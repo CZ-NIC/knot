@@ -142,8 +142,9 @@ static bool all_signatures_exist(const knot_rrset_t *covered,
 	assert(!knot_rrset_empty(covered));
 	assert(zone_keys);
 
-	for (int i = 0; i < zone_keys->count; i++) {
-		const knot_zone_key_t *key = &zone_keys->keys[i];
+	node_t *node = NULL;
+	WALK_LIST(node, zone_keys->list) {
+		const knot_zone_key_t *key = (knot_zone_key_t *)node;
 		if (!use_key(key, covered)) {
 			continue;
 		}
@@ -275,7 +276,7 @@ static int remove_expired_rrsigs(const knot_rrset_t *covered,
 
 	if (to_remove != NULL && result == KNOT_EOK) {
 		result = changeset_add_rrset(changeset, to_remove,
-		                                  CHANGESET_REMOVE);
+		                             CHANGESET_REMOVE);
 	}
 
 	if (to_remove != NULL && result != KNOT_EOK) {
@@ -311,8 +312,9 @@ static int add_missing_rrsigs(const knot_rrset_t *covered,
 	int result = KNOT_EOK;
 	knot_rrset_t *to_add = NULL;
 
-	for (int i = 0; i < zone_keys->count; i++) {
-		const knot_zone_key_t *key = &zone_keys->keys[i];
+	node_t *node = NULL;
+	WALK_LIST(node, zone_keys->list) {
+		const knot_zone_key_t *key = (knot_zone_key_t *)node;
 		if (!use_key(key, covered)) {
 			continue;
 		}
@@ -337,8 +339,7 @@ static int add_missing_rrsigs(const knot_rrset_t *covered,
 	}
 
 	if (to_add != NULL && result == KNOT_EOK) {
-		result = changeset_add_rrset(changeset, to_add,
-		                                  CHANGESET_ADD);
+		result = changeset_add_rrset(changeset, to_add, CHANGESET_ADD);
 	}
 
 	if (to_add != NULL && result != KNOT_EOK) {
@@ -376,8 +377,7 @@ static int remove_rrset_rrsigs(const knot_dname_t *owner, uint16_t type,
 		return KNOT_EOK;
 	}
 
-	ret = changeset_add_rrset(changeset, synth_rrsig,
-	                               CHANGESET_REMOVE);
+	ret = changeset_add_rrset(changeset, synth_rrsig, CHANGESET_REMOVE);
 	if (ret != KNOT_EOK) {
 		knot_rrset_free(&synth_rrsig, NULL);
 	}
@@ -476,8 +476,8 @@ static int remove_standalone_rrsigs(const zone_node_t *node,
 				knot_rrset_free(&to_remove, NULL);
 				return ret;
 			}
-			ret = changeset_add_rrset(changeset,
-			                               to_remove, CHANGESET_REMOVE);
+			ret = changeset_add_rrset(changeset, to_remove,
+			                          CHANGESET_REMOVE);
 			if (ret != KNOT_EOK) {
 				knot_rrset_free(&to_remove, NULL);
 				return ret;
@@ -803,7 +803,7 @@ done:
 
 	if (to_remove != NULL && result == KNOT_EOK) {
 		result = changeset_add_rrset(changeset, to_remove,
-		                                  CHANGESET_REMOVE);
+		                             CHANGESET_REMOVE);
 	}
 
 	if (to_remove != NULL && result != KNOT_EOK) {
@@ -855,14 +855,14 @@ static int add_missing_dnskeys(const knot_rrset_t *soa,
 	bool add_all = (knot_rrset_empty(dnskeys) ||
 	                knot_rdata_ttl(dnskeys_data) != knot_rdata_ttl(soa_data));
 
-	for (int i = 0; i < zone_keys->count; i++) {
-		const knot_zone_key_t *key = &zone_keys->keys[i];
+	node_t *node = NULL;
+	WALK_LIST(node, zone_keys->list) {
+		const knot_zone_key_t *key = (knot_zone_key_t *)node;
 		if (!add_all && dnskey_exists_in_zone(dnskeys, key)) {
 			continue;
 		}
 
 		if (!key->is_public) {
-			dbg_dnssec_detail("not public\n");
 			continue;
 		}
 
@@ -883,8 +883,7 @@ static int add_missing_dnskeys(const knot_rrset_t *soa,
 	}
 
 	if (to_add != NULL && result == KNOT_EOK) {
-		result = changeset_add_rrset(changeset, to_add,
-		                                  CHANGESET_ADD);
+		result = changeset_add_rrset(changeset, to_add, CHANGESET_ADD);
 	}
 
 	if (to_add != NULL && result != KNOT_EOK) {
@@ -944,8 +943,9 @@ static int update_dnskeys_rrsigs(const knot_rrset_t *dnskeys,
 	}
 
 	// add known keys from key database
-	for (int i = 0; i < zone_keys->count; i++) {
-		const knot_zone_key_t *key = &zone_keys->keys[i];
+	node_t *node = NULL;
+	WALK_LIST(node, zone_keys->list) {
+		const knot_zone_key_t *key = (knot_zone_key_t *)node;
 		if (!key->is_public) {
 			continue;
 		}
@@ -1295,9 +1295,13 @@ int knot_zone_sign(const zone_contents_t *zone,
 
 	// DNSKEY updates
 	uint32_t dnskey_update = knot_get_next_zone_key_event(zone_keys);
-	expiration = MIN(expiration, dnskey_update);
-
-	*refresh_at = knot_dnssec_policy_refresh_time(policy, expiration);
+	if (expiration < dnskey_update) {
+		// Signatures expire before keys do
+		*refresh_at = knot_dnssec_policy_refresh_time(policy, expiration);
+	} else {
+		// Keys expire before signatures
+		*refresh_at = dnskey_update;
+	}
 
 	return KNOT_EOK;
 }
@@ -1394,8 +1398,6 @@ int knot_zone_sign_update_soa(const knot_rrset_t *soa,
 
 	changeset->soa_from = soa_from;
 	changeset->soa_to = soa_to;
-	changeset->serial_from = serial;
-	changeset->serial_to = new_serial;
 
 	return KNOT_EOK;
 }
@@ -1414,25 +1416,28 @@ int knot_zone_sign_changeset(const zone_contents_t *zone,
 	}
 
 	// Create args for wrapper function - hattrie for duplicate sigs
-	changeset_signing_data_t args = { .zone = zone,
-	                                  .zone_keys = zone_keys,
-	                                  .policy = policy,
-	                                  .changeset = out_ch,
-	                                  .signed_tree = hattrie_create()};
+	changeset_signing_data_t args = {
+		.zone = zone,
+		.zone_keys = zone_keys,
+		.policy = policy,
+		.changeset = out_ch,
+		.signed_tree = hattrie_create()
+	};
+
 	if (args.signed_tree == NULL) {
 		return KNOT_ENOMEM;
 	}
 
 	// Sign all RRs that are new in changeset
 	int ret = changeset_apply((changeset_t *)in_ch,
-	                               CHANGESET_ADD,
-	                               sign_changeset_wrap, &args);
+	                          CHANGESET_ADD,
+	                          sign_changeset_wrap, &args);
 
 	// Sign all RRs that are removed in changeset
 	if (ret == KNOT_EOK) {
 		ret = changeset_apply((changeset_t *)in_ch,
-		                           CHANGESET_REMOVE,
-		                           sign_changeset_wrap, &args);
+		                      CHANGESET_REMOVE,
+		                      sign_changeset_wrap, &args);
 	}
 
 	knot_zone_clear_sorted_changes(args.signed_tree);
@@ -1458,7 +1463,7 @@ int knot_zone_sign_nsecs_in_changeset(const knot_zone_keys_t *zone_keys,
 	                                 .changeset = changeset };
 
 	return changeset_apply(changeset, CHANGESET_ADD,
-	                            add_rrsigs_for_nsec, &data);
+	                       add_rrsigs_for_nsec, &data);
 }
 
 /*!

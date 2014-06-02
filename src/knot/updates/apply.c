@@ -203,8 +203,7 @@ static int apply_remove(zone_contents_t *contents, changeset_t *chset)
 		const knot_rrset_t *rr = rr_node->rr;
 
 		// Find node for this owner
-		zone_node_t *node = zone_contents_find_node_for_rr(contents,
-		                                                   rr);
+		zone_node_t *node = zone_contents_find_node_for_rr(contents, rr);
 		if (!can_remove(node, rr)) {
 			// Nothing to remove from, skip.
 			continue;
@@ -311,12 +310,9 @@ static int apply_changeset(zone_contents_t *contents, changeset_t *chset,
 	 * SOA in the zone apex.
 	 */
 
-	dbg_xfrin("APPLYING CHANGESET: from serial %u to serial %u\n",
-		  chset->serial_from, chset->serial_to);
-
 	// check if serial matches
 	const knot_rdataset_t *soa = node_rdataset(contents->apex, KNOT_RRTYPE_SOA);
-	if (soa == NULL || knot_soa_serial(soa) != chset->serial_from) {
+	if (soa == NULL || knot_soa_serial(soa) != knot_soa_serial(&chset->soa_from->rrs)) {
 		dbg_xfrin("SOA serials do not match!!\n");
 		return KNOT_EINVAL;
 	}
@@ -367,13 +363,12 @@ static int mark_empty(zone_node_t **node_p, void *data)
 	return KNOT_EOK;
 }
 
-/*! \brief Removes node that were previously marked as empty. */
-static int remove_empty_nodes(zone_contents_t *z)
+static int remove_empty_tree_nodes(zone_tree_t *tree)
 {
 	list_t l;
 	init_list(&l);
 	// walk through the zone and select nodes to be removed
-	int ret = zone_tree_apply(z->nodes, mark_empty, &l);
+	int ret = zone_tree_apply(tree, mark_empty, &l);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
@@ -382,24 +377,7 @@ static int remove_empty_nodes(zone_contents_t *z)
 	node_t *nxt = NULL;
 	WALK_LIST_DELSAFE(n, nxt, l) {
 		zone_node_t *node = (zone_node_t *)n->d;
-		ret = zone_contents_remove_node(z, node->owner);
-		if (ret != KNOT_EOK) {
-			return ret;
-		}
-		node_free(&node);
-		free(n);
-	}
-
-	init_list(&l);
-	// Do the same with NSEC3 nodes.
-	ret = zone_tree_apply(z->nsec3_nodes, mark_empty, &l);
-	if (ret != KNOT_EOK) {
-		return ret;
-	}
-
-	WALK_LIST_DELSAFE(n, nxt, l) {
-		zone_node_t *node = (zone_node_t *)n->d;
-		ret = zone_contents_remove_nsec3_node(z, node->owner);
+		int ret = zone_tree_remove(tree, node->owner, &node);
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
@@ -408,6 +386,17 @@ static int remove_empty_nodes(zone_contents_t *z)
 	}
 
 	return KNOT_EOK;
+}
+
+/*! \brief Removes node that were previously marked as empty. */
+static int remove_empty_nodes(zone_contents_t *z)
+{
+	int ret = remove_empty_tree_nodes(z->nodes);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	return remove_empty_tree_nodes(z->nsec3_nodes);
 }
 
 /* --------------------- Zone copy and finalization ------------------------- */

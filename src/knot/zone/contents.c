@@ -864,11 +864,6 @@ dbg_zone_detail("Search function returned %d, node %s (%p) and prev: %s (%p)\n",
 			assert(*closest_encloser);
 		}
 	}
-dbg_zone_exec(
-	char *n = knot_dname_to_str((*closest_encloser)->owner);
-	dbg_zone_detail("Closest encloser: %s\n", n);
-	free(n);
-);
 
 	dbg_zone_verb("find_dname() returning %d\n", exact_match);
 
@@ -1015,16 +1010,6 @@ dbg_zone_exec_detail(
 		/* This RRSET was not a match, try the one from previous node. */
 		*nsec3_previous = (*nsec3_previous)->prev;
 		nsec3_rrs = node_rdataset(*nsec3_previous, KNOT_RRTYPE_NSEC3);
-		dbg_zone_exec_detail(
-		char *name = (*nsec3_previous)
-				? knot_dname_to_str((*nsec3_previous)->owner)
-				: "none";
-		dbg_zone_detail("Previous node: %s, checking parameters...\n",
-				name);
-		if (*nsec3_previous) {
-			free(name);
-		}
-);
 		if (*nsec3_previous == original_prev || nsec3_rrs == NULL) {
 			// cycle
 			*nsec3_previous = NULL;

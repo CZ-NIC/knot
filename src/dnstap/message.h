@@ -24,8 +24,7 @@
  * @{
  */
 
-#ifndef _DNSTAP__MESSAGE_H_
-#define _DNSTAP__MESSAGE_H_
+#pragma once
 
 #include <sys/socket.h>                 // struct sockaddr
 #include <sys/time.h>                   // struct timeval
@@ -69,7 +68,5 @@ int dt_message_fill(Dnstap__Message             *m,
                     const size_t                len_wire,
                     const struct timeval        *qtime,
                     const struct timeval        *rtime);
-
-#endif // _DNSTAP__MESSAGE_H_
 
 /*! @} */

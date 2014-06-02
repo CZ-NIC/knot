@@ -914,7 +914,7 @@ int internet_query_plan(struct query_plan *plan)
 }
 
 /*! \brief Process answer to SOA query. */
-static int internet_answer_soa(knot_pkt_t *pkt, struct answer_data *data)
+static int process_soa_answer(knot_pkt_t *pkt, struct answer_data *data)
 {
 	zone_t *zone  = data->param->zone;
 
@@ -957,7 +957,7 @@ int internet_process_answer(knot_pkt_t *pkt, struct answer_data *data)
 	/* As of now, server can only issue SOA queries. */
 	switch(knot_pkt_qtype(pkt)) {
 	case KNOT_RRTYPE_SOA:
-		return internet_answer_soa(pkt, data);
+		return process_soa_answer(pkt, data);
 	default:
 		return NS_PROC_NOOP;
 	}

@@ -24,6 +24,7 @@
 #include "knot/server/tcp-handler.h"
 #include "libknot/packet/wire.h"
 #include "libknot/descriptor.h"
+#include "common/strlcpy.h"
 #include "libknot/tsig-op.h"
 #include "libknot/rrtype/rdname.h"
 #include "libknot/rrtype/soa.h"
@@ -257,11 +258,12 @@ static int remote_c_zonestatus(server_t *s, remote_cmdargs_t* a)
 			next_name = zone_events_get_name(next_type);
 			next_time = next_time - time(NULL);
 			if (next_time < 0) {
-				memcpy(when, "pending", 5);
-			} else if (snprintf(when, sizeof(when), "in %ldh%ldm%lds",
-			                    (next_time / 3600),
-			                    (next_time % 3600) / 60,
-			                    (next_time % 60)) < 0) {
+				memcpy(when, "pending", strlen("pending"));
+			} else if (snprintf(when, sizeof(when),
+			                    "in %lldh%lldm%llds",
+			                    (long long)(next_time / 3600),
+			                    (long long)(next_time % 3600) / 60,
+			                    (long long)(next_time % 60)) < 0) {
 				ret = KNOT_ESPACE;
 				break;
 			}
@@ -269,7 +271,7 @@ static int remote_c_zonestatus(server_t *s, remote_cmdargs_t* a)
 			memcpy(when, "idle", strlen("idle"));
 		}
 
-		/* Workaround, some platforms ignore 'size' with snprintf() */
+		/* Prepare zone info. */
 		char buf[512] = { '\0' };
 		char dnssec_buf[128] = { '\0' };
 		int n = snprintf(buf, sizeof(buf),
@@ -616,7 +618,7 @@ int remote_answer(int sock, server_t *s, knot_pkt_t *pkt)
 	/* Prepare response. */
 	if (ret != KNOT_EOK || args->rlen == 0) {
 		args->rlen = strlen(knot_strerror(ret));
-		strncpy(args->resp, knot_strerror(ret), args->rlen);
+		strlcpy(args->resp, knot_strerror(ret), sizeof(args->resp));
 	}
 
 	unsigned p = 0;
@@ -636,10 +638,11 @@ int remote_answer(int sock, server_t *s, knot_pkt_t *pkt)
 }
 
 static int zones_verify_tsig_query(const knot_pkt_t *query,
-                            const knot_tsig_key_t *key,
-                            uint16_t *rcode, uint16_t *tsig_rcode,
-                            uint64_t *tsig_prev_time_signed)
+                                   const knot_tsig_key_t *key,
+                                   uint16_t *rcode, uint16_t *tsig_rcode,
+                                   uint64_t *tsig_prev_time_signed)
 {
+	assert(query != NULL);
 	assert(key != NULL);
 	assert(rcode != NULL);
 	assert(tsig_rcode != NULL);

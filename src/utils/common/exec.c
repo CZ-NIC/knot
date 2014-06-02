@@ -22,6 +22,7 @@
 #include "libknot/libknot.h"
 #include "common-knot/lists.h"		// list
 #include "common-knot/print.h"		// txt_print
+#include "common/strlcat.h"		// strlcat
 #include "utils/common/msg.h"		// WARN
 #include "utils/common/params.h"	// params_t
 #include "utils/common/netio.h"		// send_msg
@@ -68,29 +69,31 @@ static void print_header(const knot_pkt_t *packet, const style_t *style)
 	}
 
 	// Get flags.
-	if (knot_wire_get_qr(packet->wire) != 0) {
-		strcat(flags, " qr");
+	size_t flags_rest = sizeof(flags);
+	const size_t flag_len = 4;
+	if (knot_wire_get_qr(packet->wire) != 0 && flags_rest > flag_len) {
+		flags_rest -= strlcat(flags, " qr", flags_rest);
 	}
-	if (knot_wire_get_aa(packet->wire) != 0) {
-		strcat(flags, " aa");
+	if (knot_wire_get_aa(packet->wire) != 0 && flags_rest > flag_len) {
+		flags_rest -= strlcat(flags, " aa", flags_rest);
 	}
-	if (knot_wire_get_tc(packet->wire) != 0) {
-		strcat(flags, " tc");
+	if (knot_wire_get_tc(packet->wire) != 0 && flags_rest > flag_len) {
+		flags_rest -= strlcat(flags, " tc", flags_rest);
 	}
-	if (knot_wire_get_rd(packet->wire) != 0) {
-		strcat(flags, " rd");
+	if (knot_wire_get_rd(packet->wire) != 0 && flags_rest > flag_len) {
+		flags_rest -= strlcat(flags, " rd", flags_rest);
 	}
-	if (knot_wire_get_ra(packet->wire) != 0) {
-		strcat(flags, " ra");
+	if (knot_wire_get_ra(packet->wire) != 0 && flags_rest > flag_len) {
+		flags_rest -= strlcat(flags, " ra", flags_rest);
 	}
-	if (knot_wire_get_z(packet->wire) != 0) {
-		strcat(flags, " z");
+	if (knot_wire_get_z(packet->wire) != 0 && flags_rest > flag_len) {
+		flags_rest -= strlcat(flags, " z", flags_rest);
 	}
-	if (knot_wire_get_ad(packet->wire) != 0) {
-		strcat(flags, " ad");
+	if (knot_wire_get_ad(packet->wire) != 0 && flags_rest > flag_len) {
+		flags_rest -= strlcat(flags, " ad", flags_rest);
 	}
-	if (knot_wire_get_cd(packet->wire) != 0) {
-		strcat(flags, " cd");
+	if (knot_wire_get_cd(packet->wire) != 0 && flags_rest > flag_len) {
+		strlcat(flags, " cd", flags_rest);
 	}
 
 	uint16_t id = knot_wire_get_id(packet->wire);

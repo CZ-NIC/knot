@@ -24,8 +24,7 @@
  * @{
  */
 
-#ifndef _KNOTD_DEBUG_H_
-#define _KNOTD_DEBUG_H_
+#pragma once
 
 #ifdef KNOTD_SERVER_DEBUG
   #define KNOTD_THREADS_DEBUG
@@ -475,7 +474,5 @@
 #endif
 
 /******************************************************************************/
-
-#endif /* _KNOTD_DEBUG_H_ */
 
 /*! @} */

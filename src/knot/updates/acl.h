@@ -27,8 +27,7 @@
  * @{
  */
 
-#ifndef _KNOTD_ACL_H_
-#define _KNOTD_ACL_H_
+#pragma once
 
 #include "common-knot/lists.h"
 #include "common-knot/sockaddr.h"
@@ -52,7 +51,5 @@ int netblock_match(struct conf_iface_t *a1, const struct sockaddr_storage *a2);
  */
 struct conf_iface_t* acl_find(list_t *acl, const struct sockaddr_storage *addr,
                               const knot_dname_t *key_name);
-
-#endif /* _KNOTD_ACL_H_ */
 
 /*! @} */

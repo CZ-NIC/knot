@@ -110,7 +110,6 @@ int main(int argc, char *argv[])
 		ret = hhash_insert(tbl, keys[i], KEY_LEN(keys[i]), keys[i]);
 		if (ret != KNOT_EOK) {
 			nfilled = i;
-			ret = KNOT_EOK;
 			break;
 		}
 	}

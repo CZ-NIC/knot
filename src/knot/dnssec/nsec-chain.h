@@ -24,8 +24,7 @@
  * @{
  */
 
-#ifndef _KNOT_DNSSEC_NSEC_CHAIN_FIX_H_
-#define _KNOT_DNSSEC_NSEC_CHAIN_FIX_H_
+#pragma once
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -38,9 +37,9 @@
  * \brief Parameters to be used in connect_nsec_nodes callback.
  */
 typedef struct {
-	uint32_t ttl;                      // TTL for NSEC(3) records
-	changeset_t *changeset;       // Changeset for NSEC(3) changes
-	const zone_contents_t *zone;  // Updated zone
+	uint32_t ttl;			// TTL for NSEC(3) records
+	changeset_t *changeset;		// Changeset for NSEC(3) changes
+	const zone_contents_t *zone;	// Updated zone
 } nsec_chain_iterate_data_t;
 
 /*!
@@ -120,5 +119,3 @@ bool knot_nsec_empty_nsec_and_rrsigs_in_node(const zone_node_t *n);
  */
 int knot_nsec_create_chain(const zone_contents_t *zone, uint32_t ttl,
                            changeset_t *changeset);
-
-#endif // _KNOT_DNSSEC_NSEC_CHAIN_FIX_H_

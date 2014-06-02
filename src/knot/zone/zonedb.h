@@ -27,8 +27,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef _KNOT_ZONEDB_H_
-#define _KNOT_ZONEDB_H_
+#pragma once
 
 #include "knot/zone/node.h"
 #include "knot/zone/zone.h"
@@ -149,7 +148,5 @@ void knot_zonedb_free(knot_zonedb_t **db);
  */
 void knot_zonedb_deep_free(knot_zonedb_t **db);
 
-
-#endif /* _KNOT_ZONEDB_H_ */
 
 /*! @} */

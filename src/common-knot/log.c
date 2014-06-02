@@ -24,6 +24,7 @@
 
 #include "common-knot/log.h"
 #include "common-knot/lists.h"
+#include "common/strlcpy.h"
 #include "knot/conf/conf.h"
 
 /*! Log source table. */
@@ -272,7 +273,6 @@ int log_msg(logsrc_t src, int level, const char *msg, ...)
 {
 	/* Buffer for log message. */
 	char sbuf[4096];
-	char *buf = sbuf;
 	int buflen = sizeof(sbuf) - 1;
 
 	/* Prefix error level. */
@@ -288,21 +288,16 @@ int log_msg(logsrc_t src, int level, const char *msg, ...)
 	}
 
 	/* Prepend prefix. */
-	int plen = strlen(prefix);
-	if (plen > buflen) {
-		return KNOT_ENOMEM;
-	}
-	if (plen > 0) {
-		strncpy(buf, prefix, plen + 1);
-		buf += plen;
-		buflen -= plen;
+	size_t pr_size = strlcpy(sbuf, prefix, sizeof(sbuf));
+	if (pr_size >= sizeof(sbuf)) {
+		return KNOT_ESPACE;
 	}
 
 	/* Compile log message. */
 	int ret = 0;
 	va_list ap;
 	va_start(ap, msg);
-	ret = vsnprintf(buf, buflen, msg, ap);
+	ret = vsnprintf(sbuf + pr_size, buflen - pr_size, msg, ap);
 	va_end(ap);
 
 	/* Send to logging facilities. */

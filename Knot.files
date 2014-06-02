@@ -65,6 +65,10 @@ src/common-knot/slab/slab.h
 src/common-knot/sockaddr.c
 src/common-knot/sockaddr.h
 src/common-knot/strtonum.h
+src/common/strlcat.c
+src/common/strlcat.h
+src/common/strlcpy.c
+src/common/strlcpy.h
 src/dnstap/Makefile.am
 src/dnstap/convert.c
 src/dnstap/convert.h
@@ -150,7 +154,6 @@ src/knot/server/tcp-handler.c
 src/knot/server/tcp-handler.h
 src/knot/server/udp-handler.c
 src/knot/server/udp-handler.h
-src/knot/server/zone-load.c
 src/knot/updates/acl.c
 src/knot/updates/acl.h
 src/knot/updates/apply.c

@@ -24,8 +24,7 @@
  * @{
  */
 
-#ifndef _KNOTD_PROCESS_H_
-#define _KNOTD_PROCESS_H_
+#pragma once
 
 #include <unistd.h>
 
@@ -101,7 +100,5 @@ int proc_update_privileges(int uid, int gid);
  * \retval Created PID file path
  */
 char *pid_check_and_create();
-
-#endif // _KNOTD_PROCESS_H_
 
 /*! @} */

@@ -41,7 +41,7 @@ int main(int argc, char *argv[])
 
 	/* Create processing context. */
 	mm_ctx_t mm;
-	mm_ctx_mempool(&mm, 4096);
+	mm_ctx_mempool(&mm, DEFAULT_BLKSIZE);
 
 	/* Create a map of expected steps. */
 	bool state_map[QUERY_PLAN_STAGES] = { false };

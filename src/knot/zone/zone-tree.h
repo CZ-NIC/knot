@@ -26,8 +26,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef _KNOT_ZONE_TREE_H_
-#define _KNOT_ZONE_TREE_H_
+#pragma once
 
 #include "common-knot/hattrie/hat-trie.h"
 #include "knot/zone/node.h"
@@ -88,8 +87,8 @@ int zone_tree_insert(zone_tree_t *tree, zone_node_t *node);
  * \retval KNOT_ENOMEM
  */
 int zone_tree_find(zone_tree_t *tree,
-                          const knot_dname_t *owner,
-                          const zone_node_t **found);
+                   const knot_dname_t *owner,
+                   const zone_node_t **found);
 
 /*!
  * \brief Finds node with the given owner in the zone tree.
@@ -105,8 +104,8 @@ int zone_tree_find(zone_tree_t *tree,
  * \retval KNOT_ENOMEM
  */
 int zone_tree_get(zone_tree_t *tree,
-                         const knot_dname_t *owner,
-                         zone_node_t **found);
+                  const knot_dname_t *owner,
+                  zone_node_t **found);
 
 /*!
  * \brief Tries to find the given domain name in the zone tree and returns the
@@ -128,9 +127,9 @@ int zone_tree_get(zone_tree_t *tree,
  * \retval KNOT_ENOMEM
  */
 int zone_tree_find_less_or_equal(zone_tree_t *tree,
-                                        const knot_dname_t *owner,
-                                        const zone_node_t **found,
-                                        const zone_node_t **previous);
+                                 const knot_dname_t *owner,
+                                 const zone_node_t **found,
+                                 const zone_node_t **previous);
 
 /*!
  * \brief Tries to find the given domain name in the zone tree and returns the
@@ -155,9 +154,9 @@ int zone_tree_find_less_or_equal(zone_tree_t *tree,
  * \retval KNOT_ENOMEM
  */
 int zone_tree_get_less_or_equal(zone_tree_t *tree,
-                                       const knot_dname_t *owner,
-                                       zone_node_t **found,
-                                       zone_node_t **previous);
+                                const knot_dname_t *owner,
+                                zone_node_t **found,
+                                zone_node_t **previous);
 
 /*!
  * \brief Removes node with the given owner from the zone tree and returns it.
@@ -169,8 +168,8 @@ int zone_tree_get_less_or_equal(zone_tree_t *tree,
  * \retval The removed node.
  */
 int zone_tree_remove(zone_tree_t *tree,
-                            const knot_dname_t *owner,
-                            zone_node_t **removed);
+                     const knot_dname_t *owner,
+                     zone_node_t **removed);
 
 /*!
  * \brief Applies the given function to each node in the zone.
@@ -190,8 +189,8 @@ int zone_tree_remove(zone_tree_t *tree,
  * \retval KNOT_EINVAL
  */
 int zone_tree_apply_inorder(zone_tree_t *tree,
-                                 zone_tree_apply_cb_t function,
-                                 void *data);
+                            zone_tree_apply_cb_t function,
+                            void *data);
 
 /*!
  * \brief Applies the given function to each node in the zone. No
@@ -205,7 +204,7 @@ int zone_tree_apply_inorder(zone_tree_t *tree,
  * \retval KNOT_EINVAL
  */
 int zone_tree_apply(zone_tree_t *tree,
-                         zone_tree_apply_cb_t function, void *data);
+                    zone_tree_apply_cb_t function, void *data);
 
 /*!
  * \brief Destroys the zone tree, not touching the saved data.
@@ -224,7 +223,5 @@ void zone_tree_free(zone_tree_t **tree);
 void zone_tree_deep_free(zone_tree_t **tree);
 
 /*----------------------------------------------------------------------------*/
-
-#endif // _KNOT_ZONE_TREE_H_
 
 /*! @} */

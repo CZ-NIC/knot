@@ -24,8 +24,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef _KNOT_IXFR_H_
-#define _KNOT_IXFR_H_
+#pragma once
 
 #include "libknot/packet/pkt.h"
 
@@ -49,7 +48,5 @@ int ixfr_query(knot_pkt_t *pkt, struct query_data *qdata);
  * \retval DONE if finished.
  */
 int ixfr_process_answer(knot_pkt_t *pkt, struct answer_data *adata);
-
-#endif /* _KNOT_IXFR_H_ */
 
 /*! @} */

@@ -31,6 +31,7 @@
 #include "libknot/errcode.h"
 #include "libknot/mempattern.h"
 #include "libknot/descriptor.h"
+#include "common/strlcpy.h"
 #include "libknot/common.h"
 #include "libknot/libknot.h"
 #include "libknot/dnssec/random.h"
@@ -204,7 +205,7 @@ static int parse_partial_rr(zs_scanner_t *s, const char *lp, unsigned flags) {
 
 	len = strcspn(lp, SEP_CHARS); /* Try to find class */
 	memset(b1, 0, sizeof(b1));
-	strncpy(b1, lp, len < sizeof(b1) ? len : sizeof(b1));
+	strlcpy(b1, lp, sizeof(b1));
 
 	uint16_t v;
 	if (knot_rrclass_from_string(b1, &v) == 0) {
@@ -224,7 +225,7 @@ static int parse_partial_rr(zs_scanner_t *s, const char *lp, unsigned flags) {
 
 	len = strcspn(lp, SEP_CHARS); /* Type */
 	memset(b2, 0, sizeof(b2));
-	strncpy(b2, lp, len < sizeof(b2) ? len : sizeof(b2));
+	strlcpy(b2, lp, sizeof(b2));
 	if (knot_rrtype_from_string(b2, &v) == 0) {
 		s->r_type = v;
 		DBG("%s: parsed type=%u '%s'\n", __func__, s->r_type, b2);
@@ -245,7 +246,7 @@ static int parse_partial_rr(zs_scanner_t *s, const char *lp, unsigned flags) {
 	/* Need to parse rdata, synthetize input. */
 	char *rr = sprintf_alloc("%s %u %s %s %s\n",
 	                         owner_s, s->r_ttl, b1, b2, lp);
-	if (zs_scanner_process(rr, rr + strlen(rr), 1, s) < 0) {
+	if (rr == NULL || zs_scanner_process(rr, rr + strlen(rr), 1, s) < 0) {
 		ret = KNOT_EPARSEFAIL;
 	}
 

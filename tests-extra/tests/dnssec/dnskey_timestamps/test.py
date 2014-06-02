@@ -54,8 +54,6 @@ def date_offset(offset):
     delta = datetime.timedelta(seconds = offset)
     current_time = datetime.datetime.utcnow()
     future_time = current_time + delta
-    print("now ", datetime.datetime.strftime(current_time, "%Y%m%d%H%M%S"))
-    print("future ", datetime.datetime.strftime(future_time, "%Y%m%d%H%M%S"))
     return datetime.datetime.strftime(future_time, "%Y%m%d%H%M%S")
 
 t = Test()
@@ -72,7 +70,7 @@ shutil.copytree(os.path.join(t.data_dir, "keys"), knot.keydir)
 key_file = os.path.join(knot.keydir, "test.private")
 date_past = "19700101000001"
 date_future = "20400101000000"
-WAIT_SIGN = 1
+WAIT_SIGN = 2
 
 #
 # Common cases
@@ -84,7 +82,7 @@ check_log("Common cases")
 key_settime(key_file, Publish=date_future, Activate=date_future)
 t.start()
 t.sleep(WAIT_SIGN)
-check_zone(knot, False, False, "published, not active")
+check_zone(knot, False, False, "not published, not active")
 
 # key published, not active
 key_settime(key_file, Publish=date_past)
@@ -110,12 +108,20 @@ knot.reload()
 t.sleep(WAIT_SIGN)
 check_zone(knot, False, False, "deleted, inactive")
 
+# key not published, active (algorithm rotation)
+key_settime(key_file, Publish=date_future, Activate=date_past, Inactive=None, Delete=None)
+knot.reload()
+t.sleep(WAIT_SIGN)
+check_zone(knot, False, True, "not published, active")
+
+#
 # Test DNSSEC key event execution
+#
 
 check_log("Planned events")
 
-# key about to be published, reset other dates
-event_in = 3
+# key about to be published
+event_in = 5
 key_settime(key_file, Publish=date_offset(event_in), Activate=date_future, Inactive=None, Delete=None)
 knot.reload()
 t.sleep(WAIT_SIGN)
@@ -140,21 +146,11 @@ t.sleep(event_in)
 check_zone(knot, True, False, "to be inactivated - post")
 
 #key about to be deleted
-key_settime(key_file, Publish=date_past, Activate=date_past, Inactive=None, Delete=date_offset(event_in))
+key_settime(key_file, Publish=date_past, Activate=date_past, Inactive=date_past, Delete=date_offset(event_in))
 knot.reload()
 t.sleep(WAIT_SIGN)
-check_zone(knot, True, True, "to be deleted - pre")
+check_zone(knot, True, False, "to be deleted - pre")
 t.sleep(event_in)
 check_zone(knot, False, False, "to be deleted - post")
-
-#
-# Special cases
-#
-
-# key not published, active (algorithm rotation)
-key_settime(key_file, Publish=date_future, Activate=date_past, Inactive=None, Delete=None)
-knot.reload()
-t.sleep(WAIT_SIGN)
-check_zone(knot, False, True, "not published, active (algorithm rotation)")
 
 t.end()

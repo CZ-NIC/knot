@@ -24,8 +24,7 @@
  * @{
  */
 
-#ifndef _KNOTD_SOCKADDR_H_
-#define _KNOTD_SOCKADDR_H_
+#pragma once
 
 /* BSD IPv6 */
 #ifndef __POSIX_VISIBLE
@@ -125,7 +124,5 @@ void sockaddr_port_set(struct sockaddr_storage *ss, uint16_t port);
  * \return hostname string or NULL
  */
 char *sockaddr_hostname(void);
-
-#endif /* _KNOTD_SOCKADDR_H_ */
 
 /*! @} */

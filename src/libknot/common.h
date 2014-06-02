@@ -26,8 +26,7 @@
 
 #include "libknot/errcode.h"
 
-#ifndef _KNOT_COMMON_H_
-#define _KNOT_COMMON_H_
+#pragma once
 
 #define KNOT_NAME "lib" PACKAGE_NAME // Project name
 #define KNOT_VER  PACKAGE_VERSION  // 0xMMIIRR (MAJOR,MINOR,REVISION)
@@ -89,7 +88,5 @@ typedef unsigned int uint; /*!< \brief Unsigned. */
 		} \
 	} while (0)
 #endif
-
-#endif /* _KNOT_COMMON_H_ */
 
 /*! @} */

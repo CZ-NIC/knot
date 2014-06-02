@@ -287,8 +287,9 @@ int net_set_local_info(net_t *net)
 	struct sockaddr_storage *local_addr = calloc(1, local_addr_len);
 
 	if (getsockname(net->sockfd, (struct sockaddr *)local_addr,
-			&local_addr_len) == -1) {
+	                &local_addr_len) == -1) {
 		WARN("can't get local address\n");
+		free(local_addr);
 		return KNOT_NET_ESOCKET;
 	}
 
@@ -424,7 +425,7 @@ int net_receive(const net_t *net, uint8_t *buf, const size_t buf_len)
 
 			// Receive whole UDP datagram.
 			ret = recvfrom(net->sockfd, buf, buf_len, 0,
-				       (struct sockaddr *)&from, &from_len);
+			               (struct sockaddr *)&from, &from_len);
 			if (ret <= 0) {
 				WARN("can't receive reply from %s\n",
 				     net->remote_str);

@@ -24,10 +24,12 @@
  * @{
  */
 
-#ifndef _KNOTD_COMMON_MALLOC_H_
-#define _KNOTD_COMMON_MALLOC_H_
+#pragma once
 
 #include <stddef.h>
+
+/* Default memory block size. */
+#define DEFAULT_BLKSIZE 4096
 
 /* Memory allocation function prototypes. */
 typedef void* (*mm_alloc_t)(void* ctx, size_t len);
@@ -119,7 +121,5 @@ void usage_dump();
 
 /*! \brief Trim excess heap memory. */
 void mem_trim(void);
-
-#endif // _KNOTD_COMMON_MALLOC_H_
 
 /*! @} */

@@ -24,8 +24,7 @@
  * @{
  */
 
-#ifndef _KNOTD_LOGCONF_H_
-#define _KNOTD_LOGCONF_H_
+#pragma once
 
 struct conf_t;
 
@@ -39,7 +38,5 @@ struct conf_t;
  * \retval KNOT_ENOMEM out of memory error.
  */
 int log_reconfigure(const struct conf_t *conf, void *data);
-
-#endif /* _KNOTD_LOGCONF_H_ */
 
 /*! @} */

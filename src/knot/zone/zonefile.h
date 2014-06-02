@@ -24,8 +24,7 @@
  * @{
  */
 
-#ifndef _KNOT_ZONELOAD_H_
-#define _KNOT_ZONELOAD_H_
+#pragma once
 
 #include <stdbool.h>
 #include <stdio.h>
@@ -118,7 +117,5 @@ void process_error(zs_scanner_t *scanner);
  * \param rr      RR that caused the mismatch.
  */
 void log_ttl_error(const zone_node_t *node, const knot_rrset_t *rr);
-
-#endif /* _KNOTD_ZONELOAD_H_ */
 
 /*! @} */

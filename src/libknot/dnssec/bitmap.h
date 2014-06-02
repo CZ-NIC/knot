@@ -24,8 +24,7 @@
  * @{
  */
 
-#ifndef _KNOT_DNSSEC_ZONE_NSEC_BITMAP_H_
-#define _KNOT_DNSSEC_ZONE_NSEC_BITMAP_H_
+#pragma once
 
 #include <stdint.h>
 #include <string.h>
@@ -114,7 +113,5 @@ inline static void bitmap_write(const bitmap_t *bitmap, uint8_t *output)
 		write_ptr += used;
 	}
 }
-
-#endif // _KNOT_DNSSEC_ZONE_NSEC_BITMAP_H_
 
 /*! @} */

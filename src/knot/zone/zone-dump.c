@@ -172,7 +172,7 @@ int zone_dump_text(zone_contents_t *zone, const struct sockaddr_storage *from, F
 		params.dump_rrsig = true;
 		params.dump_nsec = false;
 		ret = zone_contents_tree_apply_inorder(zone, node_dump_text,
-		                                            &params);
+		                                       &params);
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
@@ -185,7 +185,7 @@ int zone_dump_text(zone_contents_t *zone, const struct sockaddr_storage *from, F
 		params.dump_rrsig = false;
 		params.dump_nsec = true;
 		ret = zone_contents_nsec3_apply_inorder(zone, node_dump_text,
-		                                             &params);
+		                                        &params);
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
@@ -195,7 +195,7 @@ int zone_dump_text(zone_contents_t *zone, const struct sockaddr_storage *from, F
 		params.dump_rrsig = true;
 		params.dump_nsec = false;
 		ret = zone_contents_nsec3_apply_inorder(zone, node_dump_text,
-		                                             &params);
+		                                        &params);
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
@@ -206,7 +206,7 @@ int zone_dump_text(zone_contents_t *zone, const struct sockaddr_storage *from, F
 		params.dump_rrsig = false;
 		params.dump_nsec = true;
 		ret = zone_contents_tree_apply_inorder(zone, node_dump_text,
-		                                            &params);
+		                                       &params);
 		if (ret != KNOT_EOK) {
 			return ret;
 		}

@@ -24,8 +24,7 @@
  * @{
  */
 
-#ifndef _KNOTD_REMOTE_H_
-#define _KNOTD_REMOTE_H_
+#pragma once
 
 #include "knot/conf/conf.h"
 #include "libknot/packet/pkt.h"
@@ -184,7 +183,5 @@ int remote_create_ns(knot_rrset_t *rr, const char *d);
  * \return KNOT_EOK
  */
 int remote_print_txt(const knot_rrset_t *rrset, uint16_t i);
-
-#endif // _KNOTD_REMOTE_H_
 
 /*! @} */

@@ -28,6 +28,8 @@ Knot DNS supports the following DNS features:
 * DNSSEC, including NSEC3
 * NSID
 * Unknown RR types
+* Dynamic updates
+* Response Rate Limiting
 
 Server features:
 
@@ -38,11 +40,9 @@ Server features:
 
 For more info and downloads see `www.knot-dns.cz <https://www.knot-dns.cz>`_.
 
-Git repository: `git://git.nic.cz/knot-dns.git <git://git.nic.cz/knot-dns.git>`_
+Git repository: `git://git.nic.cz/knot-dns.git <https://gitlab.labs.nic.cz/labs/knot/tree/master>`_
 
-Git repository browser: `gitlab.labs.nic.cz/knot/tree/master <https://gitlab.labs.nic.cz/knot/tree/master>`_
-
-Knot DNS issue tracker: `gitlab.labs.nic.cz/knot/issues <https://gitlab.labs.nic.cz/knot/issues>`_
+Knot DNS issue tracker: `gitlab.labs.nic.cz/labs/knot/issues <https://gitlab.labs.nic.cz/labs/knot/issues>`_
 
 Knot DNS users mailing list: `knot-dns-users@lists.nic.cz <mailto:knot-dns-users@lists.nic.cz>`_
 

@@ -51,9 +51,7 @@ int apply_changesets(zone_t *zone, changesets_t *chsets,
  * \param contents Zone contents to apply the changesets to. Will be modified.
  * \param chsets   Changesets to be applied to the zone.
  *
- * \retval KNOT_EOK if successful.
- * \retval KNOT_EINVAL if given one of the arguments is NULL.
- * \return Other error code if the application went wrong.
+ * \return KNOT_E*
  */
 int apply_changesets_directly(zone_contents_t *contents,
                               changesets_t *chsets);

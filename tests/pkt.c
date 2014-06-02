@@ -102,7 +102,7 @@ int main(int argc, char *argv[])
 	 */
 
 	/* Create packet. */
-	knot_pkt_t *out = knot_pkt_new(NULL, 4096, &mm);
+	knot_pkt_t *out = knot_pkt_new(NULL, DEFAULT_BLKSIZE, &mm);
 	ok(out != NULL, "pkt: new");
 
 	/* Mark as response (not part of the test). */

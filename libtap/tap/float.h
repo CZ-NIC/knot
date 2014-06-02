@@ -25,8 +25,7 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef TAP_FLOAT_H
-#define TAP_FLOAT_H 1
+#pragma once
 
 #include "macros.h"
 
@@ -38,5 +37,3 @@ void is_double(double wanted, double seen, double epsilon,
     __attribute__((__format__(printf, 4, 5)));
 
 END_DECLS
-
-#endif /* TAP_FLOAT_H */

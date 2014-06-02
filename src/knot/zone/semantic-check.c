@@ -203,8 +203,7 @@ int err_handler_handle_error(err_handler_t *handler, const zone_node_t *node,
 	 * an option for it.
 	 */
 
-	if ((error != 0) &&
-	    (error < ZC_ERR_GENERIC_GENERAL_ERROR)) {
+	if (error < ZC_ERR_GENERIC_GENERAL_ERROR) {
 		/* The two errors before SOA were handled */
 		log_error_from_node(handler, node, error, data);
 		return KNOT_EOK;

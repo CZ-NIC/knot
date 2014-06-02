@@ -90,7 +90,7 @@ static int nsupdate_init(nsupdate_params_t *params)
 	init_list(&params->prereq_list);
 
 	/* Initialize memory context. */
-	mm_ctx_mempool(&params->mm, 4096);
+	mm_ctx_mempool(&params->mm, DEFAULT_BLKSIZE);
 
 	/* Default server. */
 	params->server = srv_info_create(DEFAULT_IPV4_NAME, DEFAULT_DNS_PORT);

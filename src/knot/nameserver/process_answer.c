@@ -117,6 +117,7 @@ static int process_answer(knot_pkt_t *pkt, knot_process_t *ctx)
 	/* Verify incoming packet. */
 	int ret = tsig_verify_packet(&data->param->tsig_ctx, pkt);
 	if (ret != KNOT_EOK) {
+		ANSWER_LOG(LOG_INFO, data, "Response", "%s", knot_strerror(ret));
 		return NS_PROC_FAIL;
 	}
 
@@ -129,7 +130,7 @@ static int process_answer(knot_pkt_t *pkt, knot_process_t *ctx)
 		next_state = internet_process_answer(pkt, data);
 		break;
 	case KNOT_RESPONSE_AXFR:
-		next_state = axfr_process_answer(pkt, data);
+		next_state = axfr_answer_process(pkt, data);
 		break;
 	case KNOT_RESPONSE_IXFR:
 		next_state = ixfr_process_answer(pkt, data);

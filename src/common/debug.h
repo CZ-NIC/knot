@@ -26,8 +26,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef _KNOT_DEBUG_H_
-#define _KNOT_DEBUG_H_
+#pragma once
 
 #include <stdint.h>
 #include <stdio.h>
@@ -723,7 +722,5 @@
 #endif
 
 /******************************************************************************/
-
-#endif /* _KNOT_DEBUG_H_ */
 
 /*! @} */

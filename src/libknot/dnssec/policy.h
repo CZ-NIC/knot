@@ -24,8 +24,7 @@
  * @{
  */
 
-#ifndef _KNOT_DNSSEC_POLICY_H_
-#define _KNOT_DNSSEC_POLICY_H_
+#pragma once
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -62,7 +61,5 @@ void knot_dnssec_policy_set_sign_lifetime(knot_dnssec_policy_t *policy,
 uint32_t knot_dnssec_policy_refresh_time(const knot_dnssec_policy_t *policy,
                                          uint32_t earliest_expiration);
 
-
-#endif // _KNOT_DNSSEC_POLICY_H_
 
 /*! @} */

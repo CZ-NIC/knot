@@ -31,6 +31,8 @@
 #include <pwd.h>
 #include <grp.h>
 #include "common-knot/sockaddr.h"
+#include "common/strlcat.h"
+#include "common/strlcpy.h"
 #include "libknot/dname.h"
 #include "libknot/binary.h"
 #include "libknot/rrtype/opt.h"
@@ -663,13 +665,11 @@ keys:
 	   cf_error(scanner, "out of memory when allocating string");
 	   free(fqdn);
 	   fqdn = NULL;
-	   fqdnl = 0;
 	} else {
-	   strncpy(tmpdn, fqdn, fqdnl);
-	   strncat(tmpdn, ".", 1);
+	   strlcpy(tmpdn, fqdn, fqdnl);
+	   strlcat(tmpdn, ".", fqdnl);
 	   free(fqdn);
 	   fqdn = tmpdn;
-	   fqdnl = strlen(fqdn);
 	}
      }
 

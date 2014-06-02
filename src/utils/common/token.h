@@ -24,8 +24,7 @@
  * @{
  */
 
-#ifndef _UTILS__TOKEN_H_
-#define _UTILS__TOKEN_H_
+#pragma once
 
 #include <stdio.h>
 
@@ -87,5 +86,4 @@ const char* tok_skipspace(const char *lp);
  */
 int tok_process_lines(FILE *fp, lparse_f cb, void *arg);
 
-#endif // _UTILS__TOKEN_H_
 /*! @} */

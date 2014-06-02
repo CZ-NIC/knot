@@ -24,8 +24,7 @@
  * @{
  */
 
-#ifndef __CRC_H__
-#define __CRC_H__
+#pragma once
 
 #include <zlib.h>
 #include <stdint.h>
@@ -74,8 +73,5 @@ static inline crc_t crc_finalize(crc_t crc)
 {
     return crc;
 }
-
-
-#endif      /* __CRC_H__ */
 
 /*! @} */

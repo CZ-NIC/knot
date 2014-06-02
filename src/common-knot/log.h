@@ -30,8 +30,7 @@
  * @{
  */
 
-#ifndef _KNOTD_LOG_H_
-#define _KNOTD_LOG_H_
+#pragma once
 
 /*
  */
@@ -214,7 +213,5 @@ void hex_log(int source, const char *data, int length);
  * \retval KNOT_ERROR on error
  */
 int log_update_privileges(int uid, int gid);
-
-#endif /* _KNOTD_LOG_H_ */
 
 /*! @} */

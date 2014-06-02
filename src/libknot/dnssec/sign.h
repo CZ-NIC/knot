@@ -24,8 +24,7 @@
  * @{
  */
 
-#ifndef _KNOT_DNSSEC_SIGN_H_
-#define _KNOT_DNSSEC_SIGN_H_
+#pragma once
 
 #include "libknot/binary.h"
 #include "libknot/consts.h"
@@ -153,7 +152,5 @@ int knot_dnssec_sign_write(knot_dnssec_sign_context_t *context,
  */
 int knot_dnssec_sign_verify(knot_dnssec_sign_context_t *context,
                             const uint8_t *signature, size_t signature_size);
-
-#endif // _KNOT_DNSSEC_SIGN_H_
 
 /*! @} */

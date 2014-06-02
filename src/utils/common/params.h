@@ -24,8 +24,7 @@
  * @{
  */
 
-#ifndef _UTILS__PARAMS_H_
-#define _UTILS__PARAMS_H_
+#pragma once
 
 #include <stdint.h>			// uint16_t
 #include <limits.h>			// INT_MAX
@@ -168,7 +167,5 @@ int params_parse_num(const char *value, uint32_t *dst);
 int params_parse_tsig(const char *value, knot_key_params_t *key_params);
 
 int params_parse_keyfile(const char *value, knot_key_params_t *key_params);
-
-#endif // _UTILS__PARAMS_H_
 
 /*! @} */

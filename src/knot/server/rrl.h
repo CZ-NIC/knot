@@ -24,8 +24,7 @@
  * @{
  */
 
-#ifndef _KNOTD_RRL_H_
-#define _KNOTD_RRL_H_
+#pragma once
 
 #include <stdint.h>
 #include <pthread.h>
@@ -188,7 +187,5 @@ int rrl_lock(rrl_table_t *rrl, int lk_id);
  * \retval KNOT_ERROR
  */
 int rrl_unlock(rrl_table_t *rrl, int lk_id);
-
-#endif /* _KNOTD_RRL_H_ */
 
 /*! @} */

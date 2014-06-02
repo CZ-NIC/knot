@@ -194,7 +194,7 @@ finish:
 		next_state = ratelimit_apply(next_state, pkt, ctx);
 	}
 
-	/* Before query processing code. */
+	/* After query processing code. */
 	if (plan) {
 		WALK_LIST(step, plan->stage[QPLAN_END]) {
 			next_state = step->process(next_state, pkt, qdata, step->ctx);
@@ -390,7 +390,7 @@ static int query_internet(knot_pkt_t *pkt, knot_process_t *ctx)
 		next_state = notify_query(pkt, data);
 		break;
 	case KNOT_QUERY_AXFR:
-		next_state = axfr_query(pkt, data);
+		next_state = axfr_query_process(pkt, data);
 		break;
 	case KNOT_QUERY_IXFR:
 		next_state = ixfr_query(pkt, data);

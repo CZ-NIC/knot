@@ -26,8 +26,7 @@
  * @{
  */
 
-#ifndef _KNOTD_NET_H_
-#define _KNOTD_NET_H_
+#pragma once
 
 /* POSIX only. */
 #include "common-knot/sockaddr.h"
@@ -75,7 +74,5 @@ int net_connected_socket(int type, const struct sockaddr_storage *dst_addr,
  * \return true if connected
  */
 int net_is_connected(int fd);
-
-#endif // _KNOTD_NET_H_
 
 /*! @} */

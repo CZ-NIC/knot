@@ -29,8 +29,6 @@ static const uint8_t E_VERSION2 = 2;
 static const uint8_t E_RCODE = 0;
 static const uint8_t E_RCODE2 = 200;
 
-static const uint16_t E_HEADER_SIZE = 11;
-
 static const char *E_NSID_STR = "FooBar";
 static const uint16_t E_NSID_LEN = 6;
 

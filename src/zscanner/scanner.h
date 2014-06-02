@@ -24,8 +24,7 @@
  * @{
  */
 
-#ifndef _ZSCANNER__SCANNER_H_
-#define _ZSCANNER__SCANNER_H_
+#pragma once
 
 #include <stdint.h>
 #include <stdbool.h>
@@ -267,7 +266,5 @@ int zs_scanner_process(const char   *start,
                        const char   *end,
                        const bool   is_complete,
                        zs_scanner_t *scanner);
-
-#endif // _ZSCANNER__SCANNER_H_
 
 /*! @} */

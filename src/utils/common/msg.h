@@ -24,8 +24,7 @@
  * @{
  */
 
-#ifndef _UTILS__MSG_H_
-#define _UTILS__MSG_H_
+#pragma once
 
 #include <stdio.h>			// printf
 
@@ -47,7 +46,5 @@ int msg_debug(const char *fmt, ...);
 
 /*! \brief Debug message for null input. */
 #define DBG_NULL	DBG("%s: null parameter\n", __func__)
-
-#endif // _UTILS__MSG_H_
 
 /*! @} */

@@ -14,8 +14,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef _KNOT_ZONE_DIFF_H_
-#define _KNOT_ZONE_DIFF_H_
+#pragma once
 
 #include <stdint.h>
 
@@ -26,13 +25,10 @@
  * \brief Create diff between two zone trees.
  * */
 int zone_contents_create_diff(const zone_contents_t *z1,
-                                   const zone_contents_t *z2,
-                                   changeset_t *changeset);
+                              const zone_contents_t *z2,
+                              changeset_t *changeset);
 
 /*!
  * \brief Add diff between two zone trees into the changeset.
  */
-int zone_tree_add_diff(zone_tree_t *t1, zone_tree_t *t2,
-                            changeset_t *changeset);
-
-#endif // _KNOT_ZONE_DIFF_H_
+int zone_tree_add_diff(zone_tree_t *t1, zone_tree_t *t2, changeset_t *changeset);

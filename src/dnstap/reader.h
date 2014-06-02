@@ -22,8 +22,7 @@
  * @{
  */
 
-#ifndef _DNSTAP__READER_H_
-#define _DNSTAP__READER_H_
+#pragma once
 
 #include <fstrm.h>
 #include <protobuf-c/protobuf-c.h>
@@ -76,7 +75,5 @@ int dt_reader_read(dt_reader_t *reader, Dnstap__Dnstap **d);
  * \param d                     The frame to be freed.
  */
 void dt_reader_free_frame(dt_reader_t *reader, Dnstap__Dnstap **d);
-
-#endif // _DNSTAP__DNSTAP_H_
 
 /*! @} */

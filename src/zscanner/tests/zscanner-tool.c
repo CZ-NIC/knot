@@ -54,10 +54,7 @@ int main(int argc, char *argv[])
 {
 	// Parsed command line arguments.
 	int c = 0, li = 0;
-	int ret, mode = DEFAULT_MODE, test = 0;
-	zs_loader_t *fl;
-	const char *origin;
-	const char *zone_file;
+	int mode = DEFAULT_MODE, test = 0;
 
 	// Command line long options.
 	struct option opts[] = {
@@ -101,14 +98,16 @@ int main(int argc, char *argv[])
 			return EXIT_FAILURE;
 		}
 	} else {
+		zs_loader_t *fl;
+
 		// Check if there are 2 remaining non-options.
 		if (argc - optind != 2) {
 			help();
 			return EXIT_FAILURE;
 		}
 
-		origin = argv[optind];
-		zone_file = argv[optind + 1];
+		const char *origin = argv[optind];
+		const char *zone_file = argv[optind + 1];
 
 		// Create appropriate file loader.
 		switch (mode) {
@@ -147,7 +146,7 @@ int main(int argc, char *argv[])
 
 		// Check file loader.
 		if (fl != NULL) {
-			ret = zs_loader_process(fl);
+			int ret = zs_loader_process(fl);
 
 			switch (ret) {
 			case ZS_OK:

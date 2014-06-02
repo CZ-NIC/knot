@@ -27,10 +27,11 @@ int update_answer(knot_pkt_t *pkt, struct query_data *qdata)
 	/* RFC1996 require SOA question. */
 	NS_NEED_QTYPE(qdata, KNOT_RRTYPE_SOA, KNOT_RCODE_FORMERR);
 
-	/* Check valid zone, transaction security and contents. */
+	/* Check valid zone. */
 	NS_NEED_ZONE(qdata, KNOT_RCODE_NOTAUTH);
 
-	/* Allow pass-through of an unknown TSIG in DDNS forwarding (must have zone). */
+	/* Allow pass-through of an unknown TSIG in DDNS forwarding
+	   (must have zone). */
 	zone_t *zone = (zone_t *)qdata->zone;
 	if (zone_master(zone) != NULL) {
 		return update_forward(pkt, qdata);
@@ -38,7 +39,8 @@ int update_answer(knot_pkt_t *pkt, struct query_data *qdata)
 
 	/* Need valid transaction security. */
 	NS_NEED_AUTH(&zone->conf->acl.update_in, qdata);
-	NS_NEED_ZONE_CONTENTS(qdata, KNOT_RCODE_SERVFAIL); /* Check expiration. */
+	/* Check expiration. */
+	NS_NEED_ZONE_CONTENTS(qdata, KNOT_RCODE_SERVFAIL);
 
 	/* Store update into DDNS queue. */
 	int ret = zone_update_enqueue(zone, qdata->query, qdata->param);
@@ -70,12 +72,18 @@ static bool zones_dnskey_changed(const zone_contents_t *old_contents,
 static bool zones_nsec3param_changed(const zone_contents_t *old_contents,
                                      const zone_contents_t *new_contents)
 {
-	return apex_rr_changed(old_contents, new_contents, KNOT_RRTYPE_NSEC3PARAM);
+	return apex_rr_changed(old_contents, new_contents,
+	                       KNOT_RRTYPE_NSEC3PARAM);
 }
 
 static int sign_update(zone_t *zone, const zone_contents_t *old_contents,
                        zone_contents_t *new_contents, changeset_t *ddns_ch)
 {
+	assert(zone != NULL);
+	assert(old_contents != NULL);
+	assert(new_contents != NULL);
+	assert(ddns_ch != NULL);
+
 	changesets_t *sec_chs = changesets_create(1);
 	if (sec_chs == NULL) {
 		return KNOT_ENOMEM;
@@ -119,6 +127,8 @@ static int sign_update(zone_t *zone, const zone_contents_t *old_contents,
 		return ret;
 	}
 
+	// Free the DNSSEC changeset's SOA from (not used anymore)
+	knot_rrset_free(&sec_ch->soa_from, NULL);
 	// Shallow free DNSSEC changesets
 	free(sec_chs);
 
@@ -215,8 +225,9 @@ static int process_authenticated(uint16_t *rcode, struct query_data *qdata)
 
 int update_process_query(knot_pkt_t *pkt, struct query_data *qdata)
 {
-	assert(pkt);
-	assert(qdata);
+	if (pkt == NULL || qdata == NULL) {
+		return KNOT_EINVAL;
+	}
 
 	UPDATE_LOG(LOG_INFO, "Started.");
 
@@ -246,9 +257,10 @@ int update_process_query(knot_pkt_t *pkt, struct query_data *qdata)
 
 	gettimeofday(&t_end, NULL);
 	UPDATE_LOG(LOG_INFO, "Serial %u -> %u", old_serial, new_serial);
-	UPDATE_LOG(LOG_INFO, "Finished in %.02fs.", time_diff(&t_start, &t_end) / 1000.0);
+	UPDATE_LOG(LOG_INFO, "Finished in %.02fs.",
+	           time_diff(&t_start, &t_end) / 1000.0);
 	
-	zone_events_schedule(zone, ZONE_EVENT_NOTIFY,  ZONE_EVENT_NOW);
+	zone_events_schedule(zone, ZONE_EVENT_NOTIFY, ZONE_EVENT_NOW);
 
 	return KNOT_EOK;
 }

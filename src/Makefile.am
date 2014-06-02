@@ -106,6 +106,10 @@ libknotcs_la_SOURCES =				\
 	common/debug.h				\
 	common/getline.c			\
 	common/getline.h
+	common/strlcat.c			\
+	common/strlcat.h			\
+	common/strlcpy.c			\
+	common/strlcpy.h			\
 
 # static: utilities shared
 libknotus_la_SOURCES =				\
@@ -331,8 +335,8 @@ libknotd_la_SOURCES +=				\
 	knot/modules/dnstap.c			\
 	knot/modules/dnstap.h
 
-kdig_LDADD	+= dnstap/libdnstap.la
-khost_LDADD	+= dnstap/libdnstap.la
+kdig_LDADD         += dnstap/libdnstap.la
+khost_LDADD        += dnstap/libdnstap.la
 libknotd_la_LIBADD += dnstap/libdnstap.la
 endif
 

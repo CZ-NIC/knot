@@ -24,8 +24,7 @@
  * @{
  */
 
-#ifndef _KNOT_RRSETDUMP_H_
-#define _KNOT_RRSETDUMP_H_
+#pragma once
 
 #include <stdbool.h>		// bool
 
@@ -105,7 +104,5 @@ int knot_rrset_txt_dump(const knot_rrset_t      *rrset,
                         char                    *dst,
                         const size_t            maxlen,
                         const knot_dump_style_t *style);
-
-#endif // _KNOT_RRSETDUMP_H_
 
 /*! @} */

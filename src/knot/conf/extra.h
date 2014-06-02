@@ -24,8 +24,7 @@
  * @{
  */
 
-#ifndef _KNOT_CONF_EXTRA_H_
-#define _KNOT_CONF_EXTRA_H_
+#pragma once
 
 #include <stdbool.h>
 
@@ -54,7 +53,5 @@ conf_extra_t *conf_extra_init(const char *file);
  * \param extra  Structure to be freed.
  */
 void conf_extra_free(conf_extra_t *extra);
-
-#endif /* _KNOT_CONF_EXTRA_H_ */
 
 /*! @} */

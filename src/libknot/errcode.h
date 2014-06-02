@@ -25,8 +25,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef _KNOTD_COMMON_ERRCODE_H_
-#define _KNOTD_COMMON_ERRCODE_H_
+#pragma once
 
 #include <errno.h>
 #include "libknot/errors.h"
@@ -77,7 +76,6 @@ enum knot_error {
 	KNOT_EZONENOENT,      /*!< Zone file not found. */
 	KNOT_ENOZONE,         /*!< No such zone found. */
 	KNOT_ENONODE,         /*!< No such node in zone found. */
-	KNOT_ENORRSET,        /*!< No such RRSet found. */
 	KNOT_EDNAMEPTR,       /*!< Domain name pointer larger than allowed. */
 	KNOT_EPAYLOAD,        /*!< Payload in OPT RR larger than max wire size. */
 	KNOT_ECRC,            /*!< Wrong dump CRC. */
@@ -161,7 +159,5 @@ static inline const char *knot_strerror(int code)
  * \return Mapped error code.
  */
 #define knot_map_errno(err...) map_errno(KNOT_ERROR, err);
-
-#endif /* _KNOTD_COMMON_ERRCODE_H_ */
 
 /*! @} */

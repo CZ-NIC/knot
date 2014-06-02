@@ -25,8 +25,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef _KNOT_NSEC_PROOFS_H_
-#define _KNOT_NSEC_PROOFS_H_
+#pragma once
 
 #include "libknot/packet/pkt.h"
 
@@ -50,7 +49,5 @@ int nsec_append_rrsigs(knot_pkt_t *pkt, struct query_data *qdata, bool optional)
 
 /*! \brief Clear RRSIG list. */
 void nsec_clear_rrsigs(struct query_data *qdata);
-
-#endif /* _KNOT_NSEC_PROOFS_H_ */
 
 /*! @} */

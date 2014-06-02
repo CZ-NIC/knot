@@ -24,8 +24,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef _KNOT_AXFR_H_
-#define _KNOT_AXFR_H_
+#pragma once
 
 #include "libknot/packet/pkt.h"
 #include "knot/zone/zonedb.h"
@@ -43,6 +42,7 @@ struct xfr_proc {
 };
 
 /*! \brief Generic transfer processing (reused for IXFR).
+ *  \return KNOT_EOK or an error
  */
 typedef int (*xfr_put_cb)(knot_pkt_t *pkt, const void *item, struct xfr_proc *xfer);
 
@@ -52,23 +52,19 @@ typedef int (*xfr_put_cb)(knot_pkt_t *pkt, const void *item, struct xfr_proc *xf
 int xfr_process_list(knot_pkt_t *pkt, xfr_put_cb put, struct query_data *qdata);
 
 /*!
- * \brief AXFR query processing module.
+ * \brief Process an AXFR query message.
  *
- * \retval FULL if it has an answer, but not yet finished.
- * \retval FAIL if it encountered an error.
- * \retval DONE if finished.
+ * \return NS_PROC_* processing states
  */
-int axfr_query(knot_pkt_t *pkt, struct query_data *qdata);
+int axfr_query_process(knot_pkt_t *pkt, struct query_data *qdata);
 
 /*!
- * \brief Processes an AXFR query response.
+ * \brief Processes an AXFR respons message.
  *
  * \param pkt Processed packet.
  * \param xfr Persistent transfer-specific data.
- *
+ * \return NS_PROC_* processing states
  */
-int axfr_process_answer(knot_pkt_t *pkt, struct answer_data *data);
-
-#endif /* _KNOT_AXFR_H_ */
+int axfr_answer_process(knot_pkt_t *pkt, struct answer_data *data);
 
 /*! @} */

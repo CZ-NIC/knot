@@ -36,8 +36,7 @@
  * @{
  */
 
-#ifndef _KNOTD_DTHREADS_H_
-#define _KNOTD_DTHREADS_H_
+#pragma once
 
 #include <pthread.h>
 
@@ -238,7 +237,7 @@ int dt_compact(dt_unit_t *unit);
  * \retval Number of online CPU's if success.
  * \retval <0 on failure.
  */
-int dt_online_cpus();
+int dt_online_cpus(void);
 
 /*!
  * \brief Return optimal number of threads for instance.
@@ -248,7 +247,7 @@ int dt_online_cpus();
  *
  * \return Number of threads.
  */
-int dt_optimal_size();
+int dt_optimal_size(void);
 
 /*!
  * \brief Return true if thread is cancelled.
@@ -300,7 +299,5 @@ int dt_unit_lock(dt_unit_t *unit);
  * \retval KNOT_ERROR unspecified error.
  */
 int dt_unit_unlock(dt_unit_t *unit);
-
-#endif // _KNOTD_DTHREADS_H_
 
 /*! @} */

@@ -55,6 +55,6 @@ void worker_queue_enqueue(worker_queue_t *queue, task_t *task);
 /*!
  * \brief Remove item from the queue.
  *
- * \return The item or NULL if the queue is empty.
+ * \return Task or NULL if the queue is empty.
  */
 task_t *worker_queue_dequeue(worker_queue_t *queue);

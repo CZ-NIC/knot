@@ -23,8 +23,7 @@
  * @{
  */
 
-#ifndef _KNOT_DESCRIPTOR_H_
-#define _KNOT_DESCRIPTOR_H_
+#pragma once
 
 #include <stdint.h>			// uint16_t
 #include <stdio.h>			// size_t
@@ -298,7 +297,5 @@ int knot_rrtype_is_ddns_forbidden(const uint16_t type);
  * \retval 0 otherwise.
  */
 int knot_rrtype_additional_needed(const uint16_t type);
-
-#endif // _KNOT_DESCRIPTOR_H_
 
 /*! @} */

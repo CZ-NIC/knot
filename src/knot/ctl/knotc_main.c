@@ -38,13 +38,11 @@
 
 /*! \brief Controller flags. */
 enum knotc_flag_t {
-	F_NULL = 0 << 0,
-	F_FORCE = 1 << 0,
-	F_VERBOSE = 1 << 1,
-	F_INTERACTIVE = 1 << 3,
-	F_UNPRIVILEGED = 1 << 5,
-	F_NOCONF = 1 << 6,
-	F_DRYRUN = 1 << 7
+	F_NULL =         0 << 0,
+	F_FORCE =        1 << 0,
+	F_VERBOSE =      1 << 1,
+	F_INTERACTIVE =  1 << 2,
+	F_NOCONF =       1 << 3,
 };
 
 /*! \brief Check if flag is present. */
@@ -523,24 +521,33 @@ int main(int argc, char **argv)
 		goto exit;
 	}
 
-	/* Open config, allow if not exists. */
+	/* Open config, create empty if not exists. */
 	if (conf_open(config_fn) != KNOT_EOK) {
+		s_config = conf_new("");
 		flags |= F_NOCONF;
+	}
+
+	/* Check if config file is required. */
+	if (has_flag(flags, F_NOCONF) && cmd->need_conf) {
+		log_server_error("Couldn't find a config file, refusing to "
+		                 "continue.\n");
+		rc = 1;
+		goto exit;
 	}
 
 	/* Create remote iface if not present in config. */
 	conf_iface_t *ctl_if = conf()->ctl.iface;
 	if (!ctl_if) {
 		ctl_if = malloc(sizeof(conf_iface_t));
-		assert(ctl_if);
-		conf()->ctl.iface = ctl_if;
 		memset(ctl_if, 0, sizeof(conf_iface_t));
+		conf()->ctl.iface = ctl_if;
 
 		/* Fill defaults. */
-		if (!r_addr)
+		if (!r_addr) {
 			r_addr = RUN_DIR "/knot.sock";
-		else if (r_port < 0)
+		} else if (r_port < 0) {
 			r_port = REMOTE_DPORT;
+		}
 	}
 
 	/* Install the key. */
@@ -652,14 +659,7 @@ static int cmd_checkconf(int argc, char *argv[], unsigned flags)
 	UNUSED(argv);
 	UNUSED(flags);
 
-	/* Check config. */
-	if (has_flag(flags, F_NOCONF)) {
-		log_server_error("Couldn't parse config file, refusing to "
-		                 "continue.\n");
-		return 1;
-	} else {
-		log_server_info("OK, configuration is valid.\n");
-	}
+	log_server_info("OK, configuration is valid.\n");
 
 	return 0;
 }

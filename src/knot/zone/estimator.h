@@ -24,8 +24,7 @@
  * @{
  */
 
-#ifndef _KNOT_ESTIMATOR_H_
-#define _KNOT_ESTIMATOR_H_
+#pragma once
 
 #include "common-knot/hattrie/hat-trie.h"
 #include "zscanner/zscanner.h"
@@ -83,7 +82,5 @@ void estimator_rrset_memsize_wrap(zs_scanner_t *scanner);
  * \param p Data to free.
  */
 int estimator_free_trie_node(value_t *val, void *data);
-
-#endif /* _KNOT_ESTIMATOR_H_ */
 
 /*! @} */

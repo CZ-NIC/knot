@@ -570,6 +570,8 @@ bool knot_rrset_equal(const knot_rrset_t *r1,
 		if (!knot_dname_is_equal(r1->owner, r2->owner)) {
 			return false;
 		}
+	} else if (r1->owner != r2->owner) { // At least one is NULL.
+		return false;
 	}
 
 	if (cmp == KNOT_RRSET_COMPARE_WHOLE) {

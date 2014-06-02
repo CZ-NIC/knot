@@ -22,8 +22,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef _KNOT_PROCESS_H
-#define _KNOT_PROCESS_H
+#pragma once
 
 #include <stdint.h>
 
@@ -122,7 +121,5 @@ int knot_process_in(const uint8_t *wire, uint16_t wire_len, knot_process_t *ctx)
  * \return (module specific state)
  */
 int knot_process_out(uint8_t *wire, uint16_t *wire_len, knot_process_t *ctx);
-
-#endif /* _KNOT_PROCESS_H */
 
 /*! @} */

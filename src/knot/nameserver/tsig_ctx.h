@@ -30,11 +30,16 @@
  */
 typedef struct tsig_ctx {
 	const knot_tsig_key_t *key;
+	uint64_t prev_signed_time;
+
 	uint8_t digest[TSIG_MAX_DIGEST_SIZE];
 	size_t digest_size;
 
-	uint64_t prev_signed_time;
+	/* Unsigned packets handling. */
 	unsigned unsigned_count;
+	uint8_t *buffer;
+	size_t buffer_used;
+	size_t buffer_size;
 } tsig_ctx_t;
 
 /*!
@@ -45,6 +50,13 @@ typedef struct tsig_ctx {
  *             will do nothing and always successful.
  */
 void tsig_init(tsig_ctx_t *ctx, const knot_tsig_key_t *key);
+
+/*!
+ * \brief Cleanup TSIG context.
+ *
+ * \param ctx TSIG context to be cleaned up.
+ */
+void tsig_cleanup(tsig_ctx_t *ctx);
 
 /*!
  * \brief Sign outgoing packet.

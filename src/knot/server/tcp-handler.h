@@ -28,8 +28,7 @@
  * @{
  */
 
-#ifndef _KNOTD_TCPHANDLER_H_
-#define _KNOTD_TCPHANDLER_H_
+#pragma once
 
 #include <stdint.h>
 
@@ -105,7 +104,5 @@ int tcp_master(dthread_t *thread);
  * \brief Destructor for TCP handler thread.
  */
 int tcp_master_destruct(dthread_t *thread);
-
-#endif // _KNOTD_TCPHANDLER_H_
 
 /*! @} */

@@ -22,8 +22,7 @@
  * @{
  */
 
-#ifndef _DNSTAP__DNSTAP_H_
-#define _DNSTAP__DNSTAP_H_
+#pragma once
 
 #include <stddef.h>
 #include <stdint.h>
@@ -48,7 +47,5 @@
  * \retval NULL         if error.
  */
 uint8_t* dt_pack(const Dnstap__Dnstap *d, uint8_t **buf, size_t *sz);
-
-#endif // _DNSTAP__DNSTAP_H_
 
 /*! @} */

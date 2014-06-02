@@ -24,8 +24,7 @@
  * @{
  */
 
-#ifndef _KNOTD_FDSET_H_
-#define _KNOTD_FDSET_H_
+#pragma once
 
 #include <stddef.h>
 #include <poll.h>
@@ -132,7 +131,5 @@ int fdset_sweep(fdset_t* set, fdset_sweep_cb_t cb, void *data);
 int fdset_pselect(int n, fd_set *readfds, fd_set *writefds, fd_set *exceptfds,
                   const struct timespec *timeout, const sigset_t *sigmask);
 
-
-#endif /* _KNOTD_FDSET_H_ */
 
 /*! @} */

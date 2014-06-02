@@ -23,6 +23,11 @@
 #include "libknot/tsig-op.h"
 #include "knot/nameserver/tsig_ctx.h"
 
+/*!
+ * Maximal total size for unsigned messages.
+ */
+static const size_t TSIG_BUFFER_MAX_SIZE = (UINT16_MAX * 100);
+
 void tsig_init(tsig_ctx_t *ctx, const knot_tsig_key_t *key)
 {
 	if (!ctx) {
@@ -31,6 +36,16 @@ void tsig_init(tsig_ctx_t *ctx, const knot_tsig_key_t *key)
 
 	memset(ctx, 0, sizeof(*ctx));
 	ctx->key = key;
+}
+
+void tsig_cleanup(tsig_ctx_t *ctx)
+{
+	if (!ctx) {
+		return;
+	}
+
+	free(ctx->buffer);
+	memset(ctx, 0, sizeof(*ctx));
 }
 
 int tsig_sign_packet(tsig_ctx_t *ctx, knot_pkt_t *packet)
@@ -75,6 +90,36 @@ static int update_ctx_after_verify(tsig_ctx_t *ctx, knot_rrset_t *tsig_rr)
 	memcpy(ctx->digest, tsig_rdata_mac(tsig_rr), ctx->digest_size);
 	ctx->prev_signed_time = tsig_rdata_time_signed(tsig_rr);
 	ctx->unsigned_count = 0;
+	ctx->buffer_used = 0;
+
+	return KNOT_EOK;
+}
+
+static int buffer_add_packet(tsig_ctx_t *ctx, knot_pkt_t *packet)
+{
+	size_t need = ctx->buffer_used + packet->size;
+
+	// Inflate the buffer if necessary.
+
+	if (need > TSIG_BUFFER_MAX_SIZE) {
+		return KNOT_ENOMEM;
+	}
+
+	if (need > ctx->buffer_size) {
+		uint8_t *buffer = realloc(ctx->buffer, need);
+		if (!buffer) {
+			return KNOT_ENOMEM;
+		}
+
+		ctx->buffer = buffer;
+		ctx->buffer_size = need;
+	}
+
+	// Buffer the packet.
+
+	uint8_t *write = ctx->buffer + ctx->buffer_used;
+	memcpy(write, packet->wire, packet->size);
+	ctx->buffer_used = need;
 
 	return KNOT_EOK;
 }
@@ -89,19 +134,27 @@ int tsig_verify_packet(tsig_ctx_t *ctx, knot_pkt_t *packet)
 		return KNOT_EOK;
 	}
 
+	int ret = buffer_add_packet(ctx, packet);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	// Unsigned packet.
+
 	if (packet->tsig_rr == NULL) {
 		ctx->unsigned_count += 1;
 		return KNOT_EOK;
 	}
 
-	int ret = KNOT_ERROR;
+	// Signed packet.
+
 	if (ctx->prev_signed_time == 0) {
-		ret = knot_tsig_client_check(packet->tsig_rr, packet->wire,
-		                             packet->size, ctx->digest,
+		ret = knot_tsig_client_check(packet->tsig_rr, ctx->buffer,
+		                             ctx->buffer_used, ctx->digest,
 		                             ctx->digest_size, ctx->key, 0);
 	} else {
-		ret = knot_tsig_client_check_next(packet->tsig_rr, packet->wire,
-		                                  packet->size, ctx->digest,
+		ret = knot_tsig_client_check_next(packet->tsig_rr, ctx->buffer,
+		                                  ctx->buffer_used, ctx->digest,
 		                                  ctx->digest_size, ctx->key,
 		                                  ctx->prev_signed_time);
 	}

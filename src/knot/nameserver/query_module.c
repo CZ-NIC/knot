@@ -1,6 +1,7 @@
 #include "knot/nameserver/query_module.h"
 #include "libknot/mempattern.h"
 #include "libknot/errcode.h"
+#include "common/strlcpy.h"
 
 /* Compiled-in module headers. */
 #include "knot/modules/synth_record.h"
@@ -101,16 +102,17 @@ struct query_module *query_module_open(const char *name, const char *param, mm_c
 		return NULL;
 	}
 
+	size_t buflen = strlen(param) + 1;
 	memset(module, 0, sizeof(struct query_module));
 	module->mm = mm;
 	module->load = found->load;
 	module->unload = found->unload;
-	module->param = mm_alloc(mm, strlen(param) + 1);
+	module->param = mm_alloc(mm, buflen);
 	if (module->param == NULL) {
 		mm_free(mm, module);
 		return NULL;
 	}
-	strcpy(module->param, param);
+	strlcpy(module->param, param, buflen);
 
 	return module;
 }

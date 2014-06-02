@@ -106,7 +106,7 @@ int main(int argc, char *argv[])
 	ok(n_rdataset && knot_rdataset_eq(n_rdataset, &dummy_rrset->rrs),
 	   "Node: get existing rdataset.");
 	n_rdataset = node_rdataset(node, KNOT_RRTYPE_SOA);
-	ok(n_rrset == NULL, "Node: get non-existing rdataset.");
+	ok(n_rdataset == NULL, "Node: get non-existing rdataset.");
 	
 	stack_rrset = node_rrset_at(node, 0);
 	ok(knot_rrset_equal(&stack_rrset, dummy_rrset, KNOT_RRSET_COMPARE_WHOLE),
