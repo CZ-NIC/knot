@@ -92,6 +92,10 @@ libknots_la_SOURCES =				\
 	common-knot/slab/slab.h			\
 	common-knot/sockaddr.c			\
 	common-knot/sockaddr.h			\
+	common-knot/strlcat.c			\
+	common-knot/strlcat.h			\
+	common-knot/strlcpy.c			\
+	common-knot/strlcpy.h			\
 	common-knot/strtonum.h
 
 # static: common shared (also in libknot)
@@ -106,10 +110,7 @@ libknotcs_la_SOURCES =				\
 	common/debug.h				\
 	common/getline.c			\
 	common/getline.h
-	common/strlcat.c			\
-	common/strlcat.h			\
-	common/strlcpy.c			\
-	common/strlcpy.h			\
+
 
 # static: utilities shared
 libknotus_la_SOURCES =				\

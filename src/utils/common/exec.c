@@ -22,7 +22,7 @@
 #include "libknot/libknot.h"
 #include "common-knot/lists.h"		// list
 #include "common-knot/print.h"		// txt_print
-#include "common/strlcat.h"		// strlcat
+#include "common-knot/strlcat.h"		// strlcat
 #include "utils/common/msg.h"		// WARN
 #include "utils/common/params.h"	// params_t
 #include "utils/common/netio.h"		// send_msg

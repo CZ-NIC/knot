@@ -31,7 +31,7 @@
 #include "libknot/errcode.h"
 #include "libknot/mempattern.h"
 #include "libknot/descriptor.h"
-#include "common/strlcpy.h"
+#include "common-knot/strlcpy.h"
 #include "libknot/common.h"
 #include "libknot/libknot.h"
 #include "libknot/dnssec/random.h"

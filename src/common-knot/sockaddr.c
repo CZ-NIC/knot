@@ -20,7 +20,7 @@
 
 #include "common-knot/sockaddr.h"
 #include "libknot/errcode.h"
-#include "common/strlcpy.h"
+#include "common-knot/strlcpy.h"
 #include "libknot/consts.h"
 
 int sockaddr_len(const struct sockaddr_storage *ss)

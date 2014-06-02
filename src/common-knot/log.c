@@ -24,7 +24,7 @@
 
 #include "common-knot/log.h"
 #include "common-knot/lists.h"
-#include "common/strlcpy.h"
+#include "common-knot/strlcpy.h"
 #include "knot/conf/conf.h"
 
 /*! Log source table. */

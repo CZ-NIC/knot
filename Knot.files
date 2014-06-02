@@ -64,11 +64,11 @@ src/common-knot/slab/slab.c
 src/common-knot/slab/slab.h
 src/common-knot/sockaddr.c
 src/common-knot/sockaddr.h
+src/common-knot/strlcat.c
+src/common-knot/strlcat.h
+src/common-knot/strlcpy.c
+src/common-knot/strlcpy.h
 src/common-knot/strtonum.h
-src/common/strlcat.c
-src/common/strlcat.h
-src/common/strlcpy.c
-src/common/strlcpy.h
 src/dnstap/Makefile.am
 src/dnstap/convert.c
 src/dnstap/convert.h

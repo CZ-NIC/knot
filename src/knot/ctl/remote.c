@@ -24,7 +24,7 @@
 #include "knot/server/tcp-handler.h"
 #include "libknot/packet/wire.h"
 #include "libknot/descriptor.h"
-#include "common/strlcpy.h"
+#include "common-knot/strlcpy.h"
 #include "libknot/tsig-op.h"
 #include "libknot/rrtype/rdname.h"
 #include "libknot/rrtype/soa.h"
