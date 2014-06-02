@@ -158,6 +158,7 @@ static zone_t *create_zone(conf_zone_t *conf, server_t *server, zone_t *old_zone
 	case ZONE_STATUS_NOT_FOUND:
 		break;
 	case ZONE_STATUS_FOUND_CURRENT:
+		assert(old_zone);
 		zone->zonefile_mtime = old_zone->zonefile_mtime;
 		zone->zonefile_serial = old_zone->zonefile_serial;
 		update_zone_events(zone, old_zone);
