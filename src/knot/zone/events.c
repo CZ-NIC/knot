@@ -596,7 +596,7 @@ static void reschedule(zone_events_t *events)
 	assert(events);
 	assert(pthread_mutex_trylock(&events->mx) == EBUSY);
 
-	if (!events->event || events->running) {
+	if (!events->event || events->running || events->frozen) {
 		return;
 	}
 
@@ -762,11 +762,6 @@ void zone_events_schedule_at(zone_t *zone, zone_event_type_t type, time_t time)
 
 	pthread_mutex_lock(&events->mx);
 
-	/* Don't schedule new events if frozen. */
-	if (events->frozen) {
-		pthread_mutex_unlock(&events->mx);
-		return;
-	}
 
 	time_t current = event_get_time(events, type);
 	if (current == 0 || time == 0 || time < current) {
