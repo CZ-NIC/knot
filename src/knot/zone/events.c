@@ -602,7 +602,6 @@ static void reschedule(zone_events_t *events)
 
 	zone_event_type_t type = get_next_event(events);
 	if (!valid_event(type)) {
-		evsched_cancel(events->event);
 		return;
 	}
 
@@ -694,7 +693,7 @@ static int event_dispatch(event_t *event)
 	zone_events_t *events = event->data;
 
 	pthread_mutex_lock(&events->mx);
-	if (!events->running) {
+	if (!events->running && !events->frozen) {
 		events->running = true;
 		worker_pool_assign(events->pool, &events->task);
 	}
@@ -797,11 +796,13 @@ void zone_events_freeze(zone_t *zone)
 
 	zone_events_t *events = &zone->events;
 
+	/* Prevent new events being enqueued. */
 	pthread_mutex_lock(&events->mx);
-	/* Cancel pending event and prevent new. */
 	events->frozen = true;
-	evsched_cancel(events->event);
 	pthread_mutex_unlock(&events->mx);
+
+	/* Cancel current event. */
+	evsched_cancel(events->event);
 }
 
 void zone_events_start(zone_t *zone)
