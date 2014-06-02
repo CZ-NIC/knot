@@ -1311,7 +1311,6 @@ static int knot_ddns_process_rem_rr(const knot_rrset_t *rr,
 
 	/* If we removed NS from apex, there should be at least one more. */
 	if (is_apex && type == KNOT_RRTYPE_NS) {
-		printf("SULIN=%d\n", rrset_copy->rdata_count);
 		assert(knot_rrset_rdata_rr_count(rrset_copy));
 	}
 
@@ -1321,12 +1320,11 @@ static int knot_ddns_process_rem_rr(const knot_rrset_t *rr,
 	if (knot_rrset_rdata_rr_count(to_modify) == 0) {
 		// The RRSet should not be empty if we were removing NSs from
 		// apex in case of DDNS
-//		assert(!is_apex);
 		// add the removed RRSet to list of old RRSets
 		ret = knot_changes_add_rrset(changes, rrset_copy,
 		                             KNOT_CHANGES_OLD);
 		if (ret != KNOT_EOK) {
-		    knot_rrset_free(&rr_remove);
+			knot_rrset_deep_free(&rr_remove, true);
 			dbg_ddns("Failed to add RRSet to changes.\n");
 			return ret;
 		}
@@ -1355,7 +1353,7 @@ static int knot_ddns_process_rem_rr(const knot_rrset_t *rr,
 	ret = knot_ddns_check_remove_rr2(changeset, knot_node_owner(node),
 	                                 rr, &from_chgset, &from_chgset_count);
 	if (ret != KNOT_EOK) {
-	knot_rrset_free(&rr_remove);
+		knot_rrset_deep_free(&rr_remove, true);
 		dbg_ddns("Failed to remove possible redundant RRs from ADD "
 		         "section: %s.\n", knot_strerror(ret));
 		free(from_chgset);
@@ -1365,8 +1363,8 @@ static int knot_ddns_process_rem_rr(const knot_rrset_t *rr,
 	assert(from_chgset_count <= 1);
 
 	if (from_chgset_count == 1) {
-		knot_rrset_free(&(from_chgset[0]));
-		knot_rrset_free(&rr_remove);
+		knot_rrset_deep_free(&(from_chgset[0]), true);
+		knot_rrset_deep_free(&rr_remove, true);
 		/* Finish processing, no adding to changeset. */
 		free(from_chgset);
 		return KNOT_EOK;
