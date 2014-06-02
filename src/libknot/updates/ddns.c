@@ -1405,7 +1405,23 @@ static int knot_ddns_process_rem_rr(const knot_rrset_t *rr,
 		knot_rrset_deep_free(&to_chgset, 1);
 		return ret;
 	}
-
+	
+	if (to_modify->rdata_count == 0 && to_modify->rrsigs) {
+		knot_rrset_t *rrsig_copy = NULL;
+		ret = knot_rrset_deep_copy(to_modify->rrsigs, &rrsig_copy);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+		
+		ret = knot_changeset_add_rrset(changeset, rrsig_copy,
+		                               KNOT_CHANGESET_REMOVE);
+		if (ret != KNOT_EOK) {
+			knot_rrset_deep_free(&rrsig_copy, true);
+			return ret;
+		}
+		to_modify->rrsigs = NULL;
+	}
+	
 	return KNOT_EOK;
 }
 
@@ -1431,13 +1447,6 @@ static int knot_ddns_process_rem_rrset(const knot_rrset_t *rrset,
 	 *   'When the contents of an RRset are updated, the server MAY delete
 	 *    all associated SIG records, since they will no longer be valid.'
 	 *
-	 * (Although we are compliant with this RFC only selectively. The next
-	 * section says: 'If any changes are made, the server MUST, if
-	 * necessary, generate a new SOA record and new NXT records, and sign
-	 * these with the appropriate zone keys.' and we are definitely not
-	 * doing this...
-	 *
-	 * \todo Document!!
 	 */
 
 	// this should be ruled out before
@@ -1504,8 +1513,6 @@ static int knot_ddns_process_rem_rrset(const knot_rrset_t *rrset,
 				free(removed);
 				return ret;
 			}
-			/* Disconnect RRsigs from rrset. */
-			knot_rrset_set_rrsigs(removed[i], NULL);
 		}
 	}
 
@@ -1615,6 +1622,15 @@ static int knot_ddns_process_rem_rrset(const knot_rrset_t *rrset,
 			free(to_chgset);
 			return ret;
 		}
+		
+		if (to_chgset[i]->rrsigs) {
+			ret = knot_changeset_add_rrset(changeset, to_chgset[i]->rrsigs,
+			                               KNOT_CHANGESET_REMOVE);
+			if (ret != KNOT_EOK) {
+				return ret;
+			}
+			to_chgset[i]->rrsigs = NULL;
+		}
 	}
 
 	free(to_chgset);
@@ -1665,10 +1681,13 @@ static int knot_ddns_process_rem_all(knot_node_t *node,
 		// If the node is apex, skip NS, SOA and DNSSEC records
 		if (is_apex &&
 		    (knot_rrset_type(rrsets[i]) == KNOT_RRTYPE_SOA
-		     || knot_rrset_type(rrsets[i]) == KNOT_RRTYPE_NS
-		     || knot_rrtype_is_ddns_forbidden(
-		             knot_rrset_type(rrsets[i])))) {
+		     || knot_rrset_type(rrsets[i]) == KNOT_RRTYPE_NS)) {
 			/* Do not remove these RRSets, nor their RRSIGs. */
+			continue;
+		}
+		
+		if (knot_rrtype_is_ddns_forbidden(rrsets[i]->type)) {
+			/* Do not remove DNSSEC records either. */
 			continue;
 		}
 
