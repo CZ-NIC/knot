@@ -975,16 +975,15 @@ static int semantic_checks_dnssec(knot_zone_contents_t *zone,
 					}
 				}
 				free(array);
-			}
+				/* Test that only one record is in the
+					 * NSEC RRSet */
 
-			/* Test that only one record is in the
-				 * NSEC RRSet */
-
-			if (knot_rrset_rdata_rr_count(nsec_rrset) != 1) {
-				err_handler_handle_error(handler,
-						 node,
-						 ZC_ERR_NSEC_RDATA_MULTIPLE,
-				                NULL);
+				if (knot_rrset_rdata_rr_count(nsec_rrset) != 1) {
+					err_handler_handle_error(handler,
+								 node,
+							 ZC_ERR_NSEC_RDATA_MULTIPLE,
+					                NULL);
+				}
 			}
 
 			/*
@@ -1165,7 +1164,7 @@ void log_cyclic_errors_in_zone(err_handler_t *handler,
 
 	} else if (do_checks == 2 ) {
 		if (last_node == NULL) {
-			err_handler_handle_error(handler, last_node,
+			err_handler_handle_error(handler, zone->apex,
 				ZC_ERR_NSEC_RDATA_CHAIN_NOT_CYCLIC, NULL);
 				return;
 		} else {
