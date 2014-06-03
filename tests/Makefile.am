@@ -38,7 +38,8 @@ check_PROGRAMS = \
 	process_query		\
 	process_answer		\
 	requestor			\
-	query_module
+	query_module			\
+	worker_queue			\
 
 
 check-compile-only: $(check_PROGRAMS)
