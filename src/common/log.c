@@ -27,6 +27,9 @@
 #include "common/strlcpy.h"
 #include "knot/conf/conf.h"
 
+/* Single log message buffer length (one line). */
+#define LOG_BUFLEN 512
+
 /*! Log source table. */
 static uint8_t *LOG_FCL = 0;
 static volatile size_t LOG_FCL_SIZE = 0;
@@ -214,7 +217,7 @@ static int _log_msg(logsrc_t src, int level, const char *msg)
 	level = LOG_MASK(level);
 
 	/* Prefix date and time. */
-	char tstr[128] = {0};
+	char tstr[LOG_BUFLEN] = {0};
 	int tlen = 0;
 	struct tm lt;
 	struct timeval tv;
@@ -272,7 +275,7 @@ static int _log_msg(logsrc_t src, int level, const char *msg)
 int log_msg(logsrc_t src, int level, const char *msg, ...)
 {
 	/* Buffer for log message. */
-	char sbuf[4096];
+	char sbuf[LOG_BUFLEN];
 	int buflen = sizeof(sbuf) - 1;
 
 	/* Prefix error level. */
@@ -311,7 +314,7 @@ int log_msg(logsrc_t src, int level, const char *msg, ...)
 int log_vmsg(logsrc_t src, int level, const char *msg, va_list ap)
 {
 	int ret = 0;
-	char buf[2048];
+	char buf[LOG_BUFLEN];
 	ret = vsnprintf(buf, sizeof(buf) - 1, msg, ap);
 
 	if (ret > 0) {
