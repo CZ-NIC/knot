@@ -5,9 +5,4 @@ Here is a list of the most notable features that are not supported in the
 current version of Knot.
 
 * Other DNS classes than IN, partially CH (CS, HS)
-* UPDATE message forwarding (RFC2136) not implemented 
-
-Known bugs
-==========
-
-* Rarely, incremental transfer fails to reschedule
+* UPDATE message forwarding (RFC2136) not implemented
