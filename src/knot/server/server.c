@@ -236,6 +236,18 @@ static int reconfigure_sockets(const struct conf_t *conf, server_t *s)
 		}
 	}
 
+	/* Wait for readers that are reconfiguring right now. */
+	/*! \note This subsystem will be reworked in #239 */
+	for (unsigned proto = IO_UDP; proto <= IO_TCP; ++proto) {
+		dt_unit_t *tu = s->handler[proto].unit;
+		iohandler_t *ioh = &s->handler[proto];
+		for (unsigned i = 0; i < tu->size; ++i) {
+			while (ioh->thread_state[i] & ServerReload) {
+				sleep(1);
+			}
+		}
+	}
+
 	/* Publish new list. */
 	s->ifaces = newlist;
 
