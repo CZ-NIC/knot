@@ -1,6 +1,6 @@
 Knot DNS NEWS
 
-1.5.0-rc1 - Jun 1, 2014
+1.5.0-rc1 - Jun 3, 2014
 -----------------------
 Features:
 	* Pluggable query processing modules
