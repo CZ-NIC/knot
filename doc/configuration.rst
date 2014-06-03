@@ -350,6 +350,28 @@ The general syntax for importing a query module is described in the
 described by a name and a configuration string.  Below is a list of
 modules and configuration string reference.
 
+``dnstap`` - dnstap-enabled query logging
+-----------------------------------------
+
+The Knot DNS supports dnstap_ for query and response logging.
+You can capture either either all or zone-specific queries and responses, usually you want to do
+the former. The dnstap module accepts only a sink path as a parameter, which can either be a file
+or a UNIX socket prefixed with *unix:*.
+
+For example::
+
+    zones {
+        query_module "/tmp/capture.tap";
+    }
+
+You can also log to a UNIX socket with the prefix::
+
+    zones {
+        query_module "unix:/tmp/capture.tap";
+    }
+
+.. _dnstap: http://dnstap.info/
+
 ``synth_record`` - Automatic forward/reverse records
 ----------------------------------------------------
 

@@ -81,7 +81,8 @@ int query_plan_step(struct query_plan *plan, int stage, qmodule_process_t proces
 	return KNOT_EOK;
 }
 
-struct query_module *query_module_open(const char *name, const char *param, mm_ctx_t *mm)
+struct query_module *query_module_open(struct conf_t *config, const char *name,
+                                       const char *param, mm_ctx_t *mm)
 {
 	/* Locate compiled-in modules. */
 	struct compiled_module *found = NULL;
@@ -105,6 +106,7 @@ struct query_module *query_module_open(const char *name, const char *param, mm_c
 	size_t buflen = strlen(param) + 1;
 	memset(module, 0, sizeof(struct query_module));
 	module->mm = mm;
+	module->config = config;
 	module->load = found->load;
 	module->unload = found->unload;
 	module->param = mm_alloc(mm, buflen);

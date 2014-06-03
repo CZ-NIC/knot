@@ -290,7 +290,7 @@ static void conf_acl_item(void *scanner, char *item)
 
 static void query_module_create(void *scanner, const char *name, const char *param, bool on_zone)
 {
-	struct query_module *module = query_module_open(name, param, NULL);
+	struct query_module *module = query_module_open(new_config, name, param, NULL);
 	if (module == NULL) {
 		cf_error(scanner, "cannot load query module '%s'", name);
 		return;

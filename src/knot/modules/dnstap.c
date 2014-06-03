@@ -58,9 +58,9 @@ static int log_message(int state, const knot_pkt_t *pkt, struct query_data *qdat
 	/* Create a dnstap message. */
 	Dnstap__Message msg;
 	ret = dt_message_fill(&msg, msgtype,
-			      NULL, /* todo: fill me! */
-	                      (const struct sockaddr *)qdata->param->query_source,
-			      protocol,
+	                      (const struct sockaddr *)qdata->param->remote,
+	                      NULL, /* todo: fill me! */
+	                      protocol,
 	                      pkt->wire, pkt->size, &tv, &tv);
 	if (ret != KNOT_EOK) {
 		return NS_PROC_FAIL; 
@@ -78,7 +78,8 @@ static int log_message(int state, const knot_pkt_t *pkt, struct query_data *qdat
 	}
 
 	/* Submit a request. */
-	fstrm_res res = fstrm_iothr_submit(iothread, ioq, frame, size, fstrm_free_wrapper, NULL);
+	fstrm_res res = fstrm_iothr_submit(iothread, ioq, frame, size,
+	                                   fstrm_free_wrapper, NULL);
 	if (res != fstrm_res_success) {
 		free(frame);
 		state = NS_PROC_FAIL;
@@ -183,7 +184,7 @@ int dnstap_load(struct query_plan *plan, struct query_module *self)
 	}
 
 	/* Initialize queues. */
-	size_t qcount = conf_udp_threads(conf()) + conf_tcp_threads(conf());
+	size_t qcount = conf_udp_threads(self->config) + conf_tcp_threads(self->config);
 	fstrm_iothr_options_set_num_input_queues(opt, qcount);
 
 	/* Create the I/O thread. */
