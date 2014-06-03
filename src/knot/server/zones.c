@@ -179,6 +179,7 @@ int zones_expire_ev(event_t *e)
 		evsched_cancel(e->parent, zd->xfr_in.timer);
 	}
 
+	zone->version = 0;
 	knot_zone_contents_deep_free(&contents);
 
 	/* Release holding reference. */
@@ -256,15 +257,12 @@ int zones_refresh_ev(event_t *e)
 	}
 
 	/* Schedule EXPIRE timer on first attempt. */
-	if (!zd->xfr_in.expire) {
+	if (zd->xfr_in.expire->tv.tv_sec == 0) {
 		uint32_t expire_tmr = zones_jitter(zones_soa_expire(zone));
 		// Allow for timeouts.  Otherwise zones with very short
 		// expiry may expire before the timeout is reached.
 		expire_tmr += 2 * (conf()->max_conn_idle * 1000);
-		zd->xfr_in.expire = evsched_schedule_cb(
-					      e->parent,
-					      zones_expire_ev,
-					      zone, expire_tmr);
+		evsched_schedule(e->parent, zd->xfr_in.expire, expire_tmr);
 		dbg_zones("zones: EXPIRE of '%s' after %u seconds\n",
 		          zd->conf->name, expire_tmr / 1000);
 	}
