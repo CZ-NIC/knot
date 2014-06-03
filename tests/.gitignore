@@ -35,5 +35,6 @@ slab
 wire
 worker_pool
 worker_queue
+zone_events
 zonedb
 ztree

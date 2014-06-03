@@ -332,5 +332,8 @@ tests/sample_conf.h
 tests/server.c
 tests/slab.c
 tests/wire.c
+tests/worker_pool.c
+tests/worker_queue.c
+tests/zone_events.c
 tests/zonedb.c
 tests/ztree.c

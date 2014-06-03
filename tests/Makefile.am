@@ -41,6 +41,7 @@ check_PROGRAMS = \
 	query_module			\
 	worker_pool			\
 	worker_queue			\
+	zone_events
 
 
 check-compile-only: $(check_PROGRAMS)
