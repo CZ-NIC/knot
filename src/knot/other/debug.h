@@ -33,15 +33,6 @@
   #define KNOTD_RRL_DEBUG
 #endif
 
-#ifdef KNOT_ZONES_DEBUG
-  #define KNOTD_ZONES_DEBUG
-#endif
-
-#ifdef KNOT_XFR_DEBUG
-  #define KNOTD_XFR_DEBUG
-  #define KNOTD_NOTIFY_DEBUG
-#endif
-
 #ifdef KNOT_LOADER_DEBUG
   #define KNOTD_ZLOAD_DEBUG
   #define KNOTD_SEMCHECK_DEBUG
@@ -49,47 +40,6 @@
 
 #include "common/log.h"
 #include "common/print.h"
-
-/******************************************************************************/
-
-#ifdef KNOTD_NOTIFY_DEBUG
-
-/* Brief messages. */
-#ifdef DEBUG_ENABLE_BRIEF
-#define dbg_notify(msg...) log_msg(LOG_SERVER, LOG_DEBUG, msg)
-#define dbg_notify_hex(data, len) hex_log(LOG_SERVER, (data), (len))
-#else
-#define dbg_notify(msg...)
-#define dbg_notify_hex(data, len)
-#endif
-
-/* Verbose messages. */
-#ifdef DEBUG_ENABLE_VERBOSE
-#define dbg_notify_verb(msg...) log_msg(LOG_SERVER, LOG_DEBUG, msg)
-#define dbg_notify_hex_verb(data, len) hex_log(LOG_SERVER, (data), (len))
-#else
-#define dbg_notify_verb(msg...)
-#define dbg_notify_hex_verb(data, len)
-#endif
-
-/* Detail messages. */
-#ifdef DEBUG_ENABLE_DETAILS
-#define dbg_notify_detail(msg...) log_msg(LOG_SERVER, LOG_DEBUG, msg)
-#define dbg_notify_hex_detail(data, len) hex_log(LOG_SERVER, (data), (len))
-#else
-#define dbg_notify_detail(msg...)
-#define dbg_notify_hex_detail(data, len)
-#endif
-
-/* No messages. */
-#else
-#define dbg_notify(msg...)
-#define dbg_notify_hex(data, len)
-#define dbg_notify_verb(msg...)
-#define dbg_notify_hex_verb(data, len)
-#define dbg_notify_detail(msg...)
-#define dbg_notify_hex_detail(data, len)
-#endif
 
 /******************************************************************************/
 
@@ -294,95 +244,6 @@
 #define dbg_journal_hex_verb(data, len)
 #define dbg_journal_detail(msg...)
 #define dbg_journal_hex_detail(data, len)
-#endif
-
-/******************************************************************************/
-
-#ifdef KNOTD_ZONES_DEBUG
-
-/* Brief messages. */
-#ifdef DEBUG_ENABLE_BRIEF
-#define dbg_zones(msg...) log_msg(LOG_SERVER, LOG_DEBUG, msg)
-#define dbg_zones_hex(data, len) hex_log(LOG_SERVER, (data), (len))
-#define dbg_zones_exec(cmds) do { cmds } while (0)
-#else
-#define dbg_zones(msg...)
-#define dbg_zones_hex(data, len)
-#define dbg_zones_exec(cmds)
-#endif
-
-/* Verbose messages. */
-#ifdef DEBUG_ENABLE_VERBOSE
-#define dbg_zones_verb(msg...) log_msg(LOG_SERVER, LOG_DEBUG, msg)
-#define dbg_zones_hex_verb(data, len) hex_log(LOG_SERVER, (data), (len))
-#define dbg_zones_exec_verb(cmds) do { cmds } while (0)
-#else
-#define dbg_zones_verb(msg...)
-#define dbg_zones_hex_verb(data, len)
-#define dbg_zones_exec_verb(cmds)
-#endif
-
-/* Detail messages. */
-#ifdef DEBUG_ENABLE_DETAILS
-#define dbg_zones_detail(msg...) log_msg(LOG_SERVER, LOG_DEBUG, msg)
-#define dbg_zones_hex_detail(data, len) hex_log(LOG_SERVER, (data), (len))
-#define dbg_zones_exec_detail(cmds) do { cmds } while (0)
-#else
-#define dbg_zones_detail(msg...)
-#define dbg_zones_hex_detail(data, len)
-#define dbg_zones_exec_detail(cmds)
-#endif
-
-/* No messages. */
-#else
-#define dbg_zones(msg...)
-#define dbg_zones_hex(data, len)
-#define dbg_zones_verb(msg...)
-#define dbg_zones_hex_verb(data, len)
-#define dbg_zones_detail(msg...)
-#define dbg_zones_hex_detail(data, len)
-#define dbg_zones_exec(cmds)
-#endif
-
-/******************************************************************************/
-
-#ifdef KNOTD_XFR_DEBUG
-
-/* Brief messages. */
-#ifdef DEBUG_ENABLE_BRIEF
-#define dbg_xfr(msg...) log_msg(LOG_SERVER, LOG_DEBUG, msg)
-#define dbg_xfr_hex(data, len) hex_log(LOG_SERVER, (data), (len))
-#else
-#define dbg_xfr(msg...)
-#define dbg_xfr_hex(data, len)
-#endif
-
-/* Verbose messages. */
-#ifdef DEBUG_ENABLE_VERBOSE
-#define dbg_xfr_verb(msg...) log_msg(LOG_SERVER, LOG_DEBUG, msg)
-#define dbg_xfr_hex_verb(data, len) hex_log(LOG_SERVER, (data), (len))
-#else
-#define dbg_xfr_verb(msg...)
-#define dbg_xfr_hex_verb(data, len)
-#endif
-
-/* Detail messages. */
-#ifdef DEBUG_ENABLE_DETAILS
-#define dbg_xfr_detail(msg...) log_msg(LOG_SERVER, LOG_DEBUG, msg)
-#define dbg_xfr_hex_detail(data, len) hex_log(LOG_SERVER, (data), (len))
-#else
-#define dbg_xfr_detail(msg...)
-#define dbg_xfr_hex_detail(data, len)
-#endif
-
-/* No messages. */
-#else
-#define dbg_xfr(msg...)
-#define dbg_xfr_hex(data, len)
-#define dbg_xfr_verb(msg...)
-#define dbg_xfr_hex_verb(data, len)
-#define dbg_xfr_detail(msg...)
-#define dbg_xfr_hex_detail(data, len)
 #endif
 
 /******************************************************************************/

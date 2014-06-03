@@ -648,7 +648,7 @@ static int zones_verify_tsig_query(const knot_pkt_t *query,
 	assert(tsig_rcode != NULL);
 
 	if (query->tsig_rr == NULL) {
-		dbg_zones("TSIG key required, but not in query - REFUSED.\n");
+		log_answer_info("TSIG key required, but not in query - REFUSED.\n");
 		*rcode = KNOT_RCODE_REFUSED;
 		return KNOT_TSIG_EBADKEY;
 	}
@@ -676,10 +676,8 @@ static int zones_verify_tsig_query(const knot_pkt_t *query,
 	 * 2) Find the particular key used by the TSIG.
 	 *    Check not only name, but also the algorithm.
 	 */
-	if (key && kname && knot_dname_cmp(key->name, kname) == 0
-	    && key->algorithm == alg) {
-		dbg_zones_verb("Found claimed TSIG key for comparison\n");
-	} else {
+	if (!(key && kname && knot_dname_cmp(key->name, kname) == 0 &&
+	      key->algorithm == alg)) {
 		*rcode = KNOT_RCODE_NOTAUTH;
 		*tsig_rcode = KNOT_RCODE_BADKEY;
 		return KNOT_TSIG_EBADKEY;
@@ -697,9 +695,6 @@ static int zones_verify_tsig_query(const knot_pkt_t *query,
 	//uint8_t *digest = (uint8_t *)malloc(digest_max_size);
 	//memset(digest, 0 , digest_max_size);
 
-	/* Copy MAC from query. */
-	dbg_zones_verb("Validating TSIG from query\n");
-
 	//const uint8_t* mac = tsig_rdata_mac(tsig_rr);
 	size_t mac_len = tsig_rdata_mac_length(query->tsig_rr);
 
@@ -707,8 +702,8 @@ static int zones_verify_tsig_query(const knot_pkt_t *query,
 
 	if (mac_len > digest_max_size) {
 		*rcode = KNOT_RCODE_FORMERR;
-		dbg_zones("MAC length %zu exceeds digest "
-		       "maximum size %zu\n", mac_len, digest_max_size);
+		log_answer_info("MAC length %zu exceeds digest "
+		                "maximum size %zu\n", mac_len, digest_max_size);
 		return KNOT_EMALF;
 	} else {
 		//memcpy(digest, mac, mac_len);
@@ -718,10 +713,6 @@ static int zones_verify_tsig_query(const knot_pkt_t *query,
 		ret = knot_tsig_server_check(query->tsig_rr,
 		                             query->wire,
 		                             query->size, key);
-		dbg_zones_verb("knot_tsig_server_check() returned %s\n",
-		               knot_strerror(ret));
-
-		/* Evaluate TSIG check results. */
 		switch(ret) {
 		case KNOT_EOK:
 			*rcode = KNOT_RCODE_NOERROR;
