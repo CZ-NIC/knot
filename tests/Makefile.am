@@ -39,6 +39,7 @@ check_PROGRAMS = \
 	process_answer		\
 	requestor			\
 	query_module			\
+	worker_pool			\
 	worker_queue			\
 
 

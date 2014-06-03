@@ -33,6 +33,7 @@ rrset
 server
 slab
 wire
+worker_pool
 worker_queue
 zonedb
 ztree
