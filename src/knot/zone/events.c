@@ -210,6 +210,14 @@ static void schedule_dnssec(zone_t *zone, time_t refresh_at)
 
 /* -- zone events handling callbacks --------------------------------------- */
 
+/*! \brief Fetch SOA expire timer and add a timeout grace period. */
+static uint32_t soa_graceful_expire(const knot_rdataset_t *soa)
+{
+	// Allow for timeouts.  Otherwise zones with very short
+	// expiry may expire before the timeout is reached.
+	return knot_soa_expire(soa) + 2 * (conf()->max_conn_idle * 1000);
+}
+
 typedef int (*zone_event_cb)(zone_t *zone);
 
 static int event_reload(zone_t *zone)
@@ -318,7 +326,7 @@ static int event_refresh(zone_t *zone)
 	} else {
 		/* SOA query answered, reschedule refresh and expire timers. */
 		zone_events_schedule(zone, ZONE_EVENT_REFRESH, knot_soa_refresh(soa));
-		zone_events_schedule(zone, ZONE_EVENT_EXPIRE, knot_soa_expire(soa));
+		zone_events_schedule(zone, ZONE_EVENT_EXPIRE, soa_graceful_expire(soa));
 	}
 
 	return KNOT_EOK;
@@ -342,7 +350,7 @@ static int event_xfer(zone_t *zone)
 		 * timers and send notifications to slaves. */
 		const knot_rdataset_t *soa =
 			node_rdataset(zone->contents->apex, KNOT_RRTYPE_SOA);
-		zone_events_schedule(zone, ZONE_EVENT_EXPIRE,  knot_soa_expire(soa));
+		zone_events_schedule(zone, ZONE_EVENT_EXPIRE,  soa_graceful_expire(soa));
 		zone_events_schedule(zone, ZONE_EVENT_REFRESH, knot_soa_refresh(soa));
 		zone_events_schedule(zone, ZONE_EVENT_NOTIFY,  ZONE_EVENT_NOW);
 		zone->bootstrap_retry = ZONE_EVENT_NOW;
