@@ -11,7 +11,8 @@ AM_CPPFLAGS = \
 	-include $(top_builddir)/src/config.h \
 	-DCONFIG_DIR='"${config_dir}"' \
 	-DSTORAGE_DIR='"${storage_dir}"' \
-	-DRUN_DIR='"${run_dir}"'
+	-DRUN_DIR='"${run_dir}"' \
+	$(libidn_CFLAGS)
 AM_CFLAGS = $(CODE_COVERAGE_CFLAGS)
 AM_LDFLAGS = $(CODE_COVERAGE_LDFLAGS)
 AM_YFLAGS = -d
@@ -313,6 +314,7 @@ libknotd_la_SOURCES =				\
 # libraries
 libknot_la_LIBADD  = libknots.la zscanner/libzscanner.la
 libknotd_la_LIBADD = libknots.la libknot.la
+libknotus_la_LDFLAGS = $(libidn_LIBS)
 
 # sbin programs
 knotd_LDADD = libknot.la libknotd.la
@@ -322,8 +324,8 @@ knotd_LDFLAGS = $(AM_LDFLAGS) ${systemd_daemon_LIBS}
 knotc_LDADD = libknot.la libknotd.la
 
 # bin programs
-kdig_LDADD       = libknotus.la libknots.la libknot.la
-khost_LDADD      = libknotus.la libknots.la libknot.la
+kdig_LDADD       = libknotus.la libknots.la libknot.la $(libidn_LIBS)
+khost_LDADD      = libknotus.la libknots.la libknot.la $(libidn_LIBS)
 knsupdate_LDADD  = libknotus.la libknots.la libknot.la zscanner/libzscanner.la
 knsec3hash_LDADD = libknotus.la libknots.la libknot.la
 

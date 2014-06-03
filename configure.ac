@@ -292,20 +292,21 @@ AC_EGREP_CPP(openssl_version_ok,
   ],[],[AC_MSG_ERROR([OpenSSL library version >= 1.0.0 is required.])]
 )
 
-AC_ARG_WITH(libidn, AC_HELP_STRING([--with-libidn=[DIR]],
-    [Support IDN (needs GNU Libidn)]),
-    libidn=$withval, libidn=yes)
-if test "$libidn" != "no"; then
-    if test "$libidn" != "yes"; then
-        LDFLAGS="${LDFLAGS} -L$libidn/lib"
-        CPPFLAGS="${CPPFLAGS} -I$libidn/include"
+dnl Check for libidn.
+AC_ARG_WITH(libidn,
+    AC_HELP_STRING([--with-libidn=[DIR]], [Support IDN (needs GNU Libidn)]),
+    with_libidn=$withval,
+    with_libidn=yes
+)
+if test "$with_libidn" != "no" ; then
+    PKG_CHECK_MODULES([libidn], [libidn >= 0.0.0], [with_libidn=yes], [with_libidn=no])
+    if test "$with_libidn" != "yes" ; then
+        with_libidn=no
+        AC_MSG_WARN([Libidn not found])
+    else
+        with_libidn=yes
+        AC_DEFINE([LIBIDN], [1], [Define to 1 to enable IDN support])
     fi
-    AC_CHECK_HEADER(idna.h, AC_CHECK_LIB(idn, stringprep_check_version,
-                                 [libidn=yes LIBS="${LIBS} -lidn"], libidn=no),
-                    libidn=no)
-fi
-if test "$libidn" != "no" ; then
-    AC_DEFINE(LIBIDN, 1, [Define to 1 if you want IDN support.])
 fi
 
 dnl Check for dnstap.
@@ -407,7 +408,7 @@ AC_MSG_RESULT([
     Config dir:  ${config_dir}
 
     Fast zone parser:      ${enable_fastparser}
-    Utilities with IDN:    ${libidn}
+    Utilities with IDN:    ${with_libidn}
     Systemd notifications: ${enable_systemd}
     Dnstap support:        ${opt_dnstap}
     Code coverage:         ${enable_code_coverage}
