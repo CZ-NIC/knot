@@ -845,6 +845,7 @@ class Knot(Server):
         s.item("zonefile-sync", "1d")
         s.item("notify-timeout", "5")
         s.item("notify-retries", "5")
+        s.item("semantic-checks", "on")
         if self.disable_any:
             s.item("disable-any", "on")
         if self.dnssec_enable:
