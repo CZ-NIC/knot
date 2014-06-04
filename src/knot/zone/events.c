@@ -442,6 +442,7 @@ static int event_flush(zone_t *zone)
 		zone_events_schedule(zone, ZONE_EVENT_FLUSH, next_timeout);
 	}
 
+	/* Check zone contents. */
 	if (zone_contents_is_empty(zone->contents)) {
 		return KNOT_EOK;
 	}
@@ -452,6 +453,11 @@ static int event_flush(zone_t *zone)
 static int event_notify(zone_t *zone)
 {
 	assert(zone);
+
+	/* Check zone contents. */
+	if (zone_contents_is_empty(zone->contents)) {
+		return KNOT_EOK;
+	}
 
 	/* Walk through configured remotes and send messages. */
 	conf_remote_t *remote = 0;
