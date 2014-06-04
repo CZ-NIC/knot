@@ -1227,6 +1227,10 @@ static void mark_synced(journal_t *journal, journal_node_t *node)
 
 int journal_mark_synced(const char *path)
 {
+	if (!journal_exists(path)) {
+		return KNOT_EOK;
+	}
+
 	journal_t *journal = journal_open(path, FSLIMIT_INF);
 	if (journal == NULL) {
 		return KNOT_ENOMEM;

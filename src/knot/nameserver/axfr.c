@@ -306,15 +306,8 @@ static int axfr_answer_finalize(struct answer_data *adata)
 		return rc;
 	}
 
-	/* Write zone file. */
-	zone_t *zone = data->param->zone;
-	rc = zonefile_write(zone->conf->file, proc->contents,
-	                    data->param->remote);
-	if (rc != KNOT_EOK) {
-		return rc;
-	}
-
 	/* Switch contents. */
+	zone_t *zone = adata->param->zone;
 	zone_contents_t *old_contents =
 	                zone_switch_contents(zone, proc->contents);
 	synchronize_rcu();

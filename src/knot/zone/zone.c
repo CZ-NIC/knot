@@ -249,18 +249,19 @@ int zone_flush_journal(zone_t *zone)
 	conf_zone_t *conf = zone->conf;
 	int ret = zonefile_write(conf->file, contents, from);
 	if (ret == KNOT_EOK) {
-		log_zone_info("Applied differences of '%s' to zonefile.\n", conf->name);
+		log_zone_info("Zone '%s': zone file updated (%u -> %u).\n",
+		              conf->name, zone->zonefile_serial, serial_to);
 	} else {
-		log_zone_warning("Failed to apply differences of '%s' "
-		                 "to zonefile (%s).\n", conf->name, knot_strerror(ret));
+		log_zone_warning("Zone '%s': failed to update zone file (%s)\n",
+		                  conf->name, knot_strerror(ret));
 		return ret;
 	}
 
 	/* Update zone version. */
 	struct stat st;
 	if (stat(zone->conf->file, &st) < 0) {
-		log_zone_warning("Failed to apply differences '%s' to '%s (%s)'\n",
-		                 conf->name, conf->file, knot_strerror(KNOT_EACCES));
+		log_zone_warning("Zone '%s': failed to update zone file (%s)\n",
+		                  conf->name, knot_strerror(KNOT_EACCES));
 		return KNOT_EACCES;
 	}
 
