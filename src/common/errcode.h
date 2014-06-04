@@ -85,6 +85,7 @@ enum knot_error {
 	KNOT_EXFRREFUSED,     /*!< Zone transfer refused by the server. */
 	KNOT_EDENIED,         /*!< Not allowed. */
 	KNOT_ECONN,           /*!< Connection reset. */
+	KNOT_ETIMEOUT,        /*!< Connection timeout. */
 	KNOT_EIXFRSPACE,      /*!< IXFR reply did not fit in. */
 	KNOT_ECNAME,          /*!< CNAME loop found in zone. */
 	KNOT_ENODIFF,         /*!< No zone diff can be created. */
