@@ -69,6 +69,7 @@ static knot_pkt_t *zone_query(const zone_t *zone, uint16_t qtype, mm_ctx_t *mm)
 		return NULL;
 	}
 
+	knot_wire_set_id(pkt->wire, knot_random_uint16_t());
 	knot_wire_set_aa(pkt->wire);
 	knot_pkt_put_question(pkt, zone->name, KNOT_CLASS_IN, qtype);
 
