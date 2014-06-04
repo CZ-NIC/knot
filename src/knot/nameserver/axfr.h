@@ -59,12 +59,10 @@ int xfr_process_list(knot_pkt_t *pkt, xfr_put_cb put, struct query_data *qdata);
 int axfr_query_process(knot_pkt_t *pkt, struct query_data *qdata);
 
 /*!
- * \brief Processes an AXFR respons message.
+ * \brief Processes an AXFR response message.
  *
- * \param pkt Processed packet.
- * \param xfr Persistent transfer-specific data.
  * \return NS_PROC_* processing states
  */
-int axfr_answer_process(knot_pkt_t *pkt, struct answer_data *data);
+int axfr_answer_process(knot_pkt_t *pkt, struct answer_data *adata);
 
 /*! @} */

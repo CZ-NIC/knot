@@ -39,7 +39,7 @@ const error_table_t knot_error_msgs[] = {
 	{ KNOT_ERANGE, "Value is out of range." },
 
 	/* General errors. */
-	{ -10000 /*KNOT_ERROR*/, "General error." },
+	{ KNOT_ERROR, "Failed." },
 	{ KNOT_ENOTRUNNING, "Resource is not running." },
 	{ KNOT_EPARSEFAIL, "Parser failed." },
 	{ KNOT_EEXPIRED, "Resource is expired." },

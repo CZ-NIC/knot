@@ -229,7 +229,7 @@ static int exec_request(struct request *last, struct timeval *timeout)
 
 	/* Expect complete request. */
 	if (last->state != NS_PROC_DONE) {
-		return KNOT_EMALF;
+		return KNOT_ERROR;
 	}
 
 	return KNOT_EOK;

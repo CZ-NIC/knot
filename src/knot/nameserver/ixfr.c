@@ -628,6 +628,21 @@ int ixfr_query(knot_pkt_t *pkt, struct query_data *qdata)
 
 int ixfr_process_answer(knot_pkt_t *pkt, struct answer_data *adata)
 {
+	if (pkt == NULL || adata == NULL) {
+		return NS_PROC_FAIL;
+	}
+
+	/* Check RCODE. */
+	uint8_t rcode = knot_wire_get_rcode(pkt->wire);
+	if (rcode != KNOT_RCODE_NOERROR) {
+		knot_lookup_table_t *lut = knot_lookup_by_id(knot_rcode_names, rcode);
+		if (lut != NULL) {
+			IXFRIN_LOG(LOG_ERR, "Server responded with %s.", lut->name);
+		}
+		return NS_PROC_FAIL;
+	}
+
+	/* Initialize processing with first packet. */
 	if (adata->ext == NULL) {
 		NS_NEED_TSIG_SIGNED(&adata->param->tsig_ctx, 0);
 		if (!zone_transfer_needed(adata->param->zone, pkt)) {
@@ -639,7 +654,7 @@ int ixfr_process_answer(knot_pkt_t *pkt, struct answer_data *adata)
 		// First packet with IXFR, init context
 		int ret = ixfrin_answer_init(adata);
 		if (ret != KNOT_EOK) {
-			IXFRIN_LOG(LOG_ERR, "Failed - %s", knot_strerror(ret));
+			IXFRIN_LOG(LOG_ERR, "%s", knot_strerror(ret));
 			return NS_PROC_FAIL;
 		}
 	} else {
@@ -653,10 +668,6 @@ int ixfr_process_answer(knot_pkt_t *pkt, struct answer_data *adata)
 		if (fret != KNOT_EOK) {
 			ret = NS_PROC_FAIL;
 		}
-	}
-
-	if (ret == NS_PROC_FAIL) {
-		IXFRIN_LOG(LOG_ERR, "Failed - %s", knot_strerror(ret));
 	}
 
 	return ret;

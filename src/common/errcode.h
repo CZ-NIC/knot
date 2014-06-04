@@ -58,7 +58,7 @@ enum knot_error {
 	KNOT_ERANGE = err2code(ERANGE),             /*!< Value is out of range. */
 
 	/* General errors. */
-	KNOT_ERROR = -10000,  /*!< General error. */
+	KNOT_ERROR = -10000,  /*!< Failed. */
 	KNOT_ENOTRUNNING,     /*!< Resource is not running. */
 	KNOT_EPARSEFAIL,      /*!< Parser fail. */
 	KNOT_EEXPIRED,        /*!< Resource is expired. */

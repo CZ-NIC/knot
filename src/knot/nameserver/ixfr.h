@@ -41,7 +41,7 @@ struct answer_data;
 int ixfr_query(knot_pkt_t *pkt, struct query_data *qdata);
 
 /*!
- * \brief IXFR query response processing module.
+ * \brief IXFR response processing module.
  *
  * \retval MORE if more data are required.
  * \retval FAIL if it encountered an error, retry over AXFR will be done.
