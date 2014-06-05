@@ -1,5 +1,12 @@
 Knot DNS NEWS
 
+v1.4.7 - Jun  5, 2014
+---------------------
+Bugfixes:
+	* Fixed some DDNS corner cases
+	* Fixed zone EXPIRE timer
+	* Fixed semantic checks false positives
+
 v1.4.6 - May 22, 2014
 ---------------------
 Bugfixes:
