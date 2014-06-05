@@ -51,6 +51,12 @@ srv_info_t* parse_nameserver(const char *str, const char *def_port)
 		}
 		addr_len = addr_end - addr;
 		str += 1 + addr_len + 1;
+	// Address@port notation.
+	} else if ((sep = index(str, '@')) != NULL) {
+		addr = str;
+		addr_len = sep - addr;
+		str += addr_len;
+		separator = '@';
 	// Address#port notation.
 	} else if ((sep = index(str, '#')) != NULL) {
 		addr = str;
