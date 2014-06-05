@@ -598,6 +598,7 @@ int server_update_zones(const struct conf_t *conf, void *data)
 	}
 
 	/* Finish operations already in the queue. */
+	worker_pool_clear(server->workers);
 	worker_pool_wait(server->workers);
 
 	/* Reload zone database and free old zones. */
