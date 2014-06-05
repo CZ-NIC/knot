@@ -32,12 +32,13 @@
 
 #pragma once
 
-/*
- */
 #include <syslog.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdarg.h>
+#include <stdbool.h>
+
+struct conf_t;
 
 /*! \brief Log facility types. */
 typedef enum {
@@ -64,22 +65,6 @@ typedef enum {
 /*! \brief Format for timestamps in log files. */
 #define KNOT_LOG_TIME_FORMAT "%Y-%m-%dT%H:%M:%S"
 
-/* Logging facility setup. */
-
-/*!
- * \brief Create logging facilities respecting their
- *        canonical order.
- *
- * Facilities ordering: Syslog, Stderr, Stdout, File0...
- * \see logtype_t
- *
- * \param logfiles Number of extra logfiles.
- *
- * \retval KNOT_EOK on success.
- * \retval KNOT_EINVAL invalid number of logfiles (negative).
- */
-int log_setup(int logfiles);
-
 /*!
  * \brief Setup logging subsystem.
  *
@@ -96,28 +81,9 @@ int log_init();
 void log_close();
 
 /*!
- * \brief Truncate current log setup.
+ * \brief Return true if log is open.
  */
-void log_truncate();
-
-/*!
- * \brief Return positive number if open.
- *
- * \return 1 if open (boolean true)
- * \return 0 if closed (boolean false)
- */
-int log_isopen();
-
-/*!
- * \brief Open file as a logging facility.
- *
- * \param filename File path.
- *
- * \retval associated facility index on success.
- * \retval KNOT_EINVAL filename cannot be opened for writing.
- * \retval KNOT_ERROR unspecified error.
- */
-int log_open_file(const char* filename);
+bool log_isopen();
 
 /*!
  * \brief Return log levels for a given facility.
@@ -213,5 +179,16 @@ void hex_log(int source, const char *data, int length);
  * \retval KNOT_ERROR on error
  */
 int log_update_privileges(int uid, int gid);
+
+/*!
+ * \brief Setup logging facilities from config.
+ *
+ * \see syslog.h
+ *
+ * \retval KNOT_EOK on success.
+ * \retval KNOT_EINVAL on invalid parameters.
+ * \retval KNOT_ENOMEM out of memory error.
+ */
+int log_reconfigure(const struct conf_t *conf, void *data);
 
 /*! @} */

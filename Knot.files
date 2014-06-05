@@ -96,8 +96,6 @@ src/knot/conf/extra.c
 src/knot/conf/extra.h
 src/knot/conf/includes.c
 src/knot/conf/includes.h
-src/knot/conf/logconf.c
-src/knot/conf/logconf.h
 src/knot/ctl/knotc_main.c
 src/knot/ctl/process.c
 src/knot/ctl/process.h
