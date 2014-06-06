@@ -109,7 +109,7 @@ rundir
 ^^^^^^
 
 Path for storing run-time data, for example PID file and unix sockets.
-Default: ``${localstatedir}/run/knot``, configured with
+Default value: ``${localstatedir}/run/knot``, configured with
 ``--with-rundir=path``
 
 ::
