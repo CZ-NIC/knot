@@ -29,6 +29,7 @@
 #include <stdbool.h>			// bool
 
 #include "libknot/libknot.h"		// knot_addr_family_t
+#include "common/sockaddr.h"		// IPV6_PREFIXLEN
 #include "utils/common/params.h"	// protocol_t
 #include "utils/common/exec.h"		// sign_context_t
 
@@ -76,7 +77,7 @@ typedef struct {
 	/*! Protocol family. */
 	knot_addr_family_t	family;
 	/*! Address in wire format. */
-	uint8_t			addr[16];
+	uint8_t			addr[IPV6_PREFIXLEN / 8];
 	/*! Length of address in wire format. */
 	uint16_t		addr_len;
 	/*! Network mask length. */

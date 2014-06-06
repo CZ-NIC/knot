@@ -189,7 +189,7 @@ static void print_edns_client_subnet(const uint8_t *data, const uint16_t len)
 	uint8_t  src_mask, dst_mask;
 	uint8_t  addr[IPV6_PREFIXLEN / 8] = { 0 };
 	uint16_t addr_len = sizeof(addr);
-	char     addr_str[128] = { '\0' };
+	char     addr_str[SOCKADDR_STRLEN] = { '\0' };
 
 	int ret = knot_edns_client_subnet_parse(data, len, &family, addr,
 	                                        &addr_len, &src_mask, &dst_mask);
