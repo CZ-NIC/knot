@@ -58,7 +58,7 @@ serves as an example of the configuration for knotc(8) and knotd(8).
   # When asynchronous startup is enabled, server doesn't wait for the zones to be loaded, and
   # starts responding immediately lame answers until the zone loads. This may be useful in
   # some scenarios, but it is disabled by default.
-  # Default: disabled (wait for zones to be loaded before answering)
+  # Default: off (wait for zones to be loaded before answering)
   asynchronous-start off;
 
   # User for running server
