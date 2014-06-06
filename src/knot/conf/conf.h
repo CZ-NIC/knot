@@ -214,6 +214,7 @@ typedef struct conf_t {
 	size_t max_udp_payload; /*!< Maximal UDP payload size. */
 	int   workers;  /*!< Number of workers per interface. */
 	int   bg_workers; /*!< Number of background workers. */
+	bool  async_start; /*!< Asynchronous startup. */
 	int   uid;      /*!< Specified user id. */
 	int   gid;      /*!< Specified group id. */
 	int   max_conn_idle; /*!< TCP idle timeout. */

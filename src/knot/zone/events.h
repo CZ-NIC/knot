@@ -88,6 +88,17 @@ int zone_events_setup(struct zone_t *zone, worker_pool_t *workers,
 void zone_events_deinit(struct zone_t *zone);
 
 /*!
+ * \brief Enqueue event type for asynchronous execution.
+ *
+ * \note This is similar to the scheduling an event for NOW, but it can
+ *       bypass the event scheduler if no event is running at the moment.
+ *
+ * \param zone  Zone to schedule new event for.
+ * \param type  Type of event.
+ */
+void zone_events_enqueue(struct zone_t *zone, zone_event_type_t type);
+
+/*!
  * \brief Schedule new zone event to absolute time.
  *
  * \param zone  Zone to schedule new event for.

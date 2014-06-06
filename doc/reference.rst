@@ -29,6 +29,7 @@ else.
       [ rundir "string"; ]
       [ pidfile "string"; ]
       [ workers integer; ]
+      [ asynchronous-start ( on | off ); ]
       [ user string[.string]; ]
       [ max-conn-idle ( integer | integer(s | m | h | d); ) ]
       [ max-conn-handshake ( integer | integer(s | m | h | d); ) ]
@@ -148,6 +149,32 @@ online CPUs)
     system {
       workers 16;
     }
+
+.. _asynchronous-start:
+
+asynchronous-start
+^^^^^^^^^^^^^^^^^^
+
+When asynchronous startup is enabled, server doesn't wait for the zones to be loaded, and
+starts responding immediately lame answers until the zone loads. This may be useful in
+some scenarios, but it is disabled by default.
+
+Default: disabled (wait for zones to be loaded before answering)
+
+::
+
+    system {
+      asynchronous-start off;
+    }
+
+.. _user:
+
+user
+^^^^
+
+System ``user`` or ``user``.``group`` under which the Knot DNS is run
+after starting and binding to interfaces.  Linux capabilities
+(:ref:`Required libraries`) are employed if supported and this
 
 .. _user:
 

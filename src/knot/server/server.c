@@ -381,20 +381,23 @@ static void server_free_handler(iohandler_t *h)
 	memset(h, 0, sizeof(iohandler_t));
 }
 
-int server_start(server_t *s)
+int server_start(server_t *s, bool async)
 {
-	// Check server
+	dbg_server("%s(%p, %d)\n", __func__, s, async);
 	if (s == 0) {
 		return KNOT_EINVAL;
 	}
 
-	dbg_server("server: starting server instance\n");
+	/* Start workers. */
+	worker_pool_start(s->workers);
+
+	/* Wait for enqueued events if not asynchronous. */
+	if (!async) {
+		worker_pool_wait(s->workers);
+	}
 
 	/* Start evsched handler. */
 	dt_start(s->iosched);
-
-	/* Start workers. */
-	worker_pool_start(s->workers);
 
 	/* Start I/O handlers. */
 	int ret = KNOT_EOK;
@@ -404,8 +407,6 @@ int server_start(server_t *s)
 			ret = dt_start(s->handler[i].unit);
 		}
 	}
-
-	dbg_server("server: server started\n");
 
 	return ret;
 }

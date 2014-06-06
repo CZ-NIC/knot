@@ -38,6 +38,10 @@
 #include "knot/nameserver/tsig_ctx.h"
 #include "knot/nameserver/process_answer.h"
 
+/* ------------------------- internal timers -------------------------------- */
+
+#define ZONE_EVENT_IMMEDIATE 1 /* Fast-track to worker queue. */
+
 /* ------------------------- bootstrap timer logic -------------------------- */
 
 #define BOOTSTRAP_RETRY (30) /*!< Interval between AXFR bootstrap retries. */
@@ -793,6 +797,31 @@ void zone_events_schedule_at(zone_t *zone, zone_event_type_t type, time_t time)
 	}
 
 	pthread_mutex_unlock(&events->mx);
+}
+
+void zone_events_enqueue(zone_t *zone, zone_event_type_t type)
+{
+	if (!zone || !valid_event(type)) {
+		return;
+	}
+
+	zone_events_t *events = &zone->events;
+
+	pthread_mutex_lock(&events->mx);
+
+	/* Possible only if no event is running at the moment. */
+	if (!events->running && !events->frozen) {
+		events->running = true;
+		event_set_time(events, type, ZONE_EVENT_IMMEDIATE);
+		worker_pool_assign(events->pool, &events->task);
+		pthread_mutex_unlock(&events->mx);
+		return;
+	}
+
+	pthread_mutex_unlock(&events->mx);
+
+	/* Execute as soon as possible. */
+	zone_events_schedule(zone, type, ZONE_EVENT_NOW);
 }
 
 void zone_events_schedule(zone_t *zone, zone_event_type_t type, unsigned dt)
