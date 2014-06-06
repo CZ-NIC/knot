@@ -178,6 +178,9 @@ Use EDNS version (default is 0).
 Disable IDN transformation to ASCII and vice versa.
 IDNA2003 support depends on libidn availability during project building!
 .TP
+.BI +client= SUBN
+Set EDNS client subnet SUBN=IP/prefix.
+.TP
 .BI +time= T
 Set wait for reply interval in seconds (default is 5 seconds).
 This timeout applies to each query try.

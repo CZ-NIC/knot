@@ -34,22 +34,29 @@
 /* Forward declaration. */
 struct knot_packet;
 
-/*! \brief Various constants related to EDNS. */
+/*! \brief Constants related to EDNS. */
 enum knot_edns_const {
-	/*! \brief Minimal UDP payload with EDNS enabled. */
-	KNOT_EDNS_MIN_UDP_PAYLOAD = 512,
-	/*! \brief Minimal payload when using DNSSEC (RFC4035/sec.3) */
-	KNOT_EDNS_MIN_DNSSEC_PAYLOAD = 1220,
-	/*! \brief Maximal UDP payload with EDNS enabled. */
-	KNOT_EDNS_MAX_UDP_PAYLOAD = 4096,
 	/*! \brief Supported EDNS version. */
 	KNOT_EDNS_VERSION = 0,
-	/*! \brief NSID option code. */
-	KNOT_EDNS_OPTION_NSID     = 3,
+
+	/*! \brief Minimal UDP payload with EDNS enabled. */
+	KNOT_EDNS_MIN_UDP_PAYLOAD    = 512,
+	/*! \brief Minimal payload when using DNSSEC (RFC4035/sec.3). */
+	KNOT_EDNS_MIN_DNSSEC_PAYLOAD = 1220,
+	/*! \brief Maximal UDP payload with EDNS enabled. */
+	KNOT_EDNS_MAX_UDP_PAYLOAD    = 4096,
+
 	/*! \brief Minimum size of EDNS OPT RR in wire format. */
-	KNOT_EDNS_MIN_SIZE        = 11,
+	KNOT_EDNS_MIN_SIZE                 = 11,
 	/*! \brief EDNS OPT header size. */
-	KNOT_EDNS_OPTION_HDRLEN   = 2 * sizeof(uint16_t)
+	KNOT_EDNS_OPTION_HDRLEN            = 4,
+	/*! \brief Maximal edns client subnet data size (IPv6). */
+	KNOT_EDNS_MAX_OPTION_CLIENT_SUBNET = 20,
+
+	/*! \brief NSID option code. */
+	KNOT_EDNS_OPTION_NSID          = 3,
+	/*! \brief EDNS client subnet option code. */
+	KNOT_EDNS_OPTION_CLIENT_SUBNET = 8
 };
 
 /*!
@@ -233,4 +240,49 @@ bool knot_edns_has_nsid(const knot_rrset_t *opt_rr);
  */
 bool knot_edns_check_record(knot_rrset_t *opt_rr);
 
+/*!
+ * \brief Creates client subnet wire data.
+ *
+ * \param family   Address family.
+ * \param addr     Binary representation of IP address.
+ * \param addr_len Length of the address.
+ * \param src_mask Source mask.
+ * \param dst_mask Destination mask.
+ * \param data     Output data buffer.
+ * \param data_len Size of output data buffer/written data.
+ *
+ * \return KNOT_EOK
+ * \return KNOT_EINVAL
+ * \return KNOT_ESPACE
+ */
+int knot_edns_client_subnet_create(const knot_addr_family_t family,
+                                   const uint8_t *addr,
+                                   const uint16_t addr_len,
+                                   uint8_t src_mask,
+                                   uint8_t dst_mask,
+                                   uint8_t *data,
+                                   uint16_t *data_len);
+
+/*!
+ * \brief Parses client subnet wire data.
+ *
+ * \param data     Input data buffer.
+ * \param data_len Length of input data buffer.
+ * \param family   Address family.
+ * \param addr     Binary representation of IP address.
+ * \param addr_len Size of address buffer/written address data.
+ * \param src_mask Source mask.
+ * \param dst_mask Destination mask.
+ *
+ * \return KNOT_EOK
+ * \return KNOT_EINVAL
+ * \return KNOT_ESPACE
+ */
+int knot_edns_client_subnet_parse(const uint8_t *data,
+                                  const uint16_t data_len,
+                                  knot_addr_family_t *family,
+                                  uint8_t *addr,
+                                  uint16_t *addr_len,
+                                  uint8_t *src_mask,
+                                  uint8_t *dst_mask);
 /*! @} */

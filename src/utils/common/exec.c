@@ -18,12 +18,14 @@
 
 #include <stdlib.h>			// free
 #include <time.h>			// localtime_r
+#include <arpa/inet.h>			// inet_ntop
 
 #include "libknot/libknot.h"
 #include "common/lists.h"		// list
 #include "common/print.h"		// txt_print
 #include "common/errcode.h"		// KNOT_EOK
 #include "common/descriptor.h"		// KNOT_RRTYPE_
+#include "common/sockaddr.h"		// IPV4_PREFIXLEN
 #include "common/strlcat.h"		// strlcat
 #include "utils/common/msg.h"		// WARN
 #include "utils/common/params.h"	// params_t
@@ -179,6 +181,40 @@ static void print_footer(const size_t total_len,
 	}
 }
 
+static void print_edns_client_subnet(const uint8_t *data, const uint16_t len)
+{
+	struct in_addr addr4;
+	struct in6_addr addr6;
+	knot_addr_family_t family;
+	uint8_t  src_mask, dst_mask;
+	uint8_t  addr[IPV6_PREFIXLEN / 8] = { 0 };
+	uint16_t addr_len = sizeof(addr);
+	char     addr_str[128] = { '\0' };
+
+	int ret = knot_edns_client_subnet_parse(data, len, &family, addr,
+	                                        &addr_len, &src_mask, &dst_mask);
+	if (ret != KNOT_EOK) {
+		printf("\n");
+		return;
+	}
+
+	switch (family) {
+	case KNOT_ADDR_FAMILY_IPV4:
+		memcpy(&(addr4.s_addr), addr, IPV4_PREFIXLEN / 8);
+		inet_ntop(AF_INET, &addr4, addr_str, sizeof(addr_str));
+		break;
+	case KNOT_ADDR_FAMILY_IPV6:
+		memcpy(&(addr6.s6_addr), addr, IPV6_PREFIXLEN / 8);
+		inet_ntop(AF_INET6, &addr6, addr_str, sizeof(addr_str));
+		break;
+	default:
+		printf("unsupported address family\n");
+		return;
+	}
+
+	printf("%s/%u/%u\n", addr_str, src_mask, dst_mask);
+}
+
 static void print_section_opt(const knot_rrset_t *rr)
 {
 	uint8_t             ext_rcode_id = knot_edns_get_ext_rcode(rr);
@@ -208,12 +244,20 @@ static void print_section_opt(const knot_rrset_t *rr)
 		uint16_t opt_len = knot_wire_read_u16(data + pos + 2);
 		uint8_t *opt_data = data + pos + 4;
 
-		if (opt_code == KNOT_EDNS_OPTION_NSID) {
+		switch (opt_code) {
+		case KNOT_EDNS_OPTION_NSID:
 			printf(";; NSID: ");
 			short_hex_print(opt_data, opt_len);
-			printf(";;     :  ");
-			txt_print(opt_data, opt_len);
-		} else {
+			if (opt_len > 0) {
+				printf(";;     :  ");
+				txt_print(opt_data, opt_len);
+			}
+			break;
+		case KNOT_EDNS_OPTION_CLIENT_SUBNET:
+			printf(";; CLIENT-SUBNET: ");
+			print_edns_client_subnet(opt_data, opt_len);
+			break;
+		default:
 			printf(";; Option (%u): ", opt_code);
 			short_hex_print(opt_data, opt_len);
 		}
