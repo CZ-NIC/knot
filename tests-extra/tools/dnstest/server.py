@@ -388,7 +388,7 @@ class Server(object):
         else:
             dig_flags = "+tcp"
 
-        dig_flags += " +tries=%i" % tries
+        dig_flags += " +retry=%i" % (tries - 1)
 
         # Set timeout.
         if timeout is None:
