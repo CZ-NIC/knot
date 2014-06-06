@@ -144,12 +144,13 @@ void server_deinit(server_t *server);
  * \brief Starts the server.
  *
  * \param server Server structure to be used for operation.
+ * \param async  Don't wait for zones to load if true.
  *
  * \retval KNOT_EOK on success.
  * \retval KNOT_EINVAL on invalid parameters.
  *
  */
-int server_start(server_t *server);
+int server_start(server_t *server, bool async);
 
 /*!
  * \brief Waits for the server to finish.

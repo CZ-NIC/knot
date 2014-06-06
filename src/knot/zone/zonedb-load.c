@@ -147,10 +147,18 @@ static zone_t *create_zone(conf_zone_t *conf, server_t *server, zone_t *old_zone
 
 	zone_status_t zstatus = zone_file_status(old_zone, conf);
 
+	int result = zone_events_setup(zone, server->workers, &server->sched);
+	if (result != KNOT_EOK) {
+		zone->conf = NULL;
+		zone_free(&zone);
+		return NULL;
+	}
+
 	switch (zstatus) {
 	case ZONE_STATUS_FOUND_NEW:
 	case ZONE_STATUS_FOUND_UPDATED:
-		zone_events_schedule(zone, ZONE_EVENT_RELOAD, ZONE_EVENT_NOW);
+		/* Enqueueing makes the first zone load waitable. */
+		zone_events_enqueue(zone, ZONE_EVENT_RELOAD);
 		break;
 	case ZONE_STATUS_BOOSTRAP:
 		zone_events_schedule(zone, ZONE_EVENT_REFRESH, ZONE_EVENT_NOW);
@@ -165,13 +173,6 @@ static zone_t *create_zone(conf_zone_t *conf, server_t *server, zone_t *old_zone
 		break;
 	default:
 		assert(0);
-	}
-
-	int result = zone_events_setup(zone, server->workers, &server->sched);
-	if (result != KNOT_EOK) {
-		zone->conf = NULL;
-		zone_free(&zone);
-		return NULL;
 	}
 
 	log_zone_load_info(zone, conf->name, zstatus);

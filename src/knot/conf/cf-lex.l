@@ -118,6 +118,7 @@ notify-in       { lval.t = yytext; return NOTIFY_IN; }
 notify-out      { lval.t = yytext; return NOTIFY_OUT; }
 workers         { lval.t = yytext; return WORKERS; }
 background-workers { lval.t = yytext; return BACKGROUND_WORKERS; }
+asynchronous-start { lval.t = yytext; return ASYNC_START; }
 user            { lval.t = yytext; return USER; }
 pidfile         { lval.t = yytext; return PIDFILE; }
 rundir          { lval.t = yytext; return RUNDIR; }

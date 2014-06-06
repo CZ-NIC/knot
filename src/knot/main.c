@@ -349,7 +349,7 @@ int main(int argc, char **argv)
 
 	/* Start it up. */
 	log_server_info("Starting server...\n");
-	res = server_start(&server);
+	res = server_start(&server, config->async_start);
 	if (res != KNOT_EOK) {
 		log_server_fatal("Failed to start server: %s.\n",
 		                 knot_strerror(res));
