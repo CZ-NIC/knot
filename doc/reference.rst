@@ -175,15 +175,6 @@ user
 System ``user`` or ``user``.``group`` under which the Knot DNS is run
 after starting and binding to interfaces.  Linux capabilities
 (:ref:`Required libraries`) are employed if supported and this
-
-.. _user:
-
-user
-^^^^
-
-System ``user`` or ``user``.``group`` under which the Knot DNS is run
-after starting and binding to interfaces.  Linux capabilities
-(:ref:`Required libraries`) are employed if supported and this
 configuration option is set.
 
 Default value: ``root.root``
