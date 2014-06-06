@@ -155,9 +155,9 @@ online CPUs)
 asynchronous-start
 ^^^^^^^^^^^^^^^^^^
 
-When asynchronous startup is enabled, server doesn't wait for the zones to be loaded, and
-starts responding immediately lame answers until the zone loads. This may be useful in
-some scenarios, but it is disabled by default.
+When asynchronous startup is enabled, server doesn't wait for the zones to be
+loaded, and starts responding immediately with SERVFAIL answers until the zone
+loads. This may be useful in some scenarios, but it is disabled by default.
 
 Default value: ``off`` (wait for zones to be loaded before answering)
 
