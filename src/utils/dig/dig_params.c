@@ -21,10 +21,12 @@
 #include <getopt.h>			// getopt
 #include <stdlib.h>			// free
 #include <locale.h>			// setlocale
+#include <arpa/inet.h>			// inet_pton
 
 #include "common/lists.h"		// list
 #include "common/errcode.h"		// KNOT_EOK
 #include "common/descriptor.h"		// KNOT_CLASS_IN
+#include "common/sockaddr.h"		// IPV4_PREFIXLEN
 #include "utils/common/msg.h"		// WARN
 #include "utils/common/params.h"	// parse_class
 #include "utils/common/resolv.h"	// get_nameservers
@@ -610,6 +612,68 @@ static int opt_noedns(const char *arg, void *query)
 	return KNOT_EOK;
 }
 
+static int opt_client(const char *arg, void *query)
+{
+	query_t *q = query;
+
+	struct in_addr  addr4;
+	struct in6_addr addr6;
+
+	char          *sep = NULL;
+	const size_t  arg_len = strlen(arg);
+	const char    *arg_end = arg + arg_len;
+	char          *addr = NULL;
+	size_t        addr_len = 0;
+
+	subnet_t *subnet = calloc(sizeof(subnet_t), 1);
+
+	// Separate address and network mask.
+	if ((sep = index(arg, '/')) != NULL) {
+		addr_len = sep - arg;
+	} else {
+		addr_len = arg_len;
+	}
+
+	// Check IP address.
+	addr = strndup(arg, addr_len);
+	if (inet_pton(AF_INET, addr, &addr4) == 1) {
+		subnet->family = KNOT_ADDR_FAMILY_IPV4;
+		memcpy(subnet->addr, &(addr4.s_addr), IPV4_PREFIXLEN / 8);
+		subnet->addr_len = IPV4_PREFIXLEN / 8;
+		subnet->netmask = IPV4_PREFIXLEN;
+	} else if (inet_pton(AF_INET6, addr, &addr6) == 1) {
+		subnet->family = KNOT_ADDR_FAMILY_IPV6;
+		memcpy(subnet->addr, &(addr6.s6_addr), IPV6_PREFIXLEN / 8);
+		subnet->addr_len = IPV6_PREFIXLEN / 8;
+		subnet->netmask = IPV6_PREFIXLEN;
+	} else {
+		free(addr);
+		free(subnet);
+		ERR("invalid address +client=%s\n", arg);
+		return KNOT_EINVAL;
+	}
+	free(addr);
+
+	// Parse network mask.
+	if (arg + addr_len < arg_end) {
+		char *end;
+
+		arg += addr_len + 1;
+		unsigned long num = strtoul(arg, &end, 10);
+		if (end == arg || *end != '\0' || num > subnet->netmask) {
+			free(subnet);
+			ERR("invalid network mask +client=%s\n", arg);
+			return KNOT_EINVAL;
+		}
+		subnet->netmask = num;
+	}
+
+	free(q->subnet);
+	q->subnet = subnet;
+
+	return KNOT_EOK;
+}
+
 static int opt_time(const char *arg, void *query)
 {
 	query_t *q = query;
@@ -733,14 +797,16 @@ static const param_t dig_opts2[] = {
 	{ "ignore",       ARG_NONE,     opt_ignore },
 	{ "noignore",     ARG_NONE,     opt_noignore },
 
-	/* "idn" doesn't work since it must be called before query creation. */
-	{ "noidn",        ARG_NONE,     opt_noidn },
-
 	{ "nsid",         ARG_NONE,     opt_nsid },
 	{ "nonsid",       ARG_NONE,     opt_nonsid },
 
 	{ "edns",         ARG_OPTIONAL, opt_edns },
 	{ "noedns",       ARG_NONE,     opt_noedns },
+
+	/* "idn" doesn't work since it must be called before query creation. */
+	{ "noidn",        ARG_NONE,     opt_noidn },
+
+	{ "client",       ARG_REQUIRED, opt_client },
 
 	{ "time",         ARG_REQUIRED, opt_time },
 
@@ -794,6 +860,7 @@ query_t* query_create(const char *owner, const query_t *conf)
 		query->idn = true;
 		query->nsid = false;
 		query->edns = -1;
+		query->subnet = NULL;
 #if USE_DNSTAP
 		query->dt_reader = NULL;
 		query->dt_writer = NULL;
@@ -828,6 +895,16 @@ query_t* query_create(const char *owner, const query_t *conf)
 		query->idn = conf->idn;
 		query->nsid = conf->nsid;
 		query->edns = conf->edns;
+		if (conf->subnet != NULL) {
+			query->subnet = malloc(sizeof(subnet_t));
+			if (query->subnet == NULL) {
+				query_free(query);
+				return NULL;
+			}
+			*(query->subnet) = *(conf->subnet);
+		} else {
+			query->subnet = NULL;
+		}
 #if USE_DNSTAP
 		query->dt_reader = conf->dt_reader;
 		query->dt_writer = conf->dt_writer;
@@ -887,6 +964,7 @@ void query_free(query_t *query)
 
 	free(query->owner);
 	free(query->port);
+	free(query->subnet);
 	free(query);
 }
 
@@ -1292,6 +1370,7 @@ static void dig_help(void)
 	       "       +[no]nsid       Request NSID.\n"
 	       "       +[no]edns=N     Use EDNS (=version).\n"
 	       "       +noidn          Disable IDN transformation.\n"
+	       "       +client=SUBN    Set EDNS client subnet IP/prefix.\n"
 	       "       +time=T         Set wait for reply interval in seconds.\n"
 	       "       +retry=N        Set number of retries.\n"
 	       "       +bufsize=B      Set EDNS buffer size.\n"

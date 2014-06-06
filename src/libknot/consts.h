@@ -43,6 +43,16 @@
 #define KNOT_RR_HEADER_SIZE 10
 
 /*!
+ * \brief Address family numbers.
+ *
+ * http://www.iana.org/assignments/address-family-numbers/address-family-numbers.xml
+ */
+typedef enum {
+	KNOT_ADDR_FAMILY_IPV4 = 1, /*!< IP version 4. */
+	KNOT_ADDR_FAMILY_IPV6 = 2  /*!< IP version 6. */
+} knot_addr_family_t;
+
+/*!
  * \brief DNS operation codes (OPCODEs).
  *
  * http://www.iana.org/assignments/dns-parameters/dns-parameters.xml

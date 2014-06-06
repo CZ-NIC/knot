@@ -25,7 +25,8 @@ Is a domain name that is to be looked up.
 .I server
 Is a domain name or an IPv4 or IPv6 address of the nameserver to send a query to.
 An additional port can be specified using address:port ([address]:port for IPv6 address)
-or address#port notation. If no server is specified, the servers from \fB/etc/resolv.conf\fR are used.
+or address@port or address#port notation. If no server is specified, the servers from
+\fB/etc/resolv.conf\fR are used.
 .TP
 If no arguments are provided, \fBkdig\fR sends \fINS\fR query for the root zone.
 .SH OPTIONS
@@ -39,7 +40,7 @@ Use IPv6 protocol only.
 .BI \-b \ address
 Set the source IP address of the query to \fIaddress\fR. The address
 must be a valid address for local interface or :: or 0.0.0.0.
-Optional port can be specified using [address]:port notation.
+Optional port can be specified in the same format as \fIserver\fR value.
 .TP
 .BI \-c \ class
 Set query class (e.g. \fICH\fR, \fICLASS4\fR). An explicit variant of
@@ -176,6 +177,9 @@ Use EDNS version (default is 0).
 .BR +noidn
 Disable IDN transformation to ASCII and vice versa.
 IDNA2003 support depends on libidn availability during project building!
+.TP
+.BI +client= SUBN
+Set EDNS client subnet SUBN=IP/prefix.
 .TP
 .BI +time= T
 Set wait for reply interval in seconds (default is 5 seconds).

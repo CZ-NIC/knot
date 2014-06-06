@@ -28,6 +28,8 @@
 
 #include <stdbool.h>			// bool
 
+#include "libknot/libknot.h"		// knot_addr_family_t
+#include "common/sockaddr.h"		// IPV6_PREFIXLEN
 #include "utils/common/params.h"	// protocol_t
 #include "utils/common/exec.h"		// sign_context_t
 
@@ -69,6 +71,18 @@ typedef struct {
 	/*!< DNSSEC OK flag. */
 	bool	do_flag;
 } flags_t;
+
+/*! \brief Network subnet information. */
+typedef struct {
+	/*! Protocol family. */
+	knot_addr_family_t	family;
+	/*! Address in wire format. */
+	uint8_t			addr[IPV6_PREFIXLEN / 8];
+	/*! Length of address in wire format. */
+	uint16_t		addr_len;
+	/*! Network mask length. */
+	uint8_t			netmask;
+} subnet_t;
 
 /*! \brief Basic parameters for DNS query. */
 typedef struct query query_t; // Forward declaration due to configuration.
@@ -123,6 +137,8 @@ struct query {
 	knot_key_params_t key_params;
 	/*!< Context for operations with signatures. */
 	sign_context_t	sign_ctx;
+	/*!< EDNS client subnet. */
+	subnet_t	*subnet;
 #if USE_DNSTAP
 	/*!< Context for dnstap reader input. */
 	dt_reader_t	*dt_reader;

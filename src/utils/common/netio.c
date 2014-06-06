@@ -127,7 +127,7 @@ static int get_addr(const srv_info_t *server,
 
 	// Get connection parameters.
 	if (getaddrinfo(server->name, server->service, &hints, info) != 0) {
-		ERR("can't resolve address %s#%s\n",
+		ERR("can't resolve address %s@%s\n",
 		    server->name, server->service);
 		return -1;
 	}
