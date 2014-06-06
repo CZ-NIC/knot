@@ -36,7 +36,6 @@
 #include "knot/ctl/process.h"
 #include "knot/ctl/remote.h"
 #include "knot/conf/conf.h"
-#include "knot/conf/logconf.h"
 #include "knot/server/tcp-handler.h"
 
 /* Signal flags. */
