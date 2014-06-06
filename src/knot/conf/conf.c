@@ -899,6 +899,16 @@ size_t conf_tcp_threads(const conf_t *conf)
 	return MAX(thrcount * 2, CONFIG_XFERS);
 }
 
+int conf_bg_threads(const conf_t *conf)
+{
+	if (conf->bg_workers < 1) {
+		return MIN(dt_optimal_size(), CONFIG_XFERS);
+	}
+
+	return conf->bg_workers;
+}
+
+
 void conf_init_zone(conf_zone_t *zone)
 {
 	if (!zone) {

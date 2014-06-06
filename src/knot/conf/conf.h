@@ -412,6 +412,9 @@ size_t conf_udp_threads(const conf_t *conf);
 /*! \brief Return the number of TCP threads according to the configuration. */
 size_t conf_tcp_threads(const conf_t *conf);
 
+/*! \brief Return the number of background worker threads. */
+int conf_bg_threads(const conf_t *conf);
+
 /* \brief Initialize zone config. */
 void conf_init_zone(conf_zone_t *zone);
 

@@ -291,12 +291,6 @@ int server_init(server_t *server, int bg_workers)
 		return KNOT_ENOMEM;
 	}
 
-	/* Create zone events threads. */
-	if (bg_workers < 1) {
-		bg_workers = dt_optimal_size();
-	}
-	assert(bg_workers > 0);
-
 	server->workers = worker_pool_create(bg_workers);
 	if (server->workers == NULL) {
 		dt_delete(&server->iosched);
