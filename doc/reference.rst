@@ -29,6 +29,7 @@ else.
       [ rundir "string"; ]
       [ pidfile "string"; ]
       [ workers integer; ]
+      [ background-workers integer; ]
       [ asynchronous-start ( on | off ); ]
       [ user string[.string]; ]
       [ max-conn-idle ( integer | integer(s | m | h | d); ) ]
@@ -149,6 +150,22 @@ online CPUs)
     system {
       workers 16;
     }
+
+.. _background-workers:
+
+background-workers
+^^^^^^^^^^^^^^^^^^
+This option is used to set number of threads used to execute background
+operations (e.g., zone loading, zone signing, XFR zone updates, ...).
+
+Default value: unset (auto-estimates optimal value for the number of online CPUs)
+
+::
+
+    system {
+      background-workers 4;
+    }
+
 
 .. _asynchronous-start:
 
