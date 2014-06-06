@@ -339,7 +339,7 @@ int knot_edns_client_subnet_create(const knot_addr_family_t family,
 		return KNOT_ESPACE;
 	}
 
-	if (addr_len > addr_prefix_len) {
+	if (addr_prefix_len > addr_len) {
 		return KNOT_EINVAL;
 	}
 
