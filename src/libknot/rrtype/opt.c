@@ -331,8 +331,8 @@ int knot_edns_client_subnet_create(const knot_addr_family_t family,
 		return KNOT_EINVAL;
 	}
 
-	uint8_t  addr_prefix_len = (src_mask + 7) / 8; // Ceiling operation.
-	uint8_t  last_byte_mask = 0xFF << (8 - (src_mask % 8));
+	uint8_t addr_prefix_len = (src_mask + 7) / 8; // Ceiling operation.
+	uint8_t modulo = src_mask % 8;
 
 	uint16_t total = sizeof(uint16_t) + 2 * sizeof(uint8_t) + addr_prefix_len;
 	if (*data_len < total) {
@@ -349,9 +349,9 @@ int knot_edns_client_subnet_create(const knot_addr_family_t family,
 	memcpy(data + EDNS_OFFSET_CLIENT_SUBNET_ADDR, addr, addr_prefix_len);
 
 	// Zeroize trailing bits in the last byte.
-	if (addr_prefix_len > 0) {
+	if (modulo > 0 && addr_prefix_len > 0) {
 		data[EDNS_OFFSET_CLIENT_SUBNET_ADDR + addr_prefix_len - 1] &=
-			last_byte_mask;
+			0xFF << (8 - modulo);
 	}
 
 	*data_len = total;

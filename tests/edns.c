@@ -21,6 +21,7 @@
 #include "common/errcode.h"
 #include "libknot/rrtype/opt.h"
 #include "common/descriptor.h"
+#include "common/sockaddr.h"
 
 static const uint16_t E_MAX_PLD = 10000;
 static const uint16_t E_MAX_PLD2 = 20000;
@@ -331,7 +332,120 @@ static bool test_setters(knot_rrset_t *opt_rr, int *done)
 	return success;
 }
 
-#define TEST_COUNT 38
+static void test_client_subnet()
+{
+	int ret;
+	knot_addr_family_t family;
+	uint8_t  addr[IPV6_PREFIXLEN / 8] = { 0 };
+	uint16_t addr_len = sizeof(addr);
+	uint8_t  src_mask, dst_mask;
+	uint8_t  data[KNOT_EDNS_MAX_OPTION_CLIENT_SUBNET] = { 0 };
+	uint16_t data_len = sizeof(data);
+
+
+	/* Create IPv4 subnet - src mask 32  */
+	family = KNOT_ADDR_FAMILY_IPV4;
+	data_len = sizeof(data);
+	addr_len = 4;
+	memcpy(&addr, "\xFF\xFF\xFF\xFF", 4);
+	src_mask = 32;
+	dst_mask = 32;
+	ret = knot_edns_client_subnet_create(family, addr, addr_len, src_mask,
+                                             dst_mask, data, &data_len);
+	ok(ret == KNOT_EOK, "EDNS-client-subnet: create (src mask 32)");
+	ok(data_len == 8, "EDNS-client-subnet: create (cmp out length)");
+	ok(memcmp(data, "\x00\x01\x20\x20\xFF\xFF\xFF\xFF", 8) == 0,
+           "EDNS-client-subnet: create (cmp out)");
+
+	/* Create IPv4 subnet - src mask 31  */
+	data_len = sizeof(data);
+	src_mask = 31;
+	ret = knot_edns_client_subnet_create(family, addr, addr_len, src_mask,
+                                             dst_mask, data, &data_len);
+	ok(ret == KNOT_EOK, "EDNS-client-subnet: create (src mask 31)");
+	ok(data_len == 8, "EDNS-client-subnet: create (cmp out length)");
+	ok(memcmp(data, "\x00\x01\x1F\x20\xFF\xFF\xFF\xFE", 8) == 0,
+           "EDNS-client-subnet: create (cmp out)");
+
+	/* Create IPv4 subnet - src mask 7  */
+	data_len = sizeof(data);
+	src_mask = 7;
+	ret = knot_edns_client_subnet_create(family, addr, addr_len, src_mask,
+                                             dst_mask, data, &data_len);
+	ok(ret == KNOT_EOK, "EDNS-client-subnet: create (src mask 7)");
+	ok(data_len == 5, "EDNS-client-subnet: create (cmp out length)");
+	ok(memcmp(data, "\x00\x01\x07\x20\xFE", 5) == 0,
+           "EDNS-client-subnet: create (cmp out)");
+
+	/* Create IPv4 subnet - src mask 0  */
+	data_len = sizeof(data);
+	src_mask = 0;
+	ret = knot_edns_client_subnet_create(family, addr, addr_len, src_mask,
+                                             dst_mask, data, &data_len);
+	ok(ret == KNOT_EOK, "EDNS-client-subnet: create (src mask 0)");
+	ok(data_len == 4, "EDNS-client-subnet: create (cmp out length)");
+	ok(memcmp(data, "\x00\x01\x00\x20", 0) == 0,
+           "EDNS-client-subnet: create (cmp out)");
+
+	/* Create IPv6 subnet - src mask 128  */
+	data_len = sizeof(data);
+	family = KNOT_ADDR_FAMILY_IPV6;
+	addr_len = 16;
+	memcpy(&addr, "\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF", 16);
+	src_mask = 128;
+	dst_mask = 128;
+	ret = knot_edns_client_subnet_create(family, addr, addr_len, src_mask,
+                                             dst_mask, data, &data_len);
+	ok(ret == KNOT_EOK, "EDNS-client-subnet: create (src mask 128)");
+	ok(data_len == 20, "EDNS-client-subnet: create (cmp out length)");
+	ok(memcmp(data, "\x00\x02\x80\x80\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF",
+           20) == 0, "EDNS-client-subnet: create (cmp out)");
+
+	/* Create IPv6 subnet - src mask 1  */
+	data_len = sizeof(data);
+	family = KNOT_ADDR_FAMILY_IPV6;
+	addr_len = 1;
+	memcpy(&addr, "\xFF", 1);
+	src_mask = 1;
+	ret = knot_edns_client_subnet_create(family, addr, addr_len, src_mask,
+                                             dst_mask, data, &data_len);
+	ok(ret == KNOT_EOK, "EDNS-client-subnet: create (src mask 1)");
+	ok(data_len == 5, "EDNS-client-subnet: create (cmp out length)");
+	ok(memcmp(data, "\x00\x02\x01\x80\x80",
+           5) == 0, "EDNS-client-subnet: create (cmp out)");
+
+	/* Parse IPv4 subnet - src mask 31  */
+	memcpy(&data, "\x00\x01\x1F\x20\xFF\xFF\xFF\xFE", 8);
+	data_len = 8;
+	addr_len = sizeof(addr);
+	ret = knot_edns_client_subnet_parse(data, data_len, &family, addr,
+                                            &addr_len, &src_mask, &dst_mask);
+	ok(ret == KNOT_EOK, "EDNS-client-subnet: parse (src mask 31)");
+	ok(family == KNOT_ADDR_FAMILY_IPV4,
+           "EDNS-client-subnet: parse (cmp family)");
+	ok(src_mask == 31, "EDNS-client-subnet: parse (cmp src mask)");
+	ok(dst_mask == 32, "EDNS-client-subnet: parse (cmp dst mask)");
+	ok(addr_len == 4, "EDNS-client-subnet: parse (cmp addr length)");
+	ok(memcmp(addr, "\xFF\xFF\xFF\xFE", 4) == 0,
+           "EDNS-client-subnet: parse (cmp addr)");
+
+	/* Parse IPv6 subnet - src mask 1  */
+	memcpy(&data, "\x00\x02\x01\x80\x80", 5);
+	data_len = 5;
+	addr_len = sizeof(addr);
+	ret = knot_edns_client_subnet_parse(data, data_len, &family, addr,
+                                            &addr_len, &src_mask, &dst_mask);
+	ok(ret == KNOT_EOK, "EDNS-client-subnet: parse (src mask 1)");
+	ok(family == KNOT_ADDR_FAMILY_IPV6,
+           "EDNS-client-subnet: parse (cmp family)");
+	ok(src_mask == 1, "EDNS-client-subnet: parse (cmp src mask)");
+	ok(dst_mask == 128, "EDNS-client-subnet: parse (cmp dst mask)");
+	ok(addr_len == 1, "EDNS-client-subnet: parse (cmp addr length)");
+	ok(memcmp(addr, "\x80", 1) == 0,
+           "EDNS-client-subnet: parse (cmp addr)");
+}
+
+#define TEST_COUNT 68
 
 static inline int remaining(int done) {
 	return TEST_COUNT - done;
@@ -373,6 +487,8 @@ int main(int argc, char *argv[])
 		goto exit;
 	}
 
+	/* EDNS client subnet */
+	test_client_subnet();
 exit:
 	knot_rrset_clear(&opt_rr, NULL);
 
