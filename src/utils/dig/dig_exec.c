@@ -85,7 +85,6 @@ static float get_query_time(const Dnstap__Dnstap *frame)
 static void process_dnstap(const query_t *query)
 {
 	dt_reader_t *reader = query->dt_reader;
-	int         ret;
 
 	if (query->dt_reader == NULL) {
 		return;
@@ -98,7 +97,7 @@ static void process_dnstap(const query_t *query)
 		bool                is_response;
 
 		// Read next message.
-		ret = dt_reader_read(reader, &frame);
+		int ret = dt_reader_read(reader, &frame);
 		if (ret == KNOT_EOF) {
 			break;
 		} else if (ret != KNOT_EOK) {

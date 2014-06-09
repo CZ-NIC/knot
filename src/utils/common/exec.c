@@ -750,8 +750,6 @@ int verify_packet(const knot_pkt_t        *pkt,
                   const sign_context_t    *sign_ctx,
                   const knot_key_params_t *key_params)
 {
-	int result;
-
 	if (pkt == NULL || sign_ctx == NULL || key_params == NULL) {
 		DBG_NULL;
 		return KNOT_EINVAL;
@@ -767,12 +765,10 @@ int verify_packet(const knot_pkt_t        *pkt,
 			return KNOT_ENOTSIG;
 		}
 
-		result = knot_tsig_client_check(pkt->tsig_rr, wire, *wire_size,
-		                                sign_ctx->digest,
-		                                sign_ctx->digest_size,
-		                                &sign_ctx->tsig_key, 0);
-
-		return result;
+		return knot_tsig_client_check(pkt->tsig_rr, wire, *wire_size,
+		                              sign_ctx->digest,
+		                              sign_ctx->digest_size,
+		                              &sign_ctx->tsig_key, 0);
 	}
 	case KNOT_KEY_DNSSEC:
 	{

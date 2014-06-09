@@ -319,18 +319,6 @@ int conf_add_hook(conf_t * conf, int sections,
                   int (*on_update)(const conf_t*, void*), void *data);
 
 /*!
- * \brief Parse configuration from associated file.
- *
- * \note Registered callbacks may be executed if applicable.
- *
- * \param conf Configuration context.
- *
- * \retval KNOT_EOK on success.
- * \retval KNOT_EPARSEFAIL on parser error.
- */
-int conf_parse(conf_t *conf);
-
-/*!
  * \brief Parse configuration from string.
  *
  * \note Registered callbacks may be executed if applicable.

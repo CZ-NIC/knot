@@ -380,7 +380,7 @@ static void wire_data_encode_to_str(rrset_dump_params_t *p,
 		p->out_max -= out_len;
 		p->total += out_len;
 	} else {
-		int  src_begin, src_len;
+		int     src_begin;
 		uint8_t *buf;
 
 		// Encode data to the temporary buffer.
@@ -401,8 +401,8 @@ static void wire_data_encode_to_str(rrset_dump_params_t *p,
 			}
 
 			// Compute block length (the last one can be shorter).
-			src_len = (ret - src_begin) < BLOCK_WIDTH ?
-			          (ret - src_begin) : BLOCK_WIDTH;
+			int src_len = (ret - src_begin) < BLOCK_WIDTH ?
+			              (ret - src_begin) : BLOCK_WIDTH;
 
 			if ((size_t)src_len > p->out_max) {
 				free(buf);

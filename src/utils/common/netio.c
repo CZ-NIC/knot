@@ -202,8 +202,7 @@ int net_init(const srv_info_t *local,
 int net_connect(net_t *net)
 {
 	struct pollfd pfd;
-	int           sockfd, cs, err = 0;
-	socklen_t     err_len = sizeof(err);
+	int           sockfd;
 
 	if (net == NULL || net->srv == NULL) {
 		DBG_NULL;
@@ -242,6 +241,9 @@ int net_connect(net_t *net)
 	}
 
 	if (net->socktype == SOCK_STREAM) {
+		int       cs, err = 0;
+		socklen_t err_len = sizeof(err);
+
 		// Connect using socket.
 		if (connect(sockfd, net->srv->ai_addr, net->srv->ai_addrlen)
 		    == -1 && errno != EINPROGRESS) {
