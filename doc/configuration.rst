@@ -354,7 +354,7 @@ modules and configuration string reference.
 -----------------------------------------
 
 The Knot DNS supports dnstap_ for query and response logging.
-You can capture either either all or zone-specific queries and responses, usually you want to do
+You can capture either all or zone-specific queries and responses, usually you want to do
 the former. The dnstap module accepts only a sink path as a parameter, which can either be a file
 or a UNIX socket prefixed with *unix:*.
 
