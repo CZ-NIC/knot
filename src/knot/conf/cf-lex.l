@@ -160,6 +160,7 @@ info { lval.t = yytext; lval.i = LOG_MASK(LOG_INFO); return LOG_LEVEL; }
 notice { lval.t = yytext; lval.i = LOG_MASK(LOG_NOTICE); return LOG_LEVEL; }
 warning { lval.t = yytext; lval.i = LOG_MASK(LOG_WARNING); return LOG_LEVEL; }
 error { lval.t = yytext; lval.i = LOG_MASK(LOG_ERR); return LOG_LEVEL; }
+critical { lval.t = yytext; lval.i = LOG_MASK(LOG_CRIT); return LOG_LEVEL; }
 
 increment|unixtime {
   lval.t = yytext;
@@ -327,7 +328,7 @@ hmac-sha512     { lval.alg = KNOT_TSIG_ALG_HMAC_SHA512; return TSIG_ALGO_NAME; }
 
 	// remove optional semicolon
 	if (yytext[yyleng - 1] == ';') {
-		yyleng -= 1; 
+		yyleng -= 1;
 	}
 	// remove quotes
 	yytext += 1;

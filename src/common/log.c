@@ -155,7 +155,7 @@ int log_init()
 {
 	/* Setup initial state. */
 	int ret = KNOT_EOK;
-	int emask = LOG_MASK(LOG_WARNING)|LOG_MASK(LOG_ERR)|LOG_MASK(LOG_FATAL);
+	int emask = LOG_MASK(LOG_WARNING)|LOG_MASK(LOG_ERR)|LOG_MASK(LOG_CRIT);
 	int imask = LOG_MASK(LOG_INFO)|LOG_MASK(LOG_NOTICE);
 
 	/* Add debug messages. */
@@ -321,7 +321,7 @@ int log_msg(logsrc_t src, int level, const char *msg, ...)
 	case LOG_NOTICE:  prefix = "[notice] "; break;
 	case LOG_WARNING: prefix = "[warning] "; break;
 	case LOG_ERR:     prefix = "[error] "; break;
-	case LOG_FATAL:   prefix = "[fatal] "; break;
+	case LOG_CRIT:    prefix = "[fatal] "; break;
 	default: break;
 	}
 
