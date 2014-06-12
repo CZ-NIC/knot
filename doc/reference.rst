@@ -1063,10 +1063,10 @@ an error:
 
     log {
       [ log_name {
-        [ category severity [, severity ... ]; ]
+        [ category severity; ]
       } ]
       [ log_file filename {
-        [ category severity [, severity ... ]; ]
+        [ category severity; ]
       } ]
     }
 
@@ -1119,11 +1119,10 @@ Knot DNS has the following logging severities:
 * ``notice`` - Server notices and hints.
 * ``warning`` - Warnings that might require user action.
 * ``error`` - Recoverable error.  Action should be taken.
-* ``all`` - All severities.
+* ``critical`` - Non-recoverable error resulting in server shutdown.
 
-More severities may be listed for each category, but all severities
-have to be listed explicitly, i.e.  using ``warning`` severity does
-not mean that ``error`` severity messages will be logged as well.
+Each severity level includes all more serious levels, i.e. ``warning`` severity
+also includes ``error`` and ``critical`` severities.
 
 .. _log_file:
 
