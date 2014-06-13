@@ -220,7 +220,7 @@ static uint32_t soa_graceful_expire(const knot_rdataset_t *soa)
 {
 	// Allow for timeouts.  Otherwise zones with very short
 	// expiry may expire before the timeout is reached.
-	return knot_soa_expire(soa) + 2 * (conf()->max_conn_idle * 1000);
+	return knot_soa_expire(soa) + 2 * conf()->max_conn_idle;
 }
 
 typedef int (*zone_event_cb)(zone_t *zone);
@@ -274,12 +274,11 @@ static int event_reload(zone_t *zone)
 		zone_contents_deep_free(&old);
 	}
 
-	/* Trim extra heap. */
-	mem_trim();
-
-	/* Schedule notify and refresh after load. */
+	/* Schedule notify, expire and refresh after load. */
 	if (zone_master(zone)) {
 		zone_events_schedule(zone, ZONE_EVENT_REFRESH, ZONE_EVENT_NOW);
+		const knot_rdataset_t *soa = node_rdataset(contents->apex, KNOT_RRTYPE_SOA);
+		zone_events_schedule(zone, ZONE_EVENT_EXPIRE, soa_graceful_expire(soa));
 	}
 	if (!zone_contents_is_empty(contents)) {
 		zone_events_schedule(zone, ZONE_EVENT_NOTIFY, ZONE_EVENT_NOW);
@@ -342,9 +341,11 @@ static int event_xfer(zone_t *zone)
 	assert(zone);
 
 	/* Determine transfer type. */
+	bool is_bootstrap = false;
 	uint16_t pkt_type = KNOT_QUERY_IXFR;
 	if (zone_contents_is_empty(zone->contents) || zone->flags & ZONE_FORCE_AXFR) {
 		pkt_type = KNOT_QUERY_AXFR;
+		is_bootstrap = true;
 	}
 
 	/* Execute zone transfer and reschedule timers. */
@@ -365,7 +366,9 @@ static int event_xfer(zone_t *zone)
 		zone->bootstrap_retry = ZONE_EVENT_NOW;
 		zone->flags &= ~ZONE_FORCE_AXFR;
 		/* Trim extra heap. */
-		mem_trim();
+		if (!is_bootstrap) {
+			mem_trim();
+		}
 	} else {
 		/* Zone contents is still empty, increment bootstrap retry timer
 		 * and try again. */
@@ -430,6 +433,9 @@ static int event_expire(zone_t *zone)
 
 	zone_contents_t *expired = zone_switch_contents(zone, NULL);
 	synchronize_rcu();
+
+	/* Trim extra heap. */
+	mem_trim();
 
 	/* Expire zonefile information. */
 	zone->zonefile_mtime = 0;
@@ -884,14 +890,8 @@ void zone_events_schedule_at(zone_t *zone, zone_event_type_t type, time_t time)
 	zone_events_t *events = &zone->events;
 
 	pthread_mutex_lock(&events->mx);
-
-
-	time_t current = event_get_time(events, type);
-	if (current == 0 || time == 0 || time < current) {
-		event_set_time(events, type, time);
-		reschedule(events);
-	}
-
+	event_set_time(events, type, time);
+	reschedule(events);
 	pthread_mutex_unlock(&events->mx);
 }
 
