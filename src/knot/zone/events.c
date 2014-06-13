@@ -274,9 +274,6 @@ static int event_reload(zone_t *zone)
 		zone_contents_deep_free(&old);
 	}
 
-	/* Trim extra heap. */
-	mem_trim();
-
 	/* Schedule notify and refresh after load. */
 	if (zone_master(zone)) {
 		zone_events_schedule(zone, ZONE_EVENT_REFRESH, ZONE_EVENT_NOW);
@@ -342,9 +339,11 @@ static int event_xfer(zone_t *zone)
 	assert(zone);
 
 	/* Determine transfer type. */
+	bool is_bootstrap = false;
 	uint16_t pkt_type = KNOT_QUERY_IXFR;
 	if (zone_contents_is_empty(zone->contents) || zone->flags & ZONE_FORCE_AXFR) {
 		pkt_type = KNOT_QUERY_AXFR;
+		is_bootstrap = true;
 	}
 
 	/* Execute zone transfer and reschedule timers. */
@@ -365,7 +364,9 @@ static int event_xfer(zone_t *zone)
 		zone->bootstrap_retry = ZONE_EVENT_NOW;
 		zone->flags &= ~ZONE_FORCE_AXFR;
 		/* Trim extra heap. */
-		mem_trim();
+		if (!is_bootstrap) {
+			mem_trim();
+		}
 	} else {
 		/* Zone contents is still empty, increment bootstrap retry timer
 		 * and try again. */
@@ -430,6 +431,9 @@ static int event_expire(zone_t *zone)
 
 	zone_contents_t *expired = zone_switch_contents(zone, NULL);
 	synchronize_rcu();
+
+	/* Trim extra heap. */
+	mem_trim();
 
 	/* Expire zonefile information. */
 	zone->zonefile_mtime = 0;
