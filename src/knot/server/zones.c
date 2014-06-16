@@ -3118,11 +3118,13 @@ int zones_do_diff_and_sign(const conf_zone_t *z, knot_zone_t *zone,
 	/* Ensure both new and old have zone contents. */
 	knot_zone_contents_t *zc = knot_zone_get_contents(zone);
 	knot_zone_contents_t *zc_old = knot_zone_get_contents(z_old);
+	zonedata_t *zdata = (zonedata_t *)(zone->data);
 
 	dbg_zones("Going to calculate diff. Old contents: %p, new: %p\n",
 	          zc_old, zc);
 
 	knot_changesets_t *diff_chs = NULL;
+	bool purge_journal = false;
 	if (z->build_diffs && zc && zc_old && zone_changed) {
 		diff_chs = knot_changesets_create();
 		if (diff_chs == NULL) {
@@ -3148,6 +3150,8 @@ int zones_do_diff_and_sign(const conf_zone_t *z, knot_zone_t *zone,
 			                 "the zone file update: %s\n",
 			                 knot_strerror(ret));
 		}
+		// Might be signing a potential change, need flush and drop journal in that case
+		purge_journal = (ret == KNOT_ENODIFF && z->dnssec_enable);
 		/* Even if there's nothing to create the diff from
 		 * we can still sign the zone - inconsistencies may happen. */
 		// TODO consider returning straight away when serial did not change
@@ -3250,6 +3254,22 @@ int zones_do_diff_and_sign(const conf_zone_t *z, knot_zone_t *zone,
 			                      sec_chs->changes);
 			zones_free_merged_changesets(diff_chs, sec_chs);
 			rcu_read_unlock();
+			return ret;
+		}
+	}
+
+	/* Clear journal so that we don't send mismatched IXFR. */
+	if (purge_journal) {
+		ret = zones_zonefile_sync_from_ev(zone, zdata);
+		if (ret == KNOT_EOK) {
+			log_zone_warning("DNSSEC: Zone %s - Serial did not change, "
+			                 "purging journal!\n", z->name);
+			ret = journal_create(zdata->ixfr_db->path, JOURNAL_NCOUNT);
+		}
+		if (ret != KNOT_EOK) {
+			knot_changesets_free(&diff_chs);
+			rcu_read_unlock();
+			log_zone_error("Failed to flush changes to zonefile\n");
 			return ret;
 		}
 	}
