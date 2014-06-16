@@ -982,7 +982,10 @@ log_prios_start: {
 log_prios:
    log_prios_start
  | log_prios LOG_LEVEL ',' { this_logmap->prios |= $2.i; }
- | log_prios LOG_LEVEL ';' { this_logmap->prios |= $2.i; }
+ | log_prios LOG_LEVEL ';' { this_logmap->prios |= $2.i;
+	fprintf(stderr, "Warning: more log severities per statement is deprecated. "
+	                "Using the least serious one.\n");
+ }
  ;
 
 log_src:
