@@ -139,6 +139,7 @@ class Server(object):
 
         self.ratelimit = None
         self.disable_any = None
+        self.max_conn_idle = None
 
         self.ip = None
         self.addr = None
@@ -199,7 +200,7 @@ class Server(object):
         '''Set the server as a slave for the zone'''
 
         if zone.name in self.zones:
-            raise Exception("Can't set zone='%s' as a slave" % name)
+            raise Exception("Can't set zone='%s' as a slave" % zone.name)
 
         slave_file = zone.clone(self.dir + "/slave", exists=False)
         z = Zone(slave_file, ddns, ixfr)
@@ -815,6 +816,8 @@ class Knot(Server):
         self._on_str_hex(s, "nsid", self.nsid)
         self._on_str_hex(s, "rate-limit", self.ratelimit)
         s.item_str("rundir", self.dir)
+        if (self.max_conn_idle):
+            s.item("max-conn-idle", self.max_conn_idle)
         s.end()
 
         s.begin("control")

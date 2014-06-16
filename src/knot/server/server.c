@@ -122,6 +122,9 @@ static int server_init_iface(iface_t *new_if, conf_iface_t *cfg_if)
 		return sock;
 	}
 
+	/* Set UDP as non-blocking. */
+	fcntl(sock, F_SETFL, O_NONBLOCK);
+
 	new_if->fd[IO_UDP] = sock;
 
 	/* Create bound TCP socket. */

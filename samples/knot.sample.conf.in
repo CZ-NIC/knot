@@ -79,16 +79,12 @@ zones {
 
 log {
   syslog {
-    # log errors of any category
-    any error;    # for <category> and <severity> see above
-    # log also warnings and notices from category 'zone'
-    zone warning, notice;
-    # log info from server
-    server info;
+    # Log info and more serious events to syslog
+    any info;
   }
 
-  # Log fatal, warnings and errors to stderr
+  # Log warnings, errors and criticals to stderr
   stderr {
-    any error, warning;
+    any warning;
   }
 }

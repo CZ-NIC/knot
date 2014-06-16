@@ -23,7 +23,7 @@ which can be used as a base for your Knot DNS setup::
     }
 
     log {
-      syslog { any notice, warning, error; }
+      syslog { any info; }
     }
 
     zones {
@@ -40,10 +40,10 @@ Now let's go step by step through this minimal configuration file:
   on port 53 and second IPv6 called ``second_int`` also listening on
   port 53, which is the default port for the DNS. See :ref:`interfaces`.
 * The ``log`` statement defines the log facilities for Knot DNS.
-  In this example we told Knot DNS to send its log messages with the severities
-  ``debug``, ``warning`` and ``notice`` into the syslog.
-  If you omit this sections, all severities will printed to
-  either ``stdout`` or ``stderr``, and the severities
+  In this example we told Knot DNS to send its log messages with the severity
+  ``info`` or more serious to the syslog.
+  If you omit this sections, all severities will be printed
+  either to ``stdout`` or ``stderr``, and the severities
   from the ``warning`` and more serious to syslog. You can find all
   possible combinations in the :ref:`log`.
 * The ``zones`` statement is probably the most important one,

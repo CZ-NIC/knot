@@ -274,7 +274,7 @@ static int event_reload(zone_t *zone)
 		zone_contents_deep_free(&old);
 	}
 
-	/* Schedule notify, expire and refresh after load. */
+	/* Schedule notify and refresh after load. */
 	if (zone_master(zone)) {
 		zone_events_schedule(zone, ZONE_EVENT_REFRESH, ZONE_EVENT_NOW);
 		const knot_rdataset_t *soa = node_rdataset(contents->apex, KNOT_RRTYPE_SOA);

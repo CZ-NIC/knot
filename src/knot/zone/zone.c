@@ -270,6 +270,9 @@ int zone_flush_journal(zone_t *zone)
 	zone->zonefile_serial = serial_to;
 	journal_mark_synced(zone->conf->ixfr_db);
 
+	/* Trim extra heap. */
+	mem_trim();
+
 	return ret;
 }
 

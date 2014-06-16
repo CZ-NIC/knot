@@ -489,10 +489,8 @@ int udp_master(dthread_t *thread)
 {
 	unsigned cpu = dt_online_cpus();
 	if (cpu > 1) {
-		unsigned cpu_mask[2];
-		cpu_mask[0] = dt_get_id(thread) % cpu;
-		cpu_mask[1] = (cpu_mask[0] + 2) % cpu;
-		dt_setaffinity(thread, cpu_mask, 2);
+		unsigned cpu_mask = (dt_get_id(thread) % cpu);
+		dt_setaffinity(thread, &cpu_mask, 1);
 	}
 
 	/* Drop all capabilities on all workers. */
@@ -559,7 +557,7 @@ int udp_master(dthread_t *thread)
 		/* Bound sockets will be usually closely coupled. */
 		for (unsigned fd = minfd; fd <= maxfd; ++fd) {
 			if (FD_ISSET(fd, &rfds)) {
-				while ((rcvd = _udp_recv(fd, rq)) > 0) {
+				if ((rcvd = _udp_recv(fd, rq)) > 0) {
 					_udp_handle(&udp, rq);
 					/* Flush allocated memory. */
 					mp_flush(udp.query_ctx.mm.ctx);

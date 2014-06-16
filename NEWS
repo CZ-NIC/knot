@@ -4,6 +4,13 @@ Knot DNS NEWS
 -----------------------
 Features:
 	* edns-client-subnet support in kdig
+	* Optional asynchronous startup (config "asynchronous-start")
+Improvements:
+	* Preempt task queue for faster reload
+	* Lazy zone file write after zone transfer (governed by "zonefile-sync")
+Bugfixes:
+	* Close zone transfer after SERVFAIL response
+	* Incremental to full zone transfer fallback, wrong log message
 
 1.5.0-rc1 - Jun 3, 2014
 -----------------------

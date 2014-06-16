@@ -648,7 +648,7 @@ static int zones_verify_tsig_query(const knot_pkt_t *query,
 	assert(tsig_rcode != NULL);
 
 	if (query->tsig_rr == NULL) {
-		log_answer_info("TSIG key required, but not in query - REFUSED.\n");
+		log_server_info("TSIG key required, but not in query - REFUSED.\n");
 		*rcode = KNOT_RCODE_REFUSED;
 		return KNOT_TSIG_EBADKEY;
 	}
@@ -658,7 +658,7 @@ static int zones_verify_tsig_query(const knot_pkt_t *query,
 	 */
 	knot_tsig_algorithm_t alg = tsig_rdata_alg(query->tsig_rr);
 	if (knot_tsig_digest_length(alg) == 0) {
-		log_answer_info("Unsupported digest algorithm "
+		log_server_info("Unsupported digest algorithm "
 		                "requested, treating as bad key\n");
 		/*! \todo [TSIG] It is unclear from RFC if I
 		 *               should treat is as a bad key
@@ -702,7 +702,7 @@ static int zones_verify_tsig_query(const knot_pkt_t *query,
 
 	if (mac_len > digest_max_size) {
 		*rcode = KNOT_RCODE_FORMERR;
-		log_answer_info("MAC length %zu exceeds digest "
+		log_server_info("MAC length %zu exceeds digest "
 		                "maximum size %zu\n", mac_len, digest_max_size);
 		return KNOT_EMALF;
 	} else {
