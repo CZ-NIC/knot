@@ -13,8 +13,8 @@ def update_zone(master, slave, zone, changes, change_serial=False, serials=None)
         master.update_zonefile(zone, version=i)
         if change_serial:
             # update zone serial to one given in the 'serials' list
-            master.zones[zone[0].name].zfile.update_serial(serials[i])
             serial = serials[i]
+            master.zones[zone[0].name].zfile.update_serial(serial)
         else:
             serials.append(serial)
         master.reload()
@@ -38,6 +38,9 @@ def do_steps(master, slave, zone):
     serials = list(map(lambda x: x + 1000, serials))
     serials.reverse()
     update_zone(master, slave, zone, rev[1:], change_serial=True, serials=serials)
+    # update zone once, but do not change the serial - test for mismatched IXFR
+    update_zone(master, slave, zone, range(1, 2), change_serial=True,
+                serials=list(map(lambda x: x + 1, serials[:2])))
 
 t = Test()
 
