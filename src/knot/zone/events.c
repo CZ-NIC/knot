@@ -632,10 +632,8 @@ static void replan_update(zone_t *zone, const zone_t *old_zone)
 {
 	if (!EMPTY_LIST(old_zone->ddns_queue)) {
 		duplicate_ddns_q(zone, old_zone);
-		const time_t upd_time =
-			zone_events_get_time(old_zone, ZONE_EVENT_UPDATE);
-		assert(upd_time > ZONE_EVENT_NOW);
-		zone_events_schedule_at(zone, ZONE_EVENT_UPDATE, upd_time);
+		// \todo #254 Old zone *must* have the event planned, but it was not always so
+		zone_events_schedule(zone, ZONE_EVENT_UPDATE, ZONE_EVENT_NOW);
 	}
 }
 

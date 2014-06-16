@@ -302,7 +302,7 @@ int zone_update_enqueue(zone_t *zone, knot_pkt_t *pkt, struct process_query_para
 
 	pthread_mutex_unlock(&zone->ddns_lock);
 
-	/* Schedule UPDATE event. If already scheduled, older event will stay. */
+	/* Schedule UPDATE event. */
 	zone_events_schedule(zone, ZONE_EVENT_UPDATE, ZONE_EVENT_NOW);
 
 	return KNOT_EOK;
