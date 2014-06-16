@@ -1104,7 +1104,6 @@ Knot DNS allows user to choose from these logging categories:
 
 * ``server`` - Messages related to general operation of the server.
 * ``zone`` - Messages related to zones, zone parsing and loading.
-* ``answering`` - Messages regarding query processing and response creation.
 * ``any`` - All categories.
 
 .. _severity:

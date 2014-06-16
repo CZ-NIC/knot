@@ -149,7 +149,13 @@ log             { lval.t = yytext; return LOG; }
 
 any { lval.t = yytext; lval.i = LOG_ANY; return LOG_SRC; }
 server { lval.t = yytext; lval.i = LOG_SERVER; return LOG_SRC; }
-answering { lval.t = yytext; lval.i = LOG_ANSWER; return LOG_SRC; }
+answering {
+	lval.t = yytext;
+	lval.i = LOG_SERVER;
+	fprintf(stderr, "Warning: log category 'answering' is no longer "
+	                "supported. Using 'server' instead.\n");
+	return LOG_SRC;
+}
 zone { lval.t = yytext; lval.i = LOG_ZONE; return LOG_SRC; }
 stdout { lval.t = yytext; lval.i = LOGT_STDOUT; return LOG_DEST; }
 stderr { lval.t = yytext; lval.i = LOGT_STDERR; return LOG_DEST; }

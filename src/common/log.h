@@ -54,8 +54,7 @@ typedef enum {
 /*! \brief Log sources (max. LOG_SRC_BITS bits). */
 typedef enum {
 	LOG_SERVER = 0, /*!< Server module. */
-	LOG_ANSWER = 1, /*!< Query answering module. */
-	LOG_ZONE   = 2, /*!< Zone manipulation module. */
+	LOG_ZONE   = 1, /*!< Zone manipulation module. */
 	LOG_ANY    = 7  /*!< Any module. */
 } logsrc_t;
 
@@ -153,13 +152,6 @@ void hex_log(int source, const char *data, int length);
 #define log_server_notice(msg...)    log_msg(LOG_SERVER, LOG_NOTICE, msg)
 #define log_server_info(msg...)      log_msg(LOG_SERVER, LOG_INFO, msg)
 #define log_server_debug(msg...)     log_msg(LOG_SERVER, LOG_DEBUG, msg)
-
-#define log_answer_fatal(msg...)     log_msg(LOG_ANSWER, LOG_CRIT, msg)
-#define log_answer_error(msg...)     log_msg(LOG_ANSWER, LOG_ERR, msg)
-#define log_answer_warning(msg...)   log_msg(LOG_ANSWER, LOG_WARNING, msg)
-#define log_answer_notice(msg...)    log_msg(LOG_ANSWER, LOG_NOTICE, msg)
-#define log_answer_info(msg...)      log_msg(LOG_ANSWER, LOG_INFO, msg)
-#define log_answer_debug(msg...)     log_msg(LOG_ANSWER, LOG_DEBUG, msg)
 
 #define log_zone_fatal(msg...)       log_msg(LOG_ZONE, LOG_CRIT, msg)
 #define log_zone_error(msg...)       log_msg(LOG_ZONE, LOG_ERR, msg)
