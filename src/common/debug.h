@@ -208,8 +208,8 @@
 
 /* Brief messages. */
 #ifdef DEBUG_ENABLE_BRIEF
-#define dbg_response(msg...) log_msg(LOG_ANSWER, LOG_DEBUG, msg)
-#define dbg_response_hex(data, len)  hex_log(LOG_ANSWER, (data), (len))
+#define dbg_response(msg...) log_msg(LOG_SERVER, LOG_DEBUG, msg)
+#define dbg_response_hex(data, len)  hex_log(LOG_SERVER, (data), (len))
 #define dbg_response_exec(cmds) do { cmds } while (0)
 #else
 #define dbg_response(msg...)
@@ -219,8 +219,8 @@
 
 /* Verbose messages. */
 #ifdef DEBUG_ENABLE_VERBOSE
-#define dbg_response_verb(msg...) log_msg(LOG_ANSWER, LOG_DEBUG, msg)
-#define dbg_response_hex_verb(data, len)  hex_log(LOG_ANSWER, (data), (len))
+#define dbg_response_verb(msg...) log_msg(LOG_SERVER, LOG_DEBUG, msg)
+#define dbg_response_hex_verb(data, len)  hex_log(LOG_SERVER, (data), (len))
 #define dbg_response_exec_verb(cmds) do { cmds } while (0)
 #else
 #define dbg_response_verb(msg...)
@@ -230,8 +230,8 @@
 
 /* Detail messages. */
 #ifdef DEBUG_ENABLE_DETAILS
-#define dbg_response_detail(msg...) log_msg(LOG_ANSWER, LOG_DEBUG, msg)
-#define dbg_response_hex_detail(data, len)  hex_log(LOG_ANSWER, (data), (len))
+#define dbg_response_detail(msg...) log_msg(LOG_SERVER, LOG_DEBUG, msg)
+#define dbg_response_hex_detail(data, len)  hex_log(LOG_SERVER, (data), (len))
 #define dbg_response_exec_detail(cmds) do { cmds } while (0)
 #else
 #define dbg_response_detail(msg...)
@@ -258,8 +258,8 @@
 
 /* Brief messages. */
 #ifdef DEBUG_ENABLE_BRIEF
-#define dbg_packet(msg...) log_msg(LOG_ANSWER, LOG_DEBUG, msg)
-#define dbg_packet_hex(data, len)  hex_log(LOG_ANSWER, (data), (len))
+#define dbg_packet(msg...) log_msg(LOG_SERVER, LOG_DEBUG, msg)
+#define dbg_packet_hex(data, len)  hex_log(LOG_SERVER, (data), (len))
 #define dbg_packet_exec(cmds) do { cmds } while (0)
 #else
 #define dbg_packet(msg...)
@@ -269,8 +269,8 @@
 
 /* Verbose messages. */
 #ifdef DEBUG_ENABLE_VERBOSE
-#define dbg_packet_verb(msg...) log_msg(LOG_ANSWER, LOG_DEBUG, msg)
-#define dbg_packet_hex_verb(data, len)  hex_log(LOG_ANSWER, (data), (len))
+#define dbg_packet_verb(msg...) log_msg(LOG_SERVER, LOG_DEBUG, msg)
+#define dbg_packet_hex_verb(data, len)  hex_log(LOG_SERVER, (data), (len))
 #define dbg_packet_exec_verb(cmds) do { cmds } while (0)
 #else
 #define dbg_packet_verb(msg...)
@@ -280,8 +280,8 @@
 
 /* Detail messages. */
 #ifdef DEBUG_ENABLE_DETAILS
-#define dbg_packet_detail(msg...) log_msg(LOG_ANSWER, LOG_DEBUG, msg)
-#define dbg_packet_hex_detail(data, len)  hex_log(LOG_ANSWER, (data), (len))
+#define dbg_packet_detail(msg...) log_msg(LOG_SERVER, LOG_DEBUG, msg)
+#define dbg_packet_hex_detail(data, len)  hex_log(LOG_SERVER, (data), (len))
 #define dbg_packet_exec_detail(cmds) do { cmds } while (0)
 #else
 #define dbg_packet_detail(msg...)
