@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-'''Test to end all tests'''
+'''Test for SOA events and planning thereof'''
 
 from dnstest.utils import *
 from dnstest.test import Test
