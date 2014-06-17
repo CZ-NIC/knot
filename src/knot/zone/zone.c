@@ -315,7 +315,12 @@ struct request_data *zone_update_dequeue(zone_t *zone)
 	}
 
 	pthread_mutex_lock(&zone->ddns_lock);
-	assert(!EMPTY_LIST(zone->ddns_queue));
+	if (knot_unlikely(EMPTY_LIST(zone->ddns_queue))) {
+		/* Lost race during reload. */
+		pthread_mutex_unlock(&zone->ddns_lock);
+		return NULL;
+	}
+
 	struct request_data *ret = HEAD(zone->ddns_queue);
 	rem_node((node_t *)ret);
 	pthread_mutex_unlock(&zone->ddns_lock);

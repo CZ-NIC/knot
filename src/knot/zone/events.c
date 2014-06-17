@@ -389,9 +389,11 @@ static int event_update(zone_t *zone)
 	}
 
 	struct request_data *update = zone_update_dequeue(zone);
+	if (update == NULL) {
+		return KNOT_EOK;
+	}
 
 	/* Initialize query response. */
-	assert(update);
 	assert(update->query);
 	knot_pkt_init_response(resp, update->query);
 
@@ -423,6 +425,16 @@ static int event_update(zone_t *zone)
 
 	/* Trim extra heap. */
 	mem_trim();
+
+	/* Replan event if next update waiting. */
+	pthread_mutex_lock(&zone->ddns_lock);
+
+	if (!EMPTY_LIST(zone->ddns_queue)) {
+		zone_events_schedule(zone, ZONE_EVENT_UPDATE, ZONE_EVENT_NOW);
+	}
+
+	pthread_mutex_unlock(&zone->ddns_lock);
+
 
 	return KNOT_EOK;
 }
@@ -626,25 +638,29 @@ static void replan_flush(zone_t *zone, const zone_t *old_zone)
 }
 
 /*!< \brief Creates new DDNS q in the new zone - q contains references from the old zone. */
-static void duplicate_ddns_q(zone_t *zone, const zone_t *old_zone)
+static void duplicate_ddns_q(zone_t *zone, zone_t *old_zone)
 {
-	struct request_data *d;
-	WALK_LIST(d, old_zone->ddns_queue) {
+	struct request_data *d, *nxt;
+	WALK_LIST_DELSAFE(d, nxt, old_zone->ddns_queue) {
 		add_tail(&zone->ddns_queue, (node_t *)d);
 	}
 
 	// Reset the list, new zone will free the data.
-	init_list(&((zone_t *)old_zone)->ddns_queue);
+	init_list(&old_zone->ddns_queue);
 }
 
 /*!< Replans DDNS event. */
-static void replan_update(zone_t *zone, const zone_t *old_zone)
+static void replan_update(zone_t *zone, zone_t *old_zone)
 {
+	pthread_mutex_lock(&old_zone->ddns_lock);
+
 	if (!EMPTY_LIST(old_zone->ddns_queue)) {
-		duplicate_ddns_q(zone, old_zone);
+		duplicate_ddns_q(zone, (zone_t *)old_zone);
 		// \todo #254 Old zone *must* have the event planned, but it was not always so
 		zone_events_schedule(zone, ZONE_EVENT_UPDATE, ZONE_EVENT_NOW);
 	}
+
+	pthread_mutex_unlock(&old_zone->ddns_lock);
 }
 
 /*!< Replans DNSSEC event. Not whole resign needed, \todo #247 */
@@ -1029,14 +1045,14 @@ void zone_events_update(zone_t *zone, const zone_t *old_zone)
 	replan_xfer(zone, old_zone);
 	replan_flush(zone, old_zone);
 	replan_event(zone, old_zone, ZONE_EVENT_NOTIFY);
-	replan_update(zone, old_zone);
+	replan_update(zone, (zone_t *)old_zone);
 	replan_dnssec(zone);
 }
 
 void zone_events_replan_ddns(struct zone_t *zone, const struct zone_t *old_zone)
 {
 	if (old_zone) {
-		replan_update(zone, old_zone);
+		replan_update(zone, (zone_t *)old_zone);
 	}
 }
 
