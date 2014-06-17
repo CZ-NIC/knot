@@ -1,12 +1,13 @@
 Knot DNS NEWS
 
-v1.4.7 - Jun 17, 2014
+v1.4.7 - Jun 18, 2014
 ---------------------
 Bugfixes:
 	* Fixed DDNS corner cases
 	* Fixed zone EXPIRE timer
 	* Fixed semantic checks false positives
 	* Fixed sending malformed IXFR with automatic DNSSEC
+	* Fixed NAPTR record serialization
 
 v1.4.6 - May 22, 2014
 ---------------------
