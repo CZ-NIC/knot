@@ -543,9 +543,9 @@ static size_t rrset_binary_size_one(const knot_rrset_t *rrset,
 				rrset_rdata_naptr_bin_chunk_size(rrset, rdata_pos);
 			/*
 			 * Regular expressions in NAPTR are TXT's, so they
-			 * can be upto 64k long.
+			 * can be upto 64k long. Size is stored in serialized form.
 			 */
-			size += naptr_chunk_size + 2;
+			size += sizeof(uint16_t) + naptr_chunk_size;
 			offset += naptr_chunk_size;
 		}
 	}
@@ -592,6 +592,7 @@ static void rrset_serialize_rr(const knot_rrset_t *rrset, size_t rdata_pos,
 			*size += sizeof(uint16_t);
 			/* Write data. */
 			memcpy(stream + *size, rdata + offset, naptr_chunk_size);
+			*size += naptr_chunk_size;
 		}
 	}
 
