@@ -220,7 +220,7 @@ static uint32_t soa_graceful_expire(const knot_rdataset_t *soa)
 {
 	// Allow for timeouts.  Otherwise zones with very short
 	// expiry may expire before the timeout is reached.
-	return knot_soa_expire(soa) + 2 * (conf()->max_conn_idle * 1000);
+	return knot_soa_expire(soa) + 2 * conf()->max_conn_idle;
 }
 
 typedef int (*zone_event_cb)(zone_t *zone);
@@ -277,6 +277,8 @@ static int event_reload(zone_t *zone)
 	/* Schedule notify and refresh after load. */
 	if (zone_master(zone)) {
 		zone_events_schedule(zone, ZONE_EVENT_REFRESH, ZONE_EVENT_NOW);
+		const knot_rdataset_t *soa = node_rdataset(contents->apex, KNOT_RRTYPE_SOA);
+		zone_events_schedule(zone, ZONE_EVENT_EXPIRE, soa_graceful_expire(soa));
 	}
 	if (!zone_contents_is_empty(contents)) {
 		zone_events_schedule(zone, ZONE_EVENT_NOTIFY, ZONE_EVENT_NOW);
@@ -550,6 +552,110 @@ done:
 
 #undef ZONE_QUERY_LOG
 
+/* -- Zone event replanning functions --------------------------------------- */
+
+/*!< \brief Replans event for new zone according to old zone. */
+static void replan_event(zone_t *zone, const zone_t *old_zone, zone_event_type_t e)
+{
+	const time_t event_time = zone_events_get_time(old_zone, e);
+	if (event_time > ZONE_EVENT_NOW) {
+		zone_events_schedule_at(zone, e, event_time);
+	}
+}
+
+/*!< \brief Replans events that are dependent on the SOA record. */
+static void replan_soa_events(zone_t *zone, const zone_t *old_zone)
+{
+	if (!zone_master(zone)) {
+		// Events only valid for slaves.
+		return;
+	}
+
+	if (zone_master(old_zone)) {
+		// Replan SOA events.
+		replan_event(zone, old_zone, ZONE_EVENT_REFRESH);
+		replan_event(zone, old_zone, ZONE_EVENT_EXPIRE);
+	} else {
+		// Plan SOA events anew.
+		if (!zone_contents_is_empty(zone->contents)) {
+			const knot_rdataset_t *soa = node_rdataset(zone->contents->apex,
+			                                           KNOT_RRTYPE_SOA);
+			assert(soa);
+			zone_events_schedule(zone, ZONE_EVENT_REFRESH, knot_soa_refresh(soa));
+			zone_events_schedule(zone, ZONE_EVENT_EXPIRE, soa_graceful_expire(soa));
+		}
+	}
+}
+
+/*!< \brief Replans transfer event. */
+static void replan_xfer(zone_t *zone, const zone_t *old_zone)
+{
+	if (!zone_master(zone)) {
+		// Only valid for slaves.
+		return;
+	}
+
+	if (zone_master(old_zone)) {
+		// Replan the transfer from old zone.
+		replan_event(zone, old_zone, ZONE_EVENT_XFER);
+	} else if (zone_contents_is_empty(zone->contents)) {
+		// Plan transfer anew.
+		zone->bootstrap_retry = bootstrap_next(zone->bootstrap_retry);
+		zone_events_schedule(zone, ZONE_EVENT_XFER, zone->bootstrap_retry);
+	}
+}
+
+/*!< \brief Replans flush event. */
+static void replan_flush(zone_t *zone, const zone_t *old_zone)
+{
+	if (zone->conf->dbsync_timeout <= 0) {
+		// Immediate sync scheduled after events.
+		return;
+	}
+
+	const time_t flush_time = zone_events_get_time(old_zone, ZONE_EVENT_FLUSH);
+	if (flush_time < ZONE_EVENT_NOW) {
+		// Not scheduled previously.
+		zone_events_schedule_at(zone, ZONE_EVENT_FLUSH, zone->conf->dbsync_timeout);
+		return;
+	}
+
+	// Pick time to schedule: either reuse or schedule sooner than old event.
+	const time_t schedule_at = MIN(time(NULL) - zone->conf->dbsync_timeout, flush_time);
+	zone_events_schedule_at(zone, ZONE_EVENT_FLUSH, schedule_at);
+}
+
+/*!< \brief Creates new DDNS q in the new zone - q contains references from the old zone. */
+static void duplicate_ddns_q(zone_t *zone, const zone_t *old_zone)
+{
+	struct request_data *d;
+	WALK_LIST(d, old_zone->ddns_queue) {
+		add_tail(&zone->ddns_queue, (node_t *)d);
+	}
+
+	// Reset the list, new zone will free the data.
+	init_list(&((zone_t *)old_zone)->ddns_queue);
+}
+
+/*!< Replans DDNS event. */
+static void replan_update(zone_t *zone, const zone_t *old_zone)
+{
+	if (!EMPTY_LIST(old_zone->ddns_queue)) {
+		duplicate_ddns_q(zone, old_zone);
+		// \todo #254 Old zone *must* have the event planned, but it was not always so
+		zone_events_schedule(zone, ZONE_EVENT_UPDATE, ZONE_EVENT_NOW);
+	}
+}
+
+/*!< Replans DNSSEC event. Not whole resign needed, \todo #247 */
+static void replan_dnssec(zone_t *zone)
+{
+	if (zone->conf->dnssec_enable) {
+		/* Keys could have changed, force resign. */
+		zone_events_schedule(zone, ZONE_EVENT_DNSSEC, ZONE_EVENT_NOW);
+	}
+}
+
 /* -- internal API --------------------------------------------------------- */
 
 static bool valid_event(zone_event_type_t type)
@@ -792,14 +898,8 @@ void zone_events_schedule_at(zone_t *zone, zone_event_type_t type, time_t time)
 	zone_events_t *events = &zone->events;
 
 	pthread_mutex_lock(&events->mx);
-
-
-	time_t current = event_get_time(events, type);
-	if (current == 0 || time == 0 || time < current) {
-		event_set_time(events, type, time);
-		reschedule(events);
-	}
-
+	event_set_time(events, type, time);
+	reschedule(events);
 	pthread_mutex_unlock(&events->mx);
 }
 
@@ -922,3 +1022,21 @@ time_t zone_events_get_next(const struct zone_t *zone, zone_event_type_t *type)
 
 	return next_time;
 }
+
+void zone_events_update(zone_t *zone, const zone_t *old_zone)
+{
+	replan_soa_events(zone, old_zone);
+	replan_xfer(zone, old_zone);
+	replan_flush(zone, old_zone);
+	replan_event(zone, old_zone, ZONE_EVENT_NOTIFY);
+	replan_update(zone, old_zone);
+	replan_dnssec(zone);
+}
+
+void zone_events_replan_ddns(struct zone_t *zone, const struct zone_t *old_zone)
+{
+	if (old_zone) {
+		replan_update(zone, old_zone);
+	}
+}
+

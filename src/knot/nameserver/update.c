@@ -133,7 +133,11 @@ static int sign_update(zone_t *zone, const zone_contents_t *old_contents,
 	free(sec_chs);
 
 	// Plan next zone resign.
-	zone_events_schedule(zone, ZONE_EVENT_DNSSEC, refresh_at);
+	const time_t resign_time = zone_events_get_time(zone, ZONE_EVENT_DNSSEC);
+	assert(resign_time > ZONE_EVENT_NOW);
+	if (time(NULL) + refresh_at < resign_time) {
+		zone_events_schedule(zone, ZONE_EVENT_DNSSEC, refresh_at);
+	}
 	return ret;
 }
 

@@ -104,25 +104,6 @@ static void log_zone_load_info(const zone_t *zone, const char *zone_name,
 }
 
 /*!
- * \brief Copy zone events from the old zone.
- */
-static void update_zone_events(zone_t *zone, const zone_t *old_zone)
-{
-	for (zone_event_type_t i = 0; i < ZONE_EVENT_COUNT; ++i) {
-		/* DNSSEC: keys could have changed, force resign. */
-		if (i == ZONE_EVENT_DNSSEC && zone->conf->dnssec_enable) {
-			zone_events_schedule(zone, i, ZONE_EVENT_NOW);
-			continue;
-		}
-
-		time_t event_time = zone_events_get_time(old_zone, i);
-		if (event_time > ZONE_EVENT_NOW) {
-			zone_events_schedule_at(zone, i, event_time);
-		}
-	}
-}
-
-/*!
  * \brief Load or reload the zone.
  *
  * \param conf      Zone configuration.
@@ -159,6 +140,8 @@ static zone_t *create_zone(conf_zone_t *conf, server_t *server, zone_t *old_zone
 	case ZONE_STATUS_FOUND_UPDATED:
 		/* Enqueueing makes the first zone load waitable. */
 		zone_events_enqueue(zone, ZONE_EVENT_RELOAD);
+		/* Replan DDNS processing if there are pending updates. */
+		zone_events_replan_ddns(zone, old_zone);
 		break;
 	case ZONE_STATUS_BOOSTRAP:
 		zone_events_schedule(zone, ZONE_EVENT_REFRESH, ZONE_EVENT_NOW);
@@ -169,7 +152,7 @@ static zone_t *create_zone(conf_zone_t *conf, server_t *server, zone_t *old_zone
 		assert(old_zone);
 		zone->zonefile_mtime = old_zone->zonefile_mtime;
 		zone->zonefile_serial = old_zone->zonefile_serial;
-		update_zone_events(zone, old_zone);
+		zone_events_update(zone, old_zone);
 		break;
 	default:
 		assert(0);
