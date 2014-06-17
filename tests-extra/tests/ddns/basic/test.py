@@ -380,6 +380,15 @@ def do_normal_tests(master, zone, dnssec=False):
     resp.check_record(rtype="NS", rdata="dns2.ddns.")
     verify(master, zone, dnssec)
 
+    # add NAPTR record (NAPTR has special processing)
+    check_log("Add NAPTR record")
+    up = master.update(zone)
+    up.add("3.1.1.1.1.1.1.1.1.2.7.9.9.ddns.", "172800", "NAPTR", "1 1 \"u\" \"E2U+sip\" \"!^.*$!sip:123@freeswitch.org!\" .")
+    up.send("NOERROR")
+    resp = master.dig("3.1.1.1.1.1.1.1.1.2.7.9.9.ddns.", "NAPTR")
+    resp.check_record(rtype="NAPTR", rdata="1 1 \"u\" \"E2U+sip\" \"!^.*$!sip:123@freeswitch.org!\" .")
+    verify(master, zone, dnssec)
+
     if dnssec:
         # add DS for existing delegation
         check_log("DS addition")
