@@ -14,6 +14,7 @@ t.link(zone, knot)
 knot.ratelimit = 5 # Check for crashes also in rate-limit code
 
 t.start()
+knot.zone_wait(zone)
 
 # Packet lengths shorter than DNS header
 data = '\x00'
