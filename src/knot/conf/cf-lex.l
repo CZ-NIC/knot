@@ -168,9 +168,9 @@ error { lval.t = yytext; lval.i = LOG_UPTO(LOG_ERR); return LOG_LEVEL; }
 critical { lval.t = yytext; lval.i = LOG_UPTO(LOG_CRIT); return LOG_LEVEL; }
 all {
 	lval.t = yytext;
-	lval.i = LOG_UPTO(LOG_DEBUG);
-	fprintf(stderr, "Warning: log severity 'all'' is deprecated. "
-	                "Use 'debug' or 'info' instead.\n");
+	lval.i = LOG_UPTO(LOG_INFO);
+	fprintf(stderr, "Warning: log severity 'all'' is no longer "
+	                "supported. Using 'info' instead.\n");
 	return LOG_LEVEL;
 }
 
