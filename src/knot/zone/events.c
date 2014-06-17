@@ -566,11 +566,16 @@ static void replan_event(zone_t *zone, const zone_t *old_zone, zone_event_type_t
 /*!< \brief Replans events that are dependent on the SOA record. */
 static void replan_soa_events(zone_t *zone, const zone_t *old_zone)
 {
-	if (zone_master(zone) && zone_master(old_zone)) {
+	if (!zone_master(zone)) {
+		// Events only valid for slaves.
+		return;
+	}
+
+	if (zone_master(old_zone)) {
 		// Replan SOA events.
 		replan_event(zone, old_zone, ZONE_EVENT_REFRESH);
 		replan_event(zone, old_zone, ZONE_EVENT_EXPIRE);
-	} else if (zone_master(zone)) {
+	} else {
 		// Plan SOA events anew.
 		if (!zone_contents_is_empty(zone->contents)) {
 			const knot_rdataset_t *soa = node_rdataset(zone->contents->apex,
@@ -585,10 +590,15 @@ static void replan_soa_events(zone_t *zone, const zone_t *old_zone)
 /*!< \brief Replans transfer event. */
 static void replan_xfer(zone_t *zone, const zone_t *old_zone)
 {
-	if (zone_master(zone) && zone_master(old_zone)) {
+	if (!zone_master(zone)) {
+		// Only valid for slaves.
+		return;
+	}
+
+	if (zone_master(old_zone)) {
 		// Replan the transfer from old zone.
 		replan_event(zone, old_zone, ZONE_EVENT_XFER);
-	} else if (zone_master(zone) && zone_contents_is_empty(zone->contents)) {
+	} else if (zone_contents_is_empty(zone->contents)) {
 		// Plan transfer anew.
 		zone->bootstrap_retry = bootstrap_next(zone->bootstrap_retry);
 		zone_events_schedule(zone, ZONE_EVENT_XFER, zone->bootstrap_retry);
