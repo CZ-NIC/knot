@@ -83,10 +83,6 @@
 /*.info
 /*coverage/
 
-# alternative allocators
-/src/allocator.h
-/src/allocators/
-
 # sphinx documentation
 /doc/_build/
 /doc/conf.py

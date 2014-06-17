@@ -20,7 +20,8 @@ Print version of the server.
 \fB\-h\fR, \fB\-\-help\fR
 Print help and usage.
 .SH "SEE ALSO"
-.BR knotc (8)
+.BR knotc (8),
+.BR knot.conf (5).
 .SH NOTE
 The full documentation for \fBKnot DNS\fR is maintained
 as a Texinfo manual. If the \fBinfo\fR program is properly

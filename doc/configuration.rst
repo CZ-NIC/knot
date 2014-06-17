@@ -11,25 +11,25 @@ Minimal configuration
 The following configuration presents a minimal configuration file
 which can be used as a base for your Knot DNS setup::
 
-    # This is a sample of a minimal configuration file for Knot DNS.
-    #
-    # For exhaustive list of all options see samples/knot.full.conf
-    # in the source directory.
-    #
-
     interfaces {
-        my_interface { address 127.0.0.1@53; }
-        second_int { address ::1; }
-    }
-
-    log {
-      syslog { any info; }
+        all_ipv4 {
+            address 0.0.0.0;
+            port 53;
+        }
+        all_ipv6 {
+            address [::];
+            port 53;
+        }
     }
 
     zones {
-      example.com {
-        file "/etc/knot/example.com";
-      }
+        example.com {
+            file "/etc/knot/example.com";
+        }
+    }
+
+    log {
+        syslog { any info; }
     }
 
 Now let's go step by step through this minimal configuration file:

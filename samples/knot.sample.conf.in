@@ -1,8 +1,7 @@
 #
 # This is a sample of a minimal configuration file for Knot DNS.
 #
-# For exhaustive list of all options see samples/knot.full.conf
-# in the source directory or refer to user manual.
+# For exhaustive list of all options see man 5 knot.conf or refer to user manual.
 #
 
 system {

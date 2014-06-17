@@ -83,7 +83,8 @@ Make sure the key can be read/written only by the owner for security reasons.
 .TP
 # knotc \-s 127.0.0.1 \-k knotc.key reload
 .SH "SEE ALSO"
-.BR knotd (8)
+.BR knotd (8),
+.BR knot.conf (5).
 .SH NOTE
 The full documentation for \fBKnot DNS\fR is maintained
 as a Texinfo manual. If the \fBinfo\fR program is properly
