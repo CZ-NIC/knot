@@ -8,6 +8,6 @@ before_install:
 before_script:
   - autoreconf -fi
 script:
-  - ./configure --enable-code-coverage && make && make -k check
+  - ./configure --disable-fastparser --enable-code-coverage && make && make -k check
 after_success:
-  - coveralls --exclude zscanner/ --exclude tests/ --exclude src/cf-lex.l --exclude src/cf-parse.y --exclude src/scanner_body.rl --exclude src/scanner.c --exclude src/functions.c --exclude src/loader.c --exclude src/error.c --exclude src/scanner.rl --exclude src/allocator.h --build-root ./src/
+  - coveralls --exclude tests/ --extension .c extension .h --build-root ./src/
