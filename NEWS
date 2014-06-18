@@ -1,6 +1,6 @@
 Knot DNS NEWS
 
-1.5.0-rc2 - Jun 17, 2014
+1.5.0-rc2 - Jun 18, 2014
 -----------------------
 Features:
 	* edns-client-subnet support in kdig
