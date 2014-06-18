@@ -10,4 +10,4 @@ before_script:
 script:
   - ./configure --disable-fastparser --enable-code-coverage && make && make -k check
 after_success:
-  - coveralls --exclude tests/ --extension .c extension .h --build-root ./src/
+  - coveralls --exclude tests/ --extension .c --extension .h --build-root ./src/
