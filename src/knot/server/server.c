@@ -197,7 +197,7 @@ static int reconfigure_sockets(const struct conf_t *conf, server_t *s)
 	/* Duplicate current list. */
 	/*! \note Pointers to addr, handlers etc. will be shared. */
 	if (s->ifaces) {
-		list_dup(&s->ifaces->u, &s->ifaces->l, sizeof(iface_t));
+		list_dup(&s->ifaces->u, &s->ifaces->l, sizeof(iface_t), NULL);
 	}
 
 	/* Update bound interfaces. */

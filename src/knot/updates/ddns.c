@@ -953,26 +953,25 @@ int ddns_process_update(const zone_t *zone, const knot_pkt_t *query,
 		return KNOT_EINVAL;
 	}
 
-	/* Copy base SOA RR. */
-	knot_rrset_t *soa_begin =
-		node_create_rrset(zone->contents->apex, KNOT_RRTYPE_SOA);
-	if (soa_begin == NULL) {
-		*rcode = ret_to_rcode(KNOT_ENOMEM);
-		return KNOT_ENOMEM;
+	if (changeset->soa_from == NULL) {
+		/* Copy base SOA RR. */
+		changeset->soa_from =
+			node_create_rrset(zone->contents->apex, KNOT_RRTYPE_SOA);
+		if (changeset->soa_from == NULL) {
+			*rcode = ret_to_rcode(KNOT_ENOMEM);
+			return KNOT_ENOMEM;
+		}
 	}
 
-	changeset->soa_from = soa_begin;
 	int64_t sn_old = zone_contents_serial(zone->contents);
 
-	/* Process all RRs the Authority (Update) section. */
-
+	// Process all RRs in the authority section.
 	int apex_ns_rem = 0;
 	const knot_pktsection_t *authority =
 	                knot_pkt_section(query, KNOT_AUTHORITY);
 	for (uint16_t i = 0; i < authority->count; ++i) {
 		const knot_rrset_t *rr = &authority->rr[i];
-
-		/* Check if the entry is correct. */
+		// Check if RR is correct.
 		int ret = check_update(rr, query, rcode);
 		if (ret != KNOT_EOK) {
 			assert(*rcode != KNOT_RCODE_NOERROR);
@@ -998,7 +997,7 @@ int ddns_process_update(const zone_t *zone, const knot_pkt_t *query,
 			return KNOT_EOK;
 		}
 
-		knot_rrset_t *soa_cpy = knot_rrset_copy(soa_begin, NULL);
+		knot_rrset_t *soa_cpy = knot_rrset_copy(changeset->soa_from, NULL);
 		if (soa_cpy == NULL) {
 			*rcode = ret_to_rcode(KNOT_ENOMEM);
 			return KNOT_ENOMEM;

@@ -379,62 +379,76 @@ static int event_xfer(zone_t *zone)
 	return KNOT_EOK;
 }
 
+static int init_update_respones(list_t *updates)
+{
+	struct request_data *r = NULL;
+	WALK_LIST(r, *updates) {
+		r->resp = knot_pkt_new(NULL, KNOT_WIRE_MAX_PKTSIZE, NULL);
+		if (r->resp == NULL) {
+			return KNOT_ENOMEM;
+		}
+
+		assert(r->query);
+		knot_pkt_init_response(r->resp, r->query);
+	}
+
+	return KNOT_EOK;
+}
+
+static void send_update_responses(list_t *updates)
+{
+	struct request_data *r, *nxt;
+	WALK_LIST_DELSAFE(r, nxt, *updates) {
+		if (net_is_connected(r->fd)) {
+			tcp_send_msg(r->fd, r->resp->wire, r->resp->size);
+		} else {
+			udp_send_msg(r->fd, r->resp->wire, r->resp->size,
+			             (struct sockaddr *)&r->remote);
+		}
+		close(r->fd);
+		knot_pkt_free(&r->query);
+		knot_pkt_free(&r->resp);
+		free(r);
+	}
+}
+
 static int event_update(zone_t *zone)
 {
 	assert(zone);
 
-	knot_pkt_t *resp = knot_pkt_new(NULL, KNOT_WIRE_MAX_PKTSIZE, NULL);
-	if (resp == NULL) {
-		return KNOT_ENOMEM;
-	}
-
-	struct request_data *update = zone_update_dequeue(zone);
-	if (update == NULL) {
+	/* Get list of pending updates. */
+	list_t *updates = zone_update_dequeue(zone);
+	if (updates == NULL) {
 		return KNOT_EOK;
 	}
 
-	/* Initialize query response. */
-	assert(update->query);
-	knot_pkt_init_response(resp, update->query);
-
-	/* Create minimal query data context. */
-	struct process_query_param param = { 0 };
-	param.remote = &update->remote;
-	struct query_data qdata = { 0 };
-	qdata.param = &param;
-	qdata.query = update->query;
-	qdata.zone  = zone;
-
-	/* Process the update query. */
-	int ret = update_process_query(resp, &qdata);
-	UNUSED(ret); /* Don't care about the Knot code, RCODE is set. */
-
-	/* Send response. */
-	if (net_is_connected(update->fd)) {
-		tcp_send_msg(update->fd, resp->wire, resp->size);
-	} else {
-		udp_send_msg(update->fd, resp->wire, resp->size,
-		             (struct sockaddr *)param.remote);
+	/* Init updates respones. */
+	int ret = init_update_respones(updates);
+	if (ret != KNOT_EOK) {
+#warning UPDATES lost, no responses!
+		free(updates);
+		return ret;
 	}
 
-	/* Cleanup. */
-	close(update->fd);
-	knot_pkt_free(&resp);
-	knot_pkt_free(&update->query);
-	free(update);
+	/* Process update list. */
+	ret = update_process_queries(zone, updates);
+	UNUSED(ret); /* Don't care about the Knot code, RCODEs are set. */
+
+	/* Send responses. */
+	send_update_responses(updates);
+	free(updates);
 
 	/* Trim extra heap. */
 	mem_trim();
 
 	/* Replan event if next update waiting. */
-	pthread_mutex_lock(&zone->ddns_lock);
+	pthread_spin_lock(&zone->ddns_lock);
 
 	if (!EMPTY_LIST(zone->ddns_queue)) {
 		zone_events_schedule(zone, ZONE_EVENT_UPDATE, ZONE_EVENT_NOW);
 	}
 
-	pthread_mutex_unlock(&zone->ddns_lock);
-
+	pthread_spin_unlock(&zone->ddns_lock);
 
 	return KNOT_EOK;
 }
@@ -646,13 +660,15 @@ static void duplicate_ddns_q(zone_t *zone, zone_t *old_zone)
 	}
 
 	// Reset the list, new zone will free the data.
+	zone->ddns_queue_size = old_zone->ddns_queue_size;
+	old_zone->ddns_queue_size = 0;
 	init_list(&old_zone->ddns_queue);
 }
 
 /*!< Replans DDNS event. */
 static void replan_update(zone_t *zone, zone_t *old_zone)
 {
-	pthread_mutex_lock(&old_zone->ddns_lock);
+	pthread_spin_lock(&old_zone->ddns_lock);
 
 	if (!EMPTY_LIST(old_zone->ddns_queue)) {
 		duplicate_ddns_q(zone, (zone_t *)old_zone);
@@ -660,7 +676,7 @@ static void replan_update(zone_t *zone, zone_t *old_zone)
 		zone_events_schedule(zone, ZONE_EVENT_UPDATE, ZONE_EVENT_NOW);
 	}
 
-	pthread_mutex_unlock(&old_zone->ddns_lock);
+	pthread_spin_unlock(&old_zone->ddns_lock);
 }
 
 /*!< Replans DNSSEC event. Not whole resign needed, \todo #247 */

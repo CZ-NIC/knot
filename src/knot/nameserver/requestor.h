@@ -38,6 +38,7 @@ struct request_data {
 	int fd;
 	struct sockaddr_storage remote, origin;
 	knot_pkt_t *query;
+	knot_pkt_t *resp;
 };
 
 /*!

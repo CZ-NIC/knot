@@ -2,6 +2,7 @@
  * \file update.h
  *
  * \author Marek Vavrusa <marek.vavrusa@nic.cz>
+ * \author Jan Kadlec <jan.kadlec@nic.cz>
  *
  * \brief DDNS UPDATE processing.
  *
@@ -30,6 +31,7 @@
 #include "knot/zone/zonedb.h"
 
 struct query_data;
+struct zone;
 
 /*!
  * \brief UPDATE query processing module.
@@ -49,6 +51,6 @@ int update_answer(knot_pkt_t *pkt, struct query_data *qdata);
  *
  * \return KNOT_E*
  */
-int update_process_query(knot_pkt_t *pkt, struct query_data *qdata);
+int update_process_queries(zone_t *zone, list_t *queries);
 
 /*! @} */

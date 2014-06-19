@@ -1,6 +1,23 @@
+/*  Copyright (C) 2013 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
 #include "knot/nameserver/update.h"
 #include "knot/nameserver/internet.h"
 #include "knot/nameserver/process_query.h"
+#include "knot/nameserver/requestor.h"
 #include "knot/updates/apply.h"
 #include "knot/dnssec/zone-sign.h"
 #include "common/debug.h"
@@ -140,71 +157,123 @@ static int sign_update(zone_t *zone, const zone_contents_t *old_contents,
 	return ret;
 }
 
-static int process_authenticated(uint16_t *rcode, struct query_data *qdata)
+struct changeset_state {
+	knot_rrset_t *soa_from;
+	knot_rrset_t *soa_to;
+};
+
+static void store_changeset_state(struct changeset_state *state, changeset_t *ch)
 {
-	assert(rcode);
-	assert(qdata);
+	state->soa_from = knot_rrset_copy(ch->soa_from, NULL);
+	state->soa_to = knot_rrset_copy(ch->soa_to, NULL);
+}
 
-	const knot_pkt_t *query = qdata->query;
-	zone_t *zone = (zone_t *)qdata->zone;
+void changeset_rollback(struct changeset_state *from, changeset_t *ch)
+{
+#warning complete this
+	init_list(&ch->add);
+	init_list(&ch->remove);
 
-	int ret = ddns_process_prereqs(query, zone->contents, rcode);
+	if (from->soa_from != ch->soa_from) {
+		knot_rrset_free(&ch->soa_from, NULL);
+		ch->soa_from = from->soa_from;
+	}
+
+	if (from->soa_to != ch->soa_to) {
+		knot_rrset_free(&ch->soa_to, NULL);
+		ch->soa_to = from->soa_to;
+	}
+}
+
+static int process_single_update(struct request_data *request, const zone_t *zone,
+                                 changeset_t *ch)
+{
+	uint16_t rcode = KNOT_RCODE_NOERROR;
+	int ret = ddns_process_prereqs(request->query, zone->contents, &rcode);
 	if (ret != KNOT_EOK) {
-		assert(*rcode != KNOT_RCODE_NOERROR);
+		assert(rcode != KNOT_RCODE_NOERROR);
+		knot_wire_set_rcode(request->resp->wire, rcode);
 		return ret;
 	}
+
+	struct changeset_state st;
+	store_changeset_state(&st, ch);
+
+	ret = ddns_process_update(zone, request->query, ch, &rcode);
+	if (ret != KNOT_EOK) {
+		assert(rcode != KNOT_RCODE_NOERROR);
+		knot_wire_set_rcode(request->resp->wire, rcode);
+		changeset_rollback(&st, ch);
+	} else {
+		knot_rrset_free(&st.soa_from, NULL);
+		knot_rrset_free(&st.soa_to, NULL);
+		return KNOT_EOK;
+	}
+}
+
+static void set_rcodes(list_t *queries, const uint16_t rcode)
+{
+	struct request_data *query;
+	WALK_LIST(query, *queries) {
+		if (knot_wire_get_rcode(query->resp->wire) == KNOT_RCODE_NOERROR) {
+			knot_wire_set_rcode(query->resp->wire, rcode);
+		}
+	}
+}
+
+static int process_queries(zone_t *zone, list_t *queries)
+{
+#warning TODO proper logging
+	assert(queries);
 
 	// Create DDNS changesets
 	changesets_t *ddns_chs = changesets_create(1);
 	if (ddns_chs == NULL) {
-		*rcode = KNOT_RCODE_SERVFAIL;
+		set_rcodes(queries, KNOT_RCODE_SERVFAIL);
 		return KNOT_ENOMEM;
 	}
 	changeset_t *ddns_ch = changesets_get_last(ddns_chs);
-	ret = ddns_process_update(zone, query, ddns_ch, rcode);
-	if (ret != KNOT_EOK) {
-		assert(*rcode != KNOT_RCODE_NOERROR);
-		changesets_free(&ddns_chs, NULL);
-		return ret;
+
+	struct request_data *query;
+	WALK_LIST(query, *queries) {
+		process_single_update(query, zone, ddns_ch);
 	}
-	assert(*rcode == KNOT_RCODE_NOERROR);
 
 	zone_contents_t *new_contents = NULL;
 	const bool change_made = !changeset_is_empty(ddns_ch);
 	if (change_made) {
-		ret = apply_changesets(zone, ddns_chs, &new_contents);
+		int ret = apply_changesets(zone, ddns_chs, &new_contents);
 		if (ret != KNOT_EOK) {
 			if (ret == KNOT_ETTL) {
-				*rcode = KNOT_RCODE_REFUSED;
+				set_rcodes(queries, KNOT_RCODE_REFUSED);
 			} else {
-				*rcode = KNOT_RCODE_SERVFAIL;
+				set_rcodes(queries, KNOT_RCODE_SERVFAIL);
 			}
 			changesets_free(&ddns_chs, NULL);
 			return ret;
 		}
 	} else {
 		changesets_free(&ddns_chs, NULL);
-		*rcode = KNOT_RCODE_NOERROR;
 		return KNOT_EOK;
 	}
 	assert(new_contents);
 
 	if (zone->conf->dnssec_enable) {
-		ret = sign_update(zone, zone->contents, new_contents, ddns_ch);
+		int ret = sign_update(zone, zone->contents, new_contents, ddns_ch);
 		if (ret != KNOT_EOK) {
 			update_rollback(ddns_chs, &new_contents);
 			changesets_free(&ddns_chs, NULL);
-			*rcode = KNOT_RCODE_SERVFAIL;
+			set_rcodes(queries, KNOT_RCODE_SERVFAIL);
 			return ret;
 		}
 	}
 
 	// Write changes to journal if all went well. (DNSSEC merged)
-	ret = zone_change_store(zone, ddns_chs);
+	int ret = zone_change_store(zone, ddns_chs);
 	if (ret != KNOT_EOK) {
 		update_rollback(ddns_chs, &new_contents);
 		changesets_free(&ddns_chs, NULL);
-		*rcode = KNOT_RCODE_SERVFAIL;
+		set_rcodes(queries, KNOT_RCODE_SERVFAIL);
 		return ret;
 	}
 
@@ -216,51 +285,45 @@ static int process_authenticated(uint16_t *rcode, struct query_data *qdata)
 	update_cleanup(ddns_chs);
 	changesets_free(&ddns_chs, NULL);
 
-	/* Sync zonefile immediately if configured. */
+	// Sync zonefile immediately if configured.
 	if (zone->conf->dbsync_timeout == 0) {
 		zone_events_schedule(zone, ZONE_EVENT_FLUSH, ZONE_EVENT_NOW);
 	}
 
-	*rcode = KNOT_RCODE_NOERROR;
 	return ret;
 }
 
 
-int update_process_query(knot_pkt_t *pkt, struct query_data *qdata)
+int update_process_queries(zone_t *zone, list_t *queries)
 {
-	if (pkt == NULL || qdata == NULL) {
+	if (zone == NULL || queries == NULL) {
 		return KNOT_EINVAL;
 	}
 
-	UPDATE_LOG(LOG_INFO, "Started.");
+//	UPDATE_LOG(LOG_INFO, "Started.");
 
 	/* Keep original state. */
 	struct timeval t_start, t_end;
 	gettimeofday(&t_start, NULL);
-	zone_t *zone = (zone_t *)qdata->zone;
 	const uint32_t old_serial = zone_contents_serial(zone->contents);
 
 	/* Process authenticated packet. */
-	uint16_t rcode = KNOT_RCODE_NOERROR;
-	int ret = process_authenticated(&rcode, qdata);
+	int ret = process_queries(zone, queries);
 	if (ret != KNOT_EOK) {
-		assert(rcode != KNOT_RCODE_NOERROR);
-		UPDATE_LOG(LOG_ERR, "%s", knot_strerror(ret));
-		knot_wire_set_rcode(pkt->wire, rcode);
+//		UPDATE_LOG(LOG_ERR, "%s", knot_strerror(ret));
 		return ret;
 	}
 
 	/* Evaluate response. */
 	const uint32_t new_serial = zone_contents_serial(zone->contents);
 	if (new_serial == old_serial) {
-		assert(rcode == KNOT_RCODE_NOERROR);
-		UPDATE_LOG(LOG_NOTICE, "No change to zone made.");
+//		UPDATE_LOG(LOG_NOTICE, "No change to zone made.");
 		return KNOT_EOK;
 	}
 
 	gettimeofday(&t_end, NULL);
-	UPDATE_LOG(LOG_INFO, "Serial %u -> %u", old_serial, new_serial);
-	UPDATE_LOG(LOG_INFO, "Finished in %.02fs.",
+//	UPDATE_LOG(LOG_INFO, "Serial %u -> %u", old_serial, new_serial);
+	printf("Update finished in %.02fs.\n",
 	           time_diff(&t_start, &t_end) / 1000.0);
 	
 	zone_events_schedule(zone, ZONE_EVENT_NOTIFY, ZONE_EVENT_NOW);

@@ -149,11 +149,11 @@ add_tail_list(list_t *to, list_t *l)
  *
  * This function only works with a homogenous item size.
  */
-void list_dup(list_t *dst, list_t *src, size_t itemsz)
+void list_dup(list_t *dst, list_t *src, size_t itemsz, mm_ctx_t *mm)
 {
 	node_t *n = 0;
 	WALK_LIST(n, *src) {
-		node_t *i = malloc(itemsz);
+		node_t *i = mm_alloc(mm, itemsz);
 		memcpy(i, n, itemsz);
 		add_tail(dst, i);
 	}
