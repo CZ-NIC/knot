@@ -32,6 +32,12 @@
 struct query_data;
 struct answer_data;
 
+/*! \brief This macro helps with data size formatting during xfr logging. */
+#define SIZE_PARAMS(value) (value) < 1024 ? "" : "~", \
+                           (value) < 1024 ? 0 : 1, \
+                           (value) < 1024 ? (float)(value) : (value) / 1024.0, \
+                           (value) < 1024 ? "B" : "KiB"
+
 /*! \brief Generic transfer processing state. */
 struct xfr_proc {
 	list_t nodes;    /* Items to process (ptrnode_t). */
