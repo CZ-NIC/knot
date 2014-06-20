@@ -158,8 +158,108 @@ void changesets_free(list_t *chgs, mm_ctx_t *rr_mm)
 		changeset_t *chg, *nxt;
 		WALK_LIST_DELSAFE(chg, nxt, *chgs) {
 			changeset_clear(chg, rr_mm);
-			free(chg);
 		}
 	}
+}
+
+enum {
+	CHANGESET_NODE_DONE = -1,
+};
+
+typedef struct {
+	hattrie_iter_t *normal_it;
+	hattrie_iter_t *nsec3_it;
+	const zone_node_t *node;
+	int32_t node_pos;
+} changeset_iter_t;
+
+static changeset_iter_t *changeset_iter_begin(const changeset_t *ch, hattrie_t *tr,
+                                              hattrie_t *nsec3_tr, bool sorted)
+{
+#warning emptiness check
+	changeset_iter_t *ret = mm_alloc(ch->mm, sizeof(changeset_iter_t));
+	if (ret == NULL) {
+		ERR_ALLOC_FAILED;
+		return NULL;
+	}
+	memset(ret, 0, sizeof(*ret));
+	ret->node_pos = CHANGESET_NODE_DONE;
+
+	ret->normal_it = hattrie_iter_begin(tr, sorted);
+	ret->nsec3_it = hattrie_iter_begin(nsec3_tr, sorted);
+	if (ret->normal_it == NULL || ret->nsec3_it == NULL) {
+		hattrie_iter_free(ret->normal_it);
+		hattrie_iter_free(ret->nsec3_it);
+		mm_free(ch->mm, ret);
+	}
+
+	return ret;
+}
+
+changeset_iter_t *changeset_iter_add(const changeset_t *ch, bool sorted)
+{
+	return changeset_iter_begin(ch, ch->add->nodes, ch->add->nsec3_nodes, sorted);
+}
+
+changeset_iter_t *changeset_iter_rem(const changeset_t *ch, bool sorted)
+{
+	return changeset_iter_begin(ch, ch->remove->nodes, ch->remove->nsec3_nodes, sorted);
+}
+
+bool changeset_iter_finished(const changeset_iter_t *it)
+{
+	return it->normal_it == NULL && it->nsec3_it == NULL;
+}
+
+void get_next_rr(knot_rrset_t *rr, changeset_iter_t *ch_it, hattrie_iter_t *t_it) // pun intented
+{
+	if (it->node_pos == CHANGESET_NODE_DONE) {
+		// Get next node.
+		if (it->node) {
+			// Do not get next for very first node.
+			hattrie_iter_next(ch_it->normal_it);
+		}
+		if (hattrie_iter_finished(ch_it->normal_it)) {
+			hattrie_iter_free(&t_it->normal_it);
+			ch_it->normal_it = NULL;
+			ch_it->node = NULL;
+			return;
+		}
+		ch_it->node = (zone_node_t *)*hattrie_iter_val(t_it);
+		ch_it->node_pos = 0;
+	}
+
+	++it->node_pos;
+	if (ch_it->node_pos < ch_it->node->rrset_count) {
+		*rr = node_rrset_at(it->node, it->node_pos);
+	} else {
+		it->node_pos = CHANGESET_NODE_DONE;
+	}
+}
+
+knot_rrset_t changeset_iter_next(changeset_iter_t *it)
+{
+	knot_rrset_t ret;
+	knot_rrset_init_empty(&ret);
+	if (it->normal_it) {
+		get_next_rr(&ret, it, it->normal_it);
+	} else if (it->nsec3_it) {
+		get_next_rr(&ret, it, it->normal_it);
+	}
+
+	return ret;
+}
+
+void changeset_iter_free(changeset_iter_t *it, mm_ctx_t *mm)
+{
+	if (it->normal_it) {
+		hattrie_iter_free(it->normal_it);
+	}
+
+	if (it->nsec3_it) {
+		hattrie_iter_free(it->nsec3_it);
+	}
+
+	mm_free(mm, it);
 }
 

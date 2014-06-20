@@ -24,7 +24,7 @@ enum ixfr_states {
 /*! \brief Extended structure for IXFR-in/IXFR-out processing. */
 struct ixfr_proc {
 	struct xfr_proc proc;          /* Generic transfer processing context. */
-	ptrnode_t *cur;
+	hattrie_iter_t *cur;           /* Current changeset iteration state.*/
 	int state;                     /* IXFR-in state. */
 	knot_rrset_t *final_soa;       /* First SOA received via IXFR. */
 	list_t changesets;             /* Processed changesets. */
@@ -52,6 +52,8 @@ static int ixfr_put_rrlist(knot_pkt_t *pkt, struct ixfr_proc *ixfr, list_t *list
 	assert(pkt);
 	assert(ixfr);
 	assert(list);
+
+	hattrie_iter_begin()
 
 	/* If at the beginning, fetch first RR. */
 	int ret = KNOT_EOK;

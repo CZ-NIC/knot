@@ -27,21 +27,20 @@
 #pragma once
 
 #include "libknot/rrset.h"
-#include "knot/zone/node.h"
+#include "knot/zone/contents.h"
 #include "common/lists.h"
 #include "common/mempattern.h"
 
 /*----------------------------------------------------------------------------*/
 
-#warning purge lists, data, add commit functionality
 /*! \brief One zone change, from 'soa_from' to 'soa_to'. */
 typedef struct changeset {
 	node_t n; /*!< List node. */
 	mm_ctx_t *mm; /*!< Memory context */
 	knot_rrset_t *soa_from; /*!< Start SOA. */
-	list_t remove; /*!< List of RRs to remove. */
+	zone_contents_t *add;
+	zone_contents_t *remove;
 	knot_rrset_t *soa_to; /*!< Destination SOA. */
-	list_t add; /*!< List of RRs to add. */
 	uint8_t *data; /*!< Serialized changeset. */
 	size_t size; /*!< Size of serialized changeset. */
 	list_t old_data; /*!< Old data, to be freed after succesfull update. */
@@ -50,7 +49,6 @@ typedef struct changeset {
 
 /*----------------------------------------------------------------------------*/
 
-#warning get rid of this
 typedef enum {
 	CHANGESET_ADD, /*!< Put RR into 'add' section. */
 	CHANGESET_REMOVE /*!< Put RR into 'remove' section. */
@@ -113,7 +111,6 @@ size_t changeset_size(const changeset_t *ch);
  * \retval KNOT_EINVAL if \a changeset or \a func is NULL.
  * \retval Other error code if the applied function failed.
  */
-#warning get rid of this
 int changeset_apply(changeset_t *ch, changeset_part_t part,
                     int (*func)(knot_rrset_t *, void *), void *data);
 
