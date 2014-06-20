@@ -504,13 +504,8 @@ static int event_dnssec(zone_t *zone)
 {
 	assert(zone);
 
-	changesets_t *chs = changesets_create(1);
-	if (chs == NULL) {
-		return KNOT_ENOMEM;
-	}
-
-	changeset_t *ch = changesets_get_last(chs);
-	assert(ch);
+	changeset_t ch;
+	changeset_init(&ch, NULL);
 
 	int ret = KNOT_ERROR;
 	char *zname = knot_dname_to_str(zone->name);
@@ -528,19 +523,22 @@ static int event_dnssec(zone_t *zone)
 
 		zone->flags &= ~ZONE_FORCE_RESIGN;
 		ret = knot_dnssec_zone_sign_force(zone->contents, zone->conf,
-		                                  ch, &refresh_at);
+		                                  &ch, &refresh_at);
 	} else {
 		log_zone_info("%s Signing zone...\n", msgpref);
 		ret = knot_dnssec_zone_sign(zone->contents, zone->conf,
-		                            ch, KNOT_SOA_SERIAL_UPDATE,
+		                            &ch, KNOT_SOA_SERIAL_UPDATE,
 		                            &refresh_at);
 	}
 	if (ret != KNOT_EOK) {
 		goto done;
 	}
 
-	if (!changesets_empty(chs)) {
-		ret = zone_change_apply_and_store(&chs, zone, "DNSSEC", NULL);
+	if (!changeset_empty(&ch)) {
+		list_t apply;
+		init_list(&apply);
+		add_head(&apply, &ch.n);
+		ret = zone_change_apply_and_store(&apply, zone, "DNSSEC", NULL);
 		if (ret != KNOT_EOK) {
 			log_zone_error("%s Could not sign zone (%s).\n",
 				       msgpref, knot_strerror(ret));
@@ -557,7 +555,7 @@ static int event_dnssec(zone_t *zone)
 	}
 
 done:
-	changesets_free(&chs, NULL);
+	changeset_clear(&ch, NULL);
 	free(msgpref);
 	return ret;
 }

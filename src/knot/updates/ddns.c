@@ -234,9 +234,9 @@ static int process_prereq(const knot_rrset_t *rrset, uint16_t qclass,
 
 /*!< \brief Returns true if \a cmp code returns true for one RR in list. */
 #define LIST_MATCH(l, cmp) \
-	knot_rr_ln_t *_n; \
+	ptrnode_t *_n; \
 	WALK_LIST(_n, l) { \
-		const knot_rrset_t *list_rr = _n->rr; \
+		const knot_rrset_t *list_rr = (knot_rrset_t *)_n->d; \
 		if (cmp) { \
 			return true; \
 		} \
@@ -245,10 +245,10 @@ static int process_prereq(const knot_rrset_t *rrset, uint16_t qclass,
 
 /*!< \brief Deletes RR from list if \a cmp code returns true for it. */
 #define LIST_DEL_MATCH(l, cmp) \
-	knot_rr_ln_t *_n; \
+	ptrnode_t *_n; \
 	node_t *_nxt; \
 	WALK_LIST_DELSAFE(_n, _nxt, l) { \
-		knot_rrset_t *list_rr = _n->rr; \
+		knot_rrset_t *list_rr = (knot_rrset_t *)_n->d; \
 		if (cmp) { \
 			knot_rrset_free(&list_rr, NULL); \
 			rem_node((node_t *)_n); \
@@ -437,13 +437,13 @@ static bool skip_soa(const knot_rrset_t *rr, int64_t sn)
 static bool skip_record_addition(changeset_t *changeset,
                                  knot_rrset_t *rr)
 {
-	knot_rr_ln_t *rr_node = NULL;
-	WALK_LIST(rr_node, changeset->add) {
-		knot_rrset_t *rrset = rr_node->rr;
+	ptrnode_t *n;
+	WALK_LIST(n, changeset->add) {
+		knot_rrset_t *rrset = (knot_rrset_t *)n->d;
 		if (should_replace(rr, rrset)) {
 			// Replacing singleton RR.
 			knot_rrset_free(&rrset, NULL);
-			rr_node->rr = rr;
+			n->d = rr;
 			return true;
 		} else if (knot_rrset_equal(rr, rrset, KNOT_RRSET_COMPARE_WHOLE)) {
 			// Freeing duplication.
@@ -481,9 +481,9 @@ static int add_rr_to_chgset(const knot_rrset_t *rr, changeset_t *changeset,
 /*!< \brief Checks whether record should be removed (duplicate check). */
 static bool skip_record_removal(changeset_t *changeset, knot_rrset_t *rr)
 {
-	knot_rr_ln_t *rr_node = NULL;
-	WALK_LIST(rr_node, changeset->remove) {
-		knot_rrset_t *rrset = rr_node->rr;
+	ptrnode_t *n;
+	WALK_LIST(n, changeset->remove) {
+		knot_rrset_t *rrset = (knot_rrset_t *)n->d;
 		if (knot_rrset_equal(rr, rrset, KNOT_RRSET_COMPARE_WHOLE)) {
 			// Removing the same RR, drop.
 			knot_rrset_free(&rr, NULL);
@@ -992,7 +992,7 @@ int ddns_process_update(const zone_t *zone, const knot_pkt_t *query,
 
 	if (changeset->soa_to == NULL) {
 		// No SOA in the update, create according to current policy
-		if (changeset_is_empty(changeset)) {
+		if (changeset_empty(changeset)) {
 			*rcode = KNOT_RCODE_NOERROR;
 			// No change, no new SOA
 			return KNOT_EOK;

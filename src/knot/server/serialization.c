@@ -79,15 +79,15 @@ int changeset_binary_size(const changeset_t *chgset, size_t *size)
 	size_t soa_to_size = rrset_binary_size(chgset->soa_to);
 
 	size_t remove_size = 0;
-	knot_rr_ln_t *rr_node = NULL;
-	WALK_LIST(rr_node, chgset->remove) {
-		knot_rrset_t *rrset = rr_node->rr;
+	ptrnode_t *n;
+	WALK_LIST(n, chgset->remove) {
+		knot_rrset_t *rrset = (knot_rrset_t *)n->d;
 		remove_size += rrset_binary_size(rrset);
 	}
 
 	size_t add_size = 0;
-	WALK_LIST(rr_node, chgset->add) {
-		knot_rrset_t *rrset = rr_node->rr;
+	WALK_LIST(n, chgset->add) {
+		knot_rrset_t *rrset = (knot_rrset_t *)n->d;
 		add_size += rrset_binary_size(rrset);
 	}
 

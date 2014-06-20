@@ -1,7 +1,7 @@
 /*!
  * \file changesets.h
  *
- * \author Lubos Slovak <lubos.slovak@nic.cz>, Jan Kadlec <jan.kadlec@nic.cz>
+ * \author Jan Kadlec <jan.kadlec@nic.cz>
  *
  * \brief Structure for representing IXFR/DDNS changeset and its API.
  *
@@ -33,10 +33,11 @@
 
 /*----------------------------------------------------------------------------*/
 
+#warning purge lists, data, add commit functionality
 /*! \brief One zone change, from 'soa_from' to 'soa_to'. */
 typedef struct changeset {
 	node_t n; /*!< List node. */
-	mm_ctx_t mem_ctx; /*!< Memory context */
+	mm_ctx_t *mm; /*!< Memory context */
 	knot_rrset_t *soa_from; /*!< Start SOA. */
 	list_t remove; /*!< List of RRs to remove. */
 	knot_rrset_t *soa_to; /*!< Destination SOA. */
@@ -49,27 +50,7 @@ typedef struct changeset {
 
 /*----------------------------------------------------------------------------*/
 
-/*! \brief Wrapper for BIRD lists. Storing: RRSet. */
-typedef struct knot_rr_ln {
-	node_t n; /*!< List node. */
-	knot_rrset_t *rr; /*!< Actual usable data. */
-} knot_rr_ln_t;
-
-/*----------------------------------------------------------------------------*/
-
-/*!
- * \brief List of changesets that should be applied/sent as a bulk.
- */
-typedef struct {
-	mm_ctx_t mmc_chs; /*!< Memory context for creating changesets */
-	mm_ctx_t mmc_rr; /*!< Memory context for creating RRs in changesets */
-	list_t sets; /*!< List of changesets. */
-	size_t count; /*!< Changeset count. */
-	knot_rrset_t *first_soa; /*!< First received SOA. */
-} changesets_t;
-
-/*----------------------------------------------------------------------------*/
-
+#warning get rid of this
 typedef enum {
 	CHANGESET_ADD, /*!< Put RR into 'add' section. */
 	CHANGESET_REMOVE /*!< Put RR into 'remove' section. */
@@ -77,49 +58,8 @@ typedef enum {
 
 /*----------------------------------------------------------------------------*/
 
-/*!
- * \brief Creates changesets structure. The created structure has to be freed
- *        using 'knot_changesets_free()' function.
- *
- * \param count Create 'count' changesets (0 for empty).
- *
- * \retval Created structure on success.
- * \retval NULL on failure.
- */
-changesets_t *changesets_create(unsigned count);
-
-/*!
- * \brief Creates new changeset structure and returns it to caller.
- *        The structure is also connected to a list of changesets.
- *
- * \param ch Changesets structure to create a new changeset in.
- *
- * \retval Created structure on success.
- * \retval NULL on failure.
- */
-changeset_t *changesets_create_changeset(changesets_t *chs);
-
-/*!
- * \brief Gets last changesets from from structure's list.
- *
- * \param ch Changesets structure to get a last changeset from.
- *
- * \retval Last changeset on success.
- * \retval NULL on failure.
- */
-changeset_t *changesets_get_last(const changesets_t *chs);
-
-/*!
- * \brief Checks whether the changesets are empty.
- *
- * Changesets are considered empty if there is no changeset or all changesets
- * are empty.
- *
- * \param chs Changesets to check.
- *
- * \return True If there is at least one non-empty changeset. False otherwise.
- */
-bool changesets_empty(const changesets_t *chs);
+changeset_t *changeset_new(mm_ctx_t *mm);
+void changeset_init(changeset_t *ch, mm_ctx_t *mm);
 
 /*!
  * \brief Add RRSet to changeset. RRSet is either inserted to 'add' or to
@@ -146,7 +86,7 @@ int changeset_add_rrset(changeset_t *ch, knot_rrset_t *rrset,
  * \retval true if changeset is empty.
  * \retval false if changeset is not empty.
  */
-bool changeset_is_empty(const changeset_t *ch);
+bool changeset_empty(const changeset_t *ch);
 
 /*!
  * \brief Get number of changes (additions and removals) in the changeset.
@@ -173,6 +113,7 @@ size_t changeset_size(const changeset_t *ch);
  * \retval KNOT_EINVAL if \a changeset or \a func is NULL.
  * \retval Other error code if the applied function failed.
  */
+#warning get rid of this
 int changeset_apply(changeset_t *ch, changeset_part_t part,
                     int (*func)(knot_rrset_t *, void *), void *data);
 
@@ -182,7 +123,8 @@ int changeset_apply(changeset_t *ch, changeset_part_t part,
  * \param changesets  Double pointer to changesets structure to be freed.
  * \param mm          Memory context used to allocate RRSets.
  */
-void changesets_free(changesets_t **chs, mm_ctx_t *rr_mm);
+void changesets_free(list_t *chgs, mm_ctx_t *rr_mm);
+void changeset_clear(changeset_t *ch, mm_ctx_t *rr_mm);
 
 /*!
  * \brief Merges two changesets together, second changeset's lists are kept.
@@ -194,9 +136,7 @@ void changesets_free(changesets_t **chs, mm_ctx_t *rr_mm);
  * \param ch1 Changeset to merge into
  * \param ch2 Changeset to merge
  *
- * \retval KNOT_EOK on success.
- * \retval Error code on failure.
  */
-int changeset_merge(changeset_t *ch1, changeset_t *ch2);
+void changeset_merge(changeset_t *ch1, changeset_t *ch2);
 
 /*! @} */

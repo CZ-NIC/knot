@@ -176,7 +176,7 @@ bool journal_exists(const char *path);
  * \retval KNOT_ERANGE if given entry was not found.
  * \return < KNOT_EOK on error.
  */
-int journal_load_changesets(const char *path, changesets_t *dst,
+int journal_load_changesets(const char *path, list_t *dst,
                             uint32_t from, uint32_t to);
 
 /*!
@@ -190,7 +190,7 @@ int journal_load_changesets(const char *path, changesets_t *dst,
  * \retval KNOT_EBUSY when journal is full.
  * \return < KNOT_EOK on other errors.
  */
-int journal_store_changesets(changesets_t *src, const char *path, size_t size_limit);
+int journal_store_changesets(list_t *src, const char *path, size_t size_limit);
 
 /*! \brief Function for unmarking dirty nodes. */
 /*!
