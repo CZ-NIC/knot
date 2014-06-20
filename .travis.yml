@@ -8,6 +8,6 @@ before_install:
 before_script:
   - autoreconf -fi
 script:
-  - ./configure --disable-fastparser --enable-code-coverage && make && make -k check
+  - ./configure --disable-fastparser --disable-shared --enable-static --enable-code-coverage && make && make -k check
 after_success:
-  - coveralls --exclude tests/ --extension .c --extension .h --build-root ./src/
+  - coveralls --exclude tests/ --exclude ./src/utils/ --exclude ./src/libtap --exclude ./src/zscanner --build-root ./src/
