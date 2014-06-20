@@ -332,9 +332,11 @@ static int axfr_answer_packet(knot_pkt_t *pkt, struct xfr_proc *proc)
 	assert(pkt != NULL);
 	assert(proc != NULL);
 
-	++proc->npkts;
+	/* Update counters. */
+	proc->npkts  += 1;
+	proc->nbytes += pkt->size;
 
-	// Init zone creator
+	/* Init zone creator. */
 	zcreator_t zc = {.z = proc->contents, .master = false, .ret = KNOT_EOK };
 
 	const knot_pktsection_t *answer = knot_pkt_section(pkt, KNOT_ANSWER);

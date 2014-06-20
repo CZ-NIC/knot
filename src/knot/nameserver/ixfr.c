@@ -524,6 +524,7 @@ static bool out_of_zone(const knot_rrset_t *rr, struct ixfr_proc *proc)
 static int process_ixfrin_packet(knot_pkt_t *pkt, struct answer_data *adata)
 {
 	struct ixfr_proc *ixfr = (struct ixfr_proc *)adata->ext;
+
 	// Update counters.
 	ixfr->proc.npkts  += 1;
 	ixfr->proc.nbytes += pkt->size;
