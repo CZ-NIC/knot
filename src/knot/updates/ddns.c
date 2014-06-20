@@ -252,6 +252,7 @@ static int process_prereq(const knot_rrset_t *rrset, uint16_t qclass,
 		if (cmp) { \
 			knot_rrset_free(&list_rr, NULL); \
 			rem_node((node_t *)_n); \
+			free(_n); \
 		} \
 	};
 
