@@ -81,20 +81,21 @@ int zone_load_check(zone_contents_t *contents, conf_zone_t *zone_config)
 /*!
  * \brief Apply changesets to zone from journal.
  */
-int zone_load_journal(zone_contents_t *contents, conf_zone_t *zone_config)
+int zone_load_journal(zone_t *zone)
 {
 	/* Check if journal is used and zone is not empty. */
-	if (!journal_exists(zone_config->ixfr_db) || zone_contents_is_empty(contents)) {
+	if (!journal_exists(zone->conf->ixfr_db) ||
+	    zone_contents_is_empty(zone->contents)) {
 		return KNOT_EOK;
 	}
 
 	/* Fetch SOA serial. */
-	uint32_t serial = zone_contents_serial(contents);
+	uint32_t serial = zone_contents_serial(zone->contents);
 
 	/*! \todo Check what should be the upper bound. */
 	list_t chgs;
 	init_list(&chgs);
-	int ret = journal_load_changesets(zone_config->ixfr_db, &chgs, serial, serial - 1);
+	int ret = journal_load_changesets(zone, &chgs, serial, serial - 1);
 	if ((ret != KNOT_EOK && ret != KNOT_ERANGE) || EMPTY_LIST(chgs)) {
 		changesets_free(&chgs, NULL);
 		/* Absence of records is not an error. */
@@ -106,10 +107,10 @@ int zone_load_journal(zone_contents_t *contents, conf_zone_t *zone_config)
 	}
 
 	/* Apply changesets. */
-	ret = apply_changesets_directly(contents, &chgs);
+	ret = apply_changesets_directly(zone->contents, &chgs);
 	log_zone_info("Zone '%s' serial %u -> %u: %s\n",
-	              zone_config->name,
-	              serial, zone_contents_serial(contents),
+	              zone->conf->name,
+	              serial, zone_contents_serial(zone->contents),
 	              knot_strerror(ret));
 
 	changesets_free(&chgs, NULL);
@@ -129,7 +130,7 @@ int zone_load_post(zone_contents_t *contents, zone_t *zone, uint32_t *dnssec_ref
 	if (conf->dnssec_enable) {
 		assert(conf->build_diffs);
 		changeset_t ch;
-		changeset_init(&ch, NULL);
+		changeset_init(&ch, zone->name, NULL);
 		ret = knot_dnssec_zone_sign(contents, conf, &ch, KNOT_SOA_SERIAL_UPDATE,
 		                            dnssec_refresh);
 		if (ret != KNOT_EOK) {
@@ -140,7 +141,7 @@ int zone_load_post(zone_contents_t *contents, zone_t *zone, uint32_t *dnssec_ref
 		/* Apply DNSSEC changes. */
 		list_t apply;
 		init_list(&apply);
-		add_head(&apply, &ch);
+		add_head(&apply, &ch.n);
 		ret = zone_change_commit(contents, &apply);
 		changeset_clear(&ch, NULL);
 		if (ret != KNOT_EOK) {
@@ -151,7 +152,7 @@ int zone_load_post(zone_contents_t *contents, zone_t *zone, uint32_t *dnssec_ref
 	/* Calculate IXFR from differences (if configured). */
 	const bool contents_changed = zone->contents && (contents != zone->contents);
 	changeset_t diff_change;
-	changeset_init(&diff_change, NULL);
+	changeset_init(&diff_change, zone->name, NULL);
 	if (contents_changed && conf->build_diffs) {
 		ret = zone_contents_create_diff(zone->contents, contents, &diff_change);
 		if (ret == KNOT_ENODIFF) {

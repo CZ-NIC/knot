@@ -615,7 +615,7 @@ static int zone_tree_sign(zone_tree_t *tree,
 /*- private API - signing of NSEC(3) in changeset ----------------------------*/
 
 /*!
- * \brief Struct to carry data for 'add_rrsigs_for_nsec' callback function.
+ * \brief Struct to carry data for changeset signing callback functions.
  */
 typedef struct {
 	const zone_contents_t *zone;
@@ -625,37 +625,6 @@ typedef struct {
 	hattrie_t *signed_tree;
 } changeset_signing_data_t;
 
-/*!
- * \brief Sign NSEC nodes in changeset (callback function).
- *
- * \param node  Node to be signed, silently skipped if not NSEC/NSEC3.
- * \param data  Callback data, changeset_signing_data_t.
- */
-static int add_rrsigs_for_nsec(knot_rrset_t *rrset, void *data)
-{
-	if (rrset == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	assert(data);
-
-	int result = KNOT_EOK;
-	changeset_signing_data_t *nsec_data = (changeset_signing_data_t *)data;
-
-	if (rrset->type == KNOT_RRTYPE_NSEC ||
-	    rrset->type == KNOT_RRTYPE_NSEC3
-	) {
-		result = add_missing_rrsigs(rrset, NULL, nsec_data->zone_keys,
-		                            nsec_data->policy,
-		                            nsec_data->changeset);
-	}
-
-	if (result != KNOT_EOK) {
-		dbg_dnssec_detail("add_rrsigs_for_nsec() for NSEC failed\n");
-	}
-
-	return result;
-}
 
 /*- private API - DNSKEY handling --------------------------------------------*/
 
@@ -1157,9 +1126,8 @@ static int rr_already_signed(const knot_rrset_t *rrset, hattrie_t *t,
  *
  * \return Error code, KNOT_EOK if successful.
  */
-static int sign_changeset_wrap(knot_rrset_t *chg_rrset, void *data)
+static int sign_changeset_wrap(knot_rrset_t *chg_rrset, changeset_signing_data_t *args)
 {
-	changeset_signing_data_t *args = (changeset_signing_data_t *)data;
 	// Find RR's node in zone, find out if we need to sign this RR
 	const zone_node_t *node =
 		zone_contents_find_node(args->zone, chg_rrset->owner);
@@ -1426,21 +1394,43 @@ int knot_zone_sign_changeset(const zone_contents_t *zone,
 	}
 
 	// Sign all RRs that are new in changeset
-	int ret = changeset_apply((changeset_t *)in_ch,
-	                          CHANGESET_ADD,
-	                          sign_changeset_wrap, &args);
-
-	// Sign all RRs that are removed in changeset
-	if (ret == KNOT_EOK) {
-		ret = changeset_apply((changeset_t *)in_ch,
-		                      CHANGESET_REMOVE,
-		                      sign_changeset_wrap, &args);
+	changeset_iter_t *itt = changeset_iter_add(in_ch, false);
+	if (itt == NULL) {
+		return KNOT_ENOMEM;
 	}
+	
+	knot_rrset_t rr = changeset_iter_next(itt);
+	while (!knot_rrset_empty(&rr)) {
+		int ret = sign_changeset_wrap(&rr, &args);
+		if (ret != KNOT_EOK) {
+			changeset_iter_free(itt, NULL);
+			return ret;
+		}
+		rr = changeset_iter_next(itt);
+	}
+	changeset_iter_free(itt, NULL);
+	
+	itt = changeset_iter_rem(in_ch, false);
+	if (itt == NULL) {
+		return KNOT_ENOMEM;
+	}
+
+#warning too much copypasta
+	rr = changeset_iter_next(itt);
+	while (!knot_rrset_empty(&rr)) {
+		int ret = sign_changeset_wrap(&rr, &args);
+		if (ret != KNOT_EOK) {
+			changeset_iter_free(itt, NULL);
+			return ret;
+		}
+		rr = changeset_iter_next(itt);
+	}
+	changeset_iter_free(itt, NULL);
 
 	knot_zone_clear_sorted_changes(args.signed_tree);
 	hattrie_free(args.signed_tree);
 
-	return ret;
+	return KNOT_EOK;
 }
 
 /*!
@@ -1454,13 +1444,27 @@ int knot_zone_sign_nsecs_in_changeset(const knot_zone_keys_t *zone_keys,
 	assert(policy);
 	assert(changeset);
 
-	changeset_signing_data_t data = {.zone = NULL,
-	                                 .zone_keys = zone_keys,
-	                                 .policy = policy,
-	                                 .changeset = changeset };
-
-	return changeset_apply(changeset, CHANGESET_ADD,
-	                       add_rrsigs_for_nsec, &data);
+	changeset_iter_t *itt = changeset_iter_add(changeset, false);
+	if (itt == NULL) {
+		return KNOT_ENOMEM;
+	}
+	
+	knot_rrset_t rr = changeset_iter_next(itt);
+	while (!knot_rrset_empty(&rr)) {
+		if (rr.type == KNOT_RRTYPE_NSEC ||
+		    rr.type == KNOT_RRTYPE_NSEC3) {
+			int ret =  add_missing_rrsigs(&rr, NULL, zone_keys,
+			                              policy, changeset);
+			if (ret != KNOT_EOK) {
+				changeset_iter_free(itt, NULL);
+				return ret;
+			}
+		}
+		rr = changeset_iter_next(itt);
+	}
+	changeset_iter_free(itt, NULL);
+	
+	return KNOT_EOK;
 }
 
 /*!

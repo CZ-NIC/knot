@@ -273,7 +273,7 @@ bool knot_rdataset_member(const knot_rdataset_t *rrs, const knot_rdata_t *rr, bo
 			return true;
 		}
 		if (cmp > 0) {
-			// 'Bigger' RR present, no need to continue.
+			// 'Greater' RR present, no need to continue.
 			return false;
 		}
 	}

@@ -240,7 +240,7 @@ static int event_reload(zone_t *zone)
 
 	/* Store zonefile serial and apply changes from the journal. */
 	zone->zonefile_serial = zone_contents_serial(contents);
-	int result = zone_load_journal(contents, zone_config);
+	int result = zone_load_journal(zone);
 	if (result != KNOT_EOK) {
 		goto fail;
 	}
@@ -505,7 +505,7 @@ static int event_dnssec(zone_t *zone)
 	assert(zone);
 
 	changeset_t ch;
-	changeset_init(&ch, NULL);
+	changeset_init(&ch, zone->name, NULL);
 
 	int ret = KNOT_ERROR;
 	char *zname = knot_dname_to_str(zone->name);

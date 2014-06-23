@@ -118,12 +118,11 @@ static bool get_zone_soa_min_ttl(const zone_contents_t *zone,
  * This function is constructed as a callback for the knot_changeset_apply() f
  * function.
  */
-static int mark_nsec3(knot_rrset_t *rrset, void *data)
+static int mark_nsec3(knot_rrset_t *rrset, zone_tree_t *nsec3s)
 {
 	assert(rrset != NULL);
-	assert(data != NULL);
+	assert(nsec3s != NULL);
 
-	zone_tree_t *nsec3s = (zone_tree_t *)data;
 	zone_node_t *node = NULL;
 	int ret;
 
@@ -155,10 +154,24 @@ static int mark_removed_nsec3(changeset_t *out_ch,
 	if (zone_tree_is_empty(zone->nsec3_nodes)) {
 		return KNOT_EOK;
 	}
-
-	int ret = changeset_apply(out_ch, CHANGESET_REMOVE,
-	                               mark_nsec3, (void *)zone->nsec3_nodes);
-	return ret;
+	
+	changeset_iter_t *itt = changeset_iter_rem(out_ch, false);
+	if (itt == NULL) {
+		return KNOT_ENOMEM;
+	}
+	
+	knot_rrset_t rr = changeset_iter_next(itt);
+	while (!knot_rrset_empty(&rr)) {
+		int ret = mark_nsec3(&rr, zone->nsec3_nodes);
+		if (ret != KNOT_EOK) {
+			changeset_iter_free(itt, NULL);
+			return ret;
+		}
+		rr = changeset_iter_next(itt);
+	}
+	changeset_iter_free(itt, NULL);
+	
+	return KNOT_EOK;
 }
 
 /* - public API ------------------------------------------------------------ */

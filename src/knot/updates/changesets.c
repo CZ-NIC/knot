@@ -78,14 +78,14 @@ bool changeset_empty(const changeset_t *ch)
 
 size_t changeset_size(const changeset_t *ch)
 {
-	if (!ch || changeset_empty(ch)) {
+	if (changeset_empty(ch)) {
 		return 0;
 	}
 
-	return hattrie_weight(ch->add->nodes) == 0 +
-	       hattrie_weight(ch->add->nsec3_nodes) == 0 +
-	       hattrie_weight(ch->remove->nodes) == 0 +
-	       hattrie_weight(ch->remove->nsec3_nodes) == 0;
+	return hattrie_weight(ch->add->nodes) +
+	       hattrie_weight(ch->add->nsec3_nodes) +
+	       hattrie_weight(ch->remove->nodes) +
+	       hattrie_weight(ch->remove->nsec3_nodes);
 }
 
 int changeset_merge(changeset_t *ch1, changeset_t *ch2)
