@@ -228,75 +228,72 @@ static int process_prereq(const knot_rrset_t *rrset, uint16_t qclass,
 
 /* --------------------------- DDNS processing ------------------------------ */
 
-/* ----------------------- changeset lists helpers -------------------------- */
-
-/*! \todo Store changesets as a lookup structure. */
-
-/*!< \brief Returns true if \a cmp code returns true for one RR in list. */
-#define LIST_MATCH(l, cmp) \
-	ptrnode_t *_n; \
-	WALK_LIST(_n, l) { \
-		const knot_rrset_t *list_rr = (knot_rrset_t *)_n->d; \
-		if (cmp) { \
-			return true; \
-		} \
-	}; \
-	return false;
-
-/*!< \brief Deletes RR from list if \a cmp code returns true for it. */
-#define LIST_DEL_MATCH(l, cmp) \
-	ptrnode_t *_n; \
-	node_t *_nxt; \
-	WALK_LIST_DELSAFE(_n, _nxt, l) { \
-		knot_rrset_t *list_rr = (knot_rrset_t *)_n->d; \
-		if (cmp) { \
-			knot_rrset_free(&list_rr, NULL); \
-			rem_node((node_t *)_n); \
-			free(_n); \
-		} \
-	};
-
 /*!< \brief Checks whether RR was already removed. */
-static bool removed_rr(const changeset_t *changeset, const knot_rrset_t *rr)
+static bool removed_rr(zone_contents_t *z, const knot_rrset_t *rr)
 {
-	LIST_MATCH(changeset->remove,
-	           knot_rrset_equal(rr, list_rr, KNOT_RRSET_COMPARE_WHOLE));
+	const zone_node_t *n = zone_contents_find_node(z, rr->owner);
+	if (n == NULL) {
+		return false;
+	}
+
+	const knot_rdataset_t *rrs = node_rdataset(n, rr->type);
+	if (rrs == NULL) {
+		return false;
+	}
+
+	return knot_rdataset_eq(rrs, &rr->rrs);
 }
 
 /*!< \brief Checks whether any CNAME RR under dname was added. */
 static bool cname_added(const changeset_t *changeset, const knot_dname_t *d)
 {
-	knot_rrset_t mock_cname;
-	knot_rrset_init(&mock_cname, (knot_dname_t *)d,
-	                KNOT_RRTYPE_CNAME, KNOT_CLASS_IN);
-	LIST_MATCH(changeset->add, knot_rrset_equal(&mock_cname, list_rr,
-	           KNOT_RRSET_COMPARE_HEADER));
+	const zone_node_t *n = zone_contents_find_node(changeset->add, d);
+	return n && node_rrtype_exists(n, KNOT_RRTYPE_CNAME);
 }
 
 /*!< \brief Checks whether any RR under given name was added. */
 static bool name_added(const changeset_t *changeset, const knot_dname_t *d)
 {
-	LIST_MATCH(changeset->add, knot_dname_is_equal(d, list_rr->owner));
+	return zone_contents_find_node(changeset->add, d);
 }
 
 /*!< \brief Removes RR from list, full equality check. */
-static void remove_rr_from_list(list_t *l, const knot_rrset_t *rr)
+static void remove_rr_from_list(zone_contents_t *z, const knot_rrset_t *rr)
 {
-	LIST_DEL_MATCH(*l, knot_rrset_equal(list_rr, rr,
-	                                    KNOT_RRSET_COMPARE_WHOLE));
+	zone_node_t *n = zone_contents_get_node(z, rr->owner);
+	if (n == NULL) {
+		return;
+	}
+
+	knot_rdataset_t *rrs = node_rdataset(n, rr->type);
+	if (rrs == NULL) {
+		return;
+	}
+
+	knot_rdataset_subtract(rrs, rr, NULL);
+	if (rrs->rr_count == 0) {
+		node_remove_rdataset(n, rr->type);
+	}
 }
 
 /*!< \brief Removes RR from list, owner and type check. */
 static void remove_header_from_list(list_t *l, const knot_rrset_t *rr)
 {
-	LIST_DEL_MATCH(*l, knot_rrset_equal(list_rr, rr,
-	                                    KNOT_RRSET_COMPARE_HEADER));
+	zone_node_t *n = zone_contents_find_node(z, d);
+	if (n == NULL) {
+		return;
+	}
+
+	node_remove_rdataset(n, rr->type);
 }
 
 /*!< \brief Removes RR from list, owner check. */
-static void remove_owner_from_list(list_t *l, const knot_dname_t *owner)
+static void remove_owner_from_list(zone_contents_t *z, const knot_dname_t *owner)
 {
-	LIST_DEL_MATCH(*l, knot_dname_is_equal(list_rr->owner, owner));
+	zone_node_t *n = NULL;
+	zone_tree_remove(z->nodes, owner, &n);
+	node_free_rrsets(n);
+	node_free(&n);
 }
 
 /* --------------------- true/false helper functions ------------------------ */
@@ -476,7 +473,7 @@ static int add_rr_to_chgset(const knot_rrset_t *rr, changeset_t *changeset,
 		(*apex_ns_rem)--;
 	}
 
-	return changeset_add_rrset(changeset, rr_copy, CHANGESET_ADD);
+	return changeset_add_rrset(changeset, rr_copy);
 }
 
 /*!< \brief Checks whether record should be removed (duplicate check). */
@@ -515,7 +512,7 @@ static int rem_rr_to_chgset(const knot_rrset_t *rr, changeset_t *changeset,
 		(*apex_ns_rem)++;
 	}
 
-	return changeset_add_rrset(changeset, rr_copy, CHANGESET_REMOVE);
+	return changeset_rem_rrset(changeset, rr_copy);
 }
 
 /*!< \brief Adds all RRs from RRSet into remove section of changeset. */

@@ -85,7 +85,7 @@ static int sign_update(zone_t *zone, const zone_contents_t *old_contents,
 	assert(ddns_ch != NULL);
 
 	changeset_t sec_ch;
-	changeset_init(&sec_ch, NULL);
+	changeset_init(&sec_ch, zone->name, NULL);
 
 	/*
 	 * Check if the UPDATE changed DNSKEYs or NSEC3PARAM.
@@ -150,7 +150,7 @@ static int process_authenticated(uint16_t *rcode, struct query_data *qdata)
 
 	// Create DDNS change
 	changeset_t ddns_ch;
-	changeset_init(&ddns_ch, NULL);
+	changeset_init(&ddns_ch, qdata->zone->name, NULL);
 
 	ret = ddns_process_update(zone, query, &ddns_ch, rcode);
 	if (ret != KNOT_EOK) {

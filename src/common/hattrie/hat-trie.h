@@ -58,7 +58,7 @@ int hattrie_apply_rev (hattrie_t*, int (*f)(value_t*,void*), void* d);
 int hattrie_apply_rev_ahtable(hattrie_t* T, int (*f)(void*,void*), void* d);
 
 /** Find the given key in the trie, inserting it if it does not exist, and
- * returning a pointer to it's key.
+ * returning a pointer to its key.
  *
  * This pointer is not guaranteed to be valid after additional calls to
  * hattrie_get, hattrie_del, hattrie_clear, or other functions that modifies the

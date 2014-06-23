@@ -27,22 +27,22 @@
 #include "libknot/rrtype/soa.h"
 #include "common/debug.h"
 
-void changeset_init(changeset_t *ch, mm_ctx_t *mm)
+void changeset_init(changeset_t *ch, const knot_dname_t *apex, mm_ctx_t *mm)
 {
 	memset(ch, 0, sizeof(changeset_t));
 
 	ch->mm = mm;
 
-	// Init local lists
-	init_list(&ch->add);
-	init_list(&ch->remove);
+	// Init local changes
+	ch->add = zone_contents_new(apex);
+	ch->remove = zone_contents_new(apex);
 
 	// Init change lists
 	init_list(&ch->new_data);
 	init_list(&ch->old_data);
 }
 
-changeset_t *changeset_new(mm_ctx_t *mm)
+changeset_t *changeset_new(mm_ctx_t *mm, const knot_dname_t *apex)
 {
 	changeset_t *ret = mm_alloc(mm, sizeof(changeset_t));
 	if (ret == NULL) {
@@ -50,24 +50,20 @@ changeset_t *changeset_new(mm_ctx_t *mm)
 		return NULL;
 	}
 
-	changeset_init(ret, mm);
+	changeset_init(ret, apex, mm);
 	return ret;
 }
 
-int changeset_add_rrset(changeset_t *ch, knot_rrset_t *rrset,
-                        changeset_part_t part)
+int changeset_add_rrset(changeset_t *ch, const knot_rrset_t *rrset)
 {
-	if (part == CHANGESET_ADD) {
-		if (ptrlist_add(&ch->add, rrset, ch->mm) == NULL) {
-			return KNOT_ENOMEM;
-		}
-	} else {
-		if (ptrlist_add(&ch->remove, rrset, ch->mm) == NULL) {
-			return KNOT_ENOMEM;
-		}
-	}
+	zone_node_t *n;
+	return zone_contents_add_rr(ch->add, rrset, &n);
+}
 
-	return KNOT_EOK;
+int changeset_rem_rrset(changeset_t *ch, const knot_rrset_t *rrset)
+{
+	zone_node_t *n;
+	return zone_contents_add_rr(ch->remove, rrset, &n);
 }
 
 bool changeset_empty(const changeset_t *ch)
@@ -76,8 +72,8 @@ bool changeset_empty(const changeset_t *ch)
 		return true;
 	}
 
-	return (ch->soa_to == NULL &&
-	        EMPTY_LIST(ch->add) && EMPTY_LIST(ch->remove));
+	return ch->soa_to == NULL &&
+	       changeset_size(ch) == 0;
 }
 
 size_t changeset_size(const changeset_t *ch)
@@ -86,46 +82,55 @@ size_t changeset_size(const changeset_t *ch)
 		return 0;
 	}
 
-	return list_size(&ch->add) + list_size(&ch->remove);
+	return hattrie_weight(ch->add->nodes) == 0 +
+	       hattrie_weight(ch->add->nsec3_nodes) == 0 +
+	       hattrie_weight(ch->remove->nodes) == 0 +
+	       hattrie_weight(ch->remove->nsec3_nodes) == 0;
 }
 
-int changeset_apply(changeset_t *ch, changeset_part_t part,
-                    int (*func)(knot_rrset_t *, void *), void *data)
+int changeset_merge(changeset_t *ch1, changeset_t *ch2)
 {
-	if (ch == NULL || func == NULL) {
-		return KNOT_EINVAL;
+#warning slow slow slow slow
+	changeset_iter_t *itt = changeset_iter_add(ch2, false);
+	if (itt == NULL) {
+		return KNOT_ENOMEM;
 	}
 
-	ptrnode_t *n;
-	if (part == CHANGESET_ADD) {
-		WALK_LIST(n, ch->add) {
-			int res = func((knot_rrset_t *)n->d, data);
-			if (res != KNOT_EOK) {
-				return res;
-			}
+	knot_rrset_t rrset = changeset_iter_next(itt);
+	while (!knot_rrset_empty(&rrset)) {
+		zone_node_t *n;
+		int ret = zone_contents_add_rr(ch1->add, &rrset, &n);
+		UNUSED(n);
+		if (ret != KNOT_EOK) {
+			changeset_iter_free(itt, NULL);
 		}
-	} else if (part == CHANGESET_REMOVE) {
-		WALK_LIST(n, ch->remove) {
-			int res = func((knot_rrset_t *)n->d, data);
-			if (res != KNOT_EOK) {
-				return res;
-			}
-		}
+		rrset = changeset_iter_next(itt);
 	}
 
-	return KNOT_EOK;
-}
+	changeset_iter_free(itt, NULL);
 
-void changeset_merge(changeset_t *ch1, changeset_t *ch2)
-{
-	// Connect lists in changesets together
-	add_tail_list(&ch1->add, &ch2->add);
-	add_tail_list(&ch1->remove, &ch2->remove);
+	itt = changeset_iter_add(ch2, false);
+	if (itt == NULL) {
+		return KNOT_ENOMEM;
+	}
+
+	rrset = changeset_iter_next(itt);
+	while (!knot_rrset_empty(&rrset)) {
+		zone_node_t *n;
+		int ret = zone_contents_add_rr(ch1->remove, &rrset, &n);
+		UNUSED(n);
+		if (ret != KNOT_EOK) {
+			changeset_iter_free(itt, NULL);
+		}
+		rrset = changeset_iter_next(itt);
+	}
 
 	// Use soa_to and serial from the second changeset
 	// soa_to from the first changeset is redundant, delete it
 	knot_rrset_free(&ch1->soa_to, NULL);
 	ch1->soa_to = ch2->soa_to;
+
+	return KNOT_EOK;
 }
 
 void changeset_clear(changeset_t *ch, mm_ctx_t *rr_mm)
@@ -135,15 +140,8 @@ void changeset_clear(changeset_t *ch, mm_ctx_t *rr_mm)
 	}
 
 	// Delete RRSets in lists, in case there are any left
-	ptrnode_t *n, *nxt;
-	WALK_LIST_DELSAFE(n, nxt, ch->add) {
-		knot_rrset_free((knot_rrset_t **)&n->d, rr_mm);
-		mm_free(ch->mm, n);
-	}
-	WALK_LIST_DELSAFE(n, nxt, ch->remove) {
-		knot_rrset_free((knot_rrset_t **)&n->d, rr_mm);
-		mm_free(ch->mm, n);
-	}
+	zone_contents_deep_free(&ch->add);
+	zone_contents_deep_free(&ch->remove);
 
 	knot_rrset_free(&ch->soa_from, rr_mm);
 	knot_rrset_free(&ch->soa_to, rr_mm);
@@ -162,16 +160,7 @@ void changesets_free(list_t *chgs, mm_ctx_t *rr_mm)
 	}
 }
 
-enum {
-	CHANGESET_NODE_DONE = -1,
-};
-
-typedef struct {
-	hattrie_iter_t *normal_it;
-	hattrie_iter_t *nsec3_it;
-	const zone_node_t *node;
-	int32_t node_pos;
-} changeset_iter_t;
+#define NODE_DONE -1
 
 static changeset_iter_t *changeset_iter_begin(const changeset_t *ch, hattrie_t *tr,
                                               hattrie_t *nsec3_tr, bool sorted)
@@ -183,7 +172,7 @@ static changeset_iter_t *changeset_iter_begin(const changeset_t *ch, hattrie_t *
 		return NULL;
 	}
 	memset(ret, 0, sizeof(*ret));
-	ret->node_pos = CHANGESET_NODE_DONE;
+	ret->node_pos = NODE_DONE;
 
 	ret->normal_it = hattrie_iter_begin(tr, sorted);
 	ret->nsec3_it = hattrie_iter_begin(nsec3_tr, sorted);
@@ -206,22 +195,21 @@ changeset_iter_t *changeset_iter_rem(const changeset_t *ch, bool sorted)
 	return changeset_iter_begin(ch, ch->remove->nodes, ch->remove->nsec3_nodes, sorted);
 }
 
-bool changeset_iter_finished(const changeset_iter_t *it)
+static void get_next_rr(knot_rrset_t *rr, changeset_iter_t *ch_it, hattrie_iter_t *t_it) // pun intented
 {
-	return it->normal_it == NULL && it->nsec3_it == NULL;
-}
-
-void get_next_rr(knot_rrset_t *rr, changeset_iter_t *ch_it, hattrie_iter_t *t_it) // pun intented
-{
-	if (it->node_pos == CHANGESET_NODE_DONE) {
+	if (ch_it->node_pos == NODE_DONE) {
 		// Get next node.
-		if (it->node) {
+		if (ch_it->node) {
 			// Do not get next for very first node.
 			hattrie_iter_next(ch_it->normal_it);
 		}
-		if (hattrie_iter_finished(ch_it->normal_it)) {
-			hattrie_iter_free(&t_it->normal_it);
-			ch_it->normal_it = NULL;
+		if (hattrie_iter_finished(t_it)) {
+			if (t_it == ch_it->normal_it) {
+				ch_it->normal_it = NULL;
+			} else {
+				ch_it->nsec3_it = NULL;
+			}
+			hattrie_iter_free(t_it);
 			ch_it->node = NULL;
 			return;
 		}
@@ -229,11 +217,11 @@ void get_next_rr(knot_rrset_t *rr, changeset_iter_t *ch_it, hattrie_iter_t *t_it
 		ch_it->node_pos = 0;
 	}
 
-	++it->node_pos;
+	++ch_it->node_pos;
 	if (ch_it->node_pos < ch_it->node->rrset_count) {
-		*rr = node_rrset_at(it->node, it->node_pos);
+		*rr = node_rrset_at(ch_it->node, ch_it->node_pos);
 	} else {
-		it->node_pos = CHANGESET_NODE_DONE;
+		ch_it->node_pos = NODE_DONE;
 	}
 }
 
@@ -244,7 +232,7 @@ knot_rrset_t changeset_iter_next(changeset_iter_t *it)
 	if (it->normal_it) {
 		get_next_rr(&ret, it, it->normal_it);
 	} else if (it->nsec3_it) {
-		get_next_rr(&ret, it, it->normal_it);
+		get_next_rr(&ret, it, it->nsec3_it);
 	}
 
 	return ret;
@@ -252,14 +240,8 @@ knot_rrset_t changeset_iter_next(changeset_iter_t *it)
 
 void changeset_iter_free(changeset_iter_t *it, mm_ctx_t *mm)
 {
-	if (it->normal_it) {
-		hattrie_iter_free(it->normal_it);
-	}
-
-	if (it->nsec3_it) {
-		hattrie_iter_free(it->nsec3_it);
-	}
-
+	hattrie_iter_free(it->normal_it);
+	hattrie_iter_free(it->nsec3_it);
 	mm_free(mm, it);
 }
 

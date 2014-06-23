@@ -24,7 +24,7 @@ enum ixfr_states {
 /*! \brief Extended structure for IXFR-in/IXFR-out processing. */
 struct ixfr_proc {
 	struct xfr_proc proc;          /* Generic transfer processing context. */
-	hattrie_iter_t *cur;           /* Current changeset iteration state.*/
+	changeset_iter_t *cur;         /* Current changeset iteration state.*/
 	int state;                     /* IXFR-in state. */
 	knot_rrset_t *final_soa;       /* First SOA received via IXFR. */
 	list_t changesets;             /* Processed changesets. */
@@ -47,30 +47,19 @@ struct ixfr_proc {
 		return ret; \
 	}
 
-static int ixfr_put_rrlist(knot_pkt_t *pkt, struct ixfr_proc *ixfr, list_t *list)
+static int ixfr_put_chg_part(knot_pkt_t *pkt, struct ixfr_proc *ixfr, changeset_iter_t *itt)
 {
 	assert(pkt);
 	assert(ixfr);
-	assert(list);
+	assert(itt);
 
-	hattrie_iter_begin()
-
-	/* If at the beginning, fetch first RR. */
-	int ret = KNOT_EOK;
-	if (ixfr->cur == NULL) {
-		ixfr->cur = HEAD(*list);
-	}
-	/* Now iterate until it hits the last one,
-	 * this is done without for() loop because we can
-	 * rejoin the iteration at any point. */
-	while(ixfr->cur->n.next) {
-		knot_rrset_t *rr = (knot_rrset_t *)ixfr->cur->d;
-		IXFR_SAFE_PUT(pkt, rr);
-
-		ixfr->cur = (ptrnode_t *)ixfr->cur->n.next;
+	knot_rrset_t rr = changeset_iter_next(itt);
+	int ret = KNOT_EOK; // Declaration for IXFR_SAFE_PUT macro
+	while(!knot_rrset_empty(&rr)) {
+		IXFR_SAFE_PUT(pkt, &rr);
+		rr = changeset_iter_next(itt);
 	}
 
-	ixfr->cur = NULL;
 	return ret;
 }
 
@@ -97,11 +86,18 @@ static int ixfr_process_changeset(knot_pkt_t *pkt, const void *item,
 
 	/* Put REMOVE RRSets. */
 	if (ixfr->state == IXFR_DEL) {
-		ret = ixfr_put_rrlist(pkt, ixfr, &chgset->remove);
+		if (ixfr->cur == NULL) {
+			ixfr->cur = changeset_iter_rem(chgset, false);
+			if (ixfr->cur == NULL) {
+				return KNOT_ENOMEM;
+			}
+		}
+		ret = ixfr_put_chg_part(pkt, ixfr, ixfr->cur);
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
-		dbg_ns("%s: put 'REMOVE' RRs\n", __func__);
+		changeset_iter_free(ixfr->cur, NULL);
+		ixfr->cur = NULL;
 		ixfr->state = IXFR_SOA_ADD;
 	}
 
@@ -114,11 +110,18 @@ static int ixfr_process_changeset(knot_pkt_t *pkt, const void *item,
 
 	/* Put REMOVE RRSets. */
 	if (ixfr->state == IXFR_ADD) {
-		ret = ixfr_put_rrlist(pkt, ixfr, &chgset->add);
+		if (ixfr->cur == NULL) {
+			ixfr->cur = changeset_iter_add(chgset, false);
+			if (ixfr->cur == NULL) {
+				return KNOT_ENOMEM;
+			}
+		}
+		ret = ixfr_put_chg_part(pkt, ixfr, ixfr->cur);
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
-		dbg_ns("%s: put 'IXFR_ADD' RRs\n", __func__);
+		changeset_iter_free(ixfr->cur, NULL);
+		ixfr->cur = NULL;
 		ixfr->state = IXFR_SOA_DEL;
 	}
 
@@ -147,8 +150,7 @@ static int ixfr_load_chsets(list_t *chgsets, const zone_t *zone,
 		return KNOT_EUPTODATE;
 	}
 
-	ret = journal_load_changesets(zone->conf->ixfr_db, chgsets,
-	                              serial_from, serial_to);
+	ret = journal_load_changesets(zone, chgsets, serial_from, serial_to);
 	if (ret != KNOT_EOK) {
 		changesets_free(chgsets, NULL);
 	}
@@ -369,7 +371,7 @@ static int solve_soa_del(const knot_rrset_t *rr, struct ixfr_proc *proc)
 	}
 
 	// Create new changeset.
-	changeset_t *change = changeset_new(proc->mm);
+	changeset_t *change = changeset_new(proc->mm, proc->zone->name);
 	if (change == NULL) {
 		return KNOT_ENOMEM;
 	}
@@ -400,32 +402,16 @@ static int solve_soa_add(const knot_rrset_t *rr, changeset_t *change, mm_ctx_t *
 	return KNOT_EOK;
 }
 
-/*! \brief Adds single RR into given section of changeset. */
-static int add_part(const knot_rrset_t *rr, changeset_t *change, int part, mm_ctx_t *mm)
-{
-	assert(rr->type != KNOT_RRTYPE_SOA);
-	knot_rrset_t *copy = knot_rrset_copy(rr, mm);
-	if (copy) {
-		int ret = changeset_add_rrset(change, copy, part);
-		if (ret != KNOT_EOK) {
-			return ret;
-		}
-		return KNOT_EOK;
-	} else {
-		return KNOT_ENOMEM;
-	}
-}
-
 /*! \brief Adds single RR into remove section of changeset. */
 static int solve_del(const knot_rrset_t *rr, changeset_t *change, mm_ctx_t *mm)
 {
-	return add_part(rr, change, CHANGESET_REMOVE, mm);
+	return changeset_rem_rrset(change, rr);
 }
 
 /*! \brief Adds single RR into add section of changeset. */
 static int solve_add(const knot_rrset_t *rr, changeset_t *change, mm_ctx_t *mm)
 {
-	return add_part(rr, change, CHANGESET_ADD, mm);
+	return changeset_add_rrset(change, rr);
 }
 
 /*! \brief Decides what the next IXFR-in state should be. */

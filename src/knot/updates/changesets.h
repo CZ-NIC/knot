@@ -47,6 +47,13 @@ typedef struct changeset {
 	list_t new_data; /*!< New data, to be freed after failed update. */
 } changeset_t;
 
+typedef struct {
+	hattrie_iter_t *normal_it;
+	hattrie_iter_t *nsec3_it;
+	const zone_node_t *node;
+	int32_t node_pos;
+} changeset_iter_t;
+
 /*----------------------------------------------------------------------------*/
 
 typedef enum {
@@ -56,8 +63,8 @@ typedef enum {
 
 /*----------------------------------------------------------------------------*/
 
-changeset_t *changeset_new(mm_ctx_t *mm);
-void changeset_init(changeset_t *ch, mm_ctx_t *mm);
+changeset_t *changeset_new(mm_ctx_t *mm, const knot_dname_t *apex);
+void changeset_init(changeset_t *ch, const knot_dname_t *apex, mm_ctx_t *mm);
 
 /*!
  * \brief Add RRSet to changeset. RRSet is either inserted to 'add' or to
@@ -70,8 +77,8 @@ void changeset_init(changeset_t *ch, mm_ctx_t *mm);
  * \retval KNOT_EOK on success.
  * \retval Error code on failure.
  */
-int changeset_add_rrset(changeset_t *ch, knot_rrset_t *rrset,
-                        changeset_part_t part);
+int changeset_add_rrset(changeset_t *ch, const knot_rrset_t *rrset);
+int changeset_rem_rrset(changeset_t *ch, const knot_rrset_t *rrset);
 
 /*!
  * \brief Checks whether changeset is empty.
@@ -96,25 +103,6 @@ bool changeset_empty(const changeset_t *ch);
 size_t changeset_size(const changeset_t *ch);
 
 /*!
- * \brief Apply given function to all RRSets in one part of the changeset.
- *
- * If the applied function fails, the application aborts and this function
- * returns the return value of the applied function.
- *
- * \param changeset Changeset to apply the function to.
- * \param part Part of changeset to apply the function to.
- * \param func Function to apply to RRSets in the changeset. It is required that
- *             the function returns KNOT_EOK on success.
- * \param data Data to pass to the applied function.
- *
- * \retval KNOT_EOK if OK
- * \retval KNOT_EINVAL if \a changeset or \a func is NULL.
- * \retval Other error code if the applied function failed.
- */
-int changeset_apply(changeset_t *ch, changeset_part_t part,
-                    int (*func)(knot_rrset_t *, void *), void *data);
-
-/*!
  * \brief Frees the 'changesets' structure, including all its internal data.
  *
  * \param changesets  Double pointer to changesets structure to be freed.
@@ -123,17 +111,10 @@ int changeset_apply(changeset_t *ch, changeset_part_t part,
 void changesets_free(list_t *chgs, mm_ctx_t *rr_mm);
 void changeset_clear(changeset_t *ch, mm_ctx_t *rr_mm);
 
-/*!
- * \brief Merges two changesets together, second changeset's lists are kept.
- *
- * Beginning SOA is used from the first changeset, ending SOA from the second.
- * Ending SOA from first changeset is deleted. SOAs in the second changeset are
- * left untouched.
- *
- * \param ch1 Changeset to merge into
- * \param ch2 Changeset to merge
- *
- */
-void changeset_merge(changeset_t *ch1, changeset_t *ch2);
+int changeset_merge(changeset_t *ch1, changeset_t *ch2);
+changeset_iter_t *changeset_iter_add(const changeset_t *ch, bool sorted);
+changeset_iter_t *changeset_iter_rem(const changeset_t *ch, bool sorted);
+knot_rrset_t changeset_iter_next(changeset_iter_t *it);
+void changeset_iter_free(changeset_iter_t *it, mm_ctx_t *mm);
 
 /*! @} */

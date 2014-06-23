@@ -984,12 +984,10 @@ static int changesets_unpack(changeset_t *chs)
 		} else {
 			/* Remove RRSets. */
 			if (in_remove_section) {
-				ret = changeset_add_rrset(chs, rrset,
-				                          CHANGESET_REMOVE);
+				ret = changeset_rem_rrset(chs, rrset);
 			} else {
 				/* Add RRSets. */
-				ret = changeset_add_rrset(chs, rrset,
-				                          CHANGESET_ADD);
+				ret = changeset_add_rrset(chs, rrset);
 			}
 		}
 	}
@@ -1021,14 +1019,21 @@ static int serialize_and_store_chgset(const changeset_t *chs,
 	}
 
 	/* Serialize RRSets from the 'remove' section. */
-	ptrnode_t *n;
-	WALK_LIST(n, chs->remove) {
-		knot_rrset_t *rrset = (knot_rrset_t *)n->d;
-		ret = rrset_write_to_mem(rrset, &entry, &max_size);
+	changeset_iter_t *itt = changeset_iter_rem(chs, false);
+	if (itt == NULL) {
+		return ret;
+	}
+
+	knot_rrset_t rrset = changeset_iter_next(itt);
+	while (!knot_rrset_empty(&rrset)) {
+		ret = rrset_write_to_mem(&rrset, &entry, &max_size);
 		if (ret != KNOT_EOK) {
+			changeset_iter_free(itt, NULL);
 			return ret;
 		}
+		rrset = changeset_iter_next(itt);
 	}
+	changeset_iter_free(itt, NULL);
 
 	/* Serialize SOA 'to'. */
 	ret = rrset_write_to_mem(chs->soa_to, &entry, &max_size);
@@ -1037,14 +1042,21 @@ static int serialize_and_store_chgset(const changeset_t *chs,
 	}
 
 	/* Serialize RRSets from the 'add' section. */
-	WALK_LIST(n, chs->add) {
-		knot_rrset_t *rrset = (knot_rrset_t *)n->d;
-		ret = rrset_write_to_mem(rrset, &entry, &max_size);
+	itt = changeset_iter_add(chs, false);
+	if (itt == NULL) {
+		return ret;
+	}
+
+	rrset = changeset_iter_next(itt);
+	while (!knot_rrset_empty(&rrset)) {
+		ret = rrset_write_to_mem(&rrset, &entry, &max_size);
 		if (ret != KNOT_EOK) {
+			changeset_iter_free(itt, NULL);
 			return ret;
 		}
-
+		rrset = changeset_iter_next(itt);
 	}
+	changeset_iter_free(itt, NULL);
 
 	return KNOT_EOK;
 }
@@ -1085,9 +1097,9 @@ static int changeset_pack(const changeset_t *chs, journal_t *j)
 }
 
 /*! \brief Helper for iterating journal (this is temporary until #80) */
-typedef int (*journal_apply_t)(journal_t *, journal_node_t *, void *);
+typedef int (*journal_apply_t)(journal_t *, journal_node_t *, const zone_t *, list_t *);
 static int journal_walk(const char *fn, uint32_t from, uint32_t to,
-                        journal_apply_t cb, void *data)
+                        journal_apply_t cb, const zone_t *zone, list_t *chgs)
 {
 	/* Open journal for reading. */
 	journal_t *journal = journal_open(fn, FSLIMIT_INF);
@@ -1116,7 +1128,7 @@ static int journal_walk(const char *fn, uint32_t from, uint32_t to,
 		}
 
 		/* Callback. */
-		ret = cb(journal, n, data);
+		ret = cb(journal, n, zone, chgs);
 		if (ret != KNOT_EOK) {
 			break;
 		}
@@ -1130,11 +1142,9 @@ finish:
 	return ret;
 }
 
-static int load_changeset(journal_t *journal, journal_node_t *n, void *data)
+static int load_changeset(journal_t *journal, journal_node_t *n, const zone_t *zone, list_t *chgs)
 {
-	list_t *chgs = (list_t *)data;
-
-	changeset_t *ch = changeset_new(NULL);
+	changeset_t *ch = changeset_new(NULL, zone->name);
 	if (ch == NULL) {
 		return KNOT_ENOMEM;
 	}
@@ -1159,10 +1169,10 @@ static int load_changeset(journal_t *journal, journal_node_t *n, void *data)
 	return KNOT_EOK;
 }
 
-int journal_load_changesets(const char *path, list_t *dst,
+int journal_load_changesets(const zone_t *zone, list_t *dst,
                             uint32_t from, uint32_t to)
 {
-	int ret = journal_walk(path, from, to, &load_changeset, dst);
+	int ret = journal_walk(zone->conf->ixfr_db, from, to, &load_changeset, zone, dst);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}

@@ -112,7 +112,7 @@ static int knot_zone_diff_changeset_add_rrset(changeset_t *changeset,
 		return KNOT_ENOMEM;
 	}
 
-	int ret = changeset_add_rrset(changeset, rrset_copy, CHANGESET_ADD);
+	int ret = changeset_add_rrset(changeset, rrset_copy);
 	if (ret != KNOT_EOK) {
 		/* We have to free the copy now! */
 		knot_rrset_free(&rrset_copy, NULL);
@@ -149,7 +149,7 @@ static int knot_zone_diff_changeset_remove_rrset(changeset_t *changeset,
 		return KNOT_ENOMEM;
 	}
 
-	int ret = changeset_add_rrset(changeset, rrset_copy, CHANGESET_REMOVE);
+	int ret = changeset_rem_rrset(changeset, rrset_copy);
 	if (ret != KNOT_EOK) {
 		/* We have to free the copy now. */
 		knot_rrset_free(&rrset_copy, NULL);

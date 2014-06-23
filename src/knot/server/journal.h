@@ -45,6 +45,7 @@
 #include <pthread.h>
 #include <stdbool.h>
 #include "knot/updates/changesets.h"
+#include "knot/zone/zone.h"
 
 /*!
  * \brief Journal entry flags.
@@ -176,7 +177,7 @@ bool journal_exists(const char *path);
  * \retval KNOT_ERANGE if given entry was not found.
  * \return < KNOT_EOK on error.
  */
-int journal_load_changesets(const char *path, list_t *dst,
+int journal_load_changesets(const struct zone_t *zone, list_t *dst,
                             uint32_t from, uint32_t to);
 
 /*!
