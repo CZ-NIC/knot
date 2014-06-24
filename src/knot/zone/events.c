@@ -66,8 +66,17 @@ static uint32_t bootstrap_next(uint32_t timer)
 	            what " of '%s' with '%s': ", msg)
 
 /*! \brief Create zone query packet. */
-static knot_pkt_t *zone_query(const zone_t *zone, uint16_t qtype, mm_ctx_t *mm)
+static knot_pkt_t *zone_query(const zone_t *zone, uint16_t pkt_type, mm_ctx_t *mm)
 {
+	/* Determine query type and opcode. */
+	uint16_t query_type = KNOT_RRTYPE_SOA;
+	uint16_t opcode = KNOT_OPCODE_QUERY;
+	switch(pkt_type) {
+	case KNOT_QUERY_AXFR: query_type = KNOT_RRTYPE_AXFR; break;
+	case KNOT_QUERY_IXFR: query_type = KNOT_RRTYPE_IXFR; break;
+	case KNOT_QUERY_NOTIFY: opcode = KNOT_OPCODE_NOTIFY; break;
+	}
+
 	knot_pkt_t *pkt = knot_pkt_new(NULL, KNOT_WIRE_MAX_PKTSIZE, mm);
 	if (pkt == NULL) {
 		return NULL;
@@ -75,7 +84,20 @@ static knot_pkt_t *zone_query(const zone_t *zone, uint16_t qtype, mm_ctx_t *mm)
 
 	knot_wire_set_id(pkt->wire, knot_random_uint16_t());
 	knot_wire_set_aa(pkt->wire);
-	knot_pkt_put_question(pkt, zone->name, KNOT_CLASS_IN, qtype);
+	knot_wire_set_opcode(pkt->wire, opcode);
+	knot_pkt_put_question(pkt, zone->name, KNOT_CLASS_IN, query_type);
+
+	/* Put current SOA (optional). */
+	zone_contents_t *contents = zone->contents;
+	if (pkt_type == KNOT_QUERY_IXFR) {  /* RFC1995, SOA in AUTHORITY. */
+		knot_pkt_begin(pkt, KNOT_AUTHORITY);
+		knot_rrset_t soa_rr = node_rrset(contents->apex, KNOT_RRTYPE_SOA);
+		knot_pkt_put(pkt, COMPR_HINT_QNAME, &soa_rr, 0);
+	} else if (pkt_type == KNOT_QUERY_NOTIFY) { /* RFC1996, SOA in ANSWER. */
+		knot_pkt_begin(pkt, KNOT_ANSWER);
+		knot_rrset_t soa_rr = node_rrset(contents->apex, KNOT_RRTYPE_SOA);
+		knot_pkt_put(pkt, COMPR_HINT_QNAME, &soa_rr, 0);
+	}
 
 	return pkt;
 }
@@ -88,32 +110,15 @@ static knot_pkt_t *zone_query(const zone_t *zone, uint16_t qtype, mm_ctx_t *mm)
  */
 static int zone_query_execute(zone_t *zone, uint16_t pkt_type, const conf_iface_t *remote)
 {
-	uint16_t query_type = KNOT_RRTYPE_SOA;
-	uint16_t opcode = KNOT_OPCODE_QUERY;
-	switch(pkt_type) {
-	case KNOT_QUERY_AXFR: query_type = KNOT_RRTYPE_AXFR; break;
-	case KNOT_QUERY_IXFR: query_type = KNOT_RRTYPE_IXFR; break;
-	case KNOT_QUERY_NOTIFY: opcode = KNOT_OPCODE_NOTIFY; break;
-	}
-
 	/* Create a memory pool for this task. */
 	int ret = KNOT_EOK;
 	mm_ctx_t mm;
 	mm_ctx_mempool(&mm, DEFAULT_BLKSIZE);
 
 	/* Create a query message. */
-	knot_pkt_t *query = zone_query(zone, query_type, &mm);
+	knot_pkt_t *query = zone_query(zone, pkt_type, &mm);
 	if (query == NULL) {
 		return KNOT_ENOMEM;
-	}
-	knot_wire_set_opcode(query->wire, opcode);
-
-	/* Put current SOA in authority (optional). */
-	zone_contents_t *contents = zone->contents;
-	if (pkt_type == KNOT_QUERY_IXFR || pkt_type == KNOT_QUERY_NOTIFY) {
-		knot_pkt_begin(query, KNOT_AUTHORITY);
-		knot_rrset_t soa_rr = node_rrset(contents->apex, KNOT_RRTYPE_SOA);
-		knot_pkt_put(query, COMPR_HINT_QNAME, &soa_rr, 0);
 	}
 
 	/* Create requestor instance. */
