@@ -58,6 +58,7 @@ int changeset_add_rrset(changeset_t *ch, const knot_rrset_t *rrset)
 {
 	zone_node_t *n = NULL;
 	int ret = zone_contents_add_rr(ch->add, rrset, &n);
+	UNUSED(n);
 	return ret;
 }
 
@@ -65,17 +66,25 @@ int changeset_rem_rrset(changeset_t *ch, const knot_rrset_t *rrset)
 {
 	zone_node_t *n = NULL;
 	int ret = zone_contents_add_rr(ch->remove, rrset, &n);
+	UNUSED(n);
 	return ret;
 }
 
 bool changeset_empty(const changeset_t *ch)
 {
-	if (ch == NULL) {
+	if (ch == NULL || ch->add == NULL || ch->remove == NULL) {
 		return true;
 	}
 
-#warning will not work for apex changes
-	return ch->soa_to == NULL && changeset_size(ch) <= 2;
+	changeset_iter_t *itt = changeset_iter_all(ch ,false);
+	if (itt == NULL) {
+		return false;
+	}
+
+	knot_rrset_t rr = changeset_iter_next(itt);
+	changeset_iter_free(itt, NULL);
+
+	return knot_rrset_empty(&rr);
 }
 
 size_t changeset_size(const changeset_t *ch)
@@ -84,10 +93,20 @@ size_t changeset_size(const changeset_t *ch)
 		return 0;
 	}
 
-	return hattrie_weight(ch->add->nodes) +
-	       hattrie_weight(ch->add->nsec3_nodes) +
-	       hattrie_weight(ch->remove->nodes) +
-	       hattrie_weight(ch->remove->nsec3_nodes);
+	changeset_iter_t *itt = changeset_iter_all(ch ,false);
+	if (itt == NULL) {
+		return 0;
+	}
+
+	size_t size = 0;
+	knot_rrset_t rr = changeset_iter_next(itt);
+	while(!knot_rrset_empty(&rr)) {
+		++size;
+		rr = changeset_iter_next(itt);
+	}
+	changeset_iter_free(itt, NULL);
+
+	return size;
 }
 
 int changeset_merge(changeset_t *ch1, changeset_t *ch2)
@@ -100,15 +119,12 @@ int changeset_merge(changeset_t *ch1, changeset_t *ch2)
 
 	knot_rrset_t rrset = changeset_iter_next(itt);
 	while (!knot_rrset_empty(&rrset)) {
-		zone_node_t *n;
-		int ret = zone_contents_add_rr(ch1->add, &rrset, &n);
-		UNUSED(n);
+		int ret = changeset_add_rrset(ch1, &rrset);
 		if (ret != KNOT_EOK) {
 			changeset_iter_free(itt, NULL);
 		}
 		rrset = changeset_iter_next(itt);
 	}
-
 	changeset_iter_free(itt, NULL);
 
 	itt = changeset_iter_add(ch2, false);
@@ -118,14 +134,13 @@ int changeset_merge(changeset_t *ch1, changeset_t *ch2)
 
 	rrset = changeset_iter_next(itt);
 	while (!knot_rrset_empty(&rrset)) {
-		zone_node_t *n;
-		int ret = zone_contents_add_rr(ch1->remove, &rrset, &n);
-		UNUSED(n);
+		int ret = changeset_rem_rrset(ch1, &rrset);
 		if (ret != KNOT_EOK) {
 			changeset_iter_free(itt, NULL);
 		}
 		rrset = changeset_iter_next(itt);
 	}
+	changeset_iter_free(itt, NULL);
 
 	// Use soa_to and serial from the second changeset
 	// soa_to from the first changeset is redundant, delete it
@@ -158,17 +173,19 @@ void changesets_free(list_t *chgs, mm_ctx_t *rr_mm)
 		changeset_t *chg, *nxt;
 		WALK_LIST_DELSAFE(chg, nxt, *chgs) {
 			changeset_clear(chg, rr_mm);
+			rem_node(&chg->n);
 		}
 	}
 }
 
-void cleanup_iter_list(list_t *l)
+static void cleanup_iter_list(list_t *l, mm_ctx_t *mm)
 {
 	ptrnode_t *n;
 	WALK_LIST_FIRST(n, *l) {
 		hattrie_iter_t *it = (hattrie_iter_t *)n->d;
 		hattrie_iter_free(it);
 		rem_node(&n->n);
+		mm_free(mm, n);
 	}
 }
 
@@ -187,14 +204,17 @@ static changeset_iter_t *changeset_iter_begin(const changeset_t *ch, list_t *tri
 	WALK_LIST(n, *trie_l) {
 		hattrie_t *t = (hattrie_t *)n->d;
 		if (t) {
+			if (sorted) {
+				hattrie_build_index(t);
+			}
 			hattrie_iter_t *it = hattrie_iter_begin(t, sorted);
 			if (it == NULL) {
-				cleanup_iter_list(&ret->iters);
+				cleanup_iter_list(&ret->iters, ch->mm);
 				mm_free(ch->mm, ret);
 				return NULL;
 			}
 			if (ptrlist_add(&ret->iters, it, NULL) == NULL) {
-				cleanup_iter_list(&ret->iters);
+				cleanup_iter_list(&ret->iters, ch->mm);
 				mm_free(ch->mm, ret);
 				return NULL;
 			}
@@ -241,6 +261,7 @@ changeset_iter_t *changeset_iter_all(const changeset_t *ch, bool sorted)
 
 static void iter_next_node(changeset_iter_t *ch_it, hattrie_iter_t *t_it)
 {
+	assert(!hattrie_iter_finished(t_it));
 	// Get next node, but not for the very first call.
 	if (ch_it->node) {
 		hattrie_iter_next(t_it);
@@ -251,15 +272,16 @@ static void iter_next_node(changeset_iter_t *ch_it, hattrie_iter_t *t_it)
 	}
 
 	ch_it->node = (zone_node_t *)*hattrie_iter_val(t_it);
-	while (ch_it->node->rrset_count == 0 && !hattrie_iter_finished(t_it)) {
+	assert(ch_it->node);
+	while (ch_it->node && ch_it->node->rrset_count == 0) {
 		// Skip empty non-terminals.
 		hattrie_iter_next(t_it);
-		ch_it->node = (zone_node_t *)*hattrie_iter_val(t_it);
-	}
-
-	if (hattrie_iter_finished(t_it)) {
-		ch_it->node = NULL;
-		return;
+		if (hattrie_iter_finished(t_it)) {
+			ch_it->node = NULL;
+		} else {
+			ch_it->node = (zone_node_t *)*hattrie_iter_val(t_it);
+			assert(ch_it->node);
+		}
 	}
 
 	ch_it->node_pos = 0;
@@ -282,6 +304,7 @@ static knot_rrset_t get_next_rr(changeset_iter_t *ch_it, hattrie_iter_t *t_it) /
 
 knot_rrset_t changeset_iter_next(changeset_iter_t *it)
 {
+	assert(it);
 	ptrnode_t *n = NULL;
 	knot_rrset_t rr;
 	knot_rrset_init_empty(&rr);
@@ -304,7 +327,7 @@ knot_rrset_t changeset_iter_next(changeset_iter_t *it)
 void changeset_iter_free(changeset_iter_t *it, mm_ctx_t *mm)
 {
 	if (it) {
-		cleanup_iter_list(&it->iters);
+		cleanup_iter_list(&it->iters, mm);
 		mm_free(mm, it);
 	}
 }
