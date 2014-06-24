@@ -259,9 +259,13 @@ class Server(object):
 
     def running(self):
         proc = psutil.Process(self.proc.pid)
-        if proc.status == psutil.STATUS_RUNNING or \
-           proc.status == psutil.STATUS_SLEEPING or \
-           proc.status == psutil.STATUS_DISK_SLEEP:
+        status = proc.status
+        # psutil 2.0.0+ makes status a function
+        if psutil.version_info[0] >= 2:
+            status = proc.status()
+        if status == psutil.STATUS_RUNNING or \
+           status == psutil.STATUS_SLEEPING or \
+           status == psutil.STATUS_DISK_SLEEP:
             return True
         else:
             return False
