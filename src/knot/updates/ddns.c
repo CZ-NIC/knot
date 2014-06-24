@@ -290,10 +290,8 @@ static void remove_header_from_list(zone_contents_t *z, const knot_rrset_t *rr)
 /*!< \brief Removes RR from list, owner check. */
 static void remove_owner_from_list(zone_contents_t *z, const knot_dname_t *owner)
 {
-	zone_node_t *n = NULL;
-	zone_tree_remove(z->nodes, owner, &n);
+	zone_node_t *n = (zone_node_t *)zone_contents_find_node(z, owner);
 	node_free_rrsets(n);
-	node_free(&n);
 }
 
 /* --------------------- true/false helper functions ------------------------ */
@@ -428,7 +426,7 @@ static bool skip_soa(const knot_rrset_t *rr, int64_t sn)
 
 /*!< \brief Checks whether record should be added or replaced. */
 static bool skip_record_addition(changeset_t *changeset,
-                                 knot_rrset_t *rr)
+                                 const knot_rrset_t *rr)
 {
 	if (!should_replace(rr)) {
 		return false;
@@ -456,14 +454,7 @@ static bool skip_record_addition(changeset_t *changeset,
 static int add_rr_to_chgset(const knot_rrset_t *rr, changeset_t *changeset,
                             int *apex_ns_rem)
 {
-	knot_rrset_t *rr_copy = knot_rrset_copy(rr, NULL);
-	if (rr_copy == NULL) {
-		return KNOT_ENOMEM;
-	}
-
-	rr_copy->rclass = KNOT_CLASS_IN;
-
-	if (skip_record_addition(changeset, rr_copy)) {
+	if (skip_record_addition(changeset, rr)) {
 		return KNOT_EOK;
 	}
 
@@ -472,26 +463,19 @@ static int add_rr_to_chgset(const knot_rrset_t *rr, changeset_t *changeset,
 		(*apex_ns_rem)--;
 	}
 
-	return changeset_add_rrset(changeset, rr_copy);
+	return changeset_add_rrset(changeset, rr);
 }
 
 /*!< \brief Adds RR into remove section of changeset if it is deemed worthy. */
 static int rem_rr_to_chgset(const knot_rrset_t *rr, changeset_t *changeset,
                             int *apex_ns_rem)
 {
-	knot_rrset_t *rr_copy = knot_rrset_copy(rr, NULL);
-	if (rr_copy == NULL) {
-		return KNOT_ENOMEM;
-	}
-
-	rr_copy->rclass = KNOT_CLASS_IN;
-
 	if (apex_ns_rem) {
 		// Decrease post update apex NS count.
 		(*apex_ns_rem)++;
 	}
 
-	return changeset_rem_rrset(changeset, rr_copy);
+	return changeset_rem_rrset(changeset, rr);
 }
 
 /*!< \brief Adds all RRs from RRSet into remove section of changeset. */

@@ -90,85 +90,13 @@ static int knot_zone_diff_load_soas(const zone_contents_t *zone1,
 	return KNOT_EOK;
 }
 
-/*!< \todo Only use add or remove function, not both as they are the same. */
-/*!< \todo Also, this might be all handled by function in changesets.h!!! */
-static int knot_zone_diff_changeset_add_rrset(changeset_t *changeset,
-                                              const knot_rrset_t *rrset)
-{
-	/* Remove all RRs of the RRSet. */
-	if (changeset == NULL || rrset == NULL) {
-		dbg_zonediff("zone_diff: add_rrset: NULL parameters.\n");
-		return KNOT_EINVAL;
-	}
-
-	if (rrset->rrs.rr_count == 0) {
-		dbg_zonediff_detail("zone_diff: Nothing to add.\n");
-		return KNOT_EOK;
-	}
-
-	knot_rrset_t *rrset_copy = knot_rrset_copy(rrset, NULL);
-	if (rrset_copy == NULL) {
-		dbg_zonediff("zone_diff: add_rrset: Cannot copy RRSet.\n");
-		return KNOT_ENOMEM;
-	}
-
-	int ret = changeset_add_rrset(changeset, rrset_copy);
-	if (ret != KNOT_EOK) {
-		/* We have to free the copy now! */
-		knot_rrset_free(&rrset_copy, NULL);
-		dbg_zonediff("zone_diff: add_rrset: Could not add RRSet. "
-		             "Reason: %s.\n", knot_strerror(ret));
-		return ret;
-	}
-
-	return KNOT_EOK;
-}
-
-static int knot_zone_diff_changeset_remove_rrset(changeset_t *changeset,
-                                                 const knot_rrset_t *rrset)
-{
-	/* Remove all RRs of the RRSet. */
-	if (changeset == NULL) {
-		dbg_zonediff("zone_diff: remove_rrset: NULL parameters.\n");
-		return KNOT_EINVAL;
-	}
-
-	if (rrset == NULL) {
-		return KNOT_EOK;
-	}
-
-	if (rrset->rrs.rr_count == 0) {
-		/* RDATA are the same, however*/
-		dbg_zonediff_detail("zone_diff: Nothing to remove.\n");
-		return KNOT_EOK;
-	}
-
-	knot_rrset_t *rrset_copy = knot_rrset_copy(rrset, NULL);
-	if (rrset_copy == NULL) {
-		dbg_zonediff("zone_diff: remove_rrset: Cannot copy RRSet.\n");
-		return KNOT_ENOMEM;
-	}
-
-	int ret = changeset_rem_rrset(changeset, rrset_copy);
-	if (ret != KNOT_EOK) {
-		/* We have to free the copy now. */
-		knot_rrset_free(&rrset_copy, NULL);
-		dbg_zonediff("zone_diff: remove_rrset: Could not remove RRSet. "
-		             "Reason: %s.\n", knot_strerror(ret));
-		return ret;
-	}
-
-	return KNOT_EOK;
-}
-
 static int knot_zone_diff_add_node(const zone_node_t *node,
                                    changeset_t *changeset)
 {
 	/* Add all rrsets from node. */
 	for (uint i = 0; i < node->rrset_count; i++) {
 		knot_rrset_t rrset = node_rrset_at(node, i);
-		int ret = knot_zone_diff_changeset_add_rrset(changeset,
-		                                             &rrset);
+		int ret = changeset_add_rrset(changeset, &rrset);
 		if (ret != KNOT_EOK) {
 			dbg_zonediff("zone_diff: add_node: Cannot add RRSet (%s).\n",
 			             knot_strerror(ret));
@@ -185,8 +113,7 @@ static int knot_zone_diff_remove_node(changeset_t *changeset,
 	/* Remove all the RRSets of the node. */
 	for (uint i = 0; i < node->rrset_count; i++) {
 		knot_rrset_t rrset = node_rrset_at(node, i);
-		int ret = knot_zone_diff_changeset_remove_rrset(changeset,
-		                                                &rrset);
+		int ret = changeset_rem_rrset(changeset, &rrset);
 		if (ret != KNOT_EOK) {
 			dbg_zonediff("zone_diff: remove_node: Failed to "
 			             "remove rrset. Error: %s\n",
@@ -279,7 +206,7 @@ static int knot_zone_diff_rdata(const knot_rrset_t *rrset1,
 		}
 	}
 
-	int ret = knot_zone_diff_changeset_remove_rrset(changeset, to_remove);
+	int ret = changeset_rem_rrset(changeset, to_remove);
 	if (ret != KNOT_EOK) {
 		knot_rrset_free(&to_remove, NULL);
 		dbg_zonediff("zone_diff: diff_rdata: Could not remove RRs. "
@@ -302,7 +229,7 @@ static int knot_zone_diff_rdata(const knot_rrset_t *rrset1,
 		}
 	}
 
-	ret = knot_zone_diff_changeset_add_rrset(changeset, to_add);
+	ret = changeset_add_rrset(changeset, to_add);
 	if (ret != KNOT_EOK) {
 		knot_rrset_free(&to_add, NULL);
 		dbg_zonediff("zone_diff: diff_rdata: Could not remove RRs. "
@@ -396,7 +323,7 @@ static int knot_zone_diff_node(zone_node_t **node_ptr, void *data)
 			node_rrset(node_in_second_tree, rrset.type);
 		if (knot_rrset_empty(&rrset_from_second_node)) {
 			/* RRSet has been removed. Make a copy and remove. */
-			int ret = knot_zone_diff_changeset_remove_rrset(
+			int ret = changeset_rem_rrset(
 				param->changeset, &rrset);
 			if (ret != KNOT_EOK) {
 				dbg_zonediff("zone_diff: diff_node: "
@@ -428,7 +355,7 @@ static int knot_zone_diff_node(zone_node_t **node_ptr, void *data)
 		knot_rrset_t rrset_from_first_node = node_rrset(node, rrset.type);
 		if (knot_rrset_empty(&rrset_from_first_node)) {
 			/* RRSet has been added. Make a copy and add. */
-			int ret = knot_zone_diff_changeset_add_rrset(
+			int ret = changeset_add_rrset(
 				param->changeset, &rrset);
 			if (ret != KNOT_EOK) {
 				dbg_zonediff("zone_diff: diff_node: "

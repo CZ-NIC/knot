@@ -185,8 +185,8 @@ int zone_load_post(zone_contents_t *contents, zone_t *zone, uint32_t *dnssec_ref
 		init_list(&apply);
 		add_head(&apply, &diff_change.n);
 		ret = zone_change_store(zone, &apply);
-		changeset_clear(&diff_change, NULL);
 	}
+	changeset_clear(&diff_change, NULL);
 
 	return ret;
 }

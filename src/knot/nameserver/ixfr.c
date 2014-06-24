@@ -235,14 +235,14 @@ static int ixfr_answer_init(struct query_data *qdata)
 	/* Put all changesets to processing queue. */
 	xfer->changesets = chgsets;
 	changeset_t *chs = NULL;
-	WALK_LIST(chs, chgsets) {
+	WALK_LIST(chs, xfer->changesets) {
 		ptrlist_add(&xfer->proc.nodes, chs, mm);
 	}
 
 	/* Keep first and last serial. */
-	chs = HEAD(chgsets);
+	chs = HEAD(xfer->changesets);
 	xfer->soa_from = chs->soa_from;
-	chs = TAIL(chgsets);
+	chs = TAIL(xfer->changesets);
 	xfer->soa_to = chs->soa_to;
 
 	/* Set up cleanup callback. */

@@ -45,12 +45,12 @@
 /*!
  * \brief Create empty RRSIG RR set for a given RR set to be covered.
  */
-static knot_rrset_t *create_empty_rrsigs_for(const knot_rrset_t *covered)
+static knot_rrset_t create_empty_rrsigs_for(const knot_rrset_t *covered)
 {
 	assert(!knot_rrset_empty(covered));
-
-	return knot_rrset_new(covered->owner, KNOT_RRTYPE_RRSIG,
-			      covered->rclass, NULL);
+	knot_rrset_t ret;
+	knot_rrset_init(&ret, covered->owner, KNOT_RRTYPE_RRSIG, covered->rclass);
+	return ret;
 }
 
 /*- private API - signing of in-zone nodes -----------------------------------*/

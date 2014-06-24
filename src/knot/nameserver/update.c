@@ -125,6 +125,7 @@ static int sign_update(zone_t *zone, const zone_contents_t *old_contents,
 
 	// Free the DNSSEC changeset's SOA from (not used anymore)
 	knot_rrset_free(&sec_ch.soa_from, NULL);
+	changeset_clear(&sec_ch, NULL);
 
 	// Plan next zone resign.
 	const time_t resign_time = zone_events_get_time(zone, ZONE_EVENT_DNSSEC);

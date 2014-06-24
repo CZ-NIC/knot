@@ -76,9 +76,13 @@ bool changeset_empty(const changeset_t *ch)
 		return true;
 	}
 
+	if (ch->soa_to) {
+		return false;
+	}
+
 	changeset_iter_t *itt = changeset_iter_all(ch ,false);
 	if (itt == NULL) {
-		return false;
+		return true;
 	}
 
 	knot_rrset_t rr = changeset_iter_next(itt);
