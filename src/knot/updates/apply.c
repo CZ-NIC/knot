@@ -209,6 +209,7 @@ static int apply_remove(zone_contents_t *contents, changeset_t *chset)
 		zone_node_t *node = zone_contents_find_node_for_rr(contents, &rr);
 		if (!can_remove(node, &rr)) {
 			// Nothing to remove from, skip.
+			rr = changeset_iter_next(itt);
 			continue;
 		}
 

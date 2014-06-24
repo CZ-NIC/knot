@@ -188,6 +188,8 @@ static void ixfr_answer_cleanup(struct query_data *qdata)
 	mm_ctx_t *mm = qdata->mm;
 
 	ptrlist_free(&ixfr->proc.nodes, mm);
+	changeset_iter_free(ixfr->cur, NULL);
+	ixfr->cur = NULL;
 	changesets_free(&ixfr->changesets, NULL);
 	mm->free(qdata->ext);
 

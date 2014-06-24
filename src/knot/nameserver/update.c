@@ -254,8 +254,8 @@ int update_process_query(knot_pkt_t *pkt, struct query_data *qdata)
 
 	gettimeofday(&t_end, NULL);
 	UPDATE_LOG(LOG_INFO, "Serial %u -> %u", old_serial, new_serial);
-	UPDATE_LOG(LOG_INFO, "Finished in %.02fs.",
-	           time_diff(&t_start, &t_end) / 1000.0);
+	UPDATE_LOG(LOG_INFO, "Finished %d in %.02fs.",
+	           rcode, time_diff(&t_start, &t_end) / 1000.0);
 	
 	zone_events_schedule(zone, ZONE_EVENT_NOTIFY, ZONE_EVENT_NOW);
 

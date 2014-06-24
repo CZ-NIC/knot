@@ -56,14 +56,16 @@ changeset_t *changeset_new(mm_ctx_t *mm, const knot_dname_t *apex)
 
 int changeset_add_rrset(changeset_t *ch, const knot_rrset_t *rrset)
 {
-	zone_node_t *n;
-	return zone_contents_add_rr(ch->add, rrset, &n);
+	zone_node_t *n = NULL;
+	int ret = zone_contents_add_rr(ch->add, rrset, &n);
+	return ret;
 }
 
 int changeset_rem_rrset(changeset_t *ch, const knot_rrset_t *rrset)
 {
-	zone_node_t *n;
-	return zone_contents_add_rr(ch->remove, rrset, &n);
+	zone_node_t *n = NULL;
+	int ret = zone_contents_add_rr(ch->remove, rrset, &n);
+	return ret;
 }
 
 bool changeset_empty(const changeset_t *ch)
@@ -72,13 +74,13 @@ bool changeset_empty(const changeset_t *ch)
 		return true;
 	}
 
-	return ch->soa_to == NULL &&
-	       changeset_size(ch) == 0;
+#warning will not work for apex changes
+	return ch->soa_to == NULL && changeset_size(ch) <= 2;
 }
 
 size_t changeset_size(const changeset_t *ch)
 {
-	if (changeset_empty(ch)) {
+	if (ch == NULL) {
 		return 0;
 	}
 
@@ -152,7 +154,7 @@ void changeset_clear(changeset_t *ch, mm_ctx_t *rr_mm)
 
 void changesets_free(list_t *chgs, mm_ctx_t *rr_mm)
 {
-	if (!EMPTY_LIST(*chgs)) {
+	if (chgs) {
 		changeset_t *chg, *nxt;
 		WALK_LIST_DELSAFE(chg, nxt, *chgs) {
 			changeset_clear(chg, rr_mm);
@@ -175,11 +177,20 @@ static changeset_iter_t *changeset_iter_begin(const changeset_t *ch, hattrie_t *
 	ret->node_pos = NODE_DONE;
 
 	ret->normal_it = hattrie_iter_begin(tr, sorted);
-	ret->nsec3_it = hattrie_iter_begin(nsec3_tr, sorted);
-	if (ret->normal_it == NULL || ret->nsec3_it == NULL) {
-		hattrie_iter_free(ret->normal_it);
-		hattrie_iter_free(ret->nsec3_it);
+	if (ret->normal_it == NULL) {
 		mm_free(ch->mm, ret);
+		return NULL;
+	}
+	
+	if (nsec3_tr) {
+		ret->nsec3_it = hattrie_iter_begin(nsec3_tr, sorted);
+		if (ret->nsec3_it == NULL) {
+			hattrie_iter_free(ret->normal_it);
+			mm_free(ch->mm, ret);
+			return NULL;
+		}
+	} else {
+		ret->nsec3_it = NULL;
 	}
 
 	return ret;
@@ -195,34 +206,44 @@ changeset_iter_t *changeset_iter_rem(const changeset_t *ch, bool sorted)
 	return changeset_iter_begin(ch, ch->remove->nodes, ch->remove->nsec3_nodes, sorted);
 }
 
-static void get_next_rr(knot_rrset_t *rr, changeset_iter_t *ch_it, hattrie_iter_t *t_it) // pun intented
+static void get_next_rr(knot_rrset_t *rr, changeset_iter_t *ch_it, hattrie_iter_t **t_it) // pun intented
 {
+#warning get rid of recursion
 	if (ch_it->node_pos == NODE_DONE) {
 		// Get next node.
 		if (ch_it->node) {
 			// Do not get next for very first node.
-			hattrie_iter_next(ch_it->normal_it);
+			hattrie_iter_next(*t_it);
 		}
-		if (hattrie_iter_finished(t_it)) {
-			if (t_it == ch_it->normal_it) {
-				ch_it->normal_it = NULL;
-			} else {
-				ch_it->nsec3_it = NULL;
-			}
-			hattrie_iter_free(t_it);
+		if (hattrie_iter_finished(*t_it)) {
+			hattrie_iter_free(*t_it);
+			*t_it = NULL;
 			ch_it->node = NULL;
+			ch_it->node_pos = NODE_DONE;
 			return;
 		}
-		ch_it->node = (zone_node_t *)*hattrie_iter_val(t_it);
-		ch_it->node_pos = 0;
+		ch_it->node = (zone_node_t *)*hattrie_iter_val(*t_it);
+		if (ch_it->node->rrset_count == 0) {
+			get_next_rr(rr, ch_it, t_it);
+		}
+		
+		if (ch_it->node == NULL) {
+			return;
+		}
 	}
+	
+	assert(ch_it->node);
 
-	++ch_it->node_pos;
 	if (ch_it->node_pos < ch_it->node->rrset_count) {
 		*rr = node_rrset_at(ch_it->node, ch_it->node_pos);
+		++ch_it->node_pos;
 	} else {
+		// Node is done, get next.
 		ch_it->node_pos = NODE_DONE;
+		get_next_rr(rr, ch_it, t_it);
 	}
+	
+	assert(!knot_rrset_empty(rr));
 }
 
 knot_rrset_t changeset_iter_next(changeset_iter_t *it)
@@ -230,9 +251,9 @@ knot_rrset_t changeset_iter_next(changeset_iter_t *it)
 	knot_rrset_t ret;
 	knot_rrset_init_empty(&ret);
 	if (it->normal_it) {
-		get_next_rr(&ret, it, it->normal_it);
+		get_next_rr(&ret, it, &it->normal_it);
 	} else if (it->nsec3_it) {
-		get_next_rr(&ret, it, it->nsec3_it);
+		get_next_rr(&ret, it, &it->nsec3_it);
 	}
 
 	return ret;
@@ -240,8 +261,10 @@ knot_rrset_t changeset_iter_next(changeset_iter_t *it)
 
 void changeset_iter_free(changeset_iter_t *it, mm_ctx_t *mm)
 {
-	hattrie_iter_free(it->normal_it);
-	hattrie_iter_free(it->nsec3_it);
-	mm_free(mm, it);
+	if (it) {
+		hattrie_iter_free(it->normal_it);
+		hattrie_iter_free(it->nsec3_it);
+		mm_free(mm, it);
+	}
 }
 
