@@ -492,7 +492,10 @@ static int event_notify(zone_t *zone)
 		conf_iface_t *iface = remote->remote;
 
 		int ret = zone_query_execute(zone, KNOT_QUERY_NOTIFY, iface);
-		if (ret != KNOT_EOK) {
+		if (ret == KNOT_EOK) {
+			ZONE_QUERY_LOG(LOG_INFO, zone, iface, "NOTIFY", "sent (serial %u).",
+			               zone_contents_serial(zone->contents));
+		} else {
 			ZONE_QUERY_LOG(LOG_ERR, zone, iface, "NOTIFY", "%s", knot_strerror(ret));
 		}
 	}
