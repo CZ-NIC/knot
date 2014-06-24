@@ -446,15 +446,15 @@ static int event_expire(zone_t *zone)
 	zone_contents_t *expired = zone_switch_contents(zone, NULL);
 	synchronize_rcu();
 
-	/* Trim extra heap. */
-	mem_trim();
-
 	/* Expire zonefile information. */
 	zone->zonefile_mtime = 0;
 	zone->zonefile_serial = 0;
 	zone_contents_deep_free(&expired);
 
 	log_zone_info("Zone '%s' expired.\n", zone->conf->name);
+
+	/* Trim extra heap. */
+	mem_trim();
 
 	return KNOT_EOK;
 }
