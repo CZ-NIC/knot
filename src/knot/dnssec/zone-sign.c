@@ -1393,30 +1393,13 @@ int knot_zone_sign_changeset(const zone_contents_t *zone,
 		return KNOT_ENOMEM;
 	}
 
-	// Sign all RRs that are new in changeset
-	changeset_iter_t *itt = changeset_iter_add(in_ch, false);
+	// Sign all RRs that are in changeset, additions and removals
+	changeset_iter_t *itt = changeset_iter_all(in_ch, false);
 	if (itt == NULL) {
 		return KNOT_ENOMEM;
 	}
 	
 	knot_rrset_t rr = changeset_iter_next(itt);
-	while (!knot_rrset_empty(&rr)) {
-		int ret = sign_changeset_wrap(&rr, &args);
-		if (ret != KNOT_EOK) {
-			changeset_iter_free(itt, NULL);
-			return ret;
-		}
-		rr = changeset_iter_next(itt);
-	}
-	changeset_iter_free(itt, NULL);
-	
-	itt = changeset_iter_rem(in_ch, false);
-	if (itt == NULL) {
-		return KNOT_ENOMEM;
-	}
-
-#warning too much copypasta
-	rr = changeset_iter_next(itt);
 	while (!knot_rrset_empty(&rr)) {
 		int ret = sign_changeset_wrap(&rr, &args);
 		if (ret != KNOT_EOK) {

@@ -79,33 +79,21 @@ int changeset_binary_size(const changeset_t *chgset, size_t *size)
 	size_t soa_to_size = rrset_binary_size(chgset->soa_to);
 
 
-	changeset_iter_t *itt = changeset_iter_rem(chgset, false);
+	changeset_iter_t *itt = changeset_iter_all(chgset, false);
 	if (itt == NULL) {
 		return KNOT_ENOMEM;
 	}
 
-	size_t remove_size = 0;
+	size_t change_size = 0;
 	knot_rrset_t rrset = changeset_iter_next(itt);
 	while (!knot_rrset_empty(&rrset)) {
-		remove_size += rrset_binary_size(&rrset);
+		change_size += rrset_binary_size(&rrset);
 		rrset = changeset_iter_next(itt);
 	}
 
 	changeset_iter_free(itt, NULL);
-	itt = changeset_iter_add(chgset, false);
-	if (itt == NULL) {
-		return KNOT_ENOMEM;
-	}
 
-	size_t add_size = 0;
-	rrset = changeset_iter_next(itt);
-	while (!knot_rrset_empty(&rrset)) {
-		add_size += rrset_binary_size(&rrset);
-		rrset = changeset_iter_next(itt);
-	}
-	changeset_iter_free(itt, NULL);
-
-	*size = soa_from_size + soa_to_size + remove_size + add_size;
+	*size = soa_from_size + soa_to_size + change_size;
 
 	return KNOT_EOK;
 }

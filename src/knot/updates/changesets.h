@@ -48,8 +48,7 @@ typedef struct changeset {
 } changeset_t;
 
 typedef struct {
-	hattrie_iter_t *normal_it;
-	hattrie_iter_t *nsec3_it;
+	list_t iters;
 	const zone_node_t *node;
 	int32_t node_pos;
 } changeset_iter_t;
@@ -114,6 +113,7 @@ void changeset_clear(changeset_t *ch, mm_ctx_t *rr_mm);
 int changeset_merge(changeset_t *ch1, changeset_t *ch2);
 changeset_iter_t *changeset_iter_add(const changeset_t *ch, bool sorted);
 changeset_iter_t *changeset_iter_rem(const changeset_t *ch, bool sorted);
+changeset_iter_t *changeset_iter_all(const changeset_t *ch, bool sorted);
 knot_rrset_t changeset_iter_next(changeset_iter_t *it);
 void changeset_iter_free(changeset_iter_t *it, mm_ctx_t *mm);
 

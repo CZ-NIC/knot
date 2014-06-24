@@ -162,35 +162,43 @@ void changesets_free(list_t *chgs, mm_ctx_t *rr_mm)
 	}
 }
 
-#define NODE_DONE -1
-
-static changeset_iter_t *changeset_iter_begin(const changeset_t *ch, hattrie_t *tr,
-                                              hattrie_t *nsec3_tr, bool sorted)
+void cleanup_iter_list(list_t *l)
 {
-#warning emptiness check
+	ptrnode_t *n;
+	WALK_LIST_FIRST(n, *l) {
+		hattrie_iter_t *it = (hattrie_iter_t *)n->d;
+		hattrie_iter_free(it);
+		rem_node(&n->n);
+	}
+}
+
+static changeset_iter_t *changeset_iter_begin(const changeset_t *ch, list_t *trie_l, bool sorted)
+{
 	changeset_iter_t *ret = mm_alloc(ch->mm, sizeof(changeset_iter_t));
 	if (ret == NULL) {
 		ERR_ALLOC_FAILED;
 		return NULL;
 	}
-	memset(ret, 0, sizeof(*ret));
-	ret->node_pos = NODE_DONE;
 
-	ret->normal_it = hattrie_iter_begin(tr, sorted);
-	if (ret->normal_it == NULL) {
-		mm_free(ch->mm, ret);
-		return NULL;
-	}
-	
-	if (nsec3_tr) {
-		ret->nsec3_it = hattrie_iter_begin(nsec3_tr, sorted);
-		if (ret->nsec3_it == NULL) {
-			hattrie_iter_free(ret->normal_it);
-			mm_free(ch->mm, ret);
-			return NULL;
+	memset(ret, 0, sizeof(*ret));
+	init_list(&ret->iters);
+
+	ptrnode_t *n;
+	WALK_LIST(n, *trie_l) {
+		hattrie_t *t = (hattrie_t *)n->d;
+		if (t) {
+			hattrie_iter_t *it = hattrie_iter_begin(t, sorted);
+			if (it == NULL) {
+				cleanup_iter_list(&ret->iters);
+				mm_free(ch->mm, ret);
+				return NULL;
+			}
+			if (ptrlist_add(&ret->iters, it, NULL) == NULL) {
+				cleanup_iter_list(&ret->iters);
+				mm_free(ch->mm, ret);
+				return NULL;
+			}
 		}
-	} else {
-		ret->nsec3_it = NULL;
 	}
 
 	return ret;
@@ -198,72 +206,105 @@ static changeset_iter_t *changeset_iter_begin(const changeset_t *ch, hattrie_t *
 
 changeset_iter_t *changeset_iter_add(const changeset_t *ch, bool sorted)
 {
-	return changeset_iter_begin(ch, ch->add->nodes, ch->add->nsec3_nodes, sorted);
+	list_t tries;
+	init_list(&tries);
+	ptrlist_add(&tries, ch->add->nodes, NULL);
+	ptrlist_add(&tries, ch->add->nsec3_nodes, NULL);
+	changeset_iter_t *ret = changeset_iter_begin(ch, &tries, sorted);
+	ptrlist_free(&tries, NULL);
+	return ret;
 }
 
 changeset_iter_t *changeset_iter_rem(const changeset_t *ch, bool sorted)
 {
-	return changeset_iter_begin(ch, ch->remove->nodes, ch->remove->nsec3_nodes, sorted);
+	list_t tries;
+	init_list(&tries);
+	ptrlist_add(&tries, ch->remove->nodes, NULL);
+	ptrlist_add(&tries, ch->remove->nsec3_nodes, NULL);
+	changeset_iter_t *ret = changeset_iter_begin(ch, &tries, sorted);
+	ptrlist_free(&tries, NULL);
+	return ret;
 }
 
-static void get_next_rr(knot_rrset_t *rr, changeset_iter_t *ch_it, hattrie_iter_t **t_it) // pun intented
+changeset_iter_t *changeset_iter_all(const changeset_t *ch, bool sorted)
 {
-#warning get rid of recursion
-	if (ch_it->node_pos == NODE_DONE) {
-		// Get next node.
-		if (ch_it->node) {
-			// Do not get next for very first node.
-			hattrie_iter_next(*t_it);
-		}
-		if (hattrie_iter_finished(*t_it)) {
-			hattrie_iter_free(*t_it);
-			*t_it = NULL;
-			ch_it->node = NULL;
-			ch_it->node_pos = NODE_DONE;
-			return;
-		}
-		ch_it->node = (zone_node_t *)*hattrie_iter_val(*t_it);
-		if (ch_it->node->rrset_count == 0) {
-			get_next_rr(rr, ch_it, t_it);
-		}
-		
-		if (ch_it->node == NULL) {
-			return;
-		}
-	}
-	
-	assert(ch_it->node);
+	list_t tries;
+	init_list(&tries);
+	ptrlist_add(&tries, ch->add->nodes, NULL);
+	ptrlist_add(&tries, ch->add->nsec3_nodes, NULL);
+	ptrlist_add(&tries, ch->remove->nodes, NULL);
+	ptrlist_add(&tries, ch->remove->nsec3_nodes, NULL);
+	changeset_iter_t *ret = changeset_iter_begin(ch, &tries, sorted);
+	ptrlist_free(&tries, NULL);
+	return ret;
+}
 
-	if (ch_it->node_pos < ch_it->node->rrset_count) {
-		*rr = node_rrset_at(ch_it->node, ch_it->node_pos);
-		++ch_it->node_pos;
-	} else {
-		// Node is done, get next.
-		ch_it->node_pos = NODE_DONE;
-		get_next_rr(rr, ch_it, t_it);
+static void iter_next_node(changeset_iter_t *ch_it, hattrie_iter_t *t_it)
+{
+	// Get next node, but not for the very first call.
+	if (ch_it->node) {
+		hattrie_iter_next(t_it);
+	}
+	if (hattrie_iter_finished(t_it)) {
+		ch_it->node = NULL;
+		return;
+	}
+
+	ch_it->node = (zone_node_t *)*hattrie_iter_val(t_it);
+	while (ch_it->node->rrset_count == 0 && !hattrie_iter_finished(t_it)) {
+		// Skip empty non-terminals.
+		hattrie_iter_next(t_it);
+		ch_it->node = (zone_node_t *)*hattrie_iter_val(t_it);
+	}
+
+	if (hattrie_iter_finished(t_it)) {
+		ch_it->node = NULL;
+		return;
+	}
+
+	ch_it->node_pos = 0;
+}
+
+static knot_rrset_t get_next_rr(changeset_iter_t *ch_it, hattrie_iter_t *t_it) // pun intented
+{
+	if (ch_it->node == NULL || ch_it->node_pos == ch_it->node->rrset_count) {
+		iter_next_node(ch_it, t_it);
+		if (ch_it->node == NULL) {
+			assert(hattrie_iter_finished(t_it));
+			knot_rrset_t rr;
+			knot_rrset_init_empty(&rr);
+			return rr;
+		}
 	}
 	
-	assert(!knot_rrset_empty(rr));
+	return node_rrset_at(ch_it->node, ch_it->node_pos++);
 }
 
 knot_rrset_t changeset_iter_next(changeset_iter_t *it)
 {
-	knot_rrset_t ret;
-	knot_rrset_init_empty(&ret);
-	if (it->normal_it) {
-		get_next_rr(&ret, it, &it->normal_it);
-	} else if (it->nsec3_it) {
-		get_next_rr(&ret, it, &it->nsec3_it);
+	ptrnode_t *n = NULL;
+	knot_rrset_t rr;
+	knot_rrset_init_empty(&rr);
+	WALK_LIST(n, it->iters) {
+		hattrie_iter_t *t_it = (hattrie_iter_t *)n->d;
+		if (hattrie_iter_finished(t_it)) {
+			continue;
+		}
+
+		rr = get_next_rr(it, t_it);
+		if (!knot_rrset_empty(&rr)) {
+			// Got valid RRSet.
+			return rr;
+		}
 	}
 
-	return ret;
+	return rr;
 }
 
 void changeset_iter_free(changeset_iter_t *it, mm_ctx_t *mm)
 {
 	if (it) {
-		hattrie_iter_free(it->normal_it);
-		hattrie_iter_free(it->nsec3_it);
+		cleanup_iter_list(&it->iters);
 		mm_free(mm, it);
 	}
 }
