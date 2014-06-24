@@ -25,18 +25,19 @@ check_PROGRAMS = \
 	dname				\
 	ztree				\
 	zonedb				\
+	changeset			\
 	dnssec_keys			\
 	dnssec_nsec3			\
 	dnssec_sign			\
-	dnssec_zone_nsec	\
+	dnssec_zone_nsec		\
 	rdata				\
 	rdataset			\
 	rrset				\
 	node				\
-	edns                            \
-	pkt					\
-	process_query		\
-	process_answer		\
+	edns				\
+	pkt				\
+	process_query			\
+	process_answer			\
 	requestor			\
 	query_module			\
 	worker_pool			\
