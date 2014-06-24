@@ -71,9 +71,11 @@ int notify_query(knot_pkt_t *pkt, struct query_data *qdata)
 		if (soa->type == KNOT_RRTYPE_SOA) {
 			serial = knot_soa_serial(&soa->rrs);
 			NOTIFY_QLOG(LOG_INFO, "received serial %u.", serial);
-		} else { /* Ignore */
-			NOTIFY_QLOG(LOG_INFO, "received, doesn't have SOA.");
+		} else { /* Complain, but accept N/A record. */
+			NOTIFY_QLOG(LOG_NOTICE, "received, bad record in answer section.");
 		}
+	} else {
+		NOTIFY_QLOG(LOG_INFO, "received, doesn't have SOA.");
 	}
 
 	/* Incoming NOTIFY expires REFRESH timer and renews EXPIRE timer. */
