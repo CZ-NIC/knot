@@ -136,7 +136,7 @@ int rrset_serialize(const knot_rrset_t *rrset, uint8_t *stream, size_t *size)
 }
 
 int rrset_deserialize(const uint8_t *stream, size_t *stream_size,
-                      knot_rrset_t **rrset)
+                      knot_rrset_t *rrset)
 {
 	if (sizeof(uint64_t) > *stream_size) {
 		return KNOT_ESPACE;
@@ -166,11 +166,7 @@ int rrset_deserialize(const uint8_t *stream, size_t *stream_size,
 	offset += sizeof(uint16_t);
 
 	/* Create new RRSet. */
-	*rrset = knot_rrset_new(owner, type, rclass, NULL);
-	knot_dname_free(&owner, NULL);
-	if (*rrset == NULL) {
-		return KNOT_ENOMEM;
-	}
+	knot_rrset_init(rrset, owner, type, rclass);
 
 	/* Read RRs. */
 	for (uint16_t i = 0; i < rdata_count; i++) {
@@ -181,9 +177,9 @@ int rrset_deserialize(const uint8_t *stream, size_t *stream_size,
 		uint32_t rdata_size = 0;
 		memcpy(&rdata_size, stream + offset, sizeof(uint32_t));
 		offset += sizeof(uint32_t);
-		int ret = deserialize_rr((*rrset), stream + offset, rdata_size);
+		int ret = deserialize_rr(rrset, stream + offset, rdata_size);
 		if (ret != KNOT_EOK) {
-			knot_rrset_free(rrset, NULL);
+			knot_rrset_clear(rrset, NULL);
 			return ret;
 		}
 		offset += rdata_size;

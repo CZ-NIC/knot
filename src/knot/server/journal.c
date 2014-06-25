@@ -940,8 +940,6 @@ bool journal_exists(const char *path)
 static int changesets_unpack(changeset_t *chs)
 {
 
-	knot_rrset_t *rrset = NULL;
-
 	/* Read changeset flags. */
 	if (chs->data == NULL) {
 		return KNOT_EMALF;
@@ -950,20 +948,24 @@ static int changesets_unpack(changeset_t *chs)
 
 	/* Read initial changeset RRSet - SOA. */
 	uint8_t *stream = chs->data + (chs->size - remaining);
+	knot_rrset_t rrset;
 	int ret = rrset_deserialize(stream, &remaining, &rrset);
 	if (ret != KNOT_EOK) {
 		return KNOT_EMALF;
 	}
 
-	assert(rrset->type == KNOT_RRTYPE_SOA);
-	chs->soa_from = rrset;
+	assert(rrset.type == KNOT_RRTYPE_SOA);
+	chs->soa_from = knot_rrset_copy(&rrset, NULL);
+	if (chs->soa_from == NULL) {
+		return KNOT_ENOMEM;
+	}
 
 	/* Read remaining RRSets */
 	bool in_remove_section = true;
 	while (remaining > 0) {
 
 		/* Parse next RRSet. */
-		rrset = 0;
+		knot_rrset_init_empty(&rrset);
 		stream = chs->data + (chs->size - remaining);
 		ret = rrset_deserialize(stream, &remaining, &rrset);
 		if (ret != KNOT_EOK) {
@@ -971,23 +973,25 @@ static int changesets_unpack(changeset_t *chs)
 		}
 
 		/* Check for next SOA. */
-		if (rrset->type == KNOT_RRTYPE_SOA) {
+		if (rrset.type == KNOT_RRTYPE_SOA) {
 			/* Move to ADD section if in REMOVE. */
 			if (in_remove_section) {
-				chs->soa_to = rrset;
+				chs->soa_to = knot_rrset_copy(&rrset, NULL);
+				if (chs->soa_to == NULL) {
+					return KNOT_ENOMEM;
+				}
 				in_remove_section = false;
 			} else {
 				/* Final SOA. */
-				knot_rrset_free(&rrset, NULL);
 				break;
 			}
 		} else {
 			/* Remove RRSets. */
 			if (in_remove_section) {
-				ret = changeset_rem_rrset(chs, rrset);
+				ret = changeset_rem_rrset(chs, &rrset);
 			} else {
 				/* Add RRSets. */
-				ret = changeset_add_rrset(chs, rrset);
+				ret = changeset_add_rrset(chs, &rrset);
 			}
 		}
 	}
