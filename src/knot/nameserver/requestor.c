@@ -185,7 +185,11 @@ int requestor_enqueue(struct requestor *requestor, struct request *request, void
 	/* Form a pending request. */
 	request->data.fd = fd;
 	request->state = NS_PROC_FULL; /* We have a query to be sent. */
-	memcpy(&request->process.mm, requestor->mm, sizeof(mm_ctx_t));
+	if (requestor->mm != NULL) {
+		memcpy(&request->process.mm, requestor->mm, sizeof(mm_ctx_t));
+	} else {
+		mm_ctx_init(&request->process.mm);
+	}
 
 	knot_process_begin(&request->process, param, requestor->module);
 
