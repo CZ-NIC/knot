@@ -10,19 +10,17 @@
 #include "libknot/tsig-op.h"
 #include "knot/zone/zone.h"
 #include "knot/zone/events.h"
+#include "knot/server/tcp-handler.h"
+#include "knot/server/udp-handler.h"
+#include "knot/nameserver/requestor.h"
+#include "knot/nameserver/capture.h"
+#include "libknot/dnssec/random.h"
 
 /* UPDATE-specific logging (internal, expects 'qdata' variable set). */
 #define UPDATE_LOG(severity, msg...) \
 	QUERY_LOG(severity, qdata, "UPDATE", msg)
 
-static int update_forward(knot_pkt_t *pkt, struct query_data *qdata)
-{
-	/*! \todo ref #244 This will be reimplemented later. */
-	qdata->rcode = KNOT_RCODE_NOTIMPL;
-	return NS_PROC_FAIL;
-}
-
-int update_answer(knot_pkt_t *pkt, struct query_data *qdata)
+int update_query_process(knot_pkt_t *pkt, struct query_data *qdata)
 {
 	/* RFC1996 require SOA question. */
 	NS_NEED_QTYPE(qdata, KNOT_RRTYPE_SOA, KNOT_RCODE_FORMERR);
@@ -30,14 +28,8 @@ int update_answer(knot_pkt_t *pkt, struct query_data *qdata)
 	/* Check valid zone. */
 	NS_NEED_ZONE(qdata, KNOT_RCODE_NOTAUTH);
 
-	/* Allow pass-through of an unknown TSIG in DDNS forwarding
-	   (must have zone). */
-	zone_t *zone = (zone_t *)qdata->zone;
-	if (zone_master(zone) != NULL) {
-		return update_forward(pkt, qdata);
-	}
-
 	/* Need valid transaction security. */
+	zone_t *zone = (zone_t *)qdata->zone;
 	NS_NEED_AUTH(&zone->conf->acl.update_in, qdata);
 	/* Check expiration. */
 	NS_NEED_ZONE_CONTENTS(qdata, KNOT_RCODE_SERVFAIL);
@@ -226,7 +218,7 @@ static int process_authenticated(uint16_t *rcode, struct query_data *qdata)
 }
 
 
-int update_process_query(knot_pkt_t *pkt, struct query_data *qdata)
+static int execute_query(knot_pkt_t *pkt, struct query_data *qdata)
 {
 	if (pkt == NULL || qdata == NULL) {
 		return KNOT_EINVAL;
@@ -268,4 +260,94 @@ int update_process_query(knot_pkt_t *pkt, struct query_data *qdata)
 	return KNOT_EOK;
 }
 
+static int forward_query(knot_pkt_t *pkt, struct query_data *qdata)
+{
+	/* Create requestor instance. */
+	struct requestor re;
+	requestor_init(&re, NS_PROC_CAPTURE, qdata->mm);
+
+	/* Fetch primary master. */
+	const conf_iface_t *master = zone_master(qdata->zone);
+
+	/* Copy request and assign new ID. */
+	knot_pkt_t *query = knot_pkt_new(NULL, pkt->max_size, qdata->mm);
+	if (knot_pkt_copy(query, qdata->query) != KNOT_EOK) {
+		return KNOT_ENOMEM;
+	}
+	knot_wire_set_id(query->wire, knot_random_uint16_t());
+	knot_tsig_append(query->wire, &query->size, query->max_size, query->tsig_rr);
+
+	/* Create a request. */
+	struct request *req = requestor_make(&re, master, query);
+	if (req == NULL) {
+		knot_pkt_free(&query);
+		return KNOT_ENOMEM;
+	}
+
+	/* Enqueue and execute request. */
+	struct process_capture_param param;
+	param.sink = pkt;
+	int ret = requestor_enqueue(&re, req, &param);
+	if (ret == KNOT_EOK) {
+		struct timeval tv = { conf()->max_conn_reply, 0 };
+		ret = requestor_exec(&re, &tv);
+	}
+
+	requestor_clear(&re);
+
+	/* Restore message ID and TSIG. */
+	knot_wire_set_id(pkt->wire, knot_wire_get_id(qdata->query->wire));
+	knot_tsig_append(pkt->wire, &pkt->size, pkt->max_size, pkt->tsig_rr);
+
+	/* Set RCODE if forwarding failed. */
+	if (ret != KNOT_EOK) {
+		knot_wire_set_rcode(pkt->wire, KNOT_RCODE_SERVFAIL);
+		UPDATE_LOG(LOG_INFO, "Failed to forward UPDATE to master.");
+	} else {
+		UPDATE_LOG(LOG_INFO, "Forwarded UPDATE to master.");
+	}
+
+	return ret;
+}
+
 #undef UPDATE_LOG
+
+int update_execute(zone_t *zone, struct request_data *update)
+{
+	knot_pkt_t *resp = knot_pkt_new(NULL, KNOT_WIRE_MAX_PKTSIZE, NULL);
+	if (resp == NULL) {
+		return KNOT_ENOMEM;
+	}
+
+	/* Initialize query response. */
+	assert(update->query);
+	knot_pkt_init_response(resp, update->query);
+
+	/* Create minimal query data context. */
+	struct process_query_param param = { 0 };
+	param.remote = &update->remote;
+	struct query_data qdata = { 0 };
+	qdata.param = &param;
+	qdata.query = update->query;
+	qdata.zone  = zone;
+
+	/* Process the update query. */
+	int ret = KNOT_EOK;
+	if (zone_master(zone) != NULL) {
+		ret = forward_query(resp, &qdata);
+	} else {
+		ret = execute_query(resp, &qdata);
+	}
+
+	/* Send response. */
+	if (net_is_connected(update->fd)) {
+		tcp_send_msg(update->fd, resp->wire, resp->size);
+	} else {
+		udp_send_msg(update->fd, resp->wire, resp->size,
+		             (struct sockaddr *)param.remote);
+	}
+
+	knot_pkt_free(&resp);
+
+	return ret;
+}

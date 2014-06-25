@@ -388,43 +388,17 @@ static int event_update(zone_t *zone)
 {
 	assert(zone);
 
-	knot_pkt_t *resp = knot_pkt_new(NULL, KNOT_WIRE_MAX_PKTSIZE, NULL);
-	if (resp == NULL) {
-		return KNOT_ENOMEM;
-	}
-
 	struct request_data *update = zone_update_dequeue(zone);
 	if (update == NULL) {
 		return KNOT_EOK;
 	}
 
-	/* Initialize query response. */
-	assert(update->query);
-	knot_pkt_init_response(resp, update->query);
-
-	/* Create minimal query data context. */
-	struct process_query_param param = { 0 };
-	param.remote = &update->remote;
-	struct query_data qdata = { 0 };
-	qdata.param = &param;
-	qdata.query = update->query;
-	qdata.zone  = zone;
-
-	/* Process the update query. */
-	int ret = update_process_query(resp, &qdata);
-	UNUSED(ret); /* Don't care about the Knot code, RCODE is set. */
-
-	/* Send response. */
-	if (net_is_connected(update->fd)) {
-		tcp_send_msg(update->fd, resp->wire, resp->size);
-	} else {
-		udp_send_msg(update->fd, resp->wire, resp->size,
-		             (struct sockaddr *)param.remote);
-	}
+	/* Forward if zone has master, or execute. */
+	int ret = update_execute(zone, update);
+	UNUSED(ret);
 
 	/* Cleanup. */
 	close(update->fd);
-	knot_pkt_free(&resp);
 	knot_pkt_free(&update->query);
 	free(update);
 
