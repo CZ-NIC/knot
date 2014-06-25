@@ -312,6 +312,7 @@ libknotd_la_SOURCES =				\
 libknot_la_LIBADD  = libknots.la zscanner/libzscanner.la
 libknotd_la_LIBADD = libknots.la libknot.la
 libknotus_la_LDFLAGS = $(libidn_LIBS)
+libknotus_la_CFLAGS = $(libidn_CFLAGS)
 
 # sbin programs
 knotd_LDADD = libknot.la libknotd.la
