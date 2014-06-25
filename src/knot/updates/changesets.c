@@ -149,7 +149,9 @@ int changeset_merge(changeset_t *ch1, changeset_t *ch2)
 	// Use soa_to and serial from the second changeset
 	// soa_to from the first changeset is redundant, delete it
 	knot_rrset_free(&ch1->soa_to, NULL);
+	knot_rrset_free(&ch2->soa_from, NULL);
 	ch1->soa_to = ch2->soa_to;
+	ch2->soa_to = NULL;
 
 	return KNOT_EOK;
 }

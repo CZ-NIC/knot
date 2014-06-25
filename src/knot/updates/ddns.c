@@ -284,7 +284,11 @@ static void remove_header_from_list(zone_contents_t *z, const knot_rrset_t *rr)
 		return;
 	}
 
-	node_remove_rdataset(n, rr->type);
+	knot_rdataset_t *rrs = node_rdataset(n, rr->type);
+	if (rrs) {
+		knot_rdataset_clear(rrs, NULL);
+		node_remove_rdataset(n, rr->type);
+	}
 }
 
 /*!< \brief Removes RR from list, owner check. */
@@ -710,7 +714,9 @@ static int process_rem_rrset(const knot_rrset_t *rrset,
 
 	// Remove all previously added RRs with this owner and type from chgset
 	remove_header_from_list(changeset->add, rrset);
+
 	if (node == NULL) {
+		// no such node in zone, ignore
 		return KNOT_EOK;
 	}
 
