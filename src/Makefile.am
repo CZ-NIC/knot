@@ -11,8 +11,7 @@ AM_CPPFLAGS = \
 	-include $(top_builddir)/src/config.h \
 	-DCONFIG_DIR='"${config_dir}"' \
 	-DSTORAGE_DIR='"${storage_dir}"' \
-	-DRUN_DIR='"${run_dir}"' \
-	$(libidn_CFLAGS)
+	-DRUN_DIR='"${run_dir}"'
 AM_CFLAGS = $(CODE_COVERAGE_CFLAGS)
 AM_LDFLAGS = $(CODE_COVERAGE_LDFLAGS)
 AM_YFLAGS = -d
