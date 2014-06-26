@@ -303,7 +303,7 @@ static int forward_query(knot_pkt_t *pkt, struct query_data *qdata)
 	/* Set RCODE if forwarding failed. */
 	if (ret != KNOT_EOK) {
 		knot_wire_set_rcode(pkt->wire, KNOT_RCODE_SERVFAIL);
-		UPDATE_LOG(LOG_INFO, "Failed to forward UPDATE to master.");
+		UPDATE_LOG(LOG_INFO, "Failed to forward UPDATE to master: %s", knot_strerror(ret));
 	} else {
 		UPDATE_LOG(LOG_INFO, "Forwarded UPDATE to master.");
 	}
