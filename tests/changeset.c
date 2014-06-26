@@ -145,7 +145,7 @@ int main(int argc, char *argv[])
 	list_t chgs;
 	init_list(&chgs);
 	add_head(&chgs, &ch2->n);
-	changesets_free(&chgs, NULL);
+	changesets_clear(&chgs, NULL);
 	ok(changeset_empty(ch2), "changeset: clear list");
 	free(ch2);
 

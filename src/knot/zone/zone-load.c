@@ -97,7 +97,7 @@ int zone_load_journal(zone_t *zone)
 	init_list(&chgs);
 	int ret = journal_load_changesets(zone, &chgs, serial, serial - 1);
 	if ((ret != KNOT_EOK && ret != KNOT_ERANGE) || EMPTY_LIST(chgs)) {
-		changesets_free(&chgs, NULL);
+		changesets_free(&chgs);
 		/* Absence of records is not an error. */
 		if (ret == KNOT_ENOENT) {
 			return KNOT_EOK;
@@ -113,7 +113,7 @@ int zone_load_journal(zone_t *zone)
 	              serial, zone_contents_serial(zone->contents),
 	              knot_strerror(ret));
 
-	changesets_free(&chgs, NULL);
+	changesets_free(&chgs);
 	return ret;
 }
 
@@ -134,7 +134,7 @@ int zone_load_post(zone_contents_t *contents, zone_t *zone, uint32_t *dnssec_ref
 		ret = knot_dnssec_zone_sign(contents, conf, &ch, KNOT_SOA_SERIAL_UPDATE,
 		                            dnssec_refresh);
 		if (ret != KNOT_EOK) {
-			changeset_clear(&ch, NULL);
+			changeset_clear(&ch);
 			return ret;
 		}
 
@@ -143,7 +143,7 @@ int zone_load_post(zone_contents_t *contents, zone_t *zone, uint32_t *dnssec_ref
 		init_list(&apply);
 		add_head(&apply, &ch.n);
 		ret = zone_change_commit(contents, &apply);
-		changeset_clear(&ch, NULL);
+		changeset_clear(&ch);
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
@@ -160,21 +160,21 @@ int zone_load_post(zone_contents_t *contents, zone_t *zone, uint32_t *dnssec_ref
 			                 "but serial didn't - won't "
 			                 "create journal entry.\n",
 			                 conf->name);
-			changeset_clear(&diff_change, NULL);
+			changeset_clear(&diff_change);
 			ret = KNOT_EOK;
 		} else if (ret == KNOT_ERANGE) {
 			log_zone_warning("Zone %s: Zone file changed, "
 			                 "but serial is lower than before - "
 			                 "IXFR history will be lost.\n",
 			                 conf->name);
-			changeset_clear(&diff_change, NULL);
+			changeset_clear(&diff_change);
 			ret = KNOT_EOK;
 		} else if (ret != KNOT_EOK) {
 			log_zone_error("Zone %s: Failed to calculate "
 			               "differences from the zone "
 			               "file update: %s\n",
 			               conf->name, knot_strerror(ret));
-			changeset_clear(&diff_change, NULL);
+			changeset_clear(&diff_change);
 			return ret;
 		}
 	}
@@ -186,7 +186,7 @@ int zone_load_post(zone_contents_t *contents, zone_t *zone, uint32_t *dnssec_ref
 		add_head(&apply, &diff_change.n);
 		ret = zone_change_store(zone, &apply);
 	}
-	changeset_clear(&diff_change, NULL);
+	changeset_clear(&diff_change);
 
 	return ret;
 }

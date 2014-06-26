@@ -538,7 +538,7 @@ static int event_dnssec(zone_t *zone)
 		list_t apply;
 		init_list(&apply);
 		add_head(&apply, &ch.n);
-		ret = zone_change_apply_and_store(&apply, zone, "DNSSEC", NULL);
+		ret = zone_change_apply_and_store(&apply, zone, "DNSSEC");
 		if (ret != KNOT_EOK) {
 			log_zone_error("%s Could not sign zone (%s).\n",
 				       msgpref, knot_strerror(ret));
@@ -555,7 +555,7 @@ static int event_dnssec(zone_t *zone)
 	}
 
 done:
-	changeset_clear(&ch, NULL);
+	changeset_clear(&ch);
 	free(msgpref);
 	return ret;
 }

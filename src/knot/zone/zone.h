@@ -98,8 +98,7 @@ int zone_change_store(zone_t *zone, list_t *chgs);
 /*! \note @mvavrusa Moved from zones.c, this needs a common API. */
 int zone_change_apply_and_store(list_t *chs,
                                 zone_t *zone,
-                                const char *msgpref,
-                                mm_ctx_t *rr_mm);
+                                const char *msgpref);
 /*!
  * \brief Atomically switch the content of the zone.
  */

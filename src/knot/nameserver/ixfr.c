@@ -152,7 +152,7 @@ static int ixfr_load_chsets(list_t *chgsets, const zone_t *zone,
 
 	ret = journal_load_changesets(zone, chgsets, serial_from, serial_to);
 	if (ret != KNOT_EOK) {
-		changesets_free(chgsets, NULL);
+		changesets_free(chgsets);
 	}
 
 	return ret;
@@ -190,7 +190,7 @@ static void ixfr_answer_cleanup(struct query_data *qdata)
 	ptrlist_free(&ixfr->proc.nodes, mm);
 	changeset_iter_free(ixfr->cur, NULL);
 	ixfr->cur = NULL;
-	changesets_free(&ixfr->changesets, NULL);
+	changesets_free(&ixfr->changesets);
 	mm->free(qdata->ext);
 
 	/* Allow zone changes (finished). */
@@ -223,17 +223,18 @@ static int ixfr_answer_init(struct query_data *qdata)
 	mm_ctx_t *mm = qdata->mm;
 	struct ixfr_proc *xfer = mm->alloc(mm->ctx, sizeof(struct ixfr_proc));
 	if (xfer == NULL) {
-		changesets_free(&chgsets, NULL);
+		changesets_free(&chgsets);
 		return KNOT_ENOMEM;
 	}
 	memset(xfer, 0, sizeof(struct ixfr_proc));
 	gettimeofday(&xfer->proc.tstamp, NULL);
 	xfer->state = IXFR_SOA_DEL;
 	init_list(&xfer->proc.nodes);
+	init_list(&xfer->changesets);
+	add_tail_list(&xfer->changesets, &chgsets);
 	xfer->qdata = qdata;
 
 	/* Put all changesets to processing queue. */
-	xfer->changesets = chgsets;
 	changeset_t *chs = NULL;
 	WALK_LIST(chs, xfer->changesets) {
 		ptrlist_add(&xfer->proc.nodes, chs, mm);
@@ -297,7 +298,7 @@ static void ixfrin_cleanup(struct answer_data *data)
 {
 	struct ixfr_proc *proc = data->ext;
 	if (proc) {
-		changesets_free(&proc->changesets, data->mm);
+		changesets_clear(&proc->changesets);
 		mm_free(data->mm, proc);
 		data->ext = NULL;
 	}
@@ -332,7 +333,7 @@ static int ixfrin_finalize(struct answer_data *adata)
 
 	assert(ixfr->state == IXFR_DONE);
 	int ret = zone_change_apply_and_store(&ixfr->changesets,
-	                                      ixfr->zone, "IXFR", adata->mm);
+	                                      ixfr->zone, "IXFR");
 	if (ret != KNOT_EOK) {
 		IXFRIN_LOG(LOG_ERR, "Failed to apply changes to zone - %s",
 		           knot_strerror(ret));
@@ -381,7 +382,7 @@ static int solve_soa_del(const knot_rrset_t *rr, struct ixfr_proc *proc)
 	// Store SOA into changeset.
 	change->soa_from = knot_rrset_copy(rr, proc->mm);
 	if (change->soa_from == NULL) {
-		changeset_clear(change, NULL);
+		changeset_clear(change);
 		return KNOT_ENOMEM;
 	}
 

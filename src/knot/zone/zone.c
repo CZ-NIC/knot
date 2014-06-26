@@ -143,8 +143,7 @@ int zone_change_store(zone_t *zone, list_t *chgs)
 /*! \note @mvavrusa Moved from zones.c, this needs a common API. */
 int zone_change_apply_and_store(list_t *chgs,
                                 zone_t *zone,
-                                const char *msgpref,
-                                mm_ctx_t *rr_mm)
+                                const char *msgpref)
 {
 	int ret = KNOT_EOK;
 
@@ -152,7 +151,6 @@ int zone_change_apply_and_store(list_t *chgs,
 	ret = apply_changesets(zone, chgs, &new_contents);
 	if (ret != KNOT_EOK) {
 		log_zone_error("%s Failed to apply changesets.\n", msgpref);
-		changesets_free(chgs, rr_mm);
 		return ret;
 	}
 
@@ -161,7 +159,6 @@ int zone_change_apply_and_store(list_t *chgs,
 	if (ret != KNOT_EOK) {
 		log_zone_error("%s Failed to store changesets.\n", msgpref);
 		update_rollback(chgs, &new_contents);
-		changesets_free(chgs, rr_mm);
 		return ret;
 	}
 
@@ -170,9 +167,7 @@ int zone_change_apply_and_store(list_t *chgs,
 	synchronize_rcu();
 	update_free_old_zone(&old_contents);
 
-	/* Free changesets, but not the data. */
 	update_cleanup(chgs);
-	changesets_free(chgs, rr_mm);
 
 	return KNOT_EOK;
 }

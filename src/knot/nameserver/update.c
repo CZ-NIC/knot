@@ -106,7 +106,7 @@ static int sign_update(zone_t *zone, const zone_contents_t *old_contents,
 		                                 &refresh_at);
 	}
 	if (ret != KNOT_EOK) {
-		changeset_clear(&sec_ch, NULL);
+		changeset_clear(&sec_ch);
 		return ret;
 	}
 
@@ -116,13 +116,13 @@ static int sign_update(zone_t *zone, const zone_contents_t *old_contents,
 	add_head(&changes, &sec_ch.n);
 	ret = apply_changesets_directly(new_contents, &changes);
 	if (ret != KNOT_EOK) {
-		changeset_clear(&sec_ch, NULL);
+		changeset_clear(&sec_ch);
 		return ret;
 	}
 
 	// Merge changesets
 	ret = changeset_merge(ddns_ch, &sec_ch);
-	changeset_clear(&sec_ch, NULL);
+	changeset_clear(&sec_ch);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
@@ -156,7 +156,7 @@ static int process_authenticated(uint16_t *rcode, struct query_data *qdata)
 	ret = ddns_process_update(zone, query, &ddns_ch, rcode);
 	if (ret != KNOT_EOK) {
 		assert(*rcode != KNOT_RCODE_NOERROR);
-		changeset_clear(&ddns_ch, NULL);
+		changeset_clear(&ddns_ch);
 		return ret;
 	}
 	assert(*rcode == KNOT_RCODE_NOERROR);
@@ -174,11 +174,11 @@ static int process_authenticated(uint16_t *rcode, struct query_data *qdata)
 			} else {
 				*rcode = KNOT_RCODE_SERVFAIL;
 			}
-			changeset_clear(&ddns_ch, NULL);
+			changeset_clear(&ddns_ch);
 			return ret;
 		}
 	} else {
-		changeset_clear(&ddns_ch, NULL);
+		changeset_clear(&ddns_ch);
 		*rcode = KNOT_RCODE_NOERROR;
 		return KNOT_EOK;
 	}
@@ -188,7 +188,7 @@ static int process_authenticated(uint16_t *rcode, struct query_data *qdata)
 		ret = sign_update(zone, zone->contents, new_contents, &ddns_ch);
 		if (ret != KNOT_EOK) {
 			update_rollback(&apply, &new_contents);
-			changeset_clear(&ddns_ch, NULL);
+			changeset_clear(&ddns_ch);
 			*rcode = KNOT_RCODE_SERVFAIL;
 			return ret;
 		}
@@ -198,7 +198,7 @@ static int process_authenticated(uint16_t *rcode, struct query_data *qdata)
 	ret = zone_change_store(zone, &apply);
 	if (ret != KNOT_EOK) {
 		update_rollback(&apply, &new_contents);
-		changeset_clear(&ddns_ch, NULL);
+		changeset_clear(&ddns_ch);
 		*rcode = KNOT_RCODE_SERVFAIL;
 		return ret;
 	}
@@ -209,7 +209,7 @@ static int process_authenticated(uint16_t *rcode, struct query_data *qdata)
 	update_free_old_zone(&old_contents);
 
 	update_cleanup(&apply);
-	changeset_clear(&ddns_ch, NULL);
+	changeset_clear(&ddns_ch);
 
 	/* Sync zonefile immediately if configured. */
 	if (zone->conf->dbsync_timeout == 0) {

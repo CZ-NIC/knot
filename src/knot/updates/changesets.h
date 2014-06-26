@@ -50,15 +50,8 @@ typedef struct changeset {
 typedef struct {
 	list_t iters;
 	const zone_node_t *node;
-	int32_t node_pos;
+	uint16_t node_pos;
 } changeset_iter_t;
-
-/*----------------------------------------------------------------------------*/
-
-typedef enum {
-	CHANGESET_ADD, /*!< Put RR into 'add' section. */
-	CHANGESET_REMOVE /*!< Put RR into 'remove' section. */
-} changeset_part_t;
 
 /*----------------------------------------------------------------------------*/
 
@@ -107,8 +100,10 @@ size_t changeset_size(const changeset_t *ch);
  * \param changesets  Double pointer to changesets structure to be freed.
  * \param mm          Memory context used to allocate RRSets.
  */
-void changesets_free(list_t *chgs, mm_ctx_t *rr_mm);
-void changeset_clear(changeset_t *ch, mm_ctx_t *rr_mm);
+void changesets_clear(list_t *chgs);
+void changesets_free(list_t *chgs);
+void changeset_clear(changeset_t *ch);
+void changeset_free(changeset_t *ch);
 
 int changeset_merge(changeset_t *ch1, changeset_t *ch2);
 changeset_iter_t *changeset_iter_add(const changeset_t *ch, bool sorted);

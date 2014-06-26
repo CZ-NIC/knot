@@ -156,7 +156,7 @@ int changeset_merge(changeset_t *ch1, changeset_t *ch2)
 	return KNOT_EOK;
 }
 
-void changeset_clear(changeset_t *ch, mm_ctx_t *rr_mm)
+void changeset_clear(changeset_t *ch)
 {
 	if (ch == NULL) {
 		return;
@@ -166,21 +166,40 @@ void changeset_clear(changeset_t *ch, mm_ctx_t *rr_mm)
 	zone_contents_deep_free(&ch->add);
 	zone_contents_deep_free(&ch->remove);
 
-	knot_rrset_free(&ch->soa_from, rr_mm);
-	knot_rrset_free(&ch->soa_to, rr_mm);
+	knot_rrset_free(&ch->soa_from, NULL);
+	knot_rrset_free(&ch->soa_to, NULL);
 
 	// Delete binary data
 	free(ch->data);
 }
 
-void changesets_free(list_t *chgs, mm_ctx_t *rr_mm)
+void changeset_free(changeset_t *ch)
+{
+	changeset_clear(ch);
+	free(ch);
+}
+
+void changesets_clear(list_t *chgs)
 {
 	if (chgs) {
 		changeset_t *chg, *nxt;
 		WALK_LIST_DELSAFE(chg, nxt, *chgs) {
-			changeset_clear(chg, rr_mm);
+			changeset_clear(chg);
 			rem_node(&chg->n);
 		}
+		init_list(chgs);
+	}
+}
+
+void changesets_free(list_t *chgs)
+{
+	if (chgs) {
+		changeset_t *chg, *nxt;
+		WALK_LIST_DELSAFE(chg, nxt, *chgs) {
+			rem_node(&chg->n);
+			changeset_free(chg);
+		}
+		init_list(chgs);
 	}
 }
 

@@ -956,6 +956,7 @@ static int changesets_unpack(changeset_t *chs)
 
 	assert(rrset.type == KNOT_RRTYPE_SOA);
 	chs->soa_from = knot_rrset_copy(&rrset, NULL);
+	knot_rrset_clear(&rrset, NULL);
 	if (chs->soa_from == NULL) {
 		return KNOT_ENOMEM;
 	}
@@ -965,8 +966,8 @@ static int changesets_unpack(changeset_t *chs)
 	while (remaining > 0) {
 
 		/* Parse next RRSet. */
-		knot_rrset_init_empty(&rrset);
 		stream = chs->data + (chs->size - remaining);
+		knot_rrset_init_empty(&rrset);
 		ret = rrset_deserialize(stream, &remaining, &rrset);
 		if (ret != KNOT_EOK) {
 			return KNOT_EMALF;
@@ -978,6 +979,7 @@ static int changesets_unpack(changeset_t *chs)
 			if (in_remove_section) {
 				chs->soa_to = knot_rrset_copy(&rrset, NULL);
 				if (chs->soa_to == NULL) {
+					knot_rrset_clear(&rrset, NULL);
 					return KNOT_ENOMEM;
 				}
 				in_remove_section = false;
@@ -994,8 +996,10 @@ static int changesets_unpack(changeset_t *chs)
 				ret = changeset_add_rrset(chs, &rrset);
 			}
 		}
+		knot_rrset_clear(&rrset, NULL);
 	}
 
+	knot_rrset_clear(&rrset, NULL);
 	return ret;
 }
 
@@ -1153,9 +1157,6 @@ static int load_changeset(journal_t *journal, journal_node_t *n, const zone_t *z
 		return KNOT_ENOMEM;
 	}
 
-	/* Insert into changeset list. */
-	add_tail(chgs, &ch->n);
-
 	/* Initialize changeset. */
 	ch->data = malloc(n->len);
 	if (!ch->data) {
@@ -1170,6 +1171,10 @@ static int load_changeset(journal_t *journal, journal_node_t *n, const zone_t *z
 
 	/* Update changeset binary size. */
 	ch->size = n->len;
+
+	/* Insert into changeset list. */
+	add_tail(chgs, &ch->n);
+
 	return KNOT_EOK;
 }
 
