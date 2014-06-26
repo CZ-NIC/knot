@@ -198,30 +198,28 @@ static int remove_rr(zone_node_t *node, const knot_rrset_t *rr,
 /*! \brief Removes all RRs from changeset from zone contents. */
 static int apply_remove(zone_contents_t *contents, changeset_t *chset)
 {
-	changeset_iter_t *itt = changeset_iter_rem(chset, false);
-	if (itt == NULL) {
-		return KNOT_ENOMEM;
-	}
+	changeset_iter_t itt;
+	changeset_iter_rem(&itt, chset, false);
 	
-	knot_rrset_t rr = changeset_iter_next(itt);
+	knot_rrset_t rr = changeset_iter_next(&itt);
 	while (!knot_rrset_empty(&rr)) {
 		// Find node for this owner
 		zone_node_t *node = zone_contents_find_node_for_rr(contents, &rr);
 		if (!can_remove(node, &rr)) {
 			// Nothing to remove from, skip.
-			rr = changeset_iter_next(itt);
+			rr = changeset_iter_next(&itt);
 			continue;
 		}
 
 		int ret = remove_rr(node, &rr, chset);
 		if (ret != KNOT_EOK) {
-			changeset_iter_free(itt, NULL);
+			changeset_iter_clear(&itt);
 			return ret;
 		}
 		
-		rr = changeset_iter_next(itt);
+		rr = changeset_iter_next(&itt);
 	}
-	changeset_iter_free(itt, NULL);
+	changeset_iter_clear(&itt);
 
 	return KNOT_EOK;
 }
@@ -275,28 +273,26 @@ static int add_rr(zone_node_t *node, const knot_rrset_t *rr,
 static int apply_add(zone_contents_t *contents, changeset_t *chset,
                      bool master)
 {
-	changeset_iter_t *itt = changeset_iter_add(chset, false);
-	if (itt == NULL) {
-		return KNOT_ENOMEM;
-	}
+	changeset_iter_t itt;
+	changeset_iter_add(&itt, chset, false);
 	
-	knot_rrset_t rr = changeset_iter_next(itt);
+	knot_rrset_t rr = changeset_iter_next(&itt);
 	while(!knot_rrset_empty(&rr)) {
 		// Get or create node with this owner
 		zone_node_t *node = zone_contents_get_node_for_rr(contents, &rr);
 		if (node == NULL) {
-			changeset_iter_free(itt, NULL);
+			changeset_iter_clear(&itt);
 			return KNOT_ENOMEM;
 		}
 
 		int ret = add_rr(node, &rr, chset, master);
 		if (ret != KNOT_EOK) {
-			changeset_iter_free(itt, NULL);
+			changeset_iter_clear(&itt);
 			return ret;
 		}
-		rr = changeset_iter_next(itt);
+		rr = changeset_iter_next(&itt);
 	}
-	changeset_iter_free(itt, NULL);
+	changeset_iter_clear(&itt);
 	
 	return KNOT_EOK;
 }

@@ -154,22 +154,20 @@ static int mark_removed_nsec3(changeset_t *out_ch,
 	if (zone_tree_is_empty(zone->nsec3_nodes)) {
 		return KNOT_EOK;
 	}
+
+	changeset_iter_t itt;
+	changeset_iter_rem(&itt, out_ch, false);
 	
-	changeset_iter_t *itt = changeset_iter_rem(out_ch, false);
-	if (itt == NULL) {
-		return KNOT_ENOMEM;
-	}
-	
-	knot_rrset_t rr = changeset_iter_next(itt);
+	knot_rrset_t rr = changeset_iter_next(&itt);
 	while (!knot_rrset_empty(&rr)) {
 		int ret = mark_nsec3(&rr, zone->nsec3_nodes);
 		if (ret != KNOT_EOK) {
-			changeset_iter_free(itt, NULL);
+			changeset_iter_clear(&itt);
 			return ret;
 		}
-		rr = changeset_iter_next(itt);
+		rr = changeset_iter_next(&itt);
 	}
-	changeset_iter_free(itt, NULL);
+	changeset_iter_clear(&itt);
 	
 	return KNOT_EOK;
 }

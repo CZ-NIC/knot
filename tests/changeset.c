@@ -88,7 +88,7 @@ int main(int argc, char *argv[])
 	ok(trav_ok, "changeset: add traversal");
 
 	iter = changeset_iter_next(it);
-	changeset_iter_free(it, NULL);
+	changeset_iter_clear(it, NULL);
 	ok(knot_rrset_empty(&iter), "changeset: traversal: skip non-terminals");
 
 	// Test remove traversal.
@@ -97,7 +97,7 @@ int main(int argc, char *argv[])
 	iter = changeset_iter_next(it);
 	ok(knot_rrset_equal(&iter, apex_txt_rr, KNOT_RRSET_COMPARE_WHOLE),
 	   "changeset: rem traversal");
-	changeset_iter_free(it, NULL);
+	changeset_iter_clear(it, NULL);
 
 	// Test all traversal - just count.
 	it = changeset_iter_all(ch, false);
@@ -108,7 +108,7 @@ int main(int argc, char *argv[])
 		++size;
 		iter = changeset_iter_next(it);
 	}
-	changeset_iter_free(it, NULL);
+	changeset_iter_clear(it, NULL);
 	ok(size == 4, "changeset: iter all");
 
 	// Create new changeset.

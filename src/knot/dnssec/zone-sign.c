@@ -1353,24 +1353,21 @@ int knot_zone_sign_changeset(const zone_contents_t *zone,
 
 	if (args.signed_tree == NULL) {
 		return KNOT_ENOMEM;
-	}
 
-	// Sign all RRs that are in changeset, additions and removals
-	changeset_iter_t *itt = changeset_iter_all(in_ch, false);
-	if (itt == NULL) {
-		return KNOT_ENOMEM;
 	}
+	changeset_iter_t itt;
+	changeset_iter_all(&itt, in_ch, false);
 	
-	knot_rrset_t rr = changeset_iter_next(itt);
+	knot_rrset_t rr = changeset_iter_next(&itt);
 	while (!knot_rrset_empty(&rr)) {
 		int ret = sign_changeset_wrap(&rr, &args);
 		if (ret != KNOT_EOK) {
-			changeset_iter_free(itt, NULL);
+			changeset_iter_clear(&itt);
 			return ret;
 		}
-		rr = changeset_iter_next(itt);
+		rr = changeset_iter_next(&itt);
 	}
-	changeset_iter_free(itt, NULL);
+	changeset_iter_clear(&itt);
 
 	knot_zone_clear_sorted_changes(args.signed_tree);
 	hattrie_free(args.signed_tree);
@@ -1389,25 +1386,23 @@ int knot_zone_sign_nsecs_in_changeset(const knot_zone_keys_t *zone_keys,
 	assert(policy);
 	assert(changeset);
 
-	changeset_iter_t *itt = changeset_iter_add(changeset, false);
-	if (itt == NULL) {
-		return KNOT_ENOMEM;
-	}
+	changeset_iter_t itt;
+	changeset_iter_add(&itt, changeset, false);
 	
-	knot_rrset_t rr = changeset_iter_next(itt);
+	knot_rrset_t rr = changeset_iter_next(&itt);
 	while (!knot_rrset_empty(&rr)) {
 		if (rr.type == KNOT_RRTYPE_NSEC ||
 		    rr.type == KNOT_RRTYPE_NSEC3) {
 			int ret =  add_missing_rrsigs(&rr, NULL, zone_keys,
 			                              policy, changeset);
 			if (ret != KNOT_EOK) {
-				changeset_iter_free(itt, NULL);
+				changeset_iter_clear(&itt);
 				return ret;
 			}
 		}
-		rr = changeset_iter_next(itt);
+		rr = changeset_iter_next(&itt);
 	}
-	changeset_iter_free(itt, NULL);
+	changeset_iter_clear(&itt);
 	
 	return KNOT_EOK;
 }

@@ -94,22 +94,16 @@ bool changeset_empty(const changeset_t *ch);
  */
 size_t changeset_size(const changeset_t *ch);
 
-/*!
- * \brief Frees the 'changesets' structure, including all its internal data.
- *
- * \param changesets  Double pointer to changesets structure to be freed.
- * \param mm          Memory context used to allocate RRSets.
- */
 void changesets_clear(list_t *chgs);
 void changesets_free(list_t *chgs);
 void changeset_clear(changeset_t *ch);
 void changeset_free(changeset_t *ch);
 
 int changeset_merge(changeset_t *ch1, changeset_t *ch2);
-changeset_iter_t *changeset_iter_add(const changeset_t *ch, bool sorted);
-changeset_iter_t *changeset_iter_rem(const changeset_t *ch, bool sorted);
-changeset_iter_t *changeset_iter_all(const changeset_t *ch, bool sorted);
+int changeset_iter_add(changeset_iter_t *itt, const changeset_t *ch, bool sorted);
+int changeset_iter_rem(changeset_iter_t *itt, const changeset_t *ch, bool sorted);
+int changeset_iter_all(changeset_iter_t *itt, const changeset_t *ch, bool sorted);
 knot_rrset_t changeset_iter_next(changeset_iter_t *it);
-void changeset_iter_free(changeset_iter_t *it, mm_ctx_t *mm);
+void changeset_iter_clear(changeset_iter_t *it);
 
 /*! @} */

@@ -24,7 +24,7 @@ enum ixfr_states {
 /*! \brief Extended structure for IXFR-in/IXFR-out processing. */
 struct ixfr_proc {
 	struct xfr_proc proc;          /* Generic transfer processing context. */
-	changeset_iter_t *cur;         /* Current changeset iteration state.*/
+	changeset_iter_t cur;          /* Current changeset iteration state.*/
 	int state;                     /* IXFR-in state. */
 	knot_rrset_t *final_soa;       /* First SOA received via IXFR. */
 	list_t changesets;             /* Processed changesets. */
@@ -86,18 +86,14 @@ static int ixfr_process_changeset(knot_pkt_t *pkt, const void *item,
 
 	/* Put REMOVE RRSets. */
 	if (ixfr->state == IXFR_DEL) {
-		if (ixfr->cur == NULL) {
-			ixfr->cur = changeset_iter_rem(chgset, false);
-			if (ixfr->cur == NULL) {
-				return KNOT_ENOMEM;
-			}
+		if (EMPTY_LIST(ixfr->cur.iters)) {
+			changeset_iter_rem(&ixfr->cur, chgset, false);
 		}
-		ret = ixfr_put_chg_part(pkt, ixfr, ixfr->cur);
+		ret = ixfr_put_chg_part(pkt, ixfr, &ixfr->cur);
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
-		changeset_iter_free(ixfr->cur, NULL);
-		ixfr->cur = NULL;
+		changeset_iter_clear(&ixfr->cur);
 		ixfr->state = IXFR_SOA_ADD;
 	}
 
@@ -110,18 +106,14 @@ static int ixfr_process_changeset(knot_pkt_t *pkt, const void *item,
 
 	/* Put REMOVE RRSets. */
 	if (ixfr->state == IXFR_ADD) {
-		if (ixfr->cur == NULL) {
-			ixfr->cur = changeset_iter_add(chgset, false);
-			if (ixfr->cur == NULL) {
-				return KNOT_ENOMEM;
-			}
+		if (EMPTY_LIST(ixfr->cur.iters)) {
+			changeset_iter_add(&ixfr->cur, chgset, false);
 		}
-		ret = ixfr_put_chg_part(pkt, ixfr, ixfr->cur);
+		ret = ixfr_put_chg_part(pkt, ixfr, &ixfr->cur);
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
-		changeset_iter_free(ixfr->cur, NULL);
-		ixfr->cur = NULL;
+		changeset_iter_clear(&ixfr->cur);
 		ixfr->state = IXFR_SOA_DEL;
 	}
 
@@ -188,8 +180,7 @@ static void ixfr_answer_cleanup(struct query_data *qdata)
 	mm_ctx_t *mm = qdata->mm;
 
 	ptrlist_free(&ixfr->proc.nodes, mm);
-	changeset_iter_free(ixfr->cur, NULL);
-	ixfr->cur = NULL;
+	changeset_iter_clear(&ixfr->cur);
 	changesets_free(&ixfr->changesets);
 	mm->free(qdata->ext);
 
@@ -397,7 +388,7 @@ static int solve_soa_del(const knot_rrset_t *rr, struct ixfr_proc *proc)
 static int solve_soa_add(const knot_rrset_t *rr, changeset_t *change, mm_ctx_t *mm)
 {
 	assert(rr->type == KNOT_RRTYPE_SOA);
-	change->soa_to= knot_rrset_copy(rr, mm);
+	change->soa_to = knot_rrset_copy(rr, mm);
 	if (change->soa_to == NULL) {
 		return KNOT_ENOMEM;
 	}

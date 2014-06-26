@@ -1026,22 +1026,19 @@ static int serialize_and_store_chgset(const changeset_t *chs,
 		return ret;
 	}
 
-	/* Serialize RRSets from the 'remove' section. */
-	changeset_iter_t *itt = changeset_iter_rem(chs, false);
-	if (itt == NULL) {
-		return ret;
-	}
+	changeset_iter_t itt;
+	changeset_iter_rem(&itt, chs, false);
 
-	knot_rrset_t rrset = changeset_iter_next(itt);
+	knot_rrset_t rrset = changeset_iter_next(&itt);
 	while (!knot_rrset_empty(&rrset)) {
 		ret = rrset_write_to_mem(&rrset, &entry, &max_size);
 		if (ret != KNOT_EOK) {
-			changeset_iter_free(itt, NULL);
+			changeset_iter_clear(&itt);
 			return ret;
 		}
-		rrset = changeset_iter_next(itt);
+		rrset = changeset_iter_next(&itt);
 	}
-	changeset_iter_free(itt, NULL);
+	changeset_iter_clear(&itt);
 
 	/* Serialize SOA 'to'. */
 	ret = rrset_write_to_mem(chs->soa_to, &entry, &max_size);
@@ -1050,21 +1047,18 @@ static int serialize_and_store_chgset(const changeset_t *chs,
 	}
 
 	/* Serialize RRSets from the 'add' section. */
-	itt = changeset_iter_add(chs, false);
-	if (itt == NULL) {
-		return ret;
-	}
+	changeset_iter_add(&itt, chs, false);
 
-	rrset = changeset_iter_next(itt);
+	rrset = changeset_iter_next(&itt);
 	while (!knot_rrset_empty(&rrset)) {
 		ret = rrset_write_to_mem(&rrset, &entry, &max_size);
 		if (ret != KNOT_EOK) {
-			changeset_iter_free(itt, NULL);
+			changeset_iter_clear(&itt);
 			return ret;
 		}
-		rrset = changeset_iter_next(itt);
+		rrset = changeset_iter_next(&itt);
 	}
-	changeset_iter_free(itt, NULL);
+	changeset_iter_clear(&itt);
 
 	return KNOT_EOK;
 }
