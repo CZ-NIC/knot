@@ -369,7 +369,7 @@ static void conf_zone_start(void *scanner, char *name) {
 
 	// Convert zone name to lower-case.
 	for (size_t i = 0; this_zone->name[i]; i++) {
-		this_zone->name[i] = tolower(this_zone->name[i]);
+		this_zone->name[i] = tolower((unsigned char)this_zone->name[i]);
 	}
 
 	/* Check domain name. */

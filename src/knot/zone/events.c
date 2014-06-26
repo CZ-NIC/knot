@@ -658,7 +658,7 @@ static void replan_dnssec(zone_t *zone)
 
 static bool valid_event(zone_event_type_t type)
 {
-	return (type >= ZONE_EVENT_RELOAD && type < ZONE_EVENT_COUNT);
+	return (type > ZONE_EVENT_INVALID && type < ZONE_EVENT_COUNT);
 }
 
 /*! \brief Return remaining time to planned event (seconds). */

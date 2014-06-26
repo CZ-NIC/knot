@@ -11,8 +11,7 @@ AM_CPPFLAGS = \
 	-include $(top_builddir)/src/config.h \
 	-DCONFIG_DIR='"${config_dir}"' \
 	-DSTORAGE_DIR='"${storage_dir}"' \
-	-DRUN_DIR='"${run_dir}"' \
-	$(libidn_CFLAGS)
+	-DRUN_DIR='"${run_dir}"'
 AM_CFLAGS = $(CODE_COVERAGE_CFLAGS)
 AM_LDFLAGS = $(CODE_COVERAGE_LDFLAGS)
 AM_YFLAGS = -d
@@ -315,6 +314,7 @@ libknotd_la_SOURCES =				\
 libknot_la_LIBADD  = libknots.la zscanner/libzscanner.la
 libknotd_la_LIBADD = libknots.la libknot.la
 libknotus_la_LDFLAGS = $(libidn_LIBS)
+libknotus_la_CFLAGS = $(libidn_CFLAGS)
 
 # sbin programs
 knotd_LDADD = libknot.la libknotd.la
