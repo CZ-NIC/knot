@@ -75,40 +75,41 @@ int main(int argc, char *argv[])
 	ok(ret == KNOT_EOK, "changeset: remove multiple");
 
 	// Test add traversal.
-	changeset_iter_t *it = changeset_iter_add(ch, true);
-	ok(it != NULL, "changeset: create iter add");
+	changeset_iter_t it;
+	ret = changeset_iter_add(&it, ch, true);
+	ok(ret == KNOT_EOK, "changeset: create iter add");
 	// Order: non.terminals.test. TXT, SPF, here.come.more.non.terminals.test. TXT.
-	knot_rrset_t iter = changeset_iter_next(it);
+	knot_rrset_t iter = changeset_iter_next(&it);
 	bool trav_ok = knot_rrset_equal(&iter, apex_txt_rr, KNOT_RRSET_COMPARE_WHOLE);
-	iter = changeset_iter_next(it);
+	iter = changeset_iter_next(&it);
 	trav_ok = trav_ok && knot_rrset_equal(&iter, apex_spf_rr, KNOT_RRSET_COMPARE_WHOLE);
-	iter = changeset_iter_next(it);
+	iter = changeset_iter_next(&it);
 	trav_ok = trav_ok && knot_rrset_equal(&iter, other_rr, KNOT_RRSET_COMPARE_WHOLE);
 
 	ok(trav_ok, "changeset: add traversal");
 
-	iter = changeset_iter_next(it);
-	changeset_iter_clear(it, NULL);
+	iter = changeset_iter_next(&it);
+	changeset_iter_clear(&it);
 	ok(knot_rrset_empty(&iter), "changeset: traversal: skip non-terminals");
 
 	// Test remove traversal.
-	it = changeset_iter_rem(ch, false);
-	ok(it != NULL, "changeset: create iter rem");
-	iter = changeset_iter_next(it);
+	ret = changeset_iter_rem(&it, ch, false);
+	ok(ret == KNOT_EOK, "changeset: create iter rem");
+	iter = changeset_iter_next(&it);
 	ok(knot_rrset_equal(&iter, apex_txt_rr, KNOT_RRSET_COMPARE_WHOLE),
 	   "changeset: rem traversal");
-	changeset_iter_clear(it, NULL);
+	changeset_iter_clear(&it);
 
 	// Test all traversal - just count.
-	it = changeset_iter_all(ch, false);
-	ok(it != NULL, "changest: create iter all");
+	ret = changeset_iter_all(&it, ch, false);
+	ok(ret == KNOT_EOK, "changest: create iter all");
 	size_t size = 0;
-	iter = changeset_iter_next(it);
+	iter = changeset_iter_next(&it);
 	while (!knot_rrset_empty(&iter)) {
 		++size;
-		iter = changeset_iter_next(it);
+		iter = changeset_iter_next(&it);
 	}
-	changeset_iter_clear(it, NULL);
+	changeset_iter_clear(&it);
 	ok(size == 4, "changeset: iter all");
 
 	// Create new changeset.
@@ -138,14 +139,14 @@ int main(int argc, char *argv[])
 	ok(ret == KNOT_EOK && changeset_size(ch) == 6, "changeset: merge");
 
 	// Test cleanup.
-	changeset_clear(ch, NULL);
+	changeset_clear(ch);
 	ok(changeset_empty(ch), "changeset: clear");
 	free(ch);
 
 	list_t chgs;
 	init_list(&chgs);
 	add_head(&chgs, &ch2->n);
-	changesets_clear(&chgs, NULL);
+	changesets_clear(&chgs);
 	ok(changeset_empty(ch2), "changeset: clear list");
 	free(ch2);
 
