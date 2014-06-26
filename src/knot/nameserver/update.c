@@ -271,8 +271,9 @@ static int forward_query(knot_pkt_t *pkt, struct query_data *qdata)
 
 	/* Copy request and assign new ID. */
 	knot_pkt_t *query = knot_pkt_new(NULL, pkt->max_size, qdata->mm);
-	if (knot_pkt_copy(query, qdata->query) != KNOT_EOK) {
-		return KNOT_ENOMEM;
+	int ret = knot_pkt_copy(query, qdata->query);
+	if (ret != KNOT_EOK) {
+		return ret;
 	}
 	knot_wire_set_id(query->wire, knot_random_uint16_t());
 	knot_tsig_append(query->wire, &query->size, query->max_size, query->tsig_rr);
@@ -287,7 +288,7 @@ static int forward_query(knot_pkt_t *pkt, struct query_data *qdata)
 	/* Enqueue and execute request. */
 	struct process_capture_param param;
 	param.sink = pkt;
-	int ret = requestor_enqueue(&re, req, &param);
+	ret = requestor_enqueue(&re, req, &param);
 	if (ret == KNOT_EOK) {
 		struct timeval tv = { conf()->max_conn_reply, 0 };
 		ret = requestor_exec(&re, &tv);

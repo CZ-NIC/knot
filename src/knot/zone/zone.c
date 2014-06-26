@@ -291,10 +291,11 @@ int zone_update_enqueue(zone_t *zone, knot_pkt_t *pkt, struct process_query_para
 	memcpy(&req->remote, param->remote, sizeof(struct sockaddr_storage));
 
 	req->query = knot_pkt_new(NULL, pkt->max_size, NULL);
-	if (knot_pkt_copy(req->query, pkt) != KNOT_EOK) {
+	int ret = knot_pkt_copy(req->query, pkt);
+	if (ret != KNOT_EOK) {
 		knot_pkt_free(&req->query);
 		free(req);
-		return KNOT_ENOMEM;
+		return ret;
 	}
 
 	pthread_mutex_lock(&zone->ddns_lock);
