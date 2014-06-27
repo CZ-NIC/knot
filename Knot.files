@@ -335,3 +335,5 @@ tests/worker_queue.c
 tests/zone_events.c
 tests/zonedb.c
 tests/ztree.c
+src/knot/nameserver/capture.c
+src/knot/nameserver/capture.h

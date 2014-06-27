@@ -230,6 +230,8 @@ libknotd_la_SOURCES =				\
 	knot/nameserver/axfr.h			\
 	knot/nameserver/chaos.c			\
 	knot/nameserver/chaos.h			\
+	knot/nameserver/capture.c		\
+	knot/nameserver/capture.h		\
 	knot/nameserver/internet.c		\
 	knot/nameserver/internet.h		\
 	knot/nameserver/ixfr.c			\

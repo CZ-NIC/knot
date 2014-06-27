@@ -1,14 +1,14 @@
 /*!
- * \file update.h
+ * \file capture.h
  *
  * \author Marek Vavrusa <marek.vavrusa@nic.cz>
  *
- * \brief DDNS UPDATE processing.
+ * \brief Simple packet capture processor.
  *
- * \addtogroup query_processing
+ * \addtogroup answer_processing
  * @{
  */
-/*  Copyright (C) 2013 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2014 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -26,27 +26,19 @@
 
 #pragma once
 
+#include "libknot/processing/process.h"
 #include "libknot/packet/pkt.h"
-#include "knot/zone/zonedb.h"
 
-struct query_data;
-
-/*!
- * \brief UPDATE query processing module.
- *
- * \return NS_PROC_* processing states
- */
-int update_query_process(knot_pkt_t *pkt, struct query_data *qdata);
+/* Processing module implementation. */
+const knot_process_module_t *proc_capture_get_module(void);
+#define NS_PROC_CAPTURE proc_capture_get_module()
+#define NS_PROC_CAPTURE_ID 3
 
 /*!
- * \brief Processes serialized packet with DDNS. Function expects that the
- *        query is already authenticated and TSIG signature is verified.
- *
- * \param zone   Updated zone.
- * \param update UPDATE request.
- *
- * \return KNOT_E*
+ * \brief Processing module parameters.
  */
-int update_execute(zone_t *zone, struct request_data *update);
+struct process_capture_param {
+	knot_pkt_t *sink;        /*!< Container for captured response. */
+};
 
 /*! @} */
