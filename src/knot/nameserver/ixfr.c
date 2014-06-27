@@ -290,6 +290,7 @@ static void ixfrin_cleanup(struct answer_data *data)
 	struct ixfr_proc *proc = data->ext;
 	if (proc) {
 		changesets_clear(&proc->changesets);
+		knot_rrset_free(&proc->final_soa, proc->mm);
 		mm_free(data->mm, proc);
 		data->ext = NULL;
 	}

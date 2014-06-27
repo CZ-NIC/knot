@@ -326,6 +326,8 @@ void changeset_iter_clear(changeset_iter_t *it)
 {
 	if (it) {
 		cleanup_iter_list(&it->iters);
+		it->node = NULL;
+		it->node_pos = 0;
 	}
 }
 
