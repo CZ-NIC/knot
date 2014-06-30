@@ -151,6 +151,7 @@ class Server(object):
         self.tsig_test = None
 
         self.zones = dict()
+        self.zonefile_sync = None
 
         # Working directory.
         self.dir = None
