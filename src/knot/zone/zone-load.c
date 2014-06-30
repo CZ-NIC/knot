@@ -115,7 +115,7 @@ int zone_load_journal(zone_contents_t *contents, conf_zone_t *zone_config)
 	              zone_config->name,
 	              serial, zone_contents_serial(contents),
 	              knot_strerror(ret));
-
+	update_cleanup(chsets);
 	changesets_free(&chsets, NULL);
 	return ret;
 }
@@ -148,6 +148,7 @@ int zone_load_post(zone_contents_t *contents, zone_t *zone, uint32_t *dnssec_ref
 
 		/* Apply DNSSEC changes. */
 		ret = zone_change_commit(contents, dnssec_change);
+		update_cleanup(dnssec_change);
 		changesets_free(&dnssec_change, NULL);
 		if (ret != KNOT_EOK) {
 			return ret;
