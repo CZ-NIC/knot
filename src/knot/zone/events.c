@@ -327,7 +327,7 @@ static int event_refresh(zone_t *zone)
 	const knot_rdataset_t *soa = node_rdataset(contents->apex, KNOT_RRTYPE_SOA);
 	if (ret != KNOT_EOK) {
 		/* Log connection errors. */
-		ZONE_QUERY_LOG(LOG_ERR, zone, master, "SOA query", "%s", knot_strerror(ret));
+		ZONE_QUERY_LOG(LOG_WARNING, zone, master, "SOA query", "%s", knot_strerror(ret));
 		/* Rotate masters if current failed. */
 		zone_master_rotate(zone);
 		/* Schedule next retry. */
