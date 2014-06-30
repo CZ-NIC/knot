@@ -64,15 +64,15 @@ static zone_status_t zone_file_status(const zone_t *old_zone,
 			return zone_load_can_bootstrap(conf) ? ZONE_STATUS_BOOSTRAP \
 			                                     : ZONE_STATUS_NOT_FOUND;
 		}
-	}
-	
-	// Zone file exists.
-	if (old_zone == NULL) {
-		return ZONE_STATUS_FOUND_NEW;
-	} else if (old_zone->zonefile_mtime == mtime) {
-		return ZONE_STATUS_FOUND_CURRENT;
 	} else {
-		return ZONE_STATUS_FOUND_UPDATED;
+		// Zone file exists.
+		if (old_zone == NULL) {
+			return ZONE_STATUS_FOUND_NEW;
+		} else if (old_zone->zonefile_mtime == mtime) {
+			return ZONE_STATUS_FOUND_CURRENT;
+		} else {
+			return ZONE_STATUS_FOUND_UPDATED;
+		}
 	}
 }
 

@@ -611,7 +611,7 @@ static void replan_flush(zone_t *zone, const zone_t *old_zone)
 	}
 
 	const time_t flush_time = zone_events_get_time(old_zone, ZONE_EVENT_FLUSH);
-	if (flush_time <= ZONE_EVENT_NOW) {
+	if (flush_time == ZONE_EVENT_NOW) {
 		// Not scheduled previously.
 		zone_events_schedule(zone, ZONE_EVENT_FLUSH, zone->conf->dbsync_timeout);
 		return;
