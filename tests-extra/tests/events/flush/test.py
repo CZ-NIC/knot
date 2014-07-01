@@ -21,10 +21,10 @@ t.start()
 slave.zone_wait(zone)
 
 #check that the zone file has not been flushed
-zone_path = slave.dir + "/slave/example.zone" 
+zone_path = slave.dir + "/slave/" + zone[0].file_name
 if os.path.exists(zone_path):
     detail_log("Zonefile created too soon: " + str(os.stat(zone_path).st_ctime))
-    set_err("FLUSHED")
+    set_err("SOON FLUSH")
 
 t.sleep(FLUSH_SLEEP)
 #check that the zone file has been flushed
@@ -43,7 +43,7 @@ last_mtime = os.stat(zone_path).st_mtime
 #check that the zone file has been flushed after transfer
 if prev_mtime == last_mtime:
     detail_log("Did not flush after transfer")
-    set_err("POST-TRANSFER FLUSH")
+    set_err("NO POST-TRANSFER FLUSH")
 
 #set the zonefile-sync parameter to 20s and update master - should not flush
 slave.zonefile_sync = "20s"
@@ -64,7 +64,7 @@ slave.reload()
 
 if os.stat(zone_path).st_mtime == last_mtime:
     detail_log("Did not flush after config change")
-    set_err("CHANGE FLUSH")
+    set_err("NO POST-CHANGE FLUSH")
 
 t.stop()
 
