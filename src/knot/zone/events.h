@@ -145,7 +145,8 @@ void zone_events_start(struct zone_t *zone);
  * \param type  Event type.
  *
  * \retval time of the event when event found
- * \retval negative value if event was not found
+ * \retval 0 when the event is not planned
+ * \retval negative value if event is invalid
  */
 time_t zone_events_get_time(const struct zone_t *zone, zone_event_type_t type);
 

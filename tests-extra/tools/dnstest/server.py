@@ -151,6 +151,7 @@ class Server(object):
         self.tsig_test = None
 
         self.zones = dict()
+        self.zonefile_sync = None
 
         # Working directory.
         self.dir = None
@@ -895,7 +896,10 @@ class Knot(Server):
 
         s.begin("zones")
         s.item_str("storage", self.dir)
-        s.item("zonefile-sync", "1d")
+        if self.zonefile_sync:
+            s.item("zonefile-sync", self.zonefile_sync)
+        else:
+            s.item("zonefile-sync", "1d")
         s.item("notify-timeout", "5")
         s.item("notify-retries", "5")
         s.item("semantic-checks", "on")

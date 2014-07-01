@@ -367,6 +367,9 @@ static int event_xfer(zone_t *zone)
 		/* Sync zonefile immediately if configured. */
 		if (zone->conf->dbsync_timeout == 0) {
 			zone_events_schedule(zone, ZONE_EVENT_FLUSH, ZONE_EVENT_NOW);
+		} else if (zone_events_get_time(zone, ZONE_EVENT_FLUSH) <= ZONE_EVENT_NOW) {
+			/* Plan sync if not previously planned. */
+			zone_events_schedule(zone, ZONE_EVENT_FLUSH, zone->conf->dbsync_timeout);
 		}
 		zone->bootstrap_retry = ZONE_EVENT_NOW;
 		zone->flags &= ~ZONE_FORCE_AXFR;
@@ -608,9 +611,9 @@ static void replan_flush(zone_t *zone, const zone_t *old_zone)
 	}
 
 	const time_t flush_time = zone_events_get_time(old_zone, ZONE_EVENT_FLUSH);
-	if (flush_time < ZONE_EVENT_NOW) {
+	if (flush_time <= ZONE_EVENT_NOW) {
 		// Not scheduled previously.
-		zone_events_schedule_at(zone, ZONE_EVENT_FLUSH, zone->conf->dbsync_timeout);
+		zone_events_schedule(zone, ZONE_EVENT_FLUSH, zone->conf->dbsync_timeout);
 		return;
 	}
 
