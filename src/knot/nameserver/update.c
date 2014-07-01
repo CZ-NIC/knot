@@ -205,11 +205,11 @@ static int process_authenticated(uint16_t *rcode, struct query_data *qdata)
 	// Switch zone contents.
 	zone_contents_t *old_contents = zone_switch_contents(zone, new_contents);
 	synchronize_rcu();
-	
+
 	// Clear DNSSEC changes
 	update_cleanup(sec_chs);
 	free(sec_chs);
-	
+
 	// Clear obsolete zone contents
 	update_free_old_zone(&old_contents);
 
@@ -245,7 +245,7 @@ static int execute_query(knot_pkt_t *pkt, struct query_data *qdata)
 	int ret = process_authenticated(&rcode, qdata);
 	if (ret != KNOT_EOK) {
 		assert(rcode != KNOT_RCODE_NOERROR);
-		UPDATE_LOG(LOG_ERR, "%s", knot_strerror(ret));
+		UPDATE_LOG(LOG_WARNING, "%s", knot_strerror(ret));
 		knot_wire_set_rcode(pkt->wire, rcode);
 		return ret;
 	}
@@ -262,7 +262,7 @@ static int execute_query(knot_pkt_t *pkt, struct query_data *qdata)
 	UPDATE_LOG(LOG_INFO, "Serial %u -> %u", old_serial, new_serial);
 	UPDATE_LOG(LOG_INFO, "Finished in %.02fs.",
 	           time_diff(&t_start, &t_end) / 1000.0);
-	
+
 	zone_events_schedule(zone, ZONE_EVENT_NOTIFY, ZONE_EVENT_NOW);
 
 	return KNOT_EOK;
@@ -311,7 +311,8 @@ static int forward_query(knot_pkt_t *pkt, struct query_data *qdata)
 	/* Set RCODE if forwarding failed. */
 	if (ret != KNOT_EOK) {
 		knot_wire_set_rcode(pkt->wire, KNOT_RCODE_SERVFAIL);
-		UPDATE_LOG(LOG_INFO, "Failed to forward UPDATE to master: %s", knot_strerror(ret));
+		UPDATE_LOG(LOG_INFO, "Failed to forward UPDATE to master: %s",
+		           knot_strerror(ret));
 	} else {
 		UPDATE_LOG(LOG_INFO, "Forwarded UPDATE to master.");
 	}
