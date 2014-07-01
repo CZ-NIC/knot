@@ -176,10 +176,14 @@ class Server(object):
 
         # Check for successful bind.
         if str(self.proc.pid) not in pids:
+            # LSOF DEBUG
+            check_log("LSOF '%s':'%s' no PID" % (self.name, iface))
             return False
 
         # More binded processes is not acceptable too.
         if len(pids) > 1:
+            # LSOF DEBUG
+            check_log("LSOF '%s':'%s' more PIDs" % (self.name, iface))
             return False
 
         return True
