@@ -58,7 +58,7 @@ last_rr = flood(master, zone)
 master.reload()
 
 #wait for update processing
-t.sleep(3)
+t.sleep(5)
 
 #dig for last change
 resp = master.dig(last_rr[0], "TXT")
