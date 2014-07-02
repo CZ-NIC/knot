@@ -247,11 +247,12 @@ static const zone_t *answer_zone_find(const knot_pkt_t *query, knot_zonedb_t *zo
 		 *        from the parent zone (if it exists).
 		 */
 	}
+
 	if (zone == NULL) {
-		if (knot_pkt_type(query) != KNOT_QUERY_UPDATE) {
+		if (knot_pkt_type(query) == KNOT_QUERY_NORMAL) {
 			zone = knot_zonedb_find_suffix(zonedb, qname);
 		} else {
-			// Direct matches only for DDNS.
+			// Direct match required.
 			zone = knot_zonedb_find(zonedb, qname);
 		}
 	}
