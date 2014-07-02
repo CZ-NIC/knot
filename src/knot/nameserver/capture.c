@@ -45,12 +45,12 @@ static int capture(knot_pkt_t *pkt, knot_process_t *ctx)
 
 /*! \brief Module implementation. */
 static const knot_process_module_t PROCESS_CAPTURE_MODULE = {
-        &begin,
-        &reset,
-        &finish,
-        &capture,
-        &noop, /* No output. */
-        &noop  /* No error processing. */
+	&begin,
+	&reset,
+	&finish,
+	&capture,
+	&noop, /* No output. */
+	&noop  /* No error processing. */
 };
 
 const knot_process_module_t *proc_capture_get_module(void)

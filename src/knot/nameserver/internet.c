@@ -121,7 +121,7 @@ static bool dname_cname_cannot_synth(const knot_rrset_t *rrset, const knot_dname
 /*! \brief DNSSEC both requested & available. */
 static bool have_dnssec(struct query_data *qdata)
 {
-	return pkt_has_dnssec(qdata->query) &&
+	return knot_pkt_has_dnssec(qdata->query) &&
 	       qdata->rcode_ext != KNOT_EDNS_RCODE_BADVERS &&
 	       zone_contents_is_signed(qdata->zone->contents);
 }
@@ -192,7 +192,7 @@ static int put_opt_rr(knot_pkt_t *pkt, struct query_data *qdata)
 	}
 
 	/* Set DO bit if set (DNSSEC requested). */
-	if (pkt_has_dnssec(query)) {
+	if (knot_pkt_has_dnssec(query)) {
 		dbg_ns("%s: setting DO=1 in OPT RR\n", __func__);
 		knot_edns_set_do(&opt_rr);
 	}

@@ -52,7 +52,7 @@ int notify_query(knot_pkt_t *pkt, struct query_data *qdata)
 		return NS_PROC_FAIL;
 	}
 
-	/* RFC1996 require SOA question. */
+	/* RFC1996 requires SOA question. */
 	zone_t *zone = (zone_t *)qdata->zone;
 	NS_NEED_QTYPE(qdata, KNOT_RRTYPE_SOA, KNOT_RCODE_FORMERR);
 
@@ -64,12 +64,11 @@ int notify_query(knot_pkt_t *pkt, struct query_data *qdata)
 	knot_pkt_reserve(pkt, tsig_wire_maxsize(qdata->sign.tsig_key));
 
 	/* SOA RR in answer may be included, recover serial. */
-	unsigned serial = 0;
 	const knot_pktsection_t *answer = knot_pkt_section(qdata->query, KNOT_ANSWER);
 	if (answer->count > 0) {
 		const knot_rrset_t *soa = &answer->rr[0];
 		if (soa->type == KNOT_RRTYPE_SOA) {
-			serial = knot_soa_serial(&soa->rrs);
+			uint32_t serial = knot_soa_serial(&soa->rrs);
 			NOTIFY_QLOG(LOG_INFO, "received serial %u.", serial);
 		} else { /* Complain, but accept N/A record. */
 			NOTIFY_QLOG(LOG_NOTICE, "received, bad record in answer section.");

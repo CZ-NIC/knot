@@ -310,4 +310,21 @@ static inline bool knot_pkt_has_tsig(const knot_pkt_t *pkt)
 	return pkt && pkt->tsig_rr;
 }
 
+/*!
+ * \brief Checks if DO bit is set in the packet's OPT RR.
+ */
+static inline bool knot_pkt_has_dnssec(const knot_pkt_t *pkt)
+{
+	return knot_pkt_has_edns(pkt) && knot_edns_do(pkt->opt_rr);
+}
+
+/*!
+ * \brief Checks if there is an NSID OPTION in the packet's OPT RR.
+ */
+static inline bool knot_pkt_has_nsid(const knot_pkt_t *pkt)
+{
+	return knot_pkt_has_edns(pkt)
+	       && knot_edns_has_option(pkt->opt_rr, KNOT_EDNS_OPTION_NSID);
+}
+
 /*! @} */

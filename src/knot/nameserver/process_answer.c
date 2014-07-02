@@ -151,12 +151,12 @@ static int process_answer(knot_pkt_t *pkt, knot_process_t *ctx)
 
 /*! \brief Module implementation. */
 static const knot_process_module_t PROCESS_ANSWER_MODULE = {
-        &process_answer_begin,
-        &process_answer_reset,
-        &process_answer_finish,
-        &process_answer,
-        &noop, /* No output. */
-        &noop  /* No error processing. */
+	&process_answer_begin,
+	&process_answer_reset,
+	&process_answer_finish,
+	&process_answer,
+	&noop, /* No output. */
+	&noop  /* No error processing. */
 };
 
 const knot_process_module_t *process_answer_get_module(void)

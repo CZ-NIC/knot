@@ -29,7 +29,7 @@
 #include "knot/nameserver/process_query.h"
 #include "knot/nameserver/tsig_ctx.h"
 
-/* Processing module implementation. */
+/* Answer processing module implementation. */
 const knot_process_module_t *process_answer_get_module(void);
 #define NS_PROC_ANSWER process_answer_get_module()
 #define NS_PROC_ANSWER_ID 2
