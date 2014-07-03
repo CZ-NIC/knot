@@ -12,6 +12,7 @@ import dns.query
 import dns.update
 from subprocess import Popen, PIPE, check_call, CalledProcessError
 from dnstest.utils import *
+import dnstest.inquirer
 import dnstest.params as params
 import dnstest.keys
 import dnstest.response
@@ -643,8 +644,8 @@ class Server(object):
 
 class Bind(Server):
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         if not params.bind_bin:
             raise Skip("No Bind")
         self.daemon_bin = params.bind_bin
@@ -790,12 +791,24 @@ class Bind(Server):
 
 class Knot(Server):
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         if not params.knot_bin:
             raise Skip("No Knot")
         self.daemon_bin = params.knot_bin
         self.control_bin = params.knot_ctl
+        self.inquirer = None
+
+    def start(self, *args, **kwargs):
+        super().start(*args, **kwargs)
+        if params.test.stress:
+            self.inquirer = dnstest.inquirer.Inquirer(self)
+
+    def stop(self, *args, **kwargs):
+        super().stop(*args, **kwargs)
+        if self.inquirer:
+            self.inquirer.stop()
+            self.inquirer = None
 
     @property
     def keydir(self):
@@ -963,8 +976,8 @@ class Knot(Server):
 
 class Nsd(Server):
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         if not params.nsd_bin:
             raise Skip("No NSD")
         self.daemon_bin = params.nsd_bin
@@ -977,8 +990,8 @@ class Nsd(Server):
 class Dummy(Server):
     ''' Dummy name server. '''
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         self.daemon_bin = None
         self.control_bin = None
 
