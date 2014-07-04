@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import glob
 import inspect
 import psutil
 import re
@@ -366,7 +367,17 @@ class Server(object):
 
     def kill(self):
         if self.proc:
+            # Store PID before kill.
+            pid = self.proc.pid
+
             self.proc.kill()
+
+            # Remove uncleaned vgdb pipes.
+            for f in glob.glob("/tmp/vgdb-pipe*-%s-*" % pid):
+                try:
+                    os.remove(f)
+                except:
+                    pass
 
     def gen_confile(self):
         f = open(self.confile, mode="w")
