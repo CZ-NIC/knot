@@ -189,8 +189,6 @@ class Test(object):
 
             if not server.listening():
                 self.stop(kill=True)
-                # LSOF DEBUG
-                check_log("Server '%s' not listening. Reconfiguring..." % server.name)
                 self.start()
 
         self.start_tries = 0

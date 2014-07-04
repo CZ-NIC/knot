@@ -171,26 +171,21 @@ class Server(object):
         else:
             iface = "%i%s@[%s]:%i" % (self.ip, proto, self.addr, port)
 
-        proc = Popen(["lsof", "-t", "-i", iface],
-                     stdout=PIPE, stderr=PIPE, universal_newlines=True)
-        (out, err) = proc.communicate()
+        for i in range(5):
+            proc = Popen(["lsof", "-t", "-i", iface],
+                         stdout=PIPE, stderr=PIPE, universal_newlines=True)
+            (out, err) = proc.communicate()
 
-        # Create list of pids excluding last empty line.
-        pids = list(filter(None, out.split("\n")))
+            # Create list of pids excluding last empty line.
+            pids = list(filter(None, out.split("\n")))
 
-        # Check for successful bind.
-        if str(self.proc.pid) not in pids:
-            # LSOF DEBUG
-            check_log("LSOF '%s':'%s' no PID" % (self.name, iface))
-            return False
+            # Check for successful bind.
+            if len(pids) == 1 and str(self.proc.pid) in pids:
+                return True
 
-        # More binded processes is not acceptable too.
-        if len(pids) > 1:
-            # LSOF DEBUG
-            check_log("LSOF '%s':'%s' more PIDs" % (self.name, iface))
-            return False
+            time.sleep(1)
 
-        return True
+        return False
 
     def set_master(self, zone, slave=None, ddns=False, ixfr=False):
         '''Set the server as a master for the zone'''
