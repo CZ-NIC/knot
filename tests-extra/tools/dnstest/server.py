@@ -364,6 +364,10 @@ class Server(object):
         if check:
             self._valgrind_check()
 
+    def kill(self):
+        if self.proc:
+            self.proc.kill()
+
     def gen_confile(self):
         f = open(self.confile, mode="w")
         f.write(self.get_config())
@@ -806,6 +810,12 @@ class Knot(Server):
 
     def stop(self, *args, **kwargs):
         super().stop(*args, **kwargs)
+        if self.inquirer:
+            self.inquirer.stop()
+            self.inquirer = None
+
+    def kill(self):
+        super().kill(*args, **kwargs)
         if self.inquirer:
             self.inquirer.stop()
             self.inquirer = None

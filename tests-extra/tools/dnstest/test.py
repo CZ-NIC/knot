@@ -188,18 +188,21 @@ class Test(object):
                 raise Exception("Server '%s' not running" % server.name)
 
             if not server.listening():
-                self.stop(check=False)
+                self.stop(kill=True)
                 # LSOF DEBUG
                 check_log("Server '%s' not listening. Reconfiguring..." % server.name)
                 self.start()
 
         self.start_tries = 0
 
-    def stop(self, check=True):
+    def stop(self, check=True, kill=False):
         '''Stop all servers'''
 
         for server in self.servers:
-            server.stop(check=check)
+            if kill:
+                server.kill()
+            else:
+                server.stop(check=check)
 
     def end(self):
         '''Finish testing'''
