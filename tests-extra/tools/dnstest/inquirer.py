@@ -8,7 +8,11 @@ import dnstest.server
 
 class Inquirer:
 
-    def __init__(self, *args):
+    def __init__(self):
+        self._stop = None
+        self.t = None
+
+    def start(self, *args):
         self._stop = threading.Event()
         self.t = threading.Thread(target=self._query, args=args)
         self.t.start()
@@ -34,4 +38,5 @@ class Inquirer:
                 pass
 
     def stop(self):
-        self._stop.set()
+        if self._stop:
+            self._stop.set()

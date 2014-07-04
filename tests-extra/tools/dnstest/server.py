@@ -139,10 +139,6 @@ class Server(object):
         self.ident = None
         self.version = None
 
-        self.ratelimit = None
-        self.disable_any = None
-        self.max_conn_idle = None
-
         self.ip = None
         self.addr = None
         self.port = None
@@ -153,7 +149,13 @@ class Server(object):
         self.tsig_test = None
 
         self.zones = dict()
+
+        self.ratelimit = None
+        self.disable_any = None
+        self.max_conn_idle = None
         self.zonefile_sync = None
+
+        self.inquirer = None
 
         # Working directory.
         self.dir = None
@@ -241,6 +243,10 @@ class Server(object):
                 time.sleep(Server.START_WAIT)
         except OSError:
             raise Exception("Can't start server='%s'" % self.name)
+
+        # Start inquirer if enabled.
+        if params.test.stress and self.inquirer:
+            self.inquirer.start(self)
 
     def reload(self):
         try:
@@ -365,6 +371,9 @@ class Server(object):
         if check:
             self._valgrind_check()
 
+        if self.inquirer:
+            self.inquirer.stop()
+
     def kill(self):
         if self.proc:
             # Store PID before kill.
@@ -378,6 +387,9 @@ class Server(object):
                     os.remove(f)
                 except:
                     pass
+
+        if self.inquirer:
+            self.inquirer.stop()
 
     def gen_confile(self):
         f = open(self.confile, mode="w")
@@ -812,24 +824,7 @@ class Knot(Server):
             raise Skip("No Knot")
         self.daemon_bin = params.knot_bin
         self.control_bin = params.knot_ctl
-        self.inquirer = None
-
-    def start(self, *args, **kwargs):
-        super().start(*args, **kwargs)
-        if params.test.stress:
-            self.inquirer = dnstest.inquirer.Inquirer(self)
-
-    def stop(self, *args, **kwargs):
-        super().stop(*args, **kwargs)
-        if self.inquirer:
-            self.inquirer.stop()
-            self.inquirer = None
-
-    def kill(self):
-        super().kill()
-        if self.inquirer:
-            self.inquirer.stop()
-            self.inquirer = None
+        self.inquirer = dnstest.inquirer.Inquirer()
 
     @property
     def keydir(self):
