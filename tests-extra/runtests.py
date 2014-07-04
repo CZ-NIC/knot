@@ -133,7 +133,7 @@ def main(args):
                 continue
 
             case_str_err = (" * case \'%s\':" % case).ljust(31)
-            case_str_fail = ("%s/%s" % (test, case)).ljust(25)
+            case_str_fail = ("%s/%s" % (test, case)).ljust(28)
             case_cnt += 1
 
             case_dir = test_dir + "/" + case
