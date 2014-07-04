@@ -360,7 +360,7 @@ class Server(object):
                 self.backtrace()
                 check_log("WARNING: KILLING %s" % self.name)
                 detail_log(SEP)
-                self.proc.kill()
+                self.kill()
         if check:
             self._valgrind_check()
 
@@ -815,7 +815,7 @@ class Knot(Server):
             self.inquirer = None
 
     def kill(self):
-        super().kill(*args, **kwargs)
+        super().kill()
         if self.inquirer:
             self.inquirer.stop()
             self.inquirer = None
