@@ -46,19 +46,38 @@
 #define NOTIFY_QLOG(severity, msg...) \
 	QUERY_LOG(severity, qdata, "NOTIFY", msg)
 
-int notify_query(knot_pkt_t *pkt, struct query_data *qdata)
+int notify_check_query(struct query_data *qdata)
+{
+	/* RFC1996 requires SOA question. */
+	NS_NEED_QTYPE(qdata, KNOT_RRTYPE_SOA, KNOT_RCODE_FORMERR);
+
+	/* Check valid zone, transaction security. */
+	zone_t *zone = (zone_t *)qdata->zone;
+	NS_NEED_ZONE(qdata, KNOT_RCODE_NOTAUTH);
+	NS_NEED_AUTH(&zone->conf->acl.notify_in, qdata);
+
+	return NS_PROC_DONE;
+}
+
+int notify_process_query(knot_pkt_t *pkt, struct query_data *qdata)
 {
 	if (pkt == NULL || qdata == NULL) {
 		return NS_PROC_FAIL;
 	}
 
-	/* RFC1996 requires SOA question. */
-	zone_t *zone = (zone_t *)qdata->zone;
-	NS_NEED_QTYPE(qdata, KNOT_RRTYPE_SOA, KNOT_RCODE_FORMERR);
-
-	/* Check valid zone, transaction security. */
-	NS_NEED_ZONE(qdata, KNOT_RCODE_NOTAUTH);
-	NS_NEED_AUTH(&zone->conf->acl.notify_in, qdata);
+	/* Validate notification query. */
+	int state = notify_check_query(qdata);
+	if (state == NS_PROC_FAIL) {
+		switch (qdata->rcode) {
+		case KNOT_RCODE_NOTAUTH: /* Not authoritative or ACL check failed. */
+			NOTIFY_QLOG(LOG_NOTICE, "unauthorized request.");
+			break;
+		case KNOT_RCODE_FORMERR: /* Silently ignore bad queries. */
+		default:
+			break;
+		}
+		return state;
+	}
 
 	/* Reserve space for TSIG. */
 	knot_pkt_reserve(pkt, tsig_wire_maxsize(qdata->sign.tsig_key));
@@ -78,6 +97,7 @@ int notify_query(knot_pkt_t *pkt, struct query_data *qdata)
 	}
 
 	/* Incoming NOTIFY expires REFRESH timer and renews EXPIRE timer. */
+	zone_t *zone = (zone_t *)qdata->zone;
 	zone_events_schedule(zone, ZONE_EVENT_REFRESH, ZONE_EVENT_NOW);
 
 	return NS_PROC_DONE;
