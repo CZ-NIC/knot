@@ -373,7 +373,7 @@ static int solve_soa_del(const knot_rrset_t *rr, struct ixfr_proc *proc)
 	}
 
 	// Store SOA into changeset.
-	change->soa_from = knot_rrset_copy(rr, proc->mm);
+	change->soa_from = knot_rrset_copy(rr, NULL);
 	if (change->soa_from == NULL) {
 		changeset_clear(change);
 		return KNOT_ENOMEM;
@@ -390,7 +390,7 @@ static int solve_soa_del(const knot_rrset_t *rr, struct ixfr_proc *proc)
 static int solve_soa_add(const knot_rrset_t *rr, changeset_t *change, mm_ctx_t *mm)
 {
 	assert(rr->type == KNOT_RRTYPE_SOA);
-	change->soa_to = knot_rrset_copy(rr, mm);
+	change->soa_to = knot_rrset_copy(rr, NULL);
 	if (change->soa_to == NULL) {
 		return KNOT_ENOMEM;
 	}
