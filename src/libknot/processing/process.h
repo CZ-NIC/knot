@@ -72,7 +72,7 @@ typedef struct knot_process_module {
 /*!
  * \brief Universal noop process function.
  */
-static int knot_process_noop(knot_pkt_t *pkt, knot_process_t *ctx)
+inline static int knot_process_noop(knot_pkt_t *pkt, knot_process_t *ctx)
 {
 	return NS_PROC_NOOP;
 }
