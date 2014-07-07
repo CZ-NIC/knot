@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 
+import time
 import random
-import threading
+import multiprocessing
 import dns.message
 import dns.query
 import dnstest.server
@@ -9,34 +10,42 @@ import dnstest.server
 class Inquirer:
 
     def __init__(self):
-        self._stop = None
-        self.t = None
+        self.proc = None
 
     def start(self, *args):
-        self._stop = threading.Event()
-        self.t = threading.Thread(target=self._query, args=args)
-        self.t.start()
+        self.proc = multiprocessing.Process(target=self._query, args=args)
+        self.proc.start()
 
-    def _query(self, server, timeout=0.05):
-        _zones = random.sample(list(server.zones), min(len(server.zones), 2))
-        _queries = list()
+    # queries=list(list(name, type),...)
+    def _query(self, server, queries=None, sleep=0.05):
         _udp = random.choice([True, False])
+        _queries = list()
 
-        for z in _zones:
-            _queries.append(dns.message.make_query(z, "SOA", "IN"))
+        if queries:
+            for q in queries:
+                query = dns.message.make_query(q[0], q[1], "IN")
+                query.want_dnssec()
+                _queries.append(query)
+        else:
+            for z in random.sample(list(server.zones), min(len(server.zones), 2)):
+                query = dns.message.make_query(z, "SOA", "IN")
+                query.want_dnssec()
+                _queries.append(query)
 
-        while not self._stop.is_set():
+        while True:
             try:
                 for q in _queries:
                     if _udp:
                         dns.query.udp(q, server.addr, port=server.port,
-                                      timeout=timeout)
+                                      timeout=0.02)
                     else:
                         dns.query.tcp(q, server.addr, port=server.port,
-                                      timeout=timeout)
+                                      timeout=0.05)
             except:
                 pass
 
+            time.sleep(sleep)
+
     def stop(self):
-        if self._stop:
-            self._stop.set()
+        if self.proc:
+            self.proc.terminate()
