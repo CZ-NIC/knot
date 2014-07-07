@@ -222,6 +222,7 @@ static int ixfr_answer_init(struct query_data *qdata)
 	xfer->state = IXFR_SOA_DEL;
 	init_list(&xfer->proc.nodes);
 	init_list(&xfer->changesets);
+	init_list(&xfer->cur.iters);
 	add_tail_list(&xfer->changesets, &chgsets);
 	xfer->qdata = qdata;
 
