@@ -312,8 +312,8 @@ class Test(object):
             if self.soa_old != other.soa_old:
                 set_err("IXFR CHANGE DIFF")
                 detail_log("!Different remove SOA:")
-                print("  %s" % self.soa_old)
-                print("  %s" % other.soa_old)
+                detail_log("  %s" % self.soa_old)
+                detail_log("  %s" % other.soa_old)
 
             if len(self.removed) != len(other.removed):
                 set_err("IXFR CHANGE DIFF")
@@ -325,14 +325,14 @@ class Test(object):
                 if rem1 != rem2:
                     set_err("IXFR CHANGE DIFF")
                     detail_log("!Different remove records:")
-                    print("  %s" % rem1)
-                    print("  %s" % rem2)
+                    detail_log("  %s" % rem1)
+                    detail_log("  %s" % rem2)
 
             if self.soa_new != other.soa_new:
                 set_err("IXFR CHANGE DIFF")
                 detail_log("!Different add SOA:")
-                print("  %s" % self.soa_new)
-                print("  %s" % other.soa_new)
+                detail_log("  %s" % self.soa_new)
+                detail_log("  %s" % other.soa_new)
 
             if len(self.added) != len(other.added):
                 set_err("IXFR CHANGE DIFF")
@@ -344,8 +344,8 @@ class Test(object):
                 if add1 != add2:
                     set_err("IXFR CHANGE DIFF")
                     detail_log("!Different add records:")
-                    print("  %s" % add1)
-                    print("  %s" % add2)
+                    detail_log("  %s" % add1)
+                    detail_log("  %s" % add2)
 
     def _ixfr_changes(self, server, zone, serial, udp):
         soa = None
