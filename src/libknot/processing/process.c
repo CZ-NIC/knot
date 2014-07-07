@@ -31,7 +31,8 @@ static const char* _state_table[] = {
 };
 #endif /* KNOT_NS_DEBUG */
 
-int knot_process_begin(knot_process_t *ctx, void *module_param, const knot_process_module_t *module)
+int knot_process_begin(knot_process_t *ctx, void *module_param,
+                       const knot_process_module_t *module)
 {
 	/* Only in inoperable state. */
 	if (ctx->state != NS_PROC_NOOP) {

@@ -34,7 +34,7 @@
 #include "knot/zone/zone-load.h"
 #include "knot/server/tcp-handler.h"
 #include "libknot/packet/wire.h"
-#include "knot/zone/estimator.h"
+#include "knot/ctl/estimator.h"
 
 /*! \brief Controller flags. */
 enum knotc_flag_t {

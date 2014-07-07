@@ -221,15 +221,6 @@ extern knot_lookup_table_t knot_dnssec_alg_names[];
 size_t knot_tsig_digest_length(const uint8_t algorithm);
 
 /*!
- * \brief Returns length of DS digest for given algorithm.
- *
- * \param algorithm Algorithm code to be used.
- *
- * \retval Digest length for given algorithm.
- */
-size_t knot_ds_digest_length(const uint8_t algorithm);
-
-/*!
  * \brief Check if algorithm is supported for zone signing.
  *
  * \param algorithm      Algorithm identification.

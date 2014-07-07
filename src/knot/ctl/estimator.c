@@ -16,7 +16,7 @@
 
 #include <assert.h>
 
-#include "knot/zone/estimator.h"
+#include "knot/ctl/estimator.h"
 #include "libknot/dname.h"
 #include "common/lists.h"
 #include "knot/zone/node.h"

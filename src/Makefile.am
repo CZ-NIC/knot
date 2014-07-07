@@ -209,6 +209,8 @@ libknotd_la_SOURCES =				\
 	knot/conf/extra.h			\
 	knot/conf/includes.c			\
 	knot/conf/includes.h			\
+	knot/ctl/estimator.c			\
+	knot/ctl/estimator.h			\
 	knot/ctl/process.c			\
 	knot/ctl/process.h			\
 	knot/ctl/remote.c			\
@@ -285,8 +287,6 @@ libknotd_la_SOURCES =				\
 	knot/worker/queue.h			\
 	knot/zone/contents.c			\
 	knot/zone/contents.h			\
-	knot/zone/estimator.c			\
-	knot/zone/estimator.h			\
 	knot/zone/events.c			\
 	knot/zone/events.h			\
 	knot/zone/node.c			\

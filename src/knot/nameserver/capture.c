@@ -19,9 +19,8 @@
 #include "knot/server/udp-handler.h"
 
 /* State-less packet capture, only incoming data is accepted. */
-static int noop(knot_pkt_t *pkt, knot_process_t *ctx)  { return NS_PROC_NOOP; }
-static int reset(knot_process_t *ctx)                  { return NS_PROC_MORE; }
-static int finish(knot_process_t *ctx)                 { return NS_PROC_NOOP; }
+static int reset(knot_process_t *ctx)  { return NS_PROC_MORE; }
+static int finish(knot_process_t *ctx) { return NS_PROC_NOOP; }
 
 /* Set capture parameters (sink). */
 static int begin(knot_process_t *ctx, void *module_param)
@@ -49,8 +48,8 @@ static const knot_process_module_t PROCESS_CAPTURE_MODULE = {
 	&reset,
 	&finish,
 	&capture,
-	&noop, /* No output. */
-	&noop  /* No error processing. */
+	&knot_process_noop, /* No output. */
+	&knot_process_noop  /* No error processing. */
 };
 
 const knot_process_module_t *proc_capture_get_module(void)

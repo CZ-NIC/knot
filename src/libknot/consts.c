@@ -116,22 +116,6 @@ size_t knot_tsig_digest_length(const uint8_t algorithm)
 	}
 }
 
-size_t knot_ds_digest_length(const uint8_t algorithm)
-{
-	switch (algorithm) {
-	case KNOT_DS_ALG_SHA1:
-		return KNOT_DS_DIGEST_LEN_SHA1;
-	case KNOT_DS_ALG_SHA256:
-		return KNOT_DS_DIGEST_LEN_SHA256;
-	case KNOT_DS_ALG_GOST:
-		return KNOT_DS_DIGEST_LEN_GOST;
-	case KNOT_DS_ALG_SHA384:
-		return KNOT_DS_DIGEST_LEN_SHA384;
-	default:
-		return 0;
-	}
-}
-
 bool knot_dnssec_algorithm_is_zonesign(uint8_t algorithm, bool nsec3_enabled)
 {
 	switch (algorithm) {

@@ -105,11 +105,6 @@ void zone_free(zone_t **zone_ptr)
 	*zone_ptr = NULL;
 }
 
-changeset_t *zone_change_prepare(changesets_t *chset)
-{
-	return changesets_create_changeset(chset);
-}
-
 int zone_change_commit(zone_contents_t *contents, changesets_t *chset)
 {
 	assert(contents);
