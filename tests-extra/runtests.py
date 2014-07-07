@@ -76,7 +76,7 @@ def log_failed(log_dir, msg, indent=True):
     file = open(fname, mode="a")
     if first:
         print("Failed tests:", file=file)
-    print("%s%s" % (" * " if indent else "", msg), file=file)
+    print("%s%s" % ("  " if indent else "", msg), file=file)
     file.close()
 
 def main(args):
@@ -132,14 +132,15 @@ def main(args):
             if test in excluded and case in excluded[test]:
                 continue
 
+            case_str_err = (" * case \'%s\':" % case).ljust(31)
+            case_str_fail = ("%s/%s" % (test, case)).ljust(28)
             case_cnt += 1
 
             case_dir = test_dir + "/" + case
             test_file = case_dir + "/test.py"
             if not os.path.isfile(test_file):
-                log.error(" * case \'%s\':\tMISSING" % case)
-                log_failed(outs_dir, "%s/%s\tMISSING" % (test, case))
-                fail_cnt += 1
+                log.error(case_str_err + "MISSING")
+                skip_cnt += 1
                 continue
 
             try:
@@ -153,28 +154,24 @@ def main(args):
                 params.err = False
                 params.err_msg = ""
             except OsError:
-                log.error(" * case \'%s\':\tEXCEPTION (no dir \'%s\')" %
-                          (case, out_dir))
-                log_failed(outs_dir, "%s/%s\tEXCEPTION (no dir \'%s\')" %
-                           (test, case, out_dir))
+                msg = "EXCEPTION (no dir \'%s\')" % out_dir
+                log.error(case_str_err + msg)
+                log_failed(outs_dir, case_str_fail + msg)
                 fail_cnt += 1
                 continue
 
             try:
                 importlib.import_module("%s.%s.%s.test" % (TESTS_DIR, test, case))
             except dnstest.utils.Skip as exc:
-                log.error(" * case \'%s\':\tSKIPPED (%s)" % (case, format(exc)))
+                log.error(case_str_err + "SKIPPED (%s)" % format(exc))
                 skip_cnt += 1
             except Exception as exc:
                 save_traceback(params.out_dir)
 
                 desc = format(exc)
-                msg = desc if desc else exc.__class__.__name__
-
-                log.error(" * case \'%s\':\tEXCEPTION (%s)" %
-                          (case, msg))
-                log_failed(outs_dir, "%s/%s\tEXCEPTION (%s)" %
-                           (test, case, msg))
+                msg = "EXCEPTION (%s)" % (desc if desc else exc.__class__.__name__)
+                log.error(case_str_err + msg)
+                log_failed(outs_dir, case_str_fail + msg)
 
                 if params.debug:
                     traceback.print_exc()
@@ -192,12 +189,13 @@ def main(args):
                 sys.exit(1)
             else:
                 if params.err:
-                    msg = " (%s)" % params.err_msg if params.err_msg else ""
-                    log.info(" * case \'%s\':\tFAILED%s" % (case, msg))
-                    log_failed(outs_dir, "%s/%s\tFAILED%s" % (test, case, msg))
+                    msg = "FAILED" + \
+                          (("(" + params.err_msg + ")") if params.err_msg else "")
+                    log.info(case_str_err + msg)
+                    log_failed(outs_dir, case_str_fail + msg)
                     fail_cnt += 1
                 else:
-                    log.info(" * case \'%s\':\tOK" % case)
+                    log.info(case_str_err + "OK")
 
             # Stop servers if still running.
             if params.test:
