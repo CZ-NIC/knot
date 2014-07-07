@@ -152,6 +152,7 @@ class Server(object):
 
         self.ratelimit = None
         self.disable_any = None
+        self.disable_notify = None
         self.max_conn_idle = None
         self.zonefile_sync = None
 
@@ -942,7 +943,8 @@ class Knot(Server):
             s.item_str("file", z.zfile.path)
 
             if z.master:
-                s.item("notify-in", z.master.name)
+                if not self.disable_notify:
+                    s.item("notify-in", z.master.name)
                 s.item("xfr-in", z.master.name)
 
             slaves = ""

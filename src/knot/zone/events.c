@@ -282,8 +282,6 @@ static int event_reload(zone_t *zone)
 	/* Schedule notify and refresh after load. */
 	if (zone_master(zone)) {
 		zone_events_schedule(zone, ZONE_EVENT_REFRESH, ZONE_EVENT_NOW);
-		const knot_rdataset_t *soa = node_rdataset(contents->apex, KNOT_RRTYPE_SOA);
-		zone_events_schedule(zone, ZONE_EVENT_EXPIRE, soa_graceful_expire(soa));
 	}
 	if (!zone_contents_is_empty(contents)) {
 		zone_events_schedule(zone, ZONE_EVENT_NOTIFY, ZONE_EVENT_NOW);
@@ -332,10 +330,15 @@ static int event_refresh(zone_t *zone)
 		zone_master_rotate(zone);
 		/* Schedule next retry. */
 		zone_events_schedule(zone, ZONE_EVENT_REFRESH, knot_soa_retry(soa));
+		if (zone_events_get_time(zone, ZONE_EVENT_EXPIRE) <= ZONE_EVENT_NOW) {
+			/* Schedule zone expiration if not previously planned. */
+			zone_events_schedule(zone, ZONE_EVENT_EXPIRE, soa_graceful_expire(soa));
+		}
 	} else {
-		/* SOA query answered, reschedule refresh and expire timers. */
+		/* SOA query answered, reschedule refresh timer. */
 		zone_events_schedule(zone, ZONE_EVENT_REFRESH, knot_soa_refresh(soa));
-		zone_events_schedule(zone, ZONE_EVENT_EXPIRE, soa_graceful_expire(soa));
+		/* Cancel possible expire. */
+		zone_events_cancel(zone, ZONE_EVENT_EXPIRE);
 	}
 
 	return KNOT_EOK;
@@ -361,7 +364,6 @@ static int event_xfer(zone_t *zone)
 		 * timers and send notifications to slaves. */
 		const knot_rdataset_t *soa =
 			node_rdataset(zone->contents->apex, KNOT_RRTYPE_SOA);
-		zone_events_schedule(zone, ZONE_EVENT_EXPIRE,  soa_graceful_expire(soa));
 		zone_events_schedule(zone, ZONE_EVENT_REFRESH, knot_soa_refresh(soa));
 		zone_events_schedule(zone, ZONE_EVENT_NOTIFY,  ZONE_EVENT_NOW);
 		/* Sync zonefile immediately if configured. */
@@ -579,7 +581,6 @@ static void replan_soa_events(zone_t *zone, const zone_t *old_zone)
 			                                           KNOT_RRTYPE_SOA);
 			assert(soa);
 			zone_events_schedule(zone, ZONE_EVENT_REFRESH, knot_soa_refresh(soa));
-			zone_events_schedule(zone, ZONE_EVENT_EXPIRE, soa_graceful_expire(soa));
 		}
 	}
 }
