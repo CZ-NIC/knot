@@ -179,6 +179,25 @@ class ZoneFile(object):
 
         os.remove(old_name)
 
+    def update_soa(self, new_soa):
+        '''Replace whole SOA record with a new one.'''
+
+        serial = None
+        first = False
+
+        old_name = self.path + ".old"
+        os.rename(self.path, old_name)
+
+        with open(old_name) as old_file, open(self.path, 'w') as new_file:
+            for line in old_file:
+                if "SOA" in line and not first:
+                    new_file.write(new_soa)
+                    first = True
+                else:
+                    new_file.write(line)
+
+        os.remove(old_name)
+
     def update_rnd(self):
         '''Add random records or resign zone.'''
 
