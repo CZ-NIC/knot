@@ -7,7 +7,7 @@ import random, threading, socket
 from dnstest.utils import *
 from dnstest.test import Test
 
-FLOOD_COUNT = 20
+FLOOD_COUNT = 16
 UPDATE_SIZE = 24
 
 chars="qwertyuiopasdfghjklzxcvbnm123456789"
@@ -58,7 +58,7 @@ last_rr = flood(master, zone)
 master.reload()
 
 #wait for update processing
-t.sleep(5)
+t.sleep(10)
 
 #dig for last change
 resp = master.dig(last_rr[0], "TXT")
