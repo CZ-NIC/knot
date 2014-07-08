@@ -118,7 +118,7 @@ class Server(object):
     START_WAIT_VALGRIND = 5
     STOP_TIMEOUT = 30
     COMPILE_TIMEOUT = 60
-    DIG_TIMEOUT = 15
+    DIG_TIMEOUT = 5
 
     # Instance counter.
     count = 0
@@ -551,10 +551,10 @@ class Server(object):
 
         check_log("ZONE WAIT %s: %s" % (self.name, zone.name))
 
-        for t in range(20):
+        for t in range(60):
             try:
                 resp = self.dig(zone.name, "SOA", udp=True, tries=1,
-                                log_no_sep=True)
+                                timeout=2, log_no_sep=True)
             except:
                 pass
             else:
@@ -571,7 +571,7 @@ class Server(object):
                             break
                     else:
                         break
-            time.sleep(4)
+            time.sleep(2)
         else:
             self.backtrace()
             raise Exception("Can't get SOA%s, zone='%s', server='%s'" %
