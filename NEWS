@@ -6,6 +6,7 @@ Features:
 Improvements:
 	* Transfer sizes logged in bytes if needed
 	* Logging outgoing NOTIFY messages
+	* Logging unauthorized incoming NOTIFYs
 Bugfixes:
 	* Zone flush planning after bootstrap
 	* Incorrect incoming AXFR message sizes
