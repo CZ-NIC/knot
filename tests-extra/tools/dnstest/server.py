@@ -139,6 +139,7 @@ class Server(object):
 
         self.ratelimit = None
         self.disable_any = None
+        self.max_conn_idle = None
 
         self.ip = None
         self.addr = None
@@ -789,6 +790,8 @@ class Knot(Server):
         self._on_str_hex(s, "nsid", self.nsid)
         self._on_str_hex(s, "rate-limit", self.ratelimit)
         s.item_str("rundir", self.dir)
+        if (self.max_conn_idle):
+            s.item("max-conn-idle", self.max_conn_idle)
         s.end()
 
         s.begin("control")
