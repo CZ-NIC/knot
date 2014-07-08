@@ -32,7 +32,7 @@ struct server_t;
 typedef enum zone_event_type {
 	ZONE_EVENT_INVALID = -1,
 	// supported event types
-	ZONE_EVENT_RELOAD = 0, // Used as a first valid event, do not change.
+	ZONE_EVENT_RELOAD = 0,
 	ZONE_EVENT_REFRESH,
 	ZONE_EVENT_XFER,
 	ZONE_EVENT_UPDATE,
@@ -88,6 +88,17 @@ int zone_events_setup(struct zone_t *zone, worker_pool_t *workers,
 void zone_events_deinit(struct zone_t *zone);
 
 /*!
+ * \brief Enqueue event type for asynchronous execution.
+ *
+ * \note This is similar to the scheduling an event for NOW, but it can
+ *       bypass the event scheduler if no event is running at the moment.
+ *
+ * \param zone  Zone to schedule new event for.
+ * \param type  Type of event.
+ */
+void zone_events_enqueue(struct zone_t *zone, zone_event_type_t type);
+
+/*!
  * \brief Schedule new zone event to absolute time.
  *
  * \param zone  Zone to schedule new event for.
@@ -134,7 +145,8 @@ void zone_events_start(struct zone_t *zone);
  * \param type  Event type.
  *
  * \retval time of the event when event found
- * \retval negative value if event was not found
+ * \retval 0 when the event is not planned
+ * \retval negative value if event is invalid
  */
 time_t zone_events_get_time(const struct zone_t *zone, zone_event_type_t type);
 
@@ -157,3 +169,19 @@ const char *zone_events_get_name(zone_event_type_t type);
  * \return time of the next event or an error (negative number)
  */
 time_t zone_events_get_next(const struct zone_t *zone, zone_event_type_t *type);
+
+/*!
+ * \brief Replans zone events after config change. Will reuse events where applicable.
+ *
+ * \param zone      Zone with new config.
+ * \param old_zone  Zone with old config.
+ */
+void zone_events_update(struct zone_t *zone, const struct zone_t *old_zone);
+
+/*!
+ * \brief Replans DDNS processing event if DDNS queue is not empty.
+ *
+ * \param zone      Zone with new config.
+ * \param old_zone  Zone with old config.
+ */
+void zone_events_replan_ddns(struct zone_t *zone, const struct zone_t *old_zone);

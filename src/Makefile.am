@@ -213,8 +213,8 @@ libknotd_la_SOURCES =				\
 	knot/conf/extra.h			\
 	knot/conf/includes.c			\
 	knot/conf/includes.h			\
-	knot/conf/logconf.c			\
-	knot/conf/logconf.h			\
+	knot/ctl/estimator.c			\
+	knot/ctl/estimator.h			\
 	knot/ctl/process.c			\
 	knot/ctl/process.h			\
 	knot/ctl/remote.c			\
@@ -236,6 +236,8 @@ libknotd_la_SOURCES =				\
 	knot/nameserver/axfr.h			\
 	knot/nameserver/chaos.c			\
 	knot/nameserver/chaos.h			\
+	knot/nameserver/capture.c		\
+	knot/nameserver/capture.h		\
 	knot/nameserver/internet.c		\
 	knot/nameserver/internet.h		\
 	knot/nameserver/ixfr.c			\
@@ -289,8 +291,6 @@ libknotd_la_SOURCES =				\
 	knot/worker/queue.h			\
 	knot/zone/contents.c			\
 	knot/zone/contents.h			\
-	knot/zone/estimator.c			\
-	knot/zone/estimator.h			\
 	knot/zone/events.c			\
 	knot/zone/events.h			\
 	knot/zone/node.c			\
@@ -317,6 +317,8 @@ libknotd_la_SOURCES =				\
 # libraries
 libknot_la_LIBADD  = libknotcs.la zscanner/libzscanner.la
 libknotd_la_LIBADD = libknots.la libknotcs.la libknot.la
+libknotus_la_LDFLAGS = $(libidn_LIBS)
+libknotus_la_CFLAGS = $(libidn_CFLAGS)
 
 # sbin programs
 knotd_LDADD = libknot.la libknotd.la
@@ -326,8 +328,8 @@ knotd_LDFLAGS = $(AM_LDFLAGS) ${systemd_daemon_LIBS}
 knotc_LDADD = libknot.la libknotd.la
 
 # bin programs
-kdig_LDADD       = libknotus.la libknots.la libknot.la
-khost_LDADD      = libknotus.la libknots.la libknot.la
+kdig_LDADD       = libknotus.la libknots.la libknot.la $(libidn_LIBS)
+khost_LDADD      = libknotus.la libknots.la libknot.la $(libidn_LIBS)
 knsupdate_LDADD  = libknotus.la libknots.la libknot.la zscanner/libzscanner.la
 knsec3hash_LDADD = libknotus.la libknots.la libknot.la
 

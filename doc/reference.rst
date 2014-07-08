@@ -29,6 +29,8 @@ else.
       [ rundir "string"; ]
       [ pidfile "string"; ]
       [ workers integer; ]
+      [ background-workers integer; ]
+      [ asynchronous-start ( on | off ); ]
       [ user string[.string]; ]
       [ max-conn-idle ( integer | integer(s | m | h | d); ) ]
       [ max-conn-handshake ( integer | integer(s | m | h | d); ) ]
@@ -108,7 +110,7 @@ rundir
 ^^^^^^
 
 Path for storing run-time data, for example PID file and unix sockets.
-Default: ``${localstatedir}/run/knot``, configured with
+Default value: ``${localstatedir}/run/knot``, configured with
 ``--with-rundir=path``
 
 ::
@@ -147,6 +149,39 @@ online CPUs)
 
     system {
       workers 16;
+    }
+
+.. _background-workers:
+
+background-workers
+^^^^^^^^^^^^^^^^^^
+This option is used to set number of threads used to execute background
+operations (e.g., zone loading, zone signing, XFR zone updates, ...).
+
+Default value: unset (auto-estimates optimal value for the number of online CPUs)
+
+::
+
+    system {
+      background-workers 4;
+    }
+
+
+.. _asynchronous-start:
+
+asynchronous-start
+^^^^^^^^^^^^^^^^^^
+
+When asynchronous startup is enabled, server doesn't wait for the zones to be
+loaded, and starts responding immediately with SERVFAIL answers until the zone
+loads. This may be useful in some scenarios, but it is disabled by default.
+
+Default value: ``off`` (wait for zones to be loaded before answering)
+
+::
+
+    system {
+      asynchronous-start off;
     }
 
 .. _user:
@@ -1028,10 +1063,10 @@ an error:
 
     log {
       [ log_name {
-        [ category severity [, severity ... ]; ]
+        [ category severity; ]
       } ]
       [ log_file filename {
-        [ category severity [, severity ... ]; ]
+        [ category severity; ]
       } ]
     }
 
@@ -1069,7 +1104,6 @@ Knot DNS allows user to choose from these logging categories:
 
 * ``server`` - Messages related to general operation of the server.
 * ``zone`` - Messages related to zones, zone parsing and loading.
-* ``answering`` - Messages regarding query processing and response creation.
 * ``any`` - All categories.
 
 .. _severity:
@@ -1084,11 +1118,10 @@ Knot DNS has the following logging severities:
 * ``notice`` - Server notices and hints.
 * ``warning`` - Warnings that might require user action.
 * ``error`` - Recoverable error.  Action should be taken.
-* ``all`` - All severities.
+* ``critical`` - Non-recoverable error resulting in server shutdown.
 
-More severities may be listed for each category, but all severities
-have to be listed explicitly, i.e.  using ``warning`` severity does
-not mean that ``error`` severity messages will be logged as well.
+Each severity level includes all more serious levels, i.e. ``warning`` severity
+also includes ``error`` and ``critical`` severities.
 
 .. _log_file:
 

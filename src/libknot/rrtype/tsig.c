@@ -443,29 +443,6 @@ size_t tsig_wire_maxsize(const knot_tsig_key_t *key)
 	6* sizeof(uint8_t); /* uint48_t in case of BADTIME RCODE */
 }
 
-size_t tsig_wire_actsize(const knot_rrset_t *tsig)
-{
-	if (tsig == NULL) {
-		return 0;
-	}
-
-	/*! \todo Used fixed size as a base. */
-	return knot_dname_size(tsig->owner) +
-	sizeof(uint16_t) + /* TYPE */
-	sizeof(uint16_t) + /* CLASS */
-	sizeof(uint32_t) + /* TTL */
-	sizeof(uint16_t) + /* RDLENGTH */
-	knot_dname_size(tsig_rdata_alg_name(tsig)) +
-	6 * sizeof(uint8_t) + /* Time signed */
-	sizeof(uint16_t) + /* Fudge */
-	sizeof(uint16_t) + /* MAC size */
-	tsig_rdata_mac_length(tsig) +
-	sizeof(uint16_t) + /* Original ID */
-	sizeof(uint16_t) + /* Error */
-	sizeof(uint16_t) + /* Other len */
-	tsig_rdata_other_data_length(tsig);
-}
-
 int tsig_rdata_is_ok(const knot_rrset_t *tsig)
 {
 	/*! \todo Check size, needs to check variable-length fields. */

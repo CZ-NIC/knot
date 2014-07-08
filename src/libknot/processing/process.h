@@ -70,6 +70,14 @@ typedef struct knot_process_module {
 } knot_process_module_t;
 
 /*!
+ * \brief Universal noop process function.
+ */
+inline static int knot_process_noop(knot_pkt_t *pkt, knot_process_t *ctx)
+{
+	return NS_PROC_NOOP;
+}
+
+/*!
  * \brief Initialize packet processing context.
  *
  * Allowed from states: NOOP
@@ -79,7 +87,8 @@ typedef struct knot_process_module {
  * \param module Module API.
  * \return (module specific state)
  */
-int knot_process_begin(knot_process_t *ctx, void *module_param, const knot_process_module_t *module);
+int knot_process_begin(knot_process_t *ctx, void *module_param,
+                       const knot_process_module_t *module);
 
 /*!
  * \brief Reset current packet processing context.

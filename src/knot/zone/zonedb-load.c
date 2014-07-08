@@ -56,14 +56,23 @@ static zone_status_t zone_file_status(const zone_t *old_zone,
 	time_t mtime = zonefile_mtime(conf->file);
 
 	if (mtime < 0) {
-		return zone_load_can_bootstrap(conf) ? ZONE_STATUS_BOOSTRAP \
-		                                     : ZONE_STATUS_NOT_FOUND;
-	} if (old_zone == NULL) {
-		return ZONE_STATUS_FOUND_NEW;
-	} else if (old_zone->zonefile_mtime == mtime) {
-		return ZONE_STATUS_FOUND_CURRENT;
+		// Zone file does not exist.
+		if (old_zone) {
+			// Deferred flush.
+			return ZONE_STATUS_FOUND_CURRENT;
+		} else {
+			return zone_load_can_bootstrap(conf) ? ZONE_STATUS_BOOSTRAP \
+			                                     : ZONE_STATUS_NOT_FOUND;
+		}
 	} else {
-		return ZONE_STATUS_FOUND_UPDATED;
+		// Zone file exists.
+		if (old_zone == NULL) {
+			return ZONE_STATUS_FOUND_NEW;
+		} else if (old_zone->zonefile_mtime == mtime) {
+			return ZONE_STATUS_FOUND_CURRENT;
+		} else {
+			return ZONE_STATUS_FOUND_UPDATED;
+		}
 	}
 }
 
@@ -104,25 +113,6 @@ static void log_zone_load_info(const zone_t *zone, const char *zone_name,
 }
 
 /*!
- * \brief Copy zone events from the old zone.
- */
-static void update_zone_events(zone_t *zone, const zone_t *old_zone)
-{
-	for (zone_event_type_t i = 0; i < ZONE_EVENT_COUNT; ++i) {
-		/* DNSSEC: keys could have changed, force resign. */
-		if (i == ZONE_EVENT_DNSSEC && zone->conf->dnssec_enable) {
-			zone_events_schedule(zone, i, ZONE_EVENT_NOW);
-			continue;
-		}
-
-		time_t event_time = zone_events_get_time(old_zone, i);
-		if (event_time > ZONE_EVENT_NOW) {
-			zone_events_schedule_at(zone, i, event_time);
-		}
-	}
-}
-
-/*!
  * \brief Load or reload the zone.
  *
  * \param conf      Zone configuration.
@@ -147,10 +137,20 @@ static zone_t *create_zone(conf_zone_t *conf, server_t *server, zone_t *old_zone
 
 	zone_status_t zstatus = zone_file_status(old_zone, conf);
 
+	int result = zone_events_setup(zone, server->workers, &server->sched);
+	if (result != KNOT_EOK) {
+		zone->conf = NULL;
+		zone_free(&zone);
+		return NULL;
+	}
+
 	switch (zstatus) {
 	case ZONE_STATUS_FOUND_NEW:
 	case ZONE_STATUS_FOUND_UPDATED:
-		zone_events_schedule(zone, ZONE_EVENT_RELOAD, ZONE_EVENT_NOW);
+		/* Enqueueing makes the first zone load waitable. */
+		zone_events_enqueue(zone, ZONE_EVENT_RELOAD);
+		/* Replan DDNS processing if there are pending updates. */
+		zone_events_replan_ddns(zone, old_zone);
 		break;
 	case ZONE_STATUS_BOOSTRAP:
 		zone_events_schedule(zone, ZONE_EVENT_REFRESH, ZONE_EVENT_NOW);
@@ -158,19 +158,13 @@ static zone_t *create_zone(conf_zone_t *conf, server_t *server, zone_t *old_zone
 	case ZONE_STATUS_NOT_FOUND:
 		break;
 	case ZONE_STATUS_FOUND_CURRENT:
+		assert(old_zone);
 		zone->zonefile_mtime = old_zone->zonefile_mtime;
 		zone->zonefile_serial = old_zone->zonefile_serial;
-		update_zone_events(zone, old_zone);
+		zone_events_update(zone, old_zone);
 		break;
 	default:
 		assert(0);
-	}
-
-	int result = zone_events_setup(zone, server->workers, &server->sched);
-	if (result != KNOT_EOK) {
-		zone->conf = NULL;
-		zone_free(&zone);
-		return NULL;
 	}
 
 	log_zone_load_info(zone, conf->name, zstatus);

@@ -214,6 +214,7 @@ typedef struct conf_t {
 	size_t max_udp_payload; /*!< Maximal UDP payload size. */
 	int   workers;  /*!< Number of workers per interface. */
 	int   bg_workers; /*!< Number of background workers. */
+	bool  async_start; /*!< Asynchronous startup. */
 	int   uid;      /*!< Specified user id. */
 	int   gid;      /*!< Specified group id. */
 	int   max_conn_idle; /*!< TCP idle timeout. */
@@ -318,18 +319,6 @@ int conf_add_hook(conf_t * conf, int sections,
                   int (*on_update)(const conf_t*, void*), void *data);
 
 /*!
- * \brief Parse configuration from associated file.
- *
- * \note Registered callbacks may be executed if applicable.
- *
- * \param conf Configuration context.
- *
- * \retval KNOT_EOK on success.
- * \retval KNOT_EPARSEFAIL on parser error.
- */
-int conf_parse(conf_t *conf);
-
-/*!
  * \brief Parse configuration from string.
  *
  * \note Registered callbacks may be executed if applicable.
@@ -411,6 +400,9 @@ size_t conf_udp_threads(const conf_t *conf);
 
 /*! \brief Return the number of TCP threads according to the configuration. */
 size_t conf_tcp_threads(const conf_t *conf);
+
+/*! \brief Return the number of background worker threads. */
+int conf_bg_threads(const conf_t *conf);
 
 /* \brief Initialize zone config. */
 void conf_init_zone(conf_zone_t *zone);

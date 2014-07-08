@@ -1,6 +1,31 @@
 Knot DNS NEWS
+1.5.0 - Jul 8, 2014
+-----------------------
+Features:
+	* DDNS forwarding reimplemented
+Improvements:
+	* Transfer sizes logged in bytes if needed
+	* Logging outgoing NOTIFY messages
+Bugfixes:
+	* Zone flush planning after bootstrap
+	* Incorrect incoming AXFR message sizes
+	* DDNS signing changes were freed too soon, posibility of stale data
+	* knotc remote control key handling
 
-1.5.0-rc1 - Jun 1, 2014
+1.5.0-rc2 - Jun 18, 2014
+-----------------------
+Features:
+	* edns-client-subnet support in kdig
+	* Optional asynchronous startup (config "asynchronous-start")
+Improvements:
+	* Preempt task queue for faster reload
+	* Lazy zone file write after zone transfer (governed by "zonefile-sync")
+Bugfixes:
+	* Close zone transfer after SERVFAIL response
+	* Incremental to full zone transfer fallback, wrong log message
+	* Zone events corner cases, reload replanning
+
+1.5.0-rc1 - Jun 3, 2014
 -----------------------
 Features:
 	* Pluggable query processing modules
@@ -14,6 +39,7 @@ Improvements:
 	* Faster zone events scheduling
 	* RFC compliant queries/responses in some corner cases
 	* Log messages
+	* New documentation (Sphinx)
 
 v1.4.2 - Jan 27, 2014
 ---------------------

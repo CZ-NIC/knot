@@ -47,14 +47,12 @@
 /* Prototypes for cf-parse.y */
 extern int cf_parse(void *scanner);
 extern int cf_get_lineno(void *scanner);
-extern void cf_set_error(void *scanner);
 extern char *cf_get_text(void *scanner);
 extern conf_extra_t *cf_get_extra(void *scanner);
 extern int cf_lex_init_extra(void *, void *scanner);
 extern void cf_set_in(FILE *f, void *scanner);
 extern void cf_lex_destroy(void *scanner);
 extern void switch_input(const char *str, void *scanner);
-extern char *cf_current_filename(void *scanner);
 
 conf_t *new_config = NULL; /*!< \brief Currently parsed config. */
 static volatile int _parser_res = 0; /*!< \brief Parser result. */
@@ -605,25 +603,6 @@ int conf_add_hook(conf_t * conf, int sections,
 	return KNOT_EOK;
 }
 
-int conf_parse(conf_t *conf)
-{
-	/* Parse file. */
-	int ret = conf_fparser(conf);
-
-	/* Postprocess config. */
-	if (ret == 0) {
-		ret = conf_process(conf);
-		/* Update hooks. */
-		conf_update_hooks(conf);
-	}
-
-	if (ret < 0) {
-		return KNOT_EPARSEFAIL;
-	}
-
-	return KNOT_EOK;
-}
-
 int conf_parse_str(conf_t *conf, const char* src)
 {
 	/* Parse config from string. */
@@ -898,6 +877,16 @@ size_t conf_tcp_threads(const conf_t *conf)
 	size_t thrcount = conf_udp_threads(conf);
 	return MAX(thrcount * 2, CONFIG_XFERS);
 }
+
+int conf_bg_threads(const conf_t *conf)
+{
+	if (conf->bg_workers < 1) {
+		return MIN(dt_optimal_size(), CONFIG_XFERS);
+	}
+
+	return conf->bg_workers;
+}
+
 
 void conf_init_zone(conf_zone_t *zone)
 {

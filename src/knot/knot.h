@@ -36,7 +36,7 @@
 
 #define DEFAULT_THR_COUNT 2  /*!< \brief Default thread count. */
 #define TCP_BACKLOG_SIZE 10  /*!< \brief TCP listen backlog size. */
-#define RECVMMSG_BATCHLEN 64 /*!< \brief Define for recvmmsg() batch size. */
+#define RECVMMSG_BATCHLEN 10 /*!< \brief Define for recvmmsg() batch size. */
 
 /* Workarounds for clock_gettime() not available on some platforms. */
 #ifdef HAVE_CLOCK_GETTIME

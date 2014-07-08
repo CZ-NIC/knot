@@ -1,4 +1,14 @@
-/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*!
+ * \file capture.h
+ *
+ * \author Marek Vavrusa <marek.vavrusa@nic.cz>
+ *
+ * \brief Simple packet capture processor.
+ *
+ * \addtogroup answer_processing
+ * @{
+ */
+/*  Copyright (C) 2014 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -13,30 +23,22 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-/*!
- * \file log.h
- *
- * \author Marek Vavrusa <marek.vavrusa@nic.cz>
- *
- * \brief Logging facility (configuration file interface).
- *
- * \addtogroup logging
- * @{
- */
 
 #pragma once
 
-struct conf_t;
+#include "libknot/processing/process.h"
+#include "libknot/packet/pkt.h"
+
+/* Processing module implementation. */
+const knot_process_module_t *proc_capture_get_module(void);
+#define NS_PROC_CAPTURE proc_capture_get_module()
+#define NS_PROC_CAPTURE_ID 3
 
 /*!
- * \brief Setup logging facilities from config.
- *
- * \see syslog.h
- *
- * \retval KNOT_EOK on success.
- * \retval KNOT_EINVAL on invalid parameters.
- * \retval KNOT_ENOMEM out of memory error.
+ * \brief Processing module parameters.
  */
-int log_reconfigure(const struct conf_t *conf, void *data);
+struct process_capture_param {
+	knot_pkt_t *sink;        /*!< Container for captured response. */
+};
 
 /*! @} */

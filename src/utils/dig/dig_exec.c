@@ -85,7 +85,6 @@ static float get_query_time(const Dnstap__Dnstap *frame)
 static void process_dnstap(const query_t *query)
 {
 	dt_reader_t *reader = query->dt_reader;
-	int         ret;
 
 	if (query->dt_reader == NULL) {
 		return;
@@ -98,7 +97,7 @@ static void process_dnstap(const query_t *query)
 		bool                is_response;
 
 		// Read next message.
-		ret = dt_reader_read(reader, &frame);
+		int ret = dt_reader_read(reader, &frame);
 		if (ret == KNOT_EOF) {
 			break;
 		} else if (ret != KNOT_EOK) {
@@ -201,9 +200,6 @@ static void process_dnstap(const query_t *query)
 
 static int add_query_edns(knot_pkt_t *packet, const query_t *query, int max_size)
 {
-	assert(packet);
-	assert(query);
-
 	/* Initialize OPT RR. */
 	knot_rrset_t opt_rr;
 	int ret = knot_edns_init(&opt_rr, max_size, 0,
@@ -226,6 +222,29 @@ static int add_query_edns(knot_pkt_t *packet, const query_t *query, int max_size
 		}
 	}
 
+	/* Append EDNS-client-subnet. */
+	if (query->subnet != NULL) {
+		uint8_t  data[KNOT_EDNS_MAX_OPTION_CLIENT_SUBNET] = { 0 };
+		uint16_t data_len = sizeof(data);
+
+		ret = knot_edns_client_subnet_create(query->subnet->family,
+		                                     query->subnet->addr,
+		                                     query->subnet->addr_len,
+		                                     query->subnet->netmask,
+		                                     0, data, &data_len);
+		if (ret != KNOT_EOK) {
+			knot_rrset_clear(&opt_rr, &packet->mm);
+			return ret;
+		}
+
+		ret = knot_edns_add_option(&opt_rr, KNOT_EDNS_OPTION_CLIENT_SUBNET,
+		                           data_len, data, &packet->mm);
+		if (ret != KNOT_EOK) {
+			knot_rrset_clear(&opt_rr, &packet->mm);
+			return ret;
+		}
+	}
+
 	/* Add prepared OPT to packet. */
 	ret = knot_pkt_put(packet, COMPR_HINT_NONE, &opt_rr, KNOT_PF_FREE);
 	if (ret != KNOT_EOK) {
@@ -233,6 +252,12 @@ static int add_query_edns(knot_pkt_t *packet, const query_t *query, int max_size
 	}
 
 	return ret;
+}
+
+static bool use_edns(const query_t *query)
+{
+	return query->flags.do_flag || query->nsid || query->edns > -1 ||
+	       query->subnet != NULL;
 }
 
 static knot_pkt_t* create_query_packet(const query_t *query)
@@ -246,8 +271,7 @@ static knot_pkt_t* create_query_packet(const query_t *query)
 		if (get_socktype(query->protocol, query->type_num)
 		    == SOCK_STREAM) {
 			max_size = MAX_PACKET_SIZE;
-		} else if (query->flags.do_flag || query->nsid ||
-		           query->edns > -1) {
+		} else if (use_edns(query)) {
 			max_size = DEFAULT_EDNS_SIZE;
 		} else {
 			max_size = DEFAULT_UDP_SIZE;
@@ -354,8 +378,7 @@ static knot_pkt_t* create_query_packet(const query_t *query)
 	knot_pkt_begin(packet, KNOT_ADDITIONAL);
 
 	// Create EDNS section if required.
-	if (query->udp_size > 0 || query->flags.do_flag || query->nsid ||
-	    query->edns > -1) {
+	if (query->udp_size > 0 || use_edns(query)) {
 		int ret = add_query_edns(packet, query, max_size);
 		if (ret != KNOT_EOK) {
 			ERR("can't set up EDNS section\n");

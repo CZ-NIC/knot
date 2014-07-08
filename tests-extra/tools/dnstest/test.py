@@ -26,7 +26,7 @@ class Test(object):
     # Number of unsuccessful starts of servers. Recursion protection.
     start_tries = 0
 
-    def __init__(self, ip=None, tsig=None):
+    def __init__(self, ip=None, tsig=None, stress=True):
         if not os.path.exists(params.out_dir):
             raise Exception("Output directory doesn't exist")
 
@@ -46,6 +46,8 @@ class Test(object):
                 self.tsig = dnstest.keys.Tsig()
         elif random.choice([True, False]):
             self.tsig = dnstest.keys.Tsig()
+
+        self.stress = stress
 
         self.servers = set()
 
@@ -106,7 +108,7 @@ class Test(object):
         elif server == "dummy":
             srv = dnstest.server.Dummy()
         else:
-            raise Exception("Usupported server '%s'" % server)
+            raise Exception("Unsupported server '%s'" % server)
 
         type(srv).count += 1
 
@@ -186,16 +188,19 @@ class Test(object):
                 raise Exception("Server '%s' not running" % server.name)
 
             if not server.listening():
-                self.stop(check=False)
+                self.stop(kill=True)
                 self.start()
 
         self.start_tries = 0
 
-    def stop(self, check=True):
+    def stop(self, check=True, kill=False):
         '''Stop all servers'''
 
         for server in self.servers:
-            server.stop(check=check)
+            if kill:
+                server.kill()
+            else:
+                server.stop(check=check)
 
     def end(self):
         '''Finish testing'''
@@ -312,8 +317,8 @@ class Test(object):
             if self.soa_old != other.soa_old:
                 set_err("IXFR CHANGE DIFF")
                 detail_log("!Different remove SOA:")
-                print("  %s" % self.soa_old)
-                print("  %s" % other.soa_old)
+                detail_log("  %s" % self.soa_old)
+                detail_log("  %s" % other.soa_old)
 
             if len(self.removed) != len(other.removed):
                 set_err("IXFR CHANGE DIFF")
@@ -325,14 +330,14 @@ class Test(object):
                 if rem1 != rem2:
                     set_err("IXFR CHANGE DIFF")
                     detail_log("!Different remove records:")
-                    print("  %s" % rem1)
-                    print("  %s" % rem2)
+                    detail_log("  %s" % rem1)
+                    detail_log("  %s" % rem2)
 
             if self.soa_new != other.soa_new:
                 set_err("IXFR CHANGE DIFF")
                 detail_log("!Different add SOA:")
-                print("  %s" % self.soa_new)
-                print("  %s" % other.soa_new)
+                detail_log("  %s" % self.soa_new)
+                detail_log("  %s" % other.soa_new)
 
             if len(self.added) != len(other.added):
                 set_err("IXFR CHANGE DIFF")
@@ -344,8 +349,8 @@ class Test(object):
                 if add1 != add2:
                     set_err("IXFR CHANGE DIFF")
                     detail_log("!Different add records:")
-                    print("  %s" % add1)
-                    print("  %s" % add2)
+                    detail_log("  %s" % add1)
+                    detail_log("  %s" % add2)
 
     def _ixfr_changes(self, server, zone, serial, udp):
         soa = None

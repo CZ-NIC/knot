@@ -134,7 +134,6 @@ const knot_dname_t* tsig_alg_to_dname(knot_tsig_algorithm_t alg);
  * \return RRSET wire size.
  */
 size_t tsig_wire_maxsize(const knot_tsig_key_t *key);
-size_t tsig_wire_actsize(const knot_rrset_t *tsig);
 
 int tsig_rdata_is_ok(const knot_rrset_t *tsig);
 

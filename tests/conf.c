@@ -14,7 +14,6 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <config.h>
 #include <stdio.h>
 #include <tap/basic.h>
 
@@ -90,7 +89,7 @@ int main(int argc, char *argv[])
 		skip_block(5, "Empty list");
 	} else {
 		ok(m->source == LOG_ANY, "syslog first rule is ANY");
-		int mask = LOG_MASK(LOG_NOTICE)|LOG_MASK(LOG_WARNING)|LOG_MASK(LOG_ERR);
+		int mask = LOG_UPTO(LOG_NOTICE);
 		ok(m->prios == mask, "syslog mask is equal");
 		nm = nm->next;
 		m = (conf_log_map_t*)nm;
@@ -99,7 +98,7 @@ int main(int argc, char *argv[])
 			skip_block(2, "No mapping");
 		} else {
 			ok(m->source == LOG_ZONE, "syslog next rule is for zone");
-			ok(m->prios == 0xff, "rule for zone is: any level");
+			ok(m->prios == LOG_UPTO(LOG_INFO), "rule for zone is: info level");
 		}
 	}
 

@@ -88,8 +88,6 @@ src/knot/conf/extra.c
 src/knot/conf/extra.h
 src/knot/conf/includes.c
 src/knot/conf/includes.h
-src/knot/conf/logconf.c
-src/knot/conf/logconf.h
 src/knot/ctl/knotc_main.c
 src/knot/ctl/process.c
 src/knot/ctl/process.h
@@ -332,5 +330,10 @@ tests/sample_conf.h
 tests/server.c
 tests/slab.c
 tests/wire.c
+tests/worker_pool.c
+tests/worker_queue.c
+tests/zone_events.c
 tests/zonedb.c
 tests/ztree.c
+src/knot/nameserver/capture.c
+src/knot/nameserver/capture.h

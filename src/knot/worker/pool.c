@@ -35,6 +35,7 @@ struct worker_pool {
 	pthread_cond_t wake;
 
 	bool terminating;	/*!< Is the pool terminating? .*/
+	int running;		/*!< Number of running threads. */
 	worker_queue_t tasks;
 };
 
@@ -67,11 +68,13 @@ static int worker_main(dthread_t *thread)
 		}
 
 		assert(task->run);
+		pool->running += 1;
 
 		pthread_mutex_unlock(&pool->lock);
 		task->run(task);
 		pthread_mutex_lock(&pool->lock);
 
+		pool->running -= 1;
 		pthread_cond_broadcast(&pool->wake);
 	}
 
@@ -175,7 +178,7 @@ void worker_pool_wait(worker_pool_t *pool)
 	}
 
 	pthread_mutex_lock(&pool->lock);
-	while (!EMPTY_LIST(pool->tasks.list)) {
+	while (!EMPTY_LIST(pool->tasks.list) || pool->running > 0) {
 		pthread_cond_wait(&pool->wake, &pool->lock);
 	}
 	pthread_mutex_unlock(&pool->lock);

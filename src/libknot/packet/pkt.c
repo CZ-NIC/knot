@@ -68,6 +68,7 @@ static void pkt_free_data(knot_pkt_t *pkt)
 static int pkt_wire_alloc(knot_pkt_t *pkt, uint16_t len)
 {
 	assert(pkt);
+	assert(len >= KNOT_WIRE_HEADER_SIZE);
 
 	pkt->wire = pkt->mm.alloc(pkt->mm.ctx, len);
 	if (pkt->wire == NULL) {
@@ -202,38 +203,31 @@ knot_pkt_t *knot_pkt_new(void *wire, uint16_t len, mm_ctx_t *mm)
 	return pkt_new_mm(wire, len, mm);
 }
 
-knot_pkt_t *knot_pkt_copy(const knot_pkt_t *pkt, mm_ctx_t *mm)
+int knot_pkt_copy(knot_pkt_t *dst, const knot_pkt_t *src)
 {
-	dbg_packet("%s(%p, %p)\n", __func__, pkt, mm);
-	if (pkt == NULL) {
-		return NULL;
+	dbg_packet("%s(%p, %p)\n", __func__, dst, src);
+	if (dst == NULL || src == NULL) {
+		return KNOT_EINVAL;
 	}
 
-	knot_pkt_t *copy = knot_pkt_new(NULL, pkt->max_size, mm);
-	if (copy == NULL) {
-		return NULL;
+	if (dst->max_size < src->size) {
+		return KNOT_ESPACE;
 	}
 
-	copy->size = pkt->size;
-	memcpy(copy->wire, pkt->wire, copy->size);
+	dst->size = src->size;
+	memcpy(dst->wire, src->wire, dst->size);
 
 	/* Copy TSIG RR back to wire. */
-	if (pkt->tsig_rr) {
-		int ret = knot_tsig_append(copy->wire, &copy->size, copy->max_size,
-		                           pkt->tsig_rr);
+	if (src->tsig_rr) {
+		int ret = knot_tsig_append(dst->wire, &dst->size, dst->max_size,
+		                           src->tsig_rr);
 		if (ret != KNOT_EOK) {
-			knot_pkt_free(&copy);
-			return NULL;
+			return ret;
 		}
 	}
 
 	/* @note This could be done more effectively if needed. */
-	int ret = knot_pkt_parse(copy, 0);
-	if (ret != KNOT_EOK) {
-		knot_pkt_free(&copy);
-	}
-
-	return copy;
+	return knot_pkt_parse(dst, 0);
 }
 
 int knot_pkt_init_response(knot_pkt_t *pkt, const knot_pkt_t *query)

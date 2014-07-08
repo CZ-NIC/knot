@@ -14,7 +14,6 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <config.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <tap/basic.h>
@@ -91,7 +90,11 @@ static void rrl_hopscotch(struct runnable_data* rd)
 
 int main(int argc, char *argv[])
 {
+#ifdef ENABLE_TIMED_TESTS
 	plan(10);
+#else
+	plan(5);
+#endif
 
 	/* Prepare query. */
 	knot_pkt_t *query = knot_pkt_new(NULL, 512, NULL);
@@ -160,8 +163,6 @@ int main(int argc, char *argv[])
 	/* 6. limited IPv6 request */
 	ret = rrl_query(rrl, &addr6, &rq, zone);
 	is_int(0, ret, "rrl: throttled IPv6 request");
-#else
-	skip_block(2, "Timed tests not enabled");
 #endif
 
 	/* 7. invalid values. */
@@ -190,8 +191,6 @@ int main(int argc, char *argv[])
 	/* 10. hopscotch after reseed. */
 	rrl_hopscotch(&rd);
 	ok(rd.passed, "rrl: hashtable is ~ consistent");
-#else
-	skip_block(3, "Timed tests not enabled");
 #endif
 
 	zone_free(&zone);

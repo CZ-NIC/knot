@@ -38,6 +38,10 @@
 #include "knot/nameserver/tsig_ctx.h"
 #include "knot/nameserver/process_answer.h"
 
+/* ------------------------- internal timers -------------------------------- */
+
+#define ZONE_EVENT_IMMEDIATE 1 /* Fast-track to worker queue. */
+
 /* ------------------------- bootstrap timer logic -------------------------- */
 
 #define BOOTSTRAP_RETRY (30) /*!< Interval between AXFR bootstrap retries. */
@@ -62,15 +66,38 @@ static uint32_t bootstrap_next(uint32_t timer)
 	            what " of '%s' with '%s': ", msg)
 
 /*! \brief Create zone query packet. */
-static knot_pkt_t *zone_query(const zone_t *zone, uint16_t qtype, mm_ctx_t *mm)
+static knot_pkt_t *zone_query(const zone_t *zone, uint16_t pkt_type, mm_ctx_t *mm)
 {
+	/* Determine query type and opcode. */
+	uint16_t query_type = KNOT_RRTYPE_SOA;
+	uint16_t opcode = KNOT_OPCODE_QUERY;
+	switch(pkt_type) {
+	case KNOT_QUERY_AXFR: query_type = KNOT_RRTYPE_AXFR; break;
+	case KNOT_QUERY_IXFR: query_type = KNOT_RRTYPE_IXFR; break;
+	case KNOT_QUERY_NOTIFY: opcode = KNOT_OPCODE_NOTIFY; break;
+	}
+
 	knot_pkt_t *pkt = knot_pkt_new(NULL, KNOT_WIRE_MAX_PKTSIZE, mm);
 	if (pkt == NULL) {
 		return NULL;
 	}
 
+	knot_wire_set_id(pkt->wire, knot_random_uint16_t());
 	knot_wire_set_aa(pkt->wire);
-	knot_pkt_put_question(pkt, zone->name, KNOT_CLASS_IN, qtype);
+	knot_wire_set_opcode(pkt->wire, opcode);
+	knot_pkt_put_question(pkt, zone->name, KNOT_CLASS_IN, query_type);
+
+	/* Put current SOA (optional). */
+	zone_contents_t *contents = zone->contents;
+	if (pkt_type == KNOT_QUERY_IXFR) {  /* RFC1995, SOA in AUTHORITY. */
+		knot_pkt_begin(pkt, KNOT_AUTHORITY);
+		knot_rrset_t soa_rr = node_rrset(contents->apex, KNOT_RRTYPE_SOA);
+		knot_pkt_put(pkt, COMPR_HINT_QNAME, &soa_rr, 0);
+	} else if (pkt_type == KNOT_QUERY_NOTIFY) { /* RFC1996, SOA in ANSWER. */
+		knot_pkt_begin(pkt, KNOT_ANSWER);
+		knot_rrset_t soa_rr = node_rrset(contents->apex, KNOT_RRTYPE_SOA);
+		knot_pkt_put(pkt, COMPR_HINT_QNAME, &soa_rr, 0);
+	}
 
 	return pkt;
 }
@@ -83,32 +110,15 @@ static knot_pkt_t *zone_query(const zone_t *zone, uint16_t qtype, mm_ctx_t *mm)
  */
 static int zone_query_execute(zone_t *zone, uint16_t pkt_type, const conf_iface_t *remote)
 {
-	uint16_t query_type = KNOT_RRTYPE_SOA;
-	uint16_t opcode = KNOT_OPCODE_QUERY;
-	switch(pkt_type) {
-	case KNOT_QUERY_AXFR: query_type = KNOT_RRTYPE_AXFR; break;
-	case KNOT_QUERY_IXFR: query_type = KNOT_RRTYPE_IXFR; break;
-	case KNOT_QUERY_NOTIFY: opcode = KNOT_OPCODE_NOTIFY; break;
-	}
-
 	/* Create a memory pool for this task. */
 	int ret = KNOT_EOK;
 	mm_ctx_t mm;
 	mm_ctx_mempool(&mm, DEFAULT_BLKSIZE);
 
 	/* Create a query message. */
-	knot_pkt_t *query = zone_query(zone, query_type, &mm);
+	knot_pkt_t *query = zone_query(zone, pkt_type, &mm);
 	if (query == NULL) {
 		return KNOT_ENOMEM;
-	}
-	knot_wire_set_opcode(query->wire, opcode);
-
-	/* Put current SOA in authority (optional). */
-	zone_contents_t *contents = zone->contents;
-	if (pkt_type == KNOT_QUERY_IXFR || pkt_type == KNOT_QUERY_NOTIFY) {
-		knot_pkt_begin(query, KNOT_AUTHORITY);
-		knot_rrset_t soa_rr = node_rrset(contents->apex, KNOT_RRTYPE_SOA);
-		knot_pkt_put(query, COMPR_HINT_QNAME, &soa_rr, 0);
 	}
 
 	/* Create requestor instance. */
@@ -210,6 +220,14 @@ static void schedule_dnssec(zone_t *zone, time_t refresh_at)
 
 /* -- zone events handling callbacks --------------------------------------- */
 
+/*! \brief Fetch SOA expire timer and add a timeout grace period. */
+static uint32_t soa_graceful_expire(const knot_rdataset_t *soa)
+{
+	// Allow for timeouts.  Otherwise zones with very short
+	// expiry may expire before the timeout is reached.
+	return knot_soa_expire(soa) + 2 * conf()->max_conn_idle;
+}
+
 typedef int (*zone_event_cb)(zone_t *zone);
 
 static int event_reload(zone_t *zone)
@@ -261,9 +279,6 @@ static int event_reload(zone_t *zone)
 		zone_contents_deep_free(&old);
 	}
 
-	/* Trim extra heap. */
-	mem_trim();
-
 	/* Schedule notify and refresh after load. */
 	if (zone_master(zone)) {
 		zone_events_schedule(zone, ZONE_EVENT_REFRESH, ZONE_EVENT_NOW);
@@ -310,15 +325,20 @@ static int event_refresh(zone_t *zone)
 	const knot_rdataset_t *soa = node_rdataset(contents->apex, KNOT_RRTYPE_SOA);
 	if (ret != KNOT_EOK) {
 		/* Log connection errors. */
-		ZONE_QUERY_LOG(LOG_ERR, zone, master, "SOA query", "%s", knot_strerror(ret));
+		ZONE_QUERY_LOG(LOG_WARNING, zone, master, "SOA query", "%s", knot_strerror(ret));
 		/* Rotate masters if current failed. */
 		zone_master_rotate(zone);
 		/* Schedule next retry. */
 		zone_events_schedule(zone, ZONE_EVENT_REFRESH, knot_soa_retry(soa));
+		if (zone_events_get_time(zone, ZONE_EVENT_EXPIRE) <= ZONE_EVENT_NOW) {
+			/* Schedule zone expiration if not previously planned. */
+			zone_events_schedule(zone, ZONE_EVENT_EXPIRE, soa_graceful_expire(soa));
+		}
 	} else {
-		/* SOA query answered, reschedule refresh and expire timers. */
+		/* SOA query answered, reschedule refresh timer. */
 		zone_events_schedule(zone, ZONE_EVENT_REFRESH, knot_soa_refresh(soa));
-		zone_events_schedule(zone, ZONE_EVENT_EXPIRE, knot_soa_expire(soa));
+		/* Cancel possible expire. */
+		zone_events_cancel(zone, ZONE_EVENT_EXPIRE);
 	}
 
 	return KNOT_EOK;
@@ -329,9 +349,11 @@ static int event_xfer(zone_t *zone)
 	assert(zone);
 
 	/* Determine transfer type. */
+	bool is_bootstrap = false;
 	uint16_t pkt_type = KNOT_QUERY_IXFR;
 	if (zone_contents_is_empty(zone->contents) || zone->flags & ZONE_FORCE_AXFR) {
 		pkt_type = KNOT_QUERY_AXFR;
+		is_bootstrap = true;
 	}
 
 	/* Execute zone transfer and reschedule timers. */
@@ -342,13 +364,21 @@ static int event_xfer(zone_t *zone)
 		 * timers and send notifications to slaves. */
 		const knot_rdataset_t *soa =
 			node_rdataset(zone->contents->apex, KNOT_RRTYPE_SOA);
-		zone_events_schedule(zone, ZONE_EVENT_EXPIRE,  knot_soa_expire(soa));
 		zone_events_schedule(zone, ZONE_EVENT_REFRESH, knot_soa_refresh(soa));
 		zone_events_schedule(zone, ZONE_EVENT_NOTIFY,  ZONE_EVENT_NOW);
+		/* Sync zonefile immediately if configured. */
+		if (zone->conf->dbsync_timeout == 0) {
+			zone_events_schedule(zone, ZONE_EVENT_FLUSH, ZONE_EVENT_NOW);
+		} else if (zone_events_get_time(zone, ZONE_EVENT_FLUSH) <= ZONE_EVENT_NOW) {
+			/* Plan sync if not previously planned. */
+			zone_events_schedule(zone, ZONE_EVENT_FLUSH, zone->conf->dbsync_timeout);
+		}
 		zone->bootstrap_retry = ZONE_EVENT_NOW;
 		zone->flags &= ~ZONE_FORCE_AXFR;
 		/* Trim extra heap. */
-		mem_trim();
+		if (!is_bootstrap) {
+			mem_trim();
+		}
 	} else {
 		/* Zone contents is still empty, increment bootstrap retry timer
 		 * and try again. */
@@ -363,46 +393,32 @@ static int event_update(zone_t *zone)
 {
 	assert(zone);
 
-	knot_pkt_t *resp = knot_pkt_new(NULL, KNOT_WIRE_MAX_PKTSIZE, NULL);
-	if (resp == NULL) {
-		return KNOT_ENOMEM;
-	}
-
 	struct request_data *update = zone_update_dequeue(zone);
-
-	/* Initialize query response. */
-	assert(update);
-	assert(update->query);
-	knot_pkt_init_response(resp, update->query);
-
-	/* Create minimal query data context. */
-	struct process_query_param param = { 0 };
-	param.remote = &update->remote;
-	struct query_data qdata = { 0 };
-	qdata.param = &param;
-	qdata.query = update->query;
-	qdata.zone  = zone;
-
-	/* Process the update query. */
-	int ret = update_process_query(resp, &qdata);
-	UNUSED(ret); /* Don't care about the Knot code, RCODE is set. */
-
-	/* Send response. */
-	if (net_is_connected(update->fd)) {
-		tcp_send_msg(update->fd, resp->wire, resp->size);
-	} else {
-		udp_send_msg(update->fd, resp->wire, resp->size,
-		             (struct sockaddr *)param.remote);
+	if (update == NULL) {
+		return KNOT_EOK;
 	}
+
+	/* Forward if zone has master, or execute. */
+	int ret = update_execute(zone, update);
+	UNUSED(ret);
 
 	/* Cleanup. */
 	close(update->fd);
-	knot_pkt_free(&resp);
 	knot_pkt_free(&update->query);
 	free(update);
 
 	/* Trim extra heap. */
 	mem_trim();
+
+	/* Replan event if next update waiting. */
+	pthread_mutex_lock(&zone->ddns_lock);
+
+	if (!EMPTY_LIST(zone->ddns_queue)) {
+		zone_events_schedule(zone, ZONE_EVENT_UPDATE, ZONE_EVENT_NOW);
+	}
+
+	pthread_mutex_unlock(&zone->ddns_lock);
+
 
 	return KNOT_EOK;
 }
@@ -413,9 +429,16 @@ static int event_expire(zone_t *zone)
 
 	zone_contents_t *expired = zone_switch_contents(zone, NULL);
 	synchronize_rcu();
+
+	/* Expire zonefile information. */
+	zone->zonefile_mtime = 0;
+	zone->zonefile_serial = 0;
 	zone_contents_deep_free(&expired);
 
 	log_zone_info("Zone '%s' expired.\n", zone->conf->name);
+
+	/* Trim extra heap. */
+	mem_trim();
 
 	return KNOT_EOK;
 }
@@ -430,6 +453,7 @@ static int event_flush(zone_t *zone)
 		zone_events_schedule(zone, ZONE_EVENT_FLUSH, next_timeout);
 	}
 
+	/* Check zone contents. */
 	if (zone_contents_is_empty(zone->contents)) {
 		return KNOT_EOK;
 	}
@@ -441,14 +465,22 @@ static int event_notify(zone_t *zone)
 {
 	assert(zone);
 
+	/* Check zone contents. */
+	if (zone_contents_is_empty(zone->contents)) {
+		return KNOT_EOK;
+	}
+
 	/* Walk through configured remotes and send messages. */
 	conf_remote_t *remote = 0;
 	WALK_LIST(remote, zone->conf->acl.notify_out) {
 		conf_iface_t *iface = remote->remote;
 
 		int ret = zone_query_execute(zone, KNOT_QUERY_NOTIFY, iface);
-		if (ret != KNOT_EOK) {
-			ZONE_QUERY_LOG(LOG_ERR, zone, iface, "NOTIFY", "%s", knot_strerror(ret));
+		if (ret == KNOT_EOK) {
+			ZONE_QUERY_LOG(LOG_INFO, zone, iface, "NOTIFY", "sent (serial %u).",
+			               zone_contents_serial(zone->contents));
+		} else {
+			ZONE_QUERY_LOG(LOG_WARNING, zone, iface, "NOTIFY", "%s", knot_strerror(ret));
 		}
 	}
 
@@ -519,11 +551,118 @@ done:
 
 #undef ZONE_QUERY_LOG
 
+/* -- Zone event replanning functions --------------------------------------- */
+
+/*!< \brief Replans event for new zone according to old zone. */
+static void replan_event(zone_t *zone, const zone_t *old_zone, zone_event_type_t e)
+{
+	const time_t event_time = zone_events_get_time(old_zone, e);
+	if (event_time > ZONE_EVENT_NOW) {
+		zone_events_schedule_at(zone, e, event_time);
+	}
+}
+
+/*!< \brief Replans events that are dependent on the SOA record. */
+static void replan_soa_events(zone_t *zone, const zone_t *old_zone)
+{
+	if (!zone_master(zone)) {
+		// Events only valid for slaves.
+		return;
+	}
+
+	if (zone_master(old_zone)) {
+		// Replan SOA events.
+		replan_event(zone, old_zone, ZONE_EVENT_REFRESH);
+		replan_event(zone, old_zone, ZONE_EVENT_EXPIRE);
+	} else {
+		// Plan SOA events anew.
+		if (!zone_contents_is_empty(zone->contents)) {
+			const knot_rdataset_t *soa = node_rdataset(zone->contents->apex,
+			                                           KNOT_RRTYPE_SOA);
+			assert(soa);
+			zone_events_schedule(zone, ZONE_EVENT_REFRESH, knot_soa_refresh(soa));
+		}
+	}
+}
+
+/*!< \brief Replans transfer event. */
+static void replan_xfer(zone_t *zone, const zone_t *old_zone)
+{
+	if (!zone_master(zone)) {
+		// Only valid for slaves.
+		return;
+	}
+
+	if (zone_master(old_zone)) {
+		// Replan the transfer from old zone.
+		replan_event(zone, old_zone, ZONE_EVENT_XFER);
+	} else if (zone_contents_is_empty(zone->contents)) {
+		// Plan transfer anew.
+		zone->bootstrap_retry = bootstrap_next(zone->bootstrap_retry);
+		zone_events_schedule(zone, ZONE_EVENT_XFER, zone->bootstrap_retry);
+	}
+}
+
+/*!< \brief Replans flush event. */
+static void replan_flush(zone_t *zone, const zone_t *old_zone)
+{
+	if (zone->conf->dbsync_timeout <= 0) {
+		// Immediate sync scheduled after events.
+		return;
+	}
+
+	const time_t flush_time = zone_events_get_time(old_zone, ZONE_EVENT_FLUSH);
+	if (flush_time <= ZONE_EVENT_NOW) {
+		// Not scheduled previously.
+		zone_events_schedule(zone, ZONE_EVENT_FLUSH, zone->conf->dbsync_timeout);
+		return;
+	}
+
+	// Pick time to schedule: either reuse or schedule sooner than old event.
+	const time_t schedule_at = MIN(time(NULL) + zone->conf->dbsync_timeout, flush_time);
+	zone_events_schedule_at(zone, ZONE_EVENT_FLUSH, schedule_at);
+}
+
+/*!< \brief Creates new DDNS q in the new zone - q contains references from the old zone. */
+static void duplicate_ddns_q(zone_t *zone, zone_t *old_zone)
+{
+	struct request_data *d, *nxt;
+	WALK_LIST_DELSAFE(d, nxt, old_zone->ddns_queue) {
+		add_tail(&zone->ddns_queue, (node_t *)d);
+	}
+
+	// Reset the list, new zone will free the data.
+	init_list(&old_zone->ddns_queue);
+}
+
+/*!< Replans DDNS event. */
+static void replan_update(zone_t *zone, zone_t *old_zone)
+{
+	pthread_mutex_lock(&old_zone->ddns_lock);
+
+	if (!EMPTY_LIST(old_zone->ddns_queue)) {
+		duplicate_ddns_q(zone, (zone_t *)old_zone);
+		// \todo #254 Old zone *must* have the event planned, but it was not always so
+		zone_events_schedule(zone, ZONE_EVENT_UPDATE, ZONE_EVENT_NOW);
+	}
+
+	pthread_mutex_unlock(&old_zone->ddns_lock);
+}
+
+/*!< Replans DNSSEC event. Not whole resign needed, \todo #247 */
+static void replan_dnssec(zone_t *zone)
+{
+	if (zone->conf->dnssec_enable) {
+		/* Keys could have changed, force resign. */
+		zone_events_schedule(zone, ZONE_EVENT_DNSSEC, ZONE_EVENT_NOW);
+	}
+}
+
 /* -- internal API --------------------------------------------------------- */
 
 static bool valid_event(zone_event_type_t type)
 {
-	return (type >= ZONE_EVENT_RELOAD && type < ZONE_EVENT_COUNT);
+	return (type > ZONE_EVENT_INVALID && type < ZONE_EVENT_COUNT);
 }
 
 /*! \brief Return remaining time to planned event (seconds). */
@@ -596,13 +735,12 @@ static void reschedule(zone_events_t *events)
 	assert(events);
 	assert(pthread_mutex_trylock(&events->mx) == EBUSY);
 
-	if (!events->event || events->running) {
+	if (!events->event || events->running || events->frozen) {
 		return;
 	}
 
 	zone_event_type_t type = get_next_event(events);
 	if (!valid_event(type)) {
-		evsched_cancel(events->event);
 		return;
 	}
 
@@ -694,7 +832,7 @@ static int event_dispatch(event_t *event)
 	zone_events_t *events = event->data;
 
 	pthread_mutex_lock(&events->mx);
-	if (!events->running) {
+	if (!events->running && !events->frozen) {
 		events->running = true;
 		worker_pool_assign(events->pool, &events->task);
 	}
@@ -762,20 +900,34 @@ void zone_events_schedule_at(zone_t *zone, zone_event_type_t type, time_t time)
 	zone_events_t *events = &zone->events;
 
 	pthread_mutex_lock(&events->mx);
+	event_set_time(events, type, time);
+	reschedule(events);
+	pthread_mutex_unlock(&events->mx);
+}
 
-	/* Don't schedule new events if frozen. */
-	if (events->frozen) {
+void zone_events_enqueue(zone_t *zone, zone_event_type_t type)
+{
+	if (!zone || !valid_event(type)) {
+		return;
+	}
+
+	zone_events_t *events = &zone->events;
+
+	pthread_mutex_lock(&events->mx);
+
+	/* Possible only if no event is running at the moment. */
+	if (!events->running && !events->frozen) {
+		events->running = true;
+		event_set_time(events, type, ZONE_EVENT_IMMEDIATE);
+		worker_pool_assign(events->pool, &events->task);
 		pthread_mutex_unlock(&events->mx);
 		return;
 	}
 
-	time_t current = event_get_time(events, type);
-	if (current == 0 || time == 0 || time < current) {
-		event_set_time(events, type, time);
-		reschedule(events);
-	}
-
 	pthread_mutex_unlock(&events->mx);
+
+	/* Execute as soon as possible. */
+	zone_events_schedule(zone, type, ZONE_EVENT_NOW);
 }
 
 void zone_events_schedule(zone_t *zone, zone_event_type_t type, unsigned dt)
@@ -797,11 +949,13 @@ void zone_events_freeze(zone_t *zone)
 
 	zone_events_t *events = &zone->events;
 
+	/* Prevent new events being enqueued. */
 	pthread_mutex_lock(&events->mx);
-	/* Cancel pending event and prevent new. */
 	events->frozen = true;
-	evsched_cancel(events->event);
 	pthread_mutex_unlock(&events->mx);
+
+	/* Cancel current event. */
+	evsched_cancel(events->event);
 }
 
 void zone_events_start(zone_t *zone)
@@ -870,3 +1024,21 @@ time_t zone_events_get_next(const struct zone_t *zone, zone_event_type_t *type)
 
 	return next_time;
 }
+
+void zone_events_update(zone_t *zone, const zone_t *old_zone)
+{
+	replan_soa_events(zone, old_zone);
+	replan_xfer(zone, old_zone);
+	replan_flush(zone, old_zone);
+	replan_event(zone, old_zone, ZONE_EVENT_NOTIFY);
+	replan_update(zone, (zone_t *)old_zone);
+	replan_dnssec(zone);
+}
+
+void zone_events_replan_ddns(struct zone_t *zone, const struct zone_t *old_zone)
+{
+	if (old_zone) {
+		replan_update(zone, (zone_t *)old_zone);
+	}
+}
+

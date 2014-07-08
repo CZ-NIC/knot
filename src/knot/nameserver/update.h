@@ -34,21 +34,19 @@ struct query_data;
 /*!
  * \brief UPDATE query processing module.
  *
- * \retval FAIL if it encountered an error.
- * \retval DONE if finished.
+ * \return NS_PROC_* processing states
  */
-int update_answer(knot_pkt_t *pkt, struct query_data *qdata);
-
+int update_query_process(knot_pkt_t *pkt, struct query_data *qdata);
 
 /*!
  * \brief Processes serialized packet with DDNS. Function expects that the
  *        query is already authenticated and TSIG signature is verified.
  *
- * \param pkt    Prepared response packet.
- * \param qdata  Minimal query data context.
+ * \param zone   Updated zone.
+ * \param update UPDATE request.
  *
  * \return KNOT_E*
  */
-int update_process_query(knot_pkt_t *pkt, struct query_data *qdata);
+int update_execute(zone_t *zone, struct request_data *update);
 
 /*! @} */

@@ -93,7 +93,6 @@ void zone_free(zone_t **zone_ptr);
  * \note Zone change API below, subject to change.
  * \ref #223 New zone API
  */
-changeset_t *zone_change_prepare(changesets_t *chset);
 int zone_change_commit(zone_contents_t *contents, changesets_t *chset);
 int zone_change_store(zone_t *zone, changesets_t *chset);
 /*! \note @mvavrusa Moved from zones.c, this needs a common API. */

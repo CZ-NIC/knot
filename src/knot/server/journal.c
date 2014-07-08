@@ -1063,14 +1063,10 @@ static int changeset_pack(const changeset_t *chs, journal_t *j)
 	int ret = changeset_binary_size(chs, &entry_size);
 	assert(ret == KNOT_EOK);
 
-	dbg_xfr_verb("Size in serialized form: %zu\n", entry_size);
-
 	/* Reserve space for the journal entry. */
 	char *journal_entry = NULL;
 	ret = journal_map(j, k, &journal_entry, entry_size, false);
 	if (ret != KNOT_EOK) {
-		dbg_xfr("Failed to map space for journal entry: %s.\n",
-		        knot_strerror(ret));
 		return ret;
 	}
 
@@ -1231,6 +1227,10 @@ static void mark_synced(journal_t *journal, journal_node_t *node)
 
 int journal_mark_synced(const char *path)
 {
+	if (!journal_exists(path)) {
+		return KNOT_EOK;
+	}
+
 	journal_t *journal = journal_open(path, FSLIMIT_INF);
 	if (journal == NULL) {
 		return KNOT_ENOMEM;

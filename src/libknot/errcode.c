@@ -39,7 +39,7 @@ const error_table_t knot_error_msgs[] = {
 	{ KNOT_ERANGE, "Value is out of range." },
 
 	/* General errors. */
-	{ -10000 /*KNOT_ERROR*/, "General error." },
+	{ KNOT_ERROR, "Failed." },
 	{ KNOT_ENOTRUNNING, "Resource is not running." },
 	{ KNOT_EPARSEFAIL, "Parser failed." },
 	{ KNOT_EEXPIRED, "Resource is expired." },
@@ -66,6 +66,7 @@ const error_table_t knot_error_msgs[] = {
 	{ KNOT_EXFRREFUSED, "Zone transfer refused by the server." },
 	{ KNOT_EDENIED, "Not allowed." },
 	{ KNOT_ECONN, "Connection reset." },
+	{ KNOT_ETIMEOUT, "Connection timeout." },
 	{ KNOT_EIXFRSPACE, "IXFR reply did not fit in." },
 	{ KNOT_ECNAME, "CNAME loop found in zone." },
 	{ KNOT_ENODIFF, "Cannot create zone diff." },

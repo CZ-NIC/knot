@@ -43,50 +43,91 @@
 /*----------------------------------------------------------------------------*/
 
 /* NOTIFY-specific logging (internal, expects 'qdata' variable set). */
-#define NOTIFY_LOG(severity, msg...) \
+#define NOTIFY_QLOG(severity, msg...) \
 	QUERY_LOG(severity, qdata, "NOTIFY", msg)
 
-int notify_query(knot_pkt_t *pkt, struct query_data *qdata)
+int notify_check_query(struct query_data *qdata)
+{
+	/* RFC1996 requires SOA question. */
+	NS_NEED_QTYPE(qdata, KNOT_RRTYPE_SOA, KNOT_RCODE_FORMERR);
+
+	/* Check valid zone, transaction security. */
+	zone_t *zone = (zone_t *)qdata->zone;
+	NS_NEED_ZONE(qdata, KNOT_RCODE_NOTAUTH);
+	NS_NEED_AUTH(&zone->conf->acl.notify_in, qdata);
+
+	return NS_PROC_DONE;
+}
+
+int notify_process_query(knot_pkt_t *pkt, struct query_data *qdata)
 {
 	if (pkt == NULL || qdata == NULL) {
 		return NS_PROC_FAIL;
 	}
 
-	/* RFC1996 require SOA question. */
-	zone_t *zone = (zone_t *)qdata->zone;
-	NS_NEED_QTYPE(qdata, KNOT_RRTYPE_SOA, KNOT_RCODE_FORMERR);
-
-	/* Check valid zone, transaction security. */
-	NS_NEED_ZONE(qdata, KNOT_RCODE_NOTAUTH);
-	NS_NEED_AUTH(&zone->conf->acl.notify_in, qdata);
+	/* Validate notification query. */
+	int state = notify_check_query(qdata);
+	if (state == NS_PROC_FAIL) {
+		switch (qdata->rcode) {
+		case KNOT_RCODE_NOTAUTH: /* Not authoritative or ACL check failed. */
+			NOTIFY_QLOG(LOG_NOTICE, "unauthorized request.");
+			break;
+		case KNOT_RCODE_FORMERR: /* Silently ignore bad queries. */
+		default:
+			break;
+		}
+		return state;
+	}
 
 	/* Reserve space for TSIG. */
 	knot_pkt_reserve(pkt, tsig_wire_maxsize(qdata->sign.tsig_key));
 
 	/* SOA RR in answer may be included, recover serial. */
-	unsigned serial = 0;
 	const knot_pktsection_t *answer = knot_pkt_section(qdata->query, KNOT_ANSWER);
 	if (answer->count > 0) {
 		const knot_rrset_t *soa = &answer->rr[0];
 		if (soa->type == KNOT_RRTYPE_SOA) {
-			serial = knot_soa_serial(&soa->rrs);
-			dbg_ns("%s: received serial %u\n", __func__, serial);
-		} else { /* Ignore */
-			dbg_ns("%s: NOTIFY answer != SOA_RR\n", __func__);
+			uint32_t serial = knot_soa_serial(&soa->rrs);
+			NOTIFY_QLOG(LOG_INFO, "received serial %u.", serial);
+		} else { /* Complain, but accept N/A record. */
+			NOTIFY_QLOG(LOG_NOTICE, "received, bad record in answer section.");
 		}
+	} else {
+		NOTIFY_QLOG(LOG_INFO, "received, doesn't have SOA.");
 	}
 
 	/* Incoming NOTIFY expires REFRESH timer and renews EXPIRE timer. */
+	zone_t *zone = (zone_t *)qdata->zone;
 	zone_events_schedule(zone, ZONE_EVENT_REFRESH, ZONE_EVENT_NOW);
 
-	/* Format resulting log message. */
-	NOTIFY_LOG(LOG_INFO, "received serial %u.", serial);
 	return NS_PROC_DONE;
 }
 
-int notify_process_answer(knot_pkt_t *pkt, struct answer_data *data)
+#undef NOTIFY_QLOG
+
+/* NOTIFY-specific logging (internal, expects 'adata' variable set). */
+#define NOTIFY_RLOG(severity, msg...) \
+	ANSWER_LOG(severity, adata, "NOTIFY", msg)
+
+int notify_process_answer(knot_pkt_t *pkt, struct answer_data *adata)
 {
-	NS_NEED_TSIG_SIGNED(&data->param->tsig_ctx, 0);
+	if (pkt == NULL || adata == NULL) {
+		return NS_PROC_FAIL;
+	}
+
+	/* Check RCODE. */
+	uint8_t rcode = knot_wire_get_rcode(pkt->wire);
+	if (rcode != KNOT_RCODE_NOERROR) {
+		knot_lookup_table_t *lut = knot_lookup_by_id(knot_rcode_names, rcode);
+		if (lut != NULL) {
+			NOTIFY_RLOG(LOG_ERR, "Server responded with %s.", lut->name);
+		}
+		return NS_PROC_FAIL;
+	}
+
+	NS_NEED_TSIG_SIGNED(&adata->param->tsig_ctx, 0);
 
 	return NS_PROC_DONE; /* No processing. */
 }
+
+#undef NOTIFY_RLOG

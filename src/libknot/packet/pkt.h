@@ -133,12 +133,12 @@ knot_pkt_t *knot_pkt_new(void *wire, uint16_t len, mm_ctx_t *mm);
  *
  * \note Current implementation is not very efficient, as it re-parses the wire.
  *
- * \param pkt Source packet.
- * \param mm Memory context.
+ * \param dst Target packet.
+ * \param src Source packet.
  *
  * \return new packet or NULL
  */
-knot_pkt_t *knot_pkt_copy(const knot_pkt_t *pkt, mm_ctx_t *mm);
+int knot_pkt_copy(knot_pkt_t *dst, const knot_pkt_t *src);
 
 /*!
  * \brief Initialized response from query packet.
@@ -308,6 +308,23 @@ static inline bool knot_pkt_has_edns(const knot_pkt_t *pkt)
 static inline bool knot_pkt_has_tsig(const knot_pkt_t *pkt)
 {
 	return pkt && pkt->tsig_rr;
+}
+
+/*!
+ * \brief Checks if DO bit is set in the packet's OPT RR.
+ */
+static inline bool knot_pkt_has_dnssec(const knot_pkt_t *pkt)
+{
+	return knot_pkt_has_edns(pkt) && knot_edns_do(pkt->opt_rr);
+}
+
+/*!
+ * \brief Checks if there is an NSID OPTION in the packet's OPT RR.
+ */
+static inline bool knot_pkt_has_nsid(const knot_pkt_t *pkt)
+{
+	return knot_pkt_has_edns(pkt)
+	       && knot_edns_has_option(pkt->opt_rr, KNOT_EDNS_OPTION_NSID);
 }
 
 /*! @} */

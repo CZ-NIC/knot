@@ -118,6 +118,7 @@ notify-in       { lval.t = yytext; return NOTIFY_IN; }
 notify-out      { lval.t = yytext; return NOTIFY_OUT; }
 workers         { lval.t = yytext; return WORKERS; }
 background-workers { lval.t = yytext; return BACKGROUND_WORKERS; }
+asynchronous-start { lval.t = yytext; return ASYNC_START; }
 user            { lval.t = yytext; return USER; }
 pidfile         { lval.t = yytext; return PIDFILE; }
 rundir          { lval.t = yytext; return RUNDIR; }
@@ -148,17 +149,30 @@ log             { lval.t = yytext; return LOG; }
 
 any { lval.t = yytext; lval.i = LOG_ANY; return LOG_SRC; }
 server { lval.t = yytext; lval.i = LOG_SERVER; return LOG_SRC; }
-answering { lval.t = yytext; lval.i = LOG_ANSWER; return LOG_SRC; }
+answering {
+	lval.t = yytext;
+	lval.i = LOG_SERVER;
+	fprintf(stderr, "Warning: log category 'answering' is no longer "
+	                "supported. Using 'server' instead.\n");
+	return LOG_SRC;
+}
 zone { lval.t = yytext; lval.i = LOG_ZONE; return LOG_SRC; }
 stdout { lval.t = yytext; lval.i = LOGT_STDOUT; return LOG_DEST; }
 stderr { lval.t = yytext; lval.i = LOGT_STDERR; return LOG_DEST; }
 syslog { lval.t = yytext; lval.i = LOGT_SYSLOG; return LOG_DEST; }
-all { lval.t = yytext; lval.i = LOG_UPTO(LOG_DEBUG); return LOG_LEVEL; }
-debug { lval.t = yytext; lval.i = LOG_MASK(LOG_DEBUG); return LOG_LEVEL; }
-info { lval.t = yytext; lval.i = LOG_MASK(LOG_INFO); return LOG_LEVEL; }
-notice { lval.t = yytext; lval.i = LOG_MASK(LOG_NOTICE); return LOG_LEVEL; }
-warning { lval.t = yytext; lval.i = LOG_MASK(LOG_WARNING); return LOG_LEVEL; }
-error { lval.t = yytext; lval.i = LOG_MASK(LOG_ERR); return LOG_LEVEL; }
+debug { lval.t = yytext; lval.i = LOG_UPTO(LOG_DEBUG); return LOG_LEVEL; }
+info { lval.t = yytext; lval.i = LOG_UPTO(LOG_INFO); return LOG_LEVEL; }
+notice { lval.t = yytext; lval.i = LOG_UPTO(LOG_NOTICE); return LOG_LEVEL; }
+warning { lval.t = yytext; lval.i = LOG_UPTO(LOG_WARNING); return LOG_LEVEL; }
+error { lval.t = yytext; lval.i = LOG_UPTO(LOG_ERR); return LOG_LEVEL; }
+critical { lval.t = yytext; lval.i = LOG_UPTO(LOG_CRIT); return LOG_LEVEL; }
+all {
+	lval.t = yytext;
+	lval.i = LOG_UPTO(LOG_INFO);
+	fprintf(stderr, "Warning: log severity 'all' is no longer "
+	                "supported. Using 'info' instead.\n");
+	return LOG_LEVEL;
+}
 
 increment|unixtime {
   lval.t = yytext;
@@ -326,7 +340,7 @@ hmac-sha512     { lval.alg = KNOT_TSIG_ALG_HMAC_SHA512; return TSIG_ALGO_NAME; }
 
 	// remove optional semicolon
 	if (yytext[yyleng - 1] == ';') {
-		yyleng -= 1; 
+		yyleng -= 1;
 	}
 	// remove quotes
 	yytext += 1;

@@ -290,7 +290,7 @@ static void conf_acl_item(void *scanner, char *item)
 
 static void query_module_create(void *scanner, const char *name, const char *param, bool on_zone)
 {
-	struct query_module *module = query_module_open(name, param, NULL);
+	struct query_module *module = query_module_open(new_config, name, param, NULL);
 	if (module == NULL) {
 		cf_error(scanner, "cannot load query module '%s'", name);
 		return;
@@ -369,7 +369,7 @@ static void conf_zone_start(void *scanner, char *name) {
 
 	// Convert zone name to lower-case.
 	for (size_t i = 0; this_zone->name[i]; i++) {
-		this_zone->name[i] = tolower(this_zone->name[i]);
+		this_zone->name[i] = tolower((unsigned char)this_zone->name[i]);
 	}
 
 	/* Check domain name. */
@@ -468,6 +468,7 @@ static void ident_auto(int tok, conf_t *conf, bool val)
 %token <tok> TSIG_ALGO_NAME
 %token <tok> WORKERS
 %token <tok> BACKGROUND_WORKERS
+%token <tok> ASYNC_START
 %token <tok> USER
 %token <tok> RUNDIR
 %token <tok> PIDFILE
@@ -599,6 +600,9 @@ system:
  }
  | system BACKGROUND_WORKERS NUM ';' {
      SET_NUM(new_config->bg_workers, $3.i, 1, 255, "background-workers");
+ }
+ | system ASYNC_START BOOL ';' {
+     new_config->async_start = $3.i;
  }
  | system USER TEXT ';' {
      new_config->uid = new_config->gid = -1; // Invalidate
@@ -977,7 +981,10 @@ log_prios_start: {
 
 log_prios:
    log_prios_start
- | log_prios LOG_LEVEL ',' { this_logmap->prios |= $2.i; }
+ | log_prios LOG_LEVEL ',' { this_logmap->prios |= $2.i;
+	fprintf(stderr, "Warning: more log severities per statement is deprecated. "
+	                "Using the least serious one.\n");
+ }
  | log_prios LOG_LEVEL ';' { this_logmap->prios |= $2.i; }
  ;
 

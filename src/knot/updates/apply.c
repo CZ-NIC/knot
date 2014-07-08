@@ -313,7 +313,6 @@ static int apply_changeset(zone_contents_t *contents, changeset_t *chset,
 	// check if serial matches
 	const knot_rdataset_t *soa = node_rdataset(contents->apex, KNOT_RRTYPE_SOA);
 	if (soa == NULL || knot_soa_serial(soa) != knot_soa_serial(&chset->soa_from->rrs)) {
-		dbg_xfrin("SOA serials do not match!!\n");
 		return KNOT_EINVAL;
 	}
 
@@ -515,14 +514,7 @@ int apply_changesets_directly(zone_contents_t *contents, changesets_t *chsets)
 		}
 	}
 
-	int ret = finalize_updated_zone(contents, true);
-
-	/*
-	 * HACK: Cleanup for successful update is used for both success and fail
-	 * when modifying the zone directly, will fix in new zone API.
-	 */
-	update_cleanup(chsets);
-	return ret;
+	return finalize_updated_zone(contents, true);
 }
 
 void update_cleanup(changesets_t *chgs)

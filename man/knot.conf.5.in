@@ -1,24 +1,23 @@
 .TH "knot.conf" "5" "@RELEASE_DATE@" "CZ.NIC Labs" "Knot DNS, version @VERSION@"
-.SH "NAME"
-.LP
+.SH NAME
 .B knot.conf
 \- Configuration file manual for Knot DNS server.
-.SH "SYNOPSIS"
-.LP
+.SH SYNOPSIS
 .B knot.conf
-.SH "DESCRIPTION"
+.SH DESCRIPTION
 .B knot.conf
-serves as an example of the configuration for knotc(8) and knotd(8).
-.SH "EXAMPLE"
-.LP
+is an overview of all config options for \fBknotc\fR and \fBknotd\fR.
+.SH EXAMPLE
+.nf
+#
+# There are 8 main sections of this config file:
+#   system, interfaces, keys, remotes, groups, zones, control and log
+#
 
- #
- # There are 7 main sections of this config file:
- #   system, interfaces, remotes, groups, zones, control and log
- #
+# This is a comment.
 
- # Section 'system' contains general options for the server
- system {
+# Section 'system' contains general options for the server
+system {
 
   # Identity of the server (see RFC 4892).
   # Used for answer to CH TXT 'id.server' or 'hostname.bind'
@@ -53,6 +52,13 @@ serves as an example of the configuration for knotc(8) and knotd(8).
   # operations (e.g., zone loading, zone signing, XFR zone updates, ...)
   # Default: unset (auto-estimates optimal value from the number of online CPUs)
   # background-workers 4;
+
+  # Start server asynchronously
+  # When asynchronous startup is enabled, server doesn't wait for the zones to be loaded, and
+  # starts responding immediately lame answers until the zone loads. This may be useful in
+  # some scenarios, but it is disabled by default.
+  # Default: disabled (wait for zones to be loaded before answering)
+  asynchronous-start off;
 
   # User for running server
   # May also specify user.group (e.g. knot.users)
@@ -106,36 +112,36 @@ serves as an example of the configuration for knotc(8) and knotd(8).
   # Maximum EDNS0 UDP payload size
   # Default value: 4096
   max-udp-payload 4096;
- }
+}
 
- # Includes can be placed anywhere at any level in the configuration file. The
- # file name can be relative to current file or absolute.
- #
- # This include includes keys which are commented out in next section.
- include "knot.keys.conf";
+# Includes can be placed anywhere at any level in the configuration file. The
+# file name can be relative to current file or absolute.
+#
+# This include includes keys which are commented out in next section.
+include "knot.keys.conf";
 
- # Section 'keys' contains list of TSIG keys
- #keys {
- #
- #  # TSIG key
- #  #
- #  # format: name key-type "<key>";
- #  # where key-type may be one of the following:
- #  #   hmac-md5
- #  #   hmac-sha1
- #  #   hmac-sha224
- #  #   hmac-sha256
- #  #   hmac-sha384
- #  #   hmac-sha512
- #  # and <key> is the private key
- #  key0.server0 hmac-md5 "Wg==";
- #
- #  # TSIG key for zone
- #  key0.example.com hmac-md5 "==gW";
- #}
+# Section 'keys' contains list of TSIG keys
+#keys {
+#
+#  # TSIG key
+#  #
+#  # format: name key-type "<key>";
+#  # where key-type may be one of the following:
+#  #   hmac-md5
+#  #   hmac-sha1
+#  #   hmac-sha224
+#  #   hmac-sha256
+#  #   hmac-sha384
+#  #   hmac-sha512
+#  # and <key> is the private key
+#  key0.server0 hmac-md5 "Wg==";
+#
+#  # TSIG key for zone
+#  key0.example.com hmac-md5 "==gW";
+#}
 
- # Section 'interfaces' contains definitions of listening interfaces.
- interfaces {
+# Section 'interfaces' contains definitions of listening interfaces.
+interfaces {
 
   # Interface entry
   #
@@ -160,11 +166,11 @@ serves as an example of the configuration for knotc(8) and knotd(8).
   #   address [::1]@53534;
   # }
 
- }
+}
 
- # Section 'remotes' contains symbolic names for remote servers.
- # Syntax for 'remotes' is the same as for 'interfaces'.
- remotes {
+# Section 'remotes' contains symbolic names for remote servers.
+# Syntax for 'remotes' is the same as for 'interfaces'.
+remotes {
 
   # Remote entry
   #
@@ -190,14 +196,14 @@ serves as an example of the configuration for knotc(8) and knotd(8).
   admin-bob {
     address 192.168.100.2;
   }
- }
+}
 
- groups {
+groups {
   admins { admin-alice, admin-bob }
- }
+}
 
- # Section 'control' specifies on which interface to listen for RC commands
- control {
+# Section 'control' specifies on which interface to listen for RC commands
+control {
 
   # Default: $(run_dir)/knot.sock
   listen-on "knot.sock";
@@ -211,10 +217,10 @@ serves as an example of the configuration for knotc(8) and knotd(8).
   # List of remotes or groups delimited by comma
   # Notice: keep in mind that ACLs bear no effect with UNIX sockets
   # allow server0, admins;
- }
+}
 
- # Section 'zones' contains information about zones to be served.
- zones {
+# Section 'zones' contains information about zones to be served.
+zones {
 
   # Shared options for all listed zones
   #
@@ -223,7 +229,7 @@ serves as an example of the configuration for knotc(8) and knotd(8).
   # default: ${localstatedir}/lib/knot, configured with --with-storage
   storage "/var/lib/knot";
 
-  # Build differences from zone file changes
+  # Build differences from zone file changes. EXPERIMENTAL feature.
   # Possible values: on|off
   # Default value: off
   ixfr-from-differences off;
@@ -250,10 +256,12 @@ serves as an example of the configuration for knotc(8) and knotd(8).
 
   # Timeout for syncing changes from zone database to zonefile
   # Possible values: <1..INT_MAX> (seconds)
-  # Default value: 0s (immediately)
+  # Default value: 0s - immediate sync
   # It is also possible to suffix with unit size [s/m/h/d]
   # f.e. 1s = 1 day, 1m = 1 minute, 1h = 1 hour, 1d = 1 day
-  zonefile-sync 0s;
+  # Warning: If serving a large zone, set this to a larger value
+  #          to keep disk load down.
+  zonefile-sync 1h;
 
   # File size limit for IXFR journal
   # Possible values: <1..INT_MAX>
@@ -262,14 +270,14 @@ serves as an example of the configuration for knotc(8) and knotd(8).
   # f.e. 1k, 100M, 2G
   ixfr-fslimit 1G;
 
-  # Enable DNSSEC online signing (technical preview)
+  # Enable DNSSEC online signing (EXPERIMENTAL)
   # Possible values: on | off;
   # Default value: off
-  dnssec-enable off;
+  # dnssec-enable off;
 
-  # Location of DNSSEC signing keys (relative to storage directory).
+  # Location of DNSSEC signing keys (relative to storage dir).
   # Default value: not set
-  dnssec-keydir "keys";
+  # dnssec-keydir "keys";
 
   # Validity period for DNSSEC signatures
   # Possible values: <10801..INT_MAX> (seconds)
@@ -278,12 +286,12 @@ serves as an example of the configuration for knotc(8) and knotd(8).
   # f.e. 1s = 1 day, 1m = 1 minute, 1h = 1 hour, 1d = 1 day
   # The signatures are refreshed one tenth of the signature lifetime before
   # the signature expiration (i.e., 3 days before by default)
-  signature-lifetime 30d;
-  
+  # signature-lifetime 30d;
+
   # Serial policy after DDNS and automatic DNSSEC signing.
   # Possible values: increment | unixtime
   # Default value: increment
-  serial-policy increment;
+  # serial-policy increment;
 
   # Zone entry
   #
@@ -341,7 +349,7 @@ serves as an example of the configuration for knotc(8) and knotd(8).
     # Default value: inherited from zones section
     dnssec-keydir "keys";
 
-    # Enable DNSSEC online signing (technical preview)
+    # Enable DNSSEC online signing (EXPERIMENTAL)
     # Possible values: on | off;
     # Default value: inherited from zones section
     dnssec-enable off;
@@ -352,14 +360,14 @@ serves as an example of the configuration for knotc(8) and knotd(8).
     # It is also possible to suffix with unit size [s/m/h/d]
     # f.e. 1s = 1 day, 1m = 1 minute, 1h = 1 hour, 1d = 1 day
     # The lower limit is because the server will trigger resign when any of the
-    # signatures expires in 7200 seconds or less and it was chosen as a
+    # signatures expires in 7200 seconds or less and it was chosen as a 
     # reasonable value with regard to signing overhead.
-    signature-lifetime 30d;
+    # signature-lifetime 30d;
 
     # Serial policy after DDNS and automatic DNSSEC signing.
     # Possible values: increment | unixtime
     # Default value: increment
-    serial-policy increment;
+    # serial-policy increment;
 
     # XFR master server
     xfr-in server0;
@@ -376,87 +384,78 @@ serves as an example of the configuration for knotc(8) and knotd(8).
     # List of servers to allow UPDATE queries
     update-in server0, admins;
 
-	# Query modules are dynamically loaded modules that can alter query plan
-	# Configuration is always module-specific, but passed as a simple string
-	query_module {
-		module_one "configuration string";
-		module_two "specific configuration string";
-	}
+    # Query modules are dynamically loaded modules that can alter query plan processing
+    # Configuration is always module-specific, but passed as a simple string here 
+    query_module {
+        module_one "configuration string";
+        module_two "specific configuration string";
+    }
   }
- }
+}
 
- # Section 'log' configures logging of server messages.
- #
- # Logging recognizes 3 symbolic names of log devices:
- #   stdout    - Standard output
- #   stderr    - Standard error output
- #   syslog    - Syslog
- #
- # In addition, arbitrary number of log files may be specified (see below).
- #
- # Log messages are characterized by severity and category.
- # Supported severities:
- #   debug     - Debug messages. Must be turned on at compile time.
- #   info      - Informational messages.
- #   notice    - Notices and hints.
- #   warning   - Warnings. An action from the operator may be required.
- #   error     - Recoverable error. Some action should be taken.
- #   fatal     - Non-recoverable errors resulting in server shutdown.
- #               (Not supported yet.)
- #   all       - All severities.
- #
- # Categories designate the source of the log message and roughly correspond
- #   to server modules
- # Supported categories:
- #   server    - Messages related to general operation of the server.
- #   zone      - Messages related to zones, zone parsing and loading.
- #   answering - Messages regarding query processing and response creation.
- #   any       - All categories
- #
- # More severities (separated by commas) may be listed for each category.
- # All applicable severities must be listed.
- #   (I.e. specifying 'error' severity does mean: 'log error messages',
- #    and NOT 'log all messages of severity error and above'.)
- #
- # Default settings (in case there are no entries in 'log' section or the section
- # is missing at all):
- #
- # stderr { any error; }
- # syslog { any error; }
- log {
+# Section 'log' configures logging of server messages.
+#
+# Logging recognizes 3 symbolic names of log devices:
+#   stdout    - Standard output
+#   stderr    - Standard error output
+#   syslog    - Syslog
+#
+# In addition, arbitrary number of log files may be specified (see below).
+#
+# Log messages are characterized by severity and category.
+# Supported severities:
+#   debug     - Debug messages and below. Must be turned on at compile time.
+#   info      - Informational messages and below.
+#   notice    - Notices and hints and below.
+#   warning   - Warnings and below. An action from the operator may be required.
+#   error     - Recoverable error and below. Some action should be taken.
+#   critical  - Non-recoverable errors resulting in server shutdown.
+#               (Not supported yet.)
+#
+# Categories designate the source of the log message and roughly correspond
+#   to server modules
+# Supported categories:
+#   server    - Messages related to general operation of the server.
+#   zone      - Messages related to zones, zone parsing and loading.
+#   any       - All categories
+#
+# Default settings (in case there are no entries in 'log' section or the section
+# is missing at all):
+#
+# stderr { any error; }
+# syslog { any error; }
+log {
 
-  # Log entry
-  #
   # Format 1:
   # <log> {
-  #   <category1> <severity1> [, <severity2> ...];
-  #   <category2> <severity1> [, <severity2> ...];
+  #   <category1> <severity1>;
+  #   <category2> <severity2>;
   #   ...
   # }
-  syslog {     # <log> is a symbolic name of a log device (see above)
-    # log errors of any category
-    any error;    # for <category> and <severity> see above
-    # log also warnings and notices from category 'zone'
-    zone warning, notice;
-    # log info from server
+
+  syslog {
+    # Log any error or critical to syslog
+    any error;
+    # Log all (excluding debug) from server to syslog
     server info;
   }
 
-  # Log fatal, warnings and errors to stderr
+  # Log any warning, error or critical to stderr
   stderr {
-    any error, warning;
+    any warning;
   }
 
   # Format 2:
-  # file <path> {
-  #   <category1> <severity1> [, <severity2> ...];
-  #   <category2> <severity1> [, <severity2> ...];
+  # file <path> { # <path> is absolute or relative path to log file
+  #   <category1> <severity1>;
+  #   <category2> <severity2>;
   # }
-  file "/tmp/knot-sample/knotd.debug" {  # <path> is absolute or relative path to log file
+
+  file "/tmp/knot-sample/knotd.debug" {
     server debug;
   }
- }
-
+}
+.fi
 .SH "SEE ALSO"
-.LP
-knotd(8), knotc(8)
+.BR knotd (8),
+.BR knotc (8).

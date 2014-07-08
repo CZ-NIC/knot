@@ -20,11 +20,6 @@
 #include "knot/nameserver/ixfr.h"
 #include "knot/nameserver/axfr.h"
 
-static int noop(knot_pkt_t *pkt, knot_process_t *ctx)
-{
-	return NS_PROC_NOOP;
-}
-
 /*! \brief Accessor to query-specific data. */
 #define ANSWER_DATA(ctx) ((struct answer_data *)(ctx)->data)
 
@@ -151,12 +146,12 @@ static int process_answer(knot_pkt_t *pkt, knot_process_t *ctx)
 
 /*! \brief Module implementation. */
 static const knot_process_module_t PROCESS_ANSWER_MODULE = {
-        &process_answer_begin,
-        &process_answer_reset,
-        &process_answer_finish,
-        &process_answer,
-        &noop, /* No output. */
-        &noop  /* No error processing. */
+	&process_answer_begin,
+	&process_answer_reset,
+	&process_answer_finish,
+	&process_answer,
+	&knot_process_noop, /* No output. */
+	&knot_process_noop  /* No error processing. */
 };
 
 const knot_process_module_t *process_answer_get_module(void)

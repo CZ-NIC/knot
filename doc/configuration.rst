@@ -11,25 +11,25 @@ Minimal configuration
 The following configuration presents a minimal configuration file
 which can be used as a base for your Knot DNS setup::
 
-    # This is a sample of a minimal configuration file for Knot DNS.
-    #
-    # For exhaustive list of all options see samples/knot.full.conf
-    # in the source directory.
-    #
-
     interfaces {
-        my_interface { address 127.0.0.1@53; }
-        second_int { address ::1; }
-    }
-
-    log {
-      syslog { any notice, warning, error; }
+        all_ipv4 {
+            address 0.0.0.0;
+            port 53;
+        }
+        all_ipv6 {
+            address [::];
+            port 53;
+        }
     }
 
     zones {
-      example.com {
-        file "/etc/knot/example.com";
-      }
+        example.com {
+            file "/etc/knot/example.com";
+        }
+    }
+
+    log {
+        syslog { any info; }
     }
 
 Now let's go step by step through this minimal configuration file:
@@ -40,10 +40,10 @@ Now let's go step by step through this minimal configuration file:
   on port 53 and second IPv6 called ``second_int`` also listening on
   port 53, which is the default port for the DNS. See :ref:`interfaces`.
 * The ``log`` statement defines the log facilities for Knot DNS.
-  In this example we told Knot DNS to send its log messages with the severities
-  ``debug``, ``warning`` and ``notice`` into the syslog.
-  If you omit this sections, all severities will printed to
-  either ``stdout`` or ``stderr``, and the severities
+  In this example we told Knot DNS to send its log messages with the severity
+  ``info`` or more serious to the syslog.
+  If you omit this sections, all severities will be printed
+  either to ``stdout`` or ``stderr``, and the severities
   from the ``warning`` and more serious to syslog. You can find all
   possible combinations in the :ref:`log`.
 * The ``zones`` statement is probably the most important one,
@@ -349,6 +349,28 @@ The general syntax for importing a query module is described in the
 :ref:`query_module` configuration reference.  Basically, each module is
 described by a name and a configuration string.  Below is a list of
 modules and configuration string reference.
+
+``dnstap`` - dnstap-enabled query logging
+-----------------------------------------
+
+The Knot DNS supports dnstap_ for query and response logging.
+You can capture either all or zone-specific queries and responses, usually you want to do
+the former. The dnstap module accepts only a sink path as a parameter, which can either be a file
+or a UNIX socket prefixed with *unix:*.
+
+For example::
+
+    zones {
+        query_module "/tmp/capture.tap";
+    }
+
+You can also log to a UNIX socket with the prefix::
+
+    zones {
+        query_module "unix:/tmp/capture.tap";
+    }
+
+.. _dnstap: http://dnstap.info/
 
 ``synth_record`` - Automatic forward/reverse records
 ----------------------------------------------------

@@ -36,7 +36,6 @@
 #include "knot/ctl/process.h"
 #include "knot/ctl/remote.h"
 #include "knot/conf/conf.h"
-#include "knot/conf/logconf.h"
 #include "knot/server/tcp-handler.h"
 
 /* Signal flags. */
@@ -280,7 +279,7 @@ int main(int argc, char **argv)
 
 	/* Initialize server. */
 	server_t server;
-	res = server_init(&server, config->bg_workers);
+	res = server_init(&server, conf_bg_threads(config));
 	if (res != KNOT_EOK) {
 		log_server_fatal("Could not initialize server: %s\n",
 		                 knot_strerror(res));
@@ -350,7 +349,7 @@ int main(int argc, char **argv)
 
 	/* Start it up. */
 	log_server_info("Starting server...\n");
-	res = server_start(&server);
+	res = server_start(&server, config->async_start);
 	if (res != KNOT_EOK) {
 		log_server_fatal("Failed to start server: %s.\n",
 		                 knot_strerror(res));

@@ -105,11 +105,6 @@ void zone_free(zone_t **zone_ptr)
 	*zone_ptr = NULL;
 }
 
-changeset_t *zone_change_prepare(changesets_t *chset)
-{
-	return changesets_create_changeset(chset);
-}
-
 int zone_change_commit(zone_contents_t *contents, changesets_t *chset)
 {
 	assert(contents);
@@ -249,18 +244,19 @@ int zone_flush_journal(zone_t *zone)
 	conf_zone_t *conf = zone->conf;
 	int ret = zonefile_write(conf->file, contents, from);
 	if (ret == KNOT_EOK) {
-		log_zone_info("Applied differences of '%s' to zonefile.\n", conf->name);
+		log_zone_info("Zone '%s': zone file updated (%u -> %u).\n",
+		              conf->name, zone->zonefile_serial, serial_to);
 	} else {
-		log_zone_warning("Failed to apply differences of '%s' "
-		                 "to zonefile (%s).\n", conf->name, knot_strerror(ret));
+		log_zone_warning("Zone '%s': failed to update zone file (%s)\n",
+		                  conf->name, knot_strerror(ret));
 		return ret;
 	}
 
 	/* Update zone version. */
 	struct stat st;
 	if (stat(zone->conf->file, &st) < 0) {
-		log_zone_warning("Failed to apply differences '%s' to '%s (%s)'\n",
-		                 conf->name, conf->file, knot_strerror(KNOT_EACCES));
+		log_zone_warning("Zone '%s': failed to update zone file (%s)\n",
+		                  conf->name, knot_strerror(KNOT_EACCES));
 		return KNOT_EACCES;
 	}
 
@@ -268,6 +264,9 @@ int zone_flush_journal(zone_t *zone)
 	zone->zonefile_mtime = st.st_mtime;
 	zone->zonefile_serial = serial_to;
 	journal_mark_synced(zone->conf->ixfr_db);
+
+	/* Trim extra heap. */
+	mem_trim();
 
 	return ret;
 }
@@ -285,10 +284,13 @@ int zone_update_enqueue(zone_t *zone, knot_pkt_t *pkt, struct process_query_para
 	/* Copy socket and request. */
 	req->fd = dup(param->socket);
 	memcpy(&req->remote, param->remote, sizeof(struct sockaddr_storage));
-	req->query = knot_pkt_copy(pkt, NULL);
-	if (req->query == NULL) {
+
+	req->query = knot_pkt_new(NULL, pkt->max_size, NULL);
+	int ret = knot_pkt_copy(req->query, pkt);
+	if (ret != KNOT_EOK) {
+		knot_pkt_free(&req->query);
 		free(req);
-		return KNOT_ENOMEM;
+		return ret;
 	}
 
 	pthread_mutex_lock(&zone->ddns_lock);
@@ -298,7 +300,7 @@ int zone_update_enqueue(zone_t *zone, knot_pkt_t *pkt, struct process_query_para
 
 	pthread_mutex_unlock(&zone->ddns_lock);
 
-	/* Schedule UPDATE event. If already scheduled, older event will stay. */
+	/* Schedule UPDATE event. */
 	zone_events_schedule(zone, ZONE_EVENT_UPDATE, ZONE_EVENT_NOW);
 
 	return KNOT_EOK;
@@ -311,7 +313,12 @@ struct request_data *zone_update_dequeue(zone_t *zone)
 	}
 
 	pthread_mutex_lock(&zone->ddns_lock);
-	assert(!EMPTY_LIST(zone->ddns_queue));
+	if (knot_unlikely(EMPTY_LIST(zone->ddns_queue))) {
+		/* Lost race during reload. */
+		pthread_mutex_unlock(&zone->ddns_lock);
+		return NULL;
+	}
+
 	struct request_data *ret = HEAD(zone->ddns_queue);
 	rem_node((node_t *)ret);
 	pthread_mutex_unlock(&zone->ddns_lock);

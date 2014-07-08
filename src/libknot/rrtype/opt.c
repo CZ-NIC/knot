@@ -23,15 +23,26 @@
 #include "libknot/common.h"
 #include "libknot/descriptor.h"
 #include "common/debug.h"
+#include "common-knot/sockaddr.h"
 
 /*! \brief Some implementation-related constants. */
 enum knot_edns_private_consts {
-	/*! \brief Mask for the DO bit (machine byte order) */
-	KNOT_EDNS_DO_MASK = (uint32_t)(1 << 15),
-	/*! \brief Offset of Extended RCODE field in TTL (network byte order). */
-	KNOT_EDNS_OFFSET_RCODE = 0,
-	/*! \brief Offset of the Version field in TTL (network byte order). */
-	KNOT_EDNS_OFFSET_VERSION = 1
+	/*! \brief Bit mask for DO bit. */
+	EDNS_DO_MASK = (uint32_t)(1 << 15),
+
+	/*! \brief Byte offset of the extended RCODE field in TTL. */
+	EDNS_OFFSET_RCODE   = 0,
+	/*! \brief Byte offset of the version field in TTL. */
+	EDNS_OFFSET_VERSION = 1,
+
+	/*! \brief Byte offset of the family field in option data. */
+	EDNS_OFFSET_CLIENT_SUBNET_FAMILY   = 0,
+	/*! \brief Byte offset of the source mask field in option data. */
+	EDNS_OFFSET_CLIENT_SUBNET_SRC_MASK = 2,
+	/*! \brief Byte offset of the destination mask field in option data. */
+	EDNS_OFFSET_CLIENT_SUBNET_DST_MASK = 3,
+	/*! \brief Byte offset of the address field in option data. */
+	EDNS_OFFSET_CLIENT_SUBNET_ADDR     = 4,
 };
 
 /*----------------------------------------------------------------------------*/
@@ -104,7 +115,7 @@ uint8_t knot_edns_get_ext_rcode(const knot_rrset_t *opt_rr)
 	knot_wire_write_u32(ttl_ptr, knot_rrset_ttl(opt_rr));
 
 	uint8_t rcode;
-	memcpy(&rcode, ttl_ptr + KNOT_EDNS_OFFSET_RCODE, sizeof(uint8_t));
+	memcpy(&rcode, ttl_ptr + EDNS_OFFSET_RCODE, sizeof(uint8_t));
 
 	return rcode;
 }
@@ -131,7 +142,7 @@ static void set_value_to_ttl(knot_rrset_t *opt_rr, size_t offset, uint8_t value)
 void knot_edns_set_ext_rcode(knot_rrset_t *opt_rr, uint8_t ext_rcode)
 {
 	assert(opt_rr != NULL);
-	set_value_to_ttl(opt_rr, KNOT_EDNS_OFFSET_RCODE, ext_rcode);
+	set_value_to_ttl(opt_rr, EDNS_OFFSET_RCODE, ext_rcode);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -146,7 +157,7 @@ uint8_t knot_edns_get_version(const knot_rrset_t *opt_rr)
 	knot_wire_write_u32(ttl_ptr, knot_rrset_ttl(opt_rr));
 
 	uint8_t version;
-	memcpy(&version, ttl_ptr + KNOT_EDNS_OFFSET_VERSION, sizeof(uint8_t));
+	memcpy(&version, ttl_ptr + EDNS_OFFSET_VERSION, sizeof(uint8_t));
 
 	return version;
 }
@@ -156,7 +167,7 @@ uint8_t knot_edns_get_version(const knot_rrset_t *opt_rr)
 void knot_edns_set_version(knot_rrset_t *opt_rr, uint8_t version)
 {
 	assert(opt_rr != NULL);
-	set_value_to_ttl(opt_rr, KNOT_EDNS_OFFSET_VERSION, version);
+	set_value_to_ttl(opt_rr, EDNS_OFFSET_VERSION, version);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -165,7 +176,7 @@ bool knot_edns_do(const knot_rrset_t *opt_rr)
 {
 	assert(opt_rr != NULL);
 
-	return knot_rrset_ttl(opt_rr) & KNOT_EDNS_DO_MASK;
+	return knot_rrset_ttl(opt_rr) & EDNS_DO_MASK;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -177,7 +188,7 @@ void knot_edns_set_do(knot_rrset_t *opt_rr)
 	// Read the TTL
 	uint32_t ttl = knot_rrset_ttl(opt_rr);
 	// Set the DO bit
-	ttl |= KNOT_EDNS_DO_MASK;
+	ttl |= EDNS_DO_MASK;
 	// Store the TTL to the RDATA
 	knot_rdata_set_ttl(knot_rdataset_at(&opt_rr->rrs, 0), ttl);
 }
@@ -304,4 +315,75 @@ bool knot_edns_check_record(knot_rrset_t *opt_rr)
 	 * (pos < rdlength) or the last OPTION is too long (pos > rdlength).
 	 */
 	return pos == rdlength;
+}
+
+/*----------------------------------------------------------------------------*/
+
+int knot_edns_client_subnet_create(const knot_addr_family_t family,
+                                   const uint8_t *addr,
+                                   const uint16_t addr_len,
+                                   uint8_t src_mask,
+                                   uint8_t dst_mask,
+                                   uint8_t *data,
+                                   uint16_t *data_len)
+{
+	if (addr == NULL || data == NULL || data_len == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	uint8_t addr_prefix_len = (src_mask + 7) / 8; // Ceiling operation.
+	uint8_t modulo = src_mask % 8;
+
+	uint16_t total = sizeof(uint16_t) + 2 * sizeof(uint8_t) + addr_prefix_len;
+	if (*data_len < total) {
+		return KNOT_ESPACE;
+	}
+
+	if (addr_prefix_len > addr_len) {
+		return KNOT_EINVAL;
+	}
+
+	knot_wire_write_u16(data + EDNS_OFFSET_CLIENT_SUBNET_FAMILY, family);
+	data[EDNS_OFFSET_CLIENT_SUBNET_SRC_MASK] = src_mask;
+	data[EDNS_OFFSET_CLIENT_SUBNET_DST_MASK] = dst_mask;
+	memcpy(data + EDNS_OFFSET_CLIENT_SUBNET_ADDR, addr, addr_prefix_len);
+
+	// Zeroize trailing bits in the last byte.
+	if (modulo > 0 && addr_prefix_len > 0) {
+		data[EDNS_OFFSET_CLIENT_SUBNET_ADDR + addr_prefix_len - 1] &=
+			0xFF << (8 - modulo);
+	}
+
+	*data_len = total;
+
+	return KNOT_EOK;
+}
+
+int knot_edns_client_subnet_parse(const uint8_t *data,
+                                  const uint16_t data_len,
+                                  knot_addr_family_t *family,
+                                  uint8_t *addr,
+                                  uint16_t *addr_len,
+                                  uint8_t *src_mask,
+                                  uint8_t *dst_mask)
+{
+	if (data == NULL || family == NULL || addr == NULL ||
+	    addr_len == NULL || src_mask == NULL || dst_mask == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	int rest = data_len - sizeof(uint16_t) - 2 * sizeof(uint8_t);
+	if (rest < 0 || *addr_len < rest) {
+		return KNOT_ESPACE;
+	}
+
+	*family = knot_wire_read_u16(data + EDNS_OFFSET_CLIENT_SUBNET_FAMILY);
+	*src_mask = data[EDNS_OFFSET_CLIENT_SUBNET_SRC_MASK];
+	*dst_mask = data[EDNS_OFFSET_CLIENT_SUBNET_DST_MASK];
+	memcpy(addr, data + EDNS_OFFSET_CLIENT_SUBNET_ADDR, rest);
+
+	*addr_len = rest;
+
+	return KNOT_EOK;
+
 }

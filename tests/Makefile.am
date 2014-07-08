@@ -1,4 +1,5 @@
 AM_CPPFLAGS = \
+	-include $(top_builddir)/src/config.h \
 	-I$(top_srcdir)/libtap \
 	-I$(top_srcdir)/src
 
@@ -28,17 +29,20 @@ check_PROGRAMS = \
 	dnssec_keys			\
 	dnssec_nsec3			\
 	dnssec_sign			\
-	dnssec_zone_nsec	\
+	dnssec_zone_nsec		\
 	rdata				\
 	rdataset			\
 	rrset				\
 	node				\
-	edns                            \
-	pkt					\
-	process_query		\
-	process_answer		\
+	edns				\
+	pkt				\
+	process_query			\
+	process_answer			\
 	requestor			\
-	query_module
+	query_module			\
+	worker_pool			\
+	worker_queue			\
+	zone_events
 
 
 check-compile-only: $(check_PROGRAMS)

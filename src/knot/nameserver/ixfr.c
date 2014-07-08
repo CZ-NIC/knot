@@ -344,9 +344,9 @@ static int ixfrin_finalize(struct answer_data *adata)
 
 	struct timeval now = {0};
 	gettimeofday(&now, NULL);
-	IXFRIN_LOG(LOG_INFO, "Finished in %.02fs (%u messages, ~%.01fkB).",
+	IXFRIN_LOG(LOG_INFO, "Finished in %.02fs (%u messages, %s%.*f %s).",
 	           time_diff(&ixfr->proc.tstamp, &now) / 1000.0,
-	           ixfr->proc.npkts, ixfr->proc.nbytes / 1024.0);
+	           ixfr->proc.npkts, SIZE_PARAMS(ixfr->proc.nbytes));
 
 	return KNOT_EOK;
 }
@@ -524,6 +524,7 @@ static bool out_of_zone(const knot_rrset_t *rr, struct ixfr_proc *proc)
 static int process_ixfrin_packet(knot_pkt_t *pkt, struct answer_data *adata)
 {
 	struct ixfr_proc *ixfr = (struct ixfr_proc *)adata->ext;
+
 	// Update counters.
 	ixfr->proc.npkts  += 1;
 	ixfr->proc.nbytes += pkt->size;
@@ -567,6 +568,7 @@ int ixfr_query(knot_pkt_t *pkt, struct query_data *qdata)
 	int ret = KNOT_EOK;
 	struct timeval now = {0};
 	struct ixfr_proc *ixfr = (struct ixfr_proc*)qdata->ext;
+	knot_pkt_t *query = qdata->query;
 
 	/* If IXFR is disabled, respond with SOA. */
 	if (qdata->param->proc_flags & NS_QUERY_NO_IXFR) {
@@ -589,6 +591,10 @@ int ixfr_query(knot_pkt_t *pkt, struct query_data *qdata)
 		case KNOT_ERANGE:   /* No history -> AXFR. */
 		case KNOT_ENOENT:
 			IXFROUT_LOG(LOG_INFO, "Incomplete history, fallback to AXFR.");
+			knot_pkt_clear(pkt);
+			knot_pkt_put_question(pkt, knot_pkt_qname(query),
+			                      knot_pkt_qclass(query),
+			                      KNOT_RRTYPE_AXFR);
 			qdata->packet_type = KNOT_QUERY_AXFR; /* Solve as AXFR. */
 			return axfr_query_process(pkt, qdata);
 		default:            /* Server errors. */
@@ -607,9 +613,10 @@ int ixfr_query(knot_pkt_t *pkt, struct query_data *qdata)
 		return NS_PROC_FULL; /* Check for more. */
 	case KNOT_EOK:    /* Last response. */
 		gettimeofday(&now, NULL);
-		IXFROUT_LOG(LOG_INFO, "Finished in %.02fs (%u messages, ~%.01fkB).",
+		IXFROUT_LOG(LOG_INFO, "Finished in %.02fs (%u messages, "
+		            "%s%.*f %s).",
 		            time_diff(&ixfr->proc.tstamp, &now) / 1000.0,
-		            ixfr->proc.npkts, ixfr->proc.nbytes / 1024.0);
+		            ixfr->proc.npkts, SIZE_PARAMS(ixfr->proc.nbytes));
 		ret = NS_PROC_DONE;
 		break;
 	default:          /* Generic error. */
@@ -623,6 +630,21 @@ int ixfr_query(knot_pkt_t *pkt, struct query_data *qdata)
 
 int ixfr_process_answer(knot_pkt_t *pkt, struct answer_data *adata)
 {
+	if (pkt == NULL || adata == NULL) {
+		return NS_PROC_FAIL;
+	}
+
+	/* Check RCODE. */
+	uint8_t rcode = knot_wire_get_rcode(pkt->wire);
+	if (rcode != KNOT_RCODE_NOERROR) {
+		knot_lookup_table_t *lut = knot_lookup_by_id(knot_rcode_names, rcode);
+		if (lut != NULL) {
+			IXFRIN_LOG(LOG_ERR, "Server responded with %s.", lut->name);
+		}
+		return NS_PROC_FAIL;
+	}
+
+	/* Initialize processing with first packet. */
 	if (adata->ext == NULL) {
 		NS_NEED_TSIG_SIGNED(&adata->param->tsig_ctx, 0);
 		if (!zone_transfer_needed(adata->param->zone, pkt)) {
@@ -634,7 +656,7 @@ int ixfr_process_answer(knot_pkt_t *pkt, struct answer_data *adata)
 		// First packet with IXFR, init context
 		int ret = ixfrin_answer_init(adata);
 		if (ret != KNOT_EOK) {
-			IXFRIN_LOG(LOG_ERR, "Failed - %s", knot_strerror(ret));
+			IXFRIN_LOG(LOG_ERR, "%s", knot_strerror(ret));
 			return NS_PROC_FAIL;
 		}
 	} else {
@@ -648,10 +670,6 @@ int ixfr_process_answer(knot_pkt_t *pkt, struct answer_data *adata)
 		if (fret != KNOT_EOK) {
 			ret = NS_PROC_FAIL;
 		}
-	}
-
-	if (ret == NS_PROC_FAIL) {
-		IXFRIN_LOG(LOG_ERR, "Failed - %s", knot_strerror(ret));
 	}
 
 	return ret;

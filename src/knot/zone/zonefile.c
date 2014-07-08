@@ -345,12 +345,10 @@ static int zones_open_free_filename(const char *old_name, char **new_name)
 	}
 	strlcpy(*new_name, old_name, max_size);
 	strlcat(*new_name, suffix, max_size);
-	dbg_zones_verb("zones: creating temporary zone file\n");
 	mode_t old_mode = umask(077);
 	int fd = mkstemp(*new_name);
 	UNUSED(umask(old_mode));
 	if (fd < 0) {
-		dbg_zones_verb("zones: couldn't create temporary zone file\n");
 		free(*new_name);
 		*new_name = NULL;
 	}
@@ -361,7 +359,7 @@ static int zones_open_free_filename(const char *old_name, char **new_name)
 int zonefile_write(const char *path, zone_contents_t *zone,
                    const struct sockaddr_storage *from)
 {
-	if (!zone) {
+	if (!zone || !path) {
 		return KNOT_EINVAL;
 	}
 

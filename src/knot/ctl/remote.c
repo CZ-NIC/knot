@@ -461,12 +461,20 @@ int remote_poll(int sock)
 	return fdset_pselect(sock + 1, &rfds, NULL, NULL, NULL, NULL);
 }
 
-int remote_recv(int sock, struct sockaddr *addr, uint8_t* buf, size_t *buflen)
+int remote_recv(int sock, struct sockaddr_storage *addr, uint8_t *buf,
+                size_t *buflen)
 {
 	int c = tcp_accept(sock);
 	if (c < 0) {
 		dbg_server("remote: couldn't accept incoming connection\n");
 		return c;
+	}
+
+	socklen_t addrlen = sizeof(*addr);
+	if (getpeername(c, (struct sockaddr *)addr, &addrlen) != 0) {
+		dbg_server("remote: failed to get remote address\n");
+		close(c);
+		return KNOT_ECONNREFUSED;
 	}
 
 	/* Receive data. */
@@ -648,7 +656,7 @@ static int zones_verify_tsig_query(const knot_pkt_t *query,
 	assert(tsig_rcode != NULL);
 
 	if (query->tsig_rr == NULL) {
-		dbg_zones("TSIG key required, but not in query - REFUSED.\n");
+		log_server_info("TSIG key required, but not in query - REFUSED.\n");
 		*rcode = KNOT_RCODE_REFUSED;
 		return KNOT_TSIG_EBADKEY;
 	}
@@ -658,7 +666,7 @@ static int zones_verify_tsig_query(const knot_pkt_t *query,
 	 */
 	knot_tsig_algorithm_t alg = tsig_rdata_alg(query->tsig_rr);
 	if (knot_tsig_digest_length(alg) == 0) {
-		log_answer_info("Unsupported digest algorithm "
+		log_server_info("Unsupported digest algorithm "
 		                "requested, treating as bad key\n");
 		/*! \todo [TSIG] It is unclear from RFC if I
 		 *               should treat is as a bad key
@@ -676,10 +684,8 @@ static int zones_verify_tsig_query(const knot_pkt_t *query,
 	 * 2) Find the particular key used by the TSIG.
 	 *    Check not only name, but also the algorithm.
 	 */
-	if (key && kname && knot_dname_cmp(key->name, kname) == 0
-	    && key->algorithm == alg) {
-		dbg_zones_verb("Found claimed TSIG key for comparison\n");
-	} else {
+	if (!(key && kname && knot_dname_cmp(key->name, kname) == 0 &&
+	      key->algorithm == alg)) {
 		*rcode = KNOT_RCODE_NOTAUTH;
 		*tsig_rcode = KNOT_RCODE_BADKEY;
 		return KNOT_TSIG_EBADKEY;
@@ -697,9 +703,6 @@ static int zones_verify_tsig_query(const knot_pkt_t *query,
 	//uint8_t *digest = (uint8_t *)malloc(digest_max_size);
 	//memset(digest, 0 , digest_max_size);
 
-	/* Copy MAC from query. */
-	dbg_zones_verb("Validating TSIG from query\n");
-
 	//const uint8_t* mac = tsig_rdata_mac(tsig_rr);
 	size_t mac_len = tsig_rdata_mac_length(query->tsig_rr);
 
@@ -707,8 +710,8 @@ static int zones_verify_tsig_query(const knot_pkt_t *query,
 
 	if (mac_len > digest_max_size) {
 		*rcode = KNOT_RCODE_FORMERR;
-		dbg_zones("MAC length %zu exceeds digest "
-		       "maximum size %zu\n", mac_len, digest_max_size);
+		log_server_info("MAC length %zu exceeds digest "
+		                "maximum size %zu\n", mac_len, digest_max_size);
 		return KNOT_EMALF;
 	} else {
 		//memcpy(digest, mac, mac_len);
@@ -718,10 +721,6 @@ static int zones_verify_tsig_query(const knot_pkt_t *query,
 		ret = knot_tsig_server_check(query->tsig_rr,
 		                             query->wire,
 		                             query->size, key);
-		dbg_zones_verb("knot_tsig_server_check() returned %s\n",
-		               knot_strerror(ret));
-
-		/* Evaluate TSIG check results. */
 		switch(ret) {
 		case KNOT_EOK:
 			*rcode = KNOT_RCODE_NOERROR;
@@ -764,7 +763,7 @@ int remote_process(server_t *s, conf_iface_t *ctl_if, int sock,
 	memset(&ss, 0, sizeof(struct sockaddr_storage));
 
 	/* Accept incoming connection and read packet. */
-	int client = remote_recv(sock, (struct sockaddr *)&ss, pkt->wire, &buflen);
+	int client = remote_recv(sock, &ss, pkt->wire, &buflen);
 	if (client < 0) {
 		dbg_server("remote: couldn't receive query = %d\n", client);
 		knot_pkt_free(&pkt);
