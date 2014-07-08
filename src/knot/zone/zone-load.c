@@ -128,37 +128,39 @@ int zone_load_post(zone_contents_t *contents, zone_t *zone, uint32_t *dnssec_ref
 
 	int ret = KNOT_EOK;
 	const conf_zone_t *conf = zone->conf;
+	changesets_t *diff_change = changesets_create(1);
+	if (diff_change == NULL) {
+		return KNOT_ENOMEM;
+	}
 
 	/* Sign zone using DNSSEC (if configured). */
 	if (conf->dnssec_enable) {
 		assert(conf->build_diffs);
-		changesets_t *dnssec_change = changesets_create(1);
-		if (dnssec_change == NULL) {
-			return KNOT_ENOMEM;
-		}
-
 		ret = knot_dnssec_zone_sign(contents, conf,
-		                            changesets_get_last(dnssec_change),
+		                            changesets_get_last(diff_change),
 		                            KNOT_SOA_SERIAL_UPDATE,
 		                            dnssec_refresh);
 		if (ret != KNOT_EOK) {
-			changesets_free(&dnssec_change, NULL);
+			changesets_free(&diff_change, NULL);
 			return ret;
 		}
 
 		/* Apply DNSSEC changes. */
-		ret = zone_change_commit(contents, dnssec_change);
-		update_cleanup(dnssec_change);
-		changesets_free(&dnssec_change, NULL);
+		ret = zone_change_commit(contents, diff_change);
+		update_cleanup(diff_change);
 		if (ret != KNOT_EOK) {
+			changesets_free(&diff_change, NULL);
 			return ret;
 		}
 	}
 
 	/* Calculate IXFR from differences (if configured). */
 	const bool contents_changed = zone->contents && (contents != zone->contents);
-	changesets_t *diff_change = NULL;
 	if (contents_changed && conf->build_diffs) {
+
+		/* Replace changes from zone signing, the resulting diff will cover
+		 * those changes as well. */
+		changesets_free(&diff_change, NULL);
 		diff_change = changesets_create(1);
 		if (diff_change == NULL) {
 			return KNOT_ENOMEM;
@@ -188,8 +190,8 @@ int zone_load_post(zone_contents_t *contents, zone_t *zone, uint32_t *dnssec_ref
 		}
 	}
 
-	/* Write changes (DNSSEC and diff both) to journal if all went well. */
-	if (diff_change) {
+	/* Write changes (DNSSEC, diff, or both) to journal if all went well. */
+	if (!changesets_empty(diff_change)) {
 		ret = zone_change_store(zone, diff_change);
 		changesets_free(&diff_change, NULL);
 		return ret;
