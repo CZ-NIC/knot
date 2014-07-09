@@ -130,7 +130,7 @@ class ZoneFile(object):
         with open(self.path, "a") as file:
             file.write("@ 0 NSEC3PARAM 1 0 %i %s" % (iters, salt))
 
-        self.update_serial()
+        self.update_soa()
 
     def disable_nsec3(self):
         '''Remove NSEC3PARAM record if any.'''
@@ -145,7 +145,7 @@ class ZoneFile(object):
 
         os.remove(old_name)
 
-        self.update_serial()
+        self.update_soa()
 
     def backup(self):
         '''Make a backup copy of the actual zone file.'''
@@ -156,21 +156,33 @@ class ZoneFile(object):
         except:
             raise Exception("Can't make a copy of zone file '%s'" % self.path)
 
-    def update_serial(self, new_serial=None):
-        '''Change SOA serial.'''
-
-        serial = None
-        first = False
+    def update_soa(self, serial=None, refresh=None, retry=None, expire=None,
+                   minimum=None):
+        '''Update SOA rdata numbers (serial, timers). The serial is just
+           incremented if not specified.'''
 
         old_name = self.path + ".old"
         os.rename(self.path, old_name)
+
+        first = False
 
         with open(old_name) as old_file, open(self.path, 'w') as new_file:
             for line in old_file:
                 if "SOA" in line and not first:
                     items = line.split()
-                    serial = int(items[-5])
-                    items[-5] = str(serial + 1) if not new_serial else str(new_serial)
+
+                    old_serial = int(items[-5])
+                    items[-5] = str(serial) if serial else str(old_serial + 1)
+
+                    if refresh:
+                        items[-4] = str(refresh)
+                    if retry:
+                        items[-3] = str(retry)
+                    if expire:
+                        items[-2] = str(expire)
+                    if minimum:
+                        items[-1] = str(minimum)
+
                     new_file.write(str.join(" ", items))
                     new_file.write("\n")
                     first = True
@@ -185,7 +197,7 @@ class ZoneFile(object):
         dnssec = False
         nsec3 = False
 
-        self.update_serial()
+        self.update_soa()
 
         old_name = self.path + ".old"
         os.rename(self.path, old_name)
