@@ -198,6 +198,7 @@ int zone_load_post(zone_contents_t *contents, zone_t *zone, uint32_t *dnssec_ref
 	}
 
 	// No-op.
+	changesets_free(&diff_change, NULL);
 	return KNOT_EOK;
 }
 
