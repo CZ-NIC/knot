@@ -43,4 +43,4 @@ Supported operating system
 Knot DNS itself is written in a portable way, but it depends on
 several libraries. Namely userspace-rcu, which could be a constraint
 when it comes to the operating system support. Knot DNS can be compiled
-and run on most of UNIX-like systems, such as Linux, *BSD and Mac OS X.
+and run on most of UNIX-like systems, such as Linux, \*BSD and Mac OS X.
