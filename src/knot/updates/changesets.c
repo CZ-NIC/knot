@@ -33,12 +33,7 @@ static int add_rr_to_zone(zone_contents_t *z, const knot_rrset_t *rrset)
 	zone_node_t *n = NULL;
 	int ret = zone_contents_add_rr(z, rrset, &n);
 	UNUSED(n);
-	if (ret != KNOT_ETTL) {
-		return ret;
-	} else {
-		// Ignore TTL errors
-		return KNOT_EOK;
-	}
+	return ret;
 }
 
 void changeset_init(changeset_t *ch, const knot_dname_t *apex, mm_ctx_t *mm)
