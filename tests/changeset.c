@@ -31,7 +31,7 @@ int main(int argc, char *argv[])
 	// Test creation.
 	knot_dname_t *d = knot_dname_from_str("test.");
 	assert(d);
-	changeset_t *ch = changeset_new(NULL, d);
+	changeset_t *ch = changeset_new(d);
 	knot_dname_free(&d, NULL);
 	ok(ch != NULL, "changeset: new");
 	ok(changeset_empty(ch), "changeset: empty");
@@ -116,7 +116,7 @@ int main(int argc, char *argv[])
 	knot_dname_free(&d, NULL);
 	d = knot_dname_from_str("test.");
 	assert(d);
-	changeset_t *ch2 = changeset_new(NULL, d);
+	changeset_t *ch2 = changeset_new(d);
 	knot_dname_free(&d, NULL);
 	assert(ch2);
 	// Add something to add section.

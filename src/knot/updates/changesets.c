@@ -197,6 +197,13 @@ size_t changeset_size(const changeset_t *ch)
 	}
 	changeset_iter_clear(&itt);
 
+	if (!knot_rrset_empty(ch->soa_from)) {
+		size += 1;
+	}
+	if (!knot_rrset_empty(ch->soa_to)) {
+		size += 1;
+	}
+
 	return size;
 }
 
@@ -226,7 +233,7 @@ int changeset_merge(changeset_t *ch1, const changeset_t *ch2)
 	}
 	changeset_iter_clear(&itt);
 
-	changeset_iter_add(&itt, ch2, false);
+	changeset_iter_rem(&itt, ch2, false);
 
 	rrset = changeset_iter_next(&itt);
 	while (!knot_rrset_empty(&rrset)) {
@@ -242,7 +249,7 @@ int changeset_merge(changeset_t *ch1, const changeset_t *ch2)
 	// Use soa_to and serial from the second changeset
 	// soa_to from the first changeset is redundant, delete it
 	knot_rrset_t *soa_copy = knot_rrset_copy(ch2->soa_to, NULL);
-	if (soa_copy == NULL) {
+	if (soa_copy == NULL && ch2->soa_to) {
 		return KNOT_ENOMEM;
 	}
 	knot_rrset_free(&ch1->soa_to, NULL);
