@@ -130,7 +130,10 @@ int zone_load_post(zone_contents_t *contents, zone_t *zone, uint32_t *dnssec_ref
 	if (conf->dnssec_enable) {
 		assert(conf->build_diffs);
 		changeset_t ch;
-		changeset_init(&ch, zone->name, NULL);
+		ret = changeset_init(&ch, zone->name);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
 		ret = knot_dnssec_zone_sign(contents, conf, &ch, KNOT_SOA_SERIAL_UPDATE,
 		                            dnssec_refresh);
 		if (ret != KNOT_EOK) {
@@ -152,7 +155,10 @@ int zone_load_post(zone_contents_t *contents, zone_t *zone, uint32_t *dnssec_ref
 	/* Calculate IXFR from differences (if configured). */
 	const bool contents_changed = zone->contents && (contents != zone->contents);
 	changeset_t diff_change;
-	changeset_init(&diff_change, zone->name, NULL);
+	ret = changeset_init(&diff_change, zone->name);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
 	if (contents_changed && conf->build_diffs) {
 		ret = zone_contents_create_diff(zone->contents, contents, &diff_change);
 		if (ret == KNOT_ENODIFF) {

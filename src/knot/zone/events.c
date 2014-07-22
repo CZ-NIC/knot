@@ -504,15 +504,18 @@ static int event_dnssec(zone_t *zone)
 {
 	assert(zone);
 
-	changeset_t ch;
-	changeset_init(&ch, zone->name, NULL);
-
-	int ret = KNOT_ERROR;
 	char *zname = knot_dname_to_str(zone->name);
 	char *msgpref = sprintf_alloc("DNSSEC: Zone %s -", zname);
 	free(zname);
+	int ret = KNOT_EOK;
 	if (msgpref == NULL) {
 		ret = KNOT_ENOMEM;
+		goto done;
+	}
+
+	changeset_t ch;
+	ret = changeset_init(&ch, zone->name);
+	if (ret != KNOT_EOK) {
 		goto done;
 	}
 

@@ -371,7 +371,7 @@ static int solve_soa_del(const knot_rrset_t *rr, struct ixfr_proc *proc)
 	}
 
 	// Create new changeset.
-	changeset_t *change = changeset_new(proc->mm, proc->zone->name);
+	changeset_t *change = changeset_new(proc->zone->name);
 	if (change == NULL) {
 		return KNOT_ENOMEM;
 	}

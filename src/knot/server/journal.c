@@ -1146,7 +1146,7 @@ finish:
 
 static int load_changeset(journal_t *journal, journal_node_t *n, const zone_t *zone, list_t *chgs)
 {
-	changeset_t *ch = changeset_new(NULL, zone->name);
+	changeset_t *ch = changeset_new(zone->name);
 	if (ch == NULL) {
 		return KNOT_ENOMEM;
 	}

@@ -85,14 +85,16 @@ static int sign_update(zone_t *zone, const zone_contents_t *old_contents,
 	assert(ddns_ch != NULL);
 
 	changeset_t sec_ch;
-	changeset_init(&sec_ch, zone->name, NULL);
+	int ret = changeset_init(&sec_ch, zone->name);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
 
 	/*
 	 * Check if the UPDATE changed DNSKEYs or NSEC3PARAM.
 	 * If yes, signing just the changes is insufficient, we have to sign
 	 * the whole zone.
 	 */
-	int ret = KNOT_EOK;
 	uint32_t refresh_at = 0;
 	if (zones_dnskey_changed(old_contents, new_contents) ||
 	    zones_nsec3param_changed(old_contents, new_contents)) {
@@ -151,7 +153,11 @@ static int process_authenticated(uint16_t *rcode, struct query_data *qdata)
 
 	// Create DDNS change
 	changeset_t ddns_ch;
-	changeset_init(&ddns_ch, qdata->zone->name, NULL);
+	ret = changeset_init(&ddns_ch, qdata->zone->name);
+	if (ret != KNOT_EOK) {
+		*rcode = KNOT_RCODE_SERVFAIL;
+		return ret;
+	}
 
 	ret = ddns_process_update(zone, query, &ddns_ch, rcode);
 	if (ret != KNOT_EOK) {

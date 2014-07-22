@@ -3,9 +3,9 @@
  *
  * \author Jan Kadlec <jan.kadlec@nic.cz>
  *
- * \brief Structure for representing IXFR/DDNS changeset and its API.
+ * \brief Structure for representing zone change and its API.
  *
- * \addtogroup xfr
+ * \addtogroup server
  * @{
  */
 /*  Copyright (C) 2013 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
@@ -29,56 +29,54 @@
 #include "libknot/rrset.h"
 #include "knot/zone/contents.h"
 #include "common/lists.h"
-#include "common/mempattern.h"
 
 /*----------------------------------------------------------------------------*/
 
 /*! \brief One zone change, from 'soa_from' to 'soa_to'. */
-typedef struct changeset {
-	node_t n; /*!< List node. */
-	mm_ctx_t *mm; /*!< Memory context */
-	knot_rrset_t *soa_from; /*!< Start SOA. */
-	zone_contents_t *add;
-	zone_contents_t *remove;
-	knot_rrset_t *soa_to; /*!< Destination SOA. */
-	uint8_t *data; /*!< Serialized changeset. */
-	size_t size; /*!< Size of serialized changeset. */
-	list_t old_data; /*!< Old data, to be freed after succesfull update. */
-	list_t new_data; /*!< New data, to be freed after failed update. */
+typedef struct {
+	node_t n;                 /*!< List node. */
+	knot_rrset_t *soa_from;   /*!< Start SOA. */
+	knot_rrset_t *soa_to;     /*!< Destination SOA. */
+	zone_contents_t *add;     /*!< Change additions. */
+	zone_contents_t *remove;  /*!< Change removals. */
+	list_t old_data;          /*!< Old data, to be freed after succesfull update. */
+	list_t new_data;          /*!< New data, to be freed after failed update. */
+	size_t size;              /*!< Size of serialized changeset. */
+	uint8_t *data;            /*!< Serialized changeset. */
 } changeset_t;
 
+/*! \brief Changeset iteration structure. */
 typedef struct {
-	list_t iters;
-	const zone_node_t *node;
-	uint16_t node_pos;
+	list_t iters;             /*!< List of pending zone iterators. */
+	const zone_node_t *node;  /*!< Current zone node. */
+	uint16_t node_pos;        /*!< Position in node. */
 } changeset_iter_t;
 
 /*----------------------------------------------------------------------------*/
 
-changeset_t *changeset_new(mm_ctx_t *mm, const knot_dname_t *apex);
-void changeset_init(changeset_t *ch, const knot_dname_t *apex, mm_ctx_t *mm);
-
 /*!
- * \brief Add RRSet to changeset. RRSet is either inserted to 'add' or to
- *        'remove' list. Will *not* try to merge with previous RRSets.
+ * \brief Inits changeset structure.
  *
- * \param chgs Changeset to add RRSet into.
- * \param rrset RRSet to be added.
- * \param part Add to 'add' or 'remove'?
+ * \param ch    Changeset to init.
+ * \param apex  Zone apex DNAME.
  *
- * \retval KNOT_EOK on success.
- * \retval Error code on failure.
+ * \return KNOT_E*
  */
-int changeset_add_rrset(changeset_t *ch, const knot_rrset_t *rrset);
-int changeset_rem_rrset(changeset_t *ch, const knot_rrset_t *rrset);
+int changeset_init(changeset_t *ch, const knot_dname_t *apex);
 
 /*!
- * \brief Checks whether changeset is empty.
+ * \brief Creates new changeset structure.
  *
- * Changeset is considered empty if it has no RRs in REMOVE and ADD sections and
- * final SOA (soa_to) is not set.
+ * \param apex  Zone apex DNAME.
  *
- * \param changeset Changeset to be checked.
+ * \return Changeset structure on success, NULL on errors.
+ */
+changeset_t *changeset_new(const knot_dname_t *apex);
+
+/*!
+ * \brief Checks whether changeset is empty, i.e. no change will happen after its application.
+ *
+ * \param changeset  Changeset to be checked.
  *
  * \retval true if changeset is empty.
  * \retval false if changeset is not empty.
@@ -88,22 +86,117 @@ bool changeset_empty(const changeset_t *ch);
 /*!
  * \brief Get number of changes (additions and removals) in the changeset.
  *
- * \param changeset Changeset to be checked.
+ * \param changeset  Changeset to be checked.
  *
  * \return Number of changes in the changeset.
  */
 size_t changeset_size(const changeset_t *ch);
 
+/*!
+ * \brief Add RRSet to 'add' part of changeset.
+ *
+ * \param ch     Changeset to add RRSet into.
+ * \param rrset  RRSet to be added.
+ *
+ * \return KNOT_E*
+ */
+int changeset_add_rrset(changeset_t *ch, const knot_rrset_t *rrset);
+
+/*!
+ * \brief Add RRSet to 'remove' part of changeset.
+ *
+ * \param ch     Changeset to add RRSet into.
+ * \param rrset  RRSet to be added.
+ *
+ * \return KNOT_E*
+ */
+int changeset_rem_rrset(changeset_t *ch, const knot_rrset_t *rrset);
+
+/*!
+ * \brief Merges two changesets together. Legacy, to be removed with new zone API.
+ *
+ * \param ch1  Merge into this changeset.
+ * \param ch2  Merge this changeset.
+ *
+ * \return KNOT_E*
+ */
+int changeset_merge(changeset_t *ch1, const changeset_t *ch2);
+
+/*!
+ * \brief Clears changesets in list. Changesets are not free'd. Legacy.
+ *
+ * \param chgs  Changeset list to clear.
+ */
 void changesets_clear(list_t *chgs);
+
+/*!
+ * \brief Free changesets in list. Legacy.
+ *
+ * \param chgs  Changeset list to free.
+ */
 void changesets_free(list_t *chgs);
+
+/*!
+ * \brief Clear single changeset.
+ *
+ * \param ch  Changeset to clear.
+ */
 void changeset_clear(changeset_t *ch);
+
+/*!
+ * \brief Frees single changeset.
+ *
+ * \param ch  Changeset to free.
+ */
 void changeset_free(changeset_t *ch);
 
-int changeset_merge(changeset_t *ch1, changeset_t *ch2);
+/*!
+ * \brief Inits changeset iteration structure with changeset additions.
+ *
+ * \param itt     Iterator to init.
+ * \param ch      Changeset to use.
+ * \param sorted  Sort the iteration?
+ *
+ * \return KNOT_E*
+ */
 int changeset_iter_add(changeset_iter_t *itt, const changeset_t *ch, bool sorted);
+
+/*!
+ * \brief Inits changeset iteration structure with changeset removals.
+ *
+ * \param itt     Iterator to init.
+ * \param ch      Changeset to use.
+ * \param sorted  Sort the iteration?
+ *
+ * \return KNOT_E*
+ */
 int changeset_iter_rem(changeset_iter_t *itt, const changeset_t *ch, bool sorted);
+
+/*!
+ * \brief Inits changeset iteration structure with changeset additions and removals.
+ *
+ * \param itt     Iterator to init.
+ * \param ch      Changeset to use.
+ * \param sorted  Sort the iteration?
+ *
+ * \return KNOT_E*
+ */
 int changeset_iter_all(changeset_iter_t *itt, const changeset_t *ch, bool sorted);
+
+/*!
+ * \brief Gets next RRSet from changeset iterator.
+ *
+ * \param it  Changeset iterator.
+ *
+ * \return Next RRSet in iterator, empty RRSet if iteration done.
+ */
 knot_rrset_t changeset_iter_next(changeset_iter_t *it);
+
+/*!
+ * \brief Free resources allocated by changeset iterator.
+ *
+ * \param it  Iterator to clear.
+ */
 void changeset_iter_clear(changeset_iter_t *it);
 
 /*! @} */
