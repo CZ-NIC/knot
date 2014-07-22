@@ -28,6 +28,19 @@
 #include "libknot/rrtype/soa.h"
 #include "common/debug.h"
 
+static int add_rr_to_zone(zone_contents_t *z, const knot_rrset_t *rrset)
+{
+	zone_node_t *n = NULL;
+	int ret = zone_contents_add_rr(z, rrset, &n);
+	UNUSED(n);
+	if (ret != KNOT_ETTL) {
+		return ret;
+	} else {
+		// Ignore TTL errors
+		return KNOT_EOK;
+	}
+}
+
 void changeset_init(changeset_t *ch, const knot_dname_t *apex, mm_ctx_t *mm)
 {
 	memset(ch, 0, sizeof(changeset_t));
@@ -57,18 +70,12 @@ changeset_t *changeset_new(mm_ctx_t *mm, const knot_dname_t *apex)
 
 int changeset_add_rrset(changeset_t *ch, const knot_rrset_t *rrset)
 {
-	zone_node_t *n = NULL;
-	int ret = zone_contents_add_rr(ch->add, rrset, &n);
-	UNUSED(n);
-	return ret;
+	return add_rr_to_zone(ch->add, rrset);
 }
 
 int changeset_rem_rrset(changeset_t *ch, const knot_rrset_t *rrset)
 {
-	zone_node_t *n = NULL;
-	int ret = zone_contents_add_rr(ch->remove, rrset, &n);
-	UNUSED(n);
-	return ret;
+	return add_rr_to_zone(ch->remove, rrset);
 }
 
 bool changeset_empty(const changeset_t *ch)
@@ -80,6 +87,7 @@ bool changeset_empty(const changeset_t *ch)
 	if (ch->soa_to) {
 		return false;
 	}
+
 	changeset_iter_t itt;
 	changeset_iter_all(&itt, ch, false);
 
@@ -94,6 +102,7 @@ size_t changeset_size(const changeset_t *ch)
 	if (ch == NULL) {
 		return 0;
 	}
+
 	changeset_iter_t itt;
 	changeset_iter_all(&itt, ch, false);
 

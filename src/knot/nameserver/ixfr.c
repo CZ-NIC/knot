@@ -25,6 +25,7 @@ enum ixfr_states {
 struct ixfr_proc {
 	struct xfr_proc proc;          /* Generic transfer processing context. */
 	changeset_iter_t cur;          /* Current changeset iteration state.*/
+	knot_rrset_t cur_rr;           /* Currently processed RRSet. */
 	int state;                     /* IXFR-in state. */
 	knot_rrset_t *final_soa;       /* First SOA received via IXFR. */
 	list_t changesets;             /* Processed changesets. */
@@ -53,11 +54,13 @@ static int ixfr_put_chg_part(knot_pkt_t *pkt, struct ixfr_proc *ixfr, changeset_
 	assert(ixfr);
 	assert(itt);
 
-	knot_rrset_t rr = changeset_iter_next(itt);
+	if (knot_rrset_empty(&ixfr->cur_rr)) {
+		ixfr->cur_rr = changeset_iter_next(itt);
+	}
 	int ret = KNOT_EOK; // Declaration for IXFR_SAFE_PUT macro
-	while(!knot_rrset_empty(&rr)) {
-		IXFR_SAFE_PUT(pkt, &rr);
-		rr = changeset_iter_next(itt);
+	while(!knot_rrset_empty(&ixfr->cur_rr)) {
+		IXFR_SAFE_PUT(pkt, &ixfr->cur_rr);
+		ixfr->cur_rr = changeset_iter_next(itt);
 	}
 
 	return ret;
@@ -86,7 +89,7 @@ static int ixfr_process_changeset(knot_pkt_t *pkt, const void *item,
 
 	/* Put REMOVE RRSets. */
 	if (ixfr->state == IXFR_DEL) {
-		if (EMPTY_LIST(ixfr->cur.iters)) {
+		if (EMPTY_LIST(ixfr->cur.iters) && knot_rrset_empty(&ixfr->cur_rr)) {
 			changeset_iter_rem(&ixfr->cur, chgset, false);
 		}
 		ret = ixfr_put_chg_part(pkt, ixfr, &ixfr->cur);
@@ -104,9 +107,9 @@ static int ixfr_process_changeset(knot_pkt_t *pkt, const void *item,
 		ixfr->state = IXFR_ADD;
 	}
 
-	/* Put REMOVE RRSets. */
+	/* Put Add RRSets. */
 	if (ixfr->state == IXFR_ADD) {
-		if (EMPTY_LIST(ixfr->cur.iters)) {
+		if (EMPTY_LIST(ixfr->cur.iters) && knot_rrset_empty(&ixfr->cur_rr)) {
 			changeset_iter_add(&ixfr->cur, chgset, false);
 		}
 		ret = ixfr_put_chg_part(pkt, ixfr, &ixfr->cur);
@@ -223,6 +226,7 @@ static int ixfr_answer_init(struct query_data *qdata)
 	init_list(&xfer->proc.nodes);
 	init_list(&xfer->changesets);
 	init_list(&xfer->cur.iters);
+	knot_rrset_init_empty(&xfer->cur_rr);
 	add_tail_list(&xfer->changesets, &chgsets);
 	xfer->qdata = qdata;
 
