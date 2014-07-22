@@ -79,7 +79,7 @@ static int zone_sign(zone_contents_t *zone, const conf_zone_t *zone_config,
 	uint32_t new_serial = zone_contents_next_serial(zone, zone_config->serial_policy);
 
 	dbg_dnssec_verb("Changeset empty before generating NSEC chain: %d\n",
-	                changeset_is_empty(out_ch));
+	                changeset_empty(out_ch));
 
 	// Init needed structs
 	knot_zone_keys_t zone_keys;
@@ -103,7 +103,7 @@ static int zone_sign(zone_contents_t *zone, const conf_zone_t *zone_config,
 		return result;
 	}
 	dbg_dnssec_verb("Changeset empty after generating NSEC chain: %d\n",
-	                changeset_is_empty(out_ch));
+	                changeset_empty(out_ch));
 
 	// add missing signatures
 	result = knot_zone_sign(zone, &zone_keys, &policy, out_ch,
@@ -116,16 +116,16 @@ static int zone_sign(zone_contents_t *zone, const conf_zone_t *zone_config,
 		return result;
 	}
 	dbg_dnssec_verb("Changeset emtpy after signing: %d\n",
-	                changeset_is_empty(out_ch));
+	                changeset_empty(out_ch));
 
 	// Check if only SOA changed
-	if (changeset_is_empty(out_ch) &&
+	if (changeset_empty(out_ch) &&
 	    !knot_zone_sign_soa_expired(zone, &zone_keys, &policy)) {
 		log_zone_info("%s No signing performed, zone is valid.\n",
 		              msgpref);
 		free(msgpref);
 		knot_free_zone_keys(&zone_keys);
-		assert(changeset_is_empty(out_ch));
+		assert(changeset_empty(out_ch));
 		return KNOT_EOK;
 	}
 

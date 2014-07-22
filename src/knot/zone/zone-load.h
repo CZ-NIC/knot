@@ -45,7 +45,7 @@ int zone_load_check(zone_contents_t *contents, conf_zone_t *zone_config);
  * \param zone_config
  * \return KNOT_EOK or an error
  */
-int zone_load_journal(zone_contents_t *contents, conf_zone_t *zone_config);
+int zone_load_journal(zone_t *zone);
 
 /*!
  * \brief Zone loading post-actions (zone resign, calculation of delta)

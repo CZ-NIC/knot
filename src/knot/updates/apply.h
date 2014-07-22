@@ -42,7 +42,7 @@
  *
  * \return KNOT_E*
  */
-int apply_changesets(zone_t *zone, changesets_t *chsets,
+int apply_changesets(zone_t *zone, list_t *chsets,
                      zone_contents_t **new_contents);
 
 /*!
@@ -53,14 +53,13 @@ int apply_changesets(zone_t *zone, changesets_t *chsets,
  *
  * \return KNOT_E*
  */
-int apply_changesets_directly(zone_contents_t *contents,
-                              changesets_t *chsets);
+int apply_changesets_directly(zone_contents_t *contents, list_t *chsets);
 
 /*!
  * \brief Cleanups successful update. (IXFR, DNSSEC, DDNS).
  * \param chgs  Changesets used to create the update.
  */
-void update_cleanup(changesets_t *chgs);
+void update_cleanup(list_t *chgs);
 
 /*!
  * \brief Rollbacks failed update (IXFR, DNSSEC, DDNS).
@@ -68,7 +67,7 @@ void update_cleanup(changesets_t *chgs);
  * \param chgs          Changesets used to create the update.
  * \param new_contents  Created zone contents.
  */
-void update_rollback(changesets_t *chgs, zone_contents_t **new_contents);
+void update_rollback(list_t *chgs, zone_contents_t **new_contents);
 
 /*!
  * \brief Frees old zone contents - i.e. contents that were used to create the

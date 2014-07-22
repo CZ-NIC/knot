@@ -240,7 +240,7 @@ static int event_reload(zone_t *zone)
 
 	/* Store zonefile serial and apply changes from the journal. */
 	zone->zonefile_serial = zone_contents_serial(contents);
-	int result = zone_load_journal(contents, zone_config);
+	int result = zone_load_journal(zone);
 	if (result != KNOT_EOK) {
 		goto fail;
 	}
@@ -518,20 +518,18 @@ static int event_dnssec(zone_t *zone)
 {
 	assert(zone);
 
-	changesets_t *chs = changesets_create(1);
-	if (chs == NULL) {
-		return KNOT_ENOMEM;
-	}
-
-	changeset_t *ch = changesets_get_last(chs);
-	assert(ch);
-
-	int ret = KNOT_ERROR;
 	char *zname = knot_dname_to_str(zone->name);
 	char *msgpref = sprintf_alloc("DNSSEC: Zone %s -", zname);
 	free(zname);
+	int ret = KNOT_EOK;
 	if (msgpref == NULL) {
 		ret = KNOT_ENOMEM;
+		goto done;
+	}
+
+	changeset_t ch;
+	ret = changeset_init(&ch, zone->name);
+	if (ret != KNOT_EOK) {
 		goto done;
 	}
 
@@ -542,19 +540,22 @@ static int event_dnssec(zone_t *zone)
 
 		zone->flags &= ~ZONE_FORCE_RESIGN;
 		ret = knot_dnssec_zone_sign_force(zone->contents, zone->conf,
-		                                  ch, &refresh_at);
+		                                  &ch, &refresh_at);
 	} else {
 		log_zone_info("%s Signing zone...\n", msgpref);
 		ret = knot_dnssec_zone_sign(zone->contents, zone->conf,
-		                            ch, KNOT_SOA_SERIAL_UPDATE,
+		                            &ch, KNOT_SOA_SERIAL_UPDATE,
 		                            &refresh_at);
 	}
 	if (ret != KNOT_EOK) {
 		goto done;
 	}
 
-	if (!changesets_empty(chs)) {
-		ret = zone_change_apply_and_store(&chs, zone, "DNSSEC", NULL);
+	if (!changeset_empty(&ch)) {
+		list_t apply;
+		init_list(&apply);
+		add_head(&apply, &ch.n);
+		ret = zone_change_apply_and_store(&apply, zone, "DNSSEC");
 		if (ret != KNOT_EOK) {
 			log_zone_error("%s Could not sign zone (%s).\n",
 				       msgpref, knot_strerror(ret));
@@ -571,7 +572,7 @@ static int event_dnssec(zone_t *zone)
 	}
 
 done:
-	changesets_free(&chs, NULL);
+	changeset_clear(&ch);
 	free(msgpref);
 	return ret;
 }

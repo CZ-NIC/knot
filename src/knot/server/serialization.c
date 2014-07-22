@@ -76,22 +76,19 @@ int changeset_binary_size(const changeset_t *chgset, size_t *size)
 	}
 
 	size_t soa_from_size = rrset_binary_size(chgset->soa_from);
-	size_t soa_to_size = rrset_binary_size(chgset->soa_to);
+	size_t soa_to_size = rrset_binary_size(chgset->soa_to);changeset_iter_t itt;
+	changeset_iter_all(&itt, chgset, false);
 
-	size_t remove_size = 0;
-	knot_rr_ln_t *rr_node = NULL;
-	WALK_LIST(rr_node, chgset->remove) {
-		knot_rrset_t *rrset = rr_node->rr;
-		remove_size += rrset_binary_size(rrset);
+	size_t change_size = 0;
+	knot_rrset_t rrset = changeset_iter_next(&itt);
+	while (!knot_rrset_empty(&rrset)) {
+		change_size += rrset_binary_size(&rrset);
+		rrset = changeset_iter_next(&itt);
 	}
 
-	size_t add_size = 0;
-	WALK_LIST(rr_node, chgset->add) {
-		knot_rrset_t *rrset = rr_node->rr;
-		add_size += rrset_binary_size(rrset);
-	}
+	changeset_iter_clear(&itt);
 
-	*size = soa_from_size + soa_to_size + remove_size + add_size;
+	*size = soa_from_size + soa_to_size + change_size;
 
 	return KNOT_EOK;
 }
@@ -134,7 +131,7 @@ int rrset_serialize(const knot_rrset_t *rrset, uint8_t *stream, size_t *size)
 }
 
 int rrset_deserialize(const uint8_t *stream, size_t *stream_size,
-                      knot_rrset_t **rrset)
+                      knot_rrset_t *rrset)
 {
 	if (sizeof(uint64_t) > *stream_size) {
 		return KNOT_ESPACE;
@@ -164,11 +161,7 @@ int rrset_deserialize(const uint8_t *stream, size_t *stream_size,
 	offset += sizeof(uint16_t);
 
 	/* Create new RRSet. */
-	*rrset = knot_rrset_new(owner, type, rclass, NULL);
-	knot_dname_free(&owner, NULL);
-	if (*rrset == NULL) {
-		return KNOT_ENOMEM;
-	}
+	knot_rrset_init(rrset, owner, type, rclass);
 
 	/* Read RRs. */
 	for (uint16_t i = 0; i < rdata_count; i++) {
@@ -179,9 +172,9 @@ int rrset_deserialize(const uint8_t *stream, size_t *stream_size,
 		uint32_t rdata_size = 0;
 		memcpy(&rdata_size, stream + offset, sizeof(uint32_t));
 		offset += sizeof(uint32_t);
-		int ret = deserialize_rr((*rrset), stream + offset, rdata_size);
+		int ret = deserialize_rr(rrset, stream + offset, rdata_size);
 		if (ret != KNOT_EOK) {
-			knot_rrset_free(rrset, NULL);
+			knot_rrset_clear(rrset, NULL);
 			return ret;
 		}
 		offset += rdata_size;

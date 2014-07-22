@@ -335,3 +335,4 @@ tests/worker_queue.c
 tests/zone_events.c
 tests/zonedb.c
 tests/ztree.c
+tests/changeset.c

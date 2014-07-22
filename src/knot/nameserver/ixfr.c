@@ -24,9 +24,12 @@ enum ixfr_states {
 /*! \brief Extended structure for IXFR-in/IXFR-out processing. */
 struct ixfr_proc {
 	struct xfr_proc proc;          /* Generic transfer processing context. */
-	node_t *cur;
+	changeset_iter_t cur;          /* Current changeset iteration state.*/
+	knot_rrset_t cur_rr;           /* Currently processed RRSet. */
 	int state;                     /* IXFR-in state. */
-	changesets_t *changesets;      /* Processed changesets. */
+	knot_rrset_t *final_soa;       /* First SOA received via IXFR. */
+	list_t changesets;             /* Processed changesets. */
+	size_t change_count;           /* Count of changes received. */
 	zone_t *zone;                  /* Modified zone - for journal access. */
 	mm_ctx_t *mm;                  /* Memory context for RR allocations. */
 	struct query_data *qdata;
@@ -45,32 +48,21 @@ struct ixfr_proc {
 		return ret; \
 	}
 
-static int ixfr_put_rrlist(knot_pkt_t *pkt, struct ixfr_proc *ixfr, list_t *list)
+static int ixfr_put_chg_part(knot_pkt_t *pkt, struct ixfr_proc *ixfr, changeset_iter_t *itt)
 {
 	assert(pkt);
 	assert(ixfr);
-	assert(list);
+	assert(itt);
 
-	/* If at the beginning, fetch first RR. */
-	int ret = KNOT_EOK;
-	if (ixfr->cur == NULL) {
-		ixfr->cur = HEAD(*list);
+	if (knot_rrset_empty(&ixfr->cur_rr)) {
+		ixfr->cur_rr = changeset_iter_next(itt);
 	}
-	/* Now iterate until it hits the last one,
-	 * this is done without for() loop because we can
-	 * rejoin the iteration at any point. */
-	while(ixfr->cur->next) {
-		knot_rr_ln_t *rr_item = (knot_rr_ln_t *)(ixfr->cur);
-		if (rr_item->rr->rrs.rr_count > 0) {
-			IXFR_SAFE_PUT(pkt, rr_item->rr);
-		} else {
-			dbg_ns("%s: empty RR %p, skipping\n", __func__, rr_item->rr);
-		}
-
-		ixfr->cur = ixfr->cur->next;
+	int ret = KNOT_EOK; // Declaration for IXFR_SAFE_PUT macro
+	while(!knot_rrset_empty(&ixfr->cur_rr)) {
+		IXFR_SAFE_PUT(pkt, &ixfr->cur_rr);
+		ixfr->cur_rr = changeset_iter_next(itt);
 	}
 
-	ixfr->cur = NULL;
 	return ret;
 }
 
@@ -97,11 +89,14 @@ static int ixfr_process_changeset(knot_pkt_t *pkt, const void *item,
 
 	/* Put REMOVE RRSets. */
 	if (ixfr->state == IXFR_DEL) {
-		ret = ixfr_put_rrlist(pkt, ixfr, &chgset->remove);
+		if (EMPTY_LIST(ixfr->cur.iters) && knot_rrset_empty(&ixfr->cur_rr)) {
+			changeset_iter_rem(&ixfr->cur, chgset, false);
+		}
+		ret = ixfr_put_chg_part(pkt, ixfr, &ixfr->cur);
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
-		dbg_ns("%s: put 'REMOVE' RRs\n", __func__);
+		changeset_iter_clear(&ixfr->cur);
 		ixfr->state = IXFR_SOA_ADD;
 	}
 
@@ -112,13 +107,16 @@ static int ixfr_process_changeset(knot_pkt_t *pkt, const void *item,
 		ixfr->state = IXFR_ADD;
 	}
 
-	/* Put REMOVE RRSets. */
+	/* Put Add RRSets. */
 	if (ixfr->state == IXFR_ADD) {
-		ret = ixfr_put_rrlist(pkt, ixfr, &chgset->add);
+		if (EMPTY_LIST(ixfr->cur.iters) && knot_rrset_empty(&ixfr->cur_rr)) {
+			changeset_iter_add(&ixfr->cur, chgset, false);
+		}
+		ret = ixfr_put_chg_part(pkt, ixfr, &ixfr->cur);
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
-		dbg_ns("%s: put 'IXFR_ADD' RRs\n", __func__);
+		changeset_iter_clear(&ixfr->cur);
 		ixfr->state = IXFR_SOA_DEL;
 	}
 
@@ -133,8 +131,8 @@ static int ixfr_process_changeset(knot_pkt_t *pkt, const void *item,
 
 #undef IXFR_SAFE_PUT
 
-static int ixfr_load_chsets(changesets_t **chgsets, const zone_t *zone,
-			    const knot_rrset_t *their_soa)
+static int ixfr_load_chsets(list_t *chgsets, const zone_t *zone,
+                            const knot_rrset_t *their_soa)
 {
 	assert(chgsets);
 	assert(zone);
@@ -147,15 +145,9 @@ static int ixfr_load_chsets(changesets_t **chgsets, const zone_t *zone,
 		return KNOT_EUPTODATE;
 	}
 
-	*chgsets = changesets_create(0);
-	if (*chgsets == NULL) {
-		return KNOT_ENOMEM;
-	}
-
-	ret = journal_load_changesets(zone->conf->ixfr_db, *chgsets,
-	                              serial_from, serial_to);
+	ret = journal_load_changesets(zone, chgsets, serial_from, serial_to);
 	if (ret != KNOT_EOK) {
-		changesets_free(chgsets, NULL);
+		changesets_free(chgsets);
 	}
 
 	return ret;
@@ -191,7 +183,8 @@ static void ixfr_answer_cleanup(struct query_data *qdata)
 	mm_ctx_t *mm = qdata->mm;
 
 	ptrlist_free(&ixfr->proc.nodes, mm);
-	changesets_free(&ixfr->changesets, NULL);
+	changeset_iter_clear(&ixfr->cur);
+	changesets_free(&ixfr->changesets);
 	mm->free(qdata->ext);
 
 	/* Allow zone changes (finished). */
@@ -212,7 +205,8 @@ static int ixfr_answer_init(struct query_data *qdata)
 
 	/* Compare serials. */
 	const knot_rrset_t *their_soa = &knot_pkt_section(qdata->query, KNOT_AUTHORITY)->rr[0];
-	changesets_t *chgsets = NULL;
+	list_t chgsets;
+	init_list(&chgsets);
 	int ret = ixfr_load_chsets(&chgsets, qdata->zone, their_soa);
 	if (ret != KNOT_EOK) {
 		dbg_ns("%s: failed to load changesets => %d\n", __func__, ret);
@@ -223,26 +217,29 @@ static int ixfr_answer_init(struct query_data *qdata)
 	mm_ctx_t *mm = qdata->mm;
 	struct ixfr_proc *xfer = mm->alloc(mm->ctx, sizeof(struct ixfr_proc));
 	if (xfer == NULL) {
-		changesets_free(&chgsets, NULL);
+		changesets_free(&chgsets);
 		return KNOT_ENOMEM;
 	}
 	memset(xfer, 0, sizeof(struct ixfr_proc));
 	gettimeofday(&xfer->proc.tstamp, NULL);
 	xfer->state = IXFR_SOA_DEL;
 	init_list(&xfer->proc.nodes);
+	init_list(&xfer->changesets);
+	init_list(&xfer->cur.iters);
+	knot_rrset_init_empty(&xfer->cur_rr);
+	add_tail_list(&xfer->changesets, &chgsets);
 	xfer->qdata = qdata;
 
 	/* Put all changesets to processing queue. */
-	xfer->changesets = chgsets;
 	changeset_t *chs = NULL;
-	WALK_LIST(chs, chgsets->sets) {
+	WALK_LIST(chs, xfer->changesets) {
 		ptrlist_add(&xfer->proc.nodes, chs, mm);
 	}
 
 	/* Keep first and last serial. */
-	chs = HEAD(chgsets->sets);
+	chs = HEAD(xfer->changesets);
 	xfer->soa_from = chs->soa_from;
-	chs = TAIL(chgsets->sets);
+	chs = TAIL(xfer->changesets);
 	xfer->soa_to = chs->soa_to;
 
 	/* Set up cleanup callback. */
@@ -297,7 +294,8 @@ static void ixfrin_cleanup(struct answer_data *data)
 {
 	struct ixfr_proc *proc = data->ext;
 	if (proc) {
-		changesets_free(&proc->changesets, data->mm);
+		changesets_clear(&proc->changesets);
+		knot_rrset_free(&proc->final_soa, proc->mm);
 		mm_free(data->mm, proc);
 		data->ext = NULL;
 	}
@@ -313,11 +311,8 @@ static int ixfrin_answer_init(struct answer_data *data)
 	memset(proc, 0, sizeof(struct ixfr_proc));
 	gettimeofday(&proc->proc.tstamp, NULL);
 
-	proc->changesets = changesets_create(0);
-	if (proc->changesets == NULL) {
-		mm_free(data->mm, proc);
-		return KNOT_ENOMEM;
-	}
+	init_list(&proc->changesets);
+
 	proc->state = IXFR_START;
 	proc->zone = data->param->zone;
 	proc->mm = data->mm;
@@ -335,7 +330,7 @@ static int ixfrin_finalize(struct answer_data *adata)
 
 	assert(ixfr->state == IXFR_DONE);
 	int ret = zone_change_apply_and_store(&ixfr->changesets,
-	                                      ixfr->zone, "IXFR", adata->mm);
+	                                      ixfr->zone, "IXFR");
 	if (ret != KNOT_EOK) {
 		IXFRIN_LOG(LOG_ERR, "Failed to apply changes to zone - %s",
 		           knot_strerror(ret));
@@ -352,16 +347,16 @@ static int ixfrin_finalize(struct answer_data *adata)
 }
 
 /*! \brief Stores starting SOA into changesets structure. */
-static int solve_start(const knot_rrset_t *rr, changesets_t *changesets, mm_ctx_t *mm)
+static int solve_start(const knot_rrset_t *rr, struct ixfr_proc *proc)
 {
-	assert(changesets->first_soa == NULL);
+	assert(proc->final_soa == NULL);
 	if (rr->type != KNOT_RRTYPE_SOA) {
 		return KNOT_EMALF;
 	}
 
 	// Store the first SOA for later use.
-	changesets->first_soa = knot_rrset_copy(rr, mm);
-	if (changesets->first_soa == NULL) {
+	proc->final_soa = knot_rrset_copy(rr, proc->mm);
+	if (proc->final_soa == NULL) {
 		return KNOT_ENOMEM;
 	}
 
@@ -369,24 +364,28 @@ static int solve_start(const knot_rrset_t *rr, changesets_t *changesets, mm_ctx_
 }
 
 /*! \brief Decides what to do with a starting SOA (deletions). */
-static int solve_soa_del(const knot_rrset_t *rr, changesets_t *changesets,
-                         mm_ctx_t *mm)
+static int solve_soa_del(const knot_rrset_t *rr, struct ixfr_proc *proc)
 {
 	if (rr->type != KNOT_RRTYPE_SOA) {
 		return KNOT_EMALF;
 	}
 
 	// Create new changeset.
-	changeset_t *change = changesets_create_changeset(changesets);
+	changeset_t *change = changeset_new(proc->zone->name);
 	if (change == NULL) {
 		return KNOT_ENOMEM;
 	}
 
 	// Store SOA into changeset.
-	change->soa_from = knot_rrset_copy(rr, mm);
+	change->soa_from = knot_rrset_copy(rr, NULL);
 	if (change->soa_from == NULL) {
+		changeset_clear(change);
 		return KNOT_ENOMEM;
 	}
+
+	// Add changeset.
+	add_tail(&proc->changesets, &change->n);
+	++proc->change_count;
 
 	return KNOT_EOK;
 }
@@ -395,7 +394,7 @@ static int solve_soa_del(const knot_rrset_t *rr, changesets_t *changesets,
 static int solve_soa_add(const knot_rrset_t *rr, changeset_t *change, mm_ctx_t *mm)
 {
 	assert(rr->type == KNOT_RRTYPE_SOA);
-	change->soa_to= knot_rrset_copy(rr, mm);
+	change->soa_to = knot_rrset_copy(rr, NULL);
 	if (change->soa_to == NULL) {
 		return KNOT_ENOMEM;
 	}
@@ -403,32 +402,16 @@ static int solve_soa_add(const knot_rrset_t *rr, changeset_t *change, mm_ctx_t *
 	return KNOT_EOK;
 }
 
-/*! \brief Adds single RR into given section of changeset. */
-static int add_part(const knot_rrset_t *rr, changeset_t *change, int part, mm_ctx_t *mm)
-{
-	assert(rr->type != KNOT_RRTYPE_SOA);
-	knot_rrset_t *copy = knot_rrset_copy(rr, mm);
-	if (copy) {
-		int ret = changeset_add_rrset(change, copy, part);
-		if (ret != KNOT_EOK) {
-			return ret;
-		}
-		return KNOT_EOK;
-	} else {
-		return KNOT_ENOMEM;
-	}
-}
-
 /*! \brief Adds single RR into remove section of changeset. */
 static int solve_del(const knot_rrset_t *rr, changeset_t *change, mm_ctx_t *mm)
 {
-	return add_part(rr, change, CHANGESET_REMOVE, mm);
+	return changeset_rem_rrset(change, rr);
 }
 
 /*! \brief Adds single RR into add section of changeset. */
 static int solve_add(const knot_rrset_t *rr, changeset_t *change, mm_ctx_t *mm)
 {
-	return add_part(rr, change, CHANGESET_ADD, mm);
+	return changeset_add_rrset(change, rr);
 }
 
 /*! \brief Decides what the next IXFR-in state should be. */
@@ -438,7 +421,7 @@ static int ixfrin_next_state(struct ixfr_proc *proc, const knot_rrset_t *rr)
 	if (soa &&
 	    (proc->state == IXFR_SOA_ADD || proc->state == IXFR_ADD)) {
 		// Check end of transfer.
-		if (knot_rrset_equal(rr, proc->changesets->first_soa,
+		if (knot_rrset_equal(rr, proc->final_soa,
 		                     KNOT_RRSET_COMPARE_WHOLE)) {
 			// Final SOA encountered, transfer done.
 			return IXFR_DONE;
@@ -448,7 +431,7 @@ static int ixfrin_next_state(struct ixfr_proc *proc, const knot_rrset_t *rr)
 	switch (proc->state) {
 	case IXFR_START:
 		// Final SOA already stored or transfer start.
-		return proc->changesets->first_soa ? IXFR_SOA_DEL : IXFR_START;
+		return proc->final_soa ? IXFR_SOA_DEL : IXFR_START;
 	case IXFR_SOA_DEL:
 		// Empty delete section or start of delete section.
 		return soa ? IXFR_SOA_ADD : IXFR_DEL;
@@ -480,13 +463,13 @@ static int ixfrin_next_state(struct ixfr_proc *proc, const knot_rrset_t *rr)
 static int ixfrin_step(const knot_rrset_t *rr, struct ixfr_proc *proc)
 {
 	proc->state = ixfrin_next_state(proc, rr);
-	changeset_t *change = changesets_get_last(proc->changesets);
+	changeset_t *change = TAIL(proc->changesets);
 
 	switch (proc->state) {
 	case IXFR_START:
-		return solve_start(rr, proc->changesets, proc->mm);
+		return solve_start(rr, proc);
 	case IXFR_SOA_DEL:
-		return solve_soa_del(rr, proc->changesets, proc->mm);
+		return solve_soa_del(rr, proc);
 	case IXFR_DEL:
 		return solve_del(rr, change, proc->mm);
 	case IXFR_SOA_ADD:
@@ -503,7 +486,7 @@ static int ixfrin_step(const knot_rrset_t *rr, struct ixfr_proc *proc)
 /*! \brief Checks whether journal node limit has not been exceeded. */
 static bool journal_limit_exceeded(struct ixfr_proc *proc)
 {
-	return proc->changesets->count > JOURNAL_NCOUNT;
+	return proc->change_count > JOURNAL_NCOUNT;
 }
 
 /*! \brief Checks whether RR belongs into zone. */

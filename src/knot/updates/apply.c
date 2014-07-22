@@ -18,17 +18,11 @@
 
 #include "knot/updates/apply.h"
 
-#include "common/debug.h"
-#include "libknot/packet/pkt.h"
-#include "libknot/processing/process.h"
-#include "libknot/dname.h"
 #include "knot/zone/zone.h"
 #include "libknot/common.h"
 #include "knot/updates/changesets.h"
 #include "knot/zone/zonefile.h"
 #include "common/lists.h"
-#include "common/descriptor.h"
-#include "libknot/util/utils.h"
 #include "libknot/rrtype/soa.h"
 
 /* --------------------------- Update cleanup ------------------------------- */
@@ -198,22 +192,28 @@ static int remove_rr(zone_node_t *node, const knot_rrset_t *rr,
 /*! \brief Removes all RRs from changeset from zone contents. */
 static int apply_remove(zone_contents_t *contents, changeset_t *chset)
 {
-	knot_rr_ln_t *rr_node = NULL;
-	WALK_LIST(rr_node, chset->remove) {
-		const knot_rrset_t *rr = rr_node->rr;
-
+	changeset_iter_t itt;
+	changeset_iter_rem(&itt, chset, false);
+	
+	knot_rrset_t rr = changeset_iter_next(&itt);
+	while (!knot_rrset_empty(&rr)) {
 		// Find node for this owner
-		zone_node_t *node = zone_contents_find_node_for_rr(contents, rr);
-		if (!can_remove(node, rr)) {
+		zone_node_t *node = zone_contents_find_node_for_rr(contents, &rr);
+		if (!can_remove(node, &rr)) {
 			// Nothing to remove from, skip.
+			rr = changeset_iter_next(&itt);
 			continue;
 		}
 
-		int ret = remove_rr(node, rr, chset);
+		int ret = remove_rr(node, &rr, chset);
 		if (ret != KNOT_EOK) {
+			changeset_iter_clear(&itt);
 			return ret;
 		}
+		
+		rr = changeset_iter_next(&itt);
 	}
+	changeset_iter_clear(&itt);
 
 	return KNOT_EOK;
 }
@@ -267,22 +267,27 @@ static int add_rr(zone_node_t *node, const knot_rrset_t *rr,
 static int apply_add(zone_contents_t *contents, changeset_t *chset,
                      bool master)
 {
-	knot_rr_ln_t *rr_node = NULL;
-	WALK_LIST(rr_node, chset->add) {
-		knot_rrset_t *rr = rr_node->rr;
-
+	changeset_iter_t itt;
+	changeset_iter_add(&itt, chset, false);
+	
+	knot_rrset_t rr = changeset_iter_next(&itt);
+	while(!knot_rrset_empty(&rr)) {
 		// Get or create node with this owner
-		zone_node_t *node = zone_contents_get_node_for_rr(contents, rr);
+		zone_node_t *node = zone_contents_get_node_for_rr(contents, &rr);
 		if (node == NULL) {
+			changeset_iter_clear(&itt);
 			return KNOT_ENOMEM;
 		}
 
-		int ret = add_rr(node, rr, chset, master);
+		int ret = add_rr(node, &rr, chset, master);
 		if (ret != KNOT_EOK) {
+			changeset_iter_clear(&itt);
 			return ret;
 		}
+		rr = changeset_iter_next(&itt);
 	}
-
+	changeset_iter_clear(&itt);
+	
 	return KNOT_EOK;
 }
 
@@ -454,10 +459,9 @@ static int finalize_updated_zone(zone_contents_t *contents_copy,
 
 /* ------------------------------- API -------------------------------------- */
 
-int apply_changesets(zone_t *zone, changesets_t *chsets,
-                     zone_contents_t **new_contents)
+int apply_changesets(zone_t *zone, list_t *chsets, zone_contents_t **new_contents)
 {
-	if (zone == NULL || changesets_empty(chsets) || new_contents == NULL) {
+	if (zone == NULL || chsets == NULL || EMPTY_LIST(*chsets) || new_contents == NULL) {
 		return KNOT_EINVAL;
 	}
 
@@ -477,7 +481,7 @@ int apply_changesets(zone_t *zone, changesets_t *chsets,
 	 */
 	changeset_t *set = NULL;
 	const bool master = (zone_master(zone) == NULL);
-	WALK_LIST(set, chsets->sets) {
+	WALK_LIST(set, *chsets) {
 		ret = apply_changeset(contents_copy, set, master);
 		if (ret != KNOT_EOK) {
 			update_rollback(chsets, &contents_copy);
@@ -498,14 +502,14 @@ int apply_changesets(zone_t *zone, changesets_t *chsets,
 	return KNOT_EOK;
 }
 
-int apply_changesets_directly(zone_contents_t *contents, changesets_t *chsets)
+int apply_changesets_directly(zone_contents_t *contents, list_t *chsets)
 {
 	if (contents == NULL || chsets == NULL) {
 		return KNOT_EINVAL;
 	}
 
 	changeset_t *set = NULL;
-	WALK_LIST(set, chsets->sets) {
+	WALK_LIST(set, *chsets) {
 		const bool master = true; // Only DNSSEC changesets are applied directly.
 		int ret = apply_changeset(contents, set, master);
 		if (ret != KNOT_EOK) {
@@ -524,14 +528,14 @@ int apply_changesets_directly(zone_contents_t *contents, changesets_t *chsets)
 	return ret;
 }
 
-void update_cleanup(changesets_t *chgs)
+void update_cleanup(list_t *chgs)
 {
-	if (chgs == NULL) {
+	if (chgs == NULL || EMPTY_LIST(*chgs)) {
 		return;
 	}
 
 	changeset_t *change = NULL;
-	WALK_LIST(change, chgs->sets) {
+	WALK_LIST(change, *chgs) {
 		// Delete old RR data
 		rrs_list_clear(&change->old_data, NULL);
 		init_list(&change->old_data);
@@ -541,11 +545,11 @@ void update_cleanup(changesets_t *chgs)
 	};
 }
 
-void update_rollback(changesets_t *chgs, zone_contents_t **new_contents)
+void update_rollback(list_t *chgs, zone_contents_t **new_contents)
 {
-	if (chgs != NULL) {
+	if (chgs != NULL && !EMPTY_LIST(*chgs)) {
 		changeset_t *change = NULL;
-		WALK_LIST(change, chgs->sets) {
+		WALK_LIST(change, *chgs) {
 			// Delete new RR data
 			rrs_list_clear(&change->new_data, NULL);
 			init_list(&change->new_data);
