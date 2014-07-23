@@ -294,7 +294,7 @@ static int apply_add(zone_contents_t *contents, changeset_t *chset,
 /*! \brief Replace old SOA with a new one. */
 static int apply_replace_soa(zone_contents_t *contents, changeset_t *chset)
 {
-	assert(chset->soa_from);
+	assert(chset->soa_from && chset->soa_to);
 	int ret = remove_rr(contents->apex, chset->soa_from, chset);
 	if (ret != KNOT_EOK) {
 		return ret;

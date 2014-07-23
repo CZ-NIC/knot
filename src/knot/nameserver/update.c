@@ -170,7 +170,8 @@ static int process_single_update(struct request_data *request, const zone_t *zon
 		assert(rcode != KNOT_RCODE_NOERROR);
 		knot_wire_set_rcode(request->resp->wire, rcode);
 	}
-	return KNOT_EOK;
+
+	return ret;
 }
 
 static void set_rcodes(list_t *queries, const uint16_t rcode)
@@ -198,7 +199,12 @@ static int process_queries(zone_t *zone, list_t *queries)
 
 	struct request_data *query;
 	WALK_LIST(query, *queries) {
-		process_single_update(query, zone, &ddns_ch);
+		ret = process_single_update(query, zone, &ddns_ch);
+		if (ret != KNOT_EOK) {
+			changeset_clear(&ddns_ch);
+			set_rcodes(queries, KNOT_RCODE_SERVFAIL);
+			return ret;
+		}
 	}
 
 	zone_contents_t *new_contents = NULL;

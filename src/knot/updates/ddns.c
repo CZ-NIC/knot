@@ -572,7 +572,7 @@ static int process_add_soa(const zone_node_t *node,
                            changeset_t *changeset)
 {
 	if (node == NULL || !node_rrtype_exists(node, KNOT_RRTYPE_SOA)) {
-		// Adding SOA to non-apex node, ignore
+		// Adding SOA to non-apex node, ignore.
 		return KNOT_EOK;
 	}
 
@@ -584,7 +584,7 @@ static int process_add_soa(const zone_node_t *node,
 	}
 
 	// Store SOA copy into changeset.
-	if (changeset->soa_to != NULL) {
+	if (changeset->soa_to) {
 		// Discard previous SOA - "There can be only one!"
 		knot_rrset_free(&changeset->soa_to, NULL);
 	}
@@ -921,7 +921,7 @@ int ddns_process_update(const zone_t *zone, const knot_pkt_t *query,
 	}
 
 	if (changeset->soa_from == NULL) {
-		/* Copy base SOA RR. */
+		// Copy base SOA RR.
 		changeset->soa_from =
 			node_create_rrset(zone->contents->apex, KNOT_RRTYPE_SOA);
 		if (changeset->soa_from == NULL) {
