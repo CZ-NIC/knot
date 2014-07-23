@@ -14,7 +14,6 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <config.h>
 #include <tap/basic.h>
 
 #include "common/errcode.h"
@@ -181,8 +180,9 @@ int main(int argc, char *argv[])
 	/*
 	 * Copied packet tests.
 	 */
-	knot_pkt_t *copy = knot_pkt_copy(in, &in->mm);
-	ok(copy != NULL, "pkt: create packet copy");
+	knot_pkt_t *copy = knot_pkt_new(NULL, in->max_size, &in->mm);
+	ret = knot_pkt_copy(copy, in);
+	ok(ret == KNOT_EOK, "pkt: create packet copy");
 
 	/* Compare copied packet to original. */
 	packet_match(in, copy);

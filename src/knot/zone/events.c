@@ -66,8 +66,17 @@ static uint32_t bootstrap_next(uint32_t timer)
 	            what " of '%s' with '%s': ", msg)
 
 /*! \brief Create zone query packet. */
-static knot_pkt_t *zone_query(const zone_t *zone, uint16_t qtype, mm_ctx_t *mm)
+static knot_pkt_t *zone_query(const zone_t *zone, uint16_t pkt_type, mm_ctx_t *mm)
 {
+	/* Determine query type and opcode. */
+	uint16_t query_type = KNOT_RRTYPE_SOA;
+	uint16_t opcode = KNOT_OPCODE_QUERY;
+	switch(pkt_type) {
+	case KNOT_QUERY_AXFR: query_type = KNOT_RRTYPE_AXFR; break;
+	case KNOT_QUERY_IXFR: query_type = KNOT_RRTYPE_IXFR; break;
+	case KNOT_QUERY_NOTIFY: opcode = KNOT_OPCODE_NOTIFY; break;
+	}
+
 	knot_pkt_t *pkt = knot_pkt_new(NULL, KNOT_WIRE_MAX_PKTSIZE, mm);
 	if (pkt == NULL) {
 		return NULL;
@@ -75,7 +84,20 @@ static knot_pkt_t *zone_query(const zone_t *zone, uint16_t qtype, mm_ctx_t *mm)
 
 	knot_wire_set_id(pkt->wire, knot_random_uint16_t());
 	knot_wire_set_aa(pkt->wire);
-	knot_pkt_put_question(pkt, zone->name, KNOT_CLASS_IN, qtype);
+	knot_wire_set_opcode(pkt->wire, opcode);
+	knot_pkt_put_question(pkt, zone->name, KNOT_CLASS_IN, query_type);
+
+	/* Put current SOA (optional). */
+	zone_contents_t *contents = zone->contents;
+	if (pkt_type == KNOT_QUERY_IXFR) {  /* RFC1995, SOA in AUTHORITY. */
+		knot_pkt_begin(pkt, KNOT_AUTHORITY);
+		knot_rrset_t soa_rr = node_rrset(contents->apex, KNOT_RRTYPE_SOA);
+		knot_pkt_put(pkt, COMPR_HINT_QNAME, &soa_rr, 0);
+	} else if (pkt_type == KNOT_QUERY_NOTIFY) { /* RFC1996, SOA in ANSWER. */
+		knot_pkt_begin(pkt, KNOT_ANSWER);
+		knot_rrset_t soa_rr = node_rrset(contents->apex, KNOT_RRTYPE_SOA);
+		knot_pkt_put(pkt, COMPR_HINT_QNAME, &soa_rr, 0);
+	}
 
 	return pkt;
 }
@@ -88,32 +110,15 @@ static knot_pkt_t *zone_query(const zone_t *zone, uint16_t qtype, mm_ctx_t *mm)
  */
 static int zone_query_execute(zone_t *zone, uint16_t pkt_type, const conf_iface_t *remote)
 {
-	uint16_t query_type = KNOT_RRTYPE_SOA;
-	uint16_t opcode = KNOT_OPCODE_QUERY;
-	switch(pkt_type) {
-	case KNOT_QUERY_AXFR: query_type = KNOT_RRTYPE_AXFR; break;
-	case KNOT_QUERY_IXFR: query_type = KNOT_RRTYPE_IXFR; break;
-	case KNOT_QUERY_NOTIFY: opcode = KNOT_OPCODE_NOTIFY; break;
-	}
-
 	/* Create a memory pool for this task. */
 	int ret = KNOT_EOK;
 	mm_ctx_t mm;
 	mm_ctx_mempool(&mm, DEFAULT_BLKSIZE);
 
 	/* Create a query message. */
-	knot_pkt_t *query = zone_query(zone, query_type, &mm);
+	knot_pkt_t *query = zone_query(zone, pkt_type, &mm);
 	if (query == NULL) {
 		return KNOT_ENOMEM;
-	}
-	knot_wire_set_opcode(query->wire, opcode);
-
-	/* Put current SOA in authority (optional). */
-	zone_contents_t *contents = zone->contents;
-	if (pkt_type == KNOT_QUERY_IXFR || pkt_type == KNOT_QUERY_NOTIFY) {
-		knot_pkt_begin(query, KNOT_AUTHORITY);
-		knot_rrset_t soa_rr = node_rrset(contents->apex, KNOT_RRTYPE_SOA);
-		knot_pkt_put(query, COMPR_HINT_QNAME, &soa_rr, 0);
 	}
 
 	/* Create requestor instance. */
@@ -277,8 +282,6 @@ static int event_reload(zone_t *zone)
 	/* Schedule notify and refresh after load. */
 	if (zone_master(zone)) {
 		zone_events_schedule(zone, ZONE_EVENT_REFRESH, ZONE_EVENT_NOW);
-		const knot_rdataset_t *soa = node_rdataset(contents->apex, KNOT_RRTYPE_SOA);
-		zone_events_schedule(zone, ZONE_EVENT_EXPIRE, soa_graceful_expire(soa));
 	}
 	if (!zone_contents_is_empty(contents)) {
 		zone_events_schedule(zone, ZONE_EVENT_NOTIFY, ZONE_EVENT_NOW);
@@ -322,15 +325,20 @@ static int event_refresh(zone_t *zone)
 	const knot_rdataset_t *soa = node_rdataset(contents->apex, KNOT_RRTYPE_SOA);
 	if (ret != KNOT_EOK) {
 		/* Log connection errors. */
-		ZONE_QUERY_LOG(LOG_ERR, zone, master, "SOA query", "%s", knot_strerror(ret));
+		ZONE_QUERY_LOG(LOG_WARNING, zone, master, "SOA query", "%s", knot_strerror(ret));
 		/* Rotate masters if current failed. */
 		zone_master_rotate(zone);
 		/* Schedule next retry. */
 		zone_events_schedule(zone, ZONE_EVENT_REFRESH, knot_soa_retry(soa));
+		if (zone_events_get_time(zone, ZONE_EVENT_EXPIRE) <= ZONE_EVENT_NOW) {
+			/* Schedule zone expiration if not previously planned. */
+			zone_events_schedule(zone, ZONE_EVENT_EXPIRE, soa_graceful_expire(soa));
+		}
 	} else {
-		/* SOA query answered, reschedule refresh and expire timers. */
+		/* SOA query answered, reschedule refresh timer. */
 		zone_events_schedule(zone, ZONE_EVENT_REFRESH, knot_soa_refresh(soa));
-		zone_events_schedule(zone, ZONE_EVENT_EXPIRE, soa_graceful_expire(soa));
+		/* Cancel possible expire. */
+		zone_events_cancel(zone, ZONE_EVENT_EXPIRE);
 	}
 
 	return KNOT_EOK;
@@ -356,12 +364,14 @@ static int event_xfer(zone_t *zone)
 		 * timers and send notifications to slaves. */
 		const knot_rdataset_t *soa =
 			node_rdataset(zone->contents->apex, KNOT_RRTYPE_SOA);
-		zone_events_schedule(zone, ZONE_EVENT_EXPIRE,  soa_graceful_expire(soa));
 		zone_events_schedule(zone, ZONE_EVENT_REFRESH, knot_soa_refresh(soa));
 		zone_events_schedule(zone, ZONE_EVENT_NOTIFY,  ZONE_EVENT_NOW);
 		/* Sync zonefile immediately if configured. */
 		if (zone->conf->dbsync_timeout == 0) {
 			zone_events_schedule(zone, ZONE_EVENT_FLUSH, ZONE_EVENT_NOW);
+		} else if (zone_events_get_time(zone, ZONE_EVENT_FLUSH) <= ZONE_EVENT_NOW) {
+			/* Plan sync if not previously planned. */
+			zone_events_schedule(zone, ZONE_EVENT_FLUSH, zone->conf->dbsync_timeout);
 		}
 		zone->bootstrap_retry = ZONE_EVENT_NOW;
 		zone->flags &= ~ZONE_FORCE_AXFR;
@@ -383,43 +393,17 @@ static int event_update(zone_t *zone)
 {
 	assert(zone);
 
-	knot_pkt_t *resp = knot_pkt_new(NULL, KNOT_WIRE_MAX_PKTSIZE, NULL);
-	if (resp == NULL) {
-		return KNOT_ENOMEM;
-	}
-
 	struct request_data *update = zone_update_dequeue(zone);
 	if (update == NULL) {
 		return KNOT_EOK;
 	}
 
-	/* Initialize query response. */
-	assert(update->query);
-	knot_pkt_init_response(resp, update->query);
-
-	/* Create minimal query data context. */
-	struct process_query_param param = { 0 };
-	param.remote = &update->remote;
-	struct query_data qdata = { 0 };
-	qdata.param = &param;
-	qdata.query = update->query;
-	qdata.zone  = zone;
-
-	/* Process the update query. */
-	int ret = update_process_query(resp, &qdata);
-	UNUSED(ret); /* Don't care about the Knot code, RCODE is set. */
-
-	/* Send response. */
-	if (net_is_connected(update->fd)) {
-		tcp_send_msg(update->fd, resp->wire, resp->size);
-	} else {
-		udp_send_msg(update->fd, resp->wire, resp->size,
-		             (struct sockaddr *)param.remote);
-	}
+	/* Forward if zone has master, or execute. */
+	int ret = update_execute(zone, update);
+	UNUSED(ret);
 
 	/* Cleanup. */
 	close(update->fd);
-	knot_pkt_free(&resp);
 	knot_pkt_free(&update->query);
 	free(update);
 
@@ -446,15 +430,15 @@ static int event_expire(zone_t *zone)
 	zone_contents_t *expired = zone_switch_contents(zone, NULL);
 	synchronize_rcu();
 
-	/* Trim extra heap. */
-	mem_trim();
-
 	/* Expire zonefile information. */
 	zone->zonefile_mtime = 0;
 	zone->zonefile_serial = 0;
 	zone_contents_deep_free(&expired);
 
 	log_zone_info("Zone '%s' expired.\n", zone->conf->name);
+
+	/* Trim extra heap. */
+	mem_trim();
 
 	return KNOT_EOK;
 }
@@ -492,8 +476,11 @@ static int event_notify(zone_t *zone)
 		conf_iface_t *iface = remote->remote;
 
 		int ret = zone_query_execute(zone, KNOT_QUERY_NOTIFY, iface);
-		if (ret != KNOT_EOK) {
-			ZONE_QUERY_LOG(LOG_ERR, zone, iface, "NOTIFY", "%s", knot_strerror(ret));
+		if (ret == KNOT_EOK) {
+			ZONE_QUERY_LOG(LOG_INFO, zone, iface, "NOTIFY", "sent (serial %u).",
+			               zone_contents_serial(zone->contents));
+		} else {
+			ZONE_QUERY_LOG(LOG_WARNING, zone, iface, "NOTIFY", "%s", knot_strerror(ret));
 		}
 	}
 
@@ -595,7 +582,6 @@ static void replan_soa_events(zone_t *zone, const zone_t *old_zone)
 			                                           KNOT_RRTYPE_SOA);
 			assert(soa);
 			zone_events_schedule(zone, ZONE_EVENT_REFRESH, knot_soa_refresh(soa));
-			zone_events_schedule(zone, ZONE_EVENT_EXPIRE, soa_graceful_expire(soa));
 		}
 	}
 }
@@ -627,9 +613,9 @@ static void replan_flush(zone_t *zone, const zone_t *old_zone)
 	}
 
 	const time_t flush_time = zone_events_get_time(old_zone, ZONE_EVENT_FLUSH);
-	if (flush_time < ZONE_EVENT_NOW) {
+	if (flush_time <= ZONE_EVENT_NOW) {
 		// Not scheduled previously.
-		zone_events_schedule_at(zone, ZONE_EVENT_FLUSH, zone->conf->dbsync_timeout);
+		zone_events_schedule(zone, ZONE_EVENT_FLUSH, zone->conf->dbsync_timeout);
 		return;
 	}
 
@@ -677,7 +663,7 @@ static void replan_dnssec(zone_t *zone)
 
 static bool valid_event(zone_event_type_t type)
 {
-	return (type >= ZONE_EVENT_RELOAD && type < ZONE_EVENT_COUNT);
+	return (type > ZONE_EVENT_INVALID && type < ZONE_EVENT_COUNT);
 }
 
 /*! \brief Return remaining time to planned event (seconds). */

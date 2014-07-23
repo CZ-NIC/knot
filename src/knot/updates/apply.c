@@ -518,14 +518,7 @@ int apply_changesets_directly(zone_contents_t *contents, list_t *chsets)
 		}
 	}
 
-	int ret = finalize_updated_zone(contents, true);
-
-	/*
-	 * HACK: Cleanup for successful update is used for both success and fail
-	 * when modifying the zone directly, will fix in new zone API.
-	 */
-	update_cleanup(chsets);
-	return ret;
+	return finalize_updated_zone(contents, true);
 }
 
 void update_cleanup(list_t *chgs)

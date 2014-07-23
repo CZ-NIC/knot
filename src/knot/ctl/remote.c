@@ -461,12 +461,20 @@ int remote_poll(int sock)
 	return fdset_pselect(sock + 1, &rfds, NULL, NULL, NULL, NULL);
 }
 
-int remote_recv(int sock, struct sockaddr *addr, uint8_t* buf, size_t *buflen)
+int remote_recv(int sock, struct sockaddr_storage *addr, uint8_t *buf,
+                size_t *buflen)
 {
 	int c = tcp_accept(sock);
 	if (c < 0) {
 		dbg_server("remote: couldn't accept incoming connection\n");
 		return c;
+	}
+
+	socklen_t addrlen = sizeof(*addr);
+	if (getpeername(c, (struct sockaddr *)addr, &addrlen) != 0) {
+		dbg_server("remote: failed to get remote address\n");
+		close(c);
+		return KNOT_ECONNREFUSED;
 	}
 
 	/* Receive data. */
@@ -755,7 +763,7 @@ int remote_process(server_t *s, conf_iface_t *ctl_if, int sock,
 	memset(&ss, 0, sizeof(struct sockaddr_storage));
 
 	/* Accept incoming connection and read packet. */
-	int client = remote_recv(sock, (struct sockaddr *)&ss, pkt->wire, &buflen);
+	int client = remote_recv(sock, &ss, pkt->wire, &buflen);
 	if (client < 0) {
 		dbg_server("remote: couldn't receive query = %d\n", client);
 		knot_pkt_free(&pkt);

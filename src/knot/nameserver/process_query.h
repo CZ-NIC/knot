@@ -31,8 +31,8 @@
 #include "knot/updates/acl.h"
 
 /* Query processing module implementation. */
-extern const knot_process_module_t _process_query;
-#define NS_PROC_QUERY (&_process_query)
+const knot_process_module_t *process_query_get_module(void);
+#define NS_PROC_QUERY process_query_get_module()
 #define NS_PROC_QUERY_ID 1
 
 /*! \brief Query processing logging common base. */
@@ -111,62 +111,6 @@ struct rrsig_info {
 };
 
 /*!
- * \brief Initialize query processing context.
- *
- * \param ctx
- * \param module_param
- * \return MORE (awaits query)
- */
-int process_query_begin(knot_process_t *ctx, void *module_param);
-
-/*!
- * \brief Reset query processing context.
- *
- * \param ctx
- * \return MORE (awaits next query)
- */
-int process_query_reset(knot_process_t *ctx);
-
-/*!
- * \brief Finish and close current query processing.
- *
- * \param ctx
- * \return NOOP (context will be inoperable further on)
- */
-int process_query_finish(knot_process_t *ctx);
-
-/*!
- * \brief Put query into query processing context.
- *
- * \param pkt
- * \param ctx
- * \retval NOOP (unsupported query)
- * \retval FULL (ready to write answer)
- */
-int process_query_in(knot_pkt_t *pkt, knot_process_t *ctx);
-
-/*!
- * \brief Make query response.
- *
- * \param pkt
- * \param ctx
- * \retval DONE (finished response)
- * \retval FULL (partial response, send it and call again)
- * \retval FAIL (failure)
- */
-int process_query_out(knot_pkt_t *pkt, knot_process_t *ctx);
-
-/*!
- * \brief Make an error response.
- *
- * \param pkt
- * \param ctx
- * \retval DONE (finished response)
- * \retval FAIL (failure)
- */
-int process_query_err(knot_pkt_t *pkt, knot_process_t *ctx);
-
-/*!
  * \brief Check current query against ACL.
  *
  * \param acl
@@ -186,30 +130,5 @@ bool process_query_acl_check(list_t *acl, struct query_data *qdata);
  * \retval (other generic errors)
  */
 int process_query_verify(struct query_data *qdata);
-
-/*!
- * \brief Sign query response if applicable.
- *
- * \param pkt
- * \param qdata
- * \retval KNOT_EOK
- * \retval (other generic errors)
- */
-int process_query_sign_response(knot_pkt_t *pkt, struct query_data *qdata);
-
-int process_query_hooks(int qclass, int stage, knot_pkt_t *pkt, struct query_data *qdata);
-
-/*! \brief Checks if DO bit is set in the packet's OPT RR. */
-static inline bool pkt_has_dnssec(const knot_pkt_t *pkt)
-{
-	return knot_pkt_has_edns(pkt) && knot_edns_do(pkt->opt_rr);
-}
-
-/*! \brief Checks if there is an NSID OPTION in the packet's OPT RR. */
-static inline bool pkt_has_nsid(const knot_pkt_t *pkt)
-{
-	return knot_pkt_has_edns(pkt)
-	       && knot_edns_has_option(pkt->opt_rr, KNOT_EDNS_OPTION_NSID);
-}
 
 /*! @} */

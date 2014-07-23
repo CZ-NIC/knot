@@ -56,14 +56,23 @@ static zone_status_t zone_file_status(const zone_t *old_zone,
 	time_t mtime = zonefile_mtime(conf->file);
 
 	if (mtime < 0) {
-		return zone_load_can_bootstrap(conf) ? ZONE_STATUS_BOOSTRAP \
-		                                     : ZONE_STATUS_NOT_FOUND;
-	} if (old_zone == NULL) {
-		return ZONE_STATUS_FOUND_NEW;
-	} else if (old_zone->zonefile_mtime == mtime) {
-		return ZONE_STATUS_FOUND_CURRENT;
+		// Zone file does not exist.
+		if (old_zone) {
+			// Deferred flush.
+			return ZONE_STATUS_FOUND_CURRENT;
+		} else {
+			return zone_load_can_bootstrap(conf) ? ZONE_STATUS_BOOSTRAP \
+			                                     : ZONE_STATUS_NOT_FOUND;
+		}
 	} else {
-		return ZONE_STATUS_FOUND_UPDATED;
+		// Zone file exists.
+		if (old_zone == NULL) {
+			return ZONE_STATUS_FOUND_NEW;
+		} else if (old_zone->zonefile_mtime == mtime) {
+			return ZONE_STATUS_FOUND_CURRENT;
+		} else {
+			return ZONE_STATUS_FOUND_UPDATED;
+		}
 	}
 }
 

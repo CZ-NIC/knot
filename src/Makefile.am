@@ -11,8 +11,7 @@ AM_CPPFLAGS = \
 	-include $(top_builddir)/src/config.h \
 	-DCONFIG_DIR='"${config_dir}"' \
 	-DSTORAGE_DIR='"${storage_dir}"' \
-	-DRUN_DIR='"${run_dir}"' \
-	$(libidn_CFLAGS)
+	-DRUN_DIR='"${run_dir}"'
 AM_CFLAGS = $(CODE_COVERAGE_CFLAGS)
 AM_LDFLAGS = $(CODE_COVERAGE_LDFLAGS)
 AM_YFLAGS = -d
@@ -210,6 +209,8 @@ libknotd_la_SOURCES =				\
 	knot/conf/extra.h			\
 	knot/conf/includes.c			\
 	knot/conf/includes.h			\
+	knot/ctl/estimator.c			\
+	knot/ctl/estimator.h			\
 	knot/ctl/process.c			\
 	knot/ctl/process.h			\
 	knot/ctl/remote.c			\
@@ -231,6 +232,8 @@ libknotd_la_SOURCES =				\
 	knot/nameserver/axfr.h			\
 	knot/nameserver/chaos.c			\
 	knot/nameserver/chaos.h			\
+	knot/nameserver/capture.c		\
+	knot/nameserver/capture.h		\
 	knot/nameserver/internet.c		\
 	knot/nameserver/internet.h		\
 	knot/nameserver/ixfr.c			\
@@ -284,8 +287,6 @@ libknotd_la_SOURCES =				\
 	knot/worker/queue.h			\
 	knot/zone/contents.c			\
 	knot/zone/contents.h			\
-	knot/zone/estimator.c			\
-	knot/zone/estimator.h			\
 	knot/zone/events.c			\
 	knot/zone/events.h			\
 	knot/zone/node.c			\
@@ -313,6 +314,7 @@ libknotd_la_SOURCES =				\
 libknot_la_LIBADD  = libknots.la zscanner/libzscanner.la
 libknotd_la_LIBADD = libknots.la libknot.la
 libknotus_la_LDFLAGS = $(libidn_LIBS)
+libknotus_la_CFLAGS = $(libidn_CFLAGS)
 
 # sbin programs
 knotd_LDADD = libknot.la libknotd.la

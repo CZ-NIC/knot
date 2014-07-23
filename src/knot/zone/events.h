@@ -32,7 +32,7 @@ struct server_t;
 typedef enum zone_event_type {
 	ZONE_EVENT_INVALID = -1,
 	// supported event types
-	ZONE_EVENT_RELOAD = 0, // Used as a first valid event, do not change.
+	ZONE_EVENT_RELOAD = 0,
 	ZONE_EVENT_REFRESH,
 	ZONE_EVENT_XFER,
 	ZONE_EVENT_UPDATE,
@@ -145,7 +145,8 @@ void zone_events_start(struct zone_t *zone);
  * \param type  Event type.
  *
  * \retval time of the event when event found
- * \retval negative value if event was not found
+ * \retval 0 when the event is not planned
+ * \retval negative value if event is invalid
  */
 time_t zone_events_get_time(const struct zone_t *zone, zone_event_type_t type);
 

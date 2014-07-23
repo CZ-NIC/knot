@@ -9,7 +9,7 @@ EXTRA_DIST = \
 	running.rst		\
 	troubleshooting.rst	\
 	\
-	logo.pdf		\
+	logo.eps		\
 	logo.png
 
 SPHINXBUILDDIR = _build

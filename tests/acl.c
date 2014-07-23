@@ -14,7 +14,6 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <config.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <tap/basic.h>

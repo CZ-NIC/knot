@@ -234,9 +234,10 @@ int axfr_query_process(knot_pkt_t *pkt, struct query_data *qdata)
 		return NS_PROC_FULL; /* Check for more. */
 	case KNOT_EOK:    /* Last response. */
 		gettimeofday(&now, NULL);
-		AXFROUT_LOG(LOG_INFO, "Finished in %.02fs (%u messages, ~%.01f"
-		           "kB).", time_diff(&axfr->proc.tstamp, &now) / 1000.0,
-		           axfr->proc.npkts, axfr->proc.nbytes / 1024.0);
+		AXFROUT_LOG(LOG_INFO, "Finished in %.02fs (%u messages, "
+		            "%s%.*f %s).",
+		            time_diff(&axfr->proc.tstamp, &now) / 1000.0,
+		            axfr->proc.npkts, SIZE_PARAMS(axfr->proc.nbytes));
 		return NS_PROC_DONE;
 		break;
 	default:          /* Generic error. */
@@ -315,9 +316,9 @@ static int axfr_answer_finalize(struct answer_data *adata)
 	           zone_contents_serial(old_contents),
 	           zone_contents_serial(proc->contents));
 
-	AXFRIN_LOG(LOG_INFO, "Finished in %.02fs (%u messages, ~%.01fkB).",
-	         time_diff(&proc->tstamp, &now) / 1000.0,
-	         proc->npkts, proc->nbytes / 1024.0);
+	AXFRIN_LOG(LOG_INFO, "Finished in %.02fs (%u messages, %s%.*f %s).",
+	           time_diff(&proc->tstamp, &now) / 1000.0,
+	           proc->npkts, SIZE_PARAMS(proc->nbytes));
 
 	/* Do not free new contents with cleanup. */
 	zone_contents_deep_free(&old_contents);
@@ -331,9 +332,11 @@ static int axfr_answer_packet(knot_pkt_t *pkt, struct xfr_proc *proc)
 	assert(pkt != NULL);
 	assert(proc != NULL);
 
-	++proc->npkts;
+	/* Update counters. */
+	proc->npkts  += 1;
+	proc->nbytes += pkt->size;
 
-	// Init zone creator
+	/* Init zone creator. */
 	zcreator_t zc = {.z = proc->contents, .master = false, .ret = KNOT_EOK };
 
 	const knot_pktsection_t *answer = knot_pkt_section(pkt, KNOT_ANSWER);
