@@ -160,27 +160,28 @@ int zone_load_post(zone_contents_t *contents, zone_t *zone, uint32_t *dnssec_ref
 		/* Replace changes from zone signing, the resulting diff will cover
 		 * those changes as well. */
 		changeset_clear(&change);
+		ret = changeset_init(&change, zone->name);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
 		ret = zone_contents_create_diff(zone->contents, contents, &change);
 		if (ret == KNOT_ENODIFF) {
 			log_zone_warning("Zone %s: Zone file changed, "
 			                 "but serial didn't - won't "
 			                 "create journal entry.\n",
 			                 conf->name);
-			changeset_clear(&change);
 			ret = KNOT_EOK;
 		} else if (ret == KNOT_ERANGE) {
 			log_zone_warning("Zone %s: Zone file changed, "
 			                 "but serial is lower than before - "
 			                 "IXFR history will be lost.\n",
 			                 conf->name);
-			changeset_clear(&change);
 			ret = KNOT_EOK;
 		} else if (ret != KNOT_EOK) {
 			log_zone_error("Zone %s: Failed to calculate "
 			               "differences from the zone "
 			               "file update: %s\n",
 			               conf->name, knot_strerror(ret));
-			changeset_clear(&change);
 			return ret;
 		}
 	}
