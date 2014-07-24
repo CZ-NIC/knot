@@ -29,7 +29,7 @@
 #include "knot/nameserver/process_query.h"
 #include "knot/nameserver/tsig_ctx.h"
 
-/* Query processing module implementation. */
+/* Answer processing module implementation. */
 const knot_process_module_t *process_answer_get_module(void);
 #define NS_PROC_ANSWER process_answer_get_module()
 #define NS_PROC_ANSWER_ID 2
@@ -42,7 +42,7 @@ const knot_process_module_t *process_answer_get_module(void);
 	} while(0)
 
 /*!
- * \brief Answer processing parameters.
+ * \brief Processing module parameters.
  */
 struct process_answer_param {
 	zone_t   *zone;                        /*!< Answer bailiwick. */
@@ -52,7 +52,7 @@ struct process_answer_param {
 };
 
 /*!
- * \brief Answer processing context.
+ * \brief Processing module context.
  */
 struct answer_data {
 	/* Extensions. */

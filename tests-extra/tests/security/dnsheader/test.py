@@ -5,7 +5,7 @@
 import socket
 from dnstest.test import Test
 
-t = Test()
+t = Test(stress=False)
 knot = t.server("knot")
 zone = t.zone("example.com.")
 t.link(zone, knot)

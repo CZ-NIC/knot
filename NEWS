@@ -1,4 +1,17 @@
 Knot DNS NEWS
+1.5.0 - Jul 8, 2014
+-----------------------
+Features:
+	* DDNS forwarding reimplemented
+Improvements:
+	* Transfer sizes logged in bytes if needed
+	* Logging outgoing NOTIFY messages
+	* Logging unauthorized incoming NOTIFYs
+Bugfixes:
+	* Zone flush planning after bootstrap
+	* Incorrect incoming AXFR message sizes
+	* DDNS signing changes were freed too soon, posibility of stale data
+	* knotc remote control key handling
 
 1.5.0-rc2 - Jun 18, 2014
 -----------------------

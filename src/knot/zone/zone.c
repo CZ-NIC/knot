@@ -1,4 +1,4 @@
-/*  Copyright (C) 2014 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/* Copyright (C) 2014 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -277,10 +277,13 @@ int zone_update_enqueue(zone_t *zone, knot_pkt_t *pkt, struct process_query_para
 	/* Copy socket and request. */
 	req->fd = dup(param->socket);
 	memcpy(&req->remote, param->remote, sizeof(struct sockaddr_storage));
-	req->query = knot_pkt_copy(pkt, NULL);
-	if (req->query == NULL) {
+
+	req->query = knot_pkt_new(NULL, pkt->max_size, NULL);
+	int ret = knot_pkt_copy(req->query, pkt);
+	if (ret != KNOT_EOK) {
+		knot_pkt_free(&req->query);
 		free(req);
-		return KNOT_ENOMEM;
+		return ret;
 	}
 
 	pthread_spin_lock(&zone->ddns_lock);
@@ -297,33 +300,25 @@ int zone_update_enqueue(zone_t *zone, knot_pkt_t *pkt, struct process_query_para
 	return KNOT_EOK;
 }
 
-list_t *zone_update_dequeue(zone_t *zone)
+void zone_update_dequeue(zone_t *zone, list_t *updates)
 {
 	if (zone == NULL) {
-		return NULL;
+		return;
 	}
 
 	pthread_spin_lock(&zone->ddns_lock);
 	if (knot_unlikely(EMPTY_LIST(zone->ddns_queue))) {
 		/* Lost race during reload. */
 		pthread_spin_unlock(&zone->ddns_lock);
-		return NULL;
-	}
-
-	list_t *ret = malloc(sizeof(list_t));
-	if (ret == NULL) {
-		pthread_spin_unlock(&zone->ddns_lock);
-		return NULL;
+		return;
 	}
 
 	printf("Will process %zu UPDATES\n", zone->ddns_queue_size);
-	*ret = zone->ddns_queue;
+	*updates = zone->ddns_queue;
 	init_list(&zone->ddns_queue);
 	zone->ddns_queue_size = 0;
 
 	pthread_spin_unlock(&zone->ddns_lock);
-
-	return ret;
 }
 
 bool zone_transfer_needed(const zone_t *zone, const knot_pkt_t *pkt)

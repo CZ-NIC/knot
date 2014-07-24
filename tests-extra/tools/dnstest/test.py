@@ -26,7 +26,7 @@ class Test(object):
     # Number of unsuccessful starts of servers. Recursion protection.
     start_tries = 0
 
-    def __init__(self, ip=None, tsig=None):
+    def __init__(self, ip=None, tsig=None, stress=True):
         if not os.path.exists(params.out_dir):
             raise Exception("Output directory doesn't exist")
 
@@ -46,6 +46,8 @@ class Test(object):
                 self.tsig = dnstest.keys.Tsig()
         elif random.choice([True, False]):
             self.tsig = dnstest.keys.Tsig()
+
+        self.stress = stress
 
         self.servers = set()
 
@@ -186,16 +188,19 @@ class Test(object):
                 raise Exception("Server '%s' not running" % server.name)
 
             if not server.listening():
-                self.stop(check=False)
+                self.stop(kill=True)
                 self.start()
 
         self.start_tries = 0
 
-    def stop(self, check=True):
+    def stop(self, check=True, kill=False):
         '''Stop all servers'''
 
         for server in self.servers:
-            server.stop(check=check)
+            if kill:
+                server.kill()
+            else:
+                server.stop(check=check)
 
     def end(self):
         '''Finish testing'''

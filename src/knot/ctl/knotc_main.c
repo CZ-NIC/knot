@@ -34,7 +34,7 @@
 #include "knot/zone/zone-load.h"
 #include "knot/server/tcp-handler.h"
 #include "libknot/packet/wire.h"
-#include "knot/zone/estimator.h"
+#include "knot/ctl/estimator.h"
 
 /*! \brief Controller flags. */
 enum knotc_flag_t {
@@ -310,7 +310,7 @@ static int tsig_parse_str(knot_tsig_key_t *key, const char *str)
 	if (s) {
 		*s++ = '\0';               /* Last part separator */
 		knot_lookup_table_t *alg = NULL;
-		alg = knot_lookup_by_name(knot_tsig_alg_dnames_str, h);
+		alg = knot_lookup_by_name(knot_tsig_alg_names, h);
 		if (alg) {
 			algorithm = alg->id;
 		} else {

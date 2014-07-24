@@ -121,6 +121,8 @@ src/knot/modules/synth_record.c
 src/knot/modules/synth_record.h
 src/knot/nameserver/axfr.c
 src/knot/nameserver/axfr.h
+src/knot/nameserver/capture.c
+src/knot/nameserver/capture.h
 src/knot/nameserver/chaos.c
 src/knot/nameserver/chaos.h
 src/knot/nameserver/internet.c
@@ -302,6 +304,7 @@ tests/Makefile.am
 tests/acl.c
 tests/base32hex.c
 tests/base64.c
+tests/changeset.c
 tests/conf.c
 tests/descriptor.c
 tests/dname.c
@@ -335,4 +338,3 @@ tests/worker_queue.c
 tests/zone_events.c
 tests/zonedb.c
 tests/ztree.c
-tests/changeset.c

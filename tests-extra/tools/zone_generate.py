@@ -364,7 +364,7 @@ def gen_rr_rev(dn):
 
 # Generate SOA
 def gen_soa(origin, serial, auth = None):
-    refresh = 10
+    refresh = 3600
     if origin != '.':
         origin += '.'
     soa =  ''
