@@ -306,7 +306,7 @@ static int apply_replace_soa(zone_contents_t *contents, changeset_t *chset)
 }
 
 /*! \brief Apply single change to zone contents structure. */
-static int apply_changeset(zone_contents_t *contents, changeset_t *chset,
+static int apply_single(zone_contents_t *contents, changeset_t *chset,
                            bool master)
 {
 	/*
@@ -482,9 +482,10 @@ int apply_changesets(zone_t *zone, list_t *chsets, zone_contents_t **new_content
 	changeset_t *set = NULL;
 	const bool master = (zone_master(zone) == NULL);
 	WALK_LIST(set, *chsets) {
-		ret = apply_changeset(contents_copy, set, master);
+		ret = apply_single(contents_copy, set, master);
 		if (ret != KNOT_EOK) {
-			update_rollback(chsets, &contents_copy);
+			updates_rollback(chsets);
+			update_free_old_zone(&contents_copy);
 			return ret;
 		}
 	}
@@ -493,12 +494,50 @@ int apply_changesets(zone_t *zone, list_t *chsets, zone_contents_t **new_content
 
 	ret = finalize_updated_zone(contents_copy, true);
 	if (ret != KNOT_EOK) {
-		update_rollback(chsets, &contents_copy);
+		updates_rollback(chsets);
+		update_free_old_zone(&contents_copy);
 		return ret;
 	}
 
 	*new_contents = contents_copy;
 
+	return KNOT_EOK;
+}
+
+int apply_changeset(zone_t *zone, changeset_t *change, zone_contents_t **new_contents)
+{
+	if (zone == NULL || change == NULL || new_contents == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	zone_contents_t *old_contents = zone->contents;
+	if (!old_contents) {
+		return KNOT_EINVAL;
+	}
+
+	zone_contents_t *contents_copy = NULL;
+	int ret = prepare_zone_copy(old_contents, &contents_copy);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+	
+	const bool master = (zone_master(zone) == NULL);
+	ret = apply_single(contents_copy, change, master);
+	if (ret != KNOT_EOK) {
+		update_rollback(change);
+		update_free_old_zone(&contents_copy);
+		return ret;
+	}
+	
+	ret = finalize_updated_zone(contents_copy, true);
+	if (ret != KNOT_EOK) {
+		update_rollback(change);
+		update_free_old_zone(&contents_copy);
+		return ret;
+	}
+	
+	*new_contents = contents_copy;
+	
 	return KNOT_EOK;
 }
 
@@ -511,17 +550,56 @@ int apply_changesets_directly(zone_contents_t *contents, list_t *chsets)
 	changeset_t *set = NULL;
 	WALK_LIST(set, *chsets) {
 		const bool master = true; // Only DNSSEC changesets are applied directly.
-		int ret = apply_changeset(contents, set, master);
+		int ret = apply_single(contents, set, master);
 		if (ret != KNOT_EOK) {
-			update_cleanup(chsets);
+			updates_cleanup(chsets);
 			return ret;
 		}
 	}
 
-	return finalize_updated_zone(contents, true);
+	int ret = finalize_updated_zone(contents, true);
+	if (ret != KNOT_EOK) {
+		updates_cleanup(chsets);
+	}
+	
+	return ret;
 }
 
-void update_cleanup(list_t *chgs)
+int apply_changeset_directly(zone_contents_t *contents, changeset_t *ch)
+{
+	if (contents == NULL || ch == NULL) {
+		return KNOT_EINVAL;
+	}
+	
+	const bool master = true; // Only DNSSEC changesets are applied directly.
+	int ret = apply_single(contents, ch, master);
+	if (ret != KNOT_EOK) {
+		update_cleanup(ch);
+		return ret;
+	}
+	
+	ret = finalize_updated_zone(contents, true);
+	if (ret != KNOT_EOK) {
+		update_cleanup(ch);
+		return ret;
+	}
+	
+	return KNOT_EOK;
+}
+
+void update_cleanup(changeset_t *change)
+{
+	if (change) {
+		// Delete old RR data
+		rrs_list_clear(&change->old_data, NULL);
+		init_list(&change->old_data);
+		// Keep new RR data
+		ptrlist_free(&change->new_data, NULL);
+		init_list(&change->new_data);
+	}
+}
+
+void updates_cleanup(list_t *chgs)
 {
 	if (chgs == NULL || EMPTY_LIST(*chgs)) {
 		return;
@@ -529,39 +607,34 @@ void update_cleanup(list_t *chgs)
 
 	changeset_t *change = NULL;
 	WALK_LIST(change, *chgs) {
-		// Delete old RR data
-		rrs_list_clear(&change->old_data, NULL);
-		init_list(&change->old_data);
-		// Keep new RR data
-		ptrlist_free(&change->new_data, NULL);
-		init_list(&change->new_data);
+		update_cleanup(change);
 	};
 }
 
-void update_rollback(list_t *chgs, zone_contents_t **new_contents)
+void update_rollback(changeset_t *change)
+{
+	if (change) {
+		// Delete new RR data
+		rrs_list_clear(&change->new_data, NULL);
+		init_list(&change->new_data);
+		// Keep old RR data
+		ptrlist_free(&change->old_data, NULL);
+		init_list(&change->old_data);
+	}
+}
+
+void updates_rollback(list_t *chgs)
 {
 	if (chgs != NULL && !EMPTY_LIST(*chgs)) {
 		changeset_t *change = NULL;
 		WALK_LIST(change, *chgs) {
-			// Delete new RR data
-			rrs_list_clear(&change->new_data, NULL);
-			init_list(&change->new_data);
-			// Keep old RR data
-			ptrlist_free(&change->old_data, NULL);
-			init_list(&change->old_data);
-		};
-	}
-	if (new_contents) {
-		update_free_old_zone(new_contents);
+			update_rollback(change);
+		}
 	}
 }
 
 void update_free_old_zone(zone_contents_t **contents)
 {
-	/*
-	 * Free the zone tree, but only the structure
-	 * (nodes are already destroyed) and free additional arrays.
-	 */
 	zone_tree_apply((*contents)->nodes, free_additional, NULL);
 	zone_tree_deep_free(&(*contents)->nodes);
 	zone_tree_deep_free(&(*contents)->nsec3_nodes);

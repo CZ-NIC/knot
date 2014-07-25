@@ -70,24 +70,12 @@ static bool zones_nsec3param_changed(const zone_contents_t *old_contents,
 
 static int sign_update(zone_t *zone, const zone_contents_t *old_contents,
                        zone_contents_t *new_contents, changeset_t *ddns_ch,
-                       list_t **sec_chs)
+                       changeset_t *sec_ch)
 {
 	assert(zone != NULL);
 	assert(old_contents != NULL);
 	assert(new_contents != NULL);
 	assert(ddns_ch != NULL);
-
-	changeset_t *sec_ch = changeset_new(zone->name);
-	if (sec_ch == NULL) {
-		return KNOT_ENOMEM;
-	}
-	*sec_chs = malloc(sizeof(list_t));
-	if (*sec_chs == NULL) {
-		changeset_free(sec_ch);
-		return KNOT_ENOMEM;
-	}
-	init_list(*sec_chs);
-	add_head(*sec_chs, &sec_ch->n);
 
 	/*
 	 * Check if the UPDATE changed DNSKEYs or NSEC3PARAM.
@@ -107,25 +95,19 @@ static int sign_update(zone_t *zone, const zone_contents_t *old_contents,
 		                                 &refresh_at);
 	}
 	if (ret != KNOT_EOK) {
-		changesets_free(*sec_chs);
-		free(*sec_chs);
 		return ret;
 	}
 
 	// Apply DNSSEC changeset
-	ret = apply_changesets_directly(new_contents, *sec_chs);
+	ret = apply_changeset_directly(new_contents, sec_ch);
 	if (ret != KNOT_EOK) {
-		changesets_free(*sec_chs);
-		free(*sec_chs);
 		return ret;
 	}
 
 	// Merge changesets
 	ret = changeset_merge(ddns_ch, sec_ch);
 	if (ret != KNOT_EOK) {
-		update_cleanup(*sec_chs);
-		changesets_free(*sec_chs);
-		free(*sec_chs);
+		update_cleanup(sec_ch);
 		return ret;
 	}
 
@@ -172,9 +154,7 @@ static int process_authenticated(uint16_t *rcode, struct query_data *qdata)
 	const bool change_made = !changeset_empty(&ddns_ch);
 	list_t apply;
 	if (change_made) {
-		init_list(&apply);
-		add_head(&apply, &ddns_ch.n);
-		ret = apply_changesets(zone, &apply, &new_contents);
+		ret = apply_changeset(zone, &ddns_ch, &new_contents);
 		if (ret != KNOT_EOK) {
 			if (ret == KNOT_ETTL) {
 				*rcode = KNOT_RCODE_REFUSED;
@@ -191,13 +171,20 @@ static int process_authenticated(uint16_t *rcode, struct query_data *qdata)
 	}
 	assert(new_contents);
 
-	list_t *sec_chs = NULL;
+	changeset_t sec_ch;
 	if (zone->conf->dnssec_enable) {
-		ret = sign_update(zone, zone->contents, new_contents, &ddns_ch,
-		                  &sec_chs);
+		ret = changeset_init(&sec_ch, zone->name);
 		if (ret != KNOT_EOK) {
-			update_rollback(&apply, &new_contents);
+			*rcode = KNOT_RCODE_SERVFAIL;
+			return ret;
+		}
+		ret = sign_update(zone, zone->contents, new_contents, &ddns_ch,
+		                  &sec_ch);
+		if (ret != KNOT_EOK) {
+			update_rollback(&ddns_ch);
+			update_free_old_zone(&new_contents);
 			changeset_clear(&ddns_ch);
+			changeset_clear(&sec_ch);
 			*rcode = KNOT_RCODE_SERVFAIL;
 			return ret;
 		}
@@ -206,8 +193,12 @@ static int process_authenticated(uint16_t *rcode, struct query_data *qdata)
 	// Write changes to journal if all went well. (DNSSEC merged)
 	ret = zone_change_store(zone, &apply);
 	if (ret != KNOT_EOK) {
-		update_rollback(&apply, &new_contents);
+		update_rollback(&ddns_ch);
+		update_free_old_zone(&new_contents);
 		changeset_clear(&ddns_ch);
+		if (zone->conf->dnssec_enable) {
+			changeset_clear(&sec_ch);
+		}
 		*rcode = KNOT_RCODE_SERVFAIL;
 		return ret;
 	}
@@ -217,14 +208,15 @@ static int process_authenticated(uint16_t *rcode, struct query_data *qdata)
 	synchronize_rcu();
 
 	// Clear DNSSEC changes
-	update_cleanup(sec_chs);
-	changesets_free(sec_chs);
-	free(sec_chs);
+	if (zone->conf->dnssec_enable) {
+		update_cleanup(&sec_ch);
+		changeset_clear(&sec_ch);
+	}
 
 	// Clear obsolete zone contents
 	update_free_old_zone(&old_contents);
 
-	update_cleanup(&apply);
+	updates_cleanup(&apply);
 	changeset_clear(&ddns_ch);
 
 	/* Sync zonefile immediately if configured. */

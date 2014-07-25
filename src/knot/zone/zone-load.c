@@ -113,7 +113,7 @@ int zone_load_journal(zone_t *zone)
 	              serial, zone_contents_serial(zone->contents),
 	              knot_strerror(ret));
 
-	update_cleanup(&chgs);
+	updates_cleanup(&chgs);
 	changesets_free(&chgs);
 	return ret;
 }
@@ -143,14 +143,15 @@ int zone_load_post(zone_contents_t *contents, zone_t *zone, uint32_t *dnssec_ref
 		}
 
 		/* Apply DNSSEC changes. */
-		list_t apply;
-		init_list(&apply);
-		add_head(&apply, &change.n);
-		ret = zone_change_commit(contents, &apply);
-		update_cleanup(&apply);
-		if (ret != KNOT_EOK) {
+		if (!changeset_empty(&change)) {
+			ret = apply_changeset_directly(contents, &change);
+			update_cleanup(&change);
+			if (ret != KNOT_EOK) {
+				changeset_clear(&change);
+				return ret;
+			}
+		} else {
 			changeset_clear(&change);
-			return ret;
 		}
 	}
 

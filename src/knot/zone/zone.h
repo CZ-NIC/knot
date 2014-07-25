@@ -92,10 +92,12 @@ void zone_free(zone_t **zone_ptr);
 /*!
  * \note Zone change API below, subject to change.
  * \ref #223 New zone API
+ * \todo get rid of this
  */
-int zone_change_commit(zone_contents_t *contents, list_t *chgs);
 int zone_change_store(zone_t *zone, list_t *chgs);
-/*! \note @mvavrusa Moved from zones.c, this needs a common API. */
+/*! \note @mvavrusa Moved from zones.c, this needs a common API.
+ * \todo and this
+ */
 int zone_change_apply_and_store(list_t *chs,
                                 zone_t *zone,
                                 const char *msgpref);

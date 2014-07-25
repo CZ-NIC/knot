@@ -105,18 +105,6 @@ void zone_free(zone_t **zone_ptr)
 	*zone_ptr = NULL;
 }
 
-int zone_change_commit(zone_contents_t *contents, list_t *chgs)
-{
-	assert(contents && chgs);
-
-	if (EMPTY_LIST(*chgs)) {
-		return KNOT_EOK;
-	}
-
-	/* Apply DNSSEC changeset to the new zone. */
-	return apply_changesets_directly(contents, chgs);
-}
-
 int zone_change_store(zone_t *zone, list_t *chgs)
 {
 	assert(zone);
@@ -158,7 +146,8 @@ int zone_change_apply_and_store(list_t *chgs,
 	ret = zone_change_store(zone, chgs);
 	if (ret != KNOT_EOK) {
 		log_zone_error("%s Failed to store changesets.\n", msgpref);
-		update_rollback(chgs, &new_contents);
+		updates_rollback(chgs);
+		update_free_old_zone(&new_contents);
 		return ret;
 	}
 
@@ -167,7 +156,7 @@ int zone_change_apply_and_store(list_t *chgs,
 	synchronize_rcu();
 	update_free_old_zone(&old_contents);
 
-	update_cleanup(chgs);
+	updates_cleanup(chgs);
 
 	return KNOT_EOK;
 }
