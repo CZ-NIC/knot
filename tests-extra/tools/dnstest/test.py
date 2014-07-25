@@ -253,11 +253,9 @@ class Test(object):
                     raise Exception("Server is out of testing scope")
                 slave.set_slave(zone, master, ddns, ixfr)
 
-    def _axfr_records(self, server, zone):
+    def _axfr_records(self, resp, zone):
         unique = set()
         records = list()
-
-        resp = server.dig(zone.name, "AXFR", log_no_sep=True)
 
         for msg in resp.resp:
             for rrset in msg.answer:
@@ -278,10 +276,7 @@ class Test(object):
 
         return unique, records
 
-    def _axfr_diff(self, server1, server2, zone):
-        unique1, rrsets1 = self._axfr_records(server1, zone)
-        unique2, rrsets2 = self._axfr_records(server2, zone)
-
+    def _axfr_diff_resp(self, unique1, rrset1s, unique2, rrsets2):
         diff1 = sorted(list(unique1 - unique2))
         if diff1:
             set_err("AXFR DIFF")
@@ -295,6 +290,13 @@ class Test(object):
             detail_log("!Extra records server='%s':" % server2.name)
             for record in diff2:
                 detail_log("  %s" % record)
+
+
+    def _axfr_diff(self, server1, server2, zone):
+        unique1, rrsets1 = self._axfr_records(server1.dig(zone.name, "AXFR", log_no_sep=True), zone)
+        unique2, rrsets2 = self._axfr_records(server2.dig(zone.name, "AXFR", log_no_sep=True), zone)
+
+        self._axfr_diff_resp(unique1, rrsets1, unique2, rrsets2)
 
     class IxfrChange():
         def __init__(self):
@@ -452,3 +454,9 @@ class Test(object):
                 self._axfr_diff(server1, server2, zone)
 
         detail_log(SEP)
+
+    def axfr_diff_resp(self, resp1, resp2, zone):
+        unique1, rrsets1 = self._axfr_records(resp1, zone)
+        unique2, rrsets2 = self._axfr_records(resp2, zone)
+
+        self._axfr_diff_resp(unique1, rrsets1, unique2, rrsets2)
