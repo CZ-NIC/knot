@@ -527,7 +527,7 @@ static int event_dnssec(zone_t *zone)
 
 	if (!changeset_empty(&ch)) {
 		/* Apply change. */
-		zone_contents_t *new_contents;
+		zone_contents_t *new_contents = NULL;
 		int ret = apply_changeset(zone, &ch, &new_contents);
 		if (ret != KNOT_EOK) {
 			log_zone_error("%s Could not sign zone (%s).\n",

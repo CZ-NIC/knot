@@ -979,13 +979,13 @@ static int changesets_unpack(changeset_t *chs)
 			if (in_remove_section) {
 				chs->soa_to = knot_rrset_copy(&rrset, NULL);
 				if (chs->soa_to == NULL) {
-					knot_rrset_clear(&rrset, NULL);
-					return KNOT_ENOMEM;
+					ret = KNOT_ENOMEM;
+					break;
 				}
 				in_remove_section = false;
 			} else {
-				/* Final SOA. */
-				break;
+				/* Final SOA, no-op. */
+				;
 			}
 		} else {
 			/* Remove RRSets. */
@@ -997,9 +997,11 @@ static int changesets_unpack(changeset_t *chs)
 			}
 		}
 		knot_rrset_clear(&rrset, NULL);
+		if (ret != KNOT_EOK) {
+			break;
+		}
 	}
 
-	knot_rrset_clear(&rrset, NULL);
 	return ret;
 }
 
