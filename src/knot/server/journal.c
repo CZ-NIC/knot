@@ -1029,7 +1029,10 @@ static int serialize_and_store_chgset(const changeset_t *chs,
 	}
 
 	changeset_iter_t itt;
-	changeset_iter_rem(&itt, chs, false);
+	ret = changeset_iter_rem(&itt, chs, false);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
 
 	knot_rrset_t rrset = changeset_iter_next(&itt);
 	while (!knot_rrset_empty(&rrset)) {
@@ -1049,7 +1052,10 @@ static int serialize_and_store_chgset(const changeset_t *chs,
 	}
 
 	/* Serialize RRSets from the 'add' section. */
-	changeset_iter_add(&itt, chs, false);
+	ret = changeset_iter_add(&itt, chs, false);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
 
 	rrset = changeset_iter_next(&itt);
 	while (!knot_rrset_empty(&rrset)) {
