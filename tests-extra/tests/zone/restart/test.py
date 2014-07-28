@@ -53,13 +53,13 @@ up.send("NOERROR")
 # Check DDNS application
 check_axfr(master, zone)
 serial = master.zone_wait(zone)
-serial = slave.zone_wait(zone, serial)
 
 # Update zonefile on master
 master.flush()
 t.sleep(1)
 master.update_zonefile(zone, random=True)
 master.reload()
+master.zone_wait(zone)
 
 # Wait for all changes on slave
 slave.zone_wait(zone, serial)
