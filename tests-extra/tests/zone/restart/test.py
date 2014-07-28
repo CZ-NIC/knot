@@ -57,6 +57,7 @@ serial = slave.zone_wait(zone, serial)
 
 # Update zonefile on master
 master.flush()
+t.sleep(1)
 master.update_zonefile(zone, random=True)
 master.reload()
 
@@ -65,8 +66,5 @@ slave.zone_wait(zone, serial)
 
 # Make sure slave applied everything
 check_axfr(slave, zone)
-
-master.stop()
-slave.stop()
 
 t.end()
