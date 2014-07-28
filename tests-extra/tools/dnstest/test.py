@@ -276,7 +276,7 @@ class Test(object):
 
         return unique, records
 
-    def _axfr_diff_resp(self, unique1, rrset1s, unique2, rrsets2):
+    def _axfr_diff_resp(self, unique1, rrset1s, unique2, rrsets2, server1, server2):
         diff1 = sorted(list(unique1 - unique2))
         if diff1:
             set_err("AXFR DIFF")
@@ -296,7 +296,7 @@ class Test(object):
         unique1, rrsets1 = self._axfr_records(server1.dig(zone.name, "AXFR", log_no_sep=True), zone)
         unique2, rrsets2 = self._axfr_records(server2.dig(zone.name, "AXFR", log_no_sep=True), zone)
 
-        self._axfr_diff_resp(unique1, rrsets1, unique2, rrsets2)
+        self._axfr_diff_resp(unique1, rrsets1, unique2, rrsets2, server1, server2)
 
     class IxfrChange():
         def __init__(self):
@@ -455,8 +455,8 @@ class Test(object):
 
         detail_log(SEP)
 
-    def axfr_diff_resp(self, resp1, resp2, zone):
+    def axfr_diff_resp(self, resp1, resp2, server1, server2, zone):
         unique1, rrsets1 = self._axfr_records(resp1, zone)
         unique2, rrsets2 = self._axfr_records(resp2, zone)
 
-        self._axfr_diff_resp(unique1, rrsets1, unique2, rrsets2)
+        self._axfr_diff_resp(unique1, rrsets1, unique2, rrsets2, server1, server2)

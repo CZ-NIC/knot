@@ -5,6 +5,22 @@
 from dnstest.test import Test
 import dnstest.utils
 
+def check_axfr(server, zone):
+    # Get AXFR
+    axfr_pre = server.dig(zone[0].name, "AXFR", log_no_sep=True)
+
+    # Restart
+    server.stop()
+    t.sleep(1)
+    server.start()
+    server.zone_wait(zone)
+
+    # Get AXFR after restart
+    axfr_post = server.dig(zone[0].name, "AXFR", log_no_sep=True)
+
+    # Compare AXFRs
+    t.axfr_diff_resp(axfr_pre, axfr_post, server, server, zone[0])
+
 t = Test()
 
 master = t.server("knot")
@@ -12,39 +28,43 @@ slave = t.server("knot")
 
 # Zone setup
 zone = t.zone_rnd(1)
+t.link(zone, master, slave, ixfr = True, ddns=True)
 
-t.link(zone, master, slave, ixfr = True)
+# Turn automatic DNSSEC on
+master.dnssec_enable = True
+master.enable_nsec3(zone)
+master.gen_key(zone, ksk=True, alg="RSASHA256")
+master.gen_key(zone, alg="RSASHA256")
 
 t.start()
 
 # Load zones - master should sign
-serial = master.zone_wait(zone)
+master.zone_wait(zone)
 slave.zone_wait(zone)
 
-# Get AXFR from master
-axfr_pre = master.dig(zone[0].name, "AXFR", log_no_sep=True)
-
-# Restart and compare AXFRs
-master.stop()
-
-master.start()
-master.zone_wait(zone)
-
-axfr_post = master.dig(zone[0].name, "AXFR", log_no_sep=True)
-
-t.axfr_diff_resp(axfr_pre, axfr_post, zone[0])
-
-# Update zonefile on master
-
-# Wait for changes on slave
-
-# Restart and do an AXFR diff
+# Check DNSSEC application
+check_axfr(master, zone)
 
 # Update zone using DDNS
+up = master.update(zone)
+up.add("test123."+zone[0].name, "3600", "TXT", "test")
+up.send("NOERROR")
 
-# Stop and start, do an AXFR diff
+# Check DDNS application
+check_axfr(master, zone)
+serial = master.zone_wait(zone)
+serial = slave.zone_wait(zone, serial)
 
-# Stop and start the slave server, make sure everything is applied
+# Update zonefile on master
+master.flush()
+master.update_zonefile(zone, random=True)
+master.reload()
+
+# Wait for all changes on slave
+slave.zone_wait(zone, serial)
+
+# Make sure slave applied everything
+check_axfr(slave, zone)
 
 master.stop()
 slave.stop()
