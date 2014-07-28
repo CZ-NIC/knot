@@ -81,16 +81,16 @@ int zone_load_check(zone_contents_t *contents, conf_zone_t *zone_config)
 /*!
  * \brief Apply changesets to zone from journal.
  */
-int zone_load_journal(zone_t *zone)
+int zone_load_journal(zone_t *zone, zone_contents_t *contents)
 {
 	/* Check if journal is used and zone is not empty. */
 	if (!journal_exists(zone->conf->ixfr_db) ||
-	    zone_contents_is_empty(zone->contents)) {
+	    zone_contents_is_empty(contents)) {
 		return KNOT_EOK;
 	}
 
 	/* Fetch SOA serial. */
-	uint32_t serial = zone_contents_serial(zone->contents);
+	uint32_t serial = zone_contents_serial(contents);
 
 	/*! \todo Check what should be the upper bound. */
 	list_t chgs;
@@ -107,10 +107,10 @@ int zone_load_journal(zone_t *zone)
 	}
 
 	/* Apply changesets. */
-	ret = apply_changesets_directly(zone->contents, &chgs);
+	ret = apply_changesets_directly(contents, &chgs);
 	log_zone_info("Zone '%s' serial %u -> %u: %s\n",
 	              zone->conf->name,
-	              serial, zone_contents_serial(zone->contents),
+	              serial, zone_contents_serial(contents),
 	              knot_strerror(ret));
 
 	updates_cleanup(&chgs);
