@@ -189,10 +189,7 @@ int zone_load_post(zone_contents_t *contents, zone_t *zone, uint32_t *dnssec_ref
 
 	/* Write changes (DNSSEC, diff, or both) to journal if all went well. */
 	if (!changeset_empty(&change)) {
-		list_t apply;
-		init_list(&apply);
-		add_head(&apply, &change.n);
-		ret = zone_change_store(zone, &apply);
+		ret = zone_change_store(zone, &change);
 	}
 
 	changeset_clear(&change);

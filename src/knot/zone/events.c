@@ -29,6 +29,7 @@
 #include "knot/zone/zone.h"
 #include "knot/zone/zone-load.h"
 #include "knot/zone/zonefile.h"
+#include "knot/updates/apply.h"
 #include "libknot/rrtype/soa.h"
 #include "libknot/dnssec/random.h"
 #include "knot/nameserver/internet.h"
@@ -525,15 +526,31 @@ static int event_dnssec(zone_t *zone)
 	}
 
 	if (!changeset_empty(&ch)) {
-		list_t apply;
-		init_list(&apply);
-		add_head(&apply, &ch.n);
-		ret = zone_change_apply_and_store(&apply, zone, "DNSSEC");
+		/* Apply change. */
+		zone_contents_t *new_contents;
+		int ret = apply_changeset(zone, &ch, &new_contents);
 		if (ret != KNOT_EOK) {
 			log_zone_error("%s Could not sign zone (%s).\n",
-				       msgpref, knot_strerror(ret));
+			               msgpref, knot_strerror(ret));
 			goto done;
 		}
+
+		/* Write change to journal. */
+		ret = zone_change_store(zone, &ch);
+		if (ret != KNOT_EOK) {
+			log_zone_error("%s Could not sign zone (%s).\n",
+			               msgpref, knot_strerror(ret));
+			update_rollback(&ch);
+			update_free_old_zone(&new_contents);
+			goto done;
+		}
+
+		/* Switch zone contents. */
+		zone_contents_t *old_contents = zone_switch_contents(zone, new_contents);
+		synchronize_rcu();
+		update_free_old_zone(&old_contents);
+
+		update_cleanup(&ch);
 	}
 
 	// Schedule dependent events.

@@ -327,15 +327,32 @@ static int ixfrin_answer_init(struct answer_data *data)
 static int ixfrin_finalize(struct answer_data *adata)
 {
 	struct ixfr_proc *ixfr = adata->ext;
-
 	assert(ixfr->state == IXFR_DONE);
-	int ret = zone_change_apply_and_store(&ixfr->changesets,
-	                                      ixfr->zone, "IXFR");
+
+	zone_contents_t *new_contents;
+	int ret = apply_changesets(ixfr->zone, &ixfr->changesets, &new_contents);
 	if (ret != KNOT_EOK) {
 		IXFRIN_LOG(LOG_ERR, "Failed to apply changes to zone - %s",
 		           knot_strerror(ret));
 		return ret;
 	}
+
+	/* Write changes to journal. */
+	ret = zone_changes_store(ixfr->zone, &ixfr->changesets);
+	if (ret != KNOT_EOK) {
+		IXFRIN_LOG(LOG_ERR, "Failed to apply changes to zone - %s",
+		           knot_strerror(ret));
+		updates_rollback(&ixfr->changesets);
+		update_free_old_zone(&new_contents);
+		return ret;
+	}
+
+	/* Switch zone contents. */
+	zone_contents_t *old_contents = zone_switch_contents(ixfr->zone, new_contents);
+	synchronize_rcu();
+	update_free_old_zone(&old_contents);
+
+	updates_cleanup(&ixfr->changesets);
 
 	struct timeval now = {0};
 	gettimeofday(&now, NULL);

@@ -152,7 +152,6 @@ static int process_authenticated(uint16_t *rcode, struct query_data *qdata)
 
 	zone_contents_t *new_contents = NULL;
 	const bool change_made = !changeset_empty(&ddns_ch);
-	list_t apply;
 	if (change_made) {
 		ret = apply_changeset(zone, &ddns_ch, &new_contents);
 		if (ret != KNOT_EOK) {
@@ -191,7 +190,7 @@ static int process_authenticated(uint16_t *rcode, struct query_data *qdata)
 	}
 
 	// Write changes to journal if all went well. (DNSSEC merged)
-	ret = zone_change_store(zone, &apply);
+	ret = zone_change_store(zone, &ddns_ch);
 	if (ret != KNOT_EOK) {
 		update_rollback(&ddns_ch);
 		update_free_old_zone(&new_contents);
@@ -216,7 +215,7 @@ static int process_authenticated(uint16_t *rcode, struct query_data *qdata)
 	// Clear obsolete zone contents
 	update_free_old_zone(&old_contents);
 
-	updates_cleanup(&apply);
+	update_cleanup(&ddns_ch);
 	changeset_clear(&ddns_ch);
 
 	/* Sync zonefile immediately if configured. */

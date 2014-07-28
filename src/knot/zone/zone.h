@@ -94,13 +94,8 @@ void zone_free(zone_t **zone_ptr);
  * \ref #223 New zone API
  * \todo get rid of this
  */
-int zone_change_store(zone_t *zone, list_t *chgs);
-/*! \note @mvavrusa Moved from zones.c, this needs a common API.
- * \todo and this
- */
-int zone_change_apply_and_store(list_t *chs,
-                                zone_t *zone,
-                                const char *msgpref);
+int zone_changes_store(zone_t *zone, list_t *chgs);
+int zone_change_store(zone_t *zone, changeset_t *change);
 /*!
  * \brief Atomically switch the content of the zone.
  */

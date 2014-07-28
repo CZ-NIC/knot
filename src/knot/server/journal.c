@@ -1219,17 +1219,32 @@ int journal_store_changesets(list_t *src, const char *path, size_t size_limit)
 	/* Begin writing to journal. */
 	changeset_t *chs = NULL;
 	WALK_LIST(chs, *src) {
-		/* Make key from serials. */
 		ret = changeset_pack(chs, journal);
 		if (ret != KNOT_EOK) {
 			break;
 		}
 	}
 
-	/*! @note If the journal is full, this function returns KNOT_EBUSY. */
+	journal_close(journal);
+	return ret;
+}
 
-	/* Written changesets to journal. */
-	return journal_close(journal);
+int journal_store_changeset(changeset_t *change, const char *path, size_t size_limit)
+{
+	if (change == NULL || path == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	/* Open journal for reading. */
+	journal_t *journal = journal_open(path, size_limit);
+	if (journal == NULL) {
+		return KNOT_ENOMEM;
+	}
+
+	int ret = changeset_pack(change, journal);
+
+	journal_close(journal);
+	return ret;
 }
 
 static void mark_synced(journal_t *journal, journal_node_t *node)
