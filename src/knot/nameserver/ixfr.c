@@ -29,7 +29,7 @@ struct ixfr_proc {
 	int state;                     /* IXFR-in state. */
 	knot_rrset_t *final_soa;       /* First SOA received via IXFR. */
 	list_t changesets;             /* Processed changesets. */
-	size_t change_count;           /* Count of changes received. */
+	size_t change_count;           /* Count of changesets received. */
 	zone_t *zone;                  /* Modified zone - for journal access. */
 	mm_ctx_t *mm;                  /* Memory context for RR allocations. */
 	struct query_data *qdata;
