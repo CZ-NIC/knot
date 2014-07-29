@@ -281,6 +281,8 @@ libknotd_la_SOURCES =				\
 	knot/updates/ddns.h			\
 	knot/updates/apply.c			\
 	knot/updates/apply.h			\
+	knot/updates/zone-update.c		\
+	knot/updates/zone-update.h		\
 	knot/worker/pool.c			\
 	knot/worker/pool.h			\
 	knot/worker/queue.c			\

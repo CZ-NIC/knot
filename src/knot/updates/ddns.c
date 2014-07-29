@@ -449,7 +449,7 @@ static bool skip_record_addition(changeset_t *changeset,
 	// Replace singleton RR.
 	knot_rdataset_clear(rrs, NULL);
 	node_remove_rdataset(n, rr->type);
-	node_add_rrset(n, rr);
+	node_add_rrset(n, rr, NULL);
 	
 	return true;
 }

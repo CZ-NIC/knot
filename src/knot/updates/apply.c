@@ -240,7 +240,7 @@ static int add_rr(zone_node_t *node, const knot_rrset_t *rr,
 	}
 
 	// Insert new RR to RRSet, data will be copied.
-	int ret = node_add_rrset(node, rr);
+	int ret = node_add_rrset(node, rr, NULL);
 	if (ret == KNOT_EOK || ret == KNOT_ETTL) {
 		// RR added, store for possible rollback.
 		knot_rdataset_t *rrs = node_rdataset(node, rr->type);
@@ -385,7 +385,7 @@ static int remove_empty_tree_nodes(zone_tree_t *tree)
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
-		node_free(&node);
+		node_free(&node, NULL);
 		free(n);
 	}
 

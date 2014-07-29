@@ -107,7 +107,7 @@ static int zone_contents_destroy_node_rrsets_from_tree(
 	assert(tnode != NULL);
 	if (*tnode != NULL) {
 		node_free_rrsets(*tnode);
-		node_free(tnode);
+		node_free(tnode, NULL);
 	}
 
 	return KNOT_EOK;
@@ -411,7 +411,7 @@ zone_contents_t *zone_contents_new(const knot_dname_t *apex_name)
 	}
 
 	memset(contents, 0, sizeof(zone_contents_t));
-	contents->apex = node_new(apex_name);
+	contents->apex = node_new(apex_name, NULL);
 	if (contents->apex == NULL) {
 		goto cleanup;
 	}
@@ -502,7 +502,7 @@ static int zone_contents_add_node(zone_contents_t *zone, zone_node_t *node,
 
 			/* Create a new node. */
 			dbg_zone_detail("Creating new node.\n");
-			next_node = node_new(parent);
+			next_node = node_new(parent, NULL);
 			if (next_node == NULL) {
 				return KNOT_ENOMEM;
 			}
@@ -511,7 +511,7 @@ static int zone_contents_add_node(zone_contents_t *zone, zone_node_t *node,
 			dbg_zone_detail("Inserting new node to zone tree.\n");
 			ret = zone_tree_insert(zone->nodes, next_node);
 			if (ret != KNOT_EOK) {
-				node_free(&next_node);
+				node_free(&next_node, NULL);
 				return ret;
 			}
 
@@ -614,19 +614,19 @@ static int insert_rr(zone_contents_t *z,
 		             zone_contents_get_node(z, rr->owner);
 		if (*n == NULL) {
 			// Create new, insert
-			*n = node_new(rr->owner);
+			*n = node_new(rr->owner, NULL);
 			if (*n == NULL) {
 				return KNOT_ENOMEM;
 			}
 			ret = nsec3 ? zone_contents_add_nsec3_node(z, *n) :
 			              zone_contents_add_node(z, *n, true);
 			if (ret != KNOT_EOK) {
-				node_free(n);
+				node_free(n, NULL);
 			}
 		}
 	}
 
-	return node_add_rrset(*n, rr);
+	return node_add_rrset(*n, rr, NULL);
 }
 
 static int recreate_normal_tree(const zone_contents_t *z, zone_contents_t *out)
@@ -637,7 +637,7 @@ static int recreate_normal_tree(const zone_contents_t *z, zone_contents_t *out)
 	}
 
 	// Insert APEX first.
-	zone_node_t *apex_cpy = node_shallow_copy(z->apex);
+	zone_node_t *apex_cpy = node_shallow_copy(z->apex, NULL);
 	if (apex_cpy == NULL) {
 		return KNOT_ENOMEM;
 	}
@@ -645,7 +645,7 @@ static int recreate_normal_tree(const zone_contents_t *z, zone_contents_t *out)
 	// Normal additions need apex ... so we need to insert directly.
 	int ret = zone_tree_insert(out->nodes, apex_cpy);
 	if (ret != KNOT_EOK) {
-		node_free(&apex_cpy);
+		node_free(&apex_cpy, NULL);
 		return ret;
 	}
 
@@ -662,7 +662,7 @@ static int recreate_normal_tree(const zone_contents_t *z, zone_contents_t *out)
 			hattrie_iter_next(itt);
 			continue;
 		}
-		zone_node_t *to_add = node_shallow_copy(to_cpy);
+		zone_node_t *to_add = node_shallow_copy(to_cpy, NULL);
 		if (to_add == NULL) {
 			hattrie_iter_free(itt);
 			return KNOT_ENOMEM;
@@ -670,7 +670,7 @@ static int recreate_normal_tree(const zone_contents_t *z, zone_contents_t *out)
 
 		int ret = zone_contents_add_node(out, to_add, true);
 		if (ret != KNOT_EOK) {
-			node_free(&to_add);
+			node_free(&to_add, NULL);
 			hattrie_iter_free(itt);
 			return ret;
 		}
@@ -696,7 +696,7 @@ static int recreate_nsec3_tree(const zone_contents_t *z, zone_contents_t *out)
 	}
 	while (!hattrie_iter_finished(itt)) {
 		const zone_node_t *to_cpy = (zone_node_t *)*hattrie_iter_val(itt);
-		zone_node_t *to_add = node_shallow_copy(to_cpy);
+		zone_node_t *to_add = node_shallow_copy(to_cpy, NULL);
 		if (to_add == NULL) {
 			hattrie_iter_free(itt);
 			return KNOT_ENOMEM;
@@ -704,7 +704,7 @@ static int recreate_nsec3_tree(const zone_contents_t *z, zone_contents_t *out)
 		int ret = zone_contents_add_nsec3_node(out, to_add);
 		if (ret != KNOT_EOK) {
 			hattrie_iter_free(itt);
-			node_free(&to_add);
+			node_free(&to_add, NULL);
 			return ret;
 		}
 		hattrie_iter_next(itt);
@@ -1397,14 +1397,14 @@ zone_node_t *zone_contents_get_node_for_rr(zone_contents_t *zone, const knot_rrs
 
 	if (node == NULL) {
 		int ret = KNOT_EOK;
-		node = node_new(rrset->owner);
+		node = node_new(rrset->owner, NULL);
 		if (!nsec3) {
 			ret = zone_contents_add_node(zone, node, 1);
 		} else {
 			ret = zone_contents_add_nsec3_node(zone, node);
 		}
 		if (ret != KNOT_EOK) {
-			node_free(&node);
+			node_free(&node, NULL);
 			return NULL;
 		}
 

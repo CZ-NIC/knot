@@ -82,9 +82,9 @@ static bool ttl_error(struct rr_data *node_data, const knot_rrset_t *rrset)
 	return inserted_ttl != node_ttl;
 }
 
-zone_node_t *node_new(const knot_dname_t *owner)
+zone_node_t *node_new(const knot_dname_t *owner, mm_ctx_t *mm)
 {
-	zone_node_t *ret = malloc(sizeof(zone_node_t));
+	zone_node_t *ret = mm_alloc(mm, sizeof(zone_node_t));
 	if (ret == NULL) {
 		ERR_ALLOC_FAILED;
 		return NULL;
@@ -92,7 +92,7 @@ zone_node_t *node_new(const knot_dname_t *owner)
 	memset(ret, 0, sizeof(*ret));
 
 	if (owner) {
-		ret->owner = knot_dname_copy(owner, NULL);
+		ret->owner = knot_dname_copy(owner, mm);
 		if (ret->owner == NULL) {
 			free(ret);
 			return NULL;
@@ -118,30 +118,30 @@ void node_free_rrsets(zone_node_t *node)
 	node->rrset_count = 0;
 }
 
-void node_free(zone_node_t **node)
+void node_free(zone_node_t **node, mm_ctx_t *mm)
 {
 	if (node == NULL || *node == NULL) {
 		return;
 	}
 
 	if ((*node)->rrs != NULL) {
-		free((*node)->rrs);
+		mm_free(mm, (*node)->rrs);
 	}
 
-	knot_dname_free(&(*node)->owner, NULL);
+	knot_dname_free(&(*node)->owner, mm);
 
-	free(*node);
+	mm_free(mm, *node);
 	*node = NULL;
 }
 
-zone_node_t *node_shallow_copy(const zone_node_t *src)
+zone_node_t *node_shallow_copy(const zone_node_t *src, mm_ctx_t *mm)
 {
 	if (src == NULL) {
 		return NULL;
 	}
 
 	// create new node
-	zone_node_t *dst = node_new(src->owner);
+	zone_node_t *dst = node_new(src->owner, mm);
 	if (dst == NULL) {
 		return NULL;
 	}
@@ -151,9 +151,9 @@ zone_node_t *node_shallow_copy(const zone_node_t *src)
 	// copy RRSets
 	dst->rrset_count = src->rrset_count;
 	size_t rrlen = sizeof(struct rr_data) * src->rrset_count;
-	dst->rrs = malloc(rrlen);
+	dst->rrs = mm_alloc(mm, rrlen);
 	if (dst->rrs == NULL) {
-		node_free(&dst);
+		node_free(&dst, mm);
 		return NULL;
 	}
 	memcpy(dst->rrs, src->rrs, rrlen);
@@ -166,7 +166,7 @@ zone_node_t *node_shallow_copy(const zone_node_t *src)
 	return dst;
 }
 
-int node_add_rrset(zone_node_t *node, const knot_rrset_t *rrset)
+int node_add_rrset(zone_node_t *node, const knot_rrset_t *rrset, mm_ctx_t *mm)
 {
 	if (node == NULL || rrset == NULL) {
 		return KNOT_EINVAL;
@@ -177,7 +177,7 @@ int node_add_rrset(zone_node_t *node, const knot_rrset_t *rrset)
 			struct rr_data *node_data = &node->rrs[i];
 			const bool ttl_err = ttl_error(node_data, rrset);
 			int ret = knot_rdataset_merge(&node_data->rrs,
-			                              &rrset->rrs, NULL);
+			                              &rrset->rrs, mm);
 			if (ret != KNOT_EOK) {
 				return ret;
 			} else {

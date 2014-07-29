@@ -89,7 +89,7 @@ enum node_flags {
  *
  * \return Newly created node or NULL if an error occured.
  */
-zone_node_t *node_new(const knot_dname_t *owner);
+zone_node_t *node_new(const knot_dname_t *owner, mm_ctx_t *mm);
 
 /*!
  * \brief Destroys allocated data within the node
@@ -107,7 +107,7 @@ void node_free_rrsets(zone_node_t *node);
  *
  * \param node Node to be destroyed.
  */
-void node_free(zone_node_t **node);
+void node_free(zone_node_t **node, mm_ctx_t *mm);
 
 /*!
  * \brief Creates a shallow copy of node structure, RR data are shared.
@@ -116,7 +116,7 @@ void node_free(zone_node_t **node);
  *
  * \return Copied node if success, NULL otherwise.
  */
-zone_node_t *node_shallow_copy(const zone_node_t *src);
+zone_node_t *node_shallow_copy(const zone_node_t *src, mm_ctx_t *mm);
 
 /* ----------------------- Data addition/removal -----------------------------*/
 
@@ -129,7 +129,7 @@ zone_node_t *node_shallow_copy(const zone_node_t *src);
  *
  * \return KNOT_E*
  */
-int node_add_rrset(zone_node_t *node, const knot_rrset_t *rrset);
+int node_add_rrset(zone_node_t *node, const knot_rrset_t *rrset, mm_ctx_t *mm);
 
 /*!
  * \brief Removes data for given RR type from node.
