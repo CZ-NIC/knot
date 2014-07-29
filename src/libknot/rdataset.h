@@ -156,3 +156,5 @@ uint8_t *knot_rdata_offset(const knot_rdataset_t *rrs, size_t pos, size_t offset
 	knot_rdata_t *rr = knot_rdataset_at(rrs, pos);
 	return knot_rdata_data(rr) + offset;
 }
+
+/*! @} */

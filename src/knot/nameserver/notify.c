@@ -46,7 +46,7 @@
 #define NOTIFY_QLOG(severity, msg...) \
 	QUERY_LOG(severity, qdata, "NOTIFY", msg)
 
-int notify_check_query(struct query_data *qdata)
+static int notify_check_query(struct query_data *qdata)
 {
 	/* RFC1996 requires SOA question. */
 	NS_NEED_QTYPE(qdata, KNOT_RRTYPE_SOA, KNOT_RCODE_FORMERR);

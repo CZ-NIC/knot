@@ -14,7 +14,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 /*!
- * \file dnssec.h
+ * \file sign.h
  *
  * \author Jan Vcelak <jan.vcelak@nic.cz>
  *
