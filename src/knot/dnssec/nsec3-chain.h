@@ -14,7 +14,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 /*!
- * \file nsec3-chain-fix.h
+ * \file nsec3-chain.h
  *
  * \author Jan Vcelak <jan.vcelak@nic.cz> (chain creation)
  *
@@ -40,3 +40,5 @@
  */
 int knot_nsec3_create_chain(const zone_contents_t *zone, uint32_t ttl,
                             changeset_t *changeset);
+
+/*! @} */

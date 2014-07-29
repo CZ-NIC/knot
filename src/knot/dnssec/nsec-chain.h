@@ -119,3 +119,5 @@ bool knot_nsec_empty_nsec_and_rrsigs_in_node(const zone_node_t *n);
  */
 int knot_nsec_create_chain(const zone_contents_t *zone, uint32_t ttl,
                            changeset_t *changeset);
+
+/*! @} */

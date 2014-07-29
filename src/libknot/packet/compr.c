@@ -41,7 +41,7 @@ static bool compr_label_match(const uint8_t *n, const uint8_t *p)
 	return true;
 }
 
-/*! \brief Helper for \fn knot_pkt_put_dname, writes label(s) with size checks. */
+/*! \brief Helper for \fn knot_compr_put_dname, writes label(s) with size checks. */
 #define WRITE_LABEL(dst, written, label, max, len) \
 	if ((written) + (len) > (max)) { \
 		return KNOT_ESPACE; \
