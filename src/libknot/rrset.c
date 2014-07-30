@@ -180,11 +180,11 @@ static int knot_rrset_rdata_to_wire_one(const knot_rrset_t *rrset,
 	/* Compression pointer hint. */
 	uint16_t hint_id = COMPR_HINT_RDATA + rdata_pos;
 
-	const rdata_descriptor_t *desc = get_rdata_descriptor(rrset->type);
+	const rdata_descriptor_t *desc = knot_get_rdata_descriptor(rrset->type);
 
 	for (int i = 0; desc->block_types[i] != KNOT_RDATA_WF_END; i++) {
 		int item = desc->block_types[i];
-		if (compr && descriptor_item_is_compr_dname(item)) {
+		if (compr && knot_descriptor_item_is_compr_dname(item)) {
 			const knot_dname_t *dname = rdata + offset;
 			int ret = knot_compr_put_dname(dname, *pos,
 			                             max_size - size - rdlength,
@@ -200,7 +200,7 @@ static int knot_rrset_rdata_to_wire_one(const knot_rrset_t *rrset,
 			rdlength += ret;
 			offset += knot_dname_size(dname);
 			compr->wire_pos += ret;
-		} else if (descriptor_item_is_dname(item)) {
+		} else if (knot_descriptor_item_is_dname(item)) {
 			const knot_dname_t *dname = rdata + offset;
 			// save whole domain name
 			size_t maxb = max_size - size - rdlength;
@@ -217,7 +217,7 @@ static int knot_rrset_rdata_to_wire_one(const knot_rrset_t *rrset,
 			if (compr) {
 				compr->wire_pos += dname_size;
 			}
-		} else if (descriptor_item_is_fixed(item)) {
+		} else if (knot_descriptor_item_is_fixed(item)) {
 			/* Fixed length chunk. */
 			if (size + rdlength + item > max_size) {
 				return KNOT_ESPACE;
@@ -229,7 +229,7 @@ static int knot_rrset_rdata_to_wire_one(const knot_rrset_t *rrset,
 			if (compr) {
 				compr->wire_pos += item;
 			}
-		} else if (descriptor_item_is_remainder(item)) {
+		} else if (knot_descriptor_item_is_remainder(item)) {
 			/* Check that the remainder fits to stream. */
 			size_t remainder_size =
 				rrset_rdata_remainder_size(rrset, offset,
@@ -463,11 +463,11 @@ int knot_rrset_rdata_from_wire_one(knot_rrset_t *rrset,
 		return knot_rrset_add_rdata(rrset, NULL, 0, ttl, mm);
 	}
 
-	const rdata_descriptor_t *desc = get_rdata_descriptor(rrset->type);
+	const rdata_descriptor_t *desc = knot_get_rdata_descriptor(rrset->type);
 
 	/* Check for obsolete record. */
 	if (desc->type_name == NULL) {
-		desc = get_obsolete_rdata_descriptor(rrset->type);
+		desc = knot_get_obsolete_rdata_descriptor(rrset->type);
 	}
 
 	uint8_t rdata_buffer[rdlength + KNOT_DNAME_MAXLEN];
@@ -480,7 +480,7 @@ int knot_rrset_rdata_from_wire_one(knot_rrset_t *rrset,
 	for (int i = 0; desc->block_types[i] != KNOT_RDATA_WF_END &&
 	     parsed < rdlength; ++i) {
 		const int item = desc->block_types[i];
-		if (descriptor_item_is_dname(item)) {
+		if (knot_descriptor_item_is_dname(item)) {
 			int wire_size = knot_dname_wire_check(wire + *pos,
 			                                      wire + *pos + rdlength,
 			                                      wire);
@@ -498,14 +498,14 @@ int knot_rrset_rdata_from_wire_one(knot_rrset_t *rrset,
 
 			*pos += wire_size;
 			offset += unpacked_size;
-		} else if (descriptor_item_is_fixed(item)) {
+		} else if (knot_descriptor_item_is_fixed(item)) {
 			int ret = binary_store(rdata_buffer, &offset, packet_offset,
 			                       wire, pos, rdlength, item);
 			if (ret != KNOT_EOK) {
 				return ret;
 			}
 			parsed += item;
-		} else if (descriptor_item_is_remainder(item)) {
+		} else if (knot_descriptor_item_is_remainder(item)) {
 			/* Item size has to be calculated. */
 			size_t remainder_size = rdlength - parsed;
 			int ret = binary_store(rdata_buffer, &offset, packet_offset,
