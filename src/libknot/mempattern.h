@@ -97,7 +97,7 @@ int mreserve(char **p, size_t tlen, size_t min, size_t allow, size_t *reserved);
  * \param fmt Message format.
  * \return formatted message or NULL.
  */
-char* sprintf_alloc(const char *fmt, ...);
+char *sprintf_alloc(const char *fmt, ...);
 
 /*!
  * \brief Create new string from a concatenation of s1 and s2.
@@ -108,16 +108,6 @@ char* sprintf_alloc(const char *fmt, ...);
  * \retval Newly allocated string on success.
  * \retval NULL on error.
  */
-char* strcdup(const char *s1, const char *s2);
-
-/*! \brief Print usage statistics.
- *
- *  \note This function has destructor attribute set if MEM_DEBUG is enabled.
- *
- *  \warning Not all printed statistics are available on every OS,
- *           consult manual page for getrusage(2).
- */
-void usage_dump();
-
+char *strcdup(const char *s1, const char *s2);
 
 /*! @} */
