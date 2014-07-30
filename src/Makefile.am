@@ -102,12 +102,14 @@ libknotcs_la_SOURCES =				\
 	common/base32hex.h			\
 	common/base64.c				\
 	common/base64.h				\
+	common/debug.h				\
+	common/errors.c				\
+	common/errors.h				\
+	common/getline.c			\
+	common/getline.h			\
 	common/memdup.h				\
 	common/mempool.c			\
 	common/mempool.h			\
-	common/debug.h				\
-	common/getline.c			\
-	common/getline.h			\
 	common/log.c				\
 	common/log.h
 
@@ -161,8 +163,6 @@ libknot_la_SOURCES =				\
 	libknot/dnssec/sign.h			\
 	libknot/errcode.c			\
 	libknot/errcode.h			\
-	libknot/errors.c			\
-	libknot/errors.h			\
 	libknot/libknot.h			\
 	libknot/mempattern.c			\
 	libknot/mempattern.h			\

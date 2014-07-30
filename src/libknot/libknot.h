@@ -29,7 +29,6 @@
 #include "libknot/consts.h"
 #include "libknot/dname.h"
 #include "libknot/descriptor.h"
-#include "libknot/errors.h"
 #include "libknot/errcode.h"
 #include "libknot/mempattern.h"
 #include "libknot/rrtype/opt.h"

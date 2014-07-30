@@ -1,4 +1,4 @@
-/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2014 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -12,12 +12,15 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
- */
+*/
 
+#include <stdarg.h>
+#include <stdlib.h>
+
+#include "common/errors.h"
 #include "libknot/errcode.h"
-#include "libknot/errors.h"
 
-const error_table_t knot_error_msgs[] = {
+const error_table_t error_messages[] = {
 	{ KNOT_EOK, "OK" },
 
 	/* TSIG errors. */
@@ -113,5 +116,32 @@ const error_table_t knot_error_msgs[] = {
 	/* NSEC3 errors. */
 	{ KNOT_NSEC3_ECOMPUTE_HASH, "Cannot compute NSEC3 hash." },
 
-	{ KNOT_ERROR, 0 } /* Terminator */
+	{ KNOT_ERROR, NULL } /* Terminator */
 };
+
+const char *knot_strerror(int code)
+{
+	return error_to_str(error_messages, code);
+}
+
+int knot_map_errno_internal(int fallback, int arg0, ...)
+{
+	/* Iterate all variable-length arguments. */
+	va_list ap;
+	va_start(ap, arg0);
+
+	/* KNOT_ERROR serves as a sentinel. */
+	for (int c = arg0; c != 0; c = va_arg(ap, int)) {
+
+		/* Error code matches with mapped. */
+		if (c == errno) {
+			/* Return negative value of the code. */
+			va_end(ap);
+			return knot_errno_to_error(abs(c));
+		}
+	}
+	va_end(ap);
+
+	/* Fallback error code. */
+	return KNOT_ERROR;
+}

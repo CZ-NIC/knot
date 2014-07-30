@@ -28,13 +28,12 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #pragma once
 
 #include <errno.h>
-#include "libknot/errors.h"
 
 /* errno -> Knot error mapping.
  * \note offset is required, otherwise it would interfere with TSIG errors.
  */
-#define ERRBASE 100
-#define err2code(x) (-(ERRBASE + (x)))
+#define KNOT_ERROR_BASE 100
+#define knot_errno_to_error(x) (-(KNOT_ERROR_BASE + (x)))
 
 /*! \brief Error codes used in the library. */
 enum knot_error {
@@ -46,17 +45,17 @@ enum knot_error {
 	KNOT_TSIG_EBADTIME = -18, /*!< TSIG signing time out of range. */
 
 	/* Directly mapped error codes. */
-	KNOT_ENOMEM = err2code(ENOMEM),             /*!< Out of memory. */
-	KNOT_EINVAL = err2code(EINVAL),             /*!< Invalid parameter passed. */
-	KNOT_ENOTSUP = err2code(ENOTSUP),           /*!< Parameter not supported. */
-	KNOT_EBUSY = err2code(EBUSY),               /*!< Requested resource is busy. */
-	KNOT_EAGAIN = err2code(EAGAIN),             /*!< OS lacked necessary resources. */
-	KNOT_EACCES = err2code(EACCES),             /*!< Permission is denied. */
-	KNOT_ECONNREFUSED = err2code(ECONNREFUSED), /*!< Connection is refused. */
-	KNOT_EISCONN = err2code(EISCONN),           /*!< Already connected. */
-	KNOT_EADDRINUSE = err2code(EADDRINUSE),     /*!< Address already in use. */
-	KNOT_ENOENT = err2code(ENOENT),             /*!< Resource not found. */
-	KNOT_ERANGE = err2code(ERANGE),             /*!< Value is out of range. */
+	KNOT_ENOMEM = knot_errno_to_error(ENOMEM),             /*!< Out of memory. */
+	KNOT_EINVAL = knot_errno_to_error(EINVAL),             /*!< Invalid parameter passed. */
+	KNOT_ENOTSUP = knot_errno_to_error(ENOTSUP),           /*!< Parameter not supported. */
+	KNOT_EBUSY = knot_errno_to_error(EBUSY),               /*!< Requested resource is busy. */
+	KNOT_EAGAIN = knot_errno_to_error(EAGAIN),             /*!< OS lacked necessary resources. */
+	KNOT_EACCES = knot_errno_to_error(EACCES),             /*!< Permission is denied. */
+	KNOT_ECONNREFUSED = knot_errno_to_error(ECONNREFUSED), /*!< Connection is refused. */
+	KNOT_EISCONN = knot_errno_to_error(EISCONN),           /*!< Already connected. */
+	KNOT_EADDRINUSE = knot_errno_to_error(EADDRINUSE),     /*!< Address already in use. */
+	KNOT_ENOENT = knot_errno_to_error(ENOENT),             /*!< Resource not found. */
+	KNOT_ERANGE = knot_errno_to_error(ERANGE),             /*!< Value is out of range. */
 
 	/* General errors. */
 	KNOT_ERROR = -10000,  /*!< Failed. */
@@ -134,9 +133,6 @@ enum knot_error {
 	KNOT_NSEC3_ECOMPUTE_HASH
 };
 
-/*! \brief Table linking error messages to error codes. */
-extern const error_table_t knot_error_msgs[];
-
 /*!
  * \brief Returns error message for the given error code.
  *
@@ -144,21 +140,25 @@ extern const error_table_t knot_error_msgs[];
  *
  * \return String containing the error message.
  */
-static inline const char *knot_strerror(int code)
-{
-	return error_to_str((const error_table_t*)knot_error_msgs, code);
-}
+const char *knot_strerror(int code);
 
 /*!
- * \brief errno mapper that automatically prepends fallback value.
+ * \brief Get a POSIX errno mapped to Knot error code.
  *
- * \see map_errno()
+ * \internal
  *
- * \param err POSIX errno.
- * \param ... List of handled codes.
+ * \param fallback  Falback error code.
+ * \param arg0...   Error codes allowed for lookup, list must be terminated by 0.
  *
- * \return Mapped error code.
+ * \return Mapped errno or fallback error code.
  */
-#define knot_map_errno(err...) map_errno(KNOT_ERROR, err);
+int knot_map_errno_internal(int fallback, int arg0, ...);
+
+/*!
+ * \brief Map POSIX errno to Knot error code.
+ *
+ * KNOT_ERRNO is used as a fallback error, the list is terminated implicitly.
+ */
+#define knot_map_errno(errors...) knot_map_errno_internal(KNOT_ERROR, errors, 0)
 
 /*! @} */
