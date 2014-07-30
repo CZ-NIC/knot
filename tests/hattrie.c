@@ -18,8 +18,8 @@
 #include <time.h>
 #include <tap/basic.h>
 
-#include "libknot/mempattern.h"
 #include "common-knot/hattrie/hat-trie.h"
+#include "common/mem.h"
 
 /* Constants. */
 #define KEY_MAXLEN 64
