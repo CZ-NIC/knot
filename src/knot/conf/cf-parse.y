@@ -139,6 +139,7 @@ static void conf_remote_set_via(void *scanner, char *item) {
 		cf_error(scanner, "interface '%s' is not defined", item);
 	} else {
 		memcpy(&this_remote->via, &found->addr, sizeof(struct sockaddr_storage));
+		sockaddr_port_set(&this_remote->via, 0);
 	}
 }
 

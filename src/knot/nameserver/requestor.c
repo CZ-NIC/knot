@@ -90,7 +90,7 @@ static int request_send(struct request *request, const struct timeval *timeout)
 	/* Wait for writeability or error. */
 	int ret = request_wait(request->data.fd, NS_PROC_FULL, &tv);
 	if (ret == 0) {
-		return KNOT_EAGAIN;
+		return KNOT_ETIMEOUT;
 	}
 
 	/* Check socket error. */
