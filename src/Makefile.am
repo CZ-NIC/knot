@@ -81,8 +81,6 @@ libknots_la_SOURCES =				\
 	common-knot/hhash.h			\
 	common-knot/lists.c			\
 	common-knot/lists.h			\
-	common-knot/log.c			\
-	common-knot/log.h			\
 	common-knot/print.c			\
 	common-knot/print.h			\
 	common-knot/ref.c			\
@@ -109,7 +107,9 @@ libknotcs_la_SOURCES =				\
 	common/mempool.h			\
 	common/debug.h				\
 	common/getline.c			\
-	common/getline.h
+	common/getline.h			\
+	common/log.c				\
+	common/log.h
 
 
 # static: utilities shared

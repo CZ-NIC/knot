@@ -15,10 +15,13 @@
  */
 
 #include <assert.h>
-#include "libknot/errcode.h"
+
 #include "libknot/packet/compr.h"
-#include "libknot/packet/pkt.h"
+
 #include "common/debug.h"
+#include "common/log.h"
+#include "libknot/errcode.h"
+#include "libknot/packet/pkt.h"
 #include "libknot/util/tolower.h"
 
 /*! \brief Case insensitive label compare for compression. */

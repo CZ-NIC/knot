@@ -38,7 +38,7 @@
 #include "libknot/dnssec/key.h"
 #include "libknot/dnssec/policy.h"
 #include "common-knot/lists.h"
-#include "common-knot/log.h"
+#include "common/log.h"
 #include "knot/updates/acl.h"
 #include "common-knot/sockaddr.h"
 #include "common-knot/hattrie/hat-trie.h"

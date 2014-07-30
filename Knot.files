@@ -31,6 +31,8 @@ src/common/base64.h
 src/common/debug.h
 src/common/getline.c
 src/common/getline.h
+src/common/log.c
+src/common/log.h
 src/common/memdup.h
 src/common/mempool.c
 src/common/mempool.h
@@ -53,8 +55,6 @@ src/common-knot/hhash.c
 src/common-knot/hhash.h
 src/common-knot/lists.c
 src/common-knot/lists.h
-src/common-knot/log.c
-src/common-knot/log.h
 src/common-knot/print.c
 src/common-knot/print.h
 src/common-knot/ref.c

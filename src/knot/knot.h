@@ -30,7 +30,7 @@
 #include <stdint.h>
 
 #include "common-knot/print.h"
-#include "common-knot/log.h"
+#include "common/log.h"
 #include "libknot/errcode.h"
 #include "knot/other/debug.h"
 
