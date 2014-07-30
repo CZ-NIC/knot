@@ -324,16 +324,17 @@ libknotus_la_CFLAGS = $(libidn_CFLAGS)
 
 # sbin programs
 knotd_LDADD = libknot.la libknotd.la
-knotd_CPPFLAGS = $(AM_CPPFLAGS) ${systemd_daemon_CFLAGS}
-knotd_LDFLAGS = $(AM_LDFLAGS) ${systemd_daemon_LIBS}
+knotd_CPPFLAGS = $(AM_CPPFLAGS) $(systemd_daemon_CFLAGS)
+knotd_LDFLAGS = $(AM_LDFLAGS) $(systemd_daemon_LIBS)
 
 knotc_LDADD = libknot.la libknotd.la
 
 # bin programs
-kdig_LDADD       = libknotus.la libknots.la libknot.la $(libidn_LIBS)
-khost_LDADD      = libknotus.la libknots.la libknot.la $(libidn_LIBS)
-knsupdate_LDADD  = libknotus.la libknots.la libknot.la zscanner/libzscanner.la
-knsec3hash_LDADD = libknotus.la libknots.la libknot.la
+BIN_LIBS = libknotus.la libknotcs.la libknots.la libknot.la
+kdig_LDADD       = $(BIN_LIBS) $(libidn_LIBS)
+khost_LDADD      = $(BIN_LIBS) $(libidn_LIBS)
+knsupdate_LDADD  = $(BIN_LIBS) zscanner/libzscanner.la
+knsec3hash_LDADD = $(BIN_LIBS)
 
 if HAVE_DNSTAP
 libknotd_la_SOURCES +=				\
