@@ -94,7 +94,8 @@ libknots_la_SOURCES =				\
 	common-knot/strlcat.h			\
 	common-knot/strlcpy.c			\
 	common-knot/strlcpy.h			\
-	common-knot/strtonum.h
+	common-knot/strtonum.h			\
+	common-knot/trim.h
 
 # static: common shared (also in libknot)
 libknotcs_la_SOURCES =				\

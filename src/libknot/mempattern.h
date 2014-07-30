@@ -119,7 +119,5 @@ char* strcdup(const char *s1, const char *s2);
  */
 void usage_dump();
 
-/*! \brief Trim excess heap memory. */
-void mem_trim(void);
 
 /*! @} */
