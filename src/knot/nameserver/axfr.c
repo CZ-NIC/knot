@@ -21,8 +21,8 @@
 #include "knot/updates/apply.h"
 #include "knot/zone/zonefile.h"
 #include "common/debug.h"
-#include "common/descriptor.h"
-#include "common/lists.h"
+#include "libknot/descriptor.h"
+#include "common-knot/lists.h"
 
 /* AXFR context. @note aliasing the generic xfr_proc */
 struct axfr_proc {
@@ -103,9 +103,30 @@ static void axfr_query_cleanup(struct query_data *qdata)
 	rcu_read_unlock();
 }
 
+static int axfr_query_check(struct query_data *qdata)
+{
+	/* Check valid zone, transaction security and contents. */
+	NS_NEED_ZONE(qdata, KNOT_RCODE_NOTAUTH);
+	NS_NEED_AUTH(&qdata->zone->conf->acl.xfr_out, qdata);
+	/* Check expiration. */
+	NS_NEED_ZONE_CONTENTS(qdata, KNOT_RCODE_SERVFAIL);
+
+	return NS_PROC_DONE;
+}
+
 static int axfr_query_init(struct query_data *qdata)
 {
 	assert(qdata);
+
+	/* Check AXFR query validity. */
+	int state = axfr_query_check(qdata);
+	if (state == NS_PROC_FAIL) {
+		if (qdata->rcode == KNOT_RCODE_FORMERR) {
+			return KNOT_EMALF;
+		} else {
+			return KNOT_EDENIED;
+		}
+	}
 
 	/* Create transfer processing context. */
 	mm_ctx_t *mm = qdata->mm;
@@ -206,12 +227,6 @@ int axfr_query_process(knot_pkt_t *pkt, struct query_data *qdata)
 	/* Initialize on first call. */
 	if (qdata->ext == NULL) {
 
-		/* Check valid zone, transaction security and contents. */
-		NS_NEED_ZONE(qdata, KNOT_RCODE_NOTAUTH);
-		NS_NEED_AUTH(&qdata->zone->conf->acl.xfr_out, qdata);
-		/* Check expiration. */
-		NS_NEED_ZONE_CONTENTS(qdata, KNOT_RCODE_SERVFAIL);
-
 		ret = axfr_query_init(qdata);
 		if (ret != KNOT_EOK) {
 			AXFROUT_LOG(LOG_ERR, "Failed to start (%s).",
@@ -241,7 +256,7 @@ int axfr_query_process(knot_pkt_t *pkt, struct query_data *qdata)
 		return NS_PROC_DONE;
 		break;
 	default:          /* Generic error. */
-		AXFROUT_LOG(LOG_ERR, "Failed: %s", knot_strerror(ret));
+		AXFROUT_LOG(LOG_ERR, "%s", knot_strerror(ret));
 		return NS_PROC_FAIL;
 	}
 }

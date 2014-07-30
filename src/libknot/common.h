@@ -24,8 +24,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "common/errcode.h"
-#include "common/mempattern.h"
+#include "libknot/errcode.h"
 
 #pragma once
 

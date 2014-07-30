@@ -21,8 +21,8 @@
 #include <stdlib.h>
 #include <sys/mman.h>
 
-#include "common/slab/alloc-common.h"
-#include "common/slab/slab.h"
+#include "common-knot/slab/alloc-common.h"
+#include "common-knot/slab/slab.h"
 
 /*
  * Magic constants.

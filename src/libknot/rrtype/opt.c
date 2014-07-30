@@ -21,9 +21,9 @@
 #include <string.h>
 #include "libknot/rrtype/opt.h"
 #include "libknot/common.h"
-#include "common/descriptor.h"
+#include "libknot/descriptor.h"
 #include "common/debug.h"
-#include "common/sockaddr.h"
+#include "common-knot/sockaddr.h"
 
 /*! \brief Some implementation-related constants. */
 enum knot_edns_private_consts {

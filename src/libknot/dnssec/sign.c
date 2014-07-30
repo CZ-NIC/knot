@@ -20,8 +20,8 @@
 #include <openssl/opensslconf.h>
 #include <openssl/rsa.h>
 #include <pthread.h>
-#include "common/descriptor.h"
-#include "common/errcode.h"
+#include "libknot/descriptor.h"
+#include "libknot/errcode.h"
 #include "libknot/common.h"
 #include "libknot/consts.h"
 #include "libknot/dnssec/config.h"

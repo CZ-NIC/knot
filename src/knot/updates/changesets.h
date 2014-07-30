@@ -28,7 +28,7 @@
 
 #include "libknot/rrset.h"
 #include "knot/zone/contents.h"
-#include "common/lists.h"
+#include "common-knot/lists.h"
 
 /*----------------------------------------------------------------------------*/
 

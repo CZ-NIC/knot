@@ -30,7 +30,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#include "common/mempattern.h"
+#include "libknot/mempattern.h"
 
 /* ---------------------------- Single RR ----------------------------------- */
 
@@ -104,3 +104,5 @@ size_t knot_rdata_array_size(uint16_t size);
  * \retval > 0 if rr1 > rr2.
  */
 int knot_rdata_cmp(const knot_rdata_t *rr1, const knot_rdata_t *rr2);
+
+/*! @} */

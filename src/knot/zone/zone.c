@@ -19,9 +19,10 @@
 #include <string.h>
 #include <sys/stat.h>
 
-#include "common/descriptor.h"
-#include "common/evsched.h"
-#include "common/lists.h"
+#include "libknot/descriptor.h"
+#include "common-knot/evsched.h"
+#include "common-knot/lists.h"
+#include "common-knot/trim.h"
 #include "knot/zone/node.h"
 #include "knot/zone/zone.h"
 #include "knot/zone/zonefile.h"

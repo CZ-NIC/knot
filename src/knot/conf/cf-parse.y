@@ -30,9 +30,9 @@
 #include <stdlib.h>
 #include <pwd.h>
 #include <grp.h>
-#include "common/sockaddr.h"
-#include "common/strlcat.h"
-#include "common/strlcpy.h"
+#include "common-knot/sockaddr.h"
+#include "common-knot/strlcat.h"
+#include "common-knot/strlcpy.h"
 #include "libknot/dname.h"
 #include "libknot/binary.h"
 #include "libknot/rrtype/opt.h"
@@ -139,6 +139,7 @@ static void conf_remote_set_via(void *scanner, char *item) {
 		cf_error(scanner, "interface '%s' is not defined", item);
 	} else {
 		memcpy(&this_remote->via, &found->addr, sizeof(struct sockaddr_storage));
+		sockaddr_port_set(&this_remote->via, 0);
 	}
 }
 

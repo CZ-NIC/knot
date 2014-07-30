@@ -15,7 +15,7 @@
  */
 
 #include "common/debug.h"
-#include "common/descriptor.h"
+#include "libknot/descriptor.h"
 #include "libknot/common.h"
 #include "libknot/rrtype/rdname.h"
 #include "libknot/rrtype/soa.h"

@@ -21,6 +21,7 @@
 #include <errno.h>
 #include <assert.h>
 
+#include "common-knot/trim.h"
 #include "knot/knot.h"
 #include "knot/server/server.h"
 #include "knot/server/udp-handler.h"

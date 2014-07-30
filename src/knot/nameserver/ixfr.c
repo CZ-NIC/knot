@@ -5,7 +5,7 @@
 #include "knot/nameserver/process_answer.h"
 #include "knot/updates/apply.h"
 #include "common/debug.h"
-#include "common/descriptor.h"
+#include "libknot/descriptor.h"
 #include "libknot/util/utils.h"
 #include "libknot/rrtype/soa.h"
 

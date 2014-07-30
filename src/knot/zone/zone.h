@@ -28,8 +28,8 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#include "common/evsched.h"
-#include "common/ref.h"
+#include "common-knot/evsched.h"
+#include "common-knot/ref.h"
 #include "knot/conf/conf.h"
 #include "knot/server/journal.h"
 #include "knot/updates/acl.h"

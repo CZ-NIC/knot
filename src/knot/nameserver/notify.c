@@ -19,7 +19,7 @@
 #include "knot/nameserver/notify.h"
 
 #include "libknot/dname.h"
-#include "common/descriptor.h"
+#include "libknot/descriptor.h"
 #include "libknot/packet/pkt.h"
 #include "libknot/rrset.h"
 #include "libknot/consts.h"
@@ -27,7 +27,7 @@
 #include "libknot/common.h"
 #include "libknot/packet/wire.h"
 #include "knot/updates/acl.h"
-#include "common/evsched.h"
+#include "common-knot/evsched.h"
 #include "knot/other/debug.h"
 #include "knot/server/server.h"
 #include "knot/nameserver/internet.h"

@@ -22,7 +22,7 @@
 #include <limits.h>
 #include <stdbool.h>
 
-#include "common/errcode.h"
+#include "libknot/errcode.h"
 #include "knot/updates/acl.h"
 #include "knot/conf/conf.h"
 #include "libknot/util/endian.h"

@@ -19,7 +19,7 @@
 #include <pthread.h>
 #include <stdbool.h>
 
-#include "common/evsched.h"
+#include "common-knot/evsched.h"
 #include "knot/worker/pool.h"
 
 /* Timer special values. */

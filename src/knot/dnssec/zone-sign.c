@@ -21,9 +21,9 @@
 #include <time.h>
 
 #include "common/debug.h"
-#include "common/descriptor.h"
-#include "common/errcode.h"
-#include "common/hattrie/hat-trie.h"
+#include "libknot/descriptor.h"
+#include "libknot/errcode.h"
+#include "common-knot/hattrie/hat-trie.h"
 #include "libknot/common.h"
 #include "libknot/dname.h"
 #include "libknot/rrset.h"

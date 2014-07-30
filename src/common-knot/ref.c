@@ -12,27 +12,33 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
-*/
+ */
 
-#include <stdlib.h>			// EXIT_FAILURE
+#include <stdio.h>
 
-#include "libknot/errcode.h"		// KNOT_EOK
-#include "utils/host/host_params.h"	// host_parse
-#include "utils/dig/dig_exec.h"		// dig_exec
+#include "common-knot/ref.h"
 
-int main(int argc, char *argv[])
+void ref_init(ref_t *p, ref_destructor_t dtor)
 {
-	int ret = EXIT_SUCCESS;
-
-	dig_params_t params;
-	if (host_parse(&params, argc, argv) == KNOT_EOK) {
-		if (!params.stop && dig_exec(&params) != KNOT_EOK) {
-			ret = EXIT_FAILURE;
-		}
-	} else {
-		ret = EXIT_FAILURE;
+	if (p) {
+		p->count = 0;
+		p->dtor = dtor;
 	}
+}
 
-	host_clean(&params);
-	return ret;
+void ref_retain(ref_t *p)
+{
+	if (p) {
+		__sync_add_and_fetch(&p->count, 1);
+	}
+}
+
+void ref_release(ref_t *p)
+{
+	if (p) {
+		int rc = __sync_sub_and_fetch(&p->count, 1);
+		if (rc == 0 && p->dtor) {
+			p->dtor(p);
+		}
+	}
 }

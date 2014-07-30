@@ -20,7 +20,7 @@
 #include <stdlib.h>
 #include <string.h>                     // memset
 
-#include "common/errcode.h"
+#include "libknot/errcode.h"
 
 #include "dnstap/convert.h"
 #include "dnstap/message.h"
