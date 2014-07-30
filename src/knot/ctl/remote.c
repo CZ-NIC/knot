@@ -17,6 +17,7 @@
 #include <sys/stat.h>
 #include "knot/ctl/remote.h"
 #include "common/log.h"
+#include "common/mem.h"
 #include "common-knot/fdset.h"
 #include "knot/knot.h"
 #include "knot/conf/conf.h"

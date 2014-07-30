@@ -29,15 +29,12 @@
 #include <stddef.h>
 
 /* Default memory block size. */
-#define DEFAULT_BLKSIZE 4096
+#define MM_DEFAULT_BLKSIZE 4096
 
 /* Memory allocation function prototypes. */
 typedef void* (*mm_alloc_t)(void* ctx, size_t len);
 typedef void (*mm_free_t)(void *p);
 typedef void (*mm_flush_t)(void *p);
-
-/* Reusable functions. */
-static inline void mm_nofree(void *p) {}
 
 /* Memory allocation context. */
 typedef struct mm_ctx {
@@ -45,6 +42,7 @@ typedef struct mm_ctx {
 	mm_alloc_t alloc;
 	mm_free_t free;
 } mm_ctx_t;
+
 /*! \brief Allocs using 'mm' if any, uses system malloc() otherwise. */
 void *mm_alloc(mm_ctx_t *mm, size_t size);
 /*! \brief Reallocs using 'mm' if any, uses system realloc() otherwise. */
@@ -55,59 +53,5 @@ void mm_ctx_init(mm_ctx_t *mm);
 
 /*! \brief Memory pool context. */
 void mm_ctx_mempool(mm_ctx_t *mm, size_t chunk_size);
-
-/*! \brief Allocate memory or die. */
-void* xmalloc(size_t l);
-
-/*! \brief Reallocate memory or die. */
-void *xrealloc(void *p, size_t l);
-
-/*!
- * \brief Reserve new or trim excessive memory.
- *
- * \param p Double-pointer to memory region.
- * \param tlen Memory unit (f.e. sizeof(int) for int* array)
- * \param min Minimum number of items required.
- * \param allow Maximum extra items to keep (for trimming).
- * \param reserved Pointer to number of already reserved items.
- *
- * \note Example usage:
- * char *buf = NULL; size_t len = 0;
- * if (mreserve(&buf, sizeof(char), 6, 0, &len) == 0) {
- *   memcpy(buf, "hello", strlen("hello");
- *   if (mreserve(&buf, sizeof(char), 20, 0, &len) == 0) {
- *     strncat(buf, "!", 1);
- *     mreserve(&buf, sizeof(char), strlen("hello!")+1, 0, &len);
- *   }
- * }
- * free(buf);
- *
- * \retval 0 on success.
- * \retval -1 on error.
- *
- * \note Memory region will be left untouched if function fails.
- */
-int mreserve(char **p, size_t tlen, size_t min, size_t allow, size_t *reserved);
-
-/*!
- * \brief Format string and take care of allocating memory.
- *
- * \note sprintf(3) manual page reference implementation.
- *
- * \param fmt Message format.
- * \return formatted message or NULL.
- */
-char *sprintf_alloc(const char *fmt, ...);
-
-/*!
- * \brief Create new string from a concatenation of s1 and s2.
- *
- * \param s1 First string.
- * \param s2 Second string.
- *
- * \retval Newly allocated string on success.
- * \retval NULL on error.
- */
-char *strcdup(const char *s1, const char *s2);
 
 /*! @} */

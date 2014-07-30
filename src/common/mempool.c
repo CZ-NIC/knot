@@ -11,6 +11,7 @@
 
 #undef LOCAL_DEBUG
 
+#include "common/mem.h"
 #include "common/mempool.h"
 #include "libknot/mempattern.h"
 

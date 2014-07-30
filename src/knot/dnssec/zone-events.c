@@ -16,6 +16,8 @@
 
 #include <assert.h>
 #include <time.h>
+
+#include "common/mem.h"
 #include "knot/conf/conf.h"
 #include "libknot/dnssec/policy.h"
 #include "knot/dnssec/zone-events.h"

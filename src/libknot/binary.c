@@ -19,7 +19,7 @@
 
 #include "common/base64.h"
 #include "libknot/errcode.h"
-#include "common/memdup.h"
+#include "common/mem.h"
 #include "libknot/binary.h"
 
 int knot_binary_from_base64(const char *base64, knot_binary_t *to)

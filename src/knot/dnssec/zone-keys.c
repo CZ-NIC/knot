@@ -20,8 +20,8 @@
 #include <inttypes.h>
 
 #include "common/debug.h"
+#include "common/mem.h"
 #include "libknot/errcode.h"
-#include "libknot/mempattern.h"
 #include "libknot/common.h"
 #include "libknot/dname.h"
 #include "libknot/consts.h"

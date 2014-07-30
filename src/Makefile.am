@@ -108,12 +108,13 @@ libknotcs_la_SOURCES =				\
 	common/errors.h				\
 	common/getline.c			\
 	common/getline.h			\
+	common/mem.c				\
+	common/mem.h				\
 	common/memdup.h				\
 	common/mempool.c			\
 	common/mempool.h			\
 	common/log.c				\
 	common/log.h
-
 
 # static: utilities shared
 libknotus_la_SOURCES =				\
@@ -134,7 +135,7 @@ libknotus_la_SOURCES =				\
 libknot_la_LDFLAGS =				\
 	$(AM_LDFLAGS)				\
 	-version-info 0:1:0			\
-	-export-symbols-regex '^(knot|KNOT|rrset|tsig|zone)_'
+	-export-symbols-regex '^(knot|KNOT|rrset|tsig|zone|mm)_'
 
 libknot_la_SOURCES =				\
 	libknot/binary.c			\

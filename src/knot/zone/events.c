@@ -19,6 +19,7 @@
 
 #include "common-knot/evsched.h"
 #include "common-knot/trim.h"
+#include "common/mem.h"
 #include "common/mempool.h"
 #include "knot/server/server.h"
 #include "knot/server/udp-handler.h"
@@ -114,7 +115,7 @@ static int zone_query_execute(zone_t *zone, uint16_t pkt_type, const conf_iface_
 	/* Create a memory pool for this task. */
 	int ret = KNOT_EOK;
 	mm_ctx_t mm;
-	mm_ctx_mempool(&mm, DEFAULT_BLKSIZE);
+	mm_ctx_mempool(&mm, MM_DEFAULT_BLKSIZE);
 
 	/* Create a query message. */
 	knot_pkt_t *query = zone_query(zone, pkt_type, &mm);
