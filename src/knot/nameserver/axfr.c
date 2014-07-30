@@ -197,8 +197,6 @@ int axfr_query_process(knot_pkt_t *pkt, struct query_data *qdata)
 	int ret = KNOT_EOK;
 	struct timeval now = {0};
 
-	printf("axfr_query_process().\n");
-
 	/* If AXFR is disabled, respond with NOTIMPL. */
 	if (qdata->param->proc_flags & NS_QUERY_NO_AXFR) {
 		qdata->rcode = KNOT_RCODE_NOTIMPL;
@@ -208,26 +206,11 @@ int axfr_query_process(knot_pkt_t *pkt, struct query_data *qdata)
 	/* Initialize on first call. */
 	if (qdata->ext == NULL) {
 
-		/* Check valid zone. */
-		if ((qdata)->zone == NULL) {
-			qdata->rcode = KNOT_RCODE_NOTAUTH;
-			AXFROUT_LOG(LOG_ERR, "Failed to start (No such zone.).");
-			return NS_PROC_FAIL;
-		}
-
-		/* Check ACL. */
-		if (!process_query_acl_check(&qdata->zone->conf->acl.xfr_out, qdata)
-		    || (process_query_verify(qdata) != KNOT_EOK)) {
-			AXFROUT_LOG(LOG_ERR, "Failed to start (Not allowed.).");
-			return NS_PROC_FAIL;
-		}
-
+		/* Check valid zone, transaction security and contents. */
+		NS_NEED_ZONE(qdata, KNOT_RCODE_NOTAUTH);
+		NS_NEED_AUTH(&qdata->zone->conf->acl.xfr_out, qdata);
 		/* Check expiration. */
-		if ((qdata)->zone->contents == NULL) {
-			qdata->rcode = KNOT_RCODE_SERVFAIL;
-			AXFROUT_LOG(LOG_ERR, "Failed to start (Zone expired.).");
-			return NS_PROC_FAIL;
-		}
+		NS_NEED_ZONE_CONTENTS(qdata, KNOT_RCODE_SERVFAIL);
 
 		ret = axfr_query_init(qdata);
 		if (ret != KNOT_EOK) {
@@ -239,8 +222,6 @@ int axfr_query_process(knot_pkt_t *pkt, struct query_data *qdata)
 			           zone_contents_serial(qdata->zone->contents));
 		}
 	}
-
-	printf("Continuing...\n");
 
 	/* Reserve space for TSIG. */
 	knot_pkt_reserve(pkt, tsig_wire_maxsize(qdata->sign.tsig_key));
@@ -260,7 +241,6 @@ int axfr_query_process(knot_pkt_t *pkt, struct query_data *qdata)
 		return NS_PROC_DONE;
 		break;
 	default:          /* Generic error. */
-		printf("Failed 2.\n");
 		AXFROUT_LOG(LOG_ERR, "Failed: %s", knot_strerror(ret));
 		return NS_PROC_FAIL;
 	}
