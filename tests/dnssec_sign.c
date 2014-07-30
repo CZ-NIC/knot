@@ -18,7 +18,7 @@
 #include <openssl/opensslconf.h>
 #include <tap/basic.h>
 
-#include "common/errcode.h"
+#include "libknot/errcode.h"
 #include "libknot/dnssec/config.h"
 #include "libknot/dnssec/crypto.h"
 #include "libknot/dnssec/sign.h"

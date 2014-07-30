@@ -37,7 +37,7 @@
  * ------
  ***/
 
-#include "common/heap.h"
+#include "common-knot/heap.h"
 #include <string.h>
 #include <stdlib.h>
 

@@ -22,7 +22,7 @@
 #include <unistd.h>
 #include <tap/basic.h>
 
-#include "common/fdset.h"
+#include "common-knot/fdset.h"
 
 #define WRITE_PATTERN ((char) 0xde)
 #define WRITE_PATTERN_LEN sizeof(char)

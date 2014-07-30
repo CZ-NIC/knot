@@ -18,8 +18,8 @@
 #include <time.h>
 #include <tap/basic.h>
 
-#include "common/mempattern.h"
-#include "common/hattrie/hat-trie.h"
+#include "common-knot/hattrie/hat-trie.h"
+#include "common/mem.h"
 
 /* Constants. */
 #define KEY_MAXLEN 64
@@ -97,7 +97,7 @@ static bool str_key_find_leq(hattrie_t *trie, char **keys, size_t i, size_t size
 #define ASORT_PREFIX(X) str_key_##X
 #define ASORT_KEY_TYPE char*
 #define ASORT_LT(x, y) (strcmp((x), (y)) < 0)
-#include "common/array-sort.h"
+#include "common-knot/array-sort.h"
 
 int main(int argc, char *argv[])
 {

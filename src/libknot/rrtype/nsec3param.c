@@ -14,8 +14,8 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "common/memdup.h"
-#include "common/errcode.h"
+#include "common/mem.h"
+#include "libknot/errcode.h"
 #include "libknot/rrtype/nsec3param.h"
 
 /*!

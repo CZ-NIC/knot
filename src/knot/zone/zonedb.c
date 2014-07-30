@@ -28,7 +28,7 @@
 #include "libknot/packet/wire.h"
 #include "knot/zone/node.h"
 #include "common/debug.h"
-#include "common/mempattern.h"
+#include "libknot/mempattern.h"
 #include "common/mempool.h"
 
 
@@ -56,7 +56,7 @@ knot_zonedb_t *knot_zonedb_new(uint32_t size)
 {
 	/* Create memory pool context. */
 	mm_ctx_t mm = {0};
-	mm_ctx_mempool(&mm, DEFAULT_BLKSIZE);
+	mm_ctx_mempool(&mm, MM_DEFAULT_BLKSIZE);
 	knot_zonedb_t *db = mm.alloc(mm.ctx, sizeof(knot_zonedb_t));
 	if (db == NULL) {
 		return NULL;

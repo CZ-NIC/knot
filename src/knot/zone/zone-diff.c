@@ -19,9 +19,9 @@
 #include <inttypes.h>
 
 #include "common/debug.h"
-#include "common/errcode.h"
+#include "libknot/errcode.h"
 #include "knot/zone/zone-diff.h"
-#include "common/descriptor.h"
+#include "libknot/descriptor.h"
 #include "libknot/util/utils.h"
 #include "libknot/rrtype/soa.h"
 
@@ -233,7 +233,7 @@ static int knot_zone_diff_rdata_return_changes(const knot_rrset_t *rrset1,
 		return KNOT_ENOMEM;
 	}
 
-	const rdata_descriptor_t *desc = get_rdata_descriptor(rrset1->type);
+	const rdata_descriptor_t *desc = knot_get_rdata_descriptor(rrset1->type);
 	assert(desc);
 
 	uint16_t rr1_count = rrset1->rrs.rr_count;

@@ -35,9 +35,9 @@
 
 #pragma once
 
-#include "common/evsched.h"
-#include "common/lists.h"
-#include "common/fdset.h"
+#include "common-knot/evsched.h"
+#include "common-knot/lists.h"
+#include "common-knot/fdset.h"
 #include "knot/server/dthreads.h"
 #include "knot/server/net.h"
 #include "knot/server/rrl.h"

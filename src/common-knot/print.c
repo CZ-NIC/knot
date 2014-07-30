@@ -16,7 +16,7 @@
 
 #include <stdio.h>
 #include <ctype.h>
-#include "common/print.h"
+#include "common-knot/print.h"
 
 void array_printf(const uint8_t *data, const unsigned length,
                   printf_t print_handler, const char type)

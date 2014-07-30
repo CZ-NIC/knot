@@ -26,8 +26,8 @@
 #include "libknot/common.h"
 #include "knot/updates/changesets.h"
 #include "knot/zone/zonefile.h"
-#include "common/lists.h"
-#include "common/descriptor.h"
+#include "common-knot/lists.h"
+#include "libknot/descriptor.h"
 #include "libknot/util/utils.h"
 #include "libknot/rrtype/soa.h"
 

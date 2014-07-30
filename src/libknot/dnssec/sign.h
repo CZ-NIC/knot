@@ -26,7 +26,6 @@
 
 #pragma once
 
-#include "common/descriptor.h"
 #include "libknot/binary.h"
 #include "libknot/consts.h"
 #include "libknot/dnssec/key.h"

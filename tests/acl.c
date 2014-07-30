@@ -18,8 +18,8 @@
 #include <sys/socket.h>
 #include <tap/basic.h>
 
-#include "common/errcode.h"
-#include "common/sockaddr.h"
+#include "libknot/errcode.h"
+#include "common-knot/sockaddr.h"
 #include "knot/updates/acl.h"
 #include "knot/conf/conf.h"
 

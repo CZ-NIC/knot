@@ -18,7 +18,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-#include "common/errcode.h"
+#include "libknot/errcode.h"
 #include "libknot/rrtype/tsig.h"
 #include "libknot/tsig-op.h"
 #include "knot/nameserver/tsig_ctx.h"

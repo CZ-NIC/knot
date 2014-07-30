@@ -1,4 +1,4 @@
-/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2014 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -12,66 +12,24 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
- */
-/*!
- * \file errors.h
- *
- * \author Lubos Slovak <lubos.slovak@nic.cz>
- * \author Marek Vavrusa <marek.vavrusa@nic.cz>
- *
- * \brief Error codes and function for getting error message.
- *
- * \addtogroup common_lib
- * @{
- */
+*/
 
 #pragma once
 
-#include <errno.h>
-
-/*! \brief Error lookup table. */
+/*!
+ * \brief Error-to-string mapping table.
+ */
 typedef struct error_table_t {
 	int id;
 	const char *name;
 } error_table_t;
 
 /*!
- * \brief Returns error message for the given error code.
+ * \brief Map error code to error string.
  *
- * \param table Table of error messages to use.
- * \param code Error code.
+ * \param table  Lookup table.
+ * \param id     Error to look up.
  *
- * \return String containing the error message.
+ * \return Error string, fallback string if not found.
  */
-const char *error_to_str(const error_table_t *table, int code);
-
-/*!
- * \brief Safe errno mapper that automatically appends sentinel value.
- *
- * \see _map_errno()
- *
- * \param fallback_value Fallback error value (used if the code could not be
- *                       mapped.
- * \param err POSIX errno.
- * \param ... List of handled codes.
- *
- * \return Mapped error code.
- */
-#define map_errno(fallback_value, err...) _map_errno(fallback_value, err, 0)
-
-/*!
- * \brief Returns a mapped POSIX errcode.
- *
- * \warning Last error must be 0, it serves as a sentinel value.
- *          Use map_errno() instead.
- *
- * \param fallback_value Fallback error value (used if the code could not be
- *                       mapped.
- * \param arg0 First mandatory argument.
- * \param ... List of handled codes.
- *
- * \return Mapped error code.
- */
-int _map_errno(int fallback_value, int arg0, ...);
-
-/*! @} */
+const char *error_to_str(const error_table_t *table, int id);

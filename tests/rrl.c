@@ -21,7 +21,7 @@
 #include "knot/server/rrl.h"
 #include "knot/zone/zone.h"
 #include "knot/conf/conf.h"
-#include "common/descriptor.h"
+#include "libknot/descriptor.h"
 
 /* Enable time-dependent tests. */
 //#define ENABLE_TIMED_TESTS

@@ -20,7 +20,7 @@
 #include "tests/processing.h"
 #include "error.h"
 #include "scanner.h"
-#include "common/descriptor.c"		// knot_rrtype_to_string (implementation)
+#include "libknot/descriptor.c"		// knot_rrtype_to_string (implementation)
 
 const char *separator = "------\n";
 

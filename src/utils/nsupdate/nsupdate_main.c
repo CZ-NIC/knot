@@ -16,7 +16,7 @@
 
 #include <stdlib.h>				// EXIT_FAILURE
 
-#include "common/errcode.h"			// KNOT_EOK
+#include "libknot/errcode.h"			// KNOT_EOK
 #include "utils/nsupdate/nsupdate_params.h"	// params_t
 #include "utils/nsupdate/nsupdate_exec.h"	// host_exec
 #include "libknot/dnssec/crypto.h"		// knot_crypto_cleanup

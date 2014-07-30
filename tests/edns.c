@@ -17,10 +17,10 @@
 #include <tap/basic.h>
 
 #include <assert.h>
-#include "common/errcode.h"
+#include "libknot/errcode.h"
 #include "libknot/rrtype/opt.h"
-#include "common/descriptor.h"
-#include "common/sockaddr.h"
+#include "libknot/descriptor.h"
+#include "common-knot/sockaddr.h"
 
 static const uint16_t E_MAX_PLD = 10000;
 static const uint16_t E_MAX_PLD2 = 20000;

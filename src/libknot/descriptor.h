@@ -164,7 +164,7 @@ typedef struct {
  * \retval RR descriptor for given name, NULL descriptor if
  *         unknown type.
  */
-const rdata_descriptor_t *get_rdata_descriptor(const uint16_t type);
+const rdata_descriptor_t *knot_get_rdata_descriptor(const uint16_t type);
 
 /*!
  * \brief Gets rdata descriptor for given RR name (obsolete version).
@@ -174,7 +174,7 @@ const rdata_descriptor_t *get_rdata_descriptor(const uint16_t type);
  * \retval RR descriptor for given name, NULL descriptor if
  *         unknown type.
  */
-const rdata_descriptor_t *get_obsolete_rdata_descriptor(const uint16_t type);
+const rdata_descriptor_t *knot_get_obsolete_rdata_descriptor(const uint16_t type);
 
 /*!
  * \brief Converts numeric type representation to mnemonic string.
@@ -234,7 +234,7 @@ int knot_rrclass_from_string(const char *name, uint16_t *num);
  * \retval > 0 if YES.
  * \retval 0 if NO.
  */
-int descriptor_item_is_dname(const int item);
+int knot_descriptor_item_is_dname(const int item);
 
 /*!
  * \brief Checks if given item is compressible dname.
@@ -244,7 +244,7 @@ int descriptor_item_is_dname(const int item);
  * \retval > 0 if YES.
  * \retval 0 if NO.
  */
-int descriptor_item_is_compr_dname(const int item);
+int knot_descriptor_item_is_compr_dname(const int item);
 
 /*!
  * \brief Checks if given item has fixed size.
@@ -254,7 +254,7 @@ int descriptor_item_is_compr_dname(const int item);
  * \retval 1 if YES.
  * \retval 0 if NO.
  */
-int descriptor_item_is_fixed(const int item);
+int knot_descriptor_item_is_fixed(const int item);
 
 /*!
  * \brief Checks if given item is remainder.
@@ -264,7 +264,7 @@ int descriptor_item_is_fixed(const int item);
  * \retval 1 if YES.
  * \retval 0 if NO.
  */
-int descriptor_item_is_remainder(const int item);
+int knot_descriptor_item_is_remainder(const int item);
 
 /*!
  * \brief Checks if given item is one of metatypes or qtypes.

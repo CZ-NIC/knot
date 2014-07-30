@@ -21,7 +21,7 @@
 #include <ctype.h>			// isspace
 #include <string.h>			// memcmp
 
-#include "common/errcode.h"		// KNOT_EOK
+#include "libknot/errcode.h"		// KNOT_EOK
 #include "common/getline.h"		// knot_getline
 #include "utils/common/msg.h"		// ERR
 

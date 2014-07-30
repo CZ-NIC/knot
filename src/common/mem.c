@@ -1,4 +1,4 @@
-/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2014 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -12,67 +12,30 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
- */
+*/
 
-#include <stdlib.h>
+#include <stdarg.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sys/resource.h>
-#include <stdarg.h>
-#ifdef HAVE_MALLOC_TRIM
- #include <malloc.h>
-#endif /* HAVE_MALLOC_TRIM */
 
-#include "common/mempattern.h"
-#include "common/log.h"
-#include "common/slab/alloc-common.h"
-#include "common/mempool.h"
+#include "common/mem.h"
 
-static void *mm_malloc(void *ctx, size_t n)
+uint8_t *knot_memdup(const uint8_t *data, size_t data_size)
 {
-	UNUSED(ctx);
-	return malloc(n);
-}
-
-void *mm_alloc(mm_ctx_t *mm, size_t size)
-{
-	if (mm) {
-		return mm->alloc(mm->ctx, size);
-	} else {
-		return malloc(size);
+	uint8_t *result = (uint8_t *)malloc(data_size);
+	if (!result) {
+		return NULL;
 	}
-}
 
-void mm_free(mm_ctx_t *mm, void *what)
-{
-	if (mm) {
-		if (mm->free) {
-			mm->free(what);
-		}
-	} else {
-		free(what);
-	}
-}
-
-void mm_ctx_init(mm_ctx_t *mm)
-{
-	mm->ctx = NULL;
-	mm->alloc = mm_malloc;
-	mm->free = free;
-}
-
-void mm_ctx_mempool(mm_ctx_t *mm, size_t chunk_size)
-{
-	mm->ctx = mp_new(chunk_size);
-	mm->alloc = (mm_alloc_t)mp_alloc;
-	mm->free = mm_nofree;
+	return memcpy(result, data, data_size);
 }
 
 void* xmalloc(size_t l)
 {
 	void *p = malloc(l);
 	if (p == NULL) {
-		log_server_fatal("Failed to allocate %zu bytes.\n", l);
 		abort();
 	}
 	return p;
@@ -82,13 +45,10 @@ void *xrealloc(void *p, size_t l)
 {
 	p = realloc(p, l);
 	if (p == NULL) {
-		log_server_fatal("Failed to reallocate to %zu bytes from %p.\n",
-		                 l, p);
 		abort();
 	}
 	return p;
 }
-
 
 int mreserve(char **p, size_t tlen, size_t min, size_t allow, size_t *reserved)
 {
@@ -112,7 +72,7 @@ int mreserve(char **p, size_t tlen, size_t min, size_t allow, size_t *reserved)
 	return 0;
 }
 
-char* sprintf_alloc(const char *fmt, ...)
+char *sprintf_alloc(const char *fmt, ...)
 {
 	int size = 100;
 	char *p = NULL, *np = NULL;
@@ -150,7 +110,7 @@ char* sprintf_alloc(const char *fmt, ...)
 	return p;
 }
 
-char* strcdup(const char *s1, const char *s2)
+char *strcdup(const char *s1, const char *s2)
 {
 	if (!s1 || !s2) {
 		return NULL;
@@ -202,12 +162,4 @@ void usage_dump()
 	        usage.ru_nvcsw,
 	        usage.ru_nivcsw);
 	fprintf(stderr, "==================\n");
-}
-
-/*! \brief Trim excess heap memory. */
-void mem_trim(void)
-{
-#ifdef HAVE_MALLOC_TRIM
-	malloc_trim(0);
-#endif
 }

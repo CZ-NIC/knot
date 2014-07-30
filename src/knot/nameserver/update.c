@@ -6,7 +6,7 @@
 #include "common/debug.h"
 #include "knot/dnssec/zone-events.h"
 #include "knot/updates/ddns.h"
-#include "common/descriptor.h"
+#include "libknot/descriptor.h"
 #include "libknot/tsig-op.h"
 #include "knot/zone/zone.h"
 #include "knot/zone/events.h"

@@ -20,8 +20,8 @@
 
 #include "knot/updates/changesets.h"
 #include "libknot/common.h"
-#include "common/descriptor.h"
-#include "common/mempattern.h"
+#include "libknot/descriptor.h"
+#include "libknot/mempattern.h"
 #include "common/mempool.h"
 #include "libknot/rrset.h"
 #include "libknot/rrtype/soa.h"

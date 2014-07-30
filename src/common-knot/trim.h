@@ -1,4 +1,4 @@
-/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2014 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -14,25 +14,19 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <stdlib.h>			// EXIT_FAILURE
+#pragma once
 
-#include "libknot/errcode.h"		// KNOT_EOK
-#include "utils/host/host_params.h"	// host_parse
-#include "utils/dig/dig_exec.h"		// dig_exec
+#ifdef HAVE_MALLOC_TRIM
+#include <malloc.h>
+#endif
 
-int main(int argc, char *argv[])
+/*!
+ * \brief Trim excess heap memory.
+ */
+static inline void mem_trim(void)
 {
-	int ret = EXIT_SUCCESS;
+#ifdef HAVE_MALLOC_TRIM
+	malloc_trim(0);
+#endif
 
-	dig_params_t params;
-	if (host_parse(&params, argc, argv) == KNOT_EOK) {
-		if (!params.stop && dig_exec(&params) != KNOT_EOK) {
-			ret = EXIT_FAILURE;
-		}
-	} else {
-		ret = EXIT_FAILURE;
-	}
-
-	host_clean(&params);
-	return ret;
 }

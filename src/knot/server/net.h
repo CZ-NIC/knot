@@ -29,7 +29,7 @@
 #pragma once
 
 /* POSIX only. */
-#include "common/sockaddr.h"
+#include "common-knot/sockaddr.h"
 
 /*!
  * \brief Create unbound socket of given family and type.

@@ -32,7 +32,7 @@
 #include <stdio.h>
 
 #include "common/log.h"
-#include "common/print.h"
+#include "common-knot/print.h"
 
 /*
  * Debug macros

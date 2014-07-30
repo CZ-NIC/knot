@@ -18,7 +18,7 @@
 #include <tap/basic.h>
 
 #include "libknot/rrset.h"
-#include "common/descriptor.h"
+#include "libknot/descriptor.h"
 
 /*
  *  Unit implementation.

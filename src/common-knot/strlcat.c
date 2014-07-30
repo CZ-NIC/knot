@@ -17,7 +17,7 @@
 #include <sys/types.h>
 #include <string.h>
 
-#include "common/strlcat.h"
+#include "common-knot/strlcat.h"
 
 size_t
 knot_strlcat(char *dst, const char *src, size_t siz)
