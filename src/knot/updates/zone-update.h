@@ -32,7 +32,7 @@
 
 typedef struct {
 	const zone_contents_t *zone;
-	const changeset_t *change;
+	changeset_t *change;
 	mm_ctx_t mm;
 } zone_update_t;
 

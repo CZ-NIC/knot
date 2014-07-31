@@ -22,6 +22,7 @@
 #include "common/debug.h"
 #include "knot/dnssec/zone-events.h"
 #include "knot/updates/ddns.h"
+#include "knot/updates/zone-update.h"
 #include "libknot/descriptor.h"
 #include "libknot/tsig-op.h"
 #include "knot/zone/zone.h"
@@ -136,18 +137,18 @@ static int sign_update(zone_t *zone, const zone_contents_t *old_contents,
 	return KNOT_EOK;
 }
 
-static int process_single_update(struct request_data *request, const zone_t *zone,
-                                 changeset_t *ch)
+static int process_single_update(struct request_data *request,
+                                 const zone_t *zone, zone_update_t *update)
 {
 	uint16_t rcode = KNOT_RCODE_NOERROR;
-	int ret = ddns_process_prereqs(request->query, zone->contents, &rcode);
+	int ret = ddns_process_prereqs(request->query, update, &rcode);
 	if (ret != KNOT_EOK) {
 		assert(rcode != KNOT_RCODE_NOERROR);
 		knot_wire_set_rcode(request->resp->wire, rcode);
 		return ret;
 	}
 
-	ret = ddns_process_update(zone, request->query, ch, &rcode);
+	ret = ddns_process_update(zone, request->query, update, &rcode);
 	if (ret != KNOT_EOK) {
 		assert(rcode != KNOT_RCODE_NOERROR);
 		knot_wire_set_rcode(request->resp->wire, rcode);
@@ -178,10 +179,14 @@ static int process_normal(zone_t *zone, list_t *queries)
 		set_rcodes(queries, KNOT_RCODE_SERVFAIL);
 		return ret;
 	}
+	
+	// Init zone update structure
+	zone_update_t zone_update;
+	zone_update_init(&zone_update, zone->contents, &ddns_ch);
 
 	struct request_data *query;
 	WALK_LIST(query, *queries) {
-		ret = process_single_update(query, zone, &ddns_ch);
+		ret = process_single_update(query, zone, &zone_update);
 		if (ret != KNOT_EOK) {
 			changeset_clear(&ddns_ch);
 			set_rcodes(queries, KNOT_RCODE_SERVFAIL);
