@@ -30,6 +30,8 @@
 /* Single log message buffer length (one line). */
 #define LOG_BUFLEN 512
 
+#define LOG_NULL_ZONE_STRING "?"
+
 /*! Log source table. */
 struct log_sink
 {
@@ -360,7 +362,13 @@ static int log_msg_text(int level, const char *zone, const char *fmt, va_list ar
 
 	/* Prefix zone name. */
 	if (zone) {
-		ret = log_msg_add(&write, &capacity, "[%s] ", zone);
+		/* Strip terminating dot (unless root zone). */
+		size_t len = strlen(zone);
+		if (len > 1 && zone[len - 1] == '.') {
+			len -= 1;
+		}
+
+		ret = log_msg_add(&write, &capacity, "[%.*s] ", len, zone);
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
@@ -394,31 +402,25 @@ int log_msg(int priority, const char *fmt, ...)
 
 int log_msg_zone(int priority, const knot_dname_t *zone, const char *fmt, ...)
 {
-	if (!zone || !fmt) {
-		return KNOT_EINVAL;
-	}
-
-	char *zone_str = knot_dname_to_str(zone);
-
 	va_list args;
 	va_start(args, fmt);
-	int result = log_msg_text(priority, zone_str, fmt, args);
-	va_end(args);
-
+	char *zone_str = knot_dname_to_str(zone);
+	int result = log_msg_text(priority,
+				  zone_str ? zone_str : LOG_NULL_ZONE_STRING,
+				  fmt, args);
 	free(zone_str);
+	va_end(args);
 
 	return result;
 }
 
 int log_msg_zone_str(int priority, const char *zone, const char *fmt, ...)
 {
-	if (!zone|| !fmt) {
-		return KNOT_EINVAL;
-	}
-
 	va_list args;
 	va_start(args, fmt);
-	int result = log_msg_text(priority, zone, fmt, args);
+	int result = log_msg_text(priority,
+				  zone ? zone : LOG_NULL_ZONE_STRING,
+				  fmt, args);
 	va_end(args);
 
 	return result;
