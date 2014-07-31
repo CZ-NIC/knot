@@ -29,7 +29,7 @@
 #include <assert.h>
 #include <openssl/rand.h>
 #include <stdint.h>
-#include "common/errcode.h"
+#include "libknot/errcode.h"
 
 /*!
  * \brief Fill a buffer with random data.

@@ -18,7 +18,7 @@
 
 #include "knot/nameserver/chaos.h"
 #include "knot/conf/conf.h"
-#include "common/descriptor.h"
+#include "libknot/descriptor.h"
 #include "libknot/packet/pkt.h"
 
 /*!

@@ -17,7 +17,7 @@
 #include <assert.h>
 
 #include "knot/server/serialization.h"
-#include "common/errcode.h"
+#include "libknot/errcode.h"
 
 static size_t rr_binary_size(const knot_rrset_t *rrset, size_t rdata_pos)
 {
@@ -76,7 +76,8 @@ int changeset_binary_size(const changeset_t *chgset, size_t *size)
 	}
 
 	size_t soa_from_size = rrset_binary_size(chgset->soa_from);
-	size_t soa_to_size = rrset_binary_size(chgset->soa_to);changeset_iter_t itt;
+	size_t soa_to_size = rrset_binary_size(chgset->soa_to);
+	changeset_iter_t itt;
 	changeset_iter_all(&itt, chgset, false);
 
 	size_t change_size = 0;
@@ -133,6 +134,11 @@ int rrset_serialize(const knot_rrset_t *rrset, uint8_t *stream, size_t *size)
 int rrset_deserialize(const uint8_t *stream, size_t *stream_size,
                       knot_rrset_t *rrset)
 {
+	if (stream == NULL || stream_size == NULL ||
+	    rrset == NULL) {
+		return KNOT_EINVAL;
+	}
+	
 	if (sizeof(uint64_t) > *stream_size) {
 		return KNOT_ESPACE;
 	}

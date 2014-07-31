@@ -28,8 +28,8 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#include "common/evsched.h"
-#include "common/ref.h"
+#include "common-knot/evsched.h"
+#include "common-knot/ref.h"
 #include "knot/conf/conf.h"
 #include "knot/server/journal.h"
 #include "knot/updates/acl.h"
@@ -93,13 +93,10 @@ void zone_free(zone_t **zone_ptr);
 /*!
  * \note Zone change API below, subject to change.
  * \ref #223 New zone API
+ * \todo get rid of this
  */
-int zone_change_commit(zone_contents_t *contents, list_t *chgs);
-int zone_change_store(zone_t *zone, list_t *chgs);
-/*! \note @mvavrusa Moved from zones.c, this needs a common API. */
-int zone_change_apply_and_store(list_t *chs,
-                                zone_t *zone,
-                                const char *msgpref);
+int zone_changes_store(zone_t *zone, list_t *chgs);
+int zone_change_store(zone_t *zone, changeset_t *change);
 /*!
  * \brief Atomically switch the content of the zone.
  */

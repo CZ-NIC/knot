@@ -29,7 +29,6 @@
 #include <stdint.h>
 #include <string.h>
 #include <limits.h>
-#include "common/descriptor.h"
 
 #define BITMAP_WINDOW_SIZE 256
 #define BITMAP_WINDOW_BYTES (BITMAP_WINDOW_SIZE/CHAR_BIT)

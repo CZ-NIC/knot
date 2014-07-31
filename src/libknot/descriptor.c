@@ -18,7 +18,7 @@
 #include <stdlib.h>			// strtoul
 #include <strings.h>			// strcasecmp
 
-#include <common/descriptor.h>
+#include "libknot/descriptor.h"
 
 /*!
  * \brief Table with DNS classes.
@@ -153,7 +153,7 @@ static const rdata_descriptor_t obsolete_rdata_descriptors[] = {
 	                               KNOT_RDATA_WF_END }, "NXT" },
 };
 
-const rdata_descriptor_t *get_rdata_descriptor(const uint16_t type)
+const rdata_descriptor_t *knot_get_rdata_descriptor(const uint16_t type)
 {
 	if (type <= KNOT_RRTYPE_ANY &&
 	    rdata_descriptors[type].type_name != NULL) {
@@ -163,7 +163,7 @@ const rdata_descriptor_t *get_rdata_descriptor(const uint16_t type)
 	}
 }
 
-const rdata_descriptor_t *get_obsolete_rdata_descriptor(const uint16_t type)
+const rdata_descriptor_t *knot_get_obsolete_rdata_descriptor(const uint16_t type)
 {
 	if (type <= KNOT_RRTYPE_NXT &&
 	    obsolete_rdata_descriptors[type].type_name != NULL) {
@@ -179,7 +179,7 @@ int knot_rrtype_to_string(const uint16_t rrtype,
 {
 	int ret;
 
-	const rdata_descriptor_t *descr = get_rdata_descriptor(rrtype);
+	const rdata_descriptor_t *descr = knot_get_rdata_descriptor(rrtype);
 
 	if (descr->type_name != NULL) {
 		ret = snprintf(out, out_len, "%s", descr->type_name);
@@ -277,18 +277,18 @@ int knot_rrclass_from_string(const char *name, uint16_t *num)
 	return 0;
 }
 
-int descriptor_item_is_dname(const int item)
+int knot_descriptor_item_is_dname(const int item)
 {
 	return item == KNOT_RDATA_WF_COMPRESSED_DNAME ||
 	       item == KNOT_RDATA_WF_UNCOMPRESSED_DNAME;
 }
 
-int descriptor_item_is_compr_dname(const int item)
+int knot_descriptor_item_is_compr_dname(const int item)
 {
 	return item == KNOT_RDATA_WF_COMPRESSED_DNAME;
 }
 
-int descriptor_item_is_fixed(const int item)
+int knot_descriptor_item_is_fixed(const int item)
 {
 	if (item > 0) {
 		return 1;
@@ -297,7 +297,7 @@ int descriptor_item_is_fixed(const int item)
 	}
 }
 
-int descriptor_item_is_remainder(const int item)
+int knot_descriptor_item_is_remainder(const int item)
 {
 	if (item == KNOT_RDATA_WF_REMAINDER) {
 		return 1;
@@ -330,4 +330,3 @@ int knot_rrtype_additional_needed(const uint16_t type)
 	       type == KNOT_RRTYPE_MX ||
 	       type == KNOT_RRTYPE_SRV;
 }
-

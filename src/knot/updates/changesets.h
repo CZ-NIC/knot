@@ -28,7 +28,7 @@
 
 #include "libknot/rrset.h"
 #include "knot/zone/contents.h"
-#include "common/lists.h"
+#include "common-knot/lists.h"
 
 /*----------------------------------------------------------------------------*/
 
@@ -65,7 +65,7 @@ typedef struct {
 int changeset_init(changeset_t *ch, const knot_dname_t *apex);
 
 /*!
- * \brief Creates new changeset structure.
+ * \brief Creates new changeset structure and inits it.
  *
  * \param apex  Zone apex DNAME.
  *

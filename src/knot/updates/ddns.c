@@ -24,9 +24,9 @@
 #include "libknot/common.h"
 #include "libknot/consts.h"
 #include "libknot/rrtype/soa.h"
-#include "common/mempattern.h"
-#include "common/descriptor.h"
-#include "common/lists.h"
+#include "libknot/mempattern.h"
+#include "libknot/descriptor.h"
+#include "common-knot/lists.h"
 
 /* ----------------------------- prereq check ------------------------------- */
 
@@ -257,8 +257,8 @@ static bool name_added(const changeset_t *changeset, const knot_dname_t *d)
 	return zone_contents_find_node(changeset->add, d);
 }
 
-/*!< \brief Removes RR from list, full equality check. */
-static void remove_rr_from_list(zone_contents_t *z, const knot_rrset_t *rr)
+/*!< \brief Removes RR from changeset, full equality check. */
+static void remove_rr_from_changeset(zone_contents_t *z, const knot_rrset_t *rr)
 {
 	zone_node_t *n = zone_contents_find_node_for_rr(z, rr);
 	if (n == NULL) {
@@ -277,7 +277,7 @@ static void remove_rr_from_list(zone_contents_t *z, const knot_rrset_t *rr)
 }
 
 /*!< \brief Removes RR from list, owner and type check. */
-static void remove_header_from_list(zone_contents_t *z, const knot_rrset_t *rr)
+static void remove_header_from_changeset(zone_contents_t *z, const knot_rrset_t *rr)
 {
 	zone_node_t *n = zone_contents_find_node_for_rr(z, rr);
 	if (n == NULL) {
@@ -292,7 +292,7 @@ static void remove_header_from_list(zone_contents_t *z, const knot_rrset_t *rr)
 }
 
 /*!< \brief Removes RR from list, owner check. */
-static void remove_owner_from_list(zone_contents_t *z, const knot_dname_t *owner)
+static void remove_owner_from_changeset(zone_contents_t *z, const knot_dname_t *owner)
 {
 	zone_node_t *n = (zone_node_t *)zone_contents_find_node(z, owner);
 	node_free_rrsets(n);
@@ -428,9 +428,9 @@ static bool skip_soa(const knot_rrset_t *rr, int64_t sn)
 
 /* ---------------------- changeset manipulation ---------------------------- */
 
-/*!< \brief Checks whether record should be added or replaced. */
-static bool skip_record_addition(changeset_t *changeset,
-                                 const knot_rrset_t *rr)
+/*!< \brief Replaces possible singleton RR type in changeset. */
+static bool singleton_replaced(changeset_t *changeset,
+                               const knot_rrset_t *rr)
 {
 	if (!should_replace(rr)) {
 		return false;
@@ -458,7 +458,7 @@ static bool skip_record_addition(changeset_t *changeset,
 static int add_rr_to_chgset(const knot_rrset_t *rr, changeset_t *changeset,
                             int *apex_ns_rem)
 {
-	if (skip_record_addition(changeset, rr)) {
+	if (singleton_replaced(changeset, rr)) {
 		return KNOT_EOK;
 	}
 
@@ -611,7 +611,7 @@ static int process_add_normal(const zone_node_t *node,
 
 	if (node && node_contains_rr(node, rr)) {
 		// Adding existing RR, remove removal from changeset if it's there.
-		remove_rr_from_list(changeset->remove, rr);
+		remove_rr_from_changeset(changeset->remove, rr);
 		// And ignore.
 		return KNOT_EOK;
 	}
@@ -663,7 +663,7 @@ static int process_rem_rr(const knot_rrset_t *rr,
 	}
 
 	// Remove possible previously added RR
-	remove_rr_from_list(changeset->add, rr);
+	remove_rr_from_changeset(changeset->add, rr);
 	if (node == NULL) {
 		// Removing from node that did not exists before update
 		return KNOT_EOK;
@@ -713,7 +713,7 @@ static int process_rem_rrset(const knot_rrset_t *rrset,
 	}
 
 	// Remove all previously added RRs with this owner and type from chgset
-	remove_header_from_list(changeset->add, rrset);
+	remove_header_from_changeset(changeset->add, rrset);
 
 	if (node == NULL) {
 		// no such node in zone, ignore
@@ -734,7 +734,7 @@ static int process_rem_node(const knot_rrset_t *rr,
                             const zone_node_t *node, changeset_t *changeset)
 {
 	// Remove all previously added records with given owner from changeset
-	remove_owner_from_list(changeset->add, rr->owner);
+	remove_owner_from_changeset(changeset->add, rr->owner);
 
 	if (node == NULL) {
 		return KNOT_EOK;

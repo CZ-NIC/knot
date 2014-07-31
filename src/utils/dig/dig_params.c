@@ -23,10 +23,10 @@
 #include <locale.h>			// setlocale
 #include <arpa/inet.h>			// inet_pton
 
-#include "common/lists.h"		// list
-#include "common/errcode.h"		// KNOT_EOK
-#include "common/descriptor.h"		// KNOT_CLASS_IN
-#include "common/sockaddr.h"		// IPV4_PREFIXLEN
+#include "common-knot/lists.h"		// list
+#include "libknot/errcode.h"		// KNOT_EOK
+#include "libknot/descriptor.h"		// KNOT_CLASS_IN
+#include "common-knot/sockaddr.h"	// IPV4_PREFIXLEN
 #include "utils/common/msg.h"		// WARN
 #include "utils/common/params.h"	// parse_class
 #include "utils/common/resolv.h"	// get_nameservers

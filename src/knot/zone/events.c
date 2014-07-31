@@ -17,7 +17,9 @@
 #include <assert.h>
 #include <time.h>
 
-#include "common/evsched.h"
+#include "common-knot/evsched.h"
+#include "common-knot/trim.h"
+#include "common/mem.h"
 #include "common/mempool.h"
 #include "knot/server/server.h"
 #include "knot/server/udp-handler.h"
@@ -29,6 +31,7 @@
 #include "knot/zone/zone.h"
 #include "knot/zone/zone-load.h"
 #include "knot/zone/zonefile.h"
+#include "knot/updates/apply.h"
 #include "libknot/rrtype/soa.h"
 #include "libknot/dnssec/random.h"
 #include "knot/nameserver/internet.h"
@@ -113,7 +116,7 @@ static int zone_query_execute(zone_t *zone, uint16_t pkt_type, const conf_iface_
 	/* Create a memory pool for this task. */
 	int ret = KNOT_EOK;
 	mm_ctx_t mm;
-	mm_ctx_mempool(&mm, DEFAULT_BLKSIZE);
+	mm_ctx_mempool(&mm, MM_DEFAULT_BLKSIZE);
 
 	/* Create a query message. */
 	knot_pkt_t *query = zone_query(zone, pkt_type, &mm);
@@ -245,7 +248,7 @@ static int event_reload(zone_t *zone)
 
 	/* Store zonefile serial and apply changes from the journal. */
 	zone->zonefile_serial = zone_contents_serial(contents);
-	int result = zone_load_journal(zone);
+	int result = zone_load_journal(zone, contents);
 	if (result != KNOT_EOK) {
 		goto fail;
 	}
@@ -514,15 +517,31 @@ static int event_dnssec(zone_t *zone)
 	}
 
 	if (!changeset_empty(&ch)) {
-		list_t apply;
-		init_list(&apply);
-		add_head(&apply, &ch.n);
-		ret = zone_change_apply_and_store(&apply, zone, "DNSSEC");
+		/* Apply change. */
+		zone_contents_t *new_contents = NULL;
+		int ret = apply_changeset(zone, &ch, &new_contents);
 		if (ret != KNOT_EOK) {
 			log_zone_error("%s Could not sign zone (%s).\n",
-				       msgpref, knot_strerror(ret));
+			               msgpref, knot_strerror(ret));
 			goto done;
 		}
+
+		/* Write change to journal. */
+		ret = zone_change_store(zone, &ch);
+		if (ret != KNOT_EOK) {
+			log_zone_error("%s Could not sign zone (%s).\n",
+			               msgpref, knot_strerror(ret));
+			update_rollback(&ch);
+			update_free_zone(&new_contents);
+			goto done;
+		}
+
+		/* Switch zone contents. */
+		zone_contents_t *old_contents = zone_switch_contents(zone, new_contents);
+		synchronize_rcu();
+		update_free_zone(&old_contents);
+
+		update_cleanup(&ch);
 	}
 
 	// Schedule dependent events.

@@ -28,7 +28,7 @@
 
 #pragma once
 
-#include "common/descriptor.h"
+#include "libknot/descriptor.h"
 #include "libknot/dname.h"
 #include "libknot/rrset.h"
 #include "libknot/rdataset.h"

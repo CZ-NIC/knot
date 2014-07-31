@@ -81,16 +81,16 @@ int zone_load_check(zone_contents_t *contents, conf_zone_t *zone_config)
 /*!
  * \brief Apply changesets to zone from journal.
  */
-int zone_load_journal(zone_t *zone)
+int zone_load_journal(zone_t *zone, zone_contents_t *contents)
 {
 	/* Check if journal is used and zone is not empty. */
 	if (!journal_exists(zone->conf->ixfr_db) ||
-	    zone_contents_is_empty(zone->contents)) {
+	    zone_contents_is_empty(contents)) {
 		return KNOT_EOK;
 	}
 
 	/* Fetch SOA serial. */
-	uint32_t serial = zone_contents_serial(zone->contents);
+	uint32_t serial = zone_contents_serial(contents);
 
 	/*! \todo Check what should be the upper bound. */
 	list_t chgs;
@@ -107,13 +107,13 @@ int zone_load_journal(zone_t *zone)
 	}
 
 	/* Apply changesets. */
-	ret = apply_changesets_directly(zone->contents, &chgs);
+	ret = apply_changesets_directly(contents, &chgs);
 	log_zone_info("Zone '%s' serial %u -> %u: %s\n",
 	              zone->conf->name,
-	              serial, zone_contents_serial(zone->contents),
+	              serial, zone_contents_serial(contents),
 	              knot_strerror(ret));
 
-	update_cleanup(&chgs);
+	updates_cleanup(&chgs);
 	changesets_free(&chgs);
 	return ret;
 }
@@ -143,14 +143,15 @@ int zone_load_post(zone_contents_t *contents, zone_t *zone, uint32_t *dnssec_ref
 		}
 
 		/* Apply DNSSEC changes. */
-		list_t apply;
-		init_list(&apply);
-		add_head(&apply, &change.n);
-		ret = zone_change_commit(contents, &apply);
-		update_cleanup(&apply);
-		if (ret != KNOT_EOK) {
+		if (!changeset_empty(&change)) {
+			ret = apply_changeset_directly(contents, &change);
+			update_cleanup(&change);
+			if (ret != KNOT_EOK) {
+				changeset_clear(&change);
+				return ret;
+			}
+		} else {
 			changeset_clear(&change);
-			return ret;
 		}
 	}
 
@@ -188,10 +189,7 @@ int zone_load_post(zone_contents_t *contents, zone_t *zone, uint32_t *dnssec_ref
 
 	/* Write changes (DNSSEC, diff, or both) to journal if all went well. */
 	if (!changeset_empty(&change)) {
-		list_t apply;
-		init_list(&apply);
-		add_head(&apply, &change.n);
-		ret = zone_change_store(zone, &apply);
+		ret = zone_change_store(zone, &change);
 	}
 
 	changeset_clear(&change);

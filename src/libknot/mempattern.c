@@ -14,31 +14,52 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <stdio.h>
+#include <stdlib.h>
 
-#include "common/ref.h"
+#include "libknot/mempattern.h"
+#include "common/mempool.h"
 
-void ref_init(ref_t *p, ref_destructor_t dtor)
+static void mm_nofree(void *p)
 {
-	if (p) {
-		p->count = 0;
-		p->dtor = dtor;
+	/* nop */
+}
+
+static void *mm_malloc(void *ctx, size_t n)
+{
+	(void)ctx;
+	return malloc(n);
+}
+
+void *mm_alloc(mm_ctx_t *mm, size_t size)
+{
+	if (mm) {
+		return mm->alloc(mm->ctx, size);
+	} else {
+		return malloc(size);
 	}
 }
 
-void ref_retain(ref_t *p)
+void mm_free(mm_ctx_t *mm, void *what)
 {
-	if (p) {
-		__sync_add_and_fetch(&p->count, 1);
-	}
-}
-
-void ref_release(ref_t *p)
-{
-	if (p) {
-		int rc = __sync_sub_and_fetch(&p->count, 1);
-		if (rc == 0 && p->dtor) {
-			p->dtor(p);
+	if (mm) {
+		if (mm->free) {
+			mm->free(what);
 		}
+	} else {
+		free(what);
 	}
+}
+
+void mm_ctx_init(mm_ctx_t *mm)
+{
+	mm->ctx = NULL;
+	mm->alloc = mm_malloc;
+	mm->free = free;
+}
+
+void mm_ctx_mempool(mm_ctx_t *mm, size_t chunk_size)
+{
+	mm->ctx = mp_new(chunk_size);
+	mm->alloc = (mm_alloc_t)mp_alloc;
+	mm->free = mm_nofree;
 }

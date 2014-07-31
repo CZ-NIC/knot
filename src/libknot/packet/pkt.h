@@ -34,7 +34,7 @@
 #include "libknot/rrtype/opt.h"
 #include "libknot/packet/wire.h"
 #include "libknot/packet/compr.h"
-#include "common/mempattern.h"
+#include "libknot/mempattern.h"
 
 /* Number of packet sections (ANSWER, AUTHORITY, ADDITIONAL). */
 #define KNOT_PKT_SECTIONS 3

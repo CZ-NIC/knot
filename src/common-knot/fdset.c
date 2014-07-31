@@ -18,7 +18,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <time.h>
-#include "common/fdset.h"
+#include "common-knot/fdset.h"
 #include "libknot/common.h"
 
 /* Workarounds for clock_gettime() not available on some platforms. */

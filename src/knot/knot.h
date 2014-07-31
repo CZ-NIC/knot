@@ -29,9 +29,9 @@
 #include <signal.h>
 #include <stdint.h>
 
-#include "common/print.h"
+#include "common-knot/print.h"
 #include "common/log.h"
-#include "common/errcode.h"
+#include "libknot/errcode.h"
 #include "knot/other/debug.h"
 
 #define DEFAULT_THR_COUNT 2  /*!< \brief Default thread count. */

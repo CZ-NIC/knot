@@ -15,7 +15,7 @@
  */
 
 #include "knot/updates/zone-update.h"
-#include "common/lists.h"
+#include "common-knot/lists.h"
 #include "common/mempool.h"
 
 static bool node_empty(const zone_node_t *node)

@@ -20,8 +20,8 @@
 #include <string.h>
 #include <assert.h>
 
-#include "common/errcode.h"
-#include "common/evsched.h"
+#include "libknot/errcode.h"
+#include "common-knot/evsched.h"
 
 /*! \brief Some implementations of timercmp >= are broken, this is for compat.*/
 static inline int timercmp_ge(struct timeval *a, struct timeval *b) {

@@ -22,11 +22,11 @@
 #include <netinet/in.h>			// sockaddr_in (BSD)
 
 #include "libknot/libknot.h"
-#include "common/lists.h"		// list
-#include "common/print.h"		// time_diff
-#include "common/errcode.h"		// KNOT_EOK
-#include "common/descriptor.h"		// KNOT_RRTYPE_
-#include "common/sockaddr.h"		// sockaddr_set_raw
+#include "common-knot/lists.h"		// list
+#include "common-knot/print.h"		// time_diff
+#include "libknot/errcode.h"		// KNOT_EOK
+#include "libknot/descriptor.h"		// KNOT_RRTYPE_
+#include "common-knot/sockaddr.h"		// sockaddr_set_raw
 #include "utils/common/msg.h"		// WARN
 #include "utils/common/netio.h"		// get_socktype
 #include "utils/common/exec.h"		// print_packet

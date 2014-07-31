@@ -21,6 +21,7 @@
 #include <errno.h>
 #include <assert.h>
 
+#include "common-knot/trim.h"
 #include "knot/knot.h"
 #include "knot/server/server.h"
 #include "knot/server/udp-handler.h"
@@ -197,7 +198,7 @@ static int reconfigure_sockets(const struct conf_t *conf, server_t *s)
 	/* Duplicate current list. */
 	/*! \note Pointers to addr, handlers etc. will be shared. */
 	if (s->ifaces) {
-		list_dup(&s->ifaces->u, &s->ifaces->l, sizeof(iface_t), NULL);
+		list_dup(&s->ifaces->u, &s->ifaces->l, sizeof(iface_t));
 	}
 
 	/* Update bound interfaces. */

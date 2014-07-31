@@ -39,7 +39,7 @@
 #endif
 
 #include "common/log.h"
-#include "common/print.h"
+#include "common-knot/print.h"
 
 /******************************************************************************/
 

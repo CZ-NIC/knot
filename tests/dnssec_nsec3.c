@@ -18,8 +18,8 @@
 #include <string.h>
 #include <tap/basic.h>
 
-#include "common/descriptor.h"
-#include "common/errcode.h"
+#include "libknot/descriptor.h"
+#include "libknot/errcode.h"
 #include "libknot/dname.h"
 #include "libknot/consts.h"
 #include "libknot/rrset.h"

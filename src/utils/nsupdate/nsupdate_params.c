@@ -23,9 +23,9 @@
 #include "utils/nsupdate/nsupdate_params.h"
 #include "utils/common/msg.h"
 #include "utils/common/netio.h"
-#include "common/errcode.h"
-#include "common/descriptor.h"
-#include "common/mempattern.h"
+#include "libknot/errcode.h"
+#include "libknot/descriptor.h"
+#include "libknot/mempattern.h"
 #include "common/mempool.h"
 #include "libknot/libknot.h"
 
@@ -90,7 +90,7 @@ static int nsupdate_init(nsupdate_params_t *params)
 	init_list(&params->prereq_list);
 
 	/* Initialize memory context. */
-	mm_ctx_mempool(&params->mm, DEFAULT_BLKSIZE);
+	mm_ctx_mempool(&params->mm, MM_DEFAULT_BLKSIZE);
 
 	/* Default server. */
 	params->server = srv_info_create(DEFAULT_IPV4_NAME, DEFAULT_DNS_PORT);

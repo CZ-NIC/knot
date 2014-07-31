@@ -25,8 +25,9 @@
 #include <errno.h>
 
 #include <urcu.h>
-#include "common/strlcat.h"
-#include "common/strlcpy.h"
+#include "common-knot/strlcat.h"
+#include "common-knot/strlcpy.h"
+#include "common/mem.h"
 #include "knot/conf/conf.h"
 #include "knot/conf/extra.h"
 #include "knot/knot.h"

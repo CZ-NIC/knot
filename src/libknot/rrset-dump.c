@@ -28,10 +28,10 @@
 #include <netinet/in.h>			// in_addr (BSD)
 #include <arpa/inet.h>			// ntohs
 
-#include "common/errcode.h"		// KNOT_EOK
+#include "libknot/errcode.h"		// KNOT_EOK
 #include "common/base64.h"		// base64
 #include "common/base32hex.h"		// base32hex
-#include "common/descriptor.h"		// KNOT_RRTYPE
+#include "libknot/descriptor.h"		// KNOT_RRTYPE
 #include "libknot/dnssec/key.h"		// knot_keytag
 #include "libknot/consts.h"		// knot_rcode_names
 #include "libknot/util/utils.h"		// knot_wire_read_u16

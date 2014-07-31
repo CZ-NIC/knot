@@ -22,7 +22,7 @@
 #include "common/debug.h"
 #include "knot/dnssec/zone-events.h"
 #include "knot/updates/ddns.h"
-#include "common/descriptor.h"
+#include "libknot/descriptor.h"
 #include "libknot/tsig-op.h"
 #include "knot/zone/zone.h"
 #include "knot/zone/events.h"
@@ -86,18 +86,12 @@ static bool zones_nsec3param_changed(const zone_contents_t *old_contents,
 
 static int sign_update(zone_t *zone, const zone_contents_t *old_contents,
                        zone_contents_t *new_contents, changeset_t *ddns_ch,
-                       list_t *sec_chs)
+                       changeset_t *sec_ch)
 {
 	assert(zone != NULL);
 	assert(old_contents != NULL);
 	assert(new_contents != NULL);
 	assert(ddns_ch != NULL);
-
-	changeset_t *sec_ch = changeset_new(zone->name);
-	if (sec_ch == NULL) {
-		return KNOT_ENOMEM;
-	}
-	add_head(sec_chs, &sec_ch->n);
 
 	/*
 	 * Check if the UPDATE changed DNSKEYs or NSEC3PARAM.
@@ -117,22 +111,19 @@ static int sign_update(zone_t *zone, const zone_contents_t *old_contents,
 		                                 &refresh_at);
 	}
 	if (ret != KNOT_EOK) {
-		changesets_free(sec_chs);
 		return ret;
 	}
 
 	// Apply DNSSEC changeset
-	ret = apply_changesets_directly(new_contents, sec_chs);
+	ret = apply_changeset_directly(new_contents, sec_ch);
 	if (ret != KNOT_EOK) {
-		changesets_free(sec_chs);
 		return ret;
 	}
 
 	// Merge changesets
 	ret = changeset_merge(ddns_ch, sec_ch);
 	if (ret != KNOT_EOK) {
-		update_cleanup(sec_chs);
-		changesets_free(sec_chs);
+		update_cleanup(sec_ch);
 		return ret;
 	}
 
@@ -200,11 +191,8 @@ static int process_normal(zone_t *zone, list_t *queries)
 
 	zone_contents_t *new_contents = NULL;
 	const bool change_made = !changeset_empty(&ddns_ch);
-	list_t apply;
-	init_list(&apply);
 	if (change_made) {
-		add_head(&apply, &ddns_ch.n);
-		ret = apply_changesets(zone, &apply, &new_contents);
+		ret = apply_changeset(zone, &ddns_ch, &new_contents);
 		if (ret != KNOT_EOK) {
 			if (ret == KNOT_ETTL) {
 				set_rcodes(queries, KNOT_RCODE_REFUSED);
@@ -220,13 +208,18 @@ static int process_normal(zone_t *zone, list_t *queries)
 	}
 	assert(new_contents);
 
-	list_t sec_chs;
-	init_list(&sec_chs);
+	changeset_t sec_ch;
 	if (zone->conf->dnssec_enable) {
-		ret = sign_update(zone, zone->contents, new_contents, &ddns_ch,
-		                  &sec_chs);
+		ret = changeset_init(&sec_ch, zone->name);
 		if (ret != KNOT_EOK) {
-			update_rollback(&apply, &new_contents);
+			set_rcodes(queries, KNOT_RCODE_SERVFAIL);
+			return ret;
+		}
+		ret = sign_update(zone, zone->contents, new_contents, &ddns_ch,
+		                  &sec_ch);
+		if (ret != KNOT_EOK) {
+			update_rollback(&ddns_ch);
+			update_free_zone(&new_contents);
 			changeset_clear(&ddns_ch);
 			set_rcodes(queries, KNOT_RCODE_SERVFAIL);
 			return ret;
@@ -234,10 +227,14 @@ static int process_normal(zone_t *zone, list_t *queries)
 	}
 
 	// Write changes to journal if all went well. (DNSSEC merged)
-	ret = zone_change_store(zone, &apply);
+	ret = zone_change_store(zone, &ddns_ch);
 	if (ret != KNOT_EOK) {
-		update_rollback(&apply, &new_contents);
+		update_rollback(&ddns_ch);
+		update_free_zone(&new_contents);
 		changeset_clear(&ddns_ch);
+		if (zone->conf->dnssec_enable) {
+			changeset_clear(&sec_ch);
+		}
 		set_rcodes(queries, KNOT_RCODE_SERVFAIL);
 		return ret;
 	}
@@ -245,17 +242,20 @@ static int process_normal(zone_t *zone, list_t *queries)
 	// Switch zone contents.
 	zone_contents_t *old_contents = zone_switch_contents(zone, new_contents);
 	synchronize_rcu();
-	update_free_old_zone(&old_contents);
-
-	// Clear DDNS changes
-	update_cleanup(&apply);
-	changeset_clear(&ddns_ch);
 
 	// Clear DNSSEC changes
-	update_cleanup(&sec_chs);
-	changesets_free(&sec_chs);
+	if (zone->conf->dnssec_enable) {
+		update_cleanup(&sec_ch);
+		changeset_clear(&sec_ch);
+	}
 
-	// Sync zonefile immediately if configured.
+	// Clear obsolete zone contents
+	update_free_zone(&old_contents);
+
+	update_cleanup(&ddns_ch);
+	changeset_clear(&ddns_ch);
+
+	/* Sync zonefile immediately if configured. */
 	if (zone->conf->dbsync_timeout == 0) {
 		zone_events_schedule(zone, ZONE_EVENT_FLUSH, ZONE_EVENT_NOW);
 	}
@@ -324,7 +324,6 @@ static int forward_query(zone_t *zone, struct request_data *update)
 	struct request *req = requestor_make(&re, master, query);
 	if (req == NULL) {
 		knot_pkt_free(&query);
-		knot_wire_set_rcode(update->resp->wire, KNOT_RCODE_SERVFAIL);
 		return KNOT_ENOMEM;
 	}
 

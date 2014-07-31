@@ -19,9 +19,10 @@
 #include <string.h>
 #include <sys/stat.h>
 
-#include "common/descriptor.h"
-#include "common/evsched.h"
-#include "common/lists.h"
+#include "libknot/descriptor.h"
+#include "common-knot/evsched.h"
+#include "common-knot/lists.h"
+#include "common-knot/trim.h"
 #include "knot/zone/node.h"
 #include "knot/zone/zone.h"
 #include "knot/zone/zonefile.h"
@@ -106,19 +107,30 @@ void zone_free(zone_t **zone_ptr)
 	*zone_ptr = NULL;
 }
 
-int zone_change_commit(zone_contents_t *contents, list_t *chgs)
+int zone_change_store(zone_t *zone, changeset_t *change)
 {
-	assert(contents && chgs);
+	assert(zone);
+	assert(change);
 
-	if (EMPTY_LIST(*chgs)) {
-		return KNOT_EOK;
+	conf_zone_t *conf = zone->conf;
+
+	int ret = journal_store_changeset(change, conf->ixfr_db, conf->ixfr_fslimit);
+	if (ret == KNOT_EBUSY) {
+		log_zone_notice("Journal for '%s' is full, flushing.\n", conf->name);
+
+		/* Transaction rolled back, journal released, we may flush. */
+		ret = zone_flush_journal(zone);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+
+		return journal_store_changeset(change, conf->ixfr_db, conf->ixfr_fslimit);
 	}
 
-	/* Apply DNSSEC changeset to the new zone. */
-	return apply_changesets_directly(contents, chgs);
+	return ret;
 }
 
-int zone_change_store(zone_t *zone, list_t *chgs)
+int zone_changes_store(zone_t *zone, list_t *chgs)
 {
 	assert(zone);
 	assert(chgs);
@@ -139,38 +151,6 @@ int zone_change_store(zone_t *zone, list_t *chgs)
 	}
 
 	return ret;
-}
-
-/*! \note @mvavrusa Moved from zones.c, this needs a common API. */
-int zone_change_apply_and_store(list_t *chgs,
-                                zone_t *zone,
-                                const char *msgpref)
-{
-	int ret = KNOT_EOK;
-
-	zone_contents_t *new_contents;
-	ret = apply_changesets(zone, chgs, &new_contents);
-	if (ret != KNOT_EOK) {
-		log_zone_error("%s Failed to apply changesets.\n", msgpref);
-		return ret;
-	}
-
-	/* Write changes to journal. */
-	ret = zone_change_store(zone, chgs);
-	if (ret != KNOT_EOK) {
-		log_zone_error("%s Failed to store changesets.\n", msgpref);
-		update_rollback(chgs, &new_contents);
-		return ret;
-	}
-
-	/* Switch zone contents. */
-	zone_contents_t *old_contents = zone_switch_contents(zone, new_contents);
-	synchronize_rcu();
-	update_free_old_zone(&old_contents);
-
-	update_cleanup(chgs);
-
-	return KNOT_EOK;
 }
 
 zone_contents_t *zone_switch_contents(zone_t *zone, zone_contents_t *new_contents)

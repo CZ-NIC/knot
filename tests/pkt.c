@@ -16,9 +16,9 @@
 
 #include <tap/basic.h>
 
-#include "common/errcode.h"
+#include "libknot/errcode.h"
 #include "common/mempool.h"
-#include "common/descriptor.h"
+#include "libknot/descriptor.h"
 #include "libknot/packet/pkt.h"
 #include "libknot/rrtype/tsig.h"
 
@@ -101,7 +101,7 @@ int main(int argc, char *argv[])
 	 */
 
 	/* Create packet. */
-	knot_pkt_t *out = knot_pkt_new(NULL, DEFAULT_BLKSIZE, &mm);
+	knot_pkt_t *out = knot_pkt_new(NULL, MM_DEFAULT_BLKSIZE, &mm);
 	ok(out != NULL, "pkt: new");
 
 	/* Mark as response (not part of the test). */

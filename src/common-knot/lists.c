@@ -28,7 +28,7 @@
 
 #include <stdlib.h>
 #include <string.h>
-#include "common/lists.h"
+#include "common-knot/lists.h"
 
 /**
  * add_tail - append a node to a list
@@ -149,11 +149,11 @@ add_tail_list(list_t *to, list_t *l)
  *
  * This function only works with a homogenous item size.
  */
-void list_dup(list_t *dst, list_t *src, size_t itemsz, mm_ctx_t *mm)
+void list_dup(list_t *dst, list_t *src, size_t itemsz)
 {
 	node_t *n = 0;
 	WALK_LIST(n, *src) {
-		node_t *i = mm_alloc(mm, itemsz);
+		node_t *i = malloc(itemsz);
 		memcpy(i, n, itemsz);
 		add_tail(dst, i);
 	}

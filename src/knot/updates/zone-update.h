@@ -28,7 +28,7 @@
 
 #include "knot/updates/changesets.h"
 #include "knot/zone/contents.h"
-#include "common/mempattern.h"
+#include "libknot/mempattern.h"
 
 typedef struct {
 	const zone_contents_t *zone;

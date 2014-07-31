@@ -14,7 +14,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 /*!
- * \file dnssec.h
+ * \file sign.h
  *
  * \author Jan Vcelak <jan.vcelak@nic.cz>
  *
@@ -26,7 +26,6 @@
 
 #pragma once
 
-#include "common/descriptor.h"
 #include "libknot/binary.h"
 #include "libknot/consts.h"
 #include "libknot/dnssec/key.h"

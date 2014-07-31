@@ -63,3 +63,4 @@ int rrset_serialize(const knot_rrset_t *rrset, uint8_t *stream, size_t *size);
 int rrset_deserialize(const uint8_t *stream, size_t *stream_size,
                       knot_rrset_t *rrset);
 
+/*! @} */

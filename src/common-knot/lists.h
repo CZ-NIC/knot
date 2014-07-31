@@ -79,13 +79,11 @@ void rem_node(node_t *);
 void add_tail_list(list_t *, list_t *);
 void init_list(list_t *);
 void insert_node(node_t *, node_t *);
+void list_dup(list_t *dst, list_t *src, size_t itemsz);
 size_t list_size(const list_t *);
 
 #include <stdbool.h>
-#include "common/mempattern.h"
-
-void list_dup(list_t *dst, list_t *src, size_t itemsz, mm_ctx_t *mm);
-
+#include "libknot/mempattern.h"
 /*!
  * \brief Generic pointer list implementation.
  */

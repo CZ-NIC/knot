@@ -5,7 +5,7 @@
 #include "knot/nameserver/process_answer.h"
 #include "knot/updates/apply.h"
 #include "common/debug.h"
-#include "common/descriptor.h"
+#include "libknot/descriptor.h"
 #include "libknot/util/utils.h"
 #include "libknot/rrtype/soa.h"
 
@@ -29,7 +29,7 @@ struct ixfr_proc {
 	int state;                     /* IXFR-in state. */
 	knot_rrset_t *final_soa;       /* First SOA received via IXFR. */
 	list_t changesets;             /* Processed changesets. */
-	size_t change_count;           /* Count of changes received. */
+	size_t change_count;           /* Count of changesets received. */
 	zone_t *zone;                  /* Modified zone - for journal access. */
 	mm_ctx_t *mm;                  /* Memory context for RR allocations. */
 	struct query_data *qdata;
@@ -48,7 +48,9 @@ struct ixfr_proc {
 		return ret; \
 	}
 
-static int ixfr_put_chg_part(knot_pkt_t *pkt, struct ixfr_proc *ixfr, changeset_iter_t *itt)
+/*! \brief Puts current RR into packet, stores state for retries. */
+static int ixfr_put_chg_part(knot_pkt_t *pkt, struct ixfr_proc *ixfr,
+                             changeset_iter_t *itt)
 {
 	assert(pkt);
 	assert(ixfr);
@@ -64,6 +66,12 @@ static int ixfr_put_chg_part(knot_pkt_t *pkt, struct ixfr_proc *ixfr, changeset_
 	}
 
 	return ret;
+}
+
+/*! \brief Tests if iteration has started. */
+static bool iter_empty(struct ixfr_proc *ixfr)
+{
+	return EMPTY_LIST(ixfr->cur.iters) && knot_rrset_empty(&ixfr->cur_rr);
 }
 
 /*!
@@ -89,8 +97,11 @@ static int ixfr_process_changeset(knot_pkt_t *pkt, const void *item,
 
 	/* Put REMOVE RRSets. */
 	if (ixfr->state == IXFR_DEL) {
-		if (EMPTY_LIST(ixfr->cur.iters) && knot_rrset_empty(&ixfr->cur_rr)) {
-			changeset_iter_rem(&ixfr->cur, chgset, false);
+		if (iter_empty(ixfr)) {
+			ret = changeset_iter_rem(&ixfr->cur, chgset, false);
+			if (ret != KNOT_EOK) {
+				return ret;
+			}
 		}
 		ret = ixfr_put_chg_part(pkt, ixfr, &ixfr->cur);
 		if (ret != KNOT_EOK) {
@@ -109,8 +120,11 @@ static int ixfr_process_changeset(knot_pkt_t *pkt, const void *item,
 
 	/* Put Add RRSets. */
 	if (ixfr->state == IXFR_ADD) {
-		if (EMPTY_LIST(ixfr->cur.iters) && knot_rrset_empty(&ixfr->cur_rr)) {
+		if (iter_empty(ixfr)) {
 			changeset_iter_add(&ixfr->cur, chgset, false);
+			if (ret != KNOT_EOK) {
+				return ret;
+			}
 		}
 		ret = ixfr_put_chg_part(pkt, ixfr, &ixfr->cur);
 		if (ret != KNOT_EOK) {
@@ -131,6 +145,7 @@ static int ixfr_process_changeset(knot_pkt_t *pkt, const void *item,
 
 #undef IXFR_SAFE_PUT
 
+/*! \brief Loads IXFRs from journal. */
 static int ixfr_load_chsets(list_t *chgsets, const zone_t *zone,
                             const knot_rrset_t *their_soa)
 {
@@ -153,6 +168,7 @@ static int ixfr_load_chsets(list_t *chgsets, const zone_t *zone,
 	return ret;
 }
 
+/*! \brief Check IXFR query validity. */
 static int ixfr_query_check(struct query_data *qdata)
 {
 	/* Check if zone exists. */
@@ -177,6 +193,7 @@ static int ixfr_query_check(struct query_data *qdata)
 	return NS_PROC_DONE;
 }
 
+/*! \brief Cleans up ixfr processing context. */
 static void ixfr_answer_cleanup(struct query_data *qdata)
 {
 	struct ixfr_proc *ixfr = (struct ixfr_proc *)qdata->ext;
@@ -191,6 +208,7 @@ static void ixfr_answer_cleanup(struct query_data *qdata)
 	rcu_read_unlock();
 }
 
+/*! \brief Inits ixfr processing context. */
 static int ixfr_answer_init(struct query_data *qdata)
 {
 	/* Check IXFR query validity. */
@@ -252,6 +270,7 @@ static int ixfr_answer_init(struct query_data *qdata)
 	return KNOT_EOK;
 }
 
+/*! \brief Sends response to SOA query. */
 static int ixfr_answer_soa(knot_pkt_t *pkt, struct query_data *qdata)
 {
 	dbg_ns("%s: answering IXFR/SOA\n", __func__);
@@ -327,15 +346,32 @@ static int ixfrin_answer_init(struct answer_data *data)
 static int ixfrin_finalize(struct answer_data *adata)
 {
 	struct ixfr_proc *ixfr = adata->ext;
-
 	assert(ixfr->state == IXFR_DONE);
-	int ret = zone_change_apply_and_store(&ixfr->changesets,
-	                                      ixfr->zone, "IXFR");
+
+	zone_contents_t *new_contents;
+	int ret = apply_changesets(ixfr->zone, &ixfr->changesets, &new_contents);
 	if (ret != KNOT_EOK) {
 		IXFRIN_LOG(LOG_ERR, "Failed to apply changes to zone - %s",
 		           knot_strerror(ret));
 		return ret;
 	}
+
+	/* Write changes to journal. */
+	ret = zone_changes_store(ixfr->zone, &ixfr->changesets);
+	if (ret != KNOT_EOK) {
+		IXFRIN_LOG(LOG_ERR, "Failed to apply changes to zone - %s",
+		           knot_strerror(ret));
+		updates_rollback(&ixfr->changesets);
+		update_free_zone(&new_contents);
+		return ret;
+	}
+
+	/* Switch zone contents. */
+	zone_contents_t *old_contents = zone_switch_contents(ixfr->zone, new_contents);
+	synchronize_rcu();
+	update_free_zone(&old_contents);
+
+	updates_cleanup(&ixfr->changesets);
 
 	struct timeval now = {0};
 	gettimeofday(&now, NULL);

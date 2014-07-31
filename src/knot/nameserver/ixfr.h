@@ -1,7 +1,8 @@
 /*!
  * \file ixfr.h
  *
- * \author Marek Vavrusa <marek.vavrusa@nic.cz>
+ * \author Marek Vavrusa <marek.vavrusa@nic.cz> - IXFR/OUT
+ * \author Jan Kadlec <marek.vavrusa@nic.cz> - IXFR/IN
  *
  * \brief IXFR processing.
  *

@@ -2,10 +2,10 @@
 #include <assert.h>
 #include <stdbool.h>
 
-#include "common/hhash.h"
-#include "common/binsearch.h"
-#include "common/errcode.h"
-#include "common/hattrie/murmurhash3.h"
+#include "common-knot/hhash.h"
+#include "common-knot/binsearch.h"
+#include "libknot/errcode.h"
+#include "common-knot/hattrie/murmurhash3.h"
 #include "libknot/common.h"
 
 /* UCW array sorting defines. */
@@ -14,7 +14,7 @@ static int universal_cmp(uint32_t k1, uint32_t k2, hhash_t *tbl);
 #define ASORT_KEY_TYPE uint32_t 
 #define ASORT_LT(x, y) (universal_cmp((x), (y), tbl) < 0)
 #define ASORT_EXTRA_ARGS , hhash_t *tbl 
-#include "common/array-sort.h"
+#include "common-knot/array-sort.h"
 
 /* Hopscotch internal defines. */
 #define HOP_NEXT(x) __builtin_ctz((x))

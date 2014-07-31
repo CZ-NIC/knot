@@ -24,7 +24,7 @@
 #include <sys/mman.h>
 #include <assert.h>
 
-#include "common/crc.h"
+#include "common-knot/crc.h"
 #include "libknot/common.h"
 #include "knot/other/debug.h"
 #include "knot/server/journal.h"
@@ -979,13 +979,13 @@ static int changesets_unpack(changeset_t *chs)
 			if (in_remove_section) {
 				chs->soa_to = knot_rrset_copy(&rrset, NULL);
 				if (chs->soa_to == NULL) {
-					knot_rrset_clear(&rrset, NULL);
-					return KNOT_ENOMEM;
+					ret = KNOT_ENOMEM;
+					break;
 				}
 				in_remove_section = false;
 			} else {
-				/* Final SOA. */
-				break;
+				/* Final SOA, no-op. */
+				;
 			}
 		} else {
 			/* Remove RRSets. */
@@ -997,9 +997,11 @@ static int changesets_unpack(changeset_t *chs)
 			}
 		}
 		knot_rrset_clear(&rrset, NULL);
+		if (ret != KNOT_EOK) {
+			break;
+		}
 	}
 
-	knot_rrset_clear(&rrset, NULL);
 	return ret;
 }
 
@@ -1027,7 +1029,10 @@ static int serialize_and_store_chgset(const changeset_t *chs,
 	}
 
 	changeset_iter_t itt;
-	changeset_iter_rem(&itt, chs, false);
+	ret = changeset_iter_rem(&itt, chs, false);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
 
 	knot_rrset_t rrset = changeset_iter_next(&itt);
 	while (!knot_rrset_empty(&rrset)) {
@@ -1047,7 +1052,10 @@ static int serialize_and_store_chgset(const changeset_t *chs,
 	}
 
 	/* Serialize RRSets from the 'add' section. */
-	changeset_iter_add(&itt, chs, false);
+	ret = changeset_iter_add(&itt, chs, false);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
 
 	rrset = changeset_iter_next(&itt);
 	while (!knot_rrset_empty(&rrset)) {
@@ -1219,17 +1227,32 @@ int journal_store_changesets(list_t *src, const char *path, size_t size_limit)
 	/* Begin writing to journal. */
 	changeset_t *chs = NULL;
 	WALK_LIST(chs, *src) {
-		/* Make key from serials. */
 		ret = changeset_pack(chs, journal);
 		if (ret != KNOT_EOK) {
 			break;
 		}
 	}
 
-	/*! @note If the journal is full, this function returns KNOT_EBUSY. */
+	journal_close(journal);
+	return ret;
+}
 
-	/* Written changesets to journal. */
-	return journal_close(journal);
+int journal_store_changeset(changeset_t *change, const char *path, size_t size_limit)
+{
+	if (change == NULL || path == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	/* Open journal for reading. */
+	journal_t *journal = journal_open(path, size_limit);
+	if (journal == NULL) {
+		return KNOT_ENOMEM;
+	}
+
+	int ret = changeset_pack(change, journal);
+
+	journal_close(journal);
+	return ret;
 }
 
 static void mark_synced(journal_t *journal, journal_node_t *node)

@@ -19,9 +19,9 @@
 #include <string.h>
 #include <tap/basic.h>
 
-#include "common/errcode.h"
+#include "libknot/errcode.h"
 #include "common/base64.h"
-#include "common/strlcpy.h"
+#include "common-knot/strlcpy.h"
 
 #define BUF_LEN			256
 #define MAX_BIN_DATA_LEN	((INT32_MAX / 4) * 3)

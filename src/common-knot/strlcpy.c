@@ -17,7 +17,7 @@
 #include <sys/types.h>
 #include <string.h>
 
-#include "common/strlcpy.h"
+#include "common-knot/strlcpy.h"
 
 size_t
 knot_strlcpy(char *dst, const char *src, size_t siz)
