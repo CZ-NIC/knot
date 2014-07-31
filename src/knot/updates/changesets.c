@@ -14,20 +14,17 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <string.h>
 #include <stdlib.h>
 #include <assert.h>
 #include <stdarg.h>
 
 #include "knot/updates/changesets.h"
 #include "libknot/common.h"
-#include "libknot/descriptor.h"
-#include "libknot/mempattern.h"
-#include "common/mempool.h"
 #include "libknot/rrset.h"
-#include "libknot/rrtype/soa.h"
-#include "common/debug.h"
 
+/* -------------------- Changeset iterator helpers -------------------------- */
+
+/*! \brief Adds RRSet to given zone. */
 static int add_rr_to_zone(zone_contents_t *z, const knot_rrset_t *rrset)
 {
 	zone_node_t *n = NULL;
@@ -36,6 +33,7 @@ static int add_rr_to_zone(zone_contents_t *z, const knot_rrset_t *rrset)
 	return ret;
 }
 
+/*! \brief Cleans up trie iterations. */
 static void cleanup_iter_list(list_t *l)
 {
 	ptrnode_t *n, *nxt;
@@ -48,6 +46,7 @@ static void cleanup_iter_list(list_t *l)
 	init_list(l);
 }
 
+/*! \brief Inits changeset iterator with given HAT-tries. */
 static int changeset_iter_init(changeset_iter_t *ch_it,
                                const changeset_t *ch, bool sorted, size_t tries, ...)
 {
@@ -80,6 +79,7 @@ static int changeset_iter_init(changeset_iter_t *ch_it,
 	return KNOT_EOK;
 }
 
+/*! \brief Gets next node from trie iterators. */
 static void iter_next_node(changeset_iter_t *ch_it, hattrie_iter_t *t_it)
 {
 	assert(!hattrie_iter_finished(t_it));
@@ -108,6 +108,7 @@ static void iter_next_node(changeset_iter_t *ch_it, hattrie_iter_t *t_it)
 	ch_it->node_pos = 0;
 }
 
+/*! \brief Gets next RRSet from trie iterators. */
 static knot_rrset_t get_next_rr(changeset_iter_t *ch_it, hattrie_iter_t *t_it) // pun intented
 {
 	if (ch_it->node == NULL || ch_it->node_pos == ch_it->node->rrset_count) {
@@ -122,6 +123,8 @@ static knot_rrset_t get_next_rr(changeset_iter_t *ch_it, hattrie_iter_t *t_it) /
 
 	return node_rrset_at(ch_it->node, ch_it->node_pos++);
 }
+
+/* ------------------------------- API -------------------------------------- */
 
 int changeset_init(changeset_t *ch, const knot_dname_t *apex)
 {
