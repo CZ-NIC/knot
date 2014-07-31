@@ -303,9 +303,9 @@ static int axfr_answer_init(struct answer_data *data)
 	return KNOT_EOK;
 }
 
-/* AXFR-specific logging (internal, expects 'data' variable set). */
-#define AXFRIN_LOG(severity, msg...) \
-	ANSWER_LOG(severity, adata, "Incoming AXFR", msg)
+/* AXFR-specific logging (internal, expects 'adata' variable set). */
+#define AXFRIN_LOG(priority, msg...) \
+	ANSWER_LOG(priority, adata, "Incoming AXFR", msg)
 
 static int axfr_answer_finalize(struct answer_data *adata)
 {
@@ -331,7 +331,7 @@ static int axfr_answer_finalize(struct answer_data *adata)
 	           zone_contents_serial(old_contents),
 	           zone_contents_serial(proc->contents));
 
-	AXFRIN_LOG(LOG_INFO, "Finished in %.02fs (%u messages, %s%.*f %s).",
+	AXFRIN_LOG(LOG_INFO, "Finished in %.02fs (%u messages, %s%.*f %s)",
 	           time_diff(&proc->tstamp, &now) / 1000.0,
 	           proc->npkts, SIZE_PARAMS(proc->nbytes));
 
