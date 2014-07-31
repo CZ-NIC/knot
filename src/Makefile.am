@@ -110,7 +110,6 @@ libknotcs_la_SOURCES =				\
 	common/getline.h			\
 	common/mem.c				\
 	common/mem.h				\
-	common/memdup.h				\
 	common/mempool.c			\
 	common/mempool.h			\
 	common/log.c				\
