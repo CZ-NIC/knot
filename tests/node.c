@@ -52,13 +52,13 @@ int main(int argc, char *argv[])
 	
 	knot_dname_t *dummy_owner = knot_dname_from_str("test.");
 	// Test new
-	zone_node_t *node = node_new(dummy_owner);
+	zone_node_t *node = node_new(dummy_owner, NULL);
 	ok(node != NULL, "Node: new");
 	assert(node);
 	ok(knot_dname_is_equal(node->owner, dummy_owner), "Node: new - set fields");
 	
 	// Test parent setting
-	zone_node_t *parent = node_new(dummy_owner);
+	zone_node_t *parent = node_new(dummy_owner, NULL);
 	assert(parent);
 	node_set_parent(node, parent);
 	ok(node->parent == parent && parent->children == 1, "Node: set parent.");
@@ -67,13 +67,13 @@ int main(int argc, char *argv[])
 	
 	// Test RRSet addition
 	knot_rrset_t *dummy_rrset = create_dummy_rrset(dummy_owner, KNOT_RRTYPE_TXT);
-	int ret = node_add_rrset(node, dummy_rrset);
+	int ret = node_add_rrset(node, dummy_rrset, NULL);
 	ok(ret == KNOT_EOK && node->rrset_count == 1 &&
 	   knot_rdataset_eq(&dummy_rrset->rrs, &node->rrs[0].rrs), "Node: add RRSet.");
 	
 	// Test shallow copy
 	node->flags |= NODE_FLAGS_DELEG;
-	zone_node_t *copy = node_shallow_copy(node);
+	zone_node_t *copy = node_shallow_copy(node, NULL);
 	ok(copy != NULL, "Node: shallow copy.");
 	assert(copy);
 	const bool copy_ok = knot_dname_is_equal(copy->owner, node->owner) &&
@@ -116,7 +116,7 @@ int main(int argc, char *argv[])
 	// Test TTL mismatch
 	knot_rdata_t *data = knot_rdataset_at(&dummy_rrset->rrs, 0);
 	knot_rdata_set_ttl(data, 1800);
-	ret = node_add_rrset(node, dummy_rrset);
+	ret = node_add_rrset(node, dummy_rrset, NULL);
 	ok(ret == KNOT_ETTL && node->rrset_count == 1,
 	   "Node: add RRSet, TTL mismatch.");
 	
@@ -128,7 +128,7 @@ int main(int argc, char *argv[])
 	ok(!node_rrtype_is_signed(node, KNOT_RRTYPE_TXT), "Node: type is not signed.");
 	
 	dummy_rrset = create_dummy_rrsig(dummy_owner, KNOT_RRTYPE_TXT);
-	ret = node_add_rrset(node, dummy_rrset);
+	ret = node_add_rrset(node, dummy_rrset, NULL);
 	assert(ret == KNOT_EOK);
 	
 	ok(node_rrtype_is_signed(node, KNOT_RRTYPE_TXT), "Node: type is signed.");
