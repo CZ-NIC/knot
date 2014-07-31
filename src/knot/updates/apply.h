@@ -107,11 +107,11 @@ void updates_rollback(list_t *chgs);
 void update_rollback(changeset_t *change);
 
 /*!
- * \brief Frees old zone contents - i.e. contents that were used to create the
- *        shallow copy, but are now obsolete.
- 
+ * \brief Shallow frees zone contents - either shallow copy after failed update
+ *        or original zone contents after successful update.
+ *
  * \param contents  Contents to free.
  */
-void update_free_old_zone(zone_contents_t **contents);
+void update_free_zone(zone_contents_t **contents);
 
 /*! @} */

@@ -485,7 +485,7 @@ int apply_changesets(zone_t *zone, list_t *chsets, zone_contents_t **new_content
 		ret = apply_single(contents_copy, set, master);
 		if (ret != KNOT_EOK) {
 			updates_rollback(chsets);
-			update_free_old_zone(&contents_copy);
+			update_free_zone(&contents_copy);
 			return ret;
 		}
 	}
@@ -495,7 +495,7 @@ int apply_changesets(zone_t *zone, list_t *chsets, zone_contents_t **new_content
 	ret = finalize_updated_zone(contents_copy, true);
 	if (ret != KNOT_EOK) {
 		updates_rollback(chsets);
-		update_free_old_zone(&contents_copy);
+		update_free_zone(&contents_copy);
 		return ret;
 	}
 
@@ -525,14 +525,14 @@ int apply_changeset(zone_t *zone, changeset_t *change, zone_contents_t **new_con
 	ret = apply_single(contents_copy, change, master);
 	if (ret != KNOT_EOK) {
 		update_rollback(change);
-		update_free_old_zone(&contents_copy);
+		update_free_zone(&contents_copy);
 		return ret;
 	}
 	
 	ret = finalize_updated_zone(contents_copy, true);
 	if (ret != KNOT_EOK) {
 		update_rollback(change);
-		update_free_old_zone(&contents_copy);
+		update_free_zone(&contents_copy);
 		return ret;
 	}
 	
@@ -633,7 +633,7 @@ void updates_rollback(list_t *chgs)
 	}
 }
 
-void update_free_old_zone(zone_contents_t **contents)
+void update_free_zone(zone_contents_t **contents)
 {
 	zone_tree_apply((*contents)->nodes, free_additional, NULL);
 	zone_tree_deep_free(&(*contents)->nodes);

@@ -362,14 +362,14 @@ static int ixfrin_finalize(struct answer_data *adata)
 		IXFRIN_LOG(LOG_ERR, "Failed to apply changes to zone - %s",
 		           knot_strerror(ret));
 		updates_rollback(&ixfr->changesets);
-		update_free_old_zone(&new_contents);
+		update_free_zone(&new_contents);
 		return ret;
 	}
 
 	/* Switch zone contents. */
 	zone_contents_t *old_contents = zone_switch_contents(ixfr->zone, new_contents);
 	synchronize_rcu();
-	update_free_old_zone(&old_contents);
+	update_free_zone(&old_contents);
 
 	updates_cleanup(&ixfr->changesets);
 

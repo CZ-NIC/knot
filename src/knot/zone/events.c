@@ -543,14 +543,14 @@ static int event_dnssec(zone_t *zone)
 			log_zone_error("%s Could not sign zone (%s).\n",
 			               msgpref, knot_strerror(ret));
 			update_rollback(&ch);
-			update_free_old_zone(&new_contents);
+			update_free_zone(&new_contents);
 			goto done;
 		}
 
 		/* Switch zone contents. */
 		zone_contents_t *old_contents = zone_switch_contents(zone, new_contents);
 		synchronize_rcu();
-		update_free_old_zone(&old_contents);
+		update_free_zone(&old_contents);
 
 		update_cleanup(&ch);
 	}

@@ -428,9 +428,9 @@ static bool skip_soa(const knot_rrset_t *rr, int64_t sn)
 
 /* ---------------------- changeset manipulation ---------------------------- */
 
-/*!< \brief Checks whether record should be added or replaced. */
-static bool skip_record_addition(changeset_t *changeset,
-                                 const knot_rrset_t *rr)
+/*!< \brief Replaces possible singleton RR type in changeset. */
+static bool singleton_replaced(changeset_t *changeset,
+                               const knot_rrset_t *rr)
 {
 	if (!should_replace(rr)) {
 		return false;
@@ -458,7 +458,7 @@ static bool skip_record_addition(changeset_t *changeset,
 static int add_rr_to_chgset(const knot_rrset_t *rr, changeset_t *changeset,
                             int *apex_ns_rem)
 {
-	if (skip_record_addition(changeset, rr)) {
+	if (singleton_replaced(changeset, rr)) {
 		return KNOT_EOK;
 	}
 

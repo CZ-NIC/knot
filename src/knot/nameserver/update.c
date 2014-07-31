@@ -181,7 +181,7 @@ static int process_authenticated(uint16_t *rcode, struct query_data *qdata)
 		                  &sec_ch);
 		if (ret != KNOT_EOK) {
 			update_rollback(&ddns_ch);
-			update_free_old_zone(&new_contents);
+			update_free_zone(&new_contents);
 			changeset_clear(&ddns_ch);
 			changeset_clear(&sec_ch);
 			*rcode = KNOT_RCODE_SERVFAIL;
@@ -193,7 +193,7 @@ static int process_authenticated(uint16_t *rcode, struct query_data *qdata)
 	ret = zone_change_store(zone, &ddns_ch);
 	if (ret != KNOT_EOK) {
 		update_rollback(&ddns_ch);
-		update_free_old_zone(&new_contents);
+		update_free_zone(&new_contents);
 		changeset_clear(&ddns_ch);
 		if (zone->conf->dnssec_enable) {
 			changeset_clear(&sec_ch);
@@ -213,7 +213,7 @@ static int process_authenticated(uint16_t *rcode, struct query_data *qdata)
 	}
 
 	// Clear obsolete zone contents
-	update_free_old_zone(&old_contents);
+	update_free_zone(&old_contents);
 
 	update_cleanup(&ddns_ch);
 	changeset_clear(&ddns_ch);
