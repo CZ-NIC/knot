@@ -57,12 +57,14 @@ int zone_load_check(zone_contents_t *contents, conf_zone_t *zone_config)
 		return KNOT_EOK;
 	}
 
+	const knot_dname_t *zone_name = contents->apex->owner;
+
 	/* Check minimum EDNS0 payload if signed. (RFC4035/sec. 3) */
 	if (zone_contents_is_signed(contents)) {
 		if (conf()->max_udp_payload < KNOT_EDNS_MIN_DNSSEC_PAYLOAD) {
-			log_zone_warning("EDNS payload lower than %uB for "
-			                 "DNSSEC-enabled zone '%s'.\n",
-			                 KNOT_EDNS_MIN_DNSSEC_PAYLOAD, zone_config->name);
+			log_zone_warning(zone_name, "EDNS payload size is "
+					 "lower than %uB for DNSSEC zone",
+					 KNOT_EDNS_MIN_DNSSEC_PAYLOAD);
 			conf()->max_udp_payload = KNOT_EDNS_MIN_DNSSEC_PAYLOAD;
 		}
 	}
@@ -70,7 +72,7 @@ int zone_load_check(zone_contents_t *contents, conf_zone_t *zone_config)
 	/* Check NSEC3PARAM state if present. */
 	int result = zone_contents_load_nsec3param(contents);
 	if (result != KNOT_EOK) {
-		log_zone_error("NSEC3 signed zone has invalid or no "
+		log_zone_error(zone_name, "NSEC3 signed zone has invalid or no "
 			       "NSEC3PARAM record.\n");
 		return result;
 	}
@@ -111,8 +113,7 @@ int zone_load_journal(zone_contents_t *contents, conf_zone_t *zone_config)
 
 	/* Apply changesets. */
 	ret = apply_changesets_directly(contents,  chsets);
-	log_zone_info("Zone '%s' serial %u -> %u: %s\n",
-	              zone_config->name,
+	log_zone_info(contents->apex->owner, "Serial %u -> %u: %s\n",
 	              serial, zone_contents_serial(contents),
 	              knot_strerror(ret));
 	update_cleanup(chsets);
@@ -169,22 +170,20 @@ int zone_load_post(zone_contents_t *contents, zone_t *zone, uint32_t *dnssec_ref
 		ret = zone_contents_create_diff(zone->contents, contents,
 		                                changesets_get_last(diff_change));
 		if (ret == KNOT_ENODIFF) {
-			log_zone_warning("Zone %s: Zone file changed, "
+			log_zone_warning(zone->name, "Zone file changed, "
 			                 "but serial didn't - won't "
-			                 "create journal entry.\n",
-			                 conf->name);
+			                 "create journal entry\n");
 			changesets_free(&diff_change, NULL);
 		} else if (ret == KNOT_ERANGE) {
-			log_zone_warning("Zone %s: Zone file changed, "
+			log_zone_warning(zone->name, "Zone file changed, "
 			                 "but serial is lower than before - "
-			                 "IXFR history will be lost.\n",
-			                 conf->name);
+			                 "IXFR history will be lost\n");
 			changesets_free(&diff_change, NULL);
 		} else if (ret != KNOT_EOK) {
-			log_zone_error("Zone %s: Failed to calculate "
+			log_zone_error(zone->name, "Failed to calculate "
 			               "differences from the zone "
 			               "file update: %s\n",
-			               conf->name, knot_strerror(ret));
+			               knot_strerror(ret));
 			changesets_free(&diff_change, NULL);
 			return ret;
 		}

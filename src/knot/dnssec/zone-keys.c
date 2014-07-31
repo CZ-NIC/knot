@@ -123,14 +123,6 @@ int knot_load_zone_keys(const char *keydir_name, const knot_dname_t *zone_name,
 		return KNOT_DNSSEC_ENOKEYDIR;
 	}
 
-	char *zname = knot_dname_to_str(zone_name);
-	char *msgpref = sprintf_alloc("DNSSEC: Zone %s -", zname);
-	free(zname);
-	if (msgpref == NULL) {
-		closedir(keydir);
-		return KNOT_ENOMEM;
-	}
-
 	int result = KNOT_EOK;
 
 	struct dirent entry_buf = { 0 };
@@ -151,7 +143,6 @@ int knot_load_zone_keys(const char *keydir_name, const knot_dname_t *zone_name,
 		if (!path) {
 			ERR_ALLOC_FAILED;
 			closedir(keydir);
-			free(msgpref);
 			return KNOT_ENOMEM;
 		}
 
@@ -167,8 +158,8 @@ int knot_load_zone_keys(const char *keydir_name, const knot_dname_t *zone_name,
 		free(path);
 
 		if (ret != KNOT_EOK) {
-			log_zone_warning("DNSSEC: Failed to load key %s: %s\n",
-			                  entry->d_name, knot_strerror(ret));
+			log_zone_warning(zone_name, "DNSSEC: Failed to load key '%s': %s\n",
+			                 entry->d_name, knot_strerror(ret));
 			knot_free_key_params(&params);
 			continue;
 		}
@@ -198,9 +189,8 @@ int knot_load_zone_keys(const char *keydir_name, const knot_dname_t *zone_name,
 		if (!knot_dnssec_algorithm_is_zonesign(params.algorithm,
 		                                       nsec3_enabled)
 		) {
-			log_zone_notice("%s Ignoring key %d (%s): unknown "
-			                "algorithm or non-NSEC3 algorithm when"
-			                " NSEC3 is requested.\n", msgpref,
+			log_zone_notice(zone_name, "DNSSEC: Ignoring key %d (%s): "
+					"incompatible algorithm\n",
 			                params.keytag, entry->d_name);
 			knot_free_key_params(&params);
 			free(key);
@@ -208,9 +198,9 @@ int knot_load_zone_keys(const char *keydir_name, const knot_dname_t *zone_name,
 		}
 
 		if (knot_get_zone_key(keys, params.keytag) != NULL) {
-			log_zone_notice("%s Ignoring key %d (%s): duplicate "
-			                "keytag.\n", msgpref, params.keytag,
-			                entry->d_name);
+			log_zone_notice(zone_name, "DNSSEC: Ignoring key %d (%s): "
+					"duplicate keytag\n",
+					params.keytag, entry->d_name);
 			knot_free_key_params(&params);
 			free(key);
 			continue;
@@ -218,16 +208,17 @@ int knot_load_zone_keys(const char *keydir_name, const knot_dname_t *zone_name,
 
 		ret = knot_dnssec_key_from_params(&params, &key->dnssec_key);
 		if (ret != KNOT_EOK) {
-			log_zone_error("%s Failed to process key %d (%s): %s\n",
-			               msgpref, params.keytag, entry->d_name,
+			log_zone_error(zone_name, "DNSSEC: Failed to process "
+				       "key %d (%s): %s\n",
+				       params.keytag, entry->d_name,
 			               knot_strerror(ret));
 			knot_free_key_params(&params);
 			free(key);
 			continue;
 		}
 
-		log_zone_info("%s - Loaded key %5d, file %s, %s, %s, %s\n",
-		              msgpref, params.keytag, entry->d_name,
+		log_zone_info(zone_name, "DNSSEC: Loaded key %5d, file %s, %s, %s, %s\n",
+		              params.keytag, entry->d_name,
 		              key->is_ksk ? "KSK" : "ZSK",
 		              key->is_active ? "active" : "inactive",
 		              key->is_public ? "public" : "not-public");
@@ -250,8 +241,6 @@ int knot_load_zone_keys(const char *keydir_name, const knot_dname_t *zone_name,
 	if (result != KNOT_EOK) {
 		knot_free_zone_keys(keys);
 	}
-
-	free(msgpref);
 
 	return result;
 }

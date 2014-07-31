@@ -63,9 +63,8 @@ static uint32_t bootstrap_next(uint32_t timer)
 /* ------------------------- zone query requesting -------------------------- */
 
 /*! \brief Zone event logging. */
-#define ZONE_QUERY_LOG(severity, zone, remote, what, msg...) \
-	NS_PROC_LOG(severity, LOG_ZONE, &remote->addr, zone->conf->name, \
-	            what " of '%s' with '%s': ", msg)
+#define ZONE_QUERY_LOG(priority, zone, remote, operation, msg...) \
+	NS_PROC_LOG(priority, &remote->addr, zone->name, operation, msg)
 
 /*! \brief Create zone query packet. */
 static knot_pkt_t *zone_query(const zone_t *zone, uint16_t pkt_type, mm_ctx_t *mm)
@@ -163,11 +162,11 @@ fail:
 }
 
 /* @note Module specific, expects some variables set. */
-#define ZONE_XFER_LOG(severity, pkt_type, msg...) \
+#define ZONE_XFER_LOG(priority, pkt_type, msg...) \
 	if (pkt_type == KNOT_QUERY_AXFR) { \
-		ZONE_QUERY_LOG(severity, zone, master, "AXFR", msg); \
+		ZONE_QUERY_LOG(priority, zone, master, "AXFR", msg); \
 	} else { \
-		ZONE_QUERY_LOG(severity, zone, master, "IXFR", msg); \
+		ZONE_QUERY_LOG(priority, zone, master, "IXFR", msg); \
 	}
 
 /*! \brief Execute zone transfer request. */
@@ -212,8 +211,7 @@ static void schedule_dnssec(zone_t *zone, time_t refresh_at)
 	struct tm time_gm = { 0 };
 	localtime_r(&refresh_at, &time_gm);
 	strftime(time_str, sizeof(time_str), KNOT_LOG_TIME_FORMAT, &time_gm);
-	log_zone_info("DNSSEC: Zone %s - Next event on %s.\n",
-	              zone->conf->name, time_str);
+	log_zone_info(zone->name, "DNSSEC: Next event on %s\n", time_str);
 
 	// schedule
 
@@ -257,11 +255,11 @@ static int event_reload(zone_t *zone)
 	result = zone_load_post(contents, zone, &dnssec_refresh);
 	if (result != KNOT_EOK) {
 		if (result == KNOT_ESPACE) {
-			log_zone_error("Zone '%s' journal size is too small to fit the changes.\n",
-			               zone_config->name);
+			log_zone_error(zone->name, "Journal size is too small "
+				       "to fit the changes\n");
 		} else {
-			log_zone_error("Zone '%s' failed to store changes in the journal - %s\n",
-			               zone_config->name, knot_strerror(result));
+			log_zone_error(zone->name, "Failed to store changes into "
+				       "journal: %s\n", knot_strerror(result));
 		}
 		goto fail;
 	}
@@ -299,7 +297,7 @@ static int event_reload(zone_t *zone)
 	zone_events_schedule(zone, ZONE_EVENT_FLUSH, zone_config->dbsync_timeout);
 
 	uint32_t current_serial = zone_contents_serial(zone->contents);
-	log_zone_info("Zone '%s' loaded (%u -> %u).\n", zone_config->name,
+	log_zone_info(zone->name, "Loaded, serial %u -> %u\n",
 	              old_serial, current_serial);
 	return KNOT_EOK;
 
@@ -437,7 +435,7 @@ static int event_expire(zone_t *zone)
 	zone->zonefile_serial = 0;
 	zone_contents_deep_free(&expired);
 
-	log_zone_info("Zone '%s' expired.\n", zone->conf->name);
+	log_zone_info(zone->name, "Zone expired\n");
 
 	/* Trim extra heap. */
 	mem_trim();
@@ -502,24 +500,17 @@ static int event_dnssec(zone_t *zone)
 	assert(ch);
 
 	int ret = KNOT_ERROR;
-	char *zname = knot_dname_to_str(zone->name);
-	char *msgpref = sprintf_alloc("DNSSEC: Zone %s -", zname);
-	free(zname);
-	if (msgpref == NULL) {
-		ret = KNOT_ENOMEM;
-		goto done;
-	}
 
 	uint32_t refresh_at = time(NULL);
 	if (zone->flags & ZONE_FORCE_RESIGN) {
-		log_zone_info("%s Complete resign started (dropping all "
-			      "previous signatures)...\n", msgpref);
+		log_zone_info(zone->name, "DNSSEC: Dropping previous "
+			      "signatures, resigning zone\n");
 
 		zone->flags &= ~ZONE_FORCE_RESIGN;
 		ret = knot_dnssec_zone_sign_force(zone->contents, zone->conf,
 		                                  ch, &refresh_at);
 	} else {
-		log_zone_info("%s Signing zone...\n", msgpref);
+		log_zone_info(zone->name, "DNSSEC: Signing zone\n");
 		ret = knot_dnssec_zone_sign(zone->contents, zone->conf,
 		                            ch, KNOT_SOA_SERIAL_UPDATE,
 		                            &refresh_at);
@@ -531,8 +522,8 @@ static int event_dnssec(zone_t *zone)
 	if (!changesets_empty(chs)) {
 		ret = zone_change_apply_and_store(&chs, zone, "DNSSEC", NULL);
 		if (ret != KNOT_EOK) {
-			log_zone_error("%s Could not sign zone (%s).\n",
-				       msgpref, knot_strerror(ret));
+			log_zone_error(zone->name, "DNSSEC: Could not sign zone: %s\n",
+				       knot_strerror(ret));
 			goto done;
 		}
 	}
@@ -547,7 +538,6 @@ static int event_dnssec(zone_t *zone)
 
 done:
 	changesets_free(&chs, NULL);
-	free(msgpref);
 	return ret;
 }
 
@@ -813,8 +803,8 @@ static void event_wrap(task_t *task)
 	const event_info_t *info = get_event_info(type);
 	int result = info->callback(zone);
 	if (result != KNOT_EOK) {
-		log_zone_error("Zone '%s' event '%s' failed - %s\n", zone->conf->name,
-		               info->name, knot_strerror(result));
+		log_zone_error(zone->name, "Zone %s failed: %s\n", info->name,
+		               knot_strerror(result));
 	}
 
 	pthread_mutex_lock(&events->mx);

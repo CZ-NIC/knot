@@ -127,7 +127,7 @@ int zone_change_store(zone_t *zone, changesets_t *chset)
 
 	int ret = journal_store_changesets(chset, conf->ixfr_db, conf->ixfr_fslimit);
 	if (ret == KNOT_EBUSY) {
-		log_zone_notice("Journal for '%s' is full, flushing.\n", conf->name);
+		log_zone_notice(zone->name, "Zone journal is full, flushing\n");
 
 		/* Transaction rolled back, journal released, we may flush. */
 		ret = zone_flush_journal(zone);
@@ -144,7 +144,7 @@ int zone_change_store(zone_t *zone, changesets_t *chset)
 /*! \note @mvavrusa Moved from zones.c, this needs a common API. */
 int zone_change_apply_and_store(changesets_t **chs,
                                 zone_t *zone,
-                                const char *msgpref,
+                                const char *operation,
                                 mm_ctx_t *rr_mm)
 {
 	int ret = KNOT_EOK;
@@ -153,7 +153,7 @@ int zone_change_apply_and_store(changesets_t **chs,
 	zone_contents_t *new_contents;
 	ret = apply_changesets(zone, *chs, &new_contents);
 	if (ret != KNOT_EOK) {
-		log_zone_error("%s Failed to apply changesets.\n", msgpref);
+		log_zone_error(zone->name, "%s: Failed to apply changesets\n", operation);
 		/* Free changesets, but not the data. */
 		changesets_free(chs, rr_mm);
 		return ret;  // propagate the error above
@@ -162,7 +162,7 @@ int zone_change_apply_and_store(changesets_t **chs,
 	/* Write changes to journal if all went well. */
 	ret = zone_change_store(zone, *chs);
 	if (ret != KNOT_EOK) {
-		log_zone_error("%s Failed to store changesets.\n", msgpref);
+		log_zone_error(zone->name, "%s: Failed to store changesets\n", operation);
 		update_rollback(*chs, &new_contents);
 		/* Free changesets, but not the data. */
 		changesets_free(chs, rr_mm);
@@ -245,19 +245,19 @@ int zone_flush_journal(zone_t *zone)
 	conf_zone_t *conf = zone->conf;
 	int ret = zonefile_write(conf->file, contents, from);
 	if (ret == KNOT_EOK) {
-		log_zone_info("Zone '%s': zone file updated (%u -> %u).\n",
-		              conf->name, zone->zonefile_serial, serial_to);
+		log_zone_info(zone->name, "Zone file updated, serial %u -> %u\n",
+		              zone->zonefile_serial, serial_to);
 	} else {
-		log_zone_warning("Zone '%s': failed to update zone file (%s)\n",
-		                  conf->name, knot_strerror(ret));
+		log_zone_warning(zone->name, "Failed to update zone file: %s\n",
+		                 knot_strerror(ret));
 		return ret;
 	}
 
 	/* Update zone version. */
 	struct stat st;
 	if (stat(zone->conf->file, &st) < 0) {
-		log_zone_warning("Zone '%s': failed to update zone file (%s)\n",
-		                  conf->name, knot_strerror(KNOT_EACCES));
+		log_zone_warning(zone->name, "Failed to update zone file: %s\n",
+		                 knot_strerror(KNOT_EACCES));
 		return KNOT_EACCES;
 	}
 
