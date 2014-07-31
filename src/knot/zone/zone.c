@@ -1,4 +1,4 @@
-/*  Copyright (C) 2014 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/* Copyright (C) 2014 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -106,26 +106,14 @@ void zone_free(zone_t **zone_ptr)
 	*zone_ptr = NULL;
 }
 
-int zone_change_commit(zone_contents_t *contents, changesets_t *chset)
-{
-	assert(contents);
-
-	if (changesets_empty(chset)) {
-		return KNOT_EOK;
-	}
-
-	/* Apply DNSSEC changeset to the new zone. */
-	return apply_changesets_directly(contents, chset);
-}
-
-int zone_change_store(zone_t *zone, changesets_t *chset)
+int zone_change_store(zone_t *zone, changeset_t *change)
 {
 	assert(zone);
-	assert(chset);
+	assert(change);
 
 	conf_zone_t *conf = zone->conf;
 
-	int ret = journal_store_changesets(chset, conf->ixfr_db, conf->ixfr_fslimit);
+	int ret = journal_store_changeset(change, conf->ixfr_db, conf->ixfr_fslimit);
 	if (ret == KNOT_EBUSY) {
 		log_zone_notice("Journal for '%s' is full, flushing.\n", conf->name);
 
@@ -135,50 +123,33 @@ int zone_change_store(zone_t *zone, changesets_t *chset)
 			return ret;
 		}
 
-		return journal_store_changesets(chset, conf->ixfr_db, conf->ixfr_fslimit);
+		return journal_store_changeset(change, conf->ixfr_db, conf->ixfr_fslimit);
 	}
 
 	return ret;
 }
 
-/*! \note @mvavrusa Moved from zones.c, this needs a common API. */
-int zone_change_apply_and_store(changesets_t **chs,
-                                zone_t *zone,
-                                const char *msgpref,
-                                mm_ctx_t *rr_mm)
+int zone_changes_store(zone_t *zone, list_t *chgs)
 {
-	int ret = KNOT_EOK;
+	assert(zone);
+	assert(chgs);
 
-	/* Now, try to apply the changesets to the zone. */
-	zone_contents_t *new_contents;
-	ret = apply_changesets(zone, *chs, &new_contents);
-	if (ret != KNOT_EOK) {
-		log_zone_error("%s Failed to apply changesets.\n", msgpref);
-		/* Free changesets, but not the data. */
-		changesets_free(chs, rr_mm);
-		return ret;  // propagate the error above
+	conf_zone_t *conf = zone->conf;
+
+	int ret = journal_store_changesets(chgs, conf->ixfr_db, conf->ixfr_fslimit);
+	if (ret == KNOT_EBUSY) {
+		log_zone_notice("Journal for '%s' is full, flushing.\n", conf->name);
+
+		/* Transaction rolled back, journal released, we may flush. */
+		ret = zone_flush_journal(zone);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+
+		return journal_store_changesets(chgs, conf->ixfr_db, conf->ixfr_fslimit);
 	}
 
-	/* Write changes to journal if all went well. */
-	ret = zone_change_store(zone, *chs);
-	if (ret != KNOT_EOK) {
-		log_zone_error("%s Failed to store changesets.\n", msgpref);
-		update_rollback(*chs, &new_contents);
-		/* Free changesets, but not the data. */
-		changesets_free(chs, rr_mm);
-		return ret;  // propagate the error above
-	}
-
-	/* Switch zone contents. */
-	zone_contents_t *old_contents = zone_switch_contents(zone, new_contents);
-	synchronize_rcu();
-	update_free_old_zone(&old_contents);
-
-	/* Free changesets, but not the data. */
-	update_cleanup(*chs);
-	changesets_free(chs, rr_mm);
-	assert(ret == KNOT_EOK);
-	return KNOT_EOK;
+	return ret;
 }
 
 zone_contents_t *zone_switch_contents(zone_t *zone, zone_contents_t *new_contents)

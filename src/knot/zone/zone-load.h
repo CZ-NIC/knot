@@ -41,11 +41,11 @@ int zone_load_check(zone_contents_t *contents, conf_zone_t *zone_config);
 /*!
  * \brief Update zone contents from the journal.
  *
+ * \param zone
  * \param contents
- * \param zone_config
  * \return KNOT_EOK or an error
  */
-int zone_load_journal(zone_contents_t *contents, conf_zone_t *zone_config);
+int zone_load_journal(zone_t *zone, zone_contents_t *contents);
 
 /*!
  * \brief Zone loading post-actions (zone resign, calculation of delta)

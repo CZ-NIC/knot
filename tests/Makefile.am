@@ -26,6 +26,7 @@ check_PROGRAMS = \
 	dname				\
 	ztree				\
 	zonedb				\
+	changeset			\
 	dnssec_keys			\
 	dnssec_nsec3			\
 	dnssec_sign			\

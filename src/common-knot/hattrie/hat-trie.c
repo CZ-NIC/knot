@@ -888,34 +888,37 @@ static void hattrie_iter_nextnode(hattrie_iter_t* i)
 
 hattrie_iter_t* hattrie_iter_begin(const hattrie_t* T, bool sorted)
 {
-    hattrie_iter_t* i = malloc(sizeof(hattrie_iter_t));
-    i->T = T;
-    i->sorted = sorted;
-    i->i = NULL;
-    i->keysize = 16;
-    i->key = malloc(i->keysize * sizeof(char));
-    i->level   = 0;
-    i->has_nil_key = false;
-    i->nil_val     = 0;
-
-    i->stack = malloc(sizeof(hattrie_node_stack_t));
-    i->stack->next   = NULL;
-    i->stack->node   = T->root;
-    i->stack->c      = '\0';
-    i->stack->level  = 0;
-
-
-    while (((i->i == NULL || hhash_iter_finished(i->i)) && !i->has_nil_key) &&
-           i->stack != NULL ) {
-
-        free(i->i);
+    hattrie_iter_t* i = NULL;
+    if (T) {
+        i = malloc(sizeof(hattrie_iter_t));
+        i->T = T;
+        i->sorted = sorted;
         i->i = NULL;
-        hattrie_iter_nextnode(i);
-    }
+        i->keysize = 16;
+        i->key = malloc(i->keysize * sizeof(char));
+        i->level   = 0;
+        i->has_nil_key = false;
+        i->nil_val     = 0;
 
-    if (i->i != NULL && hhash_iter_finished(i->i)) {
-        free(i->i);
-        i->i = NULL;
+        i->stack = malloc(sizeof(hattrie_node_stack_t));
+        i->stack->next   = NULL;
+        i->stack->node   = T->root;
+        i->stack->c      = '\0';
+        i->stack->level  = 0;
+
+
+        while (((i->i == NULL || hhash_iter_finished(i->i)) && !i->has_nil_key) &&
+               i->stack != NULL ) {
+
+            free(i->i);
+            i->i = NULL;
+            hattrie_iter_nextnode(i);
+        }
+
+        if (i->i != NULL && hhash_iter_finished(i->i)) {
+             free(i->i);
+             i->i = NULL;
+        }
     }
 
     return i;

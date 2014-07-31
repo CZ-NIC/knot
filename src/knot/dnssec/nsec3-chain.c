@@ -427,7 +427,7 @@ static int create_nsec3_nodes(const zone_contents_t *zone, uint32_t ttl,
 
 	int result = KNOT_EOK;
 
-	int sorted = false;
+	const bool sorted = false;
 	hattrie_iter_t *it = hattrie_iter_begin(zone->nodes, sorted);
 	while (!hattrie_iter_finished(it)) {
 		zone_node_t *node = (zone_node_t *)*hattrie_iter_val(it);

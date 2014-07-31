@@ -603,8 +603,8 @@ static int insert_rr(zone_contents_t *z,
 	}
 
 	// check if the RRSet belongs to the zone
-	if (!knot_dname_is_equal(rr->owner, z->apex->owner)
-	    && !knot_dname_is_sub(rr->owner, z->apex->owner)) {
+	if (!knot_dname_is_sub(rr->owner, z->apex->owner) &&
+	    !knot_dname_is_equal(rr->owner, z->apex->owner)) {
 		return KNOT_EOUTOFZONE;
 	}
 

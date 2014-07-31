@@ -306,6 +306,7 @@ tests/Makefile.am
 tests/acl.c
 tests/base32hex.c
 tests/base64.c
+tests/changeset.c
 tests/conf.c
 tests/descriptor.c
 tests/dname.c

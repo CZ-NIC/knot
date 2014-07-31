@@ -31,6 +31,7 @@
 #include "knot/zone/zone.h"
 #include "knot/zone/zone-load.h"
 #include "knot/zone/zonefile.h"
+#include "knot/updates/apply.h"
 #include "libknot/rrtype/soa.h"
 #include "libknot/dnssec/random.h"
 #include "knot/nameserver/internet.h"
@@ -247,7 +248,7 @@ static int event_reload(zone_t *zone)
 
 	/* Store zonefile serial and apply changes from the journal. */
 	zone->zonefile_serial = zone_contents_serial(contents);
-	int result = zone_load_journal(contents, zone_config);
+	int result = zone_load_journal(zone, contents);
 	if (result != KNOT_EOK) {
 		goto fail;
 	}
@@ -493,20 +494,18 @@ static int event_dnssec(zone_t *zone)
 {
 	assert(zone);
 
-	changesets_t *chs = changesets_create(1);
-	if (chs == NULL) {
-		return KNOT_ENOMEM;
-	}
-
-	changeset_t *ch = changesets_get_last(chs);
-	assert(ch);
-
-	int ret = KNOT_ERROR;
 	char *zname = knot_dname_to_str(zone->name);
 	char *msgpref = sprintf_alloc("DNSSEC: Zone %s -", zname);
 	free(zname);
+	int ret = KNOT_EOK;
 	if (msgpref == NULL) {
 		ret = KNOT_ENOMEM;
+		goto done;
+	}
+
+	changeset_t ch;
+	ret = changeset_init(&ch, zone->name);
+	if (ret != KNOT_EOK) {
 		goto done;
 	}
 
@@ -517,24 +516,43 @@ static int event_dnssec(zone_t *zone)
 
 		zone->flags &= ~ZONE_FORCE_RESIGN;
 		ret = knot_dnssec_zone_sign_force(zone->contents, zone->conf,
-		                                  ch, &refresh_at);
+		                                  &ch, &refresh_at);
 	} else {
 		log_zone_info("%s Signing zone...\n", msgpref);
 		ret = knot_dnssec_zone_sign(zone->contents, zone->conf,
-		                            ch, KNOT_SOA_SERIAL_UPDATE,
+		                            &ch, KNOT_SOA_SERIAL_UPDATE,
 		                            &refresh_at);
 	}
 	if (ret != KNOT_EOK) {
 		goto done;
 	}
 
-	if (!changesets_empty(chs)) {
-		ret = zone_change_apply_and_store(&chs, zone, "DNSSEC", NULL);
+	if (!changeset_empty(&ch)) {
+		/* Apply change. */
+		zone_contents_t *new_contents = NULL;
+		int ret = apply_changeset(zone, &ch, &new_contents);
 		if (ret != KNOT_EOK) {
 			log_zone_error("%s Could not sign zone (%s).\n",
-				       msgpref, knot_strerror(ret));
+			               msgpref, knot_strerror(ret));
 			goto done;
 		}
+
+		/* Write change to journal. */
+		ret = zone_change_store(zone, &ch);
+		if (ret != KNOT_EOK) {
+			log_zone_error("%s Could not sign zone (%s).\n",
+			               msgpref, knot_strerror(ret));
+			update_rollback(&ch);
+			update_free_zone(&new_contents);
+			goto done;
+		}
+
+		/* Switch zone contents. */
+		zone_contents_t *old_contents = zone_switch_contents(zone, new_contents);
+		synchronize_rcu();
+		update_free_zone(&old_contents);
+
+		update_cleanup(&ch);
 	}
 
 	// Schedule dependent events.
@@ -546,7 +564,7 @@ static int event_dnssec(zone_t *zone)
 	}
 
 done:
-	changesets_free(&chs, NULL);
+	changeset_clear(&ch);
 	free(msgpref);
 	return ret;
 }

@@ -81,26 +81,23 @@ int zone_load_check(zone_contents_t *contents, conf_zone_t *zone_config)
 /*!
  * \brief Apply changesets to zone from journal.
  */
-int zone_load_journal(zone_contents_t *contents, conf_zone_t *zone_config)
+int zone_load_journal(zone_t *zone, zone_contents_t *contents)
 {
 	/* Check if journal is used and zone is not empty. */
-	if (!journal_exists(zone_config->ixfr_db) || zone_contents_is_empty(contents)) {
+	if (!journal_exists(zone->conf->ixfr_db) ||
+	    zone_contents_is_empty(contents)) {
 		return KNOT_EOK;
 	}
 
 	/* Fetch SOA serial. */
 	uint32_t serial = zone_contents_serial(contents);
 
-	/* Load all pending changesets. */
-	changesets_t* chsets = changesets_create(0);
-	if (chsets == NULL) {
-		return KNOT_ERROR;
-	}
-
 	/*! \todo Check what should be the upper bound. */
-	int ret = journal_load_changesets(zone_config->ixfr_db, chsets, serial, serial - 1);
-	if ((ret != KNOT_EOK && ret != KNOT_ERANGE) || EMPTY_LIST(chsets->sets)) {
-		changesets_free(&chsets, NULL);
+	list_t chgs;
+	init_list(&chgs);
+	int ret = journal_load_changesets(zone, &chgs, serial, serial - 1);
+	if ((ret != KNOT_EOK && ret != KNOT_ERANGE) || EMPTY_LIST(chgs)) {
+		changesets_free(&chgs);
 		/* Absence of records is not an error. */
 		if (ret == KNOT_ENOENT) {
 			return KNOT_EOK;
@@ -110,13 +107,14 @@ int zone_load_journal(zone_contents_t *contents, conf_zone_t *zone_config)
 	}
 
 	/* Apply changesets. */
-	ret = apply_changesets_directly(contents,  chsets);
+	ret = apply_changesets_directly(contents, &chgs);
 	log_zone_info("Zone '%s' serial %u -> %u: %s\n",
-	              zone_config->name,
+	              zone->conf->name,
 	              serial, zone_contents_serial(contents),
 	              knot_strerror(ret));
-	update_cleanup(chsets);
-	changesets_free(&chsets, NULL);
+
+	updates_cleanup(&chgs);
+	changesets_free(&chgs);
 	return ret;
 }
 
@@ -128,78 +126,74 @@ int zone_load_post(zone_contents_t *contents, zone_t *zone, uint32_t *dnssec_ref
 
 	int ret = KNOT_EOK;
 	const conf_zone_t *conf = zone->conf;
-	changesets_t *diff_change = changesets_create(1);
-	if (diff_change == NULL) {
-		return KNOT_ENOMEM;
+	changeset_t change;
+	ret = changeset_init(&change, zone->name);
+	if (ret != KNOT_EOK) {
+		return ret;
 	}
 
 	/* Sign zone using DNSSEC (if configured). */
 	if (conf->dnssec_enable) {
 		assert(conf->build_diffs);
-		ret = knot_dnssec_zone_sign(contents, conf,
-		                            changesets_get_last(diff_change),
-		                            KNOT_SOA_SERIAL_UPDATE,
+		ret = knot_dnssec_zone_sign(contents, conf, &change, KNOT_SOA_SERIAL_UPDATE,
 		                            dnssec_refresh);
 		if (ret != KNOT_EOK) {
-			changesets_free(&diff_change, NULL);
+			changeset_clear(&change);
 			return ret;
 		}
 
 		/* Apply DNSSEC changes. */
-		ret = zone_change_commit(contents, diff_change);
-		update_cleanup(diff_change);
-		if (ret != KNOT_EOK) {
-			changesets_free(&diff_change, NULL);
-			return ret;
+		if (!changeset_empty(&change)) {
+			ret = apply_changeset_directly(contents, &change);
+			update_cleanup(&change);
+			if (ret != KNOT_EOK) {
+				changeset_clear(&change);
+				return ret;
+			}
+		} else {
+			changeset_clear(&change);
 		}
 	}
 
 	/* Calculate IXFR from differences (if configured). */
 	const bool contents_changed = zone->contents && (contents != zone->contents);
 	if (contents_changed && conf->build_diffs) {
-
 		/* Replace changes from zone signing, the resulting diff will cover
 		 * those changes as well. */
-		changesets_free(&diff_change, NULL);
-		diff_change = changesets_create(1);
-		if (diff_change == NULL) {
-			return KNOT_ENOMEM;
+		changeset_clear(&change);
+		ret = changeset_init(&change, zone->name);
+		if (ret != KNOT_EOK) {
+			return ret;
 		}
-
-		ret = zone_contents_create_diff(zone->contents, contents,
-		                                changesets_get_last(diff_change));
+		ret = zone_contents_create_diff(zone->contents, contents, &change);
 		if (ret == KNOT_ENODIFF) {
 			log_zone_warning("Zone %s: Zone file changed, "
 			                 "but serial didn't - won't "
 			                 "create journal entry.\n",
 			                 conf->name);
-			changesets_free(&diff_change, NULL);
+			ret = KNOT_EOK;
 		} else if (ret == KNOT_ERANGE) {
 			log_zone_warning("Zone %s: Zone file changed, "
 			                 "but serial is lower than before - "
 			                 "IXFR history will be lost.\n",
 			                 conf->name);
-			changesets_free(&diff_change, NULL);
+			ret = KNOT_EOK;
 		} else if (ret != KNOT_EOK) {
 			log_zone_error("Zone %s: Failed to calculate "
 			               "differences from the zone "
 			               "file update: %s\n",
 			               conf->name, knot_strerror(ret));
-			changesets_free(&diff_change, NULL);
 			return ret;
 		}
 	}
 
 	/* Write changes (DNSSEC, diff, or both) to journal if all went well. */
-	if (!changesets_empty(diff_change)) {
-		ret = zone_change_store(zone, diff_change);
-		changesets_free(&diff_change, NULL);
-		return ret;
+	if (!changeset_empty(&change)) {
+		ret = zone_change_store(zone, &change);
 	}
 
-	// No-op.
-	changesets_free(&diff_change, NULL);
-	return KNOT_EOK;
+	changeset_clear(&change);
+	return ret;
 }
 
 bool zone_load_can_bootstrap(const conf_zone_t *zone_config)

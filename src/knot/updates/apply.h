@@ -9,6 +9,7 @@
  * \addtogroup xfr
  * @{
  */
+
 /*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
@@ -42,8 +43,20 @@
  *
  * \return KNOT_E*
  */
-int apply_changesets(zone_t *zone, changesets_t *chsets,
+int apply_changesets(zone_t *zone, list_t *chsets,
                      zone_contents_t **new_contents);
+
+/*!
+ * \brief Applies changeset *with* zone shallow copy.
+ *
+ * \param zone          Zone to be updated.
+ * \param ch            Change to be made.
+ * \param new_contents  New zone will be returned using this arg.
+ *
+ * \return KNOT_E*
+ */
+int apply_changeset(zone_t *zone, changeset_t *ch,
+                    zone_contents_t **new_contents);
 
 /*!
  * \brief Applies changesets directly to the zone, without copying it.
@@ -53,29 +66,52 @@ int apply_changesets(zone_t *zone, changesets_t *chsets,
  *
  * \return KNOT_E*
  */
-int apply_changesets_directly(zone_contents_t *contents,
-                              changesets_t *chsets);
+int apply_changesets_directly(zone_contents_t *contents, list_t *chsets);
 
 /*!
- * \brief Cleanups successful update. (IXFR, DNSSEC, DDNS).
+ * \brief Applies changeset directly to the zone, without copying it.
+ *
+ * \param contents Zone contents to apply the changesets to. Will be modified.
+ * \param chsets   Changeset to be applied to the zone.
+ *
+ * \return KNOT_E*
+ */
+int apply_changeset_directly(zone_contents_t *contents, changeset_t *ch);
+
+/*!
+ * \brief Cleanups successful zone updates.
+ 
  * \param chgs  Changesets used to create the update.
  */
-void update_cleanup(changesets_t *chgs);
+void updates_cleanup(list_t *chgs);
 
 /*!
- * \brief Rollbacks failed update (IXFR, DNSSEC, DDNS).
- *
- * \param chgs          Changesets used to create the update.
- * \param new_contents  Created zone contents.
+ * \brief Cleanups successful zone update.
+ 
+ * \param chgs  Changeset used to create the update.
  */
-void update_rollback(changesets_t *chgs, zone_contents_t **new_contents);
+void update_cleanup(changeset_t *change);
 
 /*!
- * \brief Frees old zone contents - i.e. contents that were used to create the
- *        shallow copy, but are now obsolete.
- * \note Exported because of update.c, zone.c.
+ * \brief Rollbacks failed zone updates.
+ *
+ * \param chgs   Changesets used to create the update.
+ */
+void updates_rollback(list_t *chgs);
+
+/*!
+ * \brief Rollbacks failed zone update.
+ *
+ * \param chgs   Changeset. used to create the update.
+ */
+void update_rollback(changeset_t *change);
+
+/*!
+ * \brief Shallow frees zone contents - either shallow copy after failed update
+ *        or original zone contents after successful update.
+ *
  * \param contents  Contents to free.
  */
-void update_free_old_zone(zone_contents_t **contents);
+void update_free_zone(zone_contents_t **contents);
 
 /*! @} */
