@@ -9,6 +9,7 @@
  * \addtogroup xfr
  * @{
  */
+
 /*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
@@ -66,28 +67,49 @@ int apply_changeset(zone_t *zone, changeset_t *ch,
  * \return KNOT_E*
  */
 int apply_changesets_directly(zone_contents_t *contents, list_t *chsets);
+
+/*!
+ * \brief Applies changeset directly to the zone, without copying it.
+ *
+ * \param contents Zone contents to apply the changesets to. Will be modified.
+ * \param chsets   Changeset to be applied to the zone.
+ *
+ * \return KNOT_E*
+ */
 int apply_changeset_directly(zone_contents_t *contents, changeset_t *ch);
 
 /*!
- * \brief Cleanups successful update. (IXFR, DNSSEC, DDNS).
+ * \brief Cleanups successful zone updates.
+ 
  * \param chgs  Changesets used to create the update.
  */
 void updates_cleanup(list_t *chgs);
 
+/*!
+ * \brief Cleanups successful zone update.
+ 
+ * \param chgs  Changeset used to create the update.
+ */
 void update_cleanup(changeset_t *change);
 
 /*!
- * \brief Rollbacks failed update (IXFR, DNSSEC, DDNS).
+ * \brief Rollbacks failed zone updates.
  *
  * \param chgs   Changesets used to create the update.
  */
 void updates_rollback(list_t *chgs);
 
+/*!
+ * \brief Rollbacks failed zone update.
+ *
+ * \param chgs   Changeset. used to create the update.
+ */
 void update_rollback(changeset_t *change);
 
 /*!
  * \brief Frees old zone contents - i.e. contents that were used to create the
  *        shallow copy, but are now obsolete.
+ 
  * \param contents  Contents to free.
  */
 void update_free_old_zone(zone_contents_t **contents);
