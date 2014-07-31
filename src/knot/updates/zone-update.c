@@ -43,12 +43,12 @@ static int rem_from_node(zone_node_t *old_node, const zone_node_t *rem_node,
                          mm_ctx_t *mm)
 {
 	for (uint16_t i = 0; i < rem_node->rrset_count; ++i) {
+		// Remove each found RR from 'old_node'.
 		knot_rrset_t rem_rrset = node_rrset_at(rem_node, i);
-		knot_rrset_t to_change = node_rrset(old_node, rem_rrset.type);
-		if (!knot_rrset_empty(&to_change) &&
-		    !(knot_rrset_empty(&rem_rrset))) {
+		knot_rdataset_t *to_change = node_rdataset(old_node, rem_rrset.type);
+		if (to_change) {
 			// Remove data from synthesized node
-			int ret = knot_rdataset_subtract(&to_change.rrs,
+			int ret = knot_rdataset_subtract(to_change,
 			                                 &rem_rrset.rrs,
 			                                 mm);
 			if (ret != KNOT_EOK) {
@@ -87,11 +87,14 @@ static int apply_changes_to_node(zone_node_t *synth_node, const zone_node_t *add
 static int deep_copy_node_data(zone_node_t *node_copy, const zone_node_t *old_node,
                                mm_ctx_t *mm)
 {
+	// Clear space for RRs
+	node_copy->rrs = NULL;
+	node_copy->rrset_count = 0;
+	
 	for (uint16_t i = 0; i < old_node->rrset_count; ++i) {
-		int ret = knot_rdataset_copy(&node_copy->rrs[i].rrs,
-		                             &old_node->rrs[i].rrs, mm);
+		knot_rrset_t rr = node_rrset_at(old_node, i);
+		int ret = node_add_rrset(node_copy, &rr, mm);
 		if (ret != KNOT_EOK) {
-			#warning leak
 			return ret;
 		}
 	}
@@ -113,31 +116,34 @@ const zone_node_t *zone_update_get_node(zone_update_t *update, const knot_dname_
 		return NULL;
 	}
 
-	const zone_node_t *old_node = zone_contents_find_node(update->zone, dname);
-	const zone_node_t *add_node = zone_contents_find_node(update->change->add, dname);
-	const zone_node_t *rem_node = zone_contents_find_node(update->change->remove, dname);
+	const zone_node_t *old_node =
+		zone_contents_find_node(update->zone, dname);
+	const zone_node_t *add_node =
+		zone_contents_find_node(update->change->add, dname);
+	const zone_node_t *rem_node =
+		zone_contents_find_node(update->change->remove, dname);
 
 	const bool have_change = !node_empty(add_node) || !node_empty(rem_node);
-
 	if (!have_change) {
 		return old_node;
 	}
 
 	zone_node_t *synth_node = NULL;
 	if (old_node) {
+		// We have to apply changes to the original node.
 		synth_node = node_shallow_copy(old_node, &update->mm);
 		if (synth_node == NULL) {
 			return NULL;
 		}
 
-		// Deep copy data inside node copy
+		// Deep copy data inside node copy.
 		int ret = deep_copy_node_data(synth_node, old_node, &update->mm);
 		if (ret != KNOT_EOK) {
 			node_free(&synth_node, &update->mm);
 			return NULL;
 		}
 
-		// Apply changes to node
+		// Apply changes to node.
 		ret = apply_changes_to_node(synth_node, add_node, rem_node, &update->mm);
 		if (ret != KNOT_EOK) {
 			node_free(&synth_node, &update->mm);
@@ -147,10 +153,10 @@ const zone_node_t *zone_update_get_node(zone_update_t *update, const knot_dname_
 		return synth_node;
 	} else {
 		if (add_node && node_empty(rem_node)) {
-			// Just addition
+			// Just addition.
 			return add_node;
 		} else {
-			// Addition and deletion
+			// Addition and deletion.
 #warning do not allow this
 			return NULL;
 		}
