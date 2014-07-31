@@ -58,9 +58,12 @@ static void process_rr(zs_scanner_t *scanner)
 
 int main(int argc, char *argv[])
 {
-	plan(4);
+	plan(5);
 
-	zone_contents_t *zone = zone_contents_new(knot_dname_from_str("test."));
+	knot_dname_t *apex = knot_dname_from_str("test");
+	assert(apex);
+	zone_contents_t *zone = zone_contents_new(apex);
+	knot_dname_free(&apex, NULL);
 	assert(zone);
 
 	changeset_t ch;
@@ -102,6 +105,13 @@ int main(int argc, char *argv[])
 	synth_node = zone_update_get_node(&update, zone->apex->owner);
 	ok(synth_node && node_rdataset(synth_node, KNOT_RRTYPE_TXT)->rr_count == 1,
 	   "zone update: del change");
+	
+	zone_update_clear(&update);
+	ok(update.zone == NULL && update.change == NULL, "zone update: cleanup");
+	
+	changeset_clear(&ch);
+	zs_scanner_free(sc);
+	zone_contents_deep_free(&zone);
 
 	return 0;
 }

@@ -25,6 +25,27 @@
 #include "libknot/descriptor.h"
 #include "libknot/mempattern.h"
 
+static void *mm_realloc(mm_ctx_t *mm, void *what, size_t size, size_t prev_size)
+{
+	if (mm) {
+		void *p = mm->alloc(mm->ctx, size);
+		if (knot_unlikely(p == NULL)) {
+			return NULL;
+		} else {
+			if (what) {
+				memcpy(p, what,
+				       prev_size < size ? prev_size : size);
+			}
+			if (mm->free) {
+				mm->free(what);
+			}
+			return p;
+		}
+	} else {
+		return realloc(what, size);
+	}
+}
+
 /*! \brief Clears allocated data in RRSet entry. */
 static void rr_data_clear(struct rr_data *data, mm_ctx_t *mm)
 {
@@ -46,19 +67,21 @@ static int rr_data_from(const knot_rrset_t *rrset, struct rr_data *data, mm_ctx_
 }
 
 /*! \brief Adds RRSet to node directly. */
-static int add_rrset_no_merge(zone_node_t *node, const knot_rrset_t *rrset)
+static int add_rrset_no_merge(zone_node_t *node, const knot_rrset_t *rrset,
+                              mm_ctx_t *mm)
 {
 	if (node == NULL) {
 		return KNOT_EINVAL;
 	}
 
+	const size_t prev_nlen = (node->rrset_count) * sizeof(struct rr_data);
 	const size_t nlen = (node->rrset_count + 1) * sizeof(struct rr_data);
-	void *p = realloc(node->rrs, nlen);
+	void *p = mm_realloc(mm, node->rrs, nlen, prev_nlen);
 	if (p == NULL) {
 		return KNOT_ENOMEM;
 	}
 	node->rrs = p;
-	int ret = rr_data_from(rrset, node->rrs + node->rrset_count, NULL);
+	int ret = rr_data_from(rrset, node->rrs + node->rrset_count, mm);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
@@ -187,7 +210,7 @@ int node_add_rrset(zone_node_t *node, const knot_rrset_t *rrset, mm_ctx_t *mm)
 	}
 
 	// New RRSet (with one RR)
-	return add_rrset_no_merge(node, rrset);
+	return add_rrset_no_merge(node, rrset, mm);
 }
 
 void node_remove_rdataset(zone_node_t *node, uint16_t type)

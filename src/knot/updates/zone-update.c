@@ -166,6 +166,7 @@ const zone_node_t *zone_update_get_node(zone_update_t *update, const knot_dname_
 void zone_update_clear(zone_update_t *update)
 {
 	mp_delete(update->mm.ctx);
+	memset(&update->mm, 0, sizeof(update->mm));
 	update->zone = NULL;
 	update->change = NULL;
 }
