@@ -33,6 +33,7 @@ struct query_data;
 struct answer_data;
 
 /*! \brief This macro helps with data size formatting during xfr logging. */
+#define SIZE_FORMAT "%s%.*f %s"
 #define SIZE_PARAMS(value) (value) < 1024 ? "" : "~", \
                            (value) < 1024 ? 0 : 1, \
                            (value) < 1024 ? (float)(value) : (value) / 1024.0, \

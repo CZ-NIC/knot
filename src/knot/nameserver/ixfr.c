@@ -36,7 +36,7 @@ struct ixfr_proc {
 
 /* IXFR-out-specific logging (internal, expects 'qdata' variable set). */
 #define IXFROUT_LOG(severity, msg...) \
-	QUERY_LOG(severity, qdata, "Outgoing IXFR", msg)
+	QUERY_LOG(severity, qdata, "IXFR, outgoing", msg)
 
 /*! \brief Helper macro for putting RRs into packet. */
 #define IXFR_SAFE_PUT(pkt, rr) \
@@ -126,7 +126,7 @@ static int ixfr_process_changeset(knot_pkt_t *pkt, const void *item,
 	struct query_data *qdata = ixfr->qdata; /*< Required for IXFROUT_LOG() */
 	const uint32_t serial_from = knot_soa_serial(&chgset->soa_from->rrs);
 	const uint32_t serial_to = knot_soa_serial(&chgset->soa_to->rrs);
-	IXFROUT_LOG(LOG_INFO, "Serial %u -> %u.", serial_from, serial_to);
+	IXFROUT_LOG(LOG_INFO, "serial %u -> %u", serial_from, serial_to);
 
 	return ret;
 }
@@ -290,7 +290,7 @@ static int ixfr_answer_soa(knot_pkt_t *pkt, struct query_data *qdata)
 
 /* IXFR-in-specific logging (internal, expects 'adata' variable set). */
 #define IXFRIN_LOG(severity, msg...) \
-	ANSWER_LOG(severity, adata, "Incoming IXFR", msg)
+	ANSWER_LOG(severity, adata, "IXFR, incoming", msg)
 
 /*! \brief Cleans up data allocated by IXFR-in processing. */
 static void ixfrin_cleanup(struct answer_data *data)
@@ -337,14 +337,14 @@ static int ixfrin_finalize(struct answer_data *adata)
 	int ret = zone_change_apply_and_store(&ixfr->changesets,
 	                                      ixfr->zone, "IXFR", adata->mm);
 	if (ret != KNOT_EOK) {
-		IXFRIN_LOG(LOG_ERR, "Failed to apply changes to zone - %s",
+		IXFRIN_LOG(LOG_ERR, "failed to apply changes to zone (%s)",
 		           knot_strerror(ret));
 		return ret;
 	}
 
 	struct timeval now = {0};
 	gettimeofday(&now, NULL);
-	IXFRIN_LOG(LOG_INFO, "Finished in %.02fs (%u messages, %s%.*f %s).",
+	IXFRIN_LOG(LOG_INFO, "finished, %.02fs, %u messages, " SIZE_FORMAT,
 	           time_diff(&ixfr->proc.tstamp, &now) / 1000.0,
 	           ixfr->proc.npkts, SIZE_PARAMS(ixfr->proc.nbytes));
 
@@ -533,7 +533,7 @@ static int process_ixfrin_packet(knot_pkt_t *pkt, struct answer_data *adata)
 	const knot_pktsection_t *answer = knot_pkt_section(pkt, KNOT_ANSWER);
 	for (uint16_t i = 0; i < answer->count; ++i) {
 		if (journal_limit_exceeded(ixfr)) {
-			IXFRIN_LOG(LOG_WARNING, "Journal is full.");
+			IXFRIN_LOG(LOG_WARNING, "journal is full");
 			return NS_PROC_FAIL;
 		}
 
@@ -544,7 +544,7 @@ static int process_ixfrin_packet(knot_pkt_t *pkt, struct answer_data *adata)
 
 		int ret = ixfrin_step(rr, ixfr);
 		if (ret != KNOT_EOK) {
-			IXFRIN_LOG(LOG_ERR, "Failed - %s", knot_strerror(ret));
+			IXFRIN_LOG(LOG_ERR, "failed (%s)", knot_strerror(ret));
 			return NS_PROC_FAIL;
 		}
 
@@ -581,16 +581,16 @@ int ixfr_query(knot_pkt_t *pkt, struct query_data *qdata)
 		switch(ret) {
 		case KNOT_EOK:      /* OK */
 			ixfr = (struct ixfr_proc*)qdata->ext;
-			IXFROUT_LOG(LOG_INFO, "Started (serial %u -> %u).",
+			IXFROUT_LOG(LOG_INFO, "started, serial %u -> %u",
 			            knot_soa_serial(&ixfr->soa_from->rrs),
 			            knot_soa_serial(&ixfr->soa_to->rrs));
 			break;
 		case KNOT_EUPTODATE: /* Our zone is same age/older, send SOA. */
-			IXFROUT_LOG(LOG_INFO, "Zone is up-to-date.");
+			IXFROUT_LOG(LOG_INFO, "zone is up-to-date");
 			return ixfr_answer_soa(pkt, qdata);
 		case KNOT_ERANGE:   /* No history -> AXFR. */
 		case KNOT_ENOENT:
-			IXFROUT_LOG(LOG_INFO, "Incomplete history, fallback to AXFR.");
+			IXFROUT_LOG(LOG_INFO, "incomplete history, fallback to AXFR");
 			knot_pkt_clear(pkt);
 			knot_pkt_put_question(pkt, knot_pkt_qname(query),
 			                      knot_pkt_qclass(query),
@@ -598,7 +598,7 @@ int ixfr_query(knot_pkt_t *pkt, struct query_data *qdata)
 			qdata->packet_type = KNOT_QUERY_AXFR; /* Solve as AXFR. */
 			return axfr_query_process(pkt, qdata);
 		default:            /* Server errors. */
-			IXFROUT_LOG(LOG_ERR, "Failed to start (%s).", knot_strerror(ret));
+			IXFROUT_LOG(LOG_ERR, "failed to start (%s)", knot_strerror(ret));
 			return NS_PROC_FAIL;
 		}
 	}
@@ -613,14 +613,13 @@ int ixfr_query(knot_pkt_t *pkt, struct query_data *qdata)
 		return NS_PROC_FULL; /* Check for more. */
 	case KNOT_EOK:    /* Last response. */
 		gettimeofday(&now, NULL);
-		IXFROUT_LOG(LOG_INFO, "Finished in %.02fs (%u messages, "
-		            "%s%.*f %s).",
+		IXFROUT_LOG(LOG_INFO, "finished, %.02fs, %u messages, " SIZE_FORMAT,
 		            time_diff(&ixfr->proc.tstamp, &now) / 1000.0,
 		            ixfr->proc.npkts, SIZE_PARAMS(ixfr->proc.nbytes));
 		ret = NS_PROC_DONE;
 		break;
 	default:          /* Generic error. */
-		IXFROUT_LOG(LOG_ERR, "%s", knot_strerror(ret));
+		IXFROUT_LOG(LOG_ERR, "failed (%s)", knot_strerror(ret));
 		ret = NS_PROC_FAIL;
 		break;
 	}
@@ -639,7 +638,7 @@ int ixfr_process_answer(knot_pkt_t *pkt, struct answer_data *adata)
 	if (rcode != KNOT_RCODE_NOERROR) {
 		knot_lookup_table_t *lut = knot_lookup_by_id(knot_rcode_names, rcode);
 		if (lut != NULL) {
-			IXFRIN_LOG(LOG_ERR, "Server responded with %s.", lut->name);
+			IXFRIN_LOG(LOG_ERR, "server responded with %s", lut->name);
 		}
 		return NS_PROC_FAIL;
 	}
@@ -648,15 +647,15 @@ int ixfr_process_answer(knot_pkt_t *pkt, struct answer_data *adata)
 	if (adata->ext == NULL) {
 		NS_NEED_TSIG_SIGNED(&adata->param->tsig_ctx, 0);
 		if (!zone_transfer_needed(adata->param->zone, pkt)) {
-			IXFRIN_LOG(LOG_INFO, "Server has newer zone.");
+			IXFRIN_LOG(LOG_INFO, "server has newer zone");
 			return NS_PROC_DONE;
 		}
 
-		IXFRIN_LOG(LOG_INFO, "Starting.");
+		IXFRIN_LOG(LOG_INFO, "starting");
 		// First packet with IXFR, init context
 		int ret = ixfrin_answer_init(adata);
 		if (ret != KNOT_EOK) {
-			IXFRIN_LOG(LOG_ERR, "%s", knot_strerror(ret));
+			IXFRIN_LOG(LOG_ERR, "failed (%s)", knot_strerror(ret));
 			return NS_PROC_FAIL;
 		}
 	} else {
