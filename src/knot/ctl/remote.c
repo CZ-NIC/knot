@@ -411,7 +411,7 @@ int remote_bind(conf_iface_t *desc)
 
 	char addr_str[SOCKADDR_STRLEN] = {0};
 	sockaddr_tostr(&desc->addr, addr_str, sizeof(addr_str));
-	log_server_info("Binding remote control interface to '%s'.\n", addr_str);
+	log_info("Binding remote control interface to '%s'\n", addr_str);
 
 	/* Create new socket. */
 	mode_t old_umask = umask(KNOT_CTL_SOCKET_UMASK);
@@ -424,7 +424,7 @@ int remote_bind(conf_iface_t *desc)
 	/* Start listening. */
 	int ret = listen(sock, TCP_BACKLOG_SIZE);
 	if (ret < 0) {
-		log_server_error("Could not bind to '%s'.\n", addr_str);
+		log_error("Could not bind to '%s'\n", addr_str);
 		close(sock);
 		return ret;
 	}
@@ -563,7 +563,7 @@ static void log_command(const char *cmd, const remote_cmdargs_t* args)
 		}
 	}
 
-	log_server_info("Remote command: '%s%s'\n", cmd, params);
+	log_info("Remote command: '%s%s'\n", cmd, params);
 }
 
 int remote_answer(int sock, server_t *s, knot_pkt_t *pkt)
@@ -657,7 +657,7 @@ static int zones_verify_tsig_query(const knot_pkt_t *query,
 	assert(tsig_rcode != NULL);
 
 	if (query->tsig_rr == NULL) {
-		log_server_info("TSIG key required, but not in query - REFUSED.\n");
+		log_info("TSIG: key required, query REFUSED\n");
 		*rcode = KNOT_RCODE_REFUSED;
 		return KNOT_TSIG_EBADKEY;
 	}
@@ -667,8 +667,7 @@ static int zones_verify_tsig_query(const knot_pkt_t *query,
 	 */
 	knot_tsig_algorithm_t alg = tsig_rdata_alg(query->tsig_rr);
 	if (knot_tsig_digest_length(alg) == 0) {
-		log_server_info("Unsupported digest algorithm "
-		                "requested, treating as bad key\n");
+		log_info("TSIG: unsupported algorithm, query NOTAUTH\n");
 		/*! \todo [TSIG] It is unclear from RFC if I
 		 *               should treat is as a bad key
 		 *               or some other error.
@@ -711,8 +710,8 @@ static int zones_verify_tsig_query(const knot_pkt_t *query,
 
 	if (mac_len > digest_max_size) {
 		*rcode = KNOT_RCODE_FORMERR;
-		log_server_info("MAC length %zu exceeds digest "
-		                "maximum size %zu\n", mac_len, digest_max_size);
+		log_info("TSIG: MAC length %zu exceeds maximum size %zu\n",
+		         mac_len, digest_max_size);
 		return KNOT_EMALF;
 	} else {
 		//memcpy(digest, mac, mac_len);
@@ -790,9 +789,8 @@ int remote_process(server_t *s, conf_iface_t *ctl_if, int sock,
 		uint16_t ts_trc = 0;
 		uint64_t ts_tmsigned = 0;
 		if (match == NULL) {
-			log_server_warning("Denied remote control for '%s' "
-			                   "(doesn't match ACL).\n",
-			                   addr_str);
+			log_warning("Denied remote control for '%s', "
+			            "no matching ACL\n", addr_str);
 			remote_senderr(client, pkt->wire, pkt->size);
 			ret = KNOT_EACCES;
 			goto finish;
@@ -803,9 +801,8 @@ int remote_process(server_t *s, conf_iface_t *ctl_if, int sock,
 		/* Check TSIG. */
 		if (tsig_key) {
 			if (pkt->tsig_rr == NULL) {
-				log_server_warning("Denied remote control for '%s' "
-				                   "(key required).\n",
-				                   addr_str);
+				log_warning("Denied remote control for '%s', "
+				            "key required\n", addr_str);
 				remote_senderr(client, pkt->wire, pkt->size);
 				ret = KNOT_EACCES;
 				goto finish;
@@ -813,9 +810,8 @@ int remote_process(server_t *s, conf_iface_t *ctl_if, int sock,
 			ret = zones_verify_tsig_query(pkt, tsig_key, &ts_rc,
 			                              &ts_trc, &ts_tmsigned);
 			if (ret != KNOT_EOK) {
-				log_server_warning("Denied remote control for '%s' "
-				                   "(key verification failed).\n",
-				                   addr_str);
+				log_warning("Denied remote control for '%s', "
+				            "key verification failed\n", addr_str);
 				remote_senderr(client, pkt->wire, pkt->size);
 				ret = KNOT_EACCES;
 				goto finish;

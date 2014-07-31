@@ -497,8 +497,8 @@ int log_reconfigure(const struct conf_t *conf, void *data)
 		if (facility == LOGT_FILE) {
 			facility = log_open_file(log, facility_conf->file);
 			if (facility < 0) {
-				log_server_error("Failed to open logfile '%s'.\n",
-				                 facility_conf->file);
+				log_error("Failed to open logfile '%s'\n",
+				          facility_conf->file);
 				continue;
 			}
 		}
