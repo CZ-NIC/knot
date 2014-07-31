@@ -152,7 +152,7 @@ int log_msg_zone(int priority, const knot_dname_t *zone, const char *fmt, ...)
 int log_msg_zone_str(int priority, const char *zone, const char *fmt, ...)
     __attribute__((format(printf, 3, 4)));
 
-void hex_log(int source, const char *data, int length);
+void hex_log(const char *data, int length);
 
 /* Convenient logging. */
 

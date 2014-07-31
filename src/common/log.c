@@ -426,14 +426,14 @@ int log_msg_zone_str(int priority, const char *zone, const char *fmt, ...)
 	return result;
 }
 
-void hex_log(int source, const char *data, int length)
+void hex_log(const char *data, int length)
 {
 	int ptr = 0;
 	char lbuf[512]={0}; int llen = 0;
 	for (; ptr < length; ptr++) {
 		if (ptr > 0 && ptr % 16 == 0) {
 			lbuf[llen] = '\0';
-			log_msg(source, LOG_DEBUG, "%s\n", lbuf);
+			log_msg(LOG_DEBUG, "%s\n", lbuf);
 			llen = 0;
 		}
 		int ret = snprintf(lbuf + llen, sizeof(lbuf) - llen, "0x%02x ",
@@ -444,7 +444,7 @@ void hex_log(int source, const char *data, int length)
 		llen += ret;
 	}
 	if (llen > 0) {
-		log_msg(source, LOG_DEBUG, "%s\n", lbuf);
+		log_msg(LOG_DEBUG, "%s\n", lbuf);
 	}
 }
 
