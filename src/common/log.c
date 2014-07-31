@@ -228,7 +228,7 @@ int log_levels_add(int facility, logsrc_t src, uint8_t levels)
 	return sink_levels_add(s_log, facility, src, levels);
 }
 
-static int _log_msg(logsrc_t src, int level, const char *msg)
+static int emit_log_msg(logsrc_t src, int level, const char *msg)
 {
 	rcu_read_lock();
 	struct log_sink *log = s_log;
@@ -307,56 +307,121 @@ static int _log_msg(logsrc_t src, int level, const char *msg)
 	return ret;
 }
 
-int log_msg(logsrc_t src, int level, const char *msg, ...)
+static const char *level_prefix(int level)
 {
-	/* Buffer for log message. */
-	char sbuf[LOG_BUFLEN];
-	int buflen = sizeof(sbuf) - 1;
-
-	/* Prefix error level. */
-	const char *prefix = "";
 	switch (level) {
-	case LOG_DEBUG:   prefix = "[debug] "; break;
-	case LOG_INFO:    prefix = ""; break;
-	case LOG_NOTICE:  prefix = "[notice] "; break;
-	case LOG_WARNING: prefix = "[warning] "; break;
-	case LOG_ERR:     prefix = "[error] "; break;
-	case LOG_CRIT:    prefix = "[fatal] "; break;
-	default: break;
-	}
+	case LOG_DEBUG:   return "debug";
+	case LOG_INFO:    return "info";
+	case LOG_NOTICE:  return "notice";
+	case LOG_WARNING: return "warning";
+	case LOG_ERR:     return "error";
+	case LOG_CRIT:    return "critical";
+	default:
+		return NULL;
+	};
+}
 
-	/* Prepend prefix. */
-	size_t pr_size = strlcpy(sbuf, prefix, sizeof(sbuf));
-	if (pr_size >= sizeof(sbuf)) {
+static int log_msg_add(char **write, size_t *capacity, const char *fmt, ...)
+{
+	assert(*write);
+	assert(capacity);
+	assert(fmt);
+
+	va_list args;
+	va_start(args, fmt);
+	int written = vsnprintf(*write, *capacity, fmt, args);
+	va_end(args);
+
+	if (written < 0) {
 		return KNOT_ESPACE;
 	}
 
+	*write += written;
+	*capacity -= written;
+
+	return KNOT_EOK;
+}
+
+static int log_msg_text(int level, const char *zone, const char *fmt, va_list args)
+{
+	int ret;
+
+	/* Buffer for log message. */
+	char sbuf[LOG_BUFLEN];
+	char *write = sbuf;
+	size_t capacity = sizeof(sbuf) - 1;
+
+	/* Prefix error level. */
+	const char *prefix = level_prefix(level);
+	ret = log_msg_add(&write, &capacity, "%s: ", prefix);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	/* Prefix zone name. */
+	if (zone) {
+		ret = log_msg_add(&write, &capacity, "[%s] ", zone);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+	}
+
 	/* Compile log message. */
-	int ret = 0;
-	va_list ap;
-	va_start(ap, msg);
-	ret = vsnprintf(sbuf + pr_size, buflen - pr_size, msg, ap);
-	va_end(ap);
+	ret = vsnprintf(write, capacity, fmt, args);
 
 	/* Send to logging facilities. */
-	if (ret > 0) {
-		ret = _log_msg(src, level, sbuf);
+	if (ret >= 0) {
+		logsrc_t src = zone ? LOG_ZONE : LOG_SERVER;
+		ret = emit_log_msg(src, level, sbuf);
 	}
 
 	return ret;
 }
 
-int log_vmsg(logsrc_t src, int level, const char *msg, va_list ap)
+int log_msg(int priority, const char *fmt, ...)
 {
-	int ret = 0;
-	char buf[LOG_BUFLEN];
-	ret = vsnprintf(buf, sizeof(buf) - 1, msg, ap);
-
-	if (ret > 0) {
-		ret = _log_msg(src, level, buf);
+	if (!fmt) {
+		return KNOT_EINVAL;
 	}
 
-	return ret;
+	va_list args;
+	va_start(args, fmt);
+	int result = log_msg_text(priority, NULL, fmt, args);
+	va_end(args);
+
+	return result;
+}
+
+int log_msg_zone(int priority, const knot_dname_t *zone, const char *fmt, ...)
+{
+	if (!zone || !fmt) {
+		return KNOT_EINVAL;
+	}
+
+	char *zone_str = knot_dname_to_str(zone);
+
+	va_list args;
+	va_start(args, fmt);
+	int result = log_msg_text(priority, zone_str, fmt, args);
+	va_end(args);
+
+	free(zone_str);
+
+	return result;
+}
+
+int log_msg_zone_str(int priority, const char *zone, const char *fmt, ...)
+{
+	if (!zone|| !fmt) {
+		return KNOT_EINVAL;
+	}
+
+	va_list args;
+	va_start(args, fmt);
+	int result = log_msg_text(priority, zone, fmt, args);
+	va_end(args);
+
+	return result;
 }
 
 void hex_log(int source, const char *data, int length)
