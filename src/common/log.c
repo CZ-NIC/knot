@@ -334,7 +334,7 @@ static int log_msg_add(char **write, size_t *capacity, const char *fmt, ...)
 	int written = vsnprintf(*write, *capacity, fmt, args);
 	va_end(args);
 
-	if (written < 0) {
+	if (written < 0 || written >= *capacity) {
 		return KNOT_ESPACE;
 	}
 
