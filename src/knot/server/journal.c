@@ -346,7 +346,7 @@ static int journal_open_file(journal_t *j)
 		goto open_file_error;
 	}
 	if (memcmp(magic, magic_req, MAGIC_LENGTH) != 0) {
-		log_warning("fournal '%s': version too old, purging", j->path);
+		log_warning("journal '%s': version too old, purging", j->path);
 		close(j->fd);
 		j->fd = -1;
 		ret = journal_create_file(j->path, JOURNAL_NCOUNT);
