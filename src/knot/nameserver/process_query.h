@@ -36,19 +36,17 @@ const knot_process_module_t *process_query_get_module(void);
 #define NS_PROC_QUERY_ID 1
 
 /*! \brief Query processing logging common base. */
-#define NS_PROC_LOG(severity, log_type, remote, zone_str, what, msg, ...) do { \
+#define NS_PROC_LOG(severity, remote, zone_name, operation, msg, ...) do { \
 	char addr_str[SOCKADDR_STRLEN] = {0}; \
 	sockaddr_tostr(remote, addr_str, sizeof(addr_str)); \
-	log_msg(log_type, severity, what msg "\n", zone_str, addr_str, ##__VA_ARGS__); \
+	log_msg_zone(severity, zone_name, operation ", %s: " msg "\n", \
+	             addr_str, ##__VA_ARGS__); \
 	} while (0)
 
 /*! \brief Query logging common base. */
-#define QUERY_LOG(severity, qdata, what, msg...) do {\
-	char *zone_str = knot_dname_to_str(knot_pkt_qname((qdata)->query)); \
-	NS_PROC_LOG(severity, LOG_SERVER, (qdata)->param->remote, zone_str, \
-	            what " of '%s' with '%s': ", msg); \
-	free(zone_str); \
-	} while(0)
+#define QUERY_LOG(severity, qdata, operation, msg...) \
+	NS_PROC_LOG(severity, (qdata)->param->remote, knot_pkt_qname((qdata)->query), \
+	            operation, msg);
 
 /* Query processing specific flags. */
 enum process_query_flag {

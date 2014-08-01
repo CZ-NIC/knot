@@ -41,13 +41,16 @@
 
 void process_error(zs_scanner_t *s)
 {
+	zcreator_t *zc = s->data;
+	const knot_dname_t *zname = zc->z->apex->owner;
+
 	if (s->stop == true) {
-		log_zone_error("Fatal error in zone file %s:%"PRIu64": %s "
-		               "Stopping zone loading.\n",
+		log_zone_error(zname, "fatal error in zone file %s:%"PRIu64": %s, "
+		               "stopping zone loading.\n",
 		               s->file_name, s->line_counter,
 		               zs_strerror(s->error_code));
 	} else {
-		log_zone_error("Error in zone file %s:%"PRIu64": %s\n",
+		log_zone_error(zname,"error in zone file %s:%"PRIu64": %s\n",
 		               s->file_name, s->line_counter,
 		               zs_strerror(s->error_code));
 	}
@@ -62,31 +65,29 @@ static int add_rdata_to_rr(knot_rrset_t *rrset, const zs_scanner_t *scanner)
 static bool handle_err(zcreator_t *zc, const zone_node_t *node,
                        const knot_rrset_t *rr, int ret, bool master)
 {
-	char *zname = zc->z ? knot_dname_to_str(zc->z->apex->owner) : NULL;
+	const knot_dname_t *zname = zc->z->apex->owner;
 	char *rrname = rr ? knot_dname_to_str(rr->owner) : NULL;
 	if (ret == KNOT_EOUTOFZONE) {
-		log_zone_warning("Zone %s: Ignoring out-of-zone data for %s\n",
-		                 zname ? zname : "unknown", rrname ? rrname : "unknown");
-		free(zname);
+		log_zone_warning(zname, "ignoring out-of-zone data for %s\n",
+		                 rrname ? rrname : "unknown");
 		free(rrname);
 		return true;
 	} else if (ret == KNOT_ETTL) {
-		free(zname);
 		free(rrname);
 		assert(node);
-		log_ttl_error(node, rr);
+		log_ttl_error(zc->z, node, rr);
 		// Fail if we're the master for this zone.
 		return !master;
 	} else {
-		log_zone_error("Zone %s: Cannot process record %s, stopping.\n",
-		               zname ? zname : "unknown", rrname ? rrname : "unknown");
-		free(zname);
+		log_zone_error(zname, "cannot process record %s, stopping\n",
+		               rrname ? rrname : "unknown");
 		free(rrname);
 		return false;
 	}
 }
 
-void log_ttl_error(const zone_node_t *node, const knot_rrset_t *rr)
+void log_ttl_error(const zone_contents_t *zone, const zone_node_t *node,
+		   const knot_rrset_t *rr)
 {
 	err_handler_t err_handler;
 	err_handler_init(&err_handler);
@@ -101,7 +102,7 @@ void log_ttl_error(const zone_node_t *node, const knot_rrset_t *rr)
 	}
 
 	/*!< \todo REPLACE WITH FATAL ERROR for master. */
-	err_handler_handle_error(&err_handler, node,
+	err_handler_handle_error(&err_handler, zone, node,
 	                         ZC_ERR_TTL_MISMATCH, info_str);
 }
 
@@ -166,8 +167,9 @@ static void loader_process(zs_scanner_t *scanner)
 	int ret = add_rdata_to_rr(&rr, scanner);
 	if (ret != KNOT_EOK) {
 		char *rr_name = knot_dname_to_str(rr.owner);
-		log_zone_error("%s:%"PRIu64": Can't add RDATA for '%s'.\n",
-		               scanner->file_name, scanner->line_counter, rr_name);
+		log_zone_error(zc->z->apex->owner, "file %s:%"PRIu64": "
+		               "can't add RDATA for '%s'\n", scanner->file_name,
+		               scanner->line_counter, rr_name);
 		free(rr_name);
 		knot_dname_free(&owner, NULL);
 		zc->ret = ret;
@@ -252,30 +254,32 @@ zone_contents_t *zonefile_load(zloader_t *loader)
 	}
 
 	zcreator_t *zc = loader->creator;
+	const knot_dname_t *zname = zc->z->apex->owner;
+
 	assert(zc);
 	int ret = zs_loader_process(loader->file_loader);
 	if (ret != ZS_OK) {
-		log_zone_error("%s: zone file could not be loaded (%s).\n",
+		log_zone_error(zname, "zone file '%s' could not be loaded: %s\n",
 		               loader->source, zs_strerror(ret));
 		goto fail;
 	}
 
 	if (zc->ret != KNOT_EOK) {
-		log_zone_error("%s: zone file could not be loaded (%s).\n",
+		log_zone_error(zname, "zone file '%s' could not be loaded: %s\n",
 		               loader->source, knot_strerror(zc->ret));
 		goto fail;
 	}
 
 	if (loader->file_loader->scanner->error_counter > 0) {
-		log_zone_error("%s: zone file could not be loaded due to "
-		               "%"PRIu64" errors encountered.\n",
+		log_zone_error(zname, "zone file '%s' could not be loaded due "
+		               "to %"PRIu64" errors encountered\n",
 		               loader->source,
 		               loader->file_loader->scanner->error_counter);
 		goto fail;
 	}
 
 	if (!node_rrtype_exists(loader->creator->z->apex, KNOT_RRTYPE_SOA)) {
-		log_zone_error("%s: no SOA record in the zone file.\n",
+		log_zone_error(zname, "no SOA record in the zone file '%s'\n",
 		               loader->source);
 		goto fail;
 	}
@@ -286,8 +290,8 @@ zone_contents_t *zonefile_load(zloader_t *loader)
 	int kret = zone_contents_adjust_full(zc->z,
 	                                          &first_nsec3_node, &last_nsec3_node);
 	if (kret != KNOT_EOK) {
-		log_zone_error("%s: Failed to finalize zone contents: %s\n",
-		               loader->source, knot_strerror(kret));
+		log_zone_error(zname, "failed to finalize zone contents: %s\n",
+		               knot_strerror(kret));
 		goto fail;
 	}
 
@@ -309,9 +313,7 @@ zone_contents_t *zonefile_load(zloader_t *loader)
 		zone_do_sem_checks(zc->z, check_level,
 		                   &err_handler, first_nsec3_node,
 		                   last_nsec3_node);
-		char *zname = knot_dname_to_str(soa_rr.owner);
-		log_zone_info("Semantic checks completed for zone=%s\n", zname);
-		free(zname);
+		log_zone_info(zname, "semantic checks completed\n");
 	}
 
 	return zc->z;
@@ -369,16 +371,18 @@ int zonefile_write(const char *path, zone_contents_t *zone,
 		return KNOT_EWRITABLE;
 	}
 
+	const knot_dname_t *zname = zone->apex->owner;
+
 	FILE *f = fdopen(fd, "w");
 	if (f == NULL) {
-		log_zone_warning("Failed to open file descriptor for text zone.\n");
+		log_zone_warning(zname, "failed to open zone master file\n");
 		unlink(new_fname);
 		free(new_fname);
 		return KNOT_ERROR;
 	}
 
 	if (zone_dump_text(zone, from, f) != KNOT_EOK) {
-		log_zone_warning("Failed to save the transferred zone to '%s'.\n",
+		log_zone_warning(zname, "failed to save the transferred zone to '%s'\n",
 		                 new_fname);
 		fclose(f);
 		unlink(new_fname);
@@ -394,8 +398,8 @@ int zonefile_write(const char *path, zone_contents_t *zone,
 
 	int ret = rename(new_fname, path);
 	if (ret < 0 && ret != EEXIST) {
-		log_zone_warning("Failed to replace old zone file '%s'' with a "
-		                 "new zone file '%s'.\n", path, new_fname);
+		log_zone_warning(zname, "failed to replace old zone file '%s' "
+		                 "with a new zone file '%s'\n", path, new_fname);
 		unlink(new_fname);
 		free(new_fname);
 		return KNOT_ERROR;

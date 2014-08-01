@@ -35,11 +35,9 @@ const knot_process_module_t *process_answer_get_module(void);
 #define NS_PROC_ANSWER_ID 2
 
 /*! \brief Answer processsing logging base. */
-#define ANSWER_LOG(severity, data, what, msg...) do {\
-	const char *zone_str = (data)->param->zone->conf->name; \
-	NS_PROC_LOG(severity, LOG_SERVER, (data)->param->remote, zone_str, \
-	            what " of '%s' from '%s': ", msg); \
-	} while(0)
+#define ANSWER_LOG(severity, data, operation, msg...) \
+	NS_PROC_LOG(severity, (data)->param->remote, (data)->param->zone->name, \
+		    operation, msg);
 
 /*!
  * \brief Processing module parameters.
