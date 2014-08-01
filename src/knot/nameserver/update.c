@@ -35,7 +35,7 @@
 
 /* UPDATE-specific logging (internal, expects 'qdata' variable set). */
 #define UPDATE_LOG(severity, msg...) \
-	QUERY_LOG(severity, qdata, "UPDATE", msg)
+	QUERY_LOG(severity, &qdata, "UPDATE", msg)
 
 int update_query_process(knot_pkt_t *pkt, struct query_data *qdata)
 {
@@ -140,9 +140,19 @@ static int sign_update(zone_t *zone, const zone_contents_t *old_contents,
 static int process_single_update(struct request_data *request,
                                  const zone_t *zone, zone_update_t *update)
 {
+	// Needed for logging
+	struct process_query_param param = { 0 };
+	param.remote = &request->remote;
+	struct query_data qdata = { 0 };
+	qdata.param = &param;
+	qdata.query = request->query;
+	qdata.zone  = zone;
+
 	uint16_t rcode = KNOT_RCODE_NOERROR;
 	int ret = ddns_process_prereqs(request->query, update, &rcode);
 	if (ret != KNOT_EOK) {
+		UPDATE_LOG(LOG_WARNING, "prerequisites not met - %s",
+		           knot_strerror(ret));
 		assert(rcode != KNOT_RCODE_NOERROR);
 		knot_wire_set_rcode(request->resp->wire, rcode);
 		return ret;
@@ -150,18 +160,24 @@ static int process_single_update(struct request_data *request,
 
 	ret = ddns_process_update(zone, request->query, update, &rcode);
 	if (ret != KNOT_EOK) {
+		UPDATE_LOG(LOG_WARNING, "failed to apply - %s",
+		           knot_strerror(ret));
 		assert(rcode != KNOT_RCODE_NOERROR);
 		knot_wire_set_rcode(request->resp->wire, rcode);
+		return ret;
 	}
 
-	return ret;
+	return KNOT_EOK;
 }
+
+#undef UPDATE_LOG
 
 static void set_rcodes(list_t *queries, const uint16_t rcode)
 {
 	struct request_data *query;
 	WALK_LIST(query, *queries) {
-		if (knot_wire_get_rcode(query->resp->wire) == KNOT_RCODE_NOERROR) {
+		if (knot_wire_get_rcode(query->resp->wire) ==
+		    KNOT_RCODE_NOERROR) {
 			knot_wire_set_rcode(query->resp->wire, rcode);
 		}
 	}
@@ -169,7 +185,6 @@ static void set_rcodes(list_t *queries, const uint16_t rcode)
 
 static int process_normal(zone_t *zone, list_t *queries)
 {
-#warning TODO proper logging
 	assert(queries);
 
 	// Create DDNS change
@@ -275,8 +290,6 @@ static int process_queries(zone_t *zone, list_t *queries)
 		return KNOT_EINVAL;
 	}
 
-//	UPDATE_LOG(LOG_INFO, "Started.");
-
 	/* Keep original state. */
 	struct timeval t_start, t_end;
 	gettimeofday(&t_start, NULL);
@@ -285,21 +298,22 @@ static int process_queries(zone_t *zone, list_t *queries)
 	/* Process authenticated packet. */
 	int ret = process_normal(zone, queries);
 	if (ret != KNOT_EOK) {
-//		UPDATE_LOG(LOG_ERR, "%s", knot_strerror(ret));
+		log_zone_error("update processing failed - %s",
+		               knot_strerror(ret));
 		return ret;
 	}
 
 	/* Evaluate response. */
 	const uint32_t new_serial = zone_contents_serial(zone->contents);
 	if (new_serial == old_serial) {
-//		UPDATE_LOG(LOG_NOTICE, "No change to zone made.");
+		log_zone_info("no change to zone made");
 		return KNOT_EOK;
 	}
 
 	gettimeofday(&t_end, NULL);
-//	UPDATE_LOG(LOG_INFO, "Serial %u -> %u", old_serial, new_serial);
-	printf("Update finished in %.02fs.\n",
-	           time_diff(&t_start, &t_end) / 1000.0);
+	log_zone_info("Serial %u -> %u", old_serial, new_serial);
+	log_zone_info("Update finished in %.02fs.\n",
+	              time_diff(&t_start, &t_end) / 1000.0);
 	
 	zone_events_schedule(zone, ZONE_EVENT_NOTIFY, ZONE_EVENT_NOW);
 
@@ -351,12 +365,10 @@ static int forward_query(zone_t *zone, struct request_data *update)
 	/* Set RCODE if forwarding failed. */
 	if (ret != KNOT_EOK) {
 		knot_wire_set_rcode(update->resp->wire, KNOT_RCODE_SERVFAIL);
-//		UPDATE_LOG(LOG_INFO, "Failed to forward UPDATE to master: %s",
-//		           knot_strerror(ret));
-		printf("Failed to forward\n");
+		log_zone_error("Failed to forward UPDATEs to master: %s",
+		               knot_strerror(ret));
 	} else {
-//		UPDATE_LOG(LOG_INFO, "Forwarded UPDATE to master.");
-		printf("Forwarded\n");
+		log_zone_info("UPDATEs forwarded");
 	}
 
 	return ret;
@@ -369,8 +381,6 @@ static void forward_queries(zone_t *zone, list_t *queries)
 		forward_query(zone, query);
 	}
 }
-
-#undef UPDATE_LOG
 
 static int init_update_respones(list_t *updates)
 {
@@ -392,12 +402,15 @@ static void send_update_responses(list_t *updates)
 {
 	struct request_data *r, *nxt;
 	WALK_LIST_DELSAFE(r, nxt, *updates) {
-		if (net_is_connected(r->fd)) {
-			tcp_send_msg(r->fd, r->resp->wire, r->resp->size);
-		} else {
-			udp_send_msg(r->fd, r->resp->wire, r->resp->size,
-			             (struct sockaddr *)&r->remote);
+		if (r->resp) {
+			if (net_is_connected(r->fd)) {
+				tcp_send_msg(r->fd, r->resp->wire, r->resp->size);
+			} else {
+				udp_send_msg(r->fd, r->resp->wire, r->resp->size,
+				             (struct sockaddr *)&r->remote);
+			}
 		}
+
 		close(r->fd);
 		knot_pkt_free(&r->query);
 		knot_pkt_free(&r->resp);
@@ -409,7 +422,8 @@ int updates_execute(zone_t *zone)
 {
 	/* Get list of pending updates. */
 	list_t updates;
-	zone_update_dequeue(zone, &updates);
+	size_t update_count;
+	zone_update_dequeue(zone, &updates, &update_count);
 	if (EMPTY_LIST(updates)) {
 		return KNOT_EOK;
 	}
@@ -417,14 +431,18 @@ int updates_execute(zone_t *zone)
 	/* Init updates respones. */
 	int ret = init_update_respones(&updates);
 	if (ret != KNOT_EOK) {
-#warning UPDATES lost, no responses!
+		/* Send what responses we can. */
+		set_rcodes(&updates, KNOT_RCODE_SERVFAIL);
+		send_update_responses(&updates);
 		return ret;
 	}
 
 	/* Process update list - forward if zone has master, or execute. */
 	if (zone_master(zone)) {
+		log_zone_info("forwarding %zu dynamic updates", update_count);
 		forward_queries(zone, &updates);
 	} else {
+		log_zone_info("processing %zu dynamic updates", update_count);
 		ret = process_queries(zone, &updates);
 	}
 	UNUSED(ret); /* Don't care about the Knot code, RCODEs are set. */

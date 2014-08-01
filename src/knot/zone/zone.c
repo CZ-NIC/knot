@@ -280,7 +280,7 @@ int zone_update_enqueue(zone_t *zone, knot_pkt_t *pkt, struct process_query_para
 	return KNOT_EOK;
 }
 
-void zone_update_dequeue(zone_t *zone, list_t *updates)
+void zone_update_dequeue(zone_t *zone, list_t *updates, size_t *update_count)
 {
 	if (zone == NULL) {
 		return;
@@ -293,8 +293,8 @@ void zone_update_dequeue(zone_t *zone, list_t *updates)
 		return;
 	}
 
-	printf("Will process %zu UPDATES\n", zone->ddns_queue_size);
 	*updates = zone->ddns_queue;
+	*update_count = zone->ddns_queue_size;
 	init_list(&zone->ddns_queue);
 	zone->ddns_queue_size = 0;
 

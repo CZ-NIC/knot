@@ -102,6 +102,24 @@ static int deep_copy_node_data(zone_node_t *node_copy, const zone_node_t *old_no
 	return KNOT_EOK;
 }
 
+static zone_node_t *node_deep_copy(const zone_node_t *old_node, mm_ctx_t *mm)
+{
+	// Shallow copy old node
+	zone_node_t *synth_node = node_shallow_copy(old_node, mm);
+	if (synth_node == NULL) {
+		return NULL;
+	}
+
+	// Deep copy data inside node copy.
+	int ret = deep_copy_node_data(synth_node, old_node, mm);
+	if (ret != KNOT_EOK) {
+		node_free(&synth_node, mm);
+		return NULL;
+	}
+
+	return synth_node;
+}
+
 void zone_update_init(zone_update_t *update, const zone_contents_t *zone, changeset_t *change)
 {
 	update->zone = zone;
@@ -125,42 +143,35 @@ const zone_node_t *zone_update_get_node(zone_update_t *update, const knot_dname_
 
 	const bool have_change = !node_empty(add_node) || !node_empty(rem_node);
 	if (!have_change) {
+		// Nothing to apply
 		return old_node;
 	}
 
-	zone_node_t *synth_node = NULL;
-	if (old_node) {
-		// We have to apply changes to the original node.
-		synth_node = node_shallow_copy(old_node, &update->mm);
-		if (synth_node == NULL) {
-			return NULL;
-		}
-
-		// Deep copy data inside node copy.
-		int ret = deep_copy_node_data(synth_node, old_node, &update->mm);
-		if (ret != KNOT_EOK) {
-			node_free(&synth_node, &update->mm);
-			return NULL;
-		}
-
-		// Apply changes to node.
-		ret = apply_changes_to_node(synth_node, add_node, rem_node, &update->mm);
-		if (ret != KNOT_EOK) {
-			node_free(&synth_node, &update->mm);
-			return NULL;
-		}
-
-		return synth_node;
-	} else {
+	if (!old_node) {
 		if (add_node && node_empty(rem_node)) {
-			// Just addition.
+			// Just addition
 			return add_node;
 		} else {
-			// Addition and deletion.
-#warning do not allow this
-			return NULL;
+			// Addition and deletion
+			old_node = add_node;
+			add_node = NULL;
 		}
 	}
+
+	// We have to apply changes to node.
+	zone_node_t *synth_node = node_deep_copy(old_node, &update->mm);
+	if (synth_node == NULL) {
+		return NULL;
+	}
+
+	// Apply changes to node.
+	int ret = apply_changes_to_node(synth_node, add_node, rem_node,
+	                                &update->mm);
+	if (ret != KNOT_EOK) {
+		return NULL;
+	}
+
+	return synth_node;
 }
 
 void zone_update_clear(zone_update_t *update)
