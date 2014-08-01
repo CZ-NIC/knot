@@ -1083,7 +1083,7 @@ int zone_contents_adjust_pointers(zone_contents_t *contents)
 	int ret = zone_contents_load_nsec3param(contents);
 	if (ret != KNOT_EOK) {
 		log_zone_error(contents->apex->owner,
-			       "Failed to load NSEC3 parameters: %s\n",
+			       "failed to load NSEC3 parameters: %s\n",
 			       knot_strerror(ret));
 		return ret;
 	}
@@ -1120,7 +1120,7 @@ int zone_contents_adjust_full(zone_contents_t *zone,
 	int result = zone_contents_load_nsec3param(zone);
 	if (result != KNOT_EOK) {
 		log_zone_error(zone->apex->owner,
-			       "Failed to load NSEC3 parameters: %s\n",
+			       "failed to load NSEC3 parameters: %s\n",
 			       knot_strerror(result));
 		return result;
 	}
@@ -1365,7 +1365,7 @@ uint32_t zone_contents_next_serial(const zone_contents_t *zone, int policy)
 
 	/* If the new serial is 'lower' or equal than the new one, warn the user.*/
 	if (knot_serial_compare(old_serial, new_serial) >= 0) {
-		log_zone_warning(zone->apex->owner, "New serial will be lower "
+		log_zone_warning(zone->apex->owner, "new serial will be lower "
 				 "than the current one (%u -> %u)\n",
 		                 old_serial, new_serial);
 	}

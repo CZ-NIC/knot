@@ -84,7 +84,7 @@ static void cf_print_error(void *scanner, const char *msg)
 		filename = new_config->filename;
 	}
 
-	log_error("Config error in '%s' (line %d token '%s'): %s\n",
+	log_error("config error in '%s' (line %d token '%s'): %s\n",
 		  filename, lineno, text, msg);
 
 	_parser_res = KNOT_EPARSEFAIL;
@@ -225,7 +225,7 @@ static int conf_process(conf_t *conf)
 
 			/* Check for ACL existence. */
 			if (!EMPTY_LIST(conf->ctl.allow)) {
-				log_warning("Control 'allow' statement does not "
+				log_warning("control 'allow' statement does not "
 				            "affect UNIX sockets\n");
 			}
 		} else if (sockaddr_port(&ctl_if->addr) <= 0) {
@@ -363,7 +363,7 @@ static int conf_process(conf_t *conf)
 			if (!EMPTY_LIST(zone->acl.notify_in) ||
 			    !EMPTY_LIST(zone->acl.xfr_in)
 			) {
-				log_zone_str_warning(zone->name, "Automatic "
+				log_zone_str_notice(zone->name, "automatic "
 					"DNSSEC signing enabled, disabling "
 					"incoming XFRs\n");
 
@@ -393,12 +393,14 @@ static int conf_process(conf_t *conf)
 
 		/* Check paths existence. */
 		if (!is_existing_dir(zone->storage)) {
-			log_error("Storage dir '%s' does not exist\n", zone->storage);
+			log_error("storage directory '%s' does not exist\n",
+			          zone->storage);
 			ret = KNOT_EINVAL;
 			continue;
 		}
 		if (zone->dnssec_enable && !is_existing_dir(zone->dnssec_keydir)) {
-			log_error("DNSSEC key dir '%s' does not exist\n", zone->dnssec_keydir);
+			log_error("DNSSEC key directory '%s' does not exist\n",
+			          zone->dnssec_keydir);
 			ret = KNOT_EINVAL;
 			continue;
 
@@ -818,7 +820,7 @@ char* strcpath(char *path)
 	char* remainder = strchr(path,'~');
 	if (remainder != NULL) {
 		if (remainder[1] != '/') {
-			log_warning("Cannot expand non-login user home"
+			log_warning("cannot expand non-login user home"
 			            "directory '%s', use full path instead", path);
 		}
 

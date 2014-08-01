@@ -344,9 +344,10 @@ static int ixfrin_finalize(struct answer_data *adata)
 
 	struct timeval now = {0};
 	gettimeofday(&now, NULL);
-	IXFRIN_LOG(LOG_INFO, "finished, %.02fs, %u messages, " SIZE_FORMAT,
+	IXFRIN_LOG(LOG_INFO,
+	           "finished, %.02f seconds, %u messages, %u bytes",
 	           time_diff(&ixfr->proc.tstamp, &now) / 1000.0,
-	           ixfr->proc.npkts, SIZE_PARAMS(ixfr->proc.nbytes));
+	           ixfr->proc.npkts, ixfr->proc.nbytes);
 
 	return KNOT_EOK;
 }
@@ -613,9 +614,10 @@ int ixfr_query(knot_pkt_t *pkt, struct query_data *qdata)
 		return NS_PROC_FULL; /* Check for more. */
 	case KNOT_EOK:    /* Last response. */
 		gettimeofday(&now, NULL);
-		IXFROUT_LOG(LOG_INFO, "finished, %.02fs, %u messages, " SIZE_FORMAT,
+		IXFROUT_LOG(LOG_INFO,
+	                    "finished, %.02f seconds, %u messages, %u bytes",
 		            time_diff(&ixfr->proc.tstamp, &now) / 1000.0,
-		            ixfr->proc.npkts, SIZE_PARAMS(ixfr->proc.nbytes));
+		            ixfr->proc.npkts, ixfr->proc.nbytes);
 		ret = NS_PROC_DONE;
 		break;
 	default:          /* Generic error. */

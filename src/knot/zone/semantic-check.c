@@ -168,12 +168,12 @@ static void log_error_from_node(err_handler_t *handler,
 	const knot_dname_t *zone_name = zone->apex->owner;
 
 	if (error > (int)ZC_ERR_GLUE_RECORD) {
-		log_zone_warning(zone_name, "Sematic check: Unknown error\n");
+		log_zone_warning(zone_name, "sematic check: unknown error\n");
 		return;
 	}
 
 	if (node == NULL) {
-		log_zone_warning(zone_name, "Semantic check: %d warnings, error %s\n",
+		log_zone_warning(zone_name, "semantic check: %d warnings, error %s\n",
 		                 handler->errors[-error], error_messages[-error]);
 		return;
 	}
@@ -183,9 +183,9 @@ static void log_error_from_node(err_handler_t *handler,
 	char *name = knot_dname_to_str(node->owner);
 	const char *errmsg = error_messages[-error];
 
-	log_zone_warning(zone_name, "Semantic check: node '%s': %s%s%s\n",
+	log_zone_warning(zone_name, "semantic check: node '%s': %s%s%s\n",
 	                 name,
-			 errmsg ? errmsg : "Unknown error.",
+			 errmsg ? errmsg : "unknown error",
 			 data ? " " : "",
 			 data ? data : "");
 
@@ -1074,8 +1074,8 @@ void log_cyclic_errors_in_zone(err_handler_t *handler,
 		                                                    next_dname_size,
 		                                                    apex->owner);
 		if (next_dname == NULL) {
-			log_zone_warning(zone->apex->owner, "Sematic check: "
-			                 "Could not create new dname\n");
+			log_zone_warning(zone->apex->owner, "sematic check: "
+			                 "could not create new dname\n");
 			return;
 		}
 

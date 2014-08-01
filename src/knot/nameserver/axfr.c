@@ -249,9 +249,10 @@ int axfr_query_process(knot_pkt_t *pkt, struct query_data *qdata)
 		return NS_PROC_FULL; /* Check for more. */
 	case KNOT_EOK:    /* Last response. */
 		gettimeofday(&now, NULL);
-		AXFROUT_LOG(LOG_INFO, "finished, %.02fs, %u messages, " SIZE_FORMAT,
+		AXFROUT_LOG(LOG_INFO,
+		            "finished, %.02f seconds, %u messages, %u bytes",
 		            time_diff(&axfr->proc.tstamp, &now) / 1000.0,
-		            axfr->proc.npkts, SIZE_PARAMS(axfr->proc.nbytes));
+		            axfr->proc.npkts, axfr->proc.nbytes);
 		return NS_PROC_DONE;
 		break;
 	default:          /* Generic error. */
@@ -303,8 +304,8 @@ static int axfr_answer_init(struct answer_data *data)
 }
 
 /* AXFR-specific logging (internal, expects 'adata' variable set). */
-#define AXFRIN_LOG(priority, msg...) \
-	ANSWER_LOG(priority, adata, "AXFR, incoming", msg)
+#define AXFRIN_LOG(severity, msg...) \
+	ANSWER_LOG(severity, adata, "AXFR, incoming", msg)
 
 static int axfr_answer_finalize(struct answer_data *adata)
 {
@@ -328,11 +329,11 @@ static int axfr_answer_finalize(struct answer_data *adata)
 	synchronize_rcu();
 
 	AXFRIN_LOG(LOG_INFO, "finished, "
-	           "serial %u -> %u, %.02fs, %u messages, " SIZE_FORMAT,
+	           "serial %u -> %u, %.02f seconds, %u messages, %u bytes",
 	           zone_contents_serial(old_contents),
 	           zone_contents_serial(proc->contents),
 	           time_diff(&proc->tstamp, &now) / 1000.0,
-	           proc->npkts, SIZE_PARAMS(proc->nbytes));
+	           proc->npkts, proc->nbytes);
 
 	/* Do not free new contents with cleanup. */
 	zone_contents_deep_free(&old_contents);

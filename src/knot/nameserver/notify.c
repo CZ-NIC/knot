@@ -44,7 +44,7 @@
 
 /* NOTIFY-specific logging (internal, expects 'qdata' variable set). */
 #define NOTIFY_QLOG(severity, msg...) \
-	QUERY_LOG(severity, qdata, "notify, incoming", msg)
+	QUERY_LOG(severity, qdata, "NOTIFY, incoming", msg)
 
 static int notify_check_query(struct query_data *qdata)
 {
@@ -107,7 +107,7 @@ int notify_process_query(knot_pkt_t *pkt, struct query_data *qdata)
 
 /* NOTIFY-specific logging (internal, expects 'adata' variable set). */
 #define NOTIFY_RLOG(severity, msg...) \
-	ANSWER_LOG(severity, adata, "notify, incoming", msg)
+	ANSWER_LOG(severity, adata, "NOTIFY, outgoing", msg)
 
 int notify_process_answer(knot_pkt_t *pkt, struct answer_data *adata)
 {
@@ -120,7 +120,7 @@ int notify_process_answer(knot_pkt_t *pkt, struct answer_data *adata)
 	if (rcode != KNOT_RCODE_NOERROR) {
 		knot_lookup_table_t *lut = knot_lookup_by_id(knot_rcode_names, rcode);
 		if (lut != NULL) {
-			NOTIFY_RLOG(LOG_ERR, "server responded with %s", lut->name);
+			NOTIFY_RLOG(LOG_WARNING, "server responded with %s", lut->name);
 		}
 		return NS_PROC_FAIL;
 	}

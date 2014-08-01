@@ -153,7 +153,7 @@ int zone_change_apply_and_store(changesets_t **chs,
 	zone_contents_t *new_contents;
 	ret = apply_changesets(zone, *chs, &new_contents);
 	if (ret != KNOT_EOK) {
-		log_zone_error(zone->name, "%s: Failed to apply changesets\n", operation);
+		log_zone_error(zone->name, "%s: failed to apply changesets\n", operation);
 		/* Free changesets, but not the data. */
 		changesets_free(chs, rr_mm);
 		return ret;  // propagate the error above
@@ -162,7 +162,7 @@ int zone_change_apply_and_store(changesets_t **chs,
 	/* Write changes to journal if all went well. */
 	ret = zone_change_store(zone, *chs);
 	if (ret != KNOT_EOK) {
-		log_zone_error(zone->name, "%s: Failed to store changesets\n", operation);
+		log_zone_error(zone->name, "%s: failed to store changesets\n", operation);
 		update_rollback(*chs, &new_contents);
 		/* Free changesets, but not the data. */
 		changesets_free(chs, rr_mm);

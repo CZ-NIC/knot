@@ -63,8 +63,8 @@ static uint32_t bootstrap_next(uint32_t timer)
 /* ------------------------- zone query requesting -------------------------- */
 
 /*! \brief Zone event logging. */
-#define ZONE_QUERY_LOG(priority, zone, remote, operation, msg...) \
-	NS_PROC_LOG(priority, &remote->addr, zone->name, operation, msg)
+#define ZONE_QUERY_LOG(severity, zone, remote, operation, msg...) \
+	NS_PROC_LOG(severity, &remote->addr, zone->name, operation, msg)
 
 /*! \brief Create zone query packet. */
 static knot_pkt_t *zone_query(const zone_t *zone, uint16_t pkt_type, mm_ctx_t *mm)
@@ -162,11 +162,11 @@ fail:
 }
 
 /* @note Module specific, expects some variables set. */
-#define ZONE_XFER_LOG(priority, pkt_type, msg...) \
+#define ZONE_XFER_LOG(severity, pkt_type, msg...) \
 	if (pkt_type == KNOT_QUERY_AXFR) { \
-		ZONE_QUERY_LOG(priority, zone, master, "AXFR, incoming", msg); \
+		ZONE_QUERY_LOG(severity, zone, master, "AXFR, incoming", msg); \
 	} else { \
-		ZONE_QUERY_LOG(priority, zone, master, "IXFR, incoming", msg); \
+		ZONE_QUERY_LOG(severity, zone, master, "IXFR, incoming", msg); \
 	}
 
 /*! \brief Execute zone transfer request. */
@@ -478,11 +478,11 @@ static int event_notify(zone_t *zone)
 
 		int ret = zone_query_execute(zone, KNOT_QUERY_NOTIFY, iface);
 		if (ret == KNOT_EOK) {
-			ZONE_QUERY_LOG(LOG_INFO, zone, iface, "notify, outgoing",
+			ZONE_QUERY_LOG(LOG_INFO, zone, iface, "NOTIFY, outgoing",
 			               "serial %u",
 			               zone_contents_serial(zone->contents));
 		} else {
-			ZONE_QUERY_LOG(LOG_WARNING, zone, iface, "notify, outgoing",
+			ZONE_QUERY_LOG(LOG_WARNING, zone, iface, "NOTIFY, outgoing",
 			               "failed (%s)", knot_strerror(ret));
 		}
 	}

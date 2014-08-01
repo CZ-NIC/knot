@@ -62,7 +62,7 @@ static void knot_crypto_deinit(void)
 static void pid_cleanup(char *pidfile)
 {
 	if (pidfile && pid_remove(pidfile) < 0) {
-		log_warning("Failed to remove PID file\n");
+		log_warning("failed to remove PID file\n");
 	}
 }
 
@@ -114,12 +114,12 @@ static void setup_capabilities(void)
 
 		/* Apply. */
 		if (capng_apply(CAPNG_SELECT_BOTH) < 0) {
-			log_error("Couldn't set process capabilities: %s\n",
+			log_error("couldn't set process capabilities: %s\n",
 			          strerror(errno));
 		}
 	} else {
-		log_info("User UID %d is not allowed to set capabilities, "
-		         "skipping.\n", getuid());
+		log_info("user UID %d is not allowed to set capabilities, "
+		         "skipping\n", getuid());
 	}
 #endif /* HAVE_CAP_NG_H */
 }
@@ -267,7 +267,7 @@ int main(int argc, char **argv)
 	int res = conf_open(config_fn);
 	conf_t *config = conf();
 	if (res != KNOT_EOK) {
-		log_fatal("Couldn't load configuration '%s': %s\n",
+		log_fatal("couldn't load configuration '%s': %s\n",
 		          config_fn, knot_strerror(res));
 		return EXIT_FAILURE;
 	}
@@ -281,7 +281,7 @@ int main(int argc, char **argv)
 	server_t server;
 	res = server_init(&server, conf_bg_threads(config));
 	if (res != KNOT_EOK) {
-		log_fatal("Could not initialize server: %s\n", knot_strerror(res));
+		log_fatal("could not initialize server: %s\n", knot_strerror(res));
 		conf_free(conf());
 		log_close();
 		return EXIT_FAILURE;
@@ -291,7 +291,7 @@ int main(int argc, char **argv)
 	 * @note This MUST be done before we drop privileges. */
 	server_reconfigure(config, &server);
 	conf_add_hook(config, CONF_ALL, server_reconfigure, &server);
-	log_info("Configured %zu interfaces and %zu zones\n",
+	log_info("configured %zu interfaces and %zu zones\n",
 	         list_size(&config->ifaces), hattrie_weight(config->zones));
 
 
@@ -318,10 +318,10 @@ int main(int argc, char **argv)
 
 		log_info("PID stored in '%s'\n", pidfile);
 		if (chdir(daemon_root) != 0) {
-			log_warning("Can't change working directory to %s\n",
+			log_warning("can't change working directory to %s\n",
 			            daemon_root);
 		} else {
-			log_info("Changed directory to %s.\n", daemon_root);
+			log_info("changed directory to %s\n", daemon_root);
 		}
 	}
 
@@ -336,20 +336,20 @@ int main(int argc, char **argv)
 	rcu_register_thread();
 
 	/* Populate zone database and add reconfiguration hook. */
-	log_info("Loading zones\n");
+	log_info("loading zones\n");
 	server_update_zones(config, &server);
 	conf_add_hook(config, CONF_ALL, server_update_zones, &server);
 
 	/* Check number of loaded zones. */
 	if (knot_zonedb_size(server.zone_db) == 0) {
-		log_warning("No zones loaded\n");
+		log_warning("no zones loaded\n");
 	}
 
 	/* Start it up. */
-	log_info("Starting server\n");
+	log_info("starting server\n");
 	res = server_start(&server, config->async_start);
 	if (res != KNOT_EOK) {
-		log_fatal("Failed to start server: %s\n", knot_strerror(res));
+		log_fatal("failed to start server: %s\n", knot_strerror(res));
 		server_deinit(&server);
 		rcu_unregister_thread();
 		pid_cleanup(pidfile);
@@ -359,9 +359,9 @@ int main(int argc, char **argv)
 	}
 
 	if (daemonize) {
-		log_info("Server started as a daemon, PID %ld\n", pid);
+		log_info("server started as a daemon, PID %ld\n", pid);
 	} else {
-		log_info("Server started in foreground, PID %ld\n", pid);
+		log_info("server started in foreground, PID %ld\n", pid);
 		init_signal_started();
 	}
 
@@ -381,7 +381,7 @@ int main(int argc, char **argv)
 	/* Cleanup PID file. */
 	pid_cleanup(pidfile);
 
-	log_info("Shutting down\n");
+	log_info("shutting down\n");
 	log_close();
 
 	return EXIT_SUCCESS;
