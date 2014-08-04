@@ -36,7 +36,7 @@
  * the others. We should be more strict and report other records as errors.
  * However, there is currently no API to stop the scanner.
  */
-static void parse_record(const zs_scanner_t *scanner)
+static void parse_record(zs_scanner_t *scanner)
 {
 	assert(scanner);
 	assert(scanner->data);
