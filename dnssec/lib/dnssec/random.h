@@ -63,7 +63,7 @@ int dnssec_random_binary(dnssec_binary_t *data);
  * Declare function dnssec_random_<type>().
  */
 #define dnssec_register_random_type(type) \
-	inline type dnssec_random_##type(void) { \
+	static inline type dnssec_random_##type(void) { \
 		type value; \
 		dnssec_random_buffer((uint8_t *)&value, sizeof(value)); \
 		return value; \
@@ -72,12 +72,12 @@ int dnssec_random_binary(dnssec_binary_t *data);
 /*!
  * Generate pseudo-random 16-bit number.
  */
-inline uint16_t dnssec_random_uint16_t(void);
+static inline uint16_t dnssec_random_uint16_t(void);
 
 /*!
  * Generate pseudo-random 32-bit number.
  */
-inline uint32_t dnssec_random_uint32_t(void);
+static inline uint32_t dnssec_random_uint32_t(void);
 
 /*! \cond */
 dnssec_register_random_type(uint16_t);

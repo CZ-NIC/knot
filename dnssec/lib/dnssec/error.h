@@ -98,7 +98,7 @@ const char *dnssec_strerror(int error);
 /*!
  * Convert errno value to DNSSEC error code.
  */
-inline int dnssec_errno_to_error(int ecode)
+static inline int dnssec_errno_to_error(int ecode)
 {
 	return errno2error(ecode);
 }
