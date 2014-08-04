@@ -62,42 +62,44 @@ static void* responder_thread(void *arg)
 #define CONNECTED_TESTS    4
 #define TESTS_COUNT DISCONNECTED_TESTS + CONNECTED_TESTS
 
-static struct request *make_query(struct requestor *requestor,  conf_iface_t *remote)
+static struct knot_request *make_query(struct knot_requestor *requestor,  conf_iface_t *remote)
 {
 	knot_pkt_t *pkt = knot_pkt_new(NULL, KNOT_WIRE_MAX_PKTSIZE, requestor->mm);
 	assert(pkt);
 	knot_pkt_put_question(pkt, ROOT_DNAME, KNOT_CLASS_IN, KNOT_RRTYPE_SOA);
 
-	return requestor_make(requestor, &remote->addr, &remote->via, pkt);
+	const struct sockaddr *dst = (const struct sockaddr *)&remote->addr;
+	const struct sockaddr *src = (const struct sockaddr *)&remote->via;
+	return knot_requestor_make(requestor, dst, src, pkt);
 }
 
-static void test_disconnected(struct requestor *requestor, conf_iface_t *remote)
+static void test_disconnected(struct knot_requestor *requestor, conf_iface_t *remote)
 {
 	/* Enqueue packet. */
-	int ret = requestor_enqueue(requestor, make_query(requestor, remote), NULL);
+	int ret = knot_requestor_enqueue(requestor, make_query(requestor, remote), NULL);
 	is_int(KNOT_ECONN, ret, "requestor: disconnected/enqueue");
 
 	/* Wait for completion. */
 	struct timeval tv = { 5, 0 };
-	ret = requestor_exec(requestor, &tv);
+	ret = knot_requestor_exec(requestor, &tv);
 	is_int(KNOT_ENOENT, ret, "requestor: disconnected/wait");
 }
 
-static void test_connected(struct requestor *requestor, conf_iface_t *remote)
+static void test_connected(struct knot_requestor *requestor, conf_iface_t *remote)
 {
 	/* Enqueue packet. */
-	int ret = requestor_enqueue(requestor, make_query(requestor, remote), NULL);;
+	int ret = knot_requestor_enqueue(requestor, make_query(requestor, remote), NULL);;
 	is_int(KNOT_EOK, ret, "requestor: connected/enqueue");
 
 	/* Wait for completion. */
 	struct timeval tv = { 5, 0 };
-	ret = requestor_exec(requestor, &tv);
+	ret = knot_requestor_exec(requestor, &tv);
 	is_int(KNOT_EOK, ret, "requestor: connected/wait");
 
 	/* Enqueue multiple queries. */
 	ret = KNOT_EOK;
 	for (unsigned i = 0; i < 10; ++i) {
-		ret |= requestor_enqueue(requestor, make_query(requestor, remote), NULL);;
+		ret |= knot_requestor_enqueue(requestor, make_query(requestor, remote), NULL);;
 	}
 	is_int(KNOT_EOK, ret, "requestor: multiple enqueue");
 
@@ -105,7 +107,7 @@ static void test_connected(struct requestor *requestor, conf_iface_t *remote)
 	ret = KNOT_EOK;
 	for (unsigned i = 0; i < 10; ++i) {
 		struct timeval tv = { 5, 0 };
-		ret |= requestor_exec(requestor, &tv);
+		ret |= knot_requestor_exec(requestor, &tv);
 	}
 	is_int(KNOT_EOK, ret, "requestor: multiple wait");
 }
@@ -127,8 +129,8 @@ int main(int argc, char *argv[])
 	ok(ret == KNOT_EOK, "requestor: failed to initialize fake server");
 
 	/* Initialize requestor. */
-	struct requestor requestor;
-	requestor_init(&requestor, &dummy_module, &mm);
+	struct knot_requestor requestor;
+	knot_requestor_init(&requestor, &dummy_module, &mm);
 
 	/* Test requestor in disconnected environment. */
 	test_disconnected(&requestor, &remote);
@@ -136,7 +138,7 @@ int main(int argc, char *argv[])
 	/* Bind to random port. */
 	int origin_fd = net_bound_socket(SOCK_STREAM, &remote.addr);
 	assert(origin_fd > 0);
-	socklen_t addr_len = sockaddr_len(&remote.addr);
+	socklen_t addr_len = sockaddr_len((struct sockaddr *)&remote.addr);
 	getsockname(origin_fd, (struct sockaddr *)&remote.addr, &addr_len);
 	ret = listen(origin_fd, 10);
 	assert(ret == 0);
@@ -158,7 +160,7 @@ int main(int argc, char *argv[])
 	close(responder);
 
 	/* Close requestor. */
-	requestor_clear(&requestor);
+	knot_requestor_clear(&requestor);
 	close(origin_fd);
 
 	/* Cleanup. */

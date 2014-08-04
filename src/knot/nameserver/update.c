@@ -273,8 +273,8 @@ static int execute_query(knot_pkt_t *pkt, struct query_data *qdata)
 static int forward_query(knot_pkt_t *pkt, struct query_data *qdata)
 {
 	/* Create requestor instance. */
-	struct requestor re;
-	requestor_init(&re, NS_PROC_CAPTURE, qdata->mm);
+	struct knot_requestor re;
+	knot_requestor_init(&re, NS_PROC_CAPTURE, qdata->mm);
 
 	/* Fetch primary master. */
 	const conf_iface_t *master = zone_master(qdata->zone);
@@ -289,7 +289,9 @@ static int forward_query(knot_pkt_t *pkt, struct query_data *qdata)
 	knot_tsig_append(query->wire, &query->size, query->max_size, query->tsig_rr);
 
 	/* Create a request. */
-	struct request *req = requestor_make(&re, &master->addr, &master->via, query);
+	const struct sockaddr *dst = (const struct sockaddr *)&master->addr;
+	const struct sockaddr *src = (const struct sockaddr *)&master->via;
+	struct knot_request *req = knot_requestor_make(&re, dst, src, query);
 	if (req == NULL) {
 		knot_pkt_free(&query);
 		return KNOT_ENOMEM;
@@ -298,13 +300,13 @@ static int forward_query(knot_pkt_t *pkt, struct query_data *qdata)
 	/* Enqueue and execute request. */
 	struct process_capture_param param;
 	param.sink = pkt;
-	ret = requestor_enqueue(&re, req, &param);
+	ret = knot_requestor_enqueue(&re, req, &param);
 	if (ret == KNOT_EOK) {
 		struct timeval tv = { conf()->max_conn_reply, 0 };
-		ret = requestor_exec(&re, &tv);
+		ret = knot_requestor_exec(&re, &tv);
 	}
 
-	requestor_clear(&re);
+	knot_requestor_clear(&re);
 
 	/* Restore message ID and TSIG. */
 	knot_wire_set_id(pkt->wire, knot_wire_get_id(qdata->query->wire));
@@ -324,7 +326,7 @@ static int forward_query(knot_pkt_t *pkt, struct query_data *qdata)
 
 #undef UPDATE_LOG
 
-int update_execute(zone_t *zone, struct request_data *update)
+int update_execute(zone_t *zone, struct knot_request_data *update)
 {
 	knot_pkt_t *resp = knot_pkt_new(NULL, KNOT_WIRE_MAX_PKTSIZE, NULL);
 	if (resp == NULL) {

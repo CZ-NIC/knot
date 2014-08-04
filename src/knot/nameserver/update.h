@@ -47,6 +47,6 @@ int update_query_process(knot_pkt_t *pkt, struct query_data *qdata);
  *
  * \return KNOT_E*
  */
-int update_execute(zone_t *zone, struct request_data *update);
+int update_execute(zone_t *zone, struct knot_request_data *update);
 
 /*! @} */

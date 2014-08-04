@@ -115,7 +115,7 @@ int zone_flush_journal(zone_t *zone);
 int zone_update_enqueue(zone_t *zone, knot_pkt_t *pkt, struct process_query_param *param);
 
 /*! \brief Dequeue UPDATE request. */
-struct request_data *zone_update_dequeue(zone_t *zone);
+struct knot_request_data *zone_update_dequeue(zone_t *zone);
 
 /*! \brief Returns true if final SOA in transfer has newer serial than zone */
 bool zone_transfer_needed(const zone_t *zone, const knot_pkt_t *pkt);

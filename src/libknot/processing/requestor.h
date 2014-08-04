@@ -20,20 +20,20 @@
 #include "common/sockaddr.h"
 #include "libknot/processing/process.h"
 
-struct request;
+struct knot_request;
 
 /*! \brief Requestor structure.
  *
  *  Requestor holds a FIFO of pending queries.
  */
-struct requestor {
+struct knot_requestor {
 	const knot_process_module_t *module; /*!< Response processing module. */
 	list_t pending;                      /*!< Pending requests (FIFO). */
 	mm_ctx_t *mm;                        /*!< Memory context. */
 };
 
 /*! \brief Request data (socket, payload and endpoints). */
-struct request_data {
+struct knot_request_data {
 	node_t node;
 	int fd;
 	struct sockaddr_storage remote, origin;
@@ -47,21 +47,21 @@ struct request_data {
  * \param module    Response processing module.
  * \param mm        Memory context.
  */
-void requestor_init(struct requestor *requestor, const knot_process_module_t *module, mm_ctx_t *mm);
+void knot_requestor_init(struct knot_requestor *knot_requestor, const knot_process_module_t *module, mm_ctx_t *mm);
 
 /*!
  * \brief Clear the requestor structure and close pending queries.
  *
  * \param requestor Requestor instance.
  */
-void requestor_clear(struct requestor *requestor);
+void knot_requestor_clear(struct knot_requestor *knot_requestor);
 
 /*!
  * \brief Return true if there are no pending queries.
  *
  * \param requestor Requestor instance.
  */
-bool requestor_finished(struct requestor *requestor);
+bool knot_requestor_finished(struct knot_requestor *knot_requestor);
 
 
 /*!
@@ -74,10 +74,10 @@ bool requestor_finished(struct requestor *requestor);
  *
  * \return Prepared request or NULL in case of error.
  */
-struct request *requestor_make(struct requestor *requestor,
-                               const struct sockaddr_storage *addr,
-                               const struct sockaddr_storage *src,
-                               knot_pkt_t *query);
+struct knot_request *knot_requestor_make(struct knot_requestor *knot_requestor,
+                                         const struct sockaddr *addr,
+                                         const struct sockaddr *src,
+                                         knot_pkt_t *query);
 
 /*!
  * \brief Enqueue a query for processing.
@@ -91,7 +91,7 @@ struct request *requestor_make(struct requestor *requestor,
  *
  * \return KNOT_EOK or error
  */
-int requestor_enqueue(struct requestor *requestor, struct request *request, void *param);
+int knot_requestor_enqueue(struct knot_requestor *knot_requestor, struct knot_request *knot_request, void *param);
 
 /*!
  * \brief Close first pending request.
@@ -100,7 +100,7 @@ int requestor_enqueue(struct requestor *requestor, struct request *request, void
  *
  * \return KNOT_EOK or error
  */
-int requestor_dequeue(struct requestor *requestor);
+int knot_requestor_dequeue(struct knot_requestor *knot_requestor);
 
 /*!
  * \brief Execute next pending query (FIFO).
@@ -110,4 +110,4 @@ int requestor_dequeue(struct requestor *requestor);
  *
  * \return KNOT_EOK or error
  */
-int requestor_exec(struct requestor *requestor, struct timeval *timeout);
+int knot_requestor_exec(struct knot_requestor *knot_requestor, struct timeval *timeout);

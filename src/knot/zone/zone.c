@@ -38,7 +38,7 @@
 
 static void free_ddns_queue(zone_t *z)
 {
-	struct request_data *n = NULL;
+	struct knot_request_data *n = NULL;
 	node_t *nxt = NULL;
 	WALK_LIST_DELSAFE(n, nxt, z->ddns_queue) {
 		close(n->fd);
@@ -248,11 +248,11 @@ int zone_update_enqueue(zone_t *zone, knot_pkt_t *pkt, struct process_query_para
 {
 
 	/* Create serialized request. */
-	struct request_data *req = malloc(sizeof(struct request_data));
+	struct knot_request_data *req = malloc(sizeof(struct knot_request_data));
 	if (req == NULL) {
 		return KNOT_ENOMEM;
 	}
-	memset(req, 0, sizeof(struct request_data));
+	memset(req, 0, sizeof(struct knot_request_data));
 
 	/* Copy socket and request. */
 	req->fd = dup(param->socket);
@@ -279,7 +279,7 @@ int zone_update_enqueue(zone_t *zone, knot_pkt_t *pkt, struct process_query_para
 	return KNOT_EOK;
 }
 
-struct request_data *zone_update_dequeue(zone_t *zone)
+struct knot_request_data *zone_update_dequeue(zone_t *zone)
 {
 	if (zone == NULL) {
 		return NULL;
@@ -292,7 +292,7 @@ struct request_data *zone_update_dequeue(zone_t *zone)
 		return NULL;
 	}
 
-	struct request_data *ret = HEAD(zone->ddns_queue);
+	struct knot_request_data *ret = HEAD(zone->ddns_queue);
 	rem_node((node_t *)ret);
 	pthread_mutex_unlock(&zone->ddns_lock);
 

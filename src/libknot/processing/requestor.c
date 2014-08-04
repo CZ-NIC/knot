@@ -22,21 +22,21 @@
 #include "libknot/packet/net.h"
 
 /*! \brief Single pending request. */
-struct request {
-	struct request_data data; /*!< Request data. */
+struct knot_request {
+	struct knot_request_data data; /*!< Request data. */
 	int state;                /*!< Processing state. */
 	knot_process_t process;   /*!< Response processor. */
 	uint8_t *pkt_buf;         /*!< Buffers. */
 };
 
-static struct request *request_make(mm_ctx_t *mm)
+static struct knot_request *request_make(mm_ctx_t *mm)
 {
-	struct request *request = mm_alloc(mm, sizeof(struct request));
+	struct knot_request *request = mm_alloc(mm, sizeof(struct knot_request));
 	if (request == NULL) {
 		return NULL;
 	}
 
-	memset(request, 0, sizeof(struct request));
+	memset(request, 0, sizeof(struct knot_request));
 
 	request->pkt_buf = mm_alloc(mm, KNOT_WIRE_MAX_PKTSIZE);
 	if (request->pkt_buf == NULL) {
@@ -47,7 +47,7 @@ static struct request *request_make(mm_ctx_t *mm)
 	return request;
 }
 
-static int request_close(mm_ctx_t *mm, struct request *request)
+static int request_close(mm_ctx_t *mm, struct knot_request *request)
 {
 	/* Reset processing if didn't complete. */
 	if (request->state != NS_PROC_DONE) {
@@ -82,7 +82,7 @@ static int request_wait(int fd, int state, struct timeval *timeout)
 	}
 }
 
-static int request_send(struct request *request, const struct timeval *timeout)
+static int request_send(struct knot_request *request, const struct timeval *timeout)
 {
 	/* Each request has unique timeout. */
 	struct timeval tv = { timeout->tv_sec, timeout->tv_usec };
@@ -111,7 +111,7 @@ static int request_send(struct request *request, const struct timeval *timeout)
 	return KNOT_EOK;
 }
 
-static int request_recv(struct request *request, const struct timeval *timeout)
+static int request_recv(struct knot_request *request, const struct timeval *timeout)
 {
 	/* Each request has unique timeout. */
 	struct timeval tv = { timeout->tv_sec, timeout->tv_usec };
@@ -126,29 +126,29 @@ static int request_recv(struct request *request, const struct timeval *timeout)
 	return ret;
 }
 
-void requestor_init(struct requestor *requestor, const knot_process_module_t *module,
+void knot_requestor_init(struct knot_requestor *requestor, const knot_process_module_t *module,
                     mm_ctx_t *mm)
 {
-	memset(requestor, 0, sizeof(struct requestor));
+	memset(requestor, 0, sizeof(struct knot_requestor));
 	requestor->module = module;
 	requestor->mm = mm;
 	init_list(&requestor->pending);
 }
 
-void requestor_clear(struct requestor *requestor)
+void knot_requestor_clear(struct knot_requestor *requestor)
 {
-	while (requestor_dequeue(requestor) == KNOT_EOK)
+	while (knot_requestor_dequeue(requestor) == KNOT_EOK)
 		;
 }
 
-bool requestor_finished(struct requestor *requestor)
+bool knot_requestor_finished(struct knot_requestor *requestor)
 {
 	return requestor == NULL || EMPTY_LIST(requestor->pending);
 }
 
-struct request *requestor_make(struct requestor *requestor,
-                               const struct sockaddr_storage *dst,
-                               const struct sockaddr_storage *src,
+struct knot_request *knot_requestor_make(struct knot_requestor *requestor,
+                               const struct sockaddr *dst,
+                               const struct sockaddr *src,
                                knot_pkt_t *query)
 {
 	if (requestor == NULL || query == NULL || dst == NULL) {
@@ -156,14 +156,14 @@ struct request *requestor_make(struct requestor *requestor,
 	}
 
 	/* Form a pending request. */
-	struct request *request = request_make(requestor->mm);
+	struct knot_request *request = request_make(requestor->mm);
 	if (request == NULL) {
 		return NULL;
 	}
 
-	memcpy(&request->data.remote, dst, sizeof(struct sockaddr_storage));
+	memcpy(&request->data.remote, dst, sockaddr_len(dst));
 	if (src) {
-		memcpy(&request->data.origin, src, sizeof(struct sockaddr_storage));
+		memcpy(&request->data.origin, src, sockaddr_len(src));
 	}
 
 	request->state = NS_PROC_DONE;
@@ -172,7 +172,7 @@ struct request *requestor_make(struct requestor *requestor,
 	return request;
 }
 
-int requestor_enqueue(struct requestor *requestor, struct request *request, void *param)
+int knot_requestor_enqueue(struct knot_requestor *requestor, struct knot_request *request, void *param)
 {
 	if (requestor == NULL || request == NULL) {
 		return KNOT_EINVAL;
@@ -201,17 +201,17 @@ int requestor_enqueue(struct requestor *requestor, struct request *request, void
 	return KNOT_EOK;
 }
 
-int requestor_dequeue(struct requestor *requestor)
+int knot_requestor_dequeue(struct knot_requestor *requestor)
 {
-	if (requestor_finished(requestor)) {
+	if (knot_requestor_finished(requestor)) {
 		return KNOT_ENOENT;
 	}
 
-	struct request *last = HEAD(requestor->pending);
+	struct knot_request *last = HEAD(requestor->pending);
 	return request_close(requestor->mm, last);
 }
 
-static int exec_request(struct request *last, struct timeval *timeout)
+static int exec_request(struct knot_request *last, struct timeval *timeout)
 {
 	int ret = KNOT_EOK;
 
@@ -242,9 +242,9 @@ static int exec_request(struct request *last, struct timeval *timeout)
 	return KNOT_EOK;
 }
 
-int requestor_exec(struct requestor *requestor, struct timeval *timeout)
+int knot_requestor_exec(struct knot_requestor *requestor, struct timeval *timeout)
 {
-	if (requestor_finished(requestor)) {
+	if (knot_requestor_finished(requestor)) {
 		return KNOT_ENOENT;
 	}
 
@@ -252,7 +252,7 @@ int requestor_exec(struct requestor *requestor, struct timeval *timeout)
 	int ret = exec_request(HEAD(requestor->pending), timeout);
 
 	/* Remove it from processing. */
-	requestor_dequeue(requestor);
+	knot_requestor_dequeue(requestor);
 
 	return ret;
 }
