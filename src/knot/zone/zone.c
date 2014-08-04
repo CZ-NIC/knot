@@ -28,7 +28,7 @@
 #include "knot/zone/zonefile.h"
 #include "knot/zone/contents.h"
 #include "knot/updates/apply.h"
-#include "knot/nameserver/requestor.h"
+#include "libknot/processing/requestor.h"
 #include "knot/nameserver/process_query.h"
 #include "libknot/common.h"
 #include "libknot/dname.h"

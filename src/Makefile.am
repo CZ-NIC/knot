@@ -171,9 +171,13 @@ libknot_la_SOURCES =				\
 	libknot/packet/compr.h			\
 	libknot/packet/pkt.c			\
 	libknot/packet/pkt.h			\
+	libknot/packet/net.c			\
+	libknot/packet/net.h			\
 	libknot/packet/wire.h			\
-	libknot/processing/process.c		\
-	libknot/processing/process.h		\
+	libknot/processing/process.c	\
+	libknot/processing/process.h	\
+	libknot/processing/requestor.c	\
+	libknot/processing/requestor.h	\
 	libknot/rrtype/rdname.h			\
 	libknot/rrtype/dnskey.h			\
 	libknot/rrtype/nsec.h			\
@@ -249,8 +253,6 @@ libknotd_la_SOURCES =				\
 	knot/nameserver/process_query.h		\
 	knot/nameserver/process_answer.c	\
 	knot/nameserver/process_answer.h	\
-	knot/nameserver/requestor.c		\
-	knot/nameserver/requestor.h		\
 	knot/nameserver/query_module.c		\
 	knot/nameserver/query_module.h		\
 	knot/nameserver/update.c		\
@@ -270,8 +272,6 @@ libknotd_la_SOURCES =				\
 	knot/server/rrl.h			\
 	knot/server/server.c			\
 	knot/server/server.h			\
-	knot/server/net.c			\
-	knot/server/net.h			\
 	knot/server/tcp-handler.c		\
 	knot/server/tcp-handler.h		\
 	knot/server/udp-handler.c		\

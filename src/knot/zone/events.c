@@ -37,7 +37,7 @@
 #include "knot/nameserver/internet.h"
 #include "knot/nameserver/update.h"
 #include "knot/nameserver/notify.h"
-#include "knot/nameserver/requestor.h"
+#include "libknot/processing/requestor.h"
 #include "knot/nameserver/tsig_ctx.h"
 #include "knot/nameserver/process_answer.h"
 

@@ -35,6 +35,7 @@
 #include "common-knot/fdset.h"
 #include "common/mempool.h"
 #include "knot/knot.h"
+#include "libknot/packet/net.h"
 #include "knot/server/tcp-handler.h"
 #include "libknot/packet/wire.h"
 #include "knot/nameserver/process_query.h"
@@ -159,146 +160,6 @@ static int tcp_handle(tcp_context_t *tcp, int fd,
 	return ret;
 }
 
-int tcp_accept(int fd)
-{
-	/* Accept incoming connection. */
-	int incoming = accept(fd, 0, 0);
-
-	/* Evaluate connection. */
-	if (incoming < 0) {
-		int en = errno;
-		if (en != EINTR && en != EAGAIN) {
-			log_error("cannot accept connection (%d)\n", errno);
-			if (en == EMFILE || en == ENFILE ||
-			    en == ENOBUFS || en == ENOMEM) {
-				int throttle = tcp_throttle();
-				log_error("throttling TCP connection pool for"
-				          "%d seconds because of too many open "
-				          "descriptors or lack of memory\n",
-				          throttle);
-				sleep(throttle);
-			}
-
-		}
-	} else {
-		dbg_net("tcp: accepted connection fd=%d\n", incoming);
-		/* Set recv() timeout. */
-#ifdef SO_RCVTIMEO
-		struct timeval tv;
-		rcu_read_lock();
-		tv.tv_sec = conf()->max_conn_idle;
-		rcu_read_unlock();
-		tv.tv_usec = 0;
-		if (setsockopt(incoming, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) < 0) {
-			log_warning("couldn't set up TCP connection watchdog "
-			            "timer for fd=%d\n", incoming);
-		}
-#endif
-	}
-
-	return incoming;
-}
-
-
-/*! \brief Wait for data and return true if data arrived. */
-static int tcp_wait_for_data(int fd, struct timeval *timeout)
-{
-	fd_set set;
-	FD_ZERO(&set);
-	FD_SET(fd, &set);
-	return select(fd + 1, &set, NULL, NULL, timeout);
-}
-
-int tcp_recv_data(int fd, uint8_t *buf, int len, struct timeval *timeout)
-{
-	int ret = 0;
-	int rcvd = 0;
-	int flags = 0;
-
-#ifdef MSG_NOSIGNAL
-	flags |= MSG_NOSIGNAL;
-#endif
-
-	while (rcvd < len) {
-		/* Receive data. */
-		ret = recv(fd, buf + rcvd, len - rcvd, flags);
-		if (ret > 0) {
-			rcvd += ret;
-			continue;
-		}
-		/* Check for disconnected socket. */
-		if (ret == 0) {
-			return KNOT_ECONNREFUSED;
-		}
-
-		/* Check for no data available. */
-		if (errno == EAGAIN || errno == EINTR) {
-			/* Continue only if timeout didn't expire. */
-			ret = tcp_wait_for_data(fd, timeout);
-			if (ret) {
-				continue;
-			} else {
-				return KNOT_ETIMEOUT;
-			}
-		} else {
-			return KNOT_ECONN;
-		}
-	}
-
-	return rcvd;
-}
-
-int tcp_send_msg(int fd, const uint8_t *msg, size_t msglen)
-{
-	/* Create iovec for gathered write. */
-	struct iovec iov[2];
-	uint16_t pktsize = htons(msglen);
-	iov[0].iov_base = &pktsize;
-	iov[0].iov_len = sizeof(uint16_t);
-	iov[1].iov_base = (void *)msg;
-	iov[1].iov_len = msglen;
-
-	/* Send. */
-	int total_len = iov[0].iov_len + iov[1].iov_len;
-	int sent = writev(fd, iov, 2);
-	if (sent != total_len) {
-		return KNOT_ECONN;
-	}
-
-	return msglen; /* Do not count the size prefix. */
-}
-
-int tcp_recv_msg(int fd, uint8_t *buf, size_t len, struct timeval *timeout)
-{
-	if (buf == NULL || fd < 0) {
-		return KNOT_EINVAL;
-	}
-
-	/* Receive size. */
-	unsigned short pktsize = 0;
-	int ret = tcp_recv_data(fd, (uint8_t *)&pktsize, sizeof(pktsize), timeout);
-	if (ret != sizeof(pktsize)) {
-		return ret;
-	}
-
-	pktsize = ntohs(pktsize);
-	dbg_net("tcp: incoming packet size=%hu on fd=%d\n", pktsize, fd);
-
-	// Check packet size
-	if (len < pktsize) {
-		return KNOT_ENOMEM;
-	}
-
-	/* Receive payload. */
-	ret = tcp_recv_data(fd, buf, pktsize, timeout);
-	if (ret != pktsize) {
-		return ret;
-	}
-
-	dbg_net("tcp: received packet size=%d on fd=%d\n", ret, fd);
-	return ret;
-}
-
 static int tcp_event_accept(tcp_context_t *tcp, unsigned i)
 {
 	/* Accept client. */
@@ -385,6 +246,46 @@ static int tcp_wait_for_events(tcp_context_t *tcp)
 	}
 
 	return nfds;
+}
+
+int tcp_accept(int fd)
+{
+	/* Accept incoming connection. */
+	int incoming = accept(fd, 0, 0);
+
+	/* Evaluate connection. */
+	if (incoming < 0) {
+		int en = errno;
+		if (en != EINTR && en != EAGAIN) {
+			log_error("cannot accept connection (%d)\n", errno);
+			if (en == EMFILE || en == ENFILE ||
+			    en == ENOBUFS || en == ENOMEM) {
+				int throttle = tcp_throttle();
+				log_error("throttling TCP connection pool for"
+				          "%d seconds because of too many open "
+				          "descriptors or lack of memory\n",
+				          throttle);
+				sleep(throttle);
+			}
+
+		}
+	} else {
+		dbg_net("tcp: accepted connection fd=%d\n", incoming);
+		/* Set recv() timeout. */
+#ifdef SO_RCVTIMEO
+		struct timeval tv;
+		rcu_read_lock();
+		tv.tv_sec = conf()->max_conn_idle;
+		rcu_read_unlock();
+		tv.tv_usec = 0;
+		if (setsockopt(incoming, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) < 0) {
+			log_warning("couldn't set up TCP connection watchdog "
+			            "timer for fd=%d\n", incoming);
+		}
+#endif
+	}
+
+	return incoming;
 }
 
 int tcp_master(dthread_t *thread)

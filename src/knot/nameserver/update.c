@@ -12,9 +12,9 @@
 #include "knot/zone/events.h"
 #include "knot/server/tcp-handler.h"
 #include "knot/server/udp-handler.h"
-#include "knot/nameserver/requestor.h"
 #include "knot/nameserver/capture.h"
 #include "libknot/dnssec/random.h"
+#include "libknot/processing/requestor.h"
 
 /* UPDATE-specific logging (internal, expects 'qdata' variable set). */
 #define UPDATE_LOG(severity, msg...) \

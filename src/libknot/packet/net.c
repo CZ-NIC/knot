@@ -30,8 +30,8 @@
 #include <sys/stat.h>
 #include <assert.h>
 
-#include "knot/server/net.h"
-#include "knot/knot.h"
+#include "libknot/common.h"
+#include "libknot/packet/net.h"
 
 static int socket_create(int family, int type, int proto)
 {
@@ -50,19 +50,8 @@ int net_unbound_socket(int type, const struct sockaddr_storage *ss)
 		return KNOT_EINVAL;
 	}
 
-	/* Convert to string address format. */
-	char addr_str[SOCKADDR_STRLEN] = {0};
-	sockaddr_tostr(ss, addr_str, sizeof(addr_str));
-
 	/* Create socket. */
-	int socket = socket_create(ss->ss_family, type, 0);
-	if (socket < 0) {
-		log_error("could not create socket for '%s': %s\n",
-		          addr_str, knot_strerror(socket));
-		return socket;
-	}
-
-	return socket;
+	return socket_create(ss->ss_family, type, 0);
 }
 
 int net_bound_socket(int type, const struct sockaddr_storage *ss)
@@ -96,8 +85,6 @@ int net_bound_socket(int type, const struct sockaddr_storage *ss)
 	int ret = bind(socket, (const struct sockaddr *)ss, sockaddr_len(ss));
 	if (ret < 0) {
 		ret = knot_map_errno(EADDRINUSE, EINVAL, EACCES, ENOMEM);
-		log_error("cannot bind to address '%s': %s\n",
-		          addr_str, knot_strerror(ret));
 		close(socket);
 		return ret;
 	}
@@ -150,4 +137,113 @@ int net_is_connected(int fd)
 	struct sockaddr_storage ss;
 	socklen_t len = sizeof(ss);
 	return getpeername(fd, (struct sockaddr *)&ss, &len) == 0;
+}
+
+/*! \brief Wait for data and return true if data arrived. */
+static int tcp_wait_for_data(int fd, struct timeval *timeout)
+{
+	fd_set set;
+	FD_ZERO(&set);
+	FD_SET(fd, &set);
+	return select(fd + 1, &set, NULL, NULL, timeout);
+}
+
+/* \brief Receive a block of data from TCP socket with wait. */
+static int tcp_recv_data(int fd, uint8_t *buf, int len, struct timeval *timeout)
+{
+	int ret = 0;
+	int rcvd = 0;
+	int flags = 0;
+
+#ifdef MSG_NOSIGNAL
+	flags |= MSG_NOSIGNAL;
+#endif
+
+	while (rcvd < len) {
+		/* Receive data. */
+		ret = recv(fd, buf + rcvd, len - rcvd, flags);
+		if (ret > 0) {
+			rcvd += ret;
+			continue;
+		}
+		/* Check for disconnected socket. */
+		if (ret == 0) {
+			return KNOT_ECONNREFUSED;
+		}
+
+		/* Check for no data available. */
+		if (errno == EAGAIN || errno == EINTR) {
+			/* Continue only if timeout didn't expire. */
+			ret = tcp_wait_for_data(fd, timeout);
+			if (ret) {
+				continue;
+			} else {
+				return KNOT_ETIMEOUT;
+			}
+		} else {
+			return KNOT_ECONN;
+		}
+	}
+
+	return rcvd;
+}
+
+int udp_send_msg(int fd, const uint8_t *msg, size_t msglen, struct sockaddr *addr)
+{
+	int addr_len = sockaddr_len((struct sockaddr_storage *)addr);
+	int ret = sendto(fd, msg, msglen, 0, addr, addr_len);
+	if (ret != msglen) {
+		return KNOT_ECONN;
+	}
+
+	return ret;
+}
+
+int tcp_send_msg(int fd, const uint8_t *msg, size_t msglen)
+{
+	/* Create iovec for gathered write. */
+	struct iovec iov[2];
+	uint16_t pktsize = htons(msglen);
+	iov[0].iov_base = &pktsize;
+	iov[0].iov_len = sizeof(uint16_t);
+	iov[1].iov_base = (void *)msg;
+	iov[1].iov_len = msglen;
+
+	/* Send. */
+	int total_len = iov[0].iov_len + iov[1].iov_len;
+	int sent = writev(fd, iov, 2);
+	if (sent != total_len) {
+		return KNOT_ECONN;
+	}
+
+	return msglen; /* Do not count the size prefix. */
+}
+
+int tcp_recv_msg(int fd, uint8_t *buf, size_t len, struct timeval *timeout)
+{
+	if (buf == NULL || fd < 0) {
+		return KNOT_EINVAL;
+	}
+
+	/* Receive size. */
+	unsigned short pktsize = 0;
+	int ret = tcp_recv_data(fd, (uint8_t *)&pktsize, sizeof(pktsize), timeout);
+	if (ret != sizeof(pktsize)) {
+		return ret;
+	}
+
+	pktsize = ntohs(pktsize);
+
+	// Check packet size
+	if (len < pktsize) {
+		return KNOT_ENOMEM;
+	}
+
+	/* Receive payload. */
+	ret = tcp_recv_data(fd, buf, pktsize, timeout);
+	if (ret != pktsize) {
+		return ret;
+	}
+
+	return ret;
 }

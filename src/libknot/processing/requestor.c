@@ -15,10 +15,11 @@
  */
 
 #include <assert.h>
+#include <sys/fcntl.h>
 
-#include "knot/nameserver/requestor.h"
-#include "knot/server/net.h"
-#include "knot/server/tcp-handler.h"
+#include "libknot/common.h"
+#include "libknot/processing/requestor.h"
+#include "libknot/packet/net.h"
 
 /*! \brief Single pending request. */
 struct request {

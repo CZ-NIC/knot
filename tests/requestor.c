@@ -20,8 +20,7 @@
 
 #include "common/mempool.h"
 #include "libknot/processing/process.h"
-#include "knot/nameserver/requestor.h"
-#include "knot/server/tcp-handler.h"
+#include "libknot/processing/requestor.h"
 #include "fake_server.h"
 
 /* @note Purpose of this test is not to verify process_answer functionality,
@@ -41,7 +40,7 @@ static void* responder_thread(void *arg)
 	int fd = *((int *)arg);
 	uint8_t buf[KNOT_WIRE_MAX_PKTSIZE];
 	while(true) {
-		int client = tcp_accept(fd);
+		int client = accept(fd, NULL, NULL);
 		if (client < 0) {
 			break;
 		}
