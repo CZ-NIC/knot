@@ -277,7 +277,7 @@ static int emit_log_msg(logsrc_t src, int level, const char *msg)
 			}
 
 			// Print
-			ret = fprintf(stream, "%s%s", tstr, msg);
+			ret = fprintf(stream, "%s%s\n", tstr, msg);
 			if (stream == stdout) {
 				fflush(stream);
 			}
