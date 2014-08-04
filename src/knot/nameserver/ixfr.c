@@ -121,7 +121,7 @@ static int ixfr_process_changeset(knot_pkt_t *pkt, const void *item,
 	/* Put Add RRSets. */
 	if (ixfr->state == IXFR_ADD) {
 		if (iter_empty(ixfr)) {
-			changeset_iter_add(&ixfr->cur, chgset, false);
+			ret = changeset_iter_add(&ixfr->cur, chgset, false);
 			if (ret != KNOT_EOK) {
 				return ret;
 			}
