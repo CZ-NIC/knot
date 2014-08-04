@@ -499,7 +499,7 @@ bool process_query_acl_check(list_t *acl, struct query_data *qdata)
 	knot_pkt_t *query = qdata->query;
 	const struct sockaddr_storage *query_source = qdata->param->remote;
 	const knot_dname_t *key_name = NULL;
-	knot_tsig_algorithm_t key_alg = KNOT_TSIG_ALG_NULL;
+	dnssec_tsig_algorithm_t key_alg = DNSSEC_TSIG_UNKNOWN;
 
 	/* Skip if already checked and valid. */
 	if (qdata->sign.tsig_key != NULL) {

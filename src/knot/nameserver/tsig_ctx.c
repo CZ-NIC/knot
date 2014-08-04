@@ -60,7 +60,7 @@ int tsig_sign_packet(tsig_ctx_t *ctx, knot_pkt_t *packet)
 
 	int ret = KNOT_ERROR;
 	if (ctx->digest_size == 0) {
-		ctx->digest_size = knot_tsig_digest_length(ctx->key->algorithm);
+		ctx->digest_size = dnssec_tsig_algorithm_size(ctx->key->algorithm);
 		ret = knot_tsig_sign(packet->wire, &packet->size, packet->max_size,
 		                     NULL, 0,
 		                     ctx->digest, &ctx->digest_size,

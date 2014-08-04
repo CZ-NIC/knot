@@ -118,8 +118,8 @@ int main(int argc, char *argv[])
 
 	// Attempt to search subnet with key (multiple keys)
 	knot_tsig_key_t key_a, key_b;
-	knot_tsig_create_key("tsig-key1", KNOT_TSIG_ALG_HMAC_MD5, "Wg==", &key_a);
-	knot_tsig_create_key("tsig-key2", KNOT_TSIG_ALG_HMAC_MD5, "Wg==", &key_b);
+	knot_tsig_create_key("tsig-key1", DNSSEC_TSIG_HMAC_MD5, "Wg==", &key_a);
+	knot_tsig_create_key("tsig-key2", DNSSEC_TSIG_HMAC_MD5, "Wg==", &key_b);
 	acl_insert(&acl, &match_pf6, 120, &key_a);
 	acl_insert(&acl, &match_pf6, 120, &key_b);
 	sockaddr_set(&test_pf6, AF_INET6, "2001:0DB8:0400:000e:0:0:0:AB03", 0);
@@ -130,7 +130,7 @@ int main(int argc, char *argv[])
 
 	// Attempt to search subnet with mismatching key
 	knot_tsig_key_t badkey;
-	knot_tsig_create_key("tsig-bad", KNOT_TSIG_ALG_HMAC_MD5, "Wg==", &badkey);
+	knot_tsig_create_key("tsig-bad", DNSSEC_TSIG_HMAC_MD5, "Wg==", &badkey);
 	match = acl_find(&acl, &test_pf6, badkey.name);
 	ok(match == NULL, "acl: searching v6 address with bad TSIG key");
 	knot_tsig_key_free(&badkey);
