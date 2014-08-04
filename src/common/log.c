@@ -253,28 +253,12 @@ static int emit_log_msg(logsrc_t src, int level, const char *msg)
 
 	/* Prefix date and time. */
 	char tstr[LOG_BUFLEN] = {0};
-	int tlen = 0;
 	struct tm lt;
 	struct timeval tv;
 	gettimeofday(&tv, NULL);
 	time_t sec = tv.tv_sec;
 	if (localtime_r(&sec, &lt) != NULL) {
-		bool precise = false;
-
-#ifdef ENABLE_MICROSECONDS_LOG
-		precise = true;
-#endif /* ENABLE_MICROSECONDS_LOG */
-
-		tlen = strftime(tstr, sizeof(tstr), KNOT_LOG_TIME_FORMAT " ", &lt);
-
-		if (precise && tlen > 0) {
-			char pm = (lt.tm_gmtoff > 0) ? '+' : '-';
-			snprintf(tstr + tlen - 1, sizeof(tstr) - tlen + 1,
-			         ".%.6lu%c%.2u:%.2u ",
-			         (unsigned long)tv.tv_usec, pm,
-			         (unsigned int)lt.tm_gmtoff / 3600,
-			         (unsigned int)(lt.tm_gmtoff / 60) % 60);
-		}
+		strftime(tstr, sizeof(tstr), KNOT_LOG_TIME_FORMAT " ", &lt);
 	}
 
 	// Log streams

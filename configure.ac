@@ -164,11 +164,6 @@ AC_ARG_ENABLE([lto],
       *)  AC_MSG_ERROR([bad value ${enableval} for --enable-lto]) ;;
     esac])
 
-# Check for enable microseconds in log messages
-AC_ARG_ENABLE([microseconds-log],
-    AS_HELP_STRING([--enable-microseconds-log], [enable microseconds in log messages [default=no]]),
-    AC_DEFINE([ENABLE_MICROSECONDS_LOG], [1], [microseconds in log messages]))
-
 AX_CHECK_COMPILE_FLAG("-fpredictive-commoning", [CFLAGS="$CFLAGS -fpredictive-commoning"], [], "-Werror")
 
 # Default directories
