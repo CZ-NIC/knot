@@ -37,10 +37,10 @@
 #include "libknot/rrtype/tsig.h"
 #include "libknot/dnssec/key.h"
 #include "libknot/dnssec/policy.h"
-#include "common-knot/lists.h"
+#include "common/lists.h"
 #include "common/log.h"
 #include "knot/updates/acl.h"
-#include "common-knot/sockaddr.h"
+#include "common/sockaddr.h"
 #include "common-knot/hattrie/hat-trie.h"
 #include "knot/nameserver/query_module.h"
 

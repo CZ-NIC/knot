@@ -29,7 +29,7 @@
 #pragma once
 
 /* POSIX only. */
-#include "common-knot/sockaddr.h"
+#include "common/sockaddr.h"
 
 /*******              #274, legacy API to be replaced below            ********/
 

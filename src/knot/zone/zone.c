@@ -21,7 +21,7 @@
 
 #include "libknot/descriptor.h"
 #include "common-knot/evsched.h"
-#include "common-knot/lists.h"
+#include "common/lists.h"
 #include "common-knot/trim.h"
 #include "knot/zone/node.h"
 #include "knot/zone/zone.h"

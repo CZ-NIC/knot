@@ -21,10 +21,10 @@
 #include <arpa/inet.h>			// inet_ntop
 
 #include "libknot/libknot.h"
-#include "common-knot/lists.h"		// list
+#include "common/lists.h"		// list
+#include "common/sockaddr.h"		// IPV4_PREFIXLEN
 #include "common-knot/print.h"		// txt_print
 #include "common-knot/strlcat.h"	// strlcat
-#include "common-knot/sockaddr.h"	// IPV4_PREFIXLEN
 #include "utils/common/msg.h"		// WARN
 #include "utils/common/params.h"	// params_t
 #include "utils/common/netio.h"		// send_msg

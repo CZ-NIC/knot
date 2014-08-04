@@ -23,8 +23,8 @@
 #include <sys/time.h>
 
 #include "common/log.h"
-#include "common-knot/lists.h"
-#include "common-knot/strlcpy.h"
+#include "common/lists.h"
+#include "common/strlcpy.h"
 #include "knot/conf/conf.h"
 
 /* Single log message buffer length (one line). */

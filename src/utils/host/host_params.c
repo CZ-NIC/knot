@@ -22,7 +22,7 @@
 #include <stdlib.h>			// free
 #include <locale.h>			// setlocale
 
-#include "common-knot/lists.h"		// list
+#include "common/lists.h"		// list
 #include "libknot/errcode.h"		// KNOT_EOK
 #include "libknot/descriptor.h"		// KNOT_CLASS_IN
 #include "utils/common/msg.h"		// WARN

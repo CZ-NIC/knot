@@ -28,7 +28,7 @@
 
 #include "common-knot/crc.h"
 #include "common-knot/strlcat.h"
-#include "common-knot/strlcpy.h"
+#include "common/strlcpy.h"
 #include "libknot/common.h"
 #include "knot/zone/semantic-check.h"
 #include "knot/zone/contents.h"

@@ -79,8 +79,6 @@ libknots_la_SOURCES =				\
 	common-knot/hex.h			\
 	common-knot/hhash.c			\
 	common-knot/hhash.h			\
-	common-knot/lists.c			\
-	common-knot/lists.h			\
 	common-knot/print.c			\
 	common-knot/print.h			\
 	common-knot/ref.c			\
@@ -88,17 +86,19 @@ libknots_la_SOURCES =				\
 	common-knot/slab/alloc-common.h		\
 	common-knot/slab/slab.c			\
 	common-knot/slab/slab.h			\
-	common-knot/sockaddr.c			\
-	common-knot/sockaddr.h			\
 	common-knot/strlcat.c			\
 	common-knot/strlcat.h			\
-	common-knot/strlcpy.c			\
-	common-knot/strlcpy.h			\
 	common-knot/strtonum.h			\
 	common-knot/trim.h
 
 # static: common shared (also in libknot)
 libknotcs_la_SOURCES =				\
+	common/strlcpy.c			\
+	common/strlcpy.h			\
+	common/lists.c				\
+	common/lists.h				\
+	common/sockaddr.c			\
+	common/sockaddr.h			\
 	common/base32hex.c			\
 	common/base32hex.h			\
 	common/base64.c				\

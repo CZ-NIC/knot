@@ -22,7 +22,7 @@
 #include "knot/zone/zonefile.h"
 #include "common/debug.h"
 #include "libknot/descriptor.h"
-#include "common-knot/lists.h"
+#include "common/lists.h"
 
 /* AXFR context. @note aliasing the generic xfr_proc */
 struct axfr_proc {

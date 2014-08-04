@@ -36,7 +36,7 @@
 #include <cap-ng.h>
 #endif /* HAVE_CAP_NG_H */
 
-#include "common-knot/sockaddr.h"
+#include "common/sockaddr.h"
 #include "libknot/mempattern.h"
 #include "common/mempool.h"
 #include "knot/knot.h"
