@@ -32,7 +32,6 @@
 #include <grp.h>
 #include "dnssec/binary.h"
 #include "dnssec/tsig.h"
-#include "common/sockaddr.h"
 #include "common-knot/sockaddr.h"
 #include "common-knot/strlcat.h"
 #include "common-knot/strlcpy.h"

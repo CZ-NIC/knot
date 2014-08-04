@@ -21,6 +21,7 @@
 #include "common-knot/trim.h"
 #include "common/mem.h"
 #include "common/mempool.h"
+#include "dnssec/random.h"
 #include "knot/server/server.h"
 #include "knot/server/udp-handler.h"
 #include "knot/server/tcp-handler.h"
@@ -33,7 +34,6 @@
 #include "knot/zone/zonefile.h"
 #include "knot/updates/apply.h"
 #include "libknot/rrtype/soa.h"
-#include "libknot/dnssec/random.h"
 #include "knot/nameserver/internet.h"
 #include "knot/nameserver/update.h"
 #include "knot/nameserver/notify.h"
@@ -54,7 +54,7 @@
 static uint32_t bootstrap_next(uint32_t timer)
 {
 	timer *= 2;
-	timer += knot_random_uint32_t() % BOOTSTRAP_RETRY;
+	timer += dnssec_random_uint32_t() % BOOTSTRAP_RETRY;
 	if (timer > BOOTSTRAP_MAXTIME) {
 		timer = BOOTSTRAP_MAXTIME;
 	}
@@ -85,7 +85,7 @@ static knot_pkt_t *zone_query(const zone_t *zone, uint16_t pkt_type, mm_ctx_t *m
 		return NULL;
 	}
 
-	knot_wire_set_id(pkt->wire, knot_random_uint16_t());
+	knot_wire_set_id(pkt->wire, dnssec_random_uint16_t());
 	knot_wire_set_aa(pkt->wire);
 	knot_wire_set_opcode(pkt->wire, opcode);
 	knot_pkt_put_question(pkt, zone->name, KNOT_CLASS_IN, query_type);
