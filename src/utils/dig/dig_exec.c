@@ -22,13 +22,243 @@
 #include <netinet/in.h>			// sockaddr_in (BSD)
 
 #include "libknot/libknot.h"
-#include "common/lists.h"		// list
-#include "common/print.h"		// time_diff
-#include "common/errcode.h"		// KNOT_EOK
-#include "common/descriptor.h"		// KNOT_RRTYPE_
+#include "common-knot/lists.h"		// list
+#include "common-knot/print.h"		// time_diff
+#include "libknot/errcode.h"		// KNOT_EOK
+#include "libknot/descriptor.h"		// KNOT_RRTYPE_
+#include "common-knot/sockaddr.h"		// sockaddr_set_raw
 #include "utils/common/msg.h"		// WARN
 #include "utils/common/netio.h"		// get_socktype
 #include "utils/common/exec.h"		// print_packet
+
+#if USE_DNSTAP
+# include "dnstap/convert.h"
+# include "dnstap/message.h"
+# include "dnstap/writer.h"
+
+static int write_dnstap(dt_writer_t          *writer,
+                        const bool           is_response,
+                        const uint8_t        *wire,
+                        const size_t         wire_len,
+                        net_t                *net,
+                        const struct timeval *qtime,
+                        const struct timeval *rtime)
+{
+	Dnstap__Message       msg;
+	Dnstap__Message__Type msg_type;
+	int                   ret;
+
+	if (writer == NULL) {
+		return KNOT_EOK;
+	}
+
+	net_set_local_info(net);
+
+	msg_type = is_response ? DNSTAP__MESSAGE__TYPE__TOOL_RESPONSE
+	                       : DNSTAP__MESSAGE__TYPE__TOOL_QUERY;
+
+	ret = dt_message_fill(&msg, msg_type, net->local_info->ai_addr,
+	                      net->srv->ai_addr, net->srv->ai_protocol,
+			      wire, wire_len, qtime, rtime);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	return dt_writer_write(writer, (const ProtobufCMessage *) &msg);
+}
+
+static float get_query_time(const Dnstap__Dnstap *frame)
+{
+	struct timeval from = {
+		.tv_sec = frame->message->query_time_sec,
+		.tv_usec = frame->message->query_time_nsec / 1000
+	};
+
+	struct timeval to = {
+		.tv_sec = frame->message->response_time_sec,
+		.tv_usec = frame->message->response_time_nsec / 1000
+	};
+
+	return time_diff(&from, &to);
+}
+
+static void process_dnstap(const query_t *query)
+{
+	dt_reader_t *reader = query->dt_reader;
+
+	if (query->dt_reader == NULL) {
+		return;
+	}
+
+	for (;;) {
+		Dnstap__Dnstap      *frame = NULL;
+		Dnstap__Message     *message = NULL;
+		ProtobufCBinaryData *wire = NULL;
+		bool                is_response;
+
+		// Read next message.
+		int ret = dt_reader_read(reader, &frame);
+		if (ret == KNOT_EOF) {
+			break;
+		} else if (ret != KNOT_EOK) {
+			ERR("can't read dnstap message\n");
+			break;
+		}
+
+		// Check for dnstap message.
+		if (frame->type == DNSTAP__DNSTAP__TYPE__MESSAGE) {
+			message = frame->message;
+		} else {
+			WARN("ignoring non-dnstap message\n");
+			dt_reader_free_frame(reader, &frame);
+			continue;
+		}
+
+		// Check for the type of dnstap message.
+		if (message->has_response_message) {
+			wire = &message->response_message;
+			is_response = true;
+		} else if (message->has_query_message) {
+			wire = &message->query_message;
+			is_response = false;
+		} else {
+			WARN("dnstap frame contains no message\n");
+			dt_reader_free_frame(reader, &frame);
+			continue;
+		}
+
+		if (!is_response && !query->style.show_query) {
+			dt_reader_free_frame(reader, &frame);
+			continue;
+		}
+
+		// Create dns packet based on dnstap wire data.
+		knot_pkt_t *pkt = knot_pkt_new(wire->data, wire->len, NULL);
+		if (pkt == NULL) {
+			ERR("can't allocate packet\n");
+			dt_reader_free_frame(reader, &frame);
+			break;
+		}
+
+		// Parse packet and reconstruct required data.
+		if (knot_pkt_parse(pkt, 0) == KNOT_EOK) {
+			time_t              timestamp = 0;
+			float               query_time = 0.0;
+			net_t               net_ctx = { 0 };
+
+			if (is_response) {
+
+				timestamp = message->response_time_sec;
+				query_time = get_query_time(frame);
+			} else {
+
+				timestamp = message->query_time_sec;
+			}
+
+			// Prepare connection information string.
+			if (message->response_address.data != NULL &&
+			    message->has_socket_family &&
+			    message->has_socket_protocol) {
+				struct sockaddr_storage ss;
+				int family, proto, sock_type;
+
+				family = dt_family_decode(message->socket_family);
+				proto = dt_protocol_decode(message->socket_protocol);
+
+				switch (proto) {
+				case IPPROTO_TCP:
+					sock_type = SOCK_STREAM;
+					break;
+				case IPPROTO_UDP:
+					sock_type = SOCK_DGRAM;
+					break;
+				default:
+					sock_type = 0;
+					break;
+				}
+
+				sockaddr_set_raw(&ss, family,
+				                 message->response_address.data,
+				                 message->response_address.len);
+				sockaddr_port_set(&ss, message->response_port);
+				get_addr_str(&ss, sock_type, &net_ctx.remote_str);
+			}
+
+			print_packet(pkt, &net_ctx, pkt->size, query_time,
+			             timestamp, is_response, &query->style);
+
+			net_clean(&net_ctx);
+		} else {
+			ERR("can't print dnstap message\n");
+		}
+
+		knot_pkt_free(&pkt);
+		dt_reader_free_frame(reader, &frame);
+	}
+}
+#endif // USE_DNSTAP
+
+static int add_query_edns(knot_pkt_t *packet, const query_t *query, int max_size)
+{
+	/* Initialize OPT RR. */
+	knot_rrset_t opt_rr;
+	int ret = knot_edns_init(&opt_rr, max_size, 0,
+	                         query->edns > -1 ? query->edns : 0, &packet->mm);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	if (query->flags.do_flag) {
+		knot_edns_set_do(&opt_rr);
+	}
+
+	/* Append NSID. */
+	if (query->nsid) {
+		ret = knot_edns_add_option(&opt_rr, KNOT_EDNS_OPTION_NSID,
+		                           0, NULL, &packet->mm);
+		if (ret != KNOT_EOK) {
+			knot_rrset_clear(&opt_rr, &packet->mm);
+			return ret;
+		}
+	}
+
+	/* Append EDNS-client-subnet. */
+	if (query->subnet != NULL) {
+		uint8_t  data[KNOT_EDNS_MAX_OPTION_CLIENT_SUBNET] = { 0 };
+		uint16_t data_len = sizeof(data);
+
+		ret = knot_edns_client_subnet_create(query->subnet->family,
+		                                     query->subnet->addr,
+		                                     query->subnet->addr_len,
+		                                     query->subnet->netmask,
+		                                     0, data, &data_len);
+		if (ret != KNOT_EOK) {
+			knot_rrset_clear(&opt_rr, &packet->mm);
+			return ret;
+		}
+
+		ret = knot_edns_add_option(&opt_rr, KNOT_EDNS_OPTION_CLIENT_SUBNET,
+		                           data_len, data, &packet->mm);
+		if (ret != KNOT_EOK) {
+			knot_rrset_clear(&opt_rr, &packet->mm);
+			return ret;
+		}
+	}
+
+	/* Add prepared OPT to packet. */
+	ret = knot_pkt_put(packet, COMPR_HINT_NONE, &opt_rr, KNOT_PF_FREE);
+	if (ret != KNOT_EOK) {
+		knot_rrset_clear(&opt_rr, &packet->mm);
+	}
+
+	return ret;
+}
+
+static bool use_edns(const query_t *query)
+{
+	return query->flags.do_flag || query->nsid || query->edns > -1 ||
+	       query->subnet != NULL;
+}
 
 static knot_pkt_t* create_query_packet(const query_t *query)
 {
@@ -41,8 +271,7 @@ static knot_pkt_t* create_query_packet(const query_t *query)
 		if (get_socktype(query->protocol, query->type_num)
 		    == SOCK_STREAM) {
 			max_size = MAX_PACKET_SIZE;
-		} else if (query->flags.do_flag || query->nsid ||
-		           query->edns > -1) {
+		} else if (use_edns(query)) {
 			max_size = DEFAULT_EDNS_SIZE;
 		} else {
 			max_size = DEFAULT_UDP_SIZE;
@@ -58,26 +287,31 @@ static knot_pkt_t* create_query_packet(const query_t *query)
 	}
 
 	// Set flags to wireformat.
-	if (query->flags.aa_flag == true) {
+	if (query->flags.aa_flag) {
 		knot_wire_set_aa(packet->wire);
 	}
-	if (query->flags.tc_flag == true) {
+	if (query->flags.tc_flag) {
 		knot_wire_set_tc(packet->wire);
 	}
-	if (query->flags.rd_flag == true) {
+	if (query->flags.rd_flag) {
 		knot_wire_set_rd(packet->wire);
 	}
-	if (query->flags.ra_flag == true) {
+	if (query->flags.ra_flag) {
 		knot_wire_set_ra(packet->wire);
 	}
-	if (query->flags.z_flag == true) {
+	if (query->flags.z_flag) {
 		knot_wire_set_z(packet->wire);
 	}
-	if (query->flags.ad_flag == true) {
+	if (query->flags.ad_flag) {
 		knot_wire_set_ad(packet->wire);
 	}
-	if (query->flags.cd_flag == true) {
+	if (query->flags.cd_flag) {
 		knot_wire_set_cd(packet->wire);
+	}
+
+	// Set NOTIFY opcode.
+	if (query->notify) {
+		knot_wire_set_opcode(packet->wire, KNOT_OPCODE_NOTIFY);
 	}
 
 	// Create QNAME from string.
@@ -95,6 +329,9 @@ static knot_pkt_t* create_query_packet(const query_t *query)
 		knot_pkt_free(&packet);
 		return NULL;
 	}
+
+	// Begin authority section
+	knot_pkt_begin(packet, KNOT_AUTHORITY);
 
 	// For IXFR query add authority section.
 	if (query->type_num == KNOT_RRTYPE_IXFR) {
@@ -127,8 +364,6 @@ static knot_pkt_t* create_query_packet(const query_t *query)
 		// Set SOA serial.
 		knot_soa_serial_set(&soa->rrs, query->xfr_serial);
 
-		// Add authority section.
-		knot_pkt_begin(packet, KNOT_AUTHORITY);
 		ret = knot_pkt_put(packet, 0, soa, KNOT_PF_FREE);
 		if (ret != KNOT_EOK) {
 			knot_rrset_free(&soa, &packet->mm);
@@ -139,30 +374,12 @@ static knot_pkt_t* create_query_packet(const query_t *query)
 		knot_dname_free(&qname, NULL);
 	}
 
+	// Begin additional section
+	knot_pkt_begin(packet, KNOT_ADDITIONAL);
+
 	// Create EDNS section if required.
-	if (query->udp_size > 0 || query->flags.do_flag || query->nsid ||
-	    query->edns > -1) {
-		uint8_t version = query->edns > -1 ? query->edns : 0;
-
-		ret = knot_pkt_opt_set(packet, KNOT_PKT_EDNS_PAYLOAD,
-		                       &max_size, sizeof(max_size));
-		ret |= knot_pkt_opt_set(packet, KNOT_PKT_EDNS_VERSION,
-		                       &version, sizeof(version));
-
-		if (query->flags.do_flag) {
-			ret |= knot_pkt_opt_set(packet, KNOT_PKT_EDNS_FLAG_DO,
-			                        NULL, 0);
-		}
-
-		if (query->nsid) {
-			ret |= knot_pkt_opt_set(packet, KNOT_PKT_EDNS_NSID,
-			                        NULL, 0);
-		}
-
-		// Write prepared OPT to wire
-		knot_pkt_begin(packet, KNOT_ADDITIONAL);
-		ret |= knot_pkt_put_opt(packet);
-
+	if (query->udp_size > 0 || use_edns(query)) {
+		int ret = add_query_edns(packet, query, max_size);
 		if (ret != KNOT_EOK) {
 			ERR("can't set up EDNS section\n");
 			knot_pkt_free(&packet);
@@ -259,6 +476,7 @@ static bool last_serial_check(const uint32_t serial, const knot_pkt_t *reply)
 
 static int process_query_packet(const knot_pkt_t        *query,
                                 net_t                   *net,
+                                const query_t           *query_ctx,
                                 const bool              ignore_tc,
                                 const sign_context_t    *sign_ctx,
                                 const knot_key_params_t *key_params,
@@ -289,11 +507,29 @@ static int process_query_packet(const knot_pkt_t        *query,
 	// Get stop query time and start reply time.
 	gettimeofday(&t_query, NULL);
 
+#if USE_DNSTAP
+	// Make the dnstap copy of the query.
+	write_dnstap(query_ctx->dt_writer, false, query->wire, query->size,
+	             net, &t_query, NULL);
+#endif // USE_DNSTAP
+
 	// Print query packet if required.
 	if (style->show_query) {
-		print_packet(query, net,
-		             time_diff(&t_start, &t_query),
-		             false, style);
+		// Create copy of query packet for parsing.
+		knot_pkt_t *q = knot_pkt_new(query->wire, query->size, NULL);
+		if (q != NULL) {
+			if (knot_pkt_parse(q, 0) == KNOT_EOK) {
+				print_packet(q, net, query->size,
+				             time_diff(&t_start, &t_query), 0,
+				             false, style);
+			} else {
+				ERR("can't print query packet\n");
+			}
+			knot_pkt_free(&q);
+		} else {
+			ERR("can't print query packet\n");
+		}
+
 		printf("\n");
 	}
 
@@ -308,6 +544,12 @@ static int process_query_packet(const knot_pkt_t        *query,
 
 		// Get stop reply time.
 		gettimeofday(&t_end, NULL);
+
+#if USE_DNSTAP
+		// Make the dnstap copy of the response.
+		write_dnstap(query_ctx->dt_writer, true, in, in_len, net,
+		             &t_query, &t_end);
+#endif // USE_DNSTAP
 
 		// Create reply packet structure to fill up.
 		reply = knot_pkt_new(in, in_len, NULL);
@@ -347,8 +589,8 @@ static int process_query_packet(const knot_pkt_t        *query,
 
 		net->socktype = SOCK_STREAM;
 
-		return process_query_packet(query, net, true, sign_ctx,
-		                            key_params, style);
+		return process_query_packet(query, net, query_ctx, true,
+		                            sign_ctx, key_params, style);
 	}
 
 	// Check for question sections equality.
@@ -367,7 +609,7 @@ static int process_query_packet(const knot_pkt_t        *query,
 	}
 
 	// Print reply packet.
-	print_packet(reply, net, time_diff(&t_query, &t_end),
+	print_packet(reply, net, in_len, time_diff(&t_query, &t_end), 0,
 	             true, style);
 
 	knot_pkt_free(&reply);
@@ -425,10 +667,11 @@ static void process_query(const query_t *query)
 			// Loop over all resolved addresses for remote.
 			while (net.srv != NULL) {
 				ret = process_query_packet(out_packet, &net,
-							   query->ignore_tc,
-							   &query->sign_ctx,
-							   &query->key_params,
-							   &query->style);
+				                           query,
+				                           query->ignore_tc,
+				                           &query->sign_ctx,
+				                           &query->key_params,
+				                           &query->style);
 				// If error try next resolved address.
 				if (ret != 0) {
 					net.srv = (net.srv)->ai_next;
@@ -449,7 +692,7 @@ static void process_query(const query_t *query)
 				return;
 			// SERVFAIL.
 			} else if (ret == 1 && query->servfail_stop == true) {
-				WARN("failed to query server %s#%s(%s)\n",
+				WARN("failed to query server %s@%s(%s)\n",
 				     remote->name, remote->service,
 				     get_sockname(socktype));
 				net_clean(&net);
@@ -459,7 +702,7 @@ static void process_query(const query_t *query)
 
 			if (i < query->retries) {
 				printf("\n");
-				DBG("retrying server %s#%s(%s)\n",
+				DBG("retrying server %s@%s(%s)\n",
 				    remote->name, remote->service,
 				    get_sockname(socktype));
 			}
@@ -467,15 +710,21 @@ static void process_query(const query_t *query)
 			net_clean(&net);
 		}
 
-		WARN("failed to query server %s#%s(%s)\n",
+		WARN("failed to query server %s@%s(%s)\n",
 		     remote->name, remote->service, get_sockname(socktype));
+
+		// If not last server, print separation.
+		if (server->next->next) {
+			printf("\n");
+		}
 	}
 
 	knot_pkt_free(&out_packet);
 }
 
-static int process_packet_xfr(const knot_pkt_t     *query,
+static int process_xfr_packet(const knot_pkt_t        *query,
                               net_t                   *net,
+                              const query_t           *query_ctx,
                               const sign_context_t    *sign_ctx,
                               const knot_key_params_t *key_params,
                               const style_t           *style)
@@ -509,10 +758,16 @@ static int process_packet_xfr(const knot_pkt_t     *query,
 	// Get stop query time and start reply time.
 	gettimeofday(&t_query, NULL);
 
+#if USE_DNSTAP
+	// Make the dnstap copy of the query.
+	write_dnstap(query_ctx->dt_writer, false, query->wire, query->size,
+	             net, &t_query, NULL);
+#endif // USE_DNSTAP
+
 	// Print query packet if required.
 	if (style->show_query) {
-		print_packet(query, net,
-		             time_diff(&t_start, &t_query),
+		print_packet(query, net, query->size,
+		             time_diff(&t_start, &t_query), 0,
 		             false, style);
 		printf("\n");
 	}
@@ -528,6 +783,15 @@ static int process_packet_xfr(const knot_pkt_t     *query,
 			net_close(net);
 			return -1;
 		}
+
+		// Get stop message time.
+		gettimeofday(&t_end, NULL);
+
+#if USE_DNSTAP
+		// Make the dnstap copy of the response.
+		write_dnstap(query_ctx->dt_writer, true, in, in_len, net,
+		             &t_query, &t_end);
+#endif // USE_DNSTAP
 
 		// Create reply packet structure to fill up.
 		reply = knot_pkt_new(in, in_len, NULL);
@@ -618,14 +882,14 @@ static int process_packet_xfr(const knot_pkt_t     *query,
 
 	// Print trailing transfer information.
 	print_footer_xfr(total_len, msg_count, rr_count, net,
-	                 time_diff(&t_query, &t_end), style);
+	                 time_diff(&t_query, &t_end), 0, style);
 
 	net_close(net);
 
 	return 0;
 }
 
-static void process_query_xfr(const query_t *query)
+static void process_xfr(const query_t *query)
 {
 	knot_pkt_t *out_packet;
 	net_t      net;
@@ -665,7 +929,8 @@ static void process_query_xfr(const query_t *query)
 
 	// Loop over all resolved addresses for remote.
 	while (net.srv != NULL) {
-		ret = process_packet_xfr(out_packet, &net,
+		ret = process_xfr_packet(out_packet, &net,
+		                         query,
 		                         &query->sign_ctx,
 		                         &query->key_params,
 		                         &query->style);
@@ -679,7 +944,7 @@ static void process_query_xfr(const query_t *query)
 	}
 
 	if (ret != 0) {
-		ERR("failed to query server %s#%s(%s)\n",
+		ERR("failed to query server %s@%s(%s)\n",
 		    remote->name, remote->service, get_sockname(socktype));
 	}
 
@@ -705,13 +970,23 @@ int dig_exec(const dig_params_t *params)
 			process_query(query);
 			break;
 		case OPERATION_XFR:
-			process_query_xfr(query);
+			process_xfr(query);
 			break;
+#if USE_DNSTAP
+		case OPERATION_LIST_DNSTAP:
+			process_dnstap(query);
+			break;
+#endif // USE_DNSTAP
 		case OPERATION_LIST_SOA:
 			break;
 		default:
 			ERR("unsupported operation\n");
 			break;
+		}
+
+		// If not last query, print separation.
+		if (n->next->next && params->config->style.format == FORMAT_FULL) {
+			printf("\n");
 		}
 	}
 

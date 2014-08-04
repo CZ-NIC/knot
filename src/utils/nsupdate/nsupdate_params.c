@@ -23,9 +23,9 @@
 #include "utils/nsupdate/nsupdate_params.h"
 #include "utils/common/msg.h"
 #include "utils/common/netio.h"
-#include "common/errcode.h"
-#include "common/descriptor.h"
-#include "common/mempattern.h"
+#include "libknot/errcode.h"
+#include "libknot/descriptor.h"
+#include "libknot/mempattern.h"
 #include "common/mempool.h"
 #include "libknot/libknot.h"
 
@@ -39,6 +39,7 @@ static const style_t DEFAULT_STYLE_NSUPDATE = {
 		.show_class = true,
 		.show_ttl = true,
 		.verbose = false,
+		.empty_ttl = false,
 		.human_ttl = false,
 		.human_tmstamp = true,
 		.ascii_to_idn = NULL
@@ -50,10 +51,11 @@ static const style_t DEFAULT_STYLE_NSUPDATE = {
 	.show_answer = true,
 	.show_authority = true,
 	.show_additional = true,
-	.show_footer = false,
+	.show_tsig = true,
+	.show_footer = false
 };
 
-static void parse_err(const zs_scanner_t *s) {
+static void parse_err(zs_scanner_t *s) {
 	ERR("failed to parse RR: %s\n", zs_strerror(s->error_code));
 }
 
@@ -88,7 +90,7 @@ static int nsupdate_init(nsupdate_params_t *params)
 	init_list(&params->prereq_list);
 
 	/* Initialize memory context. */
-	mm_ctx_mempool(&params->mm, 4096);
+	mm_ctx_mempool(&params->mm, MM_DEFAULT_BLKSIZE);
 
 	/* Default server. */
 	params->server = srv_info_create(DEFAULT_IPV4_NAME, DEFAULT_DNS_PORT);

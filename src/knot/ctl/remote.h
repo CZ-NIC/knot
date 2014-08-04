@@ -24,8 +24,7 @@
  * @{
  */
 
-#ifndef _KNOTD_REMOTE_H_
-#define _KNOTD_REMOTE_H_
+#pragma once
 
 #include "knot/conf/conf.h"
 #include "libknot/packet/pkt.h"
@@ -79,7 +78,8 @@ int remote_poll(int sock);
  * \return client TCP socket if success.
  * \return KNOT_ECONNREFUSED if fails to receive command.
  */
-int remote_recv(int sock, struct sockaddr *addr, uint8_t* buf, size_t *buflen);
+int remote_recv(int sock, struct sockaddr_storage *addr, uint8_t *buf,
+                size_t *buflen);
 
 /*!
  * \brief Parse a RC command.
@@ -184,7 +184,5 @@ int remote_create_ns(knot_rrset_t *rr, const char *d);
  * \return KNOT_EOK
  */
 int remote_print_txt(const knot_rrset_t *rrset, uint16_t i);
-
-#endif // _KNOTD_REMOTE_H_
 
 /*! @} */

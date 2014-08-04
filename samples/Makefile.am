@@ -15,7 +15,7 @@ knot.sample.conf: knot.sample.conf.in
 	  $(edit) $${srcdir}$@.in >$@.tmp
 	mv $@.tmp $@
 
-EXTRA_DIST = knot.sample.conf.in knot.full.conf knot.keys.conf example.com.zone
+EXTRA_DIST = knot.sample.conf.in example.com.zone
 
 install-data-local: knot.sample.conf
 	[ -d $(DESTDIR)/$(config_dir) ] || \

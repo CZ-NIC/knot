@@ -16,10 +16,10 @@
 
 #include <stdlib.h>				// EXIT_FAILURE
 
-#include "common/errcode.h"			// KNOT_EOK
 #include "dnssec/crypto.h"			// dnssec_crypto_init
-#include "utils/nsupdate/nsupdate_params.h"	// params_t
+#include "libknot/errcode.h"			// KNOT_EOK
 #include "utils/nsupdate/nsupdate_exec.h"	// host_exec
+#include "utils/nsupdate/nsupdate_params.h"	// params_t
 
 int main(int argc, char *argv[])
 {

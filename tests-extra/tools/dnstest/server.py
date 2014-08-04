@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import glob
 import inspect
 import psutil
 import re
@@ -12,6 +13,7 @@ import dns.query
 import dns.update
 from subprocess import Popen, PIPE, check_call, CalledProcessError
 from dnstest.utils import *
+import dnstest.inquirer
 import dnstest.params as params
 import dnstest.keys
 import dnstest.response
@@ -116,7 +118,7 @@ class Server(object):
     START_WAIT_VALGRIND = 5
     STOP_TIMEOUT = 30
     COMPILE_TIMEOUT = 60
-    DIG_TIMEOUT = 15
+    DIG_TIMEOUT = 5
 
     # Instance counter.
     count = 0
@@ -137,9 +139,6 @@ class Server(object):
         self.ident = None
         self.version = None
 
-        self.ratelimit = None
-        self.disable_any = None
-
         self.ip = None
         self.addr = None
         self.port = None
@@ -150,6 +149,14 @@ class Server(object):
         self.tsig_test = None
 
         self.zones = dict()
+
+        self.ratelimit = None
+        self.disable_any = None
+        self.disable_notify = None
+        self.max_conn_idle = None
+        self.zonefile_sync = None
+
+        self.inquirer = None
 
         # Working directory.
         self.dir = None
@@ -165,22 +172,21 @@ class Server(object):
         else:
             iface = "%i%s@[%s]:%i" % (self.ip, proto, self.addr, port)
 
-        proc = Popen(["lsof", "-t", "-i", iface],
-                     stdout=PIPE, stderr=PIPE, universal_newlines=True)
-        (out, err) = proc.communicate()
+        for i in range(5):
+            proc = Popen(["lsof", "-t", "-i", iface],
+                         stdout=PIPE, stderr=PIPE, universal_newlines=True)
+            (out, err) = proc.communicate()
 
-        # Create list of pids excluding last empty line.
-        pids = list(filter(None, out.split("\n")))
+            # Create list of pids excluding last empty line.
+            pids = list(filter(None, out.split("\n")))
 
-        # Check for successful bind.
-        if str(self.proc.pid) not in pids:
-            return False
+            # Check for successful bind.
+            if len(pids) == 1 and str(self.proc.pid) in pids:
+                return True
 
-        # More binded processes is not acceptable too.
-        if len(pids) > 1:
-            return False
+            time.sleep(1)
 
-        return True
+        return False
 
     def set_master(self, zone, slave=None, ddns=False, ixfr=False):
         '''Set the server as a master for the zone'''
@@ -199,7 +205,7 @@ class Server(object):
         '''Set the server as a slave for the zone'''
 
         if zone.name in self.zones:
-            raise Exception("Can't set zone='%s' as a slave" % name)
+            raise Exception("Can't set zone='%s' as a slave" % zone.name)
 
         slave_file = zone.clone(self.dir + "/slave", exists=False)
         z = Zone(slave_file, ddns, ixfr)
@@ -234,6 +240,10 @@ class Server(object):
         except OSError:
             raise Exception("Can't start server='%s'" % self.name)
 
+        # Start inquirer if enabled.
+        if params.test.stress and self.inquirer:
+            self.inquirer.start(self)
+
     def reload(self):
         try:
             check_call([self.control_bin] + self.reload_params,
@@ -258,9 +268,13 @@ class Server(object):
 
     def running(self):
         proc = psutil.Process(self.proc.pid)
-        if proc.status == psutil.STATUS_RUNNING or \
-           proc.status == psutil.STATUS_SLEEPING or \
-           proc.status == psutil.STATUS_DISK_SLEEP:
+        status = proc.status
+        # psutil 2.0.0+ makes status a function
+        if psutil.version_info[0] >= 2:
+            status = proc.status()
+        if status == psutil.STATUS_RUNNING or \
+           status == psutil.STATUS_SLEEPING or \
+           status == psutil.STATUS_DISK_SLEEP:
             return True
         else:
             return False
@@ -349,9 +363,29 @@ class Server(object):
                 self.backtrace()
                 check_log("WARNING: KILLING %s" % self.name)
                 detail_log(SEP)
-                self.proc.kill()
+                self.kill()
         if check:
             self._valgrind_check()
+
+        if self.inquirer:
+            self.inquirer.stop()
+
+    def kill(self):
+        if self.proc:
+            # Store PID before kill.
+            pid = self.proc.pid
+
+            self.proc.kill()
+
+            # Remove uncleaned vgdb pipes.
+            for f in glob.glob("/tmp/vgdb-pipe*-%s-*" % pid):
+                try:
+                    os.remove(f)
+                except:
+                    pass
+
+        if self.inquirer:
+            self.inquirer.stop()
 
     def gen_confile(self):
         f = open(self.confile, mode="w")
@@ -388,7 +422,7 @@ class Server(object):
         else:
             dig_flags = "+tcp"
 
-        dig_flags += " +tries=%i" % tries
+        dig_flags += " +retry=%i" % (tries - 1)
 
         # Set timeout.
         if timeout is None:
@@ -484,7 +518,10 @@ class Server(object):
 
                 if not log_no_sep:
                     detail_log(SEP)
+
                 return dnstest.response.Response(self, resp, args)
+            except dns.exception.Timeout:
+                pass
             except:
                 time.sleep(timeout)
 
@@ -514,20 +551,26 @@ class Server(object):
 
         check_log("ZONE WAIT %s: %s" % (self.name, zone.name))
 
-        for t in range(20):
-            resp = self.dig(zone.name, "SOA", udp=True, tries=1, log_no_sep=True)
-            if resp.resp.rcode() == 0:
-                if not resp.resp.answer:
-                    raise Exception("No SOA in ANSWER, zone='%s', server='%s'" %
-                                    (zone.name, self.name))
+        for t in range(60):
+            try:
+                resp = self.dig(zone.name, "SOA", udp=True, tries=1,
+                                timeout=2, log_no_sep=True)
+            except:
+                pass
+            else:
+                if resp.resp.rcode() == 0:
+                    if not resp.resp.answer:
+                        raise Exception("No SOA in ANSWER, zone='%s', server='%s'" %
+                                        (zone.name, self.name))
 
-                soa = str((resp.resp.answer[0]).to_rdataset())
-                _serial = int(soa.split()[5])
-                if serial:
-                    if serial < _serial:
+                    soa = str((resp.resp.answer[0]).to_rdataset())
+                    _serial = int(soa.split()[5])
+
+                    if serial:
+                        if serial < _serial:
+                            break
+                    else:
                         break
-                else:
-                    break
             time.sleep(2)
         else:
             self.backtrace()
@@ -624,8 +667,8 @@ class Server(object):
 
 class Bind(Server):
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         if not params.bind_bin:
             raise Skip("No Bind")
         self.daemon_bin = params.bind_bin
@@ -661,6 +704,10 @@ class Bind(Server):
         s.item("auth-nxdomain", "no")
         s.item("recursion", "no")
         s.item("masterfile-format", "text")
+        s.item("max-refresh-time", "2")
+        s.item("max-retry-time", "2")
+        s.item("transfers-in", "30")
+        s.item("transfers-out", "30")
         s.end()
 
         s.begin("key", self.ctlkey.name)
@@ -726,8 +773,8 @@ class Bind(Server):
                 s.item("type", "master")
                 s.item("notify", "explicit")
 
-                if z.ixfr and not z.ddns:
-                    s.item("ixfr-from-differences", "yes")
+            if z.ixfr and not z.master:
+                s.item("ixfr-from-differences", "yes")
 
             if z.slaves:
                 slaves = ""
@@ -767,12 +814,13 @@ class Bind(Server):
 
 class Knot(Server):
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         if not params.knot_bin:
             raise Skip("No Knot")
         self.daemon_bin = params.knot_bin
         self.control_bin = params.knot_ctl
+        self.inquirer = dnstest.inquirer.Inquirer()
 
     @property
     def keydir(self):
@@ -802,6 +850,8 @@ class Knot(Server):
         self._on_str_hex(s, "nsid", self.nsid)
         self._on_str_hex(s, "rate-limit", self.ratelimit)
         s.item_str("rundir", self.dir)
+        if (self.max_conn_idle):
+            s.item("max-conn-idle", self.max_conn_idle)
         s.end()
 
         s.begin("control")
@@ -875,7 +925,10 @@ class Knot(Server):
 
         s.begin("zones")
         s.item_str("storage", self.dir)
-        s.item("zonefile-sync", "0")
+        if self.zonefile_sync:
+            s.item("zonefile-sync", self.zonefile_sync)
+        else:
+            s.item("zonefile-sync", "1d")
         s.item("notify-timeout", "5")
         s.item("notify-retries", "5")
         s.item("semantic-checks", "on")
@@ -890,7 +943,8 @@ class Knot(Server):
             s.item_str("file", z.zfile.path)
 
             if z.master:
-                s.item("notify-in", z.master.name)
+                if not self.disable_notify:
+                    s.item("notify-in", z.master.name)
                 s.item("xfr-in", z.master.name)
 
             slaves = ""
@@ -919,7 +973,7 @@ class Knot(Server):
 
         s.begin("log")
         s.begin("stdout")
-        s.item("any", "all")
+        s.item("any", "info")
         s.end()
         s.begin("stderr")
         s.end()
@@ -935,8 +989,8 @@ class Knot(Server):
 
 class Nsd(Server):
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         if not params.nsd_bin:
             raise Skip("No NSD")
         self.daemon_bin = params.nsd_bin
@@ -949,8 +1003,8 @@ class Nsd(Server):
 class Dummy(Server):
     ''' Dummy name server. '''
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         self.daemon_bin = None
         self.control_bin = None
 

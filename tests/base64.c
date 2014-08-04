@@ -14,14 +14,14 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <config.h>
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
 #include <tap/basic.h>
 
-#include "common/errcode.h"
+#include "libknot/errcode.h"
 #include "common/base64.h"
+#include "common-knot/strlcpy.h"
 
 #define BUF_LEN			256
 #define MAX_BIN_DATA_LEN	((INT32_MAX / 4) * 3)
@@ -68,9 +68,9 @@ int main(int argc, char *argv[])
 	ok(ret == KNOT_EINVAL, "base64_decode_alloc: NULL output buffer");
 
 	// 1. test vector -> ENC -> DEC
-	strcpy((char *)in, "");
+	strlcpy((char *)in, "", BUF_LEN);
 	in_len = strlen((char *)in);
-	strcpy((char *)ref, "");
+	strlcpy((char *)ref, "", BUF_LEN);
 	ref_len = strlen((char *)ref);
 	ret = base64_encode(in, in_len, out, BUF_LEN);
 	ok(ret == ref_len, "1. test vector - ENC output length");
@@ -88,9 +88,9 @@ int main(int argc, char *argv[])
 	}
 
 	// 2. test vector -> ENC -> DEC
-	strcpy((char *)in, "f");
+	strlcpy((char *)in, "f", BUF_LEN);
 	in_len = strlen((char *)in);
-	strcpy((char *)ref, "Zg==");
+	strlcpy((char *)ref, "Zg==", BUF_LEN);
 	ref_len = strlen((char *)ref);
 	ret = base64_encode(in, in_len, out, BUF_LEN);
 	ok(ret == ref_len, "2. test vector - ENC output length");
@@ -108,9 +108,9 @@ int main(int argc, char *argv[])
 	}
 
 	// 3. test vector -> ENC -> DEC
-	strcpy((char *)in, "fo");
+	strlcpy((char *)in, "fo", BUF_LEN);
 	in_len = strlen((char *)in);
-	strcpy((char *)ref, "Zm8=");
+	strlcpy((char *)ref, "Zm8=", BUF_LEN);
 	ref_len = strlen((char *)ref);
 	ret = base64_encode(in, in_len, out, BUF_LEN);
 	ok(ret == ref_len, "3. test vector - ENC output length");
@@ -128,9 +128,9 @@ int main(int argc, char *argv[])
 	}
 
 	// 4. test vector -> ENC -> DEC
-	strcpy((char *)in, "foo");
+	strlcpy((char *)in, "foo", BUF_LEN);
 	in_len = strlen((char *)in);
-	strcpy((char *)ref, "Zm9v");
+	strlcpy((char *)ref, "Zm9v", BUF_LEN);
 	ref_len = strlen((char *)ref);
 	ret = base64_encode(in, in_len, out, BUF_LEN);
 	ok(ret == ref_len, "4. test vector - ENC output length");
@@ -148,9 +148,9 @@ int main(int argc, char *argv[])
 	}
 
 	// 5. test vector -> ENC -> DEC
-	strcpy((char *)in, "foob");
+	strlcpy((char *)in, "foob", BUF_LEN);
 	in_len = strlen((char *)in);
-	strcpy((char *)ref, "Zm9vYg==");
+	strlcpy((char *)ref, "Zm9vYg==", BUF_LEN);
 	ref_len = strlen((char *)ref);
 	ret = base64_encode(in, in_len, out, BUF_LEN);
 	ok(ret == ref_len, "5. test vector - ENC output length");
@@ -168,9 +168,9 @@ int main(int argc, char *argv[])
 	}
 
 	// 6. test vector -> ENC -> DEC
-	strcpy((char *)in, "fooba");
+	strlcpy((char *)in, "fooba", BUF_LEN);
 	in_len = strlen((char *)in);
-	strcpy((char *)ref, "Zm9vYmE=");
+	strlcpy((char *)ref, "Zm9vYmE=", BUF_LEN);
 	ref_len = strlen((char *)ref);
 	ret = base64_encode(in, in_len, out, BUF_LEN);
 	ok(ret == ref_len, "6. test vector - ENC output length");
@@ -188,9 +188,9 @@ int main(int argc, char *argv[])
 	}
 
 	// 7. test vector -> ENC -> DEC
-	strcpy((char *)in, "foobar");
+	strlcpy((char *)in, "foobar", BUF_LEN);
 	in_len = strlen((char *)in);
-	strcpy((char *)ref, "Zm9vYmFy");
+	strlcpy((char *)ref, "Zm9vYmFy", BUF_LEN);
 	ref_len = strlen((char *)ref);
 	ret = base64_encode(in, in_len, out, BUF_LEN);
 	ok(ret == ref_len, "7. test vector - ENC output length");

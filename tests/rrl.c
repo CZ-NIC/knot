@@ -14,17 +14,17 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <config.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <tap/basic.h>
 
-#include "common/descriptor.h"
 #include "dnssec/crypto.h"
 #include "dnssec/random.h"
 #include "knot/conf/conf.h"
 #include "knot/server/rrl.h"
 #include "knot/zone/zone.h"
+#include "knot/conf/conf.h"
+#include "libknot/descriptor.h"
 
 /* Enable time-dependent tests. */
 //#define ENABLE_TIMED_TESTS
@@ -93,7 +93,11 @@ static void rrl_hopscotch(struct runnable_data* rd)
 
 int main(int argc, char *argv[])
 {
+#ifdef ENABLE_TIMED_TESTS
 	plan(10);
+#else
+	plan(5);
+#endif
 
 	dnssec_crypto_init();
 
@@ -164,8 +168,6 @@ int main(int argc, char *argv[])
 	/* 6. limited IPv6 request */
 	ret = rrl_query(rrl, &addr6, &rq, zone);
 	is_int(0, ret, "rrl: throttled IPv6 request");
-#else
-	skip_block(2, "Timed tests not enabled");
 #endif
 
 	/* 7. invalid values. */
@@ -194,8 +196,6 @@ int main(int argc, char *argv[])
 	/* 10. hopscotch after reseed. */
 	rrl_hopscotch(&rd);
 	ok(rd.passed, "rrl: hashtable is ~ consistent");
-#else
-	skip_block(3, "Timed tests not enabled");
 #endif
 
 	zone_free(&zone);

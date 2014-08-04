@@ -21,7 +21,7 @@
 #include "libknot/common.h"
 #include "libknot/dname.h"
 #include "libknot/dnssec/key.h"
-#include "libknot/rdata/tsig.h"
+#include "libknot/rrtype/tsig.h"
 
 /*!
  * \brief Creates TSIG key.

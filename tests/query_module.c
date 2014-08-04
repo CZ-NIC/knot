@@ -14,14 +14,13 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <config.h>
 #include <tap/basic.h>
 #include <string.h>
 #include <stdlib.h>
 
-#include "common/mempattern.h"
+#include "libknot/mempattern.h"
 #include "common/mempool.h"
-#include "common/errcode.h"
+#include "libknot/errcode.h"
 #include "knot/nameserver/query_module.h"
 #include "libknot/packet/pkt.h"
 
@@ -41,7 +40,7 @@ int main(int argc, char *argv[])
 
 	/* Create processing context. */
 	mm_ctx_t mm;
-	mm_ctx_mempool(&mm, 4096);
+	mm_ctx_mempool(&mm, MM_DEFAULT_BLKSIZE);
 
 	/* Create a map of expected steps. */
 	bool state_map[QUERY_PLAN_STAGES] = { false };

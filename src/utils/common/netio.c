@@ -29,9 +29,9 @@
 #endif // HAVE_SYS_UIO_H
 
 #include "utils/common/msg.h"		// WARN
-#include "common/descriptor.h"		// KNOT_CLASS_IN
-#include "common/errcode.h"		// KNOT_E
-#include "common/sockaddr.h"		// sockaddr_tostr, sockaddr_portnum
+#include "libknot/descriptor.h"		// KNOT_CLASS_IN
+#include "libknot/errcode.h"		// KNOT_E
+#include "common-knot/sockaddr.h"	// sockaddr_tostr, sockaddr_portnum
 
 srv_info_t* srv_info_create(const char *name, const char *service)
 {
@@ -127,7 +127,7 @@ static int get_addr(const srv_info_t *server,
 
 	// Get connection parameters.
 	if (getaddrinfo(server->name, server->service, &hints, info) != 0) {
-		ERR("can't resolve address %s#%s\n",
+		ERR("can't resolve address %s@%s\n",
 		    server->name, server->service);
 		return -1;
 	}
@@ -135,9 +135,9 @@ static int get_addr(const srv_info_t *server,
 	return 0;
 }
 
-static void get_addr_str(const struct sockaddr_storage *ss,
-                         const int                     socktype,
-                         char                          **dst)
+void get_addr_str(const struct sockaddr_storage *ss,
+                  const int                     socktype,
+                  char                          **dst)
 {
 	char addr_str[SOCKADDR_STRLEN] = {0};
 
@@ -154,7 +154,7 @@ static void get_addr_str(const struct sockaddr_storage *ss,
 	if (*dst != NULL) {
 		int ret = snprintf(*dst, buflen, "%s(%s)", addr_str, sock_name);
 		if (ret <= 0 || ret >= buflen) {
-			*dst = '\0';
+			**dst = '\0';
 		}
 	}
 }
@@ -202,8 +202,7 @@ int net_init(const srv_info_t *local,
 int net_connect(net_t *net)
 {
 	struct pollfd pfd;
-	int           sockfd, cs, err = 0;
-	socklen_t     err_len = sizeof(err);
+	int           sockfd;
 
 	if (net == NULL || net->srv == NULL) {
 		DBG_NULL;
@@ -234,18 +233,17 @@ int net_connect(net_t *net)
 
 	// Bind address to socket if specified.
 	if (net->local_info != NULL) {
-		// Set local information string.
-		get_addr_str((struct sockaddr_storage *)net->local_info->ai_addr,
-		             net->socktype, &net->local_str);
-
 		if (bind(sockfd, net->local_info->ai_addr,
 		         net->local_info->ai_addrlen) == -1) {
-			WARN("can't assign address %s\n", net->local_str);
+			WARN("can't assign address %s\n", net->local->name);
 			return KNOT_NET_ESOCKET;
 		}
 	}
 
 	if (net->socktype == SOCK_STREAM) {
+		int       cs, err = 0;
+		socklen_t err_len = sizeof(err);
+
 		// Connect using socket.
 		if (connect(sockfd, net->srv->ai_addr, net->srv->ai_addrlen)
 		    == -1 && errno != EINPROGRESS) {
@@ -272,6 +270,40 @@ int net_connect(net_t *net)
 
 	// Store socket descriptor.
 	net->sockfd = sockfd;
+
+	return KNOT_EOK;
+}
+
+int net_set_local_info(net_t *net)
+{
+	if (net == NULL) {
+		DBG_NULL;
+		return KNOT_EINVAL;
+	}
+
+	if (net->local_info != NULL) {
+		freeaddrinfo(net->local_info);
+	}
+
+	socklen_t local_addr_len = sizeof(struct sockaddr_storage);
+	struct sockaddr_storage *local_addr = calloc(1, local_addr_len);
+
+	if (getsockname(net->sockfd, (struct sockaddr *)local_addr,
+	                &local_addr_len) == -1) {
+		WARN("can't get local address\n");
+		free(local_addr);
+		return KNOT_NET_ESOCKET;
+	}
+
+	net->local_info = calloc(1, sizeof(struct addrinfo));
+	net->local_info->ai_family = net->srv->ai_family;
+	net->local_info->ai_socktype = net->srv->ai_socktype;
+	net->local_info->ai_protocol = net->srv->ai_protocol;
+	net->local_info->ai_addrlen = local_addr_len;
+	net->local_info->ai_addr = (struct sockaddr *)local_addr;
+
+	get_addr_str((struct sockaddr_storage *)net->local_info->ai_addr,
+	             net->socktype, &net->local_str);
 
 	return KNOT_EOK;
 }
@@ -395,7 +427,7 @@ int net_receive(const net_t *net, uint8_t *buf, const size_t buf_len)
 
 			// Receive whole UDP datagram.
 			ret = recvfrom(net->sockfd, buf, buf_len, 0,
-				       (struct sockaddr *)&from, &from_len);
+			               (struct sockaddr *)&from, &from_len);
 			if (ret <= 0) {
 				WARN("can't receive reply from %s\n",
 				     net->remote_str);

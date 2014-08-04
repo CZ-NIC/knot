@@ -22,7 +22,7 @@
 #include <inttypes.h>
 
 #include "libknot/common.h"
-#include "common/mempattern.h"
+#include "libknot/mempattern.h"
 #include "libknot/dname.h"
 #include "libknot/consts.h"
 #include "libknot/util/tolower.h"

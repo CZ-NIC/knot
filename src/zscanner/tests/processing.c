@@ -20,7 +20,7 @@
 #include "tests/processing.h"
 #include "error.h"
 #include "scanner.h"
-#include "common/descriptor.c"		// knot_rrtype_to_string (implementation)
+#include "libknot/descriptor.c"		// knot_rrtype_to_string (implementation)
 
 const char *separator = "------\n";
 
@@ -39,7 +39,7 @@ static void print_wire_dname(const uint8_t *dname, uint32_t dname_length)
 	}
 }
 
-void debug_process_error(const zs_scanner_t *s)
+void debug_process_error(zs_scanner_t *s)
 {
 	if (s->stop == true) {
 		printf("LINE(%03"PRIu64") ERROR(%s) FILE(%s) NEAR(%s)\n",
@@ -57,7 +57,7 @@ void debug_process_error(const zs_scanner_t *s)
 	fflush(stdout);
 }
 
-void debug_process_record(const zs_scanner_t *s)
+void debug_process_record(zs_scanner_t *s)
 {
 	uint32_t i;
 
@@ -84,7 +84,7 @@ void debug_process_record(const zs_scanner_t *s)
 	fflush(stdout);
 }
 
-void test_process_error(const zs_scanner_t *s)
+void test_process_error(zs_scanner_t *s)
 {
 	if (s->stop == true) {
 		printf("ERROR=%s\n%s", zs_errorname(s->error_code), separator);
@@ -94,7 +94,7 @@ void test_process_error(const zs_scanner_t *s)
 	fflush(stdout);
 }
 
-void test_process_record(const zs_scanner_t *s)
+void test_process_record(zs_scanner_t *s)
 {
 	uint32_t i;
 

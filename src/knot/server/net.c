@@ -44,7 +44,7 @@ static int socket_create(int family, int type, int proto)
 	return ret;
 }
 
-int net_unbound_socket(int type, struct sockaddr_storage *ss)
+int net_unbound_socket(int type, const struct sockaddr_storage *ss)
 {
 	if (ss == NULL) {
 		return KNOT_EINVAL;
@@ -65,7 +65,7 @@ int net_unbound_socket(int type, struct sockaddr_storage *ss)
 	return socket;
 }
 
-int net_bound_socket(int type, struct sockaddr_storage *ss)
+int net_bound_socket(int type, const struct sockaddr_storage *ss)
 {
 	/* Create socket. */
 	int socket = net_unbound_socket(type, ss);
@@ -93,7 +93,7 @@ int net_bound_socket(int type, struct sockaddr_storage *ss)
 	}
 
 	/* Bind to specified address. */
-	int ret = bind(socket, (struct sockaddr *)ss, sockaddr_len(ss));
+	int ret = bind(socket, (const struct sockaddr *)ss, sockaddr_len(ss));
 	if (ret < 0) {
 		ret = knot_map_errno(EADDRINUSE, EINVAL, EACCES, ENOMEM);
 		log_server_error("Cannot bind to address '%s': %s\n",
@@ -105,14 +105,19 @@ int net_bound_socket(int type, struct sockaddr_storage *ss)
 	return socket;
 }
 
-int net_connected_socket(int type, struct sockaddr_storage *dst_addr,
-                            struct sockaddr_storage *src_addr)
+int net_connected_socket(int type, const struct sockaddr_storage *dst_addr,
+                         const struct sockaddr_storage *src_addr, unsigned flags)
 {
 	if (dst_addr == NULL) {
 		return KNOT_EINVAL;
 	}
 
 	int socket = -1;
+
+	/* Check port. */
+	if (sockaddr_port(dst_addr) == 0) {
+		return KNOT_ECONN;
+	}
 
 	/* Bind to specific source address - if set. */
 	if (src_addr != NULL && src_addr->ss_family != AF_UNSPEC) {
@@ -124,13 +129,13 @@ int net_connected_socket(int type, struct sockaddr_storage *dst_addr,
 		return socket;
 	}
 
-	/* Use non-blocking. */
-	if (fcntl(socket, F_SETFL, O_NONBLOCK) < 0)
-		; /* Go silently with blocking if it fails. */
-
+	/* Set socket flags. */
+	if (fcntl(socket, F_SETFL, flags) < 0)
+		;
 
 	/* Connect to destination. */
-	int ret = connect(socket, (struct sockaddr *)dst_addr, sockaddr_len(dst_addr));
+	int ret = connect(socket, (const struct sockaddr *)dst_addr,
+	                  sockaddr_len(dst_addr));
 	if (ret != 0 && errno != EINPROGRESS) {
 		close(socket);
 		return knot_map_errno(EACCES, EADDRINUSE, EAGAIN,
@@ -138,4 +143,11 @@ int net_connected_socket(int type, struct sockaddr_storage *dst_addr,
 	}
 
 	return socket;
+}
+
+int net_is_connected(int fd)
+{
+	struct sockaddr_storage ss;
+	socklen_t len = sizeof(ss);
+	return getpeername(fd, (struct sockaddr *)&ss, &len) == 0;
 }

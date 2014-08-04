@@ -24,8 +24,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef _KNOT_COMPR_H_
-#define _KNOT_COMPR_H_
+#pragma once
 
 #include "libknot/packet/wire.h"
 #include "libknot/dname.h"
@@ -108,6 +107,4 @@ static inline void knot_pkt_compr_hint_set(knot_rrinfo_t *info, uint16_t hint_id
 		info->compress_ptr[hint_id] = val;
 	}
 }
-#endif /* _KNOT_COMPR_H_ */
-
 /*! @} */

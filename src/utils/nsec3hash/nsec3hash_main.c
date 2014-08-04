@@ -14,6 +14,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+
 #include <assert.h>
 #include <getopt.h>
 #include <stdbool.h>
@@ -21,12 +22,12 @@
 #include <stdio.h>
 #include <locale.h>
 
-#include "utils/common/params.h"
+#include "common-knot/hex.h"
+#include "common-knot/strtonum.h"
 #include "common/base32hex.h"
-#include "common/errcode.h"
-#include "common/hex.h"
-#include "common/strtonum.h"
 #include "dnssec/crypto.h"
+#include "libknot/errcode.h"
+#include "utils/common/params.h"
 
 #define PROGRAM_NAME "knsec3hash"
 

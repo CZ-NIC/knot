@@ -15,10 +15,13 @@
  */
 
 #include <assert.h>
-#include "common/errcode.h"
+
 #include "libknot/packet/compr.h"
-#include "libknot/packet/pkt.h"
+
 #include "common/debug.h"
+#include "common/log.h"
+#include "libknot/errcode.h"
+#include "libknot/packet/pkt.h"
 #include "libknot/util/tolower.h"
 
 /*! \brief Case insensitive label compare for compression. */
@@ -41,7 +44,7 @@ static bool compr_label_match(const uint8_t *n, const uint8_t *p)
 	return true;
 }
 
-/*! \brief Helper for \fn knot_pkt_put_dname, writes label(s) with size checks. */
+/*! \brief Helper for \fn knot_compr_put_dname, writes label(s) with size checks. */
 #define WRITE_LABEL(dst, written, label, max, len) \
 	if ((written) + (len) > (max)) { \
 		return KNOT_ESPACE; \

@@ -21,19 +21,17 @@
 #include <limits.h>
 
 #include "common/debug.h"
-#include "common/errcode.h"
-#include "common/mempattern.h"
-
+#include "common/mem.h"
 #include "dnssec/error.h"
 #include "dnssec/kasp.h"
 #include "dnssec/keystore.h"
 #include "dnssec/sign.h"
-
-#include "libknot/common.h"
-#include "libknot/dname.h"
-#include "libknot/consts.h"
-#include "libknot/rdata/dnskey.h"
 #include "knot/dnssec/zone-keys.h"
+#include "libknot/common.h"
+#include "libknot/consts.h"
+#include "libknot/dname.h"
+#include "libknot/errcode.h"
+#include "libknot/rrtype/dnskey.h"
 
 /*!
  * \brief Get zone key by a keytag.
@@ -89,7 +87,7 @@ static int set_key(dnssec_kasp_key_t *kasp_key, zone_key_t *zone_key)
 
 	for (int i = 0; i < 4; i++) {
 		time_t ts = timestamps[i];
-		if (ts != 0 && now <= ts && ts < next) {
+		if (ts != 0 && now < ts && ts < next) {
 			next = ts;
 		}
 	}
@@ -103,9 +101,9 @@ static int set_key(dnssec_kasp_key_t *kasp_key, zone_key_t *zone_key)
 	zone_key->is_zsk = !zone_key->is_ksk; // in future, (is_ksk && is_zsk) is possible
 
 	zone_key->is_active = timing->active <= now &&
-	                      (timing->retire == 0 || now <= timing->retire);
+	                      (timing->retire == 0 || now < timing->retire);
 	zone_key->is_public = timing->publish <= now &&
-	                      (timing->remove == 0 || now <= timing->remove);
+	                      (timing->remove == 0 || now < timing->remove);
 
 	return KNOT_EOK;
 }

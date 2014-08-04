@@ -24,12 +24,11 @@
  * @{
  */
 
-#ifndef _KNOTD_RRL_H_
-#define _KNOTD_RRL_H_
+#pragma once
 
 #include <stdint.h>
 #include <pthread.h>
-#include "common/sockaddr.h"
+#include "common-knot/sockaddr.h"
 #include "libknot/packet/pkt.h"
 
 /* Defaults */
@@ -188,7 +187,5 @@ int rrl_lock(rrl_table_t *rrl, int lk_id);
  * \retval KNOT_ERROR
  */
 int rrl_unlock(rrl_table_t *rrl, int lk_id);
-
-#endif /* _KNOTD_RRL_H_ */
 
 /*! @} */

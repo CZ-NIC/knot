@@ -24,8 +24,7 @@
  * @{
  */
 
-#ifndef _UTILS__MSG_H_
-#define _UTILS__MSG_H_
+#pragma once
 
 #include <stdio.h>			// printf
 
@@ -37,6 +36,7 @@
 #define ERR(m...)	{ printf(ERROR_ m); fflush(stdout); }
 #define INFO(m...)	{ printf(INFO_ m); fflush(stdout); }
 #define WARN(m...)	{ printf(WARNING_ m); fflush(stdout); }
+#define DBG(m...)	msg_debug(DEBUG_ m)
 
 /*! \brief Enable/disable debugging. */
 int msg_enable_debug(int val);
@@ -44,15 +44,7 @@ int msg_enable_debug(int val);
 /*! \brief Print debug message. */
 int msg_debug(const char *fmt, ...);
 
-#ifndef NDEBUG
- #define DBG(m...) msg_debug(DEBUG_ m)
-#else
- #define DBG(m...)
-#endif
-
 /*! \brief Debug message for null input. */
 #define DBG_NULL	DBG("%s: null parameter\n", __func__)
-
-#endif // _UTILS__MSG_H_
 
 /*! @} */

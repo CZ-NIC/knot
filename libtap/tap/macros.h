@@ -29,8 +29,7 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef TAP_MACROS_H
-#define TAP_MACROS_H 1
+#pragma once
 
 /*
  * __attribute__ is available in gcc 2.5 and later, but only with gcc 2.7
@@ -84,5 +83,3 @@
 # define BEGIN_DECLS    /* empty */
 # define END_DECLS      /* empty */
 #endif
-
-#endif /* TAP_MACROS_H */

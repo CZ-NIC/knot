@@ -11,7 +11,7 @@ slave = t.server("knot")
 
 zone = t.zone("existing.", storage=".")
 
-t.link(zone, master, slave)
+t.link(zone, master, slave, ixfr=True)
 
 # Insert the record to slave zone file (no SOA serial change).
 slave.update_zonefile(zone, version=2)

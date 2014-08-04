@@ -18,17 +18,18 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
-#include "common/errcode.h"
-#include "common/descriptor.h"
+
 #include "dnssec/error.h"
 #include "dnssec/key.h"
 #include "dnssec/sign.h"
 #include "libknot/common.h"
+#include "libknot/descriptor.h"
 #include "libknot/dnssec/key.h"
 #include "libknot/dnssec/policy.h"
 #include "libknot/dnssec/rrset-sign.h"
-#include "libknot/rdata/rrsig.h"
+#include "libknot/errcode.h"
 #include "libknot/rrset.h"
+#include "libknot/rrtype/rrsig.h"
 
 #define MAX_RR_WIREFORMAT_SIZE (64 * 1024)
 #define RRSIG_RDATA_SIGNER_OFFSET 18
@@ -158,7 +159,7 @@ static int sign_ctx_add_records(dnssec_sign_ctx_t *ctx, const knot_rrset_t *cove
 	uint16_t rr_count = 0;
 	result = knot_rrset_to_wire(covered, rrwf, &rr_wire_size,
 	                            MAX_RR_WIREFORMAT_SIZE, &rr_count, NULL);
-	if (result != KNOT_EOK || rr_count != knot_rrset_rr_count(covered)) {
+	if (result != KNOT_EOK || rr_count != covered->rrs.rr_count) {
 		free(rrwf);
 		return result;
 	}
@@ -230,8 +231,9 @@ static int rrsigs_create_rdata(knot_rrset_t *rrsigs, dnssec_sign_ctx_t *ctx,
 	}
 
 	uint8_t header[header_size];
+	const knot_rdata_t *covered_data = knot_rdataset_at(&covered->rrs, 0);
 	int res = knot_rrsig_write_rdata(header, key, covered->type, owner_labels,
-	                                 knot_rrset_rr_ttl(covered, 0),
+	                                 knot_rdata_ttl(covered_data),
 	                                 sig_incepted, sig_expires);
 	assert(res == KNOT_EOK);
 
@@ -260,7 +262,7 @@ static int rrsigs_create_rdata(knot_rrset_t *rrsigs, dnssec_sign_ctx_t *ctx,
 	dnssec_binary_free(&signature);
 
 	return knot_rrset_add_rdata(rrsigs, rrsig, rrsig_size,
-				    knot_rrset_rr_ttl(covered, 0), NULL);
+	                            knot_rdata_ttl(covered_data), NULL);
 }
 
 /*!
@@ -351,7 +353,8 @@ int knot_is_valid_signature(const knot_rrset_t *covered,
 
 	// identify fields in the signature being validated
 
-	uint8_t *rdata = knot_rrset_rr_rdata(rrsigs, pos);
+	const knot_rdata_t *rr_data = knot_rdataset_at(&rrsigs->rrs, pos);
+	uint8_t *rdata = knot_rdata_data(rr_data);
 	if (!rdata) {
 		return KNOT_EINVAL;
 	}

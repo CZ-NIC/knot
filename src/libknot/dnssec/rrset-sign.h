@@ -14,7 +14,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 /*!
- * \file rrsig-sign.h
+ * \file rrset-sign.h
  *
  * \author Jan Vcelak <jan.vcelak@nic.cz>
  *

@@ -22,9 +22,9 @@
 #include <stdlib.h>			// free
 #include <locale.h>			// setlocale
 
-#include "common/lists.h"		// list
-#include "common/errcode.h"		// KNOT_EOK
-#include "common/descriptor.h"		// KNOT_CLASS_IN
+#include "common-knot/lists.h"		// list
+#include "libknot/errcode.h"		// KNOT_EOK
+#include "libknot/descriptor.h"		// KNOT_CLASS_IN
 #include "utils/common/msg.h"		// WARN
 #include "utils/common/params.h"	// name_to_idn
 #include "utils/dig/dig_params.h"	// dig_params_t
@@ -40,6 +40,7 @@ static const style_t DEFAULT_STYLE_HOST = {
 		.show_class = true,
 		.show_ttl = true,
 		.verbose = false,
+		.empty_ttl = false,
 		.human_ttl = false,
 		.human_tmstamp = true,
 		.ascii_to_idn = name_to_idn
@@ -51,7 +52,8 @@ static const style_t DEFAULT_STYLE_HOST = {
 	.show_answer = true,
 	.show_authority = true,
 	.show_additional = true,
-	.show_footer = false,
+	.show_tsig = false,
+	.show_footer = false
 };
 
 static int host_init(dig_params_t *params)
@@ -236,6 +238,7 @@ int host_parse(dig_params_t *params, int argc, char *argv[])
 	query_t  *conf = params->config;
 	uint16_t rclass, rtype;
 	uint32_t serial;
+	bool     notify;
 
 	// Long options.
 	struct option opts[] = {
@@ -299,13 +302,19 @@ int host_parse(dig_params_t *params, int argc, char *argv[])
 			conf->class_num = rclass;
 			break;
 		case 't':
-			if (params_parse_type(optarg, &rtype, &serial)
+			if (params_parse_type(optarg, &rtype, &serial, &notify)
 			    != KNOT_EOK) {
 				ERR("bad type %s\n", optarg);
 				return KNOT_EINVAL;
 			}
 			conf->type_num = rtype;
 			conf->xfr_serial = serial;
+			conf->notify = notify;
+
+			// If NOTIFY, reset default RD flag.
+			if (conf->notify) {
+				conf->flags.rd_flag = false;
+			}
 			break;
 		case 'R':
 			if (params_parse_num(optarg, &conf->retries)

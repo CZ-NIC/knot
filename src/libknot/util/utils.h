@@ -24,8 +24,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef _KNOT_UTILS_H_
-#define _KNOT_UTILS_H_
+#pragma once
 
 #include "libknot/util/endian.h"
 #include <string.h>
@@ -183,7 +182,5 @@ static inline void knot_wire_write_u64(uint8_t *pos, uint64_t data)
  * \retval == 0 if s1 is equal to s2.
  */
 int knot_serial_compare(uint32_t s1, uint32_t s2);
-
-#endif /* _KNOT_UTILS_H_ */
 
 /*! @} */

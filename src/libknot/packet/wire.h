@@ -24,8 +24,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef _KNOT_WIRE_H_
-#define _KNOT_WIRE_H_
+#pragma once
 
 #include <stdint.h>
 #include <assert.h>
@@ -974,7 +973,5 @@ static inline const uint8_t *knot_wire_next_label(const uint8_t *lp, const uint8
 {
 	return knot_wire_seek_label(lp + (lp[0] + sizeof(uint8_t)), wire);
 }
-
-#endif /* _KNOT_WIRE_H_ */
 
 /*! @} */

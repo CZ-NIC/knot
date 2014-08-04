@@ -32,7 +32,7 @@
 #include "zscanner/loader.h"		// loader in includes
 #include "zscanner/error.h"
 #include "zscanner/functions.h"
-#include "common/descriptor.h"
+#include "libknot/descriptor.h"
 
 /*! \brief Shorthand for setting warning data. */
 #define WARN(code) { s->error_code = code; }
@@ -42,7 +42,7 @@
 /*!
  * \brief Empty function which is called if no callback function is specified.
  */
-static inline void noop(const zs_scanner_t *s)
+static inline void noop(zs_scanner_t *s)
 {
 	(void)s;
 }
@@ -4875,49 +4875,8 @@ static const short _zone_scanner_eof_actions[] = {
 };
 
 static const int zone_scanner_start = 1056;
-static const int zone_scanner_first_final = 1056;
 static const int zone_scanner_error = 0;
 
-static const int zone_scanner_en_err_line = 246;
-static const int zone_scanner_en_dname_ = 248;
-static const int zone_scanner_en_text_ = 257;
-static const int zone_scanner_en_default_ttl_ = 269;
-static const int zone_scanner_en_zone_origin_ = 278;
-static const int zone_scanner_en_include_file_ = 290;
-static const int zone_scanner_en_base64_ = 307;
-static const int zone_scanner_en_bitmap_ = 314;
-static const int zone_scanner_en_nonempty_hex_r_data = 434;
-static const int zone_scanner_en_hex_r_data = 443;
-static const int zone_scanner_en_dns_alg_ = 453;
-static const int zone_scanner_en_cert_type_ = 548;
-static const int zone_scanner_en_r_data_a = 589;
-static const int zone_scanner_en_r_data_ns = 591;
-static const int zone_scanner_en_r_data_soa = 593;
-static const int zone_scanner_en_r_data_hinfo = 625;
-static const int zone_scanner_en_r_data_minfo = 630;
-static const int zone_scanner_en_r_data_mx = 635;
-static const int zone_scanner_en_r_data_txt = 640;
-static const int zone_scanner_en_r_data_aaaa = 644;
-static const int zone_scanner_en_r_data_loc = 646;
-static const int zone_scanner_en_r_data_srv = 701;
-static const int zone_scanner_en_r_data_naptr = 712;
-static const int zone_scanner_en_r_data_cert = 729;
-static const int zone_scanner_en_r_data_apl = 740;
-static const int zone_scanner_en_r_data_ds = 751;
-static const int zone_scanner_en_r_data_sshfp = 764;
-static const int zone_scanner_en_r_data_ipseckey = 774;
-static const int zone_scanner_en_r_data_rrsig = 813;
-static const int zone_scanner_en_r_data_nsec = 955;
-static const int zone_scanner_en_r_data_dnskey = 958;
-static const int zone_scanner_en_r_data_dhcid = 969;
-static const int zone_scanner_en_r_data_nsec3 = 971;
-static const int zone_scanner_en_r_data_nsec3param = 1000;
-static const int zone_scanner_en_r_data_tlsa = 1013;
-static const int zone_scanner_en_r_data_l32 = 1026;
-static const int zone_scanner_en_r_data_l64 = 1031;
-static const int zone_scanner_en_r_data_eui48 = 1044;
-static const int zone_scanner_en_r_data_eui64 = 1050;
-static const int zone_scanner_en_main = 1056;
 
 
 
@@ -4926,8 +4885,8 @@ zs_scanner_t* zs_scanner_create(const char     *file_name,
                                 const char     *origin,
                                 const uint16_t rclass,
                                 const uint32_t ttl,
-                                void (*process_record)(const zs_scanner_t *),
-                                void (*process_error)(const zs_scanner_t *),
+                                void (*process_record)(zs_scanner_t *),
+                                void (*process_error)(zs_scanner_t *),
                                 void *data)
 {
 	char settings[1024];
@@ -7155,6 +7114,11 @@ _match:
 		s->r_data_length = rdata_tail - s->r_data;
 
 		s->process_record(s);
+
+		// Stop scanner if required.
+		if (s->stop == true) {
+			return -1;
+		}
 	}
 	break;
 		}

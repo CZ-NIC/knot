@@ -24,8 +24,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef _KNOT_TOLOWER_H_
-#define _KNOT_TOLOWER_H_
+#pragma once
 
 #include <stdint.h>
 #include <stdlib.h>
@@ -67,7 +66,5 @@ static inline uint8_t *knot_strtolower(const uint8_t *data, size_t size)
 
 	return result;
 }
-
-#endif /* _KNOT_TOLOWER_H_ */
 
 /*! @} */

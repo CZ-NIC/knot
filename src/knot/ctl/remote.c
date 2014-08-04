@@ -17,18 +17,19 @@
 #include <sys/stat.h>
 #include "knot/ctl/remote.h"
 #include "common/log.h"
-#include "common/fdset.h"
+#include "common/mem.h"
+#include "common-knot/fdset.h"
+#include "dnssec/random.h"
 #include "knot/knot.h"
 #include "knot/conf/conf.h"
 #include "knot/server/net.h"
 #include "knot/server/tcp-handler.h"
-#include "knot/server/zones.h"
 #include "libknot/packet/wire.h"
-#include "common/descriptor.h"
+#include "libknot/descriptor.h"
+#include "common-knot/strlcpy.h"
 #include "libknot/tsig-op.h"
-#include "libknot/rdata/rdname.h"
-#include "libknot/rdata/soa.h"
-#include "dnssec/random.h"
+#include "libknot/rrtype/rdname.h"
+#include "libknot/rrtype/soa.h"
 #include "knot/dnssec/zone-sign.h"
 #include "knot/dnssec/zone-nsec.h"
 
@@ -51,7 +52,7 @@ typedef struct remote_cmdargs_t {
 typedef int (*remote_cmdf_t)(server_t*, remote_cmdargs_t*);
 
 /*! \brief Callback prototype for per-zone operations. */
-typedef int (remote_zonef_t)(server_t*, const zone_t *);
+typedef int (remote_zonef_t)(zone_t *);
 
 /*! \brief Remote command table item. */
 typedef struct remote_cmd_t {
@@ -63,6 +64,7 @@ typedef struct remote_cmd_t {
 static int remote_c_stop(server_t *s, remote_cmdargs_t* a);
 static int remote_c_reload(server_t *s, remote_cmdargs_t* a);
 static int remote_c_refresh(server_t *s, remote_cmdargs_t* a);
+static int remote_c_retransfer(server_t *s, remote_cmdargs_t* a);
 static int remote_c_status(server_t *s, remote_cmdargs_t* a);
 static int remote_c_zonestatus(server_t *s, remote_cmdargs_t* a);
 static int remote_c_flush(server_t *s, remote_cmdargs_t* a);
@@ -73,6 +75,7 @@ struct remote_cmd_t remote_cmd_tbl[] = {
 	{ "stop",      &remote_c_stop },
 	{ "reload",    &remote_c_reload },
 	{ "refresh",   &remote_c_refresh },
+	{ "retransfer",&remote_c_retransfer },
 	{ "status",    &remote_c_status },
 	{ "zonestatus",&remote_c_zonestatus },
 	{ "flush",     &remote_c_flush },
@@ -99,12 +102,12 @@ static int remote_rdata_apply(server_t *s, remote_cmdargs_t* a, remote_zonef_t *
 			continue;
 		}
 
-		uint16_t rr_count = knot_rrset_rr_count(rr);
+		uint16_t rr_count = rr->rrs.rr_count;
 		for (uint16_t i = 0; i < rr_count; i++) {
 			const knot_dname_t *dn = knot_ns_name(&rr->rrs, i);
 			rcu_read_lock();
 			zone = knot_zonedb_find(s->zone_db, dn);
-			if (cb(s, zone) != KNOT_EOK) {
+			if (cb(zone) != KNOT_EOK) {
 				a->rc = KNOT_RCODE_SERVFAIL;
 			}
 			rcu_read_unlock();
@@ -115,47 +118,49 @@ static int remote_rdata_apply(server_t *s, remote_cmdargs_t* a, remote_zonef_t *
 }
 
 /*! \brief Zone refresh callback. */
-static int remote_zone_refresh(server_t *server, const zone_t *zone)
+static int remote_zone_refresh(zone_t *zone)
 {
-	if (!server || !zone) {
+	if (zone_master(zone) == NULL) {
 		return KNOT_EINVAL;
 	}
 
-	zones_schedule_refresh((zone_t *)zone, REFRESH_NOW);
+	zone_events_schedule(zone, ZONE_EVENT_REFRESH, ZONE_EVENT_NOW);
+	return KNOT_EOK;
+}
 
+/*! \brief Zone refresh callback. */
+static int remote_zone_retransfer(zone_t *zone)
+{
+	if (zone_master(zone) == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	zone->flags |= ZONE_FORCE_AXFR;
+	zone_events_schedule(zone, ZONE_EVENT_XFER, ZONE_EVENT_NOW);
 	return KNOT_EOK;
 }
 
 /*! \brief Zone flush callback. */
-static int remote_zone_flush(server_t *server, const zone_t *zone)
+static int remote_zone_flush(zone_t *zone)
 {
-	if (!server || !zone) {
+	if (zone == NULL) {
 		return KNOT_EINVAL;
 	}
 
-	zones_schedule_zonefile_sync((zone_t *)zone, 0);
-
+	zone_events_schedule(zone, ZONE_EVENT_FLUSH, ZONE_EVENT_NOW);
 	return KNOT_EOK;
 }
 
 /*! \brief Sign zone callback. */
-static int remote_zone_sign(server_t *server, const zone_t *zone)
+static int remote_zone_sign(zone_t *zone)
 {
-	if (!server || !zone) {
+	if (zone == NULL || !zone->conf->dnssec_enable) {
 		return KNOT_EINVAL;
 	}
 
-	char *zone_name = knot_dname_to_str(zone->name);
-	log_server_info("Requested zone resign for '%s'.\n", zone_name);
-	free(zone_name);
 
-	uint32_t refresh_at = 0;
-	zone_t *wzone = (zone_t *)zone;
-
-	zones_cancel_dnssec(wzone);
-	zones_dnssec_sign(wzone, true, &refresh_at);
-	zones_schedule_dnssec(wzone, refresh_at);
-
+	zone->flags |= ZONE_FORCE_RESIGN;
+	zone_events_schedule(zone, ZONE_EVENT_DNSSEC, ZONE_EVENT_NOW);
 	return KNOT_EOK;
 }
 
@@ -194,20 +199,20 @@ static int remote_c_status(server_t *s, remote_cmdargs_t* a)
 {
 	UNUSED(s);
 	UNUSED(a);
-	/*! \todo #2035 Add some TXT RRs with stats. */
 	dbg_server("remote: %s\n", __func__);
 	return KNOT_EOK;
 }
 
 static char *dnssec_info(const zone_t *zone, char *buf, size_t buf_size)
 {
-	assert(zone && zone->dnssec.timer);
+	assert(zone);
 	assert(buf);
 
-	time_t diff_time = zone->dnssec.timer->tv.tv_sec;
-	struct tm *t = localtime(&diff_time);
+	time_t refresh_at = zone_events_get_time(zone, ZONE_EVENT_DNSSEC);
+	struct tm time_gm = { 0 };
 
-	size_t written = strftime(buf, buf_size, "%c", t);
+	gmtime_r(&refresh_at, &time_gm);
+	size_t written = strftime(buf, buf_size, KNOT_LOG_TIME_FORMAT, &time_gm);
 	if (written == 0) {
 		return NULL;
 	}
@@ -239,51 +244,35 @@ static int remote_c_zonestatus(server_t *s, remote_cmdargs_t* a)
 		const knot_rdataset_t *soa_rrs = NULL;
 		uint32_t serial = 0;
 		if (zone->contents) {
-			soa_rrs = knot_node_rdataset(zone->contents->apex,
+			soa_rrs = node_rdataset(zone->contents->apex,
 			                        KNOT_RRTYPE_SOA);
 			assert(soa_rrs != NULL);
 			serial = knot_soa_serial(soa_rrs);
 		}
 
-		/* Evalute zone type. */
-		const char *state = NULL;
-		if (serial == 0)  {
-			state = "bootstrap";
-		} else if (zone_master(zone) != NULL) {
-			state = "xfer";
-		}
-
-		/* Evaluate zone state. */
-		char *when = NULL;
-		if (zone->xfr_in.state == XFR_PENDING) {
-			when = strdup("pending");
-		} else if (zone->xfr_in.timer && zone->xfr_in.timer->tv.tv_sec != 0) {
-			struct timeval now, dif;
-			gettimeofday(&now, 0);
-			timersub(&zone->xfr_in.timer->tv, &now, &dif);
-			when = malloc(64);
-			if (when == NULL) {
-				ret = KNOT_ENOMEM;
-				break;
-			}
-			/*! Workaround until proper zone fetching API and locking
-			 *  is implemented (ref #31)
-			 */
-			if (dif.tv_sec < 0) {
-				memcpy(when, "busy", 5);
-			} else if (snprintf(when, 64, "in %uh%um%us",
-			                    (unsigned int)dif.tv_sec / 3600,
-			                    (unsigned int)(dif.tv_sec % 3600) / 60,
-			                    (unsigned int)dif.tv_sec % 60) < 0) {
-				free(when);
+		/* Fetch next zone event. */
+		char when[128] = { '\0' };
+		zone_event_type_t next_type = ZONE_EVENT_INVALID;
+		const char *next_name = "";
+		time_t next_time = zone_events_get_next(zone, &next_type);
+		if (next_type != ZONE_EVENT_INVALID) {
+			next_name = zone_events_get_name(next_type);
+			next_time = next_time - time(NULL);
+			if (next_time < 0) {
+				memcpy(when, "pending", strlen("pending"));
+			} else if (snprintf(when, sizeof(when),
+			                    "in %lldh%lldm%llds",
+			                    (long long)(next_time / 3600),
+			                    (long long)(next_time % 3600) / 60,
+			                    (long long)(next_time % 60)) < 0) {
 				ret = KNOT_ESPACE;
 				break;
 			}
 		} else {
-			when = strdup("idle");
+			memcpy(when, "idle", strlen("idle"));
 		}
 
-		/* Workaround, some platforms ignore 'size' with snprintf() */
+		/* Prepare zone info. */
 		char buf[512] = { '\0' };
 		char dnssec_buf[128] = { '\0' };
 		int n = snprintf(buf, sizeof(buf),
@@ -291,11 +280,10 @@ static int remote_c_zonestatus(server_t *s, remote_cmdargs_t* a)
 		                 zone->conf->name,
 		                 zone_master(zone) ? "slave" : "master",
 		                 serial,
-		                 state ? state : "",
-		                 when ? when : "",
-		                 zone->conf->dnssec_enable ? "automatic DNSSEC, resigning at:" : "",
+		                 next_name,
+		                 when,
+		                 zone->conf->dnssec_enable ? "automatic DNSSEC, resigning at:" : "DNSSEC signing disabled",
 		                 zone->conf->dnssec_enable ? dnssec_info(zone, dnssec_buf, sizeof(dnssec_buf)) : "");
-		free(when);
 		if (n < 0 || (size_t)n > rb) {
 			*dst = '\0';
 			ret = KNOT_ESPACE;
@@ -329,12 +317,30 @@ static int remote_c_refresh(server_t *s, remote_cmdargs_t* a)
 	dbg_server("remote: %s\n", __func__);
 	if (a->argc == 0) {
 		dbg_server_verb("remote: refreshing all zones\n");
-		knot_zonedb_foreach(s->zone_db, zones_schedule_refresh, REFRESH_NOW);
+		knot_zonedb_foreach(s->zone_db, remote_zone_refresh);
 		return KNOT_EOK;
 	}
 
 	/* Refresh specific zones. */
 	return remote_rdata_apply(s, a, &remote_zone_refresh);
+}
+
+/*!
+ * \brief Remote command 'retransfer' handler.
+ *
+ * QNAME: retransfer
+ * DATA: CNAME RRs with zones in RDATA
+ */
+static int remote_c_retransfer(server_t *s, remote_cmdargs_t* a)
+{
+	/* Refresh all. */
+	dbg_server("remote: %s\n", __func__);
+	if (a->argc == 0) {
+		return KNOT_ENOTSUP;
+	}
+
+	/* Refresh specific zones. */
+	return remote_rdata_apply(s, a, &remote_zone_retransfer);
 }
 
 /*!
@@ -355,7 +361,7 @@ static int remote_c_flush(server_t *s, remote_cmdargs_t* a)
 		knot_zonedb_iter_t it;
 		knot_zonedb_iter_begin(s->zone_db, &it);
 		while(!knot_zonedb_iter_finished(&it)) {
-			ret = remote_zone_flush(s, knot_zonedb_iter_val(&it));
+			ret = remote_zone_flush(knot_zonedb_iter_val(&it));
 			knot_zonedb_iter_next(&it);
 		}
 		rcu_read_unlock();
@@ -375,8 +381,6 @@ static int remote_c_signzone(server_t *server, remote_cmdargs_t* arguments)
 	dbg_server("remote: %s\n", __func__);
 
 	if (arguments->argc == 0) {
-		log_server_error("signzone for all zone was requested\n");
-		// TODO
 		return KNOT_ENOTSUP;
 	}
 
@@ -394,7 +398,7 @@ static int remote_senderr(int c, uint8_t *qbuf, size_t buflen)
 {
 	knot_wire_set_qr(qbuf);
 	knot_wire_set_rcode(qbuf, KNOT_RCODE_REFUSED);
-	return tcp_send(c, qbuf, buflen);
+	return tcp_send_msg(c, qbuf, buflen);
 }
 
 /* Public APIs. */
@@ -458,7 +462,8 @@ int remote_poll(int sock)
 	return fdset_pselect(sock + 1, &rfds, NULL, NULL, NULL, NULL);
 }
 
-int remote_recv(int sock, struct sockaddr *addr, uint8_t* buf, size_t *buflen)
+int remote_recv(int sock, struct sockaddr_storage *addr, uint8_t *buf,
+                size_t *buflen)
 {
 	int c = tcp_accept(sock);
 	if (c < 0) {
@@ -466,8 +471,15 @@ int remote_recv(int sock, struct sockaddr *addr, uint8_t* buf, size_t *buflen)
 		return c;
 	}
 
+	socklen_t addrlen = sizeof(*addr);
+	if (getpeername(c, (struct sockaddr *)addr, &addrlen) != 0) {
+		dbg_server("remote: failed to get remote address\n");
+		close(c);
+		return KNOT_ECONNREFUSED;
+	}
+
 	/* Receive data. */
-	int n = tcp_recv(c, buf, *buflen, addr);
+	int n = tcp_recv_msg(c, buf, *buflen, NULL);
 	*buflen = n;
 	if (n <= 0) {
 		dbg_server("remote: failed to receive data\n");
@@ -516,7 +528,7 @@ static int remote_send_chunk(int c, knot_pkt_t *query, const char* d, uint16_t l
 		goto failed;
 	}
 
-	ret = tcp_send(c, resp->wire, resp->size);
+	ret = tcp_send_msg(c, resp->wire, resp->size);
 
 failed:
 
@@ -537,7 +549,7 @@ static void log_command(const char *cmd, const remote_cmdargs_t* args)
 			continue;
 		}
 
-		uint16_t rr_count = knot_rrset_rr_count(rr);
+		uint16_t rr_count = rr->rrs.rr_count;
 		for (uint16_t j = 0; j < rr_count; j++) {
 			const knot_dname_t *dn = knot_ns_name(&rr->rrs, j);
 			char *name = knot_dname_to_str(dn);
@@ -615,7 +627,7 @@ int remote_answer(int sock, server_t *s, knot_pkt_t *pkt)
 	/* Prepare response. */
 	if (ret != KNOT_EOK || args->rlen == 0) {
 		args->rlen = strlen(knot_strerror(ret));
-		strncpy(args->resp, knot_strerror(ret), args->rlen);
+		strlcpy(args->resp, knot_strerror(ret), sizeof(args->resp));
 	}
 
 	unsigned p = 0;
@@ -634,6 +646,111 @@ int remote_answer(int sock, server_t *s, knot_pkt_t *pkt)
 	return ret;
 }
 
+static int zones_verify_tsig_query(const knot_pkt_t *query,
+                                   const knot_tsig_key_t *key,
+                                   uint16_t *rcode, uint16_t *tsig_rcode,
+                                   uint64_t *tsig_prev_time_signed)
+{
+	assert(query != NULL);
+	assert(key != NULL);
+	assert(rcode != NULL);
+	assert(tsig_rcode != NULL);
+
+	if (query->tsig_rr == NULL) {
+		log_server_info("TSIG key required, but not in query - REFUSED.\n");
+		*rcode = KNOT_RCODE_REFUSED;
+		return KNOT_TSIG_EBADKEY;
+	}
+
+	/*
+	 * 1) Check if we support the requested algorithm.
+	 */
+	knot_tsig_algorithm_t alg = tsig_rdata_alg(query->tsig_rr);
+	if (knot_tsig_digest_length(alg) == 0) {
+		log_server_info("Unsupported digest algorithm "
+		                "requested, treating as bad key\n");
+		/*! \todo [TSIG] It is unclear from RFC if I
+		 *               should treat is as a bad key
+		 *               or some other error.
+		 */
+		*rcode = KNOT_RCODE_NOTAUTH;
+		*tsig_rcode = KNOT_RCODE_BADKEY;
+		return KNOT_TSIG_EBADKEY;
+	}
+
+	const knot_dname_t *kname = query->tsig_rr->owner;
+	assert(kname != NULL);
+
+	/*
+	 * 2) Find the particular key used by the TSIG.
+	 *    Check not only name, but also the algorithm.
+	 */
+	if (!(key && kname && knot_dname_cmp(key->name, kname) == 0 &&
+	      key->algorithm == alg)) {
+		*rcode = KNOT_RCODE_NOTAUTH;
+		*tsig_rcode = KNOT_RCODE_BADKEY;
+		return KNOT_TSIG_EBADKEY;
+	}
+
+	/*
+	 * 3) Validate the query with TSIG.
+	 */
+	/* Prepare variables for TSIG */
+	/*! \todo These need to be saved to the response somehow. */
+	//size_t tsig_size = tsig_wire_maxsize(key);
+	size_t digest_max_size = knot_tsig_digest_length(key->algorithm);
+	//size_t digest_size = 0;
+	//uint64_t tsig_prev_time_signed = 0;
+	//uint8_t *digest = (uint8_t *)malloc(digest_max_size);
+	//memset(digest, 0 , digest_max_size);
+
+	//const uint8_t* mac = tsig_rdata_mac(tsig_rr);
+	size_t mac_len = tsig_rdata_mac_length(query->tsig_rr);
+
+	int ret = KNOT_EOK;
+
+	if (mac_len > digest_max_size) {
+		*rcode = KNOT_RCODE_FORMERR;
+		log_server_info("MAC length %zu exceeds digest "
+		                "maximum size %zu\n", mac_len, digest_max_size);
+		return KNOT_EMALF;
+	} else {
+		//memcpy(digest, mac, mac_len);
+		//digest_size = mac_len;
+
+		/* Check query TSIG. */
+		ret = knot_tsig_server_check(query->tsig_rr,
+		                             query->wire,
+		                             query->size, key);
+		switch(ret) {
+		case KNOT_EOK:
+			*rcode = KNOT_RCODE_NOERROR;
+			break;
+		case KNOT_TSIG_EBADKEY:
+			*tsig_rcode = KNOT_RCODE_BADKEY;
+			*rcode = KNOT_RCODE_NOTAUTH;
+			break;
+		case KNOT_TSIG_EBADSIG:
+			*tsig_rcode = KNOT_RCODE_BADSIG;
+			*rcode = KNOT_RCODE_NOTAUTH;
+			break;
+		case KNOT_TSIG_EBADTIME:
+			*tsig_rcode = KNOT_RCODE_BADTIME;
+			// store the time signed from the query
+			*tsig_prev_time_signed = tsig_rdata_time_signed(query->tsig_rr);
+			*rcode = KNOT_RCODE_NOTAUTH;
+			break;
+		case KNOT_EMALF:
+			*rcode = KNOT_RCODE_FORMERR;
+			break;
+		default:
+			*rcode = KNOT_RCODE_SERVFAIL;
+		}
+	}
+
+	return ret;
+}
+
 int remote_process(server_t *s, conf_iface_t *ctl_if, int sock,
                    uint8_t* buf, size_t buflen)
 {
@@ -647,7 +764,7 @@ int remote_process(server_t *s, conf_iface_t *ctl_if, int sock,
 	memset(&ss, 0, sizeof(struct sockaddr_storage));
 
 	/* Accept incoming connection and read packet. */
-	int client = remote_recv(sock, (struct sockaddr *)&ss, pkt->wire, &buflen);
+	int client = remote_recv(sock, &ss, pkt->wire, &buflen);
 	if (client < 0) {
 		dbg_server("remote: couldn't receive query = %d\n", client);
 		knot_pkt_free(&pkt);
@@ -668,7 +785,7 @@ int remote_process(server_t *s, conf_iface_t *ctl_if, int sock,
 		if (pkt->tsig_rr) {
 			tsig_name = pkt->tsig_rr->owner;
 		}
-		acl_match_t *match = acl_find(conf()->ctl.acl, &ss, tsig_name);
+		conf_iface_t *match = acl_find(&conf()->ctl.allow, &ss, tsig_name);
 		uint16_t ts_rc = 0;
 		uint16_t ts_trc = 0;
 		uint64_t ts_tmsigned = 0;
@@ -842,15 +959,16 @@ int remote_create_ns(knot_rrset_t *rr, const char *d)
 
 int remote_print_txt(const knot_rrset_t *rr, uint16_t i)
 {
-	if (!rr || knot_rrset_rr_count(rr) < 1) {
+	if (!rr || rr->rrs.rr_count < 1) {
 		return -1;
 	}
 
 	/* Packet parser should have already checked the packet validity. */
 	char buf[256];
 	uint16_t parsed = 0;
-	uint16_t rlen = knot_rrset_rr_size(rr, i);
-	uint8_t *p = knot_rrset_rr_rdata(rr, i);
+	const knot_rdata_t *rdata = knot_rdataset_at(&rr->rrs, i);
+	uint8_t *p = knot_rdata_data(rdata);
+	uint16_t rlen = knot_rdata_rdlen(rdata);
 	while (parsed < rlen) {
 		memcpy(buf, (const char*)(p+1), *p);
 		buf[*p] = '\0';

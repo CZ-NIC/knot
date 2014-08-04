@@ -24,18 +24,17 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef _KNOT_PACKET_H_
-#define _KNOT_PACKET_H_
+#pragma once
 
 #include <stdint.h>
 #include <string.h>
 
 #include "libknot/dname.h"
 #include "libknot/rrset.h"
-#include "libknot/edns.h"
+#include "libknot/rrtype/opt.h"
 #include "libknot/packet/wire.h"
 #include "libknot/packet/compr.h"
-#include "common/mempattern.h"
+#include "libknot/mempattern.h"
 
 /* Number of packet sections (ANSWER, AUTHORITY, ADDITIONAL). */
 #define KNOT_PKT_SECTIONS 3
@@ -71,7 +70,8 @@ enum {
 	KNOT_PF_NULL      = 0 << 0, /*!< No flags. */
 	KNOT_PF_FREE      = 1 << 1, /*!< Free with packet. */
 	KNOT_PF_NOTRUNC   = 1 << 2, /*!< Don't truncate. */
-	KNOT_PF_CHECKDUP  = 1 << 3  /*!< Check for duplicates. */
+	KNOT_PF_CHECKDUP  = 1 << 3, /*!< Check for duplicates. */
+	KNOT_PF_KEEPWIRE  = 1 << 4  /*!< Keep wireformat untouched when parsing. */
 };
 
 /*!
@@ -99,8 +99,7 @@ typedef struct knot_pkt {
 	uint16_t rrset_count;  /*!< Packet RRSet count. */
 	uint16_t flags;        /*!< Packet flags. */
 
-	/*! \todo OPT should be refactored separately as a simple RRSet. */
-	knot_opt_rr_t opt_rr;   /*!< OPT RR included in the packet. */
+	knot_rrset_t *opt_rr;   /*!< OPT RR included in the packet. */
 	knot_rrset_t *tsig_rr;  /*!< TSIG RR stored in the packet. */
 
 	/* Packet sections. */
@@ -130,6 +129,18 @@ typedef struct knot_pkt {
 knot_pkt_t *knot_pkt_new(void *wire, uint16_t len, mm_ctx_t *mm);
 
 /*!
+ * \brief Copy packet.
+ *
+ * \note Current implementation is not very efficient, as it re-parses the wire.
+ *
+ * \param dst Target packet.
+ * \param src Source packet.
+ *
+ * \return new packet or NULL
+ */
+int knot_pkt_copy(knot_pkt_t *dst, const knot_pkt_t *src);
+
+/*!
  * \brief Initialized response from query packet.
  *
  * \note Question is not checked, it is expected to be checked already.
@@ -153,6 +164,14 @@ void knot_pkt_free(knot_pkt_t **pkt);
  * \return KNOT_ERANGE if size can't be reserved
  */
 int knot_pkt_reserve(knot_pkt_t *pkt, uint16_t size);
+
+/*!
+ * \brief Reclaim reserved size.
+ *
+ * \return KNOT_EOK
+ * \return KNOT_ERANGE if size can't be reclaimed
+ */
+int knot_pkt_reclaim(knot_pkt_t *pkt, uint16_t size);
 
 /*! \brief Classify packet according to the question.
  *  \return see enum knot_pkt_type_t
@@ -183,20 +202,6 @@ uint16_t knot_pkt_qclass(const knot_pkt_t *pkt);
 int knot_pkt_begin(knot_pkt_t *pkt, knot_section_t section_id);
 
 /*!
- * \brief Set packet OPTion.
- *
- * \note OPT RR is not written immediately, call knot_pkt_put_opt for that.
- * \todo This will be a subject of OPT refactoring later on.
- *
- * \param pkt
- * \param opt  For list of available options, see enum knot_edns_option.
- * \param data Option-specific data.
- * \param len  Data length.
- * \return KNOT_EOK, KNOT_EINVAL, KNOT_ENOTSUP
- */
-int knot_pkt_opt_set(knot_pkt_t *pkt, unsigned opt, const void *data, uint16_t len);
-
-/*!
  * \brief Put QUESTION in the packet.
  *
  * \note Since we support QD=1 only, QUESTION is a special type of packet section.
@@ -208,12 +213,8 @@ int knot_pkt_opt_set(knot_pkt_t *pkt, unsigned opt, const void *data, uint16_t l
  * \param qtype
  * \return KNOT_EOK or various errors
  */
-int knot_pkt_put_question(knot_pkt_t *pkt, const knot_dname_t *qname, uint16_t qclass, uint16_t qtype);
-
-/*! \brief Write OPT RR to wireformat.
- *  \note Legacy API.
- */
-int knot_pkt_put_opt(knot_pkt_t *pkt);
+int knot_pkt_put_question(knot_pkt_t *pkt, const knot_dname_t *qname,
+                          uint16_t qclass, uint16_t qtype);
 
 /*!
  * \brief Put RRSet into packet.
@@ -222,15 +223,19 @@ int knot_pkt_put_opt(knot_pkt_t *pkt);
  * \note Available flags: PF_FREE, KNOT_PF_CHECKDUP, KNOT_PF_NOTRUNC
  *
  * \param pkt
- * \param compr_hint Compression hint, see enum knot_compr_hint or absolute position.
+ * \param compr_hint Compression hint, see enum knot_compr_hint or absolute
+ *                   position.
  * \param rr Given RRSet.
- * \param flags RRSet flags (set PF_FREE if you want RRSet to be freed with the packet).
+ * \param flags RRSet flags (set PF_FREE if you want RRSet to be freed with the
+ *              packet).
  * \return KNOT_EOK, KNOT_ESPACE, various errors
  */
-int knot_pkt_put(knot_pkt_t *pkt, uint16_t compr_hint, const knot_rrset_t *rr, uint16_t flags);
+int knot_pkt_put(knot_pkt_t *pkt, uint16_t compr_hint, const knot_rrset_t *rr,
+                 uint16_t flags);
 
 /*! \brief Get description of the given packet section. */
-const knot_pktsection_t *knot_pkt_section(const knot_pkt_t *pkt, knot_section_t section_id);
+const knot_pktsection_t *knot_pkt_section(const knot_pkt_t *pkt,
+                                          knot_section_t section_id);
 
 /*
  * Packet parsing API.
@@ -242,8 +247,10 @@ const knot_pktsection_t *knot_pkt_section(const knot_pkt_t *pkt, knot_section_t 
  * Parses both QUESTION and all packet sections,
  * includes semantic checks over specific RRs (TSIG, OPT).
  *
+ * \note For KNOT_PF_KEEPWIRE see note for \fn knot_pkt_parse_rr
+ *
  * \param pkt Given packet.
- * \param flags Parsing flags (allowed KNOT_PACKET_DUPL_NO_MERGE )
+ * \param flags Parsing flags (allowed KNOT_PF_KEEPWIRE)
  * \return KNOT_EOK, KNOT_EMALF and other errors
  */
 int knot_pkt_parse(knot_pkt_t *pkt, unsigned flags);
@@ -256,82 +263,68 @@ int knot_pkt_parse_question(knot_pkt_t *pkt);
 /*!
  * \brief Parse single resource record.
  *
+ * \note When KNOT_PF_KEEPWIRE is set, TSIG RR is not stripped from the wire
+ *       and is processed as any other RR.
+ *
  * \param pkt
  * \param flags
  * \return KNOT_EOK, KNOT_EFEWDATA if not enough data or various errors
  */
 int knot_pkt_parse_rr(knot_pkt_t *pkt, unsigned flags);
 
-/*! \brief Parse current packet section. */
+/*!
+ * \brief Parse current packet section.
+ *
+ * \note For KNOT_PF_KEEPWIRE see note for \fn knot_pkt_parse_rr
+ *
+ * \param pkt
+ * \param flags
+ * \return KNOT_EOK, KNOT_EFEWDATA if not enough data or various errors
+ */
 int knot_pkt_parse_section(knot_pkt_t *pkt, unsigned flags);
 
-/*! \brief Parse whole packet payload */
+/*!
+ * \brief Parse whole packet payload.
+ *
+ * \note For KNOT_PF_KEEPWIRE see note for \fn knot_pkt_parse_rr
+ *
+ * \param pkt
+ * \param flags
+ * \return KNOT_EOK, KNOT_EFEWDATA if not enough data or various errors
+ */
 int knot_pkt_parse_payload(knot_pkt_t *pkt, unsigned flags);
 
 /*!
- * \brief Checks if EDNS is supported (i.e. has EDNS VERSION != UNSUPPORTED).
+ * \brief Checks if there is an OPT RR in the packet.
  */
-static inline bool knot_pkt_have_edns(const knot_pkt_t *pkt)
+static inline bool knot_pkt_has_edns(const knot_pkt_t *pkt)
 {
-	return pkt && (knot_edns_get_version(&pkt->opt_rr) != EDNS_NOT_SUPPORTED);
+	return pkt != NULL && pkt->opt_rr != NULL;
 }
 
 /*!
- * \brief Checks if EDNS is supported (i.e. has EDNS VERSION != UNSUPPORTED).
+ * \brief Checks if TSIG is present.
  */
-static inline bool knot_pkt_have_tsig(const knot_pkt_t *pkt)
+static inline bool knot_pkt_has_tsig(const knot_pkt_t *pkt)
 {
 	return pkt && pkt->tsig_rr;
 }
 
 /*!
- * \brief Checks if DNSSEC was requested (i.e. the DO bit was set).
+ * \brief Checks if DO bit is set in the packet's OPT RR.
  */
-static inline bool knot_pkt_have_dnssec(const knot_pkt_t *pkt)
+static inline bool knot_pkt_has_dnssec(const knot_pkt_t *pkt)
 {
-	return knot_pkt_have_edns(pkt) && knot_edns_do(&pkt->opt_rr);
+	return knot_pkt_has_edns(pkt) && knot_edns_do(pkt->opt_rr);
 }
 
 /*!
- * \brief Checks if NSID was requested (i.e. the NSID option was
- *        present in the query OPT RR).
+ * \brief Checks if there is an NSID OPTION in the packet's OPT RR.
  */
-static inline bool knot_pkt_have_nsid(const knot_pkt_t *pkt)
+static inline bool knot_pkt_has_nsid(const knot_pkt_t *pkt)
 {
-	return knot_pkt_have_edns(pkt)
-	       && knot_edns_has_option(&pkt->opt_rr, EDNS_OPTION_NSID);
+	return knot_pkt_has_edns(pkt)
+	       && knot_edns_has_option(pkt->opt_rr, KNOT_EDNS_OPTION_NSID);
 }
-
-/*** <<< #190 DEPRECATED */
-/*----------------------------------------------------------------------------*/
-/*!
- * \brief Sets the OPT RR of the response.
- *
- * This function also allocates space for the wireformat of the response, if
- * the payload in the OPT RR is larger than the current maximum size of the
- * response and copies the current wireformat over to the new space.
- *
- * \note The contents of the OPT RR are copied.
- *
- * \note It is expected that resp.max_size is already set to correct value as
- *       it is impossible to distinguish TCP scenario in this function.
- *
- * \param resp Response to set the OPT RR to.
- * \param opt_rr OPT RR to set.
- *
- * \retval KNOT_EOK
- * \retval KNOT_EINVAL
- * \retval KNOT_ENOMEM
- *
- * \todo Needs test.
- */
-int knot_pkt_add_opt(knot_pkt_t *resp,
-                          const knot_opt_rr_t *opt_rr,
-                          int add_nsid);
-
-/*----------------------------------------------------------------------------*/
-/*** >>> #190 DEPRECATED */
-
-#endif /* _KNOT_PACKET_H_ */
 
 /*! @} */

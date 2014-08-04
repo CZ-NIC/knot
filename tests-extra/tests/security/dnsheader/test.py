@@ -5,7 +5,7 @@
 import socket
 from dnstest.test import Test
 
-t = Test()
+t = Test(stress=False)
 knot = t.server("knot")
 zone = t.zone("example.com.")
 t.link(zone, knot)
@@ -14,6 +14,7 @@ t.link(zone, knot)
 knot.ratelimit = 5 # Check for crashes also in rate-limit code
 
 t.start()
+knot.zone_wait(zone)
 
 # Packet lengths shorter than DNS header
 data = '\x00'

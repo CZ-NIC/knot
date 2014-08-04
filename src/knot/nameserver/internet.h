@@ -24,15 +24,16 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef _KNOT_INTERNET_H_
-#define _KNOT_INTERNET_H_
+#pragma once
 
 #include "libknot/packet/pkt.h"
+#include "knot/zone/contents.h"
 
 /* Query data (from query processing). */
 struct query_data;
 struct query_plan;
 struct query_module;
+struct answer_data;
 
 /*! \brief Internet query processing states. */
 enum {
@@ -47,12 +48,12 @@ enum {
 };
 
 /*!
- * \brief Answer query from IN class zone.
+ * \brief Answer query from an IN class zone.
  *
  * \retval FAIL if it encountered an error.
  * \retval DONE if finished.
  */
-int internet_answer(knot_pkt_t *resp, struct query_data *qdata);
+int internet_query(knot_pkt_t *resp, struct query_data *qdata);
 
 /*!
  * \brief Initialize query plan for IN class zone.
@@ -60,6 +61,15 @@ int internet_answer(knot_pkt_t *resp, struct query_data *qdata);
  * \return
  */
 int internet_query_plan(struct query_plan *plan);
+
+/*!
+ * \brief Process answer in an IN class zone.
+ *
+ * \retval FAIL if it encountered an error.
+ * \retval DONE if finished.
+ * \retval NOOP if not supported.
+ */
+int internet_process_answer(knot_pkt_t *pkt, struct answer_data *data);
 
 /*!
  * \brief Puts RRSet to packet, will store its RRSIG for later use.
@@ -116,6 +126,9 @@ int ns_put_rr(knot_pkt_t *pkt, const knot_rrset_t *rr,
 		} \
 	}
 
-#endif /* _KNOT_INTERNET_H_ */
+#define NS_NEED_TSIG_SIGNED(tsig_ctx, max_unsigned) \
+	if (tsig_unsigned_count(tsig_ctx) > max_unsigned) { \
+		return NS_PROC_FAIL; \
+	}
 
 /*! @} */

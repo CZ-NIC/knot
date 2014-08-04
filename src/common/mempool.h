@@ -8,8 +8,7 @@
  *	of the GNU Lesser General Public License.
  */
 
-#ifndef _UCW_POOLS_H
-#define _UCW_POOLS_H
+#pragma once
 
 #include <string.h>
 #include <stdint.h>
@@ -341,5 +340,3 @@ static inline void *mp_realloc_fast(struct mempool *pool, void *ptr, unsigned si
   mp_end(pool, (uint8_t*)ptr + size);
   return ptr;
 }
-
-#endif

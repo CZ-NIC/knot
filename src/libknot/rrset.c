@@ -23,10 +23,10 @@
 
 #include "libknot/consts.h"
 #include "libknot/common.h"
-#include "common/mempattern.h"
+#include "libknot/mempattern.h"
 #include "libknot/rrset.h"
 #include "libknot/rrset-dump.h"
-#include "common/descriptor.h"
+#include "libknot/descriptor.h"
 #include "common/debug.h"
 #include "libknot/util/utils.h"
 #include "libknot/packet/wire.h"
@@ -36,12 +36,13 @@
 static uint16_t rrset_rdata_naptr_bin_chunk_size(const knot_rrset_t *rrset,
                                                size_t pos)
 {
-	if (rrset == NULL || pos >= knot_rrset_rr_count(rrset)) {
+	if (rrset == NULL || pos >= rrset->rrs.rr_count) {
 		return 0;
 	}
 
 	size_t size = 0;
-	uint8_t *rdata = knot_rrset_rr_rdata(rrset, pos);
+	const knot_rdata_t *rr_data = knot_rdataset_at(&rrset->rrs, pos);
+	uint8_t *rdata = knot_rdata_data(rr_data);
 	assert(rdata);
 
 	/* Two shorts at the beginning. */
@@ -60,10 +61,10 @@ static uint16_t rrset_rdata_naptr_bin_chunk_size(const knot_rrset_t *rrset,
 }
 
 static size_t rrset_rdata_remainder_size(const knot_rrset_t *rrset,
-                                         size_t offset, size_t pos)
+                                         uint16_t offset, size_t pos)
 {
-	size_t ret = knot_rrset_rr_size(rrset, pos) - offset;
-	return ret;
+	const knot_rdata_t *rr_data = knot_rdataset_at(&rrset->rrs, pos);
+	return knot_rdata_rdlen(rr_data) - offset;
 }
 
 static int knot_rrset_header_to_wire(const knot_rrset_t *rrset, uint32_t ttl,
@@ -148,7 +149,8 @@ static int knot_rrset_rdata_to_wire_one(const knot_rrset_t *rrset,
 
 	/* Put RR header to wire. */
 	size_t size = 0;
-	int ret = knot_rrset_header_to_wire(rrset, knot_rrset_rr_ttl(rrset, rdata_pos),
+	int ret = knot_rrset_header_to_wire(rrset,
+	                                    knot_rdata_ttl(knot_rdataset_at(&rrset->rrs, rdata_pos)),
 	                                    pos, max_size,
 	                                    compr, &size);
 	if (ret != KNOT_EOK) {
@@ -167,7 +169,8 @@ static int knot_rrset_rdata_to_wire_one(const knot_rrset_t *rrset,
 	}
 
 	/* Get pointer into RDATA array. */
-	uint8_t *rdata = knot_rrset_rr_rdata(rrset, rdata_pos);
+	const knot_rdata_t *rr_data = knot_rdataset_at(&rrset->rrs, rdata_pos);
+	uint8_t *rdata = knot_rdata_data(rr_data);
 	assert(rdata);
 	/* Offset into one RDATA array. */
 	size_t offset = 0;
@@ -177,11 +180,11 @@ static int knot_rrset_rdata_to_wire_one(const knot_rrset_t *rrset,
 	/* Compression pointer hint. */
 	uint16_t hint_id = COMPR_HINT_RDATA + rdata_pos;
 
-	const rdata_descriptor_t *desc = get_rdata_descriptor(rrset->type);
+	const rdata_descriptor_t *desc = knot_get_rdata_descriptor(rrset->type);
 
 	for (int i = 0; desc->block_types[i] != KNOT_RDATA_WF_END; i++) {
 		int item = desc->block_types[i];
-		if (compr && descriptor_item_is_compr_dname(item)) {
+		if (compr && knot_descriptor_item_is_compr_dname(item)) {
 			const knot_dname_t *dname = rdata + offset;
 			int ret = knot_compr_put_dname(dname, *pos,
 			                             max_size - size - rdlength,
@@ -197,7 +200,7 @@ static int knot_rrset_rdata_to_wire_one(const knot_rrset_t *rrset,
 			rdlength += ret;
 			offset += knot_dname_size(dname);
 			compr->wire_pos += ret;
-		} else if (descriptor_item_is_dname(item)) {
+		} else if (knot_descriptor_item_is_dname(item)) {
 			const knot_dname_t *dname = rdata + offset;
 			// save whole domain name
 			size_t maxb = max_size - size - rdlength;
@@ -214,7 +217,7 @@ static int knot_rrset_rdata_to_wire_one(const knot_rrset_t *rrset,
 			if (compr) {
 				compr->wire_pos += dname_size;
 			}
-		} else if (descriptor_item_is_fixed(item)) {
+		} else if (knot_descriptor_item_is_fixed(item)) {
 			/* Fixed length chunk. */
 			if (size + rdlength + item > max_size) {
 				return KNOT_ESPACE;
@@ -226,7 +229,7 @@ static int knot_rrset_rdata_to_wire_one(const knot_rrset_t *rrset,
 			if (compr) {
 				compr->wire_pos += item;
 			}
-		} else if (descriptor_item_is_remainder(item)) {
+		} else if (knot_descriptor_item_is_remainder(item)) {
 			/* Check that the remainder fits to stream. */
 			size_t remainder_size =
 				rrset_rdata_remainder_size(rrset, offset,
@@ -277,7 +280,7 @@ static int knot_rrset_to_wire_aux(const knot_rrset_t *rrset, uint8_t **pos,
 	assert(*pos != NULL);
 
 	// No RDATA, just save header and 0 RDLENGTH.
-	if (knot_rrset_rr_count(rrset) == 0) {
+	if (rrset->rrs.rr_count == 0) {
 		size_t header_size = 0;
 		int ret = knot_rrset_header_to_wire(rrset, 0, pos, max_size, comp,
 		                                    &header_size);
@@ -294,7 +297,7 @@ static int knot_rrset_to_wire_aux(const knot_rrset_t *rrset, uint8_t **pos,
 	}
 
 	// Save rrset records.
-	for (uint16_t i = 0; i < knot_rrset_rr_count(rrset); ++i) {
+	for (uint16_t i = 0; i < rrset->rrs.rr_count; ++i) {
 		dbg_rrset_detail("rrset: to_wire: Current max_size=%zu\n",
 			         max_size);
 		size_t knot_rr_size = 0;
@@ -416,53 +419,6 @@ void knot_rrset_clear(knot_rrset_t *rrset, mm_ctx_t *mm)
 	}
 }
 
-uint8_t *knot_rrset_rr_rdata(const knot_rrset_t *rrset, size_t pos)
-{
-	knot_rdata_t *rr = knot_rdataset_at(&rrset->rrs, pos);
-	if (rr) {
-		return knot_rdata_data(rr);
-	} else {
-		return NULL;
-	}
-}
-
-uint16_t knot_rrset_rr_size(const knot_rrset_t *rrset, size_t pos)
-{
-	const knot_rdata_t *rr = knot_rdataset_at(&rrset->rrs, pos);
-	if (rr) {
-		return knot_rdata_rdlen(rr);
-	} else {
-		return 0;
-	}
-}
-
-uint32_t knot_rrset_rr_ttl(const knot_rrset_t *rrset, size_t pos)
-{
-	const knot_rdata_t *rr = knot_rdataset_at(&rrset->rrs, pos);
-	if (rr) {
-		return knot_rdata_ttl(rr);
-	} else {
-		return 0;
-	}
-}
-
-void knot_rrset_rr_set_ttl(const knot_rrset_t *rrset, size_t pos, uint32_t ttl)
-{
-	knot_rdata_t *rr = knot_rdataset_at(&rrset->rrs, pos);
-	if (rr) {
-		knot_rdata_set_ttl(rr, ttl);
-	}
-}
-
-uint16_t knot_rrset_rr_count(const knot_rrset_t *rrset)
-{
-	if (rrset == NULL) {
-		return 0;
-	}
-
-	return rrset->rrs.rr_count;
-}
-
 int knot_rrset_to_wire(const knot_rrset_t *rrset, uint8_t *wire, size_t *size,
                        size_t max_size, uint16_t *rr_count, knot_compr_t *compr)
 {
@@ -488,7 +444,7 @@ int knot_rrset_to_wire(const knot_rrset_t *rrset, uint8_t *wire, size_t *size,
 	dbg_rrset_detail("Size after: %zu\n", *size);
 
 	// If the rrset is empty set record counter to 1.
-	*rr_count = knot_rrset_rr_count(rrset) > 0 ? knot_rrset_rr_count(rrset) : 1;
+	*rr_count = rrset->rrs.rr_count > 0 ? rrset->rrs.rr_count : 1;
 
 	return KNOT_EOK;
 }
@@ -504,21 +460,14 @@ int knot_rrset_rdata_from_wire_one(knot_rrset_t *rrset,
 	}
 
 	if (rdlength == 0) {
-		// Alloc data for empty RR.
-		uint8_t *empty_rdata = malloc(1);
-		if (empty_rdata == NULL) {
-			return KNOT_ENOMEM;
-		}
-		int ret = knot_rrset_add_rdata(rrset, empty_rdata, 0, ttl, mm);
-		free(empty_rdata);
-		return ret;
+		return knot_rrset_add_rdata(rrset, NULL, 0, ttl, mm);
 	}
 
-	const rdata_descriptor_t *desc = get_rdata_descriptor(rrset->type);
+	const rdata_descriptor_t *desc = knot_get_rdata_descriptor(rrset->type);
 
 	/* Check for obsolete record. */
 	if (desc->type_name == NULL) {
-		desc = get_obsolete_rdata_descriptor(rrset->type);
+		desc = knot_get_obsolete_rdata_descriptor(rrset->type);
 	}
 
 	uint8_t rdata_buffer[rdlength + KNOT_DNAME_MAXLEN];
@@ -531,7 +480,7 @@ int knot_rrset_rdata_from_wire_one(knot_rrset_t *rrset,
 	for (int i = 0; desc->block_types[i] != KNOT_RDATA_WF_END &&
 	     parsed < rdlength; ++i) {
 		const int item = desc->block_types[i];
-		if (descriptor_item_is_dname(item)) {
+		if (knot_descriptor_item_is_dname(item)) {
 			int wire_size = knot_dname_wire_check(wire + *pos,
 			                                      wire + *pos + rdlength,
 			                                      wire);
@@ -549,14 +498,14 @@ int knot_rrset_rdata_from_wire_one(knot_rrset_t *rrset,
 
 			*pos += wire_size;
 			offset += unpacked_size;
-		} else if (descriptor_item_is_fixed(item)) {
+		} else if (knot_descriptor_item_is_fixed(item)) {
 			int ret = binary_store(rdata_buffer, &offset, packet_offset,
 			                       wire, pos, rdlength, item);
 			if (ret != KNOT_EOK) {
 				return ret;
 			}
 			parsed += item;
-		} else if (descriptor_item_is_remainder(item)) {
+		} else if (knot_descriptor_item_is_remainder(item)) {
 			/* Item size has to be calculated. */
 			size_t remainder_size = rdlength - parsed;
 			int ret = binary_store(rdata_buffer, &offset, packet_offset,
@@ -592,17 +541,15 @@ int knot_rrset_rdata_from_wire_one(knot_rrset_t *rrset,
 }
 
 int knot_rrset_add_rdata(knot_rrset_t *rrset,
-                      const uint8_t *rdata, const uint16_t size,
-                      const uint32_t ttl, mm_ctx_t *mm)
+                         const uint8_t *rdata, const uint16_t size,
+                         const uint32_t ttl, mm_ctx_t *mm)
 {
-	if (rrset == NULL || rdata == NULL) {
+	if (rrset == NULL || (rdata == NULL && size > 0)) {
 		return KNOT_EINVAL;
 	}
 
 	knot_rdata_t rr[knot_rdata_array_size(size)];
-	knot_rdata_set_rdlen(rr, size);
-	knot_rdata_set_ttl(rr, ttl);
-	memcpy(knot_rdata_data(rr), rdata, size);
+	knot_rdata_init(rr, size, rdata, ttl);
 
 	return knot_rdataset_add(&rrset->rrs, rr, mm);
 }
@@ -619,7 +566,11 @@ bool knot_rrset_equal(const knot_rrset_t *r1,
 		return false;
 	}
 
-	if (!knot_dname_is_equal(r1->owner, r2->owner)) {
+	if (r1->owner && r2->owner) {
+		if (!knot_dname_is_equal(r1->owner, r2->owner)) {
+			return false;
+		}
+	} else if (r1->owner != r2->owner) { // At least one is NULL.
 		return false;
 	}
 
@@ -632,7 +583,16 @@ bool knot_rrset_equal(const knot_rrset_t *r1,
 
 bool knot_rrset_empty(const knot_rrset_t *rrset)
 {
-	uint16_t rr_count = knot_rrset_rr_count(rrset);
-	return rr_count == 0;
+	if (rrset) {
+		uint16_t rr_count = rrset->rrs.rr_count;
+		return rr_count == 0;
+	} else {
+		return true;
+	}
+}
+
+uint32_t knot_rrset_ttl(const knot_rrset_t *rrset)
+{
+	return knot_rdata_ttl(knot_rdataset_at(&(rrset->rrs), 0));
 }
 

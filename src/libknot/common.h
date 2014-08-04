@@ -24,11 +24,9 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "common/errcode.h"
-#include "common/mempattern.h"
+#include "libknot/errcode.h"
 
-#ifndef _KNOT_COMMON_H_
-#define _KNOT_COMMON_H_
+#pragma once
 
 #define KNOT_NAME "lib" PACKAGE_NAME // Project name
 #define KNOT_VER  PACKAGE_VERSION  // 0xMMIIRR (MAJOR,MINOR,REVISION)
@@ -90,7 +88,5 @@ typedef unsigned int uint; /*!< \brief Unsigned. */
 		} \
 	} while (0)
 #endif
-
-#endif /* _KNOT_COMMON_H_ */
 
 /*! @} */

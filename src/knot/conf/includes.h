@@ -24,8 +24,7 @@
  * @{
  */
 
-#ifndef _KNOT_CONF_INCLUDES_H_
-#define _KNOT_CONF_INCLUDES_H_
+#pragma once
 
 #include <stdbool.h>
 #include <stdio.h>
@@ -86,7 +85,5 @@ conf_include_t *conf_includes_pop(conf_includes_t *includes);
  * \return True if the include was removed.
  */
 bool conf_includes_remove(conf_includes_t *includes);
-
-#endif /* _KNOT_CONF_INCLUDES_H_ */
 
 /*! @} */

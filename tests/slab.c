@@ -14,14 +14,13 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <config.h>
 #include <unistd.h>
 #include <stdlib.h>
 #include <time.h>
 #include <stdbool.h>
 #include <tap/basic.h>
 
-#include "common/slab/slab.h"
+#include "common-knot/slab/slab.h"
 
 /*! \brief Type-safe maximum macro. */
 #define SLAB_MAX(a, b) \

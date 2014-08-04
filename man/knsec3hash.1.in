@@ -1,4 +1,4 @@
-.TH "knsec3hash" "1" "June 2013" "CZ.NIC Labs" "Knot DNS, version @VERSION@"
+.TH "knsec3hash" "1" "@RELEASE_DATE@" "CZ.NIC Labs" "Knot DNS, version @VERSION@"
 .SH NAME
 .B knsec3hash
 \- Simple utility to compute NSEC3 hash (libknot equivalent of ISC nsec3hash)

@@ -25,6 +25,9 @@
 #include <errno.h>
 
 #include <urcu.h>
+#include "common-knot/strlcat.h"
+#include "common-knot/strlcpy.h"
+#include "common/mem.h"
 #include "knot/conf/conf.h"
 #include "knot/conf/extra.h"
 #include "knot/knot.h"
@@ -45,14 +48,12 @@
 /* Prototypes for cf-parse.y */
 extern int cf_parse(void *scanner);
 extern int cf_get_lineno(void *scanner);
-extern void cf_set_error(void *scanner);
 extern char *cf_get_text(void *scanner);
 extern conf_extra_t *cf_get_extra(void *scanner);
 extern int cf_lex_init_extra(void *, void *scanner);
 extern void cf_set_in(FILE *f, void *scanner);
 extern void cf_lex_destroy(void *scanner);
 extern void switch_input(const char *str, void *scanner);
-extern char *cf_current_filename(void *scanner);
 
 conf_t *new_config = NULL; /*!< \brief Currently parsed config. */
 static volatile int _parser_res = 0; /*!< \brief Parser result. */
@@ -257,6 +258,23 @@ static int conf_process(conf_t *conf)
 	// Postprocess zones
 	int ret = KNOT_EOK;
 
+	/* Initialize query plan if modules exist. */
+	if (!EMPTY_LIST(conf->query_modules)) {
+		conf->query_plan = query_plan_create(NULL);
+		if (conf->query_plan == NULL) {
+			return KNOT_ENOMEM;
+		}
+	}
+
+	/* Load query modules. */
+	struct query_module *module = NULL;
+	WALK_LIST(module, conf->query_modules) {
+		ret = module->load(conf->query_plan, module);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+	}
+
 	const bool sorted = false;
 	hattrie_iter_t *z_iter = hattrie_iter_begin(conf->zones, sorted);
 	if (z_iter == NULL) {
@@ -443,13 +461,6 @@ static int conf_process(conf_t *conf)
 	if (conf->uid < 0) conf->uid = getuid();
 	if (conf->gid < 0) conf->gid = getgid();
 
-	/* Build remote control ACL. */
-	conf_remote_t *r = NULL;
-	WALK_LIST(r, conf->ctl.allow) {
-		conf_iface_t *i = r->remote;
-		acl_insert(conf->ctl.acl, &i->addr, i->prefix, i->key);
-	}
-
 	return ret;
 }
 
@@ -458,64 +469,6 @@ static int conf_process(conf_t *conf)
  */
 
 conf_t *s_config = NULL; /*! \brief Singleton config instance. */
-
-/*! \brief Singleton config constructor (automatically called on load). */
-void __attribute__ ((constructor)) conf_init()
-{
-	// Create new config
-	s_config = conf_new(NULL);
-	if (!s_config) {
-		return;
-	}
-
-	/* Create default interface. */
-	conf_iface_t * iface = malloc(sizeof(conf_iface_t));
-	memset(iface, 0, sizeof(conf_iface_t));
-	sockaddr_set(&iface->addr, AF_INET, "127.0.0.1", CONFIG_DEFAULT_PORT);
-	iface->name = strdup("localhost");
-	add_tail(&s_config->ifaces, &iface->n);
-
-	/* Create default storage. */
-	s_config->storage = strdup(STORAGE_DIR);
-
-	/* Create default logs. */
-
-	/* Syslog */
-	conf_log_t *log = malloc(sizeof(conf_log_t));
-	log->type = LOGT_SYSLOG;
-	log->file = NULL;
-	init_list(&log->map);
-
-	conf_log_map_t *map = malloc(sizeof(conf_log_map_t));
-	map->source = LOG_ANY;
-	map->prios = LOG_MASK(LOG_WARNING)|LOG_MASK(LOG_ERR);
-	add_tail(&log->map, &map->n);
-	add_tail(&s_config->logs, &log->n);
-
-	/* Stderr */
-	log = malloc(sizeof(conf_log_t));
-	log->type = LOGT_STDERR;
-	log->file = NULL;
-	init_list(&log->map);
-
-	map = malloc(sizeof(conf_log_map_t));
-	map->source = LOG_ANY;
-	map->prios = LOG_MASK(LOG_WARNING)|LOG_MASK(LOG_ERR);
-	add_tail(&log->map, &map->n);
-	add_tail(&s_config->logs, &log->n);
-
-	/* Process config. */
-	conf_process(s_config);
-}
-
-/*! \brief Singleton config destructor (automatically called on exit). */
-void __attribute__ ((destructor)) conf_deinit()
-{
-	if (s_config) {
-		conf_free(s_config);
-		s_config = NULL;
-	}
-}
 
 /*!
  * \brief Parse config (from file).
@@ -613,13 +566,14 @@ conf_t *conf_new(char* path)
 
 	/* Zones container. */
 	c->zones = hattrie_create();
+	init_list(&c->query_modules);
 
 	/* Defaults. */
 	c->zone_checks = 0;
 	c->notify_retries = CONFIG_NOTIFY_RETRIES;
 	c->notify_timeout = CONFIG_NOTIFY_TIMEOUT;
 	c->dbsync_timeout = CONFIG_DBSYNC_TIMEOUT;
-	c->max_udp_payload = EDNS_MAX_UDP_PAYLOAD;
+	c->max_udp_payload = KNOT_EDNS_MAX_UDP_PAYLOAD;
 	c->sig_lifetime = KNOT_DNSSEC_DEFAULT_LIFETIME;
 	c->serial_policy = CONFIG_SERIAL_DEFAULT;
 	c->uid = -1;
@@ -630,14 +584,6 @@ conf_t *conf_new(char* path)
 
 	/* DNSSEC. */
 	c->dnssec_enable = 0;
-
-	/* ACLs. */
-	c->ctl.acl = acl_new();
-	if (!c->ctl.acl) {
-		free(c->filename);
-		free(c);
-		c = NULL;
-	}
 
 	return c;
 }
@@ -654,25 +600,6 @@ int conf_add_hook(conf_t * conf, int sections,
 	hook->update = on_update;
 	hook->data = data;
 	add_tail(&conf->hooks, &hook->n);
-
-	return KNOT_EOK;
-}
-
-int conf_parse(conf_t *conf)
-{
-	/* Parse file. */
-	int ret = conf_fparser(conf);
-
-	/* Postprocess config. */
-	if (ret == 0) {
-		ret = conf_process(conf);
-		/* Update hooks. */
-		conf_update_hooks(conf);
-	}
-
-	if (ret < 0) {
-		return KNOT_EPARSEFAIL;
-	}
 
 	return KNOT_EOK;
 }
@@ -747,6 +674,15 @@ void conf_truncate(conf_t *conf, int unload_hooks)
 		conf->zones = NULL;
 	}
 
+	/* Unload query modules. */
+	struct query_module *module = NULL, *next = NULL;
+	WALK_LIST_DELSAFE(module, next, conf->query_modules) {
+		query_module_close(module);
+	}
+
+	/* Free query plan. */
+	query_plan_free(conf->query_plan);
+
 	conf->dnssec_enable = -1;
 	if (conf->filename) {
 		free(conf->filename);
@@ -787,9 +723,6 @@ void conf_truncate(conf_t *conf, int unload_hooks)
 	}
 	init_list(&conf->remotes);
 
-	/* Free remote control ACL. */
-	acl_truncate(conf->ctl.acl);
-
 	/* Free remote control iface. */
 	conf_free_iface(conf->ctl.iface);
 }
@@ -802,9 +735,6 @@ void conf_free(conf_t *conf)
 
 	/* Truncate config. */
 	conf_truncate(conf, 1);
-
-	/* Free remote control ACL. */
-	acl_delete(&conf->ctl.acl);
 
 	/* Free config. */
 	free(conf);
@@ -848,7 +778,8 @@ int conf_open(const char* path)
 	}
 
 	/* Replace current config. */
-	conf_t *oldconf = rcu_xchg_pointer(&s_config, nconf);
+	conf_t **current_config = &s_config;
+	conf_t *oldconf = rcu_xchg_pointer(current_config, nconf);
 
 	/* Synchronize. */
 	synchronize_rcu();
@@ -911,18 +842,19 @@ char* strcpath(char *path)
 		}
 
 		// Expand
-		char *npath = malloc(plen + tild_len + 1);
+		size_t npath_size = plen + tild_len + 1;
+		char *npath = malloc(npath_size);
 		if (npath == NULL) {
 			free(tild_exp);
 			return NULL;
 		}
 		npath[0] = '\0';
-		strncpy(npath, path, (size_t)(remainder - path));
-		strncat(npath, tild_exp, tild_len);
+		strlcpy(npath, path, npath_size);
+		strlcat(npath, tild_exp, npath_size);
 
 		// Append remainder
 		++remainder;
-		strncat(npath, remainder, strlen(remainder));
+		strlcat(npath, remainder, npath_size);
 
 		free(tild_exp);
 		free(path);
@@ -931,6 +863,31 @@ char* strcpath(char *path)
 
 	return path;
 }
+
+size_t conf_udp_threads(const conf_t *conf)
+{
+	if (conf->workers < 1) {
+		return dt_optimal_size();
+	}
+
+	return conf->workers;
+}
+
+size_t conf_tcp_threads(const conf_t *conf)
+{
+	size_t thrcount = conf_udp_threads(conf);
+	return MAX(thrcount * 2, CONFIG_XFERS);
+}
+
+int conf_bg_threads(const conf_t *conf)
+{
+	if (conf->bg_workers < 1) {
+		return MIN(dt_optimal_size(), CONFIG_XFERS);
+	}
+
+	return conf->bg_workers;
+}
+
 
 void conf_init_zone(conf_zone_t *zone)
 {

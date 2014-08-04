@@ -24,13 +24,19 @@
  * @{
  */
 
-#ifndef _DIG__DIG_PARAMS_H_
-#define _DIG__DIG_PARAMS_H_
+#pragma once
 
 #include <stdbool.h>			// bool
 
+#include "libknot/libknot.h"		// knot_addr_family_t
+#include "common-knot/sockaddr.h"	// IPV6_PREFIXLEN
 #include "utils/common/params.h"	// protocol_t
 #include "utils/common/exec.h"		// sign_context_t
+
+#if USE_DNSTAP
+# include "dnstap/reader.h"
+# include "dnstap/writer.h"
+#endif // USE_DNSTAP
 
 #define KDIG_VERSION "kdig, version " PACKAGE_VERSION "\n"
 
@@ -40,6 +46,8 @@ typedef enum {
 	OPERATION_QUERY,
 	/*!< Zone transfer (AXFR or IXFR). */
 	OPERATION_XFR,
+	/*!< Dump dnstap file. */
+	OPERATION_LIST_DNSTAP,
 	/*!< Query for NS and all authoritative SOA records. */
 	OPERATION_LIST_SOA
 } operation_t;
@@ -64,10 +72,25 @@ typedef struct {
 	bool	do_flag;
 } flags_t;
 
-/*! \brief Basic parameters for DNS query. */
+/*! \brief Network subnet information. */
 typedef struct {
+	/*! Protocol family. */
+	knot_addr_family_t	family;
+	/*! Address in wire format. */
+	uint8_t			addr[IPV6_PREFIXLEN / 8];
+	/*! Length of address in wire format. */
+	uint16_t		addr_len;
+	/*! Network mask length. */
+	uint8_t			netmask;
+} subnet_t;
+
+/*! \brief Basic parameters for DNS query. */
+typedef struct query query_t; // Forward declaration due to configuration.
+struct query {
 	/*!< List node (for list container). */
 	node_t		n;
+	/*!< Reference to global config. */
+	const query_t	*conf;
 	/*!< Name to query on. */
 	char		*owner;
 	/*!< List of nameservers to query to. */
@@ -98,6 +121,8 @@ typedef struct {
 	int32_t		type_num;
 	/*!< SOA serial for XFR. */
 	uint32_t	xfr_serial;
+	/*!< NOTIFY query. */
+	bool		notify;
 	/*!< Header flags. */
 	flags_t		flags;
 	/*!< Output settings. */
@@ -112,7 +137,15 @@ typedef struct {
 	knot_key_params_t key_params;
 	/*!< Context for operations with signatures. */
 	sign_context_t	sign_ctx;
-} query_t;
+	/*!< EDNS client subnet. */
+	subnet_t	*subnet;
+#if USE_DNSTAP
+	/*!< Context for dnstap reader input. */
+	dt_reader_t	*dt_reader;
+	/*!< Context for dnstap writer output. */
+	dt_writer_t	*dt_writer;
+#endif // USE_DNSTAP
+};
 
 /*! \brief Settings for dig. */
 typedef struct {
@@ -131,7 +164,5 @@ void complete_queries(list_t *queries, const query_t *conf);
 int dig_init(dig_params_t *params);
 int dig_parse(dig_params_t *params, int argc, char *argv[]);
 void dig_clean(dig_params_t *params);
-
-#endif // _DIG__DIG_PARAMS_H_
 
 /*! @} */

@@ -24,8 +24,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef _KNOT_CONSTS_H_
-#define _KNOT_CONSTS_H_
+#pragma once
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -42,6 +41,16 @@
  * \brief Often used sizes.
  */
 #define KNOT_RR_HEADER_SIZE 10
+
+/*!
+ * \brief Address family numbers.
+ *
+ * http://www.iana.org/assignments/address-family-numbers/address-family-numbers.xml
+ */
+typedef enum {
+	KNOT_ADDR_FAMILY_IPV4 = 1, /*!< IP version 4. */
+	KNOT_ADDR_FAMILY_IPV6 = 2  /*!< IP version 6. */
+} knot_addr_family_t;
 
 /*!
  * \brief DNS operation codes (OPCODEs).
@@ -159,7 +168,7 @@ extern knot_lookup_table_t knot_rcode_names[];
 extern knot_lookup_table_t knot_dnssec_alg_names[];
 
 /*!
- * \brief Returns length of DS digest for given algorithm.
+ * \brief Returns length of TSIG digest for given algorithm.
  *
  * \param algorithm Algorithm code to be used.
  *
@@ -176,7 +185,5 @@ size_t knot_ds_digest_length(const uint8_t algorithm);
  * \return Given algorithm is allowed for zone signing.
  */
 bool knot_dnssec_algorithm_is_zonesign(uint8_t algorithm, bool nsec3_enabled);
-
-#endif /* _KNOT_CONSTS_H_ */
 
 /*! @} */

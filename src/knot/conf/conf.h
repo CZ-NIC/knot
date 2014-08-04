@@ -25,8 +25,7 @@
  * @{
  */
 
-#ifndef _KNOTD_CONF_H_
-#define _KNOTD_CONF_H_
+#pragma once
 
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -35,14 +34,14 @@
 #include <urcu.h>
 
 #include "libknot/dname.h"
-#include "libknot/rdata/tsig.h"
+#include "libknot/rrtype/tsig.h"
 #include "libknot/dnssec/key.h"
 #include "libknot/dnssec/policy.h"
-#include "common/lists.h"
+#include "common-knot/lists.h"
 #include "common/log.h"
 #include "knot/updates/acl.h"
-#include "common/sockaddr.h"
-#include "common/hattrie/hat-trie.h"
+#include "common-knot/sockaddr.h"
+#include "common-knot/hattrie/hat-trie.h"
 #include "knot/nameserver/query_module.h"
 
 /* Constants. */
@@ -193,7 +192,6 @@ typedef struct conf_key_t {
 typedef struct conf_control_t {
 	conf_iface_t *iface; /*!< Remote control interface. */
 	list_t allow;        /*!< List of allowed remotes. */
-	acl_t* acl;          /*!< ACL. */
 	bool have;           /*!< Set if configured. */
 } conf_control_t;
 
@@ -215,6 +213,8 @@ typedef struct conf_t {
 	size_t nsid_len;/*!< Server's NSID length. */
 	size_t max_udp_payload; /*!< Maximal UDP payload size. */
 	int   workers;  /*!< Number of workers per interface. */
+	int   bg_workers; /*!< Number of background workers. */
+	bool  async_start; /*!< Asynchronous startup. */
 	int   uid;      /*!< Specified user id. */
 	int   gid;      /*!< Specified group id. */
 	int   max_conn_idle; /*!< TCP idle timeout. */
@@ -266,6 +266,8 @@ typedef struct conf_t {
 	int dnssec_enable;   /*!< DNSSEC: Online signing enabled. */
 	int sig_lifetime;    /*!< DNSSEC: Signature lifetime. */
 	int serial_policy;   /*!< Serial policy when updating zone. */
+	struct query_plan *query_plan;
+	list_t query_modules;
 
 	/*
 	 * Remote control interface.
@@ -315,18 +317,6 @@ conf_t *conf_new(char *path);
  */
 int conf_add_hook(conf_t * conf, int sections,
                   int (*on_update)(const conf_t*, void*), void *data);
-
-/*!
- * \brief Parse configuration from associated file.
- *
- * \note Registered callbacks may be executed if applicable.
- *
- * \param conf Configuration context.
- *
- * \retval KNOT_EOK on success.
- * \retval KNOT_EPARSEFAIL on parser error.
- */
-int conf_parse(conf_t *conf);
 
 /*!
  * \brief Parse configuration from string.
@@ -405,6 +395,15 @@ static inline conf_t* conf() {
  */
 char* strcpath(char *path);
 
+/*! \brief Return the number of UDP threads according to the configuration. */
+size_t conf_udp_threads(const conf_t *conf);
+
+/*! \brief Return the number of TCP threads according to the configuration. */
+size_t conf_tcp_threads(const conf_t *conf);
+
+/*! \brief Return the number of background worker threads. */
+int conf_bg_threads(const conf_t *conf);
+
 /* \brief Initialize zone config. */
 void conf_init_zone(conf_zone_t *zone);
 
@@ -425,7 +424,5 @@ void conf_free_group(conf_group_t *group);
 
 /*! \brief Free log config. */
 void conf_free_log(conf_log_t *log);
-
-#endif /* _KNOTD_CONF_H_ */
 
 /*! @} */

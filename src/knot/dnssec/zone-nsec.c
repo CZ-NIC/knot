@@ -20,21 +20,21 @@
 #include <string.h>
 #include <limits.h>
 
+#include "common-knot/hhash.h"
 #include "common/base32hex.h"
 #include "common/debug.h"
-#include "common/descriptor.h"
-#include "common/hhash.h"
 #include "dnssec/error.h"
 #include "dnssec/nsec.h"
-#include "libknot/util/utils.h"
+#include "libknot/descriptor.h"
 #include "libknot/packet/wire.h"
-#include "libknot/rdata/soa.h"
-#include "libknot/rdata/nsec3.h"
+#include "libknot/rrtype/nsec3.h"
+#include "libknot/rrtype/soa.h"
+#include "libknot/util/utils.h"
 #include "knot/dnssec/nsec-chain.h"
 #include "knot/dnssec/nsec3-chain.h"
 #include "knot/dnssec/zone-nsec.h"
 #include "knot/dnssec/zone-sign.h"
-#include "knot/zone/zone-contents.h"
+#include "knot/zone/contents.h"
 #include "knot/zone/zone-diff.h"
 
 /*!
@@ -44,26 +44,26 @@
  * \param changeset  Changeset to be used.
  * \return KNOT_E*
  */
-static int delete_nsec3_chain(const knot_zone_contents_t *zone,
-                              knot_changeset_t *changeset)
+static int delete_nsec3_chain(const zone_contents_t *zone,
+                              changeset_t *changeset)
 {
 	assert(zone);
 	assert(changeset);
 
-	if (knot_zone_tree_is_empty(zone->nsec3_nodes)) {
+	if (zone_tree_is_empty(zone->nsec3_nodes)) {
 		return KNOT_EOK;
 	}
 
 	dbg_dnssec_detail("deleting NSEC3 chain\n");
-	knot_zone_tree_t *empty_tree = knot_zone_tree_create();
+	zone_tree_t *empty_tree = zone_tree_create();
 	if (!empty_tree) {
 		return KNOT_ENOMEM;
 	}
 
-	int result = knot_zone_tree_add_diff(zone->nsec3_nodes, empty_tree,
+	int result = zone_tree_add_diff(zone->nsec3_nodes, empty_tree,
 	                                     changeset);
 
-	knot_zone_tree_free(&empty_tree);
+	zone_tree_free(&empty_tree);
 
 	return result;
 }
@@ -73,7 +73,7 @@ static int delete_nsec3_chain(const knot_zone_contents_t *zone,
 /*!
  * \brief Check if NSEC3 is enabled for given zone.
  */
-bool knot_is_nsec3_enabled(const knot_zone_contents_t *zone)
+bool knot_is_nsec3_enabled(const zone_contents_t *zone)
 {
 	if (!zone) {
 		return false;
@@ -86,15 +86,15 @@ bool knot_is_nsec3_enabled(const knot_zone_contents_t *zone)
  * \brief Get minimum TTL from zone SOA.
  * \note Value should be used for NSEC records.
  */
-static bool get_zone_soa_min_ttl(const knot_zone_contents_t *zone,
+static bool get_zone_soa_min_ttl(const zone_contents_t *zone,
                                  uint32_t *ttl)
 {
 	assert(zone);
 	assert(zone->apex);
 	assert(ttl);
 
-	knot_node_t *apex = zone->apex;
-	const knot_rdataset_t *soa = knot_node_rdataset(apex, KNOT_RRTYPE_SOA);
+	zone_node_t *apex = zone->apex;
+	const knot_rdataset_t *soa = node_rdataset(apex, KNOT_RRTYPE_SOA);
 	if (!soa) {
 		return false;
 	}
@@ -112,32 +112,31 @@ static bool get_zone_soa_min_ttl(const knot_zone_contents_t *zone,
  * \brief Finds a node with the same owner as the given NSEC3 RRSet and marks it
  *        as 'removed'.
  *
- * \param data NSEC3 tree to search for the node in. (type knot_zone_tree_t *).
+ * \param data NSEC3 tree to search for the node in. (type zone_tree_t *).
  * \param rrset RRSet whose owner will be sought in the zone tree. non-NSEC3
  *              RRSets are ignored.
  *
  * This function is constructed as a callback for the knot_changeset_apply() f
  * function.
  */
-static int mark_nsec3(knot_rrset_t *rrset, void *data)
+static int mark_nsec3(knot_rrset_t *rrset, zone_tree_t *nsec3s)
 {
 	assert(rrset != NULL);
-	assert(data != NULL);
+	assert(nsec3s != NULL);
 
-	knot_zone_tree_t *nsec3s = (knot_zone_tree_t *)data;
-	knot_node_t *node = NULL;
+	zone_node_t *node = NULL;
 	int ret;
 
 	if (rrset->type == KNOT_RRTYPE_NSEC3) {
 		// Find the name in the NSEC3 tree and mark the node
-		ret = knot_zone_tree_get(nsec3s, rrset->owner,
+		ret = zone_tree_get(nsec3s, rrset->owner,
 		                         &node);
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
 
 		if (node != NULL) {
-			knot_node_set_removed_nsec(node);
+			node->flags |= NODE_FLAGS_REMOVED_NSEC;
 		}
 	}
 
@@ -150,16 +149,28 @@ static int mark_nsec3(knot_rrset_t *rrset, void *data)
  * For each NSEC3 RRSet in the changeset finds its node and marks it with the
  * 'removed' flag.
  */
-static int mark_removed_nsec3(knot_changeset_t *out_ch,
-                              const knot_zone_contents_t *zone)
+static int mark_removed_nsec3(changeset_t *out_ch,
+                              const zone_contents_t *zone)
 {
-	if (knot_zone_tree_is_empty(zone->nsec3_nodes)) {
+	if (zone_tree_is_empty(zone->nsec3_nodes)) {
 		return KNOT_EOK;
 	}
 
-	int ret = knot_changeset_apply(out_ch, KNOT_CHANGESET_REMOVE,
-	                               mark_nsec3, (void *)zone->nsec3_nodes);
-	return ret;
+	changeset_iter_t itt;
+	changeset_iter_rem(&itt, out_ch, false);
+	
+	knot_rrset_t rr = changeset_iter_next(&itt);
+	while (!knot_rrset_empty(&rr)) {
+		int ret = mark_nsec3(&rr, zone->nsec3_nodes);
+		if (ret != KNOT_EOK) {
+			changeset_iter_clear(&itt);
+			return ret;
+		}
+		rr = changeset_iter_next(&itt);
+	}
+	changeset_iter_clear(&itt);
+	
+	return KNOT_EOK;
 }
 
 /* - public API ------------------------------------------------------------ */
@@ -259,8 +270,8 @@ knot_dname_t *knot_nsec3_hash_to_dname(const uint8_t *hash, size_t hash_size,
 /*!
  * \brief Create NSEC or NSEC3 chain in the zone.
  */
-int knot_zone_create_nsec_chain(const knot_zone_contents_t *zone,
-                                knot_changeset_t *changeset,
+int knot_zone_create_nsec_chain(const zone_contents_t *zone,
+                                changeset_t *changeset,
                                 const zone_keyset_t *zone_keys,
                                 const knot_dnssec_policy_t *policy)
 {

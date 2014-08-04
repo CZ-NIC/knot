@@ -364,7 +364,7 @@ def gen_rr_rev(dn):
 
 # Generate SOA
 def gen_soa(origin, serial, auth = None):
-    refresh = 10
+    refresh = 3600
     if origin != '.':
         origin += '.'
     soa =  ''
@@ -506,6 +506,11 @@ def main(args):
     # Open zone file
     if UPDATE:
         shutil.copyfile(UPDATE, in_fname)
+
+        # Disable additional CNAME generation
+        for idx, val in enumerate(RRTYPES):
+            if val[0] == 'CNAME':
+                RRTYPES[idx][2] = 0
 
     outf = open(in_fname, "a")
 

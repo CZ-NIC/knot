@@ -14,7 +14,6 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <config.h>
 #include <pthread.h>
 #include <sched.h>
 #include <sys/select.h>

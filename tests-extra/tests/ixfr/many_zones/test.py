@@ -24,8 +24,6 @@ for zone in zones:
 
 master.reload()
 
-t.sleep(30)
-
 # Wait for IXFR to slave.
 master.zones_wait(zones, serials_init)
 slave.zones_wait(zones, serials_init)

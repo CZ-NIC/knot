@@ -24,15 +24,14 @@
  * @{
  */
 
-#ifndef _UTILS__PARAMS_H_
-#define _UTILS__PARAMS_H_
+#pragma once
 
 #include <stdint.h>			// uint16_t
 #include <limits.h>			// INT_MAX
 #include <stdbool.h>			// bool
 
 #include "libknot/libknot.h"
-#include "common/lists.h"		// list
+#include "common-knot/lists.h"		// list
 
 #define DEFAULT_IPV4_NAME	"127.0.0.1"
 #define DEFAULT_IPV6_NAME	"::1"
@@ -81,7 +80,7 @@ typedef struct {
 	bool	show_query;
 	/*!< Show header info. */
 	bool	show_header;
-	/*!< Show EDNS info. */
+	/*!< Show EDNS pseudosection. */
 	bool	show_edns;
 	/*!< Show QUERY/ZONE section. */
 	bool	show_question;
@@ -91,6 +90,8 @@ typedef struct {
 	bool	show_authority;
 	/*!< Show ADDITIONAL section. */
 	bool	show_additional;
+	/*!< Show TSIG pseudosection. */
+	bool	show_tsig;
 	/*!< Show footer info. */
 	bool	show_footer;
 
@@ -134,6 +135,17 @@ char* name_from_idn(const char *idn_name);
  */
 void name_to_idn(char **name);
 
+/*!
+ * \brief Find the best parameter match in table based on prefix equality.
+ *
+ * \param str		Parameter name to look up.
+ * \param str_len	Parameter name length.
+ * \param tbl		Parameter table.
+ * \param unique	Indication if output is unique result.
+ *
+ * \retval >=0		looked up parameter position in \a tbl.
+ * \retval err		if error.
+ */
 int best_param(const char *str, const size_t str_len, const param_t *tbl,
                bool *unique);
 
@@ -143,7 +155,8 @@ char* get_fqd_name(const char *name);
 
 int params_parse_class(const char *value, uint16_t *rclass);
 
-int params_parse_type(const char *value, uint16_t *rtype, uint32_t *xfr_serial);
+int params_parse_type(const char *value, uint16_t *rtype, uint32_t *xfr_serial,
+                      bool *notify);
 
 int params_parse_server(const char *value, list_t *servers, const char *def_port);
 
@@ -153,6 +166,6 @@ int params_parse_num(const char *value, uint32_t *dst);
 
 int params_parse_tsig(const char *value, knot_key_params_t *key_params);
 
-#endif // _UTILS__PARAMS_H_
+int params_parse_keyfile(const char *value, knot_key_params_t *key_params);
 
 /*! @} */

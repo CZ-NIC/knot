@@ -10,7 +10,7 @@ from dnstest.test import Test
 
 ################################ SETUP #######################################
 
-MAX_LABELS = 16
+MAX_LABELS = 15
 MAX_UPDATE_SIZE = 256
 
 RUNS = 1
@@ -24,13 +24,16 @@ def gen_dname(origin):
     label_count = random.randint(1, MAX_LABELS)
     label_lengths = []
     for i in range(label_count):
-        label_lengths.append(random.randint(1, 16))
+        label_lengths.append(random.randint(1, 15))
     for l in label_lengths:
         for i in range(l):
             name += random.choice(DNAME_ALLOWED)
         name += "."
     name += origin
-    return name
+    if (len(name) <= 255):
+        return name
+    else:
+        return origin
 
 names = []
 
@@ -110,6 +113,7 @@ master.gen_key(zone, alg="RSASHA256")
 master.gen_confile()
 
 t.start()
+master.zone_wait(zone)
 
 # Test NSEC fix
 check_log("============ NSEC test ============")
@@ -117,7 +121,7 @@ test_run(master, zone, "NSEC")
 
 master.enable_nsec3(zone)
 master.reload()
-t.sleep(1)
+t.sleep(2)
 
 # Test NSEC3 fix
 check_log("============ NSEC3 test ===========")

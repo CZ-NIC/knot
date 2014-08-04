@@ -30,13 +30,11 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#include "common/mempattern.h"
-
+#include "libknot/mempattern.h"
 #include "libknot/dname.h"
 #include "libknot/rdataset.h"
 
 struct knot_compr;
-struct knot_node;
 
 /*!
  * \brief Structure for representing RRSet.
@@ -49,7 +47,7 @@ struct knot_rrset {
 	uint16_t rclass;      /*!< CLASS of the RRSet. */
 	knot_rdataset_t rrs;  /*!< RRSet's RRs */
 	/* Optional fields. */
-	struct knot_node **additional; /*!< Additional records. */
+	struct zone_node **additional; /*!< Additional records. */
 };
 
 typedef struct knot_rrset knot_rrset_t;
@@ -124,57 +122,6 @@ void knot_rrset_free(knot_rrset_t **rrset, mm_ctx_t *mm);
  * \param mm     Memory context used for allocations.
  */
 void knot_rrset_clear(knot_rrset_t *rrset, mm_ctx_t *mm);
-
-/* ----------- Getters / Setters (legacy, functionality in rdata_t) ------------ */
-
-/*!
- * \brief Returns RDATA of RR on given position.
- *
- * \param rrset  RRSet to get the RDATA from.
- * \param pos    Position of RR to get.
- *
- * \retval  NULL if no RDATA on rdata_pos exist.
- * \retval  Pointer to RDATA on given position if successfull.
- */
-uint8_t *knot_rrset_rr_rdata(const knot_rrset_t *rrset, size_t pos);
-
-/*!
- * \brief Returns size of an RR RDATA on a given position.
- *
- * \param rrset  RRSet holding RR RDATA.
- * \param pos    RR position.
- *
- * \return Item size.
- */
-uint16_t knot_rrset_rr_size(const knot_rrset_t *rrset, size_t pos);
-
-/*!
- * \brief Returns TTL of an RR on a given position.
- *
- * \param rrset  RRSet holding RR RDATA.
- * \param pos    RR position.
- *
- * \return TTL.
- */
-uint32_t knot_rrset_rr_ttl(const knot_rrset_t *rrset, size_t pos);
-
-/*!
- * \brief Sets TTL for RR on a given position.
- *
- * \param rrset  RRSet containing RR.
- * \param pos    RR position.
- * \param ttl    TTL to be set.
- */
-void knot_rrset_rr_set_ttl(const knot_rrset_t *rrset, size_t pos, uint32_t ttl);
-
-/*!
- * \brief Returns count of RRs in RRSet.
- *
- * \param rrset  RRSet.
- *
- * \return RR count.
- */
-uint16_t knot_rrset_rr_count(const knot_rrset_t *rrset);
 
 /* ---------- Wire conversions (legacy, to be done in knot_pkt_t) ----------- */
 
@@ -252,5 +199,16 @@ bool knot_rrset_equal(const knot_rrset_t *r1, const knot_rrset_t *r2,
  * \retval False if RRSet is not empty.
  */
 bool knot_rrset_empty(const knot_rrset_t *rrset);
+
+/* --------------------------- Miscelaneous --------------------------------- */
+
+/*!
+ * \brief Returns the TTL of the RRSet (of its first RR).
+ *
+ * \param rrset RRSet to get the TTL of.
+ *
+ * \retval TTL of the RRSet (precisely of its first RR).
+ */
+uint32_t knot_rrset_ttl(const knot_rrset_t *rrset);
 
 /*! @} */

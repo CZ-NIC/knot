@@ -28,13 +28,13 @@
 #include <netinet/in.h>			// in_addr (BSD)
 #include <arpa/inet.h>			// ntohs
 
-#include "common/errcode.h"		// KNOT_EOK
-#include "common/base64.h"		// base64
 #include "common/base32hex.h"		// base32hex
-#include "common/descriptor.h"		// KNOT_RRTYPE
+#include "common/base64.h"		// base64
 #include "dnssec/binary.h"		// dnssec_binary_t
 #include "dnssec/keytag.h"		// dnssec_keytag
 #include "libknot/consts.h"		// knot_rcode_names
+#include "libknot/descriptor.h"		// KNOT_RRTYPE
+#include "libknot/errcode.h"		// KNOT_EOK
 #include "libknot/util/utils.h"		// knot_wire_read_u16
 
 #define TAB_WIDTH		8
@@ -58,6 +58,7 @@ const knot_dump_style_t KNOT_DUMP_STYLE_DEFAULT = {
 	.show_class = false,
 	.show_ttl = true,
 	.verbose = false,
+	.empty_ttl = false,
 	.human_ttl = false,
 	.human_tmstamp = true,
 	.ascii_to_idn = NULL
@@ -380,11 +381,11 @@ static void wire_data_encode_to_str(rrset_dump_params_t *p,
 		p->out_max -= out_len;
 		p->total += out_len;
 	} else {
-		int  src_begin, src_len;
-		char *buf;
+		int     src_begin;
+		uint8_t *buf;
 
 		// Encode data to the temporary buffer.
-		ret = enc_alloc(p->in, in_len, (uint8_t **)&buf);
+		ret = enc_alloc(p->in, in_len, &buf);
 		if (ret <= 0) {
 			return;
 		}
@@ -401,8 +402,8 @@ static void wire_data_encode_to_str(rrset_dump_params_t *p,
 			}
 
 			// Compute block length (the last one can be shorter).
-			src_len = (ret - src_begin) < BLOCK_WIDTH ?
-			          (ret - src_begin) : BLOCK_WIDTH;
+			int src_len = (ret - src_begin) < BLOCK_WIDTH ?
+			              (ret - src_begin) : BLOCK_WIDTH;
 
 			if ((size_t)src_len > p->out_max) {
 				free(buf);
@@ -1796,8 +1797,9 @@ int knot_rrset_txt_dump_data(const knot_rrset_t      *rrset,
 		return KNOT_EINVAL;
 	}
 
-	uint8_t   *data = knot_rrset_rr_rdata(rrset, pos);
-	uint16_t  data_len = knot_rrset_rr_size(rrset, pos);
+	const knot_rdata_t *rr_data = knot_rdataset_at(&rrset->rrs, pos);
+	uint8_t *data = knot_rdata_data(rr_data);
+	uint16_t data_len = knot_rdata_rdlen(rr_data);
 
 	int ret = 0;
 
@@ -1909,7 +1911,7 @@ int knot_rrset_txt_dump_data(const knot_rrset_t      *rrset,
 	}
 
 int knot_rrset_txt_dump_header(const knot_rrset_t      *rrset,
-                               uint32_t                ttl,
+                               const uint32_t          ttl,
                                char                    *dst,
                                const size_t            maxlen,
                                const knot_dump_style_t *style)
@@ -1938,7 +1940,9 @@ int knot_rrset_txt_dump_header(const knot_rrset_t      *rrset,
 
 	// Dump rrset ttl.
 	if (style->show_ttl) {
-		if (style->human_ttl) {
+		if (style->empty_ttl) {
+			ret = snprintf(dst + len, maxlen - len, "%c", sep);
+		} else if (style->human_ttl) {
 			// Create human readable ttl string.
 			if (time_to_human_str(buf, sizeof(buf), ttl) < 0) {
 				return KNOT_ESPACE;
@@ -1966,7 +1970,7 @@ int knot_rrset_txt_dump_header(const knot_rrset_t      *rrset,
 	if (knot_rrtype_to_string(rrset->type, buf, sizeof(buf)) < 0) {
 		return KNOT_ESPACE;
 	}
-	if (knot_rrset_rr_count(rrset) > 0) {
+	if (rrset->rrs.rr_count > 0) {
 		ret = snprintf(dst + len, maxlen - len, "%s%c", buf, sep);
 	} else {
 		ret = snprintf(dst + len, maxlen - len, "%s", buf);
@@ -1990,7 +1994,7 @@ int knot_rrset_txt_dump(const knot_rrset_t      *rrset,
 	int    ret;
 
 	// UPDATE delete may have empty RDATA => dump header.
-	if (knot_rrset_rr_count(rrset) == 0) {
+	if (rrset->rrs.rr_count == 0) {
 		// Dump rdata owner, class, ttl and type.
 		ret = knot_rrset_txt_dump_header(rrset, 0, dst + len,
 		                                 maxlen - len, style);
@@ -2008,11 +2012,11 @@ int knot_rrset_txt_dump(const knot_rrset_t      *rrset,
 	}
 
 	// Loop over rdata in rrset.
-	uint16_t rr_count = knot_rrset_rr_count(rrset);
+	uint16_t rr_count = rrset->rrs.rr_count;
 	for (uint16_t i = 0; i < rr_count; i++) {
 		// Dump rdata owner, class, ttl and type.
-		ret = knot_rrset_txt_dump_header(rrset,
-		                                 knot_rrset_rr_ttl(rrset, i),
+		const knot_rdata_t *rr_data = knot_rdataset_at(&rrset->rrs, i);
+		ret = knot_rrset_txt_dump_header(rrset, knot_rdata_ttl(rr_data),
 		                                 dst + len, maxlen - len, style);
 		if (ret < 0) {
 			return KNOT_ESPACE;

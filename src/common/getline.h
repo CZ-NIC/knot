@@ -25,8 +25,7 @@
  * @{
  */
 
-#ifndef _GETLINE_H_
-#define _GETLINE_H_
+#pragma once
 
 #include <stdio.h>
 #include <sys/types.h>
@@ -45,7 +44,5 @@
  *         not including terminating. -1 on error or EOF.
  */
 ssize_t knot_getline(char **lineptr, size_t *n, FILE *stream);
-
-#endif // _GETLINE_H_
 
 /*! @} */

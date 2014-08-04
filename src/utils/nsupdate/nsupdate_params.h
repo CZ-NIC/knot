@@ -24,13 +24,12 @@
  * @{
  */
 
-#ifndef _NSUPDATE__NSUPDATE_PARAMS_H_
-#define _NSUPDATE__NSUPDATE_PARAMS_H_
+#pragma once
 
 #include <stdint.h>
 
 #include "libknot/libknot.h"
-#include "common/lists.h"		// list
+#include "common-knot/lists.h"		// list
 #include "zscanner/zscanner.h"		// zs_scanner_t
 #include "utils/common/netio.h"		// server_t
 #include "utils/common/params.h"	// protocol_t
@@ -88,7 +87,5 @@ int nsupdate_set_ttl(nsupdate_params_t *params, const uint32_t ttl);
 int nsupdate_set_origin(nsupdate_params_t *params, const char *origin);
 void nsupdate_clean(nsupdate_params_t *params);
 void nsupdate_reset(nsupdate_params_t *params);
-
-#endif // _NSUPDATE__NSUPDATE_PARAMS_H_
 
 /*! @} */

@@ -24,8 +24,7 @@
  * @{
  */
 
-#ifndef _ZSCANNER__FUNCTIONS_H_
-#define _ZSCANNER__FUNCTIONS_H_
+#pragma once
 
 #include <stdint.h>
 
@@ -109,7 +108,5 @@ void wire_dname_to_str(const uint8_t  *data,
  * \retval number	encoded number.
  */
 uint8_t loc64to8(uint64_t number);
-
-#endif // _ZSCANNER__FUNCTIONS_H_
 
 /*! @} */

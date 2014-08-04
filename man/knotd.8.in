@@ -14,16 +14,14 @@ Select configuration file.
 \fB\-d\fR, \fB\-\-daemonize\fR=[\fIdir\fR]
 Run server as a daemon. Working directory may be set.
 .TP
-\fB\-v\fR, \fB\-\-verbose\fR
-Verbose mode \- additional runtime information.
-.TP
 \fB\-V\fR, \fB\-\-version\fR
 Print version of the server.
 .TP
 \fB\-h\fR, \fB\-\-help\fR
 Print help and usage.
 .SH "SEE ALSO"
-.BR knotc (8)
+.BR knotc (8),
+.BR knot.conf (5).
 .SH NOTE
 The full documentation for \fBKnot DNS\fR is maintained
 as a Texinfo manual. If the \fBinfo\fR program is properly

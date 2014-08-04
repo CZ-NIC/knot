@@ -14,37 +14,27 @@ EXTRA_DIST =				\
 BUILT_SOURCES = scanner.c
 CLEANFILES = scanner.c
 
-if HAVE_RAGEL
-scanner.c: scanner.rl scanner_body.rl
-	$(RAGEL) $(FSM_TYPE) -o $@ $(srcdir)/scanner.rl
-else
-
-if G2_PARSER
+if FAST_PARSER
 scanner.c: scanner.c.g2
-	cp $@.g2 $@
-endif
-
-if T0_PARSER
-scanner.c: scanner.c.t0
-	cp $@.t0 $@
-endif
-
-endif #HAVE_RAGEL
-
-if G2_PARSER
+	cp $(srcdir)/$@.g2 $@
 	@echo "NOTE: Compilation of scanner.c can take several minutes!"
+else
+scanner.c: scanner.c.t0
+	cp $(srcdir)/$@.t0 $@
 endif
 
 libzscanner_la_SOURCES =		\
 	zscanner.h			\
 	scanner.h			\
-	scanner.c			\
 	error.h				\
 	error.c				\
 	loader.h			\
 	loader.c			\
 	functions.h			\
 	functions.c
+
+nodist_libzscanner_la_SOURCES =		\
+	scanner.c
 
 libzscanner_la_CFLAGS = $(CODE_COVERAGE_CFLAGS)
 libzscanner_la_LDFLAGS =		\

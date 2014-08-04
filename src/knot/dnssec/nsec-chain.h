@@ -29,7 +29,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#include "knot/zone/zone-contents.h"
+#include "knot/zone/contents.h"
 #include "knot/updates/changesets.h"
 #include "dnssec/nsec.h"
 
@@ -37,9 +37,9 @@
  * \brief Parameters to be used in connect_nsec_nodes callback.
  */
 typedef struct {
-	uint32_t ttl;                      // TTL for NSEC(3) records
-	knot_changeset_t *changeset;       // Changeset for NSEC(3) changes
-	const knot_zone_contents_t *zone;  // Updated zone
+	uint32_t ttl;			// TTL for NSEC(3) records
+	changeset_t *changeset;		// Changeset for NSEC(3) changes
+	const zone_contents_t *zone;	// Updated zone
 } nsec_chain_iterate_data_t;
 
 /*!
@@ -52,17 +52,17 @@ enum {
 /*!
  * \brief Callback used when creating NSEC chains.
  */
-typedef int (*chain_iterate_create_cb)(knot_node_t *, knot_node_t *,
+typedef int (*chain_iterate_create_cb)(zone_node_t *, zone_node_t *,
                                        nsec_chain_iterate_data_t *);
 
 /*!
  * \brief Add all RR types from a node into the bitmap.
  */
 inline static void bitmap_add_node_rrsets(dnssec_nsec_bitmap_t *bitmap,
-                                          const knot_node_t *node)
+                                          const zone_node_t *node)
 {
 	for (int i = 0; i < node->rrset_count; i++) {
-		knot_rrset_t rr = knot_node_rrset_at(node, i);
+		knot_rrset_t rr = node_rrset_at(node, i);
 		if (rr.type != KNOT_RRTYPE_NSEC &&
 		    rr.type != KNOT_RRTYPE_RRSIG) {
 			dnssec_nsec_bitmap_add(bitmap, rr.type);
@@ -82,7 +82,7 @@ inline static void bitmap_add_node_rrsets(dnssec_nsec_bitmap_t *bitmap,
  *
  * \return Error code, KNOT_EOK if successful.
  */
-int knot_nsec_chain_iterate_create(knot_zone_tree_t *nodes,
+int knot_nsec_chain_iterate_create(zone_tree_t *nodes,
                                    chain_iterate_create_cb callback,
                                    nsec_chain_iterate_data_t *data);
 
@@ -94,8 +94,8 @@ int knot_nsec_chain_iterate_create(knot_zone_tree_t *nodes,
  *
  * \return Error code, KNOT_EOK if successful.
  */
-int knot_nsec_changeset_remove(const knot_node_t *n,
-                               knot_changeset_t *changeset);
+int knot_nsec_changeset_remove(const zone_node_t *n,
+                               changeset_t *changeset);
 
 /*!
  * \brief Checks whether the node is empty or eventually contains only NSEC and
@@ -106,7 +106,7 @@ int knot_nsec_changeset_remove(const knot_node_t *n,
  * \retval true if the node is empty or contains only NSEC and RRSIGs.
  * \retval false otherwise.
  */
-bool knot_nsec_empty_nsec_and_rrsigs_in_node(const knot_node_t *n);
+bool knot_nsec_empty_nsec_and_rrsigs_in_node(const zone_node_t *n);
 
 /*!
  * \brief Create new NSEC chain, add differences from current into a changeset.
@@ -117,5 +117,5 @@ bool knot_nsec_empty_nsec_and_rrsigs_in_node(const knot_node_t *n);
  *
  * \return Error code, KNOT_EOK if successful.
  */
-int knot_nsec_create_chain(const knot_zone_contents_t *zone, uint32_t ttl,
-                           knot_changeset_t *changeset);
+int knot_nsec_create_chain(const zone_contents_t *zone, uint32_t ttl,
+                           changeset_t *changeset);

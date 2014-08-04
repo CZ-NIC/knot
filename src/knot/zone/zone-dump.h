@@ -24,8 +24,7 @@
  * @{
  */
 
-#ifndef _KNOTD_ZONEDUMP_H_
-#define _KNOTD_ZONEDUMP_H_
+#pragma once
 
 #include "knot/zone/zone.h"
 
@@ -39,8 +38,6 @@
  * \retval KNOT_EOK on success.
  * \retval < 0 if error.
  */
-int zone_dump_text(knot_zone_contents_t *zone, const struct sockaddr_storage *from, FILE *file);
-
-#endif // _KNOTD_ZONEDUMP_H_
+int zone_dump_text(zone_contents_t *zone, const struct sockaddr_storage *from, FILE *file);
 
 /*! @} */

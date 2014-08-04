@@ -14,7 +14,7 @@ have individual \fIsettings\fR, or it can be specified globally via \fIcommon\-s
 which must precede \fIquery\fR specification.
 .TP 4
 .I query
-\fIname\fR | \fB\-q\fR \fIname\fR | \fB\-x\fR \fIaddress\fR
+\fIname\fR | \fB\-q\fR \fIname\fR | \fB\-x\fR \fIaddress\fR | \fB\-G\fR \fItapfile\fR
 .TP
 .I common\-settings, settings
 [\fIclass\fR] [\fItype\fR] [\fB@\fIserver\fR]... [\fIoptions\fR]
@@ -25,7 +25,8 @@ Is a domain name that is to be looked up.
 .I server
 Is a domain name or an IPv4 or IPv6 address of the nameserver to send a query to.
 An additional port can be specified using address:port ([address]:port for IPv6 address)
-or address#port notation. If no server is specified, the servers from \fB/etc/resolv.conf\fR are used.
+or address@port or address#port notation. If no server is specified, the servers from
+\fB/etc/resolv.conf\fR are used.
 .TP
 If no arguments are provided, \fBkdig\fR sends \fINS\fR query for the root zone.
 .SH OPTIONS
@@ -39,7 +40,7 @@ Use IPv6 protocol only.
 .BI \-b \ address
 Set the source IP address of the query to \fIaddress\fR. The address
 must be a valid address for local interface or :: or 0.0.0.0.
-Optional port can be specified using [address]:port notation.
+Optional port can be specified in the same format as \fIserver\fR value.
 .TP
 .BI \-c \ class
 Set query class (e.g. \fICH\fR, \fICLASS4\fR). An explicit variant of
@@ -68,6 +69,7 @@ Set query name. An explicit variant of \fIname\fR specification.
 .BI \-t \ type
 Set query type (e.g. \fINS\fR, \fIIXFR=12345\fR, \fITYPE65535\fR).
 An explicit variant of \fItype\fR specification. The default type is \fIA\fR.
+It is also possible to use \fINOTIFY\fR parameter to send a notify message.
 .TP
 .BR \-v ,\  \-\-version
 Print program version.
@@ -80,6 +82,13 @@ class and type is set automatically.
 Use TSIG key with a name \fIkeyname\fR to authenticate the request. The \fIalgo\fR
 part specifies the algorithm (the default is hmac\-md5) and \fIkey\fR specifies
 the shared secret encoded in Base64.
+.TP
+.BI \-E \ tapfile
+Export a dnstap trace of the query and response messages received to the file
+\fItapfile\fR.
+.TP
+.BI \-G \ tapfile
+Generate message output from a previously saved dnstap file \fItapfile\fR.
 .TP
 .BR + [ no ] multiline
 Wrap long records to more lines and improve human readability.
@@ -138,6 +147,9 @@ Show authority section.
 .BR + [ no ] additional
 Show additional section.
 .TP
+.BR + [ no ] tsig
+Show TSIG pseudosection.
+.TP
 .BR + [ no ] stats
 Show trailing packet statistics.
 .TP
@@ -165,6 +177,9 @@ Use EDNS version (default is 0).
 .BR +noidn
 Disable IDN transformation to ASCII and vice versa.
 IDNA2003 support depends on libidn availability during project building!
+.TP
+.BI +client= SUBN
+Set EDNS client subnet SUBN=IP/prefix.
 .TP
 .BI +time= T
 Set wait for reply interval in seconds (default is 5 seconds).

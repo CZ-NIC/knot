@@ -24,21 +24,19 @@
  * @{
  */
 
-#ifndef _KNOTD_KNOT_H_
-#define _KNOTD_KNOT_H_
+#pragma once
 
 #include <signal.h>
 #include <stdint.h>
 
-#include "common/print.h"
+#include "common-knot/print.h"
 #include "common/log.h"
-#include "common/errcode.h"
+#include "libknot/errcode.h"
 #include "knot/other/debug.h"
 
 #define DEFAULT_THR_COUNT 2  /*!< \brief Default thread count. */
 #define TCP_BACKLOG_SIZE 10  /*!< \brief TCP listen backlog size. */
-#define XFR_THREADS_COUNT 3  /*!< \brief Number of threads for XFR handler. */
-#define RECVMMSG_BATCHLEN 64 /*!< \brief Define for recvmmsg() batch size. */
+#define RECVMMSG_BATCHLEN 10 /*!< \brief Define for recvmmsg() batch size. */
 
 /* Workarounds for clock_gettime() not available on some platforms. */
 #ifdef HAVE_CLOCK_GETTIME
@@ -50,7 +48,5 @@ typedef struct timeval timev_t;
 #else
 #error Neither clock_gettime() nor gettimeofday() found. At least one is required.
 #endif
-
-#endif /* _KNOTD_KNOT_H_ */
 
 /*! @} */

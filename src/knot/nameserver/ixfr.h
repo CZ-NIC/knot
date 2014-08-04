@@ -1,7 +1,8 @@
 /*!
  * \file ixfr.h
  *
- * \author Marek Vavrusa <marek.vavrusa@nic.cz>
+ * \author Marek Vavrusa <marek.vavrusa@nic.cz> - IXFR/OUT
+ * \author Jan Kadlec <marek.vavrusa@nic.cz> - IXFR/IN
  *
  * \brief IXFR processing.
  *
@@ -24,14 +25,12 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef _KNOT_IXFR_H_
-#define _KNOT_IXFR_H_
+#pragma once
 
 #include "libknot/packet/pkt.h"
-#include "knot/zone/zonedb.h"
-#include "knot/server/xfr-handler.h"
 
 struct query_data;
+struct answer_data;
 
 /*!
  * \brief IXFR query processing module.
@@ -40,33 +39,15 @@ struct query_data;
  * \retval FAIL if it encountered an error.
  * \retval DONE if finished.
  */
-int ixfr_answer(knot_pkt_t *pkt, struct query_data *qdata);
+int ixfr_query(knot_pkt_t *pkt, struct query_data *qdata);
 
 /*!
- * \brief Process an IXFR query response.
+ * \brief IXFR response processing module.
  *
- * \param pkt Processed packet.
- * \param xfr Persistent transfer-specific data.
- *
- * \retval KNOT_EOK If this packet was processed successfuly and another packet
- *                  is expected. (RFC1995bis, case c)
- * \retval KNOT_ENOXFR If the transfer is not taking place because server's
- *                     SERIAL is the same as this client's SERIAL. The client
- *                     should close the connection and do no further processing.
- *                     (RFC1995bis case a).
- * \retval KNOT_EAGAIN If the server could not fit the transfer into the packet.
- *                     This should happen only if UDP was used. In this case
- *                     the client should retry the request via TCP. If UDP was
- *                     not used, it should be considered that the transfer was
- *                     malformed and the connection should be closed.
- *                     (RFC1995bis case b).
- * \retval >0 Transfer successully finished. Changesets are created and furter
- *            processing is needed.
- * \retval Other If any other error occured. The connection should be closed.
- *
+ * \retval MORE if more data are required.
+ * \retval FAIL if it encountered an error, retry over AXFR will be done.
+ * \retval DONE if finished.
  */
-int ixfr_process_answer(knot_pkt_t *pkt, knot_ns_xfr_t *xfr);
-
-#endif /* _KNOT_IXFR_H_ */
+int ixfr_process_answer(knot_pkt_t *pkt, struct answer_data *adata);
 
 /*! @} */

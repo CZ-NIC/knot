@@ -36,8 +36,6 @@
 #include "knot/ctl/process.h"
 #include "knot/ctl/remote.h"
 #include "knot/conf/conf.h"
-#include "knot/conf/logconf.h"
-#include "knot/server/zones.h"
 #include "knot/server/tcp-handler.h"
 
 /* Signal flags. */
@@ -184,7 +182,6 @@ static void help(void)
 	printf("\nParameters:\n"
 	       " -c, --config <file>     Select configuration file.\n"
 	       " -d, --daemonize=[dir]   Run server as a daemon.\n"
-	       " -v, --verbose           Verbose mode - additional runtime information.\n"
 	       " -V, --version           Print version of the server.\n"
 	       " -h, --help              Print help and usage.\n");
 }
@@ -193,7 +190,6 @@ int main(int argc, char **argv)
 {
 	/* Parse command line arguments. */
 	int c = 0, li = 0;
-	int verbose = 0;
 	int daemonize = 0;
 	const char *config_fn = conf_find_default();
 	const char *daemon_root = "/";
@@ -202,13 +198,12 @@ int main(int argc, char **argv)
 	struct option opts[] = {
 		{"config",    required_argument, 0, 'c'},
 		{"daemonize", optional_argument, 0, 'd'},
-		{"verbose",   no_argument,       0, 'v'},
 		{"version",   no_argument,       0, 'V'},
 		{"help",      no_argument,       0, 'h'},
 		{0, 0, 0, 0}
 	};
 
-	while ((c = getopt_long(argc, argv, "c:dvVh", opts, &li)) != -1) {
+	while ((c = getopt_long(argc, argv, "c:dVh", opts, &li)) != -1) {
 		switch (c)
 		{
 		case 'c':
@@ -219,9 +214,6 @@ int main(int argc, char **argv)
 			if (optarg) {
 				daemon_root = optarg;
 			}
-			break;
-		case 'v':
-			verbose = 1;
 			break;
 		case 'V':
 			printf("%s, version %s\n", "Knot DNS", PACKAGE_VERSION);
@@ -279,10 +271,11 @@ int main(int argc, char **argv)
 
 	/* Initialize server. */
 	server_t server;
-	res = server_init(&server);
+	res = server_init(&server, conf_bg_threads(config));
 	if (res != KNOT_EOK) {
 		log_server_fatal("Could not initialize server: %s\n",
 		                 knot_strerror(res));
+		conf_free(conf());
 		log_close();
 		return EXIT_FAILURE;
 	}
@@ -299,6 +292,7 @@ int main(int argc, char **argv)
 	log_update_privileges(config->uid, config->gid);
 	if (proc_update_privileges(config->uid, config->gid) != KNOT_EOK) {
 		server_deinit(&server);
+		conf_free(conf());
 		log_close();
 		return EXIT_FAILURE;
 	}
@@ -310,6 +304,7 @@ int main(int argc, char **argv)
 		pidfile = pid_check_and_create();
 		if (pidfile == NULL) {
 			server_deinit(&server);
+			conf_free(conf());
 			log_close();
 			return EXIT_FAILURE;
 		}
@@ -346,7 +341,7 @@ int main(int argc, char **argv)
 
 	/* Start it up. */
 	log_server_info("Starting server...\n");
-	res = server_start(&server);
+	res = server_start(&server, config->async_start);
 	if (res != KNOT_EOK) {
 		log_server_fatal("Failed to start server: %s.\n",
 		                 knot_strerror(res));
@@ -354,6 +349,7 @@ int main(int argc, char **argv)
 		rcu_unregister_thread();
 		pid_cleanup(pidfile);
 		log_close();
+		conf_free(conf());
 		return EXIT_FAILURE;
 	}
 
@@ -365,10 +361,14 @@ int main(int argc, char **argv)
 	}
 
 	/* Start the event loop. */
+	config = NULL; /* @note Invalidate pointer, as it may change now. */
 	event_loop(&server);
 
 	/* Teardown server and configuration. */
 	server_deinit(&server);
+
+	/* Free configuration. */
+	conf_free(conf());
 
 	/* Unhook from RCU. */
 	rcu_unregister_thread();

@@ -21,7 +21,7 @@
 
 #include "libknot/rdata.h"
 #include "libknot/common.h"
-#include "common/errcode.h"
+#include "libknot/errcode.h"
 
 #ifndef STRICT_ALIGNMENT
 #pragma pack(push, 1)
@@ -37,6 +37,14 @@ struct rr_offsets {
 #ifndef STRICT_ALIGNMENT
 #pragma pack(pop)
 #endif
+
+void knot_rdata_init(knot_rdata_t *rdata,
+                     uint16_t rdlen, const uint8_t *data, uint32_t ttl)
+{
+	knot_rdata_set_ttl(rdata, ttl);
+	knot_rdata_set_rdlen(rdata, rdlen);
+	memcpy(knot_rdata_data(rdata), data, rdlen);
+}
 
 uint16_t knot_rdata_rdlen(const knot_rdata_t *rr)
 {

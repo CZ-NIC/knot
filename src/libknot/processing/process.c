@@ -31,7 +31,8 @@ static const char* _state_table[] = {
 };
 #endif /* KNOT_NS_DEBUG */
 
-int knot_process_begin(knot_process_t *ctx, void *module_param, const knot_process_module_t *module)
+int knot_process_begin(knot_process_t *ctx, void *module_param,
+                       const knot_process_module_t *module)
 {
 	/* Only in inoperable state. */
 	if (ctx->state != NS_PROC_NOOP) {
@@ -93,7 +94,7 @@ int knot_process_out(uint8_t *wire, uint16_t *wire_len, knot_process_t *ctx)
 {
 	knot_pkt_t *pkt = knot_pkt_new(wire, *wire_len, &ctx->mm);
 
-	switch(ctx->state) {
+	switch (ctx->state) {
 	case NS_PROC_FULL: ctx->state = ctx->module->out(pkt, ctx); break;
 	case NS_PROC_FAIL: ctx->state = ctx->module->err(pkt, ctx); break;
 	default:

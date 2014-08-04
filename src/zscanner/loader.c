@@ -30,14 +30,17 @@
 /*! \brief Mmap block size in bytes. This value is then adjusted to the
  *         multiple of memory pages which fit in.
  */
-#define BLOCK_SIZE      30000000
+#define BLOCK_SIZE		30000000
+
+/*! \brief Last artificial block which ensures final newline character. */
+#define NEWLINE_BLOCK		"\n"
 
 zs_loader_t* zs_loader_create(const char     *file_name,
                               const char     *origin,
                               const uint16_t rclass,
                               const uint32_t ttl,
-                              void (*process_record)(const zs_scanner_t *),
-                              void (*process_error)(const zs_scanner_t *),
+                              void (*process_record)(zs_scanner_t *),
+                              void (*process_error)(zs_scanner_t *),
                               void *data)
 {
 	// Creating zeroed structure.
@@ -80,19 +83,11 @@ void zs_loader_free(zs_loader_t *fl)
 
 int zs_loader_process(zs_loader_t *fl)
 {
-	int		ret = 0;
-	char		*data;		// Mmaped data.
-	bool		is_last_block;
 	long		page_size;
 	uint64_t	n_blocks;
 	uint64_t	block_id;
 	uint64_t	default_block_size;
-	uint64_t	scanner_start;	// Current block start to scan.
-	uint64_t	block_size;	// Current block size to scan.
 	struct stat	file_stat;
-
-	// Last block - secure termination of zone file.
-	char *zone_termination = "\n";
 
 	// Getting OS page size.
 	page_size = sysconf(_SC_PAGESIZE);
@@ -120,9 +115,14 @@ int zs_loader_process(zs_loader_t *fl)
 
 	// Loop over zone file blocks.
 	for (block_id = 0; block_id < n_blocks; block_id++) {
-		scanner_start = block_id * default_block_size;
-		is_last_block = false;
-		block_size = default_block_size;
+		// Current block start to scan.
+		uint64_t scanner_start = block_id * default_block_size;
+		// Current block size to scan.
+		uint64_t block_size = default_block_size;
+		// Last data block mark.
+		bool is_last_block = false;
+		// Mmapped data.
+		char *data;
 
 		// The last block is probably shorter.
 		if (block_id == (n_blocks - 1)) {
@@ -131,28 +131,19 @@ int zs_loader_process(zs_loader_t *fl)
 		}
 
 		// Zone file block mapping.
-		data = mmap(0,
-		            block_size,
-		            PROT_READ,
-		            MAP_SHARED,
-		            fl->fd,
+		data = mmap(0, block_size, PROT_READ, MAP_SHARED, fl->fd,
 		            scanner_start);
 		if (data == MAP_FAILED) {
 			return ZS_LOADER_MMAP;
 		}
 
 		// Scan zone file.
-		ret = zs_scanner_process(data,
-		                         data + block_size,
-		                         false,
-		                         fl->scanner);
+		zs_scanner_process(data, data + block_size, false, fl->scanner);
 
-		// Artificial last block containing newline char only.
+		// Process the last artificial block (newline char) if not fatal.
 		if (is_last_block == true && fl->scanner->stop == 0) {
-			ret = zs_scanner_process(zone_termination,
-			                         zone_termination + 1,
-			                         true,
-			                         fl->scanner);
+			zs_scanner_process(NEWLINE_BLOCK, NEWLINE_BLOCK + 1,
+			                   true, fl->scanner);
 		}
 
 		// Zone file block unmapping.
@@ -162,7 +153,7 @@ int zs_loader_process(zs_loader_t *fl)
 	}
 
 	// Check for scanner return.
-	if (ret != 0) {
+	if (fl->scanner->error_counter > 0) {
 		return ZS_LOADER_SCANNER;
 	}
 

@@ -24,30 +24,30 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef _KNOT_LIBKNOT_H_
-#define _KNOT_LIBKNOT_H_
+#pragma once
 
 #include "libknot/consts.h"
 #include "libknot/dname.h"
-#include "libknot/edns.h"
+#include "libknot/descriptor.h"
+#include "libknot/errcode.h"
+#include "libknot/mempattern.h"
+#include "libknot/rrtype/opt.h"
 #include "libknot/packet/wire.h"
 #include "libknot/packet/compr.h"
 #include "libknot/packet/pkt.h"
 #include "libknot/rdataset.h"
 #include "libknot/rrset.h"
 #include "libknot/rrset-dump.h"
-#include "libknot/rdata/rdname.h"
-#include "libknot/rdata/dnskey.h"
-#include "libknot/rdata/nsec3.h"
-#include "libknot/rdata/nsec3param.h"
-#include "libknot/rdata/nsec.h"
-#include "libknot/rdata/rrsig.h"
-#include "libknot/rdata/soa.h"
-#include "libknot/rdata/tsig.h"
+#include "libknot/rrtype/rdname.h"
+#include "libknot/rrtype/dnskey.h"
+#include "libknot/rrtype/nsec3.h"
+#include "libknot/rrtype/nsec3param.h"
+#include "libknot/rrtype/nsec.h"
+#include "libknot/rrtype/rrsig.h"
+#include "libknot/rrtype/soa.h"
+#include "libknot/rrtype/tsig.h"
 #include "libknot/tsig-op.h"
 #include "libknot/util/tolower.h"
 #include "libknot/util/utils.h"
-
-#endif
 
 /*! @} */

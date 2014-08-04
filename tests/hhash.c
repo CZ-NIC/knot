@@ -14,13 +14,12 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <config.h>
 #include <string.h>
 #include <assert.h>
 #include <tap/basic.h>
 
-#include "common/hhash.h"
-#include "common/mempattern.h"
+#include "common-knot/hhash.h"
+#include "libknot/mempattern.h"
 #include "common/mempool.h"
 #include "libknot/common.h"
 
@@ -110,7 +109,6 @@ int main(int argc, char *argv[])
 		ret = hhash_insert(tbl, keys[i], KEY_LEN(keys[i]), keys[i]);
 		if (ret != KNOT_EOK) {
 			nfilled = i;
-			ret = KNOT_EOK;
 			break;
 		}
 	}

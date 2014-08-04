@@ -21,32 +21,32 @@
 #include "knot/zone/zone-tree.h"
 #include "knot/zone/node.h"
 #include "common/debug.h"
-#include "common/hattrie/hat-trie.h"
+#include "common-knot/hattrie/hat-trie.h"
 
 /*----------------------------------------------------------------------------*/
 /* API functions                                                              */
 /*----------------------------------------------------------------------------*/
 
-knot_zone_tree_t* knot_zone_tree_create()
+zone_tree_t* zone_tree_create()
 {
 	return hattrie_create();
 }
 
 /*----------------------------------------------------------------------------*/
 
-size_t knot_zone_tree_weight(const knot_zone_tree_t* tree)
+size_t zone_tree_weight(const zone_tree_t* tree)
 {
 	return hattrie_weight(tree);
 }
 
-int knot_zone_tree_is_empty(const knot_zone_tree_t *tree)
+int zone_tree_is_empty(const zone_tree_t *tree)
 {
-	return knot_zone_tree_weight(tree) == 0;
+	return zone_tree_weight(tree) == 0;
 }
 
 /*----------------------------------------------------------------------------*/
 
-int knot_zone_tree_insert(knot_zone_tree_t *tree, knot_node_t *node)
+int zone_tree_insert(zone_tree_t *tree, zone_node_t *node)
 {
 	if (tree == NULL) {
 		return KNOT_EINVAL;
@@ -62,26 +62,26 @@ int knot_zone_tree_insert(knot_zone_tree_t *tree, knot_node_t *node)
 
 /*----------------------------------------------------------------------------*/
 
-int knot_zone_tree_find(knot_zone_tree_t *tree, const knot_dname_t *owner,
-                          const knot_node_t **found)
+int zone_tree_find(zone_tree_t *tree, const knot_dname_t *owner,
+                          const zone_node_t **found)
 {
 	if (owner == NULL || found == NULL) {
 		return KNOT_EINVAL;
 	}
 
-	return knot_zone_tree_get(tree, owner, (knot_node_t **)found);
+	return zone_tree_get(tree, owner, (zone_node_t **)found);
 }
 
 /*----------------------------------------------------------------------------*/
 
-int knot_zone_tree_get(knot_zone_tree_t *tree, const knot_dname_t *owner,
-                         knot_node_t **found)
+int zone_tree_get(zone_tree_t *tree, const knot_dname_t *owner,
+                         zone_node_t **found)
 {
 	if (owner == NULL) {
 		return KNOT_EINVAL;
 	}
 
-	if (knot_zone_tree_is_empty(tree)) {
+	if (zone_tree_is_empty(tree)) {
 		return KNOT_ENONODE;
 	}
 
@@ -92,7 +92,7 @@ int knot_zone_tree_get(knot_zone_tree_t *tree, const knot_dname_t *owner,
 	if (val == NULL) {
 		*found = NULL;
 	} else {
-		*found = (knot_node_t*)(*val);
+		*found = (zone_node_t*)(*val);
 	}
 
 	return KNOT_EOK;
@@ -100,17 +100,17 @@ int knot_zone_tree_get(knot_zone_tree_t *tree, const knot_dname_t *owner,
 
 /*----------------------------------------------------------------------------*/
 
-int knot_zone_tree_find_less_or_equal(knot_zone_tree_t *tree,
-                                        const knot_dname_t *owner,
-                                        const knot_node_t **found,
-                                        const knot_node_t **previous)
+int zone_tree_find_less_or_equal(zone_tree_t *tree,
+                                 const knot_dname_t *owner,
+                                 const zone_node_t **found,
+                                 const zone_node_t **previous)
 {
 	if (owner == NULL || found == NULL || previous == NULL) {
 		return KNOT_EINVAL;
 	}
 
-	knot_node_t *f = NULL, *p = NULL;
-	int ret = knot_zone_tree_get_less_or_equal(tree, owner, &f, &p);
+	zone_node_t *f = NULL, *p = NULL;
+	int ret = zone_tree_get_less_or_equal(tree, owner, &f, &p);
 
 	*found = f;
 	*previous = p;
@@ -120,16 +120,16 @@ int knot_zone_tree_find_less_or_equal(knot_zone_tree_t *tree,
 
 /*----------------------------------------------------------------------------*/
 
-int knot_zone_tree_get_less_or_equal(knot_zone_tree_t *tree,
-                                       const knot_dname_t *owner,
-                                       knot_node_t **found,
-                                       knot_node_t **previous)
+int zone_tree_get_less_or_equal(zone_tree_t *tree,
+                                const knot_dname_t *owner,
+                                zone_node_t **found,
+                                zone_node_t **previous)
 {
 	if (owner == NULL || found == NULL || previous == NULL) {
 		return KNOT_EINVAL;
 	}
 
-	if (knot_zone_tree_is_empty(tree)) {
+	if (zone_tree_is_empty(tree)) {
 		return KNOT_ENONODE;
 	}
 
@@ -138,10 +138,14 @@ int knot_zone_tree_get_less_or_equal(knot_zone_tree_t *tree,
 
 	value_t *fval = NULL;
 	int ret = hattrie_find_leq(tree, (char*)lf+1, *lf, &fval);
-	if (fval) *found = (knot_node_t *)(*fval);
+	if (fval) {
+		*found = (zone_node_t *)(*fval);
+	}
 	int exact_match = 0;
 	if (ret == 0) {
-		*previous = knot_node_get_previous(*found);
+		if (fval) {
+			*previous = (*found)->prev;
+		}
 		exact_match = 1;
 	} else if (ret < 0) {
 		*previous = *found;
@@ -153,21 +157,22 @@ int knot_zone_tree_get_less_or_equal(knot_zone_tree_t *tree,
 		 */
 		/*! \todo We could store rightmost node in zonetree probably. */
 		hattrie_iter_t *i = hattrie_iter_begin(tree, 1);
-		*previous = *(knot_node_t **)hattrie_iter_val(i); /* leftmost */
-		*previous = knot_node_get_previous(*previous); /* rightmost */
+		*previous = *(zone_node_t **)hattrie_iter_val(i); /* leftmost */
+		*previous = (*previous)->prev; /* rightmost */
 		*found = NULL;
 		hattrie_iter_free(i);
 	}
 
 	/* Previous node for proof must be non-empty and authoritative. */
-	if (knot_node_rrset_count(*previous) == 0 || knot_node_is_non_auth(*previous)) {
-		*previous = knot_node_get_previous(*previous);
+	if (*previous &&
+	    ((*previous)->rrset_count == 0 || (*previous)->flags & NODE_FLAGS_NONAUTH)) {
+		*previous = (*previous)->prev;
 	}
 
 dbg_zone_exec_detail(
 		char *name = knot_dname_to_str(owner);
 		char *name_f = (*found != NULL)
-			? knot_dname_to_str(knot_node_owner(*found))
+			? knot_dname_to_str((*found)->owner)
 			: "none";
 
 		dbg_zone_detail("Searched for owner %s in zone tree.\n",
@@ -187,15 +192,15 @@ dbg_zone_exec_detail(
 
 /*----------------------------------------------------------------------------*/
 
-int knot_zone_tree_remove(knot_zone_tree_t *tree,
-                            const knot_dname_t *owner,
-                          knot_node_t **removed)
+int zone_tree_remove(zone_tree_t *tree,
+                     const knot_dname_t *owner,
+                     zone_node_t **removed)
 {
 	if (owner == NULL) {
 		return KNOT_EINVAL;
 	}
 
-	if (knot_zone_tree_is_empty(tree)) {
+	if (zone_tree_is_empty(tree)) {
 		return KNOT_ENONODE;
 	}
 
@@ -206,7 +211,7 @@ int knot_zone_tree_remove(knot_zone_tree_t *tree,
 	if (rval == NULL) {
 		return KNOT_ENOENT;
 	} else {
-		*removed = (knot_node_t *)(*rval);
+		*removed = (zone_node_t *)(*rval);
 	}
 
 
@@ -216,15 +221,15 @@ int knot_zone_tree_remove(knot_zone_tree_t *tree,
 
 /*----------------------------------------------------------------------------*/
 
-int knot_zone_tree_apply_inorder(knot_zone_tree_t *tree,
-                                 knot_zone_tree_apply_cb_t function,
-                                 void *data)
+int zone_tree_apply_inorder(zone_tree_t *tree,
+                            zone_tree_apply_cb_t function,
+                            void *data)
 {
 	if (function == NULL) {
 		return KNOT_EINVAL;
 	}
 
-	if (knot_zone_tree_is_empty(tree)) {
+	if (zone_tree_is_empty(tree)) {
 		return KNOT_EOK;
 	}
 
@@ -232,7 +237,7 @@ int knot_zone_tree_apply_inorder(knot_zone_tree_t *tree,
 
 	hattrie_iter_t *i = hattrie_iter_begin(tree, 1);
 	while(!hattrie_iter_finished(i)) {
-		result = function((knot_node_t **)hattrie_iter_val(i), data);
+		result = function((zone_node_t **)hattrie_iter_val(i), data);
 		if (result != KNOT_EOK) {
 			break;
 		}
@@ -245,15 +250,15 @@ int knot_zone_tree_apply_inorder(knot_zone_tree_t *tree,
 
 /*----------------------------------------------------------------------------*/
 
-int knot_zone_tree_apply(knot_zone_tree_t *tree,
-                         knot_zone_tree_apply_cb_t function,
-                         void *data)
+int zone_tree_apply(zone_tree_t *tree,
+                    zone_tree_apply_cb_t function,
+                    void *data)
 {
 	if (function == NULL) {
 		return KNOT_EINVAL;
 	}
 
-	if (knot_zone_tree_is_empty(tree)) {
+	if (zone_tree_is_empty(tree)) {
 		return KNOT_EOK;
 	}
 
@@ -262,7 +267,7 @@ int knot_zone_tree_apply(knot_zone_tree_t *tree,
 
 /*----------------------------------------------------------------------------*/
 
-void knot_zone_tree_free(knot_zone_tree_t **tree)
+void zone_tree_free(zone_tree_t **tree)
 {
 	if (tree == NULL || *tree == NULL) {
 		return;
@@ -273,21 +278,21 @@ void knot_zone_tree_free(knot_zone_tree_t **tree)
 
 /*----------------------------------------------------------------------------*/
 
-static int knot_zone_tree_free_node(knot_node_t **node, void *data)
+static int zone_tree_free_node(zone_node_t **node, void *data)
 {
 	UNUSED(data);
 	if (node) {
-		knot_node_free(node);
+		node_free(node);
 	}
 	return KNOT_EOK;
 }
 
-void knot_zone_tree_deep_free(knot_zone_tree_t **tree)
+void zone_tree_deep_free(zone_tree_t **tree)
 {
 	if (tree == NULL || *tree == NULL) {
 		return;
 	}
 
-	knot_zone_tree_apply(*tree, knot_zone_tree_free_node, NULL);
-	knot_zone_tree_free(tree);
+	zone_tree_apply(*tree, zone_tree_free_node, NULL);
+	zone_tree_free(tree);
 }

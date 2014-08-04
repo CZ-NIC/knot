@@ -16,8 +16,9 @@ AC_DEFUN([AX_CODE_COVERAGE], [
 	dnl Check for --enable-code-coverage
 	AC_ARG_ENABLE([code-coverage],
 		AS_HELP_STRING([--enable-code-coverage], [enable code coverage testing with gcov]),
-	[enable_code_coverage=yes],
-	[enable_code_coverage=no])
+		[enable_code_coverage=$enableval],
+		[enable_code_coverage=no]
+	)
 	AM_CONDITIONAL([CODE_COVERAGE_ENABLED], [test "$enable_code_coverage" = "yes"])
 	AC_SUBST([CODE_COVERAGE_ENABLED], [$enable_code_coverage])
 

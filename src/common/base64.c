@@ -15,7 +15,7 @@
  */
 
 #include "common/base64.h"
-#include "common/errcode.h"
+#include "libknot/errcode.h"
 
 #include <stdlib.h>			// malloc
 #include <stdint.h>			// uint8_t

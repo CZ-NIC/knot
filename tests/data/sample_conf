@@ -41,8 +41,8 @@ interfaces {
 
 log {
   syslog {
-    any notice, warning, error;
-    zone all;
+    any notice;
+    zone info;
   }
 
   file "/var/log/knot/server.err" {
@@ -50,7 +50,7 @@ log {
   }
 
   stderr {
-    any warning, error;
+    any warning;
   }
 
   stdout {

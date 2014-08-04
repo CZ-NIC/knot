@@ -31,13 +31,11 @@
 #include <cap-ng.h>
 #endif /* HAVE_CAP_NG_H */
 
-#include "common/sockaddr.h"
-#include "common/fdset.h"
+#include "common-knot/sockaddr.h"
+#include "common-knot/fdset.h"
 #include "common/mempool.h"
 #include "knot/knot.h"
 #include "knot/server/tcp-handler.h"
-#include "knot/server/xfr-handler.h"
-#include "knot/server/zones.h"
 #include "libknot/packet/wire.h"
 #include "knot/nameserver/process_query.h"
 #include "dnssec/random.h"
@@ -50,6 +48,7 @@ typedef struct tcp_context {
 	unsigned client_threshold;  /*!< Index of first TCP client. */
 	timev_t last_poll_time;     /*!< Time of the last socket poll. */
 	fdset_t set;                /*!< Set of server/client sockets. */
+	unsigned thread_id;         /*!< Thread identifier. */
 } tcp_context_t;
 
 /*
@@ -85,7 +84,6 @@ static enum fdset_sweep_state tcp_sweep(fdset_t *set, int i, void *data)
 
 	log_server_notice("Connection '%s' was terminated due to inactivity.\n",
 	                  addr_str);
-
 	close(fd);
 	return FDSET_SWEEP;
 }
@@ -100,14 +98,24 @@ static int tcp_handle(tcp_context_t *tcp, int fd,
 	struct sockaddr_storage ss;
 	memset(&ss, 0, sizeof(struct sockaddr_storage));
 	struct process_query_param param = {0};
-	param.query_socket = fd;
-	param.query_source = &ss;
+	param.socket = fd;
+	param.remote = &ss;
 	param.server = tcp->server;
+	param.thread_id = tcp->thread_id;
 	rx->iov_len = KNOT_WIRE_MAX_PKTSIZE;
 	tx->iov_len = KNOT_WIRE_MAX_PKTSIZE;
 
+	/* Receive peer name. */
+	socklen_t addrlen = sizeof(struct sockaddr_storage);
+	if (getpeername(fd, (struct sockaddr *)&ss, &addrlen) < 0) {
+		;
+	}
+
+	/* Timeout. */
+	struct timeval tmout = { conf()->max_conn_reply, 0 };
+
 	/* Receive data. */
-	int ret = tcp_recv(fd, rx->iov_base, rx->iov_len, (struct sockaddr *)&ss);
+	int ret = tcp_recv_msg(fd, rx->iov_base, rx->iov_len, &tmout);
 	if (ret <= 0) {
 		dbg_net("tcp: client on fd=%d disconnected\n", fd);
 		if (ret == KNOT_EAGAIN) {
@@ -138,7 +146,7 @@ static int tcp_handle(tcp_context_t *tcp, int fd,
 
 		/* If it has response, send it. */
 		if (tx_len > 0) {
-			if (tcp_send(fd, tx->iov_base, tx_len) != tx_len) {
+			if (tcp_send_msg(fd, tx->iov_base, tx_len) != tx_len) {
 				ret = KNOT_ECONNREFUSED;
 				break;
 			}
@@ -194,76 +202,104 @@ int tcp_accept(int fd)
 	return incoming;
 }
 
-int tcp_send(int fd, uint8_t *msg, size_t msglen)
+
+/*! \brief Wait for data and return true if data arrived. */
+static int tcp_wait_for_data(int fd, struct timeval *timeout)
+{
+	fd_set set;
+	FD_ZERO(&set);
+	FD_SET(fd, &set);
+	return select(fd + 1, &set, NULL, NULL, timeout);
+}
+
+int tcp_recv_data(int fd, uint8_t *buf, int len, struct timeval *timeout)
+{
+	int ret = 0;
+	int rcvd = 0;
+	int flags = 0;
+
+#ifdef MSG_NOSIGNAL
+	flags |= MSG_NOSIGNAL;
+#endif
+
+	while (rcvd < len) {
+		/* Receive data. */
+		ret = recv(fd, buf + rcvd, len - rcvd, flags);
+		if (ret > 0) {
+			rcvd += ret;
+			continue;
+		}
+		/* Check for disconnected socket. */
+		if (ret == 0) {
+			return KNOT_ECONNREFUSED;
+		}
+
+		/* Check for no data available. */
+		if (errno == EAGAIN || errno == EINTR) {
+			/* Continue only if timeout didn't expire. */
+			ret = tcp_wait_for_data(fd, timeout);
+			if (ret) {
+				continue;
+			} else {
+				return KNOT_ETIMEOUT;
+			}
+		} else {
+			return KNOT_ECONN;
+		}
+	}
+
+	return rcvd;
+}
+
+int tcp_send_msg(int fd, const uint8_t *msg, size_t msglen)
 {
 	/* Create iovec for gathered write. */
 	struct iovec iov[2];
 	uint16_t pktsize = htons(msglen);
 	iov[0].iov_base = &pktsize;
 	iov[0].iov_len = sizeof(uint16_t);
-	iov[1].iov_base = msg;
+	iov[1].iov_base = (void *)msg;
 	iov[1].iov_len = msglen;
 
 	/* Send. */
 	int total_len = iov[0].iov_len + iov[1].iov_len;
 	int sent = writev(fd, iov, 2);
 	if (sent != total_len) {
-		return KNOT_ERROR;
+		return KNOT_ECONN;
 	}
 
 	return msglen; /* Do not count the size prefix. */
 }
 
-int tcp_recv(int fd, uint8_t *buf, size_t len, struct sockaddr *addr)
+int tcp_recv_msg(int fd, uint8_t *buf, size_t len, struct timeval *timeout)
 {
-	/* Flags. */
-	int flags = MSG_WAITALL;
-#ifdef MSG_NOSIGNAL
-	flags |= MSG_NOSIGNAL;
-#endif
+	if (buf == NULL || fd < 0) {
+		return KNOT_EINVAL;
+	}
 
 	/* Receive size. */
 	unsigned short pktsize = 0;
-	int n = recv(fd, &pktsize, sizeof(unsigned short), flags);
-	if (n < 0) {
-		if (errno == EAGAIN) {
-			return KNOT_EAGAIN;
-		} else {
-			return KNOT_ERROR;
-		}
+	int ret = tcp_recv_data(fd, (uint8_t *)&pktsize, sizeof(pktsize), timeout);
+	if (ret != sizeof(pktsize)) {
+		return ret;
 	}
 
 	pktsize = ntohs(pktsize);
-
-	dbg_net("tcp: incoming packet size=%hu on fd=%d\n",
-		  pktsize, fd);
+	dbg_net("tcp: incoming packet size=%hu on fd=%d\n", pktsize, fd);
 
 	// Check packet size
 	if (len < pktsize) {
 		return KNOT_ENOMEM;
 	}
 
-	/* Get peer name. */
-	if (addr) {
-		socklen_t addrlen = sizeof(struct sockaddr_storage);
-		if (getpeername(fd, addr, &addrlen) < 0) {
-			return KNOT_EMALF;
-		}
-	}
-
 	/* Receive payload. */
-	n = recv(fd, buf, pktsize, flags);
-	if (n < 0) {
-		if (errno == EAGAIN) {
-			return KNOT_EAGAIN;
-		} else {
-			return KNOT_ERROR;
-		}
+	ret = tcp_recv_data(fd, buf, pktsize, timeout);
+	if (ret != pktsize) {
+		return ret;
 	}
-	dbg_net("tcp: received packet size=%d on fd=%d\n",
-		  n, fd);
 
-	return n;
+	dbg_net("tcp: received packet size=%d on fd=%d\n", ret, fd);
+	return ret;
 }
 
 static int tcp_event_accept(tcp_context_t *tcp, unsigned i)
@@ -370,6 +406,7 @@ int tcp_master(dthread_t *thread)
 
 	/* Create TCP answering context. */
 	tcp.server = handler->server;
+	tcp.thread_id = handler->thread_id[dt_get_id(thread)];
 
 	/* Create big enough memory cushion. */
 	mm_ctx_mempool(&tcp.query_ctx.mm, 4 * sizeof(knot_pkt_t));

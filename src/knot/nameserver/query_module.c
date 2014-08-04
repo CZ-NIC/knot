@@ -1,9 +1,13 @@
 #include "knot/nameserver/query_module.h"
-#include "common/mempattern.h"
-#include "common/errcode.h"
+#include "libknot/mempattern.h"
+#include "libknot/errcode.h"
+#include "common-knot/strlcpy.h"
 
 /* Compiled-in module headers. */
 #include "knot/modules/synth_record.h"
+#if USE_DNSTAP
+#include "knot/modules/dnstap.h"
+#endif
 
 /* Compiled-in module table. */
 struct compiled_module {
@@ -11,11 +15,16 @@ struct compiled_module {
 	qmodule_load_t load;
 	qmodule_unload_t unload;
 };
+
 /*! \note All modules should be dynamically loaded later on. */
-#define MODULE_COUNT 1
-struct compiled_module MODULES[MODULE_COUNT] = {
-        { "synth_record", &synth_record_load, &synth_record_unload }
+struct compiled_module MODULES[] = {
+        { "synth_record", &synth_record_load, &synth_record_unload },
+#if USE_DNSTAP
+        { "dnstap",       &dnstap_load,       &dnstap_unload }
+#endif
 };
+
+#define MODULE_COUNT sizeof(MODULES) / sizeof(MODULES[0])
 
 struct query_plan *query_plan_create(mm_ctx_t *mm)
 {
@@ -72,7 +81,8 @@ int query_plan_step(struct query_plan *plan, int stage, qmodule_process_t proces
 	return KNOT_EOK;
 }
 
-struct query_module *query_module_open(const char *name, const char *param, mm_ctx_t *mm)
+struct query_module *query_module_open(struct conf_t *config, const char *name,
+                                       const char *param, mm_ctx_t *mm)
 {
 	/* Locate compiled-in modules. */
 	struct compiled_module *found = NULL;
@@ -93,16 +103,18 @@ struct query_module *query_module_open(const char *name, const char *param, mm_c
 		return NULL;
 	}
 
+	size_t buflen = strlen(param) + 1;
 	memset(module, 0, sizeof(struct query_module));
 	module->mm = mm;
+	module->config = config;
 	module->load = found->load;
 	module->unload = found->unload;
-	module->param = mm_alloc(mm, strlen(param) + 1);
+	module->param = mm_alloc(mm, buflen);
 	if (module->param == NULL) {
 		mm_free(mm, module);
 		return NULL;
 	}
-	strcpy(module->param, param);
+	strlcpy(module->param, param, buflen);
 
 	return module;
 }

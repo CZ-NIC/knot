@@ -33,15 +33,15 @@
  * @{
  */
 
-#ifndef _KNOTD_SERVER_H_
-#define _KNOTD_SERVER_H_
+#pragma once
 
-#include "common/evsched.h"
-#include "common/lists.h"
-#include "knot/server/xfr-handler.h"
+#include "common-knot/evsched.h"
+#include "common-knot/lists.h"
+#include "common-knot/fdset.h"
 #include "knot/server/dthreads.h"
 #include "knot/server/net.h"
 #include "knot/server/rrl.h"
+#include "knot/worker/pool.h"
 #include "knot/zone/zonedb.h"
 
 /* Forwad declarations. */
@@ -55,7 +55,8 @@ typedef struct iohandler {
 	struct node        n;
 	struct server_t    *server; /*!< Reference to server */
 	dt_unit_t          *unit;   /*!< Threading unit */
-	unsigned           *thread_state; /*< Thread state */
+	unsigned           *thread_state; /*!< Thread state */
+	unsigned           *thread_id; /*!< Thread identifier. */
 } iohandler_t;
 
 /*! \brief Round-robin mechanism of switching.
@@ -104,12 +105,13 @@ typedef struct server_t {
 	volatile unsigned state;
 
 	knot_zonedb_t *zone_db; /*!< Zone database. */
-	knot_opt_rr_t *opt_rr;  /*!< OPT RR with the server's EDNS0 info. */
 
 	/*! \brief I/O handlers. */
 	unsigned tu_size;
-	xfrhandler_t *xfr;
 	iohandler_t handler[IO_COUNT];
+
+	/*! \brief Background jobs. */
+	worker_pool_t *workers;
 
 	/*! \brief Event scheduler. */
 	dt_unit_t *iosched;
@@ -129,7 +131,7 @@ typedef struct server_t {
  * \retval KNOT_EOK on success.
  * \retval KNOT_EINVAL on invalid parameters.
  */
-int server_init(server_t *server);
+int server_init(server_t *server, int bg_workers);
 
 /*!
  * \brief Properly destroys the server structure.
@@ -142,12 +144,13 @@ void server_deinit(server_t *server);
  * \brief Starts the server.
  *
  * \param server Server structure to be used for operation.
+ * \param async  Don't wait for zones to load if true.
  *
  * \retval KNOT_EOK on success.
  * \retval KNOT_EINVAL on invalid parameters.
  *
  */
-int server_start(server_t *server);
+int server_start(server_t *server, bool async);
 
 /*!
  * \brief Waits for the server to finish.
@@ -202,7 +205,5 @@ int server_update_zones(const struct conf_t *conf, void *data);
  * \return new interface list
  */
 ref_t *server_set_ifaces(server_t *s, fdset_t *fds, int type);
-
-#endif // _KNOTD_SERVER_H_
 
 /*! @} */

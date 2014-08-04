@@ -1,11 +1,3 @@
-/*!
- * \file process.h
- *
- * \author Marek Vavrusa <marek.vavrusa@nic.cz>
- *
- * \addtogroup query_processing
- * @{
- */
 /*  Copyright (C) 2014 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
@@ -21,15 +13,22 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
+/*!
+ * \file process.h
+ *
+ * \author Marek Vavrusa <marek.vavrusa@nic.cz>
+ *
+ * \addtogroup query_processing
+ * @{
+ */
 
-#ifndef _KNOT_PROCESS_H
-#define _KNOT_PROCESS_H
+#pragma once
 
 #include <stdint.h>
 
-#include "common/mempattern.h"
+#include "libknot/mempattern.h"
 #include "libknot/consts.h"
-#include "libknot/rdata/tsig.h"
+#include "libknot/rrtype/tsig.h"
 #include "libknot/packet/pkt.h"
 
 /*! \brief Main packet processing states.
@@ -71,6 +70,14 @@ typedef struct knot_process_module {
 } knot_process_module_t;
 
 /*!
+ * \brief Universal noop process function.
+ */
+inline static int knot_process_noop(knot_pkt_t *pkt, knot_process_t *ctx)
+{
+	return NS_PROC_NOOP;
+}
+
+/*!
  * \brief Initialize packet processing context.
  *
  * Allowed from states: NOOP
@@ -80,7 +87,8 @@ typedef struct knot_process_module {
  * \param module Module API.
  * \return (module specific state)
  */
-int knot_process_begin(knot_process_t *ctx, void *module_param, const knot_process_module_t *module);
+int knot_process_begin(knot_process_t *ctx, void *module_param,
+                       const knot_process_module_t *module);
 
 /*!
  * \brief Reset current packet processing context.
@@ -122,7 +130,5 @@ int knot_process_in(const uint8_t *wire, uint16_t wire_len, knot_process_t *ctx)
  * \return (module specific state)
  */
 int knot_process_out(uint8_t *wire, uint16_t *wire_len, knot_process_t *ctx);
-
-#endif /* _KNOT_PROCESS_H */
 
 /*! @} */

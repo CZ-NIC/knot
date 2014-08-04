@@ -1,9 +1,10 @@
 ACLOCAL_AMFLAGS = -I $(top_srcdir)/m4
+SUBDIRS = zscanner dnstap .
 
 sbin_PROGRAMS = knotc knotd
 bin_PROGRAMS = kdig khost knsupdate
 lib_LTLIBRARIES = libknot.la
-noinst_LTLIBRARIES = libknotd.la libknots.la libknotus.la
+noinst_LTLIBRARIES = libknotd.la libknots.la libknotus.la libknotcs.la
 
 # $(YACC) will generate header file
 AM_CPPFLAGS = \
@@ -11,8 +12,8 @@ AM_CPPFLAGS = \
 	-DCONFIG_DIR='"${config_dir}"' \
 	-DSTORAGE_DIR='"${storage_dir}"' \
 	-DRUN_DIR='"${run_dir}"'
-AM_CFLAGS = $(CODE_COVERAGE_CFLAGS) $(libcrypto_CFLAGS)
-AM_LDFLAGS = $(CODE_COVERAGE_LDFLAGS) $(libcrypto_LIBS)
+AM_CFLAGS = $(CODE_COVERAGE_CFLAGS)
+AM_LDFLAGS = $(CODE_COVERAGE_LDFLAGS)
 AM_YFLAGS = -d
 libknotd_la_YFLAGS = -pcf_ -d
 libknotd_la_LFLAGS = # TODO: reentrant parser, prefix
@@ -56,57 +57,60 @@ knsupdate_SOURCES =				\
 	utils/nsupdate/nsupdate_params.c	\
 	utils/nsupdate/nsupdate_params.h
 
-# static: shared
+# static: shared (not in libknot)
 libknots_la_SOURCES =				\
-	common/array-sort.h			\
+	common-knot/array-sort.h		\
+	common-knot/binsearch.h			\
+	common-knot/crc.h			\
+	common-knot/evsched.c			\
+	common-knot/evsched.h			\
+	common-knot/fdset.c			\
+	common-knot/fdset.h			\
+	common-knot/hattrie/hat-trie.c		\
+	common-knot/hattrie/hat-trie.h		\
+	common-knot/hattrie/murmurhash3.c	\
+	common-knot/hattrie/murmurhash3.h	\
+	common-knot/heap.c			\
+	common-knot/heap.h			\
+	common-knot/hex.c			\
+	common-knot/hex.h			\
+	common-knot/hhash.c			\
+	common-knot/hhash.h			\
+	common-knot/lists.c			\
+	common-knot/lists.h			\
+	common-knot/print.c			\
+	common-knot/print.h			\
+	common-knot/ref.c			\
+	common-knot/ref.h			\
+	common-knot/slab/alloc-common.h		\
+	common-knot/slab/slab.c			\
+	common-knot/slab/slab.h			\
+	common-knot/sockaddr.c			\
+	common-knot/sockaddr.h			\
+	common-knot/strlcat.c			\
+	common-knot/strlcat.h			\
+	common-knot/strlcpy.c			\
+	common-knot/strlcpy.h			\
+	common-knot/strtonum.h			\
+	common-knot/trim.h
+
+# static: common shared (also in libknot)
+libknotcs_la_SOURCES =				\
 	common/base32hex.c			\
 	common/base32hex.h			\
 	common/base64.c				\
 	common/base64.h				\
-	common/binsearch.h			\
-	common/crc.h				\
 	common/debug.h				\
-	common/descriptor.c			\
-	common/descriptor.h			\
-	common/errcode.c			\
-	common/errcode.h			\
 	common/errors.c				\
 	common/errors.h				\
-	common/evsched.c			\
-	common/evsched.h			\
-	common/fdset.c				\
-	common/fdset.h				\
 	common/getline.c			\
 	common/getline.h			\
-	common/hattrie/hat-trie.c		\
-	common/hattrie/hat-trie.h		\
-	common/hattrie/murmurhash3.c		\
-	common/hattrie/murmurhash3.h		\
-	common/heap.c				\
-	common/heap.h				\
-	common/hex.c				\
-	common/hex.h				\
-	common/hhash.c				\
-	common/hhash.h				\
-	common/lists.c				\
-	common/lists.h				\
-	common/log.c				\
-	common/log.h				\
-	common/memdup.h				\
-	common/mempattern.c			\
-	common/mempattern.h			\
+	common/mem.c				\
+	common/mem.h				\
 	common/mempool.c			\
 	common/mempool.h			\
-	common/print.c				\
-	common/print.h				\
-	common/ref.c				\
-	common/ref.h				\
-	common/slab/alloc-common.h		\
-	common/slab/slab.c			\
-	common/slab/slab.h			\
-	common/sockaddr.c			\
-	common/sockaddr.h			\
-	common/strtonum.h
+	common/log.c				\
+	common/log.h
 
 # static: utilities shared
 libknotus_la_SOURCES =				\
@@ -125,9 +129,9 @@ libknotus_la_SOURCES =				\
 
 # dynamic: libknot
 libknot_la_LDFLAGS =				\
-	$(AM_LD_FLAGS)				\
+	$(AM_LDFLAGS)				\
 	-version-info 0:1:0			\
-	-export-symbols-regex '^(knot|KNOT|rrset|tsig|zone)_'
+	-export-symbols-regex '^(knot|KNOT|rrset|tsig|zone|mm)_'
 
 libknot_la_SOURCES =				\
 	libknot/binary.c			\
@@ -136,6 +140,8 @@ libknot_la_SOURCES =				\
 	libknot/consts.c			\
 	libknot/consts.h			\
 	libknot/consts.h			\
+	libknot/descriptor.c			\
+	libknot/descriptor.h			\
 	libknot/dname.c				\
 	libknot/dname.h				\
 	libknot/dnssec/key.c			\
@@ -144,9 +150,11 @@ libknot_la_SOURCES =				\
 	libknot/dnssec/policy.h			\
 	libknot/dnssec/rrset-sign.c		\
 	libknot/dnssec/rrset-sign.h		\
-	libknot/edns.c				\
-	libknot/edns.h				\
+	libknot/errcode.c			\
+	libknot/errcode.h			\
 	libknot/libknot.h			\
+	libknot/mempattern.c			\
+	libknot/mempattern.h			\
 	libknot/packet/compr.c			\
 	libknot/packet/compr.h			\
 	libknot/packet/pkt.c			\
@@ -154,17 +162,20 @@ libknot_la_SOURCES =				\
 	libknot/packet/wire.h			\
 	libknot/processing/process.c		\
 	libknot/processing/process.h		\
-	libknot/rdata/rdname.h			\
-	libknot/rdata/dnskey.h			\
-	libknot/rdata/nsec.h			\
-	libknot/rdata/nsec3.h			\
-	libknot/rdata/nsec3param.h		\
-	libknot/rdata/nsec3param.c		\
-	libknot/rdata/nsec.h			\
-	libknot/rdata/rrsig.h			\
-	libknot/rdata/soa.h			\
-	libknot/rdata/tsig.c			\
-	libknot/rdata/tsig.h			\
+	libknot/rrtype/rdname.h			\
+	libknot/rrtype/dnskey.h			\
+	libknot/rrtype/nsec.h			\
+	libknot/rrtype/nsec3.c			\
+	libknot/rrtype/nsec3.h			\
+	libknot/rrtype/nsec3param.h		\
+	libknot/rrtype/nsec3param.c		\
+	libknot/rrtype/nsec.h			\
+	libknot/rrtype/opt.c			\
+	libknot/rrtype/opt.h			\
+	libknot/rrtype/rrsig.h			\
+	libknot/rrtype/soa.h			\
+	libknot/rrtype/tsig.c			\
+	libknot/rrtype/tsig.h			\
 	libknot/rrset-dump.c			\
 	libknot/rrset-dump.h			\
 	libknot/rdata.c				\
@@ -191,8 +202,8 @@ libknotd_la_SOURCES =				\
 	knot/conf/extra.h			\
 	knot/conf/includes.c			\
 	knot/conf/includes.h			\
-	knot/conf/logconf.c			\
-	knot/conf/logconf.h			\
+	knot/ctl/estimator.c			\
+	knot/ctl/estimator.h			\
 	knot/ctl/process.c			\
 	knot/ctl/process.h			\
 	knot/ctl/remote.c			\
@@ -214,6 +225,8 @@ libknotd_la_SOURCES =				\
 	knot/nameserver/axfr.h			\
 	knot/nameserver/chaos.c			\
 	knot/nameserver/chaos.h			\
+	knot/nameserver/capture.c		\
+	knot/nameserver/capture.h		\
 	knot/nameserver/internet.c		\
 	knot/nameserver/internet.h		\
 	knot/nameserver/ixfr.c			\
@@ -222,10 +235,18 @@ libknotd_la_SOURCES =				\
 	knot/nameserver/nsec_proofs.h		\
 	knot/nameserver/process_query.c		\
 	knot/nameserver/process_query.h		\
+	knot/nameserver/process_answer.c	\
+	knot/nameserver/process_answer.h	\
+	knot/nameserver/requestor.c		\
+	knot/nameserver/requestor.h		\
 	knot/nameserver/query_module.c		\
 	knot/nameserver/query_module.h		\
 	knot/nameserver/update.c		\
 	knot/nameserver/update.h		\
+	knot/nameserver/notify.c		\
+	knot/nameserver/notify.h		\
+	knot/nameserver/tsig_ctx.c		\
+	knot/nameserver/tsig_ctx.h		\
 	knot/modules/synth_record.c		\
 	knot/modules/synth_record.h		\
 	knot/other/debug.h			\
@@ -233,24 +254,16 @@ libknotd_la_SOURCES =				\
 	knot/server/dthreads.h			\
 	knot/server/journal.c			\
 	knot/server/journal.h			\
-	knot/server/notify.c			\
-	knot/server/notify.h			\
 	knot/server/rrl.c			\
 	knot/server/rrl.h			\
 	knot/server/server.c			\
 	knot/server/server.h			\
-	knot/server/net.c				\
-	knot/server/net.h				\
+	knot/server/net.c			\
+	knot/server/net.h			\
 	knot/server/tcp-handler.c		\
 	knot/server/tcp-handler.h		\
 	knot/server/udp-handler.c		\
 	knot/server/udp-handler.h		\
-	knot/server/xfr-handler.c		\
-	knot/server/xfr-handler.h		\
-	knot/server/zone-load.c			\
-	knot/server/zone-load.h			\
-	knot/server/zones.c			\
-	knot/server/zones.h			\
 	knot/server/serialization.c		\
 	knot/server/serialization.h		\
 	knot/updates/acl.c			\
@@ -259,45 +272,67 @@ libknotd_la_SOURCES =				\
 	knot/updates/changesets.h		\
 	knot/updates/ddns.c			\
 	knot/updates/ddns.h			\
-	knot/updates/xfr-in.c			\
-	knot/updates/xfr-in.h			\
-	knot/zone/estimator.c			\
-	knot/zone/estimator.h			\
+	knot/updates/apply.c			\
+	knot/updates/apply.h			\
+	knot/worker/pool.c			\
+	knot/worker/pool.h			\
+	knot/worker/queue.c			\
+	knot/worker/queue.h			\
+	knot/zone/contents.c			\
+	knot/zone/contents.h			\
+	knot/zone/events.c			\
+	knot/zone/events.h			\
 	knot/zone/node.c			\
 	knot/zone/node.h			\
 	knot/zone/semantic-check.c		\
 	knot/zone/semantic-check.h		\
-	knot/zone/zone-contents.c		\
-	knot/zone/zone-contents.h		\
 	knot/zone/zone-diff.c			\
 	knot/zone/zone-diff.h			\
 	knot/zone/zone-dump.c			\
 	knot/zone/zone-dump.h			\
-	knot/zone/zone-create.c			\
-	knot/zone/zone-create.h			\
 	knot/zone/zone-tree.c			\
 	knot/zone/zone-tree.h			\
 	knot/zone/zone.c			\
 	knot/zone/zone.h			\
+	knot/zone/zone-load.c			\
+	knot/zone/zone-load.h			\
 	knot/zone/zonedb.c			\
-	knot/zone/zonedb.h
+	knot/zone/zonedb.h			\
+	knot/zone/zonedb-load.c			\
+	knot/zone/zonedb-load.h			\
+	knot/zone/zonefile.c			\
+	knot/zone/zonefile.h
 
 # libraries
-libknot_la_LIBADD  = libknots.la zscanner/libzscanner.la ../dnssec/libdnssec.la
-libknotd_la_LIBADD = libknots.la libknot.la ../dnssec/libdnssec.la
+
+libknot_la_LIBADD  = libknotcs.la zscanner/libzscanner.la ../dnssec/libdnssec.la
+libknotd_la_LIBADD = libknots.la libknotcs.la libknot.la ../dnssec/libdnssec.la
 libknotus_la_LIBADD = ../dnssec/libdnssec.la
+libknotus_la_LDFLAGS = $(libidn_LIBS)
+libknotus_la_CFLAGS = $(libidn_CFLAGS)
 
 # sbin programs
 knotd_LDADD = libknot.la libknotd.la
-knotd_CPPFLAGS = $(AM_CPPFLAGS) ${systemd_daemon_CFLAGS}
-knotd_LDFLAGS = $(AM_LDFLAGS) ${systemd_daemon_LIBS}
+knotd_CPPFLAGS = $(AM_CPPFLAGS) $(systemd_daemon_CFLAGS)
+knotd_LDFLAGS = $(AM_LDFLAGS) $(systemd_daemon_LIBS)
 
 knotc_LDADD = libknot.la libknotd.la
 
 # bin programs
-kdig_LDADD       = libknotus.la libknots.la libknot.la
-khost_LDADD      = libknotus.la libknots.la libknot.la
-knsupdate_LDADD  = libknotus.la libknots.la libknot.la zscanner/libzscanner.la
+BIN_LIBS = libknotus.la libknotcs.la libknots.la libknot.la
+kdig_LDADD       = $(BIN_LIBS) $(libidn_LIBS)
+khost_LDADD      = $(BIN_LIBS) $(libidn_LIBS)
+knsupdate_LDADD  = $(BIN_LIBS) zscanner/libzscanner.la
+
+if HAVE_DNSTAP
+libknotd_la_SOURCES +=				\
+	knot/modules/dnstap.c			\
+	knot/modules/dnstap.h
+
+kdig_LDADD         += dnstap/libdnstap.la
+khost_LDADD        += dnstap/libdnstap.la
+libknotd_la_LIBADD += dnstap/libdnstap.la
+endif
 
 # Create storage and run-time directories
 install-data-hook:

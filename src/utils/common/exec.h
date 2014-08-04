@@ -24,8 +24,7 @@
  * @{
  */
 
-#ifndef _UTILS__EXEC_H_
-#define _UTILS__EXEC_H_
+#pragma once
 
 #include "utils/common/netio.h"		// net_t
 #include "utils/common/params.h"	// style_t
@@ -62,8 +61,7 @@ void print_header_xfr(const knot_pkt_t *packet, const style_t *style);
  * \param packet	Response packet.
  * \param style		Style of the output.
  */
-void print_data_xfr(const knot_pkt_t *packet,
-                    const style_t       *style);
+void print_data_xfr(const knot_pkt_t *packet, const style_t *style);
 
 /*!
  * \brief Prints trailing statistics for transfer.
@@ -72,31 +70,36 @@ void print_data_xfr(const knot_pkt_t *packet,
  * \param msg_count	Number of messages.
  * \param rr_count	Total number of answer records.
  * \param net		Connection information.
- * \param elapse	Total elapsed time.
+ * \param elapsed	Total elapsed time.
+ * \param exec_time     Time of the packet creation.
  * \param style		Style of the otput.
  */
-void print_footer_xfr(const size_t   total_len,
-                      const size_t   msg_count,
-                      const size_t   rr_count,
-                      const net_t    *net,
-                      const float    elapsed,
-                      const style_t  *style);
+void print_footer_xfr(const size_t  total_len,
+                      const size_t  msg_count,
+                      const size_t  rr_count,
+                      const net_t   *net,
+                      const float   elapsed,
+                      const time_t  exec_time,
+                      const style_t *style);
 
 /*!
  * \brief Prints one response packet.
  *
  * \param packet	Response packet.
- * \param total_len	Total reply size (all messages).
  * \param net		Connection information.
- * \param elapse	Total elapsed time.
+ * \param size		Original packet wire size.
+ * \param elapsed	Total elapsed time.
+ * \param exec_time     Time of the packet creation.
  * \param incoming	Indicates if the packet is input.
  * \param style		Style of the otput.
  */
 void print_packet(const knot_pkt_t *packet,
-                  const net_t         *net,
-                  const float         elapsed,
-                  const bool          incoming,
-                  const style_t       *style);
+                  const net_t      *net,
+                  const size_t     size,
+                  const float      elapsed,
+                  const time_t     exec_time,
+                  const bool       incoming,
+                  const style_t    *style);
 
 /*!
  * \brief Cleans up sign context.
@@ -115,7 +118,7 @@ void free_sign_context(sign_context_t *ctx);
  * \retval KNOT_EOK	if success.
  * \retval error code	if error.
  */
-int sign_packet(knot_pkt_t           *pkt,
+int sign_packet(knot_pkt_t              *pkt,
                 sign_context_t          *sign_ctx,
                 const knot_key_params_t *key_params);
 
@@ -129,10 +132,8 @@ int sign_packet(knot_pkt_t           *pkt,
  * \retval KNOT_EOK	if success.
  * \retval error code	if error.
  */
-int verify_packet(const knot_pkt_t     *pkt,
+int verify_packet(const knot_pkt_t        *pkt,
                   const sign_context_t    *sign_ctx,
                   const knot_key_params_t *key_params);
-
-#endif // _UTILS__EXEC_H_
 
 /*! @} */

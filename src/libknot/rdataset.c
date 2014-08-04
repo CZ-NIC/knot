@@ -43,7 +43,6 @@ static void *mm_realloc(mm_ctx_t *mm, void *what, size_t size, size_t prev_size)
 	}
 }
 
-
 static knot_rdata_t *rr_seek(knot_rdata_t *d, size_t pos)
 {
 	if (d == NULL) {
@@ -99,9 +98,7 @@ static int add_rr_at(knot_rdataset_t *rrs, const knot_rdata_t *rr, size_t pos,
 		// No need to rearange RDATA
 		rrs->rr_count++;
 		knot_rdata_t *new_rr = knot_rdataset_at(rrs, pos);
-		knot_rdata_set_rdlen(new_rr, size);
-		knot_rdata_set_ttl(new_rr, ttl);
-		memcpy(knot_rdata_data(new_rr), rdata, size);
+		knot_rdata_init(new_rr, size, rdata, ttl);
 		return KNOT_EOK;
 	}
 
@@ -116,9 +113,7 @@ static int add_rr_at(knot_rdataset_t *rrs, const knot_rdata_t *rr, size_t pos,
 	        (last_rr + knot_rdata_array_size(knot_rdata_rdlen(last_rr))) - old_rr);
 
 	// Set new RR
-	knot_rdata_set_rdlen(old_rr, size);
-	knot_rdata_set_ttl(old_rr, ttl);
-	memcpy(knot_rdata_data(old_rr), rdata, size);
+	knot_rdata_init(old_rr, size, rdata, ttl);
 
 	rrs->rr_count++;
 	return KNOT_EOK;
@@ -177,8 +172,7 @@ void knot_rdataset_clear(knot_rdataset_t *rrs, mm_ctx_t *mm)
 {
 	if (rrs) {
 		mm_free(mm, rrs->data);
-		rrs->data = NULL;
-		rrs->rr_count = 0;
+		knot_rdataset_init(rrs);
 	}
 }
 
@@ -279,7 +273,7 @@ bool knot_rdataset_member(const knot_rdataset_t *rrs, const knot_rdata_t *rr, bo
 			return true;
 		}
 		if (cmp > 0) {
-			// 'Bigger' RR present, no need to continue.
+			// 'Greater' RR present, no need to continue.
 			return false;
 		}
 	}
@@ -329,7 +323,7 @@ int knot_rdataset_intersect(const knot_rdataset_t *a, const knot_rdataset_t *b,
 
 int knot_rdataset_subtract(knot_rdataset_t *from, const knot_rdataset_t *what, mm_ctx_t *mm)
 {
-	if (from == NULL || what == NULL) {
+	if (from == NULL || what == NULL || from->data == what->data) {
 		return KNOT_EINVAL;
 	}
 

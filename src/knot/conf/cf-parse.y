@@ -33,9 +33,12 @@
 #include "dnssec/binary.h"
 #include "dnssec/tsig.h"
 #include "common/sockaddr.h"
+#include "common-knot/sockaddr.h"
+#include "common-knot/strlcat.h"
+#include "common-knot/strlcpy.h"
 #include "libknot/dname.h"
 #include "libknot/binary.h"
-#include "libknot/edns.h"
+#include "libknot/rrtype/opt.h"
 #include "knot/server/rrl.h"
 #include "knot/nameserver/query_module.h"
 #include "knot/conf/conf.h"
@@ -139,6 +142,7 @@ static void conf_remote_set_via(void *scanner, char *item) {
 		cf_error(scanner, "interface '%s' is not defined", item);
 	} else {
 		memcpy(&this_remote->via, &found->addr, sizeof(struct sockaddr_storage));
+		sockaddr_port_set(&this_remote->via, 0);
 	}
 }
 
@@ -288,15 +292,19 @@ static void conf_acl_item(void *scanner, char *item)
 	free(item);
 }
 
-static void query_module_create(void *scanner, const char *name, const char *param)
+static void query_module_create(void *scanner, const char *name, const char *param, bool on_zone)
 {
-	struct query_module *module = query_module_open(name, param, NULL);
+	struct query_module *module = query_module_open(new_config, name, param, NULL);
 	if (module == NULL) {
 		cf_error(scanner, "cannot load query module '%s'", name);
 		return;
 	}
 
-	add_tail(&this_zone->query_modules, &module->node);
+	if (on_zone) {
+		add_tail(&this_zone->query_modules, &module->node);
+	} else {
+		add_tail(&new_config->query_modules, &module->node);
+	}
 }
 
 static int conf_key_exists(void *scanner, char *item)
@@ -365,7 +373,7 @@ static void conf_zone_start(void *scanner, char *name) {
 
 	// Convert zone name to lower-case.
 	for (size_t i = 0; this_zone->name[i]; i++) {
-		this_zone->name[i] = tolower(this_zone->name[i]);
+		this_zone->name[i] = tolower((unsigned char)this_zone->name[i]);
 	}
 
 	/* Check domain name. */
@@ -463,6 +471,8 @@ static void ident_auto(int tok, conf_t *conf, bool val)
 %token <tok> MAX_UDP_PAYLOAD
 %token <tok> TSIG_ALGO_NAME
 %token <tok> WORKERS
+%token <tok> BACKGROUND_WORKERS
+%token <tok> ASYNC_START
 %token <tok> USER
 %token <tok> RUNDIR
 %token <tok> PIDFILE
@@ -574,8 +584,8 @@ system:
  | system NSID TEXT ';' { new_config->nsid = $3.t; new_config->nsid_len = strlen(new_config->nsid); }
  | system NSID BOOL ';' { ident_auto(NSID, new_config, $3.i); }
  | system MAX_UDP_PAYLOAD NUM ';' {
-     SET_NUM(new_config->max_udp_payload, $3.i, EDNS_MIN_UDP_PAYLOAD,
-             EDNS_MAX_UDP_PAYLOAD, "max-udp-payload");
+     SET_NUM(new_config->max_udp_payload, $3.i, KNOT_EDNS_MIN_UDP_PAYLOAD,
+             KNOT_EDNS_MAX_UDP_PAYLOAD, "max-udp-payload");
  }
  | system STORAGE TEXT ';' {
      fprintf(stderr, "warning: Config option 'system.storage' was relocated. "
@@ -591,6 +601,12 @@ system:
  }
  | system WORKERS NUM ';' {
      SET_NUM(new_config->workers, $3.i, 1, 255, "workers");
+ }
+ | system BACKGROUND_WORKERS NUM ';' {
+     SET_NUM(new_config->bg_workers, $3.i, 1, 255, "background-workers");
+ }
+ | system ASYNC_START BOOL ';' {
+     new_config->async_start = $3.i;
  }
  | system USER TEXT ';' {
      new_config->uid = new_config->gid = -1; // Invalidate
@@ -657,13 +673,11 @@ keys:
 	   cf_error(scanner, "out of memory when allocating string");
 	   free(fqdn);
 	   fqdn = NULL;
-	   fqdnl = 0;
 	} else {
-	   strncpy(tmpdn, fqdn, fqdnl);
-	   strncat(tmpdn, ".", 1);
+	   strlcpy(tmpdn, fqdn, fqdnl);
+	   strlcat(tmpdn, ".", fqdnl);
 	   free(fqdn);
 	   fqdn = tmpdn;
-	   fqdnl = strlen(fqdn);
 	}
      }
 
@@ -842,7 +856,7 @@ zone_acl:
  ;
 
 query_module:
- TEXT TEXT { query_module_create(scanner, $1.t, $2.t); free($1.t); free($2.t); }
+ TEXT TEXT { query_module_create(scanner, $1.t, $2.t, true); free($1.t); free($2.t); }
  ;
 
 query_module_list:
@@ -916,6 +930,13 @@ zone:
  | zone QUERY_MODULE '{' query_module_list '}'
  ;
 
+query_genmodule:
+ TEXT TEXT { query_module_create(scanner, $1.t, $2.t, false); free($1.t); free($2.t); }
+ ;
+query_genmodule_list:
+ | query_genmodule ';' query_genmodule_list
+ ;
+
 zones:
    ZONES '{'
  | zones zone '}'
@@ -952,6 +973,7 @@ zones:
  | zones SERIAL_POLICY SERIAL_POLICY_VAL ';' {
 	new_config->serial_policy = $3.i;
  }
+ | zones QUERY_MODULE '{' query_genmodule_list '}'
  ;
 
 log_prios_start: {
@@ -964,7 +986,10 @@ log_prios_start: {
 
 log_prios:
    log_prios_start
- | log_prios LOG_LEVEL ',' { this_logmap->prios |= $2.i; }
+ | log_prios LOG_LEVEL ',' { this_logmap->prios |= $2.i;
+	fprintf(stderr, "Warning: more log severities per statement is deprecated. "
+	                "Using the least serious one.\n");
+ }
  | log_prios LOG_LEVEL ';' { this_logmap->prios |= $2.i; }
  ;
 

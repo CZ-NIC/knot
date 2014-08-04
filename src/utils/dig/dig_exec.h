@@ -24,14 +24,11 @@
  * @{
  */
 
-#ifndef _DIG__DIG_EXEC_H_
-#define _DIG__DIG_EXEC_H_
+#pragma once
 
 #include "utils/common/params.h"	// params_t
 #include "utils/dig/dig_params.h"	// query_t
 
 int dig_exec(const dig_params_t *params);
-
-#endif // _DIG__DIG_EXEC_H_
 
 /*! @} */

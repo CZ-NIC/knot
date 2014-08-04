@@ -19,17 +19,16 @@
 #include <time.h>
 #include <inttypes.h>
 
-#include "libknot/common.h"
-#include "common/descriptor.h"
-#include "dnssec/binary.h"
+#include "common/debug.h"
 #include "dnssec/error.h"
 #include "dnssec/tsig.h"
-#include "libknot/rdata/tsig.h"
-#include "libknot/tsig-op.h"
-#include "libknot/packet/wire.h"
-#include "common/debug.h"
+#include "libknot/common.h"
 #include "libknot/consts.h"
+#include "libknot/descriptor.h"
 #include "libknot/dnssec/key.h"
+#include "libknot/packet/wire.h"
+#include "libknot/rrtype/tsig.h"
+#include "libknot/tsig-op.h"
 
 const int KNOT_TSIG_MAX_DIGEST_SIZE = 64;    // size of HMAC-SHA512 digest
 const uint16_t KNOT_TSIG_FUDGE_DEFAULT = 300;  // default Fudge value
@@ -184,9 +183,7 @@ static int knot_tsig_write_tsig_variables(uint8_t *wire,
 	offset += sizeof(uint16_t);
 
 	/* Copy TTL - always 0. */
-	knot_wire_write_u32(wire + offset, knot_rrset_rr_ttl(tsig_rr, 0));
-	dbg_tsig_verb("TSIG: write variables: written TTL: %u - \n",
-	              knot_rrset_rr_ttl(tsig_rr, 0));
+	knot_wire_write_u32(wire + offset, knot_rdata_ttl(knot_rdataset_at(&tsig_rr->rrs, 0)));
 	dbg_tsig_hex_detail((char *)(wire + offset), sizeof(uint32_t));
 	offset += sizeof(uint32_t);
 
@@ -672,7 +669,7 @@ static int knot_tsig_check_digest(const knot_rrset_t *tsig_rr,
 
 	uint8_t digest_tmp[KNOT_TSIG_MAX_DIGEST_SIZE];
 	size_t digest_tmp_len = 0;
-	assert(knot_rrset_rr_count(tsig_rr) > 0);
+	assert(tsig_rr->rrs.rr_count > 0);
 
 	if (use_times) {
 		/* Wire is not a single packet, TSIG RRs must be stripped already. */
@@ -687,7 +684,7 @@ static int knot_tsig_check_digest(const knot_rrset_t *tsig_rr,
 		                                 tsig_rr, tsig_key);
 	}
 
-	assert(knot_rrset_rr_count(tsig_rr) > 0);
+	assert(tsig_rr->rrs.rr_count > 0);
 	free(wire_to_sign);
 
 	if (ret != KNOT_EOK) {
@@ -720,8 +717,7 @@ static int knot_tsig_check_digest(const knot_rrset_t *tsig_rr,
 	dbg_tsig_verb("TSIG: given digest:\n");
 	dbg_tsig_hex_verb((char *)tsig_mac, mac_length);
 
-	if (strncasecmp((char *)(tsig_mac), (char *)digest_tmp,
-	                mac_length) != 0) {
+	if (memcmp(tsig_mac, digest_tmp, mac_length) != 0) {
 		return KNOT_TSIG_EBADSIG;
 	}
 

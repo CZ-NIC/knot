@@ -13,7 +13,8 @@ def update_zone(master, slave, zone, changes, change_serial=False, serials=None)
         master.update_zonefile(zone, version=i)
         if change_serial:
             # update zone serial to one given in the 'serials' list
-            master.zones[zone[0].name].zfile.update_serial(serials[i])
+            master.zones[zone[0].name].zfile.update_soa(serial=serials[i])
+            serial = serials[i]
         else:
             serials.append(serial)
         master.reload()
@@ -21,7 +22,6 @@ def update_zone(master, slave, zone, changes, change_serial=False, serials=None)
         master.flush()
         t.sleep(1)
         master.zone_verify(zone)
-        slave.reload()
         slave.zone_wait(zone, serial)
         t.xfr_diff(master, slave, zone)
 
@@ -34,7 +34,8 @@ def do_steps(master, slave, zone):
     rev = list(range(1, CHANGE_COUNT + 1))
     rev.reverse()
     # increase serials so that server accepts them
-    map(lambda x: x + 1000, serials)
+    serials = list(map(lambda x: x + 1000, serials))
+    serials.reverse()
     update_zone(master, slave, zone, rev[1:], change_serial=True, serials=serials)
 
 t = Test()

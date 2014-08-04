@@ -14,7 +14,6 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <config.h>
 #include <stdlib.h>
 #include <stdint.h>
 #include <sys/time.h>
@@ -23,7 +22,7 @@
 #include <unistd.h>
 #include <tap/basic.h>
 
-#include "common/fdset.h"
+#include "common-knot/fdset.h"
 
 #define WRITE_PATTERN ((char) 0xde)
 #define WRITE_PATTERN_LEN sizeof(char)

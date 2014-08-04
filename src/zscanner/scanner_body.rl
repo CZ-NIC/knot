@@ -1904,6 +1904,11 @@
 		s->r_data_length = rdata_tail - s->r_data;
 
 		s->process_record(s);
+
+		// Stop scanner if required.
+		if (s->stop == true) {
+			return -1;
+		}
 	}
 
 	# Resource record.

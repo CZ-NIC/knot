@@ -3,7 +3,7 @@
  *
  * \author Jan Kadlec <jan.kadlec@nic.cz>
  *
- * \brief API for manipulating RRs and RR arrays.
+ * \brief API for manipulating RRs.
  *
  * \addtogroup libknot
  * @{
@@ -30,7 +30,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#include "common/mempattern.h"
+#include "libknot/mempattern.h"
 
 /* ---------------------------- Single RR ----------------------------------- */
 
@@ -38,6 +38,15 @@
  * \brief knot_rdata_t Array holding single RR payload, i.e. TTL, RDLENGTH and RDATA.
  */
 typedef uint8_t knot_rdata_t;
+
+/* ------------------------------- Init ------------------------------------- */
+
+/*!
+ * \brief Inits knot_rdata_t structure - the structure has to be created using
+ *        knot_rdata_array_size.
+ */
+void knot_rdata_init(knot_rdata_t *rdata,
+                     uint16_t rdlen, const uint8_t *data, uint32_t ttl);
 
 /* ------------------------- RR getters/setters ----------------------------- */
 
@@ -87,6 +96,7 @@ size_t knot_rdata_array_size(uint16_t size);
 
 /*!
  * \brief Canonical comparison of two RRs. Both RRs *must* exist.
+ *        TTLs are *not* compared.
  * \param rr1  First RR to compare.
  * \param rr2  Second RR to compare.
  * \retval 0 if rr1 == rr2.
@@ -94,3 +104,5 @@ size_t knot_rdata_array_size(uint16_t size);
  * \retval > 0 if rr1 > rr2.
  */
 int knot_rdata_cmp(const knot_rdata_t *rr1, const knot_rdata_t *rr2);
+
+/*! @} */
