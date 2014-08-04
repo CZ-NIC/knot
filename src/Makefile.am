@@ -179,6 +179,7 @@ libknot_la_SOURCES =				\
 	libknot/processing/requestor.c	\
 	libknot/processing/requestor.h	\
 	libknot/rrtype/rdname.h			\
+	libknot/rrtype/aaaa.h			\
 	libknot/rrtype/dnskey.h			\
 	libknot/rrtype/nsec.h			\
 	libknot/rrtype/nsec3.c			\

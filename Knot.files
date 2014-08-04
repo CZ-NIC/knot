@@ -340,3 +340,4 @@ tests/worker_queue.c
 tests/zone_events.c
 tests/zonedb.c
 tests/ztree.c
+src/libknot/rrtype/aaaa.h
