@@ -82,7 +82,8 @@ int net_bound_socket(int type, const struct sockaddr_storage *ss)
 	}
 
 	/* Bind to specified address. */
-	int ret = bind(socket, (const struct sockaddr *)ss, sockaddr_len(ss));
+	const struct sockaddr *sa = (const struct sockaddr *)ss;
+	int ret = bind(socket, sa, sockaddr_len(sa));
 	if (ret < 0) {
 		ret = knot_map_errno(EADDRINUSE, EINVAL, EACCES, ENOMEM);
 		close(socket);
@@ -121,8 +122,8 @@ int net_connected_socket(int type, const struct sockaddr_storage *dst_addr,
 		;
 
 	/* Connect to destination. */
-	int ret = connect(socket, (const struct sockaddr *)dst_addr,
-	                  sockaddr_len(dst_addr));
+	const struct sockaddr *sa = (const struct sockaddr *)dst_addr;
+	int ret = connect(socket, sa, sockaddr_len(sa));
 	if (ret != 0 && errno != EINPROGRESS) {
 		close(socket);
 		return knot_map_errno(EACCES, EADDRINUSE, EAGAIN,
@@ -190,7 +191,7 @@ static int tcp_recv_data(int fd, uint8_t *buf, int len, struct timeval *timeout)
 
 int udp_send_msg(int fd, const uint8_t *msg, size_t msglen, struct sockaddr *addr)
 {
-	int addr_len = sockaddr_len((struct sockaddr_storage *)addr);
+	int addr_len = sockaddr_len(addr);
 	int ret = sendto(fd, msg, msglen, 0, addr, addr_len);
 	if (ret != msglen) {
 		return KNOT_ECONN;
