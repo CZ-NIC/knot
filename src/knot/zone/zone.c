@@ -29,6 +29,7 @@
 #include "knot/zone/contents.h"
 #include "knot/updates/apply.h"
 #include "knot/nameserver/requestor.h"
+#include "knot/nameserver/process_query.h"
 #include "libknot/common.h"
 #include "libknot/dname.h"
 #include "libknot/dnssec/random.h"

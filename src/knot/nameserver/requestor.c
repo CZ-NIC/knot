@@ -17,7 +17,6 @@
 #include <assert.h>
 
 #include "knot/nameserver/requestor.h"
-#include "knot/nameserver/process_answer.h"
 #include "knot/server/net.h"
 #include "knot/server/tcp-handler.h"
 
@@ -147,10 +146,11 @@ bool requestor_finished(struct requestor *requestor)
 }
 
 struct request *requestor_make(struct requestor *requestor,
-                               const conf_iface_t *remote,
+                               const struct sockaddr_storage *dst,
+                               const struct sockaddr_storage *src,
                                knot_pkt_t *query)
 {
-	if (requestor == NULL || query == NULL || remote == NULL) {
+	if (requestor == NULL || query == NULL || dst == NULL) {
 		return NULL;
 	}
 
@@ -160,8 +160,10 @@ struct request *requestor_make(struct requestor *requestor,
 		return NULL;
 	}
 
-	memcpy(&request->data.origin, &remote->via, sizeof(remote->via));
-	memcpy(&request->data.remote, &remote->addr, sizeof(remote->addr));
+	memcpy(&request->data.remote, dst, sizeof(struct sockaddr_storage));
+	if (src) {
+		memcpy(&request->data.origin, src, sizeof(struct sockaddr_storage));
+	}
 
 	request->state = NS_PROC_DONE;
 	request->data.fd = -1;

@@ -69,7 +69,7 @@ static struct request *make_query(struct requestor *requestor,  conf_iface_t *re
 	assert(pkt);
 	knot_pkt_put_question(pkt, ROOT_DNAME, KNOT_CLASS_IN, KNOT_RRTYPE_SOA);
 
-	return requestor_make(requestor, remote, pkt);
+	return requestor_make(requestor, &remote->addr, &remote->via, pkt);
 }
 
 static void test_disconnected(struct requestor *requestor, conf_iface_t *remote)

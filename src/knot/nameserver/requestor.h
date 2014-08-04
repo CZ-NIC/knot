@@ -16,9 +16,9 @@
 
 #pragma once
 
-#include "knot/nameserver/process_query.h"
-#include "knot/nameserver/process_answer.h"
 #include "common-knot/lists.h"
+#include "common-knot/sockaddr.h"
+#include "libknot/processing/process.h"
 
 struct request;
 
@@ -68,13 +68,15 @@ bool requestor_finished(struct requestor *requestor);
  * \brief Make request out of endpoints and query.
  *
  * \param requestor Requestor instance.
- * \param remote    Remote endpoint descriptor (source, destination, [key])
+ * \param dst       Remote endpoint address.
+ * \param src       Source address (or NULL).
  * \param query     Query message.
  *
  * \return Prepared request or NULL in case of error.
  */
 struct request *requestor_make(struct requestor *requestor,
-                               const conf_iface_t *remote,
+                               const struct sockaddr_storage *addr,
+                               const struct sockaddr_storage *src,
                                knot_pkt_t *query);
 
 /*!

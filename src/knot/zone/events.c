@@ -140,7 +140,7 @@ static int zone_query_execute(zone_t *zone, uint16_t pkt_type, const conf_iface_
 	}
 
 	/* Create a request. */
-	struct request *req = requestor_make(&re, remote, query);
+	struct request *req = requestor_make(&re, &remote->addr, &remote->via, query);
 	if (req == NULL) {
 		ret = KNOT_ENOMEM;
 		goto fail;

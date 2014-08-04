@@ -289,7 +289,7 @@ static int forward_query(knot_pkt_t *pkt, struct query_data *qdata)
 	knot_tsig_append(query->wire, &query->size, query->max_size, query->tsig_rr);
 
 	/* Create a request. */
-	struct request *req = requestor_make(&re, master, query);
+	struct request *req = requestor_make(&re, &master->addr, &master->via, query);
 	if (req == NULL) {
 		knot_pkt_free(&query);
 		return KNOT_ENOMEM;
