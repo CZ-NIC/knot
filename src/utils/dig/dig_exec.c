@@ -23,7 +23,7 @@
 
 #include "libknot/libknot.h"
 #include "common/lists.h"		// list
-#include "common-knot/print.h"		// time_diff
+#include "common/print.h"		// time_diff
 #include "libknot/errcode.h"		// KNOT_EOK
 #include "libknot/descriptor.h"		// KNOT_RRTYPE_
 #include "common/sockaddr.h"		// sockaddr_set_raw
