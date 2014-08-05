@@ -76,9 +76,9 @@ static char *error_messages[(-ZC_ERR_UNKNOWN) + 1] = {
 	[-ZC_ERR_NSEC_RDATA_MULTIPLE] =
 	"NSEC: Multiple NSEC records!",
 	[-ZC_ERR_NSEC_RDATA_CHAIN] =
-	"NSEC: NSEC chain is not coherent!",
+	"NSEC: Chain is not coherent!",
 	[-ZC_ERR_NSEC_RDATA_CHAIN_NOT_CYCLIC] =
-	"NSEC: NSEC chain is not cyclic!",
+	"NSEC: Chain is not cyclic!",
 
 	[-ZC_ERR_NSEC3_UNSECURED_DELEGATION] =
 	"NSEC3: Zone contains unsecured delegation!",
@@ -90,11 +90,11 @@ static char *error_messages[(-ZC_ERR_UNKNOWN) + 1] = {
 	[-ZC_ERR_NSEC3_RDATA_TTL] =
 	"NSEC3: Original TTL RDATA field is wrong!",
 	[-ZC_ERR_NSEC3_RDATA_CHAIN] =
-	"NSEC3: NSEC3 chain is not coherent!",
+	"NSEC3: Chain is not coherent!",
 	[-ZC_ERR_NSEC3_RDATA_BITMAP] =
-	"NSEC3: NSEC3 bitmap error!",
+	"NSEC3: Bitmap error!",
 	[-ZC_ERR_NSEC3_EXTRA_RECORD] =
-	"NSEC3: NSEC3 node contains extra record. This is valid, however Knot "
+	"NSEC3: Node contains extra record. This is valid, however Knot "
 	"will not serve this record properly.",
 
 	[-ZC_ERR_CNAME_EXTRA_RECORDS] =
