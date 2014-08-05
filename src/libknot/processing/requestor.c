@@ -101,10 +101,19 @@ static int request_send(struct knot_request *request, const struct timeval *time
 		return KNOT_ECONNREFUSED;
 	}
 
-	/* Send query. */
+	/* Send query, construct if not exists. */
 	knot_pkt_t *query = request->data.query;
-	ret = tcp_send_msg(request->data.fd, query->wire, query->size);
-	if (ret != query->size) {
+	uint8_t *wire = request->pkt_buf;
+	uint16_t wire_len = KNOT_WIRE_MAX_PKTSIZE;
+	if (query) {
+		wire = query->wire;
+		wire_len = query->size;
+	} else {
+		request->state = knot_process_out(wire, &wire_len, &request->process);
+	}
+
+	ret = tcp_send_msg(request->data.fd, wire, wire_len);
+	if (ret != wire_len) {
 		return KNOT_ECONN;
 	}
 
@@ -151,7 +160,7 @@ struct knot_request *knot_requestor_make(struct knot_requestor *requestor,
                                const struct sockaddr *src,
                                knot_pkt_t *query)
 {
-	if (requestor == NULL || query == NULL || dst == NULL) {
+	if (requestor == NULL || dst == NULL) {
 		return NULL;
 	}
 
@@ -187,14 +196,18 @@ int knot_requestor_enqueue(struct knot_requestor *requestor, struct knot_request
 
 	/* Form a pending request. */
 	request->data.fd = fd;
-	request->state = NS_PROC_FULL; /* We have a query to be sent. */
 	if (requestor->mm != NULL) {
 		memcpy(&request->process.mm, requestor->mm, sizeof(mm_ctx_t));
 	} else {
 		mm_ctx_init(&request->process.mm);
 	}
 
-	knot_process_begin(&request->process, param, requestor->module);
+	request->state = knot_process_begin(&request->process, param, requestor->module);
+
+	/* We have a query to be sent. */
+	if (request->data.query) {
+		request->state = NS_PROC_FULL;
+	}
 
 	add_tail(&requestor->pending, &request->data.node);
 

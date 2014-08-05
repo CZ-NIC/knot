@@ -47,21 +47,21 @@ struct knot_request_data {
  * \param module    Response processing module.
  * \param mm        Memory context.
  */
-void knot_requestor_init(struct knot_requestor *knot_requestor, const knot_process_module_t *module, mm_ctx_t *mm);
+void knot_requestor_init(struct knot_requestor *requestor, const knot_process_module_t *module, mm_ctx_t *mm);
 
 /*!
  * \brief Clear the requestor structure and close pending queries.
  *
  * \param requestor Requestor instance.
  */
-void knot_requestor_clear(struct knot_requestor *knot_requestor);
+void knot_requestor_clear(struct knot_requestor *requestor);
 
 /*!
  * \brief Return true if there are no pending queries.
  *
  * \param requestor Requestor instance.
  */
-bool knot_requestor_finished(struct knot_requestor *knot_requestor);
+bool knot_requestor_finished(struct knot_requestor *requestor);
 
 
 /*!
@@ -74,7 +74,7 @@ bool knot_requestor_finished(struct knot_requestor *knot_requestor);
  *
  * \return Prepared request or NULL in case of error.
  */
-struct knot_request *knot_requestor_make(struct knot_requestor *knot_requestor,
+struct knot_request *knot_requestor_make(struct knot_requestor *requestor,
                                          const struct sockaddr *addr,
                                          const struct sockaddr *src,
                                          knot_pkt_t *query);
@@ -91,7 +91,7 @@ struct knot_request *knot_requestor_make(struct knot_requestor *knot_requestor,
  *
  * \return KNOT_EOK or error
  */
-int knot_requestor_enqueue(struct knot_requestor *knot_requestor, struct knot_request *knot_request, void *param);
+int knot_requestor_enqueue(struct knot_requestor *requestor, struct knot_request *request, void *param);
 
 /*!
  * \brief Close first pending request.
@@ -100,7 +100,7 @@ int knot_requestor_enqueue(struct knot_requestor *knot_requestor, struct knot_re
  *
  * \return KNOT_EOK or error
  */
-int knot_requestor_dequeue(struct knot_requestor *knot_requestor);
+int knot_requestor_dequeue(struct knot_requestor *requestor);
 
 /*!
  * \brief Execute next pending query (FIFO).
@@ -110,4 +110,4 @@ int knot_requestor_dequeue(struct knot_requestor *knot_requestor);
  *
  * \return KNOT_EOK or error
  */
-int knot_requestor_exec(struct knot_requestor *knot_requestor, struct timeval *timeout);
+int knot_requestor_exec(struct knot_requestor *requestor, struct timeval *timeout);

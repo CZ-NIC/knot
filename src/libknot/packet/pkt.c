@@ -448,8 +448,9 @@ int knot_pkt_put_question(knot_pkt_t *pkt, const knot_dname_t *qname, uint16_t q
 
 	/* Check size limits. */
 	size_t question_len = 2 * sizeof(uint16_t) + qname_len;
-	if (qname_len < 0 || pkt->size + question_len > pkt->max_size)
+	if (qname_len < 0 || pkt->size + question_len > pkt->max_size) {
 		return KNOT_ESPACE;
+	}
 
 	/* Copy QTYPE & QCLASS */
 	dst += qname_len;
