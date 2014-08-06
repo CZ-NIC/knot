@@ -164,9 +164,18 @@ static int parse_partial_rr(zs_scanner_t *s, const char *lp, unsigned flags) {
 	int ret = KNOT_EOK;
 	char b1[32], b2[32]; /* Should suffice for both class/type */
 
+	bool fqdn = true;
+
 	/* Extract owner. */
 	size_t len = strcspn(lp, SEP_CHARS);
 	char *owner_str = strndup(lp, len);
+
+	/* Make dname FQDN if it isn't. */
+	if (owner_str[len - 1] != '.') {
+		owner_str[len++] = '.';
+		fqdn = false;
+	}
+
 	knot_dname_t *owner = knot_dname_from_str(owner_str);
 	free(owner_str);
 	if (owner == NULL) {
@@ -175,6 +184,15 @@ static int parse_partial_rr(zs_scanner_t *s, const char *lp, unsigned flags) {
 
 	s->r_owner_length = knot_dname_size(owner);
 	memcpy(s->r_owner, owner, s->r_owner_length);
+
+	/* Append origin if not FQDN. */
+	if (!fqdn) {
+		s->r_owner_length--;
+		memcpy(s->r_owner + s->r_owner_length, s->zone_origin,
+		       s->zone_origin_length);
+		s->r_owner_length += s->zone_origin_length;
+	}
+
 	lp = tok_skipspace(lp + len);
 
 	/* Initialize */
@@ -540,7 +558,7 @@ int cmd_del(const char* lp, nsupdate_params_t *params)
 
 	/* Check owner name. */
 	if (rrp->r_owner_length == 0) {
-		ERR("failed to parse prereq owner name '%s'\n", lp);
+		ERR("failed to parse owner name '%s'\n", lp);
 		return KNOT_EPARSEFAIL;
 	}
 
