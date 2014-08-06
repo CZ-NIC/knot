@@ -39,77 +39,78 @@
 #include "knot/zone/semantic-check.h"
 
 static char *error_messages[(-ZC_ERR_UNKNOWN) + 1] = {
-	[-ZC_ERR_MISSING_SOA] = "SOA record missing in zone!",
-	[-ZC_ERR_MISSING_NS_DEL_POINT] = "NS record missing in zone apex or in "
-	                "delegation point!",
-	[-ZC_ERR_TTL_MISMATCH] = "RRSet TTLs mismatched!",
+	[-ZC_ERR_MISSING_SOA] =
+	"SOA record missing in zone",
+	[-ZC_ERR_MISSING_NS_DEL_POINT] =
+	"NS record missing in zone apex or in delegation point",
+	[-ZC_ERR_TTL_MISMATCH] =
+	"RRSet TTLs mismatched",
 
 	[-ZC_ERR_RRSIG_RDATA_TYPE_COVERED] =
-	"RRSIG: Type covered RDATA field is wrong!",
+	"RRSIG: type covered RDATA field is wrong",
 	[-ZC_ERR_RRSIG_RDATA_TTL] =
-	"RRSIG: TTL RDATA field is wrong!",
+	"RRSIG: TTL RDATA field is wrong",
 	[-ZC_ERR_RRSIG_RDATA_EXPIRATION] =
-	"RRSIG: Expired signature!",
+	"RRSIG: expired signature",
 	[-ZC_ERR_RRSIG_RDATA_LABELS] =
-	"RRSIG: Labels RDATA field is wrong!",
+	"RRSIG: labels RDATA field is wrong",
 	[-ZC_ERR_RRSIG_RDATA_DNSKEY_OWNER] =
-	"RRSIG: Signer name is different than in DNSKEY!",
+	"RRSIG: signer name is different than in DNSKEY",
 	[-ZC_ERR_RRSIG_NO_DNSKEY] =
-	"RRSIG: Missing DNSKEY for RRSIG!",
+	"RRSIG: missing DNSKEY for RRSIG",
 	[-ZC_ERR_RRSIG_RDATA_SIGNED_WRONG] =
-	"RRSIG: Key error!",
+	"RRSIG: key error",
 	[-ZC_ERR_RRSIG_NO_RRSIG] =
-	"RRSIG: No RRSIG!",
+	"RRSIG: no RRSIG",
 	[-ZC_ERR_RRSIG_SIGNED] =
-	"RRSIG: Signed RRSIG!",
+	"RRSIG: signed RRSIG",
 	[-ZC_ERR_RRSIG_OWNER] =
-	"RRSIG: Owner name RDATA field is wrong!",
+	"RRSIG: owner name RDATA field is wrong",
 	[-ZC_ERR_RRSIG_CLASS] =
-	"RRSIG: Class is wrong!",
+	"RRSIG: class is wrong",
 	[-ZC_ERR_RRSIG_TTL] =
-	"RRSIG: TTL is wrong!",
+	"RRSIG: TTL is wrong",
 
 	[-ZC_ERR_NO_NSEC] =
-	"NSEC: Missing NSEC record",
+	"NSEC: missing record",
 	[-ZC_ERR_NSEC_RDATA_BITMAP] =
-	"NSEC: Wrong NSEC bitmap!",
+	"NSEC: wrong bitmap",
 	[-ZC_ERR_NSEC_RDATA_MULTIPLE] =
-	"NSEC: Multiple NSEC records!",
+	"NSEC: multiple records",
 	[-ZC_ERR_NSEC_RDATA_CHAIN] =
-	"NSEC: Chain is not coherent!",
+	"NSEC: chain is not coherent",
 	[-ZC_ERR_NSEC_RDATA_CHAIN_NOT_CYCLIC] =
-	"NSEC: Chain is not cyclic!",
+	"NSEC: chain is not cyclic",
 
 	[-ZC_ERR_NSEC3_UNSECURED_DELEGATION] =
-	"NSEC3: Zone contains unsecured delegation!",
+	"NSEC3: zone contains unsecured delegation",
 	[-ZC_ERR_NSEC3_NOT_FOUND] =
-	"NSEC3: Could not find previous NSEC3 record in the zone!",
+	"NSEC3: could not find previous NSEC3 record in the zone",
 	[-ZC_ERR_NSEC3_UNSECURED_DELEGATION_OPT] =
-	"NSEC3: Unsecured delegation is not part "
-	"of the Opt-Out span!",
+	"NSEC3: unsecured delegation is not part of the opt-out span",
 	[-ZC_ERR_NSEC3_RDATA_TTL] =
-	"NSEC3: Original TTL RDATA field is wrong!",
+	"NSEC3: original TTL RDATA field is wrong",
 	[-ZC_ERR_NSEC3_RDATA_CHAIN] =
-	"NSEC3: Chain is not coherent!",
+	"NSEC3: chain is not coherent",
 	[-ZC_ERR_NSEC3_RDATA_BITMAP] =
-	"NSEC3: Bitmap error!",
+	"NSEC3: wrong bitmap",
 	[-ZC_ERR_NSEC3_EXTRA_RECORD] =
-	"NSEC3: Node contains extra record. This is valid, however Knot "
-	"will not serve this record properly.",
+	"NSEC3: node contains extra record, unsupported",
 
 	[-ZC_ERR_CNAME_EXTRA_RECORDS] =
-	"CNAME: Node with CNAME record has other records!",
+	"CNAME: node contains other records",
 	[-ZC_ERR_DNAME_CHILDREN] =
-	"DNAME: Node with DNAME record has children!",
+	"DNAME: node has children",
 	[-ZC_ERR_CNAME_EXTRA_RECORDS_DNSSEC] =
-	"CNAME: Node with CNAME record has other "
-	"records than RRSIG and NSEC/NSEC3!",
-	[-ZC_ERR_CNAME_MULTIPLE] = "CNAME: Multiple CNAME records!",
-	[-ZC_ERR_DNAME_MULTIPLE] = "DNAME: Multiple DNAME records!",
-	[-ZC_ERR_CNAME_WILDCARD_SELF] = "CNAME wildcard "
-				  "pointing to itself!",
-	[-ZC_ERR_DNAME_WILDCARD_SELF] = "DNAME wildcard "
-				  "pointing to itself!",
+	"CNAME: node contains other records than RRSIG and NSEC/NSEC3",
+	[-ZC_ERR_CNAME_MULTIPLE] =
+	"CNAME: multiple records",
+	[-ZC_ERR_DNAME_MULTIPLE] =
+	"DNAME: multiple records",
+	[-ZC_ERR_CNAME_WILDCARD_SELF] =
+	"CNAME: wildcard pointing to itself",
+	[-ZC_ERR_DNAME_WILDCARD_SELF] =
+	"DNAME: wildcard pointing to itself",
 
 	/* ^
 	   | Important errors (to be logged on first occurence and counted) */
@@ -118,9 +119,9 @@ static char *error_messages[(-ZC_ERR_UNKNOWN) + 1] = {
 	   specified otherwise */
 
 	[-ZC_ERR_GLUE_NODE] =
-	"GLUE: Node with glue record missing!",
+	"GLUE: node with glue record missing",
 	[-ZC_ERR_GLUE_RECORD] =
-	"GLUE: Record with glue address missing!",
+	"GLUE: record with glue address missing",
 };
 
 void err_handler_init(err_handler_t *h)
