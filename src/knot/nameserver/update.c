@@ -298,7 +298,7 @@ static int process_queries(zone_t *zone, list_t *queries)
 	/* Process authenticated packet. */
 	int ret = process_normal(zone, queries);
 	if (ret != KNOT_EOK) {
-		log_zone_error("update processing failed - %s\n",
+		log_zone_error(zone->name, "DDNS: processing failed - %s\n",
 		               knot_strerror(ret));
 		return ret;
 	}
@@ -306,13 +306,13 @@ static int process_queries(zone_t *zone, list_t *queries)
 	/* Evaluate response. */
 	const uint32_t new_serial = zone_contents_serial(zone->contents);
 	if (new_serial == old_serial) {
-		log_zone_info("no change to zone made\n");
+		log_zone_info(zone->name, "DDNS: no change to zone made\n");
 		return KNOT_EOK;
 	}
 
 	gettimeofday(&t_end, NULL);
-	log_zone_info("Serial %u -> %u\n", old_serial, new_serial);
-	log_zone_info("Update finished in %.02fs.\n",
+	log_zone_info(zone->name, "DDNS: Serial %u -> %u\n", old_serial, new_serial);
+	log_zone_info(zone->name, "DDNS: Update finished in %.02fs.\n",
 	              time_diff(&t_start, &t_end) / 1000.0);
 	
 	zone_events_schedule(zone, ZONE_EVENT_NOTIFY, ZONE_EVENT_NOW);
@@ -365,10 +365,11 @@ static int forward_query(zone_t *zone, struct request_data *update)
 	/* Set RCODE if forwarding failed. */
 	if (ret != KNOT_EOK) {
 		knot_wire_set_rcode(update->resp->wire, KNOT_RCODE_SERVFAIL);
-		log_zone_error("Failed to forward UPDATEs to master: %s\n",
+		log_zone_error(zone->name, "DDNS: "
+		               "Failed to forward UPDATEs to master: %s\n",
 		               knot_strerror(ret));
 	} else {
-		log_zone_info("UPDATEs forwarded\n");
+		log_zone_info(zone->name, "DDNS: UPDATEs forwarded\n");
 	}
 
 	return ret;
@@ -439,10 +440,12 @@ int updates_execute(zone_t *zone)
 
 	/* Process update list - forward if zone has master, or execute. */
 	if (zone_master(zone)) {
-		log_zone_info("forwarding %zu dynamic updates\n", update_count);
+		log_zone_info(zone->name,
+		              "DDNS: forwarding %zu dynamic updates\n", update_count);
 		forward_queries(zone, &updates);
 	} else {
-		log_zone_info("processing %zu dynamic updates\n", update_count);
+		log_zone_info(zone->name,
+		              "DDNS: processing %zu dynamic updates\n", update_count);
 		ret = process_queries(zone, &updates);
 	}
 	UNUSED(ret); /* Don't care about the Knot code, RCODEs are set. */
