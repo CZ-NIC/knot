@@ -120,6 +120,8 @@ static zone_node_t *node_deep_copy(const zone_node_t *old_node, mm_ctx_t *mm)
 	return synth_node;
 }
 
+/* ------------------------------- API -------------------------------------- */
+
 void zone_update_init(zone_update_t *update, const zone_contents_t *zone, changeset_t *change)
 {
 	update->zone = zone;
@@ -127,7 +129,6 @@ void zone_update_init(zone_update_t *update, const zone_contents_t *zone, change
 	mm_ctx_mempool(&update->mm, 4096);
 }
 
-/* Node is either zone original or synthesized, cannot free nor modify. */
 const zone_node_t *zone_update_get_node(zone_update_t *update, const knot_dname_t *dname)
 {
 	if (update == NULL || dname == NULL) {

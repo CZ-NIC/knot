@@ -30,8 +30,6 @@
 #include "knot/zone/contents.h"
 #include "common-knot/lists.h"
 
-/*----------------------------------------------------------------------------*/
-
 /*! \brief One zone change, from 'soa_from' to 'soa_to'. */
 typedef struct {
 	node_t n;                 /*!< List node. */
@@ -51,8 +49,6 @@ typedef struct {
 	const zone_node_t *node;  /*!< Current zone node. */
 	uint16_t node_pos;        /*!< Position in node. */
 } changeset_iter_t;
-
-/*----------------------------------------------------------------------------*/
 
 /*!
  * \brief Inits changeset structure.

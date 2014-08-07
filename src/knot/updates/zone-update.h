@@ -30,18 +30,40 @@
 #include "knot/zone/contents.h"
 #include "libknot/mempattern.h"
 
+/*! \brief Structure for zone contents updating / querying \todo to be moved to new ZONE API */
 typedef struct {
-	const zone_contents_t *zone;
-	changeset_t *change;
-	mm_ctx_t mm;
+	const zone_contents_t *zone;  /*!< Zone being updated. */
+	changeset_t *change;          /*!< Changes we want to apply. */
+	mm_ctx_t mm;                  /*!< Memory context used for intermediate nodes. */
 } zone_update_t;
 
-struct zone_node;
+/*!
+ * \brief Inits given zone update structure, new memory context is created.
+ *
+ * \param update  Zone update structure to init.
+ * \param zone    Init with this zone.
+ * \param change  Init with this changeset. \todo will not be present in zone API
+ */
+void zone_update_init(zone_update_t *update, const zone_contents_t *zone,
+                      changeset_t *change);
 
-void zone_update_init(zone_update_t *update, const zone_contents_t *zone, changeset_t *change);
+/*!
+ * \brief Returns node that would be in the zone after updating it.
+ *
+ * \note Returned node is either zone original or synthesized, do *not* free or modify.
+ *
+ * \param update  Zone update.
+ * \param dname   Dname to search for.
+ *
+ * \return Node after zone update.
+ */
+const zone_node_t *zone_update_get_node(zone_update_t *update,
+                                        const knot_dname_t *dname);
 
-/* Node is either zone original or synthesized, cannot free or modify. */
-const zone_node_t *zone_update_get_node(zone_update_t *update, const knot_dname_t *dname);
-
+/*!
+ * \brief Clear data allocated by given zone update structure.
+ *
+ * \param  update Zone update to clear.
+ */
 void zone_update_clear(zone_update_t *update);
 
