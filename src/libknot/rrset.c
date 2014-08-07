@@ -200,7 +200,7 @@ static int write_rdata_dname(uint8_t **src, size_t *src_avail,
 
 	/* Update compression hints */
 
-	if (compr_get_ptr(compr, compr_hint)) {
+	if (compr_get_ptr(compr, compr_hint) == 0) {
 		compr_set_ptr(compr, compr_hint, *wire, written);
 	}
 
