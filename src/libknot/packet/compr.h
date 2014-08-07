@@ -69,7 +69,6 @@ typedef struct {
  */
 typedef struct knot_compr {
 	uint8_t *wire;          /* Packet wireformat. */
-	size_t wire_pos;        /* Current wire position. */
 	knot_rrinfo_t *rrinfo;  /* Hints for current RRSet. */
 	struct {
 		uint16_t pos;   /* Position of current suffix. */

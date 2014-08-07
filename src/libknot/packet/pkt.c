@@ -495,7 +495,6 @@ int knot_pkt_put(knot_pkt_t *pkt, uint16_t compr_hint, const knot_rrset_t *rr,
 	/* Create compression context. */
 	knot_compr_t compr;
 	compr.wire = pkt->wire;
-	compr.wire_pos = pkt->size;
 	compr.rrinfo = rrinfo;
 	compr.suffix.pos = KNOT_WIRE_HEADER_SIZE;
 	compr.suffix.labels = knot_dname_labels(compr.wire + compr.suffix.pos,
