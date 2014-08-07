@@ -146,17 +146,17 @@ int knot_sig0_sign(uint8_t *wire, size_t *wire_size, size_t wire_max_size,
 	uint8_t *wire_end = wire + *wire_size;
 	size_t wire_avail_size = wire_max_size - *wire_size;
 	size_t wire_sig_size = 0;
-	uint16_t written_rr_count = 0;
 
-	int result = knot_rrset_to_wire(sig_rrset, wire_end, &wire_sig_size,
-	                                wire_avail_size, &written_rr_count,
-	                                NULL);
+	int result = knot_rrset_to_wire(sig_rrset, wire_end, wire_avail_size,
+	                                NULL, KNOT_RRSET_WIRE_CANONICAL);
+
 	knot_rrset_free(&sig_rrset, NULL);
-	if (result != KNOT_EOK) {
+
+	if (result < 0) {
 		return result;
 	}
 
-	assert(written_rr_count == 1);
+	wire_sig_size = result;
 
 	// create signature
 
@@ -166,7 +166,7 @@ int knot_sig0_sign(uint8_t *wire, size_t *wire_size, size_t wire_max_size,
 	}
 
 	uint16_t wire_arcount = knot_wire_get_arcount(wire);
-	knot_wire_set_arcount(wire, wire_arcount + written_rr_count);
+	knot_wire_set_arcount(wire, wire_arcount + 1);
 
 	*wire_size += wire_sig_size;
 
