@@ -545,8 +545,8 @@ static int process_add_nsec3param(const zone_node_t *node,
 	if (node == NULL || !node_rrtype_exists(node, KNOT_RRTYPE_SOA)) {
 		// Ignore non-apex additions
 		char *owner = knot_dname_to_str(rr->owner);
-		log_server_warning("Refusing to add NSEC3PARAM owned "
-		                   "by %s to non-apex node.\n", owner);
+		log_warning("refusing to add NSEC3PARAM owned by '%s' to "
+		            "non-apex node", owner);
 		free(owner);
 		return KNOT_EDENIED;
 	}
@@ -556,9 +556,8 @@ static int process_add_nsec3param(const zone_node_t *node,
 	}
 
 	char *owner = knot_dname_to_str(rr->owner);
-	log_server_warning("Refusing to add NSEC3PARAM owned by %s. "
-	                   "NSEC3PARAM already present, remove it first.\n",
-	                   owner);
+	log_warning("refusing to add NSEC3PARAM owned by '%s', NSEC3PARAM "
+	            "already present, remove it first", owner);
 	free(owner);
 
 	return KNOT_EOK;
@@ -818,7 +817,7 @@ static int check_update(const knot_rrset_t *rrset, const knot_pkt_t *query,
 
 	if (knot_rrtype_is_ddns_forbidden(rrset->type)) {
 		*rcode = KNOT_RCODE_REFUSED;
-		log_zone_warning("Refusing to update DNSSEC-related record!\n");
+		log_warning("refusing to update DNSSEC-related record");
 		return KNOT_EDENIED;
 	}
 

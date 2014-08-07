@@ -52,7 +52,7 @@ static zone_status_t zone_file_status(const zone_t *old_zone,
                                       const conf_zone_t *conf)
 {
 	assert(conf);
-	
+
 	time_t mtime = zonefile_mtime(conf->file);
 
 	if (mtime < 0) {
@@ -109,7 +109,7 @@ static void log_zone_load_info(const zone_t *zone, const char *zone_name,
 		serial = knot_soa_serial(soa);
 	}
 
-	log_zone_info("Zone '%s' %s (serial %u)\n", zone_name, action, serial);
+	log_zone_info(zone->name, "zone %s, serial %u", action, serial);
 }
 
 /*!
@@ -125,7 +125,7 @@ static zone_t *create_zone(conf_zone_t *conf, server_t *server, zone_t *old_zone
 {
 	assert(conf);
 	assert(server);
-	
+
 	zone_t *zone = zone_new(conf);
 	if (!zone) {
 		return NULL;
@@ -174,7 +174,7 @@ static zone_t *create_zone(conf_zone_t *conf, server_t *server, zone_t *old_zone
 
 /*!
  * \brief Create new zone database.
- * 
+ *
  * Zones that should be retained are just added from the old database to the
  * new. New zones are loaded.
  *
@@ -187,7 +187,7 @@ static knot_zonedb_t *create_zonedb(const conf_t *conf, server_t *server)
 {
 	assert(conf);
 	assert(server);
-	
+
 	knot_zonedb_t *db_old = server->zone_db;
 	knot_zonedb_t *db_new = knot_zonedb_new(hattrie_weight(conf->zones));
 	if (!db_new) {
@@ -205,8 +205,8 @@ static knot_zonedb_t *create_zonedb(const conf_t *conf, server_t *server)
 
 		zone_t *zone = create_zone(zone_config, server, old_zone);
 		if (!zone) {
-			log_server_error("Zone '%s' cannot be created.\n",
-			                 zone_config->name);
+			log_zone_str_error(zone_config->name,
+					   "zone cannot be created");
 			conf_free_zone(zone_config);
 			continue;
 		}
@@ -214,7 +214,7 @@ static knot_zonedb_t *create_zonedb(const conf_t *conf, server_t *server)
 		knot_zonedb_insert(db_new, zone);
 	}
 	hattrie_iter_free(it);
-	
+
 	return db_new;
 }
 
@@ -239,7 +239,7 @@ static int remove_old_zonedb(const knot_zonedb_t *db_new, knot_zonedb_t *db_old)
 	while(!knot_zonedb_iter_finished(&it)) {
 		zone_t *new_zone = knot_zonedb_iter_val(&it);
 		zone_t *old_zone = knot_zonedb_find(db_old, new_zone->name);
-		
+
 		if (old_zone) {
 			old_zone->contents = NULL;
 		}
@@ -269,7 +269,7 @@ int zonedb_reload(const conf_t *conf, struct server_t *server)
 	             be required. */
 	knot_zonedb_t *db_new = create_zonedb(conf, server);
 	if (db_new == NULL) {
-		log_server_error("Failed to create new zone database.\n");
+		log_error("failed to create new zone database");
 		return KNOT_ENOMEM;
 	}
 

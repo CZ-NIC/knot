@@ -23,7 +23,7 @@
 
 /* Defines. */
 #define ARPA_ZONE_LABELS 2
-#define MODULE_ERR(msg...) log_zone_error("Module 'synth_record': " msg)
+#define MODULE_ERR(msg...) log_error("module 'synth_record': " msg)
 
 /*! \brief Supported answer synthesis template types. */
 enum synth_template_type {
@@ -347,14 +347,14 @@ int synth_record_load(struct query_plan *plan, struct query_module *self)
 	} else if (strcmp(token, "forward") == 0) {
 		tpl->type = SYNTH_FORWARD;
 	} else {
-		MODULE_ERR("invalid type '%s'.\n", token);
+		MODULE_ERR("invalid type '%s'", token);
 		return KNOT_ENOTSUP;
 	}
 
 	/* Parse format string. */
 	tpl->prefix = strtok_r(NULL, " ", &saveptr);
 	if (strchr(tpl->prefix, '.') != NULL) {
-		MODULE_ERR("dots '.' are not allowed in the prefix.\n");
+		MODULE_ERR("dots '.' are not allowed in the prefix");
 		return KNOT_EMALF;
 	}
 
@@ -363,7 +363,7 @@ int synth_record_load(struct query_plan *plan, struct query_module *self)
 		tpl->zone = strtok_r(NULL, " ", &saveptr);
 		knot_dname_t *check_name = knot_dname_from_str(tpl->zone);
 		if (check_name == NULL) {
-			MODULE_ERR("invalid zone '%s'.\n", tpl->zone);
+			MODULE_ERR("invalid zone '%s'", tpl->zone);
 			return KNOT_EMALF;
 		}
 		knot_dname_free(&check_name, NULL);
@@ -390,13 +390,13 @@ int synth_record_load(struct query_plan *plan, struct query_module *self)
 
 	/* Check subnet. */
 	if (tpl->subnet.prefix > prefix_max) {
-		MODULE_ERR("invalid address prefix '%s'.\n", subnet);
+		MODULE_ERR("invalid address prefix '%s'", subnet);
 		return KNOT_EMALF;
 	}
 
 	int ret = sockaddr_set(&tpl->subnet.addr, family, token, 0);
 	if (ret != KNOT_EOK) {
-		MODULE_ERR("invalid address '%s'.\n", token);
+		MODULE_ERR("invalid address '%s'", token);
 		return KNOT_EMALF;
 	}
 

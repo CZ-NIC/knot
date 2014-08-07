@@ -1981,7 +1981,7 @@ int knot_rrset_txt_dump(const knot_rrset_t      *rrset,
                         const size_t            maxlen,
                         const knot_dump_style_t *style)
 {
-	if (knot_rrset_empty(rrset) || dst == NULL || style == NULL) {
+	if (rrset == NULL || dst == NULL || style == NULL) {
 		return KNOT_EINVAL;
 	}
 
@@ -1989,7 +1989,7 @@ int knot_rrset_txt_dump(const knot_rrset_t      *rrset,
 	int    ret;
 
 	// UPDATE delete may have empty RDATA => dump header.
-	if (rrset->rrs.rr_count == 0) {
+	if (knot_rrset_empty(rrset)) {
 		// Dump rdata owner, class, ttl and type.
 		ret = knot_rrset_txt_dump_header(rrset, 0, dst + len,
 		                                 maxlen - len, style);

@@ -265,8 +265,8 @@ static int apply_remove(zone_contents_t *contents, changeset_t *chset)
 }
 
 /*! \brief Adds a single RR into zone contents. */
-static int add_rr(zone_node_t *node, const knot_rrset_t *rr,
-                  changeset_t *chset, bool master)
+static int add_rr(const zone_contents_t *zone, zone_node_t *node,
+                  const knot_rrset_t *rr, changeset_t *chset, bool master)
 {
 	knot_rrset_t changed_rrset = node_rrset(node, rr->type);
 	if (!knot_rrset_empty(&changed_rrset)) {
@@ -298,7 +298,7 @@ static int add_rr(zone_node_t *node, const knot_rrset_t *rr,
 
 		if (ret == KNOT_ETTL) {
 			// Handle possible TTL errors.
-			log_ttl_error(node, rr);
+			log_ttl_error(zone, node, rr);
 			if (!master) {
 				// TTL errors fatal only for master.
 				return KNOT_EOK;
@@ -325,7 +325,7 @@ static int apply_add(zone_contents_t *contents, changeset_t *chset,
 			return KNOT_ENOMEM;
 		}
 
-		int ret = add_rr(node, &rr, chset, master);
+		int ret = add_rr(contents, node, &rr, chset, master);
 		if (ret != KNOT_EOK) {
 			changeset_iter_clear(&itt);
 			return ret;
@@ -348,7 +348,7 @@ static int apply_replace_soa(zone_contents_t *contents, changeset_t *chset)
 
 	assert(!node_rrtype_exists(contents->apex, KNOT_RRTYPE_SOA));
 
-	return add_rr(contents->apex, chset->soa_to, chset, false);
+	return add_rr(contents, contents->apex, chset->soa_to, chset, false);
 }
 
 /*! \brief Apply single change to zone contents structure. */

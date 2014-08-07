@@ -116,7 +116,7 @@ int zone_change_store(zone_t *zone, changeset_t *change)
 
 	int ret = journal_store_changeset(change, conf->ixfr_db, conf->ixfr_fslimit);
 	if (ret == KNOT_EBUSY) {
-		log_zone_notice("Journal for '%s' is full, flushing.\n", conf->name);
+		log_zone_notice(zone->name, "zone journal is full, flushing");
 
 		/* Transaction rolled back, journal released, we may flush. */
 		ret = zone_flush_journal(zone);
@@ -139,7 +139,7 @@ int zone_changes_store(zone_t *zone, list_t *chgs)
 
 	int ret = journal_store_changesets(chgs, conf->ixfr_db, conf->ixfr_fslimit);
 	if (ret == KNOT_EBUSY) {
-		log_zone_notice("Journal for '%s' is full, flushing.\n", conf->name);
+		log_zone_notice(zone->name, "journal is full, flushing");
 
 		/* Transaction rolled back, journal released, we may flush. */
 		ret = zone_flush_journal(zone);
@@ -217,19 +217,19 @@ int zone_flush_journal(zone_t *zone)
 	conf_zone_t *conf = zone->conf;
 	int ret = zonefile_write(conf->file, contents, from);
 	if (ret == KNOT_EOK) {
-		log_zone_info("Zone '%s': zone file updated (%u -> %u).\n",
-		              conf->name, zone->zonefile_serial, serial_to);
+		log_zone_info(zone->name, "zone file updated, serial %u -> %u",
+		              zone->zonefile_serial, serial_to);
 	} else {
-		log_zone_warning("Zone '%s': failed to update zone file (%s)\n",
-		                  conf->name, knot_strerror(ret));
+		log_zone_warning(zone->name, "failed to update zone file: %s",
+		                 knot_strerror(ret));
 		return ret;
 	}
 
 	/* Update zone version. */
 	struct stat st;
 	if (stat(zone->conf->file, &st) < 0) {
-		log_zone_warning("Zone '%s': failed to update zone file (%s)\n",
-		                  conf->name, knot_strerror(KNOT_EACCES));
+		log_zone_warning(zone->name, "failed to update zone file: %s",
+		                 knot_strerror(KNOT_EACCES));
 		return KNOT_EACCES;
 	}
 

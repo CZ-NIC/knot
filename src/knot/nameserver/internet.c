@@ -935,12 +935,12 @@ static int process_soa_answer(knot_pkt_t *pkt, struct answer_data *data)
 	uint32_t our_serial = knot_soa_serial(soa);
 	uint32_t their_serial =	knot_soa_serial(&answer->rr[0].rrs);
 	if (knot_serial_compare(our_serial, their_serial) >= 0) {
-		ANSWER_LOG(LOG_INFO, data, "Refresh", "Zone is up-to-date.");
+		ANSWER_LOG(LOG_INFO, data, "refresh, outgoing", "zone is up-to-date");
 		return NS_PROC_DONE; /* Our zone is up to date. */
 	}
 
 	/* Our zone is outdated, schedule zone transfer. */
-	ANSWER_LOG(LOG_INFO, data, "Refresh", "master has newer serial %u -> %u.",
+	ANSWER_LOG(LOG_INFO, data, "refresh, outgoing", "master has newer serial %u -> %u",
 	           our_serial, their_serial);
 	zone_events_schedule(zone, ZONE_EVENT_XFER, ZONE_EVENT_NOW);
 	return NS_PROC_DONE;

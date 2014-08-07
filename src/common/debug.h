@@ -64,8 +64,8 @@
 
 /* Brief messages. */
 #ifdef DEBUG_ENABLE_BRIEF
-#define dbg_ns(msg...) log_msg(LOG_SERVER, LOG_DEBUG, msg)
-#define dbg_ns_hex(data, len)  hex_log(LOG_SERVER, (data), (len))
+#define dbg_ns(msg...) log_msg(LOG_DEBUG, msg)
+#define dbg_ns_hex(data, len)  hex_log((data), (len))
 #define dbg_ns_exec(cmds) do { cmds } while (0)
 #else
 #define dbg_ns(msg...)
@@ -75,8 +75,8 @@
 
 /* Verbose messages. */
 #ifdef DEBUG_ENABLE_VERBOSE
-#define dbg_ns_verb(msg...) log_msg(LOG_SERVER, LOG_DEBUG, msg)
-#define dbg_ns_hex_verb(data, len) hex_log(LOG_SERVER, (data), (len))
+#define dbg_ns_verb(msg...) log_msg(LOG_DEBUG, msg)
+#define dbg_ns_hex_verb(data, len) hex_log((data), (len))
 #define dbg_ns_exec_verb(cmds) do { cmds } while (0)
 #else
 #define dbg_ns_verb(msg...)
@@ -86,8 +86,8 @@
 
 /* Detail messages. */
 #ifdef DEBUG_ENABLE_DETAILS
-#define dbg_ns_detail(msg...) log_msg(LOG_SERVER, LOG_DEBUG, msg)
-#define dbg_ns_hex_detail(data, len)  hex_log(LOG_SERVER, (data), (len))
+#define dbg_ns_detail(msg...) log_msg(LOG_DEBUG, msg)
+#define dbg_ns_hex_detail(data, len)  hex_log((data), (len))
 #define dbg_ns_exec_detail(cmds) do { cmds } while (0)
 #else
 #define dbg_ns_detail(msg...)
@@ -114,8 +114,8 @@
 
 /* Brief messages. */
 #ifdef DEBUG_ENABLE_BRIEF
-#define dbg_zone(msg...) log_msg(LOG_ZONE, LOG_DEBUG, msg)
-#define dbg_zone_hex(data, len)  hex_log(LOG_ZONE, (data), (len))
+#define dbg_zone(msg...) log_msg(LOG_DEBUG, msg)
+#define dbg_zone_hex(data, len)  hex_log((data), (len))
 #define dbg_zone_exec(cmds) do { cmds } while (0)
 #else
 #define dbg_zone(msg...)
@@ -125,8 +125,8 @@
 
 /* Verbose messages. */
 #ifdef DEBUG_ENABLE_VERBOSE
-#define dbg_zone_verb(msg...) log_msg(LOG_ZONE, LOG_DEBUG, msg)
-#define dbg_zone_hex_verb(data, len)  hex_log(LOG_ZONE, (data), (len))
+#define dbg_zone_verb(msg...) log_msg(LOG_DEBUG, msg)
+#define dbg_zone_hex_verb(data, len)  hex_log((data), (len))
 #define dbg_zone_exec_verb(cmds) do { cmds } while (0)
 #else
 #define dbg_zone_verb(msg...)
@@ -136,8 +136,8 @@
 
 /* Detail messages. */
 #ifdef DEBUG_ENABLE_DETAILS
-#define dbg_zone_detail(msg...) log_msg(LOG_ZONE, LOG_DEBUG, msg)
-#define dbg_zone_hex_detail(data, len)  hex_log(LOG_ZONE, (data), (len))
+#define dbg_zone_detail(msg...) log_msg(LOG_DEBUG, msg)
+#define dbg_zone_hex_detail(data, len)  hex_log((data), (len))
 #define dbg_zone_exec_detail(cmds) do { cmds } while (0)
 #else
 #define dbg_zone_detail(msg...)
@@ -208,8 +208,8 @@
 
 /* Brief messages. */
 #ifdef DEBUG_ENABLE_BRIEF
-#define dbg_response(msg...) log_msg(LOG_SERVER, LOG_DEBUG, msg)
-#define dbg_response_hex(data, len)  hex_log(LOG_SERVER, (data), (len))
+#define dbg_response(msg...) log_msg(LOG_DEBUG, msg)
+#define dbg_response_hex(data, len)  hex_log((data), (len))
 #define dbg_response_exec(cmds) do { cmds } while (0)
 #else
 #define dbg_response(msg...)
@@ -219,8 +219,8 @@
 
 /* Verbose messages. */
 #ifdef DEBUG_ENABLE_VERBOSE
-#define dbg_response_verb(msg...) log_msg(LOG_SERVER, LOG_DEBUG, msg)
-#define dbg_response_hex_verb(data, len)  hex_log(LOG_SERVER, (data), (len))
+#define dbg_response_verb(msg...) log_msg(LOG_DEBUG, msg)
+#define dbg_response_hex_verb(data, len)  hex_log((data), (len))
 #define dbg_response_exec_verb(cmds) do { cmds } while (0)
 #else
 #define dbg_response_verb(msg...)
@@ -230,8 +230,8 @@
 
 /* Detail messages. */
 #ifdef DEBUG_ENABLE_DETAILS
-#define dbg_response_detail(msg...) log_msg(LOG_SERVER, LOG_DEBUG, msg)
-#define dbg_response_hex_detail(data, len)  hex_log(LOG_SERVER, (data), (len))
+#define dbg_response_detail(msg...) log_msg(LOG_DEBUG, msg)
+#define dbg_response_hex_detail(data, len)  hex_log((data), (len))
 #define dbg_response_exec_detail(cmds) do { cmds } while (0)
 #else
 #define dbg_response_detail(msg...)
@@ -258,8 +258,8 @@
 
 /* Brief messages. */
 #ifdef DEBUG_ENABLE_BRIEF
-#define dbg_packet(msg...) log_msg(LOG_SERVER, LOG_DEBUG, msg)
-#define dbg_packet_hex(data, len)  hex_log(LOG_SERVER, (data), (len))
+#define dbg_packet(msg...) log_msg(LOG_DEBUG, msg)
+#define dbg_packet_hex(data, len)  hex_log((data), (len))
 #define dbg_packet_exec(cmds) do { cmds } while (0)
 #else
 #define dbg_packet(msg...)
@@ -269,8 +269,8 @@
 
 /* Verbose messages. */
 #ifdef DEBUG_ENABLE_VERBOSE
-#define dbg_packet_verb(msg...) log_msg(LOG_SERVER, LOG_DEBUG, msg)
-#define dbg_packet_hex_verb(data, len)  hex_log(LOG_SERVER, (data), (len))
+#define dbg_packet_verb(msg...) log_msg(LOG_DEBUG, msg)
+#define dbg_packet_hex_verb(data, len)  hex_log((data), (len))
 #define dbg_packet_exec_verb(cmds) do { cmds } while (0)
 #else
 #define dbg_packet_verb(msg...)
@@ -280,8 +280,8 @@
 
 /* Detail messages. */
 #ifdef DEBUG_ENABLE_DETAILS
-#define dbg_packet_detail(msg...) log_msg(LOG_SERVER, LOG_DEBUG, msg)
-#define dbg_packet_hex_detail(data, len)  hex_log(LOG_SERVER, (data), (len))
+#define dbg_packet_detail(msg...) log_msg(LOG_DEBUG, msg)
+#define dbg_packet_hex_detail(data, len)  hex_log((data), (len))
 #define dbg_packet_exec_detail(cmds) do { cmds } while (0)
 #else
 #define dbg_packet_detail(msg...)
@@ -308,8 +308,8 @@
 
 /* Brief messages. */
 #ifdef DEBUG_ENABLE_BRIEF
-#define dbg_edns(msg...) log_msg(LOG_ZONE, LOG_DEBUG, msg)
-#define dbg_edns_hex(data, len)  hex_log(LOG_ZONE, (data), (len))
+#define dbg_edns(msg...) log_msg(LOG_DEBUG, msg)
+#define dbg_edns_hex(data, len)  hex_log((data), (len))
 #else
 #define dbg_edns(msg...)
 #define dbg_edns_hex(data, len)
@@ -317,8 +317,8 @@
 
 /* Verbose messages. */
 #ifdef DEBUG_ENABLE_VERBOSE
-#define dbg_edns_verb(msg...) log_msg(LOG_ZONE, LOG_DEBUG, msg)
-#define dbg_edns_hex_verb(data, len)  hex_log(LOG_ZONE, (data), (len))
+#define dbg_edns_verb(msg...) log_msg(LOG_DEBUG, msg)
+#define dbg_edns_hex_verb(data, len)  hex_log((data), (len))
 #else
 #define dbg_edns_verb(msg...)
 #define dbg_edns_hex_verb(data, len)
@@ -326,8 +326,8 @@
 
 /* Detail messages. */
 #ifdef DEBUG_ENABLE_DETAILS
-#define dbg_edns_detail(msg...) log_msg(LOG_ZONE, LOG_DEBUG, msg)
-#define dbg_edns_hex_detail(data, len)  hex_log(LOG_ZONE, (data), (len))
+#define dbg_edns_detail(msg...) log_msg(LOG_DEBUG, msg)
+#define dbg_edns_hex_detail(data, len)  hex_log((data), (len))
 #else
 #define dbg_edns_detail(msg...)
 #define dbg_edns_hex_detail(data, len)
@@ -349,8 +349,8 @@
 
 /* Brief messages. */
 #ifdef DEBUG_ENABLE_BRIEF
-#define dbg_tsig(msg...) log_msg(LOG_ZONE, LOG_DEBUG, msg)
-#define dbg_tsig_hex(data, len)  hex_log(LOG_ZONE, (data), (len))
+#define dbg_tsig(msg...) log_msg(LOG_DEBUG, msg)
+#define dbg_tsig_hex(data, len)  hex_log((data), (len))
 #else
 #define dbg_tsig(msg...)
 #define dbg_tsig_hex(data, len)
@@ -358,8 +358,8 @@
 
 /* Verbose messages. */
 #ifdef DEBUG_ENABLE_VERBOSE
-#define dbg_tsig_verb(msg...) log_msg(LOG_ZONE, LOG_DEBUG, msg)
-#define dbg_tsig_hex_verb(data, len)  hex_log(LOG_ZONE, (data), (len))
+#define dbg_tsig_verb(msg...) log_msg(LOG_DEBUG, msg)
+#define dbg_tsig_hex_verb(data, len)  hex_log((data), (len))
 #else
 #define dbg_tsig_verb(msg...)
 #define dbg_tsig_hex_verb(data, len)
@@ -367,8 +367,8 @@
 
 /* Detail messages. */
 #ifdef DEBUG_ENABLE_DETAILS
-#define dbg_tsig_detail(msg...) log_msg(LOG_ZONE, LOG_DEBUG, msg)
-#define dbg_tsig_hex_detail(data, len)  hex_log(LOG_ZONE, (data), (len))
+#define dbg_tsig_detail(msg...) log_msg(LOG_DEBUG, msg)
+#define dbg_tsig_hex_detail(data, len)  hex_log((data), (len))
 #else
 #define dbg_tsig_detail(msg...)
 #define dbg_tsig_hex_detail(data, len)
@@ -390,8 +390,8 @@
 
 /* Brief messages. */
 #ifdef DEBUG_ENABLE_BRIEF
-#define dbg_rrset(msg...) log_msg(LOG_ZONE, LOG_DEBUG, msg)
-#define dbg_rrset_hex(data, len)  hex_log(LOG_ZONE, (data), (len))
+#define dbg_rrset(msg...) log_msg(LOG_DEBUG, msg)
+#define dbg_rrset_hex(data, len)  hex_log((data), (len))
 #define dbg_rrset_exec(cmds) do { cmds } while (0)
 #else
 #define dbg_rrset(msg...)
@@ -401,8 +401,8 @@
 
 /* Verbose messages. */
 #ifdef DEBUG_ENABLE_VERBOSE
-#define dbg_rrset_verb(msg...) log_msg(LOG_ZONE, LOG_DEBUG, msg)
-#define dbg_rrset_hex_verb(data, len)  hex_log(LOG_ZONE, (data), (len))
+#define dbg_rrset_verb(msg...) log_msg(LOG_DEBUG, msg)
+#define dbg_rrset_hex_verb(data, len)  hex_log((data), (len))
 #define dbg_rrset_exec_verb(cmds) do { cmds } while (0)
 #else
 #define dbg_rrset_verb(msg...)
@@ -412,8 +412,8 @@
 
 /* Detail messages. */
 #ifdef DEBUG_ENABLE_DETAILS
-#define dbg_rrset_detail(msg...) log_msg(LOG_ZONE, LOG_DEBUG, msg)
-#define dbg_rrset_hex_detail(data, len)  hex_log(LOG_ZONE, (data), (len))
+#define dbg_rrset_detail(msg...) log_msg(LOG_DEBUG, msg)
+#define dbg_rrset_hex_detail(data, len)  hex_log((data), (len))
 #define dbg_rrset_exec_detail(cmds) do { cmds } while (0)
 #else
 #define dbg_rrset_detail(msg...)
@@ -440,8 +440,8 @@
 
 /* Brief messages. */
 #ifdef DEBUG_ENABLE_BRIEF
-#define dbg_dnssec(msg...) log_msg(LOG_SERVER, LOG_DEBUG, msg)
-#define dbg_dnssec_hex(data, len)  hex_log(LOG_SERVER, (data), (len))
+#define dbg_dnssec(msg...) log_msg(LOG_DEBUG, msg)
+#define dbg_dnssec_hex(data, len)  hex_log((data), (len))
 #define dbg_dnssec_exec(cmds) do { cmds } while (0)
 #else
 #define dbg_dnssec(msg...)
@@ -451,8 +451,8 @@
 
 /* Verbose messages. */
 #ifdef DEBUG_ENABLE_VERBOSE
-#define dbg_dnssec_verb(msg...) log_msg(LOG_SERVER, LOG_DEBUG, msg)
-#define dbg_dnssec_hex_verb(data, len) hex_log(LOG_SERVER, (data), (len))
+#define dbg_dnssec_verb(msg...) log_msg(LOG_DEBUG, msg)
+#define dbg_dnssec_hex_verb(data, len) hex_log((data), (len))
 #define dbg_dnssec_exec_verb(cmds) do { cmds } while (0)
 #else
 #define dbg_dnssec_verb(msg...)
@@ -462,8 +462,8 @@
 
 /* Detail messages. */
 #ifdef DEBUG_ENABLE_DETAILS
-#define dbg_dnssec_detail(msg...) log_msg(LOG_SERVER, LOG_DEBUG, msg)
-#define dbg_dnssec_hex_detail(data, len)  hex_log(LOG_SERVER, (data), (len))
+#define dbg_dnssec_detail(msg...) log_msg(LOG_DEBUG, msg)
+#define dbg_dnssec_hex_detail(data, len)  hex_log((data), (len))
 #define dbg_dnssec_exec_detail(cmds) do { cmds } while (0)
 #else
 #define dbg_dnssec_detail(msg...)
