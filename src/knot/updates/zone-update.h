@@ -50,7 +50,8 @@ void zone_update_init(zone_update_t *update, const zone_contents_t *zone,
 /*!
  * \brief Returns node that would be in the zone after updating it.
  *
- * \note Returned node is either zone original or synthesized, do *not* free or modify.
+ * \note Returned node is either zone original or synthesized, do *not* free
+ *       or modify.
  *
  * \param update  Zone update.
  * \param dname   Dname to search for.

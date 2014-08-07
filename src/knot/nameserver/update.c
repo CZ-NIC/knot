@@ -37,31 +37,6 @@
 #define UPDATE_LOG(severity, msg...) \
 	QUERY_LOG(severity, &qdata, "UPDATE", msg)
 
-int update_query_process(knot_pkt_t *pkt, struct query_data *qdata)
-{
-	/* RFC1996 require SOA question. */
-	NS_NEED_QTYPE(qdata, KNOT_RRTYPE_SOA, KNOT_RCODE_FORMERR);
-
-	/* Check valid zone. */
-	NS_NEED_ZONE(qdata, KNOT_RCODE_NOTAUTH);
-
-	/* Need valid transaction security. */
-	zone_t *zone = (zone_t *)qdata->zone;
-	NS_NEED_AUTH(&zone->conf->acl.update_in, qdata);
-	/* Check expiration. */
-	NS_NEED_ZONE_CONTENTS(qdata, KNOT_RCODE_SERVFAIL);
-
-	/* Store update into DDNS queue. */
-	int ret = zone_update_enqueue(zone, qdata->query, qdata->param);
-	if (ret != KNOT_EOK) {
-		return NS_PROC_FAIL;
-	}
-
-	/* No immediate response. */
-	pkt->size = 0;
-	return NS_PROC_DONE;
-}
-
 static bool apex_rr_changed(const zone_contents_t *old_contents,
                             const zone_contents_t *new_contents,
                             uint16_t type)
@@ -70,19 +45,6 @@ static bool apex_rr_changed(const zone_contents_t *old_contents,
 	knot_rrset_t new_rr = node_rrset(new_contents->apex, type);
 
 	return !knot_rrset_equal(&old_rr, &new_rr, KNOT_RRSET_COMPARE_WHOLE);
-}
-
-static bool zones_dnskey_changed(const zone_contents_t *old_contents,
-                                 const zone_contents_t *new_contents)
-{
-	return apex_rr_changed(old_contents, new_contents, KNOT_RRTYPE_DNSKEY);
-}
-
-static bool zones_nsec3param_changed(const zone_contents_t *old_contents,
-                                     const zone_contents_t *new_contents)
-{
-	return apex_rr_changed(old_contents, new_contents,
-	                       KNOT_RRTYPE_NSEC3PARAM);
 }
 
 static int sign_update(zone_t *zone, const zone_contents_t *old_contents,
@@ -100,8 +62,8 @@ static int sign_update(zone_t *zone, const zone_contents_t *old_contents,
 	 */
 	int ret = KNOT_EOK;
 	uint32_t refresh_at = 0;
-	if (zones_dnskey_changed(old_contents, new_contents) ||
-	    zones_nsec3param_changed(old_contents, new_contents)) {
+	if (apex_rr_changed(old_contents, new_contents, KNOT_RRTYPE_DNSKEY) ||
+	    apex_rr_changed(old_contents, new_contents, KNOT_RRTYPE_NSEC3PARAM)) {
 		ret = knot_dnssec_zone_sign(new_contents, zone->conf,
 		                            sec_ch, KNOT_SOA_SERIAL_KEEP,
 		                            &refresh_at);
@@ -172,39 +134,40 @@ static int process_single_update(struct request_data *request,
 
 #undef UPDATE_LOG
 
-static void set_rcodes(list_t *queries, const uint16_t rcode)
+static void set_rcodes(list_t *requests, const uint16_t rcode)
 {
-	struct request_data *query;
-	WALK_LIST(query, *queries) {
-		if (knot_wire_get_rcode(query->resp->wire) ==
+	struct request_data *req;
+	WALK_LIST(req, *requests) {
+		if (knot_wire_get_rcode(req->resp->wire) ==
 		    KNOT_RCODE_NOERROR) {
-			knot_wire_set_rcode(query->resp->wire, rcode);
+			knot_wire_set_rcode(req->resp->wire, rcode);
 		}
 	}
 }
 
-static int process_normal(zone_t *zone, list_t *queries)
+static int process_normal(zone_t *zone, list_t *requests)
 {
-	assert(queries);
+	assert(requests);
 
-	// Create DDNS change
+	// Create DDNS change.
 	changeset_t ddns_ch;
 	int ret = changeset_init(&ddns_ch, zone->name);
 	if (ret != KNOT_EOK) {
-		set_rcodes(queries, KNOT_RCODE_SERVFAIL);
+		set_rcodes(requests, KNOT_RCODE_SERVFAIL);
 		return ret;
 	}
 	
-	// Init zone update structure
+	// Init zone update structure.
 	zone_update_t zone_update;
 	zone_update_init(&zone_update, zone->contents, &ddns_ch);
 
-	struct request_data *query;
-	WALK_LIST(query, *queries) {
-		ret = process_single_update(query, zone, &zone_update);
+	// Walk all the requests and process.
+	struct request_data *req;
+	WALK_LIST(req, *requests) {
+		ret = process_single_update(req, zone, &zone_update);
 		if (ret != KNOT_EOK) {
 			changeset_clear(&ddns_ch);
-			set_rcodes(queries, KNOT_RCODE_SERVFAIL);
+			set_rcodes(requests, KNOT_RCODE_SERVFAIL);
 			return ret;
 		}
 	}
@@ -215,9 +178,9 @@ static int process_normal(zone_t *zone, list_t *queries)
 		ret = apply_changeset(zone, &ddns_ch, &new_contents);
 		if (ret != KNOT_EOK) {
 			if (ret == KNOT_ETTL) {
-				set_rcodes(queries, KNOT_RCODE_REFUSED);
+				set_rcodes(requests, KNOT_RCODE_REFUSED);
 			} else {
-				set_rcodes(queries, KNOT_RCODE_SERVFAIL);
+				set_rcodes(requests, KNOT_RCODE_SERVFAIL);
 			}
 			changeset_clear(&ddns_ch);
 			return ret;
@@ -232,7 +195,7 @@ static int process_normal(zone_t *zone, list_t *queries)
 	if (zone->conf->dnssec_enable) {
 		ret = changeset_init(&sec_ch, zone->name);
 		if (ret != KNOT_EOK) {
-			set_rcodes(queries, KNOT_RCODE_SERVFAIL);
+			set_rcodes(requests, KNOT_RCODE_SERVFAIL);
 			return ret;
 		}
 		ret = sign_update(zone, zone->contents, new_contents, &ddns_ch,
@@ -241,7 +204,7 @@ static int process_normal(zone_t *zone, list_t *queries)
 			update_rollback(&ddns_ch);
 			update_free_zone(&new_contents);
 			changeset_clear(&ddns_ch);
-			set_rcodes(queries, KNOT_RCODE_SERVFAIL);
+			set_rcodes(requests, KNOT_RCODE_SERVFAIL);
 			return ret;
 		}
 	}
@@ -255,7 +218,7 @@ static int process_normal(zone_t *zone, list_t *queries)
 		if (zone->conf->dnssec_enable) {
 			changeset_clear(&sec_ch);
 		}
-		set_rcodes(queries, KNOT_RCODE_SERVFAIL);
+		set_rcodes(requests, KNOT_RCODE_SERVFAIL);
 		return ret;
 	}
 
@@ -284,9 +247,9 @@ static int process_normal(zone_t *zone, list_t *queries)
 }
 
 
-static int process_queries(zone_t *zone, list_t *queries)
+static int process_requests(zone_t *zone, list_t *requests)
 {
-	if (zone == NULL || queries == NULL) {
+	if (zone == NULL || requests == NULL) {
 		return KNOT_EINVAL;
 	}
 
@@ -296,7 +259,7 @@ static int process_queries(zone_t *zone, list_t *queries)
 	const uint32_t old_serial = zone_contents_serial(zone->contents);
 
 	/* Process authenticated packet. */
-	int ret = process_normal(zone, queries);
+	int ret = process_normal(zone, requests);
 	if (ret != KNOT_EOK) {
 		log_zone_error(zone->name, "DDNS: processing failed - %s\n",
 		               knot_strerror(ret));
@@ -320,7 +283,7 @@ static int process_queries(zone_t *zone, list_t *queries)
 	return KNOT_EOK;
 }
 
-static int forward_query(zone_t *zone, struct request_data *update)
+static int forward_request(zone_t *zone, struct request_data *request)
 {
 	/* Create requestor instance. */
 	struct requestor re;
@@ -330,10 +293,10 @@ static int forward_query(zone_t *zone, struct request_data *update)
 	const conf_iface_t *master = zone_master(zone);
 
 	/* Copy request and assign new ID. */
-	knot_pkt_t *query = knot_pkt_new(NULL, update->query->max_size, NULL);
-	int ret = knot_pkt_copy(query, update->query);
+	knot_pkt_t *query = knot_pkt_new(NULL, request->query->max_size, NULL);
+	int ret = knot_pkt_copy(query, request->query);
 	if (ret != KNOT_EOK) {
-		knot_wire_set_rcode(update->resp->wire, KNOT_RCODE_SERVFAIL);
+		knot_wire_set_rcode(request->resp->wire, KNOT_RCODE_SERVFAIL);
 		return ret;
 	}
 	knot_wire_set_id(query->wire, knot_random_uint16_t());
@@ -348,7 +311,7 @@ static int forward_query(zone_t *zone, struct request_data *update)
 
 	/* Enqueue and execute request. */
 	struct process_capture_param param;
-	param.sink = update->resp;
+	param.sink = request->resp;
 	ret = requestor_enqueue(&re, req, &param);
 	if (ret == KNOT_EOK) {
 		struct timeval tv = { conf()->max_conn_reply, 0 };
@@ -358,13 +321,13 @@ static int forward_query(zone_t *zone, struct request_data *update)
 	requestor_clear(&re);
 
 	/* Restore message ID and TSIG. */
-	knot_wire_set_id(update->resp->wire, knot_wire_get_id(update->query->wire));
-	knot_tsig_append(update->resp->wire, &update->resp->size,
-	                 update->resp->max_size, update->resp->tsig_rr);
+	knot_wire_set_id(request->resp->wire, knot_wire_get_id(request->query->wire));
+	knot_tsig_append(request->resp->wire, &request->resp->size,
+	                 request->resp->max_size, request->resp->tsig_rr);
 
 	/* Set RCODE if forwarding failed. */
 	if (ret != KNOT_EOK) {
-		knot_wire_set_rcode(update->resp->wire, KNOT_RCODE_SERVFAIL);
+		knot_wire_set_rcode(request->resp->wire, KNOT_RCODE_SERVFAIL);
 		log_zone_error(zone->name, "DDNS: "
 		               "Failed to forward UPDATEs to master: %s\n",
 		               knot_strerror(ret));
@@ -375,11 +338,11 @@ static int forward_query(zone_t *zone, struct request_data *update)
 	return ret;
 }
 
-static void forward_queries(zone_t *zone, list_t *queries)
+static void forward_requests(zone_t *zone, list_t *requests)
 {
-	struct request_data *query;
-	WALK_LIST(query, *queries) {
-		forward_query(zone, query);
+	struct request_data *req;
+	WALK_LIST(req, *requests) {
+		forward_request(zone, req);
 	}
 }
 
@@ -419,6 +382,31 @@ static void send_update_responses(list_t *updates)
 	}
 }
 
+int update_query_process(knot_pkt_t *pkt, struct query_data *qdata)
+{
+	/* RFC1996 require SOA question. */
+	NS_NEED_QTYPE(qdata, KNOT_RRTYPE_SOA, KNOT_RCODE_FORMERR);
+
+	/* Check valid zone. */
+	NS_NEED_ZONE(qdata, KNOT_RCODE_NOTAUTH);
+
+	/* Need valid transaction security. */
+	zone_t *zone = (zone_t *)qdata->zone;
+	NS_NEED_AUTH(&zone->conf->acl.update_in, qdata);
+	/* Check expiration. */
+	NS_NEED_ZONE_CONTENTS(qdata, KNOT_RCODE_SERVFAIL);
+
+	/* Store update into DDNS queue. */
+	int ret = zone_update_enqueue(zone, qdata->query, qdata->param);
+	if (ret != KNOT_EOK) {
+		return NS_PROC_FAIL;
+	}
+
+	/* No immediate response. */
+	pkt->size = 0;
+	return NS_PROC_DONE;
+}
+
 int updates_execute(zone_t *zone)
 {
 	/* Get list of pending updates. */
@@ -442,11 +430,11 @@ int updates_execute(zone_t *zone)
 	if (zone_master(zone)) {
 		log_zone_info(zone->name,
 		              "DDNS: forwarding %zu dynamic updates\n", update_count);
-		forward_queries(zone, &updates);
+		forward_requests(zone, &updates);
 	} else {
 		log_zone_info(zone->name,
 		              "DDNS: processing %zu dynamic updates\n", update_count);
-		ret = process_queries(zone, &updates);
+		ret = process_requests(zone, &updates);
 	}
 	UNUSED(ret); /* Don't care about the Knot code, RCODEs are set. */
 
