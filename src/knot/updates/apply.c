@@ -66,6 +66,7 @@ static int free_additional(zone_node_t **node, void *data)
 
 /* ------------------------- Empty node cleanup ----------------------------- */
 
+/*! \todo move this to new zone API - zone should do this automatically. */
 /*! \brief Deletes possibly empty node and all its empty parents recursively. */
 static void delete_empty_node(zone_tree_t *tree, zone_node_t *node)
 {
@@ -175,6 +176,7 @@ static bool can_remove(const zone_node_t *node, const knot_rrset_t *rr)
 	return false;
 }
 
+/*! \todo part of the new zone API. */
 static bool rrset_is_nsec3rel(const knot_rrset_t *rr)
 {
 	if (rr == NULL) {
