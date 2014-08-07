@@ -272,12 +272,12 @@ static int write_rdata_naptr(uint8_t **src, size_t *src_avail,
 	/* Variable fields size (flags, services, regexp) */
 
 	for (int i = 0; i < 3; i++) {
-		uint8_t *len_ptr = *wire + size;
-		if (len_ptr >= *wire + *capacity) {
+		uint8_t *len_ptr = *src + size;
+		if (len_ptr >= *src + *src_avail) {
 			return KNOT_EMALF;
 		}
 
-		size += *len_ptr;
+		size += 1 + *len_ptr;
 	}
 
 	/* Copy result */
