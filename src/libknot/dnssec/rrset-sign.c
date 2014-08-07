@@ -145,7 +145,7 @@ static int sign_ctx_add_records(knot_dnssec_sign_context_t *ctx,
 	}
 
 	int written = knot_rrset_to_wire(covered, rrwf, KNOT_WIRE_MAX_PKTSIZE,
-	                                 NULL, 0);
+	                                 NULL, KNOT_RRSET_WIRE_CANONICAL);
 	if (written < 0) {
 		free(rrwf);
 		return written;
