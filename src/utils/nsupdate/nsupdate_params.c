@@ -73,7 +73,7 @@ static int parser_set_default(zs_scanner_t *s, const char *fmt, ...)
 	}
 
 	/* fmt must contain newline */
-	if (zs_scanner_process(buf, buf + n, 1, s) < 0) {
+	if (zs_scanner_parse(s, buf, buf + n, 1) < 0) {
 		return KNOT_EPARSEFAIL;
 	}
 
@@ -108,7 +108,7 @@ static int nsupdate_init(nsupdate_params_t *params)
 	params->zone = strdup(".");
 
 	/* Initialize RR parser. */
-	params->parser = zs_scanner_create(NULL, ".", params->class_num, 0,
+	params->parser = zs_scanner_create(".", params->class_num, 0,
 	                                   NULL, parse_err, NULL);
 	if (!params->parser)
 		return KNOT_ENOMEM;

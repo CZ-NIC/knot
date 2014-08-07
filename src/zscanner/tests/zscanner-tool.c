@@ -20,8 +20,7 @@
 #include <getopt.h>			// getopt
 #include <pthread.h>			// pthread_t
 
-#include "error.h"
-#include "loader.h"
+#include "scanner.h"
 #include "tests/processing.h"
 #include "tests/tests.h"
 
@@ -48,6 +47,26 @@ static void help(void)
 	       "     2        Test output.\n"
 	       " -t           Launch unit tests.\n"
 	       " -h           Print this help.\n");
+}
+
+static int time_test()
+{
+	pthread_t t1, t2, t3;
+	int ret1, ret2, ret3;
+
+	pthread_create(&t1, NULL, timestamp_worker, &ret1);
+	pthread_create(&t2, NULL, timestamp_worker, &ret2);
+	pthread_create(&t3, NULL, timestamp_worker, &ret3);
+
+	pthread_join(t1, NULL);
+	pthread_join(t2, NULL);
+	pthread_join(t3, NULL);
+
+	if (ret1 != 0 || ret2 != 0 || ret3 != 0) {
+		return EXIT_FAILURE;
+	}
+
+	return EXIT_SUCCESS;
 }
 
 int main(int argc, char *argv[])
@@ -83,101 +102,74 @@ int main(int argc, char *argv[])
 	}
 
 	if (test == 1) {
-		pthread_t t1, t2, t3;
-		int ret1, ret2, ret3;
-
-		pthread_create(&t1, NULL, timestamp_worker, &ret1);
-		pthread_create(&t2, NULL, timestamp_worker, &ret2);
-		pthread_create(&t3, NULL, timestamp_worker, &ret3);
-
-		pthread_join(t1, NULL);
-		pthread_join(t2, NULL);
-		pthread_join(t3, NULL);
-
-		if (ret1 != 0 || ret2 != 0 || ret3 != 0) {
-			return EXIT_FAILURE;
-		}
-	} else {
-		zs_loader_t *fl;
-
-		// Check if there are 2 remaining non-options.
-		if (argc - optind != 2) {
-			help();
-			return EXIT_FAILURE;
-		}
-
-		const char *origin = argv[optind];
-		const char *zone_file = argv[optind + 1];
-
-		// Create appropriate file loader.
-		switch (mode) {
-		case 0:
-			fl = zs_loader_create(zone_file,
-			                        origin,
-			                        DEFAULT_CLASS,
-			                        DEFAULT_TTL,
-			                        NULL,
-			                        NULL,
-			                        NULL);
-			break;
-		case 1:
-			fl = zs_loader_create(zone_file,
-			                        origin,
-			                        DEFAULT_CLASS,
-			                        DEFAULT_TTL,
-			                        &debug_process_record,
-			                        &debug_process_error,
-			                        NULL);
-			break;
-		case 2:
-			fl = zs_loader_create(zone_file,
-			                        origin,
-			                        DEFAULT_CLASS,
-			                        DEFAULT_TTL,
-			                        &test_process_record,
-			                        &test_process_error,
-			                        NULL);
-			break;
-		default:
-			printf("Bad mode number!\n");
-			help();
-			return EXIT_FAILURE;
-		}
-
-		// Check file loader.
-		if (fl != NULL) {
-			int ret = zs_loader_process(fl);
-
-			switch (ret) {
-			case ZS_OK:
-				if (mode == DEFAULT_MODE) {
-					printf("Zone file has been processed "
-					       "successfully\n");
-				}
-				zs_loader_free(fl);
-				break;
-
-			case ZS_LOADER_SCANNER:
-				if (mode == DEFAULT_MODE) {
-					printf("Zone processing has stopped with "
-					       "%"PRIu64" warnings/errors!\n",
-					       fl->scanner->error_counter);
-				}
-				zs_loader_free(fl);
-				return EXIT_FAILURE;
-
-			default:
-				if (mode == DEFAULT_MODE) {
-					printf("%s\n", zs_strerror(ret));
-				}
-				zs_loader_free(fl);
-				return EXIT_FAILURE;
-			}
-		} else {
-			printf("File open error!\n");
-			return EXIT_FAILURE;
-		}
+		return time_test();
 	}
 
-	return EXIT_SUCCESS;
+	// Check if there are 2 remaining non-options.
+	if (argc - optind != 2) {
+		help();
+		return EXIT_FAILURE;
+	}
+
+	const char   *origin = argv[optind];
+	const char   *zone_file = argv[optind + 1];
+	zs_scanner_t *s;
+
+	// Create appropriate zone scanner.
+	switch (mode) {
+	case 0:
+		s = zs_scanner_create(origin,
+		                      DEFAULT_CLASS,
+		                      DEFAULT_TTL,
+		                      NULL,
+		                      NULL,
+		                      NULL);
+		break;
+	case 1:
+		s = zs_scanner_create(origin,
+		                      DEFAULT_CLASS,
+		                      DEFAULT_TTL,
+		                      &debug_process_record,
+		                      &debug_process_error,
+		                      NULL);
+		break;
+	case 2:
+		s = zs_scanner_create(origin,
+		                      DEFAULT_CLASS,
+		                      DEFAULT_TTL,
+		                      &test_process_record,
+		                      &test_process_error,
+		                      NULL);
+		break;
+	default:
+		printf("Bad mode number!\n");
+		help();
+		return EXIT_FAILURE;
+	}
+
+	// Check parser creation.
+	if (s == NULL) {
+		printf("Scanner create error!\n");
+		return EXIT_FAILURE;
+	}
+
+	// Parse the file.
+	int ret = zs_scanner_parse_file(s, zone_file);
+	if (ret == 0) {
+		if (mode == DEFAULT_MODE) {
+			printf("Zone file has been processed successfully\n");
+		}
+		zs_scanner_free(s);
+		return EXIT_SUCCESS;
+	} else {
+		if (s->error_counter > 0 && mode == DEFAULT_MODE) {
+			printf("Zone processing has stopped with "
+			       "%"PRIu64" warnings/errors!\n",
+			       s->error_counter);
+		} else if (mode == DEFAULT_MODE) {
+			printf("%s\n", zs_strerror(s->error_code));
+		}
+		zs_scanner_free(s);
+		return EXIT_FAILURE;
+	}
 }

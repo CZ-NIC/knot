@@ -24,21 +24,18 @@ scanner.c: scanner.c.t0
 endif
 
 libzscanner_la_SOURCES =		\
-	zscanner.h			\
-	scanner.h			\
 	error.h				\
 	error.c				\
-	loader.h			\
-	loader.c			\
 	functions.h			\
-	functions.c
+	functions.c			\
+	scanner.h
 
 nodist_libzscanner_la_SOURCES =		\
 	scanner.c
 
 libzscanner_la_CFLAGS = $(CODE_COVERAGE_CFLAGS)
 libzscanner_la_LDFLAGS =		\
-	$(CODE_COVERAGE_LDFLAGS)		\
+	$(CODE_COVERAGE_LDFLAGS)	\
 	-version-info 0:1:0		\
 	-export-symbols-regex '^zs_'
 

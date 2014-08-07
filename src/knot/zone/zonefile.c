@@ -35,7 +35,6 @@
 #include "knot/dnssec/zone-nsec.h"
 #include "knot/other/debug.h"
 #include "knot/zone/zonefile.h"
-#include "zscanner/loader.h"
 #include "libknot/rdata.h"
 #include "knot/zone/zone-dump.h"
 
@@ -47,11 +46,11 @@ void process_error(zs_scanner_t *s)
 	if (s->stop == true) {
 		log_zone_error(zname, "fatal error in zone file %s:%"PRIu64": %s, "
 		               "stopping zone loading.",
-		               s->file_name, s->line_counter,
+		               s->file.name, s->line_counter,
 		               zs_strerror(s->error_code));
 	} else {
 		log_zone_error(zname,"error in zone file %s:%" PRIu64 ": %s",
-		               s->file_name, s->line_counter,
+		               s->file.name, s->line_counter,
 		               zs_strerror(s->error_code));
 	}
 }
@@ -148,7 +147,7 @@ int zcreator_step(zcreator_t *zc, const knot_rrset_t *rr)
 }
 
 /*! \brief Creates RR from parser input, passes it to handling function. */
-static void loader_process(zs_scanner_t *scanner)
+static void scanner_process(zs_scanner_t *scanner)
 {
 	zcreator_t *zc = scanner->data;
 	if (zc->ret != KNOT_EOK) {
@@ -168,7 +167,7 @@ static void loader_process(zs_scanner_t *scanner)
 	if (ret != KNOT_EOK) {
 		char *rr_name = knot_dname_to_str(rr.owner);
 		log_zone_error(zc->z->apex->owner, "file %s:%"PRIu64": "
-		               "can't add RDATA for '%s'", scanner->file_name,
+		               "can't add RDATA for '%s'", scanner->file.name,
 		               scanner->line_counter, rr_name);
 		free(rr_name);
 		knot_dname_free(&owner, NULL);
@@ -228,11 +227,10 @@ int zonefile_open(zloader_t *loader, const char *source, const char *origin,
 
 	/* Create file loader. */
 	memset(loader, 0, sizeof(zloader_t));
-	loader->file_loader = zs_loader_create(source, origin,
-	                                       KNOT_CLASS_IN, 3600,
-	                                       loader_process, process_error,
-	                                       zc);
-	if (loader->file_loader == NULL) {
+	loader->scanner = zs_scanner_create(origin, KNOT_CLASS_IN, 3600,
+	                                    scanner_process, process_error,
+	                                    zc);
+	if (loader->scanner == NULL) {
 		free(zc);
 		return KNOT_ERROR;
 	}
@@ -257,8 +255,8 @@ zone_contents_t *zonefile_load(zloader_t *loader)
 	const knot_dname_t *zname = zc->z->apex->owner;
 
 	assert(zc);
-	int ret = zs_loader_process(loader->file_loader);
-	if (ret != ZS_OK) {
+	int ret = zs_scanner_parse_file(loader->scanner, loader->source);
+	if (ret != 0) {
 		log_zone_error(zname, "zone file '%s' could not be loaded: %s",
 		               loader->source, zs_strerror(ret));
 		goto fail;
@@ -270,11 +268,11 @@ zone_contents_t *zonefile_load(zloader_t *loader)
 		goto fail;
 	}
 
-	if (loader->file_loader->scanner->error_counter > 0) {
+	if (loader->scanner->error_counter > 0) {
 		log_zone_error(zname, "zone file '%s' could not be loaded due "
 		               "to %"PRIu64" errors encountered",
 		               loader->source,
-		               loader->file_loader->scanner->error_counter);
+		               loader->scanner->error_counter);
 		goto fail;
 	}
 
@@ -415,7 +413,7 @@ void zonefile_close(zloader_t *loader)
 		return;
 	}
 
-	zs_loader_free(loader->file_loader);
+	zs_scanner_free(loader->scanner);
 
 	free(loader->source);
 	free(loader->origin);

@@ -34,7 +34,7 @@
 #include "libknot/dnssec/key.h"
 #include "libknot/dnssec/sig0.h"
 #include "libknot/rrtype/tsig.h"
-#include "zscanner/zscanner.h"
+#include "zscanner/scanner.h"
 
 /*!
  * \brief Calculates keytag for RSA/MD5 algorithm.
@@ -115,24 +115,18 @@ static int get_key_info_from_public_key(const char *filename,
 		return KNOT_KEY_EPUBLIC_KEY_OPEN;
 	}
 
-	zs_scanner_t *scanner = zs_scanner_create(filename, ".", KNOT_CLASS_IN,
-	                                          0, NULL, NULL, NULL);
+	bool scan_done = false;
+
+	zs_scanner_t *scanner = zs_scanner_create(".", KNOT_CLASS_IN, 0,
+	                                          key_scan_set_done,
+	                                          key_scan_set_done,
+	                                          (void *)&scan_done);
 	if (!scanner) {
 		fclose(keyfile);
 		return KNOT_ENOMEM;
 	}
 
-	bool scan_done = false;
 	bool last_block = false;
-
-	scanner->process_record = key_scan_set_done;
-	scanner->process_error = key_scan_set_done;
-	scanner->default_ttl = 0;
-	scanner->default_class = KNOT_CLASS_IN;
-	scanner->zone_origin[0] = '\0';
-	scanner->zone_origin_length = 1;
-	scanner->data = (void *)&scan_done;
-
 	char *buffer = NULL;
 	size_t buffer_size;
 	ssize_t read;
@@ -144,8 +138,8 @@ static int get_key_info_from_public_key(const char *filename,
 			last_block = true;
 			read = 0;
 		}
-		result = zs_scanner_process(buffer, buffer + read, last_block,
-		                            scanner);
+		result = zs_scanner_parse(scanner, buffer, buffer + read,
+		                          last_block);
 	}
 
 	free(buffer);
