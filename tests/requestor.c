@@ -70,7 +70,7 @@ static struct knot_request *make_query(struct knot_requestor *requestor,  conf_i
 
 	const struct sockaddr *dst = (const struct sockaddr *)&remote->addr;
 	const struct sockaddr *src = (const struct sockaddr *)&remote->via;
-	return knot_requestor_make(requestor, dst, src, pkt);
+	return knot_requestor_make(requestor, dst, src, pkt, 0);
 }
 
 static void test_disconnected(struct knot_requestor *requestor, conf_iface_t *remote)

@@ -29,6 +29,11 @@ struct knot_request {
 	uint8_t *pkt_buf;         /*!< Buffers. */
 };
 
+static bool use_tcp(struct knot_request *request)
+{
+	return !(request->data.flags & KNOT_RQ_UDP);
+}
+
 static struct knot_request *request_make(mm_ctx_t *mm)
 {
 	struct knot_request *request = mm_alloc(mm, sizeof(struct knot_request));
@@ -112,7 +117,13 @@ static int request_send(struct knot_request *request, const struct timeval *time
 		request->state = knot_process_out(wire, &wire_len, &request->process);
 	}
 
-	ret = tcp_send_msg(request->data.fd, wire, wire_len);
+	/* Send query. */
+	if (use_tcp(request)) {
+		ret = tcp_send_msg(request->data.fd, wire, wire_len);
+	} else {
+		ret = udp_send_msg(request->data.fd, wire, wire_len,
+		                   (const struct sockaddr *)&request->data.remote);
+	}
 	if (ret != wire_len) {
 		return KNOT_ECONN;
 	}
@@ -126,8 +137,16 @@ static int request_recv(struct knot_request *request, const struct timeval *time
 	struct timeval tv = { timeout->tv_sec, timeout->tv_usec };
 
 	/* Receive it */
-	int ret = tcp_recv_msg(request->data.fd, request->pkt_buf,
-	                       KNOT_WIRE_MAX_PKTSIZE, &tv);
+	int ret = 0;
+	if (use_tcp(request)) {
+		ret = tcp_recv_msg(request->data.fd, request->pkt_buf,
+		                   KNOT_WIRE_MAX_PKTSIZE, &tv);
+	} else {
+		ret = udp_recv_msg(request->data.fd, request->pkt_buf,
+		                   KNOT_WIRE_MAX_PKTSIZE,
+		                   (struct sockaddr *)&request->data.remote);
+
+	}
 	if (ret < 0) {
 		return ret;
 	}
@@ -136,7 +155,7 @@ static int request_recv(struct knot_request *request, const struct timeval *time
 }
 
 void knot_requestor_init(struct knot_requestor *requestor, const knot_process_module_t *module,
-                    mm_ctx_t *mm)
+                         mm_ctx_t *mm)
 {
 	memset(requestor, 0, sizeof(struct knot_requestor));
 	requestor->module = module;
@@ -158,7 +177,8 @@ bool knot_requestor_finished(struct knot_requestor *requestor)
 struct knot_request *knot_requestor_make(struct knot_requestor *requestor,
                                const struct sockaddr *dst,
                                const struct sockaddr *src,
-                               knot_pkt_t *query)
+                               knot_pkt_t *query,
+                               unsigned flags)
 {
 	if (requestor == NULL || dst == NULL) {
 		return NULL;
@@ -178,6 +198,7 @@ struct knot_request *knot_requestor_make(struct knot_requestor *requestor,
 	request->state = NS_PROC_DONE;
 	request->data.fd = -1;
 	request->data.query = query;
+	request->data.flags = flags;
 	return request;
 }
 
@@ -187,8 +208,14 @@ int knot_requestor_enqueue(struct knot_requestor *requestor, struct knot_request
 		return KNOT_EINVAL;
 	}
 
+	/* Determine comm protocol. */
+	int sock_type = SOCK_DGRAM;
+	if (use_tcp(request)) {
+		sock_type = SOCK_STREAM;
+	}
+
 	/* Fetch a bound socket. */
-	int fd = net_connected_socket(SOCK_STREAM, &request->data.remote,
+	int fd = net_connected_socket(sock_type, &request->data.remote,
 	                              &request->data.origin, O_NONBLOCK);
 	if (fd < 0) {
 		return KNOT_ECONN;

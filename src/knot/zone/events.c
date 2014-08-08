@@ -142,7 +142,7 @@ static int zone_query_execute(zone_t *zone, uint16_t pkt_type, const conf_iface_
 	/* Create a request. */
 	const struct sockaddr *dst = (const struct sockaddr *)&remote->addr;
 	const struct sockaddr *src = (const struct sockaddr *)&remote->via;
-	struct knot_request *req = knot_requestor_make(&re, dst, src, query);
+	struct knot_request *req = knot_requestor_make(&re, dst, src, query, 0);
 	if (req == NULL) {
 		ret = KNOT_ENOMEM;
 		goto fail;

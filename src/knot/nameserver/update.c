@@ -291,7 +291,7 @@ static int forward_query(knot_pkt_t *pkt, struct query_data *qdata)
 	/* Create a request. */
 	const struct sockaddr *dst = (const struct sockaddr *)&master->addr;
 	const struct sockaddr *src = (const struct sockaddr *)&master->via;
-	struct knot_request *req = knot_requestor_make(&re, dst, src, query);
+	struct knot_request *req = knot_requestor_make(&re, dst, src, query, 0);
 	if (req == NULL) {
 		knot_pkt_free(&query);
 		return KNOT_ENOMEM;

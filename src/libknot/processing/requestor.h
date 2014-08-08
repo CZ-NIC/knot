@@ -22,6 +22,12 @@
 
 struct knot_request;
 
+/* Requestor flags. */
+enum {
+	KNOT_RQ_UDP = 1 << 0  /* Use UDP for requests. */
+
+};
+
 /*! \brief Requestor structure.
  *
  *  Requestor holds a FIFO of pending queries.
@@ -36,6 +42,7 @@ struct knot_requestor {
 struct knot_request_data {
 	node_t node;
 	int fd;
+	unsigned flags;
 	struct sockaddr_storage remote, origin;
 	knot_pkt_t *query;
 };
@@ -71,13 +78,15 @@ bool knot_requestor_finished(struct knot_requestor *requestor);
  * \param dst       Remote endpoint address.
  * \param src       Source address (or NULL).
  * \param query     Query message.
+ * \param flags     Request flags.
  *
  * \return Prepared request or NULL in case of error.
  */
 struct knot_request *knot_requestor_make(struct knot_requestor *requestor,
                                          const struct sockaddr *addr,
                                          const struct sockaddr *src,
-                                         knot_pkt_t *query);
+                                         knot_pkt_t *query,
+                                         unsigned flags);
 
 /*!
  * \brief Enqueue a query for processing.
