@@ -408,6 +408,50 @@ static int ratelimit_apply(int state, knot_pkt_t *pkt, knot_process_t *ctx)
 	return NS_PROC_DONE;
 }
 
+/*! \brief Put OPT RR to packet. */
+static int put_opt_rr(knot_pkt_t *pkt, struct query_data *qdata)
+{
+	/* Copy OPT RR from server. */
+	dbg_ns("%s: adding OPT RR to the response\n", __func__);
+	const knot_pkt_t *query = qdata->query;
+	knot_rrset_t opt_rr;
+	int ret = knot_edns_init(&opt_rr, conf()->max_udp_payload,
+	                         qdata->rcode_ext, KNOT_EDNS_VERSION, &pkt->mm);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	/* Append NSID if requested and available. */
+	if (knot_edns_has_nsid(query->opt_rr) && conf()->nsid_len > 0) {
+		ret = knot_edns_add_option(&opt_rr,
+		                           KNOT_EDNS_OPTION_NSID, conf()->nsid_len,
+		                           (const uint8_t*)conf()->nsid, &pkt->mm);
+		if (ret != KNOT_EOK) {
+			knot_rrset_clear(&opt_rr, &pkt->mm);
+			return ret;
+		}
+	}
+
+	/* Set DO bit if set (DNSSEC requested). */
+	if (knot_pkt_has_dnssec(query)) {
+		dbg_ns("%s: setting DO=1 in OPT RR\n", __func__);
+		knot_edns_set_do(&opt_rr);
+	}
+
+	/* Reclaim reserved size. */
+	ret = knot_pkt_reclaim(pkt, knot_edns_wire_size(&opt_rr));
+	if (ret == KNOT_EOK) {
+		/* Write to packet. */
+		ret = knot_pkt_put(pkt, COMPR_HINT_NONE, &opt_rr, KNOT_PF_FREE);
+	}
+
+	if (ret != KNOT_EOK) {
+		knot_rrset_clear(&opt_rr, &pkt->mm);
+	}
+
+	return ret;
+}
+
 static int process_query_out(knot_pkt_t *pkt, knot_process_t *ctx)
 {
 	assert(pkt && ctx);
@@ -464,8 +508,17 @@ static int process_query_out(knot_pkt_t *pkt, knot_process_t *ctx)
 	 * Postprocessing.
 	 */
 
-	/* Transaction security (if applicable). */
 	if (next_state == NS_PROC_DONE || next_state == NS_PROC_FULL) {
+		/* Put OPT RR to the additional section. */
+		if (knot_pkt_has_edns(query)) {
+			ret = put_opt_rr(pkt, qdata);
+			if (ret != KNOT_EOK) {
+				next_state = NS_PROC_FAIL;
+				goto finish;
+			}
+		}
+
+		/* Transaction security (if applicable). */
 		if (process_query_sign_response(pkt, qdata) != KNOT_EOK) {
 			next_state = NS_PROC_FAIL;
 		}
