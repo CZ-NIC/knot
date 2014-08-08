@@ -144,7 +144,7 @@ static int write_fixed_header(const knot_rrset_t *rrset, uint16_t rrset_index,
 
 	/* Write result */
 
-	uint16_t ttl = knot_rdata_ttl(knot_rdataset_at(&rrset->rrs, rrset_index));
+	uint32_t ttl = knot_rdata_ttl(knot_rdataset_at(&rrset->rrs, rrset_index));
 	uint8_t *write = *wire;
 
 	knot_wire_write_u16(write, rrset->type);
