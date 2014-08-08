@@ -324,16 +324,12 @@ static int write_rdata(const knot_rrset_t *rrset, uint16_t rrset_index,
 
 	const knot_rdata_t *rdata = knot_rdataset_at(&rrset->rrs, rrset_index);
 
-	/* Check capacity */
+	/* Reserve space for RDLENGTH */
 
 	size_t rdlength_size = sizeof(uint16_t);
-	size_t rdata_size = knot_rdata_rdlen(rdata);
-
-	if (rdlength_size + rdata_size > *capacity) {
+	if (rdlength_size > *capacity) {
 		return KNOT_ESPACE;
 	}
-
-	/* Reserve space for RDLENGTH */
 
 	uint8_t *wire_rdlength = *wire;
 	*wire += rdlength_size;
@@ -345,7 +341,7 @@ static int write_rdata(const knot_rrset_t *rrset, uint16_t rrset_index,
 	int compr_hint = COMPR_HINT_RDATA + rrset_index;
 
 	uint8_t *src = knot_rdata_data(rdata);
-	size_t src_avail = rdata_size;
+	size_t src_avail = knot_rdata_rdlen(rdata);
 
 	const rdata_descriptor_t *desc = knot_get_rdata_descriptor(rrset->type);
 	for (int i = 0; desc->block_types[i] != KNOT_RDATA_WF_END; i++) {
