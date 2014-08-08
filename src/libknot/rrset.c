@@ -131,7 +131,7 @@ static int write_fixed_header(const knot_rrset_t *rrset, uint16_t rrset_index,
 	assert(rrset);
 	assert(rrset_index < rrset->rrs.rr_count);
 	assert(wire && *wire);
-	assert(*capacity);
+	assert(capacity);
 
 	/* Check capacity */
 
@@ -321,7 +321,7 @@ static int write_rdata(const knot_rrset_t *rrset, uint16_t rrset_index,
 	assert(rrset);
 	assert(rrset_index < rrset->rrs.rr_count);
 	assert(wire && *wire);
-	assert(*capacity);
+	assert(capacity);
 
 	const knot_rdata_t *rdata = knot_rdataset_at(&rrset->rrs, rrset_index);
 
