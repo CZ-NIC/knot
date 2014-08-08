@@ -218,7 +218,7 @@ hhash_t *hhash_create_mm(uint32_t size, const mm_ctx_t *mm)
 	}
 
 	const size_t total_len = sizeof(hhash_t) + size * sizeof(hhelem_t);
-	hhash_t *tbl = mm->alloc(mm->ctx, total_len);
+	hhash_t *tbl = mm_alloc((mm_ctx_t *)mm, total_len);
 	if (tbl) {
 		memset(tbl, 0, total_len);
 		tbl->size = size;

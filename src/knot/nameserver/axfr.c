@@ -132,7 +132,7 @@ static int axfr_query_init(struct query_data *qdata)
 	mm_ctx_t *mm = qdata->mm;
 
 	zone_contents_t *zone = qdata->zone->contents;
-	struct axfr_proc *axfr = mm->alloc(mm->ctx, sizeof(struct axfr_proc));
+	struct axfr_proc *axfr = mm_alloc(mm, sizeof(struct axfr_proc));
 	if (axfr == NULL) {
 		return KNOT_ENOMEM;
 	}
@@ -187,7 +187,7 @@ int xfr_process_list(knot_pkt_t *pkt, xfr_put_cb process_item,
 		if (ret == KNOT_EOK) { /* Finished. */
 			/* Complete change set. */
 			rem_node((node_t *)head);
-			mm->free(head);
+			mm_free(mm, head);
 		} else { /* Packet full or other error. */
 			break;
 		}

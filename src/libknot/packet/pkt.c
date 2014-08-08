@@ -176,7 +176,7 @@ static knot_pkt_t *pkt_new_mm(void *wire, uint16_t len, mm_ctx_t *mm)
 {
 	assert(mm);
 
-	knot_pkt_t *pkt = mm->alloc(mm->ctx, sizeof(knot_pkt_t));
+	knot_pkt_t *pkt = mm_alloc(mm, sizeof(knot_pkt_t));
 	if (pkt == NULL) {
 		return NULL;
 	}
@@ -185,7 +185,7 @@ static knot_pkt_t *pkt_new_mm(void *wire, uint16_t len, mm_ctx_t *mm)
 	pkt->rrset_count = 0;
 	memcpy(&pkt->mm, mm, sizeof(mm_ctx_t));
 	if (pkt_reset(pkt, wire, len) != KNOT_EOK) {
-		mm->free(pkt);
+		mm_free(mm, pkt);
 		return NULL;
 	}
 

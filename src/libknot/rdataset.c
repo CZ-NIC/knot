@@ -25,7 +25,7 @@
 static void *mm_realloc(mm_ctx_t *mm, void *what, size_t size, size_t prev_size)
 {
 	if (mm) {
-		void *p = mm->alloc(mm->ctx, size);
+		void *p = mm_alloc(mm, size);
 		if (knot_unlikely(p == NULL)) {
 			return NULL;
 		} else {
@@ -33,9 +33,8 @@ static void *mm_realloc(mm_ctx_t *mm, void *what, size_t size, size_t prev_size)
 				memcpy(p, what,
 				       prev_size < size ? prev_size : size);
 			}
-			if (mm->free) {
-				mm->free(what);
-			}
+
+			mm_free(mm, what);
 			return p;
 		}
 	} else {
