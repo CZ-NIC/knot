@@ -36,8 +36,7 @@
 /*!
  * \brief Get maximal size of a domain name in a wire with given capacity.
  */
-#define dname_max(wire_capacity) \
-	((wire_capacity) > KNOT_DNAME_MAXLEN ? KNOT_DNAME_MAXLEN : (wire_capacity))
+#define dname_max(wire_capacity) MIN(wire_capacity, KNOT_DNAME_MAXLEN)
 
 /*!
  * \brief Get compression pointer for a given hint.
