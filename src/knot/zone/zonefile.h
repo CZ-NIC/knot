@@ -31,7 +31,7 @@
 
 #include "knot/zone/zone.h"
 #include "knot/zone/semantic-check.h"
-#include "zscanner/zscanner.h"
+#include "zscanner/scanner.h"
 /*!
  * \brief Zone creator structure.
  */
@@ -50,7 +50,7 @@ typedef struct zloader_t {
 	char *origin;                /*!< Zone's origin string. */
 	bool semantic_checks;        /*!< Do semantic checks. */
 	err_handler_t *err_handler;  /*!< Semantic checks error handler. */
-	zs_loader_t *file_loader;    /*!< Scanner's file loader. */
+	zs_scanner_t *scanner;       /*!< Zone scanner. */
 	zcreator_t *creator;         /*!< Loader context. */
 } zloader_t;
 

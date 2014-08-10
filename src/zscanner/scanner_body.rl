@@ -661,25 +661,23 @@
 			        sizeof(s->buffer));
 		}
 
-		// Create new file loader for included zone file.
-		zs_loader_t *fl = zs_loader_create((char*)(s->buffer),
-		                                   text_origin,
-		                                   s->default_class,
-		                                   s->default_ttl,
-		                                   s->process_record,
-		                                   s->process_error,
-		                                   s->data);
-		if (fl != NULL) {
-			// Process included zone file.
-			ret = zs_loader_process(fl);
-			zs_loader_free(fl);
-
+		// Create new scanner for included zone file.
+		zs_scanner_t *ss = zs_scanner_create(text_origin,
+		                                     s->default_class,
+		                                     s->default_ttl,
+		                                     s->process_record,
+		                                     s->process_error,
+		                                     s->data);
+		if (ss != NULL) {
+			// Parse included zone file.
+			ret = zs_scanner_parse_file(ss, (char*)(s->buffer));
+			zs_scanner_free(ss);
 			if (ret != 0) {
 				ERR(ZS_UNPROCESSED_INCLUDE);
 				fhold; fgoto err_line;
 			}
 		} else {
-			ERR(ZS_UNOPENED_INCLUDE);
+			ERR(ZS_UNPROCESSED_INCLUDE);
 			fhold; fgoto err_line;
 		}
 	}

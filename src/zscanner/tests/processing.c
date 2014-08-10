@@ -18,7 +18,6 @@
 #include <stdio.h>			// printf
 
 #include "tests/processing.h"
-#include "error.h"
 #include "scanner.h"
 #include "libknot/descriptor.c"		// knot_rrtype_to_string (implementation)
 
@@ -45,13 +44,13 @@ void debug_process_error(zs_scanner_t *s)
 		printf("LINE(%03"PRIu64") ERROR(%s) FILE(%s) NEAR(%s)\n",
 		       s->line_counter,
 		       zs_strerror(s->error_code),
-		       s->file_name,
+		       s->file.name,
 		       s->buffer);
 	} else {
 		printf("LINE(%03"PRIu64") WARNING(%s) FILE(%s) NEAR(%s)\n",
 		       s->line_counter,
 		       zs_strerror(s->error_code),
-		       s->file_name,
+		       s->file.name,
 		       s->buffer);
 	}
 	fflush(stdout);

@@ -763,13 +763,13 @@ static int cmd_memstats(int argc, char *argv[], unsigned flags)
 			continue;
 		}
 
-		/* Create file loader. */
-		zs_loader_t *loader = zs_loader_create(zone->file, zone->name,
-		                                       KNOT_CLASS_IN, 3600,
-		                                       estimator_rrset_memsize_wrap,
-		                                       process_error,
-		                                       &est);
-		if (loader == NULL) {
+		/* Create zone scanner. */
+		zs_scanner_t *zs = zs_scanner_create(zone->name,
+		                                     KNOT_CLASS_IN, 3600,
+		                                     estimator_rrset_memsize_wrap,
+		                                     process_error,
+		                                     &est);
+		if (zs == NULL) {
 			rc = 1;
 			log_zone_str_error(zone->name, "could not load zone");
 			hattrie_free(est.node_table);
@@ -777,13 +777,13 @@ static int cmd_memstats(int argc, char *argv[], unsigned flags)
 		}
 
 		/* Do a parser run, but do not actually create the zone. */
-		int ret = zs_loader_process(loader);
-		if (ret != KNOT_EOK) {
+		int ret = zs_scanner_parse_file(zs, zone->file);
+		if (ret != 0) {
 			rc = 1;
 			log_zone_str_error(zone->name, "failed to parse zone");
 			hattrie_apply_rev(est.node_table, estimator_free_trie_node, NULL);
 			hattrie_free(est.node_table);
-			zs_loader_free(loader);
+			zs_scanner_free(zs);
 			continue;
 		}
 
@@ -803,7 +803,7 @@ static int cmd_memstats(int argc, char *argv[], unsigned flags)
 
 		log_zone_str_info(zone->name, "%zu RRs, used memory estimation is %zu MB",
 		                  est.record_count, (size_t)zone_size);
-		zs_loader_free(loader);
+		zs_scanner_free(zs);
 		total_size += zone_size;
 		conf_free_zone(zone);
 	}

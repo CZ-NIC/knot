@@ -29,21 +29,16 @@ typedef struct {
 const err_table_t err_msgs[] = {
 	ERR_ITEM( ZS_OK, "OK" ),
 
-	/* Zone file loader errors. */
-	ERR_ITEM( ZS_LOADER_FSTAT,
+	ERR_ITEM( ZS_FILE_OPEN,
+	          "File open error" ),
+	ERR_ITEM( ZS_FILE_PATH,
+	          "File path error" ),
+	ERR_ITEM( ZS_FILE_FSTAT,
 	          "Fstat error" ),
-	ERR_ITEM( ZS_LOADER_DIRECTORY,
-	          "Zone file is a directory" ),
-	ERR_ITEM( ZS_LOADER_EMPTY,
-	          "Empty zone file" ),
-	ERR_ITEM( ZS_LOADER_MMAP,
-	          "Mmap error" ),
-	ERR_ITEM( ZS_LOADER_MUNMAP,
-	          "Munmap error" ),
-	ERR_ITEM( ZS_LOADER_SCANNER,
-	          "Zone processing error" ),
-
-	/* Zone scanner errors. */
+	ERR_ITEM( ZS_FILE_DIRECTORY,
+	          "Not zone file but directory" ),
+	ERR_ITEM( ZS_FILE_MMAP,
+	          "File mmap error" ),
 	ERR_ITEM( ZS_DOS_NEWLINE,
 	          "Unsupported CRLF newline. Please, remove CR bytes" ),
 	ERR_ITEM( ZS_UNCOVERED_STATE,

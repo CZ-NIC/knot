@@ -107,7 +107,8 @@ static struct log_sink *sink_setup(unsigned logfiles)
 /*! \brief Publish new log sink and free the replaced. */
 static void sink_publish(struct log_sink *log)
 {
-	struct log_sink *old_log = rcu_xchg_pointer(&s_log, log);
+	struct log_sink **current_log = &s_log;
+	struct log_sink *old_log = rcu_xchg_pointer(current_log, log);
 	synchronize_rcu();
 	sink_free(old_log);
 }

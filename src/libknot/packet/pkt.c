@@ -488,22 +488,19 @@ int knot_pkt_put(knot_pkt_t *pkt, uint16_t compr_hint, const knot_rrset_t *rr,
 	}
 
 	uint8_t *pos = pkt->wire + pkt->size;
-	uint16_t rr_added = 0;
 	size_t maxlen = pkt_remaining(pkt);
-	size_t len = maxlen;
 
 	/* Create compression context. */
 	knot_compr_t compr;
 	compr.wire = pkt->wire;
-	compr.wire_pos = pkt->size;
 	compr.rrinfo = rrinfo;
 	compr.suffix.pos = KNOT_WIRE_HEADER_SIZE;
 	compr.suffix.labels = knot_dname_labels(compr.wire + compr.suffix.pos,
 	                                        compr.wire);
 
 	/* Write RRSet to wireformat. */
-	int ret = knot_rrset_to_wire(rr, pos, &len, maxlen, &rr_added, &compr);
-	if (ret != KNOT_EOK) {
+	int ret = knot_rrset_to_wire(rr, pos, maxlen, &compr, 0);
+	if (ret < 0) {
 		dbg_packet("%s: rr_to_wire = %s\n,", __func__, knot_strerror(ret));
 
 		/* Truncate packet if required. */
@@ -513,6 +510,9 @@ int knot_pkt_put(knot_pkt_t *pkt, uint16_t compr_hint, const knot_rrset_t *rr,
 		}
 		return ret;
 	}
+
+	size_t len = ret;
+	uint16_t rr_added = rr->rrs.rr_count;
 
 	/* Keep reference to special types. */
 	if (rr->type == KNOT_RRTYPE_OPT) {
