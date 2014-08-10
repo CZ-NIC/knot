@@ -66,6 +66,15 @@ static int free_additional(zone_node_t **node, void *data)
 
 /* ------------------------- Empty node cleanup ----------------------------- */
 
+/*! \brief Clears wildcard child if set in parent node. */
+static void fix_wildcard_child(zone_node_t *node, const knot_dname_t *owner)
+{
+	if ((node->flags & NODE_FLAGS_WILDCARD_CHILD)
+	    && knot_dname_is_wildcard(owner)) {
+		node->flags &= ~NODE_FLAGS_WILDCARD_CHILD;
+	}
+}
+
 /*! \todo move this to new zone API - zone should do this automatically. */
 /*! \brief Deletes possibly empty node and all its empty parents recursively. */
 static void delete_empty_node(zone_tree_t *tree, zone_node_t *node)
@@ -73,11 +82,7 @@ static void delete_empty_node(zone_tree_t *tree, zone_node_t *node)
 	if (node->rrset_count == 0 && node->children == 0) {
 		zone_node_t *parent_node = node->parent;
 		if (parent_node) {
-			if ((parent_node->flags & NODE_FLAGS_WILDCARD_CHILD)
-			    && knot_dname_is_wildcard(node->owner)) {
-				// Clear wildcard child in parent
-				parent_node->flags &= ~NODE_FLAGS_WILDCARD_CHILD;
-			}
+			fix_wildcard_child(parent_node, node->owner);
 			parent_node->children--;
 			// Recurse using the parent node
 			delete_empty_node(tree, parent_node);
@@ -251,9 +256,9 @@ static int apply_remove(zone_contents_t *contents, changeset_t *chset)
 			continue;
 		}
 
-		int ret = remove_rr(!rrset_is_nsec3rel(&rr) ?
-		                    contents->nodes : contents->nsec3_nodes,
-		                    node, &rr, chset);
+		zone_tree_t *tree = rrset_is_nsec3rel(&rr) ?
+		                    contents->nsec3_nodes : contents->nodes;
+		int ret = remove_rr(tree, node, &rr, chset);
 		if (ret != KNOT_EOK) {
 			changeset_iter_clear(&itt);
 			return ret;

@@ -96,7 +96,7 @@ zone_node_t *node_new(const knot_dname_t *owner, mm_ctx_t *mm)
 	if (owner) {
 		ret->owner = knot_dname_copy(owner, mm);
 		if (ret->owner == NULL) {
-			free(ret);
+			mm_free(mm, ret);
 			return NULL;
 		}
 	}

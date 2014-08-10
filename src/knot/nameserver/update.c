@@ -138,8 +138,7 @@ static void set_rcodes(list_t *requests, const uint16_t rcode)
 {
 	struct request_data *req;
 	WALK_LIST(req, *requests) {
-		if (knot_wire_get_rcode(req->resp->wire) ==
-		    KNOT_RCODE_NOERROR) {
+		if (knot_wire_get_rcode(req->resp->wire) == KNOT_RCODE_NOERROR) {
 			knot_wire_set_rcode(req->resp->wire, rcode);
 		}
 	}
@@ -174,20 +173,20 @@ static int process_normal(zone_t *zone, list_t *requests)
 
 	zone_contents_t *new_contents = NULL;
 	const bool change_made = !changeset_empty(&ddns_ch);
-	if (change_made) {
-		ret = apply_changeset(zone, &ddns_ch, &new_contents);
-		if (ret != KNOT_EOK) {
-			if (ret == KNOT_ETTL) {
-				set_rcodes(requests, KNOT_RCODE_REFUSED);
-			} else {
-				set_rcodes(requests, KNOT_RCODE_SERVFAIL);
-			}
-			changeset_clear(&ddns_ch);
-			return ret;
-		}
-	} else {
+	if (!change_made) {
 		changeset_clear(&ddns_ch);
 		return KNOT_EOK;
+	}
+	
+	ret = apply_changeset(zone, &ddns_ch, &new_contents);
+	if (ret != KNOT_EOK) {
+		if (ret == KNOT_ETTL) {
+			set_rcodes(requests, KNOT_RCODE_REFUSED);
+		} else {
+			set_rcodes(requests, KNOT_RCODE_SERVFAIL);
+		}
+		changeset_clear(&ddns_ch);
+		return ret;
 	}
 	assert(new_contents);
 
@@ -296,6 +295,7 @@ static int forward_request(zone_t *zone, struct request_data *request)
 	knot_pkt_t *query = knot_pkt_new(NULL, request->query->max_size, NULL);
 	int ret = knot_pkt_copy(query, request->query);
 	if (ret != KNOT_EOK) {
+		knot_pkt_free(&query);
 		knot_wire_set_rcode(request->resp->wire, KNOT_RCODE_SERVFAIL);
 		return ret;
 	}
