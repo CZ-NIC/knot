@@ -404,12 +404,14 @@ static int event_update(zone_t *zone)
 
 	/* Replan event if next update waiting. */
 	pthread_spin_lock(&zone->ddns_lock);
-
-	if (!EMPTY_LIST(zone->ddns_queue)) {
+	
+	const bool empty = EMPTY_LIST(zone->ddns_queue);
+	
+	pthread_spin_unlock(&zone->ddns_lock);
+	
+	if (!empty) {
 		zone_events_schedule(zone, ZONE_EVENT_UPDATE, ZONE_EVENT_NOW);
 	}
-
-	pthread_spin_unlock(&zone->ddns_lock);
 
 	return KNOT_EOK;
 }
@@ -581,7 +583,6 @@ static void replan_soa_events(zone_t *zone, const zone_t *old_zone)
 			                                           KNOT_RRTYPE_SOA);
 			assert(soa);
 			zone_events_schedule(zone, ZONE_EVENT_REFRESH, knot_soa_refresh(soa));
-			zone_events_schedule(zone, ZONE_EVENT_EXPIRE, soa_graceful_expire(soa));
 		}
 	}
 }
@@ -613,9 +614,9 @@ static void replan_flush(zone_t *zone, const zone_t *old_zone)
 	}
 
 	const time_t flush_time = zone_events_get_time(old_zone, ZONE_EVENT_FLUSH);
-	if (flush_time < ZONE_EVENT_NOW) {
+	if (flush_time <= ZONE_EVENT_NOW) {
 		// Not scheduled previously.
-		zone_events_schedule_at(zone, ZONE_EVENT_FLUSH, zone->conf->dbsync_timeout);
+		zone_events_schedule(zone, ZONE_EVENT_FLUSH, zone->conf->dbsync_timeout);
 		return;
 	}
 
@@ -641,13 +642,16 @@ static void replan_update(zone_t *zone, zone_t *old_zone)
 {
 	pthread_spin_lock(&old_zone->ddns_lock);
 
-	if (!EMPTY_LIST(old_zone->ddns_queue)) {
+	const bool empty = EMPTY_LIST(old_zone->ddns_queue);
+	if (!empty) {
 		duplicate_ddns_q(zone, (zone_t *)old_zone);
-		// \todo #254 Old zone *must* have the event planned, but it was not always so
+	}
+	
+	pthread_spin_unlock(&old_zone->ddns_lock);
+	
+	if (!empty) {
 		zone_events_schedule(zone, ZONE_EVENT_UPDATE, ZONE_EVENT_NOW);
 	}
-
-	pthread_spin_unlock(&old_zone->ddns_lock);
 }
 
 /*!< Replans DNSSEC event. Not whole resign needed, \todo #247 */
@@ -663,7 +667,7 @@ static void replan_dnssec(zone_t *zone)
 
 static bool valid_event(zone_event_type_t type)
 {
-	return (type >= ZONE_EVENT_RELOAD && type < ZONE_EVENT_COUNT);
+	return (type > ZONE_EVENT_INVALID && type < ZONE_EVENT_COUNT);
 }
 
 /*! \brief Return remaining time to planned event (seconds). */
