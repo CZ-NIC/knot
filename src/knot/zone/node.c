@@ -53,7 +53,7 @@ static int add_rrset_no_merge(zone_node_t *node, const knot_rrset_t *rrset,
 		return KNOT_EINVAL;
 	}
 
-	const size_t prev_nlen = (node->rrset_count) * sizeof(struct rr_data);
+	const size_t prev_nlen = node->rrset_count * sizeof(struct rr_data);
 	const size_t nlen = (node->rrset_count + 1) * sizeof(struct rr_data);
 	void *p = mm_realloc(mm, node->rrs, nlen, prev_nlen);
 	if (p == NULL) {
@@ -107,7 +107,7 @@ zone_node_t *node_new(const knot_dname_t *owner, mm_ctx_t *mm)
 	return ret;
 }
 
-void node_free_rrsets(zone_node_t *node)
+void node_free_rrsets(zone_node_t *node, mm_ctx_t *mm)
 {
 	if (node == NULL) {
 		return;
@@ -284,4 +284,9 @@ bool node_rrtype_is_signed(const zone_node_t *node, uint16_t type)
 bool node_rrtype_exists(const zone_node_t *node, uint16_t type)
 {
 	return node_rdataset(node, type) != NULL;
+}
+
+bool node_empty(const zone_node_t *node)
+{
+	return node == NULL || node->rrset_count == 0;
 }

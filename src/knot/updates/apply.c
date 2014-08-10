@@ -424,13 +424,11 @@ static int finalize_updated_zone(zone_contents_t *contents_copy,
 		return KNOT_EINVAL;
 	}
 
-	int ret = KNOT_EOK;
 	if (set_nsec3_names) {
-		ret = zone_contents_adjust_full(contents_copy, NULL, NULL);
+		return zone_contents_adjust_full(contents_copy, NULL, NULL);
 	} else {
-		ret = zone_contents_adjust_pointers(contents_copy);
+		return zone_contents_adjust_pointers(contents_copy);
 	}
-	return ret;
 }
 
 /* ------------------------------- API -------------------------------------- */

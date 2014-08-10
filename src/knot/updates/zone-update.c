@@ -18,18 +18,13 @@
 #include "common-knot/lists.h"
 #include "common/mempool.h"
 
-static bool node_empty(const zone_node_t *node)
-{
-	return node == NULL || node->rrset_count == 0;
-}
-
-static int add_to_node(zone_node_t *old_node, const zone_node_t *add_node,
+static int add_to_node(zone_node_t *node, const zone_node_t *add_node,
                        mm_ctx_t *mm)
 {
 	for (uint16_t i = 0; i < add_node->rrset_count; ++i) {
 		knot_rrset_t rr = node_rrset_at(add_node, i);
 		if (!knot_rrset_empty(&rr)) {
-			int ret = node_add_rrset(old_node, &rr, mm);
+			int ret = node_add_rrset(node, &rr, mm);
 			if (ret != KNOT_EOK) {
 				return ret;
 			}
@@ -39,13 +34,13 @@ static int add_to_node(zone_node_t *old_node, const zone_node_t *add_node,
 	return KNOT_EOK;
 }
 
-static int rem_from_node(zone_node_t *old_node, const zone_node_t *rem_node,
+static int rem_from_node(zone_node_t *node, const zone_node_t *rem_node,
                          mm_ctx_t *mm)
 {
 	for (uint16_t i = 0; i < rem_node->rrset_count; ++i) {
-		// Remove each found RR from 'old_node'.
+		// Remove each found RR from 'node'.
 		knot_rrset_t rem_rrset = node_rrset_at(rem_node, i);
-		knot_rdataset_t *to_change = node_rdataset(old_node, rem_rrset.type);
+		knot_rdataset_t *to_change = node_rdataset(node, rem_rrset.type);
 		if (to_change) {
 			// Remove data from synthesized node
 			int ret = knot_rdataset_subtract(to_change,
@@ -67,7 +62,6 @@ static int apply_changes_to_node(zone_node_t *synth_node, const zone_node_t *add
 	if (!node_empty(add_node)) {
 		int ret = add_to_node(synth_node, add_node, mm);
 		if (ret != KNOT_EOK) {
-			node_free(&synth_node, mm);
 			return ret;
 		}
 	}
@@ -76,7 +70,6 @@ static int apply_changes_to_node(zone_node_t *synth_node, const zone_node_t *add
 	if (!node_empty(rem_node)) {
 		int ret = rem_from_node(synth_node, rem_node, mm);
 		if (ret != KNOT_EOK) {
-			node_free(&synth_node, mm);
 			return ret;
 		}
 	}
@@ -84,15 +77,15 @@ static int apply_changes_to_node(zone_node_t *synth_node, const zone_node_t *add
 	return KNOT_EOK;
 }
 
-static int deep_copy_node_data(zone_node_t *node_copy, const zone_node_t *old_node,
+static int deep_copy_node_data(zone_node_t *node_copy, const zone_node_t *node,
                                mm_ctx_t *mm)
 {
 	// Clear space for RRs
 	node_copy->rrs = NULL;
 	node_copy->rrset_count = 0;
 	
-	for (uint16_t i = 0; i < old_node->rrset_count; ++i) {
-		knot_rrset_t rr = node_rrset_at(old_node, i);
+	for (uint16_t i = 0; i < node->rrset_count; ++i) {
+		knot_rrset_t rr = node_rrset_at(node, i);
 		int ret = node_add_rrset(node_copy, &rr, mm);
 		if (ret != KNOT_EOK) {
 			return ret;
@@ -102,16 +95,16 @@ static int deep_copy_node_data(zone_node_t *node_copy, const zone_node_t *old_no
 	return KNOT_EOK;
 }
 
-static zone_node_t *node_deep_copy(const zone_node_t *old_node, mm_ctx_t *mm)
+static zone_node_t *node_deep_copy(const zone_node_t *node, mm_ctx_t *mm)
 {
 	// Shallow copy old node
-	zone_node_t *synth_node = node_shallow_copy(old_node, mm);
+	zone_node_t *synth_node = node_shallow_copy(node, mm);
 	if (synth_node == NULL) {
 		return NULL;
 	}
 
 	// Deep copy data inside node copy.
-	int ret = deep_copy_node_data(synth_node, old_node, mm);
+	int ret = deep_copy_node_data(synth_node, node, mm);
 	if (ret != KNOT_EOK) {
 		node_free(&synth_node, mm);
 		return NULL;
@@ -169,6 +162,8 @@ const zone_node_t *zone_update_get_node(zone_update_t *update, const knot_dname_
 	int ret = apply_changes_to_node(synth_node, add_node, rem_node,
 	                                &update->mm);
 	if (ret != KNOT_EOK) {
+		node_free_rrsets(synth_node, &update->mm);
+		node_free(synth_node, &update->mm);
 		return NULL;
 	}
 
@@ -177,8 +172,8 @@ const zone_node_t *zone_update_get_node(zone_update_t *update, const knot_dname_
 
 void zone_update_clear(zone_update_t *update)
 {
-	mp_delete(update->mm.ctx);
-	memset(&update->mm, 0, sizeof(update->mm));
-	update->zone = NULL;
-	update->change = NULL;
+	if (update) {
+		mp_delete(update->mm.ctx);
+		memset(&update, 0, sizeof(*update));
+	}
 }

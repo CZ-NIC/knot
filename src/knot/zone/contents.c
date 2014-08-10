@@ -106,7 +106,7 @@ static int zone_contents_destroy_node_rrsets_from_tree(
 	UNUSED(data);
 	assert(tnode != NULL);
 	if (*tnode != NULL) {
-		node_free_rrsets(*tnode);
+		node_free_rrsets(*tnode, NULL);
 		node_free(tnode, NULL);
 	}
 

@@ -86,6 +86,7 @@ enum node_flags {
  * \brief Creates and initializes new node structure.
  *
  * \param owner  Node's owner, will be duplicated.
+ * \param mm     Memory context to use.
  *
  * \return Newly created node or NULL if an error occured.
  */
@@ -95,9 +96,10 @@ zone_node_t *node_new(const knot_dname_t *owner, mm_ctx_t *mm);
  * \brief Destroys allocated data within the node
  *        structure, but not the node itself.
  *
- * \param node Node that contains data to be destroyed.
+ * \param node  Node that contains data to be destroyed.
+ * \param mm    Memory context to use.
  */
-void node_free_rrsets(zone_node_t *node);
+void node_free_rrsets(zone_node_t *node, mm_ctx_t *mm);
 
 /*!
  * \brief Destroys the node structure.
@@ -105,7 +107,8 @@ void node_free_rrsets(zone_node_t *node);
  * Does not destroy the data within the node.
  * Also sets the given pointer to NULL.
  *
- * \param node Node to be destroyed.
+ * \param node  Node to be destroyed.
+ * \param mm    Memory context to use.
  */
 void node_free(zone_node_t **node, mm_ctx_t *mm);
 
@@ -113,6 +116,7 @@ void node_free(zone_node_t **node, mm_ctx_t *mm);
  * \brief Creates a shallow copy of node structure, RR data are shared.
  *
  * \param src  Source of the copy.
+ * \param mm   Memory context to use.
  *
  * \return Copied node if success, NULL otherwise.
  */
@@ -193,6 +197,16 @@ bool node_rrtype_is_signed(const zone_node_t *node, uint16_t type);
  * \return True/False.
  */
 bool node_rrtype_exists(const zone_node_t *node, uint16_t type);
+
+/*!
+ * \brief Checks whether node is empty. Node is empty when NULL or when no
+ *        RRSets are in it.
+ *
+ * \param node  Node to check in.
+ *
+ * \return True/False.
+ */
+bool node_empty(const zone_node_t *node);
 
 /* -------------------- Inline RRSet initializations ------------------------ */
 

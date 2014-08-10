@@ -63,8 +63,8 @@ static int add_rr_to_list(list_t *l, const knot_rrset_t *rr)
 }
 
 /*!< \brief Checks whether RRSet exists in the zone. */
-static int check_rrset_exists(zone_update_t *update,
-                              const knot_rrset_t *rrset, uint16_t *rcode)
+static int check_rrset_exists(zone_update_t *update, const knot_rrset_t *rrset,
+                              uint16_t *rcode)
 {
 	assert(rrset->type != KNOT_RRTYPE_ANY);
 
@@ -296,7 +296,7 @@ static void remove_header_from_changeset(zone_contents_t *z, const knot_rrset_t 
 static void remove_owner_from_changeset(zone_contents_t *z, const knot_dname_t *owner)
 {
 	zone_node_t *n = (zone_node_t *)zone_contents_find_node(z, owner);
-	node_free_rrsets(n);
+	node_free_rrsets(n, NULL);
 }
 
 /* --------------------- true/false helper functions ------------------------ */
@@ -334,8 +334,8 @@ static bool should_replace(const knot_rrset_t *rrset)
 }
 
 /*!< \brief Returns true if node will be empty after update application. */
-static bool node_empty(const zone_node_t *node, knot_dname_t *owner,
-                       const changeset_t *changeset)
+static bool node_will_be_empty(const zone_node_t *node, knot_dname_t *owner,
+                               const changeset_t *changeset)
 {
 	if (node == NULL && name_added(changeset, owner)) {
 		// Node created in update.
@@ -528,7 +528,7 @@ static int process_add_cname(const zone_node_t *node,
 		}
 
 		return add_rr_to_chgset(rr, changeset, NULL);
-	} else if (!node_empty(node, rr->owner, changeset)) {
+	} else if (!node_will_be_empty(node, rr->owner, changeset)) {
 		// Other occupied node => ignore.
 		return KNOT_EOK;
 	} else {
