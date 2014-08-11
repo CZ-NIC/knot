@@ -84,6 +84,9 @@ struct query_data {
 	/* Original QNAME case. */
 	uint8_t orig_qname[KNOT_DNAME_MAXLEN];
 
+	/* EDNS */
+	knot_rrset_t opt_rr;
+
 	/* Extensions. */
 	void *ext;
 	void (*ext_cleanup)(struct query_data*); /*!< Extensions cleanup callback. */
