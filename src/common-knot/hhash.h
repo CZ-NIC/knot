@@ -168,6 +168,7 @@ void hhash_build_index(hhash_t* tbl);
  * \retval -1 if found predecessor
  */
 int hhash_find_leq(hhash_t* tbl, const char* key, uint16_t len, value_t **dst);
+int hhash_find_next(hhash_t* tbl, const char* key, uint16_t len, value_t** dst);
 
 /*! \brief Hash table iterator. */
 typedef struct htable_iter {
