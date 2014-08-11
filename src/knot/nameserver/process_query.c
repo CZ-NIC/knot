@@ -313,8 +313,6 @@ static int answer_edns_put(knot_pkt_t *resp, struct query_data *qdata)
 		return KNOT_EOK;
 	}
 
-	assert(resp->current == KNOT_ADDITIONAL);
-
 	/* Reclaim reserved size. */
 	int ret = knot_pkt_reclaim(resp, knot_edns_wire_size(&qdata->opt_rr));
 	if (ret != KNOT_EOK) {
@@ -322,6 +320,7 @@ static int answer_edns_put(knot_pkt_t *resp, struct query_data *qdata)
 	}
 
 	/* Write to packet. */
+	assert(resp->current == KNOT_ADDITIONAL);
 	return knot_pkt_put(resp, COMPR_HINT_NONE, &qdata->opt_rr, KNOT_PF_FREE);
 }
 
