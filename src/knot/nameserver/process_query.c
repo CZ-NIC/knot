@@ -60,6 +60,7 @@ static int process_query_reset(knot_process_t *ctx)
 	knot_pkt_free(&qdata->query);
 	ptrlist_free(&qdata->wildcards, qdata->mm);
 	nsec_clear_rrsigs(qdata);
+	knot_rrset_clear(&qdata->opt_rr, qdata->mm);
 	if (qdata->ext_cleanup != NULL) {
 		qdata->ext_cleanup(qdata);
 	}
@@ -277,11 +278,9 @@ static int answer_edns_init(const knot_pkt_t *query, knot_pkt_t *resp,
 		return KNOT_EOK;
 	}
 
-	int ret;
-
 	/* Initialize OPT record. */
-	ret = knot_edns_init(&qdata->opt_rr, conf()->max_udp_payload, 0,
-	                     KNOT_EDNS_VERSION, &resp->mm);
+	int ret = knot_edns_init(&qdata->opt_rr, conf()->max_udp_payload, 0,
+	                     KNOT_EDNS_VERSION, qdata->mm);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
@@ -300,9 +299,8 @@ static int answer_edns_init(const knot_pkt_t *query, knot_pkt_t *resp,
 	if (knot_edns_has_nsid(query->opt_rr) && conf()->nsid_len > 0) {
 		ret = knot_edns_add_option(&qdata->opt_rr,
 		                           KNOT_EDNS_OPTION_NSID, conf()->nsid_len,
-		                           (const uint8_t*)conf()->nsid, &resp->mm);
+		                           (const uint8_t*)conf()->nsid, qdata->mm);
 		if (ret != KNOT_EOK) {
-			knot_rrset_clear(&qdata->opt_rr, &resp->mm);
 			return ret;
 		}
 	}
@@ -324,7 +322,7 @@ static int answer_edns_put(knot_pkt_t *resp, struct query_data *qdata)
 
 	/* Write to packet. */
 	assert(resp->current == KNOT_ADDITIONAL);
-	return knot_pkt_put(resp, COMPR_HINT_NONE, &qdata->opt_rr, KNOT_PF_FREE);
+	return knot_pkt_put(resp, COMPR_HINT_NONE, &qdata->opt_rr, 0);
 }
 
 /*! \brief Initialize response, sizes and find zone from which we're going to answer. */
