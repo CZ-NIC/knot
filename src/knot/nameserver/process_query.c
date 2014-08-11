@@ -507,6 +507,10 @@ static int process_query_out(knot_pkt_t *pkt, knot_process_t *ctx)
 	 */
 
 	if (next_state == NS_PROC_DONE || next_state == NS_PROC_FULL) {
+		if (pkt->current != KNOT_ADDITIONAL) {
+			knot_pkt_begin(pkt, KNOT_ADDITIONAL);
+		}
+
 		/* Put OPT RR to the additional section. */
 		ret = answer_edns_put(pkt, qdata);
 		if (ret != KNOT_EOK) {
