@@ -393,7 +393,7 @@ class Server(object):
         f.close
 
     def dig(self, rname, rtype, rclass="IN", udp=None, serial=None,
-            timeout=None, tries=3, flags="", bufsize=None,
+            timeout=None, tries=3, flags="", bufsize=None, edns=None,
             nsid=False, dnssec=False, log_no_sep=False):
         key_params = self.tsig_test.key_params if self.tsig_test else dict()
 
@@ -458,13 +458,19 @@ class Server(object):
                 dig_flags += " +cd"
 
         # Set EDNS.
-        if nsid or bufsize:
+        if edns != None or bufsize or nsid:
             class NsidFix(object):
                 '''Current pythondns doesn't implement NSID option.'''
                 def __init__(self):
                     self.otype = dns.edns.NSID
                 def to_wire(self, file=None):
                     pass
+
+            if edns:
+                edns = int(edns)
+            else:
+                edns = 0
+            dig_flags += " +edns=%i" % edns
 
             if bufsize:
                 payload = int(bufsize)
@@ -478,7 +484,7 @@ class Server(object):
             else:
                 options = None
 
-            query.use_edns(edns=0, payload=payload, options=options)
+            query.use_edns(edns=edns, payload=payload, options=options)
 
         # Set DO flag.
         if dnssec:

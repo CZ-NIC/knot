@@ -80,14 +80,14 @@ static int cmd_signzone(int argc, char *argv[], unsigned flags);
 knot_cmd_t knot_cmd_tbl[] = {
 	{&cmd_stop,       0, "stop",       "",       "\t\tStop server."},
 	{&cmd_reload,     0, "reload",     "",       "\tReload configuration and changed zones."},
-	{&cmd_refresh,    0, "refresh",    "[zone]", "\tRefresh slave zone (all if not specified). Flag '-f' forces retransfer."},
+	{&cmd_refresh,    0, "refresh",    "<zone>", "\tRefresh slave zone (all if not specified). Flag '-f' forces retransfer."},
 	{&cmd_flush,      0, "flush",      "",       "\t\tFlush journal and update zone files."},
 	{&cmd_status,     0, "status",     "",       "\tCheck if server is running."},
 	{&cmd_zonestatus, 0, "zonestatus", "",       "\tShow status of configured zones."},
 	{&cmd_checkconf,  1, "checkconf",  "",       "\tCheck current server configuration."},
-	{&cmd_checkzone,  1, "checkzone",  "[zone]", "Check zone (all if not specified)."},
-	{&cmd_memstats,   1, "memstats",   "[zone]", "Estimate memory use for zone (all if not specified)."},
-	{&cmd_signzone,   0, "signzone",   "[zone]", "Sign all zones with available DNSSEC keys."},
+	{&cmd_checkzone,  1, "checkzone",  "<zone>", "Check zone (all if not specified)."},
+	{&cmd_memstats,   1, "memstats",   "<zone>", "Estimate memory use for zone (all if not specified)."},
+	{&cmd_signzone,   0, "signzone",   "<zone>", "Sign all zones with available DNSSEC keys."},
 	{NULL, 0, NULL, NULL, NULL}
 };
 
