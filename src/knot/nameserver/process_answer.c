@@ -28,7 +28,7 @@ static void answer_data_init(knot_process_t *ctx, void *module_param)
 	/* Initialize persistent data. */
 	struct answer_data *data = ANSWER_DATA(ctx);
 	memset(data, 0, sizeof(struct answer_data));
-	data->mm = &ctx->mm;
+	data->mm = ctx->mm;
 	data->param = module_param;
 }
 
@@ -47,7 +47,7 @@ static int process_answer_begin(knot_process_t *ctx, void *module_param)
 	/* Initialize context. */
 	assert(ctx);
 	ctx->type = NS_PROC_ANSWER_ID;
-	ctx->data = mm_alloc(&ctx->mm, sizeof(struct answer_data));
+	ctx->data = mm_alloc(ctx->mm, sizeof(struct answer_data));
 
 	/* Initialize persistent data. */
 	answer_data_init(ctx, module_param);
@@ -79,7 +79,7 @@ static int process_answer_reset(knot_process_t *ctx)
 static int process_answer_finish(knot_process_t *ctx)
 {
 	process_answer_reset(ctx);
-	mm_free(&ctx->mm, ctx->data);
+	mm_free(ctx->mm, ctx->data);
 	ctx->data = NULL;
 
 	return NS_PROC_NOOP;

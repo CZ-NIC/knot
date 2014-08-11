@@ -75,14 +75,14 @@ int knot_process_finish(knot_process_t *ctx)
 	return ctx->state;
 }
 
-int knot_process_in(const uint8_t *wire, uint16_t wire_len, knot_process_t *ctx)
+int knot_process_in(knot_process_t *ctx, const uint8_t *wire, uint16_t wire_len)
 {
 	/* Only if expecting data. */
 	if (ctx->state != NS_PROC_MORE) {
 		return NS_PROC_NOOP;
 	}
 
-	knot_pkt_t *pkt = knot_pkt_new((uint8_t *)wire, wire_len, &ctx->mm);
+	knot_pkt_t *pkt = knot_pkt_new((uint8_t *)wire, wire_len, ctx->mm);
 	knot_pkt_parse(pkt, 0);
 
 	ctx->state = ctx->module->in(pkt, ctx);
@@ -90,9 +90,9 @@ int knot_process_in(const uint8_t *wire, uint16_t wire_len, knot_process_t *ctx)
 	return ctx->state;
 }
 
-int knot_process_out(uint8_t *wire, uint16_t *wire_len, knot_process_t *ctx)
+int knot_process_out(knot_process_t *ctx, uint8_t *wire, uint16_t *wire_len)
 {
-	knot_pkt_t *pkt = knot_pkt_new(wire, *wire_len, &ctx->mm);
+	knot_pkt_t *pkt = knot_pkt_new(wire, *wire_len, ctx->mm);
 
 	switch (ctx->state) {
 	case NS_PROC_FULL: ctx->state = ctx->module->out(pkt, ctx); break;

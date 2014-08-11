@@ -114,7 +114,7 @@ static int request_send(struct knot_request *request, const struct timeval *time
 		wire = query->wire;
 		wire_len = query->size;
 	} else {
-		request->state = knot_process_out(wire, &wire_len, &request->process);
+		request->state = knot_process_out(&request->process, wire, &wire_len);
 	}
 
 	/* Send query. */
@@ -223,12 +223,7 @@ int knot_requestor_enqueue(struct knot_requestor *requestor, struct knot_request
 
 	/* Form a pending request. */
 	request->data.fd = fd;
-	if (requestor->mm != NULL) {
-		memcpy(&request->process.mm, requestor->mm, sizeof(mm_ctx_t));
-	} else {
-		mm_ctx_init(&request->process.mm);
-	}
-
+	request->process.mm = requestor->mm;
 	request->state = knot_process_begin(&request->process, param, requestor->module);
 
 	/* We have a query to be sent. */
@@ -271,7 +266,7 @@ static int exec_request(struct knot_request *last, struct timeval *timeout)
 			return rcvd;
 		}
 
-		last->state = knot_process_in(last->pkt_buf, rcvd, &last->process);
+		last->state = knot_process_in(&last->process, last->pkt_buf, rcvd);
 	}
 
 	/* Expect complete request. */

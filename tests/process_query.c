@@ -49,16 +49,16 @@ static void exec_query(knot_process_t *query_ctx, const char *name,
 	uint8_t answer[KNOT_WIRE_MAX_PKTSIZE];
 
 	/* Input packet. */
-	int state = knot_process_in(query, query_len, query_ctx);
+	int state = knot_process_in(query_ctx, query, query_len);
 
 	ok(state & (NS_PROC_FULL|NS_PROC_FAIL), "ns: process %s query", name);
 
 	/* Create answer. */
-	state = knot_process_out(answer, &answer_len, query_ctx);
+	state = knot_process_out(query_ctx, answer, &answer_len);
 	if (state & NS_PROC_FAIL) {
 		/* Allow 1 generic error response. */
 		answer_len = KNOT_WIRE_MAX_PKTSIZE;
-		state = knot_process_out(answer, &answer_len, query_ctx);
+		state = knot_process_out(query_ctx, answer, &answer_len);
 	}
 
 	ok(state == NS_PROC_DONE, "ns: answer %s query", name);
@@ -76,20 +76,23 @@ int main(int argc, char *argv[])
 {
 	plan(8*6 + 4); /* exec_query = 6 TAP tests */
 
+	mm_ctx_t mm;
+	mm_ctx_mempool(&mm, sizeof(knot_pkt_t));
+
 	/* Create processing context. */
 	knot_process_t proc;
 	memset(&proc, 0, sizeof(knot_process_t));
-	mm_ctx_mempool(&proc.mm, sizeof(knot_pkt_t));
+	proc.mm = &mm;
 
 	/* Create fake server environment. */
 	server_t server;
-	int ret = create_fake_server(&server, &proc.mm);
+	int ret = create_fake_server(&server, proc.mm);
 	ok(ret == KNOT_EOK, "ns: fake server initialization");
 
 	zone_t *zone = knot_zonedb_find(server.zone_db, ROOT_DNAME);
 
 	/* Prepare. */
-	knot_pkt_t *query = knot_pkt_new(NULL, KNOT_WIRE_MAX_PKTSIZE, &proc.mm);
+	knot_pkt_t *query = knot_pkt_new(NULL, KNOT_WIRE_MAX_PKTSIZE, proc.mm);
 
 	/* Create query processing parameter. */
 	struct sockaddr_storage ss;
@@ -154,13 +157,13 @@ int main(int argc, char *argv[])
 	knot_process_reset(&proc);
 	knot_pkt_clear(query);
 	knot_pkt_put_question(query, ROOT_DNAME, KNOT_CLASS_IN, KNOT_RRTYPE_SOA);
-	int state = knot_process_in(query->wire, KNOT_WIRE_HEADER_SIZE - 1, &proc);
+	int state = knot_process_in(&proc, query->wire, KNOT_WIRE_HEADER_SIZE - 1);
 	ok(state == NS_PROC_NOOP, "ns: IN/less-than-header query ignored");
 
 	/* Query processor (response, ignore). */
 	knot_process_reset(&proc);
 	knot_wire_set_qr(query->wire);
-	state = knot_process_in(query->wire, query->size, &proc);
+	state = knot_process_in(&proc, query->wire, query->size);
 	ok(state == NS_PROC_NOOP, "ns: IN/less-than-header query ignored");
 
 	/* Finish. */
@@ -168,7 +171,7 @@ int main(int argc, char *argv[])
 	ok(state == NS_PROC_NOOP, "ns: processing end" );
 
 	/* Cleanup. */
-	mp_delete((struct mempool *)proc.mm.ctx);
+	mp_delete((struct mempool *)mm.ctx);
 	server_deinit(&server);
 
 	return 0;

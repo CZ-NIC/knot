@@ -26,7 +26,7 @@ static void query_data_init(knot_process_t *ctx, void *module_param)
 	/* Initialize persistent data. */
 	struct query_data *data = QUERY_DATA(ctx);
 	memset(data, 0, sizeof(struct query_data));
-	data->mm = &ctx->mm;
+	data->mm = ctx->mm;
 	data->param = (struct process_query_param*)module_param;
 
 	/* Initialize lists. */
@@ -39,7 +39,7 @@ static int process_query_begin(knot_process_t *ctx, void *module_param)
 	/* Initialize context. */
 	assert(ctx);
 	ctx->type = NS_PROC_QUERY_ID;
-	ctx->data = mm_alloc(&ctx->mm, sizeof(struct query_data));
+	ctx->data = mm_alloc(ctx->mm, sizeof(struct query_data));
 
 	/* Initialize persistent data. */
 	query_data_init(ctx, module_param);
@@ -74,7 +74,7 @@ static int process_query_reset(knot_process_t *ctx)
 static int process_query_finish(knot_process_t *ctx)
 {
 	process_query_reset(ctx);
-	ctx->mm.free(ctx->data);
+	mm_free(ctx->mm, ctx->data);
 	ctx->data = NULL;
 
 	return NS_PROC_NOOP;

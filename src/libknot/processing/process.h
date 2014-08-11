@@ -52,7 +52,7 @@ typedef struct knot_process_context
 {
 	uint16_t state;  /* Bitmap of enum knot_process_state. */
 	uint16_t type;   /* Module identifier. */
-	mm_ctx_t mm;     /* Processing memory context. */
+	mm_ctx_t *mm;    /* Processing memory context. */
 
 	/* Module specific. */
 	void *data;
@@ -117,7 +117,7 @@ int knot_process_finish(knot_process_t *ctx);
  * \param ctx Context.
  * \return (module specific state)
  */
-int knot_process_in(const uint8_t *wire, uint16_t wire_len, knot_process_t *ctx);
+int knot_process_in(knot_process_t *ctx, const uint8_t *wire, uint16_t wire_len);
 
 /*!
  * \brief Write out output from packet processing.
@@ -129,6 +129,6 @@ int knot_process_in(const uint8_t *wire, uint16_t wire_len, knot_process_t *ctx)
  * \param ctx Context.
  * \return (module specific state)
  */
-int knot_process_out(uint8_t *wire, uint16_t *wire_len, knot_process_t *ctx);
+int knot_process_out(knot_process_t *ctx, uint8_t *wire, uint16_t *wire_len);
 
 /*! @} */

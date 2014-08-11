@@ -136,18 +136,18 @@ void udp_handle(udp_context_t *udp, int fd, struct sockaddr_storage *ss,
 	knot_process_begin(&udp->query_ctx, &param, NS_PROC_QUERY);
 
 	/* Input packet. */
-	int state = knot_process_in(rx->iov_base, rx->iov_len, &udp->query_ctx);
+	int state = knot_process_in(&udp->query_ctx, rx->iov_base, rx->iov_len);
 
 	/* Process answer. */
 	uint16_t tx_len = tx->iov_len;
 	if (state == NS_PROC_FULL) {
-		state = knot_process_out(tx->iov_base, &tx_len, &udp->query_ctx);
+		state = knot_process_out(&udp->query_ctx, tx->iov_base, &tx_len);
 	}
 
 	/* Process error response (if failed). */
 	if (state == NS_PROC_FAIL) {
 		tx_len = tx->iov_len; /* Reset size. */
-		state = knot_process_out(tx->iov_base, &tx_len, &udp->query_ctx);
+		state = knot_process_out(&udp->query_ctx, tx->iov_base, &tx_len);
 	}
 
 	/* Send response only if finished successfuly. */
@@ -505,7 +505,9 @@ int udp_master(dthread_t *thread)
 	udp.thread_id = handler->thread_id[thr_id];
 
 	/* Create big enough memory cushion. */
-	mm_ctx_mempool(&udp.query_ctx.mm, 4 * sizeof(knot_pkt_t));
+	mm_ctx_t mm;
+	mm_ctx_mempool(&mm, 4 * sizeof(knot_pkt_t));
+	udp.query_ctx.mm = &mm;
 
 	/* Chose select as epoll/kqueue has larger overhead for a
 	 * single or handful of sockets. */
@@ -550,7 +552,7 @@ int udp_master(dthread_t *thread)
 				if ((rcvd = _udp_recv(fd, rq)) > 0) {
 					_udp_handle(&udp, rq);
 					/* Flush allocated memory. */
-					mp_flush(udp.query_ctx.mm.ctx);
+					mp_flush(mm.ctx);
 					_udp_send(rq);
 					udp_pps_sample(rcvd, thr_id);
 				}
@@ -560,7 +562,7 @@ int udp_master(dthread_t *thread)
 
 	_udp_deinit(rq);
 	forget_ifaces(ref, &fds, maxfd);
-	mp_delete(udp.query_ctx.mm.ctx);
+	mp_delete(mm.ctx);
 	return KNOT_EOK;
 }
 

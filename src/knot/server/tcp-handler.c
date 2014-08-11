@@ -137,13 +137,13 @@ static int tcp_handle(tcp_context_t *tcp, int fd,
 	knot_process_begin(&tcp->query_ctx, &param, NS_PROC_QUERY);
 
 	/* Input packet. */
-	int state = knot_process_in(rx->iov_base, rx->iov_len, &tcp->query_ctx);
+	int state = knot_process_in(&tcp->query_ctx, rx->iov_base, rx->iov_len);
 
 	/* Resolve until NOOP or finished. */
 	ret = KNOT_EOK;
 	while (state & (NS_PROC_FULL|NS_PROC_FAIL)) {
 		uint16_t tx_len = tx->iov_len;
-		state = knot_process_out(tx->iov_base, &tx_len, &tcp->query_ctx);
+		state = knot_process_out(&tcp->query_ctx, tx->iov_base, &tx_len);
 
 		/* If it has response, send it. */
 		if (tx_len > 0) {
@@ -188,7 +188,7 @@ static int tcp_event_serve(tcp_context_t *tcp, unsigned i)
 	int ret = tcp_handle(tcp, fd, &tcp->iov[0], &tcp->iov[1]);
 
 	/* Flush per-query memory. */
-	mp_flush(tcp->query_ctx.mm.ctx);
+	mp_flush(tcp->query_ctx.mm->ctx);
 
 	if (ret == KNOT_EOK) {
 		/* Update socket activity timer. */
@@ -302,12 +302,14 @@ int tcp_master(dthread_t *thread)
 	tcp_context_t tcp;
 	memset(&tcp, 0, sizeof(tcp_context_t));
 
+	/* Create big enough memory cushion. */
+	mm_ctx_t mm;
+	mm_ctx_mempool(&mm, 4 * sizeof(knot_pkt_t));
+
 	/* Create TCP answering context. */
 	tcp.server = handler->server;
 	tcp.thread_id = handler->thread_id[dt_get_id(thread)];
-
-	/* Create big enough memory cushion. */
-	mm_ctx_mempool(&tcp.query_ctx.mm, 4 * sizeof(knot_pkt_t));
+	tcp.query_ctx.mm = &mm;
 
 	/* Prepare structures for bound sockets. */
 	fdset_init(&tcp.set, list_size(&conf()->ifaces) + CONFIG_XFERS);
@@ -366,7 +368,7 @@ int tcp_master(dthread_t *thread)
 finish:
 	free(tcp.iov[0].iov_base);
 	free(tcp.iov[1].iov_base);
-	mp_delete(tcp.query_ctx.mm.ctx);
+	mp_delete(mm.ctx);
 	fdset_clear(&tcp.set);
 	ref_release(ref);
 

@@ -31,7 +31,7 @@
 
 #define TEST_EXEC(expect, info) {\
 	pkt->parsed = pkt->size; /* Simulate parsed packet. */ \
-	int state = knot_process_in(pkt->wire, pkt->size, proc); \
+	int state = knot_process_in(proc, pkt->wire, pkt->size); \
 	is_int((expect), state, "proc_answer: " info); \
 	}
 
@@ -59,7 +59,7 @@ static void test_specific(knot_pkt_t *pkt, knot_process_t *proc, struct process_
 {
 	/* Set specific SOA query. */
 	uint16_t query_id = 0xBEEF;
-	knot_pkt_t *query = knot_pkt_new(NULL, KNOT_WIRE_MIN_PKTSIZE, &proc->mm);
+	knot_pkt_t *query = knot_pkt_new(NULL, KNOT_WIRE_MIN_PKTSIZE, proc->mm);
 	assert(query);
 	knot_pkt_put_question(query, ROOT_DNAME, KNOT_CLASS_IN, KNOT_RRTYPE_SOA);
 	knot_wire_set_id(query->wire, query_id);
@@ -79,7 +79,7 @@ static void test_specific(knot_pkt_t *pkt, knot_process_t *proc, struct process_
 static void test_inclass(knot_pkt_t *pkt, knot_process_t *proc, struct process_answer_param *param)
 {
 	/* Set specific SOA query. */
-	knot_pkt_t *query = knot_pkt_new(NULL, KNOT_WIRE_MIN_PKTSIZE, &proc->mm);
+	knot_pkt_t *query = knot_pkt_new(NULL, KNOT_WIRE_MIN_PKTSIZE, proc->mm);
 	assert(query);
 	knot_pkt_put_question(query, ROOT_DNAME, KNOT_CLASS_IN, KNOT_RRTYPE_SOA);
 	param->query = query;
@@ -110,13 +110,16 @@ int main(int argc, char *argv[])
 	plan(3 + TEST_COUNT);
 
 	/* Create processing context. */
+	mm_ctx_t mm;
+	mm_ctx_mempool(&mm, sizeof(knot_pkt_t));
+
 	knot_process_t proc;
 	memset(&proc, 0, sizeof(knot_process_t));
-	mm_ctx_mempool(&proc.mm, sizeof(knot_pkt_t));
+	proc.mm = &mm;
 
 	/* Create fake server environment. */
 	server_t server;
-	int ret = create_fake_server(&server, &proc.mm);
+	int ret = create_fake_server(&server, proc.mm);
 	ok(ret == KNOT_EOK, "proc_answer: fake server initialization");
 
 	/* Prepare. */
@@ -126,7 +129,7 @@ int main(int argc, char *argv[])
 	struct process_answer_param param = {0};
 	param.remote = &remote;
 	param.zone = knot_zonedb_find(server.zone_db, ROOT_DNAME);
-	knot_pkt_t *pkt = knot_pkt_new(NULL, KNOT_WIRE_MAX_PKTSIZE, &proc.mm);
+	knot_pkt_t *pkt = knot_pkt_new(NULL, KNOT_WIRE_MAX_PKTSIZE, proc.mm);
 
 	/* Begin processing. */
 	int state = knot_process_begin(&proc, &param, NS_PROC_ANSWER);
@@ -151,7 +154,7 @@ int main(int argc, char *argv[])
 	ok(state == NS_PROC_NOOP, "proc_answer: processing end" );
 
 	/* Cleanup. */
-	mp_delete((struct mempool *)proc.mm.ctx);
+	mp_delete(mm.ctx);
 	server_deinit(&server);
 	conf_free(conf());
 
