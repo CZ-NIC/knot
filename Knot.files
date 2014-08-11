@@ -341,3 +341,6 @@ tests/zone_events.c
 tests/zonedb.c
 tests/ztree.c
 src/libknot/rrtype/aaaa.h
+src/libknot/processing/overlay.h
+src/libknot/processing/overlay.c
+tests/overlay.c

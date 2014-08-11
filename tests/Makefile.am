@@ -39,6 +39,7 @@ check_PROGRAMS = \
 	pkt				\
 	process_query			\
 	process_answer			\
+	overlay				\
 	requestor			\
 	query_module			\
 	worker_pool			\

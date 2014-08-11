@@ -1,0 +1,102 @@
+/*  Copyright (C) 2013 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+#include <tap/basic.h>
+#include <string.h>
+#include <stdlib.h>
+
+#include "common/mempool.h"
+#include "libknot/processing/overlay.h"
+
+/* @note Purpose of this test is to verify, that FSM chaining works. */
+
+#define transition(expect, generate) \
+{ \
+	if (ctx->state != expect) { \
+		return NS_PROC_FAIL; \
+	} else { \
+		return generate; \
+	} \
+}
+
+static int fsm1_begin(knot_process_t *ctx, void *param)
+transition(NS_PROC_NOOP, NS_PROC_NOOP)
+static int fsm1_in(knot_pkt_t *pkt, knot_process_t *ctx)
+transition(NS_PROC_MORE, NS_PROC_MORE)
+static int fsm1_reset(knot_process_t *ctx)
+transition(NS_PROC_DONE, NS_PROC_DONE)
+static int fsm1_out(knot_pkt_t *pkt, knot_process_t *ctx)
+transition(NS_PROC_FULL, NS_PROC_FAIL)
+static int fsm1_finish(knot_process_t *ctx)
+transition(NS_PROC_DONE, NS_PROC_DONE)
+
+static int fsm2_begin(knot_process_t *ctx, void *param)
+transition(NS_PROC_NOOP, NS_PROC_MORE)
+static int fsm2_in(knot_pkt_t *pkt, knot_process_t *ctx)
+transition(NS_PROC_MORE, NS_PROC_DONE)
+static int fsm2_reset(knot_process_t *ctx)
+transition(NS_PROC_DONE, NS_PROC_FULL)
+static int fsm2_out(knot_pkt_t *pkt, knot_process_t *ctx)
+transition(NS_PROC_FAIL, NS_PROC_DONE)
+static int fsm2_finish(knot_process_t *ctx)
+transition(NS_PROC_DONE, NS_PROC_NOOP)
+
+const knot_process_module_t fsm1_module = {
+        &fsm1_begin, &fsm1_reset, &fsm1_finish, &fsm1_in, &fsm1_out, &fsm1_out
+};
+const knot_process_module_t fsm2_module = {
+        &fsm2_begin, &fsm2_reset, &fsm2_finish, &fsm2_in, &fsm2_out, &fsm2_out
+};
+
+/* Test implementations. */
+
+#define TESTS_COUNT 4
+
+int main(int argc, char *argv[])
+{
+	plan(TESTS_COUNT);
+
+	mm_ctx_t mm;
+	mm_ctx_mempool(&mm, MM_DEFAULT_BLKSIZE);
+
+	knot_pkt_t *buf = knot_pkt_new(NULL, 512, &mm);
+	knot_pkt_put_question(buf, (const uint8_t *)"", 0, 0);
+	uint16_t wire_len = buf->size;
+
+	/* Initialize overlay. */
+	struct knot_overlay overlay;
+	knot_overlay_init(&overlay, &mm);
+
+	/* Add FSMs. */
+	knot_overlay_add(&overlay, NULL, &fsm1_module);
+	knot_overlay_add(&overlay, NULL, &fsm2_module);
+
+	/* Run the sequence. */
+	int state = knot_overlay_in(&overlay, buf->wire, wire_len);
+	is_int(NS_PROC_DONE, state, "overlay: in");
+	state = knot_overlay_reset(&overlay);
+	is_int(NS_PROC_FULL, state, "overlay: reset");
+	state = knot_overlay_out(&overlay, buf->wire, &wire_len);
+	is_int(NS_PROC_DONE, state, "overlay: out");
+	state = knot_overlay_finish(&overlay);
+	is_int(NS_PROC_NOOP, state, "overlay: finish");
+
+	/* Cleanup. */
+	knot_overlay_deinit(&overlay);
+	mp_delete((struct mempool *)mm.ctx);
+
+	return 0;
+}
