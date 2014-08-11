@@ -35,7 +35,7 @@
 
 /* UPDATE-specific logging (internal, expects 'qdata' variable set). */
 #define UPDATE_LOG(severity, msg...) \
-	QUERY_LOG(severity, &qdata, "UPDATE", msg)
+	QUERY_LOG(severity, qdata, "UPDATE", msg)
 
 static bool apex_rr_changed(const zone_contents_t *old_contents,
                             const zone_contents_t *new_contents,
@@ -99,17 +99,10 @@ static int sign_update(zone_t *zone, const zone_contents_t *old_contents,
 	return KNOT_EOK;
 }
 
-static int process_single_update(struct request_data *request,
-                                 const zone_t *zone, zone_update_t *update)
+static int check_prereqs(struct request_data *request,
+                         const zone_t *zone, zone_update_t *update,
+                         struct query_data *qdata)
 {
-	// Needed for logging
-	struct process_query_param param = { 0 };
-	param.remote = &request->remote;
-	struct query_data qdata = { 0 };
-	qdata.param = &param;
-	qdata.query = request->query;
-	qdata.zone  = zone;
-
 	uint16_t rcode = KNOT_RCODE_NOERROR;
 	int ret = ddns_process_prereqs(request->query, update, &rcode);
 	if (ret != KNOT_EOK) {
@@ -119,8 +112,16 @@ static int process_single_update(struct request_data *request,
 		knot_wire_set_rcode(request->resp->wire, rcode);
 		return ret;
 	}
+	
+	return KNOT_EOK;
+}
 
-	ret = ddns_process_update(zone, request->query, update, &rcode);
+static int process_single_update(struct request_data *request,
+                                 const zone_t *zone, zone_update_t *update,
+                                 struct query_data *qdata)
+{
+	uint16_t rcode = KNOT_RCODE_NOERROR;
+	int ret = ddns_process_update(zone, request->query, update, &rcode);
 	if (ret != KNOT_EOK) {
 		UPDATE_LOG(LOG_WARNING, "failed to apply - %s\n",
 		           knot_strerror(ret));
@@ -144,6 +145,38 @@ static void set_rcodes(list_t *requests, const uint16_t rcode)
 	}
 }
 
+static int process_bulk(zone_t *zone, list_t *requests, changeset_t *ddns_ch)
+{
+	// Init zone update structure.
+	zone_update_t zone_update;
+	zone_update_init(&zone_update, zone->contents, ddns_ch);
+	
+	// Walk all the requests and process.
+	struct request_data *req;
+	WALK_LIST(req, *requests) {
+		// Init qdata structure for logging (unique per-request).
+		struct process_query_param param = { 0 };
+		param.remote = &req->remote;
+		struct query_data qdata = { 0 };
+		qdata.param = &param;
+		qdata.query = req->query;
+		qdata.zone  = zone;
+		
+		int ret = check_prereqs(req, zone, &zone_update, &qdata);
+		if (ret != KNOT_EOK) {
+			// Skip updates with failed prereqs.
+			continue;
+		}
+		
+		ret = process_single_update(req, zone, &zone_update, &qdata);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+	}
+	
+	return KNOT_EOK;
+}
+
 static int process_normal(zone_t *zone, list_t *requests)
 {
 	assert(requests);
@@ -156,21 +189,14 @@ static int process_normal(zone_t *zone, list_t *requests)
 		return ret;
 	}
 	
-	// Init zone update structure.
-	zone_update_t zone_update;
-	zone_update_init(&zone_update, zone->contents, &ddns_ch);
-
-	// Walk all the requests and process.
-	struct request_data *req;
-	WALK_LIST(req, *requests) {
-		ret = process_single_update(req, zone, &zone_update);
-		if (ret != KNOT_EOK) {
-			changeset_clear(&ddns_ch);
-			set_rcodes(requests, KNOT_RCODE_SERVFAIL);
-			return ret;
-		}
+	// Process all updates.
+	ret = process_bulk(zone, requests, &ddns_ch);
+	if (ret != KNOT_EOK) {
+		changeset_clear(&ddns_ch);
+		set_rcodes(requests, KNOT_RCODE_SERVFAIL);
+		return ret;
 	}
-
+	
 	zone_contents_t *new_contents = NULL;
 	const bool change_made = !changeset_empty(&ddns_ch);
 	if (!change_made) {
@@ -178,6 +204,7 @@ static int process_normal(zone_t *zone, list_t *requests)
 		return KNOT_EOK;
 	}
 	
+	// Apply changes.
 	ret = apply_changeset(zone, &ddns_ch, &new_contents);
 	if (ret != KNOT_EOK) {
 		if (ret == KNOT_ETTL) {
@@ -190,6 +217,7 @@ static int process_normal(zone_t *zone, list_t *requests)
 	}
 	assert(new_contents);
 
+	// Sign the update.
 	changeset_t sec_ch;
 	if (zone->conf->dnssec_enable) {
 		ret = changeset_init(&sec_ch, zone->name);
