@@ -95,7 +95,7 @@
 
 		// In case of serious error, stop scanner.
 		if (s->stop == true) {
-			return -1;
+			return;
 		}
 	}
 
@@ -1912,7 +1912,7 @@
 
 		// Stop scanner if required.
 		if (s->stop == true) {
-			return -1;
+			return;
 		}
 	}
 
