@@ -403,10 +403,20 @@ static int process_query_err(knot_pkt_t *pkt, knot_process_t *ctx)
 	/* Set RCODE. */
 	knot_wire_set_rcode(pkt->wire, qdata->rcode);
 
-	/* Transaction security (if applicable). */
-	if (process_query_sign_response(pkt, qdata) != KNOT_EOK) {
-		return NS_PROC_FAIL;
+
+	/* Add OPT and TSIG (best effort, send reply anyway if fails). */
+	if (pkt->current != KNOT_ADDITIONAL) {
+		knot_pkt_begin(pkt, KNOT_ADDITIONAL);
 	}
+
+	/* Put OPT RR to the additional section. */
+	int ret = answer_edns_reserve(pkt, qdata);
+	if (ret == KNOT_EOK) {
+		(void) answer_edns_put(pkt, qdata);
+	}
+
+	/* Transaction security (if applicable). */
+	(void) process_query_sign_response(pkt, qdata);
 
 	return NS_PROC_DONE;
 }
