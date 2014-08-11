@@ -8,8 +8,9 @@ from dnstest.utils import *
 class Response(object):
     '''Dig output context.'''
 
-    def __init__(self, server, response, args):
+    def __init__(self, server, response, query, args):
         self.resp = response
+        self.query = query
         self.args = args
         self.srv = server
 
@@ -119,6 +120,9 @@ class Response(object):
         self._check_flags(flags, noflags)
         self._check_eflags(eflags, noeflags)
         self._check_question()
+
+        # Check EDNS section presence.
+        compare(self.query.edns, self.resp.edns, "EDNS VERSION")
 
         # Check rcode.
         if type(rcode) is not str:

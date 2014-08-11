@@ -525,7 +525,7 @@ class Server(object):
                 if not log_no_sep:
                     detail_log(SEP)
 
-                return dnstest.response.Response(self, resp, args)
+                return dnstest.response.Response(self, resp, query, args)
             except dns.exception.Timeout:
                 pass
             except:
