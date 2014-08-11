@@ -655,6 +655,49 @@ static int knot_pkt_rr_from_wire(const uint8_t *wire, size_t *pos,
 	return KNOT_EOK;
 }
 
+/* \note Private for check_rr_constraints(). */
+#define CHECK_AR_CONSTRAINTS(pkt, rr, var, check_func) \
+	if ((pkt)->current != KNOT_ADDITIONAL) { \
+		dbg_packet("%s: RRTYPE%u not in AR\n", __func__, rr->type); \
+		return KNOT_EMALF; \
+	} else if ((pkt)->var != NULL) { \
+		dbg_packet("%s: found 2nd RRTYPE%u\n", __func__, rr->type); \
+		return KNOT_EMALF; \
+	} else if (!check_func(rr)) { \
+		dbg_packet("%s: bad RRTYPE%u RDATA\n", __func__, rr->type); \
+		return KNOT_EMALF; \
+	} else { \
+		(pkt)->var = rr; \
+	}
+
+/*! \brief Check constraints (position, uniqueness, validity) for special types (TSIG, OPT). */
+static int check_rr_constraints(knot_pkt_t *pkt, knot_rrset_t *rr, size_t rr_size, unsigned flags)
+{
+	/* Check RR constraints. */
+	switch(rr->type) {
+	case KNOT_RRTYPE_TSIG:
+		CHECK_AR_CONSTRAINTS(pkt, rr, tsig_rr, tsig_rdata_is_ok);
+
+		/* Strip TSIG RR from wireformat and decrease ARCOUNT. */
+		if (!(flags & KNOT_PF_KEEPWIRE)) {
+			pkt->parsed -= rr_size;
+			pkt->size -= rr_size;
+			knot_wire_set_id(pkt->wire, tsig_rdata_orig_id(rr));
+			knot_wire_set_arcount(pkt->wire, knot_wire_get_arcount(pkt->wire) - 1);
+		}
+		break;
+	case KNOT_RRTYPE_OPT:
+		CHECK_AR_CONSTRAINTS(pkt, rr, opt_rr, knot_edns_check_record);
+		break;
+	default:
+		break;
+	}
+
+	return KNOT_EOK;
+}
+
+#undef CHECK_AR_RECORD
+
 int knot_pkt_parse_rr(knot_pkt_t *pkt, unsigned flags)
 {
 	dbg_packet("%s(%p, %u)\n", __func__, pkt, flags);
@@ -688,53 +731,10 @@ int knot_pkt_parse_rr(knot_pkt_t *pkt, unsigned flags)
 
 	/* Update packet RRSet count. */
 	++pkt->rrset_count;
-
-	/* Update section RRSet count. */
 	++pkt->sections[pkt->current].count;
 
-	/* Check RR constraints. */
-	switch(rr->type) {
-	case KNOT_RRTYPE_TSIG:
-		// if there is some TSIG already, treat as malformed
-		if (pkt->tsig_rr != NULL) {
-			dbg_packet("%s: found 2nd TSIG\n", __func__);
-			return KNOT_EMALF;
-		} else if (!tsig_rdata_is_ok(rr)) {
-			dbg_packet("%s: bad TSIG RDATA\n", __func__);
-			return KNOT_EMALF;
-		}
-
-		/* Strip TSIG RR from wireformat and decrease ARCOUNT. */
-		if (!(flags & KNOT_PF_KEEPWIRE)) {
-			pkt->parsed -= rr_size;
-			pkt->size -= rr_size;
-			knot_wire_set_id(pkt->wire, tsig_rdata_orig_id(rr));
-			knot_wire_set_arcount(pkt->wire, knot_wire_get_arcount(pkt->wire) - 1);
-		}
-
-		/* Remember TSIG RR. */
-		pkt->tsig_rr = rr;
-		break;
-	case KNOT_RRTYPE_OPT:
-		/* If there is some OPT already, treat as malformed. */
-		if (pkt->opt_rr != NULL) {
-			dbg_packet("%s: found 2nd OPT\n", __func__);
-			return KNOT_EMALF;
-		}
-
-		/* Semantic checks for the OPT. */
-		if (!knot_edns_check_record(rr)) {
-			dbg_packet("%s: OPT RR check failed\n", __func__);
-			return KNOT_EMALF;
-		}
-
-		pkt->opt_rr = rr;
-		break;
-	default:
-		break;
-	}
-
-	return ret;
+	/* Check special RRs (OPT and TSIG). */
+	return check_rr_constraints(pkt, rr, rr_size, flags);
 }
 
 int knot_pkt_parse_section(knot_pkt_t *pkt, unsigned flags)
