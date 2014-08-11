@@ -146,7 +146,7 @@ int main(int argc, char *argv[])
 	free(to_free);
 	
 	// "Test" freeing
-	node_free_rrsets(node);
+	node_free_rrsets(node, NULL);
 	ok(node->rrset_count == 0, "Node: free RRSets.");
 	
 	node_free(&node, NULL);

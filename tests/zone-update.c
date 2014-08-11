@@ -18,7 +18,7 @@
 #include <tap/basic.h>
 
 #include "knot/updates/zone-update.h"
-#include "zscanner/zscanner.h"
+#include "zscanner/scanner.h"
 #include "common/getline.h"
 
 static const char *zone_str =
@@ -75,10 +75,10 @@ int main(int argc, char *argv[])
 	   "zone update: init");
 
 	// Fill zone
-	zs_scanner_t *sc = zs_scanner_create(NULL, "test.", KNOT_CLASS_IN, 3600, process_rr,
+	zs_scanner_t *sc = zs_scanner_create("test.", KNOT_CLASS_IN, 3600, process_rr,
 	                                     NULL, zone);
 	assert(sc);
-	ret = zs_scanner_process(zone_str, zone_str + strlen(zone_str), true, sc);
+	ret = zs_scanner_parse(sc, zone_str, zone_str + strlen(zone_str), true);
 	assert(ret == 0);
 
 	// Check that old node is returned without changes
@@ -87,7 +87,7 @@ int main(int argc, char *argv[])
 
 	// Add RRs to add section
 	sc->data = ch.add;
-	ret = zs_scanner_process(add_str, add_str + strlen(add_str), true, sc);
+	ret = zs_scanner_parse(sc, add_str, add_str + strlen(add_str), true);
 	assert(ret == 0);
 
 	// Check that apex TXT has two RRs now
@@ -97,7 +97,7 @@ int main(int argc, char *argv[])
 
 	// Add RRs to remove section
 	sc->data = ch.remove;
-	ret = zs_scanner_process(del_str, del_str + strlen(del_str), true, sc);
+	ret = zs_scanner_parse(sc, del_str, del_str + strlen(del_str), true);
 	assert(ret == 0);
 
 	// Check that apex TXT has one RR again
