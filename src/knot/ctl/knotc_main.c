@@ -659,6 +659,30 @@ static int cmd_checkconf(int argc, char *argv[], unsigned flags)
 	return 0;
 }
 
+static bool fetch_zone(int argc, char *argv[], conf_zone_t *zone)
+{
+	/* Convert zone name to dname */
+	knot_dname_t *zone_name = knot_dname_from_str(zone->name);
+	if (zone_name == NULL) {
+		return false;
+	}
+	(void)knot_dname_to_lower(zone_name);
+
+	for (unsigned i = 0; i < (unsigned)argc; ++i) {
+		/* Convert the argument to dname */
+		knot_dname_t *arg_name = knot_dname_from_str(argv[i]);
+
+		if (arg_name) {
+			(void)knot_dname_to_lower(arg_name);
+			if (knot_dname_is_equal(zone_name, arg_name)) {
+				return true;
+			}
+		}
+	}
+
+	return false;
+}
+
 static int cmd_checkzone(int argc, char *argv[], unsigned flags)
 {
 	UNUSED(flags);
@@ -676,19 +700,7 @@ static int cmd_checkzone(int argc, char *argv[], unsigned flags)
 		conf_zone_t *zone = (conf_zone_t *)*hattrie_iter_val(z_iter);
 
 		/* Fetch zone */
-		int zone_match = 0;
-		for (unsigned i = 0; i < (unsigned)argc; ++i) {
-			size_t len = strlen(zone->name);
-
-			/* All (except root) without final dot */
-			if (len > 1) {
-				len -= 1;
-			}
-			if (strncmp(zone->name, argv[i], len) == 0) {
-				zone_match = 1;
-				break;
-			}
-		}
+		int zone_match = fetch_zone(argc, argv, zone);
 
 		if (!zone_match && argc > 0) {
 			conf_free_zone(zone);
@@ -728,19 +740,7 @@ static int cmd_memstats(int argc, char *argv[], unsigned flags)
 		conf_zone_t *zone = (conf_zone_t *)*hattrie_iter_val(z_iter);
 
 		/* Fetch zone */
-		int zone_match = 0;
-		for (unsigned i = 0; i < (unsigned)argc; ++i) {
-			size_t len = strlen(zone->name);
-
-			/* All (except root) without final dot */
-			if (len > 1) {
-				len -= 1;
-			}
-			if (strncmp(zone->name, argv[i], len) == 0) {
-				zone_match = 1;
-				break;
-			}
-		}
+		int zone_match = fetch_zone(argc, argv, zone);
 
 		if (!zone_match && argc > 0) {
 			conf_free_zone(zone);
