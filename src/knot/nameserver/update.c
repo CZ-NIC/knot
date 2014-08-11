@@ -35,7 +35,7 @@
 
 /* UPDATE-specific logging (internal, expects 'qdata' variable set). */
 #define UPDATE_LOG(severity, msg...) \
-	QUERY_LOG(severity, qdata, "UPDATE", msg)
+	QUERY_LOG(severity, qdata, "DDNS", msg)
 
 static bool apex_rr_changed(const zone_contents_t *old_contents,
                             const zone_contents_t *new_contents,
@@ -288,7 +288,7 @@ static int process_requests(zone_t *zone, list_t *requests)
 	/* Process authenticated packet. */
 	int ret = process_normal(zone, requests);
 	if (ret != KNOT_EOK) {
-		log_zone_error(zone->name, "DDNS: processing failed - %s\n",
+		log_zone_error(zone->name, "DDNS, processing failed (%s)",
 		               knot_strerror(ret));
 		return ret;
 	}
@@ -296,13 +296,13 @@ static int process_requests(zone_t *zone, list_t *requests)
 	/* Evaluate response. */
 	const uint32_t new_serial = zone_contents_serial(zone->contents);
 	if (new_serial == old_serial) {
-		log_zone_info(zone->name, "DDNS: no change to zone made\n");
+		log_zone_info(zone->name, "DDNS, no change to zone made");
 		return KNOT_EOK;
 	}
 
 	gettimeofday(&t_end, NULL);
-	log_zone_info(zone->name, "DDNS: Serial %u -> %u\n", old_serial, new_serial);
-	log_zone_info(zone->name, "DDNS: Update finished in %.02fs.\n",
+	log_zone_info(zone->name, "DDNS, serial %u -> %u", old_serial, new_serial);
+	log_zone_info(zone->name, "DDNS, update finished in %.02f seconds",
 	              time_diff(&t_start, &t_end) / 1000.0);
 	
 	zone_events_schedule(zone, ZONE_EVENT_NOTIFY, ZONE_EVENT_NOW);
@@ -356,11 +356,11 @@ static int forward_request(zone_t *zone, struct request_data *request)
 	/* Set RCODE if forwarding failed. */
 	if (ret != KNOT_EOK) {
 		knot_wire_set_rcode(request->resp->wire, KNOT_RCODE_SERVFAIL);
-		log_zone_error(zone->name, "DDNS: "
-		               "Failed to forward UPDATEs to master: %s\n",
+		log_zone_error(zone->name, "DDNS, "
+		               "failed to forward updates to master (%s)",
 		               knot_strerror(ret));
 	} else {
-		log_zone_info(zone->name, "DDNS: UPDATEs forwarded\n");
+		log_zone_info(zone->name, "DDNS, updates forwarded");
 	}
 
 	return ret;
@@ -457,11 +457,11 @@ int updates_execute(zone_t *zone)
 	/* Process update list - forward if zone has master, or execute. */
 	if (zone_master(zone)) {
 		log_zone_info(zone->name,
-		              "DDNS: forwarding %zu dynamic updates\n", update_count);
+		              "DDNS, forwarding %zu updates", update_count);
 		forward_requests(zone, &updates);
 	} else {
 		log_zone_info(zone->name,
-		              "DDNS: processing %zu dynamic updates\n", update_count);
+		              "DDNS, processing %zu updates", update_count);
 		ret = process_requests(zone, &updates);
 	}
 	UNUSED(ret); /* Don't care about the Knot code, RCODEs are set. */
