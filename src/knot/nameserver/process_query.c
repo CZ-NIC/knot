@@ -260,6 +260,16 @@ static const zone_t *answer_zone_find(const knot_pkt_t *query, knot_zonedb_t *zo
 	return zone;
 }
 
+static int answer_edns_reserve(knot_pkt_t *resp, struct query_data *qdata)
+{
+	if (knot_rrset_empty(&qdata->opt_rr)) {
+		return KNOT_EOK;
+	}
+
+	/* Reserve size in the response. */
+	return knot_pkt_reserve(resp, knot_edns_wire_size(&qdata->opt_rr));
+}
+
 static int answer_edns_init(const knot_pkt_t *query, knot_pkt_t *resp,
                             struct query_data *qdata)
 {
@@ -297,14 +307,7 @@ static int answer_edns_init(const knot_pkt_t *query, knot_pkt_t *resp,
 		}
 	}
 
-	/* Reserve size in the response. */
-	ret = knot_pkt_reserve(resp, knot_edns_wire_size(query->opt_rr));
-	if (ret != KNOT_EOK) {
-		knot_rrset_clear(&qdata->opt_rr, &resp->mm);
-		return ret;
-	}
-
-	return KNOT_EOK;
+	return answer_edns_reserve(resp, qdata);
 }
 
 static int answer_edns_put(knot_pkt_t *resp, struct query_data *qdata)
