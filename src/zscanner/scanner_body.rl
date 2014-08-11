@@ -671,11 +671,18 @@
 		if (ss != NULL) {
 			// Parse included zone file.
 			ret = zs_scanner_parse_file(ss, (char*)(s->buffer));
-			zs_scanner_free(ss);
 			if (ret != 0) {
-				ERR(ZS_UNPROCESSED_INCLUDE);
+				// File internal errors are handled by error callback.
+				if (ss->error_counter > 0) {
+					ERR(ZS_UNPROCESSED_INCLUDE);
+				// General include file error.
+				} else {
+					ERR(ss->error_code);
+				}
+				zs_scanner_free(ss);
 				fhold; fgoto err_line;
 			}
+			zs_scanner_free(ss);
 		} else {
 			ERR(ZS_UNPROCESSED_INCLUDE);
 			fhold; fgoto err_line;
