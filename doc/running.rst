@@ -51,13 +51,13 @@ If you want to control the daemon directly, use ``SIGINT`` to quit the process o
     Actions:
      stop                   Stop server.
      reload                 Reload configuration and changed zones.
-     refresh [zone]         Refresh slave zone (all if not specified).
+     refresh <zone>         Refresh slave zone (all if not specified).
      flush                  Flush journal and update zone files.
      status                 Check if server is running.
      zonestatus             Show status of configured zones.
      checkconf              Check current server configuration.
-     checkzone [zone]       Check zone (all if not specified).
-     memstats [zone]        Estimate memory consumption for zone (all if not
+     checkzone <zone>       Check zone (all if not specified).
+     memstats <zone>        Estimate memory consumption for zone (all if not
                             specified).
 
 Also, the server needs to create several files in order to run properly. These
