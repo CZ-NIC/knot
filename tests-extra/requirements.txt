@@ -1,2 +1,3 @@
-dnspython3==1.11.1
+#dnspython3==1.11.1
+-e git+https://github.com/rthalley/dnspython.git@python3#egg=dnspython3
 psutil==1.2.1
