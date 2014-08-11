@@ -287,7 +287,7 @@ void zone_update_dequeue(zone_t *zone, list_t *updates, size_t *update_count)
 	}
 
 	pthread_spin_lock(&zone->ddns_lock);
-	if (knot_unlikely(EMPTY_LIST(zone->ddns_queue))) {
+	if (EMPTY_LIST(zone->ddns_queue)) {
 		/* Lost race during reload. */
 		pthread_spin_unlock(&zone->ddns_lock);
 		return;
