@@ -204,7 +204,7 @@ int dnstap_load(struct query_plan *plan, struct query_module *self)
 	return KNOT_EOK;
 
 fail:
-	MODULE_ERR("init(\"%s\") failed - %s\n", self->param, knot_strerror(ret));
+	MODULE_ERR("init(\"%s\") failed - %s", self->param, knot_strerror(ret));
 	return ret;
 }
 

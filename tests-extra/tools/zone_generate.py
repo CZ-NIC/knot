@@ -16,6 +16,7 @@ Parameters:
 
 import binascii
 import getopt
+import string
 import os
 import random
 import re
@@ -88,6 +89,12 @@ WORDS = [
 "telnet","extern","intranet","extranet","testing","default","gateway","radius","noc",
 "mobile","customer","siprouter","sip","office","voice","support",
 "spare","owa","exchange" ]
+
+# Replace some words with random ones
+for i, word in enumerate(WORDS):
+    if random.choice([True, False]):
+        size = random.randint(2, 20)
+        WORDS[i] = ''.join(random.choice(string.hexdigits) for _ in range(size))
 
 # For unique CNAMES/DNAMES
 CNAME_EXIST = set([])

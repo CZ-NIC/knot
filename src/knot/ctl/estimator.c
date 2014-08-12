@@ -21,7 +21,6 @@
 #include "common/lists.h"
 #include "common/mem.h"
 #include "knot/zone/node.h"
-#include "zscanner/zscanner.h"
 #include "libknot/descriptor.h"
 
 // Addition constants used for tweaking, mostly malloc overhead

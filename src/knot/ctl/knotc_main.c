@@ -80,14 +80,14 @@ static int cmd_signzone(int argc, char *argv[], unsigned flags);
 knot_cmd_t knot_cmd_tbl[] = {
 	{&cmd_stop,       0, "stop",       "",       "\t\tStop server."},
 	{&cmd_reload,     0, "reload",     "",       "\tReload configuration and changed zones."},
-	{&cmd_refresh,    0, "refresh",    "[zone]", "\tRefresh slave zone (all if not specified). Flag '-f' forces retransfer."},
+	{&cmd_refresh,    0, "refresh",    "<zone>", "\tRefresh slave zone (all if not specified). Flag '-f' forces retransfer."},
 	{&cmd_flush,      0, "flush",      "",       "\t\tFlush journal and update zone files."},
 	{&cmd_status,     0, "status",     "",       "\tCheck if server is running."},
 	{&cmd_zonestatus, 0, "zonestatus", "",       "\tShow status of configured zones."},
 	{&cmd_checkconf,  1, "checkconf",  "",       "\tCheck current server configuration."},
-	{&cmd_checkzone,  1, "checkzone",  "[zone]", "Check zone (all if not specified)."},
-	{&cmd_memstats,   1, "memstats",   "[zone]", "Estimate memory use for zone (all if not specified)."},
-	{&cmd_signzone,   0, "signzone",   "[zone]", "Sign all zones with available DNSSEC keys."},
+	{&cmd_checkzone,  1, "checkzone",  "<zone>", "Check zone (all if not specified)."},
+	{&cmd_memstats,   1, "memstats",   "<zone>", "Estimate memory use for zone (all if not specified)."},
+	{&cmd_signzone,   0, "signzone",   "<zone>", "Sign all zones with available DNSSEC keys."},
 	{NULL, 0, NULL, NULL, NULL}
 };
 
@@ -183,14 +183,14 @@ static int cmd_remote(const char *cmd, uint16_t rrt, int argc, char *argv[])
 	/* Check remote address. */
 	conf_iface_t *r = conf()->ctl.iface;
 	if (!r || r->addr.ss_family == AF_UNSPEC) {
-		log_error("no remote address for '%s' configured\n", cmd);
+		log_error("no remote address for '%s' configured", cmd);
 		return 1;
 	}
 
 	/* Make query. */
 	knot_pkt_t *pkt = remote_query(cmd, r->key);
 	if (!pkt) {
-		log_warning("could not prepare query for '%s'\n", cmd);
+		log_warning("could not prepare query for '%s'", cmd);
 		return 1;
 	}
 
@@ -200,7 +200,7 @@ static int cmd_remote(const char *cmd, uint16_t rrt, int argc, char *argv[])
 		knot_rrset_t rr;
 		int res = remote_build_rr(&rr, "data.", rrt);
 		if (res != KNOT_EOK) {
-			log_error("couldn't create the query\n");
+			log_error("couldn't create the query");
 			knot_pkt_free(&pkt);
 			return 1;
 		}
@@ -217,7 +217,7 @@ static int cmd_remote(const char *cmd, uint16_t rrt, int argc, char *argv[])
 		}
 		res = knot_pkt_put(pkt, 0, &rr, KNOT_PF_FREE);
 		if (res != KNOT_EOK) {
-			log_error("couldn't create the query\n");
+			log_error("couldn't create the query");
 			knot_rrset_clear(&rr, NULL);
 			knot_pkt_free(&pkt);
 			return 1;
@@ -227,7 +227,7 @@ static int cmd_remote(const char *cmd, uint16_t rrt, int argc, char *argv[])
 	if (r->key) {
 		int res = remote_query_sign(pkt->wire, &pkt->size, pkt->max_size, r->key);
 		if (res != KNOT_EOK) {
-			log_error("couldn't sign the packet\n");
+			log_error("couldn't sign the packet");
 			knot_pkt_free(&pkt);
 			return 1;
 		}
@@ -241,7 +241,7 @@ static int cmd_remote(const char *cmd, uint16_t rrt, int argc, char *argv[])
 
 	int s = net_connected_socket(SOCK_STREAM, &r->addr, &r->via, 0);
 	if (s < 0) {
-		log_error("couldn't connect to remote host '%s'\n", addr_str);
+		log_error("couldn't connect to remote host '%s'", addr_str);
 		knot_pkt_free(&pkt);
 		return 1;
 	}
@@ -249,7 +249,7 @@ static int cmd_remote(const char *cmd, uint16_t rrt, int argc, char *argv[])
 	/* Wait for availability. */
 	struct pollfd pfd = { s, POLLOUT, 0 };
 	if (poll(&pfd, 1, conf()->max_conn_reply) != 1) {
-		log_error("couldn't connect to remote host '%s'\n", addr_str);
+		log_error("couldn't connect to remote host '%s'", addr_str);
 		close(s);
 		knot_pkt_free(&pkt);
 		return 1;
@@ -261,7 +261,7 @@ static int cmd_remote(const char *cmd, uint16_t rrt, int argc, char *argv[])
 
 	/* Evaluate and wait for reply. */
 	if (ret <= 0) {
-		log_error("couldn't connect to remote host '%s'\n", addr_str);
+		log_error("couldn't connect to remote host '%s'", addr_str);
 		close(s);
 		return 1;
 	}
@@ -272,7 +272,7 @@ static int cmd_remote(const char *cmd, uint16_t rrt, int argc, char *argv[])
 		ret = cmd_remote_reply(s);
 		if (ret != KNOT_EOK) {
 			if (ret != KNOT_ECONN) {
-				log_warning("remote command reply: %s\n",
+				log_warning("remote command reply: %s",
 				            knot_strerror(ret));
 				rc = 1;
 			}
@@ -373,7 +373,7 @@ static int tsig_parse_file(knot_tsig_key_t *k, const char *f)
 {
 	FILE* fp = fopen(f, "r");
 	if (!fp) {
-		log_error("couldn't open key-file '%s'\n", f);
+		log_error("couldn't open key-file '%s'", f);
 		return KNOT_EINVAL;
 	}
 
@@ -394,7 +394,7 @@ static int tsig_parse_file(knot_tsig_key_t *k, const char *f)
 		if (c == '\n') {
 			if (k->name) {
 				log_error("only one key definition allowed "
-				          "in '%s'\n", f);
+				          "in '%s'", f);
 				ret = KNOT_EMALF;
 				break;
 			}
@@ -455,14 +455,14 @@ int main(int argc, char **argv)
 		case 'y':
 			if (tsig_parse_str(&r_key, optarg) != KNOT_EOK) {
 				rc = 1;
-				log_error("couldn't parse TSIG key '%s'\n", optarg);
+				log_error("couldn't parse TSIG key '%s'", optarg);
 				goto exit;
 			}
 			break;
 		case 'k':
 			if (tsig_parse_file(&r_key, optarg) != KNOT_EOK) {
 				rc = 1;
-				log_error("couldn't parse TSIG key file '%s'\n", optarg);
+				log_error("couldn't parse TSIG key file '%s'", optarg);
 				goto exit;
 			}
 			break;
@@ -512,7 +512,7 @@ int main(int argc, char **argv)
 
 	/* Command not found. */
 	if (!cmd->name) {
-		log_error("invalid command: '%s'\n", argv[optind]);
+		log_error("invalid command: '%s'", argv[optind]);
 		rc = 1;
 		goto exit;
 	}
@@ -525,7 +525,7 @@ int main(int argc, char **argv)
 
 	/* Check if config file is required. */
 	if (has_flag(flags, F_NOCONF) && cmd->need_conf) {
-		log_error("couldn't find a config file, refusing to continue\n");
+		log_error("couldn't find a config file, refusing to continue");
 		rc = 1;
 		goto exit;
 	}
@@ -654,9 +654,38 @@ static int cmd_checkconf(int argc, char *argv[], unsigned flags)
 	UNUSED(argv);
 	UNUSED(flags);
 
-	log_info("OK, configuration is valid\n");
+	log_info("OK, configuration is valid");
 
 	return 0;
+}
+
+static bool fetch_zone(int argc, char *argv[], conf_zone_t *zone)
+{
+	/* Convert zone name to dname */
+	knot_dname_t *zone_name = knot_dname_from_str(zone->name);
+	if (zone_name == NULL) {
+		return false;
+	}
+	(void)knot_dname_to_lower(zone_name);
+
+	bool found = false;
+
+	int i = 0;
+	while (!found && i < argc) {
+		/* Convert the argument to dname */
+		knot_dname_t *arg_name = knot_dname_from_str(argv[i]);
+
+		if (arg_name != NULL) {
+			(void)knot_dname_to_lower(arg_name);
+			found = knot_dname_is_equal(zone_name, arg_name);
+		}
+
+		i++;
+		knot_dname_free(&arg_name, NULL);
+	}
+
+	knot_dname_free(&zone_name, NULL);
+	return found;
 }
 
 static int cmd_checkzone(int argc, char *argv[], unsigned flags)
@@ -676,19 +705,7 @@ static int cmd_checkzone(int argc, char *argv[], unsigned flags)
 		conf_zone_t *zone = (conf_zone_t *)*hattrie_iter_val(z_iter);
 
 		/* Fetch zone */
-		int zone_match = 0;
-		for (unsigned i = 0; i < (unsigned)argc; ++i) {
-			size_t len = strlen(zone->name);
-
-			/* All (except root) without final dot */
-			if (len > 1) {
-				len -= 1;
-			}
-			if (strncmp(zone->name, argv[i], len) == 0) {
-				zone_match = 1;
-				break;
-			}
-		}
+		int zone_match = fetch_zone(argc, argv, zone);
 
 		if (!zone_match && argc > 0) {
 			conf_free_zone(zone);
@@ -702,7 +719,7 @@ static int cmd_checkzone(int argc, char *argv[], unsigned flags)
 			continue;
 		}
 
-		log_zone_str_info(zone->name, "zone is OK\n");
+		log_zone_str_info(zone->name, "zone is OK");
 		zone_contents_deep_free(&loaded_zone);
 	}
 	hattrie_iter_free(z_iter);
@@ -715,7 +732,6 @@ static int cmd_memstats(int argc, char *argv[], unsigned flags)
 	UNUSED(flags);
 
 	/* Zone checking */
-	int rc = 0;
 	double total_size = 0;
 
 	/* Generate databases for all zones */
@@ -728,19 +744,7 @@ static int cmd_memstats(int argc, char *argv[], unsigned flags)
 		conf_zone_t *zone = (conf_zone_t *)*hattrie_iter_val(z_iter);
 
 		/* Fetch zone */
-		int zone_match = 0;
-		for (unsigned i = 0; i < (unsigned)argc; ++i) {
-			size_t len = strlen(zone->name);
-
-			/* All (except root) without final dot */
-			if (len > 1) {
-				len -= 1;
-			}
-			if (strncmp(zone->name, argv[i], len) == 0) {
-				zone_match = 1;
-				break;
-			}
-		}
+		int zone_match = fetch_zone(argc, argv, zone);
 
 		if (!zone_match && argc > 0) {
 			conf_free_zone(zone);
@@ -759,31 +763,29 @@ static int cmd_memstats(int argc, char *argv[], unsigned flags)
 		                    .htable_size = 0, .rdata_size = 0,
 		                    .record_count = 0 };
 		if (est.node_table == NULL) {
-			log_error("not enough memory\n");
-			continue;
+			log_error("not enough memory");
+			break;
 		}
 
-		/* Create file loader. */
-		zs_loader_t *loader = zs_loader_create(zone->file, zone->name,
-		                                       KNOT_CLASS_IN, 3600,
-		                                       estimator_rrset_memsize_wrap,
-		                                       process_error,
-		                                       &est);
-		if (loader == NULL) {
-			rc = 1;
-			log_zone_str_error(zone->name, "could not load zone\n");
+		/* Create zone scanner. */
+		zs_scanner_t *zs = zs_scanner_create(zone->name,
+		                                     KNOT_CLASS_IN, 3600,
+		                                     estimator_rrset_memsize_wrap,
+		                                     process_error,
+		                                     &est);
+		if (zs == NULL) {
+			log_zone_str_error(zone->name, "could not load zone");
 			hattrie_free(est.node_table);
 			continue;
 		}
 
 		/* Do a parser run, but do not actually create the zone. */
-		int ret = zs_loader_process(loader);
-		if (ret != KNOT_EOK) {
-			rc = 1;
-			log_zone_str_error(zone->name, "failed to parse zone\n");
+		int ret = zs_scanner_parse_file(zs, zone->file);
+		if (ret != 0) {
+			log_zone_str_error(zone->name, "failed to parse zone");
 			hattrie_apply_rev(est.node_table, estimator_free_trie_node, NULL);
 			hattrie_free(est.node_table);
-			zs_loader_free(loader);
+			zs_scanner_free(zs);
 			continue;
 		}
 
@@ -801,18 +803,18 @@ static int cmd_memstats(int argc, char *argv[], unsigned flags)
 		                   est.htable_size +
 		                   malloc_size) * ESTIMATE_MAGIC) / (1024.0 * 1024.0);
 
-		log_zone_str_info(zone->name, "%zu RRs, used memory estimation is %zu MB\n",
+		log_zone_str_info(zone->name, "%zu RRs, used memory estimation is %zu MB",
 		                  est.record_count, (size_t)zone_size);
-		zs_loader_free(loader);
+		zs_scanner_free(zs);
 		total_size += zone_size;
 		conf_free_zone(zone);
 	}
 	hattrie_iter_free(z_iter);
 
-	if (rc == 0 && argc == 0) { // for all zones
-		log_info("estimated memory consumption for all zones is %zu MB\n",
+	if (argc == 0) { // for all zones
+		log_info("estimated memory consumption for all zones is %zu MB",
 		         (size_t)total_size);
 	}
 
-	return rc;
+	return 0;
 }

@@ -84,7 +84,7 @@ static enum fdset_sweep_state tcp_sweep(fdset_t *set, int i, void *data)
 	char addr_str[SOCKADDR_STRLEN] = {0};
 	sockaddr_tostr(&ss, addr_str, sizeof(addr_str));
 
-	log_notice("connection '%s' was terminated due to inactivity\n", addr_str);
+	log_notice("connection '%s' was terminated due to inactivity", addr_str);
 	close(fd);
 	return FDSET_SWEEP;
 }
@@ -124,7 +124,7 @@ static int tcp_handle(tcp_context_t *tcp, int fd,
 			char addr_str[SOCKADDR_STRLEN] = {0};
 			sockaddr_tostr(&ss, addr_str, sizeof(addr_str));
 			log_warning("couldn't receive query from '%s' within "
-			            "the time limit of %ds\n",
+			            "the time limit of %ds",
 			            addr_str, conf()->max_conn_idle);
 			rcu_read_unlock();
 		}
@@ -158,6 +158,46 @@ static int tcp_handle(tcp_context_t *tcp, int fd,
 	knot_process_finish(&tcp->query_ctx);
 
 	return ret;
+}
+
+int tcp_accept(int fd)
+{
+	/* Accept incoming connection. */
+	int incoming = accept(fd, 0, 0);
+
+	/* Evaluate connection. */
+	if (incoming < 0) {
+		int en = errno;
+		if (en != EINTR && en != EAGAIN) {
+			log_error("cannot accept connection (%d)", errno);
+			if (en == EMFILE || en == ENFILE ||
+			    en == ENOBUFS || en == ENOMEM) {
+				int throttle = tcp_throttle();
+				log_error("throttling TCP connection pool for"
+				          "%d seconds because of too many open "
+				          "descriptors or lack of memory",
+				          throttle);
+				sleep(throttle);
+			}
+
+		}
+	} else {
+		dbg_net("tcp: accepted connection fd=%d\n", incoming);
+		/* Set recv() timeout. */
+#ifdef SO_RCVTIMEO
+		struct timeval tv;
+		rcu_read_lock();
+		tv.tv_sec = conf()->max_conn_idle;
+		rcu_read_unlock();
+		tv.tv_usec = 0;
+		if (setsockopt(incoming, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) < 0) {
+			log_warning("couldn't set up TCP connection watchdog "
+			            "timer for fd=%d", incoming);
+		}
+#endif
+	}
+
+	return incoming;
 }
 
 static int tcp_event_accept(tcp_context_t *tcp, unsigned i)
@@ -246,46 +286,6 @@ static int tcp_wait_for_events(tcp_context_t *tcp)
 	}
 
 	return nfds;
-}
-
-int tcp_accept(int fd)
-{
-	/* Accept incoming connection. */
-	int incoming = accept(fd, 0, 0);
-
-	/* Evaluate connection. */
-	if (incoming < 0) {
-		int en = errno;
-		if (en != EINTR && en != EAGAIN) {
-			log_error("cannot accept connection (%d)\n", errno);
-			if (en == EMFILE || en == ENFILE ||
-			    en == ENOBUFS || en == ENOMEM) {
-				int throttle = tcp_throttle();
-				log_error("throttling TCP connection pool for"
-				          "%d seconds because of too many open "
-				          "descriptors or lack of memory\n",
-				          throttle);
-				sleep(throttle);
-			}
-
-		}
-	} else {
-		dbg_net("tcp: accepted connection fd=%d\n", incoming);
-		/* Set recv() timeout. */
-#ifdef SO_RCVTIMEO
-		struct timeval tv;
-		rcu_read_lock();
-		tv.tv_sec = conf()->max_conn_idle;
-		rcu_read_unlock();
-		tv.tv_usec = 0;
-		if (setsockopt(incoming, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) < 0) {
-			log_warning("couldn't set up TCP connection watchdog "
-			            "timer for fd=%d\n", incoming);
-		}
-#endif
-	}
-
-	return incoming;
 }
 
 int tcp_master(dthread_t *thread)

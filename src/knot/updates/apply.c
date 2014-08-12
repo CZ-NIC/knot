@@ -24,6 +24,7 @@
 #include "knot/zone/zonefile.h"
 #include "common/lists.h"
 #include "libknot/rrtype/soa.h"
+#include "libknot/rrtype/rrsig.h"
 
 /* --------------------------- Update cleanup ------------------------------- */
 
@@ -61,6 +62,38 @@ static int free_additional(zone_node_t **node, void *data)
 	}
 
 	return KNOT_EOK;
+}
+
+/* ------------------------- Empty node cleanup ----------------------------- */
+
+/*! \brief Clears wildcard child if set in parent node. */
+static void fix_wildcard_child(zone_node_t *node, const knot_dname_t *owner)
+{
+	if ((node->flags & NODE_FLAGS_WILDCARD_CHILD)
+	    && knot_dname_is_wildcard(owner)) {
+		node->flags &= ~NODE_FLAGS_WILDCARD_CHILD;
+	}
+}
+
+/*! \todo move this to new zone API - zone should do this automatically. */
+/*! \brief Deletes possibly empty node and all its empty parents recursively. */
+static void delete_empty_node(zone_tree_t *tree, zone_node_t *node)
+{
+	if (node->rrset_count == 0 && node->children == 0) {
+		zone_node_t *parent_node = node->parent;
+		if (parent_node) {
+			fix_wildcard_child(parent_node, node->owner);
+			parent_node->children--;
+			// Recurse using the parent node
+			delete_empty_node(tree, parent_node);
+		}
+
+		// Delete node
+		zone_node_t *removed_node = NULL;
+		zone_tree_remove(tree, node->owner, &removed_node);
+		UNUSED(removed_node);
+		node_free(&node, NULL);
+	}
 }
 
 /* -------------------- Changeset application helpers ----------------------- */
@@ -148,9 +181,23 @@ static bool can_remove(const zone_node_t *node, const knot_rrset_t *rr)
 	return false;
 }
 
+/*! \todo part of the new zone API. */
+static bool rrset_is_nsec3rel(const knot_rrset_t *rr)
+{
+	if (rr == NULL) {
+		return false;
+	}
+
+	/* Is NSEC3 or non-empty RRSIG covering NSEC3. */
+	return ((rr->type == KNOT_RRTYPE_NSEC3)
+	        || (rr->type == KNOT_RRTYPE_RRSIG
+	            && knot_rrsig_type_covered(&rr->rrs, 0)
+	            == KNOT_RRTYPE_NSEC3));
+}
+
 /*! \brief Removes single RR from zone contents. */
-static int remove_rr(zone_node_t *node, const knot_rrset_t *rr,
-                     changeset_t *chset)
+static int remove_rr(zone_tree_t *tree, zone_node_t *node,
+                     const knot_rrset_t *rr, changeset_t *chset)
 {
 	knot_rrset_t removed_rrset = node_rrset(node, rr->type);
 	knot_rdata_t *old_data = removed_rrset.rrs.data;
@@ -184,6 +231,10 @@ static int remove_rr(zone_node_t *node, const knot_rrset_t *rr,
 	} else {
 		// RRSet is empty now, remove it from node, all data freed.
 		node_remove_rdataset(node, rr->type);
+		// If node is empty now, delete it from zone tree.
+		if (node->rrset_count == 0) {
+			delete_empty_node(tree, node);
+		}
 	}
 
 	return KNOT_EOK;
@@ -205,7 +256,9 @@ static int apply_remove(zone_contents_t *contents, changeset_t *chset)
 			continue;
 		}
 
-		int ret = remove_rr(node, &rr, chset);
+		zone_tree_t *tree = rrset_is_nsec3rel(&rr) ?
+		                    contents->nsec3_nodes : contents->nodes;
+		int ret = remove_rr(tree, node, &rr, chset);
 		if (ret != KNOT_EOK) {
 			changeset_iter_clear(&itt);
 			return ret;
@@ -240,7 +293,7 @@ static int add_rr(const zone_contents_t *zone, zone_node_t *node,
 	}
 
 	// Insert new RR to RRSet, data will be copied.
-	int ret = node_add_rrset(node, rr);
+	int ret = node_add_rrset(node, rr, NULL);
 	if (ret == KNOT_EOK || ret == KNOT_ETTL) {
 		// RR added, store for possible rollback.
 		knot_rdataset_t *rrs = node_rdataset(node, rr->type);
@@ -294,8 +347,8 @@ static int apply_add(zone_contents_t *contents, changeset_t *chset,
 /*! \brief Replace old SOA with a new one. */
 static int apply_replace_soa(zone_contents_t *contents, changeset_t *chset)
 {
-	assert(chset->soa_from);
-	int ret = remove_rr(contents->apex, chset->soa_from, chset);
+	assert(chset->soa_from && chset->soa_to);
+	int ret = remove_rr(contents->nodes, contents->apex, chset->soa_from, chset);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
@@ -332,75 +385,6 @@ static int apply_single(zone_contents_t *contents, changeset_t *chset,
 	}
 
 	return apply_replace_soa(contents, chset);
-}
-
-/* ------------------------- Empty node cleanup ----------------------------- */
-
-/*! \brief Mark empty nodes in updated tree. */
-static int mark_empty(zone_node_t **node_p, void *data)
-{
-	assert(node_p && *node_p);
-	zone_node_t *node = *node_p;
-	list_t *l = (list_t *)data;
-	assert(data);
-	if (node->rrset_count == 0 && node->children == 0 &&
-	    !(node->flags & NODE_FLAGS_EMPTY)) {
-		/*!
-		 * Mark this node and all parent nodes that have 0 RRSets and
-		 * no children for removal.
-		 */
-		if (ptrlist_add(l, node, NULL) == NULL) {
-			return KNOT_ENOMEM;
-		}
-		node->flags |= NODE_FLAGS_EMPTY;
-		if (node->parent) {
-			if ((node->parent->flags & NODE_FLAGS_WILDCARD_CHILD)
-			    && knot_dname_is_wildcard(node->owner)) {
-				node->parent->flags &= ~NODE_FLAGS_WILDCARD_CHILD;
-			}
-			node->parent->children--;
-			// Recurse using the parent node
-			return mark_empty(&node->parent, data);
-		}
-	}
-
-	return KNOT_EOK;
-}
-
-static int remove_empty_tree_nodes(zone_tree_t *tree)
-{
-	list_t l;
-	init_list(&l);
-	// walk through the zone and select nodes to be removed
-	int ret = zone_tree_apply(tree, mark_empty, &l);
-	if (ret != KNOT_EOK) {
-		return ret;
-	}
-
-	ptrnode_t *n = NULL;
-	node_t *nxt = NULL;
-	WALK_LIST_DELSAFE(n, nxt, l) {
-		zone_node_t *node = (zone_node_t *)n->d;
-		int ret = zone_tree_remove(tree, node->owner, &node);
-		if (ret != KNOT_EOK) {
-			return ret;
-		}
-		node_free(&node);
-		free(n);
-	}
-
-	return KNOT_EOK;
-}
-
-/*! \brief Removes node that were previously marked as empty. */
-static int remove_empty_nodes(zone_contents_t *z)
-{
-	int ret = remove_empty_tree_nodes(z->nodes);
-	if (ret != KNOT_EOK) {
-		return ret;
-	}
-
-	return remove_empty_tree_nodes(z->nsec3_nodes);
 }
 
 /* --------------------- Zone copy and finalization ------------------------- */
@@ -440,21 +424,11 @@ static int finalize_updated_zone(zone_contents_t *contents_copy,
 		return KNOT_EINVAL;
 	}
 
-	int ret = remove_empty_nodes(contents_copy);
-	if (ret != KNOT_EOK) {
-		return ret;
-	}
-
 	if (set_nsec3_names) {
-		ret = zone_contents_adjust_full(contents_copy, NULL, NULL);
+		return zone_contents_adjust_full(contents_copy, NULL, NULL);
 	} else {
-		ret = zone_contents_adjust_pointers(contents_copy);
+		return zone_contents_adjust_pointers(contents_copy);
 	}
-	if (ret != KNOT_EOK) {
-		return ret;
-	}
-
-	return KNOT_EOK;
 }
 
 /* ------------------------------- API -------------------------------------- */

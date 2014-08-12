@@ -56,8 +56,14 @@ enum knot_edns_const {
 	/*! \brief NSID option code. */
 	KNOT_EDNS_OPTION_NSID          = 3,
 	/*! \brief EDNS client subnet option code. */
-	KNOT_EDNS_OPTION_CLIENT_SUBNET = 8
+	KNOT_EDNS_OPTION_CLIENT_SUBNET = 8,
+	/*! \brief Extended RCODE BADVERS. */
+	KNOT_EDNS_RCODE_BADVERS = 16,
 };
+
+/* Helpers for splitting extended RCODE. */
+#define KNOT_EDNS_RCODE_HI(rc) (rc >> 4)
+#define KNOT_EDNS_RCODE_LO(rc) (rc & 0x000f)
 
 /*!
  * \brief EDNS DO flag.
@@ -66,10 +72,6 @@ enum knot_edns_const {
  * \warning Flags are represented in machine byte order.
  */
 static const uint16_t KNOT_EDNS_FLAG_DO = (uint16_t)1 << 15;
-
-/*! \brief Extended RCODE BADVERS. */
-static const uint8_t KNOT_EDNS_RCODE_BADVERS = 16;
-
 
 /*----------------------------------------------------------------------------*/
 /* EDNS OPT RR handling functions.                                            */

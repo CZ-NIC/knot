@@ -95,7 +95,7 @@
 
 		// In case of serious error, stop scanner.
 		if (s->stop == true) {
-			return -1;
+			return;
 		}
 	}
 
@@ -661,25 +661,30 @@
 			        sizeof(s->buffer));
 		}
 
-		// Create new file loader for included zone file.
-		zs_loader_t *fl = zs_loader_create((char*)(s->buffer),
-		                                   text_origin,
-		                                   s->default_class,
-		                                   s->default_ttl,
-		                                   s->process_record,
-		                                   s->process_error,
-		                                   s->data);
-		if (fl != NULL) {
-			// Process included zone file.
-			ret = zs_loader_process(fl);
-			zs_loader_free(fl);
-
+		// Create new scanner for included zone file.
+		zs_scanner_t *ss = zs_scanner_create(text_origin,
+		                                     s->default_class,
+		                                     s->default_ttl,
+		                                     s->process_record,
+		                                     s->process_error,
+		                                     s->data);
+		if (ss != NULL) {
+			// Parse included zone file.
+			ret = zs_scanner_parse_file(ss, (char*)(s->buffer));
 			if (ret != 0) {
-				ERR(ZS_UNPROCESSED_INCLUDE);
+				// File internal errors are handled by error callback.
+				if (ss->error_counter > 0) {
+					ERR(ZS_UNPROCESSED_INCLUDE);
+				// General include file error.
+				} else {
+					ERR(ss->error_code);
+				}
+				zs_scanner_free(ss);
 				fhold; fgoto err_line;
 			}
+			zs_scanner_free(ss);
 		} else {
-			ERR(ZS_UNOPENED_INCLUDE);
+			ERR(ZS_UNPROCESSED_INCLUDE);
 			fhold; fgoto err_line;
 		}
 	}
@@ -1907,7 +1912,7 @@
 
 		// Stop scanner if required.
 		if (s->stop == true) {
-			return -1;
+			return;
 		}
 	}
 

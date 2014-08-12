@@ -41,8 +41,6 @@ src/common-knot/hex.c
 src/common-knot/hex.h
 src/common-knot/hhash.c
 src/common-knot/hhash.h
-src/common-knot/print.c
-src/common-knot/print.h
 src/common-knot/ref.c
 src/common-knot/ref.h
 src/common-knot/slab/alloc-common.h
@@ -69,6 +67,8 @@ src/common/mem.c
 src/common/mem.h
 src/common/mempool.c
 src/common/mempool.h
+src/common/print.c
+src/common/print.h
 src/common/sockaddr.c
 src/common/sockaddr.h
 src/common/strlcpy.c
@@ -164,6 +164,8 @@ src/knot/updates/changesets.c
 src/knot/updates/changesets.h
 src/knot/updates/ddns.c
 src/knot/updates/ddns.h
+src/knot/updates/zone-update.c
+src/knot/updates/zone-update.h
 src/knot/worker/pool.c
 src/knot/worker/pool.h
 src/knot/worker/queue.c
@@ -228,6 +230,8 @@ src/libknot/packet/net.h
 src/libknot/packet/pkt.c
 src/libknot/packet/pkt.h
 src/libknot/packet/wire.h
+src/libknot/processing/overlay.c
+src/libknot/processing/overlay.h
 src/libknot/processing/process.c
 src/libknot/processing/process.h
 src/libknot/processing/requestor.c
@@ -240,6 +244,7 @@ src/libknot/rrset-dump.c
 src/libknot/rrset-dump.h
 src/libknot/rrset.c
 src/libknot/rrset.h
+src/libknot/rrtype/aaaa.h
 src/libknot/rrtype/dnskey.h
 src/libknot/rrtype/nsec.h
 src/libknot/rrtype/nsec3.c
@@ -291,8 +296,6 @@ src/zscanner/error.c
 src/zscanner/error.h
 src/zscanner/functions.c
 src/zscanner/functions.h
-src/zscanner/loader.c
-src/zscanner/loader.h
 src/zscanner/scanner.h
 src/zscanner/scanner.rl
 src/zscanner/scanner_body.rl
@@ -301,7 +304,6 @@ src/zscanner/tests/processing.h
 src/zscanner/tests/tests.c
 src/zscanner/tests/tests.h
 src/zscanner/tests/zscanner-tool.c
-src/zscanner/zscanner.h
 tests/Makefile.am
 tests/acl.c
 tests/base32hex.c
@@ -322,6 +324,7 @@ tests/hattrie.c
 tests/hhash.c
 tests/journal.c
 tests/node.c
+tests/overlay.c
 tests/pkt.c
 tests/process_answer.c
 tests/process_query.c
@@ -337,10 +340,7 @@ tests/slab.c
 tests/wire.c
 tests/worker_pool.c
 tests/worker_queue.c
+tests/zone-update.c
 tests/zone_events.c
 tests/zonedb.c
 tests/ztree.c
-src/libknot/rrtype/aaaa.h
-src/libknot/processing/overlay.h
-src/libknot/processing/overlay.c
-tests/overlay.c

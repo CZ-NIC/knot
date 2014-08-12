@@ -107,7 +107,8 @@ static struct log_sink *sink_setup(unsigned logfiles)
 /*! \brief Publish new log sink and free the replaced. */
 static void sink_publish(struct log_sink *log)
 {
-	struct log_sink *old_log = rcu_xchg_pointer(&s_log, log);
+	struct log_sink **current_log = &s_log;
+	struct log_sink *old_log = rcu_xchg_pointer(current_log, log);
 	synchronize_rcu();
 	sink_free(old_log);
 }
@@ -277,7 +278,7 @@ static int emit_log_msg(logsrc_t src, int level, const char *msg)
 			}
 
 			// Print
-			ret = fprintf(stream, "%s%s", tstr, msg);
+			ret = fprintf(stream, "%s%s\n", tstr, msg);
 			if (stream == stdout) {
 				fflush(stream);
 			}
@@ -481,7 +482,7 @@ int log_reconfigure(const struct conf_t *conf, void *data)
 		if (facility == LOGT_FILE) {
 			facility = log_open_file(log, facility_conf->file);
 			if (facility < 0) {
-				log_error("Failed to open logfile '%s'\n",
+				log_error("Failed to open logfile '%s'",
 				          facility_conf->file);
 				continue;
 			}

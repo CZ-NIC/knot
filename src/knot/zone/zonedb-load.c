@@ -109,7 +109,7 @@ static void log_zone_load_info(const zone_t *zone, const char *zone_name,
 		serial = knot_soa_serial(soa);
 	}
 
-	log_zone_info(zone->name, "zone %s, serial %u\n", action, serial);
+	log_zone_info(zone->name, "zone %s, serial %u", action, serial);
 }
 
 /*!
@@ -206,7 +206,7 @@ static knot_zonedb_t *create_zonedb(const conf_t *conf, server_t *server)
 		zone_t *zone = create_zone(zone_config, server, old_zone);
 		if (!zone) {
 			log_zone_str_error(zone_config->name,
-					   "zone cannot be created\n");
+					   "zone cannot be created");
 			conf_free_zone(zone_config);
 			continue;
 		}
@@ -269,7 +269,7 @@ int zonedb_reload(const conf_t *conf, struct server_t *server)
 	             be required. */
 	knot_zonedb_t *db_new = create_zonedb(conf, server);
 	if (db_new == NULL) {
-		log_error("failed to create new zone database\n");
+		log_error("failed to create new zone database");
 		return KNOT_ENOMEM;
 	}
 

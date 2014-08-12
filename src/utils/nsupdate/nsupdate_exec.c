@@ -141,11 +141,7 @@ static int dname_isvalid(const char *lp, size_t len) {
 /* This is probably redundant, but should be a bit faster so let's keep it. */
 static int parse_full_rr(zs_scanner_t *s, const char* lp)
 {
-	if (zs_scanner_process(lp, lp + strlen(lp), 0, s) < 0) {
-		return KNOT_EPARSEFAIL;
-	}
-	char nl = '\n'; /* Ensure newline after complete RR */
-	if (zs_scanner_process(&nl, &nl+sizeof(char), 1, s) < 0) { /* Terminate */
+	if (zs_scanner_parse(s, lp, lp + strlen(lp), true) < 0) {
 		return KNOT_EPARSEFAIL;
 	}
 
@@ -164,9 +160,18 @@ static int parse_partial_rr(zs_scanner_t *s, const char *lp, unsigned flags) {
 	int ret = KNOT_EOK;
 	char b1[32], b2[32]; /* Should suffice for both class/type */
 
+	bool fqdn = true;
+
 	/* Extract owner. */
 	size_t len = strcspn(lp, SEP_CHARS);
 	char *owner_str = strndup(lp, len);
+
+	/* Make dname FQDN if it isn't. */
+	if (owner_str[len - 1] != '.') {
+		owner_str[len++] = '.';
+		fqdn = false;
+	}
+
 	knot_dname_t *owner = knot_dname_from_str(owner_str);
 	free(owner_str);
 	if (owner == NULL) {
@@ -175,6 +180,15 @@ static int parse_partial_rr(zs_scanner_t *s, const char *lp, unsigned flags) {
 
 	s->r_owner_length = knot_dname_size(owner);
 	memcpy(s->r_owner, owner, s->r_owner_length);
+
+	/* Append origin if not FQDN. */
+	if (!fqdn) {
+		s->r_owner_length--;
+		memcpy(s->r_owner + s->r_owner_length, s->zone_origin,
+		       s->zone_origin_length);
+		s->r_owner_length += s->zone_origin_length;
+	}
+
 	lp = tok_skipspace(lp + len);
 
 	/* Initialize */
@@ -246,7 +260,7 @@ static int parse_partial_rr(zs_scanner_t *s, const char *lp, unsigned flags) {
 	/* Need to parse rdata, synthetize input. */
 	char *rr = sprintf_alloc("%s %u %s %s %s\n",
 	                         owner_s, s->r_ttl, b1, b2, lp);
-	if (rr == NULL || zs_scanner_process(rr, rr + strlen(rr), 1, s) < 0) {
+	if (rr == NULL || zs_scanner_parse(s, rr, rr + strlen(rr), true) < 0) {
 		ret = KNOT_EPARSEFAIL;
 	}
 
@@ -540,7 +554,7 @@ int cmd_del(const char* lp, nsupdate_params_t *params)
 
 	/* Check owner name. */
 	if (rrp->r_owner_length == 0) {
-		ERR("failed to parse prereq owner name '%s'\n", lp);
+		ERR("failed to parse owner name '%s'\n", lp);
 		return KNOT_EPARSEFAIL;
 	}
 

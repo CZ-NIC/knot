@@ -58,7 +58,8 @@ typedef struct zone_t
 	zone_flag_t flags;
 
 	/*! \brief DDNS queue and lock. */
-	pthread_mutex_t ddns_lock;
+	pthread_spinlock_t ddns_lock;
+	size_t ddns_queue_size;
 	list_t ddns_queue;
 
 	/*! \brief Zone events. */
@@ -115,7 +116,7 @@ int zone_flush_journal(zone_t *zone);
 int zone_update_enqueue(zone_t *zone, knot_pkt_t *pkt, struct process_query_param *param);
 
 /*! \brief Dequeue UPDATE request. */
-struct knot_request_data *zone_update_dequeue(zone_t *zone);
+void zone_update_dequeue(zone_t *zone, list_t *updates, size_t *update_count);
 
 /*! \brief Returns true if final SOA in transfer has newer serial than zone */
 bool zone_transfer_needed(const zone_t *zone, const knot_pkt_t *pkt);

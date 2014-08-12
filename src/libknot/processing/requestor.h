@@ -45,6 +45,7 @@ struct knot_request_data {
 	unsigned flags;
 	struct sockaddr_storage remote, origin;
 	knot_pkt_t *query;
+	knot_pkt_t *resp;
 };
 
 /*!

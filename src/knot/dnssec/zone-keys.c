@@ -107,6 +107,65 @@ static void set_zone_key_flags(const knot_key_params_t *params,
 }
 
 /*!
+ * \brief Check if there is a functional KSK and ZSK for each used algorithm.
+ */
+static int check_keys_validity(const knot_zone_keys_t *keys)
+{
+	assert(keys);
+
+	const int MAX_ALGORITHMS = KNOT_DNSSEC_ALG_ECDSAP384SHA384 + 1;
+	struct {
+		bool published;
+		bool ksk_enabled;
+		bool zsk_enabled;
+	} algorithms[MAX_ALGORITHMS];
+	memset(algorithms, 0, sizeof(algorithms));
+
+	/* Make a list of used algorithms */
+
+	const knot_zone_key_t *key = NULL;
+	WALK_LIST(key, keys->list) {
+		knot_dnssec_algorithm_t a = key->dnssec_key.algorithm;
+		assert(a < MAX_ALGORITHMS);
+
+		if (key->is_public) {
+			// public key creates a requirement for an algorithm
+			algorithms[a].published = true;
+
+			// need fully enabled ZSK and KSK for each algorithm
+			if (key->is_active) {
+				if (key->is_ksk) {
+					algorithms[a].ksk_enabled = true;
+				} else {
+					algorithms[a].zsk_enabled = true;
+				}
+			}
+		}
+	}
+
+	/* Validate enabled algorithms */
+
+	int enabled_count = 0;
+	for (int a = 0; a < MAX_ALGORITHMS; a++) {
+		if (!algorithms[a].published) {
+			continue;
+		}
+
+		if (!algorithms[a].ksk_enabled || !algorithms[a].zsk_enabled) {
+			return KNOT_DNSSEC_EMISSINGKEYTYPE;
+		}
+
+		enabled_count += 1;
+	}
+
+	if (enabled_count == 0) {
+		return KNOT_DNSSEC_ENOKEY;
+	}
+
+	return KNOT_EOK;
+}
+
+/*!
  * \brief Load zone keys from a key directory.
  *
  * \todo Maybe use dynamic list instead of fixed size array.
@@ -158,7 +217,7 @@ int knot_load_zone_keys(const char *keydir_name, const knot_dname_t *zone_name,
 		free(path);
 
 		if (ret != KNOT_EOK) {
-			log_zone_warning(zone_name, "DNSSEC: failed to load key '%s': %s\n",
+			log_zone_warning(zone_name, "DNSSEC, failed to load key '%s': %s",
 			                 entry->d_name, knot_strerror(ret));
 			knot_free_key_params(&params);
 			continue;
@@ -189,8 +248,8 @@ int knot_load_zone_keys(const char *keydir_name, const knot_dname_t *zone_name,
 		if (!knot_dnssec_algorithm_is_zonesign(params.algorithm,
 		                                       nsec3_enabled)
 		) {
-			log_zone_notice(zone_name, "DNSSEC: ignoring key %d (%s): "
-					"incompatible algorithm\n",
+			log_zone_notice(zone_name, "DNSSEC, ignoring key %d (%s): "
+			                "incompatible algorithm",
 			                params.keytag, entry->d_name);
 			knot_free_key_params(&params);
 			free(key);
@@ -198,8 +257,8 @@ int knot_load_zone_keys(const char *keydir_name, const knot_dname_t *zone_name,
 		}
 
 		if (knot_get_zone_key(keys, params.keytag) != NULL) {
-			log_zone_notice(zone_name, "DNSSEC: ignoring key %d (%s): "
-					"duplicate keytag\n",
+			log_zone_notice(zone_name, "DNSSEC, ignoring key %d (%s): "
+					"duplicate keytag",
 					params.keytag, entry->d_name);
 			knot_free_key_params(&params);
 			free(key);
@@ -208,8 +267,8 @@ int knot_load_zone_keys(const char *keydir_name, const knot_dname_t *zone_name,
 
 		ret = knot_dnssec_key_from_params(&params, &key->dnssec_key);
 		if (ret != KNOT_EOK) {
-			log_zone_error(zone_name, "DNSSEC: failed to process "
-				       "key %d (%s): %s\n",
+			log_zone_error(zone_name, "DNSSEC, failed to process "
+				       "key %d (%s): %s",
 				       params.keytag, entry->d_name,
 			               knot_strerror(ret));
 			knot_free_key_params(&params);
@@ -217,7 +276,7 @@ int knot_load_zone_keys(const char *keydir_name, const knot_dname_t *zone_name,
 			continue;
 		}
 
-		log_zone_info(zone_name, "DNSSEC: loaded key %5d, file %s, %s, %s, %s\n",
+		log_zone_info(zone_name, "DNSSEC, loaded key %5d, file %s, %s, %s, %s",
 		              params.keytag, entry->d_name,
 		              key->is_ksk ? "KSK" : "ZSK",
 		              key->is_active ? "active" : "inactive",
@@ -230,8 +289,8 @@ int knot_load_zone_keys(const char *keydir_name, const knot_dname_t *zone_name,
 
 	closedir(keydir);
 
-	if (result == KNOT_EOK && EMPTY_LIST(keys->list)) {
-		result = KNOT_DNSSEC_ENOKEY;
+	if (result == KNOT_EOK) {
+		result = check_keys_validity(keys);
 	}
 
 	if (result == KNOT_EOK) {

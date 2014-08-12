@@ -60,6 +60,7 @@ static int process_query_reset(knot_process_t *ctx)
 	knot_pkt_free(&qdata->query);
 	ptrlist_free(&qdata->wildcards, qdata->mm);
 	nsec_clear_rrsigs(qdata);
+	knot_rrset_clear(&qdata->opt_rr, qdata->mm);
 	if (qdata->ext_cleanup != NULL) {
 		qdata->ext_cleanup(qdata);
 	}
@@ -260,6 +261,94 @@ static const zone_t *answer_zone_find(const knot_pkt_t *query, knot_zonedb_t *zo
 	return zone;
 }
 
+static int answer_edns_reserve(knot_pkt_t *resp, struct query_data *qdata)
+{
+	if (knot_rrset_empty(&qdata->opt_rr)) {
+		return KNOT_EOK;
+	}
+
+	/* Reserve size in the response. */
+	return knot_pkt_reserve(resp, knot_edns_wire_size(&qdata->opt_rr));
+}
+
+static int answer_edns_init(const knot_pkt_t *query, knot_pkt_t *resp,
+                            struct query_data *qdata)
+{
+	if (!knot_pkt_has_edns(query)) {
+		return KNOT_EOK;
+	}
+
+	/* Initialize OPT record. */
+	int ret = knot_edns_init(&qdata->opt_rr, conf()->max_udp_payload, 0,
+	                     KNOT_EDNS_VERSION, qdata->mm);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	/* Check supported version. */
+	if (knot_edns_get_version(query->opt_rr) != KNOT_EDNS_VERSION) {
+		qdata->rcode_ext = KNOT_EDNS_RCODE_BADVERS;
+	}
+
+	/* Set DO bit if set (DNSSEC requested). */
+	if (knot_pkt_has_dnssec(query)) {
+		knot_edns_set_do(&qdata->opt_rr);
+	}
+
+	/* Append NSID if requested and available. */
+	if (knot_edns_has_nsid(query->opt_rr) && conf()->nsid_len > 0) {
+		ret = knot_edns_add_option(&qdata->opt_rr,
+		                           KNOT_EDNS_OPTION_NSID, conf()->nsid_len,
+		                           (const uint8_t*)conf()->nsid, qdata->mm);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+	}
+
+	return answer_edns_reserve(resp, qdata);
+}
+
+static int answer_edns_put(knot_pkt_t *resp, struct query_data *qdata)
+{
+	if (knot_rrset_empty(&qdata->opt_rr)) {
+		return KNOT_EOK;
+	}
+
+	/* Write back extended RCODE. */
+	if (qdata->rcode_ext != 0) {
+		knot_wire_set_rcode(resp->wire, KNOT_EDNS_RCODE_LO(qdata->rcode_ext));
+		knot_edns_set_ext_rcode(&qdata->opt_rr, KNOT_EDNS_RCODE_HI(qdata->rcode_ext));
+	}
+
+	/* Reclaim reserved size. */
+	int ret = knot_pkt_reclaim(resp, knot_edns_wire_size(&qdata->opt_rr));
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	/* Write to packet. */
+	assert(resp->current == KNOT_ADDITIONAL);
+	return knot_pkt_put(resp, COMPR_HINT_NONE, &qdata->opt_rr, 0);
+}
+
+/*! \brief Convert QNAME to lowercase format for processing. */
+static int qname_case_lower(knot_pkt_t *pkt)
+{
+	knot_dname_t *qname = (knot_dname_t *)knot_pkt_qname(pkt);
+	return knot_dname_to_lower(qname);
+}
+
+/*! \brief Restore QNAME letter case. */
+static void qname_case_restore(struct query_data *qdata, knot_pkt_t *pkt)
+{
+	/* If original QNAME is empty, Query is either unparsed or for root domain.
+	 * Either way, letter case doesn't matter. */
+	if (qdata->orig_qname[0] != '\0') {
+		memcpy(pkt->wire + KNOT_WIRE_HEADER_SIZE,
+		       qdata->orig_qname, qdata->query->qname_size);
+	}
+}
+
 /*! \brief Initialize response, sizes and find zone from which we're going to answer. */
 static int prepare_answer(const knot_pkt_t *query, knot_pkt_t *resp, knot_process_t *ctx)
 {
@@ -285,57 +374,33 @@ static int prepare_answer(const knot_pkt_t *query, knot_pkt_t *resp, knot_proces
 	 * Already checked for absence of compression and length.
 	 */
 	memcpy(qdata->orig_qname, qname, query->qname_size);
-	ret = knot_dname_to_lower((knot_dname_t *)qname);
+	ret = qname_case_lower((knot_pkt_t *)query);
 	if (ret != KNOT_EOK) {
 		dbg_ns("%s: can't convert QNAME to lowercase (%d)\n", __func__, ret);
 		return ret;
 	}
-
 	/* Find zone for QNAME. */
 	qdata->zone = answer_zone_find(query, server->zone_db);
 
-	/* Update maximal answer size. */
-	if (qdata->param->proc_flags & NS_QUERY_LIMIT_SIZE) {
-		resp->max_size = KNOT_WIRE_MIN_PKTSIZE;
-	}
-
-	/* Check if EDNS is supported. */
-	if (!knot_pkt_has_edns(query)) {
-		return KNOT_EOK;
-	}
-
-	/* Check EDNS version and return BADVERS if not supported. */
-	if (knot_edns_get_version(query->opt_rr) != KNOT_EDNS_VERSION) {
-		dbg_ns("%s: unsupported EDNS version required.\n", __func__);
-		qdata->rcode_ext = KNOT_EDNS_RCODE_BADVERS;
-	}
-
-	/* Reserve space for OPT RR in the packet. Using size of the server's
-	 * OPT RR, because that's the maximum size (RDATA may or may not be
-	 * used).
-	 */
-	uint16_t reserve_size = KNOT_EDNS_MIN_SIZE;
-	if (knot_edns_has_nsid(query->opt_rr) && conf()->nsid_len > 0) {
-		reserve_size += KNOT_EDNS_OPTION_HDRLEN + conf()->nsid_len;
-	}
-	ret = knot_pkt_reserve(resp, reserve_size);
+	/* Setup EDNS. */
+	ret = answer_edns_init(query, resp, qdata);
 	if (ret != KNOT_EOK) {
-		dbg_ns("%s: can't reserve OPT RR in response (%d)\n", __func__, ret);
 		return ret;
 	}
 
-	/* Get minimal supported size from EDNS(0). */
-	uint16_t client_maxlen = knot_edns_get_payload(query->opt_rr);
-	uint16_t server_maxlen = conf()->max_udp_payload;
-	uint16_t min_edns = MIN(client_maxlen, server_maxlen);
-
-	/* Update packet size limit. */
-	if (qdata->param->proc_flags & NS_QUERY_LIMIT_SIZE) {
-		resp->max_size =  MAX(resp->max_size, min_edns);
-		dbg_ns("%s: packet size limit <= %zuB\n", __func__, resp->max_size);
+	/* Update maximal answer size. */
+	bool has_limit = qdata->param->proc_flags & NS_QUERY_LIMIT_SIZE;
+	if (has_limit) {
+		resp->max_size = KNOT_WIRE_MIN_PKTSIZE;
+		if (knot_pkt_has_edns(query)) {
+			uint16_t client = knot_edns_get_payload(query->opt_rr);
+			uint16_t server = conf()->max_udp_payload;
+			uint16_t transfer = MIN(client, server);
+			resp->max_size = MAX(resp->max_size, transfer);
+		}
+	} else {
+		resp->max_size = KNOT_WIRE_MAX_PKTSIZE;
 	}
-
-	/* In the response, always advertise server's maximum UDP payload. */
 
 	return ret;
 }
@@ -351,20 +416,25 @@ static int process_query_err(knot_pkt_t *pkt, knot_process_t *ctx)
 	knot_pkt_t *query = qdata->query;
 	knot_pkt_init_response(pkt, query);
 
-	/* If original QNAME is empty, Query is either unparsed or for root domain.
-	 * Either way, letter case doesn't matter. */
-	if (qdata->orig_qname[0] != '\0') {
-		memcpy(pkt->wire + KNOT_WIRE_HEADER_SIZE,
-		       qdata->orig_qname, query->qname_size);
-	}
+	/* Restore original QNAME. */
+	qname_case_restore(qdata, pkt);
 
 	/* Set RCODE. */
 	knot_wire_set_rcode(pkt->wire, qdata->rcode);
 
-	/* Transaction security (if applicable). */
-	if (process_query_sign_response(pkt, qdata) != KNOT_EOK) {
-		return NS_PROC_FAIL;
+	/* Add OPT and TSIG (best effort, send reply anyway if fails). */
+	if (pkt->current != KNOT_ADDITIONAL) {
+		knot_pkt_begin(pkt, KNOT_ADDITIONAL);
 	}
+
+	/* Put OPT RR to the additional section. */
+	int ret = answer_edns_reserve(pkt, qdata);
+	if (ret == KNOT_EOK) {
+		(void) answer_edns_put(pkt, qdata);
+	}
+
+	/* Transaction security (if applicable). */
+	(void) process_query_sign_response(pkt, qdata);
 
 	return NS_PROC_DONE;
 }
@@ -464,8 +534,24 @@ static int process_query_out(knot_pkt_t *pkt, knot_process_t *ctx)
 	 * Postprocessing.
 	 */
 
-	/* Transaction security (if applicable). */
+
 	if (next_state == NS_PROC_DONE || next_state == NS_PROC_FULL) {
+
+		/* Restore original QNAME. */
+		qname_case_restore(qdata, pkt);
+
+		if (pkt->current != KNOT_ADDITIONAL) {
+			knot_pkt_begin(pkt, KNOT_ADDITIONAL);
+		}
+
+		/* Put OPT RR to the additional section. */
+		ret = answer_edns_put(pkt, qdata);
+		if (ret != KNOT_EOK) {
+			next_state = NS_PROC_FAIL;
+			goto finish;
+		}
+
+		/* Transaction security (if applicable). */
 		if (process_query_sign_response(pkt, qdata) != KNOT_EOK) {
 			next_state = NS_PROC_FAIL;
 		}
@@ -541,8 +627,10 @@ int process_query_verify(struct query_data *qdata)
 	ctx->tsig_digestlen = tsig_rdata_mac_length(query->tsig_rr);
 
 	/* Checking query. */
+	qname_case_restore(qdata, query);
 	int ret = knot_tsig_server_check(query->tsig_rr, query->wire,
 	                                 query->size, ctx->tsig_key);
+	qname_case_lower(query);
 
 	dbg_ns("%s: QUERY TSIG check result = %s\n", __func__, knot_strerror(ret));
 
