@@ -634,7 +634,7 @@ class Server(object):
 
         src_files = os.listdir(zone.key_dir)
         for file_name in src_files:
-            if zone.name[:-1] in file_name:
+            if (zone.name[:-1]).lower() in file_name:
                 full_file_name = os.path.join(zone.key_dir, file_name)
                 if (os.path.isfile(full_file_name)):
                     shutil.copy(full_file_name, self.keydir)
