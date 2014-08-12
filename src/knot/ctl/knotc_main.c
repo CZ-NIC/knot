@@ -668,11 +668,11 @@ static bool fetch_zone(int argc, char *argv[], conf_zone_t *zone)
 	}
 	(void)knot_dname_to_lower(zone_name);
 
-	for (unsigned i = 0; i < (unsigned)argc; ++i) {
+	for (int i = 0; i < argc; ++i) {
 		/* Convert the argument to dname */
 		knot_dname_t *arg_name = knot_dname_from_str(argv[i]);
 
-		if (arg_name) {
+		if (arg_name != NULL) {
 			(void)knot_dname_to_lower(arg_name);
 			if (knot_dname_is_equal(zone_name, arg_name)) {
 				return true;
