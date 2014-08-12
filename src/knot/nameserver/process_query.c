@@ -314,6 +314,12 @@ static int answer_edns_put(knot_pkt_t *resp, struct query_data *qdata)
 		return KNOT_EOK;
 	}
 
+	/* Write back extended RCODE. */
+	if (qdata->rcode_ext != 0) {
+		knot_wire_set_rcode(resp->wire, KNOT_EDNS_RCODE_LO(qdata->rcode_ext));
+		knot_edns_set_ext_rcode(&qdata->opt_rr, KNOT_EDNS_RCODE_HI(qdata->rcode_ext));
+	}
+
 	/* Reclaim reserved size. */
 	int ret = knot_pkt_reclaim(resp, knot_edns_wire_size(&qdata->opt_rr));
 	if (ret != KNOT_EOK) {
