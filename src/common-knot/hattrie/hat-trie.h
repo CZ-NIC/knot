@@ -73,6 +73,7 @@ value_t* hattrie_tryget (hattrie_t*, const char* key, size_t len);
 /** Find a given key in the table, returning a NULL pointer if it does not
  * exist. Also set prev to point to previous node. */
 int hattrie_find_leq (hattrie_t*, const char* key, size_t len, value_t** dst);
+/** Find a next value for given key, returning NULL if it does not exist. */
 int hattrie_find_next (hattrie_t* T, const char* key, size_t len, value_t **dst);
 
 /** Delete a given key from trie. Returns 0 if successful or -1 if not found.

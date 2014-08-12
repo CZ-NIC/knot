@@ -198,7 +198,7 @@ static value_t* hattrie_find_leftmost(node_ptr node)
             /* skip repeated pointers to hybrid bucket */
             if (i < TRIE_MAXCHAR - 1 && node.t->xs[i].t == node.t->xs[i + 1].t) {
                 continue;
-	    }
+            }
             /* nest if trie */
             value_t *ret = hattrie_find_leftmost(node.t->xs[i]);
             if (ret) {
@@ -698,7 +698,7 @@ value_t* hattrie_tryget(hattrie_t* T, const char* key, size_t len)
     return hhash_find(node.b, key, len);
 }
 
-static value_t* hattrie_walk(node_ptr* s, size_t sp,
+static value_t* hattrie_walk_left(node_ptr* s, size_t sp,
                              const char* key, value_t* (*f)(node_ptr))
 {
     value_t *r = NULL;
@@ -734,8 +734,8 @@ static value_t* hattrie_walk(node_ptr* s, size_t sp,
     return NULL;
 }
 
-static value_t* hattrie_walk2(node_ptr* s, size_t sp,
-                              const char* key, value_t* (*f)(node_ptr))
+static value_t* hattrie_walk_right(node_ptr* s, size_t sp,
+                                   const char* key, value_t* (*f)(node_ptr))
 {
     value_t *r = NULL;
     while (r == NULL)  {
@@ -781,7 +781,7 @@ int hattrie_find_leq (hattrie_t* T, const char* key, size_t len, value_t** dst)
     int ret = 1; /* no node on the left matches */
     node_ptr node = hattrie_find_ns(&ns, &sp, NODESTACK_INIT, &key, &len);
     if (node.flag == NULL) {
-        *dst = hattrie_walk(ns, sp, key, hattrie_find_rightmost);
+        *dst = hattrie_walk_left(ns, sp, key, hattrie_find_rightmost);
         if (ns != bs) free(ns);
         if (*dst) {
             return -1; /* found previous */
@@ -809,7 +809,7 @@ int hattrie_find_leq (hattrie_t* T, const char* key, size_t len, value_t** dst)
             --key;
         }
         /* walk up the stack of visited nodes and find closest match on the left */
-        *dst = hattrie_walk(ns, sp, key, hattrie_find_rightmost);
+        *dst = hattrie_walk_left(ns, sp, key, hattrie_find_rightmost);
         if (*dst) {
             ret = -1; /* found previous */
         } else {
@@ -832,7 +832,7 @@ int hattrie_find_next (hattrie_t* T, const char* key, size_t len, value_t **dst)
         /* find node for given key */
         node_ptr ptr = hattrie_find_ns(&ns, &sp, NODESTACK_INIT, &key, &len);
         if (ptr.flag == NULL) {
-            *dst = hattrie_walk2(ns, sp, key, hattrie_find_leftmost);
+            *dst = hattrie_walk_right(ns, sp, key, hattrie_find_leftmost);
         if (*dst) {
             return 0; /* found next. */
         }
@@ -852,7 +852,7 @@ int hattrie_find_next (hattrie_t* T, const char* key, size_t len, value_t **dst)
 	        if (*ptr.flag & NODE_TYPE_PURE_BUCKET) {
 	            --key;
 	        }
-	        *dst = hattrie_walk2(ns, sp, key, hattrie_find_leftmost);
+	        *dst = hattrie_walk_right(ns, sp, key, hattrie_find_leftmost);
 	        if (*dst) {
 	            ret = 0; /* found previous */
 	        } else {
