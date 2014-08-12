@@ -314,6 +314,12 @@ static int answer_edns_put(knot_pkt_t *resp, struct query_data *qdata)
 		return KNOT_EOK;
 	}
 
+	/* Write back extended RCODE. */
+	if (qdata->rcode_ext != 0) {
+		knot_wire_set_rcode(resp->wire, KNOT_EDNS_RCODE_LO(qdata->rcode_ext));
+		knot_edns_set_ext_rcode(&qdata->opt_rr, KNOT_EDNS_RCODE_HI(qdata->rcode_ext));
+	}
+
 	/* Reclaim reserved size. */
 	int ret = knot_pkt_reclaim(resp, knot_edns_wire_size(&qdata->opt_rr));
 	if (ret != KNOT_EOK) {
@@ -323,6 +329,24 @@ static int answer_edns_put(knot_pkt_t *resp, struct query_data *qdata)
 	/* Write to packet. */
 	assert(resp->current == KNOT_ADDITIONAL);
 	return knot_pkt_put(resp, COMPR_HINT_NONE, &qdata->opt_rr, 0);
+}
+
+/*! \brief Convert QNAME to lowercase format for processing. */
+static int qname_case_lower(knot_pkt_t *pkt)
+{
+	knot_dname_t *qname = (knot_dname_t *)knot_pkt_qname(pkt);
+	return knot_dname_to_lower(qname);
+}
+
+/*! \brief Restore QNAME letter case. */
+static void qname_case_restore(struct query_data *qdata, knot_pkt_t *pkt)
+{
+	/* If original QNAME is empty, Query is either unparsed or for root domain.
+	 * Either way, letter case doesn't matter. */
+	if (qdata->orig_qname[0] != '\0') {
+		memcpy(pkt->wire + KNOT_WIRE_HEADER_SIZE,
+		       qdata->orig_qname, qdata->query->qname_size);
+	}
 }
 
 /*! \brief Initialize response, sizes and find zone from which we're going to answer. */
@@ -350,12 +374,11 @@ static int prepare_answer(const knot_pkt_t *query, knot_pkt_t *resp, knot_proces
 	 * Already checked for absence of compression and length.
 	 */
 	memcpy(qdata->orig_qname, qname, query->qname_size);
-	ret = knot_dname_to_lower((knot_dname_t *)qname);
+	ret = qname_case_lower((knot_pkt_t *)query);
 	if (ret != KNOT_EOK) {
 		dbg_ns("%s: can't convert QNAME to lowercase (%d)\n", __func__, ret);
 		return ret;
 	}
-
 	/* Find zone for QNAME. */
 	qdata->zone = answer_zone_find(query, server->zone_db);
 
@@ -393,16 +416,11 @@ static int process_query_err(knot_pkt_t *pkt, knot_process_t *ctx)
 	knot_pkt_t *query = qdata->query;
 	knot_pkt_init_response(pkt, query);
 
-	/* If original QNAME is empty, Query is either unparsed or for root domain.
-	 * Either way, letter case doesn't matter. */
-	if (qdata->orig_qname[0] != '\0') {
-		memcpy(pkt->wire + KNOT_WIRE_HEADER_SIZE,
-		       qdata->orig_qname, query->qname_size);
-	}
+	/* Restore original QNAME. */
+	qname_case_restore(qdata, pkt);
 
 	/* Set RCODE. */
 	knot_wire_set_rcode(pkt->wire, qdata->rcode);
-
 
 	/* Add OPT and TSIG (best effort, send reply anyway if fails). */
 	if (pkt->current != KNOT_ADDITIONAL) {
@@ -516,7 +534,12 @@ static int process_query_out(knot_pkt_t *pkt, knot_process_t *ctx)
 	 * Postprocessing.
 	 */
 
+
 	if (next_state == NS_PROC_DONE || next_state == NS_PROC_FULL) {
+
+		/* Restore original QNAME. */
+		qname_case_restore(qdata, pkt);
+
 		if (pkt->current != KNOT_ADDITIONAL) {
 			knot_pkt_begin(pkt, KNOT_ADDITIONAL);
 		}
@@ -604,8 +627,10 @@ int process_query_verify(struct query_data *qdata)
 	ctx->tsig_digestlen = tsig_rdata_mac_length(query->tsig_rr);
 
 	/* Checking query. */
+	qname_case_restore(qdata, query);
 	int ret = knot_tsig_server_check(query->tsig_rr, query->wire,
 	                                 query->size, ctx->tsig_key);
+	qname_case_lower(query);
 
 	dbg_ns("%s: QUERY TSIG check result = %s\n", __func__, knot_strerror(ret));
 
