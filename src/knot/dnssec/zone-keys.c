@@ -129,7 +129,7 @@ static int check_keys_validity(const knot_zone_keys_t *keys)
 		assert(a < MAX_ALGORITHMS);
 
 		if (key->is_public) {
-			// public key crates a requirement for an algorithm
+			// public key creates a requirement for an algorithm
 			algorithms[a].published = true;
 
 			// need fully enabled ZSK and KSK for each algorithm
