@@ -668,19 +668,24 @@ static bool fetch_zone(int argc, char *argv[], conf_zone_t *zone)
 	}
 	(void)knot_dname_to_lower(zone_name);
 
-	for (int i = 0; i < argc; ++i) {
+	bool found = false;
+
+	int i = 0;
+	while (!found && i < argc) {
 		/* Convert the argument to dname */
 		knot_dname_t *arg_name = knot_dname_from_str(argv[i]);
 
 		if (arg_name != NULL) {
 			(void)knot_dname_to_lower(arg_name);
-			if (knot_dname_is_equal(zone_name, arg_name)) {
-				return true;
-			}
+			found = knot_dname_is_equal(zone_name, arg_name);
 		}
+
+		i++;
+		knot_dname_free(&arg_name, NULL);
 	}
 
-	return false;
+	knot_dname_free(&zone_name, NULL);
+	return found;
 }
 
 static int cmd_checkzone(int argc, char *argv[], unsigned flags)
