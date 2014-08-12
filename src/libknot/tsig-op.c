@@ -814,7 +814,7 @@ int knot_tsig_add(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
 	tsig_rdata_set_other_data(tmp_tsig, 0, 0);
 
 	/* Append TSIG RR. */
-	int ret = knot_tsig_append(msg, msg_len, msg_max_len, tsig_rr);
+	int ret = knot_tsig_append(msg, msg_len, msg_max_len, tmp_tsig);
 
 	/* key_name already referenced in RRSet, no need to free separately. */
 	knot_rrset_free(&tmp_tsig, NULL);
