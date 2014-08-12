@@ -169,6 +169,14 @@ void hhash_build_index(hhash_t* tbl);
  */
 int hhash_find_leq(hhash_t* tbl, const char* key, uint16_t len, value_t **dst);
 
+/*!
+ * \brief Find a key that is a lexicographic successor.
+ *
+ * \retval  0 if successor found.
+ * \retval  1 if couldn't find a successor.
+ */
+int hhash_find_next(hhash_t* tbl, const char* key, uint16_t len, value_t** dst);
+
 /*! \brief Hash table iterator. */
 typedef struct htable_iter {
     unsigned flags; /* Internal */
