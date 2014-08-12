@@ -28,6 +28,7 @@
 #pragma once
 
 #include "knot/updates/changesets.h"
+#include "knot/updates/zone-update.h"
 #include "knot/zone/zone.h"
 #include "libknot/packet/pkt.h"
 #include "libknot/dname.h"
@@ -41,7 +42,7 @@
  *
  * \return KNOT_E*
  */
-int ddns_process_prereqs(const knot_pkt_t *query, const zone_contents_t *zone,
+int ddns_process_prereqs(const knot_pkt_t *query, zone_update_t *update,
                          uint16_t *rcode);
 
 /*!
@@ -56,6 +57,6 @@ int ddns_process_prereqs(const knot_pkt_t *query, const zone_contents_t *zone,
  * \return KNOT_E*
  */
 int ddns_process_update(const zone_t *zone, const knot_pkt_t *query,
-                        changeset_t *changeset, uint16_t *rcode);
+                        zone_update_t *update, uint16_t *rcode);
 
 /*! @} */

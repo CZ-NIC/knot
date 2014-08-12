@@ -46,6 +46,8 @@ typedef struct mm_ctx {
 /*! \brief Allocs using 'mm' if any, uses system malloc() otherwise. */
 void *mm_alloc(mm_ctx_t *mm, size_t size);
 /*! \brief Reallocs using 'mm' if any, uses system realloc() otherwise. */
+void *mm_realloc(mm_ctx_t *mm, void *what, size_t size, size_t prev_size);
+/*! \brief Free using 'mm' if any, uses system free() otherwise. */
 void mm_free(mm_ctx_t *mm, void *what);
 
 /*! \brief Initialize default memory allocation context. */

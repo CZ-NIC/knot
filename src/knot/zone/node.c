@@ -46,19 +46,21 @@ static int rr_data_from(const knot_rrset_t *rrset, struct rr_data *data, mm_ctx_
 }
 
 /*! \brief Adds RRSet to node directly. */
-static int add_rrset_no_merge(zone_node_t *node, const knot_rrset_t *rrset)
+static int add_rrset_no_merge(zone_node_t *node, const knot_rrset_t *rrset,
+                              mm_ctx_t *mm)
 {
 	if (node == NULL) {
 		return KNOT_EINVAL;
 	}
 
+	const size_t prev_nlen = node->rrset_count * sizeof(struct rr_data);
 	const size_t nlen = (node->rrset_count + 1) * sizeof(struct rr_data);
-	void *p = realloc(node->rrs, nlen);
+	void *p = mm_realloc(mm, node->rrs, nlen, prev_nlen);
 	if (p == NULL) {
 		return KNOT_ENOMEM;
 	}
 	node->rrs = p;
-	int ret = rr_data_from(rrset, node->rrs + node->rrset_count, NULL);
+	int ret = rr_data_from(rrset, node->rrs + node->rrset_count, mm);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
@@ -82,9 +84,9 @@ static bool ttl_error(struct rr_data *node_data, const knot_rrset_t *rrset)
 	return inserted_ttl != node_ttl;
 }
 
-zone_node_t *node_new(const knot_dname_t *owner)
+zone_node_t *node_new(const knot_dname_t *owner, mm_ctx_t *mm)
 {
-	zone_node_t *ret = malloc(sizeof(zone_node_t));
+	zone_node_t *ret = mm_alloc(mm, sizeof(zone_node_t));
 	if (ret == NULL) {
 		ERR_ALLOC_FAILED;
 		return NULL;
@@ -92,9 +94,9 @@ zone_node_t *node_new(const knot_dname_t *owner)
 	memset(ret, 0, sizeof(*ret));
 
 	if (owner) {
-		ret->owner = knot_dname_copy(owner, NULL);
+		ret->owner = knot_dname_copy(owner, mm);
 		if (ret->owner == NULL) {
-			free(ret);
+			mm_free(mm, ret);
 			return NULL;
 		}
 	}
@@ -105,7 +107,7 @@ zone_node_t *node_new(const knot_dname_t *owner)
 	return ret;
 }
 
-void node_free_rrsets(zone_node_t *node)
+void node_free_rrsets(zone_node_t *node, mm_ctx_t *mm)
 {
 	if (node == NULL) {
 		return;
@@ -118,30 +120,30 @@ void node_free_rrsets(zone_node_t *node)
 	node->rrset_count = 0;
 }
 
-void node_free(zone_node_t **node)
+void node_free(zone_node_t **node, mm_ctx_t *mm)
 {
 	if (node == NULL || *node == NULL) {
 		return;
 	}
 
 	if ((*node)->rrs != NULL) {
-		free((*node)->rrs);
+		mm_free(mm, (*node)->rrs);
 	}
 
-	knot_dname_free(&(*node)->owner, NULL);
+	knot_dname_free(&(*node)->owner, mm);
 
-	free(*node);
+	mm_free(mm, *node);
 	*node = NULL;
 }
 
-zone_node_t *node_shallow_copy(const zone_node_t *src)
+zone_node_t *node_shallow_copy(const zone_node_t *src, mm_ctx_t *mm)
 {
 	if (src == NULL) {
 		return NULL;
 	}
 
 	// create new node
-	zone_node_t *dst = node_new(src->owner);
+	zone_node_t *dst = node_new(src->owner, mm);
 	if (dst == NULL) {
 		return NULL;
 	}
@@ -151,9 +153,9 @@ zone_node_t *node_shallow_copy(const zone_node_t *src)
 	// copy RRSets
 	dst->rrset_count = src->rrset_count;
 	size_t rrlen = sizeof(struct rr_data) * src->rrset_count;
-	dst->rrs = malloc(rrlen);
+	dst->rrs = mm_alloc(mm, rrlen);
 	if (dst->rrs == NULL) {
-		node_free(&dst);
+		node_free(&dst, mm);
 		return NULL;
 	}
 	memcpy(dst->rrs, src->rrs, rrlen);
@@ -166,7 +168,7 @@ zone_node_t *node_shallow_copy(const zone_node_t *src)
 	return dst;
 }
 
-int node_add_rrset(zone_node_t *node, const knot_rrset_t *rrset)
+int node_add_rrset(zone_node_t *node, const knot_rrset_t *rrset, mm_ctx_t *mm)
 {
 	if (node == NULL || rrset == NULL) {
 		return KNOT_EINVAL;
@@ -177,7 +179,7 @@ int node_add_rrset(zone_node_t *node, const knot_rrset_t *rrset)
 			struct rr_data *node_data = &node->rrs[i];
 			const bool ttl_err = ttl_error(node_data, rrset);
 			int ret = knot_rdataset_merge(&node_data->rrs,
-			                              &rrset->rrs, NULL);
+			                              &rrset->rrs, mm);
 			if (ret != KNOT_EOK) {
 				return ret;
 			} else {
@@ -187,7 +189,7 @@ int node_add_rrset(zone_node_t *node, const knot_rrset_t *rrset)
 	}
 
 	// New RRSet (with one RR)
-	return add_rrset_no_merge(node, rrset);
+	return add_rrset_no_merge(node, rrset, mm);
 }
 
 void node_remove_rdataset(zone_node_t *node, uint16_t type)
@@ -282,4 +284,9 @@ bool node_rrtype_is_signed(const zone_node_t *node, uint16_t type)
 bool node_rrtype_exists(const zone_node_t *node, uint16_t type)
 {
 	return node_rdataset(node, type) != NULL;
+}
+
+bool node_empty(const zone_node_t *node)
+{
+	return node == NULL || node->rrset_count == 0;
 }

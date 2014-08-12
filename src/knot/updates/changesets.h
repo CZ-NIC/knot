@@ -30,8 +30,6 @@
 #include "knot/zone/contents.h"
 #include "common-knot/lists.h"
 
-/*----------------------------------------------------------------------------*/
-
 /*! \brief One zone change, from 'soa_from' to 'soa_to'. */
 typedef struct {
 	node_t n;                 /*!< List node. */
@@ -39,7 +37,7 @@ typedef struct {
 	knot_rrset_t *soa_to;     /*!< Destination SOA. */
 	zone_contents_t *add;     /*!< Change additions. */
 	zone_contents_t *remove;  /*!< Change removals. */
-	list_t old_data;          /*!< Old data, to be freed after succesfull update. */
+	list_t old_data;          /*!< Old data, to be freed after successful update. */
 	list_t new_data;          /*!< New data, to be freed after failed update. */
 	size_t size;              /*!< Size of serialized changeset. */
 	uint8_t *data;            /*!< Serialized changeset. */
@@ -51,8 +49,6 @@ typedef struct {
 	const zone_node_t *node;  /*!< Current zone node. */
 	uint16_t node_pos;        /*!< Position in node. */
 } changeset_iter_t;
-
-/*----------------------------------------------------------------------------*/
 
 /*!
  * \brief Inits changeset structure.

@@ -337,3 +337,6 @@ tests/worker_queue.c
 tests/zone_events.c
 tests/zonedb.c
 tests/ztree.c
+src/knot/updates/zone-update.c
+src/knot/updates/zone-update.h
+tests/zone-update.c

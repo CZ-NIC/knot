@@ -316,7 +316,7 @@ static int zone_tree_free_node(zone_node_t **node, void *data)
 {
 	UNUSED(data);
 	if (node) {
-		node_free(node);
+		node_free(node, NULL);
 	}
 	return KNOT_EOK;
 }

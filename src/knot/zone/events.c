@@ -395,32 +395,23 @@ static int event_update(zone_t *zone)
 {
 	assert(zone);
 
-	struct request_data *update = zone_update_dequeue(zone);
-	if (update == NULL) {
-		return KNOT_EOK;
-	}
-
-	/* Forward if zone has master, or execute. */
-	int ret = update_execute(zone, update);
-	UNUSED(ret);
-
-	/* Cleanup. */
-	close(update->fd);
-	knot_pkt_free(&update->query);
-	free(update);
+	/* Process update list - forward if zone has master, or execute. */
+	int ret = updates_execute(zone);
+	UNUSED(ret); /* Don't care about the Knot code, RCODEs are set. */
 
 	/* Trim extra heap. */
 	mem_trim();
 
 	/* Replan event if next update waiting. */
-	pthread_mutex_lock(&zone->ddns_lock);
-
-	if (!EMPTY_LIST(zone->ddns_queue)) {
+	pthread_spin_lock(&zone->ddns_lock);
+	
+	const bool empty = EMPTY_LIST(zone->ddns_queue);
+	
+	pthread_spin_unlock(&zone->ddns_lock);
+	
+	if (!empty) {
 		zone_events_schedule(zone, ZONE_EVENT_UPDATE, ZONE_EVENT_NOW);
 	}
-
-	pthread_mutex_unlock(&zone->ddns_lock);
-
 
 	return KNOT_EOK;
 }
@@ -649,15 +640,18 @@ static void duplicate_ddns_q(zone_t *zone, zone_t *old_zone)
 /*!< Replans DDNS event. */
 static void replan_update(zone_t *zone, zone_t *old_zone)
 {
-	pthread_mutex_lock(&old_zone->ddns_lock);
+	pthread_spin_lock(&old_zone->ddns_lock);
 
-	if (!EMPTY_LIST(old_zone->ddns_queue)) {
+	const bool empty = EMPTY_LIST(old_zone->ddns_queue);
+	if (!empty) {
 		duplicate_ddns_q(zone, (zone_t *)old_zone);
-		// \todo #254 Old zone *must* have the event planned, but it was not always so
+	}
+	
+	pthread_spin_unlock(&old_zone->ddns_lock);
+	
+	if (!empty) {
 		zone_events_schedule(zone, ZONE_EVENT_UPDATE, ZONE_EVENT_NOW);
 	}
-
-	pthread_mutex_unlock(&old_zone->ddns_lock);
 }
 
 /*!< Replans DNSSEC event. Not whole resign needed, \todo #247 */
