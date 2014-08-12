@@ -743,7 +743,7 @@ static value_t* hattrie_walk_right(node_ptr* s, size_t sp,
          * the leftmost of the nodes right of the current
          */
         node_ptr visited = s[sp].t->xs[(unsigned char)*key];
-        for (int i = *key; i <= TRIE_MAXCHAR; ++i) {
+        for (int i = *key + 1; i <= TRIE_MAXCHAR; ++i) {
             if (s[sp].t->xs[i].flag == visited.flag)
                 continue; /* skip pointers to visited container */
             r = f(s[sp].t->xs[i]);
@@ -849,15 +849,15 @@ int hattrie_find_next (hattrie_t* T, const char* key, size_t len, value_t **dst)
     }
 
     if (ret == 1) {
-        /* we're retracing from pure bucket, pop the key */
+        /* we're retracing from pure bucket, pop the key. */
         if (*ptr.flag & NODE_TYPE_PURE_BUCKET) {
             --key;
         }
         *dst = hattrie_walk_right(ns, sp, key, hattrie_find_leftmost);
         if (*dst) {
-            ret = 0; /* found previous */
+            ret = 0; /* found next. */
         } else {
-            ret = 1; /* no previous key found */
+            ret = 1; /* no next key found. */
         }
     }
 
