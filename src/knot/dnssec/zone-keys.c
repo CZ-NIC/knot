@@ -118,7 +118,8 @@ static int check_keys_validity(const knot_zone_keys_t *keys)
 		bool published;
 		bool ksk_enabled;
 		bool zsk_enabled;
-	} algorithms[MAX_ALGORITHMS] = {{ 0 }};
+	} algorithms[MAX_ALGORITHMS];
+	memset(algorithms, 0, sizeof(algorithms));
 
 	/* Make a list of used algorithms */
 
