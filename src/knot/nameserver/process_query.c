@@ -325,6 +325,24 @@ static int answer_edns_put(knot_pkt_t *resp, struct query_data *qdata)
 	return knot_pkt_put(resp, COMPR_HINT_NONE, &qdata->opt_rr, 0);
 }
 
+/*! \brief Convert QNAME to lowercase format for processing. */
+static int qname_case_lower(knot_pkt_t *pkt)
+{
+	knot_dname_t *qname = (knot_dname_t *)knot_pkt_qname(pkt);
+	return knot_dname_to_lower(qname);
+}
+
+/*! \brief Restore QNAME letter case. */
+static void qname_case_restore(struct query_data *qdata, knot_pkt_t *pkt)
+{
+	/* If original QNAME is empty, Query is either unparsed or for root domain.
+	 * Either way, letter case doesn't matter. */
+	if (qdata->orig_qname[0] != '\0') {
+		memcpy(pkt->wire + KNOT_WIRE_HEADER_SIZE,
+		       qdata->orig_qname, qdata->query->qname_size);
+	}
+}
+
 /*! \brief Initialize response, sizes and find zone from which we're going to answer. */
 static int prepare_answer(const knot_pkt_t *query, knot_pkt_t *resp, knot_process_t *ctx)
 {
@@ -350,12 +368,11 @@ static int prepare_answer(const knot_pkt_t *query, knot_pkt_t *resp, knot_proces
 	 * Already checked for absence of compression and length.
 	 */
 	memcpy(qdata->orig_qname, qname, query->qname_size);
-	ret = knot_dname_to_lower((knot_dname_t *)qname);
+	ret = qname_case_lower((knot_pkt_t *)query);
 	if (ret != KNOT_EOK) {
 		dbg_ns("%s: can't convert QNAME to lowercase (%d)\n", __func__, ret);
 		return ret;
 	}
-
 	/* Find zone for QNAME. */
 	qdata->zone = answer_zone_find(query, server->zone_db);
 
@@ -393,16 +410,11 @@ static int process_query_err(knot_pkt_t *pkt, knot_process_t *ctx)
 	knot_pkt_t *query = qdata->query;
 	knot_pkt_init_response(pkt, query);
 
-	/* If original QNAME is empty, Query is either unparsed or for root domain.
-	 * Either way, letter case doesn't matter. */
-	if (qdata->orig_qname[0] != '\0') {
-		memcpy(pkt->wire + KNOT_WIRE_HEADER_SIZE,
-		       qdata->orig_qname, query->qname_size);
-	}
+	/* Restore original QNAME. */
+	qname_case_restore(qdata, pkt);
 
 	/* Set RCODE. */
 	knot_wire_set_rcode(pkt->wire, qdata->rcode);
-
 
 	/* Add OPT and TSIG (best effort, send reply anyway if fails). */
 	if (pkt->current != KNOT_ADDITIONAL) {
@@ -516,7 +528,11 @@ static int process_query_out(knot_pkt_t *pkt, knot_process_t *ctx)
 	 * Postprocessing.
 	 */
 
+
 	if (next_state == NS_PROC_DONE || next_state == NS_PROC_FULL) {
+
+		/* Restore original QNAME. */
+		qname_case_restore(qdata, pkt);
 		if (pkt->current != KNOT_ADDITIONAL) {
 			knot_pkt_begin(pkt, KNOT_ADDITIONAL);
 		}
