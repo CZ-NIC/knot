@@ -72,8 +72,8 @@ static int parser_set_default(zs_scanner_t *s, const char *fmt, ...)
 		return KNOT_ESPACE;
 	}
 
-	/* fmt must contain newline */
-	if (zs_scanner_parse(s, buf, buf + n, 1) < 0) {
+	/* Buffer must contain newline */
+	if (zs_scanner_parse(s, buf, buf + n, true) < 0) {
 		return KNOT_EPARSEFAIL;
 	}
 

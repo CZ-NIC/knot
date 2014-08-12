@@ -141,11 +141,7 @@ static int dname_isvalid(const char *lp, size_t len) {
 /* This is probably redundant, but should be a bit faster so let's keep it. */
 static int parse_full_rr(zs_scanner_t *s, const char* lp)
 {
-	if (zs_scanner_parse(s, lp, lp + strlen(lp), 0) < 0) {
-		return KNOT_EPARSEFAIL;
-	}
-	char nl = '\n'; /* Ensure newline after complete RR */
-	if (zs_scanner_parse(s, &nl, &nl+sizeof(char), 1) < 0) { /* Terminate */
+	if (zs_scanner_parse(s, lp, lp + strlen(lp), true) < 0) {
 		return KNOT_EPARSEFAIL;
 	}
 
@@ -264,7 +260,7 @@ static int parse_partial_rr(zs_scanner_t *s, const char *lp, unsigned flags) {
 	/* Need to parse rdata, synthetize input. */
 	char *rr = sprintf_alloc("%s %u %s %s %s\n",
 	                         owner_s, s->r_ttl, b1, b2, lp);
-	if (rr == NULL || zs_scanner_parse(s, rr, rr + strlen(rr), 1) < 0) {
+	if (rr == NULL || zs_scanner_parse(s, rr, rr + strlen(rr), true) < 0) {
 		ret = KNOT_EPARSEFAIL;
 	}
 

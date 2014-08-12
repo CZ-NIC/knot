@@ -4951,15 +4951,11 @@ void zs_scanner_free(zs_scanner_t *s)
 	}
 }
 
-int zs_scanner_parse(zs_scanner_t *s,
-                     const char   *start,
-                     const char   *end,
-                     const bool   final_block)
+static void parse_block(zs_scanner_t *s,
+                        const char   *start,
+                        const char   *end,
+                        const bool   is_eof)
 {
-	if (s == NULL || start == NULL || end == NULL) {
-		return -1;
-	}
-
 	// Necessary scanner variables.
 	const char *p = start;
 	const char *pe = end;
@@ -4985,7 +4981,7 @@ int zs_scanner_parse(zs_scanner_t *s,
 	memcpy(stack, s->stack, sizeof(stack));
 
 	// End of file check.
-	if (final_block == true) {
+	if (is_eof) {
 		eof = (char *)pe;
 	}
 
@@ -5253,7 +5249,7 @@ _match:
 
 		// In case of serious error, stop scanner.
 		if (s->stop == true) {
-			return -1;
+			return;
 		}
 	}
 	break;
@@ -5824,11 +5820,18 @@ _match:
 		if (ss != NULL) {
 			// Parse included zone file.
 			ret = zs_scanner_parse_file(ss, (char*)(s->buffer));
-			zs_scanner_free(ss);
 			if (ret != 0) {
-				ERR(ZS_UNPROCESSED_INCLUDE);
+				// File internal errors are handled by error callback.
+				if (ss->error_counter > 0) {
+					ERR(ZS_UNPROCESSED_INCLUDE);
+				// General include file error.
+				} else {
+					ERR(ss->error_code);
+				}
+				zs_scanner_free(ss);
 				p--; {cs = 246; goto _again;}
 			}
+			zs_scanner_free(ss);
 		} else {
 			ERR(ZS_UNPROCESSED_INCLUDE);
 			p--; {cs = 246; goto _again;}
@@ -7115,7 +7118,7 @@ _match:
 
 		// Stop scanner if required.
 		if (s->stop == true) {
-			return -1;
+			return;
 		}
 	}
 	break;
@@ -7370,11 +7373,11 @@ _again:
 		// Processing error.
 		s->process_error(s);
 
-		return -1;
+		return;
 	}
 
 	// Check unclosed multiline record.
-	if (final_block && s->multiline) {
+	if (is_eof && s->multiline) {
 		ERR(ZS_UNCLOSED_MULTILINE);
 		s->error_counter++;
 		s->process_error(s);
@@ -7387,6 +7390,24 @@ _again:
 
 	// Storing r_data pointer.
 	s->r_data_tail = rdata_tail - s->r_data;
+}
+
+int zs_scanner_parse(zs_scanner_t *s,
+                     const char   *start,
+                     const char   *end,
+                     const bool   final_block)
+{
+	if (s == NULL || start == NULL || end == NULL) {
+		return -1;
+	}
+
+	// Parse input block.
+	parse_block(s, start, end, false);
+
+	// Parse trailing artificial block (newline char) if not stop.
+	if (final_block && !s->stop) {
+		parse_block(s, NEWLINE_BLOCK, NEWLINE_BLOCK + 1, true);
+	}
 
 	// Check if any errors has occured.
 	if (s->error_counter > 0) {
@@ -7486,13 +7507,7 @@ int zs_scanner_parse_file(zs_scanner_t *s,
 		}
 
 		// Scan zone file block.
-		zs_scanner_parse(s, data, data + block_size, false);
-
-		// Process the last artificial block (newline char) if not fatal.
-		if (final_block == true && s->stop == 0) {
-			zs_scanner_parse(s, NEWLINE_BLOCK, NEWLINE_BLOCK + 1,
-			                 true);
-		}
+		zs_scanner_parse(s, data, data + block_size, final_block);
 
 		// Zone file block unmapping.
 		if (munmap(data, block_size) == -1) {
@@ -7501,16 +7516,20 @@ int zs_scanner_parse_file(zs_scanner_t *s,
 			free(s->file.name);
 			return -1;
 		}
-	}
 
-	// Check for scanner return.
-	if (s->error_counter > 0) {
-		close(s->file.descriptor);
-		free(s->file.name);
-		return -1;
+		// Stop parsing if required.
+		if (s->stop) {
+			break;
+		}
 	}
 
 	close(s->file.descriptor);
 	free(s->file.name);
+
+	// Check for scanner return.
+	if (s->error_counter > 0) {
+		return -1;
+	}
+
 	return 0;
 }

@@ -715,7 +715,6 @@ static int cmd_memstats(int argc, char *argv[], unsigned flags)
 	UNUSED(flags);
 
 	/* Zone checking */
-	int rc = 0;
 	double total_size = 0;
 
 	/* Generate databases for all zones */
@@ -760,7 +759,7 @@ static int cmd_memstats(int argc, char *argv[], unsigned flags)
 		                    .record_count = 0 };
 		if (est.node_table == NULL) {
 			log_error("not enough memory");
-			continue;
+			break;
 		}
 
 		/* Create zone scanner. */
@@ -770,7 +769,6 @@ static int cmd_memstats(int argc, char *argv[], unsigned flags)
 		                                     process_error,
 		                                     &est);
 		if (zs == NULL) {
-			rc = 1;
 			log_zone_str_error(zone->name, "could not load zone");
 			hattrie_free(est.node_table);
 			continue;
@@ -779,7 +777,6 @@ static int cmd_memstats(int argc, char *argv[], unsigned flags)
 		/* Do a parser run, but do not actually create the zone. */
 		int ret = zs_scanner_parse_file(zs, zone->file);
 		if (ret != 0) {
-			rc = 1;
 			log_zone_str_error(zone->name, "failed to parse zone");
 			hattrie_apply_rev(est.node_table, estimator_free_trie_node, NULL);
 			hattrie_free(est.node_table);
@@ -809,10 +806,10 @@ static int cmd_memstats(int argc, char *argv[], unsigned flags)
 	}
 	hattrie_iter_free(z_iter);
 
-	if (rc == 0 && argc == 0) { // for all zones
+	if (argc == 0) { // for all zones
 		log_info("estimated memory consumption for all zones is %zu MB",
 		         (size_t)total_size);
 	}
 
-	return rc;
+	return 0;
 }
