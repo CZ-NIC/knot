@@ -533,6 +533,7 @@ static int process_query_out(knot_pkt_t *pkt, knot_process_t *ctx)
 
 		/* Restore original QNAME. */
 		qname_case_restore(qdata, pkt);
+
 		if (pkt->current != KNOT_ADDITIONAL) {
 			knot_pkt_begin(pkt, KNOT_ADDITIONAL);
 		}
@@ -620,8 +621,10 @@ int process_query_verify(struct query_data *qdata)
 	ctx->tsig_digestlen = tsig_rdata_mac_length(query->tsig_rr);
 
 	/* Checking query. */
+	qname_case_restore(qdata, query);
 	int ret = knot_tsig_server_check(query->tsig_rr, query->wire,
 	                                 query->size, ctx->tsig_key);
+	qname_case_lower(query);
 
 	dbg_ns("%s: QUERY TSIG check result = %s\n", __func__, knot_strerror(ret));
 
