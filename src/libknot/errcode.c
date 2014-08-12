@@ -112,6 +112,7 @@ const error_table_t error_messages[] = {
 	{ KNOT_DNSSEC_ESIGN,                      "Cannot create the signature" },
 	{ KNOT_DNSSEC_ENOKEY,                     "No keys for signing" },
 	{ KNOT_DNSSEC_ENOKEYDIR,                  "Keydir does not exist" },
+	{ KNOT_DNSSEC_EMISSINGKEYTYPE,            "Missing KSK or ZSK for used algorithm" },
 
 	/* NSEC3 errors. */
 	{ KNOT_NSEC3_ECOMPUTE_HASH, "Cannot compute NSEC3 hash" },
