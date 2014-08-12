@@ -271,8 +271,6 @@ The signing keys can be generated using ISC ``dnssec-keygen`` tool
 only and there are some limitations:
 
 * Keys for all zones must be placed in one directory.
-* Algorithms based on RSA, DSA, and ECDSA are supported, support for
-  GOST algorithm is not finished yet.
 * Only key publication, activation, inactivation, and removal time
   stamps are utilized. Other time stamps are ignored.
 * It is required, that both ``.private`` and ``.key`` files for each
@@ -280,6 +278,7 @@ only and there are some limitations:
   (even for verification only).
 * There cannot be more than eight keys per zone. Keys which are not
   published are not included in this number.
+* Single-Type Signing Scheme is not supported.
 
 Example how to generate NSEC3 capable zone signing key (ZSK) and key
 signing key (KSK) for zone ``example.com``::
