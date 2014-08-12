@@ -114,15 +114,16 @@ class Response(object):
                         return
 
     def check(self, rdata=None, ttl=None, rcode="NOERROR", nordata=None,
-              flags="", noflags="", eflags="", noeflags=""):
+              edns_version=None, flags="", noflags="", eflags="", noeflags=""):
         '''Flags are text strings separated by whitespace character'''
 
         self._check_flags(flags, noflags)
         self._check_eflags(eflags, noeflags)
         self._check_question()
 
-        # Check EDNS section presence.
-        compare(self.query.edns, self.resp.edns, "EDNS VERSION")
+        # Check EDNS version.
+        edns_ver = int(edns_version) if edns_version != None else self.query.edns
+        compare(edns_ver, self.resp.edns, "EDNS VERSION")
 
         # Check rcode.
         if type(rcode) is not str:
