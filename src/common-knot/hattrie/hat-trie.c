@@ -823,44 +823,45 @@ int hattrie_find_leq (hattrie_t* T, const char* key, size_t len, value_t** dst)
 
 int hattrie_find_next (hattrie_t* T, const char* key, size_t len, value_t **dst)
 {
-        /* create node stack for traceback */
-        size_t sp = 0;
-        node_ptr bs[NODESTACK_INIT];  /* base stack (will be enough mostly) */
-        node_ptr *ns = bs;            /* generic ptr, could point to new mem */
-        ns[sp] = T->root;
+    /* create node stack for traceback */
+    size_t sp = 0;
+    node_ptr bs[NODESTACK_INIT];  /* base stack (will be enough mostly) */
+    node_ptr *ns = bs;            /* generic ptr, could point to new mem */
+    ns[sp] = T->root;
 
-        /* find node for given key */
-        node_ptr ptr = hattrie_find_ns(&ns, &sp, NODESTACK_INIT, &key, &len);
-        if (ptr.flag == NULL) {
-            *dst = hattrie_walk_right(ns, sp, key, hattrie_find_leftmost);
+    /* find node for given key */
+    node_ptr ptr = hattrie_find_ns(&ns, &sp, NODESTACK_INIT, &key, &len);
+    if (ptr.flag == NULL) {
+        *dst = hattrie_walk_right(ns, sp, key, hattrie_find_leftmost);
         if (*dst) {
             return 0; /* found next. */
+        } else {
+            return 1; /* no next key found. */
         }
-        return 1; /* no next key found. */
-        }
+    }
 
-	int ret = 0;
-	if (*ptr.flag & NODE_TYPE_TRIE) {
-		/* Get next using walk. */
-		ret = 1;
-	} else {
-		ret = hhash_find_next(ptr.b, key, len, dst);
-	}
-	
-	if (ret == 1) {
-	        /* we're retracing from pure bucket, pop the key */
-	        if (*ptr.flag & NODE_TYPE_PURE_BUCKET) {
-	            --key;
-	        }
-	        *dst = hattrie_walk_right(ns, sp, key, hattrie_find_leftmost);
-	        if (*dst) {
-	            ret = 0; /* found previous */
-	        } else {
-	            ret = 1; /* no previous key found */
-	        }
-	}
-	
-	return ret;
+    int ret = 0;
+    if (*ptr.flag & NODE_TYPE_TRIE) {
+        /* Get next using walk. */
+        ret = 1;
+    } else {
+        ret = hhash_find_next(ptr.b, key, len, dst);
+    }
+
+    if (ret == 1) {
+        /* we're retracing from pure bucket, pop the key */
+        if (*ptr.flag & NODE_TYPE_PURE_BUCKET) {
+            --key;
+        }
+        *dst = hattrie_walk_right(ns, sp, key, hattrie_find_leftmost);
+        if (*dst) {
+            ret = 0; /* found previous */
+        } else {
+            ret = 1; /* no previous key found */
+        }
+    }
+
+    return ret;
 }
 
 int hattrie_del(hattrie_t* T, const char* key, size_t len)
