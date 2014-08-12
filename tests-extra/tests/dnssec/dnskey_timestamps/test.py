@@ -37,7 +37,7 @@ def check_zone(server, expect_dnskey, expect_rrsig, msg):
     found_dnskeys = dnskeys.count("DNSKEY")
     found_rrsigs = soa.count("RRSIG")
 
-    expect_dnskeys = 2 if expect_dnskey else 1
+    expect_dnskeys = 3 if expect_dnskey else 2
     expect_rrsigs = 2 if expect_rrsig else 1
 
     check_log("DNSKEYs: %d (expected %d) RRSIGs: %d (expected %d)" %
