@@ -133,7 +133,7 @@ static int check_keys_validity(const knot_zone_keys_t *keys)
 			algorithms[a].published = true;
 
 			// need fully enabled ZSK and KSK for each algorithm
-			if (key->is_public && key->is_active) {
+			if (key->is_active) {
 				if (key->is_ksk) {
 					algorithms[a].ksk_enabled = true;
 				} else {
