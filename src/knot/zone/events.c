@@ -212,7 +212,7 @@ static void schedule_dnssec(zone_t *zone, time_t refresh_at)
 	struct tm time_gm = { 0 };
 	localtime_r(&refresh_at, &time_gm);
 	strftime(time_str, sizeof(time_str), KNOT_LOG_TIME_FORMAT, &time_gm);
-	log_zone_info(zone->name, "DNSSEC, next event on %s", time_str);
+	log_zone_info(zone->name, "DNSSEC: next signing on %s", time_str);
 
 	// schedule
 
@@ -503,14 +503,14 @@ static int event_dnssec(zone_t *zone)
 
 	uint32_t refresh_at = time(NULL);
 	if (zone->flags & ZONE_FORCE_RESIGN) {
-		log_zone_info(zone->name, "DNSSEC, dropping previous "
+		log_zone_info(zone->name, "DNSSEC: dropping previous "
 		              "signatures, resigning zone");
 
 		zone->flags &= ~ZONE_FORCE_RESIGN;
 		ret = knot_dnssec_zone_sign_force(zone->contents, zone->conf,
 		                                  &ch, &refresh_at);
 	} else {
-		log_zone_info(zone->name, "DNSSEC, signing zone");
+		log_zone_info(zone->name, "DNSSEC: signing zone");
 		ret = knot_dnssec_zone_sign(zone->contents, zone->conf,
 		                            &ch, KNOT_SOA_SERIAL_UPDATE,
 		                            &refresh_at);
@@ -524,7 +524,7 @@ static int event_dnssec(zone_t *zone)
 		zone_contents_t *new_contents = NULL;
 		int ret = apply_changeset(zone, &ch, &new_contents);
 		if (ret != KNOT_EOK) {
-			log_zone_error(zone->name, "DNSSEC, could not sign zone (%s)",
+			log_zone_error(zone->name, "DNSSEC: could not sign zone (%s)",
 				       knot_strerror(ret));
 			goto done;
 		}
@@ -532,7 +532,7 @@ static int event_dnssec(zone_t *zone)
 		/* Write change to journal. */
 		ret = zone_change_store(zone, &ch);
 		if (ret != KNOT_EOK) {
-			log_zone_error(zone->name, "DNSSEC, could not sign zone (%s)",
+			log_zone_error(zone->name, "DNSSEC: could not sign zone (%s)",
 				       knot_strerror(ret));
 			update_rollback(&ch);
 			update_free_zone(&new_contents);
