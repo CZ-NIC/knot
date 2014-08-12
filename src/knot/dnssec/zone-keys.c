@@ -158,7 +158,7 @@ int knot_load_zone_keys(const char *keydir_name, const knot_dname_t *zone_name,
 		free(path);
 
 		if (ret != KNOT_EOK) {
-			log_zone_warning(zone_name, "DNSSEC: failed to load key '%s': %s",
+			log_zone_warning(zone_name, "DNSSEC, failed to load key '%s': %s",
 			                 entry->d_name, knot_strerror(ret));
 			knot_free_key_params(&params);
 			continue;
@@ -189,7 +189,7 @@ int knot_load_zone_keys(const char *keydir_name, const knot_dname_t *zone_name,
 		if (!knot_dnssec_algorithm_is_zonesign(params.algorithm,
 		                                       nsec3_enabled)
 		) {
-			log_zone_notice(zone_name, "DNSSEC: ignoring key %d (%s): "
+			log_zone_notice(zone_name, "DNSSEC, ignoring key %d (%s): "
 			                "incompatible algorithm",
 			                params.keytag, entry->d_name);
 			knot_free_key_params(&params);
@@ -198,7 +198,7 @@ int knot_load_zone_keys(const char *keydir_name, const knot_dname_t *zone_name,
 		}
 
 		if (knot_get_zone_key(keys, params.keytag) != NULL) {
-			log_zone_notice(zone_name, "DNSSEC: ignoring key %d (%s): "
+			log_zone_notice(zone_name, "DNSSEC, ignoring key %d (%s): "
 					"duplicate keytag",
 					params.keytag, entry->d_name);
 			knot_free_key_params(&params);
@@ -208,7 +208,7 @@ int knot_load_zone_keys(const char *keydir_name, const knot_dname_t *zone_name,
 
 		ret = knot_dnssec_key_from_params(&params, &key->dnssec_key);
 		if (ret != KNOT_EOK) {
-			log_zone_error(zone_name, "DNSSEC: failed to process "
+			log_zone_error(zone_name, "DNSSEC, failed to process "
 				       "key %d (%s): %s",
 				       params.keytag, entry->d_name,
 			               knot_strerror(ret));
@@ -217,7 +217,7 @@ int knot_load_zone_keys(const char *keydir_name, const knot_dname_t *zone_name,
 			continue;
 		}
 
-		log_zone_info(zone_name, "DNSSEC: loaded key %5d, file %s, %s, %s, %s",
+		log_zone_info(zone_name, "DNSSEC, loaded key %5d, file %s, %s, %s, %s",
 		              params.keytag, entry->d_name,
 		              key->is_ksk ? "KSK" : "ZSK",
 		              key->is_active ? "active" : "inactive",
