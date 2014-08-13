@@ -493,7 +493,7 @@ static int reconfigure_threads(const struct conf_t *conf, server_t *server)
 		ret = server_init_handler(server, IO_UDP, conf_udp_threads(conf),
 		                          &udp_master, &udp_master_destruct);
 		if (ret != KNOT_EOK) {
-			log_error("failed to create UDP threads: %s",
+			log_error("failed to create UDP threads (%s)",
 			          knot_strerror(ret));
 			return ret;
 		}
@@ -503,7 +503,7 @@ static int reconfigure_threads(const struct conf_t *conf, server_t *server)
 		ret = server_init_handler(server, IO_TCP, conf_tcp_threads(conf),
 		                          &tcp_master, &tcp_master_destruct);
 		if (ret != KNOT_EOK) {
-			log_error("failed to create TCP threads: %s",
+			log_error("failed to create TCP threads (%s)",
 			          knot_strerror(ret));
 			return ret;
 		}

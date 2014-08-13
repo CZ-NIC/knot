@@ -210,27 +210,23 @@ int knot_load_zone_keys(const char *keydir_name, const knot_dname_t *zone_name,
 		UNUSED(written);
 		assert(written == path_len);
 
-		dbg_dnssec_detail("loading key '%s'\n", path);
-
 		knot_key_params_t params = { 0 };
 		int ret = knot_load_key_params(path, &params);
 		free(path);
 
 		if (ret != KNOT_EOK) {
-			log_zone_warning(zone_name, "DNSSEC, failed to load key '%s': %s",
+			log_zone_warning(zone_name, "DNSSEC, failed to load key '%s' (%s)",
 			                 entry->d_name, knot_strerror(ret));
 			knot_free_key_params(&params);
 			continue;
 		}
 
 		if (!knot_dname_is_equal(zone_name, params.name)) {
-			dbg_dnssec_detail("skipping key, different zone name\n");
 			knot_free_key_params(&params);
 			continue;
 		}
 
 		if (knot_get_key_type(&params) != KNOT_KEY_DNSSEC) {
-			dbg_dnssec_detail("skipping key, different purpose\n");
 			knot_free_key_params(&params);
 			continue;
 		}
@@ -243,13 +239,11 @@ int knot_load_zone_keys(const char *keydir_name, const knot_dname_t *zone_name,
 		memset(key, '\0', sizeof(*key));
 		set_zone_key_flags(&params, key);
 
-		dbg_dnssec_detail("next key event %" PRIu32 "\n", key->next_event);
-
 		if (!knot_dnssec_algorithm_is_zonesign(params.algorithm,
 		                                       nsec3_enabled)
 		) {
-			log_zone_notice(zone_name, "DNSSEC, ignoring key %d (%s): "
-			                "incompatible algorithm",
+			log_zone_notice(zone_name, "DNSSEC, ignoring key %5d, "
+			                "file %s (incompatible algorithm)",
 			                params.keytag, entry->d_name);
 			knot_free_key_params(&params);
 			free(key);
@@ -257,8 +251,8 @@ int knot_load_zone_keys(const char *keydir_name, const knot_dname_t *zone_name,
 		}
 
 		if (knot_get_zone_key(keys, params.keytag) != NULL) {
-			log_zone_notice(zone_name, "DNSSEC, ignoring key %d (%s): "
-					"duplicate keytag",
+			log_zone_notice(zone_name, "DNSSEC, ignoring key %5d, "
+					"file %s (duplicate keytag)",
 					params.keytag, entry->d_name);
 			knot_free_key_params(&params);
 			free(key);
@@ -268,7 +262,7 @@ int knot_load_zone_keys(const char *keydir_name, const knot_dname_t *zone_name,
 		ret = knot_dnssec_key_from_params(&params, &key->dnssec_key);
 		if (ret != KNOT_EOK) {
 			log_zone_error(zone_name, "DNSSEC, failed to process "
-				       "key %d (%s): %s",
+				       "key %5d, file %s (%s)",
 				       params.keytag, entry->d_name,
 			               knot_strerror(ret));
 			knot_free_key_params(&params);

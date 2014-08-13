@@ -57,7 +57,7 @@ int net_unbound_socket(int type, const struct sockaddr_storage *ss)
 	/* Create socket. */
 	int socket = socket_create(ss->ss_family, type, 0);
 	if (socket < 0) {
-		log_error("could not create socket for '%s': %s",
+		log_error("could not create socket '%s' (%s)",
 		          addr_str, knot_strerror(socket));
 		return socket;
 	}
@@ -96,7 +96,7 @@ int net_bound_socket(int type, const struct sockaddr_storage *ss)
 	int ret = bind(socket, (const struct sockaddr *)ss, sockaddr_len(ss));
 	if (ret < 0) {
 		ret = knot_map_errno(EADDRINUSE, EINVAL, EACCES, ENOMEM);
-		log_error("cannot bind to address '%s': %s",
+		log_error("cannot bind address '%s' (%s)",
 		          addr_str, knot_strerror(ret));
 		close(socket);
 		return ret;

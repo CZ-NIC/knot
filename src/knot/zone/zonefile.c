@@ -257,13 +257,13 @@ zone_contents_t *zonefile_load(zloader_t *loader)
 	assert(zc);
 	int ret = zs_scanner_parse_file(loader->scanner, loader->source);
 	if (ret != 0) {
-		log_zone_error(zname, "zone file '%s' could not be loaded: %s",
+		log_zone_error(zname, "zone file '%s' could not be loaded (%s)",
 		               loader->source, zs_strerror(ret));
 		goto fail;
 	}
 
 	if (zc->ret != KNOT_EOK) {
-		log_zone_error(zname, "zone file '%s' could not be loaded: %s",
+		log_zone_error(zname, "zone file '%s' could not be loaded (%s)",
 		               loader->source, knot_strerror(zc->ret));
 		goto fail;
 	}
@@ -288,7 +288,7 @@ zone_contents_t *zonefile_load(zloader_t *loader)
 	int kret = zone_contents_adjust_full(zc->z,
 	                                          &first_nsec3_node, &last_nsec3_node);
 	if (kret != KNOT_EOK) {
-		log_zone_error(zname, "failed to finalize zone contents: %s",
+		log_zone_error(zname, "failed to finalize zone contents (%s)",
 		               knot_strerror(kret));
 		goto fail;
 	}

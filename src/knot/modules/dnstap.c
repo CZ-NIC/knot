@@ -26,7 +26,7 @@
 #include "libknot/descriptor.h"
 
 /* Defines. */
-#define MODULE_ERR(msg...) log_zone_error("Module 'dnstap': " msg)
+#define MODULE_ERR(msg...) log_error("module 'dnstap', " msg)
 
 static int log_message(int state, const knot_pkt_t *pkt, struct query_data *qdata, void *ctx)
 {
@@ -204,7 +204,7 @@ int dnstap_load(struct query_plan *plan, struct query_module *self)
 	return KNOT_EOK;
 
 fail:
-	MODULE_ERR("init(\"%s\") failed - %s", self->param, knot_strerror(ret));
+	MODULE_ERR("init failed, params '%s' (%s)", self->param, knot_strerror(ret));
 	return ret;
 }
 

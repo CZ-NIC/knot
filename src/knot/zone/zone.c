@@ -220,7 +220,7 @@ int zone_flush_journal(zone_t *zone)
 		log_zone_info(zone->name, "zone file updated, serial %u -> %u",
 		              zone->zonefile_serial, serial_to);
 	} else {
-		log_zone_warning(zone->name, "failed to update zone file: %s",
+		log_zone_warning(zone->name, "failed to update zone file (%s)",
 		                 knot_strerror(ret));
 		return ret;
 	}
@@ -228,7 +228,7 @@ int zone_flush_journal(zone_t *zone)
 	/* Update zone version. */
 	struct stat st;
 	if (stat(zone->conf->file, &st) < 0) {
-		log_zone_warning(zone->name, "failed to update zone file: %s",
+		log_zone_warning(zone->name, "failed to update zone file (%s)",
 		                 knot_strerror(KNOT_EACCES));
 		return KNOT_EACCES;
 	}

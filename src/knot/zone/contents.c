@@ -1082,7 +1082,7 @@ int zone_contents_adjust_pointers(zone_contents_t *contents)
 	int ret = zone_contents_load_nsec3param(contents);
 	if (ret != KNOT_EOK) {
 		log_zone_error(contents->apex->owner,
-			       "failed to load NSEC3 parameters: %s",
+			       "failed to load NSEC3 parameters (%s)",
 			       knot_strerror(ret));
 		return ret;
 	}
@@ -1119,7 +1119,7 @@ int zone_contents_adjust_full(zone_contents_t *zone,
 	int result = zone_contents_load_nsec3param(zone);
 	if (result != KNOT_EOK) {
 		log_zone_error(zone->apex->owner,
-			       "failed to load NSEC3 parameters: %s",
+			       "failed to load NSEC3 parameters (%s)",
 			       knot_strerror(result));
 		return result;
 	}

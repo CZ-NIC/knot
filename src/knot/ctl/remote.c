@@ -657,7 +657,7 @@ static int zones_verify_tsig_query(const knot_pkt_t *query,
 	assert(tsig_rcode != NULL);
 
 	if (query->tsig_rr == NULL) {
-		log_info("TSIG: key required, query REFUSED");
+		log_info("TSIG, key required, query REFUSED");
 		*rcode = KNOT_RCODE_REFUSED;
 		return KNOT_TSIG_EBADKEY;
 	}
@@ -667,7 +667,7 @@ static int zones_verify_tsig_query(const knot_pkt_t *query,
 	 */
 	knot_tsig_algorithm_t alg = tsig_rdata_alg(query->tsig_rr);
 	if (knot_tsig_digest_length(alg) == 0) {
-		log_info("TSIG: unsupported algorithm, query NOTAUTH");
+		log_info("TSIG, unsupported algorithm, query NOTAUTH");
 		/*! \todo [TSIG] It is unclear from RFC if I
 		 *               should treat is as a bad key
 		 *               or some other error.
@@ -710,7 +710,7 @@ static int zones_verify_tsig_query(const knot_pkt_t *query,
 
 	if (mac_len > digest_max_size) {
 		*rcode = KNOT_RCODE_FORMERR;
-		log_info("TSIG: MAC length %zu exceeds maximum size %zu",
+		log_info("TSIG, MAC length %zu exceeds maximum size %zu",
 		         mac_len, digest_max_size);
 		return KNOT_EMALF;
 	} else {

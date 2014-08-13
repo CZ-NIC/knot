@@ -110,7 +110,7 @@ int zone_load_journal(zone_t *zone, zone_contents_t *contents)
 
 	/* Apply changesets. */
 	ret = apply_changesets_directly(contents, &chgs);
-	log_zone_info(zone->name, "serial %u -> %u: %s",
+	log_zone_info(zone->name, "serial %u -> %u (%s)",
 	              serial, zone_contents_serial(contents),
 	              knot_strerror(ret));
 
@@ -179,7 +179,7 @@ int zone_load_post(zone_contents_t *contents, zone_t *zone, uint32_t *dnssec_ref
 			ret = KNOT_EOK;
 		} else if (ret != KNOT_EOK) {
 			log_zone_error(zone->name, "failed to calculate "
-			               "differences from the zone file update: %s",
+			               "differences from the zone file update (%s)",
 			               knot_strerror(ret));
 			return ret;
 		}
