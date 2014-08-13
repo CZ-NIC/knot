@@ -30,12 +30,13 @@
 #include "libknot/rrtype/rdname.h"
 #include "libknot/rrtype/soa.h"
 #include "libknot/dnssec/random.h"
+#include "libknot/packet/wire.h"
 #include "knot/dnssec/zone-sign.h"
 #include "knot/dnssec/zone-nsec.h"
 
 #define KNOT_CTL_REALM "knot."
 #define KNOT_CTL_REALM_EXT ("." KNOT_CTL_REALM)
-#define CMDARGS_BUFLEN (1024*1024) /* 1M */
+#define CMDARGS_BUFLEN KNOT_WIRE_MAX_PKTSIZE
 #define CMDARGS_BUFLEN_LOG 256
 #define KNOT_CTL_SOCKET_UMASK 0007
 
