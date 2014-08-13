@@ -19,6 +19,7 @@ t.start()
 master.zone_wait(zone)
 
 # Query non-existent name
-master.dig("bogus.example.com", "A", dnssec=True)
+resp = master.dig("bogus.example.com", "A", dnssec=True)
+resp.check(rcode="NXDOMAIN")
 
 t.end()
