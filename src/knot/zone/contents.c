@@ -986,7 +986,6 @@ dbg_zone_exec_detail(
 	 */
 	const knot_rdataset_t *nsec3_rrs =
 		node_rdataset(*nsec3_previous, KNOT_RRTYPE_NSEC3);
-	assert(nsec3_rrs);
 	const zone_node_t *original_prev = *nsec3_previous;
 
 	int match = 0;
