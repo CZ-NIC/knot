@@ -325,8 +325,8 @@ libknotus_la_CFLAGS = $(libidn_CFLAGS)
 
 # sbin programs
 knotd_LDADD = libknot.la libknotd.la
-knotd_CPPFLAGS = $(AM_CPPFLAGS) $(systemd_daemon_CFLAGS)
-knotd_LDFLAGS = $(AM_LDFLAGS) $(systemd_daemon_LIBS)
+knotd_CPPFLAGS = $(AM_CPPFLAGS) $(systemd_CFLAGS)
+knotd_LDFLAGS = $(AM_LDFLAGS) $(systemd_LIBS)
 
 knotc_LDADD = libknot.la libknotd.la
 

@@ -81,18 +81,18 @@ AM_CONDITIONAL([FAST_PARSER], [test "$enable_fastparser" = yes])
 
 # Systemd integration
 AC_ARG_ENABLE([systemd],
-    AS_HELP_STRING([--enable-systemd=auto|yes|no], [enable systemd notification mechanism [default=auto]]),
+    AS_HELP_STRING([--enable-systemd=auto|yes|no], [enable systemd integration [default=auto]]),
     [enable_systemd="$enableval"], [enable_systemd=auto])
 
 case "$enable_systemd" in
-    auto) PKG_CHECK_MODULES([systemd_daemon], [libsystemd-daemon], [enable_systemd=yes], [enable_systemd=no]) ;;
-    yes)  PKG_CHECK_MODULES([systemd_daemon], [libsystemd-daemon]) ;;
+    auto) PKG_CHECK_MODULES([systemd], [libsystemd-daemon libsystemd-journal], [enable_systemd=yes], [enable_systemd=no]) ;;
+    yes)  PKG_CHECK_MODULES([systemd], [libsystemd-daemon libsystemd-journal]) ;;
     no)   ;;
     *)    AC_MSG_ERROR([Invalid value of --enable-systemd.]) ;;
 esac
 
 if test "$enable_systemd" = yes; then
-    AC_DEFINE([ENABLE_SYSTEMD_NOTIFY], [1], [Use systemd notifications.])
+    AC_DEFINE([ENABLE_SYSTEMD], [1], [Use systemd integration.])
 fi
 
 # Debug modules
@@ -404,7 +404,7 @@ AC_MSG_RESULT([
 
     Fast zone parser:      ${enable_fastparser}
     Utilities with IDN:    ${with_libidn}
-    Systemd notifications: ${enable_systemd}
+    Systemd integration:   ${enable_systemd}
     Dnstap support:        ${opt_dnstap}
     Code coverage:         ${enable_code_coverage}
 
