@@ -30,12 +30,13 @@
 #include "libknot/rrtype/rdname.h"
 #include "libknot/rrtype/soa.h"
 #include "libknot/dnssec/random.h"
+#include "libknot/packet/wire.h"
 #include "knot/dnssec/zone-sign.h"
 #include "knot/dnssec/zone-nsec.h"
 
 #define KNOT_CTL_REALM "knot."
 #define KNOT_CTL_REALM_EXT ("." KNOT_CTL_REALM)
-#define CMDARGS_BUFLEN (1024*1024) /* 1M */
+#define CMDARGS_BUFLEN KNOT_WIRE_MAX_PKTSIZE
 #define CMDARGS_BUFLEN_LOG 256
 #define KNOT_CTL_SOCKET_UMASK 0007
 
@@ -313,16 +314,17 @@ static int remote_c_zonestatus(server_t *s, remote_cmdargs_t* a)
  */
 static int remote_c_refresh(server_t *s, remote_cmdargs_t* a)
 {
-	/* Refresh all. */
 	dbg_server("remote: %s\n", __func__);
 	if (a->argc == 0) {
+		/* Refresh all. */
 		dbg_server_verb("remote: refreshing all zones\n");
 		knot_zonedb_foreach(s->zone_db, remote_zone_refresh);
-		return KNOT_EOK;
+	} else {
+		/* Refresh specific zones. */
+		remote_rdata_apply(s, a, &remote_zone_refresh);
 	}
 
-	/* Refresh specific zones. */
-	return remote_rdata_apply(s, a, &remote_zone_refresh);
+	return KNOT_CTL_ACCEPTED;
 }
 
 /*!
@@ -333,14 +335,17 @@ static int remote_c_refresh(server_t *s, remote_cmdargs_t* a)
  */
 static int remote_c_retransfer(server_t *s, remote_cmdargs_t* a)
 {
-	/* Refresh all. */
 	dbg_server("remote: %s\n", __func__);
 	if (a->argc == 0) {
+		/* Refresh all. */
 		return KNOT_ENOTSUP;
+	} else {
+		/* Refresh specific zones. */
+		remote_rdata_apply(s, a, &remote_zone_retransfer);
 	}
 
-	/* Refresh specific zones. */
-	return remote_rdata_apply(s, a, &remote_zone_retransfer);
+	return KNOT_CTL_ACCEPTED;
+
 }
 
 /*!
@@ -352,24 +357,24 @@ static int remote_c_retransfer(server_t *s, remote_cmdargs_t* a)
  */
 static int remote_c_flush(server_t *s, remote_cmdargs_t* a)
 {
-	/* Flush all. */
 	dbg_server("remote: %s\n", __func__);
 	if (a->argc == 0) {
-		int ret = 0;
+		/* Flush all. */
 		dbg_server_verb("remote: flushing all zones\n");
 		rcu_read_lock();
 		knot_zonedb_iter_t it;
 		knot_zonedb_iter_begin(s->zone_db, &it);
 		while(!knot_zonedb_iter_finished(&it)) {
-			ret = remote_zone_flush(knot_zonedb_iter_val(&it));
+			remote_zone_flush(knot_zonedb_iter_val(&it));
 			knot_zonedb_iter_next(&it);
 		}
 		rcu_read_unlock();
-		return ret;
+	} else {
+		/* Flush specific zones. */
+		remote_rdata_apply(s, a, &remote_zone_flush);
 	}
 
-	/* Flush specific zones. */
-	return remote_rdata_apply(s, a, &remote_zone_flush);
+	return KNOT_CTL_ACCEPTED;
 }
 
 /*!
@@ -381,10 +386,14 @@ static int remote_c_signzone(server_t *server, remote_cmdargs_t* arguments)
 	dbg_server("remote: %s\n", __func__);
 
 	if (arguments->argc == 0) {
+		/* Resign all. */
 		return KNOT_ENOTSUP;
+	} else {
+		/* Resign specific zones. */
+		remote_rdata_apply(server, arguments, remote_zone_sign);
 	}
 
-	return remote_rdata_apply(server, arguments, remote_zone_sign);
+	return KNOT_CTL_ACCEPTED;
 }
 
 /*!

@@ -81,6 +81,7 @@ const error_table_t error_messages[] = {
 
 	/* Control states. */
 	{ KNOT_CTL_STOP, "Stopping server" },
+	{ KNOT_CTL_ACCEPTED, "command accepted" },
 
 	/* Network errors. */
 	{ KNOT_NET_EADDR,    "Bad address or host name" },
