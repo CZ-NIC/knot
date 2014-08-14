@@ -536,9 +536,9 @@ static int reconfigure_rate_limits(const struct conf_t *conf, server_t *server)
 			/* We cannot free it, threads may use it.
 			 * Setting it to <1 will disable rate limiting. */
 			if (conf->rrl < 1) {
-				log_info("rate limiting disabled");
+				log_info("rate limiting, disabled");
 			} else {
-				log_info("rate limiting enabled, %u responses/sec",
+				log_info("rate limiting, enabled %u responses/second",
 					 conf->rrl);
 			}
 			rrl_setrate(server->rrl, conf->rrl);

@@ -47,7 +47,7 @@ void process_error(zs_scanner_t *s)
 	zcreator_t *zc = s->data;
 	const knot_dname_t *zname = zc->z->apex->owner;
 
-	ERROR(zname, "%s in zone, file %s, line %"PRIu64" (%s)",
+	ERROR(zname, "%s in zone, file '%s', line %"PRIu64" (%s)",
 	      s->stop ? "fatal error" : "error",
 	      s->file.name, s->line_counter,
 	      zs_strerror(s->error_code));
@@ -306,7 +306,7 @@ zone_contents_t *zonefile_load(zloader_t *loader)
 		zone_do_sem_checks(zc->z, check_level,
 		                   &err_handler, first_nsec3_node,
 		                   last_nsec3_node);
-		INFO(zname, "semantic checks completed");
+		INFO(zname, "semantic check, completed");
 	}
 
 	return zc->z;
