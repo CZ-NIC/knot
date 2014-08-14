@@ -99,7 +99,7 @@ static inline void udp_pps_sample(unsigned n, unsigned thr_id)
 			unsigned pps = __pps_rx;
 			memcpy(&__pps_t0, &__pps_t1, sizeof(struct timeval));
 			__pps_rx = 0;
-			log_server_info("RX rate %u p/s.\n", pps);
+			log_server_info("RX rate %u packets/second", pps);
 		}
 	}
 }

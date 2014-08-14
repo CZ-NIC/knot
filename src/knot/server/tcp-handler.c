@@ -83,7 +83,7 @@ static enum fdset_sweep_state tcp_sweep(fdset_t *set, int i, void *data)
 	char addr_str[SOCKADDR_STRLEN] = {0};
 	sockaddr_tostr(&ss, addr_str, sizeof(addr_str));
 
-	log_notice("connection '%s' was terminated due to inactivity", addr_str);
+	log_notice("connection terminated due to inactivity, address '%s'", addr_str);
 	close(fd);
 	return FDSET_SWEEP;
 }
@@ -122,8 +122,8 @@ static int tcp_handle(tcp_context_t *tcp, int fd,
 			rcu_read_lock();
 			char addr_str[SOCKADDR_STRLEN] = {0};
 			sockaddr_tostr(&ss, addr_str, sizeof(addr_str));
-			log_warning("couldn't receive query from '%s' within "
-			            "the time limit of %ds",
+			log_warning("connection timed out, address '%s', "
+			            "timeout %d seconds",
 			            addr_str, conf()->max_conn_idle);
 			rcu_read_unlock();
 		}
@@ -172,10 +172,9 @@ int tcp_accept(int fd)
 			if (en == EMFILE || en == ENFILE ||
 			    en == ENOBUFS || en == ENOMEM) {
 				int throttle = tcp_throttle();
-				log_error("throttling TCP connection pool for"
-				          "%d seconds because of too many open "
-				          "descriptors or lack of memory",
-				          throttle);
+				log_error("throttling TCP connection pool for "
+				          "%d seconds, too many allocated "
+				          "resources", throttle);
 				sleep(throttle);
 			}
 
@@ -190,8 +189,8 @@ int tcp_accept(int fd)
 		rcu_read_unlock();
 		tv.tv_usec = 0;
 		if (setsockopt(incoming, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) < 0) {
-			log_warning("couldn't set up TCP connection watchdog "
-			            "timer for fd=%d", incoming);
+			log_warning("cannot set up TCP connection watchdog "
+			            "timer, fd %d", incoming);
 		}
 #endif
 	}

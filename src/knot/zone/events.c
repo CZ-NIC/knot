@@ -260,7 +260,7 @@ static int event_reload(zone_t *zone)
 			               "to fit the changes");
 		} else {
 			log_zone_error(zone->name, "failed to store changes into "
-			               "journal: %s", knot_strerror(result));
+			               "journal (%s)", knot_strerror(result));
 		}
 		goto fail;
 	}

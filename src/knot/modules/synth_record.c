@@ -23,7 +23,7 @@
 
 /* Defines. */
 #define ARPA_ZONE_LABELS 2
-#define MODULE_ERR(msg...) log_error("module 'synth_record': " msg)
+#define MODULE_ERR(msg...) log_error("module 'synth_record', " msg)
 
 /*! \brief Supported answer synthesis template types. */
 enum synth_template_type {

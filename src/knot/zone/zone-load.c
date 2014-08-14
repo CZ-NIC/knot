@@ -110,7 +110,7 @@ int zone_load_journal(zone_t *zone, zone_contents_t *contents)
 
 	/* Apply changesets. */
 	ret = apply_changesets_directly(contents, &chgs);
-	log_zone_info(zone->name, "serial %u -> %u: %s",
+	log_zone_info(zone->name, "serial %u -> %u (%s)",
 	              serial, zone_contents_serial(contents),
 	              knot_strerror(ret));
 
@@ -168,18 +168,18 @@ int zone_load_post(zone_contents_t *contents, zone_t *zone, uint32_t *dnssec_ref
 		}
 		ret = zone_contents_create_diff(zone->contents, contents, &change);
 		if (ret == KNOT_ENODIFF) {
-			log_zone_warning(zone->name, "zone file changed, "
-			                 "but serial didn't, won't create "
-			                 "create journal entry");
+			log_zone_warning(zone->name, "cannot create journal "
+			                 "entry, zone file changed without "
+					 "SOA serial update");
 			ret = KNOT_EOK;
 		} else if (ret == KNOT_ERANGE) {
-			log_zone_warning(zone->name, "zone file changed, "
-			                 "but serial is lower than before, "
-			                 "IXFR history will be lost");
+			log_zone_warning(zone->name, "IXFR history will be lost, "
+			                 "zone file changed with SOA serial "
+			                 "decreased");
 			ret = KNOT_EOK;
 		} else if (ret != KNOT_EOK) {
 			log_zone_error(zone->name, "failed to calculate "
-			               "differences from the zone file update: %s",
+			               "differences from the zone file update (%s)",
 			               knot_strerror(ret));
 			return ret;
 		}
