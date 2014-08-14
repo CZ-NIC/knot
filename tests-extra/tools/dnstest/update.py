@@ -39,6 +39,6 @@ class Update(object):
         resp_rc = dns.rcode.to_text(resp.rcode())
         compare(resp_rc, rc, "UPDATE RCODE")
 
-        if resp_rc == "NOERROR" and self.upd.keyring and not resp.had_tsig:
+        if self.upd.keyring and not resp.had_tsig:
             set_err("INVALID RESPONSE")
             check_log("ERROR: Expected TSIG signed response")
