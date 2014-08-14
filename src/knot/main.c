@@ -25,7 +25,7 @@
 #include <cap-ng.h>
 #endif /* HAVE_CAP_NG_H */
 
-#ifdef ENABLE_SYSTEMD_NOTIFY
+#ifdef ENABLE_SYSTEMD
 #include <systemd/sd-daemon.h>
 #endif
 
@@ -46,7 +46,7 @@ static volatile short sig_stopping = 0;
 /* \brief Signal started state to the init system. */
 static void init_signal_started(void)
 {
-#ifdef ENABLE_SYSTEMD_NOTIFY
+#ifdef ENABLE_SYSTEMD
 	sd_notify(0, "READY=1");
 #endif
 }

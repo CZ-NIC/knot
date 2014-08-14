@@ -22,6 +22,11 @@
 #include <unistd.h>
 #include <sys/time.h>
 
+#ifdef ENABLE_SYSTEMD
+#define SD_JOURNAL_SUPPRESS_LOCATION 1
+#include <systemd/sd-journal.h>
+#endif
+
 #include "common/log.h"
 #include "common-knot/lists.h"
 #include "common-knot/strlcpy.h"
@@ -231,7 +236,7 @@ int log_levels_add(int facility, logsrc_t src, uint8_t levels)
 	return sink_levels_add(s_log, facility, src, levels);
 }
 
-static int emit_log_msg(logsrc_t src, int level, const char *msg)
+static int emit_log_msg(int level, const char *zone, size_t zone_len, const char *msg)
 {
 	rcu_read_lock();
 	struct log_sink *log = s_log;
@@ -242,10 +247,19 @@ static int emit_log_msg(logsrc_t src, int level, const char *msg)
 
 	int ret = 0;
 	uint8_t *f = facility_at(log, LOGT_SYSLOG);
+	logsrc_t src = zone ? LOG_ZONE : LOG_SERVER;
 
 	// Syslog
 	if (facility_levels(f, src) & LOG_MASK(level)) {
+#ifdef ENABLE_SYSTEMD
+		char *zone_fmt = zone ? "ZONE=%.*s" : NULL;
+		sd_journal_send("PRIORITY=%d", level,
+		                "MESSAGE=%s", msg,
+		                zone_fmt, zone_len, zone,
+		                NULL);
+#else
 		syslog(level, "%s", msg);
+#endif
 		ret = 1; // To prevent considering the message as ignored.
 	}
 
@@ -346,14 +360,15 @@ static int log_msg_text(int level, const char *zone, const char *fmt, va_list ar
 	}
 
 	/* Prefix zone name. */
+	size_t zone_len = 0;
 	if (zone) {
 		/* Strip terminating dot (unless root zone). */
-		size_t len = strlen(zone);
-		if (len > 1 && zone[len - 1] == '.') {
-			len -= 1;
+		zone_len = strlen(zone);
+		if (zone_len > 1 && zone[zone_len - 1] == '.') {
+			zone_len -= 1;
 		}
 
-		ret = log_msg_add(&write, &capacity, "[%.*s] ", len, zone);
+		ret = log_msg_add(&write, &capacity, "[%.*s] ", zone_len, zone);
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
@@ -364,8 +379,7 @@ static int log_msg_text(int level, const char *zone, const char *fmt, va_list ar
 
 	/* Send to logging facilities. */
 	if (ret >= 0) {
-		logsrc_t src = zone ? LOG_ZONE : LOG_SERVER;
-		ret = emit_log_msg(src, level, sbuf);
+		ret = emit_log_msg(level, zone, zone_len, sbuf);
 	}
 
 	return ret;
