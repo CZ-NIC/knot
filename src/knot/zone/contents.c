@@ -986,7 +986,6 @@ dbg_zone_exec_detail(
 	 */
 	const knot_rdataset_t *nsec3_rrs =
 		node_rdataset(*nsec3_previous, KNOT_RRTYPE_NSEC3);
-	assert(nsec3_rrs);
 	const zone_node_t *original_prev = *nsec3_previous;
 
 	int match = 0;
@@ -1083,7 +1082,7 @@ int zone_contents_adjust_pointers(zone_contents_t *contents)
 	int ret = zone_contents_load_nsec3param(contents);
 	if (ret != KNOT_EOK) {
 		log_zone_error(contents->apex->owner,
-			       "failed to load NSEC3 parameters: %s",
+			       "failed to load NSEC3 parameters (%s)",
 			       knot_strerror(ret));
 		return ret;
 	}
@@ -1120,7 +1119,7 @@ int zone_contents_adjust_full(zone_contents_t *zone,
 	int result = zone_contents_load_nsec3param(zone);
 	if (result != KNOT_EOK) {
 		log_zone_error(zone->apex->owner,
-			       "failed to load NSEC3 parameters: %s",
+			       "failed to load NSEC3 parameters (%s)",
 			       knot_strerror(result));
 		return result;
 	}
@@ -1365,8 +1364,8 @@ uint32_t zone_contents_next_serial(const zone_contents_t *zone, int policy)
 
 	/* If the new serial is 'lower' or equal than the new one, warn the user.*/
 	if (knot_serial_compare(old_serial, new_serial) >= 0) {
-		log_zone_warning(zone->apex->owner, "new serial will be lower "
-		                 "than the current one (%u -> %u)",
+		log_zone_warning(zone->apex->owner, "updated serial is lower "
+		                 "than current, serial %u -> %u",
 		                 old_serial, new_serial);
 	}
 

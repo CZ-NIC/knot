@@ -253,6 +253,28 @@ class Test(object):
                     raise Exception("Server is out of testing scope")
                 slave.set_slave(zone, master, ddns, ixfr)
 
+    def _canonize_record(self, rtype, record):
+        ''':-(('''
+        item_owner_split = record.strip().split(" ", 1)
+
+        if rtype in [dns.rdatatype.SOA, dns.rdatatype.NS, dns.rdatatype.CNAME, \
+                     dns.rdatatype.PTR, dns.rdatatype.DNAME, dns.rdatatype.SOA, \
+                     dns.rdatatype.MINFO, dns.rdatatype.RP, dns.rdatatype.MX, \
+                     dns.rdatatype.AFSDB, dns.rdatatype.RT, dns.rdatatype.KX, \
+                     dns.rdatatype.SRV, dns.rdatatype.NSEC]:
+            item_data = item_owner_split[1].lower()
+        # pythondns prints signer's as @
+        #elif rtype in [dns.rdatatype.RRSIG]:
+        #    item_dname_split = item_owner_split[1].rsplit(" ", 1)
+        #    item_data = item_dname_split[0].lower() + " " + item_dname_split[1]
+        elif rtype in [dns.rdatatype.NAPTR]:
+            item_dname_split = item_owner_split[1].rsplit(" ", 1)
+            item_data = item_dname_split[0] + " " + item_dname_split[1].lower()
+        else:
+            item_data = item_owner_split[1]
+
+        return item_owner_split[0].lower() + " " + item_data
+
     def _axfr_records(self, resp, zone):
         unique = set()
         records = list()
@@ -261,10 +283,9 @@ class Test(object):
             for rrset in msg.answer:
                 rrs = rrset.to_text(origin=dns.name.from_text(zone.name),
                                     relativize=False).split("\n")
+
                 for rr in rrs:
-                    # Owner to lower-case :-(
-                    item = rr.strip().split(" ", 1)
-                    item_lower = item[0].lower() + " " + item[1]
+                    item_lower = self._canonize_record(rrset.rdtype, rr.strip())
 
                     if item_lower in unique and rrset.rdtype != dns.rdatatype.SOA:
                         detail_log("!Duplicate record server='%s':" % server.name)
@@ -290,7 +311,6 @@ class Test(object):
             detail_log("!Extra records server='%s':" % server2.name)
             for record in diff2:
                 detail_log("  %s" % record)
-
 
     def _axfr_diff(self, server1, server2, zone):
         unique1, rrsets1 = self._axfr_records(server1.dig(zone.name, "AXFR", log_no_sep=True), zone)
@@ -367,8 +387,7 @@ class Test(object):
                 records = rrset.to_text(origin=dns.name.from_text(zone.name),
                                     relativize=False).split("\n")
                 for record in records:
-                    item = record.strip().split(" ", 1)
-                    item_lower = item[0].lower() + " " + item[1]
+                    item_lower = self._canonize_record(rrset.rdtype, record.strip())
 
                     if rrset.rdtype == dns.rdatatype.SOA:
                         if not soa: # IXFR leading SOA.

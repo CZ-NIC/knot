@@ -30,12 +30,13 @@
 #include "libknot/rrtype/rdname.h"
 #include "libknot/rrtype/soa.h"
 #include "libknot/dnssec/random.h"
+#include "libknot/packet/wire.h"
 #include "knot/dnssec/zone-sign.h"
 #include "knot/dnssec/zone-nsec.h"
 
 #define KNOT_CTL_REALM "knot."
 #define KNOT_CTL_REALM_EXT ("." KNOT_CTL_REALM)
-#define CMDARGS_BUFLEN (1024*1024) /* 1M */
+#define CMDARGS_BUFLEN KNOT_WIRE_MAX_PKTSIZE
 #define CMDARGS_BUFLEN_LOG 256
 #define KNOT_CTL_SOCKET_UMASK 0007
 
@@ -313,16 +314,17 @@ static int remote_c_zonestatus(server_t *s, remote_cmdargs_t* a)
  */
 static int remote_c_refresh(server_t *s, remote_cmdargs_t* a)
 {
-	/* Refresh all. */
 	dbg_server("remote: %s\n", __func__);
 	if (a->argc == 0) {
+		/* Refresh all. */
 		dbg_server_verb("remote: refreshing all zones\n");
 		knot_zonedb_foreach(s->zone_db, remote_zone_refresh);
-		return KNOT_EOK;
+	} else {
+		/* Refresh specific zones. */
+		remote_rdata_apply(s, a, &remote_zone_refresh);
 	}
 
-	/* Refresh specific zones. */
-	return remote_rdata_apply(s, a, &remote_zone_refresh);
+	return KNOT_CTL_ACCEPTED;
 }
 
 /*!
@@ -333,14 +335,17 @@ static int remote_c_refresh(server_t *s, remote_cmdargs_t* a)
  */
 static int remote_c_retransfer(server_t *s, remote_cmdargs_t* a)
 {
-	/* Refresh all. */
 	dbg_server("remote: %s\n", __func__);
 	if (a->argc == 0) {
+		/* Refresh all. */
 		return KNOT_ENOTSUP;
+	} else {
+		/* Refresh specific zones. */
+		remote_rdata_apply(s, a, &remote_zone_retransfer);
 	}
 
-	/* Refresh specific zones. */
-	return remote_rdata_apply(s, a, &remote_zone_retransfer);
+	return KNOT_CTL_ACCEPTED;
+
 }
 
 /*!
@@ -352,24 +357,24 @@ static int remote_c_retransfer(server_t *s, remote_cmdargs_t* a)
  */
 static int remote_c_flush(server_t *s, remote_cmdargs_t* a)
 {
-	/* Flush all. */
 	dbg_server("remote: %s\n", __func__);
 	if (a->argc == 0) {
-		int ret = 0;
+		/* Flush all. */
 		dbg_server_verb("remote: flushing all zones\n");
 		rcu_read_lock();
 		knot_zonedb_iter_t it;
 		knot_zonedb_iter_begin(s->zone_db, &it);
 		while(!knot_zonedb_iter_finished(&it)) {
-			ret = remote_zone_flush(knot_zonedb_iter_val(&it));
+			remote_zone_flush(knot_zonedb_iter_val(&it));
 			knot_zonedb_iter_next(&it);
 		}
 		rcu_read_unlock();
-		return ret;
+	} else {
+		/* Flush specific zones. */
+		remote_rdata_apply(s, a, &remote_zone_flush);
 	}
 
-	/* Flush specific zones. */
-	return remote_rdata_apply(s, a, &remote_zone_flush);
+	return KNOT_CTL_ACCEPTED;
 }
 
 /*!
@@ -381,10 +386,14 @@ static int remote_c_signzone(server_t *server, remote_cmdargs_t* arguments)
 	dbg_server("remote: %s\n", __func__);
 
 	if (arguments->argc == 0) {
+		/* Resign all. */
 		return KNOT_ENOTSUP;
+	} else {
+		/* Resign specific zones. */
+		remote_rdata_apply(server, arguments, remote_zone_sign);
 	}
 
-	return remote_rdata_apply(server, arguments, remote_zone_sign);
+	return KNOT_CTL_ACCEPTED;
 }
 
 /*!
@@ -563,7 +572,7 @@ static void log_command(const char *cmd, const remote_cmdargs_t* args)
 		}
 	}
 
-	log_info("remote command: '%s%s'", cmd, params);
+	log_info("remote control, received command '%s%s'", cmd, params);
 }
 
 int remote_answer(int sock, server_t *s, knot_pkt_t *pkt)
@@ -657,7 +666,7 @@ static int zones_verify_tsig_query(const knot_pkt_t *query,
 	assert(tsig_rcode != NULL);
 
 	if (query->tsig_rr == NULL) {
-		log_info("TSIG: key required, query REFUSED");
+		log_info("TSIG, key required, query REFUSED");
 		*rcode = KNOT_RCODE_REFUSED;
 		return KNOT_TSIG_EBADKEY;
 	}
@@ -667,7 +676,7 @@ static int zones_verify_tsig_query(const knot_pkt_t *query,
 	 */
 	knot_tsig_algorithm_t alg = tsig_rdata_alg(query->tsig_rr);
 	if (knot_tsig_digest_length(alg) == 0) {
-		log_info("TSIG: unsupported algorithm, query NOTAUTH");
+		log_info("TSIG, unsupported algorithm, query NOTAUTH");
 		/*! \todo [TSIG] It is unclear from RFC if I
 		 *               should treat is as a bad key
 		 *               or some other error.
@@ -710,7 +719,7 @@ static int zones_verify_tsig_query(const knot_pkt_t *query,
 
 	if (mac_len > digest_max_size) {
 		*rcode = KNOT_RCODE_FORMERR;
-		log_info("TSIG: MAC length %zu exceeds maximum size %zu",
+		log_info("TSIG, MAC length %zu exceeds maximum size %zu",
 		         mac_len, digest_max_size);
 		return KNOT_EMALF;
 	} else {
@@ -789,7 +798,7 @@ int remote_process(server_t *s, conf_iface_t *ctl_if, int sock,
 		uint16_t ts_trc = 0;
 		uint64_t ts_tmsigned = 0;
 		if (match == NULL) {
-			log_warning("denied remote control for '%s', "
+			log_warning("remote control, denied '%s', "
 			            "no matching ACL", addr_str);
 			remote_senderr(client, pkt->wire, pkt->size);
 			ret = KNOT_EACCES;
@@ -801,7 +810,7 @@ int remote_process(server_t *s, conf_iface_t *ctl_if, int sock,
 		/* Check TSIG. */
 		if (tsig_key) {
 			if (pkt->tsig_rr == NULL) {
-				log_warning("denied remote control for '%s', "
+				log_warning("remote control, denied '%s', "
 				            "key required", addr_str);
 				remote_senderr(client, pkt->wire, pkt->size);
 				ret = KNOT_EACCES;
@@ -810,7 +819,7 @@ int remote_process(server_t *s, conf_iface_t *ctl_if, int sock,
 			ret = zones_verify_tsig_query(pkt, tsig_key, &ts_rc,
 			                              &ts_trc, &ts_tmsigned);
 			if (ret != KNOT_EOK) {
-				log_warning("denied remote control for '%s', "
+				log_warning("remote control, denied '%s', "
 				            "key verification failed", addr_str);
 				remote_senderr(client, pkt->wire, pkt->size);
 				ret = KNOT_EACCES;

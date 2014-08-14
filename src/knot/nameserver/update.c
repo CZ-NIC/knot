@@ -106,7 +106,7 @@ static int check_prereqs(struct knot_request_data *request,
 	uint16_t rcode = KNOT_RCODE_NOERROR;
 	int ret = ddns_process_prereqs(request->query, update, &rcode);
 	if (ret != KNOT_EOK) {
-		UPDATE_LOG(LOG_WARNING, "prerequisites not met - %s\n",
+		UPDATE_LOG(LOG_WARNING, "prerequisites not met (%s)",
 		           knot_strerror(ret));
 		assert(rcode != KNOT_RCODE_NOERROR);
 		knot_wire_set_rcode(request->resp->wire, rcode);
@@ -123,7 +123,7 @@ static int process_single_update(struct knot_request_data *request,
 	uint16_t rcode = KNOT_RCODE_NOERROR;
 	int ret = ddns_process_update(zone, request->query, update, &rcode);
 	if (ret != KNOT_EOK) {
-		UPDATE_LOG(LOG_WARNING, "failed to apply - %s\n",
+		UPDATE_LOG(LOG_WARNING, "failed to apply (%s)",
 		           knot_strerror(ret));
 		assert(rcode != KNOT_RCODE_NOERROR);
 		knot_wire_set_rcode(request->resp->wire, rcode);
@@ -301,8 +301,8 @@ static int process_requests(zone_t *zone, list_t *requests)
 	}
 
 	gettimeofday(&t_end, NULL);
-	log_zone_info(zone->name, "DDNS, serial %u -> %u", old_serial, new_serial);
-	log_zone_info(zone->name, "DDNS, update finished in %.02f seconds",
+	log_zone_info(zone->name, "DDNS, update finished, serial %u -> %u, "
+	              "%.02f seconds", old_serial, new_serial,
 	              time_diff(&t_start, &t_end) / 1000.0);
 	
 	zone_events_schedule(zone, ZONE_EVENT_NOTIFY, ZONE_EVENT_NOW);

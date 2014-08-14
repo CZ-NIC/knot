@@ -120,6 +120,7 @@ static int server_init_iface(iface_t *new_if, conf_iface_t *cfg_if)
 	/* Create bound UDP socket. */
 	int sock = net_bound_socket(SOCK_DGRAM, &cfg_if->addr);
 	if (sock < 0) {
+		log_error("cannot bind address '%s' (%s)", addr_str, knot_strerror(sock));
 		return sock;
 	}
 
@@ -224,7 +225,7 @@ static int reconfigure_sockets(const struct conf_t *conf, server_t *s)
 			rem_node((node_t *)m);
 		} else {
 			sockaddr_tostr(&cfg_if->addr, addr_str, sizeof(addr_str));
-			log_info("binding to interface %s", addr_str);
+			log_info("binding to interface '%s'", addr_str);
 
 			/* Create new interface. */
 			m = malloc(sizeof(iface_t));
@@ -493,7 +494,7 @@ static int reconfigure_threads(const struct conf_t *conf, server_t *server)
 		ret = server_init_handler(server, IO_UDP, conf_udp_threads(conf),
 		                          &udp_master, &udp_master_destruct);
 		if (ret != KNOT_EOK) {
-			log_error("failed to create UDP threads: %s",
+			log_error("failed to create UDP threads (%s)",
 			          knot_strerror(ret));
 			return ret;
 		}
@@ -503,7 +504,7 @@ static int reconfigure_threads(const struct conf_t *conf, server_t *server)
 		ret = server_init_handler(server, IO_TCP, conf_tcp_threads(conf),
 		                          &tcp_master, &tcp_master_destruct);
 		if (ret != KNOT_EOK) {
-			log_error("failed to create TCP threads: %s",
+			log_error("failed to create TCP threads (%s)",
 			          knot_strerror(ret));
 			return ret;
 		}
@@ -536,9 +537,9 @@ static int reconfigure_rate_limits(const struct conf_t *conf, server_t *server)
 			/* We cannot free it, threads may use it.
 			 * Setting it to <1 will disable rate limiting. */
 			if (conf->rrl < 1) {
-				log_info("rate limiting disabled");
+				log_info("rate limiting, disabled");
 			} else {
-				log_info("rate limiting set to %u responses/sec",
+				log_info("rate limiting, enabled %u responses/second",
 					 conf->rrl);
 			}
 			rrl_setrate(server->rrl, conf->rrl);

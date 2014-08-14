@@ -84,7 +84,7 @@ static void cf_print_error(void *scanner, const char *msg)
 		filename = new_config->filename;
 	}
 
-	log_error("config error in '%s' (line %d token '%s'): %s",
+	log_error("config error, file '%s', line %d, token '%s' (%s)",
 		  filename, lineno, text, msg);
 
 	_parser_res = KNOT_EPARSEFAIL;

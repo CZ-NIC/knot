@@ -25,7 +25,7 @@
 #include <cap-ng.h>
 #endif /* HAVE_CAP_NG_H */
 
-#ifdef ENABLE_SYSTEMD_NOTIFY
+#ifdef ENABLE_SYSTEMD
 #include <systemd/sd-daemon.h>
 #endif
 
@@ -46,7 +46,7 @@ static volatile short sig_stopping = 0;
 /* \brief Signal started state to the init system. */
 static void init_signal_started(void)
 {
-#ifdef ENABLE_SYSTEMD_NOTIFY
+#ifdef ENABLE_SYSTEMD
 	sd_notify(0, "READY=1");
 #endif
 }
@@ -114,7 +114,7 @@ static void setup_capabilities(void)
 
 		/* Apply. */
 		if (capng_apply(CAPNG_SELECT_BOTH) < 0) {
-			log_error("couldn't set process capabilities: %s",
+			log_error("couldn't set process capabilities (%s)",
 			          strerror(errno));
 		}
 	} else {
@@ -267,7 +267,7 @@ int main(int argc, char **argv)
 	int res = conf_open(config_fn);
 	conf_t *config = conf();
 	if (res != KNOT_EOK) {
-		log_fatal("couldn't load configuration '%s': %s",
+		log_fatal("couldn't load configuration file '%s' (%s)",
 		          config_fn, knot_strerror(res));
 		return EXIT_FAILURE;
 	}
@@ -281,7 +281,7 @@ int main(int argc, char **argv)
 	server_t server;
 	res = server_init(&server, conf_bg_threads(config));
 	if (res != KNOT_EOK) {
-		log_fatal("could not initialize server: %s", knot_strerror(res));
+		log_fatal("could not initialize server (%s)", knot_strerror(res));
 		conf_free(conf());
 		log_close();
 		return EXIT_FAILURE;
@@ -349,7 +349,7 @@ int main(int argc, char **argv)
 	log_info("starting server");
 	res = server_start(&server, config->async_start);
 	if (res != KNOT_EOK) {
-		log_fatal("failed to start server: %s", knot_strerror(res));
+		log_fatal("failed to start server (%s)", knot_strerror(res));
 		server_deinit(&server);
 		rcu_unregister_thread();
 		pid_cleanup(pidfile);

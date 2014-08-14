@@ -286,8 +286,8 @@ static void rrl_log_state(const struct sockaddr_storage *ss, uint16_t flags, uin
 		what = "enters";
 	}
 
-	log_notice("address '%s' %s rate-limiting (class '%s')",
-	           addr_str, what, rrl_clsstr(cls));
+	log_notice("rate limiting, address '%s' class '%s' %s limiting",
+	           addr_str, rrl_clsstr(cls), what);
 #endif
 }
 

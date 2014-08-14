@@ -105,7 +105,9 @@ class ZoneFile(object):
 
         check_log("DNSSEC VERIFY for %s (%s)" % (self.name, self.path))
 
-        cmd = Popen(["dnssec-verify", "-o", self.name, self.path],
+        # note: convert origin to lower case due to a bug in dnssec-verify
+        origin = self.name.lower()
+        cmd = Popen(["dnssec-verify", "-o", origin, self.path],
                     stdout=PIPE, stderr=PIPE, universal_newlines=True)
         (out, err) = cmd.communicate()
 

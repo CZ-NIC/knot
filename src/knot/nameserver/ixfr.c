@@ -359,7 +359,7 @@ static int ixfrin_finalize(struct answer_data *adata)
 	/* Write changes to journal. */
 	ret = zone_changes_store(ixfr->zone, &ixfr->changesets);
 	if (ret != KNOT_EOK) {
-		IXFRIN_LOG(LOG_ERR, "Failed to apply changes to zone - %s",
+		IXFRIN_LOG(LOG_ERR, "failed to write changes to journal (%s)",
 		           knot_strerror(ret));
 		updates_rollback(&ixfr->changesets);
 		update_free_zone(&new_contents);

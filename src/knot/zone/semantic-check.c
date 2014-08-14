@@ -47,70 +47,70 @@ static char *error_messages[(-ZC_ERR_UNKNOWN) + 1] = {
 	"RRSet TTLs mismatched",
 
 	[-ZC_ERR_RRSIG_RDATA_TYPE_COVERED] =
-	"RRSIG: type covered RDATA field is wrong",
+	"RRSIG, type covered RDATA field is wrong",
 	[-ZC_ERR_RRSIG_RDATA_TTL] =
-	"RRSIG: TTL RDATA field is wrong",
+	"RRSIG, TTL RDATA field is wrong",
 	[-ZC_ERR_RRSIG_RDATA_EXPIRATION] =
-	"RRSIG: expired signature",
+	"RRSIG, expired signature",
 	[-ZC_ERR_RRSIG_RDATA_LABELS] =
-	"RRSIG: labels RDATA field is wrong",
+	"RRSIG, labels RDATA field is wrong",
 	[-ZC_ERR_RRSIG_RDATA_DNSKEY_OWNER] =
-	"RRSIG: signer name is different than in DNSKEY",
+	"RRSIG, signer name is different than in DNSKEY",
 	[-ZC_ERR_RRSIG_NO_DNSKEY] =
-	"RRSIG: missing DNSKEY for RRSIG",
+	"RRSIG, missing DNSKEY for RRSIG",
 	[-ZC_ERR_RRSIG_RDATA_SIGNED_WRONG] =
-	"RRSIG: key error",
+	"RRSIG, key error",
 	[-ZC_ERR_RRSIG_NO_RRSIG] =
-	"RRSIG: no RRSIG",
+	"RRSIG, no RRSIG",
 	[-ZC_ERR_RRSIG_SIGNED] =
-	"RRSIG: signed RRSIG",
+	"RRSIG, signed RRSIG",
 	[-ZC_ERR_RRSIG_OWNER] =
-	"RRSIG: owner name RDATA field is wrong",
+	"RRSIG, owner name RDATA field is wrong",
 	[-ZC_ERR_RRSIG_CLASS] =
-	"RRSIG: class is wrong",
+	"RRSIG, class is wrong",
 	[-ZC_ERR_RRSIG_TTL] =
-	"RRSIG: TTL is wrong",
+	"RRSIG, TTL is wrong",
 
 	[-ZC_ERR_NO_NSEC] =
-	"NSEC: missing record",
+	"NSEC, missing record",
 	[-ZC_ERR_NSEC_RDATA_BITMAP] =
-	"NSEC: wrong bitmap",
+	"NSEC, wrong bitmap",
 	[-ZC_ERR_NSEC_RDATA_MULTIPLE] =
-	"NSEC: multiple records",
+	"NSEC, multiple records",
 	[-ZC_ERR_NSEC_RDATA_CHAIN] =
-	"NSEC: chain is not coherent",
+	"NSEC, chain is not coherent",
 	[-ZC_ERR_NSEC_RDATA_CHAIN_NOT_CYCLIC] =
-	"NSEC: chain is not cyclic",
+	"NSEC, chain is not cyclic",
 
 	[-ZC_ERR_NSEC3_UNSECURED_DELEGATION] =
-	"NSEC3: zone contains unsecured delegation",
+	"NSEC3, zone contains unsecured delegation",
 	[-ZC_ERR_NSEC3_NOT_FOUND] =
-	"NSEC3: could not find previous NSEC3 record in the zone",
+	"NSEC3, could not find previous NSEC3 record in the zone",
 	[-ZC_ERR_NSEC3_UNSECURED_DELEGATION_OPT] =
-	"NSEC3: unsecured delegation is not part of the opt-out span",
+	"NSEC3, unsecured delegation is not part of the opt-out span",
 	[-ZC_ERR_NSEC3_RDATA_TTL] =
-	"NSEC3: original TTL RDATA field is wrong",
+	"NSEC3, original TTL RDATA field is wrong",
 	[-ZC_ERR_NSEC3_RDATA_CHAIN] =
-	"NSEC3: chain is not coherent",
+	"NSEC3, chain is not coherent",
 	[-ZC_ERR_NSEC3_RDATA_BITMAP] =
-	"NSEC3: wrong bitmap",
+	"NSEC3, wrong bitmap",
 	[-ZC_ERR_NSEC3_EXTRA_RECORD] =
-	"NSEC3: node contains extra record, unsupported",
+	"NSEC3, node contains extra record, unsupported",
 
 	[-ZC_ERR_CNAME_EXTRA_RECORDS] =
-	"CNAME: node contains other records",
+	"CNAME, node contains other records",
 	[-ZC_ERR_DNAME_CHILDREN] =
-	"DNAME: node has children",
+	"DNAME, node has children",
 	[-ZC_ERR_CNAME_EXTRA_RECORDS_DNSSEC] =
-	"CNAME: node contains other records than RRSIG and NSEC/NSEC3",
+	"CNAME, node contains other records than RRSIG and NSEC/NSEC3",
 	[-ZC_ERR_CNAME_MULTIPLE] =
-	"CNAME: multiple records",
+	"CNAME, multiple records",
 	[-ZC_ERR_DNAME_MULTIPLE] =
-	"DNAME: multiple records",
+	"DNAME, multiple records",
 	[-ZC_ERR_CNAME_WILDCARD_SELF] =
-	"CNAME: wildcard pointing to itself",
+	"CNAME, wildcard pointing to itself",
 	[-ZC_ERR_DNAME_WILDCARD_SELF] =
-	"DNAME: wildcard pointing to itself",
+	"DNAME, wildcard pointing to itself",
 
 	/* ^
 	   | Important errors (to be logged on first occurence and counted) */
@@ -119,9 +119,9 @@ static char *error_messages[(-ZC_ERR_UNKNOWN) + 1] = {
 	   specified otherwise */
 
 	[-ZC_ERR_GLUE_NODE] =
-	"GLUE: node with glue record missing",
+	"GLUE, node with glue record missing",
 	[-ZC_ERR_GLUE_RECORD] =
-	"GLUE: record with glue address missing",
+	"GLUE, record with glue address missing",
 };
 
 void err_handler_init(err_handler_t *h)
@@ -169,12 +169,12 @@ static void log_error_from_node(err_handler_t *handler,
 	const knot_dname_t *zone_name = zone->apex->owner;
 
 	if (error > (int)ZC_ERR_GLUE_RECORD) {
-		log_zone_warning(zone_name, "sematic check: unknown error");
+		log_zone_warning(zone_name, "sematic check, unknown error");
 		return;
 	}
 
 	if (node == NULL) {
-		log_zone_warning(zone_name, "semantic check: %d warnings, error %s",
+		log_zone_warning(zone_name, "semantic check, %d warnings, error (%s)",
 		                 handler->errors[-error], error_messages[-error]);
 		return;
 	}
@@ -184,7 +184,7 @@ static void log_error_from_node(err_handler_t *handler,
 	char *name = knot_dname_to_str(node->owner);
 	const char *errmsg = error_messages[-error];
 
-	log_zone_warning(zone_name, "semantic check: node '%s': %s%s%s",
+	log_zone_warning(zone_name, "semantic check, node '%s' (%s%s%s)",
 	                 name,
 			 errmsg ? errmsg : "unknown error",
 			 data ? " " : "",
@@ -288,7 +288,7 @@ static int check_rrsig_rdata(err_handler_t *handler,
 	char info_str[50] = { '\0' };
 	char type_str[16] = { '\0' };
 	knot_rrtype_to_string(rrset->type, type_str, sizeof(type_str));
-	int ret = snprintf(info_str, sizeof(info_str), "Record type: %s.", type_str);
+	int ret = snprintf(info_str, sizeof(info_str), "record type '%s'", type_str);
 	if (ret < 0 || ret >= sizeof(info_str)) {
 		return KNOT_ENOMEM;
 	}
@@ -385,7 +385,7 @@ static int check_rrsig_rdata(err_handler_t *handler,
 		} else {
 			err_handler_handle_error(handler, zone, node,
 			                         ZC_ERR_RRSIG_RDATA_SIGNED_WRONG,
-			                         "DNSKEY RDATA not matching.");
+			                         "DNSKEY RDATA not matching");
 		}
 	}
 
@@ -421,7 +421,7 @@ static int check_rrsig_in_rrset(err_handler_t *handler,
 	char info_str[50] = { '\0' };
 	char type_str[16] = { '\0' };
 	knot_rrtype_to_string(rrset->type, type_str, sizeof(type_str));
-	int ret = snprintf(info_str, sizeof(info_str), "Record type: %s.",
+	int ret = snprintf(info_str, sizeof(info_str), "record type '%s'",
 	                   type_str);
 	if (ret < 0 || ret >= sizeof(info_str)) {
 		return KNOT_ENOMEM;
@@ -463,7 +463,7 @@ static int check_rrsig_in_rrset(err_handler_t *handler,
 		int ret = check_rrsig_rdata(handler, zone, node, &rrsigs, i,
 		                            rrset, dnskey_rrset);
 		if (ret != KNOT_EOK) {
-			dbg_semcheck("Could not check RRSIG properly (%s).\n",
+			dbg_semcheck("could not check RRSIG properly (%s)",
 			             knot_strerror(ret));
 			break;
 		}
@@ -744,7 +744,7 @@ static int sem_check_node_mandatory(const zone_contents_t *zone,
 			*fatal_error = true;
 			err_handler_handle_error(handler, zone, node,
 			                         ZC_ERR_DNAME_CHILDREN,
-			                         "Error triggered by parent node.");
+			                         "error triggered by parent node");
 		}
 	}
 
@@ -752,7 +752,7 @@ static int sem_check_node_mandatory(const zone_contents_t *zone,
 		*fatal_error = true;
 		err_handler_handle_error(handler, zone, node,
 		                         ZC_ERR_DNAME_CHILDREN,
-		                         "Error triggered by child node.");
+		                         "error triggered by child node");
 	}
 
 	return KNOT_EOK;
@@ -960,9 +960,7 @@ static int semantic_checks_dnssec(zone_contents_t *zone,
 			int ret = check_nsec3_node_in_zone(zone, node,
 			                                   handler);
 			if (ret != KNOT_EOK) {
-				dbg_semcheck("semchecks: check_dnssec: "
-				              "Checking of NSEC3 node "
-				              "failed. Reason: %s.\n",
+				dbg_semcheck("semantic check, NSEC3 node (%s)",
 				              knot_strerror(ret));
 				return ret;
 			}
@@ -1075,7 +1073,7 @@ void log_cyclic_errors_in_zone(err_handler_t *handler,
 		                                                    next_dname_size,
 		                                                    apex->owner);
 		if (next_dname == NULL) {
-			log_zone_warning(zone->apex->owner, "sematic check: "
+			log_zone_warning(zone->apex->owner, "sematic check, "
 			                 "could not create new dname");
 			return;
 		}
@@ -1112,11 +1110,17 @@ void log_cyclic_errors_in_zone(err_handler_t *handler,
 
 			const knot_dname_t *next_dname = knot_nsec_next(nsec_rrs);
 			assert(next_dname);
+			knot_dname_t *lowercase = knot_dname_copy(next_dname, NULL);
+			if (lowercase == NULL) {
+				return;
+			}
+			knot_dname_to_lower(lowercase);
 
-			if (knot_dname_cmp(next_dname, zone->apex->owner) !=0) {
+			if (knot_dname_cmp(lowercase, zone->apex->owner) != 0) {
 				err_handler_handle_error(handler, zone, last_node,
 					 ZC_ERR_NSEC_RDATA_CHAIN_NOT_CYCLIC, NULL);
 			}
+			knot_dname_free(&lowercase, NULL);
 		}
 	}
 }
