@@ -563,7 +563,7 @@ static void log_command(const char *cmd, const remote_cmdargs_t* args)
 		}
 	}
 
-	log_info("remote command: '%s%s'", cmd, params);
+	log_info("remote control, received command '%s%s'", cmd, params);
 }
 
 int remote_answer(int sock, server_t *s, knot_pkt_t *pkt)
@@ -789,7 +789,7 @@ int remote_process(server_t *s, conf_iface_t *ctl_if, int sock,
 		uint16_t ts_trc = 0;
 		uint64_t ts_tmsigned = 0;
 		if (match == NULL) {
-			log_warning("denied remote control for '%s', "
+			log_warning("remote control, denied '%s', "
 			            "no matching ACL", addr_str);
 			remote_senderr(client, pkt->wire, pkt->size);
 			ret = KNOT_EACCES;
@@ -801,7 +801,7 @@ int remote_process(server_t *s, conf_iface_t *ctl_if, int sock,
 		/* Check TSIG. */
 		if (tsig_key) {
 			if (pkt->tsig_rr == NULL) {
-				log_warning("denied remote control for '%s', "
+				log_warning("remote control, denied '%s', "
 				            "key required", addr_str);
 				remote_senderr(client, pkt->wire, pkt->size);
 				ret = KNOT_EACCES;
@@ -810,7 +810,7 @@ int remote_process(server_t *s, conf_iface_t *ctl_if, int sock,
 			ret = zones_verify_tsig_query(pkt, tsig_key, &ts_rc,
 			                              &ts_trc, &ts_tmsigned);
 			if (ret != KNOT_EOK) {
-				log_warning("denied remote control for '%s', "
+				log_warning("remote control, denied '%s', "
 				            "key verification failed", addr_str);
 				remote_senderr(client, pkt->wire, pkt->size);
 				ret = KNOT_EACCES;

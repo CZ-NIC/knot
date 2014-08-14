@@ -174,7 +174,7 @@ static void log_error_from_node(err_handler_t *handler,
 	}
 
 	if (node == NULL) {
-		log_zone_warning(zone_name, "semantic check, warnings %d, error (%s)",
+		log_zone_warning(zone_name, "semantic check, %d warnings, error (%s)",
 		                 handler->errors[-error], error_messages[-error]);
 		return;
 	}
@@ -1073,7 +1073,7 @@ void log_cyclic_errors_in_zone(err_handler_t *handler,
 		                                                    next_dname_size,
 		                                                    apex->owner);
 		if (next_dname == NULL) {
-			log_zone_warning(zone->apex->owner, "sematic check: "
+			log_zone_warning(zone->apex->owner, "sematic check, "
 			                 "could not create new dname");
 			return;
 		}

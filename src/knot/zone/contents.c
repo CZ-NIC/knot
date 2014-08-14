@@ -1364,8 +1364,8 @@ uint32_t zone_contents_next_serial(const zone_contents_t *zone, int policy)
 
 	/* If the new serial is 'lower' or equal than the new one, warn the user.*/
 	if (knot_serial_compare(old_serial, new_serial) >= 0) {
-		log_zone_warning(zone->apex->owner, "new serial will be lower "
-		                 "than the current one (%u -> %u)",
+		log_zone_warning(zone->apex->owner, "updated serial is lower "
+		                 "than current, serial %u -> %u",
 		                 old_serial, new_serial);
 	}
 

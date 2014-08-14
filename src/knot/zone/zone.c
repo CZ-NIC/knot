@@ -116,7 +116,7 @@ int zone_change_store(zone_t *zone, changeset_t *change)
 
 	int ret = journal_store_changeset(change, conf->ixfr_db, conf->ixfr_fslimit);
 	if (ret == KNOT_EBUSY) {
-		log_zone_notice(zone->name, "zone journal is full, flushing");
+		log_zone_notice(zone->name, "journal is full, flushing");
 
 		/* Transaction rolled back, journal released, we may flush. */
 		ret = zone_flush_journal(zone);

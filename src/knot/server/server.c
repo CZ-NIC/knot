@@ -224,7 +224,7 @@ static int reconfigure_sockets(const struct conf_t *conf, server_t *s)
 			rem_node((node_t *)m);
 		} else {
 			sockaddr_tostr(&cfg_if->addr, addr_str, sizeof(addr_str));
-			log_info("binding to interface %s", addr_str);
+			log_info("binding to interface '%s'", addr_str);
 
 			/* Create new interface. */
 			m = malloc(sizeof(iface_t));
@@ -538,7 +538,7 @@ static int reconfigure_rate_limits(const struct conf_t *conf, server_t *server)
 			if (conf->rrl < 1) {
 				log_info("rate limiting disabled");
 			} else {
-				log_info("rate limiting set to %u responses/sec",
+				log_info("rate limiting enabled, %u responses/sec",
 					 conf->rrl);
 			}
 			rrl_setrate(server->rrl, conf->rrl);
