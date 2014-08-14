@@ -46,6 +46,8 @@ typedef struct {
 	bool	human_ttl;
 	/*!< Format timestamp as YYYYMMDDHHmmSS. */
 	bool	human_tmstamp;
+	/*!< Allow empty rdata for all types (DDNS). */
+	bool	empty_rdata;
 	/*!< ASCII string to IDN string transformation callback. */
 	void (*ascii_to_idn)(char **name);
 } knot_dump_style_t;

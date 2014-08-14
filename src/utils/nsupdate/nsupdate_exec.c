@@ -108,12 +108,13 @@ cmd_handle_f cmd_handle[] = {
 
 /* {prereq} command table. */
 const char* pq_array[] = {
-        "\x8" "nxdomain",
-        "\x7" "nxrrset",
-        "\x8" "yxdomain",
-        "\x7" "yxrrset",
-        NULL
+	"\x8" "nxdomain",
+	"\x7" "nxrrset",
+	"\x8" "yxdomain",
+	"\x7" "yxrrset",
+	NULL
 };
+
 enum {
 	PQ_NXDOMAIN = 0,
 	PQ_NXRRSET,
@@ -129,7 +130,8 @@ enum {
 	PARSE_NAMEONLY  = 1 << 1  /* Parse only name. */
 };
 
-static int dname_isvalid(const char *lp, size_t len) {
+static int dname_isvalid(const char *lp, size_t len)
+{
 	knot_dname_t *dn = knot_dname_from_str(lp);
 	if (dn == NULL) {
 		return 0;
@@ -156,15 +158,15 @@ static int parse_full_rr(zs_scanner_t *s, const char* lp)
 	return KNOT_EOK;
 }
 
-static int parse_partial_rr(zs_scanner_t *s, const char *lp, unsigned flags) {
+static int parse_partial_rr(zs_scanner_t *s, const char *lp, unsigned flags)
+{
 	int ret = KNOT_EOK;
-	char b1[32], b2[32]; /* Should suffice for both class/type */
-
 	bool fqdn = true;
 
 	/* Extract owner. */
 	size_t len = strcspn(lp, SEP_CHARS);
-	char *owner_str = strndup(lp, len);
+	char *owner_str = calloc(1, len + 2); // 2 ~ ('.' + '\0')
+	memcpy(owner_str, lp, len);
 
 	/* Make dname FQDN if it isn't. */
 	if (owner_str[len - 1] != '.') {
@@ -180,6 +182,7 @@ static int parse_partial_rr(zs_scanner_t *s, const char *lp, unsigned flags) {
 
 	s->r_owner_length = knot_dname_size(owner);
 	memcpy(s->r_owner, owner, s->r_owner_length);
+	knot_dname_free(&owner, NULL);
 
 	/* Append origin if not FQDN. */
 	if (!fqdn) {
@@ -203,12 +206,10 @@ static int parse_partial_rr(zs_scanner_t *s, const char *lp, unsigned flags) {
 
 	/* Parse only name? */
 	if (flags & PARSE_NAMEONLY) {
-		knot_dname_free(&owner, NULL);
 		return KNOT_EOK;
 	}
 
 	/* Now there could be [ttl] [class] [type [data...]]. */
-	/*! \todo support for fancy time format in ttl */
 	char *np = NULL;
 	long ttl = strtol(lp, &np, 10);
 	if (ttl >= 0 && np && (*np == '\0' || isspace((unsigned char)(*np)))) {
@@ -217,56 +218,60 @@ static int parse_partial_rr(zs_scanner_t *s, const char *lp, unsigned flags) {
 		lp = tok_skipspace(np);
 	}
 
-	len = strcspn(lp, SEP_CHARS); /* Try to find class */
-	memset(b1, 0, sizeof(b1));
-	strlcpy(b1, lp, sizeof(b1));
+	uint16_t num;
+	char *buff = NULL;
+	char *cls = NULL;
+	char *type = NULL;
 
-	uint16_t v;
-	if (knot_rrclass_from_string(b1, &v) == 0) {
-		s->r_class = v;
-		DBG("%s: parsed class=%u\n", __func__, s->r_class);
+	/* Try to find class. */
+	len = strcspn(lp, SEP_CHARS);
+	if (len > 0) {
+		buff = strndup(lp, len);
+	}
+
+	if (knot_rrclass_from_string(buff, &num) == 0) {
+		/* Class must not differ from specified. */
+		if (num != s->default_class) {
+			ERR("class mismatch: '%s'\n", buff);
+			free(buff);
+			return KNOT_EPARSEFAIL;
+		}
+		cls = buff;
+		s->r_class = num;
+		DBG("%s: parsed class=%u '%s'\n", __func__, s->r_class, cls);
 		lp = tok_skipspace(lp + len);
 	}
 
-	/* Class must not differ from specified. */
-	if (s->r_class != s->default_class) {
-		char cls_s[16] = {0};
-		knot_rrclass_to_string(s->default_class, cls_s, sizeof(cls_s));
-		ERR("class mismatch: '%s'\n", cls_s);
-		knot_dname_free(&owner, NULL);
-		return KNOT_EPARSEFAIL;
+	/* Try to parser type. */
+	if (cls != NULL) {
+		len = strcspn(lp, SEP_CHARS);
+		if (len > 0) {
+			buff = strndup(lp, len);
+		}
 	}
-
-	len = strcspn(lp, SEP_CHARS); /* Type */
-	memset(b2, 0, sizeof(b2));
-	strlcpy(b2, lp, sizeof(b2));
-	if (knot_rrtype_from_string(b2, &v) == 0) {
-		s->r_type = v;
-		DBG("%s: parsed type=%u '%s'\n", __func__, s->r_type, b2);
+	if (knot_rrtype_from_string(buff, &num) == 0) {
+		type = buff;
+		s->r_type = num;
+		DBG("%s: parsed type=%u '%s'\n", __func__, s->r_type, type);
 		lp = tok_skipspace(lp + len);
 	}
 
 	/* Remainder */
 	if (*lp == '\0') {
-		knot_dname_free(&owner, NULL);
+		free(cls);
+		free(type);
 		return ret; /* No RDATA */
 	}
 
-	/* Synthetize full RR line to prevent consistency errors. */
-	char *owner_s = knot_dname_to_str(owner);
-	knot_rrclass_to_string(s->r_class, b1, sizeof(b1));
-	knot_rrtype_to_string(s->r_type,   b2, sizeof(b2));
-
 	/* Need to parse rdata, synthetize input. */
-	char *rr = sprintf_alloc("%s %u %s %s %s\n",
-	                         owner_s, s->r_ttl, b1, b2, lp);
+	char *rr = sprintf_alloc(" %u %s %s\n", s->r_ttl, type, lp);
+	free(cls);
+	free(type);
 	if (rr == NULL || zs_scanner_parse(s, rr, rr + strlen(rr), true) < 0) {
 		ret = KNOT_EPARSEFAIL;
 	}
-
-	free(owner_s);
 	free(rr);
-	knot_dname_free(&owner, NULL);
+
 	return ret;
 }
 
@@ -313,19 +318,17 @@ static int rr_list_append(zs_scanner_t *s, list_t *target_list, mm_ctx_t *mm)
 	}
 
 	/* Create RDATA. */
-	if (s->r_data_length > 0) {
-		size_t pos = 0;
-		int ret = knot_rrset_rdata_from_wire_one(rr, s->r_data, &pos,
-		                                         s->r_data_length,
-		                                         s->r_ttl,
-		                                         s->r_data_length,
-		                                         NULL);
-		if (ret != KNOT_EOK) {
-			DBG("%s: failed to set rrset from wire - %s\n",
-			    __func__, knot_strerror(ret));
-			knot_rrset_free(&rr, NULL);
-			return ret;
-		}
+	size_t pos = 0;
+	int ret = knot_rrset_rdata_from_wire_one(rr, s->r_data, &pos,
+	                                         s->r_data_length,
+	                                         s->r_ttl,
+	                                         s->r_data_length,
+	                                         NULL);
+	if (ret != KNOT_EOK) {
+		DBG("%s: failed to set rrset from wire - %s\n",
+		    __func__, knot_strerror(ret));
+		knot_rrset_free(&rr, NULL);
+		return ret;
 	}
 
 	if (ptrlist_add(target_list, rr, mm) == NULL) {
@@ -367,8 +370,9 @@ static int build_query(nsupdate_params_t *params)
 	knot_dname_t *qname = knot_dname_from_str(params->zone);
 	int ret = knot_pkt_put_question(query, qname, params->class_num, params->type_num);
 	knot_dname_free(&qname, NULL);
-	if (ret != KNOT_EOK)
+	if (ret != KNOT_EOK) {
 		return ret;
+	}
 
 	/* Now, PREREQ => ANSWER section. */
 	ret = knot_pkt_begin(query, KNOT_ANSWER);

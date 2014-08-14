@@ -55,6 +55,7 @@ static const style_t DEFAULT_STYLE_DIG = {
 		.empty_ttl = false,
 		.human_ttl = false,
 		.human_tmstamp = true,
+		.empty_rdata = false,
 		.ascii_to_idn = name_to_idn
 	},
 	.show_query = false,

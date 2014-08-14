@@ -60,6 +60,7 @@ const knot_dump_style_t KNOT_DUMP_STYLE_DEFAULT = {
 	.empty_ttl = false,
 	.human_ttl = false,
 	.human_tmstamp = true,
+	.empty_rdata = false,
 	.ascii_to_idn = NULL
 };
 
@@ -1798,6 +1799,10 @@ int knot_rrset_txt_dump_data(const knot_rrset_t      *rrset,
 
 	int ret = 0;
 
+	if (data_len == 0 && style->empty_rdata) {
+		return ret;
+	}
+
 	switch (rrset->type) {
 		case KNOT_RRTYPE_A:
 			ret = dump_a(data, data_len, dst, maxlen, style);
@@ -1987,24 +1992,6 @@ int knot_rrset_txt_dump(const knot_rrset_t      *rrset,
 
 	size_t len = 0;
 	int    ret;
-
-	// UPDATE delete may have empty RDATA => dump header.
-	if (knot_rrset_empty(rrset)) {
-		// Dump rdata owner, class, ttl and type.
-		ret = knot_rrset_txt_dump_header(rrset, 0, dst + len,
-		                                 maxlen - len, style);
-		if (ret < 0) {
-			return KNOT_ESPACE;
-		}
-		len += ret;
-
-		// Terminate line.
-		if (len >= maxlen) {
-			return KNOT_ESPACE;
-		}
-		dst[len++] = '\n';
-		dst[len] = '\0';
-	}
 
 	// Loop over rdata in rrset.
 	uint16_t rr_count = rrset->rrs.rr_count;
