@@ -165,10 +165,10 @@ static void pkt_clear_payload(knot_pkt_t *pkt)
 	/* Free RRSets if applicable. */
 	pkt_free_data(pkt);
 
-	/* Reset section. */
+	/* Reset sections. */
 	pkt->current = KNOT_ANSWER;
-	pkt->sections[pkt->current].rr = pkt->rr;
-	pkt->sections[pkt->current].rrinfo = pkt->rr_info;
+	memset(pkt->sections, 0, sizeof(pkt->sections));
+	knot_pkt_begin(pkt, KNOT_ANSWER);
 }
 
 /*! \brief Allocate new packet using memory context. */
@@ -792,7 +792,7 @@ int knot_pkt_parse_payload(knot_pkt_t *pkt, unsigned flags)
 	/* TSIG must be last record of AR if present. */
 	const knot_pktsection_t *ar = knot_pkt_section(pkt, KNOT_ADDITIONAL);
 	if (pkt->tsig_rr != NULL) {
-		if (ar->count > 0 && pkt->tsig_rr->rrs.data != ar->rr[ar->count - 1].rrs.data) {
+		if (ar->count > 0 && ar->count != knot_wire_get_arcount(pkt->wire)) {
 			dbg_packet("%s: TSIG not last RR in AR.\n", __func__);
 			return KNOT_EMALF;
 		}
