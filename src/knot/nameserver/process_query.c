@@ -164,63 +164,6 @@ static int query_chaos(knot_pkt_t *pkt, knot_process_t *ctx)
 	return NS_PROC_DONE;
 }
 
-static int process_query_sign_response(knot_pkt_t *pkt, struct query_data *qdata)
-{
-	if (pkt->size == 0) {
-		// Nothing to sign.
-		return KNOT_EOK;
-	}
-
-	int ret = KNOT_EOK;
-	knot_pkt_t *query = qdata->query;
-	knot_sign_context_t *ctx = &qdata->sign;
-
-	/* KEY provided and verified TSIG or BADTIME allows signing. */
-	if (ctx->tsig_key != NULL && knot_tsig_can_sign(qdata->rcode_tsig)) {
-
-		/* Sign query response. */
-		dbg_ns("%s: signing response using key %p\n", __func__, ctx->tsig_key);
-		size_t new_digest_len = knot_tsig_digest_length(ctx->tsig_key->algorithm);
-		if (ctx->pkt_count == 0) {
-			ret = knot_tsig_sign(pkt->wire, &pkt->size, pkt->max_size,
-			                     ctx->tsig_digest, ctx->tsig_digestlen,
-			                     ctx->tsig_digest, &new_digest_len,
-			                     ctx->tsig_key, qdata->rcode_tsig,
-			                     ctx->tsig_time_signed);
-		} else {
-			ret = knot_tsig_sign_next(pkt->wire, &pkt->size, pkt->max_size,
-			                          ctx->tsig_digest, ctx->tsig_digestlen,
-			                          ctx->tsig_digest, &new_digest_len,
-			                          ctx->tsig_key,
-			                          pkt->wire, pkt->size);
-		}
-		if (ret != KNOT_EOK) {
-			goto fail; /* Failed to sign. */
-		} else {
-			++ctx->pkt_count;
-		}
-	} else {
-		/* Copy TSIG from query and set RCODE. */
-		if (query->tsig_rr && qdata->rcode_tsig != KNOT_RCODE_NOERROR) {
-			dbg_ns("%s: appending original TSIG\n", __func__);
-			ret = knot_tsig_add(pkt->wire, &pkt->size, pkt->max_size,
-			                    qdata->rcode_tsig, query->tsig_rr);
-			if (ret != KNOT_EOK) {
-				goto fail; /* Whatever it is, it's server fail. */
-			}
-		}
-	}
-
-	return ret;
-
-	/* Server failure in signing. */
-fail:
-	dbg_ns("%s: signing failed (%s)\n", __func__, knot_strerror(ret));
-	qdata->rcode = KNOT_RCODE_SERVFAIL;
-	qdata->rcode_tsig = KNOT_RCODE_NOERROR; /* Don't sign again. */
-	return ret;
-}
-
 /*! \brief Find zone for given question. */
 static const zone_t *answer_zone_find(const knot_pkt_t *query, knot_zonedb_t *zonedb)
 {
@@ -660,6 +603,63 @@ int process_query_verify(struct query_data *qdata)
 		break;
 	}
 
+	return ret;
+}
+
+int process_query_sign_response(knot_pkt_t *pkt, struct query_data *qdata)
+{
+	if (pkt->size == 0) {
+		// Nothing to sign.
+		return KNOT_EOK;
+	}
+
+	int ret = KNOT_EOK;
+	knot_pkt_t *query = qdata->query;
+	knot_sign_context_t *ctx = &qdata->sign;
+
+	/* KEY provided and verified TSIG or BADTIME allows signing. */
+	if (ctx->tsig_key != NULL && knot_tsig_can_sign(qdata->rcode_tsig)) {
+
+		/* Sign query response. */
+		dbg_ns("%s: signing response using key %p\n", __func__, ctx->tsig_key);
+		size_t new_digest_len = knot_tsig_digest_length(ctx->tsig_key->algorithm);
+		if (ctx->pkt_count == 0) {
+			ret = knot_tsig_sign(pkt->wire, &pkt->size, pkt->max_size,
+			                     ctx->tsig_digest, ctx->tsig_digestlen,
+			                     ctx->tsig_digest, &new_digest_len,
+			                     ctx->tsig_key, qdata->rcode_tsig,
+			                     ctx->tsig_time_signed);
+		} else {
+			ret = knot_tsig_sign_next(pkt->wire, &pkt->size, pkt->max_size,
+			                          ctx->tsig_digest, ctx->tsig_digestlen,
+			                          ctx->tsig_digest, &new_digest_len,
+			                          ctx->tsig_key,
+			                          pkt->wire, pkt->size);
+		}
+		if (ret != KNOT_EOK) {
+			goto fail; /* Failed to sign. */
+		} else {
+			++ctx->pkt_count;
+		}
+	} else {
+		/* Copy TSIG from query and set RCODE. */
+		if (query->tsig_rr && qdata->rcode_tsig != KNOT_RCODE_NOERROR) {
+			dbg_ns("%s: appending original TSIG\n", __func__);
+			ret = knot_tsig_add(pkt->wire, &pkt->size, pkt->max_size,
+			                    qdata->rcode_tsig, query->tsig_rr);
+			if (ret != KNOT_EOK) {
+				goto fail; /* Whatever it is, it's server fail. */
+			}
+		}
+	}
+
+	return ret;
+
+	/* Server failure in signing. */
+fail:
+	dbg_ns("%s: signing failed (%s)\n", __func__, knot_strerror(ret));
+	qdata->rcode = KNOT_RCODE_SERVFAIL;
+	qdata->rcode_tsig = KNOT_RCODE_NOERROR; /* Don't sign again. */
 	return ret;
 }
 

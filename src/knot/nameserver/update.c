@@ -37,6 +37,18 @@
 #define UPDATE_LOG(severity, msg...) \
 	QUERY_LOG(severity, qdata, "DDNS", msg)
 
+static void init_qdata_from_request(struct query_data *qdata,
+                                    const zone_t *zone,
+                                    struct request_data *req,
+                                    struct process_query_param *param)
+{
+	memset(qdata, 0, sizeof(*qdata));
+	qdata->param = param;
+	qdata->query = req->query;
+	qdata->zone = zone;
+	qdata->sign = req->sign;
+}
+
 static bool apex_rr_changed(const zone_contents_t *old_contents,
                             const zone_contents_t *new_contents,
                             uint16_t type)
@@ -154,13 +166,16 @@ static int process_bulk(zone_t *zone, list_t *requests, changeset_t *ddns_ch)
 	// Walk all the requests and process.
 	struct request_data *req;
 	WALK_LIST(req, *requests) {
+		if (knot_wire_get_rcode(req->resp->wire) != KNOT_RCODE_NOERROR) {
+			// Skip requests that failed ACL check.
+			continue;
+		}
+		
 		// Init qdata structure for logging (unique per-request).
 		struct process_query_param param = { 0 };
 		param.remote = &req->remote;
-		struct query_data qdata = { 0 };
-		qdata.param = &param;
-		qdata.query = req->query;
-		qdata.zone  = zone;
+		struct query_data qdata;
+		init_qdata_from_request(&qdata, zone, req, &param);
 		
 		int ret = check_prereqs(req, zone, &zone_update, &qdata);
 		if (ret != KNOT_EOK) {
@@ -374,39 +389,75 @@ static void forward_requests(zone_t *zone, list_t *requests)
 	}
 }
 
-static int init_update_respones(list_t *updates)
+static void update_tsig_check(struct query_data *qdata, struct request_data *req)
 {
-	struct request_data *r = NULL;
-	WALK_LIST(r, *updates) {
-		r->resp = knot_pkt_new(NULL, KNOT_WIRE_MAX_PKTSIZE, NULL);
-		if (r->resp == NULL) {
+	// Check that ACL is still valid.
+	if (!process_query_acl_check(&qdata->zone->conf->acl.update_in, qdata)) {
+		knot_wire_set_rcode(req->resp->wire, qdata->rcode);
+	} else {
+		// Check TSIG validity.
+		int ret = process_query_verify(qdata);
+		if (ret != KNOT_EOK) {
+			knot_wire_set_rcode(req->resp->wire, qdata->rcode);
+		}
+	}
+	
+	req->sign = qdata->sign;
+}
+
+static int init_update_responses(const zone_t *zone, list_t *updates)
+{
+	struct request_data *req = NULL;
+	WALK_LIST(req, *updates) {
+		req->resp = knot_pkt_new(NULL, KNOT_WIRE_MAX_PKTSIZE, NULL);
+		if (req->resp == NULL) {
 			return KNOT_ENOMEM;
 		}
 
-		assert(r->query);
-		knot_pkt_init_response(r->resp, r->query);
+		assert(req->query);
+		knot_pkt_init_response(req->resp, req->query);
+		if (zone_master(zone)) {
+			// Don't check TSIG for forwards.
+			continue;
+		}
+		
+		struct process_query_param param = { 0 };
+		param.remote = &req->remote;
+		struct query_data qdata;
+		init_qdata_from_request(&qdata, zone, req, &param);
+		
+		update_tsig_check(&qdata, req);
 	}
 
 	return KNOT_EOK;
 }
 
-static void send_update_responses(list_t *updates)
+static void send_update_responses(const zone_t *zone, list_t *updates)
 {
-	struct request_data *r, *nxt;
-	WALK_LIST_DELSAFE(r, nxt, *updates) {
-		if (r->resp) {
-			if (net_is_connected(r->fd)) {
-				tcp_send_msg(r->fd, r->resp->wire, r->resp->size);
+	struct request_data *req, *nxt;
+	WALK_LIST_DELSAFE(req, nxt, *updates) {
+		
+		if (req->resp) {
+			if (!zone_master(zone)) {
+				// Sign the response with TSIG where applicable
+				struct query_data qdata;
+				init_qdata_from_request(&qdata, zone, req, NULL);
+				
+				(void)process_query_sign_response(req->resp, &qdata);
+			}
+			
+			if (net_is_connected(req->fd)) {
+				tcp_send_msg(req->fd, req->resp->wire, req->resp->size);
 			} else {
-				udp_send_msg(r->fd, r->resp->wire, r->resp->size,
-				             (struct sockaddr *)&r->remote);
+				udp_send_msg(req->fd, req->resp->wire, req->resp->size,
+				             (struct sockaddr *)&req->remote);
 			}
 		}
 
-		close(r->fd);
-		knot_pkt_free(&r->query);
-		knot_pkt_free(&r->resp);
-		free(r);
+		close(req->fd);
+		knot_pkt_free(&req->query);
+		knot_pkt_free(&req->resp);
+		free(req);
 	}
 }
 
@@ -446,11 +497,11 @@ int updates_execute(zone_t *zone)
 	}
 
 	/* Init updates respones. */
-	int ret = init_update_respones(&updates);
+	int ret = init_update_responses(zone, &updates);
 	if (ret != KNOT_EOK) {
 		/* Send what responses we can. */
 		set_rcodes(&updates, KNOT_RCODE_SERVFAIL);
-		send_update_responses(&updates);
+		send_update_responses(zone, &updates);
 		return ret;
 	}
 
@@ -467,7 +518,7 @@ int updates_execute(zone_t *zone)
 	UNUSED(ret); /* Don't care about the Knot code, RCODEs are set. */
 
 	/* Send responses. */
-	send_update_responses(&updates);
+	send_update_responses(zone, &updates);
 
 	return KNOT_EOK;
 }
