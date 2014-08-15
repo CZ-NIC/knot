@@ -21,7 +21,7 @@ def check_axfr(server, zone):
     # Compare AXFRs
     t.axfr_diff_resp(axfr_pre, axfr_post, server, server, zone[0])
 
-t = Test(tsig=False)
+t = Test()
 
 master = t.server("knot")
 slave = t.server("knot")
