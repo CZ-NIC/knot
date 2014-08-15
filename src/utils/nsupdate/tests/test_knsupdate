@@ -1,0 +1,34 @@
+zone example.com
+ttl 60
+origin example.com
+server 127.0.0.1
+;
+prereq nxdomain nxdomain_test1
+nxdomain nxdomain_test2
+;
+prereq yxdomain yxdomain_test1
+yxdomain yxdomain_test2
+;
+prereq nxrrset nxrrset_test1 A
+nxrrset nxrrset_test2 IN A
+;
+prereq yxrrset yxrrset_test1 A
+yxrrset yxrrset_test2 IN A
+;
+prereq yxrrset yxrrset_test3 A 1.2.3.4
+yxrrset yxrrset_test4 IN A 1.2.3.4
+;
+update add add_test1 120 TXT "test"
+add add_test2 TXT "test"
+add add_test3 IN TXT "test"
+;
+update delete del_test1 120
+del del_test2
+del del_test3 IN
+del del_test4 IN AAAA
+del del_test5 AAAA
+del del_test6 IN AAAA ::1
+del del_test7 TXT "test"
+;
+show
+;send

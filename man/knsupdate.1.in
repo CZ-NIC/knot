@@ -87,6 +87,20 @@ Specifies TSIG key to authenticate the request. This command has the same
 semantics as the program option \fB\-y\fR, except that the MAC algorithm
 cannot be set.
 .TP
+[\fBprereq\fR] \fBnxdomain\fR \fIname\fR
+Adds a prerequisite for non-existing record owned by \fIname\fR.
+.TP
+[\fBprereq\fR] \fByxdomain\fR \fIname\fR
+Adds a prerequisite for existing record owned by \fIname\fR.
+.TP
+[\fBprereq\fR] \fBnxrrset\fR \fIname\fR [\fIclass\fR] \fItype\fR
+Adds a prerequisite for non-existing record of the \fItype\fR owned by \fIname\fR.
+Internet class is expected.
+.TP
+[\fBprereq\fR] \fByxrrset\fR \fIname\fR [\fIclass\fR] \fItype\fR [\fIdata\fR]
+Adds a prerequisite for existing record of the \fItype\fR owned by \fIname\fR
+with optional \fIdata\fR. Internet class is expected.
+.TP
 [\fBupdate\fR] \fBadd\fR \fIname\fR [\fIttl\fR] [\fIclass\fR] \fItype\fR \fIdata\fR
 Adds a request to add a new resource record into the zone. Please note that if the
 \fIname\fR is not fully qualified domain name, current \fIorigin\fR name is appended to it.
@@ -111,7 +125,7 @@ Enable debugging. This command has the same meaning as program option \fB\-d\fR.
 .SS Missing features with regard to ISC nsupdate
 Options \fB\-D\fR, \fB\-g\fR, \fB\-o\fR, \fB\-l\fR, \fB\-L\fR, \fB\-R\fR, \fB\-u\fR.
 .TP
-Commands: \fBgsstsig\fR, \fBoldgsstsig\fR, \fBrealm\fR, \fBprereq\fR (\fBnxdomain\fR, \fByxdomain\fR, \fBnxrrset\fR, \fByxrrset\fR).
+Commands: \fBgsstsig\fR, \fBoldgsstsig\fR, \fBrealm\fR.
 .SS Differences with regard to ISC nsupdate
 Zone name/server guessing, if the zone name/server is not specified.
 .TP 0
