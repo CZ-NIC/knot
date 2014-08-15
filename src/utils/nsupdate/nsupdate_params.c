@@ -42,7 +42,6 @@ static const style_t DEFAULT_STYLE_NSUPDATE = {
 		.empty_ttl = false,
 		.human_ttl = false,
 		.human_tmstamp = true,
-		.empty_rdata = true,
 		.ascii_to_idn = NULL
 	},
 	.show_query = false,

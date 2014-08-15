@@ -60,7 +60,6 @@ const knot_dump_style_t KNOT_DUMP_STYLE_DEFAULT = {
 	.empty_ttl = false,
 	.human_ttl = false,
 	.human_tmstamp = true,
-	.empty_rdata = false,
 	.ascii_to_idn = NULL
 };
 
@@ -1799,7 +1798,7 @@ int knot_rrset_txt_dump_data(const knot_rrset_t      *rrset,
 
 	int ret = 0;
 
-	if (data_len == 0 && style->empty_rdata) {
+	if (data_len == 0 && rrset->rclass != KNOT_CLASS_IN) {
 		return ret;
 	}
 
