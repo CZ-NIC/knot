@@ -521,7 +521,7 @@ void knot_rrset_clear(knot_rrset_t *rrset, mm_ctx_t *mm)
 	}
 }
 
-static bool allow_zero_data(const knot_rrset_t *rr, const rdata_descriptor_t *desc)
+static bool allow_zero_rdata(const knot_rrset_t *rr, const rdata_descriptor_t *desc)
 {
 	return rr->rclass != KNOT_CLASS_IN ||  // NONE and ANY for DDNS
 	       rr->type == KNOT_RRTYPE_APL ||  // APLs can have 0 RDLENGTH
@@ -550,9 +550,11 @@ int knot_rrset_rdata_from_wire_one(knot_rrset_t *rrset,
 	}
 
 	if (rdlength == 0) {
-		return allow_zero_data(rrset, desc) ?
-		       knot_rrset_add_rdata(rrset, NULL, 0, ttl, mm) :
-		       KNOT_EMALF;
+		if (allow_zero_rdata(rrset, desc)) {
+			return knot_rrset_add_rdata(rrset, NULL, 0, ttl, mm);
+		} else {
+			return KNOT_EMALF;
+		}
 	}
 
 	uint8_t rdata_buffer[rdlength + KNOT_DNAME_MAXLEN];
