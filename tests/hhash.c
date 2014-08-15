@@ -18,7 +18,7 @@
 #include <assert.h>
 #include <tap/basic.h>
 
-#include "common-knot/hhash.h"
+#include "common/hhash.h"
 #include "libknot/mempattern.h"
 #include "common/mempool.h"
 #include "libknot/common.h"

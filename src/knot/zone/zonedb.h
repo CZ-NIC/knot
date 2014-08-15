@@ -33,7 +33,7 @@
 #include "knot/zone/zone.h"
 #include "knot/zone/contents.h"
 #include "libknot/dname.h"
-#include "common-knot/hhash.h"
+#include "common/hhash.h"
 
 /*
  * Zone DB represents a list of managed zones.

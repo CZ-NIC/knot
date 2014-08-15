@@ -41,7 +41,7 @@
 #include "common/log.h"
 #include "knot/updates/acl.h"
 #include "common/sockaddr.h"
-#include "common-knot/hattrie/hat-trie.h"
+#include "common/trie/hat-trie.h"
 #include "knot/nameserver/query_module.h"
 
 /* Constants. */

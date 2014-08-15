@@ -62,23 +62,15 @@ knsec3hash_SOURCES =				\
 
 # static: shared (not in libknot)
 libknots_la_SOURCES =				\
-	common-knot/array-sort.h		\
-	common-knot/binsearch.h			\
 	common-knot/crc.h			\
 	common-knot/evsched.c			\
 	common-knot/evsched.h			\
 	common-knot/fdset.c			\
 	common-knot/fdset.h			\
-	common-knot/hattrie/hat-trie.c		\
-	common-knot/hattrie/hat-trie.h		\
-	common-knot/hattrie/murmurhash3.c	\
-	common-knot/hattrie/murmurhash3.h	\
 	common-knot/heap.c			\
 	common-knot/heap.h			\
 	common-knot/hex.c			\
 	common-knot/hex.h			\
-	common-knot/hhash.c			\
-	common-knot/hhash.h			\
 	common-knot/ref.c			\
 	common-knot/ref.h			\
 	common-knot/slab/alloc-common.h		\
@@ -91,6 +83,8 @@ libknots_la_SOURCES =				\
 
 # static: common shared (also in libknot)
 libknotcs_la_SOURCES =				\
+	common/array-sort.h			\
+	common/binsearch.h			\
 	common/print.c				\
 	common/print.h				\
 	common/strlcpy.c			\
@@ -112,6 +106,12 @@ libknotcs_la_SOURCES =				\
 	common/mem.h				\
 	common/mempool.c			\
 	common/mempool.h			\
+	common/hhash.c				\
+	common/hhash.h				\
+	common/trie/hat-trie.c		\
+	common/trie/hat-trie.h		\
+	common/trie/murmurhash3.c	\
+	common/trie/murmurhash3.h	\
 	common/log.c				\
 	common/log.h
 
