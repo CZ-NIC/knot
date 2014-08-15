@@ -44,7 +44,7 @@
 
 /*! \brief TCP context data. */
 typedef struct tcp_context {
-	knot_process_t query_ctx;   /*!< Query processing context. */
+	knot_layer_t query_ctx;   /*!< Query processing context. */
 	server_t *server;           /*!< Name server structure. */
 	struct iovec iov[2];        /*!< TX/RX buffers. */
 	unsigned client_threshold;  /*!< Index of first TCP client. */
@@ -134,7 +134,7 @@ static int tcp_handle(tcp_context_t *tcp, int fd,
 	}
 
 	/* Create query processing context. */
-	knot_process_begin(&tcp->query_ctx, &param, NS_PROC_QUERY);
+	knot_process_begin(&tcp->query_ctx, NS_PROC_QUERY, &param);
 
 	/* Input packet. */
 	int state = knot_process_in(&tcp->query_ctx, rx->iov_base, rx->iov_len);

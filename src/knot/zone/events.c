@@ -123,15 +123,17 @@ static int zone_query_execute(zone_t *zone, uint16_t pkt_type, const conf_iface_
 		return KNOT_ENOMEM;
 	}
 
-	/* Create requestor instance. */
-	struct knot_requestor re;
-	knot_requestor_init(&re, NS_PROC_ANSWER, &mm);
-
 	/* Answer processing parameters. */
 	struct process_answer_param param = { 0 };
 	param.zone = zone;
 	param.query = query;
 	param.remote = &remote->addr;
+
+	/* Create requestor instance. */
+	struct knot_requestor re;
+	knot_requestor_init(&re, &mm);
+	knot_requestor_overlay(&re, NS_PROC_ANSWER, &param);
+
 	tsig_init(&param.tsig_ctx, remote->key);
 
 	ret = tsig_sign_packet(&param.tsig_ctx, query);
@@ -142,14 +144,14 @@ static int zone_query_execute(zone_t *zone, uint16_t pkt_type, const conf_iface_
 	/* Create a request. */
 	const struct sockaddr *dst = (const struct sockaddr *)&remote->addr;
 	const struct sockaddr *src = (const struct sockaddr *)&remote->via;
-	struct knot_request *req = knot_requestor_make(&re, dst, src, query, 0);
+	struct knot_request *req = knot_request_make(re.mm, dst, src, query, 0);
 	if (req == NULL) {
 		ret = KNOT_ENOMEM;
 		goto fail;
 	}
 
 	/* Send the queries and process responses. */
-	ret = knot_requestor_enqueue(&re, req, &param);
+	ret = knot_requestor_enqueue(&re, req);
 	if (ret == KNOT_EOK) {
 		struct timeval tv = { conf()->max_conn_reply, 0 };
 		ret = knot_requestor_exec(&re, &tv);
@@ -630,7 +632,7 @@ static void replan_flush(zone_t *zone, const zone_t *old_zone)
 /*!< \brief Creates new DDNS q in the new zone - q contains references from the old zone. */
 static void duplicate_ddns_q(zone_t *zone, zone_t *old_zone)
 {
-	struct knot_request_data *d, *nxt;
+	struct knot_request *d, *nxt;
 	WALK_LIST_DELSAFE(d, nxt, old_zone->ddns_queue) {
 		add_tail(&zone->ddns_queue, (node_t *)d);
 	}

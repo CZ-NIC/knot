@@ -19,89 +19,19 @@
 #include "libknot/processing/process.h"
 #include "common/debug.h"
 
-/* State -> string translation table. */
-#ifdef KNOT_NS_DEBUG
-#define PROCESSING_STATE_STR(x) _state_table[x]
-static const char* _state_table[] = {
-        [NS_PROC_NOOP] = "NOOP",
-        [NS_PROC_MORE] = "MORE",
-        [NS_PROC_FULL] = "FULL",
-        [NS_PROC_DONE] = "DONE",
-        [NS_PROC_FAIL] = "FAIL"
-};
-#endif /* KNOT_NS_DEBUG */
-
-int knot_process_begin(knot_process_t *ctx, void *module_param,
-                       const knot_process_module_t *module)
+int knot_process_in(knot_layer_t *ctx, const uint8_t *wire, uint16_t wire_len)
 {
-	/* Only in inoperable state. */
-	if (ctx->state != NS_PROC_NOOP) {
-		return NS_PROC_NOOP;
-	}
-
-#ifdef KNOT_NS_DEBUG
-	/* Check module API. */
-	assert(module->begin);
-	assert(module->in);
-	assert(module->out);
-	assert(module->err);
-	assert(module->reset);
-	assert(module->finish);
-#endif /* KNOT_NS_DEBUG */
-
-	ctx->module = module;
-	ctx->state = module->begin(ctx, module_param);
-
-	dbg_ns("%s -> %s\n", __func__, PROCESSING_STATE_STR(ctx->state));
-	return ctx->state;
-}
-
-int knot_process_reset(knot_process_t *ctx)
-{
-	ctx->state = ctx->module->reset(ctx);
-	dbg_ns("%s -> %s\n", __func__, PROCESSING_STATE_STR(ctx->state));
-	return ctx->state;
-}
-
-int knot_process_finish(knot_process_t *ctx)
-{
-	/* Only in operable state. */
-	if (ctx->state == NS_PROC_NOOP) {
-		return NS_PROC_NOOP;
-	}
-
-	ctx->state = ctx->module->finish(ctx);
-	dbg_ns("%s -> %s\n", __func__, PROCESSING_STATE_STR(ctx->state));
-	return ctx->state;
-}
-
-int knot_process_in(knot_process_t *ctx, const uint8_t *wire, uint16_t wire_len)
-{
-	/* Only if expecting data. */
-	if (ctx->state != NS_PROC_MORE) {
-		return NS_PROC_NOOP;
-	}
-
 	knot_pkt_t *pkt = knot_pkt_new((uint8_t *)wire, wire_len, ctx->mm);
 	knot_pkt_parse(pkt, 0);
 
-	ctx->state = ctx->module->in(pkt, ctx);
-	dbg_ns("%s -> %s\n", __func__, PROCESSING_STATE_STR(ctx->state));
-	return ctx->state;
+	return knot_layer_in(ctx, pkt);
 }
 
-int knot_process_out(knot_process_t *ctx, uint8_t *wire, uint16_t *wire_len)
+int knot_process_out(knot_layer_t *ctx, uint8_t *wire, uint16_t *wire_len)
 {
 	knot_pkt_t *pkt = knot_pkt_new(wire, *wire_len, ctx->mm);
 
-	switch (ctx->state) {
-	case NS_PROC_FULL: ctx->state = ctx->module->out(pkt, ctx); break;
-	case NS_PROC_FAIL: ctx->state = ctx->module->err(pkt, ctx); break;
-	default:
-		assert(0); /* Improper use. */
-		knot_pkt_free(&pkt);
-		return NS_PROC_NOOP;
-	}
+	ctx->state = knot_layer_out(ctx, pkt);
 
 	/* Accept only finished result. */
 	if (ctx->state != NS_PROC_FAIL) {
@@ -111,9 +41,5 @@ int knot_process_out(knot_process_t *ctx, uint8_t *wire, uint16_t *wire_len)
 	}
 
 	knot_pkt_free(&pkt);
-
-	dbg_ns("%s -> %s\n", __func__, PROCESSING_STATE_STR(ctx->state));
 	return ctx->state;
 }
-
-#undef PROCESSING_STATE_STR

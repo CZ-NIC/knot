@@ -57,7 +57,7 @@ enum {
 
 /*! \brief UDP context data. */
 typedef struct udp_context {
-	knot_process_t query_ctx; /*!< Query processing context. */
+	knot_layer_t query_ctx; /*!< Query processing context. */
 	server_t *server;         /*!< Name server structure. */
 	unsigned thread_id;       /*!< Thread identifier. */
 } udp_context_t;
@@ -133,7 +133,7 @@ void udp_handle(udp_context_t *udp, int fd, struct sockaddr_storage *ss,
 	}
 
 	/* Create query processing context. */
-	knot_process_begin(&udp->query_ctx, &param, NS_PROC_QUERY);
+	knot_process_begin(&udp->query_ctx, NS_PROC_QUERY, &param);
 
 	/* Input packet. */
 	int state = knot_process_in(&udp->query_ctx, rx->iov_base, rx->iov_len);

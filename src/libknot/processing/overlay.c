@@ -6,8 +6,8 @@
 	int state = overlay->state; \
 	struct knot_layer *layer = NULL; \
 	WALK_LIST(layer, (overlay)->layers) { \
-		layer->proc.state = state; /* Pass-through state. */ \
-		state = (func)(&layer->proc, ##__VA_ARGS__); \
+		layer->state = state; /* Pass-through state. */ \
+		state = (func)(layer, ##__VA_ARGS__); \
 	} \
 	return overlay->state = state;
 
@@ -27,7 +27,7 @@ void knot_overlay_deinit(struct knot_overlay *overlay)
 }
 
 int knot_overlay_add(struct knot_overlay *overlay, void *module_param,
-                     const knot_process_module_t *module)
+                     const knot_layer_api_t *module)
 {
 	struct knot_layer *layer = mm_alloc(overlay->mm, sizeof(struct knot_layer));
 	if (layer == NULL) {
@@ -35,31 +35,32 @@ int knot_overlay_add(struct knot_overlay *overlay, void *module_param,
 	}
 
 	memset(layer, 0, sizeof(struct knot_layer));
-	layer->proc.mm = overlay->mm;
-	layer->proc.state = overlay->state;
+	layer->mm = overlay->mm;
+	layer->state = overlay->state;
 	add_tail(&overlay->layers, (node_t *)layer);
 
-	overlay->state = knot_process_begin(&layer->proc, module_param, module);
+	overlay->state = knot_layer_begin(layer, module, module_param);
 
 	return KNOT_EOK;
 }
 
 int knot_overlay_reset(struct knot_overlay *overlay)
 {
-	ITERATE_LAYERS(overlay, knot_process_reset);
+	ITERATE_LAYERS(overlay, knot_layer_reset);
 }
 
 int knot_overlay_finish(struct knot_overlay *overlay)
 {
-	ITERATE_LAYERS(overlay, knot_process_finish);
+	ITERATE_LAYERS(overlay, knot_layer_finish);
 }
 
-int knot_overlay_in(struct knot_overlay *overlay, const uint8_t *wire, uint16_t wire_len)
+int knot_overlay_in(struct knot_overlay *overlay, knot_pkt_t *pkt)
 {
-	ITERATE_LAYERS(overlay, knot_process_in, wire, wire_len);
+	knot_pkt_parse(pkt, 0);
+	ITERATE_LAYERS(overlay, knot_layer_in, pkt);
 }
 
-int knot_overlay_out(struct knot_overlay *overlay, uint8_t *wire, uint16_t *wire_len)
+int knot_overlay_out(struct knot_overlay *overlay, knot_pkt_t *pkt)
 {
-	ITERATE_LAYERS(overlay, knot_process_out, wire, wire_len);
+	ITERATE_LAYERS(overlay, knot_layer_out, pkt);
 }

@@ -24,14 +24,8 @@
 
 #pragma once
 
-#include "libknot/processing/process.h"
+#include "libknot/processing/layer.h"
 #include "common/lists.h"
-
-/*! \brief Single processing layer (FSM). */
-struct knot_layer {
-	node_t node;
-	knot_process_t proc;
-};
 
 /*! \brief Processsing overlay (list of chained FSMs). */
 struct knot_overlay {
@@ -66,7 +60,7 @@ void knot_overlay_deinit(struct knot_overlay *overlay);
  * \return KNOT_EOK or an error
  */
 int knot_overlay_add(struct knot_overlay *overlay, void *module_param,
-                     const knot_process_module_t *module);
+                     const knot_layer_api_t *module);
 
 /*!
  * \brief Reset processing layers.
@@ -82,14 +76,14 @@ int knot_overlay_finish(struct knot_overlay *overlay);
 
 /*!
  * \brief Input more data.
- * \fn knot_process_in
+ * \fn knot_layer_in
  */
-int knot_overlay_in(struct knot_overlay *overlay, const uint8_t *wire, uint16_t wire_len);
+int knot_overlay_in(struct knot_overlay *overlay, knot_pkt_t *pkt);
 
 /*!
  * \brief Write out output.
- * \fn knot_process_out
+ * \fn knot_layer_out
  */
-int knot_overlay_out(struct knot_overlay *overlay, uint8_t *wire, uint16_t *wire_len);
+int knot_overlay_out(struct knot_overlay *overlay, knot_pkt_t *pkt);
 
 /*! @} */

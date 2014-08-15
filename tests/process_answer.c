@@ -27,6 +27,7 @@
 /* @note Test helpers. */
 #define TEST_RESET() \
 	knot_process_reset(proc); \
+	knot_process_out(proc, pkt->wire, (uint16_t *)&pkt->size); \
 	knot_pkt_clear(pkt)
 
 #define TEST_EXEC(expect, info) {\
@@ -40,7 +41,7 @@
 #define INCLASS_COUNT  2
 #define TEST_COUNT INVALID_COUNT + SPECIFIC_COUNT + INCLASS_COUNT
 
-static void test_invalid(knot_pkt_t *pkt, knot_process_t *proc)
+static void test_invalid(knot_pkt_t *pkt, knot_layer_t *proc)
 {
 	/* Invalid packet - query. */
 	TEST_RESET();
@@ -55,7 +56,7 @@ static void test_invalid(knot_pkt_t *pkt, knot_process_t *proc)
 }
 
 /* Test if context accepts only answer to specific query. */
-static void test_specific(knot_pkt_t *pkt, knot_process_t *proc, struct process_answer_param *param)
+static void test_specific(knot_pkt_t *pkt, knot_layer_t *proc, struct process_answer_param *param)
 {
 	/* Set specific SOA query. */
 	uint16_t query_id = 0xBEEF;
@@ -76,7 +77,7 @@ static void test_specific(knot_pkt_t *pkt, knot_process_t *proc, struct process_
 	param->query = NULL;
 }
 
-static void test_inclass(knot_pkt_t *pkt, knot_process_t *proc, struct process_answer_param *param)
+static void test_inclass(knot_pkt_t *pkt, knot_layer_t *proc, struct process_answer_param *param)
 {
 	/* Set specific SOA query. */
 	knot_pkt_t *query = knot_pkt_new(NULL, KNOT_WIRE_MIN_PKTSIZE, proc->mm);
@@ -113,8 +114,8 @@ int main(int argc, char *argv[])
 	mm_ctx_t mm;
 	mm_ctx_mempool(&mm, sizeof(knot_pkt_t));
 
-	knot_process_t proc;
-	memset(&proc, 0, sizeof(knot_process_t));
+	knot_layer_t proc;
+	memset(&proc, 0, sizeof(knot_layer_t));
 	proc.mm = &mm;
 
 	/* Create fake server environment. */
@@ -132,8 +133,8 @@ int main(int argc, char *argv[])
 	knot_pkt_t *pkt = knot_pkt_new(NULL, KNOT_WIRE_MAX_PKTSIZE, proc.mm);
 
 	/* Begin processing. */
-	int state = knot_process_begin(&proc, &param, NS_PROC_ANSWER);
-	ok(state == NS_PROC_MORE, "proc_answer: expects packet after init");
+	int state = knot_process_begin(&proc, NS_PROC_ANSWER, &param);
+	ok(state == NS_PROC_FULL, "proc_answer: expects query to be sent");
 
 	/* Invalid generic input tests. */
 	test_invalid(pkt, &proc);

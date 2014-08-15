@@ -99,7 +99,7 @@ static int sign_update(zone_t *zone, const zone_contents_t *old_contents,
 	return KNOT_EOK;
 }
 
-static int check_prereqs(struct knot_request_data *request,
+static int check_prereqs(struct knot_request *request,
                          const zone_t *zone, zone_update_t *update,
                          struct query_data *qdata)
 {
@@ -116,7 +116,7 @@ static int check_prereqs(struct knot_request_data *request,
 	return KNOT_EOK;
 }
 
-static int process_single_update(struct knot_request_data *request,
+static int process_single_update(struct knot_request *request,
                                  const zone_t *zone, zone_update_t *update,
                                  struct query_data *qdata)
 {
@@ -137,7 +137,7 @@ static int process_single_update(struct knot_request_data *request,
 
 static void set_rcodes(list_t *requests, const uint16_t rcode)
 {
-	struct knot_request_data *req;
+	struct knot_request *req;
 	WALK_LIST(req, *requests) {
 		if (knot_wire_get_rcode(req->resp->wire) == KNOT_RCODE_NOERROR) {
 			knot_wire_set_rcode(req->resp->wire, rcode);
@@ -152,7 +152,7 @@ static int process_bulk(zone_t *zone, list_t *requests, changeset_t *ddns_ch)
 	zone_update_init(&zone_update, zone->contents, ddns_ch);
 	
 	// Walk all the requests and process.
-	struct knot_request_data *req;
+	struct knot_request *req;
 	WALK_LIST(req, *requests) {
 		// Init qdata structure for logging (unique per-request).
 		struct process_query_param param = { 0 };
@@ -310,11 +310,11 @@ static int process_requests(zone_t *zone, list_t *requests)
 	return KNOT_EOK;
 }
 
-static int forward_request(zone_t *zone, struct knot_request_data *request)
+static int forward_request(zone_t *zone, struct knot_request *request)
 {
 	/* Create requestor instance. */
 	struct knot_requestor re;
-	knot_requestor_init(&re, NS_PROC_CAPTURE, NULL);
+	knot_requestor_init(&re, NULL);
 
 	/* Fetch primary master. */
 	const conf_iface_t *master = zone_master(zone);
@@ -333,17 +333,19 @@ static int forward_request(zone_t *zone, struct knot_request_data *request)
 	/* Create a request. */
 	const struct sockaddr *dst = (const struct sockaddr *)&master->addr;
 	const struct sockaddr *src = (const struct sockaddr *)&master->via;
-	struct knot_request *req = knot_requestor_make(&re, dst, src, query, 0);
+	struct knot_request *req = knot_request_make(re.mm, dst, src, query, 0);
 	if (req == NULL) {
 		knot_pkt_free(&query);
 		return KNOT_ENOMEM;
 	}
 
-	/* Enqueue and execute request. */
-	struct process_capture_param param;
+	/* Prepare packet capture layer. */
+	struct capture_param param;
 	param.sink = request->resp;
-	ret = knot_requestor_enqueue(&re, req, &param);
+	knot_requestor_overlay(&re, LAYER_CAPTURE, &param);
 
+	/* Enqueue and execute request. */
+	ret = knot_requestor_enqueue(&re, req);
 	if (ret == KNOT_EOK) {
 		struct timeval tv = { conf()->max_conn_reply, 0 };
 		ret = knot_requestor_exec(&re, &tv);
@@ -371,7 +373,7 @@ static int forward_request(zone_t *zone, struct knot_request_data *request)
 
 static void forward_requests(zone_t *zone, list_t *requests)
 {
-	struct knot_request_data *req;
+	struct knot_request *req;
 	WALK_LIST(req, *requests) {
 		forward_request(zone, req);
 	}
@@ -379,14 +381,8 @@ static void forward_requests(zone_t *zone, list_t *requests)
 
 static int init_update_respones(list_t *updates)
 {
-	struct knot_request_data *r = NULL;
+	struct knot_request *r = NULL;
 	WALK_LIST(r, *updates) {
-		r->resp = knot_pkt_new(NULL, KNOT_WIRE_MAX_PKTSIZE, NULL);
-		if (r->resp == NULL) {
-			return KNOT_ENOMEM;
-		}
-
-		assert(r->query);
 		knot_pkt_init_response(r->resp, r->query);
 	}
 
@@ -395,7 +391,7 @@ static int init_update_respones(list_t *updates)
 
 static void send_update_responses(list_t *updates)
 {
-	struct knot_request_data *r, *nxt;
+	struct knot_request *r, *nxt;
 	WALK_LIST_DELSAFE(r, nxt, *updates) {
 		if (r->resp) {
 			if (net_is_connected(r->fd)) {
@@ -406,10 +402,7 @@ static void send_update_responses(list_t *updates)
 			}
 		}
 
-		close(r->fd);
-		knot_pkt_free(&r->query);
-		knot_pkt_free(&r->resp);
-		free(r);
+		knot_request_free(NULL, r);
 	}
 }
 

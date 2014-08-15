@@ -41,7 +41,7 @@ static void answer_sanity_check(const uint8_t *query,
 }
 
 /* Resolve query and check answer for sanity (2 TAP tests). */
-static void exec_query(knot_process_t *query_ctx, const char *name,
+static void exec_query(knot_layer_t *query_ctx, const char *name,
                        const uint8_t *query, uint16_t query_len,
                        uint8_t expected_rcode)
 {
@@ -80,8 +80,8 @@ int main(int argc, char *argv[])
 	mm_ctx_mempool(&mm, sizeof(knot_pkt_t));
 
 	/* Create processing context. */
-	knot_process_t proc;
-	memset(&proc, 0, sizeof(knot_process_t));
+	knot_layer_t proc;
+	memset(&proc, 0, sizeof(knot_layer_t));
 	proc.mm = &mm;
 
 	/* Create fake server environment. */
@@ -103,7 +103,7 @@ int main(int argc, char *argv[])
 	param.server = &server;
 
 	/* Query processor (CH zone) */
-	knot_process_begin(&proc, &param, NS_PROC_QUERY);
+	knot_process_begin(&proc, NS_PROC_QUERY, &param);
 	knot_pkt_clear(query);
 	knot_pkt_put_question(query, IDSERVER_DNAME, KNOT_CLASS_CH, KNOT_RRTYPE_TXT);
 	exec_query(&proc, "CH TXT", query->wire, query->size, KNOT_RCODE_NOERROR);

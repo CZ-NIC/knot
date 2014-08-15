@@ -21,7 +21,7 @@
 #define QUERY_DATA(ctx) ((struct query_data *)(ctx)->data)
 
 /*! \brief Reinitialize query data structure. */
-static void query_data_init(knot_process_t *ctx, void *module_param)
+static void query_data_init(knot_layer_t *ctx, void *module_param)
 {
 	/* Initialize persistent data. */
 	struct query_data *data = QUERY_DATA(ctx);
@@ -34,7 +34,7 @@ static void query_data_init(knot_process_t *ctx, void *module_param)
 	init_list(&data->rrsigs);
 }
 
-static int process_query_begin(knot_process_t *ctx, void *module_param)
+static int process_query_begin(knot_layer_t *ctx, void *module_param)
 {
 	/* Initialize context. */
 	assert(ctx);
@@ -48,7 +48,7 @@ static int process_query_begin(knot_process_t *ctx, void *module_param)
 	return NS_PROC_MORE;
 }
 
-static int process_query_reset(knot_process_t *ctx)
+static int process_query_reset(knot_layer_t *ctx)
 {
 	assert(ctx);
 	struct query_data *qdata = QUERY_DATA(ctx);
@@ -72,7 +72,7 @@ static int process_query_reset(knot_process_t *ctx)
 	return NS_PROC_MORE;
 }
 
-static int process_query_finish(knot_process_t *ctx)
+static int process_query_finish(knot_layer_t *ctx)
 {
 	process_query_reset(ctx);
 	mm_free(ctx->mm, ctx->data);
@@ -81,7 +81,7 @@ static int process_query_finish(knot_process_t *ctx)
 	return NS_PROC_NOOP;
 }
 
-static int process_query_in(knot_pkt_t *pkt, knot_process_t *ctx)
+static int process_query_in(knot_layer_t *ctx, knot_pkt_t *pkt)
 {
 	assert(pkt && ctx);
 	struct query_data *qdata = QUERY_DATA(ctx);
@@ -109,7 +109,7 @@ static int process_query_in(knot_pkt_t *pkt, knot_process_t *ctx)
 /*!
  * \brief Create a response for a given query in the INTERNET class.
  */
-static int query_internet(knot_pkt_t *pkt, knot_process_t *ctx)
+static int query_internet(knot_pkt_t *pkt, knot_layer_t *ctx)
 {
 	struct query_data *data = QUERY_DATA(ctx);
 	int next_state = NS_PROC_FAIL;
@@ -144,7 +144,7 @@ static int query_internet(knot_pkt_t *pkt, knot_process_t *ctx)
 /*!
  * \brief Create a response for a given query in the CHAOS class.
  */
-static int query_chaos(knot_pkt_t *pkt, knot_process_t *ctx)
+static int query_chaos(knot_pkt_t *pkt, knot_layer_t *ctx)
 {
 	dbg_ns("%s(%p, %p)\n", __func__, pkt, ctx);
 	struct query_data *data = QUERY_DATA(ctx);
@@ -350,7 +350,7 @@ static void qname_case_restore(struct query_data *qdata, knot_pkt_t *pkt)
 }
 
 /*! \brief Initialize response, sizes and find zone from which we're going to answer. */
-static int prepare_answer(const knot_pkt_t *query, knot_pkt_t *resp, knot_process_t *ctx)
+static int prepare_answer(const knot_pkt_t *query, knot_pkt_t *resp, knot_layer_t *ctx)
 {
 	struct query_data *qdata = QUERY_DATA(ctx);
 	server_t *server = qdata->param->server;
@@ -405,7 +405,7 @@ static int prepare_answer(const knot_pkt_t *query, knot_pkt_t *resp, knot_proces
 	return ret;
 }
 
-static int process_query_err(knot_pkt_t *pkt, knot_process_t *ctx)
+static int process_query_err(knot_layer_t *ctx, knot_pkt_t *pkt)
 {
 	assert(pkt && ctx);
 	struct query_data *qdata = QUERY_DATA(ctx);
@@ -442,7 +442,7 @@ static int process_query_err(knot_pkt_t *pkt, knot_process_t *ctx)
 /*!
  * \brief Apply rate limit.
  */
-static int ratelimit_apply(int state, knot_pkt_t *pkt, knot_process_t *ctx)
+static int ratelimit_apply(int state, knot_pkt_t *pkt, knot_layer_t *ctx)
 {
 	/* Check if rate limiting applies. */
 	struct query_data *qdata = QUERY_DATA(ctx);
@@ -466,7 +466,7 @@ static int ratelimit_apply(int state, knot_pkt_t *pkt, knot_process_t *ctx)
 	/* Now it is slip or drop. */
 	if (rrl_slip_roll(conf()->rrl_slip)) {
 		/* Answer slips. */
-		if (process_query_err(pkt, ctx) != KNOT_EOK) {
+		if (process_query_err(ctx, pkt) != KNOT_EOK) {
 			return NS_PROC_FAIL;
 		}
 		knot_wire_set_tc(pkt->wire);
@@ -478,7 +478,7 @@ static int ratelimit_apply(int state, knot_pkt_t *pkt, knot_process_t *ctx)
 	return NS_PROC_DONE;
 }
 
-static int process_query_out(knot_pkt_t *pkt, knot_process_t *ctx)
+static int process_query_out(knot_layer_t *ctx, knot_pkt_t *pkt)
 {
 	assert(pkt && ctx);
 	struct query_data *qdata = QUERY_DATA(ctx);
@@ -664,7 +664,7 @@ int process_query_verify(struct query_data *qdata)
 }
 
 /*! \brief Module implementation. */
-static const knot_process_module_t PROCESS_QUERY_MODULE = {
+static const knot_layer_api_t PROCESS_QUERY_MODULE = {
 	&process_query_begin,
 	&process_query_reset,
 	&process_query_finish,
@@ -673,7 +673,7 @@ static const knot_process_module_t PROCESS_QUERY_MODULE = {
 	&process_query_err
 };
 
-const knot_process_module_t *process_query_get_module(void)
+const knot_layer_api_t *process_query_get_module(void)
 {
 	return &PROCESS_QUERY_MODULE;
 }

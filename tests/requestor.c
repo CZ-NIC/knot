@@ -25,14 +25,16 @@
 
 /* @note Purpose of this test is not to verify process_answer functionality,
  *       but simply if the requesting/receiving works, so mirror is okay. */
-static int begin(knot_process_t *ctx, void *module_param) { return NS_PROC_MORE; }
-static int answer(knot_pkt_t *pkt, knot_process_t *ctx) { return NS_PROC_DONE; }
-static int reset(knot_process_t *ctx) { return NS_PROC_NOOP; }
-static int noop(knot_pkt_t *pkt, knot_process_t *ctx) { return NS_PROC_NOOP; }
+static int begin(knot_layer_t *ctx, void *module_param) { return NS_PROC_NOOP; }
+static int reset(knot_layer_t *ctx) { return NS_PROC_FULL; }
+static int finish(knot_layer_t *ctx) { return NS_PROC_NOOP; }
+static int in(knot_layer_t *ctx, knot_pkt_t *pkt) { return NS_PROC_DONE; }
+static int out(knot_layer_t *ctx, knot_pkt_t *pkt) { return NS_PROC_MORE; }
 
 /*! \brief Dummy answer processing module. */
-const knot_process_module_t dummy_module = {
-        &begin, &reset, &reset, &answer, &noop, &noop
+const knot_layer_api_t dummy_module = {
+        &begin, &reset, &finish,
+        &in, &out, &knot_layer_noop
 };
 
 static void* responder_thread(void *arg)
@@ -70,13 +72,13 @@ static struct knot_request *make_query(struct knot_requestor *requestor,  conf_i
 
 	const struct sockaddr *dst = (const struct sockaddr *)&remote->addr;
 	const struct sockaddr *src = (const struct sockaddr *)&remote->via;
-	return knot_requestor_make(requestor, dst, src, pkt, 0);
+	return knot_request_make(requestor->mm, dst, src, pkt, 0);
 }
 
 static void test_disconnected(struct knot_requestor *requestor, conf_iface_t *remote)
 {
 	/* Enqueue packet. */
-	int ret = knot_requestor_enqueue(requestor, make_query(requestor, remote), NULL);
+	int ret = knot_requestor_enqueue(requestor, make_query(requestor, remote));
 	is_int(KNOT_ECONN, ret, "requestor: disconnected/enqueue");
 
 	/* Wait for completion. */
@@ -88,7 +90,7 @@ static void test_disconnected(struct knot_requestor *requestor, conf_iface_t *re
 static void test_connected(struct knot_requestor *requestor, conf_iface_t *remote)
 {
 	/* Enqueue packet. */
-	int ret = knot_requestor_enqueue(requestor, make_query(requestor, remote), NULL);;
+	int ret = knot_requestor_enqueue(requestor, make_query(requestor, remote));
 	is_int(KNOT_EOK, ret, "requestor: connected/enqueue");
 
 	/* Wait for completion. */
@@ -99,7 +101,7 @@ static void test_connected(struct knot_requestor *requestor, conf_iface_t *remot
 	/* Enqueue multiple queries. */
 	ret = KNOT_EOK;
 	for (unsigned i = 0; i < 10; ++i) {
-		ret |= knot_requestor_enqueue(requestor, make_query(requestor, remote), NULL);;
+		ret |= knot_requestor_enqueue(requestor, make_query(requestor, remote));
 	}
 	is_int(KNOT_EOK, ret, "requestor: multiple enqueue");
 
@@ -118,6 +120,7 @@ int main(int argc, char *argv[])
 
 	mm_ctx_t mm;
 	mm_ctx_mempool(&mm, MM_DEFAULT_BLKSIZE);
+
 	conf_iface_t remote;
 	memset(&remote, 0, sizeof(conf_iface_t));
 	sockaddr_set(&remote.addr, AF_INET, "127.0.0.1", 0);
@@ -126,11 +129,12 @@ int main(int argc, char *argv[])
 	/* Create fake server environment. */
 	server_t server;
 	int ret = create_fake_server(&server, &mm);
-	ok(ret == KNOT_EOK, "requestor: failed to initialize fake server");
+	ok(ret == KNOT_EOK, "requestor: initialize fake server");
 
 	/* Initialize requestor. */
 	struct knot_requestor requestor;
-	knot_requestor_init(&requestor, &dummy_module, &mm);
+	knot_requestor_init(&requestor, &mm);
+	knot_requestor_overlay(&requestor, &dummy_module, NULL);
 
 	/* Test requestor in disconnected environment. */
 	test_disconnected(&requestor, &remote);
