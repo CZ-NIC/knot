@@ -398,6 +398,15 @@ def do_normal_tests(master, zone, dnssec=False):
     resp.check_record(rtype="NAPTR", rdata="1 1 \"u\" \"E2U+sip\" \"!^.*$!sip:123@freeswitch.org!\" .")
     verify(master, zone, dnssec)
 
+    # modify zone apex
+    check_log("Add TXT into apex")
+    up = master.update(zone)
+    up.add("ddns.", 300, "TXT", "This is apeeex!")
+    up.send("NOERROR")
+    resp = master.dig("ddns.", "TXT")
+    resp.check_record(rtype="TXT", rdata="This is apeeex!")
+    verify(master, zone, dnssec)
+
     if dnssec:
         # add DS for existing delegation
         check_log("DS addition")

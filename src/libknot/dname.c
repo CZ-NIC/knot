@@ -453,6 +453,13 @@ bool knot_dname_is_sub(const knot_dname_t *sub, const knot_dname_t *domain)
 
 /*----------------------------------------------------------------------------*/
 
+bool knot_dname_in(const knot_dname_t *domain, const knot_dname_t *sub)
+{
+	return knot_dname_is_equal(domain, sub) || knot_dname_is_sub(sub, domain);
+}
+
+/*----------------------------------------------------------------------------*/
+
 bool knot_dname_is_wildcard(const knot_dname_t *name)
 {
 	assert(name != NULL);
