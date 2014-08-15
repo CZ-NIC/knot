@@ -527,6 +527,10 @@ int knot_rrset_rdata_from_wire_one(knot_rrset_t *rrset,
 		return KNOT_EINVAL;
 	}
 
+	if (total_size - *pos < rdlength) {
+		return KNOT_EMALF;
+	}
+
 	if (rdlength == 0) {
 		return knot_rrset_add_rdata(rrset, NULL, 0, ttl, mm);
 	}
