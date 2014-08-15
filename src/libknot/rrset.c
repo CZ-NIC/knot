@@ -342,18 +342,22 @@ static int write_rdata(const knot_rrset_t *rrset, uint16_t rrset_index,
 
 	uint8_t *src = knot_rdata_data(rdata);
 	size_t src_avail = knot_rdata_rdlen(rdata);
-
-	const rdata_descriptor_t *desc = knot_get_rdata_descriptor(rrset->type);
-	for (int i = 0; desc->block_types[i] != KNOT_RDATA_WF_END; i++) {
-		int type = desc->block_types[i];
-		int ret = write_rdata_block(&src, &src_avail, wire, capacity,
-		                            type, compr, compr_hint, flags);
-		if (ret != KNOT_EOK) {
-			return ret;
+	if (src_avail > 0) {
+		/* Only write non-empty data. */
+		const rdata_descriptor_t *desc =
+			knot_get_rdata_descriptor(rrset->type);
+		for (int i = 0; desc->block_types[i] != KNOT_RDATA_WF_END; i++) {
+			int type = desc->block_types[i];
+			int ret = write_rdata_block(&src, &src_avail, wire, capacity,
+			                            type, compr, compr_hint, flags);
+			if (ret != KNOT_EOK) {
+				return ret;
+			}
 		}
 	}
 
 	if (src_avail > 0) {
+		/* Trailing data in the message. */
 		return KNOT_EMALF;
 	}
 
@@ -517,6 +521,12 @@ void knot_rrset_clear(knot_rrset_t *rrset, mm_ctx_t *mm)
 	}
 }
 
+static bool allow_zero_data(const knot_rrset_t *rr)
+{
+	return rr->rclass != KNOT_CLASS_IN || // NONE and ANY for DDNS
+	       rr->type == KNOT_RRTYPE_APL;   // APL can have 0 RDLENGTH
+}
+
 int knot_rrset_rdata_from_wire_one(knot_rrset_t *rrset,
                                    const uint8_t *wire, size_t *pos,
                                    size_t total_size, uint32_t ttl,
@@ -532,7 +542,9 @@ int knot_rrset_rdata_from_wire_one(knot_rrset_t *rrset,
 	}
 
 	if (rdlength == 0) {
-		return knot_rrset_add_rdata(rrset, NULL, 0, ttl, mm);
+		return allow_zero_data(rrset) ?
+		       knot_rrset_add_rdata(rrset, NULL, 0, ttl, mm) :
+		       KNOT_EMALF;
 	}
 
 	const rdata_descriptor_t *desc = knot_get_rdata_descriptor(rrset->type);
