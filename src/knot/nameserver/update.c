@@ -145,8 +145,6 @@ static int process_single_update(struct request_data *request,
 	return KNOT_EOK;
 }
 
-#undef UPDATE_LOG
-
 static void set_rcodes(list_t *requests, const uint16_t rcode)
 {
 	struct request_data *req;
@@ -393,17 +391,22 @@ static void update_tsig_check(struct query_data *qdata, struct request_data *req
 {
 	// Check that ACL is still valid.
 	if (!process_query_acl_check(&qdata->zone->conf->acl.update_in, qdata)) {
+		UPDATE_LOG(LOG_WARNING, "ACL check failed");
 		knot_wire_set_rcode(req->resp->wire, qdata->rcode);
 	} else {
 		// Check TSIG validity.
 		int ret = process_query_verify(qdata);
 		if (ret != KNOT_EOK) {
+			UPDATE_LOG(LOG_WARNING, "failed to verify (%s)",
+			           knot_strerror(ret));
 			knot_wire_set_rcode(req->resp->wire, qdata->rcode);
 		}
 	}
 	
 	req->sign = qdata->sign;
 }
+
+#undef UPDATE_LOG
 
 static int init_update_responses(const zone_t *zone, list_t *updates)
 {
