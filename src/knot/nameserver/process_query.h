@@ -132,4 +132,14 @@ bool process_query_acl_check(list_t *acl, struct query_data *qdata);
  */
 int process_query_verify(struct query_data *qdata);
 
+/*!
+ * \brief Sign current query using configured TSIG keys.
+ *
+ * \param pkt    Outgoing message.
+ * \param qdata  Query data.
+ *
+ * \retval KNOT_E*
+ */
+int process_query_sign_response(knot_pkt_t *pkt, struct query_data *qdata);
+
 /*! @} */

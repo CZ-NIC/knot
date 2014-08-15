@@ -37,6 +37,16 @@
 #define UPDATE_LOG(severity, msg...) \
 	QUERY_LOG(severity, qdata, "DDNS", msg)
 
+/* Creates query_data structure from DDNS request data. */
+#define MOCK_QDATA(req, zone) \
+	struct process_query_param _param = { 0 }; \
+	_param.remote = &req->remote; \
+	struct query_data qdata = { 0 }; \
+	qdata.param = &_param; \
+	qdata.query = req->query; \
+	qdata.zone  = zone; \
+	qdata.sign = req->sign;
+
 static bool apex_rr_changed(const zone_contents_t *old_contents,
                             const zone_contents_t *new_contents,
                             uint16_t type)
@@ -154,14 +164,13 @@ static int process_bulk(zone_t *zone, list_t *requests, changeset_t *ddns_ch)
 	// Walk all the requests and process.
 	struct request_data *req;
 	WALK_LIST(req, *requests) {
-		// Init qdata structure for logging (unique per-request).
-		struct process_query_param param = { 0 };
-		param.remote = &req->remote;
-		struct query_data qdata = { 0 };
-		qdata.param = &param;
-		qdata.query = req->query;
-		qdata.zone  = zone;
+		if (knot_wire_get_rcode(req->resp->wire) != KNOT_RCODE_NOERROR) {
+			// Skip requests that failed ACL check.
+			continue;
+		}
 		
+		// Init qdata structure for logging (unique per-request).
+		MOCK_QDATA(req, zone);
 		int ret = check_prereqs(req, zone, &zone_update, &qdata);
 		if (ret != KNOT_EOK) {
 			// Skip updates with failed prereqs.
@@ -374,7 +383,7 @@ static void forward_requests(zone_t *zone, list_t *requests)
 	}
 }
 
-static int init_update_respones(list_t *updates)
+static int init_update_responses(const zone_t *zone, list_t *updates)
 {
 	struct request_data *r = NULL;
 	WALK_LIST(r, *updates) {
@@ -385,16 +394,40 @@ static int init_update_respones(list_t *updates)
 
 		assert(r->query);
 		knot_pkt_init_response(r->resp, r->query);
+		if (zone_master(zone)) {
+			// Don't check TSIG for forwards.
+			continue;
+		}
+		// Check that ACL is still valid.
+		MOCK_QDATA(r, zone);
+		if (!process_query_acl_check(&zone->conf->acl.update_in, &qdata)) {
+			knot_wire_set_rcode(r->resp->wire, qdata.rcode);
+		} else {
+			// Check TSIG validity.
+			int ret = process_query_verify(&qdata);
+			if (ret != KNOT_EOK) {
+				knot_wire_set_rcode(r->resp->wire, qdata.rcode);
+			}
+		}
+		
+		r->sign = qdata.sign;
 	}
 
 	return KNOT_EOK;
 }
 
-static void send_update_responses(list_t *updates)
+static void send_update_responses(const zone_t *zone, list_t *updates)
 {
 	struct request_data *r, *nxt;
 	WALK_LIST_DELSAFE(r, nxt, *updates) {
+		
 		if (r->resp) {
+			if (!zone_master(zone)) {
+				// Sign the response with TSIG where applicable
+				MOCK_QDATA(r, zone);
+				(void)process_query_sign_response(r->resp, &qdata);
+			}
+			
 			if (net_is_connected(r->fd)) {
 				tcp_send_msg(r->fd, r->resp->wire, r->resp->size);
 			} else {
@@ -446,11 +479,11 @@ int updates_execute(zone_t *zone)
 	}
 
 	/* Init updates respones. */
-	int ret = init_update_respones(&updates);
+	int ret = init_update_responses(zone, &updates);
 	if (ret != KNOT_EOK) {
 		/* Send what responses we can. */
 		set_rcodes(&updates, KNOT_RCODE_SERVFAIL);
-		send_update_responses(&updates);
+		send_update_responses(zone, &updates);
 		return ret;
 	}
 
@@ -467,7 +500,7 @@ int updates_execute(zone_t *zone)
 	UNUSED(ret); /* Don't care about the Knot code, RCODEs are set. */
 
 	/* Send responses. */
-	send_update_responses(&updates);
+	send_update_responses(zone, &updates);
 
 	return KNOT_EOK;
 }

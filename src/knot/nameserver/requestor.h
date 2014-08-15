@@ -32,11 +32,12 @@ struct requestor {
 	mm_ctx_t *mm;                        /*!< Memory context. */
 };
 
-/*! \brief Request data (socket, payload and endpoints). */
+/*! \brief Request data (socket, payload, response, TSIG and endpoints). */
 struct request_data {
 	node_t node;
 	int fd;
 	struct sockaddr_storage remote, origin;
+	knot_sign_context_t sign;
 	knot_pkt_t *query;
 	knot_pkt_t *resp;
 };
