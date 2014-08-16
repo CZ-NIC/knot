@@ -387,28 +387,33 @@ static void forward_requests(zone_t *zone, list_t *requests)
 	}
 }
 
-static void update_tsig_check(struct query_data *qdata, struct request_data *req)
+static void update_tsig_check(struct query_data *qdata, struct request_data *req,
+                              size_t *update_count)
 {
 	// Check that ACL is still valid.
 	if (!process_query_acl_check(&qdata->zone->conf->acl.update_in, qdata)) {
 		UPDATE_LOG(LOG_WARNING, "ACL check failed");
 		knot_wire_set_rcode(req->resp->wire, qdata->rcode);
+		*update_count -= 1;
 	} else {
 		// Check TSIG validity.
 		int ret = process_query_verify(qdata);
 		if (ret != KNOT_EOK) {
-			UPDATE_LOG(LOG_WARNING, "failed to verify (%s)",
+			UPDATE_LOG(LOG_WARNING, "failed (%s)",
 			           knot_strerror(ret));
 			knot_wire_set_rcode(req->resp->wire, qdata->rcode);
+			*update_count -= 1;
 		}
 	}
 	
+	// Store signing context for response.
 	req->sign = qdata->sign;
 }
 
 #undef UPDATE_LOG
 
-static int init_update_responses(const zone_t *zone, list_t *updates)
+static int init_update_responses(const zone_t *zone, list_t *updates,
+                                 size_t *update_count)
 {
 	struct request_data *req = NULL;
 	WALK_LIST(req, *updates) {
@@ -429,7 +434,7 @@ static int init_update_responses(const zone_t *zone, list_t *updates)
 		struct query_data qdata;
 		init_qdata_from_request(&qdata, zone, req, &param);
 		
-		update_tsig_check(&qdata, req);
+		update_tsig_check(&qdata, req, update_count);
 	}
 
 	return KNOT_EOK;
@@ -500,12 +505,18 @@ int updates_execute(zone_t *zone)
 	}
 
 	/* Init updates respones. */
-	int ret = init_update_responses(zone, &updates);
+	int ret = init_update_responses(zone, &updates, &update_count);
 	if (ret != KNOT_EOK) {
 		/* Send what responses we can. */
 		set_rcodes(&updates, KNOT_RCODE_SERVFAIL);
 		send_update_responses(zone, &updates);
 		return ret;
+	}
+	
+	if (update_count == 0) {
+		/* All updates failed their ACL checks. */
+		send_update_responses(zone, &updates);
+		return KNOT_EOK;
 	}
 
 	/* Process update list - forward if zone has master, or execute. */
