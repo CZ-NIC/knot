@@ -114,6 +114,7 @@ class ZoneFile(object):
         if cmd.returncode != 0:
             set_err("DNSSEC VERIFY")
             detail_log(err.strip())
+            self.backup()
 
         detail_log(SEP)
 
@@ -130,7 +131,7 @@ class ZoneFile(object):
         '''Insert NSEC3PARAM record to the zone file.'''
 
         with open(self.path, "a") as file:
-            file.write("@ 0 NSEC3PARAM 1 0 %i %s" % (iters, salt))
+            file.write("@ 0 NSEC3PARAM 1 0 %i %s\n" % (iters, salt))
 
         self.update_soa()
 
