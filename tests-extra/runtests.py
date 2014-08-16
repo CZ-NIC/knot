@@ -165,6 +165,20 @@ def main(args):
             except dnstest.utils.Skip as exc:
                 log.error(case_str_err + "SKIPPED (%s)" % format(exc))
                 skip_cnt += 1
+            except dnstest.utils.Failed as exc:
+                save_traceback(params.out_dir)
+
+                desc = format(exc)
+                msg = "FAILED (%s)" % (desc if desc else exc.__class__.__name__)
+                if params.err and params.err_msg:
+                    msg += " AND (" + params.err_msg + ")"
+                log.error(case_str_err + msg)
+                log_failed(outs_dir, case_str_fail + msg)
+
+                if params.debug:
+                    traceback.print_exc()
+
+                fail_cnt += 1
             except Exception as exc:
                 save_traceback(params.out_dir)
 
@@ -190,7 +204,7 @@ def main(args):
             else:
                 if params.err:
                     msg = "FAILED" + \
-                          (("(" + params.err_msg + ")") if params.err_msg else "")
+                          ((" (" + params.err_msg + ")") if params.err_msg else "")
                     log.info(case_str_err + msg)
                     log_failed(outs_dir, case_str_fail + msg)
                     fail_cnt += 1

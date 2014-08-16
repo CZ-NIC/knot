@@ -96,7 +96,7 @@ class ZoneFile(object):
                          + params
             if zone_generate.main(params) != 0:
                 raise OSError
-            
+
         except OSError:
             raise Exception("Can't create zone file '%s'" % self.path)
 

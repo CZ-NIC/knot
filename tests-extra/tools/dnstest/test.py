@@ -36,7 +36,7 @@ class Test(object):
 
         self.ip = ip if ip else random.choice([4, 6])
         if self.ip not in [4, 6]:
-            raise Exception("Invalid IP version")
+            raise Failed("Invalid IP version")
 
         self.tsig = None
         if tsig != None:
@@ -108,7 +108,7 @@ class Test(object):
         elif server == "dummy":
             srv = dnstest.server.Dummy()
         else:
-            raise Exception("Unsupported server '%s'" % server)
+            raise Failed("Unsupported server '%s'" % server)
 
         type(srv).count += 1
 
@@ -168,7 +168,7 @@ class Test(object):
         '''Start all test servers'''
 
         if self.start_tries > Test.MAX_START_TRIES:
-            raise Exception("Can't start all servers")
+            raise Failed("Can't start all servers")
 
         self.start_tries += 1
 
@@ -185,7 +185,7 @@ class Test(object):
             server.start(clean=True)
 
             if not server.running():
-                raise Exception("Server '%s' not running" % server.name)
+                raise Failed("Server '%s' not running" % server.name)
 
             if not server.listening():
                 self.stop(kill=True)
@@ -245,12 +245,12 @@ class Test(object):
     def link(self, zones, master, slave=None, ddns=False, ixfr=False):
         for zone in zones:
             if master not in self.servers:
-                raise Exception("Server is out of testing scope")
+                raise Failed("Server is out of testing scope")
             master.set_master(zone, slave, ddns, ixfr)
 
             if slave:
                 if slave not in self.servers:
-                    raise Exception("Server is out of testing scope")
+                    raise Failed("Server is out of testing scope")
                 slave.set_slave(zone, master, ddns, ixfr)
 
     def _canonize_record(self, rtype, record):
