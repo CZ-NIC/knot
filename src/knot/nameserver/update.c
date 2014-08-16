@@ -155,6 +155,11 @@ static void set_rcodes(list_t *requests, const uint16_t rcode)
 	}
 }
 
+static void store_original_qname(struct query_data *qdata, const knot_pkt_t *pkt)
+{
+	memcpy(qdata->orig_qname, knot_pkt_qname(pkt), pkt->qname_size);
+}
+
 static int process_bulk(zone_t *zone, list_t *requests, changeset_t *ddns_ch)
 {
 	// Init zone update structure.
@@ -175,6 +180,9 @@ static int process_bulk(zone_t *zone, list_t *requests, changeset_t *ddns_ch)
 		struct query_data qdata;
 		init_qdata_from_request(&qdata, zone, req, &param);
 		
+		store_original_qname(&qdata, req->query);
+		process_query_qname_case_lower(req->query);
+		
 		int ret = check_prereqs(req, zone, &zone_update, &qdata);
 		if (ret != KNOT_EOK) {
 			// Skip updates with failed prereqs.
@@ -185,6 +193,8 @@ static int process_bulk(zone_t *zone, list_t *requests, changeset_t *ddns_ch)
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
+		
+		process_query_qname_case_restore(&qdata, req->query);
 	}
 	
 	return KNOT_EOK;
@@ -483,6 +493,8 @@ int update_query_process(knot_pkt_t *pkt, struct query_data *qdata)
 	/* Check expiration. */
 	NS_NEED_ZONE_CONTENTS(qdata, KNOT_RCODE_SERVFAIL);
 
+	/* Restore original QNAME for DDNS ACL checks. */
+	process_query_qname_case_restore(qdata, qdata->query);
 	/* Store update into DDNS queue. */
 	int ret = zone_update_enqueue(zone, qdata->query, qdata->param);
 	if (ret != KNOT_EOK) {
