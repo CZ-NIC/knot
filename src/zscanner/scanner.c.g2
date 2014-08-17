@@ -73186,7 +73186,7 @@ int zs_scanner_parse_file(zs_scanner_t *s,
 		}
 
 		// Scan zone file block.
-		zs_scanner_parse(s, data, data + block_size, final_block);
+		(void)zs_scanner_parse(s, data, data + block_size, final_block);
 
 		// Zone file block unmapping.
 		if (munmap(data, block_size) == -1) {
