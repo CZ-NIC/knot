@@ -418,6 +418,14 @@ static bool update_tsig_check(struct query_data *qdata, struct request_data *req
 
 #undef UPDATE_LOG
 
+static void free_request(struct request_data *req)
+{
+	close(req->fd);
+	knot_pkt_free(&req->query);
+	knot_pkt_free(&req->resp);
+	free(req);
+}
+
 static void send_update_response(const zone_t *zone, struct request_data *req)
 {
 	if (req->resp) {
@@ -436,19 +444,17 @@ static void send_update_response(const zone_t *zone, struct request_data *req)
 			             (struct sockaddr *)&req->remote);
 		}
 	}
-
-	close(req->fd);
-	knot_pkt_free(&req->query);
-	knot_pkt_free(&req->resp);
 }
 
 static void send_update_responses(const zone_t *zone, list_t *updates)
 {
-	struct request_data *req, *nxt;
+	struct request_data *req;
+	node_t *nxt = NULL;
 	WALK_LIST_DELSAFE(req, nxt, *updates) {
 		send_update_response(zone, req);
-		free(req);
+		free_request(req);
 	}
+	init_list(updates);
 }
 
 static int init_update_responses(const zone_t *zone, list_t *updates,
@@ -478,9 +484,9 @@ static int init_update_responses(const zone_t *zone, list_t *updates,
 			// ACL/TSIG check failed, send response.
 			send_update_response(zone, req);
 			// Remove this request from processing list.
-			*update_count -= 1;
 			rem_node(&req->node);
-			free(req);
+			free_request(req);
+			*update_count -= 1;
 		}
 	}
 
