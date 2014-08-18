@@ -257,6 +257,7 @@ static int parse_partial_rr(zs_scanner_t *s, const char *lp, unsigned flags)
 			return KNOT_EPARSEFAIL;
 		}
 		cls = buff;
+		buff = NULL;
 		s->r_class = num;
 		DBG("%s: parsed class=%u '%s'\n", __func__, s->r_class, cls);
 		lp = tok_skipspace(lp + len);
@@ -271,10 +272,13 @@ static int parse_partial_rr(zs_scanner_t *s, const char *lp, unsigned flags)
 	}
 	if (knot_rrtype_from_string(buff, &num) == 0) {
 		type = buff;
+		buff = NULL;
 		s->r_type = num;
 		DBG("%s: parsed type=%u '%s'\n", __func__, s->r_type, type);
 		lp = tok_skipspace(lp + len);
 	}
+
+	free(buff);
 
 	/* Remainder */
 	if (*lp == '\0') {
