@@ -16,6 +16,7 @@ Parameters:
 
 import binascii
 import getopt
+import string
 import os
 import random
 import re
@@ -89,6 +90,12 @@ WORDS = [
 "mobile","customer","siprouter","sip","office","voice","support",
 "spare","owa","exchange" ]
 
+# Replace some words with random ones
+for i, word in enumerate(WORDS):
+    if random.choice([True, False]):
+        size = random.randint(2, 20)
+        WORDS[i] = ''.join(random.choice(string.hexdigits) for _ in range(size))
+
 # For unique CNAMES/DNAMES
 CNAME_EXIST = set([])
 # For unique names
@@ -132,7 +139,7 @@ def rnd_dname(enable_sub = 1):
 def rnd_dnl(enable_sub = 1):
     dn = rnd_dname(enable_sub)
     fqdn = g_fqdn(dn)
-    while fqdn in CNAME_EXIST:
+    while fqdn.lower() in (name.lower() for name in CNAME_EXIST):
         dn = rnd_dname(enable_sub)
         fqdn = g_fqdn(dn)
     NAME_EXIST.add(fqdn)
@@ -238,7 +245,8 @@ def g_dname(rt):
     # Ensure unique owners for CNAME/DNAME
     dn = rnd_dname()
     fqdn = g_fqdn(dn)
-    while (fqdn in CNAME_EXIST) or (fqdn in NAME_EXIST):
+    while (fqdn.lower() in (name.lower() for name in CNAME_EXIST)) or \
+          (fqdn in NAME_EXIST):
         dn = rnd_dname()
         fqdn = g_fqdn(dn)
     CNAME_EXIST.add(fqdn)

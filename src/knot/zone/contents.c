@@ -106,8 +106,8 @@ static int zone_contents_destroy_node_rrsets_from_tree(
 	UNUSED(data);
 	assert(tnode != NULL);
 	if (*tnode != NULL) {
-		node_free_rrsets(*tnode);
-		node_free(tnode);
+		node_free_rrsets(*tnode, NULL);
+		node_free(tnode, NULL);
 	}
 
 	return KNOT_EOK;
@@ -411,7 +411,7 @@ zone_contents_t *zone_contents_new(const knot_dname_t *apex_name)
 	}
 
 	memset(contents, 0, sizeof(zone_contents_t));
-	contents->apex = node_new(apex_name);
+	contents->apex = node_new(apex_name, NULL);
 	if (contents->apex == NULL) {
 		goto cleanup;
 	}
@@ -502,7 +502,7 @@ static int zone_contents_add_node(zone_contents_t *zone, zone_node_t *node,
 
 			/* Create a new node. */
 			dbg_zone_detail("Creating new node.\n");
-			next_node = node_new(parent);
+			next_node = node_new(parent, NULL);
 			if (next_node == NULL) {
 				return KNOT_ENOMEM;
 			}
@@ -511,7 +511,7 @@ static int zone_contents_add_node(zone_contents_t *zone, zone_node_t *node,
 			dbg_zone_detail("Inserting new node to zone tree.\n");
 			ret = zone_tree_insert(zone->nodes, next_node);
 			if (ret != KNOT_EOK) {
-				node_free(&next_node);
+				node_free(&next_node, NULL);
 				return ret;
 			}
 
@@ -614,19 +614,19 @@ static int insert_rr(zone_contents_t *z,
 		             zone_contents_get_node(z, rr->owner);
 		if (*n == NULL) {
 			// Create new, insert
-			*n = node_new(rr->owner);
+			*n = node_new(rr->owner, NULL);
 			if (*n == NULL) {
 				return KNOT_ENOMEM;
 			}
 			ret = nsec3 ? zone_contents_add_nsec3_node(z, *n) :
 			              zone_contents_add_node(z, *n, true);
 			if (ret != KNOT_EOK) {
-				node_free(n);
+				node_free(n, NULL);
 			}
 		}
 	}
 
-	return node_add_rrset(*n, rr);
+	return node_add_rrset(*n, rr, NULL);
 }
 
 static int recreate_normal_tree(const zone_contents_t *z, zone_contents_t *out)
@@ -637,7 +637,7 @@ static int recreate_normal_tree(const zone_contents_t *z, zone_contents_t *out)
 	}
 
 	// Insert APEX first.
-	zone_node_t *apex_cpy = node_shallow_copy(z->apex);
+	zone_node_t *apex_cpy = node_shallow_copy(z->apex, NULL);
 	if (apex_cpy == NULL) {
 		return KNOT_ENOMEM;
 	}
@@ -645,7 +645,7 @@ static int recreate_normal_tree(const zone_contents_t *z, zone_contents_t *out)
 	// Normal additions need apex ... so we need to insert directly.
 	int ret = zone_tree_insert(out->nodes, apex_cpy);
 	if (ret != KNOT_EOK) {
-		node_free(&apex_cpy);
+		node_free(&apex_cpy, NULL);
 		return ret;
 	}
 
@@ -662,7 +662,7 @@ static int recreate_normal_tree(const zone_contents_t *z, zone_contents_t *out)
 			hattrie_iter_next(itt);
 			continue;
 		}
-		zone_node_t *to_add = node_shallow_copy(to_cpy);
+		zone_node_t *to_add = node_shallow_copy(to_cpy, NULL);
 		if (to_add == NULL) {
 			hattrie_iter_free(itt);
 			return KNOT_ENOMEM;
@@ -670,7 +670,7 @@ static int recreate_normal_tree(const zone_contents_t *z, zone_contents_t *out)
 
 		int ret = zone_contents_add_node(out, to_add, true);
 		if (ret != KNOT_EOK) {
-			node_free(&to_add);
+			node_free(&to_add, NULL);
 			hattrie_iter_free(itt);
 			return ret;
 		}
@@ -696,7 +696,7 @@ static int recreate_nsec3_tree(const zone_contents_t *z, zone_contents_t *out)
 	}
 	while (!hattrie_iter_finished(itt)) {
 		const zone_node_t *to_cpy = (zone_node_t *)*hattrie_iter_val(itt);
-		zone_node_t *to_add = node_shallow_copy(to_cpy);
+		zone_node_t *to_add = node_shallow_copy(to_cpy, NULL);
 		if (to_add == NULL) {
 			hattrie_iter_free(itt);
 			return KNOT_ENOMEM;
@@ -704,7 +704,7 @@ static int recreate_nsec3_tree(const zone_contents_t *z, zone_contents_t *out)
 		int ret = zone_contents_add_nsec3_node(out, to_add);
 		if (ret != KNOT_EOK) {
 			hattrie_iter_free(itt);
-			node_free(&to_add);
+			node_free(&to_add, NULL);
 			return ret;
 		}
 		hattrie_iter_next(itt);
@@ -986,7 +986,6 @@ dbg_zone_exec_detail(
 	 */
 	const knot_rdataset_t *nsec3_rrs =
 		node_rdataset(*nsec3_previous, KNOT_RRTYPE_NSEC3);
-	assert(nsec3_rrs);
 	const zone_node_t *original_prev = *nsec3_previous;
 
 	int match = 0;
@@ -1082,8 +1081,9 @@ int zone_contents_adjust_pointers(zone_contents_t *contents)
 {
 	int ret = zone_contents_load_nsec3param(contents);
 	if (ret != KNOT_EOK) {
-		log_zone_error("Failed to load NSEC3 params: %s\n",
-		               knot_strerror(ret));
+		log_zone_error(contents->apex->owner,
+			       "failed to load NSEC3 parameters (%s)",
+			       knot_strerror(ret));
 		return ret;
 	}
 
@@ -1118,8 +1118,9 @@ int zone_contents_adjust_full(zone_contents_t *zone,
 
 	int result = zone_contents_load_nsec3param(zone);
 	if (result != KNOT_EOK) {
-		log_zone_error("Failed to load NSEC3 params: %s\n",
-		               knot_strerror(result));
+		log_zone_error(zone->apex->owner,
+			       "failed to load NSEC3 parameters (%s)",
+			       knot_strerror(result));
 		return result;
 	}
 
@@ -1363,8 +1364,8 @@ uint32_t zone_contents_next_serial(const zone_contents_t *zone, int policy)
 
 	/* If the new serial is 'lower' or equal than the new one, warn the user.*/
 	if (knot_serial_compare(old_serial, new_serial) >= 0) {
-		log_zone_warning("New serial will be lower than "
-		                 "the current one. Old: %u new: %u.\n",
+		log_zone_warning(zone->apex->owner, "updated serial is lower "
+		                 "than current, serial %u -> %u",
 		                 old_serial, new_serial);
 	}
 
@@ -1397,14 +1398,14 @@ zone_node_t *zone_contents_get_node_for_rr(zone_contents_t *zone, const knot_rrs
 
 	if (node == NULL) {
 		int ret = KNOT_EOK;
-		node = node_new(rrset->owner);
+		node = node_new(rrset->owner, NULL);
 		if (!nsec3) {
 			ret = zone_contents_add_node(zone, node, 1);
 		} else {
 			ret = zone_contents_add_nsec3_node(zone, node);
 		}
 		if (ret != KNOT_EOK) {
-			node_free(&node);
+			node_free(&node, NULL);
 			return NULL;
 		}
 

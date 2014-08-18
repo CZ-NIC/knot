@@ -139,21 +139,18 @@ int proc_update_privileges(int uid, int gid)
 	/* Drop supplementary groups. */
 	if ((uid_t)uid != getuid() || (gid_t)gid != getgid()) {
 		if (setgroups(0, NULL) < 0) {
-			log_server_warning("Failed to drop supplementary groups"
-			                   " for uid '%d' (%s).\n",
-			                   getuid(), strerror(errno));
+			log_warning("failed to drop supplementary groups for "
+			            "UID '%d' (%s)", getuid(), strerror(errno));
 		}
 # ifdef HAVE_INITGROUPS
 		struct passwd *pw;
 		if ((pw = getpwuid(uid)) == NULL) {
-			log_server_warning("Failed to get passwd entry"
-					   " for uid '%d' (%s).\n",
-					   uid, strerror(errno));
+			log_warning("failed to get passwd entry for UID '%d' (%s)",
+				    uid, strerror(errno));
 		} else {
 			if (initgroups(pw->pw_name, gid) < 0) {
-				log_server_warning("Failed to set supplementary groups"
-						   " for uid '%d' (%s).\n",
-						   uid, strerror(errno));
+				log_warning("failed to set supplementary groups "
+				            "for UID '%d' (%s)", uid, strerror(errno));
 			}
 		}
 # endif /* HAVE_INITGROUPS */
@@ -162,17 +159,15 @@ int proc_update_privileges(int uid, int gid)
 
 	/* Watch uid/gid. */
 	if ((gid_t)gid != getgid()) {
-		log_server_info("Changing group id to '%d'.\n", gid);
+		log_info("changing GID to '%d'", gid);
 		if (setregid(gid, gid) < 0) {
-			log_server_error("Failed to change gid to '%d'.\n",
-			                 gid);
+			log_error("failed to change GID to '%d'", gid);
 		}
 	}
 	if ((uid_t)uid != getuid()) {
-		log_server_info("Changing user id to '%d'.\n", uid);
+		log_info("changing UID to '%d'", uid);
 		if (setreuid(uid, uid) < 0) {
-			log_server_error("Failed to change uid to '%d'.\n",
-			                 uid);
+			log_error("failed to change UID to '%d'", uid);
 		}
 	}
 
@@ -189,8 +184,8 @@ int proc_update_privileges(int uid, int gid)
 		assert(lfile != NULL);
 		FILE* fp = fopen(lfile, "w");
 		if (fp == NULL) {
-			log_server_warning("Storage directory '%s' is not "
-			                   "writeable.\n", zone->storage);
+			log_warning("storage directory '%s' is not writable",
+				    zone->storage);
 			ret = KNOT_EACCES;
 		} else {
 			fclose(fp);
@@ -215,18 +210,18 @@ char *pid_check_and_create()
 
 	/* Check PID for existence and liveness. */
 	if (pid > 0 && pid_running(pid)) {
-		log_server_error("Server PID found, already running.\n");
+		log_error("server PID found, already running");
 		free(pidfile);
 		return NULL;
 	} else if (stat(pidfile, &st) == 0) {
-		log_server_warning("Removing stale PID file '%s'.\n", pidfile);
+		log_warning("removing stale PID file '%s'", pidfile);
 		pid_remove(pidfile);
 	}
 
 	/* Create a PID file. */
 	int ret = pid_write(pidfile);
 	if (ret != KNOT_EOK) {
-		log_server_error("Couldn't create a PID file '%s'.\n", pidfile);
+		log_error("couldn't create a PID file '%s'", pidfile);
 		free(pidfile);
 		return NULL;
 	}

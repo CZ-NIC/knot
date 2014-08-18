@@ -134,7 +134,7 @@ static int server_init_iface(iface_t *new_if, conf_iface_t *cfg_if)
 	if (ret < 0) {
 		close(new_if->fd[IO_UDP]);
 		close(new_if->fd[IO_TCP]);
-		log_server_error("Failed to listen on TCP interface '%s'.\n", addr_str);
+		log_error("failed to listen on TCP interface '%s'", addr_str);
 		return KNOT_ERROR;
 	}
 
@@ -142,7 +142,8 @@ static int server_init_iface(iface_t *new_if, conf_iface_t *cfg_if)
 	if (fcntl(sock, F_SETFL, O_NONBLOCK) < 0) {
 		close(new_if->fd[IO_UDP]);
 		close(new_if->fd[IO_TCP]);
-		log_server_error("Failed to listen on '%s' in non-blocking mode.\n", addr_str);
+		log_error("failed to listen on '%s' in non-blocking mode",
+			  addr_str);
 		return KNOT_ERROR;
 	}
 
@@ -158,7 +159,7 @@ static void remove_ifacelist(struct ref_t *p)
 	iface_t *n = NULL, *m = NULL;
 	WALK_LIST_DELSAFE(n, m, ifaces->u) {
 		sockaddr_tostr(&n->addr, addr_str, sizeof(addr_str));
-		log_server_info("Removing interface '%s'.\n", addr_str);
+		log_info("removing interface '%s'", addr_str);
 		server_remove_iface(n);
 	}
 	WALK_LIST_DELSAFE(n, m, ifaces->l) {
@@ -215,7 +216,7 @@ static int reconfigure_sockets(const struct conf_t *conf, server_t *s)
 			rem_node((node_t *)m);
 		} else {
 			sockaddr_tostr(&cfg_if->addr, addr_str, sizeof(addr_str));
-			log_server_info("Binding to interface %s.\n", addr_str);
+			log_info("binding to interface '%s'", addr_str);
 
 			/* Create new interface. */
 			m = malloc(sizeof(iface_t));
@@ -431,22 +432,18 @@ int server_reload(server_t *server, const char *cf)
 		return KNOT_EINVAL;
 	}
 
-	log_server_info("Reloading configuration...\n");
+	log_info("reloading configuration");
 	int cf_ret = conf_open(cf);
 	switch (cf_ret) {
 	case KNOT_EOK:
-		log_server_info("Configuration "
-				"reloaded.\n");
+		log_info("configuration reloaded");
 		break;
 	case KNOT_ENOENT:
-		log_server_error("Configuration "
-				 "file '%s' "
-				 "not found.\n",
-				 conf()->filename);
+		log_error("configuration file '%s' not found",
+			  conf()->filename);
 		break;
 	default:
-		log_server_error("Configuration "
-				 "reload failed.\n");
+		log_error("configuration reload failed");
 		break;
 	}
 
@@ -456,7 +453,7 @@ int server_reload(server_t *server, const char *cf)
 
 void server_stop(server_t *server)
 {
-	log_server_info("Stopping server...\n");
+	log_info("stopping server");
 
 	/* Send termination event. */
 	event_t *term_ev = evsched_event_create(&server->sched, NULL, NULL);
@@ -488,8 +485,8 @@ static int reconfigure_threads(const struct conf_t *conf, server_t *server)
 		ret = server_init_handler(server, IO_UDP, conf_udp_threads(conf),
 		                          &udp_master, NULL);
 		if (ret != KNOT_EOK) {
-			log_server_error("Failed to create UDP threads: %s\n",
-			                 knot_strerror(ret));
+			log_error("failed to create UDP threads (%s)",
+			          knot_strerror(ret));
 			return ret;
 		}
 
@@ -498,8 +495,8 @@ static int reconfigure_threads(const struct conf_t *conf, server_t *server)
 		ret = server_init_handler(server, IO_TCP, conf_tcp_threads(conf),
 		                          &tcp_master, NULL);
 		if (ret != KNOT_EOK) {
-			log_server_error("Failed to create TCP threads: %s\n",
-			                 knot_strerror(ret));
+			log_error("failed to create TCP threads (%s)",
+			          knot_strerror(ret));
 			return ret;
 		}
 
@@ -521,7 +518,7 @@ static int reconfigure_rate_limits(const struct conf_t *conf, server_t *server)
 	if (!server->rrl && conf->rrl > 0) {
 		server->rrl = rrl_create(conf->rrl_size);
 		if (!server->rrl) {
-			log_server_error("Couldn't init rate limiting table.\n");
+			log_error("couldn't initialize rate limiting table");
 		} else {
 			rrl_setlocks(server->rrl, RRL_LOCK_GRANULARITY);
 		}
@@ -531,10 +528,10 @@ static int reconfigure_rate_limits(const struct conf_t *conf, server_t *server)
 			/* We cannot free it, threads may use it.
 			 * Setting it to <1 will disable rate limiting. */
 			if (conf->rrl < 1) {
-				log_server_info("Rate limiting disabled.\n");
+				log_info("rate limiting, disabled");
 			} else {
-				log_server_info("Rate limiting set to %u "
-				                "responses/sec.\n", conf->rrl);
+				log_info("rate limiting, enabled %u responses/second",
+					 conf->rrl);
 			}
 			rrl_setrate(server->rrl, conf->rrl);
 
@@ -554,25 +551,25 @@ int server_reconfigure(const struct conf_t *conf, void *data)
 
 	/* First reconfiguration. */
 	if (!(server->state & ServerRunning)) {
-		log_server_info("Knot DNS %s starting.\n", PACKAGE_VERSION);
+		log_info("Knot DNS %s starting", PACKAGE_VERSION);
 	}
 
 	/* Reconfigure rate limits. */
 	int ret = KNOT_EOK;
 	if ((ret = reconfigure_rate_limits(conf, server)) < 0) {
-		log_server_error("Failed to reconfigure rate limits.\n");
+		log_error("failed to reconfigure rate limits");
 		return ret;
 	}
 
 	/* Reconfigure server threads. */
 	if ((ret = reconfigure_threads(conf, server)) < 0) {
-		log_server_error("Failed to reconfigure server threads.\n");
+		log_error("failed to reconfigure server threads");
 		return ret;
 	}
 
 	/* Update bound sockets. */
 	if ((ret = reconfigure_sockets(conf, server)) < 0) {
-		log_server_error("Failed to reconfigure server sockets.\n");
+		log_error("failed to reconfigure server sockets");
 		return ret;
 	}
 

@@ -125,13 +125,17 @@ int knot_compr_put_dname(const knot_dname_t *dname, uint8_t *dst, uint16_t max,
 		written += sizeof(uint16_t);
 	}
 
+	assert(dst >= compr->wire);
+	size_t wire_pos = dst - compr->wire;
+	assert(wire_pos < KNOT_WIRE_MAX_PKTSIZE);
+
 	/* Heuristics - expect similar names are grouped together. */
-	if (written > sizeof(uint16_t) && compr->wire_pos + written < KNOT_WIRE_PTR_MAX) {
-		compr->suffix.pos = compr->wire_pos;
+	if (written > sizeof(uint16_t) && wire_pos + written < KNOT_WIRE_PTR_MAX) {
+		compr->suffix.pos = wire_pos;
 		compr->suffix.labels = orig_labels;
 	}
 	dbg_packet("%s: compressed to %u bytes (match=%zu,@%zu)\n",
-		   __func__, written, dname - match_begin, compr->wire_pos);
+		   __func__, written, dname - match_begin, wire_pos);
 	return written;
 }
 

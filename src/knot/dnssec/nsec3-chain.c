@@ -121,7 +121,7 @@ static int shallow_copy_signature(const zone_node_t *from, zone_node_t *to)
 	if (knot_rrset_empty(&from_sig)) {
 		return KNOT_EOK;
 	}
-	return node_add_rrset(to, &from_sig);
+	return node_add_rrset(to, &from_sig, NULL);
 }
 
 /*!
@@ -179,7 +179,7 @@ static void free_nsec3_tree(zone_tree_t *nodes)
 		knot_rdataset_t *rrsig = node_rdataset(node, KNOT_RRTYPE_RRSIG);
 		knot_rdataset_clear(nsec3, NULL);
 		knot_rdataset_clear(rrsig, NULL);
-		node_free(&node);
+		node_free(&node, NULL);
 	}
 
 	hattrie_iter_free(it);
@@ -283,7 +283,7 @@ static zone_node_t *create_nsec3_node(knot_dname_t *owner,
 	assert(apex_node);
 	assert(rr_types);
 
-	zone_node_t *new_node = node_new(owner);
+	zone_node_t *new_node = node_new(owner, NULL);
 	if (!new_node) {
 		return NULL;
 	}
@@ -294,14 +294,14 @@ static zone_node_t *create_nsec3_node(knot_dname_t *owner,
 	int ret = create_nsec3_rrset(&nsec3_rrset, owner, nsec3_params,
 	                             rr_types, NULL, ttl);
 	if (ret != KNOT_EOK) {
-		node_free(&new_node);
+		node_free(&new_node, NULL);
 		return NULL;
 	}
 
-	ret = node_add_rrset(new_node, &nsec3_rrset);
+	ret = node_add_rrset(new_node, &nsec3_rrset, NULL);
 	knot_rrset_clear(&nsec3_rrset, NULL);
 	if (ret != KNOT_EOK) {
-		node_free(&new_node);
+		node_free(&new_node, NULL);
 		return NULL;
 	}
 

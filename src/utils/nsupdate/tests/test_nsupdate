@@ -1,0 +1,33 @@
+zone example.com.
+ttl 60
+server 127.0.0.1
+;
+prereq nxdomain nxdomain_test1.example.com.
+nxdomain nxdomain_test2.example.com.
+;
+prereq yxdomain yxdomain_test1.example.com.
+yxdomain yxdomain_test2.example.com.
+;
+prereq nxrrset nxrrset_test1.example.com. A
+nxrrset nxrrset_test2.example.com. IN A
+;
+prereq yxrrset yxrrset_test1.example.com. A
+yxrrset yxrrset_test2.example.com. IN A
+;
+prereq yxrrset yxrrset_test3.example.com. A 1.2.3.4
+yxrrset yxrrset_test4.example.com. IN A 1.2.3.4
+;
+update add add_test1.example.com. 120 TXT "test"
+add add_test2.example.com. TXT "test"
+add add_test3.example.com. IN TXT "test"
+;
+update delete del_test1.example.com. 120
+del del_test2.example.com.
+del del_test3.example.com. IN
+del del_test4.example.com. IN AAAA
+del del_test5.example.com. AAAA
+del del_test6.example.com. IN AAAA ::1
+del del_test7.example.com. TXT "test"
+;
+show
+;send

@@ -22,6 +22,11 @@
 #include <unistd.h>
 #include <sys/time.h>
 
+#ifdef ENABLE_SYSTEMD
+#define SD_JOURNAL_SUPPRESS_LOCATION 1
+#include <systemd/sd-journal.h>
+#endif
+
 #include "common/log.h"
 #include "common-knot/lists.h"
 #include "common-knot/strlcpy.h"
@@ -29,6 +34,8 @@
 
 /* Single log message buffer length (one line). */
 #define LOG_BUFLEN 512
+
+#define LOG_NULL_ZONE_STRING "?"
 
 /*! Log source table. */
 struct log_sink
@@ -105,7 +112,8 @@ static struct log_sink *sink_setup(unsigned logfiles)
 /*! \brief Publish new log sink and free the replaced. */
 static void sink_publish(struct log_sink *log)
 {
-	struct log_sink *old_log = rcu_xchg_pointer(&s_log, log);
+	struct log_sink **current_log = &s_log;
+	struct log_sink *old_log = rcu_xchg_pointer(current_log, log);
 	synchronize_rcu();
 	sink_free(old_log);
 }
@@ -228,7 +236,7 @@ int log_levels_add(int facility, logsrc_t src, uint8_t levels)
 	return sink_levels_add(s_log, facility, src, levels);
 }
 
-static int _log_msg(logsrc_t src, int level, const char *msg)
+static int emit_log_msg(int level, const char *zone, size_t zone_len, const char *msg)
 {
 	rcu_read_lock();
 	struct log_sink *log = s_log;
@@ -239,10 +247,19 @@ static int _log_msg(logsrc_t src, int level, const char *msg)
 
 	int ret = 0;
 	uint8_t *f = facility_at(log, LOGT_SYSLOG);
+	logsrc_t src = zone ? LOG_ZONE : LOG_SERVER;
 
 	// Syslog
 	if (facility_levels(f, src) & LOG_MASK(level)) {
+#ifdef ENABLE_SYSTEMD
+		char *zone_fmt = zone ? "ZONE=%.*s" : NULL;
+		sd_journal_send("PRIORITY=%d", level,
+		                "MESSAGE=%s", msg,
+		                zone_fmt, zone_len, zone,
+		                NULL);
+#else
 		syslog(level, "%s", msg);
+#endif
 		ret = 1; // To prevent considering the message as ignored.
 	}
 
@@ -251,28 +268,12 @@ static int _log_msg(logsrc_t src, int level, const char *msg)
 
 	/* Prefix date and time. */
 	char tstr[LOG_BUFLEN] = {0};
-	int tlen = 0;
 	struct tm lt;
 	struct timeval tv;
 	gettimeofday(&tv, NULL);
 	time_t sec = tv.tv_sec;
 	if (localtime_r(&sec, &lt) != NULL) {
-		bool precise = false;
-
-#ifdef ENABLE_MICROSECONDS_LOG
-		precise = true;
-#endif /* ENABLE_MICROSECONDS_LOG */
-
-		tlen = strftime(tstr, sizeof(tstr), KNOT_LOG_TIME_FORMAT " ", &lt);
-
-		if (precise && tlen > 0) {
-			char pm = (lt.tm_gmtoff > 0) ? '+' : '-';
-			snprintf(tstr + tlen - 1, sizeof(tstr) - tlen + 1,
-			         ".%.6lu%c%.2u:%.2u ",
-			         (unsigned long)tv.tv_usec, pm,
-			         (unsigned int)lt.tm_gmtoff / 3600,
-			         (unsigned int)(lt.tm_gmtoff / 60) % 60);
-		}
+		strftime(tstr, sizeof(tstr), KNOT_LOG_TIME_FORMAT " ", &lt);
 	}
 
 	// Log streams
@@ -291,7 +292,7 @@ static int _log_msg(logsrc_t src, int level, const char *msg)
 			}
 
 			// Print
-			ret = fprintf(stream, "%s%s", tstr, msg);
+			ret = fprintf(stream, "%s%s\n", tstr, msg);
 			if (stream == stdout) {
 				fflush(stream);
 			}
@@ -307,66 +308,131 @@ static int _log_msg(logsrc_t src, int level, const char *msg)
 	return ret;
 }
 
-int log_msg(logsrc_t src, int level, const char *msg, ...)
+static const char *level_prefix(int level)
 {
-	/* Buffer for log message. */
-	char sbuf[LOG_BUFLEN];
-	int buflen = sizeof(sbuf) - 1;
-
-	/* Prefix error level. */
-	const char *prefix = "";
 	switch (level) {
-	case LOG_DEBUG:   prefix = "[debug] "; break;
-	case LOG_INFO:    prefix = ""; break;
-	case LOG_NOTICE:  prefix = "[notice] "; break;
-	case LOG_WARNING: prefix = "[warning] "; break;
-	case LOG_ERR:     prefix = "[error] "; break;
-	case LOG_CRIT:    prefix = "[fatal] "; break;
-	default: break;
-	}
+	case LOG_DEBUG:   return "debug";
+	case LOG_INFO:    return "info";
+	case LOG_NOTICE:  return "notice";
+	case LOG_WARNING: return "warning";
+	case LOG_ERR:     return "error";
+	case LOG_CRIT:    return "critical";
+	default:
+		return NULL;
+	};
+}
 
-	/* Prepend prefix. */
-	size_t pr_size = strlcpy(sbuf, prefix, sizeof(sbuf));
-	if (pr_size >= sizeof(sbuf)) {
+static int log_msg_add(char **write, size_t *capacity, const char *fmt, ...)
+{
+	assert(*write);
+	assert(capacity);
+	assert(fmt);
+
+	va_list args;
+	va_start(args, fmt);
+	int written = vsnprintf(*write, *capacity, fmt, args);
+	va_end(args);
+
+	if (written < 0 || written >= *capacity) {
 		return KNOT_ESPACE;
 	}
 
+	*write += written;
+	*capacity -= written;
+
+	return KNOT_EOK;
+}
+
+static int log_msg_text(int level, const char *zone, const char *fmt, va_list args)
+{
+	int ret;
+
+	/* Buffer for log message. */
+	char sbuf[LOG_BUFLEN];
+	char *write = sbuf;
+	size_t capacity = sizeof(sbuf) - 1;
+
+	/* Prefix error level. */
+	const char *prefix = level_prefix(level);
+	ret = log_msg_add(&write, &capacity, "%s: ", prefix);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	/* Prefix zone name. */
+	size_t zone_len = 0;
+	if (zone) {
+		/* Strip terminating dot (unless root zone). */
+		zone_len = strlen(zone);
+		if (zone_len > 1 && zone[zone_len - 1] == '.') {
+			zone_len -= 1;
+		}
+
+		ret = log_msg_add(&write, &capacity, "[%.*s] ", zone_len, zone);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+	}
+
 	/* Compile log message. */
-	int ret = 0;
-	va_list ap;
-	va_start(ap, msg);
-	ret = vsnprintf(sbuf + pr_size, buflen - pr_size, msg, ap);
-	va_end(ap);
+	ret = vsnprintf(write, capacity, fmt, args);
 
 	/* Send to logging facilities. */
-	if (ret > 0) {
-		ret = _log_msg(src, level, sbuf);
+	if (ret >= 0) {
+		ret = emit_log_msg(level, zone, zone_len, sbuf);
 	}
 
 	return ret;
 }
 
-int log_vmsg(logsrc_t src, int level, const char *msg, va_list ap)
+int log_msg(int priority, const char *fmt, ...)
 {
-	int ret = 0;
-	char buf[LOG_BUFLEN];
-	ret = vsnprintf(buf, sizeof(buf) - 1, msg, ap);
-
-	if (ret > 0) {
-		ret = _log_msg(src, level, buf);
+	if (!fmt) {
+		return KNOT_EINVAL;
 	}
 
-	return ret;
+	va_list args;
+	va_start(args, fmt);
+	int result = log_msg_text(priority, NULL, fmt, args);
+	va_end(args);
+
+	return result;
 }
 
-void hex_log(int source, const char *data, int length)
+int log_msg_zone(int priority, const knot_dname_t *zone, const char *fmt, ...)
+{
+	va_list args;
+	va_start(args, fmt);
+	char *zone_str = knot_dname_to_str(zone);
+	int result = log_msg_text(priority,
+				  zone_str ? zone_str : LOG_NULL_ZONE_STRING,
+				  fmt, args);
+	free(zone_str);
+	va_end(args);
+
+	return result;
+}
+
+int log_msg_zone_str(int priority, const char *zone, const char *fmt, ...)
+{
+	va_list args;
+	va_start(args, fmt);
+	int result = log_msg_text(priority,
+				  zone ? zone : LOG_NULL_ZONE_STRING,
+				  fmt, args);
+	va_end(args);
+
+	return result;
+}
+
+void hex_log(const char *data, int length)
 {
 	int ptr = 0;
 	char lbuf[512]={0}; int llen = 0;
 	for (; ptr < length; ptr++) {
 		if (ptr > 0 && ptr % 16 == 0) {
 			lbuf[llen] = '\0';
-			log_msg(source, LOG_DEBUG, "%s\n", lbuf);
+			log_msg(LOG_DEBUG, "%s\n", lbuf);
 			llen = 0;
 		}
 		int ret = snprintf(lbuf + llen, sizeof(lbuf) - llen, "0x%02x ",
@@ -377,7 +443,7 @@ void hex_log(int source, const char *data, int length)
 		llen += ret;
 	}
 	if (llen > 0) {
-		log_msg(source, LOG_DEBUG, "%s\n", lbuf);
+		log_msg(LOG_DEBUG, "%s\n", lbuf);
 	}
 }
 
@@ -430,8 +496,8 @@ int log_reconfigure(const struct conf_t *conf, void *data)
 		if (facility == LOGT_FILE) {
 			facility = log_open_file(log, facility_conf->file);
 			if (facility < 0) {
-				log_server_error("Failed to open logfile '%s'.\n",
-				                 facility_conf->file);
+				log_error("failed to open log, file '%s'",
+				          facility_conf->file);
 				continue;
 			}
 		}

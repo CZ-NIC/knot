@@ -346,8 +346,7 @@ static int journal_open_file(journal_t *j)
 		goto open_file_error;
 	}
 	if (memcmp(magic, magic_req, MAGIC_LENGTH) != 0) {
-		log_server_warning("Journal file '%s' version is too old, "
-		                   "it will be purged.\n", j->path);
+		log_warning("journal '%s', version too old, purging", j->path);
 		close(j->fd);
 		j->fd = -1;
 		ret = journal_create_file(j->path, JOURNAL_NCOUNT);
@@ -377,8 +376,7 @@ static int journal_open_file(journal_t *j)
 			goto open_file_error;
 		}
 	} else {
-		log_server_warning("Journal file '%s' CRC error, "
-		                   "it will be purged.\n", j->path);
+		log_warning("journal '%s', CRC error, purging", j->path);
 		close(j->fd);
 		j->fd = -1;
 		ret = journal_create_file(j->path, JOURNAL_NCOUNT);
@@ -462,14 +460,11 @@ static int journal_open_file(journal_t *j)
 	}
 	qhead_free = (jnode_flags(j, qhead_free) <= JOURNAL_FREE);
 	if ((j->qhead != j->qtail) && (!qtail_free || !qhead_free)) {
-		log_server_warning("Recovering journal '%s' metadata "
-		                   "after crash.\n",
-		                   j->path);
+		log_warning("journal '%s', recovering metadata after crash", j->path);
 		ret = journal_recover(j);
 		if (ret != KNOT_EOK) {
-			log_server_error("Journal file '%s' is unrecoverable, "
-			                 "metadata corrupted - %s\n",
-			                 j->path, knot_strerror(ret));
+			log_error("journal '%s', unrecoverable corruption (%s)",
+			          j->path, knot_strerror(ret));
 			goto open_file_error;
 		}
 	}

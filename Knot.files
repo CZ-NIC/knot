@@ -289,8 +289,6 @@ src/zscanner/error.c
 src/zscanner/error.h
 src/zscanner/functions.c
 src/zscanner/functions.h
-src/zscanner/loader.c
-src/zscanner/loader.h
 src/zscanner/scanner.h
 src/zscanner/scanner.rl
 src/zscanner/scanner_body.rl
@@ -299,7 +297,6 @@ src/zscanner/tests/processing.h
 src/zscanner/tests/tests.c
 src/zscanner/tests/tests.h
 src/zscanner/tests/zscanner-tool.c
-src/zscanner/zscanner.h
 tests/Makefile.am
 tests/acl.c
 tests/base32hex.c
@@ -334,3 +331,6 @@ tests/worker_queue.c
 tests/zone_events.c
 tests/zonedb.c
 tests/ztree.c
+src/knot/updates/zone-update.c
+src/knot/updates/zone-update.h
+tests/zone-update.c

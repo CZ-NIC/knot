@@ -72,7 +72,8 @@ zone_t* zone_new(conf_zone_t *conf)
 	zone->conf = conf;
 
 	// DDNS
-	pthread_mutex_init(&zone->ddns_lock, 0);
+	pthread_spin_init(&zone->ddns_lock, 0);
+	zone->ddns_queue_size = 0;
 	init_list(&zone->ddns_queue);
 
 	// Initialize events
@@ -94,7 +95,7 @@ void zone_free(zone_t **zone_ptr)
 	knot_dname_free(&zone->name, NULL);
 
 	free_ddns_queue(zone);
-	pthread_mutex_destroy(&zone->ddns_lock);
+	pthread_spin_destroy(&zone->ddns_lock);
 
 	/* Free assigned config. */
 	conf_free_zone(zone->conf);
@@ -115,7 +116,7 @@ int zone_change_store(zone_t *zone, changeset_t *change)
 
 	int ret = journal_store_changeset(change, conf->ixfr_db, conf->ixfr_fslimit);
 	if (ret == KNOT_EBUSY) {
-		log_zone_notice("Journal for '%s' is full, flushing.\n", conf->name);
+		log_zone_notice(zone->name, "journal is full, flushing");
 
 		/* Transaction rolled back, journal released, we may flush. */
 		ret = zone_flush_journal(zone);
@@ -138,7 +139,7 @@ int zone_changes_store(zone_t *zone, list_t *chgs)
 
 	int ret = journal_store_changesets(chgs, conf->ixfr_db, conf->ixfr_fslimit);
 	if (ret == KNOT_EBUSY) {
-		log_zone_notice("Journal for '%s' is full, flushing.\n", conf->name);
+		log_zone_notice(zone->name, "journal is full, flushing");
 
 		/* Transaction rolled back, journal released, we may flush. */
 		ret = zone_flush_journal(zone);
@@ -216,19 +217,19 @@ int zone_flush_journal(zone_t *zone)
 	conf_zone_t *conf = zone->conf;
 	int ret = zonefile_write(conf->file, contents, from);
 	if (ret == KNOT_EOK) {
-		log_zone_info("Zone '%s': zone file updated (%u -> %u).\n",
-		              conf->name, zone->zonefile_serial, serial_to);
+		log_zone_info(zone->name, "zone file updated, serial %u -> %u",
+		              zone->zonefile_serial, serial_to);
 	} else {
-		log_zone_warning("Zone '%s': failed to update zone file (%s)\n",
-		                  conf->name, knot_strerror(ret));
+		log_zone_warning(zone->name, "failed to update zone file (%s)",
+		                 knot_strerror(ret));
 		return ret;
 	}
 
 	/* Update zone version. */
 	struct stat st;
 	if (stat(zone->conf->file, &st) < 0) {
-		log_zone_warning("Zone '%s': failed to update zone file (%s)\n",
-		                  conf->name, knot_strerror(KNOT_EACCES));
+		log_zone_warning(zone->name, "failed to update zone file (%s)",
+		                 knot_strerror(KNOT_EACCES));
 		return KNOT_EACCES;
 	}
 
@@ -265,12 +266,13 @@ int zone_update_enqueue(zone_t *zone, knot_pkt_t *pkt, struct process_query_para
 		return ret;
 	}
 
-	pthread_mutex_lock(&zone->ddns_lock);
+	pthread_spin_lock(&zone->ddns_lock);
 
 	/* Enqueue created request. */
 	add_tail(&zone->ddns_queue, (node_t *)req);
+	++zone->ddns_queue_size;
 
-	pthread_mutex_unlock(&zone->ddns_lock);
+	pthread_spin_unlock(&zone->ddns_lock);
 
 	/* Schedule UPDATE event. */
 	zone_events_schedule(zone, ZONE_EVENT_UPDATE, ZONE_EVENT_NOW);
@@ -278,24 +280,25 @@ int zone_update_enqueue(zone_t *zone, knot_pkt_t *pkt, struct process_query_para
 	return KNOT_EOK;
 }
 
-struct request_data *zone_update_dequeue(zone_t *zone)
+void zone_update_dequeue(zone_t *zone, list_t *updates, size_t *update_count)
 {
 	if (zone == NULL) {
-		return NULL;
+		return;
 	}
 
-	pthread_mutex_lock(&zone->ddns_lock);
-	if (knot_unlikely(EMPTY_LIST(zone->ddns_queue))) {
+	pthread_spin_lock(&zone->ddns_lock);
+	if (EMPTY_LIST(zone->ddns_queue)) {
 		/* Lost race during reload. */
-		pthread_mutex_unlock(&zone->ddns_lock);
-		return NULL;
+		pthread_spin_unlock(&zone->ddns_lock);
+		return;
 	}
 
-	struct request_data *ret = HEAD(zone->ddns_queue);
-	rem_node((node_t *)ret);
-	pthread_mutex_unlock(&zone->ddns_lock);
+	*updates = zone->ddns_queue;
+	*update_count = zone->ddns_queue_size;
+	init_list(&zone->ddns_queue);
+	zone->ddns_queue_size = 0;
 
-	return ret;
+	pthread_spin_unlock(&zone->ddns_lock);
 }
 
 bool zone_transfer_needed(const zone_t *zone, const knot_pkt_t *pkt)

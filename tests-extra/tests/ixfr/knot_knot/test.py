@@ -8,8 +8,7 @@ t = Test()
 
 master = t.server("knot")
 slave = t.server("knot")
-zones = t.zone_rnd(5, records=50) + t.zone("wild.") + \
-        t.zone("cname-loop.") + t.zone("records.")
+zones = t.zone_rnd(5, records=50) + t.zone("records.")
 
 t.link(zones, master, slave, ixfr=True)
 

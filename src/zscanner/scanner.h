@@ -29,6 +29,8 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+#include "zscanner/error.h"
+
 /*! \brief Maximal length of rdata. */
 #define MAX_RDATA_LENGTH		65535
 /*! \brief Maximal length of rdata item. */
@@ -170,9 +172,7 @@ struct scanner {
 
 	/*! Absolute path for relative includes. */
 	char     *path;
-	/*! Zone file name, if specified. */
-	char     *file_name;
-	/*! Zone file line counter. */
+	/*! Zone data line counter. */
 	uint64_t line_counter;
 	/*! Last occured error/warning code. */
 	int      error_code;
@@ -183,6 +183,13 @@ struct scanner {
 	 * forces zone processing to stop.
 	 */
 	bool     stop;
+
+	struct {
+		/*! Zone file name. */
+		char *name;
+		/*!< File descriptor. */
+		int  descriptor;
+	} file;
 
 	/*!
 	 * Owner of the current record.
@@ -220,8 +227,6 @@ struct scanner {
 /*!
  * \brief Creates zone scanner structure.
  *
- * \param file_name		Name of file to process (NULL if parsing from
- * 				memory).
  * \param origin		Initial zone origin.
  * \param rclass		Zone class value.
  * \param ttl			Initial ttl value.
@@ -229,11 +234,10 @@ struct scanner {
  * \param process_error 	Error callback function.
  * \param data			Arbitrary data useful in callback functions.
  *
- * \retval scanner	if success.
- * \retval 0		if error.
+ * \retval scanner		if success.
+ * \retval NULL			if error.
  */
-zs_scanner_t* zs_scanner_create(const char     *file_name,
-                                const char     *origin,
+zs_scanner_t* zs_scanner_create(const char     *origin,
                                 const uint16_t rclass,
                                 const uint32_t ttl,
                                 void (*process_record)(zs_scanner_t *),
@@ -248,23 +252,43 @@ zs_scanner_t* zs_scanner_create(const char     *file_name,
 void zs_scanner_free(zs_scanner_t *scanner);
 
 /*!
- * \brief Executes zone scanner on data block.
+ * \brief Parser memory block with zone data.
+ *
+ * For each correctly recognized record data process_record callback function
+ * is called. If any syntax error occures, then process_error callback
+ * function is called.
  *
  * \note Zone scanner error code and other information are stored in
  *       the scanner structure.
  *
- * \param start		First byte of the zone data to scan.
- * \param end		Last byte of the zone data to scan.
- * \param is_complete	Indicates if the current block is complete i.e. the
- * 			last record line doesn't continue in the next block.
- * \param scanner	Zone scanner structure.
+ * \param scanner	Zone scanner.
+ * \param start		First byte of the zone data to parse.
+ * \param end		Last byte of the zone data to parse.
+ * \param final_block	Indicates if the current block is final i.e. no
+ * 			other blocks will be processed.
  *
  * \retval  0		if success.
  * \retval -1		if error.
  */
-int zs_scanner_process(const char   *start,
-                       const char   *end,
-                       const bool   is_complete,
-                       zs_scanner_t *scanner);
+int zs_scanner_parse(zs_scanner_t *scanner,
+                     const char   *start,
+                     const char   *end,
+                     const bool   final_block);
 
+/*!
+ * \brief Parses specified zone file.
+ *
+ * \note Zone scanner error code and other information are stored in
+ *       the scanner structure. If error and error_count == 0, there is
+ *       a more general problem with loading and this error is not processed
+ *       with process_error!
+ *
+ * \param scanner	Zone scanner.
+ * \param file_name	Name of file to process.
+ *
+ * \retval  0		if success.
+ * \retval -1		if error.
+ */
+int zs_scanner_parse_file(zs_scanner_t *scanner,
+                          const char   *file_name);
 /*! @} */

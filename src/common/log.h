@@ -38,6 +38,8 @@
 #include <stdarg.h>
 #include <stdbool.h>
 
+#include "libknot/dname.h"
+
 struct conf_t;
 
 /*! \brief Log facility types. */
@@ -120,45 +122,60 @@ int log_levels_set(int facility, logsrc_t src, uint8_t levels);
 int log_levels_add(int facility, logsrc_t src, uint8_t levels);
 
 /*!
- * \brief Log message.
+ * \brief Log message into server category.
  *
  * Function follows printf() format.
  *
- * \param src Origin of the message.
- * \param level Message error level.
- * \param msg Content of the logged message.
+ * \param priority  Message error level.
+ * \param fmt       Content of the logged message.
  *
- * \retval Number of logged bytes on success.
- * \retval 0 When the message is ignored.
- * \retval KNOT_EINVAL invalid parameters.
- * \retval KNOT_ERROR unspecified error.
+ * \return Number of logged bytes, negative error.
  */
-int log_msg(logsrc_t src, int level, const char *msg, ...)
+int log_msg(int priority, const char *fmt, ...)
+    __attribute__((format(printf, 2, 3)));
+
+/*!
+ * \brief Log message into zone category.
+ *
+ * \see log_msg
+ * \param zone  Zone name in wire format.
+ */
+int log_msg_zone(int priority, const knot_dname_t *zone, const char *fmt, ...)
     __attribute__((format(printf, 3, 4)));
 
 /*!
- * \brief Log message for stdarg.
+ * \brief Log message into zone category.
  *
  * \see log_msg
+ * \param zone  Zone name as an ASCII string.
  */
-int log_vmsg(logsrc_t src, int level, const char *msg, va_list ap);
+int log_msg_zone_str(int priority, const char *zone, const char *fmt, ...)
+    __attribute__((format(printf, 3, 4)));
 
-void hex_log(int source, const char *data, int length);
+void hex_log(const char *data, int length);
 
 /* Convenient logging. */
-#define log_server_fatal(msg...)     log_msg(LOG_SERVER, LOG_CRIT, msg)
-#define log_server_error(msg...)     log_msg(LOG_SERVER, LOG_ERR, msg)
-#define log_server_warning(msg...)   log_msg(LOG_SERVER, LOG_WARNING, msg)
-#define log_server_notice(msg...)    log_msg(LOG_SERVER, LOG_NOTICE, msg)
-#define log_server_info(msg...)      log_msg(LOG_SERVER, LOG_INFO, msg)
-#define log_server_debug(msg...)     log_msg(LOG_SERVER, LOG_DEBUG, msg)
 
-#define log_zone_fatal(msg...)       log_msg(LOG_ZONE, LOG_CRIT, msg)
-#define log_zone_error(msg...)       log_msg(LOG_ZONE, LOG_ERR, msg)
-#define log_zone_warning(msg...)     log_msg(LOG_ZONE, LOG_WARNING, msg)
-#define log_zone_notice(msg...)      log_msg(LOG_ZONE, LOG_NOTICE, msg)
-#define log_zone_info(msg...)        log_msg(LOG_ZONE, LOG_INFO, msg)
-#define log_zone_debug(msg...)       log_msg(LOG_ZONE, LOG_DEBUG, msg)
+#define log_fatal(msg...)   log_msg(LOG_CRIT,    msg)
+#define log_error(msg...)   log_msg(LOG_ERR,     msg)
+#define log_warning(msg...) log_msg(LOG_WARNING, msg)
+#define log_notice(msg...)  log_msg(LOG_NOTICE,  msg)
+#define log_info(msg...)    log_msg(LOG_INFO,    msg)
+#define log_debug(msg...)   log_msg(LOG_DEBUG,   msg)
+
+#define log_zone_fatal(zone, msg...)   log_msg_zone(LOG_CRIT,    zone, msg)
+#define log_zone_error(zone, msg...)   log_msg_zone(LOG_ERR,     zone, msg)
+#define log_zone_warning(zone, msg...) log_msg_zone(LOG_WARNING, zone, msg)
+#define log_zone_notice(zone, msg...)  log_msg_zone(LOG_NOTICE,  zone, msg)
+#define log_zone_info(zone, msg...)    log_msg_zone(LOG_INFO,    zone, msg)
+#define log_zone_debug(zone, msg...)   log_msg_zone(LOG_DEBUG,   zone, msg)
+
+#define log_zone_str_fatal(zone, msg...)   log_msg_zone_str(LOG_CRIT,    zone, msg)
+#define log_zone_str_error(zone, msg...)   log_msg_zone_str(LOG_ERR,     zone, msg)
+#define log_zone_str_warning(zone, msg...) log_msg_zone_str(LOG_WARNING, zone, msg)
+#define log_zone_str_notice(zone, msg...)  log_msg_zone_str(LOG_NOTICE,  zone, msg)
+#define log_zone_str_info(zone, msg...)    log_msg_zone_str(LOG_INFO,    zone, msg)
+#define log_zone_str_debug(zone, msg...)   log_msg_zone_str(LOG_DEBUG,   zone, msg)
 
 /*!
  * \brief Update open files ownership.

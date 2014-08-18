@@ -80,7 +80,7 @@ static trie_node_t* alloc_trie_node(hattrie_t* T, node_ptr child)
     for (i = 0; i < NODE_CHILDS; ++i) node->xs[i] = child;
     return node;
 }
-
+	
 /* iterate trie nodes until string is consumed or bucket is found */
 static node_ptr hattrie_consume_ns(node_ptr **s, size_t *sp, size_t slen,
                                 const char **k, size_t *l, unsigned min_len)
@@ -188,6 +188,39 @@ static value_t* hattrie_find_rightmost(node_ptr node)
     /* return rightmost value */
     assert(node.b->index);
     return hhash_indexval(node.b, node.b->weight - 1);
+}
+
+static value_t* hattrie_find_leftmost(node_ptr node)
+{
+    /* iterate children from left */
+    if (*node.flag & NODE_TYPE_TRIE) {
+        for (int i = 0; i <= TRIE_MAXCHAR; ++i) {
+            /* skip repeated pointers to hybrid bucket */
+            if (i < TRIE_MAXCHAR - 1 && node.t->xs[i].t == node.t->xs[i + 1].t) {
+                continue;
+            }
+            /* nest if trie */
+            value_t *ret = hattrie_find_leftmost(node.t->xs[i]);
+            if (ret) {
+                return ret;
+            }
+        }
+        /* use trie node value if no children found */
+        if (node.t->flag & NODE_HAS_VAL) {
+            return &node.t->val;
+        }
+
+        /* no non-empty children? */
+        return NULL;
+    }
+
+    /* node is hashtable */
+    if (node.b->weight == 0) {
+        return NULL;
+    }
+    /* return leftmost value */
+    assert(node.b->index);
+    return hhash_indexval(node.b, 0);
 }
 
 /* find node in trie and keep node stack (if slen > 0) */
@@ -665,7 +698,7 @@ value_t* hattrie_tryget(hattrie_t* T, const char* key, size_t len)
     return hhash_find(node.b, key, len);
 }
 
-static value_t* hattrie_walk(node_ptr* s, size_t sp,
+static value_t* hattrie_walk_left(node_ptr* s, size_t sp,
                              const char* key, value_t* (*f)(node_ptr))
 {
     value_t *r = NULL;
@@ -701,6 +734,41 @@ static value_t* hattrie_walk(node_ptr* s, size_t sp,
     return NULL;
 }
 
+static value_t* hattrie_walk_right(node_ptr* s, size_t sp,
+                                   const char* key, value_t* (*f)(node_ptr))
+{
+    value_t *r = NULL;
+    while (r == NULL)  {
+        /* if not found next in table, it should be
+         * the leftmost of the nodes right of the current
+         */
+        node_ptr visited = s[sp].t->xs[(unsigned char)*key];
+        for (int i = *key + 1; i <= TRIE_MAXCHAR; ++i) {
+            if (s[sp].t->xs[i].flag == visited.flag)
+                continue; /* skip pointers to visited container */
+            r = f(s[sp].t->xs[i]);
+            if (r) {
+                return r;
+            }
+        }
+        /* use trie node value if possible */
+        if (s[sp].t->flag & NODE_HAS_VAL) {
+            return &s[sp].t->val;
+        }
+
+        /* consumed whole stack */
+        if (sp == 0) {
+            break;
+        }
+
+        /* pop stack */
+        --key;
+        --sp;
+    }
+    
+    return NULL;
+}
+
 int hattrie_find_leq (hattrie_t* T, const char* key, size_t len, value_t** dst)
 {
     /* create node stack for traceback */
@@ -713,7 +781,7 @@ int hattrie_find_leq (hattrie_t* T, const char* key, size_t len, value_t** dst)
     int ret = 1; /* no node on the left matches */
     node_ptr node = hattrie_find_ns(&ns, &sp, NODESTACK_INIT, &key, &len);
     if (node.flag == NULL) {
-        *dst = hattrie_walk(ns, sp, key, hattrie_find_rightmost);
+        *dst = hattrie_walk_left(ns, sp, key, hattrie_find_rightmost);
         if (ns != bs) free(ns);
         if (*dst) {
             return -1; /* found previous */
@@ -741,7 +809,7 @@ int hattrie_find_leq (hattrie_t* T, const char* key, size_t len, value_t** dst)
             --key;
         }
         /* walk up the stack of visited nodes and find closest match on the left */
-        *dst = hattrie_walk(ns, sp, key, hattrie_find_rightmost);
+        *dst = hattrie_walk_left(ns, sp, key, hattrie_find_rightmost);
         if (*dst) {
             ret = -1; /* found previous */
         } else {
@@ -750,6 +818,51 @@ int hattrie_find_leq (hattrie_t* T, const char* key, size_t len, value_t** dst)
     }
 
     if (ns != bs) free(ns);
+    return ret;
+}
+
+int hattrie_find_next (hattrie_t* T, const char* key, size_t len, value_t **dst)
+{
+    /* create node stack for traceback */
+    size_t sp = 0;
+    node_ptr bs[NODESTACK_INIT];  /* base stack (will be enough mostly) */
+    node_ptr *ns = bs;            /* generic ptr, could point to new mem */
+    ns[sp] = T->root;
+
+    /* find node for given key */
+    node_ptr ptr = hattrie_find_ns(&ns, &sp, NODESTACK_INIT, &key, &len);
+    if (ptr.flag == NULL) {
+        *dst = hattrie_walk_right(ns, sp, key, hattrie_find_leftmost);
+        if (ns != bs) free(ns);
+        if (*dst) {
+            return 0; /* found next. */
+        } else {
+            return 1; /* no next key found. */
+        }
+    }
+
+    int ret = 0;
+    if (*ptr.flag & NODE_TYPE_TRIE) {
+        /* Get next using walk. */
+        ret = 1;
+    } else {
+        ret = hhash_find_next(ptr.b, key, len, dst);
+    }
+
+    if (ret == 1) {
+        /* we're retracing from pure bucket, pop the key. */
+        if (*ptr.flag & NODE_TYPE_PURE_BUCKET) {
+            --key;
+        }
+        *dst = hattrie_walk_right(ns, sp, key, hattrie_find_leftmost);
+        if (ns != bs) free(ns);
+        if (*dst) {
+            ret = 0; /* found next. */
+        } else {
+            ret = 1; /* no next key found. */
+        }
+    }
+
     return ret;
 }
 

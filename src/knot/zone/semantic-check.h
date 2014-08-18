@@ -151,13 +151,14 @@ void err_handler_init(err_handler_t *err_handler);
  *
  * \return err_handler_t * Created error handler.
  */
-err_handler_t *err_handler_new();
+err_handler_t *err_handler_new(void);
 
 /*!
  * \brief Called when error has been encountered in node. Will either log error
  *        or print it, depending on handler's options.
  *
  * \param handler Error handler.
+ * \param zone Zone content which is being checked.
  * \param node Node with semantic error in it.
  * \param error Type of error.
  * \param data Additional info in string.
@@ -167,6 +168,7 @@ err_handler_t *err_handler_new();
  * \retval ZC_ERR_ALLOC if memory error.
  */
 int err_handler_handle_error(err_handler_t *handler,
+                             const zone_contents_t *zone,
                              const zone_node_t *node,
                              int error, const char *data);
 
@@ -185,13 +187,6 @@ void log_cyclic_errors_in_zone(err_handler_t *handler,
                                const zone_node_t *first_nsec3_node,
                                const zone_node_t *last_nsec3_node,
                                char do_checks);
-
-/*!
- * \brief This function prints all errors that occured in zone.
- *
- * \param handler Error handler containing found errors.
- */
-void err_handler_log_all(err_handler_t *handler);
 
 /*!
  * \brief Helper function - wraps its arguments into arg_t structure and

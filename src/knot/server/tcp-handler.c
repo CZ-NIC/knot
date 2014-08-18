@@ -82,8 +82,7 @@ static enum fdset_sweep_state tcp_sweep(fdset_t *set, int i, void *data)
 	char addr_str[SOCKADDR_STRLEN] = {0};
 	sockaddr_tostr(&ss, addr_str, sizeof(addr_str));
 
-	log_server_notice("Connection '%s' was terminated due to inactivity.\n",
-	                  addr_str);
+	log_notice("connection terminated due to inactivity, address '%s'", addr_str);
 	close(fd);
 	return FDSET_SWEEP;
 }
@@ -122,9 +121,9 @@ static int tcp_handle(tcp_context_t *tcp, int fd,
 			rcu_read_lock();
 			char addr_str[SOCKADDR_STRLEN] = {0};
 			sockaddr_tostr(&ss, addr_str, sizeof(addr_str));
-			log_server_warning("Couldn't receive query from '%s'"
-			                  " within the time limit of %ds.\n",
-			                   addr_str, conf()->max_conn_idle);
+			log_warning("connection timed out, address '%s', "
+			            "timeout %d seconds",
+			            addr_str, conf()->max_conn_idle);
 			rcu_read_unlock();
 		}
 		return KNOT_ECONNREFUSED;
@@ -168,16 +167,13 @@ int tcp_accept(int fd)
 	if (incoming < 0) {
 		int en = errno;
 		if (en != EINTR && en != EAGAIN) {
-			log_server_error("Cannot accept connection "
-					 "(%d).\n", errno);
+			log_error("cannot accept connection (%d)", errno);
 			if (en == EMFILE || en == ENFILE ||
 			    en == ENOBUFS || en == ENOMEM) {
 				int throttle = tcp_throttle();
-				log_server_error("Throttling TCP connection pool"
-				                 " for %d seconds because of "
-				                 "too many open descriptors "
-				                 "or lack of memory.\n",
-				                 throttle);
+				log_error("throttling TCP connection pool for "
+				          "%d seconds, too many allocated "
+				          "resources", throttle);
 				sleep(throttle);
 			}
 
@@ -192,9 +188,8 @@ int tcp_accept(int fd)
 		rcu_read_unlock();
 		tv.tv_usec = 0;
 		if (setsockopt(incoming, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) < 0) {
-			log_server_warning("Couldn't set up TCP connection "
-			                   "watchdog timer for fd=%d.\n",
-			                   incoming);
+			log_warning("cannot set up TCP connection watchdog "
+			            "timer, fd %d", incoming);
 		}
 #endif
 	}

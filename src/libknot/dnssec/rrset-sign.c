@@ -28,10 +28,10 @@
 #include "libknot/dnssec/policy.h"
 #include "libknot/dnssec/rrset-sign.h"
 #include "libknot/errcode.h"
+#include "libknot/packet/wire.h"
 #include "libknot/rrset.h"
 #include "libknot/rrtype/rrsig.h"
 
-#define MAX_RR_WIREFORMAT_SIZE (64 * 1024)
 #define RRSIG_RDATA_SIGNER_OFFSET 18
 
 /*- Creating of RRSIGs -------------------------------------------------------*/
@@ -148,27 +148,22 @@ static int sign_ctx_add_self(dnssec_sign_ctx_t *ctx, const uint8_t *rdata)
 static int sign_ctx_add_records(dnssec_sign_ctx_t *ctx, const knot_rrset_t *covered)
 {
 	// huge block of rrsets can be optionally created
-	uint8_t *rrwf = malloc(MAX_RR_WIREFORMAT_SIZE);
+	uint8_t *rrwf = malloc(KNOT_WIRE_MAX_PKTSIZE);
 	if (!rrwf) {
 		return KNOT_ENOMEM;
 	}
 
-	int result = KNOT_EOK;
-
-	size_t rr_wire_size = 0;
-	uint16_t rr_count = 0;
-	result = knot_rrset_to_wire(covered, rrwf, &rr_wire_size,
-	                            MAX_RR_WIREFORMAT_SIZE, &rr_count, NULL);
-	if (result != KNOT_EOK || rr_count != covered->rrs.rr_count) {
+	int written = knot_rrset_to_wire(covered, rrwf, KNOT_WIRE_MAX_PKTSIZE,
+	                                 NULL, KNOT_RRSET_WIRE_CANONICAL);
+	if (written < 0) {
 		free(rrwf);
-		return result;
+		return written;
 	}
 
 	dnssec_binary_t rrset_wire = { 0 };
-	rrset_wire.size = rr_wire_size;
+	rrset_wire.size = written;
 	rrset_wire.data = rrwf;
-	result = dnssec_sign_add(ctx, &rrset_wire);
-
+	int result = dnssec_sign_add(ctx, &rrset_wire);
 	free(rrwf);
 
 	return (result == DNSSEC_EOK ? KNOT_EOK : KNOT_DNSSEC_ESIGN);

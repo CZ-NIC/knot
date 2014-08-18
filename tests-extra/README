@@ -11,6 +11,12 @@ lsof
 (valgrind)
 (gdb)
 
+Python modules:
+---------------
+
+To install necessary Python modules using pip, run:
+$ pip install -r requirements.txt
+
 Ubuntu:
 -------
 Disable apparmor protection for system Bind:

@@ -96,7 +96,7 @@ class ZoneFile(object):
                          + params
             if zone_generate.main(params) != 0:
                 raise OSError
-            
+
         except OSError:
             raise Exception("Can't create zone file '%s'" % self.path)
 
@@ -105,13 +105,16 @@ class ZoneFile(object):
 
         check_log("DNSSEC VERIFY for %s (%s)" % (self.name, self.path))
 
-        cmd = Popen(["dnssec-verify", "-o", self.name, self.path],
+        # note: convert origin to lower case due to a bug in dnssec-verify
+        origin = self.name.lower()
+        cmd = Popen(["dnssec-verify", "-o", origin, self.path],
                     stdout=PIPE, stderr=PIPE, universal_newlines=True)
         (out, err) = cmd.communicate()
 
         if cmd.returncode != 0:
             set_err("DNSSEC VERIFY")
             detail_log(err.strip())
+            self.backup()
 
         detail_log(SEP)
 
@@ -128,7 +131,7 @@ class ZoneFile(object):
         '''Insert NSEC3PARAM record to the zone file.'''
 
         with open(self.path, "a") as file:
-            file.write("@ 0 NSEC3PARAM 1 0 %i %s" % (iters, salt))
+            file.write("@ 0 NSEC3PARAM 1 0 %i %s\n" % (iters, salt))
 
         self.update_soa()
 

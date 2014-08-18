@@ -64,9 +64,8 @@ static uint32_t bootstrap_next(uint32_t timer)
 /* ------------------------- zone query requesting -------------------------- */
 
 /*! \brief Zone event logging. */
-#define ZONE_QUERY_LOG(severity, zone, remote, what, msg...) \
-	NS_PROC_LOG(severity, LOG_ZONE, &remote->addr, zone->conf->name, \
-	            what " of '%s' with '%s': ", msg)
+#define ZONE_QUERY_LOG(severity, zone, remote, operation, msg...) \
+	NS_PROC_LOG(severity, &remote->addr, zone->name, operation, msg)
 
 /*! \brief Create zone query packet. */
 static knot_pkt_t *zone_query(const zone_t *zone, uint16_t pkt_type, mm_ctx_t *mm)
@@ -166,9 +165,9 @@ fail:
 /* @note Module specific, expects some variables set. */
 #define ZONE_XFER_LOG(severity, pkt_type, msg...) \
 	if (pkt_type == KNOT_QUERY_AXFR) { \
-		ZONE_QUERY_LOG(severity, zone, master, "AXFR", msg); \
+		ZONE_QUERY_LOG(severity, zone, master, "AXFR, incoming", msg); \
 	} else { \
-		ZONE_QUERY_LOG(severity, zone, master, "IXFR", msg); \
+		ZONE_QUERY_LOG(severity, zone, master, "IXFR, incoming", msg); \
 	}
 
 /*! \brief Execute zone transfer request. */
@@ -181,12 +180,12 @@ static int zone_query_transfer(zone_t *zone, const conf_iface_t *master, uint16_
 	if (ret != KNOT_EOK) {
 		/* IXFR failed, revert to AXFR. */
 		if (pkt_type == KNOT_QUERY_IXFR) {
-			ZONE_XFER_LOG(LOG_NOTICE, pkt_type, "Fallback to AXFR.");
+			ZONE_XFER_LOG(LOG_NOTICE, pkt_type, "fallback to AXFR");
 			return zone_query_transfer(zone, master, KNOT_QUERY_AXFR);
 		}
 
 		/* Log connection errors. */
-		ZONE_XFER_LOG(LOG_ERR, pkt_type, "%s", knot_strerror(ret));
+		ZONE_XFER_LOG(LOG_ERR, pkt_type, "failed (%s)", knot_strerror(ret));
 	}
 
 	return ret;
@@ -213,8 +212,7 @@ static void schedule_dnssec(zone_t *zone, time_t refresh_at)
 	struct tm time_gm = { 0 };
 	localtime_r(&refresh_at, &time_gm);
 	strftime(time_str, sizeof(time_str), KNOT_LOG_TIME_FORMAT, &time_gm);
-	log_zone_info("DNSSEC: Zone %s - Next event on %s.\n",
-	              zone->conf->name, time_str);
+	log_zone_info(zone->name, "DNSSEC, next signing on %s", time_str);
 
 	// schedule
 
@@ -258,11 +256,11 @@ static int event_reload(zone_t *zone)
 	result = zone_load_post(contents, zone, &dnssec_refresh);
 	if (result != KNOT_EOK) {
 		if (result == KNOT_ESPACE) {
-			log_zone_error("Zone '%s' journal size is too small to fit the changes.\n",
-			               zone_config->name);
+			log_zone_error(zone->name, "journal size is too small "
+			               "to fit the changes");
 		} else {
-			log_zone_error("Zone '%s' failed to store changes in the journal - %s\n",
-			               zone_config->name, knot_strerror(result));
+			log_zone_error(zone->name, "failed to store changes into "
+			               "journal (%s)", knot_strerror(result));
 		}
 		goto fail;
 	}
@@ -300,7 +298,7 @@ static int event_reload(zone_t *zone)
 	zone_events_schedule(zone, ZONE_EVENT_FLUSH, zone_config->dbsync_timeout);
 
 	uint32_t current_serial = zone_contents_serial(zone->contents);
-	log_zone_info("Zone '%s' loaded (%u -> %u).\n", zone_config->name,
+	log_zone_info(zone->name, "loaded, serial %u -> %u",
 	              old_serial, current_serial);
 	return KNOT_EOK;
 
@@ -328,7 +326,8 @@ static int event_refresh(zone_t *zone)
 	const knot_rdataset_t *soa = node_rdataset(contents->apex, KNOT_RRTYPE_SOA);
 	if (ret != KNOT_EOK) {
 		/* Log connection errors. */
-		ZONE_QUERY_LOG(LOG_WARNING, zone, master, "SOA query", "%s", knot_strerror(ret));
+		ZONE_QUERY_LOG(LOG_WARNING, zone, master, "SOA query, outgoing",
+		               "failed (%s)", knot_strerror(ret));
 		/* Rotate masters if current failed. */
 		zone_master_rotate(zone);
 		/* Schedule next retry. */
@@ -396,32 +395,23 @@ static int event_update(zone_t *zone)
 {
 	assert(zone);
 
-	struct request_data *update = zone_update_dequeue(zone);
-	if (update == NULL) {
-		return KNOT_EOK;
-	}
-
-	/* Forward if zone has master, or execute. */
-	int ret = update_execute(zone, update);
-	UNUSED(ret);
-
-	/* Cleanup. */
-	close(update->fd);
-	knot_pkt_free(&update->query);
-	free(update);
+	/* Process update list - forward if zone has master, or execute. */
+	int ret = updates_execute(zone);
+	UNUSED(ret); /* Don't care about the Knot code, RCODEs are set. */
 
 	/* Trim extra heap. */
 	mem_trim();
 
 	/* Replan event if next update waiting. */
-	pthread_mutex_lock(&zone->ddns_lock);
-
-	if (!EMPTY_LIST(zone->ddns_queue)) {
+	pthread_spin_lock(&zone->ddns_lock);
+	
+	const bool empty = EMPTY_LIST(zone->ddns_queue);
+	
+	pthread_spin_unlock(&zone->ddns_lock);
+	
+	if (!empty) {
 		zone_events_schedule(zone, ZONE_EVENT_UPDATE, ZONE_EVENT_NOW);
 	}
-
-	pthread_mutex_unlock(&zone->ddns_lock);
-
 
 	return KNOT_EOK;
 }
@@ -438,7 +428,7 @@ static int event_expire(zone_t *zone)
 	zone->zonefile_serial = 0;
 	zone_contents_deep_free(&expired);
 
-	log_zone_info("Zone '%s' expired.\n", zone->conf->name);
+	log_zone_info(zone->name, "zone expired");
 
 	/* Trim extra heap. */
 	mem_trim();
@@ -480,10 +470,12 @@ static int event_notify(zone_t *zone)
 
 		int ret = zone_query_execute(zone, KNOT_QUERY_NOTIFY, iface);
 		if (ret == KNOT_EOK) {
-			ZONE_QUERY_LOG(LOG_INFO, zone, iface, "NOTIFY", "sent (serial %u).",
+			ZONE_QUERY_LOG(LOG_INFO, zone, iface, "NOTIFY, outgoing",
+			               "serial %u",
 			               zone_contents_serial(zone->contents));
 		} else {
-			ZONE_QUERY_LOG(LOG_WARNING, zone, iface, "NOTIFY", "%s", knot_strerror(ret));
+			ZONE_QUERY_LOG(LOG_WARNING, zone, iface, "NOTIFY, outgoing",
+			               "failed (%s)", knot_strerror(ret));
 		}
 	}
 
@@ -494,31 +486,22 @@ static int event_dnssec(zone_t *zone)
 {
 	assert(zone);
 
-	char *zname = knot_dname_to_str(zone->name);
-	char *msgpref = sprintf_alloc("DNSSEC: Zone %s -", zname);
-	free(zname);
-	int ret = KNOT_EOK;
-	if (msgpref == NULL) {
-		ret = KNOT_ENOMEM;
-		goto done;
-	}
-
 	changeset_t ch;
-	ret = changeset_init(&ch, zone->name);
+	int ret = changeset_init(&ch, zone->name);
 	if (ret != KNOT_EOK) {
 		goto done;
 	}
 
 	uint32_t refresh_at = time(NULL);
 	if (zone->flags & ZONE_FORCE_RESIGN) {
-		log_zone_info("%s Complete resign started (dropping all "
-			      "previous signatures)...\n", msgpref);
+		log_zone_info(zone->name, "DNSSEC, dropping previous "
+		              "signatures, resigning zone");
 
 		zone->flags &= ~ZONE_FORCE_RESIGN;
 		ret = knot_dnssec_zone_sign_force(zone->contents, zone->conf,
 		                                  &ch, &refresh_at);
 	} else {
-		log_zone_info("%s Signing zone...\n", msgpref);
+		log_zone_info(zone->name, "DNSSEC, signing zone");
 		ret = knot_dnssec_zone_sign(zone->contents, zone->conf,
 		                            &ch, KNOT_SOA_SERIAL_UPDATE,
 		                            &refresh_at);
@@ -532,16 +515,16 @@ static int event_dnssec(zone_t *zone)
 		zone_contents_t *new_contents = NULL;
 		int ret = apply_changeset(zone, &ch, &new_contents);
 		if (ret != KNOT_EOK) {
-			log_zone_error("%s Could not sign zone (%s).\n",
-			               msgpref, knot_strerror(ret));
+			log_zone_error(zone->name, "DNSSEC, could not sign zone (%s)",
+				       knot_strerror(ret));
 			goto done;
 		}
 
 		/* Write change to journal. */
 		ret = zone_change_store(zone, &ch);
 		if (ret != KNOT_EOK) {
-			log_zone_error("%s Could not sign zone (%s).\n",
-			               msgpref, knot_strerror(ret));
+			log_zone_error(zone->name, "DNSSEC, could not sign zone (%s)",
+				       knot_strerror(ret));
 			update_rollback(&ch);
 			update_free_zone(&new_contents);
 			goto done;
@@ -565,7 +548,6 @@ static int event_dnssec(zone_t *zone)
 
 done:
 	changeset_clear(&ch);
-	free(msgpref);
 	return ret;
 }
 
@@ -658,15 +640,18 @@ static void duplicate_ddns_q(zone_t *zone, zone_t *old_zone)
 /*!< Replans DDNS event. */
 static void replan_update(zone_t *zone, zone_t *old_zone)
 {
-	pthread_mutex_lock(&old_zone->ddns_lock);
+	pthread_spin_lock(&old_zone->ddns_lock);
 
-	if (!EMPTY_LIST(old_zone->ddns_queue)) {
+	const bool empty = EMPTY_LIST(old_zone->ddns_queue);
+	if (!empty) {
 		duplicate_ddns_q(zone, (zone_t *)old_zone);
-		// \todo #254 Old zone *must* have the event planned, but it was not always so
+	}
+	
+	pthread_spin_unlock(&old_zone->ddns_lock);
+	
+	if (!empty) {
 		zone_events_schedule(zone, ZONE_EVENT_UPDATE, ZONE_EVENT_NOW);
 	}
-
-	pthread_mutex_unlock(&old_zone->ddns_lock);
 }
 
 /*!< Replans DNSSEC event. Not whole resign needed, \todo #247 */
@@ -831,8 +816,8 @@ static void event_wrap(task_t *task)
 	const event_info_t *info = get_event_info(type);
 	int result = info->callback(zone);
 	if (result != KNOT_EOK) {
-		log_zone_error("Zone '%s' event '%s' failed - %s\n", zone->conf->name,
-		               info->name, knot_strerror(result));
+		log_zone_error(zone->name, "zone %s failed (%s)", info->name,
+		               knot_strerror(result));
 	}
 
 	pthread_mutex_lock(&events->mx);
@@ -1061,4 +1046,3 @@ void zone_events_replan_ddns(struct zone_t *zone, const struct zone_t *old_zone)
 		replan_update(zone, (zone_t *)old_zone);
 	}
 }
-

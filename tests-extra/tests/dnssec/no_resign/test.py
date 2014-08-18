@@ -24,6 +24,7 @@ master.dnssec_enable = True
 master.use_keys(nsec_zone)
 master.use_keys(nsec3_zone)
 master.gen_confile()
+t.sleep(2)
 master.reload()
 
 t.sleep(4)

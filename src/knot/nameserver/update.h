@@ -2,6 +2,7 @@
  * \file update.h
  *
  * \author Marek Vavrusa <marek.vavrusa@nic.cz>
+ * \author Jan Kadlec <jan.kadlec@nic.cz>
  *
  * \brief DDNS UPDATE processing.
  *
@@ -30,6 +31,7 @@
 #include "knot/zone/zonedb.h"
 
 struct query_data;
+struct zone;
 
 /*!
  * \brief UPDATE query processing module.
@@ -42,11 +44,11 @@ int update_query_process(knot_pkt_t *pkt, struct query_data *qdata);
  * \brief Processes serialized packet with DDNS. Function expects that the
  *        query is already authenticated and TSIG signature is verified.
  *
- * \param zone   Updated zone.
- * \param update UPDATE request.
+ * \param pkt    Prepared response packet.
+ * \param qdata  Minimal query data context.
  *
  * \return KNOT_E*
  */
-int update_execute(zone_t *zone, struct request_data *update);
+int updates_execute(zone_t *zone);
 
 /*! @} */

@@ -8,7 +8,7 @@ t = Test()
 
 master = t.server("knot")
 
-zones = t.zone("notexist.", exists=False) + t.zone("wild.")
+zones = t.zone("notexist.", exists=False) + t.zone("example.com.")
 
 t.link(zones, master)
 
@@ -23,7 +23,7 @@ resp = master.dig("xfiles.", "SOA", udp=True)
 resp.check(rcode="REFUSED")
 
 # The other zone should answer without problem
-resp = master.dig("wild.", "SOA", udp=True)
+resp = master.dig("example.com.", "SOA", udp=True)
 resp.check(rcode="NOERROR")
 
 # Stop master.
