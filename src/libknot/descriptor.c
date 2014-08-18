@@ -177,6 +177,10 @@ int knot_rrtype_to_string(const uint16_t rrtype,
                           char           *out,
                           const size_t   out_len)
 {
+	if (out == NULL) {
+		return -1;
+	}
+
 	int ret;
 
 	const rdata_descriptor_t *descr = knot_get_rdata_descriptor(rrtype);
@@ -196,6 +200,10 @@ int knot_rrtype_to_string(const uint16_t rrtype,
 
 int knot_rrtype_from_string(const char *name, uint16_t *num)
 {
+	if (name == NULL || num == NULL) {
+		return -1;
+	}
+
 	int i;
 	char *end;
 	unsigned long n;
@@ -230,6 +238,10 @@ int knot_rrclass_to_string(const uint16_t rrclass,
                            char           *out,
                            const size_t   out_len)
 {
+	if (out == NULL) {
+		return -1;
+	}
+
 	int ret;
 
 	if (rrclass <= KNOT_CLASS_ANY && dns_classes[rrclass] != NULL) {
@@ -247,6 +259,10 @@ int knot_rrclass_to_string(const uint16_t rrclass,
 
 int knot_rrclass_from_string(const char *name, uint16_t *num)
 {
+	if (name == NULL || num == NULL) {
+		return -1;
+	}
+
 	int i;
 	char *end;
 	unsigned long n;

@@ -141,7 +141,7 @@ int zcreator_step(zcreator_t *zc, const knot_rrset_t *rr)
 		return ret;
 	}
 
-	return sem_fatal_error ? KNOT_EMALF : KNOT_EOK;
+	return sem_fatal_error ? KNOT_ESEMCHECK : KNOT_EOK;
 }
 
 /*! \brief Creates RR from parser input, passes it to handling function. */
@@ -149,6 +149,7 @@ static void scanner_process(zs_scanner_t *scanner)
 {
 	zcreator_t *zc = scanner->data;
 	if (zc->ret != KNOT_EOK) {
+		scanner->stop = true;
 		return;
 	}
 
@@ -173,13 +174,9 @@ static void scanner_process(zs_scanner_t *scanner)
 		return;
 	}
 
-	ret = zcreator_step(zc, &rr);
+	zc->ret = zcreator_step(zc, &rr);
 	knot_dname_free(&owner, NULL);
 	knot_rdataset_clear(&rr.rrs, NULL);
-	if (ret != KNOT_EOK) {
-		zc->ret = ret;
-		return;
-	}
 }
 
 static zone_contents_t *create_zone_from_name(const char *origin)
@@ -254,9 +251,9 @@ zone_contents_t *zonefile_load(zloader_t *loader)
 
 	assert(zc);
 	int ret = zs_scanner_parse_file(loader->scanner, loader->source);
-	if (ret != 0) {
+	if (ret != 0 && loader->scanner->error_counter == 0) {
 		ERROR(zname, "could not load zone, file '%s' (%s)",
-		      loader->source, zs_strerror(ret));
+		      loader->source, zs_strerror(loader->scanner->error_code));
 		goto fail;
 	}
 
@@ -281,7 +278,7 @@ zone_contents_t *zonefile_load(zloader_t *loader)
 	zone_node_t *last_nsec3_node = NULL;
 
 	int kret = zone_contents_adjust_full(zc->z,
-	                                          &first_nsec3_node, &last_nsec3_node);
+	                                     &first_nsec3_node, &last_nsec3_node);
 	if (kret != KNOT_EOK) {
 		ERROR(zname, "failed to finalize zone contents (%s)",
 		      knot_strerror(kret));

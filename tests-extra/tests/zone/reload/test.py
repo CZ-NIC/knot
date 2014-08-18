@@ -10,9 +10,9 @@ t = Test()
 master = t.server("knot")
 
 # Zone setup
-zone = t.zone("serial.", storage = ".")
+zone = t.zone("serial.", storage=".")
 
-t.link(zone, master, ixfr = True)
+t.link(zone, master, ixfr=True)
 
 t.start()
 
@@ -31,7 +31,7 @@ def reload_zone(serial, version):
     resp.check(rcode="NOERROR")
 
 # Zone changes, serial increases (create changeset)
-version = 1 
+version = 1
 serial = serial + 1
 reload_zone(serial, version)
 
@@ -41,7 +41,7 @@ reload_zone(serial, version)
 
 # Zone changes, serial jumps out-of-range (journal is not applicable)
 version += 1
-serial = serial - 2 
+serial = serial - 2
 reload_zone(serial, version)
 
 # Stop master.

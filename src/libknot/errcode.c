@@ -45,6 +45,7 @@ const error_table_t error_messages[] = {
 	{ KNOT_ERROR,        "failed" },
 	{ KNOT_ENOTRUNNING,  "resource is not running" },
 	{ KNOT_EPARSEFAIL,   "parser failed" },
+	{ KNOT_ESEMCHECK,    "semantic check" },
 	{ KNOT_EEXPIRED,     "resource is expired" },
 	{ KNOT_EUPTODATE,    "zone is up-to-date" },
 	{ KNOT_EFEWDATA,     "not enough data to parse" },

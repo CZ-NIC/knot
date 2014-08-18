@@ -38,12 +38,13 @@ struct knot_requestor {
 	struct knot_overlay overlay;  /*!< Response processing overlay. */
 };
 
-/*! \brief Request data (socket, payload and endpoints). */
+/*! \brief Request data (socket, payload, response, TSIG and endpoints). */
 struct knot_request {
 	node_t node;
 	int fd;
 	unsigned flags;
 	struct sockaddr_storage remote, origin;
+	knot_sign_context_t sign;
 	knot_pkt_t *query;
 	knot_pkt_t *resp;
 };

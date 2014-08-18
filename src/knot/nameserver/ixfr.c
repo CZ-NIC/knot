@@ -529,8 +529,7 @@ static bool journal_limit_exceeded(struct ixfr_proc *proc)
 /*! \brief Checks whether RR belongs into zone. */
 static bool out_of_zone(const knot_rrset_t *rr, struct ixfr_proc *proc)
 {
-	return !knot_dname_is_sub(rr->owner, proc->zone->name) &&
-	       !knot_dname_is_equal(rr->owner, proc->zone->name);
+	return !knot_dname_in(proc->zone->name, rr->owner);
 }
 
 /*!

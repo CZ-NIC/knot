@@ -9,7 +9,7 @@ t = Test()
 master = t.server("knot")
 
 # Zone setup
-zone = t.zone("example.com.", storage = ".")
+zone = t.zone("example.com.", storage=".")
 
 t.link(zone, master)
 
