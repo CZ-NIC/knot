@@ -149,6 +149,15 @@ static int pkt_reset(knot_pkt_t *pkt, void *wire, uint16_t len)
 	return ret;
 }
 
+/* Reset packet parse state. */
+static int pkt_reset_sections(knot_pkt_t *pkt)
+{
+	pkt->parsed  = 0;
+	pkt->current = KNOT_ANSWER;
+	memset(pkt->sections, 0, sizeof(pkt->sections));
+	knot_pkt_begin(pkt, KNOT_ANSWER);
+}
+
 /*! \brief Clear packet payload and free allocated data. */
 static void pkt_clear_payload(knot_pkt_t *pkt)
 {
@@ -166,9 +175,7 @@ static void pkt_clear_payload(knot_pkt_t *pkt)
 	pkt_free_data(pkt);
 
 	/* Reset sections. */
-	pkt->current = KNOT_ANSWER;
-	memset(pkt->sections, 0, sizeof(pkt->sections));
-	knot_pkt_begin(pkt, KNOT_ANSWER);
+	pkt_reset_sections(pkt);
 }
 
 /*! \brief Allocate new packet using memory context. */
@@ -551,8 +558,7 @@ int knot_pkt_parse(knot_pkt_t *pkt, unsigned flags)
 	}
 
 	/* Reset parse state. */
-	pkt->parsed = 0;
-	pkt->current = KNOT_ANSWER;
+	pkt_reset_sections(pkt);
 
 	int ret = knot_pkt_parse_question(pkt);
 	if (ret == KNOT_EOK) {
