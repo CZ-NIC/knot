@@ -279,7 +279,9 @@ int zs_scanner_parse(zs_scanner_t *scanner,
  * \brief Parses specified zone file.
  *
  * \note Zone scanner error code and other information are stored in
- *       the scanner structure.
+ *       the scanner structure. If error and error_count == 0, there is
+ *       a more general problem with loading and this error is not processed
+ *       with process_error!
  *
  * \param scanner	Zone scanner.
  * \param file_name	Name of file to process.
