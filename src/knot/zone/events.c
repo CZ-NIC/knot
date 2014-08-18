@@ -632,6 +632,7 @@ static void duplicate_ddns_q(zone_t *zone, zone_t *old_zone)
 	WALK_LIST_DELSAFE(d, nxt, old_zone->ddns_queue) {
 		add_tail(&zone->ddns_queue, (node_t *)d);
 	}
+	zone->ddns_queue_size = old_zone->ddns_queue_size;
 
 	// Reset the list, new zone will free the data.
 	init_list(&old_zone->ddns_queue);
@@ -642,14 +643,14 @@ static void replan_update(zone_t *zone, zone_t *old_zone)
 {
 	pthread_spin_lock(&old_zone->ddns_lock);
 
-	const bool empty = EMPTY_LIST(old_zone->ddns_queue);
-	if (!empty) {
+	const bool have_updates = old_zone->ddns_queue_size > 0;
+	if (have_updates) {
 		duplicate_ddns_q(zone, (zone_t *)old_zone);
 	}
 	
 	pthread_spin_unlock(&old_zone->ddns_lock);
 	
-	if (!empty) {
+	if (have_updates) {
 		zone_events_schedule(zone, ZONE_EVENT_UPDATE, ZONE_EVENT_NOW);
 	}
 }
