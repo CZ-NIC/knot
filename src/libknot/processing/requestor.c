@@ -124,7 +124,7 @@ struct knot_request *knot_request_make(mm_ctx_t *mm,
                                knot_pkt_t *query,
                                unsigned flags)
 {
-	if (mm == NULL || dst == NULL || query == NULL) {
+	if (dst == NULL || query == NULL) {
 		return NULL;
 	}
 
@@ -268,6 +268,9 @@ static int exec_request(struct knot_requestor *req, struct knot_request *last, s
 	/* Do I/O until the processing is satisifed or fails. */
 	while (req->overlay.state & (NS_PROC_FULL|NS_PROC_MORE)) {
 		ret = request_io(req, last, timeout);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
 	}
 
 	/* Expect complete request. */
