@@ -792,7 +792,7 @@ int knot_pkt_parse_payload(knot_pkt_t *pkt, unsigned flags)
 	/* TSIG must be last record of AR if present. */
 	const knot_pktsection_t *ar = knot_pkt_section(pkt, KNOT_ADDITIONAL);
 	if (pkt->tsig_rr != NULL) {
-		if (ar->count > 0 && ar->count != knot_wire_get_arcount(pkt->wire)) {
+		if (ar->count > 0 && pkt->tsig_rr->rrs.data != ar->rr[ar->count - 1].rrs.data) {
 			dbg_packet("%s: TSIG not last RR in AR.\n", __func__);
 			return KNOT_EMALF;
 		}
