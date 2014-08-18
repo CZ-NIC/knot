@@ -50,7 +50,7 @@ class Tsig(object):
             self.alg = random.choice(list(Tsig.algs.keys()))
         else:
             if alg not in Tsig.algs:
-                raise Exception("Unsupported TSIG algorithm %s" % alg)
+                raise Failed("Unsupported TSIG algorithm %s" % alg)
             self.alg = alg
 
         if not key:
@@ -104,5 +104,5 @@ class Key(object):
 
         self.name = out.strip()
         if cmd.returncode != 0 or self.name[0] != "K":
-            raise Exception("Can't generate key for %s zone" % self.zone_name)
+            raise Failed("Can't generate key for %s zone" % self.zone_name)
 

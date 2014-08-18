@@ -12,6 +12,10 @@ class Skip(Exception):
     """Exception for skipping current case."""
     pass
 
+class Failed(Exception):
+    """Exception for serious error."""
+    pass
+
 def prepare_dir(path):
     try:
         os.makedirs(path)

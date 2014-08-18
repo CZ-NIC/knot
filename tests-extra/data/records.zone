@@ -1,7 +1,7 @@
 $ORIGIN records.
 $TTL 3600
 
-@	SOA	dns1 hostmaster 2010111201 10800 3600 1209600 7200
+@	SOA	dns1 HOSTmaster 2010111201 10800 3600 1209600 7200
 	NS	dns1
 	NS	dns2
 	MX	10 mail
@@ -59,7 +59,20 @@ eui48	EUI48	00-00-5e-00-53-2a
 eui64	EUI64	00-00-5e-ef-10-00-00-2a
 
 ; Miscellaneous
-empty	IN TYPE999 \# 0
+empty		IN TYPE999 \# 0
+UPPER-case	MX 10	MaiL
+str-test	HINFO	"" ""
+		TXT	"x\012\001\y z"
+		TXT	"" ""
+		TXT	ahoj "" ""
+		TXT	"" ahoj \"\ \#
+		TXT	"\\"  "\""
+		TXT	"ahoj" "" "nevim"
+		NAPTR	20 0 "s" "SIP+D2U" "" sip._udp.wild.
+
+; CNAME loop
+*.loop1 CNAME a.loop2
+*.loop2 CNAME a.loop1
 
 ; Reported bugs
 3.1.1.1.1.1.1.1.1.2.7.9.9 172800 NAPTR 1 1 "u" "E2U+sip" "!^.*$!sip:123@freeswitch.org!" .
