@@ -10,7 +10,7 @@ master = t.server("bind")
 slave = t.server("knot")
 reference = t.server("bind")
 
-zones = t.zone_rnd(10) + t.zone(".") + t.zone("wild.") + t.zone("cname-loop.")
+zones = t.zone_rnd(4) + t.zone(".") + t.zone("records.")
 
 t.link(zones, master, slave)
 t.link(zones, reference)
