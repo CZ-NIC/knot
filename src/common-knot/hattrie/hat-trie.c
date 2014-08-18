@@ -833,6 +833,7 @@ int hattrie_find_next (hattrie_t* T, const char* key, size_t len, value_t **dst)
     node_ptr ptr = hattrie_find_ns(&ns, &sp, NODESTACK_INIT, &key, &len);
     if (ptr.flag == NULL) {
         *dst = hattrie_walk_right(ns, sp, key, hattrie_find_leftmost);
+        if (ns != bs) free(ns);
         if (*dst) {
             return 0; /* found next. */
         } else {
@@ -854,6 +855,7 @@ int hattrie_find_next (hattrie_t* T, const char* key, size_t len, value_t **dst)
             --key;
         }
         *dst = hattrie_walk_right(ns, sp, key, hattrie_find_leftmost);
+        if (ns != bs) free(ns);
         if (*dst) {
             ret = 0; /* found next. */
         } else {
