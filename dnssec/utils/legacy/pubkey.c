@@ -18,7 +18,6 @@
 
 // Knot zone scanner
 #include "scanner.h"
-#include "loader.h"
 
 #include "dnssec/error.h"
 #include "dnssec/binary.h"
@@ -74,17 +73,16 @@ int legacy_pubkey_parse(const char *filename, dnssec_key_t **key_ptr)
 
 	uint16_t class = CLASS_IN;
 	uint32_t ttl = 0;
-	zs_loader_t *loader = zs_loader_create(filename, ".", class, ttl,
-					       parse_record, NULL, key);
-	if (!loader) {
+	zs_scanner_t *scanner = zs_scanner_create(".", class, ttl,
+						  parse_record, NULL, key);
+	if (!scanner) {
 		dnssec_key_free(key);
 		return DNSSEC_NOT_FOUND;
 	}
 
-	zs_loader_process(loader);
-	zs_loader_free(loader);
-
-	if (dnssec_key_get_dname(key) == NULL) {
+	result = zs_scanner_parse_file(scanner, filename);
+	zs_scanner_free(scanner);
+	if (result != 0 || dnssec_key_get_dname(key) == NULL) {
 		dnssec_key_free(key);
 		return DNSSEC_INVALID_PUBLIC_KEY;
 	}
