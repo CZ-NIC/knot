@@ -43,7 +43,6 @@ static int capture(knot_layer_t *ctx, knot_pkt_t *pkt)
 
 	/* Copy packet contents and free. */
 	knot_pkt_copy(param->sink, pkt);
-	knot_pkt_free(&pkt);
 
 	return NS_PROC_DONE;
 }

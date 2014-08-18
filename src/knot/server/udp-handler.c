@@ -46,7 +46,7 @@
 #include "libknot/consts.h"
 #include "libknot/packet/pkt.h"
 #include "libknot/dnssec/crypto.h"
-#include "libknot/processing/process.h"
+#include "libknot/processing/layer.h"
 
 /* Buffer identifiers. */
 enum {
@@ -57,9 +57,9 @@ enum {
 
 /*! \brief UDP context data. */
 typedef struct udp_context {
-	knot_layer_t query_ctx; /*!< Query processing context. */
-	server_t *server;         /*!< Name server structure. */
-	unsigned thread_id;       /*!< Thread identifier. */
+	knot_layer_t layer; /*!< Query processing context. */
+	server_t *server;   /*!< Name server structure. */
+	unsigned thread_id; /*!< Thread identifier. */
 } udp_context_t;
 
 /* FD_COPY macro compat. */
@@ -132,33 +132,35 @@ void udp_handle(udp_context_t *udp, int fd, struct sockaddr_storage *ss,
 		param.proc_flags |= NS_QUERY_LIMIT_RATE;
 	}
 
+	/* Create packets. */
+	mm_ctx_t *mm = udp->layer.mm;
+	knot_pkt_t *query = knot_pkt_new(rx->iov_base, rx->iov_len, mm);
+	knot_pkt_t *ans = knot_pkt_new(tx->iov_base, tx->iov_len, mm);
+
 	/* Create query processing context. */
-	knot_process_begin(&udp->query_ctx, NS_PROC_QUERY, &param);
+	knot_layer_begin(&udp->layer, NS_PROC_QUERY, &param);
 
 	/* Input packet. */
-	int state = knot_process_in(&udp->query_ctx, rx->iov_base, rx->iov_len);
+	int state = knot_layer_in(&udp->layer, query);
 
 	/* Process answer. */
-	uint16_t tx_len = tx->iov_len;
-	if (state == NS_PROC_FULL) {
-		state = knot_process_out(&udp->query_ctx, tx->iov_base, &tx_len);
-	}
-
-	/* Process error response (if failed). */
-	if (state == NS_PROC_FAIL) {
-		tx_len = tx->iov_len; /* Reset size. */
-		state = knot_process_out(&udp->query_ctx, tx->iov_base, &tx_len);
+	while (state & (NS_PROC_FULL|NS_PROC_FAIL)) {
+		state = knot_layer_out(&udp->layer, ans);
 	}
 
 	/* Send response only if finished successfuly. */
 	if (state == NS_PROC_DONE) {
-		tx->iov_len = tx_len;
+		tx->iov_len = ans->size;
 	} else {
 		tx->iov_len = 0;
 	}
 
 	/* Reset context. */
-	knot_process_finish(&udp->query_ctx);
+	knot_layer_finish(&udp->layer);
+
+	/* Cleanup. */
+	knot_pkt_free(&query);
+	knot_pkt_free(&ans);
 }
 
 /* Check for sendmmsg syscall. */
@@ -507,7 +509,7 @@ int udp_master(dthread_t *thread)
 	/* Create big enough memory cushion. */
 	mm_ctx_t mm;
 	mm_ctx_mempool(&mm, 4 * sizeof(knot_pkt_t));
-	udp.query_ctx.mm = &mm;
+	udp.layer.mm = &mm;
 
 	/* Chose select as epoll/kqueue has larger overhead for a
 	 * single or handful of sockets. */

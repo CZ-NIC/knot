@@ -140,6 +140,8 @@ src/knot/nameserver/query_module.h
 src/knot/nameserver/tsig_ctx.c
 src/knot/nameserver/tsig_ctx.h
 src/knot/nameserver/update.c
+src/knot/nameserver/update.c
+src/knot/nameserver/update.c
 src/knot/nameserver/update.h
 src/knot/other/debug.h
 src/knot/server/dthreads.c
@@ -234,9 +236,9 @@ src/libknot/processing/layer.c
 src/libknot/processing/layer.h
 src/libknot/processing/overlay.c
 src/libknot/processing/overlay.h
-src/libknot/processing/process.c
-src/libknot/processing/process.h
 src/libknot/processing/requestor.c
+src/libknot/processing/requestor.h
+src/libknot/processing/requestor.h
 src/libknot/processing/requestor.h
 src/libknot/rdata.c
 src/libknot/rdata.h

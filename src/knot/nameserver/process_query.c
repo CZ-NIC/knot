@@ -57,7 +57,6 @@ static int process_query_reset(knot_layer_t *ctx)
 	struct process_query_param *module_param = qdata->param;
 
 	/* Free allocated data. */
-	knot_pkt_free(&qdata->query);
 	ptrlist_free(&qdata->wildcards, qdata->mm);
 	nsec_clear_rrsigs(qdata);
 	knot_rrset_clear(&qdata->opt_rr, qdata->mm);
@@ -88,13 +87,11 @@ static int process_query_in(knot_layer_t *ctx, knot_pkt_t *pkt)
 
 	/* Check if at least header is parsed. */
 	if (pkt->parsed < KNOT_WIRE_HEADER_SIZE) {
-		knot_pkt_free(&pkt);
 		return NS_PROC_NOOP; /* Ignore. */
 	}
 
 	/* Accept only queries. */
 	if (knot_wire_get_qr(pkt->wire)) {
-		knot_pkt_free(&pkt);
 		return NS_PROC_NOOP; /* Ignore. */
 	}
 

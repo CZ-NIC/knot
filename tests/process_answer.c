@@ -26,13 +26,13 @@
 
 /* @note Test helpers. */
 #define TEST_RESET() \
-	knot_process_reset(proc); \
-	knot_process_out(proc, pkt->wire, (uint16_t *)&pkt->size); \
+	knot_layer_reset(proc); \
+	knot_layer_out(proc, pkt); \
 	knot_pkt_clear(pkt)
 
 #define TEST_EXEC(expect, info) {\
 	pkt->parsed = pkt->size; /* Simulate parsed packet. */ \
-	int state = knot_process_in(proc, pkt->wire, pkt->size); \
+	int state = knot_layer_in(proc, pkt); \
 	is_int((expect), state, "proc_answer: " info); \
 	}
 
@@ -133,7 +133,7 @@ int main(int argc, char *argv[])
 	knot_pkt_t *pkt = knot_pkt_new(NULL, KNOT_WIRE_MAX_PKTSIZE, proc.mm);
 
 	/* Begin processing. */
-	int state = knot_process_begin(&proc, NS_PROC_ANSWER, &param);
+	int state = knot_layer_begin(&proc, NS_PROC_ANSWER, &param);
 	ok(state == NS_PROC_FULL, "proc_answer: expects query to be sent");
 
 	/* Invalid generic input tests. */
@@ -151,7 +151,7 @@ int main(int argc, char *argv[])
 	/* TSIG check tests. */
 
 	/* Finish. */
-	state = knot_process_finish(&proc);
+	state = knot_layer_finish(&proc);
 	ok(state == NS_PROC_NOOP, "proc_answer: processing end" );
 
 	/* Cleanup. */

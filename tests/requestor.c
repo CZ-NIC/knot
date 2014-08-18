@@ -19,7 +19,7 @@
 #include <stdlib.h>
 
 #include "common/mempool.h"
-#include "libknot/processing/process.h"
+#include "libknot/processing/layer.h"
 #include "libknot/processing/requestor.h"
 #include "fake_server.h"
 

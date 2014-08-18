@@ -139,7 +139,6 @@ static int process_answer(knot_layer_t *ctx, knot_pkt_t *pkt)
 		break;
 	}
 
-	knot_pkt_free(&pkt);
 	return next_state;
 }
 

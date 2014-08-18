@@ -174,8 +174,6 @@ libknot_la_SOURCES =				\
 	libknot/packet/net.c			\
 	libknot/packet/net.h			\
 	libknot/packet/wire.h			\
-	libknot/processing/process.c	\
-	libknot/processing/process.h	\
 	libknot/processing/layer.c		\
 	libknot/processing/layer.h		\
 	libknot/processing/overlay.c	\

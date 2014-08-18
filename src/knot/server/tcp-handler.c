@@ -133,21 +133,25 @@ static int tcp_handle(tcp_context_t *tcp, int fd,
 		rx->iov_len = ret;
 	}
 
+	/* Create packets. */
+	mm_ctx_t *mm = tcp->query_ctx.mm;
+	knot_pkt_t *query = knot_pkt_new(rx->iov_base, rx->iov_len, mm);
+	knot_pkt_t *ans = knot_pkt_new(tx->iov_base, tx->iov_len, mm);
+
 	/* Create query processing context. */
-	knot_process_begin(&tcp->query_ctx, NS_PROC_QUERY, &param);
+	knot_layer_begin(&tcp->query_ctx, NS_PROC_QUERY, &param);
 
 	/* Input packet. */
-	int state = knot_process_in(&tcp->query_ctx, rx->iov_base, rx->iov_len);
+	int state = knot_layer_in(&tcp->query_ctx, query);
 
 	/* Resolve until NOOP or finished. */
 	ret = KNOT_EOK;
 	while (state & (NS_PROC_FULL|NS_PROC_FAIL)) {
-		uint16_t tx_len = tx->iov_len;
-		state = knot_process_out(&tcp->query_ctx, tx->iov_base, &tx_len);
+		state = knot_layer_out(&tcp->query_ctx, ans);
 
 		/* If it has response, send it. */
-		if (tx_len > 0) {
-			if (tcp_send_msg(fd, tx->iov_base, tx_len) != tx_len) {
+		if (ans->size > 0) {
+			if (tcp_send_msg(fd, ans->wire, ans->size) != ans->size) {
 				ret = KNOT_ECONNREFUSED;
 				break;
 			}
@@ -155,7 +159,11 @@ static int tcp_handle(tcp_context_t *tcp, int fd,
 	}
 
 	/* Reset after processing. */
-	knot_process_finish(&tcp->query_ctx);
+	knot_layer_finish(&tcp->query_ctx);
+
+	/* Cleanup. */
+	knot_pkt_free(&query);
+	knot_pkt_free(&ans);
 
 	return ret;
 }

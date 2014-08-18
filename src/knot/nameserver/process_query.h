@@ -26,7 +26,7 @@
 
 #pragma once
 
-#include "libknot/processing/process.h"
+#include "libknot/processing/layer.h"
 #include "knot/server/server.h"
 #include "knot/updates/acl.h"
 
