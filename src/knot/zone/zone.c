@@ -280,25 +280,27 @@ int zone_update_enqueue(zone_t *zone, knot_pkt_t *pkt, struct process_query_para
 	return KNOT_EOK;
 }
 
-void zone_update_dequeue(zone_t *zone, list_t *updates, size_t *update_count)
+size_t zone_update_dequeue(zone_t *zone, list_t *updates)
 {
 	if (zone == NULL) {
-		return;
+		return 0;
 	}
 
 	pthread_spin_lock(&zone->ddns_lock);
 	if (EMPTY_LIST(zone->ddns_queue)) {
 		/* Lost race during reload. */
 		pthread_spin_unlock(&zone->ddns_lock);
-		return;
+		return 0;
 	}
 
 	*updates = zone->ddns_queue;
-	*update_count = zone->ddns_queue_size;
+	size_t update_count = zone->ddns_queue_size;
 	init_list(&zone->ddns_queue);
 	zone->ddns_queue_size = 0;
 
 	pthread_spin_unlock(&zone->ddns_lock);
+	
+	return update_count;
 }
 
 bool zone_transfer_needed(const zone_t *zone, const knot_pkt_t *pkt)

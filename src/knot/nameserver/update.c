@@ -169,11 +169,6 @@ static int process_bulk(zone_t *zone, list_t *requests, changeset_t *ddns_ch)
 	// Walk all the requests and process.
 	struct request_data *req;
 	WALK_LIST(req, *requests) {
-		if (knot_wire_get_rcode(req->resp->wire) != KNOT_RCODE_NOERROR) {
-			// Skip requests that failed ACL check.
-			continue;
-		}
-		
 		// Init qdata structure for logging (unique per-request).
 		struct process_query_param param = { 0 };
 		param.remote = &req->remote;
@@ -397,14 +392,13 @@ static void forward_requests(zone_t *zone, list_t *requests)
 	}
 }
 
-static void update_tsig_check(struct query_data *qdata, struct request_data *req,
-                              size_t *update_count)
+static bool update_tsig_check(struct query_data *qdata, struct request_data *req)
 {
 	// Check that ACL is still valid.
 	if (!process_query_acl_check(&qdata->zone->conf->acl.update_in, qdata)) {
 		UPDATE_LOG(LOG_WARNING, "ACL check failed");
 		knot_wire_set_rcode(req->resp->wire, qdata->rcode);
-		*update_count -= 1;
+		return false;
 	} else {
 		// Check TSIG validity.
 		int ret = process_query_verify(qdata);
@@ -412,21 +406,57 @@ static void update_tsig_check(struct query_data *qdata, struct request_data *req
 			UPDATE_LOG(LOG_WARNING, "failed (%s)",
 			           knot_strerror(ret));
 			knot_wire_set_rcode(req->resp->wire, qdata->rcode);
-			*update_count -= 1;
+			return false;
 		}
 	}
 	
 	// Store signing context for response.
 	req->sign = qdata->sign;
+	
+	return true;
 }
 
 #undef UPDATE_LOG
+
+static void send_update_response(const zone_t *zone, struct request_data *req)
+{
+	if (req->resp) {
+		if (!zone_master(zone)) {
+			// Sign the response with TSIG where applicable
+			struct query_data qdata;
+			init_qdata_from_request(&qdata, zone, req, NULL);
+			
+			(void)process_query_sign_response(req->resp, &qdata);
+		}
+		
+		if (net_is_connected(req->fd)) {
+			tcp_send_msg(req->fd, req->resp->wire, req->resp->size);
+		} else {
+			udp_send_msg(req->fd, req->resp->wire, req->resp->size,
+			             (struct sockaddr *)&req->remote);
+		}
+	}
+
+	close(req->fd);
+	knot_pkt_free(&req->query);
+	knot_pkt_free(&req->resp);
+}
+
+static void send_update_responses(const zone_t *zone, list_t *updates)
+{
+	struct request_data *req, *nxt;
+	WALK_LIST_DELSAFE(req, nxt, *updates) {
+		send_update_response(zone, req);
+		free(req);
+	}
+}
 
 static int init_update_responses(const zone_t *zone, list_t *updates,
                                  size_t *update_count)
 {
 	struct request_data *req = NULL;
-	WALK_LIST(req, *updates) {
+	node_t *nxt = NULL;
+	WALK_LIST_DELSAFE(req, nxt, *updates) {
 		req->resp = knot_pkt_new(NULL, KNOT_WIRE_MAX_PKTSIZE, NULL);
 		if (req->resp == NULL) {
 			return KNOT_ENOMEM;
@@ -444,39 +474,17 @@ static int init_update_responses(const zone_t *zone, list_t *updates,
 		struct query_data qdata;
 		init_qdata_from_request(&qdata, zone, req, &param);
 		
-		update_tsig_check(&qdata, req, update_count);
+		if (!update_tsig_check(&qdata, req)) {
+			// ACL/TSIG check failed, send response.
+			send_update_response(zone, req);
+			// Remove this request from processing list.
+			*update_count -= 1;
+			rem_node(&req->node);
+			free(req);
+		}
 	}
 
 	return KNOT_EOK;
-}
-
-static void send_update_responses(const zone_t *zone, list_t *updates)
-{
-	struct request_data *req, *nxt;
-	WALK_LIST_DELSAFE(req, nxt, *updates) {
-		
-		if (req->resp) {
-			if (!zone_master(zone)) {
-				// Sign the response with TSIG where applicable
-				struct query_data qdata;
-				init_qdata_from_request(&qdata, zone, req, NULL);
-				
-				(void)process_query_sign_response(req->resp, &qdata);
-			}
-			
-			if (net_is_connected(req->fd)) {
-				tcp_send_msg(req->fd, req->resp->wire, req->resp->size);
-			} else {
-				udp_send_msg(req->fd, req->resp->wire, req->resp->size,
-				             (struct sockaddr *)&req->remote);
-			}
-		}
-
-		close(req->fd);
-		knot_pkt_free(&req->query);
-		knot_pkt_free(&req->resp);
-		free(req);
-	}
 }
 
 int update_query_process(knot_pkt_t *pkt, struct query_data *qdata)
@@ -510,9 +518,8 @@ int updates_execute(zone_t *zone)
 {
 	/* Get list of pending updates. */
 	list_t updates;
-	size_t update_count;
-	zone_update_dequeue(zone, &updates, &update_count);
-	if (EMPTY_LIST(updates)) {
+	size_t update_count = zone_update_dequeue(zone, &updates);
+	if (update_count == 0) {
 		return KNOT_EOK;
 	}
 
@@ -527,7 +534,6 @@ int updates_execute(zone_t *zone)
 	
 	if (update_count == 0) {
 		/* All updates failed their ACL checks. */
-		send_update_responses(zone, &updates);
 		return KNOT_EOK;
 	}
 
