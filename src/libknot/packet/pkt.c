@@ -550,6 +550,10 @@ int knot_pkt_parse(knot_pkt_t *pkt, unsigned flags)
 		return KNOT_EINVAL;
 	}
 
+	/* Reset parse state. */
+	pkt->parsed = 0;
+	pkt->current = KNOT_ANSWER;
+
 	int ret = knot_pkt_parse_question(pkt);
 	if (ret == KNOT_EOK) {
 		ret = knot_pkt_parse_payload(pkt, flags);
