@@ -141,7 +141,7 @@ int zcreator_step(zcreator_t *zc, const knot_rrset_t *rr)
 		return ret;
 	}
 
-	return sem_fatal_error ? KNOT_EMALF : KNOT_EOK;
+	return sem_fatal_error ? KNOT_ESEMCHECK : KNOT_EOK;
 }
 
 /*! \brief Creates RR from parser input, passes it to handling function. */
