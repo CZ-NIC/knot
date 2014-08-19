@@ -269,14 +269,18 @@ static int exec_request(struct knot_requestor *req, struct knot_request *last, s
 	while (req->overlay.state & (NS_PROC_FULL|NS_PROC_MORE)) {
 		ret = request_io(req, last, timeout);
 		if (ret != KNOT_EOK) {
+			knot_overlay_finish(&req->overlay);
 			return ret;
 		}
 	}
 
 	/* Expect complete request. */
 	if (req->overlay.state != NS_PROC_DONE) {
-		return KNOT_ERROR;
+		ret = KNOT_ERROR;
 	}
+
+	/* Finish processing. */
+	knot_overlay_finish(&req->overlay);
 
 	return ret;
 }
