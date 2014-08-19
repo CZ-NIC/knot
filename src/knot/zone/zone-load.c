@@ -110,7 +110,7 @@ int zone_load_journal(zone_t *zone, zone_contents_t *contents)
 
 	/* Apply changesets. */
 	ret = apply_changesets_directly(contents, &chgs);
-	log_zone_info(zone->name, "Applied changes from journal %u -> %u (%s)",
+	log_zone_info(zone->name, "changes from journal applied %u -> %u (%s)",
 	              serial, zone_contents_serial(contents),
 	              knot_strerror(ret));
 
