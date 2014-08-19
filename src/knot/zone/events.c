@@ -515,7 +515,7 @@ static int event_dnssec(zone_t *zone)
 		zone_contents_t *new_contents = NULL;
 		int ret = apply_changeset(zone, &ch, &new_contents);
 		if (ret != KNOT_EOK) {
-			log_zone_error(zone->name, "DNSSEC, could not sign zone (%s)",
+			log_zone_error(zone->name, "DNSSEC, failed to sign zone (%s)",
 				       knot_strerror(ret));
 			goto done;
 		}
@@ -523,7 +523,7 @@ static int event_dnssec(zone_t *zone)
 		/* Write change to journal. */
 		ret = zone_change_store(zone, &ch);
 		if (ret != KNOT_EOK) {
-			log_zone_error(zone->name, "DNSSEC, could not sign zone (%s)",
+			log_zone_error(zone->name, "DNSSEC, failed to sign zone (%s)",
 				       knot_strerror(ret));
 			update_rollback(&ch);
 			update_free_zone(&new_contents);
