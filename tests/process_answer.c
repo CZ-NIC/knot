@@ -31,7 +31,7 @@
 	knot_pkt_clear(pkt)
 
 #define TEST_EXEC(expect, info) {\
-	pkt->parsed = pkt->size; /* Simulate parsed packet. */ \
+	knot_pkt_parse(pkt, 0); \
 	int state = knot_layer_in(proc, pkt); \
 	is_int((expect), state, "proc_answer: " info); \
 	}

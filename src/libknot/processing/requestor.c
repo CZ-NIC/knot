@@ -182,7 +182,7 @@ bool knot_requestor_finished(struct knot_requestor *requestor)
 int knot_requestor_overlay(struct knot_requestor *requestor,
                             const knot_layer_api_t *proc, void *param)
 {
-	return knot_overlay_add(&requestor->overlay, param, proc);
+	return knot_overlay_add(&requestor->overlay, proc, param);
 }
 
 int knot_requestor_enqueue(struct knot_requestor *requestor, struct knot_request *request)

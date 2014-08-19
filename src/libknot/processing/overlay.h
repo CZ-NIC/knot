@@ -51,26 +51,26 @@ void knot_overlay_deinit(struct knot_overlay *overlay);
 
 /*!
  * \brief Add an overlay on top of the list and begin execution.
- * \fn knot_process_begin
+ * \fn knot_layer_begin
  *
  * \param overlay
- * \param module_param
  * \param module
+ * \param module_param
  *
  * \return KNOT_EOK or an error
  */
-int knot_overlay_add(struct knot_overlay *overlay, void *module_param,
-                     const knot_layer_api_t *module);
+int knot_overlay_add(struct knot_overlay *overlay, const knot_layer_api_t *module,
+                     void *module_param);
 
 /*!
  * \brief Reset processing layers.
- * \fn knot_process_reset
+ * \fn knot_layer_reset
  */
 int knot_overlay_reset(struct knot_overlay *overlay);
 
 /*!
  * \brief Finish processing layers.
- * \fn knot_process_finish
+ * \fn knot_layer_finish
  */
 int knot_overlay_finish(struct knot_overlay *overlay);
 

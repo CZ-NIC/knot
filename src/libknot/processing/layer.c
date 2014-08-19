@@ -78,8 +78,6 @@ int knot_layer_in(knot_layer_t *ctx, knot_pkt_t *pkt)
 		return ctx->state;
 	}
 
-	knot_pkt_parse(pkt, 0);
-
 	LAYER_CALL(ctx, in, pkt);
 	dbg_ns("%s -> %s\n", __func__, LAYER_STATE_STR(ctx->state));
 	return ctx->state;

@@ -46,7 +46,7 @@
 #include "libknot/consts.h"
 #include "libknot/packet/pkt.h"
 #include "libknot/dnssec/crypto.h"
-#include "libknot/processing/layer.h"
+#include "libknot/processing/overlay.h"
 
 /* Buffer identifiers. */
 enum {
@@ -57,9 +57,9 @@ enum {
 
 /*! \brief UDP context data. */
 typedef struct udp_context {
-	knot_layer_t layer; /*!< Query processing context. */
-	server_t *server;   /*!< Name server structure. */
-	unsigned thread_id; /*!< Thread identifier. */
+	struct knot_overlay overlay; /*!< Query processing overlay. */
+	server_t *server;            /*!< Name server structure. */
+	unsigned thread_id;          /*!< Thread identifier. */
 } udp_context_t;
 
 /* FD_COPY macro compat. */
@@ -133,19 +133,20 @@ void udp_handle(udp_context_t *udp, int fd, struct sockaddr_storage *ss,
 	}
 
 	/* Create packets. */
-	mm_ctx_t *mm = udp->layer.mm;
+	mm_ctx_t *mm = udp->overlay.mm;
 	knot_pkt_t *query = knot_pkt_new(rx->iov_base, rx->iov_len, mm);
 	knot_pkt_t *ans = knot_pkt_new(tx->iov_base, tx->iov_len, mm);
 
 	/* Create query processing context. */
-	knot_layer_begin(&udp->layer, NS_PROC_QUERY, &param);
+	knot_overlay_init(&udp->overlay, mm);
+	knot_overlay_add(&udp->overlay, NS_PROC_QUERY, &param);
 
 	/* Input packet. */
-	int state = knot_layer_in(&udp->layer, query);
+	int state = knot_overlay_in(&udp->overlay, query);
 
 	/* Process answer. */
 	while (state & (NS_PROC_FULL|NS_PROC_FAIL)) {
-		state = knot_layer_out(&udp->layer, ans);
+		state = knot_overlay_out(&udp->overlay, ans);
 	}
 
 	/* Send response only if finished successfuly. */
@@ -155,8 +156,9 @@ void udp_handle(udp_context_t *udp, int fd, struct sockaddr_storage *ss,
 		tx->iov_len = 0;
 	}
 
-	/* Reset context. */
-	knot_layer_finish(&udp->layer);
+	/* Reset after processing. */
+	knot_overlay_finish(&udp->overlay);
+	knot_overlay_deinit(&udp->overlay);
 
 	/* Cleanup. */
 	knot_pkt_free(&query);
@@ -509,7 +511,7 @@ int udp_master(dthread_t *thread)
 	/* Create big enough memory cushion. */
 	mm_ctx_t mm;
 	mm_ctx_mempool(&mm, 4 * sizeof(knot_pkt_t));
-	udp.layer.mm = &mm;
+	udp.overlay.mm = &mm;
 
 	/* Chose select as epoll/kqueue has larger overhead for a
 	 * single or handful of sockets. */

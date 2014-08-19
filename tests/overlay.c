@@ -80,8 +80,8 @@ int main(int argc, char *argv[])
 	knot_overlay_init(&overlay, &mm);
 
 	/* Add FSMs. */
-	knot_overlay_add(&overlay, NULL, &fsm1_module);
-	knot_overlay_add(&overlay, NULL, &fsm2_module);
+	knot_overlay_add(&overlay, &fsm1_module, NULL);
+	knot_overlay_add(&overlay, &fsm2_module, NULL);
 
 	/* Run the sequence. */
 	int state = knot_overlay_in(&overlay, buf);

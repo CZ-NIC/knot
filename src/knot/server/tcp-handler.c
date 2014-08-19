@@ -41,10 +41,11 @@
 #include "knot/nameserver/process_query.h"
 #include "libknot/dnssec/crypto.h"
 #include "libknot/dnssec/random.h"
+#include "libknot/processing/overlay.h"
 
 /*! \brief TCP context data. */
 typedef struct tcp_context {
-	knot_layer_t query_ctx;   /*!< Query processing context. */
+	struct knot_overlay overlay;/*!< Query processing overlay. */
 	server_t *server;           /*!< Name server structure. */
 	struct iovec iov[2];        /*!< TX/RX buffers. */
 	unsigned client_threshold;  /*!< Index of first TCP client. */
@@ -134,23 +135,24 @@ static int tcp_handle(tcp_context_t *tcp, int fd,
 	}
 
 	/* Create packets. */
-	mm_ctx_t *mm = tcp->query_ctx.mm;
-	knot_pkt_t *query = knot_pkt_new(rx->iov_base, rx->iov_len, mm);
+	mm_ctx_t *mm = tcp->overlay.mm;
 	knot_pkt_t *ans = knot_pkt_new(tx->iov_base, tx->iov_len, mm);
+	knot_pkt_t *query = knot_pkt_new(rx->iov_base, rx->iov_len, mm);
 
-	/* Create query processing context. */
-	knot_layer_begin(&tcp->query_ctx, NS_PROC_QUERY, &param);
+	/* Initialize processing overlay. */
+	knot_overlay_init(&tcp->overlay, mm);
+	knot_overlay_add(&tcp->overlay, NS_PROC_QUERY, &param);
 
 	/* Input packet. */
-	int state = knot_layer_in(&tcp->query_ctx, query);
+	int state = knot_overlay_in(&tcp->overlay, query);
 
 	/* Resolve until NOOP or finished. */
 	ret = KNOT_EOK;
 	while (state & (NS_PROC_FULL|NS_PROC_FAIL)) {
-		state = knot_layer_out(&tcp->query_ctx, ans);
+		state = knot_overlay_out(&tcp->overlay, ans);
 
-		/* If it has response, send it. */
-		if (ans->size > 0) {
+		/* Send, if response generation passed and wasn't ignored. */
+		if (ans->size > 0 && !(state & (NS_PROC_FAIL|NS_PROC_NOOP))) {
 			if (tcp_send_msg(fd, ans->wire, ans->size) != ans->size) {
 				ret = KNOT_ECONNREFUSED;
 				break;
@@ -159,7 +161,8 @@ static int tcp_handle(tcp_context_t *tcp, int fd,
 	}
 
 	/* Reset after processing. */
-	knot_layer_finish(&tcp->query_ctx);
+	knot_overlay_finish(&tcp->overlay);
+	knot_overlay_deinit(&tcp->overlay);
 
 	/* Cleanup. */
 	knot_pkt_free(&query);
@@ -235,7 +238,7 @@ static int tcp_event_serve(tcp_context_t *tcp, unsigned i)
 	int ret = tcp_handle(tcp, fd, &tcp->iov[0], &tcp->iov[1]);
 
 	/* Flush per-query memory. */
-	mp_flush(tcp->query_ctx.mm->ctx);
+	mp_flush(tcp->overlay.mm->ctx);
 
 	if (ret == KNOT_EOK) {
 		/* Update socket activity timer. */
@@ -316,7 +319,7 @@ int tcp_master(dthread_t *thread)
 	/* Create TCP answering context. */
 	tcp.server = handler->server;
 	tcp.thread_id = handler->thread_id[dt_get_id(thread)];
-	tcp.query_ctx.mm = &mm;
+	tcp.overlay.mm = &mm;
 
 	/* Prepare structures for bound sockets. */
 	fdset_init(&tcp.set, list_size(&conf()->ifaces) + CONFIG_XFERS);

@@ -49,6 +49,7 @@ static void exec_query(knot_layer_t *query_ctx, const char *name,
 	assert(answer);
 
 	/* Input packet. */
+	knot_pkt_parse(query, 0);
 	int state = knot_layer_in(query_ctx, query);
 
 	ok(state & (NS_PROC_FULL|NS_PROC_FAIL), "ns: process %s query", name);

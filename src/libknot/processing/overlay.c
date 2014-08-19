@@ -26,8 +26,8 @@ void knot_overlay_deinit(struct knot_overlay *overlay)
 	}
 }
 
-int knot_overlay_add(struct knot_overlay *overlay, void *module_param,
-                     const knot_layer_api_t *module)
+int knot_overlay_add(struct knot_overlay *overlay, const knot_layer_api_t *module,
+                     void *module_param)
 {
 	struct knot_layer *layer = mm_alloc(overlay->mm, sizeof(struct knot_layer));
 	if (layer == NULL) {
@@ -57,6 +57,7 @@ int knot_overlay_finish(struct knot_overlay *overlay)
 int knot_overlay_in(struct knot_overlay *overlay, knot_pkt_t *pkt)
 {
 	knot_pkt_parse(pkt, 0);
+
 	ITERATE_LAYERS(overlay, knot_layer_in, pkt);
 }
 
