@@ -155,7 +155,7 @@ static int pkt_reset_sections(knot_pkt_t *pkt)
 	pkt->parsed  = 0;
 	pkt->current = KNOT_ANSWER;
 	memset(pkt->sections, 0, sizeof(pkt->sections));
-	knot_pkt_begin(pkt, KNOT_ANSWER);
+	return knot_pkt_begin(pkt, KNOT_ANSWER);
 }
 
 /*! \brief Clear packet payload and free allocated data. */
