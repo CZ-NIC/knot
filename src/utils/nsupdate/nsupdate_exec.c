@@ -532,7 +532,7 @@ int nsupdate_exec(nsupdate_params_t *params)
 		}
 		FILE *fp = fopen(filename, "r");
 		if (!fp) {
-			ERR("could not open '%s': %s\n",
+			ERR("failed to open '%s': %s\n",
 			    filename, strerror(errno));
 			return KNOT_ERROR;
 		}

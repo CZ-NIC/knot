@@ -1,4 +1,22 @@
 Knot DNS NEWS
+
+1.5.1 - Aug 19, 2014
+-----------------------
+Features:
+	* Basic support for logging using systemd journal
+	* DDNS: Ability to process updates in bulk
+
+Improvements:
+	* Unified logging messages structure
+	* DNSSEC: More strict controls for signing keys
+
+Bugfixes:
+	* DNSSEC: DNAMEs in RDATA were not lowercased before signing
+	* EDNS: OPT RR were not put into responsing for some errors
+	* TSIG: DDNS responses were not signed with TSIG
+	* DDNS: Prerequisite checks failed for some inputs
+	* knsupdate: Zone origin was not used for deletions
+	
 1.5.0 - Jul 8, 2014
 -----------------------
 Features:

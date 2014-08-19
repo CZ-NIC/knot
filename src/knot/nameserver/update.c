@@ -124,7 +124,7 @@ static int check_prereqs(struct knot_request *request,
 		knot_wire_set_rcode(request->resp->wire, rcode);
 		return ret;
 	}
-	
+
 	return KNOT_EOK;
 }
 
@@ -165,7 +165,7 @@ static int process_bulk(zone_t *zone, list_t *requests, changeset_t *ddns_ch)
 	// Init zone update structure.
 	zone_update_t zone_update;
 	zone_update_init(&zone_update, zone->contents, ddns_ch);
-	
+
 	// Walk all the requests and process.
 	struct knot_request *req;
 	WALK_LIST(req, *requests) {
@@ -174,24 +174,24 @@ static int process_bulk(zone_t *zone, list_t *requests, changeset_t *ddns_ch)
 		param.remote = &req->remote;
 		struct query_data qdata;
 		init_qdata_from_request(&qdata, zone, req, &param);
-		
+
 		store_original_qname(&qdata, req->query);
 		process_query_qname_case_lower(req->query);
-		
+
 		int ret = check_prereqs(req, zone, &zone_update, &qdata);
 		if (ret != KNOT_EOK) {
 			// Skip updates with failed prereqs.
 			continue;
 		}
-		
+
 		ret = process_single_update(req, zone, &zone_update, &qdata);
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
-		
+
 		process_query_qname_case_restore(&qdata, req->query);
 	}
-	
+
 	return KNOT_EOK;
 }
 
@@ -206,7 +206,7 @@ static int process_normal(zone_t *zone, list_t *requests)
 		set_rcodes(requests, KNOT_RCODE_SERVFAIL);
 		return ret;
 	}
-	
+
 	// Process all updates.
 	ret = process_bulk(zone, requests, &ddns_ch);
 	if (ret != KNOT_EOK) {
@@ -214,14 +214,14 @@ static int process_normal(zone_t *zone, list_t *requests)
 		set_rcodes(requests, KNOT_RCODE_SERVFAIL);
 		return ret;
 	}
-	
+
 	zone_contents_t *new_contents = NULL;
 	const bool change_made = !changeset_empty(&ddns_ch);
 	if (!change_made) {
 		changeset_clear(&ddns_ch);
 		return KNOT_EOK;
 	}
-	
+
 	// Apply changes.
 	ret = apply_changeset(zone, &ddns_ch, &new_contents);
 	if (ret != KNOT_EOK) {
@@ -314,7 +314,7 @@ static int process_requests(zone_t *zone, list_t *requests)
 	/* Evaluate response. */
 	const uint32_t new_serial = zone_contents_serial(zone->contents);
 	if (new_serial == old_serial) {
-		log_zone_info(zone->name, "DDNS, no change to zone made");
+		log_zone_info(zone->name, "DDNS, finished, no changes to the zone were made");
 		return KNOT_EOK;
 	}
 
@@ -322,7 +322,7 @@ static int process_requests(zone_t *zone, list_t *requests)
 	log_zone_info(zone->name, "DDNS, update finished, serial %u -> %u, "
 	              "%.02f seconds", old_serial, new_serial,
 	              time_diff(&t_start, &t_end) / 1000.0);
-	
+
 	zone_events_schedule(zone, ZONE_EVENT_NOTIFY, ZONE_EVENT_NOW);
 
 	return KNOT_EOK;
@@ -379,11 +379,10 @@ static int forward_request(zone_t *zone, struct knot_request *request)
 	/* Set RCODE if forwarding failed. */
 	if (ret != KNOT_EOK) {
 		knot_wire_set_rcode(request->resp->wire, KNOT_RCODE_SERVFAIL);
-		log_zone_error(zone->name, "DDNS, "
-		               "failed to forward updates to master (%s)",
+		log_zone_error(zone->name, "DDNS, failed to forward updates to the master (%s)",
 		               knot_strerror(ret));
 	} else {
-		log_zone_info(zone->name, "DDNS, updates forwarded");
+		log_zone_info(zone->name, "DDNS, updates forwarded to the master");
 	}
 
 	return ret;
@@ -414,10 +413,10 @@ static bool update_tsig_check(struct query_data *qdata, struct knot_request *req
 			return false;
 		}
 	}
-	
+
 	// Store signing context for response.
 	req->sign = qdata->sign;
-	
+
 	return true;
 }
 
@@ -430,10 +429,10 @@ static void send_update_response(const zone_t *zone, struct knot_request *req)
 			// Sign the response with TSIG where applicable
 			struct query_data qdata;
 			init_qdata_from_request(&qdata, zone, req, NULL);
-			
+
 			(void)process_query_sign_response(req->resp, &qdata);
 		}
-		
+
 		if (net_is_connected(req->fd)) {
 			tcp_send_msg(req->fd, req->resp->wire, req->resp->size);
 		} else {
@@ -471,12 +470,12 @@ static int init_update_responses(const zone_t *zone, list_t *updates,
 			// Don't check TSIG for forwards.
 			continue;
 		}
-		
+
 		struct process_query_param param = { 0 };
 		param.remote = &req->remote;
 		struct query_data qdata;
 		init_qdata_from_request(&qdata, zone, req, &param);
-		
+
 		if (!update_tsig_check(&qdata, req)) {
 			// ACL/TSIG check failed, send response.
 			send_update_response(zone, req);
@@ -533,7 +532,7 @@ int updates_execute(zone_t *zone)
 		send_update_responses(zone, &updates);
 		return ret;
 	}
-	
+
 	if (update_count == 0) {
 		/* All updates failed their ACL checks. */
 		return KNOT_EOK;

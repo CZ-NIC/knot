@@ -498,7 +498,7 @@ int knot_tsig_sign(uint8_t *msg, size_t *msg_len,
 	                                     digest_tmp, &digest_tmp_len,
 					     tmp_tsig, key);
 	if (ret != KNOT_EOK) {
-		dbg_tsig("TSIG: could not create wire or sign wire: %s\n",
+		dbg_tsig("TSIG: failed to create wire or sign wire: %s\n",
 		         knot_strerror(ret));
 		knot_rrset_free(&tmp_tsig, NULL);
 		return ret;

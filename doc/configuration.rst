@@ -36,8 +36,8 @@ Now let's go step by step through this minimal configuration file:
 
 * The ``interfaces`` statement defines interfaces where Knot
   DNS will listen for incoming connections. We have defined two
-  interfaces: one IPv4 called ``my_interface`` explicitly listening
-  on port 53 and second IPv6 called ``second_int`` also listening on
+  interfaces: one IPv4 called ``all_ipv4`` explicitly listening
+  on port 53 and second IPv6 called ``all_ipv6`` also listening on
   port 53, which is the default port for the DNS. See :ref:`interfaces`.
 * The ``log`` statement defines the log facilities for Knot DNS.
   In this example we told Knot DNS to send its log messages with the severity

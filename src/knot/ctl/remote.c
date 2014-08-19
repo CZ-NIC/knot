@@ -433,7 +433,7 @@ int remote_bind(conf_iface_t *desc)
 	/* Start listening. */
 	int ret = listen(sock, TCP_BACKLOG_SIZE);
 	if (ret < 0) {
-		log_error("could not bind to '%s'", addr_str);
+		log_error("failed to bind to '%s'", addr_str);
 		close(sock);
 		return ret;
 	}
@@ -476,7 +476,7 @@ int remote_recv(int sock, struct sockaddr_storage *addr, uint8_t *buf,
 {
 	int c = tcp_accept(sock);
 	if (c < 0) {
-		dbg_server("remote: couldn't accept incoming connection\n");
+		dbg_server("remote: failed to accept incoming connection\n");
 		return c;
 	}
 
@@ -774,7 +774,7 @@ int remote_process(server_t *s, conf_iface_t *ctl_if, int sock,
 	/* Accept incoming connection and read packet. */
 	int client = remote_recv(sock, &ss, pkt->wire, &buflen);
 	if (client < 0) {
-		dbg_server("remote: couldn't receive query = %d\n", client);
+		dbg_server("remote: failed to receive query = %d\n", client);
 		knot_pkt_free(&pkt);
 		return client;
 	} else {
