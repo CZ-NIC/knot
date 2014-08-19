@@ -346,6 +346,7 @@ static int forward_request(zone_t *zone, struct knot_request *request)
 		return ret;
 	}
 	knot_wire_set_id(query->wire, knot_random_uint16_t());
+	knot_tsig_append(query->wire, &query->size, query->max_size, query->tsig_rr);
 
 	/* Create a request. */
 	const struct sockaddr *dst = (const struct sockaddr *)&master->addr;
