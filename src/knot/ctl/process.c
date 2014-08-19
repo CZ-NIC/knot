@@ -221,7 +221,7 @@ char *pid_check_and_create()
 	/* Create a PID file. */
 	int ret = pid_write(pidfile);
 	if (ret != KNOT_EOK) {
-		log_error("couldn't create a PID file '%s'", pidfile);
+		log_error("failed to create a PID file '%s'", pidfile);
 		free(pidfile);
 		return NULL;
 	}

@@ -57,7 +57,7 @@ int net_unbound_socket(int type, const struct sockaddr_storage *ss)
 	/* Create socket. */
 	int socket = socket_create(ss->ss_family, type, 0);
 	if (socket < 0) {
-		log_error("could not create socket '%s' (%s)",
+		log_error("failed to create socket '%s' (%s)",
 		          addr_str, knot_strerror(socket));
 		return socket;
 	}

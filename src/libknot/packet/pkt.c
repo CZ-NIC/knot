@@ -647,7 +647,7 @@ static int knot_pkt_rr_from_wire(const uint8_t *wire, size_t *pos,
 	int ret = knot_rrset_rdata_from_wire_one(rrset, wire, pos, size, ttl,
 	                                         rdlength, mm);
 	if (ret != KNOT_EOK) {
-		dbg_packet("%s: couldn't parse RDATA (%d)\n", __func__, ret);
+		dbg_packet("%s: failed to parse RDATA (%d)\n", __func__, ret);
 		knot_rrset_clear(rrset, mm);
 		return ret;
 	}
@@ -752,7 +752,7 @@ int knot_pkt_parse_section(knot_pkt_t *pkt, unsigned flags)
 	for (rr_parsed = 0; rr_parsed < rr_count; ++rr_parsed) {
 		ret = knot_pkt_parse_rr(pkt, flags);
 		if (ret != KNOT_EOK) {
-			dbg_packet("%s: couldn't parse RR %u/%u = %d\n",
+			dbg_packet("%s: failed to parse RR %u/%u = %d\n",
 			           __func__, rr_parsed, rr_count, ret);
 			return ret;
 		}
@@ -776,13 +776,13 @@ int knot_pkt_parse_payload(knot_pkt_t *pkt, unsigned flags)
 	for (knot_section_t i = KNOT_ANSWER; i <= KNOT_ADDITIONAL; ++i) {
 		ret = knot_pkt_begin(pkt, i);
 		if (ret != KNOT_EOK) {
-			dbg_packet("%s: couldn't begin section %u = %d\n",
+			dbg_packet("%s: failed to begin section %u = %d\n",
 			           __func__, i, ret);
 			return ret;
 		}
 		ret = knot_pkt_parse_section(pkt, flags);
 		if (ret != KNOT_EOK) {
-			dbg_packet("%s: couldn't parse section %u = %d\n",
+			dbg_packet("%s: failed to parse section %u = %d\n",
 			           __func__, i, ret);
 			return ret;
 		}

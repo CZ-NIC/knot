@@ -451,7 +451,7 @@ int server_reload(server_t *server, const char *cf)
 			  conf()->filename);
 		break;
 	default:
-		log_error("configuration reload failed");
+		log_error("failed to reload the configuration");
 		break;
 	}
 
@@ -526,7 +526,7 @@ static int reconfigure_rate_limits(const struct conf_t *conf, server_t *server)
 	if (!server->rrl && conf->rrl > 0) {
 		server->rrl = rrl_create(conf->rrl_size);
 		if (!server->rrl) {
-			log_error("couldn't initialize rate limiting table");
+			log_error("failed to initialize rate limiting table");
 		} else {
 			rrl_setlocks(server->rrl, RRL_LOCK_GRANULARITY);
 		}
@@ -538,7 +538,7 @@ static int reconfigure_rate_limits(const struct conf_t *conf, server_t *server)
 			if (conf->rrl < 1) {
 				log_info("rate limiting, disabled");
 			} else {
-				log_info("rate limiting, enabled %u responses/second",
+				log_info("rate limiting, enabled with %u responses/second",
 					 conf->rrl);
 			}
 			rrl_setrate(server->rrl, conf->rrl);
