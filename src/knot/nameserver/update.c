@@ -314,7 +314,7 @@ static int process_requests(zone_t *zone, list_t *requests)
 	/* Evaluate response. */
 	const uint32_t new_serial = zone_contents_serial(zone->contents);
 	if (new_serial == old_serial) {
-		log_zone_info(zone->name, "DDNS, update finished with no changes to the zone");
+		log_zone_info(zone->name, "DDNS, finished, no changes to the zone were made");
 		return KNOT_EOK;
 	}
 
@@ -377,7 +377,7 @@ static int forward_request(zone_t *zone, struct request_data *request)
 		log_zone_error(zone->name, "DDNS, failed to forward updates to the master (%s)",
 		               knot_strerror(ret));
 	} else {
-		log_zone_info(zone->name, "DDNS, update forwarded to the master");
+		log_zone_info(zone->name, "DDNS, updates forwarded to the master");
 	}
 
 	return ret;
@@ -545,11 +545,11 @@ int updates_execute(zone_t *zone)
 	/* Process update list - forward if zone has master, or execute. */
 	if (zone_master(zone)) {
 		log_zone_info(zone->name,
-		              "DDNS, update forwarding %zu updates", update_count);
+		              "DDNS, forwarding %zu updates", update_count);
 		forward_requests(zone, &updates);
 	} else {
 		log_zone_info(zone->name,
-		              "DDNS, update processing %zu updates", update_count);
+		              "DDNS, processing %zu updates", update_count);
 		ret = process_requests(zone, &updates);
 	}
 	UNUSED(ret); /* Don't care about the Knot code, RCODEs are set. */
