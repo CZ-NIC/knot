@@ -21,6 +21,7 @@ Knot DNS features
 
 Knot DNS supports the following DNS features:
 
+* IN class and partially CH class
 * TCP/UDP protocols
 * AXFR, IXFR - master, slave
 * TSIG
