@@ -28,9 +28,12 @@ Knot DNS supports the following DNS features:
 * EDNS0
 * DNSSEC, including NSEC3
 * NSID
-* Unknown RR types
 * Dynamic updates
 * Response Rate Limiting
+* RR types A, NS, CNAME, SOA, PTR, HINFO, MINFO, MX, TXT, RP, AFSDB, RT, KEY,
+  AAAA, LOC, SRV, NAPTR, KX, CERT, DNAME, APL, DS, SSHFP, IPSECKEY, RRSIG, NSEC,
+  DNSKEY, DHCID, NSEC3, NSEC3PARAM, TLSA, SPF, NID, L32, L64, LP, EUI48, EUI64
+  and Unknown
 
 Server features:
 
