@@ -1,5 +1,5 @@
 Knot DNS 1.5.1 (2014-08-19)
----------------------------
+===========================
 
 Features:
 ---------
@@ -545,8 +545,3 @@ Known issues:
  - IXFR code might be flaky sometimes
  - IXFR may be slow when too much (10 000+) RRSets are transfered at
    once
-
-..
-   Local Variables:
-   mode: rst
-   End:
