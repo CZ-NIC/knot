@@ -470,7 +470,7 @@ static int write_rdata(const knot_rrset_t *rrset, uint16_t rrset_index,
 //		}
 		int ret = traverse_rdata(rrset->type, &src, &src_avail, wire,
 		                         capacity, compr, compr_hint, flags,
-		                         compr->wire, compress_dname);
+		                         NULL, compress_dname);
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
