@@ -166,7 +166,7 @@ static int write_fixed_header(const knot_rrset_t *rrset, uint16_t rrset_index,
 /*!
  * \brief Write RDATA DNAME to wire.
  */
-static int write_rdata_dname(uint8_t **src, size_t *src_avail,
+static int write_rdata_dname(const uint8_t **src, size_t *src_avail,
                              uint8_t **wire, size_t *capacity,
                              knot_compr_t *compr, int compr_hint, bool compress,
                              knot_rrset_wire_flags_t flags)
@@ -217,7 +217,7 @@ static int write_rdata_dname(uint8_t **src, size_t *src_avail,
 /*!
  * \brief Write a fixed block of binary data to wire.
  */
-static int write_rdata_fixed(uint8_t **src, size_t *src_avail,
+static int write_rdata_fixed(const uint8_t **src, size_t *src_avail,
                              uint8_t **wire, size_t *capacity,
                              size_t size)
 {
@@ -254,7 +254,7 @@ static int write_rdata_fixed(uint8_t **src, size_t *src_avail,
 /*!
  * \brief Write RDATA NAPTR header to wire.
  */
-static int write_rdata_naptr(uint8_t **src, size_t *src_avail,
+static int write_rdata_naptr(const uint8_t **src, size_t *src_avail,
                              uint8_t **wire, size_t *capacity)
 {
 	assert(src && *src);
@@ -271,7 +271,7 @@ static int write_rdata_naptr(uint8_t **src, size_t *src_avail,
 	/* Variable fields size (flags, services, regexp) */
 
 	for (int i = 0; i < 3; i++) {
-		uint8_t *len_ptr = *src + size;
+		const uint8_t *len_ptr = *src + size;
 		if (len_ptr >= *src + *src_avail) {
 			return KNOT_EMALF;
 		}
@@ -284,7 +284,7 @@ static int write_rdata_naptr(uint8_t **src, size_t *src_avail,
 	return write_rdata_fixed(src, src_avail, wire, capacity, size);
 }
 
-static int compress_dname(uint8_t **src, size_t *src_avail,
+static int compress_dname(const uint8_t **src, size_t *src_avail,
                           uint8_t **dst, size_t *dst_avail,
                           knot_compr_t *compr, int compr_hint, int type,
                           knot_rrset_wire_flags_t flags,
@@ -298,7 +298,7 @@ static int compress_dname(uint8_t **src, size_t *src_avail,
 	                         compr_hint, compress, flags);
 }
 
-static int decompress_dname(uint8_t **src, size_t *src_avail,
+static int decompress_dname(const uint8_t **src, size_t *src_avail,
                             uint8_t **dst, size_t *dst_avail,
                             knot_compr_t *compr, int compr_hint, int type,
                             knot_rrset_wire_flags_t flags,
@@ -347,11 +347,11 @@ static int decompress_dname(uint8_t **src, size_t *src_avail,
 	return KNOT_EOK;
 }
 
-typedef int (*dname_callback_t)(uint8_t **, size_t *, uint8_t **, size_t *,
-                                knot_compr_t *, int, int,
+typedef int (*dname_callback_t)(const uint8_t **, size_t *, uint8_t **,
+                                size_t *, knot_compr_t *, int, int,
                                 knot_rrset_wire_flags_t, const uint8_t *);
 
-static int traverse_rdata(const rdata_descriptor_t *desc, uint8_t **src,
+static int traverse_rdata(const rdata_descriptor_t *desc, const uint8_t **src,
                           size_t *src_avail, uint8_t **wire, size_t *capacity,
                           knot_compr_t *compr, int compr_hint,
                           knot_rrset_wire_flags_t flags, const uint8_t *pkt_wire,
@@ -426,7 +426,7 @@ static int write_rdata(const knot_rrset_t *rrset, uint16_t rrset_index,
 	uint8_t *wire_rdata_begin = *wire;
 	int compr_hint = COMPR_HINT_RDATA + rrset_index;
 
-	uint8_t *src = knot_rdata_data(rdata);
+	const uint8_t *src = knot_rdata_data(rdata);
 	size_t src_avail = knot_rdata_rdlen(rdata);
 	if (src_avail > 0) {
 		/* Only write non-empty data. */
@@ -623,7 +623,7 @@ int knot_rrset_rdata_from_wire_one(knot_rrset_t *rrset,
 	memset(rdata_buffer, 0, dst_avail);
 
 	/* TODO: resolve the consts. */
-	uint8_t *src = wire + *pos;
+	const uint8_t *src = wire + *pos;
 	size_t src_avail = rdlength;
 	uint8_t *dst = rdata_buffer;
 
