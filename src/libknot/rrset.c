@@ -381,8 +381,9 @@ typedef int (*dname_callback_t)(uint8_t **, size_t *, uint8_t **, size_t *,
 static int traverse_rdata(uint16_t rr_type, uint8_t **src, size_t *src_avail,
                           uint8_t **wire, size_t *capacity, knot_compr_t *compr,
                           int compr_hint, knot_rrset_wire_flags_t flags,
-                          uint8_t *pkt_wire, dname_callback_t dname_callback)
+                          const uint8_t *pkt_wire, dname_callback_t dname_callback)
 {
+	/* TODO: Maybe pass the descriptor to the function. */
 	const rdata_descriptor_t *desc = knot_get_rdata_descriptor(rr_type);
 
 	int ret = KNOT_EOK;
@@ -677,74 +678,90 @@ int knot_rrset_rdata_from_wire_one(knot_rrset_t *rrset,
 		}
 	}
 
-	uint8_t rdata_buffer[rdlength + KNOT_DNAME_MAXLEN];
-	memset(rdata_buffer, 0, rdlength + KNOT_DNAME_MAXLEN);
+	size_t dst_avail = rdlength + KNOT_DNAME_MAXLEN;
+	uint8_t rdata_buffer[dst_avail];
+	memset(rdata_buffer, 0, dst_avail);
 
-	size_t offset = 0; // offset within in-memory RDATA
-	size_t parsed = 0; // actual count of parsed octets
-	const size_t packet_offset = *pos;
+	/* TODO: resolve the consts. */
+	uint8_t *src = wire + *pos;
+	size_t src_avail = total_size - *pos;
+	uint8_t *dst = rdata_buffer;
 
-	for (int i = 0; desc->block_types[i] != KNOT_RDATA_WF_END &&
-	     parsed < rdlength; ++i) {
-		const int item = desc->block_types[i];
-		if (knot_descriptor_item_is_dname(item)) {
-			int wire_size = knot_dname_wire_check(wire + *pos,
-			                                      wire + *pos + rdlength,
-			                                      wire);
-			if (wire_size <= 0) {
-				return KNOT_EMALF;
-			}
-			int unpacked_size = knot_dname_unpack(
-				rdata_buffer + offset, wire + *pos,
-				KNOT_DNAME_MAXLEN, wire);
-			if (unpacked_size <= 0) {
-				return KNOT_EMALF;
-			}
-
-			parsed += wire_size;
-
-			*pos += wire_size;
-			offset += unpacked_size;
-		} else if (knot_descriptor_item_is_fixed(item)) {
-			int ret = binary_store(rdata_buffer, &offset, packet_offset,
-			                       wire, pos, rdlength, item);
-			if (ret != KNOT_EOK) {
-				return ret;
-			}
-			parsed += item;
-		} else if (knot_descriptor_item_is_remainder(item)) {
-			/* Item size has to be calculated. */
-			size_t remainder_size = rdlength - parsed;
-			int ret = binary_store(rdata_buffer, &offset, packet_offset,
-			                       wire, pos, rdlength, remainder_size);
-			if (ret != KNOT_EOK) {
-				return ret;
-			}
-			parsed += remainder_size;
-		} else {
-			assert(rrset->type == KNOT_RRTYPE_NAPTR);
-			/* Read fixed part - 2 shorts. */
-			const size_t naptr_fixed_part_size = 4;
-			int ret = binary_store(rdata_buffer, &offset, packet_offset,
-			                       wire, pos, rdlength, naptr_fixed_part_size);
-			if (ret != KNOT_EOK) {
-				return ret;
-			}
-			parsed += naptr_fixed_part_size;
-			for (int j = 0; j < 3; ++j) {
-				/* Read sizes of TXT's - one byte. */
-				uint8_t txt_size = *(wire + (*pos)) + 1;
-				int ret = binary_store(rdata_buffer, &offset,
-				                       packet_offset, wire, pos,
-				                       rdlength, txt_size);
-				if (ret != KNOT_EOK) {
-				}
-				parsed += txt_size;
-			}
-		}
+	int ret = traverse_rdata(rrset->type, &src, &src_avail, &dst, &dst_avail,
+	                         NULL, 0, KNOT_RRSET_WIRE_NONE, wire,
+	                         compress_dname);
+	if (ret != KNOT_EOK) {
+		return ret;
 	}
 
-	return knot_rrset_add_rdata(rrset, rdata_buffer, offset, ttl, mm);
+	size_t src_size = src - wire - *pos;
+	assert(src_size == src_avail - (total_size - *pos));
+	*pos += src_size;
+
+	size_t dst_size = dst - rdata_buffer;
+	assert(dst_size == rdlength + KNOT_DNAME_MAXLEN - dst_avail);
+
+//	for (int i = 0; desc->block_types[i] != KNOT_RDATA_WF_END &&
+//	     parsed < rdlength; ++i) {
+//		const int item = desc->block_types[i];
+//		if (knot_descriptor_item_is_dname(item)) {
+//			int wire_size = knot_dname_wire_check(wire + *pos,
+//			                                      wire + *pos + rdlength,
+//			                                      wire);
+//			if (wire_size <= 0) {
+//				return KNOT_EMALF;
+//			}
+//			int unpacked_size = knot_dname_unpack(
+//				rdata_buffer + offset, wire + *pos,
+//				KNOT_DNAME_MAXLEN, wire);
+//			if (unpacked_size <= 0) {
+//				return KNOT_EMALF;
+//			}
+
+//			parsed += wire_size;
+
+//			*pos += wire_size;
+//			offset += unpacked_size;
+//		} else if (knot_descriptor_item_is_fixed(item)) {
+//			int ret = binary_store(rdata_buffer, &offset, packet_offset,
+//			                       wire, pos, rdlength, item);
+//			if (ret != KNOT_EOK) {
+//				return ret;
+//			}
+//			parsed += item;
+//		} else if (knot_descriptor_item_is_remainder(item)) {
+//			/* Item size has to be calculated. */
+//			size_t remainder_size = rdlength - parsed;
+//			int ret = binary_store(rdata_buffer, &offset, packet_offset,
+//			                       wire, pos, rdlength, remainder_size);
+//			if (ret != KNOT_EOK) {
+//				return ret;
+//			}
+//			parsed += remainder_size;
+//		} else {
+//			assert(rrset->type == KNOT_RRTYPE_NAPTR);
+//			/* Read fixed part - 2 shorts. */
+//			const size_t naptr_fixed_part_size = 4;
+//			int ret = binary_store(rdata_buffer, &offset, packet_offset,
+//			                       wire, pos, rdlength, naptr_fixed_part_size);
+//			if (ret != KNOT_EOK) {
+//				return ret;
+//			}
+//			parsed += naptr_fixed_part_size;
+//			for (int j = 0; j < 3; ++j) {
+//				/* Read sizes of TXT's - one byte. */
+//				uint8_t txt_size = *(wire + (*pos)) + 1;
+//				int ret = binary_store(rdata_buffer, &offset,
+//				                       packet_offset, wire, pos,
+//				                       rdlength, txt_size);
+//				if (ret != KNOT_EOK) {
+//				}
+//				parsed += txt_size;
+//			}
+//		}
+//	}
+
+	return knot_rrset_add_rdata(rrset, rdata_buffer, dst_size, ttl, mm);
 }
 
 int knot_rrset_add_rdata(knot_rrset_t *rrset,
