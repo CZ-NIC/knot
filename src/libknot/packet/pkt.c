@@ -27,6 +27,7 @@
 #include "libknot/packet/wire.h"
 #include "libknot/rrtype/tsig.h"
 #include "libknot/tsig-op.h"
+#include "libknot/packet/rrset-wire.h"
 
 /*! \brief Scan packet for RRSet existence. */
 static bool pkt_contains(const knot_pkt_t *packet,

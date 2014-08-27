@@ -1,7 +1,7 @@
 /*!
  * \file pkt.h
  *
- * \author Lubos Slovak <lubos.slovak@nic.cz>
+ * \author Marek Vavrusa <marek.vavrusa@nic.cz>
  *
  * \brief Structure for holding DNS packet data and metadata.
  *

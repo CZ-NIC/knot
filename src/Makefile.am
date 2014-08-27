@@ -171,6 +171,8 @@ libknot_la_SOURCES =				\
 	libknot/packet/compr.h			\
 	libknot/packet/pkt.c			\
 	libknot/packet/pkt.h			\
+	libknot/packet/rrset-wire.c		\
+	libknot/packet/rrset-wire.h		\
 	libknot/packet/wire.h			\
 	libknot/processing/process.c		\
 	libknot/processing/process.h		\

@@ -229,6 +229,8 @@ src/libknot/packet/compr.c
 src/libknot/packet/compr.h
 src/libknot/packet/pkt.c
 src/libknot/packet/pkt.h
+src/libknot/packet/rrset-wire.c
+src/libknot/packet/rrset-wire.h
 src/libknot/packet/wire.h
 src/libknot/processing/process.c
 src/libknot/processing/process.h
