@@ -171,6 +171,10 @@ int knot_dname_to_wire(uint8_t *dst, const knot_dname_t *src, size_t maxlen)
 	}
 
 	int len = knot_dname_size(src);
+	if (len > maxlen) {
+		return KNOT_ESPACE;
+	}
+
 	memcpy(dst, src, len);
 	return len;
 }
