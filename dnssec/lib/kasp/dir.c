@@ -14,9 +14,11 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <time.h>
+#include <jansson.h>
 #include <stdio.h>
+#include <time.h>
 
+#include "dname.h"
 #include "error.h"
 #include "kasp.h"
 #include "kasp/internal.h"
@@ -26,29 +28,32 @@
 #include "path.h"
 #include "shared.h"
 #include "strtonum.h"
-#include "yml.h"
+
+// ISO 8610
+#define TIME_FORMAT "%Y-%m-%dT%H:%M:%S%z"
 
 #define DNSKEY_KSK_FLAGS 257
 #define DNSKEY_ZSK_FLAGS 256
 
-/* -- YAML format parsing -------------------------------------------------- */
-
-#define DATE_FORMAT "%Y-%m-%d %H:%M:%S"
+/* -- variable types decoding ---------------------------------------------- */
 
 /*!
- * Convert hex encoded key ID into binary key ID.
+ * Decode key ID from JSON.
  */
-static int str_to_keyid(const char *string, void *_keyid_ptr)
+static int decode_keyid(const json_t *value, void *result)
 {
-	assert(string);
-	assert(_keyid_ptr);
-	char **keyid_ptr = _keyid_ptr;
+	char **keyid_ptr = result;
 
-	if (!dnssec_keyid_is_valid(string)) {
+	if (!json_is_string(value)) {
 		return DNSSEC_CONFIG_MALFORMED;
 	}
 
-	char *keyid = dnssec_keyid_copy(string);
+	const char *value_str = json_string_value(value);
+	if (!dnssec_keyid_is_valid(value_str)) {
+		return DNSSEC_CONFIG_MALFORMED;
+	}
+
+	char *keyid = dnssec_keyid_copy(value_str);
 	if (!keyid) {
 		return DNSSEC_ENOMEM;
 	}
@@ -59,147 +64,177 @@ static int str_to_keyid(const char *string, void *_keyid_ptr)
 }
 
 /*!
- * Parse algorithm string to algorithm.
+ * Decode algorithm from JSON.
  *
  * \todo Could understand an algorithm name instead of just a number.
  */
-static int str_to_algorithm(const char *string, void *_algorithm)
+static int decode_uint8(const json_t *value, void *result)
 {
-	assert(string);
-	assert(_algorithm);
-	dnssec_key_algorithm_t *algorithm = _algorithm;
+	uint8_t *byte_ptr = result;
 
-	uint8_t number = 0;
-	int r = str_to_u8(string, &number);
-	if (r != DNSSEC_EOK) {
-		return r;
+	if (!json_is_integer(value)) {
+		return DNSSEC_CONFIG_MALFORMED;
 	}
 
-	*algorithm = number;
+	json_int_t number = json_integer_value(value);
+	if (number < 0 || number > UINT8_MAX) {
+		return DNSSEC_CONFIG_MALFORMED;
+	}
+
+	*byte_ptr = number;
 
 	return DNSSEC_EOK;
 }
 
 /*!
- * Parse date to a time stamp.
+ * Decode binary data storead as base64 in JSON.
  */
-static int str_to_time(const char *string, void *_time)
+static int decode_binary(const json_t *value, void *result)
 {
-	assert(string);
-	assert(_time);
-	time_t *time = _time;
+	dnssec_binary_t *binary_ptr = result;
 
-	struct tm tm = { 0 };
-	char *end = strptime(string, DATE_FORMAT, &tm);
-	if (end == NULL || *end != '\0') {
+	if (!json_is_string(value)) {
 		return DNSSEC_MALFORMED_DATA;
 	}
 
-	*time = timegm(&tm);
-
-	return DNSSEC_EOK;
-}
-
-/*!
- * Parse boolean value.
- */
-static int str_to_bool(const char *string, void *_enabled)
-{
-	assert(string);
-	assert(_enabled);
-	bool *enabled = _enabled;
-
-	if (strcasecmp(string, "true") == 0) {
-		*enabled = true;
-	} else if (strcasecmp(string, "false") == 0) {
-		*enabled = false;
-	} else {
-		return DNSSEC_MALFORMED_DATA;
-	}
-
-	return DNSSEC_EOK;
-}
-
-/*!
- * Parse Base 64 encoded string to binary data.
- */
-static int str_to_binary(const char *string, void *_binary)
-{
-	assert(string);
-	assert(_binary);
-
-	dnssec_binary_t *binary = _binary;
-	const dnssec_binary_t base64 = {
-		.data = (uint8_t *)string,
-		.size = strlen(string)
+	const char *base64_str = json_string_value(value);
+	dnssec_binary_t base64 = {
+		.data = (uint8_t *)base64_str,
+		.size = strlen(base64_str)
 	};
 
-	return dnssec_binary_from_base64(&base64, binary);
+	return dnssec_binary_from_base64(&base64, binary_ptr);
 }
 
-/* -- KASP key parsing ----------------------------------------------------- */
+/*!
+ * Decode boolean value from JSON.
+ */
+static int decode_bool(const json_t *value, void *result)
+{
+	bool *bool_ptr = result;
+
+	if (!json_is_boolean(value)) {
+		return DNSSEC_CONFIG_MALFORMED;
+	}
+
+	*bool_ptr = json_is_true(value);
+
+	return DNSSEC_EOK;
+}
 
 /*!
- * Key parameters as read from the KASP configuration.
+ * Decode time value from JSON.
  */
-typedef struct {
-	dnssec_key_algorithm_t algorithm;
+static int decode_time(const json_t *value, void *result)
+{
+	time_t *time_ptr = result;
+
+	if (!json_is_string(value)) {
+		return DNSSEC_CONFIG_MALFORMED;
+	}
+
+	const char *time_str = json_string_value(value);
+	struct tm tm = { 0 };
+	char *end = strptime(time_str, TIME_FORMAT, &tm);
+	if (end == NULL || *end != '\0') {
+		return DNSSEC_CONFIG_MALFORMED;
+	}
+
+	*time_ptr = timegm(&tm);
+
+	return DNSSEC_EOK;
+}
+
+/* -- key parameters ------------------------------------------------------- */
+
+/*!
+ * Key parameters as writting in zone config file.
+ */
+struct key_params {
+	char *id;
+	uint8_t algorithm;
 	dnssec_binary_t public_key;
 	bool is_ksk;
-	char *id;
 	dnssec_kasp_key_timing_t timing;
-} kasp_key_params_t;
+};
 
-#define _cleanup_key_params_ _cleanup_(kasp_key_params_free)
+typedef struct key_params key_params_t;
+
+/*!
+ * Free allocated key parameters and clear the structure.
+ */
+static void key_params_free(key_params_t *params)
+{
+	assert(params);
+
+	free(params->id);
+	dnssec_binary_free(&params->public_key);
+
+	clear_struct(params);
+}
+
+#define _cleanup_key_params_ _cleanup_(key_params_free)
 
 /*!
  * Instruction for parsing of individual key parameters.
  */
-typedef struct {
+struct key_params_field {
 	const char *key;
-	int (*parse_cb)(const char *value, void *target);
-	size_t target_off;
-} key_parse_line_t;
-
-#define parse_offset(member) offsetof(kasp_key_params_t, member)
-
-static const key_parse_line_t KEY_PARSE_LINES[] = {
-	{ "algorithm",  str_to_algorithm, parse_offset(algorithm) },
-	{ "public_key", str_to_binary,    parse_offset(public_key) },
-	{ "ksk",        str_to_bool,      parse_offset(is_ksk) },
-	{ "id",         str_to_keyid,     parse_offset(id) },
-	{ "publish",    str_to_time,      parse_offset(timing.publish) },
-	{ "active",     str_to_time,      parse_offset(timing.active) },
-	{ "retire",     str_to_time,      parse_offset(timing.retire) },
-	{ "remove",     str_to_time,      parse_offset(timing.remove) },
-	{ 0 }
+	size_t offset;
+	int (*encode_cb)(const void *value, json_t *result);
+	int (*decode_cb)(const json_t *value, void *result);
 };
 
-/*!
- * Parse parameters from.
- *
- * \param[in]  node    Key node in the YAML tree.
- * \param[out] params  Loaded key parameters.
- */
-static int kasp_key_params_parse(yml_node_t *node, kasp_key_params_t *params)
-{
-	assert(params);
+typedef struct key_params_field key_params_field_t;
 
-	for (const key_parse_line_t *line = KEY_PARSE_LINES; line->key; line++) {
-		char *value_str = yml_get_string(node, line->key);
-		if (!value_str) {
+static const key_params_field_t KEY_PARAMS_FIELDS[] = {
+	#define off(member) offsetof(key_params_t, member)
+	{ "id",         off(id),             NULL, decode_keyid   },
+	{ "algorithm",  off(algorithm),      NULL, decode_uint8   },
+	{ "public_key", off(public_key),     NULL, decode_binary  },
+	{ "ksk",        off(is_ksk),         NULL, decode_bool    },
+	{ "publish",    off(timing.publish), NULL, decode_time    },
+	{ "active",     off(timing.active),  NULL, decode_time    },
+	{ "retire",     off(timing.retire),  NULL, decode_time    },
+	{ "remove",     off(timing.remove),  NULL, decode_time    },
+	{ 0 }
+	#undef off
+};
+
+/* -- configuration loading ------------------------------------------------ */
+
+/*!
+ * Parse key parameters from JSON object.
+ */
+static int parse_key(json_t *key, key_params_t *params)
+{
+	if (!json_is_object(key)) {
+		return DNSSEC_CONFIG_MALFORMED;
+	}
+
+	const key_params_field_t *field;
+	for (field = KEY_PARAMS_FIELDS; field->key != NULL; field++) {
+		json_t *value = json_object_get(key, field->key);
+		if (!value || json_is_null(value)) {
 			continue;
 		}
 
-		void *target = ((void *)params) + line->target_off;
-		int result = line->parse_cb(value_str, target);
-
-		free(value_str);
-
-		if (result != DNSSEC_EOK) {
-			return DNSSEC_CONFIG_MALFORMED;
+		void *dest = ((void *)params) + field->offset;
+		int r = field->decode_cb(value, dest);
+		if (r != DNSSEC_EOK) {
+			return r;
 		}
 	}
+
+	return DNSSEC_EOK;
+}
+
+/*!
+ * Check if key parameters allow to create a key.
+ */
+static int key_params_check(key_params_t *params)
+{
+	assert(params);
 
 	if (params->algorithm == 0) {
 		return DNSSEC_INVALID_KEY_ALGORITHM;
@@ -213,28 +248,33 @@ static int kasp_key_params_parse(yml_node_t *node, kasp_key_params_t *params)
 }
 
 /*!
- * Free KASP key parameters.
+ * Create DNSKEY from parameters.
  */
-static void kasp_key_params_free(kasp_key_params_t *params)
+static int create_dnskey(const uint8_t *dname, key_params_t *params,
+			 dnssec_key_t **key_ptr)
 {
-	assert(params);
-
-	free(params->id);
-	dnssec_binary_free(&params->public_key);
-
-	clear_struct(params);
-}
-
-/* -- KASP key construction ------------------------------------------------ */
-
-static int dnssec_key_from_params(kasp_key_params_t *params, dnssec_key_t **key_ptr)
-{
+	assert(dname);
 	assert(params);
 	assert(key_ptr);
 
-	dnssec_key_t *key = NULL;
-	int result = dnssec_key_new(&key);
+	int result = key_params_check(params);
 	if (result != DNSSEC_EOK) {
+		return result;
+	}
+
+	// create key
+
+	dnssec_key_t *key = NULL;
+	result = dnssec_key_new(&key);
+	if (result != DNSSEC_EOK) {
+		return result;
+	}
+
+	// set key parameters
+
+	result = dnssec_key_set_dname(key, dname);
+	if (result != DNSSEC_EOK) {
+		dnssec_key_free(key);
 		return result;
 	}
 
@@ -248,6 +288,8 @@ static int dnssec_key_from_params(kasp_key_params_t *params, dnssec_key_t **key_
 		dnssec_key_free(key);
 		return result;
 	}
+
+	// validate key ID
 
 	const char *key_id = dnssec_key_get_id(key);
 	if (!key_id) {
@@ -265,95 +307,70 @@ static int dnssec_key_from_params(kasp_key_params_t *params, dnssec_key_t **key_
 	return DNSSEC_EOK;
 }
 
-/* -- KASP key construction ------------------------------------------------ */
-
-static int kasp_key_create(kasp_key_params_t *params,
-			   dnssec_kasp_key_t **kasp_key_ptr)
+/*!
+ * Add DNSKEY into a keyset.
+ */
+static int keyset_add_dnskey(dnssec_kasp_keyset_t *keyset,
+			     dnssec_key_t *dnskey,
+			     const dnssec_kasp_key_timing_t *timing)
 {
-	if (!params || !kasp_key_ptr) {
-		return DNSSEC_EINVAL;
-	}
-
-	dnssec_key_t *key = NULL;
-	int result = dnssec_key_from_params(params, &key);
-	if (result != DNSSEC_EOK) {
-		return result;
-	}
-
 	dnssec_kasp_key_t *kasp_key = malloc(sizeof(*kasp_key));
 	if (!kasp_key) {
-		dnssec_key_free(key);
 		return DNSSEC_ENOMEM;
 	}
 
 	clear_struct(kasp_key);
-	kasp_key->key = key;
-	kasp_key->timing = params->timing;
+	kasp_key->key = dnskey;
+	kasp_key->timing = *timing;
 
-	*kasp_key_ptr = kasp_key;
+	int result = dnssec_kasp_keyset_add(keyset, kasp_key);
+	if (result != DNSSEC_EOK) {
+		free(kasp_key);
+	}
 
-	return DNSSEC_EOK;
+	return result;
 }
 
-static void kasp_key_free(dnssec_kasp_key_t *kasp_key)
+/*!
+ * Load zone keys.
+ */
+static int load_zone_keys(dnssec_kasp_zone_t *zone, json_t *keys)
 {
-	if (!kasp_key) {
-		return;
+	if (!keys) {
+		return DNSSEC_NO_PUBLIC_KEY;
 	}
 
-	dnssec_key_free(kasp_key->key);
-
-	free(kasp_key);
-}
-
-/* -- KASP keyset construction --------------------------------------------- */
-
-static int load_zone_key(yml_node_t *node, void *data, _unused_ bool *interrupt)
-{
-	assert(node);
-	assert(data);
-
-	dnssec_kasp_zone_t *zone = data;
-
-	// construct the key from key parameters
-
-	_cleanup_key_params_ kasp_key_params_t params = { 0 };
-	int result = kasp_key_params_parse(node, &params);
-	if (result != DNSSEC_EOK) {
-		return result;
+	if (!json_is_array(keys)) {
+		return DNSSEC_CONFIG_MALFORMED;
 	}
 
-	dnssec_kasp_key_t *kasp_key = NULL;
-	result = kasp_key_create(&params, &kasp_key);
-	if (result != DNSSEC_EOK) {
-		return result;
+	int result = DNSSEC_EOK;
+
+	dnssec_kasp_keyset_init(&zone->keys);
+
+	int index;
+	json_t *key;
+	json_array_foreach(keys, index, key) {
+		_cleanup_key_params_ key_params_t params = { 0 };
+
+		result = parse_key(key, &params);
+		if (result != DNSSEC_EOK) {
+			break;
+		}
+
+		dnssec_key_t *dnskey = NULL;
+		result = create_dnskey(zone->dname, &params, &dnskey);
+		if (result != DNSSEC_EOK) {
+			break;
+		}
+
+		result = keyset_add_dnskey(&zone->keys, dnskey, &params.timing);
+		if (result != DNSSEC_EOK) {
+			dnssec_key_free(dnskey);
+			break;
+		}
 	}
 
-	dnssec_key_set_dname(kasp_key->key, zone->dname);
-
-	// write result
-
-	result = dnssec_kasp_keyset_add(&zone->keys, kasp_key);
-	if (result != DNSSEC_EOK) {
-		kasp_key_free(kasp_key);
-		return result;
-	}
-
-	return DNSSEC_EOK;
-}
-
-static int parse_zone_keys(dnssec_kasp_zone_t *zone, yml_node_t *root)
-{
-	assert(zone);
-	assert(root);
-
-	yml_node_t keys;
-	int result = yml_traverse(root, "keys", &keys);
-	if (result != DNSSEC_EOK) {
-		return result;
-	}
-
-	result = yml_sequence_each(&keys, load_zone_key, zone);
 	if (result != DNSSEC_EOK) {
 		dnssec_kasp_keyset_empty(&zone->keys);
 	}
@@ -361,73 +378,57 @@ static int parse_zone_keys(dnssec_kasp_zone_t *zone, yml_node_t *root)
 	return result;
 }
 
-static int parse_zone_config(dnssec_kasp_zone_t *zone, const char *filename)
+/*!
+ * Load zone configuration.
+ */
+static int load_zone_config(dnssec_kasp_zone_t *zone, const char *filename)
 {
 	assert(zone);
 	assert(filename);
 
-	_cleanup_yml_document_free_ yml_node_t root = { 0 };
-	int result = yml_document_load(filename, &root);
-	if (result != DNSSEC_EOK) {
-		return result;
+	FILE *file = fopen(filename, "r");
+	if (!file) {
+		return DNSSEC_NOT_FOUND;
 	}
 
-	// todo parse policy
-
-	// todo parse repositories
-
-	result = parse_zone_keys(zone, &root);
-	if (result != DNSSEC_EOK) {
-		return result;
+	json_error_t error = { 0 };
+	json_t *config = json_loadf(file, JSON_REJECT_DUPLICATES, &error);
+	fclose(file);
+	if (!config) {
+		return DNSSEC_CONFIG_MALFORMED;
 	}
 
-	return DNSSEC_EOK;
+	json_t *config_keys = json_object_get(config, "keys");
+	int result = load_zone_keys(zone, config_keys);
+
+	json_decref(config);
+
+	return result;
 }
 
-static char *zone_config(const char *dir, char *zone_name)
+/*!
+ * Get zone configuration file name.
+ */
+static char *zone_config_file(const char *dir, const char *zone_name)
 {
+	// replace slashes with underscores
+
+	_cleanup_free_ char *name = strdup(zone_name);
+	for (char *scan = name; *scan != '\0'; scan++) {
+		if (*scan == '/') {
+			*scan = '_';
+		}
+	}
+
+	// build full path
+
 	char *config = NULL;
-	int result = asprintf(&config, "%s/zone_%s.yaml", dir, zone_name);
+	int result = asprintf(&config, "%s/zone_%s.json", dir, name);
 	if (result == -1) {
 		return NULL;
 	}
 
 	return config;
-}
-
-/*!
- * Load zone configuration.
- */
-static int load_zone_config(const char *dir, dnssec_kasp_zone_t *zone)
-{
-	assert(dir);
-	assert(zone);
-
-	_cleanup_free_ char *config = zone_config(dir, zone->name);
-	if (!config) {
-		return DNSSEC_ENOMEM;
-	}
-
-	return parse_zone_config(zone, config);
-}
-
-static int save_zone_config(const char *dir, dnssec_kasp_zone_t *zone)
-{
-	assert(dir);
-	assert(zone);
-
-	_cleanup_free_ char *config = zone_config(dir, zone->name);
-	if (!config) {
-		return DNSSEC_ENOMEM;
-	}
-
-	_cleanup_yml_document_free_ yml_node_t document = { 0 };
-	int result = yml_document_new(&document);
-	if (result != DNSSEC_EOK) {
-		return result;
-	}
-
-	return DNSSEC_NOT_IMPLEMENTED_ERROR;
 }
 
 /* -- internal API --------------------------------------------------------- */
@@ -474,7 +475,12 @@ static int kasp_dir_load_zone(dnssec_kasp_zone_t *zone, void *_ctx)
 
 	kasp_dir_ctx_t *ctx = _ctx;
 
-	return load_zone_config(ctx->path, zone);
+	_cleanup_free_ char *config = zone_config_file(ctx->path, zone->name);
+	if (!config) {
+		return DNSSEC_ENOMEM;
+	}
+
+	return load_zone_config(zone, config);
 }
 
 static int kasp_dir_save_zone(dnssec_kasp_zone_t *zone, void *_ctx)
@@ -484,7 +490,12 @@ static int kasp_dir_save_zone(dnssec_kasp_zone_t *zone, void *_ctx)
 
 	kasp_dir_ctx_t *ctx = _ctx;
 
-	return save_zone_config(ctx->path, zone);
+	_cleanup_free_ char *config = zone_config_file(ctx->path, zone->name);
+	if (!config) {
+		return DNSSEC_ENOMEM;
+	}
+
+	return DNSSEC_NOT_IMPLEMENTED_ERROR;
 }
 
 static const dnssec_kasp_store_functions_t KASP_DIR_FUNCTIONS = {
