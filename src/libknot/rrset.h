@@ -152,23 +152,23 @@ typedef enum knot_rrset_wire_flags knot_rrset_wire_flags_t;
 int knot_rrset_to_wire(const knot_rrset_t *rrset, uint8_t *wire, uint16_t max_size,
                        struct knot_compr *compr, knot_rrset_wire_flags_t flags);
 
- /*!
- * \brief Creates one RR from wire, stores it into 'rrset'
- *
- * \param rrset       Destination RRSet.
- * \param wire        Source wire.
- * \param pos         Position in wire.
- * \param total_size  Size of wire.
- * \param ttl         Use this TTL to create RR.
- * \param rdlength    RDLENGTH.
- * \param mm          Memory context.
- *
- * \return KNOT_E*
- */
-int knot_rrset_rdata_from_wire_one(knot_rrset_t *rrset,
-                                   const uint8_t *wire, size_t *pos,
-                                   size_t total_size, uint32_t ttl, size_t rdlength,
-                                   mm_ctx_t *mm);
+int knot_rrset_parse_rdata(const uint8_t *pkt_wire, size_t *pos, size_t pkt_size,
+                       mm_ctx_t *mm, uint32_t ttl, uint16_t rdlength,
+                       knot_rrset_t *rrset);
+
+/*!
+* \brief Creates one RR from wire, stores it into \a rrset.
+*
+* \param pkt_wire    Source wire (the whole packet).
+* \param pos         Position in \a wire where to start parsing.
+* \param pkt_size    Total size of data in \a wire (size of the packet).
+* \param mm          Memory context.
+* \param rrset       Destination RRSet.
+*
+* \return KNOT_E*
+*/
+int knot_rrset_rr_from_wire(const uint8_t *pkt_wire, size_t *pos,
+                            size_t pkt_size, mm_ctx_t *mm, knot_rrset_t *rrset);
 
 /* ---------- RR addition. (legacy, functionality in knot_rdataset_t) ------- */
 

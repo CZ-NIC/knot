@@ -350,11 +350,10 @@ static knot_pkt_t* create_query_packet(const query_t *query)
 			return NULL;
 		}
 
+		/* TODO [rrset]: replace */
 		// Fill in blank SOA rdata to rrset.
-		ret = knot_rrset_rdata_from_wire_one(soa, wire, &pos,
-		                                     sizeof(wire),
-		                                     0, sizeof(wire),
-		                                     &packet->mm);
+		ret = knot_rrset_parse_rdata(wire, &pos, sizeof(wire),
+		                             &packet->mm, 0, sizeof(wire), soa);
 		if (ret != KNOT_EOK) {
 			knot_rrset_free(&soa, &packet->mm);
 			knot_pkt_free(&packet);
