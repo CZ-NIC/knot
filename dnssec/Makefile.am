@@ -4,7 +4,7 @@ AM_CPPFLAGS = \
 	-include $(top_builddir)/src/config.h \
 	-Ishared -Ilib -Ilib/dnssec \
 	$(gnutls_CFLAGS) \
-	$(yaml_CFLAGS)
+	$(jannson_CFLAGS)
 
 noinst_LTLIBRARIES = libshared.la
 lib_LTLIBRARIES = libdnssec.la
@@ -25,9 +25,7 @@ libshared_la_SOURCES = \
 	shared/pem.h \
 	shared/shared.h \
 	shared/strtonum.h \
-	shared/wire.h \
-	shared/yml.c \
-	shared/yml.h
+	shared/wire.h
 
 libdnssec_la_CFLAGS = \
 	$(AM_CFLAGS) \
@@ -35,7 +33,7 @@ libdnssec_la_CFLAGS = \
 
 libdnssec_la_LDFLAGS = \
 	$(gnutls_LIBS) \
-	$(yaml_LIBS) \
+	$(jansson_LIBS) \
 	-version-info 0:1:0
 
 libdnssec_la_LIBADD = \

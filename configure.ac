@@ -97,8 +97,8 @@ fi
 # GnuTLS crypto backend
 PKG_CHECK_MODULES([gnutls], [gnutls nettle])
 
-# YAML for DNSSEC status storage
-PKG_CHECK_MODULES([yaml], [yaml-0.1])
+# JSON for DNSSEC status storage
+PKG_CHECK_MODULES([jansson], [jansson >= 2.5])
 
 # Debug modules
 AC_ARG_ENABLE([debug],
@@ -361,7 +361,7 @@ AC_MSG_RESULT([
     Utilities with IDN:    ${with_libidn}
     Systemd integration:   ${enable_systemd}
     GnuTLS:                ${gnutls_CFLAGS} ${gnutls_LIBS}
-    YAML:                  ${yaml_CFLAGS} ${yaml_LIBS}
+    Jansson:               ${jansson_CFLAGS} ${jansson_LIBS}
     Dnstap support:        ${opt_dnstap}
     Code coverage:         ${enable_code_coverage}
 
