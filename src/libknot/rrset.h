@@ -152,10 +152,6 @@ typedef enum knot_rrset_wire_flags knot_rrset_wire_flags_t;
 int knot_rrset_to_wire(const knot_rrset_t *rrset, uint8_t *wire, uint16_t max_size,
                        struct knot_compr *compr, knot_rrset_wire_flags_t flags);
 
-int knot_rrset_parse_rdata(const uint8_t *pkt_wire, size_t *pos, size_t pkt_size,
-                       mm_ctx_t *mm, uint32_t ttl, uint16_t rdlength,
-                       knot_rrset_t *rrset);
-
 /*!
 * \brief Creates one RR from wire, stores it into \a rrset.
 *

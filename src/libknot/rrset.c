@@ -228,6 +228,9 @@ static int naptr_header_size(const uint8_t **src, size_t *src_avail)
 	return size;
 }
 
+/*!
+ * \brief Compresses and stores one RDATA dname from \a src to \a dst.
+ */
 static int compress_dname(const uint8_t **src, size_t *src_avail,
                           uint8_t **dst, size_t *dst_avail,
                           knot_compr_t *compr, int compr_hint, int type,
@@ -280,6 +283,9 @@ static int compress_dname(const uint8_t **src, size_t *src_avail,
 	return KNOT_EOK;
 }
 
+/*!
+ * \brief Parses and decompresses one RDATA dname from \a src to \a dst.
+ */
 static int decompress_dname(const uint8_t **src, size_t *src_avail,
                             uint8_t **dst, size_t *dst_avail,
                             knot_compr_t *compr, int compr_hint, int type,
@@ -337,6 +343,9 @@ typedef int (*dname_callback_t)(const uint8_t **, size_t *, uint8_t **,
                                 size_t *, knot_compr_t *, int, int,
                                 knot_rrset_wire_flags_t, const uint8_t *);
 
+/*!
+ * \brief Generic function from processing RDATA with de/compression of dnames.
+ */
 static int traverse_rdata(const rdata_descriptor_t *desc, const uint8_t **src,
                           size_t *src_avail, uint8_t **wire, size_t *capacity,
                           knot_compr_t *compr, int compr_hint,
@@ -441,7 +450,7 @@ static int write_rdata(const knot_rrset_t *rrset, uint16_t rrset_index,
 }
 
 /*!
- * Write one RR from a RR Set to wire.
+ * \brief Write one RR from a RR Set to wire.
  */
 static int write_rr(const knot_rrset_t *rrset, uint16_t rrset_index,
                     uint8_t **wire, size_t *capacity, knot_compr_t *compr,
@@ -576,7 +585,10 @@ static bool allow_zero_rdata(const knot_rrset_t *rr, const rdata_descriptor_t *d
 	       desc->type_name == NULL;        // Unknown RR types can have 0 RDLENGTH
 }
 
-int knot_rrset_parse_rdata(const uint8_t *pkt_wire, size_t *pos, size_t pkt_size,
+/*!
+ * \brief Parse RDATA part of one RR from packet wireformat.
+ */
+static int parse_rdata(const uint8_t *pkt_wire, size_t *pos, size_t pkt_size,
                        mm_ctx_t *mm, uint32_t ttl, uint16_t rdlength,
                        knot_rrset_t *rrset)
 {
@@ -627,6 +639,9 @@ int knot_rrset_parse_rdata(const uint8_t *pkt_wire, size_t *pos, size_t pkt_size
 	return knot_rrset_add_rdata(rrset, rdata_buffer, dst_size, ttl, mm);
 }
 
+/*!
+ * \brief Parse header of one RR from packet wireformat.
+ */
 static int parse_header(const uint8_t *pkt_wire, size_t *pos,
                         size_t pkt_size, mm_ctx_t *mm, knot_rrset_t *rrset,
                         uint32_t *ttl, uint16_t *rdlen)
@@ -676,7 +691,7 @@ int knot_rrset_rr_from_wire(const uint8_t *pkt_wire, size_t *pos,
 	uint16_t rdlen = 0;
 	int ret = parse_header(pkt_wire, pos, pkt_size, mm, rrset, &ttl, &rdlen);
 	if (ret == KNOT_EOK) {
-		ret = knot_rrset_parse_rdata(pkt_wire, pos, pkt_size, mm, ttl, rdlen,
+		ret = parse_rdata(pkt_wire, pos, pkt_size, mm, ttl, rdlen,
 		                  rrset);
 		if (ret != KNOT_EOK) {
 			knot_rrset_clear(rrset, mm);

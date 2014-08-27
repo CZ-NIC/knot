@@ -342,10 +342,8 @@ static int rr_list_append(zs_scanner_t *s, list_t *target_list, mm_ctx_t *mm)
 	}
 
 	/* Create RDATA. */
-	size_t pos = 0;
-	/* TODO [rrset]: replace */
-	int ret = knot_rrset_parse_rdata(s->r_data, &pos, s->r_data_length,
-	                                 NULL, s->r_ttl, s->r_data_length, rr);
+	int ret = knot_rrset_add_rdata(rr, s->r_data, s->r_data_length,
+	                               s->r_ttl, NULL);
 	if (ret != KNOT_EOK) {
 		DBG("%s: failed to set rrset from wire - %s\n",
 		    __func__, knot_strerror(ret));
