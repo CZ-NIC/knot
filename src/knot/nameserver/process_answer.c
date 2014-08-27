@@ -141,13 +141,13 @@ static int process_answer(knot_layer_t *ctx, knot_pkt_t *pkt)
 
 	return next_state;
 }
+#undef ANSWER_REQUIRES
 
 static int prepare_query(knot_layer_t *ctx, knot_pkt_t *pkt)
 {
 	/* \note Don't touch the query, expect answer. */
 	return NS_PROC_MORE;
 }
-#undef ANSWER_REQUIRES
 
 /*! \brief Module implementation. */
 static const knot_layer_api_t PROCESS_ANSWER_MODULE = {

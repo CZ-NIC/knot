@@ -83,8 +83,6 @@ inline static int knot_layer_noop(knot_layer_t *ctx, knot_pkt_t *pkt)
 /*!
  * \brief Initialize packet processing context.
  *
- * Allowed from states: NOOP
- *
  * \param ctx   Layer context.
  * \param param Parameters for given module.
  * \param api   Layer API.
@@ -124,9 +122,6 @@ int knot_layer_in(knot_layer_t *ctx, knot_pkt_t *pkt);
 /*!
  * \brief Generate output from layer.
  *
- * Allowed from states: FULL, FAIL
- *
- * \param ctx Layer context.
  * \param ctx Layer context.
  * \param pkt Data packet.
  *

@@ -25,8 +25,8 @@
 
 /* @note Purpose of this test is not to verify process_answer functionality,
  *       but simply if the requesting/receiving works, so mirror is okay. */
-static int begin(knot_layer_t *ctx, void *module_param) { return NS_PROC_NOOP; }
 static int reset(knot_layer_t *ctx) { return NS_PROC_FULL; }
+static int begin(knot_layer_t *ctx, void *module_param) { return reset(ctx); }
 static int finish(knot_layer_t *ctx) { return NS_PROC_NOOP; }
 static int in(knot_layer_t *ctx, knot_pkt_t *pkt) { return NS_PROC_DONE; }
 static int out(knot_layer_t *ctx, knot_pkt_t *pkt) { return NS_PROC_MORE; }

@@ -171,6 +171,7 @@ void knot_requestor_clear(struct knot_requestor *requestor)
 	while (knot_requestor_dequeue(requestor) == KNOT_EOK)
 		;
 
+	knot_overlay_finish(&requestor->overlay);
 	knot_overlay_deinit(&requestor->overlay);
 }
 
@@ -262,25 +263,22 @@ static int exec_request(struct knot_requestor *req, struct knot_request *last, s
 {
 	int ret = KNOT_EOK;
 
-	/* Reset overlay. */
-	knot_overlay_reset(&req->overlay);
-
 	/* Do I/O until the processing is satisifed or fails. */
 	while (req->overlay.state & (NS_PROC_FULL|NS_PROC_MORE)) {
 		ret = request_io(req, last, timeout);
 		if (ret != KNOT_EOK) {
-			knot_overlay_finish(&req->overlay);
+			knot_overlay_reset(&req->overlay);
 			return ret;
 		}
 	}
 
 	/* Expect complete request. */
-	if (req->overlay.state != NS_PROC_DONE) {
+	if (req->overlay.state == NS_PROC_FAIL) {
 		ret = KNOT_ERROR;
 	}
 
-	/* Finish processing. */
-	knot_overlay_finish(&req->overlay);
+	/* Finish current query processing. */
+	knot_overlay_reset(&req->overlay);
 
 	return ret;
 }

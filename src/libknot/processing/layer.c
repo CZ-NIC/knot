@@ -21,6 +21,7 @@
 
 /*! \brief Helper for conditional layer call. */
 #define LAYER_CALL(layer, func, ...) \
+	assert(layer->api); \
 	if (layer->api->func) { \
 		layer->state = layer->api->func(layer, ##__VA_ARGS__); \
 	}
@@ -39,11 +40,6 @@ static const char* _state_table[] = {
 
 int knot_layer_begin(knot_layer_t *ctx, const knot_layer_api_t *api, void *param)
 {
-	/* Only in inoperable state. */
-	if (ctx->state != NS_PROC_NOOP) {
-		return ctx->state;
-	}
-
 	ctx->api = api;
 
 	LAYER_CALL(ctx, begin, param);
@@ -61,11 +57,6 @@ int knot_layer_reset(knot_layer_t *ctx)
 
 int knot_layer_finish(knot_layer_t *ctx)
 {
-	/* Only in operable state. */
-	if (ctx->state == NS_PROC_NOOP) {
-		return ctx->state;
-	}
-
 	LAYER_CALL(ctx, finish);
 	dbg_ns("%s -> %s\n", __func__, LAYER_STATE_STR(ctx->state));
 	return ctx->state;
@@ -73,11 +64,6 @@ int knot_layer_finish(knot_layer_t *ctx)
 
 int knot_layer_in(knot_layer_t *ctx, knot_pkt_t *pkt)
 {
-	/* Only if expecting data. */
-	if (ctx->state != NS_PROC_MORE) {
-		return ctx->state;
-	}
-
 	LAYER_CALL(ctx, in, pkt);
 	dbg_ns("%s -> %s\n", __func__, LAYER_STATE_STR(ctx->state));
 	return ctx->state;
@@ -86,10 +72,9 @@ int knot_layer_in(knot_layer_t *ctx, knot_pkt_t *pkt)
 int knot_layer_out(knot_layer_t *ctx, knot_pkt_t *pkt)
 {
 	switch (ctx->state) {
-	case NS_PROC_FULL: LAYER_CALL(ctx, out, pkt); break;
 	case NS_PROC_FAIL: LAYER_CALL(ctx, err, pkt); break;
-	default:
-		break;
+	case NS_PROC_FULL:
+	default: LAYER_CALL(ctx, out, pkt); break;
 	}
 
 	dbg_ns("%s -> %s\n", __func__, LAYER_STATE_STR(ctx->state));

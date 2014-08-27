@@ -51,11 +51,21 @@ int knot_overlay_reset(struct knot_overlay *overlay)
 
 int knot_overlay_finish(struct knot_overlay *overlay)
 {
+	/* Only in operable state. */
+	if (overlay->state == NS_PROC_NOOP) {
+		return overlay->state;
+	}
+
 	ITERATE_LAYERS(overlay, knot_layer_finish);
 }
 
 int knot_overlay_in(struct knot_overlay *overlay, knot_pkt_t *pkt)
 {
+	/* Only if expecting data. */
+	if (overlay->state != NS_PROC_MORE) {
+		return overlay->state;
+	}
+
 	knot_pkt_parse(pkt, 0);
 
 	ITERATE_LAYERS(overlay, knot_layer_in, pkt);
@@ -63,5 +73,10 @@ int knot_overlay_in(struct knot_overlay *overlay, knot_pkt_t *pkt)
 
 int knot_overlay_out(struct knot_overlay *overlay, knot_pkt_t *pkt)
 {
+	/* Only in operable state. */
+	if (overlay->state == NS_PROC_NOOP) {
+		return overlay->state;
+	}
+
 	ITERATE_LAYERS(overlay, knot_layer_out, pkt);
 }
