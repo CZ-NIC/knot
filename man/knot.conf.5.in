@@ -293,6 +293,13 @@ zones {
   # Default value: increment
   # serial-policy increment;
 
+  # Query modules are dynamically loaded modules that can alter query plan processing
+  # Configuration is always module-specific, but passed as a simple string here 
+  # Query modules listed here are effective for all queries (even those without assigned zone)
+  query_module {
+    module_name "configuration string";
+  }
+
   # Zone entry
   #
   # Format: <zone-name> { file "<path-to-zone-file>"; }
@@ -390,6 +397,7 @@ zones {
         module_one "configuration string";
         module_two "specific configuration string";
     }
+
   }
 }
 
