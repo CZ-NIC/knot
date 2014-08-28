@@ -140,7 +140,7 @@ typedef int (*dname_callback_t)(const uint8_t **, size_t *, uint8_t **,
 static int process_other(const uint8_t **src, size_t *src_avail,
                          uint8_t **dst, size_t *dst_avail, int type)
 {
-	size_t to_copy = 0;
+	int to_copy = 0;
 
 	switch (type) {
 	case KNOT_RDATA_WF_NAPTR_HEADER:
