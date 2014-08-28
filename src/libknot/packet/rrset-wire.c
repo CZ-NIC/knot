@@ -571,7 +571,7 @@ static int parse_rdata(const uint8_t *pkt_wire, size_t *pos, size_t pkt_size,
 	*pos += rdlength;
 
 	size_t written = dst - rdata_buffer;
-	assert(written == rdlength + KNOT_DNAME_MAXLEN - dst_avail);
+	assert(written == rdlength + 2 * KNOT_DNAME_MAXLEN - dst_avail);
 
 	return knot_rrset_add_rdata(rrset, rdata_buffer, written, ttl, mm);
 }
