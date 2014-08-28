@@ -345,16 +345,18 @@ static int check_rrsig_rdata(err_handler_t *handler,
 	}
 
 	/* signer's name is same as in the zone apex */
-	const knot_dname_t *signer_name =
-		knot_rrsig_signer_name(rrsig, rr_pos);
+	knot_dname_t *signer = knot_dname_copy(knot_rrsig_signer_name(rrsig, rr_pos), NULL);
+	knot_dname_to_lower(signer);
 
 	/* dnskey is in the apex node */
 	if (!knot_rrset_empty(dnskey_rrset) &&
-	    !knot_dname_is_equal(signer_name, dnskey_rrset->owner)) {
+	    !knot_dname_is_equal(signer, dnskey_rrset->owner)) {
 		err_handler_handle_error(handler, zone, node,
 		                         ZC_ERR_RRSIG_RDATA_DNSKEY_OWNER,
 		                         info_str);
 	}
+
+	knot_dname_free(&signer, NULL);
 
 	/* Compare algorithm, key tag and signer's name with DNSKEY rrset
 	 * one of the records has to match. Signer name has been checked

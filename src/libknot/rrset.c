@@ -293,10 +293,11 @@ static int write_rdata_block(uint8_t **src, size_t *src_avail,
                              knot_rrset_wire_flags_t flags)
 {
 	switch (type) {
-	case KNOT_RDATA_WF_COMPRESSED_DNAME:
+	case KNOT_RDATA_WF_COMPRESSIBLE_DNAME:
 		return write_rdata_dname(src, src_avail, wire, capacity,
 					 compr, compr_hint_id, true, flags);
-	case KNOT_RDATA_WF_UNCOMPRESSED_DNAME:
+	case KNOT_RDATA_WF_DECOMPRESSIBLE_DNAME:
+	case KNOT_RDATA_WF_FIXED_DNAME:
 		return write_rdata_dname(src, src_avail, wire, capacity,
 					 compr, compr_hint_id, false, flags);
 	case KNOT_RDATA_WF_NAPTR_HEADER:
@@ -541,7 +542,7 @@ int knot_rrset_rdata_from_wire_one(knot_rrset_t *rrset,
 	if (total_size - *pos < rdlength) {
 		return KNOT_EMALF;
 	}
-	
+
 	const rdata_descriptor_t *desc = knot_get_rdata_descriptor(rrset->type);
 
 	/* Check for obsolete record. */

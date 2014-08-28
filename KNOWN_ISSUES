@@ -1,7 +1,0 @@
-Features not supported
-======================
-
-Here is a list of the most notable features that are not supported in the
-current version of Knot.
-
-* Other DNS classes than IN, partially CH (CS, HS)

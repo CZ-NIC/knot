@@ -26,6 +26,20 @@ def create_log(logger, filename="", level=logging.NOTSET):
     logger.addHandler(handler)
     return handler
 
+def log_environment(filename):
+    def want_log(key):
+        return key in [ "CC", "CPP", "CFLAGS", "CPPFLAGS",
+                        "LDFLAGS", "LIBS",
+                        "PKG_CONFIG", "PKG_CONFIG_PATH", "PKG_CONFIG_LIBDIR",
+                        "YAAC", "YFLAGS",
+                        "MALLOC_PERTURB_", "MALLOC_CHECK_" ] or \
+              re.match(r'.+_(CFLAGS|LIBS)$', key) or \
+              re.match(r'^KNOT_TEST_', key)
+
+    with open(filename, "w") as log:
+        lines = ["%s=%s\n" % (k, v) for (k, v) in os.environ.items() if want_log(k)]
+        log.writelines(lines)
+
 def parse_args(cmd_args):
     parser = argparse.ArgumentParser()
     parser.add_argument("-d", dest="debug", action="store_true", \
@@ -94,6 +108,9 @@ def main(args):
         os.symlink(outs_dir, LAST_WORKING_DIR)
     except:
         pass
+
+    # Write down environment
+    log_environment(os.path.join(outs_dir, "environment.log"))
 
     # Set up logging.
     log = logging.getLogger()

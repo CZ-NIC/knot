@@ -322,7 +322,7 @@ keys Syntax
 ::
 
     keys {
-      key_id algorithm "string"; ]
+      key_id algorithm "string";
       [ key_id algorithm "string"; ... ]
     }
 
@@ -532,7 +532,7 @@ with this ``remote``.  This section is optional.
         address 127.0.0.1;
         port 53531;
         key key0.server0;
-        via ipv4;             # reference to 'remotes'
+        via ipv4;             # reference to interface named ipv4
         # via 82.35.64.59;    # direct IPv4
         # via [::cafe];       # direct IPv6
       }
@@ -704,7 +704,6 @@ The ``zones`` statement contains definition of zones served by Knot DNS.
         [ notify-in remote_id [, remote_id, ... ]; ]
         [ notify-out remote_id [, remote_id, ... ]; ]
         [ update-in remote_id [, remote_id, ... ]; ]
-        [ query_module { module_name "string"; [ module_name "string"; ... ] } ]
         [ zone_options ]
       }
     }
@@ -723,6 +722,7 @@ The ``zones`` statement contains definition of zones served by Knot DNS.
       [ dnssec-enable ( on | off ); ]
       [ signature-lifetime ( integer | integer(s | m | h | d); ) ]
       [ serial-policy ( increment | unixtime ); ]
+      [ query_module { module_name "string"; [ module_name "string"; ... ] } ]
 
 .. _zones Statement Definition and Grammar:
 

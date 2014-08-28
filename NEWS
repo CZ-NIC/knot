@@ -1,591 +1,547 @@
-Knot DNS NEWS
+Knot DNS 1.5.1 (2014-08-19)
+===========================
 
-1.5.1 - Aug 19, 2014
------------------------
 Features:
-	* Basic support for logging using systemd journal
-	* DDNS: Ability to process updates in bulk
+---------
+ - Basic support for logging using systemd journal
+ - DDNS: Ability to process updates in bulk
 
 Improvements:
-	* Unified logging messages structure
-	* DNSSEC: More strict controls for signing keys
+-------------
+ - Unified logging messages structure
+ - DNSSEC: More strict controls for signing keys
 
 Bugfixes:
-	* DNSSEC: DNAMEs in RDATA were not lowercased before signing
-	* EDNS: OPT RR were not put into responsing for some errors
-	* TSIG: DDNS responses were not signed with TSIG
-	* DDNS: Prerequisite checks failed for some inputs
-	* knsupdate: Zone origin was not used for deletions
-	
-1.5.0 - Jul 8, 2014
------------------------
+---------
+ - DNSSEC: DNAMEs in RDATA were not lowercased before signing
+ - EDNS: OPT RR were not put into responsing for some errors
+ - TSIG: DDNS responses were not signed with TSIG
+ - DDNS: Prerequisite checks failed for some inputs
+ - knsupdate: Zone origin was not used for deletions
+
+Knot DNS 1.5.0 (2014-07-08)
+===========================
+
 Features:
-	* DDNS forwarding reimplemented
+---------
+ - DDNS forwarding reimplemented
+
 Improvements:
-	* Transfer sizes logged in bytes if needed
-	* Logging outgoing NOTIFY messages
-	* Logging unauthorized incoming NOTIFYs
-Bugfixes:
-	* Zone flush planning after bootstrap
-	* Incorrect incoming AXFR message sizes
-	* DDNS signing changes were freed too soon, posibility of stale data
-	* knotc remote control key handling
+-------------
+ - Transfer sizes logged in bytes if needed
+ - Logging outgoing NOTIFY messages
+ - Logging unauthorized incoming NOTIFYs
 
-1.5.0-rc2 - Jun 18, 2014
------------------------
+Bugfixes:
+---------
+ - Zone flush planning after bootstrap
+ - Incorrect incoming AXFR message sizes
+ - DDNS signing changes were freed too soon, posibility of stale data
+ - knotc remote control key handling
+
+Knot DNS 1.5.0-rc2 (2014-06-18)
+===============================
+
 Features:
-	* edns-client-subnet support in kdig
-	* Optional asynchronous startup (config "asynchronous-start")
+---------
+ - edns-client-subnet support in kdig
+ - Optional asynchronous startup (config "asynchronous-start")
+
 Improvements:
-	* Preempt task queue for faster reload
-	* Lazy zone file write after zone transfer (governed by "zonefile-sync")
-Bugfixes:
-	* Close zone transfer after SERVFAIL response
-	* Incremental to full zone transfer fallback, wrong log message
-	* Zone events corner cases, reload replanning
+-------------
+ - Preempt task queue for faster reload
+ - Lazy zone file write after zone transfer (governed by
+   "zonefile-sync")
 
-1.5.0-rc1 - Jun 3, 2014
------------------------
+Bugfixes:
+---------
+ - Close zone transfer after SERVFAIL response
+ - Incremental to full zone transfer fallback, wrong log message
+ - Zone events corner cases, reload replanning
+
+Knot DNS 1.5.0-rc1 (2014-06-03)
+===============================
+
 Features:
-	* Pluggable query processing modules
-	* Synthetic IPv4/IPv6 reverse/forward records (optional module)
-	* dnstap support in both utilities & server (optional module)
-	* NOTIFY message support and new TSIG section in kdig
-	* Multi-master support
+---------
+ - Pluggable query processing modules
+ - Synthetic IPv4/IPv6 reverse/forward records (optional module)
+ - dnstap support in both utilities & server (optional module)
+ - NOTIFY message support and new TSIG section in kdig
+ - Multi-master support
+
 Improvements:
-	* Query processing and core functionality overhaul 
-	* Performance and reduced memory footprint
-	* Faster zone events scheduling
-	* RFC compliant queries/responses in some corner cases
-	* Log messages
-	* New documentation (Sphinx)
+-------------
+ - Query processing and core functionality overhaul
+ - Performance and reduced memory footprint
+ - Faster zone events scheduling
+ - RFC compliant queries/responses in some corner cases
+ - Log messages
+ - New documentation (Sphinx)
 
-v1.4.2 - Jan 27, 2014
----------------------
-Bugfixes:
-	* AXFR/IXFR compatibility issues with tinydns/axfrdns
-	* Journal file is created only when needed
-	* Zone-related log messages are logged into correct category 
-	* DNSSEC: Refresh signatures earlier (3 days before their expiration
-	  with the default signature lifetime)
-	* Fixed RCU synchronization causing deadlock on 'knotc signzone'
-	* RRSIG not fitting in the additional records doesn't cause truncation
-
-v1.4.1 - Jan 13, 2014
----------------------
-Bugfixes:
-	* Empty APL record support
-	* 'zonestatus' when using immediate zone syncing
-	* Immediate zone syncing after reload
-	* Race condition writing time values to zone file
-
-v1.4.0 - Jan 6, 2014
----------------------
-Features:
-	* Zone SERIAL policies (INCREMENT, UNIXTIME)
-Bugfixes:
-	* AXFR crash with specific packet 
-	* QNAME case-sensitive since 1.4.0-rc0
-	* DNSSEC records over DDNS
-	* Semantic check fail in AXFR is only soft-error
-	* Journal race condition
-	* Notifies are sent immediately
-
-v1.4.0-rc2 - Dec 13, 2013
--------------------------
-Features:
-	* IDN support in Knot utilities
-	* DNSSEC: support for GOST algorithm
+Knot DNS 1.4.2 (2014-01-27)
+===========================
 
 Bugfixes:
-	* Crash in particular additionals processing
-	* Race condition in event cancelation
-	* Journal corruption after failed transactions
-	* DNSSEC: fixed detection of ECDSA support
+---------
+ - AXFR/IXFR compatibility issues with tinydns/axfrdns
+ - Journal file is created only when needed
+ - Zone-related log messages are logged into correct category
+ - DNSSEC: Refresh signatures earlier (3 days before their expiration
+    with the default signature lifetime)
+ - Fixed RCU synchronization causing deadlock on 'knotc signzone'
+ - RRSIG not fitting in the additional records doesn't cause
+   truncation
 
-Other improvements:
-	* ./configure prints build configuration summary
-	* Pretty zone file output (DNSSEC-related data separately)
-	* Lower memory consumption
-	* config: option 'dnssec-keydir' can be set per zone
-	* config: option 'storage' can be set per zone
+Knot DNS 1.4.1 (2014-01-13)
+===========================
 
-v1.4.0-rc1 - Nov 20, 2013
--------------------------
+Bugfixes:
+---------
+ - Empty APL record support
+ - 'zonestatus' when using immediate zone syncing
+ - Immediate zone syncing after reload
+ - Race condition writing time values to zone file
+
+Knot DNS 1.4.0 (2014-01-06)
+===========================
 
 Features:
-	* Better logging of automatic DNSSEC events
-	* Support for DNSSEC key pre-publication
+---------
+ - Zone SERIAL policies (INCREMENT, UNIXTIME)
+ - IDN support in Knot utilities
+ - DNSSEC: support for GOST algorithm
+ - Better logging of automatic DNSSEC events
+ - Support for DNSSEC key pre-publication
+ - Experimental automatic DNSSEC signing
+ - Reduced memory usage
+
+Improvements:
+-------------
+ - ./configure prints build configuration summary
+ - Pretty zone file output (DNSSEC-related data separately)
+ - Lower memory consumption
+ - config: option 'dnssec-keydir' can be set per zone
+ - config: option 'storage' can be set per zone
+
 Bugfixes:
-	* Refactored zone loading
-	* Improved journal locking and fixed some race conditions
-	* Various fixes in client utilities
-	* Fixed memory errors in automatic DNSSEC signing
-	* 'dnssec-keydir' doesn't auto-enable signing
-	* Fixed rescheduling of zone resigns
+---------
+ - AXFR crash with specific packet
+ - QNAME case-sensitive since 1.4.0-rc0
+ - DNSSEC records over DDNS
+ - Semantic check fail in AXFR is only soft-error
+ - Journal race condition
+ - Notifies are sent immediately
+ - Crash in particular additionals processing
+ - Race condition in event cancelation
+ - Journal corruption after failed transactions
+ - DNSSEC: fixed detection of ECDSA support
+ - Refactored zone loading
+ - Improved journal locking and fixed some race conditions
+ - Various fixes in client utilities
+ - Fixed memory errors in automatic DNSSEC signing
+ - 'dnssec-keydir' doesn't auto-enable signing
+ - Fixed rescheduling of zone resigns
 
-v1.4.0-beta - Oct 28, 2013
---------------------------
-Features:
-	* Experimental automatic DNSSEC signing
-	* Reduced memory usage
+Knot DNS 1.3.3 (2013-10-28)
+===========================
 
-v1.3.3 - Oct 28, 2013
----------------------
 Bugfixes:
-	* Improved zone loading error messages
-	* Correct control socket permissions
-	* Improved log syntax documentation 
-	* Fixed wrong assertions in DDNS prerequisites checking
-	* Fixed processing of some malformed DNS packets 
-	* Fixed notify messages being ignored in some cases
+---------
+ - Improved zone loading error messages
+ - Correct control socket permissions
+ - Improved log syntax documentation
+ - Fixed wrong assertions in DDNS prerequisites checking
+ - Fixed processing of some malformed DNS packets
+ - Fixed notify messages being ignored in some cases
 
-v1.3.2 - Sep 30, 2013
----------------------
+Knot DNS 1.3.2 (2013-09-30)
+===========================
+
 Bugfixes:
-	* Configuration option for EDNS0 max UDP payload.
-	* Max UDP payload from EDNS0 affected TCP responses.
-	* Fixed build on SLE 10.
-	* knotc reload did not close files included from config.
+---------
+ - Configuration option for EDNS0 max UDP payload.
+ - Max UDP payload from EDNS0 affected TCP responses.
+ - Fixed build on SLE 10.
+ - knotc reload did not close files included from config.
 
-v1.3.1 - Aug 26, 2013
----------------------
+Knot DNS 1.3.1 (2013-08-26)
+===========================
+
 Bugfixes:
-	* Response with NSID contained extra bytes after reload
-	* List of remotes is scanned for longest prefix match
-	* Multipacket TSIG signatures for transfers
-	* Wrongly parsed TSIG key secret without quotes
-	* Removed autoconf checks for extended instruction sets
+---------
+ - Response with NSID contained extra bytes after reload
+ - List of remotes is scanned for longest prefix match
+ - Multipacket TSIG signatures for transfers
+ - Wrongly parsed TSIG key secret without quotes
+ - Removed autoconf checks for extended instruction sets
 
-v1.3.0 - Aug 5, 2013
---------------------
-Features:
-	* Defaults for CH TXT id.server,version.server (see doc)
-Bugfixes:
-	* Progressive interval for bootstrap retry
-	* Transfers randomly cancelled
-	* Disabling RRL on reload
-	* Secondary groups not initialized when dropping privileges
-	* Responding to DS queries for names at or below delegation points
-
-v1.3.0-rc5 - Jul 29, 2013
--------------------------
-Features:
-	* Much faster bootstrap of many zones
-Bugfixes:
-	* Removed deprecated 'knotc -w' option
-	* Slave ignores out-of-zone records in zone
-	* Support for obsolete types in zone transfers
-	* Slave zone file names fixes
-	* Long transfers being randomly dropped
-
-v1.3.0-rc4 - Jul 15, 2013
--------------------------
-Features:
-	* --with-configdir option for default config path
-	* Reintroducted 'pidfile' config option
-Bugfixes:
-	* AXFR/IXFR subsystem performance improvements
-	* Rescheduling of AXFR in some cases
-	* RRSIGs not in the same section for DS records
-	* Log messages leaking to syslog
-	* 'knotc restart' option removed due to several limitations
-
-v1.3.0-rc3 - Jun 28, 2013
--------------------------
+Knot DNS 1.3.0 (2013-08-05)
+===========================
 
 Features:
-	* Utility to estimate memory consumption (see 'knotc memstats')
-	* PID file is not created when running on foreground
-	* UNIX sockets support for knotc
-	* Configurable 'rundir' and 'storage'
+---------
+ - Defaults for CH TXT id.server,version.server (see doc)
+ - Much faster bootstrap of many zones
+ - --with-configdir option for default config path
+ - Reintroducted 'pidfile' config option
+ - Utility to estimate memory consumption (see 'knotc memstats')
+ - PID file is not created when running on foreground
+ - UNIX sockets support for knotc
+ - Configurable 'rundir' and 'storage'
+ - Faster zone parser
+ - Full support for EUI and ILNP resource records
+ - Lower memory footprint for large zones
+ - No compilation of zones
+ - Improved scheduling of zone transfers
+ - Logging of serials and timing information for zone transfers
+ - Config: 'groups' keyword allowing to create groups of remotes
+ - Config: 'include' keyword allowing other file includes
+ - Client utilities: kdig, khost, knsupdate
+ - Server identification using TXT/CH queries (RFC 4892)
+ - Improved build scripts
+ - Improved dname compression and performance
 
 Bugfixes:
-	* IXFR with an arbitrary number of diffs
-	* Processing of knotc TSIG keyfile
-	* Atomic PID file writing, removed deprecated 'knotc start'
-	* Performance regression when RRSIGs came before covered RRs in AXFR
+---------
+ - Progressive interval for bootstrap retry
+ - Transfers randomly cancelled
+ - Disabling RRL on reload
+ - Secondary groups not initialized when dropping privileges
+ - Responding to DS queries for names at or below delegation points
+ - Removed deprecated 'knotc -w' option
+ - Slave ignores out-of-zone records in zone
+ - Support for obsolete types in zone transfers
+ - Slave zone file names fixes
+ - Long transfers being randomly dropped
+ - AXFR/IXFR subsystem performance improvements
+ - Rescheduling of AXFR in some cases
+ - RRSIGs not in the same section for DS records
+ - Log messages leaking to syslog
+ - 'knotc restart' option removed due to several limitations
+ - IXFR with an arbitrary number of diffs
+ - Processing of knotc TSIG keyfile
+ - Atomic PID file writing, removed deprecated 'knotc start'
+ - Performance regression when RRSIGs came before covered RRs in AXFR
+ - Label compression related bug
+ - Proper resolution of some CNAME chains
+ - Unstable response rate in rare cases
+ - Several log messages
+ - Fixed creating of PID file when dropping privileges
 
-v1.3.0-rc2 - Jun 14, 2013
--------------------------
-
-Bugfixes:
-	* Label compression related bug
-	* Proper resolution of some CNAME chains
-	* Unstable response rate in rare cases
-	* Several log messages
-
-v1.3.0-rc1 - Jun 4, 2013
----------------------------
+Knot DNS 1.2.0 (2013-03-29)
+===========================
 
 Features:
-        * Faster zone parser
-        * Full support for EUI and ILNP resource records
-        * Lower memory footprint for large zones
-        * No compilation of zones
-        * Improved scheduling of zone transfers
-        * Logging of serials and timing information for zone transfers
-        * Config: 'groups' keyword allowing to create groups of remotes
-        * Config: 'include' keyword allowing other file includes
-        * Client utilities: kdig, khost, knsupdate
-        * Server identification using TXT/CH queries (RFC 4892)
-	* Improved build scripts
-	* Improved dname compression and performance
-Bugfixes:
-	* Fixed creating of PID file when dropping privileges
-
-v1.2.0 - Mar 29, 2013
----------------------
+---------
+ - knotc 'zonestatus' command
+ - Response rate limiting (see documentation)
+ - Dynamic updates, including forwarding (limited on signed zones)
+ - Updated remote control utility
+ - Configurable TCP timeouts
+ - LOC RR support
 
 Bugfixes:
-	* Memory leaks
+---------
+ - Memory leaks
+ - Check for broken recvmmsg() implementation
+ - Changing logfile ownership before dropping privileges
+ - knotc respects 'control' section from configuration
+ - RRL: resolved bucket collisions
+ - RRL: updated bucket mapping to conform RRL technical memo
+ - Fixed OpenBSD build
+ - Responses to ANY should contain RRSIGs
+ - Fixed processing of some non-standard dnames.
+ - Correct checking of label length bounds in some cases.
+ - More compliant rcodes in case of DDNS/TSIG failures.
+ - Correct processing of malformed DDNS prereq section.
 
-v1.2.0-rc4 - Mar 22, 2013
--------------------------
+Knot DNS 1.1.3 (2012-12-19)
+===========================
+
+Bugfixes:
+---------
+ - Updated manpage.
+ - Fixed answering DS queries (RRSIGs not together with DS, AA bit
+    missing).
+ - Fixed setting ARCOUNT in some error responses with EDNS enabled.
+ - Fixed crash when compiling zone zone with NSEC3PARAM but no NSEC3
+    and semantic checks enabled.
+
+Knot DNS 1.1.2 (2012-11-21)
+===========================
+
+Bugfixes:
+---------
+ - Fixed debug message.
+ - Fixed crash on reload when config contained duplicate zones.
+ - Fixed scheduling of transfers.
+
+Knot DNS 1.1.1 (2012-10-31)
+===========================
 
 Features:
-	* knotc 'zonestatus' command
+---------
+ - Improved compression of packets. Out-of-zone dnames present in
+    RDATA were not compressed.
+ - Slave zones are now automatically refreshed after startup.
+ - Proper response to IXFR/UDP query (returns SOA in Authority
+   section).
 
 Bugfixes:
-	* Check for broken recvmmsg() implementation
-	* Changing logfile ownership before dropping privileges
-	* knotc respects 'control' section from configuration
-	* RRL: resolved bucket collisions
-	* RRL: updated bucket mapping to conform RRL technical memo
+---------
+ - Fixed assertion failing when asking directly for a wildcard name.
+ - Crash after IXFR in certain cases when adding RRSIG in an IXFR.
+ - Fixed behaviour when incoming IXFR removes a zone cut. Previously
+    occluded names now become properly visible. Previously lead to a
+    crash when the server was asked for the previously occluded name.
+ - Fixed handling of zero-length strings in text zone dump. Caused the
+    compilation to fail.
+ - Fixed TSIG algorithm name comparison - the names should be in
+    canonical form.
+ - Fixed handling unknown RR types with type less than 251.
 
-v1.2.0-rc3 - Mar 1, 2013
-------------------------
+Knot DNS 1.1.0 (2012-08-31)
+===========================
 
 Features:
-	* Response rate limiting (see documentation)
+---------
+ - Signing SOA with TSIG queries when checking zone version with
+   master.
+ - Optionally disable ANY queries for authoritative answers.
+ - Dropping identical records in zone and incoming transfers.
+ - Support for '/' in zone names.
+ - Generating journal from reloaded zone (EXPERIMENTAL).
+ - Outgoing-only interfaces in configuration file.
+ - Following DNAME if the synthetized name is in the same zone.
 
 Bugfixes:
-	* Fixed OpenBSD build
-	* Responses to ANY should contain RRSIGs
+---------
+ - Syncing journal to zone was not updating the compiled zone
+   database.
+ - Fixed ixfr-from-differences journal generation in case of IPSECKEY
+    and APL records.
+ - Fixed possible leak on server shutdown with a pending transfer.
+ - Crash when zone contained RRSIG signing a CNAME, but did not
+    contain the CNAME.
+ - Malformed packets parsing.
+ - Failed IXFR caused memory leaks.
+ - Failed IXFR might have resulted in inconsistent zone structures.
+ - Fixed answering to +dnssec queries when NSEC3 chain is corrupted.
+ - Fixed answering when transitioning from NSEC3 to NSEC.
+ - Fixed answering when zone contains multiple NSEC3 chains.
+ - Handling RRSets with different TTLs - TTL from the first RR is
+   used.
+ - Synchronization of zone reload and zone transfers.
+ - Fixed build on NetBSD 5 and FreeBSD.
+ - Fixed binding to both IPv4 and IPv6 at the same time on special
+    interfaces.
+ - Fixed access rights of created files.
+ - Semantic checks corrupted RDATA domain names which are covered by
+    wildcard in the same zone.
 
-v1.2.0-rc2 - Feb 15, 2013
--------------------------
+Improvements:
+-------------
+ - Improved user manual.
+ - Better checks of corrupted zone database.
+ - IXFR-in optimized.
+ - Many zones loading optimized.
+ - More detailed log messages (mostly transfer-related).
+ - Copying Question section to error responses.
+ - Using zone name from config file as default origin in zone file.
+ - Additional records are now added to response also from
+    wildcard-covered names.
+
+Knot DNS 1.0.6 (2012-06-13)
+===========================
 
 Bugfixes:
-	* Fixed processing of some non-standard dnames.
-	* Correct checking of label length bounds in some cases.
-	* More compliant rcodes in case of DDNS/TSIG failures.
-	* Correct processing of malformed DDNS prereq section.
+---------
+ - Fixed potential problems with RCU synchronization.
+ - Adding NSEC/NSEC3 for all wildcard CNAMEs in the response.
 
-v1.2.0-rc1 - Jan 4, 2013
-------------------
+Knot DNS 1.0.5 (2012-05-17)
+===========================
+
+Bugfixes:
+---------
+ - Fixed bug with creating journal files.
+
+Knot DNS 1.0.4 (2012-05-16)
+===========================
 
 Features:
-        * Dynamic updates, including forwarding (limited on signed zones)
-        * Updated remote control utility
-        * Configurable TCP timeouts
-        * LOC RR support
+---------
+ - Parallel loading of zones to the server.
+ - RFC3339-complaint format of log time.
+ - Support for TLSA (RR type 52).
+ - knotc checkzone (as a dry-run of zone compile).
+ - knotc refresh for forcing Knot to update all zones from master
+    servers.
+ - Reopening log files upon start (used to truncate them).
 
-v1.1.3 - Dec 19, 2012
----------------------
-
-Bugfixes:
-        * Updated manpage.
-
-v1.1.3-rc1 - Dec 6, 2012
-------------------------
-
-Bugfixes:
-	* Fixed answering DS queries (RRSIGs not together with DS, AA bit
-          missing).
-	* Fixed setting ARCOUNT in some error responses with EDNS enabled.
-	* Fixed crash when compiling zone zone with NSEC3PARAM but no NSEC3
-	  and semantic checks enabled.
-
-
-v1.1.2 - Nov 21, 2012
----------------------
+Improvements:
+-------------
+ - Significantly sped up IXFR-in and reduced its memory requirements.
 
 Bugfixes:
-	* Fixed debug message.
+---------
+ - Copying OPCODE and RD bit from query to NOTIMPL responses.
+ - Corrected response to CNAME queries if the canonical name was also
+    an alias (was adding the whole CNAME chain to the response).
+ - Fixed crash when NS or MX points to an alias.
+ - Fixed problem with early closing of filedescriptors (lead to crash
+    when compiling and loading or bootstrapping and restarting the
+    server with a lot of zones).
 
-
-v1.1.2-rc1 - Nov 14, 2012
--------------------------
-
-Bugfixes:
-	* Fixed crash on reload when config contained duplicate zones.
-	* Fixed scheduling of transfers.
-
-
-v1.1.1 - Oct 31, 2012
----------------------
+Knot DNS 1.0.3 (2012-04-17)
+===========================
 
 Bugfixes:
-        * Fixed assertion failing when asking directly for a wildcard name.
+---------
+ - Corrected handling of EDNS0 when TCP is used (was applying the UDP
+   size limit).
+ - Fixed slow compilation of zones.
+ - Fixed potential crash with many concurrent transfers.
+ - Fixed missing include for FreeBSD.
 
-
-v1.1.1-rc1 - Oct 23, 2012
--------------------------
-
-Bugfixes:
-        * Crash after IXFR in certain cases when adding RRSIG in an IXFR.
-        * Fixed behaviour when incoming IXFR removes a zone cut. Previously
-          occluded names now become properly visible. Previously lead to a
-          crash when the server was asked for the previously occluded name.
-        * Fixed handling of zero-length strings in text zone dump. Caused the
-          compilation to fail.
-        * Fixed TSIG algorithm name comparison - the names should be in
-          canonical form.
-        * Fixed handling unknown RR types with type less than 251.
+Knot DNS 1.0.2 (2012-04-13)
+===========================
 
 Features:
-        * Improved compression of packets. Out-of-zone dnames present in RDATA
-          were not compressed.
-        * Slave zones are now automatically refreshed after startup.
-        * Proper response to IXFR/UDP query (returns SOA in Authority section).
-
-
-v1.1.0 - Aug 31, 2012
----------------------
+---------
+ - Configuration checker (invoked via knotc).
+ - Specifying source interface for transfers and NOTIFY requests
+   directly.
 
 Bugfixes:
-	* Syncing journal to zone was not updating the compiled zone database.
+---------
+ - Fixed leak when querying non-existing name and zone SOA TTL >
+   minimal.
+ - Fixed some minor bugs in tansfers.
 
-Other improvements:
-	* Better checks of corrupted zone database.
+Improvements:
+-------------
+ - Improved log messages (added date and time, better specification of
+   XFR remote).
+ - Improved saving incoming IXFR to journal (memory optimized).
+ - Now using system scheduler (better for Linux).
+ - Decreased thread stack size.
 
-
-v1.1.0-rc2 - Aug 23, 2012
--------------------------
-
-New features:
-	* Signing SOA with TSIG queries when checking zone version with master.
-
-Bugfixes:
-	* Fixed ixfr-from-differences journal generation in case of IPSECKEY
-          and APL records.
-	* Fixed possible leak on server shutdown with a pending transfer.
-
-Other improvements:
-	* Improved user manual.
-
-
-v1.1.0-rc1 - Aug 17, 2012
--------------------------
-
-New features:
-        * Optionally disable ANY queries for authoritative answers.
-        * Dropping identical records in zone and incoming transfers.
-        * Support for '/' in zone names.
-        * Generating journal from reloaded zone (EXPERIMENTAL).
-        * Outgoing-only interfaces in configuration file.
-        * Following DNAME if the synthetized name is in the same zone.
-
-Bugfixes:
-        * Crash when zone contained RRSIG signing a CNAME, but did not
-          contain the CNAME.
-        * Malformed packets parsing.
-        * Failed IXFR caused memory leaks.
-        * Failed IXFR might have resulted in inconsistent zone structures.
-        * Fixed answering to +dnssec queries when NSEC3 chain is corrupted.
-        * Fixed answering when transitioning from NSEC3 to NSEC.
-        * Fixed answering when zone contains multiple NSEC3 chains.
-        * Handling RRSets with different TTLs - TTL from the first RR is used.
-        * Synchronization of zone reload and zone transfers.
-        * Fixed build on NetBSD 5 and FreeBSD.
-        * Fixed binding to both IPv4 and IPv6 at the same time on special
-          interfaces.
-        * Fixed access rights of created files.
-        * Semantic checks corrupted RDATA domain names which are covered by
-          wildcard in the same zone.
-
-Other improvements:
-        * IXFR-in optimized.
-        * Many zones loading optimized.
-        * More detailed log messages (mostly transfer-related).
-        * Copying Question section to error responses.
-        * Using zone name from config file as default origin in zone file.
-        * Additional records are now added to response also from
-          wildcard-covered names.
-
-v1.0.6 - Jun 13, 2012
----------------------
-
-Bugfixes
-        * Fixed potential problems with RCU synchronization.
-        * Adding NSEC/NSEC3 for all wildcard CNAMEs in the response.
-
-
-v1.0.5 - May 17, 2012
----------------------
-
-Bugfixes:
-        * Fixed bug with creating journal files.
-
-
-v1.0.4 - May 16, 2012
----------------------
-
-New features:
-        * Parallel loading of zones to the server.
-        * RFC3339-complaint format of log time.
-        * Support for TLSA (RR type 52).
-        * knotc checkzone (as a dry-run of zone compile).
-        * knotc refresh for forcing Knot to update all zones from master
-          servers.
-        * Reopening log files upon start (used to truncate them).
-
-Bugfixes:
-        * Copying OPCODE and RD bit from query to NOTIMPL responses.
-        * Corrected response to CNAME queries if the canonical name was also
-          an alias (was adding the whole CNAME chain to the response).
-        * Fixed crash when NS or MX points to an alias.
-        * Fixed problem with early closing of filedescriptors (lead to crash
-          when compiling and loading or bootstrapping and restarting the server
-          with a lot of zones).
-
-Other improvements:
-        * Significantly sped up IXFR-in and reduced its memory requirements.
-
-
-v1.0.3 - Apr 17, 2012
----------------------
-
-Bugfixes:
-        * Corrected handling of EDNS0 when TCP is used (was applying the UDP size limit).
-        * Fixed slow compilation of zones.
-        * Fixed potential crash with many concurrent transfers.
-        * Fixed missing include for FreeBSD.
-
-
-v1.0.2 - Apr 13, 2012
----------------------
-
-New features:
-        * Configuration checker (invoked via knotc).
-        * Specifying source interface for transfers and NOTIFY requests directly.
-
-Bugfixes:
-        * Fixed leak when querying non-existing name and zone SOA TTL > minimal.
-        * Fixed some minor bugs in tansfers.
-
-Other improvements:
-        * Improved log messages (added date and time, better specification of XFR remote).
-        * Improved saving incoming IXFR to journal (memory optimized).
-        * Now using system scheduler (better for Linux).
-        * Decreased thread stack size.
-
-
-v1.0.1 - Mar 9, 2012
---------------------
-
-New features:
-        * Implemented jitter to REFRESH/RETRY timers.
-        * Implemented magic bytes for journal.
-        * Improved error messages.
-
-Bugfixes:
-        * Problem with creating IXFR journal for bootstrapped zone.
-        * Race condition in processing NOTIFY/SOA queries.
-        * Leak when reloading zone with NSEC3.
-        * Processing of APL RR.
-        * TSIG improper assignment of algorithm type.
-
-
-v1.0.0 - Feb 29, 2012
----------------------
-
-New features:
-        * Support for subnets in ACL.
-        * Debug messages enabling in configure.
-        * Optimized memory consuption of zone structures.
-
-Bugfixes:
-        * Memory errors and leaks.
-        * Fixed improper handling of failed IXFR/IN.
-        * Several other minor bugfixes.
-
-
-v1.0-rc1 - Feb 14, 2012
------------------------
-
-New features:
-        * NSID support (RFC5001).
-        * Root zone support.
-        * Automatic zone compiling on server start.
-        * Setting user to run Knot under in config file.
-        * Dropping privileges after binding to port 53.
-	        + Support for Linux capabilities(7).
-        * Setting source address of outgoing transfers in config file.
-        * Custom PID file.
-        * CNAME loop detection.
-        * Timeout on TCP connections.
-        * Basic defense against DoS attacks.
-
-Bugfixes:
-        * Fixed IXFR processing.
-        * Patched URCU so that it compiles on architectures without TLS in compiler (NetBSD, OpenBSD).
-        * Fixed response to DS query at parent zone.
-        * A lot of other bugfixes.
-
-
-v0.9.1 - Jan 20, 2012
----------------------
-
-New features:
-	* RRSet rotation
-
-Bugfixes:
-	* Fixed build on BSD.
-	* Fixes in parsing and dumping of zone
-	  - types IPSECKEY, WKS, DLV, APL, NSAP
-
-Other changes:
-	* Replaced pseudo-random number generator by one with MIT/BSD license.
-
-
-v0.9 - Jan 13, 2012
--------------------
-
-New features:
-        * TSIG support in both client and server.
-        * Use of sendmmsg() on Linux 3.0+ (improves performance).
-
-Bugfixes:
-        * Knot was not accepting AXFR-style IXFR with first SOA in a separate
-          packet (i.e. from Power DNS).
-        * Wrong SOA TTL in negative answers.
-        * Wrong max packet size for outgoing transfers (was causing the
-          packets to be malformed).
-        * Wrong handling of WKS record in zone compiler.
-        * Problems with zone bootstrapping.
-
-
-v0.8.1 - Dec 1, 2011
---------------------
-
-Bugfixes:
-	* Handling SPF record.
-	* Wrong text dump of unknown records.
-
-
-v0.8.0 - Beta Release - Nov 3, 2011
------------------------------------
+Knot DNS 1.0.1 (2012-05-09)
+===========================
 
 Features:
-        * AXFR-in/-out
-        * IXFR-in/-out
-        * EDNS0
-        * DNSSEC
-        * NSEC3
-        * IPv6
-        * Runtime reconfiguration
+---------
+ - Implemented jitter to REFRESH/RETRY timers.
+ - Implemented magic bytes for journal.
+ - Improved error messages.
+
+Bugfixes:
+---------
+ - Problem with creating IXFR journal for bootstrapped zone.
+ - Race condition in processing NOTIFY/SOA queries.
+ - Leak when reloading zone with NSEC3.
+ - Processing of APL RR.
+ - TSIG improper assignment of algorithm type.
+
+Knot DNS 1.0.0 (2012-02-29)
+===========================
+
+Features:
+---------
+ - Support for subnets in ACL.
+ - Debug messages enabling in configure.
+ - Optimized memory consuption of zone structures.
+ - NSID support (RFC5001).
+ - Root zone support.
+ - Automatic zone compiling on server start.
+ - Setting user to run Knot under in config file.
+ - Dropping privileges after binding to port 53.
+    + Support for Linux capabilities(7).
+ - Setting source address of outgoing transfers in config file.
+ - Custom PID file.
+ - CNAME loop detection.
+ - Timeout on TCP connections.
+ - Basic defense against DoS attacks.
+
+Bugfixes:
+---------
+ - Memory errors and leaks.
+ - Fixed improper handling of failed IXFR/IN.
+ - Several other minor bugfixes.
+ - Fixed IXFR processing.
+ - Patched URCU so that it compiles on architectures without TLS in
+   compiler (NetBSD, OpenBSD).
+ - Fixed response to DS query at parent zone.
+ - A lot of other bugfixes.
+
+Knot DNS 0.9.1 (2012-01-20)
+===========================
+
+Features:
+---------
+ - RRSet rotation
+
+Improvements:
+-------------
+ - Replaced pseudo-random number generator by one with MIT/BSD
+   license.
+
+Bugfixes:
+---------
+ - Fixed build on BSD.
+ - Fixes in parsing and dumping of zone RR types IPSECKEY, WKS, DLV,
+    APL, NSAP
+
+Knot DNS 0.9.0 (2012-01-13)
+===========================
+
+Features:
+---------
+ - TSIG support in both client and server.
+ - Use of sendmmsg() on Linux 3.0+ (improves performance).
+
+Bugfixes:
+---------
+ - Knot was not accepting AXFR-style IXFR with first SOA in a separate
+    packet (i.e. from Power DNS).
+ - Wrong SOA TTL in negative answers.
+ - Wrong max packet size for outgoing transfers (was causing the
+    packets to be malformed).
+ - Wrong handling of WKS record in zone compiler.
+ - Problems with zone bootstrapping.
+
+Knot DNS 0.8.1 (2011-12-01)
+===========================
+
+Bugfixes:
+---------
+ - Handling SPF record.
+ - Wrong text dump of unknown records.
+
+Knot DNS 0.8.0 (2011-11-03)
+===========================
+
+Features:
+---------
+ - First Public Release
+ - AXFR-in/-out
+ - IXFR-in/-out
+ - EDNS0
+ - DNSSEC
+ - NSEC3
+ - IPv6
+ - Runtime reconfiguration
 
 Known issues:
-        * Missing support for TSIG
-        * Root zone support
-        * NSID support
-        * Other DNS classes than IN
-        * RRSet rotation not implmented
-        * Dynamic update support
-        * IXFR code might be flaky sometimes
-        * IXFR may be slow when too much (10 000+) RRSets are transfered at once
-
-Platforms (tested on):
-	* Linux (2.6.x and newer), FreeBSD 8.2, Mac OS X 10.6, 10.7
+-------------
+ - Missing support for TSIG
+ - Root zone support
+ - NSID support
+ - Other DNS classes than IN
+ - RRSet rotation not implmented
+ - Dynamic update support
+ - IXFR code might be flaky sometimes
+ - IXFR may be slow when too much (10 000+) RRSets are transfered at
+   once
