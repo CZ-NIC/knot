@@ -155,7 +155,7 @@ fail:
 /*!
  * \brief Check if there is a functional KSK and ZSK for each used algorithm.
  *
- * \todo To be moved to libdnssec.
+ * \todo [dnssec] move to library
  */
 static int check_keys_validity(const zone_keyset_t *keyset)
 {
@@ -217,20 +217,18 @@ static int check_keys_validity(const zone_keyset_t *keyset)
 /*!
  * \brief Log information about zone keys.
  */
-static void log_key_info(const zone_keyset_t *keyset, const char *zone_name)
+static void log_key_info(const zone_key_t *key, const char *zone_name)
 {
-	assert(keyset);
+	assert(key);
 	assert(zone_name);
 
-	for (size_t i = 0; i < keyset->count; i++) {
-		const zone_key_t *key = &keyset->keys[i];
-
-		log_zone_str_info(zone_name, "DNSSEC, loaded key %5d, %s, %s, %s",
-		                  dnssec_key_get_keytag(key->key),
-		                  key->is_ksk ? "KSK" : "ZSK",
-		                  key->is_public ? "public" : "not-public",
-		                  key->is_active ? "active" : "inactive");
-	}
+	log_zone_str_info(zone_name, "DNSSEC, loaded key, tag %5d, "
+			  "KSK %s, ZSK %s, public %s, active %s",
+			  dnssec_key_get_keytag(key->key),
+			  key->is_ksk ? "yes" : "no",
+			  key->is_zsk ? "yes" : "no",
+			  key->is_public ? "yes" : "no",
+			  key->is_active ? "yes" : "no");
 }
 
 /*!
@@ -260,9 +258,26 @@ int load_zone_keys(const char *keydir_name, const char *zone_name,
 		return KNOT_ERROR;
 	}
 
-	log_key_info(&keyset, zone_name);
-
 	dnssec_kasp_keyset_t *kasp_keys = dnssec_kasp_zone_get_keys(keyset.kasp_zone);
+	keyset.count = dnssec_kasp_keyset_count(kasp_keys);
+	if (keyset.count == 0) {
+		log_zone_str_error(zone_name, "DNSSEC, no keys are available");
+		free_zone_keys(&keyset);
+		return KNOT_ERROR;
+	}
+
+	keyset.keys = calloc(keyset.count, sizeof(zone_key_t));
+	if (!keyset.keys) {
+		free_zone_keys(&keyset);
+		return KNOT_ENOMEM;
+	}
+
+	for (size_t i = 0; i < keyset.count; i++) {
+		dnssec_kasp_key_t *kasp_key = dnssec_kasp_keyset_at(kasp_keys, i);
+		set_key(kasp_key, &keyset.keys[i]);
+		log_key_info(&keyset.keys[i], zone_name);
+	}
+
 	r = check_keys_validity(&keyset);
 	if (r != KNOT_EOK) {
 		log_zone_str_error(zone_name, "DNSSEC, keys validation failed (%s)",
@@ -271,18 +286,6 @@ int load_zone_keys(const char *keydir_name, const char *zone_name,
 		return KNOT_ERROR;
 	}
 
-	size_t keys_count = dnssec_kasp_keyset_count(kasp_keys);
-	keyset.keys = calloc(keys_count, sizeof(zone_key_t));
-	if (!keyset.keys) {
-		free_zone_keys(&keyset);
-		return KNOT_ENOMEM;
-	}
-
-	keyset.count = keys_count;
-	for (size_t i = 0; i < keys_count; i++) {
-		dnssec_kasp_key_t *kasp_key = dnssec_kasp_keyset_at(kasp_keys, i);
-		set_key(kasp_key, &keyset.keys[i]);
-	}
 
 	r = load_private_keys(keydir_name, &keyset);
 	if (r != KNOT_EOK) {

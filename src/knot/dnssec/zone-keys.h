@@ -36,19 +36,24 @@
 #include "dnssec/kasp.h"
 #include "dnssec/sign.h"
 
+// [dnssec] will be replaced
 typedef struct zone_key {
 	dnssec_key_t *key;
 	dnssec_sign_ctx_t *ctx;
 
 	time_t next_event;
+
 	bool is_ksk;
 	bool is_zsk;
 	bool is_public;
 	bool is_active;
 } zone_key_t;
 
+// [dnssec] will be replaced
 typedef struct {
-	dnssec_kasp_t *kasp; // temporary, should be shared by all zones
+	// [dnssec] temporary, one instance per server
+	dnssec_kasp_t *kasp;
+
 	dnssec_kasp_zone_t *kasp_zone;
 	size_t count;
 	zone_key_t *keys;
