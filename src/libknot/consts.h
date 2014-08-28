@@ -40,7 +40,11 @@
 /*!
  * \brief Often used sizes.
  */
-#define KNOT_RR_HEADER_SIZE 10
+#define KNOT_RR_SIZE_TYPE 2
+#define KNOT_RR_SIZE_CLASS 2
+#define KNOT_RR_SIZE_TTL 4
+#define KNOT_RR_SIZE_RDLEN 2
+#define KNOT_RR_SIZE_HEADER 10
 
 /*!
  * \brief Address family numbers.

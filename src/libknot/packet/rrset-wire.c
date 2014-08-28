@@ -135,52 +135,61 @@ typedef int (*dname_callback_t)(const uint8_t **, size_t *, uint8_t **,
                                 knot_rrset_wire_flags_t, const uint8_t *);
 
 /*!
- * \brief Generic function from processing RDATA with de/compression of dnames.
+ * \brief Processes (copies) other portions of RDATA than dnames.
+ */
+static int process_other(const uint8_t **src, size_t *src_avail,
+                         uint8_t **dst, size_t *dst_avail, int type)
+{
+	size_t to_copy = 0;
+
+	switch (type) {
+	case KNOT_RDATA_WF_NAPTR_HEADER:
+		to_copy = naptr_header_size(src, src_avail);
+		break;
+	case KNOT_RDATA_WF_REMAINDER:
+		to_copy = *src_avail;
+		break;
+	default:
+		/* Fixed size block */
+		assert(type > 0);
+		to_copy = type;
+	}
+
+	if (to_copy > 0) {
+		return write_rdata_fixed(src, src_avail, dst, dst_avail, to_copy);
+	} else {
+		return to_copy;  /* Error code from naptr_header_size() or 0 */
+	}
+}
+
+/*!
+ * \brief Generic function for processing RDATA with de/compression of dnames.
  */
 static int traverse_rdata(const rdata_descriptor_t *desc, const uint8_t **src,
-                          size_t *src_avail, uint8_t **wire, size_t *capacity,
+                          size_t *src_avail, uint8_t **dst, size_t *dst_avail,
                           knot_compr_t *compr, int compr_hint,
                           knot_rrset_wire_flags_t flags, const uint8_t *pkt_wire,
-                          dname_callback_t dname_callback)
+                          dname_callback_t process_dname)
 {
 	int ret = KNOT_EOK;
 
 	for (int i = 0; desc->block_types[i] != KNOT_RDATA_WF_END; i++) {
 		int type = desc->block_types[i];
-		size_t to_copy = 0;
 
-		switch (type) {
-		case KNOT_RDATA_WF_COMPRESSIBLE_DNAME:
-		case KNOT_RDATA_WF_DECOMPRESSIBLE_DNAME:
-		case KNOT_RDATA_WF_FIXED_DNAME:
-			ret = dname_callback(src, src_avail, wire, capacity,
-			                     compr, compr_hint, type, flags,
-			                     pkt_wire);
-			break;
-		case KNOT_RDATA_WF_NAPTR_HEADER:
-			ret = naptr_header_size(src, src_avail);
-			to_copy = ret;
-			break;
-		case KNOT_RDATA_WF_REMAINDER:
-			to_copy = *src_avail;
-			break;
-		default:
-			/* Fixed size block */
-			assert(type > 0);
-			to_copy = type;
-		}
-
-		if (to_copy > 0) {
-			ret = write_rdata_fixed(src, src_avail, wire, capacity,
-			                        to_copy);
+		if (knot_descriptor_item_is_dname(type)) {
+			ret = process_dname(src, src_avail, dst, dst_avail,
+			                    compr, compr_hint, type, flags,
+			                    pkt_wire);
+		} else {
+			ret = process_other(src, src_avail, dst, dst_avail, type);
 		}
 
 		if (ret != KNOT_EOK) {
-			return ret;
+			break;
 		}
 	}
 
-	return KNOT_EOK;
+	return ret;
 }
 
 /*- RRSet to wire ------------------------------------------------------------*/
@@ -189,12 +198,12 @@ static int traverse_rdata(const rdata_descriptor_t *desc, const uint8_t **src,
  * \brief Write RR owner to wire.
  */
 static int write_owner(const knot_rrset_t *rrset,
-                       uint8_t **wire, size_t *capacity,
+                       uint8_t **dst, size_t *dst_avail,
                        knot_compr_t *compr, knot_rrset_wire_flags_t flags)
 {
 	assert(rrset);
-	assert(wire && *wire);
-	assert(capacity);
+	assert(dst && *dst);
+	assert(dst_avail);
 
 	uint16_t owner_pointer = compr_get_ptr(compr, COMPR_HINT_OWNER);
 
@@ -207,34 +216,34 @@ static int write_owner(const knot_rrset_t *rrset,
 		owner_size = knot_dname_size(rrset->owner);
 	}
 
-	if (owner_size > *capacity) {
+	if (owner_size > *dst_avail) {
 		return KNOT_ESPACE;
 	}
 
 	/* Write result */
 
 	if (owner_pointer > 0) {
-		knot_wire_put_pointer(*wire, owner_pointer);
+		knot_wire_put_pointer(*dst, owner_pointer);
 	} else {
-		int written = knot_compr_put_dname(rrset->owner, *wire,
-		                                   dname_max(*capacity), compr);
+		int written = knot_compr_put_dname(rrset->owner, *dst,
+		                                   dname_max(*dst_avail), compr);
 		if (written < 0) {
 			return written;
 		}
 
 		if (flags & KNOT_RRSET_WIRE_CANONICAL) {
 			assert(compr == NULL);
-			knot_dname_to_lower(*wire);
+			knot_dname_to_lower(*dst);
 		}
 
-		compr_set_ptr(compr, COMPR_HINT_OWNER, *wire, written);
+		compr_set_ptr(compr, COMPR_HINT_OWNER, *dst, written);
 		owner_size = written;
 	}
 
 	/* Update buffer */
 
-	*wire += owner_size;
-	*capacity -= owner_size;
+	*dst += owner_size;
+	*dst_avail -= owner_size;
 
 	return KNOT_EOK;
 }
@@ -243,40 +252,40 @@ static int write_owner(const knot_rrset_t *rrset,
  * \brief Write RR type, class, and TTL to wire.
  */
 static int write_fixed_header(const knot_rrset_t *rrset, uint16_t rrset_index,
-                              uint8_t **wire, size_t *capacity)
+                              uint8_t **dst, size_t *dst_avail)
 {
 	assert(rrset);
 	assert(rrset_index < rrset->rrs.rr_count);
-	assert(wire && *wire);
-	assert(capacity);
+	assert(dst && *dst);
+	assert(dst_avail);
 
 	/* Check capacity */
 
-	size_t size = sizeof(uint16_t)  // type
-		    + sizeof(uint16_t)  // class
-		    + sizeof(uint32_t); // ttl
+	size_t size = KNOT_RR_SIZE_TYPE
+	              + KNOT_RR_SIZE_CLASS
+	              + KNOT_RR_SIZE_TTL;
 
-	if (size > *capacity) {
+	if (size > *dst_avail) {
 		return KNOT_ESPACE;
 	}
 
 	/* Write result */
 
 	uint32_t ttl = knot_rdata_ttl(knot_rdataset_at(&rrset->rrs, rrset_index));
-	uint8_t *write = *wire;
+	uint8_t *write = *dst;
 
 	knot_wire_write_u16(write, rrset->type);
-	write += sizeof(uint16_t);
+	write += KNOT_RR_SIZE_TYPE;
 	knot_wire_write_u16(write, rrset->rclass);
-	write += sizeof(uint16_t);
+	write += KNOT_RR_SIZE_CLASS;
 	knot_wire_write_u32(write, ttl);
-	write += sizeof(uint32_t);
-	assert(write == *wire + size);
+	write += KNOT_RR_SIZE_TTL;
+	assert(write == *dst + size);
 
 	/* Update buffer */
 
-	*wire = write;
-	*capacity -= size;
+	*dst = write;
+	*dst_avail -= size;
 
 	return KNOT_EOK;
 }
@@ -341,30 +350,29 @@ static int compress_dname(const uint8_t **src, size_t *src_avail,
  * \brief Write RDLENGTH and RDATA fields of a RR in a wire.
  */
 static int write_rdata(const knot_rrset_t *rrset, uint16_t rrset_index,
-                       uint8_t **wire, size_t *capacity,
+                       uint8_t **dst, size_t *dst_avail,
                        knot_compr_t *compr, knot_rrset_wire_flags_t flags)
 {
 	assert(rrset);
 	assert(rrset_index < rrset->rrs.rr_count);
-	assert(wire && *wire);
-	assert(capacity);
+	assert(dst && *dst);
+	assert(dst_avail);
 
 	const knot_rdata_t *rdata = knot_rdataset_at(&rrset->rrs, rrset_index);
 
 	/* Reserve space for RDLENGTH */
 
-	size_t rdlength_size = sizeof(uint16_t);
-	if (rdlength_size > *capacity) {
+	if (KNOT_RR_SIZE_RDLEN > *dst_avail) {
 		return KNOT_ESPACE;
 	}
 
-	uint8_t *wire_rdlength = *wire;
-	*wire += rdlength_size;
-	*capacity -= rdlength_size;
+	uint8_t *wire_rdlength = *dst;
+	*dst += KNOT_RR_SIZE_RDLEN;
+	*dst_avail -= KNOT_RR_SIZE_RDLEN;
 
 	/* Write RDATA */
 
-	uint8_t *wire_rdata_begin = *wire;
+	uint8_t *wire_rdata_begin = *dst;
 	int compr_hint = COMPR_HINT_RDATA + rrset_index;
 
 	const uint8_t *src = knot_rdata_data(rdata);
@@ -373,8 +381,8 @@ static int write_rdata(const knot_rrset_t *rrset, uint16_t rrset_index,
 		/* Only write non-empty data. */
 		const rdata_descriptor_t *desc =
 			knot_get_rdata_descriptor(rrset->type);
-		int ret = traverse_rdata(desc, &src, &src_avail, wire,
-		                         capacity, compr, compr_hint, flags,
+		int ret = traverse_rdata(desc, &src, &src_avail, dst,
+		                         dst_avail, compr, compr_hint, flags,
 		                         NULL, compress_dname);
 		if (ret != KNOT_EOK) {
 			return ret;
@@ -388,7 +396,7 @@ static int write_rdata(const knot_rrset_t *rrset, uint16_t rrset_index,
 
 	/* Write final RDLENGTH */
 
-	size_t rdlength = *wire - wire_rdata_begin;
+	size_t rdlength = *dst - wire_rdata_begin;
 	knot_wire_write_u16(wire_rdlength, rdlength);
 
 	return KNOT_EOK;
@@ -398,22 +406,22 @@ static int write_rdata(const knot_rrset_t *rrset, uint16_t rrset_index,
  * \brief Write one RR from a RR Set to wire.
  */
 static int write_rr(const knot_rrset_t *rrset, uint16_t rrset_index,
-                    uint8_t **wire, size_t *capacity, knot_compr_t *compr,
+                    uint8_t **dst, size_t *dst_avail, knot_compr_t *compr,
                     knot_rrset_wire_flags_t flags)
 {
 	int ret;
 
-	ret = write_owner(rrset, wire, capacity, compr, flags);
+	ret = write_owner(rrset, dst, dst_avail, compr, flags);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
 
-	ret = write_fixed_header(rrset, rrset_index, wire, capacity);
+	ret = write_fixed_header(rrset, rrset_index, dst, dst_avail);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
 
-	ret = write_rdata(rrset, rrset_index, wire, capacity, compr, flags);
+	ret = write_rdata(rrset, rrset_index, dst, dst_avail, compr, flags);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
@@ -476,13 +484,12 @@ static int decompress_dname(const uint8_t **src, size_t *src_avail,
 	bool decompress = (type == KNOT_RDATA_WF_COMPRESSIBLE_DNAME
 	                   || type == KNOT_RDATA_WF_DECOMPRESSIBLE_DNAME);
 
-	int ret = knot_dname_wire_check(*src, *src + *src_avail, pkt_wire);
-	if (ret <= 0) {
+	int read = knot_dname_wire_check(*src, *src + *src_avail, pkt_wire);
+	if (read <= 0) {
 		return KNOT_EMALF;
 	}
 
-	size_t dname_size = ret;
-	int written = dname_size;
+	int written = read;
 
 	if (decompress) {
 		int ret = knot_dname_unpack(*dst, *src, *dst_avail, pkt_wire);
@@ -490,10 +497,10 @@ static int decompress_dname(const uint8_t **src, size_t *src_avail,
 			return ret;
 		}
 		written = ret;
-	} else if (dname_size > *dst_avail) {
+	} else if (read > *dst_avail) {
 		return KNOT_ESPACE;
 	} else {
-		memcpy(*dst, *src, dname_size);
+		memcpy(*dst, *src, read);
 	}
 
 	/* Post-processing */
@@ -507,8 +514,8 @@ static int decompress_dname(const uint8_t **src, size_t *src_avail,
 	*dst += written;
 	*dst_avail -= written;
 
-	*src += dname_size;
-	*src_avail -= dname_size;
+	*src += read;
+	*src_avail -= read;
 
 	return KNOT_EOK;
 }
@@ -543,13 +550,15 @@ static int parse_rdata(const uint8_t *pkt_wire, size_t *pos, size_t pkt_size,
 		}
 	}
 
-	size_t dst_avail = rdlength + KNOT_DNAME_MAXLEN;
+	/* Buffer to parse RDATA into. */
+	size_t dst_avail = rdlength + 2 * KNOT_DNAME_MAXLEN;
 	uint8_t rdata_buffer[dst_avail];
 	memset(rdata_buffer, 0, dst_avail);
+	uint8_t *dst = rdata_buffer;
 
+	/* Source of the RDATA. */
 	const uint8_t *src = pkt_wire + *pos;
 	size_t src_avail = rdlength;
-	uint8_t *dst = rdata_buffer;
 
 	int ret = traverse_rdata(desc, &src, &src_avail, &dst, &dst_avail,
 	                         NULL, 0, KNOT_RRSET_WIRE_NONE, pkt_wire,
@@ -561,10 +570,10 @@ static int parse_rdata(const uint8_t *pkt_wire, size_t *pos, size_t pkt_size,
 	assert(src_avail == 0);
 	*pos += rdlength;
 
-	size_t dst_size = dst - rdata_buffer;
-	assert(dst_size == rdlength + KNOT_DNAME_MAXLEN - dst_avail);
+	size_t written = dst - rdata_buffer;
+	assert(written == rdlength + KNOT_DNAME_MAXLEN - dst_avail);
 
-	return knot_rrset_add_rdata(rrset, rdata_buffer, dst_size, ttl, mm);
+	return knot_rrset_add_rdata(rrset, rdata_buffer, written, ttl, mm);
 }
 
 /*!
@@ -586,17 +595,19 @@ static int parse_header(const uint8_t *pkt_wire, size_t *pos,
 	}
 	knot_dname_to_lower(owner);
 
-	if (pkt_size - *pos < KNOT_RR_HEADER_SIZE) {
+	if (pkt_size - *pos < KNOT_RR_SIZE_HEADER) {
 		knot_dname_free(&owner, mm);
 		return KNOT_EMALF;
 	}
 
 	uint16_t type = knot_wire_read_u16(pkt_wire + *pos);
-	uint16_t rclass = knot_wire_read_u16(pkt_wire + *pos + sizeof(uint16_t));
-	*ttl = knot_wire_read_u32(pkt_wire + *pos + 2 * sizeof(uint16_t));
-	*rdlen = knot_wire_read_u16(pkt_wire + *pos + 4 * sizeof(uint16_t));
-
-	*pos += KNOT_RR_HEADER_SIZE;
+	*pos += KNOT_RR_SIZE_TYPE;
+	uint16_t rclass = knot_wire_read_u16(pkt_wire + *pos);
+	*pos += KNOT_RR_SIZE_CLASS;
+	*ttl = knot_wire_read_u32(pkt_wire + *pos);
+	*pos += KNOT_RR_SIZE_TTL;
+	*rdlen = knot_wire_read_u16(pkt_wire + *pos);
+	*pos += KNOT_RR_SIZE_RDLEN;
 
 	if (pkt_size - *pos < *rdlen) {
 		knot_dname_free(&owner, mm);
@@ -619,8 +630,7 @@ int knot_rrset_rr_from_wire(const uint8_t *pkt_wire, size_t *pos,
 	uint16_t rdlen = 0;
 	int ret = parse_header(pkt_wire, pos, pkt_size, mm, rrset, &ttl, &rdlen);
 	if (ret == KNOT_EOK) {
-		ret = parse_rdata(pkt_wire, pos, pkt_size, mm, ttl, rdlen,
-		                  rrset);
+		ret = parse_rdata(pkt_wire, pos, pkt_size, mm, ttl, rdlen, rrset);
 		if (ret != KNOT_EOK) {
 			knot_rrset_clear(rrset, mm);
 		}
