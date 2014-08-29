@@ -690,7 +690,7 @@ int ixfr_process_answer(knot_pkt_t *pkt, struct answer_data *adata)
 	
 	/* Check for AXFR-style IXFR. */
 	if (ixfr_is_axfr(pkt)) {
-		IXFRIN_LOG(LOG_NOTICE, "Fallback to AXFR");
+		IXFRIN_LOG(LOG_NOTICE, "fallback to AXFR");
 		return axfr_answer_process(pkt, adata);
 	}
 	
