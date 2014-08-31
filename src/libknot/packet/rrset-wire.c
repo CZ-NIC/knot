@@ -572,6 +572,26 @@ static bool allow_zero_rdata(const knot_rrset_t *rr, const rdata_descriptor_t *d
 }
 
 /*!
+ * \brief Get above-maximal approximation of decompressed RDATA size.
+ */
+static size_t rdata_decompress_maxsize(uint16_t rdlength,
+                                       const rdata_descriptor_t *desc)
+{
+	size_t result = rdlength;
+
+	for (int i = 0; desc->block_types[i] != KNOT_RDATA_WF_END; i++) {
+		int block_type = desc->block_types[i];
+		if (block_type == KNOT_RDATA_WF_COMPRESSIBLE_DNAME ||
+		    block_type == KNOT_RDATA_WF_DECOMPRESSIBLE_DNAME
+		) {
+			result += KNOT_DNAME_MAXLEN;
+		}
+	}
+
+	return result;
+}
+
+/*!
  * \brief Parse RDATA part of one RR from packet wireformat.
  */
 static int parse_rdata(const uint8_t *pkt_wire, size_t *pos, size_t pkt_size,
@@ -599,32 +619,34 @@ static int parse_rdata(const uint8_t *pkt_wire, size_t *pos, size_t pkt_size,
 		}
 	}
 
-	/* Buffer to parse RDATA into. */
-	size_t dst_avail = rdlength + 2 * KNOT_DNAME_MAXLEN;
-	uint8_t rdata_buffer[dst_avail];
-	memset(rdata_buffer, 0, dst_avail);
-	uint8_t *dst = rdata_buffer;
+	/* Source and destination buffer */
 
-	/* Source of the RDATA. */
 	const uint8_t *src = pkt_wire + *pos;
 	size_t src_avail = rdlength;
 
+	size_t dst_avail = rdata_decompress_maxsize(rdlength, desc);
+	uint8_t rdata_buffer[dst_avail];
+	uint8_t *dst = rdata_buffer;
+
+	/* Parse RDATA */
+
 	dname_config_t dname_cfg = {
-		.process = decompress_rdata_dname,
+		.write_cb = decompress_rdata_dname,
 		.pkt_wire = pkt_wire
 	};
 
 	int ret = rdata_traverse(&src, &src_avail, &dst, &dst_avail,
-	                         desc, &dname_cfg, 0);
+	                         desc, &dname_cfg, KNOT_RRSET_WIRE_NONE);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
 
 	assert(src_avail == 0);
-	*pos += rdlength;
 
+	/* Update pointers and write result */
+
+	*pos += rdlength;
 	size_t written = dst - rdata_buffer;
-	assert(written == rdlength + 2 * KNOT_DNAME_MAXLEN - dst_avail);
 
 	return knot_rrset_add_rdata(rrset, rdata_buffer, written, ttl, mm);
 }
