@@ -641,7 +641,9 @@ static int parse_rdata(const uint8_t *pkt_wire, size_t *pos, size_t pkt_size,
 		return ret;
 	}
 
-	assert(src_avail == 0);
+	if (src_avail > 0) {
+		return KNOT_EMALF;
+	}
 
 	/* Update pointers and write result */
 
