@@ -635,7 +635,7 @@ static int parse_rdata(const uint8_t *pkt_wire, size_t *pos, size_t pkt_size,
 int knot_rrset_rr_from_wire(const uint8_t *pkt_wire, size_t *pos,
                             size_t pkt_size, mm_ctx_t *mm, knot_rrset_t *rrset)
 {
-	if (!pkt_wire || !pos || !rrset) {
+	if (!pkt_wire || !pos || !rrset || *pos > pkt_size) {
 		return KNOT_EINVAL;
 	}
 
