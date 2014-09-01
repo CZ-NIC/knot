@@ -15,23 +15,15 @@
  */
 
 #include <assert.h>
-#include <inttypes.h>
 #include <stdbool.h>
 #include <stdint.h>
-#include <stdio.h>
-#include <stdlib.h>
 
 #include "libknot/rrset.h"
 
 #include "libknot/consts.h"
 #include "libknot/common.h"
 #include "libknot/mempattern.h"
-#include "libknot/rrset-dump.h"
 #include "libknot/descriptor.h"
-#include "common/debug.h"
-#include "libknot/util/utils.h"
-#include "libknot/packet/wire.h"
-#include "libknot/packet/pkt.h"
 #include "libknot/dname.h"
 
 knot_rrset_t *knot_rrset_new(const knot_dname_t *owner, uint16_t type,
