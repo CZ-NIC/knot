@@ -67,8 +67,6 @@ static void dump_string(rrset_dump_params_t *p, const char *str)
 {
 	size_t in_len = strlen(str);
 
-	p->ret = -1;
-
 	// Check input size (+ 1 termination).
 	if (in_len >= p->out_max) {
 		return;
@@ -91,8 +89,6 @@ static void wire_num8_to_str(rrset_dump_params_t *p)
 	uint8_t data = *(p->in);
 	size_t  in_len = sizeof(data);
 	size_t  out_len = 0;
-
-	p->ret = -1;
 
 	// Check input size.
 	if (in_len > p->in_max) {
@@ -120,8 +116,6 @@ static void wire_num16_to_str(rrset_dump_params_t *p)
 	uint16_t data;
 	size_t   in_len = sizeof(data);
 	size_t   out_len = 0;
-
-	p->ret = -1;
 
 	// Check input size.
 	if (in_len > p->in_max) {
@@ -153,8 +147,6 @@ static void wire_num32_to_str(rrset_dump_params_t *p)
 	size_t   in_len = sizeof(data);
 	size_t   out_len = 0;
 
-	p->ret = -1;
-
 	// Check input size.
 	if (in_len > p->in_max) {
 		return;
@@ -185,8 +177,6 @@ static void wire_num48_to_str(rrset_dump_params_t *p)
 	size_t   in_len = 6;
 	size_t   out_len = 0;
 
-	p->ret = -1;
-
 	// Check input size.
 	if (in_len > p->in_max) {
 		return;
@@ -216,8 +206,6 @@ static void wire_ipv4_to_str(rrset_dump_params_t *p)
 	struct in_addr addr4;
 	size_t in_len = sizeof(addr4.s_addr);
 	size_t out_len = 0;
-
-	p->ret = -1;
 
 	// Check input size.
 	if (in_len > p->in_max) {
@@ -250,8 +238,6 @@ static void wire_ipv6_to_str(rrset_dump_params_t *p)
 	size_t in_len = sizeof(addr6.s6_addr);
 	size_t out_len = 0;
 
-	p->ret = -1;
-
 	// Check input size.
 	if (in_len > p->in_max) {
 		return;
@@ -283,8 +269,6 @@ static void wire_type_to_str(rrset_dump_params_t *p)
 	uint16_t data;
 	size_t   in_len = sizeof(data);
 	size_t   out_len = 0;
-
-	p->ret = -1;
 
 	// Check input size.
 	if (in_len > p->in_max) {
@@ -365,8 +349,6 @@ static void wire_data_encode_to_str(rrset_dump_params_t *p,
 	int    ret;
 	size_t in_len = p->in_max;
 
-	p->ret = -1;
-
 	// One-line vs multi-line mode.
 	if (p->style->wrap == false) {
 		// Encode data directly to the output.
@@ -441,8 +423,6 @@ static void wire_len_data_encode_to_str(rrset_dump_params_t *p,
                                         const char          *empty_str)
 {
 	size_t in_len;
-
-	p->ret = -1;
 
 	// First len_len bytes are data length.
 	if (p->in_max < len_len) {
@@ -526,8 +506,6 @@ static void wire_len_data_encode_to_str(rrset_dump_params_t *p,
 
 static void wire_text_to_str(rrset_dump_params_t *p)
 {
-	p->ret = -1;
-
 	// First byte is string length.
 	if (p->in_max < 1) {
 		return;
@@ -607,8 +585,6 @@ static void wire_timestamp_to_str(rrset_dump_params_t *p)
 	size_t   in_len = sizeof(data);
 	size_t   out_len = 0;
 	int      ret;
-
-	p->ret = -1;
 
 	// Check input size.
 	if (in_len > p->in_max) {
@@ -717,8 +693,6 @@ static void wire_ttl_to_str(rrset_dump_params_t *p)
 	size_t   out_len = 0;
 	int      ret;
 
-	p->ret = -1;
-
 	// Check input size.
 	if (in_len > p->in_max) {
 		return;
@@ -760,8 +734,6 @@ static void wire_bitmap_to_str(rrset_dump_params_t *p)
 	size_t i = 0;
 	size_t in_len = p->in_max;
 	size_t out_len = 0;
-
-	p->ret = -1;
 
 	// Loop over bitmap window array (can be empty).
 	while (i < in_len) {
@@ -820,8 +792,6 @@ static void wire_bitmap_to_str(rrset_dump_params_t *p)
 
 static void wire_dname_to_str(rrset_dump_params_t *p)
 {
-	p->ret = -1;
-
 	int in_len = knot_dname_size(p->in);
 	if (in_len < 0) {
 		return;
@@ -860,8 +830,6 @@ static void wire_apl_to_str(rrset_dump_params_t *p)
 	struct in6_addr addr6;
 	int    ret;
 	size_t out_len = 0;
-
-	p->ret = -1;
 
 	// Input check: family(2B) + prefix(1B) + afdlen(1B).
 	if (p->in_max < 4) {
@@ -956,8 +924,6 @@ static void wire_loc_to_str(rrset_dump_params_t *p)
 {
 	int    ret;
 	size_t in_len = 16;
-
-	p->ret = -1;
 
 	// Check input size (1 LOC = 16 B).
 	if (in_len > p->in_max) {
@@ -1068,8 +1034,6 @@ static void wire_loc_to_str(rrset_dump_params_t *p)
 
 static void wire_gateway_to_str(rrset_dump_params_t *p)
 {
-	p->ret = -1;
-
 	// Input check: type(1B) + algo(1B).
 	if (p->in_max < 2) {
 		return;
@@ -1146,8 +1110,6 @@ static void wire_gateway_to_str(rrset_dump_params_t *p)
 
 static void wire_l64_to_str(rrset_dump_params_t *p)
 {
-	p->ret = -1;
-
 	// Check input size (64-bit identifier).
 	if (p->in_max != 8) {
 		return;
@@ -1179,8 +1141,6 @@ static void wire_l64_to_str(rrset_dump_params_t *p)
 
 static void wire_eui_to_str(rrset_dump_params_t *p)
 {
-	p->ret = -1;
-
 	// Data can't have zero length.
 	if (p->in_max < 2) {
 		return;
@@ -1216,8 +1176,6 @@ static void wire_rcode_to_str(rrset_dump_params_t *p)
 	size_t   in_len = sizeof(data);
 	const char *rcode_str = "NULL";
 
-	p->ret = -1;
-
 	// Check input size.
 	if (in_len > p->in_max) {
 		return;
@@ -1249,8 +1207,6 @@ static void wire_unknown_to_str(rrset_dump_params_t *p)
 	int    ret;
 	size_t in_len = p->in_max;
 	size_t out_len = 0;
-
-	p->ret = -1;
 
 	// Write unknown length header.
 	if (in_len > 0) {
@@ -1307,60 +1263,55 @@ static void dnskey_info(const uint8_t *rdata,
 	}
 }
 
-#define DUMP_PARAMS	const uint8_t *in, const size_t in_len, char *out, \
-			const size_t out_max, const knot_dump_style_t *style
-#define DUMP_INIT	rrset_dump_params_t p = { .style = style, .in = in, \
-			.in_max = in_len, .out = out, .out_max = out_max };
-#define	DUMP_END	return (p.in_max == 0 ? (int)p.total : KNOT_EPARSEFAIL);
+#define DUMP_PARAMS	rrset_dump_params_t *const p
+#define	DUMP_END	return (p->in_max == 0 ? (int)p->total : KNOT_EPARSEFAIL);
 
-#define CHECK_RET(p)	if (p.ret != 0) return -1;
+#define CHECK_RET(p)	if (p->ret != 0) return -1;
 
-#define WRAP_INIT	dump_string(&p, "(" BLOCK_INDENT); CHECK_RET(p);
-#define WRAP_END	dump_string(&p, BLOCK_INDENT ")"); CHECK_RET(p);
-#define WRAP_LINE	dump_string(&p, BLOCK_INDENT); CHECK_RET(p);
+#define WRAP_INIT	dump_string(p, "(" BLOCK_INDENT); CHECK_RET(p);
+#define WRAP_END	dump_string(p, BLOCK_INDENT ")"); CHECK_RET(p);
+#define WRAP_LINE	dump_string(p, BLOCK_INDENT); CHECK_RET(p);
 
-#define COMMENT(s)	if (p.style->verbose) { \
-			    dump_string(&p, " ; "); CHECK_RET(p); \
-			    dump_string(&p, s); CHECK_RET(p); \
+#define COMMENT(s)	if (p->style->verbose) { \
+			    dump_string(p, " ; "); CHECK_RET(p); \
+			    dump_string(p, s); CHECK_RET(p); \
 			}
 
-#define DUMP_SPACE	dump_string(&p, " "); CHECK_RET(p);
-#define DUMP_NUM8	wire_num8_to_str(&p); CHECK_RET(p);
-#define DUMP_NUM16	wire_num16_to_str(&p); CHECK_RET(p);
-#define DUMP_NUM32	wire_num32_to_str(&p); CHECK_RET(p);
-#define DUMP_NUM48	wire_num48_to_str(&p); CHECK_RET(p);
-#define DUMP_DNAME	wire_dname_to_str(&p); CHECK_RET(p);
-#define DUMP_TIME	wire_ttl_to_str(&p); CHECK_RET(p);
-#define DUMP_TIMESTAMP	wire_timestamp_to_str(&p); CHECK_RET(p);
-#define DUMP_IPV4	wire_ipv4_to_str(&p); CHECK_RET(p);
-#define DUMP_IPV6	wire_ipv6_to_str(&p); CHECK_RET(p);
-#define DUMP_TYPE	wire_type_to_str(&p); CHECK_RET(p);
-#define DUMP_HEX	wire_data_encode_to_str(&p, &hex_encode, \
+#define DUMP_SPACE	dump_string(p, " "); CHECK_RET(p);
+#define DUMP_NUM8	wire_num8_to_str(p); CHECK_RET(p);
+#define DUMP_NUM16	wire_num16_to_str(p); CHECK_RET(p);
+#define DUMP_NUM32	wire_num32_to_str(p); CHECK_RET(p);
+#define DUMP_NUM48	wire_num48_to_str(p); CHECK_RET(p);
+#define DUMP_DNAME	wire_dname_to_str(p); CHECK_RET(p);
+#define DUMP_TIME	wire_ttl_to_str(p); CHECK_RET(p);
+#define DUMP_TIMESTAMP	wire_timestamp_to_str(p); CHECK_RET(p);
+#define DUMP_IPV4	wire_ipv4_to_str(p); CHECK_RET(p);
+#define DUMP_IPV6	wire_ipv6_to_str(p); CHECK_RET(p);
+#define DUMP_TYPE	wire_type_to_str(p); CHECK_RET(p);
+#define DUMP_HEX	wire_data_encode_to_str(p, &hex_encode, \
 				&hex_encode_alloc); CHECK_RET(p);
-#define DUMP_BASE64	wire_data_encode_to_str(&p, &base64_encode, \
+#define DUMP_BASE64	wire_data_encode_to_str(p, &base64_encode, \
 				&base64_encode_alloc); CHECK_RET(p);
-#define DUMP_HASH	wire_len_data_encode_to_str(&p, &base32hex_encode, \
+#define DUMP_HASH	wire_len_data_encode_to_str(p, &base32hex_encode, \
 				1, false, ""); CHECK_RET(p);
-#define DUMP_SALT	wire_len_data_encode_to_str(&p, &hex_encode, \
+#define DUMP_SALT	wire_len_data_encode_to_str(p, &hex_encode, \
 				1, false, "-"); CHECK_RET(p);
-#define DUMP_TSIG_DGST	wire_len_data_encode_to_str(&p, &base64_encode, \
+#define DUMP_TSIG_DGST	wire_len_data_encode_to_str(p, &base64_encode, \
 				2, true, ""); CHECK_RET(p);
-#define DUMP_TSIG_DATA	wire_len_data_encode_to_str(&p, &hex_encode, \
+#define DUMP_TSIG_DATA	wire_len_data_encode_to_str(p, &hex_encode, \
 				2, true, ""); CHECK_RET(p);
-#define DUMP_TEXT	wire_text_to_str(&p); CHECK_RET(p);
-#define DUMP_BITMAP	wire_bitmap_to_str(&p); CHECK_RET(p);
-#define DUMP_APL	wire_apl_to_str(&p); CHECK_RET(p);
-#define DUMP_LOC	wire_loc_to_str(&p); CHECK_RET(p);
-#define DUMP_GATEWAY	wire_gateway_to_str(&p); CHECK_RET(p);
-#define DUMP_L64	wire_l64_to_str(&p); CHECK_RET(p);
-#define DUMP_EUI	wire_eui_to_str(&p); CHECK_RET(p);
-#define DUMP_RCODE	wire_rcode_to_str(&p); CHECK_RET(p);
-#define DUMP_UNKNOWN	wire_unknown_to_str(&p); CHECK_RET(p);
+#define DUMP_TEXT	wire_text_to_str(p); CHECK_RET(p);
+#define DUMP_BITMAP	wire_bitmap_to_str(p); CHECK_RET(p);
+#define DUMP_APL	wire_apl_to_str(p); CHECK_RET(p);
+#define DUMP_LOC	wire_loc_to_str(p); CHECK_RET(p);
+#define DUMP_GATEWAY	wire_gateway_to_str(p); CHECK_RET(p);
+#define DUMP_L64	wire_l64_to_str(p); CHECK_RET(p);
+#define DUMP_EUI	wire_eui_to_str(p); CHECK_RET(p);
+#define DUMP_RCODE	wire_rcode_to_str(p); CHECK_RET(p);
+#define DUMP_UNKNOWN	wire_unknown_to_str(p); CHECK_RET(p);
 
 static int dump_a(DUMP_PARAMS)
 {
-	DUMP_INIT;
-
 	DUMP_IPV4;
 
 	DUMP_END;
@@ -1368,8 +1319,6 @@ static int dump_a(DUMP_PARAMS)
 
 static int dump_ns(DUMP_PARAMS)
 {
-	DUMP_INIT;
-
 	DUMP_DNAME;
 
 	DUMP_END;
@@ -1377,9 +1326,7 @@ static int dump_ns(DUMP_PARAMS)
 
 static int dump_soa(DUMP_PARAMS)
 {
-	DUMP_INIT;
-
-	if (p.style->wrap) {
+	if (p->style->wrap) {
 		DUMP_DNAME; DUMP_SPACE;
 		DUMP_DNAME; DUMP_SPACE; WRAP_INIT;
 		DUMP_NUM32; COMMENT("serial"); WRAP_LINE;
@@ -1402,8 +1349,6 @@ static int dump_soa(DUMP_PARAMS)
 
 static int dump_hinfo(DUMP_PARAMS)
 {
-	DUMP_INIT;
-
 	DUMP_TEXT; DUMP_SPACE;
 	DUMP_TEXT;
 
@@ -1412,8 +1357,6 @@ static int dump_hinfo(DUMP_PARAMS)
 
 static int dump_minfo(DUMP_PARAMS)
 {
-	DUMP_INIT;
-
 	DUMP_DNAME; DUMP_SPACE;
 	DUMP_DNAME;
 
@@ -1422,8 +1365,6 @@ static int dump_minfo(DUMP_PARAMS)
 
 static int dump_mx(DUMP_PARAMS)
 {
-	DUMP_INIT;
-
 	DUMP_NUM16; DUMP_SPACE;
 	DUMP_DNAME;
 
@@ -1432,13 +1373,11 @@ static int dump_mx(DUMP_PARAMS)
 
 static int dump_txt(DUMP_PARAMS)
 {
-	DUMP_INIT;
-
 	// First text string.
 	DUMP_TEXT;
 
 	// Other text strings if any.
-	while (p.in_max > 0) {
+	while (p->in_max > 0) {
 		DUMP_SPACE; DUMP_TEXT;
 	}
 
@@ -1447,11 +1386,9 @@ static int dump_txt(DUMP_PARAMS)
 
 static int dump_dnskey(DUMP_PARAMS)
 {
-	DUMP_INIT;
-
-	if (p.style->wrap) {
+	if (p->style->wrap) {
 		char info[512] = "";
-		dnskey_info(in, in_len, info, sizeof(info));
+		dnskey_info(p->in, p->in_max, info, sizeof(info));
 
 		DUMP_NUM16; DUMP_SPACE;
 		DUMP_NUM8;  DUMP_SPACE;
@@ -1470,8 +1407,6 @@ static int dump_dnskey(DUMP_PARAMS)
 
 static int dump_aaaa(DUMP_PARAMS)
 {
-	DUMP_INIT;
-
 	DUMP_IPV6;
 
 	DUMP_END;
@@ -1479,8 +1414,6 @@ static int dump_aaaa(DUMP_PARAMS)
 
 static int dump_loc(DUMP_PARAMS)
 {
-	DUMP_INIT;
-
 	DUMP_LOC;
 
 	DUMP_END;
@@ -1488,8 +1421,6 @@ static int dump_loc(DUMP_PARAMS)
 
 static int dump_srv(DUMP_PARAMS)
 {
-	DUMP_INIT;
-
 	DUMP_NUM16; DUMP_SPACE;
 	DUMP_NUM16; DUMP_SPACE;
 	DUMP_NUM16; DUMP_SPACE;
@@ -1500,8 +1431,6 @@ static int dump_srv(DUMP_PARAMS)
 
 static int dump_naptr(DUMP_PARAMS)
 {
-	DUMP_INIT;
-
 	DUMP_NUM16; DUMP_SPACE;
 	DUMP_NUM16; DUMP_SPACE;
 	DUMP_TEXT;  DUMP_SPACE;
@@ -1514,9 +1443,7 @@ static int dump_naptr(DUMP_PARAMS)
 
 static int dump_cert(DUMP_PARAMS)
 {
-	DUMP_INIT;
-
-	if (p.style->wrap) {
+	if (p->style->wrap) {
 		DUMP_NUM16;  DUMP_SPACE;
 		DUMP_NUM16;  DUMP_SPACE;
 		DUMP_NUM8;   DUMP_SPACE; WRAP_INIT;
@@ -1534,11 +1461,9 @@ static int dump_cert(DUMP_PARAMS)
 
 static int dump_apl(DUMP_PARAMS)
 {
-	DUMP_INIT;
-
 	// Print list of APLs (empty list is allowed).
-	while (p.in_max > 0) {
-		if (p.total > 0) {
+	while (p->in_max > 0) {
+		if (p->total > 0) {
 			DUMP_SPACE;
 		}
 		DUMP_APL;
@@ -1549,9 +1474,7 @@ static int dump_apl(DUMP_PARAMS)
 
 static int dump_ds(DUMP_PARAMS)
 {
-	DUMP_INIT;
-
-	if (p.style->wrap) {
+	if (p->style->wrap) {
 		DUMP_NUM16; DUMP_SPACE;
 		DUMP_NUM8;  DUMP_SPACE;
 		DUMP_NUM8;  DUMP_SPACE; WRAP_INIT;
@@ -1569,9 +1492,7 @@ static int dump_ds(DUMP_PARAMS)
 
 static int dump_sshfp(DUMP_PARAMS)
 {
-	DUMP_INIT;
-
-	if (p.style->wrap) {
+	if (p->style->wrap) {
 		DUMP_NUM8; DUMP_SPACE;
 		DUMP_NUM8; DUMP_SPACE; WRAP_INIT;
 		DUMP_HEX;
@@ -1587,9 +1508,7 @@ static int dump_sshfp(DUMP_PARAMS)
 
 static int dump_ipseckey(DUMP_PARAMS)
 {
-	DUMP_INIT;
-
-	if (p.style->wrap) {
+	if (p->style->wrap) {
 		DUMP_NUM8; DUMP_SPACE; WRAP_INIT;
 		DUMP_GATEWAY;
 		WRAP_END;
@@ -1603,9 +1522,7 @@ static int dump_ipseckey(DUMP_PARAMS)
 
 static int dump_rrsig(DUMP_PARAMS)
 {
-	DUMP_INIT;
-
-	if (p.style->wrap) {
+	if (p->style->wrap) {
 		DUMP_TYPE;   DUMP_SPACE;
 		DUMP_NUM8;   DUMP_SPACE;
 		DUMP_NUM8;   DUMP_SPACE;
@@ -1633,8 +1550,6 @@ static int dump_rrsig(DUMP_PARAMS)
 
 static int dump_nsec(DUMP_PARAMS)
 {
-	DUMP_INIT;
-
 	DUMP_DNAME; DUMP_SPACE;
 	DUMP_BITMAP;
 
@@ -1643,9 +1558,7 @@ static int dump_nsec(DUMP_PARAMS)
 
 static int dump_dhcid(DUMP_PARAMS)
 {
-	DUMP_INIT;
-
-	if (p.style->wrap) {
+	if (p->style->wrap) {
 		WRAP_INIT;
 		DUMP_BASE64;
 		WRAP_END;
@@ -1658,9 +1571,7 @@ static int dump_dhcid(DUMP_PARAMS)
 
 static int dump_nsec3(DUMP_PARAMS)
 {
-	DUMP_INIT;
-
-	if (p.style->wrap) {
+	if (p->style->wrap) {
 		DUMP_NUM8;   DUMP_SPACE;
 		DUMP_NUM8;   DUMP_SPACE;
 		DUMP_NUM16;  DUMP_SPACE;
@@ -1682,8 +1593,6 @@ static int dump_nsec3(DUMP_PARAMS)
 
 static int dump_nsec3param(DUMP_PARAMS)
 {
-	DUMP_INIT;
-
 	DUMP_NUM8;  DUMP_SPACE;
 	DUMP_NUM8;  DUMP_SPACE;
 	DUMP_NUM16; DUMP_SPACE;
@@ -1694,9 +1603,7 @@ static int dump_nsec3param(DUMP_PARAMS)
 
 static int dump_tlsa(DUMP_PARAMS)
 {
-	DUMP_INIT;
-
-	if (p.style->wrap) {
+	if (p->style->wrap) {
 		DUMP_NUM8; DUMP_SPACE;
 		DUMP_NUM8; DUMP_SPACE;
 		DUMP_NUM8; DUMP_SPACE; WRAP_INIT;
@@ -1714,8 +1621,6 @@ static int dump_tlsa(DUMP_PARAMS)
 
 static int dump_l64(DUMP_PARAMS)
 {
-	DUMP_INIT;
-
 	DUMP_NUM16; DUMP_SPACE;
 	DUMP_L64;
 
@@ -1724,8 +1629,6 @@ static int dump_l64(DUMP_PARAMS)
 
 static int dump_l32(DUMP_PARAMS)
 {
-	DUMP_INIT;
-
 	DUMP_NUM16; DUMP_SPACE;
 	DUMP_IPV4;
 
@@ -1734,8 +1637,6 @@ static int dump_l32(DUMP_PARAMS)
 
 static int dump_eui(DUMP_PARAMS)
 {
-	DUMP_INIT;
-
 	DUMP_EUI;
 
 	DUMP_END;
@@ -1743,9 +1644,7 @@ static int dump_eui(DUMP_PARAMS)
 
 static int dump_tsig(DUMP_PARAMS)
 {
-	DUMP_INIT;
-
-	if (p.style->wrap) {
+	if (p->style->wrap) {
 		DUMP_DNAME; DUMP_SPACE;
 		DUMP_NUM48; DUMP_SPACE;
 		DUMP_NUM16; DUMP_SPACE; WRAP_INIT;
@@ -1769,9 +1668,7 @@ static int dump_tsig(DUMP_PARAMS)
 
 static int dump_unknown(DUMP_PARAMS)
 {
-	DUMP_INIT;
-
-	if (p.style->wrap) {
+	if (p->style->wrap) {
 		WRAP_INIT;
 		DUMP_UNKNOWN;
 		WRAP_END;
@@ -1796,6 +1693,16 @@ int knot_rrset_txt_dump_data(const knot_rrset_t      *rrset,
 	uint8_t *data = knot_rdata_data(rr_data);
 	uint16_t data_len = knot_rdata_rdlen(rr_data);
 
+	rrset_dump_params_t p = {
+		.style = style,
+		.in = data,
+		.in_max = data_len,
+		.out = dst,
+		.out_max = maxlen,
+		.total = 0,
+		.ret = -1
+	};
+
 	int ret = 0;
 
 	if (data_len == 0 && rrset->rclass != KNOT_CLASS_IN) {
@@ -1804,100 +1711,100 @@ int knot_rrset_txt_dump_data(const knot_rrset_t      *rrset,
 
 	switch (rrset->type) {
 		case KNOT_RRTYPE_A:
-			ret = dump_a(data, data_len, dst, maxlen, style);
+			ret = dump_a(&p);
 			break;
 		case KNOT_RRTYPE_NS:
 		case KNOT_RRTYPE_CNAME:
 		case KNOT_RRTYPE_PTR:
 		case KNOT_RRTYPE_DNAME:
-			ret = dump_ns(data, data_len, dst, maxlen, style);
+			ret = dump_ns(&p);
 			break;
 		case KNOT_RRTYPE_SOA:
-			ret = dump_soa(data, data_len, dst, maxlen, style);
+			ret = dump_soa(&p);
 			break;
 		case KNOT_RRTYPE_HINFO:
-			ret = dump_hinfo(data, data_len, dst, maxlen, style);
+			ret = dump_hinfo(&p);
 			break;
 		case KNOT_RRTYPE_MINFO:
 		case KNOT_RRTYPE_RP:
-			ret = dump_minfo(data, data_len, dst, maxlen, style);
+			ret = dump_minfo(&p);
 			break;
 		case KNOT_RRTYPE_MX:
 		case KNOT_RRTYPE_AFSDB:
 		case KNOT_RRTYPE_RT:
 		case KNOT_RRTYPE_KX:
 		case KNOT_RRTYPE_LP:
-			ret = dump_mx(data, data_len, dst, maxlen, style);
+			ret = dump_mx(&p);
 			break;
 		case KNOT_RRTYPE_TXT:
 		case KNOT_RRTYPE_SPF:
-			ret = dump_txt(data, data_len, dst, maxlen, style);
+			ret = dump_txt(&p);
 			break;
 		case KNOT_RRTYPE_KEY:
 		case KNOT_RRTYPE_DNSKEY:
-			ret = dump_dnskey(data, data_len, dst, maxlen, style);
+			ret = dump_dnskey(&p);
 			break;
 		case KNOT_RRTYPE_AAAA:
-			ret = dump_aaaa(data, data_len, dst, maxlen, style);
+			ret = dump_aaaa(&p);
 			break;
 		case KNOT_RRTYPE_LOC:
-			ret = dump_loc(data, data_len, dst, maxlen, style);
+			ret = dump_loc(&p);
 			break;
 		case KNOT_RRTYPE_SRV:
-			ret = dump_srv(data, data_len, dst, maxlen, style);
+			ret = dump_srv(&p);
 			break;
 		case KNOT_RRTYPE_NAPTR:
-			ret = dump_naptr(data, data_len, dst, maxlen, style);
+			ret = dump_naptr(&p);
 			break;
 		case KNOT_RRTYPE_CERT:
-			ret = dump_cert(data, data_len, dst, maxlen, style);
+			ret = dump_cert(&p);
 			break;
 		case KNOT_RRTYPE_APL:
-			ret = dump_apl(data, data_len, dst, maxlen, style);
+			ret = dump_apl(&p);
 			break;
 		case KNOT_RRTYPE_DS:
-			ret = dump_ds(data, data_len, dst, maxlen, style);
+			ret = dump_ds(&p);
 			break;
 		case KNOT_RRTYPE_SSHFP:
-			ret = dump_sshfp(data, data_len, dst, maxlen, style);
+			ret = dump_sshfp(&p);
 			break;
 		case KNOT_RRTYPE_IPSECKEY:
-			ret = dump_ipseckey(data, data_len, dst, maxlen, style);
+			ret = dump_ipseckey(&p);
 			break;
 		case KNOT_RRTYPE_RRSIG:
-			ret = dump_rrsig(data, data_len, dst, maxlen, style);
+			ret = dump_rrsig(&p);
 			break;
 		case KNOT_RRTYPE_NSEC:
-			ret = dump_nsec(data, data_len, dst, maxlen, style);
+			ret = dump_nsec(&p);
 			break;
 		case KNOT_RRTYPE_DHCID:
-			ret = dump_dhcid(data, data_len, dst, maxlen, style);
+			ret = dump_dhcid(&p);
 			break;
 		case KNOT_RRTYPE_NSEC3:
-			ret = dump_nsec3(data, data_len, dst, maxlen, style);
+			ret = dump_nsec3(&p);
 			break;
 		case KNOT_RRTYPE_NSEC3PARAM:
-			ret = dump_nsec3param(data, data_len, dst, maxlen, style);
+			ret = dump_nsec3param(&p);
 			break;
 		case KNOT_RRTYPE_TLSA:
-			ret = dump_tlsa(data, data_len, dst, maxlen, style);
+			ret = dump_tlsa(&p);
 			break;
 		case KNOT_RRTYPE_NID:
 		case KNOT_RRTYPE_L64:
-			ret = dump_l64(data, data_len, dst, maxlen, style);
+			ret = dump_l64(&p);
 			break;
 		case KNOT_RRTYPE_L32:
-			ret = dump_l32(data, data_len, dst, maxlen, style);
+			ret = dump_l32(&p);
 			break;
 		case KNOT_RRTYPE_EUI48:
 		case KNOT_RRTYPE_EUI64:
-			ret = dump_eui(data, data_len, dst, maxlen, style);
+			ret = dump_eui(&p);
 			break;
 		case KNOT_RRTYPE_TSIG:
-			ret = dump_tsig(data, data_len, dst, maxlen, style);
+			ret = dump_tsig(&p);
 			break;
 		default:
-			ret = dump_unknown(data, data_len, dst, maxlen, style);
+			ret = dump_unknown(&p);
 			break;
 	}
 
