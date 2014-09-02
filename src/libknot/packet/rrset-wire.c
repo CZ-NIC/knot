@@ -519,15 +519,6 @@ static int parse_header(const uint8_t *pkt_wire, size_t *pos, size_t pkt_size,
 }
 
 /*!
- * \brief Checks whether DNAME type should be decompressed.
- */
-static bool should_decompress(const int dname_type)
-{
-	return dname_type == KNOT_RDATA_WF_COMPRESSIBLE_DNAME ||
-	       dname_type == KNOT_RDATA_WF_DECOMPRESSIBLE_DNAME;
-}
-
-/*!
  * \brief Parse and decompress RDATA.
  */
 static int decompress_rdata_dname(const uint8_t **src, size_t *src_avail,
@@ -544,17 +535,12 @@ static int decompress_rdata_dname(const uint8_t **src, size_t *src_avail,
 
 	int compr_size = knot_dname_wire_check(*src, *src + *src_avail, dname_cfg->pkt_wire);
 	if (compr_size <= 0) {
-		return KNOT_EMALF;
+		return compr_size;
 	}
 	
 	int decompr_size = knot_dname_unpack(*dst, *src, *dst_avail, dname_cfg->pkt_wire);
 	if (decompr_size <= 0) {
 		return decompr_size;
-	}
-	
-	if (!should_decompress(dname_type) && (compr_size != decompr_size)) {
-		/* Compressed DNAME when it shouldn't be. */
-		return KNOT_EMALF;
 	}
 	
 	/* Update buffers */
@@ -572,26 +558,6 @@ static bool allow_zero_rdata(const knot_rrset_t *rr, const rdata_descriptor_t *d
 	return rr->rclass != KNOT_CLASS_IN ||  // NONE and ANY for DDNS
 	       rr->type == KNOT_RRTYPE_APL ||  // APL RR type
 	       desc->type_name == NULL;        // Unknown RR type
-}
-
-/*!
- * \brief Get above-maximal approximation of decompressed RDATA size.
- */
-static size_t rdata_decompress_maxsize(uint16_t rdlength,
-                                       const rdata_descriptor_t *desc)
-{
-	size_t result = rdlength;
-
-	for (int i = 0; desc->block_types[i] != KNOT_RDATA_WF_END; i++) {
-		int block_type = desc->block_types[i];
-		if (block_type == KNOT_RDATA_WF_COMPRESSIBLE_DNAME ||
-		    block_type == KNOT_RDATA_WF_DECOMPRESSIBLE_DNAME
-		) {
-			result += KNOT_DNAME_MAXLEN;
-		}
-	}
-
-	return result;
 }
 
 /*!
@@ -627,9 +593,10 @@ static int parse_rdata(const uint8_t *pkt_wire, size_t *pos, size_t pkt_size,
 	const uint8_t *src = pkt_wire + *pos;
 	size_t src_avail = rdlength;
 
-	size_t dst_avail = rdata_decompress_maxsize(rdlength, desc);
-	uint8_t rdata_buffer[dst_avail];
+	const size_t buffer_size = rdlength + KNOT_MAX_RDATA_DNAMES * KNOT_DNAME_MAXLEN;
+	uint8_t rdata_buffer[buffer_size];
 	uint8_t *dst = rdata_buffer;
+	size_t dst_avail = buffer_size;
 
 	/* Parse RDATA */
 
@@ -649,7 +616,7 @@ static int parse_rdata(const uint8_t *pkt_wire, size_t *pos, size_t pkt_size,
 		return KNOT_EMALF;
 	}
 
-	size_t written = dst - rdata_buffer;
+	const size_t written = buffer_size - dst_avail;
 	if (written > MAX_RDLENGTH) {
 		/* DNAME compression caused RDATA overflow. */
 		return KNOT_EMALF;
