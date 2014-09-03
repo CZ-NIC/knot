@@ -69,6 +69,8 @@ str-test	HINFO	"" ""
 		TXT	"\\"  "\""
 		TXT	"ahoj" "" "nevim"
 		NAPTR	20 0 "s" "SIP+D2U" "" sip._udp.wild.
+\035leading.hash.char	A 1.2.3.4
+cname.to.hash.dname	CNAME \035leading.hash.char
 
 ; CNAME loop
 *.loop1 CNAME a.loop2

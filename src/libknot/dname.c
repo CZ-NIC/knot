@@ -263,7 +263,12 @@ char *knot_dname_to_str(const knot_dname_t *name)
 		if (isalnum(c) != 0 || c == '-' || c == '_' || c == '*' ||
 		    c == '/') {
 			res[str_len++] = c;
-		} else if (ispunct(c) != 0) {
+		} else if (ispunct(c) != 0 && c != '#') {
+			/* Exclusion of '#' character is to avoid possible
+			 * collision with rdata hex notation '\#'. So it is
+			 * encoded in \ddd notation.
+			 */
+
 			// Increase output size for \x format.
 			alloc_size += 1;
 			char *extended = realloc(res, alloc_size);
