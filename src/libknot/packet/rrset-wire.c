@@ -104,12 +104,15 @@ static int write_rdata_fixed(const uint8_t **src, size_t *src_avail,
 }
 
 /*!
- * \brief Compute size of NAPTR RDATA header.
+ * \brief Write NAPTR RDATA header.
  */
-static size_t naptr_header_size(const uint8_t **src, size_t *src_avail)
+static int write_rdata_naptr_header(const uint8_t **src, size_t *src_avail,
+                                    uint8_t **dst, size_t *dst_avail)
 {
 	assert(src && *src);
 	assert(src_avail);
+	assert(dst && *dst);
+	assert(dst_avail);
 
 	size_t size = 0;
 
@@ -122,27 +125,15 @@ static size_t naptr_header_size(const uint8_t **src, size_t *src_avail)
 	for (int i = 0; i < 3; i++) {
 		const uint8_t *len_ptr = *src + size;
 		if (len_ptr >= *src + *src_avail) {
-			return 0;
+			return KNOT_EMALF;
 		}
 
 		size += 1 + *len_ptr;
 	}
 
-	return size;
-}
+	/* Copy the data */
 
-/*!
- * \brief Write NAPTR RDATA header.
- */
-static int write_rdata_naptr_header(const uint8_t **src, size_t *src_avail,
-                                    uint8_t **wire, size_t *wire_avail)
-{
-	size_t size = naptr_header_size(src, src_avail);
-	if (size == 0) {
-		return KNOT_EMALF;
-	}
-
-	return write_rdata_fixed(src, src_avail, wire, wire_avail, size);
+	return write_rdata_fixed(src, src_avail, dst, dst_avail, size);
 }
 
 /*!
