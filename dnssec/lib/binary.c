@@ -197,3 +197,22 @@ int dnssec_binary_from_base64(const dnssec_binary_t *base64,
 
 	return DNSSEC_EOK;
 }
+
+_public_
+int dnssec_binary_to_base64(const dnssec_binary_t *binary,
+			    dnssec_binary_t *base64)
+{
+	if (!binary || !base64) {
+		return DNSSEC_EINVAL;
+	}
+
+	size_t base64_size = BASE64_ENCODE_RAW_LENGTH(binary->size);
+	int r = dnssec_binary_resize(base64, base64_size);
+	if (r != DNSSEC_EOK) {
+		return r;
+	}
+
+	base64_encode_raw(base64->data, binary->size, binary->data);
+
+	return DNSSEC_EOK;
+}

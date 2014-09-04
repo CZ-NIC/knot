@@ -31,6 +31,7 @@ typedef struct test_string {
 static void test_base64(void)
 {
 	test_string_t data[] = {
+		{ "",         0, "",       0 },
 		{ "YQ==",     4, "a",      1 },
 		{ "YWI=",     4, "ab",     2 },
 		{ "YWJj",     4, "abc",    3 },
@@ -56,7 +57,15 @@ static void test_base64(void)
 		   memcmp(binary.data, ts->decoded, binary.size) == 0,
 		   "dnssec_binary_from_base64() for '%s'", ts->encoded);
 
+		dnssec_binary_t encoded = { 0 };
+		r = dnssec_binary_to_base64(&binary, &encoded);
+		ok(r == DNSSEC_EOK &&
+		   encoded.size == ts->encoded_size &&
+		   memcmp(encoded.data, ts->encoded, encoded.size) == 0,
+		   "dnssec_binary_to_base64() for '%s'", ts->encoded);
+
 		dnssec_binary_free(&binary);
+		dnssec_binary_free(&encoded);
 	}
 }
 

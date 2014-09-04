@@ -134,4 +134,14 @@ void dnssec_binary_ltrim(dnssec_binary_t *binary);
 int dnssec_binary_from_base64(const dnssec_binary_t *base64,
 			      dnssec_binary_t *binary);
 
+/*!
+ * Create Base64 encoded string from binary data.
+ *
+ * \param[in]  binary  Binary data.
+ * \param[out] base64  Base64 encode data.
+ *
+ * \return Error code, DNSSEC_EOK if successful.
+ */
+int dnssec_binary_to_base64(const dnssec_binary_t *binary,
+			    dnssec_binary_t *base64);
 /*! @} */
