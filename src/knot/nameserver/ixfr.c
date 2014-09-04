@@ -1,3 +1,19 @@
+/*  Copyright (C) 2014 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
 #include "knot/nameserver/ixfr.h"
 #include "knot/nameserver/axfr.h"
 #include "knot/nameserver/internet.h"
@@ -308,6 +324,21 @@ static int ixfr_answer_soa(knot_pkt_t *pkt, struct query_data *qdata)
 #define IXFRIN_LOG(severity, msg...) \
 	ANSWER_LOG(severity, adata, "IXFR, incoming", msg)
 
+/*! \brief Checks whether IXFR response contains enough data for processing. */
+static bool ixfr_enough_data(const knot_pkt_t *pkt)
+{
+	const knot_pktsection_t *answer = knot_pkt_section(pkt, KNOT_ANSWER);
+	return answer->count >= 2;
+}
+
+/*! \brief Checks whether server responded with AXFR-style IXFR. */
+static bool ixfr_is_axfr(const knot_pkt_t *pkt)
+{
+	const knot_pktsection_t *answer = knot_pkt_section(pkt, KNOT_ANSWER);
+	return answer->rr[0].type == KNOT_RRTYPE_SOA &&
+	       answer->rr[1].type != KNOT_RRTYPE_SOA;
+}
+
 /*! \brief Cleans up data allocated by IXFR-in processing. */
 static void ixfrin_cleanup(struct answer_data *data)
 {
@@ -351,7 +382,7 @@ static int ixfrin_finalize(struct answer_data *adata)
 	zone_contents_t *new_contents;
 	int ret = apply_changesets(ixfr->zone, &ixfr->changesets, &new_contents);
 	if (ret != KNOT_EOK) {
-		IXFRIN_LOG(LOG_ERR, "failed to apply changes to zone (%s)",
+		IXFRIN_LOG(LOG_WARNING, "failed to apply changes to zone (%s)",
 		           knot_strerror(ret));
 		return ret;
 	}
@@ -359,7 +390,7 @@ static int ixfrin_finalize(struct answer_data *adata)
 	/* Write changes to journal. */
 	ret = zone_changes_store(ixfr->zone, &ixfr->changesets);
 	if (ret != KNOT_EOK) {
-		IXFRIN_LOG(LOG_ERR, "failed to write changes to journal (%s)",
+		IXFRIN_LOG(LOG_WARNING, "failed to write changes to journal (%s)",
 		           knot_strerror(ret));
 		updates_rollback(&ixfr->changesets);
 		update_free_zone(&new_contents);
@@ -563,7 +594,7 @@ static int process_ixfrin_packet(knot_pkt_t *pkt, struct answer_data *adata)
 
 		int ret = ixfrin_step(rr, ixfr);
 		if (ret != KNOT_EOK) {
-			IXFRIN_LOG(LOG_ERR, "failed (%s)", knot_strerror(ret));
+			IXFRIN_LOG(LOG_WARNING, "failed (%s)", knot_strerror(ret));
 			return NS_PROC_FAIL;
 		}
 
@@ -628,7 +659,7 @@ int ixfr_query(knot_pkt_t *pkt, struct query_data *qdata)
 	case KNOT_EOK:    /* Last response. */
 		gettimeofday(&now, NULL);
 		IXFROUT_LOG(LOG_INFO,
-	                    "finished, %.02f seconds, %u messages, %u bytes",
+		            "finished, %.02f seconds, %u messages, %u bytes",
 		            time_diff(&ixfr->proc.tstamp, &now) / 1000.0,
 		            ixfr->proc.npkts, ixfr->proc.nbytes);
 		ret = NS_PROC_DONE;
@@ -647,17 +678,27 @@ int ixfr_process_answer(knot_pkt_t *pkt, struct answer_data *adata)
 	if (pkt == NULL || adata == NULL) {
 		return NS_PROC_FAIL;
 	}
-
+	
+	if (!ixfr_enough_data(pkt)) {
+		return NS_PROC_FAIL;
+	}
+	
+	/* Check for AXFR-style IXFR. */
+	if (ixfr_is_axfr(pkt)) {
+		IXFRIN_LOG(LOG_NOTICE, "fallback to AXFR");
+		return axfr_answer_process(pkt, adata);
+	}
+	
 	/* Check RCODE. */
 	uint8_t rcode = knot_wire_get_rcode(pkt->wire);
 	if (rcode != KNOT_RCODE_NOERROR) {
 		knot_lookup_table_t *lut = knot_lookup_by_id(knot_rcode_names, rcode);
 		if (lut != NULL) {
-			IXFRIN_LOG(LOG_ERR, "server responded with %s", lut->name);
+			IXFRIN_LOG(LOG_WARNING, "server responded with %s", lut->name);
 		}
 		return NS_PROC_FAIL;
 	}
-
+	
 	/* Initialize processing with first packet. */
 	if (adata->ext == NULL) {
 		NS_NEED_TSIG_SIGNED(&adata->param->tsig_ctx, 0);
@@ -670,7 +711,7 @@ int ixfr_process_answer(knot_pkt_t *pkt, struct answer_data *adata)
 		// First packet with IXFR, init context
 		int ret = ixfrin_answer_init(adata);
 		if (ret != KNOT_EOK) {
-			IXFRIN_LOG(LOG_ERR, "failed (%s)", knot_strerror(ret));
+			IXFRIN_LOG(LOG_WARNING, "failed (%s)", knot_strerror(ret));
 			return NS_PROC_FAIL;
 		}
 	} else {

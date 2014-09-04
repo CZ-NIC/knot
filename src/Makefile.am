@@ -173,6 +173,8 @@ libknot_la_SOURCES =				\
 	libknot/packet/pkt.h			\
 	libknot/packet/net.c			\
 	libknot/packet/net.h			\
+	libknot/packet/rrset-wire.c		\
+	libknot/packet/rrset-wire.h		\
 	libknot/packet/wire.h			\
 	libknot/processing/layer.c		\
 	libknot/processing/layer.h		\

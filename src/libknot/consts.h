@@ -38,11 +38,6 @@
 #define KNOT_DNAME_MAXLABELS 127  /*!< 1-char labels. */
 
 /*!
- * \brief Often used sizes.
- */
-#define KNOT_RR_HEADER_SIZE 10
-
-/*!
  * \brief Address family numbers.
  *
  * http://www.iana.org/assignments/address-family-numbers/address-family-numbers.xml

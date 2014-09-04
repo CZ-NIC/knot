@@ -79,6 +79,12 @@ AXFR::
       }
     }
 
+Note that the ``xfr-in`` option accepts a list of multiple remotes.
+The first remote in the list is used as a primary master, and the rest is used
+for failover should the connection with the primary master fail.
+The list is rotated in this case, and a new primary is elected.
+The preference list is reset on the configuration reload.
+
 You can also use TSIG for access control. For this, you need to configure a TSIG key
 and assign it to a remote.  Supported algorithms for TSIG key are:
 | ``hmac-md5, hmac-sha1, hmac-sha224, hmac-sha256, hmac-sha384, hmac-sha512``

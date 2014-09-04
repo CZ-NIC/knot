@@ -29,6 +29,7 @@
 #include <stdio.h>			// size_t
 
 #define KNOT_MAX_RDATA_BLOCKS	8
+#define KNOT_MAX_RDATA_DNAMES	2	// update this when defining new RR types
 
 /*!
  * \brief Resource record class codes.

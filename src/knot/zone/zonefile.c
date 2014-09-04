@@ -264,7 +264,7 @@ zone_contents_t *zonefile_load(zloader_t *loader)
 	}
 
 	if (loader->scanner->error_counter > 0) {
-		ERROR(zname, "failed to load zone, file '%s', %"PRIu64"errors",
+		ERROR(zname, "failed to load zone, file '%s', %"PRIu64" errors",
 		      loader->source, loader->scanner->error_counter);
 		goto fail;
 	}

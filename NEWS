@@ -68,7 +68,7 @@ Features:
  - Synthetic IPv4/IPv6 reverse/forward records (optional module)
  - dnstap support in both utilities & server (optional module)
  - NOTIFY message support and new TSIG section in kdig
- - Multi-master support
+ - Zone transfer master failover
 
 Improvements:
 -------------
