@@ -41,19 +41,19 @@ static uint16_t dname_max(size_t wire_avail)
 /*!
  * \brief Get compression pointer for a given hint.
  */
-static uint16_t compr_get_ptr(knot_compr_t *compr, int hint)
+static uint16_t compr_get_ptr(knot_compr_t *compr, uint16_t hint)
 {
 	if (compr == NULL) {
 		return 0;
 	}
 
-	return compr->rrinfo->compress_ptr[hint];
+	return knot_pkt_compr_hint(compr->rrinfo, hint);
 }
 
 /*!
  * \brief Set compression pointer for a given hint.
  */
-static void compr_set_ptr(knot_compr_t *compr, int hint,
+static void compr_set_ptr(knot_compr_t *compr, uint16_t hint,
                           const uint8_t *written_at, uint16_t written_size)
 {
 	if (compr == NULL) {
@@ -154,7 +154,7 @@ struct dname_config {
 	                int dname_type, struct dname_config *dname_cfg,
 	                knot_rrset_wire_flags_t flags);
 	knot_compr_t *compr;
-	int hint;
+	uint16_t hint;
 	const uint8_t *pkt_wire;
 };
 
