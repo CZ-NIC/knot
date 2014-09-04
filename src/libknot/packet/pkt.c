@@ -27,6 +27,7 @@
 #include "libknot/packet/wire.h"
 #include "libknot/rrtype/tsig.h"
 #include "libknot/tsig-op.h"
+#include "libknot/packet/rrset-wire.h"
 
 /*! \brief Scan packet for RRSet existence. */
 static bool pkt_contains(const knot_pkt_t *packet,
@@ -607,54 +608,6 @@ int knot_pkt_parse_question(knot_pkt_t *pkt)
 	return KNOT_EOK;
 }
 
-/*! \note Legacy code, mainly for transfers and updates.
- *        RRSets should use packet memory context for allocation and
- *        should be copied if they are supposed to be stored in zone permanently.
- */
-static int knot_pkt_rr_from_wire(const uint8_t *wire, size_t *pos,
-                                 size_t size, mm_ctx_t *mm, knot_rrset_t *rrset)
-{
-	dbg_packet("%s(%p, %zu, %zu)\n", __func__, wire, *pos, size);
-	assert(wire);
-	assert(pos);
-
-	knot_dname_t *owner = knot_dname_parse(wire, pos, size, mm);
-	if (owner == NULL) {
-		return KNOT_EMALF;
-	}
-	knot_dname_to_lower(owner);
-
-	if (size - *pos < KNOT_RR_HEADER_SIZE) {
-		dbg_packet("%s: not enough data to parse RR HEADER\n", __func__);
-		knot_dname_free(&owner, mm);
-		return KNOT_EMALF;
-	}
-
-	uint16_t type = knot_wire_read_u16(wire + *pos);
-	uint16_t rclass = knot_wire_read_u16(wire + *pos + sizeof(uint16_t));
-	uint32_t ttl = knot_wire_read_u32(wire + *pos + 2 * sizeof(uint16_t));
-	uint16_t rdlength = knot_wire_read_u16(wire + *pos + 4 * sizeof(uint16_t));
-
-	*pos += KNOT_RR_HEADER_SIZE;
-
-	if (size - *pos < rdlength) {
-		dbg_packet("%s: not enough data to parse RDATA\n", __func__);
-		knot_dname_free(&owner, mm);
-		return KNOT_EMALF;
-	}
-
-	knot_rrset_init(rrset, owner, type, rclass);
-	int ret = knot_rrset_rdata_from_wire_one(rrset, wire, pos, size, ttl,
-	                                         rdlength, mm);
-	if (ret != KNOT_EOK) {
-		dbg_packet("%s: failed to parse RDATA (%d)\n", __func__, ret);
-		knot_rrset_clear(rrset, mm);
-		return ret;
-	}
-
-	return KNOT_EOK;
-}
-
 /* \note Private for check_rr_constraints(). */
 #define CHECK_AR_CONSTRAINTS(pkt, rr, var, check_func) \
 	if ((pkt)->current != KNOT_ADDITIONAL) { \
@@ -719,8 +672,8 @@ int knot_pkt_parse_rr(knot_pkt_t *pkt, unsigned flags)
 	/* Parse wire format. */
 	size_t rr_size = pkt->parsed;
 	knot_rrset_t *rr = &pkt->rr[pkt->rrset_count];
-	ret = knot_pkt_rr_from_wire(pkt->wire, &pkt->parsed, pkt->max_size,
-	                           &pkt->mm, rr);
+	ret = knot_rrset_rr_from_wire(pkt->wire, &pkt->parsed, pkt->max_size,
+	                              &pkt->mm, rr);
 	if (ret != KNOT_EOK) {
 		dbg_packet("%s: failed to parse RR\n", __func__);
 		return ret;

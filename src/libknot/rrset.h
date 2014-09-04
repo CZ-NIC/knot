@@ -34,8 +34,6 @@
 #include "libknot/dname.h"
 #include "libknot/rdataset.h"
 
-struct knot_compr;
-
 /*!
  * \brief Structure for representing RRSet.
  *
@@ -122,53 +120,6 @@ void knot_rrset_free(knot_rrset_t **rrset, mm_ctx_t *mm);
  * \param mm     Memory context used for allocations.
  */
 void knot_rrset_clear(knot_rrset_t *rrset, mm_ctx_t *mm);
-
-/* ---------- Wire conversions (legacy, to be done in knot_pkt_t) ----------- */
-
-/*!
- * \brief Flags controlling RR set from/to wire conversion.
- */
-enum knot_rrset_wire_flags {
-	KNOT_RRSET_WIRE_NONE = 0,
-	KNOT_RRSET_WIRE_CANONICAL = 1 << 0,
-};
-
-typedef enum knot_rrset_wire_flags knot_rrset_wire_flags_t;
-
-/*!
- * \brief Write RR Set content to a wire.
- *
- * Function accepts \ref KNOT_RRSET_WIRE_CANONICAL flag, which causes the
- * output to be written in canonical representation.
- *
- * \param rrset     RRSet to be converted.
- * \param wire      Output wire buffer.
- * \param max_size  Capacity of wire buffer.
- * \param compr     Compression context.
- * \param flags     Flags controlling the output.
- *
- * \return Output size, negative number on error (KNOT_E*).
- */
-int knot_rrset_to_wire(const knot_rrset_t *rrset, uint8_t *wire, uint16_t max_size,
-                       struct knot_compr *compr, knot_rrset_wire_flags_t flags);
-
- /*!
- * \brief Creates one RR from wire, stores it into 'rrset'
- *
- * \param rrset       Destination RRSet.
- * \param wire        Source wire.
- * \param pos         Position in wire.
- * \param total_size  Size of wire.
- * \param ttl         Use this TTL to create RR.
- * \param rdlength    RDLENGTH.
- * \param mm          Memory context.
- *
- * \return KNOT_E*
- */
-int knot_rrset_rdata_from_wire_one(knot_rrset_t *rrset,
-                                   const uint8_t *wire, size_t *pos,
-                                   size_t total_size, uint32_t ttl, size_t rdlength,
-                                   mm_ctx_t *mm);
 
 /* ---------- RR addition. (legacy, functionality in knot_rdataset_t) ------- */
 

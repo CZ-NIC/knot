@@ -166,32 +166,16 @@ knot_dname_t *knot_dname_copy_part(const knot_dname_t *name, unsigned len,
 
 int knot_dname_to_wire(uint8_t *dst, const knot_dname_t *src, size_t maxlen)
 {
-	if (dst == NULL || src == NULL)
+	if (dst == NULL || src == NULL) {
 		return KNOT_EINVAL;
-
-	/* Write out non or partially compressed name. */
-	int len = 0;
-	while (*src != '\0' && !knot_wire_is_pointer(src)) {
-		uint8_t lblen = *src + 1;
-		if (len + lblen > maxlen)
-			return KNOT_ESPACE;
-		memcpy(dst + len, src, lblen);
-		len += lblen;
-		src += lblen;
 	}
 
-	/* Terminated either FQDN \x00, or as a pointer. */
-	if (*src == '\0') {
-		if (len + 1> maxlen)
-			return KNOT_ESPACE;
-		*(dst + len) = '\0';
-		len += 1; /* \x00 */
-	} else {
-		if (len + 2 > maxlen)
-			return KNOT_ESPACE;
-		memcpy(dst + len, src, sizeof(uint16_t));
-		len += 2; /* ptr */
+	int len = knot_dname_size(src);
+	if (len > maxlen) {
+		return KNOT_ESPACE;
 	}
+
+	memcpy(dst, src, len);
 	return len;
 }
 

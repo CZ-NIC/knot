@@ -28,6 +28,7 @@
 #include "libknot/packet/wire.h"
 #include "libknot/rrset.h"
 #include "libknot/rrtype/rrsig.h"
+#include "libknot/packet/rrset-wire.h"
 
 #define RRSIG_RDATA_SIGNER_OFFSET 18
 
