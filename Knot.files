@@ -330,6 +330,7 @@ tests/rdataset.c
 tests/requestor.c
 tests/rrl.c
 tests/rrset.c
+tests/rrset_wire.c
 tests/sample_conf.h
 tests/server.c
 tests/slab.c
@@ -338,7 +339,7 @@ tests/worker_pool.c
 tests/worker_queue.c
 tests/zone_events.c
 tests/zonedb.c
+tests/zone-update.c
 tests/ztree.c
 src/knot/updates/zone-update.c
 src/knot/updates/zone-update.h
-tests/zone-update.c
