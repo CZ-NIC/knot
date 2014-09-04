@@ -35,6 +35,16 @@
 #define DNSKEY_KSK_FLAGS 257
 #define DNSKEY_ZSK_FLAGS 256
 
+#define JSON_LOAD_OPTIONS JSON_REJECT_DUPLICATES
+#define JSON_DUMP_OPTIONS JSON_INDENT(2)|JSON_PRESERVE_ORDER
+
+static void json_decref_ptr(json_t **json_ptr)
+{
+	json_decref(*json_ptr);
+}
+
+#define _json_cleanup_ _cleanup_(json_decref_ptr)
+
 /* -- variable types decoding ---------------------------------------------- */
 
 /*!
@@ -63,6 +73,19 @@ static int decode_keyid(const json_t *value, void *result)
 	return DNSSEC_EOK;
 }
 
+static int encode_keyid(const void *value, json_t **result)
+{
+	char * const *id_ptr = value;
+	json_t *encoded = json_string(*id_ptr);
+	if (!encoded) {
+		return DNSSEC_ENOMEM;
+	}
+
+	*result = encoded;
+
+	return DNSSEC_EOK;
+}
+
 /*!
  * Decode algorithm from JSON.
  *
@@ -82,6 +105,20 @@ static int decode_uint8(const json_t *value, void *result)
 	}
 
 	*byte_ptr = number;
+
+	return DNSSEC_EOK;
+}
+
+static int encode_uint8(const void *value, json_t **result)
+{
+	const uint8_t *byte_ptr = value;
+
+	json_t *encoded = json_integer(*byte_ptr);
+	if (!encoded) {
+		return DNSSEC_ENOMEM;
+	}
+
+	*result = encoded;
 
 	return DNSSEC_EOK;
 }
@@ -106,6 +143,27 @@ static int decode_binary(const json_t *value, void *result)
 	return dnssec_binary_from_base64(&base64, binary_ptr);
 }
 
+static int encode_binary(const void *value, json_t **result)
+{
+	const dnssec_binary_t *binary_ptr = value;
+
+	_cleanup_binary_ dnssec_binary_t base64 = { 0 };
+	int r = dnssec_binary_to_base64(binary_ptr, &base64);
+	if (r != DNSSEC_EOK) {
+		return r;
+	}
+
+	//! \todo replace json_pack with json_stringn (not in Jansson 2.6 yet)
+	json_t *encoded = json_pack("s#", base64.data, base64.size);
+	if (!encoded) {
+		return DNSSEC_ENOMEM;
+	}
+
+	*result = encoded;
+
+	return DNSSEC_EOK;
+}
+
 /*!
  * Decode boolean value from JSON.
  */
@@ -118,6 +176,15 @@ static int decode_bool(const json_t *value, void *result)
 	}
 
 	*bool_ptr = json_is_true(value);
+
+	return DNSSEC_EOK;
+}
+
+static int encode_bool(const void *value, json_t **result)
+{
+	const bool *bool_ptr = value;
+
+	*result = *bool_ptr ? json_true() : json_false();
 
 	return DNSSEC_EOK;
 }
@@ -141,6 +208,36 @@ static int decode_time(const json_t *value, void *result)
 	}
 
 	*time_ptr = timegm(&tm);
+
+	return DNSSEC_EOK;
+}
+
+static int encode_time(const void *value, json_t **result)
+{
+	const time_t *time_ptr = value;
+
+	if (*time_ptr == 0) {
+		// unset
+		return DNSSEC_EOK;
+	}
+
+	struct tm tm = { 0 };
+	if (!gmtime_r(time_ptr, &tm)) {
+		return DNSSEC_CONFIG_MALFORMED;
+	}
+
+	char buffer[128] = { 0 };
+	int written = strftime(buffer, sizeof(buffer), TIME_FORMAT, &tm);
+	if (written == 0) {
+		return DNSSEC_CONFIG_MALFORMED;
+	}
+
+	json_t *encoded = json_string(buffer);
+	if (!encoded) {
+		return DNSSEC_ENOMEM;
+	}
+
+	*result = encoded;
 
 	return DNSSEC_EOK;
 }
@@ -181,7 +278,7 @@ static void key_params_free(key_params_t *params)
 struct key_params_field {
 	const char *key;
 	size_t offset;
-	int (*encode_cb)(const void *value, json_t *result);
+	int (*encode_cb)(const void *value, json_t **result);
 	int (*decode_cb)(const json_t *value, void *result);
 };
 
@@ -189,14 +286,14 @@ typedef struct key_params_field key_params_field_t;
 
 static const key_params_field_t KEY_PARAMS_FIELDS[] = {
 	#define off(member) offsetof(key_params_t, member)
-	{ "id",         off(id),             NULL, decode_keyid   },
-	{ "algorithm",  off(algorithm),      NULL, decode_uint8   },
-	{ "public_key", off(public_key),     NULL, decode_binary  },
-	{ "ksk",        off(is_ksk),         NULL, decode_bool    },
-	{ "publish",    off(timing.publish), NULL, decode_time    },
-	{ "active",     off(timing.active),  NULL, decode_time    },
-	{ "retire",     off(timing.retire),  NULL, decode_time    },
-	{ "remove",     off(timing.remove),  NULL, decode_time    },
+	{ "id",         off(id),             encode_keyid,  decode_keyid  },
+	{ "algorithm",  off(algorithm),      encode_uint8,  decode_uint8  },
+	{ "public_key", off(public_key),     encode_binary, decode_binary },
+	{ "ksk",        off(is_ksk),         encode_bool,   decode_bool   },
+	{ "publish",    off(timing.publish), encode_time,   decode_time   },
+	{ "active",     off(timing.active),  encode_time,   decode_time   },
+	{ "retire",     off(timing.retire),  encode_time,   decode_time   },
+	{ "remove",     off(timing.remove),  encode_time,   decode_time   },
 	{ 0 }
 	#undef off
 };
@@ -392,18 +489,130 @@ static int load_zone_config(dnssec_kasp_zone_t *zone, const char *filename)
 	}
 
 	json_error_t error = { 0 };
-	json_t *config = json_loadf(file, JSON_REJECT_DUPLICATES, &error);
+	_json_cleanup_ json_t *config = json_loadf(file, JSON_LOAD_OPTIONS, &error);
 	fclose(file);
 	if (!config) {
 		return DNSSEC_CONFIG_MALFORMED;
 	}
 
 	json_t *config_keys = json_object_get(config, "keys");
-	int result = load_zone_keys(zone, config_keys);
+	return load_zone_keys(zone, config_keys);
+}
 
-	json_decref(config);
+/*!
+ * Convert KASP key parameters to JSON.
+ */
+static int export_key(const key_params_t *params, json_t **key_ptr)
+{
+	assert(params);
+	assert(key_ptr);
 
-	return result;
+	json_t *key = json_object();
+	if (!key) {
+		return DNSSEC_ENOMEM;
+	}
+
+	const key_params_field_t *field;
+	for (field = KEY_PARAMS_FIELDS; field->key != NULL; field++) {
+		const void *src = ((void *)params) + field->offset;
+		json_t *encoded = NULL;
+		int r = field->encode_cb(src, &encoded);
+		if (r != DNSSEC_EOK) {
+			json_decref(key);
+			return r;
+		}
+
+		if (encoded == NULL) {
+			// missing value (valid)
+			continue;
+		}
+
+		if (json_object_set_new(key, field->key, encoded) != 0) {
+			json_decref(encoded);
+			json_decref(key);
+			return DNSSEC_ENOMEM;
+		}
+	}
+
+	*key_ptr = key;
+
+	return DNSSEC_EOK;
+}
+
+/*!
+ * Convert KASP key to serializable parameters.
+ */
+static void key_to_params(dnssec_kasp_key_t *key, key_params_t *params)
+{
+	assert(key);
+	assert(params);
+
+	params->id = (char *)dnssec_key_get_id(key->key);
+	dnssec_key_get_pubkey(key->key, &params->public_key);
+	params->algorithm = dnssec_key_get_algorithm(key->key);
+	params->is_ksk = dnssec_key_get_flags(key->key) == DNSKEY_KSK_FLAGS;
+	params->timing = key->timing;
+}
+
+/*!
+ * Convert KASP keys to JSON array.
+ */
+static int export_zone_keys(dnssec_kasp_zone_t *zone, json_t **keys_ptr)
+{
+	json_t *keys = json_array();
+	if (!keys) {
+		return DNSSEC_ENOMEM;
+	}
+
+	int keys_count = dnssec_kasp_keyset_count(&zone->keys);
+	for (int i = 0; i < keys_count; i++) {
+		dnssec_kasp_key_t *kasp_key = dnssec_kasp_keyset_at(&zone->keys, i);
+		key_params_t params = { 0 };
+		key_to_params(kasp_key, &params);
+
+		json_t *key = NULL;
+		int r = export_key(&params, &key);
+		if (r != DNSSEC_EOK) {
+			json_decref(keys);
+			return r;
+		}
+
+		if (json_array_append_new(keys, key)) {
+			json_decref(key);
+			json_decref(keys);
+			return DNSSEC_ENOMEM;
+		}
+	}
+
+	*keys_ptr = keys;
+
+	return DNSSEC_EOK;
+}
+
+/*!
+ * Save zone configuration.
+ */
+static int save_zone_config(dnssec_kasp_zone_t *zone, const char *filename)
+{
+	assert(zone);
+	assert(filename);
+
+	json_t *keys = NULL;
+	int r = export_zone_keys(zone, &keys);
+	if (r != DNSSEC_EOK) {
+		return r;
+	}
+
+	_json_cleanup_ json_t *config = json_pack("{so}", "keys", keys);
+	_cleanup_fclose_ FILE *file = fopen(filename, "r");
+	if (!file) {
+		return DNSSEC_NOT_FOUND;
+	}
+
+	r = json_dumpf(config, file, JSON_DUMP_OPTIONS);
+	fputc('\n', file);
+
+	return (r == 0) ? DNSSEC_EOK : DNSSEC_NOT_FOUND;
 }
 
 /*!
@@ -495,7 +704,7 @@ static int kasp_dir_save_zone(dnssec_kasp_zone_t *zone, void *_ctx)
 		return DNSSEC_ENOMEM;
 	}
 
-	return DNSSEC_NOT_IMPLEMENTED_ERROR;
+	return save_zone_config(zone, config);
 }
 
 static const dnssec_kasp_store_functions_t KASP_DIR_FUNCTIONS = {

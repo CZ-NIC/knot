@@ -74,12 +74,18 @@ int main(int argc, char *argv[])
 		const uint8_t *dname = dnssec_key_get_dname(key->key);
 		const char *id = dnssec_key_get_id(key->key);
 		uint16_t keytag = dnssec_key_get_keytag(key->key);
-		printf("%-6d  %s\n", keytag, id);
+		printf("%06d  %s\n", keytag, id);
 		for (int i = 0; dname[i]; i++) {
 			if (isprint(dname[i])) { putchar(dname[i]); }
 			else { printf("%02x", dname[i]); }
 		}
 		printf("\n");
+	}
+
+	r = dnssec_kasp_save_zone(kasp, zone);
+	if (r != DNSSEC_EOK) {
+		error("dnssec_kasp_save_zone()", r);
+		goto fail;
 	}
 
 	exit_code = 0;
