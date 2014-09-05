@@ -168,6 +168,8 @@ src/knot/updates/changesets.c
 src/knot/updates/changesets.h
 src/knot/updates/ddns.c
 src/knot/updates/ddns.h
+src/knot/updates/zone-update.c
+src/knot/updates/zone-update.h
 src/knot/worker/pool.c
 src/knot/worker/pool.h
 src/knot/worker/queue.c
@@ -338,8 +340,6 @@ tests/wire.c
 tests/worker_pool.c
 tests/worker_queue.c
 tests/zone_events.c
+tests/zone_update.c
 tests/zonedb.c
-tests/zone-update.c
 tests/ztree.c
-src/knot/updates/zone-update.c
-src/knot/updates/zone-update.h
