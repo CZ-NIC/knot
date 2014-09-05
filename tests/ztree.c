@@ -55,8 +55,8 @@ static int ztree_iter_data(zone_node_t **node, void *data)
 	int result = KNOT_EOK;
 	if (owner != ORDER[*i]) {
 		result = KNOT_ERROR;
-		char *exp_s = knot_dname_to_str(ORDER[*i]);
-		char *owner_s = knot_dname_to_str(owner);
+		char *exp_s = knot_dname_to_str_alloc(ORDER[*i]);
+		char *owner_s = knot_dname_to_str_alloc(owner);
 		diag("ztree: at index: %u expected '%s' got '%s'\n", *i, exp_s, owner_s);
 		free(exp_s);
 		free(owner_s);

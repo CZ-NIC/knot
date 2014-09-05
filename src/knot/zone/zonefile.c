@@ -63,7 +63,7 @@ static bool handle_err(zcreator_t *zc, const zone_node_t *node,
                        const knot_rrset_t *rr, int ret, bool master)
 {
 	const knot_dname_t *zname = zc->z->apex->owner;
-	char *rrname = rr ? knot_dname_to_str(rr->owner) : NULL;
+	char *rrname = rr ? knot_dname_to_str_alloc(rr->owner) : NULL;
 	if (ret == KNOT_EOUTOFZONE) {
 		WARNING(zname, "ignoring out-of-zone data, owner '%s'",
 		        rrname ? rrname : "unknown");
@@ -164,7 +164,7 @@ static void scanner_process(zs_scanner_t *scanner)
 	knot_rrset_init(&rr, owner, scanner->r_type, scanner->r_class);
 	int ret = add_rdata_to_rr(&rr, scanner);
 	if (ret != KNOT_EOK) {
-		char *rr_name = knot_dname_to_str(rr.owner);
+		char *rr_name = knot_dname_to_str_alloc(rr.owner);
 		const knot_dname_t *zname = zc->z->apex->owner;
 		ERROR(zname, "failed to add RDATA, file '%s', line %"PRIu64", owner '%s'",
 		      scanner->file.name, scanner->line_counter, rr_name);

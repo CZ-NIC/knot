@@ -561,7 +561,7 @@ static void log_command(const char *cmd, const remote_cmdargs_t* args)
 		uint16_t rr_count = rr->rrs.rr_count;
 		for (uint16_t j = 0; j < rr_count; j++) {
 			const knot_dname_t *dn = knot_ns_name(&rr->rrs, j);
-			char *name = knot_dname_to_str(dn);
+			char *name = knot_dname_to_str_alloc(dn);
 
 			int ret = snprintf(params, rest, " %s", name);
 			free(name);

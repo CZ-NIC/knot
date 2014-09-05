@@ -211,17 +211,24 @@ int knot_dname_unpack(uint8_t* dst, const knot_dname_t *src,
 
 /*----------------------------------------------------------------------------*/
 
-char *knot_dname_to_str(const knot_dname_t *name)
+char *knot_dname_to_str(char *dst, const knot_dname_t *name, size_t maxlen)
 {
-	if (name == NULL)
+	if (name == NULL) {
 		return NULL;
+	}
 
-	/*! \todo Supply packet. */
-	/*! \todo Write to static buffer? */
-	// Allocate space for dname string + 1 char termination.
 	int dname_size = knot_dname_size(name);
-	size_t alloc_size = dname_size + 1;
-	char *res = malloc(alloc_size);
+	if (dname_size <= 0) {
+		return NULL;
+	}
+
+	// Check the size for len(dname) + 1 char termination.
+	size_t alloc_size = (dst == NULL) ? dname_size + 1 : maxlen;
+	if (alloc_size < dname_size + 1) {
+		return NULL;
+	}
+
+	char *res = (dst == NULL) ? malloc(alloc_size) : dst;
 	if (res == NULL) {
 		return NULL;
 	}
@@ -253,33 +260,47 @@ char *knot_dname_to_str(const knot_dname_t *name)
 			 * encoded in \ddd notation.
 			 */
 
-			// Increase output size for \x format.
-			alloc_size += 1;
-			char *extended = realloc(res, alloc_size);
-			if (extended == NULL) {
-				free(res);
-				return NULL;
+			if (dst != NULL) {
+				if (maxlen <= str_len + 2) {
+					return NULL;
+				}
+			} else {
+				// Extend output buffer for \x format.
+				alloc_size += 1;
+				char *extended = realloc(res, alloc_size);
+				if (extended == NULL) {
+					free(res);
+					return NULL;
+				}
+				res = extended;
 			}
-			res = extended;
 
 			// Write encoded character.
 			res[str_len++] = '\\';
 			res[str_len++] = c;
 		} else {
-			// Increase output size for \DDD format.
-			alloc_size += 3;
-			char *extended = realloc(res, alloc_size);
-			if (extended == NULL) {
-				free(res);
-				return NULL;
+			if (dst != NULL) {
+				if (maxlen <= str_len + 4) {
+					return NULL;
+				}
+			} else {
+				// Extend output buffer for \DDD format.
+				alloc_size += 3;
+				char *extended = realloc(res, alloc_size);
+				if (extended == NULL) {
+					free(res);
+					return NULL;
+				}
+				res = extended;
 			}
-			res = extended;
 
 			// Write encoded character.
 			int ret = snprintf(res + str_len, alloc_size - str_len,
 			                   "\\%03u", c);
 			if (ret <= 0 || ret >= alloc_size - str_len) {
-				free(res);
+				if (dst == NULL) {
+					free(res);
+				}
 				return NULL;
 			}
 
