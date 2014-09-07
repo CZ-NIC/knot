@@ -73,7 +73,7 @@ struct wire_data {
 	const char *msg;
 };
 
-#define FROM_CASE_COUNT 16
+#define FROM_CASE_COUNT 17
 
 static const struct wire_data FROM_CASES[FROM_CASE_COUNT] = {
 { .wire = { MESSAGE_HEADER(1, 0, 0), QUERY(QNAME, KNOT_RRTYPE_A)},
@@ -155,6 +155,13 @@ static const struct wire_data FROM_CASES[FROM_CASE_COUNT] = {
   .pos = QUERY_SIZE + QNAME_SIZE,
   .code = KNOT_EMALF,
   .msg = "NAPTR bad offset"},
+{ .wire = { MESSAGE_HEADER(1, 0, 0), QUERY(QNAME, KNOT_RRTYPE_NAPTR),
+            RR_HEADER(QNAME_POINTER, KNOT_RRTYPE_NAPTR, 0x00, 0x09),
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
+  .size = QUERY_SIZE + QNAME_SIZE + RR_HEADER_SIZE + 2 + 7,
+  .pos = QUERY_SIZE + QNAME_SIZE,
+  .code = KNOT_EMALF,
+  .msg = "NAPTR no DNAME"},
 { .wire = { MESSAGE_HEADER(1, 0, 0), QUERY(QNAME, KNOT_RRTYPE_NAPTR),
             RR_HEADER(QNAME_POINTER, KNOT_RRTYPE_NAPTR, 0x00, 0x0c),
             0x00, 0x00, 0x00, 0x00, 0x01, 0xff, 0x01, 0xff, 0x01, 0xff, QNAME_POINTER},
