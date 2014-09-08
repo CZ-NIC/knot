@@ -178,6 +178,7 @@ int node_add_rrset(zone_node_t *node, const knot_rrset_t *rrset, mm_ctx_t *mm)
 		if (node->rrs[i].type == rrset->type) {
 			struct rr_data *node_data = &node->rrs[i];
 			const bool ttl_err = ttl_error(node_data, rrset);
+            /* TODO[lowercase] should change case. */
 			int ret = knot_rdataset_merge(&node_data->rrs,
 			                              &rrset->rrs, mm);
 			if (ret != KNOT_EOK) {
@@ -189,6 +190,7 @@ int node_add_rrset(zone_node_t *node, const knot_rrset_t *rrset, mm_ctx_t *mm)
 	}
 
 	// New RRSet (with one RR)
+    /* TODO[lowercase] should change case. */
 	return add_rrset_no_merge(node, rrset, mm);
 }
 

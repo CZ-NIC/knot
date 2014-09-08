@@ -602,6 +602,10 @@ static int insert_rr(zone_contents_t *z,
 		return KNOT_EINVAL;
 	}
 
+    /* TODO [lowercase]: Here we would need the RR to be in lowercase, at least
+     * the owner.
+     */
+
 	// check if the RRSet belongs to the zone
 	if (!knot_dname_is_sub(rr->owner, z->apex->owner) &&
 	    !knot_dname_is_equal(rr->owner, z->apex->owner)) {
@@ -729,10 +733,87 @@ static bool rrset_is_nsec3rel(const knot_rrset_t *rr)
 	            == KNOT_RRTYPE_NSEC3));
 }
 
+static size_t naptr_header_size(uint8_t *naptr, uint8_t *maxp)
+{
+    /*! \todo Copy-pasted from rrset.c. Unify. */
+
+    size_t size = 0;
+
+    /* Fixed fields size (order, preference) */
+    size += 2 * sizeof(uint16_t);
+
+    /* Variable fields size (flags, services, regexp) */
+    for (int i = 0; i < 3; i++) {
+        uint8_t *len_ptr = naptr + size;
+        assert(len_ptr < maxp);
+        size += 1 + *len_ptr;
+    }
+
+    return size;
+}
+
+static void convert_to_lowercase(knot_rrset_t *rrset)
+{
+    int ret = knot_dname_to_lower(rrset->owner);
+    assert(ret == KNOT_EOK);
+
+    const rdata_descriptor_t *desc = knot_get_rdata_descriptor(rrset->type);
+
+    for (int j = 0; j < rrset->rrs.rr_count; ++j) {
+        knot_rdata_t *rdata = knot_rdataset_at(&rrset->rrs, j);
+
+        uint16_t rdlen = knot_rdata_rdlen(rdata);
+        uint8_t *pos = knot_rdata_data(rdata);
+
+        for (int i = 0; desc->block_types[i] != KNOT_RDATA_WF_END; ++i) {
+            int type = desc->block_types[i];
+            switch (type) {
+            case KNOT_RDATA_WF_COMPRESSIBLE_DNAME:
+            case KNOT_RDATA_WF_DECOMPRESSIBLE_DNAME:
+            case KNOT_RDATA_WF_FIXED_DNAME:
+                ret = knot_dname_to_lower(pos);
+                assert(ret == KNOT_EOK);
+                pos += knot_dname_size(pos);
+                break;
+            case KNOT_RDATA_WF_NAPTR_HEADER:
+                pos += naptr_header_size(pos, rdata + rdlen);
+                break;
+            case KNOT_RDATA_WF_REMAINDER:
+                break;
+            default:
+                /* Fixed size block */
+                assert(type > 0);
+                pos += type;
+            }
+        }
+    }
+}
+
+static knot_rrset_t *rrset_to_lowercase(const knot_rrset_t *rrset)
+{
+    knot_rrset_t *rr_l = knot_rrset_copy(rrset, NULL);
+    if (rr_l != NULL) {
+        convert_to_lowercase(rr_l);
+    }
+
+    return rr_l;
+}
+
 int zone_contents_add_rr(zone_contents_t *z, const knot_rrset_t *rr,
                          zone_node_t **n)
 {
-	return insert_rr(z, rr, n, rrset_is_nsec3rel(rr));
+    /* Convert all dnames in RRSet to lowercase. */
+    knot_rrset_t *rr_lc = rrset_to_lowercase(rr);
+
+    int ret;
+    if (rr_lc != NULL) {
+        ret = insert_rr(z, rr_lc, n, rrset_is_nsec3rel(rr));
+        knot_rrset_free(&rr_lc, NULL);
+    } else {
+        ret = KNOT_ERROR;
+    }
+
+    return ret;
 }
 
 /*----------------------------------------------------------------------------*/
