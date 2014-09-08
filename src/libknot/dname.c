@@ -73,8 +73,8 @@ int knot_dname_wire_check(const uint8_t *name, const uint8_t *endp,
 				is_compressed = true;
 			}
 		} else {
-			/* Check label length (maximum 63 bytes allowed). */
-			if (*name > 63)
+			/* Check label length. */
+			if (*name > KNOT_DNAME_MAXLABELLEN)
 				return KNOT_EMALF;
 			/* Check if there's enough space. */
 			int lblen = *name + 1;
