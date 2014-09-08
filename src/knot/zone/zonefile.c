@@ -115,10 +115,6 @@ int zcreator_step(zcreator_t *zc, const knot_rrset_t *rr)
 		return KNOT_EOK;
 	}
 
-    /* TODO[lowercase]: Convert to lowercase here? AXFR + zone load.
-     * Below, in zone_contents_add_rr() it would also deal with IXFR.
-     */
-
 	zone_node_t *node = NULL;
 	int ret = zone_contents_add_rr(zc->z, rr, &node);
 	if (ret != KNOT_EOK) {
@@ -163,8 +159,6 @@ static void scanner_process(zs_scanner_t *scanner)
 		return;
 	}
 	knot_dname_to_lower(owner);
-
-    /* TODO[lowercase]: Owner is in lowercase, need the RDATA! */
 
 	knot_rrset_t rr;
 	knot_rrset_init(&rr, owner, scanner->r_type, scanner->r_class);
