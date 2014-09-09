@@ -46,9 +46,10 @@ class ZoneFile(object):
 
         if not file_name:
             file_name = self.name + "zone"
-
         self.file_name = os.path.basename(file_name)
-        self.storage = storage if storage else os.path.dirname(file_name)
+
+        if not self.storage:
+            self.storage = storage if storage else os.path.dirname(file_name)
 
         if not exists:
             return
