@@ -679,17 +679,14 @@ int ixfr_process_answer(knot_pkt_t *pkt, struct answer_data *adata)
 		return NS_PROC_FAIL;
 	}
 	
-	if (adata->ext == NULL) {
-		/* Check for AXFR-style IXFR on first run. */
-		if (!ixfr_enough_data(pkt)) {
-			return NS_PROC_FAIL;
-		}
+	if (!ixfr_enough_data(pkt)) {
+		return NS_PROC_FAIL;
+	}
 	
-		if (ixfr_is_axfr(pkt)) {
-			IXFRIN_LOG(LOG_NOTICE, "fallback to AXFR");
-			knot_wire_set_opcode(adata->param->query->wire, KNOT_RRTYPE_AXFR);
-			return axfr_answer_process(pkt, adata);
-		}
+	/* Check for AXFR-style IXFR. */
+	if (ixfr_is_axfr(pkt)) {
+		IXFRIN_LOG(LOG_NOTICE, "fallback to AXFR");
+		return axfr_answer_process(pkt, adata);
 	}
 	
 	/* Check RCODE. */
