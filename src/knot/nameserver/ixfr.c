@@ -639,8 +639,9 @@ int ixfr_query(knot_pkt_t *pkt, struct query_data *qdata)
 			return ixfr_answer_soa(pkt, qdata);
 		case KNOT_ERANGE:   /* No history -> AXFR. */
 		case KNOT_ENOENT:
-			IXFROUT_LOG(LOG_INFO, "incomplete history, fallback to AXFR");
-			return axfr_query_process(pkt, qdata);
+            IXFROUT_LOG(LOG_INFO, "incomplete history, fallback to AXFR");
+            qdata->packet_type = KNOT_QUERY_AXFR; /* Solve as AXFR. */
+            return axfr_query_process(pkt, qdata);
 		default:            /* Server errors. */
 			IXFROUT_LOG(LOG_ERR, "failed to start (%s)", knot_strerror(ret));
 			return NS_PROC_FAIL;
