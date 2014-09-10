@@ -22,12 +22,14 @@
 
 /*! \brief Accessor to query-specific data. */
 #define ANSWER_DATA(ctx) ((struct answer_data *)(ctx)->data)
+#define RESPONSE_TYPE_UNSET -1
 
 static void answer_data_init(knot_process_t *ctx, void *module_param)
 {
 	/* Initialize persistent data. */
 	struct answer_data *data = ANSWER_DATA(ctx);
 	memset(data, 0, sizeof(struct answer_data));
+	data->response_type = RESPONSE_TYPE_UNSET;
 	data->mm = &ctx->mm;
 	data->param = module_param;
 }
@@ -119,9 +121,11 @@ static int process_answer(knot_pkt_t *pkt, knot_process_t *ctx)
 
 	/* Call appropriate processing handler. */
 	int next_state = NS_PROC_NOOP;
-	int response_type = knot_pkt_type(query) | KNOT_RESPONSE;
-	/* @note We can't derive type from response, as it may not contain QUESTION at all. */
-	switch(response_type) {
+	if (data->response_type == RESPONSE_TYPE_UNSET) {
+		/* @note We can't derive type from response, as it may not contain QUESTION at all. */
+		data->response_type = knot_pkt_type(query) | KNOT_RESPONSE;
+	}
+	switch(data->response_type) {
 	case KNOT_RESPONSE_NORMAL:
 		next_state = internet_process_answer(pkt, data);
 		break;
