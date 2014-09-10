@@ -143,14 +143,26 @@ static inline char *knot_dname_to_str_alloc(const knot_dname_t *name)
  * \brief Creates a dname structure from domain name given in presentation
  *        format.
  *
- * The resulting FQDN is stored in the wire format.
+ * \note The resulting FQDN is stored in the wire format.
+ * \note Output buffer is allocated automatically if dst is NULL.
  *
- * \param name Domain name in presentation format (labels separated by dots,
- *             '\0' terminated).
+ * \param dst    Output buffer.
+ * \param name   Domain name in presentation format (labels separated by dots,
+ *               '\0' terminated).
+ * \param maxlen Output buffer length.
  *
- * \return New name or NULL
+ * \return New dname if successful, NULL if error.
  */
-knot_dname_t *knot_dname_from_str(const char *name);
+knot_dname_t *knot_dname_from_str(uint8_t *dst, const char *name, size_t maxlen);
+
+/*!
+ * \brief This function is a shortcut for \ref knot_dname_from_str with
+ *        no output buffer parameters.
+ */
+static inline knot_dname_t *knot_dname_from_str_alloc(const char *name)
+{
+	return knot_dname_from_str(NULL, name, 0);
+}
 
 /*!
  * \brief Convert name to lowercase.

@@ -184,7 +184,7 @@ static zone_contents_t *create_zone_from_name(const char *origin)
 	if (origin == NULL) {
 		return NULL;
 	}
-	knot_dname_t *owner = knot_dname_from_str(origin);
+	knot_dname_t *owner = knot_dname_from_str_alloc(origin);
 	if (owner == NULL) {
 		return NULL;
 	}

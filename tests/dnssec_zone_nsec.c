@@ -23,9 +23,9 @@ int main(int argc, char *argv[])
 {
 	plan(1);
 
-	knot_dname_t *owner  = knot_dname_from_str("name.example.com");
-	knot_dname_t *apex   = knot_dname_from_str("example.com");
-	knot_dname_t *expect = knot_dname_from_str("sv9o5lv8kgv6lm1t9dkst43b3c0aagbj.example.com");
+	knot_dname_t *owner  = knot_dname_from_str_alloc("name.example.com");
+	knot_dname_t *apex   = knot_dname_from_str_alloc("example.com");
+	knot_dname_t *expect = knot_dname_from_str_alloc("sv9o5lv8kgv6lm1t9dkst43b3c0aagbj.example.com");
 
 	knot_nsec3_params_t params = {
 		.algorithm = 1, .flags = 0, .iterations = 10,

@@ -318,60 +318,144 @@ char *knot_dname_to_str(char *dst, const knot_dname_t *name, size_t maxlen)
 
 /*----------------------------------------------------------------------------*/
 
-knot_dname_t *knot_dname_from_str(const char *name)
+knot_dname_t *knot_dname_from_str(uint8_t *dst, const char *name, size_t maxlen)
 {
 	if (name == NULL) {
 		return NULL;
 	}
 
-	unsigned len = strlen(name);
-	if (len > KNOT_DNAME_MAXLEN) {
+	size_t name_len = strlen(name);
+	if (name_len == 0) {
 		return NULL;
 	}
 
-	/* Estimate wire size for special cases. */
-	unsigned wire_size = len + 1;
-	if (name[0] == '.' && len == 1) {
-		wire_size = 1; /* Root label. */
-		len = 0;      /* Do not parse input. */
-	} else if (name[len - 1] != '.') {
-		++wire_size; /* No FQDN, reserve last root label. */
-	}
-
-	/* Create wire. */
-	uint8_t *wire = malloc(wire_size * sizeof(uint8_t));
-	if (wire == NULL)
-		return NULL;
-	*wire = '\0';
-
-	/* Parse labels. */
-	const uint8_t *ch = (const uint8_t *)name;
-	const uint8_t *np = ch + len;
-	uint8_t *label = wire;
-	uint8_t *w = wire + 1; /* Reserve 1 for label len */
-	while (ch != np) {
-		if (*ch == '.') {
-			/* Zero-length label inside a dname - invalid. */
-			if (*label == 0) {
-				free(wire);
+	/* Wire size estimation. */
+	size_t alloc_size = 0;
+	if (dst == NULL) {
+		/* Check for the root label. */
+		if (name[0] == '.') {
+			/* Just the root dname can begin with a dot. */
+			if (name_len > 1) {
 				return NULL;
 			}
-			label = w;
-			*label = '\0';
-		} else {
-			*w = *ch;
-			*label += 1;
+			name_len = 0; /* Skip the following parsing. */
+			alloc_size++;
+		} else if (name[name_len -1] != '.') { /* Check for non-FQDN. */
+			alloc_size++;
 		}
-		++w;
-		++ch;
+		alloc_size += name_len + 1; /* + 1 ~ first label length. */
+	} else {
+		alloc_size = maxlen;
+	}
+
+	/* Check the maximal wire size. */
+	if (alloc_size > KNOT_DNAME_MAXLEN) {
+		alloc_size = KNOT_DNAME_MAXLEN;
+	}
+
+	/* Prepare output buffer. */
+	uint8_t *wire = (dst == NULL) ? malloc(alloc_size) : dst;
+	if (wire == NULL) {
+		return NULL;
+	}
+
+	uint8_t *label = wire;
+	uint8_t *wire_pos = wire + 1;
+	uint8_t *wire_end = wire + alloc_size;
+
+	/* Initialize the first label (root label). */
+	*label = 0;
+
+	const uint8_t *ch = (const uint8_t *)name;
+	const uint8_t *end = ch + name_len;
+
+	while (ch < end) {
+		switch (*ch) {
+		case '.':
+			/* Check for invalid zero-length label. */
+			if (*label == 0 && name_len > 1) {
+				goto dname_from_str_failed;
+			}
+			label = wire_pos++;
+			*label = 0;
+			break;
+		case '\\':
+			ch++;
+			/* At least one more character is required. */
+			if (ch == end) {
+				goto dname_from_str_failed;
+			}
+
+			/* Check for maximal label length. */
+			if (++(*label) > KNOT_DNAME_MAXLABELLEN) {
+				goto dname_from_str_failed;
+			}
+
+			/* Check for \DDD notation. */
+			if (isdigit(*ch) != 0) {
+				/* Check for next two digits. */
+				if (ch + 2 >= end ||
+				    isdigit(*(ch + 1)) == 0 ||
+				    isdigit(*(ch + 2)) == 0) {
+					goto dname_from_str_failed;
+				}
+
+				uint32_t num = (*(ch + 0) - '0') * 100 +
+				               (*(ch + 1) - '0') * 10 +
+				               (*(ch + 2) - '0') * 1;
+				if (num > UINT8_MAX) {
+					goto dname_from_str_failed;
+				}
+				*(wire_pos++) = num;
+				ch +=2;
+			} else {
+				*(wire_pos++) = *ch;
+			}
+
+			/* At least trailing root label should follow. */
+			if (wire_pos >= wire_end) {
+				goto dname_from_str_failed;
+			}
+
+			break;
+		default:
+			/* Check for maximal label length. */
+			if (++(*label) > KNOT_DNAME_MAXLABELLEN) {
+				goto dname_from_str_failed;
+			}
+			*(wire_pos++) = *ch;
+
+			/* At least trailing root label should follow. */
+			if (wire_pos >= wire_end) {
+				goto dname_from_str_failed;
+			}
+		}
+		ch++;
 	}
 
 	/* Check for non-FQDN name. */
 	if (*label > 0) {
-		*w = '\0';
+		*(wire_pos++) = 0;
+	}
+
+	/* Reduce output buffer if the size is overestimated. */
+	if (wire_pos < wire_end && dst == NULL) {
+		uint8_t *reduced = realloc(wire, wire_pos - wire);
+		if (reduced == NULL) {
+			goto dname_from_str_failed;
+		}
+		wire = reduced;
 	}
 
 	return wire;
+
+dname_from_str_failed:
+
+	if (dst == NULL) {
+		free(wire);
+	}
+
+	return NULL;
 }
 
 /*----------------------------------------------------------------------------*/

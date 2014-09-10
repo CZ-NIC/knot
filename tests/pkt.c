@@ -76,7 +76,7 @@ int main(int argc, char *argv[])
 	knot_dname_t* dnames[NAMECOUNT] = {0};
 	knot_rrset_t* rrsets[NAMECOUNT] = {0};
 	for (unsigned i = 0; i < NAMECOUNT; ++i) {
-		dnames[i] = knot_dname_from_str(g_names[i]);
+		dnames[i] = knot_dname_from_str_alloc(g_names[i]);
 	}
 
 	uint8_t *edns_str = (uint8_t *)"ab";

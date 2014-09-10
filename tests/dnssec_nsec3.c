@@ -54,7 +54,7 @@ int main(int argc, char *argv[])
 		'a', 'b', 'c', 'd'     // salt
 	};
 
-	knot_dname_t *owner = knot_dname_from_str("test.");
+	knot_dname_t *owner = knot_dname_from_str_alloc("test.");
 	rrset = knot_rrset_new(owner, KNOT_RRTYPE_NSEC3PARAM, KNOT_CLASS_IN, NULL);
 	knot_dname_free(&owner, NULL);
 
@@ -81,7 +81,7 @@ int main(int argc, char *argv[])
 	params.salt = (uint8_t *)strdup("happywithnsec3");
 
 	const char *dname_str = "knot-dns.cz.";
-	knot_dname_t *dname = knot_dname_from_str(dname_str);
+	knot_dname_t *dname = knot_dname_from_str_alloc(dname_str);
 
 	uint8_t expected[] = {
 		0x72, 0x40, 0x55, 0x83, 0x92, 0x93, 0x95, 0x28, 0xee, 0xa2,

@@ -29,7 +29,7 @@ int main(int argc, char *argv[])
 	ok(changeset_empty(NULL), "changeset: NULL empty");
 
 	// Test creation.
-	knot_dname_t *d = knot_dname_from_str("test.");
+	knot_dname_t *d = knot_dname_from_str_alloc("test.");
 	assert(d);
 	changeset_t *ch = changeset_new(d);
 	knot_dname_free(&d, NULL);
@@ -41,7 +41,7 @@ int main(int argc, char *argv[])
 	ok(changeset_size(ch) == 0, "changeset: empty size");
 
 	// Test additions.
-	d = knot_dname_from_str("non.terminals.test.");
+	d = knot_dname_from_str_alloc("non.terminals.test.");
 	assert(d);
 	knot_rrset_t *apex_txt_rr = knot_rrset_new(d, KNOT_RRTYPE_TXT, KNOT_CLASS_IN, NULL);
 	assert(apex_txt_rr);
@@ -66,7 +66,7 @@ int main(int argc, char *argv[])
 
 	// Add another node.
 	knot_dname_free(&d, NULL);
-	d = knot_dname_from_str("here.come.more.non.terminals.test");
+	d = knot_dname_from_str_alloc("here.come.more.non.terminals.test");
 	assert(d);
 	knot_rrset_t *other_rr = knot_rrset_new(d, KNOT_RRTYPE_TXT, KNOT_CLASS_IN, NULL);
 	assert(other_rr);
@@ -114,14 +114,14 @@ int main(int argc, char *argv[])
 
 	// Create new changeset.
 	knot_dname_free(&d, NULL);
-	d = knot_dname_from_str("test.");
+	d = knot_dname_from_str_alloc("test.");
 	assert(d);
 	changeset_t *ch2 = changeset_new(d);
 	knot_dname_free(&d, NULL);
 	assert(ch2);
 	// Add something to add section.
 	knot_dname_free(&apex_txt_rr->owner, NULL);
-	apex_txt_rr->owner = knot_dname_from_str("something.test.");
+	apex_txt_rr->owner = knot_dname_from_str_alloc("something.test.");
 	assert(apex_txt_rr->owner);
 	ret = changeset_add_rrset(ch2, apex_txt_rr);
 	assert(ret == KNOT_EOK);
@@ -129,7 +129,7 @@ int main(int argc, char *argv[])
 	// Add something to remove section.
 	knot_dname_free(&apex_txt_rr->owner, NULL);
 	apex_txt_rr->owner =
-		knot_dname_from_str("and.now.for.something.completely.different.test.");
+		knot_dname_from_str_alloc("and.now.for.something.completely.different.test.");
 	assert(apex_txt_rr->owner);
 	ret = changeset_rem_rrset(ch2, apex_txt_rr);
 	assert(ret == KNOT_EOK);

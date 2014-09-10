@@ -244,7 +244,7 @@ static knot_dname_t *ns_wildcard_child_name(const knot_dname_t *name)
 {
 	assert(name != NULL);
 
-	knot_dname_t *wildcard = knot_dname_from_str("*");
+	knot_dname_t *wildcard = knot_dname_from_str_alloc("*");
 	if (wildcard == NULL) {
 		return NULL;
 	}
