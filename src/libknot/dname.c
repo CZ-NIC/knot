@@ -222,7 +222,7 @@ char *knot_dname_to_str(char *dst, const knot_dname_t *name, size_t maxlen)
 		return NULL;
 	}
 
-	// Check the size for len(dname) + 1 char termination.
+	/* Check the size for len(dname) + 1 char termination. */
 	size_t alloc_size = (dst == NULL) ? dname_size + 1 : maxlen;
 	if (alloc_size < dname_size + 1) {
 		return NULL;
@@ -239,11 +239,11 @@ char *knot_dname_to_str(char *dst, const knot_dname_t *name, size_t maxlen)
 	for (uint i = 0; i < dname_size; i++) {
 		uint8_t c = name[i];
 
-		// Read next label size.
+		/* Read next label size. */
 		if (label_len == 0) {
 			label_len = c;
 
-			// Write label separation.
+			/* Write label separation. */
 			if (str_len > 0 || dname_size == 1) {
 				res[str_len++] = '.';
 			}
@@ -265,7 +265,7 @@ char *knot_dname_to_str(char *dst, const knot_dname_t *name, size_t maxlen)
 					return NULL;
 				}
 			} else {
-				// Extend output buffer for \x format.
+				/* Extend output buffer for \x format. */
 				alloc_size += 1;
 				char *extended = realloc(res, alloc_size);
 				if (extended == NULL) {
@@ -275,7 +275,7 @@ char *knot_dname_to_str(char *dst, const knot_dname_t *name, size_t maxlen)
 				res = extended;
 			}
 
-			// Write encoded character.
+			/* Write encoded character. */
 			res[str_len++] = '\\';
 			res[str_len++] = c;
 		} else {
@@ -284,7 +284,7 @@ char *knot_dname_to_str(char *dst, const knot_dname_t *name, size_t maxlen)
 					return NULL;
 				}
 			} else {
-				// Extend output buffer for \DDD format.
+				/* Extend output buffer for \DDD format. */
 				alloc_size += 3;
 				char *extended = realloc(res, alloc_size);
 				if (extended == NULL) {
@@ -294,7 +294,7 @@ char *knot_dname_to_str(char *dst, const knot_dname_t *name, size_t maxlen)
 				res = extended;
 			}
 
-			// Write encoded character.
+			/* Write encoded character. */
 			int ret = snprintf(res + str_len, alloc_size - str_len,
 			                   "\\%03u", c);
 			if (ret <= 0 || ret >= alloc_size - str_len) {
@@ -310,7 +310,7 @@ char *knot_dname_to_str(char *dst, const knot_dname_t *name, size_t maxlen)
 		label_len--;
 	}
 
-	// String_termination.
+	/* String_termination. */
 	res[str_len] = 0;
 
 	return res;
