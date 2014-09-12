@@ -618,7 +618,6 @@ int ixfr_query(knot_pkt_t *pkt, struct query_data *qdata)
 	int ret = KNOT_EOK;
 	struct timeval now = {0};
 	struct ixfr_proc *ixfr = (struct ixfr_proc*)qdata->ext;
-	knot_pkt_t *query = qdata->query;
 
 	/* If IXFR is disabled, respond with SOA. */
 	if (qdata->param->proc_flags & NS_QUERY_NO_IXFR) {
@@ -641,10 +640,6 @@ int ixfr_query(knot_pkt_t *pkt, struct query_data *qdata)
 		case KNOT_ERANGE:   /* No history -> AXFR. */
 		case KNOT_ENOENT:
 			IXFROUT_LOG(LOG_INFO, "incomplete history, fallback to AXFR");
-			knot_pkt_clear(pkt);
-			knot_pkt_put_question(pkt, knot_pkt_qname(query),
-			                      knot_pkt_qclass(query),
-			                      KNOT_RRTYPE_AXFR);
 			qdata->packet_type = KNOT_QUERY_AXFR; /* Solve as AXFR. */
 			return axfr_query_process(pkt, qdata);
 		default:            /* Server errors. */
@@ -684,14 +679,17 @@ int ixfr_process_answer(knot_pkt_t *pkt, struct answer_data *adata)
 		return NS_PROC_FAIL;
 	}
 	
-	if (!ixfr_enough_data(pkt)) {
-		return NS_PROC_FAIL;
-	}
+	if (adata->ext == NULL) {
+		if (!ixfr_enough_data(pkt)) {
+			return NS_PROC_FAIL;
+		}
 	
-	/* Check for AXFR-style IXFR. */
-	if (ixfr_is_axfr(pkt)) {
-		IXFRIN_LOG(LOG_NOTICE, "fallback to AXFR");
-		return axfr_answer_process(pkt, adata);
+		/* Check for AXFR-style IXFR. */
+		if (ixfr_is_axfr(pkt)) {
+			IXFRIN_LOG(LOG_NOTICE, "receiving AXFR-style IXFR");
+			adata->response_type = KNOT_RESPONSE_AXFR;
+			return axfr_answer_process(pkt, adata);
+		}
 	}
 	
 	/* Check RCODE. */
