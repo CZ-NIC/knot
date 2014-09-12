@@ -18,6 +18,12 @@ zone = t.zone("forward.", storage=".") + \
        t.zone("1.6.b.0.0.0.0.0.0.2.6.2.ip6.arpa.", storage=".")
 t.link(zone, knot)
 
+# Enable DNSSEC
+knot.dnssec_enable = True
+for z in zone:
+    knot.gen_key(z, ksk=True, alg="RSASHA256")
+    knot.gen_key(z, alg="RSASHA256")
+
 # Configure 'synth_record' modules for auto forward/reverse zones
 knot.add_query_module(zone[FWD],  "synth_record", "forward dynamic4- 900 192.168.1.0/25")
 knot.add_query_module(zone[FWD],  "synth_record", "forward dynamic6- 900 2620:0:b61::/52")
@@ -32,26 +38,26 @@ static_map = [ ("192.168.1.42", "42." + zone[REV4].name, "static4-a.forward."),
 
 # Check static reverse records 
 for (_, reverse, forward) in static_map:
-    resp = knot.dig(reverse, "PTR")
+    resp = knot.dig(reverse, "PTR", dnssec=True)
     resp.check(forward, rcode="NOERROR", flags="QR AA")
 
 # Check static forward records
 for (addr, reverse, forward) in static_map:
     rrtype = "AAAA" if ":" in addr else "A"
-    resp = knot.dig(forward, rrtype)
+    resp = knot.dig(forward, rrtype, dnssec=True)
     resp.check(addr, rcode="NOERROR", flags="QR AA")
 
 # Check positive dynamic reverse records
 dynamic_map = [ ("192.168.1.1", "1." + zone[REV4].name, "dynamic4-192-168-1-1." + zone[FWD].name),
                 ("2620:0:b61::1", "1.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0." + zone[REV6].name, "dynamic6-2620-0000-0b61-0000-0000-0000-0000-0001." + zone[FWD].name) ]
 for (_, reverse, forward) in dynamic_map:
-    resp = knot.dig(reverse, "PTR")
+    resp = knot.dig(reverse, "PTR", dnssec=True)
     resp.check(forward, rcode="NOERROR", flags="QR AA")
 
 # Check positive dynamic forward records
 for (addr, reverse, forward) in dynamic_map:
     rrtype = "AAAA" if ":" in addr else "A"
-    resp = knot.dig(forward, rrtype)
+    resp = knot.dig(forward, rrtype, dnssec=True)
     resp.check(addr, rcode="NOERROR", flags="QR AA")
 
 # Check NODATA answer for all records
@@ -61,14 +67,20 @@ for (addr, reverse, forward) in dynamic_map:
     resp = knot.dig(forward, "TXT")
     resp.check(nordata=addr, rcode="NOERROR", flags="QR AA")
 
+    # Check for SERVFAIL with DNSSEC - no way to prove
+    resp = knot.dig(reverse, "TXT", dnssec=True)
+    resp.check(nordata=forward, rcode="SERVFAIL")
+    resp = knot.dig(forward, "TXT", dnssec=True)
+    resp.check(nordata=addr, rcode="SERVFAIL")
+
 # Check "out of subnet range" query response
 nxdomain_map = [ ("192.168.1.128", "128." + zone[REV4].name, "dynamic4-192-168-1-128." + zone[FWD].name),
                  ("2620:0:b61:1000::", "0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.1." + zone[REV6].name, "dynamic6-2620-0000-0b61-1000-0000-0000-0000-0000." + zone[FWD].name) ]
 for (addr, reverse, forward) in nxdomain_map:
     rrtype = "AAAA" if ":" in addr else "A"
-    resp = knot.dig(reverse, "PTR")
+    resp = knot.dig(reverse, "PTR", dnssec=True)
     resp.check(rcode="NXDOMAIN", flags="QR AA")
-    resp = knot.dig(forward, rrtype)
+    resp = knot.dig(forward, rrtype, dnssec=True)
     resp.check(rcode="NXDOMAIN", flags="QR AA")
 
 # Check alias leading to synthetic name 
@@ -76,12 +88,12 @@ alias_map = [ ("192.168.1.1", None, "cname4." + zone[FWD].name),
               ("2620:0:b61::1", None, "cname6." + zone[FWD].name) ]
 for (addr, _, forward) in alias_map:
     rrtype = "AAAA" if ":" in addr else "A"
-    resp = knot.dig(forward, rrtype)
+    resp = knot.dig(forward, rrtype, dnssec=True)
     resp.check(addr, rcode="NOERROR", flags="QR AA")
 
 # Check ANY type question
 for (addr, reverse, forward) in dynamic_map:
-    resp = knot.dig(forward, "ANY")
+    resp = knot.dig(forward, "ANY", dnssec=True)
     resp.check(rcode="NOERROR", flags="QR AA")
 
 t.end()
