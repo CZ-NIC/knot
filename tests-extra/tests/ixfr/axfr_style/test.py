@@ -7,7 +7,7 @@ import os
 
 t = Test(tsig=False)
 
-master = t.server("bind")
+master = t.server("knot")
 slave = t.server("knot")
 zone = t.zone("xfr", storage=".")
 
