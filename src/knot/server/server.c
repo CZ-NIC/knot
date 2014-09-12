@@ -588,12 +588,13 @@ int server_update_zones(const struct conf_t *conf, void *data)
 {
 	server_t *server = (server_t *)data;
 
-	/* Prevent new events on zones waiting to be replaced. */
+	/* Prevent emitting of new zone events. */
 	if (server->zone_db) {
 		knot_zonedb_foreach(server->zone_db, zone_events_freeze);
 	}
 
-	/* Finish operations already in the queue. */
+	/* Suspend workers, clear wating events, finish running events. */
+	worker_pool_suspend(server->workers);
 	worker_pool_clear(server->workers);
 	worker_pool_wait(server->workers);
 
@@ -603,7 +604,8 @@ int server_update_zones(const struct conf_t *conf, void *data)
 	/* Trim extra heap. */
 	mem_trim();
 
-	/* Plan events on new zones. */
+	/* Resume workers and allow events on new zones. */
+	worker_pool_resume(server->workers);
 	if (server->zone_db) {
 		knot_zonedb_foreach(server->zone_db, zone_events_start);
 	}

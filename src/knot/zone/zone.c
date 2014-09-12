@@ -72,7 +72,7 @@ zone_t* zone_new(conf_zone_t *conf)
 	zone->conf = conf;
 
 	// DDNS
-	pthread_spin_init(&zone->ddns_lock, 0);
+	pthread_mutex_init(&zone->ddns_lock, NULL);
 	zone->ddns_queue_size = 0;
 	init_list(&zone->ddns_queue);
 
@@ -95,7 +95,7 @@ void zone_free(zone_t **zone_ptr)
 	knot_dname_free(&zone->name, NULL);
 
 	free_ddns_queue(zone);
-	pthread_spin_destroy(&zone->ddns_lock);
+	pthread_mutex_destroy(&zone->ddns_lock);
 
 	/* Free assigned config. */
 	conf_free_zone(zone->conf);
@@ -266,13 +266,13 @@ int zone_update_enqueue(zone_t *zone, knot_pkt_t *pkt, struct process_query_para
 		return ret;
 	}
 
-	pthread_spin_lock(&zone->ddns_lock);
+	pthread_mutex_lock(&zone->ddns_lock);
 
 	/* Enqueue created request. */
 	add_tail(&zone->ddns_queue, (node_t *)req);
 	++zone->ddns_queue_size;
 
-	pthread_spin_unlock(&zone->ddns_lock);
+	pthread_mutex_unlock(&zone->ddns_lock);
 
 	/* Schedule UPDATE event. */
 	zone_events_schedule(zone, ZONE_EVENT_UPDATE, ZONE_EVENT_NOW);
@@ -286,10 +286,10 @@ size_t zone_update_dequeue(zone_t *zone, list_t *updates)
 		return 0;
 	}
 
-	pthread_spin_lock(&zone->ddns_lock);
+	pthread_mutex_lock(&zone->ddns_lock);
 	if (EMPTY_LIST(zone->ddns_queue)) {
 		/* Lost race during reload. */
-		pthread_spin_unlock(&zone->ddns_lock);
+		pthread_mutex_unlock(&zone->ddns_lock);
 		return 0;
 	}
 
@@ -298,7 +298,7 @@ size_t zone_update_dequeue(zone_t *zone, list_t *updates)
 	init_list(&zone->ddns_queue);
 	zone->ddns_queue_size = 0;
 
-	pthread_spin_unlock(&zone->ddns_lock);
+	pthread_mutex_unlock(&zone->ddns_lock);
 	
 	return update_count;
 }

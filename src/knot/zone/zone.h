@@ -58,7 +58,7 @@ typedef struct zone_t
 	zone_flag_t flags;
 
 	/*! \brief DDNS queue and lock. */
-	pthread_spinlock_t ddns_lock;
+	pthread_mutex_t ddns_lock;
 	size_t ddns_queue_size;
 	list_t ddns_queue;
 

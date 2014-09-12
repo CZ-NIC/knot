@@ -403,11 +403,11 @@ static int event_update(zone_t *zone)
 	mem_trim();
 
 	/* Replan event if next update waiting. */
-	pthread_spin_lock(&zone->ddns_lock);
+	pthread_mutex_lock(&zone->ddns_lock);
 	
 	const bool empty = EMPTY_LIST(zone->ddns_queue);
 	
-	pthread_spin_unlock(&zone->ddns_lock);
+	pthread_mutex_unlock(&zone->ddns_lock);
 	
 	if (!empty) {
 		zone_events_schedule(zone, ZONE_EVENT_UPDATE, ZONE_EVENT_NOW);
@@ -641,14 +641,14 @@ static void duplicate_ddns_q(zone_t *zone, zone_t *old_zone)
 /*!< Replans DDNS event. */
 static void replan_update(zone_t *zone, zone_t *old_zone)
 {
-	pthread_spin_lock(&old_zone->ddns_lock);
+	pthread_mutex_lock(&old_zone->ddns_lock);
 
 	const bool have_updates = old_zone->ddns_queue_size > 0;
 	if (have_updates) {
 		duplicate_ddns_q(zone, (zone_t *)old_zone);
 	}
 	
-	pthread_spin_unlock(&old_zone->ddns_lock);
+	pthread_mutex_unlock(&old_zone->ddns_lock);
 	
 	if (have_updates) {
 		zone_events_schedule(zone, ZONE_EVENT_UPDATE, ZONE_EVENT_NOW);
@@ -921,7 +921,7 @@ void zone_events_enqueue(zone_t *zone, zone_event_type_t type)
 
 	pthread_mutex_lock(&events->mx);
 
-	/* Possible only if no event is running at the moment. */
+	/* Bypass scheduler if no event is running. */
 	if (!events->running && !events->frozen) {
 		events->running = true;
 		event_set_time(events, type, ZONE_EVENT_IMMEDIATE);
