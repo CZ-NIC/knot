@@ -46,6 +46,16 @@ void worker_pool_start(worker_pool_t *pool);
 void worker_pool_stop(worker_pool_t *pool);
 
 /*!
+ * \brief Temporarily suspend the execution of worker pool.
+ */
+void worker_pool_suspend(worker_pool_t *pool);
+
+/*!
+ * \brief Resume the execution of worker pool.
+ */
+void worker_pool_resume(worker_pool_t *pool);
+
+/*!
  * \brief Wait for all threads to terminate.
  */
 void worker_pool_join(worker_pool_t *pool);
