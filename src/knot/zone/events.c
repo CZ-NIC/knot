@@ -921,7 +921,7 @@ void zone_events_enqueue(zone_t *zone, zone_event_type_t type)
 
 	pthread_mutex_lock(&events->mx);
 
-	/* Possible only if no event is running at the moment. */
+	/* Bypass scheduler if no event is running. */
 	if (!events->running && !events->frozen) {
 		events->running = true;
 		event_set_time(events, type, ZONE_EVENT_IMMEDIATE);
