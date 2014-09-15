@@ -82,7 +82,7 @@ knot_cmd_t knot_cmd_tbl[] = {
 	{&cmd_refresh,    0, "refresh",    "<zone>", "\tRefresh slave zone (all if not specified). Flag '-f' forces retransfer."},
 	{&cmd_flush,      0, "flush",      "",       "\t\tFlush journal and update zone files."},
 	{&cmd_status,     0, "status",     "",       "\tCheck if server is running."},
-	{&cmd_zonestatus, 0, "zonestatus", "<zone>", "\tShow status of configured zones (all if not specified)."},
+	{&cmd_zonestatus, 0, "zonestatus", "",       "\tShow status of configured zones."},
 	{&cmd_checkconf,  1, "checkconf",  "",       "\tCheck current server configuration."},
 	{&cmd_checkzone,  1, "checkzone",  "<zone>", "Check zone (all if not specified)."},
 	{&cmd_memstats,   1, "memstats",   "<zone>", "Estimate memory use for zone (all if not specified)."},

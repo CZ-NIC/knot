@@ -53,7 +53,7 @@ If you want to control the daemon directly, use ``SIGINT`` to quit the process o
      refresh <zone>         Refresh slave zone (all if not specified).
      flush                  Flush journal and update zone files.
      status                 Check if server is running.
-     zonestatus <zone>      Show status of configured zones.
+     zonestatus             Show status of configured zones.
      checkconf              Check current server configuration.
      checkzone <zone>       Check zone (all if not specified).
      memstats <zone>        Estimate memory consumption for zone (all if not
