@@ -43,7 +43,7 @@ Stop server (no\-op if not running).
 Reload configuration and changed zones (all if not specified).
 .TP
 \fBflush\fR [\fIzone\fR]...
-Flush journal and update zone files.
+Flush journal and update zone files (all if not specified).
 .TP
 \fBstatus\fR
 Check if server is running.
