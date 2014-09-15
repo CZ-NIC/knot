@@ -348,6 +348,18 @@ khost_LDADD        += dnstap/libdnstap.la
 libknotd_la_LIBADD += dnstap/libdnstap.la
 endif
 
+if HAVE_LMDB
+libknotd_la_SOURCES +=				\
+	knot/modules/dynzone.c				\
+	knot/modules/dynzone.h
+
+dynzone_tool_SOURCES =					\
+	knot/modules/dynzone_tool.c
+
+bin_PROGRAMS += dynzone_tool
+dynzone_tool_LDADD = libknot.la libknotd.la
+endif
+
 # Create storage and run-time directories
 install-data-hook:
 	$(INSTALL) -d $(DESTDIR)/@config_dir@
