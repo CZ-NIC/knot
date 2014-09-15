@@ -104,12 +104,13 @@ static void test_str(const char *in_str, const char *in_bin, size_t bin_len) {
 
 int main(int argc, char *argv[])
 {
-	plan(269);
+	plan(285);
 
 	knot_dname_t *d = NULL, *d2 = NULL;
 	const char *w = NULL, *t = NULL;
 	unsigned len = 0;
 	size_t pos = 0;
+	char *s = NULL;
 
 	/* DNAME WIRE CHECKS */
 
@@ -120,17 +121,17 @@ int main(int argc, char *argv[])
 	ok(test_fw(1, ""), "parsing empty dname");
 
 	/* incomplete dname */
-	ok(!test_fw(5, "\x08""dddd"), "parsing incomplete wire");
+	ok(!test_fw(5, "\x08" "dddd"), "parsing incomplete wire");
 
 	/* non-fqdn */
-	ok(!test_fw(3, "\x02""ab"), "parsing non-fqdn name");
+	ok(!test_fw(3, "\x02" "ab"), "parsing non-fqdn name");
 
 	/* label length == 63 */
-	w = "\x3f""ddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd";
+	w = "\x3f" "123456789012345678901234567890123456789012345678901234567890123";
 	ok(test_fw(1 + 63 + 1, w), "parsing label length == 63");
 
 	/* label length > 63 */
-	w = "\x40""dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd";
+	w = "\x40" "1234567890123456789012345678901234567890123456789012345678901234";
 	ok(!test_fw(1 + 64 + 1, w), "parsing label length > 63");
 
 	/* label count == 127 (also maximal dname length) */
@@ -266,8 +267,28 @@ int main(int argc, char *argv[])
 	         "\x35" "#234567890123456789012345678901234567890123456789012?",
 	         255);
 
+	/* NULL output, positive maxlen */
+	w = "\x02" "aa";
+	s = knot_dname_to_str(NULL, (const uint8_t *)w, 1);
+	ok(s != NULL, "dname_to_str: null dname");
+	if (s != NULL) {
+		ok(memcmp(s, "aa.", 4) == 0, "dname_to_str: null dname compare");
+		free(s);
+	} else {
+		skip("dname_to_str: null dname");
+	}
+
+	/* non-NULL output, zero maxlen */
+	char s_small[2];
+	s = knot_dname_to_str(s_small, (const uint8_t *)w, 0);
+	ok(s == NULL, "dname_to_str: non-NULL output, zero maxlen");
+
+	/* small buffer */
+	s = knot_dname_to_str(s_small, (const uint8_t *)w, 1);
+	ok(s == NULL, "dname_to_str: small buffer");
+
 	/* NULL dname */
-	char *s = knot_dname_to_str_alloc(NULL);
+	s = knot_dname_to_str_alloc(NULL);
 	ok(s == NULL, "dname_to_str: null dname");
 
 	/* empty dname is considered as a root dname */
@@ -280,6 +301,80 @@ int main(int argc, char *argv[])
 	} else {
 		skip("dname_to_str: empty dname");
 	}
+
+	/* incomplete dname */
+	w = "\x08" "dddd";
+	s = knot_dname_to_str_alloc((const uint8_t *)w);
+	ok(s != NULL, "dname_to_str: incomplete dname");
+	free(s);
+
+	/* non-fqdn */
+	w = "\x02" "ab";
+	s = knot_dname_to_str_alloc((const uint8_t *)w);
+	ok(s != NULL, "dname_to_str: non-fqdn");
+	free(s);
+
+	/* label length > 63 */
+	w = "\x40" "1234567890123456789012345678901234567890123456789012345678901234";
+	s = knot_dname_to_str_alloc((const uint8_t *)w);
+	ok(s != NULL, "dname_to_str: label length > 63");
+	free(s);
+
+	/* label count > 127 */
+	w = "\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64"
+	    "\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64"
+	    "\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64"
+	    "\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64"
+	    "\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64"
+	    "\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64"
+	    "\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64"
+	    "\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64"
+	    "\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64"
+	    "\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64"
+	    "\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64"
+	    "\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64"
+	    "\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64";
+	s = knot_dname_to_str_alloc((const uint8_t *)w);
+	ok(s != NULL, "dname_to_str: label count > 127");
+	free(s);
+
+	/* dname length > 255 */
+	w = "\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64"
+	    "\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64"
+	    "\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64"
+	    "\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64"
+	    "\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64"
+	    "\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64"
+	    "\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64"
+	    "\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64"
+	    "\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64"
+	    "\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64"
+	    "\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64"
+	    "\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64"
+	    "\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64\x01\x64\x02\x64\x64";
+	s = knot_dname_to_str_alloc((const uint8_t *)w);
+	ok(s != NULL, "dname_to_str: dname length > 255");
+	free(s);
+
+	/* NULL output, positive maxlen */
+	s = "aa.";
+	d = knot_dname_from_str(NULL, s, 1);
+	ok(s != NULL, "dname_from_str: null name");
+	if (s != NULL) {
+		ok(memcmp(d, "\x02" "aa", 4) == 0, "dname_from_str: null name compare");
+		free(d);
+	} else {
+		skip("dname_from_str: null name");
+	}
+
+	/* non-NULL output, zero maxlen */
+	uint8_t d_small[2];
+	d = knot_dname_from_str(d_small, s, 0);
+	ok(d == NULL, "dname_from_str: non-NULL output, zero maxlen");
+
+	/* small buffer */
+	d = knot_dname_from_str(d_small, s, 1);
+	ok(d == NULL, "dname_from_str: small buffer");
 
 	/* NULL string */
 	d = knot_dname_from_str_alloc(NULL);
@@ -310,6 +405,21 @@ int main(int argc, char *argv[])
 	d = knot_dname_from_str_alloc(t);
 	ok(d == NULL, "dname_from_str: incomplete decimal II");
 
+	/* invalid decimal notation I */
+	t = "\\256";
+	d = knot_dname_from_str_alloc(t);
+	ok(d == NULL, "dname_from_str: invalid decimal I");
+
+	/* invalid decimal notation II */
+	t = "\\2x6";
+	d = knot_dname_from_str_alloc(t);
+	ok(d == NULL, "dname_from_str: invalid decimal II");
+
+	/* invalid escape notation */
+	t = "\\2";
+	d = knot_dname_from_str_alloc(t);
+	ok(d == NULL, "dname_from_str: invalid escape");
+
 	/* label length > 63 I */
 	t = "1234567890123456789012345678901234567890123456789012345678901234";
 	d = knot_dname_from_str_alloc(t);
@@ -325,13 +435,13 @@ int main(int argc, char *argv[])
 	d = knot_dname_from_str_alloc(t);
 	ok(d == NULL, "dname_from_str: label length > 63 III");
 
-	/* dname label length > 255 */
+	/* dname length > 255 */
 	t = "1234567890123456789012345678901234567890123456789."
 	    "1234567890123456789012345678901234567890123456789."
 	    "1234567890123456789012345678901234567890123456789."
 	    "1234567890123456789012345678901234567890123456789."
 	    "123456789012345678901234567890123456789012345678901234.",
-	ok(d == NULL, "dname_from_str: dname label length > 255");
+	ok(d == NULL, "dname_from_str: dname length > 255");
 
 	/* DNAME SUBDOMAIN CHECKS */
 

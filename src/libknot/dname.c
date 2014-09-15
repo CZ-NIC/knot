@@ -330,7 +330,7 @@ knot_dname_t *knot_dname_from_str(uint8_t *dst, const char *name, size_t maxlen)
 	}
 
 	/* Wire size estimation. */
-	size_t alloc_size = 0;
+	size_t alloc_size = maxlen;
 	if (dst == NULL) {
 		/* Check for the root label. */
 		if (name[0] == '.') {
@@ -339,13 +339,17 @@ knot_dname_t *knot_dname_from_str(uint8_t *dst, const char *name, size_t maxlen)
 				return NULL;
 			}
 			name_len = 0; /* Skip the following parsing. */
-			alloc_size++;
-		} else if (name[name_len -1] != '.') { /* Check for non-FQDN. */
-			alloc_size++;
+			alloc_size = 1;
+		} else if (name[name_len - 1] != '.') { /* Check for non-FQDN. */
+			alloc_size = 1 + name_len + 1;
+		} else {
+			alloc_size = 1 + name_len ; /* + 1 ~ first label length. */
 		}
-		alloc_size += name_len + 1; /* + 1 ~ first label length. */
-	} else {
-		alloc_size = maxlen;
+	}
+
+	/* The minimal (root) dname takes 1 byte. */
+	if (alloc_size == 0) {
+		return NULL;
 	}
 
 	/* Check the maximal wire size. */
@@ -370,6 +374,11 @@ knot_dname_t *knot_dname_from_str(uint8_t *dst, const char *name, size_t maxlen)
 	const uint8_t *end = ch + name_len;
 
 	while (ch < end) {
+		/* Check the output buffer for enough space. */
+		if (wire_pos >= wire_end) {
+			goto dname_from_str_failed;
+		}
+
 		switch (*ch) {
 		case '.':
 			/* Check for invalid zero-length label. */
@@ -381,13 +390,11 @@ knot_dname_t *knot_dname_from_str(uint8_t *dst, const char *name, size_t maxlen)
 			break;
 		case '\\':
 			ch++;
-			/* At least one more character is required. */
-			if (ch == end) {
-				goto dname_from_str_failed;
-			}
 
-			/* Check for maximal label length. */
-			if (++(*label) > KNOT_DNAME_MAXLABELLEN) {
+			/* At least one more character is required OR
+			 * check for maximal label length.
+			 */
+			if (ch == end || ++(*label) > KNOT_DNAME_MAXLABELLEN) {
 				goto dname_from_str_failed;
 			}
 
@@ -411,12 +418,6 @@ knot_dname_t *knot_dname_from_str(uint8_t *dst, const char *name, size_t maxlen)
 			} else {
 				*(wire_pos++) = *ch;
 			}
-
-			/* At least trailing root label should follow. */
-			if (wire_pos >= wire_end) {
-				goto dname_from_str_failed;
-			}
-
 			break;
 		default:
 			/* Check for maximal label length. */
@@ -424,17 +425,15 @@ knot_dname_t *knot_dname_from_str(uint8_t *dst, const char *name, size_t maxlen)
 				goto dname_from_str_failed;
 			}
 			*(wire_pos++) = *ch;
-
-			/* At least trailing root label should follow. */
-			if (wire_pos >= wire_end) {
-				goto dname_from_str_failed;
-			}
 		}
 		ch++;
 	}
 
 	/* Check for non-FQDN name. */
 	if (*label > 0) {
+		if (wire_pos >= wire_end) {
+			goto dname_from_str_failed;
+		}
 		*(wire_pos++) = 0;
 	}
 
