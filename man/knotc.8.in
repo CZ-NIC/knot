@@ -39,10 +39,10 @@ Print help and usage.
 \fBstop\fR
 Stop server (no\-op if not running).
 .TP
-\fBreload\fR
-Reload configuration and changed zones.
+\fBreload\fR [\fIzone\fR]...
+Reload configuration and changed zones (all if not specified).
 .TP
-\fBflush\fR
+\fBflush\fR [\fIzone\fR]...
 Flush journal and update zone files.
 .TP
 \fBstatus\fR
