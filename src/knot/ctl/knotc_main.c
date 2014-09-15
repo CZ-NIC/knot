@@ -42,8 +42,7 @@ enum knotc_flag_t {
 	F_NULL =         0 << 0,
 	F_FORCE =        1 << 0,
 	F_VERBOSE =      1 << 1,
-	F_INTERACTIVE =  1 << 2,
-	F_NOCONF =       1 << 3,
+	F_NOCONF =       1 << 2
 };
 
 /*! \brief Check if flag is present. */
@@ -79,9 +78,9 @@ static int cmd_signzone(int argc, char *argv[], unsigned flags);
 /*! \brief Table of remote commands. */
 knot_cmd_t knot_cmd_tbl[] = {
 	{&cmd_stop,       0, "stop",       "",       "\t\tStop server."},
-	{&cmd_reload,     0, "reload",     "",       "\tReload configuration and changed zones."},
+	{&cmd_reload,     0, "reload",     "<zone>", "\tReload configuration and changed zones."},
 	{&cmd_refresh,    0, "refresh",    "<zone>", "\tRefresh slave zone (all if not specified). Flag '-f' forces retransfer."},
-	{&cmd_flush,      0, "flush",      "",       "\t\tFlush journal and update zone files."},
+	{&cmd_flush,      0, "flush",      "<zone>", "\t\tFlush journal and update zone file (all if not specified)."},
 	{&cmd_status,     0, "status",     "",       "\tCheck if server is running."},
 	{&cmd_zonestatus, 0, "zonestatus", "",       "\tShow status of configured zones."},
 	{&cmd_checkconf,  1, "checkconf",  "",       "\tCheck current server configuration."},
@@ -104,7 +103,6 @@ void help(void)
 	       " -f, --force            \tForce operation - override some checks.\n"
 	       " -v, --verbose          \tVerbose mode - additional runtime information.\n"
 	       " -V, --version          \tPrint %s server version.\n"
-	       " -i, --interactive      \tInteractive mode (do not daemonize).\n"
 	       " -h, --help             \tPrint help and usage.\n",
 	       RUN_DIR "/knot.sock", PACKAGE_NAME);
 	printf("\nActions:\n");
@@ -434,7 +432,6 @@ int main(int argc, char **argv)
 		{"force", no_argument, 0, 'f'},
 		{"config", required_argument, 0, 'c'},
 		{"verbose", no_argument, 0, 'v'},
-		{"interactive", no_argument, 0, 'i'},
 		{"version", no_argument, 0, 'V'},
 		{"help", no_argument, 0, 'h'},
 		{"server", required_argument, 0, 's' },
@@ -444,7 +441,7 @@ int main(int argc, char **argv)
 		{0, 0, 0, 0}
 	};
 
-	while ((c = getopt_long(argc, argv, "s:p:y:k:fc:viVh", opts, &li)) != -1) {
+	while ((c = getopt_long(argc, argv, "s:p:y:k:fc:vVh", opts, &li)) != -1) {
 		switch (c) {
 		case 's':
 			r_addr = optarg;
@@ -471,9 +468,6 @@ int main(int argc, char **argv)
 			break;
 		case 'v':
 			flags |= F_VERBOSE;
-			break;
-		case 'i':
-			flags |= F_INTERACTIVE;
 			break;
 		case 'c':
 			config_fn = optarg;
