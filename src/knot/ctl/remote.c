@@ -14,6 +14,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <assert.h>
 #include <sys/stat.h>
 #include "knot/ctl/remote.h"
 #include "common/log.h"
@@ -36,7 +37,7 @@
 
 #define KNOT_CTL_REALM "knot."
 #define KNOT_CTL_REALM_EXT ("." KNOT_CTL_REALM)
-#define CMDARGS_BUFLEN KNOT_WIRE_MAX_PKTSIZE
+#define CMDARGS_ALLOC_BLOCK KNOT_WIRE_MAX_PKTSIZE
 #define CMDARGS_BUFLEN_LOG 256
 #define KNOT_CTL_SOCKET_UMASK 0007
 
@@ -45,9 +46,56 @@ typedef struct remote_cmdargs_t {
 	const knot_rrset_t *arg;
 	unsigned argc;
 	knot_rcode_t rc;
-	char resp[CMDARGS_BUFLEN];
-	size_t rlen;
+	char *response;
+	size_t response_size;
+	size_t response_max;
 } remote_cmdargs_t;
+
+/*! \brief Initialize cmdargs_t structure. */
+static int cmdargs_init(remote_cmdargs_t *args)
+{
+	assert(args);
+
+	char *response = malloc(CMDARGS_ALLOC_BLOCK);
+	if (!response) {
+		return KNOT_ENOMEM;
+	}
+
+	memset(args, 0, sizeof(*args));
+	args->response = response;
+	args->response_max = CMDARGS_ALLOC_BLOCK;
+
+	return KNOT_EOK;
+}
+
+/*! \brief Resize output buffer if the new data won't fit. */
+static int cmdargs_assure_avail(remote_cmdargs_t *args, size_t add_size)
+{
+	assert(args);
+	assert(add_size <= CMDARGS_ALLOC_BLOCK);
+
+	if (args->response_size + add_size > args->response_max) {
+		size_t new_max = args->response_max + CMDARGS_ALLOC_BLOCK;
+		char *new_response = realloc(args->response, new_max);
+		if (!new_response) {
+			return KNOT_ENOMEM;
+		}
+
+		args->response = new_response;
+		args->response_max = new_max;
+	}
+
+	return KNOT_EOK;
+}
+
+/*! \brief Deinitialize cmdargs_t structure. */
+static void cmdargs_deinit(remote_cmdargs_t *args)
+{
+	assert(args);
+
+	free(args->response);
+	memset(args, 0, sizeof(*args));
+}
 
 /*! \brief Callback prototype for remote commands. */
 typedef int (*remote_cmdf_t)(server_t*, remote_cmdargs_t*);
@@ -230,8 +278,6 @@ static char *dnssec_info(const zone_t *zone, char *buf, size_t buf_size)
 static int remote_c_zonestatus(server_t *s, remote_cmdargs_t* a)
 {
 	dbg_server("remote: %s\n", __func__);
-	char *dst = a->resp;
-	size_t rb = sizeof(a->resp) - 1;
 
 	int ret = KNOT_EOK;
 	rcu_read_lock();
@@ -285,23 +331,23 @@ static int remote_c_zonestatus(server_t *s, remote_cmdargs_t* a)
 		                 when,
 		                 zone->conf->dnssec_enable ? "automatic DNSSEC, resigning at:" : "DNSSEC signing disabled",
 		                 zone->conf->dnssec_enable ? dnssec_info(zone, dnssec_buf, sizeof(dnssec_buf)) : "");
-		if (n < 0 || (size_t)n > rb) {
-			*dst = '\0';
+		if (n < 0 || n >= sizeof(buf)) {
 			ret = KNOT_ESPACE;
 			break;
 		}
 
-		assert(n <= sizeof(buf));
+		ret = cmdargs_assure_avail(a, n);
+		if (ret != KNOT_EOK) {
+			break;
+		}
 
-		memcpy(dst, buf, n);
-		rb -= n;
-		dst += n;
+		memcpy(a->response + a->response_size, buf, n);
+		a->response_size += n;
 
 		knot_zonedb_iter_next(&it);
 	}
 	rcu_read_unlock();
 
-	a->rlen = sizeof(a->resp) - 1 - rb;
 	return ret;
 }
 
@@ -609,48 +655,46 @@ int remote_answer(int sock, server_t *s, knot_pkt_t *pkt)
 	 * NS: TSIG
 	 * AR: data
 	 */
-	int ret = KNOT_EOK;
-	remote_cmdargs_t* args = malloc(sizeof(remote_cmdargs_t));
-	if (!args) {
-		free(cmd);
-		return KNOT_ENOMEM;
+	remote_cmdargs_t args = { 0 };
+	int ret = cmdargs_init(&args);
+	if (ret != KNOT_EOK) {
+		return ret;
 	}
-	memset(args, 0, sizeof(remote_cmdargs_t));
 
 	const knot_pktsection_t *authority = knot_pkt_section(pkt, KNOT_AUTHORITY);
-	args->arg = authority->rr;
-	args->argc = authority->count;
-	args->rc = KNOT_RCODE_NOERROR;
+	args.arg = authority->rr;
+	args.argc = authority->count;
+	args.rc = KNOT_RCODE_NOERROR;
 
-	log_command(cmd, args);
+	log_command(cmd, &args);
 
 	remote_cmd_t *c = remote_cmd_tbl;
 	while (c->name != NULL) {
 		if (strcmp(cmd, c->name) == 0) {
-			ret = c->f(s, args);
+			ret = c->f(s, &args);
 			break;
 		}
 		++c;
 	}
 
 	/* Prepare response. */
-	if (ret != KNOT_EOK || args->rlen == 0) {
-		args->rlen = strlen(knot_strerror(ret));
-		strlcpy(args->resp, knot_strerror(ret), sizeof(args->resp));
+	if (ret != KNOT_EOK || args.response_size == 0) {
+		args.response_size = strlen(knot_strerror(ret));
+		strlcpy(args.response, knot_strerror(ret), args.response_max);
 	}
 
 	unsigned p = 0;
 	size_t chunk = 16384;
-	for (; p + chunk < args->rlen; p += chunk) {
-		remote_send_chunk(sock, pkt, args->resp + p, chunk);
+	for (; p + chunk < args.response_size; p += chunk) {
+		remote_send_chunk(sock, pkt, args.response + p, chunk);
 	}
 
-	unsigned r = args->rlen - p;
+	unsigned r = args.response_size - p;
 	if (r > 0) {
-		remote_send_chunk(sock, pkt, args->resp + p, r);
+		remote_send_chunk(sock, pkt, args.response + p, r);
 	}
 
-	free(args);
+	cmdargs_deinit(&args);
 	free(cmd);
 	return ret;
 }
