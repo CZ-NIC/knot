@@ -76,6 +76,15 @@ int sockaddr_cmp(const struct sockaddr_storage *k1, const struct sockaddr_storag
 int sockaddr_set(struct sockaddr_storage *ss, int family, const char *straddr, int port);
 
 /*!
+ * \brief Return raw network address in network byte order.
+ *
+ * \param ss Socket address storage.
+ * \param addr_size Length of the address will be stored in addr_size.
+ * \return pointer to raw address
+ */
+void *sockaddr_raw(struct sockaddr_storage *ss, size_t *addr_size);
+
+/*!
  * \brief Set raw address.
  *
  * \param ss Socket address storage.
@@ -99,7 +108,7 @@ int sockaddr_set_raw(struct sockaddr_storage *ss, int family,
  *
  * \return EOK on success, error code on failure
  */
-int sockaddr_tostr(const struct sockaddr_storage *ss, char *buf, size_t maxlen);
+int sockaddr_tostr(char *buf, size_t maxlen, const struct sockaddr_storage *ss);
 
 /*!
  * \brief Return port number from address.

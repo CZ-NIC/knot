@@ -52,7 +52,7 @@ int net_unbound_socket(int type, const struct sockaddr_storage *ss)
 
 	/* Convert to string address format. */
 	char addr_str[SOCKADDR_STRLEN] = {0};
-	sockaddr_tostr(ss, addr_str, sizeof(addr_str));
+	sockaddr_tostr(addr_str, sizeof(addr_str), ss);
 
 	/* Create socket. */
 	int socket = socket_create(ss->ss_family, type, 0);
@@ -75,7 +75,7 @@ int net_bound_socket(int type, const struct sockaddr_storage *ss)
 
 	/* Convert to string address format. */
 	char addr_str[SOCKADDR_STRLEN] = {0};
-	sockaddr_tostr(ss, addr_str, sizeof(addr_str));
+	sockaddr_tostr(addr_str, sizeof(addr_str), ss);
 
 	/* Reuse old address if taken. */
 	int flag = 1;
