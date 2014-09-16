@@ -213,9 +213,10 @@ static void print_edns_client_subnet(const uint8_t *data, const uint16_t len)
 	printf("%s/%u/%u\n", addr_str, src_mask, dst_mask);
 }
 
-static void print_section_opt(const knot_rrset_t *rr)
+static void print_section_opt(const knot_rrset_t *rr, uint8_t rcode)
 {
-	uint8_t             ext_rcode_id = knot_edns_get_ext_rcode(rr);
+	uint16_t             ext_rcode_id = knot_edns_whole_rcode(
+					    knot_edns_get_ext_rcode(rr), rcode);
 	const char          *ext_rcode_str = "NULL";
 	knot_lookup_table_t *ext_rcode;
 
@@ -587,7 +588,8 @@ void print_packet(const knot_pkt_t *packet,
 	// Print EDNS section.
 	if (style->show_edns && knot_pkt_has_edns(packet)) {
 		printf("\n;; EDNS PSEUDOSECTION:\n;; ");
-		print_section_opt(packet->opt_rr);
+		print_section_opt(packet->opt_rr,
+				  knot_wire_get_rcode(packet->wire));
 	}
 
 	// Print DNS sections.

@@ -138,6 +138,12 @@ void knot_edns_set_payload(knot_rrset_t *opt_rr, uint16_t payload);
  */
 uint8_t knot_edns_get_ext_rcode(const knot_rrset_t *opt_rr);
 
+static inline uint16_t knot_edns_whole_rcode(uint8_t ext_rcode, uint8_t rcode)
+{
+	uint16_t high = ext_rcode;
+	return (high << 4) | rcode;
+}
+
 /*!
  * \brief Sets the Extended RCODE field in the OPT RR.
  *
