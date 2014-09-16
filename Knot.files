@@ -347,3 +347,4 @@ tests/zone_events.c
 tests/zone_update.c
 tests/zonedb.c
 tests/ztree.c
+src/libknot/rrtype/naptr.h

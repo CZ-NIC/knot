@@ -37,6 +37,7 @@
 #include "knot/zone/zonefile.h"
 #include "libknot/rdata.h"
 #include "knot/zone/zone-dump.h"
+#include "libknot/rrtype/naptr.h"
 
 #define ERROR(zone, fmt...) log_zone_error(zone, "zone loader, " fmt)
 #define WARNING(zone, fmt...) log_zone_warning(zone, "zone loader, " fmt)
@@ -144,6 +145,43 @@ int zcreator_step(zcreator_t *zc, const knot_rrset_t *rr)
 	return sem_fatal_error ? KNOT_ESEMCHECK : KNOT_EOK;
 }
 
+static void convert_to_lowercase(knot_rrset_t *rrset)
+{
+	int ret = knot_dname_to_lower(rrset->owner);
+	assert(ret == KNOT_EOK);
+
+	const rdata_descriptor_t *desc = knot_get_rdata_descriptor(rrset->type);
+
+	for (int j = 0; j < rrset->rrs.rr_count; ++j) {
+		knot_rdata_t *rdata = knot_rdataset_at(&rrset->rrs, j);
+
+		uint16_t rdlen = knot_rdata_rdlen(rdata);
+		uint8_t *pos = knot_rdata_data(rdata);
+
+		for (int i = 0; desc->block_types[i] != KNOT_RDATA_WF_END; ++i) {
+		    int type = desc->block_types[i];
+		    switch (type) {
+		    case KNOT_RDATA_WF_COMPRESSIBLE_DNAME:
+		    case KNOT_RDATA_WF_DECOMPRESSIBLE_DNAME:
+		    case KNOT_RDATA_WF_FIXED_DNAME:
+			ret = knot_dname_to_lower(pos);
+			assert(ret == KNOT_EOK);
+			pos += knot_dname_size(pos);
+			break;
+		    case KNOT_RDATA_WF_NAPTR_HEADER:
+			pos += naptr_header_size(pos, rdata + rdlen);
+			break;
+		    case KNOT_RDATA_WF_REMAINDER:
+			break;
+		    default:
+			/* Fixed size block */
+			assert(type > 0);
+			pos += type;
+		    }
+		}
+	}
+}
+
 /*! \brief Creates RR from parser input, passes it to handling function. */
 static void scanner_process(zs_scanner_t *scanner)
 {
@@ -158,7 +196,6 @@ static void scanner_process(zs_scanner_t *scanner)
 		zc->ret = KNOT_ENOMEM;
 		return;
 	}
-	knot_dname_to_lower(owner);
 
 	knot_rrset_t rr;
 	knot_rrset_init(&rr, owner, scanner->r_type, scanner->r_class);
@@ -173,6 +210,9 @@ static void scanner_process(zs_scanner_t *scanner)
 		zc->ret = ret;
 		return;
 	}
+
+	/* Convert RDATA dnames to lowercase before adding to zone. */
+	convert_to_lowercase(&rr);
 
 	zc->ret = zcreator_step(zc, &rr);
 	knot_dname_free(&owner, NULL);
