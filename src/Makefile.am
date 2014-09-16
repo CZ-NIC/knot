@@ -296,8 +296,12 @@ libknotd_la_SOURCES =				\
 	knot/worker/queue.h			\
 	knot/zone/contents.c			\
 	knot/zone/contents.h			\
-	knot/zone/events.c			\
-	knot/zone/events.h			\
+	knot/zone/events/events.c		\
+	knot/zone/events/events.h		\
+	knot/zone/events/events-impl.c		\
+	knot/zone/events/events-impl.h		\
+	knot/zone/events/events-replan.c	\
+	knot/zone/events/events-replan.h	\
 	knot/zone/node.c			\
 	knot/zone/node.h			\
 	knot/zone/semantic-check.c		\
