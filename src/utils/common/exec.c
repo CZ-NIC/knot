@@ -57,6 +57,7 @@ static void print_header(const knot_pkt_t *packet, const style_t *style)
 	const char *opcode_str = "NULL";
 	knot_lookup_table_t *rcode, *opcode;
 
+	/* TODO[EDNS] Interpret Extended RCODE */
 	// Get codes.
 	rcode_id = knot_wire_get_rcode(packet->wire);
 	rcode = knot_lookup_by_id(knot_rcode_names, rcode_id);
@@ -220,6 +221,7 @@ static void print_section_opt(const knot_rrset_t *rr, uint8_t rcode)
 	const char          *ext_rcode_str = "NULL";
 	knot_lookup_table_t *ext_rcode;
 
+	/* TODO[EDNS] Extended RCODE to header */
 	ext_rcode = knot_lookup_by_id(knot_rcode_names, ext_rcode_id);
 	if (ext_rcode != NULL) {
 		ext_rcode_str = ext_rcode->name;
@@ -437,6 +439,7 @@ static void print_error_host(const uint8_t    code,
 	if (style->style.ascii_to_idn != NULL) {
 		style->style.ascii_to_idn(&owner);
 	}
+	/* TODO[EDNS] Interpret Extended RCODE?? */
 	rcode = knot_lookup_by_id(knot_rcode_names, code);
 	if (rcode != NULL) {
 		rcode_str = rcode->name;

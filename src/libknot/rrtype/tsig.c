@@ -132,7 +132,7 @@ int tsig_create_rdata(knot_rrset_t *rr, const knot_dname_t *alg, uint16_t maclen
 	/* We already checked rr and know rdlen > 0, no need to check rets. */
 	int alg_len = knot_dname_size(alg);
 	size_t rdlen = alg_len + TSIG_FIXED_RDLEN + maclen;
-	if (tsig_err != KNOT_RCODE_BADTIME) {
+	if (tsig_err != KNOT_TSIG_ERR_BADTIME) {
 		rdlen -= TSIG_OTHER_MAXLEN;
 	}
 	uint8_t rd[rdlen];
