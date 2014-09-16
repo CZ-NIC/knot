@@ -120,7 +120,7 @@ void replan_update(zone_t *zone, const zone_t *old_zone)
 	if (have_updates) {
 		duplicate_ddns_q(zone, (zone_t *)old_zone);
 	}
-	
+
 	if (have_updates) {
 		zone_events_schedule(zone, ZONE_EVENT_UPDATE, ZONE_EVENT_NOW);
 	}
