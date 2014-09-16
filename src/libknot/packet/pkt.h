@@ -294,6 +294,8 @@ int knot_pkt_parse_section(knot_pkt_t *pkt, unsigned flags);
  */
 int knot_pkt_parse_payload(knot_pkt_t *pkt, unsigned flags);
 
+uint16_t knot_pkt_get_ext_rcode(const knot_pkt_t *pkt);
+
 /*!
  * \brief Checks if there is an OPT RR in the packet.
  */
