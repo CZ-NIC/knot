@@ -22,8 +22,8 @@
 #include "knot/worker/pool.h"
 #include "knot/zone/zone.h"
 #include "knot/zone/events/events.h"
-#include "knot/zone/events/events-impl.h"
-#include "knot/zone/events/events-replan.h"
+#include "knot/zone/events/handlers.h"
+#include "knot/zone/events/replan.h"
 
 /* ------------------------- internal timers -------------------------------- */
 

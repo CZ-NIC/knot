@@ -15,8 +15,8 @@
 */
 
 #include "libknot/rrtype/soa.h"
-#include "knot/zone/events/events-replan.h"
-#include "knot/zone/events/events-impl.h"
+#include "knot/zone/events/replan.h"
+#include "knot/zone/events/handlers.h"
 #include "knot/zone/zone.h"
 
 /* -- Zone event replanning functions --------------------------------------- */

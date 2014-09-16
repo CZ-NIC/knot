@@ -25,7 +25,7 @@
 #include "knot/zone/zone-load.h"
 #include "knot/zone/zonefile.h"
 #include "knot/zone/events/events.h"
-#include "knot/zone/events/events-impl.h"
+#include "knot/zone/events/handlers.h"
 #include "knot/updates/apply.h"
 #include "knot/nameserver/internet.h"
 #include "knot/nameserver/update.h"
