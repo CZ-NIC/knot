@@ -32,9 +32,6 @@ Verbose mode \- additional runtime information.
 \fB\-V\fR, \fB\-\-version\fR
 Print version of the server.
 .TP
-\fB\-i\fR, \fB\-\-interactive\fR
-Interactive mode (do not daemonize).
-.TP
 \fB\-h\fR, \fB\-\-help\fR
 Print help and usage.
 .SS "Actions:"
@@ -42,11 +39,11 @@ Print help and usage.
 \fBstop\fR
 Stop server (no\-op if not running).
 .TP
-\fBreload\fR
-Reload configuration and changed zones.
+\fBreload\fR [\fIzone\fR]...
+Reload configuration and changed zones (all if not specified).
 .TP
-\fBflush\fR
-Flush journal and update zone files.
+\fBflush\fR [\fIzone\fR]...
+Flush journal and update zone files (all if not specified).
 .TP
 \fBstatus\fR
 Check if server is running.

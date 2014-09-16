@@ -26,7 +26,7 @@
 #include "libknot/descriptor.h"
 #include "libknot/tsig-op.h"
 #include "knot/zone/zone.h"
-#include "knot/zone/events.h"
+#include "knot/zone/events/events.h"
 #include "knot/server/tcp-handler.h"
 #include "knot/server/udp-handler.h"
 #include "knot/nameserver/requestor.h"

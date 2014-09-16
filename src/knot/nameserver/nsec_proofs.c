@@ -702,11 +702,17 @@ static int ns_put_nsec_nsec3_nodata(const zone_node_t *node,
 int nsec_prove_wildcards(knot_pkt_t *pkt, struct query_data *qdata)
 {
 	dbg_ns("%s(%p, %p)\n", __func__, pkt, qdata);
+	if (qdata->zone->contents == NULL) {
+		return KNOT_EINVAL;
+	}
 
 	int ret = KNOT_EOK;
 	struct wildcard_hit *item = NULL;
 
 	WALK_LIST(item, qdata->wildcards) {
+		if (item->node == NULL) {
+			return KNOT_EINVAL;
+		}
 		ret = ns_put_nsec_nsec3_wildcard_answer(
 					item->node,
 					item->node->parent,
@@ -724,6 +730,10 @@ int nsec_prove_wildcards(knot_pkt_t *pkt, struct query_data *qdata)
 int nsec_prove_nodata(knot_pkt_t *pkt, struct query_data *qdata)
 {
 	dbg_ns("%s(%p, %p)\n", __func__, pkt, qdata);
+	if (qdata->node == NULL || qdata->encloser == NULL ||
+	    qdata->zone->contents == NULL) {
+		return KNOT_EINVAL;
+	}
 
 	return ns_put_nsec_nsec3_nodata(qdata->node, qdata->encloser,
 	                                qdata->previous, qdata->zone->contents,
@@ -733,6 +743,9 @@ int nsec_prove_nodata(knot_pkt_t *pkt, struct query_data *qdata)
 int nsec_prove_nxdomain(knot_pkt_t *pkt, struct query_data *qdata)
 {
 	dbg_ns("%s(%p, %p)\n", __func__, pkt, qdata);
+	if (qdata->encloser == NULL || qdata->zone->contents == NULL) {
+		return KNOT_EINVAL;
+	}
 
 	return ns_put_nsec_nsec3_nxdomain(qdata->zone->contents, qdata->previous,
 	                                  qdata->encloser, qdata->name, qdata,
@@ -742,6 +755,10 @@ int nsec_prove_nxdomain(knot_pkt_t *pkt, struct query_data *qdata)
 int nsec_prove_dp_security(knot_pkt_t *pkt, struct query_data *qdata)
 {
 	dbg_ns("%s(%p, %p)\n", __func__, pkt, qdata);
+	if (qdata->node == NULL || qdata->encloser == NULL ||
+	    qdata->zone->contents == NULL) {
+		return KNOT_EINVAL;
+	}
 
 	/* Add DS record if present. */
 	knot_rrset_t rrset = node_rrset(qdata->node, KNOT_RRTYPE_DS);

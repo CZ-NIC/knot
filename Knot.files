@@ -176,8 +176,6 @@ src/knot/worker/queue.c
 src/knot/worker/queue.h
 src/knot/zone/contents.c
 src/knot/zone/contents.h
-src/knot/zone/events.c
-src/knot/zone/events.h
 src/knot/zone/node.c
 src/knot/zone/node.h
 src/knot/zone/semantic-check.c
@@ -198,6 +196,12 @@ src/knot/zone/zonedb.c
 src/knot/zone/zonedb.h
 src/knot/zone/zonefile.c
 src/knot/zone/zonefile.h
+src/knot/zone/events/events.c
+src/knot/zone/events/events.h
+src/knot/zone/events/handlers.h
+src/knot/zone/events/handlers.c
+src/knot/zone/events/replan.c
+src/knot/zone/events/replan.h
 src/libknot/binary.c
 src/libknot/binary.h
 src/libknot/common.h
