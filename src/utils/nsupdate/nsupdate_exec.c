@@ -145,7 +145,7 @@ enum {
 
 static bool dname_isvalid(const char *lp)
 {
-	knot_dname_t *dn = knot_dname_from_str(lp);
+	knot_dname_t *dn = knot_dname_from_str_alloc(lp);
 	if (dn == NULL) {
 		return false;
 	}
@@ -187,7 +187,7 @@ static int parse_partial_rr(zs_scanner_t *s, const char *lp, unsigned flags)
 		fqdn = false;
 	}
 
-	knot_dname_t *owner = knot_dname_from_str(owner_str);
+	knot_dname_t *owner = knot_dname_from_str_alloc(owner_str);
 	free(owner_str);
 	if (owner == NULL) {
 		return KNOT_EPARSEFAIL;
@@ -388,7 +388,7 @@ static int build_query(nsupdate_params_t *params)
 	/* Write question. */
 	knot_wire_set_id(query->wire, knot_random_uint16_t());
 	knot_wire_set_opcode(query->wire, KNOT_OPCODE_UPDATE);
-	knot_dname_t *qname = knot_dname_from_str(params->zone);
+	knot_dname_t *qname = knot_dname_from_str_alloc(params->zone);
 	int ret = knot_pkt_put_question(query, qname, params->class_num,
 	                                params->type_num);
 	knot_dname_free(&qname, NULL);

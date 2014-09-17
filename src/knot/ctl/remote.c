@@ -607,7 +607,7 @@ static void log_command(const char *cmd, const remote_cmdargs_t* args)
 		uint16_t rr_count = rr->rrs.rr_count;
 		for (uint16_t j = 0; j < rr_count; j++) {
 			const knot_dname_t *dn = knot_ns_name(&rr->rrs, j);
-			char *name = knot_dname_to_str(dn);
+			char *name = knot_dname_to_str_alloc(dn);
 
 			int ret = snprintf(params, rest, " %s", name);
 			free(name);
@@ -637,7 +637,7 @@ int remote_answer(int sock, server_t *s, knot_pkt_t *pkt)
 		return KNOT_EMALF;
 	}
 
-	knot_dname_t *realm = knot_dname_from_str(KNOT_CTL_REALM);
+	knot_dname_t *realm = knot_dname_from_str_alloc(KNOT_CTL_REALM);
 	if (!knot_dname_is_sub(qname, realm) != 0) {
 		dbg_server("remote: qname != *%s\n", KNOT_CTL_REALM_EXT);
 		knot_dname_free(&realm, NULL);
@@ -899,7 +899,7 @@ knot_pkt_t* remote_query(const char *query, const knot_tsig_key_t *key)
 
 	/* Question section. */
 	char *qname = strcdup(query, KNOT_CTL_REALM_EXT);
-	knot_dname_t *dname = knot_dname_from_str(qname);
+	knot_dname_t *dname = knot_dname_from_str_alloc(qname);
 	free(qname);
 	if (!dname) {
 		knot_pkt_free(&pkt);
@@ -944,7 +944,7 @@ int remote_build_rr(knot_rrset_t *rr, const char *k, uint16_t t)
 	}
 
 	/* Assert K is FQDN. */
-	knot_dname_t *key = knot_dname_from_str(k);
+	knot_dname_t *key = knot_dname_from_str_alloc(k);
 	if (key == NULL) {
 		return KNOT_ENOMEM;
 	}
@@ -993,7 +993,7 @@ int remote_create_ns(knot_rrset_t *rr, const char *d)
 	}
 
 	/* Create dname. */
-	knot_dname_t *dn = knot_dname_from_str(d);
+	knot_dname_t *dn = knot_dname_from_str_alloc(d);
 	if (!dn) {
 		return KNOT_ERROR;
 	}

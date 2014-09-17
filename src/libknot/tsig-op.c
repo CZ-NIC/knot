@@ -69,7 +69,7 @@ static int knot_tsig_check_key(const knot_rrset_t *tsig_rr,
 		return KNOT_EMALF;
 	}
 
-	char *name = knot_dname_to_str(tsig_name);
+	char *name = knot_dname_to_str_alloc(tsig_name);
 	if (!name) {
 		return KNOT_EMALF;
 	}

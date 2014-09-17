@@ -804,16 +804,23 @@ static void wire_dname_to_str(rrset_dump_params_t *p)
 	}
 
 	// Write dname string.
-	char *dname_str = knot_dname_to_str(p->in);
-	if (p->style->ascii_to_idn != NULL) {
+	if (p->style->ascii_to_idn == NULL) {
+		char *dname_str = knot_dname_to_str(p->out, p->in, p->out_max);
+		if (dname_str == NULL) {
+			return;
+		}
+		out_len = strlen(dname_str);
+	} else {
+		char *dname_str = knot_dname_to_str_alloc(p->in);
 		p->style->ascii_to_idn(&dname_str);
+
+		int ret = snprintf(p->out, p->out_max, "%s", dname_str);
+		free(dname_str);
+		if (ret < 0 || (size_t)ret >= p->out_max) {
+			return;
+		}
+		out_len = ret;
 	}
-	int ret = snprintf(p->out, p->out_max, "%s", dname_str);
-	free(dname_str);
-	if (ret < 0 || (size_t)ret >= p->out_max) {
-		return;
-	}
-	out_len = ret;
 
 	// Fill in output.
 	p->in += in_len;
@@ -1831,7 +1838,7 @@ int knot_rrset_txt_dump_header(const knot_rrset_t      *rrset,
 	int    ret;
 
 	// Dump rrset owner.
-	char *name = knot_dname_to_str(rrset->owner);
+	char *name = knot_dname_to_str_alloc(rrset->owner);
 	if (style->ascii_to_idn != NULL) {
 		style->ascii_to_idn(&name);
 	}
