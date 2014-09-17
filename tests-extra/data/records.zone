@@ -114,6 +114,9 @@ dUpL		MX	10 sOMe.doMAin
 bad-order	NS      B.foo.
 bad-order	NS      a.foo.
 
+; Different case in origin
+origin-case.rEcoRDs.	A	1.2.3.4
+
 ; CNAME loop
 *.loop1 CNAME a.loop2
 *.loop2 CNAME a.loop1
