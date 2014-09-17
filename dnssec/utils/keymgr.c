@@ -15,129 +15,128 @@
 */
 
 #include <assert.h>
-#include <errno.h>
 #include <getopt.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
 
-#include "shared.h"
 #include "utils.h"
 
-typedef struct global_params {
-	const char *kasp_dir;
-} global_params_t;
+struct options {
+	char *kasp_dir;
+};
 
-static void help(void)
-{
-	printf("%s [OPTIONS...] COMMAND ...\n\n"
-	       "Query or manage DNSSEC key and signing policy.\n\n"
-	       "  -h --help              Show this help\n"
-	       "     --version           Show tool version\n"
-	       "  -d --dir               KASP storage directory\n\n"
-	       "Commands:\n"
-	       "  zone                   Manage zones\n"
-	       "  key                    Manage keys\n\n",
-	       program_invocation_short_name);
-}
+typedef struct options options_t;
 
-static void version(void)
-{
-	printf("%s (libdnssec), version %s\n",
-	       program_invocation_short_name,
-	       PACKAGE_VERSION);
-}
+struct command {
+	const char *name;
+	int (*callback)(options_t *options, int argc, char *argv[]);
+};
 
-int main_zone(int argc, char *argv[], global_params_t *global)
-{
-	printf("%s\n", __func__);
-	return 0;
-}
+typedef struct command command_t;
 
-int main_key(int argc, char *argv[], global_params_t *global)
-{
-	printf("%s\n", __func__);
-	return 0;
-}
-
-/*!
- * Parse global options.
- *
- * \retval -1 Parsing failed.
- * \retval 0  Parsing OK, terminate.
- * \retval 1  Parsing OK, continue.
- *
+/*
+ * keymgr init
  */
-int parse_options(int argc, char *argv[], global_params_t *global)
+static int main_init(options_t *options, int argc, char *argv[])
 {
-	enum {
-		ARG_VERSION = 0x100,
-	};
+	fprintf(stderr, "KASP dir %s\n", options->kasp_dir);
 
-	static const struct option options[] = {
-		{ "help",    no_argument,       NULL, 'h' },
-		{ "version", no_argument,       NULL, ARG_VERSION },
-		{ "dir",     required_argument, NULL, 'd' },
-		{ NULL },
-	};
-
-	int c;
-        while ((c = getopt_long(argc, argv, "+hd:", options, NULL)) >= 0) {
-		switch (c) {
-		case 'h':
-			help();
-			return 0;
-		case ARG_VERSION:
-			version();
-			return 0;
-		case 'd':
-			global->kasp_dir = optarg;
-			break;
-		default:
-			assert(c == '?');
-			return -1;
-		}
-	};
-
+	error("Not implemented.");
 	return 1;
 }
 
-int parse_command(int argc, char *argv[], global_params_t *global)
+static int main_zone(options_t *options, int argc, char *argv[])
 {
-	int left = argc - optind;
-	if (left == 0) {
-		error("No command specified.\n");
+	error("Not implemented.");
+	return 1;
+}
+
+static int main_policy(options_t *options, int argc, char *argv[])
+{
+	error("Not implemented.");
+	return 1;
+}
+
+static int main_keystore(options_t *options, int argc, char *argv[])
+{
+	error("Not implemented.");
+	return 1;
+}
+
+static int main_key(options_t *options, int argc, char *argv[])
+{
+	error("Not implemented.");
+	return 1;
+}
+
+static int subcommand(const command_t *subcommands, options_t *options,
+			   int argc, char *argv[])
+{
+	assert(subcommands);
+	assert(options);
+	assert(argv);
+
+	if (argc < 1) {
+		error("No command specified");
 		return 1;
 	}
 
-	static const struct {
-		const char *name;
-		int (*callback)(int argc, char *argv[], global_params_t *global);
-	} commands[] = {
-		{ "zone", main_zone },
-		{ "key",  main_key },
-	};
-
-	char *command = argv[optind];
-	for (int i = 0; i < 2; i++) {
-		if (streq(commands[i].name, command)) {
-			optind += 1;
-			return commands[i].callback(argc, argv, global);
+	char *command = argv[0];
+	for (const command_t *cmd = subcommands; cmd->name != NULL; cmd++) {
+		if (strcmp(command, cmd->name) == 0) {
+			return cmd->callback(options, argc - 1, argv + 1);
 		}
 	}
 
-	error("Unknown command.\n");
+	error("Invalid command");
 	return 1;
 }
+
+static const command_t main_commands[] = {
+	{ "init",     main_init },
+	{ "zone",     main_zone },
+	{ "policy",   main_policy },
+	{ "keystore", main_keystore },
+	{ "key",      main_key },
+	{ NULL }
+};
 
 int main(int argc, char *argv[])
 {
-	global_params_t global = {};
+	int exit_code = 1;
 
-	int r = parse_options(argc, argv, &global);
-	if (r < 0) {
-		return 1;
-	} else if (r == 0) {
-		return 0;
+	// global configuration
+	options_t options = { 0 };
+	options.kasp_dir = getcwd(NULL, 0);
+	assert(options.kasp_dir);
+
+	// global options
+	static struct option opts[] = {
+		{ "dir", required_argument, NULL, 'd' },
+		{ NULL }
+	};
+
+	int c = 0;
+	int opt_index = 0;
+	while (c = getopt_long(argc, argv, "+", opts, &opt_index), c != -1) {
+		switch (c) {
+		case 'd':
+			free(options.kasp_dir);
+			options.kasp_dir = strdup(optarg);
+			break;
+		case '?':
+			goto failed;
+		default:
+			assert(0);
+		}
 	}
 
-	return parse_command(argc, argv, &global);
+	exit_code = subcommand(main_commands, &options, optind, argv + optind);
+
+failed:
+	free(options.kasp_dir);
+
+	return exit_code;
 }
