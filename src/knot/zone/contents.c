@@ -602,10 +602,6 @@ static int insert_rr(zone_contents_t *z,
 		return KNOT_EINVAL;
 	}
 
-    /* TODO [lowercase]: Here we would need the RR to be in lowercase, at least
-     * the owner.
-     */
-
 	// check if the RRSet belongs to the zone
 	if (!knot_dname_is_sub(rr->owner, z->apex->owner) &&
 	    !knot_dname_is_equal(rr->owner, z->apex->owner)) {

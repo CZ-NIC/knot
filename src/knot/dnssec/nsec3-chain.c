@@ -384,7 +384,6 @@ static int connect_nsec3_nodes(zone_node_t *a, zone_node_t *b,
 
 	assert(raw_length == knot_nsec3_hash_length(algorithm));
 
-	knot_dname_to_lower(b->owner);
 	uint8_t *b32_hash = (uint8_t *)knot_dname_to_str(b->owner);
 	size_t b32_length = knot_nsec3_hash_b32_length(algorithm);
 	if (!b32_hash) {
