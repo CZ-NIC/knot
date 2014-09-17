@@ -287,7 +287,7 @@ static zone_node_t *create_nsec3_node(knot_dname_t *owner,
 	if (!new_node) {
 		return NULL;
 	}
-	
+
 	node_set_parent(new_node, apex_node);
 
 	knot_rrset_t nsec3_rrset;
@@ -384,7 +384,7 @@ static int connect_nsec3_nodes(zone_node_t *a, zone_node_t *b,
 
 	assert(raw_length == knot_nsec3_hash_length(algorithm));
 
-	uint8_t *b32_hash = (uint8_t *)knot_dname_to_str(b->owner);
+	uint8_t *b32_hash = (uint8_t *)knot_dname_to_str_alloc(b->owner);
 	size_t b32_length = knot_nsec3_hash_b32_length(algorithm);
 	if (!b32_hash) {
 		return KNOT_ENOMEM;

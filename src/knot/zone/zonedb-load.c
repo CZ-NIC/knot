@@ -199,7 +199,7 @@ static knot_zonedb_t *create_zonedb(const conf_t *conf, server_t *server)
 
 		conf_zone_t *zone_config = (conf_zone_t *)*hattrie_iter_val(it);
 
-		knot_dname_t *apex = knot_dname_from_str(zone_config->name);
+		knot_dname_t *apex = knot_dname_from_str_alloc(zone_config->name);
 		zone_t *old_zone = knot_zonedb_find(db_old, apex);
 		knot_dname_free(&apex, NULL);
 

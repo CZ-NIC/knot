@@ -60,7 +60,7 @@ zone_t* zone_new(conf_zone_t *conf)
 	}
 	memset(zone, 0, sizeof(zone_t));
 
-	zone->name = knot_dname_from_str(conf->name);
+	zone->name = knot_dname_from_str_alloc(conf->name);
 	knot_dname_to_lower(zone->name);
 	if (zone->name == NULL) {
 		free(zone);

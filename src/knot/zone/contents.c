@@ -748,7 +748,7 @@ int zone_contents_remove_node(zone_contents_t *contents, const knot_dname_t *own
 	}
 
 dbg_zone_exec_verb(
-	char *name = knot_dname_to_str(owner);
+	char *name = knot_dname_to_str_alloc(owner);
 	dbg_zone_verb("Removing zone node: %s\n", name);
 	free(name);
 );
@@ -805,8 +805,8 @@ int zone_contents_find_dname(const zone_contents_t *zone,
 	}
 
 dbg_zone_exec_verb(
-	char *name_str = knot_dname_to_str(name);
-	char *zone_str = knot_dname_to_str(zone->apex->owner);
+	char *name_str = knot_dname_to_str_alloc(name);
+	char *zone_str = knot_dname_to_str_alloc(zone->apex->owner);
 	dbg_zone_verb("Searching for name %s in zone %s...\n",
 		      name_str, zone_str);
 	free(name_str);
@@ -822,10 +822,10 @@ dbg_zone_exec_verb(
 	*previous = prev;
 
 dbg_zone_exec_detail(
-	char *name_str = (*node) ? knot_dname_to_str((*node)->owner)
+	char *name_str = (*node) ? knot_dname_to_str_alloc((*node)->owner)
 				 : "(nil)";
 	char *name_str2 = (*previous != NULL)
-			  ? knot_dname_to_str((*previous)->owner)
+			  ? knot_dname_to_str_alloc((*previous)->owner)
 			  : "(nil)";
 dbg_zone_detail("Search function returned %d, node %s (%p) and prev: %s (%p)\n",
 			exact_match, name_str, *node, name_str2, *previous);
@@ -937,7 +937,7 @@ int zone_contents_find_nsec3_for_name(const zone_contents_t *zone,
 	}
 
 dbg_zone_exec_verb(
-	char *n = knot_dname_to_str(nsec3_name);
+	char *n = knot_dname_to_str_alloc(nsec3_name);
 	dbg_zone_verb("NSEC3 node name: %s.\n", n);
 	free(n);
 );
@@ -953,7 +953,7 @@ dbg_zone_exec_verb(
 
 dbg_zone_exec_detail(
 	if (found) {
-		char *n = knot_dname_to_str(found->owner);
+		char *n = knot_dname_to_str_alloc(found->owner);
 		dbg_zone_detail("Found NSEC3 node: %s.\n", n);
 		free(n);
 	} else {
@@ -962,7 +962,7 @@ dbg_zone_exec_detail(
 
 	if (prev) {
 		assert(prev->owner);
-		char *n = knot_dname_to_str(prev->owner);
+		char *n = knot_dname_to_str_alloc(prev->owner);
 		dbg_zone_detail("Found previous NSEC3 node: %s.\n", n);
 		free(n);
 	} else {
