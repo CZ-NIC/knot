@@ -489,10 +489,8 @@ int udp_master(dthread_t *thread)
 {
 	unsigned cpu = dt_online_cpus();
 	if (cpu > 1) {
-		unsigned cpu_mask[2];
-		cpu_mask[0] = dt_get_id(thread) % cpu;
-		cpu_mask[1] = (cpu_mask[0] + 2) % cpu;
-		dt_setaffinity(thread, cpu_mask, 2);
+		unsigned cpu_mask = (dt_get_id(thread) % cpu);
+		dt_setaffinity(thread, &cpu_mask, 1);
 	}
 
 	/* Drop all capabilities on all workers. */
