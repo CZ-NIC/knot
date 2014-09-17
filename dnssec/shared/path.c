@@ -16,8 +16,6 @@
 
 #include <stdlib.h>
 #include <string.h>
-#include <sys/stat.h>
-#include <unistd.h>
 #include <limits.h>
 
 #include "path.h"
@@ -28,15 +26,6 @@ char *path_normalize(const char *path)
 	if (!realpath(path, real)) {
 		return NULL;
 	};
-
-	struct stat st = { 0 };
-	if (stat(real, &st) == -1) {
-		return NULL;
-	}
-
-	if (!S_ISDIR(st.st_mode)) {
-		return NULL;
-	}
 
 	return strdup(real);
 }
