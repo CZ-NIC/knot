@@ -39,5 +39,13 @@ struct dnssec_kasp {
 	void *ctx;
 };
 
+/*!
+ * Create new KASP handle.
+ *
+ * \param[out] kasp_ptr   New KASP handle.
+ * \param[in]  functions  KASP store implementation.
+ *
+ * \return Error code, DNSSE_EOK if successful.
+ */
 int dnssec_kasp_create(dnssec_kasp_t **kasp_ptr,
-                       const dnssec_kasp_store_functions_t *functions);
+		       const dnssec_kasp_store_functions_t *functions);

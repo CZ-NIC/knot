@@ -14,235 +14,20 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <jansson.h>
-#include <stdio.h>
-#include <time.h>
-#include <sys/stat.h>
-#include <fcntl.h>
+#include <assert.h>
+#include <stdbool.h>
+#include <stdint.h>
 
-#include "dname.h"
+#include "binary.h"
 #include "error.h"
 #include "kasp.h"
-#include "kasp/internal.h"
-#include "kasp/keyset.h"
+#include "kasp/dir/json.h"
 #include "kasp/zone.h"
-#include "key.h"
-#include "path.h"
+#include "kasp/keyset.h"
 #include "shared.h"
-#include "strtonum.h"
-
-// ISO 8610
-#define TIME_FORMAT "%Y-%m-%dT%H:%M:%S%z"
 
 #define DNSKEY_KSK_FLAGS 257
 #define DNSKEY_ZSK_FLAGS 256
-
-#define JSON_LOAD_OPTIONS JSON_REJECT_DUPLICATES
-#define JSON_DUMP_OPTIONS JSON_INDENT(2)|JSON_PRESERVE_ORDER
-
-static void json_decref_ptr(json_t **json_ptr)
-{
-	json_decref(*json_ptr);
-}
-
-#define _json_cleanup_ _cleanup_(json_decref_ptr)
-
-/* -- variable types decoding ---------------------------------------------- */
-
-/*!
- * Decode key ID from JSON.
- */
-static int decode_keyid(const json_t *value, void *result)
-{
-	char **keyid_ptr = result;
-
-	if (!json_is_string(value)) {
-		return DNSSEC_CONFIG_MALFORMED;
-	}
-
-	const char *value_str = json_string_value(value);
-	if (!dnssec_keyid_is_valid(value_str)) {
-		return DNSSEC_CONFIG_MALFORMED;
-	}
-
-	char *keyid = dnssec_keyid_copy(value_str);
-	if (!keyid) {
-		return DNSSEC_ENOMEM;
-	}
-
-	*keyid_ptr = keyid;
-
-	return DNSSEC_EOK;
-}
-
-static int encode_keyid(const void *value, json_t **result)
-{
-	char * const *id_ptr = value;
-	json_t *encoded = json_string(*id_ptr);
-	if (!encoded) {
-		return DNSSEC_ENOMEM;
-	}
-
-	*result = encoded;
-
-	return DNSSEC_EOK;
-}
-
-/*!
- * Decode algorithm from JSON.
- *
- * \todo Could understand an algorithm name instead of just a number.
- */
-static int decode_uint8(const json_t *value, void *result)
-{
-	uint8_t *byte_ptr = result;
-
-	if (!json_is_integer(value)) {
-		return DNSSEC_CONFIG_MALFORMED;
-	}
-
-	json_int_t number = json_integer_value(value);
-	if (number < 0 || number > UINT8_MAX) {
-		return DNSSEC_CONFIG_MALFORMED;
-	}
-
-	*byte_ptr = number;
-
-	return DNSSEC_EOK;
-}
-
-static int encode_uint8(const void *value, json_t **result)
-{
-	const uint8_t *byte_ptr = value;
-
-	json_t *encoded = json_integer(*byte_ptr);
-	if (!encoded) {
-		return DNSSEC_ENOMEM;
-	}
-
-	*result = encoded;
-
-	return DNSSEC_EOK;
-}
-
-/*!
- * Decode binary data storead as base64 in JSON.
- */
-static int decode_binary(const json_t *value, void *result)
-{
-	dnssec_binary_t *binary_ptr = result;
-
-	if (!json_is_string(value)) {
-		return DNSSEC_MALFORMED_DATA;
-	}
-
-	const char *base64_str = json_string_value(value);
-	dnssec_binary_t base64 = {
-		.data = (uint8_t *)base64_str,
-		.size = strlen(base64_str)
-	};
-
-	return dnssec_binary_from_base64(&base64, binary_ptr);
-}
-
-static int encode_binary(const void *value, json_t **result)
-{
-	const dnssec_binary_t *binary_ptr = value;
-
-	_cleanup_binary_ dnssec_binary_t base64 = { 0 };
-	int r = dnssec_binary_to_base64(binary_ptr, &base64);
-	if (r != DNSSEC_EOK) {
-		return r;
-	}
-
-	//! \todo replace json_pack with json_stringn (not in Jansson 2.6 yet)
-	json_t *encoded = json_pack("s#", base64.data, base64.size);
-	if (!encoded) {
-		return DNSSEC_ENOMEM;
-	}
-
-	*result = encoded;
-
-	return DNSSEC_EOK;
-}
-
-/*!
- * Decode boolean value from JSON.
- */
-static int decode_bool(const json_t *value, void *result)
-{
-	bool *bool_ptr = result;
-
-	if (!json_is_boolean(value)) {
-		return DNSSEC_CONFIG_MALFORMED;
-	}
-
-	*bool_ptr = json_is_true(value);
-
-	return DNSSEC_EOK;
-}
-
-static int encode_bool(const void *value, json_t **result)
-{
-	const bool *bool_ptr = value;
-
-	*result = *bool_ptr ? json_true() : json_false();
-
-	return DNSSEC_EOK;
-}
-
-/*!
- * Decode time value from JSON.
- */
-static int decode_time(const json_t *value, void *result)
-{
-	time_t *time_ptr = result;
-
-	if (!json_is_string(value)) {
-		return DNSSEC_CONFIG_MALFORMED;
-	}
-
-	const char *time_str = json_string_value(value);
-	struct tm tm = { 0 };
-	char *end = strptime(time_str, TIME_FORMAT, &tm);
-	if (end == NULL || *end != '\0') {
-		return DNSSEC_CONFIG_MALFORMED;
-	}
-
-	*time_ptr = timegm(&tm);
-
-	return DNSSEC_EOK;
-}
-
-static int encode_time(const void *value, json_t **result)
-{
-	const time_t *time_ptr = value;
-
-	if (*time_ptr == 0) {
-		// unset
-		return DNSSEC_EOK;
-	}
-
-	struct tm tm = { 0 };
-	if (!gmtime_r(time_ptr, &tm)) {
-		return DNSSEC_CONFIG_MALFORMED;
-	}
-
-	char buffer[128] = { 0 };
-	int written = strftime(buffer, sizeof(buffer), TIME_FORMAT, &tm);
-	if (written == 0) {
-		return DNSSEC_CONFIG_MALFORMED;
-	}
-
-	json_t *encoded = json_string(buffer);
-	if (!encoded) {
-		return DNSSEC_ENOMEM;
-	}
-
-	*result = encoded;
-
-	return DNSSEC_EOK;
-}
 
 /* -- key parameters ------------------------------------------------------- */
 
@@ -478,30 +263,6 @@ static int load_zone_keys(dnssec_kasp_zone_t *zone, json_t *keys)
 }
 
 /*!
- * Load zone configuration.
- */
-static int load_zone_config(dnssec_kasp_zone_t *zone, const char *filename)
-{
-	assert(zone);
-	assert(filename);
-
-	FILE *file = fopen(filename, "r");
-	if (!file) {
-		return DNSSEC_NOT_FOUND;
-	}
-
-	json_error_t error = { 0 };
-	_json_cleanup_ json_t *config = json_loadf(file, JSON_LOAD_OPTIONS, &error);
-	fclose(file);
-	if (!config) {
-		return DNSSEC_CONFIG_MALFORMED;
-	}
-
-	json_t *config_keys = json_object_get(config, "keys");
-	return load_zone_keys(zone, config_keys);
-}
-
-/*!
  * Convert KASP key parameters to JSON.
  */
 static int export_key(const key_params_t *params, json_t **key_ptr)
@@ -591,36 +352,12 @@ static int export_zone_keys(dnssec_kasp_zone_t *zone, json_t **keys_ptr)
 	return DNSSEC_EOK;
 }
 
-/*!
- * Save zone configuration.
- */
-static int save_zone_config(dnssec_kasp_zone_t *zone, const char *filename)
-{
-	assert(zone);
-	assert(filename);
-
-	json_t *keys = NULL;
-	int r = export_zone_keys(zone, &keys);
-	if (r != DNSSEC_EOK) {
-		return r;
-	}
-
-	_json_cleanup_ json_t *config = json_pack("{so}", "keys", keys);
-	_cleanup_fclose_ FILE *file = fopen(filename, "r");
-	if (!file) {
-		return DNSSEC_NOT_FOUND;
-	}
-
-	r = json_dumpf(config, file, JSON_DUMP_OPTIONS);
-	fputc('\n', file);
-
-	return (r == 0) ? DNSSEC_EOK : DNSSEC_NOT_FOUND;
-}
+/* -- internal API --------------------------------------------------------- */
 
 /*!
  * Get zone configuration file name.
  */
-static char *zone_config_file(const char *dir, const char *zone_name)
+char *zone_config_file(const char *dir, const char *zone_name)
 {
 	// replace slashes with underscores
 
@@ -642,119 +379,52 @@ static char *zone_config_file(const char *dir, const char *zone_name)
 	return config;
 }
 
-/* -- internal API --------------------------------------------------------- */
-
-typedef struct kasp_dir_ctx {
-	char *path;
-} kasp_dir_ctx_t;
-
-#define KASP_DIR_INIT_MODE (S_IRWXU | S_IRGRP|S_IXGRP)
-
-static int kasp_dir_init(const char *config)
+/*!
+ * Load zone configuration.
+ */
+int load_zone_config(dnssec_kasp_zone_t *zone, const char *filename)
 {
-	assert(config);
+	assert(zone);
+	assert(filename);
 
-	// existing directory is no-op
-
-	_cleanup_close_ int fd = open(config, O_RDONLY);
-	if (fd != -1) {
-		struct stat stat = { 0 };
-		if (fstat(fd, &stat) == -1) {
-			return dnssec_errno_to_error(errno);
-		}
-
-		if (!S_ISDIR(stat.st_mode)) {
-			return dnssec_errno_to_error(ENOTDIR);
-		}
-
-		// TODO: maybe check if the directory is empty?
-
-		return DNSSEC_EOK;
-	}
-
-	// create directory
-
-	int r = mkdir(config, KASP_DIR_INIT_MODE);
-	if (r != 0) {
-		return dnssec_errno_to_error(errno);
-	}
-
-	return DNSSEC_EOK;
-}
-
-static int kasp_dir_open(void **ctx_ptr, const char *config)
-{
-	assert(ctx_ptr);
-	assert(config);
-
-	kasp_dir_ctx_t *ctx = malloc(sizeof(*ctx));
-	if (!ctx) {
-		return DNSSEC_ENOMEM;
-	}
-
-	clear_struct(ctx);
-	ctx->path = path_normalize(config);
-	if (!ctx->path) {
-		free(ctx);
+	FILE *file = fopen(filename, "r");
+	if (!file) {
 		return DNSSEC_NOT_FOUND;
 	}
 
-	*ctx_ptr = ctx;
-	return DNSSEC_EOK;
-}
-
-static void kasp_dir_close(void *_ctx)
-{
-	assert(_ctx);
-
-	kasp_dir_ctx_t *ctx = _ctx;
-
-	free(ctx->path);
-	free(ctx);
-}
-
-static int kasp_dir_load_zone(dnssec_kasp_zone_t *zone, void *_ctx)
-{
-	assert(zone);
-	assert(_ctx);
-
-	kasp_dir_ctx_t *ctx = _ctx;
-
-	_cleanup_free_ char *config = zone_config_file(ctx->path, zone->name);
+	json_error_t error = { 0 };
+	_json_cleanup_ json_t *config = json_loadf(file, JSON_LOAD_OPTIONS, &error);
+	fclose(file);
 	if (!config) {
-		return DNSSEC_ENOMEM;
+		return DNSSEC_CONFIG_MALFORMED;
 	}
 
-	return load_zone_config(zone, config);
+	json_t *config_keys = json_object_get(config, "keys");
+	return load_zone_keys(zone, config_keys);
 }
 
-static int kasp_dir_save_zone(dnssec_kasp_zone_t *zone, void *_ctx)
+/*!
+ * Save zone configuration.
+ */
+int save_zone_config(dnssec_kasp_zone_t *zone, const char *filename)
 {
 	assert(zone);
-	assert(_ctx);
+	assert(filename);
 
-	kasp_dir_ctx_t *ctx = _ctx;
-
-	_cleanup_free_ char *config = zone_config_file(ctx->path, zone->name);
-	if (!config) {
-		return DNSSEC_ENOMEM;
+	json_t *keys = NULL;
+	int r = export_zone_keys(zone, &keys);
+	if (r != DNSSEC_EOK) {
+		return r;
 	}
 
-	return save_zone_config(zone, config);
-}
+	_json_cleanup_ json_t *config = json_pack("{so}", "keys", keys);
+	_cleanup_fclose_ FILE *file = fopen(filename, "r");
+	if (!file) {
+		return DNSSEC_NOT_FOUND;
+	}
 
-static const dnssec_kasp_store_functions_t KASP_DIR_FUNCTIONS = {
-	.init = kasp_dir_init,
-	.open = kasp_dir_open,
-	.close = kasp_dir_close,
-	.load_zone = kasp_dir_load_zone,
-	.save_zone = kasp_dir_save_zone,
-};
+	r = json_dumpf(config, file, JSON_DUMP_OPTIONS);
+	fputc('\n', file);
 
-/* -- public API ----------------------------------------------------------- */
-
-_public_
-int dnssec_kasp_init_dir(dnssec_kasp_t **kasp_ptr)
-{
-	return dnssec_kasp_create(kasp_ptr, &KASP_DIR_FUNCTIONS);
+	return (r == 0) ? DNSSEC_EOK : DNSSEC_NOT_FOUND;
 }
