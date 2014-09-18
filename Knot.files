@@ -329,6 +329,7 @@ tests/fdset.c
 tests/hattrie.c
 tests/hhash.c
 tests/journal.c
+tests/namedb.c
 tests/node.c
 tests/pkt.c
 tests/process_answer.c

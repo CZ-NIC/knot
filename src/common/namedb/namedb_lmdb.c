@@ -1,9 +1,9 @@
+#ifdef HAVE_LMDB
+
 #include <lmdb.h>
 
 #include "common/namedb/namedb_lmdb.h"
 #include "libknot/errcode.h"
-
-#define NAME_TO_KEY(key) { knot_dname_size(key), (void *)(key)  }
 
 struct lmdb_env
 {
@@ -54,7 +54,7 @@ static void dbase_close(struct lmdb_env *env)
 	mdb_env_close(env->env);
 }
 
-knot_namedb_t* init(const char *handle, mm_ctx_t *mm)
+static knot_namedb_t* init(const char *handle, mm_ctx_t *mm)
 {
 	struct lmdb_env *env = mm_alloc(mm, sizeof(struct lmdb_env));
 	if (env == NULL) {
@@ -72,7 +72,7 @@ knot_namedb_t* init(const char *handle, mm_ctx_t *mm)
 	return env;
 }
 
-void deinit(knot_namedb_t *db)
+static void deinit(knot_namedb_t *db)
 {
 	struct lmdb_env *env = db;
 
@@ -80,7 +80,7 @@ void deinit(knot_namedb_t *db)
 	mm_free(env->pool, env);
 }
 
-int txn_begin(knot_namedb_t *db, knot_txn_t *txn, unsigned flags)
+static int txn_begin(knot_namedb_t *db, knot_txn_t *txn, unsigned flags)
 {
 	txn->db = db;
 	txn->txn = NULL;
@@ -99,7 +99,7 @@ int txn_begin(knot_namedb_t *db, knot_txn_t *txn, unsigned flags)
 	return KNOT_EOK;
 }
 
-int txn_commit(knot_txn_t *txn)
+static int txn_commit(knot_txn_t *txn)
 {
 	int ret = mdb_txn_commit((MDB_txn *)txn->txn);
 	if (ret != 0) {
@@ -109,12 +109,12 @@ int txn_commit(knot_txn_t *txn)
 	return KNOT_EOK;
 }
 
-void txn_abort(knot_txn_t *txn)
+static void txn_abort(knot_txn_t *txn)
 {
 	mdb_txn_abort((MDB_txn *)txn->txn);
 }
 
-int count(knot_txn_t *txn)
+static int count(knot_txn_t *txn)
 {
 	struct lmdb_env *env = txn->db;
 
@@ -127,20 +127,16 @@ int count(knot_txn_t *txn)
 	return stat.ms_entries;
 }
 
-int find(knot_txn_t *txn, const knot_dname_t *key, knot_val_t *val, unsigned op)
+static int find(knot_txn_t *txn, knot_val_t *key, knot_val_t *val, unsigned flags)
 {
 	struct lmdb_env *env = txn->db;
-	MDB_val db_key = NAME_TO_KEY(key);
+	MDB_val db_key = { key->len, key->data };
 	MDB_val data = { 0, NULL };
 
 
 	int ret = mdb_get(txn->txn, env->dbi, &db_key, &data);
 	if (ret != 0) {
-		if (ret == MDB_NOTFOUND) {
-			return KNOT_ENOENT;
-		} else {
-			return KNOT_ERROR;
-		}
+		return KNOT_ERROR;
 	}
 
 	val->data = data.mv_data;
@@ -148,24 +144,27 @@ int find(knot_txn_t *txn, const knot_dname_t *key, knot_val_t *val, unsigned op)
 	return KNOT_EOK;
 }
 
-int insert(knot_txn_t *txn, const knot_dname_t *key, knot_val_t *val)
+static int insert(knot_txn_t *txn, knot_val_t *key, knot_val_t *val, unsigned flags)
 {
 	struct lmdb_env *env = txn->db;
-	MDB_val db_key = NAME_TO_KEY(key);
+	MDB_val db_key = { key->len, key->data };
 	MDB_val data = { val->len, val->data };
 
 	int ret = mdb_put(txn->txn, env->dbi, &db_key, &data, 0);
 	if (ret != 0) {
+		if (ret == MDB_KEYEXIST) {
+			return KNOT_EEXIST;
+		}
 		return KNOT_ERROR;
 	}
 
 	return KNOT_EOK;
 }
 
-int del(knot_txn_t *txn, const knot_dname_t *key)
+static int del(knot_txn_t *txn, knot_val_t *key)
 {
 	struct lmdb_env *env = txn->db;
-	MDB_val db_key = NAME_TO_KEY(key);
+	MDB_val db_key = { key->len, key->data };
 	MDB_val data = { 0, NULL };
 
 	int ret = mdb_del(txn->txn, env->dbi, &db_key, &data);
@@ -176,34 +175,82 @@ int del(knot_txn_t *txn, const knot_dname_t *key)
 	return KNOT_EOK;
 }
 
-knot_iter_t *iter_begin(knot_txn_t *txn, unsigned flags)
+static knot_iter_t *iter_begin(knot_txn_t *txn, unsigned flags)
 {
-	return NULL; /* NOTIMPL */
+	struct lmdb_env *env = txn->db;
+	MDB_cursor *cursor = NULL;
+
+	int ret = mdb_cursor_open(txn->txn, env->dbi, &cursor);
+	if (ret != 0) {
+		return NULL;
+	}
+
+	ret = mdb_cursor_get(cursor, NULL, NULL, MDB_FIRST);
+	if (ret != 0) {
+		mdb_cursor_close(cursor);
+		return NULL;
+	}
+
+	return cursor;
 }
 
-int iter_next(knot_iter_t *iter)
+static knot_iter_t *iter_next(knot_iter_t *iter)
 {
-	return KNOT_ENOTSUP;
+	MDB_cursor *cursor = iter;
+
+	int ret = mdb_cursor_get(cursor, NULL, NULL, MDB_NEXT);
+	if (ret != 0) {
+		mdb_cursor_close(cursor);
+		return NULL;
+	}
+
+	return cursor;
 }
 
-const knot_dname_t *iter_key(knot_iter_t *iter)
+static int iter_key(knot_iter_t *iter, knot_val_t *key)
 {
-	return NULL; /* NOTIMPL */
+	MDB_cursor *cursor = iter;
+
+	MDB_val mdb_key, mdb_val;
+	int ret = mdb_cursor_get(cursor, &mdb_key, &mdb_val, MDB_GET_CURRENT);
+	if (ret != 0) {
+		return KNOT_ERROR;
+	}
+
+	key->data = mdb_key.mv_data;
+	key->len  = mdb_key.mv_size;
+	return KNOT_EOK;
 }
 
-int iter_val(knot_iter_t *iter, knot_val_t *val)
+static int iter_val(knot_iter_t *iter, knot_val_t *val)
 {
-	return KNOT_ENOTSUP;
+	MDB_cursor *cursor = iter;
+
+	MDB_val mdb_key, mdb_val;
+	int ret = mdb_cursor_get(cursor, &mdb_key, &mdb_val, MDB_GET_CURRENT);
+	if (ret != 0) {
+		return KNOT_ERROR;
+	}
+
+	val->data = mdb_val.mv_data;
+	val->len  = mdb_val.mv_size;
+	return KNOT_EOK;
 }
 
-int iter_finish(knot_iter_t *iter)
+static void iter_finish(knot_iter_t *iter)
 {
-	return KNOT_ENOTSUP;
+	if (iter == NULL) {
+		return;
+	}
+
+	MDB_cursor *cursor = iter;
+	mdb_cursor_close(cursor);
 }
 
 struct namedb_api *namedb_lmdb_api(void)
 {
 	static struct namedb_api api = {
+		"lmdb",
 		init, deinit,
 		txn_begin, txn_commit, txn_abort,
 		count, find, insert, del,
@@ -213,3 +260,11 @@ struct namedb_api *namedb_lmdb_api(void)
 	return &api;
 }
 
+#else
+
+struct namedb_api *namedb_lmdb_api(void)
+{
+	return NULL;
+}
+
+#endif

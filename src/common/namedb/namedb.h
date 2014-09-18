@@ -19,7 +19,8 @@
 #include "libknot/dname.h"
 
 enum {
-	NAMEDB_RDONLY = 1 << 0
+	NAMEDB_RDONLY = 1 << 0,
+	NAMEDB_SORTED = 1 << 1
 };
 
 typedef void knot_namedb_t;
@@ -37,6 +38,8 @@ typedef struct knot_txn {
 
 struct namedb_api {
 
+	const char *name;
+
 	/* Context operations */
 
 	knot_namedb_t* (*init)(const char *handle, mm_ctx_t *mm);
@@ -51,17 +54,17 @@ struct namedb_api {
 	/* Data access */
 
 	int (*count)(knot_txn_t *txn);
-	int (*find)(knot_txn_t *txn, const knot_dname_t *key, knot_val_t *val, unsigned op);
-	int (*insert)(knot_txn_t *txn, const knot_dname_t *key, knot_val_t *val);
-	int (*del)(knot_txn_t *txn, const knot_dname_t *key);
+	int (*find)(knot_txn_t *txn, knot_val_t *key, knot_val_t *val, unsigned flags);
+	int (*insert)(knot_txn_t *txn, knot_val_t *key, knot_val_t *val, unsigned flags);
+	int (*del)(knot_txn_t *txn,knot_val_t *key);
 
 	/* Iteration */
 
 	knot_iter_t *(*iter_begin)(knot_txn_t *txn, unsigned flags);
-	int (*iter_next)(knot_iter_t *iter);
-	const knot_dname_t *(*iter_key)(knot_iter_t *iter);
+	knot_iter_t *(*iter_next)(knot_iter_t *iter);
+	int (*iter_key)(knot_iter_t *iter, knot_val_t *key);
 	int (*iter_val)(knot_iter_t *iter, knot_val_t *val);
-	int (*iter_finish)(knot_iter_t *iter);
+	void (*iter_finish)(knot_iter_t *iter);
 };
 
 

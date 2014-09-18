@@ -113,26 +113,13 @@ static void log_zone_load_info(const zone_t *zone, const char *zone_name,
 	log_zone_info(zone->name, "zone %s, serial %u", action, serial);
 }
 
-static bool timer_set(const struct timer_storage *timers, const int event_id)
+static int create_zone_reload(zone_t *zone, conf_zone_t *zone_conf, server_t *server,
+                              zone_t *old_zone)
 {
-	for (size_t i = 0; i < PERSISTENT_EVENT_COUNT; ++i) {
-		if (timers[i].id == event_id) {
-			return true;
-		}
-	}
-	
-	return false;
 }
 
-static time_t get_timer(const struct timer_storage *timers, const int event_id)
+static int create_zone_restart(zone_t *zone, conf_zone_t *zone_conf, server_t *server)
 {
-	for (size_t i = 0; i < PERSISTENT_EVENT_COUNT; ++i) {
-		if (timers[i].id == event_id) {
-			return timers[i].timer;
-		}
-	}
-	
-	return 0;
 }
 
 /*!
@@ -149,7 +136,7 @@ static zone_t *create_zone(conf_zone_t *zone_conf, server_t *server, zone_t *old
 	assert(zone_conf);
 	assert(server);
 
-	struct timer_storage timers[PERSISTENT_EVENT_COUNT];
+	time_t timers[ZONE_EVENT_COUNT];
 	memset(timers, 0, sizeof(timers));
 
 	zone_t *zone = zone_new(zone_conf);
@@ -185,20 +172,10 @@ static zone_t *create_zone(conf_zone_t *zone_conf, server_t *server, zone_t *old
 		zone_events_enqueue(zone, ZONE_EVENT_RELOAD);
 		/* Replan DDNS processing if there are pending updates. */
 		zone_events_replan_ddns(zone, old_zone);
-		if (!old_zone) {
-			/* Reuse timers. */
-			
-		}
-
 		break;
 	case ZONE_STATUS_BOOSTRAP: // TIMERS: sort bootstrap
-		if (!old_zone && timer_set(timers, ZONE_EVENT_REFRESH)) {
-			zone_events_schedule(zone, ZONE_EVENT_REFRESH,
-			                     get_timer(timers, ZONE_EVENT_REFRESH));
-		} else {
-			zone_events_schedule(zone, ZONE_EVENT_REFRESH, ZONE_EVENT_NOW);
-		}
-		
+#warning should not call this if we have old zone!
+		zone_events_schedule(zone, ZONE_EVENT_REFRESH, ZONE_EVENT_NOW);
 		break;
 	case ZONE_STATUS_NOT_FOUND:
 		break;

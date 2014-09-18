@@ -45,7 +45,8 @@ check_PROGRAMS = \
 	worker_pool			\
 	worker_queue			\
 	zone_events			\
-	zone_update
+	zone_update			\
+	namedb
 
 check-compile-only: $(check_PROGRAMS)
 
