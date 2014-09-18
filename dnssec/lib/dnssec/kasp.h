@@ -108,6 +108,13 @@ int dnssec_kasp_init_dir(dnssec_kasp_t **kasp);
  */
 int dnssec_kasp_init(dnssec_kasp_t *kasp, const char *config);
 
+/*
+ * Deinitialize KASP store.
+ *
+ * \param kasp    KASP store handle.
+ */
+void dnssec_kasp_deinit(dnssec_kasp_t *kasp);
+
 /*!
  * Open KASP store.
  *

@@ -98,7 +98,7 @@ int main(int argc, char *argv[])
 
 fail:
 	dnssec_kasp_zone_free(zone);
-	dnssec_kasp_close(kasp);
+	dnssec_kasp_deinit(kasp);
 	dnssec_crypto_cleanup();
 
 	return exit_code;

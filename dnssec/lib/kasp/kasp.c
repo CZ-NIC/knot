@@ -53,6 +53,17 @@ int dnssec_kasp_init(dnssec_kasp_t *kasp, const char *config)
 }
 
 _public_
+void dnssec_kasp_deinit(dnssec_kasp_t *kasp)
+{
+	if (!kasp) {
+		return;
+	}
+
+	dnssec_kasp_close(kasp);
+	free(kasp);
+}
+
+_public_
 int dnssec_kasp_open(dnssec_kasp_t *kasp, const char *config)
 {
 	if (!kasp || !config) {
@@ -69,8 +80,10 @@ void dnssec_kasp_close(dnssec_kasp_t *kasp)
 		return;
 	}
 
-	kasp->functions->close(kasp->ctx);
-	free(kasp);
+	if (kasp->ctx) {
+		dnssec_kasp_close(kasp);
+		kasp->ctx = NULL;
+	}
 }
 
 _public_
