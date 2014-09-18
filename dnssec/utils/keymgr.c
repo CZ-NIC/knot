@@ -21,6 +21,9 @@
 #include <string.h>
 #include <unistd.h>
 
+#include <dnssec/error.h>
+#include <dnssec/kasp.h>
+
 #include "utils.h"
 
 struct options {
@@ -41,10 +44,23 @@ typedef struct command command_t;
  */
 static int main_init(options_t *options, int argc, char *argv[])
 {
-	fprintf(stderr, "KASP dir %s\n", options->kasp_dir);
+	if (argc != 0) {
+		error("Extra parameters supplied.\n");
+		return 1;
+	}
 
-	error("Not implemented.");
-	return 1;
+	dnssec_kasp_t *kasp = NULL;
+	dnssec_kasp_init_dir(&kasp);
+
+	int r = dnssec_kasp_init(kasp, options->kasp_dir);
+	if (r != DNSSEC_EOK) {
+		error("Cannot initialize KASP directory (%s).\n",
+		      dnssec_strerror(r));
+	}
+
+	dnssec_kasp_deinit(kasp);
+
+	return (r == DNSSEC_EOK ? 0 : 1);
 }
 
 static int main_zone(options_t *options, int argc, char *argv[])
@@ -133,7 +149,7 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	exit_code = subcommand(main_commands, &options, optind, argv + optind);
+	exit_code = subcommand(main_commands, &options, argc - optind, argv + optind);
 
 failed:
 	free(options.kasp_dir);
