@@ -47,7 +47,13 @@ int main(int argc, char *argv[])
 	dnssec_kasp_t *kasp = NULL;
 	dnssec_kasp_zone_t *zone = NULL;
 
-	int r = dnssec_kasp_open_dir(kasp_dir, &kasp);
+	int r = dnssec_kasp_init_dir(&kasp);
+	if (r != DNSSEC_EOK) {
+		error("dnssec_kasp_init_dir()", r);
+		goto fail;
+	}
+
+	r = dnssec_kasp_open(kasp, kasp_dir);
 	if (r != DNSSEC_EOK) {
 		error("dnssec_kasp_open_dir()", r);
 		goto fail;
