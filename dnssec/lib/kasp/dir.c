@@ -646,6 +646,11 @@ typedef struct kasp_dir_ctx {
 	char *path;
 } kasp_dir_ctx_t;
 
+static int kasp_dir_init(const char *config)
+{
+	return DNSSEC_NOT_IMPLEMENTED_ERROR;
+}
+
 static int kasp_dir_open(void **ctx_ptr, const char *config)
 {
 	assert(ctx_ptr);
@@ -708,6 +713,7 @@ static int kasp_dir_save_zone(dnssec_kasp_zone_t *zone, void *_ctx)
 }
 
 static const dnssec_kasp_store_functions_t KASP_DIR_FUNCTIONS = {
+	.init = kasp_dir_init,
 	.open = kasp_dir_open,
 	.close = kasp_dir_close,
 	.load_zone = kasp_dir_load_zone,
@@ -717,7 +723,7 @@ static const dnssec_kasp_store_functions_t KASP_DIR_FUNCTIONS = {
 /* -- public API ----------------------------------------------------------- */
 
 _public_
-int dnssec_kasp_open_dir(const char *path, dnssec_kasp_t **kasp_ptr)
+int dnssec_kasp_init_dir(dnssec_kasp_t **kasp_ptr)
 {
-	return dnssec_kasp_create(kasp_ptr, &KASP_DIR_FUNCTIONS, path);
+	return dnssec_kasp_create(kasp_ptr, &KASP_DIR_FUNCTIONS);
 }

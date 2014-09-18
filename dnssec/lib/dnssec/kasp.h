@@ -90,16 +90,31 @@ struct dnssec_kasp;
 typedef struct dnssec_kasp dnssec_kasp_t;
 
 /*!
- * Open default KASP state store.
+ * Initialize default KASP state store.
  *
- * This KASP provider stores the state in YAML files in a directory.
+ * This KASP provider stores the state in JSON files in a directory.
  *
- * \param[in]  path  Path to the KASP storage.
  * \param[out] kasp  Pointer to KASP store instance.
  *
  * \return Error code, DNSSEC_EOK if successful.
  */
-int dnssec_kasp_open_dir(const char *path, dnssec_kasp_t **kasp);
+int dnssec_kasp_init_dir(dnssec_kasp_t **kasp);
+
+/*!
+ * Initialize KASP store.
+ *
+ * \param kasp    KASP store handle.
+ * \param config  KASP store configuration string.
+ */
+int dnssec_kasp_init(dnssec_kasp_t *kasp, const char *config);
+
+/*!
+ * Open KASP store.
+ *
+ * \param kasp    KASP store handle.
+ * \param config  KASP store configuration string.
+ */
+int dnssec_kasp_open(dnssec_kasp_t *kasp, const char *config);
 
 /*!
  * Close KASP store.

@@ -22,6 +22,7 @@
  * KASP store API implementation.
  */
 typedef struct dnssec_kasp_store_functions {
+	int (*init)(const char *config);
 	// internal context initialization
 	int (*open)(void **ctx_ptr, const char *config);
 	void (*close)(void *ctx);
@@ -39,5 +40,4 @@ struct dnssec_kasp {
 };
 
 int dnssec_kasp_create(dnssec_kasp_t **kasp_ptr,
-                       const dnssec_kasp_store_functions_t *functions,
-                       const char *open_config);
+                       const dnssec_kasp_store_functions_t *functions);

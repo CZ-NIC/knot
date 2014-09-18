@@ -22,10 +22,9 @@
 /* -- internal API --------------------------------------------------------- */
 
 int dnssec_kasp_create(dnssec_kasp_t **kasp_ptr,
-                       const dnssec_kasp_store_functions_t *functions,
-                       const char *config)
+                       const dnssec_kasp_store_functions_t *functions)
 {
-	if (!kasp_ptr || !functions || !config) {
+	if (!kasp_ptr || !functions) {
 		return DNSSEC_EINVAL;
 	}
 
@@ -35,19 +34,33 @@ int dnssec_kasp_create(dnssec_kasp_t **kasp_ptr,
 	}
 
 	clear_struct(kasp);
-
 	kasp->functions = functions;
-	int result = functions->open(&kasp->ctx, config);
-	if (result != DNSSEC_EOK) {
-		free(kasp);
-		return result;
-	}
 
 	*kasp_ptr = kasp;
 	return DNSSEC_EOK;
 }
 
 /* -- public API ----------------------------------------------------------- */
+
+_public_
+int dnssec_kasp_init(dnssec_kasp_t *kasp, const char *config)
+{
+	if (!kasp || !config) {
+		return DNSSEC_EINVAL;
+	}
+
+	return kasp->functions->init(config);
+}
+
+_public_
+int dnssec_kasp_open(dnssec_kasp_t *kasp, const char *config)
+{
+	if (!kasp || !config) {
+		return DNSSEC_EINVAL;
+	}
+
+	return kasp->functions->open(&kasp->ctx, config);
+}
 
 _public_
 void dnssec_kasp_close(dnssec_kasp_t *kasp)
