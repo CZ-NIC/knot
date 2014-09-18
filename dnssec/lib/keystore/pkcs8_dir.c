@@ -43,9 +43,9 @@ typedef struct pkcs8_dir_handle {
  */
 static char *key_path(const char *dir, const char *id)
 {
-	char buffer[MAX_PATH] = { 0 };
-	int wrote = snprintf(buffer, MAX_PATH, "%s/%s.pem", dir, id);
-	if (wrote < 0 || wrote > MAX_PATH) {
+	char buffer[PATH_MAX] = { 0 };
+	int wrote = snprintf(buffer, PATH_MAX, "%s/%s.pem", dir, id);
+	if (wrote < 0 || wrote >= PATH_MAX) {
 		return NULL;
 	}
 
