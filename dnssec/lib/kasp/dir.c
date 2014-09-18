@@ -17,6 +17,8 @@
 #include <jansson.h>
 #include <stdio.h>
 #include <time.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 
 #include "dname.h"
 #include "error.h"
@@ -646,9 +648,38 @@ typedef struct kasp_dir_ctx {
 	char *path;
 } kasp_dir_ctx_t;
 
+#define KASP_DIR_INIT_MODE (S_IRWXU | S_IRGRP|S_IXGRP)
+
 static int kasp_dir_init(const char *config)
 {
-	return DNSSEC_NOT_IMPLEMENTED_ERROR;
+	assert(config);
+
+	// existing directory is no-op
+
+	_cleanup_close_ int fd = open(config, O_RDONLY);
+	if (fd != -1) {
+		struct stat stat = { 0 };
+		if (fstat(fd, &stat) == -1) {
+			return dnssec_errno_to_error(errno);
+		}
+
+		if (!S_ISDIR(stat.st_mode)) {
+			return dnssec_errno_to_error(ENOTDIR);
+		}
+
+		// TODO: maybe check if the directory is empty?
+
+		return DNSSEC_EOK;
+	}
+
+	// create directory
+
+	int r = mkdir(config, KASP_DIR_INIT_MODE);
+	if (r != 0) {
+		return dnssec_errno_to_error(errno);
+	}
+
+	return DNSSEC_EOK;
 }
 
 static int kasp_dir_open(void **ctx_ptr, const char *config)
