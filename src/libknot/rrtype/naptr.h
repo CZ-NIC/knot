@@ -41,7 +41,7 @@ static inline int naptr_header_size(const uint8_t *naptr, const uint8_t *maxp)
 
 	/* Variable fields size (flags, services, regexp) */
 	for (int i = 0; i < 3; i++) {
-		uint8_t *len_ptr = naptr + size;
+		const uint8_t *len_ptr = naptr + size;
 		printf("Checking len_ptr = %p, maxp = %p\n",
 		       len_ptr, maxp);
 		if (len_ptr >= maxp) {
