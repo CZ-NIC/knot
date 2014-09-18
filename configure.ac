@@ -312,6 +312,24 @@ dt_DNSTAP([
 ])
 AM_CONDITIONAL([HAVE_DNSTAP], test "$opt_dnstap" != "no")
 
+dnl Check for lmdb.
+AC_ARG_WITH(lmdb,
+    AC_HELP_STRING([--with-lmdb=[DIR]], [Support for LMDB.]),
+    with_lmdb=$withval,
+    with_lmdb=yes
+)   
+if test "$with_lmdb" != "no" ; then
+    AC_SEARCH_LIBS([mdb_env_open], [lmdb], [with_lmdb=yes], [with_lmdb=no])
+    if test "$with_lmdb" != "yes" ; then
+        with_lmdb=no
+        AC_MSG_WARN([LMDB not found])
+    else
+        with_lmdb=yes
+        AC_DEFINE([HAVE_LMDB], [1], [Define to 1 to enable LMDB.])
+    fi
+fi
+AM_CONDITIONAL([HAVE_LMDB], test "$with_lmdb" != "no")
+
 AC_SEARCH_LIBS([pow], [m])
 AC_SEARCH_LIBS([pthread_create], [pthread], [], [AC_MSG_ERROR([pthreads not found])])
 AC_SEARCH_LIBS([dlopen], [dl])

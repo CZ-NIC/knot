@@ -112,6 +112,11 @@ libknotcs_la_SOURCES =				\
 	common/mem.h				\
 	common/mempool.c			\
 	common/mempool.h			\
+	common/namedb/namedb.h			\
+	common/namedb/namedb_lmdb.h		\
+	common/namedb/namedb_lmdb.c		\
+	common/namedb/namedb_trie.h		\
+	common/namedb/namedb_trie.c		\
 	common/log.c				\
 	common/log.h
 
@@ -306,6 +311,8 @@ libknotd_la_SOURCES =				\
 	knot/zone/node.h			\
 	knot/zone/semantic-check.c		\
 	knot/zone/semantic-check.h		\
+	knot/zone/timers.c			\
+	knot/zone/timers.h			\
 	knot/zone/zone-diff.c			\
 	knot/zone/zone-diff.h			\
 	knot/zone/zone-dump.c			\

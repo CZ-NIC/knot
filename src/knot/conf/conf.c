@@ -33,6 +33,7 @@
 #include "knot/knot.h"
 #include "knot/ctl/remote.h"
 #include "knot/nameserver/internet.h"
+#include "knot/zone/timers.h"
 
 /*
  * Defaults.
@@ -724,6 +725,9 @@ void conf_truncate(conf_t *conf, int unload_hooks)
 
 	/* Free remote control iface. */
 	conf_free_iface(conf->ctl.iface);
+	
+	/* Close timers db. */
+	close_timers_db(conf);
 }
 
 void conf_free(conf_t *conf)
@@ -795,6 +799,9 @@ int conf_open(const char* path)
 
 		/* Update hooks. */
 		conf_update_hooks(nconf);
+		
+		/* Close old timers db. */
+		close_timers_db(oldconf);
 
 		/* Free old config. */
 		conf_free(oldconf);

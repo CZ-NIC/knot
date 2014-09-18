@@ -36,6 +36,7 @@
 #include "knot/ctl/process.h"
 #include "knot/ctl/remote.h"
 #include "knot/conf/conf.h"
+#include "knot/zone/timers.h"
 #include "knot/server/tcp-handler.h"
 
 /* Signal flags. */
@@ -323,6 +324,15 @@ int main(int argc, char **argv)
 		} else {
 			log_info("changed directory to %s", daemon_root);
 		}
+	}
+	
+	/* Open zone timers db. */
+	int ret = open_timers_db(config);
+	if (ret != KNOT_EOK) {
+		server_deinit(&server);
+		conf_free(conf());
+		log_close();
+		return EXIT_FAILURE;
 	}
 
 	/* Register base signal handling. */

@@ -32,6 +32,7 @@
 #include "libknot/rrtype/soa.h"
 #include "libknot/dnssec/random.h"
 #include "libknot/packet/wire.h"
+#include "knot/zone/timers.h"
 #include "knot/dnssec/zone-sign.h"
 #include "knot/dnssec/zone-nsec.h"
 
@@ -174,7 +175,7 @@ static int remote_zone_refresh(zone_t *zone)
 	}
 
 	zone_events_schedule(zone, ZONE_EVENT_REFRESH, ZONE_EVENT_NOW);
-	return KNOT_EOK;
+	return write_zone_timers(conf(), zone);
 }
 
 /*! \brief Zone refresh callback. */
