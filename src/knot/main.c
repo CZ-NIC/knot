@@ -329,10 +329,7 @@ int main(int argc, char **argv)
 	/* Open zone timers db. */
 	int ret = open_timers_db(config);
 	if (ret != KNOT_EOK) {
-		server_deinit(&server);
-		conf_free(conf());
-		log_close();
-		return EXIT_FAILURE;
+		log_warning("Cannot open timers db (%s)\n", knot_strerror(ret));
 	}
 
 	/* Register base signal handling. */

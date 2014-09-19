@@ -74,10 +74,12 @@ static knot_namedb_t* init(const char *handle, mm_ctx_t *mm)
 
 static void deinit(knot_namedb_t *db)
 {
-	struct lmdb_env *env = db;
+	if (db) {
+		struct lmdb_env *env = db;
 
-	dbase_close(env);
-	mm_free(env->pool, env);
+		dbase_close(env);
+		mm_free(env->pool, env);
+	}
 }
 
 static int txn_begin(knot_namedb_t *db, knot_txn_t *txn, unsigned flags)
@@ -136,7 +138,11 @@ static int find(knot_txn_t *txn, knot_val_t *key, knot_val_t *val, unsigned flag
 
 	int ret = mdb_get(txn->txn, env->dbi, &db_key, &data);
 	if (ret != 0) {
-		return KNOT_ERROR;
+		if (ret == MDB_NOTFOUND) {
+			return KNOT_ENOENT;
+		} else {
+			return KNOT_ERROR;
+		}
 	}
 
 	val->data = data.mv_data;
@@ -261,6 +267,8 @@ struct namedb_api *namedb_lmdb_api(void)
 }
 
 #else
+
+#include <stdlib.h>
 
 struct namedb_api *namedb_lmdb_api(void)
 {
