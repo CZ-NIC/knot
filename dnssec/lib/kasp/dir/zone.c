@@ -418,7 +418,7 @@ int save_zone_config(dnssec_kasp_zone_t *zone, const char *filename)
 	}
 
 	_json_cleanup_ json_t *config = json_pack("{so}", "keys", keys);
-	_cleanup_fclose_ FILE *file = fopen(filename, "r");
+	_cleanup_fclose_ FILE *file = fopen(filename, "w");
 	if (!file) {
 		return DNSSEC_NOT_FOUND;
 	}
