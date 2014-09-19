@@ -81,7 +81,7 @@ void dnssec_kasp_close(dnssec_kasp_t *kasp)
 	}
 
 	if (kasp->ctx) {
-		dnssec_kasp_close(kasp);
+		kasp->functions->close(kasp);
 		kasp->ctx = NULL;
 	}
 }
