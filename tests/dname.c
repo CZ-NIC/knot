@@ -96,7 +96,7 @@ static void test_str(const char *in_str, const char *in_bin, size_t bin_len) {
 	ok(ret == bin_len, "dname_wire_check: %s", s2);
 
 	/* dname compare */
-	ok(memcmp(d2, in_bin, bin_len) == 0, "dname compare: %s", s2);
+	ok(d2 && memcmp(d2, in_bin, bin_len) == 0, "dname compare: %s", s2);
 
 	knot_dname_free(&d2, NULL);
 	free(s2);
