@@ -130,7 +130,7 @@ static zone_t *create_zone_from(zone_t *old_zone, conf_zone_t *zone_conf, server
 	return zone;
 }
 
-static zone_t *create_zone_reload(conf_zone_t *zone_conf, server_t *server,
+static zone_t *create_zone_reload(const conf_t *conf, conf_zone_t *zone_conf, server_t *server,
                                   zone_t *old_zone)
 {
 	zone_t *zone = create_zone_from(old_zone, zone_conf, server);
@@ -152,6 +152,8 @@ static zone_t *create_zone_reload(conf_zone_t *zone_conf, server_t *server,
 		zone->zonefile_serial = old_zone->zonefile_serial;
 		/* Reuse events from old zone. */
 		zone_events_update(zone, old_zone);
+		/* Write updated timers. */
+		write_zone_timers((conf_t *)conf, zone);
 		break;
 	default:
 		assert(0);
@@ -244,13 +246,14 @@ static zone_t *create_zone_new(conf_zone_t *zone_conf, server_t *server)
  *
  * \return Error code, KNOT_EOK if successful.
  */
-static zone_t *create_zone(conf_zone_t *zone_conf, server_t *server, zone_t *old_zone)
+static zone_t *create_zone(const conf_t *conf, conf_zone_t *zone_conf, server_t *server,
+                           zone_t *old_zone)
 {
 	assert(zone_conf);
 	assert(server);
 
 	if (old_zone) {
-		return create_zone_reload(zone_conf, server, old_zone);
+		return create_zone_reload(conf, zone_conf, server, old_zone);
 	} else {
 		return create_zone_new(zone_conf, server);
 	}
@@ -287,7 +290,7 @@ static knot_zonedb_t *create_zonedb(const conf_t *conf, server_t *server)
 		zone_t *old_zone = knot_zonedb_find(db_old, apex);
 		knot_dname_free(&apex, NULL);
 
-		zone_t *zone = create_zone(zone_config, server, old_zone);
+		zone_t *zone = create_zone(conf, zone_config, server, old_zone);
 		if (!zone) {
 			log_zone_str_error(zone_config->name,
 					   "zone cannot be created");
