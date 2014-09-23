@@ -218,6 +218,8 @@ int sweep_timer_db(conf_t *conf, knot_zonedb_t *zone_db)
 		return KNOT_ERROR;
 	}
 
+	const knot_dname_t *prev = NULL;
+	bool prev_removed = false;
 	while (it) {
 		knot_val_t key;
 		ret = db_api->iter_key(it, &key);
@@ -225,10 +227,23 @@ int sweep_timer_db(conf_t *conf, knot_zonedb_t *zone_db)
 			db_api->txn_abort(&txn);
 			return ret;
 		}
-		if (!knot_zonedb_find(zone_db, (knot_dname_t *)key.data)) {
+		const knot_dname_t *dbkey = (const knot_dname_t *)key.data;
+		if (prev && knot_dname_is_equal(prev, dbkey)) {
+			// Already checked this key.
+			if (prev_removed) {
+				// Remove from db.
+				db_api->del(&txn, &key);
+			}
+			it = db_api->iter_next(it);
+			continue;
+		}
+		prev_removed = !knot_zonedb_find(zone_db, dbkey);
+		if (prev_removed) {
 			// Delete obsolete timers
 			db_api->del(&txn, &key);
 		}
+
+		prev = dbkey;
 		it = db_api->iter_next(it);
 	}
 	db_api->iter_finish(it);
