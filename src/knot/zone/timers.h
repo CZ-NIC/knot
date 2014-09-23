@@ -14,20 +14,59 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "knot/conf/conf.h"
-#include "knot/zone/zone.h"
-#include "knot/zone/events/events.h"
-#include "knot/zone/zonedb.h"
-
 #pragma once
 
+#include "knot/conf/conf.h"
+#include "knot/zone/zone.h"
+#include "knot/zone/zonedb.h"
+
+/*!
+ * \brief Opens zone timers db. No-op without LMDB support.
+ *
+ * \param conf  Server-wide config.
+ *
+ * \return KNOT_E*
+ */
 int open_timers_db(conf_t *conf);
 
+/*!
+ * \brief Closes zone timers db.
+ *
+ * \param conf  Server-wide config.
+ */
 void close_timers_db(conf_t *conf);
 
-int write_zone_timers(conf_t *conf, zone_t *zone);
-
+/*!
+ * \brief Reads zone timers from timers db.
+ *        Currently these events are read (and stored):
+ *          ZONE_EVENT_REFRESH
+ *          ZONE_EVENT_EXPIRE
+ *          ZONE_EVENT_FLUSH
+ *
+ * \param conf     Server-wide config.
+ * \param zone     Zone to read timers for.
+ * \param timers   Output array with timers (size must be ZONE_EVENT_COUNT).
+ *
+ * \return KNOT_E*
+ */
 int read_zone_timers(conf_t *conf, const zone_t *zone, time_t *timers);
 
+/*!
+ * \brief Writes zone timers to timers db.
+ *
+ * \param conf     Server-wide config.
+ * \param zone     Zone to store timers for.
+ *
+ * \return KNOT_E*
+ */
+int write_zone_timers(conf_t *conf, zone_t *zone);
+
+/*!
+ * \brief Removes stale zones info from timers db.
+ *
+ * \param conf     Server-wide config.
+ * \param zone_db  Current zone database.
+ * \return KNOT_EOK or an error
+ */
 int sweep_timer_db(conf_t *conf, knot_zonedb_t *zone_db);
 

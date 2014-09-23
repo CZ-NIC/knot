@@ -20,12 +20,12 @@
 #include "knot/zone/timers.h"
 #include "knot/zone/zonedb.h"
 
+/* ---- Knot-internal event code to db key defines and lookup table --------- */
+
 #define KEY_UNKNOWN 0
 #define KEY_REFRESH 1
 #define KEY_EXPIRE 2
 #define KEY_FLUSH 3
-
-#define PERSISTENT_EVENT_COUNT 3
 
 static const uint8_t event_id_to_key[ZONE_EVENT_COUNT] = {
  [ZONE_EVENT_REFRESH] = KEY_REFRESH,
@@ -43,13 +43,18 @@ static bool event_persistent(size_t event)
 #undef KEY_EXPIRE
 #undef KEY_FLUSH
 
+/* ----- Key and value init macros ------------------------------------------ */
+
+// Key is a zone name + event code.
 #define KEY_INIT(zone, event_id, buf) { .len = sizeof(buf), .data = buf }; \
 	memcpy(buf, zone->name, sizeof(buf) - 1); \
 	buf[sizeof(buf) - 1] = event_id_to_key[event_id]
 
+// Value is a 64bit timer.
 #define VAL_INIT(buf, timer) { .len = sizeof(buf), .data = buf }; \
 	knot_wire_write_u64(buf, timer)
 
+/*! \brief Stores timers for persistent events. */
 static int store_timers(knot_txn_t *txn, zone_t *zone)
 {
 	for (size_t event = 0; event < ZONE_EVENT_COUNT; ++event) {
@@ -71,12 +76,14 @@ static int store_timers(knot_txn_t *txn, zone_t *zone)
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
+		
 
 	}
 
 	return KNOT_EOK;
 }
 
+/*! \brief Reads timers for persistent events. */
 static int read_timers(knot_txn_t *txn, const zone_t *zone, time_t *timers)
 {
 	const struct namedb_api *db_api = namedb_lmdb_api();
@@ -109,9 +116,12 @@ static int read_timers(knot_txn_t *txn, const zone_t *zone, time_t *timers)
 	return KNOT_EOK;
 }
 
+/* -------- API ------------------------------------------------------------- */
+
 int open_timers_db(conf_t *conf)
 {
 #ifndef HAVE_LMDB
+	// No-op if we don't have lmdb, all other operations will no-op as well then
 	return KNOT_EOK;
 #else
 	conf->timers_db = namedb_lmdb_api()->init(conf->storage, NULL);
@@ -129,30 +139,6 @@ void close_timers_db(conf_t *conf)
 		namedb_lmdb_api()->deinit(conf->timers_db);
 		conf->timers_db = NULL;
 	}
-}
-
-int write_zone_timers(conf_t *conf, zone_t *zone)
-{
-	if (conf->timers_db == NULL) {
-		return KNOT_EOK;
-	}
-	
-
-	const struct namedb_api *db_api = namedb_lmdb_api();
-
-	knot_txn_t txn;
-	int ret = db_api->txn_begin(conf->timers_db, &txn, 0);
-	if (ret != KNOT_EOK) {
-		return ret;
-	}
-
-	ret = store_timers(&txn, zone);
-	if (ret != KNOT_EOK) {
-		db_api->txn_abort(&txn);
-		return ret;
-	}
-
-	return db_api->txn_commit(&txn);
 }
 
 int read_zone_timers(conf_t *conf, const zone_t *zone, time_t *timers)
@@ -182,6 +168,30 @@ int read_zone_timers(conf_t *conf, const zone_t *zone, time_t *timers)
 	}
 
 	return KNOT_EOK;
+}
+
+int write_zone_timers(conf_t *conf, zone_t *zone)
+{
+	if (conf->timers_db == NULL) {
+		return KNOT_EOK;
+	}
+	
+
+	const struct namedb_api *db_api = namedb_lmdb_api();
+
+	knot_txn_t txn;
+	int ret = db_api->txn_begin(conf->timers_db, &txn, 0);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	ret = store_timers(&txn, zone);
+	if (ret != KNOT_EOK) {
+		db_api->txn_abort(&txn);
+		return ret;
+	}
+
+	return db_api->txn_commit(&txn);
 }
 
 int sweep_timer_db(conf_t *conf, knot_zonedb_t *zone_db)
