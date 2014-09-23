@@ -175,7 +175,7 @@ static int remote_zone_refresh(zone_t *zone)
 	}
 
 	zone_events_schedule(zone, ZONE_EVENT_REFRESH, ZONE_EVENT_NOW);
-	return write_zone_timers(conf(), zone);
+	return KNOT_EOK;
 }
 
 /*! \brief Zone refresh callback. */
