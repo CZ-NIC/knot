@@ -205,6 +205,8 @@ src/knot/zone/events/handlers.h
 src/knot/zone/events/handlers.c
 src/knot/zone/events/replan.c
 src/knot/zone/events/replan.h
+src/knot/zone/timers.c
+src/knot/zone/timers.h
 src/libknot/binary.c
 src/libknot/binary.h
 src/libknot/common.h
