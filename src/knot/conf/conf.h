@@ -32,7 +32,6 @@
 #include <stdbool.h>
 
 #include <urcu.h>
-#include <lmdb.h>
 
 #include "libknot/dname.h"
 #include "libknot/rrtype/tsig.h"
