@@ -4,6 +4,7 @@
 
 from dnstest.utils import *
 from dnstest.test import Test
+import random
 
 EXPIRE_SLEEP = 4
 
@@ -21,7 +22,20 @@ def test_expire(slave):
     resp = slave.dig("example.", "SOA")
     resp.check(rcode="SERVFAIL")
 
-def test_run(master, slave, zone, action):
+def test_run(t, action):
+    master = t.server("bind")
+    master.disable_notify = True
+
+    slave = t.server("knot")
+    slave.disable_notify = True
+    slave.max_conn_idle = "1s"
+
+    # this zone has refresh = 1s, retry = 1s and expire = 1s + 2s for connection timeouts
+    zone = t.zone("example.", storage=".")
+
+    t.link(zone, master, slave)
+    t.start()
+
     slave.zone_wait(zone)
     slave.reload() # reload should keep the event intact
     #test that zone does not expire when master is alive
@@ -57,6 +71,7 @@ def test_run(master, slave, zone, action):
     t.generate_conf()
     action(slave)
 
+    #test that the zone does not expire
     slave.zone_wait(zone)
     t.sleep(EXPIRE_SLEEP)
     detail_log("Expire - roles switch")
@@ -72,27 +87,24 @@ def test_run(master, slave, zone, action):
     detail_log("Expire - roles switch 2")
     test_expire(slave)
 
+    t.stop()
+
 def restart_server(s):
     s.stop()
     s.start()
 
+def reload_or_restart(s):
+    if random.choice([True, False]):
+        restart_server(s)
+    else:
+        s.reload()
+
 t = Test()
 
-master = t.server("bind")
-master.disable_notify = True
-slave = t.server("knot")
-slave.disable_notify = True
-slave.max_conn_idle = "1s"
+random.seed()
 
-# this zone has refresh = 1s, retry = 1s and expire = 1s + 2s for connection timeouts
-zone = t.zone("example.", storage=".")
+#test_run(t, lambda x: x.reload())
+#est_run(t, restart_server)
+test_run(t, reload_or_restart)
 
-t.link(zone, master, slave)
-
-t.start()
-
-test_run(master, slave, zone, lambda x: x.reload())
-test_run(master, slave, zone, restart_server)
-
-t.stop()
 
