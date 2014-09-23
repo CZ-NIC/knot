@@ -37,14 +37,14 @@ def test_run(t, action):
     t.start()
 
     slave.zone_wait(zone)
-    slave.reload() # reload should keep the event intact
+    action(t, slave) # action should keep the event intact
     #test that zone does not expire when master is alive
     detail_log("Refresh - master alive")
     test_refresh(slave)
     master.stop()
     #test that zone does expire when master is down
-    action(slave) # action should keep the event intact
-    detail_log("Refresh - master alive")
+    action(t, slave) # action should keep the event intact
+    detail_log("Refresh - master down")
     test_expire(slave)
 
     #update master zone file with 10s retry in SOA
@@ -69,7 +69,7 @@ def test_run(t, action):
     master.zones = {}
     t.link(zone, slave)
     t.generate_conf()
-    action(slave)
+    action(t, slave)
 
     #test that the zone does not expire
     slave.zone_wait(zone)
@@ -81,30 +81,33 @@ def test_run(t, action):
     slave.zones = {}
     t.link(zone, master, slave)
     t.generate_conf()
-    action(slave)
-    t.sleep(1)
+    action(t, slave)
 
     detail_log("Expire - roles switch 2")
     test_expire(slave)
 
     t.stop()
 
-def restart_server(s):
+def reload_server(t, s):
+    s.reload()
+    t.sleep(1)
+
+def restart_server(t, s):
     s.stop()
     s.start()
 
-def reload_or_restart(s):
+def reload_or_restart(t, s):
     if random.choice([True, False]):
-        restart_server(s)
+        restart_server(t, s)
     else:
-        s.reload()
+        reload_server(t, s)
 
 t = Test()
 
 random.seed()
 
-#test_run(t, lambda x: x.reload())
-#est_run(t, restart_server)
+test_run(t, reload_server)
+test_run(t, restart_server)
 test_run(t, reload_or_restart)
 
 
