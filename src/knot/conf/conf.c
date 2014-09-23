@@ -779,6 +779,12 @@ int conf_open(const char* path)
 		conf_free(nconf);
 		return ret;
 	}
+	
+	/* Open zone timers db. */
+	ret = open_timers_db(nconf);
+	if (ret != KNOT_EOK) {
+		log_warning("Cannot open timers db (%s)\n", knot_strerror(ret));
+	}
 
 	/* Replace current config. */
 	conf_t **current_config = &s_config;
@@ -786,6 +792,8 @@ int conf_open(const char* path)
 
 	/* Synchronize. */
 	synchronize_rcu();
+
+#warning double check synchronization
 
 	if (oldconf) {
 
@@ -800,12 +808,10 @@ int conf_open(const char* path)
 		/* Update hooks. */
 		conf_update_hooks(nconf);
 		
-		/* Close old timers db. */
-		close_timers_db(oldconf);
-
 		/* Free old config. */
 		conf_free(oldconf);
 	}
+	
 
 	return KNOT_EOK;
 }

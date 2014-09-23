@@ -325,12 +325,6 @@ int main(int argc, char **argv)
 			log_info("changed directory to %s", daemon_root);
 		}
 	}
-	
-	/* Open zone timers db. */
-	int ret = open_timers_db(config);
-	if (ret != KNOT_EOK) {
-		log_warning("Cannot open timers db (%s)\n", knot_strerror(ret));
-	}
 
 	/* Register base signal handling. */
 	struct sigaction emptyset;
