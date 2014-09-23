@@ -1,4 +1,4 @@
-#ifdef HAVE_LMBD
+#ifdef HAVE_LMDB
 
 #include <lmdb.h>
 
