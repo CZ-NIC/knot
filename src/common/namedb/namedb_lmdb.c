@@ -1,4 +1,4 @@
-#ifdef HAVE_LMDB
+#ifdef HAVE_LMBD
 
 #include <lmdb.h>
 
@@ -32,7 +32,7 @@ static int dbase_open(struct lmdb_env *env, const char *handle)
 		return ret;
 	}
 
-	ret = mdb_open(txn, NULL, MDB_DUPSORT, &env->dbi);
+	ret = mdb_open(txn, NULL, 0, &env->dbi);
 	if (ret != 0) {
 		mdb_txn_abort(txn);
 		mdb_env_close(env->env);
@@ -153,14 +153,35 @@ static int find(knot_txn_t *txn, knot_val_t *key, knot_val_t *val, unsigned flag
 static int insert(knot_txn_t *txn, knot_val_t *key, knot_val_t *val, unsigned flags)
 {
 	struct lmdb_env *env = txn->db;
+
+	MDB_cursor *cursor = NULL;
+	int ret = mdb_cursor_open(txn->txn, env->dbi, &cursor);
+	if (ret != 0) {
+		return KNOT_ERROR;
+	}
+
 	MDB_val db_key = { key->len, key->data };
 	MDB_val data = { val->len, val->data };
 
-	int ret = mdb_put(txn->txn, env->dbi, &db_key, &data, 0);
+	ret = mdb_cursor_get(cursor, &db_key, NULL, MDB_SET);
 	if (ret != 0) {
-		if (ret == MDB_KEYEXIST) {
-			return KNOT_EEXIST;
+		mdb_cursor_close(cursor);
+		if (ret == MDB_NOTFOUND) {
+			// Insert new item
+			ret = mdb_put(txn->txn, env->dbi, &db_key, &data, 0);
+			if (ret != 0) {
+				return KNOT_ERROR;
+			}
+
+			return KNOT_EOK;
+		} else {
+			return ret;
 		}
+	}
+
+	ret = mdb_cursor_put(cursor, &db_key, &data, MDB_CURRENT);
+	mdb_cursor_close(cursor);
+	if (ret != 0) {
 		return KNOT_ERROR;
 	}
 
@@ -276,3 +297,4 @@ struct namedb_api *namedb_lmdb_api(void)
 }
 
 #endif
+
