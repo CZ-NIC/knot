@@ -45,8 +45,8 @@ static int openssl_mutex_count = 0;
  */
 static void openssl_mutex_cb(int mode, int n, const char *file, int line)
 {
-	UNUSED(file);
-	UNUSED(line);
+	KNOT_UNUSED(file);
+	KNOT_UNUSED(line);
 
 	assert(openssl_mutex);
 	assert(n < openssl_mutex_count);

@@ -412,7 +412,7 @@ static int conf_process(conf_t *conf)
 		size_t size = stor_len + zname_len + 9; // /diff.db,\0
 		char *dest = malloc(size);
 		if (dest == NULL) {
-			ERR_ALLOC_FAILED;
+			KNOT_ERR_ALLOC_FAILED;
 			zone->ixfr_db = NULL; /* Not enough memory. */
 			ret = KNOT_ENOMEM; /* Error report. */
 			continue;
@@ -877,13 +877,13 @@ size_t conf_udp_threads(const conf_t *conf)
 size_t conf_tcp_threads(const conf_t *conf)
 {
 	size_t thrcount = conf_udp_threads(conf);
-	return MAX(thrcount * 2, CONFIG_XFERS);
+	return KNOT_MAX(thrcount * 2, CONFIG_XFERS);
 }
 
 int conf_bg_threads(const conf_t *conf)
 {
 	if (conf->bg_workers < 1) {
-		return MIN(dt_optimal_size(), CONFIG_XFERS);
+		return KNOT_MIN(dt_optimal_size(), CONFIG_XFERS);
 	}
 
 	return conf->bg_workers;

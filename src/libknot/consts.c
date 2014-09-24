@@ -14,7 +14,8 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <libknot/consts.h>
+#include "libknot/consts.h"
+#include "libknot/common.h"
 
 knot_lookup_table_t knot_opcode_names[] = {
 	{ KNOT_OPCODE_QUERY,  "QUERY" },
@@ -69,8 +70,8 @@ knot_lookup_table_t knot_tsig_alg_dnames_str[] = {
 };
 
 knot_lookup_table_t knot_tsig_alg_dnames[] = {
-        { KNOT_TSIG_ALG_GSS_TSIG,    "\x08" "gss-tsig" },
-        { KNOT_TSIG_ALG_HMAC_MD5,    "\x08" "hmac-md5" "\x07" "sig-alg" "\x03" "reg" "\x03" "int" },
+	{ KNOT_TSIG_ALG_GSS_TSIG,    "\x08" "gss-tsig" },
+	{ KNOT_TSIG_ALG_HMAC_MD5,    "\x08" "hmac-md5" "\x07" "sig-alg" "\x03" "reg" "\x03" "int" },
 	{ KNOT_TSIG_ALG_HMAC_SHA1,   "\x09" "hmac-sha1" },
 	{ KNOT_TSIG_ALG_HMAC_SHA224, "\x0B" "hmac-sha224" },
 	{ KNOT_TSIG_ALG_HMAC_SHA256, "\x0B" "hmac-sha256" },
@@ -94,6 +95,7 @@ knot_lookup_table_t knot_dnssec_alg_names[] = {
 	{ 0, NULL }
 };
 
+_public_
 size_t knot_tsig_digest_length(const uint8_t algorithm)
 {
 	switch (algorithm) {
@@ -116,6 +118,7 @@ size_t knot_tsig_digest_length(const uint8_t algorithm)
 	}
 }
 
+_public_
 bool knot_dnssec_algorithm_is_zonesign(uint8_t algorithm, bool nsec3_enabled)
 {
 	switch (algorithm) {

@@ -47,7 +47,7 @@ static void rrs_list_clear(list_t *l, knot_mm_ctx_t *mm)
 /*! \brief Frees additional data from single node */
 static int free_additional(zone_node_t **node, void *data)
 {
-	UNUSED(data);
+	KNOT_UNUSED(data);
 	if ((*node)->flags & NODE_FLAGS_NONAUTH) {
 		// non-auth nodes have no additionals.
 		return KNOT_EOK;
@@ -91,7 +91,7 @@ static void delete_empty_node(zone_tree_t *tree, zone_node_t *node)
 		// Delete node
 		zone_node_t *removed_node = NULL;
 		zone_tree_remove(tree, node->owner, &removed_node);
-		UNUSED(removed_node);
+		KNOT_UNUSED(removed_node);
 		node_free(&node, NULL);
 	}
 }

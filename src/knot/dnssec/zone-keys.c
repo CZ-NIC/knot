@@ -200,14 +200,14 @@ int knot_load_zone_keys(const char *keydir_name, const knot_dname_t *zone_name,
 		size_t path_len = strlen(keydir_name) + 1 + strlen(entry->d_name);
 		char *path = malloc((path_len + 1) * sizeof(char));
 		if (!path) {
-			ERR_ALLOC_FAILED;
+			KNOT_ERR_ALLOC_FAILED;
 			closedir(keydir);
 			return KNOT_ENOMEM;
 		}
 
 		int written = snprintf(path, path_len + 1, "%s/%s",
 		                       keydir_name, entry->d_name);
-		UNUSED(written);
+		KNOT_UNUSED(written);
 		assert(written == path_len);
 
 		knot_key_params_t params = { 0 };
@@ -340,7 +340,7 @@ uint32_t knot_get_next_zone_key_event(const knot_zone_keys_t *keys)
 	node_t *node = NULL;
 	WALK_LIST(node, keys->list) {
 		knot_zone_key_t *key = (knot_zone_key_t *)node;
-		result = MIN(result, key->next_event);
+		result = KNOT_MIN(result, key->next_event);
 	}
 
 	return result;

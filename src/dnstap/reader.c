@@ -98,7 +98,7 @@ void dt_reader_free_frame(dt_reader_t *reader, Dnstap__Dnstap **frame_ptr)
 		return;
 	}
 
-	UNUSED(reader);
+	KNOT_UNUSED(reader);
 
 	dnstap__dnstap__free_unpacked(*frame_ptr, NULL);
 	*frame_ptr = NULL;

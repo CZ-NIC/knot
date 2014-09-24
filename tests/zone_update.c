@@ -51,7 +51,7 @@ static void process_rr(zs_scanner_t *scanner)
 	zone_node_t *n = NULL;
 	ret = zone_contents_add_rr(zone, rr, &n);
 	knot_rrset_free(&rr, NULL);
-	UNUSED(n);
+	KNOT_UNUSED(n);
 	assert(ret == KNOT_EOK);
 }
 

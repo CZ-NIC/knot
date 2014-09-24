@@ -103,7 +103,7 @@ static int zone_contents_check_node(
 static int zone_contents_destroy_node_rrsets_from_tree(
 	zone_node_t **tnode, void *data)
 {
-	UNUSED(data);
+	KNOT_UNUSED(data);
 	assert(tnode != NULL);
 	if (*tnode != NULL) {
 		node_free_rrsets(*tnode, NULL);
@@ -153,7 +153,7 @@ static int discover_additionals(struct rr_data *rr_data,
 	}
 	rr_data->additional = malloc(rdcount * sizeof(zone_node_t *));
 	if (rr_data->additional == NULL) {
-		ERR_ALLOC_FAILED;
+		KNOT_ERR_ALLOC_FAILED;
 		return KNOT_ENOMEM;
 	}
 
@@ -1251,7 +1251,7 @@ int zone_contents_shallow_copy(const zone_contents_t *from, zone_contents_t **to
 
 	zone_contents_t *contents = calloc(1, sizeof(zone_contents_t));
 	if (contents == NULL) {
-		ERR_ALLOC_FAILED;
+		KNOT_ERR_ALLOC_FAILED;
 		return KNOT_ENOMEM;
 	}
 

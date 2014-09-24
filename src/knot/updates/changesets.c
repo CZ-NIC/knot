@@ -29,7 +29,7 @@ static int add_rr_to_zone(zone_contents_t *z, const knot_rrset_t *rrset)
 {
 	zone_node_t *n = NULL;
 	int ret = zone_contents_add_rr(z, rrset, &n);
-	UNUSED(n);
+	KNOT_UNUSED(n);
 	return ret;
 }
 
@@ -152,7 +152,7 @@ changeset_t *changeset_new(const knot_dname_t *apex)
 {
 	changeset_t *ret = malloc(sizeof(changeset_t));
 	if (ret == NULL) {
-		ERR_ALLOC_FAILED;
+		KNOT_ERR_ALLOC_FAILED;
 		return NULL;
 	}
 

@@ -30,7 +30,6 @@
 #include "libknot/dname.h"
 #include "libknot/descriptor.h"
 #include "libknot/errcode.h"
-#include "common/mempattern.h"
 #include "libknot/rrtype/opt.h"
 #include "libknot/packet/wire.h"
 #include "libknot/packet/compr.h"

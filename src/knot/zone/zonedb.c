@@ -119,7 +119,7 @@ int knot_zonedb_build_index(knot_zonedb_t *db)
 	knot_zonedb_iter_begin(db, &it);
 	while (!knot_zonedb_iter_finished(&it)) {
 		zone_t *zone = knot_zonedb_iter_val(&it);
-		db->maxlabels = MAX(db->maxlabels, knot_dname_labels(zone->name, NULL));
+		db->maxlabels = KNOT_MAX(db->maxlabels, knot_dname_labels(zone->name, NULL));
 		knot_zonedb_iter_next(&it);
 	}
 

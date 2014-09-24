@@ -314,7 +314,7 @@ void zone_tree_free(zone_tree_t **tree)
 
 static int zone_tree_free_node(zone_node_t **node, void *data)
 {
-	UNUSED(data);
+	KNOT_UNUSED(data);
 	if (node) {
 		node_free(node, NULL);
 	}

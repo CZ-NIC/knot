@@ -68,7 +68,7 @@ static inline int tcp_throttle() {
 /*! \brief Sweep TCP connection. */
 static enum fdset_sweep_state tcp_sweep(fdset_t *set, int i, void *data)
 {
-	UNUSED(data);
+	KNOT_UNUSED(data);
 	assert(set && i < set->n && i >= 0);
 
 	int fd = set->pfd[i].fd;

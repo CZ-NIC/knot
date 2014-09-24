@@ -49,7 +49,7 @@ static bool str_check_sort(const char *prev, const char *cur)
 
 	int l1 = strlen(prev);
 	int l2 = strlen(cur);
-	int res = memcmp(prev, cur, MIN(l1, l2));
+	int res = memcmp(prev, cur, KNOT_MIN(l1, l2));
 	if (res == 0) { /* Keys may be equal. */
 		if (l1 > l2) { /* 'prev' is longer, breaks ordering. */
 			return false;

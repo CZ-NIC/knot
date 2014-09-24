@@ -996,7 +996,7 @@ static int add_rr_type_to_list(const knot_rrset_t *rr, list_t *l)
 
 	type_node_t *n = malloc(sizeof(type_node_t));
 	if (n == NULL) {
-		ERR_ALLOC_FAILED;
+		KNOT_ERR_ALLOC_FAILED;
 		return KNOT_ENOMEM;
 	}
 	n->type = rr->type;
@@ -1031,7 +1031,7 @@ static int rr_already_signed(const knot_rrset_t *rrset, hattrie_t *t,
 		// Create new info struct
 		signed_info_t *info = malloc(sizeof(signed_info_t));
 		if (info == NULL) {
-			ERR_ALLOC_FAILED;
+			KNOT_ERR_ALLOC_FAILED;
 			return KNOT_ENOMEM;
 		}
 		memset(info, 0, sizeof(signed_info_t));
@@ -1044,7 +1044,7 @@ static int rr_already_signed(const knot_rrset_t *rrset, hattrie_t *t,
 		// Create new list to insert as a value
 		info->type_list = malloc(sizeof(list_t));
 		if (info->type_list == NULL) {
-			ERR_ALLOC_FAILED;
+			KNOT_ERR_ALLOC_FAILED;
 			free(info->dname);
 			free(info);
 			return KNOT_ENOMEM;
@@ -1154,7 +1154,7 @@ static int sign_changeset_wrap(knot_rrset_t *chg_rrset, changeset_signing_data_t
  */
 static int free_helper_trie_node(value_t *val, void *d)
 {
-	UNUSED(d);
+	KNOT_UNUSED(d);
 	signed_info_t *info = (signed_info_t *)*val;
 	if (info->type_list && !EMPTY_LIST(*(info->type_list))) {
 		WALK_LIST_FREE(*(info->type_list));
@@ -1218,7 +1218,7 @@ int knot_zone_sign(const zone_contents_t *zone,
 	}
 
 	// renew the signatures a little earlier
-	uint32_t expiration = MIN(normal_tree_expiration, nsec3_tree_expiration);
+	uint32_t expiration = KNOT_MIN(normal_tree_expiration, nsec3_tree_expiration);
 
 	// DNSKEY updates
 	uint32_t dnskey_update = knot_get_next_zone_key_event(zone_keys);

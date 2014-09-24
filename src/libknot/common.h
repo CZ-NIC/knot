@@ -34,25 +34,21 @@
 #define _public_ __attribute__((visibility("default")))
 #define _hidden_ __attribute__((visibility("hidden")))
 
-#ifndef UINT_DEFINED
+#ifndef KNOT_UINT_DEFINED
 typedef unsigned int uint; /*!< \brief Unsigned. */
-#define UINT_DEFINED
-#endif
-
-#ifndef PATH_MAX
-#define PATH_MAX 4096
+#define KNOT_UINT_DEFINED
 #endif
 
 /*! \brief Eliminate compiler warning with unused parameters. */
-#define UNUSED(param) (void)(param)
+#define KNOT_UNUSED(param) (void)(param)
 
-#ifndef MIN
+#ifndef KNOT_MIN
 /*! \brief Type-safe minimum macro. */
-#define MIN(a, b) \
+#define KNOT_MIN(a, b) \
 	({ __typeof__ (a) _a = (a); __typeof__ (b) _b = (b); _a < _b ? _a : _b; })
 
 /*! \brief Type-safe maximum macro. */
-#define MAX(a, b) \
+#define KNOT_MAX(a, b) \
 	({ __typeof__ (a) _a = (a); __typeof__ (b) _b = (b); _a > _b ? _a : _b; })
 #endif
 
@@ -67,29 +63,10 @@ typedef unsigned int uint; /*!< \brief Unsigned. */
 #endif
 
 /*! \todo Refactor theese. We should have an allocator function handling this.*/
-#ifndef ERR_ALLOC_FAILED
-#define ERR_ALLOC_FAILED fprintf(stderr, \
+#ifndef KNOT_ERR_ALLOC_FAILED
+#define KNOT_ERR_ALLOC_FAILED fprintf(stderr, \
                                  "Allocation failed at %s:%d (%s ver.%s)\n", \
                                  __FILE__, __LINE__, KNOT_NAME, KNOT_VER)
-#endif
-
-#ifndef CHECK_ALLOC_LOG
-#define CHECK_ALLOC_LOG(var, ret) \
-	do { \
-		if ((var) == NULL) { \
-			ERR_ALLOC_FAILED; \
-			return (ret); \
-		} \
-	} while (0)
-#endif
-
-#ifndef CHECK_ALLOC
-#define CHECK_ALLOC(var, ret) \
-	do { \
-		if ((var) == NULL) { \
-			return (ret); \
-		} \
-	} while (0)
 #endif
 
 /*! @} */

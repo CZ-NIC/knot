@@ -72,7 +72,7 @@ static int reduce_dist(hhash_t *t, int idx, int *empty)
 /*! \brief Item comparator. */
 static int key_cmp(const char *k1, uint16_t k1_len, const char *k2, uint16_t k2_len)
 {
-	int ret = memcmp(k1, k2, MIN(k1_len, k2_len));
+	int ret = memcmp(k1, k2, KNOT_MIN(k1_len, k2_len));
 	if (ret != 0) {
 		return ret;
 	}

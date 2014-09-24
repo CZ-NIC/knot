@@ -56,7 +56,7 @@ zone_t* zone_new(conf_zone_t *conf)
 
 	zone_t *zone = malloc(sizeof(zone_t));
 	if (zone == NULL) {
-		ERR_ALLOC_FAILED;
+		KNOT_ERR_ALLOC_FAILED;
 		return NULL;
 	}
 	memset(zone, 0, sizeof(zone_t));
@@ -65,7 +65,7 @@ zone_t* zone_new(conf_zone_t *conf)
 	knot_dname_to_lower(zone->name);
 	if (zone->name == NULL) {
 		free(zone);
-		ERR_ALLOC_FAILED;
+		KNOT_ERR_ALLOC_FAILED;
 		return NULL;
 	}
 

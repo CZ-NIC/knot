@@ -591,25 +591,25 @@ exit:
 
 static int cmd_stop(int argc, char *argv[], unsigned flags)
 {
-	UNUSED(argc);
-	UNUSED(argv);
-	UNUSED(flags);
+	KNOT_UNUSED(argc);
+	KNOT_UNUSED(argv);
+	KNOT_UNUSED(flags);
 
 	return cmd_remote("stop", KNOT_RRTYPE_TXT, 0, NULL);
 }
 
 static int cmd_reload(int argc, char *argv[], unsigned flags)
 {
-	UNUSED(argc);
-	UNUSED(argv);
-	UNUSED(flags);
+	KNOT_UNUSED(argc);
+	KNOT_UNUSED(argv);
+	KNOT_UNUSED(flags);
 
 	return cmd_remote("reload", KNOT_RRTYPE_TXT, 0, NULL);
 }
 
 static int cmd_refresh(int argc, char *argv[], unsigned flags)
 {
-	UNUSED(flags);
+	KNOT_UNUSED(flags);
 
 	if (flags & F_FORCE) {
 		return cmd_remote("retransfer", KNOT_RRTYPE_NS, argc, argv);
@@ -620,25 +620,25 @@ static int cmd_refresh(int argc, char *argv[], unsigned flags)
 
 static int cmd_flush(int argc, char *argv[], unsigned flags)
 {
-	UNUSED(flags);
+	KNOT_UNUSED(flags);
 
 	return cmd_remote("flush", KNOT_RRTYPE_NS, argc, argv);
 }
 
 static int cmd_status(int argc, char *argv[], unsigned flags)
 {
-	UNUSED(argc);
-	UNUSED(argv);
-	UNUSED(flags);
+	KNOT_UNUSED(argc);
+	KNOT_UNUSED(argv);
+	KNOT_UNUSED(flags);
 
 	return cmd_remote("status", KNOT_RRTYPE_TXT, 0, NULL);
 }
 
 static int cmd_zonestatus(int argc, char *argv[], unsigned flags)
 {
-	UNUSED(argc);
-	UNUSED(argv);
-	UNUSED(flags);
+	KNOT_UNUSED(argc);
+	KNOT_UNUSED(argv);
+	KNOT_UNUSED(flags);
 
 	return cmd_remote("zonestatus", KNOT_RRTYPE_TXT, 0, NULL);
 }
@@ -650,9 +650,9 @@ static int cmd_signzone(int argc, char *argv[], unsigned flags)
 
 static int cmd_checkconf(int argc, char *argv[], unsigned flags)
 {
-	UNUSED(argc);
-	UNUSED(argv);
-	UNUSED(flags);
+	KNOT_UNUSED(argc);
+	KNOT_UNUSED(argv);
+	KNOT_UNUSED(flags);
 
 	log_info("configuration is valid");
 
@@ -690,7 +690,7 @@ static bool fetch_zone(int argc, char *argv[], conf_zone_t *zone)
 
 static int cmd_checkzone(int argc, char *argv[], unsigned flags)
 {
-	UNUSED(flags);
+	KNOT_UNUSED(flags);
 
 	/* Zone checking */
 	int rc = 0;
@@ -729,7 +729,7 @@ static int cmd_checkzone(int argc, char *argv[], unsigned flags)
 
 static int cmd_memstats(int argc, char *argv[], unsigned flags)
 {
-	UNUSED(flags);
+	KNOT_UNUSED(flags);
 
 	/* Zone checking */
 	double total_size = 0;

@@ -548,7 +548,7 @@ int updates_execute(zone_t *zone)
 		              "DDNS, processing %zu updates", update_count);
 		ret = process_requests(zone, &updates);
 	}
-	UNUSED(ret); /* Don't care about the Knot code, RCODEs are set. */
+	KNOT_UNUSED(ret); /* Don't care about the Knot code, RCODEs are set. */
 
 	/* Send responses. */
 	send_update_responses(zone, &updates);

@@ -19,6 +19,7 @@
 #include <strings.h>			// strcasecmp
 
 #include "libknot/descriptor.h"
+#include "libknot/common.h"
 
 /*!
  * \brief Table with DNS classes.
@@ -153,6 +154,7 @@ static const rdata_descriptor_t obsolete_rdata_descriptors[] = {
 	                               KNOT_RDATA_WF_END }, "NXT" },
 };
 
+_public_
 const rdata_descriptor_t *knot_get_rdata_descriptor(const uint16_t type)
 {
 	if (type <= KNOT_RRTYPE_ANY &&
@@ -163,6 +165,7 @@ const rdata_descriptor_t *knot_get_rdata_descriptor(const uint16_t type)
 	}
 }
 
+_public_
 const rdata_descriptor_t *knot_get_obsolete_rdata_descriptor(const uint16_t type)
 {
 	if (type <= KNOT_RRTYPE_NXT &&
@@ -173,6 +176,7 @@ const rdata_descriptor_t *knot_get_obsolete_rdata_descriptor(const uint16_t type
 	}
 }
 
+_public_
 int knot_rrtype_to_string(const uint16_t rrtype,
                           char           *out,
                           const size_t   out_len)
@@ -198,6 +202,7 @@ int knot_rrtype_to_string(const uint16_t rrtype,
 	}
 }
 
+_public_
 int knot_rrtype_from_string(const char *name, uint16_t *num)
 {
 	if (name == NULL || num == NULL) {
@@ -234,6 +239,7 @@ int knot_rrtype_from_string(const char *name, uint16_t *num)
 	return 0;
 }
 
+_public_
 int knot_rrclass_to_string(const uint16_t rrclass,
                            char           *out,
                            const size_t   out_len)
@@ -257,6 +263,7 @@ int knot_rrclass_to_string(const uint16_t rrclass,
 	}
 }
 
+_public_
 int knot_rrclass_from_string(const char *name, uint16_t *num)
 {
 	if (name == NULL || num == NULL) {
@@ -293,6 +300,7 @@ int knot_rrclass_from_string(const char *name, uint16_t *num)
 	return 0;
 }
 
+_public_
 int knot_descriptor_item_is_dname(const int item)
 {
 	return item == KNOT_RDATA_WF_FIXED_DNAME ||
@@ -300,6 +308,7 @@ int knot_descriptor_item_is_dname(const int item)
 	       item == KNOT_RDATA_WF_DECOMPRESSIBLE_DNAME;
 }
 
+_public_
 int knot_descriptor_item_is_fixed(const int item)
 {
 	if (item > 0) {
@@ -309,6 +318,7 @@ int knot_descriptor_item_is_fixed(const int item)
 	}
 }
 
+_public_
 int knot_descriptor_item_is_remainder(const int item)
 {
 	if (item == KNOT_RDATA_WF_REMAINDER) {
@@ -318,6 +328,7 @@ int knot_descriptor_item_is_remainder(const int item)
 	}
 }
 
+_public_
 int knot_rrtype_is_metatype(const uint16_t type)
 {
 	return type == KNOT_RRTYPE_SIG  ||
@@ -329,6 +340,7 @@ int knot_rrtype_is_metatype(const uint16_t type)
 	       type == KNOT_RRTYPE_ANY;
 }
 
+_public_
 int knot_rrtype_is_ddns_forbidden(const uint16_t type)
 {
 	return type == KNOT_RRTYPE_RRSIG ||
@@ -336,6 +348,7 @@ int knot_rrtype_is_ddns_forbidden(const uint16_t type)
 	       type == KNOT_RRTYPE_NSEC3;
 }
 
+_public_
 int knot_rrtype_additional_needed(const uint16_t type)
 {
 	return type == KNOT_RRTYPE_NS ||

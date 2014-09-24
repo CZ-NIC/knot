@@ -209,7 +209,7 @@ int zonefile_open(zloader_t *loader, const char *source, const char *origin,
 	/* Create context. */
 	zcreator_t *zc = malloc(sizeof(zcreator_t));
 	if (zc == NULL) {
-		ERR_ALLOC_FAILED;
+		KNOT_ERR_ALLOC_FAILED;
 		return KNOT_ENOMEM;
 	}
 	memset(zc, 0, sizeof(zcreator_t));
@@ -339,7 +339,7 @@ static int zones_open_free_filename(const char *old_name, char **new_name)
 	strlcat(*new_name, suffix, max_size);
 	mode_t old_mode = umask(077);
 	int fd = mkstemp(*new_name);
-	UNUSED(umask(old_mode));
+	KNOT_UNUSED(umask(old_mode));
 	if (fd < 0) {
 		free(*new_name);
 		*new_name = NULL;

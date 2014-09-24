@@ -461,7 +461,7 @@ int log_update_privileges(int uid, int gid)
 int log_reconfigure(const struct conf_t *conf, void *data)
 {
 	// Data not used
-	UNUSED(data);
+	KNOT_UNUSED(data);
 
 	// Use defaults if no 'log' section is configured.
 	if (EMPTY_LIST(conf->logs)) {

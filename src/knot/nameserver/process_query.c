@@ -317,8 +317,8 @@ static int prepare_answer(const knot_pkt_t *query, knot_pkt_t *resp, knot_layer_
 		if (knot_pkt_has_edns(query)) {
 			uint16_t client = knot_edns_get_payload(query->opt_rr);
 			uint16_t server = conf()->max_udp_payload;
-			uint16_t transfer = MIN(client, server);
-			resp->max_size = MAX(resp->max_size, transfer);
+			uint16_t transfer = KNOT_MIN(client, server);
+			resp->max_size = KNOT_MAX(resp->max_size, transfer);
 		}
 	} else {
 		resp->max_size = KNOT_WIRE_MAX_PKTSIZE;

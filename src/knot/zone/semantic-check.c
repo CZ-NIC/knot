@@ -531,7 +531,7 @@ static int rdata_nsec_to_type_array(const knot_rdataset_t *rrs, uint16_t type,
 		uint8_t *bitmap =
 			malloc(sizeof(uint8_t) * (bitmap_size));
 		if (bitmap == NULL) {
-			ERR_ALLOC_FAILED;
+			KNOT_ERR_ALLOC_FAILED;
 			free(*array);
 			return KNOT_ENOMEM;
 		}
@@ -548,7 +548,7 @@ static int rdata_nsec_to_type_array(const knot_rdataset_t *rrs, uint16_t type,
 						    sizeof(uint16_t) *
 						    *count);
 				if (tmp == NULL) {
-					ERR_ALLOC_FAILED;
+					KNOT_ERR_ALLOC_FAILED;
 					free(bitmap);
 					free(*array);
 					return KNOT_ENOMEM;

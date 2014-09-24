@@ -173,8 +173,8 @@ static int remote_zone_sign(zone_t *zone)
  */
 static int remote_c_stop(server_t *s, remote_cmdargs_t* a)
 {
-	UNUSED(a);
-	UNUSED(s);
+	KNOT_UNUSED(a);
+	KNOT_UNUSED(s);
 	return KNOT_CTL_STOP;
 }
 
@@ -186,7 +186,7 @@ static int remote_c_stop(server_t *s, remote_cmdargs_t* a)
  */
 static int remote_c_reload(server_t *s, remote_cmdargs_t* a)
 {
-	UNUSED(a);
+	KNOT_UNUSED(a);
 	return server_reload(s, conf()->filename);
 }
 
@@ -198,8 +198,8 @@ static int remote_c_reload(server_t *s, remote_cmdargs_t* a)
  */
 static int remote_c_status(server_t *s, remote_cmdargs_t* a)
 {
-	UNUSED(s);
-	UNUSED(a);
+	KNOT_UNUSED(s);
+	KNOT_UNUSED(a);
 	dbg_server("remote: %s\n", __func__);
 	return KNOT_EOK;
 }

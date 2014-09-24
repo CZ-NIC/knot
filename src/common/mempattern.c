@@ -18,6 +18,7 @@
 
 #include "common/mempattern.h"
 #include "common/mempool.h"
+/*! \todo Define the _public_ macro also in common/ */
 #include "libknot/common.h"
 
 static void mm_nofree(void *p)

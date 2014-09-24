@@ -88,7 +88,7 @@ zone_node_t *node_new(const knot_dname_t *owner, knot_mm_ctx_t *mm)
 {
 	zone_node_t *ret = knot_mm_alloc(mm, sizeof(zone_node_t));
 	if (ret == NULL) {
-		ERR_ALLOC_FAILED;
+		KNOT_ERR_ALLOC_FAILED;
 		return NULL;
 	}
 	memset(ret, 0, sizeof(*ret));

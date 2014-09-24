@@ -35,7 +35,7 @@
  */
 static uint16_t dname_max(size_t wire_avail)
 {
-	return MIN(wire_avail, KNOT_DNAME_MAXLEN);
+	return KNOT_MIN(wire_avail, KNOT_DNAME_MAXLEN);
 }
 
 /*!
@@ -531,7 +531,7 @@ static int decompress_rdata_dname(const uint8_t **src, size_t *src_avail,
 	assert(dst && *dst);
 	assert(dst_avail);
 	assert(dname_cfg);
-	UNUSED(flags);
+	KNOT_UNUSED(flags);
 
 	int compr_size = knot_dname_wire_check(*src, *src + *src_avail, dname_cfg->pkt_wire);
 	if (compr_size <= 0) {

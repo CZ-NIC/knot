@@ -320,7 +320,7 @@ static int knot_tsig_create_sign_wire(const uint8_t *msg, size_t msg_len,
 			tsig_rdata_tsig_variables_length(tmp_tsig));
 	uint8_t *wire = malloc(wire_len);
 	if (!wire) {
-		ERR_ALLOC_FAILED;
+		KNOT_ERR_ALLOC_FAILED;
 		return KNOT_ENOMEM;
 	}
 
@@ -395,7 +395,7 @@ static int knot_tsig_create_sign_wire_next(const uint8_t *msg, size_t msg_len,
 			tsig_rdata_tsig_timers_length() + 2);
 	uint8_t *wire = malloc(wire_len);
 	if (!wire) {
-		ERR_ALLOC_FAILED;
+		KNOT_ERR_ALLOC_FAILED;
 		return KNOT_ENOMEM;
 	}
 
@@ -567,7 +567,7 @@ int knot_tsig_sign_next(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
 	                  + KNOT_TSIG_TIMERS_LENGTH + 2;
 	uint8_t *wire = malloc(wire_len);
 	if (!wire) {
-		ERR_ALLOC_FAILED;
+		KNOT_ERR_ALLOC_FAILED;
 		knot_rrset_free(&tmp_tsig, NULL);
 		return KNOT_ENOMEM;
 	}
@@ -685,7 +685,7 @@ static int knot_tsig_check_digest(const knot_rrset_t *tsig_rr,
 
 	uint8_t *wire_to_sign = malloc(sizeof(uint8_t) * size);
 	if (!wire_to_sign) {
-		ERR_ALLOC_FAILED;
+		KNOT_ERR_ALLOC_FAILED;
 		return KNOT_ENOMEM;
 	}
 
