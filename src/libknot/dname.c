@@ -21,12 +21,14 @@
 #include <ctype.h>
 #include <inttypes.h>
 
-#include "libknot/common.h"
-#include "common/mempattern.h"
 #include "libknot/dname.h"
+
+#include "common/mempattern.h"
+#include "common/debug.h"
+
+#include "libknot/common.h"
 #include "libknot/consts.h"
 #include "libknot/util/tolower.h"
-#include "common/debug.h"
 #include "libknot/util/utils.h"
 #include "libknot/packet/wire.h"
 

@@ -31,6 +31,7 @@
 #include <stdbool.h>
 
 #include "common/mempattern.h"
+
 #include "libknot/rdata.h"
 
 /*!< \brief Set of RRs. */

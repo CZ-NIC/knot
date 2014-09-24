@@ -20,6 +20,7 @@
 #include <stdlib.h>
 
 #include "libknot/rdataset.h"
+
 #include "libknot/common.h"
 
 static knot_rdata_t *rr_seek(knot_rdata_t *d, size_t pos)

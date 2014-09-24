@@ -14,8 +14,6 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "libknot/rrset-dump.h"
-
 #include <stdlib.h>			// free
 #include <stdbool.h>			// bool
 #include <string.h>			// memcpy
@@ -28,10 +26,13 @@
 #include <netinet/in.h>			// in_addr (BSD)
 #include <arpa/inet.h>			// ntohs
 
-#include "libknot/common.h"		// _public_
-#include "libknot/errcode.h"		// KNOT_EOK
+#include "libknot/rrset-dump.h"
+
 #include "common/base64.h"		// base64
 #include "common/base32hex.h"		// base32hex
+
+#include "libknot/common.h"		// _public_
+#include "libknot/errcode.h"		// KNOT_EOK
 #include "libknot/descriptor.h"		// KNOT_RRTYPE
 #include "libknot/dnssec/key.h"		// knot_keytag
 #include "libknot/consts.h"		// knot_rcode_names

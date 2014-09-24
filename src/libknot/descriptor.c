@@ -19,6 +19,7 @@
 #include <strings.h>			// strcasecmp
 
 #include "libknot/descriptor.h"
+
 #include "libknot/common.h"
 
 /*!

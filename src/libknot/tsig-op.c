@@ -25,6 +25,7 @@
 
 #include "common/debug.h"
 #include "common/log.h"
+
 #include "libknot/common.h"
 #include "libknot/descriptor.h"
 #include "libknot/rrtype/tsig.h"

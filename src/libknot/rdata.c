@@ -20,6 +20,7 @@
 #include <stdlib.h>
 
 #include "libknot/rdata.h"
+
 #include "libknot/common.h"
 #include "libknot/errcode.h"
 
