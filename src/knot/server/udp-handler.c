@@ -145,12 +145,12 @@ void udp_handle(udp_context_t *udp, int fd, struct sockaddr_storage *ss,
 	int state = knot_overlay_in(&udp->overlay, query);
 
 	/* Process answer. */
-	while (state & (NS_PROC_FULL|NS_PROC_FAIL)) {
+	while (state & (KNOT_NS_PROC_FULL|KNOT_NS_PROC_FAIL)) {
 		state = knot_overlay_out(&udp->overlay, ans);
 	}
 
 	/* Send response only if finished successfuly. */
-	if (state == NS_PROC_DONE) {
+	if (state == KNOT_NS_PROC_DONE) {
 		tx->iov_len = ans->size;
 	} else {
 		tx->iov_len = 0;

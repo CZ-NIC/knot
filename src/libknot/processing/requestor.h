@@ -19,6 +19,7 @@
 #include "common/lists.h"
 #include "common/sockaddr.h"
 #include "common/mempattern.h"
+
 #include "libknot/processing/overlay.h"
 
 struct knot_request;
@@ -33,7 +34,7 @@ enum {
  *  Requestor holds a FIFO of pending queries.
  */
 struct knot_requestor {
-	knot_mm_ctx_t *mm;                 /*!< Memory context. */
+	knot_mm_ctx_t *mm;            /*!< Memory context. */
 	list_t pending;               /*!< Pending requests (FIFO). */
 	struct knot_overlay overlay;  /*!< Response processing overlay. */
 };
@@ -119,7 +120,8 @@ int knot_requestor_overlay(struct knot_requestor *requestor,
  *
  * \return KNOT_EOK or error
  */
-int knot_requestor_enqueue(struct knot_requestor *requestor, struct knot_request *request);
+int knot_requestor_enqueue(struct knot_requestor *requestor,
+                           struct knot_request *request);
 
 /*!
  * \brief Close first pending request.

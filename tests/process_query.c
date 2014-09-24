@@ -52,16 +52,16 @@ static void exec_query(knot_layer_t *query_ctx, const char *name,
 	knot_pkt_parse(query, 0);
 	int state = knot_layer_in(query_ctx, query);
 
-	ok(state & (NS_PROC_FULL|NS_PROC_FAIL), "ns: process %s query", name);
+	ok(state & (KNOT_NS_PROC_FULL|KNOT_NS_PROC_FAIL), "ns: process %s query", name);
 
 	/* Create answer. */
 	state = knot_layer_out(query_ctx, answer);
-	if (state & NS_PROC_FAIL) {
+	if (state & KNOT_NS_PROC_FAIL) {
 		/* Allow 1 generic error response. */
 		state = knot_layer_out(query_ctx, answer);
 	}
 
-	ok(state == NS_PROC_DONE, "ns: answer %s query", name);
+	ok(state == KNOT_NS_PROC_DONE, "ns: answer %s query", name);
 
 	/* Check answer. */
 	answer_sanity_check(query->wire, answer->wire, answer->size, expected_rcode, name);
@@ -168,18 +168,18 @@ int main(int argc, char *argv[])
 	size_t orig_query_size = query->size;
 	query->size = KNOT_WIRE_HEADER_SIZE - 1;
 	int state = knot_layer_in(&proc, query);
-	ok(state == NS_PROC_NOOP, "ns: IN/less-than-header query ignored");
+	ok(state == KNOT_NS_PROC_NOOP, "ns: IN/less-than-header query ignored");
 	query->size = orig_query_size;
 
 	/* Query processor (response, ignore). */
 	knot_layer_reset(&proc);
 	knot_wire_set_qr(query->wire);
 	state = knot_layer_in(&proc, query);
-	ok(state == NS_PROC_NOOP, "ns: IN/less-than-header query ignored");
+	ok(state == KNOT_NS_PROC_NOOP, "ns: IN/less-than-header query ignored");
 
 	/* Finish. */
 	state = knot_layer_finish(&proc);
-	ok(state == NS_PROC_NOOP, "ns: processing end" );
+	ok(state == KNOT_NS_PROC_NOOP, "ns: processing end" );
 
 	/* Cleanup. */
 	mp_delete((struct mempool *)mm.ctx);

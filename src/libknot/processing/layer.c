@@ -30,14 +30,15 @@
 #ifdef KNOT_NS_DEBUG
 #define LAYER_STATE_STR(x) _state_table[x]
 static const char* _state_table[] = {
-        [NS_PROC_NOOP] = "NOOP",
-        [NS_PROC_MORE] = "MORE",
-        [NS_PROC_FULL] = "FULL",
-        [NS_PROC_DONE] = "DONE",
-        [NS_PROC_FAIL] = "FAIL"
+        [KNOT_NS_PROC_NOOP] = "NOOP",
+        [KNOT_NS_PROC_MORE] = "MORE",
+        [KNOT_NS_PROC_FULL] = "FULL",
+        [KNOT_NS_PROC_DONE] = "DONE",
+        [KNOT_NS_PROC_FAIL] = "FAIL"
 };
 #endif /* KNOT_NS_DEBUG */
 
+_public_
 int knot_layer_begin(knot_layer_t *ctx, const knot_layer_api_t *api, void *param)
 {
 	ctx->api = api;
@@ -48,6 +49,7 @@ int knot_layer_begin(knot_layer_t *ctx, const knot_layer_api_t *api, void *param
 	return ctx->state;
 }
 
+_public_
 int knot_layer_reset(knot_layer_t *ctx)
 {
 	LAYER_CALL(ctx, reset);
@@ -55,6 +57,7 @@ int knot_layer_reset(knot_layer_t *ctx)
 	return ctx->state;
 }
 
+_public_
 int knot_layer_finish(knot_layer_t *ctx)
 {
 	LAYER_CALL(ctx, finish);
@@ -62,6 +65,7 @@ int knot_layer_finish(knot_layer_t *ctx)
 	return ctx->state;
 }
 
+_public_
 int knot_layer_in(knot_layer_t *ctx, knot_pkt_t *pkt)
 {
 	LAYER_CALL(ctx, in, pkt);
@@ -69,11 +73,12 @@ int knot_layer_in(knot_layer_t *ctx, knot_pkt_t *pkt)
 	return ctx->state;
 }
 
+_public_
 int knot_layer_out(knot_layer_t *ctx, knot_pkt_t *pkt)
 {
 	switch (ctx->state) {
-	case NS_PROC_FAIL: LAYER_CALL(ctx, err, pkt); break;
-	case NS_PROC_FULL:
+	case KNOT_NS_PROC_FAIL: LAYER_CALL(ctx, err, pkt); break;
+	case KNOT_NS_PROC_FULL:
 	default: LAYER_CALL(ctx, out, pkt); break;
 	}
 

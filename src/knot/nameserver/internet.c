@@ -752,9 +752,9 @@ int ns_put_rr(knot_pkt_t *pkt, const knot_rrset_t *rr,
 #define SOLVE_STEP(solver, state, context) \
 	state = (solver)(state, response, qdata, context); \
 	if (state == TRUNC) { \
-		return NS_PROC_DONE; \
+		return KNOT_NS_PROC_DONE; \
 	} else if (state == ERROR) { \
-		return NS_PROC_FAIL; \
+		return KNOT_NS_PROC_FAIL; \
 	}
 
 static int default_answer(knot_pkt_t *response, struct query_data *qdata)
@@ -782,7 +782,7 @@ static int default_answer(knot_pkt_t *response, struct query_data *qdata)
 	/* Write resulting RCODE. */
 	knot_wire_set_rcode(response->wire, qdata->rcode);
 
-	return NS_PROC_DONE;
+	return KNOT_NS_PROC_DONE;
 }
 
 static int planned_answer(struct query_plan *plan, knot_pkt_t *response, struct query_data *qdata)
@@ -811,7 +811,7 @@ static int planned_answer(struct query_plan *plan, knot_pkt_t *response, struct 
 	/* Write resulting RCODE. */
 	knot_wire_set_rcode(response->wire, qdata->rcode);
 
-	return NS_PROC_DONE;
+	return KNOT_NS_PROC_DONE;
 }
 
 #undef SOLVE_STEP
@@ -820,7 +820,7 @@ int internet_query(knot_pkt_t *response, struct query_data *qdata)
 {
 	dbg_ns("%s(%p, %p)\n", __func__, response, qdata);
 	if (response == NULL || qdata == NULL) {
-		return NS_PROC_FAIL;
+		return KNOT_NS_PROC_FAIL;
 	}
 
 	/* Check valid zone, transaction security (optional) and contents. */
@@ -869,13 +869,13 @@ static int process_soa_answer(knot_pkt_t *pkt, struct answer_data *data)
 	/* Expect SOA in answer section. */
 	const knot_pktsection_t *answer = knot_pkt_section(pkt, KNOT_ANSWER);
 	if (answer->count < 1 || answer->rr[0].type != KNOT_RRTYPE_SOA) {
-		return NS_PROC_FAIL;
+		return KNOT_NS_PROC_FAIL;
 	}
 
 	/* Our zone is expired, schedule transfer. */
 	if (zone_contents_is_empty(zone->contents)) {
 		zone_events_schedule(zone, ZONE_EVENT_XFER, ZONE_EVENT_NOW);
-		return NS_PROC_DONE;
+		return KNOT_NS_PROC_DONE;
 	}
 
 	/* Check if master has newer zone and schedule transfer. */
@@ -884,20 +884,20 @@ static int process_soa_answer(knot_pkt_t *pkt, struct answer_data *data)
 	uint32_t their_serial =	knot_soa_serial(&answer->rr[0].rrs);
 	if (knot_serial_compare(our_serial, their_serial) >= 0) {
 		ANSWER_LOG(LOG_INFO, data, "refresh, outgoing", "zone is up-to-date");
-		return NS_PROC_DONE; /* Our zone is up to date. */
+		return KNOT_NS_PROC_DONE; /* Our zone is up to date. */
 	}
 
 	/* Our zone is outdated, schedule zone transfer. */
 	ANSWER_LOG(LOG_INFO, data, "refresh, outgoing", "master has newer serial %u -> %u",
 	           our_serial, their_serial);
 	zone_events_schedule(zone, ZONE_EVENT_XFER, ZONE_EVENT_NOW);
-	return NS_PROC_DONE;
+	return KNOT_NS_PROC_DONE;
 }
 
 int internet_process_answer(knot_pkt_t *pkt, struct answer_data *data)
 {
 	if (pkt == NULL || data == NULL) {
-		return NS_PROC_FAIL;
+		return KNOT_NS_PROC_FAIL;
 	}
 
 	NS_NEED_TSIG_SIGNED(&data->param->tsig_ctx, 0);
@@ -907,6 +907,6 @@ int internet_process_answer(knot_pkt_t *pkt, struct answer_data *data)
 	case KNOT_RRTYPE_SOA:
 		return process_soa_answer(pkt, data);
 	default:
-		return NS_PROC_NOOP;
+		return KNOT_NS_PROC_NOOP;
 	}
 }

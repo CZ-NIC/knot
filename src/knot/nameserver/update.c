@@ -507,12 +507,12 @@ int update_query_process(knot_pkt_t *pkt, struct query_data *qdata)
 	/* Store update into DDNS queue. */
 	int ret = zone_update_enqueue(zone, qdata->query, qdata->param);
 	if (ret != KNOT_EOK) {
-		return NS_PROC_FAIL;
+		return KNOT_NS_PROC_FAIL;
 	}
 
 	/* No immediate response. */
 	pkt->size = 0;
-	return NS_PROC_DONE;
+	return KNOT_NS_PROC_DONE;
 }
 
 int updates_execute(zone_t *zone)

@@ -162,7 +162,8 @@ static void ASORT_PREFIX(sort)(ASORT_ARRAY_ARG uns array_size ASORT_EXTRA_ARGS)
    */
 
   /* Find minimal element which will serve as a barrier */
-  r = MIN(array_size, ASORT_THRESHOLD);
+  /*! \todo This requires libknot/common.h!!! Define also in common/ */
+  r = KNOT_MIN(array_size, ASORT_THRESHOLD);
   m = 0;
   for (l=1; l<r; l++)
     if (ASORT_LT(ASORT_ELT(l),ASORT_ELT(m)))

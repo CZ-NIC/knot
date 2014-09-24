@@ -132,7 +132,7 @@ static int zone_query_execute(zone_t *zone, uint16_t pkt_type, const conf_iface_
 	/* Create requestor instance. */
 	struct knot_requestor re;
 	knot_requestor_init(&re, &mm);
-	knot_requestor_overlay(&re, NS_PROC_ANSWER, &param);
+	knot_requestor_overlay(&re, KNOT_NS_PROC_ANSWER, &param);
 
 	tsig_init(&param.tsig_ctx, remote->key);
 
