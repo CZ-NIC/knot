@@ -25,6 +25,7 @@
 
 #include "common/debug.h"
 #include "common/log.h"
+
 #include "libknot/common.h"
 #include "libknot/util/utils.h"
 #include "libknot/rrset.h"
@@ -123,6 +124,7 @@ static int tsig_rdata_set_tsig_error(knot_rrset_t *tsig, uint16_t tsig_error)
 	return KNOT_EOK;
 }
 
+_public_
 int tsig_create_rdata(knot_rrset_t *rr, const knot_dname_t *alg, uint16_t maclen, uint16_t tsig_err)
 {
 	if (rr == NULL || alg == NULL) {
@@ -156,6 +158,7 @@ int tsig_create_rdata(knot_rrset_t *rr, const knot_dname_t *alg, uint16_t maclen
 	return KNOT_EOK;
 }
 
+_public_
 int tsig_rdata_set_time_signed(knot_rrset_t *tsig, uint64_t time)
 {
 	uint8_t *rd = tsig_rdata_seek(tsig, TSIG_TSIGNED_O, 3*sizeof(uint16_t));
@@ -167,6 +170,19 @@ int tsig_rdata_set_time_signed(knot_rrset_t *tsig, uint64_t time)
 	return KNOT_EOK;
 }
 
+_public_
+int tsig_rdata_store_current_time(knot_rrset_t *tsig)
+{
+	if (!tsig) {
+		return KNOT_EINVAL;
+	}
+	time_t curr_time = time(NULL);
+	/*! \todo bleeding eyes. */
+	tsig_rdata_set_time_signed(tsig, (uint64_t)curr_time);
+	return KNOT_EOK;
+}
+
+_public_
 int tsig_rdata_set_fudge(knot_rrset_t *tsig, uint16_t fudge)
 {
 	uint8_t *rd = tsig_rdata_seek(tsig, TSIG_FUDGE_O, sizeof(uint16_t));
@@ -178,6 +194,7 @@ int tsig_rdata_set_fudge(knot_rrset_t *tsig, uint16_t fudge)
 	return KNOT_EOK;
 }
 
+_public_
 int tsig_rdata_set_mac(knot_rrset_t *tsig, uint16_t length, const uint8_t *mac)
 {
 	uint8_t *rd = tsig_rdata_seek(tsig, TSIG_MAC_O, length);
@@ -192,6 +209,7 @@ int tsig_rdata_set_mac(knot_rrset_t *tsig, uint16_t length, const uint8_t *mac)
 	return KNOT_EOK;
 }
 
+_public_
 int tsig_rdata_set_orig_id(knot_rrset_t *tsig, uint16_t id)
 {
 	uint8_t *rd = tsig_rdata_seek(tsig, TSIG_ORIGID_O, sizeof(uint16_t));
@@ -204,6 +222,7 @@ int tsig_rdata_set_orig_id(knot_rrset_t *tsig, uint16_t id)
 	return KNOT_EOK;
 }
 
+_public_
 int tsig_rdata_set_other_data(knot_rrset_t *tsig, uint16_t len,
                               const uint8_t *other_data)
 {
@@ -225,12 +244,14 @@ int tsig_rdata_set_other_data(knot_rrset_t *tsig, uint16_t len,
 	return KNOT_EOK;
 }
 
+_public_
 const knot_dname_t *tsig_rdata_alg_name(const knot_rrset_t *tsig)
 {
 	const knot_rdata_t *rr_data = knot_rdataset_at(&tsig->rrs, 0);
 	return knot_rdata_data(rr_data);
 }
 
+_public_
 knot_tsig_algorithm_t tsig_rdata_alg(const knot_rrset_t *tsig)
 {
 	/* Get the algorithm name. */
@@ -257,6 +278,7 @@ knot_tsig_algorithm_t tsig_rdata_alg(const knot_rrset_t *tsig)
 	return item->id;
 }
 
+_public_
 uint64_t tsig_rdata_time_signed(const knot_rrset_t *tsig)
 {
 	/*! \todo How to return invalid value? */
@@ -267,6 +289,7 @@ uint64_t tsig_rdata_time_signed(const knot_rrset_t *tsig)
 	return knot_wire_read_u48(rd);
 }
 
+_public_
 uint16_t tsig_rdata_fudge(const knot_rrset_t *tsig)
 {
 	uint8_t *rd = tsig_rdata_seek(tsig, TSIG_FUDGE_O, sizeof(uint16_t));
@@ -276,6 +299,7 @@ uint16_t tsig_rdata_fudge(const knot_rrset_t *tsig)
 	return knot_wire_read_u16(rd);
 }
 
+_public_
 const uint8_t *tsig_rdata_mac(const knot_rrset_t *tsig)
 {
 	uint8_t *rd = tsig_rdata_seek(tsig, TSIG_MAC_O, 0);
@@ -285,6 +309,7 @@ const uint8_t *tsig_rdata_mac(const knot_rrset_t *tsig)
 	return rd;
 }
 
+_public_
 size_t tsig_rdata_mac_length(const knot_rrset_t *tsig)
 {
 	uint8_t *rd = tsig_rdata_seek(tsig, TSIG_MACLEN_O, sizeof(uint16_t));
@@ -294,6 +319,7 @@ size_t tsig_rdata_mac_length(const knot_rrset_t *tsig)
 	return knot_wire_read_u16(rd);
 }
 
+_public_
 uint16_t tsig_rdata_orig_id(const knot_rrset_t *tsig)
 {
 	uint8_t *rd = tsig_rdata_seek(tsig, TSIG_ORIGID_O, sizeof(uint16_t));
@@ -303,6 +329,7 @@ uint16_t tsig_rdata_orig_id(const knot_rrset_t *tsig)
 	return knot_wire_read_u16(rd);
 }
 
+_public_
 uint16_t tsig_rdata_error(const knot_rrset_t *tsig)
 {
 	uint8_t *rd = tsig_rdata_seek(tsig, TSIG_ERROR_O, sizeof(uint16_t));
@@ -312,6 +339,7 @@ uint16_t tsig_rdata_error(const knot_rrset_t *tsig)
 	return knot_wire_read_u16(rd);
 }
 
+_public_
 const uint8_t *tsig_rdata_other_data(const knot_rrset_t *tsig)
 {
 	uint8_t *rd = tsig_rdata_seek(tsig, TSIG_OTHER_O, 0);
@@ -321,6 +349,7 @@ const uint8_t *tsig_rdata_other_data(const knot_rrset_t *tsig)
 	return rd;
 }
 
+_public_
 uint16_t tsig_rdata_other_data_length(const knot_rrset_t *tsig)
 {
 	uint8_t *rd = tsig_rdata_seek(tsig, TSIG_OLEN_O, sizeof(uint16_t));
@@ -330,6 +359,37 @@ uint16_t tsig_rdata_other_data_length(const knot_rrset_t *tsig)
 	return knot_wire_read_u16(rd);
 }
 
+_public_
+size_t tsig_rdata_tsig_variables_length(const knot_rrset_t *tsig)
+{
+	if (tsig == NULL) {
+		return 0;
+	}
+	/* Key name, Algorithm name and Other data have variable lengths. */
+	const knot_dname_t *key_name = tsig->owner;
+	if (!key_name) {
+		return 0;
+	}
+
+	const knot_dname_t *alg_name = tsig_rdata_alg_name(tsig);
+	if (!alg_name) {
+		return 0;
+	}
+
+	uint16_t other_data_length = tsig_rdata_other_data_length(tsig);
+
+	return knot_dname_size(key_name) + knot_dname_size(alg_name) +
+	       other_data_length + KNOT_TSIG_VARIABLES_LENGTH;
+}
+
+_public_
+size_t tsig_rdata_tsig_timers_length()
+{
+	/*! \todo Cleanup */
+	return KNOT_TSIG_TIMERS_LENGTH;
+}
+
+_public_
 int tsig_alg_from_name(const knot_dname_t *alg_name)
 {
 	if (!alg_name) {
@@ -355,46 +415,7 @@ int tsig_alg_from_name(const knot_dname_t *alg_name)
 	return found->id;
 }
 
-size_t tsig_rdata_tsig_variables_length(const knot_rrset_t *tsig)
-{
-	if (tsig == NULL) {
-		return 0;
-	}
-	/* Key name, Algorithm name and Other data have variable lengths. */
-	const knot_dname_t *key_name = tsig->owner;
-	if (!key_name) {
-		return 0;
-	}
-
-	const knot_dname_t *alg_name = tsig_rdata_alg_name(tsig);
-	if (!alg_name) {
-		return 0;
-	}
-
-	uint16_t other_data_length = tsig_rdata_other_data_length(tsig);
-
-	return knot_dname_size(key_name) + knot_dname_size(alg_name) +
-	       other_data_length + KNOT_TSIG_VARIABLES_LENGTH;
-}
-
-size_t tsig_rdata_tsig_timers_length()
-{
-	/*! \todo Cleanup */
-	return KNOT_TSIG_TIMERS_LENGTH;
-}
-
-int tsig_rdata_store_current_time(knot_rrset_t *tsig)
-{
-	if (!tsig) {
-		return KNOT_EINVAL;
-	}
-	time_t curr_time = time(NULL);
-	/*! \todo bleeding eyes. */
-	tsig_rdata_set_time_signed(tsig, (uint64_t)curr_time);
-	return KNOT_EOK;
-}
-
-const char* tsig_alg_to_str(knot_tsig_algorithm_t alg)
+const char *tsig_alg_to_str(knot_tsig_algorithm_t alg)
 {
 	knot_lookup_table_t *item;
 
@@ -407,7 +428,8 @@ const char* tsig_alg_to_str(knot_tsig_algorithm_t alg)
 	}
 }
 
-const knot_dname_t* tsig_alg_to_dname(knot_tsig_algorithm_t alg)
+_public_
+const knot_dname_t *tsig_alg_to_dname(knot_tsig_algorithm_t alg)
 {
 	knot_lookup_table_t *item;
 
@@ -420,6 +442,7 @@ const knot_dname_t* tsig_alg_to_dname(knot_tsig_algorithm_t alg)
 	}
 }
 
+_public_
 size_t tsig_wire_maxsize(const knot_tsig_key_t *key)
 {
 	if (key == NULL) {
@@ -445,6 +468,7 @@ size_t tsig_wire_maxsize(const knot_tsig_key_t *key)
 	6* sizeof(uint8_t); /* uint48_t in case of BADTIME RCODE */
 }
 
+_public_
 int tsig_rdata_is_ok(const knot_rrset_t *tsig)
 {
 	/*! \todo Check size, needs to check variable-length fields. */

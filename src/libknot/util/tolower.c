@@ -16,7 +16,10 @@
 
 #include "libknot/util/tolower.h"
 
-const uint8_t char_table[KNOT_CHAR_TABLE_SIZE] = {
+#include "libknot/common.h"
+
+_public_
+const uint8_t knot_char_table[KNOT_CHAR_TABLE_SIZE] = {
 	'\x00',
 	'\x01',
 	'\x02',

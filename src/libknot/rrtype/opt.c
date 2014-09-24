@@ -17,13 +17,15 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <assert.h>
-
 #include <string.h>
+
 #include "libknot/rrtype/opt.h"
-#include "libknot/common.h"
-#include "libknot/descriptor.h"
+
 #include "common/debug.h"
 #include "common/sockaddr.h"
+
+#include "libknot/common.h"
+#include "libknot/descriptor.h"
 
 /*! \brief Some implementation-related constants. */
 enum knot_edns_private_consts {
@@ -46,7 +48,7 @@ enum knot_edns_private_consts {
 };
 
 /*----------------------------------------------------------------------------*/
-
+_public_
 int knot_edns_init(knot_rrset_t *opt_rr, uint16_t max_pld,
                   uint8_t ext_rcode, uint8_t ver, knot_mm_ctx_t *mm)
 {
@@ -74,7 +76,7 @@ int knot_edns_init(knot_rrset_t *opt_rr, uint16_t max_pld,
 
 
 /*----------------------------------------------------------------------------*/
-
+_public_
 size_t knot_edns_wire_size(knot_rrset_t *opt_rr)
 {
 	if (opt_rr == NULL) {
@@ -88,7 +90,7 @@ size_t knot_edns_wire_size(knot_rrset_t *opt_rr)
 }
 
 /*----------------------------------------------------------------------------*/
-
+_public_
 uint16_t knot_edns_get_payload(const knot_rrset_t *opt_rr)
 {
 	assert(opt_rr != NULL);
@@ -96,7 +98,7 @@ uint16_t knot_edns_get_payload(const knot_rrset_t *opt_rr)
 }
 
 /*----------------------------------------------------------------------------*/
-
+_public_
 void knot_edns_set_payload(knot_rrset_t *opt_rr, uint16_t payload)
 {
 	assert(opt_rr != NULL);
@@ -104,7 +106,7 @@ void knot_edns_set_payload(knot_rrset_t *opt_rr, uint16_t payload)
 }
 
 /*----------------------------------------------------------------------------*/
-
+_public_
 uint8_t knot_edns_get_ext_rcode(const knot_rrset_t *opt_rr)
 {
 	assert(opt_rr != NULL);
@@ -121,7 +123,7 @@ uint8_t knot_edns_get_ext_rcode(const knot_rrset_t *opt_rr)
 }
 
 /*----------------------------------------------------------------------------*/
-
+_public_
 static void set_value_to_ttl(knot_rrset_t *opt_rr, size_t offset, uint8_t value)
 {
 	uint32_t ttl = 0;
@@ -138,7 +140,7 @@ static void set_value_to_ttl(knot_rrset_t *opt_rr, size_t offset, uint8_t value)
 }
 
 /*----------------------------------------------------------------------------*/
-
+_public_
 void knot_edns_set_ext_rcode(knot_rrset_t *opt_rr, uint8_t ext_rcode)
 {
 	assert(opt_rr != NULL);
@@ -146,7 +148,7 @@ void knot_edns_set_ext_rcode(knot_rrset_t *opt_rr, uint8_t ext_rcode)
 }
 
 /*----------------------------------------------------------------------------*/
-
+_public_
 uint8_t knot_edns_get_version(const knot_rrset_t *opt_rr)
 {
 	assert(opt_rr != NULL);
@@ -163,7 +165,7 @@ uint8_t knot_edns_get_version(const knot_rrset_t *opt_rr)
 }
 
 /*----------------------------------------------------------------------------*/
-
+_public_
 void knot_edns_set_version(knot_rrset_t *opt_rr, uint8_t version)
 {
 	assert(opt_rr != NULL);
@@ -171,7 +173,7 @@ void knot_edns_set_version(knot_rrset_t *opt_rr, uint8_t version)
 }
 
 /*----------------------------------------------------------------------------*/
-
+_public_
 bool knot_edns_do(const knot_rrset_t *opt_rr)
 {
 	assert(opt_rr != NULL);
@@ -226,7 +228,7 @@ static uint8_t *find_option(knot_rdata_t *rdata, uint16_t opt_code)
 }
 
 /*----------------------------------------------------------------------------*/
-
+_public_
 int knot_edns_add_option(knot_rrset_t *opt_rr, uint16_t code,
                          uint16_t length, const uint8_t *data, knot_mm_ctx_t *mm)
 {
@@ -267,7 +269,7 @@ int knot_edns_add_option(knot_rrset_t *opt_rr, uint16_t code,
 }
 
 /*----------------------------------------------------------------------------*/
-
+_public_
 bool knot_edns_has_option(const knot_rrset_t *opt_rr, uint16_t code)
 {
 	assert(opt_rr != NULL);
@@ -281,14 +283,14 @@ bool knot_edns_has_option(const knot_rrset_t *opt_rr, uint16_t code)
 }
 
 /*----------------------------------------------------------------------------*/
-
+_public_
 bool knot_edns_has_nsid(const knot_rrset_t *opt_rr)
 {
 	return knot_edns_has_option(opt_rr, KNOT_EDNS_OPTION_NSID);
 }
 
 /*----------------------------------------------------------------------------*/
-
+_public_
 bool knot_edns_check_record(knot_rrset_t *opt_rr)
 {
 	if (opt_rr->rrs.rr_count != 1) {
@@ -318,7 +320,7 @@ bool knot_edns_check_record(knot_rrset_t *opt_rr)
 }
 
 /*----------------------------------------------------------------------------*/
-
+_public_
 int knot_edns_client_subnet_create(const knot_addr_family_t family,
                                    const uint8_t *addr,
                                    const uint16_t addr_len,
@@ -359,6 +361,7 @@ int knot_edns_client_subnet_create(const knot_addr_family_t family,
 	return KNOT_EOK;
 }
 
+_public_
 int knot_edns_client_subnet_parse(const uint8_t *data,
                                   const uint16_t data_len,
                                   knot_addr_family_t *family,
