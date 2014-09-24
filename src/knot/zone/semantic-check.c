@@ -33,7 +33,7 @@
 #include "common/base32hex.h"
 #include "common-knot/crc.h"
 #include "libknot/descriptor.h"
-#include "libknot/mempattern.h"
+#include "common/mempattern.h"
 #include "knot/dnssec/zone-nsec.h"
 
 #include "knot/zone/semantic-check.h"

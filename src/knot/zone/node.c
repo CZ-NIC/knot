@@ -23,7 +23,7 @@
 #include "libknot/rdataset.h"
 #include "libknot/rrtype/rrsig.h"
 #include "libknot/descriptor.h"
-#include "libknot/mempattern.h"
+#include "common/mempattern.h"
 
 /*! \brief Clears allocated data in RRSet entry. */
 static void rr_data_clear(struct rr_data *data, knot_mm_ctx_t *mm)

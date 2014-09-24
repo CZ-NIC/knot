@@ -30,7 +30,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#include "libknot/mempattern.h"
+#include "common/mempattern.h"
 #include "libknot/dname.h"
 #include "libknot/rdataset.h"
 

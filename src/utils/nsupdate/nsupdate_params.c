@@ -25,7 +25,7 @@
 #include "utils/common/netio.h"
 #include "libknot/errcode.h"
 #include "libknot/descriptor.h"
-#include "libknot/mempattern.h"
+#include "common/mempattern.h"
 #include "common/mempool.h"
 #include "libknot/libknot.h"
 

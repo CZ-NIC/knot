@@ -31,7 +31,7 @@
 #include <stdio.h>
 #include <stdbool.h>
 
-#include "libknot/mempattern.h"
+#include "common/mempattern.h"
 #include "libknot/consts.h"
 
 typedef uint8_t knot_dname_t;

@@ -104,6 +104,8 @@ libknotcs_la_SOURCES =				\
 	common/getline.h			\
 	common/mem.c				\
 	common/mem.h				\
+        common/mempattern.c			\
+        common/mempattern.h			\
 	common/mempool.c			\
 	common/mempool.h			\
 	common/hhash.c				\
@@ -165,8 +167,6 @@ libknot_la_SOURCES =				\
 	libknot/errcode.c			\
 	libknot/errcode.h			\
 	libknot/libknot.h			\
-	libknot/mempattern.c			\
-	libknot/mempattern.h			\
 	libknot/packet/compr.c			\
 	libknot/packet/compr.h			\
 	libknot/packet/pkt.c			\

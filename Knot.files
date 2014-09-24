@@ -61,6 +61,8 @@ src/common/log.c
 src/common/log.h
 src/common/mem.c
 src/common/mem.h
+src/common/mempattern.c
+src/common/mempattern.h
 src/common/mempool.c
 src/common/mempool.h
 src/common/print.c
@@ -223,8 +225,6 @@ src/libknot/dnssec/sign.h
 src/libknot/errcode.c
 src/libknot/errcode.h
 src/libknot/libknot.h
-src/libknot/mempattern.c
-src/libknot/mempattern.h
 src/libknot/packet/compr.c
 src/libknot/packet/compr.h
 src/libknot/packet/net.c

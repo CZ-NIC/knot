@@ -29,7 +29,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <stdbool.h>
-#include "libknot/mempattern.h"
+#include "common/mempattern.h"
 
 /*! \brief Bitvector type. */
 typedef unsigned hhbitvec_t;

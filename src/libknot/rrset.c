@@ -22,7 +22,7 @@
 
 #include "libknot/consts.h"
 #include "libknot/common.h"
-#include "libknot/mempattern.h"
+#include "common/mempattern.h"
 #include "libknot/descriptor.h"
 #include "libknot/dname.h"
 

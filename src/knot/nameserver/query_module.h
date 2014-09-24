@@ -41,7 +41,7 @@
 #pragma once
 
 #include "common/lists.h"
-#include "libknot/mempattern.h"
+#include "common/mempattern.h"
 #include "libknot/consts.h"
 #include "libknot/packet/pkt.h"
 
