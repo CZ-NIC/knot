@@ -19,8 +19,8 @@
 #include "libknot/dname.h"
 
 enum {
-	NAMEDB_RDONLY = 1 << 0,
-	NAMEDB_SORTED = 1 << 1
+	KNOT_NAMEDB_RDONLY = 1 << 0,
+	KNOT_NAMEDB_SORTED = 1 << 1
 };
 
 typedef void knot_namedb_t;
@@ -42,7 +42,7 @@ struct namedb_api {
 
 	/* Context operations */
 
-	knot_namedb_t* (*init)(const char *handle, mm_ctx_t *mm);
+	knot_namedb_t *(*init)(const char *handle, mm_ctx_t *mm);
 	void (*deinit)(knot_namedb_t *db);
 
 	/* Transactions */
@@ -66,5 +66,3 @@ struct namedb_api {
 	int (*iter_val)(knot_iter_t *iter, knot_val_t *val);
 	void (*iter_finish)(knot_iter_t *iter);
 };
-
-

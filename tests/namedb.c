@@ -79,7 +79,7 @@ static int namedb_test_set(unsigned nkeys, char **keys, char *dbid,
 	ok(ret == KNOT_EOK, "%s: txn_commit(WR)", api->name);
 
 	/* Start RD transaction. */
-	ret = api->txn_begin(db, &txn, NAMEDB_RDONLY);
+	ret = api->txn_begin(db, &txn, KNOT_NAMEDB_RDONLY);
 	ok(ret == KNOT_EOK, "%s: txn_begin(RD)", api->name);
 
 	/* Lookup all keys */
@@ -119,7 +119,7 @@ static int namedb_test_set(unsigned nkeys, char **keys, char *dbid,
 	/* Sorted iteration. */
 	char key_buf[KEY_MAXLEN] = {'\0'};
 	iterated = 0;
-	it = api->iter_begin(&txn, NAMEDB_SORTED);
+	it = api->iter_begin(&txn, KNOT_NAMEDB_SORTED);
 	while (it != NULL) {
 		ret = api->iter_key(it, &key);
 		if (iterated > 0) { /* Only if previous exists. */

@@ -1,8 +1,24 @@
+/*  Copyright (C) 2014 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
 #include "common/namedb/namedb_trie.h"
 #include "common-knot/hattrie/hat-trie.h"
 #include "libknot/errcode.h"
 
-static knot_namedb_t* init(const char *handle, mm_ctx_t *mm)
+static knot_namedb_t *init(const char *handle, mm_ctx_t *mm)
 {
 	return hattrie_create_n(TRIE_BUCKET_SIZE, mm);
 }
@@ -22,7 +38,7 @@ static int txn_begin(knot_namedb_t *db, knot_txn_t *txn, unsigned flags)
 static int txn_commit(knot_txn_t *txn)
 {
 	/* Rebuild order index only for WR transactions. */
-	if ((size_t)txn->txn & NAMEDB_RDONLY) {
+	if ((size_t)txn->txn & KNOT_NAMEDB_RDONLY) {
 		return KNOT_EOK;
 	}
 
@@ -69,7 +85,7 @@ static int del(knot_txn_t *txn, knot_val_t *key)
 
 static knot_iter_t *iter_begin(knot_txn_t *txn, unsigned flags)
 {
-	return hattrie_iter_begin((hattrie_t *)txn->db, (flags & NAMEDB_SORTED));
+	return hattrie_iter_begin((hattrie_t *)txn->db, (flags & KNOT_NAMEDB_SORTED));
 }
 
 static knot_iter_t *iter_next(knot_iter_t *iter)
@@ -122,4 +138,3 @@ struct namedb_api *namedb_trie_api(void)
 
 	return &api;
 }
-
