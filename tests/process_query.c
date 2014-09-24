@@ -78,8 +78,8 @@ int main(int argc, char *argv[])
 {
 	plan(8*6 + 4); /* exec_query = 6 TAP tests */
 
-	mm_ctx_t mm;
-	mm_ctx_mempool(&mm, sizeof(knot_pkt_t));
+	knot_mm_ctx_t mm;
+	knot_mm_ctx_mempool(&mm, sizeof(knot_pkt_t));
 
 	/* Create processing context. */
 	knot_layer_t proc;

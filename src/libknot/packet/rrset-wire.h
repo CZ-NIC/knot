@@ -75,4 +75,4 @@ int knot_rrset_to_wire(const knot_rrset_t *rrset, uint8_t *wire, uint16_t max_si
 * \return KNOT_E*
 */
 int knot_rrset_rr_from_wire(const uint8_t *pkt_wire, size_t *pos,
-                            size_t pkt_size, mm_ctx_t *mm, knot_rrset_t *rrset);
+                            size_t pkt_size, knot_mm_ctx_t *mm, knot_rrset_t *rrset);

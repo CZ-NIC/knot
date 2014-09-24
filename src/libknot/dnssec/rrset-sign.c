@@ -280,7 +280,7 @@ int knot_sign_rrset(knot_rrset_t *rrsigs, const knot_rrset_t *covered,
 }
 
 int knot_synth_rrsig(uint16_t type, const knot_rdataset_t *rrsig_rrs,
-                     knot_rdataset_t *out_sig, mm_ctx_t *mm)
+                     knot_rdataset_t *out_sig, knot_mm_ctx_t *mm)
 {
 	if (rrsig_rrs == NULL) {
 		return KNOT_ENOENT;

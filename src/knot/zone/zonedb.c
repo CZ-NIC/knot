@@ -53,8 +53,8 @@ static void discard_zone(zone_t *zone)
 knot_zonedb_t *knot_zonedb_new(uint32_t size)
 {
 	/* Create memory pool context. */
-	mm_ctx_t mm = {0};
-	mm_ctx_mempool(&mm, MM_DEFAULT_BLKSIZE);
+	knot_mm_ctx_t mm = {0};
+	knot_mm_ctx_mempool(&mm, MM_DEFAULT_BLKSIZE);
 	knot_zonedb_t *db = mm.alloc(mm.ctx, sizeof(knot_zonedb_t));
 	if (db == NULL) {
 		return NULL;
@@ -67,7 +67,7 @@ knot_zonedb_t *knot_zonedb_new(uint32_t size)
 		return NULL;
 	}
 
-	memcpy(&db->mm, &mm, sizeof(mm_ctx_t));
+	memcpy(&db->mm, &mm, sizeof(knot_mm_ctx_t));
 	return db;
 }
 

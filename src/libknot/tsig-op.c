@@ -439,6 +439,7 @@ static int knot_tsig_create_sign_wire_next(const uint8_t *msg, size_t msg_len,
 	return KNOT_EOK;
 }
 
+_public_
 int knot_tsig_sign(uint8_t *msg, size_t *msg_len,
                    size_t msg_max_len, const uint8_t *request_mac,
                    size_t request_mac_len,
@@ -536,6 +537,7 @@ int knot_tsig_sign(uint8_t *msg, size_t *msg_len,
 	return KNOT_EOK;
 }
 
+_public_
 int knot_tsig_sign_next(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
                         const uint8_t *prev_digest, size_t prev_digest_len,
                         uint8_t *digest, size_t *digest_len,
@@ -747,6 +749,7 @@ static int knot_tsig_check_digest(const knot_rrset_t *tsig_rr,
 	return KNOT_EOK;
 }
 
+_public_
 int knot_tsig_server_check(const knot_rrset_t *tsig_rr,
                            const uint8_t *wire, size_t size,
                            const knot_tsig_key_t *tsig_key)
@@ -756,6 +759,7 @@ int knot_tsig_server_check(const knot_rrset_t *tsig_rr,
 	                              0, 0);
 }
 
+_public_
 int knot_tsig_client_check(const knot_rrset_t *tsig_rr,
                            const uint8_t *wire, size_t size,
                            const uint8_t *request_mac, size_t request_mac_len,
@@ -768,6 +772,7 @@ int knot_tsig_client_check(const knot_rrset_t *tsig_rr,
 	                              prev_time_signed, 0);
 }
 
+_public_
 int knot_tsig_client_check_next(const knot_rrset_t *tsig_rr,
                                 const uint8_t *wire, size_t size,
                                 const uint8_t *prev_digest,
@@ -781,6 +786,7 @@ int knot_tsig_client_check_next(const knot_rrset_t *tsig_rr,
 	                              prev_time_signed, 1);
 }
 
+_public_
 int knot_tsig_add(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
                   uint16_t tsig_rcode, const knot_rrset_t *tsig_rr)
 {
@@ -823,6 +829,7 @@ int knot_tsig_add(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
 	return ret;
 }
 
+_public_
 int knot_tsig_append(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
                      const knot_rrset_t *tsig_rr)
 {

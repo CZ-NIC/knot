@@ -31,7 +31,7 @@
 struct knot_overlay {
 	int state;
 	list_t layers;
-	mm_ctx_t *mm;
+	knot_mm_ctx_t *mm;
 };
 
 /*!
@@ -40,7 +40,7 @@ struct knot_overlay {
  * \param overlay
  * \param mm
  */
-void knot_overlay_init(struct knot_overlay *overlay, mm_ctx_t *mm);
+void knot_overlay_init(struct knot_overlay *overlay, knot_mm_ctx_t *mm);
 
 /*!
  * \brief Clear structure nad free list of layers.

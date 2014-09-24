@@ -26,14 +26,14 @@
 #include "libknot/mempattern.h"
 
 /*! \brief Clears allocated data in RRSet entry. */
-static void rr_data_clear(struct rr_data *data, mm_ctx_t *mm)
+static void rr_data_clear(struct rr_data *data, knot_mm_ctx_t *mm)
 {
 	knot_rdataset_clear(&data->rrs, mm);
 	free(data->additional);
 }
 
 /*! \brief Clears allocated data in RRSet entry. */
-static int rr_data_from(const knot_rrset_t *rrset, struct rr_data *data, mm_ctx_t *mm)
+static int rr_data_from(const knot_rrset_t *rrset, struct rr_data *data, knot_mm_ctx_t *mm)
 {
 	int ret = knot_rdataset_copy(&data->rrs, &rrset->rrs, mm);
 	if (ret != KNOT_EOK) {
@@ -47,7 +47,7 @@ static int rr_data_from(const knot_rrset_t *rrset, struct rr_data *data, mm_ctx_
 
 /*! \brief Adds RRSet to node directly. */
 static int add_rrset_no_merge(zone_node_t *node, const knot_rrset_t *rrset,
-                              mm_ctx_t *mm)
+                              knot_mm_ctx_t *mm)
 {
 	if (node == NULL) {
 		return KNOT_EINVAL;
@@ -55,7 +55,7 @@ static int add_rrset_no_merge(zone_node_t *node, const knot_rrset_t *rrset,
 
 	const size_t prev_nlen = node->rrset_count * sizeof(struct rr_data);
 	const size_t nlen = (node->rrset_count + 1) * sizeof(struct rr_data);
-	void *p = mm_realloc(mm, node->rrs, nlen, prev_nlen);
+	void *p = knot_mm_realloc(mm, node->rrs, nlen, prev_nlen);
 	if (p == NULL) {
 		return KNOT_ENOMEM;
 	}
@@ -84,9 +84,9 @@ static bool ttl_error(struct rr_data *node_data, const knot_rrset_t *rrset)
 	return inserted_ttl != node_ttl;
 }
 
-zone_node_t *node_new(const knot_dname_t *owner, mm_ctx_t *mm)
+zone_node_t *node_new(const knot_dname_t *owner, knot_mm_ctx_t *mm)
 {
-	zone_node_t *ret = mm_alloc(mm, sizeof(zone_node_t));
+	zone_node_t *ret = knot_mm_alloc(mm, sizeof(zone_node_t));
 	if (ret == NULL) {
 		ERR_ALLOC_FAILED;
 		return NULL;
@@ -96,7 +96,7 @@ zone_node_t *node_new(const knot_dname_t *owner, mm_ctx_t *mm)
 	if (owner) {
 		ret->owner = knot_dname_copy(owner, mm);
 		if (ret->owner == NULL) {
-			mm_free(mm, ret);
+			knot_mm_free(mm, ret);
 			return NULL;
 		}
 	}
@@ -107,7 +107,7 @@ zone_node_t *node_new(const knot_dname_t *owner, mm_ctx_t *mm)
 	return ret;
 }
 
-void node_free_rrsets(zone_node_t *node, mm_ctx_t *mm)
+void node_free_rrsets(zone_node_t *node, knot_mm_ctx_t *mm)
 {
 	if (node == NULL) {
 		return;
@@ -120,23 +120,23 @@ void node_free_rrsets(zone_node_t *node, mm_ctx_t *mm)
 	node->rrset_count = 0;
 }
 
-void node_free(zone_node_t **node, mm_ctx_t *mm)
+void node_free(zone_node_t **node, knot_mm_ctx_t *mm)
 {
 	if (node == NULL || *node == NULL) {
 		return;
 	}
 
 	if ((*node)->rrs != NULL) {
-		mm_free(mm, (*node)->rrs);
+		knot_mm_free(mm, (*node)->rrs);
 	}
 
 	knot_dname_free(&(*node)->owner, mm);
 
-	mm_free(mm, *node);
+	knot_mm_free(mm, *node);
 	*node = NULL;
 }
 
-zone_node_t *node_shallow_copy(const zone_node_t *src, mm_ctx_t *mm)
+zone_node_t *node_shallow_copy(const zone_node_t *src, knot_mm_ctx_t *mm)
 {
 	if (src == NULL) {
 		return NULL;
@@ -153,7 +153,7 @@ zone_node_t *node_shallow_copy(const zone_node_t *src, mm_ctx_t *mm)
 	// copy RRSets
 	dst->rrset_count = src->rrset_count;
 	size_t rrlen = sizeof(struct rr_data) * src->rrset_count;
-	dst->rrs = mm_alloc(mm, rrlen);
+	dst->rrs = knot_mm_alloc(mm, rrlen);
 	if (dst->rrs == NULL) {
 		node_free(&dst, mm);
 		return NULL;
@@ -168,7 +168,7 @@ zone_node_t *node_shallow_copy(const zone_node_t *src, mm_ctx_t *mm)
 	return dst;
 }
 
-int node_add_rrset(zone_node_t *node, const knot_rrset_t *rrset, mm_ctx_t *mm)
+int node_add_rrset(zone_node_t *node, const knot_rrset_t *rrset, knot_mm_ctx_t *mm)
 {
 	if (node == NULL || rrset == NULL) {
 		return KNOT_EINVAL;

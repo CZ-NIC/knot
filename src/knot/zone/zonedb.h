@@ -47,7 +47,7 @@
 typedef struct {
 	uint16_t maxlabels;
 	hhash_t *hash;
-	mm_ctx_t mm;
+	knot_mm_ctx_t mm;
 } knot_zonedb_t;
 
 /*

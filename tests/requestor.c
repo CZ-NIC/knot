@@ -118,8 +118,8 @@ int main(int argc, char *argv[])
 {
 	plan(TESTS_COUNT + 1);
 
-	mm_ctx_t mm;
-	mm_ctx_mempool(&mm, MM_DEFAULT_BLKSIZE);
+	knot_mm_ctx_t mm;
+	knot_mm_ctx_mempool(&mm, MM_DEFAULT_BLKSIZE);
 
 	conf_iface_t remote;
 	memset(&remote, 0, sizeof(conf_iface_t));

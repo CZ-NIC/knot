@@ -88,7 +88,7 @@ static const uint16_t KNOT_EDNS_FLAG_DO = (uint16_t)1 << 15;
  * \return KNOT_EOK or an error
  */
 int knot_edns_init(knot_rrset_t *opt_rr, uint16_t max_pld,
-                  uint8_t ext_rcode, uint8_t ver, mm_ctx_t *mm);
+                  uint8_t ext_rcode, uint8_t ver, knot_mm_ctx_t *mm);
 
 
 /*!
@@ -215,7 +215,7 @@ void knot_edns_set_do(knot_rrset_t *opt_rr);
  * \retval KNOT_ENOMEM
  */
 int knot_edns_add_option(knot_rrset_t *opt_rr, uint16_t code,
-                         uint16_t length, const uint8_t *data, mm_ctx_t *mm);
+                         uint16_t length, const uint8_t *data, knot_mm_ctx_t *mm);
 
 /*!
  * \brief Checks if the OPT RR contains Option with the specified code.

@@ -44,7 +44,7 @@ size_t     hattrie_weight (const hattrie_t*);  //< Number of entries
 
 /** Create new trie with custom bucket size and memory management.
  */
-hattrie_t* hattrie_create_n (unsigned, const mm_ctx_t *);
+hattrie_t* hattrie_create_n (unsigned, const knot_mm_ctx_t *);
 
 /** Duplicate an existing trie.
  */

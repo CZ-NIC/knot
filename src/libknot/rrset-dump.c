@@ -28,6 +28,7 @@
 #include <netinet/in.h>			// in_addr (BSD)
 #include <arpa/inet.h>			// ntohs
 
+#include "libknot/common.h"		// _public_
 #include "libknot/errcode.h"		// KNOT_EOK
 #include "common/base64.h"		// base64
 #include "common/base32hex.h"		// base32hex
@@ -1679,6 +1680,7 @@ static int dump_unknown(DUMP_PARAMS)
 	DUMP_END;
 }
 
+_public_
 int knot_rrset_txt_dump_data(const knot_rrset_t      *rrset,
                              const size_t            pos,
                              char                    *dst,
@@ -1816,6 +1818,7 @@ int knot_rrset_txt_dump_data(const knot_rrset_t      *rrset,
 		return KNOT_ESPACE;			\
 	}
 
+_public_
 int knot_rrset_txt_dump_header(const knot_rrset_t      *rrset,
                                const uint32_t          ttl,
                                char                    *dst,
@@ -1887,6 +1890,7 @@ int knot_rrset_txt_dump_header(const knot_rrset_t      *rrset,
 	return len;
 }
 
+_public_
 int knot_rrset_txt_dump(const knot_rrset_t      *rrset,
                         char                    *dst,
                         const size_t            maxlen,

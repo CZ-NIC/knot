@@ -26,9 +26,9 @@ static bool use_tcp(struct knot_request *request)
 	return !(request->flags & KNOT_RQ_UDP);
 }
 
-static struct knot_request *request_make(mm_ctx_t *mm)
+static struct knot_request *request_make(knot_mm_ctx_t *mm)
 {
-	struct knot_request *request = mm_alloc(mm, sizeof(struct knot_request));
+	struct knot_request *request = knot_mm_alloc(mm, sizeof(struct knot_request));
 	if (request == NULL) {
 		return NULL;
 	}
@@ -118,7 +118,7 @@ static int request_recv(struct knot_request *request, const struct timeval *time
 	return ret;
 }
 
-struct knot_request *knot_request_make(mm_ctx_t *mm,
+struct knot_request *knot_request_make(knot_mm_ctx_t *mm,
                                const struct sockaddr *dst,
                                const struct sockaddr *src,
                                knot_pkt_t *query,
@@ -146,19 +146,19 @@ struct knot_request *knot_request_make(mm_ctx_t *mm,
 	return request;
 }
 
-int knot_request_free(mm_ctx_t *mm, struct knot_request *request)
+int knot_request_free(knot_mm_ctx_t *mm, struct knot_request *request)
 {
 	close(request->fd);
 	knot_pkt_free(&request->query);
 	knot_pkt_free(&request->resp);
 
 	rem_node(&request->node);
-	mm_free(mm, request);
+	knot_mm_free(mm, request);
 
 	return KNOT_EOK;
 }
 
-void knot_requestor_init(struct knot_requestor *requestor, mm_ctx_t *mm)
+void knot_requestor_init(struct knot_requestor *requestor, knot_mm_ctx_t *mm)
 {
 	memset(requestor, 0, sizeof(struct knot_requestor));
 	requestor->mm = mm;
@@ -208,7 +208,7 @@ int knot_requestor_enqueue(struct knot_requestor *requestor, struct knot_request
 	/* Prepare response buffers. */
 	request->resp  = knot_pkt_new(NULL, KNOT_WIRE_MAX_PKTSIZE, requestor->mm);
 	if (request->resp == NULL) {
-		mm_free(requestor->mm, request);
+		knot_mm_free(requestor->mm, request);
 		return KNOT_ENOMEM;
 	}
 

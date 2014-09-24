@@ -112,7 +112,7 @@ typedef struct knot_pkt {
 	knot_rrinfo_t rr_info[KNOT_PKT_MAX_RRS];
 	knot_rrset_t rr[KNOT_PKT_MAX_RRS];
 
-	mm_ctx_t mm; /*!< Memory allocation context. */
+	knot_mm_ctx_t mm; /*!< Memory allocation context. */
 } knot_pkt_t;
 
 /*!
@@ -126,7 +126,7 @@ typedef struct knot_pkt {
  * \param mm Memory context (NULL for default).
  * \return New packet or NULL.
  */
-knot_pkt_t *knot_pkt_new(void *wire, uint16_t len, mm_ctx_t *mm);
+knot_pkt_t *knot_pkt_new(void *wire, uint16_t len, knot_mm_ctx_t *mm);
 
 /*!
  * \brief Copy packet.

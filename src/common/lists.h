@@ -92,8 +92,8 @@ typedef struct ptrnode {
 	const void *d;
 } ptrnode_t;
 
-ptrnode_t *ptrlist_add(list_t *, const void *, mm_ctx_t *);
-void ptrlist_free(list_t *, mm_ctx_t *);
+ptrnode_t *ptrlist_add(list_t *, const void *, knot_mm_ctx_t *);
+void ptrlist_free(list_t *, knot_mm_ctx_t *);
 bool ptrlist_contains(list_t *, const void *);
 
 /*! \todo This is broken atm.

@@ -60,7 +60,7 @@ struct answer_data {
 
 	/* Everything below should be kept on reset. */
 	struct process_answer_param *param; /*!< Module parameters. */
-	mm_ctx_t *mm;                      /*!< Memory context. */
+	knot_mm_ctx_t *mm;                      /*!< Memory context. */
 };
 
 /*! @} */

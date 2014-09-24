@@ -753,7 +753,7 @@ static int cmd_memstats(int argc, char *argv[], unsigned flags)
 
 		/* Init malloc wrapper for trie size estimation. */
 		size_t malloc_size = 0;
-		mm_ctx_t mem_ctx = { .ctx = &malloc_size,
+		knot_mm_ctx_t mem_ctx = { .ctx = &malloc_size,
 		                     .alloc = estimator_malloc,
 		                     .free = estimator_free };
 

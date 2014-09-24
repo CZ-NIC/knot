@@ -26,9 +26,9 @@ struct compiled_module MODULES[] = {
 
 #define MODULE_COUNT sizeof(MODULES) / sizeof(MODULES[0])
 
-struct query_plan *query_plan_create(mm_ctx_t *mm)
+struct query_plan *query_plan_create(knot_mm_ctx_t *mm)
 {
-	struct query_plan *plan = mm_alloc(mm, sizeof(struct query_plan));
+	struct query_plan *plan = knot_mm_alloc(mm, sizeof(struct query_plan));
 	if (plan == NULL) {
 		return NULL;
 	}
@@ -50,16 +50,16 @@ void query_plan_free(struct query_plan *plan)
 	for (unsigned i = 0; i < QUERY_PLAN_STAGES; ++i) {
 		struct query_step *step = NULL, *next = NULL;
 		WALK_LIST_DELSAFE(step, next, plan->stage[i]) {
-			mm_free(plan->mm, step);
+			knot_mm_free(plan->mm, step);
 		}
 	}
 
-	mm_free(plan->mm, plan);
+	knot_mm_free(plan->mm, plan);
 }
 
-static struct query_step *make_step(mm_ctx_t *mm, qmodule_process_t process, void *ctx)
+static struct query_step *make_step(knot_mm_ctx_t *mm, qmodule_process_t process, void *ctx)
 {
-	struct query_step *step = mm_alloc(mm, sizeof(struct query_step));
+	struct query_step *step = knot_mm_alloc(mm, sizeof(struct query_step));
 	if (step == NULL) {
 		return NULL;
 	}
@@ -82,7 +82,7 @@ int query_plan_step(struct query_plan *plan, int stage, qmodule_process_t proces
 }
 
 struct query_module *query_module_open(struct conf_t *config, const char *name,
-                                       const char *param, mm_ctx_t *mm)
+                                       const char *param, knot_mm_ctx_t *mm)
 {
 	/* Locate compiled-in modules. */
 	struct compiled_module *found = NULL;
@@ -98,7 +98,7 @@ struct query_module *query_module_open(struct conf_t *config, const char *name,
 		return NULL;
 	}
 
-	struct query_module *module = mm_alloc(mm, sizeof(struct query_module));
+	struct query_module *module = knot_mm_alloc(mm, sizeof(struct query_module));
 	if (module == NULL) {
 		return NULL;
 	}
@@ -109,9 +109,9 @@ struct query_module *query_module_open(struct conf_t *config, const char *name,
 	module->config = config;
 	module->load = found->load;
 	module->unload = found->unload;
-	module->param = mm_alloc(mm, buflen);
+	module->param = knot_mm_alloc(mm, buflen);
 	if (module->param == NULL) {
-		mm_free(mm, module);
+		knot_mm_free(mm, module);
 		return NULL;
 	}
 	strlcpy(module->param, param, buflen);
@@ -126,6 +126,6 @@ void query_module_close(struct query_module *module)
 	}
 
 	module->unload(module);
-	mm_free(module->mm, module->param);
-	mm_free(module->mm, module);
+	knot_mm_free(module->mm, module->param);
+	knot_mm_free(module->mm, module);
 }

@@ -69,8 +69,8 @@ int main(int argc, char *argv[])
 {
 	plan(TESTS_COUNT);
 
-	mm_ctx_t mm;
-	mm_ctx_mempool(&mm, MM_DEFAULT_BLKSIZE);
+	knot_mm_ctx_t mm;
+	knot_mm_ctx_mempool(&mm, MM_DEFAULT_BLKSIZE);
 
 	knot_pkt_t *buf = knot_pkt_new(NULL, 512, &mm);
 	knot_pkt_put_question(buf, (const uint8_t *)"", 0, 0);

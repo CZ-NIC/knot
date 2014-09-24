@@ -31,6 +31,9 @@
 #define KNOT_NAME "lib" PACKAGE_NAME // Project name
 #define KNOT_VER  PACKAGE_VERSION  // 0xMMIIRR (MAJOR,MINOR,REVISION)
 
+#define _public_ __attribute__((visibility("default")))
+#define _hidden_ __attribute__((visibility("hidden")))
+
 #ifndef UINT_DEFINED
 typedef unsigned int uint; /*!< \brief Unsigned. */
 #define UINT_DEFINED

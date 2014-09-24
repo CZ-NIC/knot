@@ -68,7 +68,7 @@ static uint32_t bootstrap_next(uint32_t timer)
 	NS_PROC_LOG(severity, &remote->addr, zone->name, operation, msg)
 
 /*! \brief Create zone query packet. */
-static knot_pkt_t *zone_query(const zone_t *zone, uint16_t pkt_type, mm_ctx_t *mm)
+static knot_pkt_t *zone_query(const zone_t *zone, uint16_t pkt_type, knot_mm_ctx_t *mm)
 {
 	/* Determine query type and opcode. */
 	uint16_t query_type = KNOT_RRTYPE_SOA;
@@ -114,8 +114,8 @@ static int zone_query_execute(zone_t *zone, uint16_t pkt_type, const conf_iface_
 {
 	/* Create a memory pool for this task. */
 	int ret = KNOT_EOK;
-	mm_ctx_t mm;
-	mm_ctx_mempool(&mm, MM_DEFAULT_BLKSIZE);
+	knot_mm_ctx_t mm;
+	knot_mm_ctx_mempool(&mm, MM_DEFAULT_BLKSIZE);
 
 	/* Create a query message. */
 	knot_pkt_t *query = zone_query(zone, pkt_type, &mm);

@@ -63,7 +63,7 @@ typedef struct hhash {
 	uint32_t weight;  /*!< Table weight (number of inserted). */
 
 	/* Table data storage. */
-	mm_ctx_t mm;      /*!< Memory manager. */
+	knot_mm_ctx_t mm;      /*!< Memory manager. */
 	uint32_t *index;  /*!< Order index (optional). */
 	hhelem_t item[];  /*!< Table items. */
 } hhash_t;
@@ -78,7 +78,7 @@ typedef struct hhash {
 hhash_t *hhash_create(uint32_t size);
 
 /*! \brief Create hopscotch hash table (custom memory manager). */
-hhash_t *hhash_create_mm(uint32_t size, const mm_ctx_t *mm);
+hhash_t *hhash_create_mm(uint32_t size, const knot_mm_ctx_t *mm);
 
 /*!
  * \brief Clear hash table.

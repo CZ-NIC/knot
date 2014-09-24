@@ -90,7 +90,7 @@ static int nsupdate_init(nsupdate_params_t *params)
 	init_list(&params->prereq_list);
 
 	/* Initialize memory context. */
-	mm_ctx_mempool(&params->mm, MM_DEFAULT_BLKSIZE);
+	knot_mm_ctx_mempool(&params->mm, MM_DEFAULT_BLKSIZE);
 
 	/* Default server. */
 	params->server = srv_info_create(DEFAULT_IPV4_NAME, DEFAULT_DNS_PORT);
@@ -149,7 +149,7 @@ void nsupdate_clean(nsupdate_params_t *params)
 }
 
 /*! \brief Free RRSet list. */
-static void rr_list_free(list_t *list, mm_ctx_t *mm)
+static void rr_list_free(list_t *list, knot_mm_ctx_t *mm)
 {
 	assert(list != NULL);
 	assert(mm != NULL);
