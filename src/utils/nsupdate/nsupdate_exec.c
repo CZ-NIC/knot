@@ -368,7 +368,7 @@ static int rr_list_to_packet(knot_pkt_t *dst, list_t *list)
 	int ret = KNOT_EOK;
 	ptrnode_t *node = NULL;
 	WALK_LIST(node, *list) {
-		ret = knot_pkt_put(dst, COMPR_HINT_NONE,
+		ret = knot_pkt_put(dst, KNOT_COMPR_HINT_NONE,
 		                   (knot_rrset_t *)node->d, 0);
 		if (ret != KNOT_EOK) {
 			break;

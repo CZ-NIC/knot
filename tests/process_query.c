@@ -153,7 +153,7 @@ int main(int argc, char *argv[])
 	/* Append SOA RR. */
 	knot_rrset_t soa_rr = node_rrset(zone->contents->apex, KNOT_RRTYPE_SOA);
 	knot_pkt_begin(query, KNOT_AUTHORITY);
-	knot_pkt_put(query, COMPR_HINT_NONE, &soa_rr, 0);
+	knot_pkt_put(query, KNOT_COMPR_HINT_NONE, &soa_rr, 0);
 	exec_query(&proc, "IN/ixfr", query, KNOT_RCODE_NOTAUTH);
 
 	/* \note Tests below are not possible without proper zone and zone data. */

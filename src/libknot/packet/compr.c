@@ -53,6 +53,7 @@ static bool compr_label_match(const uint8_t *n, const uint8_t *p)
 		written += (len); \
 	}
 
+_public_
 int knot_compr_put_dname(const knot_dname_t *dname, uint8_t *dst, uint16_t max,
                          knot_compr_t *compr)
 {

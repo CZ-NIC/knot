@@ -94,11 +94,11 @@ static knot_pkt_t *zone_query(const zone_t *zone, uint16_t pkt_type, knot_mm_ctx
 	if (pkt_type == KNOT_QUERY_IXFR) {  /* RFC1995, SOA in AUTHORITY. */
 		knot_pkt_begin(pkt, KNOT_AUTHORITY);
 		knot_rrset_t soa_rr = node_rrset(contents->apex, KNOT_RRTYPE_SOA);
-		knot_pkt_put(pkt, COMPR_HINT_QNAME, &soa_rr, 0);
+		knot_pkt_put(pkt, KNOT_COMPR_HINT_QNAME, &soa_rr, 0);
 	} else if (pkt_type == KNOT_QUERY_NOTIFY) { /* RFC1996, SOA in ANSWER. */
 		knot_pkt_begin(pkt, KNOT_ANSWER);
 		knot_rrset_t soa_rr = node_rrset(contents->apex, KNOT_RRTYPE_SOA);
-		knot_pkt_put(pkt, COMPR_HINT_QNAME, &soa_rr, 0);
+		knot_pkt_put(pkt, KNOT_COMPR_HINT_QNAME, &soa_rr, 0);
 	}
 
 	return pkt;

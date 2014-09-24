@@ -22,6 +22,7 @@
 
 #include "common/debug.h"
 #include "common/log.h"
+
 #include "libknot/common.h"
 #include "libknot/descriptor.h"
 #include "libknot/packet/wire.h"
@@ -200,6 +201,7 @@ static knot_pkt_t *pkt_new_mm(void *wire, uint16_t len, knot_mm_ctx_t *mm)
 	return pkt;
 }
 
+_public_
 knot_pkt_t *knot_pkt_new(void *wire, uint16_t len, knot_mm_ctx_t *mm)
 {
 	/* Default memory allocator if NULL. */
@@ -213,6 +215,7 @@ knot_pkt_t *knot_pkt_new(void *wire, uint16_t len, knot_mm_ctx_t *mm)
 	return pkt_new_mm(wire, len, mm);
 }
 
+_public_
 int knot_pkt_copy(knot_pkt_t *dst, const knot_pkt_t *src)
 {
 	dbg_packet("%s(%p, %p)\n", __func__, dst, src);
@@ -240,6 +243,7 @@ int knot_pkt_copy(knot_pkt_t *dst, const knot_pkt_t *src)
 	return knot_pkt_parse(dst, 0);
 }
 
+_public_
 int knot_pkt_init_response(knot_pkt_t *pkt, const knot_pkt_t *query)
 {
 	dbg_packet("%s(%p, %p)\n", __func__, pkt, query);
@@ -270,6 +274,7 @@ int knot_pkt_init_response(knot_pkt_t *pkt, const knot_pkt_t *query)
 	return KNOT_EOK;
 }
 
+_public_
 void knot_pkt_clear(knot_pkt_t *pkt)
 {
 	dbg_packet("%s(%p)\n", __func__, pkt);
@@ -285,6 +290,7 @@ void knot_pkt_clear(knot_pkt_t *pkt)
 	memset(pkt->wire, 0, pkt->size);
 }
 
+_public_
 void knot_pkt_free(knot_pkt_t **pkt)
 {
 	dbg_packet("%s(%p)\n", __func__, pkt);
@@ -305,6 +311,7 @@ void knot_pkt_free(knot_pkt_t **pkt)
 	*pkt = NULL;
 }
 
+_public_
 int knot_pkt_reserve(knot_pkt_t *pkt, uint16_t size)
 {
 	dbg_packet("%s(%p, %hu)\n", __func__, pkt, size);
@@ -321,6 +328,7 @@ int knot_pkt_reserve(knot_pkt_t *pkt, uint16_t size)
 	}
 }
 
+_public_
 int knot_pkt_reclaim(knot_pkt_t *pkt, uint16_t size)
 {
 	dbg_packet("%s(%p, %hu)\n", __func__, pkt, size);
@@ -337,6 +345,7 @@ int knot_pkt_reclaim(knot_pkt_t *pkt, uint16_t size)
 
 }
 
+_public_
 uint16_t knot_pkt_type(const knot_pkt_t *pkt)
 {
 	dbg_packet("%s(%p)\n", __func__, pkt);
@@ -371,7 +380,7 @@ uint16_t knot_pkt_type(const knot_pkt_t *pkt)
 }
 
 /*----------------------------------------------------------------------------*/
-
+_public_
 uint16_t knot_pkt_question_size(const knot_pkt_t *pkt)
 {
 	dbg_packet("%s(%p)\n", __func__, pkt);
@@ -383,7 +392,7 @@ uint16_t knot_pkt_question_size(const knot_pkt_t *pkt)
 }
 
 /*----------------------------------------------------------------------------*/
-
+_public_
 const knot_dname_t *knot_pkt_qname(const knot_pkt_t *pkt)
 {
 	dbg_packet("%s(%p)\n", __func__, pkt);
@@ -395,7 +404,7 @@ const knot_dname_t *knot_pkt_qname(const knot_pkt_t *pkt)
 }
 
 /*----------------------------------------------------------------------------*/
-
+_public_
 uint16_t knot_pkt_qtype(const knot_pkt_t *pkt)
 {
 	dbg_packet("%s(%p)\n", __func__, pkt);
@@ -408,7 +417,7 @@ uint16_t knot_pkt_qtype(const knot_pkt_t *pkt)
 }
 
 /*----------------------------------------------------------------------------*/
-
+_public_
 uint16_t knot_pkt_qclass(const knot_pkt_t *pkt)
 {
 	dbg_packet("%s(%p)\n", __func__, pkt);
@@ -420,6 +429,7 @@ uint16_t knot_pkt_qclass(const knot_pkt_t *pkt)
 	return knot_wire_read_u16(pkt->wire + off);
 }
 
+_public_
 int knot_pkt_begin(knot_pkt_t *pkt, knot_section_t section_id)
 {
 	if (pkt == NULL) {
@@ -437,6 +447,7 @@ int knot_pkt_begin(knot_pkt_t *pkt, knot_section_t section_id)
 	return KNOT_EOK;
 }
 
+_public_
 int knot_pkt_put_question(knot_pkt_t *pkt, const knot_dname_t *qname, uint16_t qclass, uint16_t qtype)
 {
 	dbg_packet("%s(%p, %p, %hu, %hu)\n", __func__, pkt, qname, qclass, qtype);
@@ -475,6 +486,7 @@ int knot_pkt_put_question(knot_pkt_t *pkt, const knot_dname_t *qname, uint16_t q
 	return knot_pkt_begin(pkt, KNOT_ANSWER);
 }
 
+_public_
 int knot_pkt_put(knot_pkt_t *pkt, uint16_t compr_hint, const knot_rrset_t *rr,
                  uint16_t flags)
 {
@@ -541,6 +553,7 @@ int knot_pkt_put(knot_pkt_t *pkt, uint16_t compr_hint, const knot_rrset_t *rr,
 	return KNOT_EOK;
 }
 
+_public_
 const knot_pktsection_t *knot_pkt_section(const knot_pkt_t *pkt, knot_section_t section_id)
 {
 	dbg_packet("%s(%p, %u)\n", __func__, pkt, section_id);
@@ -551,6 +564,7 @@ const knot_pktsection_t *knot_pkt_section(const knot_pkt_t *pkt, knot_section_t 
 	return &pkt->sections[section_id];
 }
 
+_public_
 int knot_pkt_parse(knot_pkt_t *pkt, unsigned flags)
 {
 	dbg_packet("%s(%p, %u)\n", __func__, pkt, flags);
@@ -569,6 +583,7 @@ int knot_pkt_parse(knot_pkt_t *pkt, unsigned flags)
 	return ret;
 }
 
+_public_
 int knot_pkt_parse_question(knot_pkt_t *pkt)
 {
 	dbg_packet("%s(%p)\n", __func__, pkt);
@@ -662,6 +677,7 @@ static int check_rr_constraints(knot_pkt_t *pkt, knot_rrset_t *rr, size_t rr_siz
 
 #undef CHECK_AR_RECORD
 
+_public_
 int knot_pkt_parse_rr(knot_pkt_t *pkt, unsigned flags)
 {
 	dbg_packet("%s(%p, %u)\n", __func__, pkt, flags);
@@ -701,6 +717,7 @@ int knot_pkt_parse_rr(knot_pkt_t *pkt, unsigned flags)
 	return check_rr_constraints(pkt, rr, rr_size, flags);
 }
 
+_public_
 int knot_pkt_parse_section(knot_pkt_t *pkt, unsigned flags)
 {
 	dbg_packet("%s(%p, %u)\n", __func__, pkt, flags);
@@ -725,6 +742,7 @@ int knot_pkt_parse_section(knot_pkt_t *pkt, unsigned flags)
 	return KNOT_EOK;
 }
 
+_public_
 int knot_pkt_parse_payload(knot_pkt_t *pkt, unsigned flags)
 {
 	dbg_packet("%s(%p, %u)\n", __func__, pkt, flags);

@@ -268,7 +268,7 @@ static int answer_edns_put(knot_pkt_t *resp, struct query_data *qdata)
 
 	/* Write to packet. */
 	assert(resp->current == KNOT_ADDITIONAL);
-	return knot_pkt_put(resp, COMPR_HINT_NONE, &qdata->opt_rr, 0);
+	return knot_pkt_put(resp, KNOT_COMPR_HINT_NONE, &qdata->opt_rr, 0);
 }
 
 /*! \brief Initialize response, sizes and find zone from which we're going to answer. */

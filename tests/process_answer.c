@@ -92,7 +92,7 @@ static void test_inclass(knot_pkt_t *pkt, knot_layer_t *proc, struct process_ans
 	knot_pkt_put_question(pkt, ROOT_DNAME, KNOT_CLASS_IN, KNOT_RRTYPE_SOA);
 	knot_wire_set_qr(pkt->wire);
 	knot_pkt_begin(pkt, KNOT_ANSWER);
-	knot_pkt_put(pkt, COMPR_HINT_OWNER, &soa, 0);
+	knot_pkt_put(pkt, KNOT_COMPR_HINT_OWNER, &soa, 0);
 	TEST_EXEC(KNOT_NS_PROC_DONE, "IN/SOA answer");
 
 	/* Unsupported anwer. */

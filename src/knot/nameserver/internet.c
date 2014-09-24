@@ -179,9 +179,9 @@ static int put_answer(knot_pkt_t *pkt, uint16_t type, struct query_data *qdata)
 	 * QNAME position. Just need to check if we're answering QNAME and not
 	 * a CNAME target.
 	 */
-	uint16_t compr_hint = COMPR_HINT_NONE;
+	uint16_t compr_hint = KNOT_COMPR_HINT_NONE;
 	if (pkt->rrset_count == 0) { /* Guaranteed first answer. */
-		compr_hint = COMPR_HINT_QNAME;
+		compr_hint = KNOT_COMPR_HINT_QNAME;
 	}
 
 	int ret = KNOT_EOK;
@@ -236,7 +236,7 @@ static int put_authority_ns(knot_pkt_t *pkt, struct query_data *qdata)
 	knot_rrset_t ns_rrset = node_rrset(zone->apex, KNOT_RRTYPE_NS);
 	if (!knot_rrset_empty(&ns_rrset)) {
 		knot_rrset_t rrsigs = node_rrset(zone->apex, KNOT_RRTYPE_RRSIG);
-		return ns_put_rr(pkt, &ns_rrset, &rrsigs, COMPR_HINT_NONE,
+		return ns_put_rr(pkt, &ns_rrset, &rrsigs, KNOT_COMPR_HINT_NONE,
 		                 KNOT_PF_NOTRUNC|KNOT_PF_CHECKDUP, qdata);
 	} else {
 		dbg_ns("%s: no NS RRSets in this zone, fishy...\n", __func__);
@@ -277,7 +277,7 @@ static int put_authority_soa(knot_pkt_t *pkt, struct query_data *qdata,
 		soa_rrset = copy;
 	}
 
-	ret = ns_put_rr(pkt, &soa_rrset, &rrsigs, COMPR_HINT_NONE, flags, qdata);
+	ret = ns_put_rr(pkt, &soa_rrset, &rrsigs, KNOT_COMPR_HINT_NONE, flags, qdata);
 	if (ret != KNOT_EOK && (flags & KNOT_PF_FREE)) {
 		knot_rrset_clear(&soa_rrset, &pkt->mm);
 	}
@@ -296,7 +296,7 @@ static int put_delegation(knot_pkt_t *pkt, struct query_data *qdata)
 	/* Insert NS record. */
 	knot_rrset_t rrset = node_rrset(qdata->node, KNOT_RRTYPE_NS);
 	knot_rrset_t rrsigs = node_rrset(qdata->node, KNOT_RRTYPE_RRSIG);
-	return ns_put_rr(pkt, &rrset, &rrsigs, COMPR_HINT_NONE, 0, qdata);
+	return ns_put_rr(pkt, &rrset, &rrsigs, KNOT_COMPR_HINT_NONE, 0, qdata);
 }
 
 /*! \brief Put additional records for given RR. */
@@ -310,13 +310,13 @@ static int put_additional(knot_pkt_t *pkt, const knot_rrset_t *rr,
 
 	int ret = KNOT_EOK;
 	uint32_t flags = KNOT_PF_NOTRUNC|KNOT_PF_CHECKDUP;
-	uint16_t hint = COMPR_HINT_NONE;
+	uint16_t hint = KNOT_COMPR_HINT_NONE;
 	const zone_node_t *node = NULL;
 
 	/* All RRs should have additional node cached or NULL. */
 	uint16_t rr_rdata_count = rr->rrs.rr_count;
 	for (uint16_t i = 0; i < rr_rdata_count; i++) {
-		hint = knot_pkt_compr_hint(info, COMPR_HINT_RDATA + i);
+		hint = knot_pkt_compr_hint(info, KNOT_COMPR_HINT_RDATA + i);
 		node = rr->additional[i];
 
 		/* No additional node for this record. */
@@ -714,7 +714,7 @@ int ns_put_rr(knot_pkt_t *pkt, const knot_rrset_t *rr,
 	 * hint. */
 	int ret = KNOT_EOK;
 	knot_rrset_t to_add;
-	if (compr_hint == COMPR_HINT_NONE && expand) {
+	if (compr_hint == KNOT_COMPR_HINT_NONE && expand) {
 		knot_dname_t *qname_cpy = knot_dname_copy(qdata->name, &pkt->mm);
 		if (qname_cpy == NULL) {
 			return KNOT_ENOMEM;
