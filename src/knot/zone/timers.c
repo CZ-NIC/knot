@@ -151,7 +151,7 @@ int read_zone_timers(conf_t *conf, const zone_t *zone, time_t *timers)
 	const struct namedb_api *db_api = namedb_lmdb_api();
 
 	knot_txn_t txn;
-	int ret = db_api->txn_begin(conf->timers_db, &txn, NAMEDB_RDONLY);
+	int ret = db_api->txn_begin(conf->timers_db, &txn, KNOT_NAMEDB_RDONLY);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
@@ -202,7 +202,7 @@ int sweep_timer_db(conf_t *conf, knot_zonedb_t *zone_db)
 	const struct namedb_api *db_api = namedb_lmdb_api();
 
 	knot_txn_t txn;
-	int ret = db_api->txn_begin(conf->timers_db, &txn, NAMEDB_SORTED);
+	int ret = db_api->txn_begin(conf->timers_db, &txn, KNOT_NAMEDB_SORTED);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
