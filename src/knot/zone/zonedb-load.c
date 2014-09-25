@@ -113,7 +113,7 @@ static void log_zone_load_info(const zone_t *zone, const char *zone_name,
 	log_zone_info(zone->name, "zone %s, serial %u", action, serial);
 }
 
-static zone_t *create_zone_from(zone_t *old_zone, conf_zone_t *zone_conf, server_t *server)
+static zone_t *create_zone_from(conf_zone_t *zone_conf, server_t *server)
 {
 	zone_t *zone = zone_new(zone_conf);
 	if (!zone) {
@@ -133,7 +133,7 @@ static zone_t *create_zone_from(zone_t *old_zone, conf_zone_t *zone_conf, server
 static zone_t *create_zone_reload(const conf_t *conf, conf_zone_t *zone_conf, server_t *server,
                                   zone_t *old_zone)
 {
-	zone_t *zone = create_zone_from(old_zone, zone_conf, server);
+	zone_t *zone = create_zone_from(zone_conf, server);
 	if (!zone) {
 		return NULL;
 	}
@@ -147,13 +147,14 @@ static zone_t *create_zone_reload(const conf_t *conf, conf_zone_t *zone_conf, se
 		zone_events_enqueue(zone, ZONE_EVENT_RELOAD);
 		/* Replan DDNS processing if there are pending updates. */
 		zone_events_replan_ddns(zone, old_zone);
+		break;
 	case ZONE_STATUS_FOUND_CURRENT:
 		zone->zonefile_mtime = old_zone->zonefile_mtime;
 		zone->zonefile_serial = old_zone->zonefile_serial;
 		/* Reuse events from old zone. */
 		zone_events_update(zone, old_zone);
 		/* Write updated timers. */
-		write_zone_timers((conf_t *)conf, zone);
+		write_zone_timers(conf->timers_db, zone);
 		break;
 	default:
 		assert(0);
@@ -191,7 +192,7 @@ static bool zone_expired(const time_t *timers)
 
 static zone_t *create_zone_new(conf_zone_t *zone_conf, server_t *server)
 {
-	zone_t *zone = create_zone_from(NULL, zone_conf, server);
+	zone_t *zone = create_zone_from(zone_conf, server);
 	if (!zone) {
 		return NULL;
 	}
@@ -200,7 +201,7 @@ static zone_t *create_zone_new(conf_zone_t *zone_conf, server_t *server)
 	memset(timers, 0, sizeof(timers));
 	
 	// Get persistent timers
-	int ret = read_zone_timers(conf(), zone, timers);
+	int ret = read_zone_timers(conf()->timers_db, zone, timers);
 	if (ret != KNOT_EOK) {
 		log_zone_error(zone->name, "cannot read zone timers (%s)",
 		               knot_strerror(ret));
@@ -371,7 +372,7 @@ int zonedb_reload(const conf_t *conf, struct server_t *server)
 	synchronize_rcu();
 	
 	/* Sweep the timer database. */
-	sweep_timer_db((conf_t *)conf, db_new);
+	sweep_timer_db(conf->timers_db, db_new);
 
 	/*
 	 * Remove all zones present in the new DB from the old DB.

@@ -276,7 +276,7 @@ int event_reload(zone_t *zone)
 	log_zone_info(zone->name, "loaded, serial %u -> %u",
 	              old_serial, current_serial);
 
-	return write_zone_timers(conf(), zone);
+	return write_zone_timers(conf()->timers_db, zone);
 
 fail:
 	zone_contents_deep_free(&contents);
@@ -321,7 +321,7 @@ int event_refresh(zone_t *zone)
 		zone_events_cancel(zone, ZONE_EVENT_EXPIRE);
 	}
 
-	return write_zone_timers(conf(), zone);
+	return write_zone_timers(conf()->timers_db, zone);
 }
 
 int event_xfer(zone_t *zone)

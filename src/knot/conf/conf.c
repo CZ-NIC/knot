@@ -727,7 +727,8 @@ void conf_truncate(conf_t *conf, int unload_hooks)
 	conf_free_iface(conf->ctl.iface);
 	
 	/* Close timers db. */
-	close_timers_db(conf);
+	close_timers_db(conf->timers_db);
+	conf->timers_db = NULL;
 }
 
 void conf_free(conf_t *conf)
@@ -779,11 +780,11 @@ int conf_open(const char* path)
 		conf_free(nconf);
 		return ret;
 	}
-	
+
 	/* Open zone timers db. */
-	ret = open_timers_db(nconf);
-	if (ret != KNOT_EOK) {
-		log_warning("Cannot open timers db (%s)\n", knot_strerror(ret));
+	nconf->timers_db = open_timers_db(nconf->storage);
+	if (nconf->timers_db == NULL) {
+		log_warning("cannot open timers db\n");
 	}
 
 	/* Replace current config. */
@@ -792,8 +793,6 @@ int conf_open(const char* path)
 
 	/* Synchronize. */
 	synchronize_rcu();
-
-#warning double check synchronization
 
 	if (oldconf) {
 

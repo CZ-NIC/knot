@@ -16,25 +16,25 @@
 
 #pragma once
 
-#include "knot/conf/conf.h"
+#include "common/namedb/namedb.h"
 #include "knot/zone/zone.h"
 #include "knot/zone/zonedb.h"
 
 /*!
  * \brief Opens zone timers db. No-op without LMDB support.
  *
- * \param conf  Server-wide config.
+ * \param storage  Path to storage directory.
  *
- * \return KNOT_E*
+ * \return Created database.
  */
-int open_timers_db(conf_t *conf);
+knot_namedb_t *open_timers_db(const char *storage);
 
 /*!
  * \brief Closes zone timers db.
  *
- * \param conf  Server-wide config.
+ * \param timer_db  Timer database.
  */
-void close_timers_db(conf_t *conf);
+void close_timers_db(knot_namedb_t *timer_db);
 
 /*!
  * \brief Reads zone timers from timers db.
@@ -43,30 +43,30 @@ void close_timers_db(conf_t *conf);
  *          ZONE_EVENT_EXPIRE
  *          ZONE_EVENT_FLUSH
  *
- * \param conf     Server-wide config.
- * \param zone     Zone to read timers for.
- * \param timers   Output array with timers (size must be ZONE_EVENT_COUNT).
+ * \param timer_db  Timer database.
+ * \param zone      Zone to read timers for.
+ * \param timers    Output array with timers (size must be ZONE_EVENT_COUNT).
  *
  * \return KNOT_E*
  */
-int read_zone_timers(conf_t *conf, const zone_t *zone, time_t *timers);
+int read_zone_timers(knot_namedb_t *timer_db, const zone_t *zone, time_t *timers);
 
 /*!
  * \brief Writes zone timers to timers db.
  *
- * \param conf     Server-wide config.
- * \param zone     Zone to store timers for.
+ * \param timer_db  Timer database.
+ * \param zone      Zone to store timers for.
  *
  * \return KNOT_E*
  */
-int write_zone_timers(conf_t *conf, zone_t *zone);
+int write_zone_timers(knot_namedb_t *timer_db, zone_t *zone);
 
 /*!
  * \brief Removes stale zones info from timers db.
  *
- * \param conf     Server-wide config.
- * \param zone_db  Current zone database.
+ * \param timer_db  Timer database.
+ * \param zone_db   Current zone database.
  * \return KNOT_EOK or an error
  */
-int sweep_timer_db(conf_t *conf, knot_zonedb_t *zone_db);
+int sweep_timer_db(knot_namedb_t *timer_db, knot_zonedb_t *zone_db);
 
