@@ -141,12 +141,7 @@ int read_zone_timers(knot_namedb_t *timer_db, const zone_t *zone, time_t *timers
 	}
 
 	ret = read_timers(&txn, zone, timers);
-	if (ret != KNOT_EOK) {
-		db_api->txn_abort(&txn);
-		return ret;
-	}
-
-	ret = db_api->txn_commit(&txn);
+	db_api->txn_abort(&txn);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
