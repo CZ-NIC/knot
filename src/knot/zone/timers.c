@@ -20,57 +20,66 @@
 #include "knot/zone/timers.h"
 #include "knot/zone/zonedb.h"
 
-/* ---- Knot-internal event code to db key lookup table --------- */
+/* ---- Knot-internal event code to db key lookup tables ------------------ - */
 
-static const uint8_t event_id_to_key[ZONE_EVENT_COUNT] = {
- [ZONE_EVENT_REFRESH] = 1,
- [ZONE_EVENT_EXPIRE] = 2,
- [ZONE_EVENT_FLUSH] = 3
+#define PERSISTENT_EVENT_COUNT 3
+
+enum {
+	KEY_REFRESH = 1,
+	KEY_EXPIRE,
+	KEY_FLUSH
 };
+
+// Do not change these mappings if you want backwards compatibility.
+static const uint8_t event_id_to_key[ZONE_EVENT_COUNT] = {
+ [ZONE_EVENT_REFRESH] = KEY_REFRESH,
+ [ZONE_EVENT_EXPIRE] = KEY_EXPIRE,
+ [ZONE_EVENT_FLUSH] = KEY_FLUSH
+};
+
+static const int key_to_event_id[PERSISTENT_EVENT_COUNT + 1] = {
+ [KEY_REFRESH] = ZONE_EVENT_REFRESH,
+ [KEY_EXPIRE] = ZONE_EVENT_EXPIRE,
+ [KEY_FLUSH] = ZONE_EVENT_FLUSH
+};
+
+static bool known_event_key(uint8_t key)
+{
+	return key <= KEY_FLUSH;
+}
+
+#define EVENT_KEY_PAIR_SIZE (sizeof(uint8_t) + sizeof(int64_t))
 
 static bool event_persistent(size_t event)
 {
 	return event_id_to_key[event] != 0;
 }
 
-/* ----- Key and value init macros ------------------------------------------ */
-
-// Key is a zone name + event code.
-#define KEY_INIT(zone, event_id, buf) { .len = sizeof(buf), .data = buf }; \
-	memcpy(buf, zone->name, sizeof(buf) - 1); \
-	buf[sizeof(buf) - 1] = event_id_to_key[event_id]
-
-// Value is a 64bit timer.
-#define VAL_INIT(buf, timer) { .len = sizeof(buf), .data = buf }; \
-	knot_wire_write_u64(buf, timer)
-
 /*! \brief Stores timers for persistent events. */
 static int store_timers(knot_txn_t *txn, zone_t *zone)
 {
-	for (size_t event = 0; event < ZONE_EVENT_COUNT; ++event) {
+	// Create key
+	knot_val_t key = { .len = knot_dname_size(zone->name), .data = zone->name };
+	
+	// Create value
+	uint8_t packed_timer[EVENT_KEY_PAIR_SIZE * PERSISTENT_EVENT_COUNT];
+	size_t offset = 0;
+	for (zone_event_type_t event = 0; event < ZONE_EVENT_COUNT; ++event) {
 		if (!event_persistent(event)) {
 			continue;
 		}
 
-		// Create key
-		uint8_t buf[knot_dname_size(zone->name) + 1];
-		knot_val_t key = KEY_INIT(zone, event, buf);
-
-		// Create value
-		uint8_t packed_timer[sizeof(int64_t)];
-		knot_val_t val = VAL_INIT(packed_timer,
-		                          (int64_t)zone_events_get_time(zone, event));
-
-		// Store
-		int ret = namedb_lmdb_api()->insert(txn, &key, &val, 0);
-		if (ret != KNOT_EOK) {
-			return ret;
-		}
-		
-
+		// Write event key and timer to buffer
+		packed_timer[offset] = event_id_to_key[event];
+		offset += 1;
+		knot_wire_write_u64(packed_timer + offset,
+		                    (int64_t)zone_events_get_time(zone, event));
+		offset += sizeof(uint64_t);
 	}
+	knot_val_t val = { .len = sizeof(packed_timer), .data = packed_timer };
 
-	return KNOT_EOK;
+	// Store
+	return namedb_lmdb_api()->insert(txn, &key, &val, 0);
 }
 
 /*! \brief Reads timers for persistent events. */
@@ -78,29 +87,31 @@ static int read_timers(knot_txn_t *txn, const zone_t *zone, time_t *timers)
 {
 	const struct namedb_api *db_api = namedb_lmdb_api();
 
-	for (size_t event = 0; event < ZONE_EVENT_COUNT; ++event) {
-		if (!event_persistent(event)) {
-			timers[event] = 0;
-			continue;
+	knot_val_t key = { .len = knot_dname_size(zone->name), .data = zone->name };
+	knot_val_t val;
+	int ret = db_api->find(txn, &key, &val, 0);
+	if (ret != KNOT_EOK) {
+		if (ret == KNOT_ENOENT) {
+			// New zone, no entry in db.
+			memset(timers, 0, ZONE_EVENT_COUNT * sizeof(time_t));
+			return KNOT_EOK;
 		}
+		return ret;
+	}
 
-		const size_t dsize = knot_dname_size(zone->name);
-		uint8_t buf[dsize + 1];
-		knot_val_t key = KEY_INIT(zone, event, buf);
+	// Set unknown/unset event timers to 0.
+	memset(timers, 0, ZONE_EVENT_COUNT * sizeof(time_t));
 
-		knot_val_t val;
-		int ret = db_api->find(txn, &key, &val, 0);
-		if (ret != KNOT_EOK) {
-			if (ret == KNOT_ENOENT) {
-				// New zone or new event type.
-				timers[event] = 0;
-				continue;
-			} else {
-				return ret;
-			}
+	const size_t stored_event_count = val.len / EVENT_KEY_PAIR_SIZE;
+	size_t offset = 0;
+	for (size_t i = 0; i < stored_event_count; ++i) {
+		const uint8_t db_key = ((uint8_t *)val.data)[offset];
+		offset += 1;
+		if (known_event_key(db_key)) {
+			const zone_event_type_t event = key_to_event_id[db_key];
+			timers[event] = (time_t)knot_wire_read_u64(val.data + offset);
 		}
-		
-		timers[event] = (time_t)knot_wire_read_u64(val.data);
+		offset += sizeof(uint64_t);
 	}
 
 	return KNOT_EOK;
@@ -196,8 +207,6 @@ int sweep_timer_db(knot_namedb_t *timer_db, knot_zonedb_t *zone_db)
 		return KNOT_ERROR;
 	}
 
-	const knot_dname_t *prev = NULL;
-	bool prev_removed = false;
 	while (it) {
 		knot_val_t key;
 		ret = db_api->iter_key(it, &key);
@@ -206,22 +215,11 @@ int sweep_timer_db(knot_namedb_t *timer_db, knot_zonedb_t *zone_db)
 			return ret;
 		}
 		const knot_dname_t *dbkey = (const knot_dname_t *)key.data;
-		if (prev && knot_dname_is_equal(prev, dbkey)) {
-			// Already checked this key.
-			if (prev_removed) {
-				// Remove from db.
-				db_api->del(&txn, &key);
-			}
-			it = db_api->iter_next(it);
-			continue;
-		}
-		prev_removed = !knot_zonedb_find(zone_db, dbkey);
-		if (prev_removed) {
+		if (!knot_zonedb_find(zone_db, dbkey)) {
 			// Delete obsolete timers
 			db_api->del(&txn, &key);
 		}
 
-		prev = dbkey;
 		it = db_api->iter_next(it);
 	}
 	db_api->iter_finish(it);
