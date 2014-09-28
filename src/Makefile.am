@@ -334,10 +334,12 @@ libknotd_la_SOURCES =				\
 libknot_la_LIBADD  = libknotcs.la zscanner/libzscanner.la
 libknotd_la_LIBADD = libknots.la libknotcs.la libknot.la
 libknotus_la_LIBADD = libknots.la libknotcs.la libknot.la
+libknotd_la_CPPFLAGS = $(AM_CPPFLAGS) $(lmdb_CFLAGS)
+libknotd_la_LDFLAGS = $(AM_LDFLAGS) $(lmdb_LIBS)
 libknotus_la_CPPFLAGS = $(AM_CPPFLAGS) $(libidn_CFLAGS)
 libknotus_la_LDFLAGS = $(AM_LDFLAGS) $(libidn_LIBS)
-libknotcs_la_CPPFLAGS = $(AM_CPPFLAGS) $(systemd_CFLAGS)
-libknotcs_la_LDFLAGS = $(AM_LDFLAGS) $(systemd_LIBS)
+libknotcs_la_CPPFLAGS = $(AM_CPPFLAGS) $(systemd_CFLAGS) $(lmdb_CFLAGS)
+libknotcs_la_LDFLAGS = $(AM_LDFLAGS) $(systemd_LIBS) $(lmdb_LIBS)
 
 # sbin programs
 knotd_LDADD = libknot.la libknotd.la $(systemd_LIBS) $(lmdb_LIBS)
