@@ -46,9 +46,14 @@ static char *str_key_rand(size_t len, mm_ctx_t *pool)
 #define ASORT_LT(x, y) (strcmp((x), (y)) < 0)
 #include "common-knot/array-sort.h"
 
-static int namedb_test_set(unsigned nkeys, char **keys, char *dbid,
-                           struct namedb_api *api, mm_ctx_t *pool)
+static void namedb_test_set(unsigned nkeys, char **keys, char *dbid,
+                            struct namedb_api *api, mm_ctx_t *pool)
 {
+	if (api == NULL) {
+		skip("API not compiled in");
+		return;
+	}
+
 	/* Create database */
 	knot_namedb_t *db = api->init(dbid, pool);
 	ok(db != NULL, "%s: create", api->name);
@@ -138,13 +143,11 @@ static int namedb_test_set(unsigned nkeys, char **keys, char *dbid,
 
 	api->txn_abort(&txn);
 	api->deinit(db);
-
-	return 0;
 }
 
 int main(int argc, char *argv[])
 {
-	plan(9 * 2);
+	plan_lazy();
 
 	mm_ctx_t pool;
 	mm_ctx_mempool(&pool, 4096);
