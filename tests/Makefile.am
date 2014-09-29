@@ -46,6 +46,7 @@ check_PROGRAMS = \
 	worker_queue			\
 	zone_events			\
 	zone_update			\
+	zone_timers			\
 	namedb
 
 check-compile-only: $(check_PROGRAMS)
