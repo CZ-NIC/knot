@@ -32,6 +32,7 @@
 #include "libknot/rrtype/soa.h"
 #include "libknot/dnssec/random.h"
 #include "libknot/packet/wire.h"
+#include "knot/zone/timers.h"
 #include "knot/dnssec/zone-sign.h"
 #include "knot/dnssec/zone-nsec.h"
 

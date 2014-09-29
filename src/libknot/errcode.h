@@ -55,6 +55,7 @@ enum knot_error {
 	KNOT_EISCONN = knot_errno_to_error(EISCONN),
 	KNOT_EADDRINUSE = knot_errno_to_error(EADDRINUSE),
 	KNOT_ENOENT = knot_errno_to_error(ENOENT),
+	KNOT_EEXIST = knot_errno_to_error(EEXIST),
 	KNOT_ERANGE = knot_errno_to_error(ERANGE),
 
 	/* General errors. */

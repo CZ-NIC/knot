@@ -112,6 +112,11 @@ libknotcs_la_SOURCES =				\
 	common/mem.h				\
 	common/mempool.c			\
 	common/mempool.h			\
+	common/namedb/namedb.h			\
+	common/namedb/namedb_lmdb.h		\
+	common/namedb/namedb_lmdb.c		\
+	common/namedb/namedb_trie.h		\
+	common/namedb/namedb_trie.c		\
 	common/log.c				\
 	common/log.h
 
@@ -306,6 +311,8 @@ libknotd_la_SOURCES =				\
 	knot/zone/node.h			\
 	knot/zone/semantic-check.c		\
 	knot/zone/semantic-check.h		\
+	knot/zone/timers.c			\
+	knot/zone/timers.h			\
 	knot/zone/zone-diff.c			\
 	knot/zone/zone-diff.h			\
 	knot/zone/zone-dump.c			\
@@ -326,17 +333,20 @@ libknotd_la_SOURCES =				\
 # libraries
 libknot_la_LIBADD  = libknotcs.la zscanner/libzscanner.la
 libknotd_la_LIBADD = libknots.la libknotcs.la libknot.la
+libknotus_la_LIBADD = libknots.la libknotcs.la libknot.la
+libknotd_la_CPPFLAGS = $(AM_CPPFLAGS) $(lmdb_CFLAGS)
+libknotd_la_LDFLAGS = $(AM_LDFLAGS) $(lmdb_LIBS)
 libknotus_la_CPPFLAGS = $(AM_CPPFLAGS) $(libidn_CFLAGS)
 libknotus_la_LDFLAGS = $(AM_LDFLAGS) $(libidn_LIBS)
-libknotcs_la_CPPFLAGS = $(AM_CPPFLAGS) $(systemd_CFLAGS)
-libknotcs_la_LDFLAGS = $(AM_LDFLAGS) $(systemd_LIBS)
+libknotcs_la_CPPFLAGS = $(AM_CPPFLAGS) $(systemd_CFLAGS) $(lmdb_CFLAGS)
+libknotcs_la_LDFLAGS = $(AM_LDFLAGS) $(systemd_LIBS) $(lmdb_LIBS)
 
 # sbin programs
-knotd_LDADD = libknot.la libknotd.la $(systemd_LIBS)
+knotd_LDADD = libknot.la libknotd.la $(systemd_LIBS) $(lmdb_LIBS)
 knotc_LDADD = libknot.la libknotd.la
 
 # bin programs
-BIN_LIBS = libknotus.la libknotcs.la libknots.la libknot.la
+BIN_LIBS = libknotus.la libknots.la
 kdig_LDADD       = $(BIN_LIBS) $(libidn_LIBS)
 khost_LDADD      = $(BIN_LIBS) $(libidn_LIBS)
 knsupdate_LDADD  = $(BIN_LIBS) zscanner/libzscanner.la
