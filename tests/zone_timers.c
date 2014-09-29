@@ -20,6 +20,7 @@
 
 #include "libknot/common.h"
 #include "common/namedb/namedb.h"
+#include "common/namedb/namedb_lmdb.h"
 #include "knot/zone/timers.h"
 #include "knot/zone/zone.h"
 #include "knot/zone/events/events.h"
@@ -32,6 +33,11 @@ static const size_t FLUSH_SLIP = SLIP + 2;
 int main(int argc, char *argv[])
 {
 	plan_lazy();
+
+	if (namedb_lmdb_api() == NULL) {
+		// LMDB API not compiled.
+		return EXIT_SUCCESS;
+	}
 
 	// Temporary DB identifier.
 	char dbid_buf[] = "/tmp/timerdb.XXXXXX";
