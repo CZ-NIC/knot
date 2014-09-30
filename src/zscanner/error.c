@@ -29,13 +29,15 @@ typedef struct {
 const err_table_t err_msgs[] = {
 	ERR_ITEM( ZS_OK, "ok" ),
 
+	ERR_ITEM( ZS_SYSTEM,
+	          "system error" ),
 	ERR_ITEM( ZS_FILE_OPEN,
 	          "file open error" ),
 	ERR_ITEM( ZS_FILE_PATH,
 	          "file path error" ),
 	ERR_ITEM( ZS_FILE_FSTAT,
 	          "fstat error" ),
-	ERR_ITEM( ZS_FILE_DIRECTORY,
+	ERR_ITEM( ZS_FILE_DIR,
 	          "not zone file but directory" ),
 	ERR_ITEM( ZS_FILE_MMAP,
 	          "file mmap error" ),

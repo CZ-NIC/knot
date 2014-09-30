@@ -43,8 +43,7 @@ enum knotc_flag_t {
 	F_NULL =         0 << 0,
 	F_FORCE =        1 << 0,
 	F_VERBOSE =      1 << 1,
-	F_INTERACTIVE =  1 << 2,
-	F_NOCONF =       1 << 3,
+	F_NOCONF =       1 << 2
 };
 
 /*! \brief Check if flag is present. */
@@ -80,9 +79,9 @@ static int cmd_signzone(int argc, char *argv[], unsigned flags);
 /*! \brief Table of remote commands. */
 knot_cmd_t knot_cmd_tbl[] = {
 	{&cmd_stop,       0, "stop",       "",       "\t\tStop server."},
-	{&cmd_reload,     0, "reload",     "",       "\tReload configuration and changed zones."},
+	{&cmd_reload,     0, "reload",     "<zone>", "\tReload configuration and changed zones."},
 	{&cmd_refresh,    0, "refresh",    "<zone>", "\tRefresh slave zone (all if not specified). Flag '-f' forces retransfer."},
-	{&cmd_flush,      0, "flush",      "",       "\t\tFlush journal and update zone files."},
+	{&cmd_flush,      0, "flush",      "<zone>", "\t\tFlush journal and update zone file (all if not specified)."},
 	{&cmd_status,     0, "status",     "",       "\tCheck if server is running."},
 	{&cmd_zonestatus, 0, "zonestatus", "",       "\tShow status of configured zones."},
 	{&cmd_checkconf,  1, "checkconf",  "",       "\tCheck current server configuration."},
@@ -105,7 +104,6 @@ void help(void)
 	       " -f, --force            \tForce operation - override some checks.\n"
 	       " -v, --verbose          \tVerbose mode - additional runtime information.\n"
 	       " -V, --version          \tPrint %s server version.\n"
-	       " -i, --interactive      \tInteractive mode (do not daemonize).\n"
 	       " -h, --help             \tPrint help and usage.\n",
 	       RUN_DIR "/knot.sock", PACKAGE_NAME);
 	printf("\nActions:\n");
@@ -191,7 +189,7 @@ static int cmd_remote(const char *cmd, uint16_t rrt, int argc, char *argv[])
 	/* Make query. */
 	knot_pkt_t *pkt = remote_query(cmd, r->key);
 	if (!pkt) {
-		log_warning("could not prepare query for '%s'", cmd);
+		log_warning("failed to prepare query for '%s'", cmd);
 		return 1;
 	}
 
@@ -201,7 +199,7 @@ static int cmd_remote(const char *cmd, uint16_t rrt, int argc, char *argv[])
 		knot_rrset_t rr;
 		int res = remote_build_rr(&rr, "data.", rrt);
 		if (res != KNOT_EOK) {
-			log_error("couldn't create the query");
+			log_error("failed to create the query");
 			knot_pkt_free(&pkt);
 			return 1;
 		}
@@ -218,7 +216,7 @@ static int cmd_remote(const char *cmd, uint16_t rrt, int argc, char *argv[])
 		}
 		res = knot_pkt_put(pkt, 0, &rr, KNOT_PF_FREE);
 		if (res != KNOT_EOK) {
-			log_error("couldn't create the query");
+			log_error("failed to create the query");
 			knot_rrset_clear(&rr, NULL);
 			knot_pkt_free(&pkt);
 			return 1;
@@ -228,7 +226,7 @@ static int cmd_remote(const char *cmd, uint16_t rrt, int argc, char *argv[])
 	if (r->key) {
 		int res = remote_query_sign(pkt->wire, &pkt->size, pkt->max_size, r->key);
 		if (res != KNOT_EOK) {
-			log_error("couldn't sign the packet");
+			log_error("failed to sign the packet");
 			knot_pkt_free(&pkt);
 			return 1;
 		}
@@ -242,7 +240,7 @@ static int cmd_remote(const char *cmd, uint16_t rrt, int argc, char *argv[])
 
 	int s = net_connected_socket(SOCK_STREAM, &r->addr, &r->via, 0);
 	if (s < 0) {
-		log_error("couldn't connect to remote host '%s'", addr_str);
+		log_error("failed to connect to remote host '%s'", addr_str);
 		knot_pkt_free(&pkt);
 		return 1;
 	}
@@ -250,7 +248,7 @@ static int cmd_remote(const char *cmd, uint16_t rrt, int argc, char *argv[])
 	/* Wait for availability. */
 	struct pollfd pfd = { s, POLLOUT, 0 };
 	if (poll(&pfd, 1, conf()->max_conn_reply) != 1) {
-		log_error("couldn't connect to remote host '%s'", addr_str);
+		log_error("failed to connect to remote host '%s'", addr_str);
 		close(s);
 		knot_pkt_free(&pkt);
 		return 1;
@@ -262,7 +260,7 @@ static int cmd_remote(const char *cmd, uint16_t rrt, int argc, char *argv[])
 
 	/* Evaluate and wait for reply. */
 	if (ret <= 0) {
-		log_error("couldn't connect to remote host '%s'", addr_str);
+		log_error("failed to connect to remote host '%s'", addr_str);
 		close(s);
 		return 1;
 	}
@@ -273,8 +271,8 @@ static int cmd_remote(const char *cmd, uint16_t rrt, int argc, char *argv[])
 		ret = cmd_remote_reply(s);
 		if (ret != KNOT_EOK) {
 			if (ret != KNOT_ECONN) {
-				log_warning("remote command reply: %s",
-				            knot_strerror(ret));
+				log_notice("remote command reply: %s",
+				           knot_strerror(ret));
 				rc = 1;
 			}
 			break;
@@ -371,7 +369,7 @@ static int tsig_parse_file(knot_tsig_key_t *k, const char *f)
 {
 	FILE* fp = fopen(f, "r");
 	if (!fp) {
-		log_error("couldn't open key-file '%s'", f);
+		log_error("failed to open key-file '%s'", f);
 		return KNOT_EINVAL;
 	}
 
@@ -432,7 +430,6 @@ int main(int argc, char **argv)
 		{"force", no_argument, 0, 'f'},
 		{"config", required_argument, 0, 'c'},
 		{"verbose", no_argument, 0, 'v'},
-		{"interactive", no_argument, 0, 'i'},
 		{"version", no_argument, 0, 'V'},
 		{"help", no_argument, 0, 'h'},
 		{"server", required_argument, 0, 's' },
@@ -442,7 +439,7 @@ int main(int argc, char **argv)
 		{0, 0, 0, 0}
 	};
 
-	while ((c = getopt_long(argc, argv, "s:p:y:k:fc:viVh", opts, &li)) != -1) {
+	while ((c = getopt_long(argc, argv, "s:p:y:k:fc:vVh", opts, &li)) != -1) {
 		switch (c) {
 		case 's':
 			r_addr = optarg;
@@ -453,14 +450,14 @@ int main(int argc, char **argv)
 		case 'y':
 			if (tsig_parse_str(&r_key, optarg) != KNOT_EOK) {
 				rc = 1;
-				log_error("couldn't parse TSIG key '%s'", optarg);
+				log_error("failed to parse TSIG key '%s'", optarg);
 				goto exit;
 			}
 			break;
 		case 'k':
 			if (tsig_parse_file(&r_key, optarg) != KNOT_EOK) {
 				rc = 1;
-				log_error("couldn't parse TSIG key file '%s'", optarg);
+				log_error("failed to parse TSIG key file '%s'", optarg);
 				goto exit;
 			}
 			break;
@@ -469,9 +466,6 @@ int main(int argc, char **argv)
 			break;
 		case 'v':
 			flags |= F_VERBOSE;
-			break;
-		case 'i':
-			flags |= F_INTERACTIVE;
 			break;
 		case 'c':
 			config_fn = optarg;
@@ -523,7 +517,7 @@ int main(int argc, char **argv)
 
 	/* Check if config file is required. */
 	if (has_flag(flags, F_NOCONF) && cmd->need_conf) {
-		log_error("couldn't find a config file, refusing to continue");
+		log_error("failed to find a config file, refusing to continue");
 		rc = 1;
 		goto exit;
 	}
@@ -654,7 +648,7 @@ static int cmd_checkconf(int argc, char *argv[], unsigned flags)
 	UNUSED(argv);
 	UNUSED(flags);
 
-	log_info("OK, configuration is valid");
+	log_info("configuration is valid");
 
 	return 0;
 }
@@ -662,7 +656,7 @@ static int cmd_checkconf(int argc, char *argv[], unsigned flags)
 static bool fetch_zone(int argc, char *argv[], conf_zone_t *zone)
 {
 	/* Convert zone name to dname */
-	knot_dname_t *zone_name = knot_dname_from_str(zone->name);
+	knot_dname_t *zone_name = knot_dname_from_str_alloc(zone->name);
 	if (zone_name == NULL) {
 		return false;
 	}
@@ -673,7 +667,7 @@ static bool fetch_zone(int argc, char *argv[], conf_zone_t *zone)
 	int i = 0;
 	while (!found && i < argc) {
 		/* Convert the argument to dname */
-		knot_dname_t *arg_name = knot_dname_from_str(argv[i]);
+		knot_dname_t *arg_name = knot_dname_from_str_alloc(argv[i]);
 
 		if (arg_name != NULL) {
 			(void)knot_dname_to_lower(arg_name);
@@ -719,7 +713,7 @@ static int cmd_checkzone(int argc, char *argv[], unsigned flags)
 			continue;
 		}
 
-		log_zone_str_info(zone->name, "zone is OK");
+		log_zone_str_info(zone->name, "zone is valid");
 		zone_contents_deep_free(&loaded_zone);
 	}
 	hattrie_iter_free(z_iter);
@@ -774,7 +768,7 @@ static int cmd_memstats(int argc, char *argv[], unsigned flags)
 		                                     process_error,
 		                                     &est);
 		if (zs == NULL) {
-			log_zone_str_error(zone->name, "could not load zone");
+			log_zone_str_error(zone->name, "failed to load zone");
 			hattrie_free(est.node_table);
 			continue;
 		}

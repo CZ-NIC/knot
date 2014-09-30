@@ -29,6 +29,7 @@
 #include "libknot/packet/wire.h"
 #include "libknot/rrtype/tsig.h"
 #include "libknot/tsig-op.h"
+#include "libknot/packet/rrset-wire.h"
 
 const int KNOT_TSIG_MAX_DIGEST_SIZE = 64;    // size of HMAC-SHA512 digest
 const uint16_t KNOT_TSIG_FUDGE_DEFAULT = 300;  // default Fudge value
@@ -66,7 +67,7 @@ static int knot_tsig_check_key(const knot_rrset_t *tsig_rr,
 		return KNOT_EMALF;
 	}
 
-	char *name = knot_dname_to_str(tsig_name);
+	char *name = knot_dname_to_str_alloc(tsig_name);
 	if (!name) {
 		return KNOT_EMALF;
 	}
@@ -466,7 +467,7 @@ int knot_tsig_sign(uint8_t *msg, size_t *msg_len,
 	                                     digest_tmp, &digest_tmp_len,
 					     tmp_tsig, key);
 	if (ret != KNOT_EOK) {
-		dbg_tsig("TSIG: could not create wire or sign wire: %s\n",
+		dbg_tsig("TSIG: failed to create wire or sign wire: %s\n",
 		         knot_strerror(ret));
 		knot_rrset_free(&tmp_tsig, NULL);
 		return ret;

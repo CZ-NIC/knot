@@ -88,7 +88,7 @@ static int zone_sign(zone_contents_t *zone, const conf_zone_t *zone_config,
 	result = knot_zone_create_nsec_chain(zone, out_ch,
 	                                     &zone_keys, &policy);
 	if (result != KNOT_EOK) {
-		log_zone_error(zone_name, "DNSSEC, could not create NSEC(3) chain (%s)",
+		log_zone_error(zone_name, "DNSSEC, failed to create NSEC(3) chain (%s)",
 		               knot_strerror(result));
 		free_zone_keys(&zone_keys);
 		return result;
@@ -100,7 +100,7 @@ static int zone_sign(zone_contents_t *zone, const conf_zone_t *zone_config,
 	result = knot_zone_sign(zone, &zone_keys, &policy, out_ch,
 	                        refresh_at);
 	if (result != KNOT_EOK) {
-		log_zone_error(zone_name, "DNSSEC, zone sign failed (%s)",
+		log_zone_error(zone_name, "DNSSEC, failed to sign the zone (%s)",
 		               knot_strerror(result));
 		free_zone_keys(&zone_keys);
 		return result;
@@ -124,7 +124,7 @@ static int zone_sign(zone_contents_t *zone, const conf_zone_t *zone_config,
 	result = knot_zone_sign_update_soa(&soa, &rrsigs, &zone_keys, &policy,
 	                                   new_serial, out_ch);
 	if (result != KNOT_EOK) {
-		log_zone_error(zone_name, "DNSSEC, not signing, cannot update "
+		log_zone_error(zone_name, "DNSSEC, not signing, failed to update "
 		               "SOA record (%s)", knot_strerror(result));
 		free_zone_keys(&zone_keys);
 		return result;

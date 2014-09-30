@@ -29,6 +29,7 @@
 #include <stdio.h>			// size_t
 
 #define KNOT_MAX_RDATA_BLOCKS	8
+#define KNOT_MAX_RDATA_DNAMES	2	// update this when defining new RR types
 
 /*!
  * \brief Resource record class codes.
@@ -45,7 +46,9 @@ enum knot_rr_class {
 /*!
  * \brief Resource record type constants.
  *
+ * References:
  * http://www.iana.org/assignments/dns-parameters/dns-parameters.xml
+ * RFC 3597#4
  *
  * METATYPE: Contains DNS data that can't be in a zone file.
  * QTYPE: Specifies DNS query type; can't be in a zone file.
@@ -114,11 +117,12 @@ enum knot_rr_type {
 /*!
  * \brief Some (OBSOLETE) resource record type constants.
  *
+ * References:
  * http://www.iana.org/assignments/dns-parameters/dns-parameters.xml
+ * RFC 3597#4
  *
  * \note These records can contain compressed domain name in rdata so
- *       it is important to know the position of it during transfers.
- *       See RFC 3597#4.
+ *       it is important to know the position of them during transfers.
  */
 enum knot_obsolete_rr_type {
 	KNOT_RRTYPE_MD         =   3,
@@ -134,16 +138,18 @@ enum knot_obsolete_rr_type {
  * \brief Constants characterising the wire format of RDATA items.
  */
 enum knot_rdata_wireformat {
-	/*!< Possibly compressed dname. */
-	KNOT_RDATA_WF_COMPRESSED_DNAME   = -10,
-	/*!< Uncompressed dname. */
-	KNOT_RDATA_WF_UNCOMPRESSED_DNAME,
+	/*!< Dname must not be compressed. */
+	KNOT_RDATA_WF_FIXED_DNAME          = -10,
+	/*!< Dname can be both compressed and decompressed. */
+	KNOT_RDATA_WF_COMPRESSIBLE_DNAME,
+	/*!< Dname can be decompressed. */
+	KNOT_RDATA_WF_DECOMPRESSIBLE_DNAME,
 	/*!< Initial part of NAPTR record before dname. */
 	KNOT_RDATA_WF_NAPTR_HEADER,
 	/*!< Final part of a record. */
 	KNOT_RDATA_WF_REMAINDER,
 	/*!< The last descriptor in array. */
-	KNOT_RDATA_WF_END                =   0
+	KNOT_RDATA_WF_END                  =   0
 };
 
 /*!
@@ -235,16 +241,6 @@ int knot_rrclass_from_string(const char *name, uint16_t *num);
  * \retval 0 if NO.
  */
 int knot_descriptor_item_is_dname(const int item);
-
-/*!
- * \brief Checks if given item is compressible dname.
- *
- * \param item Item value.
- *
- * \retval > 0 if YES.
- * \retval 0 if NO.
- */
-int knot_descriptor_item_is_compr_dname(const int item);
 
 /*!
  * \brief Checks if given item has fixed size.

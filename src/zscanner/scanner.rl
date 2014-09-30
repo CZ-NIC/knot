@@ -277,6 +277,13 @@ int zs_scanner_parse_file(zs_scanner_t *s,
 		return -1;
 	}
 
+	// Getting OS page size.
+	page_size = sysconf(_SC_PAGESIZE);
+	if (page_size <= 0) {
+		ERR(ZS_SYSTEM);
+		return -1;
+	}
+
 	// Copying file name.
 	s->file.name = strdup(file_name);
 
@@ -301,9 +308,6 @@ int zs_scanner_parse_file(zs_scanner_t *s,
 		return -1;
 	}
 
-	// Getting OS page size.
-	page_size = sysconf(_SC_PAGESIZE);
-
 	// Getting file information.
 	if (fstat(s->file.descriptor, &file_stat) == -1) {
 		ERR(ZS_FILE_FSTAT);
@@ -314,7 +318,7 @@ int zs_scanner_parse_file(zs_scanner_t *s,
 
 	// Check for directory.
 	if (S_ISDIR(file_stat.st_mode)) {
-		ERR(ZS_FILE_DIRECTORY);
+		ERR(ZS_FILE_DIR);
 		close(s->file.descriptor);
 		free(s->file.name);
 		return -1;

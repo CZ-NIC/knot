@@ -114,7 +114,7 @@ int main(int argc, char *argv[])
 
 	// Test 21: Load key dname
 	const char *sample_str = "key0.example.net";
-	knot_dname_t *sample = knot_dname_from_str(sample_str);
+	knot_dname_t *sample = knot_dname_from_str_alloc(sample_str);
 	if (list_size(&conf->keys) > 0) {
 		knot_tsig_key_t *k = &((conf_key_t *)HEAD(conf->keys))->k;
 		ok(knot_dname_cmp(sample, k->name) == 0,

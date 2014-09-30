@@ -25,7 +25,7 @@
 
 int main(int argc, char *argv[])
 {
-	plan(108);
+	plan(107);
 
 	const    rdata_descriptor_t *descr;
 	char     name[BUF_LEN];
@@ -60,7 +60,7 @@ int main(int argc, char *argv[])
 	// 3. CNAME
 	descr = knot_get_rdata_descriptor(5);
 	ok(strcmp(descr->type_name, "CNAME") == 0, "get CNAME descriptor name");
-	ok(descr->block_types[0] == KNOT_RDATA_WF_COMPRESSED_DNAME,
+	ok(descr->block_types[0] == KNOT_RDATA_WF_COMPRESSIBLE_DNAME,
 	   "get CNAME descriptor 1. item type");
 	ok(descr->block_types[1] == KNOT_RDATA_WF_END,
 	   "get CNAME descriptor 2. item type");
@@ -228,7 +228,7 @@ int main(int argc, char *argv[])
 	// 31. MD
 	descr = knot_get_obsolete_rdata_descriptor(3);
 	ok(strcmp(descr->type_name, "MD") == 0, "get MD descriptor name");
-	ok(descr->block_types[0] == KNOT_RDATA_WF_COMPRESSED_DNAME,
+	ok(descr->block_types[0] == KNOT_RDATA_WF_DECOMPRESSIBLE_DNAME,
 	   "get A descriptor 1. item type");
 	ok(descr->block_types[1] == KNOT_RDATA_WF_END,
 	   "get A descriptor 2. item type");
@@ -236,7 +236,7 @@ int main(int argc, char *argv[])
 	// 32. NXT
 	descr = knot_get_obsolete_rdata_descriptor(30);
 	ok(strcmp(descr->type_name, "NXT") == 0, "get NXT descriptor name");
-	ok(descr->block_types[0] == KNOT_RDATA_WF_COMPRESSED_DNAME,
+	ok(descr->block_types[0] == KNOT_RDATA_WF_DECOMPRESSIBLE_DNAME,
 	   "get CNAME descriptor 1. item type");
 	ok(descr->block_types[1] == KNOT_RDATA_WF_REMAINDER,
 	   "get CNAME descriptor 2. item type");
@@ -262,16 +262,12 @@ int main(int argc, char *argv[])
 	// descriptor_item_is_dname
 	ok(knot_descriptor_item_is_dname(KNOT_RDATA_WF_END) == 0,
 	   "descriptor is not dname");
-	ok(knot_descriptor_item_is_dname(KNOT_RDATA_WF_COMPRESSED_DNAME) != 0,
-	   "descriptor is compressed dname");
-	ok(knot_descriptor_item_is_dname(KNOT_RDATA_WF_UNCOMPRESSED_DNAME) != 0,
-	   "descriptor is uncompressed dname");
-
-	// descriptor_item_is_compr_dname
-	ok(knot_descriptor_item_is_compr_dname(KNOT_RDATA_WF_END) == 0,
-	   "descriptor is not compressed dname");
-	ok(knot_descriptor_item_is_compr_dname(KNOT_RDATA_WF_COMPRESSED_DNAME) != 0,
-	   "descriptor is compressed dname");
+	ok(knot_descriptor_item_is_dname(KNOT_RDATA_WF_FIXED_DNAME) != 0,
+	   "descriptor is fixed dname");
+	ok(knot_descriptor_item_is_dname(KNOT_RDATA_WF_COMPRESSIBLE_DNAME) != 0,
+	   "descriptor is compressible dname");
+	ok(knot_descriptor_item_is_dname(KNOT_RDATA_WF_DECOMPRESSIBLE_DNAME) != 0,
+	   "descriptor is decompressible dname");
 
 	// descriptor_item_is_fixed
 	ok(knot_descriptor_item_is_fixed(0) == 0,

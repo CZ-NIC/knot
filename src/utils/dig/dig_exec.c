@@ -315,7 +315,7 @@ static knot_pkt_t* create_query_packet(const query_t *query)
 	}
 
 	// Create QNAME from string.
-	knot_dname_t *qname = knot_dname_from_str(query->owner);
+	knot_dname_t *qname = knot_dname_from_str_alloc(query->owner);
 	if (qname == NULL) {
 		knot_pkt_free(&packet);
 		return NULL;
@@ -337,7 +337,6 @@ static knot_pkt_t* create_query_packet(const query_t *query)
 	if (query->type_num == KNOT_RRTYPE_IXFR) {
 		// SOA rdata in wireformat.
 		uint8_t wire[22] = { 0x0 };
-		size_t  pos = 0;
 
 		// Create rrset with SOA record.
 		knot_rrset_t *soa = knot_rrset_new(qname,
@@ -351,10 +350,8 @@ static knot_pkt_t* create_query_packet(const query_t *query)
 		}
 
 		// Fill in blank SOA rdata to rrset.
-		ret = knot_rrset_rdata_from_wire_one(soa, wire, &pos,
-		                                     sizeof(wire),
-		                                     0, sizeof(wire),
-		                                     &packet->mm);
+		ret = knot_rrset_add_rdata(soa, wire, sizeof(wire), 0,
+		                           &packet->mm);
 		if (ret != KNOT_EOK) {
 			knot_rrset_free(&soa, &packet->mm);
 			knot_pkt_free(&packet);

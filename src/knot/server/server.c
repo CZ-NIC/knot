@@ -443,7 +443,7 @@ int server_reload(server_t *server, const char *cf)
 			  conf()->filename);
 		break;
 	default:
-		log_error("configuration reload failed");
+		log_error("failed to reload the configuration");
 		break;
 	}
 
@@ -518,7 +518,7 @@ static int reconfigure_rate_limits(const struct conf_t *conf, server_t *server)
 	if (!server->rrl && conf->rrl > 0) {
 		server->rrl = rrl_create(conf->rrl_size);
 		if (!server->rrl) {
-			log_error("couldn't initialize rate limiting table");
+			log_error("failed to initialize rate limiting table");
 		} else {
 			rrl_setlocks(server->rrl, RRL_LOCK_GRANULARITY);
 		}
@@ -530,7 +530,7 @@ static int reconfigure_rate_limits(const struct conf_t *conf, server_t *server)
 			if (conf->rrl < 1) {
 				log_info("rate limiting, disabled");
 			} else {
-				log_info("rate limiting, enabled %u responses/second",
+				log_info("rate limiting, enabled with %u responses/second",
 					 conf->rrl);
 			}
 			rrl_setrate(server->rrl, conf->rrl);
@@ -580,12 +580,13 @@ int server_update_zones(const struct conf_t *conf, void *data)
 {
 	server_t *server = (server_t *)data;
 
-	/* Prevent new events on zones waiting to be replaced. */
+	/* Prevent emitting of new zone events. */
 	if (server->zone_db) {
 		knot_zonedb_foreach(server->zone_db, zone_events_freeze);
 	}
 
-	/* Finish operations already in the queue. */
+	/* Suspend workers, clear wating events, finish running events. */
+	worker_pool_suspend(server->workers);
 	worker_pool_clear(server->workers);
 	worker_pool_wait(server->workers);
 
@@ -595,7 +596,8 @@ int server_update_zones(const struct conf_t *conf, void *data)
 	/* Trim extra heap. */
 	mem_trim();
 
-	/* Plan events on new zones. */
+	/* Resume workers and allow events on new zones. */
+	worker_pool_resume(server->workers);
 	if (server->zone_db) {
 		knot_zonedb_foreach(server->zone_db, zone_events_start);
 	}

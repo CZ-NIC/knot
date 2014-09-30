@@ -43,8 +43,6 @@ static void discard_zone(zone_t *zone)
 	if (zone->zonefile_mtime == 0) {
 		zone_flush_journal(zone);
 	}
-	/* Wait for current operations. */
-	synchronize_rcu();
 	zone_free(&zone);
 }
 

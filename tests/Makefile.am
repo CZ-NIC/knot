@@ -33,6 +33,7 @@ check_PROGRAMS = \
 	rdata				\
 	rdataset			\
 	rrset				\
+	rrset_wire			\
 	node				\
 	edns				\
 	pkt				\

@@ -107,7 +107,7 @@ static void setup_capabilities(void)
 
 		/* Apply. */
 		if (capng_apply(CAPNG_SELECT_BOTH) < 0) {
-			log_error("couldn't set process capabilities (%s)",
+			log_error("failed to set process capabilities (%s)",
 			          strerror(errno));
 		}
 	} else {
@@ -259,7 +259,7 @@ int main(int argc, char **argv)
 	int res = conf_open(config_fn);
 	conf_t *config = conf();
 	if (res != KNOT_EOK) {
-		log_fatal("couldn't load configuration file '%s' (%s)",
+		log_fatal("failed to load configuration file '%s' (%s)",
 		          config_fn, knot_strerror(res));
 		return EXIT_FAILURE;
 	}
@@ -273,7 +273,7 @@ int main(int argc, char **argv)
 	server_t server;
 	res = server_init(&server, conf_bg_threads(config));
 	if (res != KNOT_EOK) {
-		log_fatal("could not initialize server (%s)", knot_strerror(res));
+		log_fatal("failed to initialize server (%s)", knot_strerror(res));
 		conf_free(conf());
 		log_close();
 		return EXIT_FAILURE;
@@ -310,7 +310,7 @@ int main(int argc, char **argv)
 
 		log_info("PID stored in '%s'", pidfile);
 		if (chdir(daemon_root) != 0) {
-			log_warning("can't change working directory to %s",
+			log_warning("failed to change working directory to %s",
 			            daemon_root);
 		} else {
 			log_info("changed directory to %s", daemon_root);
@@ -353,7 +353,7 @@ int main(int argc, char **argv)
 	if (daemonize) {
 		log_info("server started as a daemon, PID %ld", pid);
 	} else {
-		log_info("server started in foreground, PID %ld", pid);
+		log_info("server started in the foreground, PID %ld", pid);
 		init_signal_started();
 	}
 

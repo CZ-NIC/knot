@@ -393,7 +393,7 @@ int params_parse_tsig(const char *value, knot_key_params_t *key_params)
 
 	/* Invalidate previous key. */
 	if (key_params->name) {
-		ERR("Key specified multiple times.\n");
+		ERR("key specified multiple times.\n");
 		return KNOT_EINVAL;
 	}
 
@@ -434,7 +434,7 @@ int params_parse_tsig(const char *value, knot_key_params_t *key_params)
 	}
 
 	/* Set key name and secret. */
-	key_params->name = knot_dname_from_str(k);
+	key_params->name = knot_dname_from_str_alloc(k);
 	knot_dname_to_lower(key_params->name);
 	dnssec_binary_t secret64 = { .size = strlen(s), .data = (uint8_t *) s };
 	int r = dnssec_binary_from_base64(&secret64, &key_params->secret);

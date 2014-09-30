@@ -33,7 +33,7 @@
 #include "knot/conf/conf.h"
 #include "knot/server/journal.h"
 #include "knot/updates/acl.h"
-#include "knot/zone/events.h"
+#include "knot/zone/events/events.h"
 #include "knot/zone/contents.h"
 #include "libknot/dname.h"
 
@@ -58,7 +58,7 @@ typedef struct zone_t
 	zone_flag_t flags;
 
 	/*! \brief DDNS queue and lock. */
-	pthread_spinlock_t ddns_lock;
+	pthread_mutex_t ddns_lock;
 	size_t ddns_queue_size;
 	list_t ddns_queue;
 
@@ -115,8 +115,8 @@ int zone_flush_journal(zone_t *zone);
 /*! \brief Enqueue UPDATE request for processing. */
 int zone_update_enqueue(zone_t *zone, knot_pkt_t *pkt, struct process_query_param *param);
 
-/*! \brief Dequeue UPDATE request. */
-void zone_update_dequeue(zone_t *zone, list_t *updates, size_t *update_count);
+/*! \brief Dequeue UPDATE request. Returns number of queued updates. */
+size_t zone_update_dequeue(zone_t *zone, list_t *updates);
 
 /*! \brief Returns true if final SOA in transfer has newer serial than zone */
 bool zone_transfer_needed(const zone_t *zone, const knot_pkt_t *pkt);

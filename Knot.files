@@ -175,14 +175,14 @@ src/knot/updates/changesets.c
 src/knot/updates/changesets.h
 src/knot/updates/ddns.c
 src/knot/updates/ddns.h
+src/knot/updates/zone-update.c
+src/knot/updates/zone-update.h
 src/knot/worker/pool.c
 src/knot/worker/pool.h
 src/knot/worker/queue.c
 src/knot/worker/queue.h
 src/knot/zone/contents.c
 src/knot/zone/contents.h
-src/knot/zone/events.c
-src/knot/zone/events.h
 src/knot/zone/node.c
 src/knot/zone/node.h
 src/knot/zone/semantic-check.c
@@ -203,6 +203,12 @@ src/knot/zone/zonedb.c
 src/knot/zone/zonedb.h
 src/knot/zone/zonefile.c
 src/knot/zone/zonefile.h
+src/knot/zone/events/events.c
+src/knot/zone/events/events.h
+src/knot/zone/events/handlers.h
+src/knot/zone/events/handlers.c
+src/knot/zone/events/replan.c
+src/knot/zone/events/replan.h
 src/libknot/binary.c
 src/libknot/binary.h
 src/libknot/common.h
@@ -227,6 +233,8 @@ src/libknot/packet/compr.c
 src/libknot/packet/compr.h
 src/libknot/packet/pkt.c
 src/libknot/packet/pkt.h
+src/libknot/packet/rrset-wire.c
+src/libknot/packet/rrset-wire.h
 src/libknot/packet/wire.h
 src/libknot/processing/process.c
 src/libknot/processing/process.h
@@ -322,6 +330,7 @@ tests/rdataset.c
 tests/requestor.c
 tests/rrl.c
 tests/rrset.c
+tests/rrset_wire.c
 tests/sample_conf.h
 tests/server.c
 tests/slab.c
@@ -329,8 +338,6 @@ tests/wire.c
 tests/worker_pool.c
 tests/worker_queue.c
 tests/zone_events.c
+tests/zone_update.c
 tests/zonedb.c
 tests/ztree.c
-src/knot/updates/zone-update.c
-src/knot/updates/zone-update.h
-tests/zone-update.c

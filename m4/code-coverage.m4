@@ -31,7 +31,7 @@ AC_DEFUN([AX_CODE_COVERAGE], [
 		AC_CHECK_PROG([LCOV], [lcov], [lcov])
 		AC_CHECK_PROG([GENHTML], [genhtml], [genhtml])		
 
-		lcov_version_list="1.6 1.7 1.8 1.9 1.10"
+		lcov_version_list="1.6 1.7 1.8 1.9 1.10 1.11"
 
 		AS_IF([test "$LCOV"], [
 			AC_CACHE_CHECK([for lcov version], ac_cv_lvoc_version, [

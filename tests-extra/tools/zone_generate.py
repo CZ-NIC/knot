@@ -139,10 +139,10 @@ def rnd_dname(enable_sub = 1):
 def rnd_dnl(enable_sub = 1):
     dn = rnd_dname(enable_sub)
     fqdn = g_fqdn(dn)
-    while fqdn.lower() in (name.lower() for name in CNAME_EXIST):
+    while fqdn.lower() in CNAME_EXIST:
         dn = rnd_dname(enable_sub)
         fqdn = g_fqdn(dn)
-    NAME_EXIST.add(fqdn)
+    NAME_EXIST.add(fqdn.lower())
     return dn
 
 def rnd_dnr():
@@ -217,7 +217,7 @@ def g_a(rt):
         # Append some valid names
         for i in range(1, rnd(2,5)):
             A_NAMES.append(g_fqdn(rnd_str() + '.' + dn))
-        NAME_EXIST.add(g_fqdn(dn))
+        NAME_EXIST.add(g_fqdn(dn).lower())
         dn = '*.%s' % dn
     else:
         A_NAMES.append(dn)
@@ -230,7 +230,7 @@ def g_aaaa(rt):
         # Append some valid names
         for i in range(1, rnd(2,5)):
             AAAA_NAMES.append(g_fqdn(rnd_str() + '.' + dn))
-        NAME_EXIST.add(g_fqdn(dn))
+        NAME_EXIST.add(g_fqdn(dn).lower())
         dn = '*.%s' % dn
     else:
         AAAA_NAMES.append(dn)
@@ -245,14 +245,14 @@ def g_dname(rt):
     # Ensure unique owners for CNAME/DNAME
     dn = rnd_dname()
     fqdn = g_fqdn(dn)
-    while (fqdn.lower() in (name.lower() for name in CNAME_EXIST)) or \
-          (fqdn in NAME_EXIST):
+    while (fqdn.lower() in CNAME_EXIST) or \
+          (fqdn.lower() in NAME_EXIST):
         dn = rnd_dname()
         fqdn = g_fqdn(dn)
-    CNAME_EXIST.add(fqdn)
+    CNAME_EXIST.add(fqdn.lower())
     # Value (domain-name)
     rd = rnd_dnr()
-    CNAME_EXIST.add(g_fqdn(rd))
+    CNAME_EXIST.add(g_fqdn(rd).lower())
     return '%s %s %s' % (dn, g_rtype(rt), rd)
 
 def g_mx(rt):
@@ -326,7 +326,7 @@ def g_ipseckey(rt):
     # precedence gw-type algorithm gw pubkey
     # TODO: Doesn't make much sense in non-reverse zones
     dn = rnd_ip4()
-    NAME_EXIST.add(dn)
+    NAME_EXIST.add(dn.lower())
     prec = rnd(1,20)
     gwtype = 3 #rnd(1, 3) # TODO: fix, 1,2 needs valid IPs as dnames in zone
     algo = rnd(1, 2)

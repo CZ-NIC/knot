@@ -31,6 +31,7 @@
 #include "libknot/packet/wire.h"
 #include "libknot/rrset.h"
 #include "libknot/rrtype/rrsig.h"
+#include "libknot/packet/rrset-wire.h"
 
 #define RRSIG_RDATA_SIGNER_OFFSET 18
 
@@ -124,15 +125,31 @@ static int sign_ctx_add_self(dnssec_sign_ctx_t *ctx, const uint8_t *rdata)
 	assert(ctx);
 	assert(rdata);
 
-	const uint8_t *signer = rdata + RRSIG_RDATA_SIGNER_OFFSET;
+	int result;
+
+	// static header
 
 	dnssec_binary_t header = { 0 };
-	header.data = (uint8_t *)rdata;
-	header.size = RRSIG_RDATA_SIGNER_OFFSET + knot_dname_size(signer);
+	header.const_data = rdata;
+	header.size = RRSIG_RDATA_SIGNER_OFFSET;
 
-	int result = dnssec_sign_add(ctx, &header);
+	result = dnssec_sign_add(ctx, &header);
+	if (result != DNSSEC_EOK) {
+		// todo: error mapping from libdnssec to Knot
+		return KNOT_DNSSEC_ESIGN;
+	}
 
-	return (result == DNSSEC_EOK ? KNOT_EOK : KNOT_DNSSEC_ESIGN);
+	// signer name
+
+	const uint8_t *rdata_signer = rdata + RRSIG_RDATA_SIGNER_OFFSET;
+	dnssec_binary_t signer = { 0 };
+	signer.data = knot_dname_copy(rdata_signer, NULL);
+	signer.size = knot_dname_size(signer.data);
+
+	result = dnssec_sign_add(ctx, &signer);
+	free(signer.data);
+
+	return result;
 }
 
 /*!
@@ -269,7 +286,7 @@ int knot_sign_rrset(knot_rrset_t *rrsigs, const knot_rrset_t *covered,
 {
 	if (knot_rrset_empty(covered) || !key || !sign_ctx || !policy ||
 	    rrsigs->type != KNOT_RRTYPE_RRSIG ||
-	    (knot_dname_cmp(rrsigs->owner, covered->owner) != 0)
+	    !knot_dname_is_equal(rrsigs->owner, covered->owner)
 	) {
 		return KNOT_EINVAL;
 	}

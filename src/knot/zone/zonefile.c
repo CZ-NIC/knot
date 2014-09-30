@@ -63,7 +63,7 @@ static bool handle_err(zcreator_t *zc, const zone_node_t *node,
                        const knot_rrset_t *rr, int ret, bool master)
 {
 	const knot_dname_t *zname = zc->z->apex->owner;
-	char *rrname = rr ? knot_dname_to_str(rr->owner) : NULL;
+	char *rrname = rr ? knot_dname_to_str_alloc(rr->owner) : NULL;
 	if (ret == KNOT_EOUTOFZONE) {
 		WARNING(zname, "ignoring out-of-zone data, owner '%s'",
 		        rrname ? rrname : "unknown");
@@ -164,9 +164,9 @@ static void scanner_process(zs_scanner_t *scanner)
 	knot_rrset_init(&rr, owner, scanner->r_type, scanner->r_class);
 	int ret = add_rdata_to_rr(&rr, scanner);
 	if (ret != KNOT_EOK) {
-		char *rr_name = knot_dname_to_str(rr.owner);
+		char *rr_name = knot_dname_to_str_alloc(rr.owner);
 		const knot_dname_t *zname = zc->z->apex->owner;
-		ERROR(zname, "cannot add RDATA, file '%s', line %"PRIu64", owner '%s'",
+		ERROR(zname, "failed to add RDATA, file '%s', line %"PRIu64", owner '%s'",
 		      scanner->file.name, scanner->line_counter, rr_name);
 		free(rr_name);
 		knot_dname_free(&owner, NULL);
@@ -184,7 +184,7 @@ static zone_contents_t *create_zone_from_name(const char *origin)
 	if (origin == NULL) {
 		return NULL;
 	}
-	knot_dname_t *owner = knot_dname_from_str(origin);
+	knot_dname_t *owner = knot_dname_from_str_alloc(origin);
 	if (owner == NULL) {
 		return NULL;
 	}
@@ -252,19 +252,19 @@ zone_contents_t *zonefile_load(zloader_t *loader)
 	assert(zc);
 	int ret = zs_scanner_parse_file(loader->scanner, loader->source);
 	if (ret != 0 && loader->scanner->error_counter == 0) {
-		ERROR(zname, "could not load zone, file '%s' (%s)",
+		ERROR(zname, "failed to load zone, file '%s' (%s)",
 		      loader->source, zs_strerror(loader->scanner->error_code));
 		goto fail;
 	}
 
 	if (zc->ret != KNOT_EOK) {
-		ERROR(zname, "could not load zone, file '%s' (%s)",
+		ERROR(zname, "failed to load zone, file '%s' (%s)",
 		      loader->source, knot_strerror(zc->ret));
 		goto fail;
 	}
 
 	if (loader->scanner->error_counter > 0) {
-		ERROR(zname, "could not load zone, file '%s', %"PRIu64"errors",
+		ERROR(zname, "failed to load zone, file '%s', %"PRIu64" errors",
 		      loader->source, loader->scanner->error_counter);
 		goto fail;
 	}

@@ -79,8 +79,8 @@ Sets \fIname\fR as a default class for all updates. If not used, the default
 class is \fIIN\fR.
 .TP
 .BI ttl \ value
-Sets \fIvalue\fR as a default TTL (time to live) in seconds. If not used, the
-default value is \fI0\fR.
+Sets \fIvalue\fR as a default TTL (in seconds). If not used, the default
+value is \fI0\fR.
 .TP
 .BI key \ name \ \fIkey\fR
 Specifies TSIG key to authenticate the request. This command has the same
@@ -132,9 +132,6 @@ Zone name/server guessing, if the zone name/server is not specified.
 Empty line doesn't send an update.
 .TP
 Bind-like key format (\fBddns\-confgen\fR output) is not supported.
-.TP
-Command \fBadd\fR doesn't require \fIttl\fR item to be set. In such case,
-the default ttl value is used.
 .SH EXAMPLES
 .B Example 1. Add two records to the zone example.com.:
 .TP 0

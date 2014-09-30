@@ -660,7 +660,8 @@ class Server(object):
         if random:
             self.zones[zone.name].zfile.update_rnd()
         else:
-            self.zones[zone.name].zfile.upd_file(version=version)
+            self.zones[zone.name].zfile.upd_file(storage=self.data_dir,
+                                                 version=version)
 
     def add_query_module(self, zone, module, param):
         # Convert one item list to single object.
@@ -979,7 +980,7 @@ class Knot(Server):
 
         s.begin("log")
         s.begin("stdout")
-        s.item("any", "info")
+        s.item("any", "debug")
         s.end()
         s.begin("stderr")
         s.end()

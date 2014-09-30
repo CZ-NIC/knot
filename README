@@ -20,9 +20,9 @@ Installation
 ============
 
 Knot DNS may already be included in your operating system distribution and
-therefore can be installed from packages (Linux) or ports (BSD). This is
-always preferred unless you want to test the latest features, contribute to
-Knot development, or you just know what you are doing.
+therefore can be installed from packages (Linux), ports (BSD) or via
+Homebrew (Mac). This is always preferred unless you want to test the latest
+features, contribute to Knot development, or you just know what you are doing.
 
 Following sections describe how to build Knot DNS from the source code.
 
@@ -56,18 +56,6 @@ $ yum install libtool autoconf flex bison openssl-devel userspace-rcu-devel
 
 Install optional packages:
 ($ yum install libcap-ng-devel)
-
-OS X
-----
-Not all prerequisites are preinstalled for OS X.
-- liburcu must be compiled from sources
-  - liburcu requires gcc-4.6 from MacPorts, as it depends on __thread keyword
-  $ CC=gcc-mp-4.6 ARCH=x86_64 ./configure
-  $ make && sudo make install
-- liburcu >= 0.7.0 works with supplied compiler, however ARCH must still be set
-  - alternative is to set it with configure parameter --target
-
-Compiling Knot DNS with gcc-mp-4.6 is recommended, but not necessary.
 
 2) Install Knot DNS
 
@@ -115,7 +103,7 @@ $ mv example.com.zone /var/lib/knot/
 Alternatively, your distribution should have an init script available, if you've
 installed Knot using a binary package.
 
-Start Knot in foreground to see if it runs:
+Start Knot in the foreground to see if it runs:
 $ knotd -c myserver.conf
 
 For more information, refer to the user manual or:

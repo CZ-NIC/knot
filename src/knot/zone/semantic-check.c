@@ -85,7 +85,7 @@ static char *error_messages[(-ZC_ERR_UNKNOWN) + 1] = {
 	[-ZC_ERR_NSEC3_UNSECURED_DELEGATION] =
 	"NSEC3, zone contains unsecured delegation",
 	[-ZC_ERR_NSEC3_NOT_FOUND] =
-	"NSEC3, could not find previous NSEC3 record in the zone",
+	"NSEC3, failed to find previous NSEC3 record in the zone",
 	[-ZC_ERR_NSEC3_UNSECURED_DELEGATION_OPT] =
 	"NSEC3, unsecured delegation is not part of the opt-out span",
 	[-ZC_ERR_NSEC3_RDATA_TTL] =
@@ -169,7 +169,7 @@ static void log_error_from_node(err_handler_t *handler,
 	const knot_dname_t *zone_name = zone->apex->owner;
 
 	if (error > (int)ZC_ERR_GLUE_RECORD) {
-		log_zone_warning(zone_name, "sematic check, unknown error");
+		log_zone_warning(zone_name, "semantic check, unknown error");
 		return;
 	}
 
@@ -181,7 +181,7 @@ static void log_error_from_node(err_handler_t *handler,
 
 	handler->error_count++;
 
-	char *name = knot_dname_to_str(node->owner);
+	char *name = knot_dname_to_str_alloc(node->owner);
 	const char *errmsg = error_messages[-error];
 
 	log_zone_warning(zone_name, "semantic check, node '%s' (%s%s%s)",
@@ -345,16 +345,18 @@ static int check_rrsig_rdata(err_handler_t *handler,
 	}
 
 	/* signer's name is same as in the zone apex */
-	const knot_dname_t *signer_name =
-		knot_rrsig_signer_name(rrsig, rr_pos);
+	knot_dname_t *signer = knot_dname_copy(knot_rrsig_signer_name(rrsig, rr_pos), NULL);
+	knot_dname_to_lower(signer);
 
 	/* dnskey is in the apex node */
 	if (!knot_rrset_empty(dnskey_rrset) &&
-	    !knot_dname_is_equal(signer_name, dnskey_rrset->owner)) {
+	    !knot_dname_is_equal(signer, dnskey_rrset->owner)) {
 		err_handler_handle_error(handler, zone, node,
 		                         ZC_ERR_RRSIG_RDATA_DNSKEY_OWNER,
 		                         info_str);
 	}
+
+	knot_dname_free(&signer, NULL);
 
 	/* Compare algorithm, key tag and signer's name with DNSKEY rrset
 	 * one of the records has to match. Signer name has been checked
@@ -467,7 +469,7 @@ static int check_rrsig_in_rrset(err_handler_t *handler,
 		int ret = check_rrsig_rdata(handler, zone, node, &rrsigs, i,
 		                            rrset, dnskey_rrset);
 		if (ret != KNOT_EOK) {
-			dbg_semcheck("could not check RRSIG properly (%s)",
+			dbg_semcheck("failed to check RRSIG properly (%s)",
 			             knot_strerror(ret));
 			break;
 		}
@@ -1077,8 +1079,8 @@ void log_cyclic_errors_in_zone(err_handler_t *handler,
 		                                                    next_dname_size,
 		                                                    apex->owner);
 		if (next_dname == NULL) {
-			log_zone_warning(zone->apex->owner, "sematic check, "
-			                 "could not create new dname");
+			log_zone_warning(zone->apex->owner, "semantic check, "
+			                 "failed to create new dname");
 			return;
 		}
 

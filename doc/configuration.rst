@@ -36,8 +36,8 @@ Now let's go step by step through this minimal configuration file:
 
 * The ``interfaces`` statement defines interfaces where Knot
   DNS will listen for incoming connections. We have defined two
-  interfaces: one IPv4 called ``my_interface`` explicitly listening
-  on port 53 and second IPv6 called ``second_int`` also listening on
+  interfaces: one IPv4 called ``all_ipv4`` explicitly listening
+  on port 53 and second IPv6 called ``all_ipv6`` also listening on
   port 53, which is the default port for the DNS. See :ref:`interfaces`.
 * The ``log`` statement defines the log facilities for Knot DNS.
   In this example we told Knot DNS to send its log messages with the severity
@@ -78,6 +78,12 @@ AXFR::
                             # to master
       }
     }
+
+Note that the ``xfr-in`` option accepts a list of multiple remotes.
+The first remote in the list is used as a primary master, and the rest is used
+for failover should the connection with the primary master fail.
+The list is rotated in this case, and a new primary is elected.
+The preference list is reset on the configuration reload.
 
 You can also use TSIG for access control. For this, you need to configure a TSIG key
 and assign it to a remote.  Supported algorithms for TSIG key are:
@@ -219,11 +225,14 @@ default.  You can enable it with the :ref:`rate-limit` option in the
 :ref:`system` section.  Setting to a value greater than ``0`` means
 that every flow is allowed N responses per second, (i.e. ``rate-limit
 50;`` means ``50`` responses per second).  It is also possible to
-configure SLIP interval, which causes every Nth blocked response to be
-slipped as a truncated response. Not that some error responses cannot
-be truncated and are slipped as-is.  For more information, refer to
-:ref:`rate-limit-slip`.  It is advisable to not set slip interval to a
-value larger than 1.
+configure SLIP interval, which causes every Nth ``blocked`` response to be
+slipped as a truncated response. Note that some error responses cannot
+be truncated.  For more information, refer to the :ref:`rate-limit-slip`.
+It is advisable to not set slip interval to a value larger than 2,
+as too large slip value means more denial of service for legitimate
+requestors, and introduces excessive timeouts during resolution.
+On the other hand, slipping truncated answer gives the legitimate
+requestors a chance to reconnect over TCP.
 
 Example configuration::
 
@@ -360,13 +369,17 @@ or a UNIX socket prefixed with *unix:*.
 For example::
 
     zones {
-        query_module "/tmp/capture.tap";
+        query_module {
+            dnstap "/tmp/capture.tap";
+        }
     }
 
 You can also log to a UNIX socket with the prefix::
 
     zones {
-        query_module "unix:/tmp/capture.tap";
+        query_module {
+            dnstap "unix:/tmp/capture.tap";
+        }
     }
 
 .. _dnstap: http://dnstap.info/

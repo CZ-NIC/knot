@@ -50,7 +50,7 @@ int main(int argc, char *argv[])
 {
 	plan(23);
 	
-	knot_dname_t *dummy_owner = knot_dname_from_str("test.");
+	knot_dname_t *dummy_owner = knot_dname_from_str_alloc("test.");
 	// Test new
 	zone_node_t *node = node_new(dummy_owner, NULL);
 	ok(node != NULL, "Node: new");

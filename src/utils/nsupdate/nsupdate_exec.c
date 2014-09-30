@@ -145,7 +145,7 @@ enum {
 
 static bool dname_isvalid(const char *lp)
 {
-	knot_dname_t *dn = knot_dname_from_str(lp);
+	knot_dname_t *dn = knot_dname_from_str_alloc(lp);
 	if (dn == NULL) {
 		return false;
 	}
@@ -187,7 +187,7 @@ static int parse_partial_rr(zs_scanner_t *s, const char *lp, unsigned flags)
 		fqdn = false;
 	}
 
-	knot_dname_t *owner = knot_dname_from_str(owner_str);
+	knot_dname_t *owner = knot_dname_from_str_alloc(owner_str);
 	free(owner_str);
 	if (owner == NULL) {
 		return KNOT_EPARSEFAIL;
@@ -342,12 +342,8 @@ static int rr_list_append(zs_scanner_t *s, list_t *target_list, mm_ctx_t *mm)
 	}
 
 	/* Create RDATA. */
-	size_t pos = 0;
-	int ret = knot_rrset_rdata_from_wire_one(rr, s->r_data, &pos,
-	                                         s->r_data_length,
-	                                         s->r_ttl,
-	                                         s->r_data_length,
-	                                         NULL);
+	int ret = knot_rrset_add_rdata(rr, s->r_data, s->r_data_length,
+	                               s->r_ttl, NULL);
 	if (ret != KNOT_EOK) {
 		DBG("%s: failed to set rrset from wire - %s\n",
 		    __func__, knot_strerror(ret));
@@ -392,7 +388,7 @@ static int build_query(nsupdate_params_t *params)
 	/* Write question. */
 	knot_wire_set_id(query->wire, dnssec_random_uint16_t());
 	knot_wire_set_opcode(query->wire, KNOT_OPCODE_UPDATE);
-	knot_dname_t *qname = knot_dname_from_str(params->zone);
+	knot_dname_t *qname = knot_dname_from_str_alloc(params->zone);
 	int ret = knot_pkt_put_question(query, qname, params->class_num,
 	                                params->type_num);
 	knot_dname_free(&qname, NULL);
@@ -532,7 +528,7 @@ int nsupdate_exec(nsupdate_params_t *params)
 		}
 		FILE *fp = fopen(filename, "r");
 		if (!fp) {
-			ERR("could not open '%s': %s\n",
+			ERR("failed to open '%s': %s\n",
 			    filename, strerror(errno));
 			return KNOT_ERROR;
 		}

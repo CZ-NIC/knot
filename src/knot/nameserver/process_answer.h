@@ -59,6 +59,7 @@ struct answer_data {
 	knot_sign_context_t sign;            /*!< Signing context. */
 
 	/* Everything below should be kept on reset. */
+	int response_type; /*!< Type of incoming response. */
 	struct process_answer_param *param; /*!< Module parameters. */
 	mm_ctx_t *mm;                      /*!< Memory context. */
 };
