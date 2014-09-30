@@ -73,8 +73,8 @@ int knot_dname_wire_check(const uint8_t *name, const uint8_t *endp,
 				is_compressed = true;
 			}
 		} else {
-			/* Check label length (maximum 63 bytes allowed). */
-			if (*name > 63)
+			/* Check label length. */
+			if (*name > KNOT_DNAME_MAXLABELLEN)
 				return KNOT_EMALF;
 			/* Check if there's enough space. */
 			int lblen = *name + 1;
@@ -211,17 +211,24 @@ int knot_dname_unpack(uint8_t* dst, const knot_dname_t *src,
 
 /*----------------------------------------------------------------------------*/
 
-char *knot_dname_to_str(const knot_dname_t *name)
+char *knot_dname_to_str(char *dst, const knot_dname_t *name, size_t maxlen)
 {
-	if (name == NULL)
+	if (name == NULL) {
 		return NULL;
+	}
 
-	/*! \todo Supply packet. */
-	/*! \todo Write to static buffer? */
-	// Allocate space for dname string + 1 char termination.
 	int dname_size = knot_dname_size(name);
-	size_t alloc_size = dname_size + 1;
-	char *res = malloc(alloc_size);
+	if (dname_size <= 0) {
+		return NULL;
+	}
+
+	/* Check the size for len(dname) + 1 char termination. */
+	size_t alloc_size = (dst == NULL) ? dname_size + 1 : maxlen;
+	if (alloc_size < dname_size + 1) {
+		return NULL;
+	}
+
+	char *res = (dst == NULL) ? malloc(alloc_size) : dst;
 	if (res == NULL) {
 		return NULL;
 	}
@@ -232,11 +239,11 @@ char *knot_dname_to_str(const knot_dname_t *name)
 	for (uint i = 0; i < dname_size; i++) {
 		uint8_t c = name[i];
 
-		// Read next label size.
+		/* Read next label size. */
 		if (label_len == 0) {
 			label_len = c;
 
-			// Write label separation.
+			/* Write label separation. */
 			if (str_len > 0 || dname_size == 1) {
 				res[str_len++] = '.';
 			}
@@ -253,33 +260,47 @@ char *knot_dname_to_str(const knot_dname_t *name)
 			 * encoded in \ddd notation.
 			 */
 
-			// Increase output size for \x format.
-			alloc_size += 1;
-			char *extended = realloc(res, alloc_size);
-			if (extended == NULL) {
-				free(res);
-				return NULL;
+			if (dst != NULL) {
+				if (maxlen <= str_len + 2) {
+					return NULL;
+				}
+			} else {
+				/* Extend output buffer for \x format. */
+				alloc_size += 1;
+				char *extended = realloc(res, alloc_size);
+				if (extended == NULL) {
+					free(res);
+					return NULL;
+				}
+				res = extended;
 			}
-			res = extended;
 
-			// Write encoded character.
+			/* Write encoded character. */
 			res[str_len++] = '\\';
 			res[str_len++] = c;
 		} else {
-			// Increase output size for \DDD format.
-			alloc_size += 3;
-			char *extended = realloc(res, alloc_size);
-			if (extended == NULL) {
-				free(res);
-				return NULL;
+			if (dst != NULL) {
+				if (maxlen <= str_len + 4) {
+					return NULL;
+				}
+			} else {
+				/* Extend output buffer for \DDD format. */
+				alloc_size += 3;
+				char *extended = realloc(res, alloc_size);
+				if (extended == NULL) {
+					free(res);
+					return NULL;
+				}
+				res = extended;
 			}
-			res = extended;
 
-			// Write encoded character.
+			/* Write encoded character. */
 			int ret = snprintf(res + str_len, alloc_size - str_len,
 			                   "\\%03u", c);
 			if (ret <= 0 || ret >= alloc_size - str_len) {
-				free(res);
+				if (dst == NULL) {
+					free(res);
+				}
 				return NULL;
 			}
 
@@ -289,7 +310,7 @@ char *knot_dname_to_str(const knot_dname_t *name)
 		label_len--;
 	}
 
-	// String_termination.
+	/* String_termination. */
 	res[str_len] = 0;
 
 	return res;
@@ -297,60 +318,143 @@ char *knot_dname_to_str(const knot_dname_t *name)
 
 /*----------------------------------------------------------------------------*/
 
-knot_dname_t *knot_dname_from_str(const char *name)
+knot_dname_t *knot_dname_from_str(uint8_t *dst, const char *name, size_t maxlen)
 {
 	if (name == NULL) {
 		return NULL;
 	}
 
-	unsigned len = strlen(name);
-	if (len > KNOT_DNAME_MAXLEN) {
+	size_t name_len = strlen(name);
+	if (name_len == 0) {
 		return NULL;
 	}
 
-	/* Estimate wire size for special cases. */
-	unsigned wire_size = len + 1;
-	if (name[0] == '.' && len == 1) {
-		wire_size = 1; /* Root label. */
-		len = 0;      /* Do not parse input. */
-	} else if (name[len - 1] != '.') {
-		++wire_size; /* No FQDN, reserve last root label. */
-	}
-
-	/* Create wire. */
-	uint8_t *wire = malloc(wire_size * sizeof(uint8_t));
-	if (wire == NULL)
-		return NULL;
-	*wire = '\0';
-
-	/* Parse labels. */
-	const uint8_t *ch = (const uint8_t *)name;
-	const uint8_t *np = ch + len;
-	uint8_t *label = wire;
-	uint8_t *w = wire + 1; /* Reserve 1 for label len */
-	while (ch != np) {
-		if (*ch == '.') {
-			/* Zero-length label inside a dname - invalid. */
-			if (*label == 0) {
-				free(wire);
+	/* Wire size estimation. */
+	size_t alloc_size = maxlen;
+	if (dst == NULL) {
+		/* Check for the root label. */
+		if (name[0] == '.') {
+			/* Just the root dname can begin with a dot. */
+			if (name_len > 1) {
 				return NULL;
 			}
-			label = w;
-			*label = '\0';
+			name_len = 0; /* Skip the following parsing. */
+			alloc_size = 1;
+		} else if (name[name_len - 1] != '.') { /* Check for non-FQDN. */
+			alloc_size = 1 + name_len + 1;
 		} else {
-			*w = *ch;
-			*label += 1;
+			alloc_size = 1 + name_len ; /* + 1 ~ first label length. */
 		}
-		++w;
-		++ch;
+	}
+
+	/* The minimal (root) dname takes 1 byte. */
+	if (alloc_size == 0) {
+		return NULL;
+	}
+
+	/* Check the maximal wire size. */
+	if (alloc_size > KNOT_DNAME_MAXLEN) {
+		alloc_size = KNOT_DNAME_MAXLEN;
+	}
+
+	/* Prepare output buffer. */
+	uint8_t *wire = (dst == NULL) ? malloc(alloc_size) : dst;
+	if (wire == NULL) {
+		return NULL;
+	}
+
+	uint8_t *label = wire;
+	uint8_t *wire_pos = wire + 1;
+	uint8_t *wire_end = wire + alloc_size;
+
+	/* Initialize the first label (root label). */
+	*label = 0;
+
+	const uint8_t *ch = (const uint8_t *)name;
+	const uint8_t *end = ch + name_len;
+
+	while (ch < end) {
+		/* Check the output buffer for enough space. */
+		if (wire_pos >= wire_end) {
+			goto dname_from_str_failed;
+		}
+
+		switch (*ch) {
+		case '.':
+			/* Check for invalid zero-length label. */
+			if (*label == 0 && name_len > 1) {
+				goto dname_from_str_failed;
+			}
+			label = wire_pos++;
+			*label = 0;
+			break;
+		case '\\':
+			ch++;
+
+			/* At least one more character is required OR
+			 * check for maximal label length.
+			 */
+			if (ch == end || ++(*label) > KNOT_DNAME_MAXLABELLEN) {
+				goto dname_from_str_failed;
+			}
+
+			/* Check for \DDD notation. */
+			if (isdigit(*ch) != 0) {
+				/* Check for next two digits. */
+				if (ch + 2 >= end ||
+				    isdigit(*(ch + 1)) == 0 ||
+				    isdigit(*(ch + 2)) == 0) {
+					goto dname_from_str_failed;
+				}
+
+				uint32_t num = (*(ch + 0) - '0') * 100 +
+				               (*(ch + 1) - '0') * 10 +
+				               (*(ch + 2) - '0') * 1;
+				if (num > UINT8_MAX) {
+					goto dname_from_str_failed;
+				}
+				*(wire_pos++) = num;
+				ch +=2;
+			} else {
+				*(wire_pos++) = *ch;
+			}
+			break;
+		default:
+			/* Check for maximal label length. */
+			if (++(*label) > KNOT_DNAME_MAXLABELLEN) {
+				goto dname_from_str_failed;
+			}
+			*(wire_pos++) = *ch;
+		}
+		ch++;
 	}
 
 	/* Check for non-FQDN name. */
 	if (*label > 0) {
-		*w = '\0';
+		if (wire_pos >= wire_end) {
+			goto dname_from_str_failed;
+		}
+		*(wire_pos++) = 0;
+	}
+
+	/* Reduce output buffer if the size is overestimated. */
+	if (wire_pos < wire_end && dst == NULL) {
+		uint8_t *reduced = realloc(wire, wire_pos - wire);
+		if (reduced == NULL) {
+			goto dname_from_str_failed;
+		}
+		wire = reduced;
 	}
 
 	return wire;
+
+dname_from_str_failed:
+
+	if (dst == NULL) {
+		free(wire);
+	}
+
+	return NULL;
 }
 
 /*----------------------------------------------------------------------------*/

@@ -39,7 +39,7 @@ int main(int argc, char *argv[])
 	plan(19);
 
 	// Test new
-	knot_dname_t *dummy_owner = knot_dname_from_str("test.");
+	knot_dname_t *dummy_owner = knot_dname_from_str_alloc("test.");
 	assert(dummy_owner);
 
 	knot_rrset_t *rrset = knot_rrset_new(dummy_owner, KNOT_RRTYPE_TXT,
@@ -52,7 +52,7 @@ int main(int argc, char *argv[])
 
 	// Test init
 	knot_dname_free(&dummy_owner, NULL);
-	dummy_owner = knot_dname_from_str("test2.");
+	dummy_owner = knot_dname_from_str_alloc("test2.");
 	assert(dummy_owner);
 
 	knot_dname_free(&rrset->owner, NULL);

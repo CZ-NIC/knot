@@ -14,26 +14,20 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <assert.h>
-#include <time.h>
-
-#include "common-knot/evsched.h"
+#include "libknot/rrtype/soa.h"
+#include "libknot/dnssec/random.h"
 #include "common-knot/trim.h"
-#include "common/mem.h"
 #include "common/mempool.h"
-#include "knot/server/server.h"
 #include "knot/server/udp-handler.h"
 #include "knot/server/tcp-handler.h"
 #include "knot/updates/changesets.h"
 #include "knot/dnssec/zone-events.h"
-#include "knot/worker/pool.h"
-#include "knot/zone/events.h"
-#include "knot/zone/zone.h"
+#include "knot/zone/timers.h"
 #include "knot/zone/zone-load.h"
 #include "knot/zone/zonefile.h"
+#include "knot/zone/events/events.h"
+#include "knot/zone/events/handlers.h"
 #include "knot/updates/apply.h"
-#include "libknot/rrtype/soa.h"
-#include "libknot/dnssec/random.h"
 #include "knot/nameserver/internet.h"
 #include "knot/nameserver/update.h"
 #include "knot/nameserver/notify.h"
@@ -41,25 +35,8 @@
 #include "knot/nameserver/tsig_ctx.h"
 #include "knot/nameserver/process_answer.h"
 
-/* ------------------------- internal timers -------------------------------- */
-
-#define ZONE_EVENT_IMMEDIATE 1 /* Fast-track to worker queue. */
-
-/* ------------------------- bootstrap timer logic -------------------------- */
-
 #define BOOTSTRAP_RETRY (30) /*!< Interval between AXFR bootstrap retries. */
 #define BOOTSTRAP_MAXTIME (24*60*60) /*!< Maximum AXFR retry cap of 24 hours. */
-
-/*! \brief Progressive bootstrap retry timer. */
-static uint32_t bootstrap_next(uint32_t timer)
-{
-	timer *= 2;
-	timer += knot_random_uint32_t() % BOOTSTRAP_RETRY;
-	if (timer > BOOTSTRAP_MAXTIME) {
-		timer = BOOTSTRAP_MAXTIME;
-	}
-	return timer;
-}
 
 /* ------------------------- zone query requesting -------------------------- */
 
@@ -229,9 +206,7 @@ static uint32_t soa_graceful_expire(const knot_rdataset_t *soa)
 	return knot_soa_expire(soa) + 2 * conf()->max_conn_idle;
 }
 
-typedef int (*zone_event_cb)(zone_t *zone);
-
-static int event_reload(zone_t *zone)
+int event_reload(zone_t *zone)
 {
 	assert(zone);
 
@@ -300,14 +275,17 @@ static int event_reload(zone_t *zone)
 	uint32_t current_serial = zone_contents_serial(zone->contents);
 	log_zone_info(zone->name, "loaded, serial %u -> %u",
 	              old_serial, current_serial);
-	return KNOT_EOK;
+
+	return write_zone_timers(conf()->timers_db, zone);
 
 fail:
 	zone_contents_deep_free(&contents);
 	return result;
 }
 
-static int event_refresh(zone_t *zone)
+/* -- zone events implementation API ---------------------------------------- */
+
+int event_refresh(zone_t *zone)
 {
 	assert(zone);
 
@@ -343,10 +321,10 @@ static int event_refresh(zone_t *zone)
 		zone_events_cancel(zone, ZONE_EVENT_EXPIRE);
 	}
 
-	return KNOT_EOK;
+	return write_zone_timers(conf()->timers_db, zone);
 }
 
-static int event_xfer(zone_t *zone)
+int event_xfer(zone_t *zone)
 {
 	assert(zone);
 
@@ -391,7 +369,7 @@ static int event_xfer(zone_t *zone)
 	return KNOT_EOK;
 }
 
-static int event_update(zone_t *zone)
+int event_update(zone_t *zone)
 {
 	assert(zone);
 
@@ -416,7 +394,7 @@ static int event_update(zone_t *zone)
 	return KNOT_EOK;
 }
 
-static int event_expire(zone_t *zone)
+int event_expire(zone_t *zone)
 {
 	assert(zone);
 
@@ -436,7 +414,7 @@ static int event_expire(zone_t *zone)
 	return KNOT_EOK;
 }
 
-static int event_flush(zone_t *zone)
+int event_flush(zone_t *zone)
 {
 	assert(zone);
 
@@ -454,7 +432,7 @@ static int event_flush(zone_t *zone)
 	return zone_flush_journal(zone);
 }
 
-static int event_notify(zone_t *zone)
+int event_notify(zone_t *zone)
 {
 	assert(zone);
 
@@ -482,7 +460,7 @@ static int event_notify(zone_t *zone)
 	return KNOT_EOK;
 }
 
-static int event_dnssec(zone_t *zone)
+int event_dnssec(zone_t *zone)
 {
 	assert(zone);
 
@@ -553,497 +531,14 @@ done:
 
 #undef ZONE_QUERY_LOG
 
-/* -- Zone event replanning functions --------------------------------------- */
-
-/*!< \brief Replans event for new zone according to old zone. */
-static void replan_event(zone_t *zone, const zone_t *old_zone, zone_event_type_t e)
+/*! \brief Progressive bootstrap retry timer. */
+uint32_t bootstrap_next(uint32_t timer)
 {
-	const time_t event_time = zone_events_get_time(old_zone, e);
-	if (event_time > ZONE_EVENT_NOW) {
-		zone_events_schedule_at(zone, e, event_time);
+	timer *= 2;
+	timer += knot_random_uint32_t() % BOOTSTRAP_RETRY;
+	if (timer > BOOTSTRAP_MAXTIME) {
+		timer = BOOTSTRAP_MAXTIME;
 	}
+	return timer;
 }
 
-/*!< \brief Replans events that are dependent on the SOA record. */
-static void replan_soa_events(zone_t *zone, const zone_t *old_zone)
-{
-	if (!zone_master(zone)) {
-		// Events only valid for slaves.
-		return;
-	}
-
-	if (zone_master(old_zone)) {
-		// Replan SOA events.
-		replan_event(zone, old_zone, ZONE_EVENT_REFRESH);
-		replan_event(zone, old_zone, ZONE_EVENT_EXPIRE);
-	} else {
-		// Plan SOA events anew.
-		if (!zone_contents_is_empty(zone->contents)) {
-			const knot_rdataset_t *soa = node_rdataset(zone->contents->apex,
-			                                           KNOT_RRTYPE_SOA);
-			assert(soa);
-			zone_events_schedule(zone, ZONE_EVENT_REFRESH, knot_soa_refresh(soa));
-		}
-	}
-}
-
-/*!< \brief Replans transfer event. */
-static void replan_xfer(zone_t *zone, const zone_t *old_zone)
-{
-	if (!zone_master(zone)) {
-		// Only valid for slaves.
-		return;
-	}
-
-	if (zone_master(old_zone)) {
-		// Replan the transfer from old zone.
-		replan_event(zone, old_zone, ZONE_EVENT_XFER);
-	} else if (zone_contents_is_empty(zone->contents)) {
-		// Plan transfer anew.
-		zone->bootstrap_retry = bootstrap_next(zone->bootstrap_retry);
-		zone_events_schedule(zone, ZONE_EVENT_XFER, zone->bootstrap_retry);
-	}
-}
-
-/*!< \brief Replans flush event. */
-static void replan_flush(zone_t *zone, const zone_t *old_zone)
-{
-	if (zone->conf->dbsync_timeout <= 0) {
-		// Immediate sync scheduled after events.
-		return;
-	}
-
-	const time_t flush_time = zone_events_get_time(old_zone, ZONE_EVENT_FLUSH);
-	if (flush_time <= ZONE_EVENT_NOW) {
-		// Not scheduled previously.
-		zone_events_schedule(zone, ZONE_EVENT_FLUSH, zone->conf->dbsync_timeout);
-		return;
-	}
-
-	// Pick time to schedule: either reuse or schedule sooner than old event.
-	const time_t schedule_at = MIN(time(NULL) + zone->conf->dbsync_timeout, flush_time);
-	zone_events_schedule_at(zone, ZONE_EVENT_FLUSH, schedule_at);
-}
-
-/*!< \brief Creates new DDNS q in the new zone - q contains references from the old zone. */
-static void duplicate_ddns_q(zone_t *zone, zone_t *old_zone)
-{
-	struct request_data *d, *nxt;
-	WALK_LIST_DELSAFE(d, nxt, old_zone->ddns_queue) {
-		add_tail(&zone->ddns_queue, (node_t *)d);
-	}
-	zone->ddns_queue_size = old_zone->ddns_queue_size;
-
-	// Reset the list, new zone will free the data.
-	init_list(&old_zone->ddns_queue);
-}
-
-/*!< Replans DDNS event. */
-static void replan_update(zone_t *zone, zone_t *old_zone)
-{
-	pthread_mutex_lock(&old_zone->ddns_lock);
-
-	const bool have_updates = old_zone->ddns_queue_size > 0;
-	if (have_updates) {
-		duplicate_ddns_q(zone, (zone_t *)old_zone);
-	}
-	
-	pthread_mutex_unlock(&old_zone->ddns_lock);
-	
-	if (have_updates) {
-		zone_events_schedule(zone, ZONE_EVENT_UPDATE, ZONE_EVENT_NOW);
-	}
-}
-
-/*!< Replans DNSSEC event. Not whole resign needed, \todo #247 */
-static void replan_dnssec(zone_t *zone)
-{
-	if (zone->conf->dnssec_enable) {
-		/* Keys could have changed, force resign. */
-		zone_events_schedule(zone, ZONE_EVENT_DNSSEC, ZONE_EVENT_NOW);
-	}
-}
-
-/* -- internal API --------------------------------------------------------- */
-
-static bool valid_event(zone_event_type_t type)
-{
-	return (type > ZONE_EVENT_INVALID && type < ZONE_EVENT_COUNT);
-}
-
-/*! \brief Return remaining time to planned event (seconds). */
-static time_t time_until(time_t planned)
-{
-	time_t now = time(NULL);
-	return now < planned ? (planned - now) : 0;
-}
-
-/*!
- * \brief Find next scheduled zone event.
- *
- * \param events  Zone events.
- *
- * \return Zone event type, or ZONE_EVENT_INVALID if no event is scheduled.
- */
-static zone_event_type_t get_next_event(zone_events_t *events)
-{
-	if (!events) {
-		return ZONE_EVENT_INVALID;
-	}
-
-	zone_event_type_t next_type = ZONE_EVENT_INVALID;
-	time_t next = 0;
-
-	for (int i = 0; i < ZONE_EVENT_COUNT; i++) {
-		time_t current = events->time[i];
-		if (current == 0) {
-			continue;
-		}
-
-		if (next == 0 || current < next) {
-			next = current;
-			next_type = i;
-		}
-	}
-
-	return next_type;
-}
-
-/*!
- * \brief Set time of a given event type.
- */
-static void event_set_time(zone_events_t *events, zone_event_type_t type, time_t time)
-{
-	assert(events);
-	assert(valid_event(type));
-
-	events->time[type] = time;
-}
-
-/*!
- * \brief Get time of a given event type.
- */
-static time_t event_get_time(zone_events_t *events, zone_event_type_t type)
-{
-	assert(events);
-	assert(valid_event(type));
-
-	return events->time[type];
-}
-
-/*!
- * \brief Cancel scheduled item, schedule first enqueued item.
- *
- * The events mutex must be locked when calling this function.
- */
-static void reschedule(zone_events_t *events)
-{
-	assert(events);
-	assert(pthread_mutex_trylock(&events->mx) == EBUSY);
-
-	if (!events->event || events->running || events->frozen) {
-		return;
-	}
-
-	zone_event_type_t type = get_next_event(events);
-	if (!valid_event(type)) {
-		return;
-	}
-
-	time_t diff = time_until(event_get_time(events, type));
-
-	evsched_schedule(events->event, diff * 1000);
-}
-
-/* -- callbacks control ---------------------------------------------------- */
-
-typedef struct event_info_t {
-	zone_event_type_t type;
-	const zone_event_cb callback;
-	const char *name;
-} event_info_t;
-
-static const event_info_t EVENT_INFO[] = {
-        { ZONE_EVENT_RELOAD,  event_reload,  "reload" },
-        { ZONE_EVENT_REFRESH, event_refresh, "refresh" },
-        { ZONE_EVENT_XFER,    event_xfer,    "transfer" },
-        { ZONE_EVENT_UPDATE,  event_update,  "update" },
-        { ZONE_EVENT_EXPIRE,  event_expire,  "expiration" },
-        { ZONE_EVENT_FLUSH,   event_flush,   "journal flush" },
-        { ZONE_EVENT_NOTIFY,  event_notify,  "notify" },
-        { ZONE_EVENT_DNSSEC,  event_dnssec,  "DNSSEC resign" },
-        { 0 }
-};
-
-static const event_info_t *get_event_info(zone_event_type_t type)
-{
-	const event_info_t *info;
-	for (info = EVENT_INFO; info->callback != NULL; info++) {
-		if (info->type == type) {
-			return info;
-		}
-	}
-
-	assert(0);
-	return NULL;
-}
-
-/*!
- * \brief Zone event wrapper, expected to be called from a worker thread.
- *
- * 1. Takes the next planned event.
- * 2. Resets the event's scheduled time.
- * 3. Perform the event's callback.
- * 4. Schedule next event planned event.
- */
-static void event_wrap(task_t *task)
-{
-	assert(task);
-	assert(task->ctx);
-
-	zone_t *zone = task->ctx;
-	zone_events_t *events = &zone->events;
-
-	pthread_mutex_lock(&events->mx);
-	zone_event_type_t type = get_next_event(events);
-	if (!valid_event(type)) {
-		events->running = false;
-		pthread_mutex_unlock(&events->mx);
-		return;
-	}
-	event_set_time(events, type, 0);
-	pthread_mutex_unlock(&events->mx);
-
-	const event_info_t *info = get_event_info(type);
-	int result = info->callback(zone);
-	if (result != KNOT_EOK) {
-		log_zone_error(zone->name, "zone %s failed (%s)", info->name,
-		               knot_strerror(result));
-	}
-
-	pthread_mutex_lock(&events->mx);
-	events->running = false;
-	reschedule(events);
-	pthread_mutex_unlock(&events->mx);
-}
-
-/*!
- * \brief Called by scheduler thread if the event occurs.
- */
-static int event_dispatch(event_t *event)
-{
-	assert(event);
-	assert(event->data);
-
-	zone_events_t *events = event->data;
-
-	pthread_mutex_lock(&events->mx);
-	if (!events->running && !events->frozen) {
-		events->running = true;
-		worker_pool_assign(events->pool, &events->task);
-	}
-	pthread_mutex_unlock(&events->mx);
-
-	return KNOT_EOK;
-}
-
-/* -- public API ----------------------------------------------------------- */
-
-int zone_events_init(zone_t *zone)
-{
-	if (!zone) {
-		return KNOT_EINVAL;
-	}
-
-	zone_events_t *events = &zone->events;
-
-	memset(&zone->events, 0, sizeof(zone->events));
-	pthread_mutex_init(&events->mx, NULL);
-	events->task.ctx = zone;
-	events->task.run = event_wrap;
-
-	return KNOT_EOK;
-}
-
-int zone_events_setup(zone_t *zone, worker_pool_t *workers, evsched_t *scheduler)
-{
-	if (!zone || !workers || !scheduler) {
-		return KNOT_EINVAL;
-	}
-
-	event_t *event;
-	event = evsched_event_create(scheduler, event_dispatch, &zone->events);
-	if (!event) {
-		return KNOT_ENOMEM;
-	}
-
-	zone->events.event = event;
-	zone->events.pool = workers;
-
-	return KNOT_EOK;
-}
-
-void zone_events_deinit(zone_t *zone)
-{
-	if (!zone) {
-		return;
-	}
-
-	evsched_cancel(zone->events.event);
-	evsched_event_free(zone->events.event);
-
-	pthread_mutex_destroy(&zone->events.mx);
-
-	memset(&zone->events, 0, sizeof(zone->events));
-}
-
-void zone_events_schedule_at(zone_t *zone, zone_event_type_t type, time_t time)
-{
-	if (!zone || !valid_event(type)) {
-		return;
-	}
-
-	zone_events_t *events = &zone->events;
-
-	pthread_mutex_lock(&events->mx);
-	event_set_time(events, type, time);
-	reschedule(events);
-	pthread_mutex_unlock(&events->mx);
-}
-
-void zone_events_enqueue(zone_t *zone, zone_event_type_t type)
-{
-	if (!zone || !valid_event(type)) {
-		return;
-	}
-
-	zone_events_t *events = &zone->events;
-
-	pthread_mutex_lock(&events->mx);
-
-	/* Bypass scheduler if no event is running. */
-	if (!events->running && !events->frozen) {
-		events->running = true;
-		event_set_time(events, type, ZONE_EVENT_IMMEDIATE);
-		worker_pool_assign(events->pool, &events->task);
-		pthread_mutex_unlock(&events->mx);
-		return;
-	}
-
-	pthread_mutex_unlock(&events->mx);
-
-	/* Execute as soon as possible. */
-	zone_events_schedule(zone, type, ZONE_EVENT_NOW);
-}
-
-void zone_events_schedule(zone_t *zone, zone_event_type_t type, unsigned dt)
-{
-	time_t abstime = time(NULL) + dt;
-	return zone_events_schedule_at(zone, type, abstime);
-}
-
-void zone_events_cancel(zone_t *zone, zone_event_type_t type)
-{
-	zone_events_schedule_at(zone, type, 0);
-}
-
-void zone_events_freeze(zone_t *zone)
-{
-	if (!zone) {
-		return;
-	}
-
-	zone_events_t *events = &zone->events;
-
-	/* Prevent new events being enqueued. */
-	pthread_mutex_lock(&events->mx);
-	events->frozen = true;
-	pthread_mutex_unlock(&events->mx);
-
-	/* Cancel current event. */
-	evsched_cancel(events->event);
-}
-
-void zone_events_start(zone_t *zone)
-{
-	if (!zone) {
-		return;
-	}
-
-	pthread_mutex_lock(&zone->events.mx);
-	reschedule(&zone->events);
-	pthread_mutex_unlock(&zone->events.mx);
-}
-
-time_t zone_events_get_time(const struct zone_t *zone, zone_event_type_t type)
-{
-	if (zone == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	time_t event_time = KNOT_ENOENT;
-	zone_events_t *events = (zone_events_t *)&zone->events;
-
-	pthread_mutex_lock(&events->mx);
-
-	/* Get next valid event. */
-	if (valid_event(type)) {
-		event_time = event_get_time(events, type);
-	}
-
-	pthread_mutex_unlock(&events->mx);
-
-	return event_time;
-}
-
-const char *zone_events_get_name(zone_event_type_t type)
-{
-	/* Get information about the event and time. */
-	const event_info_t *info = get_event_info(type);
-	if (info == NULL) {
-		return NULL;
-	}
-
-	return info->name;
-}
-
-time_t zone_events_get_next(const struct zone_t *zone, zone_event_type_t *type)
-{
-	if (zone == NULL || type == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	time_t next_time = KNOT_ENOENT;
-	zone_events_t *events = (zone_events_t *)&zone->events;
-
-	pthread_mutex_lock(&events->mx);
-
-	/* Get time of next valid event. */
-	*type = get_next_event(events);
-	if (valid_event(*type)) {
-		next_time = event_get_time(events, *type);
-	} else {
-		*type = ZONE_EVENT_INVALID;
-	}
-
-	pthread_mutex_unlock(&events->mx);
-
-	return next_time;
-}
-
-void zone_events_update(zone_t *zone, const zone_t *old_zone)
-{
-	replan_soa_events(zone, old_zone);
-	replan_xfer(zone, old_zone);
-	replan_flush(zone, old_zone);
-	replan_event(zone, old_zone, ZONE_EVENT_NOTIFY);
-	replan_update(zone, (zone_t *)old_zone);
-	replan_dnssec(zone);
-}
-
-void zone_events_replan_ddns(struct zone_t *zone, const struct zone_t *old_zone)
-{
-	if (old_zone) {
-		replan_update(zone, (zone_t *)old_zone);
-	}
-}

@@ -382,7 +382,7 @@ static void print_section_host(const knot_rrset_t *rrsets,
 		char                type[32] = "NULL";
 		char                *owner;
 
-		owner = knot_dname_to_str(rrset->owner);
+		owner = knot_dname_to_str_alloc(rrset->owner);
 		if (style->style.ascii_to_idn != NULL) {
 			style->style.ascii_to_idn(&owner);
 		}
@@ -438,7 +438,7 @@ static void print_error_host(const uint16_t    code,
 
 	knot_lookup_table_t *rcode;
 
-	owner = knot_dname_to_str(knot_pkt_qname(packet));
+	owner = knot_dname_to_str_alloc(knot_pkt_qname(packet));
 	if (style->style.ascii_to_idn != NULL) {
 		style->style.ascii_to_idn(&owner);
 	}
@@ -493,7 +493,7 @@ void print_header_xfr(const knot_pkt_t *packet, const style_t  *style)
 	}
 
 	if (style->show_header) {
-		char *owner = knot_dname_to_str(knot_pkt_qname(packet));
+		char *owner = knot_dname_to_str_alloc(knot_pkt_qname(packet));
 		if (style->style.ascii_to_idn != NULL) {
 			style->style.ascii_to_idn(&owner);
 		}

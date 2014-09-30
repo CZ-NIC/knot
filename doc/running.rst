@@ -45,14 +45,13 @@ If you want to control the daemon directly, use ``SIGINT`` to quit the process o
      -f, --force            Force operation - override some checks.
      -v, --verbose          Verbose mode - additional runtime information.
      -V, --version          Print knot server version.
-     -i, --interactive      Interactive mode (do not daemonize).
      -h, --help             Print help and usage.
 
     Actions:
      stop                   Stop server.
      reload                 Reload configuration and changed zones.
      refresh <zone>         Refresh slave zone (all if not specified).
-     flush                  Flush journal and update zone files.
+     flush <zone>           Flush journal and update zone files. (all if not specified)
      status                 Check if server is running.
      zonestatus             Show status of configured zones.
      checkconf              Check current server configuration.
