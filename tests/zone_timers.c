@@ -35,7 +35,7 @@ int main(int argc, char *argv[])
 	plan_lazy();
 
 	if (namedb_lmdb_api() == NULL) {
-		// LMDB API not compiled.
+		skip("LMDB API not compiled");
 		return EXIT_SUCCESS;
 	}
 
