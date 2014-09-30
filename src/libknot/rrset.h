@@ -174,4 +174,18 @@ bool knot_rrset_empty(const knot_rrset_t *rrset);
  */
 uint32_t knot_rrset_ttl(const knot_rrset_t *rrset);
 
+/*!
+ * \brief Convert one RR into canonical format.
+ *
+ * Owner is always converted to lowercase. RDATA domain names are converted only
+ * for types listed in RFC 4034, Section 6.2, except for NSEC (updated by
+ * RFC 6840, Section 5.1) and A6 (not supported).
+ *
+ * \note If RRSet with more RRs is given to this function, only the first RR
+ *       will be converted.
+ *
+ * \param rrset  RR to convert.
+ */
+int knot_rrset_rr_to_canonical(knot_rrset_t *rrset);
+
 /*! @} */

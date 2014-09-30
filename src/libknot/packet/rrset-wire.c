@@ -472,7 +472,6 @@ static int parse_header(const uint8_t *pkt_wire, size_t *pos, size_t pkt_size,
 	if (owner == NULL) {
 		return KNOT_EMALF;
 	}
-	knot_dname_to_lower(owner);
 
 	if (pkt_size - *pos < RR_HEADER_SIZE) {
 		knot_dname_free(&owner, mm);
@@ -521,12 +520,6 @@ static int decompress_rdata_dname(const uint8_t **src, size_t *src_avail,
 	int decompr_size = knot_dname_unpack(*dst, *src, *dst_avail, dname_cfg->pkt_wire);
 	if (decompr_size <= 0) {
 		return decompr_size;
-	}
-
-	/* Convert to lowercase. */
-	if (flags & KNOT_RRSET_WIRE_CANONICAL) {
-		int ret = knot_dname_to_lower(*dst);
-		assert(ret == KNOT_EOK);
 	}
 	
 	/* Update buffers */
@@ -592,7 +585,7 @@ static int parse_rdata(const uint8_t *pkt_wire, size_t *pos, size_t pkt_size,
 	};
 
 	int ret = rdata_traverse(&src, &src_avail, &dst, &dst_avail,
-				 desc, &dname_cfg, KNOT_RRSET_WIRE_CANONICAL);
+				 desc, &dname_cfg, KNOT_RRSET_WIRE_NONE);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
@@ -637,7 +630,15 @@ int knot_rrset_rr_from_wire(const uint8_t *pkt_wire, size_t *pos,
 	ret = parse_rdata(pkt_wire, pos, pkt_size, mm, ttl, rdlen, rrset);
 	if (ret != KNOT_EOK) {
 		knot_rrset_clear(rrset, mm);
+		return ret;
 	}
 
-	return ret;
+	/* Convert RR to canonical format. */
+	ret = knot_rrset_rr_to_canonical(rrset);
+
+	if (ret != KNOT_EOK) {
+		knot_rrset_clear(rrset, mm);
+	}
+
+	return KNOT_EOK;
 }
