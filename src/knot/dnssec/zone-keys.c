@@ -243,7 +243,10 @@ int load_zone_keys(const char *keydir_name, const char *zone_name,
 
 	zone_keyset_t keyset = {0};
 
-	int r = dnssec_kasp_open_dir(keydir_name, &keyset.kasp);
+	dnssec_kasp_init_dir(&keyset.kasp);
+	assert(keyset.kasp);
+
+	int r = dnssec_kasp_open(keyset.kasp, keydir_name);
 	if (r != DNSSEC_EOK) {
 		log_zone_str_error(zone_name, "DNSSEC, failed to open KASP (%s)",
 		                   dnssec_strerror(r));
