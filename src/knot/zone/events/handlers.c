@@ -22,6 +22,7 @@
 #include "knot/server/tcp-handler.h"
 #include "knot/updates/changesets.h"
 #include "knot/dnssec/zone-events.h"
+#include "knot/zone/timers.h"
 #include "knot/zone/zone-load.h"
 #include "knot/zone/zonefile.h"
 #include "knot/zone/events/events.h"
@@ -274,7 +275,8 @@ int event_reload(zone_t *zone)
 	uint32_t current_serial = zone_contents_serial(zone->contents);
 	log_zone_info(zone->name, "loaded, serial %u -> %u",
 	              old_serial, current_serial);
-	return KNOT_EOK;
+
+	return write_zone_timers(conf()->timers_db, zone);
 
 fail:
 	zone_contents_deep_free(&contents);
@@ -319,7 +321,7 @@ int event_refresh(zone_t *zone)
 		zone_events_cancel(zone, ZONE_EVENT_EXPIRE);
 	}
 
-	return KNOT_EOK;
+	return write_zone_timers(conf()->timers_db, zone);
 }
 
 int event_xfer(zone_t *zone)
