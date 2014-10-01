@@ -17,6 +17,7 @@
 #pragma once
 
 #include "zone.h"
+#include "list.h"
 
 /*!
  * KASP store API implementation.
@@ -29,6 +30,7 @@ typedef struct dnssec_kasp_store_functions {
 	// zone serialization/deserialization
 	int (*load_zone)(dnssec_kasp_zone_t *zone, void *ctx);
 	int (*save_zone)(dnssec_kasp_zone_t *zone, void *ctx);
+	int (*list_zones)(dnssec_kasp_zone_t *zone, dnssec_list_t **list_ptr);
 } dnssec_kasp_store_functions_t;
 
 /*!

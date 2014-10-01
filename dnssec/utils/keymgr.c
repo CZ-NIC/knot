@@ -51,7 +51,7 @@ static int subcommand(const command_t *subcommands, options_t *options,
 	assert(argv);
 
 	if (argc < 1) {
-		error("No command specified");
+		error("No command specified.\n");
 		return 1;
 	}
 
@@ -63,7 +63,7 @@ static int subcommand(const command_t *subcommands, options_t *options,
 		}
 	}
 
-	error("Invalid command");
+	error("Invalid command.\n");
 	return 1;
 }
 
@@ -156,12 +156,44 @@ static int cmd_zone_add(options_t *options, int argc, char *argv[])
 }
 
 /*
+ * keymgr zone list [substring-match]
+ */
+static int cmd_zone_list(options_t *options, int argc, char *argv[])
+{
+	dnssec_kasp_t *kasp = NULL;
+	dnssec_kasp_init_dir(&kasp);
+
+	const char *match;
+	if (argc == 1) {
+		match = NULL;
+	} else if (argc == 2) {
+		match = argv[1];
+	} else {
+		error("Extra parameter specified.\n");
+		return 1;
+	}
+
+	int r = dnssec_kasp_open(kasp, options->kasp_dir);
+	if (r != DNSSEC_EOK) {
+		error("dnssec_kasp_open: %s\n", dnssec_strerror(r));
+		return 1;
+	}
+
+	printf("list of zones (match substring '%s')\n", match ? match : "");
+
+	dnssec_kasp_deinit(kasp);
+
+	return 0;
+}
+
+/*
  * keymgr zone
  */
 static int cmd_zone(options_t *options, int argc, char *argv[])
 {
 	static const command_t commands[] = {
-		{ "add", cmd_zone_add },
+		{ "add",  cmd_zone_add },
+		{ "list", cmd_zone_list },
 		{ NULL }
 	};
 
@@ -180,10 +212,27 @@ static int cmd_keystore(options_t *options, int argc, char *argv[])
 	return 1;
 }
 
-static int cmd_key(options_t *options, int argc, char *argv[])
+static int cmd_key_generate(options_t *options, int argc, char *argv[])
 {
 	error("Not implemented.");
 	return 1;
+}
+
+static int cmd_key_import(options_t *options, int argc, char *argv[])
+{
+	error("Not implemented.");
+	return 1;
+}
+
+static int cmd_key(options_t *options, int argc, char *argv[])
+{
+	static const command_t commands[] = {
+		{ "generate", cmd_key_generate },
+		{ "import",   cmd_key_import },
+		{ NULL }
+	};
+
+	return subcommand(commands, options, argc - 1, argv + 1);
 }
 
 int main(int argc, char *argv[])
