@@ -65,17 +65,15 @@ int main(int argc, char *argv[])
 		goto fail;
 	}
 
-	dnssec_kasp_keyset_t *keys = dnssec_kasp_zone_get_keys(zone);
+	dnssec_list_t *keys = dnssec_kasp_zone_get_keys(zone);
 	if (!keys) {
 		error("dnssec_kasp_zone_get_keys()", DNSSEC_ENOMEM);
 		goto fail;
 	}
 
-	size_t keys_count = dnssec_kasp_keyset_count(keys);
-
 	printf("keytag  ID\n");
-	for (size_t i = 0; i < keys_count; i++) {
-		dnssec_kasp_key_t *key = dnssec_kasp_keyset_at(keys, i);
+	dnssec_list_foreach(item, keys) {
+		dnssec_kasp_key_t *key = dnssec_item_get(item);
 
 		const uint8_t *dname = dnssec_key_get_dname(key->key);
 		const char *id = dnssec_key_get_id(key->key);
