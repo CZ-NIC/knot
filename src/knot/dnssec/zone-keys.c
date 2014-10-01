@@ -261,25 +261,28 @@ int load_zone_keys(const char *keydir_name, const char *zone_name,
 		return KNOT_ERROR;
 	}
 
-	dnssec_kasp_keyset_t *kasp_keys = dnssec_kasp_zone_get_keys(keyset.kasp_zone);
-	keyset.count = dnssec_kasp_keyset_count(kasp_keys);
-	if (keyset.count == 0) {
+	dnssec_list_t *kasp_keys = dnssec_kasp_zone_get_keys(keyset.kasp_zone);
+	if (dnssec_list_is_empty(kasp_keys)) {
 		log_zone_str_error(zone_name, "DNSSEC, no keys are available");
 		free_zone_keys(&keyset);
 		return KNOT_ERROR;
 	}
 
+	keyset.count = dnssec_list_size(kasp_keys);
 	keyset.keys = calloc(keyset.count, sizeof(zone_key_t));
 	if (!keyset.keys) {
 		free_zone_keys(&keyset);
 		return KNOT_ENOMEM;
 	}
 
-	for (size_t i = 0; i < keyset.count; i++) {
-		dnssec_kasp_key_t *kasp_key = dnssec_kasp_keyset_at(kasp_keys, i);
+	size_t i = 0;
+	dnssec_list_foreach(item, kasp_keys) {
+		dnssec_kasp_key_t *kasp_key = dnssec_item_get(item);
 		set_key(kasp_key, &keyset.keys[i]);
 		log_key_info(&keyset.keys[i], zone_name);
+		i += 1;
 	}
+	assert(i == keyset.count);
 
 	r = check_keys_validity(&keyset);
 	if (r != KNOT_EOK) {
@@ -288,7 +291,6 @@ int load_zone_keys(const char *keydir_name, const char *zone_name,
 		free_zone_keys(&keyset);
 		return KNOT_ERROR;
 	}
-
 
 	r = load_private_keys(keydir_name, &keyset);
 	if (r != KNOT_EOK) {
