@@ -20,7 +20,7 @@
 
 #include "kasp.h"
 #include "kasp/internal.h"
-#include "kasp/keyset.h"
+#include "list.h"
 
 struct dnssec_kasp_zone {
 	char *name;
@@ -28,5 +28,10 @@ struct dnssec_kasp_zone {
 
 	dnssec_kasp_t *policy;
 
-	dnssec_kasp_keyset_t keys;
+	dnssec_list_t *keys;
 };
+
+/*!
+ * Free KASP zone keys.
+ */
+void kasp_zone_keys_free(dnssec_list_t *keys);

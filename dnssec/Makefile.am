@@ -61,8 +61,6 @@ libdnssec_la_SOURCES = \
 	lib/kasp/dir/zone.h \
 	lib/kasp/internal.h \
 	lib/kasp/kasp.c \
-	lib/kasp/keyset.c \
-	lib/kasp/keyset.h \
 	lib/kasp/zone.c \
 	lib/kasp/zone.h \
 	lib/key/algorithm.c \

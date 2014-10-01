@@ -35,7 +35,7 @@
  * int result;
  * dnssec_kasp_t *kasp = NULL;
  * dnssec_kasp_zone_t *zone = NULL;
- * dnssec_kasp_keyset_t *keyset = NULL;
+ * dnssec_list_t *keys = NULL;
  *
  * // open KASP
  * result = dnssec_kasp_open_dir("keydir", &kasp);
@@ -60,15 +60,15 @@
  *
  * // list key IDs and it they are active
  * time_t now = time(NULL);
- * for (size_t i = 0; i < dnssec_kasp_keyset_count(keys); i++) {
- *     dnssec_kasp_key_t *key = dnssec_kasp_keyset_at(keys, i);
+ * dnssec_list_foreach(item, keys) {
+ *     dnssec_kasp_key_t *key = dnssec_item_get(item);
  *     bool active = key->timing.active <= now && now < key->timing.retire;
  *     printf("key %s is %s\n", dnssec_key_get_id(key->key),
  *                              active ? "active" : "inactive");
  * }
  *
  * // cleanup
- * dnssec_kasp_keyset_free(keys);
+ * dnssec_kasp_zone_free_keys(keys);
  * dnssec_kasp_zone_free(zone);
  * dnssec_kasp_close(kasp);
  *
@@ -80,6 +80,7 @@
 #pragma once
 
 #include <dnssec/key.h>
+#include <dnssec/list.h>
 #include <time.h>
 
 struct dnssec_kasp;
@@ -205,58 +206,9 @@ typedef struct dnssec_kasp_key {
 	dnssec_kasp_key_timing_t timing;	/*!< Key timing information. */
 } dnssec_kasp_key_t;
 
-struct dnssec_kasp_keyset;
-
-/*!
- * A set of zone keys.
- */
-typedef struct dnssec_kasp_keyset dnssec_kasp_keyset_t;
-
-/*!
- * Create an empty set of keys.
- */
-dnssec_kasp_keyset_t *dnssec_kasp_keyset_new(void);
-
-/*!
- * Empty a key set, do not free the keys.
- */
-void dnssec_kasp_keyset_init(dnssec_kasp_keyset_t *keys);
-
-/*!
- * Free the key set, including the keys.
- */
-void dnssec_kasp_keyset_free(dnssec_kasp_keyset_t *keyset);
-
-/*!
- * Get a number of keys within a key set.
- */
-size_t dnssec_kasp_keyset_count(dnssec_kasp_keyset_t *keys);
-
-/*!
- * Get a key at a given index in the key set.
- */
-dnssec_kasp_key_t *dnssec_kasp_keyset_at(dnssec_kasp_keyset_t *keys, size_t number);
-
-/*!
- * Add a key into the keyset.
- *
- * The key set is responsible for freeing the key.
- */
-int dnssec_kasp_keyset_add(dnssec_kasp_keyset_t *keys, dnssec_kasp_key_t *key);
-
-/*!
- * Remove the key from the keyset.
- */
-int dnssec_kasp_keyset_remove(dnssec_kasp_keyset_t *keys, dnssec_kasp_key_t *key);
-
-/*!
- * Empty the key set while freeing the keys.
- */
-void dnssec_kasp_keyset_empty(dnssec_kasp_keyset_t *keys);
-
 /*!
  * Get the set of keys associated with the zone.
  */
-dnssec_kasp_keyset_t *dnssec_kasp_zone_get_keys(dnssec_kasp_zone_t *zone);
+dnssec_list_t *dnssec_kasp_zone_get_keys(dnssec_kasp_zone_t *zone);
 
 /*! @} */

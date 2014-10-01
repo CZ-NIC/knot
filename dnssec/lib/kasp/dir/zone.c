@@ -23,7 +23,7 @@
 #include "kasp.h"
 #include "kasp/dir/json.h"
 #include "kasp/zone.h"
-#include "kasp/keyset.h"
+#include "list.h"
 #include "shared.h"
 
 #define DNSKEY_KSK_FLAGS 257
@@ -194,8 +194,7 @@ static int create_dnskey(const uint8_t *dname, key_params_t *params,
 /*!
  * Add DNSKEY into a keyset.
  */
-static int keyset_add_dnskey(dnssec_kasp_keyset_t *keyset,
-			     dnssec_key_t *dnskey,
+static int keyset_add_dnskey(dnssec_list_t *keyset, dnssec_key_t *dnskey,
 			     const dnssec_kasp_key_timing_t *timing)
 {
 	dnssec_kasp_key_t *kasp_key = malloc(sizeof(*kasp_key));
@@ -207,7 +206,7 @@ static int keyset_add_dnskey(dnssec_kasp_keyset_t *keyset,
 	kasp_key->key = dnskey;
 	kasp_key->timing = *timing;
 
-	int result = dnssec_kasp_keyset_add(keyset, kasp_key);
+	int result = dnssec_list_append(keyset, kasp_key);
 	if (result != DNSSEC_EOK) {
 		free(kasp_key);
 	}
@@ -228,9 +227,12 @@ static int load_zone_keys(dnssec_kasp_zone_t *zone, json_t *keys)
 		return DNSSEC_CONFIG_MALFORMED;
 	}
 
-	int result = DNSSEC_EOK;
+	zone->keys = dnssec_list_new();
+	if (!zone->keys) {
+		return DNSSEC_ENOMEM;
+	}
 
-	dnssec_kasp_keyset_init(&zone->keys);
+	int result = DNSSEC_EOK;
 
 	int index;
 	json_t *key;
@@ -248,7 +250,7 @@ static int load_zone_keys(dnssec_kasp_zone_t *zone, json_t *keys)
 			break;
 		}
 
-		result = keyset_add_dnskey(&zone->keys, dnskey, &params.timing);
+		result = keyset_add_dnskey(zone->keys, dnskey, &params.timing);
 		if (result != DNSSEC_EOK) {
 			dnssec_key_free(dnskey);
 			break;
@@ -256,7 +258,8 @@ static int load_zone_keys(dnssec_kasp_zone_t *zone, json_t *keys)
 	}
 
 	if (result != DNSSEC_EOK) {
-		dnssec_kasp_keyset_empty(&zone->keys);
+		kasp_zone_keys_free(zone->keys);
+		zone->keys = NULL;
 	}
 
 	return result;
@@ -327,9 +330,8 @@ static int export_zone_keys(dnssec_kasp_zone_t *zone, json_t **keys_ptr)
 		return DNSSEC_ENOMEM;
 	}
 
-	int keys_count = dnssec_kasp_keyset_count(&zone->keys);
-	for (int i = 0; i < keys_count; i++) {
-		dnssec_kasp_key_t *kasp_key = dnssec_kasp_keyset_at(&zone->keys, i);
+	dnssec_list_foreach(item, zone->keys) {
+		dnssec_kasp_key_t *kasp_key = dnssec_item_get(item);
 		key_params_t params = { 0 };
 		key_to_params(kasp_key, &params);
 
