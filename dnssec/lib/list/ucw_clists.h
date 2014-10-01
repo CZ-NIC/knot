@@ -7,44 +7,36 @@
  *	of the GNU Lesser General Public License.
  */
 
-#pragma once
-
-#include <stdlib.h>
-#include <stdbool.h>
-
-/*
- * NOTICE:
- * - based on ucw clists (LGPL), altered to use typedefs with _t
- * - ptrnode_t taken from Knot DNS (GPLv3+)
- */
+#ifndef _UCW_CLISTS_H
+#define _UCW_CLISTS_H
 
 /**
  * Common header for list nodes.
  **/
 typedef struct cnode {
   struct cnode *next, *prev;
-} cnode_t;
+} cnode;
 
 /**
  * Circular doubly linked list.
  **/
 typedef struct clist {
   struct cnode head;
-} clist_t;
+} clist;
 
 /**
  * Initialize a new circular linked list. Must be called before any other function.
  **/
-static inline void clist_init(clist_t *l)
+static inline void clist_init(clist *l)
 {
-  cnode_t *head = &l->head;
+  cnode *head = &l->head;
   head->next = head->prev = head;
 }
 
 /**
  * Return the first node on @l or NULL if @l is empty.
  **/
-static inline void *clist_head(clist_t *l)
+static inline void *clist_head(clist *l)
 {
   return (l->head.next != &l->head) ? l->head.next : NULL;
 }
@@ -52,7 +44,7 @@ static inline void *clist_head(clist_t *l)
 /**
  * Return the last node on @l or NULL if @l is empty.
  **/
-static inline void *clist_tail(clist_t *l)
+static inline void *clist_tail(clist *l)
 {
   return (l->head.prev != &l->head) ? l->head.prev : NULL;
 }
@@ -60,7 +52,7 @@ static inline void *clist_tail(clist_t *l)
 /**
  * Find the next node to @n or NULL if @n is the last one.
  **/
-static inline void *clist_next(clist_t *l, cnode_t *n)
+static inline void *clist_next(clist *l, cnode *n)
 {
   return (n->next != &l->head) ? (void *) n->next : NULL;
 }
@@ -68,7 +60,7 @@ static inline void *clist_next(clist_t *l, cnode_t *n)
 /**
  * Find the previous node to @n or NULL if @n is the first one.
  **/
-static inline void *clist_prev(clist_t *l, cnode_t *n)
+static inline void *clist_prev(clist *l, cnode *n)
 {
   return (n->prev != &l->head) ? (void *) n->prev : NULL;
 }
@@ -76,7 +68,7 @@ static inline void *clist_prev(clist_t *l, cnode_t *n)
 /**
  * Return a non-zero value iff @l is empty.
  **/
-static inline int clist_empty(clist_t *l)
+static inline int clist_empty(clist *l)
 {
   return (l->head.next == &l->head);
 }
@@ -85,34 +77,34 @@ static inline int clist_empty(clist_t *l)
  * Loop over all nodes in the @list and perform the next C statement on them. The current node is stored in @n which must be defined before as pointer to any type.
  * The list should not be changed during this loop command.
  **/
-#define CLIST_WALK(n,list) for(n=(void*)(list).head.next; (cnode_t*)(n) != &(list).head; n=(void*)((cnode_t*)(n))->next)
+#define CLIST_WALK(n,list) for(n=(void*)(list).head.next; (cnode*)(n) != &(list).head; n=(void*)((cnode*)(n))->next)
 
 /**
  * Same as @CLIST_WALK(), but allows removal of the current node. This macro requires one more variable to store some temporary pointers.
  **/
-#define CLIST_WALK_DELSAFE(n,list,tmp) for(n=(void*)(list).head.next; tmp=(void*)((cnode_t*)(n))->next, (cnode_t*)(n) != &(list).head; n=(void*)tmp)
+#define CLIST_WALK_DELSAFE(n,list,tmp) for(n=(void*)(list).head.next; tmp=(void*)((cnode*)(n))->next, (cnode*)(n) != &(list).head; n=(void*)tmp)
 
 /**
  * Same as @CLIST_WALK(), but it defines the variable for the current node in place. @type should be a pointer type.
  **/
-#define CLIST_FOR_EACH(type,n,list) for(type n=(void*)(list).head.next; (cnode_t*)(n) != &(list).head; n=(void*)((cnode_t*)(n))->next)
+#define CLIST_FOR_EACH(type,n,list) for(type n=(void*)(list).head.next; (cnode*)(n) != &(list).head; n=(void*)((cnode*)(n))->next)
 
 /**
  * Same as @CLIST_WALK_DELSAFE(), but it defines the variable for the current node in place. @type should be a pointer type. The temporary variable must be still known before.
  **/
-#define CLIST_FOR_EACH_DELSAFE(type,n,list,tmp) for(type n=(void*)(list).head.next; tmp=(void*)((cnode_t*)(n))->next, (cnode_t*)(n) != &(list).head; n=(void*)tmp)
+#define CLIST_FOR_EACH_DELSAFE(type,n,list,tmp) for(type n=(void*)(list).head.next; tmp=(void*)((cnode*)(n))->next, (cnode*)(n) != &(list).head; n=(void*)tmp)
 
 /**
  * Reversed version of @CLIST_FOR_EACH().
  **/
-#define CLIST_FOR_EACH_BACKWARDS(type,n,list) for(type n=(void*)(list).head.prev; (cnode_t*)(n) != &(list).head; n=(void*)((cnode_t*)(n))->prev)
+#define CLIST_FOR_EACH_BACKWARDS(type,n,list) for(type n=(void*)(list).head.prev; (cnode*)(n) != &(list).head; n=(void*)((cnode*)(n))->prev)
 
 /**
  * Insert a new node just after the node @after. To insert at the head of the list, use @clist_add_head() instead.
  **/
-static inline void clist_insert_after(cnode_t *what, cnode_t *after)
+static inline void clist_insert_after(cnode *what, cnode *after)
 {
-  cnode_t *before = after->next;
+  cnode *before = after->next;
   what->next = before;
   what->prev = after;
   before->prev = what;
@@ -122,9 +114,9 @@ static inline void clist_insert_after(cnode_t *what, cnode_t *after)
 /**
  * Insert a new node just before the node @before. To insert at the tail of the list, use @clist_add_tail() instead.
  **/
-static inline void clist_insert_before(cnode_t *what, cnode_t *before)
+static inline void clist_insert_before(cnode *what, cnode *before)
 {
-  cnode_t *after = before->prev;
+  cnode *after = before->prev;
   what->next = before;
   what->prev = after;
   before->prev = what;
@@ -134,7 +126,7 @@ static inline void clist_insert_before(cnode_t *what, cnode_t *before)
 /**
  * Insert a new node in front of all other nodes.
  **/
-static inline void clist_add_head(clist_t *l, cnode_t *n)
+static inline void clist_add_head(clist *l, cnode *n)
 {
   clist_insert_after(n, &l->head);
 }
@@ -142,7 +134,7 @@ static inline void clist_add_head(clist_t *l, cnode_t *n)
 /**
  * Insert a new node after all other nodes.
  **/
-static inline void clist_add_tail(clist_t *l, cnode_t *n)
+static inline void clist_add_tail(clist *l, cnode *n)
 {
   clist_insert_before(n, &l->head);
 }
@@ -150,10 +142,10 @@ static inline void clist_add_tail(clist_t *l, cnode_t *n)
 /**
  * Remove node @n.
  **/
-static inline void clist_remove(cnode_t *n)
+static inline void clist_remove(cnode *n)
 {
-  cnode_t *before = n->prev;
-  cnode_t *after = n->next;
+  cnode *before = n->prev;
+  cnode *after = n->next;
   before->next = after;
   after->prev = before;
 }
@@ -161,9 +153,9 @@ static inline void clist_remove(cnode_t *n)
 /**
  * Remove the first node in @l, if it exists. Return the pointer to that node or NULL.
  **/
-static inline void *clist_remove_head(clist_t *l)
+static inline void *clist_remove_head(clist *l)
 {
-  cnode_t *n = clist_head(l);
+  cnode *n = clist_head(l);
   if (n)
     clist_remove(n);
   return n;
@@ -172,9 +164,9 @@ static inline void *clist_remove_head(clist_t *l)
 /**
  * Remove the last node in @l, if it exists. Return the pointer to that node or NULL.
  **/
-static inline void *clist_remove_tail(clist_t *l)
+static inline void *clist_remove_tail(clist *l)
 {
-  cnode_t *n = clist_tail(l);
+  cnode *n = clist_tail(l);
   if (n)
     clist_remove(n);
   return n;
@@ -184,11 +176,11 @@ static inline void *clist_remove_tail(clist_t *l)
  * Merge two lists by inserting the list @what just after the node @after in a different list.
  * The first list is then cleared.
  **/
-static inline void clist_insert_list_after(clist_t *what, cnode_t *after)
+static inline void clist_insert_list_after(clist *what, cnode *after)
 {
   if (!clist_empty(what))
     {
-      cnode_t *w = &what->head;
+      cnode *w = &what->head;
       w->prev->next = after->next;
       after->next->prev = w->prev;
       w->next->prev = after;
@@ -201,7 +193,7 @@ static inline void clist_insert_list_after(clist_t *what, cnode_t *after)
  * Move all items from a source list to a destination list. The source list
  * becomes empty, the original contents of the destination list are destroyed.
  **/
-static inline void clist_move(clist_t *to, clist_t *from)
+static inline void clist_move(clist *to, clist *from)
 {
   clist_init(to);
   clist_insert_list_after(from, &to->head);
@@ -211,10 +203,10 @@ static inline void clist_move(clist_t *to, clist_t *from)
 /**
  * Compute the number of nodes in @l. Beware of linear time complexity.
  **/
-static inline size_t clist_size(clist_t *l)
+static inline uint clist_size(clist *l)
 {
-  size_t i = 0;
-  CLIST_FOR_EACH(cnode_t *, n, *l)
+  uint i = 0;
+  CLIST_FOR_EACH(cnode *, n, *l)
     i++;
   return i;
 }
@@ -222,7 +214,7 @@ static inline size_t clist_size(clist_t *l)
 /**
  * Remove a node @n and mark it as unlinked by setting the previous and next pointers to NULL.
  **/
-static inline void clist_unlink(cnode_t *n)
+static inline void clist_unlink(cnode *n)
 {
   clist_remove(n);
   n->prev = n->next = NULL;
@@ -232,9 +224,9 @@ static inline void clist_unlink(cnode_t *n)
  * Remove the first node on @l and mark it as unlinked.
  * Return the pointer to that node or NULL.
  **/
-static inline void *clist_unlink_head(clist_t *l)
+static inline void *clist_unlink_head(clist *l)
 {
-  cnode_t *n = clist_head(l);
+  cnode *n = clist_head(l);
   if (n)
     clist_unlink(n);
   return n;
@@ -244,9 +236,9 @@ static inline void *clist_unlink_head(clist_t *l)
  * Remove the last node on @l and mark it as unlinked.
  * Return the pointer to that node or NULL.
  **/
-static inline void *clist_unlink_tail(clist_t *l)
+static inline void *clist_unlink_tail(clist *l)
 {
-  cnode_t *n = clist_tail(l);
+  cnode *n = clist_tail(l);
   if (n)
     clist_unlink(n);
   return n;
@@ -260,19 +252,9 @@ static inline void *clist_unlink_tail(clist_t *l)
  * makes it linked. Normal removal functions like @clist_remove() do not mark nodes
  * as unlinked, you need to call @clist_unlink() instead.
  **/
-static inline int clist_is_linked(cnode_t *n)
+static inline int clist_is_linked(cnode *n)
 {
   return !!n->next;
 }
 
-/*!
- * Generic pointer list implementation.
- */
-typedef struct cptrnode {
-	cnode_t n;
-	void *ptr;
-} cptrnode_t;
-
-cptrnode_t *cptrlist_add(clist_t *, void *);
-void cptrlist_free(clist_t *);
-bool cptrlist_contains(clist_t *, const void *);
+#endif

@@ -13,8 +13,6 @@ libshared_la_CFLAGS = \
 	$(AM_CFLAGS)
 
 libshared_la_SOURCES = \
-	shared/clists.c \
-	shared/clists.h \
 	shared/dname.c \
 	shared/dname.h \
 	shared/hex.c \
@@ -50,6 +48,7 @@ libdnssec_la_SOURCES = \
 	lib/dnssec/keyid.h \
 	lib/dnssec/keystore.h \
 	lib/dnssec/keytag.h \
+	lib/dnssec/list.h \
 	lib/dnssec/nsec.h \
 	lib/dnssec/random.h \
 	lib/dnssec/sign.h \
@@ -86,6 +85,8 @@ libdnssec_la_SOURCES = \
 	lib/keystore/pkcs11.c \
 	lib/keystore/pkcs8.c \
 	lib/keystore/pkcs8_dir.c \
+	lib/list/list.c \
+	lib/list/ucw_clists.h \
 	lib/nsec/bitmap.c \
 	lib/nsec/hash.c \
 	lib/random.c \

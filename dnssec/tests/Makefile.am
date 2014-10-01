@@ -20,6 +20,7 @@ check_PROGRAMS = \
 	keystore_pkcs8	\
 	keystore_pkcs8_dir \
 	keytag		\
+	list		\
 	nsec_bitmap	\
 	nsec_hash	\
 	random		\
