@@ -39,6 +39,7 @@ const error_table_t error_messages[] = {
 	{ KNOT_EISCONN,      "already connected" },
 	{ KNOT_EADDRINUSE,   "address already in use" },
 	{ KNOT_ENOENT,       "not exists" },
+	{ KNOT_EEXIST,       "already exists" },
 	{ KNOT_ERANGE,       "value is out of range" },
 
 	/* General errors. */

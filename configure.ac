@@ -312,6 +312,10 @@ dt_DNSTAP([
 ])
 AM_CONDITIONAL([HAVE_DNSTAP], test "$opt_dnstap" != "no")
 
+dnl Check for LMDB
+KNOT_CHECK_HEADER([lmdb], [LMDB], [auto], [lmdb.h], [], [-llmdb])
+AS_IF([test "$enable_lmdb" = yes], [AC_DEFINE([HAVE_LMDB], [1], [Define to 1 to enable LMDB support])])
+
 AC_SEARCH_LIBS([pow], [m])
 AC_SEARCH_LIBS([pthread_create], [pthread], [], [AC_MSG_ERROR([pthreads not found])])
 AC_SEARCH_LIBS([dlopen], [dl])
@@ -407,6 +411,7 @@ AC_MSG_RESULT([
     Systemd integration:   ${enable_systemd}
     Dnstap support:        ${opt_dnstap}
     Code coverage:         ${enable_code_coverage}
+    LMDB support:          ${enable_lmdb}
 
   Continue with 'make' command
 ])

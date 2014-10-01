@@ -69,7 +69,7 @@ static void test_str(const char *in_str, const char *in_bin, size_t bin_len) {
 	ok(ret == bin_len, "dname_wire_check: %s", s1);
 
 	/* dname compare */
-	ok(memcmp(d2, in_bin, bin_len) == 0, "dname compare: %s", s1);
+	ok(d2 && memcmp(d2, in_bin, bin_len) == 0, "dname compare: %s", s1);
 
 	/* dname_to_str_alloc */
 	s2 = knot_dname_to_str_alloc(d2);
@@ -96,7 +96,7 @@ static void test_str(const char *in_str, const char *in_bin, size_t bin_len) {
 	ok(ret == bin_len, "dname_wire_check: %s", s2);
 
 	/* dname compare */
-	ok(memcmp(d2, in_bin, bin_len) == 0, "dname compare: %s", s2);
+	ok(d2 && memcmp(d2, in_bin, bin_len) == 0, "dname compare: %s", s2);
 
 	knot_dname_free(&d2, NULL);
 	free(s2);
@@ -441,6 +441,7 @@ int main(int argc, char *argv[])
 	    "1234567890123456789012345678901234567890123456789."
 	    "1234567890123456789012345678901234567890123456789."
 	    "123456789012345678901234567890123456789012345678901234.",
+	d = knot_dname_from_str_alloc(t);
 	ok(d == NULL, "dname_from_str: dname length > 255");
 
 	/* DNAME SUBDOMAIN CHECKS */
@@ -482,8 +483,8 @@ int main(int argc, char *argv[])
 	d2 = knot_dname_cat(d2, d);
 	t = "\x01""*""\x03""cat";
 	len = 2 + 4 + 1;
-	ok (d2 && len == knot_dname_size(d2), "dname_cat: valid concatenation size");
-	ok(memcmp(d2, t, len) == 0, "dname_cat: valid concatenation");
+	ok(d2 && len == knot_dname_size(d2), "dname_cat: valid concatenation size");
+	ok(d2 && memcmp(d2, t, len) == 0, "dname_cat: valid concatenation");
 	knot_dname_free(&d, NULL);
 	knot_dname_free(&d2, NULL);
 
