@@ -512,12 +512,14 @@ static int decompress_rdata_dname(const uint8_t **src, size_t *src_avail,
 	assert(dname_cfg);
 	UNUSED(dname_type);
 
-	int compr_size = knot_dname_wire_check(*src, *src + *src_avail, dname_cfg->pkt_wire);
+	int compr_size = knot_dname_wire_check(*src, *src + *src_avail,
+	                                       dname_cfg->pkt_wire);
 	if (compr_size <= 0) {
 		return compr_size;
 	}
 	
-	int decompr_size = knot_dname_unpack(*dst, *src, *dst_avail, dname_cfg->pkt_wire);
+	int decompr_size = knot_dname_unpack(*dst, *src, *dst_avail,
+	                                     dname_cfg->pkt_wire);
 	if (decompr_size <= 0) {
 		return decompr_size;
 	}

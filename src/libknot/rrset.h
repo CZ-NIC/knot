@@ -183,6 +183,9 @@ uint32_t knot_rrset_ttl(const knot_rrset_t *rrset);
  *
  * \note If RRSet with more RRs is given to this function, only the first RR
  *       will be converted.
+ * \warning This function expects either empty RDATA or full, not malformed
+ *          RDATA. I malformed RRSet is passed to this function, memory errors
+ *          may occur.
  *
  * \param rrset  RR to convert.
  */
