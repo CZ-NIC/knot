@@ -803,6 +803,9 @@ int knot_dname_lf(uint8_t *dst, const knot_dname_t *src, const uint8_t *pkt)
 	while(sp != lstack) {          /* consume stack */
 		l = *--sp; /* fetch rightmost label */
 		memcpy(dst, l+1, *l);  /* write label */
+		for (int i = 0; i < *l; ++i) {   /* convert to lowercase */
+			dst[i] = knot_tolower(dst[i]);
+		}
 		dst += *l;
 		*dst++ = '\0';         /* label separator */
 		*len += *l + 1;

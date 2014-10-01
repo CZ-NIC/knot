@@ -113,6 +113,7 @@ static int connect_nsec_nodes(zone_node_t *a, zone_node_t *b,
 
 	knot_rrset_t old_nsec = node_rrset(a, KNOT_RRTYPE_NSEC);
 	if (!knot_rrset_empty(&old_nsec)) {
+		/*! \todo[lowercase]: Case insensitive comparison needed. */
 		if (knot_rrset_equal(&new_nsec, &old_nsec,
 		                     KNOT_RRSET_COMPARE_WHOLE)) {
 			// current NSEC is valid, do nothing
