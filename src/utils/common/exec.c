@@ -50,21 +50,21 @@ static knot_lookup_table_t rtypes[] = {
 };
 
 static void print_header(const knot_pkt_t *packet, const style_t *style,
-			 uint16_t ext_rcode)
+                         const uint16_t ext_rcode)
 {
 	char    flags[64] = "";
 	uint8_t opcode_id;
-	const char *rcode_str = "NULL";
-	const char *opcode_str = "NULL";
+	const char *rcode_str = "Unknown";
+	const char *opcode_str = "Unknown";
 	knot_lookup_table_t *rcode, *opcode;
 
-	// Get RCODE from Header and check for Extended RCODE from OPT RR
+	// Get RCODE from Header and check for Extended RCODE from OPT RR.
 	rcode = knot_lookup_by_id(knot_rcode_names, ext_rcode);
 	if (rcode != NULL) {
 		rcode_str = rcode->name;
 	}
 
-	// Get OPCODE
+	// Get OPCODE.
 	opcode_id = knot_wire_get_opcode(packet->wire);
 	opcode = knot_lookup_by_id(knot_opcode_names, opcode_id);
 	if (opcode != NULL) {
@@ -214,11 +214,11 @@ static void print_edns_client_subnet(const uint8_t *data, const uint16_t len)
 	printf("%s/%u/%u\n", addr_str, src_mask, dst_mask);
 }
 
-static void print_section_opt(const knot_rrset_t *rr, uint8_t rcode)
+static void print_section_opt(const knot_rrset_t *rr, const uint8_t rcode)
 {
-	uint8_t              ercode = knot_edns_get_ext_rcode(rr);
-	uint16_t             ext_rcode_id = knot_edns_whole_rcode(ercode, rcode);
-	const char          *ext_rcode_str = "Not used";
+	uint8_t             ercode = knot_edns_get_ext_rcode(rr);
+	uint16_t            ext_rcode_id = knot_edns_whole_rcode(ercode, rcode);
+	const char          *ext_rcode_str = "Unused";
 	knot_lookup_table_t *ext_rcode;
 
 	if (ercode > 0) {
@@ -230,7 +230,7 @@ static void print_section_opt(const knot_rrset_t *rr, uint8_t rcode)
 		}
 	}
 
-	printf("Version: %u; flags: %s; UDP size: %u B, Extended RCODE: %s\n",
+	printf("Version: %u; flags: %s; UDP size: %u B; ext-rcode: %s\n",
 	       knot_edns_get_version(rr),
 	       (knot_edns_do(rr) != 0) ? "do" : "",
 	       knot_edns_get_payload(rr),
@@ -428,7 +428,7 @@ static void print_section_host(const knot_rrset_t *rrsets,
 	free(buf);
 }
 
-static void print_error_host(const uint16_t    code,
+static void print_error_host(const uint16_t   code,
                              const knot_pkt_t *packet,
                              const style_t    *style)
 {
@@ -597,7 +597,7 @@ void print_packet(const knot_pkt_t *packet,
 	if (style->show_edns && knot_pkt_has_edns(packet)) {
 		printf("\n;; EDNS PSEUDOSECTION:\n;; ");
 		print_section_opt(packet->opt_rr,
-				  knot_wire_get_rcode(packet->wire));
+		                  knot_wire_get_rcode(packet->wire));
 	}
 
 	// Print DNS sections.
