@@ -1,18 +1,22 @@
 noinst_LTLIBRARIES = libutils.la
 
-AM_CFLAGS = \
+AM_CPPFLAGS = \
 	-include $(top_builddir)/src/config.h \
 	-I$(srcdir)/../shared \
 	-I$(srcdir)/../lib/dnssec \
-	-I$(srcdir)/../lib
+	-I$(srcdir)/../lib \
+	$(CODE_COVERAGE_CFLAGS)
+
+AM_LDFLAGS = \
+	$(CODE_COVERAGE_LDFLAGS)
 
 libutils_la_LIBADD = \
 	$(builddir)/../libshared.la \
 	$(builddir)/../libdnssec.la \
 	$(top_builddir)/src/zscanner/libzscanner.la
 
-libutils_la_CFLAGS = \
-	$(AM_CFLAGS) \
+libutils_la_CPPFLAGS = \
+	$(AM_CPPFLAGS) \
 	-I$(top_srcdir)/src/zscanner
 
 libutils_la_SOURCES = \

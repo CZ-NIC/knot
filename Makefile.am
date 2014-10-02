@@ -9,7 +9,8 @@ CODE_COVERAGE_HTML = coverage.html
 CODE_COVERAGE_DIRS = \
 	src/common src/knot src/libknot \
 	src/knot/conf \
-	src/zscanner
+	src/zscanner \
+	dnssec/lib dnssec/shared
 
 code_coverage_quiet = --quiet
 

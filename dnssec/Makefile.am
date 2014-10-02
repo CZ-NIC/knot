@@ -3,14 +3,18 @@ SUBDIRS = . utils tests
 AM_CPPFLAGS = \
 	-include $(top_builddir)/src/config.h \
 	-Ishared -Ilib -Ilib/dnssec \
+	$(CODE_COVERAGE_CFLAGS) \
 	$(gnutls_CFLAGS) \
 	$(jannson_CFLAGS)
+
+AM_LDFLAGS = \
+	$(CODE_COVERAGE_LDFLAGS)
 
 noinst_LTLIBRARIES = libshared.la
 lib_LTLIBRARIES = libdnssec.la
 
-libshared_la_CFLAGS = \
-	$(AM_CFLAGS)
+libshared_la_CPPFLAGS = \
+	$(AM_CPPFLAGS)
 
 libshared_la_SOURCES = \
 	shared/dname.c \
@@ -25,8 +29,8 @@ libshared_la_SOURCES = \
 	shared/strtonum.h \
 	shared/wire.h
 
-libdnssec_la_CFLAGS = \
-	$(AM_CFLAGS) \
+libdnssec_la_CPPFLAGS = \
+	$(AM_CPPFLAGS) \
 	-fvisibility=hidden
 
 libdnssec_la_LDFLAGS = \

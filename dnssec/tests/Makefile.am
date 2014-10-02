@@ -2,9 +2,11 @@ AM_CPPFLAGS = \
 	-I$(top_srcdir)/libtap \
 	-I$(srcdir)/../shared \
 	-I$(srcdir)/../lib \
-	-I$(srcdir)/../lib/dnssec
+	-I$(srcdir)/../lib/dnssec \
+	$(CODE_COVERAGE_CFLAGS)
 
 AM_LDFLAGS = \
+	$(CODE_COVERAGE_LDFLAGS) \
 	-static
 
 LDADD = \
