@@ -16,6 +16,7 @@
 
 #include <string.h>
 #include <time.h>
+#include <unistd.h>
 #include <tap/basic.h>
 
 #include "libknot/common.h"
