@@ -113,11 +113,11 @@ src/knot/dnssec/zone-sign.c
 src/knot/dnssec/zone-sign.h
 src/knot/knot.h
 src/knot/main.c
+src/knot/modules/dcudb.c
+src/knot/modules/dcudb.h
+src/knot/modules/dcudb_tool.c
 src/knot/modules/dnstap.c
 src/knot/modules/dnstap.h
-src/knot/modules/dynzone.c
-src/knot/modules/dynzone.h
-src/knot/modules/dynzone_tool.c
 src/knot/modules/synth_record.c
 src/knot/modules/synth_record.h
 src/knot/nameserver/axfr.c

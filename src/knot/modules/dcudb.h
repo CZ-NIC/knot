@@ -36,7 +36,7 @@
 #include "knot/nameserver/query_module.h"
 
 /*! \brief Module interface. */
-int dynzone_load(struct query_plan *plan, struct query_module *self);
-int dynzone_unload(struct query_module *self);
+int dcudb_load(struct query_plan *plan, struct query_module *self);
+int dcudb_unload(struct query_module *self);
 
 /*! @} */

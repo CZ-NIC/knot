@@ -350,14 +350,14 @@ endif
 
 if HAVE_LMDB
 libknotd_la_SOURCES +=				\
-	knot/modules/dynzone.c				\
-	knot/modules/dynzone.h
+	knot/modules/dcudb.c				\
+	knot/modules/dcudb.h
 
-dynzone_tool_SOURCES =					\
-	knot/modules/dynzone_tool.c
+dcudb_tool_SOURCES =					\
+	knot/modules/dcudb_tool.c
 
-bin_PROGRAMS += dynzone_tool
-dynzone_tool_LDADD = libknot.la libknotd.la
+bin_PROGRAMS += dcudb_tool
+dcudb_tool_LDADD = libknot.la libknotd.la
 endif
 
 # Create storage and run-time directories

@@ -5,7 +5,7 @@
 
 /* Compiled-in module headers. */
 #ifdef HAVE_LMDB
-#include "knot/modules/dynzone.h"
+#include "knot/modules/dcudb.h"
 #endif
 #include "knot/modules/synth_record.h"
 #if USE_DNSTAP
@@ -22,7 +22,7 @@ struct compiled_module {
 /*! \note All modules should be dynamically loaded later on. */
 struct compiled_module MODULES[] = {
 #ifdef HAVE_LMDB
-        { "dynzone", &dynzone_load, &dynzone_unload },
+        { "dcudb", &dcudb_load, &dcudb_unload },
 #endif
         { "synth_record", &synth_record_load, &synth_record_unload },
 #if USE_DNSTAP
