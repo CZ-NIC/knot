@@ -414,7 +414,7 @@ static int process_query_out(knot_pkt_t *pkt, knot_process_t *ctx)
 
 	/* Check parse state. */
 	knot_pkt_t *query = qdata->query;
-	int next_state = NS_PROC_FAIL;
+	int next_state = NS_PROC_MORE;
 	if (query->parsed < query->size) {
 		dbg_ns("%s: incompletely parsed query, FORMERR\n", __func__);
 		knot_pkt_clear(pkt);

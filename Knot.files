@@ -116,6 +116,8 @@ src/knot/main.c
 src/knot/modules/dcudb.c
 src/knot/modules/dcudb.h
 src/knot/modules/dcudb_tool.c
+src/knot/modules/dnsproxy.c
+src/knot/modules/dnsproxy.h
 src/knot/modules/dnstap.c
 src/knot/modules/dnstap.h
 src/knot/modules/synth_record.c

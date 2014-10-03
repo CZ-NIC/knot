@@ -263,6 +263,8 @@ libknotd_la_SOURCES =				\
 	knot/nameserver/tsig_ctx.h		\
 	knot/modules/synth_record.c		\
 	knot/modules/synth_record.h		\
+	knot/modules/dnsproxy.c		\
+	knot/modules/dnsproxy.h		\
 	knot/other/debug.h			\
 	knot/server/dthreads.c			\
 	knot/server/dthreads.h			\

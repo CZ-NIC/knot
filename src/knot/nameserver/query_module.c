@@ -4,10 +4,11 @@
 #include "common-knot/strlcpy.h"
 
 /* Compiled-in module headers. */
+#include "knot/modules/synth_record.h"
+#include "knot/modules/dnsproxy.h"
 #ifdef HAVE_LMDB
 #include "knot/modules/dcudb.h"
 #endif
-#include "knot/modules/synth_record.h"
 #if USE_DNSTAP
 #include "knot/modules/dnstap.h"
 #endif
@@ -21,10 +22,11 @@ struct compiled_module {
 
 /*! \note All modules should be dynamically loaded later on. */
 struct compiled_module MODULES[] = {
+        { "synth_record", &synth_record_load, &synth_record_unload },
+        { "dnsproxy", &dnsproxy_load, &dnsproxy_unload },
 #ifdef HAVE_LMDB
         { "dcudb", &dcudb_load, &dcudb_unload },
 #endif
-        { "synth_record", &synth_record_load, &synth_record_unload },
 #if USE_DNSTAP
         { "dnstap",       &dnstap_load,       &dnstap_unload }
 #endif
