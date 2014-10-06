@@ -17,6 +17,7 @@
 #pragma once
 
 #include <assert.h>
+#include <dirent.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -46,12 +47,18 @@
 
 #define _cleanup_(var) __attribute__((cleanup(var)))
 
+static inline void free_ptr(void *ptr)
+{
+	free(*(void **)ptr);
+}
+
 static inline void close_ptr(int *ptr)
 {
 	if (*ptr != -1) {
 		close(*ptr);
 	}
 }
+
 static inline void fclose_ptr(FILE **ptr)
 {
 	if (*ptr) {
@@ -59,9 +66,11 @@ static inline void fclose_ptr(FILE **ptr)
 	}
 }
 
-static inline void free_ptr(void *ptr)
+static inline void closedir_ptr(DIR **ptr)
 {
-	free(*(void **)ptr);
+	if (*ptr) {
+		closedir(*ptr);
+	}
 }
 
 static inline void free_gnutls_datum_ptr(gnutls_datum_t *ptr)
@@ -86,6 +95,7 @@ static inline void free_gnutls_hash_ptr(gnutls_hash_hd_t *ptr)
 #define _cleanup_free_ _cleanup_(free_ptr)
 #define _cleanup_close_ _cleanup_(close_ptr)
 #define _cleanup_fclose_ _cleanup_(fclose_ptr)
+#define _cleanup_closedir_ _cleanup_(closedir_ptr)
 #define _cleanup_binary_ _cleanup_(dnssec_binary_free)
 #define _cleanup_datum_ _cleanup_(free_gnutls_datum_ptr)
 #define _cleanup_x509_privkey_ _cleanup_(free_x509_privkey_ptr)
