@@ -59,6 +59,8 @@ libdnssec_la_SOURCES = \
 	lib/dnssec/tsig.h \
 	lib/error.c \
 	lib/kasp/dir/dir.c \
+	lib/kasp/dir/escape.c \
+	lib/kasp/dir/escape.h \
 	lib/kasp/dir/json.c \
 	lib/kasp/dir/json.h \
 	lib/kasp/dir/zone.c \
