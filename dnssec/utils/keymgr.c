@@ -24,6 +24,7 @@
 #include <dnssec/error.h>
 #include <dnssec/kasp.h>
 
+#include "shared.h"
 #include "utils.h"
 
 /* -- global options ------------------------------------------------------- */
@@ -33,6 +34,15 @@ struct options {
 };
 
 typedef struct options options_t;
+
+/* -- internal ------------------------------------------------------------- */
+
+static void cleanup_kasp(dnssec_kasp_t **kasp_ptr)
+{
+	dnssec_kasp_deinit(*kasp_ptr);
+}
+
+#define _cleanup_kasp_ _cleanup_(cleanup_kasp)
 
 /* -- subcommands processing ----------------------------------------------- */
 
@@ -79,7 +89,7 @@ static int cmd_init(options_t *options, int argc, char *argv[])
 		return 1;
 	}
 
-	dnssec_kasp_t *kasp = NULL;
+	_cleanup_kasp_ dnssec_kasp_t *kasp = NULL;
 	dnssec_kasp_init_dir(&kasp);
 
 	int r = dnssec_kasp_init(kasp, options->kasp_dir);
@@ -87,8 +97,6 @@ static int cmd_init(options_t *options, int argc, char *argv[])
 		error("Cannot initialize KASP directory (%s).\n",
 		      dnssec_strerror(r));
 	}
-
-	dnssec_kasp_deinit(kasp);
 
 	return (r == DNSSEC_EOK ? 0 : 1);
 }
@@ -129,7 +137,7 @@ static int cmd_zone_add(options_t *options, int argc, char *argv[])
 
 	// create zone
 
-	dnssec_kasp_t *kasp = NULL;
+	_cleanup_kasp_ dnssec_kasp_t *kasp = NULL;
 	dnssec_kasp_init_dir(&kasp);
 
 	int r = dnssec_kasp_open(kasp, options->kasp_dir);
@@ -150,8 +158,6 @@ static int cmd_zone_add(options_t *options, int argc, char *argv[])
 		return 1;
 	}
 
-	dnssec_kasp_deinit(kasp);
-
 	return 0;
 }
 
@@ -160,9 +166,6 @@ static int cmd_zone_add(options_t *options, int argc, char *argv[])
  */
 static int cmd_zone_list(options_t *options, int argc, char *argv[])
 {
-	dnssec_kasp_t *kasp = NULL;
-	dnssec_kasp_init_dir(&kasp);
-
 	const char *match;
 	if (argc == 1) {
 		match = NULL;
@@ -173,6 +176,9 @@ static int cmd_zone_list(options_t *options, int argc, char *argv[])
 		return 1;
 	}
 
+	_cleanup_kasp_ dnssec_kasp_t *kasp = NULL;
+	dnssec_kasp_init_dir(&kasp);
+
 	int r = dnssec_kasp_open(kasp, options->kasp_dir);
 	if (r != DNSSEC_EOK) {
 		error("dnssec_kasp_open: %s\n", dnssec_strerror(r));
@@ -181,7 +187,6 @@ static int cmd_zone_list(options_t *options, int argc, char *argv[])
 
 	printf("list of zones (match substring '%s')\n", match ? match : "");
 
-	dnssec_kasp_deinit(kasp);
 
 	return 0;
 }
