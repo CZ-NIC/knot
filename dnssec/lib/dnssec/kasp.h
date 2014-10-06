@@ -174,6 +174,14 @@ int dnssec_kasp_load_zone(dnssec_kasp_t *kasp, const char *zone_name,
  */
 int dnssec_kasp_save_zone(dnssec_kasp_t *kasp, dnssec_kasp_zone_t *zone);
 
+/*!
+ * Get list of zones in the KASP.
+ *
+ * \param[in]  kasp  KASP instance.
+ * \param[out] list  List of zones.
+ */
+int dnssec_kasp_list_zones(dnssec_kasp_t *kasp, dnssec_list_t **list);
+
 struct dnssec_kasp_policy;
 
 /*!

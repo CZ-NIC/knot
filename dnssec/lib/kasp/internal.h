@@ -30,7 +30,7 @@ typedef struct dnssec_kasp_store_functions {
 	// zone serialization/deserialization
 	int (*load_zone)(dnssec_kasp_zone_t *zone, void *ctx);
 	int (*save_zone)(dnssec_kasp_zone_t *zone, void *ctx);
-	int (*list_zones)(dnssec_kasp_zone_t *zone, dnssec_list_t **list_ptr);
+	int (*list_zones)(void *ctx, dnssec_list_t *zones);
 } dnssec_kasp_store_functions_t;
 
 /*!

@@ -118,3 +118,30 @@ int dnssec_kasp_save_zone(dnssec_kasp_t *kasp, dnssec_kasp_zone_t *zone)
 
 	return kasp->functions->save_zone(zone, kasp->ctx);
 }
+
+static void free_zone_name(void *ptr, void *ctx _unused_)
+{
+	free(ptr);
+}
+
+_public_
+int dnssec_kasp_list_zones(dnssec_kasp_t *kasp, dnssec_list_t **list_ptr)
+{
+	if (!kasp || !list_ptr) {
+		return DNSSEC_EINVAL;
+	}
+
+	dnssec_list_t *list = dnssec_list_new();
+	if (!list) {
+		return DNSSEC_ENOMEM;
+	}
+
+	int result = kasp->functions->list_zones(kasp->ctx, list);
+	if (result != DNSSEC_EOK) {
+		dnssec_list_free_full(list, free_zone_name, NULL);
+		return result;
+	}
+
+	*list_ptr = list;
+	return DNSSEC_EOK;
+}
