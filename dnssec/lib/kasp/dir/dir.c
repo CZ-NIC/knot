@@ -15,14 +15,16 @@
 */
 
 #include <assert.h>
+#include <dirent.h>
 #include <fcntl.h>
-#include <jansson.h>
 #include <sys/stat.h>
+#include <sys/types.h>
 
 #include "error.h"
 #include "kasp/dir/zone.h"
 #include "kasp/internal.h"
 #include "key.h"
+#include "list.h"
 #include "path.h"
 #include "shared.h"
 
@@ -127,12 +129,37 @@ static int kasp_dir_save_zone(dnssec_kasp_zone_t *zone, void *_ctx)
 	return save_zone_config(zone, config);
 }
 
+static int kasp_dir_list_zones(void *_ctx, dnssec_list_t *list)
+{
+	assert(_ctx);
+	assert(list);
+
+	kasp_dir_ctx_t *ctx = _ctx;
+
+	_cleanup_closedir_ DIR *dir = opendir(ctx->path);
+	if (!dir) {
+		return DNSSEC_NOT_FOUND;
+	}
+
+	int error;
+	struct dirent entry, *result;
+	while (error = readdir_r(dir, &entry, &result), error == 0 && result) {
+	}
+
+	if (error != 0) {
+		return dnssec_errno_to_error(error);
+	}
+
+	return DNSSEC_EOK;
+}
+
 static const dnssec_kasp_store_functions_t KASP_DIR_FUNCTIONS = {
 	.init = kasp_dir_init,
 	.open = kasp_dir_open,
 	.close = kasp_dir_close,
 	.load_zone = kasp_dir_load_zone,
 	.save_zone = kasp_dir_save_zone,
+	.list_zones = kasp_dir_list_zones,
 };
 
 /* -- public API ----------------------------------------------------------- */
