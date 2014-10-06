@@ -1,12 +1,12 @@
 #include <string.h>
 #include <stdlib.h>
 #include <lmdb.h>
-#include "knot/modules/dcudb.c"
+#include "knot/modules/rosedb.c"
 
-static int dcudb_add(struct cache *cache, int argc, char *argv[]);
-static int dcudb_del(struct cache *cache, int argc, char *argv[]);
-static int dcudb_get(struct cache *cache, int argc, char *argv[]);
-static int dcudb_list(struct cache *cache, int argc, char *argv[]);
+static int rosedb_add(struct cache *cache, int argc, char *argv[]);
+static int rosedb_del(struct cache *cache, int argc, char *argv[]);
+static int rosedb_get(struct cache *cache, int argc, char *argv[]);
+static int rosedb_list(struct cache *cache, int argc, char *argv[]);
 
 struct tool_action {
 	const char *name;
@@ -17,15 +17,15 @@ struct tool_action {
 
 #define TOOL_ACTION_COUNT 4
 static struct tool_action TOOL_ACTION[TOOL_ACTION_COUNT] = {
-{ "add",  dcudb_add, 4, "<zone> <ip> <threat_code> <syslog_ip>" },
-{ "del",  dcudb_del, 1, "<zone>" },
-{ "get",  dcudb_get, 1, "<zone>" },
-{ "list", dcudb_list, 0, "" },
+{ "add",  rosedb_add, 4, "<zone> <ip> <threat_code> <syslog_ip>" },
+{ "del",  rosedb_del, 1, "<zone>" },
+{ "get",  rosedb_get, 1, "<zone>" },
+{ "list", rosedb_list, 0, "" },
 };
 
 static int help(void)
 {
-	printf("Usage: dcudb_tool <dbdir> <action> [params]\n");
+	printf("Usage: rosedb_tool <dbdir> <action> [params]\n");
 	printf("Actions:\n");
 	for (unsigned i = 0; i < TOOL_ACTION_COUNT; ++i) {
 		struct tool_action *ta = &TOOL_ACTION[i];
@@ -73,7 +73,7 @@ int main(int argc, char *argv[])
 	return ret;
 }
 
-static int dcudb_add(struct cache *cache, int argc, char *argv[])
+static int rosedb_add(struct cache *cache, int argc, char *argv[])
 {
 	printf("ADD %s\t%s\t%s\t%s\n", argv[0], argv[1], argv[2], argv[3]);
 
@@ -107,7 +107,7 @@ static int dcudb_add(struct cache *cache, int argc, char *argv[])
 	return ret;
 }
 
-static int dcudb_del(struct cache *cache, int argc, char *argv[])
+static int rosedb_del(struct cache *cache, int argc, char *argv[])
 {
 	printf("DEL %s\n", argv[0]);
 
@@ -126,7 +126,7 @@ static int dcudb_del(struct cache *cache, int argc, char *argv[])
 	return ret;
 }
 
-static int dcudb_get(struct cache *cache, int argc, char *argv[])
+static int rosedb_get(struct cache *cache, int argc, char *argv[])
 {
 	MDB_txn *txn = NULL;
 	int ret = mdb_txn_begin(cache->env, NULL, MDB_RDONLY, &txn);
@@ -148,7 +148,7 @@ static int dcudb_get(struct cache *cache, int argc, char *argv[])
 	return ret;
 }
 
-static int dcudb_list(struct cache *cache, int argc, char *argv[])
+static int rosedb_list(struct cache *cache, int argc, char *argv[])
 {
 	MDB_txn *txn = NULL;
 	int ret = mdb_txn_begin(cache->env, NULL, MDB_RDONLY, &txn);

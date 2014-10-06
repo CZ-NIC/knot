@@ -7,7 +7,7 @@
 #include "knot/modules/synth_record.h"
 #include "knot/modules/dnsproxy.h"
 #ifdef HAVE_LMDB
-#include "knot/modules/dcudb.h"
+#include "knot/modules/rosedb.h"
 #endif
 #if USE_DNSTAP
 #include "knot/modules/dnstap.h"
@@ -25,7 +25,7 @@ struct compiled_module MODULES[] = {
         { "synth_record", &synth_record_load, &synth_record_unload },
         { "dnsproxy", &dnsproxy_load, &dnsproxy_unload },
 #ifdef HAVE_LMDB
-        { "dcudb", &dcudb_load, &dcudb_unload },
+        { "rosedb", &rosedb_load, &rosedb_unload },
 #endif
 #if USE_DNSTAP
         { "dnstap",       &dnstap_load,       &dnstap_unload }

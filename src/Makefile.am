@@ -352,14 +352,14 @@ endif
 
 if HAVE_LMDB
 libknotd_la_SOURCES +=				\
-	knot/modules/dcudb.c				\
-	knot/modules/dcudb.h
+	knot/modules/rosedb.c				\
+	knot/modules/rosedb.h
 
-dcudb_tool_SOURCES =					\
-	knot/modules/dcudb_tool.c
+rosedb_tool_SOURCES =					\
+	knot/modules/rosedb_tool.c
 
-bin_PROGRAMS += dcudb_tool
-dcudb_tool_LDADD = libknot.la libknotd.la
+bin_PROGRAMS += rosedb_tool
+rosedb_tool_LDADD = libknot.la libknotd.la
 endif
 
 # Create storage and run-time directories

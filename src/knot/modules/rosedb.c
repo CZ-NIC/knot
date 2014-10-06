@@ -16,7 +16,7 @@
 
 #include <lmdb.h>
 
-#include "knot/modules/dcudb.h"
+#include "knot/modules/rosedb.h"
 #include "knot/nameserver/process_query.h"
 
 struct cache
@@ -257,7 +257,7 @@ int cache_remove(MDB_txn *txn, MDB_dbi dbi, const knot_dname_t *name)
 #define DEFAULT_PORT 514
 #define SYSLOG_BUFLEN 1024 /* RFC3164, 4.1 message size. */
 #define SYSLOG_FACILITY 3  /* System daemon. */
-#define MODULE_ERR(msg...) log_error("module 'dcu', " msg)
+#define MODULE_ERR(msg...) log_error("module 'rose', " msg)
 
 /*! \brief Safe stream skipping. */
 static int stream_skip(char **stream, size_t *maxlen, int nbytes)
@@ -278,7 +278,7 @@ static int stream_skip(char **stream, size_t *maxlen, int nbytes)
 		return KNOT_ESPACE; \
 	}
 
-static int dcudb_log_message(char *stream, size_t *maxlen, struct entry *entry, struct query_data *qdata)
+static int rosedb_log_message(char *stream, size_t *maxlen, struct entry *entry, struct query_data *qdata)
 {
 	struct sockaddr_storage addr;
 	socklen_t addr_len = sizeof(addr);
@@ -334,7 +334,7 @@ static int dcudb_log_message(char *stream, size_t *maxlen, struct entry *entry, 
 	return KNOT_EOK;
 }
 
-static int dcudb_send_log(int sock, struct sockaddr_storage *dst_addr, struct entry *entry, struct query_data *qdata)
+static int rosedb_send_log(int sock, struct sockaddr_storage *dst_addr, struct entry *entry, struct query_data *qdata)
 {
 	char buf[SYSLOG_BUFLEN];
 	char *stream = buf;
@@ -355,7 +355,7 @@ static int dcudb_send_log(int sock, struct sockaddr_storage *dst_addr, struct en
 	STREAM_WRITE(stream, &maxlen, snprintf, "%s[%lu]: ", PACKAGE_NAME, (unsigned long) getpid());
 
 	/* Prepare log message line. */
-	int ret = dcudb_log_message(stream, &maxlen, entry, qdata);
+	int ret = rosedb_log_message(stream, &maxlen, entry, qdata);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
@@ -367,7 +367,7 @@ static int dcudb_send_log(int sock, struct sockaddr_storage *dst_addr, struct en
 	return ret;
 }
 
-static int dcudb_synth(knot_pkt_t *pkt, struct entry *entry)
+static int rosedb_synth(knot_pkt_t *pkt, struct entry *entry)
 {
 	size_t addr_len = 0;
 	struct sockaddr_storage addr;
@@ -388,7 +388,7 @@ static int dcudb_synth(knot_pkt_t *pkt, struct entry *entry)
 	return ret;
 }
 
-static int dcudb_query_txn(MDB_txn *txn, MDB_dbi dbi, knot_pkt_t *pkt, struct query_data *qdata)
+static int rosedb_query_txn(MDB_txn *txn, MDB_dbi dbi, knot_pkt_t *pkt, struct query_data *qdata)
 {
 	struct entry entry;
 	int ret = 0;
@@ -410,14 +410,14 @@ static int dcudb_query_txn(MDB_txn *txn, MDB_dbi dbi, knot_pkt_t *pkt, struct qu
 	}
 
 	/* Synthetize A record to response. */
-	ret = dcudb_synth(pkt, &entry);
+	ret = rosedb_synth(pkt, &entry);
 
 	/* Send message to syslog. */
 	struct sockaddr_storage syslog_addr;
 	sockaddr_set(&syslog_addr, AF_INET, entry.syslog_ip, DEFAULT_PORT);
 	int sock = net_unbound_socket(AF_INET, &syslog_addr);
 	if (sock > 0) {
-		dcudb_send_log(sock, &syslog_addr, &entry, qdata);
+		rosedb_send_log(sock, &syslog_addr, &entry, qdata);
 		close(sock);
 	}
 
@@ -425,7 +425,7 @@ static int dcudb_query_txn(MDB_txn *txn, MDB_dbi dbi, knot_pkt_t *pkt, struct qu
 	return ret;
 }
 
-static int dcudb_query(int state, knot_pkt_t *pkt, struct query_data *qdata, void *ctx)
+static int rosedb_query(int state, knot_pkt_t *pkt, struct query_data *qdata, void *ctx)
 {
 	if (pkt == NULL || qdata == NULL || ctx == NULL) {
 		return NS_PROC_FAIL;
@@ -444,7 +444,7 @@ static int dcudb_query(int state, knot_pkt_t *pkt, struct query_data *qdata, voi
 		return state;
 	}
 
-	ret = dcudb_query_txn(txn, cache->dbi, pkt, qdata);
+	ret = rosedb_query_txn(txn, cache->dbi, pkt, qdata);
 	if (ret != 0) { /* Can't find matching zone, ignore. */
 		mdb_txn_abort(txn);
 		return state;
@@ -455,7 +455,7 @@ static int dcudb_query(int state, knot_pkt_t *pkt, struct query_data *qdata, voi
 	return NS_PROC_DONE;
 }
 
-int dcudb_load(struct query_plan *plan, struct query_module *self)
+int rosedb_load(struct query_plan *plan, struct query_module *self)
 {
 	struct cache *cache = cache_open(self->param, 0, self->mm);
 	if (cache == NULL) {
@@ -465,10 +465,10 @@ int dcudb_load(struct query_plan *plan, struct query_module *self)
 
 	self->ctx = cache;
 
-	return query_plan_step(plan, QPLAN_BEGIN, dcudb_query, cache);
+	return query_plan_step(plan, QPLAN_BEGIN, rosedb_query, cache);
 }
 
-int dcudb_unload(struct query_module *self)
+int rosedb_unload(struct query_module *self)
 {
 	cache_close(self->ctx);
 	return KNOT_EOK;

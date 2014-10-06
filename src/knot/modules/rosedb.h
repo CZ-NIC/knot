@@ -36,7 +36,7 @@
 #include "knot/nameserver/query_module.h"
 
 /*! \brief Module interface. */
-int dcudb_load(struct query_plan *plan, struct query_module *self);
-int dcudb_unload(struct query_module *self);
+int rosedb_load(struct query_plan *plan, struct query_module *self);
+int rosedb_unload(struct query_module *self);
 
 /*! @} */
