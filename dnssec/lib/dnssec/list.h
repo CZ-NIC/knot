@@ -42,6 +42,15 @@ void dnssec_list_free(dnssec_list_t *list);
 
 typedef void (*dnssec_item_free_cb)(void *data, void *ctx);
 
+/*!
+ * Free the list including contained items.
+ *
+ * If \c free_cb is NULL, standard libc \c free will used to free the items.
+ *
+ * \param list      List to be freed.
+ * \param free_cb   Free function called for each item in the list.
+ * \param free_ctx  Context passed to item free.
+ */
 void dnssec_list_free_full(dnssec_list_t *list, dnssec_item_free_cb free_cb,
 			   void *free_ctx);
 

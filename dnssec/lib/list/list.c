@@ -44,6 +44,14 @@ static dnssec_item_t *item_new(void *data)
 	return item;
 }
 
+/*!
+ * Wrapper around libc free with unused context.
+ */
+static void wrap_free(void *ptr, void *ctx _unused_)
+{
+	free(ptr);
+}
+
 /* -- public API ----------------------------------------------------------- */
 
 _public_
@@ -89,8 +97,12 @@ _public_
 void dnssec_list_free_full(dnssec_list_t *list, dnssec_item_free_cb free_cb,
 			   void *free_ctx)
 {
-	if (!list || !free_cb) {
+	if (!list) {
 		return;
+	}
+
+	if (!free_cb) {
+		free_cb = wrap_free;
 	}
 
 	dnssec_list_foreach(item, list) {
