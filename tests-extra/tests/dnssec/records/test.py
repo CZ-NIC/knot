@@ -19,7 +19,7 @@ master.gen_confile()
 
 t.start()
 
-t.sleep(4)
+master.zone_wait(zone)
 
 master.flush()
 

@@ -32,7 +32,18 @@
 
 #include "libknot/errcode.h"
 
-static inline int naptr_header_size(const uint8_t *naptr, const uint8_t *maxp)
+/*!
+ * \brief Counts the size of the NAPTR RDATA before the Replacement domain name.
+ *
+ * See RFC 2915.
+ *
+ * \param naptr  Wire format of NAPTR record.
+ * \param maxp   Limit of the wire format.
+ *
+ * \retval KNOT_EMALF if the record is malformed.
+ * \retval Size of the RDATA before the Replacement domain name.
+ */
+static inline int knot_naptr_header_size(const uint8_t *naptr, const uint8_t *maxp)
 {
 	size_t size = 0;
 
@@ -42,8 +53,6 @@ static inline int naptr_header_size(const uint8_t *naptr, const uint8_t *maxp)
 	/* Variable fields size (flags, services, regexp) */
 	for (int i = 0; i < 3; i++) {
 		const uint8_t *len_ptr = naptr + size;
-		printf("Checking len_ptr = %p, maxp = %p\n",
-		       len_ptr, maxp);
 		if (len_ptr >= maxp) {
 			return KNOT_EMALF;
 		}

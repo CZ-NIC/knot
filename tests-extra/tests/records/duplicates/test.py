@@ -15,7 +15,7 @@ t.start()
 
 knot.zones_wait(zone)
 
-# Request AXFR from both Knot
+# Request AXFR from Knot
 resp = knot.dig("duplicates.", "AXFR")
 
 # If Knot has not properly handled the case, there will be some redundant record

@@ -115,7 +115,7 @@ static int write_rdata_naptr_header(const uint8_t **src, size_t *src_avail,
 	assert(dst && *dst);
 	assert(dst_avail);
 
-	int ret = naptr_header_size(*src, *src + *src_avail);
+	int ret = knot_naptr_header_size(*src, *src + *src_avail);
 
 	if (ret < 0) {
 		return ret;

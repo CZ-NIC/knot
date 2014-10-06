@@ -172,45 +172,46 @@ int knot_rrset_rr_to_canonical(knot_rrset_t *rrset)
 	}
 
 	/* Convert DNAMEs in RDATA only for RFC4034 types. */
-	if (knot_rrtype_should_be_lowercased(rrset->type)) {
-		const rdata_descriptor_t *desc =
-		                knot_get_rdata_descriptor(rrset->type);
-		if (desc->type_name == NULL) {
-			desc = knot_get_obsolete_rdata_descriptor(rrset->type);
-		}
+	if (!knot_rrtype_should_be_lowercased(rrset->type)) {
+		return KNOT_EOK;
+	}
 
-		knot_rdata_t *rdata = knot_rdataset_at(&rrset->rrs, 0);
-		uint16_t rdlen = knot_rdata_rdlen(rdata);
-		uint8_t *pos = knot_rdata_data(rdata);
+	const rdata_descriptor_t *desc = knot_get_rdata_descriptor(rrset->type);
+	if (desc->type_name == NULL) {
+		desc = knot_get_obsolete_rdata_descriptor(rrset->type);
+	}
 
-		/* No RDATA */
-		if (rdata == NULL || rdlen == 0) {
-			return KNOT_EOK;
-		}
+	knot_rdata_t *rdata = knot_rdataset_at(&rrset->rrs, 0);
+	uint16_t rdlen = knot_rdata_rdlen(rdata);
+	uint8_t *pos = knot_rdata_data(rdata);
 
-		/* Otherwise, whole and not malformed RDATA are expected. */
-		for (int i = 0; desc->block_types[i] != KNOT_RDATA_WF_END; ++i) {
-			int type = desc->block_types[i];
-			switch (type) {
-			case KNOT_RDATA_WF_COMPRESSIBLE_DNAME:
-			case KNOT_RDATA_WF_DECOMPRESSIBLE_DNAME:
-			case KNOT_RDATA_WF_FIXED_DNAME:
-				ret = knot_dname_to_lower(pos);
-				if (ret != KNOT_EOK) {
-					return ret;
-				}
-				pos += knot_dname_size(pos);
-				break;
-			case KNOT_RDATA_WF_NAPTR_HEADER:
-				pos += naptr_header_size(pos, rdata + rdlen);
-				break;
-			case KNOT_RDATA_WF_REMAINDER:
-				break;
-			default:
-				/* Fixed size block */
-				assert(type > 0);
-				pos += type;
+	/* No RDATA */
+	if (rdata == NULL || rdlen == 0) {
+		return KNOT_EOK;
+	}
+
+	/* Otherwise, whole and not malformed RDATA are expected. */
+	for (int i = 0; desc->block_types[i] != KNOT_RDATA_WF_END; ++i) {
+		int type = desc->block_types[i];
+		switch (type) {
+		case KNOT_RDATA_WF_COMPRESSIBLE_DNAME:
+		case KNOT_RDATA_WF_DECOMPRESSIBLE_DNAME:
+		case KNOT_RDATA_WF_FIXED_DNAME:
+			ret = knot_dname_to_lower(pos);
+			if (ret != KNOT_EOK) {
+				return ret;
 			}
+			pos += knot_dname_size(pos);
+			break;
+		case KNOT_RDATA_WF_NAPTR_HEADER:
+			pos += knot_naptr_header_size(pos, rdata + rdlen);
+			break;
+		case KNOT_RDATA_WF_REMAINDER:
+			break;
+		default:
+			/* Fixed size block */
+			assert(type > 0);
+			pos += type;
 		}
 	}
 

@@ -1104,11 +1104,18 @@ void log_cyclic_errors_in_zone(err_handler_t *handler,
 
 			const knot_dname_t *next_dname = knot_nsec_next(nsec_rrs);
 			assert(next_dname);
+			knot_dname_t *lowercase = knot_dname_copy(next_dname, NULL);
+			if (lowercase == NULL) {
+				return;
+			}
+			knot_dname_to_lower(lowercase);
 
-			if (knot_dname_cmp(next_dname, zone->apex->owner) != 0) {
+			if (knot_dname_cmp(lowercase, zone->apex->owner) != 0) {
 				err_handler_handle_error(handler, zone, last_node,
 					 ZC_ERR_NSEC_RDATA_CHAIN_NOT_CYCLIC, NULL);
 			}
+
+			knot_dname_free(&lowercase, NULL);
 		}
 	}
 }

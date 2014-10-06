@@ -304,7 +304,8 @@ int knot_rrtype_additional_needed(const uint16_t type);
  *
  * \param type RRSet type to check.
  *
- * \retval true If RDATA dnames for type
+ * \retval true If RDATA dnames for type should be lowercased in canonical format.
+ * \retval false Otherwise.
  */
 bool knot_rrtype_should_be_lowercased(const uint16_t type);
 
