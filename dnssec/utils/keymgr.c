@@ -185,8 +185,15 @@ static int cmd_zone_list(options_t *options, int argc, char *argv[])
 		return 1;
 	}
 
+	dnssec_list_t *zones = NULL;
+	r = dnssec_kasp_list_zones(kasp, &zones);
+	if (r != DNSSEC_EOK) {
+		error("dnssec_kasp_list_zones");
+	}
+
 	printf("list of zones (match substring '%s')\n", match ? match : "");
 
+	dnssec_list_free_full(zones, NULL, NULL);
 
 	return 0;
 }
