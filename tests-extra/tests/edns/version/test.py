@@ -3,6 +3,7 @@
 '''Test for EDNS version'''
 
 from dnstest.test import Test
+from dnstest.utils import *
 
 t = Test()
 
@@ -21,8 +22,8 @@ resp.check(rcode="NOERROR", edns_version=0)
 resp = server.dig("example.com", "SOA", edns=1)
 resp.check(rcode="BADVERS", edns_version=0)
 compare(resp.count(section="answer"), 0, "Answer count")
-compare(resp.count(section="authority", 0, "Authority count")
-compare(resp.count(section="additional", 0, "Additional count")
+compare(resp.count(section="authority"), 0, "Authority count")
+compare(resp.count(section="additional"), 0, "Additional count")
 
 
 t.end()
