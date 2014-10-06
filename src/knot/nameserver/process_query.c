@@ -315,7 +315,7 @@ static int prepare_answer(const knot_pkt_t *query, knot_pkt_t *resp, knot_proces
 
 	/* If Extended RCODE is set, do not continue with query processing. */
 	if (qdata->rcode_ext != 0) {
-		return KNOT_EMALF;
+		return KNOT_ERROR;
 	}
 
 	/* Update maximal answer size. */
@@ -490,7 +490,7 @@ static int process_query_out(knot_pkt_t *pkt, knot_process_t *ctx)
 finish:
 	/* Default RCODE is SERVFAIL if not specified otherwise. */
 	if (next_state == NS_PROC_FAIL && qdata->rcode == KNOT_RCODE_NOERROR
-	    && qdata->rcode_ext != KNOT_RCODE_BADVERS) {
+	    && qdata->rcode_ext == 0) {
 		qdata->rcode = KNOT_RCODE_SERVFAIL;
 	}
 
