@@ -1,14 +1,14 @@
 ; File written on Mon Sep  8 14:59:12 2014
 ; dnssec_signzone version 9.9.0
-example.				      3600 IN SOA	ns1.example. bugs.x.w.example. 1081539377 3600 300 3600000 3600
+example.				      3600 IN SOA	ns1.exAmpLe. BUGS.x.w.example. 1081539377 3600 300 3600000 3600
 example.				      3600 IN RRSIG	SOA 5 1 3600 20500101000000 20140908115912 35721 example. eUi219ENFoSmkCstQZ0D/eYNg3amKIdX8HvW1qHwM2rSv9Q7XaCI2NBy ki0poLwEuabZf8SHm2Kqh7EA35UFKYkEhEwtN/292ROuHVkZRCUzM3lD 9PT1NPkleqT3JcjiBRy3BCTirnGX5qQXK9qKW08fIawvNhwexI3e5hjS QUU=
 example.				      3600 IN NS	ns1.example.
 example.				      3600 IN NS	ns2.example.
 example.				      3600 IN RRSIG	NS 5 1 3600 20500101000000 20140908115912 35721 example. XRYbz0NL/bcF4uOH+puXe5hSJgmG9wX+sWz7ksi3Vl4HO5InUkyltxkn CdWw0M8cfpM8FM30inACCOOfBUEbyFL7TWUjfTwk3jKDX+7gm5FkItNE 2ZMLK0QnyjWQOiE5G15+cvV31eQHBRFpYLrQBIeGiL+V9aDYafTLV+Yt 0e0=
-example.				      3600 IN MX	1 xx.example.
+example.				      3600 IN MX	1 XX.example.
 example.				      3600 IN RRSIG	MX 5 1 3600 20500101000000 20140908115912 35721 example. ejvossk9ErTnwuBQ0bcfwRXOvXeIJ419x/AphtwAJMtsj01kASdszAi1 Rzlo1CSca18Z6nq0XZQ1KeDjLg07WEWS1WU8l30RAKgWawlCjjJeeOTy r0GJ2IYhtbFDm9BB3u6EUmrD5/1/1NBchvWATMCo4FfspGNwZ7BgiUB3 ne4=
-example.				      3600 IN NSEC	A.eXAmple. NS SOA MX RRSIG NSEC DNSKEY
-example.				      3600 IN RRSIG	NSEC 5 1 3600 20500101000000 20140908115912 35721 example. X20KQj2os3I3fMWGXLoNccWhbP53v95PwHrKZJPCf0KawwAMsGNXfKfT 9mDLGi4AJMImmJJfufSI/Za1clHQ5n5t2Ru5w0W4QAPkpBaWuQSU/5WU IV54lCVtBBgTMuf3zpMnRgda2Q/o1XoFvN3+5eFvk0Qgs3m4OxBIfeJu Z7c=
+example.				      3600 IN NSEC	a.example. NS SOA MX RRSIG NSEC DNSKEY
+example.				      3600 IN RRSIG	NSEC 5 1 3600 20500101000000 20140908115912 35721 exAMple. X20KQj2os3I3fMWGXLoNccWhbP53v95PwHrKZJPCf0KawwAMsGNXfKfT 9mDLGi4AJMImmJJfufSI/Za1clHQ5n5t2Ru5w0W4QAPkpBaWuQSU/5WU IV54lCVtBBgTMuf3zpMnRgda2Q/o1XoFvN3+5eFvk0Qgs3m4OxBIfeJu Z7c=
 example.				      3600 IN DNSKEY	256 3 5 AwEAAdcURIq28DnbSgdwnQjjX/9ihQAgPylq7HHnMjQOm59fGPMnsjy/ AkpcNxadAVGRycM7jZHloPyp7Tty/11J9wKDsLR86YChcYk9KXFKakdr EE1jchkL7KYL7g0bUTAIJSDLhsn6TyLILzgTX6Ru4mCceS4wLJ30LSi+ DR4cockH
 example.				      3600 IN DNSKEY	257 3 5 AwEAAeMNmQ/1/6yfFfp7jOqy2M7AGBtuSzZJFpnUqrcAmTTI+RxX9vN0 1Z5CpAs9nhYTVyLEQLaGQBwkrF+QBIPJ6DQ0SvHJEWEAN25tyvWmDdUj eDnevEpbQbkdaV+XQJ3SMWGf7OtzGo0BC4vO5ecw+zGteWT/UUbX9XkK 3vWOirLAF1s5kNEEnUt+kIbr50vz+qOfvWa+ldWHSt2T2Ds6fMVkdE84 gyb3mE0syQbEuSdgOO6Vko4qn9FtJ2Uz0L2i8vKb1chT+f7RISQhicTL X/RQgH0kV80UCBtn4CEgE6Cx5Yv+z50li0I4bNRI1BLBqJneCeN/eqQs /pYNJhZg4d8=
 example.				      3600 IN RRSIG	DNSKEY 5 1 3600 20500101000000 20140908115912 35721 example. zft/jYjZDK2eq6twehtmp6W3UgZQBVhDjDauBwGG6jimkZ00PwAL4Eh5 1ZM/nGnw8CPt6YxXK32FGoLy9VQTOgFUfp0myZiRggH1At7RSBusDyOA I/BaZhJ+X1hCG2wfvPfiD9irPHB11az+isrms4FmQrWsPkyF/A3ZJqcl DpM=
@@ -20,15 +20,16 @@ ns1.b.example.				      3600 IN A		192.0.2.7
 ns2.b.example.				      3600 IN A		192.0.2.8
 b.example.				      3600 IN NS	ns1.b.example.
 b.example.				      3600 IN NS	ns2.b.example.
+b.example.				      3600 IN NS	NS2.b.eXample.
 b.example.				      3600 IN NSEC	ns1.example. NS RRSIG NSEC
 b.example.				      3600 IN RRSIG	NSEC 5 2 3600 20500101000000 20140908115912 35721 example. gXx+XR8khxgHGl4Zc5H2Fk+ekZQMFyb8qVGGztE+sGh6YD8ERZyBi6J/ GaL+PF7iDO9qJvrOHmULssCgiiTooWhnG8ezXt429ADB+8bsd9qjoyU1 cAcYL6zXHpYdf8LOTSetEaaoZISF0buD3UMOmErSZ+z5liN09V+woZqu 2K0=
-a.example.				      3600 IN NS	ns1.a.example.
+a.example.				      3600 IN NS	nS1.A.example.
 a.example.				      3600 IN NS	ns2.a.example.
 a.example.				      3600 IN DS	57855 5 1 B6DCD485719ADCA18E5F3D48A2331627FDD3636B
 a.example.				      3600 IN RRSIG	DS 5 2 3600 20500101000000 20140908115912 35721 example. X5GpSOMM71nyseLAMDsZ0ClXiQknr4KNhnde+WYsSeQwSmHjxE7cyhrt KBrhRpaCTwjGn2ydmYteRWkeCGhatr19zqdHVbu0KCbX2RQ+dv2FUu2o aw4yzIGGPsw38BxwCECauLiPIAN9cx57QIIGNRxMsestpQf1xgdNrBPS p/s=
 a.example.				      3600 IN NSEC	ai.example. NS DS RRSIG NSEC
 a.example.				      3600 IN RRSIG	NSEC 5 2 3600 20500101000000 20140908115912 35721 example. ISCOL3yUf66kEwYq3mGbc8atYg0q4Be2U86zfisEBsFcp95VE4roe7hA Zn8tvo9CgyiZ0oPpWcFdwThD7kJlDz6pW0yaUNL0m6vfVGmPJSSUITNC QUleyQKTv43UyyLGxYBazpdQkVgETD29uFI77Kb2p8sThWgD6/incQjE 4s0=
-*.to-nxdomain.example.			      3600 IN CNAME	nxdomain.example.
+*.to-nxdomain.example.			      3600 IN CNAME	nxdOMAin.eXAmple.
 *.to-nxdomain.example.			      3600 IN RRSIG	CNAME 5 2 3600 20500101000000 20140908115912 35721 example. WMK7tl1ialmOHlfJfr4Xi2Q0Vm1nxWfZgyxIMKWp3ZtaYssdDgGeu/hw xu26bztP6KZdBAtODP4m80DNNyTkTBABAlHGhlRzzdtuJUxDf106OdzX wmHYF3RUUghosTByoOk9jo4ZxqZczYJXTSPD/f8CJbe0w2Jj8u3KXuNV pao=
 *.to-nxdomain.example.			      3600 IN NSEC	*.w.example. CNAME RRSIG NSEC
 *.to-nxdomain.example.			      3600 IN RRSIG	NSEC 5 2 3600 20500101000000 20140908115912 35721 example. YKLAdVvMKdkBjkCAc7pANAiWsKnG1HPcbi8H7D+sIeXN879yk5VLxrxb sMvBlLKqAiRJvT/bfUg7Q1oUNs6hCJgI6GdfNjU4iWVOTixj1rwbUCoG HqEJdOpHsqcTIa7h3Cw46JRPZvv4Cb0nMidOdYlW4y6ibLaIO0WIy7Ds 1o8=

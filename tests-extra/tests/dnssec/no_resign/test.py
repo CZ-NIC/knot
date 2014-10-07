@@ -57,7 +57,7 @@ if compare(old_static_serial, new_static_serial,
         detail_log(rr)
 
 
-# Switch the static zone for the one with different NSEC case
+# Switch the static zone for the one with different case in records
 master.update_zonefile(static_zone, 1)
 master.reload()
 
@@ -68,5 +68,18 @@ if compare(new_static_serial, new_static_serial2,
     resp = master.dig(static_zone, "IXFR", serial=new_static_serial)
     for rr in resp.resp:
         detail_log(rr)
+
+# Switch the static zone again, this time change case in NSEC only
+# Zone should be resigned, as the NSEC's RRSIG is no longer valid
+master.update_zonefile(static_zone, 2)
+master.reload()
+
+new_static_serial3 = master.zone_wait(static_zone)
+
+# How to check that they are different??
+#compare(new_static_serial2, new_static_serial3,
+#        "%s SOA serial (static, NSEC change)" % static_zone[0].name);
+
+master.zone_verify(static_zone)
 
 t.stop()
