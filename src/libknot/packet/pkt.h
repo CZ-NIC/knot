@@ -303,7 +303,7 @@ int knot_pkt_parse_payload(knot_pkt_t *pkt, unsigned flags);
  *
  * \param pkt Packet to get the response code from.
  *
- * \return
+ * \return Whole extended RCODE (0 if pkt == NULL).
  */
 uint16_t knot_pkt_get_ext_rcode(const knot_pkt_t *pkt);
 
