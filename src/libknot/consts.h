@@ -34,8 +34,9 @@
 /*!
  * \brief Basic limits for domain names (RFC 1035).
  */
-#define KNOT_DNAME_MAXLEN 255     /*!< 1-byte maximum. */
-#define KNOT_DNAME_MAXLABELS 127  /*!< 1-char labels. */
+#define KNOT_DNAME_MAXLEN      255 /*!< 1-byte maximum. */
+#define KNOT_DNAME_MAXLABELS   127 /*!< 1-char labels. */
+#define KNOT_DNAME_MAXLABELLEN  63 /*!< 2^6 - 1 */
 
 /*!
  * \brief Address family numbers.

@@ -33,7 +33,7 @@
 #include "knot/conf/conf.h"
 #include "knot/server/journal.h"
 #include "knot/updates/acl.h"
-#include "knot/zone/events.h"
+#include "knot/zone/events/events.h"
 #include "knot/zone/contents.h"
 #include "libknot/dname.h"
 
@@ -58,7 +58,7 @@ typedef struct zone_t
 	zone_flag_t flags;
 
 	/*! \brief DDNS queue and lock. */
-	pthread_spinlock_t ddns_lock;
+	pthread_mutex_t ddns_lock;
 	size_t ddns_queue_size;
 	list_t ddns_queue;
 

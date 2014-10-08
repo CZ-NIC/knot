@@ -31,6 +31,7 @@ rdataset
 requestor
 rrl
 rrset
+rrset_wire
 server
 slab
 wire

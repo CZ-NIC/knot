@@ -315,7 +315,7 @@ static knot_pkt_t* create_query_packet(const query_t *query)
 	}
 
 	// Create QNAME from string.
-	knot_dname_t *qname = knot_dname_from_str(query->owner);
+	knot_dname_t *qname = knot_dname_from_str_alloc(query->owner);
 	if (qname == NULL) {
 		knot_pkt_free(&packet);
 		return NULL;

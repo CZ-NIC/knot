@@ -41,19 +41,19 @@ static uint16_t dname_max(size_t wire_avail)
 /*!
  * \brief Get compression pointer for a given hint.
  */
-static uint16_t compr_get_ptr(knot_compr_t *compr, int hint)
+static uint16_t compr_get_ptr(knot_compr_t *compr, uint16_t hint)
 {
 	if (compr == NULL) {
 		return 0;
 	}
 
-	return compr->rrinfo->compress_ptr[hint];
+	return knot_pkt_compr_hint(compr->rrinfo, hint);
 }
 
 /*!
  * \brief Set compression pointer for a given hint.
  */
-static void compr_set_ptr(knot_compr_t *compr, int hint,
+static void compr_set_ptr(knot_compr_t *compr, uint16_t hint,
                           const uint8_t *written_at, uint16_t written_size)
 {
 	if (compr == NULL) {
@@ -104,12 +104,15 @@ static int write_rdata_fixed(const uint8_t **src, size_t *src_avail,
 }
 
 /*!
- * \brief Compute size of NAPTR RDATA header.
+ * \brief Write NAPTR RDATA header.
  */
-static size_t naptr_header_size(const uint8_t **src, size_t *src_avail)
+static int write_rdata_naptr_header(const uint8_t **src, size_t *src_avail,
+                                    uint8_t **dst, size_t *dst_avail)
 {
 	assert(src && *src);
 	assert(src_avail);
+	assert(dst && *dst);
+	assert(dst_avail);
 
 	size_t size = 0;
 
@@ -122,27 +125,15 @@ static size_t naptr_header_size(const uint8_t **src, size_t *src_avail)
 	for (int i = 0; i < 3; i++) {
 		const uint8_t *len_ptr = *src + size;
 		if (len_ptr >= *src + *src_avail) {
-			return 0;
+			return KNOT_EMALF;
 		}
 
 		size += 1 + *len_ptr;
 	}
 
-	return size;
-}
+	/* Copy the data */
 
-/*!
- * \brief Write NAPTR RDATA header.
- */
-static int write_rdata_naptr_header(const uint8_t **src, size_t *src_avail,
-                                    uint8_t **wire, size_t *wire_avail)
-{
-	size_t size = naptr_header_size(src, src_avail);
-	if (size == 0) {
-		return KNOT_EMALF;
-	}
-
-	return write_rdata_fixed(src, src_avail, wire, wire_avail, size);
+	return write_rdata_fixed(src, src_avail, dst, dst_avail, size);
 }
 
 /*!
@@ -154,7 +145,7 @@ struct dname_config {
 	                int dname_type, struct dname_config *dname_cfg,
 	                knot_rrset_wire_flags_t flags);
 	knot_compr_t *compr;
-	int hint;
+	uint16_t hint;
 	const uint8_t *pkt_wire;
 };
 

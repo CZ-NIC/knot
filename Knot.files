@@ -24,6 +24,8 @@ man/Makefile.am
 patches/Makefile.am
 samples/Makefile.am
 src/Makefile.am
+src/Makefile.am
+src/Makefile.am
 src/common-knot/crc.h
 src/common-knot/evsched.c
 src/common-knot/evsched.h
@@ -63,6 +65,11 @@ src/common/mem.c
 src/common/mem.h
 src/common/mempool.c
 src/common/mempool.h
+src/common/namedb/namedb.h
+src/common/namedb/namedb_lmdb.c
+src/common/namedb/namedb_lmdb.h
+src/common/namedb/namedb_trie.c
+src/common/namedb/namedb_trie.h
 src/common/print.c
 src/common/print.h
 src/common/sockaddr.c
@@ -87,6 +94,8 @@ src/dnstap/writer.h
 src/knot/conf/cf-lex.l
 src/knot/conf/cf-parse.y
 src/knot/conf/conf.c
+src/knot/conf/conf.h
+src/knot/conf/conf.h
 src/knot/conf/conf.h
 src/knot/conf/extra.c
 src/knot/conf/extra.h
@@ -132,6 +141,8 @@ src/knot/nameserver/notify.h
 src/knot/nameserver/nsec_proofs.c
 src/knot/nameserver/nsec_proofs.h
 src/knot/nameserver/process_answer.c
+src/knot/nameserver/process_answer.c
+src/knot/nameserver/process_answer.c
 src/knot/nameserver/process_answer.h
 src/knot/nameserver/process_query.c
 src/knot/nameserver/process_query.h
@@ -139,8 +150,6 @@ src/knot/nameserver/query_module.c
 src/knot/nameserver/query_module.h
 src/knot/nameserver/tsig_ctx.c
 src/knot/nameserver/tsig_ctx.h
-src/knot/nameserver/update.c
-src/knot/nameserver/update.c
 src/knot/nameserver/update.c
 src/knot/nameserver/update.h
 src/knot/other/debug.h
@@ -174,12 +183,20 @@ src/knot/worker/queue.c
 src/knot/worker/queue.h
 src/knot/zone/contents.c
 src/knot/zone/contents.h
-src/knot/zone/events.c
-src/knot/zone/events.h
+src/knot/zone/events/events.c
+src/knot/zone/events/events.h
+src/knot/zone/events/handlers.c
+src/knot/zone/events/handlers.c
+src/knot/zone/events/handlers.c
+src/knot/zone/events/handlers.h
+src/knot/zone/events/replan.c
+src/knot/zone/events/replan.h
 src/knot/zone/node.c
 src/knot/zone/node.h
 src/knot/zone/semantic-check.c
 src/knot/zone/semantic-check.h
+src/knot/zone/timers.c
+src/knot/zone/timers.h
 src/knot/zone/zone-diff.c
 src/knot/zone/zone-diff.h
 src/knot/zone/zone-dump.c
@@ -239,8 +256,6 @@ src/libknot/processing/layer.h
 src/libknot/processing/overlay.c
 src/libknot/processing/overlay.h
 src/libknot/processing/requestor.c
-src/libknot/processing/requestor.h
-src/libknot/processing/requestor.h
 src/libknot/processing/requestor.h
 src/libknot/rdata.c
 src/libknot/rdata.h
@@ -329,6 +344,7 @@ tests/fdset.c
 tests/hattrie.c
 tests/hhash.c
 tests/journal.c
+tests/namedb.c
 tests/node.c
 tests/overlay.c
 tests/pkt.c
@@ -348,7 +364,7 @@ tests/wire.c
 tests/worker_pool.c
 tests/worker_queue.c
 tests/zone_events.c
+tests/zone_timers.c
 tests/zone_update.c
 tests/zonedb.c
-tests/zone-update.c
 tests/ztree.c

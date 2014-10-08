@@ -93,7 +93,7 @@ int main(int argc, char *argv[])
 
 	// RSA
 
-	kp.name = knot_dname_from_str("example.com.");
+	kp.name = knot_dname_from_str_alloc("example.com.");
 	kp.algorithm = 5;
 	knot_binary_from_base64("pSxiFXG8wB1SSHdok+OdaAp6QdvqjpZ17ucNge21iYVfv+DZq52l21KdmmyEqoG9wG/87O7XG8XVLNyYPue8Mw==", &kp.modulus);
 	knot_binary_from_base64("AQAB", &kp.public_exponent);
@@ -109,7 +109,7 @@ int main(int argc, char *argv[])
 
 	// DSA
 
-	kp.name = knot_dname_from_str("example.com.");
+	kp.name = knot_dname_from_str_alloc("example.com.");
 	kp.algorithm = 6;
 	knot_binary_from_base64("u7tr4jc7CH0+r2muVEZyjYu7hpMrQ1dHGAMv7hr5dBFYzkutfdBmDSW4C+qxaXWo14gi+jJ8XqFqQ7rQn23DdQ==", &kp.prime);
 	knot_binary_from_base64("tgZ5X6pFoCOM2NzfiAYVG1434Mk=", &kp.subprime);
@@ -123,7 +123,7 @@ int main(int argc, char *argv[])
 	// ECDSA
 
 #ifdef KNOT_ENABLE_ECDSA
-	kp.name = knot_dname_from_str("example.com");
+	kp.name = knot_dname_from_str_alloc("example.com");
 	kp.algorithm = 13;
 	knot_binary_from_base64("1N/PvpB8jZcvv+zr3Q987RKK1cBxDKULzEc5F/nnpSg=", &kp.private_key);
 	knot_binary_from_base64("AAAAAH3t6EfkvHK5fQMGslhWcCfMF6Q3oNbol2f19DGAb8r49ZX7iQ12sFIyrs2CiwDxFR9Y7fF2zOZ005VV1LA3m1Q=", &kp.rdata);
@@ -135,7 +135,7 @@ int main(int argc, char *argv[])
 #endif
 
 #if KNOT_ENABLE_GOST
-	kp.name = knot_dname_from_str("example.com");
+	kp.name = knot_dname_from_str_alloc("example.com");
 	kp.algorithm = 12;
 	knot_binary_from_base64("MEUCAQAwHAYGKoUDAgITMBIGByqFAwICIwEGByqFAwICHgEEIgIgN2CMRL538HmFM9+GHYM54rEDYO+tLDV3q7AtK1nZ4iA=", &kp.private_key);
 	knot_binary_from_base64("eHh4eOJ4YHvlasoDRc4ZnvRzldoTUgwWSW0bPv7r9xJ074Dn8KzM4yU9fJgTwIT1TsaHmejYopDnVdjxZyrKNra8Keo=", &kp.rdata);
