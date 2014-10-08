@@ -324,6 +324,13 @@ int zs_scanner_parse_file(zs_scanner_t *s,
 		return -1;
 	}
 
+	// Check for empty file.
+	if (file_stat.st_size == 0) {
+		close(s->file.descriptor);
+		free(s->file.name);
+		return 0;
+	}
+
 	// Block size adjustment to multiple of page size.
 	default_block_size = (BLOCK_SIZE / page_size) * page_size;
 

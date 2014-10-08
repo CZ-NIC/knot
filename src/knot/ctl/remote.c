@@ -727,7 +727,7 @@ static int zones_verify_tsig_query(const knot_pkt_t *query,
 		 *               or some other error.
 		 */
 		*rcode = KNOT_RCODE_NOTAUTH;
-		*tsig_rcode = KNOT_RCODE_BADKEY;
+		*tsig_rcode = KNOT_TSIG_ERR_BADKEY;
 		return KNOT_TSIG_EBADKEY;
 	}
 
@@ -741,7 +741,7 @@ static int zones_verify_tsig_query(const knot_pkt_t *query,
 	if (!(key && kname && knot_dname_cmp(key->name, kname) == 0 &&
 	      key->algorithm == alg)) {
 		*rcode = KNOT_RCODE_NOTAUTH;
-		*tsig_rcode = KNOT_RCODE_BADKEY;
+		*tsig_rcode = KNOT_TSIG_ERR_BADKEY;
 		return KNOT_TSIG_EBADKEY;
 	}
 
@@ -780,15 +780,15 @@ static int zones_verify_tsig_query(const knot_pkt_t *query,
 			*rcode = KNOT_RCODE_NOERROR;
 			break;
 		case KNOT_TSIG_EBADKEY:
-			*tsig_rcode = KNOT_RCODE_BADKEY;
+			*tsig_rcode = KNOT_TSIG_ERR_BADKEY;
 			*rcode = KNOT_RCODE_NOTAUTH;
 			break;
 		case KNOT_TSIG_EBADSIG:
-			*tsig_rcode = KNOT_RCODE_BADSIG;
+			*tsig_rcode = KNOT_TSIG_ERR_BADSIG;
 			*rcode = KNOT_RCODE_NOTAUTH;
 			break;
 		case KNOT_TSIG_EBADTIME:
-			*tsig_rcode = KNOT_RCODE_BADTIME;
+			*tsig_rcode = KNOT_TSIG_ERR_BADTIME;
 			// store the time signed from the query
 			*tsig_prev_time_signed = tsig_rdata_time_signed(query->tsig_rr);
 			*rcode = KNOT_RCODE_NOTAUTH;
