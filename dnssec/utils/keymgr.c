@@ -191,7 +191,19 @@ static int cmd_zone_list(options_t *options, int argc, char *argv[])
 		error("dnssec_kasp_list_zones");
 	}
 
-	printf("list of zones (match substring '%s')\n", match ? match : "");
+	bool found_match = false;
+
+	dnssec_list_foreach(item, zones) {
+		const char *name = dnssec_item_get(item);
+		if (match == NULL || strcasestr(name, match) != NULL) {
+			found_match = true;
+			printf("%s\n", name);
+		}
+	}
+
+	if (!found_match) {
+		fprintf(stderr, "No matching zone found.\n");
+	}
 
 	dnssec_list_free_full(zones, NULL, NULL);
 
