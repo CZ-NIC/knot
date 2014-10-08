@@ -25,8 +25,6 @@
 #include "kasp/dir/escape.h"
 #include "wire.h"
 
-#define BUFFER_SIZE 256
-
 static char ascii_tolower(char chr)
 {
 	if ('A' <= chr && chr <= 'Z') {
@@ -101,6 +99,8 @@ static int read_unsafe(wire_ctx_t *dest, wire_ctx_t *src)
 	return DNSSEC_EOK;
 }
 
+typedef int (*filter_cb)(wire_ctx_t *, wire_ctx_t *);
+
 static int filter_escape(wire_ctx_t *src, wire_ctx_t *dest)
 {
 	char chr = wire_read_u8(src);
@@ -124,11 +124,10 @@ static int filter_unescape(wire_ctx_t *src, wire_ctx_t *dest)
 	}
 }
 
-static int filter(wire_ctx_t *src, wire_ctx_t *dest,
-		  int (*filter_cb)(wire_ctx_t *, wire_ctx_t *))
+static int filter_ctx(wire_ctx_t *src, wire_ctx_t *dest, filter_cb filter)
 {
 	while (wire_available(src) > 0) {
-		int result = filter_cb(src, dest);
+		int result = filter(src, dest);
 		if (result != DNSSEC_EOK) {
 			return result;
 		}
@@ -137,7 +136,7 @@ static int filter(wire_ctx_t *src, wire_ctx_t *dest,
 	return DNSSEC_EOK;
 }
 
-static int buffer_to_string(wire_ctx_t *src, char **result)
+static int ctx_to_str(wire_ctx_t *src, char **result)
 {
 	size_t len = wire_tell(src);
 
@@ -153,40 +152,34 @@ static int buffer_to_string(wire_ctx_t *src, char **result)
 	return DNSSEC_EOK;
 }
 
+
+static int filter_str(const char *input, char **output, filter_cb filter)
+{
+	assert(input);
+	assert(output);
+	assert(filter);
+
+	uint8_t buffer[256] = { 0 };
+
+	wire_ctx_t in_ctx = wire_init((uint8_t *)input, strlen(input));
+	wire_ctx_t out_ctx = wire_init(buffer, sizeof(buffer));
+
+	int r = filter_ctx(&in_ctx, &out_ctx, filter);
+	if (r != DNSSEC_EOK) {
+		return r;
+	}
+
+	return ctx_to_str(&out_ctx, output);
+}
+
 /* -- internal API --------------------------------------------------------- */
 
 int escape_zone_name(const char *name, char **escaped)
 {
-	assert(name);
-	assert(escaped);
-
-	wire_ctx_t name_ctx = wire_init((uint8_t *)name, strlen(name));
-
-	uint8_t buffer[BUFFER_SIZE] = { 0 };
-	wire_ctx_t buffer_ctx = wire_init(buffer, sizeof(buffer));
-
-	int r = filter(&name_ctx, &buffer_ctx, filter_escape);
-	if (r != DNSSEC_EOK) {
-		return r;
-	}
-
-	return buffer_to_string(&buffer_ctx, escaped);
+	return filter_str(name, escaped, filter_escape);
 }
 
 int unescape_zone_name(const char *escaped, char **name)
 {
-	assert(escaped);
-	assert(name);
-
-	wire_ctx_t escaped_ctx = wire_init((uint8_t *)escaped, strlen(escaped));
-
-	uint8_t buffer[BUFFER_SIZE] = { 0 };
-	wire_ctx_t buffer_ctx = wire_init(buffer, sizeof(buffer));
-
-	int r = filter(&escaped_ctx, &buffer_ctx, filter_unescape);
-	if (r != DNSSEC_EOK) {
-		return r;
-	}
-
-	return buffer_to_string(&buffer_ctx, name);
+	return filter_str(escaped, name, filter_unescape);
 }
