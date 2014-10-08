@@ -16,6 +16,7 @@ LDADD = \
 check_PROGRAMS = \
 	binary		\
 	crypto		\
+	kasp_dir_escape	\
 	key		\
 	key_algorithm	\
 	keyid		\
