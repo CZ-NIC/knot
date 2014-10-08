@@ -71,6 +71,15 @@ static int write_unsafe(wire_ctx_t *dest, char chr)
 	return DNSSEC_EOK;
 }
 
+static int read_safe(wire_ctx_t *dest, char chr)
+{
+	if (!is_safe(chr)) {
+		return DNSSEC_MALFORMED_DATA;
+	}
+
+	return write_safe(dest, chr);
+}
+
 static int read_unsafe(wire_ctx_t *dest, wire_ctx_t *src)
 {
 	if (wire_available(dest) < 1 || wire_available(src) < 3) {
@@ -82,11 +91,11 @@ static int read_unsafe(wire_ctx_t *dest, wire_ctx_t *src)
 
 	int value = 0;
 	int read = sscanf(buffer, "x%02x", &value);
-	if (read != 1) {
+	if (read != 1 || value == 0) {
 		return DNSSEC_MALFORMED_DATA;
 	}
 
-	assert(SCHAR_MIN <= value && value <= SCHAR_MAX);
+	assert(SCHAR_MIN < value && value <= SCHAR_MAX);
 	wire_write_u8(dest, value);
 
 	return DNSSEC_EOK;
@@ -109,7 +118,7 @@ static int filter_unescape(wire_ctx_t *src, wire_ctx_t *dest)
 	char chr = wire_read_u8(src);
 
 	if (chr != '\\') {
-		return write_safe(dest, chr);
+		return read_safe(dest, chr);
 	} else {
 		return read_unsafe(dest, src);
 	}
