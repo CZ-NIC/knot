@@ -144,6 +144,10 @@ static int kasp_dir_list_zones(void *_ctx, dnssec_list_t *list)
 	int error;
 	struct dirent entry, *result;
 	while (error = readdir_r(dir, &entry, &result), error == 0 && result) {
+		char *zone = zone_name_from_config_file(entry.d_name);
+		if (zone) {
+			dnssec_list_append(list, zone);
+		}
 	}
 
 	if (error != 0) {

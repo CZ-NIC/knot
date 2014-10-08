@@ -21,6 +21,7 @@
 #include "binary.h"
 #include "error.h"
 #include "kasp.h"
+#include "kasp/dir/escape.h"
 #include "kasp/dir/json.h"
 #include "kasp/zone.h"
 #include "list.h"
@@ -361,24 +362,74 @@ static int export_zone_keys(dnssec_kasp_zone_t *zone, json_t **keys_ptr)
  */
 char *zone_config_file(const char *dir, const char *zone_name)
 {
-	// replace slashes with underscores
+	// escape zone name
 
-	_cleanup_free_ char *name = strdup(zone_name);
-	for (char *scan = name; *scan != '\0'; scan++) {
-		if (*scan == '/') {
-			*scan = '_';
-		}
+	_cleanup_free_ char *zone_escaped = NULL;
+	int r = escape_zone_name(zone_name, &zone_escaped);
+	if (r != DNSSEC_EOK) {
+		return NULL;
 	}
 
 	// build full path
 
 	char *config = NULL;
-	int result = asprintf(&config, "%s/zone_%s.json", dir, name);
+	int result = asprintf(&config, "%s/zone_%s.json", dir, zone_escaped);
 	if (result == -1) {
 		return NULL;
 	}
 
 	return config;
+}
+
+/*!
+ * Get a zone name from a config file name.
+ */
+char *zone_name_from_config_file(const char *basename)
+{
+	assert(basename);
+
+	// basename components
+
+	const char *prefix = "zone_";
+	const char *suffix = ".json";
+
+	size_t basename_len = strlen(basename);
+	size_t prefix_len = strlen(prefix);
+	size_t suffix_len = strlen(suffix);
+
+	if (basename_len < prefix_len + suffix_len) {
+		return NULL;
+	}
+
+	const char *basename_prefix = basename;
+	const char *basename_name   = basename + prefix_len;
+	const char *basename_suffix = basename + basename_len - suffix_len;
+
+	size_t name_len = basename_len - suffix_len - prefix_len;
+
+	// prefix and suffix match
+
+	if (memcmp(basename_prefix, prefix, prefix_len) != 0 ||
+	    memcmp(basename_suffix, suffix, suffix_len) != 0
+	) {
+		return NULL;
+	}
+
+	// unescape zone name
+
+	_cleanup_free_ char *escaped = strndup(basename_name, name_len);
+	if (!escaped) {
+		return NULL;
+	}
+
+	char *name = NULL;
+	int r = unescape_zone_name(escaped, &name);
+	if (r != DNSSEC_EOK) {
+		free(name);
+		return NULL;
+	}
+
+	return name;
 }
 
 /*!
