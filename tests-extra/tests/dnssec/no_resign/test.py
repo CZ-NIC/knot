@@ -28,7 +28,7 @@ master.use_keys(nsec_zone)
 master.use_keys(nsec3_zone)
 master.use_keys(static_zone)
 master.gen_confile()
-t.sleep(2)
+t.sleep(1)
 master.reload()
 
 t.sleep(4)
@@ -38,47 +38,29 @@ new_nsec3_serial = master.zone_wait(nsec3_zone)
 new_static_serial = master.zone_wait(static_zone)
 
 # Check if the zones are resigned.
-if compare(old_nsec_serial, new_nsec_serial,
-           "%s SOA serial (NSEC)" % nsec_zone[0].name):
-    resp = master.dig(nsec_zone, "IXFR", serial=old_nsec_serial)
-    for rr in resp.resp:
-        detail_log(rr)
+compare(old_nsec_serial, new_nsec_serial, "NSEC zone got resigned")
+compare(old_nsec3_serial, new_nsec3_serial, "NSEC3 zone got resigned")
+compare(old_static_serial, new_static_serial, "static zone got resigned")
 
-if compare(old_nsec3_serial, new_nsec3_serial,
-           "%s SOA serial (NSEC3)" % nsec3_zone[0].name):
-    resp = master.dig(nsec3_zone, "IXFR", serial=old_nsec3_serial)
-    for rr in resp.resp:
-        detail_log(rr)
-
-if compare(old_static_serial, new_static_serial,
-           "%s SOA serial (static)" % static_zone[0].name):
-    resp = master.dig(static_zone, "IXFR", serial=old_static_serial)
-    for rr in resp.resp:
-        detail_log(rr)
-
+prev_serial = new_static_serial
 
 # Switch the static zone for the one with different case in records
 master.update_zonefile(static_zone, 1)
 master.reload()
 
-new_static_serial2 = master.zone_wait(static_zone)
+serial = master.zone_wait(static_zone)
 
-if compare(new_static_serial, new_static_serial2,
-           "%s SOA serial (static)" % static_zone[0].name):
-    resp = master.dig(static_zone, "IXFR", serial=new_static_serial)
-    for rr in resp.resp:
-        detail_log(rr)
+compare(prev_serial, serial, "static zone got resigned after case change")
 
 # Switch the static zone again, this time change case in NSEC only
 # Zone should be resigned, as the NSEC's RRSIG is no longer valid
 master.update_zonefile(static_zone, 2)
 master.reload()
 
-new_static_serial3 = master.zone_wait(static_zone)
+serial = master.zone_wait(static_zone)
 
-# How to check that they are different??
-#compare(new_static_serial2, new_static_serial3,
-#        "%s SOA serial (static, NSEC change)" % static_zone[0].name);
+if (serial <= prev_serial):
+    set_err("Ignored NSEC change")
 
 master.zone_verify(static_zone)
 
