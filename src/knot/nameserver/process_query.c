@@ -230,7 +230,7 @@ static int answer_edns_init(const knot_pkt_t *query, knot_pkt_t *resp,
 
 	/* Check supported version. */
 	if (knot_edns_get_version(query->opt_rr) != KNOT_EDNS_VERSION) {
-		qdata->rcode_ext = KNOT_EDNS_RCODE_BADVERS;
+		qdata->rcode_ext = KNOT_RCODE_BADVERS;
 	}
 
 	/* Set DO bit if set (DNSSEC requested). */
@@ -311,6 +311,11 @@ static int prepare_answer(const knot_pkt_t *query, knot_pkt_t *resp, knot_proces
 	ret = answer_edns_init(query, resp, qdata);
 	if (ret != KNOT_EOK) {
 		return ret;
+	}
+
+	/* If Extended RCODE is set, do not continue with query processing. */
+	if (qdata->rcode_ext != 0) {
+		return KNOT_ERROR;
 	}
 
 	/* Update maximal answer size. */
@@ -484,7 +489,8 @@ static int process_query_out(knot_pkt_t *pkt, knot_process_t *ctx)
 
 finish:
 	/* Default RCODE is SERVFAIL if not specified otherwise. */
-	if (next_state == NS_PROC_FAIL && qdata->rcode == KNOT_RCODE_NOERROR) {
+	if (next_state == NS_PROC_FAIL && qdata->rcode == KNOT_RCODE_NOERROR
+	    && qdata->rcode_ext == 0) {
 		qdata->rcode = KNOT_RCODE_SERVFAIL;
 	}
 
@@ -527,7 +533,7 @@ bool process_query_acl_check(list_t *acl, struct query_data *qdata)
 	if (match == NULL || (match->key && match->key->algorithm != key_alg)) {
 		dbg_ns("%s: no ACL match => NOTAUTH\n", __func__);
 		qdata->rcode = KNOT_RCODE_NOTAUTH;
-		qdata->rcode_tsig = KNOT_RCODE_BADKEY;
+		qdata->rcode_tsig = KNOT_TSIG_ERR_BADKEY;
 		return false;
 	}
 
@@ -566,15 +572,15 @@ int process_query_verify(struct query_data *qdata)
 		break;
 	case KNOT_TSIG_EBADKEY:
 		qdata->rcode = KNOT_RCODE_NOTAUTH;
-		qdata->rcode_tsig = KNOT_RCODE_BADKEY;
+		qdata->rcode_tsig = KNOT_TSIG_ERR_BADKEY;
 		break;
 	case KNOT_TSIG_EBADSIG:
 		qdata->rcode = KNOT_RCODE_NOTAUTH;
-		qdata->rcode_tsig = KNOT_RCODE_BADSIG;
+		qdata->rcode_tsig = KNOT_TSIG_ERR_BADSIG;
 		break;
 	case KNOT_TSIG_EBADTIME:
 		qdata->rcode = KNOT_RCODE_NOTAUTH;
-		qdata->rcode_tsig = KNOT_RCODE_BADTIME;
+		qdata->rcode_tsig = KNOT_TSIG_ERR_BADTIME;
 		ctx->tsig_time_signed = tsig_rdata_time_signed(query->tsig_rr);
 		break;
 	case KNOT_EMALF:
