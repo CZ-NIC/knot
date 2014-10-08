@@ -16,6 +16,25 @@
 
 #pragma once
 
+/*!
+ * Escape zone name to be safely included into a file name.
+ *
+ * A-Z letters are converted to lower case.
+ *
+ * ASCII letters (a-z), numbers (0-9), dot (.), dash (-), and underscore (_)
+ * are preserved.
+ *
+ * Other characters are written as a sequence '\x..', where .. is hex
+ * representation of the char.
+ *
+ * \param[in]  name     Zone name to be encoded.
+ * \param[out] escaped  Allocated escaped zone name.
+ *
+ * \return Error code, DNSSEC_EOK if successful.
+ */
 int escape_zone_name(const char *name, char **escaped);
 
+/*!
+ * Reverse function of \ref escape_zone_name.
+ */
 int unescape_zone_name(const char *escaped, char **name);

@@ -25,6 +25,9 @@
 #include "kasp/dir/escape.h"
 #include "wire.h"
 
+/*!
+ * Convert ASCII upper case character to lowercase one.
+ */
 static char ascii_tolower(char chr)
 {
 	if ('A' <= chr && chr <= 'Z') {
@@ -34,6 +37,9 @@ static char ascii_tolower(char chr)
 	}
 }
 
+/*!
+ * Check if char is safe and should be written without escaping.
+ */
 static bool is_safe(char chr)
 {
 	return ('a' <= chr && chr <= 'z') ||
@@ -41,6 +47,9 @@ static bool is_safe(char chr)
 	       (chr == '.' || chr == '-' || chr == '_');
 }
 
+/*!
+ * Write one safe byte.
+ */
 static int write_safe(wire_ctx_t *dest, char chr)
 {
 	if (wire_available(dest) < 1) {
@@ -52,6 +61,9 @@ static int write_safe(wire_ctx_t *dest, char chr)
 	return DNSSEC_EOK;
 }
 
+/*!
+ * Escape one unsafe byte.
+ */
 static int write_unsafe(wire_ctx_t *dest, char chr)
 {
 	if (wire_available(dest) < 4) {
@@ -69,6 +81,9 @@ static int write_unsafe(wire_ctx_t *dest, char chr)
 	return DNSSEC_EOK;
 }
 
+/*!
+ * Read one safe byte during unescaping.
+ */
 static int read_safe(wire_ctx_t *dest, char chr)
 {
 	if (!is_safe(chr)) {
@@ -78,6 +93,11 @@ static int read_safe(wire_ctx_t *dest, char chr)
 	return write_safe(dest, chr);
 }
 
+/*!
+ * Unescape one unsafe byte.
+ *
+ * Initial slash is already processed.
+ */
 static int read_unsafe(wire_ctx_t *dest, wire_ctx_t *src)
 {
 	if (wire_available(dest) < 1 || wire_available(src) < 3) {
@@ -99,8 +119,14 @@ static int read_unsafe(wire_ctx_t *dest, wire_ctx_t *src)
 	return DNSSEC_EOK;
 }
 
+/*!
+ * Filtering function type signature.
+ */
 typedef int (*filter_cb)(wire_ctx_t *, wire_ctx_t *);
 
+/*!
+ * Escaping filter.
+ */
 static int filter_escape(wire_ctx_t *src, wire_ctx_t *dest)
 {
 	char chr = wire_read_u8(src);
@@ -113,6 +139,9 @@ static int filter_escape(wire_ctx_t *src, wire_ctx_t *dest)
 	}
 }
 
+/*!
+ * Unescaping filter.
+ */
 static int filter_unescape(wire_ctx_t *src, wire_ctx_t *dest)
 {
 	char chr = wire_read_u8(src);
@@ -124,6 +153,9 @@ static int filter_unescape(wire_ctx_t *src, wire_ctx_t *dest)
 	}
 }
 
+/*!
+ * Convert one buffer to another using filtering function.
+ */
 static int filter_ctx(wire_ctx_t *src, wire_ctx_t *dest, filter_cb filter)
 {
 	while (wire_available(src) > 0) {
@@ -136,6 +168,9 @@ static int filter_ctx(wire_ctx_t *src, wire_ctx_t *dest, filter_cb filter)
 	return DNSSEC_EOK;
 }
 
+/*!
+ * Create string from wire context.
+ */
 static int ctx_to_str(wire_ctx_t *src, char **result)
 {
 	size_t len = wire_tell(src);
@@ -152,7 +187,9 @@ static int ctx_to_str(wire_ctx_t *src, char **result)
 	return DNSSEC_EOK;
 }
 
-
+/*!
+ * Convert string to another using a filtering function.
+ */
 static int filter_str(const char *input, char **output, filter_cb filter)
 {
 	assert(input);
