@@ -176,7 +176,7 @@ time_t zone_events_get_next(const struct zone_t *zone, zone_event_type_t *type);
  * \param zone      Zone with new config.
  * \param old_zone  Zone with old config.
  */
-void zone_events_update(struct zone_t *zone, const struct zone_t *old_zone);
+void zone_events_update(struct zone_t *zone, struct zone_t *old_zone);
 
 /*!
  * \brief Replans DDNS processing event if DDNS queue is not empty.

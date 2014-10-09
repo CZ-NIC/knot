@@ -398,7 +398,7 @@ time_t zone_events_get_next(const struct zone_t *zone, zone_event_type_t *type)
 	return next_time;
 }
 
-void zone_events_update(zone_t *zone, const zone_t *old_zone)
+void zone_events_update(zone_t *zone, zone_t *old_zone)
 {
 	replan_events(zone, old_zone);
 }
