@@ -29,13 +29,10 @@ check_PROGRAMS = \
 	namedb				\
 	node				\
 	pkt				\
-	process_answer			\
-<<<<<<< HEAD
 	overlay				\
 	requestor			\
-=======
+	process_answer			\
 	process_query			\
->>>>>>> master
 	query_module			\
 	rdata				\
 	rdataset			\
