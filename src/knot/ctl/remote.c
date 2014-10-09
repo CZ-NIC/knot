@@ -22,7 +22,7 @@
 #include "common-knot/fdset.h"
 #include "knot/knot.h"
 #include "knot/conf/conf.h"
-#include "libknot/packet/net.h"
+#include "common/net.h"
 #include "knot/server/tcp-handler.h"
 #include "libknot/packet/wire.h"
 #include "libknot/descriptor.h"

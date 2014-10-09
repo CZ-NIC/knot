@@ -32,7 +32,7 @@
 #include "common-knot/evsched.h"
 #include "common/lists.h"
 #include "common-knot/fdset.h"
-#include "libknot/packet/net.h"
+#include "common/net.h"
 #include "knot/server/dthreads.h"
 #include "knot/server/rrl.h"
 #include "knot/worker/pool.h"

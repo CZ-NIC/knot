@@ -103,6 +103,8 @@ libknotcs_la_SOURCES =				\
 	common/mem.h				\
 	common/mempool.c			\
 	common/mempool.h			\
+	common/net.c			\
+	common/net.h			\
 	common/hhash.c				\
 	common/hhash.h				\
 	common/trie/hat-trie.c		\
@@ -173,8 +175,6 @@ libknot_la_SOURCES =				\
 	libknot/packet/compr.h			\
 	libknot/packet/pkt.c			\
 	libknot/packet/pkt.h			\
-	libknot/packet/net.c			\
-	libknot/packet/net.h			\
 	libknot/packet/rrset-wire.c		\
 	libknot/packet/rrset-wire.h		\
 	libknot/packet/wire.h			\
