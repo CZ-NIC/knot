@@ -24,8 +24,6 @@ man/Makefile.am
 patches/Makefile.am
 samples/Makefile.am
 src/Makefile.am
-src/Makefile.am
-src/Makefile.am
 src/common-knot/crc.h
 src/common-knot/evsched.c
 src/common-knot/evsched.h
@@ -67,6 +65,8 @@ src/common/namedb/namedb_lmdb.c
 src/common/namedb/namedb_lmdb.h
 src/common/namedb/namedb_trie.c
 src/common/namedb/namedb_trie.h
+src/common/net.c
+src/common/net.h
 src/common/print.c
 src/common/print.h
 src/common/sockaddr.c
@@ -235,8 +235,6 @@ src/libknot/mempattern.c
 src/libknot/mempattern.h
 src/libknot/packet/compr.c
 src/libknot/packet/compr.h
-src/libknot/packet/net.c
-src/libknot/packet/net.h
 src/libknot/packet/pkt.c
 src/libknot/packet/pkt.h
 src/libknot/packet/rrset-wire.c
@@ -316,8 +314,6 @@ src/zscanner/tests/processing.h
 src/zscanner/tests/tests.c
 src/zscanner/tests/tests.h
 src/zscanner/tests/zscanner-tool.c
-tests/Makefile.am
-tests/Makefile.am
 tests/Makefile.am
 tests/acl.c
 tests/base32hex.c
