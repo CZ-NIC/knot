@@ -34,7 +34,6 @@ rrl
 rrset
 rrset_wire
 server
-slab
 wire
 worker_pool
 worker_queue

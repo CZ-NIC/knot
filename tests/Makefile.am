@@ -10,7 +10,6 @@ LDADD = \
 
 check_PROGRAMS = \
 	journal				\
-	slab				\
 	hattrie				\
 	hhash				\
 	dthreads			\
