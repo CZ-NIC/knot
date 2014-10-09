@@ -4,6 +4,16 @@
 
 from dnstest.utils import *
 from dnstest.test import Test
+import dns
+
+# Changes in NSEC allowed due to case changes (Knot lowercases all owners).
+def only_nsec_changed(server, zone, serial):
+   resp = master.dig(nsec_zone, "IXFR", serial=serial)
+   for msg in resp.resp:                                                   
+       for rr in msg.answer:
+            if rr.rdtype not in [dns.rdatatype.SOA, dns.rdatatype.NSEC, dns.rdatatype.RRSIG]:
+                return False
+   return True
 
 t = Test()
 
@@ -29,16 +39,19 @@ master.use_keys(nsec3_zone)
 master.use_keys(static_zone)
 master.gen_confile()
 t.sleep(1)
-master.reload()
-
-t.sleep(4)
+master.stop()
+master.start()
 
 new_nsec_serial = master.zone_wait(nsec_zone)
 new_nsec3_serial = master.zone_wait(nsec3_zone)
 new_static_serial = master.zone_wait(static_zone)
 
 # Check if the zones are resigned.
-compare(old_nsec_serial, new_nsec_serial, "NSEC zone got resigned")
+if old_nsec_serial < new_nsec_serial:
+    if not only_nsec_changed(master, nsec_zone, old_nsec_serial):
+        set_err("NSEC zone got resigned")
+    old_nsec_serial = new_nsec_serial
+
 compare(old_nsec3_serial, new_nsec3_serial, "NSEC3 zone got resigned")
 compare(old_static_serial, new_static_serial, "static zone got resigned")
 
@@ -46,7 +59,8 @@ prev_serial = new_static_serial
 
 # Switch the static zone for the one with different case in records
 master.update_zonefile(static_zone, 1)
-master.reload()
+master.stop()
+master.start()
 
 serial = master.zone_wait(static_zone)
 
@@ -55,13 +69,12 @@ compare(prev_serial, serial, "static zone got resigned after case change")
 # Switch the static zone again, this time change case in NSEC only
 # Zone should be resigned, as the NSEC's RRSIG is no longer valid
 master.update_zonefile(static_zone, 2)
-master.reload()
+master.stop()
+master.start()
 
 serial = master.zone_wait(static_zone)
 
 if (serial <= prev_serial):
     set_err("Ignored NSEC change")
-
-master.zone_verify(static_zone)
 
 t.stop()
