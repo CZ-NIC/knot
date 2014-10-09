@@ -47,9 +47,6 @@ src/common-knot/print.c
 src/common-knot/print.h
 src/common-knot/ref.c
 src/common-knot/ref.h
-src/common-knot/slab/alloc-common.h
-src/common-knot/slab/slab.c
-src/common-knot/slab/slab.h
 src/common-knot/sockaddr.c
 src/common-knot/sockaddr.h
 src/common-knot/strlcat.c
