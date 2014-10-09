@@ -13,6 +13,11 @@ def only_nsec_changed(server, zone, serial):
        for rr in msg.answer:
             if rr.rdtype not in [dns.rdatatype.SOA, dns.rdatatype.NSEC, dns.rdatatype.RRSIG]:
                 return False
+            if rr.rdtype == dns.rdatatype.RRSIG:
+                if (not rr.match(rr.name, rr.rdclass, dns.rdatatype.RRSIG, dns.rdatatype.NSEC)) and \
+                   (not rr.match(rr.name, rr.rdclass, dns.rdatatype.RRSIG, dns.rdatatype.SOA)):
+                    # RRSIG covering something else than NSEC or SOA.
+                    return False
    return True
 
 t = Test()
