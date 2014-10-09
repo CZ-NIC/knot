@@ -85,9 +85,6 @@ libknots_la_SOURCES =				\
 	common-knot/print.h			\
 	common-knot/ref.c			\
 	common-knot/ref.h			\
-	common-knot/slab/alloc-common.h		\
-	common-knot/slab/slab.c			\
-	common-knot/slab/slab.h			\
 	common-knot/sockaddr.c			\
 	common-knot/sockaddr.h			\
 	common-knot/strlcat.c			\
