@@ -121,7 +121,7 @@ static bool dname_cname_cannot_synth(const knot_rrset_t *rrset, const knot_dname
 static bool have_dnssec(struct query_data *qdata)
 {
 	return knot_pkt_has_dnssec(qdata->query) &&
-	       qdata->rcode_ext != KNOT_EDNS_RCODE_BADVERS &&
+	       qdata->rcode_ext != KNOT_RCODE_BADVERS &&
 	       zone_contents_is_signed(qdata->zone->contents);
 }
 

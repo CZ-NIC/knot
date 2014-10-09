@@ -37,13 +37,22 @@ knot_lookup_table_t knot_rcode_names[] = {
 	{ KNOT_RCODE_NXRRSET,  "NXRRSET" },
 	{ KNOT_RCODE_NOTAUTH,  "NOTAUTH" },
 	{ KNOT_RCODE_NOTZONE,  "NOTZONE" },
-	{ KNOT_RCODE_BADSIG,   "BADSIG" },
-	{ KNOT_RCODE_BADKEY,   "BADKEY" },
-	{ KNOT_RCODE_BADTIME,  "BADTIME" },
-	{ KNOT_RCODE_BADMODE,  "BADMODE" },
-	{ KNOT_RCODE_BADNAME,  "BADNAME" },
-	{ KNOT_RCODE_BADALG,   "BADALG" },
-	{ KNOT_RCODE_BADTRUNC, "BADTRUNC" },
+	{ KNOT_RCODE_BADVERS,  "BADVERS" },
+	{ 0, NULL }
+};
+
+knot_lookup_table_t knot_tsig_err_names[] = {
+	{ KNOT_TSIG_ERR_BADSIG,   "BADSIG" },
+	{ KNOT_TSIG_ERR_BADKEY,   "BADKEY" },
+	{ KNOT_TSIG_ERR_BADTIME,  "BADTIME" },
+	{ KNOT_TSIG_ERR_BADTRUNC, "BADTRUNC" },
+	{ 0, NULL }
+};
+
+knot_lookup_table_t knot_tkey_err_names[] = {
+	{ KNOT_TKEY_ERR_BADMODE,  "BADMODE" },
+	{ KNOT_TKEY_ERR_BADNAME,  "BADNAME" },
+	{ KNOT_TKEY_ERR_BADALG,   "BADALG" },
 	{ 0, NULL }
 };
 

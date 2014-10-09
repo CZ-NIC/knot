@@ -28,7 +28,7 @@ AM_PROG_CC_C_O
 AC_PROG_CPP_WERROR
 
 # Default compiler flags
-CFLAGS="$CFLAGS -Wall -Werror=format-security"
+CFLAGS="$CFLAGS -Wall -Werror=format-security -Werror=implicit"
 
 # Checks for programs.
 m4_ifdef([AM_PROG_AR], [AM_PROG_AR]) # call AM_PROG_AR only if available

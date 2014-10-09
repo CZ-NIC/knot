@@ -784,7 +784,7 @@ int conf_open(const char* path)
 	/* Open zone timers db. */
 	nconf->timers_db = open_timers_db(nconf->storage);
 	if (nconf->timers_db == NULL) {
-		log_warning("cannot open timers db\n");
+		log_warning("cannot open timers db");
 	}
 
 	/* Replace current config. */

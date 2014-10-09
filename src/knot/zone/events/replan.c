@@ -114,11 +114,11 @@ static void replan_dnssec(zone_t *zone)
 }
 
 /*!< Replans DDNS event. */
-void replan_update(zone_t *zone, const zone_t *old_zone)
+void replan_update(zone_t *zone, zone_t *old_zone)
 {
 	const bool have_updates = old_zone->ddns_queue_size > 0;
 	if (have_updates) {
-		duplicate_ddns_q(zone, (zone_t *)old_zone);
+		duplicate_ddns_q(zone, old_zone);
 	}
 
 	if (have_updates) {
@@ -126,12 +126,12 @@ void replan_update(zone_t *zone, const zone_t *old_zone)
 	}
 }
 
-void replan_events(zone_t *zone, const zone_t *old_zone)
+void replan_events(zone_t *zone, zone_t *old_zone)
 {
 	replan_soa_events(zone, old_zone);
 	replan_xfer(zone, old_zone);
 	replan_flush(zone, old_zone);
 	replan_event(zone, old_zone, ZONE_EVENT_NOTIFY);
-	replan_update(zone, (zone_t *)old_zone);
+	replan_update(zone, old_zone);
 	replan_dnssec(zone);
 }

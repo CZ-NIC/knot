@@ -37,9 +37,6 @@ src/common-knot/hex.c
 src/common-knot/hex.h
 src/common-knot/ref.c
 src/common-knot/ref.h
-src/common-knot/slab/alloc-common.h
-src/common-knot/slab/slab.c
-src/common-knot/slab/slab.h
 src/common-knot/strlcat.c
 src/common-knot/strlcat.h
 src/common-knot/strtonum.h
@@ -95,8 +92,6 @@ src/knot/conf/cf-lex.l
 src/knot/conf/cf-parse.y
 src/knot/conf/conf.c
 src/knot/conf/conf.h
-src/knot/conf/conf.h
-src/knot/conf/conf.h
 src/knot/conf/extra.c
 src/knot/conf/extra.h
 src/knot/conf/includes.c
@@ -141,8 +136,6 @@ src/knot/nameserver/notify.h
 src/knot/nameserver/nsec_proofs.c
 src/knot/nameserver/nsec_proofs.h
 src/knot/nameserver/process_answer.c
-src/knot/nameserver/process_answer.c
-src/knot/nameserver/process_answer.c
 src/knot/nameserver/process_answer.h
 src/knot/nameserver/process_query.c
 src/knot/nameserver/process_query.h
@@ -185,8 +178,6 @@ src/knot/zone/contents.c
 src/knot/zone/contents.h
 src/knot/zone/events/events.c
 src/knot/zone/events/events.h
-src/knot/zone/events/handlers.c
-src/knot/zone/events/handlers.c
 src/knot/zone/events/handlers.c
 src/knot/zone/events/handlers.h
 src/knot/zone/events/replan.c
@@ -325,6 +316,8 @@ src/zscanner/tests/processing.h
 src/zscanner/tests/tests.c
 src/zscanner/tests/tests.h
 src/zscanner/tests/zscanner-tool.c
+tests/Makefile.am
+tests/Makefile.am
 tests/Makefile.am
 tests/acl.c
 tests/base32hex.c

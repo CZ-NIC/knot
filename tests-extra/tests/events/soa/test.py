@@ -22,19 +22,27 @@ def test_expire(slave):
     resp = slave.dig("example.", "SOA")
     resp.check(rcode="SERVFAIL")
 
-def test_run(t, action):
-    master = t.server("bind")
-    master.disable_notify = True
+def create_servers(t):
+    servers = []
+    for _ in range(3):
+        master = t.server("bind")
+        master.disable_notify = True
 
-    slave = t.server("knot")
-    slave.disable_notify = True
-    slave.max_conn_idle = "1s"
+        slave = t.server("knot")
+        slave.disable_notify = True
+        slave.max_conn_idle = "1s"
 
-    # this zone has refresh = 1s, retry = 1s and expire = 1s + 2s for connection timeouts
-    zone = t.zone("example.", storage=".")
+        t.link(zone, master, slave)
 
-    t.link(zone, master, slave)
-    t.start()
+        servers.append((master, slave))
+
+    return servers
+
+def test_run(t, servers, zone, action):
+    master, slave = servers
+
+    master.start()
+    slave.start()
 
     slave.zone_wait(zone)
     action(t, slave) # action should keep the event intact
@@ -86,8 +94,6 @@ def test_run(t, action):
     detail_log("Expire - roles switch 2")
     test_expire(slave)
 
-    t.stop()
-
 def reload_server(t, s):
     s.reload()
     t.sleep(1)
@@ -106,8 +112,24 @@ t = Test()
 
 random.seed()
 
-test_run(t, reload_server)
-test_run(t, restart_server)
-test_run(t, reload_or_restart)
+# this zone has refresh = 1s, retry = 1s and expire = 1s + 2s for connection timeouts
+zone = t.zone("example.", storage=".")
+
+servers = create_servers(t)
+
+t.start()
+
+#stop the servers so that the zone does not expire
+for server_pair in servers:
+    server_pair[0].stop()
+    server_pair[1].stop()
+
+test_run(t, servers[0], zone, reload_server)
+test_run(t, servers[1], zone, restart_server)
+test_run(t, servers[2], zone, reload_or_restart)
+
+t.stop()
+
+
 
 

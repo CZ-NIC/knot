@@ -20,7 +20,7 @@
 #include "knot/zone/zone.h"
 
 /*! \brief Replans zone's events using old zone. */
-void replan_events(zone_t *zone, const zone_t *old_zone);
+void replan_events(zone_t *zone, zone_t *old_zone);
 
 /*! \brief Replans zone's DDNS events using old zone's DDNS queue. */
-void replan_update(zone_t *zone, const zone_t *old_zone);
+void replan_update(zone_t *zone, zone_t *old_zone);

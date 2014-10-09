@@ -73,9 +73,6 @@ libknots_la_SOURCES =				\
 	common-knot/hex.h			\
 	common-knot/ref.c			\
 	common-knot/ref.h			\
-	common-knot/slab/alloc-common.h		\
-	common-knot/slab/slab.c			\
-	common-knot/slab/slab.h			\
 	common-knot/strlcat.c			\
 	common-knot/strlcat.h			\
 	common-knot/strtonum.h			\
