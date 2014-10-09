@@ -500,7 +500,7 @@ int knot_pkt_put(knot_pkt_t *pkt, uint16_t compr_hint, const knot_rrset_t *rr,
 	                                        compr.wire);
 
 	/* Write RRSet to wireformat. */
-	int ret = knot_rrset_to_wire(rr, pos, maxlen, &compr, 0);
+	int ret = knot_rrset_to_wire(rr, pos, maxlen, &compr);
 	if (ret < 0) {
 		dbg_packet("%s: rr_to_wire = %s\n,", __func__, knot_strerror(ret));
 

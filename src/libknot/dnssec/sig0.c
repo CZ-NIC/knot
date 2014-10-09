@@ -148,8 +148,7 @@ int knot_sig0_sign(uint8_t *wire, size_t *wire_size, size_t wire_max_size,
 	size_t wire_avail_size = wire_max_size - *wire_size;
 	size_t wire_sig_size = 0;
 
-	int result = knot_rrset_to_wire(sig_rrset, wire_end, wire_avail_size,
-	                                NULL, KNOT_RRSET_WIRE_CANONICAL);
+	int result = knot_rrset_to_wire(sig_rrset, wire_end, wire_avail_size, NULL);
 
 	knot_rrset_free(&sig_rrset, NULL);
 
