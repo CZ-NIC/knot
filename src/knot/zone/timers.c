@@ -15,6 +15,7 @@
  */
 
 #include "libknot/dname.h"
+#include "common/mem.h"
 #include "common/namedb/namedb.h"
 #include "common/namedb/namedb_lmdb.h"
 #include "knot/zone/timers.h"
@@ -125,7 +126,16 @@ knot_namedb_t *open_timers_db(const char *storage)
 	// No-op if we don't have lmdb, all other operations will no-op as well then
 	return NULL;
 #else
-	return namedb_lmdb_api()->init(storage, NULL);
+	char *path = sprintf_alloc("%s/timers", storage);
+	if (!path) {
+		return NULL;
+	}
+
+	knot_namedb_t *db = namedb_lmdb_api()->init(path, NULL);
+
+	free(path);
+
+	return db;
 #endif
 }
 
