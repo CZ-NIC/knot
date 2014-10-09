@@ -29,6 +29,7 @@
 #include "libknot/packet/rrset-wire.h"
 #include "libknot/packet/wire.h"
 #include "libknot/rrset.h"
+#include "libknot/rrtype/naptr.h"
 
 /*!
  * \brief Get maximal size of a domain name in a wire with given capacity.
@@ -114,26 +115,14 @@ static int write_rdata_naptr_header(const uint8_t **src, size_t *src_avail,
 	assert(dst && *dst);
 	assert(dst_avail);
 
-	size_t size = 0;
+	int ret = knot_naptr_header_size(*src, *src + *src_avail);
 
-	/* Fixed fields size (order, preference) */
-
-	size += 2 * sizeof(uint16_t);
-
-	/* Variable fields size (flags, services, regexp) */
-
-	for (int i = 0; i < 3; i++) {
-		const uint8_t *len_ptr = *src + size;
-		if (len_ptr >= *src + *src_avail) {
-			return KNOT_EMALF;
-		}
-
-		size += 1 + *len_ptr;
+	if (ret < 0) {
+		return ret;
 	}
 
 	/* Copy the data */
-
-	return write_rdata_fixed(src, src_avail, dst, dst_avail, size);
+	return write_rdata_fixed(src, src_avail, dst, dst_avail, ret);
 }
 
 /*!
@@ -483,7 +472,6 @@ static int parse_header(const uint8_t *pkt_wire, size_t *pos, size_t pkt_size,
 	if (owner == NULL) {
 		return KNOT_EMALF;
 	}
-	knot_dname_to_lower(owner);
 
 	if (pkt_size - *pos < RR_HEADER_SIZE) {
 		knot_dname_free(&owner, mm);
@@ -522,14 +510,16 @@ static int decompress_rdata_dname(const uint8_t **src, size_t *src_avail,
 	assert(dst && *dst);
 	assert(dst_avail);
 	assert(dname_cfg);
-	UNUSED(flags);
+	UNUSED(dname_type);
 
-	int compr_size = knot_dname_wire_check(*src, *src + *src_avail, dname_cfg->pkt_wire);
+	int compr_size = knot_dname_wire_check(*src, *src + *src_avail,
+	                                       dname_cfg->pkt_wire);
 	if (compr_size <= 0) {
 		return compr_size;
 	}
 	
-	int decompr_size = knot_dname_unpack(*dst, *src, *dst_avail, dname_cfg->pkt_wire);
+	int decompr_size = knot_dname_unpack(*dst, *src, *dst_avail,
+	                                     dname_cfg->pkt_wire);
 	if (decompr_size <= 0) {
 		return decompr_size;
 	}
@@ -597,7 +587,7 @@ static int parse_rdata(const uint8_t *pkt_wire, size_t *pos, size_t pkt_size,
 	};
 
 	int ret = rdata_traverse(&src, &src_avail, &dst, &dst_avail,
-	                         desc, &dname_cfg, KNOT_RRSET_WIRE_NONE);
+				 desc, &dname_cfg, KNOT_RRSET_WIRE_NONE);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
@@ -642,7 +632,15 @@ int knot_rrset_rr_from_wire(const uint8_t *pkt_wire, size_t *pos,
 	ret = parse_rdata(pkt_wire, pos, pkt_size, mm, ttl, rdlen, rrset);
 	if (ret != KNOT_EOK) {
 		knot_rrset_clear(rrset, mm);
+		return ret;
 	}
 
-	return ret;
+	/* Convert RR to canonical format. */
+	ret = knot_rrset_rr_to_canonical(rrset);
+
+	if (ret != KNOT_EOK) {
+		knot_rrset_clear(rrset, mm);
+	}
+
+	return KNOT_EOK;
 }

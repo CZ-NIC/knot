@@ -470,7 +470,7 @@ int knot_dname_to_lower(knot_dname_t *name)
 			name[1 + i] = knot_tolower(name[1 + i]);
 		name = (uint8_t *)knot_wire_next_label(name, NULL);
 		if (name == NULL) { /* Must not be used on compressed names. */
-			return KNOT_EINVAL;
+			return KNOT_EMALF;
 		}
 	}
 
@@ -803,6 +803,9 @@ int knot_dname_lf(uint8_t *dst, const knot_dname_t *src, const uint8_t *pkt)
 	while(sp != lstack) {          /* consume stack */
 		l = *--sp; /* fetch rightmost label */
 		memcpy(dst, l+1, *l);  /* write label */
+		for (int i = 0; i < *l; ++i) {   /* convert to lowercase */
+			dst[i] = knot_tolower(dst[i]);
+		}
 		dst += *l;
 		*dst++ = '\0';         /* label separator */
 		*len += *l + 1;
