@@ -60,26 +60,4 @@ if old_nsec_serial < new_nsec_serial:
 compare(old_nsec3_serial, new_nsec3_serial, "NSEC3 zone got resigned")
 compare(old_static_serial, new_static_serial, "static zone got resigned")
 
-prev_serial = new_static_serial
-
-# Switch the static zone for the one with different case in records
-master.update_zonefile(static_zone, 1)
-master.stop()
-master.start()
-
-serial = master.zone_wait(static_zone)
-
-compare(prev_serial, serial, "static zone got resigned after case change")
-
-# Switch the static zone again, this time change case in NSEC only
-# Zone should be resigned, as the NSEC's RRSIG is no longer valid
-master.update_zonefile(static_zone, 2)
-master.stop()
-master.start()
-
-serial = master.zone_wait(static_zone)
-
-if (serial <= prev_serial):
-    set_err("Ignored NSEC change")
-
 t.stop()
