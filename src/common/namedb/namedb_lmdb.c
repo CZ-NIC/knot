@@ -17,9 +17,13 @@
 #ifdef HAVE_LMDB
 
 #include <lmdb.h>
+#include <sys/stat.h>
 
 #include "common/namedb/namedb_lmdb.h"
 #include "libknot/errcode.h"
+
+#define LMDB_DIR_MODE 0770
+#define LMDB_FILE_MODE 0660
 
 struct lmdb_env
 {
@@ -28,14 +32,30 @@ struct lmdb_env
 	mm_ctx_t *pool;
 };
 
-static int dbase_open(struct lmdb_env *env, const char *handle)
+static int create_env_dir(const char *path)
+{
+	int r = mkdir(path, LMDB_DIR_MODE);
+	if (r == -1 && errno != EEXIST) {
+		return knot_errno_to_error(errno);
+	}
+
+	return KNOT_EOK;
+}
+
+static int dbase_open(struct lmdb_env *env, const char *path)
 {
 	int ret = mdb_env_create(&env->env);
 	if (ret != 0) {
 		return ret;
 	}
 
-	ret = mdb_env_open(env->env, handle, 0, 0644);
+	ret = create_env_dir(path);
+	if (ret != KNOT_EOK) {
+		mdb_env_close(env->env);
+		return ret;
+	}
+
+	ret = mdb_env_open(env->env, path, 0, LMDB_FILE_MODE);
 	if (ret != 0) {
 		mdb_env_close(env->env);
 		return ret;
@@ -70,7 +90,7 @@ static void dbase_close(struct lmdb_env *env)
 	mdb_env_close(env->env);
 }
 
-static knot_namedb_t *init(const char *handle, mm_ctx_t *mm)
+static knot_namedb_t *init(const char *config, mm_ctx_t *mm)
 {
 	struct lmdb_env *env = mm_alloc(mm, sizeof(struct lmdb_env));
 	if (env == NULL) {
@@ -78,7 +98,7 @@ static knot_namedb_t *init(const char *handle, mm_ctx_t *mm)
 	}
 	memset(env, 0, sizeof(struct lmdb_env));
 
-	int ret = dbase_open(env, handle);
+	int ret = dbase_open(env, config);
 	if (ret != 0) {
 		mm_free(mm, env);
 		return NULL;
