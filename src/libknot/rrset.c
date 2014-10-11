@@ -161,7 +161,7 @@ uint32_t knot_rrset_ttl(const knot_rrset_t *rrset)
 
 int knot_rrset_rr_to_canonical(knot_rrset_t *rrset)
 {
-	if (rrset == NULL) {
+	if (rrset == NULL || rrset->rrs.rr_count != 1) {
 		return KNOT_EINVAL;
 	}
 
@@ -182,11 +182,12 @@ int knot_rrset_rr_to_canonical(knot_rrset_t *rrset)
 	}
 
 	knot_rdata_t *rdata = knot_rdataset_at(&rrset->rrs, 0);
+	assert(rdata);
 	uint16_t rdlen = knot_rdata_rdlen(rdata);
 	uint8_t *pos = knot_rdata_data(rdata);
 
 	/* No RDATA */
-	if (rdata == NULL || rdlen == 0) {
+	if (rdlen == 0) {
 		return KNOT_EOK;
 	}
 
