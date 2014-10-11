@@ -809,7 +809,8 @@ Statement ``query_module`` takes a list of ``module_name
 ^^^^^^^^^^^
 
 Data directory for zones.  It is used to store zone files and journal
-files.
+files. If compiled with LMDB support, a database storing persistent zone
+ event timers will also be created in the ``timers`` subdirectory.
 
 Value of ``storage`` set in ``zone`` section is relative to
 ``storage`` in ``zones`` section.
