@@ -106,7 +106,11 @@ See :ref:`keys`::
       }
     }
 
-As of now it is not possible to associate multiple keys with a remote.
+
+If Knot DNS is compiled with the LMDB library, the server will be able to
+preserve slave zone timers across full server restarts. The zone expire,
+refresh, and flush timers are stored in a file-backed database in the
+:ref:`storage` directory in the ``timers`` subdirectory.
 
 Master configuration
 ====================
