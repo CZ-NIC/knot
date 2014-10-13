@@ -87,8 +87,10 @@ The preference list is reset on the configuration reload.
 
 You can also use TSIG for access control. For this, you need to configure a TSIG key
 and assign it to a remote.  Supported algorithms for TSIG key are:
-| ``hmac-md5, hmac-sha1, hmac-sha224, hmac-sha256, hmac-sha384, hmac-sha512``
-Key secret is written in a base64 encoded format. See :ref:`keys`::
+``hmac-md5``, ``hmac-sha1``, ``hmac-sha224``, ``hmac-sha256``, ``hmac-sha384``,
+and ``hmac-sha512``. Key secret is written in a base64 encoded format.
+As of now, it is not possible to associate multiple keys with a remote.
+See :ref:`keys`::
 
     keys {
       key0 hmac-md5 "Wg=="; # keyname algorithm secret
