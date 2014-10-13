@@ -72,12 +72,6 @@ static int evsched_destruct(dthread_t *thread)
 	return KNOT_EOK;
 }
 
-/*! \brief List item for generic pointers. */
-typedef struct pnode_t {
-	struct node *next, *prev; /* Keep the ordering for lib/lists.h */
-	void *p; /*!< \brief Useful data pointer. */
-} pnode_t;
-
 /*! \brief Unbind and dispose given interface. */
 static void server_remove_iface(iface_t *iface)
 {

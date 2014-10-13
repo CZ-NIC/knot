@@ -293,31 +293,6 @@ int knot_rrclass_from_string(const char *name, uint16_t *num)
 	return 0;
 }
 
-int knot_descriptor_item_is_dname(const int item)
-{
-	return item == KNOT_RDATA_WF_FIXED_DNAME ||
-	       item == KNOT_RDATA_WF_COMPRESSIBLE_DNAME ||
-	       item == KNOT_RDATA_WF_DECOMPRESSIBLE_DNAME;
-}
-
-int knot_descriptor_item_is_fixed(const int item)
-{
-	if (item > 0) {
-		return 1;
-	} else {
-		return 0;
-	}
-}
-
-int knot_descriptor_item_is_remainder(const int item)
-{
-	if (item == KNOT_RDATA_WF_REMAINDER) {
-		return 1;
-	} else {
-		return 0;
-	}
-}
-
 int knot_rrtype_is_metatype(const uint16_t type)
 {
 	return type == KNOT_RRTYPE_SIG  ||

@@ -234,36 +234,6 @@ int knot_rrclass_to_string(const uint16_t rrclass,
 int knot_rrclass_from_string(const char *name, uint16_t *num);
 
 /*!
- * \brief Checks if given item is one of dname types.
- *
- * \param item Item value.
- *
- * \retval > 0 if YES.
- * \retval 0 if NO.
- */
-int knot_descriptor_item_is_dname(const int item);
-
-/*!
- * \brief Checks if given item has fixed size.
- *
- * \param item Item value.
- *
- * \retval 1 if YES.
- * \retval 0 if NO.
- */
-int knot_descriptor_item_is_fixed(const int item);
-
-/*!
- * \brief Checks if given item is remainder.
- *
- * \param item Item value.
- *
- * \retval 1 if YES.
- * \retval 0 if NO.
- */
-int knot_descriptor_item_is_remainder(const int item);
-
-/*!
  * \brief Checks if given item is one of metatypes or qtypes.
  *
  * \param item Item value.

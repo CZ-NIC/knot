@@ -25,7 +25,7 @@
 
 int main(int argc, char *argv[])
 {
-	plan(107);
+	plan(99);
 
 	const    rdata_descriptor_t *descr;
 	char     name[BUF_LEN];
@@ -258,28 +258,6 @@ int main(int argc, char *argv[])
 	// knot_rrclass_to_string invalid output buffer size
 	ret = knot_rrclass_to_string(1, NULL, 0);
 	ok(ret == -1, "knot_rrclass_to_string: invalid output buffer size");
-
-	// descriptor_item_is_dname
-	ok(knot_descriptor_item_is_dname(KNOT_RDATA_WF_END) == 0,
-	   "descriptor is not dname");
-	ok(knot_descriptor_item_is_dname(KNOT_RDATA_WF_FIXED_DNAME) != 0,
-	   "descriptor is fixed dname");
-	ok(knot_descriptor_item_is_dname(KNOT_RDATA_WF_COMPRESSIBLE_DNAME) != 0,
-	   "descriptor is compressible dname");
-	ok(knot_descriptor_item_is_dname(KNOT_RDATA_WF_DECOMPRESSIBLE_DNAME) != 0,
-	   "descriptor is decompressible dname");
-
-	// descriptor_item_is_fixed
-	ok(knot_descriptor_item_is_fixed(0) == 0,
-	   "descriptor is not fixed");
-	ok(knot_descriptor_item_is_fixed(1) != 0,
-	   "descriptor is fixed");
-
-	// descriptor_item_is_remainder
-	ok(knot_descriptor_item_is_remainder(0) == 0,
-	   "descriptor is not remainder");
-	ok(knot_descriptor_item_is_remainder(KNOT_RDATA_WF_REMAINDER) != 0,
-	   "descriptor is remainder");
 
 	// knot_rrtype_is_metatype
 	ok(knot_rrtype_is_metatype(0) == 0,

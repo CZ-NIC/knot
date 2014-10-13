@@ -114,7 +114,6 @@ typedef struct conf_group_t {
  */
 typedef struct conf_zone_t {
 	char *name;                /*!< Zone name. */
-	uint16_t cls;              /*!< Zone class (IN or CH). */
 	char *file;                /*!< Path to a zone file. */
 	char *storage;             /*!< Path to a storage dir. */
 	char *dnssec_keydir;       /*!< Path to a DNSSEC key dir. */
@@ -269,7 +268,7 @@ typedef struct conf_t {
 	int serial_policy;   /*!< Serial policy when updating zone. */
 	struct query_plan *query_plan;
 	list_t query_modules;
-	
+
 	/*
 	 * Zone timers db
 	 */
