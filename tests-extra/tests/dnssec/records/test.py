@@ -21,6 +21,7 @@ t.start()
 
 master.zone_wait(zone)
 
+t.sleep(1)
 master.flush()
 t.sleep(1)
 
