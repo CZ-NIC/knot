@@ -178,16 +178,17 @@ libknot_la_SOURCES =				\
 	libknot/packet/wire.h			\
 	libknot/processing/process.c		\
 	libknot/processing/process.h		\
-	libknot/rrtype/rdname.h			\
 	libknot/rrtype/dnskey.h			\
+	libknot/rrtype/naptr.h			\
+	libknot/rrtype/nsec.h			\
 	libknot/rrtype/nsec.h			\
 	libknot/rrtype/nsec3.c			\
 	libknot/rrtype/nsec3.h			\
-	libknot/rrtype/nsec3param.h		\
 	libknot/rrtype/nsec3param.c		\
-	libknot/rrtype/nsec.h			\
+	libknot/rrtype/nsec3param.h		\
 	libknot/rrtype/opt.c			\
 	libknot/rrtype/opt.h			\
+	libknot/rrtype/rdname.h			\
 	libknot/rrtype/rrsig.h			\
 	libknot/rrtype/soa.h			\
 	libknot/rrtype/tsig.c			\
