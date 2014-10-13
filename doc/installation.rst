@@ -37,6 +37,7 @@ Knot DNS requires few libraries to be compiled:
 * Userspace RCU, at least 0.5.4
 * libcap-ng, at least 0.6.4 (optional library)
 * lmdb (optional library)
+* libsystemd (optional library)
 
 If the libcap-ng library is available, Knot DNS will take advantage of the
 POSIX 1003.1e capabilites(7) by sandboxing the exposed threads.  Most
@@ -45,6 +46,9 @@ rights are stripped from the exposed threads for security reasons.
 If the LMDB library is available, the server will be able to store timers
 for slave zones in file-backed storage and the timers will persist across
 server restarts.
+
+If the libsystemd library is available, the server will use systemd's startup
+notifications mechanism and journald for logging.
 
 You can probably find OpenSSL and zlib libraries already included in
 your system or distribution.  If not, zlib resides at http://zlib.net,
