@@ -1,5 +1,16 @@
+Knot DNS 1.6.0-rc1 (2014-10-13)
+===============================
+
+Features:
+---------
+ - Persistent timers for slave zones
+
+Bufixes:
+--------
+ - RFC compliant processing of letter case in RDATA domain names
+
 Knot DNS 1.5.3 (2014-09-15)
-==========================
+===========================
 
 Bugfixes:
 ---------
@@ -10,7 +21,7 @@ Bugfixes:
  - Knot failed to send large messages to remote control (present since 1.5.1)
 
 Knot DNS 1.5.2 (2014-09-08)
-==========================
+===========================
 
 Bugfixes:
 ---------
