@@ -15,7 +15,7 @@ Optional packages:
 * lmdb               (for persistent events for slave zones)
 
 Dependencies for building documentation:
-* texinfo
+* python-sphinx
 
 Installation
 ============
