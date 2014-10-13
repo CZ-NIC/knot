@@ -9,10 +9,13 @@ Knot DNS Installation
 Required build environment
 ==========================
 
-GCC at least 4.1 is strictly required for atomic built-ins, but 4.2 or
-newer is recommended.  Another requirement is ``_GNU_SOURCE`` support,
-otherwise it adapts to the compiler available features.  LLVM clang
-works, but it is not officially supported.
+GCC at least 4.1 is strictly required for atomic built-ins, but the latest
+available version is recommended. Another requirement is ``_GNU_SOURCE``
+support, otherwise it adapts to the compiler available features.
+
+LLVM clang compiler can be used as well. However, the compilation with
+enabled optimizations will take a long time, unless the ``--disable-fastparser``
+configure option is given.
 
 Knot DNS build system relies on these standard tools:
 
