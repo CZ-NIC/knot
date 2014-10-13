@@ -25,7 +25,7 @@
 
 int main(int argc, char *argv[])
 {
-	plan(99);
+	plan(122);
 
 	const    rdata_descriptor_t *descr;
 	char     name[BUF_LEN];
@@ -296,6 +296,54 @@ int main(int argc, char *argv[])
 	   "rrtype is MX");
 	ok(knot_rrtype_additional_needed(KNOT_RRTYPE_SRV) != 0,
 	   "rrtype is SRV");
+
+	// knot_rrtype_should_be_lowercased
+	ok(knot_rrtype_should_be_lowercased(0) == 0,
+	   "rrtype should not be lowercased");
+	ok(knot_rrtype_should_be_lowercased(KNOT_RRTYPE_NS) != 0,
+	   "rrtype is NS");
+	ok(knot_rrtype_should_be_lowercased(KNOT_RRTYPE_MD) != 0,
+	   "rrtype is MD");
+	ok(knot_rrtype_should_be_lowercased(KNOT_RRTYPE_MF) != 0,
+	   "rrtype is MF");
+	ok(knot_rrtype_should_be_lowercased(KNOT_RRTYPE_CNAME) != 0,
+	   "rrtype is CNAME");
+	ok(knot_rrtype_should_be_lowercased(KNOT_RRTYPE_SOA) != 0,
+	   "rrtype is SOA");
+	ok(knot_rrtype_should_be_lowercased(KNOT_RRTYPE_MB) != 0,
+	   "rrtype is MB");
+	ok(knot_rrtype_should_be_lowercased(KNOT_RRTYPE_MG) != 0,
+	   "rrtype is MG");
+	ok(knot_rrtype_should_be_lowercased(KNOT_RRTYPE_MR) != 0,
+	   "rrtype is MR");
+	ok(knot_rrtype_should_be_lowercased(KNOT_RRTYPE_PTR) != 0,
+	   "rrtype is PTR");
+	ok(knot_rrtype_should_be_lowercased(KNOT_RRTYPE_MINFO) != 0,
+	   "rrtype is MINFO");
+	ok(knot_rrtype_should_be_lowercased(KNOT_RRTYPE_MX) != 0,
+	   "rrtype is MX");
+	ok(knot_rrtype_should_be_lowercased(KNOT_RRTYPE_RP) != 0,
+	   "rrtype is RP");
+	ok(knot_rrtype_should_be_lowercased(KNOT_RRTYPE_AFSDB) != 0,
+	   "rrtype is AFSDB");
+	ok(knot_rrtype_should_be_lowercased(KNOT_RRTYPE_RT) != 0,
+	   "rrtype is RT");
+	ok(knot_rrtype_should_be_lowercased(KNOT_RRTYPE_SIG) != 0,
+	   "rrtype is SIG");
+	ok(knot_rrtype_should_be_lowercased(KNOT_RRTYPE_PX) != 0,
+	   "rrtype is PX");
+	ok(knot_rrtype_should_be_lowercased(KNOT_RRTYPE_NXT) != 0,
+	   "rrtype is NXT");
+	ok(knot_rrtype_should_be_lowercased(KNOT_RRTYPE_NAPTR) != 0,
+	   "rrtype is NAPTR");
+	ok(knot_rrtype_should_be_lowercased(KNOT_RRTYPE_KX) != 0,
+	   "rrtype is KX");
+	ok(knot_rrtype_should_be_lowercased(KNOT_RRTYPE_SRV) != 0,
+	   "rrtype is SRV");
+	ok(knot_rrtype_should_be_lowercased(KNOT_RRTYPE_DNAME) != 0,
+	   "rrtype is DNAME");
+	ok(knot_rrtype_should_be_lowercased(KNOT_RRTYPE_RRSIG) != 0,
+	   "rrtype is RRSIG");
 
 	return 0;
 }
