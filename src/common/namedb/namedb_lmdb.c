@@ -18,12 +18,14 @@
 
 #include <lmdb.h>
 #include <sys/stat.h>
+#include <unistd.h>
 
 #include "common/namedb/namedb_lmdb.h"
 #include "libknot/errcode.h"
 
-#define LMDB_DIR_MODE 0770
-#define LMDB_FILE_MODE 0660
+#define LMDB_DIR_MODE	0770
+#define LMDB_FILE_MODE	0660
+#define LMDB_MAPSIZE	(100 * 1024 * 1024)
 
 struct lmdb_env
 {
@@ -46,6 +48,19 @@ static int dbase_open(struct lmdb_env *env, const char *path)
 {
 	int ret = mdb_env_create(&env->env);
 	if (ret != 0) {
+		return ret;
+	}
+
+	long page_size = sysconf(_SC_PAGESIZE);
+	if (page_size <= 0) {
+		mdb_env_close(env->env);
+		return KNOT_ENOTSUP;
+	}
+
+	size_t map_size = (LMDB_MAPSIZE / page_size) * page_size;
+	ret = mdb_env_set_mapsize(env->env, map_size);
+	if (ret != 0) {
+		mdb_env_close(env->env);
 		return ret;
 	}
 
