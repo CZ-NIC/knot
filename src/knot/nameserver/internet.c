@@ -121,7 +121,7 @@ static bool dname_cname_cannot_synth(const knot_rrset_t *rrset, const knot_dname
 static bool have_dnssec(struct query_data *qdata)
 {
 	return knot_pkt_has_dnssec(qdata->query) &&
-	       qdata->rcode_ext != KNOT_EDNS_RCODE_BADVERS &&
+	       qdata->rcode_ext != KNOT_RCODE_BADVERS &&
 	       zone_contents_is_signed(qdata->zone->contents);
 }
 
@@ -416,8 +416,8 @@ static int follow_cname(knot_pkt_t *pkt, uint16_t rrtype, struct query_data *qda
 	qdata->name = knot_cname_name(&cname_rr.rrs);
 
 #ifdef KNOT_NS_DEBUG
-	char *cname_str = knot_dname_to_str(cname_node->owner);
-	char *target_str = knot_dname_to_str(qdata->name);
+	char *cname_str = knot_dname_to_str_alloc(cname_node->owner);
+	char *target_str = knot_dname_to_str_alloc(qdata->name);
 	dbg_ns("%s: FOLLOW '%s' -> '%s'\n", __func__, cname_str, target_str);
 	free(cname_str);
 	free(target_str);

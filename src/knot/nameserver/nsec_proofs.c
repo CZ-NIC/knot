@@ -107,7 +107,7 @@ static int ns_put_covering_nsec3(const zone_contents_t *zone,
 	}
 
 dbg_ns_exec_verb(
-	char *name = knot_dname_to_str(prev->owner);
+	char *name = knot_dname_to_str_alloc(prev->owner);
 	dbg_ns_verb("Covering NSEC3 node: %s\n", name);
 	free(name);
 );
@@ -155,7 +155,7 @@ static int ns_put_nsec3_closest_encloser_proof(
 
 	if (zone_contents_nsec3params(zone) == NULL) {
 dbg_ns_exec_verb(
-		char *name = knot_dname_to_str(zone->apex->owner);
+		char *name = knot_dname_to_str_alloc(zone->apex->owner);
 		dbg_ns_verb("No NSEC3PARAM found in zone %s.\n", name);
 		free(name);
 );
@@ -163,7 +163,7 @@ dbg_ns_exec_verb(
 	}
 
 dbg_ns_exec_detail(
-	char *name = knot_dname_to_str((*closest_encloser)->owner);
+	char *name = knot_dname_to_str_alloc((*closest_encloser)->owner);
 	dbg_ns_detail("Closest encloser: %s\n", name);
 	free(name);
 );
@@ -186,14 +186,14 @@ dbg_ns_exec_detail(
 	assert(nsec3_node != NULL);
 
 dbg_ns_exec_verb(
-	char *name = knot_dname_to_str(nsec3_node->owner);
+	char *name = knot_dname_to_str_alloc(nsec3_node->owner);
 	dbg_ns_verb("NSEC3 node: %s\n", name);
 	free(name);
-	name = knot_dname_to_str((*closest_encloser)->owner);
+	name = knot_dname_to_str_alloc((*closest_encloser)->owner);
 	dbg_ns_verb("Closest provable encloser: %s\n", name);
 	free(name);
 	if (next_closer != NULL) {
-		name = knot_dname_to_str(next_closer);
+		name = knot_dname_to_str_alloc(next_closer);
 		dbg_ns_verb("Next closer name: %s\n", name);
 		free(name);
 	} else {
@@ -218,7 +218,7 @@ dbg_ns_exec_verb(
 			return KNOT_ERROR; /*servfail */
 		}
 dbg_ns_exec_verb(
-		char *name = knot_dname_to_str(new_next_closer);
+		char *name = knot_dname_to_str_alloc(new_next_closer);
 		dbg_ns_verb("Next closer name: %s\n", name);
 		free(name);
 );
@@ -244,7 +244,7 @@ static knot_dname_t *ns_wildcard_child_name(const knot_dname_t *name)
 {
 	assert(name != NULL);
 
-	knot_dname_t *wildcard = knot_dname_from_str("*");
+	knot_dname_t *wildcard = knot_dname_from_str_alloc("*");
 	if (wildcard == NULL) {
 		return NULL;
 	}
@@ -254,7 +254,7 @@ static knot_dname_t *ns_wildcard_child_name(const knot_dname_t *name)
 		return NULL;
 
 dbg_ns_exec_verb(
-	char *name = knot_dname_to_str(wildcard);
+	char *name = knot_dname_to_str_alloc(wildcard);
 	dbg_ns_verb("Wildcard: %s\n", name);
 	free(name);
 );
@@ -386,7 +386,7 @@ static int ns_put_nsec3_wildcard(const zone_contents_t *zone,
 		return KNOT_ERROR; /* servfail */
 	}
 dbg_ns_exec_verb(
-	char *name = knot_dname_to_str(next_closer);
+	char *name = knot_dname_to_str_alloc(next_closer);
 	dbg_ns_verb("Next closer name: %s\n", name);
 	free(name);
 );
@@ -480,7 +480,7 @@ static int ns_put_nsec_nxdomain(const knot_dname_t *qname,
 	}
 
 dbg_ns_exec_verb(
-	char *name = knot_dname_to_str(previous->owner);
+	char *name = knot_dname_to_str_alloc(previous->owner);
 	dbg_ns_verb("Previous node: %s\n", name);
 	free(name);
 );
@@ -517,7 +517,7 @@ dbg_ns_exec_verb(
 
 	while (knot_dname_cmp(prev_new->owner, wildcard) > 0) {
 dbg_ns_exec_verb(
-		char *name = knot_dname_to_str(prev_new->owner);
+		char *name = knot_dname_to_str_alloc(prev_new->owner);
 		dbg_ns_verb("Previous node: %s\n", name);
 		free(name);
 );
@@ -527,7 +527,7 @@ dbg_ns_exec_verb(
 	assert(knot_dname_cmp(prev_new->owner, wildcard) < 0);
 
 dbg_ns_exec_verb(
-	char *name = knot_dname_to_str(prev_new->owner);
+	char *name = knot_dname_to_str_alloc(prev_new->owner);
 	dbg_ns_verb("Previous node: %s\n", name);
 	free(name);
 );
@@ -702,11 +702,17 @@ static int ns_put_nsec_nsec3_nodata(const zone_node_t *node,
 int nsec_prove_wildcards(knot_pkt_t *pkt, struct query_data *qdata)
 {
 	dbg_ns("%s(%p, %p)\n", __func__, pkt, qdata);
+	if (qdata->zone->contents == NULL) {
+		return KNOT_EINVAL;
+	}
 
 	int ret = KNOT_EOK;
 	struct wildcard_hit *item = NULL;
 
 	WALK_LIST(item, qdata->wildcards) {
+		if (item->node == NULL) {
+			return KNOT_EINVAL;
+		}
 		ret = ns_put_nsec_nsec3_wildcard_answer(
 					item->node,
 					item->node->parent,
@@ -724,6 +730,10 @@ int nsec_prove_wildcards(knot_pkt_t *pkt, struct query_data *qdata)
 int nsec_prove_nodata(knot_pkt_t *pkt, struct query_data *qdata)
 {
 	dbg_ns("%s(%p, %p)\n", __func__, pkt, qdata);
+	if (qdata->node == NULL || qdata->encloser == NULL ||
+	    qdata->zone->contents == NULL) {
+		return KNOT_EINVAL;
+	}
 
 	return ns_put_nsec_nsec3_nodata(qdata->node, qdata->encloser,
 	                                qdata->previous, qdata->zone->contents,
@@ -733,6 +743,9 @@ int nsec_prove_nodata(knot_pkt_t *pkt, struct query_data *qdata)
 int nsec_prove_nxdomain(knot_pkt_t *pkt, struct query_data *qdata)
 {
 	dbg_ns("%s(%p, %p)\n", __func__, pkt, qdata);
+	if (qdata->encloser == NULL || qdata->zone->contents == NULL) {
+		return KNOT_EINVAL;
+	}
 
 	return ns_put_nsec_nsec3_nxdomain(qdata->zone->contents, qdata->previous,
 	                                  qdata->encloser, qdata->name, qdata,
@@ -742,6 +755,10 @@ int nsec_prove_nxdomain(knot_pkt_t *pkt, struct query_data *qdata)
 int nsec_prove_dp_security(knot_pkt_t *pkt, struct query_data *qdata)
 {
 	dbg_ns("%s(%p, %p)\n", __func__, pkt, qdata);
+	if (qdata->node == NULL || qdata->encloser == NULL ||
+	    qdata->zone->contents == NULL) {
+		return KNOT_EINVAL;
+	}
 
 	/* Add DS record if present. */
 	knot_rrset_t rrset = node_rrset(qdata->node, KNOT_RRTYPE_DS);

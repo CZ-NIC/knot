@@ -112,6 +112,21 @@ int main(void)
 	worker_pool_wait(pool);
 	ok(executed_reset(&log) == TASKS_BATCH, "executed count after add");
 
+	// temporary suspension
+
+	worker_pool_suspend(pool);
+
+	for (int i = 0; i < TASKS_BATCH; i++) {
+		worker_pool_assign(pool, &task);
+	}
+
+	sched_yield();
+	ok(executed_reset(&log) == 0, "executed count after suspend");
+
+	worker_pool_resume(pool);
+	worker_pool_wait(pool);
+	ok(executed_reset(&log) == TASKS_BATCH, "executed count after resume");
+
 	// try clean
 
 	pthread_mutex_lock(&log.mx);

@@ -20,7 +20,6 @@ class ZoneFile(object):
         # Directory containing source zone file/updates.
         self.storage = None
 
-
         self.backup_num = 1
 
     @property
@@ -47,11 +46,10 @@ class ZoneFile(object):
 
         if not file_name:
             file_name = self.name + "zone"
-
-        if storage:
-            self.storage = storage
-
         self.file_name = os.path.basename(file_name)
+
+        if not self.storage:
+            self.storage = storage if storage else os.path.dirname(file_name)
 
         if not exists:
             return
@@ -66,6 +64,19 @@ class ZoneFile(object):
                 src_file += "." + str(version)
 
             shutil.copyfile(src_file, self.path)
+
+            # Copy zone keys.
+            keydir = self.storage + "/keys"
+            if os.path.isdir(keydir):
+                prepare_dir(self.key_dir)
+
+                src_files = os.listdir(keydir)
+                for file_name in src_files:
+                    if (self.name[:-1]).lower() in file_name:
+                        full_file_name = os.path.join(keydir, file_name)
+                        if (os.path.isfile(full_file_name)):
+                            shutil.copy(full_file_name, self.key_dir)
+
         except:
             raise Exception("Can't use zone file '%s'" % src_file)
 

@@ -134,7 +134,7 @@ int tsig_create_rdata(knot_rrset_t *rr, const knot_dname_t *alg, uint16_t maclen
 	/* We already checked rr and know rdlen > 0, no need to check rets. */
 	int alg_len = knot_dname_size(alg);
 	size_t rdlen = alg_len + TSIG_FIXED_RDLEN + maclen;
-	if (tsig_err != KNOT_RCODE_BADTIME) {
+	if (tsig_err != KNOT_TSIG_ERR_BADTIME) {
 		rdlen -= TSIG_OTHER_MAXLEN;
 	}
 	uint8_t rd[rdlen];
@@ -262,7 +262,7 @@ knot_tsig_algorithm_t tsig_rdata_alg(const knot_rrset_t *tsig)
 	}
 
 	/* Convert alg name to string. */
-	char *name = knot_dname_to_str(alg_name);
+	char *name = knot_dname_to_str_alloc(alg_name);
 	if (!name) {
 		dbg_tsig("TSIG: rdata: cannot convert alg name.\n");
 		return KNOT_TSIG_ALG_NULL;
@@ -360,6 +360,32 @@ uint16_t tsig_rdata_other_data_length(const knot_rrset_t *tsig)
 }
 
 _public_
+int tsig_alg_from_name(const knot_dname_t *alg_name)
+{
+	if (!alg_name) {
+		return 0;
+	}
+
+	char *name = knot_dname_to_str_alloc(alg_name);
+	if (!name) {
+		return 0;
+	}
+
+	knot_lookup_table_t *found =
+		knot_lookup_by_name(knot_tsig_alg_dnames_str, name);
+
+	if (!found) {
+		dbg_tsig("Unknown algorithm: %s \n", name);
+		free(name);
+		return 0;
+	}
+
+	free(name);
+
+	return found->id;
+}
+
+_public_
 size_t tsig_rdata_tsig_variables_length(const knot_rrset_t *tsig)
 {
 	if (tsig == NULL) {
@@ -387,32 +413,6 @@ size_t tsig_rdata_tsig_timers_length()
 {
 	/*! \todo Cleanup */
 	return KNOT_TSIG_TIMERS_LENGTH;
-}
-
-_public_
-int tsig_alg_from_name(const knot_dname_t *alg_name)
-{
-	if (!alg_name) {
-		return 0;
-	}
-
-	char *name = knot_dname_to_str(alg_name);
-	if (!name) {
-		return 0;
-	}
-
-	knot_lookup_table_t *found =
-		knot_lookup_by_name(knot_tsig_alg_dnames_str, name);
-
-	if (!found) {
-		dbg_tsig("Unknown algorithm: %s \n", name);
-		free(name);
-		return 0;
-	}
-
-	free(name);
-
-	return found->id;
 }
 
 const char *tsig_alg_to_str(knot_tsig_algorithm_t alg)

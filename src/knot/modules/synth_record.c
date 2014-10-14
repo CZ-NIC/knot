@@ -185,7 +185,7 @@ static knot_dname_t *synth_ptrname(const char *addr_str, synth_template_t *tpl)
 	memcpy(ptrname + written, tpl->zone, zone_len);
 
 	/* Convert to domain name. */
-	return knot_dname_from_str(ptrname);
+	return knot_dname_from_str_alloc(ptrname);
 }
 
 static int reverse_rr(char *addr_str, synth_template_t *tpl, knot_pkt_t *pkt, knot_rrset_t *rr)
@@ -361,7 +361,7 @@ int synth_record_load(struct query_plan *plan, struct query_module *self)
 	/* Parse zone if generating reverse record. */
 	if (tpl->type == SYNTH_REVERSE) {
 		tpl->zone = strtok_r(NULL, " ", &saveptr);
-		knot_dname_t *check_name = knot_dname_from_str(tpl->zone);
+		knot_dname_t *check_name = knot_dname_from_str_alloc(tpl->zone);
 		if (check_name == NULL) {
 			MODULE_ERR("invalid zone '%s'", tpl->zone);
 			return KNOT_EMALF;

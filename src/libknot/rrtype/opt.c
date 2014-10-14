@@ -123,7 +123,7 @@ uint8_t knot_edns_get_ext_rcode(const knot_rrset_t *opt_rr)
 }
 
 /*----------------------------------------------------------------------------*/
-_public_
+
 static void set_value_to_ttl(knot_rrset_t *opt_rr, size_t offset, uint8_t value)
 {
 	uint32_t ttl = 0;

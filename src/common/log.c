@@ -14,7 +14,6 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#define _BSD_SOURCE
 #include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
@@ -403,7 +402,7 @@ int log_msg_zone(int priority, const knot_dname_t *zone, const char *fmt, ...)
 {
 	va_list args;
 	va_start(args, fmt);
-	char *zone_str = knot_dname_to_str(zone);
+	char *zone_str = knot_dname_to_str_alloc(zone);
 	int result = log_msg_text(priority,
 				  zone_str ? zone_str : LOG_NULL_ZONE_STRING,
 				  fmt, args);

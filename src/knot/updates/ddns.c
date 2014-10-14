@@ -436,7 +436,7 @@ static bool singleton_replaced(changeset_t *changeset,
 	if (!should_replace(rr)) {
 		return false;
 	}
-	
+
 	zone_node_t *n = zone_contents_find_node_for_rr(changeset->add, rr);
 	if (n == NULL) {
 		return false;
@@ -446,12 +446,12 @@ static bool singleton_replaced(changeset_t *changeset,
 	if (rrs == NULL) {
 		return false;
 	}
-	
+
 	// Replace singleton RR.
 	knot_rdataset_clear(rrs, NULL);
 	node_remove_rdataset(n, rr->type);
 	node_add_rrset(n, rr, NULL);
-	
+
 	return true;
 }
 
@@ -544,7 +544,7 @@ static int process_add_nsec3param(const zone_node_t *node,
 {
 	if (node == NULL || !node_rrtype_exists(node, KNOT_RRTYPE_SOA)) {
 		// Ignore non-apex additions
-		char *owner = knot_dname_to_str(rr->owner);
+		char *owner = knot_dname_to_str_alloc(rr->owner);
 		log_warning("DDNS, refusing to add NSEC3PARAM to non-apex "
 		            "node '%s'", owner);
 		free(owner);
@@ -555,7 +555,7 @@ static int process_add_nsec3param(const zone_node_t *node,
 		return add_rr_to_chgset(rr, changeset, NULL);
 	}
 
-	char *owner = knot_dname_to_str(rr->owner);
+	char *owner = knot_dname_to_str_alloc(rr->owner);
 	log_warning("DDNS, refusing to add second NSEC3PARAM to node '%s'", owner);
 	free(owner);
 
@@ -918,7 +918,7 @@ int ddns_process_update(const zone_t *zone, const knot_pkt_t *query,
 		}
 		return KNOT_EINVAL;
 	}
-	
+
 	changeset_t *changeset = update->change;
 
 	if (changeset->soa_from == NULL) {

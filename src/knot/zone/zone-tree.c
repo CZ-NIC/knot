@@ -170,9 +170,9 @@ int zone_tree_get_less_or_equal(zone_tree_t *tree,
 	}
 
 dbg_zone_exec_detail(
-		char *name = knot_dname_to_str(owner);
+		char *name = knot_dname_to_str_alloc(owner);
 		char *name_f = (*found != NULL)
-			? knot_dname_to_str((*found)->owner)
+			? knot_dname_to_str_alloc((*found)->owner)
 			: "none";
 
 		dbg_zone_detail("Searched for owner %s in zone tree.\n",
@@ -214,7 +214,7 @@ zone_node_t *zone_tree_get_next(zone_tree_t *tree,
 		fval = hattrie_iter_val(it);
 		hattrie_iter_free(it);
 	}
-	
+
 	n = (zone_node_t *)*fval;
 	/* Next node must be non-empty and auth. */
 	if (n->rrset_count == 0 || n->flags & NODE_FLAGS_NONAUTH) {

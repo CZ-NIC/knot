@@ -24,6 +24,7 @@
 #include "knot/zone/zone.h"
 #include "knot/zone/zonefile.h"
 #include "knot/zone/zonedb.h"
+#include "knot/zone/timers.h"
 #include "knot/server/server.h"
 #include "libknot/dname.h"
 
@@ -112,30 +113,12 @@ static void log_zone_load_info(const zone_t *zone, const char *zone_name,
 	log_zone_info(zone->name, "zone %s, serial %u", action, serial);
 }
 
-/*!
- * \brief Load or reload the zone.
- *
- * \param conf      Zone configuration.
- * \param server    Server.
- * \param old_zone  Already loaded zone (can be NULL).
- *
- * \return Error code, KNOT_EOK if successful.
- */
-static zone_t *create_zone(conf_zone_t *conf, server_t *server, zone_t *old_zone)
+static zone_t *create_zone_from(conf_zone_t *zone_conf, server_t *server)
 {
-	assert(conf);
-	assert(server);
-
-	zone_t *zone = zone_new(conf);
+	zone_t *zone = zone_new(zone_conf);
 	if (!zone) {
 		return NULL;
 	}
-
-	if (old_zone) {
-		zone->contents = old_zone->contents;
-	}
-
-	zone_status_t zstatus = zone_file_status(old_zone, conf);
 
 	int result = zone_events_setup(zone, server->workers, &server->sched);
 	if (result != KNOT_EOK) {
@@ -143,33 +126,138 @@ static zone_t *create_zone(conf_zone_t *conf, server_t *server, zone_t *old_zone
 		zone_free(&zone);
 		return NULL;
 	}
+	
+	return zone;
+}
 
+static zone_t *create_zone_reload(const conf_t *conf, conf_zone_t *zone_conf, server_t *server,
+                                  zone_t *old_zone)
+{
+	zone_t *zone = create_zone_from(zone_conf, server);
+	if (!zone) {
+		return NULL;
+	}
+	zone->contents = old_zone->contents;
+	
+	const zone_status_t zstatus = zone_file_status(old_zone, zone_conf);
+	
 	switch (zstatus) {
-	case ZONE_STATUS_FOUND_NEW:
 	case ZONE_STATUS_FOUND_UPDATED:
 		/* Enqueueing makes the first zone load waitable. */
 		zone_events_enqueue(zone, ZONE_EVENT_RELOAD);
 		/* Replan DDNS processing if there are pending updates. */
 		zone_events_replan_ddns(zone, old_zone);
 		break;
-	case ZONE_STATUS_BOOSTRAP:
-		zone_events_schedule(zone, ZONE_EVENT_REFRESH, ZONE_EVENT_NOW);
-		break;
-	case ZONE_STATUS_NOT_FOUND:
-		break;
 	case ZONE_STATUS_FOUND_CURRENT:
-		assert(old_zone);
 		zone->zonefile_mtime = old_zone->zonefile_mtime;
 		zone->zonefile_serial = old_zone->zonefile_serial;
+		/* Reuse events from old zone. */
 		zone_events_update(zone, old_zone);
+		/* Write updated timers. */
+		write_zone_timers(conf->timers_db, zone);
+		break;
+	default:
+		assert(0);
+	}
+	
+	return zone;
+}
+
+static bool slave_event(zone_event_type_t event)
+{
+	return event == ZONE_EVENT_EXPIRE || event == ZONE_EVENT_REFRESH;
+}
+
+static void reuse_uvents(zone_t *zone, const time_t *timers)
+{
+	for (zone_event_type_t event = 0; event < ZONE_EVENT_COUNT; ++event) {
+		if (timers[event] == 0) {
+			// Timer unset.
+			continue;
+		}
+		if (slave_event(event) && !zone_master(zone)) {
+			// Slave-only event.
+			continue;
+		}
+		
+		zone_events_schedule_at(zone, event, timers[event]);
+	}
+}
+
+static bool zone_expired(const time_t *timers)
+{
+	const time_t now = time(NULL);
+	return now <= timers[ZONE_EVENT_EXPIRE];
+}
+
+static zone_t *create_zone_new(conf_zone_t *zone_conf, server_t *server)
+{
+	zone_t *zone = create_zone_from(zone_conf, server);
+	if (!zone) {
+		return NULL;
+	}
+	
+	time_t timers[ZONE_EVENT_COUNT];
+	memset(timers, 0, sizeof(timers));
+	
+	// Get persistent timers
+	int ret = read_zone_timers(conf()->timers_db, zone, timers);
+	if (ret != KNOT_EOK) {
+		log_zone_error(zone->name, "cannot read zone timers (%s)",
+		               knot_strerror(ret));
+		zone->conf = NULL;
+		zone_free(&zone);
+		return NULL;
+	}
+	
+	reuse_uvents(zone, timers);
+	
+	const zone_status_t zstatus = zone_file_status(NULL, zone_conf);
+	
+	switch (zstatus) {
+	case ZONE_STATUS_FOUND_NEW:
+		if (!zone_expired(timers)) {
+			/* Enqueueing makes the first zone load waitable. */
+			zone_events_enqueue(zone, ZONE_EVENT_RELOAD);
+		}
+		break;
+	case ZONE_STATUS_BOOSTRAP:
+		if (timers[ZONE_EVENT_REFRESH] == 0) {
+			// Plan immediate refresh if not already planned.
+			zone_events_schedule(zone, ZONE_EVENT_REFRESH, ZONE_EVENT_NOW);
+		}
+		break;
+	case ZONE_STATUS_NOT_FOUND:
 		break;
 	default:
 		assert(0);
 	}
 
-	log_zone_load_info(zone, conf->name, zstatus);
-
+	log_zone_load_info(zone, zone_conf->name, zstatus);
+	
 	return zone;
+}
+
+/*!
+ * \brief Load or reload the zone.
+ *
+ * \param zone_conf  Zone configuration.
+ * \param server     Server.
+ * \param old_zone   Already loaded zone (can be NULL).
+ *
+ * \return Error code, KNOT_EOK if successful.
+ */
+static zone_t *create_zone(const conf_t *conf, conf_zone_t *zone_conf, server_t *server,
+                           zone_t *old_zone)
+{
+	assert(zone_conf);
+	assert(server);
+
+	if (old_zone) {
+		return create_zone_reload(conf, zone_conf, server, old_zone);
+	} else {
+		return create_zone_new(zone_conf, server);
+	}
 }
 
 /*!
@@ -199,11 +287,11 @@ static knot_zonedb_t *create_zonedb(const conf_t *conf, server_t *server)
 
 		conf_zone_t *zone_config = (conf_zone_t *)*hattrie_iter_val(it);
 
-		knot_dname_t *apex = knot_dname_from_str(zone_config->name);
+		knot_dname_t *apex = knot_dname_from_str_alloc(zone_config->name);
 		zone_t *old_zone = knot_zonedb_find(db_old, apex);
 		knot_dname_free(&apex, NULL);
 
-		zone_t *zone = create_zone(zone_config, server, old_zone);
+		zone_t *zone = create_zone(conf, zone_config, server, old_zone);
 		if (!zone) {
 			log_zone_str_error(zone_config->name,
 					   "zone cannot be created");
@@ -282,6 +370,9 @@ int zonedb_reload(const conf_t *conf, struct server_t *server)
 
 	/* Wait for readers to finish reading old zone database. */
 	synchronize_rcu();
+	
+	/* Sweep the timer database. */
+	sweep_timer_db(conf->timers_db, db_new);
 
 	/*
 	 * Remove all zones present in the new DB from the old DB.

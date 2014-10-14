@@ -35,6 +35,7 @@ struct worker_pool {
 	pthread_cond_t wake;
 
 	bool terminating;	/*!< Is the pool terminating? .*/
+	bool suspended;		/*!< Is execution temporarily suspended? .*/
 	int running;		/*!< Number of running threads. */
 	worker_queue_t tasks;
 };
@@ -61,7 +62,11 @@ static int worker_main(dthread_t *thread)
 			break;
 		}
 
-		task_t *task = worker_queue_dequeue(&pool->tasks);
+		task_t *task = NULL;
+		if (!pool->suspended) {
+			task = worker_queue_dequeue(&pool->tasks);
+		}
+
 		if (task == NULL) {
 			pthread_cond_wait(&pool->wake, &pool->lock);
 			continue;
@@ -160,6 +165,29 @@ void worker_pool_stop(worker_pool_t *pool)
 	pthread_mutex_unlock(&pool->lock);
 
 	dt_stop(pool->threads);
+}
+
+void worker_pool_suspend(worker_pool_t *pool)
+{
+	if (!pool) {
+		return;
+	}
+
+	pthread_mutex_lock(&pool->lock);
+	pool->suspended = true;
+	pthread_mutex_unlock(&pool->lock);
+}
+
+void worker_pool_resume(worker_pool_t *pool)
+{
+	if (!pool) {
+		return;
+	}
+
+	pthread_mutex_lock(&pool->lock);
+	pool->suspended = false;
+	pthread_cond_broadcast(&pool->wake);
+	pthread_mutex_unlock(&pool->lock);
 }
 
 void worker_pool_join(worker_pool_t *pool)

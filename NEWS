@@ -1,3 +1,23 @@
+Knot DNS 1.5.3 (2014-09-15)
+==========================
+
+Bugfixes:
+---------
+ - Some specific incoming IXFRs were causing server to crash
+ - Rare sychronization error during reload caused read-after-free
+ - Response synthetization module did not work properly with DNSSEC-enabled zones
+ - When Knot sent AXFR when IXFR was requested, message ID and opcode were wrong
+ - Knot failed to send large messages to remote control (present since 1.5.1)
+
+Knot DNS 1.5.2 (2014-09-08)
+==========================
+
+Bugfixes:
+---------
+ - Some RR parsing corner cases were not handled properly
+ - AXFR-style IXFR was refused and had to be retransfered
+ - Hash character (#) was not properly escaped when storing text zone file
+
 Knot DNS 1.5.1 (2014-08-19)
 ===========================
 

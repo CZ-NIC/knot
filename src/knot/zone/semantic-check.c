@@ -181,7 +181,7 @@ static void log_error_from_node(err_handler_t *handler,
 
 	handler->error_count++;
 
-	char *name = knot_dname_to_str(node->owner);
+	char *name = knot_dname_to_str_alloc(node->owner);
 	const char *errmsg = error_messages[-error];
 
 	log_zone_warning(zone_name, "semantic check, node '%s' (%s%s%s)",

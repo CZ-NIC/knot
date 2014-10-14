@@ -59,7 +59,7 @@ int main(int argc, char *argv[])
 {
 	plan(5);
 
-	knot_dname_t *apex = knot_dname_from_str("test");
+	knot_dname_t *apex = knot_dname_from_str_alloc("test");
 	assert(apex);
 	zone_contents_t *zone = zone_contents_new(apex);
 	knot_dname_free(&apex, NULL);

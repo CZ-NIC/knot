@@ -26,7 +26,7 @@
  */
 static const char *get_txt_response_string(const knot_dname_t *qname)
 {
-	char *qname_str = knot_dname_to_str(qname);
+	char *qname_str = knot_dname_to_str_alloc(qname);
 	const char *response = NULL;
 
 	/* id.server and hostname.bind should have similar meaning */

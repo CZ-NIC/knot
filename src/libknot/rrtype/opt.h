@@ -139,6 +139,25 @@ void knot_edns_set_payload(knot_rrset_t *opt_rr, uint16_t payload);
 uint8_t knot_edns_get_ext_rcode(const knot_rrset_t *opt_rr);
 
 /*!
+ * \brief Concatenates OPT RR Extended RCODE field and normal RCODE to get the
+ *        whole Extended RCODE.
+ *
+ * Extended RCODE is created by using the Extended RCODE field from OPT RR as
+ * higher 8 bits and the RCODE from DNS Header as the lower 4 bits, resulting
+ * in a 12-bit unsigned integer. (See RFC 6891, Section 6.1.3).
+ *
+ * \param ext_rcode  Extended RCODE field from OPT RR.
+ * \param rcode      RCODE from DNS Header.
+ *
+ * \return 12-bit Extended RCODE.
+ */
+static inline uint16_t knot_edns_whole_rcode(uint8_t ext_rcode, uint8_t rcode)
+{
+	uint16_t high = ext_rcode;
+	return (high << 4) | rcode;
+}
+
+/*!
  * \brief Sets the Extended RCODE field in the OPT RR.
  *
  * \warning This function does not check the parameter, so ensure to check it

@@ -34,9 +34,9 @@
 #include "common/sockaddr.h"
 #include "common-knot/fdset.h"
 #include "common/mempool.h"
+#include "common/net.h"
 
 #include "libknot/packet/wire.h"
-#include "libknot/packet/net.h"
 #include "libknot/dnssec/crypto.h"
 #include "libknot/dnssec/random.h"
 #include "libknot/processing/overlay.h"
