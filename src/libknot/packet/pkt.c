@@ -151,7 +151,7 @@ static int pkt_reset(knot_pkt_t *pkt, void *wire, uint16_t len)
 	return ret;
 }
 
-/* Reset packet parse state. */
+/*! \brief Reset packet parse state. */
 static int pkt_reset_sections(knot_pkt_t *pkt)
 {
 	pkt->parsed  = 0;
@@ -554,7 +554,8 @@ int knot_pkt_put(knot_pkt_t *pkt, uint16_t compr_hint, const knot_rrset_t *rr,
 }
 
 _public_
-const knot_pktsection_t *knot_pkt_section(const knot_pkt_t *pkt, knot_section_t section_id)
+const knot_pktsection_t *knot_pkt_section(const knot_pkt_t *pkt,
+                                          knot_section_t section_id)
 {
 	dbg_packet("%s(%p, %u)\n", __func__, pkt, section_id);
 	if (pkt == NULL) {
@@ -649,8 +650,11 @@ int knot_pkt_parse_question(knot_pkt_t *pkt)
 		(pkt)->var = rr; \
 	}
 
-/*! \brief Check constraints (position, uniqueness, validity) for special types (TSIG, OPT). */
-static int check_rr_constraints(knot_pkt_t *pkt, knot_rrset_t *rr, size_t rr_size, unsigned flags)
+/*! \brief Check constraints (position, uniqueness, validity) for special types
+ *         (TSIG, OPT).
+ */
+static int check_rr_constraints(knot_pkt_t *pkt, knot_rrset_t *rr, size_t rr_size,
+                                unsigned flags)
 {
 	/* Check RR constraints. */
 	switch(rr->type) {
@@ -789,6 +793,7 @@ int knot_pkt_parse_payload(knot_pkt_t *pkt, unsigned flags)
 	return KNOT_EOK;
 }
 
+_public_
 uint16_t knot_pkt_get_ext_rcode(const knot_pkt_t *pkt)
 {
 	if (pkt == NULL) {

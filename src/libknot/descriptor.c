@@ -35,7 +35,7 @@ static const char* dns_classes[] = {
 /*!
  * \brief RR type descriptors.
  */
-static const rdata_descriptor_t rdata_descriptors[] = {
+static const knot_rdata_descriptor_t rdata_descriptors[] = {
 	[0]                      = { { KNOT_RDATA_WF_REMAINDER,
 	                               KNOT_RDATA_WF_END }, NULL },
 	[KNOT_RRTYPE_A]          = { { 4, KNOT_RDATA_WF_END }, "A" },
@@ -134,7 +134,7 @@ static const rdata_descriptor_t rdata_descriptors[] = {
 /*!
  * \brief Some (OBSOLETE) RR type descriptors.
  */
-static const rdata_descriptor_t obsolete_rdata_descriptors[] = {
+static const knot_rdata_descriptor_t obsolete_rdata_descriptors[] = {
 	[0]                      = { { KNOT_RDATA_WF_REMAINDER,
 	                               KNOT_RDATA_WF_END }, NULL },
 	[KNOT_RRTYPE_MD]         = { { KNOT_RDATA_WF_DECOMPRESSIBLE_DNAME,

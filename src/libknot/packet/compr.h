@@ -88,7 +88,9 @@ typedef struct knot_compr {
 int knot_compr_put_dname(const knot_dname_t *dname, uint8_t *dst, uint16_t max,
                          knot_compr_t *compr);
 
-/*! \brief Retrieve compression hint from given offset. */
+/*! \brief Retrieve compression hint from given offset.
+ *  \todo More detailed documentation.
+ */
 static inline uint16_t knot_pkt_compr_hint(const knot_rrinfo_t *info, uint16_t hint_id)
 {
 	if (hint_id < KNOT_COMPR_HINT_COUNT) {
@@ -98,7 +100,9 @@ static inline uint16_t knot_pkt_compr_hint(const knot_rrinfo_t *info, uint16_t h
 	}
 }
 
-/*! \brief Store compression hint for given offset. */
+/*! \brief Store compression hint for given offset.
+ *  \todo More detailed documentation.
+ */
 static inline void knot_pkt_compr_hint_set(knot_rrinfo_t *info, uint16_t hint_id,
                                            uint16_t val, uint16_t len)
 {

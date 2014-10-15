@@ -20,6 +20,7 @@
 
 #include "common/debug.h"
 #include "common/log.h"
+
 #include "libknot/errcode.h"
 #include "libknot/packet/pkt.h"
 #include "libknot/util/tolower.h"

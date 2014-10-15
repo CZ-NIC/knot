@@ -17,6 +17,7 @@
 #include <assert.h>
 
 #include "libknot/processing/layer.h"
+
 #include "common/debug.h"
 
 /*! \brief Helper for conditional layer call. */

@@ -21,12 +21,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "libknot/packet/rrset-wire.h"
+
 #include "libknot/common.h"
 #include "libknot/consts.h"
 #include "libknot/descriptor.h"
 #include "libknot/dname.h"
 #include "libknot/packet/pkt.h"
-#include "libknot/packet/rrset-wire.h"
 #include "libknot/packet/wire.h"
 #include "libknot/rrset.h"
 
