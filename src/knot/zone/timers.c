@@ -90,18 +90,16 @@ static int read_timers(knot_txn_t *txn, const zone_t *zone, time_t *timers)
 
 	knot_val_t key = { .len = knot_dname_size(zone->name), .data = zone->name };
 	knot_val_t val;
+
 	int ret = db_api->find(txn, &key, &val, 0);
-	if (ret != KNOT_EOK) {
-		if (ret == KNOT_ENOENT) {
-			// New zone, no entry in db.
-			memset(timers, 0, ZONE_EVENT_COUNT * sizeof(time_t));
-			return KNOT_EOK;
-		}
+	if (ret != KNOT_EOK && ret != KNOT_ENOENT) {
 		return ret;
 	}
 
-	// Set unknown/unset event timers to 0.
 	memset(timers, 0, ZONE_EVENT_COUNT * sizeof(time_t));
+	if (ret == KNOT_ENOENT) {
+		return KNOT_EOK;
+	}
 
 	const size_t stored_event_count = val.len / EVENT_KEY_PAIR_SIZE;
 	size_t offset = 0;
