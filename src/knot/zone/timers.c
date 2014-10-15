@@ -56,6 +56,12 @@ static bool event_persistent(size_t event)
 	return event_id_to_key[event] != 0;
 }
 
+/*! \brief Clear array of timers. */
+static void clear_timers(time_t *timers)
+{
+	memset(timers, 0, ZONE_EVENT_COUNT * sizeof(time_t));
+}
+
 /*! \brief Stores timers for persistent events. */
 static int store_timers(knot_txn_t *txn, zone_t *zone)
 {
@@ -96,7 +102,7 @@ static int read_timers(knot_txn_t *txn, const zone_t *zone, time_t *timers)
 		return ret;
 	}
 
-	memset(timers, 0, ZONE_EVENT_COUNT * sizeof(time_t));
+	clear_timers(timers);
 	if (ret == KNOT_ENOENT) {
 		return KNOT_EOK;
 	}
@@ -151,7 +157,7 @@ void close_timers_db(knot_namedb_t *timer_db)
 int read_zone_timers(knot_namedb_t *timer_db, const zone_t *zone, time_t *timers)
 {
 	if (timer_db == NULL) {
-		memset(timers, 0, ZONE_EVENT_COUNT * sizeof(time_t));
+		clear_timers(timers);
 		return KNOT_EOK;
 	}
 
