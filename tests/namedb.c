@@ -56,12 +56,13 @@ static void namedb_test_set(unsigned nkeys, char **keys, char *dbid,
 	}
 
 	/* Create database */
-	knot_namedb_t *db = api->init(dbid, pool);
-	ok(db != NULL, "%s: create", api->name);
+	knot_namedb_t *db = NULL;
+	int ret = api->init(dbid, &db, pool);
+	ok(ret == KNOT_EOK && db != NULL, "%s: create", api->name);
 
 	/* Start WR transaction. */
 	knot_txn_t txn;
-	int ret = api->txn_begin(db, &txn, 0);
+	ret = api->txn_begin(db, &txn, 0);
 	ok(ret == KNOT_EOK, "%s: txn_begin(WR)", api->name);
 
 	/* Insert keys */
@@ -169,7 +170,7 @@ int main(int argc, char *argv[])
 
 	/* Execute test set for all backends. */
 	namedb_test_set(nkeys, keys, dbid, namedb_lmdb_api(), &pool);
-	namedb_test_set(nkeys, keys, dbid, namedb_trie_api(), &pool);
+	namedb_test_set(nkeys, keys, NULL, namedb_trie_api(), &pool);
 
 	/* Cleanup */
 	mp_delete(pool.ctx);

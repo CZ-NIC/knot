@@ -105,22 +105,24 @@ static void dbase_close(struct lmdb_env *env)
 	mdb_env_close(env->env);
 }
 
-static knot_namedb_t *init(const char *config, mm_ctx_t *mm)
+static int init(const char *config, knot_namedb_t **db_ptr, mm_ctx_t *mm)
 {
 	struct lmdb_env *env = mm_alloc(mm, sizeof(struct lmdb_env));
 	if (env == NULL) {
-		return NULL;
+		return KNOT_ENOMEM;
 	}
 	memset(env, 0, sizeof(struct lmdb_env));
 
 	int ret = dbase_open(env, config);
 	if (ret != 0) {
 		mm_free(mm, env);
-		return NULL;
+		return KNOT_ERROR;
 	}
 
 	env->pool = mm;
-	return env;
+	*db_ptr = env;
+
+	return KNOT_EOK;
 }
 
 static void deinit(knot_namedb_t *db)
