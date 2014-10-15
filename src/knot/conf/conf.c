@@ -783,8 +783,9 @@ int conf_open(const char* path)
 
 	/* Open zone timers db. */
 	ret = open_timers_db(nconf->storage, &nconf->timers_db);
-	if (ret != KNOT_EOK) {
-		log_warning("cannot open timers DB (%s)", knot_strerror(ret));
+	if (ret != KNOT_EOK && ret != KNOT_ENOTSUP) {
+		log_warning("cannot open persistent timers DB (%s)",
+		            knot_strerror(ret));
 	}
 
 	/* Replace current config. */

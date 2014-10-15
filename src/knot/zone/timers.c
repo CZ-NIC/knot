@@ -133,7 +133,7 @@ int open_timers_db(const char *storage, knot_namedb_t **db_ptr)
 
 	const struct namedb_api *api = namedb_lmdb_api();
 	if (!api) {
-		return KNOT_EOK;
+		return KNOT_ENOTSUP;
 	}
 
 	char *path = sprintf_alloc("%s/timers", storage);
