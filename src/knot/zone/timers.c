@@ -118,23 +118,27 @@ static int read_timers(knot_txn_t *txn, const zone_t *zone, time_t *timers)
 
 /* -------- API ------------------------------------------------------------- */
 
-knot_namedb_t *open_timers_db(const char *storage)
+int open_timers_db(const char *storage, knot_namedb_t **db_ptr)
 {
-#ifndef HAVE_LMDB
-	// No-op if we don't have lmdb, all other operations will no-op as well then
-	return NULL;
-#else
-	char *path = sprintf_alloc("%s/timers", storage);
-	if (!path) {
-		return NULL;
+	if (!storage || !db_ptr) {
+		return KNOT_EINVAL;
 	}
 
-	knot_namedb_t *db = namedb_lmdb_api()->init(path, NULL);
+	const struct namedb_api *api = namedb_lmdb_api();
+	if (!api) {
+		return KNOT_EOK;
+	}
+
+	char *path = sprintf_alloc("%s/timers", storage);
+	if (!path) {
+		return KNOT_ENOMEM;
+	}
+
+	int ret = api->init(path, db_ptr, NULL);
 
 	free(path);
 
-	return db;
-#endif
+	return ret;
 }
 
 void close_timers_db(knot_namedb_t *timer_db)
