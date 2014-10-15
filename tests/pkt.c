@@ -114,7 +114,7 @@ int main(int argc, char *argv[])
 	tsig_key.name = dnames[0];
 	tsig_key.secret.data = (uint8_t *)strdup(tsig_secret);
 	tsig_key.secret.size = strlen(tsig_secret);
-	ret = knot_pkt_reserve(out, tsig_wire_maxsize(&tsig_key));
+	ret = knot_pkt_reserve(out, knot_tsig_wire_maxsize(&tsig_key));
 	ok(ret == KNOT_EOK, "pkt: set TSIG key");
 
 	/* Write question. */

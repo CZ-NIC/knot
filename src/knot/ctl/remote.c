@@ -719,7 +719,7 @@ static int zones_verify_tsig_query(const knot_pkt_t *query,
 	/*
 	 * 1) Check if we support the requested algorithm.
 	 */
-	knot_tsig_algorithm_t alg = tsig_rdata_alg(query->tsig_rr);
+	knot_tsig_algorithm_t alg = knot_tsig_rdata_alg(query->tsig_rr);
 	if (knot_tsig_digest_length(alg) == 0) {
 		log_info("TSIG, unsupported algorithm, query NOTAUTH");
 		/*! \todo [TSIG] It is unclear from RFC if I
@@ -758,7 +758,7 @@ static int zones_verify_tsig_query(const knot_pkt_t *query,
 	//memset(digest, 0 , digest_max_size);
 
 	//const uint8_t* mac = tsig_rdata_mac(tsig_rr);
-	size_t mac_len = tsig_rdata_mac_length(query->tsig_rr);
+	size_t mac_len = knot_tsig_rdata_mac_length(query->tsig_rr);
 
 	int ret = KNOT_EOK;
 
@@ -790,7 +790,7 @@ static int zones_verify_tsig_query(const knot_pkt_t *query,
 		case KNOT_TSIG_EBADTIME:
 			*tsig_rcode = KNOT_TSIG_ERR_BADTIME;
 			// store the time signed from the query
-			*tsig_prev_time_signed = tsig_rdata_time_signed(query->tsig_rr);
+			*tsig_prev_time_signed = knot_tsig_rdata_time_signed(query->tsig_rr);
 			*rcode = KNOT_RCODE_NOTAUTH;
 			break;
 		case KNOT_EMALF:
@@ -896,7 +896,7 @@ knot_pkt_t* remote_query(const char *query, const knot_tsig_key_t *key)
 	}
 
 	knot_wire_set_id(pkt->wire, knot_random_uint16_t());
-	knot_pkt_reserve(pkt, tsig_wire_maxsize(key));
+	knot_pkt_reserve(pkt, knot_tsig_wire_maxsize(key));
 
 	/* Question section. */
 	char *qname = strcdup(query, KNOT_CTL_REALM_EXT);

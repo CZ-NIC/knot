@@ -239,7 +239,7 @@ int axfr_query_process(knot_pkt_t *pkt, struct query_data *qdata)
 	}
 
 	/* Reserve space for TSIG. */
-	knot_pkt_reserve(pkt, tsig_wire_maxsize(qdata->sign.tsig_key));
+	knot_pkt_reserve(pkt, knot_tsig_wire_maxsize(qdata->sign.tsig_key));
 
 	/* Answer current packet (or continue). */
 	struct axfr_proc *axfr = (struct axfr_proc *)qdata->ext;

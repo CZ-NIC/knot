@@ -832,7 +832,7 @@ int internet_query(knot_pkt_t *response, struct query_data *qdata)
 		NS_NEED_AUTH(&qdata->zone->conf->acl.xfr_out, qdata);
 
 		/* Reserve space for TSIG. */
-		knot_pkt_reserve(response, tsig_wire_maxsize(qdata->sign.tsig_key));
+		knot_pkt_reserve(response, knot_tsig_wire_maxsize(qdata->sign.tsig_key));
 	}
 
 	NS_NEED_ZONE_CONTENTS(qdata, KNOT_RCODE_SERVFAIL); /* Expired */

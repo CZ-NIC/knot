@@ -522,7 +522,7 @@ bool process_query_acl_check(list_t *acl, struct query_data *qdata)
 	/* Authenticate with NOKEY if the packet isn't signed. */
 	if (query->tsig_rr) {
 		key_name = query->tsig_rr->owner;
-		key_alg = tsig_rdata_alg(query->tsig_rr);
+		key_alg = knot_tsig_rdata_alg(query->tsig_rr);
 	}
 	conf_iface_t *match = acl_find(acl, query_source, key_name);
 
@@ -551,8 +551,8 @@ int process_query_verify(struct query_data *qdata)
 
 	/* Keep digest for signing response. */
 	/*! \note This memory will be rewritten for multi-pkt answers. */
-	ctx->tsig_digest = (uint8_t *)tsig_rdata_mac(query->tsig_rr);
-	ctx->tsig_digestlen = tsig_rdata_mac_length(query->tsig_rr);
+	ctx->tsig_digest = (uint8_t *)knot_tsig_rdata_mac(query->tsig_rr);
+	ctx->tsig_digestlen = knot_tsig_rdata_mac_length(query->tsig_rr);
 
 	/* Checking query. */
 	process_query_qname_case_restore(qdata, query);
@@ -578,7 +578,7 @@ int process_query_verify(struct query_data *qdata)
 	case KNOT_TSIG_EBADTIME:
 		qdata->rcode = KNOT_RCODE_NOTAUTH;
 		qdata->rcode_tsig = KNOT_TSIG_ERR_BADTIME;
-		ctx->tsig_time_signed = tsig_rdata_time_signed(query->tsig_rr);
+		ctx->tsig_time_signed = knot_tsig_rdata_time_signed(query->tsig_rr);
 		break;
 	case KNOT_EMALF:
 		qdata->rcode = KNOT_RCODE_FORMERR;

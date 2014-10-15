@@ -81,7 +81,7 @@ int notify_process_query(knot_pkt_t *pkt, struct query_data *qdata)
 	}
 
 	/* Reserve space for TSIG. */
-	knot_pkt_reserve(pkt, tsig_wire_maxsize(qdata->sign.tsig_key));
+	knot_pkt_reserve(pkt, knot_tsig_wire_maxsize(qdata->sign.tsig_key));
 
 	/* SOA RR in answer may be included, recover serial. */
 	const knot_pktsection_t *answer = knot_pkt_section(qdata->query, KNOT_ANSWER);

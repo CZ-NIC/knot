@@ -154,7 +154,7 @@ static int knot_zone_diff_rdata_return_changes(const knot_rrset_t *rrset1,
 	/* Create fake RRSet, it will be easier to handle. */
 	knot_rrset_init(changes, rrset1->owner, rrset1->type, rrset1->rclass);
 
-	const rdata_descriptor_t *desc = knot_get_rdata_descriptor(rrset1->type);
+	const knot_rdata_descriptor_t *desc = knot_get_rdata_descriptor(rrset1->type);
 	assert(desc);
 
 	uint16_t rr1_count = rrset1->rrs.rr_count;

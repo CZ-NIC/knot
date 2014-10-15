@@ -181,7 +181,7 @@ static int write_rdata_block(const uint8_t **src, size_t *src_avail,
  */
 static int rdata_traverse(const uint8_t **src, size_t *src_avail,
                           uint8_t **dst, size_t *dst_avail,
-                          const rdata_descriptor_t *desc,
+                          const knot_rdata_descriptor_t *desc,
                           dname_config_t *dname_cfg, knot_rrset_wire_flags_t flags)
 {
 	for (int i = 0; desc->block_types[i] != KNOT_RDATA_WF_END; i++) {
@@ -388,7 +388,7 @@ static int write_rdata(const knot_rrset_t *rrset, uint16_t rrset_index,
 	size_t src_avail = knot_rdata_rdlen(rdata);
 	if (src_avail > 0) {
 		/* Only write non-empty data. */
-		const rdata_descriptor_t *desc =
+		const knot_rdata_descriptor_t *desc =
 			knot_get_rdata_descriptor(rrset->type);
 		int ret = rdata_traverse(&src, &src_avail, dst, dst_avail,
 		                         desc, &dname_cfg, flags);
@@ -548,7 +548,7 @@ static int decompress_rdata_dname(const uint8_t **src, size_t *src_avail,
 }
 
 static bool allow_zero_rdata(const knot_rrset_t *rr,
-                             const rdata_descriptor_t *desc)
+                             const knot_rdata_descriptor_t *desc)
 {
 	return rr->rclass != KNOT_CLASS_IN ||  // NONE and ANY for DDNS
 	       rr->type == KNOT_RRTYPE_APL ||  // APL RR type
@@ -570,7 +570,7 @@ static int parse_rdata(const uint8_t *pkt_wire, size_t *pos, size_t pkt_size,
 		return KNOT_EMALF;
 	}
 
-	const rdata_descriptor_t *desc = knot_get_rdata_descriptor(rrset->type);
+	const knot_rdata_descriptor_t *desc = knot_get_rdata_descriptor(rrset->type);
 	if (desc->type_name == NULL) {
 		desc = knot_get_obsolete_rdata_descriptor(rrset->type);
 	}

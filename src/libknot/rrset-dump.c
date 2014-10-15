@@ -54,6 +54,7 @@ typedef struct {
 	int           ret;
 } rrset_dump_params_t;
 
+_public_
 const knot_dump_style_t KNOT_DUMP_STYLE_DEFAULT = {
 	.wrap = false,
 	.show_class = false,

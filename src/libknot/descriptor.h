@@ -160,7 +160,7 @@ typedef struct {
 	const int  block_types[KNOT_MAX_RDATA_BLOCKS];
 	/*!< RR type name. */
 	const char *type_name;
-} rdata_descriptor_t;
+} knot_rdata_descriptor_t;
 
 /*!
  * \brief Gets rdata descriptor for given RR name.
@@ -170,7 +170,7 @@ typedef struct {
  * \retval RR descriptor for given name, NULL descriptor if
  *         unknown type.
  */
-const rdata_descriptor_t *knot_get_rdata_descriptor(const uint16_t type);
+const knot_rdata_descriptor_t *knot_get_rdata_descriptor(const uint16_t type);
 
 /*!
  * \brief Gets rdata descriptor for given RR name (obsolete version).
@@ -180,7 +180,7 @@ const rdata_descriptor_t *knot_get_rdata_descriptor(const uint16_t type);
  * \retval RR descriptor for given name, NULL descriptor if
  *         unknown type.
  */
-const rdata_descriptor_t *knot_get_obsolete_rdata_descriptor(const uint16_t type);
+const knot_rdata_descriptor_t *knot_get_obsolete_rdata_descriptor(const uint16_t type);
 
 /*!
  * \brief Converts numeric type representation to mnemonic string.

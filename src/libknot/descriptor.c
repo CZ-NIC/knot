@@ -156,7 +156,7 @@ static const rdata_descriptor_t obsolete_rdata_descriptors[] = {
 };
 
 _public_
-const rdata_descriptor_t *knot_get_rdata_descriptor(const uint16_t type)
+const knot_rdata_descriptor_t *knot_get_rdata_descriptor(const uint16_t type)
 {
 	if (type <= KNOT_RRTYPE_ANY &&
 	    rdata_descriptors[type].type_name != NULL) {
@@ -167,7 +167,7 @@ const rdata_descriptor_t *knot_get_rdata_descriptor(const uint16_t type)
 }
 
 _public_
-const rdata_descriptor_t *knot_get_obsolete_rdata_descriptor(const uint16_t type)
+const knot_rdata_descriptor_t *knot_get_obsolete_rdata_descriptor(const uint16_t type)
 {
 	if (type <= KNOT_RRTYPE_NXT &&
 	    obsolete_rdata_descriptors[type].type_name != NULL) {
@@ -188,7 +188,7 @@ int knot_rrtype_to_string(const uint16_t rrtype,
 
 	int ret;
 
-	const rdata_descriptor_t *descr = knot_get_rdata_descriptor(rrtype);
+	const knot_rdata_descriptor_t *descr = knot_get_rdata_descriptor(rrtype);
 
 	if (descr->type_name != NULL) {
 		ret = snprintf(out, out_len, "%s", descr->type_name);

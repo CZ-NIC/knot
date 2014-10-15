@@ -655,13 +655,13 @@ static int check_rr_constraints(knot_pkt_t *pkt, knot_rrset_t *rr, size_t rr_siz
 	/* Check RR constraints. */
 	switch(rr->type) {
 	case KNOT_RRTYPE_TSIG:
-		CHECK_AR_CONSTRAINTS(pkt, rr, tsig_rr, tsig_rdata_is_ok);
+		CHECK_AR_CONSTRAINTS(pkt, rr, tsig_rr, knot_tsig_rdata_is_ok);
 
 		/* Strip TSIG RR from wireformat and decrease ARCOUNT. */
 		if (!(flags & KNOT_PF_KEEPWIRE)) {
 			pkt->parsed -= rr_size;
 			pkt->size -= rr_size;
-			knot_wire_set_id(pkt->wire, tsig_rdata_orig_id(rr));
+			knot_wire_set_id(pkt->wire, knot_tsig_rdata_orig_id(rr));
 			knot_wire_set_arcount(pkt->wire, knot_wire_get_arcount(pkt->wire) - 1);
 		}
 		break;
