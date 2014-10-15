@@ -126,9 +126,9 @@ static void iter_finish(knot_iter_t *iter)
 	hattrie_iter_free((hattrie_iter_t *)iter);
 }
 
-struct namedb_api *namedb_trie_api(void)
+const struct namedb_api *namedb_trie_api(void)
 {
-	static struct namedb_api api = {
+	static const struct namedb_api api = {
 		"hattrie",
 		init, deinit,
 		txn_begin, txn_commit, txn_abort,

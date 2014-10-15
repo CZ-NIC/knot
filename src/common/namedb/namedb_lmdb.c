@@ -325,9 +325,9 @@ static void iter_finish(knot_iter_t *iter)
 	mdb_cursor_close(cursor);
 }
 
-struct namedb_api *namedb_lmdb_api(void)
+const struct namedb_api *namedb_lmdb_api(void)
 {
-	static struct namedb_api api = {
+	static const struct namedb_api api = {
 		"lmdb",
 		init, deinit,
 		txn_begin, txn_commit, txn_abort,
@@ -342,7 +342,7 @@ struct namedb_api *namedb_lmdb_api(void)
 
 #include <stdlib.h>
 
-struct namedb_api *namedb_lmdb_api(void)
+const struct namedb_api *namedb_lmdb_api(void)
 {
 	return NULL;
 }
