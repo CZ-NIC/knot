@@ -134,7 +134,10 @@ enum knot_error {
 	KNOT_DNSSEC_EMISSINGKEYTYPE,
 
 	/* NSEC3 errors. */
-	KNOT_NSEC3_ECOMPUTE_HASH
+	KNOT_NSEC3_ECOMPUTE_HASH,
+
+	/* Database backend. */
+	KNOT_DATABASE_ERROR
 };
 
 /*!
@@ -161,7 +164,7 @@ int knot_map_errno_internal(int fallback, int arg0, ...);
 /*!
  * \brief Map POSIX errno to Knot error code.
  *
- * KNOT_ERRNO is used as a fallback error, the list is terminated implicitly.
+ * KNOT_ERROR is used as a fallback error, the list is terminated implicitly.
  */
 #define knot_map_errno(errors...) knot_map_errno_internal(KNOT_ERROR, errors, 0)
 
