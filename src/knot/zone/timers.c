@@ -93,6 +93,7 @@ static int store_timers(knot_txn_t *txn, zone_t *zone)
 static int read_timers(knot_txn_t *txn, const zone_t *zone, time_t *timers)
 {
 	const struct namedb_api *db_api = namedb_lmdb_api();
+	assert(db_api);
 
 	knot_val_t key = { .len = knot_dname_size(zone->name), .data = zone->name };
 	knot_val_t val;
@@ -149,9 +150,14 @@ int open_timers_db(const char *storage, knot_namedb_t **db_ptr)
 
 void close_timers_db(knot_namedb_t *timer_db)
 {
-	if (timer_db) {
-		namedb_lmdb_api()->deinit(timer_db);
+	if (!timer_db) {
+		return;
 	}
+
+	const struct namedb_api *db_api = namedb_lmdb_api();
+	assert(db_api);
+
+	db_api->deinit(timer_db);
 }
 
 int read_zone_timers(knot_namedb_t *timer_db, const zone_t *zone, time_t *timers)
@@ -162,6 +168,7 @@ int read_zone_timers(knot_namedb_t *timer_db, const zone_t *zone, time_t *timers
 	}
 
 	const struct namedb_api *db_api = namedb_lmdb_api();
+	assert(db_api);
 
 	knot_txn_t txn;
 	int ret = db_api->txn_begin(timer_db, &txn, KNOT_NAMEDB_RDONLY);
@@ -185,6 +192,7 @@ int write_zone_timers(knot_namedb_t *timer_db, zone_t *zone)
 	}
 
 	const struct namedb_api *db_api = namedb_lmdb_api();
+	assert(db_api);
 
 	knot_txn_t txn;
 	int ret = db_api->txn_begin(timer_db, &txn, 0);
@@ -206,7 +214,9 @@ int sweep_timer_db(knot_namedb_t *timer_db, knot_zonedb_t *zone_db)
 	if (timer_db == NULL) {
 		return KNOT_EOK;
 	}
+
 	const struct namedb_api *db_api = namedb_lmdb_api();
+	assert(db_api);
 
 	knot_txn_t txn;
 	int ret = db_api->txn_begin(timer_db, &txn, KNOT_NAMEDB_SORTED);
@@ -244,5 +254,3 @@ int sweep_timer_db(knot_namedb_t *timer_db, knot_zonedb_t *zone_db)
 
 	return db_api->txn_commit(&txn);
 }
-
-
