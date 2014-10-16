@@ -22,7 +22,7 @@
 #include "libknot/errcode.h"
 #include "knot/zone/zone-diff.h"
 #include "libknot/descriptor.h"
-#include "libknot/util/utils.h"
+#include "libknot/internal/utils.h"
 #include "libknot/rrtype/soa.h"
 
 struct zone_diff_param {

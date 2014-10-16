@@ -14,7 +14,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "libknot/util/tolower.h"
+#include "libknot/internal/tolower.h"
 
 #include "libknot/common.h"
 

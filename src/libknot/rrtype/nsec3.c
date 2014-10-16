@@ -20,7 +20,7 @@
 
 #include "libknot/common.h"
 #include "libknot/rrtype/nsec3.h"
-#include "libknot/util/tolower.h"
+#include "libknot/internal/tolower.h"
 #include "libknot/errcode.h"
 
 /*!

@@ -23,7 +23,7 @@
 
 #include "libknot/errcode.h"
 #include "libknot/packet/pkt.h"
-#include "libknot/util/tolower.h"
+#include "libknot/internal/tolower.h"
 
 /*! \brief Case insensitive label compare for compression. */
 static bool compr_label_match(const uint8_t *n, const uint8_t *p)

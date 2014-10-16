@@ -28,8 +28,8 @@
 
 #include "libknot/common.h"
 #include "libknot/consts.h"
-#include "libknot/util/tolower.h"
-#include "libknot/util/utils.h"
+#include "libknot/internal/tolower.h"
+#include "libknot/internal/utils.h"
 #include "libknot/packet/wire.h"
 
 /*----------------------------------------------------------------------------*/

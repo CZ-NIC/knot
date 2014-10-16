@@ -33,7 +33,7 @@
 #include "libknot/common.h"
 #include "libknot/dname.h"
 #include "libknot/dnssec/random.h"
-#include "libknot/util/utils.h"
+#include "libknot/internal/utils.h"
 #include "libknot/rrtype/soa.h"
 
 static void free_ddns_queue(zone_t *z)

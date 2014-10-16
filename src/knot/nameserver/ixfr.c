@@ -22,7 +22,7 @@
 #include "knot/updates/apply.h"
 #include "libknot/internal/debug.h"
 #include "libknot/descriptor.h"
-#include "libknot/util/utils.h"
+#include "libknot/internal/utils.h"
 #include "libknot/rrtype/soa.h"
 
 /* ------------------------ IXFR-out processing ----------------------------- */

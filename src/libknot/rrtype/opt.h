@@ -28,7 +28,7 @@
 
 #include <stdint.h>
 
-#include "libknot/util/utils.h"
+#include "libknot/internal/utils.h"
 #include "libknot/rrset.h"
 
 /* Forward declaration. */

@@ -29,7 +29,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#include "libknot/util/utils.h"
+#include "libknot/internal/utils.h"
 
 /*!
  * \brief Basic limits for domain names (RFC 1035).

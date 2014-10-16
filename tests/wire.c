@@ -16,7 +16,7 @@
 
 #include <tap/basic.h>
 
-#include "libknot/util/utils.h"
+#include "libknot/internal/utils.h"
 
 #define write_test(size, value, ...) { \
 	const uint8_t expect[] = { __VA_ARGS__ }; \

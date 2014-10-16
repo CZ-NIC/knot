@@ -209,11 +209,11 @@ libknot_la_SOURCES =				\
 	libknot/rrtype/tsig.h			\
 	libknot/tsig-op.c			\
 	libknot/tsig-op.h			\
-	libknot/util/endian.h			\
-	libknot/util/tolower.c			\
-	libknot/util/tolower.h			\
-	libknot/util/utils.c			\
-	libknot/util/utils.h
+	libknot/internal/endian.h		\
+	libknot/internal/tolower.c		\
+	libknot/internal/tolower.h		\
+	libknot/internal/utils.c		\
+	libknot/internal/utils.h
 
 # static: server shared
 libknotd_la_SOURCES =				\

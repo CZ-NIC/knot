@@ -46,7 +46,7 @@
 #include "libknot/rrtype/soa.h"
 #include "libknot/rrtype/tsig.h"
 #include "libknot/tsig-op.h"
-#include "libknot/util/tolower.h"
-#include "libknot/util/utils.h"
+#include "libknot/internal/tolower.h"
+#include "libknot/internal/utils.h"
 
 /*! @} */

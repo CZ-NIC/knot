@@ -19,10 +19,10 @@
 #include <fcntl.h>
 #include <unistd.h>
 
-#include "libknot/util/utils.h"
+#include "libknot/internal/utils.h"
 
 #include "libknot/common.h"
-#include "libknot/util/endian.h"
+#include "libknot/internal/endian.h"
 
 /*----------------------------------------------------------------------------*/
 _public_

@@ -36,7 +36,7 @@
 #include "libknot/descriptor.h"		// KNOT_RRTYPE
 #include "libknot/dnssec/key.h"		// knot_keytag
 #include "libknot/consts.h"		// knot_rcode_names
-#include "libknot/util/utils.h"		// knot_wire_read_u16
+#include "libknot/internal/utils.h"		// knot_wire_read_u16
 
 #define TAB_WIDTH		8
 #define BLOCK_WIDTH		40

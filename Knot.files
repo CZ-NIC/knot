@@ -173,6 +173,7 @@ src/libknot/internal/base64.c
 src/libknot/internal/base64.h
 src/libknot/internal/binsearch.h
 src/libknot/internal/debug.h
+src/libknot/internal/endian.h
 src/libknot/internal/errors.c
 src/libknot/internal/errors.h
 src/libknot/internal/getline.c
@@ -202,6 +203,10 @@ src/libknot/internal/sockaddr.c
 src/libknot/internal/sockaddr.h
 src/libknot/internal/strlcpy.c
 src/libknot/internal/strlcpy.h
+src/libknot/internal/tolower.c
+src/libknot/internal/tolower.h
+src/libknot/internal/utils.c
+src/libknot/internal/utils.h
 src/libknot/internal/trie/hat-trie.c
 src/libknot/internal/trie/hat-trie.h
 src/libknot/internal/trie/murmurhash3.c
@@ -270,11 +275,6 @@ src/libknot/rrtype/tsig.c
 src/libknot/rrtype/tsig.h
 src/libknot/tsig-op.c
 src/libknot/tsig-op.h
-src/libknot/util/endian.h
-src/libknot/util/tolower.c
-src/libknot/util/tolower.h
-src/libknot/util/utils.c
-src/libknot/util/utils.h
 src/utils/common/exec.c
 src/utils/common/exec.h
 src/utils/common/msg.c

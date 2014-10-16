@@ -27,7 +27,7 @@
 #include "libknot/internal/log.h"
 
 #include "libknot/common.h"
-#include "libknot/util/utils.h"
+#include "libknot/internal/utils.h"
 #include "libknot/rrset.h"
 #include "libknot/dname.h"
 #include "libknot/consts.h"
