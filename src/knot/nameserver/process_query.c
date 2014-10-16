@@ -15,7 +15,7 @@
 #include "knot/conf/conf.h"
 #include "libknot/tsig-op.h"
 #include "libknot/descriptor.h"
-#include "common/debug.h"
+#include "libknot/internal/debug.h"
 
 /*! \brief Accessor to query-specific data. */
 #define QUERY_DATA(ctx) ((struct query_data *)(ctx)->data)

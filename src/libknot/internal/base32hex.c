@@ -14,7 +14,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "common/base32hex.h"
+#include "libknot/internal/base32hex.h"
 #include "libknot/errcode.h"
 
 #include <stdlib.h>			// malloc

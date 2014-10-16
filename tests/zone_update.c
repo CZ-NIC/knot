@@ -19,7 +19,7 @@
 
 #include "knot/updates/zone-update.h"
 #include "zscanner/scanner.h"
-#include "common/getline.h"
+#include "libknot/internal/getline.h"
 
 static const char *zone_str =
 "test. 3600 IN SOA a.ns.test. hostmaster.nic.cz. 1406641065 900 300 604800 900 \n"

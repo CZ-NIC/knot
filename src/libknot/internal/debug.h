@@ -31,8 +31,8 @@
 #include <stdint.h>
 #include <stdio.h>
 
-#include "common/log.h"
-#include "common/print.h"
+#include "libknot/internal/log.h"
+#include "libknot/internal/print.h"
 
 /*
  * Debug macros

@@ -28,8 +28,8 @@
 
 #include "libknot/rrset-dump.h"
 
-#include "common/base64.h"		// base64
-#include "common/base32hex.h"		// base32hex
+#include "libknot/internal/base64.h"		// base64
+#include "libknot/internal/base32hex.h"		// base32hex
 
 #include "libknot/common.h"		// _public_
 #include "libknot/errcode.h"		// KNOT_EOK

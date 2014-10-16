@@ -26,9 +26,9 @@
 #include <systemd/sd-journal.h>
 #endif
 
-#include "common/log.h"
-#include "common/lists.h"
-#include "common/strlcpy.h"
+#include "libknot/internal/log.h"
+#include "libknot/internal/lists.h"
+#include "libknot/internal/strlcpy.h"
 #include "knot/conf/conf.h"
 
 /* Single log message buffer length (one line). */

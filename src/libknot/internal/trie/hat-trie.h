@@ -24,8 +24,8 @@ extern "C" {
 #include <stdlib.h>
 #include <stdbool.h>
 #include "libknot/common.h"
-#include "common/mempattern.h"
-#include "common/hhash.h"
+#include "libknot/internal/mempattern.h"
+#include "libknot/internal/hhash.h"
 
 /* Hat-trie defines. */
 #define TRIE_ZEROBUCKETS  0    /* Do not use hash buckets (pure trie). */

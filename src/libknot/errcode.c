@@ -19,7 +19,7 @@
 
 #include "libknot/errcode.h"
 
-#include "common/errors.h"
+#include "libknot/internal/errors.h"
 
 #include "libknot/common.h"
 

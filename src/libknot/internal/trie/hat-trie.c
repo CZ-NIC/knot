@@ -8,8 +8,8 @@
 #include <stdint.h>
 #include <assert.h>
 #include <string.h>
-#include "common/trie/hat-trie.h"
-#include "common/hhash.h"
+#include "libknot/internal/trie/hat-trie.h"
+#include "libknot/internal/hhash.h"
 
 /* number of child nodes for used alphabet */
 #define NODE_CHILDS (TRIE_MAXCHAR+1)

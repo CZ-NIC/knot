@@ -21,9 +21,9 @@
 #include <arpa/inet.h>			// inet_ntop
 
 #include "libknot/libknot.h"
-#include "common/lists.h"		// list
-#include "common/sockaddr.h"		// IPV4_PREFIXLEN
-#include "common/print.h"		// txt_print
+#include "libknot/internal/lists.h"		// list
+#include "libknot/internal/sockaddr.h"		// IPV4_PREFIXLEN
+#include "libknot/internal/print.h"		// txt_print
 #include "common-knot/strlcat.h"	// strlcat
 #include "utils/common/msg.h"		// WARN
 #include "utils/common/params.h"	// params_t

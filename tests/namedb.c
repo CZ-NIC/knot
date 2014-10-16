@@ -20,10 +20,10 @@
 #include <tap/basic.h>
 
 #include "libknot/common.h"
-#include "common/mempool.h"
-#include "common/mem.h"
-#include "common/namedb/namedb_lmdb.h"
-#include "common/namedb/namedb_trie.h"
+#include "libknot/internal/mempool.h"
+#include "libknot/internal/mem.h"
+#include "libknot/internal/namedb/namedb_lmdb.h"
+#include "libknot/internal/namedb/namedb_trie.h"
 
 /* Constants. */
 #define KEY_MAXLEN 64
@@ -45,7 +45,7 @@ static char *str_key_rand(size_t len, mm_ctx_t *pool)
 #define ASORT_PREFIX(X) str_key_##X
 #define ASORT_KEY_TYPE char*
 #define ASORT_LT(x, y) (strcmp((x), (y)) < 0)
-#include "common/array-sort.h"
+#include "libknot/internal/array-sort.h"
 
 static void namedb_test_set(unsigned nkeys, char **keys, char *dbid,
                             struct namedb_api *api, mm_ctx_t *pool)

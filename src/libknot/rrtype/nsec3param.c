@@ -16,7 +16,7 @@
 
 #include "libknot/rrtype/nsec3param.h"
 
-#include "common/mem.h"
+#include "libknot/internal/mem.h"
 
 #include "libknot/common.h"
 #include "libknot/errcode.h"

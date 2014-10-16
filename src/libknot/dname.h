@@ -31,7 +31,7 @@
 #include <stdio.h>
 #include <stdbool.h>
 
-#include "common/mempattern.h"
+#include "libknot/internal/mempattern.h"
 
 #include "libknot/consts.h"
 #include "libknot/common.h"

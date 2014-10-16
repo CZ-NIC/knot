@@ -32,7 +32,7 @@
 #include <assert.h>
 
 #include "libknot/common.h"
-#include "common/net.h"
+#include "libknot/internal/net.h"
 
 static int socket_create(int family, int type, int proto)
 {

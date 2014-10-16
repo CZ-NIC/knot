@@ -20,10 +20,10 @@
 #include <sys/types.h>
 #include <time.h>
 
-#include "common/debug.h"
+#include "libknot/internal/debug.h"
 #include "libknot/descriptor.h"
 #include "libknot/errcode.h"
-#include "common/trie/hat-trie.h"
+#include "libknot/internal/trie/hat-trie.h"
 #include "libknot/common.h"
 #include "libknot/dname.h"
 #include "libknot/rrset.h"

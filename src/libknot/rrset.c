@@ -20,7 +20,7 @@
 
 #include "libknot/rrset.h"
 
-#include "common/mempattern.h"
+#include "libknot/internal/mempattern.h"
 
 #include "libknot/consts.h"
 #include "libknot/common.h"

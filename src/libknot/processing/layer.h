@@ -26,8 +26,8 @@
 
 #include <stdint.h>
 
-#include "common/lists.h"
-#include "common/mempattern.h"
+#include "libknot/internal/lists.h"
+#include "libknot/internal/mempattern.h"
 
 #include "libknot/consts.h"
 #include "libknot/rrtype/tsig.h"

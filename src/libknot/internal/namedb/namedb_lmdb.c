@@ -18,7 +18,7 @@
 
 #include <lmdb.h>
 
-#include "common/namedb/namedb_lmdb.h"
+#include "libknot/internal/namedb/namedb_lmdb.h"
 #include "libknot/errcode.h"
 
 struct lmdb_env

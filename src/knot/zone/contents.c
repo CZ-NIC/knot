@@ -17,11 +17,11 @@
 #include <assert.h>
 
 #include "knot/zone/contents.h"
-#include "common/debug.h"
+#include "libknot/internal/debug.h"
 #include "libknot/rrset.h"
-#include "common/base32hex.h"
+#include "libknot/internal/base32hex.h"
 #include "libknot/descriptor.h"
-#include "common/trie/hat-trie.h"
+#include "libknot/internal/trie/hat-trie.h"
 #include "knot/dnssec/zone-nsec.h"
 #include "knot/dnssec/zone-sign.h"
 #include "knot/zone/zone-tree.h"

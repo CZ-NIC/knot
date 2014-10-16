@@ -15,8 +15,8 @@
  */
 
 #include "libknot/dname.h"
-#include "common/namedb/namedb.h"
-#include "common/namedb/namedb_lmdb.h"
+#include "libknot/internal/namedb/namedb.h"
+#include "libknot/internal/namedb/namedb_lmdb.h"
 #include "knot/zone/timers.h"
 #include "knot/zone/zonedb.h"
 

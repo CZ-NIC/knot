@@ -24,7 +24,7 @@
 
 #pragma once
 
-#include "common/lists.h"
+#include "libknot/internal/lists.h"
 
 #include "libknot/processing/layer.h"
 

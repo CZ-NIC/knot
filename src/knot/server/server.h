@@ -30,9 +30,9 @@
 #pragma once
 
 #include "common-knot/evsched.h"
-#include "common/lists.h"
+#include "libknot/internal/lists.h"
 #include "common-knot/fdset.h"
-#include "common/net.h"
+#include "libknot/internal/net.h"
 #include "knot/server/dthreads.h"
 #include "knot/server/rrl.h"
 #include "knot/worker/pool.h"

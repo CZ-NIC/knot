@@ -31,10 +31,10 @@
 #include <cap-ng.h>
 #endif /* HAVE_CAP_NG_H */
 
-#include "common/sockaddr.h"
+#include "libknot/internal/sockaddr.h"
 #include "common-knot/fdset.h"
-#include "common/mempool.h"
-#include "common/net.h"
+#include "libknot/internal/mempool.h"
+#include "libknot/internal/net.h"
 
 #include "libknot/packet/wire.h"
 #include "libknot/dnssec/crypto.h"

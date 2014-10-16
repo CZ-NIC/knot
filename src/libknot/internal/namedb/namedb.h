@@ -18,7 +18,7 @@
 
 #include "libknot/dname.h"
 
-#include "common/mempattern.h"
+#include "libknot/internal/mempattern.h"
 
 enum {
 	KNOT_NAMEDB_RDONLY = 1 << 0,

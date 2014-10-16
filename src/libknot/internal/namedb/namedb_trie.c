@@ -16,9 +16,9 @@
 
 #include "libknot/errcode.h"
 
-#include "common/namedb/namedb_trie.h"
-#include "common/trie/hat-trie.h"
-#include "common/mempattern.h"
+#include "libknot/internal/namedb/namedb_trie.h"
+#include "libknot/internal/trie/hat-trie.h"
+#include "libknot/internal/mempattern.h"
 
 static knot_namedb_t *init(const char *handle, knot_mm_ctx_t *mm)
 {

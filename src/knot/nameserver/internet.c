@@ -14,7 +14,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "common/debug.h"
+#include "libknot/internal/debug.h"
 #include "libknot/descriptor.h"
 #include "libknot/common.h"
 #include "libknot/rrtype/rdname.h"

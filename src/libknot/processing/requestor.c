@@ -17,7 +17,7 @@
 #include <assert.h>
 #include <sys/fcntl.h>
 
-#include "common/net.h"
+#include "libknot/internal/net.h"
 
 #include "libknot/common.h"
 #include "libknot/processing/requestor.h"

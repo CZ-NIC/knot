@@ -19,7 +19,7 @@
 #define _WITH_GETLINE
 #endif
 
-#include "common/getline.h"
+#include "libknot/internal/getline.h"
 
 #include <stdio.h>		// getline or fgetln
 #include <stdlib.h>		// free

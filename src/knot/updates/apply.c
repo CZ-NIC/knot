@@ -22,7 +22,7 @@
 #include "libknot/common.h"
 #include "knot/updates/changesets.h"
 #include "knot/zone/zonefile.h"
-#include "common/lists.h"
+#include "libknot/internal/lists.h"
 #include "libknot/rrtype/soa.h"
 #include "libknot/rrtype/rrsig.h"
 

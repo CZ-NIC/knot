@@ -16,8 +16,8 @@
 
 #include <stdlib.h>
 
-#include "common/mempattern.h"
-#include "common/mempool.h"
+#include "libknot/internal/mempattern.h"
+#include "libknot/internal/mempool.h"
 /*! \todo Define the _public_ macro also in common/ */
 #include "libknot/common.h"
 

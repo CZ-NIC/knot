@@ -19,7 +19,7 @@
 #include "libknot/processing/requestor.h"
 
 #include "common-knot/trim.h"
-#include "common/mempool.h"
+#include "libknot/internal/mempool.h"
 
 #include "knot/server/udp-handler.h"
 #include "knot/server/tcp-handler.h"

@@ -20,8 +20,8 @@
 
 #include "knot/zone/zone-tree.h"
 #include "knot/zone/node.h"
-#include "common/debug.h"
-#include "common/trie/hat-trie.h"
+#include "libknot/internal/debug.h"
+#include "libknot/internal/trie/hat-trie.h"
 
 /*----------------------------------------------------------------------------*/
 /* API functions                                                              */

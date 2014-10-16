@@ -20,7 +20,7 @@
 #include <string.h>
 #include <sys/resource.h>
 
-#include "common/mem.h"
+#include "libknot/internal/mem.h"
 
 uint8_t *knot_memdup(const uint8_t *data, size_t data_size)
 {

@@ -40,8 +40,8 @@
 
 #pragma once
 
-#include "common/lists.h"
-#include "common/mempattern.h"
+#include "libknot/internal/lists.h"
+#include "libknot/internal/mempattern.h"
 #include "libknot/consts.h"
 #include "libknot/packet/pkt.h"
 

@@ -23,8 +23,8 @@
 
 #include "libknot/dname.h"
 
-#include "common/mempattern.h"
-#include "common/debug.h"
+#include "libknot/internal/mempattern.h"
+#include "libknot/internal/debug.h"
 
 #include "libknot/common.h"
 #include "libknot/consts.h"

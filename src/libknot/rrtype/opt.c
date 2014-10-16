@@ -21,8 +21,8 @@
 
 #include "libknot/rrtype/opt.h"
 
-#include "common/debug.h"
-#include "common/sockaddr.h"
+#include "libknot/internal/debug.h"
+#include "libknot/internal/sockaddr.h"
 
 #include "libknot/common.h"
 #include "libknot/descriptor.h"

@@ -23,8 +23,8 @@
 
 #include "libknot/tsig-op.h"
 
-#include "common/debug.h"
-#include "common/log.h"
+#include "libknot/internal/debug.h"
+#include "libknot/internal/log.h"
 
 #include "libknot/common.h"
 #include "libknot/descriptor.h"

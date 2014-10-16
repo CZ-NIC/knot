@@ -20,7 +20,7 @@
 #include "knot/nameserver/process_query.h"
 #include "knot/nameserver/process_answer.h"
 #include "knot/updates/apply.h"
-#include "common/debug.h"
+#include "libknot/internal/debug.h"
 #include "libknot/descriptor.h"
 #include "libknot/util/utils.h"
 #include "libknot/rrtype/soa.h"

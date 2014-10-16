@@ -16,7 +16,7 @@
 
 #include <assert.h>
 
-#include "common/base32hex.h"
+#include "libknot/internal/base32hex.h"
 #include "knot/dnssec/nsec3-chain.h"
 #include "libknot/dname.h"
 #include "libknot/packet/wire.h"

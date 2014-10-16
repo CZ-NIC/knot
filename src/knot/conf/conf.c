@@ -26,8 +26,8 @@
 
 #include <urcu.h>
 #include "common-knot/strlcat.h"
-#include "common/strlcpy.h"
-#include "common/mem.h"
+#include "libknot/internal/strlcpy.h"
+#include "libknot/internal/mem.h"
 #include "knot/conf/conf.h"
 #include "knot/conf/extra.h"
 #include "knot/knot.h"

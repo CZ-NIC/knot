@@ -18,8 +18,8 @@
 
 #include "knot/ctl/estimator.h"
 #include "libknot/dname.h"
-#include "common/lists.h"
-#include "common/mem.h"
+#include "libknot/internal/lists.h"
+#include "libknot/internal/mem.h"
 #include "knot/zone/node.h"
 #include "libknot/descriptor.h"
 

@@ -14,29 +14,8 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <stdlib.h>
+#pragma once
 
-#include "common/errors.h"
+#include "libknot/internal/namedb/namedb.h"
 
-static const error_table_t *lookup_error(const error_table_t *table, int id)
-{
-	while (table->name != NULL) {
-		if (table->id == id) {
-			return table;
-		}
-		table++;
-	}
-
-	return NULL;
-}
-
-const char *error_to_str(const error_table_t *table, int id)
-{
-	const error_table_t *msg = lookup_error(table, id);
-
-	if (msg != NULL) {
-		return msg->name;
-	} else {
-		return "Unknown error.";
-	}
-}
+struct namedb_api *namedb_trie_api(void);

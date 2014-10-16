@@ -28,7 +28,7 @@
 
 #include "libknot/dnssec/key.h"
 
-#include "common/getline.h"
+#include "libknot/internal/getline.h"
 
 #include "zscanner/scanner.h"		// TODO: remove dependency!!
 

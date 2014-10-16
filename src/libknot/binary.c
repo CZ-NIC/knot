@@ -19,8 +19,8 @@
 
 #include "libknot/binary.h"
 
-#include "common/base64.h"
-#include "common/mem.h"
+#include "libknot/internal/base64.h"
+#include "libknot/internal/mem.h"
 
 #include "libknot/common.h"
 #include "libknot/errcode.h"

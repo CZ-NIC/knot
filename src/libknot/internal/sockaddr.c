@@ -18,9 +18,9 @@
 #include <string.h>
 #include <netdb.h>
 
-#include "common/sockaddr.h"
+#include "libknot/internal/sockaddr.h"
 #include "libknot/errcode.h"
-#include "common/strlcpy.h"
+#include "libknot/internal/strlcpy.h"
 #include "libknot/consts.h"
 
 int sockaddr_len(const struct sockaddr *ss)

@@ -24,10 +24,10 @@
 #include "knot/knot.h"
 #include "libknot/consts.h"
 #include "libknot/packet/wire.h"
-#include "common/trie/murmurhash3.h"
+#include "libknot/internal/trie/murmurhash3.h"
 #include "libknot/dnssec/random.h"
 #include "libknot/descriptor.h"
-#include "common/errors.h"
+#include "libknot/internal/errors.h"
 #include "knot/zone/zone.h"
 
 /* Hopscotch defines. */

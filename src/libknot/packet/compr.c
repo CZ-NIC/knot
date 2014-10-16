@@ -18,8 +18,8 @@
 
 #include "libknot/packet/compr.h"
 
-#include "common/debug.h"
-#include "common/log.h"
+#include "libknot/internal/debug.h"
+#include "libknot/internal/log.h"
 
 #include "libknot/errcode.h"
 #include "libknot/packet/pkt.h"

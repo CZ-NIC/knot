@@ -80,46 +80,47 @@ libknots_la_SOURCES =				\
 
 # static: common shared (also in libknot)
 libknotcs_la_SOURCES =				\
-	common/array-sort.h			\
-	common/base32hex.c			\
-	common/base32hex.h			\
-	common/base64.c				\
-	common/base64.h				\
-	common/binsearch.h			\
-	common/debug.h				\
-	common/errors.c				\
-	common/errors.h				\
-	common/getline.c			\
-	common/getline.h			\
-	common/hhash.c				\
-	common/hhash.h				\
-	common/lists.c				\
-	common/lists.h				\
-	common/log.c				\
-	common/log.h				\
-	common/mem.c				\
-	common/mem.h				\
-        common/mempattern.c			\
-        common/mempattern.h			\
-	common/mempool.c			\
-	common/mempool.h			\
-	common/namedb/namedb.h			\
-	common/namedb/namedb_lmdb.c		\
-	common/namedb/namedb_lmdb.h		\
-	common/namedb/namedb_trie.c		\
-	common/namedb/namedb_trie.h		\
-	common/net.c				\
-	common/net.h				\
-	common/print.c				\
-	common/print.h				\
-	common/sockaddr.c			\
-	common/sockaddr.h			\
-	common/strlcpy.c			\
-	common/strlcpy.h			\
-	common/trie/hat-trie.c			\
-	common/trie/hat-trie.h			\
-	common/trie/murmurhash3.c		\
-	common/trie/murmurhash3.h
+	libknot/internal/array-sort.h		\
+	libknot/internal/base32hex.c		\
+	libknot/internal/base32hex.h		\
+	libknot/internal/base64.c		\
+	libknot/internal/base64.h		\
+	libknot/internal/binsearch.h		\
+	libknot/internal/debug.h		\
+	libknot/internal/errors.c		\
+	libknot/internal/errors.h		\
+	libknot/internal/getline.c		\
+	libknot/internal/getline.h		\
+	libknot/internal/hhash.c		\
+	libknot/internal/hhash.h		\
+	libknot/internal/lists.c		\
+	libknot/internal/lists.h		\
+	libknot/internal/log.c			\
+	libknot/internal/log.h			\
+	libknot/internal/mem.c			\
+	libknot/internal/mem.h			\
+	libknot/internal/mempattern.c		\
+	libknot/internal/mempattern.h		\
+	libknot/internal/mempool.c		\
+	libknot/internal/mempool.h		\
+	libknot/internal/namedb/namedb.h	\
+	libknot/internal/namedb/namedb_lmdb.c	\
+	libknot/internal/namedb/namedb_lmdb.h	\
+	libknot/internal/namedb/namedb_trie.c	\
+	libknot/internal/namedb/namedb_trie.h	\
+	libknot/internal/net.c			\
+	libknot/internal/net.h			\
+	libknot/internal/print.c		\
+	libknot/internal/print.h		\
+	libknot/internal/sockaddr.c		\
+	libknot/internal/sockaddr.h		\
+	libknot/internal/strlcpy.c		\
+	libknot/internal/strlcpy.h		\
+	libknot/internal/trie/hat-trie.c	\
+	libknot/internal/trie/hat-trie.h	\
+	libknot/internal/trie/murmurhash3.c	\
+	libknot/internal/trie/murmurhash3.h
+
 
 # static: utilities shared
 libknotus_la_SOURCES =				\

@@ -20,9 +20,9 @@
 #include "knot/nameserver/process_answer.h"
 #include "knot/updates/apply.h"
 #include "knot/zone/zonefile.h"
-#include "common/debug.h"
+#include "libknot/internal/debug.h"
 #include "libknot/descriptor.h"
-#include "common/lists.h"
+#include "libknot/internal/lists.h"
 
 /* AXFR context. @note aliasing the generic xfr_proc */
 struct axfr_proc {

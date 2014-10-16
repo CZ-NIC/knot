@@ -20,8 +20,8 @@
 #include <string.h>
 #include <limits.h>
 
-#include "common/base32hex.h"
-#include "common/debug.h"
+#include "libknot/internal/base32hex.h"
+#include "libknot/internal/debug.h"
 #include "libknot/descriptor.h"
 #include "libknot/dnssec/bitmap.h"
 #include "libknot/util/utils.h"

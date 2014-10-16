@@ -18,7 +18,7 @@
 
 #include <stdlib.h>
 
-#include "common/sockaddr.h"
+#include "libknot/internal/sockaddr.h"
 
 #include "libknot/rdataset.h"
 #include "libknot/errcode.h"

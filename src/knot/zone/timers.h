@@ -16,7 +16,7 @@
 
 #pragma once
 
-#include "common/namedb/namedb.h"
+#include "libknot/internal/namedb/namedb.h"
 #include "knot/zone/zone.h"
 #include "knot/zone/zonedb.h"
 

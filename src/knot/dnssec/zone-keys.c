@@ -19,8 +19,8 @@
 #include <stdbool.h>
 #include <inttypes.h>
 
-#include "common/debug.h"
-#include "common/mem.h"
+#include "libknot/internal/debug.h"
+#include "libknot/internal/mem.h"
 #include "libknot/errcode.h"
 #include "libknot/common.h"
 #include "libknot/dname.h"

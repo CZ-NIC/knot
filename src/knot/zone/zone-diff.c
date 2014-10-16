@@ -18,7 +18,7 @@
 #include <stdlib.h>
 #include <inttypes.h>
 
-#include "common/debug.h"
+#include "libknot/internal/debug.h"
 #include "libknot/errcode.h"
 #include "knot/zone/zone-diff.h"
 #include "libknot/descriptor.h"

@@ -22,7 +22,7 @@
 #include <string.h>			// memcmp
 
 #include "libknot/errcode.h"		// KNOT_EOK
-#include "common/getline.h"		// knot_getline
+#include "libknot/internal/getline.h"		// knot_getline
 #include "utils/common/msg.h"		// ERR
 
 int tok_scan(const char* lp, const char **tbl, int *lpm)
