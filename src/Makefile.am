@@ -139,8 +139,7 @@ libknotus_la_SOURCES =				\
 # dynamic: libknot
 libknot_la_LDFLAGS =				\
 	$(AM_LDFLAGS)				\
-	-version-info 0:1:0			\
-	-export-symbols-regex '^(knot|KNOT|rrset|tsig|zone|mm)_'
+	-version-info 0:1:0
 
 libknot_la_SOURCES =				\
 	libknot/binary.c			\

@@ -350,8 +350,8 @@ AC_LINK_IFELSE([AC_LANG_PROGRAM([[#include <sched.h>]], [[cpuset_t* set = cpuset
 
 # Use -fvisibility=hidden when linking.
 # Let's leave it default now and use -export-symbols-regex in LDFLAGS
-#gl_VISIBILITY()
-#CFLAGS="$CFLAGS $CFLAG_VISIBILITY"
+gl_VISIBILITY()
+CFLAGS="$CFLAGS $CFLAG_VISIBILITY"
 
 # Add code coverage macro
 AX_CODE_COVERAGE
