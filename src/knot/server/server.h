@@ -32,6 +32,7 @@
 #include "common-knot/evsched.h"
 #include "common-knot/lists.h"
 #include "common-knot/fdset.h"
+#include "common/namedb/namedb.h"
 #include "knot/server/dthreads.h"
 #include "knot/server/net.h"
 #include "knot/server/rrl.h"
@@ -93,7 +94,9 @@ typedef struct server_t {
 	/*! \brief Server state tracking. */
 	volatile unsigned state;
 
-	knot_zonedb_t *zone_db; /*!< Zone database. */
+	/*! \brief Zone database. */
+	knot_zonedb_t *zone_db;
+	knot_namedb_t *timers_db;
 
 	/*! \brief I/O handlers. */
 	unsigned tu_size;

@@ -28,6 +28,7 @@
 #include "knot/server/tcp-handler.h"
 #include "knot/conf/conf.h"
 #include "knot/worker/pool.h"
+#include "knot/zone/timers.h"
 #include "knot/zone/zonedb-load.h"
 #include "libknot/dname.h"
 #include "libknot/dnssec/crypto.h"
@@ -329,6 +330,9 @@ void server_deinit(server_t *server)
 	/* Free remaining events. */
 	evsched_deinit(&server->sched);
 
+	/* Close persistent timers database. */
+	close_timers_db(server->timers_db);
+
 	/* Clear the structure. */
 	memset(server, 0, sizeof(server_t));
 }
@@ -578,7 +582,19 @@ int server_reconfigure(const struct conf_t *conf, void *data)
 	return ret;
 }
 
-int server_update_zones(const struct conf_t *conf, void *data)
+static void reopen_timers_database(const conf_t *conf, server_t *server)
+{
+	close_timers_db(server->timers_db);
+	server->timers_db = NULL;
+
+	int ret = open_timers_db(conf->storage, &server->timers_db);
+	if (ret != KNOT_EOK && ret != KNOT_ENOTSUP) {
+		log_warning("cannot open persistent timers DB (%s)",
+		            knot_strerror(ret));
+	}
+}
+
+int server_update_zones(const conf_t *conf, void *data)
 {
 	server_t *server = (server_t *)data;
 
@@ -593,6 +609,7 @@ int server_update_zones(const struct conf_t *conf, void *data)
 	worker_pool_wait(server->workers);
 
 	/* Reload zone database and free old zones. */
+	reopen_timers_database(conf, server);
 	int ret = zonedb_reload(conf, server);
 
 	/* Trim extra heap. */

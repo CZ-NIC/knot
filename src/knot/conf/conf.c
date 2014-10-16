@@ -33,7 +33,6 @@
 #include "knot/knot.h"
 #include "knot/ctl/remote.h"
 #include "knot/nameserver/internet.h"
-#include "knot/zone/timers.h"
 
 /*
  * Defaults.
@@ -725,10 +724,6 @@ void conf_truncate(conf_t *conf, int unload_hooks)
 
 	/* Free remote control iface. */
 	conf_free_iface(conf->ctl.iface);
-	
-	/* Close timers db. */
-	close_timers_db(conf->timers_db);
-	conf->timers_db = NULL;
 }
 
 void conf_free(conf_t *conf)
@@ -779,13 +774,6 @@ int conf_open(const char* path)
 	if (ret != KNOT_EOK) {
 		conf_free(nconf);
 		return ret;
-	}
-
-	/* Open zone timers db. */
-	ret = open_timers_db(nconf->storage, &nconf->timers_db);
-	if (ret != KNOT_EOK && ret != KNOT_ENOTSUP) {
-		log_warning("cannot open persistent timers DB (%s)",
-		            knot_strerror(ret));
 	}
 
 	/* Replace current config. */
