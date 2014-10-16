@@ -45,6 +45,7 @@ knot_lookup_table_t knot_rcode_names[] = {
 	{ 0, NULL }
 };
 
+_public_
 knot_lookup_table_t knot_tsig_err_names[] = {
 	{ KNOT_TSIG_ERR_BADSIG,   "BADSIG" },
 	{ KNOT_TSIG_ERR_BADKEY,   "BADKEY" },
@@ -53,6 +54,7 @@ knot_lookup_table_t knot_tsig_err_names[] = {
 	{ 0, NULL }
 };
 
+_public_
 knot_lookup_table_t knot_tkey_err_names[] = {
 	{ KNOT_TKEY_ERR_BADMODE,  "BADMODE" },
 	{ KNOT_TKEY_ERR_BADNAME,  "BADNAME" },

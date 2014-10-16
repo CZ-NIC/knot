@@ -34,7 +34,7 @@
 
 /*----------------------------------------------------------------------------*/
 
-static int knot_label_is_equal(const uint8_t *lb1, const uint8_t *lb2)
+static int label_is_equal(const uint8_t *lb1, const uint8_t *lb2)
 {
 	return (*lb1 == *lb2) && memcmp(lb1 + 1, lb2 + 1, *lb1) == 0;
 }
@@ -536,7 +536,7 @@ bool knot_dname_is_sub(const knot_dname_t *sub, const knot_dname_t *domain)
 	/* Compare common suffix. */
 	while(common > 0) {
 		/* Compare label. */
-		if (!knot_label_is_equal(sub, domain))
+		if (!label_is_equal(sub, domain))
 			return false;
 		/* Next label. */
 		sub = knot_wire_next_label(sub, NULL);
@@ -584,7 +584,7 @@ int knot_dname_matched_labels(const knot_dname_t *d1, const knot_dname_t *d2)
 	/* Count longest chain leading to root label. */
 	int matched = 0;
 	while (common > 0) {
-		if (knot_label_is_equal(d1, d2))
+		if (label_is_equal(d1, d2))
 			++matched;
 		else
 			matched = 0; /* Broken chain. */
@@ -696,7 +696,7 @@ _public_
 bool knot_dname_is_equal(const knot_dname_t *d1, const knot_dname_t *d2)
 {
 	while(*d1 != '\0' || *d2 != '\0') {
-		if (knot_label_is_equal(d1, d2)) {
+		if (label_is_equal(d1, d2)) {
 			d1 = knot_wire_next_label(d1, NULL);
 			d2 = knot_wire_next_label(d2, NULL);
 		} else {
