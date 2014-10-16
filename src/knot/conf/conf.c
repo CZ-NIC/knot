@@ -1020,6 +1020,7 @@ void conf_free_group(conf_group_t *group)
 		free(remote);
 	}
 
+	free(group->name);
 	free(group);
 }
 
