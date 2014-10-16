@@ -70,4 +70,3 @@ int write_zone_timers(knot_namedb_t *timer_db, zone_t *zone);
  * \return KNOT_EOK or an error
  */
 int sweep_timer_db(knot_namedb_t *timer_db, knot_zonedb_t *zone_db);
-
