@@ -169,7 +169,7 @@ static bool slave_event(zone_event_type_t event)
 	return event == ZONE_EVENT_EXPIRE || event == ZONE_EVENT_REFRESH;
 }
 
-static void reuse_uvents(zone_t *zone, const time_t *timers)
+static void reuse_events(zone_t *zone, const time_t *timers)
 {
 	for (zone_event_type_t event = 0; event < ZONE_EVENT_COUNT; ++event) {
 		if (timers[event] == 0) {
@@ -211,7 +211,7 @@ static zone_t *create_zone_new(conf_zone_t *zone_conf, server_t *server)
 		return NULL;
 	}
 	
-	reuse_uvents(zone, timers);
+	reuse_events(zone, timers);
 	
 	const zone_status_t zstatus = zone_file_status(NULL, zone_conf);
 	
