@@ -16,10 +16,12 @@
 
 #include <assert.h>
 #include <time.h>
+
+#include "libknot/dnssec/sig0.h"
+
 #include "libknot/errcode.h"
 #include "libknot/descriptor.h"
 #include "libknot/dnssec/rrset-sign.h"
-#include "libknot/dnssec/sig0.h"
 #include "libknot/dnssec/sign.h"
 #include "libknot/packet/wire.h"
 #include "libknot/packet/rrset-wire.h"
@@ -123,9 +125,7 @@ static int sig0_write_signature(uint8_t* wire, size_t request_size,
 
 /*- SIG(0) public ------------------------------------------------------------*/
 
-/*!
- * \brief Sign a packet using SIG(0) mechanism.
- */
+_public_
 int knot_sig0_sign(uint8_t *wire, size_t *wire_size, size_t wire_max_size,
                    knot_dnssec_key_t *key)
 {

@@ -65,7 +65,7 @@ inline static void bitmap_add_node_rrsets(bitmap_t *bitmap,
 		knot_rrset_t rr = node_rrset_at(node, i);
 		if (rr.type != KNOT_RRTYPE_NSEC &&
 		    rr.type != KNOT_RRTYPE_RRSIG) {
-			bitmap_add_type(bitmap, rr.type);
+			knot_bitmap_add_type(bitmap, rr.type);
 		}
 	}
 }

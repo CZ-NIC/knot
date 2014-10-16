@@ -30,16 +30,16 @@
 #include <string.h>
 #include <limits.h>
 
-#define BITMAP_WINDOW_SIZE 256
-#define BITMAP_WINDOW_BYTES (BITMAP_WINDOW_SIZE/CHAR_BIT)
-#define BITMAP_WINDOW_COUNT 256
+#define KNOT_BITMAP_WINDOW_SIZE 256
+#define KNOT_BITMAP_WINDOW_BYTES (KNOT_BITMAP_WINDOW_SIZE/CHAR_BIT)
+#define KNOT_BITMAP_WINDOW_COUNT 256
 
 /*!
  * \brief One window of a bitmap.
  */
 typedef struct {
 	uint8_t used;
-	uint8_t data[BITMAP_WINDOW_BYTES];
+	uint8_t data[KNOT_BITMAP_WINDOW_BYTES];
 } bitmap_window_t;
 
 /*!
@@ -47,16 +47,16 @@ typedef struct {
  */
 typedef struct {
 	int used;
-	bitmap_window_t windows[BITMAP_WINDOW_COUNT];
+	bitmap_window_t windows[KNOT_BITMAP_WINDOW_COUNT];
 } bitmap_t;
 
 /*!
  * \brief Add one RR type into the bitmap.
  */
-inline static void bitmap_add_type(bitmap_t *bitmap, uint16_t type)
+inline static void knot_bitmap_add_type(bitmap_t *bitmap, uint16_t type)
 {
-	int win = type / BITMAP_WINDOW_SIZE;
-	int bit = type % BITMAP_WINDOW_SIZE;
+	int win = type / KNOT_BITMAP_WINDOW_SIZE;
+	int bit = type % KNOT_BITMAP_WINDOW_SIZE;
 
 	if (bitmap->used <= win) {
 		bitmap->used = win + 1;
@@ -75,7 +75,7 @@ inline static void bitmap_add_type(bitmap_t *bitmap, uint16_t type)
 /*!
  * \brief Compute the size of the bitmap in NSEC RDATA format.
  */
-inline static size_t bitmap_size(const bitmap_t *bitmap)
+inline static size_t knot_bitmap_size(const bitmap_t *bitmap)
 {
 	size_t result = 0;
 
@@ -94,7 +94,7 @@ inline static size_t bitmap_size(const bitmap_t *bitmap)
 /*!
  * \brief Write bitmap in NSEC RDATA format.
  */
-inline static void bitmap_write(const bitmap_t *bitmap, uint8_t *output)
+inline static void knot_bitmap_write(const bitmap_t *bitmap, uint8_t *output)
 {
 	uint8_t *write_ptr = output;
 	for (int win = 0; win < bitmap->used; win++) {
