@@ -212,7 +212,7 @@ static int find(knot_txn_t *txn, knot_val_t *key, knot_val_t *val, unsigned flag
 		if (ret == MDB_NOTFOUND) {
 			return KNOT_ENOENT;
 		} else {
-			return KNOT_ERROR;
+			return lmdb_error_to_knot(ret);
 		}
 	}
 
