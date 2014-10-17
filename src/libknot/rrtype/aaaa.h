@@ -16,18 +16,19 @@
 
 #pragma once
 
+#include <stdlib.h>
+
 #include "libknot/rdataset.h"
 #include "libknot/errcode.h"
 #include "common/sockaddr.h"
-#include <stdlib.h>
 
 static inline
 int knot_a_addr(const knot_rdataset_t *rrs, size_t pos, struct sockaddr_in *dst)
 {
 	KNOT_RDATASET_CHECK(rrs, pos, return KNOT_EINVAL);
 	knot_rdata_t *rr = knot_rdataset_at(rrs, pos);
-	return sockaddr_set_raw((struct sockaddr_storage *)dst,
-	                        AF_INET, knot_rdata_data(rr), knot_rdata_rdlen(rr));
+	return sockaddr_set_raw((struct sockaddr_storage *)dst, AF_INET,
+	                        knot_rdata_data(rr), knot_rdata_rdlen(rr));
 }
 
 static inline
@@ -35,6 +36,6 @@ int knot_aaaa_addr(const knot_rdataset_t *rrs, size_t pos, struct sockaddr_in6 *
 {
 	KNOT_RDATASET_CHECK(rrs, pos, return KNOT_EINVAL);
 	knot_rdata_t *rr = knot_rdataset_at(rrs, pos);
-	return sockaddr_set_raw((struct sockaddr_storage *)dst,
-	                        AF_INET6, knot_rdata_data(rr), knot_rdata_rdlen(rr));
+	return sockaddr_set_raw((struct sockaddr_storage *)dst, AF_INET6,
+	                        knot_rdata_data(rr), knot_rdata_rdlen(rr));
 }
