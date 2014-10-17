@@ -18,9 +18,20 @@
 #include "common-knot/hattrie/hat-trie.h"
 #include "libknot/errcode.h"
 
-static knot_namedb_t *init(const char *handle, mm_ctx_t *mm)
+static int init(const char *config, knot_namedb_t **db, mm_ctx_t *mm)
 {
-	return hattrie_create_n(TRIE_BUCKET_SIZE, mm);
+	if (config != NULL || db == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	hattrie_t *trie = hattrie_create_n(TRIE_BUCKET_SIZE, mm);
+	if (!trie) {
+		return KNOT_ENOMEM;
+	}
+
+	*db = trie;
+
+	return KNOT_EOK;
 }
 
 static void deinit(knot_namedb_t *db)
@@ -126,9 +137,9 @@ static void iter_finish(knot_iter_t *iter)
 	hattrie_iter_free((hattrie_iter_t *)iter);
 }
 
-struct namedb_api *namedb_trie_api(void)
+const struct namedb_api *namedb_trie_api(void)
 {
-	static struct namedb_api api = {
+	static const struct namedb_api api = {
 		"hattrie",
 		init, deinit,
 		txn_begin, txn_commit, txn_abort,

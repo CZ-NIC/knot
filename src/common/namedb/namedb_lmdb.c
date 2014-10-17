@@ -18,12 +18,14 @@
 
 #include <lmdb.h>
 #include <sys/stat.h>
+#include <unistd.h>
 
 #include "common/namedb/namedb_lmdb.h"
 #include "libknot/errcode.h"
 
-#define LMDB_DIR_MODE 0770
-#define LMDB_FILE_MODE 0660
+#define LMDB_DIR_MODE	0770
+#define LMDB_FILE_MODE	0660
+#define LMDB_MAPSIZE	(100 * 1024 * 1024)
 
 struct lmdb_env
 {
@@ -42,11 +44,43 @@ static int create_env_dir(const char *path)
 	return KNOT_EOK;
 }
 
+/*!
+ * \brief Convert error code returned by LMDB to Knot DNS error code.
+ *
+ * LMDB defines own error codes but uses additional ones from libc. All LMDB
+ * specific error codes are translated to KNOT_DATABASE_ERROR.
+ */
+static int lmdb_error_to_knot(int error)
+{
+	if (error == MDB_SUCCESS) {
+		return KNOT_EOK;
+	}
+
+	if (MDB_KEYEXIST <= error && error <= MDB_LAST_ERRCODE) {
+		return KNOT_DATABASE_ERROR;
+	}
+
+	return knot_errno_to_error(error);
+}
+
 static int dbase_open(struct lmdb_env *env, const char *path)
 {
 	int ret = mdb_env_create(&env->env);
 	if (ret != 0) {
-		return ret;
+		return lmdb_error_to_knot(ret);
+	}
+
+	long page_size = sysconf(_SC_PAGESIZE);
+	if (page_size <= 0) {
+		mdb_env_close(env->env);
+		return KNOT_EINVAL;
+	}
+
+	size_t map_size = (LMDB_MAPSIZE / page_size) * page_size;
+	ret = mdb_env_set_mapsize(env->env, map_size);
+	if (ret != 0) {
+		mdb_env_close(env->env);
+		return lmdb_error_to_knot(ret);
 	}
 
 	ret = create_env_dir(path);
@@ -58,27 +92,27 @@ static int dbase_open(struct lmdb_env *env, const char *path)
 	ret = mdb_env_open(env->env, path, 0, LMDB_FILE_MODE);
 	if (ret != 0) {
 		mdb_env_close(env->env);
-		return ret;
+		return lmdb_error_to_knot(ret);
 	}
 
 	MDB_txn *txn = NULL;
 	ret = mdb_txn_begin(env->env, NULL, 0, &txn);
 	if (ret != 0) {
 		mdb_env_close(env->env);
-		return ret;
+		return lmdb_error_to_knot(ret);
 	}
 
 	ret = mdb_open(txn, NULL, 0, &env->dbi);
 	if (ret != 0) {
 		mdb_txn_abort(txn);
 		mdb_env_close(env->env);
-		return ret;
+		return lmdb_error_to_knot(ret);
 	}
 
 	ret = mdb_txn_commit(txn);
 	if (ret != 0) {
 		mdb_env_close(env->env);
-		return ret;
+		return lmdb_error_to_knot(ret);
 	}
 
 	return 0;
@@ -90,22 +124,24 @@ static void dbase_close(struct lmdb_env *env)
 	mdb_env_close(env->env);
 }
 
-static knot_namedb_t *init(const char *config, mm_ctx_t *mm)
+static int init(const char *config, knot_namedb_t **db_ptr, mm_ctx_t *mm)
 {
 	struct lmdb_env *env = mm_alloc(mm, sizeof(struct lmdb_env));
 	if (env == NULL) {
-		return NULL;
+		return KNOT_ENOMEM;
 	}
 	memset(env, 0, sizeof(struct lmdb_env));
 
 	int ret = dbase_open(env, config);
 	if (ret != 0) {
 		mm_free(mm, env);
-		return NULL;
+		return ret;
 	}
 
 	env->pool = mm;
-	return env;
+	*db_ptr = env;
+
+	return KNOT_EOK;
 }
 
 static void deinit(knot_namedb_t *db)
@@ -131,7 +167,7 @@ static int txn_begin(knot_namedb_t *db, knot_txn_t *txn, unsigned flags)
 	struct lmdb_env *env = db;
 	int ret = mdb_txn_begin(env->env, NULL, txn_flags, (MDB_txn **)&txn->txn);
 	if (ret != 0) {
-		return KNOT_ERROR;
+		return lmdb_error_to_knot(ret);
 	}
 
 	return KNOT_EOK;
@@ -141,7 +177,7 @@ static int txn_commit(knot_txn_t *txn)
 {
 	int ret = mdb_txn_commit((MDB_txn *)txn->txn);
 	if (ret != 0) {
-		return KNOT_ERROR;
+		return lmdb_error_to_knot(ret);
 	}
 
 	return KNOT_EOK;
@@ -159,7 +195,7 @@ static int count(knot_txn_t *txn)
 	MDB_stat stat;
 	int ret = mdb_stat(txn->txn, env->dbi, &stat);
 	if (ret != 0) {
-		return KNOT_ERROR;
+		return lmdb_error_to_knot(ret);
 	}
 
 	return stat.ms_entries;
@@ -171,13 +207,12 @@ static int find(knot_txn_t *txn, knot_val_t *key, knot_val_t *val, unsigned flag
 	MDB_val db_key = { key->len, key->data };
 	MDB_val data = { 0, NULL };
 
-
 	int ret = mdb_get(txn->txn, env->dbi, &db_key, &data);
 	if (ret != 0) {
 		if (ret == MDB_NOTFOUND) {
 			return KNOT_ENOENT;
 		} else {
-			return KNOT_ERROR;
+			return lmdb_error_to_knot(ret);
 		}
 	}
 
@@ -193,7 +228,7 @@ static int insert(knot_txn_t *txn, knot_val_t *key, knot_val_t *val, unsigned fl
 	MDB_cursor *cursor = NULL;
 	int ret = mdb_cursor_open(txn->txn, env->dbi, &cursor);
 	if (ret != 0) {
-		return KNOT_ERROR;
+		return lmdb_error_to_knot(ret);
 	}
 
 	MDB_val db_key = { key->len, key->data };
@@ -206,7 +241,7 @@ static int insert(knot_txn_t *txn, knot_val_t *key, knot_val_t *val, unsigned fl
 			// Insert new item
 			ret = mdb_put(txn->txn, env->dbi, &db_key, &data, 0);
 			if (ret != 0) {
-				return KNOT_ERROR;
+				return lmdb_error_to_knot(ret);
 			}
 
 			return KNOT_EOK;
@@ -218,7 +253,7 @@ static int insert(knot_txn_t *txn, knot_val_t *key, knot_val_t *val, unsigned fl
 	ret = mdb_cursor_put(cursor, &db_key, &data, MDB_CURRENT);
 	mdb_cursor_close(cursor);
 	if (ret != 0) {
-		return KNOT_ERROR;
+		return lmdb_error_to_knot(ret);
 	}
 
 	return KNOT_EOK;
@@ -232,7 +267,7 @@ static int del(knot_txn_t *txn, knot_val_t *key)
 
 	int ret = mdb_del(txn->txn, env->dbi, &db_key, &data);
 	if (ret != 0) {
-		return KNOT_ERROR;
+		return lmdb_error_to_knot(ret);
 	}
 
 	return KNOT_EOK;
@@ -277,7 +312,7 @@ static int iter_key(knot_iter_t *iter, knot_val_t *key)
 	MDB_val mdb_key, mdb_val;
 	int ret = mdb_cursor_get(cursor, &mdb_key, &mdb_val, MDB_GET_CURRENT);
 	if (ret != 0) {
-		return KNOT_ERROR;
+		return lmdb_error_to_knot(ret);
 	}
 
 	key->data = mdb_key.mv_data;
@@ -292,7 +327,7 @@ static int iter_val(knot_iter_t *iter, knot_val_t *val)
 	MDB_val mdb_key, mdb_val;
 	int ret = mdb_cursor_get(cursor, &mdb_key, &mdb_val, MDB_GET_CURRENT);
 	if (ret != 0) {
-		return KNOT_ERROR;
+		return lmdb_error_to_knot(ret);
 	}
 
 	val->data = mdb_val.mv_data;
@@ -310,9 +345,9 @@ static void iter_finish(knot_iter_t *iter)
 	mdb_cursor_close(cursor);
 }
 
-struct namedb_api *namedb_lmdb_api(void)
+const struct namedb_api *namedb_lmdb_api(void)
 {
-	static struct namedb_api api = {
+	static const struct namedb_api api = {
 		"lmdb",
 		init, deinit,
 		txn_begin, txn_commit, txn_abort,
@@ -327,7 +362,7 @@ struct namedb_api *namedb_lmdb_api(void)
 
 #include <stdlib.h>
 
-struct namedb_api *namedb_lmdb_api(void)
+const struct namedb_api *namedb_lmdb_api(void)
 {
 	return NULL;
 }
