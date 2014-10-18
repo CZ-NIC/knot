@@ -88,6 +88,11 @@ int net_bound_socket(int type, const struct sockaddr_storage *ss)
 	(void) setsockopt(socket, IPPROTO_IP, IP_FREEBIND, &flag, sizeof(flag));
 #endif
 
+	/* Allow bind to non-local address (FreeBSD) */
+#ifdef IPV6_BINDANY
+	(void) setsockopt(socket, IPPROTO_IPV6, IPV6_BINDANY, &flag, sizeof(flag));
+#endif
+
 	/* Bind to specified address. */
 	const struct sockaddr *sa = (const struct sockaddr *)ss;
 	int ret = bind(socket, sa, sockaddr_len(sa));
