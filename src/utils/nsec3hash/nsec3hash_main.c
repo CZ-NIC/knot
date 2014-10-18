@@ -150,10 +150,10 @@ int main(int argc, char *argv[])
 			fprintf(stderr, "Cannot transform IDN domain name.\n");
 			goto fail;
 		}
-		dname = knot_dname_from_str(ascii_name);
+		dname = knot_dname_from_str_alloc(ascii_name);
 		free(ascii_name);
 	} else {
-		dname = knot_dname_from_str(argv[4]);
+		dname = knot_dname_from_str_alloc(argv[4]);
 	}
 	if (dname == NULL) {
 		fprintf(stderr, "Cannot parse domain name.\n");

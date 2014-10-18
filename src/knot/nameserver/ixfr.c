@@ -218,7 +218,7 @@ static void ixfr_answer_cleanup(struct query_data *qdata)
 	ptrlist_free(&ixfr->proc.nodes, mm);
 	changeset_iter_clear(&ixfr->cur);
 	changesets_free(&ixfr->changesets);
-	mm->free(qdata->ext);
+	mm_free(mm, qdata->ext);
 
 	/* Allow zone changes (finished). */
 	rcu_read_unlock();
@@ -249,7 +249,7 @@ static int ixfr_answer_init(struct query_data *qdata)
 
 	/* Initialize transfer processing. */
 	mm_ctx_t *mm = qdata->mm;
-	struct ixfr_proc *xfer = mm->alloc(mm->ctx, sizeof(struct ixfr_proc));
+	struct ixfr_proc *xfer = mm_alloc(mm, sizeof(struct ixfr_proc));
 	if (xfer == NULL) {
 		changesets_free(&chgsets);
 		return KNOT_ENOMEM;

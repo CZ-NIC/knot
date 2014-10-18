@@ -34,8 +34,9 @@
 /*!
  * \brief Basic limits for domain names (RFC 1035).
  */
-#define KNOT_DNAME_MAXLEN 255     /*!< 1-byte maximum. */
-#define KNOT_DNAME_MAXLABELS 127  /*!< 1-char labels. */
+#define KNOT_DNAME_MAXLEN      255 /*!< 1-byte maximum. */
+#define KNOT_DNAME_MAXLABELS   127 /*!< 1-char labels. */
+#define KNOT_DNAME_MAXLABELLEN  63 /*!< 2^6 - 1 */
 
 /*!
  * \brief Address family numbers.
@@ -64,6 +65,10 @@ typedef enum {
  * \brief DNS reply codes (RCODEs).
  *
  * http://www.iana.org/assignments/dns-parameters/dns-parameters.xml
+ *
+ * \note Here, only RCODEs present in Header or as an Extended RCODE in
+ *       OPT + Header are listed. Other codes are used in dedicated fields of
+ *       other RRs.
  */
 typedef enum {
 	KNOT_RCODE_NOERROR  =  0, /*!< No error. */
@@ -75,16 +80,23 @@ typedef enum {
 	KNOT_RCODE_YXDOMAIN =  6, /*!< Name should not exist. */
 	KNOT_RCODE_YXRRSET  =  7, /*!< RR set should not exist. */
 	KNOT_RCODE_NXRRSET  =  8, /*!< RR set does not exist. */
-	KNOT_RCODE_NOTAUTH  =  9, /*!< Server not authoritative. */
+	KNOT_RCODE_NOTAUTH  =  9, /*!< Server not authoritative. / Query not authorized. */
 	KNOT_RCODE_NOTZONE  = 10, /*!< Name is not inside zone. */
-	KNOT_RCODE_BADSIG   = 16, /*!< TSIG signature failed. */
-	KNOT_RCODE_BADKEY   = 17, /*!< Key is not supported. */
-	KNOT_RCODE_BADTIME  = 18, /*!< Signature out of time window. */
-	KNOT_RCODE_BADMODE  = 19, /*!< Bad TKEY mode. */
-	KNOT_RCODE_BADNAME  = 20, /*!< Duplicate key name. */
-	KNOT_RCODE_BADALG   = 21, /*!< Algorithm not supported. */
-	KNOT_RCODE_BADTRUNC = 22  /*!< Bad truncation. */
+	KNOT_RCODE_BADVERS  = 16  /*!< Bad OPT Version. */
 } knot_rcode_t;
+
+typedef enum {
+	KNOT_TSIG_ERR_BADSIG   = 16, /*!< TSIG signature failed. */
+	KNOT_TSIG_ERR_BADKEY   = 17, /*!< Key is not supported. */
+	KNOT_TSIG_ERR_BADTIME  = 18, /*!< Signature out of time window. */
+	KNOT_TSIG_ERR_BADTRUNC = 22  /*!< Bad truncation. */
+} knot_tsig_error_t;
+
+typedef enum {
+	KNOT_TKEY_ERR_BADMODE  = 19, /*!< Bad TKEY mode. */
+	KNOT_TKEY_ERR_BADNAME  = 20, /*!< Duplicate key name. */
+	KNOT_TKEY_ERR_BADALG   = 21  /*!< Algorithm not supported. */
+} knot_tkey_error_t;
 
 /*!
  * \brief DNS packet section identifiers.

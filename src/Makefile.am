@@ -62,43 +62,34 @@ knsec3hash_SOURCES =				\
 
 # static: shared (not in libknot)
 libknots_la_SOURCES =				\
-	common-knot/array-sort.h		\
-	common-knot/binsearch.h			\
 	common-knot/crc.h			\
 	common-knot/evsched.c			\
 	common-knot/evsched.h			\
 	common-knot/fdset.c			\
 	common-knot/fdset.h			\
-	common-knot/hattrie/hat-trie.c		\
-	common-knot/hattrie/hat-trie.h		\
-	common-knot/hattrie/murmurhash3.c	\
-	common-knot/hattrie/murmurhash3.h	\
 	common-knot/heap.c			\
 	common-knot/heap.h			\
 	common-knot/hex.c			\
 	common-knot/hex.h			\
-	common-knot/hhash.c			\
-	common-knot/hhash.h			\
-	common-knot/lists.c			\
-	common-knot/lists.h			\
-	common-knot/print.c			\
-	common-knot/print.h			\
 	common-knot/ref.c			\
 	common-knot/ref.h			\
-	common-knot/slab/alloc-common.h		\
-	common-knot/slab/slab.c			\
-	common-knot/slab/slab.h			\
-	common-knot/sockaddr.c			\
-	common-knot/sockaddr.h			\
 	common-knot/strlcat.c			\
 	common-knot/strlcat.h			\
-	common-knot/strlcpy.c			\
-	common-knot/strlcpy.h			\
 	common-knot/strtonum.h			\
 	common-knot/trim.h
 
 # static: common shared (also in libknot)
 libknotcs_la_SOURCES =				\
+	common/array-sort.h			\
+	common/binsearch.h			\
+	common/print.c				\
+	common/print.h				\
+	common/strlcpy.c			\
+	common/strlcpy.h			\
+	common/lists.c				\
+	common/lists.h				\
+	common/sockaddr.c			\
+	common/sockaddr.h			\
 	common/base32hex.c			\
 	common/base32hex.h			\
 	common/base64.c				\
@@ -112,6 +103,19 @@ libknotcs_la_SOURCES =				\
 	common/mem.h				\
 	common/mempool.c			\
 	common/mempool.h			\
+	common/net.c			\
+	common/net.h			\
+	common/hhash.c				\
+	common/hhash.h				\
+	common/trie/hat-trie.c		\
+	common/trie/hat-trie.h		\
+	common/trie/murmurhash3.c	\
+	common/trie/murmurhash3.h	\
+	common/namedb/namedb.h			\
+	common/namedb/namedb_lmdb.h		\
+	common/namedb/namedb_lmdb.c		\
+	common/namedb/namedb_trie.h		\
+	common/namedb/namedb_trie.c		\
 	common/log.c				\
 	common/log.h
 
@@ -174,9 +178,14 @@ libknot_la_SOURCES =				\
 	libknot/packet/rrset-wire.c		\
 	libknot/packet/rrset-wire.h		\
 	libknot/packet/wire.h			\
-	libknot/processing/process.c		\
-	libknot/processing/process.h		\
+	libknot/processing/layer.c		\
+	libknot/processing/layer.h		\
+	libknot/processing/overlay.c	\
+	libknot/processing/overlay.h	\
+	libknot/processing/requestor.c	\
+	libknot/processing/requestor.h	\
 	libknot/rrtype/rdname.h			\
+	libknot/rrtype/aaaa.h			\
 	libknot/rrtype/dnskey.h			\
 	libknot/rrtype/nsec.h			\
 	libknot/rrtype/nsec3.c			\
@@ -251,8 +260,6 @@ libknotd_la_SOURCES =				\
 	knot/nameserver/process_query.h		\
 	knot/nameserver/process_answer.c	\
 	knot/nameserver/process_answer.h	\
-	knot/nameserver/requestor.c		\
-	knot/nameserver/requestor.h		\
 	knot/nameserver/query_module.c		\
 	knot/nameserver/query_module.h		\
 	knot/nameserver/update.c		\
@@ -274,8 +281,6 @@ libknotd_la_SOURCES =				\
 	knot/server/rrl.h			\
 	knot/server/server.c			\
 	knot/server/server.h			\
-	knot/server/net.c			\
-	knot/server/net.h			\
 	knot/server/tcp-handler.c		\
 	knot/server/tcp-handler.h		\
 	knot/server/udp-handler.c		\
@@ -298,12 +303,18 @@ libknotd_la_SOURCES =				\
 	knot/worker/queue.h			\
 	knot/zone/contents.c			\
 	knot/zone/contents.h			\
-	knot/zone/events.c			\
-	knot/zone/events.h			\
+	knot/zone/events/events.c		\
+	knot/zone/events/events.h		\
+	knot/zone/events/handlers.c		\
+	knot/zone/events/handlers.h		\
+	knot/zone/events/replan.c		\
+	knot/zone/events/replan.h		\
 	knot/zone/node.c			\
 	knot/zone/node.h			\
 	knot/zone/semantic-check.c		\
 	knot/zone/semantic-check.h		\
+	knot/zone/timers.c			\
+	knot/zone/timers.h			\
 	knot/zone/zone-diff.c			\
 	knot/zone/zone-diff.h			\
 	knot/zone/zone-dump.c			\
@@ -324,17 +335,20 @@ libknotd_la_SOURCES =				\
 # libraries
 libknot_la_LIBADD  = libknotcs.la zscanner/libzscanner.la
 libknotd_la_LIBADD = libknots.la libknotcs.la libknot.la
+libknotus_la_LIBADD = libknots.la libknotcs.la libknot.la
+libknotd_la_CPPFLAGS = $(AM_CPPFLAGS) $(lmdb_CFLAGS)
+libknotd_la_LDFLAGS = $(AM_LDFLAGS) $(lmdb_LIBS)
 libknotus_la_CPPFLAGS = $(AM_CPPFLAGS) $(libidn_CFLAGS)
 libknotus_la_LDFLAGS = $(AM_LDFLAGS) $(libidn_LIBS)
-libknotcs_la_CPPFLAGS = $(AM_CPPFLAGS) $(systemd_CFLAGS)
-libknotcs_la_LDFLAGS = $(AM_LDFLAGS) $(systemd_LIBS)
+libknotcs_la_CPPFLAGS = $(AM_CPPFLAGS) $(systemd_CFLAGS) $(lmdb_CFLAGS)
+libknotcs_la_LDFLAGS = $(AM_LDFLAGS) $(systemd_LIBS) $(lmdb_LIBS)
 
 # sbin programs
-knotd_LDADD = libknot.la libknotd.la $(systemd_LIBS)
+knotd_LDADD = libknot.la libknotd.la $(systemd_LIBS) $(lmdb_LIBS)
 knotc_LDADD = libknot.la libknotd.la
 
 # bin programs
-BIN_LIBS = libknotus.la libknotcs.la libknots.la libknot.la
+BIN_LIBS = libknotus.la libknots.la
 kdig_LDADD       = $(BIN_LIBS) $(libidn_LIBS)
 khost_LDADD      = $(BIN_LIBS) $(libidn_LIBS)
 knsupdate_LDADD  = $(BIN_LIBS) zscanner/libzscanner.la
@@ -350,7 +364,7 @@ khost_LDADD        += dnstap/libdnstap.la
 libknotd_la_LIBADD += dnstap/libdnstap.la
 endif
 
-if HAVE_LMDB
+# rose sources and client tool
 libknotd_la_SOURCES +=				\
 	knot/modules/rosedb.c				\
 	knot/modules/rosedb.h
@@ -360,7 +374,6 @@ rosedb_tool_SOURCES =					\
 
 bin_PROGRAMS += rosedb_tool
 rosedb_tool_LDADD = libknot.la libknotd.la
-endif
 
 # Create storage and run-time directories
 install-data-hook:

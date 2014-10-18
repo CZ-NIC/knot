@@ -28,7 +28,7 @@ AM_PROG_CC_C_O
 AC_PROG_CPP_WERROR
 
 # Default compiler flags
-CFLAGS="$CFLAGS -Wall -Werror=format-security"
+CFLAGS="$CFLAGS -Wall -Werror=format-security -Werror=implicit"
 
 # Checks for programs.
 m4_ifdef([AM_PROG_AR], [AM_PROG_AR]) # call AM_PROG_AR only if available
@@ -312,23 +312,9 @@ dt_DNSTAP([
 ])
 AM_CONDITIONAL([HAVE_DNSTAP], test "$opt_dnstap" != "no")
 
-dnl Check for lmdb.
-AC_ARG_WITH(lmdb,
-    AC_HELP_STRING([--with-lmdb=[DIR]], [Support for LMDB.]),
-    with_lmdb=$withval,
-    with_lmdb=yes
-)
-if test "$with_lmdb" != "no" ; then
-    AC_SEARCH_LIBS([mdb_env_open], [lmdb], [with_lmdb=yes], [with_lmdb=no])
-    if test "$with_lmdb" != "yes" ; then
-        with_lmdb=no
-        AC_MSG_WARN([LMDB not found])
-    else
-        with_lmdb=yes
-        AC_DEFINE([HAVE_LMDB], [1], [Define to 1 to enable LMDB.])
-    fi
-fi
-AM_CONDITIONAL([HAVE_LMDB], test "$with_lmdb" != "no")
+dnl Check for LMDB
+KNOT_CHECK_HEADER([lmdb], [LMDB], [auto], [lmdb.h], [], [-llmdb])
+AS_IF([test "$enable_lmdb" = yes], [AC_DEFINE([HAVE_LMDB], [1], [Define to 1 to enable LMDB support])])
 
 AC_SEARCH_LIBS([pow], [m])
 AC_SEARCH_LIBS([pthread_create], [pthread], [], [AC_MSG_ERROR([pthreads not found])])
@@ -426,6 +412,7 @@ AC_MSG_RESULT([
     Dnstap support:        ${opt_dnstap}
     LMDB support:          ${with_lmdb}
     Code coverage:         ${enable_code_coverage}
+    LMDB support:          ${enable_lmdb}
 
   Continue with 'make' command
 ])

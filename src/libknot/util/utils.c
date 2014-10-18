@@ -21,6 +21,7 @@
 
 #include "libknot/common.h"
 #include "libknot/util/utils.h"
+#include "libknot/util/endian.h"
 
 /*----------------------------------------------------------------------------*/
 
@@ -67,4 +68,47 @@ int knot_serial_compare(uint32_t s1, uint32_t s2)
 	        :((diff >= 1 && diff < ((uint32_t)1 << 31))
 	           ? 1	/* s1 larger than s2 */
 	           : -1); /* s1 less than s2 */
+}
+
+uint16_t knot_wire_read_u16(const uint8_t *pos)
+{
+	return be16toh(*(uint16_t *)pos);
+}
+
+uint32_t knot_wire_read_u32(const uint8_t *pos)
+{
+	return be32toh(*(uint32_t *)pos);
+}
+
+uint64_t knot_wire_read_u48(const uint8_t *pos)
+{
+	uint64_t input = 0;
+	memcpy((void *)&input + 1, (void *)pos, 6);
+	return be64toh(input) >> 8;
+}
+
+uint64_t knot_wire_read_u64(const uint8_t *pos)
+{
+	return be64toh(*(uint64_t *)pos);
+}
+
+void knot_wire_write_u16(uint8_t *pos, uint16_t data)
+{
+	*(uint16_t *)pos = htobe16(data);
+}
+
+void knot_wire_write_u32(uint8_t *pos, uint32_t data)
+{
+	*(uint32_t *)pos = htobe32(data);
+}
+
+void knot_wire_write_u48(uint8_t *pos, uint64_t data)
+{
+	uint64_t swapped = htobe64(data << 8);
+	memcpy((void *)pos, (uint8_t *)&swapped + 1, 6);
+}
+
+void knot_wire_write_u64(uint8_t *pos, uint64_t data)
+{
+	*(uint64_t *)pos = htobe64(data);
 }

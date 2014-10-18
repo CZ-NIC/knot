@@ -1,6 +1,6 @@
 #include <string.h>
 #include <stdlib.h>
-#include <lmdb.h>
+
 #include "knot/modules/rosedb.c"
 
 static int rosedb_add(struct cache *cache, int argc, char *argv[]);
@@ -49,6 +49,10 @@ int main(int argc, char *argv[])
 
 	/* Open cache for operations. */
 	struct cache *cache = cache_open(dbdir, 0, NULL);
+	if (cache == NULL) {
+		fprintf(stderr, "failed to open db '%s'\n", dbdir);
+		return 1;
+	}
 
 	/* Execute action. */
 	for (unsigned i = 0; i < TOOL_ACTION_COUNT; ++i) {
@@ -77,7 +81,8 @@ static int rosedb_add(struct cache *cache, int argc, char *argv[])
 {
 	printf("ADD %s\t%s\t%s\t%s\n", argv[0], argv[1], argv[2], argv[3]);
 
-	knot_dname_t *key = knot_dname_from_str(argv[0]);
+	knot_dname_t key[KNOT_DNAME_MAXLEN] = { '\0' };
+	knot_dname_from_str(key, argv[0], sizeof(key));
 	struct entry entry;
 	entry.ip          = argv[1];
 	entry.threat_code = argv[2];
@@ -117,9 +122,9 @@ static int rosedb_del(struct cache *cache, int argc, char *argv[])
 		return ret;
 	}
 
-	knot_dname_t *key = knot_dname_from_str(argv[0]);
+	knot_dname_t key[KNOT_DNAME_MAXLEN] = { '\0' };
+	knot_dname_from_str(key, argv[0], sizeof(key));
 	ret = cache_remove(txn, cache->dbi, key);
-	knot_dname_free(&key, NULL);
 
 	mdb_txn_commit(txn);
 
@@ -134,10 +139,10 @@ static int rosedb_get(struct cache *cache, int argc, char *argv[])
 		return ret;
 	}
 
+	knot_dname_t key[KNOT_DNAME_MAXLEN] = { '\0' };
+	knot_dname_from_str(key, argv[0], sizeof(key));
 	struct entry entry;
-	knot_dname_t *key = knot_dname_from_str(argv[0]);
 	ret = cache_query_fetch(txn, cache->dbi, key, &entry);
-	knot_dname_free(&key, NULL);
 	if (ret == 0) {
 		printf("%s\t%s\t%s\t%s\n", argv[0], entry.ip, entry.threat_code, entry.syslog_ip);
 		cache_query_release(&entry);
@@ -158,14 +163,14 @@ static int rosedb_list(struct cache *cache, int argc, char *argv[])
 
 	MDB_cursor *cursor = cursor_acquire(txn, cache->dbi);
 	MDB_val key, data;
+	char dname_str[KNOT_DNAME_MAXLEN] = {'\0'};
 
 	ret = mdb_cursor_get(cursor, &key, &data, MDB_FIRST);
 	while (ret == 0) {
 		struct entry entry;
 		unpack_entry(&data, &entry);
-		char *zone = knot_dname_to_str(key.mv_data);
-		printf("%s\t%s\t%s\t%s\n", zone, entry.ip, entry.threat_code, entry.syslog_ip);
-		free(zone);
+		knot_dname_to_str(dname_str, key.mv_data, sizeof(dname_str));
+		printf("%s\t%s\t%s\t%s\n", dname_str, entry.ip, entry.threat_code, entry.syslog_ip);
 
 		ret = mdb_cursor_get(cursor, &key, &data, MDB_NEXT);
 	}

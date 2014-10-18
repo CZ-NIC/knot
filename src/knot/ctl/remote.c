@@ -22,16 +22,17 @@
 #include "common-knot/fdset.h"
 #include "knot/knot.h"
 #include "knot/conf/conf.h"
-#include "knot/server/net.h"
+#include "common/net.h"
 #include "knot/server/tcp-handler.h"
 #include "libknot/packet/wire.h"
 #include "libknot/descriptor.h"
-#include "common-knot/strlcpy.h"
+#include "common/strlcpy.h"
 #include "libknot/tsig-op.h"
 #include "libknot/rrtype/rdname.h"
 #include "libknot/rrtype/soa.h"
 #include "libknot/dnssec/random.h"
 #include "libknot/packet/wire.h"
+#include "knot/zone/timers.h"
 #include "knot/dnssec/zone-sign.h"
 #include "knot/dnssec/zone-nsec.h"
 
@@ -607,7 +608,7 @@ static void log_command(const char *cmd, const remote_cmdargs_t* args)
 		uint16_t rr_count = rr->rrs.rr_count;
 		for (uint16_t j = 0; j < rr_count; j++) {
 			const knot_dname_t *dn = knot_ns_name(&rr->rrs, j);
-			char *name = knot_dname_to_str(dn);
+			char *name = knot_dname_to_str_alloc(dn);
 
 			int ret = snprintf(params, rest, " %s", name);
 			free(name);
@@ -637,7 +638,7 @@ int remote_answer(int sock, server_t *s, knot_pkt_t *pkt)
 		return KNOT_EMALF;
 	}
 
-	knot_dname_t *realm = knot_dname_from_str(KNOT_CTL_REALM);
+	knot_dname_t *realm = knot_dname_from_str_alloc(KNOT_CTL_REALM);
 	if (!knot_dname_is_sub(qname, realm) != 0) {
 		dbg_server("remote: qname != *%s\n", KNOT_CTL_REALM_EXT);
 		knot_dname_free(&realm, NULL);
@@ -726,7 +727,7 @@ static int zones_verify_tsig_query(const knot_pkt_t *query,
 		 *               or some other error.
 		 */
 		*rcode = KNOT_RCODE_NOTAUTH;
-		*tsig_rcode = KNOT_RCODE_BADKEY;
+		*tsig_rcode = KNOT_TSIG_ERR_BADKEY;
 		return KNOT_TSIG_EBADKEY;
 	}
 
@@ -740,7 +741,7 @@ static int zones_verify_tsig_query(const knot_pkt_t *query,
 	if (!(key && kname && knot_dname_cmp(key->name, kname) == 0 &&
 	      key->algorithm == alg)) {
 		*rcode = KNOT_RCODE_NOTAUTH;
-		*tsig_rcode = KNOT_RCODE_BADKEY;
+		*tsig_rcode = KNOT_TSIG_ERR_BADKEY;
 		return KNOT_TSIG_EBADKEY;
 	}
 
@@ -779,15 +780,15 @@ static int zones_verify_tsig_query(const knot_pkt_t *query,
 			*rcode = KNOT_RCODE_NOERROR;
 			break;
 		case KNOT_TSIG_EBADKEY:
-			*tsig_rcode = KNOT_RCODE_BADKEY;
+			*tsig_rcode = KNOT_TSIG_ERR_BADKEY;
 			*rcode = KNOT_RCODE_NOTAUTH;
 			break;
 		case KNOT_TSIG_EBADSIG:
-			*tsig_rcode = KNOT_RCODE_BADSIG;
+			*tsig_rcode = KNOT_TSIG_ERR_BADSIG;
 			*rcode = KNOT_RCODE_NOTAUTH;
 			break;
 		case KNOT_TSIG_EBADTIME:
-			*tsig_rcode = KNOT_RCODE_BADTIME;
+			*tsig_rcode = KNOT_TSIG_ERR_BADTIME;
 			// store the time signed from the query
 			*tsig_prev_time_signed = tsig_rdata_time_signed(query->tsig_rr);
 			*rcode = KNOT_RCODE_NOTAUTH;
@@ -899,7 +900,7 @@ knot_pkt_t* remote_query(const char *query, const knot_tsig_key_t *key)
 
 	/* Question section. */
 	char *qname = strcdup(query, KNOT_CTL_REALM_EXT);
-	knot_dname_t *dname = knot_dname_from_str(qname);
+	knot_dname_t *dname = knot_dname_from_str_alloc(qname);
 	free(qname);
 	if (!dname) {
 		knot_pkt_free(&pkt);
@@ -944,7 +945,7 @@ int remote_build_rr(knot_rrset_t *rr, const char *k, uint16_t t)
 	}
 
 	/* Assert K is FQDN. */
-	knot_dname_t *key = knot_dname_from_str(k);
+	knot_dname_t *key = knot_dname_from_str_alloc(k);
 	if (key == NULL) {
 		return KNOT_ENOMEM;
 	}
@@ -993,7 +994,7 @@ int remote_create_ns(knot_rrset_t *rr, const char *d)
 	}
 
 	/* Create dname. */
-	knot_dname_t *dn = knot_dname_from_str(d);
+	knot_dname_t *dn = knot_dname_from_str_alloc(d);
 	if (!dn) {
 		return KNOT_ERROR;
 	}

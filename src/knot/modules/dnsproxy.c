@@ -14,8 +14,8 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "libknot/processing/requestor.h"
 #include "knot/modules/dnsproxy.h"
-#include "knot/nameserver/requestor.h"
 #include "knot/nameserver/capture.h"
 #include "knot/nameserver/process_query.h"
 
@@ -39,23 +39,26 @@ static int dnsproxy_fwd(int state, knot_pkt_t *pkt, struct query_data *qdata, vo
 	struct dnsproxy *proxy = ctx;
 
 	/* Create a forwarding request. */
-	struct requestor re;
-	requestor_init(&re, NS_PROC_CAPTURE, NULL);
-	struct request *req = requestor_make(&re, &proxy->remote, qdata->query);
+	struct knot_requestor re;
+	knot_requestor_init(&re, qdata->mm);
+	struct capture_param param;
+	param.sink = pkt;
+	knot_requestor_overlay(&re, LAYER_CAPTURE, &param);
+	bool is_tcp = net_is_connected(qdata->param->socket);
+	struct knot_request *req = knot_request_make(re.mm, (struct sockaddr *)&proxy->remote.addr,
+	                                             NULL, qdata->query, is_tcp ? 0 : KNOT_RQ_UDP);
 	if (req == NULL) {
 		return state; /* Ignore, not enough memory. */
 	}
 
 	/* Forward request. */
-	struct process_capture_param param;
-	param.sink = pkt;
-	int ret = requestor_enqueue(&re, req, &param);
+	int ret = knot_requestor_enqueue(&re, req);
 	if (ret == KNOT_EOK) {
 		struct timeval tv = { conf()->max_conn_hs, 0 };
-		ret = requestor_exec(&re, &tv);
+		ret = knot_requestor_exec(&re, &tv);
 	}
 
-	requestor_clear(&re);
+	knot_requestor_clear(&re);
 
 	/* Check result. */
 	if (ret != KNOT_EOK) {

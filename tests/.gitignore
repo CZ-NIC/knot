@@ -21,6 +21,7 @@ fdset
 hattrie
 hhash
 journal
+namedb
 node
 pkt
 process_answer
@@ -33,11 +34,11 @@ rrl
 rrset
 rrset_wire
 server
-slab
 wire
 worker_pool
 worker_queue
 zone_events
+zone_timers
 zone_update
 zonedb
 ztree

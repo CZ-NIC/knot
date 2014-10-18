@@ -8,8 +8,8 @@
 #include <stdint.h>
 #include <assert.h>
 #include <string.h>
-#include "common-knot/hattrie/hat-trie.h"
-#include "common-knot/hhash.h"
+#include "common/trie/hat-trie.h"
+#include "common/hhash.h"
 
 /* number of child nodes for used alphabet */
 #define NODE_CHILDS (TRIE_MAXCHAR+1)
@@ -375,7 +375,7 @@ size_t hattrie_weight (const hattrie_t *T)
 
 hattrie_t* hattrie_create_n(unsigned bucket_size, const mm_ctx_t *mm)
 {
-    hattrie_t* T = mm->alloc(mm->ctx, sizeof(hattrie_t));
+    hattrie_t* T = mm_alloc((mm_ctx_t *)mm, sizeof(hattrie_t));
     memcpy(&T->mm, mm, sizeof(mm_ctx_t));
     hattrie_init(T, bucket_size);
     return T;

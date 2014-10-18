@@ -24,7 +24,7 @@
 #include "knot/knot.h"
 #include "libknot/consts.h"
 #include "libknot/packet/wire.h"
-#include "common-knot/hattrie/murmurhash3.h"
+#include "common/trie/murmurhash3.h"
 #include "libknot/dnssec/random.h"
 #include "libknot/descriptor.h"
 #include "common/errors.h"

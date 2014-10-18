@@ -296,8 +296,8 @@ int zs_scanner_parse_file(zs_scanner_t *s,
 	}
 
 	// Get absolute path of the zone file.
-	if (realpath(file_name, (char*)(s->buffer)) != NULL) {
-		char *full_name = strdup((char*)(s->buffer));
+	char *full_name = realpath(file_name, NULL);
+	if (full_name != NULL) {
 		free(s->path);
 		s->path = strdup(dirname(full_name));
 		free(full_name);
@@ -322,6 +322,13 @@ int zs_scanner_parse_file(zs_scanner_t *s,
 		close(s->file.descriptor);
 		free(s->file.name);
 		return -1;
+	}
+
+	// Check for empty file.
+	if (file_stat.st_size == 0) {
+		close(s->file.descriptor);
+		free(s->file.name);
+		return 0;
 	}
 
 	// Block size adjustment to multiple of page size.

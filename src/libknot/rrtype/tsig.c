@@ -132,7 +132,7 @@ int tsig_create_rdata(knot_rrset_t *rr, const knot_dname_t *alg, uint16_t maclen
 	/* We already checked rr and know rdlen > 0, no need to check rets. */
 	int alg_len = knot_dname_size(alg);
 	size_t rdlen = alg_len + TSIG_FIXED_RDLEN + maclen;
-	if (tsig_err != KNOT_RCODE_BADTIME) {
+	if (tsig_err != KNOT_TSIG_ERR_BADTIME) {
 		rdlen -= TSIG_OTHER_MAXLEN;
 	}
 	uint8_t rd[rdlen];
@@ -241,7 +241,7 @@ knot_tsig_algorithm_t tsig_rdata_alg(const knot_rrset_t *tsig)
 	}
 
 	/* Convert alg name to string. */
-	char *name = knot_dname_to_str(alg_name);
+	char *name = knot_dname_to_str_alloc(alg_name);
 	if (!name) {
 		dbg_tsig("TSIG: rdata: cannot convert alg name.\n");
 		return KNOT_TSIG_ALG_NULL;
@@ -336,7 +336,7 @@ int tsig_alg_from_name(const knot_dname_t *alg_name)
 		return 0;
 	}
 
-	char *name = knot_dname_to_str(alg_name);
+	char *name = knot_dname_to_str_alloc(alg_name);
 	if (!name) {
 		return 0;
 	}

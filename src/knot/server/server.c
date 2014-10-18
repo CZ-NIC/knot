@@ -120,6 +120,7 @@ static int server_init_iface(iface_t *new_if, conf_iface_t *cfg_if)
 	/* Create bound UDP socket. */
 	int sock = net_bound_socket(SOCK_DGRAM, &cfg_if->addr);
 	if (sock < 0) {
+		log_error("cannot bind address '%s' (%s)", addr_str, knot_strerror(sock));
 		return sock;
 	}
 

@@ -9,43 +9,46 @@ LDADD = \
 	$(top_builddir)/src/libknots.la
 
 check_PROGRAMS = \
-	journal				\
-	slab				\
-	hattrie				\
-	hhash				\
-	dthreads			\
 	acl				\
-	fdset				\
-	base64				\
 	base32hex			\
-	descriptor			\
-	server				\
-	conf				\
-	rrl				\
-	wire				\
-	dname				\
-	ztree				\
-	zonedb				\
+	base64				\
 	changeset			\
+	conf				\
+	descriptor			\
+	dname				\
 	dnssec_keys			\
 	dnssec_nsec3			\
 	dnssec_sign			\
 	dnssec_zone_nsec		\
+	dthreads			\
+	edns				\
+	fdset				\
+	hattrie				\
+	hhash				\
+	journal				\
+	namedb				\
+	node				\
+	pkt				\
+	overlay				\
+	requestor			\
+	process_answer			\
+	process_query			\
+	query_module			\
 	rdata				\
 	rdataset			\
+	requestor			\
+	rrl				\
 	rrset				\
 	rrset_wire			\
-	node				\
-	edns				\
-	pkt				\
-	process_query			\
-	process_answer			\
-	requestor			\
-	query_module			\
+	server				\
+	wire				\
 	worker_pool			\
 	worker_queue			\
 	zone_events			\
-	zone_update
+	zone_timers			\
+	zone_update			\
+	zonedb				\
+	ztree
 
 check-compile-only: $(check_PROGRAMS)
 

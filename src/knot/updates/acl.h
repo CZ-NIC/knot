@@ -29,8 +29,8 @@
 
 #pragma once
 
-#include "common-knot/lists.h"
-#include "common-knot/sockaddr.h"
+#include "common/lists.h"
+#include "common/sockaddr.h"
 #include "libknot/mempattern.h"
 #include "libknot/rrtype/tsig.h"
 

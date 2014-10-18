@@ -78,10 +78,12 @@
 /src/khost
 /src/knsupdate
 /src/knsec3hash
+
+# Code coverage
 *.gcda
 *.gcno
-/*.info
-/*coverage/
+/coverage.info
+/coverage.html
 
 # sphinx documentation
 /doc/_build/

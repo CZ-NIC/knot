@@ -24,13 +24,13 @@
 #define ANSWER_DATA(ctx) ((struct answer_data *)(ctx)->data)
 #define RESPONSE_TYPE_UNSET -1
 
-static void answer_data_init(knot_process_t *ctx, void *module_param)
+static void answer_data_init(knot_layer_t *ctx, void *module_param)
 {
 	/* Initialize persistent data. */
 	struct answer_data *data = ANSWER_DATA(ctx);
 	memset(data, 0, sizeof(struct answer_data));
 	data->response_type = RESPONSE_TYPE_UNSET;
-	data->mm = &ctx->mm;
+	data->mm = ctx->mm;
 	data->param = module_param;
 }
 
@@ -44,21 +44,21 @@ static bool is_answer_to_query(const knot_pkt_t *query, knot_pkt_t *answer)
 	return knot_wire_get_id(query->wire) == knot_wire_get_id(answer->wire);
 }
 
-static int process_answer_begin(knot_process_t *ctx, void *module_param)
+static int process_answer_begin(knot_layer_t *ctx, void *module_param)
 {
 	/* Initialize context. */
 	assert(ctx);
 	ctx->type = NS_PROC_ANSWER_ID;
-	ctx->data = mm_alloc(&ctx->mm, sizeof(struct answer_data));
+	ctx->data = mm_alloc(ctx->mm, sizeof(struct answer_data));
 
 	/* Initialize persistent data. */
 	answer_data_init(ctx, module_param);
 
-	/* Await packet. */
-	return NS_PROC_MORE;
+	/* Issue the query. */
+	return NS_PROC_FULL;
 }
 
-static int process_answer_reset(knot_process_t *ctx)
+static int process_answer_reset(knot_layer_t *ctx)
 {
 	assert(ctx);
 	struct answer_data *data = ANSWER_DATA(ctx);
@@ -74,14 +74,14 @@ static int process_answer_reset(knot_process_t *ctx)
 	/* Initialize persistent data. */
 	answer_data_init(ctx, module_param);
 
-	/* Await packet. */
-	return NS_PROC_MORE;
+	/* Issue the query. */
+	return NS_PROC_FULL;
 }
 
-static int process_answer_finish(knot_process_t *ctx)
+static int process_answer_finish(knot_layer_t *ctx)
 {
 	process_answer_reset(ctx);
-	mm_free(&ctx->mm, ctx->data);
+	mm_free(ctx->mm, ctx->data);
 	ctx->data = NULL;
 
 	return NS_PROC_NOOP;
@@ -94,7 +94,7 @@ static int process_answer_finish(knot_process_t *ctx)
 		return ret; \
 	}
 
-static int process_answer(knot_pkt_t *pkt, knot_process_t *ctx)
+static int process_answer(knot_layer_t *ctx, knot_pkt_t *pkt)
 {
 	assert(pkt && ctx);
 	struct answer_data *data = ANSWER_DATA(ctx);
@@ -143,23 +143,27 @@ static int process_answer(knot_pkt_t *pkt, knot_process_t *ctx)
 		break;
 	}
 
-	knot_pkt_free(&pkt);
 	return next_state;
 }
-
 #undef ANSWER_REQUIRES
 
+static int prepare_query(knot_layer_t *ctx, knot_pkt_t *pkt)
+{
+	/* \note Don't touch the query, expect answer. */
+	return NS_PROC_MORE;
+}
+
 /*! \brief Module implementation. */
-static const knot_process_module_t PROCESS_ANSWER_MODULE = {
+static const knot_layer_api_t PROCESS_ANSWER_MODULE = {
 	&process_answer_begin,
 	&process_answer_reset,
 	&process_answer_finish,
 	&process_answer,
-	&knot_process_noop, /* No output. */
-	&knot_process_noop  /* No error processing. */
+	&prepare_query,
+	&knot_layer_noop
 };
 
-const knot_process_module_t *process_answer_get_module(void)
+const knot_layer_api_t *process_answer_get_module(void)
 {
 	return &PROCESS_ANSWER_MODULE;
 }

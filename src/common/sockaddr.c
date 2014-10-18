@@ -18,14 +18,15 @@
 #include <string.h>
 #include <netdb.h>
 
-#include "common-knot/sockaddr.h"
+#include "common/sockaddr.h"
 #include "libknot/errcode.h"
-#include "common-knot/strlcpy.h"
+#include "common/strlcpy.h"
 #include "libknot/consts.h"
 
-int sockaddr_len(const struct sockaddr_storage *ss)
+int sockaddr_len(const struct sockaddr *ss)
 {
-	switch(ss->ss_family) {
+	const struct sockaddr_storage *sa = (const struct sockaddr_storage *)ss;
+	switch(sa->ss_family) {
 	case AF_INET:
 		return sizeof(struct sockaddr_in);
 	case AF_INET6:
@@ -43,7 +44,7 @@ int sockaddr_cmp(const struct sockaddr_storage *k1, const struct sockaddr_storag
 		return (int)k1->ss_family - (int)k2->ss_family;
 	}
 
-	return memcmp(k1, k2, sockaddr_len(k1));
+	return memcmp(k1, k2, sockaddr_len((const struct sockaddr *)k1));
 }
 
 int sockaddr_set(struct sockaddr_storage *ss, int family, const char *straddr, int port)

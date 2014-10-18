@@ -16,26 +16,33 @@
 
 #pragma once
 
-#include "knot/nameserver/process_query.h"
-#include "knot/nameserver/process_answer.h"
-#include "common-knot/lists.h"
+#include "common/lists.h"
+#include "common/sockaddr.h"
+#include "libknot/mempattern.h"
+#include "libknot/processing/overlay.h"
 
-struct request;
+struct knot_request;
+
+/* Requestor flags. */
+enum {
+	KNOT_RQ_UDP = 1 << 0  /* Use UDP for requests. */
+};
 
 /*! \brief Requestor structure.
  *
  *  Requestor holds a FIFO of pending queries.
  */
-struct requestor {
-	const knot_process_module_t *module; /*!< Response processing module. */
-	list_t pending;                      /*!< Pending requests (FIFO). */
-	mm_ctx_t *mm;                        /*!< Memory context. */
+struct knot_requestor {
+	mm_ctx_t *mm;                 /*!< Memory context. */
+	list_t pending;               /*!< Pending requests (FIFO). */
+	struct knot_overlay overlay;  /*!< Response processing overlay. */
 };
 
 /*! \brief Request data (socket, payload, response, TSIG and endpoints). */
-struct request_data {
+struct knot_request {
 	node_t node;
 	int fd;
+	unsigned flags;
 	struct sockaddr_storage remote, origin;
 	knot_sign_context_t sign;
 	knot_pkt_t *query;
@@ -43,41 +50,63 @@ struct request_data {
 };
 
 /*!
+ * \brief Make request out of endpoints and query.
+ *
+ * \param mm     Memory context.
+ * \param dst    Remote endpoint address.
+ * \param src    Source address (or NULL).
+ * \param query  Query message.
+ * \param flags  Request flags.
+ *
+ * \return Prepared request or NULL in case of error.
+ */
+struct knot_request *knot_request_make(mm_ctx_t *mm,
+                                       const struct sockaddr *dst,
+                                       const struct sockaddr *src,
+                                       knot_pkt_t *query,
+                                       unsigned flags);
+
+/*!
+ * \brief Free request and associated data.
+ *
+ * \param mm      Memory context.
+ * \param request Freed request.
+ *
+ * \return Prepared request or NULL in case of error.
+ */
+int knot_request_free(mm_ctx_t *mm, struct knot_request *request);
+
+/*!
  * \brief Initialize requestor structure.
  *
  * \param requestor Requestor instance.
- * \param module    Response processing module.
  * \param mm        Memory context.
  */
-void requestor_init(struct requestor *requestor, const knot_process_module_t *module, mm_ctx_t *mm);
+void knot_requestor_init(struct knot_requestor *requestor, mm_ctx_t *mm);
 
 /*!
  * \brief Clear the requestor structure and close pending queries.
  *
  * \param requestor Requestor instance.
  */
-void requestor_clear(struct requestor *requestor);
+void knot_requestor_clear(struct knot_requestor *requestor);
 
 /*!
  * \brief Return true if there are no pending queries.
  *
  * \param requestor Requestor instance.
  */
-bool requestor_finished(struct requestor *requestor);
-
+bool knot_requestor_finished(struct knot_requestor *requestor);
 
 /*!
- * \brief Make request out of endpoints and query.
+ * \brief Add a processing layer.
  *
  * \param requestor Requestor instance.
- * \param remote    Remote endpoint descriptor (source, destination, [key])
- * \param query     Query message.
- *
- * \return Prepared request or NULL in case of error.
+ * \param proc      Response processing module.
+ * \param param     Processing module parameters.
  */
-struct request *requestor_make(struct requestor *requestor,
-                               const conf_iface_t *remote,
-                               knot_pkt_t *query);
+int knot_requestor_overlay(struct knot_requestor *requestor,
+                           const knot_layer_api_t *proc, void *param);
 
 /*!
  * \brief Enqueue a query for processing.
@@ -87,11 +116,10 @@ struct request *requestor_make(struct requestor *requestor,
  *
  * \param requestor Requestor instance.
  * \param request   Prepared request.
- * \param param     Request processing module parameter.
  *
  * \return KNOT_EOK or error
  */
-int requestor_enqueue(struct requestor *requestor, struct request *request, void *param);
+int knot_requestor_enqueue(struct knot_requestor *requestor, struct knot_request *request);
 
 /*!
  * \brief Close first pending request.
@@ -100,7 +128,7 @@ int requestor_enqueue(struct requestor *requestor, struct request *request, void
  *
  * \return KNOT_EOK or error
  */
-int requestor_dequeue(struct requestor *requestor);
+int knot_requestor_dequeue(struct knot_requestor *requestor);
 
 /*!
  * \brief Execute next pending query (FIFO).
@@ -110,4 +138,4 @@ int requestor_dequeue(struct requestor *requestor);
  *
  * \return KNOT_EOK or error
  */
-int requestor_exec(struct requestor *requestor, struct timeval *timeout);
+int knot_requestor_exec(struct knot_requestor *requestor, struct timeval *timeout);

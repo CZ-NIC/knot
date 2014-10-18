@@ -656,7 +656,7 @@ static int cmd_checkconf(int argc, char *argv[], unsigned flags)
 static bool fetch_zone(int argc, char *argv[], conf_zone_t *zone)
 {
 	/* Convert zone name to dname */
-	knot_dname_t *zone_name = knot_dname_from_str(zone->name);
+	knot_dname_t *zone_name = knot_dname_from_str_alloc(zone->name);
 	if (zone_name == NULL) {
 		return false;
 	}
@@ -667,7 +667,7 @@ static bool fetch_zone(int argc, char *argv[], conf_zone_t *zone)
 	int i = 0;
 	while (!found && i < argc) {
 		/* Convert the argument to dname */
-		knot_dname_t *arg_name = knot_dname_from_str(argv[i]);
+		knot_dname_t *arg_name = knot_dname_from_str_alloc(argv[i]);
 
 		if (arg_name != NULL) {
 			(void)knot_dname_to_lower(arg_name);

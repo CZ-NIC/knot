@@ -54,7 +54,7 @@
  *
  * \return number of bytes or error code
  */
-int sockaddr_len(const struct sockaddr_storage *ss);
+int sockaddr_len(const struct sockaddr *ss);
 
 /*!
  * \brief Compare address storages.

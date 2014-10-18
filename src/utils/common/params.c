@@ -30,7 +30,7 @@
 #include "libknot/errcode.h"		// KNOT_EOK
 #include "libknot/mempattern.h"		// strcdup
 #include "libknot/descriptor.h"		// KNOT_RRTYPE_
-#include "common-knot/strlcpy.h"		// strlcpy
+#include "common/strlcpy.h"		// strlcpy
 #include "utils/common/msg.h"		// WARN
 #include "utils/common/resolv.h"	// parse_nameserver
 #include "utils/common/token.h"		// token
@@ -434,7 +434,7 @@ int params_parse_tsig(const char *value, knot_key_params_t *key_params)
 	}
 
 	/* Set key name and secret. */
-	key_params->name = knot_dname_from_str(k);
+	key_params->name = knot_dname_from_str_alloc(k);
 	knot_dname_to_lower(key_params->name);
 	int r = knot_binary_from_base64(s, &key_params->secret);
 	if (r != KNOT_EOK) {

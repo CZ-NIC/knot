@@ -280,6 +280,7 @@ static int stream_skip(char **stream, size_t *maxlen, int nbytes)
 
 static int rosedb_log_message(char *stream, size_t *maxlen, struct entry *entry, struct query_data *qdata)
 {
+	char dname_buf[KNOT_DNAME_MAXLEN] = {'\0'};
 	struct sockaddr_storage addr;
 	socklen_t addr_len = sizeof(addr);
 	time_t now = time(NULL);
@@ -290,7 +291,7 @@ static int rosedb_log_message(char *stream, size_t *maxlen, struct entry *entry,
 	STREAM_WRITE(stream, maxlen, strftime, "%Y-%m-%d %H:%M:%S\t", &tm);
 
 	/* Field 2/3 Local, remote address. */
-	const struct sockaddr_storage *remote = qdata->param->remote;
+	const struct sockaddr *remote = (const struct sockaddr *)qdata->param->remote;
 	memcpy(&addr, remote, sockaddr_len(remote));
 	int client_port = sockaddr_port(&addr);
 	sockaddr_port_set(&addr, 0);
@@ -312,9 +313,8 @@ static int rosedb_log_message(char *stream, size_t *maxlen, struct entry *entry,
 	STREAM_WRITE(stream, maxlen, snprintf, "\t\t\t\t\t\t\t");
 
 	/* Field 14 QNAME */
-	char *qname = knot_dname_to_str(knot_pkt_qname(qdata->query));
-	STREAM_WRITE(stream, maxlen, snprintf, "%s\t", qname);
-	free(qname);
+	knot_dname_to_str(dname_buf, knot_pkt_qname(qdata->query), sizeof(dname_buf));
+	STREAM_WRITE(stream, maxlen, snprintf, "%s\t", dname_buf);
 
 	/* Field 15 Resolution (0 = local, 1 = lookup)*/
 	STREAM_WRITE(stream, maxlen, snprintf, "0\t");
@@ -334,7 +334,7 @@ static int rosedb_log_message(char *stream, size_t *maxlen, struct entry *entry,
 	return KNOT_EOK;
 }
 
-static int rosedb_send_log(int sock, struct sockaddr_storage *dst_addr, struct entry *entry, struct query_data *qdata)
+static int rosedb_send_log(int sock, struct sockaddr *dst_addr, struct entry *entry, struct query_data *qdata)
 {
 	char buf[SYSLOG_BUFLEN];
 	char *stream = buf;
@@ -361,8 +361,7 @@ static int rosedb_send_log(int sock, struct sockaddr_storage *dst_addr, struct e
 	}
 
 	/* Send log message line. */
-	sendto(sock, buf, sizeof(buf) - maxlen, 0, (struct sockaddr *)dst_addr,
-	       sockaddr_len(dst_addr));
+	sendto(sock, buf, sizeof(buf) - maxlen, 0, dst_addr, sockaddr_len(dst_addr));
 
 	return ret;
 }
@@ -417,7 +416,7 @@ static int rosedb_query_txn(MDB_txn *txn, MDB_dbi dbi, knot_pkt_t *pkt, struct q
 	sockaddr_set(&syslog_addr, AF_INET, entry.syslog_ip, DEFAULT_PORT);
 	int sock = net_unbound_socket(AF_INET, &syslog_addr);
 	if (sock > 0) {
-		rosedb_send_log(sock, &syslog_addr, &entry, qdata);
+		rosedb_send_log(sock, (struct sockaddr *)&syslog_addr, &entry, qdata);
 		close(sock);
 	}
 
@@ -459,7 +458,7 @@ int rosedb_load(struct query_plan *plan, struct query_module *self)
 {
 	struct cache *cache = cache_open(self->param, 0, self->mm);
 	if (cache == NULL) {
-		MODULE_ERR("couldn't open cache file");
+		MODULE_ERR("couldn't open db '%s'", self->param);
 		return KNOT_ENOMEM;
 	}
 

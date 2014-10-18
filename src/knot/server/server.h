@@ -21,13 +21,7 @@
  * \brief Core server functions.
  *
  * Contains the main high-level server structure (server_t) and interface
- * to functions taking care of proper initialization of the server and clean-up
- * when terminated.
- *
- * As of now, the server supports only one zone file and only in a special
- * format.
- *
- * \see zone-parser.h
+ * to functions taking care of initialization of the server and clean-up.
  *
  * \addtogroup server
  * @{
@@ -36,10 +30,10 @@
 #pragma once
 
 #include "common-knot/evsched.h"
-#include "common-knot/lists.h"
+#include "common/lists.h"
 #include "common-knot/fdset.h"
+#include "common/net.h"
 #include "knot/server/dthreads.h"
-#include "knot/server/net.h"
 #include "knot/server/rrl.h"
 #include "knot/worker/pool.h"
 #include "knot/zone/zonedb.h"
@@ -58,11 +52,6 @@ typedef struct iohandler {
 	unsigned           *thread_state; /*!< Thread state */
 	unsigned           *thread_id; /*!< Thread identifier. */
 } iohandler_t;
-
-/*! \brief Round-robin mechanism of switching.
-  */
-#define get_next_rr(current, count) \
-	(((current) + 1) % (count))
 
 /*! \brief Server state flags.
  */

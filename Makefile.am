@@ -4,6 +4,13 @@ SUBDIRS = libtap src tests samples doc man patches
 AM_DISTCHECK_CONFIGURE_FLAGS = \
 	--disable-code-coverage
 
+CODE_COVERAGE_INFO = coverage.info
+CODE_COVERAGE_HTML = coverage.html
+CODE_COVERAGE_DIRS = \
+	src/common src/knot src/libknot \
+	src/knot/conf \
+	src/zscanner
+
 code_coverage_quiet = --quiet
 
 check-code-coverage:
@@ -20,31 +27,13 @@ endif
 code-coverage-initial:
 if CODE_COVERAGE_ENABLED
 	$(LCOV) $(code_coverage_quiet) \
-		--directory $(top_builddir)/src/common \
-		--directory $(top_builddir)/src/knot \
-		--directory $(top_builddir)/src/libknot \
+		--no-external \
+		$(foreach dir, $(CODE_COVERAGE_DIRS), --directory $(top_builddir)/$(dir)) \
 		--capture --initial \
 		--ignore-errors source \
-		--base-directory $(top_builddir)/src \
-		--output-file "$(PACKAGE_NAME)-$(PACKAGE_VERSION)-src_base.info" \
-		--test-name "$(PACKAGE_NAME)-$(PACKAGE_VERSION)" \
-		--no-checksum --compat-libtool
-	$(LCOV) $(code_coverage_quiet) \
-		--directory $(top_builddir)/src/knot/conf \
-		--capture --initial \
-		--ignore-errors source \
-		--base-directory $(top_builddir)/src/knot/conf \
-		--output-file "$(PACKAGE_NAME)-$(PACKAGE_VERSION)-conf_base.info" \
-		--test-name "$(PACKAGE_NAME)-$(PACKAGE_VERSION)" \
-		--no-checksum --compat-libtool
-	$(LCOV) $(code_coverage_quiet) \
-		--directory $(top_builddir)/src/zscanner \
-		--capture --initial \
-		--ignore-errors source \
-		--base-directory $(top_builddir)/src/zscanner \
-		--output-file "$(PACKAGE_NAME)-$(PACKAGE_VERSION)-zscanner_base.info" \
-		--test-name "$(PACKAGE_NAME)-$(PACKAGE_VERSION)" \
-		--no-checksum --compat-libtool
+		--no-checksum \
+		--compat-libtool \
+		--output-file $(CODE_COVERAGE_INFO)
 else
 	@echo "You need to run configure with --enable-code-coverage to enable code coverage"
 endif
@@ -52,39 +41,13 @@ endif
 code-coverage-capture:
 if CODE_COVERAGE_ENABLED
 	$(LCOV) $(code_coverage_quiet) \
-		--directory $(top_builddir)/src/common \
-		--directory $(top_builddir)/src/knot \
-		--directory $(top_builddir)/src/libknot \
+		--no-external \
+		$(foreach dir, $(CODE_COVERAGE_DIRS), --directory $(builddir)/$(dir)) \
 		--capture \
 		--ignore-errors source \
-		--base-directory $(top_builddir)/src \
-		--output-file "$(PACKAGE_NAME)-$(PACKAGE_VERSION)-src_capture.info" \
-		--test-name "$(PACKAGE_NAME)-$(PACKAGE_VERSION)" \
-		--no-checksum --compat-libtool
-	$(LCOV) $(code_coverage_quiet) \
-		--directory $(top_builddir)/src/knot/conf \
-		--capture \
-		--ignore-errors source \
-		--base-directory $(top_builddir)/src/knot/conf \
-		--output-file "$(PACKAGE_NAME)-$(PACKAGE_VERSION)-conf_capture.info" \
-		--test-name "$(PACKAGE_NAME)-$(PACKAGE_VERSION)" \
-		--no-checksum --compat-libtool
-	$(LCOV) $(code_coverage_quiet) \
-		--directory $(top_builddir)/src/zscanner \
-		--capture \
-		--ignore-errors source \
-		--base-directory $(top_builddir)/src/zscanner \
-		--output-file "$(PACKAGE_NAME)-$(PACKAGE_VERSION)-zscanner_capture.info" \
-		--test-name "$(PACKAGE_NAME)-$(PACKAGE_VERSION)" \
-		--no-checksum --compat-libtool
-	$(LCOV) $(code_coverage_quiet) \
-		--add-tracefile "$(PACKAGE_NAME)-$(PACKAGE_VERSION)-src_base.info" \
-		--add-tracefile "$(PACKAGE_NAME)-$(PACKAGE_VERSION)-conf_base.info" \
-		--add-tracefile "$(PACKAGE_NAME)-$(PACKAGE_VERSION)-zscanner_base.info" \
-		--add-tracefile "$(PACKAGE_NAME)-$(PACKAGE_VERSION)-src_capture.info" \
-		--add-tracefile "$(PACKAGE_NAME)-$(PACKAGE_VERSION)-conf_capture.info" \
-		--add-tracefile "$(PACKAGE_NAME)-$(PACKAGE_VERSION)-zscanner_capture.info" \
-		--output-file "$(PACKAGE_NAME)-$(PACKAGE_VERSION)-coverage.info"
+		--no-checksum \
+		--compat-libtool \
+		--output-file $(CODE_COVERAGE_INFO)
 else
 	@echo "You need to run configure with --enable-code-coverage to enable code coverage"
 endif
@@ -93,7 +56,12 @@ code-coverage-html:
 if CODE_COVERAGE_ENABLED
 	@echo "Generating code coverage HTML report (this might take a while)"
 	@cp src/knot/conf/cf-lex.l src/knot/conf/cf-parse.y src/
-	LANG=C $(GENHTML) $(code_coverage_quiet) --prefix $(top_builddir) --output-directory "$(PACKAGE_NAME)-$(PACKAGE_VERSION)-coverage" --title "$(PACKAGE_NAME)-$(PACKAGE_VERSION) Code Coverage" --legend --show-details "$(PACKAGE_NAME)-$(PACKAGE_VERSION)-coverage.info" --ignore-errors source
+	LANG=C $(GENHTML) $(code_coverage_quiet) \
+		--output-directory $(CODE_COVERAGE_HTML) \
+		--title "Knot DNS $(PACKAGE_VERSION) Code Coverage" \
+		--legend --show-details \
+		--ignore-errors source \
+		$(CODE_COVERAGE_INFO)
 	-@rm src/cf-lex.l src/cf-parse.y
 else
 	@echo "You need to run configure with --enable-code-coverage to enable code coverage"
@@ -102,7 +70,7 @@ endif
 code-coverage-summary:
 if CODE_COVERAGE_ENABLED
 	$(LCOV) \
-		--summary "$(PACKAGE_NAME)-$(PACKAGE_VERSION)-coverage.info"
+		--summary $(CODE_COVERAGE_INFO)
 else
 	@echo "You need to run configure with --enable-code-coverage to enable code coverage"
 endif
@@ -112,10 +80,7 @@ clean-local: code-coverage-clean
 	-find . -name "*.gcno" -delete
 code-coverage-clean:
 	-$(LCOV) --directory $(top_builddir) -z
-	-rm -rf $(PACKAGE_NAME)-$(PACKAGE_VERSION)-*_base.info \
-	        $(PACKAGE_NAME)-$(PACKAGE_VERSION)-*_capture.info \
-	        $(PACKAGE_NAME)-$(PACKAGE_VERSION)-coverage.info \
-	        $(PACKAGE_NAME)-$(PACKAGE_VERSION)-coverage/
+	-rm -rf $(CODE_COVERAGE_INFO) $(CODE_COVERAGE_HTML)
 	-find . -name "*.gcda" -o -name "*.gcov" -delete
 endif
 

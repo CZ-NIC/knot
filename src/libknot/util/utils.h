@@ -26,7 +26,6 @@
 
 #pragma once
 
-#include "libknot/util/endian.h"
 #include <string.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -78,10 +77,7 @@ knot_lookup_table_t *knot_lookup_by_id(knot_lookup_table_t *table,
  *
  * \return The 2 bytes read, in host byte order.
  */
-static inline uint16_t knot_wire_read_u16(const uint8_t *pos)
-{
-	return be16toh(*(uint16_t *)pos);
-}
+uint16_t knot_wire_read_u16(const uint8_t *pos);
 
 /*!
  * \brief Reads 4 bytes from the wireformat data.
@@ -90,10 +86,7 @@ static inline uint16_t knot_wire_read_u16(const uint8_t *pos)
  *
  * \return The 4 bytes read, in host byte order.
  */
-static inline uint32_t knot_wire_read_u32(const uint8_t *pos)
-{
-	return be32toh(*(uint32_t *)pos);
-}
+uint32_t knot_wire_read_u32(const uint8_t *pos);
 
 /*!
  * \brief Reads 6 bytes from the wireformat data.
@@ -102,12 +95,7 @@ static inline uint32_t knot_wire_read_u32(const uint8_t *pos)
  *
  * \return The 6 bytes read, in host byte order.
  */
-static inline uint64_t knot_wire_read_u48(const uint8_t *pos)
-{
-	uint64_t input = 0;
-	memcpy((void *)&input + 1, (void *)pos, 6);
-	return be64toh(input) >> 8;
-}
+uint64_t knot_wire_read_u48(const uint8_t *pos);
 
 /*!
  * \brief Read 8 bytes from the wireformat data.
@@ -116,10 +104,7 @@ static inline uint64_t knot_wire_read_u48(const uint8_t *pos)
  *
  * \return The 8 bytes read, in host byte order.
  */
-static inline uint64_t knot_wire_read_u64(const uint8_t *pos)
-{
-	return be64toh(*(uint64_t *)pos);
-}
+uint64_t knot_wire_read_u64(const uint8_t *pos);
 
 /*!
  * \brief Writes 2 bytes in wireformat.
@@ -129,10 +114,7 @@ static inline uint64_t knot_wire_read_u64(const uint8_t *pos)
  * \param pos Position where to put the 2 bytes.
  * \param data Data to put.
  */
-static inline void knot_wire_write_u16(uint8_t *pos, uint16_t data)
-{
-	*(uint16_t *)pos = htobe16(data);
-}
+void knot_wire_write_u16(uint8_t *pos, uint16_t data);
 
 /*!
  * \brief Writes 4 bytes in wireformat.
@@ -142,10 +124,7 @@ static inline void knot_wire_write_u16(uint8_t *pos, uint16_t data)
  * \param pos Position where to put the 4 bytes.
  * \param data Data to put.
  */
-static inline void knot_wire_write_u32(uint8_t *pos, uint32_t data)
-{
-	*(uint32_t *)pos = htobe32(data);
-}
+void knot_wire_write_u32(uint8_t *pos, uint32_t data);
 
 /*!
  * \brief Writes 6 bytes in wireformat.
@@ -155,11 +134,7 @@ static inline void knot_wire_write_u32(uint8_t *pos, uint32_t data)
  * \param pos Position where to put the 4 bytes.
  * \param data Data to put.
  */
-static inline void knot_wire_write_u48(uint8_t *pos, uint64_t data)
-{
-	uint64_t swapped = htobe64(data << 8);
-	memcpy((void *)pos, (uint8_t *)&swapped + 1, 6);
-}
+void knot_wire_write_u48(uint8_t *pos, uint64_t data);
 
 /*!
  * \brief Writes 8 bytes in wireformat.
@@ -169,10 +144,7 @@ static inline void knot_wire_write_u48(uint8_t *pos, uint64_t data)
  * \param pos Position where to put the 8 bytes.
  * \param data Data to put.
  */
-static inline void knot_wire_write_u64(uint8_t *pos, uint64_t data)
-{
-	*(uint64_t *)pos = htobe64(data);
-}
+void knot_wire_write_u64(uint8_t *pos, uint64_t data);
 
 /*!
  * \brief Compares two zone serials.
