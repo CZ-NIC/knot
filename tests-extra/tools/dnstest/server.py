@@ -343,6 +343,7 @@ class Server(object):
                 check_call([params.gdb_bin, "-ex", "set confirm off", "-ex",
                             "target remote | %s --pid=%s" %
                             (params.vgdb_bin, self.proc.pid),
+                            "-ex", "info threads",
                             "-ex", "thread apply all bt full", "-ex", "q",
                             self.daemon_bin],
                            stdout=open(self.dir + "/gdb.out", mode="a"),

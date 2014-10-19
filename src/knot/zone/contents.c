@@ -732,6 +732,10 @@ static bool rrset_is_nsec3rel(const knot_rrset_t *rr)
 int zone_contents_add_rr(zone_contents_t *z, const knot_rrset_t *rr,
                          zone_node_t **n)
 {
+	if (z == NULL || rr == NULL) {
+		return KNOT_EINVAL;
+	}
+
 	return insert_rr(z, rr, n, rrset_is_nsec3rel(rr));
 }
 

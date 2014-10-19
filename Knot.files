@@ -256,6 +256,7 @@ src/libknot/rrset.c
 src/libknot/rrset.h
 src/libknot/rrtype/aaaa.h
 src/libknot/rrtype/dnskey.h
+src/libknot/rrtype/naptr.h
 src/libknot/rrtype/nsec.h
 src/libknot/rrtype/nsec3.c
 src/libknot/rrtype/nsec3.h
@@ -348,7 +349,6 @@ tests/rrset.c
 tests/rrset_wire.c
 tests/sample_conf.h
 tests/server.c
-tests/slab.c
 tests/wire.c
 tests/worker_pool.c
 tests/worker_queue.c
