@@ -293,31 +293,6 @@ int knot_rrclass_from_string(const char *name, uint16_t *num)
 	return 0;
 }
 
-int knot_descriptor_item_is_dname(const int item)
-{
-	return item == KNOT_RDATA_WF_FIXED_DNAME ||
-	       item == KNOT_RDATA_WF_COMPRESSIBLE_DNAME ||
-	       item == KNOT_RDATA_WF_DECOMPRESSIBLE_DNAME;
-}
-
-int knot_descriptor_item_is_fixed(const int item)
-{
-	if (item > 0) {
-		return 1;
-	} else {
-		return 0;
-	}
-}
-
-int knot_descriptor_item_is_remainder(const int item)
-{
-	if (item == KNOT_RDATA_WF_REMAINDER) {
-		return 1;
-	} else {
-		return 0;
-	}
-}
-
 int knot_rrtype_is_metatype(const uint16_t type)
 {
 	return type == KNOT_RRTYPE_SIG  ||
@@ -341,4 +316,30 @@ int knot_rrtype_additional_needed(const uint16_t type)
 	return type == KNOT_RRTYPE_NS ||
 	       type == KNOT_RRTYPE_MX ||
 	       type == KNOT_RRTYPE_SRV;
+}
+
+bool knot_rrtype_should_be_lowercased(const uint16_t type)
+{
+	return type == KNOT_RRTYPE_NS    ||
+	       type == KNOT_RRTYPE_MD    ||
+	       type == KNOT_RRTYPE_MF    ||
+	       type == KNOT_RRTYPE_CNAME ||
+	       type == KNOT_RRTYPE_SOA   ||
+	       type == KNOT_RRTYPE_MB    ||
+	       type == KNOT_RRTYPE_MG    ||
+	       type == KNOT_RRTYPE_MR    ||
+	       type == KNOT_RRTYPE_PTR   ||
+	       type == KNOT_RRTYPE_MINFO ||
+	       type == KNOT_RRTYPE_MX    ||
+	       type == KNOT_RRTYPE_RP    ||
+	       type == KNOT_RRTYPE_AFSDB ||
+	       type == KNOT_RRTYPE_RT    ||
+	       type == KNOT_RRTYPE_SIG   ||
+	       type == KNOT_RRTYPE_PX    ||
+	       type == KNOT_RRTYPE_NXT   ||
+	       type == KNOT_RRTYPE_NAPTR ||
+	       type == KNOT_RRTYPE_KX    ||
+	       type == KNOT_RRTYPE_SRV   ||
+	       type == KNOT_RRTYPE_DNAME ||
+	       type == KNOT_RRTYPE_RRSIG;
 }

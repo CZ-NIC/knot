@@ -809,7 +809,8 @@ Statement ``query_module`` takes a list of ``module_name
 ^^^^^^^^^^^
 
 Data directory for zones.  It is used to store zone files and journal
-files.
+files. If compiled with LMDB support, a database storing persistent zone
+event timers for slave zones will be created in the ``timers`` subdirectory.
 
 Value of ``storage`` set in ``zone`` section is relative to
 ``storage`` in ``zones`` section.
@@ -1093,7 +1094,7 @@ serious will be logged to both ``stderr`` and ``syslog``.  The
 
 * ``stdout`` - logging to standard output
 * ``stderr`` - logging to standard error output
-* ``syslog`` - logging to syslog
+* ``syslog`` - logging to syslog (or systemd journal, if systemd support is enabled)
 
 .. _category:
 
@@ -1105,6 +1106,10 @@ Knot DNS allows user to choose from these logging categories:
 * ``server`` - Messages related to general operation of the server.
 * ``zone`` - Messages related to zones, zone parsing and loading.
 * ``any`` - All categories.
+
+If systemd support is enabled, the log messages in the `zone` category are
+given the `ZONE` field containing a name of the zone. The field can be used
+to filter the log entries in the journal.
 
 .. _severity:
 

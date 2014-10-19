@@ -112,9 +112,21 @@ static int connect_nsec_nodes(zone_node_t *a, zone_node_t *b,
 	}
 
 	knot_rrset_t old_nsec = node_rrset(a, KNOT_RRTYPE_NSEC);
+
 	if (!knot_rrset_empty(&old_nsec)) {
-		if (knot_rrset_equal(&new_nsec, &old_nsec,
-		                     KNOT_RRSET_COMPARE_WHOLE)) {
+		/* Convert old NSEC to lowercase, just in case it's not. */
+		knot_rrset_t *old_nsec_lc = knot_rrset_copy(&old_nsec, NULL);
+		ret = knot_rrset_rr_to_canonical(old_nsec_lc);
+		if (ret != KNOT_EOK) {
+			knot_rrset_free(&old_nsec_lc, NULL);
+			return ret;
+		}
+
+		bool equal = knot_rrset_equal(&new_nsec, old_nsec_lc,
+		                              KNOT_RRSET_COMPARE_WHOLE);
+		knot_rrset_free(&old_nsec_lc, NULL);
+
+		if (equal) {
 			// current NSEC is valid, do nothing
 			dbg_dnssec_detail("NSECs equal.\n");
 			knot_rdataset_clear(&new_nsec.rrs, NULL);

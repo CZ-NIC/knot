@@ -28,9 +28,8 @@ check_PROGRAMS = \
 	journal				\
 	namedb				\
 	node				\
-	pkt				\
 	overlay				\
-	requestor			\
+	pkt				\
 	process_answer			\
 	process_query			\
 	query_module			\

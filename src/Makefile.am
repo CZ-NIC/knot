@@ -8,9 +8,9 @@ noinst_LTLIBRARIES = libknotd.la libknots.la libknotus.la libknotcs.la
 
 # $(YACC) will generate header file
 AM_CPPFLAGS = \
-	-include $(top_builddir)/src/config.h \
-	-DCONFIG_DIR='"${config_dir}"' \
-	-DSTORAGE_DIR='"${storage_dir}"' \
+	-include $(top_builddir)/src/config.h	\
+	-DCONFIG_DIR='"${config_dir}"'		\
+	-DSTORAGE_DIR='"${storage_dir}"'	\
 	-DRUN_DIR='"${run_dir}"'
 AM_CFLAGS = $(CODE_COVERAGE_CFLAGS)
 AM_LDFLAGS = $(CODE_COVERAGE_LDFLAGS)
@@ -81,43 +81,43 @@ libknots_la_SOURCES =				\
 # static: common shared (also in libknot)
 libknotcs_la_SOURCES =				\
 	common/array-sort.h			\
-	common/binsearch.h			\
-	common/print.c				\
-	common/print.h				\
-	common/strlcpy.c			\
-	common/strlcpy.h			\
-	common/lists.c				\
-	common/lists.h				\
-	common/sockaddr.c			\
-	common/sockaddr.h			\
 	common/base32hex.c			\
 	common/base32hex.h			\
 	common/base64.c				\
 	common/base64.h				\
+	common/binsearch.h			\
 	common/debug.h				\
 	common/errors.c				\
 	common/errors.h				\
 	common/getline.c			\
 	common/getline.h			\
+	common/hhash.c				\
+	common/hhash.h				\
+	common/lists.c				\
+	common/lists.h				\
+	common/log.c				\
+	common/log.h				\
 	common/mem.c				\
 	common/mem.h				\
 	common/mempool.c			\
 	common/mempool.h			\
-	common/net.c			\
-	common/net.h			\
-	common/hhash.c				\
-	common/hhash.h				\
-	common/trie/hat-trie.c		\
-	common/trie/hat-trie.h		\
-	common/trie/murmurhash3.c	\
-	common/trie/murmurhash3.h	\
 	common/namedb/namedb.h			\
-	common/namedb/namedb_lmdb.h		\
 	common/namedb/namedb_lmdb.c		\
-	common/namedb/namedb_trie.h		\
+	common/namedb/namedb_lmdb.h		\
 	common/namedb/namedb_trie.c		\
-	common/log.c				\
-	common/log.h
+	common/namedb/namedb_trie.h		\
+	common/net.c				\
+	common/net.h				\
+	common/print.c				\
+	common/print.h				\
+	common/sockaddr.c			\
+	common/sockaddr.h			\
+	common/strlcpy.c			\
+	common/strlcpy.h			\
+	common/trie/hat-trie.c			\
+	common/trie/hat-trie.h			\
+	common/trie/murmurhash3.c		\
+	common/trie/murmurhash3.h
 
 # static: utilities shared
 libknotus_la_SOURCES =				\
@@ -151,12 +151,12 @@ libknot_la_SOURCES =				\
 	libknot/descriptor.h			\
 	libknot/dname.c				\
 	libknot/dname.h				\
+	libknot/dnssec/bitmap.h			\
 	libknot/dnssec/config.h			\
 	libknot/dnssec/crypto.c			\
 	libknot/dnssec/crypto.h			\
 	libknot/dnssec/key.c			\
 	libknot/dnssec/key.h			\
-	libknot/dnssec/bitmap.h			\
 	libknot/dnssec/policy.c			\
 	libknot/dnssec/policy.h			\
 	libknot/dnssec/random.h			\
@@ -180,33 +180,35 @@ libknot_la_SOURCES =				\
 	libknot/packet/wire.h			\
 	libknot/processing/layer.c		\
 	libknot/processing/layer.h		\
-	libknot/processing/overlay.c	\
-	libknot/processing/overlay.h	\
-	libknot/processing/requestor.c	\
-	libknot/processing/requestor.h	\
-	libknot/rrtype/rdname.h			\
-	libknot/rrtype/aaaa.h			\
-	libknot/rrtype/dnskey.h			\
-	libknot/rrtype/nsec.h			\
-	libknot/rrtype/nsec3.c			\
-	libknot/rrtype/nsec3.h			\
-	libknot/rrtype/nsec3param.h		\
-	libknot/rrtype/nsec3param.c		\
-	libknot/rrtype/nsec.h			\
-	libknot/rrtype/opt.c			\
-	libknot/rrtype/opt.h			\
-	libknot/rrtype/rrsig.h			\
-	libknot/rrtype/soa.h			\
-	libknot/rrtype/tsig.c			\
-	libknot/rrtype/tsig.h			\
-	libknot/rrset-dump.c			\
-	libknot/rrset-dump.h			\
+	libknot/processing/overlay.c		\
+	libknot/processing/overlay.h		\
+	libknot/processing/requestor.c		\
+	libknot/processing/requestor.h		\
 	libknot/rdata.c				\
 	libknot/rdata.h				\
 	libknot/rdataset.c			\
 	libknot/rdataset.h			\
+	libknot/rrset-dump.c			\
+	libknot/rrset-dump.h			\
 	libknot/rrset.c				\
 	libknot/rrset.h				\
+	libknot/rrtype/aaaa.h			\
+	libknot/rrtype/dnskey.h			\
+	libknot/rrtype/naptr.h			\
+	libknot/rrtype/nsec.h			\
+	libknot/rrtype/nsec.h			\
+	libknot/rrtype/nsec.h			\
+	libknot/rrtype/nsec3.c			\
+	libknot/rrtype/nsec3.h			\
+	libknot/rrtype/nsec3param.c		\
+	libknot/rrtype/nsec3param.h		\
+	libknot/rrtype/opt.c			\
+	libknot/rrtype/opt.h			\
+	libknot/rrtype/rdname.h			\
+	libknot/rrtype/rrsig.h			\
+	libknot/rrtype/soa.h			\
+	libknot/rrtype/tsig.c			\
+	libknot/rrtype/tsig.h			\
 	libknot/tsig-op.c			\
 	libknot/tsig-op.h			\
 	libknot/util/endian.h			\
@@ -244,34 +246,34 @@ libknotd_la_SOURCES =				\
 	knot/dnssec/zone-sign.c			\
 	knot/dnssec/zone-sign.h			\
 	knot/knot.h				\
-	knot/nameserver/axfr.c			\
-	knot/nameserver/axfr.h			\
-	knot/nameserver/chaos.c			\
-	knot/nameserver/chaos.h			\
-	knot/nameserver/capture.c		\
-	knot/nameserver/capture.h		\
-	knot/nameserver/internet.c		\
-	knot/nameserver/internet.h		\
-	knot/nameserver/ixfr.c			\
-	knot/nameserver/ixfr.h			\
-	knot/nameserver/nsec_proofs.c		\
-	knot/nameserver/nsec_proofs.h		\
-	knot/nameserver/process_query.c		\
-	knot/nameserver/process_query.h		\
-	knot/nameserver/process_answer.c	\
-	knot/nameserver/process_answer.h	\
-	knot/nameserver/query_module.c		\
-	knot/nameserver/query_module.h		\
-	knot/nameserver/update.c		\
-	knot/nameserver/update.h		\
-	knot/nameserver/notify.c		\
-	knot/nameserver/notify.h		\
-	knot/nameserver/tsig_ctx.c		\
-	knot/nameserver/tsig_ctx.h		\
 	knot/modules/synth_record.c		\
 	knot/modules/synth_record.h		\
 	knot/modules/dnsproxy.c		\
 	knot/modules/dnsproxy.h		\
+	knot/nameserver/axfr.c			\
+	knot/nameserver/axfr.h			\
+	knot/nameserver/capture.c		\
+	knot/nameserver/capture.h		\
+	knot/nameserver/chaos.c			\
+	knot/nameserver/chaos.h			\
+	knot/nameserver/internet.c		\
+	knot/nameserver/internet.h		\
+	knot/nameserver/ixfr.c			\
+	knot/nameserver/ixfr.h			\
+	knot/nameserver/notify.c		\
+	knot/nameserver/notify.h		\
+	knot/nameserver/nsec_proofs.c		\
+	knot/nameserver/nsec_proofs.h		\
+	knot/nameserver/process_answer.c	\
+	knot/nameserver/process_answer.h	\
+	knot/nameserver/process_query.c		\
+	knot/nameserver/process_query.h		\
+	knot/nameserver/query_module.c		\
+	knot/nameserver/query_module.h		\
+	knot/nameserver/tsig_ctx.c		\
+	knot/nameserver/tsig_ctx.h		\
+	knot/nameserver/update.c		\
+	knot/nameserver/update.h		\
 	knot/other/debug.h			\
 	knot/server/dthreads.c			\
 	knot/server/dthreads.h			\
@@ -279,22 +281,22 @@ libknotd_la_SOURCES =				\
 	knot/server/journal.h			\
 	knot/server/rrl.c			\
 	knot/server/rrl.h			\
+	knot/server/serialization.c		\
+	knot/server/serialization.h		\
 	knot/server/server.c			\
 	knot/server/server.h			\
 	knot/server/tcp-handler.c		\
 	knot/server/tcp-handler.h		\
 	knot/server/udp-handler.c		\
 	knot/server/udp-handler.h		\
-	knot/server/serialization.c		\
-	knot/server/serialization.h		\
 	knot/updates/acl.c			\
 	knot/updates/acl.h			\
+	knot/updates/apply.c			\
+	knot/updates/apply.h			\
 	knot/updates/changesets.c		\
 	knot/updates/changesets.h		\
 	knot/updates/ddns.c			\
 	knot/updates/ddns.h			\
-	knot/updates/apply.c			\
-	knot/updates/apply.h			\
 	knot/updates/zone-update.c		\
 	knot/updates/zone-update.h		\
 	knot/worker/pool.c			\
@@ -319,16 +321,16 @@ libknotd_la_SOURCES =				\
 	knot/zone/zone-diff.h			\
 	knot/zone/zone-dump.c			\
 	knot/zone/zone-dump.h			\
+	knot/zone/zone-load.c			\
+	knot/zone/zone-load.h			\
 	knot/zone/zone-tree.c			\
 	knot/zone/zone-tree.h			\
 	knot/zone/zone.c			\
 	knot/zone/zone.h			\
-	knot/zone/zone-load.c			\
-	knot/zone/zone-load.h			\
-	knot/zone/zonedb.c			\
-	knot/zone/zonedb.h			\
 	knot/zone/zonedb-load.c			\
 	knot/zone/zonedb-load.h			\
+	knot/zone/zonedb.c			\
+	knot/zone/zonedb.h			\
 	knot/zone/zonefile.c			\
 	knot/zone/zonefile.h
 

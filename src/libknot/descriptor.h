@@ -27,6 +27,7 @@
 
 #include <stdint.h>			// uint16_t
 #include <stdio.h>			// size_t
+#include <stdbool.h>			// bool
 
 #define KNOT_MAX_RDATA_BLOCKS	8
 #define KNOT_MAX_RDATA_DNAMES	2	// update this when defining new RR types
@@ -233,36 +234,6 @@ int knot_rrclass_to_string(const uint16_t rrclass,
 int knot_rrclass_from_string(const char *name, uint16_t *num);
 
 /*!
- * \brief Checks if given item is one of dname types.
- *
- * \param item Item value.
- *
- * \retval > 0 if YES.
- * \retval 0 if NO.
- */
-int knot_descriptor_item_is_dname(const int item);
-
-/*!
- * \brief Checks if given item has fixed size.
- *
- * \param item Item value.
- *
- * \retval 1 if YES.
- * \retval 0 if NO.
- */
-int knot_descriptor_item_is_fixed(const int item);
-
-/*!
- * \brief Checks if given item is remainder.
- *
- * \param item Item value.
- *
- * \retval 1 if YES.
- * \retval 0 if NO.
- */
-int knot_descriptor_item_is_remainder(const int item);
-
-/*!
  * \brief Checks if given item is one of metatypes or qtypes.
  *
  * \param item Item value.
@@ -293,5 +264,19 @@ int knot_rrtype_is_ddns_forbidden(const uint16_t type);
  * \retval 0 otherwise.
  */
 int knot_rrtype_additional_needed(const uint16_t type);
+
+/*!
+ * \brief Checks whether the RDATA domain names should be lowercased in
+ *        canonical format of RRSet of the given type.
+ *
+ * Types that should be lowercased are accorrding to RFC 4034, Section 6.2,
+ * except for NSEC (updated by RFC 6840, Section 5.1) and A6 (not supported).
+ *
+ * \param type RRSet type to check.
+ *
+ * \retval true If RDATA dnames for type should be lowercased in canonical format.
+ * \retval false Otherwise.
+ */
+bool knot_rrtype_should_be_lowercased(const uint16_t type);
 
 /*! @} */
