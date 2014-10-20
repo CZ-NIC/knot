@@ -420,9 +420,8 @@ static int rosedb_send_log(int sock, struct sockaddr *dst_addr, struct entry *en
 	return ret;
 }
 
-static int rosedb_synth_rr(knot_pkt_t *pkt, struct entry *entry, struct query_data *qdata)
+static int rosedb_synth_rr(knot_pkt_t *pkt, struct entry *entry, uint16_t qtype)
 {
-	uint16_t qtype = knot_pkt_qtype(qdata->query);
 	if (qtype != entry->data.type) {
 		return KNOT_EOK; /* Ignore */
 	}
@@ -441,16 +440,34 @@ static int rosedb_synth_rr(knot_pkt_t *pkt, struct entry *entry, struct query_da
 	return ret;
 }
 
-static int rosedb_synth(knot_pkt_t *pkt, struct iter *it, struct query_data *qdata)
+static int rosedb_synth(knot_pkt_t *pkt, const knot_dname_t *key, struct iter *it, struct query_data *qdata)
 {
 	struct entry entry;
 	int ret = KNOT_EOK;
+	uint16_t qtype = knot_pkt_qtype(qdata->query);
+
 	while(ret == KNOT_EOK) {
 		if (cache_iter_val(it, &entry) == 0) {
-			ret = rosedb_synth_rr(pkt, &entry, qdata);
+			ret = rosedb_synth_rr(pkt, &entry, qtype);
 		}
 		if (cache_iter_next(it) != 0) {
 			break;
+		}
+	}
+
+	/* Not found (zone cut if records exist). */
+	if (knot_wire_get_ancount(pkt->wire) == 0) {
+		knot_wire_set_rcode(pkt->wire, KNOT_RCODE_NXDOMAIN);
+		knot_pkt_begin(pkt, KNOT_AUTHORITY);
+		ret = cache_iter_begin(it, key);
+		while(ret == KNOT_EOK) {
+			if (cache_iter_val(it, &entry) == 0) {
+				ret = rosedb_synth_rr(pkt, &entry, KNOT_RRTYPE_SOA);
+				ret = rosedb_synth_rr(pkt, &entry, KNOT_RRTYPE_NS);
+			}
+			if (cache_iter_next(it) != 0) {
+				break;
+			}
 		}
 	}
 
@@ -488,7 +505,7 @@ static int rosedb_query_txn(MDB_txn *txn, MDB_dbi dbi, knot_pkt_t *pkt, struct q
 	}
 
 	/* Synthetize record to response. */
-	ret = rosedb_synth(pkt, &it, qdata);
+	ret = rosedb_synth(pkt, key, &it, qdata);
 
 	cache_iter_free(&it);
 	return ret;
