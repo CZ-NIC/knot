@@ -2,6 +2,8 @@
 #include <stdlib.h>
 
 #include "knot/modules/rosedb.c"
+#include "zscanner/scanner.h"
+#include "common/mem.h"
 
 static int rosedb_add(struct cache *cache, int argc, char *argv[]);
 static int rosedb_del(struct cache *cache, int argc, char *argv[]);
@@ -17,9 +19,9 @@ struct tool_action {
 
 #define TOOL_ACTION_COUNT 4
 static struct tool_action TOOL_ACTION[TOOL_ACTION_COUNT] = {
-{ "add",  rosedb_add, 4, "<zone> <ip> <threat_code> <syslog_ip>" },
-{ "del",  rosedb_del, 1, "<zone>" },
-{ "get",  rosedb_get, 1, "<zone>" },
+{ "add",  rosedb_add, 6, "<zone> <rrtype> <ttl> <rdata> <threat_code> <syslog_ip>" },
+{ "del",  rosedb_del, 1, "<zone> [rrtype]" },
+{ "get",  rosedb_get, 1, "<zone> [rrtype]" },
 { "list", rosedb_list, 0, "" },
 };
 
@@ -77,30 +79,55 @@ int main(int argc, char *argv[])
 	return ret;
 }
 
+static void parse_err(zs_scanner_t *s) {
+	fprintf(stderr, "failed to parse RDATA: %s\n", zs_strerror(s->error_code));
+}
+
+static int parse_rdata(struct entry *entry, const char *owner, const char *rrtype, const char *rdata,
+                       int ttl, mm_ctx_t *mm)
+{
+	zs_scanner_t *scanner = zs_scanner_create(".", KNOT_CLASS_IN, 0,
+	                                         NULL, parse_err, NULL);
+	if (scanner == NULL) {
+		return KNOT_ENOMEM;
+	}
+
+	knot_rdataset_init(&entry->data.rrs);
+	knot_rrtype_from_string(rrtype, &entry->data.type);
+
+	/* Synthetize RR line */
+	char *rr_line = sprintf_alloc("%s %u IN %s %s\n", owner, ttl, rrtype, rdata);
+	int ret = zs_scanner_parse(scanner, rr_line, rr_line + strlen(rr_line), true);
+	free(rr_line);
+
+	/* Write parsed RDATA. */
+	if (ret == KNOT_EOK) {
+		knot_rdata_t rr[knot_rdata_array_size(scanner->r_data_length)];
+		knot_rdata_init(rr, scanner->r_data_length, scanner->r_data, ttl);
+		knot_rdataset_add(&entry->data.rrs, rr, mm);
+	}
+
+	zs_scanner_free(scanner);
+
+	return ret;
+}
+
 static int rosedb_add(struct cache *cache, int argc, char *argv[])
 {
-	printf("ADD %s\t%s\t%s\t%s\n", argv[0], argv[1], argv[2], argv[3]);
+	printf("ADD %s\t%s\t%s\t%s\t%s\t%s\n", argv[0], argv[1], argv[2], argv[3], argv[4], argv[5]);
 
 	knot_dname_t key[KNOT_DNAME_MAXLEN] = { '\0' };
 	knot_dname_from_str(key, argv[0], sizeof(key));
 	struct entry entry;
-	entry.ip          = argv[1];
-	entry.threat_code = argv[2];
-	entry.syslog_ip   = argv[3];
-
-	/* Check IPs. */
-	struct sockaddr_storage addr;
-	if (sockaddr_set(&addr, AF_INET, entry.ip, 0) != KNOT_EOK) {
-		fprintf(stderr, "invalid address: '%s'\n", entry.ip);
-		return KNOT_ERROR;
-	}
-	if (sockaddr_set(&addr, AF_INET, entry.syslog_ip, 0) != KNOT_EOK) {
-		fprintf(stderr, "invalid address: '%s'\n", entry.syslog_ip);
-		return KNOT_ERROR;
+	int ret = parse_rdata(&entry, argv[0], argv[1], argv[3], atoi(argv[2]), cache->pool);
+	entry.threat_code = argv[4];
+	entry.syslog_ip   = argv[5];
+	if (ret != 0) {
+		return ret;
 	}
 
 	MDB_txn *txn = NULL;
-	int ret = mdb_txn_begin(cache->env, NULL, 0, &txn);
+	ret = mdb_txn_begin(cache->env, NULL, 0, &txn);
 	if (ret != 0) {
 		return ret;
 	}
@@ -141,13 +168,20 @@ static int rosedb_get(struct cache *cache, int argc, char *argv[])
 
 	knot_dname_t key[KNOT_DNAME_MAXLEN] = { '\0' };
 	knot_dname_from_str(key, argv[0], sizeof(key));
-	struct entry entry;
-	ret = cache_query_fetch(txn, cache->dbi, key, &entry);
-	if (ret == 0) {
-		printf("%s\t%s\t%s\t%s\n", argv[0], entry.ip, entry.threat_code, entry.syslog_ip);
-		cache_query_release(&entry);
+	struct iter it;
+	ret = cache_query_fetch(txn, cache->dbi, &it, key);
+	while (ret == 0) {
+		struct entry entry;
+		cache_iter_val(&it, &entry);
+		knot_rdata_t *rd = knot_rdataset_at(&entry.data.rrs, 0);
+		printf("%s\t%hu\tTTL=%u\tRDLEN=%u\t%s\t%s\n", argv[0], entry.data.type,
+		                knot_rdata_ttl(rd), knot_rdata_rdlen(rd), entry.threat_code, entry.syslog_ip);
+		if (cache_iter_next(&it) != 0) {
+			break;
+		}
 	}
 
+	cache_iter_free(&it);
 	mdb_txn_abort(txn);
 
 	return ret;
@@ -170,7 +204,8 @@ static int rosedb_list(struct cache *cache, int argc, char *argv[])
 		struct entry entry;
 		unpack_entry(&data, &entry);
 		knot_dname_to_str(dname_str, key.mv_data, sizeof(dname_str));
-		printf("%s\t%s\t%s\t%s\n", dname_str, entry.ip, entry.threat_code, entry.syslog_ip);
+		printf("%s\t%hu RDATA=%zuB\t%s\t%s\n", dname_str, entry.data.type,
+		       knot_rdataset_size(&entry.data.rrs), entry.threat_code, entry.syslog_ip);
 
 		ret = mdb_cursor_get(cursor, &key, &data, MDB_NEXT);
 	}

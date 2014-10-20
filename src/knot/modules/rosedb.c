@@ -26,11 +26,22 @@ struct cache
 	mm_ctx_t *pool;
 };
 
+struct rdentry {
+	uint16_t type;
+	knot_rdataset_t rrs;
+};
+
 struct entry {
-	const char *ip;
+	struct rdentry data;
 	const char *threat_code;
 	const char *syslog_ip;
 	MDB_cursor *cursor;
+};
+
+struct iter {
+	MDB_cursor *cur;
+	MDB_val key;
+	MDB_val val;
 };
 
 /*                       MDB access                                           */
@@ -55,7 +66,7 @@ static int dbase_open(struct cache *cache, const char *handle)
 		return ret;
 	}
 
-	ret = mdb_open(txn, NULL, 0, &cache->dbi);
+	ret = mdb_open(txn, NULL, MDB_DUPSORT, &cache->dbi);
 	if (ret != 0) {
 		mdb_txn_abort(txn);
 		mdb_env_close(cache->env);
@@ -98,9 +109,8 @@ static void cursor_release(MDB_cursor *cursor)
 
 /*                       data serialization                                   */
 
+#define ENTRY_MAXLEN 65535
 #define PACKED_LEN(str) (strlen(str) + 1) /* length of packed string including terminal byte */
-#define PACKED_ENTRY_LEN(e) \
-	(PACKED_LEN(e->ip) + PACKED_LEN(e->threat_code) + PACKED_LEN(e->syslog_ip))
 static inline void pack_str(char **stream, const char *str) {
 	int len = PACKED_LEN(str);
 	memcpy(*stream, str, len);
@@ -111,7 +121,19 @@ static inline char *unpack_str(char **stream) {
 	*stream += PACKED_LEN(ret);
 	return ret;
 }
-
+static inline void pack_bin(char **stream, const void *data, uint32_t len) {
+	knot_wire_write_u32((uint8_t *)*stream, len);
+	*stream += sizeof(uint32_t);
+	memcpy(*stream, data, len);
+	*stream += len;
+}
+static inline void *unpack_bin(char **stream, uint32_t *len) {
+	*len = knot_wire_read_u32((uint8_t *)*stream);
+	*stream += sizeof(uint32_t);
+	void *ret = *stream;
+	*stream += *len;
+	return ret;
+}
 static MDB_val pack_key(const knot_dname_t *name)
 {
 	MDB_val key = { knot_dname_size(name), (void *)name };
@@ -121,17 +143,32 @@ static MDB_val pack_key(const knot_dname_t *name)
 static int pack_entry(MDB_val *data, struct entry *entry)
 {
 	char *stream = data->mv_data;
-	pack_str(&stream, entry->ip);
+	char *bptr = stream;
+	pack_bin(&stream, &entry->data.type, sizeof(entry->data.type));
+	knot_rdataset_t *rrs = &entry->data.rrs;
+	pack_bin(&stream, &rrs->rr_count, sizeof(rrs->rr_count));
+	pack_bin(&stream, rrs->data, knot_rdataset_size(rrs));
+
 	pack_str(&stream, entry->threat_code);
 	pack_str(&stream, entry->syslog_ip);
 
+	data->mv_size = (stream - bptr);
 	return KNOT_EOK;
 }
 
 static int unpack_entry(MDB_val *data, struct entry *entry)
 {
+	uint32_t len = 0;
+	void *val = NULL;
 	char *stream = data->mv_data;
-	entry->ip = unpack_str(&stream);
+
+	val = unpack_bin(&stream, &len);
+	memcpy(&entry->data.type, val, sizeof(uint16_t));
+	knot_rdataset_t *rrs = &entry->data.rrs;
+	val = unpack_bin(&stream, &len);
+	memcpy(&rrs->rr_count, val, sizeof(uint16_t));
+	rrs->data = unpack_bin(&stream, &len);
+
 	entry->threat_code = unpack_str(&stream);
 	entry->syslog_ip = unpack_str(&stream);
 
@@ -140,7 +177,7 @@ static int unpack_entry(MDB_val *data, struct entry *entry)
 
 static int remove_entry(MDB_cursor *cur)
 {
-	int ret = mdb_cursor_del(cur, 0);
+	int ret = mdb_cursor_del(cur, MDB_NODUPDATA);
 	if (ret != 0) {
 		return KNOT_ERROR;
 	}
@@ -178,35 +215,45 @@ void cache_close(struct cache *cache)
 	mm_free(cache->pool, cache);
 }
 
-int cache_query_fetch(MDB_txn *txn, MDB_dbi dbi, const knot_dname_t *name, struct entry *entry)
+static int cache_iter_begin(struct iter *it, const knot_dname_t *name)
 {
-	MDB_cursor *cursor = cursor_acquire(txn, dbi);
-	if (cursor == NULL) {
+	it->key = pack_key(name);
+	it->val.mv_data = NULL;
+	it->val.mv_size = 0;
+
+	return mdb_cursor_get(it->cur, &it->key, &it->val, MDB_SET_KEY);
+}
+
+static int cache_iter_next(struct iter *it)
+{
+	return mdb_cursor_get(it->cur, &it->key, &it->val, MDB_NEXT_DUP);
+}
+
+static int cache_iter_val(struct iter *it, struct entry *entry)
+{
+	return unpack_entry(&it->val, entry);
+}
+
+static void cache_iter_free(struct iter *it)
+{
+	mdb_cursor_close(it->cur);
+	it->cur = NULL;
+}
+
+int cache_query_fetch(MDB_txn *txn, MDB_dbi dbi, struct iter *it, const knot_dname_t *name)
+{
+	it->cur = cursor_acquire(txn, dbi);
+	if (it->cur == NULL) {
 		return KNOT_ERROR;
 	}
 
-	MDB_val key = pack_key(name);
-	MDB_val data = { 0, NULL };
-	int ret = mdb_cursor_get(cursor, &key, &data, MDB_SET_KEY);
+	int ret = cache_iter_begin(it, name);
 	if (ret != 0) {
-		cursor_release(cursor);
-		return ret;
-	}
-
-	ret = unpack_entry(&data, entry);
-	if (ret != 0) {
-		cursor_release(cursor);
+		cache_iter_free(it);
 		return KNOT_ENOENT;
 	}
 
-	entry->cursor = cursor;
 	return KNOT_EOK;
-}
-
-void cache_query_release(struct entry *entry)
-{
-	mdb_cursor_close(entry->cursor);
-	entry->cursor = NULL;
 }
 
 int cache_insert(MDB_txn *txn, MDB_dbi dbi, const knot_dname_t *name, struct entry *entry)
@@ -216,38 +263,36 @@ int cache_insert(MDB_txn *txn, MDB_dbi dbi, const knot_dname_t *name, struct ent
 		return KNOT_ERROR;
 	}
 
-	size_t len = PACKED_ENTRY_LEN(entry);
 	MDB_val key = pack_key(name);
-	MDB_val data = { len, NULL };
+	MDB_val data = { 0, malloc(ENTRY_MAXLEN) };
 
-	int ret = mdb_cursor_put(cursor, &key, &data, MDB_RESERVE);
-	if (ret != 0) {
+	int ret = pack_entry(&data, entry);
+	if (ret != KNOT_EOK) {
+		free(data.mv_data);
 		return ret;
 	}
 
-	ret = pack_entry(&data, entry);
-
+	ret = mdb_cursor_put(cursor, &key, &data, 0);
+	free(data.mv_data);
 	cursor_release(cursor);
+
 	return ret;
 }
 
 int cache_remove(MDB_txn *txn, MDB_dbi dbi, const knot_dname_t *name)
 {
-	MDB_cursor *cursor = cursor_acquire(txn, dbi);
-	if (cursor == NULL) {
+	struct iter it;
+	it.cur = cursor_acquire(txn, dbi);
+	if (it.cur == NULL) {
 		return KNOT_ERROR;
 	}
 
-	MDB_val data;
-	MDB_val key = pack_key(name);
-	int ret = mdb_cursor_get(cursor, &key, &data, MDB_SET);
-	if (ret != 0) {
-		return KNOT_ENOENT;
+	int ret = cache_iter_begin(&it, name);
+	if (ret == 0) {
+		ret = remove_entry(it.cur);
 	}
 
-	ret = remove_entry(cursor);
-
-	cursor_release(cursor);
+	cursor_release(it.cur);
 	return ret;
 }
 
@@ -320,7 +365,8 @@ static int rosedb_log_message(char *stream, size_t *maxlen, struct entry *entry,
 	STREAM_WRITE(stream, maxlen, snprintf, "0\t");
 
 	/* Field 16 First IP. */
-	STREAM_WRITE(stream, maxlen, snprintf, "%s\t", entry->ip);
+#warning TODO: what to log?
+	//STREAM_WRITE(stream, maxlen, snprintf, "%s\t", entry->ip);
 
 	/* Field 17 Connection type. */
 	STREAM_WRITE(stream, maxlen, snprintf, "%s\t",
@@ -366,37 +412,62 @@ static int rosedb_send_log(int sock, struct sockaddr *dst_addr, struct entry *en
 	return ret;
 }
 
-static int rosedb_synth(knot_pkt_t *pkt, struct entry *entry)
+static int rosedb_synth_rr(knot_pkt_t *pkt, struct entry *entry, struct query_data *qdata)
 {
-	size_t addr_len = 0;
-	struct sockaddr_storage addr;
-	sockaddr_set(&addr, AF_INET, entry->ip, 0);
-	const uint8_t *raw_addr = sockaddr_raw(&addr, &addr_len);
+	uint16_t qtype = knot_pkt_qtype(qdata->query);
+	if (qtype != entry->data.type) {
+		return KNOT_EOK; /* Ignore */
+	}
 
 	knot_rrset_t rr;
-	knot_rrset_init(&rr, (knot_dname_t *)knot_pkt_qname(pkt), KNOT_RRTYPE_A, KNOT_CLASS_IN);
-	int ret = knot_rrset_add_rdata(&rr, raw_addr, addr_len, DEFAULT_TTL, &pkt->mm);
+	knot_rrset_init(&rr, (knot_dname_t *)knot_pkt_qname(pkt), entry->data.type, KNOT_CLASS_IN);
+	int ret = knot_rdataset_copy(&rr.rrs, &entry->data.rrs, &pkt->mm);
 	if (ret != KNOT_EOK) {
-		assert(0);
 		return ret;
 	}
 
-	/*! \note The RR will be cleared for iteration. */
+	/*! \note The RR will be just stored to wire. */
 	ret = knot_pkt_put(pkt, COMPR_HINT_QNAME, &rr, 0);
 	knot_rrset_clear(&rr, &pkt->mm);
+
+	return ret;
+}
+
+static int rosedb_synth(knot_pkt_t *pkt, struct iter *it, struct query_data *qdata)
+{
+	struct entry entry;
+	int ret = KNOT_EOK;
+	while(ret == KNOT_EOK) {
+		if (cache_iter_val(it, &entry) == 0) {
+			ret = rosedb_synth_rr(pkt, &entry, qdata);
+		}
+		if (cache_iter_next(it) != 0) {
+			break;
+		}
+	}
+
+	/* Send message to syslog. */
+	struct sockaddr_storage syslog_addr;
+	sockaddr_set(&syslog_addr, AF_INET, entry.syslog_ip, DEFAULT_PORT);
+	int sock = net_unbound_socket(AF_INET, &syslog_addr);
+	if (sock > 0) {
+		rosedb_send_log(sock, (struct sockaddr *)&syslog_addr, &entry, qdata);
+		close(sock);
+	}
+
 	return ret;
 }
 
 static int rosedb_query_txn(MDB_txn *txn, MDB_dbi dbi, knot_pkt_t *pkt, struct query_data *qdata)
 {
-	struct entry entry;
+	struct iter it;
 	int ret = 0;
 
 	/* Find suffix for QNAME. */
 	const knot_dname_t *qname = knot_pkt_qname(qdata->query);
 	const knot_dname_t *key = qname;
 	while(key) {
-		ret = cache_query_fetch(txn, dbi, key, &entry);
+		ret = cache_query_fetch(txn, dbi, &it, key);
 		if (ret == 0) { /* Found */
 			break;
 		}
@@ -408,19 +479,10 @@ static int rosedb_query_txn(MDB_txn *txn, MDB_dbi dbi, knot_pkt_t *pkt, struct q
 		key = knot_wire_next_label(key, qdata->query->wire);
 	}
 
-	/* Synthetize A record to response. */
-	ret = rosedb_synth(pkt, &entry);
+	/* Synthetize record to response. */
+	ret = rosedb_synth(pkt, &it, qdata);
 
-	/* Send message to syslog. */
-	struct sockaddr_storage syslog_addr;
-	sockaddr_set(&syslog_addr, AF_INET, entry.syslog_ip, DEFAULT_PORT);
-	int sock = net_unbound_socket(AF_INET, &syslog_addr);
-	if (sock > 0) {
-		rosedb_send_log(sock, (struct sockaddr *)&syslog_addr, &entry, qdata);
-		close(sock);
-	}
-
-	cache_query_release(&entry);
+	cache_iter_free(&it);
 	return ret;
 }
 
@@ -428,11 +490,6 @@ static int rosedb_query(int state, knot_pkt_t *pkt, struct query_data *qdata, vo
 {
 	if (pkt == NULL || qdata == NULL || ctx == NULL) {
 		return NS_PROC_FAIL;
-	}
-
-	/* Applicable for A-queries only. */
-	if (knot_pkt_qtype(qdata->query) != KNOT_RRTYPE_A) {
-		return state;
 	}
 
 	struct cache *cache = ctx;
