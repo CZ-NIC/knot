@@ -18,6 +18,7 @@
 
 #include "knot/modules/rosedb.h"
 #include "knot/nameserver/process_query.h"
+#include "libknot/rrset-dump.h"
 
 struct cache
 {
@@ -364,9 +365,16 @@ static int rosedb_log_message(char *stream, size_t *maxlen, struct entry *entry,
 	/* Field 15 Resolution (0 = local, 1 = lookup)*/
 	STREAM_WRITE(stream, maxlen, snprintf, "0\t");
 
-	/* Field 16 First IP. */
-#warning TODO: what to log?
-	//STREAM_WRITE(stream, maxlen, snprintf, "%s\t", entry->ip);
+	/* Field 16 RDATA. */
+	knot_rrset_t stub_rr;
+	knot_rrset_init(&stub_rr, (knot_dname_t *)knot_pkt_qname(qdata->query), entry->data.type, KNOT_CLASS_IN);
+	memcpy(&stub_rr.rrs, &entry->data.rrs, sizeof(knot_rdataset_t));
+	int ret = knot_rrset_txt_dump_data(&stub_rr, 0, stream, *maxlen, &KNOT_DUMP_STYLE_DEFAULT);
+	if (ret < 0) {
+		return ret;
+	}
+	stream_skip(&stream, maxlen, ret);
+	STREAM_WRITE(stream, maxlen, snprintf, "\t");
 
 	/* Field 17 Connection type. */
 	STREAM_WRITE(stream, maxlen, snprintf, "%s\t",
