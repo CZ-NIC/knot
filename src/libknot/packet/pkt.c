@@ -150,6 +150,15 @@ static int pkt_reset(knot_pkt_t *pkt, void *wire, uint16_t len)
 	return ret;
 }
 
+/* Reset packet parse state. */
+static int pkt_reset_sections(knot_pkt_t *pkt)
+{
+	pkt->parsed  = 0;
+	pkt->current = KNOT_ANSWER;
+	memset(pkt->sections, 0, sizeof(pkt->sections));
+	return knot_pkt_begin(pkt, KNOT_ANSWER);
+}
+
 /*! \brief Clear packet payload and free allocated data. */
 static void pkt_clear_payload(knot_pkt_t *pkt)
 {
@@ -166,10 +175,8 @@ static void pkt_clear_payload(knot_pkt_t *pkt)
 	/* Free RRSets if applicable. */
 	pkt_free_data(pkt);
 
-	/* Reset section. */
-	pkt->current = KNOT_ANSWER;
-	pkt->sections[pkt->current].rr = pkt->rr;
-	pkt->sections[pkt->current].rrinfo = pkt->rr_info;
+	/* Reset sections. */
+	pkt_reset_sections(pkt);
 }
 
 /*! \brief Allocate new packet using memory context. */
@@ -177,7 +184,7 @@ static knot_pkt_t *pkt_new_mm(void *wire, uint16_t len, mm_ctx_t *mm)
 {
 	assert(mm);
 
-	knot_pkt_t *pkt = mm->alloc(mm->ctx, sizeof(knot_pkt_t));
+	knot_pkt_t *pkt = mm_alloc(mm, sizeof(knot_pkt_t));
 	if (pkt == NULL) {
 		return NULL;
 	}
@@ -186,7 +193,7 @@ static knot_pkt_t *pkt_new_mm(void *wire, uint16_t len, mm_ctx_t *mm)
 	pkt->rrset_count = 0;
 	memcpy(&pkt->mm, mm, sizeof(mm_ctx_t));
 	if (pkt_reset(pkt, wire, len) != KNOT_EOK) {
-		mm->free(pkt);
+		mm_free(mm, pkt);
 		return NULL;
 	}
 
@@ -449,8 +456,9 @@ int knot_pkt_put_question(knot_pkt_t *pkt, const knot_dname_t *qname, uint16_t q
 
 	/* Check size limits. */
 	size_t question_len = 2 * sizeof(uint16_t) + qname_len;
-	if (qname_len < 0 || pkt->size + question_len > pkt->max_size)
+	if (qname_len < 0 || pkt->size + question_len > pkt->max_size) {
 		return KNOT_ESPACE;
+	}
 
 	/* Copy QTYPE & QCLASS */
 	dst += qname_len;
@@ -549,6 +557,9 @@ int knot_pkt_parse(knot_pkt_t *pkt, unsigned flags)
 	if (pkt == NULL) {
 		return KNOT_EINVAL;
 	}
+
+	/* Reset parse state. */
+	pkt_reset_sections(pkt);
 
 	int ret = knot_pkt_parse_question(pkt);
 	if (ret == KNOT_EOK) {

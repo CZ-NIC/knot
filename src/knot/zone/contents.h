@@ -26,7 +26,7 @@
 
 #pragma once
 
-#include "common-knot/lists.h"
+#include "common/lists.h"
 #include "libknot/rrtype/nsec3param.h"
 #include "knot/zone/node.h"
 #include "knot/zone/zone-tree.h"

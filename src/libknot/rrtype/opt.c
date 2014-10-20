@@ -23,7 +23,7 @@
 #include "libknot/common.h"
 #include "libknot/descriptor.h"
 #include "common/debug.h"
-#include "common-knot/sockaddr.h"
+#include "common/sockaddr.h"
 
 /*! \brief Some implementation-related constants. */
 enum knot_edns_private_consts {

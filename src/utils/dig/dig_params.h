@@ -29,7 +29,7 @@
 #include <stdbool.h>			// bool
 
 #include "libknot/libknot.h"		// knot_addr_family_t
-#include "common-knot/sockaddr.h"	// IPV6_PREFIXLEN
+#include "common/sockaddr.h"		// IPV6_PREFIXLEN
 #include "utils/common/params.h"	// protocol_t
 #include "utils/common/exec.h"		// sign_context_t
 

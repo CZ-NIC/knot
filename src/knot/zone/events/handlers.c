@@ -31,7 +31,7 @@
 #include "knot/nameserver/internet.h"
 #include "knot/nameserver/update.h"
 #include "knot/nameserver/notify.h"
-#include "knot/nameserver/requestor.h"
+#include "libknot/processing/requestor.h"
 #include "knot/nameserver/tsig_ctx.h"
 #include "knot/nameserver/process_answer.h"
 
@@ -100,15 +100,17 @@ static int zone_query_execute(zone_t *zone, uint16_t pkt_type, const conf_iface_
 		return KNOT_ENOMEM;
 	}
 
-	/* Create requestor instance. */
-	struct requestor re;
-	requestor_init(&re, NS_PROC_ANSWER, &mm);
-
 	/* Answer processing parameters. */
 	struct process_answer_param param = { 0 };
 	param.zone = zone;
 	param.query = query;
 	param.remote = &remote->addr;
+
+	/* Create requestor instance. */
+	struct knot_requestor re;
+	knot_requestor_init(&re, &mm);
+	knot_requestor_overlay(&re, NS_PROC_ANSWER, &param);
+
 	tsig_init(&param.tsig_ctx, remote->key);
 
 	ret = tsig_sign_packet(&param.tsig_ctx, query);
@@ -117,23 +119,25 @@ static int zone_query_execute(zone_t *zone, uint16_t pkt_type, const conf_iface_
 	}
 
 	/* Create a request. */
-	struct request *req = requestor_make(&re, remote, query);
+	const struct sockaddr *dst = (const struct sockaddr *)&remote->addr;
+	const struct sockaddr *src = (const struct sockaddr *)&remote->via;
+	struct knot_request *req = knot_request_make(re.mm, dst, src, query, 0);
 	if (req == NULL) {
 		ret = KNOT_ENOMEM;
 		goto fail;
 	}
 
 	/* Send the queries and process responses. */
-	ret = requestor_enqueue(&re, req, &param);
+	ret = knot_requestor_enqueue(&re, req);
 	if (ret == KNOT_EOK) {
 		struct timeval tv = { conf()->max_conn_reply, 0 };
-		ret = requestor_exec(&re, &tv);
+		ret = knot_requestor_exec(&re, &tv);
 	}
 
 fail:
 	/* Cleanup. */
 	tsig_cleanup(&param.tsig_ctx);
-	requestor_clear(&re);
+	knot_requestor_clear(&re);
 	mp_delete(mm.ctx);
 
 	return ret;

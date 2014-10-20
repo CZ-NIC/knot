@@ -23,7 +23,6 @@
 #include "common/base32hex.h"
 #include "common/debug.h"
 #include "libknot/descriptor.h"
-#include "common-knot/hhash.h"
 #include "libknot/dnssec/bitmap.h"
 #include "libknot/util/utils.h"
 #include "libknot/packet/wire.h"

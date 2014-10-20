@@ -29,7 +29,7 @@
 #include <stdint.h>
 
 #include "libknot/libknot.h"
-#include "common-knot/lists.h"		// list
+#include "common/lists.h"		// list
 #include "zscanner/scanner.h"		// zs_scanner_t
 #include "utils/common/netio.h"		// server_t
 #include "utils/common/params.h"	// protocol_t

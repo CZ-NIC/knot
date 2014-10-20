@@ -40,7 +40,7 @@
 
 #pragma once
 
-#include "common-knot/lists.h"
+#include "common/lists.h"
 #include "libknot/mempattern.h"
 #include "libknot/consts.h"
 #include "libknot/packet/pkt.h"

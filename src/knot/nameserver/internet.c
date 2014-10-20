@@ -50,7 +50,7 @@ static int wildcard_visit(struct query_data *qdata, const zone_node_t *node, con
 	}
 
 	mm_ctx_t *mm = qdata->mm;
-	struct wildcard_hit *item = mm->alloc(mm->ctx, sizeof(struct wildcard_hit));
+	struct wildcard_hit *item = mm_alloc(mm, sizeof(struct wildcard_hit));
 	item->node = node;
 	item->sname = sname;
 	add_tail(&qdata->wildcards, (node_t *)item);

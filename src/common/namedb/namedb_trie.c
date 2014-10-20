@@ -15,7 +15,7 @@
 */
 
 #include "common/namedb/namedb_trie.h"
-#include "common-knot/hattrie/hat-trie.h"
+#include "common/trie/hat-trie.h"
 #include "libknot/errcode.h"
 
 static int init(const char *config, knot_namedb_t **db, mm_ctx_t *mm)

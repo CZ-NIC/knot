@@ -21,14 +21,15 @@
 
 #include "libknot/descriptor.h"
 #include "common-knot/evsched.h"
-#include "common-knot/lists.h"
+#include "common/lists.h"
 #include "common-knot/trim.h"
 #include "knot/zone/node.h"
 #include "knot/zone/zone.h"
 #include "knot/zone/zonefile.h"
 #include "knot/zone/contents.h"
 #include "knot/updates/apply.h"
-#include "knot/nameserver/requestor.h"
+#include "libknot/processing/requestor.h"
+#include "knot/nameserver/process_query.h"
 #include "libknot/common.h"
 #include "libknot/dname.h"
 #include "libknot/dnssec/random.h"
@@ -37,7 +38,7 @@
 
 static void free_ddns_queue(zone_t *z)
 {
-	struct request_data *n = NULL;
+	struct knot_request *n = NULL;
 	node_t *nxt = NULL;
 	WALK_LIST_DELSAFE(n, nxt, z->ddns_queue) {
 		close(n->fd);
@@ -248,11 +249,11 @@ int zone_update_enqueue(zone_t *zone, knot_pkt_t *pkt, struct process_query_para
 {
 
 	/* Create serialized request. */
-	struct request_data *req = malloc(sizeof(struct request_data));
+	struct knot_request *req = malloc(sizeof(struct knot_request));
 	if (req == NULL) {
 		return KNOT_ENOMEM;
 	}
-	memset(req, 0, sizeof(struct request_data));
+	memset(req, 0, sizeof(struct knot_request));
 
 	/* Copy socket and request. */
 	req->fd = dup(param->socket);
