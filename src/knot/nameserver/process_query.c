@@ -376,7 +376,7 @@ static int process_query_err(knot_pkt_t *pkt, knot_process_t *ctx)
 
 	/* Put OPT RR to the additional section. */
 	int ret = answer_edns_reserve(pkt, qdata);
-	ret = ret && answer_edns_put(pkt, qdata);
+	ret = ret || answer_edns_put(pkt, qdata);
 
 	if (ret != KNOT_EOK) {
 		qdata->rcode = KNOT_RCODE_SERVFAIL;
