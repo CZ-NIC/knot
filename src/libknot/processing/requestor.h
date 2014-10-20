@@ -119,7 +119,8 @@ int knot_requestor_overlay(struct knot_requestor *requestor,
  *
  * \return KNOT_EOK or error
  */
-int knot_requestor_enqueue(struct knot_requestor *requestor, struct knot_request *request);
+int knot_requestor_enqueue(struct knot_requestor *requestor,
+                           struct knot_request *request);
 
 /*!
  * \brief Close first pending request.
@@ -138,4 +139,5 @@ int knot_requestor_dequeue(struct knot_requestor *requestor);
  *
  * \return KNOT_EOK or error
  */
-int knot_requestor_exec(struct knot_requestor *requestor, struct timeval *timeout);
+int knot_requestor_exec(struct knot_requestor *requestor,
+                        struct timeval *timeout);

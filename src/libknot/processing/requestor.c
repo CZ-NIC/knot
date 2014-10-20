@@ -55,7 +55,8 @@ static int request_wait(int fd, int state, struct timeval *timeout)
 	}
 }
 
-static int request_send(struct knot_request *request, const struct timeval *timeout)
+static int request_send(struct knot_request *request,
+                        const struct timeval *timeout)
 {
 	/* Each request has unique timeout. */
 	struct timeval tv = { timeout->tv_sec, timeout->tv_usec };
@@ -93,7 +94,8 @@ static int request_send(struct knot_request *request, const struct timeval *time
 	return KNOT_EOK;
 }
 
-static int request_recv(struct knot_request *request, const struct timeval *timeout)
+static int request_recv(struct knot_request *request,
+                        const struct timeval *timeout)
 {
 	int ret = 0;
 	knot_pkt_t *resp = request->resp;
@@ -119,10 +121,10 @@ static int request_recv(struct knot_request *request, const struct timeval *time
 }
 
 struct knot_request *knot_request_make(mm_ctx_t *mm,
-                               const struct sockaddr *dst,
-                               const struct sockaddr *src,
-                               knot_pkt_t *query,
-                               unsigned flags)
+                                       const struct sockaddr *dst,
+                                       const struct sockaddr *src,
+                                       knot_pkt_t *query,
+                                       unsigned flags)
 {
 	if (dst == NULL || query == NULL) {
 		return NULL;
@@ -181,12 +183,13 @@ bool knot_requestor_finished(struct knot_requestor *requestor)
 }
 
 int knot_requestor_overlay(struct knot_requestor *requestor,
-                            const knot_layer_api_t *proc, void *param)
+                           const knot_layer_api_t *proc, void *param)
 {
 	return knot_overlay_add(&requestor->overlay, proc, param);
 }
 
-int knot_requestor_enqueue(struct knot_requestor *requestor, struct knot_request *request)
+int knot_requestor_enqueue(struct knot_requestor *requestor,
+                           struct knot_request *request)
 {
 	if (requestor == NULL || request == NULL) {
 		return KNOT_EINVAL;
@@ -227,7 +230,8 @@ int knot_requestor_dequeue(struct knot_requestor *requestor)
 	return knot_request_free(requestor->mm, last);
 }
 
-static int request_io(struct knot_requestor *req, struct knot_request *last, struct timeval *timeout)
+static int request_io(struct knot_requestor *req, struct knot_request *last,
+                      struct timeval *timeout)
 {
 	int ret = KNOT_EOK;
 	knot_pkt_t *query = last->query;
@@ -259,7 +263,8 @@ static int request_io(struct knot_requestor *req, struct knot_request *last, str
 	return KNOT_EOK;
 }
 
-static int exec_request(struct knot_requestor *req, struct knot_request *last, struct timeval *timeout)
+static int exec_request(struct knot_requestor *req, struct knot_request *last,
+                        struct timeval *timeout)
 {
 	int ret = KNOT_EOK;
 
@@ -283,7 +288,8 @@ static int exec_request(struct knot_requestor *req, struct knot_request *last, s
 	return ret;
 }
 
-int knot_requestor_exec(struct knot_requestor *requestor, struct timeval *timeout)
+int knot_requestor_exec(struct knot_requestor *requestor,
+                        struct timeval *timeout)
 {
 	if (knot_requestor_finished(requestor)) {
 		return KNOT_ENOENT;

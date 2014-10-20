@@ -190,7 +190,8 @@ static int tcp_recv_data(int fd, uint8_t *buf, int len, struct timeval *timeout)
 	return rcvd;
 }
 
-int udp_send_msg(int fd, const uint8_t *msg, size_t msglen, const struct sockaddr *addr)
+int udp_send_msg(int fd, const uint8_t *msg, size_t msglen,
+                 const struct sockaddr *addr)
 {
 	socklen_t addr_len = sockaddr_len(addr);
 	int ret = sendto(fd, msg, msglen, 0, addr, addr_len);
