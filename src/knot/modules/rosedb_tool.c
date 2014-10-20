@@ -57,6 +57,7 @@ int main(int argc, char *argv[])
 	}
 
 	/* Execute action. */
+	bool found = false;
 	for (unsigned i = 0; i < TOOL_ACTION_COUNT; ++i) {
 		struct tool_action *ta = &TOOL_ACTION[i];
 		if (strcmp(ta->name, action) == 0) {
@@ -66,6 +67,7 @@ int main(int argc, char *argv[])
 				return help();
 			}
 
+			found = true;
 			ret = ta->func(cache, argc, argv);
 			if (ret != 0) {
 				fprintf(stderr, "FAILED\n");
@@ -73,6 +75,10 @@ int main(int argc, char *argv[])
 
 			break;
 		}
+	}
+	
+	if (!found) {
+		return help();
 	}
 
 	cache_close(cache);
