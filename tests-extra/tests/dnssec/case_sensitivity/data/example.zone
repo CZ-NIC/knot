@@ -1,0 +1,8 @@
+example.	3600 IN SOA	ns1.example. aaa.bbb.example. 1 3600 300 3600000 3600
+example.	3600 IN NS	ns1.example.
+example.	3600 IN NS	ns2.example.
+ns1.example.	3600 IN A	192.0.2.1
+ns2.example.	3600 IN AAAA	::1
+example.	3600 IN MX	1 xx.example.
+*.c.example.	3600 IN CNAME	ttt-example.
+lp.example.     3600 IN LP      5 L32-SUBnet.example.

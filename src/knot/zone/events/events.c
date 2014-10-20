@@ -18,12 +18,14 @@
 #include <time.h>
 
 #include "common-knot/evsched.h"
+#include "common/namedb/namedb.h"
 #include "knot/server/server.h"
 #include "knot/worker/pool.h"
 #include "knot/zone/zone.h"
 #include "knot/zone/events/events.h"
 #include "knot/zone/events/handlers.h"
 #include "knot/zone/events/replan.h"
+#include "knot/zone/timers.h"
 
 /* ------------------------- internal timers -------------------------------- */
 
@@ -232,7 +234,8 @@ int zone_events_init(zone_t *zone)
 	return KNOT_EOK;
 }
 
-int zone_events_setup(zone_t *zone, worker_pool_t *workers, evsched_t *scheduler)
+int zone_events_setup(struct zone_t *zone, worker_pool_t *workers,
+                      evsched_t *scheduler, knot_namedb_t *timers_db)
 {
 	if (!zone || !workers || !scheduler) {
 		return KNOT_EINVAL;
@@ -246,6 +249,7 @@ int zone_events_setup(zone_t *zone, worker_pool_t *workers, evsched_t *scheduler
 
 	zone->events.event = event;
 	zone->events.pool = workers;
+	zone->events.timers_db = timers_db;
 
 	return KNOT_EOK;
 }
@@ -408,4 +412,17 @@ void zone_events_replan_ddns(struct zone_t *zone, const struct zone_t *old_zone)
 	if (old_zone) {
 		replan_update(zone, (zone_t *)old_zone);
 	}
+}
+
+int zone_events_write_persistent(zone_t *zone)
+{
+	if (!zone) {
+		return KNOT_EINVAL;
+	}
+
+	if (zone->events.timers_db == NULL) {
+		return KNOT_EOK;
+	}
+
+	return write_zone_timers(zone->events.timers_db, zone);
 }

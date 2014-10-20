@@ -193,6 +193,8 @@ libknot_la_SOURCES =				\
 	libknot/rrset.h				\
 	libknot/rrtype/aaaa.h			\
 	libknot/rrtype/dnskey.h			\
+	libknot/rrtype/naptr.h			\
+	libknot/rrtype/nsec.h			\
 	libknot/rrtype/nsec.h			\
 	libknot/rrtype/nsec.h			\
 	libknot/rrtype/nsec3.c			\

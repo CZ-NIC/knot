@@ -191,7 +191,7 @@ bool knot_requestor_finished(struct knot_requestor *requestor)
 
 _public_
 int knot_requestor_overlay(struct knot_requestor *requestor,
-                            const knot_layer_api_t *proc, void *param)
+                           const knot_layer_api_t *proc, void *param)
 {
 	return knot_overlay_add(&requestor->overlay, proc, param);
 }
@@ -299,7 +299,8 @@ static int exec_request(struct knot_requestor *req, struct knot_request *last,
 }
 
 _public_
-int knot_requestor_exec(struct knot_requestor *requestor, struct timeval *timeout)
+int knot_requestor_exec(struct knot_requestor *requestor,
+                        struct timeval *timeout)
 {
 	if (knot_requestor_finished(requestor)) {
 		return KNOT_ENOENT;

@@ -140,4 +140,5 @@ int knot_requestor_dequeue(struct knot_requestor *requestor);
  *
  * \return KNOT_EOK or error
  */
-int knot_requestor_exec(struct knot_requestor *requestor, struct timeval *timeout);
+int knot_requestor_exec(struct knot_requestor *requestor,
+                        struct timeval *timeout);
