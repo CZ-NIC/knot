@@ -230,7 +230,7 @@ static int answer_edns_init(const knot_pkt_t *query, knot_pkt_t *resp,
 
 	/* Check supported version. */
 	if (knot_edns_get_version(query->opt_rr) != KNOT_EDNS_VERSION) {
-		qdata->rcode_ext = KNOT_RCODE_BADVERS;
+		qdata->rcode = KNOT_RCODE_BADVERS;
 	}
 
 	/* Set DO bit if set (DNSSEC requested). */
@@ -257,21 +257,23 @@ static int answer_edns_put(knot_pkt_t *resp, struct query_data *qdata)
 		return KNOT_EOK;
 	}
 
-	/* Write back extended RCODE. */
-	if (qdata->rcode_ext != 0) {
-		knot_wire_set_rcode(resp->wire, KNOT_EDNS_RCODE_LO(qdata->rcode_ext));
-		knot_edns_set_ext_rcode(&qdata->opt_rr, KNOT_EDNS_RCODE_HI(qdata->rcode_ext));
-	}
-
 	/* Reclaim reserved size. */
 	int ret = knot_pkt_reclaim(resp, knot_edns_wire_size(&qdata->opt_rr));
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
 
+	uint8_t *wire_end = resp->wire + resp->size;
+
 	/* Write to packet. */
 	assert(resp->current == KNOT_ADDITIONAL);
-	return knot_pkt_put(resp, COMPR_HINT_NONE, &qdata->opt_rr, 0);
+	ret = knot_pkt_put(resp, COMPR_HINT_NONE, &qdata->opt_rr, 0);
+	if (ret == KNOT_EOK) {
+		/* Save position of the Ext RCODE field. */
+		qdata->ext_rcode = wire_end + KNOT_EDNS_EXT_RCODE_POS;
+	}
+
+	return ret;
 }
 
 /*! \brief Initialize response, sizes and find zone from which we're going to answer. */
@@ -309,12 +311,7 @@ static int prepare_answer(const knot_pkt_t *query, knot_pkt_t *resp, knot_proces
 
 	/* Setup EDNS. */
 	ret = answer_edns_init(query, resp, qdata);
-	if (ret != KNOT_EOK) {
-		return ret;
-	}
-
-	/* If Extended RCODE is set, do not continue with query processing. */
-	if (qdata->rcode_ext != 0) {
+	if (ret != KNOT_EOK || qdata->rcode != 0) {
 		return KNOT_ERROR;
 	}
 
@@ -335,6 +332,27 @@ static int prepare_answer(const knot_pkt_t *query, knot_pkt_t *resp, knot_proces
 	return ret;
 }
 
+static int set_rcode_to_packet(knot_pkt_t *pkt, struct query_data *qdata)
+{
+	int ret = KNOT_EOK;
+	uint8_t ext_rcode = KNOT_EDNS_RCODE_HI(qdata->rcode);
+
+	if (ext_rcode != 0) {
+		/* If there is no OPT RR and Ext RCODE is set, result in
+		 * SERVFAIL. This should not happen!
+		 */
+		if (qdata->ext_rcode == NULL) {
+			return KNOT_ERROR;
+		} else {
+			*qdata->ext_rcode = ext_rcode;
+		}
+	}
+
+	knot_wire_set_rcode(pkt->wire, KNOT_EDNS_RCODE_LO(qdata->rcode));
+
+	return ret;
+}
+
 static int process_query_err(knot_pkt_t *pkt, knot_process_t *ctx)
 {
 	assert(pkt && ctx);
@@ -349,8 +367,8 @@ static int process_query_err(knot_pkt_t *pkt, knot_process_t *ctx)
 	/* Restore original QNAME. */
 	process_query_qname_case_restore(qdata, pkt);
 
-	/* Set RCODE. */
-	knot_wire_set_rcode(pkt->wire, qdata->rcode);
+	/* Set final RCODE to packet. */
+	(void) set_rcode_to_packet(pkt, qdata);
 
 	/* Add OPT and TSIG (best effort, send reply anyway if fails). */
 	if (pkt->current != KNOT_ADDITIONAL) {
@@ -489,10 +507,18 @@ static int process_query_out(knot_pkt_t *pkt, knot_process_t *ctx)
 
 finish:
 	/* Default RCODE is SERVFAIL if not specified otherwise. */
-	if (next_state == NS_PROC_FAIL && qdata->rcode == KNOT_RCODE_NOERROR
-	    && qdata->rcode_ext == 0) {
+	if (next_state == NS_PROC_FAIL && qdata->rcode == KNOT_RCODE_NOERROR) {
 		qdata->rcode = KNOT_RCODE_SERVFAIL;
 	}
+
+	/* Store Extended RCODE - divide between header and OPT if possible. */
+	if (next_state != NS_PROC_FAIL) {
+		if (set_rcode_to_packet(pkt, qdata) != KNOT_EOK) {
+			qdata->rcode = KNOT_RCODE_SERVFAIL;
+			next_state = NS_PROC_FAIL;
+		}
+	}
+	/* In case of NS_PROC_FAIL, RCODE is set in the error-processing function. */
 
 	/* Rate limits (if applicable). */
 	if (qdata->param->proc_flags & NS_QUERY_LIMIT_RATE) {
