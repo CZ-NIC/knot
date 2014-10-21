@@ -351,7 +351,9 @@ int event_xfer(zone_t *zone)
 			zone->bootstrap_retry = bootstrap_next(zone->bootstrap_retry);
 			zone_events_schedule(zone, ZONE_EVENT_XFER, zone->bootstrap_retry);
 		} else {
-			start_expire_timer(zone, zone_soa(zone));
+			const knot_rdataset_t *soa = zone_soa(zone);
+			zone_events_schedule(zone, ZONE_EVENT_XFER, knot_soa_retry(soa));
+			start_expire_timer(zone, soa);
 		}
 
 		return KNOT_EOK;
