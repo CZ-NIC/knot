@@ -3,7 +3,7 @@
 '''Test for reload of a changed zone (serial up, nochange, serial down). '''
 
 from dnstest.test import Test
-from dnstest.utils import set_err, detail_log
+from dnstest.utils import *
 
 t = Test()
 

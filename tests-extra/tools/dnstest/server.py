@@ -997,7 +997,7 @@ class Knot(Server):
 
     def ctl(self, params):
         try:
-            check_call([self.control_bin] + self.start_params + params.split,
+            check_call([self.control_bin] + self.start_params + params.split(),
                        stdout=open(self.dir + "/call.out", mode="a"),
                        stderr=open(self.dir + "/call.err", mode="a"))
             time.sleep(Server.START_WAIT)
