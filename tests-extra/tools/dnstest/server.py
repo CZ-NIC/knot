@@ -995,6 +995,17 @@ class Knot(Server):
 
         return s.conf
 
+    def ctl(self, params):
+        try:
+            check_call([self.control_bin] + self.start_params + params.split,
+                       stdout=open(self.dir + "/call.out", mode="a"),
+                       stderr=open(self.dir + "/call.err", mode="a"))
+            time.sleep(Server.START_WAIT)
+        except CalledProcessError as e:
+            self.backtrace()
+            raise Failed("Can't control='%s' server='%s', ret='%i'" %
+                         (params, self.name, e.returncode))
+
 class Nsd(Server):
 
     def __init__(self, *args, **kwargs):
