@@ -864,7 +864,7 @@ int internet_query_plan(struct query_plan *plan)
 /*! \brief Process answer to SOA query. */
 static int process_soa_answer(knot_pkt_t *pkt, struct answer_data *data)
 {
-	zone_t *zone  = data->param->zone;
+	zone_t *zone = data->param->zone;
 
 	/* Expect SOA in answer section. */
 	const knot_pktsection_t *answer = knot_pkt_section(pkt, KNOT_ANSWER);
@@ -884,6 +884,7 @@ static int process_soa_answer(knot_pkt_t *pkt, struct answer_data *data)
 	uint32_t their_serial =	knot_soa_serial(&answer->rr[0].rrs);
 	if (knot_serial_compare(our_serial, their_serial) >= 0) {
 		ANSWER_LOG(LOG_INFO, data, "refresh, outgoing", "zone is up-to-date");
+		zone_events_cancel(zone, ZONE_EVENT_EXPIRE);
 		return NS_PROC_DONE; /* Our zone is up to date. */
 	}
 
