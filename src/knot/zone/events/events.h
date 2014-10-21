@@ -120,6 +120,14 @@ void zone_events_schedule_at(struct zone_t *zone, zone_event_type_t type, time_t
 void zone_events_schedule(struct zone_t *zone, zone_event_type_t type, unsigned dt);
 
 /*!
+ * \brief Check if zone event is scheduled.
+ *
+ * \param zone  Zone to check event of.
+ * \param type  Type of event.
+ */
+bool zone_events_is_scheduled(struct zone_t *zone, zone_event_type_t type);
+
+/*!
  * \brief Cancel one zone event.
  *
  * \param zone  Zone to cancel event in.
