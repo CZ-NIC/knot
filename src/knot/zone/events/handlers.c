@@ -377,7 +377,7 @@ int event_xfer(zone_t *zone)
 	zone->flags &= ~ZONE_FORCE_AXFR;
 
 	/* Trim extra heap. */
-	if (pkt_type == KNOT_QUERY_AXFR) {
+	if (!is_boostrap) {
 		mem_trim();
 	}
 
