@@ -391,7 +391,7 @@ class Server(object):
     def gen_confile(self):
         f = open(self.confile, mode="w")
         f.write(self.get_config())
-        f.close
+        f.close()
 
     def dig(self, rname, rtype, rclass="IN", udp=None, serial=None,
             timeout=None, tries=3, flags="", bufsize=None, edns=None,
