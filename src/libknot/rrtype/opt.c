@@ -182,7 +182,7 @@ bool knot_edns_do(const knot_rrset_t *opt_rr)
 }
 
 /*----------------------------------------------------------------------------*/
-
+_public_
 void knot_edns_set_do(knot_rrset_t *opt_rr)
 {
 	assert(opt_rr != NULL);

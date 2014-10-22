@@ -304,7 +304,7 @@ static inline int sendmmsg(int fd, struct mmsghdr *mmsg, unsigned vlen,
  */
 int udp_sendmmsg(int sock, struct sockaddr *_, struct mmsghdr *msgs, size_t count)
 {
-	UNUSED(_);
+	KNOT_UNUSED(_);
 	return sendmmsg(sock, msgs, count, 0);
 }
 #endif /* ENABLE_SENDMMSG */
