@@ -49,7 +49,7 @@ static int process_answer_begin(knot_layer_t *ctx, void *module_param)
 	/* Initialize context. */
 	assert(ctx);
 	ctx->type = KNOT_NS_PROC_ANSWER_ID;
-	ctx->data = knot_mm_alloc(ctx->mm, sizeof(struct answer_data));
+	ctx->data = mm_alloc(ctx->mm, sizeof(struct answer_data));
 
 	/* Initialize persistent data. */
 	answer_data_init(ctx, module_param);
@@ -81,7 +81,7 @@ static int process_answer_reset(knot_layer_t *ctx)
 static int process_answer_finish(knot_layer_t *ctx)
 {
 	process_answer_reset(ctx);
-	knot_mm_free(ctx->mm, ctx->data);
+	mm_free(ctx->mm, ctx->data);
 	ctx->data = NULL;
 
 	return KNOT_NS_PROC_NOOP;

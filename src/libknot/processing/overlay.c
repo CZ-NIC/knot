@@ -29,7 +29,7 @@
 	return overlay->state = state;
 
 _public_
-void knot_overlay_init(struct knot_overlay *overlay, knot_mm_ctx_t *mm)
+void knot_overlay_init(struct knot_overlay *overlay, mm_ctx_t *mm)
 {
 	init_list(&overlay->layers);
 	overlay->mm = mm;
@@ -41,7 +41,7 @@ void knot_overlay_deinit(struct knot_overlay *overlay)
 {
 	struct knot_layer *layer = NULL, *next = NULL;
 	WALK_LIST_DELSAFE(layer, next, overlay->layers) {
-		knot_mm_free(overlay->mm, layer);
+		mm_free(overlay->mm, layer);
 	}
 }
 
@@ -49,7 +49,7 @@ _public_
 int knot_overlay_add(struct knot_overlay *overlay, const knot_layer_api_t *module,
                      void *module_param)
 {
-	struct knot_layer *layer = knot_mm_alloc(overlay->mm, sizeof(struct knot_layer));
+	struct knot_layer *layer = mm_alloc(overlay->mm, sizeof(struct knot_layer));
 	if (layer == NULL) {
 		return KNOT_ENOMEM;
 	}

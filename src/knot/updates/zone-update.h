@@ -34,7 +34,7 @@
 typedef struct {
 	const zone_contents_t *zone;  /*!< Zone being updated. */
 	changeset_t *change;          /*!< Changes we want to apply. */
-	knot_mm_ctx_t mm;                  /*!< Memory context used for intermediate nodes. */
+	mm_ctx_t mm;                  /*!< Memory context used for intermediate nodes. */
 } zone_update_t;
 
 /*!

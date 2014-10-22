@@ -44,7 +44,7 @@ struct namedb_api {
 
 	/* Context operations */
 
-	int (*init)(const char *config, knot_namedb_t **db, knot_mm_ctx_t *mm);
+	int (*init)(const char *config, knot_namedb_t **db, mm_ctx_t *mm);
 	void (*deinit)(knot_namedb_t *db);
 
 	/* Transactions */

@@ -56,7 +56,7 @@ typedef struct knot_layer
 
 	uint16_t state;  /* Bitmap of enum knot_layer_state. */
 	uint16_t type;   /* Module identifier. */
-	knot_mm_ctx_t *mm;    /* Processing memory context. */
+	mm_ctx_t *mm;    /* Processing memory context. */
 
 	/* Module specific. */
 	void *data;

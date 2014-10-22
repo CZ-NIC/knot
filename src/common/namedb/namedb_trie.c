@@ -20,7 +20,7 @@
 #include "common/trie/hat-trie.h"
 #include "common/mempattern.h"
 
-static int init(const char *config, knot_namedb_t **db, knot_mm_ctx_t *mm)
+static int init(const char *config, knot_namedb_t **db, mm_ctx_t *mm)
 {
 	if (config != NULL || db == NULL) {
 		return KNOT_EINVAL;

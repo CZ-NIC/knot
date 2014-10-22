@@ -18,8 +18,6 @@
 
 #include "common/mempattern.h"
 #include "common/mempool.h"
-/*! \todo Define the _public_ macro also in common/ */
-#include "libknot/common.h"
 
 static void mm_nofree(void *p)
 {
@@ -32,8 +30,7 @@ static void *mm_malloc(void *ctx, size_t n)
 	return malloc(n);
 }
 
-_public_
-void *knot_mm_alloc(knot_mm_ctx_t *mm, size_t size)
+void *mm_alloc(mm_ctx_t *mm, size_t size)
 {
 	if (mm) {
 		return mm->alloc(mm->ctx, size);
@@ -43,8 +40,7 @@ void *knot_mm_alloc(knot_mm_ctx_t *mm, size_t size)
 }
 
 
-_public_
-void *knot_mm_realloc(knot_mm_ctx_t *mm, void *what, size_t size, size_t prev_size)
+void *mm_realloc(mm_ctx_t *mm, void *what, size_t size, size_t prev_size)
 {
 	if (mm) {
 		void *p = mm->alloc(mm->ctx, size);
@@ -55,7 +51,7 @@ void *knot_mm_realloc(knot_mm_ctx_t *mm, void *what, size_t size, size_t prev_si
 				memcpy(p, what,
 				       prev_size < size ? prev_size : size);
 			}
-			knot_mm_free(mm, what);
+			mm_free(mm, what);
 			return p;
 		}
 	} else {
@@ -63,8 +59,7 @@ void *knot_mm_realloc(knot_mm_ctx_t *mm, void *what, size_t size, size_t prev_si
 	}
 }
 
-_public_
-void knot_mm_free(knot_mm_ctx_t *mm, void *what)
+void mm_free(mm_ctx_t *mm, void *what)
 {
 	if (mm) {
 		if (mm->free) {
@@ -75,18 +70,16 @@ void knot_mm_free(knot_mm_ctx_t *mm, void *what)
 	}
 }
 
-_public_
-void knot_mm_ctx_init(knot_mm_ctx_t *mm)
+void mm_ctx_init(mm_ctx_t *mm)
 {
 	mm->ctx = NULL;
 	mm->alloc = mm_malloc;
 	mm->free = free;
 }
 
-_public_
-void knot_mm_ctx_mempool(knot_mm_ctx_t *mm, size_t chunk_size)
+void mm_ctx_mempool(mm_ctx_t *mm, size_t chunk_size)
 {
 	mm->ctx = mp_new(chunk_size);
-	mm->alloc = (knot_mm_alloc_t)mp_alloc;
+	mm->alloc = (mm_alloc_t)mp_alloc;
 	mm->free = mm_nofree;
 }

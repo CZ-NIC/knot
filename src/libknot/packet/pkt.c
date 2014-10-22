@@ -137,7 +137,7 @@ static int pkt_reset(knot_pkt_t *pkt, void *wire, uint16_t len)
 
 	/* NULL everything up to 'sections' (not the large data fields). */
 	int ret = KNOT_EOK;
-	knot_mm_ctx_t mm = pkt->mm;
+	mm_ctx_t mm = pkt->mm;
 	memset(pkt, 0, offsetof(knot_pkt_t, rr_info));
 	pkt->mm = mm;
 
@@ -181,20 +181,20 @@ static void pkt_clear_payload(knot_pkt_t *pkt)
 }
 
 /*! \brief Allocate new packet using memory context. */
-static knot_pkt_t *pkt_new_mm(void *wire, uint16_t len, knot_mm_ctx_t *mm)
+static knot_pkt_t *pkt_new_mm(void *wire, uint16_t len, mm_ctx_t *mm)
 {
 	assert(mm);
 
-	knot_pkt_t *pkt = knot_mm_alloc(mm, sizeof(knot_pkt_t));
+	knot_pkt_t *pkt = mm_alloc(mm, sizeof(knot_pkt_t));
 	if (pkt == NULL) {
 		return NULL;
 	}
 
 	/* No data to free, set memory context. */
 	pkt->rrset_count = 0;
-	memcpy(&pkt->mm, mm, sizeof(knot_mm_ctx_t));
+	memcpy(&pkt->mm, mm, sizeof(mm_ctx_t));
 	if (pkt_reset(pkt, wire, len) != KNOT_EOK) {
-		knot_mm_free(mm, pkt);
+		mm_free(mm, pkt);
 		return NULL;
 	}
 
@@ -202,13 +202,13 @@ static knot_pkt_t *pkt_new_mm(void *wire, uint16_t len, knot_mm_ctx_t *mm)
 }
 
 _public_
-knot_pkt_t *knot_pkt_new(void *wire, uint16_t len, knot_mm_ctx_t *mm)
+knot_pkt_t *knot_pkt_new(void *wire, uint16_t len, mm_ctx_t *mm)
 {
 	/* Default memory allocator if NULL. */
 	dbg_packet("%s(%p, %hu, %p)\n", __func__, wire, len, mm);
-	knot_mm_ctx_t _mm;
+	mm_ctx_t _mm;
 	if (mm == NULL) {
-		knot_mm_ctx_init(&_mm);
+		mm_ctx_init(&_mm);
 		mm = &_mm;
 	}
 

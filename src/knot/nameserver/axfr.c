@@ -97,7 +97,7 @@ static void axfr_query_cleanup(struct query_data *qdata)
 
 	hattrie_iter_free(axfr->i);
 	ptrlist_free(&axfr->proc.nodes, qdata->mm);
-	knot_mm_free(qdata->mm, axfr);
+	mm_free(qdata->mm, axfr);
 
 	/* Allow zone changes (finished). */
 	rcu_read_unlock();
@@ -129,10 +129,10 @@ static int axfr_query_init(struct query_data *qdata)
 	}
 
 	/* Create transfer processing context. */
-	knot_mm_ctx_t *mm = qdata->mm;
+	mm_ctx_t *mm = qdata->mm;
 
 	zone_contents_t *zone = qdata->zone->contents;
-	struct axfr_proc *axfr = knot_mm_alloc(mm, sizeof(struct axfr_proc));
+	struct axfr_proc *axfr = mm_alloc(mm, sizeof(struct axfr_proc));
 	if (axfr == NULL) {
 		return KNOT_ENOMEM;
 	}
@@ -166,7 +166,7 @@ int xfr_process_list(knot_pkt_t *pkt, xfr_put_cb process_item,
 	}
 
 	int ret = KNOT_EOK;
-	knot_mm_ctx_t *mm = qdata->mm;
+	mm_ctx_t *mm = qdata->mm;
 	struct xfr_proc *xfer = qdata->ext;
 
 	zone_contents_t *zone = qdata->zone->contents;
@@ -187,7 +187,7 @@ int xfr_process_list(knot_pkt_t *pkt, xfr_put_cb process_item,
 		if (ret == KNOT_EOK) { /* Finished. */
 			/* Complete change set. */
 			rem_node((node_t *)head);
-			knot_mm_free(mm, head);
+			mm_free(mm, head);
 		} else { /* Packet full or other error. */
 			break;
 		}
@@ -269,7 +269,7 @@ static void axfr_answer_cleanup(struct answer_data *data)
 	struct xfr_proc *proc = data->ext;
 	if (proc) {
 		zone_contents_deep_free(&proc->contents);
-		knot_mm_free(data->mm, proc);
+		mm_free(data->mm, proc);
 		data->ext = NULL;
 	}
 }
@@ -286,7 +286,7 @@ static int axfr_answer_init(struct answer_data *data)
 	}
 
 	/* Create new processing context. */
-	struct xfr_proc *proc = knot_mm_alloc(data->mm, sizeof(struct xfr_proc));
+	struct xfr_proc *proc = mm_alloc(data->mm, sizeof(struct xfr_proc));
 	if (proc == NULL) {
 		zone_contents_deep_free(&new_contents);
 		return KNOT_ENOMEM;

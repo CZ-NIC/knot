@@ -183,9 +183,9 @@ size_t list_size(const list_t *l)
  * @val: added pointer
  * @mm: memory context
  */
-ptrnode_t *ptrlist_add(list_t *to, const void *val, knot_mm_ctx_t *mm)
+ptrnode_t *ptrlist_add(list_t *to, const void *val, mm_ctx_t *mm)
 {
-	ptrnode_t *node = knot_mm_alloc(mm , sizeof(ptrnode_t));
+	ptrnode_t *node = mm_alloc(mm , sizeof(ptrnode_t));
 	if (node == NULL) {
 		return NULL;
 	} else {
@@ -200,11 +200,11 @@ ptrnode_t *ptrlist_add(list_t *to, const void *val, knot_mm_ctx_t *mm)
  * @list: list nodes
  * @mm: memory context
  */
-void ptrlist_free(list_t *list, knot_mm_ctx_t *mm)
+void ptrlist_free(list_t *list, mm_ctx_t *mm)
 {
 	node_t *n = NULL, *nxt = NULL;
 	WALK_LIST_DELSAFE(n, nxt, *list) {
-		knot_mm_free(mm, n);
+		mm_free(mm, n);
 	}
 	init_list(list);
 }

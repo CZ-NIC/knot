@@ -49,8 +49,8 @@ static int wildcard_visit(struct query_data *qdata, const zone_node_t *node, con
 		return KNOT_EOK;
 	}
 
-	knot_mm_ctx_t *mm = qdata->mm;
-	struct wildcard_hit *item = knot_mm_alloc(mm, sizeof(struct wildcard_hit));
+	mm_ctx_t *mm = qdata->mm;
+	struct wildcard_hit *item = mm_alloc(mm, sizeof(struct wildcard_hit));
 	item->node = node;
 	item->sname = sname;
 	add_tail(&qdata->wildcards, (node_t *)item);
@@ -61,7 +61,7 @@ static int wildcard_visit(struct query_data *qdata, const zone_node_t *node, con
 static int dname_cname_synth(const knot_rrset_t *dname_rr,
                              const knot_dname_t *qname,
                              knot_rrset_t *cname_rrset,
-                             knot_mm_ctx_t *mm)
+                             mm_ctx_t *mm)
 {
 	if (cname_rrset == NULL) {
 		return KNOT_EINVAL;
@@ -143,7 +143,7 @@ static int put_rrsig(const knot_dname_t *sig_owner, uint16_t type,
 	}
 
 	/* Create rrsig info structure. */
-	struct rrsig_info *info = knot_mm_alloc(qdata->mm, sizeof(struct rrsig_info));
+	struct rrsig_info *info = mm_alloc(qdata->mm, sizeof(struct rrsig_info));
 	if (info == NULL) {
 		knot_rdataset_clear(&synth_rrs, qdata->mm);
 		return KNOT_ENOMEM;
@@ -152,7 +152,7 @@ static int put_rrsig(const knot_dname_t *sig_owner, uint16_t type,
 	/* Store RRSIG into info structure. */
 	knot_dname_t *owner_copy = knot_dname_copy(sig_owner, qdata->mm);
 	if (owner_copy == NULL) {
-		knot_mm_free(qdata->mm, info);
+		mm_free(qdata->mm, info);
 		knot_rdataset_clear(&synth_rrs, qdata->mm);
 		return KNOT_ENOMEM;
 	}

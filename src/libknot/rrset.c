@@ -30,14 +30,14 @@
 
 _public_
 knot_rrset_t *knot_rrset_new(const knot_dname_t *owner, uint16_t type,
-                             uint16_t rclass, knot_mm_ctx_t *mm)
+                             uint16_t rclass, mm_ctx_t *mm)
 {
 	knot_dname_t *owner_cpy = knot_dname_copy(owner, mm);
 	if (owner_cpy == NULL) {
 		return NULL;
 	}
 
-	knot_rrset_t *ret = knot_mm_alloc(mm, sizeof(knot_rrset_t));
+	knot_rrset_t *ret = mm_alloc(mm, sizeof(knot_rrset_t));
 	if (ret == NULL) {
 		KNOT_ERR_ALLOC_FAILED;
 		knot_dname_free(&owner_cpy, mm);
@@ -67,7 +67,7 @@ void knot_rrset_init_empty(knot_rrset_t *rrset)
 }
 
 _public_
-knot_rrset_t *knot_rrset_copy(const knot_rrset_t *src, knot_mm_ctx_t *mm)
+knot_rrset_t *knot_rrset_copy(const knot_rrset_t *src, mm_ctx_t *mm)
 {
 	if (src == NULL) {
 		return NULL;
@@ -89,7 +89,7 @@ knot_rrset_t *knot_rrset_copy(const knot_rrset_t *src, knot_mm_ctx_t *mm)
 }
 
 _public_
-void knot_rrset_free(knot_rrset_t **rrset, knot_mm_ctx_t *mm)
+void knot_rrset_free(knot_rrset_t **rrset, mm_ctx_t *mm)
 {
 	if (rrset == NULL || *rrset == NULL) {
 		return;
@@ -97,12 +97,12 @@ void knot_rrset_free(knot_rrset_t **rrset, knot_mm_ctx_t *mm)
 
 	knot_rrset_clear(*rrset, mm);
 
-	knot_mm_free(mm, *rrset);
+	mm_free(mm, *rrset);
 	*rrset = NULL;
 }
 
 _public_
-void knot_rrset_clear(knot_rrset_t *rrset, knot_mm_ctx_t *mm)
+void knot_rrset_clear(knot_rrset_t *rrset, mm_ctx_t *mm)
 {
 	if (rrset) {
 		knot_rdataset_clear(&rrset->rrs, mm);
@@ -113,7 +113,7 @@ void knot_rrset_clear(knot_rrset_t *rrset, knot_mm_ctx_t *mm)
 _public_
 int knot_rrset_add_rdata(knot_rrset_t *rrset,
                          const uint8_t *rdata, const uint16_t size,
-                         const uint32_t ttl, knot_mm_ctx_t *mm)
+                         const uint32_t ttl, mm_ctx_t *mm)
 {
 	if (rrset == NULL || (rdata == NULL && size > 0)) {
 		return KNOT_EINVAL;

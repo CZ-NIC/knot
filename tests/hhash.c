@@ -32,7 +32,7 @@ static const char *alphabet = "0123abcdABCDwxyzWXYZ.-_";
 char *test_randstr_mm(struct mm_ctx *mm)
 {
 	unsigned len = (5 + rand() % 251) + 1;
-	char *s = knot_mm_alloc(mm, len * sizeof(char));
+	char *s = mm_alloc(mm, len * sizeof(char));
 	for (unsigned i = 0; i < len - 1; ++i) {
 		s[i] = alphabet[rand() % strlen(alphabet)];
 	}
@@ -67,9 +67,9 @@ int main(int argc, char *argv[])
 
 	/* Create memory pool context. */
 	struct mempool *pool = mp_new(64 * 1024);
-	knot_mm_ctx_t mm;
+	mm_ctx_t mm;
 	mm.ctx = pool;
-	mm.alloc = (knot_mm_alloc_t)mp_alloc;
+	mm.alloc = (mm_alloc_t)mp_alloc;
 	mm.free = NULL;
 
 	/* Create hashtable */

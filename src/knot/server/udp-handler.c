@@ -133,7 +133,7 @@ void udp_handle(udp_context_t *udp, int fd, struct sockaddr_storage *ss,
 	}
 
 	/* Create packets. */
-	knot_mm_ctx_t *mm = udp->overlay.mm;
+	mm_ctx_t *mm = udp->overlay.mm;
 	knot_pkt_t *query = knot_pkt_new(rx->iov_base, rx->iov_len, mm);
 	knot_pkt_t *ans = knot_pkt_new(tx->iov_base, tx->iov_len, mm);
 
@@ -507,8 +507,8 @@ int udp_master(dthread_t *thread)
 	udp.thread_id = handler->thread_id[thr_id];
 
 	/* Create big enough memory cushion. */
-	knot_mm_ctx_t mm;
-	knot_mm_ctx_mempool(&mm, 4 * sizeof(knot_pkt_t));
+	mm_ctx_t mm;
+	mm_ctx_mempool(&mm, 4 * sizeof(knot_pkt_t));
 	udp.overlay.mm = &mm;
 
 	/* Chose select as epoll/kqueue has larger overhead for a

@@ -25,7 +25,7 @@ void worker_queue_init(worker_queue_t *queue)
 	memset(queue, 0, sizeof(worker_queue_t));
 
 	init_list(&queue->list);
-	knot_mm_ctx_init(&queue->mm_ctx);
+	mm_ctx_init(&queue->mm_ctx);
 }
 
 void worker_queue_deinit(worker_queue_t *queue)
