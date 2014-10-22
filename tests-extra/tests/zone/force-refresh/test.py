@@ -18,17 +18,17 @@ slave.update_zonefile(zone, version=1)
 
 t.start()
 
-serials_master = master.zones_wait(zone)
-serials_slave = slave.zones_wait(zone)
+serial_master = master.zone_wait(zone)
+serial_slave = slave.zone_wait(zone)
 
 # Check that the slave's serial is larger than master's
-if serials_master["example.com."] >= serials_slave["example.com."]:
-	set_err("Master has newer or the same zone as slave.")
+assert serial_master <= serial_slave
 
 # Force refresh
 slave.ctl("-f refresh example.com.")
+t.sleep(2)
 
-serials_slave = slave.zones_wait(zone)
-compare(serials_slave["example.com."], serials_master["example.com."], "Forced refresh")
+serial_slave = slave.zone_wait(zone)
+compare(serial_slave, serial_master, "Forced refresh")
 
 t.end()
