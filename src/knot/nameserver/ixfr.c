@@ -706,7 +706,8 @@ int ixfr_process_answer(knot_pkt_t *pkt, struct answer_data *adata)
 	if (adata->ext == NULL) {
 		NS_NEED_TSIG_SIGNED(&adata->param->tsig_ctx, 0);
 		if (!zone_transfer_needed(adata->param->zone, pkt)) {
-			IXFRIN_LOG(LOG_INFO, "server has newer zone");
+			IXFRIN_LOG(LOG_WARNING, "master sent older serial, "
+			                        "ignoring");
 			return NS_PROC_DONE;
 		}
 
