@@ -80,7 +80,7 @@ knot_cmd_t knot_cmd_tbl[] = {
 	{&cmd_stop,       0, "stop",       "",       "\t\tStop server."},
 	{&cmd_reload,     0, "reload",     "<zone>", "\tReload configuration and changed zones."},
 	{&cmd_refresh,    0, "refresh",    "<zone>", "\tRefresh slave zone (all if not specified). Flag '-f' forces retransfer."},
-	{&cmd_flush,      0, "flush",      "<zone>", "\t\tFlush journal and update zone file (all if not specified)."},
+	{&cmd_flush,      0, "flush",      "<zone>", "\tFlush journal and update zone file (all if not specified)."},
 	{&cmd_status,     0, "status",     "",       "\tCheck if server is running."},
 	{&cmd_zonestatus, 0, "zonestatus", "",       "\tShow status of configured zones."},
 	{&cmd_checkconf,  1, "checkconf",  "",       "\tCheck current server configuration."},
