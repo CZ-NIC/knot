@@ -390,10 +390,6 @@ int axfr_answer_process(knot_pkt_t *pkt, struct answer_data *adata)
 	/* Initialize processing with first packet. */
 	if (adata->ext == NULL) {
 		NS_NEED_TSIG_SIGNED(&adata->param->tsig_ctx, 0);
-		if (!zone_transfer_needed(adata->param->zone, pkt)) {
-			AXFRIN_LOG(LOG_INFO, "zone is up-to-date");
-			return NS_PROC_DONE;
-		}
 		AXFRIN_LOG(LOG_INFO, "starting");
 
 		int ret = axfr_answer_init(adata);
