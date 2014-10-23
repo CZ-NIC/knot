@@ -301,6 +301,7 @@ int knot_rrclass_from_string(const char *name, uint16_t *num)
 	return 0;
 }
 
+_public_
 int knot_rrtype_is_metatype(const uint16_t type)
 {
 	return type == KNOT_RRTYPE_SIG  ||
@@ -328,6 +329,7 @@ int knot_rrtype_additional_needed(const uint16_t type)
 	       type == KNOT_RRTYPE_SRV;
 }
 
+_public_
 bool knot_rrtype_should_be_lowercased(const uint16_t type)
 {
 	return type == KNOT_RRTYPE_NS    ||

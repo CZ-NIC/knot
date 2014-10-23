@@ -170,6 +170,7 @@ uint32_t knot_rrset_ttl(const knot_rrset_t *rrset)
 	return knot_rdata_ttl(knot_rdataset_at(&(rrset->rrs), 0));
 }
 
+_public_
 int knot_rrset_rr_to_canonical(knot_rrset_t *rrset)
 {
 	if (rrset == NULL || rrset->rrs.rr_count != 1) {
