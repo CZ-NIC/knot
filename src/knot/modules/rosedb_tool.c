@@ -127,6 +127,8 @@ static int rosedb_add(struct cache *cache, int argc, char *argv[])
 
 	knot_dname_t key[KNOT_DNAME_MAXLEN] = { '\0' };
 	knot_dname_from_str(key, argv[0], sizeof(key));
+	knot_dname_to_lower(key);
+	
 	struct entry entry;
 	int ret = parse_rdata(&entry, argv[0], argv[1], argv[3], atoi(argv[2]), cache->pool);
 	entry.threat_code = argv[4];
