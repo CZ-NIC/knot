@@ -444,7 +444,7 @@ static int process_query_out(knot_layer_t *ctx, knot_pkt_t *pkt)
 	}
 
 	/* Answer based on qclass. */
-	if (next_state != NS_PROC_DONE) {
+	if (next_state != KNOT_NS_PROC_DONE) {
 		switch (knot_pkt_qclass(pkt)) {
 		case KNOT_CLASS_CH:
 			next_state = query_chaos(pkt, ctx);

@@ -434,7 +434,7 @@ static int rosedb_synth_rr(knot_pkt_t *pkt, struct entry *entry, uint16_t qtype)
 	}
 
 	/*! \note The RR will be just stored to wire. */
-	ret = knot_pkt_put(pkt, COMPR_HINT_QNAME, &rr, 0);
+	ret = knot_pkt_put(pkt, KNOT_COMPR_HINT_QNAME, &rr, 0);
 	knot_rrset_clear(&rr, &pkt->mm);
 
 	return ret;
@@ -520,7 +520,7 @@ static int rosedb_query_txn(MDB_txn *txn, MDB_dbi dbi, knot_pkt_t *pkt, struct q
 static int rosedb_query(int state, knot_pkt_t *pkt, struct query_data *qdata, void *ctx)
 {
 	if (pkt == NULL || qdata == NULL || ctx == NULL) {
-		return NS_PROC_FAIL;
+		return KNOT_NS_PROC_FAIL;
 	}
 
 	struct cache *cache = ctx;
@@ -539,7 +539,7 @@ static int rosedb_query(int state, knot_pkt_t *pkt, struct query_data *qdata, vo
 
 	mdb_txn_abort(txn);
 
-	return NS_PROC_DONE;
+	return KNOT_NS_PROC_DONE;
 }
 
 int rosedb_load(struct query_plan *plan, struct query_module *self)
