@@ -282,6 +282,11 @@ void zone_events_schedule_at(zone_t *zone, zone_event_type_t type, time_t time)
 	pthread_mutex_unlock(&events->mx);
 }
 
+bool zone_events_is_scheduled(zone_t *zone, zone_event_type_t type)
+{
+	return zone_events_get_time(zone, type) > 0;
+}
+
 void zone_events_enqueue(zone_t *zone, zone_event_type_t type)
 {
 	if (!zone || !valid_event(type)) {
