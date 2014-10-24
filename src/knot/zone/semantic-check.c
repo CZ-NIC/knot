@@ -127,7 +127,7 @@ static char *error_messages[(-ZC_ERR_UNKNOWN) + 1] = {
 void err_handler_init(err_handler_t *h)
 {
 	memset(h, 0, sizeof(err_handler_t));
-	memset(h->errors, 0, sizeof(uint) * (-ZC_ERR_UNKNOWN + 1));
+	memset(h->errors, 0, sizeof(unsigned) * (-ZC_ERR_UNKNOWN + 1));
 	h->options.log_cname = 0;
 	h->options.log_glue = 0;
 	h->options.log_rrsigs = 0;

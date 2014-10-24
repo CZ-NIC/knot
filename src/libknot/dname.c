@@ -238,7 +238,7 @@ char *knot_dname_to_str(char *dst, const knot_dname_t *name, size_t maxlen)
 	uint8_t label_len = 0;
 	size_t  str_len = 0;
 
-	for (uint i = 0; i < dname_size; i++) {
+	for (unsigned i = 0; i < dname_size; i++) {
 		uint8_t c = name[i];
 
 		/* Read next label size. */
@@ -600,7 +600,7 @@ int knot_dname_matched_labels(const knot_dname_t *d1, const knot_dname_t *d2)
 
 /*----------------------------------------------------------------------------*/
 _public_
-knot_dname_t *knot_dname_replace_suffix(const knot_dname_t *name, uint labels,
+knot_dname_t *knot_dname_replace_suffix(const knot_dname_t *name, unsigned labels,
 					const knot_dname_t *suffix)
 {
 	if (name == NULL)

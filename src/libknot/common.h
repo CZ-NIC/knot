@@ -34,11 +34,6 @@
 #define _public_ __attribute__((visibility("default")))
 #define _hidden_ __attribute__((visibility("hidden")))
 
-#ifndef KNOT_UINT_DEFINED
-typedef unsigned int uint; /*!< \brief Unsigned. */
-#define KNOT_UINT_DEFINED
-#endif
-
 /*! \brief Eliminate compiler warning with unused parameters. */
 #define KNOT_UNUSED(param) (void)(param)
 

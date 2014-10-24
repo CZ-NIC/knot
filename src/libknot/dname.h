@@ -258,7 +258,7 @@ int knot_dname_matched_labels(const knot_dname_t *d1, const knot_dname_t *d2);
  * \return New domain name created by replacing suffix of \a dname of size
  *         \a size with \a suffix.
  */
-knot_dname_t *knot_dname_replace_suffix(const knot_dname_t *name, uint labels,
+knot_dname_t *knot_dname_replace_suffix(const knot_dname_t *name, unsigned labels,
                                         const knot_dname_t *suffix);
 
 /*!

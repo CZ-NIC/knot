@@ -94,7 +94,7 @@ static int knot_zone_diff_add_node(const zone_node_t *node,
                                    changeset_t *changeset)
 {
 	/* Add all rrsets from node. */
-	for (uint i = 0; i < node->rrset_count; i++) {
+	for (unsigned i = 0; i < node->rrset_count; i++) {
 		knot_rrset_t rrset = node_rrset_at(node, i);
 		int ret = changeset_add_rrset(changeset, &rrset);
 		if (ret != KNOT_EOK) {
@@ -111,7 +111,7 @@ static int knot_zone_diff_remove_node(changeset_t *changeset,
                                       const zone_node_t *node)
 {
 	/* Remove all the RRSets of the node. */
-	for (uint i = 0; i < node->rrset_count; i++) {
+	for (unsigned i = 0; i < node->rrset_count; i++) {
 		knot_rrset_t rrset = node_rrset_at(node, i);
 		int ret = changeset_rem_rrset(changeset, &rrset);
 		if (ret != KNOT_EOK) {
@@ -270,7 +270,7 @@ static int knot_zone_diff_node(zone_node_t **node_ptr, void *data)
 		                               param->changeset);
 	}
 
-	for (uint i = 0; i < node->rrset_count; i++) {
+	for (unsigned i = 0; i < node->rrset_count; i++) {
 		/* Search for the RRSet in the node from the second tree. */
 		knot_rrset_t rrset = node_rrset_at(node, i);
 
@@ -299,7 +299,7 @@ static int knot_zone_diff_node(zone_node_t **node_ptr, void *data)
 		}
 	}
 
-	for (uint i = 0; i < node_in_second_tree->rrset_count; i++) {
+	for (unsigned i = 0; i < node_in_second_tree->rrset_count; i++) {
 		/* Search for the RRSet in the node from the second tree. */
 		knot_rrset_t rrset = node_rrset_at(node_in_second_tree, i);
 
