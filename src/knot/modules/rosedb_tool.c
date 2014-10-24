@@ -92,25 +92,28 @@ static void parse_err(zs_scanner_t *s) {
 static int parse_rdata(struct entry *entry, const char *owner, const char *rrtype, const char *rdata,
                        int ttl, mm_ctx_t *mm)
 {
+	knot_rdataset_init(&entry->data.rrs);
+	int ret = knot_rrtype_from_string(rrtype, &entry->data.type);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+	
 	zs_scanner_t *scanner = zs_scanner_create(".", KNOT_CLASS_IN, 0,
 	                                         NULL, parse_err, NULL);
 	if (scanner == NULL) {
 		return KNOT_ENOMEM;
 	}
 
-	knot_rdataset_init(&entry->data.rrs);
-	knot_rrtype_from_string(rrtype, &entry->data.type);
-
 	/* Synthetize RR line */
 	char *rr_line = sprintf_alloc("%s %u IN %s %s\n", owner, ttl, rrtype, rdata);
-	int ret = zs_scanner_parse(scanner, rr_line, rr_line + strlen(rr_line), true);
+	ret = zs_scanner_parse(scanner, rr_line, rr_line + strlen(rr_line), true);
 	free(rr_line);
 
 	/* Write parsed RDATA. */
 	if (ret == KNOT_EOK) {
 		knot_rdata_t rr[knot_rdata_array_size(scanner->r_data_length)];
 		knot_rdata_init(rr, scanner->r_data_length, scanner->r_data, ttl);
-		knot_rdataset_add(&entry->data.rrs, rr, mm);
+		ret = knot_rdataset_add(&entry->data.rrs, rr, mm);
 	}
 
 	zs_scanner_free(scanner);
@@ -174,14 +177,17 @@ static int rosedb_get(struct cache *cache, int argc, char *argv[])
 
 	knot_dname_t key[KNOT_DNAME_MAXLEN] = { '\0' };
 	knot_dname_from_str(key, argv[0], sizeof(key));
+	char type_str[16] = { '\0' };
+
 	struct iter it;
 	ret = cache_query_fetch(txn, cache->dbi, &it, key);
 	while (ret == 0) {
 		struct entry entry;
 		cache_iter_val(&it, &entry);
 		knot_rdata_t *rd = knot_rdataset_at(&entry.data.rrs, 0);
-		printf("%s\t%hu\tTTL=%u\tRDLEN=%u\t%s\t%s\n", argv[0], entry.data.type,
-		                knot_rdata_ttl(rd), knot_rdata_rdlen(rd), entry.threat_code, entry.syslog_ip);
+		knot_rrtype_to_string(entry.data.type, type_str, sizeof(type_str));
+		printf("%s\t%s\tTTL=%u\tRDLEN=%u\t%s\t%s\n", argv[0], type_str,
+		       knot_rdata_ttl(rd), knot_rdata_rdlen(rd), entry.threat_code, entry.syslog_ip);
 		if (cache_iter_next(&it) != 0) {
 			break;
 		}
@@ -204,13 +210,15 @@ static int rosedb_list(struct cache *cache, int argc, char *argv[])
 	MDB_cursor *cursor = cursor_acquire(txn, cache->dbi);
 	MDB_val key, data;
 	char dname_str[KNOT_DNAME_MAXLEN] = {'\0'};
+	char type_str[16] = { '\0' };
 
 	ret = mdb_cursor_get(cursor, &key, &data, MDB_FIRST);
 	while (ret == 0) {
 		struct entry entry;
 		unpack_entry(&data, &entry);
 		knot_dname_to_str(dname_str, key.mv_data, sizeof(dname_str));
-		printf("%s\t%hu RDATA=%zuB\t%s\t%s\n", dname_str, entry.data.type,
+		knot_rrtype_to_string(entry.data.type, type_str, sizeof(type_str));
+		printf("%s\t%s RDATA=%zuB\t%s\t%s\n", dname_str, type_str,
 		       knot_rdataset_size(&entry.data.rrs), entry.threat_code, entry.syslog_ip);
 
 		ret = mdb_cursor_get(cursor, &key, &data, MDB_NEXT);
