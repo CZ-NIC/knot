@@ -25,6 +25,7 @@
 #include "common/sockaddr.h"
 
 #include "libknot/common.h"
+#include "libknot/errcode.h"
 #include "libknot/descriptor.h"
 
 /*! \brief Some implementation-related constants. */

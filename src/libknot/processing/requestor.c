@@ -19,7 +19,7 @@
 
 #include "common/net.h"
 
-#include "libknot/common.h"
+#include "libknot/errcode.h"
 #include "libknot/processing/requestor.h"
 
 static bool use_tcp(struct knot_request *request)

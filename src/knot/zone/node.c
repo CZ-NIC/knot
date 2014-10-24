@@ -17,8 +17,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-#include "libknot/common.h"
 #include "knot/zone/node.h"
+#include "libknot/errcode.h"
 #include "libknot/rrset.h"
 #include "libknot/rdataset.h"
 #include "libknot/rrtype/rrsig.h"
@@ -115,7 +115,7 @@ void node_free_rrsets(zone_node_t *node, mm_ctx_t *mm)
 	for (uint16_t i = 0; i < node->rrset_count; ++i) {
 		rr_data_clear(&node->rrs[i], NULL);
 	}
-	
+
 	node->rrset_count = 0;
 }
 

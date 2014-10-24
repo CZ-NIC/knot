@@ -30,6 +30,7 @@
 #include "common/lists.h"
 #include "common/strlcpy.h"
 #include "knot/conf/conf.h"
+#include "libknot/errcode.h"
 
 /* Single log message buffer length (one line). */
 #define LOG_BUFLEN 512

@@ -28,6 +28,7 @@
 
 #include "libknot/common.h"
 #include "libknot/consts.h"
+#include "libknot/errcode.h"
 #include "libknot/util/tolower.h"
 #include "libknot/util/utils.h"
 #include "libknot/packet/wire.h"

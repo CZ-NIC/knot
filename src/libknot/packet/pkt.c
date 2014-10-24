@@ -23,8 +23,8 @@
 #include "common/debug.h"
 #include "common/log.h"
 
-#include "libknot/common.h"
 #include "libknot/descriptor.h"
+#include "libknot/errcode.h"
 #include "libknot/packet/wire.h"
 #include "libknot/rrtype/tsig.h"
 #include "libknot/tsig-op.h"

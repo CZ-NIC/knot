@@ -24,8 +24,6 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "libknot/errcode.h"
-
 #pragma once
 
 #define _public_ __attribute__((visibility("default")))

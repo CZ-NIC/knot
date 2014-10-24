@@ -31,7 +31,7 @@
 #include <sys/stat.h>
 #include <assert.h>
 
-#include "libknot/common.h"
+#include "libknot/errcode.h"
 #include "common/net.h"
 
 static int socket_create(int family, int type, int proto)

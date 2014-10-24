@@ -27,6 +27,7 @@
 #include "common/log.h"
 
 #include "libknot/common.h"
+#include "libknot/errcode.h"
 #include "libknot/descriptor.h"
 #include "libknot/rrtype/tsig.h"
 #include "libknot/packet/wire.h"

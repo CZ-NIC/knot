@@ -30,7 +30,7 @@
 #include "knot/updates/apply.h"
 #include "libknot/processing/requestor.h"
 #include "knot/nameserver/process_query.h"
-#include "libknot/common.h"
+#include "libknot/errcode.h"
 #include "libknot/dname.h"
 #include "libknot/dnssec/random.h"
 #include "libknot/util/utils.h"
@@ -298,7 +298,7 @@ size_t zone_update_dequeue(zone_t *zone, list_t *updates)
 	zone->ddns_queue_size = 0;
 
 	pthread_mutex_unlock(&zone->ddns_lock);
-	
+
 	return update_count;
 }
 

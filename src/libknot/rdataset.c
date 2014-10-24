@@ -22,6 +22,7 @@
 #include "libknot/rdataset.h"
 
 #include "libknot/common.h"
+#include "libknot/errcode.h"
 
 static knot_rdata_t *rr_seek(knot_rdata_t *d, size_t pos)
 {
