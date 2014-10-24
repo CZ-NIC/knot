@@ -28,9 +28,6 @@
 
 #pragma once
 
-#define KNOT_NAME "lib" PACKAGE_NAME // Project name
-#define KNOT_VER  PACKAGE_VERSION  // 0xMMIIRR (MAJOR,MINOR,REVISION)
-
 #define _public_ __attribute__((visibility("default")))
 #define _hidden_ __attribute__((visibility("hidden")))
 
@@ -55,13 +52,6 @@
 #ifndef knot_unlikely
 /*! \brief Optimize for x to be false value. */
 #define knot_unlikely(x)     __builtin_expect((x),0)
-#endif
-
-/*! \todo Refactor theese. We should have an allocator function handling this.*/
-#ifndef KNOT_ERR_ALLOC_FAILED
-#define KNOT_ERR_ALLOC_FAILED fprintf(stderr, \
-                                 "Allocation failed at %s:%d (%s ver.%s)\n", \
-                                 __FILE__, __LINE__, KNOT_NAME, KNOT_VER)
 #endif
 
 /*! @} */

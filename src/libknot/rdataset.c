@@ -70,7 +70,6 @@ static int add_rr_at(knot_rdataset_t *rrs, const knot_rdata_t *rr, size_t pos,
 	if (tmp) {
 		rrs->data = tmp;
 	} else {
-		KNOT_ERR_ALLOC_FAILED;
 		return KNOT_ENOMEM;
 	}
 
@@ -125,7 +124,6 @@ static int remove_rr_at(knot_rdataset_t *rrs, size_t pos, mm_ctx_t *mm)
 		                       total_size - (knot_rdata_array_size(old_size)),
 		                       total_size);
 		if (tmp == NULL) {
-			KNOT_ERR_ALLOC_FAILED;
 			return KNOT_ENOMEM;
 		} else {
 			rrs->data = tmp;
@@ -169,7 +167,6 @@ int knot_rdataset_copy(knot_rdataset_t *dst, const knot_rdataset_t *src, mm_ctx_
 	size_t src_size = knot_rdataset_size(src);
 	dst->data = mm_alloc(mm, src_size);
 	if (dst->data == NULL) {
-		KNOT_ERR_ALLOC_FAILED;
 		return KNOT_ENOMEM;
 	}
 

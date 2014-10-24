@@ -152,7 +152,6 @@ changeset_t *changeset_new(const knot_dname_t *apex)
 {
 	changeset_t *ret = malloc(sizeof(changeset_t));
 	if (ret == NULL) {
-		KNOT_ERR_ALLOC_FAILED;
 		return NULL;
 	}
 

@@ -200,7 +200,6 @@ int knot_load_zone_keys(const char *keydir_name, const knot_dname_t *zone_name,
 		size_t path_len = strlen(keydir_name) + 1 + strlen(entry->d_name);
 		char *path = malloc((path_len + 1) * sizeof(char));
 		if (!path) {
-			KNOT_ERR_ALLOC_FAILED;
 			closedir(keydir);
 			return KNOT_ENOMEM;
 		}

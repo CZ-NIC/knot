@@ -217,7 +217,6 @@ int zonefile_open(zloader_t *loader, const char *source, const char *origin,
 	/* Create context. */
 	zcreator_t *zc = malloc(sizeof(zcreator_t));
 	if (zc == NULL) {
-		KNOT_ERR_ALLOC_FAILED;
 		return KNOT_ENOMEM;
 	}
 	memset(zc, 0, sizeof(zcreator_t));

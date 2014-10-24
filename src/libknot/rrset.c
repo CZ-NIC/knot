@@ -39,7 +39,6 @@ knot_rrset_t *knot_rrset_new(const knot_dname_t *owner, uint16_t type,
 
 	knot_rrset_t *ret = mm_alloc(mm, sizeof(knot_rrset_t));
 	if (ret == NULL) {
-		KNOT_ERR_ALLOC_FAILED;
 		knot_dname_free(&owner_cpy, mm);
 		return NULL;
 	}

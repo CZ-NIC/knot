@@ -996,7 +996,6 @@ static int add_rr_type_to_list(const knot_rrset_t *rr, list_t *l)
 
 	type_node_t *n = malloc(sizeof(type_node_t));
 	if (n == NULL) {
-		KNOT_ERR_ALLOC_FAILED;
 		return KNOT_ENOMEM;
 	}
 	n->type = rr->type;
@@ -1031,7 +1030,6 @@ static int rr_already_signed(const knot_rrset_t *rrset, hattrie_t *t,
 		// Create new info struct
 		signed_info_t *info = malloc(sizeof(signed_info_t));
 		if (info == NULL) {
-			KNOT_ERR_ALLOC_FAILED;
 			return KNOT_ENOMEM;
 		}
 		memset(info, 0, sizeof(signed_info_t));
@@ -1044,7 +1042,6 @@ static int rr_already_signed(const knot_rrset_t *rrset, hattrie_t *t,
 		// Create new list to insert as a value
 		info->type_list = malloc(sizeof(list_t));
 		if (info->type_list == NULL) {
-			KNOT_ERR_ALLOC_FAILED;
 			free(info->dname);
 			free(info);
 			return KNOT_ENOMEM;

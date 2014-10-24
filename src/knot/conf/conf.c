@@ -412,7 +412,6 @@ static int conf_process(conf_t *conf)
 		size_t size = stor_len + zname_len + 9; // /diff.db,\0
 		char *dest = malloc(size);
 		if (dest == NULL) {
-			KNOT_ERR_ALLOC_FAILED;
 			zone->ixfr_db = NULL; /* Not enough memory. */
 			ret = KNOT_ENOMEM; /* Error report. */
 			continue;
