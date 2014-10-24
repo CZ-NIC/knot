@@ -21,10 +21,10 @@
 #include <time.h>
 
 #include "common/debug.h"
+#include "common/macros.h"
 #include "libknot/descriptor.h"
 #include "libknot/errcode.h"
 #include "common/trie/hat-trie.h"
-#include "libknot/common.h"
 #include "libknot/dname.h"
 #include "libknot/rrset.h"
 #include "libknot/dnssec/key.h"
@@ -1151,7 +1151,7 @@ static int sign_changeset_wrap(knot_rrset_t *chg_rrset, changeset_signing_data_t
  */
 static int free_helper_trie_node(value_t *val, void *d)
 {
-	KNOT_UNUSED(d);
+	UNUSED(d);
 	signed_info_t *info = (signed_info_t *)*val;
 	if (info->type_list && !EMPTY_LIST(*(info->type_list))) {
 		WALK_LIST_FREE(*(info->type_list));
@@ -1215,7 +1215,7 @@ int knot_zone_sign(const zone_contents_t *zone,
 	}
 
 	// renew the signatures a little earlier
-	uint32_t expiration = KNOT_MIN(normal_tree_expiration, nsec3_tree_expiration);
+	uint32_t expiration = MIN(normal_tree_expiration, nsec3_tree_expiration);
 
 	// DNSKEY updates
 	uint32_t dnskey_update = knot_get_next_zone_key_event(zone_keys);
@@ -1354,7 +1354,7 @@ int knot_zone_sign_changeset(const zone_contents_t *zone,
 	}
 	changeset_iter_t itt;
 	changeset_iter_all(&itt, in_ch, false);
-	
+
 	knot_rrset_t rr = changeset_iter_next(&itt);
 	while (!knot_rrset_empty(&rr)) {
 		int ret = sign_changeset_wrap(&rr, &args);
@@ -1385,7 +1385,7 @@ int knot_zone_sign_nsecs_in_changeset(const knot_zone_keys_t *zone_keys,
 
 	changeset_iter_t itt;
 	changeset_iter_add(&itt, changeset, false);
-	
+
 	knot_rrset_t rr = changeset_iter_next(&itt);
 	while (!knot_rrset_empty(&rr)) {
 		if (rr.type == KNOT_RRTYPE_NSEC ||
@@ -1400,7 +1400,7 @@ int knot_zone_sign_nsecs_in_changeset(const knot_zone_keys_t *zone_keys,
 		rr = changeset_iter_next(&itt);
 	}
 	changeset_iter_clear(&itt);
-	
+
 	return KNOT_EOK;
 }
 

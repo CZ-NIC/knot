@@ -28,8 +28,8 @@
 
 #include "common-knot/crc.h"
 #include "common-knot/strlcat.h"
+#include "common/macros.h"
 #include "common/strlcpy.h"
-#include "libknot/common.h"
 #include "knot/zone/semantic-check.h"
 #include "knot/zone/contents.h"
 #include "knot/dnssec/zone-nsec.h"
@@ -346,7 +346,7 @@ static int zones_open_free_filename(const char *old_name, char **new_name)
 	strlcat(*new_name, suffix, max_size);
 	mode_t old_mode = umask(077);
 	int fd = mkstemp(*new_name);
-	KNOT_UNUSED(umask(old_mode));
+	UNUSED(umask(old_mode));
 	if (fd < 0) {
 		free(*new_name);
 		*new_name = NULL;

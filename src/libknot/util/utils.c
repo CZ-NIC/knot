@@ -21,8 +21,8 @@
 
 #include "libknot/util/utils.h"
 
-#include "libknot/common.h"
 #include "libknot/util/endian.h"
+#include "common/macros.h"
 
 /*----------------------------------------------------------------------------*/
 _public_

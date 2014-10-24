@@ -27,6 +27,7 @@
 #include <urcu.h>
 #include "common-knot/strlcat.h"
 #include "common/strlcpy.h"
+#include "common/macros.h"
 #include "common/mem.h"
 #include "knot/conf/conf.h"
 #include "knot/conf/extra.h"
@@ -794,7 +795,7 @@ int conf_open(const char* path)
 
 		/* Update hooks. */
 		conf_update_hooks(nconf);
-		
+
 		/* Free old config. */
 		conf_free(oldconf);
 	}
@@ -876,13 +877,13 @@ size_t conf_udp_threads(const conf_t *conf)
 size_t conf_tcp_threads(const conf_t *conf)
 {
 	size_t thrcount = conf_udp_threads(conf);
-	return KNOT_MAX(thrcount * 2, CONFIG_XFERS);
+	return MAX(thrcount * 2, CONFIG_XFERS);
 }
 
 int conf_bg_threads(const conf_t *conf)
 {
 	if (conf->bg_workers < 1) {
-		return KNOT_MIN(dt_optimal_size(), CONFIG_XFERS);
+		return MIN(dt_optimal_size(), CONFIG_XFERS);
 	}
 
 	return conf->bg_workers;

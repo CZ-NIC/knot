@@ -18,6 +18,7 @@
 #include <sys/stat.h>
 #include "knot/ctl/remote.h"
 #include "common/log.h"
+#include "common/macros.h"
 #include "common/mem.h"
 #include "common-knot/fdset.h"
 #include "knot/knot.h"
@@ -222,8 +223,8 @@ static int remote_zone_sign(zone_t *zone)
  */
 static int remote_c_stop(server_t *s, remote_cmdargs_t* a)
 {
-	KNOT_UNUSED(a);
-	KNOT_UNUSED(s);
+	UNUSED(a);
+	UNUSED(s);
 	return KNOT_CTL_STOP;
 }
 
@@ -235,7 +236,7 @@ static int remote_c_stop(server_t *s, remote_cmdargs_t* a)
  */
 static int remote_c_reload(server_t *s, remote_cmdargs_t* a)
 {
-	KNOT_UNUSED(a);
+	UNUSED(a);
 	return server_reload(s, conf()->filename);
 }
 
@@ -247,8 +248,8 @@ static int remote_c_reload(server_t *s, remote_cmdargs_t* a)
  */
 static int remote_c_status(server_t *s, remote_cmdargs_t* a)
 {
-	KNOT_UNUSED(s);
-	KNOT_UNUSED(a);
+	UNUSED(s);
+	UNUSED(a);
 	dbg_server("remote: %s\n", __func__);
 	return KNOT_EOK;
 }

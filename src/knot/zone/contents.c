@@ -18,6 +18,7 @@
 
 #include "knot/zone/contents.h"
 #include "common/debug.h"
+#include "common/macros.h"
 #include "libknot/rrset.h"
 #include "common/base32hex.h"
 #include "libknot/descriptor.h"
@@ -103,7 +104,7 @@ static int zone_contents_check_node(
 static int zone_contents_destroy_node_rrsets_from_tree(
 	zone_node_t **tnode, void *data)
 {
-	KNOT_UNUSED(data);
+	UNUSED(data);
 	assert(tnode != NULL);
 	if (*tnode != NULL) {
 		node_free_rrsets(*tnode, NULL);

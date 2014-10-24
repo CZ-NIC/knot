@@ -25,7 +25,6 @@
 #include "libknot/consts.h"
 #include "knot/zone/zonedb.h"
 #include "knot/zone/timers.h"
-#include "libknot/common.h"
 #include "libknot/packet/wire.h"
 #include "knot/updates/acl.h"
 #include "common-knot/evsched.h"

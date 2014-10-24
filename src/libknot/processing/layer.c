@@ -19,6 +19,7 @@
 #include "libknot/processing/layer.h"
 
 #include "common/debug.h"
+#include "common/macros.h"
 
 /*! \brief Helper for conditional layer call. */
 #define LAYER_CALL(layer, func, ...) \

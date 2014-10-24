@@ -22,6 +22,7 @@
 
 #include "common/debug.h"
 #include "common/log.h"
+#include "common/macros.h"
 
 #include "libknot/descriptor.h"
 #include "libknot/errcode.h"

@@ -21,7 +21,6 @@
 
 #include "libknot/dnssec/rrset-sign.h"
 
-#include "libknot/common.h"
 #include "libknot/descriptor.h"
 #include "libknot/dnssec/key.h"
 #include "libknot/dnssec/policy.h"
@@ -31,6 +30,7 @@
 #include "libknot/rrset.h"
 #include "libknot/rrtype/rrsig.h"
 #include "libknot/packet/rrset-wire.h"
+#include "common/macros.h"
 
 #define RRSIG_RDATA_SIGNER_OFFSET 18
 

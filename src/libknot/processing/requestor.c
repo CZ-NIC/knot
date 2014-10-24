@@ -17,6 +17,7 @@
 #include <assert.h>
 #include <sys/fcntl.h>
 
+#include "common/macros.h"
 #include "common/net.h"
 
 #include "libknot/errcode.h"

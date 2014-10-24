@@ -34,7 +34,6 @@
 #include "common/mempattern.h"
 
 #include "libknot/consts.h"
-#include "libknot/common.h"
 
 /*! \brief Type representing a domain name in wire format. */
 typedef uint8_t knot_dname_t;

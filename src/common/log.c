@@ -28,6 +28,7 @@
 
 #include "common/log.h"
 #include "common/lists.h"
+#include "common/macros.h"
 #include "common/strlcpy.h"
 #include "knot/conf/conf.h"
 #include "libknot/errcode.h"
@@ -123,7 +124,7 @@ static uint8_t sink_levels(struct log_sink *log, int facility, logsrc_t src)
 	assert(log);
 
 	// Check facility
-	if (knot_unlikely(log->facility_count == 0 || facility >= log->facility_count)) {
+	if (unlikely(log->facility_count == 0 || facility >= log->facility_count)) {
 		return 0;
 	}
 
@@ -133,7 +134,7 @@ static uint8_t sink_levels(struct log_sink *log, int facility, logsrc_t src)
 static int sink_levels_set(struct log_sink *log, int facility, logsrc_t src, uint8_t levels)
 {
 	// Check facility
-	if (knot_unlikely(log->facility_count == 0 || facility >= log->facility_count)) {
+	if (unlikely(log->facility_count == 0 || facility >= log->facility_count)) {
 		return KNOT_EINVAL;
 	}
 
@@ -204,7 +205,7 @@ bool log_isopen()
 static int log_open_file(struct log_sink *log, const char* filename)
 {
 	// Check facility
-	if (knot_unlikely(log->facility_count  == 0 ||
+	if (unlikely(log->facility_count  == 0 ||
 	                  LOGT_FILE + log->file_count >= log->facility_count)) {
 		return KNOT_ERROR;
 	}
@@ -461,7 +462,7 @@ int log_update_privileges(int uid, int gid)
 int log_reconfigure(const struct conf_t *conf, void *data)
 {
 	// Data not used
-	KNOT_UNUSED(data);
+	UNUSED(data);
 
 	// Use defaults if no 'log' section is configured.
 	if (EMPTY_LIST(conf->logs)) {

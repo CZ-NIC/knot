@@ -17,6 +17,7 @@
 #include <assert.h>
 
 #include "common/base32hex.h"
+#include "common/macros.h"
 #include "knot/dnssec/nsec3-chain.h"
 #include "libknot/dname.h"
 #include "libknot/packet/wire.h"
@@ -364,7 +365,7 @@ static int connect_nsec3_nodes(zone_node_t *a, zone_node_t *b,
 {
 	assert(a);
 	assert(b);
-	KNOT_UNUSED(data);
+	UNUSED(data);
 
 	assert(a->rrset_count == 1);
 
@@ -496,7 +497,7 @@ static bool nsec3_is_empty(zone_node_t *node)
  */
 static int nsec3_mark_empty(zone_node_t **node_p, void *data)
 {
-	KNOT_UNUSED(data);
+	UNUSED(data);
 	zone_node_t *node = *node_p;
 
 	if (!(node->flags & NODE_FLAGS_EMPTY) && nsec3_is_empty(node)) {
@@ -545,7 +546,7 @@ static void mark_empty_nodes_tmp(const zone_contents_t *zone)
  */
 static int nsec3_reset(zone_node_t **node_p, void *data)
 {
-	KNOT_UNUSED(data);
+	UNUSED(data);
 	zone_node_t *node = *node_p;
 
 	if (node->flags & NODE_FLAGS_EMPTY) {

@@ -28,11 +28,11 @@
 #include "utils/common/exec.h"
 #include "utils/common/netio.h"
 #include "utils/common/token.h"
+#include "common/macros.h"
 #include "common/mem.h"
 #include "libknot/errcode.h"
 #include "libknot/descriptor.h"
 #include "common/strlcpy.h"
-#include "libknot/common.h"
 #include "libknot/libknot.h"
 #include "libknot/dnssec/random.h"
 
@@ -628,7 +628,7 @@ int cmd_ttl(const char* lp, nsupdate_params_t *params)
 
 int cmd_debug(const char* lp, nsupdate_params_t *params)
 {
-	KNOT_UNUSED(params);
+	UNUSED(params);
 	DBG("%s: lp='%s'\n", __func__, lp);
 
 	msg_enable_debug(1);
@@ -936,7 +936,7 @@ int cmd_origin(const char* lp, nsupdate_params_t *params)
 
 int cmd_gsstsig(const char* lp, nsupdate_params_t *params)
 {
-	KNOT_UNUSED(params);
+	UNUSED(params);
 	DBG("%s: lp='%s'\n", __func__, lp);
 
 	return KNOT_ENOTSUP;
@@ -944,7 +944,7 @@ int cmd_gsstsig(const char* lp, nsupdate_params_t *params)
 
 int cmd_oldgsstsig(const char* lp, nsupdate_params_t *params)
 {
-	KNOT_UNUSED(params);
+	UNUSED(params);
 	DBG("%s: lp='%s'\n", __func__, lp);
 
 	return KNOT_ENOTSUP;
@@ -952,7 +952,7 @@ int cmd_oldgsstsig(const char* lp, nsupdate_params_t *params)
 
 int cmd_realm(const char* lp, nsupdate_params_t *params)
 {
-	KNOT_UNUSED(params);
+	UNUSED(params);
 	DBG("%s: lp='%s'\n", __func__, lp);
 
 	return KNOT_ENOTSUP;

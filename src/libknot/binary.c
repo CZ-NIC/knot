@@ -20,9 +20,9 @@
 #include "libknot/binary.h"
 
 #include "common/base64.h"
+#include "common/macros.h"
 #include "common/mem.h"
 
-#include "libknot/common.h"
 #include "libknot/errcode.h"
 
 _public_

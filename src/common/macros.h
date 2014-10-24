@@ -1,14 +1,4 @@
-/*!
- * \file libknot/common.h
- *
- * \author Lubos Slovak <lubos.slovak@nic.cz>
- *
- * \brief Common macros, includes and utilities.
- *
- * \addtogroup libknot
- * @{
- */
-/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2014 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -23,33 +13,44 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
+/*!
+ * \file common/macros.h
+ *
+ * \author Lubos Slovak <lubos.slovak@nic.cz>
+ *
+ * \brief Common macros.
+ *
+ * \addtogroup common_lib
+ * @{
+ */
 
 #pragma once
 
+/*! \brief Library visibility macros. */
 #define _public_ __attribute__((visibility("default")))
 #define _hidden_ __attribute__((visibility("hidden")))
 
 /*! \brief Eliminate compiler warning with unused parameters. */
-#define KNOT_UNUSED(param) (void)(param)
+#define UNUSED(param) (void)(param)
 
-#ifndef KNOT_MIN
+#ifndef MIN
 /*! \brief Type-safe minimum macro. */
-#define KNOT_MIN(a, b) \
+#define MIN(a, b) \
 	({ __typeof__ (a) _a = (a); __typeof__ (b) _b = (b); _a < _b ? _a : _b; })
 
 /*! \brief Type-safe maximum macro. */
-#define KNOT_MAX(a, b) \
+#define MAX(a, b) \
 	({ __typeof__ (a) _a = (a); __typeof__ (b) _b = (b); _a > _b ? _a : _b; })
 #endif
 
-/* Optimisation macros. */
-#ifndef knot_likely
+#ifndef likely
 /*! \brief Optimize for x to be true value. */
-#define knot_likely(x)       __builtin_expect((x),1)
+#define likely(x) __builtin_expect((x), 1)
 #endif
-#ifndef knot_unlikely
+
+#ifndef unlikely
 /*! \brief Optimize for x to be false value. */
-#define knot_unlikely(x)     __builtin_expect((x),0)
+#define unlikely(x) __builtin_expect((x), 0)
 #endif
 
 /*! @} */

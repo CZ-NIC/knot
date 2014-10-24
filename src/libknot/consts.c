@@ -15,8 +15,7 @@
 */
 
 #include "libknot/consts.h"
-
-#include "libknot/common.h"
+#include "common/macros.h"
 
 _public_
 knot_lookup_table_t knot_opcode_names[] = {

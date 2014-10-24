@@ -23,10 +23,10 @@
 
 #include "libknot/dname.h"
 
+#include "common/macros.h"
 #include "common/mempattern.h"
 #include "common/debug.h"
 
-#include "libknot/common.h"
 #include "libknot/consts.h"
 #include "libknot/errcode.h"
 #include "libknot/util/tolower.h"

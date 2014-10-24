@@ -22,9 +22,9 @@
 #include "libknot/rrtype/opt.h"
 
 #include "common/debug.h"
+#include "common/macros.h"
 #include "common/sockaddr.h"
 
-#include "libknot/common.h"
 #include "libknot/errcode.h"
 #include "libknot/descriptor.h"
 

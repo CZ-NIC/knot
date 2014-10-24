@@ -20,10 +20,10 @@
 
 #include "libknot/rrset.h"
 
+#include "common/macros.h"
 #include "common/mempattern.h"
 
 #include "libknot/consts.h"
-#include "libknot/common.h"
 #include "libknot/descriptor.h"
 #include "libknot/dname.h"
 #include "libknot/rrtype/naptr.h"

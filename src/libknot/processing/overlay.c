@@ -17,6 +17,7 @@
 #include "libknot/processing/overlay.h"
 
 #include "libknot/errcode.h"
+#include "common/macros.h"
 
 /*! \note Macro for state-chaining layers. */
 #define ITERATE_LAYERS(overlay, func, ...) \

@@ -20,7 +20,6 @@
 #include <string.h>                     // strdup
 
 #include "libknot/errcode.h"
-#include "libknot/common.h"
 
 #include "dnstap/dnstap.h"
 #include "dnstap/reader.h"
@@ -98,7 +97,7 @@ void dt_reader_free_frame(dt_reader_t *reader, Dnstap__Dnstap **frame_ptr)
 		return;
 	}
 
-	KNOT_UNUSED(reader);
+	UNUSED(reader);
 
 	dnstap__dnstap__free_unpacked(*frame_ptr, NULL);
 	*frame_ptr = NULL;

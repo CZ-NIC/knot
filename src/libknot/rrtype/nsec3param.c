@@ -16,9 +16,9 @@
 
 #include "libknot/rrtype/nsec3param.h"
 
+#include "common/macros.h"
 #include "common/mem.h"
 
-#include "libknot/common.h"
 #include "libknot/errcode.h"
 
 _public_

@@ -19,8 +19,7 @@
 #include <strings.h>			// strcasecmp
 
 #include "libknot/descriptor.h"
-
-#include "libknot/common.h"
+#include "common/macros.h"
 
 /*!
  * \brief Table with DNS classes.

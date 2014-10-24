@@ -20,9 +20,9 @@
 #include <inttypes.h>
 
 #include "common/debug.h"
+#include "common/macros.h"
 #include "common/mem.h"
 #include "libknot/errcode.h"
-#include "libknot/common.h"
 #include "libknot/dname.h"
 #include "libknot/consts.h"
 #include "libknot/rrtype/dnskey.h"
@@ -206,7 +206,7 @@ int knot_load_zone_keys(const char *keydir_name, const knot_dname_t *zone_name,
 
 		int written = snprintf(path, path_len + 1, "%s/%s",
 		                       keydir_name, entry->d_name);
-		KNOT_UNUSED(written);
+		UNUSED(written);
 		assert(written == path_len);
 
 		knot_key_params_t params = { 0 };
@@ -339,7 +339,7 @@ uint32_t knot_get_next_zone_key_event(const knot_zone_keys_t *keys)
 	node_t *node = NULL;
 	WALK_LIST(node, keys->list) {
 		knot_zone_key_t *key = (knot_zone_key_t *)node;
-		result = KNOT_MIN(result, key->next_event);
+		result = MIN(result, key->next_event);
 	}
 
 	return result;

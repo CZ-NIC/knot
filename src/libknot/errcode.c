@@ -20,8 +20,7 @@
 #include "libknot/errcode.h"
 
 #include "common/errors.h"
-
-#include "libknot/common.h"
+#include "common/macros.h"
 
 const error_table_t error_messages[] = {
 	{ KNOT_EOK, "OK" },

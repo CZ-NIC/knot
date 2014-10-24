@@ -37,6 +37,7 @@
 #endif /* HAVE_CAP_NG_H */
 
 #include "common/sockaddr.h"
+#include "common/macros.h"
 #include "common/mempattern.h"
 #include "common/mempool.h"
 #include "knot/knot.h"
@@ -128,7 +129,7 @@ void udp_handle(udp_context_t *udp, int fd, struct sockaddr_storage *ss,
 	param.thread_id = udp->thread_id;
 
 	/* Rate limit is applied? */
-	if (knot_unlikely(udp->server->rrl != NULL) && udp->server->rrl->rate > 0) {
+	if (unlikely(udp->server->rrl != NULL) && udp->server->rrl->rate > 0) {
 		param.proc_flags |= NS_QUERY_LIMIT_RATE;
 	}
 
@@ -304,7 +305,7 @@ static inline int sendmmsg(int fd, struct mmsghdr *mmsg, unsigned vlen,
  */
 int udp_sendmmsg(int sock, struct sockaddr *_, struct mmsghdr *msgs, size_t count)
 {
-	KNOT_UNUSED(_);
+	UNUSED(_);
 	return sendmmsg(sock, msgs, count, 0);
 }
 #endif /* ENABLE_SENDMMSG */
@@ -469,8 +470,8 @@ static int track_ifaces(ifacelist_t *ifaces, fd_set *set, int *maxfd, int *minfd
 	iface_t *iface = NULL;
 	WALK_LIST(iface, ifaces->l) {
 		int fd = iface->fd[IO_UDP];
-		*maxfd = KNOT_MAX(fd, *maxfd);
-		*minfd = KNOT_MIN(fd, *minfd);
+		*maxfd = MAX(fd, *maxfd);
+		*minfd = MIN(fd, *minfd);
 		FD_SET(fd, set);
 	}
 
@@ -524,7 +525,7 @@ int udp_master(dthread_t *thread)
 	for (;;) {
 
 		/* Check handler state. */
-		if (knot_unlikely(*iostate & ServerReload)) {
+		if (unlikely(*iostate & ServerReload)) {
 			*iostate &= ~ServerReload;
 			udp.thread_id = handler->thread_id[thr_id];
 

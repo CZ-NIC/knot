@@ -23,7 +23,6 @@
 
 #include "libknot/packet/rrset-wire.h"
 
-#include "libknot/common.h"
 #include "libknot/consts.h"
 #include "libknot/descriptor.h"
 #include "libknot/dname.h"
@@ -31,13 +30,14 @@
 #include "libknot/packet/wire.h"
 #include "libknot/rrset.h"
 #include "libknot/rrtype/naptr.h"
+#include "common/macros.h"
 
 /*!
  * \brief Get maximal size of a domain name in a wire with given capacity.
  */
 static uint16_t dname_max(size_t wire_avail)
 {
-	return KNOT_MIN(wire_avail, KNOT_DNAME_MAXLEN);
+	return MIN(wire_avail, KNOT_DNAME_MAXLEN);
 }
 
 /*!
@@ -490,20 +490,20 @@ static int decompress_rdata_dname(const uint8_t **src, size_t *src_avail,
 	assert(dst && *dst);
 	assert(dst_avail);
 	assert(dname_cfg);
-	KNOT_UNUSED(dname_type);
+	UNUSED(dname_type);
 
 	int compr_size = knot_dname_wire_check(*src, *src + *src_avail,
 	                                       dname_cfg->pkt_wire);
 	if (compr_size <= 0) {
 		return compr_size;
 	}
-	
+
 	int decompr_size = knot_dname_unpack(*dst, *src, *dst_avail,
 	                                     dname_cfg->pkt_wire);
 	if (decompr_size <= 0) {
 		return decompr_size;
 	}
-	
+
 	/* Update buffers */
 	*dst += decompr_size;
 	*dst_avail -= decompr_size;
@@ -583,13 +583,13 @@ static int parse_rdata(const uint8_t *pkt_wire, size_t *pos, size_t pkt_size,
 		/* DNAME compression caused RDATA overflow. */
 		return KNOT_EMALF;
 	}
-	
+
 	ret = knot_rrset_add_rdata(rrset, rdata_buffer, written, ttl, mm);
 	if (ret == KNOT_EOK) {
 		/* Update position pointer. */
 		*pos += rdlength;
 	}
-	
+
 	return ret;
 }
 

@@ -21,13 +21,13 @@
 
 #include "knot/zone/zonedb.h"
 #include "knot/server/server.h"
-#include "libknot/common.h"
 #include "knot/zone/zone.h"
 #include "knot/zone/zonedb.h"
 #include "libknot/dname.h"
 #include "libknot/packet/wire.h"
 #include "knot/zone/node.h"
 #include "common/debug.h"
+#include "common/macros.h"
 #include "common/mempattern.h"
 #include "common/mempool.h"
 
@@ -119,7 +119,7 @@ int knot_zonedb_build_index(knot_zonedb_t *db)
 	knot_zonedb_iter_begin(db, &it);
 	while (!knot_zonedb_iter_finished(&it)) {
 		zone_t *zone = knot_zonedb_iter_val(&it);
-		db->maxlabels = KNOT_MAX(db->maxlabels, knot_dname_labels(zone->name, NULL));
+		db->maxlabels = MAX(db->maxlabels, knot_dname_labels(zone->name, NULL));
 		knot_zonedb_iter_next(&it);
 	}
 

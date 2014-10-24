@@ -33,6 +33,7 @@
 
 #include "common/sockaddr.h"
 #include "common-knot/fdset.h"
+#include "common/macros.h"
 #include "common/mempool.h"
 #include "common/net.h"
 
@@ -70,7 +71,7 @@ static inline int tcp_throttle() {
 /*! \brief Sweep TCP connection. */
 static enum fdset_sweep_state tcp_sweep(fdset_t *set, int i, void *data)
 {
-	KNOT_UNUSED(data);
+	UNUSED(data);
 	assert(set && i < set->n && i >= 0);
 
 	int fd = set->pfd[i].fd;
@@ -344,7 +345,7 @@ int tcp_master(dthread_t *thread)
 	for(;;) {
 
 		/* Check handler state. */
-		if (knot_unlikely(*iostate & ServerReload)) {
+		if (unlikely(*iostate & ServerReload)) {
 			*iostate &= ~ServerReload;
 
 			/* Cancel client connections. */

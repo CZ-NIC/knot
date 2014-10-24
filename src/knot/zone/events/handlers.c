@@ -19,6 +19,7 @@
 #include "libknot/processing/requestor.h"
 
 #include "common-knot/trim.h"
+#include "common/macros.h"
 #include "common/mempool.h"
 
 #include "knot/server/udp-handler.h"
@@ -381,18 +382,18 @@ int event_update(zone_t *zone)
 
 	/* Process update list - forward if zone has master, or execute. */
 	int ret = updates_execute(zone);
-	KNOT_UNUSED(ret); /* Don't care about the Knot code, RCODEs are set. */
+	UNUSED(ret); /* Don't care about the Knot code, RCODEs are set. */
 
 	/* Trim extra heap. */
 	mem_trim();
 
 	/* Replan event if next update waiting. */
 	pthread_mutex_lock(&zone->ddns_lock);
-	
+
 	const bool empty = EMPTY_LIST(zone->ddns_queue);
-	
+
 	pthread_mutex_unlock(&zone->ddns_lock);
-	
+
 	if (!empty) {
 		zone_events_schedule(zone, ZONE_EVENT_UPDATE, ZONE_EVENT_NOW);
 	}

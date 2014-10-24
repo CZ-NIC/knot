@@ -97,6 +97,7 @@ libknotcs_la_SOURCES =				\
 	common/lists.h				\
 	common/log.c				\
 	common/log.h				\
+	common/macros.h				\
 	common/mem.c				\
 	common/mem.h				\
         common/mempattern.c			\
@@ -144,7 +145,6 @@ libknot_la_LDFLAGS =				\
 libknot_la_SOURCES =				\
 	libknot/binary.c			\
 	libknot/binary.h			\
-	libknot/common.h			\
 	libknot/consts.c			\
 	libknot/consts.h			\
 	libknot/consts.h			\

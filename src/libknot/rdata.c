@@ -21,8 +21,8 @@
 
 #include "libknot/rdata.h"
 
-#include "libknot/common.h"
 #include "libknot/errcode.h"
+#include "common/macros.h"
 
 #ifndef STRICT_ALIGNMENT
 #pragma pack(push, 1)
@@ -92,7 +92,7 @@ int knot_rdata_cmp(const knot_rdata_t *rr1, const knot_rdata_t *rr2)
 	const uint8_t *r2 = knot_rdata_data(rr2);
 	uint16_t l1 = knot_rdata_rdlen(rr1);
 	uint16_t l2 = knot_rdata_rdlen(rr2);
-	int cmp = memcmp(r1, r2, KNOT_MIN(l1, l2));
+	int cmp = memcmp(r1, r2, MIN(l1, l2));
 	if (cmp == 0 && l1 != l2) {
 		cmp = l1 < l2 ? -1 : 1;
 	}

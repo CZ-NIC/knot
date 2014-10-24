@@ -19,9 +19,10 @@
 #include <tap/basic.h>
 
 #include "common/hhash.h"
+#include "common/macros.h"
 #include "common/mempattern.h"
 #include "common/mempool.h"
-#include "libknot/common.h"
+#include "libknot/errcode.h"
 
 /* Test defines. */
 #define ELEM_COUNT 65535
@@ -49,7 +50,7 @@ static bool str_check_sort(const char *prev, const char *cur)
 
 	int l1 = strlen(prev);
 	int l2 = strlen(cur);
-	int res = memcmp(prev, cur, KNOT_MIN(l1, l2));
+	int res = memcmp(prev, cur, MIN(l1, l2));
 	if (res == 0) { /* Keys may be equal. */
 		if (l1 > l2) { /* 'prev' is longer, breaks ordering. */
 			return false;
