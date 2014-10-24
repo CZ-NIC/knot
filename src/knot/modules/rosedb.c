@@ -457,7 +457,6 @@ static int rosedb_synth(knot_pkt_t *pkt, const knot_dname_t *key, struct iter *i
 
 	/* Not found (zone cut if records exist). */
 	if (knot_wire_get_ancount(pkt->wire) == 0) {
-		knot_wire_set_rcode(pkt->wire, KNOT_RCODE_NXDOMAIN);
 		knot_pkt_begin(pkt, KNOT_AUTHORITY);
 		ret = cache_iter_begin(it, key);
 		while(ret == KNOT_EOK) {
@@ -469,7 +468,14 @@ static int rosedb_synth(knot_pkt_t *pkt, const knot_dname_t *key, struct iter *i
 				break;
 			}
 		}
+		/* No authority for current name => NXDOMAIN. */
+		if (knot_wire_get_nscount(pkt->wire) == 0) {
+			knot_wire_set_rcode(pkt->wire, KNOT_RCODE_NXDOMAIN);
+		}
 	}
+	
+	/* Our response is authoritative. */
+	knot_wire_set_aa(pkt->wire);
 
 	/* Send message to syslog. */
 	struct sockaddr_storage syslog_addr;
