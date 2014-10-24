@@ -19,8 +19,8 @@
 #include <stdarg.h>
 
 #include "knot/updates/changesets.h"
-#include "libknot/common.h"
 #include "libknot/rrset.h"
+#include "common/macros.h"
 
 /* -------------------- Changeset iterator helpers -------------------------- */
 
@@ -152,7 +152,6 @@ changeset_t *changeset_new(const knot_dname_t *apex)
 {
 	changeset_t *ret = malloc(sizeof(changeset_t));
 	if (ret == NULL) {
-		ERR_ALLOC_FAILED;
 		return NULL;
 	}
 

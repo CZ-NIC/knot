@@ -72,7 +72,7 @@ const uint8_t *knot_nsec3_salt(const knot_rdataset_t *rrs, size_t pos)
 
 static inline
 void knot_nsec3_next_hashed(const knot_rdataset_t *rrs, size_t pos,
-                                  uint8_t **name, uint8_t *name_size)
+                            uint8_t **name, uint8_t *name_size)
 {
 	KNOT_RDATASET_CHECK(rrs, pos, return);
 	uint8_t salt_size = knot_nsec3_salt_length(rrs, pos);
@@ -80,25 +80,8 @@ void knot_nsec3_next_hashed(const knot_rdataset_t *rrs, size_t pos,
 	*name = knot_rdata_offset(rrs, pos, 4 + salt_size + 2);
 }
 
-static inline
 void knot_nsec3_bitmap(const knot_rdataset_t *rrs, size_t pos,
-                             uint8_t **bitmap, uint16_t *size)
-{
-	KNOT_RDATASET_CHECK(rrs, pos, return);
-
-	/* Bitmap is last, skip all the items. */
-	size_t offset = 6; //hash alg., flags, iterations, salt len., hash len.
-	offset += knot_nsec3_salt_length(rrs, pos); //salt
-
-	uint8_t *next_hashed = NULL;
-	uint8_t next_hashed_size = 0;
-	knot_nsec3_next_hashed(rrs, pos, &next_hashed, &next_hashed_size);
-	offset += next_hashed_size; //hash
-
-	*bitmap = knot_rdata_offset(rrs, pos, offset);
-	const knot_rdata_t *rr = knot_rdataset_at(rrs, pos);
-	*size = knot_rdata_rdlen(rr) - offset;
-}
+                       uint8_t **bitmap, uint16_t *size);
 
 /*!
  * \brief Get length of the raw NSEC3 hash.

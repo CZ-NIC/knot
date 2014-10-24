@@ -33,15 +33,18 @@
 
 #include "common/sockaddr.h"
 #include "common-knot/fdset.h"
+#include "common/macros.h"
 #include "common/mempool.h"
-#include "knot/knot.h"
 #include "common/net.h"
-#include "knot/server/tcp-handler.h"
+
 #include "libknot/packet/wire.h"
-#include "knot/nameserver/process_query.h"
 #include "libknot/dnssec/crypto.h"
 #include "libknot/dnssec/random.h"
 #include "libknot/processing/overlay.h"
+
+#include "knot/knot.h"
+#include "knot/server/tcp-handler.h"
+#include "knot/nameserver/process_query.h"
 
 /*! \brief TCP context data. */
 typedef struct tcp_context {
@@ -148,11 +151,11 @@ static int tcp_handle(tcp_context_t *tcp, int fd,
 
 	/* Resolve until NOOP or finished. */
 	ret = KNOT_EOK;
-	while (state & (NS_PROC_FULL|NS_PROC_FAIL)) {
+	while (state & (KNOT_NS_PROC_FULL|KNOT_NS_PROC_FAIL)) {
 		state = knot_overlay_out(&tcp->overlay, ans);
 
 		/* Send, if response generation passed and wasn't ignored. */
-		if (ans->size > 0 && !(state & (NS_PROC_FAIL|NS_PROC_NOOP))) {
+		if (ans->size > 0 && !(state & (KNOT_NS_PROC_FAIL|KNOT_NS_PROC_NOOP))) {
 			if (tcp_send_msg(fd, ans->wire, ans->size) != ans->size) {
 				ret = KNOT_ECONNREFUSED;
 				break;
@@ -342,7 +345,7 @@ int tcp_master(dthread_t *thread)
 	for(;;) {
 
 		/* Check handler state. */
-		if (knot_unlikely(*iostate & ServerReload)) {
+		if (unlikely(*iostate & ServerReload)) {
 			*iostate &= ~ServerReload;
 
 			/* Cancel client connections. */

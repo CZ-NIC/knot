@@ -29,6 +29,7 @@
 #include <assert.h>
 #include <openssl/rand.h>
 #include <stdint.h>
+
 #include "libknot/errcode.h"
 
 /*!

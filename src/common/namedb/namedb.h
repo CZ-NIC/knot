@@ -18,6 +18,8 @@
 
 #include "libknot/dname.h"
 
+#include "common/mempattern.h"
+
 enum {
 	KNOT_NAMEDB_RDONLY = 1 << 0,
 	KNOT_NAMEDB_SORTED = 1 << 1

@@ -37,7 +37,8 @@
 #endif /* HAVE_CAP_NG_H */
 
 #include "common/sockaddr.h"
-#include "libknot/mempattern.h"
+#include "common/macros.h"
+#include "common/mempattern.h"
 #include "common/mempool.h"
 #include "knot/knot.h"
 #include "knot/server/udp-handler.h"
@@ -128,7 +129,7 @@ void udp_handle(udp_context_t *udp, int fd, struct sockaddr_storage *ss,
 	param.thread_id = udp->thread_id;
 
 	/* Rate limit is applied? */
-	if (knot_unlikely(udp->server->rrl != NULL) && udp->server->rrl->rate > 0) {
+	if (unlikely(udp->server->rrl != NULL) && udp->server->rrl->rate > 0) {
 		param.proc_flags |= NS_QUERY_LIMIT_RATE;
 	}
 
@@ -145,12 +146,12 @@ void udp_handle(udp_context_t *udp, int fd, struct sockaddr_storage *ss,
 	int state = knot_overlay_in(&udp->overlay, query);
 
 	/* Process answer. */
-	while (state & (NS_PROC_FULL|NS_PROC_FAIL)) {
+	while (state & (KNOT_NS_PROC_FULL|KNOT_NS_PROC_FAIL)) {
 		state = knot_overlay_out(&udp->overlay, ans);
 	}
 
 	/* Send response only if finished successfuly. */
-	if (state == NS_PROC_DONE) {
+	if (state == KNOT_NS_PROC_DONE) {
 		tx->iov_len = ans->size;
 	} else {
 		tx->iov_len = 0;
@@ -524,7 +525,7 @@ int udp_master(dthread_t *thread)
 	for (;;) {
 
 		/* Check handler state. */
-		if (knot_unlikely(*iostate & ServerReload)) {
+		if (unlikely(*iostate & ServerReload)) {
 			*iostate &= ~ServerReload;
 			udp.thread_id = handler->thread_id[thr_id];
 

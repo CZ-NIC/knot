@@ -80,7 +80,7 @@ static trie_node_t* alloc_trie_node(hattrie_t* T, node_ptr child)
     for (i = 0; i < NODE_CHILDS; ++i) node->xs[i] = child;
     return node;
 }
-	
+
 /* iterate trie nodes until string is consumed or bucket is found */
 static node_ptr hattrie_consume_ns(node_ptr **s, size_t *sp, size_t slen,
                                 const char **k, size_t *l, unsigned min_len)
@@ -765,7 +765,7 @@ static value_t* hattrie_walk_right(node_ptr* s, size_t sp,
         --key;
         --sp;
     }
-    
+
     return NULL;
 }
 

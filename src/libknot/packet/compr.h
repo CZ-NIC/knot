@@ -32,16 +32,16 @@
 
 /*! \brief Compression hint type. */
 enum knot_compr_hint {
-	COMPR_HINT_NONE    = 0, /* No hint. */
-	COMPR_HINT_NOCOMP  = 1, /* Don't compress. */
-	COMPR_HINT_QNAME   = KNOT_WIRE_HEADER_SIZE /* Name is QNAME. */
+	KNOT_COMPR_HINT_NONE    = 0, /* No hint. */
+	KNOT_COMPR_HINT_NOCOMP  = 1, /* Don't compress. */
+	KNOT_COMPR_HINT_QNAME   = KNOT_WIRE_HEADER_SIZE /* Name is QNAME. */
 };
 
 /*! \brief Compression hint array offsets. */
 enum knot_compr_offset {
-	COMPR_HINT_OWNER = 0,  /* First element in the array is RR owner. */
-	COMPR_HINT_RDATA = 1,  /* First name in RDATA is at offset 1. */
-	COMPR_HINT_COUNT = 16  /* Maximum number of stored hints per-RR. */
+	KNOT_COMPR_HINT_OWNER = 0,  /* First element in the array is RR owner. */
+	KNOT_COMPR_HINT_RDATA = 1,  /* First name in RDATA is at offset 1. */
+	KNOT_COMPR_HINT_COUNT = 16  /* Maximum number of stored hints per-RR. */
 };
 
 /*
@@ -61,7 +61,7 @@ enum knot_compr_offset {
 typedef struct {
 	uint16_t pos;   /* RRSet position in the packet. */
 	uint16_t flags; /* RRSet flags. */
-	uint16_t compress_ptr[COMPR_HINT_COUNT]; /* Array of compr. ptr hints. */
+	uint16_t compress_ptr[KNOT_COMPR_HINT_COUNT]; /* Array of compr. ptr hints. */
 } knot_rrinfo_t;
 
 /*!
@@ -88,21 +88,25 @@ typedef struct knot_compr {
 int knot_compr_put_dname(const knot_dname_t *dname, uint8_t *dst, uint16_t max,
                          knot_compr_t *compr);
 
-/*! \brief Retrieve compression hint from given offset. */
+/*! \brief Retrieve compression hint from given offset.
+ *  \todo More detailed documentation.
+ */
 static inline uint16_t knot_pkt_compr_hint(const knot_rrinfo_t *info, uint16_t hint_id)
 {
-	if (hint_id < COMPR_HINT_COUNT) {
+	if (hint_id < KNOT_COMPR_HINT_COUNT) {
 		return info->compress_ptr[hint_id];
 	} else {
-		return COMPR_HINT_NONE;
+		return KNOT_COMPR_HINT_NONE;
 	}
 }
 
-/*! \brief Store compression hint for given offset. */
+/*! \brief Store compression hint for given offset.
+ *  \todo More detailed documentation.
+ */
 static inline void knot_pkt_compr_hint_set(knot_rrinfo_t *info, uint16_t hint_id,
                                            uint16_t val, uint16_t len)
 {
-	if ((hint_id < COMPR_HINT_COUNT) && (val + len < KNOT_WIRE_PTR_MAX)) {
+	if ((hint_id < KNOT_COMPR_HINT_COUNT) && (val + len < KNOT_WIRE_PTR_MAX)) {
 		info->compress_ptr[hint_id] = val;
 	}
 }

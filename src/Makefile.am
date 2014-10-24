@@ -97,8 +97,11 @@ libknotcs_la_SOURCES =				\
 	common/lists.h				\
 	common/log.c				\
 	common/log.h				\
+	common/macros.h				\
 	common/mem.c				\
 	common/mem.h				\
+        common/mempattern.c			\
+        common/mempattern.h			\
 	common/mempool.c			\
 	common/mempool.h			\
 	common/namedb/namedb.h			\
@@ -137,13 +140,11 @@ libknotus_la_SOURCES =				\
 # dynamic: libknot
 libknot_la_LDFLAGS =				\
 	$(AM_LDFLAGS)				\
-	-version-info 0:1:0			\
-	-export-symbols-regex '^(knot|KNOT|rrset|tsig|zone|mm)_'
+	-version-info 0:1:0
 
 libknot_la_SOURCES =				\
 	libknot/binary.c			\
 	libknot/binary.h			\
-	libknot/common.h			\
 	libknot/consts.c			\
 	libknot/consts.h			\
 	libknot/consts.h			\
@@ -169,8 +170,6 @@ libknot_la_SOURCES =				\
 	libknot/errcode.c			\
 	libknot/errcode.h			\
 	libknot/libknot.h			\
-	libknot/mempattern.c			\
-	libknot/mempattern.h			\
 	libknot/packet/compr.c			\
 	libknot/packet/compr.h			\
 	libknot/packet/pkt.c			\

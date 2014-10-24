@@ -160,14 +160,21 @@ int knot_tsig_client_check_next(const knot_rrset_t *tsig_rr,
                                 const knot_tsig_key_t *key,
                                 uint64_t prev_time_signed);
 
+/*!
+ * \todo Documentation!
+ */
 int knot_tsig_add(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
                   uint16_t tsig_rcode, const knot_rrset_t *tsig_rr);
 
-/*! \brief Append TSIG RR to message. */
+/*! \brief Append TSIG RR to message.
+ *  \todo Proper documentation.
+ */
 int knot_tsig_append(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
                      const knot_rrset_t *tsig_rr);
 
-/*! \brief Return true if the TSIG RCODE allows signing the packet. */
+/*! \brief Return true if the TSIG RCODE allows signing the packet.
+ *  \todo Proper documentation.
+ */
 static inline bool knot_tsig_can_sign(uint16_t tsig_rcode) {
 	return (tsig_rcode == KNOT_RCODE_NOERROR || tsig_rcode == KNOT_TSIG_ERR_BADTIME);
 }

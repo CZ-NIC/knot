@@ -26,11 +26,12 @@
 
 #include <stdint.h>
 
-#include "libknot/mempattern.h"
+#include "common/lists.h"
+#include "common/mempattern.h"
+
 #include "libknot/consts.h"
 #include "libknot/rrtype/tsig.h"
 #include "libknot/packet/pkt.h"
-#include "common/lists.h"
 
 /*! \brief Main packet processing states.
  *         Each state describes the current machine processing step
@@ -38,11 +39,11 @@
  */
 
 enum knot_layer_state {
-	NS_PROC_NOOP = 0,      /* N/A */
-	NS_PROC_MORE = 1 << 0, /* More input data. */
-	NS_PROC_FULL = 1 << 1, /* Has output data. */
-	NS_PROC_DONE = 1 << 2, /* Finished. */
-	NS_PROC_FAIL = 1 << 3  /* Error. */
+	KNOT_NS_PROC_NOOP = 0,      /* N/A */
+	KNOT_NS_PROC_MORE = 1 << 0, /* More input data. */
+	KNOT_NS_PROC_FULL = 1 << 1, /* Has output data. */
+	KNOT_NS_PROC_DONE = 1 << 2, /* Finished. */
+	KNOT_NS_PROC_FAIL = 1 << 3  /* Error. */
 };
 
 /* Forward declarations. */
@@ -77,7 +78,7 @@ typedef struct knot_layer_api {
  */
 inline static int knot_layer_noop(knot_layer_t *ctx, knot_pkt_t *pkt)
 {
-	return NS_PROC_NOOP;
+	return KNOT_NS_PROC_NOOP;
 }
 
 /*!

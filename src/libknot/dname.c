@@ -21,18 +21,21 @@
 #include <ctype.h>
 #include <inttypes.h>
 
-#include "libknot/common.h"
-#include "libknot/mempattern.h"
 #include "libknot/dname.h"
-#include "libknot/consts.h"
-#include "libknot/util/tolower.h"
+
+#include "common/macros.h"
+#include "common/mempattern.h"
 #include "common/debug.h"
+
+#include "libknot/consts.h"
+#include "libknot/errcode.h"
+#include "libknot/util/tolower.h"
 #include "libknot/util/utils.h"
 #include "libknot/packet/wire.h"
 
 /*----------------------------------------------------------------------------*/
 
-static int knot_label_is_equal(const uint8_t *lb1, const uint8_t *lb2)
+static int label_is_equal(const uint8_t *lb1, const uint8_t *lb2)
 {
 	return (*lb1 == *lb2) && memcmp(lb1 + 1, lb2 + 1, *lb1) == 0;
 }
@@ -40,7 +43,7 @@ static int knot_label_is_equal(const uint8_t *lb1, const uint8_t *lb2)
 /*----------------------------------------------------------------------------*/
 /* API functions                                                              */
 /*----------------------------------------------------------------------------*/
-
+_public_
 int knot_dname_wire_check(const uint8_t *name, const uint8_t *endp,
                           const uint8_t *pkt)
 {
@@ -100,7 +103,7 @@ int knot_dname_wire_check(const uint8_t *name, const uint8_t *endp,
 }
 
 /*----------------------------------------------------------------------------*/
-
+_public_
 knot_dname_t *knot_dname_parse(const uint8_t *pkt, size_t *pos, size_t maxpos,
                                mm_ctx_t *mm)
 {
@@ -136,7 +139,7 @@ knot_dname_t *knot_dname_parse(const uint8_t *pkt, size_t *pos, size_t maxpos,
 }
 
 /*----------------------------------------------------------------------------*/
-
+_public_
 knot_dname_t *knot_dname_copy(const knot_dname_t *name, mm_ctx_t *mm)
 {
 	if (name == NULL)
@@ -146,7 +149,7 @@ knot_dname_t *knot_dname_copy(const knot_dname_t *name, mm_ctx_t *mm)
 }
 
 /*----------------------------------------------------------------------------*/
-
+_public_
 knot_dname_t *knot_dname_copy_part(const knot_dname_t *name, unsigned len,
                                    mm_ctx_t *mm)
 {
@@ -163,7 +166,7 @@ knot_dname_t *knot_dname_copy_part(const knot_dname_t *name, unsigned len,
 }
 
 /*----------------------------------------------------------------------------*/
-
+_public_
 int knot_dname_to_wire(uint8_t *dst, const knot_dname_t *src, size_t maxlen)
 {
 	if (dst == NULL || src == NULL) {
@@ -180,7 +183,7 @@ int knot_dname_to_wire(uint8_t *dst, const knot_dname_t *src, size_t maxlen)
 }
 
 /*----------------------------------------------------------------------------*/
-
+_public_
 int knot_dname_unpack(uint8_t* dst, const knot_dname_t *src,
                       size_t maxlen, const uint8_t *pkt)
 {
@@ -210,7 +213,7 @@ int knot_dname_unpack(uint8_t* dst, const knot_dname_t *src,
 }
 
 /*----------------------------------------------------------------------------*/
-
+_public_
 char *knot_dname_to_str(char *dst, const knot_dname_t *name, size_t maxlen)
 {
 	if (name == NULL) {
@@ -236,7 +239,7 @@ char *knot_dname_to_str(char *dst, const knot_dname_t *name, size_t maxlen)
 	uint8_t label_len = 0;
 	size_t  str_len = 0;
 
-	for (uint i = 0; i < dname_size; i++) {
+	for (unsigned i = 0; i < dname_size; i++) {
 		uint8_t c = name[i];
 
 		/* Read next label size. */
@@ -317,7 +320,7 @@ char *knot_dname_to_str(char *dst, const knot_dname_t *name, size_t maxlen)
 }
 
 /*----------------------------------------------------------------------------*/
-
+_public_
 knot_dname_t *knot_dname_from_str(uint8_t *dst, const char *name, size_t maxlen)
 {
 	if (name == NULL) {
@@ -458,7 +461,7 @@ dname_from_str_failed:
 }
 
 /*----------------------------------------------------------------------------*/
-
+_public_
 int knot_dname_to_lower(knot_dname_t *name)
 {
 	if (name == NULL)
@@ -478,7 +481,7 @@ int knot_dname_to_lower(knot_dname_t *name)
 }
 
 /*----------------------------------------------------------------------------*/
-
+_public_
 int knot_dname_size(const knot_dname_t *name)
 {
 	if (name == NULL)
@@ -500,14 +503,14 @@ int knot_dname_size(const knot_dname_t *name)
 }
 
 /*----------------------------------------------------------------------------*/
-
+_public_
 int knot_dname_realsize(const knot_dname_t *name, const uint8_t *pkt)
 {
 	return knot_dname_prefixlen(name, KNOT_DNAME_MAXLABELS, pkt);
 }
 
 /*----------------------------------------------------------------------------*/
-
+_public_
 bool knot_dname_is_sub(const knot_dname_t *sub, const knot_dname_t *domain)
 {
 	if (sub == domain)
@@ -534,7 +537,7 @@ bool knot_dname_is_sub(const knot_dname_t *sub, const knot_dname_t *domain)
 	/* Compare common suffix. */
 	while(common > 0) {
 		/* Compare label. */
-		if (!knot_label_is_equal(sub, domain))
+		if (!label_is_equal(sub, domain))
 			return false;
 		/* Next label. */
 		sub = knot_wire_next_label(sub, NULL);
@@ -545,14 +548,14 @@ bool knot_dname_is_sub(const knot_dname_t *sub, const knot_dname_t *domain)
 }
 
 /*----------------------------------------------------------------------------*/
-
+_public_
 bool knot_dname_in(const knot_dname_t *domain, const knot_dname_t *sub)
 {
 	return knot_dname_is_equal(domain, sub) || knot_dname_is_sub(sub, domain);
 }
 
 /*----------------------------------------------------------------------------*/
-
+_public_
 bool knot_dname_is_wildcard(const knot_dname_t *name)
 {
 	assert(name != NULL);
@@ -560,7 +563,7 @@ bool knot_dname_is_wildcard(const knot_dname_t *name)
 }
 
 /*----------------------------------------------------------------------------*/
-
+_public_
 int knot_dname_matched_labels(const knot_dname_t *d1, const knot_dname_t *d2)
 {
 	if (d1 == NULL || d2 == NULL)
@@ -582,7 +585,7 @@ int knot_dname_matched_labels(const knot_dname_t *d1, const knot_dname_t *d2)
 	/* Count longest chain leading to root label. */
 	int matched = 0;
 	while (common > 0) {
-		if (knot_label_is_equal(d1, d2))
+		if (label_is_equal(d1, d2))
 			++matched;
 		else
 			matched = 0; /* Broken chain. */
@@ -597,9 +600,9 @@ int knot_dname_matched_labels(const knot_dname_t *d1, const knot_dname_t *d2)
 }
 
 /*----------------------------------------------------------------------------*/
-
+_public_
 knot_dname_t *knot_dname_replace_suffix(const knot_dname_t *name, unsigned labels,
-                                        const knot_dname_t *suffix)
+					const knot_dname_t *suffix)
 {
 	if (name == NULL)
 		return NULL;
@@ -641,7 +644,7 @@ knot_dname_t *knot_dname_replace_suffix(const knot_dname_t *name, unsigned label
 }
 
 /*----------------------------------------------------------------------------*/
-
+_public_
 void knot_dname_free(knot_dname_t **name, mm_ctx_t *mm)
 {
 	if (name == NULL || *name == NULL)
@@ -652,14 +655,14 @@ void knot_dname_free(knot_dname_t **name, mm_ctx_t *mm)
 }
 
 /*----------------------------------------------------------------------------*/
-
+_public_
 int knot_dname_cmp(const knot_dname_t *d1, const knot_dname_t *d2)
 {
 	return knot_dname_cmp_wire(d1, d2, NULL);
 }
 
 /*----------------------------------------------------------------------------*/
-
+_public_
 int knot_dname_cmp_wire(const knot_dname_t *d1, const knot_dname_t *d2,
                         const uint8_t *pkt)
 {
@@ -690,11 +693,11 @@ int knot_dname_cmp_wire(const knot_dname_t *d1, const knot_dname_t *d2,
 }
 
 /*----------------------------------------------------------------------------*/
-
+_public_
 bool knot_dname_is_equal(const knot_dname_t *d1, const knot_dname_t *d2)
 {
 	while(*d1 != '\0' || *d2 != '\0') {
-		if (knot_label_is_equal(d1, d2)) {
+		if (label_is_equal(d1, d2)) {
 			d1 = knot_wire_next_label(d1, NULL);
 			d2 = knot_wire_next_label(d2, NULL);
 		} else {
@@ -706,7 +709,7 @@ bool knot_dname_is_equal(const knot_dname_t *d1, const knot_dname_t *d2)
 }
 
 /*----------------------------------------------------------------------------*/
-
+_public_
 knot_dname_t *knot_dname_cat(knot_dname_t *d1, const knot_dname_t *d2)
 {
 	if (d1 == NULL || d2 == NULL)
@@ -723,7 +726,7 @@ knot_dname_t *knot_dname_cat(knot_dname_t *d1, const knot_dname_t *d2)
 }
 
 /*----------------------------------------------------------------------------*/
-
+_public_
 int knot_dname_prefixlen(const uint8_t *name, unsigned nlabels, const uint8_t *pkt)
 {
 	if (name == NULL)
@@ -748,7 +751,7 @@ int knot_dname_prefixlen(const uint8_t *name, unsigned nlabels, const uint8_t *p
 }
 
 /*----------------------------------------------------------------------------*/
-
+_public_
 int knot_dname_labels(const uint8_t *name, const uint8_t *pkt)
 {
 	if (name == NULL)
@@ -765,7 +768,7 @@ int knot_dname_labels(const uint8_t *name, const uint8_t *pkt)
 }
 
 /*----------------------------------------------------------------------------*/
-
+_public_
 int knot_dname_align(const uint8_t **d1, uint8_t d1_labels,
                      const uint8_t **d2, uint8_t d2_labels,
                      uint8_t *wire)
@@ -783,7 +786,7 @@ int knot_dname_align(const uint8_t **d1, uint8_t d1_labels,
 }
 
 /*----------------------------------------------------------------------------*/
-
+_public_
 int knot_dname_lf(uint8_t *dst, const knot_dname_t *src, const uint8_t *pkt)
 {
 	if (dst == NULL || src == NULL)

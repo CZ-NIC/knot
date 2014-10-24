@@ -31,9 +31,11 @@
 #include <stdio.h>
 #include <stdbool.h>
 
-#include "libknot/mempattern.h"
+#include "common/mempattern.h"
+
 #include "libknot/consts.h"
 
+/*! \brief Type representing a domain name in wire format. */
 typedef uint8_t knot_dname_t;
 
 /*!
@@ -82,7 +84,8 @@ knot_dname_t *knot_dname_copy(const knot_dname_t *name, mm_ctx_t *mm);
  *
  * \return New domain name which is an partial copy of \a dname.
  */
-knot_dname_t *knot_dname_copy_part(const knot_dname_t *name, unsigned len, mm_ctx_t *mm);
+knot_dname_t *knot_dname_copy_part(const knot_dname_t *name, unsigned len,
+				   mm_ctx_t *mm);
 
 /*!
  * \brief Copy name to wire as is, no compression pointer expansion will be done.
@@ -254,8 +257,7 @@ int knot_dname_matched_labels(const knot_dname_t *d1, const knot_dname_t *d2);
  * \return New domain name created by replacing suffix of \a dname of size
  *         \a size with \a suffix.
  */
-knot_dname_t *knot_dname_replace_suffix(const knot_dname_t *name,
-                                        unsigned labels,
+knot_dname_t *knot_dname_replace_suffix(const knot_dname_t *name, unsigned labels,
                                         const knot_dname_t *suffix);
 
 /*!

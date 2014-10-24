@@ -83,12 +83,12 @@ static int update_ctx_after_verify(tsig_ctx_t *ctx, knot_rrset_t *tsig_rr)
 	assert(ctx);
 	assert(tsig_rr);
 
-	if (ctx->digest_size != tsig_rdata_mac_length(tsig_rr)) {
+	if (ctx->digest_size != knot_tsig_rdata_mac_length(tsig_rr)) {
 		return KNOT_EMALF;
 	}
 
-	memcpy(ctx->digest, tsig_rdata_mac(tsig_rr), ctx->digest_size);
-	ctx->prev_signed_time = tsig_rdata_time_signed(tsig_rr);
+	memcpy(ctx->digest, knot_tsig_rdata_mac(tsig_rr), ctx->digest_size);
+	ctx->prev_signed_time = knot_tsig_rdata_time_signed(tsig_rr);
 	ctx->unsigned_count = 0;
 	ctx->buffer_used = 0;
 

@@ -199,6 +199,16 @@ extern knot_lookup_table_t knot_opcode_names[];
 extern knot_lookup_table_t knot_rcode_names[];
 
 /*!
+ * \brief TSIG error names.
+ */
+extern knot_lookup_table_t knot_tsig_err_names[];
+
+/*!
+ * \brief TKEY error names.
+ */
+extern knot_lookup_table_t knot_tkey_err_names[];
+
+/*!
  * \brief TSIG key algorithm names.
  */
 extern knot_lookup_table_t knot_tsig_alg_names[];

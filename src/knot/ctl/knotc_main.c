@@ -26,6 +26,7 @@
 #endif
 
 #include "knot/knot.h"
+#include "common/macros.h"
 #include "common/mem.h"
 #include "libknot/descriptor.h"
 #include "knot/ctl/process.h"

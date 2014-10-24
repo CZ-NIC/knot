@@ -16,8 +16,12 @@
 
 #include "libknot/rrtype/soa.h"
 #include "libknot/dnssec/random.h"
+#include "libknot/processing/requestor.h"
+
 #include "common-knot/trim.h"
+#include "common/macros.h"
 #include "common/mempool.h"
+
 #include "knot/server/udp-handler.h"
 #include "knot/server/tcp-handler.h"
 #include "knot/updates/changesets.h"
@@ -31,7 +35,6 @@
 #include "knot/nameserver/internet.h"
 #include "knot/nameserver/update.h"
 #include "knot/nameserver/notify.h"
-#include "libknot/processing/requestor.h"
 #include "knot/nameserver/tsig_ctx.h"
 #include "knot/nameserver/process_answer.h"
 
@@ -71,11 +74,11 @@ static knot_pkt_t *zone_query(const zone_t *zone, uint16_t pkt_type, mm_ctx_t *m
 	if (pkt_type == KNOT_QUERY_IXFR) {  /* RFC1995, SOA in AUTHORITY. */
 		knot_pkt_begin(pkt, KNOT_AUTHORITY);
 		knot_rrset_t soa_rr = node_rrset(contents->apex, KNOT_RRTYPE_SOA);
-		knot_pkt_put(pkt, COMPR_HINT_QNAME, &soa_rr, 0);
+		knot_pkt_put(pkt, KNOT_COMPR_HINT_QNAME, &soa_rr, 0);
 	} else if (pkt_type == KNOT_QUERY_NOTIFY) { /* RFC1996, SOA in ANSWER. */
 		knot_pkt_begin(pkt, KNOT_ANSWER);
 		knot_rrset_t soa_rr = node_rrset(contents->apex, KNOT_RRTYPE_SOA);
-		knot_pkt_put(pkt, COMPR_HINT_QNAME, &soa_rr, 0);
+		knot_pkt_put(pkt, KNOT_COMPR_HINT_QNAME, &soa_rr, 0);
 	}
 
 	return pkt;
@@ -109,7 +112,7 @@ static int zone_query_execute(zone_t *zone, uint16_t pkt_type, const conf_iface_
 	/* Create requestor instance. */
 	struct knot_requestor re;
 	knot_requestor_init(&re, &mm);
-	knot_requestor_overlay(&re, NS_PROC_ANSWER, &param);
+	knot_requestor_overlay(&re, KNOT_NS_PROC_ANSWER, &param);
 
 	tsig_init(&param.tsig_ctx, remote->key);
 
@@ -401,11 +404,11 @@ int event_update(zone_t *zone)
 
 	/* Replan event if next update waiting. */
 	pthread_mutex_lock(&zone->ddns_lock);
-	
+
 	const bool empty = EMPTY_LIST(zone->ddns_queue);
-	
+
 	pthread_mutex_unlock(&zone->ddns_lock);
-	
+
 	if (!empty) {
 		zone_events_schedule(zone, ZONE_EVENT_UPDATE, ZONE_EVENT_NOW);
 	}

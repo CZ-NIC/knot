@@ -6,7 +6,6 @@
 #include "common/binsearch.h"
 #include "common/trie/murmurhash3.h"
 #include "libknot/errcode.h"
-#include "libknot/common.h"
 
 /* UCW array sorting defines. */
 static int universal_cmp(uint32_t k1, uint32_t k2, hhash_t *tbl);

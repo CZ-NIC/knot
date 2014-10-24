@@ -16,6 +16,7 @@
 #include "libknot/tsig-op.h"
 #include "libknot/descriptor.h"
 #include "common/debug.h"
+#include "common/macros.h"
 
 /*! \brief Accessor to query-specific data. */
 #define QUERY_DATA(ctx) ((struct query_data *)(ctx)->data)
@@ -45,7 +46,7 @@ static int process_query_begin(knot_layer_t *ctx, void *module_param)
 	query_data_init(ctx, module_param);
 
 	/* Await packet. */
-	return NS_PROC_MORE;
+	return KNOT_NS_PROC_MORE;
 }
 
 static int process_query_reset(knot_layer_t *ctx)
@@ -68,7 +69,7 @@ static int process_query_reset(knot_layer_t *ctx)
 	query_data_init(ctx, module_param);
 
 	/* Await packet. */
-	return NS_PROC_MORE;
+	return KNOT_NS_PROC_MORE;
 }
 
 static int process_query_finish(knot_layer_t *ctx)
@@ -77,7 +78,7 @@ static int process_query_finish(knot_layer_t *ctx)
 	mm_free(ctx->mm, ctx->data);
 	ctx->data = NULL;
 
-	return NS_PROC_NOOP;
+	return KNOT_NS_PROC_NOOP;
 }
 
 static int process_query_in(knot_layer_t *ctx, knot_pkt_t *pkt)
@@ -87,12 +88,12 @@ static int process_query_in(knot_layer_t *ctx, knot_pkt_t *pkt)
 
 	/* Check if at least header is parsed. */
 	if (pkt->parsed < KNOT_WIRE_HEADER_SIZE) {
-		return NS_PROC_NOOP; /* Ignore. */
+		return KNOT_NS_PROC_NOOP; /* Ignore. */
 	}
 
 	/* Accept only queries. */
 	if (knot_wire_get_qr(pkt->wire)) {
-		return NS_PROC_NOOP; /* Ignore. */
+		return KNOT_NS_PROC_NOOP; /* Ignore. */
 	}
 
 	/* Store for processing. */
@@ -100,7 +101,7 @@ static int process_query_in(knot_layer_t *ctx, knot_pkt_t *pkt)
 	qdata->packet_type = knot_pkt_type(pkt);
 
 	/* Declare having response. */
-	return NS_PROC_FULL;
+	return KNOT_NS_PROC_FULL;
 }
 
 /*!
@@ -109,7 +110,7 @@ static int process_query_in(knot_layer_t *ctx, knot_pkt_t *pkt)
 static int query_internet(knot_pkt_t *pkt, knot_layer_t *ctx)
 {
 	struct query_data *data = QUERY_DATA(ctx);
-	int next_state = NS_PROC_FAIL;
+	int next_state = KNOT_NS_PROC_FAIL;
 	dbg_ns("%s(%p, %p, pkt_type=%u)\n", __func__, pkt, ctx, data->packet_type);
 
 	switch(data->packet_type) {
@@ -131,7 +132,7 @@ static int query_internet(knot_pkt_t *pkt, knot_layer_t *ctx)
 	default:
 		/* Nothing else is supported. */
 		data->rcode = KNOT_RCODE_NOTIMPL;
-		next_state = NS_PROC_FAIL;
+		next_state = KNOT_NS_PROC_FAIL;
 		break;
 	}
 
@@ -149,16 +150,16 @@ static int query_chaos(knot_pkt_t *pkt, knot_layer_t *ctx)
 	/* Nothing except normal queries is supported. */
 	if (data->packet_type != KNOT_QUERY_NORMAL) {
 		data->rcode = KNOT_RCODE_NOTIMPL;
-		return NS_PROC_FAIL;
+		return KNOT_NS_PROC_FAIL;
 	}
 
 	data->rcode = knot_chaos_answer(pkt);
 	if (data->rcode != KNOT_RCODE_NOERROR) {
 		dbg_ns("%s: failed with RCODE=%d\n", __func__, data->rcode);
-		return NS_PROC_FAIL;
+		return KNOT_NS_PROC_FAIL;
 	}
 
-	return NS_PROC_DONE;
+	return KNOT_NS_PROC_DONE;
 }
 
 /*! \brief Find zone for given question. */
@@ -268,7 +269,7 @@ static int answer_edns_put(knot_pkt_t *resp, struct query_data *qdata)
 
 	/* Write to packet. */
 	assert(resp->current == KNOT_ADDITIONAL);
-	return knot_pkt_put(resp, COMPR_HINT_NONE, &qdata->opt_rr, 0);
+	return knot_pkt_put(resp, KNOT_COMPR_HINT_NONE, &qdata->opt_rr, 0);
 }
 
 /*! \brief Initialize response, sizes and find zone from which we're going to answer. */
@@ -363,7 +364,7 @@ static int process_query_err(knot_layer_t *ctx, knot_pkt_t *pkt)
 	/* Transaction security (if applicable). */
 	(void) process_query_sign_response(pkt, qdata);
 
-	return NS_PROC_DONE;
+	return KNOT_NS_PROC_DONE;
 }
 
 /*!
@@ -394,7 +395,7 @@ static int ratelimit_apply(int state, knot_pkt_t *pkt, knot_layer_t *ctx)
 	if (rrl_slip_roll(conf()->rrl_slip)) {
 		/* Answer slips. */
 		if (process_query_err(ctx, pkt) != KNOT_EOK) {
-			return NS_PROC_FAIL;
+			return KNOT_NS_PROC_FAIL;
 		}
 		knot_wire_set_tc(pkt->wire);
 	} else {
@@ -402,7 +403,7 @@ static int ratelimit_apply(int state, knot_pkt_t *pkt, knot_layer_t *ctx)
 		pkt->size = 0;
 	}
 
-	return NS_PROC_DONE;
+	return KNOT_NS_PROC_DONE;
 }
 
 static int process_query_out(knot_layer_t *ctx, knot_pkt_t *pkt)
@@ -416,12 +417,12 @@ static int process_query_out(knot_layer_t *ctx, knot_pkt_t *pkt)
 
 	/* Check parse state. */
 	knot_pkt_t *query = qdata->query;
-	int next_state = NS_PROC_DONE;
+	int next_state = KNOT_NS_PROC_DONE;
 	if (query->parsed < query->size) {
 		dbg_ns("%s: incompletely parsed query, FORMERR\n", __func__);
 		knot_pkt_clear(pkt);
 		qdata->rcode = KNOT_RCODE_FORMERR;
-		next_state = NS_PROC_FAIL;
+		next_state = KNOT_NS_PROC_FAIL;
 		goto finish;
 	}
 
@@ -431,7 +432,7 @@ static int process_query_out(knot_layer_t *ctx, knot_pkt_t *pkt)
 
 	int ret = prepare_answer(query, pkt, ctx);
 	if (ret != KNOT_EOK) {
-		next_state = NS_PROC_FAIL;
+		next_state = KNOT_NS_PROC_FAIL;
 		goto finish;
 	}
 
@@ -453,7 +454,7 @@ static int process_query_out(knot_layer_t *ctx, knot_pkt_t *pkt)
 		break;
 	default:
 		qdata->rcode = KNOT_RCODE_REFUSED;
-		next_state = NS_PROC_FAIL;
+		next_state = KNOT_NS_PROC_FAIL;
 		break;
 	}
 
@@ -462,7 +463,7 @@ static int process_query_out(knot_layer_t *ctx, knot_pkt_t *pkt)
 	 */
 
 
-	if (next_state == NS_PROC_DONE || next_state == NS_PROC_FULL) {
+	if (next_state == KNOT_NS_PROC_DONE || next_state == KNOT_NS_PROC_FULL) {
 
 		/* Restore original QNAME. */
 		process_query_qname_case_restore(qdata, pkt);
@@ -474,19 +475,19 @@ static int process_query_out(knot_layer_t *ctx, knot_pkt_t *pkt)
 		/* Put OPT RR to the additional section. */
 		ret = answer_edns_put(pkt, qdata);
 		if (ret != KNOT_EOK) {
-			next_state = NS_PROC_FAIL;
+			next_state = KNOT_NS_PROC_FAIL;
 			goto finish;
 		}
 
 		/* Transaction security (if applicable). */
 		if (process_query_sign_response(pkt, qdata) != KNOT_EOK) {
-			next_state = NS_PROC_FAIL;
+			next_state = KNOT_NS_PROC_FAIL;
 		}
 	}
 
 finish:
 	/* Default RCODE is SERVFAIL if not specified otherwise. */
-	if (next_state == NS_PROC_FAIL && qdata->rcode == KNOT_RCODE_NOERROR
+	if (next_state == KNOT_NS_PROC_FAIL && qdata->rcode == KNOT_RCODE_NOERROR
 	    && qdata->rcode_ext == 0) {
 		qdata->rcode = KNOT_RCODE_SERVFAIL;
 	}
@@ -522,7 +523,7 @@ bool process_query_acl_check(list_t *acl, struct query_data *qdata)
 	/* Authenticate with NOKEY if the packet isn't signed. */
 	if (query->tsig_rr) {
 		key_name = query->tsig_rr->owner;
-		key_alg = tsig_rdata_alg(query->tsig_rr);
+		key_alg = knot_tsig_rdata_alg(query->tsig_rr);
 	}
 	conf_iface_t *match = acl_find(acl, query_source, key_name);
 
@@ -551,8 +552,8 @@ int process_query_verify(struct query_data *qdata)
 
 	/* Keep digest for signing response. */
 	/*! \note This memory will be rewritten for multi-pkt answers. */
-	ctx->tsig_digest = (uint8_t *)tsig_rdata_mac(query->tsig_rr);
-	ctx->tsig_digestlen = tsig_rdata_mac_length(query->tsig_rr);
+	ctx->tsig_digest = (uint8_t *)knot_tsig_rdata_mac(query->tsig_rr);
+	ctx->tsig_digestlen = knot_tsig_rdata_mac_length(query->tsig_rr);
 
 	/* Checking query. */
 	process_query_qname_case_restore(qdata, query);
@@ -578,7 +579,7 @@ int process_query_verify(struct query_data *qdata)
 	case KNOT_TSIG_EBADTIME:
 		qdata->rcode = KNOT_RCODE_NOTAUTH;
 		qdata->rcode_tsig = KNOT_TSIG_ERR_BADTIME;
-		ctx->tsig_time_signed = tsig_rdata_time_signed(query->tsig_rr);
+		ctx->tsig_time_signed = knot_tsig_rdata_time_signed(query->tsig_rr);
 		break;
 	case KNOT_EMALF:
 		qdata->rcode = KNOT_RCODE_FORMERR;

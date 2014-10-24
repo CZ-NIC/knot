@@ -19,6 +19,7 @@
 #include "knot/ctl/estimator.h"
 #include "libknot/dname.h"
 #include "common/lists.h"
+#include "common/macros.h"
 #include "common/mem.h"
 #include "knot/zone/node.h"
 #include "libknot/descriptor.h"

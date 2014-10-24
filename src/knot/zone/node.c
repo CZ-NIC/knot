@@ -17,13 +17,13 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-#include "libknot/common.h"
 #include "knot/zone/node.h"
+#include "libknot/errcode.h"
 #include "libknot/rrset.h"
 #include "libknot/rdataset.h"
 #include "libknot/rrtype/rrsig.h"
 #include "libknot/descriptor.h"
-#include "libknot/mempattern.h"
+#include "common/mempattern.h"
 
 /*! \brief Clears allocated data in RRSet entry. */
 static void rr_data_clear(struct rr_data *data, mm_ctx_t *mm)
@@ -88,7 +88,6 @@ zone_node_t *node_new(const knot_dname_t *owner, mm_ctx_t *mm)
 {
 	zone_node_t *ret = mm_alloc(mm, sizeof(zone_node_t));
 	if (ret == NULL) {
-		ERR_ALLOC_FAILED;
 		return NULL;
 	}
 	memset(ret, 0, sizeof(*ret));
@@ -116,7 +115,7 @@ void node_free_rrsets(zone_node_t *node, mm_ctx_t *mm)
 	for (uint16_t i = 0; i < node->rrset_count; ++i) {
 		rr_data_clear(&node->rrs[i], NULL);
 	}
-	
+
 	node->rrset_count = 0;
 }
 
