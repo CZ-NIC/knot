@@ -36,7 +36,7 @@ typedef void* (*mm_alloc_t)(void* ctx, size_t len);
 typedef void (*mm_free_t)(void *p);
 typedef void (*mm_flush_t)(void *p);
 
-/* Memory allocation context. */
+/*! \brief Memory allocation context. */
 typedef struct mm_ctx {
 	void *ctx; /* \note Must be first */
 	mm_alloc_t alloc;

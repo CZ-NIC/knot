@@ -133,8 +133,8 @@ struct handler_options {
 struct err_handler {
 	/* Consider moving error messages here */
 	struct handler_options options; /*!< Handler options. */
-	uint errors[(-ZC_ERR_UNKNOWN) + 1]; /*!< Array with error messages */
-	uint error_count; /*!< Total error count */
+	unsigned errors[(-ZC_ERR_UNKNOWN) + 1]; /*!< Array with error messages */
+	unsigned error_count; /*!< Total error count */
 };
 
 typedef struct err_handler err_handler_t;

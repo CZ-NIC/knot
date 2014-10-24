@@ -28,6 +28,7 @@
 
 #include <stdint.h>
 #include <time.h>
+
 #include "libknot/dname.h"
 #include "libknot/binary.h"
 #include "libknot/rrtype/tsig.h"

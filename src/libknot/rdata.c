@@ -20,8 +20,9 @@
 #include <stdlib.h>
 
 #include "libknot/rdata.h"
-#include "libknot/common.h"
+
 #include "libknot/errcode.h"
+#include "common/macros.h"
 
 #ifndef STRICT_ALIGNMENT
 #pragma pack(push, 1)
@@ -38,6 +39,7 @@ struct rr_offsets {
 #pragma pack(pop)
 #endif
 
+_public_
 void knot_rdata_init(knot_rdata_t *rdata,
                      uint16_t rdlen, const uint8_t *data, uint32_t ttl)
 {
@@ -46,36 +48,43 @@ void knot_rdata_init(knot_rdata_t *rdata,
 	memcpy(knot_rdata_data(rdata), data, rdlen);
 }
 
+_public_
 uint16_t knot_rdata_rdlen(const knot_rdata_t *rr)
 {
 	return ((struct rr_offsets *)rr)->size;
 }
 
+_public_
 void knot_rdata_set_rdlen(knot_rdata_t *rr, uint16_t size)
 {
 	((struct rr_offsets *)rr)->size = size;
 }
 
+_public_
 uint32_t knot_rdata_ttl(const knot_rdata_t *rr)
 {
 	return ((struct rr_offsets *)rr)->ttl;
 }
 
+_public_
 void knot_rdata_set_ttl(knot_rdata_t *rr, uint32_t ttl)
 {
 	((struct rr_offsets *)rr)->ttl = ttl;
 }
 
+_public_
 uint8_t *knot_rdata_data(const knot_rdata_t *rr)
 {
 	return ((struct rr_offsets *)rr)->rdata;
 }
 
+_public_
 size_t knot_rdata_array_size(uint16_t size)
 {
 	return size + sizeof(struct rr_offsets);
 }
 
+_public_
 int knot_rdata_cmp(const knot_rdata_t *rr1, const knot_rdata_t *rr2)
 {
 	assert(rr1 && rr2);

@@ -45,21 +45,21 @@ static int create_nsec_rrset(knot_rrset_t *rrset, const zone_node_t *from,
 	// Create bitmap
 	bitmap_t rr_types = { 0 };
 	bitmap_add_node_rrsets(&rr_types, from);
-	bitmap_add_type(&rr_types, KNOT_RRTYPE_NSEC);
-	bitmap_add_type(&rr_types, KNOT_RRTYPE_RRSIG);
+	knot_bitmap_add_type(&rr_types, KNOT_RRTYPE_NSEC);
+	knot_bitmap_add_type(&rr_types, KNOT_RRTYPE_RRSIG);
 	if (node_rrtype_exists(from, KNOT_RRTYPE_SOA)) {
-		bitmap_add_type(&rr_types, KNOT_RRTYPE_DNSKEY);
+		knot_bitmap_add_type(&rr_types, KNOT_RRTYPE_DNSKEY);
 	}
 
 	// Create RDATA
 	assert(to->owner);
 	size_t next_owner_size = knot_dname_size(to->owner);
-	size_t rdata_size = next_owner_size + bitmap_size(&rr_types);
+	size_t rdata_size = next_owner_size + knot_bitmap_size(&rr_types);
 	uint8_t rdata[rdata_size];
 
 	// Fill RDATA
 	memcpy(rdata, to->owner, next_owner_size);
-	bitmap_write(&rr_types, rdata + next_owner_size);
+	knot_bitmap_write(&rr_types, rdata + next_owner_size);
 
 	return knot_rrset_add_rdata(rrset, rdata, rdata_size, ttl, NULL);
 }

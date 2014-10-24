@@ -13,7 +13,7 @@
 
 #include "common/mem.h"
 #include "common/mempool.h"
-#include "libknot/mempattern.h"
+#include "common/mempattern.h"
 
 #include <string.h>
 #include <stdlib.h>

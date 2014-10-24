@@ -138,7 +138,6 @@ int zone_dump_text(zone_contents_t *zone, const struct sockaddr_storage *from, F
 	// Allocate auxiliary buffer for dumping operations.
 	char *buf = malloc(DUMP_BUF_LEN);
 	if (buf == NULL) {
-		ERR_ALLOC_FAILED;
 		return KNOT_ENOMEM;
 	}
 

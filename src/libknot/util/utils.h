@@ -52,7 +52,7 @@ typedef struct knot_lookup_table knot_lookup_table_t;
  *         present.
  */
 knot_lookup_table_t *knot_lookup_by_name(knot_lookup_table_t *table,
-                                             const char *name);
+                                         const char *name);
 
 /*!
  * \brief Looks up the given id in the lookup table.
@@ -63,8 +63,7 @@ knot_lookup_table_t *knot_lookup_by_name(knot_lookup_table_t *table,
  * \return Item in the lookup table with the given id or NULL if no such is
  *         present.
  */
-knot_lookup_table_t *knot_lookup_by_id(knot_lookup_table_t *table,
-                                           int id);
+knot_lookup_table_t *knot_lookup_by_id(knot_lookup_table_t *table, int id);
 
 /*
  * Writing / reading arbitrary data to / from wireformat.

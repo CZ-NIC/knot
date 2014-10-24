@@ -246,7 +246,7 @@ static int add_query_edns(knot_pkt_t *packet, const query_t *query, int max_size
 	}
 
 	/* Add prepared OPT to packet. */
-	ret = knot_pkt_put(packet, COMPR_HINT_NONE, &opt_rr, KNOT_PF_FREE);
+	ret = knot_pkt_put(packet, KNOT_COMPR_HINT_NONE, &opt_rr, KNOT_PF_FREE);
 	if (ret != KNOT_EOK) {
 		knot_rrset_clear(&opt_rr, &packet->mm);
 	}

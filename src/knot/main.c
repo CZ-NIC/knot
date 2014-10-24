@@ -29,7 +29,6 @@
 #include <systemd/sd-daemon.h>
 #endif
 
-#include "libknot/common.h"
 #include "libknot/dnssec/crypto.h"
 #include "knot/knot.h"
 #include "knot/server/server.h"

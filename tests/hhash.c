@@ -19,9 +19,10 @@
 #include <tap/basic.h>
 
 #include "common/hhash.h"
-#include "libknot/mempattern.h"
+#include "common/macros.h"
+#include "common/mempattern.h"
 #include "common/mempool.h"
-#include "libknot/common.h"
+#include "libknot/errcode.h"
 
 /* Test defines. */
 #define ELEM_COUNT 65535

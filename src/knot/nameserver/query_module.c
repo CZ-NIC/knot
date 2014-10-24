@@ -1,5 +1,5 @@
 #include "knot/nameserver/query_module.h"
-#include "libknot/mempattern.h"
+#include "common/mempattern.h"
 #include "libknot/errcode.h"
 #include "common/strlcpy.h"
 

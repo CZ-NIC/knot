@@ -27,6 +27,7 @@
 #include <urcu.h>
 #include "common-knot/strlcat.h"
 #include "common/strlcpy.h"
+#include "common/macros.h"
 #include "common/mem.h"
 #include "knot/conf/conf.h"
 #include "knot/conf/extra.h"
@@ -412,7 +413,6 @@ static int conf_process(conf_t *conf)
 		size_t size = stor_len + zname_len + 9; // /diff.db,\0
 		char *dest = malloc(size);
 		if (dest == NULL) {
-			ERR_ALLOC_FAILED;
 			zone->ixfr_db = NULL; /* Not enough memory. */
 			ret = KNOT_ENOMEM; /* Error report. */
 			continue;
@@ -795,7 +795,7 @@ int conf_open(const char* path)
 
 		/* Update hooks. */
 		conf_update_hooks(nconf);
-		
+
 		/* Free old config. */
 		conf_free(oldconf);
 	}

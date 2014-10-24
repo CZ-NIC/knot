@@ -14,13 +14,14 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "common/mem.h"
-#include "libknot/errcode.h"
 #include "libknot/rrtype/nsec3param.h"
 
-/*!
- * \brief Initialize the structure with NSEC3 params from NSEC3PARAM RR set.
- */
+#include "common/macros.h"
+#include "common/mem.h"
+
+#include "libknot/errcode.h"
+
+_public_
 int knot_nsec3param_from_wire(knot_nsec3_params_t *params,
                                 const knot_rdataset_t *rrs)
 {
@@ -49,12 +50,4 @@ int knot_nsec3param_from_wire(knot_nsec3_params_t *params,
 	*params = result;
 
 	return KNOT_EOK;
-}
-
-/*!
- * \brief Clean up structure with NSEC3 params (do not deallocate).
- */
-void knot_nsec3param_free(knot_nsec3_params_t *params)
-{
-	free(params->salt);
 }

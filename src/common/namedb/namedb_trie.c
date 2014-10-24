@@ -14,9 +14,11 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include "libknot/errcode.h"
+
 #include "common/namedb/namedb_trie.h"
 #include "common/trie/hat-trie.h"
-#include "libknot/errcode.h"
+#include "common/mempattern.h"
 
 static int init(const char *config, knot_namedb_t **db, mm_ctx_t *mm)
 {

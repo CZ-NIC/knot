@@ -17,9 +17,11 @@
 #include <assert.h>
 #include <sys/fcntl.h>
 
-#include "libknot/common.h"
-#include "libknot/processing/requestor.h"
+#include "common/macros.h"
 #include "common/net.h"
+
+#include "libknot/errcode.h"
+#include "libknot/processing/requestor.h"
 
 static bool use_tcp(struct knot_request *request)
 {
@@ -28,7 +30,8 @@ static bool use_tcp(struct knot_request *request)
 
 static struct knot_request *request_make(mm_ctx_t *mm)
 {
-	struct knot_request *request = mm_alloc(mm, sizeof(struct knot_request));
+	struct knot_request *request =
+	                mm_alloc(mm, sizeof(struct knot_request));
 	if (request == NULL) {
 		return NULL;
 	}
@@ -46,9 +49,9 @@ static int request_wait(int fd, int state, struct timeval *timeout)
 	FD_SET(fd, &set);
 
 	switch(state) {
-	case NS_PROC_FULL: /* Wait for writeability. */
+	case KNOT_NS_PROC_FULL: /* Wait for writeability. */
 		return select(fd + 1, NULL, &set, NULL, timeout);
-	case NS_PROC_MORE: /* Wait for data. */
+	case KNOT_NS_PROC_MORE: /* Wait for data. */
 		return select(fd + 1, &set, NULL, NULL, timeout);
 	default:
 		return -1;
@@ -62,7 +65,7 @@ static int request_send(struct knot_request *request,
 	struct timeval tv = { timeout->tv_sec, timeout->tv_usec };
 
 	/* Wait for writeability or error. */
-	int ret = request_wait(request->fd, NS_PROC_FULL, &tv);
+	int ret = request_wait(request->fd, KNOT_NS_PROC_FULL, &tv);
 	if (ret == 0) {
 		return KNOT_ETIMEOUT;
 	}
@@ -120,6 +123,7 @@ static int request_recv(struct knot_request *request,
 	return ret;
 }
 
+_public_
 struct knot_request *knot_request_make(mm_ctx_t *mm,
                                        const struct sockaddr *dst,
                                        const struct sockaddr *src,
@@ -148,6 +152,7 @@ struct knot_request *knot_request_make(mm_ctx_t *mm,
 	return request;
 }
 
+_public_
 int knot_request_free(mm_ctx_t *mm, struct knot_request *request)
 {
 	close(request->fd);
@@ -160,6 +165,7 @@ int knot_request_free(mm_ctx_t *mm, struct knot_request *request)
 	return KNOT_EOK;
 }
 
+_public_
 void knot_requestor_init(struct knot_requestor *requestor, mm_ctx_t *mm)
 {
 	memset(requestor, 0, sizeof(struct knot_requestor));
@@ -168,6 +174,7 @@ void knot_requestor_init(struct knot_requestor *requestor, mm_ctx_t *mm)
 	knot_overlay_init(&requestor->overlay, mm);
 }
 
+_public_
 void knot_requestor_clear(struct knot_requestor *requestor)
 {
 	while (knot_requestor_dequeue(requestor) == KNOT_EOK)
@@ -177,17 +184,20 @@ void knot_requestor_clear(struct knot_requestor *requestor)
 	knot_overlay_deinit(&requestor->overlay);
 }
 
+_public_
 bool knot_requestor_finished(struct knot_requestor *requestor)
 {
 	return requestor == NULL || EMPTY_LIST(requestor->pending);
 }
 
+_public_
 int knot_requestor_overlay(struct knot_requestor *requestor,
                            const knot_layer_api_t *proc, void *param)
 {
 	return knot_overlay_add(&requestor->overlay, proc, param);
 }
 
+_public_
 int knot_requestor_enqueue(struct knot_requestor *requestor,
                            struct knot_request *request)
 {
@@ -220,6 +230,7 @@ int knot_requestor_enqueue(struct knot_requestor *requestor,
 	return KNOT_EOK;
 }
 
+_public_
 int knot_requestor_dequeue(struct knot_requestor *requestor)
 {
 	if (knot_requestor_finished(requestor)) {
@@ -238,7 +249,7 @@ static int request_io(struct knot_requestor *req, struct knot_request *last,
 	knot_pkt_t *resp = last->resp;
 
 	/* Data to be sent. */
-	if (req->overlay.state == NS_PROC_FULL) {
+	if (req->overlay.state == KNOT_NS_PROC_FULL) {
 
 		/* Process query and send it out. */
 		knot_overlay_out(&req->overlay, query);
@@ -250,7 +261,7 @@ static int request_io(struct knot_requestor *req, struct knot_request *last,
 	}
 
 	/* Data to be read. */
-	if (req->overlay.state == NS_PROC_MORE) {
+	if (req->overlay.state == KNOT_NS_PROC_MORE) {
 		/* Read answer and process it. */
 		ret = request_recv(last, timeout);
 		if (ret < 0) {
@@ -269,7 +280,7 @@ static int exec_request(struct knot_requestor *req, struct knot_request *last,
 	int ret = KNOT_EOK;
 
 	/* Do I/O until the processing is satisifed or fails. */
-	while (req->overlay.state & (NS_PROC_FULL|NS_PROC_MORE)) {
+	while (req->overlay.state & (KNOT_NS_PROC_FULL|KNOT_NS_PROC_MORE)) {
 		ret = request_io(req, last, timeout);
 		if (ret != KNOT_EOK) {
 			knot_overlay_reset(&req->overlay);
@@ -278,7 +289,7 @@ static int exec_request(struct knot_requestor *req, struct knot_request *last,
 	}
 
 	/* Expect complete request. */
-	if (req->overlay.state == NS_PROC_FAIL) {
+	if (req->overlay.state == KNOT_NS_PROC_FAIL) {
 		ret = KNOT_ERROR;
 	}
 
@@ -288,6 +299,7 @@ static int exec_request(struct knot_requestor *req, struct knot_request *last,
 	return ret;
 }
 
+_public_
 int knot_requestor_exec(struct knot_requestor *requestor,
                         struct timeval *timeout)
 {

@@ -1,7 +1,7 @@
 #pragma once
 
 #include "knot/server/server.h"
-#include "libknot/mempattern.h"
+#include "common/mempattern.h"
 
 /* Some domain names. */
 #define ROOT_DNAME ((const uint8_t *)"")

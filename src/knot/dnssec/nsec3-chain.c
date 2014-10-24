@@ -17,6 +17,7 @@
 #include <assert.h>
 
 #include "common/base32hex.h"
+#include "common/macros.h"
 #include "knot/dnssec/nsec3-chain.h"
 #include "libknot/dname.h"
 #include "libknot/packet/wire.h"
@@ -199,7 +200,7 @@ static size_t nsec3_rdata_size(const knot_nsec3_params_t *params,
 
 	return 6 + params->salt_length
 	       + knot_nsec3_hash_length(params->algorithm)
-	       + bitmap_size(rr_types);
+	       + knot_bitmap_size(rr_types);
 }
 
 /*!
@@ -234,7 +235,7 @@ static void nsec3_fill_rdata(uint8_t *rdata, const knot_nsec3_params_t *params,
 		memcpy(rdata, next_hashed, hash_length);
 	}
 	rdata += hash_length;
-	bitmap_write(rr_types, rdata);                    // RR types bit map
+	knot_bitmap_write(rr_types, rdata);                    // RR types bit map
 }
 
 /*!
@@ -336,10 +337,10 @@ static zone_node_t *create_nsec3_node_for_node(zone_node_t *node,
 	bitmap_t rr_types = { 0 };
 	bitmap_add_node_rrsets(&rr_types, node);
 	if (node->rrset_count > 0 && node_should_be_signed_nsec3(node)) {
-		bitmap_add_type(&rr_types, KNOT_RRTYPE_RRSIG);
+		knot_bitmap_add_type(&rr_types, KNOT_RRTYPE_RRSIG);
 	}
 	if (node == apex) {
-		bitmap_add_type(&rr_types, KNOT_RRTYPE_DNSKEY);
+		knot_bitmap_add_type(&rr_types, KNOT_RRTYPE_DNSKEY);
 	}
 
 	zone_node_t *nsec3_node;

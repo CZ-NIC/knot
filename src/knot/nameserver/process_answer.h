@@ -31,8 +31,8 @@
 
 /* Answer processing module implementation. */
 const knot_layer_api_t *process_answer_get_module(void);
-#define NS_PROC_ANSWER process_answer_get_module()
-#define NS_PROC_ANSWER_ID 2
+#define KNOT_NS_PROC_ANSWER process_answer_get_module()
+#define KNOT_NS_PROC_ANSWER_ID 2
 
 /*! \brief Answer processing logging base. */
 #define ANSWER_LOG(severity, data, operation, msg...) \

@@ -18,25 +18,25 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
-#include "libknot/common.h"
+
+#include "libknot/dnssec/rrset-sign.h"
+
 #include "libknot/descriptor.h"
 #include "libknot/dnssec/key.h"
 #include "libknot/dnssec/policy.h"
-#include "libknot/dnssec/rrset-sign.h"
 #include "libknot/dnssec/sign.h"
 #include "libknot/errcode.h"
 #include "libknot/packet/wire.h"
 #include "libknot/rrset.h"
 #include "libknot/rrtype/rrsig.h"
 #include "libknot/packet/rrset-wire.h"
+#include "common/macros.h"
 
 #define RRSIG_RDATA_SIGNER_OFFSET 18
 
 /*- Creating of RRSIGs -------------------------------------------------------*/
 
-/*!
- * \brief Get size of RRSIG RDATA for a given key.
- */
+_public_
 size_t knot_rrsig_rdata_size(const knot_dnssec_key_t *key)
 {
 	if (!key) {
@@ -66,9 +66,7 @@ size_t knot_rrsig_rdata_size(const knot_dnssec_key_t *key)
 	return size;
 }
 
-/*!
- * \brief Write RRSIG RDATA except signature.
- */
+_public_
 int knot_rrsig_write_rdata(uint8_t *rdata, const knot_dnssec_key_t *key,
                            uint16_t covered_type, uint8_t owner_labels,
                            uint32_t owner_ttl,  uint32_t sig_incepted,
@@ -256,9 +254,7 @@ static int rrsigs_create_rdata(knot_rrset_t *rrsigs,
 	                            knot_rdata_ttl(covered_data), NULL);
 }
 
-/*!
- * \brief Create RRSIG RR for given RR set.
- */
+_public_
 int knot_sign_rrset(knot_rrset_t *rrsigs, const knot_rrset_t *covered,
                     const knot_dnssec_key_t *key,
                     knot_dnssec_sign_context_t *sign_ctx,
@@ -278,6 +274,7 @@ int knot_sign_rrset(knot_rrset_t *rrsigs, const knot_rrset_t *covered,
 	                           sig_expire);
 }
 
+_public_
 int knot_synth_rrsig(uint16_t type, const knot_rdataset_t *rrsig_rrs,
                      knot_rdataset_t *out_sig, mm_ctx_t *mm)
 {
@@ -326,9 +323,7 @@ static bool is_expired_signature(const knot_rrset_t *rrsigs, size_t pos,
 	return (expiration <= policy->refresh_before);
 }
 
-/*!
- * \brief Check if RRSIG signature is valid.
- */
+_public_
 int knot_is_valid_signature(const knot_rrset_t *covered,
                             const knot_rrset_t *rrsigs, size_t pos,
                             const knot_dnssec_key_t *key,
