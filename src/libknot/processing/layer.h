@@ -14,7 +14,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 /*!
- * \file process.h
+ * \file layer.h
  *
  * \author Marek Vavrusa <marek.vavrusa@nic.cz>
  *
@@ -26,7 +26,9 @@
 
 #include <stdint.h>
 
-#include "libknot/mempattern.h"
+#include "common/lists.h"
+#include "common/mempattern.h"
+
 #include "libknot/consts.h"
 #include "libknot/rrtype/tsig.h"
 #include "libknot/packet/pkt.h"
@@ -36,99 +38,96 @@
  *         and determines readiness for next action.
  */
 
-enum knot_process_state {
-	NS_PROC_NOOP = 0,      /* N/A */
-	NS_PROC_MORE = 1 << 0, /* More input data. */
-	NS_PROC_FULL = 1 << 1, /* Has output data. */
-	NS_PROC_DONE = 1 << 2, /* Finished. */
-	NS_PROC_FAIL = 1 << 3  /* Error. */
+enum knot_layer_state {
+	KNOT_NS_PROC_NOOP = 0,      /* N/A */
+	KNOT_NS_PROC_MORE = 1 << 0, /* More input data. */
+	KNOT_NS_PROC_FULL = 1 << 1, /* Has output data. */
+	KNOT_NS_PROC_DONE = 1 << 2, /* Finished. */
+	KNOT_NS_PROC_FAIL = 1 << 3  /* Error. */
 };
 
 /* Forward declarations. */
-struct knot_process_module;
+struct knot_layer_api;
 
 /*! \brief Packet processing context. */
-typedef struct knot_process_context
+typedef struct knot_layer
 {
-	uint16_t state;  /* Bitmap of enum knot_process_state. */
+	node_t node;
+
+	uint16_t state;  /* Bitmap of enum knot_layer_state. */
 	uint16_t type;   /* Module identifier. */
-	mm_ctx_t mm;     /* Processing memory context. */
+	mm_ctx_t *mm;    /* Processing memory context. */
 
 	/* Module specific. */
 	void *data;
-	const struct knot_process_module *module;
-} knot_process_t;
+	const struct knot_layer_api *api;
+} knot_layer_t;
 
 /*! \brief Packet processing module API. */
-typedef struct knot_process_module {
-	int (*begin)(knot_process_t *ctx, void *module_param);
-	int (*reset)(knot_process_t *ctx);
-	int (*finish)(knot_process_t *ctx);
-	int (*in)(knot_pkt_t *pkt, knot_process_t *ctx);
-	int (*out)(knot_pkt_t *pkt, knot_process_t *ctx);
-	int (*err)(knot_pkt_t *pkt, knot_process_t *ctx);
-} knot_process_module_t;
+typedef struct knot_layer_api {
+	int (*begin)(knot_layer_t *ctx, void *module_param);
+	int (*reset)(knot_layer_t *ctx);
+	int (*finish)(knot_layer_t *ctx);
+	int (*in)(knot_layer_t *ctx, knot_pkt_t *pkt);
+	int (*out)(knot_layer_t *ctx, knot_pkt_t *pkt);
+	int (*err)(knot_layer_t *ctx, knot_pkt_t *pkt);
+} knot_layer_api_t;
 
 /*!
  * \brief Universal noop process function.
  */
-inline static int knot_process_noop(knot_pkt_t *pkt, knot_process_t *ctx)
+inline static int knot_layer_noop(knot_layer_t *ctx, knot_pkt_t *pkt)
 {
-	return NS_PROC_NOOP;
+	return KNOT_NS_PROC_NOOP;
 }
 
 /*!
  * \brief Initialize packet processing context.
  *
- * Allowed from states: NOOP
- *
- * \param ctx Context.
- * \param module_param Parameters for given module.
- * \param module Module API.
+ * \param ctx   Layer context.
+ * \param param Parameters for given module.
+ * \param api   Layer API.
  * \return (module specific state)
  */
-int knot_process_begin(knot_process_t *ctx, void *module_param,
-                       const knot_process_module_t *module);
+int knot_layer_begin(knot_layer_t *ctx, const knot_layer_api_t *api, void *param);
 
 /*!
  * \brief Reset current packet processing context.
- * \param ctx Context.
+ * \param ctx   Layer context.
  * \return (module specific state)
  */
-int knot_process_reset(knot_process_t *ctx);
+int knot_layer_reset(knot_layer_t *ctx);
 
 /*!
  * \brief Finish and close packet processing context.
  *
  * Allowed from states: MORE, FULL, DONE, FAIL
  *
- * \param ctx Context.
+ * \param ctx   Layer context.
  * \return (module specific state)
  */
-int knot_process_finish(knot_process_t *ctx);
+int knot_layer_finish(knot_layer_t *ctx);
 
 /*!
- * \brief Input more data into packet processing.
+ * \brief Add more data to layer processing.
  *
  * Allowed from states: MORE
  *
- * \param wire Source data.
- * \param wire_len Source data length.
- * \param ctx Context.
+ * \param ctx Layer context.
+ * \param pkt Data packet.
+ *
  * \return (module specific state)
  */
-int knot_process_in(const uint8_t *wire, uint16_t wire_len, knot_process_t *ctx);
+int knot_layer_in(knot_layer_t *ctx, knot_pkt_t *pkt);
 
 /*!
- * \brief Write out output from packet processing.
+ * \brief Generate output from layer.
  *
- * Allowed from states: FULL, FAIL
+ * \param ctx Layer context.
+ * \param pkt Data packet.
  *
- * \param wire Destination.
- * \param wire_len Destination length.
- * \param ctx Context.
  * \return (module specific state)
  */
-int knot_process_out(uint8_t *wire, uint16_t *wire_len, knot_process_t *ctx);
+int knot_layer_out(knot_layer_t *ctx, knot_pkt_t *pkt);
 
 /*! @} */

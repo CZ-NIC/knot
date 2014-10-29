@@ -28,7 +28,7 @@
 
 #include <stdlib.h>
 #include <string.h>
-#include "common-knot/lists.h"
+#include "common/lists.h"
 
 /**
  * add_tail - append a node to a list

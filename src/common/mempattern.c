@@ -16,7 +16,7 @@
 
 #include <stdlib.h>
 
-#include "libknot/mempattern.h"
+#include "common/mempattern.h"
 #include "common/mempool.h"
 
 static void mm_nofree(void *p)
@@ -39,6 +39,7 @@ void *mm_alloc(mm_ctx_t *mm, size_t size)
 	}
 }
 
+
 void *mm_realloc(mm_ctx_t *mm, void *what, size_t size, size_t prev_size)
 {
 	if (mm) {
@@ -50,16 +51,13 @@ void *mm_realloc(mm_ctx_t *mm, void *what, size_t size, size_t prev_size)
 				memcpy(p, what,
 				       prev_size < size ? prev_size : size);
 			}
-			if (mm->free) {
-				mm->free(what);
-			}
+			mm_free(mm, what);
 			return p;
 		}
 	} else {
 		return realloc(what, size);
 	}
 }
-
 
 void mm_free(mm_ctx_t *mm, void *what)
 {

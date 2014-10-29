@@ -21,15 +21,16 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "libknot/common.h"
+#include "libknot/packet/rrset-wire.h"
+
 #include "libknot/consts.h"
 #include "libknot/descriptor.h"
 #include "libknot/dname.h"
 #include "libknot/packet/pkt.h"
-#include "libknot/packet/rrset-wire.h"
 #include "libknot/packet/wire.h"
 #include "libknot/rrset.h"
 #include "libknot/rrtype/naptr.h"
+#include "common/macros.h"
 
 /*!
  * \brief Get maximal size of a domain name in a wire with given capacity.
@@ -168,7 +169,7 @@ static int write_rdata_block(const uint8_t **src, size_t *src_avail,
  */
 static int rdata_traverse(const uint8_t **src, size_t *src_avail,
                           uint8_t **dst, size_t *dst_avail,
-                          const rdata_descriptor_t *desc,
+                          const knot_rdata_descriptor_t *desc,
                           dname_config_t *dname_cfg)
 {
 	for (int i = 0; desc->block_types[i] != KNOT_RDATA_WF_END; i++) {
@@ -195,7 +196,7 @@ static int write_owner(const knot_rrset_t *rrset, uint8_t **dst, size_t *dst_ava
 	assert(dst && *dst);
 	assert(dst_avail);
 
-	uint16_t owner_pointer = compr_get_ptr(compr, COMPR_HINT_OWNER);
+	uint16_t owner_pointer = compr_get_ptr(compr, KNOT_COMPR_HINT_OWNER);
 
 	/* Check size */
 
@@ -221,7 +222,7 @@ static int write_owner(const knot_rrset_t *rrset, uint8_t **dst, size_t *dst_ava
 			return written;
 		}
 
-		compr_set_ptr(compr, COMPR_HINT_OWNER, *dst, written);
+		compr_set_ptr(compr, KNOT_COMPR_HINT_OWNER, *dst, written);
 		owner_size = written;
 	}
 
@@ -354,14 +355,14 @@ static int write_rdata(const knot_rrset_t *rrset, uint16_t rrset_index,
 	dname_config_t dname_cfg = {
 		.write_cb = compress_rdata_dname,
 		.compr = compr,
-		.hint = COMPR_HINT_RDATA + rrset_index
+		.hint = KNOT_COMPR_HINT_RDATA + rrset_index
 	};
 
 	const uint8_t *src = knot_rdata_data(rdata);
 	size_t src_avail = knot_rdata_rdlen(rdata);
 	if (src_avail > 0) {
 		/* Only write non-empty data. */
-		const rdata_descriptor_t *desc =
+		const knot_rdata_descriptor_t *desc =
 			knot_get_rdata_descriptor(rrset->type);
 		int ret = rdata_traverse(&src, &src_avail, dst, dst_avail,
 		                         desc, &dname_cfg);
@@ -407,6 +408,7 @@ static int write_rr(const knot_rrset_t *rrset, uint16_t rrset_index,
 /*!
  * \brief Write RR Set content to a wire.
  */
+_public_
 int knot_rrset_to_wire(const knot_rrset_t *rrset, uint8_t *wire, uint16_t max_size,
                        knot_compr_t *compr)
 {
@@ -495,13 +497,13 @@ static int decompress_rdata_dname(const uint8_t **src, size_t *src_avail,
 	if (compr_size <= 0) {
 		return compr_size;
 	}
-	
+
 	int decompr_size = knot_dname_unpack(*dst, *src, *dst_avail,
 	                                     dname_cfg->pkt_wire);
 	if (decompr_size <= 0) {
 		return decompr_size;
 	}
-	
+
 	/* Update buffers */
 	*dst += decompr_size;
 	*dst_avail -= decompr_size;
@@ -512,7 +514,8 @@ static int decompress_rdata_dname(const uint8_t **src, size_t *src_avail,
 	return KNOT_EOK;
 }
 
-static bool allow_zero_rdata(const knot_rrset_t *rr, const rdata_descriptor_t *desc)
+static bool allow_zero_rdata(const knot_rrset_t *rr,
+                             const knot_rdata_descriptor_t *desc)
 {
 	return rr->rclass != KNOT_CLASS_IN ||  // NONE and ANY for DDNS
 	       rr->type == KNOT_RRTYPE_APL ||  // APL RR type
@@ -534,7 +537,7 @@ static int parse_rdata(const uint8_t *pkt_wire, size_t *pos, size_t pkt_size,
 		return KNOT_EMALF;
 	}
 
-	const rdata_descriptor_t *desc = knot_get_rdata_descriptor(rrset->type);
+	const knot_rdata_descriptor_t *desc = knot_get_rdata_descriptor(rrset->type);
 	if (desc->type_name == NULL) {
 		desc = knot_get_obsolete_rdata_descriptor(rrset->type);
 	}
@@ -552,7 +555,8 @@ static int parse_rdata(const uint8_t *pkt_wire, size_t *pos, size_t pkt_size,
 	const uint8_t *src = pkt_wire + *pos;
 	size_t src_avail = rdlength;
 
-	const size_t buffer_size = rdlength + KNOT_MAX_RDATA_DNAMES * KNOT_DNAME_MAXLEN;
+	const size_t buffer_size = rdlength +
+	                           KNOT_MAX_RDATA_DNAMES * KNOT_DNAME_MAXLEN;
 	uint8_t rdata_buffer[buffer_size];
 	uint8_t *dst = rdata_buffer;
 	size_t dst_avail = buffer_size;
@@ -579,21 +583,20 @@ static int parse_rdata(const uint8_t *pkt_wire, size_t *pos, size_t pkt_size,
 		/* DNAME compression caused RDATA overflow. */
 		return KNOT_EMALF;
 	}
-	
+
 	ret = knot_rrset_add_rdata(rrset, rdata_buffer, written, ttl, mm);
 	if (ret == KNOT_EOK) {
 		/* Update position pointer. */
 		*pos += rdlength;
 	}
-	
+
 	return ret;
 }
 
-/*!
-* \brief Creates one RR from a wire.
- */
+_public_
 int knot_rrset_rr_from_wire(const uint8_t *pkt_wire, size_t *pos,
-                            size_t pkt_size, mm_ctx_t *mm, knot_rrset_t *rrset)
+                            size_t pkt_size, mm_ctx_t *mm,
+                            knot_rrset_t *rrset)
 {
 	if (!pkt_wire || !pos || !rrset || *pos > pkt_size) {
 		return KNOT_EINVAL;

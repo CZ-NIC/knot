@@ -99,6 +99,7 @@ static inline void window_add_bit(const uint16_t type, zs_scanner_t *s) {
 	write data;
 }%%
 
+__attribute__((visibility("default")))
 zs_scanner_t* zs_scanner_create(const char     *origin,
                                 const uint16_t rclass,
                                 const uint32_t ttl,
@@ -151,6 +152,7 @@ zs_scanner_t* zs_scanner_create(const char     *origin,
 	return s;
 }
 
+__attribute__((visibility("default")))
 void zs_scanner_free(zs_scanner_t *s)
 {
 	if (s != NULL) {
@@ -239,6 +241,7 @@ static void parse_block(zs_scanner_t *s,
 	s->r_data_tail = rdata_tail - s->r_data;
 }
 
+__attribute__((visibility("default")))
 int zs_scanner_parse(zs_scanner_t *s,
                      const char   *start,
                      const char   *end,
@@ -264,6 +267,7 @@ int zs_scanner_parse(zs_scanner_t *s,
 	return 0;
 }
 
+__attribute__((visibility("default")))
 int zs_scanner_parse_file(zs_scanner_t *s,
                           const char   *file_name)
 {

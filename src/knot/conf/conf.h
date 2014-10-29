@@ -37,12 +37,12 @@
 #include "libknot/rrtype/tsig.h"
 #include "libknot/dnssec/key.h"
 #include "libknot/dnssec/policy.h"
-#include "common-knot/lists.h"
+#include "common/lists.h"
 #include "common/namedb/namedb.h"
 #include "common/log.h"
 #include "knot/updates/acl.h"
-#include "common-knot/sockaddr.h"
-#include "common-knot/hattrie/hat-trie.h"
+#include "common/sockaddr.h"
+#include "common/trie/hat-trie.h"
 #include "knot/nameserver/query_module.h"
 
 /* Constants. */
@@ -268,11 +268,6 @@ typedef struct conf_t {
 	int serial_policy;   /*!< Serial policy when updating zone. */
 	struct query_plan *query_plan;
 	list_t query_modules;
-
-	/*
-	 * Zone timers db
-	 */
-	knot_namedb_t *timers_db;
 
 	/*
 	 * Remote control interface.

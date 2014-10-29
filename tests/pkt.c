@@ -114,7 +114,7 @@ int main(int argc, char *argv[])
 	tsig_key.name = dnames[0];
 	tsig_key.secret.data = (uint8_t *)strdup(tsig_secret);
 	tsig_key.secret.size = strlen(tsig_secret);
-	ret = knot_pkt_reserve(out, tsig_wire_maxsize(&tsig_key));
+	ret = knot_pkt_reserve(out, knot_tsig_wire_maxsize(&tsig_key));
 	ok(ret == KNOT_EOK, "pkt: set TSIG key");
 
 	/* Write question. */
@@ -133,7 +133,7 @@ int main(int argc, char *argv[])
 	rrsets[0] = knot_rrset_new(dnames[0], KNOT_RRTYPE_A, KNOT_CLASS_IN, NULL);
 	knot_dname_free(&dnames[0], NULL);
 	knot_rrset_add_rdata(rrsets[0], RDVAL(0), RDLEN(0), TTL, NULL);
-	ret = knot_pkt_put(out, COMPR_HINT_QNAME, rrsets[0], 0);
+	ret = knot_pkt_put(out, KNOT_COMPR_HINT_QNAME, rrsets[0], 0);
 	ok(ret == KNOT_EOK, "pkt: write ANSWER");
 
 	/* Begin AUTHORITY. */
@@ -146,7 +146,7 @@ int main(int argc, char *argv[])
 		rrsets[i] = knot_rrset_new(dnames[i], KNOT_RRTYPE_NS, KNOT_CLASS_IN, NULL);
 		knot_dname_free(&dnames[i], NULL);
 		knot_rrset_add_rdata(rrsets[i], RDVAL(i), RDLEN(i), TTL, NULL);
-		ret |= knot_pkt_put(out, COMPR_HINT_NONE, rrsets[i], 0);
+		ret |= knot_pkt_put(out, KNOT_COMPR_HINT_NONE, rrsets[i], 0);
 	}
 	ok(ret == KNOT_EOK, "pkt: write AUTHORITY(%u)", NAMECOUNT - 1);
 
@@ -155,7 +155,7 @@ int main(int argc, char *argv[])
 	ok(ret == KNOT_EOK, "pkt: begin ADDITIONALS");
 
 	/* Encode OPT RR. */
-	ret = knot_pkt_put(out, COMPR_HINT_NONE, &opt_rr, 0);
+	ret = knot_pkt_put(out, KNOT_COMPR_HINT_NONE, &opt_rr, 0);
 	ok(ret == KNOT_EOK, "pkt: write OPT RR");
 
 	/*

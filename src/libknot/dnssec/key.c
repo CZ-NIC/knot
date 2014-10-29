@@ -26,15 +26,19 @@
 #include <string.h>
 #include <time.h>
 
-#include "libknot/descriptor.h"
-#include "common/getline.h"
-#include "libknot/binary.h"
-#include "libknot/common.h"
-#include "libknot/dname.h"
 #include "libknot/dnssec/key.h"
+
+#include "common/getline.h"
+#include "common/macros.h"
+
+#include "zscanner/scanner.h"		// TODO: remove dependency!!
+
+#include "libknot/descriptor.h"
+#include "libknot/errcode.h"
+#include "libknot/binary.h"
+#include "libknot/dname.h"
 #include "libknot/dnssec/sig0.h"
 #include "libknot/rrtype/tsig.h"
-#include "zscanner/scanner.h"
 
 /*!
  * \brief Calculates keytag for RSA/MD5 algorithm.
@@ -50,9 +54,7 @@ static uint16_t keytag_rsa_md5(const uint8_t *rdata, uint16_t rdata_len)
 	return ac;
 }
 
-/*!
- * \brief Calculates keytag from key wire.
- */
+_public_
 uint16_t knot_keytag(const uint8_t *rdata, uint16_t rdata_len)
 {
 	if (!rdata || rdata_len < 4) {
@@ -349,9 +351,7 @@ static int parse_keyfile_line(knot_key_params_t *key_params,
 	return KNOT_EOK;
 }
 
-/*!
- * \brief Reads the key file and extracts key parameters.
- */
+_public_
 int knot_load_key_params(const char *filename, knot_key_params_t *key_params)
 {
 	if (!filename || !key_params) {
@@ -411,6 +411,7 @@ int knot_load_key_params(const char *filename, knot_key_params_t *key_params)
 	return result;
 }
 
+_public_
 int knot_copy_key_params(const knot_key_params_t *src, knot_key_params_t *dst)
 {
 	if (src == NULL || dst == NULL) {
@@ -456,9 +457,7 @@ int knot_copy_key_params(const knot_key_params_t *src, knot_key_params_t *dst)
 	return KNOT_EOK;
 }
 
-/*!
- * \brief Frees the key parameters.
- */
+_public_
 int knot_free_key_params(knot_key_params_t *key_params)
 {
 	if (!key_params) {
@@ -492,9 +491,7 @@ int knot_free_key_params(knot_key_params_t *key_params)
 	return KNOT_EOK;
 }
 
-/*!
- * \brief Get the type of the key.
- */
+_public_
 knot_key_type_t knot_get_key_type(const knot_key_params_t *key_params)
 {
 	if (!key_params) {
@@ -517,9 +514,7 @@ knot_key_type_t knot_get_key_type(const knot_key_params_t *key_params)
 	return KNOT_KEY_UNKNOWN;
 }
 
-/*!
- * \brief Creates TSIG key.
- */
+_public_
 int knot_tsig_create_key(const char *name, int algorithm,
                          const char *b64secret, knot_tsig_key_t *key)
 {
@@ -547,9 +542,7 @@ int knot_tsig_create_key(const char *name, int algorithm,
 	return KNOT_EOK;
 }
 
-/*!
- * \brief Creates TSIG key from key parameters.
- */
+_public_
 int knot_tsig_key_from_params(const knot_key_params_t *params,
                               knot_tsig_key_t *key)
 {
@@ -569,9 +562,7 @@ int knot_tsig_key_from_params(const knot_key_params_t *params,
 	return KNOT_EOK;
 }
 
-/*!
- * \brief Frees TSIG key.
- */
+_public_
 int knot_tsig_key_free(knot_tsig_key_t *key)
 {
 	if (!key) {

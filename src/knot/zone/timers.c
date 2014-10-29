@@ -56,6 +56,12 @@ static bool event_persistent(size_t event)
 	return event_id_to_key[event] != 0;
 }
 
+/*! \brief Clear array of timers. */
+static void clear_timers(time_t *timers)
+{
+	memset(timers, 0, ZONE_EVENT_COUNT * sizeof(time_t));
+}
+
 /*! \brief Stores timers for persistent events. */
 static int store_timers(knot_txn_t *txn, zone_t *zone)
 {
@@ -87,21 +93,20 @@ static int store_timers(knot_txn_t *txn, zone_t *zone)
 static int read_timers(knot_txn_t *txn, const zone_t *zone, time_t *timers)
 {
 	const struct namedb_api *db_api = namedb_lmdb_api();
+	assert(db_api);
 
 	knot_val_t key = { .len = knot_dname_size(zone->name), .data = zone->name };
 	knot_val_t val;
+
 	int ret = db_api->find(txn, &key, &val, 0);
-	if (ret != KNOT_EOK) {
-		if (ret == KNOT_ENOENT) {
-			// New zone, no entry in db.
-			memset(timers, 0, ZONE_EVENT_COUNT * sizeof(time_t));
-			return KNOT_EOK;
-		}
+	if (ret != KNOT_EOK && ret != KNOT_ENOENT) {
 		return ret;
 	}
 
-	// Set unknown/unset event timers to 0.
-	memset(timers, 0, ZONE_EVENT_COUNT * sizeof(time_t));
+	clear_timers(timers);
+	if (ret == KNOT_ENOENT) {
+		return KNOT_EOK;
+	}
 
 	const size_t stored_event_count = val.len / EVENT_KEY_PAIR_SIZE;
 	size_t offset = 0;
@@ -120,40 +125,50 @@ static int read_timers(knot_txn_t *txn, const zone_t *zone, time_t *timers)
 
 /* -------- API ------------------------------------------------------------- */
 
-knot_namedb_t *open_timers_db(const char *storage)
+int open_timers_db(const char *storage, knot_namedb_t **db_ptr)
 {
-#ifndef HAVE_LMDB
-	// No-op if we don't have lmdb, all other operations will no-op as well then
-	return NULL;
-#else
-	char *path = sprintf_alloc("%s/timers", storage);
-	if (!path) {
-		return NULL;
+	if (!storage || !db_ptr) {
+		return KNOT_EINVAL;
 	}
 
-	knot_namedb_t *db = namedb_lmdb_api()->init(path, NULL);
+	const struct namedb_api *api = namedb_lmdb_api();
+	if (!api) {
+		return KNOT_ENOTSUP;
+	}
+
+	char *path = sprintf_alloc("%s/timers", storage);
+	if (!path) {
+		return KNOT_ENOMEM;
+	}
+
+	int ret = api->init(path, db_ptr, NULL);
 
 	free(path);
 
-	return db;
-#endif
+	return ret;
 }
 
 void close_timers_db(knot_namedb_t *timer_db)
 {
-	if (timer_db) {
-		namedb_lmdb_api()->deinit(timer_db);
+	if (!timer_db) {
+		return;
 	}
+
+	const struct namedb_api *db_api = namedb_lmdb_api();
+	assert(db_api);
+
+	db_api->deinit(timer_db);
 }
 
 int read_zone_timers(knot_namedb_t *timer_db, const zone_t *zone, time_t *timers)
 {
 	if (timer_db == NULL) {
-		memset(timers, 0, ZONE_EVENT_COUNT * sizeof(time_t));
+		clear_timers(timers);
 		return KNOT_EOK;
 	}
 
 	const struct namedb_api *db_api = namedb_lmdb_api();
+	assert(db_api);
 
 	knot_txn_t txn;
 	int ret = db_api->txn_begin(timer_db, &txn, KNOT_NAMEDB_RDONLY);
@@ -177,6 +192,7 @@ int write_zone_timers(knot_namedb_t *timer_db, zone_t *zone)
 	}
 
 	const struct namedb_api *db_api = namedb_lmdb_api();
+	assert(db_api);
 
 	knot_txn_t txn;
 	int ret = db_api->txn_begin(timer_db, &txn, 0);
@@ -198,7 +214,9 @@ int sweep_timer_db(knot_namedb_t *timer_db, knot_zonedb_t *zone_db)
 	if (timer_db == NULL) {
 		return KNOT_EOK;
 	}
+
 	const struct namedb_api *db_api = namedb_lmdb_api();
+	assert(db_api);
 
 	knot_txn_t txn;
 	int ret = db_api->txn_begin(timer_db, &txn, KNOT_NAMEDB_SORTED);
@@ -236,5 +254,3 @@ int sweep_timer_db(knot_namedb_t *timer_db, knot_zonedb_t *zone_db)
 
 	return db_api->txn_commit(&txn);
 }
-
-

@@ -18,10 +18,11 @@
 
 #include "knot/zone/contents.h"
 #include "common/debug.h"
+#include "common/macros.h"
 #include "libknot/rrset.h"
 #include "common/base32hex.h"
 #include "libknot/descriptor.h"
-#include "common-knot/hattrie/hat-trie.h"
+#include "common/trie/hat-trie.h"
 #include "knot/dnssec/zone-nsec.h"
 #include "knot/dnssec/zone-sign.h"
 #include "knot/zone/zone-tree.h"
@@ -153,7 +154,6 @@ static int discover_additionals(struct rr_data *rr_data,
 	}
 	rr_data->additional = malloc(rdcount * sizeof(zone_node_t *));
 	if (rr_data->additional == NULL) {
-		ERR_ALLOC_FAILED;
 		return KNOT_ENOMEM;
 	}
 
@@ -1255,7 +1255,6 @@ int zone_contents_shallow_copy(const zone_contents_t *from, zone_contents_t **to
 
 	zone_contents_t *contents = calloc(1, sizeof(zone_contents_t));
 	if (contents == NULL) {
-		ERR_ALLOC_FAILED;
 		return KNOT_ENOMEM;
 	}
 

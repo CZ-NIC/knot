@@ -54,14 +54,14 @@ int xfr_process_list(knot_pkt_t *pkt, xfr_put_cb put, struct query_data *qdata);
 /*!
  * \brief Process an AXFR query message.
  *
- * \return NS_PROC_* processing states
+ * \return KNOT_NS_PROC_* processing states
  */
 int axfr_query_process(knot_pkt_t *pkt, struct query_data *qdata);
 
 /*!
  * \brief Processes an AXFR response message.
  *
- * \return NS_PROC_* processing states
+ * \return KNOT_NS_PROC_* processing states
  */
 int axfr_answer_process(knot_pkt_t *pkt, struct answer_data *adata);
 

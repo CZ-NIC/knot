@@ -3,7 +3,6 @@
 #include "knot/nameserver/internet.h"
 #include "knot/dnssec/zone-nsec.h"
 
-#include "libknot/common.h"
 #include "common/debug.h"
 
 #define DNSSEC_ENABLED 1
@@ -64,7 +63,7 @@ static int ns_put_nsec3_from_node(const zone_node_t *node,
 		return KNOT_EOK;
 	}
 
-	int res = ns_put_rr(resp, &rrset, &rrsigs, COMPR_HINT_NONE,
+	int res = ns_put_rr(resp, &rrset, &rrsigs, KNOT_COMPR_HINT_NONE,
 	                    KNOT_PF_CHECKDUP, qdata);
 
 	/*! \note TC bit is already set, if something went wrong. */
@@ -297,7 +296,7 @@ static int ns_put_nsec_wildcard(const zone_contents_t *zone,
 	if (!knot_rrset_empty(&rrset)) {
 		knot_rrset_t rrsigs = node_rrset(previous, KNOT_RRTYPE_RRSIG);
 		// NSEC proving that there is no node with the searched name
-		ret = ns_put_rr(resp, &rrset, &rrsigs, COMPR_HINT_NONE, 0, qdata);
+		ret = ns_put_rr(resp, &rrset, &rrsigs, KNOT_COMPR_HINT_NONE, 0, qdata);
 	}
 
 	return ret;
@@ -494,7 +493,7 @@ dbg_ns_exec_verb(
 		return KNOT_EOK;
 	}
 
-	int ret = ns_put_rr(resp, &rrset, &rrsigs, COMPR_HINT_NONE, 0, qdata);
+	int ret = ns_put_rr(resp, &rrset, &rrsigs, KNOT_COMPR_HINT_NONE, 0, qdata);
 	if (ret != KNOT_EOK) {
 		dbg_ns("Failed to add NSEC for NXDOMAIN to response: %s\n",
 		       knot_strerror(ret));
@@ -542,7 +541,7 @@ dbg_ns_exec_verb(
 			// bad zone, ignore
 			return KNOT_EOK;
 		}
-		ret = ns_put_rr(resp, &rrset, &rrsigs, COMPR_HINT_NONE, 0, qdata);
+		ret = ns_put_rr(resp, &rrset, &rrsigs, KNOT_COMPR_HINT_NONE, 0, qdata);
 		if (ret != KNOT_EOK) {
 			dbg_ns("Failed to add second NSEC for NXDOMAIN to "
 			       "response: %s\n", knot_strerror(ret));
@@ -692,7 +691,7 @@ static int ns_put_nsec_nsec3_nodata(const zone_node_t *node,
 		if (!knot_rrset_empty(&rrset)) {
 			dbg_ns_detail("Putting the RRSet to Authority\n");
 			knot_rrset_t rrsigs = node_rrset(node, KNOT_RRTYPE_RRSIG);
-			ret = ns_put_rr(resp, &rrset, &rrsigs, COMPR_HINT_NONE, 0, qdata);
+			ret = ns_put_rr(resp, &rrset, &rrsigs, KNOT_COMPR_HINT_NONE, 0, qdata);
 		}
 	}
 
@@ -764,7 +763,7 @@ int nsec_prove_dp_security(knot_pkt_t *pkt, struct query_data *qdata)
 	knot_rrset_t rrset = node_rrset(qdata->node, KNOT_RRTYPE_DS);
 	if (!knot_rrset_empty(&rrset)) {
 		knot_rrset_t rrsigs = node_rrset(qdata->node, KNOT_RRTYPE_RRSIG);
-		return ns_put_rr(pkt, &rrset, &rrsigs, COMPR_HINT_NONE, 0, qdata);
+		return ns_put_rr(pkt, &rrset, &rrsigs, KNOT_COMPR_HINT_NONE, 0, qdata);
 	}
 
 	/* DS doesn't exist => NODATA proof. */
@@ -787,7 +786,7 @@ int nsec_append_rrsigs(knot_pkt_t *pkt, struct query_data *qdata, bool optional)
 	struct rrsig_info *info = NULL;
 	WALK_LIST(info, qdata->rrsigs) {
 		knot_rrset_t *rrsig = &info->synth_rrsig;
-		uint16_t compr_hint = info->rrinfo->compress_ptr[COMPR_HINT_OWNER];
+		uint16_t compr_hint = info->rrinfo->compress_ptr[KNOT_COMPR_HINT_OWNER];
 		ret = knot_pkt_put(pkt, compr_hint, rrsig, flags);
 		if (ret != KNOT_EOK) {
 			break;

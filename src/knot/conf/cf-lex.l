@@ -33,7 +33,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
-#include "common-knot/sockaddr.h"
+#include "common/sockaddr.h"
 #include "knot/conf/conf.h"
 #include "knot/conf/includes.h"
 #include "knot/conf/extra.h"

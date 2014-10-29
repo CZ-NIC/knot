@@ -30,7 +30,8 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#include "libknot/mempattern.h"
+#include "common/mempattern.h"
+
 #include "libknot/rdata.h"
 
 /*!< \brief Set of RRs. */
@@ -110,7 +111,8 @@ bool knot_rdataset_eq(const knot_rdataset_t *rrs1, const knot_rdataset_t *rrs2);
  * \retval true if \a rr is present in \a rrs.
  * \retval false if \a rr is not present in \a rrs.
  */
-bool knot_rdataset_member(const knot_rdataset_t *rrs, const knot_rdata_t *rr, bool cmp_ttl);
+bool knot_rdataset_member(const knot_rdataset_t *rrs, const knot_rdata_t *rr,
+			  bool cmp_ttl);
 
 /*!
  * \brief Merges two RRS into the first one. Second RRS is left intact.
@@ -120,7 +122,8 @@ bool knot_rdataset_member(const knot_rdataset_t *rrs, const knot_rdata_t *rr, bo
  * \param mm    Memory context.
  * \return KNOT_E*
  */
-int knot_rdataset_merge(knot_rdataset_t *rrs1, const knot_rdataset_t *rrs2, mm_ctx_t *mm);
+int knot_rdataset_merge(knot_rdataset_t *rrs1, const knot_rdataset_t *rrs2,
+			mm_ctx_t *mm);
 
 /*!
  * \brief RRS set-like intersection. Full compare is done.
@@ -151,6 +154,7 @@ int knot_rdataset_subtract(knot_rdataset_t *from, const knot_rdataset_t *what,
 		code; \
 	}
 
+/*! \todo Documentation. */
 static inline
 uint8_t *knot_rdata_offset(const knot_rdataset_t *rrs, size_t pos, size_t offset) {
 	knot_rdata_t *rr = knot_rdataset_at(rrs, pos);

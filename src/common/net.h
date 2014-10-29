@@ -29,7 +29,9 @@
 #pragma once
 
 /* POSIX only. */
-#include "common-knot/sockaddr.h"
+#include "common/sockaddr.h"
+
+/*******              #274, legacy API to be replaced below            ********/
 
 /*!
  * \brief Create unbound socket of given family and type.
@@ -74,5 +76,59 @@ int net_connected_socket(int type, const struct sockaddr_storage *dst_addr,
  * \return true if connected
  */
 int net_is_connected(int fd);
+
+/*!
+ * \brief Send a UDP message.
+ *
+ * \param fd Associated socket.
+ * \param msg Buffer for a query wireformat.
+ * \param msglen Buffer maximum size.
+ * \param addr Destination address.
+ *
+ * \retval Number of sent data on success.
+ * \retval KNOT_ERROR on error.
+ */
+int udp_send_msg(int fd, const uint8_t *msg, size_t msglen,
+                 const struct sockaddr *addr);
+
+/*!
+ * \brief Receive a UDP message.
+ *
+ * \param fd Associated socket.
+ * \param buf Buffer for incoming bytestream.
+ * \param len Buffer maximum size.
+ * \param addr Source address.
+ *
+ * \retval Number of read bytes on success.
+ * \retval KNOT_ERROR on error.
+ * \retval KNOT_ENOMEM on potential buffer overflow.
+ */
+int udp_recv_msg(int fd, uint8_t *buf, size_t len, struct sockaddr *addr);
+
+/*!
+ * \brief Send a TCP message.
+ *
+ * \param fd Associated socket.
+ * \param msg Buffer for a query wireformat.
+ * \param msglen Buffer maximum size.
+ *
+ * \retval Number of sent data on success.
+ * \retval KNOT_ERROR on error.
+ */
+int tcp_send_msg(int fd, const uint8_t *msg, size_t msglen);
+
+/*!
+ * \brief Receive a TCP message.
+ *
+ * \param fd Associated socket.
+ * \param buf Buffer for incoming bytestream.
+ * \param len Buffer maximum size.
+ * \param timeout Message receive timeout.
+ *
+ * \retval Number of read bytes on success.
+ * \retval KNOT_ERROR on error.
+ * \retval KNOT_ENOMEM on potential buffer overflow.
+ */
+int tcp_recv_msg(int fd, uint8_t *buf, size_t len, struct timeval *timeout);
 
 /*! @} */

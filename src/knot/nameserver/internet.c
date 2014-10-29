@@ -16,7 +16,6 @@
 
 #include "common/debug.h"
 #include "libknot/descriptor.h"
-#include "libknot/common.h"
 #include "libknot/rrtype/rdname.h"
 #include "libknot/rrtype/soa.h"
 #include "libknot/dnssec/rrset-sign.h"
@@ -50,7 +49,7 @@ static int wildcard_visit(struct query_data *qdata, const zone_node_t *node, con
 	}
 
 	mm_ctx_t *mm = qdata->mm;
-	struct wildcard_hit *item = mm->alloc(mm->ctx, sizeof(struct wildcard_hit));
+	struct wildcard_hit *item = mm_alloc(mm, sizeof(struct wildcard_hit));
 	item->node = node;
 	item->sname = sname;
 	add_tail(&qdata->wildcards, (node_t *)item);
@@ -179,9 +178,9 @@ static int put_answer(knot_pkt_t *pkt, uint16_t type, struct query_data *qdata)
 	 * QNAME position. Just need to check if we're answering QNAME and not
 	 * a CNAME target.
 	 */
-	uint16_t compr_hint = COMPR_HINT_NONE;
+	uint16_t compr_hint = KNOT_COMPR_HINT_NONE;
 	if (pkt->rrset_count == 0) { /* Guaranteed first answer. */
-		compr_hint = COMPR_HINT_QNAME;
+		compr_hint = KNOT_COMPR_HINT_QNAME;
 	}
 
 	int ret = KNOT_EOK;
@@ -236,7 +235,7 @@ static int put_authority_ns(knot_pkt_t *pkt, struct query_data *qdata)
 	knot_rrset_t ns_rrset = node_rrset(zone->apex, KNOT_RRTYPE_NS);
 	if (!knot_rrset_empty(&ns_rrset)) {
 		knot_rrset_t rrsigs = node_rrset(zone->apex, KNOT_RRTYPE_RRSIG);
-		return ns_put_rr(pkt, &ns_rrset, &rrsigs, COMPR_HINT_NONE,
+		return ns_put_rr(pkt, &ns_rrset, &rrsigs, KNOT_COMPR_HINT_NONE,
 		                 KNOT_PF_NOTRUNC|KNOT_PF_CHECKDUP, qdata);
 	} else {
 		dbg_ns("%s: no NS RRSets in this zone, fishy...\n", __func__);
@@ -277,7 +276,7 @@ static int put_authority_soa(knot_pkt_t *pkt, struct query_data *qdata,
 		soa_rrset = copy;
 	}
 
-	ret = ns_put_rr(pkt, &soa_rrset, &rrsigs, COMPR_HINT_NONE, flags, qdata);
+	ret = ns_put_rr(pkt, &soa_rrset, &rrsigs, KNOT_COMPR_HINT_NONE, flags, qdata);
 	if (ret != KNOT_EOK && (flags & KNOT_PF_FREE)) {
 		knot_rrset_clear(&soa_rrset, &pkt->mm);
 	}
@@ -296,7 +295,7 @@ static int put_delegation(knot_pkt_t *pkt, struct query_data *qdata)
 	/* Insert NS record. */
 	knot_rrset_t rrset = node_rrset(qdata->node, KNOT_RRTYPE_NS);
 	knot_rrset_t rrsigs = node_rrset(qdata->node, KNOT_RRTYPE_RRSIG);
-	return ns_put_rr(pkt, &rrset, &rrsigs, COMPR_HINT_NONE, 0, qdata);
+	return ns_put_rr(pkt, &rrset, &rrsigs, KNOT_COMPR_HINT_NONE, 0, qdata);
 }
 
 /*! \brief Put additional records for given RR. */
@@ -310,13 +309,13 @@ static int put_additional(knot_pkt_t *pkt, const knot_rrset_t *rr,
 
 	int ret = KNOT_EOK;
 	uint32_t flags = KNOT_PF_NOTRUNC|KNOT_PF_CHECKDUP;
-	uint16_t hint = COMPR_HINT_NONE;
+	uint16_t hint = KNOT_COMPR_HINT_NONE;
 	const zone_node_t *node = NULL;
 
 	/* All RRs should have additional node cached or NULL. */
 	uint16_t rr_rdata_count = rr->rrs.rr_count;
 	for (uint16_t i = 0; i < rr_rdata_count; i++) {
-		hint = knot_pkt_compr_hint(info, COMPR_HINT_RDATA + i);
+		hint = knot_pkt_compr_hint(info, KNOT_COMPR_HINT_RDATA + i);
 		node = rr->additional[i];
 
 		/* No additional node for this record. */
@@ -714,7 +713,7 @@ int ns_put_rr(knot_pkt_t *pkt, const knot_rrset_t *rr,
 	 * hint. */
 	int ret = KNOT_EOK;
 	knot_rrset_t to_add;
-	if (compr_hint == COMPR_HINT_NONE && expand) {
+	if (compr_hint == KNOT_COMPR_HINT_NONE && expand) {
 		knot_dname_t *qname_cpy = knot_dname_copy(qdata->name, &pkt->mm);
 		if (qname_cpy == NULL) {
 			return KNOT_ENOMEM;
@@ -752,9 +751,9 @@ int ns_put_rr(knot_pkt_t *pkt, const knot_rrset_t *rr,
 #define SOLVE_STEP(solver, state, context) \
 	state = (solver)(state, response, qdata, context); \
 	if (state == TRUNC) { \
-		return NS_PROC_DONE; \
+		return KNOT_NS_PROC_DONE; \
 	} else if (state == ERROR) { \
-		return NS_PROC_FAIL; \
+		return KNOT_NS_PROC_FAIL; \
 	}
 
 static int default_answer(knot_pkt_t *response, struct query_data *qdata)
@@ -782,7 +781,7 @@ static int default_answer(knot_pkt_t *response, struct query_data *qdata)
 	/* Write resulting RCODE. */
 	knot_wire_set_rcode(response->wire, qdata->rcode);
 
-	return NS_PROC_DONE;
+	return KNOT_NS_PROC_DONE;
 }
 
 static int planned_answer(struct query_plan *plan, knot_pkt_t *response, struct query_data *qdata)
@@ -811,7 +810,7 @@ static int planned_answer(struct query_plan *plan, knot_pkt_t *response, struct 
 	/* Write resulting RCODE. */
 	knot_wire_set_rcode(response->wire, qdata->rcode);
 
-	return NS_PROC_DONE;
+	return KNOT_NS_PROC_DONE;
 }
 
 #undef SOLVE_STEP
@@ -820,7 +819,7 @@ int internet_query(knot_pkt_t *response, struct query_data *qdata)
 {
 	dbg_ns("%s(%p, %p)\n", __func__, response, qdata);
 	if (response == NULL || qdata == NULL) {
-		return NS_PROC_FAIL;
+		return KNOT_NS_PROC_FAIL;
 	}
 
 	/* Check valid zone, transaction security (optional) and contents. */
@@ -832,7 +831,7 @@ int internet_query(knot_pkt_t *response, struct query_data *qdata)
 		NS_NEED_AUTH(&qdata->zone->conf->acl.xfr_out, qdata);
 
 		/* Reserve space for TSIG. */
-		knot_pkt_reserve(response, tsig_wire_maxsize(qdata->sign.tsig_key));
+		knot_pkt_reserve(response, knot_tsig_wire_maxsize(qdata->sign.tsig_key));
 	}
 
 	NS_NEED_ZONE_CONTENTS(qdata, KNOT_RCODE_SERVFAIL); /* Expired */
@@ -864,18 +863,18 @@ int internet_query_plan(struct query_plan *plan)
 /*! \brief Process answer to SOA query. */
 static int process_soa_answer(knot_pkt_t *pkt, struct answer_data *data)
 {
-	zone_t *zone  = data->param->zone;
+	zone_t *zone = data->param->zone;
 
 	/* Expect SOA in answer section. */
 	const knot_pktsection_t *answer = knot_pkt_section(pkt, KNOT_ANSWER);
 	if (answer->count < 1 || answer->rr[0].type != KNOT_RRTYPE_SOA) {
-		return NS_PROC_FAIL;
+		return KNOT_NS_PROC_FAIL;
 	}
 
 	/* Our zone is expired, schedule transfer. */
 	if (zone_contents_is_empty(zone->contents)) {
 		zone_events_schedule(zone, ZONE_EVENT_XFER, ZONE_EVENT_NOW);
-		return NS_PROC_DONE;
+		return KNOT_NS_PROC_DONE;
 	}
 
 	/* Check if master has newer zone and schedule transfer. */
@@ -884,20 +883,21 @@ static int process_soa_answer(knot_pkt_t *pkt, struct answer_data *data)
 	uint32_t their_serial =	knot_soa_serial(&answer->rr[0].rrs);
 	if (knot_serial_compare(our_serial, their_serial) >= 0) {
 		ANSWER_LOG(LOG_INFO, data, "refresh, outgoing", "zone is up-to-date");
-		return NS_PROC_DONE; /* Our zone is up to date. */
+		zone_events_cancel(zone, ZONE_EVENT_EXPIRE);
+		return KNOT_NS_PROC_DONE; /* Our zone is up to date. */
 	}
 
 	/* Our zone is outdated, schedule zone transfer. */
 	ANSWER_LOG(LOG_INFO, data, "refresh, outgoing", "master has newer serial %u -> %u",
 	           our_serial, their_serial);
 	zone_events_schedule(zone, ZONE_EVENT_XFER, ZONE_EVENT_NOW);
-	return NS_PROC_DONE;
+	return KNOT_NS_PROC_DONE;
 }
 
 int internet_process_answer(knot_pkt_t *pkt, struct answer_data *data)
 {
 	if (pkt == NULL || data == NULL) {
-		return NS_PROC_FAIL;
+		return KNOT_NS_PROC_FAIL;
 	}
 
 	NS_NEED_TSIG_SIGNED(&data->param->tsig_ctx, 0);
@@ -907,6 +907,6 @@ int internet_process_answer(knot_pkt_t *pkt, struct answer_data *data)
 	case KNOT_RRTYPE_SOA:
 		return process_soa_answer(pkt, data);
 	default:
-		return NS_PROC_NOOP;
+		return KNOT_NS_PROC_NOOP;
 	}
 }

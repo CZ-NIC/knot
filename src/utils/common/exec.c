@@ -21,10 +21,10 @@
 #include <arpa/inet.h>			// inet_ntop
 
 #include "libknot/libknot.h"
-#include "common-knot/lists.h"		// list
-#include "common-knot/print.h"		// txt_print
+#include "common/lists.h"		// list
+#include "common/sockaddr.h"		// IPV4_PREFIXLEN
+#include "common/print.h"		// txt_print
 #include "common-knot/strlcat.h"	// strlcat
-#include "common-knot/sockaddr.h"	// IPV4_PREFIXLEN
 #include "utils/common/msg.h"		// WARN
 #include "utils/common/params.h"	// params_t
 #include "utils/common/netio.h"		// send_msg
@@ -728,7 +728,7 @@ int sign_packet(knot_pkt_t              *pkt,
 		sign_ctx->digest_size = knot_tsig_digest_length(key->algorithm);
 		sign_ctx->digest = malloc(sign_ctx->digest_size);
 
-		knot_pkt_reserve(pkt, tsig_wire_maxsize(key));
+		knot_pkt_reserve(pkt, knot_tsig_wire_maxsize(key));
 
 		result = knot_tsig_sign(wire, wire_size, max_size, NULL, 0,
 		                        sign_ctx->digest, &sign_ctx->digest_size,

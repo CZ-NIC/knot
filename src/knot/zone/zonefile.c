@@ -28,8 +28,8 @@
 
 #include "common-knot/crc.h"
 #include "common-knot/strlcat.h"
-#include "common-knot/strlcpy.h"
-#include "libknot/common.h"
+#include "common/macros.h"
+#include "common/strlcpy.h"
 #include "knot/zone/semantic-check.h"
 #include "knot/zone/contents.h"
 #include "knot/dnssec/zone-nsec.h"
@@ -217,7 +217,6 @@ int zonefile_open(zloader_t *loader, const char *source, const char *origin,
 	/* Create context. */
 	zcreator_t *zc = malloc(sizeof(zcreator_t));
 	if (zc == NULL) {
-		ERR_ALLOC_FAILED;
 		return KNOT_ENOMEM;
 	}
 	memset(zc, 0, sizeof(zcreator_t));

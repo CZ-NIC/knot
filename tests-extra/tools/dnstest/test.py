@@ -67,10 +67,10 @@ class Test(object):
         try:
             s = socket.socket(proto, socket.SOCK_DGRAM)
             s.bind((Test.LOCAL_ADDR[self.ip], port))
-            s.close
+            s.close()
             s = socket.socket(proto, socket.SOCK_STREAM)
             s.bind((Test.LOCAL_ADDR[self.ip], port))
-            s.close
+            s.close()
         except:
             return False
 

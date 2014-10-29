@@ -21,7 +21,8 @@
 #include "knot/zone/zone-tree.h"
 #include "knot/zone/node.h"
 #include "common/debug.h"
-#include "common-knot/hattrie/hat-trie.h"
+#include "common/macros.h"
+#include "common/trie/hat-trie.h"
 
 /*----------------------------------------------------------------------------*/
 /* API functions                                                              */

@@ -26,18 +26,18 @@
 
 #pragma once
 
-#include "libknot/processing/process.h"
+#include "libknot/processing/layer.h"
 #include "libknot/packet/pkt.h"
 
 /* Processing module implementation. */
-const knot_process_module_t *proc_capture_get_module(void);
-#define NS_PROC_CAPTURE proc_capture_get_module()
-#define NS_PROC_CAPTURE_ID 3
+const knot_layer_api_t *capture_get_module(void);
+#define LAYER_CAPTURE capture_get_module()
+#define LAYER_CAPTURE_ID 3
 
 /*!
  * \brief Processing module parameters.
  */
-struct process_capture_param {
+struct capture_param {
 	knot_pkt_t *sink;        /*!< Container for captured response. */
 };
 

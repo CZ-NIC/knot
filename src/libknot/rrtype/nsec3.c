@@ -21,6 +21,7 @@
 #include "libknot/rrtype/nsec3.h"
 #include "libknot/util/tolower.h"
 #include "libknot/errcode.h"
+#include "common/macros.h"
 
 /*!
  * \brief Compute NSEC3 SHA1 hash.
@@ -95,9 +96,27 @@ static int nsec3_sha1(const uint8_t *salt, uint8_t salt_length,
 	return KNOT_EOK;
 }
 
-/*!
- * \brief Compute NSEC3 hash for given data.
- */
+_public_
+void knot_nsec3_bitmap(const knot_rdataset_t *rrs, size_t pos,
+                       uint8_t **bitmap, uint16_t *size)
+{
+	KNOT_RDATASET_CHECK(rrs, pos, return);
+
+	/* Bitmap is last, skip all the items. */
+	size_t offset = 6; //hash alg., flags, iterations, salt len., hash len.
+	offset += knot_nsec3_salt_length(rrs, pos); //salt
+
+	uint8_t *next_hashed = NULL;
+	uint8_t next_hashed_size = 0;
+	knot_nsec3_next_hashed(rrs, pos, &next_hashed, &next_hashed_size);
+	offset += next_hashed_size; //hash
+
+	*bitmap = knot_rdata_offset(rrs, pos, offset);
+	const knot_rdata_t *rr = knot_rdataset_at(rrs, pos);
+	*size = knot_rdata_rdlen(rr) - offset;
+}
+
+_public_
 int knot_nsec3_hash(const knot_nsec3_params_t *params, const uint8_t *data,
                     size_t data_size, uint8_t **digest, size_t *digest_size)
 {

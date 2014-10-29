@@ -83,7 +83,7 @@ void list_dup(list_t *dst, list_t *src, size_t itemsz);
 size_t list_size(const list_t *);
 
 #include <stdbool.h>
-#include "libknot/mempattern.h"
+#include "common/mempattern.h"
 /*!
  * \brief Generic pointer list implementation.
  */

@@ -21,14 +21,14 @@
 
 #include "knot/zone/zonedb.h"
 #include "knot/server/server.h"
-#include "libknot/common.h"
 #include "knot/zone/zone.h"
 #include "knot/zone/zonedb.h"
 #include "libknot/dname.h"
 #include "libknot/packet/wire.h"
 #include "knot/zone/node.h"
 #include "common/debug.h"
-#include "libknot/mempattern.h"
+#include "common/macros.h"
+#include "common/mempattern.h"
 #include "common/mempool.h"
 
 

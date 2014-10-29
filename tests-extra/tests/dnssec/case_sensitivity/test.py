@@ -38,6 +38,7 @@ scripts = [
 ]
 
 for name, script, resign in scripts:
+    t.sleep(1)
     server.flush()
     server.stop()
     patch_zone(t, server, zone, script)

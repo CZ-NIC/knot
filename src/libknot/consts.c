@@ -14,8 +14,10 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <libknot/consts.h>
+#include "libknot/consts.h"
+#include "common/macros.h"
 
+_public_
 knot_lookup_table_t knot_opcode_names[] = {
 	{ KNOT_OPCODE_QUERY,  "QUERY" },
 	{ KNOT_OPCODE_IQUERY, "IQUERY" },
@@ -25,6 +27,7 @@ knot_lookup_table_t knot_opcode_names[] = {
 	{ 0, NULL }
 };
 
+_public_
 knot_lookup_table_t knot_rcode_names[] = {
 	{ KNOT_RCODE_NOERROR,  "NOERROR" },
 	{ KNOT_RCODE_FORMERR,  "FORMERR" },
@@ -41,6 +44,7 @@ knot_lookup_table_t knot_rcode_names[] = {
 	{ 0, NULL }
 };
 
+_public_
 knot_lookup_table_t knot_tsig_err_names[] = {
 	{ KNOT_TSIG_ERR_BADSIG,   "BADSIG" },
 	{ KNOT_TSIG_ERR_BADKEY,   "BADKEY" },
@@ -49,6 +53,7 @@ knot_lookup_table_t knot_tsig_err_names[] = {
 	{ 0, NULL }
 };
 
+_public_
 knot_lookup_table_t knot_tkey_err_names[] = {
 	{ KNOT_TKEY_ERR_BADMODE,  "BADMODE" },
 	{ KNOT_TKEY_ERR_BADNAME,  "BADNAME" },
@@ -56,6 +61,7 @@ knot_lookup_table_t knot_tkey_err_names[] = {
 	{ 0, NULL }
 };
 
+_public_
 knot_lookup_table_t knot_tsig_alg_names[] = {
 	{ KNOT_TSIG_ALG_HMAC_MD5,    "hmac-md5" },
 	{ KNOT_TSIG_ALG_HMAC_SHA1,   "hmac-sha1" },
@@ -66,6 +72,7 @@ knot_lookup_table_t knot_tsig_alg_names[] = {
 	{ KNOT_TSIG_ALG_NULL, NULL }
 };
 
+_public_
 knot_lookup_table_t knot_tsig_alg_dnames_str[] = {
 	{ KNOT_TSIG_ALG_GSS_TSIG,    "gss-tsig." },
 	{ KNOT_TSIG_ALG_HMAC_MD5,    "hmac-md5.sig-alg.reg.int." },
@@ -77,9 +84,10 @@ knot_lookup_table_t knot_tsig_alg_dnames_str[] = {
 	{ KNOT_TSIG_ALG_NULL, NULL }
 };
 
+_public_
 knot_lookup_table_t knot_tsig_alg_dnames[] = {
-        { KNOT_TSIG_ALG_GSS_TSIG,    "\x08" "gss-tsig" },
-        { KNOT_TSIG_ALG_HMAC_MD5,    "\x08" "hmac-md5" "\x07" "sig-alg" "\x03" "reg" "\x03" "int" },
+	{ KNOT_TSIG_ALG_GSS_TSIG,    "\x08" "gss-tsig" },
+	{ KNOT_TSIG_ALG_HMAC_MD5,    "\x08" "hmac-md5" "\x07" "sig-alg" "\x03" "reg" "\x03" "int" },
 	{ KNOT_TSIG_ALG_HMAC_SHA1,   "\x09" "hmac-sha1" },
 	{ KNOT_TSIG_ALG_HMAC_SHA224, "\x0B" "hmac-sha224" },
 	{ KNOT_TSIG_ALG_HMAC_SHA256, "\x0B" "hmac-sha256" },
@@ -88,6 +96,7 @@ knot_lookup_table_t knot_tsig_alg_dnames[] = {
 	{ KNOT_TSIG_ALG_NULL, NULL }
 };
 
+_public_
 knot_lookup_table_t knot_dnssec_alg_names[] = {
 	{ KNOT_DNSSEC_ALG_RSAMD5,             "RSAMD5" },
 	{ KNOT_DNSSEC_ALG_DH,                 "DH" },
@@ -103,6 +112,7 @@ knot_lookup_table_t knot_dnssec_alg_names[] = {
 	{ 0, NULL }
 };
 
+_public_
 size_t knot_tsig_digest_length(const uint8_t algorithm)
 {
 	switch (algorithm) {
@@ -125,6 +135,7 @@ size_t knot_tsig_digest_length(const uint8_t algorithm)
 	}
 }
 
+_public_
 bool knot_dnssec_algorithm_is_zonesign(uint8_t algorithm, bool nsec3_enabled)
 {
 	switch (algorithm) {

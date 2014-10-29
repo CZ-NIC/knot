@@ -26,14 +26,14 @@
 
 #include <urcu.h>
 #include "common-knot/strlcat.h"
-#include "common-knot/strlcpy.h"
+#include "common/strlcpy.h"
+#include "common/macros.h"
 #include "common/mem.h"
 #include "knot/conf/conf.h"
 #include "knot/conf/extra.h"
 #include "knot/knot.h"
 #include "knot/ctl/remote.h"
 #include "knot/nameserver/internet.h"
-#include "knot/zone/timers.h"
 
 /*
  * Defaults.
@@ -413,7 +413,6 @@ static int conf_process(conf_t *conf)
 		size_t size = stor_len + zname_len + 9; // /diff.db,\0
 		char *dest = malloc(size);
 		if (dest == NULL) {
-			ERR_ALLOC_FAILED;
 			zone->ixfr_db = NULL; /* Not enough memory. */
 			ret = KNOT_ENOMEM; /* Error report. */
 			continue;
@@ -725,10 +724,6 @@ void conf_truncate(conf_t *conf, int unload_hooks)
 
 	/* Free remote control iface. */
 	conf_free_iface(conf->ctl.iface);
-	
-	/* Close timers db. */
-	close_timers_db(conf->timers_db);
-	conf->timers_db = NULL;
 }
 
 void conf_free(conf_t *conf)
@@ -781,12 +776,6 @@ int conf_open(const char* path)
 		return ret;
 	}
 
-	/* Open zone timers db. */
-	nconf->timers_db = open_timers_db(nconf->storage);
-	if (nconf->timers_db == NULL) {
-		log_warning("cannot open timers db");
-	}
-
 	/* Replace current config. */
 	conf_t **current_config = &s_config;
 	conf_t *oldconf = rcu_xchg_pointer(current_config, nconf);
@@ -806,11 +795,10 @@ int conf_open(const char* path)
 
 		/* Update hooks. */
 		conf_update_hooks(nconf);
-		
+
 		/* Free old config. */
 		conf_free(oldconf);
 	}
-	
 
 	return KNOT_EOK;
 }
@@ -990,6 +978,7 @@ void conf_free_group(conf_group_t *group)
 		free(remote);
 	}
 
+	free(group->name);
 	free(group);
 }
 

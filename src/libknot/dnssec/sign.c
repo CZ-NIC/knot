@@ -22,12 +22,12 @@
 #include <pthread.h>
 #include "libknot/descriptor.h"
 #include "libknot/errcode.h"
-#include "libknot/common.h"
 #include "libknot/consts.h"
 #include "libknot/dnssec/config.h"
 #include "libknot/dnssec/crypto.h"
 #include "libknot/dnssec/key.h"
 #include "libknot/dnssec/sign.h"
+#include "common/macros.h"
 
 #ifdef KNOT_ENABLE_ECDSA
 #include <openssl/ecdsa.h>
@@ -41,13 +41,13 @@
 struct algorithm_functions;
 typedef struct algorithm_functions algorithm_functions_t;
 
-//! \brief Algorithm private key data and algorithm implementation.
+/*! \brief Algorithm private key data and algorithm implementation. */
 struct knot_dnssec_key_data {
 	const algorithm_functions_t *functions; //!< Implementation specific.
 	EVP_PKEY *private_key;                  //!< Private key.
 };
 
-//! \brief DNSSEC signature contextual data.
+/*! \brief DNSSEC signature contextual data. */
 struct knot_dnssec_sign_context {
 	const knot_dnssec_key_t *key; //!< Associated key.
 	EVP_MD_CTX *digest_context;   //!< Digest computation context.
@@ -57,21 +57,21 @@ struct knot_dnssec_sign_context {
  * \brief Algorithm implementation specific functions.
  */
 struct algorithm_functions {
-	//! \brief Callback: function called before creating any keys/contexts
+	/*! \brief Callback: function called before creating any keys/contexts */
 	int (*algorithm_init)(void);
-	//! \brief Callback: create private key from key parameters.
+	/*! \brief Callback: create private key from key parameters. */
 	int (*create_pkey)(const knot_key_params_t *, EVP_PKEY *);
-	//! \brief Callback: get signature size in bytes.
+	/*! \brief Callback: get signature size in bytes. */
 	size_t (*sign_size)(const knot_dnssec_key_t *);
-	//! \brief Callback: cover supplied data with the signature.
+	/*! \brief Callback: cover supplied data with the signature. */
 	int (*sign_add)(const knot_dnssec_sign_context_t *, const uint8_t *, size_t);
-	//! \brief Callback: finish the signing and write out the signature.
+	/*! \brief Callback: finish the signing and write out the signature. */
 	int (*sign_write)(const knot_dnssec_sign_context_t *, uint8_t *, size_t);
-	//! \brief Callback: finish the signing and validate the signature.
+	/*! \brief Callback: finish the signing and validate the signature. */
 	int (*sign_verify)(const knot_dnssec_sign_context_t *, const uint8_t *, size_t);
 };
 
-/**
+/*!
  * \brief Convert binary data to OpenSSL BIGNUM format.
  */
 static BIGNUM *binary_to_bn(const knot_binary_t *bin)
@@ -1106,9 +1106,7 @@ static int init_algorithm_data(const knot_key_params_t *params,
 
 /*- Public init/clean functions ----------------------------------------------*/
 
-/*!
- * \brief Fill DNSSEC key structure according to key parameters.
- */
+_public_
 int knot_dnssec_key_from_params(const knot_key_params_t *params,
                                 knot_dnssec_key_t *key)
 {
@@ -1153,9 +1151,7 @@ int knot_dnssec_key_from_params(const knot_key_params_t *params,
 	return KNOT_EOK;
 }
 
-/*!
- * \brief Free DNSSEC key structure content.
- */
+_public_
 int knot_dnssec_key_free(knot_dnssec_key_t *key)
 {
 	if (!key) {
@@ -1178,9 +1174,7 @@ int knot_dnssec_key_free(knot_dnssec_key_t *key)
 
 /*- Public low level signing interface ---------------------------------------*/
 
-/*!
- * \brief Initialize DNSSEC signing context.
- */
+_public_
 knot_dnssec_sign_context_t *knot_dnssec_sign_init(const knot_dnssec_key_t *key)
 {
 	if (!key) {
@@ -1202,9 +1196,7 @@ knot_dnssec_sign_context_t *knot_dnssec_sign_init(const knot_dnssec_key_t *key)
 	return context;
 }
 
-/*!
- * \brief Free DNSSEC signing context.
- */
+_public_
 void knot_dnssec_sign_free(knot_dnssec_sign_context_t *context)
 {
 	if (!context) {
@@ -1216,9 +1208,7 @@ void knot_dnssec_sign_free(knot_dnssec_sign_context_t *context)
 	free(context);
 }
 
-/*!
- * \brief Get DNSSEC signature size.
- */
+_public_
 size_t knot_dnssec_sign_size(const knot_dnssec_key_t *key)
 {
 	if (!key) {
@@ -1228,9 +1218,7 @@ size_t knot_dnssec_sign_size(const knot_dnssec_key_t *key)
 	return key->data->functions->sign_size(key);
 }
 
-/**
- * \brief Clean DNSSEC signing context to start a new signature.
- */
+_public_
 int knot_dnssec_sign_new(knot_dnssec_sign_context_t *context)
 {
 	if (!context) {
@@ -1241,9 +1229,7 @@ int knot_dnssec_sign_new(knot_dnssec_sign_context_t *context)
 	return create_digest_context(context->key, &context->digest_context);
 }
 
-/*!
- * \brief Add data to be covered by DNSSEC signature.
- */
+_public_
 int knot_dnssec_sign_add(knot_dnssec_sign_context_t *context,
                          const uint8_t *data, size_t data_size)
 {
@@ -1254,9 +1240,7 @@ int knot_dnssec_sign_add(knot_dnssec_sign_context_t *context,
 	return context->key->data->functions->sign_add(context, data, data_size);
 }
 
-/**
- * \brief Write down the DNSSEC signature for supplied data.
- */
+_public_
 int knot_dnssec_sign_write(knot_dnssec_sign_context_t *context,
                            uint8_t *signature, size_t signature_size)
 {
@@ -1268,9 +1252,7 @@ int knot_dnssec_sign_write(knot_dnssec_sign_context_t *context,
 	                                                 signature_size);
 }
 
-/**
- * \brief Verify the DNSSEC signature for supplied data.
- */
+_public_
 int knot_dnssec_sign_verify(knot_dnssec_sign_context_t *context,
 			    const uint8_t *signature, size_t signature_size)
 {
