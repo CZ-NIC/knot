@@ -21,9 +21,9 @@
 
 #include "binary.h"
 #include "error.h"
+#include "hex_gnutls.h"
 #include "key.h"
 #include "keyid.h"
-#include "keyid/internal.h"
 #include "pem.h"
 #include "shared.h"
 

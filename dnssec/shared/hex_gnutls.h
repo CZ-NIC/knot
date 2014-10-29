@@ -17,7 +17,6 @@
 #pragma once
 
 #include <gnutls/abstract.h>
-#include "binary.h"
 
 /*!
  * Get ID from GnuTLS public key and convert it into library format.

@@ -22,42 +22,7 @@
 #include "error.h"
 #include "hex.h"
 #include "keyid.h"
-#include "keyid/internal.h"
 #include "shared.h"
-
-/* -- internal API --------------------------------------------------------- */
-
-char *gnutls_pubkey_hex_key_id(gnutls_pubkey_t key)
-{
-	assert(key);
-
-	uint8_t raw[DNSSEC_KEYID_BINARY_SIZE] = { 0 };
-	size_t size = sizeof(raw);
-	gnutls_pubkey_get_key_id(key, 0, raw, &size);
-	assert(size == sizeof(raw));
-
-	dnssec_binary_t bin = { .size = size, .data = raw };
-	char *hex_id = NULL;
-	bin_to_hex(&bin, &hex_id);
-
-	return hex_id;
-}
-
-char *gnutls_x509_privkey_hex_key_id(gnutls_x509_privkey_t key)
-{
-	assert(key);
-
-	uint8_t raw[DNSSEC_KEYID_BINARY_SIZE] = { 0 };
-	size_t size = sizeof(raw);
-	gnutls_x509_privkey_get_key_id(key, 0, raw, &size);
-	assert(size == sizeof(raw));
-
-	dnssec_binary_t bin = { .size = size, .data = raw };
-	char *hex_id = NULL;
-	bin_to_hex(&bin, &hex_id);
-
-	return hex_id;
-}
 
 /* -- public API ----------------------------------------------------------- */
 

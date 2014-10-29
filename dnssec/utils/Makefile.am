@@ -11,8 +11,8 @@ AM_LDFLAGS = \
 	$(CODE_COVERAGE_LDFLAGS)
 
 libutils_la_LIBADD = \
-	$(builddir)/../libshared.la \
 	$(builddir)/../libdnssec.la \
+	$(builddir)/../libshared.la \
 	$(top_builddir)/src/zscanner/libzscanner.la
 
 libutils_la_CPPFLAGS = \
