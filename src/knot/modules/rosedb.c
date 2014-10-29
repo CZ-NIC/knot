@@ -49,10 +49,22 @@ struct iter {
 
 static int dbase_open(struct cache *cache, const char *handle)
 {
+        long page_size = sysconf(_SC_PAGESIZE);
+        if (page_size <= 0) {
+                return KNOT_EINVAL;
+        }
+
 	int ret = mdb_env_create(&cache->env);
 	if (ret != 0) {
 		return ret;
 	}
+
+	size_t map_size = ((1024 * 1024 * 10) / page_size) * page_size;
+        ret = mdb_env_set_mapsize(cache->env, map_size);
+        if (ret != 0) {
+		mdb_env_close(cache->env);
+		return ret;
+        }
 
 	ret = mdb_env_open(cache->env, handle, 0, 0644);
 	if (ret != 0) {
