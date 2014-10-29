@@ -83,36 +83,4 @@ void knot_nsec3_next_hashed(const knot_rdataset_t *rrs, size_t pos,
 void knot_nsec3_bitmap(const knot_rdataset_t *rrs, size_t pos,
                        uint8_t **bitmap, uint16_t *size);
 
-/*!
- * \brief Get length of the raw NSEC3 hash.
- *
- * \param algorithm  NSEC3 hash algorithm.
- *
- * \return Length of the hash, 0 for unknown hash algorithm.
- */
-inline static size_t knot_nsec3_hash_length(uint8_t algorithm)
-{
-	if (algorithm == KNOT_NSEC3_ALGORITHM_SHA1) {
-		return 20;
-	} else {
-		return 0;
-	}
-}
-
-/*!
- * \brief Get length of the NSEC3 hash encoded in Base32 encoding.
- *
- * \param algorithm  NSEC3 hash algorithm.
- *
- * \return Length of the hash, 0 for unknown hash algorithm.
- */
-inline static size_t knot_nsec3_hash_b32_length(uint8_t algorithm)
-{
-	if (algorithm == KNOT_NSEC3_ALGORITHM_SHA1) {
-		return 32;
-	} else {
-		return 0;
-	}
-}
-
 /*! @} */

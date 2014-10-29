@@ -199,7 +199,7 @@ static size_t nsec3_rdata_size(const knot_nsec3_params_t *params,
 	assert(rr_types);
 
 	return 6 + params->salt_length
-	       + knot_nsec3_hash_length(params->algorithm)
+	       + dnssec_nsec3_hash_length(params->algorithm)
 	       + dnssec_nsec_bitmap_size(rr_types);
 }
 
@@ -216,7 +216,7 @@ static void nsec3_fill_rdata(uint8_t *rdata, const knot_nsec3_params_t *params,
 	assert(params);
 	assert(rr_types);
 
-	uint8_t hash_length = knot_nsec3_hash_length(params->algorithm);
+	uint8_t hash_length = dnssec_nsec3_hash_length(params->algorithm);
 
 	*rdata = params->algorithm;                       // hash algorithm
 	rdata += 1;
@@ -388,15 +388,21 @@ static int connect_nsec3_nodes(zone_node_t *a, zone_node_t *b,
 		return KNOT_EINVAL;
 	}
 
-	assert(raw_length == knot_nsec3_hash_length(algorithm));
+	assert(raw_length == dnssec_nsec3_hash_length(algorithm));
 
-	uint8_t *b32_hash = (uint8_t *)knot_dname_to_str_alloc(b->owner);
-	size_t b32_length = knot_nsec3_hash_b32_length(algorithm);
+	char *b32_hash = knot_dname_to_str_alloc(b->owner);
 	if (!b32_hash) {
 		return KNOT_ENOMEM;
 	}
 
-	int32_t written = base32hex_decode(b32_hash, b32_length,
+	char *b32_end = strchr(b32_hash, '.');
+	if (!b32_end) {
+		free(b32_hash);
+		return KNOT_EINVAL;
+	}
+
+	size_t b32_length = b32_end - b32_hash;
+	int32_t written = base32hex_decode((uint8_t *)b32_hash, b32_length,
 	                                   raw_hash, raw_length);
 
 	free(b32_hash);
