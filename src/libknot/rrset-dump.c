@@ -14,8 +14,6 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "libknot/rrset-dump.h"
-
 #include <stdlib.h>			// free
 #include <stdbool.h>			// bool
 #include <string.h>			// memcpy
@@ -28,10 +26,16 @@
 #include <netinet/in.h>			// in_addr (BSD)
 #include <arpa/inet.h>			// ntohs
 
-#include "common/base32hex.h"		// base32hex
-#include "common/base64.h"		// base64
 #include "dnssec/binary.h"		// dnssec_binary_t
 #include "dnssec/keytag.h"		// dnssec_keytag
+#include "libknot/rrset-dump.h"
+
+#include "common/base64.h"		// base64
+#include "common/base32hex.h"		// base32hex
+#include "common/macros.h"
+
+#include "libknot/errcode.h"		// KNOT_EOK
+#include "libknot/descriptor.h"		// KNOT_RRTYPE
 #include "libknot/consts.h"		// knot_rcode_names
 #include "libknot/descriptor.h"		// KNOT_RRTYPE
 #include "libknot/errcode.h"		// KNOT_EOK
@@ -53,6 +57,7 @@ typedef struct {
 	int           ret;
 } rrset_dump_params_t;
 
+_public_
 const knot_dump_style_t KNOT_DUMP_STYLE_DEFAULT = {
 	.wrap = false,
 	.show_class = false,
@@ -1691,6 +1696,7 @@ static int dump_unknown(DUMP_PARAMS)
 	DUMP_END;
 }
 
+_public_
 int knot_rrset_txt_dump_data(const knot_rrset_t      *rrset,
                              const size_t            pos,
                              char                    *dst,
@@ -1828,6 +1834,7 @@ int knot_rrset_txt_dump_data(const knot_rrset_t      *rrset,
 		return KNOT_ESPACE;			\
 	}
 
+_public_
 int knot_rrset_txt_dump_header(const knot_rrset_t      *rrset,
                                const uint32_t          ttl,
                                char                    *dst,
@@ -1899,6 +1906,7 @@ int knot_rrset_txt_dump_header(const knot_rrset_t      *rrset,
 	return len;
 }
 
+_public_
 int knot_rrset_txt_dump(const knot_rrset_t      *rrset,
                         char                    *dst,
                         const size_t            maxlen,

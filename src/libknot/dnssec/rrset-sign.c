@@ -19,19 +19,19 @@
 #include <stdint.h>
 #include <stdlib.h>
 
+#include "common/macros.h"
 #include "dnssec/error.h"
 #include "dnssec/key.h"
 #include "dnssec/sign.h"
-#include "libknot/common.h"
 #include "libknot/descriptor.h"
 #include "libknot/dnssec/key.h"
 #include "libknot/dnssec/policy.h"
 #include "libknot/dnssec/rrset-sign.h"
 #include "libknot/errcode.h"
+#include "libknot/packet/rrset-wire.h"
 #include "libknot/packet/wire.h"
 #include "libknot/rrset.h"
 #include "libknot/rrtype/rrsig.h"
-#include "libknot/packet/rrset-wire.h"
 
 #define RRSIG_RDATA_SIGNER_OFFSET 18
 
@@ -40,6 +40,7 @@
 /*!
  * \brief Get size of RRSIG RDATA for a given key without signature.
  */
+_public_
 size_t knot_rrsig_rdata_size(const dnssec_key_t *key)
 {
 	if (!key) {
@@ -72,6 +73,7 @@ size_t knot_rrsig_rdata_size(const dnssec_key_t *key)
 /*!
  * \brief Write RRSIG RDATA except signature.
  */
+_public_
 int knot_rrsig_write_rdata(uint8_t *rdata, const dnssec_key_t *key,
                            uint16_t covered_type, uint8_t owner_labels,
                            uint32_t owner_ttl,  uint32_t sig_incepted,
@@ -170,8 +172,7 @@ static int sign_ctx_add_records(dnssec_sign_ctx_t *ctx, const knot_rrset_t *cove
 		return KNOT_ENOMEM;
 	}
 
-	int written = knot_rrset_to_wire(covered, rrwf, KNOT_WIRE_MAX_PKTSIZE,
-	                                 NULL, KNOT_RRSET_WIRE_CANONICAL);
+	int written = knot_rrset_to_wire(covered, rrwf, KNOT_WIRE_MAX_PKTSIZE, NULL);
 	if (written < 0) {
 		free(rrwf);
 		return written;
@@ -277,9 +278,7 @@ static int rrsigs_create_rdata(knot_rrset_t *rrsigs, dnssec_sign_ctx_t *ctx,
 	                            knot_rdata_ttl(covered_data), NULL);
 }
 
-/*!
- * \brief Create RRSIG RR for given RR set.
- */
+_public_
 int knot_sign_rrset(knot_rrset_t *rrsigs, const knot_rrset_t *covered,
                     const dnssec_key_t *key, dnssec_sign_ctx_t *sign_ctx,
                     const knot_dnssec_policy_t *policy)
@@ -298,6 +297,7 @@ int knot_sign_rrset(knot_rrset_t *rrsigs, const knot_rrset_t *covered,
 	                           sig_expire);
 }
 
+_public_
 int knot_synth_rrsig(uint16_t type, const knot_rdataset_t *rrsig_rrs,
                      knot_rdataset_t *out_sig, mm_ctx_t *mm)
 {
@@ -346,9 +346,7 @@ static bool is_expired_signature(const knot_rrset_t *rrsigs, size_t pos,
 	return (expiration <= policy->refresh_before);
 }
 
-/*!
- * \brief Check if RRSIG signature is valid.
- */
+_public_
 int knot_is_valid_signature(const knot_rrset_t *covered,
                             const knot_rrset_t *rrsigs, size_t pos,
                             const dnssec_key_t *key, dnssec_sign_ctx_t *ctx,

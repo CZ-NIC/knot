@@ -29,9 +29,9 @@
 
 #pragma once
 
-#include "common-knot/lists.h"
-#include "common-knot/sockaddr.h"
-#include "libknot/mempattern.h"
+#include "common/lists.h"
+#include "common/sockaddr.h"
+#include "common/mempattern.h"
 #include "libknot/rrtype/tsig.h"
 
 struct conf_iface_t;

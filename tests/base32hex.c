@@ -21,7 +21,7 @@
 
 #include "libknot/errcode.h"
 #include "common/base32hex.h"
-#include "common-knot/strlcpy.h"
+#include "common/strlcpy.h"
 
 #define BUF_LEN			256
 #define MAX_BIN_DATA_LEN	((INT32_MAX / 8) * 5)

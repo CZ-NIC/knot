@@ -29,6 +29,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
+
 #include "dnssec/key.h"
 #include "dnssec/sign.h"
 #include "libknot/dnssec/policy.h"

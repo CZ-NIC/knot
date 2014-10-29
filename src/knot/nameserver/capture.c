@@ -19,40 +19,45 @@
 #include "knot/server/udp-handler.h"
 
 /* State-less packet capture, only incoming data is accepted. */
-static int reset(knot_process_t *ctx)  { return NS_PROC_MORE; }
-static int finish(knot_process_t *ctx) { return NS_PROC_NOOP; }
+static int reset(knot_layer_t *ctx)  { return KNOT_NS_PROC_FULL; }
+static int finish(knot_layer_t *ctx) { return KNOT_NS_PROC_NOOP; }
 
 /* Set capture parameters (sink). */
-static int begin(knot_process_t *ctx, void *module_param)
+static int begin(knot_layer_t *ctx, void *module_param)
 {
 	ctx->data = module_param;
-	return NS_PROC_MORE;
+	return reset(ctx);
+}
+
+static int prepare_query(knot_layer_t *ctx, knot_pkt_t *pkt)
+{
+	/* \note Don't touch the query, expect answer. */
+	return KNOT_NS_PROC_MORE;
 }
 
 /* Forward packet. */
-static int capture(knot_pkt_t *pkt, knot_process_t *ctx)
+static int capture(knot_layer_t *ctx, knot_pkt_t *pkt)
 {
 	assert(pkt && ctx);
-	struct process_capture_param *param = ctx->data;
+	struct capture_param *param = ctx->data;
 
 	/* Copy packet contents and free. */
 	knot_pkt_copy(param->sink, pkt);
-	knot_pkt_free(&pkt);
 
-	return NS_PROC_DONE;
+	return KNOT_NS_PROC_DONE;
 }
 
 /*! \brief Module implementation. */
-static const knot_process_module_t PROCESS_CAPTURE_MODULE = {
+static const knot_layer_api_t CAPTURE_LAYER = {
 	&begin,
 	&reset,
 	&finish,
 	&capture,
-	&knot_process_noop, /* No output. */
-	&knot_process_noop  /* No error processing. */
+	&prepare_query,
+	NULL
 };
 
-const knot_process_module_t *proc_capture_get_module(void)
+const knot_layer_api_t *capture_get_module(void)
 {
-	return &PROCESS_CAPTURE_MODULE;
+	return &CAPTURE_LAYER;
 }

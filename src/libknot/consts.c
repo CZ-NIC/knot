@@ -14,8 +14,10 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <libknot/consts.h>
+#include "libknot/consts.h"
+#include "common/macros.h"
 
+_public_
 knot_lookup_table_t knot_opcode_names[] = {
 	{ KNOT_OPCODE_QUERY,  "QUERY" },
 	{ KNOT_OPCODE_IQUERY, "IQUERY" },
@@ -25,6 +27,7 @@ knot_lookup_table_t knot_opcode_names[] = {
 	{ 0, NULL }
 };
 
+_public_
 knot_lookup_table_t knot_rcode_names[] = {
 	{ KNOT_RCODE_NOERROR,  "NOERROR" },
 	{ KNOT_RCODE_FORMERR,  "FORMERR" },
@@ -37,16 +40,28 @@ knot_lookup_table_t knot_rcode_names[] = {
 	{ KNOT_RCODE_NXRRSET,  "NXRRSET" },
 	{ KNOT_RCODE_NOTAUTH,  "NOTAUTH" },
 	{ KNOT_RCODE_NOTZONE,  "NOTZONE" },
-	{ KNOT_RCODE_BADSIG,   "BADSIG" },
-	{ KNOT_RCODE_BADKEY,   "BADKEY" },
-	{ KNOT_RCODE_BADTIME,  "BADTIME" },
-	{ KNOT_RCODE_BADMODE,  "BADMODE" },
-	{ KNOT_RCODE_BADNAME,  "BADNAME" },
-	{ KNOT_RCODE_BADALG,   "BADALG" },
-	{ KNOT_RCODE_BADTRUNC, "BADTRUNC" },
+	{ KNOT_RCODE_BADVERS,  "BADVERS" },
 	{ 0, NULL }
 };
 
+_public_
+knot_lookup_table_t knot_tsig_err_names[] = {
+	{ KNOT_TSIG_ERR_BADSIG,   "BADSIG" },
+	{ KNOT_TSIG_ERR_BADKEY,   "BADKEY" },
+	{ KNOT_TSIG_ERR_BADTIME,  "BADTIME" },
+	{ KNOT_TSIG_ERR_BADTRUNC, "BADTRUNC" },
+	{ 0, NULL }
+};
+
+_public_
+knot_lookup_table_t knot_tkey_err_names[] = {
+	{ KNOT_TKEY_ERR_BADMODE,  "BADMODE" },
+	{ KNOT_TKEY_ERR_BADNAME,  "BADNAME" },
+	{ KNOT_TKEY_ERR_BADALG,   "BADALG" },
+	{ 0, NULL }
+};
+
+_public_
 knot_lookup_table_t knot_dnssec_alg_names[] = {
 	{ KNOT_DNSSEC_ALG_RSAMD5,             "RSAMD5" },
 	{ KNOT_DNSSEC_ALG_DH,                 "DH" },
@@ -62,6 +77,7 @@ knot_lookup_table_t knot_dnssec_alg_names[] = {
 	{ 0, NULL }
 };
 
+_public_
 size_t knot_ds_digest_length(const uint8_t algorithm)
 {
 	switch (algorithm) {
@@ -78,6 +94,7 @@ size_t knot_ds_digest_length(const uint8_t algorithm)
 	}
 }
 
+_public_
 bool knot_dnssec_algorithm_is_zonesign(uint8_t algorithm, bool nsec3_enabled)
 {
 	switch (algorithm) {

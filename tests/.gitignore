@@ -23,6 +23,7 @@ hhash
 journal
 namedb
 node
+overlay
 pkt
 process_answer
 process_query
@@ -34,7 +35,6 @@ rrl
 rrset
 rrset_wire
 server
-slab
 wire
 worker_pool
 worker_queue

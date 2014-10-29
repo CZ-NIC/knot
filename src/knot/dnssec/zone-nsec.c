@@ -20,7 +20,6 @@
 #include <string.h>
 #include <limits.h>
 
-#include "common-knot/hhash.h"
 #include "common/base32hex.h"
 #include "common/debug.h"
 #include "dnssec/error.h"

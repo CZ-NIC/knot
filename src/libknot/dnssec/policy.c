@@ -19,7 +19,9 @@
 #include <time.h>
 
 #include "libknot/dnssec/policy.h"
+#include "common/macros.h"
 
+_public_
 uint32_t knot_dnssec_policy_refresh_time(const knot_dnssec_policy_t *policy,
                                          uint32_t earliest_expiration)
 {
@@ -35,6 +37,7 @@ uint32_t knot_dnssec_policy_refresh_time(const knot_dnssec_policy_t *policy,
 	return earliest_expiration - signature_safety;
 }
 
+_public_
 void knot_dnssec_policy_set_sign_lifetime(knot_dnssec_policy_t *policy,
                                           uint32_t sign_lifetime)
 {
@@ -49,6 +52,7 @@ void knot_dnssec_policy_set_sign_lifetime(knot_dnssec_policy_t *policy,
 	                                                         max_expiration);
 }
 
+_public_
 void knot_dnssec_init_default_policy(knot_dnssec_policy_t *policy)
 {
 	if (policy == NULL) {

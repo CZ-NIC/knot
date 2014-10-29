@@ -17,15 +17,17 @@
 #include <assert.h>
 #include <string.h>
 
+#include "common/macros.h"
 #include "dnssec/binary.h"
-#include "libknot/common.h"
 #include "libknot/dname.h"
 #include "libknot/dnssec/key.h"
+#include "libknot/errcode.h"
 #include "libknot/rrtype/tsig.h"
 
 /*!
  * \brief Creates TSIG key.
  */
+_public_
 int knot_tsig_create_key(const char *name, dnssec_tsig_algorithm_t algorithm,
                          const char *b64secret_str, knot_tsig_key_t *key)
 {
@@ -60,6 +62,7 @@ int knot_tsig_create_key(const char *name, dnssec_tsig_algorithm_t algorithm,
 /*!
  * \brief Frees TSIG key.
  */
+_public_
 int knot_tsig_key_free(knot_tsig_key_t *key)
 {
 	if (!key) {
@@ -73,6 +76,7 @@ int knot_tsig_key_free(knot_tsig_key_t *key)
 	return KNOT_EOK;
 }
 
+_public_
 int knot_copy_key_params(const knot_key_params_t *src, knot_key_params_t *dst)
 {
 	if (src == NULL || dst == NULL) {
@@ -99,6 +103,7 @@ int knot_copy_key_params(const knot_key_params_t *src, knot_key_params_t *dst)
 	return KNOT_EOK;
 }
 
+_public_
 int knot_free_key_params(knot_key_params_t *key_params)
 {
 	if (!key_params) {
@@ -113,6 +118,7 @@ int knot_free_key_params(knot_key_params_t *key_params)
 	return KNOT_EOK;
 }
 
+_public_
 int knot_tsig_key_from_params(const knot_key_params_t *params,
                               knot_tsig_key_t *key_ptr)
 {

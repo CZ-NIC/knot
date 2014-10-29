@@ -20,22 +20,20 @@
 #include <sys/types.h>
 #include <time.h>
 
-#include "common-knot/hattrie/hat-trie.h"
 #include "common/debug.h"
+#include "common/macros.h"
+#include "common/trie/hat-trie.h"
 #include "dnssec/key.h"
 #include "dnssec/keytag.h"
 #include "dnssec/sign.h"
 #include "knot/dnssec/zone-keys.h"
 #include "knot/dnssec/zone-sign.h"
-#include "knot/updates/changesets.h"
-#include "knot/zone/contents.h"
-#include "knot/zone/node.h"
-#include "libknot/common.h"
 #include "libknot/descriptor.h"
 #include "libknot/dname.h"
 #include "libknot/dnssec/key.h"
 #include "libknot/dnssec/policy.h"
 #include "libknot/dnssec/rrset-sign.h"
+#include "libknot/errcode.h"
 #include "libknot/errcode.h"
 #include "libknot/rrset.h"
 #include "libknot/rrtype/rdname.h"
@@ -1007,7 +1005,6 @@ static int add_rr_type_to_list(const knot_rrset_t *rr, list_t *l)
 
 	type_node_t *n = malloc(sizeof(type_node_t));
 	if (n == NULL) {
-		ERR_ALLOC_FAILED;
 		return KNOT_ENOMEM;
 	}
 	n->type = rr->type;
@@ -1042,7 +1039,6 @@ static int rr_already_signed(const knot_rrset_t *rrset, hattrie_t *t,
 		// Create new info struct
 		signed_info_t *info = malloc(sizeof(signed_info_t));
 		if (info == NULL) {
-			ERR_ALLOC_FAILED;
 			return KNOT_ENOMEM;
 		}
 		memset(info, 0, sizeof(signed_info_t));
@@ -1055,7 +1051,6 @@ static int rr_already_signed(const knot_rrset_t *rrset, hattrie_t *t,
 		// Create new list to insert as a value
 		info->type_list = malloc(sizeof(list_t));
 		if (info->type_list == NULL) {
-			ERR_ALLOC_FAILED;
 			free(info->dname);
 			free(info);
 			return KNOT_ENOMEM;
@@ -1368,7 +1363,7 @@ int knot_zone_sign_changeset(const zone_contents_t *zone,
 	}
 	changeset_iter_t itt;
 	changeset_iter_all(&itt, in_ch, false);
-	
+
 	knot_rrset_t rr = changeset_iter_next(&itt);
 	while (!knot_rrset_empty(&rr)) {
 		int ret = sign_changeset_wrap(&rr, &args);
@@ -1399,7 +1394,7 @@ int knot_zone_sign_nsecs_in_changeset(const zone_keyset_t *zone_keys,
 
 	changeset_iter_t itt;
 	changeset_iter_add(&itt, changeset, false);
-	
+
 	knot_rrset_t rr = changeset_iter_next(&itt);
 	while (!knot_rrset_empty(&rr)) {
 		if (rr.type == KNOT_RRTYPE_NSEC ||
@@ -1414,7 +1409,7 @@ int knot_zone_sign_nsecs_in_changeset(const zone_keyset_t *zone_keys,
 		rr = changeset_iter_next(&itt);
 	}
 	changeset_iter_clear(&itt);
-	
+
 	return KNOT_EOK;
 }
 

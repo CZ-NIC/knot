@@ -31,7 +31,6 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <time.h>
-#include "common-knot/lists.h"
 #include "libknot/dname.h"
 #include "dnssec/kasp.h"
 #include "dnssec/sign.h"

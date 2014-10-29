@@ -1,0 +1,14 @@
+$ORIGIN duplicates.
+$TTL 3600
+
+@	SOA	dns1 hostmaster 2010111213 10800 3600 1209600 7200
+	NS	dns1
+
+dns1	A	192.0.2.1
+	AAAA	2001:DB8::1
+
+; Duplicate RDATA differing only in case
+dupl            MX      10 some.domain.
+dupl            MX      10 Some.Domain.
+DuPl            MX      10 some.domain.
+dUpL            MX      10 sOMe.doMAin.

@@ -30,7 +30,6 @@
 #endif
 
 #include "dnssec/crypto.h"
-#include "libknot/common.h"
 #include "knot/knot.h"
 #include "knot/server/server.h"
 #include "knot/ctl/process.h"

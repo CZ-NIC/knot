@@ -21,10 +21,10 @@
 #include <arpa/inet.h>			// inet_ntop
 
 #include "libknot/libknot.h"
-#include "common-knot/lists.h"		// list
-#include "common-knot/print.h"		// txt_print
+#include "common/lists.h"		// list
+#include "common/sockaddr.h"		// IPV4_PREFIXLEN
+#include "common/print.h"		// txt_print
 #include "common-knot/strlcat.h"	// strlcat
-#include "common-knot/sockaddr.h"	// IPV4_PREFIXLEN
 #include "utils/common/msg.h"		// WARN
 #include "utils/common/params.h"	// params_t
 #include "utils/common/netio.h"		// send_msg
@@ -48,21 +48,22 @@ static knot_lookup_table_t rtypes[] = {
 	{ 0, NULL }
 };
 
-static void print_header(const knot_pkt_t *packet, const style_t *style)
+static void print_header(const knot_pkt_t *packet, const style_t *style,
+                         const uint16_t ext_rcode)
 {
 	char    flags[64] = "";
-	uint8_t rcode_id, opcode_id;
-	const char *rcode_str = "NULL";
-	const char *opcode_str = "NULL";
+	uint8_t opcode_id;
+	const char *rcode_str = "Unknown";
+	const char *opcode_str = "Unknown";
 	knot_lookup_table_t *rcode, *opcode;
 
-	// Get codes.
-	rcode_id = knot_wire_get_rcode(packet->wire);
-	rcode = knot_lookup_by_id(knot_rcode_names, rcode_id);
+	// Get RCODE from Header and check for Extended RCODE from OPT RR.
+	rcode = knot_lookup_by_id(knot_rcode_names, ext_rcode);
 	if (rcode != NULL) {
 		rcode_str = rcode->name;
 	}
 
+	// Get OPCODE.
 	opcode_id = knot_wire_get_opcode(packet->wire);
 	opcode = knot_lookup_by_id(knot_opcode_names, opcode_id);
 	if (opcode != NULL) {
@@ -212,18 +213,23 @@ static void print_edns_client_subnet(const uint8_t *data, const uint16_t len)
 	printf("%s/%u/%u\n", addr_str, src_mask, dst_mask);
 }
 
-static void print_section_opt(const knot_rrset_t *rr)
+static void print_section_opt(const knot_rrset_t *rr, const uint8_t rcode)
 {
-	uint8_t             ext_rcode_id = knot_edns_get_ext_rcode(rr);
-	const char          *ext_rcode_str = "NULL";
+	uint8_t             ercode = knot_edns_get_ext_rcode(rr);
+	uint16_t            ext_rcode_id = knot_edns_whole_rcode(ercode, rcode);
+	const char          *ext_rcode_str = "Unused";
 	knot_lookup_table_t *ext_rcode;
 
-	ext_rcode = knot_lookup_by_id(knot_rcode_names, ext_rcode_id);
-	if (ext_rcode != NULL) {
-		ext_rcode_str = ext_rcode->name;
+	if (ercode > 0) {
+		ext_rcode = knot_lookup_by_id(knot_rcode_names, ext_rcode_id);
+		if (ext_rcode != NULL) {
+			ext_rcode_str = ext_rcode->name;
+		} else {
+			ext_rcode_str = "Unknown";
+		}
 	}
 
-	printf("Version: %u; flags: %s; UDP size: %u B, status: %s\n",
+	printf("Version: %u; flags: %s; UDP size: %u B; ext-rcode: %s\n",
 	       knot_edns_get_version(rr),
 	       (knot_edns_do(rr) != 0) ? "do" : "",
 	       knot_edns_get_payload(rr),
@@ -421,12 +427,12 @@ static void print_section_host(const knot_rrset_t *rrsets,
 	free(buf);
 }
 
-static void print_error_host(const uint8_t    code,
+static void print_error_host(const uint16_t   code,
                              const knot_pkt_t *packet,
                              const style_t    *style)
 {
-	const char *rcode_str = "NULL";
-	char type[32] = "NULL";
+	const char *rcode_str = "Unknown";
+	char type[32] = "Unknown";
 	char *owner;
 
 	knot_lookup_table_t *rcode;
@@ -435,6 +441,7 @@ static void print_error_host(const uint8_t    code,
 	if (style->style.ascii_to_idn != NULL) {
 		style->style.ascii_to_idn(&owner);
 	}
+
 	rcode = knot_lookup_by_id(knot_rcode_names, code);
 	if (rcode != NULL) {
 		rcode_str = rcode->name;
@@ -566,11 +573,13 @@ void print_packet(const knot_pkt_t *packet,
 	const knot_pktsection_t *additional = knot_pkt_section(packet,
 	                                                       KNOT_ADDITIONAL);
 
-	uint8_t rcode = knot_wire_get_rcode(packet->wire);
 	uint16_t qdcount = knot_wire_get_qdcount(packet->wire);
 	uint16_t ancount = knot_wire_get_ancount(packet->wire);
 	uint16_t nscount = knot_wire_get_nscount(packet->wire);
 	uint16_t arcount = knot_wire_get_arcount(packet->wire);
+
+	// Get Extended RCODE from the packet.
+	uint16_t rcode = knot_pkt_get_ext_rcode(packet);
 
 	// Disable additionals printing if there are no other records.
 	// OPT record may be placed anywhere within additionals!
@@ -580,13 +589,14 @@ void print_packet(const knot_pkt_t *packet,
 
 	// Print packet information header.
 	if (style->show_header) {
-		print_header(packet, style);
+		print_header(packet, style, rcode);
 	}
 
 	// Print EDNS section.
 	if (style->show_edns && knot_pkt_has_edns(packet)) {
 		printf("\n;; EDNS PSEUDOSECTION:\n;; ");
-		print_section_opt(packet->opt_rr);
+		print_section_opt(packet->opt_rr,
+		                  knot_wire_get_rcode(packet->wire));
 	}
 
 	// Print DNS sections.
@@ -710,7 +720,7 @@ int sign_packet(knot_pkt_t              *pkt,
 	sign_ctx->digest_size = dnssec_tsig_algorithm_size(key->algorithm);
 	sign_ctx->digest = malloc(sign_ctx->digest_size);
 
-	knot_pkt_reserve(pkt, tsig_wire_maxsize(key));
+	knot_pkt_reserve(pkt, knot_tsig_wire_maxsize(key));
 
 	result = knot_tsig_sign(wire, wire_size, max_size, NULL, 0,
 				sign_ctx->digest, &sign_ctx->digest_size,

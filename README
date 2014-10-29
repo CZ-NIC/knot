@@ -12,9 +12,11 @@ Knot DNS has several dependencies:
 Optional packages:
 * libcap-ng >= 0.6.4 (for POSIX 1003.1e capabilites(7))
 * libidn             (for IDNA2003 support in Knot utilities)
+* lmdb               (for persistent events for slave zones)
+* libsystemd         (for systemd init system support)
 
 Dependencies for building documentation:
-* texinfo
+* python-sphinx
 
 Installation
 ============
@@ -38,7 +40,7 @@ Install prerequisites:
 $ sudo apt-get install git-core libtool autoconf flex bison libssl-dev liburcu-dev
 
 Install optional packages:
-($ sudo apt-get install libcap-ng-dev)
+($ sudo apt-get install libcap-ng-dev liblmdb-dev libsystemd-dev)
 
 If the liburcu-dev package is not present, install it from the source code
 (http://lttng.org/urcu)
@@ -55,7 +57,7 @@ Ensure all prerequisites are installed:
 $ yum install libtool autoconf flex bison openssl-devel userspace-rcu-devel
 
 Install optional packages:
-($ yum install libcap-ng-devel)
+($ yum install libcap-ng-devel lmdb-devel systemd-devel)
 
 2) Install Knot DNS
 

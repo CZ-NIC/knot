@@ -19,10 +19,10 @@
 #include "knot/updates/apply.h"
 
 #include "knot/zone/zone.h"
-#include "libknot/common.h"
 #include "knot/updates/changesets.h"
 #include "knot/zone/zonefile.h"
-#include "common-knot/lists.h"
+#include "common/lists.h"
+#include "common/macros.h"
 #include "libknot/rrtype/soa.h"
 #include "libknot/rrtype/rrsig.h"
 
@@ -245,7 +245,7 @@ static int apply_remove(zone_contents_t *contents, changeset_t *chset)
 {
 	changeset_iter_t itt;
 	changeset_iter_rem(&itt, chset, false);
-	
+
 	knot_rrset_t rr = changeset_iter_next(&itt);
 	while (!knot_rrset_empty(&rr)) {
 		// Find node for this owner
@@ -263,7 +263,7 @@ static int apply_remove(zone_contents_t *contents, changeset_t *chset)
 			changeset_iter_clear(&itt);
 			return ret;
 		}
-		
+
 		rr = changeset_iter_next(&itt);
 	}
 	changeset_iter_clear(&itt);
@@ -322,7 +322,7 @@ static int apply_add(zone_contents_t *contents, changeset_t *chset,
 {
 	changeset_iter_t itt;
 	changeset_iter_add(&itt, chset, false);
-	
+
 	knot_rrset_t rr = changeset_iter_next(&itt);
 	while(!knot_rrset_empty(&rr)) {
 		// Get or create node with this owner
@@ -340,7 +340,7 @@ static int apply_add(zone_contents_t *contents, changeset_t *chset,
 		rr = changeset_iter_next(&itt);
 	}
 	changeset_iter_clear(&itt);
-	
+
 	return KNOT_EOK;
 }
 
@@ -494,7 +494,7 @@ int apply_changeset(zone_t *zone, changeset_t *change, zone_contents_t **new_con
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
-	
+
 	const bool master = (zone_master(zone) == NULL);
 	ret = apply_single(contents_copy, change, master);
 	if (ret != KNOT_EOK) {
@@ -502,16 +502,16 @@ int apply_changeset(zone_t *zone, changeset_t *change, zone_contents_t **new_con
 		update_free_zone(&contents_copy);
 		return ret;
 	}
-	
+
 	ret = finalize_updated_zone(contents_copy, true);
 	if (ret != KNOT_EOK) {
 		update_rollback(change);
 		update_free_zone(&contents_copy);
 		return ret;
 	}
-	
+
 	*new_contents = contents_copy;
-	
+
 	return KNOT_EOK;
 }
 
@@ -535,7 +535,7 @@ int apply_changesets_directly(zone_contents_t *contents, list_t *chsets)
 	if (ret != KNOT_EOK) {
 		updates_cleanup(chsets);
 	}
-	
+
 	return ret;
 }
 
@@ -544,20 +544,20 @@ int apply_changeset_directly(zone_contents_t *contents, changeset_t *ch)
 	if (contents == NULL || ch == NULL) {
 		return KNOT_EINVAL;
 	}
-	
+
 	const bool master = true; // Only DNSSEC changesets are applied directly.
 	int ret = apply_single(contents, ch, master);
 	if (ret != KNOT_EOK) {
 		update_cleanup(ch);
 		return ret;
 	}
-	
+
 	ret = finalize_updated_zone(contents, true);
 	if (ret != KNOT_EOK) {
 		update_cleanup(ch);
 		return ret;
 	}
-	
+
 	return KNOT_EOK;
 }
 

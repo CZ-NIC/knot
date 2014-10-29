@@ -21,15 +21,16 @@
 #include <limits.h>
 
 #include "common/debug.h"
+#include "common/macros.h"
 #include "common/mem.h"
 #include "dnssec/error.h"
 #include "dnssec/kasp.h"
 #include "dnssec/keystore.h"
 #include "dnssec/sign.h"
 #include "knot/dnssec/zone-keys.h"
-#include "libknot/common.h"
 #include "libknot/consts.h"
 #include "libknot/dname.h"
+#include "libknot/errcode.h"
 #include "libknot/errcode.h"
 #include "libknot/rrtype/dnskey.h"
 

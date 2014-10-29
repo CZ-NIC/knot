@@ -79,32 +79,45 @@ typedef struct knot_sign_context {
  * \retval KNOT_EINVAL
  * \retval KNOT_EOK
  */
-int tsig_create_rdata(knot_rrset_t *rr, const knot_dname_t *alg,
+int knot_tsig_create_rdata(knot_rrset_t *rr, const knot_dname_t *alg,
                       uint16_t maclen, uint16_t tsig_err);
 
-int tsig_rdata_set_time_signed(knot_rrset_t *tsig, uint64_t time);
-int tsig_rdata_store_current_time(knot_rrset_t *tsig);
-int tsig_rdata_set_fudge(knot_rrset_t *tsig, uint16_t fudge);
-int tsig_rdata_set_mac(knot_rrset_t *tsig, uint16_t length,
-                       const uint8_t *mac);
-int tsig_rdata_set_orig_id(knot_rrset_t *tsig, uint16_t id);
-//int tsig_rdata_set_tsig_error(knot_rrset_t *tsig, uint16_t tsig_error);
-int tsig_rdata_set_other_data(knot_rrset_t *tsig, uint16_t length,
+int knot_tsig_rdata_set_time_signed(knot_rrset_t *tsig, uint64_t time);
+
+int knot_tsig_rdata_store_current_time(knot_rrset_t *tsig);
+
+int knot_tsig_rdata_set_fudge(knot_rrset_t *tsig, uint16_t fudge);
+
+int knot_tsig_rdata_set_mac(knot_rrset_t *tsig, uint16_t length, const uint8_t *mac);
+
+int knot_tsig_rdata_set_orig_id(knot_rrset_t *tsig, uint16_t id);
+
+int knot_tsig_rdata_set_other_data(knot_rrset_t *tsig, uint16_t length,
                               const uint8_t *other_data);
 
-const knot_dname_t *tsig_rdata_alg_name(const knot_rrset_t *tsig);
-dnssec_tsig_algorithm_t tsig_rdata_alg(const knot_rrset_t *tsig);
-uint64_t tsig_rdata_time_signed(const knot_rrset_t *tsig);
-uint16_t tsig_rdata_fudge(const knot_rrset_t *tsig);
-const uint8_t *tsig_rdata_mac(const knot_rrset_t *tsig);
-size_t tsig_rdata_mac_length(const knot_rrset_t *tsig);
-uint16_t tsig_rdata_orig_id(const knot_rrset_t *tsig);
-uint16_t tsig_rdata_error(const knot_rrset_t *tsig);
-const uint8_t *tsig_rdata_other_data(const knot_rrset_t *tsig);
-uint16_t tsig_rdata_other_data_length(const knot_rrset_t *tsig);
-size_t tsig_rdata_tsig_variables_length(const knot_rrset_t *tsig);
+const knot_dname_t *knot_tsig_rdata_alg_name(const knot_rrset_t *tsig);
 
-size_t tsig_rdata_tsig_timers_length();
+dnssec_tsig_algorithm_t knot_tsig_rdata_alg(const knot_rrset_t *tsig);
+
+uint64_t knot_tsig_rdata_time_signed(const knot_rrset_t *tsig);
+
+uint16_t knot_tsig_rdata_fudge(const knot_rrset_t *tsig);
+
+const uint8_t *knot_tsig_rdata_mac(const knot_rrset_t *tsig);
+
+size_t knot_tsig_rdata_mac_length(const knot_rrset_t *tsig);
+
+uint16_t knot_tsig_rdata_orig_id(const knot_rrset_t *tsig);
+
+uint16_t knot_tsig_rdata_error(const knot_rrset_t *tsig);
+
+const uint8_t *knot_tsig_rdata_other_data(const knot_rrset_t *tsig);
+
+uint16_t knot_tsig_rdata_other_data_length(const knot_rrset_t *tsig);
+
+size_t knot_tsig_rdata_tsig_variables_length(const knot_rrset_t *tsig);
+
+size_t knot_tsig_rdata_tsig_timers_length();
 
 /*!
  * \brief Return TSIG RRSET maximum wire size for given algorithm.
@@ -113,8 +126,9 @@ size_t tsig_rdata_tsig_timers_length();
  *
  * \return RRSET wire size.
  */
-size_t tsig_wire_maxsize(const knot_tsig_key_t *key);
+size_t knot_tsig_wire_maxsize(const knot_tsig_key_t *key);
 
-int tsig_rdata_is_ok(const knot_rrset_t *tsig);
+/*! \todo Documentation. */
+int knot_tsig_rdata_is_ok(const knot_rrset_t *tsig);
 
 /*! @} */

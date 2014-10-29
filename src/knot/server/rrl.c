@@ -20,8 +20,8 @@
 #include <sys/socket.h>
 #include <assert.h>
 
-#include "common-knot/hattrie/murmurhash3.h"
 #include "common/errors.h"
+#include "common/trie/murmurhash3.h"
 #include "dnssec/random.h"
 #include "knot/knot.h"
 #include "knot/server/rrl.h"

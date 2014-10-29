@@ -14,10 +14,14 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "libknot/rrtype/soa.h"
-#include "common-knot/trim.h"
-#include "common/mempool.h"
 #include "dnssec/random.h"
+#include "libknot/processing/requestor.h"
+#include "libknot/rrtype/soa.h"
+
+#include "common-knot/trim.h"
+#include "common/macros.h"
+#include "common/mempool.h"
+
 #include "knot/server/udp-handler.h"
 #include "knot/server/tcp-handler.h"
 #include "knot/updates/changesets.h"
@@ -31,7 +35,6 @@
 #include "knot/nameserver/internet.h"
 #include "knot/nameserver/update.h"
 #include "knot/nameserver/notify.h"
-#include "knot/nameserver/requestor.h"
 #include "knot/nameserver/tsig_ctx.h"
 #include "knot/nameserver/process_answer.h"
 
@@ -71,11 +74,11 @@ static knot_pkt_t *zone_query(const zone_t *zone, uint16_t pkt_type, mm_ctx_t *m
 	if (pkt_type == KNOT_QUERY_IXFR) {  /* RFC1995, SOA in AUTHORITY. */
 		knot_pkt_begin(pkt, KNOT_AUTHORITY);
 		knot_rrset_t soa_rr = node_rrset(contents->apex, KNOT_RRTYPE_SOA);
-		knot_pkt_put(pkt, COMPR_HINT_QNAME, &soa_rr, 0);
+		knot_pkt_put(pkt, KNOT_COMPR_HINT_QNAME, &soa_rr, 0);
 	} else if (pkt_type == KNOT_QUERY_NOTIFY) { /* RFC1996, SOA in ANSWER. */
 		knot_pkt_begin(pkt, KNOT_ANSWER);
 		knot_rrset_t soa_rr = node_rrset(contents->apex, KNOT_RRTYPE_SOA);
-		knot_pkt_put(pkt, COMPR_HINT_QNAME, &soa_rr, 0);
+		knot_pkt_put(pkt, KNOT_COMPR_HINT_QNAME, &soa_rr, 0);
 	}
 
 	return pkt;
@@ -100,15 +103,17 @@ static int zone_query_execute(zone_t *zone, uint16_t pkt_type, const conf_iface_
 		return KNOT_ENOMEM;
 	}
 
-	/* Create requestor instance. */
-	struct requestor re;
-	requestor_init(&re, NS_PROC_ANSWER, &mm);
-
 	/* Answer processing parameters. */
 	struct process_answer_param param = { 0 };
 	param.zone = zone;
 	param.query = query;
 	param.remote = &remote->addr;
+
+	/* Create requestor instance. */
+	struct knot_requestor re;
+	knot_requestor_init(&re, &mm);
+	knot_requestor_overlay(&re, KNOT_NS_PROC_ANSWER, &param);
+
 	tsig_init(&param.tsig_ctx, remote->key);
 
 	ret = tsig_sign_packet(&param.tsig_ctx, query);
@@ -117,23 +122,25 @@ static int zone_query_execute(zone_t *zone, uint16_t pkt_type, const conf_iface_
 	}
 
 	/* Create a request. */
-	struct request *req = requestor_make(&re, remote, query);
+	const struct sockaddr *dst = (const struct sockaddr *)&remote->addr;
+	const struct sockaddr *src = (const struct sockaddr *)&remote->via;
+	struct knot_request *req = knot_request_make(re.mm, dst, src, query, 0);
 	if (req == NULL) {
 		ret = KNOT_ENOMEM;
 		goto fail;
 	}
 
 	/* Send the queries and process responses. */
-	ret = requestor_enqueue(&re, req, &param);
+	ret = knot_requestor_enqueue(&re, req);
 	if (ret == KNOT_EOK) {
 		struct timeval tv = { conf()->max_conn_reply, 0 };
-		ret = requestor_exec(&re, &tv);
+		ret = knot_requestor_exec(&re, &tv);
 	}
 
 fail:
 	/* Cleanup. */
 	tsig_cleanup(&param.tsig_ctx);
-	requestor_clear(&re);
+	knot_requestor_clear(&re);
 	mp_delete(mm.ctx);
 
 	return ret;
@@ -196,7 +203,11 @@ static void schedule_dnssec(zone_t *zone, time_t refresh_at)
 	zone_events_schedule_at(zone, ZONE_EVENT_DNSSEC, refresh_at);
 }
 
-/* -- zone events handling callbacks --------------------------------------- */
+/*! \brief Get SOA from zone. */
+static const knot_rdataset_t *zone_soa(zone_t *zone)
+{
+	return node_rdataset(zone->contents->apex, KNOT_RRTYPE_SOA);
+}
 
 /*! \brief Fetch SOA expire timer and add a timeout grace period. */
 static uint32_t soa_graceful_expire(const knot_rdataset_t *soa)
@@ -205,6 +216,18 @@ static uint32_t soa_graceful_expire(const knot_rdataset_t *soa)
 	// expiry may expire before the timeout is reached.
 	return knot_soa_expire(soa) + 2 * conf()->max_conn_idle;
 }
+
+/*! \brief Schedule expire event, unless it is already scheduled. */
+static void start_expire_timer(zone_t *zone, const knot_rdataset_t *soa)
+{
+	if (zone_events_is_scheduled(zone, ZONE_EVENT_EXPIRE)) {
+		return;
+	}
+
+	zone_events_schedule(zone, ZONE_EVENT_EXPIRE, soa_graceful_expire(soa));
+}
+
+/* -- zone events handling callbacks --------------------------------------- */
 
 int event_reload(zone_t *zone)
 {
@@ -276,21 +299,18 @@ int event_reload(zone_t *zone)
 	log_zone_info(zone->name, "loaded, serial %u -> %u",
 	              old_serial, current_serial);
 
-	return write_zone_timers(conf()->timers_db, zone);
+	return zone_events_write_persistent(zone);
 
 fail:
 	zone_contents_deep_free(&contents);
 	return result;
 }
 
-/* -- zone events implementation API ---------------------------------------- */
-
 int event_refresh(zone_t *zone)
 {
 	assert(zone);
 
-	zone_contents_t *contents = zone->contents;
-	if (zone_contents_is_empty(contents)) {
+	if (zone_contents_is_empty(zone->contents)) {
 		/* No contents, schedule retransfer now. */
 		zone_events_schedule(zone, ZONE_EVENT_XFER, ZONE_EVENT_NOW);
 		return KNOT_EOK;
@@ -300,8 +320,7 @@ int event_refresh(zone_t *zone)
 	assert(master);
 
 	int ret = zone_query_execute(zone, KNOT_QUERY_NORMAL, master);
-
-	const knot_rdataset_t *soa = node_rdataset(contents->apex, KNOT_RRTYPE_SOA);
+	const knot_rdataset_t *soa = zone_soa(zone);
 	if (ret != KNOT_EOK) {
 		/* Log connection errors. */
 		ZONE_QUERY_LOG(LOG_WARNING, zone, master, "SOA query, outgoing",
@@ -310,18 +329,13 @@ int event_refresh(zone_t *zone)
 		zone_master_rotate(zone);
 		/* Schedule next retry. */
 		zone_events_schedule(zone, ZONE_EVENT_REFRESH, knot_soa_retry(soa));
-		if (zone_events_get_time(zone, ZONE_EVENT_EXPIRE) <= ZONE_EVENT_NOW) {
-			/* Schedule zone expiration if not previously planned. */
-			zone_events_schedule(zone, ZONE_EVENT_EXPIRE, soa_graceful_expire(soa));
-		}
+		start_expire_timer(zone, soa);
 	} else {
 		/* SOA query answered, reschedule refresh timer. */
 		zone_events_schedule(zone, ZONE_EVENT_REFRESH, knot_soa_refresh(soa));
-		/* Cancel possible expire. */
-		zone_events_cancel(zone, ZONE_EVENT_EXPIRE);
 	}
 
-	return write_zone_timers(conf()->timers_db, zone);
+	return zone_events_write_persistent(zone);
 }
 
 int event_xfer(zone_t *zone)
@@ -329,41 +343,49 @@ int event_xfer(zone_t *zone)
 	assert(zone);
 
 	/* Determine transfer type. */
-	bool is_bootstrap = false;
+	bool is_boostrap = zone_contents_is_empty(zone->contents);
 	uint16_t pkt_type = KNOT_QUERY_IXFR;
-	if (zone_contents_is_empty(zone->contents) || zone->flags & ZONE_FORCE_AXFR) {
+	if (is_boostrap || zone->flags & ZONE_FORCE_AXFR) {
 		pkt_type = KNOT_QUERY_AXFR;
-		is_bootstrap = true;
 	}
 
 	/* Execute zone transfer and reschedule timers. */
 	int ret = zone_query_transfer(zone, zone_master(zone), pkt_type);
-	if (ret == KNOT_EOK) {
-		assert(!zone_contents_is_empty(zone->contents));
-		/* New zone transferred, reschedule zone expiration and refresh
-		 * timers and send notifications to slaves. */
-		const knot_rdataset_t *soa =
-			node_rdataset(zone->contents->apex, KNOT_RRTYPE_SOA);
-		zone_events_schedule(zone, ZONE_EVENT_REFRESH, knot_soa_refresh(soa));
-		zone_events_schedule(zone, ZONE_EVENT_NOTIFY,  ZONE_EVENT_NOW);
-		/* Sync zonefile immediately if configured. */
-		if (zone->conf->dbsync_timeout == 0) {
-			zone_events_schedule(zone, ZONE_EVENT_FLUSH, ZONE_EVENT_NOW);
-		} else if (zone_events_get_time(zone, ZONE_EVENT_FLUSH) <= ZONE_EVENT_NOW) {
-			/* Plan sync if not previously planned. */
-			zone_events_schedule(zone, ZONE_EVENT_FLUSH, zone->conf->dbsync_timeout);
+
+	/* Handle failure during transfer. */
+	if (ret != KNOT_EOK) {
+		if (is_boostrap) {
+			zone->bootstrap_retry = bootstrap_next(zone->bootstrap_retry);
+			zone_events_schedule(zone, ZONE_EVENT_XFER, zone->bootstrap_retry);
+		} else {
+			const knot_rdataset_t *soa = zone_soa(zone);
+			zone_events_schedule(zone, ZONE_EVENT_XFER, knot_soa_retry(soa));
+			start_expire_timer(zone, soa);
 		}
-		zone->bootstrap_retry = ZONE_EVENT_NOW;
-		zone->flags &= ~ZONE_FORCE_AXFR;
-		/* Trim extra heap. */
-		if (!is_bootstrap) {
-			mem_trim();
-		}
-	} else {
-		/* Zone contents is still empty, increment bootstrap retry timer
-		 * and try again. */
-		zone->bootstrap_retry = bootstrap_next(zone->bootstrap_retry);
-		zone_events_schedule(zone, ZONE_EVENT_XFER, zone->bootstrap_retry);
+
+		return KNOT_EOK;
+	}
+
+	assert(!zone_contents_is_empty(zone->contents));
+	const knot_rdataset_t *soa = zone_soa(zone);
+
+	/* Rechedule events. */
+	zone_events_schedule(zone, ZONE_EVENT_REFRESH, knot_soa_refresh(soa));
+	zone_events_schedule(zone, ZONE_EVENT_NOTIFY,  ZONE_EVENT_NOW);
+	zone_events_cancel(zone, ZONE_EVENT_EXPIRE);
+	if (zone->conf->dbsync_timeout == 0) {
+		zone_events_schedule(zone, ZONE_EVENT_FLUSH, ZONE_EVENT_NOW);
+	} else if (!zone_events_is_scheduled(zone, ZONE_EVENT_FLUSH)) {
+		zone_events_schedule(zone, ZONE_EVENT_FLUSH, zone->conf->dbsync_timeout);
+	}
+
+	/* Transfer cleanup. */
+	zone->bootstrap_retry = ZONE_EVENT_NOW;
+	zone->flags &= ~ZONE_FORCE_AXFR;
+
+	/* Trim extra heap. */
+	if (!is_boostrap) {
+		mem_trim();
 	}
 
 	return KNOT_EOK;
@@ -382,11 +404,11 @@ int event_update(zone_t *zone)
 
 	/* Replan event if next update waiting. */
 	pthread_mutex_lock(&zone->ddns_lock);
-	
+
 	const bool empty = EMPTY_LIST(zone->ddns_queue);
-	
+
 	pthread_mutex_unlock(&zone->ddns_lock);
-	
+
 	if (!empty) {
 		zone_events_schedule(zone, ZONE_EVENT_UPDATE, ZONE_EVENT_NOW);
 	}

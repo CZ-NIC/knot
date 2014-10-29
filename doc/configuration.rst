@@ -87,8 +87,10 @@ The preference list is reset on the configuration reload.
 
 You can also use TSIG for access control. For this, you need to configure a TSIG key
 and assign it to a remote.  Supported algorithms for TSIG key are:
-| ``hmac-md5, hmac-sha1, hmac-sha224, hmac-sha256, hmac-sha384, hmac-sha512``
-Key secret is written in a base64 encoded format. See :ref:`keys`::
+``hmac-md5``, ``hmac-sha1``, ``hmac-sha224``, ``hmac-sha256``, ``hmac-sha384``,
+and ``hmac-sha512``. Key secret is written in a base64 encoded format.
+As of now, it is not possible to associate multiple keys with a remote.
+See :ref:`keys`::
 
     keys {
       key0 hmac-md5 "Wg=="; # keyname algorithm secret
@@ -104,7 +106,11 @@ Key secret is written in a base64 encoded format. See :ref:`keys`::
       }
     }
 
-As of now it is not possible to associate multiple keys with a remote.
+
+If Knot DNS is compiled with the LMDB library, the server will be able to
+preserve slave zone timers across full server restarts. The zone expire,
+refresh, and flush timers are stored in a file-backed database in the
+:ref:`storage` directory in the ``timers`` subdirectory.
 
 Master configuration
 ====================

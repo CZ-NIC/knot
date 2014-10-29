@@ -26,7 +26,7 @@ typedef struct {
 
 #define ERR_ITEM(code, text) { code, text, #code }
 
-const err_table_t err_msgs[] = {
+static const err_table_t err_msgs[] = {
 	ERR_ITEM( ZS_OK, "ok" ),
 
 	ERR_ITEM( ZS_SYSTEM,
@@ -161,6 +161,7 @@ const err_table_t err_msgs[] = {
 	ERR_ITEM( 0, NULL ) // Terminator
 };
 
+__attribute__((visibility("default")))
 const char* zs_strerror(const int code)
 {
 	const err_table_t *err = err_msgs;
@@ -175,6 +176,7 @@ const char* zs_strerror(const int code)
 	return NULL;
 }
 
+__attribute__((visibility("default")))
 const char* zs_errorname(const int code)
 {
 	const err_table_t *err = err_msgs;

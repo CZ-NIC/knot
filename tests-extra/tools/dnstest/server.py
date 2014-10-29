@@ -343,6 +343,7 @@ class Server(object):
                 check_call([params.gdb_bin, "-ex", "set confirm off", "-ex",
                             "target remote | %s --pid=%s" %
                             (params.vgdb_bin, self.proc.pid),
+                            "-ex", "info threads",
                             "-ex", "thread apply all bt full", "-ex", "q",
                             self.daemon_bin],
                            stdout=open(self.dir + "/gdb.out", mode="a"),
@@ -390,7 +391,7 @@ class Server(object):
     def gen_confile(self):
         f = open(self.confile, mode="w")
         f.write(self.get_config())
-        f.close
+        f.close()
 
     def dig(self, rname, rtype, rclass="IN", udp=None, serial=None,
             timeout=None, tries=3, flags="", bufsize=None, edns=None,
@@ -993,6 +994,17 @@ class Knot(Server):
         self.flush_params = ["-c", self.confile, "flush"]
 
         return s.conf
+
+    def ctl(self, params):
+        try:
+            check_call([self.control_bin] + self.start_params + params.split(),
+                       stdout=open(self.dir + "/call.out", mode="a"),
+                       stderr=open(self.dir + "/call.err", mode="a"))
+            time.sleep(Server.START_WAIT)
+        except CalledProcessError as e:
+            self.backtrace()
+            raise Failed("Can't control='%s' server='%s', ret='%i'" %
+                         (params, self.name, e.returncode))
 
 class Nsd(Server):
 

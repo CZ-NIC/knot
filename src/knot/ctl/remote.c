@@ -18,16 +18,17 @@
 #include <sys/stat.h>
 #include "knot/ctl/remote.h"
 #include "common/log.h"
+#include "common/macros.h"
 #include "common/mem.h"
 #include "common-knot/fdset.h"
 #include "dnssec/random.h"
 #include "knot/knot.h"
 #include "knot/conf/conf.h"
-#include "knot/server/net.h"
+#include "common/net.h"
 #include "knot/server/tcp-handler.h"
 #include "libknot/packet/wire.h"
 #include "libknot/descriptor.h"
-#include "common-knot/strlcpy.h"
+#include "common/strlcpy.h"
 #include "libknot/tsig-op.h"
 #include "libknot/rrtype/rdname.h"
 #include "libknot/rrtype/soa.h"
@@ -719,7 +720,7 @@ static int zones_verify_tsig_query(const knot_pkt_t *query,
 	/*
 	 * 1) Check if we support the requested algorithm.
 	 */
-	dnssec_tsig_algorithm_t alg = tsig_rdata_alg(query->tsig_rr);
+	dnssec_tsig_algorithm_t alg = knot_tsig_rdata_alg(query->tsig_rr);
 	if (alg == DNSSEC_TSIG_UNKNOWN) {
 		log_info("TSIG, unsupported algorithm, query NOTAUTH");
 		/*! \todo [TSIG] It is unclear from RFC if I
@@ -727,7 +728,7 @@ static int zones_verify_tsig_query(const knot_pkt_t *query,
 		 *               or some other error.
 		 */
 		*rcode = KNOT_RCODE_NOTAUTH;
-		*tsig_rcode = KNOT_RCODE_BADKEY;
+		*tsig_rcode = KNOT_TSIG_ERR_BADKEY;
 		return KNOT_TSIG_EBADKEY;
 	}
 
@@ -741,7 +742,7 @@ static int zones_verify_tsig_query(const knot_pkt_t *query,
 	if (!(key && kname && knot_dname_cmp(key->name, kname) == 0 &&
 	      key->algorithm == alg)) {
 		*rcode = KNOT_RCODE_NOTAUTH;
-		*tsig_rcode = KNOT_RCODE_BADKEY;
+		*tsig_rcode = KNOT_TSIG_ERR_BADKEY;
 		return KNOT_TSIG_EBADKEY;
 	}
 
@@ -758,7 +759,7 @@ static int zones_verify_tsig_query(const knot_pkt_t *query,
 	//memset(digest, 0 , digest_max_size);
 
 	//const uint8_t* mac = tsig_rdata_mac(tsig_rr);
-	size_t mac_len = tsig_rdata_mac_length(query->tsig_rr);
+	size_t mac_len = knot_tsig_rdata_mac_length(query->tsig_rr);
 
 	int ret = KNOT_EOK;
 
@@ -780,17 +781,17 @@ static int zones_verify_tsig_query(const knot_pkt_t *query,
 			*rcode = KNOT_RCODE_NOERROR;
 			break;
 		case KNOT_TSIG_EBADKEY:
-			*tsig_rcode = KNOT_RCODE_BADKEY;
+			*tsig_rcode = KNOT_TSIG_ERR_BADKEY;
 			*rcode = KNOT_RCODE_NOTAUTH;
 			break;
 		case KNOT_TSIG_EBADSIG:
-			*tsig_rcode = KNOT_RCODE_BADSIG;
+			*tsig_rcode = KNOT_TSIG_ERR_BADSIG;
 			*rcode = KNOT_RCODE_NOTAUTH;
 			break;
 		case KNOT_TSIG_EBADTIME:
-			*tsig_rcode = KNOT_RCODE_BADTIME;
+			*tsig_rcode = KNOT_TSIG_ERR_BADTIME;
 			// store the time signed from the query
-			*tsig_prev_time_signed = tsig_rdata_time_signed(query->tsig_rr);
+			*tsig_prev_time_signed = knot_tsig_rdata_time_signed(query->tsig_rr);
 			*rcode = KNOT_RCODE_NOTAUTH;
 			break;
 		case KNOT_EMALF:
@@ -896,7 +897,7 @@ knot_pkt_t* remote_query(const char *query, const knot_tsig_key_t *key)
 	}
 
 	knot_wire_set_id(pkt->wire, dnssec_random_uint16_t());
-	knot_pkt_reserve(pkt, tsig_wire_maxsize(key));
+	knot_pkt_reserve(pkt, knot_tsig_wire_maxsize(key));
 
 	/* Question section. */
 	char *qname = strcdup(query, KNOT_CTL_REALM_EXT);

@@ -30,7 +30,8 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#include "libknot/mempattern.h"
+#include "common/mempattern.h"
+
 #include "libknot/dname.h"
 #include "libknot/rdataset.h"
 
@@ -50,6 +51,7 @@ struct knot_rrset {
 
 typedef struct knot_rrset knot_rrset_t;
 
+/*! \todo Documentation */
 typedef enum {
 	KNOT_RRSET_COMPARE_PTR,
 	KNOT_RRSET_COMPARE_HEADER,
@@ -173,5 +175,22 @@ bool knot_rrset_empty(const knot_rrset_t *rrset);
  * \retval TTL of the RRSet (precisely of its first RR).
  */
 uint32_t knot_rrset_ttl(const knot_rrset_t *rrset);
+
+/*!
+ * \brief Convert one RR into canonical format.
+ *
+ * Owner is always converted to lowercase. RDATA domain names are converted only
+ * for types listed in RFC 4034, Section 6.2, except for NSEC (updated by
+ * RFC 6840, Section 5.1) and A6 (not supported).
+ *
+ * \note If RRSet with more RRs is given to this function, only the first RR
+ *       will be converted.
+ * \warning This function expects either empty RDATA or full, not malformed
+ *          RDATA. If malformed RRSet is passed to this function, memory errors
+ *          may occur.
+ *
+ * \param rrset  RR to convert.
+ */
+int knot_rrset_rr_to_canonical(knot_rrset_t *rrset);
 
 /*! @} */

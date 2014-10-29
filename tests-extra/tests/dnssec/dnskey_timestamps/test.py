@@ -121,7 +121,7 @@ check_zone(knot, False, True, "not published, active")
 check_log("Planned events")
 
 # key about to be published
-event_in = 5
+event_in = 7
 key_settime(key_file, Publish=date_offset(event_in), Activate=date_future, Inactive=None, Delete=None)
 knot.reload()
 t.sleep(WAIT_SIGN)
