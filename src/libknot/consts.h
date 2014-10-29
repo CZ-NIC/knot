@@ -26,9 +26,6 @@
 
 #pragma once
 
-#include <stdbool.h>
-#include <stdint.h>
-
 #include "libknot/util/utils.h"
 
 /*!
@@ -183,24 +180,5 @@ extern knot_lookup_table_t knot_tkey_err_names[];
  * \brief DNSSEC algorithm names.
  */
 extern knot_lookup_table_t knot_dnssec_alg_names[];
-
-/*!
- * \brief Returns length of TSIG digest for given algorithm.
- *
- * \param algorithm Algorithm code to be used.
- *
- * \retval Digest length for given algorithm.
- */
-size_t knot_ds_digest_length(const uint8_t algorithm);
-
-/*!
- * \brief Check if algorithm is supported for zone signing.
- *
- * \param algorithm      Algorithm identification.
- * \param nsec3_enabled  NSEC3 enabled for signed zone.
- *
- * \return Given algorithm is allowed for zone signing.
- */
-bool knot_dnssec_algorithm_is_zonesign(uint8_t algorithm, bool nsec3_enabled);
 
 /*! @} */
