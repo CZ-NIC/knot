@@ -71,7 +71,7 @@ static int write_unsafe(wire_ctx_t *dest, char chr)
 	}
 
 	char buffer[5] = { 0 };
-	int written = snprintf(buffer, sizeof(buffer), "\\x%02x", chr);
+	int written = snprintf(buffer, sizeof(buffer), "\\x%02x", (unsigned char)chr);
 	if (written != 4) {
 		return DNSSEC_ERROR;
 	}
@@ -113,7 +113,7 @@ static int read_unsafe(wire_ctx_t *dest, wire_ctx_t *src)
 		return DNSSEC_MALFORMED_DATA;
 	}
 
-	assert(SCHAR_MIN < value && value <= SCHAR_MAX);
+	assert(0 < value && value <= UINT8_MAX);
 	wire_write_u8(dest, value);
 
 	return DNSSEC_EOK;
