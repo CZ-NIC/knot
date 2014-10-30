@@ -29,7 +29,7 @@ static void test_function(int (*function)(const char *, char **),
 	int result = function(input, &output);
 
 	ok((result == DNSSEC_EOK && strcmp(output, expected) == 0) ||
-	   (result != DNSSEC_EOK && output == NULL),
+	   (result != DNSSEC_EOK && output == NULL && expected == NULL),
 	   "%s '%s'", function_name, input);
 
 	free(output);
