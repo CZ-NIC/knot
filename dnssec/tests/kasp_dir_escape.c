@@ -85,5 +85,15 @@ int main(int argc, char *argv[])
 	test_unescape("a\\x00b", NULL);
 	test_unescape("a\\xgg", NULL);
 
+	// unicode escape
+
+	test_escape("křemílek.cz", "k\\xc5\\x99em\\xc3\\xadlek.cz");
+	test_escape("www.vochomůrka", "www.vochom\\xc5\\xafrka");
+
+	// unicode unescape
+
+	test_unescape("br\\xc4\\x8d\\xc3\\xa1ln\\xc3\\xadk.eu", "brčálník.eu");
+	test_unescape("\\xc4\\x8dty\\xc5\\x99i.\\xc5\\xa1neci", "čtyři.šneci");
+
 	return 0;
 }
