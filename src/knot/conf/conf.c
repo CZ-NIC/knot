@@ -651,7 +651,7 @@ void conf_truncate(conf_t *conf, int unload_hooks)
 
 	// Free logs
 	WALK_LIST_DELSAFE(n, nxt, conf->logs) {
-		conf_free_log((conf_log_t*)n);
+		log_free((conf_log_t*)n);
 	}
 	init_list(&conf->logs);
 
@@ -980,21 +980,4 @@ void conf_free_group(conf_group_t *group)
 
 	free(group->name);
 	free(group);
-}
-
-void conf_free_log(conf_log_t *log)
-{
-	if (!log) {
-		return;
-	}
-
-	free(log->file);
-
-	/* Free loglevel mapping. */
-	node_t *n = NULL, *nxt = NULL;
-	WALK_LIST_DELSAFE(n, nxt, log->map) {
-		free((conf_log_map_t*)n);
-	}
-
-	free(log);
 }

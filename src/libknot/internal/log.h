@@ -37,6 +37,9 @@
 #include <stdint.h>
 #include <stdarg.h>
 #include <stdbool.h>
+#include <assert.h>
+
+#include "libknot/internal/lists.h"
 
 #include "libknot/dname.h"
 
@@ -59,6 +62,25 @@ typedef enum {
 	LOG_ZONE   = 1, /*!< Zone manipulation module. */
 	LOG_ANY    = 7  /*!< Any module. */
 } logsrc_t;
+
+/*!
+ * \brief Mapping of loglevels to message sources.
+ */
+typedef struct conf_log_map_t {
+	node_t n;
+	int source; /*!< Log message source mask. */
+	int prios;  /*!< Log priorities mask. */
+} conf_log_map_t;
+
+/*!
+ * \brief Log facility descriptor.
+ */
+typedef struct conf_log_t {
+	node_t n;
+	logtype_t type;  /*!< Type of the log (SYSLOG/STDERR/FILE). */
+	char *file;      /*!< Filename in case of LOG_FILE, else NULL. */
+	list_t map;      /*!< Log levels mapping. */
+} conf_log_t;
 
 /*! \brief Format for timestamps in log files. */
 #define KNOT_LOG_TIME_FORMAT "%Y-%m-%dT%H:%M:%S"
@@ -195,6 +217,9 @@ int log_update_privileges(int uid, int gid);
  * \retval KNOT_EINVAL on invalid parameters.
  * \retval KNOT_ENOMEM out of memory error.
  */
-int log_reconfigure(const struct conf_t *conf, void *data);
+int log_reconfigure(const list_t *logs, void *data);
+
+/*! \brief Free log config. */
+void log_free(conf_log_t *log);
 
 /*! @} */

@@ -20,6 +20,8 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <sys/time.h>
+#include <time.h>			// strftime
+#include <urcu.h>
 
 #ifdef ENABLE_SYSTEMD
 #define SD_JOURNAL_SUPPRESS_LOCATION 1
@@ -30,7 +32,6 @@
 #include "libknot/internal/lists.h"
 #include "libknot/internal/strlcpy.h"
 #include "libknot/internal/macros.h"
-#include "knot/conf/conf.h"
 #include "libknot/errcode.h"
 
 /* Single log message buffer length (one line). */
@@ -459,13 +460,13 @@ int log_update_privileges(int uid, int gid)
 	return KNOT_EOK;
 }
 
-int log_reconfigure(const struct conf_t *conf, void *data)
+int log_reconfigure(const list_t *logs, void *data)
 {
 	// Data not used
 	UNUSED(data);
 
 	// Use defaults if no 'log' section is configured.
-	if (EMPTY_LIST(conf->logs)) {
+	if (EMPTY_LIST(*logs)) {
 		log_close();
 		log_init();
 		return KNOT_EOK;
@@ -474,7 +475,7 @@ int log_reconfigure(const struct conf_t *conf, void *data)
 	// Find maximum log facility id
 	unsigned files = 0;
 	node_t *list_node = NULL;
-	WALK_LIST(list_node, conf->logs) {
+	WALK_LIST(list_node, *logs) {
 		conf_log_t* log = (conf_log_t*)list_node;
 		if (log->type == LOGT_FILE) {
 			++files;
@@ -489,7 +490,7 @@ int log_reconfigure(const struct conf_t *conf, void *data)
 
 	// Setup logs
 	list_node = NULL;
-	WALK_LIST(list_node, conf->logs) {
+	WALK_LIST(list_node, *logs) {
 
 		// Calculate offset
 		conf_log_t* facility_conf = (conf_log_t*)list_node;
@@ -516,4 +517,21 @@ int log_reconfigure(const struct conf_t *conf, void *data)
 	sink_publish(log);
 
 	return KNOT_EOK;
+}
+
+void log_free(conf_log_t *log)
+{
+	if (!log) {
+		return;
+	}
+
+	free(log->file);
+
+	/* Free loglevel mapping. */
+	node_t *n = NULL, *nxt = NULL;
+	WALK_LIST_DELSAFE(n, nxt, log->map) {
+		free((conf_log_map_t*)n);
+	}
+
+	free(log);
 }

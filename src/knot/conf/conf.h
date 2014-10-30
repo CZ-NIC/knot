@@ -149,25 +149,6 @@ typedef enum conf_serial_policy_t {
 } conf_serial_policy_t;
 
 /*!
- * \brief Mapping of loglevels to message sources.
- */
-typedef struct conf_log_map_t {
-	node_t n;
-	int source; /*!< Log message source mask. */
-	int prios;  /*!< Log priorities mask. */
-} conf_log_map_t;
-
-/*!
- * \brief Log facility descriptor.
- */
-typedef struct conf_log_t {
-	node_t n;
-	logtype_t type;  /*!< Type of the log (SYSLOG/STDERR/FILE). */
-	char *file;      /*!< Filename in case of LOG_FILE, else NULL. */
-	list_t map;      /*!< Log levels mapping. */
-} conf_log_t;
-
-/*!
  * \brief Configuration sections.
  */
 typedef enum conf_section_t {
@@ -422,7 +403,10 @@ void conf_free_remote(conf_remote_t *r);
 /*! \brief Free group config. */
 void conf_free_group(conf_group_t *group);
 
-/*! \brief Free log config. */
-void conf_free_log(conf_log_t *log);
+/*! \brief Log reconfiguration wrapper. */
+static inline int conf_log_reconfigure(const conf_t *conf, void *data)
+{
+	return log_reconfigure(&conf->logs, data);
+}
 
 /*! @} */
