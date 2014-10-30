@@ -15,6 +15,7 @@
 */
 
 #include "libknot/consts.h"
+
 #include "libknot/internal/macros.h"
 
 _public_

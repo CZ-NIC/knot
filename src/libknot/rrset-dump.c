@@ -31,11 +31,12 @@
 #include "libknot/internal/base64.h"		// base64
 #include "libknot/internal/base32hex.h"		// base32hex
 #include "libknot/internal/macros.h"
+#include "libknot/internal/utils.h"		// knot_wire_read_u16
+
 #include "libknot/errcode.h"		// KNOT_EOK
 #include "libknot/descriptor.h"		// KNOT_RRTYPE
 #include "libknot/dnssec/key.h"		// knot_keytag
 #include "libknot/consts.h"		// knot_rcode_names
-#include "libknot/internal/utils.h"		// knot_wire_read_u16
 
 #define TAB_WIDTH		8
 #define BLOCK_WIDTH		40

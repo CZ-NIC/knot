@@ -26,6 +26,7 @@
 #include "libknot/internal/debug.h"
 #include "libknot/internal/log.h"
 #include "libknot/internal/macros.h"
+
 #include "libknot/errcode.h"
 #include "libknot/descriptor.h"
 #include "libknot/rrtype/tsig.h"

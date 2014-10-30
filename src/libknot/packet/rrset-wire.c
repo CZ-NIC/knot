@@ -23,6 +23,8 @@
 
 #include "libknot/packet/rrset-wire.h"
 
+#include "libknot/internal/macros.h"
+
 #include "libknot/consts.h"
 #include "libknot/descriptor.h"
 #include "libknot/dname.h"
@@ -30,7 +32,6 @@
 #include "libknot/packet/wire.h"
 #include "libknot/rrset.h"
 #include "libknot/rrtype/naptr.h"
-#include "libknot/internal/macros.h"
 
 /*!
  * \brief Get maximal size of a domain name in a wire with given capacity.

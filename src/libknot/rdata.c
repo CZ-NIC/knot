@@ -22,6 +22,7 @@
 #include "libknot/rdata.h"
 
 #include "libknot/internal/macros.h"
+
 #include "libknot/errcode.h"
 
 #ifndef STRICT_ALIGNMENT
