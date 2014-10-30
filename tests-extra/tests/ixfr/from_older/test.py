@@ -18,13 +18,17 @@ serial_init = knot.zones_wait(zone)
 
 resp = knot.dig("example.com", "IXFR", serial=serial_init["example.com."]+1)
 
-count = 0
+msg_count = 0;
+rec_count = 0;
+
 for msg in resp.resp:
-        count += len(msg.answer)
+	msg_count += 1
+	rec_count += len(msg.answer)
 
-compare(count, 1, "Only one RR in Answer section")
+compare(msg_count, 1, "Only one message")
+compare(rec_count, 1, "Only one RR in Answer section")
 
-#TODO: Can I somehow check that the only RR is SOA?
+#TODO: Can I somehow check that the only RR in the transfer is SOA?
 
 t.end()
 
