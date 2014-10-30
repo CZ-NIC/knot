@@ -18,6 +18,7 @@
 
 #include "knot/zone/contents.h"
 #include "libknot/internal/debug.h"
+#include "libknot/internal/macros.h"
 #include "libknot/rrset.h"
 #include "libknot/internal/base32hex.h"
 #include "libknot/descriptor.h"
@@ -103,7 +104,7 @@ static int zone_contents_check_node(
 static int zone_contents_destroy_node_rrsets_from_tree(
 	zone_node_t **tnode, void *data)
 {
-	KNOT_UNUSED(data);
+	UNUSED(data);
 	assert(tnode != NULL);
 	if (*tnode != NULL) {
 		node_free_rrsets(*tnode, NULL);
@@ -153,7 +154,6 @@ static int discover_additionals(struct rr_data *rr_data,
 	}
 	rr_data->additional = malloc(rdcount * sizeof(zone_node_t *));
 	if (rr_data->additional == NULL) {
-		KNOT_ERR_ALLOC_FAILED;
 		return KNOT_ENOMEM;
 	}
 
@@ -732,6 +732,10 @@ static bool rrset_is_nsec3rel(const knot_rrset_t *rr)
 int zone_contents_add_rr(zone_contents_t *z, const knot_rrset_t *rr,
                          zone_node_t **n)
 {
+	if (z == NULL || rr == NULL) {
+		return KNOT_EINVAL;
+	}
+
 	return insert_rr(z, rr, n, rrset_is_nsec3rel(rr));
 }
 
@@ -1251,7 +1255,6 @@ int zone_contents_shallow_copy(const zone_contents_t *from, zone_contents_t **to
 
 	zone_contents_t *contents = calloc(1, sizeof(zone_contents_t));
 	if (contents == NULL) {
-		KNOT_ERR_ALLOC_FAILED;
 		return KNOT_ENOMEM;
 	}
 

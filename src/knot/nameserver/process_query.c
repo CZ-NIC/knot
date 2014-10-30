@@ -16,6 +16,7 @@
 #include "libknot/tsig-op.h"
 #include "libknot/descriptor.h"
 #include "libknot/internal/debug.h"
+#include "libknot/internal/macros.h"
 
 /*! \brief Accessor to query-specific data. */
 #define QUERY_DATA(ctx) ((struct query_data *)(ctx)->data)
@@ -39,7 +40,7 @@ static int process_query_begin(knot_layer_t *ctx, void *module_param)
 	/* Initialize context. */
 	assert(ctx);
 	ctx->type = NS_PROC_QUERY_ID;
-	ctx->data = knot_mm_alloc(ctx->mm, sizeof(struct query_data));
+	ctx->data = mm_alloc(ctx->mm, sizeof(struct query_data));
 
 	/* Initialize persistent data. */
 	query_data_init(ctx, module_param);
@@ -74,7 +75,7 @@ static int process_query_reset(knot_layer_t *ctx)
 static int process_query_finish(knot_layer_t *ctx)
 {
 	process_query_reset(ctx);
-	knot_mm_free(ctx->mm, ctx->data);
+	mm_free(ctx->mm, ctx->data);
 	ctx->data = NULL;
 
 	return KNOT_NS_PROC_NOOP;
@@ -322,8 +323,8 @@ static int prepare_answer(const knot_pkt_t *query, knot_pkt_t *resp, knot_layer_
 		if (knot_pkt_has_edns(query)) {
 			uint16_t client = knot_edns_get_payload(query->opt_rr);
 			uint16_t server = conf()->max_udp_payload;
-			uint16_t transfer = KNOT_MIN(client, server);
-			resp->max_size = KNOT_MAX(resp->max_size, transfer);
+			uint16_t transfer = MIN(client, server);
+			resp->max_size = MAX(resp->max_size, transfer);
 		}
 	} else {
 		resp->max_size = KNOT_WIRE_MAX_PKTSIZE;

@@ -25,8 +25,8 @@
 
 #include "libknot/internal/debug.h"
 #include "libknot/internal/log.h"
-
-#include "libknot/common.h"
+#include "libknot/internal/macros.h"
+#include "libknot/errcode.h"
 #include "libknot/descriptor.h"
 #include "libknot/rrtype/tsig.h"
 #include "libknot/packet/wire.h"
@@ -318,7 +318,6 @@ static int create_sign_wire(const uint8_t *msg, size_t msg_len,
 			knot_tsig_rdata_tsig_variables_length(tmp_tsig));
 	uint8_t *wire = malloc(wire_len);
 	if (!wire) {
-		KNOT_ERR_ALLOC_FAILED;
 		return KNOT_ENOMEM;
 	}
 
@@ -392,7 +391,6 @@ static int create_sign_wire_next(const uint8_t *msg, size_t msg_len,
 			knot_tsig_rdata_tsig_timers_length() + 2);
 	uint8_t *wire = malloc(wire_len);
 	if (!wire) {
-		KNOT_ERR_ALLOC_FAILED;
 		return KNOT_ENOMEM;
 	}
 
@@ -508,7 +506,7 @@ int knot_tsig_sign(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
 	/* Write RRSet to wire */
 
 	ret = knot_rrset_to_wire(tmp_tsig, msg + *msg_len,
-	                         msg_max_len - *msg_len, NULL, 0);
+	                         msg_max_len - *msg_len, NULL);
 	if (ret < 0) {
 		dbg_tsig("TSIG: rrset_to_wire = %s\n", knot_strerror(ret));
 		*digest_len = 0;
@@ -563,7 +561,6 @@ int knot_tsig_sign_next(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
 	                  + KNOT_TSIG_TIMERS_LENGTH + 2;
 	uint8_t *wire = malloc(wire_len);
 	if (!wire) {
-		KNOT_ERR_ALLOC_FAILED;
 		knot_rrset_free(&tmp_tsig, NULL);
 		return KNOT_ENOMEM;
 	}
@@ -617,7 +614,7 @@ int knot_tsig_sign_next(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
 	              msg_max_len, *msg_len);
 
 	ret = knot_rrset_to_wire(tmp_tsig, msg + *msg_len,
-	                         msg_max_len - *msg_len, NULL, 0);
+	                         msg_max_len - *msg_len, NULL);
 	if (ret < 0) {
 		knot_rrset_free(&tmp_tsig, NULL);
 		*digest_len = 0;
@@ -679,7 +676,6 @@ static int check_digest(const knot_rrset_t *tsig_rr,
 
 	uint8_t *wire_to_sign = malloc(sizeof(uint8_t) * size);
 	if (!wire_to_sign) {
-		KNOT_ERR_ALLOC_FAILED;
 		return KNOT_ENOMEM;
 	}
 
@@ -829,7 +825,7 @@ int knot_tsig_append(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
 {
 	/* Write RRSet to wire */
 	int ret = knot_rrset_to_wire(tsig_rr, msg + *msg_len,
-	                             msg_max_len - *msg_len, NULL, 0);
+	                             msg_max_len - *msg_len, NULL);
 	if (ret < 0) {
 		dbg_tsig("TSIG: rrset_to_wire = %s\n", knot_strerror(ret));
 		return ret;

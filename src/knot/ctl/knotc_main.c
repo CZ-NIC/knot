@@ -27,6 +27,7 @@
 
 #include "knot/knot.h"
 #include "libknot/internal/mem.h"
+#include "libknot/internal/macros.h"
 #include "libknot/descriptor.h"
 #include "knot/ctl/process.h"
 #include "knot/ctl/remote.h"
@@ -80,7 +81,7 @@ knot_cmd_t knot_cmd_tbl[] = {
 	{&cmd_stop,       0, "stop",       "",       "\t\tStop server."},
 	{&cmd_reload,     0, "reload",     "<zone>", "\tReload configuration and changed zones."},
 	{&cmd_refresh,    0, "refresh",    "<zone>", "\tRefresh slave zone (all if not specified). Flag '-f' forces retransfer."},
-	{&cmd_flush,      0, "flush",      "<zone>", "\t\tFlush journal and update zone file (all if not specified)."},
+	{&cmd_flush,      0, "flush",      "<zone>", "\tFlush journal and update zone file (all if not specified)."},
 	{&cmd_status,     0, "status",     "",       "\tCheck if server is running."},
 	{&cmd_zonestatus, 0, "zonestatus", "",       "\tShow status of configured zones."},
 	{&cmd_checkconf,  1, "checkconf",  "",       "\tCheck current server configuration."},
@@ -585,25 +586,25 @@ exit:
 
 static int cmd_stop(int argc, char *argv[], unsigned flags)
 {
-	KNOT_UNUSED(argc);
-	KNOT_UNUSED(argv);
-	KNOT_UNUSED(flags);
+	UNUSED(argc);
+	UNUSED(argv);
+	UNUSED(flags);
 
 	return cmd_remote("stop", KNOT_RRTYPE_TXT, 0, NULL);
 }
 
 static int cmd_reload(int argc, char *argv[], unsigned flags)
 {
-	KNOT_UNUSED(argc);
-	KNOT_UNUSED(argv);
-	KNOT_UNUSED(flags);
+	UNUSED(argc);
+	UNUSED(argv);
+	UNUSED(flags);
 
 	return cmd_remote("reload", KNOT_RRTYPE_TXT, 0, NULL);
 }
 
 static int cmd_refresh(int argc, char *argv[], unsigned flags)
 {
-	KNOT_UNUSED(flags);
+	UNUSED(flags);
 
 	if (flags & F_FORCE) {
 		return cmd_remote("retransfer", KNOT_RRTYPE_NS, argc, argv);
@@ -614,25 +615,25 @@ static int cmd_refresh(int argc, char *argv[], unsigned flags)
 
 static int cmd_flush(int argc, char *argv[], unsigned flags)
 {
-	KNOT_UNUSED(flags);
+	UNUSED(flags);
 
 	return cmd_remote("flush", KNOT_RRTYPE_NS, argc, argv);
 }
 
 static int cmd_status(int argc, char *argv[], unsigned flags)
 {
-	KNOT_UNUSED(argc);
-	KNOT_UNUSED(argv);
-	KNOT_UNUSED(flags);
+	UNUSED(argc);
+	UNUSED(argv);
+	UNUSED(flags);
 
 	return cmd_remote("status", KNOT_RRTYPE_TXT, 0, NULL);
 }
 
 static int cmd_zonestatus(int argc, char *argv[], unsigned flags)
 {
-	KNOT_UNUSED(argc);
-	KNOT_UNUSED(argv);
-	KNOT_UNUSED(flags);
+	UNUSED(argc);
+	UNUSED(argv);
+	UNUSED(flags);
 
 	return cmd_remote("zonestatus", KNOT_RRTYPE_TXT, 0, NULL);
 }
@@ -644,9 +645,9 @@ static int cmd_signzone(int argc, char *argv[], unsigned flags)
 
 static int cmd_checkconf(int argc, char *argv[], unsigned flags)
 {
-	KNOT_UNUSED(argc);
-	KNOT_UNUSED(argv);
-	KNOT_UNUSED(flags);
+	UNUSED(argc);
+	UNUSED(argv);
+	UNUSED(flags);
 
 	log_info("configuration is valid");
 
@@ -684,7 +685,7 @@ static bool fetch_zone(int argc, char *argv[], conf_zone_t *zone)
 
 static int cmd_checkzone(int argc, char *argv[], unsigned flags)
 {
-	KNOT_UNUSED(flags);
+	UNUSED(flags);
 
 	/* Zone checking */
 	int rc = 0;
@@ -723,7 +724,7 @@ static int cmd_checkzone(int argc, char *argv[], unsigned flags)
 
 static int cmd_memstats(int argc, char *argv[], unsigned flags)
 {
-	KNOT_UNUSED(flags);
+	UNUSED(flags);
 
 	/* Zone checking */
 	double total_size = 0;
@@ -747,7 +748,7 @@ static int cmd_memstats(int argc, char *argv[], unsigned flags)
 
 		/* Init malloc wrapper for trie size estimation. */
 		size_t malloc_size = 0;
-		knot_mm_ctx_t mem_ctx = { .ctx = &malloc_size,
+		mm_ctx_t mem_ctx = { .ctx = &malloc_size,
 		                     .alloc = estimator_malloc,
 		                     .free = estimator_free };
 

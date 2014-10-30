@@ -34,7 +34,7 @@ enum {
  *  Requestor holds a FIFO of pending queries.
  */
 struct knot_requestor {
-	knot_mm_ctx_t *mm;            /*!< Memory context. */
+	mm_ctx_t *mm;            /*!< Memory context. */
 	list_t pending;               /*!< Pending requests (FIFO). */
 	struct knot_overlay overlay;  /*!< Response processing overlay. */
 };
@@ -61,7 +61,7 @@ struct knot_request {
  *
  * \return Prepared request or NULL in case of error.
  */
-struct knot_request *knot_request_make(knot_mm_ctx_t *mm,
+struct knot_request *knot_request_make(mm_ctx_t *mm,
                                        const struct sockaddr *dst,
                                        const struct sockaddr *src,
                                        knot_pkt_t *query,
@@ -75,7 +75,7 @@ struct knot_request *knot_request_make(knot_mm_ctx_t *mm,
  *
  * \return Prepared request or NULL in case of error.
  */
-int knot_request_free(knot_mm_ctx_t *mm, struct knot_request *request);
+int knot_request_free(mm_ctx_t *mm, struct knot_request *request);
 
 /*!
  * \brief Initialize requestor structure.
@@ -83,7 +83,7 @@ int knot_request_free(knot_mm_ctx_t *mm, struct knot_request *request);
  * \param requestor Requestor instance.
  * \param mm        Memory context.
  */
-void knot_requestor_init(struct knot_requestor *requestor, knot_mm_ctx_t *mm);
+void knot_requestor_init(struct knot_requestor *requestor, mm_ctx_t *mm);
 
 /*!
  * \brief Clear the requestor structure and close pending queries.
@@ -140,4 +140,5 @@ int knot_requestor_dequeue(struct knot_requestor *requestor);
  *
  * \return KNOT_EOK or error
  */
-int knot_requestor_exec(struct knot_requestor *requestor, struct timeval *timeout);
+int knot_requestor_exec(struct knot_requestor *requestor,
+                        struct timeval *timeout);

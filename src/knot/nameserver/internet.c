@@ -16,7 +16,6 @@
 
 #include "libknot/internal/debug.h"
 #include "libknot/descriptor.h"
-#include "libknot/common.h"
 #include "libknot/rrtype/rdname.h"
 #include "libknot/rrtype/soa.h"
 #include "libknot/dnssec/rrset-sign.h"
@@ -49,8 +48,8 @@ static int wildcard_visit(struct query_data *qdata, const zone_node_t *node, con
 		return KNOT_EOK;
 	}
 
-	knot_mm_ctx_t *mm = qdata->mm;
-	struct wildcard_hit *item = knot_mm_alloc(mm, sizeof(struct wildcard_hit));
+	mm_ctx_t *mm = qdata->mm;
+	struct wildcard_hit *item = mm_alloc(mm, sizeof(struct wildcard_hit));
 	item->node = node;
 	item->sname = sname;
 	add_tail(&qdata->wildcards, (node_t *)item);
@@ -61,7 +60,7 @@ static int wildcard_visit(struct query_data *qdata, const zone_node_t *node, con
 static int dname_cname_synth(const knot_rrset_t *dname_rr,
                              const knot_dname_t *qname,
                              knot_rrset_t *cname_rrset,
-                             knot_mm_ctx_t *mm)
+                             mm_ctx_t *mm)
 {
 	if (cname_rrset == NULL) {
 		return KNOT_EINVAL;
@@ -143,7 +142,7 @@ static int put_rrsig(const knot_dname_t *sig_owner, uint16_t type,
 	}
 
 	/* Create rrsig info structure. */
-	struct rrsig_info *info = knot_mm_alloc(qdata->mm, sizeof(struct rrsig_info));
+	struct rrsig_info *info = mm_alloc(qdata->mm, sizeof(struct rrsig_info));
 	if (info == NULL) {
 		knot_rdataset_clear(&synth_rrs, qdata->mm);
 		return KNOT_ENOMEM;
@@ -152,7 +151,7 @@ static int put_rrsig(const knot_dname_t *sig_owner, uint16_t type,
 	/* Store RRSIG into info structure. */
 	knot_dname_t *owner_copy = knot_dname_copy(sig_owner, qdata->mm);
 	if (owner_copy == NULL) {
-		knot_mm_free(qdata->mm, info);
+		mm_free(qdata->mm, info);
 		knot_rdataset_clear(&synth_rrs, qdata->mm);
 		return KNOT_ENOMEM;
 	}
@@ -864,7 +863,7 @@ int internet_query_plan(struct query_plan *plan)
 /*! \brief Process answer to SOA query. */
 static int process_soa_answer(knot_pkt_t *pkt, struct answer_data *data)
 {
-	zone_t *zone  = data->param->zone;
+	zone_t *zone = data->param->zone;
 
 	/* Expect SOA in answer section. */
 	const knot_pktsection_t *answer = knot_pkt_section(pkt, KNOT_ANSWER);
@@ -884,6 +883,7 @@ static int process_soa_answer(knot_pkt_t *pkt, struct answer_data *data)
 	uint32_t their_serial =	knot_soa_serial(&answer->rr[0].rrs);
 	if (knot_serial_compare(our_serial, their_serial) >= 0) {
 		ANSWER_LOG(LOG_INFO, data, "refresh, outgoing", "zone is up-to-date");
+		zone_events_cancel(zone, ZONE_EVENT_EXPIRE);
 		return KNOT_NS_PROC_DONE; /* Our zone is up to date. */
 	}
 

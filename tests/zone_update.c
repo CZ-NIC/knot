@@ -20,6 +20,7 @@
 #include "knot/updates/zone-update.h"
 #include "zscanner/scanner.h"
 #include "libknot/internal/getline.h"
+#include "libknot/internal/macros.h"
 
 static const char *zone_str =
 "test. 3600 IN SOA a.ns.test. hostmaster.nic.cz. 1406641065 900 300 604800 900 \n"
@@ -51,7 +52,7 @@ static void process_rr(zs_scanner_t *scanner)
 	zone_node_t *n = NULL;
 	ret = zone_contents_add_rr(zone, rr, &n);
 	knot_rrset_free(&rr, NULL);
-	KNOT_UNUSED(n);
+	UNUSED(n);
 	assert(ret == KNOT_EOK);
 }
 

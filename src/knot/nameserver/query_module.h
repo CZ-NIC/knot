@@ -77,7 +77,7 @@ struct query_module {
 	node_t node;
 	void *ctx;
 	char *param;
-	knot_mm_ctx_t *mm;
+	mm_ctx_t *mm;
 	struct conf_t *config;
 	qmodule_load_t load;
 	qmodule_unload_t unload;
@@ -95,12 +95,12 @@ struct query_step {
  *  assembly phase, for example 'before processing', 'answer section' and so on.
  */
 struct query_plan {
-	knot_mm_ctx_t *mm;
+	mm_ctx_t *mm;
 	list_t stage[QUERY_PLAN_STAGES];
 };
 
 /*! \brief Create an empty query plan. */
-struct query_plan *query_plan_create(knot_mm_ctx_t *mm);
+struct query_plan *query_plan_create(mm_ctx_t *mm);
 
 /*! \brief Free query plan and all planned steps. */
 void query_plan_free(struct query_plan *plan);
@@ -113,7 +113,7 @@ int query_plan_step(struct query_plan *plan, int stage, qmodule_process_t proces
  * \note Module 'load' hook is NOT called and left upon a caller to decide.
  */
 struct query_module *query_module_open(struct conf_t *config, const char *name,
-                                       const char *param, knot_mm_ctx_t *mm);
+                                       const char *param, mm_ctx_t *mm);
 
 /*!
  * \brief Close query module.

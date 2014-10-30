@@ -9,10 +9,13 @@ Knot DNS Installation
 Required build environment
 ==========================
 
-GCC at least 4.1 is strictly required for atomic built-ins, but 4.2 or
-newer is recommended.  Another requirement is ``_GNU_SOURCE`` support,
-otherwise it adapts to the compiler available features.  LLVM clang
-works, but it is not officially supported.
+GCC at least 4.1 is strictly required for atomic built-ins, but the latest
+available version is recommended. Another requirement is ``_GNU_SOURCE``
+support, otherwise it adapts to the compiler available features.
+
+LLVM clang compiler can be used as well. However, the compilation with
+enabled optimizations will take a long time, unless the ``--disable-fastparser``
+configure option is given.
 
 Knot DNS build system relies on these standard tools:
 
@@ -33,10 +36,19 @@ Knot DNS requires few libraries to be compiled:
 * zlib
 * Userspace RCU, at least 0.5.4
 * libcap-ng, at least 0.6.4 (optional library)
+* lmdb (optional library)
+* libsystemd (optional library)
 
-If libcap-ng library is available, Knot DNS will take advantage of the
+If the libcap-ng library is available, Knot DNS will take advantage of the
 POSIX 1003.1e capabilites(7) by sandboxing the exposed threads.  Most
 rights are stripped from the exposed threads for security reasons.
+
+If the LMDB library is available, the server will be able to store timers
+for slave zones in file-backed storage and the timers will persist across
+server restarts.
+
+If the libsystemd library is available, the server will use systemd's startup
+notifications mechanism and journald for logging.
 
 You can probably find OpenSSL and zlib libraries already included in
 your system or distribution.  If not, zlib resides at http://zlib.net,

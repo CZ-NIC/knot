@@ -19,9 +19,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "libknot/internal/macros.h"
+
+#include "libknot/errcode.h"
 #include "libknot/rdataset.h"
 
-#include "libknot/common.h"
 
 static knot_rdata_t *rr_seek(knot_rdata_t *d, size_t pos)
 {
@@ -52,7 +54,7 @@ static int find_rr_pos(const knot_rdataset_t *search_in,
 }
 
 static int add_rr_at(knot_rdataset_t *rrs, const knot_rdata_t *rr, size_t pos,
-                     knot_mm_ctx_t *mm)
+                     mm_ctx_t *mm)
 {
 	if (rrs == NULL || pos > rrs->rr_count) {
 		return KNOT_EINVAL;
@@ -64,13 +66,12 @@ static int add_rr_at(knot_rdataset_t *rrs, const knot_rdata_t *rr, size_t pos,
 	size_t total_size = knot_rdataset_size(rrs);
 
 	// Realloc data.
-	void *tmp = knot_mm_realloc(mm, rrs->data,
+	void *tmp = mm_realloc(mm, rrs->data,
 	                       total_size + knot_rdata_array_size(size),
 	                       total_size);
 	if (tmp) {
 		rrs->data = tmp;
 	} else {
-		KNOT_ERR_ALLOC_FAILED;
 		return KNOT_ENOMEM;
 	}
 
@@ -99,7 +100,7 @@ static int add_rr_at(knot_rdataset_t *rrs, const knot_rdata_t *rr, size_t pos,
 	return KNOT_EOK;
 }
 
-static int remove_rr_at(knot_rdataset_t *rrs, size_t pos, knot_mm_ctx_t *mm)
+static int remove_rr_at(knot_rdataset_t *rrs, size_t pos, mm_ctx_t *mm)
 {
 	if (rrs == NULL || pos >= rrs->rr_count) {
 		return KNOT_EINVAL;
@@ -121,18 +122,17 @@ static int remove_rr_at(knot_rdataset_t *rrs, size_t pos, knot_mm_ctx_t *mm)
 
 	if (rrs->rr_count > 1) {
 		// Realloc RDATA
-		void *tmp = knot_mm_realloc(mm, rrs->data,
+		void *tmp = mm_realloc(mm, rrs->data,
 		                       total_size - (knot_rdata_array_size(old_size)),
 		                       total_size);
 		if (tmp == NULL) {
-			KNOT_ERR_ALLOC_FAILED;
 			return KNOT_ENOMEM;
 		} else {
 			rrs->data = tmp;
 		}
 	} else {
 		// Free RDATA
-		knot_mm_free(mm, rrs->data);
+		mm_free(mm, rrs->data);
 		rrs->data = NULL;
 	}
 	rrs->rr_count--;
@@ -150,16 +150,16 @@ void knot_rdataset_init(knot_rdataset_t *rrs)
 }
 
 _public_
-void knot_rdataset_clear(knot_rdataset_t *rrs, knot_mm_ctx_t *mm)
+void knot_rdataset_clear(knot_rdataset_t *rrs, mm_ctx_t *mm)
 {
 	if (rrs) {
-		knot_mm_free(mm, rrs->data);
+		mm_free(mm, rrs->data);
 		knot_rdataset_init(rrs);
 	}
 }
 
 _public_
-int knot_rdataset_copy(knot_rdataset_t *dst, const knot_rdataset_t *src, knot_mm_ctx_t *mm)
+int knot_rdataset_copy(knot_rdataset_t *dst, const knot_rdataset_t *src, mm_ctx_t *mm)
 {
 	if (dst == NULL || src == NULL) {
 		return KNOT_EINVAL;
@@ -167,9 +167,8 @@ int knot_rdataset_copy(knot_rdataset_t *dst, const knot_rdataset_t *src, knot_mm
 
 	dst->rr_count = src->rr_count;
 	size_t src_size = knot_rdataset_size(src);
-	dst->data = knot_mm_alloc(mm, src_size);
+	dst->data = mm_alloc(mm, src_size);
 	if (dst->data == NULL) {
-		KNOT_ERR_ALLOC_FAILED;
 		return KNOT_ENOMEM;
 	}
 
@@ -205,7 +204,7 @@ size_t knot_rdataset_size(const knot_rdataset_t *rrs)
 }
 
 _public_
-int knot_rdataset_add(knot_rdataset_t *rrs, const knot_rdata_t *rr, knot_mm_ctx_t *mm)
+int knot_rdataset_add(knot_rdataset_t *rrs, const knot_rdata_t *rr, mm_ctx_t *mm)
 {
 	if (rrs == NULL || rr == NULL) {
 		return KNOT_EINVAL;
@@ -270,7 +269,7 @@ bool knot_rdataset_member(const knot_rdataset_t *rrs, const knot_rdata_t *rr,
 }
 
 _public_
-int knot_rdataset_merge(knot_rdataset_t *rrs1, const knot_rdataset_t *rrs2, knot_mm_ctx_t *mm)
+int knot_rdataset_merge(knot_rdataset_t *rrs1, const knot_rdataset_t *rrs2, mm_ctx_t *mm)
 {
 	if (rrs1 == NULL || rrs2 == NULL) {
 		return KNOT_EINVAL;
@@ -289,7 +288,7 @@ int knot_rdataset_merge(knot_rdataset_t *rrs1, const knot_rdataset_t *rrs2, knot
 
 _public_
 int knot_rdataset_intersect(const knot_rdataset_t *a, const knot_rdataset_t *b,
-                       knot_rdataset_t *out, knot_mm_ctx_t *mm)
+                       knot_rdataset_t *out, mm_ctx_t *mm)
 {
 	if (a == NULL || b == NULL || out == NULL) {
 		return KNOT_EINVAL;
@@ -314,7 +313,7 @@ int knot_rdataset_intersect(const knot_rdataset_t *a, const knot_rdataset_t *b,
 
 _public_
 int knot_rdataset_subtract(knot_rdataset_t *from, const knot_rdataset_t *what,
-			   knot_mm_ctx_t *mm)
+			   mm_ctx_t *mm)
 {
 	if (from == NULL || what == NULL || from->data == what->data) {
 		return KNOT_EINVAL;

@@ -28,12 +28,12 @@
 #include "common-knot/strlcat.h"
 #include "libknot/internal/strlcpy.h"
 #include "libknot/internal/mem.h"
+#include "libknot/internal/macros.h"
 #include "knot/conf/conf.h"
 #include "knot/conf/extra.h"
 #include "knot/knot.h"
 #include "knot/ctl/remote.h"
 #include "knot/nameserver/internet.h"
-#include "knot/zone/timers.h"
 
 /*
  * Defaults.
@@ -413,7 +413,6 @@ static int conf_process(conf_t *conf)
 		size_t size = stor_len + zname_len + 9; // /diff.db,\0
 		char *dest = malloc(size);
 		if (dest == NULL) {
-			KNOT_ERR_ALLOC_FAILED;
 			zone->ixfr_db = NULL; /* Not enough memory. */
 			ret = KNOT_ENOMEM; /* Error report. */
 			continue;
@@ -725,10 +724,6 @@ void conf_truncate(conf_t *conf, int unload_hooks)
 
 	/* Free remote control iface. */
 	conf_free_iface(conf->ctl.iface);
-	
-	/* Close timers db. */
-	close_timers_db(conf->timers_db);
-	conf->timers_db = NULL;
 }
 
 void conf_free(conf_t *conf)
@@ -781,12 +776,6 @@ int conf_open(const char* path)
 		return ret;
 	}
 
-	/* Open zone timers db. */
-	nconf->timers_db = open_timers_db(nconf->storage);
-	if (nconf->timers_db == NULL) {
-		log_warning("cannot open timers db");
-	}
-
 	/* Replace current config. */
 	conf_t **current_config = &s_config;
 	conf_t *oldconf = rcu_xchg_pointer(current_config, nconf);
@@ -806,11 +795,10 @@ int conf_open(const char* path)
 
 		/* Update hooks. */
 		conf_update_hooks(nconf);
-		
+
 		/* Free old config. */
 		conf_free(oldconf);
 	}
-	
 
 	return KNOT_EOK;
 }
@@ -889,13 +877,13 @@ size_t conf_udp_threads(const conf_t *conf)
 size_t conf_tcp_threads(const conf_t *conf)
 {
 	size_t thrcount = conf_udp_threads(conf);
-	return KNOT_MAX(thrcount * 2, CONFIG_XFERS);
+	return MAX(thrcount * 2, CONFIG_XFERS);
 }
 
 int conf_bg_threads(const conf_t *conf)
 {
 	if (conf->bg_workers < 1) {
-		return KNOT_MIN(dt_optimal_size(), CONFIG_XFERS);
+		return MIN(dt_optimal_size(), CONFIG_XFERS);
 	}
 
 	return conf->bg_workers;
@@ -990,6 +978,7 @@ void conf_free_group(conf_group_t *group)
 		free(remote);
 	}
 
+	free(group->name);
 	free(group);
 }
 

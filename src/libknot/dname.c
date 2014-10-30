@@ -25,11 +25,12 @@
 
 #include "libknot/internal/mempattern.h"
 #include "libknot/internal/debug.h"
+#include "libknot/internal/macros.h"
 
-#include "libknot/common.h"
 #include "libknot/consts.h"
 #include "libknot/internal/tolower.h"
 #include "libknot/internal/utils.h"
+#include "libknot/errcode.h"
 #include "libknot/packet/wire.h"
 
 /*----------------------------------------------------------------------------*/
@@ -104,7 +105,7 @@ int knot_dname_wire_check(const uint8_t *name, const uint8_t *endp,
 /*----------------------------------------------------------------------------*/
 _public_
 knot_dname_t *knot_dname_parse(const uint8_t *pkt, size_t *pos, size_t maxpos,
-                               knot_mm_ctx_t *mm)
+                               mm_ctx_t *mm)
 {
 	if (pkt == NULL || pos == NULL)
 		return NULL;
@@ -123,7 +124,7 @@ knot_dname_t *knot_dname_parse(const uint8_t *pkt, size_t *pos, size_t maxpos,
 	}
 
 	/* Allocate space for the name. */
-	knot_dname_t *res = knot_mm_alloc(mm, decompressed_len);
+	knot_dname_t *res = mm_alloc(mm, decompressed_len);
 	if (res) {
 		/* Unpack name (expand compression pointers). */
 		if (knot_dname_unpack(res, name, decompressed_len, pkt) > 0) {
@@ -139,7 +140,7 @@ knot_dname_t *knot_dname_parse(const uint8_t *pkt, size_t *pos, size_t maxpos,
 
 /*----------------------------------------------------------------------------*/
 _public_
-knot_dname_t *knot_dname_copy(const knot_dname_t *name, knot_mm_ctx_t *mm)
+knot_dname_t *knot_dname_copy(const knot_dname_t *name, mm_ctx_t *mm)
 {
 	if (name == NULL)
 		return NULL;
@@ -150,12 +151,12 @@ knot_dname_t *knot_dname_copy(const knot_dname_t *name, knot_mm_ctx_t *mm)
 /*----------------------------------------------------------------------------*/
 _public_
 knot_dname_t *knot_dname_copy_part(const knot_dname_t *name, unsigned len,
-                                   knot_mm_ctx_t *mm)
+                                   mm_ctx_t *mm)
 {
 	if (name == NULL || len == 0)
 		return NULL;
 
-	knot_dname_t *dst = knot_mm_alloc(mm, len);
+	knot_dname_t *dst = mm_alloc(mm, len);
 	if (knot_dname_to_wire(dst, name, len) < 1) {
 		free(dst);
 		return NULL;
@@ -238,7 +239,7 @@ char *knot_dname_to_str(char *dst, const knot_dname_t *name, size_t maxlen)
 	uint8_t label_len = 0;
 	size_t  str_len = 0;
 
-	for (uint i = 0; i < dname_size; i++) {
+	for (unsigned i = 0; i < dname_size; i++) {
 		uint8_t c = name[i];
 
 		/* Read next label size. */
@@ -472,7 +473,7 @@ int knot_dname_to_lower(knot_dname_t *name)
 			name[1 + i] = knot_tolower(name[1 + i]);
 		name = (uint8_t *)knot_wire_next_label(name, NULL);
 		if (name == NULL) { /* Must not be used on compressed names. */
-			return KNOT_EINVAL;
+			return KNOT_EMALF;
 		}
 	}
 
@@ -600,7 +601,7 @@ int knot_dname_matched_labels(const knot_dname_t *d1, const knot_dname_t *d2)
 
 /*----------------------------------------------------------------------------*/
 _public_
-knot_dname_t *knot_dname_replace_suffix(const knot_dname_t *name, uint labels,
+knot_dname_t *knot_dname_replace_suffix(const knot_dname_t *name, unsigned labels,
 					const knot_dname_t *suffix)
 {
 	if (name == NULL)
@@ -644,12 +645,12 @@ knot_dname_t *knot_dname_replace_suffix(const knot_dname_t *name, uint labels,
 
 /*----------------------------------------------------------------------------*/
 _public_
-void knot_dname_free(knot_dname_t **name, knot_mm_ctx_t *mm)
+void knot_dname_free(knot_dname_t **name, mm_ctx_t *mm)
 {
 	if (name == NULL || *name == NULL)
 		return;
 
-	knot_mm_free(mm, *name);
+	mm_free(mm, *name);
 	*name = NULL;
 }
 
@@ -805,6 +806,9 @@ int knot_dname_lf(uint8_t *dst, const knot_dname_t *src, const uint8_t *pkt)
 	while(sp != lstack) {          /* consume stack */
 		l = *--sp; /* fetch rightmost label */
 		memcpy(dst, l+1, *l);  /* write label */
+		for (int i = 0; i < *l; ++i) {   /* convert to lowercase */
+			dst[i] = knot_tolower(dst[i]);
+		}
 		dst += *l;
 		*dst++ = '\0';         /* label separator */
 		*len += *l + 1;

@@ -21,7 +21,7 @@
 #include <openssl/evp.h>
 #include <pthread.h>
 
-#include "libknot/common.h"
+#include "libknot/internal/macros.h"
 #include "libknot/dnssec/config.h"
 #include "libknot/dnssec/crypto.h"
 
@@ -45,8 +45,8 @@ static int openssl_mutex_count = 0;
  */
 static void openssl_mutex_cb(int mode, int n, const char *file, int line)
 {
-	KNOT_UNUSED(file);
-	KNOT_UNUSED(line);
+	UNUSED(file);
+	UNUSED(line);
 
 	assert(openssl_mutex);
 	assert(n < openssl_mutex_count);

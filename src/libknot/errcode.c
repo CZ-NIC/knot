@@ -21,7 +21,7 @@
 
 #include "libknot/internal/errors.h"
 
-#include "libknot/common.h"
+#include "libknot/internal/macros.h"
 
 const error_table_t error_messages[] = {
 	{ KNOT_EOK, "OK" },
@@ -122,6 +122,9 @@ const error_table_t error_messages[] = {
 
 	/* NSEC3 errors. */
 	{ KNOT_NSEC3_ECOMPUTE_HASH, "cannot compute NSEC3 hash" },
+
+	/* Dynamic backend errors. */
+	{ KNOT_DATABASE_ERROR, "unspecified database error" },
 
 	{ KNOT_ERROR, NULL } /* Terminator */
 };

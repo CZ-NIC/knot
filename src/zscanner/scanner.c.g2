@@ -100,6 +100,7 @@ static const int zone_scanner_error = 0;
 
 
 
+__attribute__((visibility("default")))
 zs_scanner_t* zs_scanner_create(const char     *origin,
                                 const uint16_t rclass,
                                 const uint32_t ttl,
@@ -152,6 +153,7 @@ zs_scanner_t* zs_scanner_create(const char     *origin,
 	return s;
 }
 
+__attribute__((visibility("default")))
 void zs_scanner_free(zs_scanner_t *s)
 {
 	if (s != NULL) {
@@ -73071,6 +73073,7 @@ case 1140:
 	s->r_data_tail = rdata_tail - s->r_data;
 }
 
+__attribute__((visibility("default")))
 int zs_scanner_parse(zs_scanner_t *s,
                      const char   *start,
                      const char   *end,
@@ -73096,6 +73099,7 @@ int zs_scanner_parse(zs_scanner_t *s,
 	return 0;
 }
 
+__attribute__((visibility("default")))
 int zs_scanner_parse_file(zs_scanner_t *s,
                           const char   *file_name)
 {

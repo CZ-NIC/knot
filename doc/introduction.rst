@@ -41,6 +41,7 @@ Server features:
 * Reconfiguring server instance on-the-fly
 * IPv4 / IPv6 support
 * Semantic checks of zones
+* Persistent zone timers
 
 For more info and downloads see `www.knot-dns.cz <https://www.knot-dns.cz>`_.
 

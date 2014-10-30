@@ -23,9 +23,9 @@ extern "C" {
 
 #include <stdlib.h>
 #include <stdbool.h>
-#include "libknot/common.h"
 #include "libknot/internal/mempattern.h"
 #include "libknot/internal/hhash.h"
+#include "libknot/errcode.h"
 
 /* Hat-trie defines. */
 #define TRIE_ZEROBUCKETS  0    /* Do not use hash buckets (pure trie). */
@@ -44,7 +44,7 @@ size_t     hattrie_weight (const hattrie_t*);  //< Number of entries
 
 /** Create new trie with custom bucket size and memory management.
  */
-hattrie_t* hattrie_create_n (unsigned, const knot_mm_ctx_t *);
+hattrie_t* hattrie_create_n (unsigned, const mm_ctx_t *);
 
 /** Duplicate an existing trie.
  */

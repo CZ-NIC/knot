@@ -21,7 +21,6 @@
 
 #include "knot/zone/zonedb.h"
 #include "knot/server/server.h"
-#include "libknot/common.h"
 #include "knot/zone/zone.h"
 #include "knot/zone/zonedb.h"
 #include "libknot/dname.h"
@@ -30,6 +29,7 @@
 #include "libknot/internal/debug.h"
 #include "libknot/internal/mempattern.h"
 #include "libknot/internal/mempool.h"
+#include "libknot/internal/macros.h"
 
 
 /*----------------------------------------------------------------------------*/
@@ -53,8 +53,8 @@ static void discard_zone(zone_t *zone)
 knot_zonedb_t *knot_zonedb_new(uint32_t size)
 {
 	/* Create memory pool context. */
-	knot_mm_ctx_t mm = {0};
-	knot_mm_ctx_mempool(&mm, MM_DEFAULT_BLKSIZE);
+	mm_ctx_t mm = {0};
+	mm_ctx_mempool(&mm, MM_DEFAULT_BLKSIZE);
 	knot_zonedb_t *db = mm.alloc(mm.ctx, sizeof(knot_zonedb_t));
 	if (db == NULL) {
 		return NULL;
@@ -67,7 +67,7 @@ knot_zonedb_t *knot_zonedb_new(uint32_t size)
 		return NULL;
 	}
 
-	memcpy(&db->mm, &mm, sizeof(knot_mm_ctx_t));
+	memcpy(&db->mm, &mm, sizeof(mm_ctx_t));
 	return db;
 }
 
@@ -119,7 +119,7 @@ int knot_zonedb_build_index(knot_zonedb_t *db)
 	knot_zonedb_iter_begin(db, &it);
 	while (!knot_zonedb_iter_finished(&it)) {
 		zone_t *zone = knot_zonedb_iter_val(&it);
-		db->maxlabels = KNOT_MAX(db->maxlabels, knot_dname_labels(zone->name, NULL));
+		db->maxlabels = MAX(db->maxlabels, knot_dname_labels(zone->name, NULL));
 		knot_zonedb_iter_next(&it);
 	}
 

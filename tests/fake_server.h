@@ -9,7 +9,7 @@
 #define IDSERVER_DNAME ((const uint8_t *)"\2""id""\6""server")
 
 /* Create fake root zone. */
-static inline void create_root_zone(server_t *server, knot_mm_ctx_t *mm)
+static inline void create_root_zone(server_t *server, mm_ctx_t *mm)
 {
 	/* SOA RDATA. */
 	#define SOA_RDLEN 30
@@ -48,7 +48,7 @@ static inline void create_root_zone(server_t *server, knot_mm_ctx_t *mm)
 }
 
 /* Create fake server. */
-static inline int create_fake_server(server_t *server, knot_mm_ctx_t *mm)
+static inline int create_fake_server(server_t *server, mm_ctx_t *mm)
 {
 	/* Create name server. */
 	int ret = server_init(server, 1);

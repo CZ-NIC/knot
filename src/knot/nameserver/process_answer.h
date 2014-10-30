@@ -61,7 +61,7 @@ struct answer_data {
 	/* Everything below should be kept on reset. */
 	int response_type; /*!< Type of incoming response. */
 	struct process_answer_param *param; /*!< Module parameters. */
-	knot_mm_ctx_t *mm;                      /*!< Memory context. */
+	mm_ctx_t *mm;                      /*!< Memory context. */
 };
 
 /*! @} */

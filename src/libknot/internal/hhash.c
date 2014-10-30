@@ -6,7 +6,6 @@
 #include "libknot/internal/binsearch.h"
 #include "libknot/internal/trie/murmurhash3.h"
 #include "libknot/errcode.h"
-#include "libknot/common.h"
 
 /* UCW array sorting defines. */
 static int universal_cmp(uint32_t k1, uint32_t k2, hhash_t *tbl);
@@ -72,7 +71,7 @@ static int reduce_dist(hhash_t *t, int idx, int *empty)
 /*! \brief Item comparator. */
 static int key_cmp(const char *k1, uint16_t k1_len, const char *k2, uint16_t k2_len)
 {
-	int ret = memcmp(k1, k2, KNOT_MIN(k1_len, k2_len));
+	int ret = memcmp(k1, k2, MIN(k1_len, k2_len));
 	if (ret != 0) {
 		return ret;
 	}
@@ -206,23 +205,23 @@ static void hhash_free_buckets(hhash_t *tbl)
 
 hhash_t *hhash_create(uint32_t size)
 {
-	knot_mm_ctx_t mm;
-	knot_mm_ctx_init(&mm);
+	mm_ctx_t mm;
+	mm_ctx_init(&mm);
 	return hhash_create_mm(size, &mm);
 }
 
-hhash_t *hhash_create_mm(uint32_t size, const knot_mm_ctx_t *mm)
+hhash_t *hhash_create_mm(uint32_t size, const mm_ctx_t *mm)
 {
 	if (size == 0) {
 		return NULL;
 	}
 
 	const size_t total_len = sizeof(hhash_t) + size * sizeof(hhelem_t);
-	hhash_t *tbl = knot_mm_alloc((knot_mm_ctx_t *)mm, total_len);
+	hhash_t *tbl = mm_alloc((mm_ctx_t *)mm, total_len);
 	if (tbl) {
 		memset(tbl, 0, total_len);
 		tbl->size = size;
-		memcpy(&tbl->mm, mm, sizeof(knot_mm_ctx_t));
+		memcpy(&tbl->mm, mm, sizeof(mm_ctx_t));
 	}
 
 	return tbl;

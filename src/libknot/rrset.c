@@ -21,24 +21,24 @@
 #include "libknot/rrset.h"
 
 #include "libknot/internal/mempattern.h"
+#include "libknot/internal/macros.h"
 
 #include "libknot/consts.h"
-#include "libknot/common.h"
 #include "libknot/descriptor.h"
 #include "libknot/dname.h"
+#include "libknot/rrtype/naptr.h"
 
 _public_
 knot_rrset_t *knot_rrset_new(const knot_dname_t *owner, uint16_t type,
-                             uint16_t rclass, knot_mm_ctx_t *mm)
+                             uint16_t rclass, mm_ctx_t *mm)
 {
 	knot_dname_t *owner_cpy = knot_dname_copy(owner, mm);
 	if (owner_cpy == NULL) {
 		return NULL;
 	}
 
-	knot_rrset_t *ret = knot_mm_alloc(mm, sizeof(knot_rrset_t));
+	knot_rrset_t *ret = mm_alloc(mm, sizeof(knot_rrset_t));
 	if (ret == NULL) {
-		KNOT_ERR_ALLOC_FAILED;
 		knot_dname_free(&owner_cpy, mm);
 		return NULL;
 	}
@@ -66,7 +66,7 @@ void knot_rrset_init_empty(knot_rrset_t *rrset)
 }
 
 _public_
-knot_rrset_t *knot_rrset_copy(const knot_rrset_t *src, knot_mm_ctx_t *mm)
+knot_rrset_t *knot_rrset_copy(const knot_rrset_t *src, mm_ctx_t *mm)
 {
 	if (src == NULL) {
 		return NULL;
@@ -88,7 +88,7 @@ knot_rrset_t *knot_rrset_copy(const knot_rrset_t *src, knot_mm_ctx_t *mm)
 }
 
 _public_
-void knot_rrset_free(knot_rrset_t **rrset, knot_mm_ctx_t *mm)
+void knot_rrset_free(knot_rrset_t **rrset, mm_ctx_t *mm)
 {
 	if (rrset == NULL || *rrset == NULL) {
 		return;
@@ -96,12 +96,12 @@ void knot_rrset_free(knot_rrset_t **rrset, knot_mm_ctx_t *mm)
 
 	knot_rrset_clear(*rrset, mm);
 
-	knot_mm_free(mm, *rrset);
+	mm_free(mm, *rrset);
 	*rrset = NULL;
 }
 
 _public_
-void knot_rrset_clear(knot_rrset_t *rrset, knot_mm_ctx_t *mm)
+void knot_rrset_clear(knot_rrset_t *rrset, mm_ctx_t *mm)
 {
 	if (rrset) {
 		knot_rdataset_clear(&rrset->rrs, mm);
@@ -112,7 +112,7 @@ void knot_rrset_clear(knot_rrset_t *rrset, knot_mm_ctx_t *mm)
 _public_
 int knot_rrset_add_rdata(knot_rrset_t *rrset,
                          const uint8_t *rdata, const uint16_t size,
-                         const uint32_t ttl, knot_mm_ctx_t *mm)
+                         const uint32_t ttl, mm_ctx_t *mm)
 {
 	if (rrset == NULL || (rdata == NULL && size > 0)) {
 		return KNOT_EINVAL;
@@ -167,5 +167,66 @@ _public_
 uint32_t knot_rrset_ttl(const knot_rrset_t *rrset)
 {
 	return knot_rdata_ttl(knot_rdataset_at(&(rrset->rrs), 0));
+}
+
+_public_
+int knot_rrset_rr_to_canonical(knot_rrset_t *rrset)
+{
+	if (rrset == NULL || rrset->rrs.rr_count != 1) {
+		return KNOT_EINVAL;
+	}
+
+	/* Convert owner for all RRSets. */
+	int ret = knot_dname_to_lower(rrset->owner);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	/* Convert DNAMEs in RDATA only for RFC4034 types. */
+	if (!knot_rrtype_should_be_lowercased(rrset->type)) {
+		return KNOT_EOK;
+	}
+
+	const knot_rdata_descriptor_t *desc = knot_get_rdata_descriptor(rrset->type);
+	if (desc->type_name == NULL) {
+		desc = knot_get_obsolete_rdata_descriptor(rrset->type);
+	}
+
+	knot_rdata_t *rdata = knot_rdataset_at(&rrset->rrs, 0);
+	assert(rdata);
+	uint16_t rdlen = knot_rdata_rdlen(rdata);
+	uint8_t *pos = knot_rdata_data(rdata);
+
+	/* No RDATA */
+	if (rdlen == 0) {
+		return KNOT_EOK;
+	}
+
+	/* Otherwise, whole and not malformed RDATA are expected. */
+	for (int i = 0; desc->block_types[i] != KNOT_RDATA_WF_END; ++i) {
+		int type = desc->block_types[i];
+		switch (type) {
+		case KNOT_RDATA_WF_COMPRESSIBLE_DNAME:
+		case KNOT_RDATA_WF_DECOMPRESSIBLE_DNAME:
+		case KNOT_RDATA_WF_FIXED_DNAME:
+			ret = knot_dname_to_lower(pos);
+			if (ret != KNOT_EOK) {
+				return ret;
+			}
+			pos += knot_dname_size(pos);
+			break;
+		case KNOT_RDATA_WF_NAPTR_HEADER:
+			pos += knot_naptr_header_size(pos, rdata + rdlen);
+			break;
+		case KNOT_RDATA_WF_REMAINDER:
+			break;
+		default:
+			/* Fixed size block */
+			assert(type > 0);
+			pos += type;
+		}
+	}
+
+	return KNOT_EOK;
 }
 

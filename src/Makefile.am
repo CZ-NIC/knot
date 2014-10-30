@@ -97,6 +97,7 @@ libknotcs_la_SOURCES =				\
 	libknot/internal/lists.h		\
 	libknot/internal/log.c			\
 	libknot/internal/log.h			\
+	libknot/internal/macros.h		\
 	libknot/internal/mem.c			\
 	libknot/internal/mem.h			\
 	libknot/internal/mempattern.c		\
@@ -121,7 +122,6 @@ libknotcs_la_SOURCES =				\
 	libknot/internal/trie/murmurhash3.c	\
 	libknot/internal/trie/murmurhash3.h
 
-
 # static: utilities shared
 libknotus_la_SOURCES =				\
 	utils/common/exec.c			\
@@ -145,7 +145,6 @@ libknot_la_LDFLAGS =				\
 libknot_la_SOURCES =				\
 	libknot/binary.c			\
 	libknot/binary.h			\
-	libknot/common.h			\
 	libknot/consts.c			\
 	libknot/consts.h			\
 	libknot/consts.h			\
@@ -194,6 +193,8 @@ libknot_la_SOURCES =				\
 	libknot/rrset.h				\
 	libknot/rrtype/aaaa.h			\
 	libknot/rrtype/dnskey.h			\
+	libknot/rrtype/naptr.h			\
+	libknot/rrtype/nsec.h			\
 	libknot/rrtype/nsec.h			\
 	libknot/rrtype/nsec.h			\
 	libknot/rrtype/nsec3.c			\

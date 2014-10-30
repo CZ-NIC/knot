@@ -30,8 +30,7 @@
 
 #include "libknot/internal/base64.h"		// base64
 #include "libknot/internal/base32hex.h"		// base32hex
-
-#include "libknot/common.h"		// _public_
+#include "libknot/internal/macros.h"
 #include "libknot/errcode.h"		// KNOT_EOK
 #include "libknot/descriptor.h"		// KNOT_RRTYPE
 #include "libknot/dnssec/key.h"		// knot_keytag

@@ -79,7 +79,7 @@ typedef struct {
 	/*!< Default output settings. */
 	style_t		style;
 	/*!< Memory context. */
-	knot_mm_ctx_t	mm;
+	mm_ctx_t	mm;
 } nsupdate_params_t;
 
 int nsupdate_parse(nsupdate_params_t *params, int argc, char *argv[]);

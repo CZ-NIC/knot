@@ -20,6 +20,7 @@
 #include "libknot/dname.h"
 #include "libknot/internal/lists.h"
 #include "libknot/internal/mem.h"
+#include "libknot/internal/macros.h"
 #include "knot/zone/node.h"
 #include "libknot/descriptor.h"
 
@@ -172,7 +173,7 @@ void estimator_rrset_memsize_wrap(zs_scanner_t *scanner)
 
 int estimator_free_trie_node(value_t *val, void *data)
 {
-	KNOT_UNUSED(data);
+	UNUSED(data);
 	list_t *trie_n = (list_t *)(*val);
 	WALK_LIST_FREE(*trie_n);
 	free(trie_n);

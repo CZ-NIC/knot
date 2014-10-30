@@ -22,6 +22,7 @@
 #include "knot/zone/node.h"
 #include "libknot/internal/debug.h"
 #include "libknot/internal/trie/hat-trie.h"
+#include "libknot/internal/macros.h"
 
 /*----------------------------------------------------------------------------*/
 /* API functions                                                              */
@@ -314,7 +315,7 @@ void zone_tree_free(zone_tree_t **tree)
 
 static int zone_tree_free_node(zone_node_t **node, void *data)
 {
-	KNOT_UNUSED(data);
+	UNUSED(data);
 	if (node) {
 		node_free(node, NULL);
 	}

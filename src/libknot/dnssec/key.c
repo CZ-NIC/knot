@@ -29,12 +29,13 @@
 #include "libknot/dnssec/key.h"
 
 #include "libknot/internal/getline.h"
+#include "libknot/internal/macros.h"
 
 #include "zscanner/scanner.h"		// TODO: remove dependency!!
 
 #include "libknot/descriptor.h"
+#include "libknot/errcode.h"
 #include "libknot/binary.h"
-#include "libknot/common.h"
 #include "libknot/dname.h"
 #include "libknot/dnssec/sig0.h"
 #include "libknot/rrtype/tsig.h"

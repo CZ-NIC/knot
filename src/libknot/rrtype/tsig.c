@@ -25,9 +25,10 @@
 
 #include "libknot/internal/debug.h"
 #include "libknot/internal/log.h"
-
-#include "libknot/common.h"
 #include "libknot/internal/utils.h"
+#include "libknot/internal/macros.h"
+
+#include "libknot/errcode.h"
 #include "libknot/rrset.h"
 #include "libknot/dname.h"
 #include "libknot/consts.h"

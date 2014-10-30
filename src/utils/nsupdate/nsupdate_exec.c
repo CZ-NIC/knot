@@ -32,7 +32,7 @@
 #include "libknot/errcode.h"
 #include "libknot/descriptor.h"
 #include "libknot/internal/strlcpy.h"
-#include "libknot/common.h"
+#include "libknot/internal/macros.h"
 #include "libknot/libknot.h"
 #include "libknot/dnssec/random.h"
 
@@ -332,7 +332,7 @@ static srv_info_t *parse_host(const char *lp, const char* default_port)
 }
 
 /* Append parsed RRSet to list. */
-static int rr_list_append(zs_scanner_t *s, list_t *target_list, knot_mm_ctx_t *mm)
+static int rr_list_append(zs_scanner_t *s, list_t *target_list, mm_ctx_t *mm)
 {
 	knot_rrset_t *rr = knot_rrset_new(s->r_owner, s->r_type, s->r_class,
 	                                  NULL);
@@ -628,7 +628,7 @@ int cmd_ttl(const char* lp, nsupdate_params_t *params)
 
 int cmd_debug(const char* lp, nsupdate_params_t *params)
 {
-	KNOT_UNUSED(params);
+	UNUSED(params);
 	DBG("%s: lp='%s'\n", __func__, lp);
 
 	msg_enable_debug(1);
@@ -936,7 +936,7 @@ int cmd_origin(const char* lp, nsupdate_params_t *params)
 
 int cmd_gsstsig(const char* lp, nsupdate_params_t *params)
 {
-	KNOT_UNUSED(params);
+	UNUSED(params);
 	DBG("%s: lp='%s'\n", __func__, lp);
 
 	return KNOT_ENOTSUP;
@@ -944,7 +944,7 @@ int cmd_gsstsig(const char* lp, nsupdate_params_t *params)
 
 int cmd_oldgsstsig(const char* lp, nsupdate_params_t *params)
 {
-	KNOT_UNUSED(params);
+	UNUSED(params);
 	DBG("%s: lp='%s'\n", __func__, lp);
 
 	return KNOT_ENOTSUP;
@@ -952,7 +952,7 @@ int cmd_oldgsstsig(const char* lp, nsupdate_params_t *params)
 
 int cmd_realm(const char* lp, nsupdate_params_t *params)
 {
-	KNOT_UNUSED(params);
+	UNUSED(params);
 	DBG("%s: lp='%s'\n", __func__, lp);
 
 	return KNOT_ENOTSUP;

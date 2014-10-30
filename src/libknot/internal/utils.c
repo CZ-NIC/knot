@@ -20,9 +20,8 @@
 #include <unistd.h>
 
 #include "libknot/internal/utils.h"
-
-#include "libknot/common.h"
 #include "libknot/internal/endian.h"
+#include "libknot/internal/macros.h"
 
 /*----------------------------------------------------------------------------*/
 _public_

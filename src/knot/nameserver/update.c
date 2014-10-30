@@ -20,6 +20,7 @@
 #include "knot/updates/apply.h"
 #include "knot/dnssec/zone-sign.h"
 #include "libknot/internal/debug.h"
+#include "libknot/internal/macros.h"
 #include "knot/dnssec/zone-events.h"
 #include "knot/updates/ddns.h"
 #include "knot/updates/zone-update.h"
@@ -548,7 +549,7 @@ int updates_execute(zone_t *zone)
 		              "DDNS, processing %zu updates", update_count);
 		ret = process_requests(zone, &updates);
 	}
-	KNOT_UNUSED(ret); /* Don't care about the Knot code, RCODEs are set. */
+	UNUSED(ret); /* Don't care about the Knot code, RCODEs are set. */
 
 	/* Send responses. */
 	send_update_responses(zone, &updates);

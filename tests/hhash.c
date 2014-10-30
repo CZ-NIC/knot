@@ -21,7 +21,8 @@
 #include "libknot/internal/hhash.h"
 #include "libknot/internal/mempattern.h"
 #include "libknot/internal/mempool.h"
-#include "libknot/common.h"
+#include "libknot/internal/macros.h"
+#include "libknot/errcode.h"
 
 /* Test defines. */
 #define ELEM_COUNT 65535
@@ -32,7 +33,7 @@ static const char *alphabet = "0123abcdABCDwxyzWXYZ.-_";
 char *test_randstr_mm(struct mm_ctx *mm)
 {
 	unsigned len = (5 + rand() % 251) + 1;
-	char *s = knot_mm_alloc(mm, len * sizeof(char));
+	char *s = mm_alloc(mm, len * sizeof(char));
 	for (unsigned i = 0; i < len - 1; ++i) {
 		s[i] = alphabet[rand() % strlen(alphabet)];
 	}
@@ -49,7 +50,7 @@ static bool str_check_sort(const char *prev, const char *cur)
 
 	int l1 = strlen(prev);
 	int l2 = strlen(cur);
-	int res = memcmp(prev, cur, KNOT_MIN(l1, l2));
+	int res = memcmp(prev, cur, MIN(l1, l2));
 	if (res == 0) { /* Keys may be equal. */
 		if (l1 > l2) { /* 'prev' is longer, breaks ordering. */
 			return false;
@@ -67,9 +68,9 @@ int main(int argc, char *argv[])
 
 	/* Create memory pool context. */
 	struct mempool *pool = mp_new(64 * 1024);
-	knot_mm_ctx_t mm;
+	mm_ctx_t mm;
 	mm.ctx = pool;
-	mm.alloc = (knot_mm_alloc_t)mp_alloc;
+	mm.alloc = (mm_alloc_t)mp_alloc;
 	mm.free = NULL;
 
 	/* Create hashtable */

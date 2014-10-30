@@ -20,6 +20,7 @@
 
 #include "libknot/internal/debug.h"
 #include "libknot/internal/log.h"
+#include "libknot/internal/macros.h"
 
 #include "libknot/errcode.h"
 #include "libknot/packet/pkt.h"
@@ -34,14 +35,14 @@ static bool compr_label_match(const uint8_t *n, const uint8_t *p)
 	if (*n != *p) {
 		return false;
 	}
-	
+
 	uint8_t len = *n;
 	for (uint8_t i = 0; i < len; ++i) {
 		if (knot_tolower(n[1 + i]) != knot_tolower(p[1 + i])) {
 			return false;
 		}
 	}
-	
+
 	return true;
 }
 

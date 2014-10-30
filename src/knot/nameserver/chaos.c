@@ -55,7 +55,7 @@ static const char *get_txt_response_string(const knot_dname_t *qname)
  * \return KNOT_EOK
  */
 static int create_txt_rrset(knot_rrset_t *rrset, const knot_dname_t *owner,
-                            const char *response, knot_mm_ctx_t *mm)
+                            const char *response, mm_ctx_t *mm)
 {
 	// truncate response to one TXT label
 	size_t response_len = strlen(response);

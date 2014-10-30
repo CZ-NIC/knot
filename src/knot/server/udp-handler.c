@@ -39,6 +39,7 @@
 #include "libknot/internal/sockaddr.h"
 #include "libknot/internal/mempattern.h"
 #include "libknot/internal/mempool.h"
+#include "libknot/internal/macros.h"
 #include "knot/knot.h"
 #include "knot/server/udp-handler.h"
 #include "knot/server/server.h"
@@ -128,12 +129,12 @@ void udp_handle(udp_context_t *udp, int fd, struct sockaddr_storage *ss,
 	param.thread_id = udp->thread_id;
 
 	/* Rate limit is applied? */
-	if (knot_unlikely(udp->server->rrl != NULL) && udp->server->rrl->rate > 0) {
+	if (unlikely(udp->server->rrl != NULL) && udp->server->rrl->rate > 0) {
 		param.proc_flags |= NS_QUERY_LIMIT_RATE;
 	}
 
 	/* Create packets. */
-	knot_mm_ctx_t *mm = udp->overlay.mm;
+	mm_ctx_t *mm = udp->overlay.mm;
 	knot_pkt_t *query = knot_pkt_new(rx->iov_base, rx->iov_len, mm);
 	knot_pkt_t *ans = knot_pkt_new(tx->iov_base, tx->iov_len, mm);
 
@@ -469,8 +470,8 @@ static int track_ifaces(ifacelist_t *ifaces, fd_set *set, int *maxfd, int *minfd
 	iface_t *iface = NULL;
 	WALK_LIST(iface, ifaces->l) {
 		int fd = iface->fd[IO_UDP];
-		*maxfd = KNOT_MAX(fd, *maxfd);
-		*minfd = KNOT_MIN(fd, *minfd);
+		*maxfd = MAX(fd, *maxfd);
+		*minfd = MIN(fd, *minfd);
 		FD_SET(fd, set);
 	}
 
@@ -507,8 +508,8 @@ int udp_master(dthread_t *thread)
 	udp.thread_id = handler->thread_id[thr_id];
 
 	/* Create big enough memory cushion. */
-	knot_mm_ctx_t mm;
-	knot_mm_ctx_mempool(&mm, 4 * sizeof(knot_pkt_t));
+	mm_ctx_t mm;
+	mm_ctx_mempool(&mm, 4 * sizeof(knot_pkt_t));
 	udp.overlay.mm = &mm;
 
 	/* Chose select as epoll/kqueue has larger overhead for a
@@ -524,7 +525,7 @@ int udp_master(dthread_t *thread)
 	for (;;) {
 
 		/* Check handler state. */
-		if (knot_unlikely(*iostate & ServerReload)) {
+		if (unlikely(*iostate & ServerReload)) {
 			*iostate &= ~ServerReload;
 			udp.thread_id = handler->thread_id[thr_id];
 

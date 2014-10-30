@@ -18,8 +18,9 @@
 #include <sys/fcntl.h>
 
 #include "libknot/internal/net.h"
+#include "libknot/internal/macros.h"
 
-#include "libknot/common.h"
+#include "libknot/errcode.h"
 #include "libknot/processing/requestor.h"
 
 static bool use_tcp(struct knot_request *request)
@@ -27,10 +28,10 @@ static bool use_tcp(struct knot_request *request)
 	return !(request->flags & KNOT_RQ_UDP);
 }
 
-static struct knot_request *request_make(knot_mm_ctx_t *mm)
+static struct knot_request *request_make(mm_ctx_t *mm)
 {
 	struct knot_request *request =
-	                knot_mm_alloc(mm, sizeof(struct knot_request));
+	                mm_alloc(mm, sizeof(struct knot_request));
 	if (request == NULL) {
 		return NULL;
 	}
@@ -123,7 +124,7 @@ static int request_recv(struct knot_request *request,
 }
 
 _public_
-struct knot_request *knot_request_make(knot_mm_ctx_t *mm,
+struct knot_request *knot_request_make(mm_ctx_t *mm,
                                        const struct sockaddr *dst,
                                        const struct sockaddr *src,
                                        knot_pkt_t *query,
@@ -152,20 +153,20 @@ struct knot_request *knot_request_make(knot_mm_ctx_t *mm,
 }
 
 _public_
-int knot_request_free(knot_mm_ctx_t *mm, struct knot_request *request)
+int knot_request_free(mm_ctx_t *mm, struct knot_request *request)
 {
 	close(request->fd);
 	knot_pkt_free(&request->query);
 	knot_pkt_free(&request->resp);
 
 	rem_node(&request->node);
-	knot_mm_free(mm, request);
+	mm_free(mm, request);
 
 	return KNOT_EOK;
 }
 
 _public_
-void knot_requestor_init(struct knot_requestor *requestor, knot_mm_ctx_t *mm)
+void knot_requestor_init(struct knot_requestor *requestor, mm_ctx_t *mm)
 {
 	memset(requestor, 0, sizeof(struct knot_requestor));
 	requestor->mm = mm;
@@ -191,7 +192,7 @@ bool knot_requestor_finished(struct knot_requestor *requestor)
 
 _public_
 int knot_requestor_overlay(struct knot_requestor *requestor,
-                            const knot_layer_api_t *proc, void *param)
+                           const knot_layer_api_t *proc, void *param)
 {
 	return knot_overlay_add(&requestor->overlay, proc, param);
 }
@@ -220,7 +221,7 @@ int knot_requestor_enqueue(struct knot_requestor *requestor,
 	/* Prepare response buffers. */
 	request->resp  = knot_pkt_new(NULL, KNOT_WIRE_MAX_PKTSIZE, requestor->mm);
 	if (request->resp == NULL) {
-		knot_mm_free(requestor->mm, request);
+		mm_free(requestor->mm, request);
 		return KNOT_ENOMEM;
 	}
 
@@ -299,7 +300,8 @@ static int exec_request(struct knot_requestor *req, struct knot_request *last,
 }
 
 _public_
-int knot_requestor_exec(struct knot_requestor *requestor, struct timeval *timeout)
+int knot_requestor_exec(struct knot_requestor *requestor,
+                        struct timeval *timeout)
 {
 	if (knot_requestor_finished(requestor)) {
 		return KNOT_ENOENT;

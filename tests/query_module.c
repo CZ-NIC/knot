@@ -39,8 +39,8 @@ int main(int argc, char *argv[])
 	plan(4);
 
 	/* Create processing context. */
-	knot_mm_ctx_t mm;
-	knot_mm_ctx_mempool(&mm, MM_DEFAULT_BLKSIZE);
+	mm_ctx_t mm;
+	mm_ctx_mempool(&mm, MM_DEFAULT_BLKSIZE);
 
 	/* Create a map of expected steps. */
 	bool state_map[QUERY_PLAN_STAGES] = { false };

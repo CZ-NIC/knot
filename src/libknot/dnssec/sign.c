@@ -22,12 +22,12 @@
 #include <pthread.h>
 #include "libknot/descriptor.h"
 #include "libknot/errcode.h"
-#include "libknot/common.h"
 #include "libknot/consts.h"
 #include "libknot/dnssec/config.h"
 #include "libknot/dnssec/crypto.h"
 #include "libknot/dnssec/key.h"
 #include "libknot/dnssec/sign.h"
+#include "libknot/internal/macros.h"
 
 #ifdef KNOT_ENABLE_ECDSA
 #include <openssl/ecdsa.h>
@@ -370,7 +370,7 @@ static int dsa_create_pkey(const knot_key_params_t *params, EVP_PKEY *key)
  */
 static size_t dsa_sign_size(const knot_dnssec_key_t *key)
 {
-	KNOT_UNUSED(key);
+	UNUSED(key);
 	// RFC 2536 (section 3 - DSA SIG Resource Record)
 	return 41;
 }

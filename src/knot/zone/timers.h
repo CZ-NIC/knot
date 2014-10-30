@@ -23,11 +23,12 @@
 /*!
  * \brief Opens zone timers db. No-op without LMDB support.
  *
- * \param storage  Path to storage directory.
+ * \param[in]  storage   Path to storage directory.
+ * \param[out] timer_db  Created database.
  *
- * \return Created database.
+ * \return KNOT_E*
  */
-knot_namedb_t *open_timers_db(const char *storage);
+int open_timers_db(const char *storage, knot_namedb_t **timer_db);
 
 /*!
  * \brief Closes zone timers db.
@@ -69,4 +70,3 @@ int write_zone_timers(knot_namedb_t *timer_db, zone_t *zone);
  * \return KNOT_EOK or an error
  */
 int sweep_timer_db(knot_namedb_t *timer_db, knot_zonedb_t *zone_db);
-

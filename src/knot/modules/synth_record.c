@@ -333,7 +333,7 @@ int synth_record_load(struct query_plan *plan, struct query_module *self)
 	}
 
 	/* Create synthesis template. */
-	struct synth_template *tpl = knot_mm_alloc(self->mm, sizeof(struct synth_template));
+	struct synth_template *tpl = mm_alloc(self->mm, sizeof(struct synth_template));
 	if (tpl == NULL) {
 		return KNOT_ENOMEM;
 	}
@@ -405,6 +405,6 @@ int synth_record_load(struct query_plan *plan, struct query_module *self)
 
 int synth_record_unload(struct query_module *self)
 {
-	knot_mm_free(self->mm, self->ctx);
+	mm_free(self->mm, self->ctx);
 	return KNOT_EOK;
 }

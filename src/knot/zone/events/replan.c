@@ -15,11 +15,11 @@
 */
 
 #include "libknot/rrtype/soa.h"
-#include "libknot/common.h"
 
 #include "knot/zone/events/replan.h"
 #include "knot/zone/events/handlers.h"
 #include "knot/zone/zone.h"
+#include "libknot/internal/macros.h"
 
 /* -- Zone event replanning functions --------------------------------------- */
 
@@ -89,7 +89,7 @@ static void replan_flush(zone_t *zone, const zone_t *old_zone)
 	}
 
 	// Pick time to schedule: either reuse or schedule sooner than old event.
-	const time_t schedule_at = KNOT_MIN(time(NULL) + zone->conf->dbsync_timeout, flush_time);
+	const time_t schedule_at = MIN(time(NULL) + zone->conf->dbsync_timeout, flush_time);
 	zone_events_schedule_at(zone, ZONE_EVENT_FLUSH, schedule_at);
 }
 

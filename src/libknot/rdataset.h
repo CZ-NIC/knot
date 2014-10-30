@@ -53,7 +53,7 @@ void knot_rdataset_init(knot_rdataset_t *rrs);
  * \param rrs  Structure to be cleared.
  * \param mm   Memory context used to create allocations.
  */
-void knot_rdataset_clear(knot_rdataset_t *rrs, knot_mm_ctx_t *mm);
+void knot_rdataset_clear(knot_rdataset_t *rrs, mm_ctx_t *mm);
 
 /*!
  * \brief Deep copies RRS structure. All data are duplicated.
@@ -62,7 +62,7 @@ void knot_rdataset_clear(knot_rdataset_t *rrs, knot_mm_ctx_t *mm);
  * \param mm   Memory context.
  * \return KNOT_E*
  */
-int knot_rdataset_copy(knot_rdataset_t *dst, const knot_rdataset_t *src, knot_mm_ctx_t *mm);
+int knot_rdataset_copy(knot_rdataset_t *dst, const knot_rdataset_t *src, mm_ctx_t *mm);
 
 /* ----------------------- RRs getters/setters ------------------------------ */
 
@@ -90,7 +90,7 @@ size_t knot_rdataset_size(const knot_rdataset_t *rrs);
  * \param mm   Memory context.
  * \return KNOT_E*
  */
-int knot_rdataset_add(knot_rdataset_t *rrs, const knot_rdata_t *rr, knot_mm_ctx_t *mm);
+int knot_rdataset_add(knot_rdataset_t *rrs, const knot_rdata_t *rr, mm_ctx_t *mm);
 
 /* ---------------------- RRs set-like operations --------------------------- */
 
@@ -123,7 +123,7 @@ bool knot_rdataset_member(const knot_rdataset_t *rrs, const knot_rdata_t *rr,
  * \return KNOT_E*
  */
 int knot_rdataset_merge(knot_rdataset_t *rrs1, const knot_rdataset_t *rrs2,
-			knot_mm_ctx_t *mm);
+			mm_ctx_t *mm);
 
 /*!
  * \brief RRS set-like intersection. Full compare is done.
@@ -134,7 +134,7 @@ int knot_rdataset_merge(knot_rdataset_t *rrs1, const knot_rdataset_t *rrs2,
  * \return KNOT_E*
  */
 int knot_rdataset_intersect(const knot_rdataset_t *a, const knot_rdataset_t *b,
-                            knot_rdataset_t *out, knot_mm_ctx_t *mm);
+                            knot_rdataset_t *out, mm_ctx_t *mm);
 
 /*!
  * \brief Does set-like RRS subtraction. \a from RRS is changed. Both sets must
@@ -145,7 +145,7 @@ int knot_rdataset_intersect(const knot_rdataset_t *a, const knot_rdataset_t *b,
  * \return KNOT_E*
  */
 int knot_rdataset_subtract(knot_rdataset_t *from, const knot_rdataset_t *what,
-                           knot_mm_ctx_t *mm);
+                           mm_ctx_t *mm);
 
 /*! \brief Accession helpers. */
 #define KNOT_RDATASET_CHECK(rrs, pos, code) \

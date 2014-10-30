@@ -127,7 +127,7 @@ static char *error_messages[(-ZC_ERR_UNKNOWN) + 1] = {
 void err_handler_init(err_handler_t *h)
 {
 	memset(h, 0, sizeof(err_handler_t));
-	memset(h->errors, 0, sizeof(uint) * (-ZC_ERR_UNKNOWN + 1));
+	memset(h->errors, 0, sizeof(unsigned) * (-ZC_ERR_UNKNOWN + 1));
 	h->options.log_cname = 0;
 	h->options.log_glue = 0;
 	h->options.log_rrsigs = 0;
@@ -346,7 +346,6 @@ static int check_rrsig_rdata(err_handler_t *handler,
 
 	/* signer's name is same as in the zone apex */
 	knot_dname_t *signer = knot_dname_copy(knot_rrsig_signer_name(rrsig, rr_pos), NULL);
-	knot_dname_to_lower(signer);
 
 	/* dnskey is in the apex node */
 	if (!knot_rrset_empty(dnskey_rrset) &&
@@ -531,7 +530,6 @@ static int rdata_nsec_to_type_array(const knot_rdataset_t *rrs, uint16_t type,
 		uint8_t *bitmap =
 			malloc(sizeof(uint8_t) * (bitmap_size));
 		if (bitmap == NULL) {
-			KNOT_ERR_ALLOC_FAILED;
 			free(*array);
 			return KNOT_ENOMEM;
 		}
@@ -548,7 +546,6 @@ static int rdata_nsec_to_type_array(const knot_rdataset_t *rrs, uint16_t type,
 						    sizeof(uint16_t) *
 						    *count);
 				if (tmp == NULL) {
-					KNOT_ERR_ALLOC_FAILED;
 					free(bitmap);
 					free(*array);
 					return KNOT_ENOMEM;
@@ -939,25 +936,18 @@ static int semantic_checks_dnssec(zone_contents_t *zone,
 			 */
 			const knot_dname_t *next_domain =
 				knot_nsec_next(nsec_rrs);
-			// Convert name to lowercase for trie lookup
-			knot_dname_t *lowercase = knot_dname_copy(next_domain, NULL);
-			if (lowercase == NULL) {
-				return KNOT_ENOMEM;
-			}
-			knot_dname_to_lower(lowercase);
 
-			if (zone_contents_find_node(zone, lowercase) == NULL) {
+			if (zone_contents_find_node(zone, next_domain) == NULL) {
 				err_handler_handle_error(handler, zone, node,
 				                         ZC_ERR_NSEC_RDATA_CHAIN,
 				                         NULL);
 			}
 
-			if (knot_dname_is_equal(lowercase, zone->apex->owner)) {
+			if (knot_dname_is_equal(next_domain, zone->apex->owner)) {
 				/* saving the last node */
 				*last_node = node;
 
 			}
-			knot_dname_free(&lowercase, NULL);
 		} else if (nsec3 && (auth || deleg)) { /* nsec3 */
 			int ret = check_nsec3_node_in_zone(zone, node,
 			                                   handler);
@@ -1122,6 +1112,7 @@ void log_cyclic_errors_in_zone(err_handler_t *handler,
 				err_handler_handle_error(handler, zone, last_node,
 					 ZC_ERR_NSEC_RDATA_CHAIN_NOT_CYCLIC, NULL);
 			}
+
 			knot_dname_free(&lowercase, NULL);
 		}
 	}

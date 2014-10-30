@@ -17,6 +17,7 @@
 #include <assert.h>
 
 #include "libknot/internal/base32hex.h"
+#include "libknot/internal/macros.h"
 #include "knot/dnssec/nsec3-chain.h"
 #include "libknot/dname.h"
 #include "libknot/packet/wire.h"
@@ -364,7 +365,7 @@ static int connect_nsec3_nodes(zone_node_t *a, zone_node_t *b,
 {
 	assert(a);
 	assert(b);
-	KNOT_UNUSED(data);
+	UNUSED(data);
 
 	assert(a->rrset_count == 1);
 
@@ -384,7 +385,6 @@ static int connect_nsec3_nodes(zone_node_t *a, zone_node_t *b,
 
 	assert(raw_length == knot_nsec3_hash_length(algorithm));
 
-	knot_dname_to_lower(b->owner);
 	uint8_t *b32_hash = (uint8_t *)knot_dname_to_str_alloc(b->owner);
 	size_t b32_length = knot_nsec3_hash_b32_length(algorithm);
 	if (!b32_hash) {
@@ -497,7 +497,7 @@ static bool nsec3_is_empty(zone_node_t *node)
  */
 static int nsec3_mark_empty(zone_node_t **node_p, void *data)
 {
-	KNOT_UNUSED(data);
+	UNUSED(data);
 	zone_node_t *node = *node_p;
 
 	if (!(node->flags & NODE_FLAGS_EMPTY) && nsec3_is_empty(node)) {
@@ -546,7 +546,7 @@ static void mark_empty_nodes_tmp(const zone_contents_t *zone)
  */
 static int nsec3_reset(zone_node_t **node_p, void *data)
 {
-	KNOT_UNUSED(data);
+	UNUSED(data);
 	zone_node_t *node = *node_p;
 
 	if (node->flags & NODE_FLAGS_EMPTY) {

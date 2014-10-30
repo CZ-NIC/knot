@@ -19,8 +19,8 @@
 #include <stdarg.h>
 
 #include "knot/updates/changesets.h"
-#include "libknot/common.h"
 #include "libknot/rrset.h"
+#include "libknot/internal/macros.h"
 
 /* -------------------- Changeset iterator helpers -------------------------- */
 
@@ -29,7 +29,7 @@ static int add_rr_to_zone(zone_contents_t *z, const knot_rrset_t *rrset)
 {
 	zone_node_t *n = NULL;
 	int ret = zone_contents_add_rr(z, rrset, &n);
-	KNOT_UNUSED(n);
+	UNUSED(n);
 	return ret;
 }
 
@@ -152,7 +152,6 @@ changeset_t *changeset_new(const knot_dname_t *apex)
 {
 	changeset_t *ret = malloc(sizeof(changeset_t));
 	if (ret == NULL) {
-		KNOT_ERR_ALLOC_FAILED;
 		return NULL;
 	}
 

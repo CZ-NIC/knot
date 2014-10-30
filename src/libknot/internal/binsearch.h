@@ -7,6 +7,8 @@
  *	of the GNU Lesser General Public License.
  */
 
+#pragma once
+
 /***
  * [[defs]]
  * Definitions

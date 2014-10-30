@@ -54,7 +54,7 @@ struct hattrie_t_
     node_ptr root; // root node
     size_t m;      // number of stored keys
     unsigned bsize; // bucket size
-    knot_mm_ctx_t mm;
+    mm_ctx_t mm;
 };
 
 /* Create an empty trie node. */
@@ -80,7 +80,7 @@ static trie_node_t* alloc_trie_node(hattrie_t* T, node_ptr child)
     for (i = 0; i < NODE_CHILDS; ++i) node->xs[i] = child;
     return node;
 }
-	
+
 /* iterate trie nodes until string is consumed or bucket is found */
 static node_ptr hattrie_consume_ns(node_ptr **s, size_t *sp, size_t slen,
                                 const char **k, size_t *l, unsigned min_len)
@@ -279,7 +279,7 @@ static void hattrie_initroot(hattrie_t *T)
 }
 
 /* Free hat-trie nodes recursively. */
-static void hattrie_free_node(node_ptr node, knot_mm_free_t free_cb)
+static void hattrie_free_node(node_ptr node, mm_free_t free_cb)
 {
     if (*node.flag & NODE_TYPE_TRIE) {
         size_t i;
@@ -317,8 +317,8 @@ static void hattrie_deinit(hattrie_t * T)
 
 hattrie_t* hattrie_create()
 {
-    knot_mm_ctx_t mm;
-    knot_mm_ctx_init(&mm);
+    mm_ctx_t mm;
+    mm_ctx_init(&mm);
     return hattrie_create_n(TRIE_BUCKET_SIZE, &mm);
 }
 
@@ -373,10 +373,10 @@ size_t hattrie_weight (const hattrie_t *T)
     return T->m;
 }
 
-hattrie_t* hattrie_create_n(unsigned bucket_size, const knot_mm_ctx_t *mm)
+hattrie_t* hattrie_create_n(unsigned bucket_size, const mm_ctx_t *mm)
 {
-    hattrie_t* T = knot_mm_alloc((knot_mm_ctx_t *)mm, sizeof(hattrie_t));
-    memcpy(&T->mm, mm, sizeof(knot_mm_ctx_t));
+    hattrie_t* T = mm_alloc((mm_ctx_t *)mm, sizeof(hattrie_t));
+    memcpy(&T->mm, mm, sizeof(mm_ctx_t));
     hattrie_init(T, bucket_size);
     return T;
 }
@@ -765,7 +765,7 @@ static value_t* hattrie_walk_right(node_ptr* s, size_t sp,
         --key;
         --sp;
     }
-    
+
     return NULL;
 }
 

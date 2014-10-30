@@ -72,7 +72,7 @@ typedef enum {
  * \return New RRSet structure or NULL if an error occured.
  */
 knot_rrset_t *knot_rrset_new(const knot_dname_t *owner, uint16_t type,
-                             uint16_t rclass, knot_mm_ctx_t *mm);
+                             uint16_t rclass, mm_ctx_t *mm);
 
 /*!
  * \brief Initializes RRSet structure with given data.
@@ -101,7 +101,7 @@ void knot_rrset_init_empty(knot_rrset_t *rrset);
  * \retval Pointer to new RRSet if all went OK.
  * \retval NULL on error.
  */
-knot_rrset_t *knot_rrset_copy(const knot_rrset_t *src, knot_mm_ctx_t *mm);
+knot_rrset_t *knot_rrset_copy(const knot_rrset_t *src, mm_ctx_t *mm);
 
 /* ---------------------------- Cleanup ------------------------------------- */
 
@@ -113,7 +113,7 @@ knot_rrset_t *knot_rrset_copy(const knot_rrset_t *src, knot_mm_ctx_t *mm);
  * \param rrset  RRset to be destroyed.
  * \param mm     Memory context.
  */
-void knot_rrset_free(knot_rrset_t **rrset, knot_mm_ctx_t *mm);
+void knot_rrset_free(knot_rrset_t **rrset, mm_ctx_t *mm);
 
 /*!
  * \brief Frees structures inside RRSet, but not the RRSet itself.
@@ -121,7 +121,7 @@ void knot_rrset_free(knot_rrset_t **rrset, knot_mm_ctx_t *mm);
  * \param rrset  RRSet to be cleared.
  * \param mm     Memory context used for allocations.
  */
-void knot_rrset_clear(knot_rrset_t *rrset, knot_mm_ctx_t *mm);
+void knot_rrset_clear(knot_rrset_t *rrset, mm_ctx_t *mm);
 
 /* ---------- RR addition. (legacy, functionality in knot_rdataset_t) ------- */
 
@@ -138,7 +138,7 @@ void knot_rrset_clear(knot_rrset_t *rrset, knot_mm_ctx_t *mm);
  */
 int knot_rrset_add_rdata(knot_rrset_t *rrset, const uint8_t *rdata,
                          const uint16_t size, const uint32_t ttl,
-                         knot_mm_ctx_t *mm);
+                         mm_ctx_t *mm);
 
 /* ------------------ Equality / emptines bool checks ----------------------- */
 
@@ -175,5 +175,22 @@ bool knot_rrset_empty(const knot_rrset_t *rrset);
  * \retval TTL of the RRSet (precisely of its first RR).
  */
 uint32_t knot_rrset_ttl(const knot_rrset_t *rrset);
+
+/*!
+ * \brief Convert one RR into canonical format.
+ *
+ * Owner is always converted to lowercase. RDATA domain names are converted only
+ * for types listed in RFC 4034, Section 6.2, except for NSEC (updated by
+ * RFC 6840, Section 5.1) and A6 (not supported).
+ *
+ * \note If RRSet with more RRs is given to this function, only the first RR
+ *       will be converted.
+ * \warning This function expects either empty RDATA or full, not malformed
+ *          RDATA. If malformed RRSet is passed to this function, memory errors
+ *          may occur.
+ *
+ * \param rrset  RR to convert.
+ */
+int knot_rrset_rr_to_canonical(knot_rrset_t *rrset);
 
 /*! @} */

@@ -16,7 +16,7 @@
 
 #include "libknot/internal/tolower.h"
 
-#include "libknot/common.h"
+#include "libknot/internal/macros.h"
 
 _public_
 const uint8_t knot_char_table[KNOT_CHAR_TABLE_SIZE] = {

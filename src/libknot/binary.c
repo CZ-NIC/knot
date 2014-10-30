@@ -21,8 +21,8 @@
 
 #include "libknot/internal/base64.h"
 #include "libknot/internal/mem.h"
+#include "libknot/internal/macros.h"
 
-#include "libknot/common.h"
 #include "libknot/errcode.h"
 
 _public_

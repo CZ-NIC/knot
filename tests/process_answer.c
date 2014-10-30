@@ -111,8 +111,8 @@ int main(int argc, char *argv[])
 	plan(3 + TEST_COUNT);
 
 	/* Create processing context. */
-	knot_mm_ctx_t mm;
-	knot_mm_ctx_mempool(&mm, sizeof(knot_pkt_t));
+	mm_ctx_t mm;
+	mm_ctx_mempool(&mm, sizeof(knot_pkt_t));
 
 	knot_layer_t proc;
 	memset(&proc, 0, sizeof(knot_layer_t));

@@ -33,7 +33,7 @@ typedef struct task {
  * \brief Worker queue.
  */
 typedef struct worker_queue {
-	knot_mm_ctx_t mm_ctx;
+	mm_ctx_t mm_ctx;
 	list_t list;
 } worker_queue_t;
 

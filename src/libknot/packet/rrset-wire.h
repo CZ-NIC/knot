@@ -38,31 +38,17 @@
 struct knot_compr;
 
 /*!
- * \brief Flags controlling RR set from/to wire conversion.
- */
-enum knot_rrset_wire_flags {
-	KNOT_RRSET_WIRE_NONE = 0,
-	KNOT_RRSET_WIRE_CANONICAL = 1 << 0,
-};
-
-typedef enum knot_rrset_wire_flags knot_rrset_wire_flags_t;
-
-/*!
  * \brief Write RR Set content to a wire.
- *
- * Function accepts \ref KNOT_RRSET_WIRE_CANONICAL flag, which causes the
- * output to be written in canonical representation.
  *
  * \param rrset     RRSet to be converted.
  * \param wire      Output wire buffer.
  * \param max_size  Capacity of wire buffer.
  * \param compr     Compression context.
- * \param flags     Flags controlling the output.
  *
  * \return Output size, negative number on error (KNOT_E*).
  */
 int knot_rrset_to_wire(const knot_rrset_t *rrset, uint8_t *wire, uint16_t max_size,
-                       struct knot_compr *compr, knot_rrset_wire_flags_t flags);
+                       struct knot_compr *compr);
 
 /*!
 * \brief Creates one RR from wire, stores it into \a rrset.
@@ -76,4 +62,4 @@ int knot_rrset_to_wire(const knot_rrset_t *rrset, uint8_t *wire, uint16_t max_si
 * \return KNOT_E*
 */
 int knot_rrset_rr_from_wire(const uint8_t *pkt_wire, size_t *pos,
-                            size_t pkt_size, knot_mm_ctx_t *mm, knot_rrset_t *rrset);
+                            size_t pkt_size, mm_ctx_t *mm, knot_rrset_t *rrset);
