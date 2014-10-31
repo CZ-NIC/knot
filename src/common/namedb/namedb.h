@@ -21,10 +21,14 @@
 #include "common/mempattern.h"
 
 enum {
-	KNOT_NAMEDB_RDONLY = 1 << 0, /*< Read only. */
-	KNOT_NAMEDB_SORTED = 1 << 1, /*< Sorted output. */
-	
-	KNOT_NAMEDB_NOOP   = 1 << 2, /*< No operation. */
+	/* Database flags */
+
+	KNOT_NAMEDB_RDONLY = 1 << 0, /*!< Read only. */
+	KNOT_NAMEDB_SORTED = 1 << 1, /*!< Sorted output. */
+
+	/* Operations */
+
+	KNOT_NAMEDB_NOOP   = 1 << 2, /*!< No operation. */
 	KNOT_NAMEDB_FIRST  = 1 << 3, /*!< First entry. */
 	KNOT_NAMEDB_LAST   = 1 << 4, /*!< Last entry. */
 	KNOT_NAMEDB_NEXT   = 1 << 5, /*!< Next entry. */

@@ -17,6 +17,7 @@
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
+#include <assert.h>
 #include <tap/basic.h>
 
 #include "libknot/errcode.h"
@@ -156,19 +157,20 @@ static void namedb_test_set(unsigned nkeys, char **keys, char *dbid,
 	/* Interactive iteration. */
 	it = api->iter_begin(&txn, KNOT_NAMEDB_NOOP);
 	if (it != NULL) { /* If supported. */
-		/* Get first key. */
+		/* Check if first and last keys are reachable */
 		it = api->iter_seek(it, NULL, KNOT_NAMEDB_FIRST);
 		ret = api->iter_key(it, &key);
-		ok(strcmp(key.data, first_key) == 0, "%s: iter_set(FIRST)", api->name);
+		is_string(first_key, key.data, "%s: iter_set(FIRST)", api->name);
+		/* Check left/right iteration. */
 		it = api->iter_seek(it, &key, KNOT_NAMEDB_NEXT);
 		ret = api->iter_key(it, &key);
-		ok(strcmp(key.data, second_key) == 0, "%s: iter_set(NEXT)", api->name);
+		is_string(second_key, key.data, "%s: iter_set(NEXT)", api->name);
 		it = api->iter_seek(it, &key, KNOT_NAMEDB_PREV);
 		ret = api->iter_key(it, &key);
-		ok(strcmp(key.data, first_key) == 0, "%s: iter_set(PREV)", api->name);
+		is_string(first_key, key.data, "%s: iter_set(PREV)", api->name);
 		it = api->iter_seek(it, &key, KNOT_NAMEDB_LAST);
 		ret = api->iter_key(it, &key);
-		ok(strcmp(key.data, last_key) == 0, "%s: iter_set(LAST)", api->name);
+		is_string(last_key, key.data, "%s: iter_set(LAST)", api->name);
 	}
 	api->iter_finish(it);
 
