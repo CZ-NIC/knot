@@ -282,14 +282,11 @@ static knot_iter_t *iter_begin(knot_txn_t *txn, unsigned flags)
 	if (ret != 0) {
 		return NULL;
 	}
-
-	ret = mdb_cursor_get(cursor, NULL, NULL, MDB_FIRST);
-	if (ret != 0) {
-		mdb_cursor_close(cursor);
-		return NULL;
-	}
-
-	return cursor;
+	
+	/* Clear sorted flag, as it's always sorted. */
+	flags &= ~KNOT_NAMEDB_SORTED;
+	
+	return iter_set(cursor, NULL, (flags == 0) ? KNOT_NAMEDB_FIRST : flags);
 }
 
 static knot_iter_t *iter_next(knot_iter_t *iter)

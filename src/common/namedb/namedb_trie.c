@@ -98,7 +98,16 @@ static int del(knot_txn_t *txn, knot_val_t *key)
 
 static knot_iter_t *iter_begin(knot_txn_t *txn, unsigned flags)
 {
-	return hattrie_iter_begin((hattrie_t *)txn->db, (flags & KNOT_NAMEDB_SORTED));
+	bool is_sorted = (flags & KNOT_NAMEDB_SORTED);
+	flags &= ~KNOT_NAMEDB_SORTED;
+	
+	/* No operations other than begin are supported right now. */
+	if (flags != 0) {
+		return NULL;
+	}
+	
+	return hattrie_iter_begin((hattrie_t *)txn->db, is_sorted);
+}
 }
 
 static knot_iter_t *iter_next(knot_iter_t *iter)
