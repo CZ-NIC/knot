@@ -66,11 +66,12 @@ struct namedb_api {
 	int (*count)(knot_txn_t *txn);
 	int (*find)(knot_txn_t *txn, knot_val_t *key, knot_val_t *val, unsigned flags);
 	int (*insert)(knot_txn_t *txn, knot_val_t *key, knot_val_t *val, unsigned flags);
-	int (*del)(knot_txn_t *txn,knot_val_t *key);
+	int (*del)(knot_txn_t *txn, knot_val_t *key);
 
 	/* Iteration */
 
 	knot_iter_t *(*iter_begin)(knot_txn_t *txn, unsigned flags);
+	knot_iter_t *(*iter_seek)(knot_iter_t *iter, knot_val_t *key, unsigned flags);
 	knot_iter_t *(*iter_next)(knot_iter_t *iter);
 	int (*iter_key)(knot_iter_t *iter, knot_val_t *key);
 	int (*iter_val)(knot_iter_t *iter, knot_val_t *val);

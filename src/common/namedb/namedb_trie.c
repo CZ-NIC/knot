@@ -14,6 +14,8 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <assert.h>
+
 #include "libknot/errcode.h"
 
 #include "common/namedb/namedb_trie.h"
@@ -108,6 +110,11 @@ static knot_iter_t *iter_begin(knot_txn_t *txn, unsigned flags)
 	
 	return hattrie_iter_begin((hattrie_t *)txn->db, is_sorted);
 }
+
+static knot_iter_t *iter_seek(knot_iter_t *iter, knot_val_t *key, unsigned flags)
+{
+	assert(0);
+	return NULL; /* ENOTSUP */
 }
 
 static knot_iter_t *iter_next(knot_iter_t *iter)
@@ -155,7 +162,7 @@ const struct namedb_api *namedb_trie_api(void)
 		init, deinit,
 		txn_begin, txn_commit, txn_abort,
 		count, find, insert, del,
-		iter_begin, iter_next, iter_key, iter_val, iter_finish
+		iter_begin, iter_seek, iter_next, iter_key, iter_val, iter_finish
 	};
 
 	return &api;

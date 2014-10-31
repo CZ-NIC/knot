@@ -124,6 +124,9 @@ static void namedb_test_set(unsigned nkeys, char **keys, char *dbid,
 	is_int(db_size, iterated, "%s: unsorted iteration", api->name);
 
 	/* Sorted iteration. */
+	char first_key[KEY_MAXLEN] = { '\0' };
+	char second_key[KEY_MAXLEN] = { '\0' };
+	char last_key[KEY_MAXLEN] = { '\0' };
 	char key_buf[KEY_MAXLEN] = {'\0'};
 	iterated = 0;
 	it = api->iter_begin(&txn, KNOT_NAMEDB_SORTED);
@@ -135,12 +138,38 @@ static void namedb_test_set(unsigned nkeys, char **keys, char *dbid,
 				     api->name, key_buf, (const char *)key.data);
 				break;
 			}
+			if (iterated == 1) {
+				memcpy(second_key, key.data, key.len);
+			}
+		} else {
+			memcpy(first_key, key.data, key.len);
 		}
 		++iterated;
 		memcpy(key_buf, key.data, key.len);
 		it = api->iter_next(it);
 	}
-	is_int(db_size, iterated, "hattrie: sorted iteration");
+	strcpy(last_key, key_buf);
+	is_int(db_size, iterated, "%s: sorted iteration", api->name);
+	api->iter_finish(it);
+	
+	
+	/* Interactive iteration. */
+	it = api->iter_begin(&txn, KNOT_NAMEDB_NOOP);
+	if (it != NULL) { /* If supported. */
+		/* Get first key. */
+		it = api->iter_seek(it, NULL, KNOT_NAMEDB_FIRST);
+		ret = api->iter_key(it, &key);
+		ok(strcmp(key.data, first_key) == 0, "%s: iter_set(FIRST)", api->name);
+		it = api->iter_seek(it, &key, KNOT_NAMEDB_NEXT);
+		ret = api->iter_key(it, &key);
+		ok(strcmp(key.data, second_key) == 0, "%s: iter_set(NEXT)", api->name);
+		it = api->iter_seek(it, &key, KNOT_NAMEDB_PREV);
+		ret = api->iter_key(it, &key);
+		ok(strcmp(key.data, first_key) == 0, "%s: iter_set(PREV)", api->name);
+		it = api->iter_seek(it, &key, KNOT_NAMEDB_LAST);
+		ret = api->iter_key(it, &key);
+		ok(strcmp(key.data, last_key) == 0, "%s: iter_set(LAST)", api->name);
+	}
 	api->iter_finish(it);
 
 	api->txn_abort(&txn);
