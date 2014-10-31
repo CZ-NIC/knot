@@ -56,6 +56,27 @@ int net_unbound_socket(int type, const struct sockaddr_storage *ss)
 	return socket_create(ss->ss_family, type, 0);
 }
 
+static void allow_freebind(int socket, int family)
+{
+	int flag = 1;
+
+#ifdef IP_FREEBIND
+	(void) setsockopt(socket, IPPROTO_IP, IP_FREEBIND, &flag, sizeof(flag));
+#endif
+
+#ifdef IP_BINDANY
+	if (family == AF_INET) {
+		(void) setsockopt(socket, IPPROTO_IP, IP_BINDANY, &flag, sizeof(flag));
+	}
+#endif
+#ifdef IPV6_BINDANY
+	if (family == AF_INET6) {
+		(void) setsockopt(socket, IPPROTO_IPV6, IPV6_BINDANY, &flag, sizeof(flag));
+	}
+#endif
+}
+
+
 int net_bound_socket(int type, const struct sockaddr_storage *ss)
 {
 	/* Create socket. */
@@ -83,15 +104,8 @@ int net_bound_socket(int type, const struct sockaddr_storage *ss)
 		                  &flag, sizeof(flag));
 	}
 
-	/* Allow bind to non-local address (Linux) */
-#ifdef IP_FREEBIND
-	(void) setsockopt(socket, IPPROTO_IP, IP_FREEBIND, &flag, sizeof(flag));
-#endif
-
-	/* Allow bind to non-local address (FreeBSD) */
-#ifdef IPV6_BINDANY
-	(void) setsockopt(socket, IPPROTO_IPV6, IPV6_BINDANY, &flag, sizeof(flag));
-#endif
+	/* Allow bind to non-local address. */
+	allow_freebind(socket, ss->ss_family);
 
 	/* Bind to specified address. */
 	const struct sockaddr *sa = (const struct sockaddr *)ss;
