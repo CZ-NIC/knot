@@ -213,7 +213,7 @@ static knot_iter_t *iter_set(knot_iter_t *iter, knot_val_t *key, unsigned flags)
 	case KNOT_NAMEDB_LAST:  op = MDB_LAST;  break;
 	case KNOT_NAMEDB_NEXT:  op = MDB_NEXT; break;
 	case KNOT_NAMEDB_PREV:  op = MDB_PREV; break;
-	case KNOT_NAMEDB_LEQ:   assert(0); /* ENOTSUP */ break;
+	case KNOT_NAMEDB_LEQ:
 	case KNOT_NAMEDB_GEQ:   op = MDB_SET_RANGE; break;
 	default: break;
 	}
@@ -225,7 +225,20 @@ static knot_iter_t *iter_set(knot_iter_t *iter, knot_val_t *key, unsigned flags)
 	}
 	
 	int ret = mdb_cursor_get(cursor, key ? &db_key : NULL, NULL, op);
-	if (ret != 0) {
+
+	/* LEQ is not supported in LMDB, workaround using GEQ. */
+	if (flags == KNOT_NAMEDB_LEQ && key) {
+		/* Searched key is after the last key. */
+		if (ret != MDB_SUCCESS) {
+			return iter_set(iter, NULL, KNOT_NAMEDB_LAST);
+		}
+		/* If the searched key != matched, get previous. */
+		if ((key->len != db_key.mv_size) || (memcmp(key->data, db_key.mv_data, key->len) != 0)) {
+			return iter_set(iter, NULL, KNOT_NAMEDB_PREV);
+		}
+	}
+
+	if (ret != MDB_SUCCESS) {
 		mdb_cursor_close(cursor);
 		return NULL;
 	}

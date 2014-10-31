@@ -171,6 +171,24 @@ static void namedb_test_set(unsigned nkeys, char **keys, char *dbid,
 		it = api->iter_seek(it, &key, KNOT_NAMEDB_LAST);
 		ret = api->iter_key(it, &key);
 		is_string(last_key, key.data, "%s: iter_set(LAST)", api->name);
+		/* Check if prev(last_key + 1) is the last_key */
+		strcpy(key_buf, last_key);
+		key_buf[0] += 1;
+		KEY_SET(key, key_buf);
+		it = api->iter_seek(it, &key, KNOT_NAMEDB_LEQ);
+		assert(it);
+		ret = api->iter_key(it, &key);
+		is_int(0, ret, "LEQ ret");
+		is_string(last_key, key.data, "%s: iter_set(LEQ)", api->name);
+		/* Check if next(first_key - 1) is the first_key */
+		strcpy(key_buf, first_key);
+		key_buf[0] -= 1;
+		KEY_SET(key, key_buf);
+		it = api->iter_seek(it, &key, KNOT_NAMEDB_GEQ);
+		assert(it);
+		ret = api->iter_key(it, &key);
+		is_int(0, ret, "GEQ ret");
+		is_string(first_key, key.data, "%s: iter_set(GEQ)", api->name);
 	}
 	api->iter_finish(it);
 
