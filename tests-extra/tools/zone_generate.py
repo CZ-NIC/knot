@@ -401,9 +401,9 @@ def gen_soa(origin, serial, auth = None):
 GENERATED = set([])
 def g_unique():
     dn = rnd_dnl()
-    while dn in GENERATED:
+    while dn.lower() in GENERATED:
         dn = rnd_dnl()
-    GENERATED.add(dn)
+    GENERATED.add(dn.lower())
     return dn
 
 def g_unique_names(count):
