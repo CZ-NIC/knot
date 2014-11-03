@@ -17,25 +17,36 @@
 #pragma once
 
 #if defined(__linux__)
-#	include <endian.h>
-# ifndef HAVE_BE64TOH
+#       include <endian.h>
+#  ifndef HAVE_BE64TOH
 #       include <arpa/inet.h>
-#       define be32toh(x) ntohl(x)
-#       define be16toh(x) ntohs(x)
-#  if BYTE_ORDER == LITTLE_ENDIAN
 #       include <byteswap.h>
+#    if BYTE_ORDER == LITTLE_ENDIAN
+#       define be16toh(x) ntohs(x)
+#       define be32toh(x) ntohl(x)
 #       define be64toh(x) bswap_64 (x)
-#  else
+#       define le16toh(x) (x)
+#       define le32toh(x) (x)
+#       define le64toh(x) (x)
+#    else
+#       define be16toh(x) (x)
+#       define be32toh(x) (x)
 #       define be64toh(x) (x)
+#       define le16toh(x) ntohs(x)
+#       define le32toh(x) ntohl(x)
+#       define le64toh(x) bswap_64 (x)
+#    endif
 #  endif
-# endif
 #elif defined(__FreeBSD__) || defined(__NetBSD__)
-#	include <sys/endian.h>
+#       include <sys/endian.h>
 #elif defined(__OpenBSD__)
-#	include <sys/types.h>
-#	define be16toh(x) betoh16(x)
-#	define be32toh(x) betoh32(x)
-#	define be64toh(x) betoh64(x)
+#       include <sys/types.h>
+#       define be16toh(x) betoh16(x)
+#       define be32toh(x) betoh32(x)
+#       define be64toh(x) betoh64(x)
+#       define le16toh(x) letoh16(x)
+#       define le32toh(x) letoh32(x)
+#       define le64toh(x) letoh64(x)
 #elif defined(__APPLE__)
 #       include <libkern/OSByteOrder.h>
 #       define be16toh(x) OSSwapBigToHostInt16(x)
@@ -44,4 +55,10 @@
 #       define htobe16(x) OSSwapHostToBigInt16(x)
 #       define htobe32(x) OSSwapHostToBigInt32(x)
 #       define htobe64(x) OSSwapHostToBigInt64(x)
+#       define le16toh(x) OSSwapLittleToHostInt16(x)
+#       define le32toh(x) OSSwapLittleToHostInt32(x)
+#       define le64toh(x) OSSwapLittleToHostInt64(x)
+#       define htole16(x) OSSwapHostToLittleInt16(x)
+#       define htole32(x) OSSwapHostToLittleInt32(x)
+#       define htole64(x) OSSwapHostToLittleInt64(x)
 #endif
