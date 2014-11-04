@@ -129,6 +129,14 @@ static int kasp_dir_zone_save(void *_ctx, dnssec_kasp_zone_t *zone)
 	return save_zone_config(zone, config);
 }
 
+static int kasp_dir_zone_remove(void *_ctx, dnssec_kasp_zone_t *zone)
+{
+	assert(_ctx);
+	assert(zone);
+
+	return DNSSEC_NOT_IMPLEMENTED_ERROR;
+}
+
 static int kasp_dir_zone_list(void *_ctx, dnssec_list_t *list)
 {
 	assert(_ctx);
@@ -163,6 +171,7 @@ static const dnssec_kasp_store_functions_t KASP_DIR_FUNCTIONS = {
 	.close = kasp_dir_close,
 	.zone_load = kasp_dir_zone_load,
 	.zone_save = kasp_dir_zone_save,
+	.zone_remove = kasp_dir_zone_remove,
 	.zone_list = kasp_dir_zone_list,
 };
 

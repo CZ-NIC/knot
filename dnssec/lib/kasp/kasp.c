@@ -14,10 +14,11 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "shared.h"
 #include "error.h"
 #include "kasp.h"
 #include "kasp/internal.h"
+#include "shared.h"
+#include "dname.h"
 
 /* -- internal API --------------------------------------------------------- */
 
@@ -122,7 +123,16 @@ int dnssec_kasp_zone_save(dnssec_kasp_t *kasp, dnssec_kasp_zone_t *zone)
 _public_
 int dnssec_kasp_zone_remove(dnssec_kasp_t *kasp, const char *zone_name)
 {
-	return DNSSEC_NOT_IMPLEMENTED_ERROR;
+	if (!kasp || !zone_name) {
+		return DNSSEC_EINVAL;
+	}
+
+	_cleanup_free_ char *normalized = dname_ascii_normalize_copy(zone_name);
+	if (!normalized) {
+		return DNSSEC_ENOMEM;
+	}
+
+	return kasp->functions->zone_remove(kasp->ctx, normalized);
 }
 
 _public_
