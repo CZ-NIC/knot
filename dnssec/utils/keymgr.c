@@ -54,7 +54,7 @@ struct command {
 typedef struct command command_t;
 
 static int subcommand(const command_t *subcommands, options_t *options,
-			   int argc, char *argv[])
+		      int argc, char *argv[])
 {
 	assert(subcommands);
 	assert(options);
@@ -152,9 +152,9 @@ static int cmd_zone_add(options_t *options, int argc, char *argv[])
 		return 1;
 	}
 
-	r = dnssec_kasp_save_zone(kasp, zone);
+	r = dnssec_kasp_zone_save(kasp, zone);
 	if (r != DNSSEC_EOK) {
-		error("dnssec_kasp_save_zone: %s\n", dnssec_strerror(r));
+		error("dnssec_kasp_zone_save: %s\n", dnssec_strerror(r));
 		return 1;
 	}
 
@@ -186,7 +186,7 @@ static int cmd_zone_list(options_t *options, int argc, char *argv[])
 	}
 
 	dnssec_list_t *zones = NULL;
-	r = dnssec_kasp_list_zones(kasp, &zones);
+	r = dnssec_kasp_zone_list(kasp, &zones);
 	if (r != DNSSEC_EOK) {
 		error("dnssec_kasp_list_zones");
 	}

@@ -87,7 +87,7 @@ void dnssec_kasp_close(dnssec_kasp_t *kasp)
 }
 
 _public_
-int dnssec_kasp_load_zone(dnssec_kasp_t *kasp, const char *zone_name,
+int dnssec_kasp_zone_load(dnssec_kasp_t *kasp, const char *zone_name,
 			 dnssec_kasp_zone_t **zone_ptr)
 {
 	if (!kasp || !zone_name || !zone_ptr) {
@@ -110,7 +110,7 @@ int dnssec_kasp_load_zone(dnssec_kasp_t *kasp, const char *zone_name,
 }
 
 _public_
-int dnssec_kasp_save_zone(dnssec_kasp_t *kasp, dnssec_kasp_zone_t *zone)
+int dnssec_kasp_zone_save(dnssec_kasp_t *kasp, dnssec_kasp_zone_t *zone)
 {
 	if (!kasp || !zone) {
 		return DNSSEC_EINVAL;
@@ -125,7 +125,7 @@ static void free_zone_name(void *ptr, void *ctx _unused_)
 }
 
 _public_
-int dnssec_kasp_list_zones(dnssec_kasp_t *kasp, dnssec_list_t **list_ptr)
+int dnssec_kasp_zone_list(dnssec_kasp_t *kasp, dnssec_list_t **list_ptr)
 {
 	if (!kasp || !list_ptr) {
 		return DNSSEC_EINVAL;

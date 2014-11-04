@@ -44,7 +44,7 @@
  * }
  *
  * // get zone state of 'example.com.'
- * result = dnssec_kasp_load_zone(kasp, "example.com", &zone);
+ * result = dnssec_kasp_zone_load(kasp, "example.com", &zone);
  * if (result != DNSSEC_EOK) {
  *     dnssec_kasp_close(kasp);
  *     return result;
@@ -163,7 +163,7 @@ void dnssec_kasp_zone_free(dnssec_kasp_zone_t *zone);
  *
  * \return Error code, DNSSEC_EOK if successful.
  */
-int dnssec_kasp_load_zone(dnssec_kasp_t *kasp, const char *zone_name,
+int dnssec_kasp_zone_load(dnssec_kasp_t *kasp, const char *zone_name,
 			  dnssec_kasp_zone_t **zone);
 
 /*!
@@ -172,15 +172,15 @@ int dnssec_kasp_load_zone(dnssec_kasp_t *kasp, const char *zone_name,
  * \param kasp  KASP instance.
  * \param zone  Zone to be saved.
  */
-int dnssec_kasp_save_zone(dnssec_kasp_t *kasp, dnssec_kasp_zone_t *zone);
+int dnssec_kasp_zone_save(dnssec_kasp_t *kasp, dnssec_kasp_zone_t *zone);
 
 /*!
  * Get list of zones in the KASP.
  *
  * \param[in]  kasp  KASP instance.
- * \param[out] list  List of zones.
+ * \param[out] list  List of zones (as strings).
  */
-int dnssec_kasp_list_zones(dnssec_kasp_t *kasp, dnssec_list_t **list);
+int dnssec_kasp_zone_list(dnssec_kasp_t *kasp, dnssec_list_t **list);
 
 struct dnssec_kasp_policy;
 
