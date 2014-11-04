@@ -70,6 +70,13 @@ static int count(knot_txn_t *txn)
 	return hattrie_weight((hattrie_t *)txn->db);
 }
 
+static int clear(knot_txn_t *txn)
+{
+	hattrie_clear((hattrie_t *)txn->db);
+
+	return KNOT_EOK;
+}
+
 static int find(knot_txn_t *txn, knot_val_t *key, knot_val_t *val, unsigned flags)
 {
 	value_t *ret = hattrie_tryget((hattrie_t *)txn->db, key->data, key->len);
@@ -161,7 +168,7 @@ const struct namedb_api *namedb_trie_api(void)
 		"hattrie",
 		init, deinit,
 		txn_begin, txn_commit, txn_abort,
-		count, find, insert, del,
+		count, clear, find, insert, del,
 		iter_begin, iter_seek, iter_next, iter_key, iter_val, iter_finish
 	};
 

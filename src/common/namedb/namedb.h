@@ -68,6 +68,7 @@ struct namedb_api {
 	/* Data access */
 
 	int (*count)(knot_txn_t *txn);
+	int (*clear)(knot_txn_t *txn);
 	int (*find)(knot_txn_t *txn, knot_val_t *key, knot_val_t *val, unsigned flags);
 	int (*insert)(knot_txn_t *txn, knot_val_t *key, knot_val_t *val, unsigned flags);
 	int (*del)(knot_txn_t *txn, knot_val_t *key);

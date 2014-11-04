@@ -152,8 +152,7 @@ static void namedb_test_set(unsigned nkeys, char **keys, char *dbid,
 	strcpy(last_key, key_buf);
 	is_int(db_size, iterated, "%s: sorted iteration", api->name);
 	api->iter_finish(it);
-	
-	
+
 	/* Interactive iteration. */
 	it = api->iter_begin(&txn, KNOT_NAMEDB_NOOP);
 	if (it != NULL) { /* If supported. */
@@ -176,23 +175,32 @@ static void namedb_test_set(unsigned nkeys, char **keys, char *dbid,
 		key_buf[0] += 1;
 		KEY_SET(key, key_buf);
 		it = api->iter_seek(it, &key, KNOT_NAMEDB_LEQ);
-		assert(it);
 		ret = api->iter_key(it, &key);
-		is_int(0, ret, "LEQ ret");
 		is_string(last_key, key.data, "%s: iter_set(LEQ)", api->name);
 		/* Check if next(first_key - 1) is the first_key */
 		strcpy(key_buf, first_key);
 		key_buf[0] -= 1;
 		KEY_SET(key, key_buf);
 		it = api->iter_seek(it, &key, KNOT_NAMEDB_GEQ);
-		assert(it);
 		ret = api->iter_key(it, &key);
-		is_int(0, ret, "GEQ ret");
 		is_string(first_key, key.data, "%s: iter_set(GEQ)", api->name);
+		api->iter_finish(it);
 	}
-	api->iter_finish(it);
-
 	api->txn_abort(&txn);
+
+	/* Clear database and recheck. */
+	ret = api->txn_begin(db, &txn, 0);
+	ret = api->clear(&txn);
+	is_int(0, ret, "%s: clear()", api->name);
+	ret = api->txn_commit(&txn);
+	is_int(0, ret, "%s: commit clear", api->name);
+	
+	/* Check if the database is empty. */
+	ret = api->txn_begin(db, &txn, KNOT_NAMEDB_RDONLY);
+	db_size = api->count(&txn);
+	is_int(0, db_size, "%s: count after clear = %d", api->name, db_size);
+	api->txn_abort(&txn);
+
 	api->deinit(db);
 }
 

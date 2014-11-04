@@ -202,6 +202,18 @@ static int count(knot_txn_t *txn)
 	return stat.ms_entries;
 }
 
+static int clear(knot_txn_t *txn)
+{
+	struct lmdb_env *env = txn->db;
+
+	int ret = mdb_drop(txn->txn, env->dbi, 0);
+	if (ret != MDB_SUCCESS) {
+		return lmdb_error_to_knot(ret);
+	}
+	
+	return KNOT_EOK;
+}
+
 static knot_iter_t *iter_set(knot_iter_t *iter, knot_val_t *key, unsigned flags)
 {
 	MDB_cursor *cursor = iter;
@@ -361,7 +373,7 @@ const struct namedb_api *namedb_lmdb_api(void)
 		"lmdb",
 		init, deinit,
 		txn_begin, txn_commit, txn_abort,
-		count, find, insert, del,
+		count, clear, find, insert, del,
 		iter_begin, iter_set, iter_next, iter_key, iter_val, iter_finish
 	};
 
