@@ -42,7 +42,13 @@ static void cleanup_kasp(dnssec_kasp_t **kasp_ptr)
 	dnssec_kasp_deinit(*kasp_ptr);
 }
 
+static void cleanup_kasp_zone(dnssec_kasp_zone_t **zone_ptr)
+{
+	dnssec_kasp_zone_free(*zone_ptr);
+}
+
 #define _cleanup_kasp_ _cleanup_(cleanup_kasp)
+#define _cleanup_zone_ _cleanup_(cleanup_kasp_zone)
 
 /* -- subcommands processing ----------------------------------------------- */
 
@@ -210,14 +216,96 @@ static int cmd_zone_list(options_t *options, int argc, char *argv[])
 	return 0;
 }
 
+static bool is_zone_used(dnssec_kasp_zone_t *zone)
+{
+	time_t now = time(NULL);
+	dnssec_list_t *keys = dnssec_kasp_zone_get_keys(zone);
+	dnssec_list_foreach(item, keys) {
+		dnssec_kasp_key_t *key = dnssec_item_get(item);
+		if (dnssec_kasp_key_is_used(&key->timing, now)) {
+			return true;
+		}
+	}
+
+	return false;
+}
+
+/*
+ * keymgr zone remove [--force] <name>
+ */
+static int cmd_zone_remove(options_t *options, int argc, char *argv[])
+{
+	static const struct option opts[] = {
+		{ "force", no_argument, NULL, 'f' },
+		{ NULL }
+	};
+
+	bool force = false;
+
+	int c = 0;
+	optind = 0;
+	while (c = getopt_long(argc, argv, "+", opts, NULL), c != -1) {
+		switch (c) {
+		case 'f':
+			force = true;
+			break;
+		case '?':
+			error("Invalid option.\n");
+			return 1;
+		default:
+			assert(0);
+		}
+	}
+
+	if (argc != optind + 1) {
+		error("Name of one zone has to be specified.\n");
+		return 1;
+	}
+
+	char *zone_name = argv[optind];
+
+	// delete zone
+
+	_cleanup_kasp_ dnssec_kasp_t *kasp = NULL;
+	dnssec_kasp_init_dir(&kasp);
+
+	int r = dnssec_kasp_open(kasp, options->kasp_dir);
+	if (r != DNSSEC_EOK) {
+		error("Cannot open KASP directory (%s).\n", dnssec_strerror(r));
+		return 1;
+	}
+
+	_cleanup_zone_ dnssec_kasp_zone_t *zone = NULL;
+	r = dnssec_kasp_zone_load(kasp, zone_name, &zone);
+	if (r != DNSSEC_EOK) {
+		error("Cannot retrieve zone from KASP (%s).\n", dnssec_strerror(r));
+		return false;
+	}
+
+	if (!force && is_zone_used(zone)) {
+		error("Some keys are being used. Cannot remove the zone "
+		      "unless --force is given.\n");
+		return 1;
+	}
+
+	r = dnssec_kasp_zone_remove(kasp, zone_name);
+	if (r != DNSSEC_EOK) {
+		error("Cannot remove the zone (%s).\n", dnssec_strerror(r));
+		return 1;
+	}
+
+	return 0;
+}
+
 /*
  * keymgr zone
  */
 static int cmd_zone(options_t *options, int argc, char *argv[])
 {
 	static const command_t commands[] = {
-		{ "add",  cmd_zone_add },
-		{ "list", cmd_zone_list },
+		{ "add",    cmd_zone_add },
+		{ "list",   cmd_zone_list },
+		{ "remove", cmd_zone_remove },
 		{ NULL }
 	};
 
