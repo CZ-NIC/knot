@@ -99,10 +99,10 @@ static void kasp_dir_close(void *_ctx)
 	free(ctx);
 }
 
-static int kasp_dir_load_zone(dnssec_kasp_zone_t *zone, void *_ctx)
+static int kasp_dir_zone_load(void *_ctx, dnssec_kasp_zone_t *zone)
 {
-	assert(zone);
 	assert(_ctx);
+	assert(zone);
 
 	kasp_dir_ctx_t *ctx = _ctx;
 
@@ -114,10 +114,10 @@ static int kasp_dir_load_zone(dnssec_kasp_zone_t *zone, void *_ctx)
 	return load_zone_config(zone, config);
 }
 
-static int kasp_dir_save_zone(dnssec_kasp_zone_t *zone, void *_ctx)
+static int kasp_dir_zone_save(void *_ctx, dnssec_kasp_zone_t *zone)
 {
-	assert(zone);
 	assert(_ctx);
+	assert(zone);
 
 	kasp_dir_ctx_t *ctx = _ctx;
 
@@ -129,7 +129,7 @@ static int kasp_dir_save_zone(dnssec_kasp_zone_t *zone, void *_ctx)
 	return save_zone_config(zone, config);
 }
 
-static int kasp_dir_list_zones(void *_ctx, dnssec_list_t *list)
+static int kasp_dir_zone_list(void *_ctx, dnssec_list_t *list)
 {
 	assert(_ctx);
 	assert(list);
@@ -161,9 +161,9 @@ static const dnssec_kasp_store_functions_t KASP_DIR_FUNCTIONS = {
 	.init = kasp_dir_init,
 	.open = kasp_dir_open,
 	.close = kasp_dir_close,
-	.load_zone = kasp_dir_load_zone,
-	.save_zone = kasp_dir_save_zone,
-	.list_zones = kasp_dir_list_zones,
+	.zone_load = kasp_dir_zone_load,
+	.zone_save = kasp_dir_zone_save,
+	.zone_list = kasp_dir_zone_list,
 };
 
 /* -- public API ----------------------------------------------------------- */

@@ -99,7 +99,7 @@ int dnssec_kasp_zone_load(dnssec_kasp_t *kasp, const char *zone_name,
 		return DNSSEC_ENOMEM;
 	}
 
-	int result = kasp->functions->load_zone(zone, kasp->ctx);
+	int result = kasp->functions->zone_load(kasp->ctx, zone);
 	if (result != DNSSEC_EOK) {
 		dnssec_kasp_zone_free(zone);
 		return result;
@@ -116,7 +116,7 @@ int dnssec_kasp_zone_save(dnssec_kasp_t *kasp, dnssec_kasp_zone_t *zone)
 		return DNSSEC_EINVAL;
 	}
 
-	return kasp->functions->save_zone(zone, kasp->ctx);
+	return kasp->functions->zone_save(kasp->ctx, zone);
 }
 
 _public_
@@ -137,7 +137,7 @@ int dnssec_kasp_zone_list(dnssec_kasp_t *kasp, dnssec_list_t **list_ptr)
 		return DNSSEC_ENOMEM;
 	}
 
-	int result = kasp->functions->list_zones(kasp->ctx, list);
+	int result = kasp->functions->zone_list(kasp->ctx, list);
 	if (result != DNSSEC_EOK) {
 		dnssec_list_free_full(list, NULL, NULL);
 		return result;

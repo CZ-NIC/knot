@@ -28,9 +28,9 @@ typedef struct dnssec_kasp_store_functions {
 	int (*open)(void **ctx_ptr, const char *config);
 	void (*close)(void *ctx);
 	// zone serialization/deserialization
-	int (*load_zone)(dnssec_kasp_zone_t *zone, void *ctx);
-	int (*save_zone)(dnssec_kasp_zone_t *zone, void *ctx);
-	int (*list_zones)(void *ctx, dnssec_list_t *zones);
+	int (*zone_load)(void *ctx, dnssec_kasp_zone_t *zone);
+	int (*zone_save)(void *ctx, dnssec_kasp_zone_t *zone);
+	int (*zone_list)(void *ctx, dnssec_list_t *zones);
 } dnssec_kasp_store_functions_t;
 
 /*!
