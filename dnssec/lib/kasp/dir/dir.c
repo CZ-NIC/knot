@@ -129,12 +129,23 @@ static int kasp_dir_zone_save(void *_ctx, dnssec_kasp_zone_t *zone)
 	return save_zone_config(zone, config);
 }
 
-static int kasp_dir_zone_remove(void *_ctx, dnssec_kasp_zone_t *zone)
+static int kasp_dir_zone_remove(void *_ctx, const char *zone_name)
 {
 	assert(_ctx);
-	assert(zone);
+	assert(zone_name);
 
-	return DNSSEC_NOT_IMPLEMENTED_ERROR;
+	kasp_dir_ctx_t *ctx = _ctx;
+
+	_cleanup_free_ char *config = zone_config_file(ctx->path, zone_name);
+	if (!config) {
+		return DNSSEC_ENOMEM;
+	}
+
+	if (unlink(config) != 0) {
+		return dnssec_errno_to_error(errno);
+	}
+
+	return DNSSEC_EOK;
 }
 
 static int kasp_dir_zone_list(void *_ctx, dnssec_list_t *list)
