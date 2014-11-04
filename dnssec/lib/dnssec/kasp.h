@@ -176,6 +176,14 @@ int dnssec_kasp_zone_load(dnssec_kasp_t *kasp, const char *zone_name,
 int dnssec_kasp_zone_save(dnssec_kasp_t *kasp, dnssec_kasp_zone_t *zone);
 
 /*!
+ * Remove zone from KASP.
+ *
+ * \param kasp       KASP instance.
+ * \param zone_name  Zone to be removed.
+ */
+int dnssec_kasp_zone_remove(dnssec_kasp_t *kasp, const char *zone_name);
+
+/*!
  * Get list of zones in the KASP.
  *
  * \param[in]  kasp  KASP instance.

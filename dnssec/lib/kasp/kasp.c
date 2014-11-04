@@ -119,8 +119,10 @@ int dnssec_kasp_zone_save(dnssec_kasp_t *kasp, dnssec_kasp_zone_t *zone)
 	return kasp->functions->save_zone(zone, kasp->ctx);
 }
 
+_public_
+int dnssec_kasp_zone_remove(dnssec_kasp_t *kasp, const char *zone_name)
 {
-	free(ptr);
+	return DNSSEC_NOT_IMPLEMENTED_ERROR;
 }
 
 _public_
