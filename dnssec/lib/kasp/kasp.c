@@ -119,7 +119,6 @@ int dnssec_kasp_zone_save(dnssec_kasp_t *kasp, dnssec_kasp_zone_t *zone)
 	return kasp->functions->save_zone(zone, kasp->ctx);
 }
 
-static void free_zone_name(void *ptr, void *ctx _unused_)
 {
 	free(ptr);
 }
@@ -138,7 +137,7 @@ int dnssec_kasp_zone_list(dnssec_kasp_t *kasp, dnssec_list_t **list_ptr)
 
 	int result = kasp->functions->list_zones(kasp->ctx, list);
 	if (result != DNSSEC_EOK) {
-		dnssec_list_free_full(list, free_zone_name, NULL);
+		dnssec_list_free_full(list, NULL, NULL);
 		return result;
 	}
 
