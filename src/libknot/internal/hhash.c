@@ -10,7 +10,7 @@
 /* UCW array sorting defines. */
 static int universal_cmp(uint32_t k1, uint32_t k2, hhash_t *tbl);
 #define ASORT_PREFIX(X) hhash_##X
-#define ASORT_KEY_TYPE uint32_t 
+#define ASORT_KEY_TYPE uint32_t
 #define ASORT_LT(x, y) (universal_cmp((x), (y), tbl) < 0)
 #define ASORT_EXTRA_ARGS , hhash_t *tbl 
 #include "libknot/internal/array-sort.h"
@@ -27,7 +27,7 @@ static int universal_cmp(uint32_t k1, uint32_t k2, hhash_t *tbl);
  * Value is fixed size (pointer), so is keylen.
  * Key is variable-sized string. */
 #define KEY_VAL(p) (p)
-#define KEY_LEN(p) ((p) + HHVAL_LEN)
+#define KEY_LEN(p) ((char*)(p) + HHVAL_LEN)
 #define KEY_STR(p) ((char*)(p) + HHKEY_LEN)
 
 /*! \brief Helper function to read key length. */
@@ -437,7 +437,7 @@ int hhash_find_next(hhash_t* tbl, const char* key, uint16_t len, value_t** dst)
 	if (tbl->weight == 0) {
 		return 1;
 	}
-	
+
 	int k = BIN_SEARCH_FIRST_GE_CMP(tbl, tbl->weight, CMP_LE, key, len);
 	/* Found prev or equal, we want next */
 	if (k + 1 < tbl->weight) {

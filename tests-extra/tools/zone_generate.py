@@ -52,7 +52,7 @@ RRTYPES = [ \
     [ 'A',        'g_a',        1.00,   1 ], \
     [ 'NS',       'g_dname',    0.25,   2 ], \
     [ 'CNAME',    'g_dname',    0.25,   5 ], \
-    [ 'PTR',      'g_ptr',      0.50,  12 ], \
+#   [ 'PTR',      'g_ptr',      0.50,  12 ], \
     [ 'HINFO',    'g_hinfo',    0.05,  13 ], \
     [ 'MX',       'g_mx',       0.25,  15 ], \
     [ 'TXT',      'g_txt',      0.15,  16 ], \
@@ -401,9 +401,9 @@ def gen_soa(origin, serial, auth = None):
 GENERATED = set([])
 def g_unique():
     dn = rnd_dnl()
-    while dn in GENERATED:
+    while dn.lower() in GENERATED:
         dn = rnd_dnl()
-    GENERATED.add(dn)
+    GENERATED.add(dn.lower())
     return dn
 
 def g_unique_names(count):

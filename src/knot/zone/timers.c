@@ -67,7 +67,7 @@ static int store_timers(knot_txn_t *txn, zone_t *zone)
 {
 	// Create key
 	knot_val_t key = { .len = knot_dname_size(zone->name), .data = zone->name };
-	
+
 	// Create value
 	uint8_t packed_timer[EVENT_KEY_PAIR_SIZE * PERSISTENT_EVENT_COUNT];
 	size_t offset = 0;
@@ -115,7 +115,8 @@ static int read_timers(knot_txn_t *txn, const zone_t *zone, time_t *timers)
 		offset += 1;
 		if (known_event_key(db_key)) {
 			const zone_event_type_t event = key_to_event_id[db_key];
-			timers[event] = (time_t)knot_wire_read_u64(val.data + offset);
+			timers[event] =
+				(time_t)knot_wire_read_u64((uint8_t *)val.data + offset);
 		}
 		offset += sizeof(uint64_t);
 	}

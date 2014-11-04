@@ -315,7 +315,7 @@ void zone_events_enqueue(zone_t *zone, zone_event_type_t type)
 void zone_events_schedule(zone_t *zone, zone_event_type_t type, unsigned dt)
 {
 	time_t abstime = time(NULL) + dt;
-	return zone_events_schedule_at(zone, type, abstime);
+	zone_events_schedule_at(zone, type, abstime);
 }
 
 void zone_events_cancel(zone_t *zone, zone_event_type_t type)
