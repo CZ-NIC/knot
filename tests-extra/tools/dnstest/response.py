@@ -2,6 +2,8 @@
 
 import binascii
 import dns.name
+import collections
+import itertools
 
 from dnstest.utils import *
 
@@ -189,17 +191,41 @@ class Response(object):
         elif type(rtype) is str:
             rtype = dns.rdatatype.from_text(rtype)
 
-        if not section or section == "answer":
-            sect = self.resp.answer
-        elif section == "additional":
-            sect = self.resp.additional
-        elif section == "authority":
-            sect = self.resp.authority
+        cnt = 0
+        if isinstance(self.resp, collections.Iterable):
+            self.resp, iter_copy = itertools.tee(self.resp)
+            for msg in iter_copy:
+                if not section or section == "answer":
+                    sect = msg.answer
+                elif section == "additional":
+                    sect = msg.additional
+                elif section == "authority":
+                    sect = msg.authority
+
+                for rrset in sect:
+                    if rrset.rdtype == rtype or rtype == dns.rdatatype.ANY:
+                        cnt += len(rrset)
+        else:
+            if not section or section == "answer":
+                sect = self.resp.answer
+            elif section == "additional":
+                sect = self.resp.additional
+            elif section == "authority":
+                sect = self.resp.authority
+
+            for rrset in sect:
+                if rrset.rdtype == rtype or rtype == dns.rdatatype.ANY:
+                    cnt += len(rrset)
+
+        return cnt
+
+    def msg_count(self):
+        '''Returns number of response messages'''
 
         cnt = 0
-        for rrset in sect:
-            if rrset.rdtype == rtype or rtype == dns.rdatatype.ANY:
-                cnt += len(rrset)
+        self.resp, iter_copy = itertools.tee(self.resp)
+        for msg in iter_copy:
+            cnt += 1
 
         return cnt
 

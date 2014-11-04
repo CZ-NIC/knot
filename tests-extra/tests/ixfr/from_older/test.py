@@ -14,21 +14,12 @@ t.link(zone, knot, ixfr=True)
 
 t.start()
 
-serial_init = knot.zones_wait(zone)
+serial_init = knot.zone_wait(zone)
 
-resp = knot.dig("example.com", "IXFR", serial=serial_init["example.com."]+1)
+resp = knot.dig("example.com", "IXFR", serial=serial_init + 1)
 
-msg_count = 0;
-rec_count = 0;
-
-for msg in resp.resp:
-	msg_count += 1
-	rec_count += len(msg.answer)
-
-compare(msg_count, 1, "Only one message")
-compare(rec_count, 1, "Only one RR in Answer section")
-
-#TODO: Can I somehow check that the only RR in the transfer is SOA?
+compare(resp.msg_count(), 1, "Only one message")
+compare(resp.count("SOA"), 1, "Only one RR in Answer section")
 
 t.end()
 
