@@ -373,7 +373,7 @@ static int process_query_err(knot_layer_t *ctx, knot_pkt_t *pkt)
 	}
 
 	/* Put OPT RR to the additional section. */
-	ret = answer_edns_reserve(pkt, qdata);
+	int ret = answer_edns_reserve(pkt, qdata);
 	if (ret == KNOT_EOK) {
 		(void) answer_edns_put(pkt, qdata);
 	}
