@@ -69,6 +69,13 @@ uint8_t *dname_from_ascii(const char *name);
 void dname_ascii_normalize(char *name);
 
 /*!
+ * Create normalized copy of ASCII domain name.
+ *
+ * \see dname_ascii_normalize
+ */
+char *dname_ascii_normalize_copy(const char *name);
+
+/*!
  * Check if two dnames are equal.
  *
  * Case insensitive.

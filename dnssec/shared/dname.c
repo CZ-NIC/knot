@@ -217,6 +217,25 @@ void dname_ascii_normalize(char *name)
 }
 
 /*!
+ * Create normalized copy of ASCII domain name.
+ */
+char *dname_ascii_normalize_copy(const char *name)
+{
+	if (!name) {
+		return NULL;
+	}
+
+	char *copy = strdup(name);
+	if (!copy) {
+		return NULL;
+	}
+
+	dname_ascii_normalize(copy);
+
+	return copy;
+}
+
+/*!
  * Check if two dnames are equal.
  */
 bool dname_equal(const uint8_t *one, const uint8_t *two)
