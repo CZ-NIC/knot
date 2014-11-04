@@ -254,7 +254,7 @@ int load_zone_keys(const char *keydir_name, const char *zone_name,
 		return KNOT_ERROR;
 	}
 
-	r = dnssec_kasp_load_zone(keyset.kasp, zone_name, &keyset.kasp_zone);
+	r = dnssec_kasp_zone_load(keyset.kasp, zone_name, &keyset.kasp_zone);
 	if (r != DNSSEC_EOK) {
 		log_zone_str_error(zone_name, "DNSSEC, failed to get zone from KASP (%s)",
 		                   dnssec_strerror(r));
