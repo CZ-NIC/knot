@@ -69,7 +69,6 @@ struct process_query_param {
 /*! \brief Query processing intermediate data. */
 struct query_data {
 	uint16_t rcode;       /*!< Resulting RCODE (Whole extended RCODE). */
-	uint8_t *ext_rcode;   /*!< Place of the Ext RCODE field of OPT RR in wire. */
 	uint16_t rcode_tsig;  /*!< Resulting TSIG RCODE. */
 	uint16_t packet_type; /*!< Resolved packet type. */
 	knot_pkt_t *query;    /*!< Query to be solved. */
@@ -86,6 +85,7 @@ struct query_data {
 
 	/* EDNS */
 	knot_rrset_t opt_rr;
+	uint8_t *opt_rr_pos;  /*!< Place of the OPT RR in wire. */
 
 	/* Extensions. */
 	void *ext;

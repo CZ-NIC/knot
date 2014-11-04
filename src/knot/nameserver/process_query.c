@@ -267,8 +267,8 @@ static int answer_edns_put(knot_pkt_t *resp, struct query_data *qdata)
 	assert(resp->current == KNOT_ADDITIONAL);
 	ret = knot_pkt_put(resp, KNOT_COMPR_HINT_NONE, &qdata->opt_rr, 0);
 	if (ret == KNOT_EOK) {
-		/* Save position of the Ext RCODE field. */
-		qdata->ext_rcode = wire_end + KNOT_EDNS_EXT_RCODE_POS;
+		/* Save position of the OPT RR. */
+		qdata->opt_rr_pos = wire_end;
 	}
 
 	return ret;
@@ -337,13 +337,13 @@ static int set_rcode_to_packet(knot_pkt_t *pkt, struct query_data *qdata)
 
 	if (ext_rcode != 0) {
 		/* If there is no OPT RR and Ext RCODE is set, result in
-		 * SERVFAIL. This should not happen!
+		 * SERVFAIL. This may happen if adding OPT failed.
 		 */
-		if (qdata->ext_rcode == NULL) {
+		if (qdata->opt_rr_pos == NULL) {
 			qdata->rcode = KNOT_RCODE_SERVFAIL;
 			ret = KNOT_ERROR;
 		} else {
-			*qdata->ext_rcode = ext_rcode;
+			knot_edns_set_ext_rcode_wire(qdata->opt_rr_pos, ext_rcode);
 		}
 	}
 
@@ -373,14 +373,12 @@ static int process_query_err(knot_layer_t *ctx, knot_pkt_t *pkt)
 	}
 
 	/* Put OPT RR to the additional section. */
-	int ret = answer_edns_reserve(pkt, qdata);
-	ret = ret || answer_edns_put(pkt, qdata);
-
-	if (ret != KNOT_EOK) {
-		qdata->rcode = KNOT_RCODE_SERVFAIL;
+	ret = answer_edns_reserve(pkt, qdata);
+	if (ret == KNOT_EOK) {
+		(void) answer_edns_put(pkt, qdata);
 	}
 
-	/* Set final RCODE to packet. */
+	/* Set final RCODE to packet. If the above failed, SERVFAIL will be set. */
 	(void) set_rcode_to_packet(pkt, qdata);
 
 	/* Transaction security (if applicable). */
