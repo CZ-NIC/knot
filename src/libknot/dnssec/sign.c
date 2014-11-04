@@ -147,12 +147,7 @@ static int sign_safe_write(const knot_dnssec_sign_context_t *context,
 
 	// check target size
 
-	unsigned int max_write = 0;
-	int result = EVP_SignFinal(digest_ctx, NULL, &max_write, private_key);
-	if (!result) {
-		return KNOT_DNSSEC_ESIGN;
-	}
-
+	unsigned int max_write = EVP_PKEY_size(private_key);
 	if (max_write > max_size) {
 		return KNOT_DNSSEC_EUNEXPECTED_SIGNATURE_SIZE;
 	}
@@ -160,7 +155,7 @@ static int sign_safe_write(const knot_dnssec_sign_context_t *context,
 	// write signature
 
 	unsigned int written = 0;
-	result = EVP_SignFinal(digest_ctx, signature, &written, private_key);
+	int result = EVP_SignFinal(digest_ctx, signature, &written, private_key);
 	if (!result) {
 		return KNOT_DNSSEC_ESIGN;
 	}
