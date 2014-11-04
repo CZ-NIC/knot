@@ -13,6 +13,7 @@
 #include "knot/server/rrl.h"
 #include "knot/updates/acl.h"
 #include "knot/conf/conf.h"
+#include "libknot/rrtype/opt.h"
 #include "libknot/tsig-op.h"
 #include "libknot/descriptor.h"
 #include "common/debug.h"

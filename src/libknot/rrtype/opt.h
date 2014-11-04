@@ -177,7 +177,8 @@ void knot_edns_set_ext_rcode(knot_rrset_t *opt_rr, uint8_t ext_rcode);
  * \param opt_rr     Position of the OPT RR in packet.
  * \param ext_rcode  Higher 8 bits of Extended RCODE.
  */
-inline void knot_edns_set_ext_rcode_wire(uint8_t *opt_rr, uint8_t ext_rcode)
+static inline void knot_edns_set_ext_rcode_wire(uint8_t *opt_rr,
+                                                uint8_t ext_rcode)
 {
 	*(opt_rr + KNOT_EDNS_EXT_RCODE_POS) = ext_rcode;
 }
