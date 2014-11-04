@@ -88,7 +88,7 @@ _public_
 uint64_t knot_wire_read_u48(const uint8_t *pos)
 {
 	uint64_t input = 0;
-	memcpy((void *)&input + 1, (void *)pos, 6);
+	memcpy((uint8_t *)&input + 1, pos, 6);
 	return be64toh(input) >> 8;
 }
 
@@ -114,7 +114,7 @@ _public_
 void knot_wire_write_u48(uint8_t *pos, uint64_t data)
 {
 	uint64_t swapped = htobe64(data << 8);
-	memcpy((void *)pos, (uint8_t *)&swapped + 1, 6);
+	memcpy(pos, (uint8_t *)&swapped + 1, 6);
 }
 
 _public_

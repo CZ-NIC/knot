@@ -343,7 +343,7 @@ static int parse_keyfile_line(knot_key_params_t *key_params,
 			value++;
 		}
 
-		void *save_to = (void *)key_params + current->offset;
+		void *save_to = (uint8_t *)key_params + current->offset;
 		return current->handler(save_to, value);
 	}
 
