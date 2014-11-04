@@ -81,6 +81,7 @@
 
 #include <dnssec/key.h>
 #include <dnssec/list.h>
+#include <stdbool.h>
 #include <time.h>
 
 struct dnssec_kasp;
@@ -213,6 +214,24 @@ typedef struct dnssec_kasp_key {
 	dnssec_key_t *key;			/*!< Instance of the key. */
 	dnssec_kasp_key_timing_t timing;	/*!< Key timing information. */
 } dnssec_kasp_key_t;
+
+/*!
+ * Check if DNSKEY is published in the zone.
+ */
+bool dnssec_kasp_key_is_published(dnssec_kasp_key_timing_t *timing, time_t at);
+
+/*!
+ * Check if RRSIGs are present in the zone.
+ */
+bool dnssec_kasp_key_is_active(dnssec_kasp_key_timing_t *timing, time_t at);
+
+/*!
+ * Check if key is published or active.
+ *
+ * \param timing  Key timing metadata.
+ * \param at      Time to check the metadata against.
+ */
+bool dnssec_kasp_key_is_used(dnssec_kasp_key_timing_t *timing, time_t at);
 
 /*!
  * Get the set of keys associated with the zone.

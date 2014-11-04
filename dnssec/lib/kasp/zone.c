@@ -15,6 +15,7 @@
 */
 
 #include <assert.h>
+#include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -80,6 +81,48 @@ void dnssec_kasp_zone_free(dnssec_kasp_zone_t *zone)
 	free(zone->name);
 
 	free(zone);
+}
+
+/*!
+ * Check if DNSKEY is published in the zone.
+ */
+_public_
+bool dnssec_kasp_key_is_published(dnssec_kasp_key_timing_t *timing, time_t at)
+{
+	if (!timing) {
+		return false;
+	}
+
+	return (timing->publish == 0 || timing->publish <= at) &&
+	       (timing->remove == 0 || at <= timing->remove);
+}
+
+/*!
+ * Check if RRSIGs are present in the zone.
+ */
+_public_
+bool dnssec_kasp_key_is_active(dnssec_kasp_key_timing_t *timing, time_t at)
+{
+	if (!timing) {
+		return false;
+	}
+
+	return (timing->active == 0 || timing->active <= at) &&
+	       (timing->retire == 0 || at <= timing->retire);
+}
+
+/*!
+ * Check if key is published or active.
+ */
+_public_
+bool dnssec_kasp_key_is_used(dnssec_kasp_key_timing_t *timing, time_t at)
+{
+	if (!timing) {
+		return false;
+	}
+
+	return dnssec_kasp_key_is_published(timing, at) ||
+	       dnssec_kasp_key_is_active(timing, at);
 }
 
 /*!
