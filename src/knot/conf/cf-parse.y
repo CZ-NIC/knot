@@ -54,6 +54,8 @@ static conf_log_t *this_log = 0;
 static conf_log_map_t *this_logmap = 0;
 //#define YYERROR_VERBOSE 1
 
+static char *cache_hostname = NULL;
+
 #define SET_NUM(out, in, min, max, name)				\
 {									\
 	if (in < min || in > max) {					\
@@ -67,6 +69,11 @@ static conf_log_map_t *this_logmap = 0;
 #define SET_UINT16(out, in, name) SET_NUM(out, in, 0, UINT16_MAX, name);
 #define SET_INT(out, in, name) SET_NUM(out, in, 0, INT_MAX, name);
 #define SET_SIZE(out, in, name) SET_NUM(out, in, 0, SIZE_MAX, name);
+
+static void conf_start(void *scanner)
+{
+	cache_hostname = NULL;
+}
 
 static void conf_init_iface(void *scanner, char* ifname)
 {
@@ -422,11 +429,17 @@ static void opt_replace(char **opt, char *new_opt, bool val)
 
 static char *get_hostname(void *scanner)
 {
+	if (cache_hostname) {
+		return strdup(cache_hostname);
+	}
+
 	char *fqdn = sockaddr_hostname();
 	if (!fqdn) {
 		cf_warning(scanner, "cannot retrieve host FQDN");
 		return NULL;
 	}
+
+	cache_hostname = fqdn;
 
 	return fqdn;
 }
@@ -531,7 +544,7 @@ static void ident_auto(void *scanner, int tok, conf_t *conf, bool val)
 
 %%
 
-config: conf_entries END { return 0; } ;
+config: { conf_start(scanner); } conf_entries END { return 0; } ;
 
 conf_entries:
  /* EMPTY */
