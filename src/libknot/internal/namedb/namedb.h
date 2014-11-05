@@ -21,19 +21,31 @@
 #include "libknot/internal/mempattern.h"
 
 enum {
-	NAMEDB_RDONLY = 1 << 0,
-	NAMEDB_SORTED = 1 << 1
+	/* Database flags */
+
+	NAMEDB_RDONLY = 1 << 0, /*!< Read only. */
+	NAMEDB_SORTED = 1 << 1, /*!< Sorted output. */
+
+	/* Operations */
+
+	NAMEDB_NOOP   = 1 << 2, /*!< No operation. */
+	NAMEDB_FIRST  = 1 << 3, /*!< First entry. */
+	NAMEDB_LAST   = 1 << 4, /*!< Last entry. */
+	NAMEDB_NEXT   = 1 << 5, /*!< Next entry. */
+	NAMEDB_PREV   = 1 << 6, /*!< Previous entry. */
+	NAMEDB_LEQ    = 1 << 7, /*!< Lesser or equal. */
+	NAMEDB_GEQ    = 1 << 8  /*!< Greater or equal. */
 };
 
 typedef void namedb_t;
 typedef void namedb_iter_t;
 
-typedef struct knot_val {
+typedef struct namedb_val {
 	void *data;
 	size_t len;
 } namedb_val_t;
 
-typedef struct knot_txn {
+typedef struct namedb_txn {
 	namedb_t *db;
 	void *txn;
 } namedb_txn_t;
@@ -56,13 +68,15 @@ struct namedb_api {
 	/* Data access */
 
 	int (*count)(namedb_txn_t *txn);
+	int (*clear)(namedb_txn_t *txn);
 	int (*find)(namedb_txn_t *txn, namedb_val_t *key, namedb_val_t *val, unsigned flags);
 	int (*insert)(namedb_txn_t *txn, namedb_val_t *key, namedb_val_t *val, unsigned flags);
-	int (*del)(namedb_txn_t *txn,namedb_val_t *key);
+	int (*del)(namedb_txn_t *txn, namedb_val_t *key);
 
 	/* Iteration */
 
 	namedb_iter_t *(*iter_begin)(namedb_txn_t *txn, unsigned flags);
+	namedb_iter_t *(*iter_seek)(namedb_iter_t *iter, namedb_val_t *key, unsigned flags);
 	namedb_iter_t *(*iter_next)(namedb_iter_t *iter);
 	int (*iter_key)(namedb_iter_t *iter, namedb_val_t *key);
 	int (*iter_val)(namedb_iter_t *iter, namedb_val_t *val);

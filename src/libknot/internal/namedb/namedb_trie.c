@@ -14,6 +14,8 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <assert.h>
+
 #include "libknot/errcode.h"
 
 #include "libknot/internal/namedb/namedb_trie.h"
@@ -68,6 +70,13 @@ static int count(namedb_txn_t *txn)
 	return hattrie_weight((hattrie_t *)txn->db);
 }
 
+static int clear(namedb_txn_t *txn)
+{
+	hattrie_clear((hattrie_t *)txn->db);
+
+	return KNOT_EOK;
+}
+
 static int find(namedb_txn_t *txn, namedb_val_t *key, namedb_val_t *val, unsigned flags)
 {
 	value_t *ret = hattrie_tryget((hattrie_t *)txn->db, key->data, key->len);
@@ -98,7 +107,21 @@ static int del(namedb_txn_t *txn, namedb_val_t *key)
 
 static namedb_iter_t *iter_begin(namedb_txn_t *txn, unsigned flags)
 {
-	return hattrie_iter_begin((hattrie_t *)txn->db, (flags & NAMEDB_SORTED));
+	bool is_sorted = (flags & NAMEDB_SORTED);
+	flags &= ~NAMEDB_SORTED;
+	
+	/* No operations other than begin are supported right now. */
+	if (flags != 0) {
+		return NULL;
+	}
+	
+	return hattrie_iter_begin((hattrie_t *)txn->db, is_sorted);
+}
+
+static namedb_iter_t *iter_seek(namedb_iter_t *iter, namedb_val_t *key, unsigned flags)
+{
+	assert(0);
+	return NULL; /* ENOTSUP */
 }
 
 static namedb_iter_t *iter_next(namedb_iter_t *iter)
@@ -145,8 +168,8 @@ const struct namedb_api *namedb_trie_api(void)
 		"hattrie",
 		init, deinit,
 		txn_begin, txn_commit, txn_abort,
-		count, find, insert, del,
-		iter_begin, iter_next, iter_key, iter_val, iter_finish
+		count, clear, find, insert, del,
+		iter_begin, iter_seek, iter_next, iter_key, iter_val, iter_finish
 	};
 
 	return &api;
