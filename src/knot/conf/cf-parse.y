@@ -574,8 +574,8 @@ system:
  | system IDENTITY TEXT ';' { new_config->identity = $3.t; }
  | system IDENTITY BOOL ';' { ident_auto(IDENTITY, new_config, $3.i); }
  | system HOSTNAME TEXT ';' {
-     fprintf(stderr, "warning: Config option 'system.hostname' is deprecated. "
-                     "Use 'system.identity' instead.\n");
+     cf_warning(scanner, "option 'system.hostname' is deprecated, "
+                         "use 'system.identity' instead");
      free($3.t);
  }
  | system NSID HEXSTR ';' { new_config->nsid = $3.t; new_config->nsid_len = $3.l; }
@@ -586,15 +586,14 @@ system:
              KNOT_EDNS_MAX_UDP_PAYLOAD, "max-udp-payload");
  }
  | system STORAGE TEXT ';' {
-     fprintf(stderr, "warning: Config option 'system.storage' was relocated. "
-                     "Use 'zones.storage' instead.\n");
+     cf_warning(scanner, "option 'system.storage' was relocated, "
+                         "use 'zones.storage' instead");
      new_config->storage = $3.t;
  }
  | system RUNDIR TEXT ';' { new_config->rundir = $3.t; }
  | system PIDFILE TEXT ';' { new_config->pidfile = $3.t; }
  | system KEY TSIG_ALGO_NAME TEXT ';' {
-     fprintf(stderr, "warning: Config option 'system.key' is deprecated "
-                     "and has no effect.\n");
+     cf_warning(scanner, "option 'system.key' is deprecated and it has no effect");
      free($4.t);
  }
  | system WORKERS NUM ';' {
@@ -984,8 +983,8 @@ log_prios_start: {
 log_prios:
    log_prios_start
  | log_prios LOG_LEVEL ',' { this_logmap->prios |= $2.i;
-	fprintf(stderr, "Warning: more log severities per statement is deprecated. "
-	                "Using the least serious one.\n");
+	cf_warning(scanner, "multiple log severities are deprecated, "
+	                    "using the least serious one");
  }
  | log_prios LOG_LEVEL ';' { this_logmap->prios |= $2.i; }
  ;
