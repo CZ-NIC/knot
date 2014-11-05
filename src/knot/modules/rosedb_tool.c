@@ -254,7 +254,7 @@ static int rosedb_import_line(struct cache *cache, MDB_txn *txn, char *line)
 	/* Tokenize */
 	char *saveptr = line;
 	char *token = NULL;
-	while ((token = strtok_r(saveptr, " ", &saveptr)) != NULL) {
+	while ((token = strtok_r(saveptr, ";\t", &saveptr)) != NULL) {
 		token = trim(token);
 		if (*token == '\0') {
 			continue;
