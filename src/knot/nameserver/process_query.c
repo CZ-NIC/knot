@@ -337,9 +337,7 @@ static int set_rcode_to_packet(knot_pkt_t *pkt, struct query_data *qdata)
 	uint8_t ext_rcode = KNOT_EDNS_RCODE_HI(qdata->rcode);
 
 	if (ext_rcode != 0) {
-		/* If there is no OPT RR and Ext RCODE is set, result in
-		 * SERVFAIL. This may happen if adding OPT failed.
-		 */
+		/* No OPT RR and Ext RCODE results in SERVFAIL. */
 		if (qdata->opt_rr_pos == NULL) {
 			qdata->rcode = KNOT_RCODE_SERVFAIL;
 			ret = KNOT_ERROR;
@@ -348,7 +346,6 @@ static int set_rcode_to_packet(knot_pkt_t *pkt, struct query_data *qdata)
 		}
 	}
 
-	/* This sets also the SERVFAIL from above. */
 	knot_wire_set_rcode(pkt->wire, KNOT_EDNS_RCODE_LO(qdata->rcode));
 
 	return ret;
@@ -379,7 +376,7 @@ static int process_query_err(knot_layer_t *ctx, knot_pkt_t *pkt)
 		(void) answer_edns_put(pkt, qdata);
 	}
 
-	/* Set final RCODE to packet. If the above failed, SERVFAIL will be set. */
+	/* Set final RCODE to packet. */
 	(void) set_rcode_to_packet(pkt, qdata);
 
 	/* Transaction security (if applicable). */
