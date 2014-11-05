@@ -420,18 +420,29 @@ static void opt_replace(char **opt, char *new_opt, bool val)
 	}
 }
 
+static char *get_hostname(void *scanner)
+{
+	char *fqdn = sockaddr_hostname();
+	if (!fqdn) {
+		cf_warning(scanner, "cannot retrieve host FQDN");
+		return NULL;
+	}
+
+	return fqdn;
+}
+
 /*! \brief Generate automatic defaults for server identity, version and NSID. */
-static void ident_auto(int tok, conf_t *conf, bool val)
+static void ident_auto(void *scanner, int tok, conf_t *conf, bool val)
 {
 	switch(tok) {
 	case SVERSION:
 		opt_replace(&conf->version, strdup("Knot DNS " PACKAGE_VERSION), val);
 		break;
 	case IDENTITY:
-		opt_replace(&conf->identity, sockaddr_hostname(), val);
+		opt_replace(&conf->identity, get_hostname(scanner), val);
 		break;
 	case NSID:
-		opt_replace(&conf->nsid, sockaddr_hostname(), val);
+		opt_replace(&conf->nsid, get_hostname(scanner), val);
 		if (conf->nsid) {
 			conf->nsid_len = strlen(conf->nsid);
 		}
@@ -570,9 +581,9 @@ interfaces:
 system:
    SYSTEM '{'
  | system SVERSION TEXT ';' { new_config->version = $3.t; }
- | system SVERSION BOOL ';' { ident_auto(SVERSION, new_config, $3.i); }
+ | system SVERSION BOOL ';' { ident_auto(scanner, SVERSION, new_config, $3.i); }
  | system IDENTITY TEXT ';' { new_config->identity = $3.t; }
- | system IDENTITY BOOL ';' { ident_auto(IDENTITY, new_config, $3.i); }
+ | system IDENTITY BOOL ';' { ident_auto(scanner, IDENTITY, new_config, $3.i); }
  | system HOSTNAME TEXT ';' {
      cf_warning(scanner, "option 'system.hostname' is deprecated, "
                          "use 'system.identity' instead");
@@ -580,7 +591,7 @@ system:
  }
  | system NSID HEXSTR ';' { new_config->nsid = $3.t; new_config->nsid_len = $3.l; }
  | system NSID TEXT ';' { new_config->nsid = $3.t; new_config->nsid_len = strlen(new_config->nsid); }
- | system NSID BOOL ';' { ident_auto(NSID, new_config, $3.i); }
+ | system NSID BOOL ';' { ident_auto(scanner, NSID, new_config, $3.i); }
  | system MAX_UDP_PAYLOAD NUM ';' {
      SET_NUM(new_config->max_udp_payload, $3.i, KNOT_EDNS_MIN_UDP_PAYLOAD,
              KNOT_EDNS_MAX_UDP_PAYLOAD, "max-udp-payload");
