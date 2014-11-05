@@ -85,6 +85,12 @@ typedef enum {
 	KNOT_RCODE_BADVERS  = 16  /*!< Bad OPT Version. */
 } knot_rcode_t;
 
+/*!
+ * \brief TSIG error codes to be set in the TSIG RR's RDATA.
+ *
+ * Defined in RFC 2845 and RFC 4635.
+ * See also https://www.iana.org/assignments/dns-parameters/dns-parameters.xhtml
+ */
 typedef enum {
 	KNOT_TSIG_ERR_BADSIG   = 16, /*!< TSIG signature failed. */
 	KNOT_TSIG_ERR_BADKEY   = 17, /*!< Key is not supported. */
@@ -92,6 +98,9 @@ typedef enum {
 	KNOT_TSIG_ERR_BADTRUNC = 22  /*!< Bad truncation. */
 } knot_tsig_error_t;
 
+/*!
+ * \brief TKEY error codes. (Defined in RFC 2930.)
+ */
 typedef enum {
 	KNOT_TKEY_ERR_BADMODE  = 19, /*!< Bad TKEY mode. */
 	KNOT_TKEY_ERR_BADNAME  = 20, /*!< Duplicate key name. */
