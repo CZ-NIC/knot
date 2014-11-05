@@ -40,6 +40,12 @@ static int help(void)
 	return 1;
 }
 
+/* Global instance of RR scanner. */
+static void parse_err(zs_scanner_t *s) {
+	fprintf(stderr, "failed to parse RDATA: %s\n", zs_strerror(s->error_code));
+}
+static zs_scanner_t *g_scanner = NULL;
+
 int main(int argc, char *argv[])
 {
 	if (argc < 3) {
@@ -53,10 +59,16 @@ int main(int argc, char *argv[])
 	argv += 3;
 	argc -= 3;
 
+	g_scanner = zs_scanner_create(".", KNOT_CLASS_IN, 0, NULL, parse_err, NULL);
+	if (g_scanner == NULL) {
+		return KNOT_ENOMEM;
+	}
+
 	/* Open cache for operations. */
 	struct cache *cache = cache_open(dbdir, 0, NULL);
 	if (cache == NULL) {
 		fprintf(stderr, "failed to open db '%s'\n", dbdir);
+		zs_scanner_free(g_scanner);
 		return 1;
 	}
 
@@ -68,16 +80,19 @@ int main(int argc, char *argv[])
 
 			/* Check param count. */
 			if (argc < ta->min_args) {
-				return help();
+				break;
 			}
-			
+
+			/* Now set as found. */
+			found = true;
+
 			MDB_txn *txn = NULL;
 			int ret = mdb_txn_begin(cache->env, NULL, 0, &txn);
 			if (ret != 0) {
-				return ret;
-			}			
+				break;
+			}
 
-			found = true;
+			/* Execute operation handler. */
 			ret = ta->func(cache, txn, argc, argv);
 			if (ret != 0) {
 				fprintf(stderr, "FAILED\n");
@@ -89,47 +104,36 @@ int main(int argc, char *argv[])
 			break;
 		}
 	}
-	
+
 	if (!found) {
 		return help();
 	}
 
 	cache_close(cache);
+	zs_scanner_free(g_scanner);
 	return ret;
 }
 
-static void parse_err(zs_scanner_t *s) {
-	fprintf(stderr, "failed to parse RDATA: %s\n", zs_strerror(s->error_code));
-}
-
 static int parse_rdata(struct entry *entry, const char *owner, const char *rrtype, const char *rdata,
-                       int ttl, mm_ctx_t *mm)
+		       int ttl, mm_ctx_t *mm)
 {
 	knot_rdataset_init(&entry->data.rrs);
 	int ret = knot_rrtype_from_string(rrtype, &entry->data.type);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
-	
-	zs_scanner_t *scanner = zs_scanner_create(".", KNOT_CLASS_IN, 0,
-	                                         NULL, parse_err, NULL);
-	if (scanner == NULL) {
-		return KNOT_ENOMEM;
-	}
 
 	/* Synthetize RR line */
 	char *rr_line = sprintf_alloc("%s %u IN %s %s\n", owner, ttl, rrtype, rdata);
-	ret = zs_scanner_parse(scanner, rr_line, rr_line + strlen(rr_line), true);
+	ret = zs_scanner_parse(g_scanner, rr_line, rr_line + strlen(rr_line), true);
 	free(rr_line);
 
 	/* Write parsed RDATA. */
 	if (ret == KNOT_EOK) {
-		knot_rdata_t rr[knot_rdata_array_size(scanner->r_data_length)];
-		knot_rdata_init(rr, scanner->r_data_length, scanner->r_data, ttl);
+		knot_rdata_t rr[knot_rdata_array_size(g_scanner->r_data_length)];
+		knot_rdata_init(rr, g_scanner->r_data_length, g_scanner->r_data, ttl);
 		ret = knot_rdataset_add(&entry->data.rrs, rr, mm);
 	}
-
-	zs_scanner_free(scanner);
 
 	return ret;
 }
@@ -141,7 +145,7 @@ static int rosedb_add(struct cache *cache, MDB_txn *txn, int argc, char *argv[])
 	knot_dname_t key[KNOT_DNAME_MAXLEN] = { '\0' };
 	knot_dname_from_str(key, argv[0], sizeof(key));
 	knot_dname_to_lower(key);
-	
+
 	struct entry entry;
 	int ret = parse_rdata(&entry, argv[0], argv[1], argv[3], atoi(argv[2]), cache->pool);
 	entry.threat_code = argv[4];
@@ -155,7 +159,7 @@ static int rosedb_add(struct cache *cache, MDB_txn *txn, int argc, char *argv[])
 	if (ret != 0) {
 		fprintf(stderr, "%s\n", mdb_strerror(ret));
 	}
-	
+
 	return ret;
 }
 
@@ -166,12 +170,12 @@ static int rosedb_del(struct cache *cache, MDB_txn *txn, int argc, char *argv[])
 	knot_dname_t key[KNOT_DNAME_MAXLEN] = { '\0' };
 	knot_dname_from_str(key, argv[0], sizeof(key));
 	knot_dname_to_lower(key);
-	
+
 	int ret = cache_remove(txn, cache->dbi, key);
 	if (ret != 0) {
 		fprintf(stderr, "%s\n", mdb_strerror(ret));
 	}
-	
+
 	return ret;
 }
 
@@ -180,7 +184,7 @@ static int rosedb_get(struct cache *cache, MDB_txn *txn, int argc, char *argv[])
 	knot_dname_t key[KNOT_DNAME_MAXLEN] = { '\0' };
 	knot_dname_from_str(key, argv[0], sizeof(key));
 	knot_dname_to_lower(key);
-	
+
 	char type_str[16] = { '\0' };
 
 	struct iter it;
@@ -237,7 +241,7 @@ static char *trim(char *line)
 		line[last] = '\0';
 		line += 1;
 	}
-	
+
 	return line;
 }
 
@@ -246,7 +250,7 @@ static int rosedb_import_line(struct cache *cache, MDB_txn *txn, char *line)
 	int ret = 0;
 	int argc = 0;
 	char *argv[TOOL_ACTION_MAXARG];
-	
+
 	/* Tokenize */
 	char *saveptr = line;
 	char *token = NULL;
@@ -263,7 +267,7 @@ static int rosedb_import_line(struct cache *cache, MDB_txn *txn, char *line)
 			return KNOT_EPARSEFAIL;
 		}
 	}
-	
+
 	if (argc < 1) {
 		return KNOT_EOK; /* Ignore NOOP */
 	}
@@ -286,7 +290,7 @@ static int rosedb_import_line(struct cache *cache, MDB_txn *txn, char *line)
 static int rosedb_import(struct cache *cache, MDB_txn *txn, int argc, char *argv[])
 {
 	printf("IMPORT %s\n", argv[0]);
-	
+
 	int ret = 0;
 	char *line = NULL;
 	size_t line_len = 0;
@@ -295,7 +299,7 @@ static int rosedb_import(struct cache *cache, MDB_txn *txn, int argc, char *argv
 	if (fp == NULL) {
 		return KNOT_ENOENT;
 	}
-	
+
 	while ((rb = knot_getline(&line, &line_len, fp)) != -1) {
 		ret = rosedb_import_line(cache, txn, line);
 		if (ret != 0) {
@@ -306,6 +310,6 @@ static int rosedb_import(struct cache *cache, MDB_txn *txn, int argc, char *argv
 
 	free(line);
 	fclose(fp);
-	
+
 	return ret;
 }
