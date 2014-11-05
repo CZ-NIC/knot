@@ -7,8 +7,9 @@ import random, threading, socket
 from dnstest.utils import *
 from dnstest.test import Test
 
-FLOOD_COUNT = 16
-UPDATE_SIZE = 24
+FLOOD_COUNT = 128
+RELOAD_FREQ = FLOOD_COUNT // 16
+UPDATE_SIZE = 32
 
 chars="qwertyuiopasdfghjklzxcvbnm123456789"
 
@@ -35,8 +36,10 @@ def flood(server, zone):
             rr = [randstr() + "." + zone[0].name, 3600, "TXT", randstr()]
             update.add(*rr)
         updates.append(update)
-    for up in updates:
+    for up_index, up in enumerate(updates):
         send_upd(up)
+        if up_index % RELOAD_FREQ == 0:
+            server.reload()
     return rr
     
 random.seed()
