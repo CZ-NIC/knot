@@ -21,8 +21,20 @@
 #include "common/mempattern.h"
 
 enum {
-	KNOT_NAMEDB_RDONLY = 1 << 0,
-	KNOT_NAMEDB_SORTED = 1 << 1
+	/* Database flags */
+
+	KNOT_NAMEDB_RDONLY = 1 << 0, /*!< Read only. */
+	KNOT_NAMEDB_SORTED = 1 << 1, /*!< Sorted output. */
+
+	/* Operations */
+
+	KNOT_NAMEDB_NOOP   = 1 << 2, /*!< No operation. */
+	KNOT_NAMEDB_FIRST  = 1 << 3, /*!< First entry. */
+	KNOT_NAMEDB_LAST   = 1 << 4, /*!< Last entry. */
+	KNOT_NAMEDB_NEXT   = 1 << 5, /*!< Next entry. */
+	KNOT_NAMEDB_PREV   = 1 << 6, /*!< Previous entry. */
+	KNOT_NAMEDB_LEQ    = 1 << 7, /*!< Lesser or equal. */
+	KNOT_NAMEDB_GEQ    = 1 << 8  /*!< Greater or equal. */
 };
 
 typedef void knot_namedb_t;
@@ -56,13 +68,15 @@ struct namedb_api {
 	/* Data access */
 
 	int (*count)(knot_txn_t *txn);
+	int (*clear)(knot_txn_t *txn);
 	int (*find)(knot_txn_t *txn, knot_val_t *key, knot_val_t *val, unsigned flags);
 	int (*insert)(knot_txn_t *txn, knot_val_t *key, knot_val_t *val, unsigned flags);
-	int (*del)(knot_txn_t *txn,knot_val_t *key);
+	int (*del)(knot_txn_t *txn, knot_val_t *key);
 
 	/* Iteration */
 
 	knot_iter_t *(*iter_begin)(knot_txn_t *txn, unsigned flags);
+	knot_iter_t *(*iter_seek)(knot_iter_t *iter, knot_val_t *key, unsigned flags);
 	knot_iter_t *(*iter_next)(knot_iter_t *iter);
 	int (*iter_key)(knot_iter_t *iter, knot_val_t *key);
 	int (*iter_val)(knot_iter_t *iter, knot_val_t *val);
