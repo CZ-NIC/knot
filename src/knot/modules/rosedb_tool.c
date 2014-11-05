@@ -37,7 +37,7 @@ static int help(void)
 		struct tool_action *ta = &TOOL_ACTION[i];
 		printf("\t%s %s\n", ta->name, ta->info);
 	}
-	return 1;
+	return EXIT_FAILURE;
 }
 
 /* Global instance of RR scanner. */
@@ -53,7 +53,7 @@ int main(int argc, char *argv[])
 	}
 
 	/* Get mandatory parameters. */
-	int ret = EXIT_FAILURE;
+	int ret = EXIT_SUCCESS;
 	char *dbdir  = argv[1];
 	char *action = argv[2];
 	argv += 3;
@@ -61,7 +61,7 @@ int main(int argc, char *argv[])
 
 	g_scanner = zs_scanner_create(".", KNOT_CLASS_IN, 0, NULL, parse_err, NULL);
 	if (g_scanner == NULL) {
-		return KNOT_ENOMEM;
+		return EXIT_FAILURE;
 	}
 
 	/* Open cache for operations. */
@@ -69,7 +69,7 @@ int main(int argc, char *argv[])
 	if (cache == NULL) {
 		fprintf(stderr, "failed to open db '%s'\n", dbdir);
 		zs_scanner_free(g_scanner);
-		return 1;
+		return EXIT_FAILURE;
 	}
 
 	/* Execute action. */
@@ -88,14 +88,15 @@ int main(int argc, char *argv[])
 
 			MDB_txn *txn = NULL;
 			int ret = mdb_txn_begin(cache->env, NULL, 0, &txn);
-			if (ret != 0) {
+			if (ret != MDB_SUCCESS) {
+				fprintf(stderr, "failed to open transaction, aborting\n");
 				break;
 			}
 
 			/* Execute operation handler. */
 			ret = ta->func(cache, txn, argc, argv);
 			if (ret != 0) {
-				fprintf(stderr, "FAILED\n");
+				fprintf(stderr, "'%s' failed, aborting transaction\n", action);
 				mdb_txn_abort(txn);
 			} else {
 				mdb_txn_commit(txn);
@@ -111,6 +112,7 @@ int main(int argc, char *argv[])
 
 	cache_close(cache);
 	zs_scanner_free(g_scanner);
+	
 	return ret;
 }
 
