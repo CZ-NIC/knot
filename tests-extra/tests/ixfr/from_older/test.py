@@ -20,6 +20,7 @@ resp = knot.dig("example.com", "IXFR", serial=serial_init + 1)
 
 compare(resp.msg_count(), 1, "Only one message")
 compare(resp.count("SOA"), 1, "Only one RR in Answer section")
+compare(resp.count("ANY"), 1, "Only one RR in the whole message.")
 
 t.end()
 
