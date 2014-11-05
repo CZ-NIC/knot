@@ -387,7 +387,7 @@ int knot_load_key_params(const char *filename, knot_key_params_t *key_params)
 	key_params->name = name;
 	key_params->rdata = rdata;
 	key_params->keytag = knot_keytag(rdata.data, rdata.size);
-	key_params->flags = knot_wire_read_u16(rdata.data);
+	key_params->flags = wire_read_u16(rdata.data);
 
 	char *buffer = NULL;
 	size_t buffer_size = 0;

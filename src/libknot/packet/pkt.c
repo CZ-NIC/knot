@@ -414,7 +414,7 @@ uint16_t knot_pkt_qtype(const knot_pkt_t *pkt)
 	}
 
 	unsigned off = KNOT_WIRE_HEADER_SIZE + pkt->qname_size;
-	return knot_wire_read_u16(pkt->wire + off);
+	return wire_read_u16(pkt->wire + off);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -427,7 +427,7 @@ uint16_t knot_pkt_qclass(const knot_pkt_t *pkt)
 	}
 
 	unsigned off = KNOT_WIRE_HEADER_SIZE + pkt->qname_size + sizeof(uint16_t);
-	return knot_wire_read_u16(pkt->wire + off);
+	return wire_read_u16(pkt->wire + off);
 }
 
 _public_
@@ -474,9 +474,9 @@ int knot_pkt_put_question(knot_pkt_t *pkt, const knot_dname_t *qname, uint16_t q
 
 	/* Copy QTYPE & QCLASS */
 	dst += qname_len;
-	knot_wire_write_u16(dst, qtype);
+	wire_write_u16(dst, qtype);
 	dst += sizeof(uint16_t);
-	knot_wire_write_u16(dst, qclass);
+	wire_write_u16(dst, qclass);
 
 	/* Update question count and sizes. */
 	knot_wire_set_qdcount(pkt->wire, 1);

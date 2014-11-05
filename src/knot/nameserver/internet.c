@@ -881,7 +881,7 @@ static int process_soa_answer(knot_pkt_t *pkt, struct answer_data *data)
 	knot_rdataset_t *soa = node_rdataset(zone->contents->apex, KNOT_RRTYPE_SOA);
 	uint32_t our_serial = knot_soa_serial(soa);
 	uint32_t their_serial =	knot_soa_serial(&answer->rr[0].rrs);
-	if (knot_serial_compare(our_serial, their_serial) >= 0) {
+	if (serial_compare(our_serial, their_serial) >= 0) {
 		ANSWER_LOG(LOG_INFO, data, "refresh, outgoing", "zone is up-to-date");
 		zone_events_cancel(zone, ZONE_EVENT_EXPIRE);
 		return KNOT_NS_PROC_DONE; /* Our zone is up to date. */

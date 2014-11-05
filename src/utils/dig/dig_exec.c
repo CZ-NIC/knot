@@ -815,8 +815,8 @@ static int process_xfr_packet(const knot_pkt_t        *query,
 		// Check for reply error.
 		uint8_t rcode_id = knot_wire_get_rcode(in);
 		if (rcode_id != KNOT_RCODE_NOERROR) {
-			knot_lookup_table_t *rcode =
-				knot_lookup_by_id(knot_rcode_names, rcode_id);
+			lookup_table_t *rcode =
+				lookup_by_id(knot_rcode_names, rcode_id);
 			if (rcode != NULL) {
 				ERR("server %s responded %s\n",
 				    net->remote_str, rcode->name);

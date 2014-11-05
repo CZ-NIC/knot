@@ -31,7 +31,7 @@
 #include "libknot/internal/base64.h"		// base64
 #include "libknot/internal/base32hex.h"		// base32hex
 #include "libknot/internal/macros.h"
-#include "libknot/internal/utils.h"		// knot_wire_read_u16
+#include "libknot/internal/utils.h"		// wire_read_u16
 
 #include "libknot/errcode.h"		// KNOT_EOK
 #include "libknot/descriptor.h"		// KNOT_RRTYPE
@@ -126,7 +126,7 @@ static void wire_num16_to_str(rrset_dump_params_t *p)
 	}
 
 	// Fill in input data.
-	data = knot_wire_read_u16(p->in);
+	data = wire_read_u16(p->in);
 
 	// Write number.
 	int ret = snprintf(p->out, p->out_max, "%u", data);
@@ -156,7 +156,7 @@ static void wire_num32_to_str(rrset_dump_params_t *p)
 	}
 
 	// Fill in input data.
-	data = knot_wire_read_u32(p->in);
+	data = wire_read_u32(p->in);
 
 	// Write number.
 	int ret = snprintf(p->out, p->out_max, "%u", data);
@@ -186,7 +186,7 @@ static void wire_num48_to_str(rrset_dump_params_t *p)
 	}
 
 	// Fill in input data.
-	data = knot_wire_read_u48(p->in);
+	data = wire_read_u48(p->in);
 
 	// Write number.
 	int ret = snprintf(p->out, p->out_max, "%"PRIu64"", data);
@@ -438,10 +438,10 @@ static void wire_len_data_encode_to_str(rrset_dump_params_t *p,
 		in_len = *(p->in);
 		break;
 	case 2:
-		in_len = knot_wire_read_u16(p->in);
+		in_len = wire_read_u16(p->in);
 		break;
 	case 4:
-		in_len = knot_wire_read_u32(p->in);
+		in_len = wire_read_u32(p->in);
 		break;
 	default:
 		return;
@@ -847,7 +847,7 @@ static void wire_apl_to_str(rrset_dump_params_t *p)
 	}
 
 	// Read fixed size values.
-	uint16_t family   = knot_wire_read_u16(p->in);
+	uint16_t family   = wire_read_u16(p->in);
 	uint8_t  prefix   = *(p->in + 2);
 	uint8_t  negation = *(p->in + 3) >> 7;
 	uint8_t  afdlen   = *(p->in + 3) & 0x7F;
@@ -949,11 +949,11 @@ static void wire_loc_to_str(rrset_dump_params_t *p)
 	p->in++;
 	uint8_t vpre_w = *p->in;
 	p->in++;
-	uint32_t lat_w = knot_wire_read_u32(p->in);
+	uint32_t lat_w = wire_read_u32(p->in);
 	p->in += 4;
-	uint32_t lon_w = knot_wire_read_u32(p->in);
+	uint32_t lon_w = wire_read_u32(p->in);
 	p->in += 4;
-	uint32_t alt_w = knot_wire_read_u32(p->in);
+	uint32_t alt_w = wire_read_u32(p->in);
 	p->in += 4;
 
 	p->in_max -= in_len;
@@ -1192,10 +1192,10 @@ static void wire_rcode_to_str(rrset_dump_params_t *p)
 	}
 
 	// Fill in input data.
-	data = knot_wire_read_u16(p->in);
+	data = wire_read_u16(p->in);
 
 	// Find RCODE name.
-	knot_lookup_table_t *rcode = knot_lookup_by_id(knot_rcode_names, data);
+	lookup_table_t *rcode = lookup_by_id(knot_rcode_names, data);
 	if (rcode != NULL) {
 		rcode_str = rcode->name;
 	}
@@ -1261,8 +1261,8 @@ static void dnskey_info(const uint8_t *rdata,
 	const uint8_t  sep = *(rdata + 1) & 0x01;
 	const uint16_t key_tag = knot_keytag(rdata, rdata_len);
 
-	knot_lookup_table_t *alg = NULL;
-	alg = knot_lookup_by_id(knot_dnssec_alg_names, *(rdata + 3));
+	lookup_table_t *alg = NULL;
+	alg = lookup_by_id(knot_dnssec_alg_names, *(rdata + 3));
 
 	int ret = snprintf(out, out_len, "%s, alg = %s, id = %u ",
 	                   sep ? "KSK" : "ZSK",

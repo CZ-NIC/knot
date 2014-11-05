@@ -25,7 +25,7 @@
 
 /*----------------------------------------------------------------------------*/
 _public_
-knot_lookup_table_t *knot_lookup_by_name(knot_lookup_table_t *table,
+lookup_table_t *lookup_by_name(lookup_table_t *table,
                                              const char *name)
 {
 	while (table->name != NULL) {
@@ -40,7 +40,7 @@ knot_lookup_table_t *knot_lookup_by_name(knot_lookup_table_t *table,
 
 /*----------------------------------------------------------------------------*/
 _public_
-knot_lookup_table_t *knot_lookup_by_id(knot_lookup_table_t *table,
+lookup_table_t *lookup_by_id(lookup_table_t *table,
                                            int id)
 {
 	while (table->name != NULL) {
@@ -61,7 +61,7 @@ static int32_t serial_difference(uint32_t s1, uint32_t s2)
 }
 
 _public_
-int knot_serial_compare(uint32_t s1, uint32_t s2)
+int serial_compare(uint32_t s1, uint32_t s2)
 {
 	int32_t diff = serial_difference(s1, s2);
 	return (s1 == s2) /* s1 equal to s2 */
@@ -72,19 +72,19 @@ int knot_serial_compare(uint32_t s1, uint32_t s2)
 }
 
 _public_
-uint16_t knot_wire_read_u16(const uint8_t *pos)
+uint16_t wire_read_u16(const uint8_t *pos)
 {
 	return be16toh(*(uint16_t *)pos);
 }
 
 _public_
-uint32_t knot_wire_read_u32(const uint8_t *pos)
+uint32_t wire_read_u32(const uint8_t *pos)
 {
 	return be32toh(*(uint32_t *)pos);
 }
 
 _public_
-uint64_t knot_wire_read_u48(const uint8_t *pos)
+uint64_t wire_read_u48(const uint8_t *pos)
 {
 	uint64_t input = 0;
 	memcpy((uint8_t *)&input + 1, pos, 6);
@@ -92,32 +92,32 @@ uint64_t knot_wire_read_u48(const uint8_t *pos)
 }
 
 _public_
-uint64_t knot_wire_read_u64(const uint8_t *pos)
+uint64_t wire_read_u64(const uint8_t *pos)
 {
 	return be64toh(*(uint64_t *)pos);
 }
 
 _public_
-void knot_wire_write_u16(uint8_t *pos, uint16_t data)
+void wire_write_u16(uint8_t *pos, uint16_t data)
 {
 	*(uint16_t *)pos = htobe16(data);
 }
 
 _public_
-void knot_wire_write_u32(uint8_t *pos, uint32_t data)
+void wire_write_u32(uint8_t *pos, uint32_t data)
 {
 	*(uint32_t *)pos = htobe32(data);
 }
 
 _public_
-void knot_wire_write_u48(uint8_t *pos, uint64_t data)
+void wire_write_u48(uint8_t *pos, uint64_t data)
 {
 	uint64_t swapped = htobe64(data << 8);
 	memcpy(pos, (uint8_t *)&swapped + 1, 6);
 }
 
 _public_
-void knot_wire_write_u64(uint8_t *pos, uint64_t data)
+void wire_write_u64(uint8_t *pos, uint64_t data)
 {
 	*(uint64_t *)pos = htobe64(data);
 }

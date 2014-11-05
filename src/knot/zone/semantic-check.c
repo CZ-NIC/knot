@@ -255,7 +255,7 @@ static int check_dnskey_rdata(const knot_rrset_t *rrset, size_t rdata_pos)
 	const uint16_t mask = 1 << 8; //0b0000000100000000;
 
 	const knot_rdata_t *rr_data = knot_rdataset_at(&rrset->rrs, rdata_pos);
-	uint16_t flags = knot_wire_read_u16(knot_rdata_data(rr_data));
+	uint16_t flags = wire_read_u16(knot_rdata_data(rr_data));
 	if (flags & mask) {
 		return KNOT_EOK;
 	} else {

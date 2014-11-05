@@ -235,7 +235,7 @@ int zone_events_init(zone_t *zone)
 }
 
 int zone_events_setup(struct zone_t *zone, worker_pool_t *workers,
-                      evsched_t *scheduler, knot_namedb_t *timers_db)
+                      evsched_t *scheduler, namedb_t *timers_db)
 {
 	if (!zone || !workers || !scheduler) {
 		return KNOT_EINVAL;

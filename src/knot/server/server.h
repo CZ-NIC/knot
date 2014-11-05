@@ -96,7 +96,7 @@ typedef struct server_t {
 
 	/*! \brief Zone database. */
 	knot_zonedb_t *zone_db;
-	knot_namedb_t *timers_db;
+	namedb_t *timers_db;
 
 	/*! \brief I/O handlers. */
 	unsigned tu_size;

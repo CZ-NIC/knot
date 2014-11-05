@@ -19,7 +19,7 @@
 #include "libknot/internal/macros.h"
 
 _public_
-knot_lookup_table_t knot_opcode_names[] = {
+lookup_table_t knot_opcode_names[] = {
 	{ KNOT_OPCODE_QUERY,  "QUERY" },
 	{ KNOT_OPCODE_IQUERY, "IQUERY" },
 	{ KNOT_OPCODE_STATUS, "STATUS" },
@@ -29,7 +29,7 @@ knot_lookup_table_t knot_opcode_names[] = {
 };
 
 _public_
-knot_lookup_table_t knot_rcode_names[] = {
+lookup_table_t knot_rcode_names[] = {
 	{ KNOT_RCODE_NOERROR,  "NOERROR" },
 	{ KNOT_RCODE_FORMERR,  "FORMERR" },
 	{ KNOT_RCODE_SERVFAIL, "SERVFAIL" },
@@ -46,7 +46,7 @@ knot_lookup_table_t knot_rcode_names[] = {
 };
 
 _public_
-knot_lookup_table_t knot_tsig_err_names[] = {
+lookup_table_t knot_tsig_err_names[] = {
 	{ KNOT_TSIG_ERR_BADSIG,   "BADSIG" },
 	{ KNOT_TSIG_ERR_BADKEY,   "BADKEY" },
 	{ KNOT_TSIG_ERR_BADTIME,  "BADTIME" },
@@ -55,7 +55,7 @@ knot_lookup_table_t knot_tsig_err_names[] = {
 };
 
 _public_
-knot_lookup_table_t knot_tkey_err_names[] = {
+lookup_table_t knot_tkey_err_names[] = {
 	{ KNOT_TKEY_ERR_BADMODE,  "BADMODE" },
 	{ KNOT_TKEY_ERR_BADNAME,  "BADNAME" },
 	{ KNOT_TKEY_ERR_BADALG,   "BADALG" },
@@ -63,7 +63,7 @@ knot_lookup_table_t knot_tkey_err_names[] = {
 };
 
 _public_
-knot_lookup_table_t knot_tsig_alg_names[] = {
+lookup_table_t knot_tsig_alg_names[] = {
 	{ KNOT_TSIG_ALG_HMAC_MD5,    "hmac-md5" },
 	{ KNOT_TSIG_ALG_HMAC_SHA1,   "hmac-sha1" },
 	{ KNOT_TSIG_ALG_HMAC_SHA224, "hmac-sha224" },
@@ -74,7 +74,7 @@ knot_lookup_table_t knot_tsig_alg_names[] = {
 };
 
 _public_
-knot_lookup_table_t knot_tsig_alg_dnames_str[] = {
+lookup_table_t knot_tsig_alg_dnames_str[] = {
 	{ KNOT_TSIG_ALG_GSS_TSIG,    "gss-tsig." },
 	{ KNOT_TSIG_ALG_HMAC_MD5,    "hmac-md5.sig-alg.reg.int." },
 	{ KNOT_TSIG_ALG_HMAC_SHA1,   "hmac-sha1." },
@@ -86,7 +86,7 @@ knot_lookup_table_t knot_tsig_alg_dnames_str[] = {
 };
 
 _public_
-knot_lookup_table_t knot_tsig_alg_dnames[] = {
+lookup_table_t knot_tsig_alg_dnames[] = {
 	{ KNOT_TSIG_ALG_GSS_TSIG,    "\x08" "gss-tsig" },
 	{ KNOT_TSIG_ALG_HMAC_MD5,    "\x08" "hmac-md5" "\x07" "sig-alg" "\x03" "reg" "\x03" "int" },
 	{ KNOT_TSIG_ALG_HMAC_SHA1,   "\x09" "hmac-sha1" },
@@ -98,7 +98,7 @@ knot_lookup_table_t knot_tsig_alg_dnames[] = {
 };
 
 _public_
-knot_lookup_table_t knot_dnssec_alg_names[] = {
+lookup_table_t knot_dnssec_alg_names[] = {
 	{ KNOT_DNSSEC_ALG_RSAMD5,             "RSAMD5" },
 	{ KNOT_DNSSEC_ALG_DH,                 "DH" },
 	{ KNOT_DNSSEC_ALG_DSA,                "DSA" },

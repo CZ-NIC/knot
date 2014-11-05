@@ -35,12 +35,12 @@
  *
  * \note Taken from NSD.
  */
-struct knot_lookup_table {
+struct lookup_table {
 	int id;
 	const char *name;
 };
 
-typedef struct knot_lookup_table knot_lookup_table_t;
+typedef struct lookup_table lookup_table_t;
 
 /*!
  * \brief Looks up the given name in the lookup table.
@@ -51,8 +51,7 @@ typedef struct knot_lookup_table knot_lookup_table_t;
  * \return Item in the lookup table with the given name or NULL if no such is
  *         present.
  */
-knot_lookup_table_t *knot_lookup_by_name(knot_lookup_table_t *table,
-                                         const char *name);
+lookup_table_t *lookup_by_name(lookup_table_t *table, const char *name);
 
 /*!
  * \brief Looks up the given id in the lookup table.
@@ -63,7 +62,7 @@ knot_lookup_table_t *knot_lookup_by_name(knot_lookup_table_t *table,
  * \return Item in the lookup table with the given id or NULL if no such is
  *         present.
  */
-knot_lookup_table_t *knot_lookup_by_id(knot_lookup_table_t *table, int id);
+lookup_table_t *lookup_by_id(lookup_table_t *table, int id);
 
 /*
  * Writing / reading arbitrary data to / from wireformat.
@@ -76,7 +75,7 @@ knot_lookup_table_t *knot_lookup_by_id(knot_lookup_table_t *table, int id);
  *
  * \return The 2 bytes read, in host byte order.
  */
-uint16_t knot_wire_read_u16(const uint8_t *pos);
+uint16_t wire_read_u16(const uint8_t *pos);
 
 /*!
  * \brief Reads 4 bytes from the wireformat data.
@@ -85,7 +84,7 @@ uint16_t knot_wire_read_u16(const uint8_t *pos);
  *
  * \return The 4 bytes read, in host byte order.
  */
-uint32_t knot_wire_read_u32(const uint8_t *pos);
+uint32_t wire_read_u32(const uint8_t *pos);
 
 /*!
  * \brief Reads 6 bytes from the wireformat data.
@@ -94,7 +93,7 @@ uint32_t knot_wire_read_u32(const uint8_t *pos);
  *
  * \return The 6 bytes read, in host byte order.
  */
-uint64_t knot_wire_read_u48(const uint8_t *pos);
+uint64_t wire_read_u48(const uint8_t *pos);
 
 /*!
  * \brief Read 8 bytes from the wireformat data.
@@ -103,7 +102,7 @@ uint64_t knot_wire_read_u48(const uint8_t *pos);
  *
  * \return The 8 bytes read, in host byte order.
  */
-uint64_t knot_wire_read_u64(const uint8_t *pos);
+uint64_t wire_read_u64(const uint8_t *pos);
 
 /*!
  * \brief Writes 2 bytes in wireformat.
@@ -113,7 +112,7 @@ uint64_t knot_wire_read_u64(const uint8_t *pos);
  * \param pos Position where to put the 2 bytes.
  * \param data Data to put.
  */
-void knot_wire_write_u16(uint8_t *pos, uint16_t data);
+void wire_write_u16(uint8_t *pos, uint16_t data);
 
 /*!
  * \brief Writes 4 bytes in wireformat.
@@ -123,7 +122,7 @@ void knot_wire_write_u16(uint8_t *pos, uint16_t data);
  * \param pos Position where to put the 4 bytes.
  * \param data Data to put.
  */
-void knot_wire_write_u32(uint8_t *pos, uint32_t data);
+void wire_write_u32(uint8_t *pos, uint32_t data);
 
 /*!
  * \brief Writes 6 bytes in wireformat.
@@ -133,7 +132,7 @@ void knot_wire_write_u32(uint8_t *pos, uint32_t data);
  * \param pos Position where to put the 4 bytes.
  * \param data Data to put.
  */
-void knot_wire_write_u48(uint8_t *pos, uint64_t data);
+void wire_write_u48(uint8_t *pos, uint64_t data);
 
 /*!
  * \brief Writes 8 bytes in wireformat.
@@ -143,7 +142,7 @@ void knot_wire_write_u48(uint8_t *pos, uint64_t data);
  * \param pos Position where to put the 8 bytes.
  * \param data Data to put.
  */
-void knot_wire_write_u64(uint8_t *pos, uint64_t data);
+void wire_write_u64(uint8_t *pos, uint64_t data);
 
 /*!
  * \brief Compares two zone serials.
@@ -152,6 +151,6 @@ void knot_wire_write_u64(uint8_t *pos, uint64_t data);
  * \retval > 0 if s1 is larger than s2.
  * \retval == 0 if s1 is equal to s2.
  */
-int knot_serial_compare(uint32_t s1, uint32_t s2);
+int serial_compare(uint32_t s1, uint32_t s2);
 
 /*! @} */

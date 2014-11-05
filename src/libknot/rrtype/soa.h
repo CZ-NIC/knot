@@ -45,7 +45,7 @@ static inline
 uint32_t knot_soa_serial(const knot_rdataset_t *rrs)
 {
 	KNOT_RDATASET_CHECK(rrs, 0, return 0);
-	return knot_wire_read_u32(knot_rdata_offset(rrs, 0,
+	return wire_read_u32(knot_rdata_offset(rrs, 0,
 	                                      knot_soa_names_len(rrs)));
 }
 
@@ -54,7 +54,7 @@ void knot_soa_serial_set(knot_rdataset_t *rrs, uint32_t serial)
 {
 	KNOT_RDATASET_CHECK(rrs, 0, return);
 	// the number is in network byte order, transform it
-	knot_wire_write_u32(knot_rdata_offset(rrs, 0, knot_soa_names_len(rrs)),
+	wire_write_u32(knot_rdata_offset(rrs, 0, knot_soa_names_len(rrs)),
 	                    serial);
 }
 
@@ -62,7 +62,7 @@ static inline
 uint32_t knot_soa_refresh(const knot_rdataset_t *rrs)
 {
 	KNOT_RDATASET_CHECK(rrs, 0, return 0);
-	return knot_wire_read_u32(knot_rdata_offset(rrs, 0,
+	return wire_read_u32(knot_rdata_offset(rrs, 0,
 	                                      knot_soa_names_len(rrs) + 4));
 }
 
@@ -70,7 +70,7 @@ static inline
 uint32_t knot_soa_retry(const knot_rdataset_t *rrs)
 {
 	KNOT_RDATASET_CHECK(rrs, 0, return 0);
-	return knot_wire_read_u32(knot_rdata_offset(rrs, 0,
+	return wire_read_u32(knot_rdata_offset(rrs, 0,
 	                                      knot_soa_names_len(rrs) + 8));
 }
 
@@ -78,7 +78,7 @@ static inline
 uint32_t knot_soa_expire(const knot_rdataset_t *rrs)
 {
 	KNOT_RDATASET_CHECK(rrs, 0, return 0);
-	return knot_wire_read_u32(knot_rdata_offset(rrs, 0,
+	return wire_read_u32(knot_rdata_offset(rrs, 0,
 	                                      knot_soa_names_len(rrs) + 12));
 }
 
@@ -86,6 +86,6 @@ static inline
 uint32_t knot_soa_minimum(const knot_rdataset_t *rrs)
 {
 	KNOT_RDATASET_CHECK(rrs, 0, return 0);
-	return knot_wire_read_u32(knot_rdata_offset(rrs, 0,
+	return wire_read_u32(knot_rdata_offset(rrs, 0,
 	                                      knot_soa_names_len(rrs) + 16));
 }

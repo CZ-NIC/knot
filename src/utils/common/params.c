@@ -412,8 +412,8 @@ int params_parse_tsig(const char *value, knot_key_params_t *key_params)
 	key_params->algorithm = KNOT_TSIG_ALG_HMAC_MD5;
 	if (s) {
 		*s++ = '\0';               /* Last part separator */
-		knot_lookup_table_t *alg = NULL;
-		alg = knot_lookup_by_name(knot_tsig_alg_names, h);
+		lookup_table_t *alg = NULL;
+		alg = lookup_by_name(knot_tsig_alg_names, h);
 		if (alg) {
 			DBG("%s: parsed algorithm '%s'\n", __func__, h);
 			key_params->algorithm = alg->id;

@@ -191,42 +191,42 @@ typedef enum {
 /*!
  * \brief DNS operation code names.
  */
-extern knot_lookup_table_t knot_opcode_names[];
+extern lookup_table_t knot_opcode_names[];
 
 /*!
  * \brief DNS reply code names.
  */
-extern knot_lookup_table_t knot_rcode_names[];
+extern lookup_table_t knot_rcode_names[];
 
 /*!
  * \brief TSIG error names.
  */
-extern knot_lookup_table_t knot_tsig_err_names[];
+extern lookup_table_t knot_tsig_err_names[];
 
 /*!
  * \brief TKEY error names.
  */
-extern knot_lookup_table_t knot_tkey_err_names[];
+extern lookup_table_t knot_tkey_err_names[];
 
 /*!
  * \brief TSIG key algorithm names.
  */
-extern knot_lookup_table_t knot_tsig_alg_names[];
+extern lookup_table_t knot_tsig_alg_names[];
 
 /*!
  * \brief TSIG key algorithm names in a domain form.
  */
-extern knot_lookup_table_t knot_tsig_alg_dnames_str[];
+extern lookup_table_t knot_tsig_alg_dnames_str[];
 
 /*!
  * \brief TSIG key algorithm domain names.
  */
-extern knot_lookup_table_t knot_tsig_alg_dnames[];
+extern lookup_table_t knot_tsig_alg_dnames[];
 
 /*!
  * \brief DNSSEC algorithm names.
  */
-extern knot_lookup_table_t knot_dnssec_alg_names[];
+extern lookup_table_t knot_dnssec_alg_names[];
 
 /*!
  * \brief Returns length of TSIG digest for given algorithm.

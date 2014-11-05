@@ -810,10 +810,10 @@ int cmd_send(const char* lp, nsupdate_params_t *params)
 	nsupdate_reset(params);
 
 	/* Check return code. */
-	knot_lookup_table_t *rcode;
+	lookup_table_t *rcode;
 	int rc = knot_wire_get_rcode(params->answer->wire);
 	DBG("%s: received rcode=%d\n", __func__, rc);
-	rcode = knot_lookup_by_id(knot_rcode_names, rc);
+	rcode = lookup_by_id(knot_rcode_names, rc);
 	if (rcode && rcode->id > KNOT_RCODE_NOERROR) {
 		ERR("update failed: %s\n", rcode->name);
 	}

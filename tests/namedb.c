@@ -56,17 +56,17 @@ static void namedb_test_set(unsigned nkeys, char **keys, char *dbid,
 	}
 
 	/* Create database */
-	knot_namedb_t *db = NULL;
+	namedb_t *db = NULL;
 	int ret = api->init(dbid, &db, pool);
 	ok(ret == KNOT_EOK && db != NULL, "%s: create", api->name);
 
 	/* Start WR transaction. */
-	knot_txn_t txn;
+	namedb_txn_t txn;
 	ret = api->txn_begin(db, &txn, 0);
 	ok(ret == KNOT_EOK, "%s: txn_begin(WR)", api->name);
 
 	/* Insert keys */
-	knot_val_t key, val;
+	namedb_val_t key, val;
 	bool passed = true;
 	for (unsigned i = 0; i < nkeys; ++i) {
 		KEY_SET(key, keys[i]);
@@ -86,7 +86,7 @@ static void namedb_test_set(unsigned nkeys, char **keys, char *dbid,
 	ok(ret == KNOT_EOK, "%s: txn_commit(WR)", api->name);
 
 	/* Start RD transaction. */
-	ret = api->txn_begin(db, &txn, KNOT_NAMEDB_RDONLY);
+	ret = api->txn_begin(db, &txn, NAMEDB_RDONLY);
 	ok(ret == KNOT_EOK, "%s: txn_begin(RD)", api->name);
 
 	/* Lookup all keys */
@@ -115,7 +115,7 @@ static void namedb_test_set(unsigned nkeys, char **keys, char *dbid,
 
 	/* Unsorted iteration */
 	int iterated = 0;
-	knot_iter_t *it = api->iter_begin(&txn, 0);
+	namedb_iter_t *it = api->iter_begin(&txn, 0);
 	while (it != NULL) {
 		++iterated;
 		it = api->iter_next(it);
@@ -126,7 +126,7 @@ static void namedb_test_set(unsigned nkeys, char **keys, char *dbid,
 	/* Sorted iteration. */
 	char key_buf[KEY_MAXLEN] = {'\0'};
 	iterated = 0;
-	it = api->iter_begin(&txn, KNOT_NAMEDB_SORTED);
+	it = api->iter_begin(&txn, NAMEDB_SORTED);
 	while (it != NULL) {
 		ret = api->iter_key(it, &key);
 		if (iterated > 0) { /* Only if previous exists. */

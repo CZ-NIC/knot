@@ -21,22 +21,22 @@
 #include "libknot/internal/mempattern.h"
 
 enum {
-	KNOT_NAMEDB_RDONLY = 1 << 0,
-	KNOT_NAMEDB_SORTED = 1 << 1
+	NAMEDB_RDONLY = 1 << 0,
+	NAMEDB_SORTED = 1 << 1
 };
 
-typedef void knot_namedb_t;
-typedef void knot_iter_t;
+typedef void namedb_t;
+typedef void namedb_iter_t;
 
 typedef struct knot_val {
 	void *data;
 	size_t len;
-} knot_val_t;
+} namedb_val_t;
 
 typedef struct knot_txn {
-	knot_namedb_t *db;
+	namedb_t *db;
 	void *txn;
-} knot_txn_t;
+} namedb_txn_t;
 
 struct namedb_api {
 
@@ -44,27 +44,27 @@ struct namedb_api {
 
 	/* Context operations */
 
-	int (*init)(const char *config, knot_namedb_t **db, mm_ctx_t *mm);
-	void (*deinit)(knot_namedb_t *db);
+	int (*init)(const char *config, namedb_t **db, mm_ctx_t *mm);
+	void (*deinit)(namedb_t *db);
 
 	/* Transactions */
 
-	int (*txn_begin)(knot_namedb_t *db, knot_txn_t *txn, unsigned flags);
-	int (*txn_commit)(knot_txn_t *txn);
-	void (*txn_abort)(knot_txn_t *txn);
+	int (*txn_begin)(namedb_t *db, namedb_txn_t *txn, unsigned flags);
+	int (*txn_commit)(namedb_txn_t *txn);
+	void (*txn_abort)(namedb_txn_t *txn);
 
 	/* Data access */
 
-	int (*count)(knot_txn_t *txn);
-	int (*find)(knot_txn_t *txn, knot_val_t *key, knot_val_t *val, unsigned flags);
-	int (*insert)(knot_txn_t *txn, knot_val_t *key, knot_val_t *val, unsigned flags);
-	int (*del)(knot_txn_t *txn,knot_val_t *key);
+	int (*count)(namedb_txn_t *txn);
+	int (*find)(namedb_txn_t *txn, namedb_val_t *key, namedb_val_t *val, unsigned flags);
+	int (*insert)(namedb_txn_t *txn, namedb_val_t *key, namedb_val_t *val, unsigned flags);
+	int (*del)(namedb_txn_t *txn,namedb_val_t *key);
 
 	/* Iteration */
 
-	knot_iter_t *(*iter_begin)(knot_txn_t *txn, unsigned flags);
-	knot_iter_t *(*iter_next)(knot_iter_t *iter);
-	int (*iter_key)(knot_iter_t *iter, knot_val_t *key);
-	int (*iter_val)(knot_iter_t *iter, knot_val_t *val);
-	void (*iter_finish)(knot_iter_t *iter);
+	namedb_iter_t *(*iter_begin)(namedb_txn_t *txn, unsigned flags);
+	namedb_iter_t *(*iter_next)(namedb_iter_t *iter);
+	int (*iter_key)(namedb_iter_t *iter, namedb_val_t *key);
+	int (*iter_val)(namedb_iter_t *iter, namedb_val_t *val);
+	void (*iter_finish)(namedb_iter_t *iter);
 };

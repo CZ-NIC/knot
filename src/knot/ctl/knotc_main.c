@@ -307,8 +307,8 @@ static int tsig_parse_str(knot_tsig_key_t *key, const char *str)
 	int algorithm = KNOT_TSIG_ALG_HMAC_MD5;
 	if (s) {
 		*s++ = '\0';               /* Last part separator */
-		knot_lookup_table_t *alg = NULL;
-		alg = knot_lookup_by_name(knot_tsig_alg_names, h);
+		lookup_table_t *alg = NULL;
+		alg = lookup_by_name(knot_tsig_alg_names, h);
 		if (alg) {
 			algorithm = alg->id;
 		} else {
@@ -357,8 +357,8 @@ static int tsig_parse_line(knot_tsig_key_t *k, char *l)
 	}
 
 	/* Lookup algorithm. */
-	knot_lookup_table_t *alg;
-	alg = knot_lookup_by_name(knot_tsig_alg_names, a);
+	lookup_table_t *alg;
+	alg = lookup_by_name(knot_tsig_alg_names, a);
 
 	if (!alg) {
 		return KNOT_EMALF;
