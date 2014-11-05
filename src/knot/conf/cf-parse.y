@@ -43,6 +43,7 @@
 
 extern int cf_lex (YYSTYPE *lvalp, void *scanner);
 extern void cf_error(void *scanner, const char *format, ...);
+extern void cf_warning(void *scanner, const char *format, ...);
 extern conf_t *new_config;
 static conf_iface_t *this_iface = 0;
 static conf_iface_t *this_remote = 0;
