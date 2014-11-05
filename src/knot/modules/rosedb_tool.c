@@ -245,7 +245,7 @@ static char *trim(char *line)
 	return line;
 }
 
-static int rosedb_import_line(struct cache *cache, MDB_txn *txn, char *line)
+static int rosedb_import_line(struct cache *cache, MDB_txn *txn, char *line, const char *file, int lineno)
 {
 	int ret = 0;
 	int argc = 0;
@@ -263,25 +263,32 @@ static int rosedb_import_line(struct cache *cache, MDB_txn *txn, char *line)
 			argv[argc] = token;
 			argc += 1;
 		} else {
-			fprintf(stderr, "PARSE: '%s', too much parameters.\n", line);
+			fprintf(stderr, "%s#%d command '%s' - too much parameters (%d)\n", file, lineno, line, argc);
 			return KNOT_EPARSEFAIL;
 		}
 	}
 
 	if (argc < 1) {
+		fprintf(stderr, "%s#%d command '%s' - command not recognized\n", file, lineno, line);
 		return KNOT_EOK; /* Ignore NOOP */
 	}
 
 	/* Execute action. */
+	bool found = false;
 	for (unsigned i = 0; i < TOOL_ACTION_COUNT; ++i) {
 		struct tool_action *ta = &TOOL_ACTION[i];
 		if (strcmp(ta->name, argv[0]) == 0) {
 			if (argc < ta->min_args) {
 				return help();
 			}
+			found = true;
 			ret = ta->func(cache, txn, argc - 1, argv + 1);
 			break;
 		}
+	}
+	if (!found) {
+		fprintf(stderr, "%s#%d command '%s' - command not recognized\n", file, lineno, line);
+		return KNOT_EPARSEFAIL;
 	}
 
 	return ret;
@@ -293,6 +300,7 @@ static int rosedb_import(struct cache *cache, MDB_txn *txn, int argc, char *argv
 
 	int ret = 0;
 	char *line = NULL;
+	int lineno = 0;
 	size_t line_len = 0;
 	ssize_t rb = 0;
 	FILE *fp = fopen(argv[0], "r");
@@ -301,7 +309,8 @@ static int rosedb_import(struct cache *cache, MDB_txn *txn, int argc, char *argv
 	}
 
 	while ((rb = knot_getline(&line, &line_len, fp)) != -1) {
-		ret = rosedb_import_line(cache, txn, line);
+		lineno += 1;
+		ret = rosedb_import_line(cache, txn, line, argv[0], lineno);
 		if (ret != 0) {
 			assert(0);
 			break;
