@@ -321,7 +321,7 @@ static void iter_finish(namedb_iter_t *iter)
 
 static int find(namedb_txn_t *txn, namedb_val_t *key, namedb_val_t *val, unsigned flags)
 {
-	knot_iter_t *iter = iter_begin(txn, NAMEDB_NOOP);
+	namedb_iter_t *iter = iter_begin(txn, NAMEDB_NOOP);
 	if (iter == NULL) {
 		return KNOT_ERROR;
 	}
