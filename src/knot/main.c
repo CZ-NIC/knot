@@ -41,7 +41,6 @@
 /* Signal flags. */
 static volatile short sig_req_stop = 0;
 static volatile short sig_req_reload = 0;
-static volatile short sig_stopping = 0;
 
 /* \brief Signal started state to the init system. */
 static void init_signal_started(void)
@@ -67,22 +66,22 @@ static void pid_cleanup(char *pidfile)
 }
 
 /*! \brief SIGINT signal handler. */
-void interrupt_handle(int s)
+static void interrupt_handle(int signum)
 {
-	/* Reload configuration. */
-	if (s == SIGHUP) {
+	switch (signum) {
+	case SIGHUP:
 		sig_req_reload = 1;
-		return;
+		break;
+	case SIGINT:
+	case SIGTERM:
+		sig_req_stop = 1;
+		break;
+	default:
+		/* ignore */
+		break;
 	}
+}
 
-	/* Stop server. */
-	if (s == SIGINT || s == SIGTERM) {
-		if (sig_stopping == 0) {
-			sig_req_stop = 1;
-			sig_stopping = 1;
-		} else {
-			exit(1);
-		}
 	}
 }
 
