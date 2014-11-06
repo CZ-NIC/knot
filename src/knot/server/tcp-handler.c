@@ -32,7 +32,7 @@
 #endif /* HAVE_CAP_NG_H */
 
 #include "libknot/internal/sockaddr.h"
-#include "common-knot/fdset.h"
+#include "knot/common/fdset.h"
 #include "libknot/internal/mempool.h"
 #include "libknot/internal/net.h"
 #include "libknot/internal/macros.h"

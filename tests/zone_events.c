@@ -16,7 +16,7 @@
 
 #include <tap/basic.h>
 
-#include "common-knot/evsched.h"
+#include "knot/common/evsched.h"
 #include "knot/worker/pool.h"
 #include "knot/zone/events/events.h"
 #include "knot/zone/zone.h"

@@ -29,9 +29,9 @@
 
 #pragma once
 
-#include "common-knot/evsched.h"
+#include "knot/common/evsched.h"
 #include "libknot/internal/lists.h"
-#include "common-knot/fdset.h"
+#include "knot/common/fdset.h"
 #include "libknot/internal/net.h"
 #include "libknot/internal/namedb/namedb.h"
 #include "knot/server/dthreads.h"

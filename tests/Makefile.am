@@ -5,8 +5,7 @@ AM_CPPFLAGS = \
 
 LDADD = \
 	$(top_builddir)/libtap/libtap.a \
-	$(top_builddir)/src/libknotd.la \
-	$(top_builddir)/src/libknots.la
+	$(top_builddir)/src/libknotd.la
 
 check_PROGRAMS = \
 	acl				\

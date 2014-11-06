@@ -19,7 +19,7 @@
 #include <pthread.h>
 #include <stdbool.h>
 
-#include "common-knot/evsched.h"
+#include "knot/common/evsched.h"
 #include "libknot/internal/namedb/namedb.h"
 #include "knot/worker/pool.h"
 
