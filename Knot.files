@@ -41,8 +41,6 @@ src/knot/common/evsched.c
 src/knot/common/evsched.h
 src/knot/common/fdset.c
 src/knot/common/fdset.h
-src/knot/common/heap.c
-src/knot/common/heap.h
 src/knot/common/ref.c
 src/knot/common/ref.h
 src/knot/common/trim.h
@@ -198,6 +196,8 @@ src/libknot/internal/errors.c
 src/libknot/internal/errors.h
 src/libknot/internal/getline.c
 src/libknot/internal/getline.h
+src/libknot/internal/heap.c
+src/libknot/internal/heap.h
 src/libknot/internal/hhash.c
 src/libknot/internal/hhash.h
 src/libknot/internal/lists.c
