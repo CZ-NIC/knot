@@ -265,6 +265,7 @@ int main(int argc, char **argv)
 
 	/* Setup base signal handling. */
 	setup_signals();
+	block_signals();
 
 	/* Initialize cryptographic backend. */
 	knot_crypto_init();

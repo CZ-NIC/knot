@@ -124,17 +124,13 @@ static void *thread_ep(void *data)
 		return 0;
 	}
 
-	// Ignore specific signals (except SIGALRM)
-	sigset_t ignset;
-	sigemptyset(&ignset);
-	sigaddset(&ignset, SIGINT);
-	sigaddset(&ignset, SIGTERM);
-	sigaddset(&ignset, SIGHUP);
-	sigaddset(&ignset, SIGPIPE);
-	sigaddset(&ignset, SIGUSR1);
-	pthread_sigmask(SIG_BLOCK, &ignset, 0);
-	rcu_register_thread();
+	// Unblock SIGALRM
+	sigset_t mask;
+	sigemptyset(&mask);
+	sigaddset(&mask, SIGALRM);
+	pthread_sigmask(SIG_UNBLOCK, &mask, NULL);
 
+	rcu_register_thread();
 	dbg_dt("dthreads: [%p] entered ep\n", thread);
 
 	/* Drop capabilities except FS access. */
