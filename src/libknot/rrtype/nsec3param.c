@@ -15,11 +15,9 @@
  */
 
 #include "libknot/rrtype/nsec3param.h"
-
-#include "libknot/internal/mem.h"
-#include "libknot/internal/macros.h"
-
 #include "libknot/errcode.h"
+#include "libknot/internal/macros.h"
+#include "libknot/internal/mem.h"
 
 _public_
 int knot_nsec3param_from_wire(knot_nsec3_params_t *params,

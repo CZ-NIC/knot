@@ -18,7 +18,6 @@
 #include <stdlib.h>
 
 #include "libknot/errcode.h"
-
 #include "libknot/internal/errors.h"
 #include "libknot/internal/macros.h"
 

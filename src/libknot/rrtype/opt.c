@@ -20,13 +20,11 @@
 #include <string.h>
 
 #include "libknot/rrtype/opt.h"
-
-#include "libknot/internal/debug.h"
-#include "libknot/internal/sockaddr.h"
-#include "libknot/internal/macros.h"
-
-#include "libknot/errcode.h"
 #include "libknot/descriptor.h"
+#include "libknot/errcode.h"
+#include "libknot/internal/debug.h"
+#include "libknot/internal/macros.h"
+#include "libknot/internal/sockaddr.h"
 
 /*! \brief Some implementation-related constants. */
 enum knot_edns_private_consts {

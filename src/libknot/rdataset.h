@@ -30,9 +30,8 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#include "libknot/internal/mempattern.h"
-
 #include "libknot/rdata.h"
+#include "libknot/internal/mempattern.h"
 
 /*!< \brief Set of RRs. */
 typedef struct knot_rdataset {

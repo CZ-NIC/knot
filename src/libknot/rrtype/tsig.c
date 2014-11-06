@@ -14,24 +14,22 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <assert.h>
+#include <inttypes.h>
 #include <string.h>
 #include <stdlib.h>
 #include <stdint.h>
-#include <inttypes.h>
-#include <assert.h>
 #include <time.h>
 
 #include "libknot/rrtype/tsig.h"
-
-#include "libknot/internal/debug.h"
-#include "libknot/internal/log.h"
-#include "libknot/internal/utils.h"
-#include "libknot/internal/macros.h"
-
+#include "libknot/consts.h"
+#include "libknot/dname.h"
 #include "libknot/errcode.h"
 #include "libknot/rrset.h"
-#include "libknot/dname.h"
-#include "libknot/consts.h"
+#include "libknot/internal/debug.h"
+#include "libknot/internal/log.h"
+#include "libknot/internal/macros.h"
+#include "libknot/internal/utils.h"
 
 /*! \brief TSIG field offsets. */
 typedef enum tsig_off_t {

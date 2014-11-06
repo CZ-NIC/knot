@@ -30,10 +30,9 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#include "libknot/internal/mempattern.h"
-
 #include "libknot/dname.h"
 #include "libknot/rrset.h"
+#include "libknot/internal/mempattern.h"
 
 struct knot_compr;
 

@@ -14,24 +14,22 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <assert.h>
+#include <ctype.h>
 #include <stdint.h>
 #include <stdlib.h>
-#include <assert.h>
 #include <string.h>
-#include <ctype.h>
 #include <inttypes.h>
 
 #include "libknot/dname.h"
-
-#include "libknot/internal/mempattern.h"
-#include "libknot/internal/debug.h"
-#include "libknot/internal/macros.h"
-
 #include "libknot/consts.h"
-#include "libknot/internal/tolower.h"
-#include "libknot/internal/utils.h"
 #include "libknot/errcode.h"
 #include "libknot/packet/wire.h"
+#include "libknot/internal/debug.h"
+#include "libknot/internal/macros.h"
+#include "libknot/internal/mempattern.h"
+#include "libknot/internal/tolower.h"
+#include "libknot/internal/utils.h"
 
 /*----------------------------------------------------------------------------*/
 

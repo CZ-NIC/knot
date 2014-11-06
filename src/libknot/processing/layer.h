@@ -26,12 +26,11 @@
 
 #include <stdint.h>
 
+#include "libknot/consts.h"
+#include "libknot/packet/pkt.h"
+#include "libknot/rrtype/tsig.h"
 #include "libknot/internal/lists.h"
 #include "libknot/internal/mempattern.h"
-
-#include "libknot/consts.h"
-#include "libknot/rrtype/tsig.h"
-#include "libknot/packet/pkt.h"
 
 /*! \brief Main packet processing states.
  *         Each state describes the current machine processing step

@@ -16,11 +16,10 @@
 
 #pragma once
 
+#include "libknot/processing/overlay.h"
 #include "libknot/internal/lists.h"
 #include "libknot/internal/sockaddr.h"
 #include "libknot/internal/mempattern.h"
-
-#include "libknot/processing/overlay.h"
 
 struct knot_request;
 

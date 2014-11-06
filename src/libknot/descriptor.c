@@ -14,12 +14,11 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <stdio.h>			// snprintf
-#include <stdlib.h>			// strtoul
-#include <strings.h>			// strcasecmp
+#include <stdio.h>
+#include <stdlib.h>
+#include <strings.h>
 
 #include "libknot/descriptor.h"
-
 #include "libknot/internal/macros.h"
 
 /*!

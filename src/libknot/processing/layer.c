@@ -17,7 +17,6 @@
 #include <assert.h>
 
 #include "libknot/processing/layer.h"
-
 #include "libknot/internal/debug.h"
 #include "libknot/internal/macros.h"
 

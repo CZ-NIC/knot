@@ -19,17 +19,15 @@
 #include <stdbool.h>
 
 #include "libknot/packet/pkt.h"
-
+#include "libknot/descriptor.h"
+#include "libknot/errcode.h"
+#include "libknot/rrtype/tsig.h"
+#include "libknot/tsig-op.h"
+#include "libknot/packet/wire.h"
+#include "libknot/packet/rrset-wire.h"
 #include "libknot/internal/debug.h"
 #include "libknot/internal/log.h"
 #include "libknot/internal/macros.h"
-
-#include "libknot/descriptor.h"
-#include "libknot/errcode.h"
-#include "libknot/packet/wire.h"
-#include "libknot/rrtype/tsig.h"
-#include "libknot/tsig-op.h"
-#include "libknot/packet/rrset-wire.h"
 
 /*! \brief Scan packet for RRSet existence. */
 static bool pkt_contains(const knot_pkt_t *packet,

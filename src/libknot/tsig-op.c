@@ -15,18 +15,13 @@
  */
 
 #include <assert.h>
-#include <stdint.h>
+#include <inttypes.h>
 #include <openssl/hmac.h>
 #include <openssl/evp.h>
 #include <time.h>
-#include <inttypes.h>
+#include <stdint.h>
 
 #include "libknot/tsig-op.h"
-
-#include "libknot/internal/debug.h"
-#include "libknot/internal/log.h"
-#include "libknot/internal/macros.h"
-
 #include "libknot/errcode.h"
 #include "libknot/descriptor.h"
 #include "libknot/rrtype/tsig.h"
@@ -34,6 +29,9 @@
 #include "libknot/consts.h"
 #include "libknot/dnssec/key.h"
 #include "libknot/packet/rrset-wire.h"
+#include "libknot/internal/debug.h"
+#include "libknot/internal/log.h"
+#include "libknot/internal/macros.h"
 
 const int KNOT_TSIG_MAX_DIGEST_SIZE = 64;    // size of HMAC-SHA512 digest
 const uint16_t KNOT_TSIG_FUDGE_DEFAULT = 300;  // default Fudge value
