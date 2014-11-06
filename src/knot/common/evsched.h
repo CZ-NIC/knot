@@ -30,7 +30,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <sys/time.h>
-#include "knot/common/heap.h"
+#include "libknot/internal/heap.h"
 
 /* Forward decls. */
 struct evsched;

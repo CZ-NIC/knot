@@ -73,6 +73,8 @@ libknotcs_la_SOURCES =				\
 	libknot/internal/errors.h		\
 	libknot/internal/getline.c		\
 	libknot/internal/getline.h		\
+	libknot/internal/heap.c			\
+	libknot/internal/heap.h			\
 	libknot/internal/hhash.c		\
 	libknot/internal/hhash.h		\
 	libknot/internal/lists.c		\
@@ -264,8 +266,6 @@ libknotd_la_SOURCES =				\
 	knot/common/evsched.h			\
 	knot/common/fdset.c			\
 	knot/common/fdset.h			\
-	knot/common/heap.c			\
-	knot/common/heap.h			\
 	knot/common/ref.c			\
 	knot/common/ref.h			\
 	knot/common/trim.h			\
