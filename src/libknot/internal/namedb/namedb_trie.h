@@ -18,4 +18,4 @@
 
 #include "libknot/internal/namedb/namedb.h"
 
-const struct namedb_api *namedb_trie_api(void);
+const namedb_api_t *namedb_trie_api(void);

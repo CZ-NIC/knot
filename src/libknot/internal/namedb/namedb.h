@@ -50,8 +50,7 @@ typedef struct namedb_txn {
 	void *txn;
 } namedb_txn_t;
 
-struct namedb_api {
-
+typedef struct namedb_api {
 	const char *name;
 
 	/* Context operations */
@@ -81,4 +80,4 @@ struct namedb_api {
 	int (*iter_key)(namedb_iter_t *iter, namedb_val_t *key);
 	int (*iter_val)(namedb_iter_t *iter, namedb_val_t *val);
 	void (*iter_finish)(namedb_iter_t *iter);
-};
+} namedb_api_t;

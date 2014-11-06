@@ -49,7 +49,7 @@ static char *str_key_rand(size_t len, mm_ctx_t *pool)
 #include "libknot/internal/array-sort.h"
 
 static void namedb_test_set(unsigned nkeys, char **keys, char *dbid,
-                            const struct namedb_api *api, mm_ctx_t *pool)
+                            const namedb_api_t *api, mm_ctx_t *pool)
 {
 	if (api == NULL) {
 		skip("API not compiled in");
@@ -194,7 +194,7 @@ static void namedb_test_set(unsigned nkeys, char **keys, char *dbid,
 	is_int(0, ret, "%s: clear()", api->name);
 	ret = api->txn_commit(&txn);
 	is_int(0, ret, "%s: commit clear", api->name);
-	
+
 	/* Check if the database is empty. */
 	ret = api->txn_begin(db, &txn, NAMEDB_RDONLY);
 	db_size = api->count(&txn);

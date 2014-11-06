@@ -210,14 +210,14 @@ static int clear(namedb_txn_t *txn)
 	if (ret != MDB_SUCCESS) {
 		return lmdb_error_to_knot(ret);
 	}
-	
+
 	return KNOT_EOK;
 }
 
 static namedb_iter_t *iter_set(namedb_iter_t *iter, namedb_val_t *key, unsigned flags)
 {
 	MDB_cursor *cursor = iter;
-	
+
 	MDB_cursor_op op = MDB_SET;
 	switch(flags) {
 	case NAMEDB_NOOP:  return cursor;
@@ -235,7 +235,7 @@ static namedb_iter_t *iter_set(namedb_iter_t *iter, namedb_val_t *key, unsigned 
 		db_key.mv_data = key->data;
 		db_key.mv_size = key->len;
 	}
-	
+
 	int ret = mdb_cursor_get(cursor, key ? &db_key : NULL, NULL, op);
 
 	/* LEQ is not supported in LMDB, workaround using GEQ. */
@@ -267,10 +267,10 @@ static namedb_iter_t *iter_begin(namedb_txn_t *txn, unsigned flags)
 	if (ret != MDB_SUCCESS) {
 		return NULL;
 	}
-	
+
 	/* Clear sorted flag, as it's always sorted. */
 	flags &= ~NAMEDB_SORTED;
-	
+
 	return iter_set(cursor, NULL, (flags == 0) ? NAMEDB_FIRST : flags);
 }
 
@@ -325,14 +325,14 @@ static int find(namedb_txn_t *txn, namedb_val_t *key, namedb_val_t *val, unsigne
 	if (iter == NULL) {
 		return KNOT_ERROR;
 	}
-	
+
 	int ret = KNOT_EOK;
 	if (iter_set(iter, key, flags) == NULL) {
 		return KNOT_ENOENT;
 	} else {
 		ret = iter_val(iter, val);
 	}
-	
+
 	iter_finish(iter);
 	return ret;
 }
@@ -384,7 +384,7 @@ const struct namedb_api *namedb_lmdb_api(void)
 
 #include <stdlib.h>
 
-const struct namedb_api *namedb_lmdb_api(void)
+const namedb_api_t *namedb_lmdb_api(void)
 {
 	return NULL;
 }

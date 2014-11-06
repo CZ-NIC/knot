@@ -109,12 +109,12 @@ static namedb_iter_t *iter_begin(namedb_txn_t *txn, unsigned flags)
 {
 	bool is_sorted = (flags & NAMEDB_SORTED);
 	flags &= ~NAMEDB_SORTED;
-	
+
 	/* No operations other than begin are supported right now. */
 	if (flags != 0) {
 		return NULL;
 	}
-	
+
 	return hattrie_iter_begin((hattrie_t *)txn->db, is_sorted);
 }
 
@@ -162,9 +162,9 @@ static void iter_finish(namedb_iter_t *iter)
 	hattrie_iter_free((hattrie_iter_t *)iter);
 }
 
-const struct namedb_api *namedb_trie_api(void)
+const namedb_api_t *namedb_trie_api(void)
 {
-	static const struct namedb_api api = {
+	static const namedb_api_t api = {
 		"hattrie",
 		init, deinit,
 		txn_begin, txn_commit, txn_abort,
