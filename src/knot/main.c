@@ -82,6 +82,19 @@ static void interrupt_handle(int signum)
 	}
 }
 
+/*! \brief Setup signal handlers and signal blocking mask. */
+static void setup_signals(void)
+{
+	struct sigaction action;
+	memset(&action, 0, sizeof(struct sigaction));
+	action.sa_handler = interrupt_handle;
+
+	int signals[] = { SIGALRM, SIGHUP, SIGINT, SIGPIPE, SIGTERM };
+	size_t count = sizeof(signals) / sizeof(*signals);
+
+	for (int i = 0; i < count; i++) {
+		int signal = signals[i];
+		sigaction(signal, &action, NULL);
 	}
 }
 
@@ -126,15 +139,8 @@ static void setup_capabilities(void)
 /*! \brief Event loop listening for signals and remote commands. */
 static void event_loop(server_t *server)
 {
-	/* Setup signal handler. */
 	struct sigaction sa;
 	memset(&sa, 0, sizeof(sa));
-	sa.sa_handler = interrupt_handle;
-	sigaction(SIGINT,  &sa, NULL);
-	sigaction(SIGTERM, &sa, NULL);
-	sigaction(SIGHUP,  &sa, NULL);
-	sigaction(SIGPIPE, &sa, NULL);
-	sigaction(SIGALRM, &sa, NULL);
 	pthread_sigmask(SIG_BLOCK, &sa.sa_mask, NULL);
 
 	/* Bind to control interface. */
@@ -248,6 +254,9 @@ int main(int argc, char **argv)
 		}
 	}
 
+	/* Setup base signal handling. */
+	setup_signals();
+
 	/* Initialize cryptographic backend. */
 	knot_crypto_init();
 	knot_crypto_init_threads();
@@ -323,13 +332,6 @@ int main(int argc, char **argv)
 			log_info("changed directory to %s", daemon_root);
 		}
 	}
-
-	/* Register base signal handling. */
-	struct sigaction emptyset;
-	memset(&emptyset, 0, sizeof(struct sigaction));
-	emptyset.sa_handler = interrupt_handle;
-	sigaction(SIGALRM, &emptyset, NULL);
-	sigaction(SIGPIPE, &emptyset, NULL);
 
 	/* Now we're going multithreaded. */
 	rcu_register_thread();
