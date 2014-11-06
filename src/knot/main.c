@@ -263,6 +263,9 @@ int main(int argc, char **argv)
 		}
 	}
 
+	/* Clear file creation mask. */
+	umask(0);
+
 	/* Setup base signal handling. */
 	setup_signals();
 	block_signals();
