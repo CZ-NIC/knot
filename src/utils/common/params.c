@@ -29,8 +29,6 @@
 #include "utils/common/resolv.h"
 #include "utils/common/token.h"
 #include "libknot/libknot.h"
-#include "libknot/descriptor.h"
-#include "libknot/errcode.h"
 #include "libknot/internal/mempattern.h"
 #include "libknot/internal/strlcpy.h"
 

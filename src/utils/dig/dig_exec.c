@@ -24,8 +24,6 @@
 #include "utils/common/msg.h"
 #include "utils/common/netio.h"
 #include "libknot/libknot.h"
-#include "libknot/descriptor.h"
-#include "libknot/errcode.h"
 #include "libknot/internal/lists.h"
 #include "libknot/internal/print.h"
 #include "libknot/internal/sockaddr.h"
