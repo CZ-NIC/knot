@@ -43,6 +43,7 @@
 
 extern int cf_lex (YYSTYPE *lvalp, void *scanner);
 extern void cf_error(void *scanner, const char *format, ...);
+extern void cf_warning(void *scanner, const char *format, ...);
 extern conf_t *new_config;
 static conf_iface_t *this_iface = 0;
 static conf_iface_t *this_remote = 0;
@@ -52,6 +53,8 @@ static list_t *this_list = 0;
 static conf_log_t *this_log = 0;
 static conf_log_map_t *this_logmap = 0;
 //#define YYERROR_VERBOSE 1
+
+static char *cache_hostname = NULL;
 
 #define SET_NUM(out, in, min, max, name)				\
 {									\
@@ -66,6 +69,11 @@ static conf_log_map_t *this_logmap = 0;
 #define SET_UINT16(out, in, name) SET_NUM(out, in, 0, UINT16_MAX, name);
 #define SET_INT(out, in, name) SET_NUM(out, in, 0, INT_MAX, name);
 #define SET_SIZE(out, in, name) SET_NUM(out, in, 0, SIZE_MAX, name);
+
+static void conf_start(void *scanner)
+{
+	cache_hostname = NULL;
+}
 
 static void conf_init_iface(void *scanner, char* ifname)
 {
@@ -419,18 +427,35 @@ static void opt_replace(char **opt, char *new_opt, bool val)
 	}
 }
 
+static char *get_hostname(void *scanner)
+{
+	if (cache_hostname) {
+		return strdup(cache_hostname);
+	}
+
+	char *fqdn = sockaddr_hostname();
+	if (!fqdn) {
+		cf_warning(scanner, "cannot retrieve host FQDN");
+		return NULL;
+	}
+
+	cache_hostname = fqdn;
+
+	return fqdn;
+}
+
 /*! \brief Generate automatic defaults for server identity, version and NSID. */
-static void ident_auto(int tok, conf_t *conf, bool val)
+static void ident_auto(void *scanner, int tok, conf_t *conf, bool val)
 {
 	switch(tok) {
 	case SVERSION:
 		opt_replace(&conf->version, strdup("Knot DNS " PACKAGE_VERSION), val);
 		break;
 	case IDENTITY:
-		opt_replace(&conf->identity, sockaddr_hostname(), val);
+		opt_replace(&conf->identity, get_hostname(scanner), val);
 		break;
 	case NSID:
-		opt_replace(&conf->nsid, sockaddr_hostname(), val);
+		opt_replace(&conf->nsid, get_hostname(scanner), val);
 		if (conf->nsid) {
 			conf->nsid_len = strlen(conf->nsid);
 		}
@@ -519,7 +544,7 @@ static void ident_auto(int tok, conf_t *conf, bool val)
 
 %%
 
-config: conf_entries END { return 0; } ;
+config: { conf_start(scanner); } conf_entries END { return 0; } ;
 
 conf_entries:
  /* EMPTY */
@@ -569,31 +594,30 @@ interfaces:
 system:
    SYSTEM '{'
  | system SVERSION TEXT ';' { new_config->version = $3.t; }
- | system SVERSION BOOL ';' { ident_auto(SVERSION, new_config, $3.i); }
+ | system SVERSION BOOL ';' { ident_auto(scanner, SVERSION, new_config, $3.i); }
  | system IDENTITY TEXT ';' { new_config->identity = $3.t; }
- | system IDENTITY BOOL ';' { ident_auto(IDENTITY, new_config, $3.i); }
+ | system IDENTITY BOOL ';' { ident_auto(scanner, IDENTITY, new_config, $3.i); }
  | system HOSTNAME TEXT ';' {
-     fprintf(stderr, "warning: Config option 'system.hostname' is deprecated. "
-                     "Use 'system.identity' instead.\n");
+     cf_warning(scanner, "option 'system.hostname' is deprecated, "
+                         "use 'system.identity' instead");
      free($3.t);
  }
  | system NSID HEXSTR ';' { new_config->nsid = $3.t; new_config->nsid_len = $3.l; }
  | system NSID TEXT ';' { new_config->nsid = $3.t; new_config->nsid_len = strlen(new_config->nsid); }
- | system NSID BOOL ';' { ident_auto(NSID, new_config, $3.i); }
+ | system NSID BOOL ';' { ident_auto(scanner, NSID, new_config, $3.i); }
  | system MAX_UDP_PAYLOAD NUM ';' {
      SET_NUM(new_config->max_udp_payload, $3.i, KNOT_EDNS_MIN_UDP_PAYLOAD,
              KNOT_EDNS_MAX_UDP_PAYLOAD, "max-udp-payload");
  }
  | system STORAGE TEXT ';' {
-     fprintf(stderr, "warning: Config option 'system.storage' was relocated. "
-                     "Use 'zones.storage' instead.\n");
+     cf_warning(scanner, "option 'system.storage' was relocated, "
+                         "use 'zones.storage' instead");
      new_config->storage = $3.t;
  }
  | system RUNDIR TEXT ';' { new_config->rundir = $3.t; }
  | system PIDFILE TEXT ';' { new_config->pidfile = $3.t; }
  | system KEY TSIG_ALGO_NAME TEXT ';' {
-     fprintf(stderr, "warning: Config option 'system.key' is deprecated "
-                     "and has no effect.\n");
+     cf_warning(scanner, "option 'system.key' is deprecated and it has no effect");
      free($4.t);
  }
  | system WORKERS NUM ';' {
@@ -983,8 +1007,8 @@ log_prios_start: {
 log_prios:
    log_prios_start
  | log_prios LOG_LEVEL ',' { this_logmap->prios |= $2.i;
-	fprintf(stderr, "Warning: more log severities per statement is deprecated. "
-	                "Using the least serious one.\n");
+	cf_warning(scanner, "multiple log severities are deprecated, "
+	                    "using the least serious one");
  }
  | log_prios LOG_LEVEL ';' { this_logmap->prios |= $2.i; }
  ;
