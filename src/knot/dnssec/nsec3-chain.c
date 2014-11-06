@@ -222,7 +222,7 @@ static void nsec3_fill_rdata(uint8_t *rdata, const knot_nsec3_params_t *params,
 	rdata += 1;
 	*rdata = 0;                                       // flags
 	rdata += 1;
-	wire_write_u16(rdata, params->iterations);   // iterations
+	wire_write_u16(rdata, params->iterations);        // iterations
 	rdata += 2;
 	*rdata = params->salt_length;                     // salt length
 	rdata += 1;
@@ -235,7 +235,7 @@ static void nsec3_fill_rdata(uint8_t *rdata, const knot_nsec3_params_t *params,
 		memcpy(rdata, next_hashed, hash_length);
 	}
 	rdata += hash_length;
-	knot_bitmap_write(rr_types, rdata);                    // RR types bit map
+	knot_bitmap_write(rr_types, rdata);               // RR types bit map
 }
 
 /*!

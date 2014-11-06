@@ -268,8 +268,7 @@ knot_tsig_algorithm_t knot_tsig_rdata_alg(const knot_rrset_t *tsig)
 		return KNOT_TSIG_ALG_NULL;
 	}
 
-	lookup_table_t *item = lookup_by_name(
-	                                      knot_tsig_alg_dnames_str, name);
+	lookup_table_t *item = lookup_by_name(knot_tsig_alg_dnames_str, name);
 	free(name);
 	if (!item) {
 		dbg_tsig("TSIG: rdata: unknown algorithm.\n");
@@ -371,9 +370,7 @@ int knot_tsig_alg_from_name(const knot_dname_t *alg_name)
 		return 0;
 	}
 
-	lookup_table_t *found =
-		lookup_by_name(knot_tsig_alg_dnames_str, name);
-
+	lookup_table_t *found = lookup_by_name(knot_tsig_alg_dnames_str, name);
 	if (!found) {
 		dbg_tsig("Unknown algorithm: %s \n", name);
 		free(name);

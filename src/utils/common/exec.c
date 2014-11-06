@@ -215,9 +215,9 @@ static void print_edns_client_subnet(const uint8_t *data, const uint16_t len)
 
 static void print_section_opt(const knot_rrset_t *rr, const uint8_t rcode)
 {
-	uint8_t             ercode = knot_edns_get_ext_rcode(rr);
-	uint16_t            ext_rcode_id = knot_edns_whole_rcode(ercode, rcode);
-	const char          *ext_rcode_str = "Unused";
+	uint8_t        ercode = knot_edns_get_ext_rcode(rr);
+	uint16_t       ext_rcode_id = knot_edns_whole_rcode(ercode, rcode);
+	const char     *ext_rcode_str = "Unused";
 	lookup_table_t *ext_rcode;
 
 	if (ercode > 0) {
@@ -376,10 +376,10 @@ static void print_section_host(const knot_rrset_t *rrsets,
 	char   *buf = calloc(buflen, 1);
 
 	for (size_t i = 0; i < count; i++) {
-		const knot_rrset_t  *rrset = &rrsets[i];
-		lookup_table_t *descr;
-		char                type[32] = "NULL";
-		char                *owner;
+		const knot_rrset_t *rrset = &rrsets[i];
+		lookup_table_t     *descr;
+		char               type[32] = "NULL";
+		char               *owner;
 
 		owner = knot_dname_to_str_alloc(rrset->owner);
 		if (style->style.ascii_to_idn != NULL) {

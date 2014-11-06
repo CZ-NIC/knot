@@ -52,7 +52,7 @@ typedef struct zone_events {
 
 	event_t *event;			//!< Scheduler event.
 	worker_pool_t *pool;		//!< Server worker pool.
-	namedb_t *timers_db;	//!< Persistent zone timers database.
+	namedb_t *timers_db;		//!< Persistent zone timers database.
 
 	task_t task;			//!< Event execution context.
 	time_t time[ZONE_EVENT_COUNT];	//!< Event execution times.
