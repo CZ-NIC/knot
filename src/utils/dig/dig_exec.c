@@ -14,22 +14,21 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <stdlib.h>
+#include <netinet/in.h>
+#include <sys/socket.h>
+#include <sys/time.h>
+
 #include "utils/dig/dig_exec.h"
-
-#include <stdlib.h>			// free
-#include <sys/time.h>			// gettimeofday
-#include <sys/socket.h>			// AF_INET
-#include <netinet/in.h>			// sockaddr_in (BSD)
-
+#include "utils/common/exec.h"
+#include "utils/common/msg.h"
+#include "utils/common/netio.h"
 #include "libknot/libknot.h"
-#include "libknot/internal/lists.h"		// list
-#include "libknot/internal/print.h"		// time_diff
-#include "libknot/errcode.h"		// KNOT_EOK
-#include "libknot/descriptor.h"		// KNOT_RRTYPE_
-#include "libknot/internal/sockaddr.h"		// sockaddr_set_raw
-#include "utils/common/msg.h"		// WARN
-#include "utils/common/netio.h"		// get_socktype
-#include "utils/common/exec.h"		// print_packet
+#include "libknot/descriptor.h"
+#include "libknot/errcode.h"
+#include "libknot/internal/lists.h"
+#include "libknot/internal/print.h"
+#include "libknot/internal/sockaddr.h"
 
 #if USE_DNSTAP
 # include "dnstap/convert.h"

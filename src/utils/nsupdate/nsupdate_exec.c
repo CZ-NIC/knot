@@ -14,27 +14,27 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <stdio.h>
-#include <errno.h>
 #include <assert.h>
-#include <stdlib.h>
 #include <ctype.h>
+#include <errno.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <sys/socket.h>
 #include <unistd.h>
 
 #include "utils/nsupdate/nsupdate_exec.h"
-#include "utils/common/params.h"
-#include "utils/common/msg.h"
 #include "utils/common/exec.h"
+#include "utils/common/msg.h"
 #include "utils/common/netio.h"
+#include "utils/common/params.h"
 #include "utils/common/token.h"
-#include "libknot/internal/mem.h"
-#include "libknot/errcode.h"
-#include "libknot/descriptor.h"
-#include "libknot/internal/strlcpy.h"
-#include "libknot/internal/macros.h"
 #include "libknot/libknot.h"
+#include "libknot/descriptor.h"
 #include "libknot/dnssec/random.h"
+#include "libknot/errcode.h"
+#include "libknot/internal/macros.h"
+#include "libknot/internal/mem.h"
+#include "libknot/internal/strlcpy.h"
 
 /* Declarations of cmd parse functions. */
 typedef int (*cmd_handle_f)(const char *lp, nsupdate_params_t *params);

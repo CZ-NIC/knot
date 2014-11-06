@@ -14,26 +14,25 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "utils/common/params.h"
-
+#include <arpa/inet.h>
 #include <stdio.h>
-#include <stdlib.h>			// free
-#include <netinet/in.h>			// in_addr
-#include <arpa/inet.h>			// inet_pton
-#include <sys/socket.h>			// AF_INET (BSD)
+#include <stdlib.h>
+#include <netinet/in.h>
+#include <sys/socket.h>
 
 #ifdef LIBIDN
 #include <idna.h>
 #endif
 
+#include "utils/common/params.h"
+#include "utils/common/msg.h"
+#include "utils/common/resolv.h"
+#include "utils/common/token.h"
 #include "libknot/libknot.h"
-#include "libknot/errcode.h"		// KNOT_EOK
-#include "libknot/internal/mempattern.h"		// strcdup
-#include "libknot/descriptor.h"		// KNOT_RRTYPE_
-#include "libknot/internal/strlcpy.h"		// strlcpy
-#include "utils/common/msg.h"		// WARN
-#include "utils/common/resolv.h"	// parse_nameserver
-#include "utils/common/token.h"		// token
+#include "libknot/descriptor.h"
+#include "libknot/errcode.h"
+#include "libknot/internal/mempattern.h"
+#include "libknot/internal/strlcpy.h"
 
 #define IPV4_REVERSE_DOMAIN	"in-addr.arpa."
 #define IPV6_REVERSE_DOMAIN	"ip6.arpa."

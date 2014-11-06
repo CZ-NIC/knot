@@ -26,7 +26,7 @@
 
 #pragma once
 
-#include "utils/dig/dig_params.h"	// dig_params_t
+#include "utils/dig/dig_params.h"
 
 #define KHOST_VERSION "khost, version " PACKAGE_VERSION "\n"
 

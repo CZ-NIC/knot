@@ -14,22 +14,21 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <arpa/inet.h>
+#include <stdlib.h>
+#include <time.h>
+
 #include "utils/common/exec.h"
-
-#include <stdlib.h>			// free
-#include <time.h>			// localtime_r
-#include <arpa/inet.h>			// inet_ntop
-
+#include "utils/common/msg.h"
+#include "utils/common/netio.h"
+#include "utils/common/params.h"
+#include "common-knot/strlcat.h"
 #include "libknot/libknot.h"
-#include "libknot/internal/lists.h"		// list
-#include "libknot/internal/sockaddr.h"		// IPV4_PREFIXLEN
-#include "libknot/internal/print.h"		// txt_print
-#include "common-knot/strlcat.h"	// strlcat
-#include "utils/common/msg.h"		// WARN
-#include "utils/common/params.h"	// params_t
-#include "utils/common/netio.h"		// send_msg
-#include "libknot/dnssec/sig0.h"
+#include "libknot/internal/lists.h"
+#include "libknot/internal/print.h"
+#include "libknot/internal/sockaddr.h"
 #include "libknot/dnssec/random.h"
+#include "libknot/dnssec/sig0.h"
 
 static lookup_table_t rtypes[] = {
 	{ KNOT_RRTYPE_A,      "has IPv4 address" },

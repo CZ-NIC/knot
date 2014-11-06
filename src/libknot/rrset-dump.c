@@ -14,29 +14,26 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <stdlib.h>			// free
-#include <stdbool.h>			// bool
-#include <string.h>			// memcpy
-#include <time.h>			// strftime
-#include <ctype.h>			// isprint
-#include <math.h>			// pow
-#include <inttypes.h>			// PRIu64
-#include <sys/types.h>			// (OpenBSD)
-#include <sys/socket.h>			// AF_INET (BSD)
-#include <netinet/in.h>			// in_addr (BSD)
-#include <arpa/inet.h>			// ntohs
+#include <arpa/inet.h>
+#include <ctype.h>
+#include <inttypes.h>
+#include <math.h>
+#include <stdbool.h>
+#include <stdlib.h>
+#include <string.h>
+#include <time.h>
+#include <netinet/in.h>
+#include <sys/socket.h>
 
 #include "libknot/rrset-dump.h"
-
-#include "libknot/internal/base64.h"		// base64
-#include "libknot/internal/base32hex.h"		// base32hex
+#include "libknot/consts.h"
+#include "libknot/descriptor.h"
+#include "libknot/dnssec/key.h"
+#include "libknot/errcode.h"
+#include "libknot/internal/base64.h"
+#include "libknot/internal/base32hex.h"
 #include "libknot/internal/macros.h"
-#include "libknot/internal/utils.h"		// wire_read_u16
-
-#include "libknot/errcode.h"		// KNOT_EOK
-#include "libknot/descriptor.h"		// KNOT_RRTYPE
-#include "libknot/dnssec/key.h"		// knot_keytag
-#include "libknot/consts.h"		// knot_rcode_names
+#include "libknot/internal/utils.h"
 
 #define TAB_WIDTH		8
 #define BLOCK_WIDTH		40

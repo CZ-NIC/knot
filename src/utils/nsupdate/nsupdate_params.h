@@ -28,12 +28,12 @@
 
 #include <stdint.h>
 
+#include "utils/common/netio.h"
+#include "utils/common/params.h"
 #include "libknot/libknot.h"
-#include "libknot/internal/lists.h"		// list
-#include "zscanner/scanner.h"		// zs_scanner_t
-#include "utils/common/netio.h"		// server_t
-#include "utils/common/params.h"	// protocol_t
-#include "libknot/dnssec/key.h"		// knot_key_params_t
+#include "libknot/dnssec/key.h"
+#include "libknot/internal/lists.h"
+#include "zscanner/scanner.h"
 
 #define KNSUPDATE_VERSION "knsupdate, version " PACKAGE_VERSION "\n"
 
