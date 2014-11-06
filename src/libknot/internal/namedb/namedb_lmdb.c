@@ -14,15 +14,16 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifdef HAVE_LMDB
-
 #include <assert.h>
 #include <sys/stat.h>
 #include <unistd.h>
-#include <lmdb.h>
 
 #include "libknot/internal/namedb/namedb_lmdb.h"
 #include "libknot/errcode.h"
+
+#ifdef HAVE_LMDB
+
+#include <lmdb.h>
 
 #define LMDB_DIR_MODE	0770
 #define LMDB_FILE_MODE	0660
@@ -381,8 +382,6 @@ const namedb_api_t *namedb_lmdb_api(void)
 }
 
 #else
-
-#include <stdlib.h>
 
 const namedb_api_t *namedb_lmdb_api(void)
 {
