@@ -59,7 +59,7 @@ conf_t *new_config = NULL; /*!< \brief Currently parsed config. */
 static volatile int _parser_res = 0; /*!< \brief Parser result. */
 static pthread_mutex_t _parser_lock = PTHREAD_MUTEX_INITIALIZER;
 
-static void cf_print_error(void *scanner, const char *msg)
+static void cf_print_error(void *scanner, int priority, const char *msg)
 {
 	conf_extra_t *extra = NULL;
 	int lineno = -1;
@@ -84,10 +84,8 @@ static void cf_print_error(void *scanner, const char *msg)
 		filename = new_config->filename;
 	}
 
-	log_error("config error, file '%s', line %d, token '%s' (%s)",
-		  filename, lineno, text, msg);
-
-	_parser_res = KNOT_EPARSEFAIL;
+	log_msg(priority, "config, file '%s', line %d, token '%s', %s",
+	        filename, lineno, text, msg);
 }
 
 /*! \brief Config error report. */
@@ -100,7 +98,21 @@ void cf_error(void *scanner, const char *format, ...)
 	vsnprintf(buffer, sizeof(buffer), format, ap);
 	va_end(ap);
 
-	cf_print_error(scanner, buffer);
+	cf_print_error(scanner, LOG_ERR, buffer);
+	_parser_res = KNOT_EPARSEFAIL;
+}
+
+/*! \brief Config warning report. */
+void cf_warning(void *scanner, const char *format, ...)
+{
+	char buffer[ERROR_BUFFER_SIZE];
+	va_list ap;
+
+	va_start(ap, format);
+	vsnprintf(buffer, sizeof(buffer), format, ap);
+	va_end(ap);
+
+	cf_print_error(scanner, LOG_WARNING, buffer);
 }
 
 /*!
