@@ -367,9 +367,9 @@ static int del(namedb_txn_t *txn, namedb_val_t *key)
 }
 
 
-const struct namedb_api *namedb_lmdb_api(void)
+const namedb_api_t *namedb_lmdb_api(void)
 {
-	static const struct namedb_api api = {
+	static const namedb_api_t api = {
 		"lmdb",
 		init, deinit,
 		txn_begin, txn_commit, txn_abort,
