@@ -39,6 +39,7 @@
 #include "knot/server/tcp-handler.h"
 
 /* Signal flags. */
+static sigset_t sig_block_mask;
 static volatile short sig_req_stop = 0;
 static volatile short sig_req_reload = 0;
 
@@ -89,13 +90,26 @@ static void setup_signals(void)
 	memset(&action, 0, sizeof(struct sigaction));
 	action.sa_handler = interrupt_handle;
 
+	sigemptyset(&sig_block_mask);
+
 	int signals[] = { SIGALRM, SIGHUP, SIGINT, SIGPIPE, SIGTERM };
 	size_t count = sizeof(signals) / sizeof(*signals);
 
 	for (int i = 0; i < count; i++) {
 		int signal = signals[i];
 		sigaction(signal, &action, NULL);
+		sigaddset(&sig_block_mask, signal);
 	}
+}
+
+static void block_signals(void)
+{
+	pthread_sigmask(SIG_BLOCK, &sig_block_mask, NULL);
+}
+
+static void unblock_signals(void)
+{
+	pthread_sigmask(SIG_UNBLOCK, &sig_block_mask, NULL);
 }
 
 /*! \brief POSIX 1003.1e capabilities. */
@@ -139,10 +153,6 @@ static void setup_capabilities(void)
 /*! \brief Event loop listening for signals and remote commands. */
 static void event_loop(server_t *server)
 {
-	struct sigaction sa;
-	memset(&sa, 0, sizeof(sa));
-	pthread_sigmask(SIG_BLOCK, &sa.sa_mask, NULL);
-
 	/* Bind to control interface. */
 	uint8_t buf[KNOT_WIRE_MAX_PKTSIZE];
 	size_t buflen = sizeof(buf);
@@ -150,9 +160,9 @@ static void event_loop(server_t *server)
 
 	/* Run event loop. */
 	for (;;) {
-		pthread_sigmask(SIG_UNBLOCK, &sa.sa_mask, NULL);
+		unblock_signals();
 		int ret = remote_poll(remote);
-		pthread_sigmask(SIG_BLOCK, &sa.sa_mask, NULL);
+		block_signals();
 
 		/* Events. */
 		if (ret > 0) {
@@ -178,7 +188,6 @@ static void event_loop(server_t *server)
 			server_reload(server, conf()->filename);
 		}
 	}
-	pthread_sigmask(SIG_UNBLOCK, &sa.sa_mask, NULL);
 
 	/* Close remote control interface. */
 	remote_unbind(conf()->ctl.iface, remote);
