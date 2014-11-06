@@ -19,7 +19,7 @@
 /*!
  * \brief Error-to-string mapping table.
  */
-typedef struct error_table_t {
+typedef struct error_table {
 	int id;
 	const char *name;
 } error_table_t;

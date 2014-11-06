@@ -81,7 +81,7 @@ int query_plan_step(struct query_plan *plan, int stage, qmodule_process_t proces
 	return KNOT_EOK;
 }
 
-struct query_module *query_module_open(struct conf_t *config, const char *name,
+struct query_module *query_module_open(struct conf *config, const char *name,
                                        const char *param, mm_ctx_t *mm)
 {
 	/* Locate compiled-in modules. */

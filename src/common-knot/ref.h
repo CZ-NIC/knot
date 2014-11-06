@@ -31,10 +31,10 @@
 
 #include <stddef.h>
 
-struct ref_t;
+struct ref;
 
 /*! \brief Prototype for object destructor callback. */
-typedef void (*ref_destructor_t)(struct ref_t * p);
+typedef void (*ref_destructor_t)(struct ref * p);
 
 /*!
  * \brief Structure for reference counting.
@@ -51,7 +51,7 @@ typedef void (*ref_destructor_t)(struct ref_t * p);
  * }
  * \endcode
  */
-typedef struct ref_t {
+typedef struct ref {
 	size_t count;          /*! \brief Reference counter. */
 	ref_destructor_t dtor; /*! \brief Object destructor function. */
 } ref_t;

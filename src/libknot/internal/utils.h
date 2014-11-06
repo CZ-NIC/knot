@@ -32,8 +32,6 @@
 
 /*!
  * \brief A general purpose lookup table.
- *
- * \note Taken from NSD.
  */
 struct lookup_table {
 	int id;

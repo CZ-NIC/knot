@@ -34,10 +34,10 @@
 #include "libknot/internal/mempattern.h"
 #include "libknot/rrtype/tsig.h"
 
-struct conf_iface_t;
+struct conf_iface;
 
 /*! \brief Match address against netblock. */
-int netblock_match(struct conf_iface_t *a1, const struct sockaddr_storage *a2);
+int netblock_match(struct conf_iface *a1, const struct sockaddr_storage *a2);
 
 /*!
  * \brief Match address against ACL.
@@ -49,7 +49,7 @@ int netblock_match(struct conf_iface_t *a1, const struct sockaddr_storage *a2);
  * \retval Matching rule instance if found.
  * \retval NULL if it didn't find a match.
  */
-struct conf_iface_t* acl_find(list_t *acl, const struct sockaddr_storage *addr,
+struct conf_iface* acl_find(list_t *acl, const struct sockaddr_storage *addr,
                               const knot_dname_t *key_name);
 
 /*! @} */

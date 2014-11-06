@@ -44,7 +44,7 @@
 #define KNOT_CTL_SOCKET_UMASK 0007
 
 /*! \brief Remote command structure. */
-typedef struct remote_cmdargs_t {
+typedef struct remote_cmdargs {
 	const knot_rrset_t *arg;
 	unsigned argc;
 	knot_rcode_t rc;
@@ -106,7 +106,7 @@ typedef int (*remote_cmdf_t)(server_t*, remote_cmdargs_t*);
 typedef int (remote_zonef_t)(zone_t *);
 
 /*! \brief Remote command table item. */
-typedef struct remote_cmd_t {
+typedef struct remote_cmd {
 	const char *name;
 	remote_cmdf_t f;
 } remote_cmd_t;
@@ -122,7 +122,7 @@ static int remote_c_flush(server_t *s, remote_cmdargs_t* a);
 static int remote_c_signzone(server_t *s, remote_cmdargs_t* a);
 
 /*! \brief Table of remote commands. */
-struct remote_cmd_t remote_cmd_tbl[] = {
+struct remote_cmd remote_cmd_tbl[] = {
 	{ "stop",      &remote_c_stop },
 	{ "reload",    &remote_c_reload },
 	{ "refresh",   &remote_c_refresh },

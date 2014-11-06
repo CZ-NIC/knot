@@ -43,7 +43,7 @@
 
 #include "libknot/dname.h"
 
-struct conf_t;
+struct conf;
 
 /*! \brief Log facility types. */
 typedef enum {
@@ -66,7 +66,7 @@ typedef enum {
 /*!
  * \brief Mapping of loglevels to message sources.
  */
-typedef struct conf_log_map_t {
+typedef struct conf_log_map {
 	node_t n;
 	int source; /*!< Log message source mask. */
 	int prios;  /*!< Log priorities mask. */
@@ -75,7 +75,7 @@ typedef struct conf_log_map_t {
 /*!
  * \brief Log facility descriptor.
  */
-typedef struct conf_log_t {
+typedef struct conf_log {
 	node_t n;
 	logtype_t type;  /*!< Type of the log (SYSLOG/STDERR/FILE). */
 	char *file;      /*!< Filename in case of LOG_FILE, else NULL. */
