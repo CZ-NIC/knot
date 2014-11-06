@@ -50,7 +50,7 @@ typedef enum zone_flag_t {
 /*!
  * \brief Structure for holding DNS zone.
  */
-typedef struct zone_t
+typedef struct zone
 {
 	knot_dname_t *name;
 	zone_contents_t *contents;

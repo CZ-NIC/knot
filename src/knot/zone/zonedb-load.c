@@ -346,7 +346,7 @@ static int remove_old_zonedb(const knot_zonedb_t *db_new, knot_zonedb_t *db_old)
 /*!
  * \brief Update zone database according to configuration.
  */
-int zonedb_reload(const conf_t *conf, struct server_t *server)
+int zonedb_reload(const conf_t *conf, struct server *server)
 {
 	/* Check parameters */
 	if (conf == NULL || server == NULL) {

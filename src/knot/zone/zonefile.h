@@ -45,7 +45,7 @@ typedef struct zcreator {
 /*!
  * \brief Zone loader structure.
  */
-typedef struct zloader_t {
+typedef struct zloader {
 	char *source;                /*!< Zone source file. */
 	char *origin;                /*!< Zone's origin string. */
 	bool semantic_checks;        /*!< Do semantic checks. */

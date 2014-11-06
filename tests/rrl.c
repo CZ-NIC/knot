@@ -34,7 +34,7 @@
  * Table may be consistent even if some collision occur (and they may occur).
  */
 #ifdef ENABLE_TIMED_TESTS
-struct bucketmap_t {
+struct bucketmap {
 	unsigned i;
 	uint64_t x;
 };
@@ -55,7 +55,7 @@ static void* rrl_runnable(void *arg)
 	memcpy(&addr, d->addr, sizeof(sockaddr_t));
 	int lock = -1;
 	uint32_t now = time(NULL);
-	struct bucketmap_t *m = malloc(RRL_INSERTS * sizeof(struct bucketmap_t));
+	struct bucketmap *m = malloc(RRL_INSERTS * sizeof(struct bucketmap_t));
 	for (unsigned i = 0; i < RRL_INSERTS; ++i) {
 		m[i].i = knot_random_uint32_t(UINT32_MAX);
 		addr.addr4.sin_addr.s_addr = m[i].i;
