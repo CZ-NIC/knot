@@ -22,7 +22,7 @@
 #include <arpa/inet.h>
 
 #include "knot/knot.h"
-#include "knot/other/debug.h"
+#include "knot/common/debug.h"
 #include "libknot/libknot.h"
 #include "libknot/dnssec/key.h"
 #include "libknot/dnssec/rrset-sign.h"
@@ -31,7 +31,7 @@
 #include "libknot/rrtype/nsec.h"
 #include "libknot/rrtype/nsec3.h"
 #include "libknot/internal/base32hex.h"
-#include "common-knot/crc.h"
+#include "knot/common/crc.h"
 #include "libknot/descriptor.h"
 #include "libknot/internal/mempattern.h"
 #include "knot/dnssec/zone-nsec.h"

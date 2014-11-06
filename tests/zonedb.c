@@ -16,7 +16,7 @@
 
 #include <tap/basic.h>
 
-#include "common-knot/strlcat.h"
+#include "libknot/internal/strlcat.h"
 #include "libknot/internal/strlcpy.h"
 #include "knot/zone/zone.h"
 #include "knot/zone/zonedb.h"

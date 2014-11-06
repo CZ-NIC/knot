@@ -20,7 +20,7 @@
 #include "libknot/internal/log.h"
 #include "libknot/internal/mem.h"
 #include "libknot/internal/macros.h"
-#include "common-knot/fdset.h"
+#include "knot/common/fdset.h"
 #include "knot/knot.h"
 #include "knot/conf/conf.h"
 #include "libknot/internal/net.h"

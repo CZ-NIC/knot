@@ -17,7 +17,7 @@
 #include <assert.h>
 #include <time.h>
 
-#include "common-knot/evsched.h"
+#include "knot/common/evsched.h"
 #include "libknot/internal//namedb/namedb.h"
 #include "knot/server/server.h"
 #include "knot/worker/pool.h"

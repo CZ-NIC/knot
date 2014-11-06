@@ -18,7 +18,7 @@
 #include "libknot/dnssec/random.h"
 #include "libknot/processing/requestor.h"
 
-#include "common-knot/trim.h"
+#include "knot/common/trim.h"
 #include "libknot/internal/mempool.h"
 #include "libknot/internal/macros.h"
 

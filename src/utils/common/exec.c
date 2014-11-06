@@ -22,11 +22,11 @@
 #include "utils/common/msg.h"
 #include "utils/common/netio.h"
 #include "utils/common/params.h"
-#include "common-knot/strlcat.h"
 #include "libknot/libknot.h"
 #include "libknot/internal/lists.h"
 #include "libknot/internal/print.h"
 #include "libknot/internal/sockaddr.h"
+#include "libknot/internal/strlcat.h"
 #include "libknot/dnssec/random.h"
 #include "libknot/dnssec/sig0.h"
 

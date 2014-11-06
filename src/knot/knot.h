@@ -32,7 +32,7 @@
 #include "libknot/internal/print.h"
 #include "libknot/internal/log.h"
 #include "libknot/errcode.h"
-#include "knot/other/debug.h"
+#include "knot/common/debug.h"
 
 #define DEFAULT_THR_COUNT 2  /*!< \brief Default thread count. */
 #define TCP_BACKLOG_SIZE 10  /*!< \brief TCP listen backlog size. */
