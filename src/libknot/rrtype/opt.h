@@ -28,8 +28,8 @@
 
 #include <stdint.h>
 
-#include "libknot/util/utils.h"
 #include "libknot/rrset.h"
+#include "libknot/internal/utils.h"
 
 /* Forward declaration. */
 struct knot_packet;

@@ -20,11 +20,11 @@
 #include <sys/types.h>
 #include <time.h>
 
-#include "common/debug.h"
-#include "common/macros.h"
+#include "libknot/internal/debug.h"
 #include "libknot/descriptor.h"
 #include "libknot/errcode.h"
-#include "common/trie/hat-trie.h"
+#include "libknot/internal/trie/hat-trie.h"
+#include "libknot/internal/macros.h"
 #include "libknot/dname.h"
 #include "libknot/rrset.h"
 #include "libknot/dnssec/key.h"

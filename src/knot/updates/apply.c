@@ -21,8 +21,8 @@
 #include "knot/zone/zone.h"
 #include "knot/updates/changesets.h"
 #include "knot/zone/zonefile.h"
-#include "common/lists.h"
-#include "common/macros.h"
+#include "libknot/internal/lists.h"
+#include "libknot/internal/macros.h"
 #include "libknot/rrtype/soa.h"
 #include "libknot/rrtype/rrsig.h"
 

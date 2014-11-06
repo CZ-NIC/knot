@@ -28,8 +28,8 @@
 
 #include "common-knot/crc.h"
 #include "common-knot/strlcat.h"
-#include "common/macros.h"
-#include "common/strlcpy.h"
+#include "libknot/internal/strlcpy.h"
+#include "libknot/internal/macros.h"
 #include "knot/zone/semantic-check.h"
 #include "knot/zone/contents.h"
 #include "knot/dnssec/zone-nsec.h"

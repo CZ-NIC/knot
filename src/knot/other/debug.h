@@ -38,8 +38,8 @@
   #define KNOTD_SEMCHECK_DEBUG
 #endif
 
-#include "common/log.h"
-#include "common/print.h"
+#include "libknot/internal/log.h"
+#include "libknot/internal/print.h"
 
 /******************************************************************************/
 

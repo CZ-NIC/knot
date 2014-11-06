@@ -36,10 +36,10 @@
 #include <cap-ng.h>
 #endif /* HAVE_CAP_NG_H */
 
-#include "common/sockaddr.h"
-#include "common/macros.h"
-#include "common/mempattern.h"
-#include "common/mempool.h"
+#include "libknot/internal/sockaddr.h"
+#include "libknot/internal/mempattern.h"
+#include "libknot/internal/mempool.h"
+#include "libknot/internal/macros.h"
 #include "knot/knot.h"
 #include "knot/server/udp-handler.h"
 #include "knot/server/server.h"

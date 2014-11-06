@@ -18,10 +18,10 @@
 #include <assert.h>
 #include <tap/basic.h>
 
-#include "common/hhash.h"
-#include "common/macros.h"
-#include "common/mempattern.h"
-#include "common/mempool.h"
+#include "libknot/internal/hhash.h"
+#include "libknot/internal/mempattern.h"
+#include "libknot/internal/mempool.h"
+#include "libknot/internal/macros.h"
 #include "libknot/errcode.h"
 
 /* Test defines. */

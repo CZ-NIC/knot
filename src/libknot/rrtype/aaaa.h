@@ -18,10 +18,9 @@
 
 #include <stdlib.h>
 
-#include "common/sockaddr.h"
-
-#include "libknot/rdataset.h"
 #include "libknot/errcode.h"
+#include "libknot/rdataset.h"
+#include "libknot/internal/sockaddr.h"
 
 static inline
 int knot_a_addr(const knot_rdataset_t *rrs, size_t pos, struct sockaddr_in *dst)

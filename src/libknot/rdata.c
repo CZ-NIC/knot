@@ -20,9 +20,8 @@
 #include <stdlib.h>
 
 #include "libknot/rdata.h"
-
 #include "libknot/errcode.h"
-#include "common/macros.h"
+#include "libknot/internal/macros.h"
 
 #ifndef STRICT_ALIGNMENT
 #pragma pack(push, 1)

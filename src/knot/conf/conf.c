@@ -26,9 +26,9 @@
 
 #include <urcu.h>
 #include "common-knot/strlcat.h"
-#include "common/strlcpy.h"
-#include "common/macros.h"
-#include "common/mem.h"
+#include "libknot/internal/strlcpy.h"
+#include "libknot/internal/mem.h"
+#include "libknot/internal/macros.h"
 #include "knot/conf/conf.h"
 #include "knot/conf/extra.h"
 #include "knot/knot.h"
@@ -663,7 +663,7 @@ void conf_truncate(conf_t *conf, int unload_hooks)
 
 	// Free logs
 	WALK_LIST_DELSAFE(n, nxt, conf->logs) {
-		conf_free_log((conf_log_t*)n);
+		log_free((conf_log_t*)n);
 	}
 	init_list(&conf->logs);
 
@@ -992,21 +992,4 @@ void conf_free_group(conf_group_t *group)
 
 	free(group->name);
 	free(group);
-}
-
-void conf_free_log(conf_log_t *log)
-{
-	if (!log) {
-		return;
-	}
-
-	free(log->file);
-
-	/* Free loglevel mapping. */
-	node_t *n = NULL, *nxt = NULL;
-	WALK_LIST_DELSAFE(n, nxt, log->map) {
-		free((conf_log_map_t*)n);
-	}
-
-	free(log);
 }

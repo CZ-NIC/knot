@@ -30,10 +30,9 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#include "common/mempattern.h"
-
 #include "libknot/dname.h"
 #include "libknot/rdataset.h"
+#include "libknot/internal/mempattern.h"
 
 /*!
  * \brief Structure for representing RRSet.

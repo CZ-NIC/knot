@@ -26,12 +26,12 @@
 
 #pragma once
 
-#include <stdbool.h>			// bool
+#include <stdbool.h>
 
-#include "libknot/libknot.h"		// knot_addr_family_t
-#include "common/sockaddr.h"		// IPV6_PREFIXLEN
-#include "utils/common/params.h"	// protocol_t
-#include "utils/common/exec.h"		// sign_context_t
+#include "utils/common/params.h"
+#include "utils/common/exec.h"
+#include "libknot/libknot.h"
+#include "libknot/internal/sockaddr.h"
 
 #if USE_DNSTAP
 # include "dnstap/reader.h"

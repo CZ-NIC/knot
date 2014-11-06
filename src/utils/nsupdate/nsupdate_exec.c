@@ -14,27 +14,25 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <stdio.h>
-#include <errno.h>
 #include <assert.h>
-#include <stdlib.h>
 #include <ctype.h>
+#include <errno.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <sys/socket.h>
 #include <unistd.h>
 
 #include "utils/nsupdate/nsupdate_exec.h"
-#include "utils/common/params.h"
-#include "utils/common/msg.h"
 #include "utils/common/exec.h"
+#include "utils/common/msg.h"
 #include "utils/common/netio.h"
+#include "utils/common/params.h"
 #include "utils/common/token.h"
-#include "common/macros.h"
-#include "common/mem.h"
-#include "libknot/errcode.h"
-#include "libknot/descriptor.h"
-#include "common/strlcpy.h"
 #include "libknot/libknot.h"
 #include "libknot/dnssec/random.h"
+#include "libknot/internal/macros.h"
+#include "libknot/internal/mem.h"
+#include "libknot/internal/strlcpy.h"
 
 /* Declarations of cmd parse functions. */
 typedef int (*cmd_handle_f)(const char *lp, nsupdate_params_t *params);
@@ -810,10 +808,10 @@ int cmd_send(const char* lp, nsupdate_params_t *params)
 	nsupdate_reset(params);
 
 	/* Check return code. */
-	knot_lookup_table_t *rcode;
+	lookup_table_t *rcode;
 	int rc = knot_wire_get_rcode(params->answer->wire);
 	DBG("%s: received rcode=%d\n", __func__, rc);
-	rcode = knot_lookup_by_id(knot_rcode_names, rc);
+	rcode = lookup_by_id(knot_rcode_names, rc);
 	if (rcode && rcode->id > KNOT_RCODE_NOERROR) {
 		ERR("update failed: %s\n", rcode->name);
 	}

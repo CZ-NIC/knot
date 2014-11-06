@@ -18,9 +18,9 @@
 #include <time.h>
 #include <tap/basic.h>
 
+#include "libknot/internal/namedb/namedb.h"
+#include "libknot/internal/namedb/namedb_lmdb.h"
 #include "libknot/errcode.h"
-#include "common/namedb/namedb.h"
-#include "common/namedb/namedb_lmdb.h"
 #include "knot/zone/timers.h"
 #include "knot/zone/zone.h"
 #include "knot/zone/events/events.h"
@@ -58,7 +58,7 @@ int main(int argc, char *argv[])
 	ret = knot_zonedb_insert(zone_db, zone_2);
 	assert(ret == KNOT_EOK);
 
-	knot_namedb_t *db = NULL;
+	namedb_t *db = NULL;
 	ret = open_timers_db(dbid, &db);
 	ok(ret == KNOT_EOK && db != NULL, "zone timers: create");
 

@@ -31,9 +31,8 @@
 #include <stdio.h>
 #include <stdbool.h>
 
-#include "common/mempattern.h"
-
 #include "libknot/consts.h"
+#include "libknot/internal/mempattern.h"
 
 /*! \brief Type representing a domain name in wire format. */
 typedef uint8_t knot_dname_t;

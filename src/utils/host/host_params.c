@@ -14,21 +14,20 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <getopt.h>
+#include <locale.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
 #include "utils/host/host_params.h"
-
-#include <string.h>			// strncmp
-#include <stdio.h>			// printf
-#include <getopt.h>			// getopt
-#include <stdlib.h>			// free
-#include <locale.h>			// setlocale
-
-#include "common/lists.h"		// list
-#include "libknot/errcode.h"		// KNOT_EOK
-#include "libknot/descriptor.h"		// KNOT_CLASS_IN
-#include "utils/common/msg.h"		// WARN
-#include "utils/common/params.h"	// name_to_idn
-#include "utils/dig/dig_params.h"	// dig_params_t
-#include "utils/common/resolv.h"	// get_nameservers
+#include "utils/common/msg.h"
+#include "utils/common/params.h"
+#include "utils/common/resolv.h"
+#include "utils/dig/dig_params.h"
+#include "libknot/internal/lists.h"
+#include "libknot/descriptor.h"
+#include "libknot/errcode.h"
 
 #define DEFAULT_RETRIES_HOST	1
 #define DEFAULT_TIMEOUT_HOST	2

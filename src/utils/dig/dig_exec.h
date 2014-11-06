@@ -26,8 +26,8 @@
 
 #pragma once
 
-#include "utils/common/params.h"	// params_t
-#include "utils/dig/dig_params.h"	// query_t
+#include "utils/common/params.h"
+#include "utils/dig/dig_params.h"
 
 int dig_exec(const dig_params_t *params);
 

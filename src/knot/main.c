@@ -274,8 +274,8 @@ int main(int argc, char **argv)
 
 	/* Initialize logging subsystem.
 	 * @note We're logging since now. */
-	log_reconfigure(config, NULL);
-	conf_add_hook(config, CONF_LOG, log_reconfigure, NULL);
+	conf_log_reconfigure(config, NULL);
+	conf_add_hook(config, CONF_LOG, conf_log_reconfigure, NULL);
 
 	/* Initialize server. */
 	server_t server;

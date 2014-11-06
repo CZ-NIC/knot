@@ -27,7 +27,7 @@
 #include "libknot/dnssec/crypto.h"
 #include "libknot/dnssec/key.h"
 #include "libknot/dnssec/sign.h"
-#include "common/macros.h"
+#include "libknot/internal/macros.h"
 
 #ifdef KNOT_ENABLE_ECDSA
 #include <openssl/ecdsa.h>

@@ -14,11 +14,11 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <stdlib.h>			// EXIT_FAILURE
+#include <stdlib.h>
 
-#include "libknot/errcode.h"		// KNOT_EOK
-#include "utils/dig/dig_params.h"	// dig_parse
-#include "utils/dig/dig_exec.h"		// dig_exec
+#include "utils/dig/dig_params.h"
+#include "utils/dig/dig_exec.h"
+#include "libknot/errcode.h"
 
 int main(int argc, char *argv[])
 {

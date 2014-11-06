@@ -20,9 +20,9 @@
 #include "knot/nameserver/process_answer.h"
 #include "knot/updates/apply.h"
 #include "knot/zone/zonefile.h"
-#include "common/debug.h"
+#include "libknot/internal/debug.h"
 #include "libknot/descriptor.h"
-#include "common/lists.h"
+#include "libknot/internal/lists.h"
 
 /* AXFR context. @note aliasing the generic xfr_proc */
 struct axfr_proc {
@@ -380,7 +380,7 @@ int axfr_answer_process(knot_pkt_t *pkt, struct answer_data *adata)
 	/* Check RCODE. */
 	uint8_t rcode = knot_wire_get_rcode(pkt->wire);
 	if (rcode != KNOT_RCODE_NOERROR) {
-		knot_lookup_table_t *lut = knot_lookup_by_id(knot_rcode_names, rcode);
+		lookup_table_t *lut = lookup_by_id(knot_rcode_names, rcode);
 		if (lut != NULL) {
 			AXFRIN_LOG(LOG_ERR, "server responded with %s", lut->name);
 		}

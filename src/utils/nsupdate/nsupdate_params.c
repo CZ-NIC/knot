@@ -14,20 +14,18 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <string.h>
-#include <stdio.h>
 #include <getopt.h>
-#include <stdlib.h>
 #include <stdarg.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 #include "utils/nsupdate/nsupdate_params.h"
 #include "utils/common/msg.h"
 #include "utils/common/netio.h"
-#include "libknot/errcode.h"
-#include "libknot/descriptor.h"
-#include "common/mempattern.h"
-#include "common/mempool.h"
 #include "libknot/libknot.h"
+#include "libknot/internal/mempattern.h"
+#include "libknot/internal/mempool.h"
 
 #define DEFAULT_RETRIES_NSUPDATE	3
 #define DEFAULT_TIMEOUT_NSUPDATE	12

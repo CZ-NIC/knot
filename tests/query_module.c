@@ -18,8 +18,8 @@
 #include <string.h>
 #include <stdlib.h>
 
-#include "common/mempattern.h"
-#include "common/mempool.h"
+#include "libknot/internal/mempattern.h"
+#include "libknot/internal/mempool.h"
 #include "libknot/errcode.h"
 #include "knot/nameserver/query_module.h"
 #include "libknot/packet/pkt.h"

@@ -30,10 +30,10 @@
 #pragma once
 
 #include "common-knot/evsched.h"
-#include "common/lists.h"
+#include "libknot/internal/lists.h"
 #include "common-knot/fdset.h"
-#include "common/net.h"
-#include "common/namedb/namedb.h"
+#include "libknot/internal/net.h"
+#include "libknot/internal/namedb/namedb.h"
 #include "knot/server/dthreads.h"
 #include "knot/server/rrl.h"
 #include "knot/worker/pool.h"
@@ -96,7 +96,7 @@ typedef struct server_t {
 
 	/*! \brief Zone database. */
 	knot_zonedb_t *zone_db;
-	knot_namedb_t *timers_db;
+	namedb_t *timers_db;
 
 	/*! \brief I/O handlers. */
 	unsigned tu_size;

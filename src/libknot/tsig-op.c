@@ -15,18 +15,13 @@
  */
 
 #include <assert.h>
-#include <stdint.h>
+#include <inttypes.h>
 #include <openssl/hmac.h>
 #include <openssl/evp.h>
 #include <time.h>
-#include <inttypes.h>
+#include <stdint.h>
 
 #include "libknot/tsig-op.h"
-
-#include "common/debug.h"
-#include "common/log.h"
-#include "common/macros.h"
-
 #include "libknot/errcode.h"
 #include "libknot/descriptor.h"
 #include "libknot/rrtype/tsig.h"
@@ -34,6 +29,9 @@
 #include "libknot/consts.h"
 #include "libknot/dnssec/key.h"
 #include "libknot/packet/rrset-wire.h"
+#include "libknot/internal/debug.h"
+#include "libknot/internal/log.h"
+#include "libknot/internal/macros.h"
 
 const int KNOT_TSIG_MAX_DIGEST_SIZE = 64;    // size of HMAC-SHA512 digest
 const uint16_t KNOT_TSIG_FUDGE_DEFAULT = 300;  // default Fudge value
@@ -212,14 +210,14 @@ static int write_tsig_variables(uint8_t *wire, const knot_rrset_t *tsig_rr)
 	/*!< \todo which order? */
 
 	/* Copy class. */
-	knot_wire_write_u16(wire + offset, tsig_rr->rclass);
+	wire_write_u16(wire + offset, tsig_rr->rclass);
 	dbg_tsig_verb("TSIG: write variables: written CLASS: %u - \n",
 	               tsig_rr->rclass);
 	dbg_tsig_hex_detail((char *)(wire + offset), sizeof(uint16_t));
 	offset += sizeof(uint16_t);
 
 	/* Copy TTL - always 0. */
-	knot_wire_write_u32(wire + offset, knot_rdata_ttl(knot_rdataset_at(&tsig_rr->rrs, 0)));
+	wire_write_u32(wire + offset, knot_rdata_ttl(knot_rdataset_at(&tsig_rr->rrs, 0)));
 	dbg_tsig_hex_detail((char *)(wire + offset), sizeof(uint32_t));
 	offset += sizeof(uint32_t);
 
@@ -241,18 +239,18 @@ static int write_tsig_variables(uint8_t *wire, const knot_rrset_t *tsig_rr)
 
 	/* Following data are written in network order. */
 	/* Time signed. */
-	knot_wire_write_u48(wire + offset, knot_tsig_rdata_time_signed(tsig_rr));
+	wire_write_u48(wire + offset, knot_tsig_rdata_time_signed(tsig_rr));
 	offset += 6;
 	dbg_tsig_verb("TSIG: write variables: time signed: %"PRIu64" \n",
 	              knot_tsig_rdata_time_signed(tsig_rr));
 	dbg_tsig_hex_detail((char *)(wire + offset - 6), 6);
 	/* Fudge. */
-	knot_wire_write_u16(wire + offset, knot_tsig_rdata_fudge(tsig_rr));
+	wire_write_u16(wire + offset, knot_tsig_rdata_fudge(tsig_rr));
 	offset += sizeof(uint16_t);
 	dbg_tsig_verb("TSIG: write variables: fudge: %hu\n",
 	              knot_tsig_rdata_fudge(tsig_rr));
 	/* TSIG error. */
-	knot_wire_write_u16(wire + offset, knot_tsig_rdata_error(tsig_rr));
+	wire_write_u16(wire + offset, knot_tsig_rdata_error(tsig_rr));
 	offset += sizeof(uint16_t);
 	/* Get other data length. */
 	uint16_t other_data_length = knot_tsig_rdata_other_data_length(tsig_rr);
@@ -267,7 +265,7 @@ static int write_tsig_variables(uint8_t *wire, const knot_rrset_t *tsig_rr)
 	 * We cannot write the whole other_data, as it contains its length in
 	 * machine order.
 	 */
-	knot_wire_write_u16(wire + offset, other_data_length);
+	wire_write_u16(wire + offset, other_data_length);
 	offset += sizeof(uint16_t);
 
 	/* Skip the length. */
@@ -285,9 +283,9 @@ static int wire_write_timers(uint8_t *wire, const knot_rrset_t *tsig_rr)
 	}
 
 	//write time signed
-	knot_wire_write_u48(wire, knot_tsig_rdata_time_signed(tsig_rr));
+	wire_write_u48(wire, knot_tsig_rdata_time_signed(tsig_rr));
 	//write fudge
-	knot_wire_write_u16(wire + 6, knot_tsig_rdata_fudge(tsig_rr));
+	wire_write_u16(wire + 6, knot_tsig_rdata_fudge(tsig_rr));
 
 	return KNOT_EOK;
 }
@@ -329,7 +327,7 @@ static int create_sign_wire(const uint8_t *msg, size_t msg_len,
 	/* Copy the request MAC - should work even if NULL. */
 	if (request_mac_len > 0) {
 		dbg_tsig_verb("Copying request MAC size\n");
-		knot_wire_write_u16(pos, request_mac_len);
+		wire_write_u16(pos, request_mac_len);
 		pos += 2;
 		dbg_tsig_verb("Copying request mac.\n");
 		memcpy(pos, request_mac, sizeof(uint8_t) * request_mac_len);
@@ -399,7 +397,7 @@ static int create_sign_wire_next(const uint8_t *msg, size_t msg_len,
 
 	/* Copy the request MAC - should work even if NULL. */
 	dbg_tsig_verb("Copying request mac size.\n");
-	knot_wire_write_u16(wire, prev_mac_len);
+	wire_write_u16(wire, prev_mac_len);
 	dbg_tsig_verb("Copying request mac.\n");
 	memcpy(wire + 2, prev_mac, sizeof(uint8_t) * prev_mac_len);
 	dbg_tsig_detail("TSIG: create wire: request mac:\n");
@@ -471,7 +469,7 @@ int knot_tsig_sign(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
 		time_t curr_time = time(NULL);
 
 		uint64_t time64 = curr_time;
-		knot_wire_write_u48(time_signed, time64);
+		wire_write_u48(time_signed, time64);
 
 		knot_tsig_rdata_set_other_data(tmp_tsig, 6, time_signed);
 	} else {
@@ -568,7 +566,7 @@ int knot_tsig_sign_next(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
 	memset(wire, 0, wire_len);
 
 	/* Write previous digest length. */
-	knot_wire_write_u16(wire, prev_digest_len);
+	wire_write_u16(wire, prev_digest_len);
 	/* Write previous digest. */
 	memcpy(wire + 2, prev_digest, sizeof(uint8_t) * prev_digest_len);
 	/* Write original message. */

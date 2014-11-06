@@ -30,7 +30,7 @@
 
 #include <stdbool.h>
 #include <stdint.h>
-#include "common/lists.h"
+#include "libknot/internal/lists.h"
 #include "libknot/dname.h"
 #include "libknot/dnssec/sign.h"
 

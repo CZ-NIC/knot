@@ -31,7 +31,7 @@
 
 #include "knot/knot.h"
 #include "knot/server/dthreads.h"
-#include "common/log.h"
+#include "libknot/internal/log.h"
 
 /* BSD cpu set compatibility. */
 #if defined(HAVE_CPUSET_BSD)

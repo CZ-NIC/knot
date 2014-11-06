@@ -17,8 +17,8 @@
 #pragma once
 
 #include "libknot/descriptor.h"
-#include "libknot/rdataset.h"
 #include "libknot/dname.h"
+#include "libknot/rdataset.h"
 
 static inline
 const knot_dname_t *knot_cname_name(const knot_rdataset_t *rrs)

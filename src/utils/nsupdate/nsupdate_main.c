@@ -14,12 +14,12 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <stdlib.h>				// EXIT_FAILURE
+#include <stdlib.h>
 
-#include "libknot/errcode.h"			// KNOT_EOK
-#include "utils/nsupdate/nsupdate_params.h"	// params_t
-#include "utils/nsupdate/nsupdate_exec.h"	// host_exec
-#include "libknot/dnssec/crypto.h"		// knot_crypto_cleanup
+#include "utils/nsupdate/nsupdate_exec.h"
+#include "utils/nsupdate/nsupdate_params.h"
+#include "libknot/dnssec/crypto.h"
+#include "libknot/errcode.h"
 
 int main(int argc, char *argv[])
 {

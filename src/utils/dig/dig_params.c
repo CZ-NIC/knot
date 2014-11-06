@@ -14,22 +14,21 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <arpa/inet.h>
+#include <getopt.h>
+#include <locale.h>
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+
 #include "utils/dig/dig_params.h"
-
-#include <string.h>			// strncmp
-#include <stdio.h>			// printf
-#include <getopt.h>			// getopt
-#include <stdlib.h>			// free
-#include <locale.h>			// setlocale
-#include <arpa/inet.h>			// inet_pton
-
-#include "common/lists.h"		// list
-#include "libknot/errcode.h"		// KNOT_EOK
-#include "libknot/descriptor.h"		// KNOT_CLASS_IN
-#include "common/sockaddr.h"		// IPV4_PREFIXLEN
-#include "utils/common/msg.h"		// WARN
-#include "utils/common/params.h"	// parse_class
-#include "utils/common/resolv.h"	// get_nameservers
+#include "utils/common/msg.h"
+#include "utils/common/params.h"
+#include "utils/common/resolv.h"
+#include "libknot/descriptor.h"
+#include "libknot/errcode.h"
+#include "libknot/internal/lists.h"
+#include "libknot/internal/sockaddr.h"
 
 #define DEFAULT_RETRIES_DIG	2
 #define DEFAULT_TIMEOUT_DIG	5

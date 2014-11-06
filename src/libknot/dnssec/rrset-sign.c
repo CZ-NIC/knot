@@ -30,7 +30,7 @@
 #include "libknot/rrset.h"
 #include "libknot/rrtype/rrsig.h"
 #include "libknot/packet/rrset-wire.h"
-#include "common/macros.h"
+#include "libknot/internal/macros.h"
 
 #define RRSIG_RDATA_SIGNER_OFFSET 18
 
@@ -78,19 +78,19 @@ int knot_rrsig_write_rdata(uint8_t *rdata, const knot_dnssec_key_t *key,
 
 	uint8_t *w = rdata;
 
-	knot_wire_write_u16(w, covered_type);	// type covered
+	wire_write_u16(w, covered_type);	// type covered
 	w += sizeof(uint16_t);
 	*w = key->algorithm;			// algorithm
 	w += sizeof(uint8_t);
 	*w = owner_labels;			// labels
 	w += sizeof(uint8_t);
-	knot_wire_write_u32(w, owner_ttl);	// original TTL
+	wire_write_u32(w, owner_ttl);		// original TTL
 	w += sizeof(uint32_t);
-	knot_wire_write_u32(w, sig_expires);	// signature expiration
+	wire_write_u32(w, sig_expires);		// signature expiration
 	w += sizeof(uint32_t);
-	knot_wire_write_u32(w, sig_incepted);	// signature inception
+	wire_write_u32(w, sig_incepted);	// signature inception
 	w += sizeof(uint32_t);
-	knot_wire_write_u16(w, key->keytag);	// key fingerprint
+	wire_write_u16(w, key->keytag);		// key fingerprint
 	w += sizeof(uint16_t);
 
 	assert(w == rdata + RRSIG_RDATA_SIGNER_OFFSET);

@@ -28,7 +28,7 @@
 
 #include "knot/updates/changesets.h"
 #include "knot/zone/contents.h"
-#include "common/mempattern.h"
+#include "libknot/internal/mempattern.h"
 
 /*! \brief Structure for zone contents updating / querying \todo to be moved to new ZONE API */
 typedef struct {

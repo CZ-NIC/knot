@@ -16,17 +16,17 @@
 
 #include <assert.h>
 #include <getopt.h>
+#include <locale.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
-#include <locale.h>
 
 #include "utils/common/params.h"
-#include "common/base32hex.h"
+#include "libknot/internal/base32hex.h"
+#include "libknot/dnssec/crypto.h"
 #include "libknot/errcode.h"
 #include "common-knot/hex.h"
 #include "common-knot/strtonum.h"
-#include "libknot/dnssec/crypto.h"
 
 #define PROGRAM_NAME "knsec3hash"
 

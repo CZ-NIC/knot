@@ -26,7 +26,7 @@
 
 #pragma once
 
-#include <stdio.h>			// printf
+#include <stdio.h>
 
 #define ERROR_		"; Error: "
 #define INFO_		"; Info: "

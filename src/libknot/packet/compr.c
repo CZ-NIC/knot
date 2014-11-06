@@ -17,14 +17,12 @@
 #include <assert.h>
 
 #include "libknot/packet/compr.h"
-
-#include "common/debug.h"
-#include "common/log.h"
-#include "common/macros.h"
-
 #include "libknot/errcode.h"
 #include "libknot/packet/pkt.h"
-#include "libknot/util/tolower.h"
+#include "libknot/internal/debug.h"
+#include "libknot/internal/log.h"
+#include "libknot/internal/macros.h"
+#include "libknot/internal/tolower.h"
 
 /*! \brief Case insensitive label compare for compression. */
 static bool compr_label_match(const uint8_t *n, const uint8_t *p)
