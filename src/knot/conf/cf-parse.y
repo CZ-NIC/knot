@@ -31,7 +31,7 @@
 #include <pwd.h>
 #include <grp.h>
 #include "libknot/internal/sockaddr.h"
-#include "common-knot/strlcat.h"
+#include "libknot/internal/strlcat.h"
 #include "libknot/internal/strlcpy.h"
 #include "libknot/dname.h"
 #include "libknot/binary.h"

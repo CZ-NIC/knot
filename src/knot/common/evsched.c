@@ -21,7 +21,7 @@
 #include <assert.h>
 
 #include "libknot/errcode.h"
-#include "common-knot/evsched.h"
+#include "knot/common/evsched.h"
 
 /*! \brief Some implementations of timercmp >= are broken, this is for compat.*/
 static inline int timercmp_ge(struct timeval *a, struct timeval *b) {
