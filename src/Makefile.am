@@ -69,6 +69,7 @@ libknotcs_la_SOURCES =				\
 	libknot/internal/base64.h		\
 	libknot/internal/binsearch.h		\
 	libknot/internal/debug.h		\
+	libknot/internal/endian.h		\
 	libknot/internal/errors.c		\
 	libknot/internal/errors.h		\
 	libknot/internal/getline.c		\
@@ -103,10 +104,14 @@ libknotcs_la_SOURCES =				\
 	libknot/internal/strlcat.h		\
 	libknot/internal/strlcpy.c		\
 	libknot/internal/strlcpy.h		\
+	libknot/internal/tolower.c		\
+	libknot/internal/tolower.h		\
 	libknot/internal/trie/hat-trie.c	\
 	libknot/internal/trie/hat-trie.h	\
 	libknot/internal/trie/murmurhash3.c	\
-	libknot/internal/trie/murmurhash3.h
+	libknot/internal/trie/murmurhash3.h	\
+	libknot/internal/utils.c		\
+	libknot/internal/utils.h
 
 # static: utilities shared
 libknotus_la_SOURCES =				\
@@ -198,12 +203,7 @@ libknot_la_SOURCES =				\
 	libknot/rrtype/tsig.c			\
 	libknot/rrtype/tsig.h			\
 	libknot/tsig-op.c			\
-	libknot/tsig-op.h			\
-	libknot/internal/endian.h		\
-	libknot/internal/tolower.c		\
-	libknot/internal/tolower.h		\
-	libknot/internal/utils.c		\
-	libknot/internal/utils.h
+	libknot/tsig-op.h
 
 # static: server shared
 libknotd_la_SOURCES =				\
