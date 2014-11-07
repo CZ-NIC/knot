@@ -30,7 +30,6 @@
 #include <pwd.h>
 
 #include "libknot/internal/mem.h"
-#include "knot/knot.h"
 #include "knot/ctl/process.h"
 #include "knot/conf/conf.h"
 

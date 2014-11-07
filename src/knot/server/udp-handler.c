@@ -40,7 +40,6 @@
 #include "libknot/internal/mempattern.h"
 #include "libknot/internal/mempool.h"
 #include "libknot/internal/macros.h"
-#include "knot/knot.h"
 #include "knot/server/udp-handler.h"
 #include "knot/server/server.h"
 #include "libknot/packet/wire.h"

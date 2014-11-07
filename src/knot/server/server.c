@@ -21,8 +21,8 @@
 #include <errno.h>
 #include <assert.h>
 
+#include "knot/common/debug.h"
 #include "knot/common/trim.h"
-#include "knot/knot.h"
 #include "knot/server/server.h"
 #include "knot/server/udp-handler.h"
 #include "knot/server/tcp-handler.h"
@@ -30,7 +30,7 @@
 #include "knot/worker/pool.h"
 #include "knot/zone/timers.h"
 #include "knot/zone/zonedb-load.h"
-#include "libknot/dname.h"
+#include "libknot/libknot.h"
 #include "libknot/dnssec/crypto.h"
 #include "libknot/dnssec/random.h"
 

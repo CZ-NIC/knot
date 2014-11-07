@@ -31,7 +31,6 @@
 #include "libknot/internal/macros.h"
 #include "knot/conf/conf.h"
 #include "knot/conf/extra.h"
-#include "knot/knot.h"
 #include "knot/ctl/remote.h"
 #include "knot/nameserver/internet.h"
 

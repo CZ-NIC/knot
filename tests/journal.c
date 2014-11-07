@@ -22,7 +22,6 @@
 #include <tap/basic.h>
 
 #include "knot/server/journal.h"
-#include "knot/knot.h"
 
 /*! \brief Generate random string with given length. */
 static int randstr(char* dst, size_t len)

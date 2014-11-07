@@ -21,22 +21,15 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
-#include "knot/knot.h"
+#include "knot/zone/semantic-check.h"
+#include "knot/common/crc.h"
 #include "knot/common/debug.h"
+#include "knot/dnssec/zone-nsec.h"
 #include "libknot/libknot.h"
 #include "libknot/dnssec/key.h"
 #include "libknot/dnssec/rrset-sign.h"
-#include "libknot/rrtype/rrsig.h"
-#include "libknot/rrtype/soa.h"
-#include "libknot/rrtype/nsec.h"
-#include "libknot/rrtype/nsec3.h"
 #include "libknot/internal/base32hex.h"
-#include "knot/common/crc.h"
-#include "libknot/descriptor.h"
 #include "libknot/internal/mempattern.h"
-#include "knot/dnssec/zone-nsec.h"
-
-#include "knot/zone/semantic-check.h"
 
 static char *error_messages[(-ZC_ERR_UNKNOWN) + 1] = {
 	[-ZC_ERR_MISSING_SOA] =

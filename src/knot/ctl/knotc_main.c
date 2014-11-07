@@ -25,18 +25,17 @@
 #include <sys/stat.h>
 #endif
 
-#include "knot/knot.h"
 #include "libknot/internal/mem.h"
 #include "libknot/internal/macros.h"
-#include "libknot/descriptor.h"
+#include "libknot/libknot.h"
+#include "knot/common/debug.h"
+#include "knot/ctl/estimator.h"
 #include "knot/ctl/process.h"
 #include "knot/ctl/remote.h"
 #include "knot/conf/conf.h"
+#include "knot/server/tcp-handler.h"
 #include "knot/zone/zonefile.h"
 #include "knot/zone/zone-load.h"
-#include "knot/server/tcp-handler.h"
-#include "libknot/packet/wire.h"
-#include "knot/ctl/estimator.h"
 
 /*! \brief Controller flags. */
 enum knotc_flag_t {

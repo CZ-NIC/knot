@@ -32,8 +32,8 @@
 
 #include "knot/server/dthreads.h"
 
-/* Constants */
-#define TCP_SWEEP_INTERVAL 2 /* [secs] granularity of connection sweeping */
+#define TCP_SWEEP_INTERVAL 2 /*!< [secs] granularity of connection sweeping. */
+#define TCP_BACKLOG_SIZE  10 /*!< TCP listen backlog size. */
 
 /*!
  * \brief Accept a TCP connection.

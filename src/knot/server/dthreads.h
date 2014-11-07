@@ -40,6 +40,8 @@
 
 #include <pthread.h>
 
+#define DEFAULT_THR_COUNT 2  /*!< Default thread count. */
+
 /* Forward decls */
 struct dthread;
 struct dt_unit;
@@ -54,7 +56,6 @@ typedef enum {
 	ThreadDead      = 1 << 3, /*!< Thread is finished, exiting. */
 	ThreadIdle      = 1 << 4, /*!< Thread is idle, waiting for purpose. */
 	ThreadActive    = 1 << 5  /*!< Thread is active, working on a task. */
-
 } dt_state_t;
 
 /*!
