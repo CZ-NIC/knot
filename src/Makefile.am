@@ -35,30 +35,30 @@ knotd_SOURCES =					\
 	knot/main.c
 
 kdig_SOURCES =					\
-	utils/dig/dig_exec.c			\
-	utils/dig/dig_exec.h			\
-	utils/dig/dig_main.c			\
-	utils/dig/dig_params.c			\
-	utils/dig/dig_params.h
+	utils/kdig/kdig_exec.c			\
+	utils/kdig/kdig_exec.h			\
+	utils/kdig/kdig_main.c			\
+	utils/kdig/kdig_params.c		\
+	utils/kdig/kdig_params.h
 
 khost_SOURCES =					\
-	utils/dig/dig_exec.c			\
-	utils/dig/dig_exec.h			\
-	utils/dig/dig_params.c			\
-	utils/dig/dig_params.h			\
-	utils/host/host_main.c			\
-	utils/host/host_params.c		\
-	utils/host/host_params.h
+	utils/kdig/kdig_exec.c			\
+	utils/kdig/kdig_exec.h			\
+	utils/kdig/kdig_params.c		\
+	utils/kdig/kdig_params.h		\
+	utils/khost/khost_main.c		\
+	utils/khost/khost_params.c		\
+	utils/khost/khost_params.h
 
 knsupdate_SOURCES =				\
-	utils/nsupdate/nsupdate_exec.c		\
-	utils/nsupdate/nsupdate_exec.h		\
-	utils/nsupdate/nsupdate_main.c		\
-	utils/nsupdate/nsupdate_params.c	\
-	utils/nsupdate/nsupdate_params.h
+	utils/knsupdate/knsupdate_exec.c	\
+	utils/knsupdate/knsupdate_exec.h	\
+	utils/knsupdate/knsupdate_main.c	\
+	utils/knsupdate/knsupdate_params.c	\
+	utils/knsupdate/knsupdate_params.h
 
 knsec3hash_SOURCES =				\
-	utils/nsec3hash/nsec3hash_main.c
+	utils/knsec3hash/knsec3hash_main.c
 
 # static: common shared (also in libknot)
 libknotcs_la_SOURCES =				\

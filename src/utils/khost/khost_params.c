@@ -20,14 +20,13 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "utils/host/host_params.h"
+#include "utils/khost/khost_params.h"
+#include "utils/kdig/kdig_params.h"
 #include "utils/common/msg.h"
 #include "utils/common/params.h"
 #include "utils/common/resolv.h"
-#include "utils/dig/dig_params.h"
+#include "libknot/libknot.h"
 #include "libknot/internal/lists.h"
-#include "libknot/descriptor.h"
-#include "libknot/errcode.h"
 
 #define DEFAULT_RETRIES_HOST	1
 #define DEFAULT_TIMEOUT_HOST	2
@@ -55,16 +54,16 @@ static const style_t DEFAULT_STYLE_HOST = {
 	.show_footer = false
 };
 
-static int host_init(dig_params_t *params)
+static int khost_init(kdig_params_t *params)
 {
-	// Initialize params with dig defaults.
-	int ret = dig_init(params);
+	// Initialize params with kdig defaults.
+	int ret = kdig_init(params);
 
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
 
-	// Set host specific defaults.
+	// Set khost specific defaults.
 	free(params->config->port);
 	params->config->port = strdup(DEFAULT_DNS_PORT);
 	params->config->retries = DEFAULT_RETRIES_HOST;
@@ -83,14 +82,14 @@ static int host_init(dig_params_t *params)
 	return KNOT_EOK;
 }
 
-void host_clean(dig_params_t *params)
+void khost_clean(kdig_params_t *params)
 {
 	if (params == NULL) {
 		DBG_NULL;
 		return;
 	}
 
-	dig_clean(params);
+	kdig_clean(params);
 }
 
 static int parse_name(const char *value, list_t *queries, const query_t *conf)
@@ -192,7 +191,7 @@ static int parse_name(const char *value, list_t *queries, const query_t *conf)
 	return KNOT_EOK;
 }
 
-static void host_help(void)
+static void khost_help(void)
 {
 	printf("Usage: khost [-4] [-6] [-adhrsTvVw] [-c class] [-t type]\n"
 	       "             [-R retries] [-W time] name [server]\n\n"
@@ -214,7 +213,7 @@ static void host_help(void)
 	      );
 }
 
-int host_parse(dig_params_t *params, int argc, char *argv[])
+int khost_parse(kdig_params_t *params, int argc, char *argv[])
 {
 	int opt = 0, li = 0;
 
@@ -223,7 +222,7 @@ int host_parse(dig_params_t *params, int argc, char *argv[])
 		return KNOT_EINVAL;
 	}
 
-	if (host_init(params) != KNOT_EOK) {
+	if (khost_init(params) != KNOT_EOK) {
 		return KNOT_ERROR;
 	}
 
@@ -267,7 +266,7 @@ int host_parse(dig_params_t *params, int argc, char *argv[])
 			msg_enable_debug(1);
 			break;
 		case 'h':
-			host_help();
+			khost_help();
 			params->stop = false;
 			return KNOT_EOK;
 		case 'r':
@@ -328,7 +327,7 @@ int host_parse(dig_params_t *params, int argc, char *argv[])
 			}
 			break;
 		default:
-			host_help();
+			khost_help();
 			return KNOT_ENOTSUP;
 		}
 	}
@@ -348,7 +347,7 @@ int host_parse(dig_params_t *params, int argc, char *argv[])
 		}
 		break;
 	default:
-		host_help();
+		khost_help();
 		return KNOT_ENOTSUP;
 	}
 

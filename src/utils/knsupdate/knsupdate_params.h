@@ -14,11 +14,11 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 /*!
- * \file nsupdate_params.h
+ * \file knsupdate_params.h
  *
  * \author Marek Vavrusa <marek.vavrusa@nic.cz>
  *
- * \brief nsupdate command line parameters.
+ * \brief knsupdate command line parameters.
  *
  * \addtogroup knot_utils
  * @{
@@ -40,7 +40,7 @@
 /*! Parser init string. */
 #define PARSER_INIT_STR "$ORIGIN %s\n$TTL %u\n"
 
-/*! \brief nsupdate-specific params data. */
+/*! \brief knsupdate-specific params data. */
 typedef struct {
 	/*!< Stop processing - just print help, version,... */
 	bool		stop;
@@ -80,12 +80,12 @@ typedef struct {
 	style_t		style;
 	/*!< Memory context. */
 	mm_ctx_t	mm;
-} nsupdate_params_t;
+} knsupdate_params_t;
 
-int nsupdate_parse(nsupdate_params_t *params, int argc, char *argv[]);
-int nsupdate_set_ttl(nsupdate_params_t *params, const uint32_t ttl);
-int nsupdate_set_origin(nsupdate_params_t *params, const char *origin);
-void nsupdate_clean(nsupdate_params_t *params);
-void nsupdate_reset(nsupdate_params_t *params);
+int knsupdate_parse(knsupdate_params_t *params, int argc, char *argv[]);
+int knsupdate_set_ttl(knsupdate_params_t *params, const uint32_t ttl);
+int knsupdate_set_origin(knsupdate_params_t *params, const char *origin);
+void knsupdate_clean(knsupdate_params_t *params);
+void knsupdate_reset(knsupdate_params_t *params);
 
 /*! @} */

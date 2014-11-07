@@ -22,7 +22,7 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
-#include "utils/nsupdate/nsupdate_exec.h"
+#include "utils/knsupdate/knsupdate_exec.h"
 #include "utils/common/exec.h"
 #include "utils/common/msg.h"
 #include "utils/common/netio.h"
@@ -35,29 +35,29 @@
 #include "libknot/internal/strlcpy.h"
 
 /* Declarations of cmd parse functions. */
-typedef int (*cmd_handle_f)(const char *lp, nsupdate_params_t *params);
-int cmd_add(const char* lp, nsupdate_params_t *params);
-int cmd_answer(const char* lp, nsupdate_params_t *params);
-int cmd_class(const char* lp, nsupdate_params_t *params);
-int cmd_debug(const char* lp, nsupdate_params_t *params);
-int cmd_del(const char* lp, nsupdate_params_t *params);
-int cmd_gsstsig(const char* lp, nsupdate_params_t *params);
-int cmd_key(const char* lp, nsupdate_params_t *params);
-int cmd_local(const char* lp, nsupdate_params_t *params);
-int cmd_nxdomain(const char *lp, nsupdate_params_t *params);
-int cmd_nxrrset(const char *lp, nsupdate_params_t *params);
-int cmd_oldgsstsig(const char* lp, nsupdate_params_t *params);
-int cmd_origin(const char* lp, nsupdate_params_t *params);
-int cmd_prereq(const char* lp, nsupdate_params_t *params);
-int cmd_realm(const char* lp, nsupdate_params_t *params);
-int cmd_send(const char* lp, nsupdate_params_t *params);
-int cmd_server(const char* lp, nsupdate_params_t *params);
-int cmd_show(const char* lp, nsupdate_params_t *params);
-int cmd_ttl(const char* lp, nsupdate_params_t *params);
-int cmd_update(const char* lp, nsupdate_params_t *params);
-int cmd_yxdomain(const char *lp, nsupdate_params_t *params);
-int cmd_yxrrset(const char *lp, nsupdate_params_t *params);
-int cmd_zone(const char* lp, nsupdate_params_t *params);
+typedef int (*cmd_handle_f)(const char *lp, knsupdate_params_t *params);
+int cmd_add(const char* lp, knsupdate_params_t *params);
+int cmd_answer(const char* lp, knsupdate_params_t *params);
+int cmd_class(const char* lp, knsupdate_params_t *params);
+int cmd_debug(const char* lp, knsupdate_params_t *params);
+int cmd_del(const char* lp, knsupdate_params_t *params);
+int cmd_gsstsig(const char* lp, knsupdate_params_t *params);
+int cmd_key(const char* lp, knsupdate_params_t *params);
+int cmd_local(const char* lp, knsupdate_params_t *params);
+int cmd_nxdomain(const char *lp, knsupdate_params_t *params);
+int cmd_nxrrset(const char *lp, knsupdate_params_t *params);
+int cmd_oldgsstsig(const char* lp, knsupdate_params_t *params);
+int cmd_origin(const char* lp, knsupdate_params_t *params);
+int cmd_prereq(const char* lp, knsupdate_params_t *params);
+int cmd_realm(const char* lp, knsupdate_params_t *params);
+int cmd_send(const char* lp, knsupdate_params_t *params);
+int cmd_server(const char* lp, knsupdate_params_t *params);
+int cmd_show(const char* lp, knsupdate_params_t *params);
+int cmd_ttl(const char* lp, knsupdate_params_t *params);
+int cmd_update(const char* lp, knsupdate_params_t *params);
+int cmd_yxdomain(const char *lp, knsupdate_params_t *params);
+int cmd_yxrrset(const char *lp, knsupdate_params_t *params);
+int cmd_zone(const char* lp, knsupdate_params_t *params);
 
 /* Sorted list of commands.
  * This way we could identify command byte-per-byte and
@@ -377,7 +377,7 @@ static int rr_list_to_packet(knot_pkt_t *dst, list_t *list)
 }
 
 /*! \brief Build UPDATE query. */
-static int build_query(nsupdate_params_t *params)
+static int build_query(knsupdate_params_t *params)
 {
 	/* Clear old query. */
 	knot_pkt_t *query = params->query;
@@ -416,7 +416,7 @@ static int build_query(nsupdate_params_t *params)
 	return rr_list_to_packet(query, &params->update_list);
 }
 
-static int pkt_sendrecv(nsupdate_params_t *params)
+static int pkt_sendrecv(knsupdate_params_t *params)
 {
 	net_t net;
 	int   ret;
@@ -464,9 +464,9 @@ static int pkt_sendrecv(nsupdate_params_t *params)
 	return rb;
 }
 
-static int nsupdate_process_line(char *lp, int len, void *arg)
+static int knsupdate_process_line(char *lp, int len, void *arg)
 {
-	nsupdate_params_t *params = (nsupdate_params_t *)arg;
+	knsupdate_params_t *params = (knsupdate_params_t *)arg;
 
 	/* Remove trailing white space chars. */
 	for (int i = len - 1; i >= 0; i--) {
@@ -497,13 +497,13 @@ static int nsupdate_process_line(char *lp, int len, void *arg)
 	return ret;
 }
 
-static int nsupdate_process(nsupdate_params_t *params, FILE *fp)
+static int knsupdate_process(knsupdate_params_t *params, FILE *fp)
 {
 	/* Process lines. */
-	return tok_process_lines(fp, nsupdate_process_line, params);
+	return tok_process_lines(fp, knsupdate_process_line, params);
 }
 
-int nsupdate_exec(nsupdate_params_t *params)
+int knsupdate_exec(knsupdate_params_t *params)
 {
 	if (!params) {
 		return KNOT_EINVAL;
@@ -513,7 +513,7 @@ int nsupdate_exec(nsupdate_params_t *params)
 
 	/* If not file specified, use stdin. */
 	if (EMPTY_LIST(params->qfiles)) {
-		return nsupdate_process(params, stdin);
+		return knsupdate_process(params, stdin);
 	}
 
 	/* Read from each specified file. */
@@ -521,7 +521,7 @@ int nsupdate_exec(nsupdate_params_t *params)
 	WALK_LIST(n, params->qfiles) {
 		const char *filename = (const char*)n->d;
 		if (strcmp(filename, "-") == 0) {
-			ret = nsupdate_process(params, stdin);
+			ret = knsupdate_process(params, stdin);
 			continue;
 		}
 		FILE *fp = fopen(filename, "r");
@@ -530,14 +530,14 @@ int nsupdate_exec(nsupdate_params_t *params)
 			    filename, strerror(errno));
 			return KNOT_ERROR;
 		}
-		ret = nsupdate_process(params, fp);
+		ret = knsupdate_process(params, fp);
 		fclose(fp);
 	}
 
 	return ret;
 }
 
-int cmd_update(const char* lp, nsupdate_params_t *params)
+int cmd_update(const char* lp, knsupdate_params_t *params)
 {
 	DBG("%s: lp='%s'\n", __func__, lp);
 
@@ -556,7 +556,7 @@ int cmd_update(const char* lp, nsupdate_params_t *params)
 	return h[bp](tok_skipspace(lp + TOK_L(cmd_array[bp])), params);
 }
 
-int cmd_add(const char* lp, nsupdate_params_t *params)
+int cmd_add(const char* lp, knsupdate_params_t *params)
 {
 	DBG("%s: lp='%s'\n", __func__, lp);
 
@@ -567,7 +567,7 @@ int cmd_add(const char* lp, nsupdate_params_t *params)
 	return rr_list_append(params->parser, &params->update_list, &params->mm);
 }
 
-int cmd_del(const char* lp, nsupdate_params_t *params)
+int cmd_del(const char* lp, knsupdate_params_t *params)
 {
 	DBG("%s: lp='%s'\n", __func__, lp);
 
@@ -594,7 +594,7 @@ int cmd_del(const char* lp, nsupdate_params_t *params)
 	return rr_list_append(rrp, &params->update_list, &params->mm);
 }
 
-int cmd_class(const char* lp, nsupdate_params_t *params)
+int cmd_class(const char* lp, knsupdate_params_t *params)
 {
 	DBG("%s: lp='%s'\n", __func__, lp);
 
@@ -611,7 +611,7 @@ int cmd_class(const char* lp, nsupdate_params_t *params)
 	return KNOT_EOK;
 }
 
-int cmd_ttl(const char* lp, nsupdate_params_t *params)
+int cmd_ttl(const char* lp, knsupdate_params_t *params)
 {
 	DBG("%s: lp='%s'\n", __func__, lp);
 
@@ -621,10 +621,10 @@ int cmd_ttl(const char* lp, nsupdate_params_t *params)
 		return KNOT_EPARSEFAIL;
 	}
 
-	return nsupdate_set_ttl(params, ttl);
+	return knsupdate_set_ttl(params, ttl);
 }
 
-int cmd_debug(const char* lp, nsupdate_params_t *params)
+int cmd_debug(const char* lp, knsupdate_params_t *params)
 {
 	UNUSED(params);
 	DBG("%s: lp='%s'\n", __func__, lp);
@@ -633,7 +633,7 @@ int cmd_debug(const char* lp, nsupdate_params_t *params)
 	return KNOT_EOK;
 }
 
-int cmd_nxdomain(const char *lp, nsupdate_params_t *params)
+int cmd_nxdomain(const char *lp, knsupdate_params_t *params)
 {
 	DBG("%s: lp='%s'\n", __func__, lp);
 
@@ -649,7 +649,7 @@ int cmd_nxdomain(const char *lp, nsupdate_params_t *params)
 	return rr_list_append(s, &params->prereq_list, &params->mm);
 }
 
-int cmd_yxdomain(const char *lp, nsupdate_params_t *params)
+int cmd_yxdomain(const char *lp, knsupdate_params_t *params)
 {
 	DBG("%s: lp='%s'\n", __func__, lp);
 
@@ -665,7 +665,7 @@ int cmd_yxdomain(const char *lp, nsupdate_params_t *params)
 	return rr_list_append(s, &params->prereq_list, &params->mm);
 }
 
-int cmd_nxrrset(const char *lp, nsupdate_params_t *params)
+int cmd_nxrrset(const char *lp, knsupdate_params_t *params)
 {
 	DBG("%s: lp='%s'\n", __func__, lp);
 
@@ -687,7 +687,7 @@ int cmd_nxrrset(const char *lp, nsupdate_params_t *params)
 	return rr_list_append(s, &params->prereq_list, &params->mm);
 }
 
-int cmd_yxrrset(const char *lp, nsupdate_params_t *params)
+int cmd_yxrrset(const char *lp, knsupdate_params_t *params)
 {
 	DBG("%s: lp='%s'\n", __func__, lp);
 
@@ -713,7 +713,7 @@ int cmd_yxrrset(const char *lp, nsupdate_params_t *params)
 	return rr_list_append(s, &params->prereq_list, &params->mm);
 }
 
-int cmd_prereq(const char* lp, nsupdate_params_t *params)
+int cmd_prereq(const char* lp, knsupdate_params_t *params)
 {
 	DBG("%s: lp='%s'\n", __func__, lp);
 
@@ -746,7 +746,7 @@ int cmd_prereq(const char* lp, nsupdate_params_t *params)
 	return ret;
 }
 
-int cmd_send(const char* lp, nsupdate_params_t *params)
+int cmd_send(const char* lp, knsupdate_params_t *params)
 {
 	DBG("%s: lp='%s'\n", __func__, lp);
 	DBG("sending packet\n");
@@ -805,7 +805,7 @@ int cmd_send(const char* lp, nsupdate_params_t *params)
 	}
 
 	/* Free RRSet lists. */
-	nsupdate_reset(params);
+	knsupdate_reset(params);
 
 	/* Check return code. */
 	lookup_table_t *rcode;
@@ -819,7 +819,7 @@ int cmd_send(const char* lp, nsupdate_params_t *params)
 	return KNOT_EOK;
 }
 
-int cmd_zone(const char* lp, nsupdate_params_t *params)
+int cmd_zone(const char* lp, knsupdate_params_t *params)
 {
 	DBG("%s: lp='%s'\n", __func__, lp);
 
@@ -835,7 +835,7 @@ int cmd_zone(const char* lp, nsupdate_params_t *params)
 	return KNOT_EOK;
 }
 
-int cmd_server(const char* lp, nsupdate_params_t *params)
+int cmd_server(const char* lp, knsupdate_params_t *params)
 {
 	DBG("%s: lp='%s'\n", __func__, lp);
 
@@ -851,7 +851,7 @@ int cmd_server(const char* lp, nsupdate_params_t *params)
 	return KNOT_EOK;
 }
 
-int cmd_local(const char* lp, nsupdate_params_t *params)
+int cmd_local(const char* lp, knsupdate_params_t *params)
 {
 	DBG("%s: lp='%s'\n", __func__, lp);
 
@@ -867,7 +867,7 @@ int cmd_local(const char* lp, nsupdate_params_t *params)
 	return KNOT_EOK;
 }
 
-int cmd_show(const char* lp, nsupdate_params_t *params)
+int cmd_show(const char* lp, knsupdate_params_t *params)
 {
 	DBG("%s: lp='%s'\n", __func__, lp);
 
@@ -880,7 +880,7 @@ int cmd_show(const char* lp, nsupdate_params_t *params)
 	return KNOT_EOK;
 }
 
-int cmd_answer(const char* lp, nsupdate_params_t *params)
+int cmd_answer(const char* lp, knsupdate_params_t *params)
 {
 	DBG("%s: lp='%s'\n", __func__, lp);
 
@@ -891,7 +891,7 @@ int cmd_answer(const char* lp, nsupdate_params_t *params)
 	return KNOT_EOK;
 }
 
-int cmd_key(const char* lp, nsupdate_params_t *params)
+int cmd_key(const char* lp, knsupdate_params_t *params)
 {
 	DBG("%s: lp='%s'\n", __func__, lp);
 
@@ -915,7 +915,7 @@ int cmd_key(const char* lp, nsupdate_params_t *params)
 	return ret;
 }
 
-int cmd_origin(const char* lp, nsupdate_params_t *params)
+int cmd_origin(const char* lp, knsupdate_params_t *params)
 {
 	DBG("%s: lp='%s'\n", __func__, lp);
 
@@ -925,14 +925,14 @@ int cmd_origin(const char* lp, nsupdate_params_t *params)
 		return KNOT_EPARSEFAIL;
 	}
 
-	return nsupdate_set_origin(params, lp);
+	return knsupdate_set_origin(params, lp);
 }
 
 /*
  *   Not implemented.
  */
 
-int cmd_gsstsig(const char* lp, nsupdate_params_t *params)
+int cmd_gsstsig(const char* lp, knsupdate_params_t *params)
 {
 	UNUSED(params);
 	DBG("%s: lp='%s'\n", __func__, lp);
@@ -940,7 +940,7 @@ int cmd_gsstsig(const char* lp, nsupdate_params_t *params)
 	return KNOT_ENOTSUP;
 }
 
-int cmd_oldgsstsig(const char* lp, nsupdate_params_t *params)
+int cmd_oldgsstsig(const char* lp, knsupdate_params_t *params)
 {
 	UNUSED(params);
 	DBG("%s: lp='%s'\n", __func__, lp);
@@ -948,7 +948,7 @@ int cmd_oldgsstsig(const char* lp, nsupdate_params_t *params)
 	return KNOT_ENOTSUP;
 }
 
-int cmd_realm(const char* lp, nsupdate_params_t *params)
+int cmd_realm(const char* lp, knsupdate_params_t *params)
 {
 	UNUSED(params);
 	DBG("%s: lp='%s'\n", __func__, lp);

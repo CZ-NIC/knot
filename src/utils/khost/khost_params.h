@@ -12,30 +12,25 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
-*/
+ */
+/*!
+ * \file khost_params.h
+ *
+ * \author Daniel Salzman <daniel.salzman@nic.cz>
+ *
+ * \brief khost command line parameters.
+ *
+ * \addtogroup knot_utils
+ * @{
+ */
 
-#include <stdlib.h>
+#pragma once
 
-#include "utils/nsupdate/nsupdate_exec.h"
-#include "utils/nsupdate/nsupdate_params.h"
-#include "libknot/dnssec/crypto.h"
-#include "libknot/errcode.h"
+#include "utils/kdig/kdig_params.h"
 
-int main(int argc, char *argv[])
-{
-	atexit(knot_crypto_cleanup);
+#define KHOST_VERSION "khost, version " PACKAGE_VERSION "\n"
 
-	int ret = EXIT_SUCCESS;
+int khost_parse(kdig_params_t *params, int argc, char *argv[]);
+void khost_clean(kdig_params_t *params);
 
-	nsupdate_params_t params;
-	if (nsupdate_parse(&params, argc, argv) == KNOT_EOK) {
-		if (!params.stop && nsupdate_exec(&params) != KNOT_EOK) {
-			ret = EXIT_FAILURE;
-		}
-	} else {
-		ret = EXIT_FAILURE;
-	}
-
-	nsupdate_clean(&params);
-	return ret;
-}
+/*! @} */

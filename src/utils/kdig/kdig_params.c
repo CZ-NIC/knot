@@ -21,7 +21,7 @@
 #include <string.h>
 #include <stdlib.h>
 
-#include "utils/dig/dig_params.h"
+#include "utils/kdig/kdig_params.h"
 #include "utils/common/msg.h"
 #include "utils/common/params.h"
 #include "utils/common/resolv.h"
@@ -717,7 +717,7 @@ static int opt_bufsize(const char *arg, void *query)
 	return KNOT_EOK;
 }
 
-static const param_t dig_opts2[] = {
+static const param_t kdig_opts2[] = {
 	{ "multiline",    ARG_NONE,     opt_multiline },
 	{ "nomultiline",  ARG_NONE,     opt_nomultiline },
 
@@ -967,7 +967,7 @@ void query_free(query_t *query)
 	free(query);
 }
 
-int dig_init(dig_params_t *params)
+int kdig_init(kdig_params_t *params)
 {
 	if (params == NULL) {
 		DBG_NULL;
@@ -989,7 +989,7 @@ int dig_init(dig_params_t *params)
 	return KNOT_EOK;
 }
 
-void dig_clean(dig_params_t *params)
+void kdig_clean(kdig_params_t *params)
 {
 	node_t *n = NULL, *nxt = NULL;
 
@@ -1139,7 +1139,7 @@ static int parse_reverse(const char *value, list_t *queries, const query_t *conf
 	return KNOT_EOK;
 }
 
-static int parse_server(const char *value, dig_params_t *params)
+static int parse_server(const char *value, kdig_params_t *params)
 {
 	query_t *query;
 
@@ -1333,7 +1333,7 @@ void complete_queries(list_t *queries, const query_t *conf)
 	}
 }
 
-static void dig_help(void)
+static void kdig_help(void)
 {
 	printf("Usage: kdig [-4] [-6] [-dh] [-b address] [-c class] [-p port]\n"
 	       "            [-q name] [-t type] [-x address] [-k keyfile]\n"
@@ -1378,7 +1378,7 @@ static void dig_help(void)
 	       "       -v, --version   Print program version.\n");
 }
 
-static int parse_opt1(const char *opt, const char *value, dig_params_t *params,
+static int parse_opt1(const char *opt, const char *value, kdig_params_t *params,
                       int *index)
 {
 	const char *val = value;
@@ -1437,7 +1437,7 @@ static int parse_opt1(const char *opt, const char *value, dig_params_t *params,
 			return KNOT_ENOTSUP;
 		}
 
-		dig_help();
+		kdig_help();
 		params->stop = true;
 		break;
 	case 'c':
@@ -1580,7 +1580,7 @@ static int parse_opt1(const char *opt, const char *value, dig_params_t *params,
 		break;
 	case '-':
 		if (strcmp(opt, "-help") == 0) {
-			dig_help();
+			kdig_help();
 			params->stop = true;
 		} else if (strcmp(opt, "-version") == 0) {
 			printf(KDIG_VERSION);
@@ -1598,7 +1598,7 @@ static int parse_opt1(const char *opt, const char *value, dig_params_t *params,
 	return KNOT_EOK;
 }
 
-static int parse_opt2(const char *value, dig_params_t *params)
+static int parse_opt2(const char *value, kdig_params_t *params)
 {
 	query_t *query;
 
@@ -1626,7 +1626,7 @@ static int parse_opt2(const char *value, dig_params_t *params)
 
 	// Check if the given option is supported.
 	bool unique;
-	int ret = best_param(value, opt_len, dig_opts2, &unique);
+	int ret = best_param(value, opt_len, kdig_opts2, &unique);
 	if (ret < 0) {
 		ERR("invalid option: +%s\n", value);
 		return KNOT_ENOTSUP;
@@ -1636,7 +1636,7 @@ static int parse_opt2(const char *value, dig_params_t *params)
 	}
 
 	// Check argument presence.
-	switch (dig_opts2[ret].arg) {
+	switch (kdig_opts2[ret].arg) {
 	case ARG_NONE:
 		if (arg != NULL) {
 			ERR("superfluous option argument: +%s\n", value);
@@ -1657,10 +1657,10 @@ static int parse_opt2(const char *value, dig_params_t *params)
 	}
 
 	// Call option handler.
-	return dig_opts2[ret].handler(arg, query);
+	return kdig_opts2[ret].handler(arg, query);
 }
 
-static int parse_token(const char *value, dig_params_t *params)
+static int parse_token(const char *value, kdig_params_t *params)
 {
 	query_t *query;
 
@@ -1685,7 +1685,7 @@ static int parse_token(const char *value, dig_params_t *params)
 	return KNOT_EINVAL;
 }
 
-int dig_parse(dig_params_t *params, int argc, char *argv[])
+int kdig_parse(kdig_params_t *params, int argc, char *argv[])
 {
 	if (params == NULL || argv == NULL) {
 		DBG_NULL;
@@ -1693,7 +1693,7 @@ int dig_parse(dig_params_t *params, int argc, char *argv[])
 	}
 
 	// Initialize parameters.
-	if (dig_init(params) != KNOT_EOK) {
+	if (kdig_init(params) != KNOT_EOK) {
 		return KNOT_ERROR;
 	}
 
@@ -1734,7 +1734,7 @@ int dig_parse(dig_params_t *params, int argc, char *argv[])
 			}
 			break;
 		case KNOT_ENOTSUP:
-			dig_help();
+			kdig_help();
 		default: // Fall through.
 			return ret;
 		}

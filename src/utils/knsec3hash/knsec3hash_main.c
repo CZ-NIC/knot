@@ -21,12 +21,12 @@
 #include <stdint.h>
 #include <stdio.h>
 
-#include "utils/common/params.h"
-#include "libknot/internal/base32hex.h"
-#include "libknot/dnssec/crypto.h"
-#include "libknot/errcode.h"
 #include "utils/common/hex.h"
+#include "utils/common/params.h"
 #include "utils/common/strtonum.h"
+#include "libknot/libknot.h"
+#include "libknot/dnssec/crypto.h"
+#include "libknot/internal/base32hex.h"
 
 #define PROGRAM_NAME "knsec3hash"
 

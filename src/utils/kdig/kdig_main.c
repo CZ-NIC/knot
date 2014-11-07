@@ -13,21 +13,26 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
-/*!
- * \file nsupdate_exec.h
- *
- * \author Marek Vavrusa <marek.vavrusa@nic.cz>
- *
- * \brief
- *
- * \addtogroup knot_utils
- * @{
- */
 
-#pragma once
+#include <stdlib.h>
 
-#include "utils/nsupdate/nsupdate_params.h"
+#include "utils/kdig/kdig_params.h"
+#include "utils/kdig/kdig_exec.h"
+#include "libknot/errcode.h"
 
-int nsupdate_exec(nsupdate_params_t *params);
+int main(int argc, char *argv[])
+{
+	int ret = EXIT_SUCCESS;
 
-/*! @} */
+	kdig_params_t params;
+	if (kdig_parse(&params, argc, argv) == KNOT_EOK) {
+		if (!params.stop && kdig_exec(&params) != KNOT_EOK) {
+			ret = EXIT_FAILURE;
+		}
+	} else {
+		ret = EXIT_FAILURE;
+	}
+
+	kdig_clean(&params);
+	return ret;
+}

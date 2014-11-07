@@ -20,7 +20,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "utils/nsupdate/nsupdate_params.h"
+#include "utils/knsupdate/knsupdate_params.h"
 #include "utils/common/msg.h"
 #include "utils/common/netio.h"
 #include "libknot/libknot.h"
@@ -78,9 +78,9 @@ static int parser_set_default(zs_scanner_t *s, const char *fmt, ...)
 	return KNOT_EOK;
 }
 
-static int nsupdate_init(nsupdate_params_t *params)
+static int knsupdate_init(knsupdate_params_t *params)
 {
-	memset(params, 0, sizeof(nsupdate_params_t));
+	memset(params, 0, sizeof(knsupdate_params_t));
 
 	/* Initialize lists. */
 	init_list(&params->qfiles);
@@ -121,14 +121,14 @@ static int nsupdate_init(nsupdate_params_t *params)
 	return KNOT_EOK;
 }
 
-void nsupdate_clean(nsupdate_params_t *params)
+void knsupdate_clean(knsupdate_params_t *params)
 {
 	if (params == NULL) {
 		return;
 	}
 
 	/* Clear current query. */
-	nsupdate_reset(params);
+	knsupdate_reset(params);
 
 	/* Free qfiles. */
 	ptrlist_free(&params->qfiles, &params->mm);
@@ -160,7 +160,7 @@ static void rr_list_free(list_t *list, mm_ctx_t *mm)
 	ptrlist_free(list, mm);
 }
 
-void nsupdate_reset(nsupdate_params_t *params)
+void knsupdate_reset(knsupdate_params_t *params)
 {
 	/* Free ADD/REMOVE RRSets. */
 	rr_list_free(&params->update_list, &params->mm);
@@ -169,13 +169,13 @@ void nsupdate_reset(nsupdate_params_t *params)
 	rr_list_free(&params->prereq_list, &params->mm);
 }
 
-static void nsupdate_help(void)
+static void knsupdate_help(void)
 {
 	printf("Usage: knsupdate [-d] [-v] [-k keyfile | -y [hmac:]name:key]\n"
 	       "                 [-p port] [-t timeout] [-r retries] [filename]\n");
 }
 
-int nsupdate_parse(nsupdate_params_t *params, int argc, char *argv[])
+int knsupdate_parse(knsupdate_params_t *params, int argc, char *argv[])
 {
 	int opt = 0, li = 0;
 	int ret = KNOT_EOK;
@@ -184,7 +184,7 @@ int nsupdate_parse(nsupdate_params_t *params, int argc, char *argv[])
 		return KNOT_EINVAL;
 	}
 
-	ret = nsupdate_init(params);
+	ret = knsupdate_init(params);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
@@ -205,7 +205,7 @@ int nsupdate_parse(nsupdate_params_t *params, int argc, char *argv[])
 			msg_enable_debug(1);
 			break;
 		case 'h':
-			nsupdate_help();
+			knsupdate_help();
 			params->stop = true;
 			return KNOT_EOK;
 		case 'v':
@@ -240,7 +240,7 @@ int nsupdate_parse(nsupdate_params_t *params, int argc, char *argv[])
 			if (ret != KNOT_EOK) return ret;
 			break;
 		default:
-			nsupdate_help();
+			knsupdate_help();
 			return KNOT_ENOTSUP;
 		}
 	}
@@ -266,7 +266,7 @@ int nsupdate_parse(nsupdate_params_t *params, int argc, char *argv[])
 	return ret;
 }
 
-int nsupdate_set_ttl(nsupdate_params_t *params, const uint32_t ttl)
+int knsupdate_set_ttl(knsupdate_params_t *params, const uint32_t ttl)
 {
 	int ret = parser_set_default(params->parser, "$TTL %u\n", ttl);
 	if (ret == KNOT_EOK) {
@@ -277,7 +277,7 @@ int nsupdate_set_ttl(nsupdate_params_t *params, const uint32_t ttl)
 	return ret;
 }
 
-int nsupdate_set_origin(nsupdate_params_t *params, const char *origin)
+int knsupdate_set_origin(knsupdate_params_t *params, const char *origin)
 {
 	char *fqdn = get_fqd_name(origin);
 

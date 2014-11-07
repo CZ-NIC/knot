@@ -21,7 +21,7 @@
 
 #include "utils/common/token.h"
 #include "utils/common/msg.h"
-#include "libknot/errcode.h"
+#include "libknot/libknot.h"
 #include "libknot/internal/getline.h"
 
 int tok_scan(const char* lp, const char **tbl, int *lpm)

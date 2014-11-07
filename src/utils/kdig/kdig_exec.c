@@ -19,7 +19,7 @@
 #include <sys/socket.h>
 #include <sys/time.h>
 
-#include "utils/dig/dig_exec.h"
+#include "utils/kdig/kdig_exec.h"
 #include "utils/common/exec.h"
 #include "utils/common/msg.h"
 #include "utils/common/netio.h"
@@ -946,7 +946,7 @@ static void process_xfr(const query_t *query)
 	knot_pkt_free(&out_packet);
 }
 
-int dig_exec(const dig_params_t *params)
+int kdig_exec(const kdig_params_t *params)
 {
 	node_t *n = NULL;
 

@@ -13,26 +13,21 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
+/*!
+ * \file knsupdate_exec.h
+ *
+ * \author Marek Vavrusa <marek.vavrusa@nic.cz>
+ *
+ * \brief
+ *
+ * \addtogroup knot_utils
+ * @{
+ */
 
-#include <stdlib.h>
+#pragma once
 
-#include "utils/dig/dig_params.h"
-#include "utils/dig/dig_exec.h"
-#include "libknot/errcode.h"
+#include "utils/knsupdate/knsupdate_params.h"
 
-int main(int argc, char *argv[])
-{
-	int ret = EXIT_SUCCESS;
+int knsupdate_exec(knsupdate_params_t *params);
 
-	dig_params_t params;
-	if (dig_parse(&params, argc, argv) == KNOT_EOK) {
-		if (!params.stop && dig_exec(&params) != KNOT_EOK) {
-			ret = EXIT_FAILURE;
-		}
-	} else {
-		ret = EXIT_FAILURE;
-	}
-
-	dig_clean(&params);
-	return ret;
-}
+/*! @} */

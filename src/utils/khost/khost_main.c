@@ -16,23 +16,23 @@
 
 #include <stdlib.h>
 
-#include "utils/host/host_params.h"
-#include "utils/dig/dig_exec.h"
-#include "libknot/errcode.h"
+#include "utils/khost/khost_params.h"
+#include "utils/kdig/kdig_exec.h"
+#include "libknot/libknot.h"
 
 int main(int argc, char *argv[])
 {
 	int ret = EXIT_SUCCESS;
 
-	dig_params_t params;
-	if (host_parse(&params, argc, argv) == KNOT_EOK) {
-		if (!params.stop && dig_exec(&params) != KNOT_EOK) {
+	kdig_params_t params;
+	if (khost_parse(&params, argc, argv) == KNOT_EOK) {
+		if (!params.stop && kdig_exec(&params) != KNOT_EOK) {
 			ret = EXIT_FAILURE;
 		}
 	} else {
 		ret = EXIT_FAILURE;
 	}
 
-	host_clean(&params);
+	khost_clean(&params);
 	return ret;
 }

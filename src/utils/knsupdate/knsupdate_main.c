@@ -12,25 +12,30 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
- */
-/*!
- * \file host_params.h
- *
- * \author Daniel Salzman <daniel.salzman@nic.cz>
- *
- * \brief host command line parameters.
- *
- * \addtogroup knot_utils
- * @{
- */
+*/
 
-#pragma once
+#include <stdlib.h>
 
-#include "utils/dig/dig_params.h"
+#include "utils/knsupdate/knsupdate_exec.h"
+#include "utils/knsupdate/knsupdate_params.h"
+#include "libknot/libknot.h"
+#include "libknot/dnssec/crypto.h"
 
-#define KHOST_VERSION "khost, version " PACKAGE_VERSION "\n"
+int main(int argc, char *argv[])
+{
+	atexit(knot_crypto_cleanup);
 
-int host_parse(dig_params_t *params, int argc, char *argv[]);
-void host_clean(dig_params_t *params);
+	int ret = EXIT_SUCCESS;
 
-/*! @} */
+	knsupdate_params_t params;
+	if (knsupdate_parse(&params, argc, argv) == KNOT_EOK) {
+		if (!params.stop && knsupdate_exec(&params) != KNOT_EOK) {
+			ret = EXIT_FAILURE;
+		}
+	} else {
+		ret = EXIT_FAILURE;
+	}
+
+	knsupdate_clean(&params);
+	return ret;
+}

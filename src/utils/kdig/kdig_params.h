@@ -14,11 +14,11 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 /*!
- * \file dig_params.h
+ * \file kdig_params.h
  *
  * \author Daniel Salzman <daniel.salzman@nic.cz>
  *
- * \brief dig command line parameters.
+ * \brief kdig command line parameters.
  *
  * \addtogroup knot_utils
  * @{
@@ -40,7 +40,7 @@
 
 #define KDIG_VERSION "kdig, version " PACKAGE_VERSION "\n"
 
-/*! \brief Operation mode of dig. */
+/*! \brief Operation mode of kdig. */
 typedef enum {
 	/*!< Standard 1-message query/reply. */
 	OPERATION_QUERY,
@@ -147,7 +147,7 @@ struct query {
 #endif // USE_DNSTAP
 };
 
-/*! \brief Settings for dig. */
+/*! \brief Settings for kdig. */
 typedef struct {
 	/*!< Stop processing - just print help, version,... */
 	bool	stop;
@@ -155,14 +155,14 @@ typedef struct {
 	list_t	queries;
 	/*!< Default settings for queries. */
 	query_t	*config;
-} dig_params_t;
+} kdig_params_t;
 
 query_t* query_create(const char *owner, const query_t *config);
 void query_free(query_t *query);
 void complete_queries(list_t *queries, const query_t *conf);
 
-int dig_init(dig_params_t *params);
-int dig_parse(dig_params_t *params, int argc, char *argv[]);
-void dig_clean(dig_params_t *params);
+int kdig_init(kdig_params_t *params);
+int kdig_parse(kdig_params_t *params, int argc, char *argv[]);
+void kdig_clean(kdig_params_t *params);
 
 /*! @} */

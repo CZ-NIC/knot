@@ -14,11 +14,11 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 /*!
- * \file dig_exec.h
+ * \file kdig_exec.h
  *
  * \author Daniel Salzman <daniel.salzman@nic.cz>
  *
- * \brief dig executives.
+ * \brief kdig executives.
  *
  * \addtogroup knot_utils
  * @{
@@ -27,8 +27,8 @@
 #pragma once
 
 #include "utils/common/params.h"
-#include "utils/dig/dig_params.h"
+#include "utils/kdig/kdig_params.h"
 
-int dig_exec(const dig_params_t *params);
+int kdig_exec(const kdig_params_t *params);
 
 /*! @} */

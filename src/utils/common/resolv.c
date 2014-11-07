@@ -20,7 +20,7 @@
 #include "utils/common/resolv.h"
 #include "utils/common/msg.h"
 #include "utils/common/params.h"
-#include "libknot/errcode.h"
+#include "libknot/libknot.h"
 #include "libknot/internal/lists.h"
 
 #define RESOLV_FILE	"/etc/resolv.conf"
