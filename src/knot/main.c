@@ -14,6 +14,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -39,9 +40,9 @@
 #include "knot/server/tcp-handler.h"
 
 /* Signal flags. */
+static volatile bool sig_req_stop = false;
+static volatile bool sig_req_reload = false;
 static sigset_t sig_block_mask;
-static volatile short sig_req_stop = 0;
-static volatile short sig_req_reload = 0;
 
 /* \brief Signal started state to the init system. */
 static void init_signal_started(void)
@@ -71,11 +72,11 @@ static void interrupt_handle(int signum)
 {
 	switch (signum) {
 	case SIGHUP:
-		sig_req_reload = 1;
+		sig_req_reload = true;
 		break;
 	case SIGINT:
 	case SIGTERM:
-		sig_req_stop = 1;
+		sig_req_stop = true;
 		break;
 	default:
 		/* ignore */
@@ -179,12 +180,11 @@ static void event_loop(server_t *server)
 
 		/* Interrupts. */
 		if (sig_req_stop) {
-			sig_req_stop = 0;
 			server_stop(server);
 			break;
 		}
 		if (sig_req_reload) {
-			sig_req_reload = 0;
+			sig_req_reload = false;
 			server_reload(server, conf()->filename);
 		}
 	}
