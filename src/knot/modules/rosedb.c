@@ -440,16 +440,13 @@ static int rosedb_synth_rr(knot_pkt_t *pkt, struct entry *entry, uint16_t qtype)
 		return KNOT_EOK; /* Ignore */
 	}
 
-	knot_rrset_t rr;
-	knot_rrset_init(&rr, (knot_dname_t *)knot_pkt_qname(pkt), entry->data.type, KNOT_CLASS_IN);
-	int ret = knot_rdataset_copy(&rr.rrs, &entry->data.rrs, &pkt->mm);
+	knot_rrset_t *rr = knot_rrset_new(knot_pkt_qname(pkt), entry->data.type, KNOT_CLASS_IN, &pkt->mm);
+	int ret = knot_rdataset_copy(&rr->rrs, &entry->data.rrs, &pkt->mm);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
 
-	/*! \note The RR will be just stored to wire. */
-	ret = knot_pkt_put(pkt, KNOT_COMPR_HINT_QNAME, &rr, 0);
-	knot_rrset_clear(&rr, &pkt->mm);
+	ret = knot_pkt_put(pkt, KNOT_COMPR_HINT_QNAME, rr, KNOT_PF_FREE);
 
 	return ret;
 }
@@ -459,7 +456,6 @@ static int rosedb_synth(knot_pkt_t *pkt, const knot_dname_t *key, struct iter *i
 	struct entry entry;
 	int ret = KNOT_EOK;
 	uint16_t qtype = knot_pkt_qtype(qdata->query);
-	bool is_authoritative = true;
 
 	/* Answer section. */
 	while(ret == KNOT_EOK) {
@@ -478,15 +474,8 @@ static int rosedb_synth(knot_pkt_t *pkt, const knot_dname_t *key, struct iter *i
 	ret = cache_iter_begin(it, key);
 	while(ret == KNOT_EOK) {
 		if (cache_iter_val(it, &entry) == 0) {
-			ret = rosedb_synth_rr(pkt, &entry, KNOT_RRTYPE_SOA);
-			
-			/* Referral if no answer is provided. */
-			if (knot_wire_get_ancount(pkt->wire) == 0) {
-				ret = rosedb_synth_rr(pkt, &entry, KNOT_RRTYPE_NS);
-				if (entry.data.type == KNOT_RRTYPE_NS) {
-					is_authoritative = false;
-				}
-			}
+            ret = rosedb_synth_rr(pkt, &entry, KNOT_RRTYPE_NS);  
+            ret = rosedb_synth_rr(pkt, &entry, KNOT_RRTYPE_SOA);
 		}
 		if (cache_iter_next(it) != 0) {
 			break;
@@ -494,13 +483,12 @@ static int rosedb_synth(knot_pkt_t *pkt, const knot_dname_t *key, struct iter *i
 	}
 	
 	/* Our response is authoritative. */
-	if (is_authoritative) {
-		knot_wire_set_aa(pkt->wire);
-		/* Not a referral response => NXDOMAIN. */
-		if (knot_wire_get_ancount(pkt->wire) == 0) {
-			knot_wire_set_rcode(pkt->wire, KNOT_RCODE_NXDOMAIN);
-		}
-	}
+    if (knot_wire_get_nscount(pkt->wire) > 0) {
+        knot_wire_set_aa(pkt->wire);
+        if (knot_wire_get_ancount(pkt->wire) == 0) {
+            knot_wire_set_rcode(pkt->wire, KNOT_RCODE_NXDOMAIN);
+        }
+    }
 
 	/* Send message to syslog. */
 	struct sockaddr_storage syslog_addr;
