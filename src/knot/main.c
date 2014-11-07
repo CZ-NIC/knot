@@ -42,7 +42,6 @@
 /* Signal flags. */
 static volatile bool sig_req_stop = false;
 static volatile bool sig_req_reload = false;
-static sigset_t sig_block_mask;
 
 /* \brief Signal started state to the init system. */
 static void init_signal_started(void)
@@ -84,14 +83,15 @@ static void interrupt_handle(int signum)
 	}
 }
 
-/*! \brief Setup signal handlers and signal blocking mask. */
+/*! \brief Setup signal handlers and blocking mask. */
 static void setup_signals(void)
 {
 	struct sigaction action;
 	memset(&action, 0, sizeof(struct sigaction));
 	action.sa_handler = interrupt_handle;
 
-	sigemptyset(&sig_block_mask);
+	static sigset_t block_mask;
+	sigemptyset(&block_mask);
 
 	int signals[] = { SIGALRM, SIGHUP, SIGINT, SIGPIPE, SIGTERM };
 	size_t count = sizeof(signals) / sizeof(*signals);
@@ -99,18 +99,10 @@ static void setup_signals(void)
 	for (int i = 0; i < count; i++) {
 		int signal = signals[i];
 		sigaction(signal, &action, NULL);
-		sigaddset(&sig_block_mask, signal);
+		sigaddset(&block_mask, signal);
 	}
-}
 
-static void block_signals(void)
-{
-	pthread_sigmask(SIG_BLOCK, &sig_block_mask, NULL);
-}
-
-static void unblock_signals(void)
-{
-	pthread_sigmask(SIG_UNBLOCK, &sig_block_mask, NULL);
+	pthread_sigmask(SIG_BLOCK, &block_mask, NULL);
 }
 
 /*! \brief POSIX 1003.1e capabilities. */
@@ -159,28 +151,24 @@ static void event_loop(server_t *server)
 	size_t buflen = sizeof(buf);
 	int remote = remote_bind(conf()->ctl.iface);
 
+	sigset_t empty;
+	sigemptyset(&empty);
+
 	/* Run event loop. */
 	for (;;) {
-		unblock_signals();
-		int ret = remote_poll(remote);
-		block_signals();
+		int ret = remote_poll(remote, &empty);
 
 		/* Events. */
 		if (ret > 0) {
 			ret = remote_process(server, conf()->ctl.iface,
 			                     remote, buf, buflen);
-			switch (ret) {
-			case KNOT_CTL_STOP:
-				sig_req_stop = 1;
-				break;
-			default:
+			if (ret == KNOT_CTL_STOP) {
 				break;
 			}
 		}
 
 		/* Interrupts. */
 		if (sig_req_stop) {
-			server_stop(server);
 			break;
 		}
 		if (sig_req_reload) {
@@ -188,6 +176,8 @@ static void event_loop(server_t *server)
 			server_reload(server, conf()->filename);
 		}
 	}
+
+	server_stop(server);
 
 	/* Close remote control interface. */
 	remote_unbind(conf()->ctl.iface, remote);
@@ -268,7 +258,6 @@ int main(int argc, char **argv)
 
 	/* Setup base signal handling. */
 	setup_signals();
-	block_signals();
 
 	/* Initialize cryptographic backend. */
 	knot_crypto_init();
