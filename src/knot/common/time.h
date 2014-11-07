@@ -1,4 +1,4 @@
-/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2014 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -14,11 +14,11 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 /*!
- * \file knot.h
+ * \file time.h
  *
  * \author Lubos Slovak <lubos.slovak@nic.cz>
  *
- * \brief Common macros, includes and utilities.
+ * \brief Universal time getter.
  *
  * \addtogroup server
  * @{
@@ -26,23 +26,12 @@
 
 #pragma once
 
-#include <signal.h>
-#include <stdint.h>
-
-#include "libknot/internal/print.h"
-#include "libknot/internal/log.h"
-#include "libknot/errcode.h"
-#include "knot/common/debug.h"
-
-#define DEFAULT_THR_COUNT 2  /*!< \brief Default thread count. */
-#define TCP_BACKLOG_SIZE 10  /*!< \brief TCP listen backlog size. */
-#define RECVMMSG_BATCHLEN 10 /*!< \brief Define for recvmmsg() batch size. */
-
-/* Workarounds for clock_gettime() not available on some platforms. */
 #ifdef HAVE_CLOCK_GETTIME
+#include <time.h>
 #define time_now(x) clock_gettime(CLOCK_MONOTONIC, (x))
 typedef struct timespec timev_t;
 #elif HAVE_GETTIMEOFDAY
+#include <sys/time.h>
 #define time_now(x) gettimeofday((x), NULL)
 typedef struct timeval timev_t;
 #else

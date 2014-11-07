@@ -29,8 +29,9 @@
 #include <pthread_np.h>
 #endif /* HAVE_PTHREAD_NP_H */
 
-#include "knot/knot.h"
+#include "knot/common/debug.h"
 #include "knot/server/dthreads.h"
+#include "libknot/libknot.h"
 #include "libknot/internal/log.h"
 
 /* BSD cpu set compatibility. */

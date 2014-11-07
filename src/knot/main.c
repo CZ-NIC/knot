@@ -29,14 +29,13 @@
 #include <systemd/sd-daemon.h>
 #endif
 
-#include "libknot/dnssec/crypto.h"
-#include "knot/knot.h"
-#include "knot/server/server.h"
 #include "knot/ctl/process.h"
 #include "knot/ctl/remote.h"
 #include "knot/conf/conf.h"
-#include "knot/zone/timers.h"
+#include "knot/server/server.h"
 #include "knot/server/tcp-handler.h"
+#include "knot/zone/timers.h"
+#include "libknot/dnssec/crypto.h"
 
 /* Signal flags. */
 static volatile short sig_req_stop = 0;

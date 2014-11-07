@@ -233,7 +233,6 @@ libknotd_la_SOURCES =				\
 	knot/dnssec/zone-nsec.h			\
 	knot/dnssec/zone-sign.c			\
 	knot/dnssec/zone-sign.h			\
-	knot/knot.h				\
 	knot/modules/synth_record.c		\
 	knot/modules/synth_record.h		\
 	knot/nameserver/axfr.c			\
@@ -268,6 +267,7 @@ libknotd_la_SOURCES =				\
 	knot/common/fdset.h			\
 	knot/common/ref.c			\
 	knot/common/ref.h			\
+	knot/common/time.h			\
 	knot/common/trim.h			\
 	knot/server/dthreads.c			\
 	knot/server/dthreads.h			\
