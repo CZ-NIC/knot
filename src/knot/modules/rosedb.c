@@ -18,6 +18,8 @@
 
 #include "knot/modules/rosedb.h"
 #include "knot/nameserver/process_query.h"
+#include "libknot/rrtype/rdname.h"
+#include "libknot/dnssec/random.h"
 #include "libknot/rrset-dump.h"
 
 #define LMDB_MAPSIZE	(100 * 1024 * 1024)
@@ -338,7 +340,7 @@ static int stream_skip(char **stream, size_t *maxlen, int nbytes)
 		return KNOT_ESPACE; \
 	}
 
-static int rosedb_log_message(char *stream, size_t *maxlen, struct entry *entry, struct query_data *qdata)
+static int rosedb_log_message(char *stream, size_t *maxlen, knot_pkt_t *pkt, const char *threat_code, struct query_data *qdata)
 {
 	char dname_buf[KNOT_DNAME_MAXLEN] = {'\0'};
 	struct sockaddr_storage addr;
@@ -350,7 +352,7 @@ static int rosedb_log_message(char *stream, size_t *maxlen, struct entry *entry,
 	/* Field 1 Timestamp (UTC). */
 	STREAM_WRITE(stream, maxlen, strftime, "%Y-%m-%d %H:%M:%S\t", &tm);
 
-	/* Field 2/3 Local, remote address. */
+	/* Field 2/3 Remote, local address. */
 	const struct sockaddr *remote = (const struct sockaddr *)qdata->param->remote;
 	memcpy(&addr, remote, sockaddr_len(remote));
 	int client_port = sockaddr_port(&addr);
@@ -367,7 +369,7 @@ static int rosedb_log_message(char *stream, size_t *maxlen, struct entry *entry,
 	STREAM_WRITE(stream, maxlen, snprintf, "%d\t%d\t", client_port, server_port);
 
 	/* Field 6 Threat ID. */
-	STREAM_WRITE(stream, maxlen, snprintf, "%s\t", entry->threat_code);
+	STREAM_WRITE(stream, maxlen, snprintf, "%s\t", threat_code);
 
 	/* Field 7 - 13 NULL */
 	STREAM_WRITE(stream, maxlen, snprintf, "\t\t\t\t\t\t\t");
@@ -379,15 +381,19 @@ static int rosedb_log_message(char *stream, size_t *maxlen, struct entry *entry,
 	/* Field 15 Resolution (0 = local, 1 = lookup)*/
 	STREAM_WRITE(stream, maxlen, snprintf, "0\t");
 
-	/* Field 16 RDATA. */
-	knot_rrset_t stub_rr;
-	knot_rrset_init(&stub_rr, (knot_dname_t *)knot_pkt_qname(qdata->query), entry->data.type, KNOT_CLASS_IN);
-	memcpy(&stub_rr.rrs, &entry->data.rrs, sizeof(knot_rdataset_t));
-	int ret = knot_rrset_txt_dump_data(&stub_rr, 0, stream, *maxlen, &KNOT_DUMP_STYLE_DEFAULT);
-	if (ret < 0) {
-		return ret;
-	}
-	stream_skip(&stream, maxlen, ret);
+	/* Field 16 RDATA.
+	 * - Return randomly RDATA in the answer section (probabilistic rotation).
+	 * - Empty if no answer.
+	 */
+	const knot_pktsection_t *ans = knot_pkt_section(pkt, KNOT_ANSWER);
+    if (ans->count > 0) {
+        const knot_rrset_t *rr = &ans->rr[knot_random_uint16_t() % ans->count];
+        int ret = knot_rrset_txt_dump_data(rr, 0, stream, *maxlen, &KNOT_DUMP_STYLE_DEFAULT);
+        if (ret < 0) {
+            return ret;
+        }
+        stream_skip(&stream, maxlen, ret);
+    }
 	STREAM_WRITE(stream, maxlen, snprintf, "\t");
 
 	/* Field 17 Connection type. */
@@ -402,7 +408,7 @@ static int rosedb_log_message(char *stream, size_t *maxlen, struct entry *entry,
 	return KNOT_EOK;
 }
 
-static int rosedb_send_log(int sock, struct sockaddr *dst_addr, struct entry *entry, struct query_data *qdata)
+static int rosedb_send_log(int sock, struct sockaddr *dst_addr, knot_pkt_t *pkt, const char *threat_code, struct query_data *qdata)
 {
 	char buf[SYSLOG_BUFLEN];
 	char *stream = buf;
@@ -423,7 +429,7 @@ static int rosedb_send_log(int sock, struct sockaddr *dst_addr, struct entry *en
 	STREAM_WRITE(stream, &maxlen, snprintf, "%s[%lu]: ", PACKAGE_NAME, (unsigned long) getpid());
 
 	/* Prepare log message line. */
-	int ret = rosedb_log_message(stream, &maxlen, entry, qdata);
+	int ret = rosedb_log_message(stream, &maxlen, pkt, threat_code, qdata);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
@@ -495,7 +501,7 @@ static int rosedb_synth(knot_pkt_t *pkt, const knot_dname_t *key, struct iter *i
 	sockaddr_set(&syslog_addr, AF_INET, entry.syslog_ip, DEFAULT_PORT);
 	int sock = net_unbound_socket(AF_INET, &syslog_addr);
 	if (sock > 0) {
-		rosedb_send_log(sock, (struct sockaddr *)&syslog_addr, &entry, qdata);
+		rosedb_send_log(sock, (struct sockaddr *)&syslog_addr, pkt, entry.threat_code, qdata);
 		close(sock);
 	}
 
