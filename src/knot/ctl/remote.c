@@ -20,7 +20,6 @@
 #include "libknot/internal/log.h"
 #include "libknot/internal/mem.h"
 #include "libknot/internal/macros.h"
-#include "knot/common/fdset.h"
 #include "knot/knot.h"
 #include "knot/conf/conf.h"
 #include "libknot/internal/net.h"
@@ -516,7 +515,7 @@ int remote_poll(int sock)
 		sock = -1; /* Make sure n == r + 1 == 0 */
 	}
 
-	return fdset_pselect(sock + 1, &rfds, NULL, NULL, NULL, NULL);
+	return pselect(sock + 1, &rfds, NULL, NULL, NULL, NULL);
 }
 
 int remote_recv(int sock, struct sockaddr_storage *addr, uint8_t *buf,
