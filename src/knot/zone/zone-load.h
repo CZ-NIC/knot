@@ -52,6 +52,7 @@ int zone_load_journal(zone_t *zone, zone_contents_t *contents);
  *
  * \param contents
  * \param zone
+ * \param dnssec_refresh
  * \return KNOT_EOK or an error
  */
 int zone_load_post(zone_contents_t *contents, zone_t *zone, uint32_t *dnssec_refresh);

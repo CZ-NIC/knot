@@ -1,5 +1,5 @@
 /*!
- * \file zone_update.h
+ * \file zone-update.h
  *
  * \author Jan Kadlec <jan.kadlec@nic.cz>
  *
@@ -68,3 +68,4 @@ const zone_node_t *zone_update_get_node(zone_update_t *update,
  */
 void zone_update_clear(zone_update_t *update);
 
+/*! @} */

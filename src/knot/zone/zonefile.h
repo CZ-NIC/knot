@@ -57,7 +57,7 @@ typedef struct zloader {
 /*!
  * \brief Open zone file for loading.
  *
- * \param zl Output zone loader.
+ * \param loader Output zone loader.
  * \param source Source file name.
  * \param origin Zone origin.
  * \param semantic_checks Perform semantic checks.

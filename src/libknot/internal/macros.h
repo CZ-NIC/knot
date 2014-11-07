@@ -14,7 +14,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 /*!
- * \file common/macros.h
+ * \file macros.h
  *
  * \author Lubos Slovak <lubos.slovak@nic.cz>
  *

@@ -14,7 +14,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 /*!
- * \file other/debug.h
+ * \file common/debug.h
  *
  * \author Marek Vavrusa <marek.vavrusa@nic.cz>
  *
