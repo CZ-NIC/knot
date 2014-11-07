@@ -366,6 +366,7 @@ libknotd_la_LIBADD += dnstap/libdnstap.la
 endif
 
 # rose sources and client tool
+if HAVE_LMDB
 libknotd_la_SOURCES +=				\
 	knot/modules/rosedb.c				\
 	knot/modules/rosedb.h
@@ -375,6 +376,7 @@ rosedb_tool_SOURCES =					\
 
 bin_PROGRAMS += rosedb_tool
 rosedb_tool_LDADD = libknot.la libknotd.la
+endif
 
 # Create storage and run-time directories
 install-data-hook:
