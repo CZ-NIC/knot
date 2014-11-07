@@ -403,7 +403,16 @@ static int rosedb_log_message(char *stream, size_t *maxlen, knot_pkt_t *pkt, con
 	/* Field 18 Query type. */
 	char type_str[16] = { '\0' };
 	knot_rrtype_to_string(knot_pkt_qtype(qdata->query), type_str, sizeof(type_str));
-	STREAM_WRITE(stream, maxlen, snprintf, "%s", type_str);
+	STREAM_WRITE(stream, maxlen, snprintf, "%s\t", type_str);
+    
+    /* Field 19 First authority. */
+    const knot_pktsection_t *ns = knot_pkt_section(pkt, KNOT_AUTHORITY);
+    if (ns->count > 0 && ns->rr[0].type == KNOT_RRTYPE_NS) {
+        const knot_dname_t *label = knot_ns_name(&ns->rr[0].rrs, 0);
+        memset(dname_buf, 0, sizeof(dname_buf));
+        memcpy(dname_buf, label + 1, *label);
+        STREAM_WRITE(stream, maxlen, snprintf, "%s", dname_buf);
+    }
 
 	return KNOT_EOK;
 }
