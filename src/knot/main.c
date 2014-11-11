@@ -14,6 +14,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -38,9 +39,8 @@
 #include "libknot/dnssec/crypto.h"
 
 /* Signal flags. */
-static volatile short sig_req_stop = 0;
-static volatile short sig_req_reload = 0;
-static volatile short sig_stopping = 0;
+static volatile bool sig_req_stop = false;
+static volatile bool sig_req_reload = false;
 
 /* \brief Signal started state to the init system. */
 static void init_signal_started(void)
@@ -66,23 +66,42 @@ static void pid_cleanup(char *pidfile)
 }
 
 /*! \brief SIGINT signal handler. */
-void interrupt_handle(int s)
+static void interrupt_handle(int signum)
 {
-	/* Reload configuration. */
-	if (s == SIGHUP) {
-		sig_req_reload = 1;
-		return;
+	switch (signum) {
+	case SIGHUP:
+		sig_req_reload = true;
+		break;
+	case SIGINT:
+	case SIGTERM:
+		sig_req_stop = true;
+		break;
+	default:
+		/* ignore */
+		break;
+	}
+}
+
+/*! \brief Setup signal handlers and blocking mask. */
+static void setup_signals(void)
+{
+	struct sigaction action;
+	memset(&action, 0, sizeof(struct sigaction));
+	action.sa_handler = interrupt_handle;
+
+	static sigset_t block_mask;
+	sigemptyset(&block_mask);
+
+	int signals[] = { SIGALRM, SIGHUP, SIGINT, SIGPIPE, SIGTERM };
+	size_t count = sizeof(signals) / sizeof(*signals);
+
+	for (int i = 0; i < count; i++) {
+		int signal = signals[i];
+		sigaction(signal, &action, NULL);
+		sigaddset(&block_mask, signal);
 	}
 
-	/* Stop server. */
-	if (s == SIGINT || s == SIGTERM) {
-		if (sig_stopping == 0) {
-			sig_req_stop = 1;
-			sig_stopping = 1;
-		} else {
-			exit(1);
-		}
-	}
+	pthread_sigmask(SIG_BLOCK, &block_mask, NULL);
 }
 
 /*! \brief POSIX 1003.1e capabilities. */
@@ -126,53 +145,38 @@ static void setup_capabilities(void)
 /*! \brief Event loop listening for signals and remote commands. */
 static void event_loop(server_t *server)
 {
-	/* Setup signal handler. */
-	struct sigaction sa;
-	memset(&sa, 0, sizeof(sa));
-	sa.sa_handler = interrupt_handle;
-	sigaction(SIGINT,  &sa, NULL);
-	sigaction(SIGTERM, &sa, NULL);
-	sigaction(SIGHUP,  &sa, NULL);
-	sigaction(SIGPIPE, &sa, NULL);
-	sigaction(SIGALRM, &sa, NULL);
-	pthread_sigmask(SIG_BLOCK, &sa.sa_mask, NULL);
-
 	/* Bind to control interface. */
 	uint8_t buf[KNOT_WIRE_MAX_PKTSIZE];
 	size_t buflen = sizeof(buf);
 	int remote = remote_bind(conf()->ctl.iface);
 
+	sigset_t empty;
+	sigemptyset(&empty);
+
 	/* Run event loop. */
 	for (;;) {
-		pthread_sigmask(SIG_UNBLOCK, &sa.sa_mask, NULL);
-		int ret = remote_poll(remote);
-		pthread_sigmask(SIG_BLOCK, &sa.sa_mask, NULL);
+		int ret = remote_poll(remote, &empty);
 
 		/* Events. */
 		if (ret > 0) {
 			ret = remote_process(server, conf()->ctl.iface,
 			                     remote, buf, buflen);
-			switch (ret) {
-			case KNOT_CTL_STOP:
-				sig_req_stop = 1;
-				break;
-			default:
+			if (ret == KNOT_CTL_STOP) {
 				break;
 			}
 		}
 
 		/* Interrupts. */
 		if (sig_req_stop) {
-			sig_req_stop = 0;
-			server_stop(server);
 			break;
 		}
 		if (sig_req_reload) {
-			sig_req_reload = 0;
+			sig_req_reload = false;
 			server_reload(server, conf()->filename);
 		}
 	}
-	pthread_sigmask(SIG_UNBLOCK, &sa.sa_mask, NULL);
+
+	server_stop(server);
 
 	/* Close remote control interface. */
 	remote_unbind(conf()->ctl.iface, remote);
@@ -247,6 +251,12 @@ int main(int argc, char **argv)
 			return EXIT_FAILURE;
 		}
 	}
+
+	/* Clear file creation mask. */
+	umask(0);
+
+	/* Setup base signal handling. */
+	setup_signals();
 
 	/* Initialize cryptographic backend. */
 	knot_crypto_init();
@@ -323,13 +333,6 @@ int main(int argc, char **argv)
 			log_info("changed directory to %s", daemon_root);
 		}
 	}
-
-	/* Register base signal handling. */
-	struct sigaction emptyset;
-	memset(&emptyset, 0, sizeof(struct sigaction));
-	emptyset.sa_handler = interrupt_handle;
-	sigaction(SIGALRM, &emptyset, NULL);
-	sigaction(SIGPIPE, &emptyset, NULL);
 
 	/* Now we're going multithreaded. */
 	rcu_register_thread();

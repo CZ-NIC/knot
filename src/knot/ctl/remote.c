@@ -500,7 +500,7 @@ int remote_unbind(conf_iface_t *desc, int sock)
 	return close(sock);
 }
 
-int remote_poll(int sock)
+int remote_poll(int sock, const sigset_t *sigmask)
 {
 	/* Wait for events. */
 	fd_set rfds;
@@ -511,7 +511,7 @@ int remote_poll(int sock)
 		sock = -1; /* Make sure n == r + 1 == 0 */
 	}
 
-	return fdset_pselect(sock + 1, &rfds, NULL, NULL, NULL, NULL);
+	return pselect(sock + 1, &rfds, NULL, NULL, NULL, sigmask);
 }
 
 int remote_recv(int sock, struct sockaddr_storage *addr, uint8_t *buf,
