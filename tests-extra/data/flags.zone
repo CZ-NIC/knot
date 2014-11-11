@@ -123,3 +123,29 @@ sub.*.wildcard	A	6.7.8.9
 ; MX record with name leading to wildcard-covered additional record
 mx-additional MX 10 jump.wildcard-additional
 *.wildcard-additional A 1.2.3.4
+
+; Really long CNAME loop
+ab      CNAME   bc
+bc      CNAME   cd
+cd      CNAME   de
+de      CNAME   ef
+ef      CNAME   fg
+fg      CNAME   gh
+gh      CNAME   hi
+hi      CNAME   ij
+ij      CNAME   jk
+jk      CNAME   kl
+kl      CNAME   lm
+lm      CNAME   mn
+mn      CNAME   no
+no      CNAME   op
+op      CNAME   pq
+pq      CNAME   qr
+qr      CNAME   rs
+rs      CNAME   st
+st      CNAME   tu
+tu      CNAME   uv
+uv      CNAME   vw
+vw      CNAME   wx
+wx      CNAME   ab
+
