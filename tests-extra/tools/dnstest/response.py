@@ -139,6 +139,27 @@ class Response(object):
             self.check_record(section="answer", rtype=self.rtype, ttl=ttl,
                               rdata=rdata, nordata=nordata)
 
+    def check_xfr(self, rcode="NOERROR"):
+        '''Checks XFR message'''
+
+        self.resp, iter_copy = itertools.tee(self.resp)
+
+        # Get the first message.
+        for msg in iter_copy:
+            question = msg.question[0]
+            compare(question.rdclass, self.rclass, "QCLASS")
+            compare(question.rdtype, self.rtype, "QTYPE")
+
+            # Check rcode.
+            if type(rcode) is not str:
+                rc = dns.rcode.to_text(rcode)
+            else:
+                rc = rcode
+            compare(dns.rcode.to_text(msg.rcode()), rc, "RCODE")
+
+            # Check the first message only.
+            break
+
     def check_edns(self, nsid=None, buff_size=None):
         compare(self.resp.edns, 0, "EDNS VERSION")
 

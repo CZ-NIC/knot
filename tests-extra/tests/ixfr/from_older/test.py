@@ -17,6 +17,7 @@ t.start()
 serial_init = knot.zone_wait(zone)
 
 resp = knot.dig("example.com", "IXFR", serial=serial_init + 1)
+resp.check_xfr()
 
 compare(resp.msg_count(), 1, "Only one message")
 compare(resp.count("SOA"), 1, "Only one RR in Answer section")
