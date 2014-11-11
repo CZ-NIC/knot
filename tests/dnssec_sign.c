@@ -87,7 +87,9 @@ static void test_algorithm(const char *alg, const knot_key_params_t *kp)
 
 int main(int argc, char *argv[])
 {
-	plan(4 * 14);
+	plan(5 * 14);
+
+	knot_crypto_init();
 
 	knot_key_params_t kp = { 0 };
 
@@ -145,6 +147,22 @@ int main(int argc, char *argv[])
 #else
 	skip_block(14, "GOST: not supported on this system");
 #endif
+
+	// RSA-PSS
+
+	kp.name = knot_dname_from_str_alloc("example.com.");
+	kp.algorithm = 15;
+	knot_binary_from_base64("pSxiFXG8wB1SSHdok+OdaAp6QdvqjpZ17ucNge21iYVfv+DZq52l21KdmmyEqoG9wG/87O7XG8XVLNyYPue8Mw==", &kp.modulus);
+	knot_binary_from_base64("AQAB", &kp.public_exponent);
+	knot_binary_from_base64("UuNK9Wf2SJJuUF9b45s9ypA3egVaV+O5mwHoDWO0ziWJxFXNMMsobDdusEDjCw64xnlLmrbzNJ3+ClrOnV04gQ==", &kp.private_exponent);
+	knot_binary_from_base64("0/wjqkgVZxqrFi5OMzq2qQYpxKn3HgS87Io9UG6iqis=", &kp.prime_one);
+	knot_binary_from_base64("x3gFCPpaJ4etPEM1hRd6WMAcmx5FBMjvuuzID6SWWhk=", &kp.prime_two);
+	knot_binary_from_base64("Z8qUS9NvZ0QPcJTLhRnCRY/W84ukivYW6lnlG3SQAHE=", &kp.exponent_one);
+	knot_binary_from_base64("C0kjH8rqZuoqRwqWcJ1Pcs4L0Er6JLcpuS3Ec/4f86E=", &kp.exponent_two);
+	knot_binary_from_base64("VYc62FQX0Vnd27VxkX6hsBcl7Oh00wVCeh3WTDutndg=", &kp.coefficient);
+
+	test_algorithm("RSA-PSS", &kp);
+	knot_free_key_params(&kp);
 
 	knot_crypto_cleanup();
 

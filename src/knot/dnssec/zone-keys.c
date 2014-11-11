@@ -113,7 +113,7 @@ static int check_keys_validity(const knot_zone_keys_t *keys)
 {
 	assert(keys);
 
-	const int MAX_ALGORITHMS = KNOT_DNSSEC_ALG_ECDSAP384SHA384 + 1;
+	const int MAX_ALGORITHMS = KNOT_DNSSEC_ALG_RSASHA512_PSS + 1;
 	struct {
 		bool published;
 		bool ksk_enabled;

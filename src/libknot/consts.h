@@ -187,7 +187,10 @@ typedef enum {
 
 	KNOT_DNSSEC_ALG_ECC_GOST           = 12,
 	KNOT_DNSSEC_ALG_ECDSAP256SHA256    = 13,
-	KNOT_DNSSEC_ALG_ECDSAP384SHA384    = 14
+	KNOT_DNSSEC_ALG_ECDSAP384SHA384    = 14,
+
+	KNOT_DNSSEC_ALG_RSASHA256_PSS      = 15, // experimental
+	KNOT_DNSSEC_ALG_RSASHA512_PSS      = 16, // experimental
 } knot_dnssec_algorithm_t;
 
 /*!

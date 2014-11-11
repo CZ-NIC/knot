@@ -155,6 +155,8 @@ bool knot_dnssec_algorithm_is_zonesign(uint8_t algorithm, bool nsec3_enabled)
 	case KNOT_DNSSEC_ALG_ECC_GOST:
 	case KNOT_DNSSEC_ALG_ECDSAP256SHA256:
 	case KNOT_DNSSEC_ALG_ECDSAP384SHA384:
+	case KNOT_DNSSEC_ALG_RSASHA256_PSS:
+	case KNOT_DNSSEC_ALG_RSASHA512_PSS:
 		return true;
 
 	// unsupported or unknown

@@ -906,6 +906,9 @@ static const algorithm_functions_t *get_implementation(int algorithm)
 	case KNOT_DNSSEC_ALG_ECC_GOST:
 		return &gost_functions;
 #endif
+	case KNOT_DNSSEC_ALG_RSASHA256_PSS:
+	case KNOT_DNSSEC_ALG_RSASHA512_PSS:
+		return &rsa_functions;
 	default:
 		return NULL;
 	}
@@ -932,10 +935,12 @@ static const EVP_MD *get_digest_type(knot_dnssec_algorithm_t algorithm)
 		return EVP_md5();
 	case KNOT_DNSSEC_ALG_RSASHA256:
 	case KNOT_DNSSEC_ALG_ECDSAP256SHA256:
+	case KNOT_DNSSEC_ALG_RSASHA256_PSS:
 		return EVP_sha256();
 	case KNOT_DNSSEC_ALG_ECDSAP384SHA384:
 		return EVP_sha384();
 	case KNOT_DNSSEC_ALG_RSASHA512:
+	case KNOT_DNSSEC_ALG_RSASHA512_PSS:
 		return EVP_sha512();
 #if KNOT_ENABLE_GOST
 	case KNOT_DNSSEC_ALG_ECC_GOST:
@@ -1007,6 +1012,14 @@ static int create_digest_context(const knot_dnssec_key_t *key,
 	if (!EVP_DigestInit_ex(context, digest_type, NULL)) {
 		EVP_MD_CTX_destroy(context);
 		return KNOT_DNSSEC_ECREATE_DIGEST_CONTEXT;
+	}
+
+	// HACK: experimental
+	if (key->algorithm == KNOT_DNSSEC_ALG_RSASHA256_PSS ||
+	    key->algorithm == KNOT_DNSSEC_ALG_RSASHA512_PSS) {
+		unsigned salt_size = 8;
+		EVP_MD_CTX_set_flags(context, salt_size << 16 |
+		                              EVP_MD_CTX_FLAG_PAD_PSS);
 	}
 
 	*result_context = context;
