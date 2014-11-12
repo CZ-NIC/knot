@@ -8,4 +8,4 @@ Description: Knot DNS library
 URL: http://www.knot-dns.cz
 Version: @PACKAGE_VERSION@
 Libs: -L${libdir} -lknot @LIBS@
-Cflags: -I${includedir}/libknot
+Cflags: -I${includedir}
