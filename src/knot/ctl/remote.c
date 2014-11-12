@@ -153,7 +153,12 @@ static int remote_rdata_apply(server_t *s, remote_cmdargs_t* a, remote_zonef_t *
 			const knot_dname_t *dn = knot_ns_name(&rr->rrs, i);
 			rcu_read_lock();
 			zone = knot_zonedb_find(s->zone_db, dn);
-			if (cb(zone) != KNOT_EOK) {
+			if (zone == NULL) {
+				char zname[KNOT_DNAME_MAXLEN];
+				knot_dname_to_str(zname, dn, KNOT_DNAME_MAXLEN);
+				log_warning("remote control, zone %s not found.",
+				            zname);
+			} else if (cb(zone) != KNOT_EOK) {
 				a->rc = KNOT_RCODE_SERVFAIL;
 			}
 			rcu_read_unlock();
@@ -613,6 +618,7 @@ static void log_command(const char *cmd, const remote_cmdargs_t* args)
 {
 	char params[CMDARGS_BUFLEN_LOG] = { 0 };
 	size_t rest = CMDARGS_BUFLEN_LOG;
+	size_t pos = 0;
 
 	for (unsigned i = 0; i < args->argc; i++) {
 		const knot_rrset_t *rr = &args->arg[i];
@@ -625,11 +631,13 @@ static void log_command(const char *cmd, const remote_cmdargs_t* args)
 			const knot_dname_t *dn = knot_ns_name(&rr->rrs, j);
 			char *name = knot_dname_to_str_alloc(dn);
 
-			int ret = snprintf(params, rest, " %s", name);
+			int ret = snprintf(params + pos, rest, " %s", name);
 			free(name);
+
 			if (ret <= 0 || ret >= rest) {
 				break;
 			}
+			pos += ret;
 			rest -= ret;
 		}
 	}
