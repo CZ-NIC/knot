@@ -49,11 +49,11 @@ If you want to control the daemon directly, use ``SIGINT`` to quit the process o
 
     Actions:
      stop                   Stop server.
-     reload <zone>          Reload <zone> form zone file or reload whole configuration and changed zones.
+     reload <zone>          Reload zone or reload whole configuration and changed zones.
      refresh <zone>         Refresh slave zone (all if not specified).
      flush <zone>           Flush journal and update zone files. (all if not specified)
      status                 Check if server is running.
-     zonestatus             Show status of configured zones.
+     zonestatus <zone>      Show status of configured zone (all if not specified).
      checkconf              Check current server configuration.
      checkzone <zone>       Check zone (all if not specified).
      memstats <zone>        Estimate memory consumption for zone (all if not
