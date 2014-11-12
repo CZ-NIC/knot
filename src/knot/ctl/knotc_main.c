@@ -594,11 +594,9 @@ static int cmd_stop(int argc, char *argv[], unsigned flags)
 
 static int cmd_reload(int argc, char *argv[], unsigned flags)
 {
-	UNUSED(argc);
-	UNUSED(argv);
 	UNUSED(flags);
 
-	return cmd_remote("reload", KNOT_RRTYPE_TXT, 0, NULL);
+	return cmd_remote("reload", KNOT_RRTYPE_NS, argc, argv);
 }
 
 static int cmd_refresh(int argc, char *argv[], unsigned flags)

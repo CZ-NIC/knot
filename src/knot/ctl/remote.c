@@ -174,6 +174,14 @@ static int remote_zone_refresh(zone_t *zone)
 	return KNOT_EOK;
 }
 
+/*! \brief Zone reload callback. */
+static int remote_zone_reload(zone_t *zone)
+{
+	dbg_server_verb("Scheduling reload.\n");
+	zone_events_schedule(zone, ZONE_EVENT_RELOAD, ZONE_EVENT_NOW);
+	return KNOT_EOK;
+}
+
 /*! \brief Zone refresh callback. */
 static int remote_zone_retransfer(zone_t *zone)
 {
@@ -231,8 +239,19 @@ static int remote_c_stop(server_t *s, remote_cmdargs_t* a)
  */
 static int remote_c_reload(server_t *s, remote_cmdargs_t* a)
 {
-	UNUSED(a);
-	return server_reload(s, conf()->filename);
+	int ret = KNOT_EOK;
+
+	if (a->argc == 0) {
+		/* Reload all. */
+		dbg_server_verb("remote: refreshing all zones\n");
+		ret = server_reload(s, conf()->filename);
+	} else {
+		/* Reload specific zones. */
+		dbg_server_verb("remote: refreshing particular zones");
+		ret = remote_rdata_apply(s, a, &remote_zone_reload);
+	}
+
+	return (ret != KNOT_EOK) ? ret : KNOT_CTL_ACCEPTED;
 }
 
 /*!
