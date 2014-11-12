@@ -141,7 +141,6 @@ libknot_la_SOURCES =				\
 	libknot/binary.h			\
 	libknot/consts.c			\
 	libknot/consts.h			\
-	libknot/consts.h			\
 	libknot/descriptor.c			\
 	libknot/descriptor.h			\
 	libknot/dname.c				\
@@ -188,8 +187,6 @@ libknot_la_SOURCES =				\
 	libknot/rrtype/aaaa.h			\
 	libknot/rrtype/dnskey.h			\
 	libknot/rrtype/naptr.h			\
-	libknot/rrtype/nsec.h			\
-	libknot/rrtype/nsec.h			\
 	libknot/rrtype/nsec.h			\
 	libknot/rrtype/nsec3.c			\
 	libknot/rrtype/nsec3.h			\
