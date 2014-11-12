@@ -160,6 +160,41 @@ class Response(object):
             # Check the first message only.
             break
 
+    # Checks whether the transfer is an AXFR-style IXFR
+    def check_axfr_style_ixfr(self, axfr=None):
+        # 1) QTYPE == IXFR && RCODE == NOERROR
+        self.check_xfr()
+
+        # 2) Check if Answer contains AXFR data (first SOA, second non-SOA)
+        soa_count = 0
+        rr_count = 0
+
+        self.resp, iter_copy = itertools.tee(self.resp)
+        for msg in iter_copy:
+            for rrset in msg.answer:
+                for rr in rrset:
+                    if rr_count == 0:
+                        if rr.rdtype != dns.rdatatype.SOA:
+                            set_err("First RR is not SOA")
+                            return
+                        else:
+                            soa_count += 1
+
+                    elif rr_count == 1:
+                        if rr.rdtype == dns.rdatatype.SOA:
+                            set_err("Second RR is SOA")
+                            return
+                    else:
+                        # OK, it has the format of AXFR
+                        return
+
+                    rr_count += 1
+
+        # 3) Check that number of records in IXFR and AXFR is the same
+        if axfr:
+            compare(self.count("ANY"), axfr.count("ANY"),
+                    "Count of RRs in Answer")
+
     def check_edns(self, nsid=None, buff_size=None):
         compare(self.resp.edns, 0, "EDNS VERSION")
 
