@@ -39,29 +39,32 @@ Print help and usage.
 \fBstop\fR
 Stop server (no\-op if not running).
 .TP
-\fBreload\fR [\fIzone\fR]...
-Reload configuration and changed zones (all if not specified).
+\fBreload\fR [\fIzone\fR] ...
+Reload zones or reload whole configuration and changed zones (if not specified).
 .TP
-\fBflush\fR [\fIzone\fR]...
+\fBflush\fR [\fIzone\fR] ...
 Flush journal and update zone files (all if not specified).
 .TP
 \fBstatus\fR
 Check if server is running.
 .TP
-\fBzonestatus\fR
-Show status of configured zones.
+\fBzonestatus\fR [\fIzone\fR] ...
+Show status of configured zones (all if not specified).
 .TP
-\fBrefresh\fR [\fIzone\fR]...
+\fBrefresh\fR [\fIzone\fR] ...
 Refresh slave zones (all if not specified).
 .TP
 \fBcheckconf\fR
 Check current server configuration.
 .TP
-\fBcheckzone\fR [\fIzone\fR]...
-Check zone (all if not specified).
+\fBcheckzone\fR [\fIzone\fR] ...
+Check zones (all if not specified).
 .TP
-\fBmemstats\fR [\fIzone\fR]...
-Estimate memory consumption for zone (all if not specified).
+\fBmemstats\fR [\fIzone\fR] ...
+Estimate memory consumption for zones (all if not specified).
+.TP
+\fBsignzone\fR \fIzone\fR ...
+Sign zone with available DNSSEC keys (zone must be specified).
 .SH EXAMPLES
 .TP
 .B Setup a keyfile for remote control

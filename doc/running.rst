@@ -49,15 +49,15 @@ If you want to control the daemon directly, use ``SIGINT`` to quit the process o
 
     Actions:
      stop                   Stop server.
-     reload <zone>          Reload zone or reload whole configuration and changed zones.
-     refresh <zone>         Refresh slave zone (all if not specified).
-     flush <zone>           Flush journal and update zone files. (all if not specified)
+     reload <zone> ...      Reload zones or reload whole configuration and changed zones (if not specified).
+     refresh <zone> ...     Refresh slave zones (all if not specified).
+     flush <zone> ...       Flush journal and update zone files. (all if not specified)
      status                 Check if server is running.
-     zonestatus <zone>      Show status of configured zone (all if not specified).
+     zonestatus <zone> ...  Show status of configured zones (all if not specified).
      checkconf              Check current server configuration.
-     checkzone <zone>       Check zone (all if not specified).
-     memstats <zone>        Estimate memory consumption for zone (all if not
-                            specified).
+     checkzone <zone> ...   Check zones (all if not specified).
+     memstats <zone> ...    Estimate memory consumption for zones (all if not specified).
+     signzone <zone>        Sign zone with available DNSSEC keys (zone must be specified).
 
 Also, the server needs to create several files in order to run properly. These
 files are stored in the folowing directories.

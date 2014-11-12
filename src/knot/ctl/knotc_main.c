@@ -78,22 +78,22 @@ static int cmd_signzone(int argc, char *argv[], unsigned flags);
 /*! \brief Table of remote commands. */
 knot_cmd_t knot_cmd_tbl[] = {
 	{&cmd_stop,       0, "stop",       "",       "\t\tStop server."},
-	{&cmd_reload,     0, "reload",     "<zone>", "\tReload zone or reload whole configuration and changed zones."},
-	{&cmd_refresh,    0, "refresh",    "<zone>", "\tRefresh slave zone (all if not specified). Flag '-f' forces retransfer."},
-	{&cmd_flush,      0, "flush",      "<zone>", "\tFlush journal and update zone file (all if not specified)."},
+	{&cmd_reload,     0, "reload",     "<zone> ...", "Reload zones or reload whole configuration and changed zones (if not specified)."},
+	{&cmd_refresh,    0, "refresh",    "<zone> ...", "Refresh slave zones (all if not specified). Flag '-f' forces retransfer."},
+	{&cmd_flush,      0, "flush",      "<zone> ...", "Flush journal and update zone files (all if not specified)."},
 	{&cmd_status,     0, "status",     "",       "\tCheck if server is running."},
-	{&cmd_zonestatus, 0, "zonestatus", "<zone>"  "\tShow status of configured zone (all if not specified)."},
+	{&cmd_zonestatus, 0, "zonestatus", "<zone> ...", "Show status of configured zones (all if not specified)."},
 	{&cmd_checkconf,  1, "checkconf",  "",       "\tCheck current server configuration."},
-	{&cmd_checkzone,  1, "checkzone",  "<zone>", "Check zone (all if not specified)."},
-	{&cmd_memstats,   1, "memstats",   "<zone>", "Estimate memory use for zone (all if not specified)."},
-	{&cmd_signzone,   0, "signzone",   "<zone>", "Sign all zones with available DNSSEC keys."},
+	{&cmd_checkzone,  1, "checkzone",  "<zone> ...", "Check zones (all if not specified)."},
+	{&cmd_memstats,   1, "memstats",   "<zone> ...", "Estimate memory use for zones (all if not specified)."},
+	{&cmd_signzone,   0, "signzone",   "<zone> ...", "Sign zone with available DNSSEC keys (zone must be specified)."},
 	{NULL, 0, NULL, NULL, NULL}
 };
 
 /*! \brief Print help. */
 void help(void)
 {
-	printf("Usage: %sc [parameters] <action>\n", PACKAGE_NAME);
+	printf("Usage: %sc [parameters] <action> [action_args]\n", PACKAGE_NAME);
 	printf("\nParameters:\n"
 	       " -c, --config <file>    \tSelect configuration file.\n"
 	       " -s <server>            \tRemote UNIX socket/IP address (default %s).\n"
