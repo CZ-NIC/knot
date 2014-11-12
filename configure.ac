@@ -9,6 +9,7 @@ AC_CONFIG_HEADERS([src/config.h])
 AC_CONFIG_MACRO_DIR([m4])
 AC_USE_SYSTEM_EXTENSIONS([_GNU_SOURCE])
 AC_CANONICAL_HOST
+AX_SET_VERSION_INFO
 
 # Automatically update release date based on configure.ac date
 case "$host_os" in
@@ -40,6 +41,11 @@ LT_INIT
 
 # Use pkg-config
 PKG_PROG_PKG_CONFIG
+AC_CHECK_PROG(PKG_CONFIG, pkg-config, yes)
+AM_CONDITIONAL([HAVE_PKG_CONFIG], [test "x$PKG_CONFIG" != "x"])
+AS_IF([test "x$PKG_CONFIG" != "x"], [
+    AC_CONFIG_FILES([libknot.pc])
+])
 
 AC_CACHE_CHECK([for reentrant lex], [ac_cv_path_LEX],
   [AC_PATH_PROGS_FEATURE_CHECK([LEX], [$LEX flex gflex],
@@ -390,6 +396,7 @@ AC_CONFIG_FILES([Makefile
 		 man/knot.conf.5
 		 man/knsec3hash.1
 		 ])
+
 
 AC_OUTPUT
 AC_MSG_RESULT([

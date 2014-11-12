@@ -81,7 +81,7 @@ libknotus_la_SOURCES =				\
 # dynamic: libknot
 libknot_la_LDFLAGS =				\
 	$(AM_LDFLAGS)				\
-	-version-info 0:1:0
+	$(RELEASE_INFO) $(VERSION_INFO)
 
 libknot_la_SOURCES =				\
 	libknot/binary.c			\
@@ -413,6 +413,11 @@ kdig_LDADD       = $(BIN_LIBS) $(libidn_LIBS)
 khost_LDADD      = $(BIN_LIBS) $(libidn_LIBS)
 knsupdate_LDADD  = $(BIN_LIBS) zscanner/libzscanner.la
 knsec3hash_LDADD = $(BIN_LIBS)
+
+if HAVE_PKG_CONFIG
+pkgconfigdir = $(libdir)/pkgconfig
+pkgconfig_DATA = $(top_srcdir)/libknot.pc
+endif
 
 if HAVE_DNSTAP
 libknotd_la_SOURCES +=				\
