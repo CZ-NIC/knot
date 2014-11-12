@@ -589,6 +589,11 @@ static int cmd_stop(int argc, char *argv[], unsigned flags)
 	UNUSED(argv);
 	UNUSED(flags);
 
+	if (argc > 0) {
+		log_error("command does not take arguments");
+		return KNOT_EINVAL;
+	}
+
 	return cmd_remote("stop", KNOT_RRTYPE_TXT, 0, NULL);
 }
 
@@ -623,6 +628,11 @@ static int cmd_status(int argc, char *argv[], unsigned flags)
 	UNUSED(argv);
 	UNUSED(flags);
 
+	if (argc > 0) {
+		log_error("command does not take arguments");
+		return KNOT_EINVAL;
+	}
+
 	return cmd_remote("status", KNOT_RRTYPE_TXT, 0, NULL);
 }
 
@@ -631,6 +641,11 @@ static int cmd_zonestatus(int argc, char *argv[], unsigned flags)
 	UNUSED(argc);
 	UNUSED(argv);
 	UNUSED(flags);
+
+	if (argc > 0) {
+		log_error("command does not take arguments");
+		return KNOT_EINVAL;
+	}
 
 	return cmd_remote("zonestatus", KNOT_RRTYPE_TXT, 0, NULL);
 }
