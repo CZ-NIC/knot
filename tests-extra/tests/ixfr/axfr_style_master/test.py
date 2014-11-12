@@ -21,11 +21,7 @@ serial_init = knot.zone_wait(zone)
 knot.update_zonefile(zone, 1)
 knot.reload()
 
-resp_ixfr = knot.dig("example.com", "IXFR", serial=serial_init)
-
-# Query for AXFR for comparison
-resp_axfr = knot.dig("example.com", "AXFR")
-
-resp_ixfr.check_axfr_style_ixfr(resp_axfr)
+# Check if IXFR gives answer in the format of AXFR
+t.check_axfr_style_ixfr(knot, "example.com.", serial_init)
 
 t.end()
