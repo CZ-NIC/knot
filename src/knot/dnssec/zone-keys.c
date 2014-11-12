@@ -98,6 +98,7 @@ static void set_zone_key_flags(const knot_key_params_t *params,
 	key->next_event = next_event;
 
 	key->is_ksk = params->flags & KNOT_RDATA_DNSKEY_FLAG_KSK;
+	key->is_zsk = !key->is_ksk;
 
 	key->is_active = params->time_activate <= now &&
 	                 (params->time_inactive == 0 || now < params->time_inactive);
@@ -134,11 +135,8 @@ static int check_keys_validity(const knot_zone_keys_t *keys)
 
 			// need fully enabled ZSK and KSK for each algorithm
 			if (key->is_active) {
-				if (key->is_ksk) {
-					algorithms[a].ksk_enabled = true;
-				} else {
-					algorithms[a].zsk_enabled = true;
-				}
+				if (key->is_ksk) { algorithms[a].ksk_enabled = true; }
+				if (key->is_zsk) { algorithms[a].zsk_enabled = true; }
 			}
 		}
 	}
