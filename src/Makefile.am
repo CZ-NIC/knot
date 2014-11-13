@@ -327,7 +327,7 @@ libknotd_la_SOURCES =				\
 	knot/zone/zonefile.h
 
 # libraries
-libknot_la_LIBADD  = zscanner/libzscanner.la
+libknot_la_LIBADD  = zscanner/libzscanner.la $(systemd_LIBS) $(lmdb_LIBS)
 libknotd_la_LIBADD = libknot.la
 libknotus_la_LIBADD = libknot.la
 libknotd_la_CPPFLAGS = $(AM_CPPFLAGS) $(lmdb_CFLAGS)
@@ -339,7 +339,7 @@ libknotus_la_LDFLAGS = $(AM_LDFLAGS) $(libidn_LIBS)
 libknot_ladir = $(includedir)
 
 # sbin programs
-knotd_LDADD = libknot.la libknotd.la $(systemd_LIBS) $(lmdb_LIBS)
+knotd_LDADD = libknot.la libknotd.la
 knotc_LDADD = libknot.la libknotd.la
 
 # bin programs
