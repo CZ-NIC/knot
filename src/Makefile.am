@@ -349,11 +349,6 @@ khost_LDADD      = $(BIN_LIBS) $(libidn_LIBS)
 knsupdate_LDADD  = $(BIN_LIBS) zscanner/libzscanner.la
 knsec3hash_LDADD = $(BIN_LIBS)
 
-if HAVE_PKG_CONFIG
-pkgconfigdir = $(libdir)/pkgconfig
-pkgconfig_DATA = $(top_srcdir)/libknot.pc
-endif
-
 if HAVE_DNSTAP
 libknotd_la_SOURCES +=				\
 	knot/modules/dnstap.c			\
@@ -363,6 +358,9 @@ kdig_LDADD         += dnstap/libdnstap.la
 khost_LDADD        += dnstap/libdnstap.la
 libknotd_la_LIBADD += dnstap/libdnstap.la
 endif
+
+# pkg-config
+pkgconfig_DATA = $(top_srcdir)/libknot.pc
 
 # Create storage and run-time directories
 install-data-hook:

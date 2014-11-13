@@ -41,11 +41,8 @@ LT_INIT
 
 # Use pkg-config
 PKG_PROG_PKG_CONFIG
-AC_CHECK_PROG(PKG_CONFIG, pkg-config, yes)
-AM_CONDITIONAL([HAVE_PKG_CONFIG], [test "x$PKG_CONFIG" != "x"])
-AS_IF([test "x$PKG_CONFIG" != "x"], [
-    AC_CONFIG_FILES([libknot.pc])
-])
+PKG_INSTALLDIR
+AC_CONFIG_FILES([libknot.pc])
 
 AC_CACHE_CHECK([for reentrant lex], [ac_cv_path_LEX],
   [AC_PATH_PROGS_FEATURE_CHECK([LEX], [$LEX flex gflex],
