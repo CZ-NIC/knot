@@ -351,10 +351,9 @@ AC_LINK_IFELSE([AC_LANG_PROGRAM([[#include <pthread_np.h>]], [[cpuset_t set; CPU
 AC_LINK_IFELSE([AC_LANG_PROGRAM([[#include <sched.h>]], [[cpuset_t* set = cpuset_create(); cpuset_destroy(set);]])],
 [AC_DEFINE(HAVE_CPUSET_NETBSD, 1, [Define if cpuset_t and cpuset(3) exists.])])
 
-# Use -fvisibility=hidden when linking.
-# Let's leave it default now and use -export-symbols-regex in LDFLAGS
+# Hide all exported symbols by default
 gl_VISIBILITY()
-CFLAGS="$CFLAGS $CFLAG_VISIBILITY"
+CPPFLAGS="$CPPFLAGS $CFLAG_VISIBILITY"
 
 # Add code coverage macro
 AX_CODE_COVERAGE
