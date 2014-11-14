@@ -48,16 +48,18 @@ If you want to control the daemon directly, use ``SIGINT`` to quit the process o
      -h, --help             Print help and usage.
 
     Actions:
-     stop                   Stop server.
-     reload <zone> ...      Reload zones or reload whole configuration and changed zones (if not specified).
-     refresh <zone> ...     Refresh slave zones (all if not specified).
-     flush <zone> ...       Flush journal and update zone files. (all if not specified)
-     status                 Check if server is running.
-     zonestatus <zone> ...  Show status of configured zones (all if not specified).
-     checkconf              Check current server configuration.
-     checkzone <zone> ...   Check zones (all if not specified).
-     memstats <zone> ...    Estimate memory consumption for zones (all if not specified).
-     signzone <zone>        Sign zone with available DNSSEC keys (zone must be specified).
+     stop                    Stop server.
+     reload [<zone>...]      Reload particular zones or reload whole configuration and changed zones.
+     refresh [<zone>...]     Refresh slave zones. Flag '-f' forces retransfer (zone(s) must be specified).
+     flush [<zone>...]       Flush journal and update zone files.
+     status                  Check if server is running.
+     zonestatus [<zone>...]  Show status of configured zones.
+     checkconf               Check current server configuration.
+     checkzone [<zone>...]   Check zones.
+     memstats [<zone>...]    Estimate memory consumption for zones.
+     signzone <zone>         Sign zones with available DNSSEC keys.
+
+    Note: If <zone> parameter is not specified, command is applied to all zones.
 
 Also, the server needs to create several files in order to run properly. These
 files are stored in the folowing directories.

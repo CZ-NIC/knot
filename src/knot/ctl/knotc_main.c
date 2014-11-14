@@ -77,16 +77,16 @@ static int cmd_signzone(int argc, char *argv[], unsigned flags);
 
 /*! \brief Table of remote commands. */
 knot_cmd_t knot_cmd_tbl[] = {
-	{&cmd_stop,       0, "stop",       "",       "\t\tStop server."},
-	{&cmd_reload,     0, "reload",     "<zone> ...", "Reload zones or reload whole configuration and changed zones (if not specified)."},
-	{&cmd_refresh,    0, "refresh",    "<zone> ...", "Refresh slave zones (all if not specified). Flag '-f' forces retransfer."},
-	{&cmd_flush,      0, "flush",      "<zone> ...", "Flush journal and update zone files (all if not specified)."},
-	{&cmd_status,     0, "status",     "",       "\tCheck if server is running."},
-	{&cmd_zonestatus, 0, "zonestatus", "<zone> ...", "Show status of configured zones (all if not specified)."},
-	{&cmd_checkconf,  1, "checkconf",  "",       "\tCheck current server configuration."},
-	{&cmd_checkzone,  1, "checkzone",  "<zone> ...", "Check zones (all if not specified)."},
-	{&cmd_memstats,   1, "memstats",   "<zone> ...", "Estimate memory use for zones (all if not specified)."},
-	{&cmd_signzone,   0, "signzone",   "<zone> ...", "Sign zone with available DNSSEC keys (zone must be specified)."},
+	{&cmd_stop,       0, "stop",       "",           "\t\tStop server."},
+	{&cmd_reload,     0, "reload",     "[<zone>...]", "Reload particular zones or reload whole configuration and changed zones."},
+	{&cmd_refresh,    0, "refresh",    "[<zone>...]", "Refresh slave zones. Flag '-f' forces retransfer (zone(s) must be specified)."},
+	{&cmd_flush,      0, "flush",      "[<zone>...]", "Flush journal and update zone files."},
+	{&cmd_status,     0, "status",     "",           "\tCheck if server is running."},
+	{&cmd_zonestatus, 0, "zonestatus", "[<zone>...]", "Show status of configured zones."},
+	{&cmd_checkconf,  1, "checkconf",  "",           "\tCheck current server configuration."},
+	{&cmd_checkzone,  1, "checkzone",  "[<zone>...]", "Check zones."},
+	{&cmd_memstats,   1, "memstats",   "[<zone>...]", "Estimate memory use for zones."},
+	{&cmd_signzone,   0, "signzone",   "<zone>...", "Sign zones with available DNSSEC keys (at least one zone must be specified)."},
 	{NULL, 0, NULL, NULL, NULL}
 };
 
@@ -111,6 +111,7 @@ void help(void)
 		printf(" %s %s\t\t%s\n", c->name, c->params, c->desc);
 		++c;
 	}
+	printf("\nNote: If <zone> parameter is not specified, command is applied to all zones.\n\n");
 }
 
 static int cmd_remote_print_reply(const knot_rrset_t *rr)
