@@ -127,14 +127,12 @@ nobase_libknot_la_HEADERS =				\
 	libknot/internal/base32hex.h		\
 	libknot/internal/base64.h		\
 	libknot/internal/binsearch.h		\
-	libknot/internal/debug.h		\
 	libknot/internal/endian.h		\
 	libknot/internal/errors.h		\
 	libknot/internal/getline.h		\
 	libknot/internal/heap.h			\
 	libknot/internal/hhash.h		\
 	libknot/internal/lists.h		\
-	libknot/internal/log.h			\
 	libknot/internal/macros.h		\
 	libknot/internal/mem.h			\
 	libknot/internal/mempattern.h		\
@@ -186,7 +184,6 @@ libknot_la_SOURCES =				\
 	libknot/internal/heap.c			\
 	libknot/internal/hhash.c		\
 	libknot/internal/lists.c		\
-	libknot/internal/log.c			\
 	libknot/internal/mem.c			\
 	libknot/internal/mempattern.c		\
 	libknot/internal/mempool.c		\
@@ -263,6 +260,8 @@ libknotd_la_SOURCES =				\
 	knot/common/evsched.h			\
 	knot/common/fdset.c			\
 	knot/common/fdset.h			\
+	knot/common/log.c			\
+	knot/common/log.h			\
 	knot/common/ref.c			\
 	knot/common/ref.h			\
 	knot/common/time.h			\

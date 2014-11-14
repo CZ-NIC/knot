@@ -39,7 +39,7 @@
 #include "libknot/dnssec/policy.h"
 #include "libknot/internal/lists.h"
 #include "libknot/internal/namedb/namedb.h"
-#include "libknot/internal/log.h"
+#include "knot/common/log.h"
 #include "knot/updates/acl.h"
 #include "libknot/internal/sockaddr.h"
 #include "libknot/internal/trie/hat-trie.h"

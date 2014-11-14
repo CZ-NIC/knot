@@ -25,8 +25,6 @@
 #include "libknot/tsig-op.h"
 #include "libknot/packet/wire.h"
 #include "libknot/packet/rrset-wire.h"
-#include "libknot/internal/debug.h"
-#include "libknot/internal/log.h"
 #include "libknot/internal/macros.h"
 
 /*! \brief Scan packet for RRSet existence. */

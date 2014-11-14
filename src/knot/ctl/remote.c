@@ -18,6 +18,7 @@
 #include <sys/stat.h>
 #include "knot/common/debug.h"
 #include "knot/common/fdset.h"
+#include "knot/common/log.h"
 #include "knot/conf/conf.h"
 #include "knot/ctl/remote.h"
 #include "knot/dnssec/zone-sign.h"
@@ -25,7 +26,6 @@
 #include "knot/server/tcp-handler.h"
 #include "knot/zone/timers.h"
 #include "libknot/libknot.h"
-#include "libknot/internal/log.h"
 #include "libknot/internal/macros.h"
 #include "libknot/internal/mem.h"
 #include "libknot/internal/net.h"

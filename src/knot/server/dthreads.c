@@ -30,9 +30,9 @@
 #endif /* HAVE_PTHREAD_NP_H */
 
 #include "knot/common/debug.h"
+#include "knot/common/log.h"
 #include "knot/server/dthreads.h"
 #include "libknot/libknot.h"
-#include "libknot/internal/log.h"
 
 /* BSD cpu set compatibility. */
 #if defined(HAVE_CPUSET_BSD)

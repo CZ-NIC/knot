@@ -17,7 +17,6 @@
 #include <assert.h>
 
 #include "libknot/processing/layer.h"
-#include "libknot/internal/debug.h"
 #include "libknot/internal/macros.h"
 
 /*! \brief Helper for conditional layer call. */
@@ -26,18 +25,6 @@
 	if (layer->api->func) { \
 		layer->state = layer->api->func(layer, ##__VA_ARGS__); \
 	}
-
-/* State -> string translation table. */
-#ifdef KNOT_NS_DEBUG
-#define LAYER_STATE_STR(x) _state_table[x]
-static const char* _state_table[] = {
-        [KNOT_NS_PROC_NOOP] = "NOOP",
-        [KNOT_NS_PROC_MORE] = "MORE",
-        [KNOT_NS_PROC_FULL] = "FULL",
-        [KNOT_NS_PROC_DONE] = "DONE",
-        [KNOT_NS_PROC_FAIL] = "FAIL"
-};
-#endif /* KNOT_NS_DEBUG */
 
 _public_
 int knot_layer_begin(knot_layer_t *ctx, const knot_layer_api_t *api, void *param)

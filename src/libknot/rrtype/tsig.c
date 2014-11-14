@@ -26,8 +26,6 @@
 #include "libknot/dname.h"
 #include "libknot/errcode.h"
 #include "libknot/rrset.h"
-#include "libknot/internal/debug.h"
-#include "libknot/internal/log.h"
 #include "libknot/internal/macros.h"
 #include "libknot/internal/utils.h"
 

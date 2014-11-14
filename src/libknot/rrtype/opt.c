@@ -22,7 +22,6 @@
 #include "libknot/rrtype/opt.h"
 #include "libknot/descriptor.h"
 #include "libknot/errcode.h"
-#include "libknot/internal/debug.h"
 #include "libknot/internal/macros.h"
 #include "libknot/internal/sockaddr.h"
 

@@ -26,7 +26,7 @@
 #include "libknot/dname.h"
 #include "libknot/packet/wire.h"
 #include "knot/zone/node.h"
-#include "libknot/internal/debug.h"
+#include "knot/common/debug.h"
 #include "libknot/internal/mempattern.h"
 #include "libknot/internal/mempool.h"
 #include "libknot/internal/macros.h"
