@@ -46,7 +46,6 @@ int knot_layer_begin(knot_layer_t *ctx, const knot_layer_api_t *api, void *param
 
 	LAYER_CALL(ctx, begin, param);
 
-	dbg_ns("%s -> %s\n", __func__, LAYER_STATE_STR(ctx->state));
 	return ctx->state;
 }
 
@@ -54,7 +53,6 @@ _public_
 int knot_layer_reset(knot_layer_t *ctx)
 {
 	LAYER_CALL(ctx, reset);
-	dbg_ns("%s -> %s\n", __func__, LAYER_STATE_STR(ctx->state));
 	return ctx->state;
 }
 
@@ -62,7 +60,6 @@ _public_
 int knot_layer_finish(knot_layer_t *ctx)
 {
 	LAYER_CALL(ctx, finish);
-	dbg_ns("%s -> %s\n", __func__, LAYER_STATE_STR(ctx->state));
 	return ctx->state;
 }
 
@@ -70,7 +67,6 @@ _public_
 int knot_layer_in(knot_layer_t *ctx, knot_pkt_t *pkt)
 {
 	LAYER_CALL(ctx, in, pkt);
-	dbg_ns("%s -> %s\n", __func__, LAYER_STATE_STR(ctx->state));
 	return ctx->state;
 }
 
@@ -83,7 +79,6 @@ int knot_layer_out(knot_layer_t *ctx, knot_pkt_t *pkt)
 	default: LAYER_CALL(ctx, out, pkt); break;
 	}
 
-	dbg_ns("%s -> %s\n", __func__, LAYER_STATE_STR(ctx->state));
 	return ctx->state;
 }
 

@@ -249,10 +249,6 @@ int knot_edns_add_option(knot_rrset_t *opt_rr, uint16_t code,
 
 	uint8_t new_data[new_data_len];
 
-	dbg_edns_verb("EDNS: Adding option. Code: %u, length: %u, data:\n",
-	              code, length);
-	dbg_edns_hex_verb((char *)data, length);
-
 	memcpy(new_data, old_data, old_data_len);
 	// write length and code in wireformat (convert endian)
 	wire_write_u16(new_data + old_data_len, code);
