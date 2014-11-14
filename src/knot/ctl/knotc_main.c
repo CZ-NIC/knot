@@ -591,7 +591,7 @@ static int cmd_stop(int argc, char *argv[], unsigned flags)
 	UNUSED(flags);
 
 	if (argc > 0) {
-		log_error("command does not take arguments");
+		printf("command does not take arguments\n");
 		return KNOT_EINVAL;
 	}
 
@@ -630,7 +630,7 @@ static int cmd_status(int argc, char *argv[], unsigned flags)
 	UNUSED(flags);
 
 	if (argc > 0) {
-		log_error("command does not take arguments");
+		printf("command does not take arguments\n");
 		return KNOT_EINVAL;
 	}
 

@@ -416,7 +416,7 @@ static int remote_c_retransfer(server_t *s, remote_cmdargs_t* a)
 	dbg_server("remote: %s\n", __func__);
 	if (a->argc == 0) {
 		/* Refresh all. */
-		return KNOT_ENOTSUP;
+		return KNOT_CTL_ARG_REQ;
 	} else {
 		rcu_read_lock();
 		/* Refresh specific zones. */
@@ -463,7 +463,7 @@ static int remote_c_signzone(server_t *server, remote_cmdargs_t* arguments)
 
 	if (arguments->argc == 0) {
 		/* Resign all. */
-		return KNOT_ENOTSUP;
+		return KNOT_CTL_ARG_REQ;
 	} else {
 		rcu_read_lock();
 		/* Resign specific zones. */

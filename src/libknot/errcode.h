@@ -100,6 +100,7 @@ enum knot_error {
 	/* Control states. */
 	KNOT_CTL_STOP,
 	KNOT_CTL_ACCEPTED,
+	KNOT_CTL_ARG_REQ,
 
 	/* Network errors. */
 	KNOT_NET_EADDR,
