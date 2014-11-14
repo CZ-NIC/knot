@@ -18,7 +18,9 @@
 #include <ctype.h>
 #include "libknot/internal/print.h"
 
-void array_printf(const uint8_t *data, const unsigned length,
+typedef int (*printf_t)(const char *fmt, ...);
+
+static void array_printf(const uint8_t *data, const unsigned length,
                   printf_t print_handler, const char type)
 {
 	for (unsigned i = 0; i < length; i++) {
@@ -55,29 +57,6 @@ void short_hex_print(const uint8_t *data, unsigned length)
 void txt_print(const uint8_t *data, unsigned length)
 {
 	array_printf(data, length, &printf, 't');
-}
-
-void bit_printf(const uint8_t *data, unsigned length, printf_t print_handler)
-{
-	unsigned char mask = 0x01;
-	unsigned ptr;
-	int bit = 0;
-	for (ptr = 0; ptr < length; ptr++) {
-		for (bit = 7; bit >= 0; bit--) {
-			if ((mask << bit) & (unsigned char)*(data + ptr)) {
-				print_handler("1");
-			} else {
-				print_handler("0");
-			}
-		}
-		print_handler(" ");
-	}
-	print_handler("\n");
-}
-
-void bit_print(const uint8_t *data, unsigned length)
-{
-	bit_printf(data, length, &printf);
 }
 
 float time_diff(struct timeval *begin, struct timeval *end)

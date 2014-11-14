@@ -32,8 +32,6 @@
 #include <sys/time.h>
 #include <stdint.h>
 
-typedef int (*printf_t)(const char *fmt, ...);
-
 /*!
  * \brief Prints the given data as hexadecimal character string. Each hexa-pair
  *        contains leading 0x string.
@@ -59,35 +57,6 @@ void short_hex_print(const uint8_t *data, unsigned length);
  * \param length	Size of the \a data array.
  */
 void txt_print(const uint8_t *data, unsigned length);
-
-/*!
- * \brief Prints the given data array as a specified character string using
- *        the given handler.
- *
- * \param data		Data to print.
- * \param length	Size of the \a data array.
- * \param print_handler	Handler for printing.
- * \param type		Character type ('x': hex, 't': txt, otherwise: 0xXX).
- */
-void array_printf(const uint8_t *data, const unsigned length,
-                  printf_t print_handler, const char type);
-
-/*!
- * \brief Prints the given data as a bitmap.
- *
- * \param data		Data to print.
- * \param length	Size of the \a data array.
- */
-void bit_print(const uint8_t *data, unsigned length);
-
-/*!
- * \brief Prints the given data as a bitmap using the given handler.
- *
- * \param data		Data to print.
- * \param length	Size of the \a data array.
- * \param print_handler	Handler for printing.
- */
-void bit_printf(const uint8_t *data, unsigned length, printf_t print_handler);
 
 /*!
  * \brief Get time diff in miliseconds.
