@@ -24,6 +24,7 @@
 #include "libknot/internal/mem.h"
 #include "libknot/internal/namedb/namedb_lmdb.h"
 #include "libknot/internal/namedb/namedb_trie.h"
+#include "libknot/internal/strlcpy.h"
 #include "libknot/errcode.h"
 
 /* Constants. */
@@ -149,7 +150,7 @@ static void namedb_test_set(unsigned nkeys, char **keys, char *dbid,
 		memcpy(key_buf, key.data, key.len);
 		it = api->iter_next(it);
 	}
-	strcpy(last_key, key_buf);
+	strlcpy(last_key, key_buf, sizeof(last_key));
 	is_int(db_size, iterated, "%s: sorted iteration", api->name);
 	api->iter_finish(it);
 
@@ -171,14 +172,14 @@ static void namedb_test_set(unsigned nkeys, char **keys, char *dbid,
 		ret = api->iter_key(it, &key);
 		is_string(last_key, key.data, "%s: iter_set(LAST)", api->name);
 		/* Check if prev(last_key + 1) is the last_key */
-		strcpy(key_buf, last_key);
+		strlcpy(key_buf, last_key, sizeof(key_buf));
 		key_buf[0] += 1;
 		KEY_SET(key, key_buf);
 		it = api->iter_seek(it, &key, NAMEDB_LEQ);
 		ret = api->iter_key(it, &key);
 		is_string(last_key, key.data, "%s: iter_set(LEQ)", api->name);
 		/* Check if next(first_key - 1) is the first_key */
-		strcpy(key_buf, first_key);
+		strlcpy(key_buf, first_key, sizeof(key_buf));
 		key_buf[0] -= 1;
 		KEY_SET(key, key_buf);
 		it = api->iter_seek(it, &key, NAMEDB_GEQ);
