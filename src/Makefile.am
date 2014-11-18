@@ -3,7 +3,7 @@ SUBDIRS = zscanner dnstap .
 
 sbin_PROGRAMS = knotc knotd
 bin_PROGRAMS = kdig khost knsupdate knsec3hash
-lib_LTLIBRARIES = libknot.la libknot-int.la
+lib_LTLIBRARIES = libknot-int.la libknot.la
 noinst_LTLIBRARIES = libknotd.la libknotus.la
 
 # $(YACC) will generate header file
