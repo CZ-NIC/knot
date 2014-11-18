@@ -58,7 +58,9 @@ int net_unbound_socket(int type, const struct sockaddr_storage *ss)
 
 static void allow_freebind(int socket, int family)
 {
+#if defined(IP_FREEBIND) || defined(IP_BINDANY) || defined(IPV6_BINDANY)
 	int flag = 1;
+#endif
 
 #ifdef IP_FREEBIND
 	(void) setsockopt(socket, IPPROTO_IP, IP_FREEBIND, &flag, sizeof(flag));
