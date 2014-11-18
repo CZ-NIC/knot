@@ -86,7 +86,7 @@ knot_cmd_t knot_cmd_tbl[] = {
 	{&cmd_checkconf,  1, "checkconf",  "",           "\tCheck current server configuration."},
 	{&cmd_checkzone,  1, "checkzone",  "[<zone>...]", "Check zones."},
 	{&cmd_memstats,   1, "memstats",   "[<zone>...]", "Estimate memory use for zones."},
-	{&cmd_signzone,   0, "signzone",   "<zone>...", "Sign zones with available DNSSEC keys (at least one zone must be specified)."},
+	{&cmd_signzone,   0, "signzone",   "<zone>...", "Sign zones with available DNSSEC keys."},
 	{NULL, 0, NULL, NULL, NULL}
 };
 

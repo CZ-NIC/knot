@@ -257,9 +257,11 @@ static int remote_c_reload(server_t *s, remote_cmdargs_t* a)
 		dbg_server_verb("remote: refreshing all zones\n");
 		ret = server_reload(s, conf()->filename);
 	} else {
+		rcu_read_lock();
 		/* Reload specific zones. */
 		dbg_server_verb("remote: refreshing particular zones");
 		ret = remote_rdata_apply(s, a, &remote_zone_reload);
+		rcu_read_unlock();
 	}
 
 	return (ret != KNOT_EOK) ? ret : KNOT_CTL_ACCEPTED;
