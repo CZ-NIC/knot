@@ -40,8 +40,7 @@ AC_PROG_LIBTOOL
 LT_INIT
 
 # Use pkg-config
-PKG_PROG_PKG_CONFIG
-PKG_INSTALLDIR
+m4_ifdef([PKG_INSTALLDIR], [PKG_INSTALLDIR], [AC_SUBST([pkgconfigdir], ['${libdir}/pkgconfig'])])
 AC_CONFIG_FILES([libknot.pc])
 
 AC_CACHE_CHECK([for reentrant lex], [ac_cv_path_LEX],
