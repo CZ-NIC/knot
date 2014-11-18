@@ -17,7 +17,7 @@
 #include <assert.h>
 
 #include "knot/zone/contents.h"
-#include "libknot/internal/debug.h"
+#include "knot/common/debug.h"
 #include "libknot/internal/macros.h"
 #include "libknot/rrset.h"
 #include "libknot/internal/base32hex.h"

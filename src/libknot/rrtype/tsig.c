@@ -26,8 +26,6 @@
 #include "libknot/dname.h"
 #include "libknot/errcode.h"
 #include "libknot/rrset.h"
-#include "libknot/internal/debug.h"
-#include "libknot/internal/log.h"
 #include "libknot/internal/macros.h"
 #include "libknot/internal/utils.h"
 
@@ -69,9 +67,6 @@ static uint8_t* rdata_seek(const knot_rrset_t *rr, tsig_off_t id, size_t nb)
 	int alg_len = knot_dname_size(rd);
 	uint16_t lim = knot_rdata_rdlen(rr_data);
 	if (lim < alg_len + 5 * sizeof(uint16_t)) {
-		dbg_tsig("TSIG: rdata: not enough items "
-		         "(has %"PRIu16", min %zu).\n",
-		         lim, alg_len + 5 * sizeof(uint16_t));
 		return NULL;
 	}
 
@@ -104,8 +99,6 @@ static uint8_t* rdata_seek(const knot_rrset_t *rr, tsig_off_t id, size_t nb)
 
 	/* Check remaining bytes. */
 	if (rd + nb > bp + lim) {
-		dbg_tsig("TSIG: rdata: not enough items (needs %zu, has %u).\n",
-		         (rd-bp)+nb, lim);
 		return NULL;
 	}
 
@@ -227,7 +220,6 @@ int knot_tsig_rdata_set_other_data(knot_rrset_t *tsig, uint16_t len,
                                    const uint8_t *other_data)
 {
 	if (len > TSIG_OTHER_MAXLEN) {
-		dbg_tsig("TSIG: rdata: other len > %zu B\n", TSIG_OTHER_MAXLEN);
 		return KNOT_EINVAL;
 	}
 
@@ -257,21 +249,18 @@ knot_tsig_algorithm_t knot_tsig_rdata_alg(const knot_rrset_t *tsig)
 	/* Get the algorithm name. */
 	const knot_dname_t *alg_name = knot_tsig_rdata_alg_name(tsig);
 	if (!alg_name) {
-		dbg_tsig("TSIG: rdata: cannot get algorithm name.\n");
 		return KNOT_TSIG_ALG_NULL;
 	}
 
 	/* Convert alg name to string. */
 	char *name = knot_dname_to_str_alloc(alg_name);
 	if (!name) {
-		dbg_tsig("TSIG: rdata: cannot convert alg name.\n");
 		return KNOT_TSIG_ALG_NULL;
 	}
 
 	lookup_table_t *item = lookup_by_name(knot_tsig_alg_dnames_str, name);
 	free(name);
 	if (!item) {
-		dbg_tsig("TSIG: rdata: unknown algorithm.\n");
 		return KNOT_TSIG_ALG_NULL;
 	}
 	return item->id;
@@ -372,7 +361,6 @@ int knot_tsig_alg_from_name(const knot_dname_t *alg_name)
 
 	lookup_table_t *found = lookup_by_name(knot_tsig_alg_dnames_str, name);
 	if (!found) {
-		dbg_tsig("Unknown algorithm: %s \n", name);
 		free(name);
 		return 0;
 	}

@@ -19,7 +19,7 @@
 #include <stdbool.h>
 #include <inttypes.h>
 
-#include "libknot/internal/debug.h"
+#include "knot/common/debug.h"
 #include "libknot/internal/mem.h"
 #include "libknot/internal/macros.h"
 #include "libknot/errcode.h"

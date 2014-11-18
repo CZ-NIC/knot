@@ -31,7 +31,7 @@
 #include "knot/common/debug.h"
 #include "knot/server/server.h"
 #include "knot/nameserver/internet.h"
-#include "libknot/internal/debug.h"
+#include "knot/common/debug.h"
 #include "knot/nameserver/process_query.h"
 #include "knot/nameserver/tsig_ctx.h"
 #include "knot/nameserver/process_answer.h"

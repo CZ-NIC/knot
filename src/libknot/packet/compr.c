@@ -19,8 +19,6 @@
 #include "libknot/packet/compr.h"
 #include "libknot/errcode.h"
 #include "libknot/packet/pkt.h"
-#include "libknot/internal/debug.h"
-#include "libknot/internal/log.h"
 #include "libknot/internal/macros.h"
 #include "libknot/internal/tolower.h"
 
@@ -58,12 +56,10 @@ int knot_compr_put_dname(const knot_dname_t *dname, uint8_t *dst, uint16_t max,
                          knot_compr_t *compr)
 {
 	/* Write uncompressible names directly. */
-	dbg_packet("%s(%p,%p,%u,%p)\n", __func__, dname, dst, max, compr);
 	if (dname == NULL || dst == NULL) {
 		return KNOT_EINVAL;
 	}
 	if (compr == NULL || *dname == '\0') {
-		dbg_packet("%s: uncompressible, writing full name\n", __func__);
 		return knot_dname_to_wire(dst, dname, max);
 	}
 
@@ -135,8 +131,7 @@ int knot_compr_put_dname(const knot_dname_t *dname, uint8_t *dst, uint16_t max,
 		compr->suffix.pos = wire_pos;
 		compr->suffix.labels = orig_labels;
 	}
-	dbg_packet("%s: compressed to %u bytes (match=%zu,@%zu)\n",
-		   __func__, written, dname - match_begin, wire_pos);
+
 	return written;
 }
 

@@ -16,7 +16,7 @@
 #include "libknot/rrtype/opt.h"
 #include "libknot/tsig-op.h"
 #include "libknot/descriptor.h"
-#include "libknot/internal/debug.h"
+#include "knot/common/debug.h"
 #include "libknot/internal/macros.h"
 
 /*! \brief Accessor to query-specific data. */

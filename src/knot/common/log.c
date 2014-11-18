@@ -28,11 +28,11 @@
 #include <systemd/sd-journal.h>
 #endif
 
-#include "libknot/internal/log.h"
-#include "libknot/internal/lists.h"
-#include "libknot/internal/strlcpy.h"
-#include "libknot/internal/macros.h"
+#include "knot/common/log.h"
 #include "libknot/errcode.h"
+#include "libknot/internal/lists.h"
+#include "libknot/internal/macros.h"
+#include "libknot/internal/strlcpy.h"
 
 /* Single log message buffer length (one line). */
 #define LOG_BUFLEN 512

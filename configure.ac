@@ -9,6 +9,7 @@ AC_CONFIG_HEADERS([src/config.h])
 AC_CONFIG_MACRO_DIR([m4])
 AC_USE_SYSTEM_EXTENSIONS([_GNU_SOURCE])
 AC_CANONICAL_HOST
+AX_SET_VERSION_INFO
 
 # Automatically update release date based on configure.ac date
 case "$host_os" in
@@ -40,6 +41,8 @@ LT_INIT
 
 # Use pkg-config
 PKG_PROG_PKG_CONFIG
+PKG_INSTALLDIR
+AC_CONFIG_FILES([libknot.pc])
 
 AC_CACHE_CHECK([for reentrant lex], [ac_cv_path_LEX],
   [AC_PATH_PROGS_FEATURE_CHECK([LEX], [$LEX flex gflex],
@@ -348,10 +351,9 @@ AC_LINK_IFELSE([AC_LANG_PROGRAM([[#include <pthread_np.h>]], [[cpuset_t set; CPU
 AC_LINK_IFELSE([AC_LANG_PROGRAM([[#include <sched.h>]], [[cpuset_t* set = cpuset_create(); cpuset_destroy(set);]])],
 [AC_DEFINE(HAVE_CPUSET_NETBSD, 1, [Define if cpuset_t and cpuset(3) exists.])])
 
-# Use -fvisibility=hidden when linking.
-# Let's leave it default now and use -export-symbols-regex in LDFLAGS
+# Hide all exported symbols by default
 gl_VISIBILITY()
-CFLAGS="$CFLAGS $CFLAG_VISIBILITY"
+CPPFLAGS="$CPPFLAGS $CFLAG_VISIBILITY"
 
 # Add code coverage macro
 AX_CODE_COVERAGE
@@ -390,6 +392,7 @@ AC_CONFIG_FILES([Makefile
 		 man/knot.conf.5
 		 man/knsec3hash.1
 		 ])
+
 
 AC_OUTPUT
 AC_MSG_RESULT([
