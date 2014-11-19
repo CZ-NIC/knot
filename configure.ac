@@ -357,7 +357,7 @@ CPPFLAGS="$CPPFLAGS $CFLAG_VISIBILITY"
 # Add code coverage macro
 AX_CODE_COVERAGE
 
-AC_PATH_PROG([SPHINXBUILD], [sphinx-build], [false])
+AC_PATH_PROGS([SPHINXBUILD], [sphinx-build sphinx-build-3], [false])
 AS_IF([test "$SPHINXBUILD" = "false"],
   [AC_MSG_WARN([Could not find the 'sphinx-build' executable, you will be unable to regenerate documentation.])],
   [AC_PATH_PROG([PDFLATEX], [pdflatex], [false])
