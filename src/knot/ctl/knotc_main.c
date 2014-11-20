@@ -77,16 +77,18 @@ static int cmd_signzone(int argc, char *argv[], unsigned flags);
 
 /*! \brief Table of remote commands. */
 knot_cmd_t knot_cmd_tbl[] = {
-	{&cmd_stop,       0, "stop",       "",           "\t\tStop server."},
-	{&cmd_reload,     0, "reload",     "[<zone>...]", "Reload particular zones or reload whole configuration and changed zones."},
-	{&cmd_refresh,    0, "refresh",    "[<zone>...]", "Refresh slave zones. Flag '-f' forces retransfer (zone(s) must be specified)."},
+	{&cmd_stop,       0, "stop",       "",            "Stop server."},
+	{&cmd_reload,     0, "reload",     "[<zone>...]", "Reload particular zones or reload whole\n"
+	                   "                                configuration and changed zones."},
+	{&cmd_refresh,    0, "refresh",    "[<zone>...]", "Refresh slave zones. Flag '-f' forces retransfer\n"
+	                   "                                (zone(s) must be specified)."},
 	{&cmd_flush,      0, "flush",      "[<zone>...]", "Flush journal and update zone files."},
-	{&cmd_status,     0, "status",     "",           "\tCheck if server is running."},
+	{&cmd_status,     0, "status",     "",            "Check if server is running."},
 	{&cmd_zonestatus, 0, "zonestatus", "[<zone>...]", "Show status of configured zones."},
-	{&cmd_checkconf,  1, "checkconf",  "",           "\tCheck current server configuration."},
+	{&cmd_checkconf,  1, "checkconf",  "",            "Check current server configuration."},
 	{&cmd_checkzone,  1, "checkzone",  "[<zone>...]", "Check zones."},
 	{&cmd_memstats,   1, "memstats",   "[<zone>...]", "Estimate memory use for zones."},
-	{&cmd_signzone,   0, "signzone",   "<zone>...", "Sign zones with available DNSSEC keys."},
+	{&cmd_signzone,   0, "signzone",   "<zone>...",   "Sign zones with available DNSSEC keys."},
 	{NULL, 0, NULL, NULL, NULL}
 };
 
@@ -95,23 +97,25 @@ void help(void)
 {
 	printf("Usage: %sc [parameters] <action> [action_args]\n", PACKAGE_NAME);
 	printf("\nParameters:\n"
-	       " -c, --config <file>    \tSelect configuration file.\n"
-	       " -s <server>            \tRemote UNIX socket/IP address (default %s).\n"
-	       " -p <port>              \tRemote server port (only for IP).\n"
-	       " -y <[hmac:]name:key>   \tUse key specified on the command line.\n"
-	       " -k <file>              \tUse key file (as in config section 'keys').\n"
-	       " -f, --force            \tForce operation - override some checks.\n"
-	       " -v, --verbose          \tVerbose mode - additional runtime information.\n"
-	       " -V, --version          \tPrint %s server version.\n"
-	       " -h, --help             \tPrint help and usage.\n",
+	       " -c, --config <file>           Select configuration file.\n"
+	       " -s, --server <server>         Remote UNIX socket/IP address\n"
+	       "                                (default %s).\n"
+	       " -p, --port <port>             Remote server port (only for IP).\n"
+	       " -y, --key <[hmac:]name:key>   Use key specified on the command line\n"
+	       "                                (default algorithm is hmac-md5).\n"
+	       " -k, --keyfile <file>          Use key file (as in config section 'keys').\n"
+	       " -f, --force                   Force operation - override some checks.\n"
+	       " -v, --verbose                 Verbose mode - additional runtime information.\n"
+	       " -V, --version                 Print %s server version.\n"
+	       " -h, --help                    Print help and usage.\n",
 	       RUN_DIR "/knot.sock", PACKAGE_NAME);
 	printf("\nActions:\n");
 	knot_cmd_t *c = knot_cmd_tbl;
 	while (c->name != NULL) {
-		printf(" %s %s\t\t%s\n", c->name, c->params, c->desc);
+		printf(" %-10s %-18s %s\n", c->name, c->params, c->desc);
 		++c;
 	}
-	printf("\nNote: If <zone> parameter is not specified, command is applied to all zones.\n\n");
+	printf("\nIf optional <zone> parameter is not specified, command is applied to all zones.\n\n");
 }
 
 static int cmd_remote_print_reply(const knot_rrset_t *rr)
@@ -430,20 +434,23 @@ int main(int argc, char **argv)
 
 	/* Long options. */
 	struct option opts[] = {
-		{"force", no_argument, 0, 'f'},
-		{"config", required_argument, 0, 'c'},
-		{"verbose", no_argument, 0, 'v'},
-		{"version", no_argument, 0, 'V'},
-		{"help", no_argument, 0, 'h'},
-		{"server", required_argument, 0, 's' },
-		{"port", required_argument, 0, 's' },
-		{"y", required_argument, 0, 'y' },
-		{"k", required_argument, 0, 'k' },
+		{"config",  required_argument, 0, 'c' },
+		{"server",  required_argument, 0, 's' },
+		{"port",    required_argument, 0, 'p' },
+		{"key",     required_argument, 0, 'y' },
+		{"keyfile", required_argument, 0, 'k' },
+		{"force",   no_argument,       0, 'f' },
+		{"verbose", no_argument,       0, 'v' },
+		{"help",    no_argument,       0, 'h' },
+		{"version", no_argument,       0, 'V' },
 		{0, 0, 0, 0}
 	};
 
 	while ((c = getopt_long(argc, argv, "s:p:y:k:fc:vVh", opts, &li)) != -1) {
 		switch (c) {
+		case 'c':
+			config_fn = optarg;
+			break;
 		case 's':
 			r_addr = optarg;
 			break;
@@ -469,9 +476,6 @@ int main(int argc, char **argv)
 			break;
 		case 'v':
 			flags |= F_VERBOSE;
-			break;
-		case 'c':
-			config_fn = optarg;
 			break;
 		case 'V':
 			rc = 0;
