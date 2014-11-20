@@ -11,16 +11,16 @@
 \fB\-c\fR, \fB\-\-config\fR \fIfile\fR
 Select configuration file.
 .TP
-\fB\-s\fR \fIserver\fR
+\fB\-s\fR, \fB\-\-server\fR \fIserver\fR
 Remote UNIX socket/IP address (default @run_dir@/knot.sock).
 .TP
-\fB\-p\fR \fIport\fR
+\fB\-p\fR, \fB\-\-port\fR \fIport\fR
 Remote server port (only for IP).
 .TP
-\fB\-y\fR [\fIhmac\fR:]\fIname\fR:\fIkey\fR
+\fB\-y\fR, \fB\-\-key\fR [\fIhmac\fR:]\fIname\fR:\fIkey\fR
 Use key specified on the command line (default algorithm is hmac\-md5).
 .TP
-\fB\-k\fR \fIfile\fR
+\fB\-k\fR, \fB\-\-keyfile\fR \fIfile\fR
 Use key file (as in config section 'keys').
 .TP
 \fB\-f\fR, \fB\-\-force\fR
@@ -88,7 +88,5 @@ Make sure the key can be read/written only by the owner for security reasons.
 .BR knotd (8),
 .BR knot.conf (5).
 .SH NOTE
-The full documentation for \fBKnot DNS\fR is maintained
-as a Texinfo manual. If the \fBinfo\fR program is properly
-installed at your site, the \fBinfo\ Knot\fR command should
-give you an access to the complete manual.
+If the \fBinfo\fR program is properly installed at your site,
+the \fBinfo\ Knot\fR command should give you an access to the complete manual.

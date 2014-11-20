@@ -23,7 +23,5 @@ Print help and usage.
 .BR knotc (8),
 .BR knot.conf (5).
 .SH NOTE
-The full documentation for \fBKnot DNS\fR is maintained
-as a Texinfo manual. If the \fBinfo\fR program is properly
-installed at your site, the \fBinfo\ Knot\fR command should
-give you an access to the complete manual.
+If the \fBinfo\fR program is properly installed at your site,
+the \fBinfo\ Knot\fR command should give you an access to the complete manual.
