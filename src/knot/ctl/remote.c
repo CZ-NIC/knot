@@ -131,7 +131,7 @@ struct remote_cmd remote_cmd_tbl[] = {
 
 /* Private APIs. */
 
-/*! \brief Apply callback to all zones specified by RDATA of CNAME RRs. */
+/*! \brief Apply callback to all zones specified by RDATA of NS RRs. */
 static int remote_rdata_apply(server_t *s, remote_cmdargs_t* a, remote_zonef_t *cb)
 {
 	if (!s || !a || !cb) {
@@ -247,7 +247,7 @@ static int remote_c_stop(server_t *s, remote_cmdargs_t* a)
  *
  * QNAME: reload
  * DATA: NONE for all zones
- *       CNAME RRs with zones in RDATA
+ *       NS RRs with zones in RDATA
  */
 static int remote_c_reload(server_t *s, remote_cmdargs_t* a)
 {
@@ -368,7 +368,7 @@ static int remote_zonestatus(zone_t *zone, remote_cmdargs_t *a)
  *
  * QNAME: zonestatus
  * DATA: NONE for all zones
- *       CNAME RRs with zones in RDATA
+ *       NS RRs with zones in RDATA
  */
 static int remote_c_zonestatus(server_t *s, remote_cmdargs_t* a)
 {
@@ -390,7 +390,7 @@ static int remote_c_zonestatus(server_t *s, remote_cmdargs_t* a)
  *
  * QNAME: refresh
  * DATA: NONE for all zones
- *       CNAME RRs with zones in RDATA
+ *       NS RRs with zones in RDATA
  */
 static int remote_c_refresh(server_t *s, remote_cmdargs_t* a)
 {
@@ -413,7 +413,7 @@ static int remote_c_refresh(server_t *s, remote_cmdargs_t* a)
  * \brief Remote command 'retransfer' handler.
  *
  * QNAME: retransfer
- * DATA: CNAME RRs with zones in RDATA
+ * DATA: NS RRs with zones in RDATA
  */
 static int remote_c_retransfer(server_t *s, remote_cmdargs_t* a)
 {
@@ -437,7 +437,7 @@ static int remote_c_retransfer(server_t *s, remote_cmdargs_t* a)
  *
  * QNAME: flush
  * DATA: NONE for all zones
- *       CNAME RRs with zones in RDATA
+ *       NS RRs with zones in RDATA
  */
 static int remote_c_flush(server_t *s, remote_cmdargs_t* a)
 {
