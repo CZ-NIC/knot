@@ -629,7 +629,6 @@ static int cmd_flush(int argc, char *argv[], unsigned flags)
 
 static int cmd_status(int argc, char *argv[], unsigned flags)
 {
-	UNUSED(argc);
 	UNUSED(argv);
 	UNUSED(flags);
 
@@ -643,8 +642,6 @@ static int cmd_status(int argc, char *argv[], unsigned flags)
 
 static int cmd_zonestatus(int argc, char *argv[], unsigned flags)
 {
-	UNUSED(argc);
-	UNUSED(argv);
 	UNUSED(flags);
 
 	return cmd_remote("zonestatus", KNOT_RRTYPE_NS, argc, argv);

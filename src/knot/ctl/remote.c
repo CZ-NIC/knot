@@ -183,7 +183,7 @@ static int remote_zone_refresh(zone_t *zone, remote_cmdargs_t *a)
 static int remote_zone_reload(zone_t *zone, remote_cmdargs_t *a)
 {
 	UNUSED(a);
-	dbg_server_verb("Scheduling reload.\n");
+
 	zone_events_schedule(zone, ZONE_EVENT_RELOAD, ZONE_EVENT_NOW);
 	return KNOT_EOK;
 }
@@ -246,7 +246,8 @@ static int remote_c_stop(server_t *s, remote_cmdargs_t* a)
  * \brief Remote command 'reload' handler.
  *
  * QNAME: reload
- * DATA: NULL
+ * DATA: NONE for all zones
+ *       CNAME RRs with zones in RDATA
  */
 static int remote_c_reload(server_t *s, remote_cmdargs_t* a)
 {
@@ -366,7 +367,8 @@ static int remote_zonestatus(zone_t *zone, remote_cmdargs_t *a)
  * \brief Remote command 'zonestatus' handler.
  *
  * QNAME: zonestatus
- * DATA: NONE
+ * DATA: NONE for all zones
+ *       CNAME RRs with zones in RDATA
  */
 static int remote_c_zonestatus(server_t *s, remote_cmdargs_t* a)
 {
@@ -417,11 +419,11 @@ static int remote_c_retransfer(server_t *s, remote_cmdargs_t* a)
 {
 	dbg_server("remote: %s\n", __func__);
 	if (a->argc == 0) {
-		/* Refresh all. */
+		/* Retransfer all. */
 		return KNOT_CTL_ARG_REQ;
 	} else {
 		rcu_read_lock();
-		/* Refresh specific zones. */
+		/* Retransfer specific zones. */
 		remote_rdata_apply(s, a, &remote_zone_retransfer);
 		rcu_read_unlock();
 	}
