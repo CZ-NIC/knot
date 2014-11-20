@@ -35,7 +35,6 @@ src/dnstap/reader.c
 src/dnstap/reader.h
 src/dnstap/writer.c
 src/dnstap/writer.h
-src/knot/common/crc.h
 src/knot/common/debug.h
 src/knot/common/evsched.c
 src/knot/common/evsched.h

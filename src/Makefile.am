@@ -257,7 +257,6 @@ libknotd_la_SOURCES =				\
 	knot/nameserver/tsig_ctx.h		\
 	knot/nameserver/update.c		\
 	knot/nameserver/update.h		\
-	knot/common/crc.h			\
 	knot/common/debug.h			\
 	knot/common/evsched.c			\
 	knot/common/evsched.h			\

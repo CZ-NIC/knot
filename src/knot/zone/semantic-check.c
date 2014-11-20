@@ -22,7 +22,6 @@
 #include <arpa/inet.h>
 
 #include "knot/zone/semantic-check.h"
-#include "knot/common/crc.h"
 #include "knot/common/debug.h"
 #include "knot/dnssec/zone-nsec.h"
 #include "libknot/libknot.h"
