@@ -388,7 +388,7 @@ static int journal_open_file(journal_t *j)
 
 	/* Get journal file size. */
 	struct stat st;
-	if (stat(j->path, &st) < 0) {
+	if (fstat(j->fd, &st) < 0) {
 		dbg_journal_verb("journal: cannot get journal fsize\n");
 		goto open_file_error;
 	}
@@ -548,7 +548,11 @@ int journal_write_in(journal_t *j, journal_node_t **rn, uint64_t id, size_t len)
 	            (unsigned long long)id, j->qtail, len, j->fsize);
 
 	/* Calculate remaining bytes to reach file size limit. */
-	size_t fs_remaining = j->fslimit - j->fsize;
+	size_t fs_remaining = 0;
+	if (j->fsize < j->fslimit) {
+		fs_remaining = j->fslimit - j->fsize;
+	}
+
 	int seek_ret = 0;
 
 	/* Increase free segment if on the end of file. */
