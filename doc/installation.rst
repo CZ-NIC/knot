@@ -33,7 +33,6 @@ Required libraries
 Knot DNS requires few libraries to be compiled:
 
 * OpenSSL, at least 1.0.0 (1.0.1 is required for ECDSA)
-* zlib
 * Userspace RCU, at least 0.5.4
 * libcap-ng, at least 0.6.4 (optional library)
 * lmdb (optional library)
@@ -50,9 +49,9 @@ server restarts.
 If the libsystemd library is available, the server will use systemd's startup
 notifications mechanism and journald for logging.
 
-You can probably find OpenSSL and zlib libraries already included in
-your system or distribution.  If not, zlib resides at http://zlib.net,
-and OpenSSL can be found at http://www.openssl.org.
+You can probably find OpenSSL library already included in
+your system or distribution.  If not, OpenSSL can be found at
+http://www.openssl.org.
 
 .. _Userspace RCU:
 
