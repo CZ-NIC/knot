@@ -293,7 +293,6 @@ only and there are some limitations:
   (even for verification only).
 * There cannot be more than eight keys per zone. Keys which are not
   published are not included in this number.
-* Single-Type Signing Scheme is not supported.
 
 Example how to generate NSEC3 capable zone signing key (ZSK) and key
 signing key (KSK) for zone ``example.com``::
@@ -325,8 +324,9 @@ The signing process consists of the following steps:
   for any keys that are present in keydir, but missing in zone file.
 * Removing expired signatures, invalid signatures, signatures expiring
   in a short time, and signatures with unknown key.
-* Creating any missing signatures. ``DNSKEY`` records are signed by
-  both ZSK and KSK keys, other records are signed only by ZSK keys.
+* Creating missing signatures. Unless the Single-Type Signing Scheme
+  is used, ``DNSKEY`` records in a zone apex are signed by KSK keys and
+  all other records are signed by ZSK keys.
 * SOA record is updated and resigned if any changes were performed.
 
 The zone signing is performed when the zone is loaded into server, on
