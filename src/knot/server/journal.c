@@ -484,7 +484,11 @@ int journal_write_in(journal_t *j, journal_node_t **rn, uint64_t id, size_t len)
 	            (unsigned long long)id, j->qtail, len, j->fsize);
 
 	/* Calculate remaining bytes to reach file size limit. */
-	size_t fs_remaining = j->fslimit - j->fsize;
+	size_t fs_remaining = 0;
+	if (j->fsize < j->fslimit) {
+		fs_remaining = j->fslimit - j->fsize;
+	}
+
 	int seek_ret = 0;
 
 	/* Increase free segment if on the end of file. */
