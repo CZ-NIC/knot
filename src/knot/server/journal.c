@@ -327,7 +327,7 @@ static int journal_open_file(journal_t *j)
 
 	/* Get journal file size. */
 	struct stat st;
-	if (stat(j->path, &st) < 0) {
+	if (fstat(j->fd, &st) < 0) {
 		dbg_journal_verb("journal: cannot get journal fsize\n");
 		goto open_file_error;
 	}
