@@ -14,13 +14,15 @@ TEST_CASES = {
     "rsa_ok":             True,
     "rsa_ecdsa_ok":       True,
     "rsa_ecdsa_roll_ok":  True,
+    # valid single-type signing
+    "rsa_stss_ksk":       True,
+    "rsa_stss_zsk":       True,
     # invalid cases
     "rsa_future_all":     False,
     "rsa_future_publish": False,
     "rsa_future_active":  False,
     "rsa_inactive_zsk":   False,
     "rsa_no_zsk":         False,
-    "rsa_twice_ksk":      False,
     "rsa_ecdsa_ksk_only": False,
     "rsa256_rsa512":      False,
 }
