@@ -1250,21 +1250,69 @@ static void wire_unknown_to_str(rrset_dump_params_t *p)
 	p->ret = 0;
 }
 
+static size_t dnskey_len(const uint8_t *rdata,
+                         const size_t  rdata_len)
+{
+	// Check for empty rdata and empty key.
+	if (rdata_len <= 4) {
+		return 0;
+	}
+
+	const uint8_t *key = rdata + 4;
+	const size_t  len = rdata_len - 4;
+
+	switch (rdata[3]) {
+	case KNOT_DNSSEC_ALG_DSA:
+	case KNOT_DNSSEC_ALG_DSA_NSEC3_SHA1:
+		// RFC 2536, key size ~ bit-length of 'modulus' P.
+		return (64 + 8 * key[0]) * 8;
+	case KNOT_DNSSEC_ALG_RSAMD5:
+	case KNOT_DNSSEC_ALG_RSASHA1:
+	case KNOT_DNSSEC_ALG_RSASHA1_NSEC3_SHA1:
+	case KNOT_DNSSEC_ALG_RSASHA256:
+	case KNOT_DNSSEC_ALG_RSASHA512:
+		// RFC 3110, key size ~ bit-length of 'modulus'.
+		if (key[0] == 0) {
+			if (len < 3) {
+				return 0;
+			}
+			uint16_t exp;
+			memcpy(&exp, key + 1, sizeof(uint16_t));
+			return (len - 3 - ntohs(exp)) * 8;
+		} else {
+			return (len - 1 - key[0]) * 8;
+		}
+	case KNOT_DNSSEC_ALG_ECC_GOST:
+		// RFC 5933, key size of GOST public keys MUST be 512 bits.
+		return 512;
+	case KNOT_DNSSEC_ALG_ECDSAP256SHA256:
+		// RFC 6605.
+		return 256;
+	case KNOT_DNSSEC_ALG_ECDSAP384SHA384:
+		// RFC 6605.
+		return 384;
+	default:
+		return 0;
+	}
+}
+
 static void dnskey_info(const uint8_t *rdata,
                         const size_t  rdata_len,
                         char          *out,
                         const size_t  out_len)
 {
-	const uint8_t  sep = *(rdata + 1) & 0x01;
+	const uint8_t  sep = rdata[1] & 0x01;
 	const uint16_t key_tag = knot_keytag(rdata, rdata_len);
+	const size_t   key_len = dnskey_len(rdata, rdata_len);
+	const uint8_t  alg_id = rdata[3];
 
 	lookup_table_t *alg = NULL;
-	alg = lookup_by_id(knot_dnssec_alg_names, *(rdata + 3));
+	alg = lookup_by_id(knot_dnssec_alg_names, alg_id);
 
-	int ret = snprintf(out, out_len, "%s, alg = %s, id = %u ",
+	int ret = snprintf(out, out_len, "%s, %s (%zub), id = %u",
 	                   sep ? "KSK" : "ZSK",
 	                   alg ? alg->name : "UNKNOWN",
-	                   key_tag );
+	                   key_len, key_tag );
 	if (ret <= 0) {	// Truncated return is acceptable. Just check for errors.
 		out[0] = '\0';
 	}
