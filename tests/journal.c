@@ -35,6 +35,35 @@ static int randstr(char* dst, size_t len)
 	return 0;
 }
 
+/*! \brief Journal fillup test with size check. */
+static void test_fillup(journal_t *journal, int fsize, const char *note)
+{
+	const int chunk = 512 + rand() % 512;
+	int ret = KNOT_EOK;
+	char *mptr = NULL;
+	size_t large_entry_len = chunk * 1024;
+	char *large_entry = malloc(chunk * 1024);
+	assert(large_entry);
+	randstr(large_entry, large_entry_len);
+	for (int i = 0; i < chunk; ++i) {
+		uint64_t chk_key = (uint64_t)journal + i;
+		ret = journal_map(journal, chk_key, &mptr, large_entry_len, false);
+		if (ret != KNOT_EOK) {
+			break;
+		}
+
+		memcpy(mptr, large_entry, large_entry_len);
+		journal_unmap(journal, chk_key, mptr, 1);
+	}
+	is_int(KNOT_EBUSY, ret, "journal: %s fillup", note);
+	free(large_entry);
+
+	/* Check file size. */
+	struct stat st;
+	fstat(journal->fd, &st);
+	ok(st.st_size < fsize + large_entry_len, "journal: %s fillup file size check", note);
+}
+
 int main(int argc, char *argv[])
 {
 	plan_lazy();
@@ -96,10 +125,9 @@ int main(int argc, char *argv[])
 	is_int(KNOT_EOK, ret, "journal: data integrity check after close/open");
 
 	/*  Write random data. */
-	ret = 0;
-	uint64_t tskey = 0xDEAD0000;
+	ret = KNOT_EOK;
 	for (int i = 0; i < 512; ++i) {
-		chk_key = tskey + i;
+		chk_key = 0xDEAD0000 + i;
 		ret = journal_map(journal, chk_key, &mptr, sizeof(chk_buf), false);
 		if (ret != KNOT_EOK) {
 			diag("journal_map failed: %s", knot_strerror(ret));
@@ -118,27 +146,17 @@ int main(int argc, char *argv[])
 	is_int(KNOT_ESPACE, ret, "journal: overfill");
 
 	/* Fillup */
-	tskey = 0xBEEF0000;
-	size_t large_entry_len = 512 * 1024;
-	char *large_entry = malloc(512 * 1024);
-	assert(large_entry);
-	randstr(large_entry, large_entry_len);
-	for (int i = 0; i < 512; ++i) {
-		chk_key = tskey + i;
-		ret = journal_map(journal, chk_key, &mptr, large_entry_len, false);
-		if (ret != KNOT_EOK) {
-			break;
-		}
-
-		journal_unmap(journal, chk_key, mptr, 1);
-	}
-	is_int(KNOT_EBUSY, ret, "journal: fillup");
-	free(large_entry);
-
-	/* Check file size. */
-	struct stat st;
-	stat(journal->path, &st);
-	ok(st.st_size < fsize + large_entry_len, "journal: fillup file size check");
+	test_fillup(journal, fsize, "iter#1");
+	
+	/* Journal flush + refill. */
+	journal_close(journal);
+	ret = journal_mark_synced(jfilename);
+	is_int(KNOT_EOK, ret, "journal: flush after fillup");
+	journal = journal_open(jfilename, fsize);
+	ok(journal != NULL, "journal: reopen after flush");
+	
+	/* Fillup */
+	test_fillup(journal, fsize, "iter#2");
 
 	/* Close journal. */
 	journal_close(journal);
