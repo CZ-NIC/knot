@@ -1264,12 +1264,14 @@ static size_t dnskey_len(const uint8_t *rdata,
 	switch (rdata[3]) {
 	case KNOT_DNSSEC_ALG_DSA:
 	case KNOT_DNSSEC_ALG_DSA_NSEC3_SHA1:
+		// RFC 2536, key size ~ bit-length of 'modulus' P.
 		return (64 + 8 * key[0]) * 8;
 	case KNOT_DNSSEC_ALG_RSAMD5:
 	case KNOT_DNSSEC_ALG_RSASHA1:
 	case KNOT_DNSSEC_ALG_RSASHA1_NSEC3_SHA1:
 	case KNOT_DNSSEC_ALG_RSASHA256:
 	case KNOT_DNSSEC_ALG_RSASHA512:
+		// RFC 3110, key size ~ bit-length of 'modulus'.
 		if (key[0] == 0) {
 			if (len < 3) {
 				return 0;
@@ -1281,10 +1283,13 @@ static size_t dnskey_len(const uint8_t *rdata,
 			return (len - 1 - key[0]) * 8;
 		}
 	case KNOT_DNSSEC_ALG_ECC_GOST:
+		// RFC 5933, key size of GOST public keys MUST be 512 bits.
 		return 512;
 	case KNOT_DNSSEC_ALG_ECDSAP256SHA256:
+		// RFC 6605.
 		return 256;
 	case KNOT_DNSSEC_ALG_ECDSAP384SHA384:
+		// RFC 6605.
 		return 384;
 	default:
 		return 0;
