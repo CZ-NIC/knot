@@ -26,8 +26,8 @@
 
 #pragma once
 
-#include <stdint.h>
 #include <stdbool.h>
+#include <stdint.h>
 
 #include "zscanner/error.h"
 
@@ -52,9 +52,6 @@
 
 /*! \brief Ragel call stack size (see Ragel internals). */
 #define RAGEL_STACK_SIZE		16
-
-/*! \brief ASCII value of '0' character. */
-#define ASCII_0				48
 
 /*! \brief Latitude value for equator (2^31). */
 #define LOC_LAT_ZERO	(uint32_t)2147483648

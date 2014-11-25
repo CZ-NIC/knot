@@ -25,7 +25,7 @@
 #include "libknot/dnssec/sign.h"
 #include "libknot/packet/wire.h"
 #include "libknot/packet/rrset-wire.h"
-#include "common/macros.h"
+#include "libknot/internal/macros.h"
 
 /*!
  * \brief Lifetime fudge of the SIG(0) packets in seconds.

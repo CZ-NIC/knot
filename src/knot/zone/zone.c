@@ -20,9 +20,9 @@
 #include <sys/stat.h>
 
 #include "libknot/descriptor.h"
-#include "common-knot/evsched.h"
-#include "common/lists.h"
-#include "common-knot/trim.h"
+#include "knot/common/evsched.h"
+#include "libknot/internal/lists.h"
+#include "knot/common/trim.h"
 #include "knot/zone/node.h"
 #include "knot/zone/zone.h"
 #include "knot/zone/zonefile.h"
@@ -33,7 +33,7 @@
 #include "libknot/errcode.h"
 #include "libknot/dname.h"
 #include "libknot/dnssec/random.h"
-#include "libknot/util/utils.h"
+#include "libknot/internal/utils.h"
 #include "libknot/rrtype/soa.h"
 
 static void free_ddns_queue(zone_t *z)
@@ -314,7 +314,7 @@ bool zone_transfer_needed(const zone_t *zone, const knot_pkt_t *pkt)
 		return false;
 	}
 
-	return knot_serial_compare(zone_contents_serial(zone->contents),
+	return serial_compare(zone_contents_serial(zone->contents),
 	                           knot_soa_serial(&soa.rrs)) < 0;
 }
 

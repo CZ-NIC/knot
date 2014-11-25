@@ -25,7 +25,7 @@
 #include "libknot/errcode.h"
 #include "knot/updates/acl.h"
 #include "knot/conf/conf.h"
-#include "libknot/util/endian.h"
+#include "libknot/internal/endian.h"
 #include "libknot/rrtype/tsig.h"
 
 static inline uint32_t ipv4_chunk(const struct sockaddr_in *ipv4)
@@ -83,7 +83,7 @@ static uint32_t acl_fill_mask32(short nbits)
 	return htonl(r);
 }
 
-int netblock_match(struct conf_iface_t *a1, const struct sockaddr_storage *a2)
+int netblock_match(struct conf_iface *a1, const struct sockaddr_storage *a2)
 {
 	int ret = 0;
 	uint32_t mask = 0xffffffff;
@@ -120,7 +120,7 @@ int netblock_match(struct conf_iface_t *a1, const struct sockaddr_storage *a2)
 	return ret;
 }
 
-struct conf_iface_t* acl_find(list_t *acl, const struct sockaddr_storage *addr,
+struct conf_iface* acl_find(list_t *acl, const struct sockaddr_storage *addr,
                               const knot_dname_t *key_name)
 {
 	if (acl == NULL || addr == NULL) {

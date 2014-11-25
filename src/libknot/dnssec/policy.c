@@ -19,7 +19,7 @@
 #include <time.h>
 
 #include "libknot/dnssec/policy.h"
-#include "common/macros.h"
+#include "libknot/internal/macros.h"
 
 _public_
 uint32_t knot_dnssec_policy_refresh_time(const knot_dnssec_policy_t *policy,

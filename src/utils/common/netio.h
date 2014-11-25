@@ -26,12 +26,12 @@
 
 #pragma once
 
-#include <stdint.h>			// uint_t
-#include <netdb.h>			// addrinfo
-#include <sys/socket.h>			// sockaddr_storage (BSD)
+#include <netdb.h>
+#include <stdint.h>
+#include <sys/socket.h>
 
-#include "common/lists.h"		// node
-#include "utils/common/params.h"	// params_t
+#include "utils/common/params.h"
+#include "libknot/internal/lists.h"
 
 /*! \brief Structure containing server information. */
 typedef struct {

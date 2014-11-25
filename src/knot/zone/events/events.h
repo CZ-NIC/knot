@@ -19,16 +19,16 @@
 #include <pthread.h>
 #include <stdbool.h>
 
-#include "common-knot/evsched.h"
-#include "common/namedb/namedb.h"
+#include "knot/common/evsched.h"
+#include "libknot/internal/namedb/namedb.h"
 #include "knot/worker/pool.h"
 
 /* Timer special values. */
 #define ZONE_EVENT_NOW 0
 
-struct zone_t;
+struct zone;
 
-struct server_t;
+struct server;
 
 typedef enum zone_event_type {
 	ZONE_EVENT_INVALID = -1,
@@ -52,7 +52,7 @@ typedef struct zone_events {
 
 	event_t *event;			//!< Scheduler event.
 	worker_pool_t *pool;		//!< Server worker pool.
-	knot_namedb_t *timers_db;	//!< Persistent zone timers database.
+	namedb_t *timers_db;		//!< Persistent zone timers database.
 
 	task_t task;			//!< Event execution context.
 	time_t time[ZONE_EVENT_COUNT];	//!< Event execution times.
@@ -68,7 +68,7 @@ typedef struct zone_events {
  *
  * \return KNOT_E*
  */
-int zone_events_init(struct zone_t *zone);
+int zone_events_init(struct zone *zone);
 
 /*!
  * \brief Set up zone events execution.
@@ -80,15 +80,15 @@ int zone_events_init(struct zone_t *zone);
  *
  * \return KNOT_E*
  */
-int zone_events_setup(struct zone_t *zone, worker_pool_t *workers,
-                      evsched_t *scheduler, knot_namedb_t *timers_db);
+int zone_events_setup(struct zone *zone, worker_pool_t *workers,
+                      evsched_t *scheduler, namedb_t *timers_db);
 
 /*!
  * \brief Deinitialize zone events.
  *
  * \param zone  Zone whose events we want to deinitialize.
  */
-void zone_events_deinit(struct zone_t *zone);
+void zone_events_deinit(struct zone *zone);
 
 /*!
  * \brief Enqueue event type for asynchronous execution.
@@ -99,7 +99,7 @@ void zone_events_deinit(struct zone_t *zone);
  * \param zone  Zone to schedule new event for.
  * \param type  Type of event.
  */
-void zone_events_enqueue(struct zone_t *zone, zone_event_type_t type);
+void zone_events_enqueue(struct zone *zone, zone_event_type_t type);
 
 /*!
  * \brief Schedule new zone event to absolute time.
@@ -108,7 +108,7 @@ void zone_events_enqueue(struct zone_t *zone, zone_event_type_t type);
  * \param type  Type of event.
  * \param time  Absolute time.
  */
-void zone_events_schedule_at(struct zone_t *zone, zone_event_type_t type, time_t time);
+void zone_events_schedule_at(struct zone *zone, zone_event_type_t type, time_t time);
 
 /*!
  * \brief Schedule new zone event using relative time to current time.
@@ -117,7 +117,7 @@ void zone_events_schedule_at(struct zone_t *zone, zone_event_type_t type, time_t
  * \param type  Type of event.
  * \param dt    Relative time.
  */
-void zone_events_schedule(struct zone_t *zone, zone_event_type_t type, unsigned dt);
+void zone_events_schedule(struct zone *zone, zone_event_type_t type, unsigned dt);
 
 /*!
  * \brief Check if zone event is scheduled.
@@ -125,7 +125,7 @@ void zone_events_schedule(struct zone_t *zone, zone_event_type_t type, unsigned 
  * \param zone  Zone to check event of.
  * \param type  Type of event.
  */
-bool zone_events_is_scheduled(struct zone_t *zone, zone_event_type_t type);
+bool zone_events_is_scheduled(struct zone *zone, zone_event_type_t type);
 
 /*!
  * \brief Cancel one zone event.
@@ -133,21 +133,21 @@ bool zone_events_is_scheduled(struct zone_t *zone, zone_event_type_t type);
  * \param zone  Zone to cancel event in.
  * \param type  Type of event to cancel.
  */
-void zone_events_cancel(struct zone_t *zone, zone_event_type_t type);
+void zone_events_cancel(struct zone *zone, zone_event_type_t type);
 
 /*!
  * \brief Freeze all zone events and prevent new events from running.
  *
  * \param zone  Zone to freeze events for.
  */
-void zone_events_freeze(struct zone_t *zone);
+void zone_events_freeze(struct zone *zone);
 
 /*!
  * \brief Start the events processing.
  *
  * \param zone  Zone to start processing for.
  */
-void zone_events_start(struct zone_t *zone);
+void zone_events_start(struct zone *zone);
 
 /*!
  * \brief Return time of the occurence of the given event.
@@ -159,7 +159,7 @@ void zone_events_start(struct zone_t *zone);
  * \retval 0 when the event is not planned
  * \retval negative value if event is invalid
  */
-time_t zone_events_get_time(const struct zone_t *zone, zone_event_type_t type);
+time_t zone_events_get_time(const struct zone *zone, zone_event_type_t type);
 
 /*!
  * \brief Return text name of the event.
@@ -179,7 +179,7 @@ const char *zone_events_get_name(zone_event_type_t type);
  *
  * \return time of the next event or an error (negative number)
  */
-time_t zone_events_get_next(const struct zone_t *zone, zone_event_type_t *type);
+time_t zone_events_get_next(const struct zone *zone, zone_event_type_t *type);
 
 /*!
  * \brief Replans zone events after config change. Will reuse events where applicable.
@@ -187,7 +187,7 @@ time_t zone_events_get_next(const struct zone_t *zone, zone_event_type_t *type);
  * \param zone      Zone with new config.
  * \param old_zone  Zone with old config.
  */
-void zone_events_update(struct zone_t *zone, struct zone_t *old_zone);
+void zone_events_update(struct zone *zone, struct zone *old_zone);
 
 /*!
  * \brief Replans DDNS processing event if DDNS queue is not empty.
@@ -195,11 +195,11 @@ void zone_events_update(struct zone_t *zone, struct zone_t *old_zone);
  * \param zone      Zone with new config.
  * \param old_zone  Zone with old config.
  */
-void zone_events_replan_ddns(struct zone_t *zone, const struct zone_t *old_zone);
+void zone_events_replan_ddns(struct zone *zone, const struct zone *old_zone);
 
 /*!
  * \brief Write persistent timers to timers database.
  *
  * \return KNOT_E*
  */
-int zone_events_write_persistent(struct zone_t *zone);
+int zone_events_write_persistent(struct zone *zone);

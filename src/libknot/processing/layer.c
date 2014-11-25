@@ -17,9 +17,7 @@
 #include <assert.h>
 
 #include "libknot/processing/layer.h"
-
-#include "common/debug.h"
-#include "common/macros.h"
+#include "libknot/internal/macros.h"
 
 /*! \brief Helper for conditional layer call. */
 #define LAYER_CALL(layer, func, ...) \
@@ -28,18 +26,6 @@
 		layer->state = layer->api->func(layer, ##__VA_ARGS__); \
 	}
 
-/* State -> string translation table. */
-#ifdef KNOT_NS_DEBUG
-#define LAYER_STATE_STR(x) _state_table[x]
-static const char* _state_table[] = {
-        [KNOT_NS_PROC_NOOP] = "NOOP",
-        [KNOT_NS_PROC_MORE] = "MORE",
-        [KNOT_NS_PROC_FULL] = "FULL",
-        [KNOT_NS_PROC_DONE] = "DONE",
-        [KNOT_NS_PROC_FAIL] = "FAIL"
-};
-#endif /* KNOT_NS_DEBUG */
-
 _public_
 int knot_layer_begin(knot_layer_t *ctx, const knot_layer_api_t *api, void *param)
 {
@@ -47,7 +33,6 @@ int knot_layer_begin(knot_layer_t *ctx, const knot_layer_api_t *api, void *param
 
 	LAYER_CALL(ctx, begin, param);
 
-	dbg_ns("%s -> %s\n", __func__, LAYER_STATE_STR(ctx->state));
 	return ctx->state;
 }
 
@@ -55,7 +40,6 @@ _public_
 int knot_layer_reset(knot_layer_t *ctx)
 {
 	LAYER_CALL(ctx, reset);
-	dbg_ns("%s -> %s\n", __func__, LAYER_STATE_STR(ctx->state));
 	return ctx->state;
 }
 
@@ -63,7 +47,6 @@ _public_
 int knot_layer_finish(knot_layer_t *ctx)
 {
 	LAYER_CALL(ctx, finish);
-	dbg_ns("%s -> %s\n", __func__, LAYER_STATE_STR(ctx->state));
 	return ctx->state;
 }
 
@@ -71,7 +54,6 @@ _public_
 int knot_layer_in(knot_layer_t *ctx, knot_pkt_t *pkt)
 {
 	LAYER_CALL(ctx, in, pkt);
-	dbg_ns("%s -> %s\n", __func__, LAYER_STATE_STR(ctx->state));
 	return ctx->state;
 }
 
@@ -84,7 +66,6 @@ int knot_layer_out(knot_layer_t *ctx, knot_pkt_t *pkt)
 	default: LAYER_CALL(ctx, out, pkt); break;
 	}
 
-	dbg_ns("%s -> %s\n", __func__, LAYER_STATE_STR(ctx->state));
 	return ctx->state;
 }
 

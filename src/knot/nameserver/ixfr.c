@@ -20,9 +20,9 @@
 #include "knot/nameserver/process_query.h"
 #include "knot/nameserver/process_answer.h"
 #include "knot/updates/apply.h"
-#include "common/debug.h"
+#include "knot/common/debug.h"
 #include "libknot/descriptor.h"
-#include "libknot/util/utils.h"
+#include "libknot/internal/utils.h"
 #include "libknot/rrtype/soa.h"
 
 /* ------------------------ IXFR-out processing ----------------------------- */
@@ -171,7 +171,7 @@ static int ixfr_load_chsets(list_t *chgsets, const zone_t *zone,
 	/* Compare serials. */
 	uint32_t serial_to = zone_contents_serial(zone->contents);
 	uint32_t serial_from = knot_soa_serial(&their_soa->rrs);
-	int ret = knot_serial_compare(serial_to, serial_from);
+	int ret = serial_compare(serial_to, serial_from);
 	if (ret <= 0) { /* We have older/same age zone. */
 		return KNOT_EUPTODATE;
 	}
@@ -695,7 +695,7 @@ int ixfr_process_answer(knot_pkt_t *pkt, struct answer_data *adata)
 	/* Check RCODE. */
 	uint8_t rcode = knot_wire_get_rcode(pkt->wire);
 	if (rcode != KNOT_RCODE_NOERROR) {
-		knot_lookup_table_t *lut = knot_lookup_by_id(knot_rcode_names, rcode);
+		lookup_table_t *lut = lookup_by_id(knot_rcode_names, rcode);
 		if (lut != NULL) {
 			IXFRIN_LOG(LOG_WARNING, "server responded with %s", lut->name);
 		}

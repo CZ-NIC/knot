@@ -19,7 +19,7 @@
 #include "knot/conf/conf.h"
 #include "knot/zone/zonedb.h"
 
-struct server_t;
+struct server;
 
 /*!
  * \brief Update zone database according to configuration.
@@ -31,4 +31,4 @@ struct server_t;
  * \retval KNOT_EINVAL
  * \retval KNOT_ERROR
  */
-int zonedb_reload(const conf_t *conf, struct server_t *server);
+int zonedb_reload(const conf_t *conf, struct server *server);

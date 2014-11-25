@@ -15,22 +15,22 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <arpa/inet.h>
 #include <config.h>
-#include <stdint.h>			// uint32_t
-#include <stdlib.h>			// calloc
-#include <stdio.h>			// sprintf
-#include <fcntl.h>			// open
-#include <libgen.h>			// dirname
-#include <stdbool.h>			// bool
-#include <string.h>			// strdup
-#include <math.h>			// pow
-#include <sys/mman.h>			// mmap
-#include <sys/types.h>			// (OpenBSD)
-#include <sys/socket.h>			// AF_INET (BSD)
-#include <sys/stat.h>			// fstat
-#include <netinet/in.h>			// in_addr (BSD)
-#include <arpa/inet.h>			// inet_pton
-#include <unistd.h>			// sysconf
+#include <fcntl.h>
+#include <stdbool.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <libgen.h>
+#include <math.h>
+#include <netinet/in.h>
+#include <sys/socket.h>
+#include <sys/mman.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <unistd.h>
 
 #include "zscanner/scanner.h"
 #include "zscanner/functions.h"
@@ -5412,10 +5412,10 @@ _match:
 	break;
 	case 30:
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -5681,7 +5681,7 @@ _match:
 	{
 		if ((*rdata_tail < (UINT8_MAX / 10)) ||   // Dominant fast check.
 			((*rdata_tail == (UINT8_MAX / 10)) && // Marginal case.
-			 ((*p) <= (UINT8_MAX % 10) + ASCII_0)
+			 ((*p) <= (UINT8_MAX % 10) + '0')
 			)
 		   ) {
 			*rdata_tail *= 10;

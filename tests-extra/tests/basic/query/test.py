@@ -2,6 +2,7 @@
 
 ''' For various query processing states. '''
 
+from dnstest.utils import *
 from dnstest.test import Test
 
 t = Test()
@@ -113,33 +114,38 @@ resp = knot.dig("cname-wildcard.flags", "TXT", udp=True)
 resp.cmp(bind)
 
 # CNAME leading to DNAME tree
-resp = knot.dig("cname-dname", "A", udp=True)
+resp = knot.dig("cname-dname.flags", "A", udp=True)
 resp.cmp(bind)
 
 # CNAME leading to DNAME tree (NXDOMAIN)
-resp = knot.dig("cname-dname-nx", "A", udp=True)
+resp = knot.dig("cname-dname-nx.flags", "A", udp=True)
 resp.cmp(bind)
 
 # CNAME leading to DNAME tree (NODATA)
-resp = knot.dig("cname-dname", "TXT", udp=True)
+resp = knot.dig("cname-dname.flags", "TXT", udp=True)
 resp.cmp(bind)
+
+# Long CNAME loop (Bind truncates the loop at 17 records)
+resp = knot.dig("ab.flags", "A", udp=True)
+resp.check(rcode="NOERROR")
+compare(resp.count(rtype="CNAME", section="answer"), 23, "Count of CNAME records in loop.")
 
 ''' CNAME in Additional '''
 
 # Leading to existing name
-resp = knot.dig("cname-mx", "MX", udp=True)
+resp = knot.dig("cname-mx.flags", "MX", udp=True)
 resp.cmp(bind)
 
 # Leading to delegation
-resp = knot.dig("cname-mx-deleg", "MX", udp=True)
+resp = knot.dig("cname-mx-deleg.flags", "MX", udp=True)
 resp.cmp(bind)
 
 # Leading to wildcard-covered name
-resp = knot.dig("cname-mx-wc", "MX", udp=True)
+resp = knot.dig("cname-mx-wc.flags", "MX", udp=True)
 resp.cmp(bind)
 
 # Leading to name outside zone
-resp = knot.dig("cname-mx-out", "MX", udp=True)
+resp = knot.dig("cname-mx-out.flags", "MX", udp=True)
 resp.cmp(bind)
 
 ''' DNAME answers. '''

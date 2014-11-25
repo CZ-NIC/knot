@@ -26,10 +26,10 @@
 #include "libknot/dname.h"
 #include "libknot/packet/wire.h"
 #include "knot/zone/node.h"
-#include "common/debug.h"
-#include "common/macros.h"
-#include "common/mempattern.h"
-#include "common/mempool.h"
+#include "knot/common/debug.h"
+#include "libknot/internal/mempattern.h"
+#include "libknot/internal/mempool.h"
+#include "libknot/internal/macros.h"
 
 
 /*----------------------------------------------------------------------------*/

@@ -21,6 +21,7 @@
 #include "libknot/rrtype/rdname.h"
 #include "libknot/dnssec/random.h"
 #include "libknot/rrset-dump.h"
+#include "libknot/internal/utils.h"
 
 #define LMDB_MAPSIZE	(100 * 1024 * 1024)
 
@@ -139,13 +140,13 @@ static inline char *unpack_str(char **stream) {
 	return ret;
 }
 static inline void pack_bin(char **stream, const void *data, uint32_t len) {
-	knot_wire_write_u32((uint8_t *)*stream, len);
+	wire_write_u32((uint8_t *)*stream, len);
 	*stream += sizeof(uint32_t);
 	memcpy(*stream, data, len);
 	*stream += len;
 }
 static inline void *unpack_bin(char **stream, uint32_t *len) {
-	*len = knot_wire_read_u32((uint8_t *)*stream);
+	*len = wire_read_u32((uint8_t *)*stream);
 	*stream += sizeof(uint32_t);
 	void *ret = *stream;
 	*stream += *len;
@@ -386,14 +387,14 @@ static int rosedb_log_message(char *stream, size_t *maxlen, knot_pkt_t *pkt, con
 	 * - Empty if no answer.
 	 */
 	const knot_pktsection_t *ans = knot_pkt_section(pkt, KNOT_ANSWER);
-    if (ans->count > 0) {
-        const knot_rrset_t *rr = &ans->rr[knot_random_uint16_t() % ans->count];
-        int ret = knot_rrset_txt_dump_data(rr, 0, stream, *maxlen, &KNOT_DUMP_STYLE_DEFAULT);
-        if (ret < 0) {
-            return ret;
-        }
-        stream_skip(&stream, maxlen, ret);
-    }
+	if (ans->count > 0) {
+		const knot_rrset_t *rr = &ans->rr[knot_random_uint16_t() % ans->count];
+		int ret = knot_rrset_txt_dump_data(rr, 0, stream, *maxlen, &KNOT_DUMP_STYLE_DEFAULT);
+		if (ret < 0) {
+			return ret;
+		}
+		stream_skip(&stream, maxlen, ret);
+	}
 	STREAM_WRITE(stream, maxlen, snprintf, "\t");
 
 	/* Field 17 Connection type. */
@@ -404,15 +405,15 @@ static int rosedb_log_message(char *stream, size_t *maxlen, knot_pkt_t *pkt, con
 	char type_str[16] = { '\0' };
 	knot_rrtype_to_string(knot_pkt_qtype(qdata->query), type_str, sizeof(type_str));
 	STREAM_WRITE(stream, maxlen, snprintf, "%s\t", type_str);
-    
-    /* Field 19 First authority. */
-    const knot_pktsection_t *ns = knot_pkt_section(pkt, KNOT_AUTHORITY);
-    if (ns->count > 0 && ns->rr[0].type == KNOT_RRTYPE_NS) {
-        const knot_dname_t *label = knot_ns_name(&ns->rr[0].rrs, 0);
-        memset(dname_buf, 0, sizeof(dname_buf));
-        memcpy(dname_buf, label + 1, *label);
-        STREAM_WRITE(stream, maxlen, snprintf, "%s", dname_buf);
-    }
+
+	/* Field 19 First authority. */
+	const knot_pktsection_t *ns = knot_pkt_section(pkt, KNOT_AUTHORITY);
+	if (ns->count > 0 && ns->rr[0].type == KNOT_RRTYPE_NS) {
+		const knot_dname_t *label = knot_ns_name(&ns->rr[0].rrs, 0);
+		memset(dname_buf, 0, sizeof(dname_buf));
+		memcpy(dname_buf, label + 1, *label);
+		STREAM_WRITE(stream, maxlen, snprintf, "%s", dname_buf);
+	}
 
 	return KNOT_EOK;
 }
@@ -489,21 +490,21 @@ static int rosedb_synth(knot_pkt_t *pkt, const knot_dname_t *key, struct iter *i
 	ret = cache_iter_begin(it, key);
 	while(ret == KNOT_EOK) {
 		if (cache_iter_val(it, &entry) == 0) {
-            ret = rosedb_synth_rr(pkt, &entry, KNOT_RRTYPE_NS);  
-            ret = rosedb_synth_rr(pkt, &entry, KNOT_RRTYPE_SOA);
+			ret = rosedb_synth_rr(pkt, &entry, KNOT_RRTYPE_NS);  
+			ret = rosedb_synth_rr(pkt, &entry, KNOT_RRTYPE_SOA);
 		}
 		if (cache_iter_next(it) != 0) {
 			break;
 		}
 	}
-	
+
 	/* Our response is authoritative. */
-    if (knot_wire_get_nscount(pkt->wire) > 0) {
-        knot_wire_set_aa(pkt->wire);
-        if (knot_wire_get_ancount(pkt->wire) == 0) {
-            knot_wire_set_rcode(pkt->wire, KNOT_RCODE_NXDOMAIN);
-        }
-    }
+	if (knot_wire_get_nscount(pkt->wire) > 0) {
+		knot_wire_set_aa(pkt->wire);
+		if (knot_wire_get_ancount(pkt->wire) == 0) {
+			knot_wire_set_rcode(pkt->wire, KNOT_RCODE_NXDOMAIN);
+		}
+	}
 
 	/* Send message to syslog. */
 	struct sockaddr_storage syslog_addr;

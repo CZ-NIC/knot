@@ -29,13 +29,12 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "common/mempattern.h"
-
 #include "libknot/dname.h"
 #include "libknot/rrset.h"
 #include "libknot/rrtype/opt.h"
 #include "libknot/packet/wire.h"
 #include "libknot/packet/compr.h"
+#include "libknot/internal/mempattern.h"
 
 /* Number of packet sections (ANSWER, AUTHORITY, ADDITIONAL). */
 #define KNOT_PKT_SECTIONS 3

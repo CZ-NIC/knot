@@ -40,8 +40,8 @@
 
 #pragma once
 
-#include "common/lists.h"
-#include "common/mempattern.h"
+#include "libknot/internal/lists.h"
+#include "libknot/internal/mempattern.h"
 #include "libknot/consts.h"
 #include "libknot/packet/pkt.h"
 
@@ -61,7 +61,7 @@ enum query_stage {
 struct query_data;
 struct query_module;
 struct query_plan;
-struct conf_t;
+struct conf;
 
 /* Module callback required API. */
 typedef int (*qmodule_load_t)(struct query_plan *plan, struct query_module *self);
@@ -78,7 +78,7 @@ struct query_module {
 	void *ctx;
 	char *param;
 	mm_ctx_t *mm;
-	struct conf_t *config;
+	struct conf *config;
 	qmodule_load_t load;
 	qmodule_unload_t unload;
 };
@@ -112,7 +112,7 @@ int query_plan_step(struct query_plan *plan, int stage, qmodule_process_t proces
  * \brief Open query module identified by name.
  * \note Module 'load' hook is NOT called and left upon a caller to decide.
  */
-struct query_module *query_module_open(struct conf_t *config, const char *name,
+struct query_module *query_module_open(struct conf *config, const char *name,
                                        const char *param, mm_ctx_t *mm);
 
 /*!

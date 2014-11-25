@@ -26,9 +26,9 @@
 
 #pragma once
 
-#include "libknot/packet/wire.h"
 #include "libknot/dname.h"
 #include "libknot/rrset.h"
+#include "libknot/packet/wire.h"
 
 /*! \brief Compression hint type. */
 enum knot_compr_hint {
@@ -46,7 +46,7 @@ enum knot_compr_offset {
 
 /*
  * \note A little bit about how compression hints work.
- * 
+ *
  * We're storing a RRSet say 'abcd. CNAME [0]net. [1]com.' (owner=abcd. 2 RRs).
  * The owner 'abcd.' is same for both RRs, we put it at the offset 0 in rrinfo.compress_ptr
  * The names 'net.' and 'com.' are in the RDATA, therefore go to offsets 1 and 2.

@@ -18,9 +18,8 @@
 #include <stdlib.h>
 
 #include "libknot/errcode.h"
-
-#include "common/errors.h"
-#include "common/macros.h"
+#include "libknot/internal/errors.h"
+#include "libknot/internal/macros.h"
 
 const error_table_t error_messages[] = {
 	{ KNOT_EOK, "OK" },
@@ -86,6 +85,7 @@ const error_table_t error_messages[] = {
 	/* Control states. */
 	{ KNOT_CTL_STOP,     "stopping server" },
 	{ KNOT_CTL_ACCEPTED, "command accepted" },
+	{ KNOT_CTL_ARG_REQ,  "argument required" },
 
 	/* Network errors. */
 	{ KNOT_NET_EADDR,    "bad address or host name" },

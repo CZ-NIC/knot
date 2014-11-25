@@ -14,24 +14,20 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <assert.h>
+#include <inttypes.h>
 #include <string.h>
 #include <stdlib.h>
 #include <stdint.h>
-#include <inttypes.h>
-#include <assert.h>
 #include <time.h>
 
 #include "libknot/rrtype/tsig.h"
-
-#include "common/debug.h"
-#include "common/log.h"
-#include "common/macros.h"
-
-#include "libknot/errcode.h"
-#include "libknot/util/utils.h"
-#include "libknot/rrset.h"
-#include "libknot/dname.h"
 #include "libknot/consts.h"
+#include "libknot/dname.h"
+#include "libknot/errcode.h"
+#include "libknot/rrset.h"
+#include "libknot/internal/macros.h"
+#include "libknot/internal/utils.h"
 
 /*! \brief TSIG field offsets. */
 typedef enum tsig_off_t {
@@ -71,9 +67,6 @@ static uint8_t* rdata_seek(const knot_rrset_t *rr, tsig_off_t id, size_t nb)
 	int alg_len = knot_dname_size(rd);
 	uint16_t lim = knot_rdata_rdlen(rr_data);
 	if (lim < alg_len + 5 * sizeof(uint16_t)) {
-		dbg_tsig("TSIG: rdata: not enough items "
-		         "(has %"PRIu16", min %zu).\n",
-		         lim, alg_len + 5 * sizeof(uint16_t));
 		return NULL;
 	}
 
@@ -87,27 +80,25 @@ static uint8_t* rdata_seek(const knot_rrset_t *rr, tsig_off_t id, size_t nb)
 	case TSIG_MAC_O: rd += alg_len + 5 * sizeof(uint16_t); break;
 	case TSIG_ORIGID_O:
 		rd += alg_len + 4 * sizeof(uint16_t);
-		rd += knot_wire_read_u16(rd) + sizeof(uint16_t);
+		rd += wire_read_u16(rd) + sizeof(uint16_t);
 		break;
 
 	case TSIG_ERROR_O:
 		rd += alg_len + 4 * sizeof(uint16_t);
-		rd += knot_wire_read_u16(rd) + 2 * sizeof(uint16_t);
+		rd += wire_read_u16(rd) + 2 * sizeof(uint16_t);
 		break;
 	case TSIG_OLEN_O:
 		rd += alg_len + 4 * sizeof(uint16_t);
-		rd += knot_wire_read_u16(rd) + 3 * sizeof(uint16_t);
+		rd += wire_read_u16(rd) + 3 * sizeof(uint16_t);
 		break;
 	case TSIG_OTHER_O:
 		rd += alg_len + 4 * sizeof(uint16_t);
-		rd += knot_wire_read_u16(rd) + 4 * sizeof(uint16_t);
+		rd += wire_read_u16(rd) + 4 * sizeof(uint16_t);
 		break;
 	}
 
 	/* Check remaining bytes. */
 	if (rd + nb > bp + lim) {
-		dbg_tsig("TSIG: rdata: not enough items (needs %zu, has %u).\n",
-		         (rd-bp)+nb, lim);
 		return NULL;
 	}
 
@@ -121,7 +112,7 @@ static int rdata_set_tsig_error(knot_rrset_t *tsig, uint16_t tsig_error)
 		return KNOT_ERROR;
 	}
 
-	knot_wire_write_u16(rd, tsig_error);
+	wire_write_u16(rd, tsig_error);
 	return KNOT_EOK;
 }
 
@@ -147,7 +138,7 @@ int knot_tsig_create_rdata(knot_rrset_t *rr, const knot_dname_t *alg,
 
 	/* Set MAC variable length in advance. */
 	size_t offset = alg_len + TSIG_OFF_MACLEN;
-	knot_wire_write_u16(rd + offset, maclen);
+	wire_write_u16(rd + offset, maclen);
 
 	int ret = knot_rrset_add_rdata(rr, rd, rdlen, 0, NULL);
 	if (ret != KNOT_EOK) {
@@ -168,7 +159,7 @@ int knot_tsig_rdata_set_time_signed(knot_rrset_t *tsig, uint64_t time)
 		return KNOT_ERROR;
 	}
 
-	knot_wire_write_u48(rd, time);
+	wire_write_u48(rd, time);
 	return KNOT_EOK;
 }
 
@@ -192,7 +183,7 @@ int knot_tsig_rdata_set_fudge(knot_rrset_t *tsig, uint16_t fudge)
 		return KNOT_ERROR;
 	}
 
-	knot_wire_write_u16(rd, fudge);
+	wire_write_u16(rd, fudge);
 	return KNOT_EOK;
 }
 
@@ -220,7 +211,7 @@ int knot_tsig_rdata_set_orig_id(knot_rrset_t *tsig, uint16_t id)
 	}
 
 	/* Write the length - 2. */
-	knot_wire_write_u16(rd, id);
+	wire_write_u16(rd, id);
 	return KNOT_EOK;
 }
 
@@ -229,7 +220,6 @@ int knot_tsig_rdata_set_other_data(knot_rrset_t *tsig, uint16_t len,
                                    const uint8_t *other_data)
 {
 	if (len > TSIG_OTHER_MAXLEN) {
-		dbg_tsig("TSIG: rdata: other len > %zu B\n", TSIG_OTHER_MAXLEN);
 		return KNOT_EINVAL;
 	}
 
@@ -239,7 +229,7 @@ int knot_tsig_rdata_set_other_data(knot_rrset_t *tsig, uint16_t len,
 	}
 
 	/* Write the length. */
-	knot_wire_write_u16(rd, len);
+	wire_write_u16(rd, len);
 
 	/* Copy the actual data. */
 	memcpy(rd + sizeof(uint16_t), other_data, len);
@@ -259,22 +249,18 @@ knot_tsig_algorithm_t knot_tsig_rdata_alg(const knot_rrset_t *tsig)
 	/* Get the algorithm name. */
 	const knot_dname_t *alg_name = knot_tsig_rdata_alg_name(tsig);
 	if (!alg_name) {
-		dbg_tsig("TSIG: rdata: cannot get algorithm name.\n");
 		return KNOT_TSIG_ALG_NULL;
 	}
 
 	/* Convert alg name to string. */
 	char *name = knot_dname_to_str_alloc(alg_name);
 	if (!name) {
-		dbg_tsig("TSIG: rdata: cannot convert alg name.\n");
 		return KNOT_TSIG_ALG_NULL;
 	}
 
-	knot_lookup_table_t *item = knot_lookup_by_name(
-	                                      knot_tsig_alg_dnames_str, name);
+	lookup_table_t *item = lookup_by_name(knot_tsig_alg_dnames_str, name);
 	free(name);
 	if (!item) {
-		dbg_tsig("TSIG: rdata: unknown algorithm.\n");
 		return KNOT_TSIG_ALG_NULL;
 	}
 	return item->id;
@@ -288,7 +274,7 @@ uint64_t knot_tsig_rdata_time_signed(const knot_rrset_t *tsig)
 	if (!rd) {
 		return 0;
 	}
-	return knot_wire_read_u48(rd);
+	return wire_read_u48(rd);
 }
 
 _public_
@@ -298,7 +284,7 @@ uint16_t knot_tsig_rdata_fudge(const knot_rrset_t *tsig)
 	if (!rd) {
 		return 0;
 	}
-	return knot_wire_read_u16(rd);
+	return wire_read_u16(rd);
 }
 
 _public_
@@ -318,7 +304,7 @@ size_t knot_tsig_rdata_mac_length(const knot_rrset_t *tsig)
 	if (!rd) {
 		return 0;
 	}
-	return knot_wire_read_u16(rd);
+	return wire_read_u16(rd);
 }
 
 _public_
@@ -328,7 +314,7 @@ uint16_t knot_tsig_rdata_orig_id(const knot_rrset_t *tsig)
 	if (!rd) {
 		return KNOT_ERROR;
 	}
-	return knot_wire_read_u16(rd);
+	return wire_read_u16(rd);
 }
 
 _public_
@@ -338,7 +324,7 @@ uint16_t knot_tsig_rdata_error(const knot_rrset_t *tsig)
 	if (!rd) {
 		return KNOT_ERROR;
 	}
-	return knot_wire_read_u16(rd);
+	return wire_read_u16(rd);
 }
 
 _public_
@@ -358,7 +344,7 @@ uint16_t knot_tsig_rdata_other_data_length(const knot_rrset_t *tsig)
 	if (!rd) {
 		return KNOT_ERROR;
 	}
-	return knot_wire_read_u16(rd);
+	return wire_read_u16(rd);
 }
 
 _public_
@@ -373,11 +359,8 @@ int knot_tsig_alg_from_name(const knot_dname_t *alg_name)
 		return 0;
 	}
 
-	knot_lookup_table_t *found =
-		knot_lookup_by_name(knot_tsig_alg_dnames_str, name);
-
+	lookup_table_t *found = lookup_by_name(knot_tsig_alg_dnames_str, name);
 	if (!found) {
-		dbg_tsig("Unknown algorithm: %s \n", name);
 		free(name);
 		return 0;
 	}
@@ -427,9 +410,9 @@ size_t knot_tsig_rdata_tsig_timers_length()
  */
 static const char *alg_to_str(knot_tsig_algorithm_t alg)
 {
-	knot_lookup_table_t *item;
+	lookup_table_t *item;
 
-	item = knot_lookup_by_id(knot_tsig_alg_dnames_str, alg);
+	item = lookup_by_id(knot_tsig_alg_dnames_str, alg);
 
 	if (item != NULL) {
 		return item->name;
@@ -441,9 +424,9 @@ static const char *alg_to_str(knot_tsig_algorithm_t alg)
 _public_
 const knot_dname_t *knot_tsig_alg_to_dname(knot_tsig_algorithm_t alg)
 {
-	knot_lookup_table_t *item;
+	lookup_table_t *item;
 
-	item = knot_lookup_by_id(knot_tsig_alg_dnames, alg);
+	item = lookup_by_id(knot_tsig_alg_dnames, alg);
 
 	if (item != NULL) {
 		return (const knot_dname_t*)item->name;

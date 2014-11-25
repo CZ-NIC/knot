@@ -1,5 +1,5 @@
 /*!
- * \file zone_update.h
+ * \file zone-update.h
  *
  * \author Jan Kadlec <jan.kadlec@nic.cz>
  *
@@ -28,7 +28,7 @@
 
 #include "knot/updates/changesets.h"
 #include "knot/zone/contents.h"
-#include "common/mempattern.h"
+#include "libknot/internal/mempattern.h"
 
 /*! \brief Structure for zone contents updating / querying \todo to be moved to new ZONE API */
 typedef struct {
@@ -68,3 +68,4 @@ const zone_node_t *zone_update_get_node(zone_update_t *update,
  */
 void zone_update_clear(zone_update_t *update);
 
+/*! @} */

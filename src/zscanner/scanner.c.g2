@@ -15,22 +15,22 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <arpa/inet.h>
 #include <config.h>
-#include <stdint.h>			// uint32_t
-#include <stdlib.h>			// calloc
-#include <stdio.h>			// sprintf
-#include <fcntl.h>			// open
-#include <libgen.h>			// dirname
-#include <stdbool.h>			// bool
-#include <string.h>			// strdup
-#include <math.h>			// pow
-#include <sys/mman.h>			// mmap
-#include <sys/types.h>			// (OpenBSD)
-#include <sys/socket.h>			// AF_INET (BSD)
-#include <sys/stat.h>			// fstat
-#include <netinet/in.h>			// in_addr (BSD)
-#include <arpa/inet.h>			// inet_pton
-#include <unistd.h>			// sysconf
+#include <fcntl.h>
+#include <stdbool.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <libgen.h>
+#include <math.h>
+#include <netinet/in.h>
+#include <sys/socket.h>
+#include <sys/mman.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <unistd.h>
 
 #include "zscanner/scanner.h"
 #include "zscanner/functions.h"
@@ -2475,10 +2475,10 @@ tr4:
 		s->number64 = 0;
 	}
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -2491,10 +2491,10 @@ tr4:
 	goto st2;
 tr27:
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -11780,10 +11780,10 @@ tr98:
 		s->number64 = 0;
 	}
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -17580,10 +17580,10 @@ tr525:
 		s->number64 = 0;
 	}
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -17596,10 +17596,10 @@ tr525:
 	goto st126;
 tr530:
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -18095,10 +18095,10 @@ tr550:
 		s->number64 = 0;
 	}
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -18111,10 +18111,10 @@ tr550:
 	goto st132;
 tr570:
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -18227,10 +18227,10 @@ case 133:
 	goto tr23;
 tr579:
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -18249,10 +18249,10 @@ tr578:
 		s->number64 = 0;
 	}
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -18279,10 +18279,10 @@ tr588:
 		s->number64 = 0;
 	}
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -19089,10 +19089,10 @@ tr3173:
 		s->number64 = 0;
 	}
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -19397,10 +19397,10 @@ case 152:
 	goto tr23;
 tr626:
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -19419,10 +19419,10 @@ tr625:
 		s->number64 = 0;
 	}
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -19449,10 +19449,10 @@ tr635:
 		s->number64 = 0;
 	}
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -23297,10 +23297,10 @@ tr3212:
 		s->number64 = 0;
 	}
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -29319,7 +29319,7 @@ tr806:
 	{
 		if ((*rdata_tail < (UINT8_MAX / 10)) ||   // Dominant fast check.
 			((*rdata_tail == (UINT8_MAX / 10)) && // Marginal case.
-			 ((*p) <= (UINT8_MAX % 10) + ASCII_0)
+			 ((*p) <= (UINT8_MAX % 10) + '0')
 			)
 		   ) {
 			*rdata_tail *= 10;
@@ -29341,7 +29341,7 @@ tr808:
 	{
 		if ((*rdata_tail < (UINT8_MAX / 10)) ||   // Dominant fast check.
 			((*rdata_tail == (UINT8_MAX / 10)) && // Marginal case.
-			 ((*p) <= (UINT8_MAX % 10) + ASCII_0)
+			 ((*p) <= (UINT8_MAX % 10) + '0')
 			)
 		   ) {
 			*rdata_tail *= 10;
@@ -29363,7 +29363,7 @@ tr809:
 	{
 		if ((*rdata_tail < (UINT8_MAX / 10)) ||   // Dominant fast check.
 			((*rdata_tail == (UINT8_MAX / 10)) && // Marginal case.
-			 ((*p) <= (UINT8_MAX % 10) + ASCII_0)
+			 ((*p) <= (UINT8_MAX % 10) + '0')
 			)
 		   ) {
 			*rdata_tail *= 10;
@@ -29482,7 +29482,7 @@ tr818:
 	{
 		if ((*rdata_tail < (UINT8_MAX / 10)) ||   // Dominant fast check.
 			((*rdata_tail == (UINT8_MAX / 10)) && // Marginal case.
-			 ((*p) <= (UINT8_MAX % 10) + ASCII_0)
+			 ((*p) <= (UINT8_MAX % 10) + '0')
 			)
 		   ) {
 			*rdata_tail *= 10;
@@ -29504,7 +29504,7 @@ tr819:
 	{
 		if ((*rdata_tail < (UINT8_MAX / 10)) ||   // Dominant fast check.
 			((*rdata_tail == (UINT8_MAX / 10)) && // Marginal case.
-			 ((*p) <= (UINT8_MAX % 10) + ASCII_0)
+			 ((*p) <= (UINT8_MAX % 10) + '0')
 			)
 		   ) {
 			*rdata_tail *= 10;
@@ -29526,7 +29526,7 @@ tr820:
 	{
 		if ((*rdata_tail < (UINT8_MAX / 10)) ||   // Dominant fast check.
 			((*rdata_tail == (UINT8_MAX / 10)) && // Marginal case.
-			 ((*p) <= (UINT8_MAX % 10) + ASCII_0)
+			 ((*p) <= (UINT8_MAX % 10) + '0')
 			)
 		   ) {
 			*rdata_tail *= 10;
@@ -29636,10 +29636,10 @@ tr831:
 		s->number64 = 0;
 	}
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -29652,10 +29652,10 @@ tr831:
 	goto st271;
 tr836:
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -29923,10 +29923,10 @@ case 274:
 	goto tr832;
 tr847:
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -29945,10 +29945,10 @@ tr845:
 		s->number64 = 0;
 	}
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -29975,10 +29975,10 @@ tr856:
 		s->number64 = 0;
 	}
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -39153,10 +39153,10 @@ tr1373:
 		s->number64 = 0;
 	}
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -39169,10 +39169,10 @@ tr1373:
 	goto st427;
 tr1377:
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -39400,10 +39400,10 @@ tr1410:
 		s->number64 = 0;
 	}
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -39416,10 +39416,10 @@ tr1410:
 	goto st436;
 tr1414:
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -39944,10 +39944,10 @@ tr1438:
 		s->number64 = 0;
 	}
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -40478,10 +40478,10 @@ tr1439:
 		s->number64 = 0;
 	}
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -40494,10 +40494,10 @@ tr1439:
 	goto st451;
 tr1443:
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -40626,10 +40626,10 @@ tr1468:
 		s->number64 = 0;
 	}
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -40642,10 +40642,10 @@ tr1468:
 	goto st454;
 tr1475:
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -41704,10 +41704,10 @@ tr1579:
 		s->number64 = 0;
 	}
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -41720,10 +41720,10 @@ tr1579:
 	goto st549;
 tr1587:
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -42662,10 +42662,10 @@ tr1658:
 		s->number64 = 0;
 	}
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -42678,10 +42678,10 @@ tr1658:
 	goto st598;
 tr1664:
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -42835,10 +42835,10 @@ tr1670:
 		s->number64 = 0;
 	}
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -42851,10 +42851,10 @@ tr1670:
 	goto st600;
 tr1677:
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -43111,10 +43111,10 @@ tr1688:
 		s->number64 = 0;
 	}
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -43127,10 +43127,10 @@ tr1688:
 	goto st602;
 tr1694:
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -43387,10 +43387,10 @@ tr1705:
 		s->number64 = 0;
 	}
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -43403,10 +43403,10 @@ tr1705:
 	goto st604;
 tr1711:
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -43663,10 +43663,10 @@ tr1722:
 		s->number64 = 0;
 	}
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -43679,10 +43679,10 @@ tr1722:
 	goto st606;
 tr1726:
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -43816,10 +43816,10 @@ case 607:
 	goto tr1673;
 tr1733:
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -43838,10 +43838,10 @@ tr1732:
 		s->number64 = 0;
 	}
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -43868,10 +43868,10 @@ tr1740:
 		s->number64 = 0;
 	}
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -44076,10 +44076,10 @@ case 611:
 	goto tr1673;
 tr1742:
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -44098,10 +44098,10 @@ tr1741:
 		s->number64 = 0;
 	}
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -44128,10 +44128,10 @@ tr1751:
 		s->number64 = 0;
 	}
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -44346,10 +44346,10 @@ case 615:
 	goto tr1673;
 tr1755:
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -44368,10 +44368,10 @@ tr1754:
 		s->number64 = 0;
 	}
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -44398,10 +44398,10 @@ tr1764:
 		s->number64 = 0;
 	}
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -44616,10 +44616,10 @@ case 619:
 	goto tr1673;
 tr1768:
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -44638,10 +44638,10 @@ tr1767:
 		s->number64 = 0;
 	}
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -44668,10 +44668,10 @@ tr1777:
 		s->number64 = 0;
 	}
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -45333,10 +45333,10 @@ tr1806:
 		s->number64 = 0;
 	}
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -45349,10 +45349,10 @@ tr1806:
 	goto st636;
 tr1810:
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -46036,10 +46036,10 @@ case 646:
 	goto tr1840;
 tr1845:
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -46065,10 +46065,10 @@ tr1841:
 		s->number64 = 0;
 	}
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -46220,10 +46220,10 @@ tr1851:
 		s->number64 = 0;
 	}
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -46236,10 +46236,10 @@ tr1851:
 	goto st649;
 tr1859:
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -46388,10 +46388,10 @@ case 650:
 	goto tr1840;
 tr1872:
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -46413,10 +46413,10 @@ tr1865:
 		s->number64 = 0;
 	}
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -46844,10 +46844,10 @@ tr1885:
 		s->number64 = 0;
 	}
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -46860,10 +46860,10 @@ tr1885:
 	goto st655;
 tr1889:
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -47015,10 +47015,10 @@ tr1895:
 		s->number64 = 0;
 	}
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -47031,10 +47031,10 @@ tr1895:
 	goto st657;
 tr1903:
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -47183,10 +47183,10 @@ case 658:
 	goto tr1840;
 tr1916:
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -47208,10 +47208,10 @@ tr1909:
 		s->number64 = 0;
 	}
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -47644,10 +47644,10 @@ case 663:
 	goto tr1840;
 tr1936:
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -47669,10 +47669,10 @@ tr1930:
 		s->number64 = 0;
 	}
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -47697,10 +47697,10 @@ tr1931:
 		s->number64 = 0;
 	}
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -48046,10 +48046,10 @@ case 665:
 	goto tr1840;
 tr1956:
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -48071,10 +48071,10 @@ tr1946:
 		s->number64 = 0;
 	}
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -48404,10 +48404,10 @@ case 667:
 	goto tr1840;
 tr1975:
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -48429,10 +48429,10 @@ tr1966:
 		s->number64 = 0;
 	}
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -48762,10 +48762,10 @@ case 669:
 	goto tr1840;
 tr1994:
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -48787,10 +48787,10 @@ tr1985:
 		s->number64 = 0;
 	}
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -50035,10 +50035,10 @@ tr2010:
 		s->number64 = 0;
 	}
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -50054,10 +50054,10 @@ tr2010:
 	goto st674;
 tr2016:
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -50568,10 +50568,10 @@ tr2020:
 		s->number64 = 0;
 	}
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -50587,10 +50587,10 @@ tr2020:
 	goto st677;
 tr2027:
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -51181,10 +51181,10 @@ tr2031:
 		s->number64 = 0;
 	}
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -51200,10 +51200,10 @@ tr2031:
 	goto st681;
 tr2038:
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -51806,10 +51806,10 @@ tr2042:
 		s->number64 = 0;
 	}
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -51825,10 +51825,10 @@ tr2042:
 	goto st685;
 tr2049:
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -52128,10 +52128,10 @@ tr2058:
 		s->number64 = 0;
 	}
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -52147,10 +52147,10 @@ tr2058:
 	goto st691;
 tr2061:
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -52431,10 +52431,10 @@ tr2070:
 		s->number64 = 0;
 	}
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -52450,10 +52450,10 @@ tr2070:
 	goto st698;
 tr2073:
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -52580,10 +52580,10 @@ tr2074:
 		s->number64 = 0;
 	}
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -52596,10 +52596,10 @@ tr2074:
 	goto st702;
 tr2078:
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -52753,10 +52753,10 @@ tr2084:
 		s->number64 = 0;
 	}
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -52769,10 +52769,10 @@ tr2084:
 	goto st704;
 tr2090:
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -52926,10 +52926,10 @@ tr2096:
 		s->number64 = 0;
 	}
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -52942,10 +52942,10 @@ tr2096:
 	goto st706;
 tr2102:
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -53262,10 +53262,10 @@ tr2112:
 		s->number64 = 0;
 	}
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -53278,10 +53278,10 @@ tr2112:
 	goto st713;
 tr2116:
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -53435,10 +53435,10 @@ tr2122:
 		s->number64 = 0;
 	}
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -53451,10 +53451,10 @@ tr2122:
 	goto st715;
 tr2128:
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -54390,10 +54390,10 @@ tr2177:
 		s->number64 = 0;
 	}
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -54406,10 +54406,10 @@ tr2177:
 	goto st732;
 tr2181:
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -55151,10 +55151,10 @@ tr2216:
 		s->number64 = 0;
 	}
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -55167,10 +55167,10 @@ tr2216:
 	goto st746;
 tr2220:
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -55616,10 +55616,10 @@ tr2230:
 		s->number64 = 0;
 	}
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -55632,10 +55632,10 @@ tr2230:
 	goto st752;
 tr2234:
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -55873,10 +55873,10 @@ tr2248:
 		s->number64 = 0;
 	}
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -55889,10 +55889,10 @@ tr2248:
 	goto st756;
 tr2252:
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -56373,10 +56373,10 @@ tr2271:
 		s->number64 = 0;
 	}
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -56389,10 +56389,10 @@ tr2271:
 	goto st765;
 tr2275:
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -56546,10 +56546,10 @@ tr2281:
 		s->number64 = 0;
 	}
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -56562,10 +56562,10 @@ tr2281:
 	goto st767;
 tr2287:
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -57019,10 +57019,10 @@ tr2305:
 		s->number64 = 0;
 	}
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -57035,10 +57035,10 @@ tr2305:
 	goto st775;
 tr2309:
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -57274,10 +57274,10 @@ tr2328:
 		s->number64 = 0;
 	}
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -57290,10 +57290,10 @@ tr2328:
 	goto st779;
 tr2332:
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -59613,10 +59613,10 @@ tr2371:
 		s->number64 = 0;
 	}
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -59629,10 +59629,10 @@ tr2371:
 	goto st793;
 tr2375:
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -60057,10 +60057,10 @@ tr2414:
 		s->number64 = 0;
 	}
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -60073,10 +60073,10 @@ tr2414:
 	goto st800;
 tr2418:
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -60513,10 +60513,10 @@ tr2455:
 		s->number64 = 0;
 	}
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -60529,10 +60529,10 @@ tr2455:
 	goto st807;
 tr2459:
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -62264,10 +62264,10 @@ tr2524:
 		s->number64 = 0;
 	}
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -62280,10 +62280,10 @@ tr2524:
 	goto st818;
 tr2528:
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -62437,10 +62437,10 @@ tr2534:
 		s->number64 = 0;
 	}
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -62453,10 +62453,10 @@ tr2534:
 	goto st820;
 tr2540:
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -63140,10 +63140,10 @@ tr2571:
 		s->number64 = 0;
 	}
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -63156,10 +63156,10 @@ tr2571:
 	goto st826;
 tr2577:
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -65590,10 +65590,10 @@ tr2883:
 		s->number64 = 0;
 	}
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -65606,10 +65606,10 @@ tr2883:
 	goto st954;
 tr2887:
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -65727,10 +65727,10 @@ tr2893:
 		s->number64 = 0;
 	}
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -65743,10 +65743,10 @@ tr2893:
 	goto st959;
 tr2897:
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -65900,10 +65900,10 @@ tr2903:
 		s->number64 = 0;
 	}
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -65916,10 +65916,10 @@ tr2903:
 	goto st961;
 tr2909:
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -66357,10 +66357,10 @@ tr2927:
 		s->number64 = 0;
 	}
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -66373,10 +66373,10 @@ tr2927:
 	goto st972;
 tr2931:
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -66530,10 +66530,10 @@ tr2937:
 		s->number64 = 0;
 	}
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -66546,10 +66546,10 @@ tr2937:
 	goto st974;
 tr2943:
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -66703,10 +66703,10 @@ tr2949:
 		s->number64 = 0;
 	}
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -66719,10 +66719,10 @@ tr2949:
 	goto st976;
 tr2955:
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -67549,10 +67549,10 @@ tr2995:
 		s->number64 = 0;
 	}
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -67565,10 +67565,10 @@ tr2995:
 	goto st1001;
 tr2999:
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -67722,10 +67722,10 @@ tr3005:
 		s->number64 = 0;
 	}
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -67738,10 +67738,10 @@ tr3005:
 	goto st1003;
 tr3011:
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -67895,10 +67895,10 @@ tr3017:
 		s->number64 = 0;
 	}
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -67911,10 +67911,10 @@ tr3017:
 	goto st1005;
 tr3023:
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -68300,10 +68300,10 @@ tr3036:
 		s->number64 = 0;
 	}
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -68316,10 +68316,10 @@ tr3036:
 	goto st1014;
 tr3040:
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -68473,10 +68473,10 @@ tr3046:
 		s->number64 = 0;
 	}
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -68489,10 +68489,10 @@ tr3046:
 	goto st1016;
 tr3052:
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -68646,10 +68646,10 @@ tr3058:
 		s->number64 = 0;
 	}
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -68662,10 +68662,10 @@ tr3058:
 	goto st1018;
 tr3064:
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -69157,10 +69157,10 @@ tr3082:
 		s->number64 = 0;
 	}
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -69173,10 +69173,10 @@ tr3082:
 	goto st1027;
 tr3086:
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -69441,10 +69441,10 @@ tr3097:
 		s->number64 = 0;
 	}
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -69457,10 +69457,10 @@ tr3097:
 	goto st1032;
 tr3101:
 	{
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;

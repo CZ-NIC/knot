@@ -1,7 +1,1 @@
 src
-tests
-src/common
-src/knot
-src/libknot
-src/utils
-src/zscanner

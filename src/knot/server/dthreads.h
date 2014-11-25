@@ -40,9 +40,11 @@
 
 #include <pthread.h>
 
+#define DEFAULT_THR_COUNT 2  /*!< Default thread count. */
+
 /* Forward decls */
-struct dthread_t;
-struct dt_unit_t;
+struct dthread;
+struct dt_unit;
 
 /*!
  * \brief Thread state enumeration.
@@ -54,7 +56,6 @@ typedef enum {
 	ThreadDead      = 1 << 3, /*!< Thread is finished, exiting. */
 	ThreadIdle      = 1 << 4, /*!< Thread is idle, waiting for purpose. */
 	ThreadActive    = 1 << 5  /*!< Thread is active, working on a task. */
-
 } dt_state_t;
 
 /*!
@@ -69,21 +70,21 @@ typedef enum {
  *       Implement this by checking dt_is_cancelled() and return
  *       as soon as possible.
  */
-typedef int (*runnable_t)(struct dthread_t *);
+typedef int (*runnable_t)(struct dthread *);
 
 /*!
  * \brief Single thread descriptor public API.
  */
-typedef struct dthread_t {
+typedef struct dthread {
 	volatile unsigned  state; /*!< Bitfield of dt_flag flags. */
 	runnable_t           run; /*!< Runnable function or 0. */
 	runnable_t      destruct; /*!< Destructor function or 0. */
 	void               *data; /*!< Currently active data */
-	struct dt_unit_t   *unit; /*!< Reference to assigned unit. */
-	void             *_adata; /* Thread-specific data. */
-	pthread_t           _thr; /* Thread */
-	pthread_attr_t     _attr; /* Thread attributes */
-	pthread_mutex_t      _mx; /* Thread state change lock. */
+	struct dt_unit     *unit; /*!< Reference to assigned unit. */
+	void             *_adata; /*!< Thread-specific data. */
+	pthread_t           _thr; /*!< Thread */
+	pthread_attr_t     _attr; /*!< Thread attributes */
+	pthread_mutex_t      _mx; /*!< Thread state change lock. */
 } dthread_t;
 
 /*!
@@ -93,14 +94,14 @@ typedef struct dthread_t {
  * Unit is coherent if all threads execute
  * the same runnable.
  */
-typedef struct dt_unit_t {
+typedef struct dt_unit {
 	int                   size; /*!< Unit width (number of threads) */
-	struct dthread_t **threads; /*!< Array of threads */
-	pthread_cond_t     _notify; /* Notify thread */
-	pthread_mutex_t _notify_mx; /* Condition mutex */
-	pthread_cond_t     _report; /* Report thread state */
-	pthread_mutex_t _report_mx; /* Condition mutex */
-	pthread_mutex_t        _mx; /* Unit lock */
+	struct dthread   **threads; /*!< Array of threads */
+	pthread_cond_t     _notify; /*!< Notify thread */
+	pthread_mutex_t _notify_mx; /*!< Condition mutex */
+	pthread_cond_t     _report; /*!< Report thread state */
+	pthread_mutex_t _report_mx; /*!< Condition mutex */
+	pthread_mutex_t        _mx; /*!< Unit lock */
 } dt_unit_t;
 
 /*!

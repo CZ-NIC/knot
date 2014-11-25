@@ -33,11 +33,11 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
-#include "common/sockaddr.h"
+#include "libknot/internal/sockaddr.h"
 #include "knot/conf/conf.h"
 #include "knot/conf/includes.h"
 #include "knot/conf/extra.h"
-#include "common/log.h"
+#include "knot/common/log.h"
 #include "libknotd_la-cf-parse.h" /* Automake generated header. */
 
 /* Imported symbols. */

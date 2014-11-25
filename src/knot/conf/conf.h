@@ -37,12 +37,12 @@
 #include "libknot/rrtype/tsig.h"
 #include "libknot/dnssec/key.h"
 #include "libknot/dnssec/policy.h"
-#include "common/lists.h"
-#include "common/namedb/namedb.h"
-#include "common/log.h"
+#include "libknot/internal/lists.h"
+#include "libknot/internal/namedb/namedb.h"
+#include "knot/common/log.h"
 #include "knot/updates/acl.h"
-#include "common/sockaddr.h"
-#include "common/trie/hat-trie.h"
+#include "libknot/internal/sockaddr.h"
+#include "libknot/internal/trie/hat-trie.h"
 #include "knot/nameserver/query_module.h"
 
 /* Constants. */
@@ -65,7 +65,7 @@
  * used in the configuration.  Same interface could be used for
  * listening and outgoing function.
  */
-typedef struct conf_iface_t {
+typedef struct conf_iface {
 	node_t n;
 	char *name;                   /*!< Internal name for the interface. */
 	knot_tsig_key_t *key;         /*!< TSIG key (only applic for remotes). */
@@ -79,7 +79,7 @@ typedef struct conf_iface_t {
  *
  * Used for zone ACL lists to prevent node duplication.
  */
-typedef struct conf_remote_t {
+typedef struct conf_remote {
 	node_t n;             /*!< List node. */
 	conf_iface_t *remote; /*!< Pointer to interface descriptor. */
 } conf_remote_t;
@@ -89,7 +89,7 @@ typedef struct conf_remote_t {
  *
  * Holds the name of a remote in the list.
  */
-typedef struct conf_group_remote_t {
+typedef struct conf_group_remote {
 	node_t n;
 	char *name;
 } conf_group_remote_t;
@@ -97,7 +97,7 @@ typedef struct conf_group_remote_t {
 /*!
  * \brief Group of remotes.
  */
-typedef struct conf_group_t {
+typedef struct conf_group {
 	node_t n;	/*!< List node. */
 	char *name;	/*!< Unique name of the group. */
 	list_t remotes;	/*!< List of remote names. */
@@ -112,7 +112,7 @@ typedef struct conf_group_t {
  * as a source for the zone transfer and multiple DNS servers to allow
  * zone transfers.  Same logic applies for the NOTIFY.
  */
-typedef struct conf_zone_t {
+typedef struct conf_zone {
 	char *name;                /*!< Zone name. */
 	char *file;                /*!< Path to a zone file. */
 	char *storage;             /*!< Path to a storage dir. */
@@ -149,25 +149,6 @@ typedef enum conf_serial_policy_t {
 } conf_serial_policy_t;
 
 /*!
- * \brief Mapping of loglevels to message sources.
- */
-typedef struct conf_log_map_t {
-	node_t n;
-	int source; /*!< Log message source mask. */
-	int prios;  /*!< Log priorities mask. */
-} conf_log_map_t;
-
-/*!
- * \brief Log facility descriptor.
- */
-typedef struct conf_log_t {
-	node_t n;
-	logtype_t type;  /*!< Type of the log (SYSLOG/STDERR/FILE). */
-	char *file;      /*!< Filename in case of LOG_FILE, else NULL. */
-	list_t map;      /*!< Log levels mapping. */
-} conf_log_t;
-
-/*!
  * \brief Configuration sections.
  */
 typedef enum conf_section_t {
@@ -181,7 +162,7 @@ typedef enum conf_section_t {
 /*!
  * \brief TSIG key list item.
  */
-typedef struct conf_key_t {
+typedef struct conf_key {
 	node_t n;
 	knot_tsig_key_t k;
 } conf_key_t;
@@ -189,7 +170,7 @@ typedef struct conf_key_t {
 /*!
  * \brief Remote control interface.
  */
-typedef struct conf_control_t {
+typedef struct conf_control {
 	conf_iface_t *iface; /*!< Remote control interface. */
 	list_t allow;        /*!< List of allowed remotes. */
 	bool have;           /*!< Set if configured. */
@@ -200,7 +181,7 @@ typedef struct conf_control_t {
  *
  * Configuration structure.
  */
-typedef struct conf_t {
+typedef struct conf {
 	/*
 	 * System
 	 */
@@ -284,7 +265,7 @@ typedef struct conf_t {
 /*!
  * \brief Config hook prototype.
  */
-typedef struct conf_hook_t {
+typedef struct conf_hook {
 	node_t n;
 	int sections; /*!< Bitmask of watched sections. */
 	int (*update)(const conf_t*, void*); /*!< Function executed on config load. */
@@ -422,7 +403,10 @@ void conf_free_remote(conf_remote_t *r);
 /*! \brief Free group config. */
 void conf_free_group(conf_group_t *group);
 
-/*! \brief Free log config. */
-void conf_free_log(conf_log_t *log);
+/*! \brief Log reconfiguration wrapper. */
+static inline int conf_log_reconfigure(const conf_t *conf, void *data)
+{
+	return log_reconfigure(&conf->logs, data);
+}
 
 /*! @} */

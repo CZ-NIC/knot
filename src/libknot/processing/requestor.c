@@ -17,11 +17,10 @@
 #include <assert.h>
 #include <sys/fcntl.h>
 
-#include "common/macros.h"
-#include "common/net.h"
-
-#include "libknot/errcode.h"
 #include "libknot/processing/requestor.h"
+#include "libknot/errcode.h"
+#include "libknot/internal/macros.h"
+#include "libknot/internal/net.h"
 
 static bool use_tcp(struct knot_request *request)
 {

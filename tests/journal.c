@@ -19,10 +19,10 @@
 #include <stdio.h>
 #include <limits.h>
 #include <unistd.h>
+#include <sys/stat.h>
 #include <tap/basic.h>
 
 #include "knot/server/journal.h"
-#include "knot/knot.h"
 
 /*! \brief Generate random string with given length. */
 static int randstr(char* dst, size_t len)
@@ -37,7 +37,7 @@ static int randstr(char* dst, size_t len)
 
 int main(int argc, char *argv[])
 {
-	plan(10);
+	plan_lazy();
 
 	/* Create tmpdir */
 	int fsize = 10 * 1024 * 1024;
@@ -112,6 +112,33 @@ int main(int argc, char *argv[])
 		}
 	}
 	is_int(KNOT_EOK, ret, "journal: sustained mmap r/w");
+
+	/* Overfill */
+	ret = journal_map(journal, chk_key, &mptr, fsize, false);
+	is_int(KNOT_ESPACE, ret, "journal: overfill");
+
+	/* Fillup */
+	tskey = 0xBEEF0000;
+	size_t large_entry_len = 512 * 1024;
+	char *large_entry = malloc(512 * 1024);
+	assert(large_entry);
+	randstr(large_entry, large_entry_len);
+	for (int i = 0; i < 512; ++i) {
+		chk_key = tskey + i;
+		ret = journal_map(journal, chk_key, &mptr, large_entry_len, false);
+		if (ret != KNOT_EOK) {
+			break;
+		}
+
+		journal_unmap(journal, chk_key, mptr, 1);
+	}
+	is_int(KNOT_EBUSY, ret, "journal: fillup");
+	free(large_entry);
+
+	/* Check file size. */
+	struct stat st;
+	stat(journal->path, &st);
+	ok(st.st_size < fsize + large_entry_len, "journal: fillup file size check");
 
 	/* Close journal. */
 	journal_close(journal);

@@ -14,26 +14,23 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "utils/common/params.h"
-
+#include <arpa/inet.h>
 #include <stdio.h>
-#include <stdlib.h>			// free
-#include <netinet/in.h>			// in_addr
-#include <arpa/inet.h>			// inet_pton
-#include <sys/socket.h>			// AF_INET (BSD)
+#include <stdlib.h>
+#include <netinet/in.h>
+#include <sys/socket.h>
 
 #ifdef LIBIDN
 #include <idna.h>
 #endif
 
+#include "utils/common/params.h"
+#include "utils/common/msg.h"
+#include "utils/common/resolv.h"
+#include "utils/common/token.h"
 #include "libknot/libknot.h"
-#include "libknot/errcode.h"		// KNOT_EOK
-#include "common/mempattern.h"		// strcdup
-#include "libknot/descriptor.h"		// KNOT_RRTYPE_
-#include "common/strlcpy.h"		// strlcpy
-#include "utils/common/msg.h"		// WARN
-#include "utils/common/resolv.h"	// parse_nameserver
-#include "utils/common/token.h"		// token
+#include "libknot/internal/mempattern.h"
+#include "libknot/internal/strlcpy.h"
 
 #define IPV4_REVERSE_DOMAIN	"in-addr.arpa."
 #define IPV6_REVERSE_DOMAIN	"ip6.arpa."
@@ -412,8 +409,8 @@ int params_parse_tsig(const char *value, knot_key_params_t *key_params)
 	key_params->algorithm = KNOT_TSIG_ALG_HMAC_MD5;
 	if (s) {
 		*s++ = '\0';               /* Last part separator */
-		knot_lookup_table_t *alg = NULL;
-		alg = knot_lookup_by_name(knot_tsig_alg_names, h);
+		lookup_table_t *alg = NULL;
+		alg = lookup_by_name(knot_tsig_alg_names, h);
 		if (alg) {
 			DBG("%s: parsed algorithm '%s'\n", __func__, h);
 			key_params->algorithm = alg->id;

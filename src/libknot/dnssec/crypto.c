@@ -21,7 +21,7 @@
 #include <openssl/evp.h>
 #include <pthread.h>
 
-#include "common/macros.h"
+#include "libknot/internal/macros.h"
 #include "libknot/dnssec/config.h"
 #include "libknot/dnssec/crypto.h"
 

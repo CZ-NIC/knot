@@ -24,8 +24,7 @@
 #include <sys/mman.h>
 #include <assert.h>
 
-#include "common-knot/crc.h"
-#include "knot/other/debug.h"
+#include "knot/common/debug.h"
 #include "knot/server/journal.h"
 #include "knot/server/serialization.h"
 #include "libknot/rrtype/soa.h"
@@ -41,6 +40,9 @@
 
 /*! \brief Previous node. */
 #define jnode_prev(j, i) (((i) == 0) ? (j)->max_nodes - 1 : (i) - 1)
+
+typedef uint32_t crc_t;
+static const crc_t CRC_PLACEHOLDER = 0;
 
 static inline int sfread(void *dst, size_t len, int fd)
 {
@@ -169,34 +171,6 @@ static int journal_recover(journal_t *j)
 	return KNOT_EOK;
 }
 
-/* Recalculate CRC. */
-static int journal_update_crc(int fd)
-{
-	if (fcntl(fd, F_GETFL) < 0) {
-		return KNOT_EINVAL;
-	}
-
-	char buf[4096];
-	ssize_t rb = 0;
-	crc_t crc = crc_init();
-	if (lseek(fd, MAGIC_LENGTH + sizeof(crc_t), SEEK_SET) < 0) {
-		return KNOT_ERROR;
-	}
-	while((rb = read(fd, buf, sizeof(buf))) > 0) {
-		crc = crc_update(crc, (const unsigned char *)buf, rb);
-	}
-	if (lseek(fd, MAGIC_LENGTH, SEEK_SET) < 0) {
-		return KNOT_ERROR;
-	}
-	if (!sfwrite(&crc, sizeof(crc_t), fd)) {
-		dbg_journal("journal: couldn't write CRC to fd=%d\n", fd);
-		return KNOT_ERROR;
-	}
-
-	return KNOT_EOK;
-}
-
-
 /*! \brief Create new journal. */
 static int journal_create_file(const char *fn, uint16_t max_nodes)
 {
@@ -230,8 +204,8 @@ static int journal_create_file(const char *fn, uint16_t max_nodes)
 		remove(fn);
 		return KNOT_ERROR;
 	}
-	crc_t crc = crc_init();
-	if (!sfwrite(&crc, sizeof(crc_t), fd)) {
+
+	if (!sfwrite(&CRC_PLACEHOLDER, sizeof(CRC_PLACEHOLDER), fd)) {
 		close(fd);
 		remove(fn);
 		return KNOT_ERROR;
@@ -286,15 +260,6 @@ static int journal_create_file(const char *fn, uint16_t max_nodes)
 			}
 			return KNOT_ERROR;
 		}
-	}
-
-	/* Recalculate CRC. */
-	if (journal_update_crc(fd) != KNOT_EOK) {
-		close(fd);
-		if(remove(fn) < 0) {
-			dbg_journal("journal: failed to remove journal file after error\n");
-		}
-		return KNOT_ERROR;
 	}
 
 	/* Unlock and close. */
@@ -354,40 +319,15 @@ static int journal_open_file(journal_t *j)
 		}
 		return ret;
 	}
-	crc_t crc = 0;
-	if (!sfread(&crc, sizeof(crc_t), j->fd)) {
-		dbg_journal_verb("journal: cannot read CRC\n");
+
+	/* Skip CRC */
+	if (lseek(j->fd, MAGIC_LENGTH + sizeof(crc_t), SEEK_SET) < 0) {
 		goto open_file_error;
-	}
-
-	/* Recalculate CRC. */
-	char buf[4096];
-	ssize_t rb = 0;
-	crc_t crc_calc = crc_init();
-	while((rb = read(j->fd, buf, sizeof(buf))) > 0) {
-		crc_calc = crc_update(crc_calc, (const unsigned char *)buf, rb);
-	}
-
-	/* Compare */
-	if (crc == crc_calc) {
-		/* Rewind. */
-		if (lseek(j->fd, MAGIC_LENGTH + sizeof(crc_t), SEEK_SET) < 0) {
-			goto open_file_error;
-		}
-	} else {
-		log_warning("journal '%s', CRC error, purging", j->path);
-		close(j->fd);
-		j->fd = -1;
-		ret = journal_create_file(j->path, JOURNAL_NCOUNT);
-		if(ret == KNOT_EOK) {
-			return journal_open_file(j);
-		}
-		return ret;
 	}
 
 	/* Get journal file size. */
 	struct stat st;
-	if (stat(j->path, &st) < 0) {
+	if (fstat(j->fd, &st) < 0) {
 		dbg_journal_verb("journal: cannot get journal fsize\n");
 		goto open_file_error;
 	}
@@ -488,9 +428,6 @@ static int journal_close_file(journal_t *journal)
 		return KNOT_EINVAL;
 	}
 
-	/* Recalculate CRC. */
-	int ret = journal_update_crc(journal->fd);
-
 	/* Close file. */
 	if (journal->fd > 0) {
 		close(journal->fd);
@@ -501,7 +438,7 @@ static int journal_close_file(journal_t *journal)
 	free(journal->nodes);
 	journal->nodes = NULL;
 
-	return ret;
+	return KNOT_EOK;
 }
 
 /*!  \brief Sync node state to permanent storage. */
@@ -547,7 +484,11 @@ int journal_write_in(journal_t *j, journal_node_t **rn, uint64_t id, size_t len)
 	            (unsigned long long)id, j->qtail, len, j->fsize);
 
 	/* Calculate remaining bytes to reach file size limit. */
-	size_t fs_remaining = j->fslimit - j->fsize;
+	size_t fs_remaining = 0;
+	if (j->fsize < j->fslimit) {
+		fs_remaining = j->fslimit - j->fsize;
+	}
+
 	int seek_ret = 0;
 
 	/* Increase free segment if on the end of file. */

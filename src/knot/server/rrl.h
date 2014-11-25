@@ -28,7 +28,7 @@
 
 #include <stdint.h>
 #include <pthread.h>
-#include "common/sockaddr.h"
+#include "libknot/internal/sockaddr.h"
 #include "libknot/packet/pkt.h"
 
 /* Defaults */
@@ -41,7 +41,7 @@ enum {
 	RRL_WILDCARD  = 1 << 1  /*!< Query to wildcard name. */
 };
 
-struct zone_t;
+struct zone;
 
 /*!
  * \brief RRL hash bucket.
@@ -134,7 +134,7 @@ int rrl_setlocks(rrl_table_t *rrl, unsigned granularity);
  * \return assigned bucket
  */
 rrl_item_t* rrl_hash(rrl_table_t *t, const struct sockaddr_storage *a, rrl_req_t *p,
-                     const struct zone_t *zone, uint32_t stamp, int* lock);
+                     const struct zone *zone, uint32_t stamp, int* lock);
 
 /*!
  * \brief Query the RRL table for accept or deny, when the rate limit is reached.
@@ -147,7 +147,7 @@ rrl_item_t* rrl_hash(rrl_table_t *t, const struct sockaddr_storage *a, rrl_req_t
  * \retval KNOT_ELIMIT when the limit is reached.
  */
 int rrl_query(rrl_table_t *rrl, const struct sockaddr_storage *a, rrl_req_t *req,
-              const struct zone_t *zone);
+              const struct zone *zone);
 
 /*!
  * \brief Roll a dice whether answer slips or not.

@@ -20,7 +20,7 @@
 
 #include "knot/updates/changesets.h"
 #include "libknot/rrset.h"
-#include "common/macros.h"
+#include "libknot/internal/macros.h"
 
 /* -------------------- Changeset iterator helpers -------------------------- */
 

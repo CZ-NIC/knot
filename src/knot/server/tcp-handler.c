@@ -31,20 +31,18 @@
 #include <cap-ng.h>
 #endif /* HAVE_CAP_NG_H */
 
-#include "common/sockaddr.h"
-#include "common-knot/fdset.h"
-#include "common/macros.h"
-#include "common/mempool.h"
-#include "common/net.h"
-
-#include "libknot/packet/wire.h"
+#include "knot/server/tcp-handler.h"
+#include "knot/common/debug.h"
+#include "knot/common/fdset.h"
+#include "knot/common/time.h"
+#include "knot/nameserver/process_query.h"
+#include "libknot/internal/mempool.h"
+#include "libknot/internal/macros.h"
+#include "libknot/internal/net.h"
+#include "libknot/internal/sockaddr.h"
 #include "libknot/dnssec/crypto.h"
 #include "libknot/dnssec/random.h"
 #include "libknot/processing/overlay.h"
-
-#include "knot/knot.h"
-#include "knot/server/tcp-handler.h"
-#include "knot/nameserver/process_query.h"
 
 /*! \brief TCP context data. */
 typedef struct tcp_context {

@@ -26,12 +26,12 @@
 
 #pragma once
 
-#include "common/lists.h"
+#include "libknot/internal/lists.h"
 #include "libknot/rrtype/nsec3param.h"
 #include "knot/zone/node.h"
 #include "knot/zone/zone-tree.h"
 
-struct zone_t;
+struct zone;
 
 enum zone_contents_find_dname_result {
 	ZONE_NAME_FOUND = 1,
@@ -40,7 +40,7 @@ enum zone_contents_find_dname_result {
 
 /*----------------------------------------------------------------------------*/
 
-typedef struct zone_contents_t {
+typedef struct zone_contents {
 	zone_node_t *apex;       /*!< Apex node of the zone (holding SOA) */
 
 	zone_tree_t *nodes;

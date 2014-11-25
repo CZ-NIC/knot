@@ -1,5 +1,5 @@
 /*!
- * \file dnstap.h
+ * \file modules/dnstap.h
  *
  * \author Marek Vavrusa <marek.vavrusa@nic.cz>
  *

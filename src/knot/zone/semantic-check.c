@@ -21,22 +21,14 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
-#include "knot/knot.h"
-#include "knot/other/debug.h"
+#include "knot/zone/semantic-check.h"
+#include "knot/common/debug.h"
+#include "knot/dnssec/zone-nsec.h"
 #include "libknot/libknot.h"
 #include "libknot/dnssec/key.h"
 #include "libknot/dnssec/rrset-sign.h"
-#include "libknot/rrtype/rrsig.h"
-#include "libknot/rrtype/soa.h"
-#include "libknot/rrtype/nsec.h"
-#include "libknot/rrtype/nsec3.h"
-#include "common/base32hex.h"
-#include "common-knot/crc.h"
-#include "libknot/descriptor.h"
-#include "common/mempattern.h"
-#include "knot/dnssec/zone-nsec.h"
-
-#include "knot/zone/semantic-check.h"
+#include "libknot/internal/base32hex.h"
+#include "libknot/internal/mempattern.h"
 
 static char *error_messages[(-ZC_ERR_UNKNOWN) + 1] = {
 	[-ZC_ERR_MISSING_SOA] =
@@ -255,7 +247,7 @@ static int check_dnskey_rdata(const knot_rrset_t *rrset, size_t rdata_pos)
 	const uint16_t mask = 1 << 8; //0b0000000100000000;
 
 	const knot_rdata_t *rr_data = knot_rdataset_at(&rrset->rrs, rdata_pos);
-	uint16_t flags = knot_wire_read_u16(knot_rdata_data(rr_data));
+	uint16_t flags = wire_read_u16(knot_rdata_data(rr_data));
 	if (flags & mask) {
 		return KNOT_EOK;
 	} else {

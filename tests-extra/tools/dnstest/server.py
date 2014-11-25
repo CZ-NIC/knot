@@ -184,7 +184,7 @@ class Server(object):
             if len(pids) == 1 and str(self.proc.pid) in pids:
                 return True
 
-            time.sleep(1)
+            time.sleep(2)
 
         return False
 

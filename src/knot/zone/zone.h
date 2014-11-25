@@ -28,8 +28,8 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#include "common-knot/evsched.h"
-#include "common-knot/ref.h"
+#include "knot/common/evsched.h"
+#include "knot/common/ref.h"
 #include "knot/conf/conf.h"
 #include "knot/server/journal.h"
 #include "knot/updates/acl.h"
@@ -50,7 +50,7 @@ typedef enum zone_flag_t {
 /*!
  * \brief Structure for holding DNS zone.
  */
-typedef struct zone_t
+typedef struct zone
 {
 	knot_dname_t *name;
 	zone_contents_t *contents;

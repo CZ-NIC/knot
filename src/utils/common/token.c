@@ -14,16 +14,15 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "utils/common/token.h"
-
+#include <ctype.h>
 #include <stdio.h>
-#include <stdlib.h>			// free
-#include <ctype.h>			// isspace
-#include <string.h>			// memcmp
+#include <stdlib.h>
+#include <string.h>
 
-#include "libknot/errcode.h"		// KNOT_EOK
-#include "common/getline.h"		// knot_getline
-#include "utils/common/msg.h"		// ERR
+#include "utils/common/token.h"
+#include "utils/common/msg.h"
+#include "libknot/libknot.h"
+#include "libknot/internal/getline.h"
 
 int tok_scan(const char* lp, const char **tbl, int *lpm)
 {

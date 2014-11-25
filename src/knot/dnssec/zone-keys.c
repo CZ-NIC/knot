@@ -19,9 +19,9 @@
 #include <stdbool.h>
 #include <inttypes.h>
 
-#include "common/debug.h"
-#include "common/macros.h"
-#include "common/mem.h"
+#include "knot/common/debug.h"
+#include "libknot/internal/mem.h"
+#include "libknot/internal/macros.h"
 #include "libknot/errcode.h"
 #include "libknot/dname.h"
 #include "libknot/consts.h"
@@ -98,12 +98,43 @@ static void set_zone_key_flags(const knot_key_params_t *params,
 	key->next_event = next_event;
 
 	key->is_ksk = params->flags & KNOT_RDATA_DNSKEY_FLAG_KSK;
+	key->is_zsk = !key->is_ksk;
 
 	key->is_active = params->time_activate <= now &&
 	                 (params->time_inactive == 0 || now < params->time_inactive);
 
 	key->is_public = params->time_publish <= now &&
 	                 (params->time_delete == 0 || now < params->time_delete);
+}
+
+/*!
+ * \brief Enable STSS if all keys are KSK/ZSK exclusively.
+ *
+ * \return STSS was enabled.
+ */
+static bool enable_single_type_signing(knot_zone_keys_t *keys)
+{
+	assert(keys);
+
+	int num_keys = 0;
+	int num_zone = 0;
+
+	knot_zone_key_t *key = NULL;
+	WALK_LIST(key, keys->list) {
+		if (key->is_ksk) { num_keys += 1; }
+		if (key->is_zsk) { num_zone += 1; }
+	}
+
+	if ((num_keys + num_zone == 0) || (num_keys > 0 && num_zone > 0)) {
+		return false;
+	}
+
+	WALK_LIST(key, keys->list) {
+		key->is_ksk = true;
+		key->is_zsk = true;
+	}
+
+	return true;
 }
 
 /*!
@@ -134,11 +165,8 @@ static int check_keys_validity(const knot_zone_keys_t *keys)
 
 			// need fully enabled ZSK and KSK for each algorithm
 			if (key->is_active) {
-				if (key->is_ksk) {
-					algorithms[a].ksk_enabled = true;
-				} else {
-					algorithms[a].zsk_enabled = true;
-				}
+				if (key->is_ksk) { algorithms[a].ksk_enabled = true; }
+				if (key->is_zsk) { algorithms[a].zsk_enabled = true; }
 			}
 		}
 	}
@@ -282,6 +310,10 @@ int knot_load_zone_keys(const char *keydir_name, const knot_dname_t *zone_name,
 	}
 
 	closedir(keydir);
+
+	if (enable_single_type_signing(keys)) {
+		log_zone_info(zone_name, "DNSSEC, using Single-Type Signing Scheme");
+	}
 
 	if (result == KNOT_EOK) {
 		result = check_keys_validity(keys);

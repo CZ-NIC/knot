@@ -26,7 +26,7 @@
 
 #pragma once
 
-#include <stdbool.h>		// bool
+#include <stdbool.h>
 
 #include "libknot/rrset.h"
 

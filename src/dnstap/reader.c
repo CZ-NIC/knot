@@ -20,6 +20,7 @@
 #include <string.h>                     // strdup
 
 #include "libknot/errcode.h"
+#include "libknot/internal/macros.h"
 
 #include "dnstap/dnstap.h"
 #include "dnstap/reader.h"

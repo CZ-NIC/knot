@@ -21,8 +21,8 @@
 #include <errno.h>
 #include <assert.h>
 
-#include "common-knot/trim.h"
-#include "knot/knot.h"
+#include "knot/common/debug.h"
+#include "knot/common/trim.h"
 #include "knot/server/server.h"
 #include "knot/server/udp-handler.h"
 #include "knot/server/tcp-handler.h"
@@ -30,7 +30,7 @@
 #include "knot/worker/pool.h"
 #include "knot/zone/timers.h"
 #include "knot/zone/zonedb-load.h"
-#include "libknot/dname.h"
+#include "libknot/libknot.h"
 #include "libknot/dnssec/crypto.h"
 #include "libknot/dnssec/random.h"
 
@@ -154,7 +154,7 @@ static int server_init_iface(iface_t *new_if, conf_iface_t *cfg_if)
 	return KNOT_EOK;
 }
 
-static void remove_ifacelist(struct ref_t *p)
+static void remove_ifacelist(struct ref *p)
 {
 	ifacelist_t *ifaces = (ifacelist_t *)p;
 
@@ -179,7 +179,7 @@ static void remove_ifacelist(struct ref_t *p)
  * \param server Server instance.
  * \return number of added sockets.
  */
-static int reconfigure_sockets(const struct conf_t *conf, server_t *s)
+static int reconfigure_sockets(const struct conf *conf, server_t *s)
 {
 	/* Prepare helper lists. */
 	char addr_str[SOCKADDR_STRLEN] = {0};
@@ -475,7 +475,7 @@ void server_stop(server_t *server)
 }
 
 /*! \brief Reconfigure UDP and TCP query processing threads. */
-static int reconfigure_threads(const struct conf_t *conf, server_t *server)
+static int reconfigure_threads(const struct conf *conf, server_t *server)
 {
 	/* Estimate number of threads/manager. */
 	int ret = KNOT_EOK;
@@ -519,7 +519,7 @@ static int reconfigure_threads(const struct conf_t *conf, server_t *server)
 	return ret;
 }
 
-static int reconfigure_rate_limits(const struct conf_t *conf, server_t *server)
+static int reconfigure_rate_limits(const struct conf *conf, server_t *server)
 {
 	/* Rate limiting. */
 	if (!server->rrl && conf->rrl > 0) {
@@ -548,7 +548,7 @@ static int reconfigure_rate_limits(const struct conf_t *conf, server_t *server)
 	return KNOT_EOK;
 }
 
-int server_reconfigure(const struct conf_t *conf, void *data)
+int server_reconfigure(const struct conf *conf, void *data)
 {
 	server_t *server = (server_t *)data;
 	dbg_server("%s(%p, %p)\n", __func__, conf, server);

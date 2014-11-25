@@ -22,7 +22,6 @@
 #include <stdlib.h>
 
 #include "libknot/packet/rrset-wire.h"
-
 #include "libknot/consts.h"
 #include "libknot/descriptor.h"
 #include "libknot/dname.h"
@@ -30,7 +29,7 @@
 #include "libknot/packet/wire.h"
 #include "libknot/rrset.h"
 #include "libknot/rrtype/naptr.h"
-#include "common/macros.h"
+#include "libknot/internal/macros.h"
 
 /*!
  * \brief Get maximal size of a domain name in a wire with given capacity.
@@ -260,11 +259,11 @@ static int write_fixed_header(const knot_rrset_t *rrset, uint16_t rrset_index,
 	uint32_t ttl = knot_rdata_ttl(knot_rdataset_at(&rrset->rrs, rrset_index));
 	uint8_t *write = *dst;
 
-	knot_wire_write_u16(write, rrset->type);
+	wire_write_u16(write, rrset->type);
 	write += sizeof(uint16_t);
-	knot_wire_write_u16(write, rrset->rclass);
+	wire_write_u16(write, rrset->rclass);
 	write += sizeof(uint16_t);
-	knot_wire_write_u32(write, ttl);
+	wire_write_u32(write, ttl);
 	write += sizeof(uint32_t);
 
 	assert(write == *dst + size);
@@ -379,7 +378,7 @@ static int write_rdata(const knot_rrset_t *rrset, uint16_t rrset_index,
 	/* Write final RDLENGTH */
 
 	size_t rdlength = *dst - wire_rdata_begin;
-	knot_wire_write_u16(wire_rdlength, rdlength);
+	wire_write_u16(wire_rdlength, rdlength);
 
 	return KNOT_EOK;
 }
@@ -459,13 +458,13 @@ static int parse_header(const uint8_t *pkt_wire, size_t *pos, size_t pkt_size,
 		return KNOT_EMALF;
 	}
 
-	uint16_t type = knot_wire_read_u16(pkt_wire + *pos);
+	uint16_t type = wire_read_u16(pkt_wire + *pos);
 	*pos += sizeof(uint16_t);
-	uint16_t rclass = knot_wire_read_u16(pkt_wire + *pos);
+	uint16_t rclass = wire_read_u16(pkt_wire + *pos);
 	*pos += sizeof(uint16_t);
-	*ttl = knot_wire_read_u32(pkt_wire + *pos);
+	*ttl = wire_read_u32(pkt_wire + *pos);
 	*pos += sizeof(uint32_t);
-	*rdlen = knot_wire_read_u16(pkt_wire + *pos);
+	*rdlen = wire_read_u16(pkt_wire + *pos);
 	*pos += sizeof(uint16_t);
 
 	if (pkt_size - *pos < *rdlen) {

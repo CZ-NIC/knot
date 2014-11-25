@@ -26,8 +26,8 @@
 
 #pragma once
 
-#include "common/lists.h"		// list
-#include "utils/common/netio.h"		// server_t
+#include "utils/common/netio.h"
+#include "libknot/internal/lists.h"
 
 srv_info_t* parse_nameserver(const char *str, const char *def_port);
 

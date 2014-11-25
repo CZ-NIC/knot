@@ -58,6 +58,7 @@
 /src/knot/conf/libknotd_la-cf-lex.c
 /src/knot/conf/libknotd_la-cf-parse.c
 /src/knot/conf/libknotd_la-cf-parse.h
+/libknot.pc
 
 # dnstap
 /src/dnstap/Makefile

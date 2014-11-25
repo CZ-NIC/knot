@@ -16,26 +16,21 @@
 
 #include <assert.h>
 #include <sys/stat.h>
-#include "knot/ctl/remote.h"
-#include "common/log.h"
-#include "common/macros.h"
-#include "common/mem.h"
-#include "common-knot/fdset.h"
-#include "knot/knot.h"
+#include "knot/common/debug.h"
+#include "knot/common/fdset.h"
+#include "knot/common/log.h"
 #include "knot/conf/conf.h"
-#include "common/net.h"
-#include "knot/server/tcp-handler.h"
-#include "libknot/packet/wire.h"
-#include "libknot/descriptor.h"
-#include "common/strlcpy.h"
-#include "libknot/tsig-op.h"
-#include "libknot/rrtype/rdname.h"
-#include "libknot/rrtype/soa.h"
-#include "libknot/dnssec/random.h"
-#include "libknot/packet/wire.h"
-#include "knot/zone/timers.h"
+#include "knot/ctl/remote.h"
 #include "knot/dnssec/zone-sign.h"
 #include "knot/dnssec/zone-nsec.h"
+#include "knot/server/tcp-handler.h"
+#include "knot/zone/timers.h"
+#include "libknot/libknot.h"
+#include "libknot/internal/macros.h"
+#include "libknot/internal/mem.h"
+#include "libknot/internal/net.h"
+#include "libknot/internal/strlcpy.h"
+#include "libknot/dnssec/random.h"
 
 #define KNOT_CTL_REALM "knot."
 #define KNOT_CTL_REALM_EXT ("." KNOT_CTL_REALM)
@@ -44,7 +39,7 @@
 #define KNOT_CTL_SOCKET_UMASK 0007
 
 /*! \brief Remote command structure. */
-typedef struct remote_cmdargs_t {
+typedef struct remote_cmdargs {
 	const knot_rrset_t *arg;
 	unsigned argc;
 	knot_rcode_t rc;
@@ -103,10 +98,10 @@ static void cmdargs_deinit(remote_cmdargs_t *args)
 typedef int (*remote_cmdf_t)(server_t*, remote_cmdargs_t*);
 
 /*! \brief Callback prototype for per-zone operations. */
-typedef int (remote_zonef_t)(zone_t *);
+typedef int (remote_zonef_t)(zone_t *, remote_cmdargs_t *a);
 
 /*! \brief Remote command table item. */
-typedef struct remote_cmd_t {
+typedef struct remote_cmd {
 	const char *name;
 	remote_cmdf_t f;
 } remote_cmd_t;
@@ -122,7 +117,7 @@ static int remote_c_flush(server_t *s, remote_cmdargs_t* a);
 static int remote_c_signzone(server_t *s, remote_cmdargs_t* a);
 
 /*! \brief Table of remote commands. */
-struct remote_cmd_t remote_cmd_tbl[] = {
+struct remote_cmd remote_cmd_tbl[] = {
 	{ "stop",      &remote_c_stop },
 	{ "reload",    &remote_c_reload },
 	{ "refresh",   &remote_c_refresh },
@@ -136,7 +131,7 @@ struct remote_cmd_t remote_cmd_tbl[] = {
 
 /* Private APIs. */
 
-/*! \brief Apply callback to all zones specified by RDATA of CNAME RRs. */
+/*! \brief Apply callback to all zones specified by RDATA of NS RRs. */
 static int remote_rdata_apply(server_t *s, remote_cmdargs_t* a, remote_zonef_t *cb)
 {
 	if (!s || !a || !cb) {
@@ -156,12 +151,15 @@ static int remote_rdata_apply(server_t *s, remote_cmdargs_t* a, remote_zonef_t *
 		uint16_t rr_count = rr->rrs.rr_count;
 		for (uint16_t i = 0; i < rr_count; i++) {
 			const knot_dname_t *dn = knot_ns_name(&rr->rrs, i);
-			rcu_read_lock();
 			zone = knot_zonedb_find(s->zone_db, dn);
-			if (cb(zone) != KNOT_EOK) {
+			if (zone == NULL) {
+				char zname[KNOT_DNAME_MAXLEN];
+				knot_dname_to_str(zname, dn, KNOT_DNAME_MAXLEN);
+				log_warning("remote control, zone %s not found.",
+				            zname);
+			} else if (cb(zone, a) != KNOT_EOK) {
 				a->rc = KNOT_RCODE_SERVFAIL;
 			}
-			rcu_read_unlock();
 		}
 	}
 
@@ -169,8 +167,10 @@ static int remote_rdata_apply(server_t *s, remote_cmdargs_t* a, remote_zonef_t *
 }
 
 /*! \brief Zone refresh callback. */
-static int remote_zone_refresh(zone_t *zone)
+static int remote_zone_refresh(zone_t *zone, remote_cmdargs_t *a)
 {
+	UNUSED(a);
+
 	if (zone_master(zone) == NULL) {
 		return KNOT_EINVAL;
 	}
@@ -179,9 +179,20 @@ static int remote_zone_refresh(zone_t *zone)
 	return KNOT_EOK;
 }
 
-/*! \brief Zone refresh callback. */
-static int remote_zone_retransfer(zone_t *zone)
+/*! \brief Zone reload callback. */
+static int remote_zone_reload(zone_t *zone, remote_cmdargs_t *a)
 {
+	UNUSED(a);
+
+	zone_events_schedule(zone, ZONE_EVENT_RELOAD, ZONE_EVENT_NOW);
+	return KNOT_EOK;
+}
+
+/*! \brief Zone refresh callback. */
+static int remote_zone_retransfer(zone_t *zone, remote_cmdargs_t *a)
+{
+	UNUSED(a);
+
 	if (zone_master(zone) == NULL) {
 		return KNOT_EINVAL;
 	}
@@ -192,8 +203,10 @@ static int remote_zone_retransfer(zone_t *zone)
 }
 
 /*! \brief Zone flush callback. */
-static int remote_zone_flush(zone_t *zone)
+static int remote_zone_flush(zone_t *zone, remote_cmdargs_t *a)
 {
+	UNUSED(a);
+
 	if (zone == NULL) {
 		return KNOT_EINVAL;
 	}
@@ -203,12 +216,13 @@ static int remote_zone_flush(zone_t *zone)
 }
 
 /*! \brief Sign zone callback. */
-static int remote_zone_sign(zone_t *zone)
+static int remote_zone_sign(zone_t *zone, remote_cmdargs_t *a)
 {
+	UNUSED(a);
+
 	if (zone == NULL || !zone->conf->dnssec_enable) {
 		return KNOT_EINVAL;
 	}
-
 
 	zone->flags |= ZONE_FORCE_RESIGN;
 	zone_events_schedule(zone, ZONE_EVENT_DNSSEC, ZONE_EVENT_NOW);
@@ -232,12 +246,26 @@ static int remote_c_stop(server_t *s, remote_cmdargs_t* a)
  * \brief Remote command 'reload' handler.
  *
  * QNAME: reload
- * DATA: NULL
+ * DATA: NONE for all zones
+ *       NS RRs with zones in RDATA
  */
 static int remote_c_reload(server_t *s, remote_cmdargs_t* a)
 {
-	UNUSED(a);
-	return server_reload(s, conf()->filename);
+	int ret = KNOT_EOK;
+
+	if (a->argc == 0) {
+		/* Reload all. */
+		dbg_server_verb("remote: refreshing all zones\n");
+		ret = server_reload(s, conf()->filename);
+	} else {
+		rcu_read_lock();
+		/* Reload specific zones. */
+		dbg_server_verb("remote: refreshing particular zones");
+		ret = remote_rdata_apply(s, a, &remote_zone_reload);
+		rcu_read_unlock();
+	}
+
+	return (ret != KNOT_EOK) ? ret : KNOT_CTL_ACCEPTED;
 }
 
 /*!
@@ -271,86 +299,90 @@ static char *dnssec_info(const zone_t *zone, char *buf, size_t buf_size)
 	return buf;
 }
 
+static int remote_zonestatus(zone_t *zone, remote_cmdargs_t *a)
+{
+	if (zone == NULL || a == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	int ret = KNOT_EOK;
+
+	/* Fetch latest serial. */
+	const knot_rdataset_t *soa_rrs = NULL;
+	uint32_t serial = 0;
+	if (zone->contents) {
+		soa_rrs = node_rdataset(zone->contents->apex,
+		                        KNOT_RRTYPE_SOA);
+		assert(soa_rrs != NULL);
+		serial = knot_soa_serial(soa_rrs);
+	}
+
+	/* Fetch next zone event. */
+	char when[128] = { '\0' };
+	zone_event_type_t next_type = ZONE_EVENT_INVALID;
+	const char *next_name = "";
+	time_t next_time = zone_events_get_next(zone, &next_type);
+	if (next_type != ZONE_EVENT_INVALID) {
+		next_name = zone_events_get_name(next_type);
+		next_time = next_time - time(NULL);
+		if (next_time < 0) {
+			memcpy(when, "pending", strlen("pending"));
+		} else if (snprintf(when, sizeof(when),
+		                    "in %lldh%lldm%llds",
+		                    (long long)(next_time / 3600),
+		                    (long long)(next_time % 3600) / 60,
+		                    (long long)(next_time % 60)) < 0) {
+			return KNOT_ESPACE;
+		}
+	} else {
+		memcpy(when, "idle", strlen("idle"));
+	}
+
+	/* Prepare zone info. */
+	char buf[512] = { '\0' };
+	char dnssec_buf[128] = { '\0' };
+	int n = snprintf(buf, sizeof(buf),
+	                 "%s\ttype=%s | serial=%u | %s %s | %s %s\n",
+	                 zone->conf->name,
+	                 zone_master(zone) ? "slave" : "master",
+	                 serial,
+	                 next_name,
+	                 when,
+	                 zone->conf->dnssec_enable ? "automatic DNSSEC, resigning at:" : "DNSSEC signing disabled",
+	                 zone->conf->dnssec_enable ? dnssec_info(zone, dnssec_buf, sizeof(dnssec_buf)) : "");
+	if (n < 0 || n >= sizeof(buf)) {
+		return KNOT_ESPACE;
+	}
+
+	ret = cmdargs_assure_avail(a, n);
+	if (ret == KNOT_EOK) {
+		memcpy(a->response + a->response_size, buf, n);
+		a->response_size += n;
+	}
+
+	return ret;
+}
+
 /*!
  * \brief Remote command 'zonestatus' handler.
  *
  * QNAME: zonestatus
- * DATA: NONE
+ * DATA: NONE for all zones
+ *       NS RRs with zones in RDATA
  */
 static int remote_c_zonestatus(server_t *s, remote_cmdargs_t* a)
 {
 	dbg_server("remote: %s\n", __func__);
 
-	int ret = KNOT_EOK;
 	rcu_read_lock();
-
-	knot_zonedb_iter_t it;
-	knot_zonedb_iter_begin(s->zone_db, &it);
-	while(!knot_zonedb_iter_finished(&it)) {
-		const zone_t *zone = knot_zonedb_iter_val(&it);
-
-		/* Fetch latest serial. */
-		const knot_rdataset_t *soa_rrs = NULL;
-		uint32_t serial = 0;
-		if (zone->contents) {
-			soa_rrs = node_rdataset(zone->contents->apex,
-			                        KNOT_RRTYPE_SOA);
-			assert(soa_rrs != NULL);
-			serial = knot_soa_serial(soa_rrs);
-		}
-
-		/* Fetch next zone event. */
-		char when[128] = { '\0' };
-		zone_event_type_t next_type = ZONE_EVENT_INVALID;
-		const char *next_name = "";
-		time_t next_time = zone_events_get_next(zone, &next_type);
-		if (next_type != ZONE_EVENT_INVALID) {
-			next_name = zone_events_get_name(next_type);
-			next_time = next_time - time(NULL);
-			if (next_time < 0) {
-				memcpy(when, "pending", strlen("pending"));
-			} else if (snprintf(when, sizeof(when),
-			                    "in %lldh%lldm%llds",
-			                    (long long)(next_time / 3600),
-			                    (long long)(next_time % 3600) / 60,
-			                    (long long)(next_time % 60)) < 0) {
-				ret = KNOT_ESPACE;
-				break;
-			}
-		} else {
-			memcpy(when, "idle", strlen("idle"));
-		}
-
-		/* Prepare zone info. */
-		char buf[512] = { '\0' };
-		char dnssec_buf[128] = { '\0' };
-		int n = snprintf(buf, sizeof(buf),
-		                 "%s\ttype=%s | serial=%u | %s %s | %s %s\n",
-		                 zone->conf->name,
-		                 zone_master(zone) ? "slave" : "master",
-		                 serial,
-		                 next_name,
-		                 when,
-		                 zone->conf->dnssec_enable ? "automatic DNSSEC, resigning at:" : "DNSSEC signing disabled",
-		                 zone->conf->dnssec_enable ? dnssec_info(zone, dnssec_buf, sizeof(dnssec_buf)) : "");
-		if (n < 0 || n >= sizeof(buf)) {
-			ret = KNOT_ESPACE;
-			break;
-		}
-
-		ret = cmdargs_assure_avail(a, n);
-		if (ret != KNOT_EOK) {
-			break;
-		}
-
-		memcpy(a->response + a->response_size, buf, n);
-		a->response_size += n;
-
-		knot_zonedb_iter_next(&it);
+	if (a->argc == 0) {
+		knot_zonedb_foreach(s->zone_db, remote_zonestatus, a);
+	} else {
+		remote_rdata_apply(s, a, &remote_zonestatus);
 	}
 	rcu_read_unlock();
 
-	return ret;
+	return KNOT_EOK;
 }
 
 /*!
@@ -358,19 +390,21 @@ static int remote_c_zonestatus(server_t *s, remote_cmdargs_t* a)
  *
  * QNAME: refresh
  * DATA: NONE for all zones
- *       CNAME RRs with zones in RDATA
+ *       NS RRs with zones in RDATA
  */
 static int remote_c_refresh(server_t *s, remote_cmdargs_t* a)
 {
 	dbg_server("remote: %s\n", __func__);
+	rcu_read_lock();
 	if (a->argc == 0) {
 		/* Refresh all. */
 		dbg_server_verb("remote: refreshing all zones\n");
-		knot_zonedb_foreach(s->zone_db, remote_zone_refresh);
+		knot_zonedb_foreach(s->zone_db, remote_zone_refresh, NULL);
 	} else {
 		/* Refresh specific zones. */
 		remote_rdata_apply(s, a, &remote_zone_refresh);
 	}
+	rcu_read_unlock();
 
 	return KNOT_CTL_ACCEPTED;
 }
@@ -379,17 +413,19 @@ static int remote_c_refresh(server_t *s, remote_cmdargs_t* a)
  * \brief Remote command 'retransfer' handler.
  *
  * QNAME: retransfer
- * DATA: CNAME RRs with zones in RDATA
+ * DATA: NS RRs with zones in RDATA
  */
 static int remote_c_retransfer(server_t *s, remote_cmdargs_t* a)
 {
 	dbg_server("remote: %s\n", __func__);
 	if (a->argc == 0) {
-		/* Refresh all. */
-		return KNOT_ENOTSUP;
+		/* Retransfer all. */
+		return KNOT_CTL_ARG_REQ;
 	} else {
-		/* Refresh specific zones. */
+		rcu_read_lock();
+		/* Retransfer specific zones. */
 		remote_rdata_apply(s, a, &remote_zone_retransfer);
+		rcu_read_unlock();
 	}
 
 	return KNOT_CTL_ACCEPTED;
@@ -401,26 +437,22 @@ static int remote_c_retransfer(server_t *s, remote_cmdargs_t* a)
  *
  * QNAME: flush
  * DATA: NONE for all zones
- *       CNAME RRs with zones in RDATA
+ *       NS RRs with zones in RDATA
  */
 static int remote_c_flush(server_t *s, remote_cmdargs_t* a)
 {
 	dbg_server("remote: %s\n", __func__);
+
+	rcu_read_lock();
 	if (a->argc == 0) {
 		/* Flush all. */
 		dbg_server_verb("remote: flushing all zones\n");
-		rcu_read_lock();
-		knot_zonedb_iter_t it;
-		knot_zonedb_iter_begin(s->zone_db, &it);
-		while(!knot_zonedb_iter_finished(&it)) {
-			remote_zone_flush(knot_zonedb_iter_val(&it));
-			knot_zonedb_iter_next(&it);
-		}
-		rcu_read_unlock();
+		knot_zonedb_foreach(s->zone_db, remote_zone_flush, NULL);
 	} else {
 		/* Flush specific zones. */
 		remote_rdata_apply(s, a, &remote_zone_flush);
 	}
+	rcu_read_unlock();
 
 	return KNOT_CTL_ACCEPTED;
 }
@@ -435,10 +467,12 @@ static int remote_c_signzone(server_t *server, remote_cmdargs_t* arguments)
 
 	if (arguments->argc == 0) {
 		/* Resign all. */
-		return KNOT_ENOTSUP;
+		return KNOT_CTL_ARG_REQ;
 	} else {
+		rcu_read_lock();
 		/* Resign specific zones. */
 		remote_rdata_apply(server, arguments, remote_zone_sign);
+		rcu_read_unlock();
 	}
 
 	return KNOT_CTL_ACCEPTED;
@@ -505,7 +539,7 @@ int remote_unbind(conf_iface_t *desc, int sock)
 	return close(sock);
 }
 
-int remote_poll(int sock)
+int remote_poll(int sock, const sigset_t *sigmask)
 {
 	/* Wait for events. */
 	fd_set rfds;
@@ -516,7 +550,7 @@ int remote_poll(int sock)
 		sock = -1; /* Make sure n == r + 1 == 0 */
 	}
 
-	return fdset_pselect(sock + 1, &rfds, NULL, NULL, NULL, NULL);
+	return pselect(sock + 1, &rfds, NULL, NULL, NULL, sigmask);
 }
 
 int remote_recv(int sock, struct sockaddr_storage *addr, uint8_t *buf,
@@ -599,6 +633,7 @@ static void log_command(const char *cmd, const remote_cmdargs_t* args)
 {
 	char params[CMDARGS_BUFLEN_LOG] = { 0 };
 	size_t rest = CMDARGS_BUFLEN_LOG;
+	size_t pos = 0;
 
 	for (unsigned i = 0; i < args->argc; i++) {
 		const knot_rrset_t *rr = &args->arg[i];
@@ -611,11 +646,13 @@ static void log_command(const char *cmd, const remote_cmdargs_t* args)
 			const knot_dname_t *dn = knot_ns_name(&rr->rrs, j);
 			char *name = knot_dname_to_str_alloc(dn);
 
-			int ret = snprintf(params, rest, " %s", name);
+			int ret = snprintf(params + pos, rest, " %s", name);
 			free(name);
+
 			if (ret <= 0 || ret >= rest) {
 				break;
 			}
+			pos += ret;
 			rest -= ret;
 		}
 	}

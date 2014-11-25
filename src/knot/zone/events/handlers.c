@@ -18,9 +18,9 @@
 #include "libknot/dnssec/random.h"
 #include "libknot/processing/requestor.h"
 
-#include "common-knot/trim.h"
-#include "common/macros.h"
-#include "common/mempool.h"
+#include "knot/common/trim.h"
+#include "libknot/internal/mempool.h"
+#include "libknot/internal/macros.h"
 
 #include "knot/server/udp-handler.h"
 #include "knot/server/tcp-handler.h"

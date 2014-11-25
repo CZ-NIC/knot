@@ -26,14 +26,13 @@
 #include <unistd.h>
 #include <inttypes.h>
 
-#include "common-knot/crc.h"
-#include "common-knot/strlcat.h"
-#include "common/macros.h"
-#include "common/strlcpy.h"
+#include "libknot/internal/strlcat.h"
+#include "libknot/internal/strlcpy.h"
+#include "libknot/internal/macros.h"
 #include "knot/zone/semantic-check.h"
 #include "knot/zone/contents.h"
 #include "knot/dnssec/zone-nsec.h"
-#include "knot/other/debug.h"
+#include "knot/common/debug.h"
 #include "knot/zone/zonefile.h"
 #include "libknot/rdata.h"
 #include "knot/zone/zone-dump.h"
