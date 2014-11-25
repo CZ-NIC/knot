@@ -137,8 +137,9 @@ static int prepare_and_check_keys(const knot_dname_t *zone_name,
 	assert(zone_name);
 	assert(keys);
 
-	static const size_t max_algorithms = KNOT_DNSSEC_ALG_ECDSAP384SHA384 + 1;
-	algorithm_usage_t usage[max_algorithms] = {{0}};
+	const size_t max_algorithms = KNOT_DNSSEC_ALG_ECDSAP384SHA384 + 1;
+	algorithm_usage_t usage[max_algorithms];
+	memset(usage, 0, max_algorithms * sizeof(algorithm_usage_t));
 
 	// count available keys
 
