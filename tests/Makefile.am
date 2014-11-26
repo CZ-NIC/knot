@@ -40,6 +40,7 @@ check_PROGRAMS = \
 	rrset				\
 	rrset_wire			\
 	server				\
+	utils				\
 	wire				\
 	worker_pool			\
 	worker_queue			\

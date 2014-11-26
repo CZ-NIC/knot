@@ -46,6 +46,9 @@ typedef struct lookup_table lookup_table_t;
  * \param table Lookup table.
  * \param name Name to look up.
  *
+ * \warning Both \a table and \a name must be non-NULL. The function does not
+ *          check parameters.
+ *
  * \return Item in the lookup table with the given name or NULL if no such is
  *         present.
  */
@@ -56,6 +59,8 @@ lookup_table_t *lookup_by_name(lookup_table_t *table, const char *name);
  *
  * \param table Lookup table.
  * \param id ID to look up.
+ *
+ * \warning \a table must be non-NULL. The function does not check parameters.
  *
  * \return Item in the lookup table with the given id or NULL if no such is
  *         present.
