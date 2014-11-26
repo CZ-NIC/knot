@@ -25,9 +25,12 @@
 
 /*----------------------------------------------------------------------------*/
 _public_
-lookup_table_t *lookup_by_name(lookup_table_t *table,
-                                             const char *name)
+lookup_table_t *lookup_by_name(lookup_table_t *table, const char *name)
 {
+	if (table == NULL || name == NULL) {
+		return NULL;
+	}
+
 	while (table->name != NULL) {
 		if (strcasecmp(name, table->name) == 0) {
 			return table;
@@ -40,9 +43,12 @@ lookup_table_t *lookup_by_name(lookup_table_t *table,
 
 /*----------------------------------------------------------------------------*/
 _public_
-lookup_table_t *lookup_by_id(lookup_table_t *table,
-                                           int id)
+lookup_table_t *lookup_by_id(lookup_table_t *table, int id)
 {
+	if (table == NULL) {
+		return NULL;
+	}
+
 	while (table->name != NULL) {
 		if (table->id == id) {
 			return table;

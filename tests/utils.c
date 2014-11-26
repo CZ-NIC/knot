@@ -19,6 +19,7 @@
 #include <stdint.h>
 #include <string.h>
 #include <math.h>
+#include <stdlib.h>
 
 #include "libknot/internal/utils.h"
 
@@ -39,33 +40,51 @@ enum serials {
 	S_HIGHEST = 0xffffffff		// highest value
 };
 
+static uint32_t random_serial()
+{
+	uint32_t s = rand() & 0xff;
+	s |= (rand() & 0xff) << 8;
+	s |= (rand() & 0xff) << 16;
+	s |= (rand() & 0xff) << 24;
+
+	return s;
+}
+
 int main(int argc, char *argv[])
 {
-	plan(5 + 18);
+	plan(9 + 20);
 
 	/* Lookup by ID. */
 	lookup_table_t *found = lookup_by_id(test_table, 3);
-	ok(found == NULL, "lookup table: find non-existent ID");
+	ok(found == NULL, "lookup table: find by id - non-existent ID");
 
 	found = lookup_by_id(test_table, 2);
 	ok(found && found->id == 2 && strcmp(found->name, "test item 2") == 0,
-	   "lookup table: find ID 2 (unordered IDs)");
+	   "lookup table: find by id - ID 2 (unordered IDs)");
+
+	found = lookup_by_id(NULL, 2);
+	ok(found == NULL, "lookup table: find by id - table == NULL");
 
 	/* Lookup by name. */
 	found = lookup_by_name(test_table, "test item 2");
 	ok(found && found->id == 2 && strcmp(found->name, "test item 2") == 0,
-	   "lookup table: find existent name");
+	   "lookup table: find by name - existent");
 
 	found = lookup_by_name(test_table, "");
 	ok(found && found->id == 10 && strcmp(found->name, "") == 0,
-	   "lookup table: find item with empty string");
+	   "lookup table: find by name - empty string");
 
-	// The function does not take NULL argument
-//	found = lookup_by_name(test_table, NULL);
-//	ok(found == NULL, "Find NULL");
+	found = lookup_by_name(test_table, NULL);
+	ok(found == NULL, "lookup table: find by name - NULL name");
+
+	found = lookup_by_name(NULL, "test item 2");
+	ok(found == NULL, "lookup table: find by name - NULL table");
+
+	found = lookup_by_name(NULL, NULL);
+	ok(found == NULL, "lookup table: find by name - NULL table & NULL name");
 
 	found = lookup_by_name(test_table, "non existent name");
-	ok(found == NULL, "lookup table: find non-existent name");
+	ok(found == NULL, "lookup table: find by name - non-existent name");
 
 
 	/* Serial compare test. */
@@ -74,9 +93,9 @@ int main(int argc, char *argv[])
 	ok(serial_compare(S_BELOW_MIDDLE, S_LOWEST) > 0,
 	   "serial compare: below middle > lowest");
 
-	// TODO: Both are -1, but that's not an error!
-	ok(serial_compare(S_LOWEST, S_ABOVE_MIDDLE) > 0,
-	   "serial compare: lowest > above_middle");
+	/* Corner-case: these serials' distance is exactly 2^31. */
+	ok(serial_compare(S_LOWEST, S_ABOVE_MIDDLE) < 0,
+	   "serial compare: lowest < above_middle");
 	ok(serial_compare(S_ABOVE_MIDDLE, S_LOWEST) < 0,
 	   "serial compare: above_middle < lowest");
 
@@ -90,9 +109,9 @@ int main(int argc, char *argv[])
 	ok(serial_compare(S_ABOVE_MIDDLE, S_2LOWEST) > 0,
 	   "serial compare: above middle > 2nd lowest");
 
-	// TODO: Both are -1, but that's not an error!
-	ok(serial_compare(S_BELOW_MIDDLE, S_HIGHEST) > 0,
-	   "serial compare: below middle > highest");
+	/* Corner-case: these serials' distance is exactly 2^31. */
+	ok(serial_compare(S_BELOW_MIDDLE, S_HIGHEST) < 0,
+	   "serial compare: below middle < highest");
 	ok(serial_compare(S_HIGHEST, S_BELOW_MIDDLE) < 0,
 	   "serial compare: highest < below middle");
 
@@ -115,6 +134,14 @@ int main(int argc, char *argv[])
 	   "serial compare: lowest - 1 == highest");
 	ok(serial_compare(S_LOWEST, S_HIGHEST + 1) == 0,
 	   "serial compare: lowest== highest + 1");
+
+	/* Corner-case: these serials' distance is exactly 2^31. */
+	uint32_t s1 = random_serial();
+	uint32_t s2 = s1 + S_ABOVE_MIDDLE;  // exactly the 'oposite' number
+	ok(serial_compare(s1, s2) < 0,
+	   "serial compare: random oposites (s1 < s2)");
+	ok(serial_compare(s2, s1) < 0,
+	   "serial compare: random oposites (s2 < s1)");
 
 	return 0;
 }
