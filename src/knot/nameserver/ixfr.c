@@ -698,13 +698,12 @@ int ixfr_process_answer(knot_pkt_t *pkt, struct answer_data *adata)
 		if (!zone_transfer_needed(adata->param->zone, pkt)) {
 			if (knot_pkt_section(pkt, KNOT_ANSWER)->count > 1) {
 				IXFRIN_LOG(LOG_WARNING, "malformed IXFR response"
-				           "(old data).");
-				return KNOT_NS_PROC_FAIL;
+				           " (old data), ignoring");
 			} else {
 				/* Single-SOA answer. */
 				IXFRIN_LOG(LOG_INFO, "zone is up-to-date");
-				return KNOT_NS_PROC_DONE;
 			}
+			return KNOT_NS_PROC_DONE;
 		}
 
 		IXFRIN_LOG(LOG_INFO, "starting");
