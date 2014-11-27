@@ -36,8 +36,11 @@
  * int result;
  * dnssec_keystore_t *store = NULL;
  *
- * // open the default PKCS #8 key store
- * result = dnssec_keystore_create_pkcs8_dir(&store, "/path/to/keydb");
+ * // create key store access context
+ * dnssec_keystore_init_pkcs8_dir(&store);
+ *
+ * // open the key store
+ * result = dnssec_keystore_open(&store, "/path/to/keydb");
  * if (result != DNSSEC_EOK) {
  *     return result;
  * }
@@ -77,6 +80,7 @@
  * free(key_id);
  * dnssec_key_free(key);
  * dnssec_keystore_close(store);
+ * dnssec_keystore_deinit(store);
  *
  * ~~~~~
  * @{
@@ -99,12 +103,27 @@ typedef struct dnssec_keystore dnssec_keystore_t;
  */
 typedef struct dnssec_keystore_pkcs8_functions {
 	/*!
+	 * Create keystore context.
+	 *
+	 * \param[out]  handle_ptr  Allocated key store handle.
+	 */
+	int (*create)(void **handle_ptr);
+
+	/*!
+	 * Initialize key store.
+	 *
+	 * \param handle  Key store handle.
+	 * \param config  Configuration string.
+	 */
+	int (*init)(void *handle, const char *config);
+
+	/*!
 	 * Callback to open the key store.
 	 *
-	 * \param[out] handle_ptr  Allocated key store handle.
-	 * \param[in]  config      Configuration string.
+	 * \param[out] handle  Key store handle.
+	 * \param[in]  config  Configuration string.
 	 */
-	int (*open)(void **handle_ptr, const char *config);
+	int (*open)(void *handle, const char *config);
 
 	/*!
 	 * Callback to close the key store.
@@ -130,46 +149,67 @@ typedef struct dnssec_keystore_pkcs8_functions {
 	 * \param pem     Key material in unencrypted PEM format.
 	 */
 	int (*write)(void *handle, const char *id, const dnssec_binary_t *pem);
+
+	/*!
+	 * Callback to remove a PEM key.
+	 *
+	 * \param handle  Key store handle.
+	 * \param id      Key ID of the key to be removed (ASCII form).
+	 */
+	int (*remove)(void *handle, const char *id);
 } dnssec_keystore_pkcs8_functions_t;
 
 /*!
- * Open default PKCS #8 private key store.
+ * Create default PKCS #8 private key store context.
  *
  * The default store maintains the private keys in one directory on the file
  * system. The private keys are stored in unencrypted PEM format, named
- * key-id.pem.
+ * key-id.pem. The configuration string is a path to the directory.
  *
  * \param[out] store  Opened key store.
- * \param[in]  path   Path to the key store.
  *
  * \return Error code, KNOT_EOK if successful.
  */
-int dnssec_keystore_create_pkcs8_dir(dnssec_keystore_t **store, const char *path);
+int dnssec_keystore_init_pkcs8_dir(dnssec_keystore_t **store);
 
 /*!
- * Open custom PKCS #8 private key store.
+ * Create custom PKCS #8 private key store context.
  *
  * \param[out] store   Opened key store.
  * \param[in]  impl    Implementation of the key store provider.
- * \param[in]  config  Configuration string for initialization.
  *
  * \return Error code, KNOT_EOK if successful.
  */
-int dnssec_keystore_create_pkcs8_custom(dnssec_keystore_t **store,
-					const dnssec_keystore_pkcs8_functions_t *impl,
-					const char *config);
+int dnssec_keystore_init_pkcs8_custom(dnssec_keystore_t **store,
+				      const dnssec_keystore_pkcs8_functions_t *impl);
 
 /*!
- * Open PKCS #11 private key store.
+ * Crate new PKCS #11 private key store context.
  *
  * \todo Not implemented.
  *
  * \param[out]  store   Opened key store.
- * \param[in]   config  Configuration string.
  *
  * \return Error code, KNOT_EOK if successful.
  */
-int dnssec_keystore_create_pkcs11(dnssec_keystore_t **store, const char *config);
+int dnssec_keystore_init_pkcs11(dnssec_keystore_t **store);
+
+/*!
+ * Deinitialize private key store context.
+ *
+ * \param store  Key store to be deinitialized.
+ */
+int dnssec_keystore_deinit(dnssec_keystore_t *store);
+
+/*!
+ * Initialize new private key store.
+ */
+int dnssec_keystore_init(dnssec_keystore_t *store, const char *config);
+
+/*!
+ * Open private key store.
+ */
+int dnssec_keystore_open(dnssec_keystore_t *store, const char *config);
 
 /*!
  * Close private key store.
@@ -207,14 +247,14 @@ int dnssec_keystore_generate_key(dnssec_keystore_t *store,
 				 unsigned bits, char **id_ptr);
 
 /*!
- * Delete a private key from the key store.
+ * Remove a private key from the key store.
  *
  * \param store  Key store.
  * \param id     ID of the private key to be deleted.
  *
  * \return Error code, KNOT_EOK if successful.
  */
-int dnssec_keystore_delete_key(dnssec_keystore_t *store, const char *id);
+int dnssec_keystore_remove_key(dnssec_keystore_t *store, const char *id);
 
 /*!
  * Import public and private key from the key store into a DNSSEC key.

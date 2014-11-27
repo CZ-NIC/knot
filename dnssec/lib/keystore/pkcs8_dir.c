@@ -110,24 +110,45 @@ static int key_open_write(const char *dir_name, const char *id, int *fd_ptr)
 
 /* -- PKCS #8 dir access API ----------------------------------------------- */
 
-static int pkcs8_dir_open(void **handle_ptr, const char *path)
+static int pkcs8_dir_create(void **handle_ptr)
 {
-	if (!handle_ptr || !path) {
+	if (!handle_ptr) {
 		return DNSSEC_EINVAL;
 	}
 
-	pkcs8_dir_handle_t *handle = calloc(1, sizeof(pkcs8_dir_handle_t));
+	pkcs8_dir_handle_t *handle = calloc(1, sizeof(*handle));
 	if (!handle) {
 		return DNSSEC_ENOMEM;
 	}
 
-	handle->dir_name = path_normalize(path);
-	if (!handle->dir_name) {
-		free(handle);
+	*handle_ptr = handle;
+
+	return DNSSEC_EOK;
+}
+
+static int pkcs8_dir_init(void *handle, const char *path)
+{
+	if (!handle || !path) {
+		return DNSSEC_EINVAL;
+	}
+
+	return DNSSEC_NOT_IMPLEMENTED_ERROR;
+}
+
+static int pkcs8_dir_open(void *_handle, const char *config)
+{
+	if (!_handle || !config) {
+		return DNSSEC_EINVAL;
+	}
+
+	pkcs8_dir_handle_t *handle = _handle;
+
+	char *path = path_normalize(config);
+	if (!path) {
 		return DNSSEC_NOT_FOUND;
 	}
 
-	*handle_ptr = handle;
+	handle->dir_name = path;
 
 	return DNSSEC_EOK;
 }
@@ -224,24 +245,36 @@ static int pkcs8_dir_write(void *_handle, const char *id, const dnssec_binary_t 
 	return DNSSEC_EOK;
 }
 
+static int pkcs8_dir_remove(void *_handle, const char *id)
+{
+	if (!_handle || !id) {
+		return DNSSEC_EINVAL;
+	}
+
+	pkcs8_dir_handle_t *handle = _handle;
+	(void)handle;
+
+	return DNSSEC_NOT_IMPLEMENTED_ERROR;
+}
+
 const dnssec_keystore_pkcs8_functions_t PKCS8_DIR_FUNCTIONS = {
-	.open    = pkcs8_dir_open,
-	.close   = pkcs8_dir_close,
-	.read    = pkcs8_dir_read,
-	.write   = pkcs8_dir_write,
+	.create = pkcs8_dir_create,
+	.init   = pkcs8_dir_init,
+	.open   = pkcs8_dir_open,
+	.close  = pkcs8_dir_close,
+	.read   = pkcs8_dir_read,
+	.write  = pkcs8_dir_write,
+	.remove = pkcs8_dir_remove,
 };
 
 /* -- public API ----------------------------------------------------------- */
 
 _public_
-int dnssec_keystore_create_pkcs8_dir(dnssec_keystore_t **store_ptr,
-				     const char *path)
+int dnssec_keystore_init_pkcs8_dir(dnssec_keystore_t **store_ptr)
 {
-	if (!store_ptr || !path) {
+	if (!store_ptr) {
 		return DNSSEC_EINVAL;
 	}
 
-	return dnssec_keystore_create_pkcs8_custom(store_ptr,
-						   &PKCS8_DIR_FUNCTIONS,
-						   path);
+	return dnssec_keystore_init_pkcs8_custom(store_ptr, &PKCS8_DIR_FUNCTIONS);
 }

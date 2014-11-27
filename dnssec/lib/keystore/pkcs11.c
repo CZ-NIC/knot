@@ -35,11 +35,7 @@ const keystore_functions_t PKCS11_FUNCTIONS = {
 /* -- public API ----------------------------------------------------------- */
 
 _public_
-int dnssec_keystore_create_pkcs11(dnssec_keystore_t **store_ptr, const char *config)
+int dnssec_keystore_create_pkcs11(dnssec_keystore_t **store_ptr)
 {
-	if (!config) {
-		return DNSSEC_EINVAL;
-	}
-
-	return keystore_create(store_ptr, &PKCS11_FUNCTIONS, NULL, config);
+	return keystore_create(store_ptr, &PKCS11_FUNCTIONS, NULL);
 }

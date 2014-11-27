@@ -33,7 +33,7 @@
 
 int keystore_create(dnssec_keystore_t **store_ptr,
 		    const keystore_functions_t *functions,
-		    void *ctx_custom_data, const char *open_config)
+		    void *ctx_custom_data)
 {
 	assert(store_ptr);
 	assert(functions);
@@ -51,17 +51,44 @@ int keystore_create(dnssec_keystore_t **store_ptr,
 		return DNSSEC_ENOMEM;
 	}
 
-	result = functions->open(store->ctx, open_config);
-	if (result != DNSSEC_EOK) {
-		dnssec_keystore_close(store);
-		return result;
-	}
-
 	*store_ptr = store;
 	return DNSSEC_EOK;
 }
 
 /* -- public API ----------------------------------------------------------- */
+
+_public_
+int dnssec_keystore_deinit(dnssec_keystore_t *store)
+{
+	if (!store) {
+		return DNSSEC_EINVAL;
+	}
+
+	dnssec_keystore_close(store);
+	free(store);
+
+	return DNSSEC_EOK;
+}
+
+_public_
+int dnssec_keystore_init(dnssec_keystore_t *store, const char *config)
+{
+	if (!store) {
+		return DNSSEC_EINVAL;
+	}
+
+	return store->functions->init(store->ctx, config);
+}
+
+_public_
+int dnssec_keystore_open(dnssec_keystore_t *store, const char *config)
+{
+	if (!store) {
+		return DNSSEC_EINVAL;
+	}
+
+	return store->functions->open(store->ctx, config);
+}
 
 _public_
 int dnssec_keystore_close(dnssec_keystore_t *store)
@@ -70,11 +97,7 @@ int dnssec_keystore_close(dnssec_keystore_t *store)
 		return DNSSEC_EINVAL;
 	}
 
-	store->functions->close(store->ctx);
-	free(store->ctx);
-	free(store);
-
-	return DNSSEC_EOK;
+	return store->functions->close(store->ctx);
 }
 
 _public_
@@ -112,14 +135,13 @@ int dnssec_keystore_generate_key(dnssec_keystore_t *store,
 }
 
 _public_
-int dnssec_keystore_delete_key(dnssec_keystore_t *store,
-			       const char *key_id)
+int dnssec_keystore_remove_key(dnssec_keystore_t *store, const char *key_id)
 {
 	if (!store || !key_id) {
 		return DNSSEC_EINVAL;
 	}
 
-	return store->functions->delete_key(store, key_id);
+	return store->functions->remove_key(store, key_id);
 }
 
 static bool valid_params(dnssec_key_t *key, const char *id,
@@ -148,7 +170,6 @@ static bool valid_params(dnssec_key_t *key, const char *id,
 
 	return true;
 }
-
 
 _public_
 int dnssec_key_import_keystore(dnssec_key_t *key, dnssec_keystore_t *keystore,

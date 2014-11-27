@@ -36,17 +36,17 @@ typedef struct pkcs8_ctx {
 
 /* -- internal API --------------------------------------------------------- */
 
-static int pkcs8_ctx_new(void **ctx_ptr, void *data)
+static int pkcs8_ctx_new(void **ctx_ptr, void *_functions)
 {
 	assert(ctx_ptr);
-	assert(data);
+	assert(_functions);
 
 	pkcs8_ctx_t *ctx = calloc(1, sizeof(*ctx));
 	if (!ctx) {
 		return DNSSEC_ENOMEM;
 	}
 
-	dnssec_keystore_pkcs8_functions_t *functions = data;
+	dnssec_keystore_pkcs8_functions_t *functions = _functions;
 	ctx->functions = functions;
 
 	*ctx_ptr = ctx;
@@ -56,6 +56,12 @@ static int pkcs8_ctx_new(void **ctx_ptr, void *data)
 static void pkcs8_ctx_free(void *ctx)
 {
 	free(ctx);
+}
+
+static int pkcs8_init(void *_ctx, const char *config)
+{
+	pkcs8_ctx_t *ctx = _ctx;
+	return ctx->functions->init(&ctx->data, config);
 }
 
 static int pkcs8_open(void *_ctx, const char *config)
@@ -107,10 +113,10 @@ static int pkcs8_generate_key(void *_ctx, gnutls_pk_algorithm_t algorithm,
 	return DNSSEC_EOK;
 }
 
-static int pkcs8_delete_key(void *_ctx, const char *id)
+static int pkcs8_remove_key(void *_ctx, const char *id)
 {
-	//pkcs8_ctx_t *ctx = _ctx;
-	return DNSSEC_NOT_IMPLEMENTED_ERROR;
+	pkcs8_ctx_t *ctx = _ctx;
+	return ctx->functions->remove(ctx->data, id);
 }
 
 static int pkcs8_get_private(void *_ctx, const char *id, gnutls_privkey_t *key_ptr)
@@ -153,25 +159,24 @@ static int pkcs8_get_private(void *_ctx, const char *id, gnutls_privkey_t *key_p
 const keystore_functions_t PKCS8_FUNCTIONS = {
 	.ctx_new = pkcs8_ctx_new,
 	.ctx_free = pkcs8_ctx_free,
+	.init = pkcs8_init,
 	.open = pkcs8_open,
 	.close = pkcs8_close,
 	.list_keys = pkcs8_list_keys,
 	.generate_key = pkcs8_generate_key,
-	.delete_key = pkcs8_delete_key,
+	.remove_key = pkcs8_remove_key,
 	.get_private = pkcs8_get_private,
 };
 
 /* -- public API ----------------------------------------------------------- */
 
 _public_
-int dnssec_keystore_create_pkcs8_custom(dnssec_keystore_t **store_ptr,
-		const dnssec_keystore_pkcs8_functions_t *store_functions,
-		const char *config)
+int dnssec_keystore_init_pkcs8_custom(dnssec_keystore_t **store_ptr,
+			const dnssec_keystore_pkcs8_functions_t *store_functions)
 {
 	if (!store_ptr || !store_functions) {
 		return DNSSEC_EINVAL;
 	}
 
-	return keystore_create(store_ptr, &PKCS8_FUNCTIONS,
-			       (void *)store_functions, config);
+	return keystore_create(store_ptr, &PKCS8_FUNCTIONS, (void *)store_functions);
 }
