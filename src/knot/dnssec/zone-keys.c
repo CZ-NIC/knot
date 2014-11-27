@@ -127,7 +127,8 @@ static int load_private_keys(const char *kasp_dir, zone_keyset_t *keyset)
 		goto fail;
 	}
 
-	result = dnssec_keystore_create_pkcs8_dir(&keystore, keystore_dir);
+	dnssec_keystore_init_pkcs8_dir(&keystore);
+	result = dnssec_keystore_open(keystore, keystore_dir);
 	if (result != DNSSEC_EOK) {
 		goto fail;
 	}

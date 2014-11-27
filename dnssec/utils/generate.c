@@ -42,7 +42,9 @@ int main(int argc, char *argv[])
 	dnssec_crypto_init();
 
 	dnssec_keystore_t *keystore = NULL;
-	r = dnssec_keystore_create_pkcs8_dir(&keystore, storage_dir);
+	dnssec_keystore_init_pkcs8_dir(&keystore);
+
+	r = dnssec_keystore_open(keystore, storage_dir);
 	if (r != DNSSEC_EOK) {
 		fprintf(stderr, "Cannot open key store (%s).\n", dnssec_strerror(r));
 		goto fail;
