@@ -37,8 +37,11 @@
  * dnssec_kasp_zone_t *zone = NULL;
  * dnssec_list_t *keys = NULL;
  *
+ * // create API context
+ * dnssec_kasp_init_dir(&kasp);
+ *
  * // open KASP
- * result = dnssec_kasp_open_dir("keydir", &kasp);
+ * result = dnssec_kasp_open_dir(kasp, "keydir");
  * if (result != DNSSEC_EOK) {
  *     return result;
  * }
@@ -71,6 +74,7 @@
  * dnssec_kasp_zone_free_keys(keys);
  * dnssec_kasp_zone_free(zone);
  * dnssec_kasp_close(kasp);
+ * dnssec_kasp_deinit(kasp);
  *
  * ~~~~~
  *
@@ -92,7 +96,7 @@ struct dnssec_kasp;
 typedef struct dnssec_kasp dnssec_kasp_t;
 
 /*!
- * Initialize default KASP state store.
+ * Initialize default KASP state store context.
  *
  * This KASP provider stores the state in JSON files in a directory.
  *
@@ -103,19 +107,19 @@ typedef struct dnssec_kasp dnssec_kasp_t;
 int dnssec_kasp_init_dir(dnssec_kasp_t **kasp);
 
 /*!
+ * Deinitialize KASP store context.
+ *
+ * \param kasp    KASP store handle.
+ */
+void dnssec_kasp_deinit(dnssec_kasp_t *kasp);
+
+/*!
  * Initialize KASP store.
  *
  * \param kasp    KASP store handle.
  * \param config  KASP store configuration string.
  */
 int dnssec_kasp_init(dnssec_kasp_t *kasp, const char *config);
-
-/*
- * Deinitialize KASP store.
- *
- * \param kasp    KASP store handle.
- */
-void dnssec_kasp_deinit(dnssec_kasp_t *kasp);
 
 /*!
  * Open KASP store.
