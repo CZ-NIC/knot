@@ -27,6 +27,7 @@ const error_message_t ERROR_MESSAGES[] = {
 
 	{ DNSSEC_ENOMEM,		"Not enough memory" },
 	{ DNSSEC_EINVAL,		"Invalid argument" },
+	{ DNSSEC_ENOENT,		"No such file or directory" },
 
 	{ DNSSEC_ERROR,			"Unspecified error" },
 	{ DNSSEC_NOT_IMPLEMENTED_ERROR,	"Not implemeted" },

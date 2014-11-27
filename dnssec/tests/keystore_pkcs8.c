@@ -28,13 +28,18 @@
 
 static void *test_handle = (void *)0x42;
 
-static bool test_open_called = false;
-static int test_open(void **handle_ptr, const char *config)
+static bool test_init_called = false;
+static int test_init(void *handle_ptr, const char *config)
 {
-	test_open_called = (handle_ptr != NULL && strcmp(config, "hello") == 0);
-	if (handle_ptr != NULL) {
-		*handle_ptr = test_handle;
-	}
+	test_init_called = (handle_ptr != NULL && strcmp(config, "init config") == 0);
+
+	return DNSSEC_EOK;
+}
+
+static bool test_open_called = false;
+static int test_open(void *handle_ptr, const char *config)
+{
+	test_open_called = (handle_ptr != NULL && strcmp(config, "open config") == 0);
 
 	return DNSSEC_EOK;
 }
@@ -72,6 +77,7 @@ static int test_write(void *handle, const char *id, const dnssec_binary_t *pem)
 }
 
 static const dnssec_keystore_pkcs8_functions_t custom_store = {
+	.init = test_init,
 	.open = test_open,
 	.close = test_close,
 	.read = test_read,
@@ -89,8 +95,14 @@ int main(void)
 	int r = 0;
 
 	dnssec_keystore_t *store = NULL;
-	r = dnssec_keystore_create_pkcs8_custom(&store, &custom_store, "hello");
-	ok(r == DNSSEC_EOK, "dnssec_keystore_create_pkcs8_custom()");
+	r = dnssec_keystore_init_pkcs8_custom(&store, &custom_store);
+	ok(r == DNSSEC_EOK, "dnssec_keystore_init_pkcs8_custom()");
+
+	r = dnssec_keystore_init(store, "init config");
+	ok(r == DNSSEC_EOK, "dnssec_keystore_init()");
+
+	r = dnssec_keystore_open(store, "open config");
+	ok(r == DNSSEC_EOK, "dnssec_keystore_open()");
 
 	char *gen_id = NULL;
 	r = dnssec_keystore_generate_key(store, DNSSEC_KEY_ALGORITHM_RSA_SHA256, 512, &gen_id);

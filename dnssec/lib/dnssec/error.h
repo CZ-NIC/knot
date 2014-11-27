@@ -54,6 +54,7 @@ enum dnssec_error {
 
 	DNSSEC_ENOMEM = errno2error(ENOMEM),
 	DNSSEC_EINVAL = errno2error(EINVAL),
+	DNSSEC_ENOENT = errno2error(ENOENT),
 
 	DNSSEC_ERROR = -1000,
 	DNSSEC_NOT_IMPLEMENTED_ERROR,

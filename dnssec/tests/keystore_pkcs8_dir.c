@@ -69,13 +69,20 @@ int main(void)
 	// create context
 
 	const dnssec_keystore_pkcs8_functions_t *func = &PKCS8_DIR_FUNCTIONS;
-	r = func->open(&data, dir);
-	ok(r == DNSSEC_EOK && data != NULL, "open");
+
+	r = func->create(&data);
+	ok(r == DNSSEC_EOK && data != NULL, "create");
+
+	r = func->init(data, dir);
+	ok(r == DNSSEC_EOK, "init");
+
+	r = func->open(data, dir);
+	ok(r == DNSSEC_EOK, "open");
 
 	// read/write tests
 
 	r = func->read(data, TEST_PEM_A.id, &bin);
-	ok(r != DNSSEC_EOK && bin.size == 0, "read non-existent");
+	ok(r == DNSSEC_ENOENT && bin.size == 0, "read non-existent");
 
 	r = func->write(data, TEST_PEM_A.id, &TEST_PEM_A.data);
 	ok(r == DNSSEC_EOK, "write A");
@@ -92,6 +99,11 @@ int main(void)
 	ok(r == DNSSEC_EOK && dnssec_binary_cmp(&TEST_PEM_B.data, &bin) == 0,
 	   "read B");
 	dnssec_binary_free(&bin);
+
+	r = func->remove(data, TEST_PEM_A.id);
+	ok(r == DNSSEC_EOK, "remove A");
+	r = func->read(data, TEST_PEM_A.id, &bin);
+	ok(r == DNSSEC_ENOENT && bin.size == 0, "read removed");
 
 	// cleanup
 
