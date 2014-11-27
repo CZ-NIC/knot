@@ -279,7 +279,7 @@ static int cmd_zone_remove(options_t *options, int argc, char *argv[])
 	r = dnssec_kasp_zone_load(kasp, zone_name, &zone);
 	if (r != DNSSEC_EOK) {
 		error("Cannot retrieve zone from KASP (%s).\n", dnssec_strerror(r));
-		return false;
+		return 1;
 	}
 
 	if (!force && is_zone_used(zone)) {
@@ -297,15 +297,70 @@ static int cmd_zone_remove(options_t *options, int argc, char *argv[])
 	return 0;
 }
 
+static int cmd_zone_key_list(options_t *options, int argc, char *argv[])
+{
+	error("Not implemented.\n");
+	return 1;
+}
+
 /*
- * keymgr zone
+ * keymgr zone key generate <zone> <algorithm> [<bits>] [ksk]
  */
+static int cmd_zone_key_generate(options_t *options, int argc, char *argv[])
+{
+	if (argc != 3) {
+		error("Invalid parameters.\n");
+		return 1;
+	}
+
+	const char *zone_name = argv[1];
+	const char *algorithm_name = argv[2];
+
+	_cleanup_kasp_ dnssec_kasp_t *kasp = NULL;
+	dnssec_kasp_init_dir(&kasp);
+
+	int r = dnssec_kasp_open(kasp, options->kasp_dir);
+	if (r != DNSSEC_EOK) {
+		error("Cannot open KASP directory (%s).\n", dnssec_strerror(r));
+		return 1;
+	}
+
+	_cleanup_zone_ dnssec_kasp_zone_t *zone = NULL;
+	r = dnssec_kasp_zone_load(kasp, zone_name, &zone);
+	if (r != DNSSEC_EOK) {
+		error("Cannot retrieve zone from KASP (%s).\n", dnssec_strerror(r));
+		return 1;
+	}
+
+	error("Not implemented.\n");
+	return 1;
+}
+
+static int cmd_zone_key_import(options_t *options, int argc, char *argv[])
+{
+	error("Not implemented.\n");
+	return 1;
+}
+
+static int cmd_zone_key(options_t *options, int argc, char *argv[])
+{
+	static const command_t commands[] = {
+		{ "list",     cmd_zone_key_list },
+		{ "generate", cmd_zone_key_generate },
+		{ "import",   cmd_zone_key_import },
+		{ NULL }
+	};
+
+	return subcommand(commands, options, argc -1, argv + 1);
+}
+
 static int cmd_zone(options_t *options, int argc, char *argv[])
 {
 	static const command_t commands[] = {
 		{ "add",    cmd_zone_add },
 		{ "list",   cmd_zone_list },
 		{ "remove", cmd_zone_remove },
+		{ "key",    cmd_zone_key },
 		{ NULL }
 	};
 
@@ -322,29 +377,6 @@ static int cmd_keystore(options_t *options, int argc, char *argv[])
 {
 	error("Not implemented.");
 	return 1;
-}
-
-static int cmd_key_generate(options_t *options, int argc, char *argv[])
-{
-	error("Not implemented.");
-	return 1;
-}
-
-static int cmd_key_import(options_t *options, int argc, char *argv[])
-{
-	error("Not implemented.");
-	return 1;
-}
-
-static int cmd_key(options_t *options, int argc, char *argv[])
-{
-	static const command_t commands[] = {
-		{ "generate", cmd_key_generate },
-		{ "import",   cmd_key_import },
-		{ NULL }
-	};
-
-	return subcommand(commands, options, argc - 1, argv + 1);
 }
 
 int main(int argc, char *argv[])
@@ -385,7 +417,6 @@ int main(int argc, char *argv[])
 		{ "zone",     cmd_zone },
 		{ "policy",   cmd_policy },
 		{ "keystore", cmd_keystore },
-		{ "key",      cmd_key },
 		{ NULL }
 	};
 
