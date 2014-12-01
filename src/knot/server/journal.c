@@ -483,10 +483,10 @@ int journal_write_in(journal_t *j, journal_node_t **rn, uint64_t id, size_t len)
 	dbg_journal("journal: will write id=%llu, node=%u, size=%zu, fsize=%zu\n",
 	            (unsigned long long)id, j->qtail, len, j->fsize);
 
-	/* Calculate remaining bytes to reach file size limit. */
-	size_t fs_remaining = 0;
-	if (j->fsize < j->fslimit) {
-		fs_remaining = j->fslimit - j->fsize;
+	/* Calculate file end position (with imposed limits). */
+	size_t file_end = j->fsize;
+	if (file_end > j->fslimit) {
+		file_end = j->fslimit;
 	}
 
 	int seek_ret = 0;
@@ -495,12 +495,12 @@ int journal_write_in(journal_t *j, journal_node_t **rn, uint64_t id, size_t len)
 	dbg_journal("journal: free.pos = %u free.len = %u\n",
 	            j->free.pos, j->free.len);
 	journal_node_t *n = j->nodes + j->qtail;
-	if (j->free.pos + j->free.len == j->fsize) {
+	if (j->free.pos + len >= file_end) {
 
 		dbg_journal_verb("journal: * is last node\n");
 
 		/* Grow journal file until the size limit. */
-		if(j->free.len < len && len <= fs_remaining) {
+		if(j->free.pos + len < j->fslimit) {
 			size_t diff = len - j->free.len;
 			dbg_journal("journal: * growing by +%zu, pos=%u, "
 			            "new fsize=%zu\n",
@@ -509,10 +509,8 @@ int journal_write_in(journal_t *j, journal_node_t **rn, uint64_t id, size_t len)
 			j->fsize += diff; /* Appending increases file size. */
 			j->free.len += diff;
 
-		}
-
-		/*  Rewind if resize is needed, but the limit is reached. */
-		if(j->free.len < len && len > fs_remaining) {
+		} else {
+			/*  Rewind if resize is needed, but the limit is reached. */
 			journal_node_t *head = j->nodes + j->qhead;
 			j->fsize = j->free.pos;
 			j->free.pos = head->pos;
