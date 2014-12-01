@@ -40,6 +40,8 @@ src/knot/common/evsched.c
 src/knot/common/evsched.h
 src/knot/common/fdset.c
 src/knot/common/fdset.h
+src/knot/common/log.c
+src/knot/common/log.h
 src/knot/common/ref.c
 src/knot/common/ref.h
 src/knot/common/time.h
@@ -189,7 +191,6 @@ src/libknot/internal/base32hex.h
 src/libknot/internal/base64.c
 src/libknot/internal/base64.h
 src/libknot/internal/binsearch.h
-src/libknot/internal/debug.h
 src/libknot/internal/endian.h
 src/libknot/internal/errors.c
 src/libknot/internal/errors.h
@@ -201,8 +202,6 @@ src/libknot/internal/hhash.c
 src/libknot/internal/hhash.h
 src/libknot/internal/lists.c
 src/libknot/internal/lists.h
-src/libknot/internal/log.c
-src/libknot/internal/log.h
 src/libknot/internal/macros.h
 src/libknot/internal/mem.c
 src/libknot/internal/mem.h
