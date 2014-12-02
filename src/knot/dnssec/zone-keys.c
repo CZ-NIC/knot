@@ -121,7 +121,7 @@ typedef struct algorithm_usage {
 } algorithm_usage_t;
 
 /*!
- * \brief Enable Single-Type Signing Scheme, check if the keys are used correctly.
+ * \brief Check correct key usage, enable Single-Type Signing Scheme if needed.
  *
  * Each record in the zone has to be signed at least by one key for each
  * algorithm published in the DNSKEY RR set in the zone apex.
@@ -157,6 +157,7 @@ static int prepare_and_check_keys(const knot_dname_t *zone_name,
 	for (int i = 0; i < max_algorithms; i++) {
 		algorithm_usage_t *u = &usage[i];
 
+		// either KSK or ZSK keys are available
 		if ((u->ksk_count == 0) != (u->zsk_count == 0)) {
 			u->is_stss = true;
 			log_zone_info(zone_name, "DNSSEC, Single-Type Signing "
@@ -205,8 +206,6 @@ static int prepare_and_check_keys(const knot_dname_t *zone_name,
 
 /*!
  * \brief Load zone keys from a key directory.
- *
- * \todo Maybe use dynamic list instead of fixed size array.
  */
 int knot_load_zone_keys(const char *keydir_name, const knot_dname_t *zone_name,
                         bool nsec3_enabled, knot_zone_keys_t *keys)
