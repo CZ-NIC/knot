@@ -182,6 +182,7 @@ static int unpack_entry(MDB_val *data, struct entry *entry)
 
 	val = unpack_bin(&stream, &len);
 	memcpy(&entry->data.type, val, sizeof(uint16_t));
+
 	knot_rdataset_t *rrs = &entry->data.rrs;
 	val = unpack_bin(&stream, &len);
 	memcpy(&rrs->rr_count, val, sizeof(uint16_t));
@@ -316,7 +317,6 @@ int cache_remove(MDB_txn *txn, MDB_dbi dbi, const knot_dname_t *name)
 
 /*                       module callbacks                                   */
 
-#define DEFAULT_TTL 300
 #define DEFAULT_PORT 514
 #define SYSLOG_BUFLEN 1024 /* RFC3164, 4.1 message size. */
 #define SYSLOG_FACILITY 3  /* System daemon. */
@@ -508,11 +508,12 @@ static int rosedb_synth(knot_pkt_t *pkt, const knot_dname_t *key, struct iter *i
 
 	/* Send message to syslog. */
 	struct sockaddr_storage syslog_addr;
-	sockaddr_set(&syslog_addr, AF_INET, entry.syslog_ip, DEFAULT_PORT);
-	int sock = net_unbound_socket(AF_INET, &syslog_addr);
-	if (sock > 0) {
-		rosedb_send_log(sock, (struct sockaddr *)&syslog_addr, pkt, entry.threat_code, qdata);
-		close(sock);
+	if (sockaddr_set(&syslog_addr, AF_INET, entry.syslog_ip, DEFAULT_PORT) == KNOT_EOK) {
+		int sock = net_unbound_socket(AF_INET, &syslog_addr);
+		if (sock > 0) {
+			rosedb_send_log(sock, (struct sockaddr *)&syslog_addr, pkt, entry.threat_code, qdata);
+			close(sock);
+		}
 	}
 
 	return ret;
