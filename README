@@ -85,8 +85,8 @@ NOTE: If you want to reduce zscanner compile time, use configure option --disabl
 Running
 =======
 
-1) Each server needs configuration file. Please see samples/knot.sample.conf
-for reference or samples/knot.full.conf for more examples.
+1) Each server needs configuration file. Please see samples/knot.sample.conf,
+project documentation, or man 5 knot.conf for more details.
 Configuration file has to specify:
 - storage for PID files, journal files etc.
 - network interfaces
