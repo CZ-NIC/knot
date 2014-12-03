@@ -470,12 +470,13 @@ Limitations
   since the module is hooked in the query processing plan, it will be
   possible to do online signing in the future.
 
-``rose`` - Static resource records
+``rosedb`` - Static resource records
 ---------------------------------------
 
 The module provides a mean to override responses for certain queries before the record is searched in
 the available zones. The modules comes with a tool ``rosedb_tool`` to manipulate with the database
-of static records.
+of static records. Neither the tool nor the module are enabled by default, recompile with the configure flag ``--enable-rosedb``
+to enable them.
 
 *Note: An entry in the database matches anything at or below it, i.e. 'myrecord.com' matches 'a.a.myrecord.com' as well.
 This can be exploited to create a catch-all entries.*
@@ -528,6 +529,8 @@ Here is an example on how to use the module:
         }
 
         $ knotd -c knot.conf
+
+  *Note: The module accepts just one parameter - path to the directory where the database will be stored.*
 
 * Verify the running instance::
 
