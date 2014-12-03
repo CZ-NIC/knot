@@ -23,7 +23,13 @@
 #include "libknot/rrset-dump.h"
 #include "libknot/internal/utils.h"
 
-#define LMDB_MAPSIZE	(100 * 1024 * 1024)
+/*! \note Below is an implementation of basic RR cache in LMDB,
+ *        it shall be replaced with the namedb API later, when
+ *        it supports multiple dbs + the basic "node" representation,
+ *        as the cache implementation requires DUPSORT.
+ */
+
+#define LMDB_MAPSIZE (100 * 1024 * 1024)
 
 struct cache
 {
