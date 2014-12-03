@@ -40,7 +40,8 @@ typedef struct {
 	knot_dnssec_key_t dnssec_key;
 	knot_dnssec_sign_context_t *context;
 	uint32_t next_event;                 //!< Timestamp of next key event.
-	bool is_ksk;                         //!< Is KSK key.
+	bool is_ksk;                         //!< Is key-signing.
+	bool is_zsk;                         //!< Is zone-signing.
 	bool is_public;                      //!< Currently in zone.
 	bool is_active;                      //!< Currently used for signing.
 } knot_zone_key_t;

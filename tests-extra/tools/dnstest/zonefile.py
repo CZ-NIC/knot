@@ -118,7 +118,7 @@ class ZoneFile(object):
 
         # note: convert origin to lower case due to a bug in dnssec-verify
         origin = self.name.lower()
-        cmd = Popen(["dnssec-verify", "-o", origin, self.path],
+        cmd = Popen(["dnssec-verify", "-z", "-o", origin, self.path],
                     stdout=PIPE, stderr=PIPE, universal_newlines=True)
         (out, err) = cmd.communicate()
 

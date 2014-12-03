@@ -98,6 +98,7 @@ static void set_zone_key_flags(const knot_key_params_t *params,
 	key->next_event = next_event;
 
 	key->is_ksk = params->flags & KNOT_RDATA_DNSKEY_FLAG_KSK;
+	key->is_zsk = !key->is_ksk;
 
 	key->is_active = params->time_activate <= now &&
 	                 (params->time_inactive == 0 || now < params->time_inactive);
@@ -107,58 +108,96 @@ static void set_zone_key_flags(const knot_key_params_t *params,
 }
 
 /*!
- * \brief Check if there is a functional KSK and ZSK for each used algorithm.
+ * \brief Algorithm usage information.
  */
-static int check_keys_validity(const knot_zone_keys_t *keys)
+typedef struct algorithm_usage {
+	unsigned ksk_count;  //!< Available KSK count.
+	unsigned zsk_count;  //!< Available ZSK count.
+
+	bool is_public;      //!< DNSKEY is published.
+	bool is_stss;        //!< Used to sign all types of records.
+	bool is_ksk_active;  //!< Used to sign DNSKEY records.
+	bool is_zsk_active;  //!< Used to sign non-DNSKEY records.
+} algorithm_usage_t;
+
+/*!
+ * \brief Check correct key usage, enable Single-Type Signing Scheme if needed.
+ *
+ * Each record in the zone has to be signed at least by one key for each
+ * algorithm published in the DNSKEY RR set in the zone apex.
+ *
+ * Therefore, publishing a DNSKEY creates a requirement on active keys with
+ * the same algorithm. At least one KSK key and one ZSK has to be enabled.
+ * If one key type is unavailable (not just inactive and not-published), the
+ * algorithm is switched to Single-Type Signing Scheme.
+ */
+static int prepare_and_check_keys(const knot_dname_t *zone_name,
+                                  knot_zone_keys_t *keys)
 {
+	assert(zone_name);
 	assert(keys);
 
-	const int MAX_ALGORITHMS = KNOT_DNSSEC_ALG_ECDSAP384SHA384 + 1;
-	struct {
-		bool published;
-		bool ksk_enabled;
-		bool zsk_enabled;
-	} algorithms[MAX_ALGORITHMS];
-	memset(algorithms, 0, sizeof(algorithms));
+	const size_t max_algorithms = KNOT_DNSSEC_ALG_ECDSAP384SHA384 + 1;
+	algorithm_usage_t usage[max_algorithms];
+	memset(usage, 0, max_algorithms * sizeof(algorithm_usage_t));
 
-	/* Make a list of used algorithms */
+	// count available keys
 
-	const knot_zone_key_t *key = NULL;
+	knot_zone_key_t *key = NULL;
 	WALK_LIST(key, keys->list) {
-		knot_dnssec_algorithm_t a = key->dnssec_key.algorithm;
-		assert(a < MAX_ALGORITHMS);
+		assert(key->dnssec_key.algorithm < max_algorithms);
+		algorithm_usage_t *u = &usage[key->dnssec_key.algorithm];
 
-		if (key->is_public) {
-			// public key creates a requirement for an algorithm
-			algorithms[a].published = true;
+		if (key->is_ksk) { u->ksk_count += 1; }
+		if (key->is_zsk) { u->zsk_count += 1; }
+	}
 
-			// need fully enabled ZSK and KSK for each algorithm
-			if (key->is_active) {
-				if (key->is_ksk) {
-					algorithms[a].ksk_enabled = true;
-				} else {
-					algorithms[a].zsk_enabled = true;
-				}
+	// enable Single-Type Signing scheme if applicable
+
+	for (int i = 0; i < max_algorithms; i++) {
+		algorithm_usage_t *u = &usage[i];
+
+		// either KSK or ZSK keys are available
+		if ((u->ksk_count == 0) != (u->zsk_count == 0)) {
+			u->is_stss = true;
+			log_zone_info(zone_name, "DNSSEC, Single-Type Signing "
+			              "scheme enabled, algorithm '%d'", i);
+		}
+	}
+
+	// update key flags for STSS, collect information about usage
+
+	WALK_LIST(key, keys->list) {
+		assert(key->dnssec_key.algorithm < max_algorithms);
+		algorithm_usage_t *u = &usage[key->dnssec_key.algorithm];
+
+		if (u->is_stss) {
+			key->is_ksk = true;
+			key->is_zsk = true;
+		}
+
+		if (key->is_public) { u->is_public = true; }
+		if (key->is_active) {
+			if (key->is_ksk) { u->is_ksk_active = true; }
+			if (key->is_zsk) { u->is_zsk_active = true; }
+		}
+	}
+
+	// validate conditions for used algorithms
+
+	unsigned public_count = 0;
+
+	for (int i = 0; i < max_algorithms; i++) {
+		algorithm_usage_t *u = &usage[i];
+		if (u->is_public) {
+			public_count += 1;
+			if (!u->is_ksk_active || !u->is_zsk_active) {
+				return KNOT_DNSSEC_EMISSINGKEYTYPE;
 			}
 		}
 	}
 
-	/* Validate enabled algorithms */
-
-	int enabled_count = 0;
-	for (int a = 0; a < MAX_ALGORITHMS; a++) {
-		if (!algorithms[a].published) {
-			continue;
-		}
-
-		if (!algorithms[a].ksk_enabled || !algorithms[a].zsk_enabled) {
-			return KNOT_DNSSEC_EMISSINGKEYTYPE;
-		}
-
-		enabled_count += 1;
-	}
-
-	if (enabled_count == 0) {
+	if (public_count == 0) {
 		return KNOT_DNSSEC_ENOKEY;
 	}
 
@@ -167,8 +206,6 @@ static int check_keys_validity(const knot_zone_keys_t *keys)
 
 /*!
  * \brief Load zone keys from a key directory.
- *
- * \todo Maybe use dynamic list instead of fixed size array.
  */
 int knot_load_zone_keys(const char *keydir_name, const knot_dname_t *zone_name,
                         bool nsec3_enabled, knot_zone_keys_t *keys)
@@ -285,7 +322,7 @@ int knot_load_zone_keys(const char *keydir_name, const knot_dname_t *zone_name,
 	closedir(keydir);
 
 	if (result == KNOT_EOK) {
-		result = check_keys_validity(keys);
+		result = prepare_and_check_keys(zone_name, keys);
 	}
 
 	if (result == KNOT_EOK) {

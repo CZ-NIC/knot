@@ -110,18 +110,10 @@ static bool use_key(const knot_zone_key_t *key, const knot_rrset_t *covered)
 		return false;
 	}
 
-	if (key->is_ksk) {
-		if (covered->type != KNOT_RRTYPE_DNSKEY) {
-			return false;
-		}
+	bool is_zone_key = covered->type == KNOT_RRTYPE_DNSKEY &&
+	                   knot_dname_is_equal(key->dnssec_key.name, covered->owner);
 
-		// use KSK only in the zone apex
-		if (!knot_dname_is_equal(key->dnssec_key.name, covered->owner)) {
-			return false;
-		}
-	}
-
-	return true;
+	return (key->is_ksk && is_zone_key) || (key->is_zsk && !is_zone_key);
 }
 
 /*!
