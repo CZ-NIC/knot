@@ -21,6 +21,7 @@
 #include <sys/types.h>
 
 #include "error.h"
+#include "fs.h"
 #include "kasp/dir/zone.h"
 #include "kasp/internal.h"
 #include "key.h"
@@ -40,32 +41,9 @@ static int kasp_dir_init(const char *config)
 {
 	assert(config);
 
-	// existing directory is no-op
+	// TODO: maybe check if the directory is empty?
 
-	_cleanup_close_ int fd = open(config, O_RDONLY);
-	if (fd != -1) {
-		struct stat stat = { 0 };
-		if (fstat(fd, &stat) == -1) {
-			return dnssec_errno_to_error(errno);
-		}
-
-		if (!S_ISDIR(stat.st_mode)) {
-			return dnssec_errno_to_error(ENOTDIR);
-		}
-
-		// TODO: maybe check if the directory is empty?
-
-		return DNSSEC_EOK;
-	}
-
-	// create directory
-
-	int r = mkdir(config, KASP_DIR_INIT_MODE);
-	if (r != 0) {
-		return dnssec_errno_to_error(errno);
-	}
-
-	return DNSSEC_EOK;
+	return fs_mkdir(config, KASP_DIR_INIT_MODE, true);
 }
 
 static int kasp_dir_open(void **ctx_ptr, const char *config)
