@@ -19,6 +19,8 @@ libshared_la_CPPFLAGS = \
 libshared_la_SOURCES = \
 	shared/dname.c \
 	shared/dname.h \
+	shared/fs.c \
+	shared/fs.h \
 	shared/hex.c \
 	shared/hex.h \
 	shared/hex_gnutls.c \
