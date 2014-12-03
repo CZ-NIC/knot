@@ -23,11 +23,14 @@
 
 #include "binary.h"
 #include "error.h"
+#include "fs.h"
 #include "key.h"
 #include "keystore.h"
 #include "keystore/internal.h"
 #include "path.h"
 #include "shared.h"
+
+#define DIR_INIT_MODE 0750
 
 /*!
  * Context for PKCS #8 key directory.
@@ -132,7 +135,7 @@ static int pkcs8_dir_init(void *handle, const char *path)
 		return DNSSEC_EINVAL;
 	}
 
-	return DNSSEC_NOT_IMPLEMENTED_ERROR;
+	return fs_mkdir(path, DIR_INIT_MODE, true);
 }
 
 static int pkcs8_dir_open(void *_handle, const char *config)
@@ -252,9 +255,17 @@ static int pkcs8_dir_remove(void *_handle, const char *id)
 	}
 
 	pkcs8_dir_handle_t *handle = _handle;
-	(void)handle;
 
-	return DNSSEC_NOT_IMPLEMENTED_ERROR;
+	_cleanup_free_ char *filename = key_path(handle->dir_name, id);
+	if (!filename) {
+		return DNSSEC_ENOMEM;
+	}
+
+	if (unlink(filename) == -1) {
+		return dnssec_errno_to_error(errno);
+	}
+
+	return DNSSEC_EOK;
 }
 
 const dnssec_keystore_pkcs8_functions_t PKCS8_DIR_FUNCTIONS = {

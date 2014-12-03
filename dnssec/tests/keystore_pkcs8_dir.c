@@ -110,7 +110,6 @@ int main(void)
 	r = func->close(data);
 	ok(r == DNSSEC_EOK, "close");
 
-	rm(dir, "7b0c9f6a59b1c76b26ed93ea8684f300821eee41.pem");
 	rm(dir, "f4f3e73cf4ee605993c2ef2d790571ade827244c.pem");
 
 	test_tmpdir_free(dir);
