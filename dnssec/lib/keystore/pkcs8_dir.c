@@ -255,6 +255,15 @@ static int pkcs8_dir_write(void *_handle, const char *id, const dnssec_binary_t 
 	return DNSSEC_EOK;
 }
 
+static int pkcs8_dir_list(void *_handle, dnssec_list_t **list_ptr)
+{
+	if (!_handle || !list_ptr) {
+		return DNSSEC_EINVAL;
+	}
+
+	return DNSSEC_NOT_IMPLEMENTED_ERROR;
+}
+
 static int pkcs8_dir_remove(void *_handle, const char *id)
 {
 	if (!_handle || !id) {
@@ -283,6 +292,7 @@ const dnssec_keystore_pkcs8_functions_t PKCS8_DIR_FUNCTIONS = {
 	.close       = pkcs8_dir_close,
 	.read        = pkcs8_dir_read,
 	.write       = pkcs8_dir_write,
+	.list        = pkcs8_dir_list,
 	.remove      = pkcs8_dir_remove,
 };
 

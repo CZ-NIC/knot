@@ -98,6 +98,18 @@ static int test_read(void *handle, const char *id, dnssec_binary_t *pem)
 	return DNSSEC_EOK;
 }
 
+static bool test_list_ok = false;
+static int test_list(void *handle, dnssec_list_t **list_ptr)
+{
+	if (handle == test_handle && list_ptr) {
+		test_list_ok = true;
+	}
+
+	*list_ptr = dnssec_list_new();
+
+	return DNSSEC_EOK;
+}
+
 static bool test_remove_ok = false;
 static char *test_remove_id = NULL;
 static int test_remove(void *handle, const char *id)
@@ -108,15 +120,16 @@ static int test_remove(void *handle, const char *id)
 	return DNSSEC_EOK;
 }
 
-static const dnssec_keystore_pkcs8_functions_t custom_store = {
-	.handle_new = test_handle_new,
+static const dnssec_keystore_pkcs8_functions_t test_store = {
+	.handle_new  = test_handle_new,
 	.handle_free = test_handle_free,
-	.init = test_init,
-	.open = test_open,
-	.close = test_close,
-	.read = test_read,
-	.write = test_write,
-	.remove = test_remove,
+	.init        = test_init,
+	.open        = test_open,
+	.close       = test_close,
+	.read        = test_read,
+	.write       = test_write,
+	.list        = test_list,
+	.remove      = test_remove,
 };
 
 /* -- test plan ------------------------------------------------------------ */
@@ -132,7 +145,7 @@ int main(void)
 	// create/init/open
 
 	dnssec_keystore_t *store = NULL;
-	r = dnssec_keystore_init_pkcs8_custom(&store, &custom_store);
+	r = dnssec_keystore_init_pkcs8_custom(&store, &test_store);
 	ok(r == DNSSEC_EOK, "dnssec_keystore_init_pkcs8_custom()");
 	ok(test_handle_new_ok, "test_handle_new_ok() called");
 
@@ -175,6 +188,15 @@ int main(void)
 	r = dnssec_keystore_close(store);
 	ok(r == DNSSEC_EOK, "dnssec_keystore_clse()");
 	ok(test_close_ok, "test_close() called");
+
+	// list
+
+	dnssec_list_t *list = NULL;
+	r = dnssec_keystore_list_keys(store, &list);
+	ok(r == DNSSEC_EOK, "dnssec_keystore_list_keys()");
+	ok(test_list_ok, "test_list() called");
+	ok(list && dnssec_list_size(list) == 0, "dnssec_list() correct output");
+	dnssec_list_free(list);
 
 	// cleanup
 

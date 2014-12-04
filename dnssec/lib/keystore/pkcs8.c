@@ -83,10 +83,10 @@ static int pkcs8_close(void *_ctx)
 	return ctx->functions->close(ctx->data);
 }
 
-static int pkcs8_list_keys(void *_ctx, void *list)
+static int pkcs8_list_keys(void *_ctx, dnssec_list_t **list)
 {
-	//pkcs8_ctx_t *ctx = _ctx;
-	return DNSSEC_NOT_IMPLEMENTED_ERROR;
+	pkcs8_ctx_t *ctx = _ctx;
+	return ctx->functions->list(ctx->data, list);
 }
 
 static int pkcs8_generate_key(void *_ctx, gnutls_pk_algorithm_t algorithm,
@@ -163,16 +163,16 @@ static int pkcs8_get_private(void *_ctx, const char *id, gnutls_privkey_t *key_p
 	return DNSSEC_EOK;
 }
 
-const keystore_functions_t PKCS8_FUNCTIONS = {
-	.ctx_new = pkcs8_ctx_new,
-	.ctx_free = pkcs8_ctx_free,
-	.init = pkcs8_init,
-	.open = pkcs8_open,
-	.close = pkcs8_close,
-	.list_keys = pkcs8_list_keys,
+static const keystore_functions_t PKCS8_FUNCTIONS = {
+	.ctx_new      = pkcs8_ctx_new,
+	.ctx_free     = pkcs8_ctx_free,
+	.init         = pkcs8_init,
+	.open         = pkcs8_open,
+	.close        = pkcs8_close,
+	.list_keys    = pkcs8_list_keys,
 	.generate_key = pkcs8_generate_key,
-	.remove_key = pkcs8_remove_key,
-	.get_private = pkcs8_get_private,
+	.remove_key   = pkcs8_remove_key,
+	.get_private  = pkcs8_get_private,
 };
 
 /* -- public API ----------------------------------------------------------- */

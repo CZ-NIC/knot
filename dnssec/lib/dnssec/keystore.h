@@ -90,6 +90,7 @@
 
 #include <dnssec/binary.h>
 #include <dnssec/key.h>
+#include <dnssec/list.h>
 
 struct dnssec_keystore;
 
@@ -156,6 +157,14 @@ typedef struct dnssec_keystore_pkcs8_functions {
 	 * \param pem     Key material in unencrypted PEM format.
 	 */
 	int (*write)(void *handle, const char *id, const dnssec_binary_t *pem);
+
+	/*!
+	 * Callback to get a list of all PEM key IDs.
+	 *
+	 * \param[in]  handle  Key store handle.
+	 * \param[out] list    Allocated list of key IDs.
+	 */
+	int (*list)(void *handle, dnssec_list_t **list);
 
 	/*!
 	 * Callback to remove a PEM key.
@@ -237,7 +246,7 @@ int dnssec_keystore_close(dnssec_keystore_t *store);
  *
  * \return Error code, KNOT_EOK if successful.
  */
-int dnssec_keystore_list_keys(dnssec_keystore_t *store, void *list);
+int dnssec_keystore_list_keys(dnssec_keystore_t *store, dnssec_list_t **list);
 
 /*!
  * Generate a new key in the key store.

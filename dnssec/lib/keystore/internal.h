@@ -21,6 +21,7 @@
 
 #include "key.h"
 #include "keystore.h"
+#include "list.h"
 
 typedef struct keystore_functions {
 	// construction of internal context
@@ -31,7 +32,7 @@ typedef struct keystore_functions {
 	int (*open)(void *ctx, const char *config);
 	int (*close)(void *ctx);
 	// keystore access
-	int (*list_keys)(void *ctx, void *list);
+	int (*list_keys)(void *ctx, dnssec_list_t **list);
 	int (*generate_key)(void *ctx, gnutls_pk_algorithm_t algorithm,
 			    unsigned bits, char **id_ptr);
 	int (*remove_key)(void *ctx, const char *id);

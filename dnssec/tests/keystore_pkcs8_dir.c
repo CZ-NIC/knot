@@ -15,6 +15,7 @@
 */
 
 #include <stdio.h>
+#include <string.h>
 #include <tap/basic.h>
 #include <unistd.h>
 
@@ -58,7 +59,7 @@ int main(void)
 	plan_lazy();
 
 	int r = 0;
-	void *data = NULL;
+	void *handle = NULL;
 	dnssec_binary_t bin = { 0 };
 
 	char *dir = test_tmpdir();
@@ -70,47 +71,72 @@ int main(void)
 
 	const dnssec_keystore_pkcs8_functions_t *func = &PKCS8_DIR_FUNCTIONS;
 
-	r = func->handle_new(&data);
-	ok(r == DNSSEC_EOK && data != NULL, "new handle");
+	r = func->handle_new(&handle);
+	ok(r == DNSSEC_EOK && handle != NULL, "new handle");
 
-	r = func->init(data, dir);
+	r = func->init(handle, dir);
 	ok(r == DNSSEC_EOK, "init");
 
-	r = func->open(data, dir);
+	r = func->open(handle, dir);
 	ok(r == DNSSEC_EOK, "open");
 
-	// read/write tests
+	// non-existent reads
 
-	r = func->read(data, TEST_PEM_A.id, &bin);
+	r = func->read(handle, TEST_PEM_A.id, &bin);
 	ok(r == DNSSEC_ENOENT && bin.size == 0, "read non-existent");
 
-	r = func->write(data, TEST_PEM_A.id, &TEST_PEM_A.data);
+	// writing new content
+
+	r = func->write(handle, TEST_PEM_A.id, &TEST_PEM_A.data);
 	ok(r == DNSSEC_EOK, "write A");
 
-	r = func->write(data, TEST_PEM_B.id, &TEST_PEM_B.data);
+	r = func->write(handle, TEST_PEM_B.id, &TEST_PEM_B.data);
 	ok(r == DNSSEC_EOK, "write B");
 
-	r = func->read(data, TEST_PEM_A.id, &bin);
+	// content listing
+
+	dnssec_list_t *list = NULL;
+	r = func->list(handle, &list);
+	ok(r == DNSSEC_EOK, "get list");
+	is_int(2, dnssec_list_size(list), "list size");
+
+	bool found_a = false;
+	bool found_b = false;
+	dnssec_list_foreach(item, list) {
+		char *id = dnssec_item_get(item);
+		if (id && strcmp(TEST_PEM_A.id, id) == 0) { found_a = true; }
+		if (id && strcmp(TEST_PEM_B.id, id) == 0) { found_b = true; }
+	}
+	ok(found_a && found_b, "list content");
+
+	dnssec_list_free_full(list, NULL, NULL);
+
+	// reading existing content
+
+	r = func->read(handle, TEST_PEM_A.id, &bin);
 	ok(r == DNSSEC_EOK && dnssec_binary_cmp(&TEST_PEM_A.data, &bin) == 0,
 	   "read A");
 	dnssec_binary_free(&bin);
 
-	r = func->read(data, TEST_PEM_B.id, &bin);
+	r = func->read(handle, TEST_PEM_B.id, &bin);
 	ok(r == DNSSEC_EOK && dnssec_binary_cmp(&TEST_PEM_B.data, &bin) == 0,
 	   "read B");
 	dnssec_binary_free(&bin);
 
-	r = func->remove(data, TEST_PEM_A.id);
+	// content removal
+
+	r = func->remove(handle, TEST_PEM_A.id);
 	ok(r == DNSSEC_EOK, "remove A");
-	r = func->read(data, TEST_PEM_A.id, &bin);
+
+	r = func->read(handle, TEST_PEM_A.id, &bin);
 	ok(r == DNSSEC_ENOENT && bin.size == 0, "read removed");
 
 	// cleanup
 
-	r = func->close(data);
+	r = func->close(handle);
 	ok(r == DNSSEC_EOK, "close");
 
-	r = func->handle_free(data);
+	r = func->handle_free(handle);
 	ok(r == DNSSEC_EOK, "free handle");
 
 	rm(dir, "f4f3e73cf4ee605993c2ef2d790571ade827244c.pem");
