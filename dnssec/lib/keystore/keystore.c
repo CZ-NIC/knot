@@ -185,17 +185,9 @@ int dnssec_key_import_keystore(dnssec_key_t *key, dnssec_keystore_t *keystore,
 		return DNSSEC_KEY_ALREADY_PRESENT;
 	}
 
-	// define search ID and algorithm
-
 	if (id == NULL) {
 		assert(key->public_key);
 		id = key->id;
-	}
-
-	if (algorithm == 0) {
-		assert(key->public_key);
-		uint8_t algorithm8 = dnssec_key_get_algorithm(key);
-		algorithm = algorithm8;
 	}
 
 	// retrieve and set the private key
@@ -204,6 +196,11 @@ int dnssec_key_import_keystore(dnssec_key_t *key, dnssec_keystore_t *keystore,
 	int r = keystore->functions->get_private(keystore->ctx, id, &privkey);
 	if (r != DNSSEC_EOK) {
 		return r;
+	}
+
+	if (dnssec_key_get_algorithm(key) == 0) {
+		assert(algorithm != 0);
+		dnssec_key_set_algorithm(key, algorithm);
 	}
 
 	r = key_set_private_key(key, privkey);
