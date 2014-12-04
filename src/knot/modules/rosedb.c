@@ -496,7 +496,7 @@ static int rosedb_synth(knot_pkt_t *pkt, const knot_dname_t *key, struct iter *i
 	ret = cache_iter_begin(it, key);
 	while(ret == KNOT_EOK) {
 		if (cache_iter_val(it, &entry) == 0) {
-			ret = rosedb_synth_rr(pkt, &entry, KNOT_RRTYPE_NS);  
+			ret = rosedb_synth_rr(pkt, &entry, KNOT_RRTYPE_NS);
 			ret = rosedb_synth_rr(pkt, &entry, KNOT_RRTYPE_SOA);
 		}
 		if (cache_iter_next(it) != 0) {
@@ -508,7 +508,7 @@ static int rosedb_synth(knot_pkt_t *pkt, const knot_dname_t *key, struct iter *i
 	if (knot_wire_get_nscount(pkt->wire) > 0) {
 		knot_wire_set_aa(pkt->wire);
 		if (knot_wire_get_ancount(pkt->wire) == 0) {
-			knot_wire_set_rcode(pkt->wire, KNOT_RCODE_NXDOMAIN);
+			qdata->rcode = KNOT_RCODE_NXDOMAIN;
 		}
 	}
 
