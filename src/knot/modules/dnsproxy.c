@@ -56,6 +56,8 @@ static int dnsproxy_fwd(int state, knot_pkt_t *pkt, struct query_data *qdata, vo
 	if (ret == KNOT_EOK) {
 		struct timeval tv = { conf()->max_conn_hs, 0 };
 		ret = knot_requestor_exec(&re, &tv);
+	} else {
+		knot_request_free(re.mm, req);
 	}
 
 	knot_requestor_clear(&re);
