@@ -70,8 +70,8 @@ int main(void)
 
 	const dnssec_keystore_pkcs8_functions_t *func = &PKCS8_DIR_FUNCTIONS;
 
-	r = func->create(&data);
-	ok(r == DNSSEC_EOK && data != NULL, "create");
+	r = func->handle_new(&data);
+	ok(r == DNSSEC_EOK && data != NULL, "new handle");
 
 	r = func->init(data, dir);
 	ok(r == DNSSEC_EOK, "init");
@@ -109,6 +109,9 @@ int main(void)
 
 	r = func->close(data);
 	ok(r == DNSSEC_EOK, "close");
+
+	r = func->handle_free(data);
+	ok(r == DNSSEC_EOK, "free handle");
 
 	rm(dir, "f4f3e73cf4ee605993c2ef2d790571ade827244c.pem");
 

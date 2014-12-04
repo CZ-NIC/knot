@@ -103,14 +103,21 @@ typedef struct dnssec_keystore dnssec_keystore_t;
  */
 typedef struct dnssec_keystore_pkcs8_functions {
 	/*!
-	 * Create keystore context.
+	 * Callback to allocate key store handle.
 	 *
 	 * \param[out]  handle_ptr  Allocated key store handle.
 	 */
-	int (*create)(void **handle_ptr);
+	int (*handle_new)(void **handle_ptr);
 
 	/*!
-	 * Initialize key store.
+	 * Callback to deallocate key store handle.
+	 *
+	 * \param handle  Key store handle.
+	 */
+	int (*handle_free)(void *handle);
+
+	/*!
+	 * Callback to initialize the key store.
 	 *
 	 * \param handle  Key store handle.
 	 * \param config  Configuration string.

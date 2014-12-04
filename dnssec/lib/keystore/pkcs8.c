@@ -46,16 +46,23 @@ static int pkcs8_ctx_new(void **ctx_ptr, void *_functions)
 		return DNSSEC_ENOMEM;
 	}
 
-	dnssec_keystore_pkcs8_functions_t *functions = _functions;
-	ctx->functions = functions;
+	ctx->functions = _functions;
+
+	int r = ctx->functions->handle_new(&ctx->data);
+	if (r != DNSSEC_EOK) {
+		free(ctx);
+		return r;
+	}
 
 	*ctx_ptr = ctx;
+
 	return DNSSEC_EOK;
 }
 
-static void pkcs8_ctx_free(void *ctx)
+static int pkcs8_ctx_free(void *_ctx)
 {
-	free(ctx);
+	pkcs8_ctx_t *ctx = _ctx;
+	return ctx->functions->handle_free(ctx->data);
 }
 
 static int pkcs8_init(void *_ctx, const char *config)

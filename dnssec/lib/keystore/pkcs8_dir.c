@@ -113,7 +113,7 @@ static int key_open_write(const char *dir_name, const char *id, int *fd_ptr)
 
 /* -- PKCS #8 dir access API ----------------------------------------------- */
 
-static int pkcs8_dir_create(void **handle_ptr)
+static int pkcs8_dir_handle_new(void **handle_ptr)
 {
 	if (!handle_ptr) {
 		return DNSSEC_EINVAL;
@@ -125,6 +125,13 @@ static int pkcs8_dir_create(void **handle_ptr)
 	}
 
 	*handle_ptr = handle;
+
+	return DNSSEC_EOK;
+}
+
+static int pkcs8_dir_handle_free(void *handle)
+{
+	free(handle);
 
 	return DNSSEC_EOK;
 }
@@ -165,7 +172,7 @@ static int pkcs8_dir_close(void *_handle)
 	pkcs8_dir_handle_t *handle = _handle;
 
 	free(handle->dir_name);
-	free(handle);
+	memset(handle, 0, sizeof(*handle));
 
 	return DNSSEC_EOK;
 }
@@ -269,13 +276,14 @@ static int pkcs8_dir_remove(void *_handle, const char *id)
 }
 
 const dnssec_keystore_pkcs8_functions_t PKCS8_DIR_FUNCTIONS = {
-	.create = pkcs8_dir_create,
-	.init   = pkcs8_dir_init,
-	.open   = pkcs8_dir_open,
-	.close  = pkcs8_dir_close,
-	.read   = pkcs8_dir_read,
-	.write  = pkcs8_dir_write,
-	.remove = pkcs8_dir_remove,
+	.handle_new  = pkcs8_dir_handle_new,
+	.handle_free = pkcs8_dir_handle_free,
+	.init        = pkcs8_dir_init,
+	.open        = pkcs8_dir_open,
+	.close       = pkcs8_dir_close,
+	.read        = pkcs8_dir_read,
+	.write       = pkcs8_dir_write,
+	.remove      = pkcs8_dir_remove,
 };
 
 /* -- public API ----------------------------------------------------------- */
