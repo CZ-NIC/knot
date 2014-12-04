@@ -173,10 +173,10 @@ static bool valid_params(dnssec_key_t *key, const char *id,
 }
 
 _public_
-int dnssec_key_import_keystore(dnssec_key_t *key, dnssec_keystore_t *keystore,
+int dnssec_key_import_keystore(dnssec_key_t *key, dnssec_keystore_t *store,
 			       const char *id, dnssec_key_algorithm_t algorithm)
 {
-	if (!key || !keystore || !valid_params(key, id, algorithm)) {
+	if (!key || !store || !valid_params(key, id, algorithm)) {
 		return DNSSEC_EINVAL;
 	}
 
@@ -192,7 +192,7 @@ int dnssec_key_import_keystore(dnssec_key_t *key, dnssec_keystore_t *keystore,
 	// retrieve and set the private key
 
 	gnutls_privkey_t privkey = NULL;
-	int r = keystore->functions->get_private(keystore->ctx, id, &privkey);
+	int r = store->functions->get_private(store->ctx, id, &privkey);
 	if (r != DNSSEC_EOK) {
 		return r;
 	}
@@ -212,8 +212,7 @@ int dnssec_key_import_keystore(dnssec_key_t *key, dnssec_keystore_t *keystore,
 }
 
 _public_
-int dnssec_key_import_private_keystore(dnssec_key_t *key,
-				       dnssec_keystore_t *keystore)
+int dnssec_key_import_private_keystore(dnssec_key_t *key, dnssec_keystore_t *store)
 {
-	return dnssec_key_import_keystore(key, keystore, NULL, 0);
+	return dnssec_key_import_keystore(key, store, NULL, 0);
 }
