@@ -470,8 +470,40 @@ Limitations
   since the module is hooked in the query processing plan, it will be
   possible to do online signing in the future.
 
+``dnsproxy`` - Tiny DNS proxy 
+-----------------------------
+
+The module catches all unsatisfied queries and forwards them to the configured server for resolution,
+i.e. a tiny DNS proxy. This can be useful to several things:
+
+* A substitute public-facing server in front of the real one
+* Local zones (poor man's "views"), rest is forwarded to the public-facing server
+* etc.
+
+The configuration is straightforward and just accepts a single IP address (either IPv4 or IPv6).
+
+*Note: The module does not alter the query/response as the resolver would do, also the original
+transport protocol is kept.*
+
+Example
+^^^^^^^
+
+Example configuration::
+
+        $ vim knot.conf
+        knot.conf:
+        zones {
+                local.zone {}
+                query_module {
+                        dnsproxy "10.0.1.1";
+                }
+        }
+
+Now when the clients query for anything in the ``local.zone``, it will be answered locally.
+Rest of the requests will be forwarded to the specified server (``10.0.1.1`` in this case).
+
 ``rosedb`` - Static resource records
----------------------------------------
+------------------------------------
 
 The module provides a mean to override responses for certain queries before the record is searched in
 the available zones. The modules comes with a tool ``rosedb_tool`` to manipulate with the database

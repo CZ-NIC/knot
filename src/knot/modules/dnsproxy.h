@@ -1,16 +1,16 @@
 /*!
- * \file synth_record.h
+ * \file dnsproxy.h
  *
  * \author Marek Vavrusa <marek.vavrusa@nic.cz>
  *
- * \brief Synthetic records module
+ * \brief DNS proxy module
  *
  * Accepted configurations:
- *  * "forward <prefix> <ttl> <address>/<netblock>"
- *  * "reverse <prefix> <zone> <ttl> <address>/<netblock>"
+ *  * "<address>"
  *
- * Module synthetises forward/reverse records based on a template when
- * the queried record can't be found in the zone contents.
+ * Module forwards all unsatisfied queries to the specified server in
+ * order to solve them, and then sends the response back, i.e. a tiny
+ * DNS proxy.
  *
  * \addtogroup query_processing
  * @{
