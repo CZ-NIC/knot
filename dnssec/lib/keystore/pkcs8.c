@@ -68,13 +68,13 @@ static int pkcs8_ctx_free(void *_ctx)
 static int pkcs8_init(void *_ctx, const char *config)
 {
 	pkcs8_ctx_t *ctx = _ctx;
-	return ctx->functions->init(&ctx->data, config);
+	return ctx->functions->init(ctx->data, config);
 }
 
 static int pkcs8_open(void *_ctx, const char *config)
 {
 	pkcs8_ctx_t *ctx = _ctx;
-	return ctx->functions->open(&ctx->data, config);
+	return ctx->functions->open(ctx->data, config);
 }
 
 static int pkcs8_close(void *_ctx)
