@@ -28,60 +28,95 @@
 
 static void *test_handle = (void *)0x42;
 
-static bool test_init_called = false;
-static int test_init(void *handle_ptr, const char *config)
+static bool test_handle_new_ok = false;
+static int test_handle_new(void **handle_ptr)
 {
-	test_init_called = (handle_ptr != NULL && strcmp(config, "init config") == 0);
+	if (handle_ptr) {
+		*handle_ptr = test_handle;
+		test_handle_new_ok = true;
+	}
 
 	return DNSSEC_EOK;
 }
 
-static bool test_open_called = false;
-static int test_open(void *handle_ptr, const char *config)
+static bool test_handle_free_ok = false;
+static int test_handle_free(void *handle)
 {
-	test_open_called = (handle_ptr != NULL && strcmp(config, "open config") == 0);
+	test_handle_free_ok = (handle == test_handle);
 
 	return DNSSEC_EOK;
 }
 
-static bool test_close_called = false;
+static bool test_init_ok = false;
+static int test_init(void *handle, const char *config)
+{
+	test_init_ok = (handle == test_handle && config && strcmp(config, "init config") == 0);
+
+	return DNSSEC_EOK;
+}
+
+static bool test_open_ok = false;
+static int test_open(void *handle, const char *config)
+{
+	test_open_ok = (handle == test_handle && config && strcmp(config, "open config") == 0);
+
+	return DNSSEC_EOK;
+}
+
+static bool test_close_ok = false;
 static int test_close(void *handle)
 {
-	test_close_called = handle == test_handle;
+	test_close_ok = (handle == test_handle);
 
 	return DNSSEC_EOK;
 }
 
-static bool test_read_called = false;
+static bool test_write_ok = false;
+static char *test_write_id = NULL;
+static dnssec_binary_t test_write_pem = { 0 };
+static int test_write(void *handle, const char *id, const dnssec_binary_t *pem)
+{
+	if (handle == test_handle && id && pem) {
+		test_write_ok = true;
+		test_write_id = dnssec_keyid_copy(id);
+		dnssec_binary_dup(pem, &test_write_pem);
+	}
+
+	return DNSSEC_EOK;
+}
+
+static bool test_read_ok = false;
 static char *test_read_id = NULL;
 static int test_read(void *handle, const char *id, dnssec_binary_t *pem)
 {
-	test_read_called = (handle == test_handle && id && pem);
-	test_read_id = dnssec_keyid_copy(id);
+	if (handle == test_handle && id && pem) {
+		test_read_ok = true;
+		test_read_id = dnssec_keyid_copy(id);
+		dnssec_binary_dup(&test_write_pem, pem);
+	}
 
 	return DNSSEC_EOK;
 }
 
-static bool test_write_called = false;
-static char *test_write_id = NULL;
-static dnssec_binary_t test_write_binary = { 0 };
-static int test_write(void *handle, const char *id, const dnssec_binary_t *pem)
+static bool test_remove_ok = false;
+static char *test_remove_id = NULL;
+static int test_remove(void *handle, const char *id)
 {
-	test_write_called = (handle == test_handle && id &&
-			     pem && pem->size > 0 && pem->data);
-
-	test_write_id = dnssec_keyid_copy(id);
-	test_write_binary = *pem;
+	test_remove_ok = (handle == test_handle && id);
+	test_remove_id = dnssec_keyid_copy(id);
 
 	return DNSSEC_EOK;
 }
 
 static const dnssec_keystore_pkcs8_functions_t custom_store = {
+	.handle_new = test_handle_new,
+	.handle_free = test_handle_free,
 	.init = test_init,
 	.open = test_open,
 	.close = test_close,
 	.read = test_read,
 	.write = test_write,
+	.remove = test_remove,
 };
 
 /* -- test plan ------------------------------------------------------------ */
@@ -94,35 +129,65 @@ int main(void)
 
 	int r = 0;
 
+	// create/init/open
+
 	dnssec_keystore_t *store = NULL;
 	r = dnssec_keystore_init_pkcs8_custom(&store, &custom_store);
 	ok(r == DNSSEC_EOK, "dnssec_keystore_init_pkcs8_custom()");
+	ok(test_handle_new_ok, "test_handle_new_ok() called");
 
 	r = dnssec_keystore_init(store, "init config");
 	ok(r == DNSSEC_EOK, "dnssec_keystore_init()");
+	ok(test_init_ok, "test_init() called");
 
 	r = dnssec_keystore_open(store, "open config");
-	ok(r == DNSSEC_EOK, "dnssec_keystore_open()");
+	ok(r == DNSSEC_EOK && test_open_ok, "dnssec_keystore_open()");
+	ok(test_open_ok, "test_open() called");
+
+	// write
 
 	char *gen_id = NULL;
 	r = dnssec_keystore_generate_key(store, DNSSEC_KEY_ALGORITHM_RSA_SHA256, 512, &gen_id);
 	ok(r == DNSSEC_EOK, "dnssec_keystore_generate_key()");
+	ok(test_write_ok, "test_write() called");
+	is_string(gen_id, test_write_id, "test_write() correct key ID");
+
+	// read
+
+	dnssec_key_t *key = NULL;
+	dnssec_key_new(&key);
+
+	r = dnssec_key_import_keystore(key, store, gen_id, DNSSEC_KEY_ALGORITHM_RSA_SHA512);
+	ok(r == DNSSEC_EOK, "dnssec_key_import_keystore()");
+	ok(test_read_ok, "test_read() called");
+	is_string(gen_id, test_read_id, "test_read() correct key ID");
+	dnssec_key_free(key);
+
+	// remove
+
+	r = dnssec_keystore_remove_key(store, gen_id);
+	ok(r == DNSSEC_EOK, "dnssec_keystore_remove_key()");
+	ok(test_remove_ok, "test_remove() called");
+	is_string(gen_id, test_remove_id, "test_remove() correct key ID");
+
+	// close
 
 	r = dnssec_keystore_close(store);
-	ok(r == DNSSEC_EOK, "dnssec_keystore_close()");
+	ok(r == DNSSEC_EOK, "dnssec_keystore_clse()");
+	ok(test_close_ok, "test_close() called");
 
-	ok(test_open_called, "test_open() called");
-	ok(test_read_called, "test_read() called");
-	ok(test_read_id && 0, "test_read() with correct key id");
-	ok(test_write_called, "test_write() called");
-	ok(strcmp(test_write_id, gen_id) == 0, "test_write() with correct key id");
-	ok(test_close_called, "test_close() called");
+	// cleanup
 
-	free(gen_id);
-	free(test_read_id);
-	free(test_write_id);
+	dnssec_keystore_deinit(store);
+	ok(test_handle_free_ok, "test_handle_free() called");
 
 	dnssec_crypto_cleanup();
+
+	free(gen_id);
+	free(test_write_id);
+	dnssec_binary_free(&test_write_pem);
+	free(test_read_id);
+	free(test_remove_id);
 
 	return 0;
 }
