@@ -87,6 +87,7 @@ int dnsproxy_load(struct query_plan *plan, struct query_module *self)
 	int ret = sockaddr_set(&proxy->remote.addr, family, self->param, 53);
 	if (ret != KNOT_EOK) {
 		MODULE_ERR("invalid proxy address: '%s'", self->param);
+		mm_free(self->mm, proxy);
 		return KNOT_EINVAL;
 	}
 
