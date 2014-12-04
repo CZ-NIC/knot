@@ -111,6 +111,25 @@ static int key_open_write(const char *dir_name, const char *id, int *fd_ptr)
 			S_IRUSR|S_IWUSR|S_IRGRP, fd_ptr);
 }
 
+/*!
+ * Strip '.pem' suffix, basename has to be valid key ID.
+ */
+static char *filename_to_keyid(const char *filename)
+{
+	assert(filename);
+
+	size_t len = strlen(filename);
+
+	const char ext[] = ".pem";
+	const size_t ext_len = sizeof(ext) - 1;
+
+	if (len < ext_len || strcmp(filename + len - ext_len, ext) != 0) {
+		return NULL;
+	}
+
+	return strndup(filename, len - ext_len);
+}
+
 /* -- PKCS #8 dir access API ----------------------------------------------- */
 
 static int pkcs8_dir_handle_new(void **handle_ptr)
@@ -261,7 +280,35 @@ static int pkcs8_dir_list(void *_handle, dnssec_list_t **list_ptr)
 		return DNSSEC_EINVAL;
 	}
 
-	return DNSSEC_NOT_IMPLEMENTED_ERROR;
+	pkcs8_dir_handle_t *handle = _handle;
+
+	_cleanup_closedir_ DIR *dir = opendir(handle->dir_name);
+	if (!dir) {
+		return DNSSEC_NOT_FOUND;
+	}
+
+	dnssec_list_t *list = dnssec_list_new();
+	if (!list) {
+		return DNSSEC_ENOMEM;
+	}
+
+	int error;
+	struct dirent entry, *result;
+	while (error = readdir_r(dir, &entry, &result), error == 0 && result) {
+		char *keyid = filename_to_keyid(entry.d_name);
+		if (keyid) {
+			dnssec_list_append(list, keyid);
+		}
+	}
+
+	if (error != 0) {
+		dnssec_list_free_full(list, NULL, NULL);
+		return dnssec_errno_to_error(error);
+	}
+
+	*list_ptr = list;
+
+	return DNSSEC_EOK;
 }
 
 static int pkcs8_dir_remove(void *_handle, const char *id)
