@@ -510,13 +510,10 @@ the available zones. The modules comes with a tool ``rosedb_tool`` to manipulate
 of static records. Neither the tool nor the module are enabled by default, recompile with the configure flag ``--enable-rosedb``
 to enable them.
 
-*Note: An entry in the database matches anything at or below it, i.e. 'myrecord.com' matches 'a.a.myrecord.com' as well.
-This can be exploited to create a catch-all entries.*
-
 For example, suppose we have a database of following records::
 
-        myrecord.com. 3600 IN A 127.0.0.1
-        www.myrecord.com. 3600 IN A 127.0.0.2
+        myrecord.com.      3600 IN A 127.0.0.1
+        www.myrecord.com.  3600 IN A 127.0.0.2
         ipv6.myrecord.com. 3600 IN AAAA ::1
 
 And we query the nameserver with following::
@@ -528,9 +525,29 @@ And we query the nameserver with following::
         $ kdig IN A stuff.myrecord.com
           ... returns NOERROR, 127.0.0.1
         $ kdig IN AAAA myrecord.com
-          ... returns NXDOMAIN
+          ... returns NOERROR, NODATA
         $ kdig IN AAAA ipv6.myrecord.com
           ... returns NOERROR, ::1 
+
+*Note: An entry in the database matches anything at or below it, i.e. 'myrecord.com' matches 'a.a.myrecord.com' as well.
+This can be exploited to create a catch-all entries.*
+
+You can also add an authority information for the entries, provided you create a SOA + NS records for a name, like so::
+
+        myrecord.com.     3600 IN SOA master host 1 3600 60 3600 3600
+        myrecord.com.     3600 IN NS ns1.myrecord.com.
+        myrecord.com.     3600 IN NS ns2.myrecord.com.
+        ns1.myrecord.com. 3600 IN A 127.0.0.1
+        ns2.myrecord.com. 3600 IN A 127.0.0.2
+
+In this case, the responses will:
+
+1. Be authoritative (AA flag set)
+2. Provide an authority section (SOA + NS)
+3. NXDOMAIN if the name is found *(i.e. the 'IN AAAA myrecord.com' from the example)*, but not the RR type *(this is to allow synthesis of negative responses)*
+
+*Note: The SOA record applies only to the 'myrecord.com.', not to any other record (even below it). From this point of view,
+all records in the database are unrelated and not hierarchical. The reasoning is to provide a subtree isolation for each entry.*
         
 In addition the module is able to log matching queries via remote syslog if you specify a syslog address endpoint and an
 optional string code.
