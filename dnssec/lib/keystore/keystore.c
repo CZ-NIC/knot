@@ -142,7 +142,7 @@ int dnssec_keystore_remove_key(dnssec_keystore_t *store, const char *key_id)
 		return DNSSEC_EINVAL;
 	}
 
-	return store->functions->remove_key(store, key_id);
+	return store->functions->remove_key(store->ctx, key_id);
 }
 
 static bool valid_params(dnssec_key_t *key, const char *id,
