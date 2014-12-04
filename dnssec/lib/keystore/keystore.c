@@ -65,6 +65,8 @@ int dnssec_keystore_deinit(dnssec_keystore_t *store)
 	}
 
 	dnssec_keystore_close(store);
+	store->functions->ctx_free(store->ctx);
+
 	free(store);
 
 	return DNSSEC_EOK;
