@@ -323,7 +323,7 @@ dnl Check for rosedb module
 AC_ARG_ENABLE([rosedb],
     AS_HELP_STRING([--disable-rosedb], [Do not enable static RR query module.]),
     [], [enable_rosedb=no])
-AM_CONDITIONAL([ENABLE_ROSEDB], [test "$enable_rosedb" = yes])
+AM_CONDITIONAL([HAVE_ROSEDB], [test "$enable_rosedb" = yes])
 AS_IF([test "$enable_rosedb" = yes], [AC_DEFINE([HAVE_ROSEDB], [1], [Define to 1 to enable static RR query module.])])
 
 AC_SEARCH_LIBS([pow], [m])

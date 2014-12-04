@@ -371,7 +371,7 @@ libknotd_la_LIBADD += dnstap/libdnstap.la
 endif
 
 # rose sources and client tool
-if ENABLE_ROSEDB
+if HAVE_ROSEDB
 libknotd_la_SOURCES +=				\
 	knot/modules/rosedb.c				\
 	knot/modules/rosedb.h
