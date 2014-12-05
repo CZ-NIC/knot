@@ -396,10 +396,35 @@ static int cmd_policy(options_t *options, int argc, char *argv[])
 	return 1;
 }
 
+static int cmd_keystore_list(options_t *options, int argc, char *argv[])
+{
+	_cleanup_keystore_ dnssec_keystore_t *store = NULL;
+	dnssec_keystore_init_pkcs8_dir(&store);
+	int r = dnssec_keystore_open(store, options->keystore_dir);
+	if (r != DNSSEC_EOK) {
+		error("Cannot open default key store (%s).\n", dnssec_strerror(r));
+		return 1;
+	}
+
+	dnssec_list_t *keys = NULL;
+	dnssec_keystore_list_keys(store, &keys);
+	dnssec_list_foreach(item, keys) {
+		const char *key_id = dnssec_item_get(item);
+		printf("%s\n", key_id);
+	}
+	dnssec_list_free_full(keys, NULL, NULL);
+
+	return 0;
+}
+
 static int cmd_keystore(options_t *options, int argc, char *argv[])
 {
-	error("Not implemented.");
-	return 1;
+	static const command_t commands[] = {
+		{ "list",   cmd_keystore_list },
+		{ NULL }
+	};
+
+	return subcommand(commands, options, argc - 1, argv + 1);
 }
 
 int main(int argc, char *argv[])
