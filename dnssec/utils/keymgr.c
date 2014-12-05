@@ -217,7 +217,7 @@ static int cmd_zone_list(options_t *options, int argc, char *argv[])
 	dnssec_list_t *zones = NULL;
 	r = dnssec_kasp_zone_list(kasp, &zones);
 	if (r != DNSSEC_EOK) {
-		error("dnssec_kasp_list_zones");
+		error("dnssec_kasp_list_zones\n");
 	}
 
 	bool found_match = false;
@@ -392,7 +392,7 @@ static int cmd_zone(options_t *options, int argc, char *argv[])
 
 static int cmd_policy(options_t *options, int argc, char *argv[])
 {
-	error("Not implemented.");
+	error("Not implemented.\n");
 	return 1;
 }
 
