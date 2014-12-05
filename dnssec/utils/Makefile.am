@@ -31,6 +31,7 @@ LDADD = libutils.la
 
 bin_PROGRAMS = \
 	generate \
+	genzonekey \
 	getpub \
 	import \
 	keymgr \
