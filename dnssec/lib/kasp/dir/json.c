@@ -26,6 +26,11 @@
 // ISO 8610
 #define TIME_FORMAT "%Y-%m-%dT%H:%M:%S%z"
 
+int decode_ignore(_unused_ const json_t *value, _unused_ void *result)
+{
+	return DNSSEC_EOK;
+}
+
 /*!
  * Decode key ID from JSON.
  */
@@ -69,24 +74,58 @@ int encode_keyid(const void *value, json_t **result)
 }
 
 /*!
- * Decode unsigned 8-bit integer from JSON.
- *
- * \todo Could understand an algorithm name instead of just a number.
+ * Decode bounded interger value from JSON.
  */
-int decode_uint8(const json_t *value, void *result)
+static int decode_int(const json_int_t min, const json_int_t max,
+		      const json_t *value, json_int_t *result)
 {
-	uint8_t *byte_ptr = result;
-
 	if (!json_is_integer(value)) {
 		return DNSSEC_CONFIG_MALFORMED;
 	}
 
 	json_int_t number = json_integer_value(value);
-	if (number < 0 || number > UINT8_MAX) {
+	if (number < min || number > max) {
 		return DNSSEC_CONFIG_MALFORMED;
 	}
 
-	*byte_ptr = number;
+	*result = number;
+
+	return DNSSEC_EOK;
+}
+
+/*!
+ * Encode bounded integer value to JSON.
+ */
+static int encode_int(const json_int_t min, const json_int_t max,
+		      const json_int_t value, json_t **result)
+{
+	if (value < min || max < value) {
+		return DNSSEC_CONFIG_MALFORMED;
+	}
+
+	json_t *encoded = json_integer(value);
+	if (!encoded) {
+		return DNSSEC_ENOMEM;
+	}
+
+	*result = encoded;
+
+	return DNSSEC_EOK;
+}
+
+/*!
+ * Decode unsigned 8-bit integer from JSON.
+ */
+int decode_uint8(const json_t *value, void *result)
+{
+	json_int_t decoded;
+	int r = decode_int(0, UINT8_MAX, value, &decoded);
+	if (r != DNSSEC_EOK) {
+		return r;
+	}
+
+	uint8_t *uint8_ptr = result;
+	*uint8_ptr = decoded;
 
 	return DNSSEC_EOK;
 }
@@ -96,16 +135,32 @@ int decode_uint8(const json_t *value, void *result)
  */
 int encode_uint8(const void *value, json_t **result)
 {
-	const uint8_t *byte_ptr = value;
+	return encode_int(0, UINT8_MAX, *((uint8_t *)value), result);
+}
 
-	json_t *encoded = json_integer(*byte_ptr);
-	if (!encoded) {
-		return DNSSEC_ENOMEM;
+/*!
+ * Decode unsigned 16-bit integer from JSON.
+ */
+int decode_uint16(const json_t *value, void *result)
+{
+	json_int_t decoded;
+	int r = decode_int(0, UINT16_MAX, value, &decoded);
+	if (r != DNSSEC_EOK) {
+		return r;
 	}
 
-	*result = encoded;
+	uint16_t *uint16_ptr = result;
+	*uint16_ptr = decoded;
 
 	return DNSSEC_EOK;
+}
+
+/*!
+ * Encode unsigned 16-bit integer to JSON.
+ */
+int encode_uint16(const void *value, json_t **result)
+{
+	return encode_int(0, UINT16_MAX, *((uint16_t *)value), result);
 }
 
 /*!

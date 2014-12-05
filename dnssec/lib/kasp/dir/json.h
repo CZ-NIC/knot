@@ -33,12 +33,16 @@ static inline void json_decref_ptr(json_t **json_ptr)
 /*! Options for JSON writing. */
 #define JSON_DUMP_OPTIONS JSON_INDENT(2)|JSON_PRESERVE_ORDER
 
+int decode_ignore(const json_t *value, void *result);
 
 int decode_keyid(const json_t *value, void *result);
 int encode_keyid(const void *value, json_t **result);
 
 int decode_uint8(const json_t *value, void *result);
 int encode_uint8(const void *value, json_t **result);
+
+int decode_uint16(const json_t *value, void *result);
+int encode_uint16(const void *value, json_t **result);
 
 int decode_binary(const json_t *value, void *result);
 int encode_binary(const void *value, json_t **result);

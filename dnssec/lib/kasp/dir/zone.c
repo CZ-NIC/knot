@@ -37,6 +37,7 @@
  */
 struct key_params {
 	char *id;
+	uint16_t keytag;
 	uint8_t algorithm;
 	dnssec_binary_t public_key;
 	bool is_ksk;
@@ -75,6 +76,7 @@ typedef struct key_params_field key_params_field_t;
 static const key_params_field_t KEY_PARAMS_FIELDS[] = {
 	#define off(member) offsetof(key_params_t, member)
 	{ "id",         off(id),             encode_keyid,  decode_keyid  },
+	{ "keytag",     off(keytag),         encode_uint16, decode_ignore },
 	{ "algorithm",  off(algorithm),      encode_uint8,  decode_uint8  },
 	{ "public_key", off(public_key),     encode_binary, decode_binary },
 	{ "ksk",        off(is_ksk),         encode_bool,   decode_bool   },
@@ -315,6 +317,7 @@ static void key_to_params(dnssec_kasp_key_t *key, key_params_t *params)
 	assert(params);
 
 	params->id = (char *)dnssec_key_get_id(key->key);
+	params->keytag = dnssec_key_get_keytag(key->key);
 	dnssec_key_get_pubkey(key->key, &params->public_key);
 	params->algorithm = dnssec_key_get_algorithm(key->key);
 	params->is_ksk = dnssec_key_get_flags(key->key) == DNSKEY_KSK_FLAGS;
