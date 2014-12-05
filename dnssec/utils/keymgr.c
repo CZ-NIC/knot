@@ -23,6 +23,7 @@
 
 #include <dnssec/error.h>
 #include <dnssec/kasp.h>
+#include <dnssec/keystore.h>
 
 #include "shared.h"
 #include "utils.h"
@@ -31,6 +32,7 @@
 
 struct options {
 	char *kasp_dir;
+	char *keystore_dir;
 };
 
 typedef struct options options_t;
@@ -42,12 +44,18 @@ static void cleanup_kasp(dnssec_kasp_t **kasp_ptr)
 	dnssec_kasp_deinit(*kasp_ptr);
 }
 
+static void cleanup_keystore(dnssec_keystore_t **keystore_ptr)
+{
+	dnssec_keystore_deinit(*keystore_ptr);
+}
+
 static void cleanup_kasp_zone(dnssec_kasp_zone_t **zone_ptr)
 {
 	dnssec_kasp_zone_free(*zone_ptr);
 }
 
 #define _cleanup_kasp_ _cleanup_(cleanup_kasp)
+#define _cleanup_keystore_ _cleanup_(cleanup_keystore)
 #define _cleanup_zone_ _cleanup_(cleanup_kasp_zone)
 
 /* -- subcommands processing ----------------------------------------------- */
@@ -95,6 +103,8 @@ static int cmd_init(options_t *options, int argc, char *argv[])
 		return 1;
 	}
 
+	// KASP
+
 	_cleanup_kasp_ dnssec_kasp_t *kasp = NULL;
 	dnssec_kasp_init_dir(&kasp);
 
@@ -102,9 +112,22 @@ static int cmd_init(options_t *options, int argc, char *argv[])
 	if (r != DNSSEC_EOK) {
 		error("Cannot initialize KASP directory (%s).\n",
 		      dnssec_strerror(r));
+		return 1;
 	}
 
-	return (r == DNSSEC_EOK ? 0 : 1);
+	// keystore
+
+	_cleanup_keystore_ dnssec_keystore_t *store = NULL;
+	dnssec_keystore_init_pkcs8_dir(&store);
+
+	r = dnssec_keystore_init(store, options->keystore_dir);
+	if (r != DNSSEC_EOK) {
+		error("Cannot initialize default keystore (%s).\n",
+		      dnssec_strerror(r));
+		return 1;
+	}
+
+	return 0;
 }
 
 /*
@@ -410,6 +433,11 @@ int main(int argc, char *argv[])
 		}
 	}
 
+	if (asprintf(&options.keystore_dir, "%s/keys", options.kasp_dir) == -1) {
+		error("failed to allocate memory\n");
+		goto failed;
+	}
+
 	// subcommands
 
 	static const command_t commands[] = {
@@ -424,6 +452,7 @@ int main(int argc, char *argv[])
 
 failed:
 	free(options.kasp_dir);
+	free(options.keystore_dir);
 
 	return exit_code;
 }
