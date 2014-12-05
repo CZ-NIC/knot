@@ -18,4 +18,17 @@
 
 #include "libknot/internal/namedb/namedb.h"
 
+/* Defines */
+#define NAMEDB_TRIE_BUCKET_SIZE  253 /* 1 page per bucket, see hat-trie.h */
+
+/* Native options. */
+struct namedb_trie_opts {
+	unsigned bucket_size; /*!< Trie bucket size. */
+};
+
+/* Default options. */
+#define NAMEDB_TRIE_OPTS_INITIALIZER { \
+	NAMEDB_TRIE_BUCKET_SIZE \
+}
+
 const namedb_api_t *namedb_trie_api(void);

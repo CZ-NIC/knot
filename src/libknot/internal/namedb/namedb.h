@@ -55,7 +55,7 @@ typedef struct namedb_api {
 
 	/* Context operations */
 
-	int (*init)(const char *config, namedb_t **db, mm_ctx_t *mm);
+	int (*init)(namedb_t **db, mm_ctx_t *mm, void *opts);
 	void (*deinit)(namedb_t *db);
 
 	/* Transactions */

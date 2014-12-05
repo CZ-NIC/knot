@@ -22,13 +22,14 @@
 #include "libknot/internal/trie/hat-trie.h"
 #include "libknot/internal/mempattern.h"
 
-static int init(const char *config, namedb_t **db, mm_ctx_t *mm)
+static int init(namedb_t **db, mm_ctx_t *mm, void *arg)
 {
-	if (config != NULL || db == NULL) {
+	if (db == NULL || arg == NULL) {
 		return KNOT_EINVAL;
 	}
-
-	hattrie_t *trie = hattrie_create_n(TRIE_BUCKET_SIZE, mm);
+	
+	struct namedb_trie_opts *opts = arg;
+	hattrie_t *trie = hattrie_create_n(opts->bucket_size, mm);
 	if (!trie) {
 		return KNOT_ENOMEM;
 	}

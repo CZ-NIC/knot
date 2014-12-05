@@ -49,7 +49,7 @@ static char *str_key_rand(size_t len, mm_ctx_t *pool)
 #define ASORT_LT(x, y) (strcmp((x), (y)) < 0)
 #include "libknot/internal/array-sort.h"
 
-static void namedb_test_set(unsigned nkeys, char **keys, char *dbid,
+static void namedb_test_set(unsigned nkeys, char **keys, void *opts,
                             const namedb_api_t *api, mm_ctx_t *pool)
 {
 	if (api == NULL) {
@@ -59,7 +59,7 @@ static void namedb_test_set(unsigned nkeys, char **keys, char *dbid,
 
 	/* Create database */
 	namedb_t *db = NULL;
-	int ret = api->init(dbid, &db, pool);
+	int ret = api->init(&db, pool, opts);
 	ok(ret == KNOT_EOK && db != NULL, "%s: create", api->name);
 
 	/* Start WR transaction. */
@@ -227,8 +227,11 @@ int main(int argc, char *argv[])
 	str_key_sort(keys, nkeys);
 
 	/* Execute test set for all backends. */
-	namedb_test_set(nkeys, keys, dbid, namedb_lmdb_api(), &pool);
-	namedb_test_set(nkeys, keys, NULL, namedb_trie_api(), &pool);
+	struct namedb_lmdb_opts lmdb_opts = NAMEDB_LMDB_OPTS_INITIALIZER;
+	lmdb_opts.path = dbid;
+	struct namedb_trie_opts trie_opts = NAMEDB_TRIE_OPTS_INITIALIZER;
+	namedb_test_set(nkeys, keys, &lmdb_opts, namedb_lmdb_api(), &pool);
+	namedb_test_set(nkeys, keys, &trie_opts, namedb_trie_api(), &pool);
 
 	/* Cleanup */
 	mp_delete(pool.ctx);

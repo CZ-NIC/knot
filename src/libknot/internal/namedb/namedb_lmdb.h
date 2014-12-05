@@ -18,4 +18,27 @@
 
 #include "libknot/internal/namedb/namedb.h"
 
+/* Defines */
+#define NAMEDB_LMDB_MAPSIZE    (100 * 1024 * 1024)
+
+/* Native options. */
+struct namedb_lmdb_opts {
+	const char *path;     /*!< Database environment path. */
+	const char *dbname;   /*!< Database name (or NULL). */
+	size_t mapsize;       /*!< Environment map size. */
+	unsigned maxdbs;      /*!< Maximum number of databases in the env. */
+	struct {
+		unsigned env; /*!< Environment flags. */
+		unsigned db;  /*!< Database flags. */
+	} flags;
+};
+
+/* Default options. */
+#define NAMEDB_LMDB_OPTS_INITIALIZER { \
+	NULL, NULL, \
+	NAMEDB_LMDB_MAPSIZE, \
+	0, \
+	{ 0, 0 } \
+}
+
 const namedb_api_t *namedb_lmdb_api(void);

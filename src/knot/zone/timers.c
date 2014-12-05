@@ -132,19 +132,20 @@ int open_timers_db(const char *storage, namedb_t **db_ptr)
 		return KNOT_EINVAL;
 	}
 
+	struct namedb_lmdb_opts opts = NAMEDB_LMDB_OPTS_INITIALIZER;
 	const namedb_api_t *db_api = namedb_lmdb_api();
 	if (!db_api) {
 		return KNOT_ENOTSUP;
 	}
 
-	char *path = sprintf_alloc("%s/timers", storage);
-	if (!path) {
+	opts.path = sprintf_alloc("%s/timers", storage);
+	if (!opts.path) {
 		return KNOT_ENOMEM;
 	}
 
-	int ret = db_api->init(path, db_ptr, NULL);
+	int ret = db_api->init(db_ptr, NULL, &opts);
 
-	free(path);
+	free((char *)opts.path);
 
 	return ret;
 }

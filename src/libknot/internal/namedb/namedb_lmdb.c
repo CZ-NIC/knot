@@ -25,12 +25,13 @@
 
 #include <lmdb.h>
 
-#define LMDB_DIR_MODE	0770
-#define LMDB_FILE_MODE	0660
-#define LMDB_MAPSIZE	(100 * 1024 * 1024)
+/* Defines */
+#define LMDB_DIR_MODE   0770
+#define LMDB_FILE_MODE  0660
 
 struct lmdb_env
 {
+	bool shared;
 	MDB_dbi dbi;
 	MDB_env *env;
 	mm_ctx_t *pool;
@@ -65,46 +66,85 @@ static int lmdb_error_to_knot(int error)
 	return knot_errno_to_error(error);
 }
 
-static int dbase_open(struct lmdb_env *env, const char *path)
+/*! \brief Set the environment map size.
+ * \note This also sets the maximum database size, see \fn mdb_env_set_mapsize
+ */
+static int set_mapsize(MDB_env *env, size_t map_size)
 {
-	int ret = mdb_env_create(&env->env);
-	if (ret != MDB_SUCCESS) {
-		return lmdb_error_to_knot(ret);
-	}
-
 	long page_size = sysconf(_SC_PAGESIZE);
 	if (page_size <= 0) {
-		mdb_env_close(env->env);
-		return KNOT_EINVAL;
+		return KNOT_ERROR;
 	}
 
-	size_t map_size = (LMDB_MAPSIZE / page_size) * page_size;
-	ret = mdb_env_set_mapsize(env->env, map_size);
+	/* Round to page size. */
+	map_size = (map_size / page_size) * page_size;
+	int ret = mdb_env_set_mapsize(env, map_size);
 	if (ret != MDB_SUCCESS) {
+		return lmdb_error_to_knot(ret);
+	}
+	
+	return KNOT_EOK;
+}
+
+/*! \brief Close the database. */
+static void dbase_close(struct lmdb_env *env)
+{
+	mdb_dbi_close(env->env, env->dbi);
+	if (!env->shared) {
 		mdb_env_close(env->env);
+	}
+}
+
+/*! \brief Open database environment. */
+static int dbase_open_env(struct lmdb_env *env, struct namedb_lmdb_opts *opts)
+{
+	MDB_env *mdb_env = NULL;
+	int ret = mdb_env_create(&mdb_env);
+	if (ret != MDB_SUCCESS) {
 		return lmdb_error_to_knot(ret);
 	}
 
-	ret = create_env_dir(path);
+	ret = create_env_dir(opts->path);
 	if (ret != KNOT_EOK) {
-		mdb_env_close(env->env);
+		mdb_env_close(mdb_env);
 		return ret;
 	}
-
-	ret = mdb_env_open(env->env, path, 0, LMDB_FILE_MODE);
+	
+	ret = set_mapsize(mdb_env, opts->mapsize);
+	if (ret != KNOT_EOK) {
+		mdb_env_close(mdb_env);
+		return ret;
+	}
+	
+	ret = mdb_env_set_maxdbs(mdb_env, opts->maxdbs);
 	if (ret != MDB_SUCCESS) {
-		mdb_env_close(env->env);
+		mdb_env_close(mdb_env);
 		return lmdb_error_to_knot(ret);
 	}
 
+	ret = mdb_env_open(mdb_env, opts->path, opts->flags.env, LMDB_FILE_MODE);
+	if (ret != MDB_SUCCESS) {
+		mdb_env_close(mdb_env);
+		return lmdb_error_to_knot(ret);
+	}
+	
+	/* Keep the environment pointer. */
+	env->env = mdb_env;
+	
+	return KNOT_EOK;
+}
+
+static int dbase_open(struct lmdb_env *env, struct namedb_lmdb_opts *opts)
+{
+	/* Open the database. */
 	MDB_txn *txn = NULL;
-	ret = mdb_txn_begin(env->env, NULL, 0, &txn);
+	int ret = mdb_txn_begin(env->env, NULL, 0, &txn);
 	if (ret != MDB_SUCCESS) {
 		mdb_env_close(env->env);
 		return lmdb_error_to_knot(ret);
 	}
 
-	ret = mdb_open(txn, NULL, 0, &env->dbi);
+	ret = mdb_dbi_open(txn, opts->dbname, opts->flags.db, &env->dbi);
 	if (ret != MDB_SUCCESS) {
 		mdb_txn_abort(txn);
 		mdb_env_close(env->env);
@@ -120,27 +160,43 @@ static int dbase_open(struct lmdb_env *env, const char *path)
 	return KNOT_EOK;
 }
 
-static void dbase_close(struct lmdb_env *env)
+static int init(namedb_t **db_ptr, mm_ctx_t *mm, void *arg)
 {
-	mdb_close(env->env, env->dbi);
-	mdb_env_close(env->env);
-}
+	if (db_ptr == NULL || arg == NULL) {
+		return KNOT_EINVAL;
+	}
 
-static int init(const char *config, namedb_t **db_ptr, mm_ctx_t *mm)
-{
+	int ret = KNOT_EOK;
 	struct lmdb_env *env = mm_alloc(mm, sizeof(struct lmdb_env));
 	if (env == NULL) {
 		return KNOT_ENOMEM;
 	}
+	
 	memset(env, 0, sizeof(struct lmdb_env));
+	env->pool = mm;
 
-	int ret = dbase_open(env, config);
+	/* Open new environment. */
+	struct lmdb_env *old_env = (*db_ptr);
+	if (old_env == NULL) {
+		ret = dbase_open_env(env, (struct namedb_lmdb_opts *)arg);
+		if (ret != KNOT_EOK) {
+			mm_free(mm, env);
+			return ret;
+		}
+	} else {
+		/* Shared environment, this instance just owns the DBI. */
+		env->env = old_env->env;
+		env->shared = true;
+	}
+
+	/* Open the database. */
+	ret = dbase_open(env, (struct namedb_lmdb_opts *)arg);
 	if (ret != KNOT_EOK) {
 		mm_free(mm, env);
 		return ret;
 	}
 
-	env->pool = mm;
+	/* Store the new environment. */
 	*db_ptr = env;
 
 	return KNOT_EOK;
