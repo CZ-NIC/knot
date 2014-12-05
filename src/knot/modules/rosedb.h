@@ -1,16 +1,15 @@
 /*!
- * \file synth_record.h
+ * \file rosedb.h
  *
  * \author Marek Vavrusa <marek.vavrusa@nic.cz>
  *
- * \brief Synthetic records module
+ * \brief Static resource records
  *
  * Accepted configurations:
- *  * "forward <prefix> <ttl> <address>/<netblock>"
- *  * "reverse <prefix> <zone> <ttl> <address>/<netblock>"
+ *  * "<path_to_database>"
  *
- * Module synthetises forward/reverse records based on a template when
- * the queried record can't be found in the zone contents.
+ * The module provides a mean to override responses for certain queries before
+ * the record is searched in the available zones.
  *
  * \addtogroup query_processing
  * @{

@@ -140,17 +140,20 @@ static inline void pack_str(char **stream, const char *str) {
 	memcpy(*stream, str, len);
 	*stream += len;
 }
+
 static inline char *unpack_str(char **stream) {
 	char *ret = *stream;
 	*stream += PACKED_LEN(ret);
 	return ret;
 }
+
 static inline void pack_bin(char **stream, const void *data, uint32_t len) {
 	wire_write_u32((uint8_t *)*stream, len);
 	*stream += sizeof(uint32_t);
 	memcpy(*stream, data, len);
 	*stream += len;
 }
+
 static inline void *unpack_bin(char **stream, uint32_t *len) {
 	*len = wire_read_u32((uint8_t *)*stream);
 	*stream += sizeof(uint32_t);
@@ -158,6 +161,7 @@ static inline void *unpack_bin(char **stream, uint32_t *len) {
 	*stream += *len;
 	return ret;
 }
+
 static MDB_val pack_key(const knot_dname_t *name)
 {
 	MDB_val key = { knot_dname_size(name), (void *)name };
