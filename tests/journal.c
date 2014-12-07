@@ -64,7 +64,8 @@ static void test_fillup(journal_t *journal, size_t fsize, unsigned iter)
 	fstat(journal->fd, &st);
 	ok(st.st_size < fsize + large_entry_len, "journal: fillup / size check #%u", iter);
 	if (st.st_size > fsize + large_entry_len) {
-		diag("journal: fillup / size check #%u fsize(%zu) > max(%zu)", iter, st.st_size, fsize + large_entry_len);
+		diag("journal: fillup / size check #%u fsize(%zu) > max(%zu)",
+		     iter, (size_t)st.st_size, fsize + large_entry_len);
 	}
 }
 
