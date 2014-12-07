@@ -166,7 +166,6 @@ static int init(namedb_t **db_ptr, mm_ctx_t *mm, void *arg)
 		return KNOT_EINVAL;
 	}
 
-	int ret = KNOT_EOK;
 	struct lmdb_env *env = mm_alloc(mm, sizeof(struct lmdb_env));
 	if (env == NULL) {
 		return KNOT_ENOMEM;
@@ -176,9 +175,9 @@ static int init(namedb_t **db_ptr, mm_ctx_t *mm, void *arg)
 	env->pool = mm;
 
 	/* Open new environment. */
-	struct lmdb_env *old_env = (*db_ptr);
+	struct lmdb_env *old_env = *db_ptr;
 	if (old_env == NULL) {
-		ret = dbase_open_env(env, (struct namedb_lmdb_opts *)arg);
+		int ret = dbase_open_env(env, (struct namedb_lmdb_opts *)arg);
 		if (ret != KNOT_EOK) {
 			mm_free(mm, env);
 			return ret;
@@ -190,7 +189,7 @@ static int init(namedb_t **db_ptr, mm_ctx_t *mm, void *arg)
 	}
 
 	/* Open the database. */
-	ret = dbase_open(env, (struct namedb_lmdb_opts *)arg);
+	int ret = dbase_open(env, (struct namedb_lmdb_opts *)arg);
 	if (ret != KNOT_EOK) {
 		mm_free(mm, env);
 		return ret;

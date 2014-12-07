@@ -33,15 +33,15 @@ enum {
 
 // Do not change these mappings if you want backwards compatibility.
 static const uint8_t event_id_to_key[ZONE_EVENT_COUNT] = {
- [ZONE_EVENT_REFRESH] = KEY_REFRESH,
- [ZONE_EVENT_EXPIRE] = KEY_EXPIRE,
- [ZONE_EVENT_FLUSH] = KEY_FLUSH
+	[ZONE_EVENT_REFRESH] = KEY_REFRESH,
+	[ZONE_EVENT_EXPIRE] = KEY_EXPIRE,
+	[ZONE_EVENT_FLUSH] = KEY_FLUSH
 };
 
 static const int key_to_event_id[PERSISTENT_EVENT_COUNT + 1] = {
- [KEY_REFRESH] = ZONE_EVENT_REFRESH,
- [KEY_EXPIRE] = ZONE_EVENT_EXPIRE,
- [KEY_FLUSH] = ZONE_EVENT_FLUSH
+	[KEY_REFRESH] = ZONE_EVENT_REFRESH,
+	[KEY_EXPIRE] = ZONE_EVENT_EXPIRE,
+	[KEY_FLUSH] = ZONE_EVENT_FLUSH
 };
 
 static bool known_event_key(uint8_t key)
@@ -128,18 +128,18 @@ static int read_timers(namedb_txn_t *txn, const zone_t *zone, time_t *timers)
 
 int open_timers_db(const char *storage, namedb_t **db_ptr)
 {
-	if (!storage || !db_ptr) {
+	if (storage == NULL || db_ptr == NULL) {
 		return KNOT_EINVAL;
 	}
 
 	struct namedb_lmdb_opts opts = NAMEDB_LMDB_OPTS_INITIALIZER;
 	const namedb_api_t *db_api = namedb_lmdb_api();
-	if (!db_api) {
+	if (db_api == NULL) {
 		return KNOT_ENOTSUP;
 	}
 
 	opts.path = sprintf_alloc("%s/timers", storage);
-	if (!opts.path) {
+	if (opts.path == NULL) {
 		return KNOT_ENOMEM;
 	}
 
@@ -152,7 +152,7 @@ int open_timers_db(const char *storage, namedb_t **db_ptr)
 
 void close_timers_db(namedb_t *timer_db)
 {
-	if (!timer_db) {
+	if (timer_db == NULL) {
 		return;
 	}
 
