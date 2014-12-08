@@ -20,3 +20,4 @@ Rules worth to highlight:
 - No empty lines at the end of the file, the last line ends with a '\n' char
 - Use braces even for single line statements after if, else, while, for, ...
 - Use typedefs for structs, do not use them for pointers.
+- Use comma after the last element of a list, unless there is a terminating sentinel.
