@@ -112,6 +112,21 @@ static int cmd_zone_add(int argc, char *argv[])
 	}
 
 	char *zone_name = argv[0];
+	char *policy = NULL;
+
+	parameter_t params[] = {
+		{ "policy", parameter_string },
+		{ NULL }
+	};
+
+	if (parse_parameters(params, argc - 1, argv + 1, &policy) != 0) {
+		return 1;
+	}
+
+	if (policy) {
+		error("Not implemented. Setting policy '%s' failed.", policy);
+		return 1;
+	}
 
 	// create zone
 
