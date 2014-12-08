@@ -20,6 +20,8 @@ libutils_la_CPPFLAGS = \
 	-I$(top_srcdir)/src/zscanner
 
 libutils_la_SOURCES = \
+	cmdparse/cmdparse.c \
+	cmdparse/cmdparse.h \
 	legacy/legacy.c \
 	legacy/legacy.h \
 	legacy/privkey.c \

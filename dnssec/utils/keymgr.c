@@ -25,6 +25,7 @@
 #include <dnssec/kasp.h>
 #include <dnssec/keystore.h>
 
+#include "cmdparse/cmdparse.h"
 #include "shared.h"
 #include "utils.h"
 
@@ -60,39 +61,6 @@ static void cleanup_kasp_zone(dnssec_kasp_zone_t **zone_ptr)
 #define _cleanup_keystore_ _cleanup_(cleanup_keystore)
 #define _cleanup_zone_ _cleanup_(cleanup_kasp_zone)
 
-/* -- subcommands processing ----------------------------------------------- */
-
-struct command {
-	const char *name;
-	int (*callback)(options_t *options, int argc, char *argv[]);
-};
-
-typedef struct command command_t;
-
-static int subcommand(const command_t *subcommands, options_t *options,
-		      int argc, char *argv[])
-{
-	assert(subcommands);
-	assert(options);
-	assert(argv);
-
-	if (argc < 1) {
-		error("No command specified.\n");
-		return 1;
-	}
-
-	char *command = argv[0];
-	for (const command_t *cmd = subcommands; cmd->name != NULL; cmd++) {
-		if (strcmp(command, cmd->name) == 0) {
-			fprintf(stderr, "[debug] command '%s'\n", cmd->name);
-			return cmd->callback(options, argc, argv);
-		}
-	}
-
-	error("Invalid command.\n");
-	return 1;
-}
-
 /* -- actions implementation ----------------------------------------------- */
 
 /*
@@ -100,7 +68,7 @@ static int subcommand(const command_t *subcommands, options_t *options,
  */
 static int cmd_init(int argc, char *argv[])
 {
-	if (argc != 1) {
+	if (argc != 0) {
 		error("Extra parameters supplied.\n");
 		return 1;
 	}
@@ -133,38 +101,16 @@ static int cmd_init(int argc, char *argv[])
 }
 
 /*
- * keymgr zone add [--policy <policy>] <name>
+ * keymgr zone add <name> [policy <policy>]
  */
 static int cmd_zone_add(int argc, char *argv[])
 {
-	char *policy_name = NULL;
-
-	static const struct option opts[] = {
-		{ "policy", required_argument, NULL, 'p' },
-		{ NULL }
-	};
-
-	int c = 0;
-	optind = 0;
-	while (c = getopt_long(argc, argv, "+p:", opts, NULL), c != -1) {
-		switch (c) {
-		case 'p':
-			policy_name = optarg;
-			break;
-		case '?':
-			error("Invalid option");
-			return 1;
-		default:
-			assert(0);
-		}
-	}
-
-	if (argc != optind + 1) {
-		error("Invalid number of positional arguments.\n");
+	if (argc < 1) {
+		error("Missing zone name.\n");
 		return 1;
 	}
 
-	char *zone_name = argv[optind];
+	char *zone_name = argv[0];
 
 	// create zone
 
@@ -198,10 +144,10 @@ static int cmd_zone_add(int argc, char *argv[])
 static int cmd_zone_list(int argc, char *argv[])
 {
 	const char *match;
-	if (argc == 1) {
+	if (argc == 0) {
 		match = NULL;
-	} else if (argc == 2) {
-		match = argv[1];
+	} else if (argc == 1) {
+		match = argv[0];
 	} else {
 		error("Extra parameter specified.\n");
 		return 1;
@@ -256,38 +202,17 @@ static bool is_zone_used(dnssec_kasp_zone_t *zone)
 }
 
 /*
- * keymgr zone remove [--force] <name>
+ * keymgr zone remove <name> [force]
  */
 static int cmd_zone_remove(int argc, char *argv[])
 {
-	static const struct option opts[] = {
-		{ "force", no_argument, NULL, 'f' },
-		{ NULL }
-	};
-
-	bool force = false;
-
-	int c = 0;
-	optind = 0;
-	while (c = getopt_long(argc, argv, "+", opts, NULL), c != -1) {
-		switch (c) {
-		case 'f':
-			force = true;
-			break;
-		case '?':
-			error("Invalid option.\n");
-			return 1;
-		default:
-			assert(0);
-		}
-	}
-
-	if (argc != optind + 1) {
+	if (argc < 1) {
 		error("Name of one zone has to be specified.\n");
 		return 1;
 	}
 
-	char *zone_name = argv[optind];
+	char *zone_name = argv[0];
+	bool force = false; // TODO
 
 	// delete zone
 
@@ -333,13 +258,12 @@ static int cmd_zone_key_list(int argc, char *argv[])
  */
 static int cmd_zone_key_generate(int argc, char *argv[])
 {
-	if (argc != 3) {
+	if (argc != 2) {
 		error("Invalid parameters.\n");
 		return 1;
 	}
 
-	const char *zone_name = argv[1];
-	const char *algorithm_name = argv[2];
+	const char *zone_name = argv[0];
 
 	_cleanup_kasp_ dnssec_kasp_t *kasp = NULL;
 	dnssec_kasp_init_dir(&kasp);
@@ -376,7 +300,7 @@ static int cmd_zone_key(int argc, char *argv[])
 		{ NULL }
 	};
 
-	return subcommand(commands, argc - 1, argv + 1);
+	return subcommand(commands, argc, argv);
 }
 
 static int cmd_zone(int argc, char *argv[])
