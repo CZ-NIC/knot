@@ -27,7 +27,7 @@
 
 #include "cmdparse/cmdparse.h"
 #include "shared.h"
-#include "utils.h"
+#include "print.h"
 
 /* -- global options ------------------------------------------------------- */
 
@@ -69,7 +69,7 @@ static void cleanup_kasp_zone(dnssec_kasp_zone_t **zone_ptr)
 static int cmd_init(int argc, char *argv[])
 {
 	if (argc != 0) {
-		error("Extra parameters supplied.\n");
+		error("Extra parameters supplied.");
 		return 1;
 	}
 
@@ -80,7 +80,7 @@ static int cmd_init(int argc, char *argv[])
 
 	int r = dnssec_kasp_init(kasp, global.kasp_dir);
 	if (r != DNSSEC_EOK) {
-		error("Cannot initialize KASP directory (%s).\n",
+		error("Cannot initialize KASP directory (%s).",
 		      dnssec_strerror(r));
 		return 1;
 	}
@@ -92,7 +92,7 @@ static int cmd_init(int argc, char *argv[])
 
 	r = dnssec_keystore_init(store, global.keystore_dir);
 	if (r != DNSSEC_EOK) {
-		error("Cannot initialize default keystore (%s).\n",
+		error("Cannot initialize default keystore (%s).",
 		      dnssec_strerror(r));
 		return 1;
 	}
@@ -106,7 +106,7 @@ static int cmd_init(int argc, char *argv[])
 static int cmd_zone_add(int argc, char *argv[])
 {
 	if (argc < 1) {
-		error("Missing zone name.\n");
+		error("Missing zone name.");
 		return 1;
 	}
 
@@ -119,19 +119,19 @@ static int cmd_zone_add(int argc, char *argv[])
 
 	int r = dnssec_kasp_open(kasp, global.kasp_dir);
 	if (r != DNSSEC_EOK) {
-		error("dnssec_kasp_open: %s\n", dnssec_strerror(r));
+		error("dnssec_kasp_open: %s", dnssec_strerror(r));
 		return 1;
 	}
 
 	dnssec_kasp_zone_t *zone = dnssec_kasp_zone_new(zone_name);
 	if (!zone) {
-		error("dnssec_kasp_zone_new: %s\n", dnssec_strerror(r));
+		error("dnssec_kasp_zone_new: %s", dnssec_strerror(r));
 		return 1;
 	}
 
 	r = dnssec_kasp_zone_save(kasp, zone);
 	if (r != DNSSEC_EOK) {
-		error("dnssec_kasp_zone_save: %s\n", dnssec_strerror(r));
+		error("dnssec_kasp_zone_save: %s", dnssec_strerror(r));
 		return 1;
 	}
 
@@ -149,7 +149,7 @@ static int cmd_zone_list(int argc, char *argv[])
 	} else if (argc == 1) {
 		match = argv[0];
 	} else {
-		error("Extra parameter specified.\n");
+		error("Extra parameter specified.");
 		return 1;
 	}
 
@@ -158,14 +158,14 @@ static int cmd_zone_list(int argc, char *argv[])
 
 	int r = dnssec_kasp_open(kasp, global.kasp_dir);
 	if (r != DNSSEC_EOK) {
-		error("dnssec_kasp_open: %s\n", dnssec_strerror(r));
+		error("dnssec_kasp_open: %s", dnssec_strerror(r));
 		return 1;
 	}
 
 	dnssec_list_t *zones = NULL;
 	r = dnssec_kasp_zone_list(kasp, &zones);
 	if (r != DNSSEC_EOK) {
-		error("dnssec_kasp_list_zones\n");
+		error("dnssec_kasp_list_zones");
 	}
 
 	bool found_match = false;
@@ -179,7 +179,7 @@ static int cmd_zone_list(int argc, char *argv[])
 	}
 
 	if (!found_match) {
-		fprintf(stderr, "No matching zone found.\n");
+		error("No matching zone found.");
 	}
 
 	dnssec_list_free_full(zones, NULL, NULL);
@@ -207,7 +207,7 @@ static bool is_zone_used(dnssec_kasp_zone_t *zone)
 static int cmd_zone_remove(int argc, char *argv[])
 {
 	if (argc < 1) {
-		error("Name of one zone has to be specified.\n");
+		error("Name of one zone has to be specified.");
 		return 1;
 	}
 
@@ -221,14 +221,14 @@ static int cmd_zone_remove(int argc, char *argv[])
 
 	int r = dnssec_kasp_open(kasp, global.kasp_dir);
 	if (r != DNSSEC_EOK) {
-		error("Cannot open KASP directory (%s).\n", dnssec_strerror(r));
+		error("Cannot open KASP directory (%s).", dnssec_strerror(r));
 		return 1;
 	}
 
 	_cleanup_zone_ dnssec_kasp_zone_t *zone = NULL;
 	r = dnssec_kasp_zone_load(kasp, zone_name, &zone);
 	if (r != DNSSEC_EOK) {
-		error("Cannot retrieve zone from KASP (%s).\n", dnssec_strerror(r));
+		error("Cannot retrieve zone from KASP (%s).", dnssec_strerror(r));
 		return 1;
 	}
 
@@ -240,7 +240,7 @@ static int cmd_zone_remove(int argc, char *argv[])
 
 	r = dnssec_kasp_zone_remove(kasp, zone_name);
 	if (r != DNSSEC_EOK) {
-		error("Cannot remove the zone (%s).\n", dnssec_strerror(r));
+		error("Cannot remove the zone (%s).", dnssec_strerror(r));
 		return 1;
 	}
 
@@ -249,7 +249,7 @@ static int cmd_zone_remove(int argc, char *argv[])
 
 static int cmd_zone_key_list(int argc, char *argv[])
 {
-	error("Not implemented.\n");
+	error("Not implemented.");
 	return 1;
 }
 
@@ -259,7 +259,7 @@ static int cmd_zone_key_list(int argc, char *argv[])
 static int cmd_zone_key_generate(int argc, char *argv[])
 {
 	if (argc != 2) {
-		error("Invalid parameters.\n");
+		error("Invalid parameters.");
 		return 1;
 	}
 
@@ -270,24 +270,24 @@ static int cmd_zone_key_generate(int argc, char *argv[])
 
 	int r = dnssec_kasp_open(kasp, global.kasp_dir);
 	if (r != DNSSEC_EOK) {
-		error("Cannot open KASP directory (%s).\n", dnssec_strerror(r));
+		error("Cannot open KASP directory (%s).", dnssec_strerror(r));
 		return 1;
 	}
 
 	_cleanup_zone_ dnssec_kasp_zone_t *zone = NULL;
 	r = dnssec_kasp_zone_load(kasp, zone_name, &zone);
 	if (r != DNSSEC_EOK) {
-		error("Cannot retrieve zone from KASP (%s).\n", dnssec_strerror(r));
+		error("Cannot retrieve zone from KASP (%s).", dnssec_strerror(r));
 		return 1;
 	}
 
-	error("Not implemented.\n");
+	error("Not implemented.");
 	return 1;
 }
 
 static int cmd_zone_key_import(int argc, char *argv[])
 {
-	error("Not implemented.\n");
+	error("Not implemented.");
 	return 1;
 }
 
@@ -318,7 +318,7 @@ static int cmd_zone(int argc, char *argv[])
 
 static int cmd_policy(int argc, char *argv[])
 {
-	error("Not implemented.\n");
+	error("Not implemented.");
 	return 1;
 }
 
@@ -328,7 +328,7 @@ static int cmd_keystore_list(int argc, char *argv[])
 	dnssec_keystore_init_pkcs8_dir(&store);
 	int r = dnssec_keystore_open(store, global.keystore_dir);
 	if (r != DNSSEC_EOK) {
-		error("Cannot open default key store (%s).\n", dnssec_strerror(r));
+		error("Cannot open default key store (%s).", dnssec_strerror(r));
 		return 1;
 	}
 
@@ -384,7 +384,7 @@ int main(int argc, char *argv[])
 	}
 
 	if (asprintf(&global.keystore_dir, "%s/keys", global.kasp_dir) == -1) {
-		error("failed to allocate memory\n");
+		error("failed to allocate memory");
 		goto failed;
 	}
 

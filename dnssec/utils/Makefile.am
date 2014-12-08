@@ -27,7 +27,8 @@ libutils_la_SOURCES = \
 	legacy/privkey.c \
 	legacy/privkey.h \
 	legacy/pubkey.c \
-	legacy/pubkey.h
+	legacy/pubkey.h \
+	print.h
 
 LDADD = libutils.la
 

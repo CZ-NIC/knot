@@ -18,4 +18,4 @@
 
 #include <stdio.h>
 
-#define error(args...) fprintf(stderr, args)
+#define error(fmt, ...) fprintf(stderr, fmt "\n", ##__VA_ARGS__)
