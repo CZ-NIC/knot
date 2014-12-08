@@ -51,6 +51,9 @@ t.link(zones, knot)
 
 t.start()
 
+for zone in [zone for zone in zones if TEST_CASES[zone.name.rstrip(".")]]:
+    knot.zone_wait(zone)
+
 for zone, valid in TEST_CASES.items():
     expected_rcode = "NOERROR" if valid else "SERVFAIL"
     knot.dig(zone, "SOA").check(rcode=expected_rcode)
