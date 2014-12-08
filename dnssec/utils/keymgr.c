@@ -37,6 +37,8 @@ struct options {
 
 typedef struct options options_t;
 
+static options_t global = { 0 };
+
 /* -- internal ------------------------------------------------------------- */
 
 static void cleanup_kasp(dnssec_kasp_t **kasp_ptr)
@@ -96,7 +98,7 @@ static int subcommand(const command_t *subcommands, options_t *options,
 /*
  * keymgr init
  */
-static int cmd_init(options_t *options, int argc, char *argv[])
+static int cmd_init(int argc, char *argv[])
 {
 	if (argc != 1) {
 		error("Extra parameters supplied.\n");
@@ -108,7 +110,7 @@ static int cmd_init(options_t *options, int argc, char *argv[])
 	_cleanup_kasp_ dnssec_kasp_t *kasp = NULL;
 	dnssec_kasp_init_dir(&kasp);
 
-	int r = dnssec_kasp_init(kasp, options->kasp_dir);
+	int r = dnssec_kasp_init(kasp, global.kasp_dir);
 	if (r != DNSSEC_EOK) {
 		error("Cannot initialize KASP directory (%s).\n",
 		      dnssec_strerror(r));
@@ -120,7 +122,7 @@ static int cmd_init(options_t *options, int argc, char *argv[])
 	_cleanup_keystore_ dnssec_keystore_t *store = NULL;
 	dnssec_keystore_init_pkcs8_dir(&store);
 
-	r = dnssec_keystore_init(store, options->keystore_dir);
+	r = dnssec_keystore_init(store, global.keystore_dir);
 	if (r != DNSSEC_EOK) {
 		error("Cannot initialize default keystore (%s).\n",
 		      dnssec_strerror(r));
@@ -133,7 +135,7 @@ static int cmd_init(options_t *options, int argc, char *argv[])
 /*
  * keymgr zone add [--policy <policy>] <name>
  */
-static int cmd_zone_add(options_t *options, int argc, char *argv[])
+static int cmd_zone_add(int argc, char *argv[])
 {
 	char *policy_name = NULL;
 
@@ -169,7 +171,7 @@ static int cmd_zone_add(options_t *options, int argc, char *argv[])
 	_cleanup_kasp_ dnssec_kasp_t *kasp = NULL;
 	dnssec_kasp_init_dir(&kasp);
 
-	int r = dnssec_kasp_open(kasp, options->kasp_dir);
+	int r = dnssec_kasp_open(kasp, global.kasp_dir);
 	if (r != DNSSEC_EOK) {
 		error("dnssec_kasp_open: %s\n", dnssec_strerror(r));
 		return 1;
@@ -193,7 +195,7 @@ static int cmd_zone_add(options_t *options, int argc, char *argv[])
 /*
  * keymgr zone list [substring-match]
  */
-static int cmd_zone_list(options_t *options, int argc, char *argv[])
+static int cmd_zone_list(int argc, char *argv[])
 {
 	const char *match;
 	if (argc == 1) {
@@ -208,7 +210,7 @@ static int cmd_zone_list(options_t *options, int argc, char *argv[])
 	_cleanup_kasp_ dnssec_kasp_t *kasp = NULL;
 	dnssec_kasp_init_dir(&kasp);
 
-	int r = dnssec_kasp_open(kasp, options->kasp_dir);
+	int r = dnssec_kasp_open(kasp, global.kasp_dir);
 	if (r != DNSSEC_EOK) {
 		error("dnssec_kasp_open: %s\n", dnssec_strerror(r));
 		return 1;
@@ -256,7 +258,7 @@ static bool is_zone_used(dnssec_kasp_zone_t *zone)
 /*
  * keymgr zone remove [--force] <name>
  */
-static int cmd_zone_remove(options_t *options, int argc, char *argv[])
+static int cmd_zone_remove(int argc, char *argv[])
 {
 	static const struct option opts[] = {
 		{ "force", no_argument, NULL, 'f' },
@@ -292,7 +294,7 @@ static int cmd_zone_remove(options_t *options, int argc, char *argv[])
 	_cleanup_kasp_ dnssec_kasp_t *kasp = NULL;
 	dnssec_kasp_init_dir(&kasp);
 
-	int r = dnssec_kasp_open(kasp, options->kasp_dir);
+	int r = dnssec_kasp_open(kasp, global.kasp_dir);
 	if (r != DNSSEC_EOK) {
 		error("Cannot open KASP directory (%s).\n", dnssec_strerror(r));
 		return 1;
@@ -320,7 +322,7 @@ static int cmd_zone_remove(options_t *options, int argc, char *argv[])
 	return 0;
 }
 
-static int cmd_zone_key_list(options_t *options, int argc, char *argv[])
+static int cmd_zone_key_list(int argc, char *argv[])
 {
 	error("Not implemented.\n");
 	return 1;
@@ -329,7 +331,7 @@ static int cmd_zone_key_list(options_t *options, int argc, char *argv[])
 /*
  * keymgr zone key generate <zone> <algorithm> [<bits>] [ksk]
  */
-static int cmd_zone_key_generate(options_t *options, int argc, char *argv[])
+static int cmd_zone_key_generate(int argc, char *argv[])
 {
 	if (argc != 3) {
 		error("Invalid parameters.\n");
@@ -342,7 +344,7 @@ static int cmd_zone_key_generate(options_t *options, int argc, char *argv[])
 	_cleanup_kasp_ dnssec_kasp_t *kasp = NULL;
 	dnssec_kasp_init_dir(&kasp);
 
-	int r = dnssec_kasp_open(kasp, options->kasp_dir);
+	int r = dnssec_kasp_open(kasp, global.kasp_dir);
 	if (r != DNSSEC_EOK) {
 		error("Cannot open KASP directory (%s).\n", dnssec_strerror(r));
 		return 1;
@@ -359,13 +361,13 @@ static int cmd_zone_key_generate(options_t *options, int argc, char *argv[])
 	return 1;
 }
 
-static int cmd_zone_key_import(options_t *options, int argc, char *argv[])
+static int cmd_zone_key_import(int argc, char *argv[])
 {
 	error("Not implemented.\n");
 	return 1;
 }
 
-static int cmd_zone_key(options_t *options, int argc, char *argv[])
+static int cmd_zone_key(int argc, char *argv[])
 {
 	static const command_t commands[] = {
 		{ "list",     cmd_zone_key_list },
@@ -374,10 +376,10 @@ static int cmd_zone_key(options_t *options, int argc, char *argv[])
 		{ NULL }
 	};
 
-	return subcommand(commands, options, argc -1, argv + 1);
+	return subcommand(commands, argc - 1, argv + 1);
 }
 
-static int cmd_zone(options_t *options, int argc, char *argv[])
+static int cmd_zone(int argc, char *argv[])
 {
 	static const command_t commands[] = {
 		{ "add",    cmd_zone_add },
@@ -387,20 +389,20 @@ static int cmd_zone(options_t *options, int argc, char *argv[])
 		{ NULL }
 	};
 
-	return subcommand(commands, options, argc - 1, argv + 1);
+	return subcommand(commands, argc, argv);
 }
 
-static int cmd_policy(options_t *options, int argc, char *argv[])
+static int cmd_policy(int argc, char *argv[])
 {
 	error("Not implemented.\n");
 	return 1;
 }
 
-static int cmd_keystore_list(options_t *options, int argc, char *argv[])
+static int cmd_keystore_list(int argc, char *argv[])
 {
 	_cleanup_keystore_ dnssec_keystore_t *store = NULL;
 	dnssec_keystore_init_pkcs8_dir(&store);
-	int r = dnssec_keystore_open(store, options->keystore_dir);
+	int r = dnssec_keystore_open(store, global.keystore_dir);
 	if (r != DNSSEC_EOK) {
 		error("Cannot open default key store (%s).\n", dnssec_strerror(r));
 		return 1;
@@ -417,14 +419,14 @@ static int cmd_keystore_list(options_t *options, int argc, char *argv[])
 	return 0;
 }
 
-static int cmd_keystore(options_t *options, int argc, char *argv[])
+static int cmd_keystore(int argc, char *argv[])
 {
 	static const command_t commands[] = {
 		{ "list",   cmd_keystore_list },
 		{ NULL }
 	};
 
-	return subcommand(commands, options, argc - 1, argv + 1);
+	return subcommand(commands, argc, argv);
 }
 
 int main(int argc, char *argv[])
@@ -433,9 +435,8 @@ int main(int argc, char *argv[])
 
 	// global configuration
 
-	options_t options = { 0 };
-	options.kasp_dir = getcwd(NULL, 0);
-	assert(options.kasp_dir);
+	global.kasp_dir = getcwd(NULL, 0);
+	assert(global.kasp_dir);
 
 	// global options
 
@@ -448,8 +449,8 @@ int main(int argc, char *argv[])
 	while (c = getopt_long(argc, argv, "+", opts, NULL), c != -1) {
 		switch (c) {
 		case 'd':
-			free(options.kasp_dir);
-			options.kasp_dir = strdup(optarg);
+			free(global.kasp_dir);
+			global.kasp_dir = strdup(optarg);
 			break;
 		case '?':
 			goto failed;
@@ -458,7 +459,7 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	if (asprintf(&options.keystore_dir, "%s/keys", options.kasp_dir) == -1) {
+	if (asprintf(&global.keystore_dir, "%s/keys", global.kasp_dir) == -1) {
 		error("failed to allocate memory\n");
 		goto failed;
 	}
@@ -473,11 +474,11 @@ int main(int argc, char *argv[])
 		{ NULL }
 	};
 
-	exit_code = subcommand(commands, &options, argc - optind, argv + optind);
+	exit_code = subcommand(commands, argc - optind, argv + optind);
 
 failed:
-	free(options.kasp_dir);
-	free(options.keystore_dir);
+	free(global.kasp_dir);
+	free(global.keystore_dir);
 
 	return exit_code;
 }
