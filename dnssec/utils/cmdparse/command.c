@@ -14,13 +14,12 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "cmdparse/cmdparse.h"
+#include "cmdparse/command.h"
+#include "cmdparse/match.h"
+#include "print.h"
 
 #include <assert.h>
-#include <stdio.h>
 #include <string.h>
-
-#define error(fmt, ...) fprintf(stderr, fmt "\n", ##__VA_ARGS__)
 
 #define HELP_COMMAND "help"
 
@@ -37,26 +36,6 @@ static void command_help(const command_t *commands)
 		} else {
 			fprintf(stderr, "- %s\n", cmd->name);
 		}
-	}
-}
-
-enum match_type {
-	MATCH_NO = 0,
-	MATCH_PREFIX,
-	MATCH_EXECT,
-};
-
-typedef enum match_type match_type_t;
-
-static match_type_t cmd_match(const char *cmd, const char *search)
-{
-	size_t cmd_len = strlen(cmd);
-	size_t search_len = strlen(search);
-
-	if (cmd_len >= search_len && strncmp(search, cmd, search_len) == 0) {
-		return cmd_len == search_len ? MATCH_EXECT : MATCH_PREFIX;
-	} else {
-		return MATCH_NO;
 	}
 }
 
@@ -82,18 +61,18 @@ int subcommand(const command_t *commands, int argc, char *argv[])
 	}
 
 	for (const command_t *cmd = commands; cmd->name != NULL;  cmd++) {
-		match_type_t m = cmd_match(cmd->name, search);
+		cmd_match_t m = cmd_match(cmd->name, search);
 
-		if (m == MATCH_NO) {
+		if (m == CMD_MATCH_NO) {
 			continue;
 		}
 
-		if (m == MATCH_EXECT) {
+		if (m == CMD_MATCH_EXACT) {
 			match = cmd;
 			break;
 		}
 
-		assert(m == MATCH_PREFIX);
+		assert(m == CMD_MATCH_PREFIX);
 		if (match) {
 			error("Unambiguous command ('%s' or '%s').",
 			      match->name, cmd->name);

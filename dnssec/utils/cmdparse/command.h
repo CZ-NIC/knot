@@ -16,9 +16,11 @@
 
 #pragma once
 
+typedef int (*command_cb)(int argc, char *argv[]);
+
 struct command {
 	char *name;
-	int (*process)(int argc, char *argv[]);
+	command_cb process;
 	char *help;
 };
 

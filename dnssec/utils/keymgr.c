@@ -25,7 +25,7 @@
 #include <dnssec/kasp.h>
 #include <dnssec/keystore.h>
 
-#include "cmdparse/cmdparse.h"
+#include "cmdparse/command.h"
 #include "shared.h"
 #include "print.h"
 
