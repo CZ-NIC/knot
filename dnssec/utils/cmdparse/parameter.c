@@ -85,3 +85,15 @@ int parse_parameters(const parameter_t *params, int argc, char *argv[], void *da
 
 	return 0;
 }
+
+int parameter_flag(int argc, char *argv[], const parameter_t *p, void *data)
+{
+	assert(p);
+	assert(data);
+
+	void *dest = data + p->offset;
+	bool *flag = dest;
+	*flag = true;
+
+	return 0;
+}

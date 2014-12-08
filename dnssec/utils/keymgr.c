@@ -26,6 +26,7 @@
 #include <dnssec/keystore.h>
 
 #include "cmdparse/command.h"
+#include "cmdparse/parameter.h"
 #include "shared.h"
 #include "print.h"
 
@@ -212,7 +213,16 @@ static int cmd_zone_remove(int argc, char *argv[])
 	}
 
 	char *zone_name = argv[0];
-	bool force = false; // TODO
+	bool force = false;
+
+	parameter_t params[] = {
+		{ "force", parameter_flag, .req_full_match = true },
+		{ NULL }
+	};
+
+	if (parse_parameters(params, argc - 1, argv + 1, &force) != 0) {
+		return 1;
+	}
 
 	// delete zone
 
@@ -234,7 +244,7 @@ static int cmd_zone_remove(int argc, char *argv[])
 
 	if (!force && is_zone_used(zone)) {
 		error("Some keys are being used. Cannot remove the zone "
-		      "unless --force is given.\n");
+		      "unless 'force' parameter is given.");
 		return 1;
 	}
 

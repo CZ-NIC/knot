@@ -39,3 +39,5 @@ struct parameter {
 };
 
 int parse_parameters(const parameter_t *params, int argc, char *argv[], void *data);
+
+int parameter_flag(int argc, char *argv[], const parameter_t *p, void *data);
