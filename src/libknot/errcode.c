@@ -64,7 +64,6 @@ const error_table_t error_messages[] = {
 	{ KNOT_ENONODE,      "no such node in zone found" },
 	{ KNOT_EDNAMEPTR,    "domain name pointer larger than allowed" },
 	{ KNOT_EPAYLOAD,     "payload in OPT RR larger than max wire size" },
-	{ KNOT_ECRC,         "CRC check failed" },
 	{ KNOT_EPREREQ,      "UPDATE prerequisity not met" },
 	{ KNOT_ETTL,         "TTL mismatch" },
 	{ KNOT_ENOXFR,       "transfer was not sent" },
