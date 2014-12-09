@@ -14,28 +14,40 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#pragma once
+#include "cmdparse/value.h"
+#include "print.h"
 
+#include <assert.h>
 #include <stdbool.h>
-#include <stdlib.h>
 
-struct parameter;
-typedef struct parameter parameter_t;
+static void error_missing_option(const parameter_t *p)
+{
+	error("Missing value for option '%s'.", p->name);
+}
 
-typedef int (*parameter_cb)(int argc, char *argv[],
-			    const parameter_t *parameter, void *data);
+int value_flag(int argc, char *argv[], const parameter_t *p, void *data)
+{
+	assert(p);
+	assert(data);
 
-struct parameter {
-	char *name;
-	parameter_cb process;
+	bool *flag = data + p->offset;
+	*flag = true;
 
-	bool req_full_match;
-	char *hint;
+	return 0;
+}
 
-	union {
-		void *data;
-		size_t offset;
-	};
-};
+int value_string(int argc, char *argv[], const parameter_t *p, void *data)
+{
+	assert(p);
+	assert(data);
 
-int parse_parameters(const parameter_t *params, int argc, char *argv[], void *data);
+	if (argc < 1) {
+		error_missing_option(p);
+		return -1;
+	}
+
+	char **string = data + p->offset;
+	*string = argv[0];
+
+	return 1;
+}

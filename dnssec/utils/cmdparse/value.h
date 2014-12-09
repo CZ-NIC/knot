@@ -16,26 +16,14 @@
 
 #pragma once
 
-#include <stdbool.h>
-#include <stdlib.h>
+#include "cmdparse/parameter.h"
 
-struct parameter;
-typedef struct parameter parameter_t;
+/*!
+ * bool
+ */
+int value_flag(int argc, char *argv[], const parameter_t *p, void *data);
 
-typedef int (*parameter_cb)(int argc, char *argv[],
-			    const parameter_t *parameter, void *data);
-
-struct parameter {
-	char *name;
-	parameter_cb process;
-
-	bool req_full_match;
-	char *hint;
-
-	union {
-		void *data;
-		size_t offset;
-	};
-};
-
-int parse_parameters(const parameter_t *params, int argc, char *argv[], void *data);
+/*!
+ * char *
+ */
+int value_string(int argc, char *argv[], const parameter_t *p, void *data);

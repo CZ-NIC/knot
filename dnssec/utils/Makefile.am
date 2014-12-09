@@ -25,6 +25,8 @@ libutils_la_SOURCES = \
 	cmdparse/match.h \
 	cmdparse/parameter.c \
 	cmdparse/parameter.h \
+	cmdparse/value.c \
+	cmdparse/value.h \
 	legacy/legacy.c \
 	legacy/legacy.h \
 	legacy/privkey.c \

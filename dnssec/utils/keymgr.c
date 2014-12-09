@@ -27,6 +27,7 @@
 
 #include "cmdparse/command.h"
 #include "cmdparse/parameter.h"
+#include "cmdparse/value.h"
 #include "shared.h"
 #include "print.h"
 
@@ -115,7 +116,7 @@ static int cmd_zone_add(int argc, char *argv[])
 	char *policy = NULL;
 
 	parameter_t params[] = {
-		{ "policy", parameter_string },
+		{ "policy", value_string },
 		{ NULL }
 	};
 
@@ -231,7 +232,7 @@ static int cmd_zone_remove(int argc, char *argv[])
 	bool force = false;
 
 	parameter_t params[] = {
-		{ "force", parameter_flag, .req_full_match = true },
+		{ "force", value_flag, .req_full_match = true },
 		{ NULL }
 	};
 
