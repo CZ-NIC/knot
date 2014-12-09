@@ -27,3 +27,18 @@ int value_flag(int argc, char *argv[], const parameter_t *p, void *data);
  * char *
  */
 int value_string(int argc, char *argv[], const parameter_t *p, void *data);
+
+/*!
+ * dnssec_key_algorithm_t
+ */
+int value_algorithm(int argc, char *argv[], const parameter_t *p, void *data);
+
+/*!
+ * unsigned int
+ */
+int value_key_size(int argc, char *argv[], const parameter_t *p, void *data);
+
+/*!
+ * time_t
+ */
+int value_time(int argc, char *argv[], const parameter_t *p, void *data);
