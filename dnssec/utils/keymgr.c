@@ -284,13 +284,49 @@ static int cmd_zone_key_list(int argc, char *argv[])
  */
 static int cmd_zone_key_generate(int argc, char *argv[])
 {
-	if (argc != 2) {
-		error("Invalid parameters.");
+	if (argc < 1) {
+		error("Name of the zone has to be specified.");
 		return 1;
 	}
 
-	const char *zone_name = argv[0];
+	struct config {
+		char *name;
+		dnssec_key_algorithm_t algorithm;
+		unsigned size;
+		bool is_ksk;
+		dnssec_kasp_key_timing_t timing;
+	};
 
+	parameter_t params[] =   {
+		#define o(member) offsetof(struct config, member)
+		{ "algorithm", value_algorithm, .offset = o(algorithm) },
+		{ "size",      value_key_size,  .offset = o(size) },
+		{ "ksk",       value_flag,      .offset = o(is_ksk) },
+		{ "publish",   value_time,      .offset = o(timing.publish) },
+		{ "active",    value_time,      .offset = o(timing.active) },
+		{ "retire",    value_time,      .offset = o(timing.retire) },
+		{ "remove",    value_time,      .offset = o(timing.remove) },
+		{ NULL }
+		#undef o
+	};
+
+	struct config config = {
+		.name = argv[0]
+	};
+
+	if (parse_parameters(params, argc - 1, argv + 1, &config) != 0) {
+		return 1;
+	}
+
+	fprintf(stderr, "[debug] name %s\n", config.name);
+	fprintf(stderr, "[debug] algorithm %d size %u\n", config.algorithm, config.size);
+	fprintf(stderr, "[debug] ksk %s\n", config.is_ksk ? "true" : "false");
+	fprintf(stderr, "[debug] publish %zd\n", config.timing.publish);
+	fprintf(stderr, "[debug] active  %zd\n", config.timing.active);
+	fprintf(stderr, "[debug] retire  %zd\n", config.timing.retire);
+	fprintf(stderr, "[debug] remove  %zd\n", config.timing.remove);
+
+#if 0
 	_cleanup_kasp_ dnssec_kasp_t *kasp = NULL;
 	dnssec_kasp_init_dir(&kasp);
 
@@ -306,6 +342,7 @@ static int cmd_zone_key_generate(int argc, char *argv[])
 		error("Cannot retrieve zone from KASP (%s).", dnssec_strerror(r));
 		return 1;
 	}
+#endif
 
 	error("Not implemented.");
 	return 1;
