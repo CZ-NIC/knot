@@ -115,7 +115,7 @@ resulting binaries.
 
 If you want to add debug messages, there are two steps to do that.
 First you have to enable modules you are interested in.
-Available are: ``server, zones, xfr, packet, dname, rr, ns, hash, compiler``.
+Available are: ``server, zones, ns, loader, dnssec``.
 You can combine multiple modules as a comma-separated list.
 Then you can narrow the verbosity of the debugging message by specifying the
 verbosity as ``brief, verbose, details``.

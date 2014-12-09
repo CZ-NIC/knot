@@ -99,16 +99,13 @@ fi
 
 # Debug modules
 AC_ARG_ENABLE([debug],
-    AS_HELP_STRING([--enable-debug=server,zones,xfr,packet,rr,ns,loader,dnssec],
+    AS_HELP_STRING([--enable-debug=server,zones,ns,loader,dnssec],
     [compile selected debug modules [default=none]]),
     [
     echo ${enableval}|tr "," "\n"|while read val; do
         case "${val}" in
             server) AC_DEFINE([KNOTD_SERVER_DEBUG], [1], [Server debug.]) ;;
             zones) AC_DEFINE([KNOT_ZONES_DEBUG], [1], [Zones debug.]) ;;
-            xfr) AC_DEFINE([KNOT_XFR_DEBUG], [1], [XFR debug.]) ;;
-            packet) AC_DEFINE([KNOT_PACKET_DEBUG], [1], [Packet debug.]) ;;
-            rr) AC_DEFINE([KNOT_RR_DEBUG], [1], [RR debug.]) ;;
             ns) AC_DEFINE([KNOT_NS_DEBUG], [1], [Nameserver debug.]) ;;
             loader) AC_DEFINE([KNOT_LOADER_DEBUG], [1], [Zone loading debug.]) ;;
             dnssec) AC_DEFINE([KNOT_DNSSEC_DEBUG], [1], [DNSSEC debug.]) ;;

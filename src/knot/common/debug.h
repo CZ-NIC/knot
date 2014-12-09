@@ -26,6 +26,12 @@
 
 #pragma once
 
+#include <stdint.h>
+#include <stdio.h>
+
+#include "knot/common/log.h"
+#include "libknot/internal/print.h"
+
 #ifdef KNOTD_SERVER_DEBUG
   #define KNOTD_THREADS_DEBUG
   #define KNOTD_JOURNAL_DEBUG
@@ -38,34 +44,9 @@
   #define KNOTD_SEMCHECK_DEBUG
 #endif
 
-#include <stdint.h>
-#include <stdio.h>
-
-#include "knot/common/log.h"
-#include "libknot/internal/print.h"
-
-/*
- * Debug macros
- */
 #ifdef KNOT_ZONES_DEBUG
   #define KNOT_ZONE_DEBUG
   #define KNOT_ZONEDIFF_DEBUG
-#endif
-
-#ifdef KNOT_NS_DEBUG
-  #define KNOT_EDNS_DEBUG
-#endif
-
-#ifdef KNOT_PACKET_DEBUG
-  #define KNOT_RESPONSE_DEBUG
-#endif
-
-#ifdef KNOT_RR_DEBUG
-  #define KNOT_RRSET_DEBUG
-#endif
-
-#ifdef KNOT_XFR_DEBUG
-  #define KNOT_TSIG_DEBUG
 #endif
 
 /******************************************************************************/
@@ -214,238 +195,6 @@
 
 /******************************************************************************/
 
-#ifdef KNOT_RESPONSE_DEBUG
-
-/* Brief messages. */
-#ifdef DEBUG_ENABLE_BRIEF
-#define dbg_response(msg...) log_msg(LOG_DEBUG, msg)
-#define dbg_response_hex(data, len)  hex_log((data), (len))
-#define dbg_response_exec(cmds) do { cmds } while (0)
-#else
-#define dbg_response(msg...)
-#define dbg_response_hex(data, len)
-#define dbg_response_exec(cmds)
-#endif
-
-/* Verbose messages. */
-#ifdef DEBUG_ENABLE_VERBOSE
-#define dbg_response_verb(msg...) log_msg(LOG_DEBUG, msg)
-#define dbg_response_hex_verb(data, len)  hex_log((data), (len))
-#define dbg_response_exec_verb(cmds) do { cmds } while (0)
-#else
-#define dbg_response_verb(msg...)
-#define dbg_response_hex_verb(data, len)
-#define dbg_response_exec_verb(cmds)
-#endif
-
-/* Detail messages. */
-#ifdef DEBUG_ENABLE_DETAILS
-#define dbg_response_detail(msg...) log_msg(LOG_DEBUG, msg)
-#define dbg_response_hex_detail(data, len)  hex_log((data), (len))
-#define dbg_response_exec_detail(cmds) do { cmds } while (0)
-#else
-#define dbg_response_detail(msg...)
-#define dbg_response_hex_detail(data, len)
-#define dbg_response_exec_detail(cmds)
-#endif
-
-/* No messages. */
-#else
-#define dbg_response(msg...)
-#define dbg_response_hex(data, len)
-#define dbg_response_exec(cmds)
-#define dbg_response_verb(msg...)
-#define dbg_response_hex_verb(data, len)
-#define dbg_response_exec_verb(cmds)
-#define dbg_response_detail(msg...)
-#define dbg_response_hex_detail(data, len)
-#define dbg_response_exec_detail(cmds)
-#endif
-
-/******************************************************************************/
-
-#ifdef KNOT_PACKET_DEBUG
-
-/* Brief messages. */
-#ifdef DEBUG_ENABLE_BRIEF
-#define dbg_packet(msg...) log_msg(LOG_DEBUG, msg)
-#define dbg_packet_hex(data, len)  hex_log((data), (len))
-#define dbg_packet_exec(cmds) do { cmds } while (0)
-#else
-#define dbg_packet(msg...)
-#define dbg_packet_hex(data, len)
-#define dbg_packet_exec(cmds)
-#endif
-
-/* Verbose messages. */
-#ifdef DEBUG_ENABLE_VERBOSE
-#define dbg_packet_verb(msg...) log_msg(LOG_DEBUG, msg)
-#define dbg_packet_hex_verb(data, len)  hex_log((data), (len))
-#define dbg_packet_exec_verb(cmds) do { cmds } while (0)
-#else
-#define dbg_packet_verb(msg...)
-#define dbg_packet_hex_verb(data, len)
-#define dbg_packet_exec_verb(cmds)
-#endif
-
-/* Detail messages. */
-#ifdef DEBUG_ENABLE_DETAILS
-#define dbg_packet_detail(msg...) log_msg(LOG_DEBUG, msg)
-#define dbg_packet_hex_detail(data, len)  hex_log((data), (len))
-#define dbg_packet_exec_detail(cmds) do { cmds } while (0)
-#else
-#define dbg_packet_detail(msg...)
-#define dbg_packet_hex_detail(data, len)
-#define dbg_packet_exec_detail(cmds)
-#endif
-
-/* No messages. */
-#else
-#define dbg_packet(msg...)
-#define dbg_packet_hex(data, len)
-#define dbg_packet_exec(cmds)
-#define dbg_packet_verb(msg...)
-#define dbg_packet_hex_verb(data, len)
-#define dbg_packet_exec_verb(cmds)
-#define dbg_packet_detail(msg...)
-#define dbg_packet_hex_detail(data, len)
-#define dbg_packet_exec_detail(cmds)
-#endif
-
-/******************************************************************************/
-
-#ifdef KNOT_EDNS_DEBUG
-
-/* Brief messages. */
-#ifdef DEBUG_ENABLE_BRIEF
-#define dbg_edns(msg...) log_msg(LOG_DEBUG, msg)
-#define dbg_edns_hex(data, len)  hex_log((data), (len))
-#else
-#define dbg_edns(msg...)
-#define dbg_edns_hex(data, len)
-#endif
-
-/* Verbose messages. */
-#ifdef DEBUG_ENABLE_VERBOSE
-#define dbg_edns_verb(msg...) log_msg(LOG_DEBUG, msg)
-#define dbg_edns_hex_verb(data, len)  hex_log((data), (len))
-#else
-#define dbg_edns_verb(msg...)
-#define dbg_edns_hex_verb(data, len)
-#endif
-
-/* Detail messages. */
-#ifdef DEBUG_ENABLE_DETAILS
-#define dbg_edns_detail(msg...) log_msg(LOG_DEBUG, msg)
-#define dbg_edns_hex_detail(data, len)  hex_log((data), (len))
-#else
-#define dbg_edns_detail(msg...)
-#define dbg_edns_hex_detail(data, len)
-#endif
-
-/* No messages. */
-#else
-#define dbg_edns(msg...)
-#define dbg_edns_hex(data, len)
-#define dbg_edns_verb(msg...)
-#define dbg_edns_hex_verb(data, len)
-#define dbg_edns_detail(msg...)
-#define dbg_edns_hex_detail(data, len)
-#endif
-
-/******************************************************************************/
-
-#ifdef KNOT_TSIG_DEBUG
-
-/* Brief messages. */
-#ifdef DEBUG_ENABLE_BRIEF
-#define dbg_tsig(msg...) log_msg(LOG_DEBUG, msg)
-#define dbg_tsig_hex(data, len)  hex_log((data), (len))
-#else
-#define dbg_tsig(msg...)
-#define dbg_tsig_hex(data, len)
-#endif
-
-/* Verbose messages. */
-#ifdef DEBUG_ENABLE_VERBOSE
-#define dbg_tsig_verb(msg...) log_msg(LOG_DEBUG, msg)
-#define dbg_tsig_hex_verb(data, len)  hex_log((data), (len))
-#else
-#define dbg_tsig_verb(msg...)
-#define dbg_tsig_hex_verb(data, len)
-#endif
-
-/* Detail messages. */
-#ifdef DEBUG_ENABLE_DETAILS
-#define dbg_tsig_detail(msg...) log_msg(LOG_DEBUG, msg)
-#define dbg_tsig_hex_detail(data, len)  hex_log((data), (len))
-#else
-#define dbg_tsig_detail(msg...)
-#define dbg_tsig_hex_detail(data, len)
-#endif
-
-/* No messages. */
-#else
-#define dbg_tsig(msg...)
-#define dbg_tsig_hex(data, len)
-#define dbg_tsig_verb(msg...)
-#define dbg_tsig_hex_verb(data, len)
-#define dbg_tsig_detail(msg...)
-#define dbg_tsig_hex_detail(data, len)
-#endif
-
-/******************************************************************************/
-
-#ifdef KNOT_RRSET_DEBUG
-
-/* Brief messages. */
-#ifdef DEBUG_ENABLE_BRIEF
-#define dbg_rrset(msg...) log_msg(LOG_DEBUG, msg)
-#define dbg_rrset_hex(data, len)  hex_log((data), (len))
-#define dbg_rrset_exec(cmds) do { cmds } while (0)
-#else
-#define dbg_rrset(msg...)
-#define dbg_rrset_hex(data, len)
-#define dbg_rrset_exec(cmds)
-#endif
-
-/* Verbose messages. */
-#ifdef DEBUG_ENABLE_VERBOSE
-#define dbg_rrset_verb(msg...) log_msg(LOG_DEBUG, msg)
-#define dbg_rrset_hex_verb(data, len)  hex_log((data), (len))
-#define dbg_rrset_exec_verb(cmds) do { cmds } while (0)
-#else
-#define dbg_rrset_verb(msg...)
-#define dbg_rrset_hex_verb(data, len)
-#define dbg_rrset_exec_verb(cmds)
-#endif
-
-/* Detail messages. */
-#ifdef DEBUG_ENABLE_DETAILS
-#define dbg_rrset_detail(msg...) log_msg(LOG_DEBUG, msg)
-#define dbg_rrset_hex_detail(data, len)  hex_log((data), (len))
-#define dbg_rrset_exec_detail(cmds) do { cmds } while (0)
-#else
-#define dbg_rrset_detail(msg...)
-#define dbg_rrset_hex_detail(data, len)
-#define dbg_rrset_exec_detail(cmds)
-#endif
-
-/* No messages. */
-#else
-#define dbg_rrset(msg...)
-#define dbg_rrset_hex(data, len)
-#define dbg_rrset_exec(cmds)
-#define dbg_rrset_verb(msg...)
-#define dbg_rrset_hex_verb(data, len)
-#define dbg_rrset_exec_verb(cmds)
-#define dbg_rrset_detail(msg...)
-#define dbg_rrset_hex_detail(data, len)
-#define dbg_rrset_exec_detail(cmds)
-#endif
-
-/******************************************************************************/
-
 #ifdef KNOT_DNSSEC_DEBUG
 
 /* Brief messages. */
@@ -493,8 +242,6 @@
 #define dbg_dnssec_hex_detail(data, len)
 #define dbg_dnssec_exec_detail(cmds)
 #endif
-
-/******************************************************************************/
 
 /******************************************************************************/
 
