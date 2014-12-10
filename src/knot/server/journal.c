@@ -600,6 +600,12 @@ static int journal_fetch(journal_t *journal, uint64_t id,
 	size_t endp = jnode_prev(journal, journal->qhead);
 	for(; i != endp; i = jnode_prev(journal, i)) {
 		journal_node_t *n = journal->nodes + i;
+
+		/* Skip invalid nodes. */
+		if (!(n->flags & JOURNAL_VALID)) {
+			continue;
+		}
+
 		if (cf(n->id, id) == 0) {
 			*dst = journal->nodes + i;
 			return KNOT_EOK;
@@ -962,12 +968,6 @@ static int journal_walk(const char *fn, uint32_t from, uint32_t to,
 		/* Check for history end. */
 		if (to == found_to) {
 			break;
-		}
-
-		/* Skip wrong changesets. */
-		if (!(n->flags & JOURNAL_VALID)) {
-			++n;
-			continue;
 		}
 
 		/* Callback. */
