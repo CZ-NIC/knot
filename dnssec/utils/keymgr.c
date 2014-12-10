@@ -529,6 +529,87 @@ static int cmd_zone_key_generate(int argc, char *argv[])
 	return 0;
 }
 
+/*
+ * keymgr zone key set <zone> <key-spec>  [publish <publish>] [active <active>]
+ *					  [retire <retire>] [remove <remove>]
+ */
+static int cmd_zone_key_set(int argc, char *argv[])
+{
+	if (argc < 2) {
+		error("Name of the zone and key have to be specified.");
+		return 1;
+	}
+
+	char *zone_name = argv[0];
+	char *search = argv[1];
+
+	parameter_t params[] = {
+		#define o(member) offsetof(dnssec_kasp_key_timing_t, member)
+		{ "publish", value_time, .offset = o(publish) },
+		{ "active",  value_time, .offset = o(active) },
+		{ "retire",  value_time, .offset = o(retire) },
+		{ "remove",  value_time, .offset = o(remove) },
+		{ NULL }
+		#undef o
+	};
+
+	dnssec_kasp_key_timing_t new_timing = { -1, -1, -1, -1 };
+
+	if (parse_parameters(params, argc - 2, argv + 2, &new_timing) != 0) {
+		return 1;
+	}
+
+	// update the key
+
+	_cleanup_kasp_ dnssec_kasp_t *kasp = NULL;
+	dnssec_kasp_init_dir(&kasp);
+
+	int r = dnssec_kasp_open(kasp, global.kasp_dir);
+	if (r != DNSSEC_EOK) {
+		error("Cannot open KASP directory (%s).", dnssec_strerror(r));
+		return 1;
+	}
+
+	_cleanup_zone_ dnssec_kasp_zone_t *zone = NULL;
+	r = dnssec_kasp_zone_load(kasp, zone_name, &zone);
+	if (r != DNSSEC_EOK) {
+		error("Cannot retrieve zone from KASP (%s).", dnssec_strerror(r));
+		return 1;
+	}
+
+	dnssec_kasp_key_t *match = NULL;
+
+	dnssec_list_t *zone_keys = dnssec_kasp_zone_get_keys(zone);
+	dnssec_list_foreach(item, zone_keys) {
+		dnssec_kasp_key_t *key = dnssec_item_get(item);
+		if (key_match(key->key, search)) {
+			if (match) {
+				error("Multiple matching keys found.");
+				return 1;
+			}
+			match = key;
+		}
+	}
+
+	if (!match) {
+		error("No matching key found.");
+		return 1;
+	}
+
+	if (new_timing.publish >= 0) { match->timing.publish = new_timing.publish; }
+	if (new_timing.active >= 0) { match->timing.active = new_timing.active; }
+	if (new_timing.retire >= 0) { match->timing.retire = new_timing.retire; }
+	if (new_timing.remove >= 0) { match->timing.remove = new_timing.remove; }
+
+	r = dnssec_kasp_zone_save(kasp, zone);
+	if (r != DNSSEC_EOK) {
+		error("Failed to save updated zone (%s).", dnssec_strerror(r));
+		return 1;
+	}
+
+	return 0;
+}
+
 static int cmd_zone_key_import(int argc, char *argv[])
 {
 	error("Not implemented.");
@@ -541,6 +622,7 @@ static int cmd_zone_key(int argc, char *argv[])
 		{ "list",     cmd_zone_key_list },
 		{ "show",     cmd_zone_key_show },
 		{ "generate", cmd_zone_key_generate },
+		{ "set",      cmd_zone_key_set },
 		{ "import",   cmd_zone_key_import },
 		{ NULL }
 	};
