@@ -40,22 +40,22 @@ static void test_fillup(journal_t *journal, size_t fsize, unsigned iter, size_t 
 {
 	int ret = KNOT_EOK;
 	char *mptr = NULL;
-	size_t jitter = (chunk_size / 5);
-	size_t large_entry_len = chunk_size + rand() % (2 * jitter) - jitter;
-	char *large_entry = malloc(large_entry_len);
+	char *large_entry = malloc(chunk_size);
 	assert(large_entry);
+
 	unsigned i = 0;
 	bool read_passed = true;
 	for (; i < 2 * JOURNAL_NCOUNT; ++i) {
 		uint64_t chk_key = 0xBEBE + i;
-		randstr(large_entry, large_entry_len);
+		size_t entry_len = chunk_size/2 + rand() % (chunk_size/2);
+		randstr(large_entry, entry_len);
 
 		/* Write */
-		ret = journal_map(journal, chk_key, &mptr, large_entry_len, false);
+		ret = journal_map(journal, chk_key, &mptr, entry_len, false);
 		if (ret != KNOT_EOK) {
 			break;
 		}
-		memcpy(mptr, large_entry, large_entry_len);
+		memcpy(mptr, large_entry, entry_len);
 		ret = journal_unmap(journal, chk_key, mptr, 1);
 		if (ret != KNOT_EOK) {
 			diag("journal_unmap = %s", knot_strerror(ret));
@@ -64,9 +64,9 @@ static void test_fillup(journal_t *journal, size_t fsize, unsigned iter, size_t 
 		}
 
 		/* Read */
-		ret = journal_map(journal, chk_key, &mptr, large_entry_len, true);
+		ret = journal_map(journal, chk_key, &mptr, entry_len, true);
 		if (ret == KNOT_EOK) {
-			ret = memcmp(large_entry, mptr, large_entry_len);
+			ret = memcmp(large_entry, mptr, entry_len);
 			if (ret != 0) {
 				diag("integrity check failed");
 				read_passed = false;
@@ -93,10 +93,10 @@ static void test_fillup(journal_t *journal, size_t fsize, unsigned iter, size_t 
 	/* Check file size. */
 	struct stat st;
 	fstat(journal->fd, &st);
-	ok(st.st_size < fsize + large_entry_len, "journal: fillup / size check #%u", iter);
-	if (st.st_size > fsize + large_entry_len) {
+	ok(st.st_size < fsize + chunk_size, "journal: fillup / size check #%u", iter);
+	if (st.st_size > fsize + chunk_size) {
 		diag("journal: fillup / size check #%u fsize(%zu) > max(%zu)",
-		     iter, (size_t)st.st_size, fsize + large_entry_len);
+		     iter, (size_t)st.st_size, fsize + chunk_size);
 	}
 }
 
@@ -182,7 +182,7 @@ int main(int argc, char *argv[])
 	ok(ret != KNOT_EOK, "journal: overfill");
 
 	/* Fillup */
-	size_t sizes[] = {16, 64, 1024, 4096, 512 * 1024, 1024 * 1024, 1024, 16 };
+	size_t sizes[] = {16, 64, 1024, 4096, 512 * 1024, 1024 * 1024, 1024, 64, 16};
 	for (unsigned i = 0; i < sizeof(sizes)/sizeof(size_t); ++i) {
 		/* Journal flush. */
 		journal_close(journal);

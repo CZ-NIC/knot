@@ -403,8 +403,11 @@ int journal_write_in(journal_t *j, journal_node_t **rn, uint64_t id, size_t len)
 	/* Increase free segment if on the end of file. */
 	dbg_journal("journal: free.pos = %u free.len = %u\n",
 	            j->free.pos, j->free.len);
+	bool is_empty = (j->qtail == j->qhead);
 	journal_node_t *n = j->nodes + j->qtail;
-	if (j->free.pos + len >= file_end) {
+	journal_node_t *head = j->nodes + j->qhead;
+	journal_node_t *last = j->nodes + jnode_prev(j, j->qtail);
+	if (is_empty || (head->pos <= last->pos && j->free.pos > last->pos)) {
 
 		dbg_journal_verb("journal: * is last node\n");
 
