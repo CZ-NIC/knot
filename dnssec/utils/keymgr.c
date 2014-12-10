@@ -315,6 +315,93 @@ static int cmd_zone_key_list(int argc, char *argv[])
 	return 0;
 }
 
+/*!
+ * Match key by keytag or key ID prefix.
+ */
+static bool key_match(const dnssec_key_t *key, const char *search)
+{
+	// keytag exact match
+
+	char keytag[10] = { 0 };
+	snprintf(keytag, sizeof(keytag), "%d", dnssec_key_get_keytag(key));
+
+	if (strcmp(search, keytag) == 0) {
+		return true;
+	}
+
+	// key ID prefix match
+
+	const char *keyid = dnssec_key_get_id(key);
+
+	size_t keyid_len = strlen(keyid);
+	size_t search_len = strlen(search);
+
+	return (search_len <= keyid_len && strncasecmp(search, keyid, search_len) == 0);
+}
+
+/*
+ * keymgr zone key show <zone> <key-spec>
+ */
+static int cmd_zone_key_show(int argc, char *argv[])
+{
+	if (argc != 2) {
+		error("Name of zone and key have to be specified.");
+		return 1;
+	}
+
+	char *zone_name = argv[0];
+	char *search = argv[1];
+
+	// list the keys
+
+	_cleanup_kasp_ dnssec_kasp_t *kasp = NULL;
+	dnssec_kasp_init_dir(&kasp);
+
+	int r = dnssec_kasp_open(kasp, global.kasp_dir);
+	if (r != DNSSEC_EOK) {
+		error("Cannot open KASP directory (%s).", dnssec_strerror(r));
+		return 1;
+	}
+
+	_cleanup_zone_ dnssec_kasp_zone_t *zone = NULL;
+	r = dnssec_kasp_zone_load(kasp, zone_name, &zone);
+	if (r != DNSSEC_EOK) {
+		error("Cannot retrieve zone from KASP (%s).", dnssec_strerror(r));
+		return 1;
+	}
+
+	bool found = false;
+
+	dnssec_list_t *zone_keys = dnssec_kasp_zone_get_keys(zone);
+	dnssec_list_foreach(item, zone_keys) {
+		const dnssec_kasp_key_t *key = dnssec_item_get(item);
+		if (!key_match(key->key, search)) {
+			continue;
+		}
+
+		if (found) {
+			printf("\n");
+		}
+
+		printf("id %s\n", dnssec_key_get_id(key->key));
+		printf("keytag %d\n", dnssec_key_get_keytag(key->key));
+		printf("algorithm %d\n", dnssec_key_get_algorithm(key->key));
+		printf("size %u\n", dnssec_key_get_size(key->key));
+		printf("flags %d\n", dnssec_key_get_flags(key->key));
+		printf("publish %ld\n", key->timing.publish);
+		printf("active %ld\n", key->timing.active);
+		printf("retire %ld\n", key->timing.retire);
+		printf("remove %ld\n", key->timing.remove);
+
+		found = true;
+	}
+
+	if (!found) {
+		error("No matching key found.");
+		return 1;
+	}
+
+	return 0;
 }
 
 /*
@@ -450,6 +537,7 @@ static int cmd_zone_key(int argc, char *argv[])
 {
 	static const command_t commands[] = {
 		{ "list",     cmd_zone_key_list },
+		{ "show",     cmd_zone_key_show },
 		{ "generate", cmd_zone_key_generate },
 		{ "import",   cmd_zone_key_import },
 		{ NULL }
