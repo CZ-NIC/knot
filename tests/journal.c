@@ -146,9 +146,9 @@ int main(int argc, char *argv[])
 	}
 	is_int(KNOT_EOK, ret, "journal: sustained mmap r/w");
 
-	/* Overfill */
+	/* Overfill (yields ESPACE/EBUSY) */
 	ret = journal_map(journal, chk_key, &mptr, fsize, false);
-	is_int(KNOT_ESPACE, ret, "journal: overfill");
+	ok(ret != KNOT_EOK, "journal: overfill");
 
 	/* Fillup */
 	unsigned iterations = 10;

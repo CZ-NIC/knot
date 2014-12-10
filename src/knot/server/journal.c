@@ -647,12 +647,13 @@ int journal_map(journal_t *journal, uint64_t id, char **dst, size_t size, bool r
 	/* Check if entry exists. */
 	journal_node_t *n = NULL;
 	int ret = journal_fetch(journal, id, journal_cmp_eq, &n);
-	if (ret != KNOT_EOK) {
-		/* Return error if read only. */
-		if (rdonly) {
+
+	/* Return if read-only, invalidate if rewritten to avoid duplicates. */
+	if (rdonly) {
+		if (ret != KNOT_EOK) {
 			return ret;
 		}
-
+	} else {
 		/* Prepare journal write. */
 		ret = journal_write_in(journal, &n, id, size);
 		if (ret != KNOT_EOK) {
@@ -674,11 +675,6 @@ int journal_map(journal_t *journal, uint64_t id, char **dst, size_t size, bool r
 				return KNOT_ERROR;
 			}
 			size -= wb;
-		}
-	} else {
-		/* Entry resizing is not really supported now. */
-		if (n->len < size) {
-			return KNOT_ESPACE;
 		}
 	}
 
@@ -965,6 +961,12 @@ static int journal_walk(const char *fn, uint32_t from, uint32_t to,
 	}
 
 	while (n != 0 && n != journal_end(journal)) {
+		/* Skip invalid nodes. */
+		if (!(n->flags & JOURNAL_VALID)) {
+			++n;
+			continue;
+		}
+
 		/* Check for history end. */
 		if (to == found_to) {
 			break;
