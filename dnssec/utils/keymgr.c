@@ -318,15 +318,23 @@ static int cmd_zone_key_generate(int argc, char *argv[])
 		return 1;
 	}
 
-	fprintf(stderr, "[debug] name %s\n", config.name);
-	fprintf(stderr, "[debug] algorithm %d size %u\n", config.algorithm, config.size);
-	fprintf(stderr, "[debug] ksk %s\n", config.is_ksk ? "true" : "false");
-	fprintf(stderr, "[debug] publish %zd\n", config.timing.publish);
-	fprintf(stderr, "[debug] active  %zd\n", config.timing.active);
-	fprintf(stderr, "[debug] retire  %zd\n", config.timing.retire);
-	fprintf(stderr, "[debug] remove  %zd\n", config.timing.remove);
+	if (config.algorithm == 0) {
+		error("Algorithm has to be specified.");
+		return 1;
+	}
 
-#if 0
+	if (config.size == 0) {
+		error("Key size has to be specified.");
+		return 1;
+	}
+
+	if (!dnssec_algorithm_key_size_check(config.algorithm, config.size)) {
+		error("Key size is invalid for given algorithm.");
+		return 1;
+	}
+
+	// open KASP and key store
+
 	_cleanup_kasp_ dnssec_kasp_t *kasp = NULL;
 	dnssec_kasp_init_dir(&kasp);
 
@@ -337,15 +345,61 @@ static int cmd_zone_key_generate(int argc, char *argv[])
 	}
 
 	_cleanup_zone_ dnssec_kasp_zone_t *zone = NULL;
-	r = dnssec_kasp_zone_load(kasp, zone_name, &zone);
+	r = dnssec_kasp_zone_load(kasp, config.name, &zone);
 	if (r != DNSSEC_EOK) {
 		error("Cannot retrieve zone from KASP (%s).", dnssec_strerror(r));
 		return 1;
 	}
-#endif
 
-	error("Not implemented.");
-	return 1;
+	_cleanup_keystore_ dnssec_keystore_t *store = NULL;
+	dnssec_keystore_init_pkcs8_dir(&store);
+	r = dnssec_keystore_open(store, global.keystore_dir);
+	if (r != DNSSEC_EOK) {
+		error("Cannot open default key store (%s).", dnssec_strerror(r));
+		return 1;
+	}
+
+	// generate private key and construct DNSKEY
+
+	_cleanup_free_ char *keyid = NULL;
+	r = dnssec_keystore_generate_key(store, config.algorithm, config.size, &keyid);
+	if (r != DNSSEC_EOK) {
+		error("Failed to generate a private key in key store (%s).", dnssec_strerror(r));
+		return 1;
+	}
+
+	dnssec_key_t *dnskey = NULL;
+	dnssec_key_new(&dnskey);
+	r = dnssec_key_import_keystore(dnskey, store, keyid, config.algorithm);
+	if (r != DNSSEC_EOK) {
+		dnssec_key_free(dnskey);
+		error("Failed to create a DNSKEY entry (%s).", dnssec_strerror(r));
+		return 1;
+	}
+
+	uint16_t flags = config.is_ksk ? 257 : 256;
+	dnssec_key_set_flags(dnskey, flags);
+
+	// add DNSKEY into zone keys
+
+	dnssec_kasp_key_t *kasp_key = calloc(1, sizeof(*kasp_key));
+	kasp_key->key = dnskey;
+	kasp_key->timing = config.timing;
+
+	dnssec_list_t *zone_keys = dnssec_kasp_zone_get_keys(zone);
+	dnssec_list_append(zone_keys, kasp_key);
+
+	r = dnssec_kasp_zone_save(kasp, zone);
+	if (r != DNSSEC_EOK) {
+		error("Failed to save update zone configuration (%s).", dnssec_strerror(r));
+		free(dnskey);
+		dnssec_keystore_remove_key(store, keyid);
+		return 1;
+	}
+
+	printf("id %s keytag %d\n", keyid, dnssec_key_get_keytag(dnskey));
+
+	return 0;
 }
 
 static int cmd_zone_key_import(int argc, char *argv[])
