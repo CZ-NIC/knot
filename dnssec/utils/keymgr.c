@@ -405,7 +405,9 @@ static int cmd_zone_key_show(int argc, char *argv[])
 }
 
 /*
- * keymgr zone key generate <zone> <algorithm> [<bits>] [ksk]
+ * keymgr zone key generate <zone> algorithm <algorithm> size <size> [ksk]
+ *                                 [publish <publish>] [active <active>]
+ *                                 [retire <retire>] [remove <remove>]
  */
 static int cmd_zone_key_generate(int argc, char *argv[])
 {
