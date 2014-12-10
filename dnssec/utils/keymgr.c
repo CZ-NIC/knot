@@ -273,10 +273,48 @@ static int cmd_zone_remove(int argc, char *argv[])
 	return 0;
 }
 
+/*!
+ * keymgr zone key list <zone>
+ */
 static int cmd_zone_key_list(int argc, char *argv[])
 {
-	error("Not implemented.");
-	return 1;
+	if (argc != 1) {
+		error("Name of one zone has to be specified.");
+		return 1;
+	}
+
+	char *zone_name = argv[0];
+
+	// list the keys
+
+	_cleanup_kasp_ dnssec_kasp_t *kasp = NULL;
+	dnssec_kasp_init_dir(&kasp);
+
+	int r = dnssec_kasp_open(kasp, global.kasp_dir);
+	if (r != DNSSEC_EOK) {
+		error("Cannot open KASP directory (%s).", dnssec_strerror(r));
+		return 1;
+	}
+
+	_cleanup_zone_ dnssec_kasp_zone_t *zone = NULL;
+	r = dnssec_kasp_zone_load(kasp, zone_name, &zone);
+	if (r != DNSSEC_EOK) {
+		error("Cannot retrieve zone from KASP (%s).", dnssec_strerror(r));
+		return 1;
+	}
+
+	dnssec_list_t *zone_keys = dnssec_kasp_zone_get_keys(zone);
+	dnssec_list_foreach(item, zone_keys) {
+		const dnssec_kasp_key_t *key = dnssec_item_get(item);
+		const dnssec_key_t *dnskey = key->key;
+
+		printf("id %s keytag %d\n", dnssec_key_get_id(dnskey),
+					    dnssec_key_get_keytag(dnskey));
+	}
+
+	return 0;
+}
+
 }
 
 /*
