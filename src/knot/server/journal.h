@@ -67,7 +67,7 @@ typedef struct journal_node
 {
 	uint64_t id;    /*!< Node ID. */
 	uint16_t flags; /*!< Node flags. */
-	uint16_t next;  /*!< Next node ptr. */
+	uint16_t next;  /*!< UNUSED */
 	uint32_t pos;   /*!< Position in journal file. */
 	uint32_t len;   /*!< Entry data length. */
 } journal_node_t;

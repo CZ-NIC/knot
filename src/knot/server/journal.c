@@ -421,14 +421,11 @@ int journal_write_in(journal_t *j, journal_node_t **rn, uint64_t id, size_t len)
 		} else {
 			/*  Rewind if resize is needed, but the limit is reached. */
 			journal_node_t *head = j->nodes + j->qhead;
-			j->fsize = j->free.pos;
 			j->free.pos = head->pos;
 			j->free.len = 0;
 			dbg_journal_verb("journal: * fslimit reached, "
 			                 "rewinding to %u\n",
 			                 head->pos);
-			dbg_journal_verb("journal: * file size trimmed to %zu\n",
-			                 j->fsize);
 		}
 	}
 
@@ -479,7 +476,6 @@ int journal_write_in(journal_t *j, journal_node_t **rn, uint64_t id, size_t len)
 	n->pos = j->free.pos;
 	n->len = len;
 	n->flags = JOURNAL_FREE;
-	n->next = jnext;
 	journal_update(j, n);
 	*rn = n;
 	return KNOT_EOK;
@@ -488,19 +484,14 @@ int journal_write_in(journal_t *j, journal_node_t **rn, uint64_t id, size_t len)
 int journal_write_out(journal_t *journal, journal_node_t *n)
 {
 	/* Mark node as valid and write back. */
-	uint16_t jnext = n->next;
+	uint16_t jnext = (journal->qtail + 1) % journal->max_nodes;
 	size_t size = n->len;
 	const size_t node_len = sizeof(journal_node_t);
 	n->flags = JOURNAL_VALID | journal->bflags;
-	n->next = 0;
 	journal_update(journal, n);
 
 	/* Handle free segment on node rotation. */
 	if (journal->qtail > jnext && journal->fslimit == FSLIMIT_INF) {
-		/* Trim free space. */
-		journal->fsize -= journal->free.len;
-		dbg_journal_verb("journal: * trimmed filesize to %zu\n",
-		                 journal->fsize);
 
 		/* Rewind free segment. */
 		journal_node_t *n = journal->nodes + jnext;
