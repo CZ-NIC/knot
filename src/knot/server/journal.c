@@ -97,80 +97,6 @@ static inline uint64_t ixfrdb_key_make(uint32_t from, uint32_t to)
 	return (((uint64_t)to) << ((uint64_t)32)) | ((uint64_t)from);
 }
 
-/*! \brief Recover metadata from journal. */
-static int journal_recover(journal_t *j)
-{
-	if (j == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	/* Attempt to recover queue. */
-	int qstate[2] = { -1, -1 };
-	unsigned c = 0, p = j->max_nodes - 1;
-	while (1) {
-
-		/* Fetch previous and current node. */
-		journal_node_t *np = j->nodes + p;
-		journal_node_t *nc = j->nodes + c;
-
-		/* Check flags
-		 * p c (0 = free, 1 = non-free)
-		 * 0 0 - in free segment
-		 * 0 1 - c-node is qhead
-		 * 1 0 - c-node is qtail
-		 * 1 1 - in full segment
-		 */
-		unsigned c_set = (nc->flags > JOURNAL_FREE);
-		unsigned p_set = (np->flags > JOURNAL_FREE);
-		if (!p_set && c_set && qstate[0] < 0) {
-			qstate[0] = c; /* Recovered qhead. */
-			dbg_journal_verb("journal: recovered qhead=%u\n",
-			                 qstate[0]);
-		}
-		if (p_set && !c_set && qstate[1] < 0) {\
-			qstate[1] = c; /* Recovered qtail. */
-			dbg_journal_verb("journal: recovered qtail=%u\n",
-			                 qstate[1]);
-		}
-
-		/* Both qstates set. */
-		if (qstate[0] > -1 && qstate[1] > -1) {
-			break;
-		}
-
-		/* Set prev and next. */
-		p = c;
-		c = (c + 1) % j->max_nodes;
-
-		/* All nodes probed. */
-		if (c == 0) {
-			dbg_journal("journal: failed to recover node queue\n");
-			break;
-		}
-	}
-
-	/* Evaluate */
-	if (qstate[0] < 0 || qstate[1] < 0) {
-		return KNOT_ERANGE;
-	}
-
-	/* Write back. */
-	int seek_ret = lseek(j->fd, JOURNAL_HSIZE - 2 * sizeof(uint16_t), SEEK_SET);
-	if (seek_ret < 0 || !sfwrite(qstate, 2 * sizeof(uint16_t), j->fd)) {
-		dbg_journal("journal: failed to write back queue state\n");
-		return KNOT_ERROR;
-	}
-
-	/* Reset queue state. */
-	j->qhead = qstate[0];
-	j->qtail = qstate[1];
-	dbg_journal("journal: node queue=<%u,%u> recovered\n",
-	            qstate[0], qstate[1]);
-
-
-	return KNOT_EOK;
-}
-
 /*! \brief Create new journal. */
 static int journal_create_file(const char *fn, uint16_t max_nodes)
 {
@@ -390,23 +316,6 @@ static int journal_open_file(journal_t *j)
 
 	dbg_journal("journal: opened journal size=%u, queue=<%u, %u>, fd=%d\n",
 	            j->max_nodes, j->qhead, j->qtail, j->fd);
-
-	/* Check node queue. */
-	unsigned qtail_free = (jnode_flags(j, j->qtail) <= JOURNAL_FREE);
-	unsigned qhead_free = j->max_nodes - 1; /* Left of qhead must be free.*/
-	if (j->qhead > 0) {
-		qhead_free = (j->qhead - 1);
-	}
-	qhead_free = (jnode_flags(j, qhead_free) <= JOURNAL_FREE);
-	if ((j->qhead != j->qtail) && (!qtail_free || !qhead_free)) {
-		log_warning("journal '%s', recovering metadata after crash", j->path);
-		ret = journal_recover(j);
-		if (ret != KNOT_EOK) {
-			log_error("journal '%s', unrecoverable corruption (%s)",
-			          j->path, knot_strerror(ret));
-			goto open_file_error;
-		}
-	}
 
 	/* Save file lock and return. */
 	return KNOT_EOK;
