@@ -36,27 +36,58 @@ static int randstr(char* dst, size_t len)
 }
 
 /*! \brief Journal fillup test with size check. */
-static void test_fillup(journal_t *journal, size_t fsize, unsigned iter)
+static void test_fillup(journal_t *journal, size_t fsize, unsigned iter, size_t chunk_size)
 {
-	const unsigned chunk = 512 + rand() % 512;
 	int ret = KNOT_EOK;
 	char *mptr = NULL;
-	size_t large_entry_len = chunk * 1024;
-	char *large_entry = malloc(chunk * 1024);
+	size_t jitter = (chunk_size / 5);
+	size_t large_entry_len = chunk_size + rand() % (2 * jitter) - jitter;
+	char *large_entry = malloc(large_entry_len);
 	assert(large_entry);
-	randstr(large_entry, large_entry_len);
 	unsigned i = 0;
-	for (; i < 512; ++i) {
-		uint64_t chk_key = 0xBEBE + (iter * 512) + i;
+	bool read_passed = true;
+	for (; i < 2 * JOURNAL_NCOUNT; ++i) {
+		uint64_t chk_key = 0xBEBE + i;
+		randstr(large_entry, large_entry_len);
+
+		/* Write */
 		ret = journal_map(journal, chk_key, &mptr, large_entry_len, false);
 		if (ret != KNOT_EOK) {
 			break;
 		}
-
 		memcpy(mptr, large_entry, large_entry_len);
-		journal_unmap(journal, chk_key, mptr, 1);
+		ret = journal_unmap(journal, chk_key, mptr, 1);
+		if (ret != KNOT_EOK) {
+			diag("journal_unmap = %s", knot_strerror(ret));
+			read_passed = true;
+			break;
+		}
+
+		/* Read */
+		ret = journal_map(journal, chk_key, &mptr, large_entry_len, true);
+		if (ret == KNOT_EOK) {
+			ret = memcmp(large_entry, mptr, large_entry_len);
+			if (ret != 0) {
+				diag("integrity check failed");
+				read_passed = false;
+			} else {
+				ret = journal_unmap(journal, chk_key, mptr, 0);
+				if (ret != KNOT_EOK) {
+					diag("journal_unmap(rdonly) = %s", knot_strerror(ret));
+					read_passed = false;
+				}
+			}
+		} else {
+			diag("journal_map(rdonly) = %s", knot_strerror(ret));
+			read_passed = false;
+		}
+
+		if (!read_passed) {
+			break;
+		}
 	}
-	is_int(KNOT_EBUSY, ret, "journal: fillup #%u (%d entries)", iter, i);
+	ok(read_passed, "journal: fillup #%u, reading written entries", iter);
+	ok(ret != KNOT_EOK, "journal: fillup #%u (%d entries)", iter, i);
 	free(large_entry);
 
 	/* Check file size. */
@@ -151,8 +182,8 @@ int main(int argc, char *argv[])
 	ok(ret != KNOT_EOK, "journal: overfill");
 
 	/* Fillup */
-	unsigned iterations = 10;
-	for (unsigned i = 0; i < iterations; ++i) {
+	size_t sizes[] = {16, 64, 1024, 4096, 512 * 1024, 1024 * 1024, 1024, 16 };
+	for (unsigned i = 0; i < sizeof(sizes)/sizeof(size_t); ++i) {
 		/* Journal flush. */
 		journal_close(journal);
 		ret = journal_mark_synced(jfilename);
@@ -160,7 +191,7 @@ int main(int argc, char *argv[])
 		journal = journal_open(jfilename, fsize);
 		ok(journal != NULL, "journal: reopen after flush #%u", i);
 		/* Journal fillup. */
-		test_fillup(journal, fsize, i);
+		test_fillup(journal, fsize, i, sizes[i]);
 	}
 	
 	
