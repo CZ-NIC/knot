@@ -363,9 +363,7 @@ static int journal_update(journal_t *journal, journal_node_t *n)
 	/* Calculate node offset. */
 	const size_t node_len = sizeof(journal_node_t);
 	size_t i = n - journal->nodes;
-	if (i > journal->max_nodes) {
-		return KNOT_EINVAL;
-	}
+	assert(i < journal->max_nodes);
 
 	/* Calculate node position in permanent storage. */
 	long jn_fpos = JOURNAL_HSIZE + (i + 1) * node_len;
@@ -942,11 +940,15 @@ static int journal_walk(const char *fn, uint32_t from, uint32_t to,
 	if (ret != KNOT_EOK) {
 		goto finish;
 	}
+	
+	size_t i = n - journal->nodes;
+	assert(i < journal->max_nodes);
 
-	while (n != 0 && n != journal_end(journal)) {
+	for (; i != journal->qtail; i = jnode_next(journal, i)) {
+		journal_node_t *n = journal->nodes + i;
+
 		/* Skip invalid nodes. */
 		if (!(n->flags & JOURNAL_VALID)) {
-			++n;
 			continue;
 		}
 
@@ -960,8 +962,6 @@ static int journal_walk(const char *fn, uint32_t from, uint32_t to,
 		if (ret != KNOT_EOK) {
 			break;
 		}
-
-		++n;
 	}
 
 finish:
@@ -998,8 +998,7 @@ static int load_changeset(journal_t *journal, journal_node_t *n, const zone_t *z
 	return KNOT_EOK;
 }
 
-int journal_load_changesets(const zone_t *zone, list_t *dst,
-                            uint32_t from, uint32_t to)
+int journal_load_changesets(const zone_t *zone, list_t *dst, uint32_t from, uint32_t to)
 {
 	int ret = journal_walk(zone->conf->ixfr_db, from, to, &load_changeset, zone, dst);
 	if (ret != KNOT_EOK) {
@@ -1095,7 +1094,7 @@ int journal_mark_synced(const char *path)
 	}
 
 	size_t i = journal->qhead;
-	for(; i != journal->qtail; i = (i + 1) % journal->max_nodes) {
+	for(; i != journal->qtail; i = jnode_next(journal, i)) {
 		mark_synced(journal, journal->nodes + i);
 	}
 
