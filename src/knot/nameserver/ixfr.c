@@ -667,9 +667,25 @@ int ixfr_query(knot_pkt_t *pkt, struct query_data *qdata)
 	return ret;
 }
 
+static int check_format(knot_pkt_t *pkt)
+{
+	const knot_pktsection_t *answer = knot_pkt_section(pkt, KNOT_ANSWER);
+
+	if (answer->count >= 1 && answer->rr[0].type == KNOT_RRTYPE_SOA) {
+		return KNOT_EOK;
+	} else {
+		return KNOT_EMALF;
+	}
+}
+
 int ixfr_process_answer(knot_pkt_t *pkt, struct answer_data *adata)
 {
 	if (pkt == NULL || adata == NULL) {
+		return KNOT_NS_PROC_FAIL;
+	}
+
+	if (check_format(pkt) != KNOT_EOK) {
+		IXFRIN_LOG(LOG_WARNING, "malformed response");
 		return KNOT_NS_PROC_FAIL;
 	}
 	
@@ -697,8 +713,7 @@ int ixfr_process_answer(knot_pkt_t *pkt, struct answer_data *adata)
 		NS_NEED_TSIG_SIGNED(&adata->param->tsig_ctx, 0);
 		if (!zone_transfer_needed(adata->param->zone, pkt)) {
 			if (knot_pkt_section(pkt, KNOT_ANSWER)->count > 1) {
-				IXFRIN_LOG(LOG_WARNING, "malformed IXFR response"
-				           " (old data), ignoring");
+				IXFRIN_LOG(LOG_WARNING, "old data, ignoring");
 			} else {
 				/* Single-SOA answer. */
 				IXFRIN_LOG(LOG_INFO, "zone is up-to-date");
