@@ -63,6 +63,50 @@ static void cleanup_kasp_zone(dnssec_kasp_zone_t **zone_ptr)
 #define _cleanup_keystore_ _cleanup_(cleanup_keystore)
 #define _cleanup_zone_ _cleanup_(cleanup_kasp_zone)
 
+/* -- frequent operations -------------------------------------------------- */
+
+static dnssec_kasp_t *get_kasp(void)
+{
+	dnssec_kasp_t *kasp = NULL;
+
+	dnssec_kasp_init_dir(&kasp);
+	int r = dnssec_kasp_open(kasp, global.kasp_dir);
+	if (r != DNSSEC_EOK) {
+		error("Cannot open KASP directory (%s).", dnssec_strerror(r));
+		dnssec_kasp_deinit(kasp);
+		return NULL;
+	}
+
+	return kasp;
+}
+
+static dnssec_keystore_t *get_keystore(void)
+{
+	dnssec_keystore_t *store = NULL;
+
+	dnssec_keystore_init_pkcs8_dir(&store);
+	int r = dnssec_keystore_open(store, global.keystore_dir);
+	if (r != DNSSEC_EOK) {
+		error("Cannot open private key store (%s).", dnssec_strerror(r));
+		dnssec_keystore_deinit(store);
+		return NULL;
+	}
+
+	return store;
+}
+
+static dnssec_kasp_zone_t *get_zone(dnssec_kasp_t *kasp, const char *name)
+{
+	dnssec_kasp_zone_t *zone = NULL;
+	int r = dnssec_kasp_zone_load(kasp, name, &zone);
+	if (r != DNSSEC_EOK) {
+		error("Cannot retrieve zone from KASP (%s).", dnssec_strerror(r));
+		return NULL;
+	}
+
+	return zone;
+}
+
 /* -- actions implementation ----------------------------------------------- */
 
 /*
@@ -82,8 +126,7 @@ static int cmd_init(int argc, char *argv[])
 
 	int r = dnssec_kasp_init(kasp, global.kasp_dir);
 	if (r != DNSSEC_EOK) {
-		error("Cannot initialize KASP directory (%s).",
-		      dnssec_strerror(r));
+		error("Cannot initialize KASP directory (%s).", dnssec_strerror(r));
 		return 1;
 	}
 
@@ -94,8 +137,7 @@ static int cmd_init(int argc, char *argv[])
 
 	r = dnssec_keystore_init(store, global.keystore_dir);
 	if (r != DNSSEC_EOK) {
-		error("Cannot initialize default keystore (%s).",
-		      dnssec_strerror(r));
+		error("Cannot initialize default keystore (%s).", dnssec_strerror(r));
 		return 1;
 	}
 
@@ -131,24 +173,20 @@ static int cmd_zone_add(int argc, char *argv[])
 
 	// create zone
 
-	_cleanup_kasp_ dnssec_kasp_t *kasp = NULL;
-	dnssec_kasp_init_dir(&kasp);
-
-	int r = dnssec_kasp_open(kasp, global.kasp_dir);
-	if (r != DNSSEC_EOK) {
-		error("dnssec_kasp_open: %s", dnssec_strerror(r));
+	_cleanup_kasp_ dnssec_kasp_t *kasp = get_kasp();
+	if (!kasp) {
 		return 1;
 	}
 
 	dnssec_kasp_zone_t *zone = dnssec_kasp_zone_new(zone_name);
 	if (!zone) {
-		error("dnssec_kasp_zone_new: %s", dnssec_strerror(r));
+		error("Failed to create new zone.");
 		return 1;
 	}
 
-	r = dnssec_kasp_zone_save(kasp, zone);
+	int r = dnssec_kasp_zone_save(kasp, zone);
 	if (r != DNSSEC_EOK) {
-		error("dnssec_kasp_zone_save: %s", dnssec_strerror(r));
+		error("Failed to save new zone (%s).", dnssec_strerror(r));
 		return 1;
 	}
 
@@ -170,19 +208,15 @@ static int cmd_zone_list(int argc, char *argv[])
 		return 1;
 	}
 
-	_cleanup_kasp_ dnssec_kasp_t *kasp = NULL;
-	dnssec_kasp_init_dir(&kasp);
-
-	int r = dnssec_kasp_open(kasp, global.kasp_dir);
-	if (r != DNSSEC_EOK) {
-		error("dnssec_kasp_open: %s", dnssec_strerror(r));
+	_cleanup_kasp_ dnssec_kasp_t *kasp = get_kasp();
+	if (!kasp) {
 		return 1;
 	}
 
 	dnssec_list_t *zones = NULL;
-	r = dnssec_kasp_zone_list(kasp, &zones);
+	int r = dnssec_kasp_zone_list(kasp, &zones);
 	if (r != DNSSEC_EOK) {
-		error("dnssec_kasp_list_zones");
+		error("Failed to get list of zones (%s).", dnssec_strerror(r));
 	}
 
 	bool found_match = false;
@@ -242,19 +276,13 @@ static int cmd_zone_remove(int argc, char *argv[])
 
 	// delete zone
 
-	_cleanup_kasp_ dnssec_kasp_t *kasp = NULL;
-	dnssec_kasp_init_dir(&kasp);
-
-	int r = dnssec_kasp_open(kasp, global.kasp_dir);
-	if (r != DNSSEC_EOK) {
-		error("Cannot open KASP directory (%s).", dnssec_strerror(r));
+	_cleanup_kasp_ dnssec_kasp_t *kasp = get_kasp();
+	if (!kasp) {
 		return 1;
 	}
 
-	_cleanup_zone_ dnssec_kasp_zone_t *zone = NULL;
-	r = dnssec_kasp_zone_load(kasp, zone_name, &zone);
-	if (r != DNSSEC_EOK) {
-		error("Cannot retrieve zone from KASP (%s).", dnssec_strerror(r));
+	_cleanup_zone_ dnssec_kasp_zone_t *zone = get_zone(kasp, zone_name);
+	if (!zone) {
 		return 1;
 	}
 
@@ -264,7 +292,7 @@ static int cmd_zone_remove(int argc, char *argv[])
 		return 1;
 	}
 
-	r = dnssec_kasp_zone_remove(kasp, zone_name);
+	int r = dnssec_kasp_zone_remove(kasp, zone_name);
 	if (r != DNSSEC_EOK) {
 		error("Cannot remove the zone (%s).", dnssec_strerror(r));
 		return 1;
@@ -273,7 +301,7 @@ static int cmd_zone_remove(int argc, char *argv[])
 	return 0;
 }
 
-/*!
+/*
  * keymgr zone key list <zone>
  */
 static int cmd_zone_key_list(int argc, char *argv[])
@@ -287,19 +315,13 @@ static int cmd_zone_key_list(int argc, char *argv[])
 
 	// list the keys
 
-	_cleanup_kasp_ dnssec_kasp_t *kasp = NULL;
-	dnssec_kasp_init_dir(&kasp);
-
-	int r = dnssec_kasp_open(kasp, global.kasp_dir);
-	if (r != DNSSEC_EOK) {
-		error("Cannot open KASP directory (%s).", dnssec_strerror(r));
+	_cleanup_kasp_ dnssec_kasp_t *kasp = get_kasp();
+	if (!kasp) {
 		return 1;
 	}
 
-	_cleanup_zone_ dnssec_kasp_zone_t *zone = NULL;
-	r = dnssec_kasp_zone_load(kasp, zone_name, &zone);
-	if (r != DNSSEC_EOK) {
-		error("Cannot retrieve zone from KASP (%s).", dnssec_strerror(r));
+	_cleanup_zone_ dnssec_kasp_zone_t *zone = get_zone(kasp, zone_name);
+	if (!zone) {
 		return 1;
 	}
 
@@ -354,19 +376,13 @@ static int cmd_zone_key_show(int argc, char *argv[])
 
 	// list the keys
 
-	_cleanup_kasp_ dnssec_kasp_t *kasp = NULL;
-	dnssec_kasp_init_dir(&kasp);
-
-	int r = dnssec_kasp_open(kasp, global.kasp_dir);
-	if (r != DNSSEC_EOK) {
-		error("Cannot open KASP directory (%s).", dnssec_strerror(r));
+	_cleanup_kasp_ dnssec_kasp_t *kasp = get_kasp();
+	if (!kasp) {
 		return 1;
 	}
 
-	_cleanup_zone_ dnssec_kasp_zone_t *zone = NULL;
-	r = dnssec_kasp_zone_load(kasp, zone_name, &zone);
-	if (r != DNSSEC_EOK) {
-		error("Cannot retrieve zone from KASP (%s).", dnssec_strerror(r));
+	_cleanup_zone_ dnssec_kasp_zone_t *zone = get_zone(kasp, zone_name);
+	if (zone) {
 		return 1;
 	}
 
@@ -462,36 +478,27 @@ static int cmd_zone_key_generate(int argc, char *argv[])
 
 	// open KASP and key store
 
-	_cleanup_kasp_ dnssec_kasp_t *kasp = NULL;
-	dnssec_kasp_init_dir(&kasp);
-
-	int r = dnssec_kasp_open(kasp, global.kasp_dir);
-	if (r != DNSSEC_EOK) {
-		error("Cannot open KASP directory (%s).", dnssec_strerror(r));
+	_cleanup_kasp_ dnssec_kasp_t *kasp = get_kasp();
+	if (!kasp) {
 		return 1;
 	}
 
-	_cleanup_zone_ dnssec_kasp_zone_t *zone = NULL;
-	r = dnssec_kasp_zone_load(kasp, config.name, &zone);
-	if (r != DNSSEC_EOK) {
-		error("Cannot retrieve zone from KASP (%s).", dnssec_strerror(r));
+	_cleanup_zone_ dnssec_kasp_zone_t *zone = get_zone(kasp, config.name);
+	if (!zone) {
 		return 1;
 	}
 
-	_cleanup_keystore_ dnssec_keystore_t *store = NULL;
-	dnssec_keystore_init_pkcs8_dir(&store);
-	r = dnssec_keystore_open(store, global.keystore_dir);
-	if (r != DNSSEC_EOK) {
-		error("Cannot open default key store (%s).", dnssec_strerror(r));
+	_cleanup_keystore_ dnssec_keystore_t *store = get_keystore();
+	if (!store) {
 		return 1;
 	}
 
 	// generate private key and construct DNSKEY
 
 	_cleanup_free_ char *keyid = NULL;
-	r = dnssec_keystore_generate_key(store, config.algorithm, config.size, &keyid);
+	int r = dnssec_keystore_generate_key(store, config.algorithm, config.size, &keyid);
 	if (r != DNSSEC_EOK) {
-		error("Failed to generate a private key in key store (%s).", dnssec_strerror(r));
+		error("Failed to generate a private key (%s).", dnssec_strerror(r));
 		return 1;
 	}
 
@@ -500,7 +507,7 @@ static int cmd_zone_key_generate(int argc, char *argv[])
 	r = dnssec_key_import_keystore(dnskey, store, keyid, config.algorithm);
 	if (r != DNSSEC_EOK) {
 		dnssec_key_free(dnskey);
-		error("Failed to create a DNSKEY entry (%s).", dnssec_strerror(r));
+		error("Failed to create a DNSKEY record (%s).", dnssec_strerror(r));
 		return 1;
 	}
 
@@ -518,7 +525,7 @@ static int cmd_zone_key_generate(int argc, char *argv[])
 
 	r = dnssec_kasp_zone_save(kasp, zone);
 	if (r != DNSSEC_EOK) {
-		error("Failed to save update zone configuration (%s).", dnssec_strerror(r));
+		error("Failed to save updated zone (%s).", dnssec_strerror(r));
 		free(dnskey);
 		dnssec_keystore_remove_key(store, keyid);
 		return 1;
@@ -561,19 +568,13 @@ static int cmd_zone_key_set(int argc, char *argv[])
 
 	// update the key
 
-	_cleanup_kasp_ dnssec_kasp_t *kasp = NULL;
-	dnssec_kasp_init_dir(&kasp);
-
-	int r = dnssec_kasp_open(kasp, global.kasp_dir);
-	if (r != DNSSEC_EOK) {
-		error("Cannot open KASP directory (%s).", dnssec_strerror(r));
+	_cleanup_kasp_ dnssec_kasp_t *kasp = get_kasp();
+	if (!kasp) {
 		return 1;
 	}
 
-	_cleanup_zone_ dnssec_kasp_zone_t *zone = NULL;
-	r = dnssec_kasp_zone_load(kasp, zone_name, &zone);
-	if (r != DNSSEC_EOK) {
-		error("Cannot retrieve zone from KASP (%s).", dnssec_strerror(r));
+	_cleanup_zone_ dnssec_kasp_zone_t *zone = get_zone(kasp, zone_name);
+	if (!zone) {
 		return 1;
 	}
 
@@ -601,7 +602,7 @@ static int cmd_zone_key_set(int argc, char *argv[])
 	if (new_timing.retire >= 0) { match->timing.retire = new_timing.retire; }
 	if (new_timing.remove >= 0) { match->timing.remove = new_timing.remove; }
 
-	r = dnssec_kasp_zone_save(kasp, zone);
+	int r = dnssec_kasp_zone_save(kasp, zone);
 	if (r != DNSSEC_EOK) {
 		error("Failed to save updated zone (%s).", dnssec_strerror(r));
 		return 1;
@@ -651,11 +652,8 @@ static int cmd_policy(int argc, char *argv[])
 
 static int cmd_keystore_list(int argc, char *argv[])
 {
-	_cleanup_keystore_ dnssec_keystore_t *store = NULL;
-	dnssec_keystore_init_pkcs8_dir(&store);
-	int r = dnssec_keystore_open(store, global.keystore_dir);
-	if (r != DNSSEC_EOK) {
-		error("Cannot open default key store (%s).", dnssec_strerror(r));
+	_cleanup_keystore_ dnssec_keystore_t *store = get_keystore();
+	if (!store) {
 		return 1;
 	}
 
