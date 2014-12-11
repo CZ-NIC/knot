@@ -23,6 +23,11 @@
 #include <tap/basic.h>
 
 #include "knot/server/journal.h"
+#include "knot/zone/zone-diff.h"
+
+#define RAND_RR_LABEL 16
+#define RAND_RR_PAYLOAD 64
+#define MIN_SOA_SIZE 22
 
 /*! \brief Generate random string with given length. */
 static int randstr(char* dst, size_t len)
@@ -33,6 +38,106 @@ static int randstr(char* dst, size_t len)
 	dst[len - 1] = '\0';
 
 	return 0;
+}
+
+/*! \brief Init RRSet with type SOA and given serial. */
+static void init_soa(knot_rrset_t *rr, const uint32_t serial, const knot_dname_t *apex)
+{
+	knot_rrset_init(rr, knot_dname_copy(apex, NULL), KNOT_RRTYPE_SOA, KNOT_CLASS_IN);
+
+	assert(serial < 256);
+	uint8_t soa_data[MIN_SOA_SIZE] = { 0, 0, 0, 0, 0, serial };
+	int ret = knot_rrset_add_rdata(rr, soa_data, sizeof(soa_data), 3600, NULL);
+	assert(ret == KNOT_EOK);
+}
+
+/*! \brief Init RRSet with type TXT, random owner and random payload. */
+static void init_random_rr(knot_rrset_t *rr , const knot_dname_t *apex)
+{
+	/* Create random label. */
+	char owner[RAND_RR_LABEL + knot_dname_size(apex)];
+	owner[0] = RAND_RR_LABEL - 1;
+	randstr(owner + 1, RAND_RR_LABEL);
+
+	/* Append zone apex. */
+	memcpy(owner + RAND_RR_LABEL, apex, knot_dname_size(apex));
+	knot_rrset_init(rr, knot_dname_copy((knot_dname_t *)owner, NULL), KNOT_RRTYPE_TXT, KNOT_CLASS_IN);
+
+	/* Create random RDATA. */
+	uint8_t txt[RAND_RR_PAYLOAD + 1];
+	txt[0] = RAND_RR_PAYLOAD - 1;
+	randstr((char *)(txt + 1), RAND_RR_PAYLOAD);
+
+	int ret = knot_rrset_add_rdata(rr, txt, RAND_RR_PAYLOAD, 3600, NULL);
+	assert(ret == KNOT_EOK);
+}
+
+/*! \brief Init changeset with random changes. */
+static void init_random_changeset(changeset_t *ch, const uint32_t from, const uint32_t to, const size_t size, const knot_dname_t *apex)
+{
+	int ret = changeset_init(ch, apex);
+	assert(ret == KNOT_EOK);
+	
+	// Add SOAs
+	knot_rrset_t soa;
+	init_soa(&soa, from, apex);
+	
+	ch->soa_from = knot_rrset_copy(&soa, NULL);
+	assert(ch->soa_from);
+	knot_rrset_clear(&soa, NULL);
+	
+	init_soa(&soa, to, apex);
+	ch->soa_to = knot_rrset_copy(&soa, NULL);
+	assert(ch->soa_to);
+	knot_rrset_clear(&soa, NULL);
+	
+	// Add RRs to add section
+	for (size_t i = 0; i < size / 2; ++i) {
+		knot_rrset_t rr;
+		init_random_rr(&rr, apex);
+		int ret = changeset_add_rrset(ch, &rr);
+		assert(ret == KNOT_EOK);
+		knot_rrset_clear(&rr, NULL);
+	}
+
+	// Add RRs to remove section
+	for (size_t i = 0; i < size / 2; ++i) {
+		knot_rrset_t rr;
+		init_random_rr(&rr, apex);
+		int ret = changeset_rem_rrset(ch, &rr);
+		assert(ret == KNOT_EOK);
+		knot_rrset_clear(&rr, NULL);
+	}
+}
+
+/*! \brief Compare two changesets for equality. */
+static bool changesets_eq(const changeset_t *ch1, changeset_t *ch2)
+{
+	if (changeset_size(ch1) != changeset_size(ch2)) {
+		return false;
+	}
+
+	changeset_iter_t it1;
+	changeset_iter_all(&it1, ch1, true);
+	changeset_iter_t it2;
+	changeset_iter_all(&it2, ch2, true);
+
+	knot_rrset_t rr1 = changeset_iter_next(&it1);
+	knot_rrset_t rr2 = changeset_iter_next(&it2);
+	bool ret = true;
+	while (!knot_rrset_empty(&rr1)) {
+		if (!knot_rrset_equal(&rr1, &rr2, KNOT_RRSET_COMPARE_WHOLE)) {
+			ret = false;
+			break;
+		}
+		rr1 = changeset_iter_next(&it1);
+		rr2 = changeset_iter_next(&it2);
+	}
+
+	changeset_iter_clear(&it1);
+	changeset_iter_clear(&it2);
+
+	return ret;
 }
 
 /*! \brief Journal fillup test with size check. */
@@ -98,6 +203,81 @@ static void test_fillup(journal_t *journal, size_t fsize, unsigned iter, size_t 
 		diag("journal: fillup / size check #%u fsize(%zu) > max(%zu)",
 		     iter, (size_t)st.st_size, fsize + chunk_size);
 	}
+}
+
+/*! \brief Test behavior with real changesets. */
+static void test_store_load(const char *jfilename)
+{
+	const size_t filesize = 100 * 1024;
+	uint8_t *apex = (uint8_t *)"\4test";
+
+	/* Create fake zone. */
+	conf_zone_t zconf = { .ixfr_db = (char *)jfilename, .ixfr_fslimit = filesize };
+	zone_t z = { .name = apex, .conf = &zconf };
+
+	/* Save and load changeset. */
+	changeset_t ch;
+	init_random_changeset(&ch, 0, 1, 128, apex);
+	int ret = journal_store_changeset(&ch, jfilename, filesize);
+	ok(ret == KNOT_EOK, "journal: store changeset");
+	list_t l;
+	init_list(&l);
+	ret = journal_load_changesets(&z, &l, 0, 1);
+	ok(ret == KNOT_EOK && changesets_eq(TAIL(l), &ch), "journal: load changeset");
+	changeset_clear(&ch);
+	changesets_free(&l);
+	init_list(&l);
+
+	/* Fill the journal. */
+	ret = KNOT_EOK;
+	uint32_t serial = 1;
+	for (; ret == KNOT_EOK; ++serial) {
+		init_random_changeset(&ch, serial, serial + 1, 128, apex);
+		ret = journal_store_changeset(&ch, jfilename, filesize);
+		changeset_clear(&ch);
+	}
+	ok(ret == KNOT_EBUSY, "journal: overfill with changesets");
+
+	/* Load all changesets stored until now. */
+	serial--;
+	ret = journal_load_changesets(&z, &l, 0, serial);
+	changesets_free(&l);
+	ok(ret == KNOT_EOK, "journal: load changesets");
+
+	/* Flush the journal. */
+	ret = journal_mark_synced(jfilename);
+	ok(ret == KNOT_EOK, "journal: flush");
+
+	/* Store next changeset. */
+	init_random_changeset(&ch, serial, serial + 1, 128, apex);
+	ret = journal_store_changeset(&ch, jfilename, filesize);
+		changeset_clear(&ch);
+	ok(ret == KNOT_EOK, "journal: store after flush");
+
+	/* Load all changesets, except the first one that got evicted. */
+	init_list(&l);
+	ret = journal_load_changesets(&z, &l, 1, serial + 1);
+	changesets_free(&l);
+	ok(ret == KNOT_EOK, "journal: load changesets after flush");
+}
+
+/*! \brief Test behavior when writing to jurnal and flushing it. */
+static void test_stress(const char *jfilename)
+{
+	uint8_t *apex = (uint8_t *)"\4test";
+	const size_t filesize = 100 * 1024;
+	int ret = KNOT_EOK;
+	uint32_t serial = 0;
+	size_t update_size = 3;
+	for (; ret == KNOT_EOK && serial < 32; ++serial) {
+		changeset_t ch;
+		init_random_changeset(&ch, serial, serial + 1, update_size, apex);
+		update_size *= 1.5;
+		ret = journal_store_changeset(&ch, jfilename, filesize);
+		changeset_clear(&ch);
+		journal_mark_synced(jfilename);
+	}
+	ok(ret == KNOT_ESPACE, "journal: does not overfill under load");
 }
 
 int main(int argc, char *argv[])
@@ -194,13 +374,19 @@ int main(int argc, char *argv[])
 		/* Journal fillup. */
 		test_fillup(journal, fsize, i, sizes[i % num_sizes]);
 	}
-	
-	
+
 	/* Close journal. */
 	journal_close(journal);
 
 	/* Delete journal. */
 	remove(jfilename);
+
+	test_store_load(jfilename);
+	remove(jfilename);
+
+	test_stress(jfilename);
+	remove(jfilename);
+
 	free(tmpdir);
 
 skip_all:
