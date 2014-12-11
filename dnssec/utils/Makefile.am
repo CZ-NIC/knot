@@ -27,8 +27,8 @@ libutils_la_SOURCES = \
 	cmdparse/parameter.h \
 	cmdparse/value.c \
 	cmdparse/value.h \
-	legacy/legacy.c \
-	legacy/legacy.h \
+	legacy/key.c \
+	legacy/key.h \
 	legacy/privkey.c \
 	legacy/privkey.h \
 	legacy/pubkey.c \
@@ -41,6 +41,5 @@ bin_PROGRAMS = \
 	generate \
 	genzonekey \
 	getpub \
-	import \
 	keymgr \
 	parsekey

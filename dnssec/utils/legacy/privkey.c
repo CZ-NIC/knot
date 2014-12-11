@@ -45,35 +45,35 @@ static void binary_free(void *_binary)
 	dnssec_binary_free(binary);
 }
 
-#define off(field) offsetof(legacy_privkey_t, field)
 /*!
  * Know attributes in private key file.
  */
 const param_t PRIVKEY_CONVERSION_TABLE[] = {
-	{ "Algorithm",       off(algorithm),        parse_algorithm, NULL },
-	{ "Modulus",         off(modulus),          parse_binary,    binary_free },
-	{ "PublicExponent",  off(public_exponent),  parse_binary,    binary_free },
-	{ "PrivateExponent", off(private_exponent), parse_binary,    binary_free },
-	{ "Prime1",          off(prime_one),        parse_binary,    binary_free },
-	{ "Prime2",          off(prime_two),        parse_binary,    binary_free },
-	{ "Exponent1",       off(exponent_one),     parse_binary,    binary_free },
-	{ "Exponent2",       off(exponent_two),     parse_binary,    binary_free },
-	{ "Coefficient",     off(coefficient),      parse_binary,    binary_free },
-	{ "Prime(p)",        off(prime),            parse_binary,    binary_free },
-	{ "Subprime(q)",     off(subprime),         parse_binary,    binary_free },
-	{ "Base(g)",         off(base),             parse_binary,    binary_free },
-	{ "Private_value(x)",off(private_value),    parse_binary,    binary_free },
-	{ "Public_value(y)", off(public_value),     parse_binary,    binary_free },
-	{ "PrivateKey",      off(private_key),      parse_binary,    binary_free },
-	{ "Created",         off(time_created),     parse_time,      NULL },
-	{ "Publish",         off(time_publish),     parse_time,      NULL },
-	{ "Activate",        off(time_activate),    parse_time,      NULL },
-	{ "Revoke",          off(time_revoke),      parse_time,      NULL },
-	{ "Inactive",        off(time_inactive),    parse_time,      NULL },
-	{ "Delete",          off(time_delete),      parse_time,      NULL },
+	#define o(field) offsetof(legacy_privkey_t, field)
+	{ "Algorithm",       o(algorithm),        parse_algorithm, NULL },
+	{ "Modulus",         o(modulus),          parse_binary,    binary_free },
+	{ "PublicExponent",  o(public_exponent),  parse_binary,    binary_free },
+	{ "PrivateExponent", o(private_exponent), parse_binary,    binary_free },
+	{ "Prime1",          o(prime_one),        parse_binary,    binary_free },
+	{ "Prime2",          o(prime_two),        parse_binary,    binary_free },
+	{ "Exponent1",       o(exponent_one),     parse_binary,    binary_free },
+	{ "Exponent2",       o(exponent_two),     parse_binary,    binary_free },
+	{ "Coefficient",     o(coefficient),      parse_binary,    binary_free },
+	{ "Prime(p)",        o(prime),            parse_binary,    binary_free },
+	{ "Subprime(q)",     o(subprime),         parse_binary,    binary_free },
+	{ "Base(g)",         o(base),             parse_binary,    binary_free },
+	{ "Private_value(x)",o(private_value),    parse_binary,    binary_free },
+	{ "Public_value(y)", o(public_value),     parse_binary,    binary_free },
+	{ "PrivateKey",      o(private_key),      parse_binary,    binary_free },
+	{ "Created",         o(time_created),     parse_time,      NULL },
+	{ "Publish",         o(time_publish),     parse_time,      NULL },
+	{ "Activate",        o(time_activate),    parse_time,      NULL },
+	{ "Revoke",          o(time_revoke),      parse_time,      NULL },
+	{ "Inactive",        o(time_inactive),    parse_time,      NULL },
+	{ "Delete",          o(time_delete),      parse_time,      NULL },
 	{ NULL }
+	#undef o
 };
-#undef off
 
 /* -- attribute parsing ---------------------------------------------------- */
 

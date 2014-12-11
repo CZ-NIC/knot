@@ -22,7 +22,7 @@
 
 #include "dnssec/binary.h"
 #include "dnssec/error.h"
-#include "legacy/legacy.h"
+#include "legacy/key.h"
 #include "legacy/privkey.h"
 #include "legacy/pubkey.h"
 #include "pem.h"
@@ -153,7 +153,6 @@ static int params_to_pem(dnssec_key_t *key, legacy_privkey_t *params, dnssec_bin
 	}
 }
 
-
 /*!
  * \brief Extract private and public key file names from input filename.
  *
@@ -197,7 +196,7 @@ static int get_key_names(const char *input, char **public_ptr, char **private_pt
 	return DNSSEC_EOK;
 }
 
-int legacy_key_import(const char *filename)
+int legacy_key_parse(const char *filename, dnssec_key_t **key_ptr, dnssec_binary_t *pem_ptr)
 {
 	if (!filename) {
 		return DNSSEC_EINVAL;
@@ -230,11 +229,8 @@ int legacy_key_import(const char *filename)
 		return result;
 	}
 
-	printf("public key %s (%d)\n", dnssec_key_get_id(key), dnssec_key_get_keytag(key));
-	printf("conversion happens here\n");
-	fwrite(pem.data, pem.size, 1, stdout);
-
-	legacy_privkey_free(&params);
+	*key_ptr = key;
+	*pem_ptr = pem;
 
 	return DNSSEC_EOK;
 }

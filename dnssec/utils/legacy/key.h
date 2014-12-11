@@ -16,4 +16,16 @@
 
 #pragma once
 
-int legacy_key_import(const char *filename);
+#include <dnssec/key.h>
+#include <dnssec/binary.h>
+
+/*!
+ * Parse legacy key files and get a DNSKEY and private key in PEM.
+ *
+ * \param[in]  filename  File name of private key, public key, or without extension.
+ * \param[out] key       Resulting DNSKEY.
+ * \param[out] pem       Private key material in PEM format.
+ *
+ * \return Error code, DNSSEC_EOK if successful.
+ */
+int legacy_key_parse(const char *filename, dnssec_key_t **key, dnssec_binary_t *pem);
