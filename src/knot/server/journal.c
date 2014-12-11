@@ -389,60 +389,46 @@ int journal_write_in(journal_t *j, journal_node_t **rn, uint64_t id, size_t len)
 	const size_t node_len = sizeof(journal_node_t);
 	*rn = NULL;
 
-	/* Find next free node. */
-	uint16_t jnext = (j->qtail + 1) % j->max_nodes;
-
 	dbg_journal("journal: will write id=%llu, node=%u, size=%zu, fsize=%zu\n",
 	            (unsigned long long)id, j->qtail, len, j->fsize);
-
-	/* Calculate file end position (with imposed limits). */
-	size_t file_end = j->fsize;
-	if (file_end > j->fslimit) {
-		file_end = j->fslimit;
-	}
-
-	int seek_ret = 0;
-
-	/* Increase free segment if on the end of file. */
-	dbg_journal("journal: free.pos = %u free.len = %u\n",
-	            j->free.pos, j->free.len);
-	bool is_empty = (j->qtail == j->qhead);
-	journal_node_t *n = j->nodes + j->qtail;
-	journal_node_t *head = j->nodes + j->qhead;
-	journal_node_t *last = j->nodes + jnode_prev(j, j->qtail);
-	if (is_empty || (head->pos <= last->pos && j->free.pos > last->pos)) {
-
-		dbg_journal_verb("journal: * is last node\n");
-
-		/* Grow journal file until the size limit. */
-		if(j->free.pos + len < j->fslimit) {
-			size_t diff = len - j->free.len;
-			dbg_journal("journal: * growing by +%zu, pos=%u, "
-			            "new fsize=%zu\n",
-			            diff, j->free.pos,
-			            j->fsize + diff);
-			j->fsize += diff; /* Appending increases file size. */
-			j->free.len += diff;
-
-		} else {
-			/*  Rewind if resize is needed, but the limit is reached. */
-			journal_node_t *head = j->nodes + j->qhead;
-			j->free.pos = jnode_base_pos(j->max_nodes);
-			j->free.len = head->pos - j->free.pos;
-			dbg_journal_verb("journal: * fslimit reached, "
-			                 "rewinding to %u\n",
-			                 head->pos);
-		}
-	}
 
 	/* Count node visits to prevent looping. */
 	uint16_t visit_count = 0;
 
 	/* Evict occupied nodes if necessary. */
-	while (j->free.len < len || j->nodes[jnext].flags > JOURNAL_FREE) {
+	while (j->free.len < len) {
 
-		/* Evict least recent node if not empty. */
+		/* Increase free segment if on the end of file. */
+		bool is_empty = (j->qtail == j->qhead);
 		journal_node_t *head = j->nodes + j->qhead;
+		journal_node_t *last = j->nodes + jnode_prev(j, j->qtail);
+		if (is_empty || (head->pos <= last->pos && j->free.pos > last->pos)) {
+
+			dbg_journal_verb("journal: * is last node\n");
+
+			/* Grow journal file until the size limit. */
+			if(j->free.pos + len < j->fslimit) {
+				size_t diff = len - j->free.len;
+				dbg_journal("journal: * growing by +%zu, pos=%u, "
+				            "new fsize=%zu\n",
+				            diff, j->free.pos,
+				            j->fsize + diff);
+				j->fsize += diff; /* Appending increases file size. */
+				j->free.len += diff;
+				continue;
+
+			} else {
+				/*  Rewind if resize is needed, but the limit is reached. */
+				j->free.pos = jnode_base_pos(j->max_nodes);
+				j->free.len = head->pos - j->free.pos;
+				dbg_journal_verb("journal: * fslimit reached, "
+				                 "rewinding to %u\n",
+				                 head->pos);
+			}
+
+			/* Continue until enough free space is collected. */
+			continue;
+		}
 
 		/* Check if it has been synced to disk. */
 		if ((head->flags & JOURNAL_DIRTY) && (head->flags & JOURNAL_VALID)) {
@@ -451,7 +437,7 @@ int journal_write_in(journal_t *j, journal_node_t **rn, uint64_t id, size_t len)
 
 		/* Write back evicted node. */
 		head->flags = JOURNAL_FREE;
-		seek_ret = lseek(j->fd, JOURNAL_HSIZE + (j->qhead + 1) * node_len, SEEK_SET);
+		int seek_ret = lseek(j->fd, JOURNAL_HSIZE + (j->qhead + 1) * node_len, SEEK_SET);
 		if (seek_ret < 0 || !sfwrite(head, node_len, j->fd)) {
 			return KNOT_ERROR;
 		}
@@ -472,12 +458,13 @@ int journal_write_in(journal_t *j, journal_node_t **rn, uint64_t id, size_t len)
 
 		/* Update node visit count. */
 		visit_count += 1;
-		if (visit_count >= j->max_nodes) {
+		if (visit_count >= j->max_nodes - 1) {
 			return KNOT_ESPACE;
 		}
 	}
 
-	/* Invalidate node and write back. */
+	/* Invalidate tail node and write back. */
+	journal_node_t *n = j->nodes + j->qtail;
 	n->id = id;
 	n->pos = j->free.pos;
 	n->len = len;
