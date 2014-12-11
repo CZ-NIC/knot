@@ -397,8 +397,8 @@ int journal_write_in(journal_t *j, journal_node_t **rn, uint64_t id, size_t len)
 	dbg_journal("journal: will write id=%llu, node=%u, size=%zu, fsize=%zu\n",
 	            (unsigned long long)id, j->qtail, len, j->fsize);
 
-	/* Count node visits to prevent looping. */
-	uint16_t visit_count = 0;
+	/* Count rewinds. */
+	bool already_rewound = false;
 
 	/* Evict occupied nodes if necessary. */
 	while (j->free.len < len || jnode_next(j, j->qtail) == j->qhead) {
@@ -422,7 +422,7 @@ int journal_write_in(journal_t *j, journal_node_t **rn, uint64_t id, size_t len)
 				j->free.len += diff;
 				continue;
 
-			} else {
+			} else if (!already_rewound) {
 				/*  Rewind if resize is needed, but the limit is reached. */
 				j->free.pos = jnode_base_pos(j->max_nodes);
 				j->free.len = 0;
@@ -431,7 +431,11 @@ int journal_write_in(journal_t *j, journal_node_t **rn, uint64_t id, size_t len)
 				}
 				dbg_journal_verb("journal: * fslimit/nodelimit reached, "
 				                 "rewinding to %u\n",
-				                 head->pos);
+				                 j->free.pos);
+				already_rewound = true;
+			} else {
+				/* Already rewound, but couldn't collect enough free space. */
+				return KNOT_ESPACE;
 			}
 
 			/* Continue until enough free space is collected. */
@@ -463,12 +467,6 @@ int journal_write_in(journal_t *j, journal_node_t **rn, uint64_t id, size_t len)
 
 		/* Increase free segment. */
 		j->free.len += head->len;
-
-		/* Update node visit count. */
-		visit_count += 1;
-		if (visit_count >= j->max_nodes - 1) {
-			return KNOT_ESPACE;
-		}
 	}
 
 	/* Invalidate tail node and write back. */
