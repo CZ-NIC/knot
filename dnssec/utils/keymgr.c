@@ -29,8 +29,8 @@
 #include "cmdparse/command.h"
 #include "cmdparse/parameter.h"
 #include "cmdparse/value.h"
-#include "shared.h"
 #include "print.h"
+#include "shared.h"
 
 /* -- global options ------------------------------------------------------- */
 
@@ -106,6 +106,26 @@ static dnssec_kasp_zone_t *get_zone(dnssec_kasp_t *kasp, const char *name)
 	}
 
 	return zone;
+}
+
+static bool zone_add_dnskey(dnssec_kasp_zone_t *zone, dnssec_key_t *dnskey,
+			    const dnssec_kasp_key_timing_t *timing)
+{
+	dnssec_kasp_key_t *key = calloc(1, sizeof(*key));
+	if (!key) {
+		error("Failed to create a zone key (out of memory).");
+		return false;
+	}
+
+	key->key = dnskey;
+	if (timing) {
+		key->timing = *timing;
+	}
+
+	dnssec_list_t *keys = dnssec_kasp_zone_get_keys(zone);
+	dnssec_list_append(keys, key);
+
+	return true;
 }
 
 /* -- actions implementation ----------------------------------------------- */
@@ -517,12 +537,10 @@ static int cmd_zone_key_generate(int argc, char *argv[])
 
 	// add DNSKEY into zone keys
 
-	dnssec_kasp_key_t *kasp_key = calloc(1, sizeof(*kasp_key));
-	kasp_key->key = dnskey;
-	kasp_key->timing = config.timing;
-
-	dnssec_list_t *zone_keys = dnssec_kasp_zone_get_keys(zone);
-	dnssec_list_append(zone_keys, kasp_key);
+	if (!zone_add_dnskey(zone, dnskey, &config.timing)) {
+		free(dnskey);
+		return 1;
+	}
 
 	r = dnssec_kasp_zone_save(kasp, zone);
 	if (r != DNSSEC_EOK) {
