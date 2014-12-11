@@ -396,7 +396,7 @@ int journal_write_in(journal_t *j, journal_node_t **rn, uint64_t id, size_t len)
 	uint16_t visit_count = 0;
 
 	/* Evict occupied nodes if necessary. */
-	while (j->free.len < len) {
+	while (j->free.len < len || jnode_next(j, j->qtail) == j->qhead) {
 
 		/* Increase free segment if on the end of file. */
 		bool is_empty = (j->qtail == j->qhead);
@@ -407,7 +407,7 @@ int journal_write_in(journal_t *j, journal_node_t **rn, uint64_t id, size_t len)
 			dbg_journal_verb("journal: * is last node\n");
 
 			/* Grow journal file until the size limit. */
-			if(j->free.pos + len < j->fslimit) {
+			if(j->free.pos + len < j->fslimit  && jnode_next(j, j->qtail) != j->qhead) {
 				size_t diff = len - j->free.len;
 				dbg_journal("journal: * growing by +%zu, pos=%u, "
 				            "new fsize=%zu\n",
@@ -421,7 +421,7 @@ int journal_write_in(journal_t *j, journal_node_t **rn, uint64_t id, size_t len)
 				/*  Rewind if resize is needed, but the limit is reached. */
 				j->free.pos = jnode_base_pos(j->max_nodes);
 				j->free.len = head->pos - j->free.pos;
-				dbg_journal_verb("journal: * fslimit reached, "
+				dbg_journal_verb("journal: * fslimit/nodelimit reached, "
 				                 "rewinding to %u\n",
 				                 head->pos);
 			}
@@ -483,19 +483,9 @@ int journal_write_out(journal_t *journal, journal_node_t *n)
 	n->flags = JOURNAL_VALID | journal->bflags;
 	journal_update(journal, n);
 
-	/* Handle free segment on node rotation. */
-	if (journal->qtail > jnext && journal->fslimit == FSLIMIT_INF) {
-
-		/* Rewind free segment. */
-		journal_node_t *n = journal->nodes + jnext;
-		journal->free.pos = n->pos;
-		journal->free.len = 0;
-
-	} else {
-		/* Mark used space. */
-		journal->free.pos += size;
-		journal->free.len -= size;
-	}
+	/* Mark used space. */
+	journal->free.pos += size;
+	journal->free.len -= size;
 
 	dbg_journal("journal: finishing node=%u id=%llu flags=0x%x, "
 	            "data=<%u, %u> free=<%u, %u>\n",
