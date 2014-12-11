@@ -684,20 +684,6 @@ int ixfr_process_answer(knot_pkt_t *pkt, struct answer_data *adata)
 		return KNOT_NS_PROC_FAIL;
 	}
 
-	if (check_format(pkt) != KNOT_EOK) {
-		IXFRIN_LOG(LOG_WARNING, "malformed response");
-		return KNOT_NS_PROC_FAIL;
-	}
-	
-	if (adata->ext == NULL) {
-		/* Check for AXFR-style IXFR. */
-		if (ixfr_is_axfr(pkt)) {
-			IXFRIN_LOG(LOG_NOTICE, "receiving AXFR-style IXFR");
-			adata->response_type = KNOT_RESPONSE_AXFR;
-			return axfr_answer_process(pkt, adata);
-		}
-	}
-	
 	/* Check RCODE. */
 	uint8_t rcode = knot_wire_get_rcode(pkt->wire);
 	if (rcode != KNOT_RCODE_NOERROR) {
@@ -708,8 +694,20 @@ int ixfr_process_answer(knot_pkt_t *pkt, struct answer_data *adata)
 		return KNOT_NS_PROC_FAIL;
 	}
 	
-	/* Initialize processing with first packet. */
 	if (adata->ext == NULL) {
+		if (check_format(pkt) != KNOT_EOK) {
+			IXFRIN_LOG(LOG_WARNING, "malformed response");
+			return KNOT_NS_PROC_FAIL;
+		}
+
+		/* Check for AXFR-style IXFR. */
+		if (ixfr_is_axfr(pkt)) {
+			IXFRIN_LOG(LOG_NOTICE, "receiving AXFR-style IXFR");
+			adata->response_type = KNOT_RESPONSE_AXFR;
+			return axfr_answer_process(pkt, adata);
+		}
+	
+		/* Initialize processing with first packet. */
 		NS_NEED_TSIG_SIGNED(&adata->param->tsig_ctx, 0);
 		if (!zone_transfer_needed(adata->param->zone, pkt)) {
 			if (knot_pkt_section(pkt, KNOT_ANSWER)->count > 1) {
