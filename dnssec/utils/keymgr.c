@@ -29,6 +29,7 @@
 #include "cmdparse/command.h"
 #include "cmdparse/parameter.h"
 #include "cmdparse/value.h"
+#include "legacy/key.h"
 #include "print.h"
 #include "shared.h"
 
@@ -633,10 +634,74 @@ static int cmd_zone_key_set(int argc, char *argv[])
 	return 0;
 }
 
+/*
+ * keymgr zone key import <zone> <bind-keyfile>
+ */
 static int cmd_zone_key_import(int argc, char *argv[])
 {
-	error("Not implemented.");
-	return 1;
+	if (argc != 2) {
+		error("Zone name and input file required.");
+		return 1;
+	}
+
+	char *zone_name = argv[0];
+	char *input_file = argv[1];
+
+	_cleanup_kasp_ dnssec_kasp_t *kasp = get_kasp();
+	if (!kasp) {
+		return 1;
+	}
+
+	_cleanup_zone_ dnssec_kasp_zone_t *zone = get_zone(kasp, zone_name);
+	if (!zone) {
+		return 1;
+	}
+
+	// parse the key
+
+	dnssec_key_t *key = NULL;
+	_cleanup_binary_ dnssec_binary_t pem = { 0 };
+
+	int r = legacy_key_parse(input_file, &key, &pem);
+	if (r != DNSSEC_EOK) {
+		error("Failed to parse the input key (%s).", dnssec_strerror(r));
+		return 1;
+	}
+
+	// store private key
+
+	_cleanup_keystore_ dnssec_keystore_t *store = get_keystore();
+	if (!store) {
+		dnssec_key_free(key);
+		return 1;
+	}
+
+#warning Keystore import not implemented.
+
+	r = DNSSEC_NOT_IMPLEMENTED_ERROR;
+	if (r != DNSSEC_EOK) {
+		error("Failed to import private key (%s).", dnssec_strerror(r));
+		dnssec_key_free(key);
+		return 1;
+	}
+
+#warning No way to set timing.
+
+	if (!zone_add_dnskey(zone, key, NULL)) {
+		dnssec_keystore_remove_key(store, dnssec_key_get_id(key));
+		dnssec_key_free(key);
+		return 1;
+	}
+
+	r = dnssec_kasp_zone_save(kasp, zone);
+	if (r != DNSSEC_EOK) {
+		error("Failed to save updated zone (%s).", dnssec_strerror(r));
+		dnssec_keystore_remove_key(store, dnssec_key_get_id(key));
+		dnssec_key_free(key);
+		return 1;
+	}
+
+	return 0;
 }
 
 static int cmd_zone_key(int argc, char *argv[])
