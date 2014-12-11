@@ -21,6 +21,7 @@
 #include <string.h>
 #include <unistd.h>
 
+#include <dnssec/crypto.h>
 #include <dnssec/error.h>
 #include <dnssec/kasp.h>
 #include <dnssec/keystore.h>
@@ -723,9 +724,13 @@ int main(int argc, char *argv[])
 		{ NULL }
 	};
 
+	dnssec_crypto_init();
+
 	exit_code = subcommand(commands, argc - optind, argv + optind);
 
 failed:
+	dnssec_crypto_cleanup();
+
 	free(global.kasp_dir);
 	free(global.keystore_dir);
 
