@@ -425,7 +425,10 @@ int journal_write_in(journal_t *j, journal_node_t **rn, uint64_t id, size_t len)
 			} else {
 				/*  Rewind if resize is needed, but the limit is reached. */
 				j->free.pos = jnode_base_pos(j->max_nodes);
-				j->free.len = head->pos - j->free.pos;
+				j->free.len = 0;
+				if (!is_empty) {
+					j->free.len = head->pos - j->free.pos;
+				}
 				dbg_journal_verb("journal: * fslimit/nodelimit reached, "
 				                 "rewinding to %u\n",
 				                 head->pos);
