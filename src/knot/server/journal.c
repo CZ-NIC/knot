@@ -41,6 +41,9 @@
 /*! \brief Previous node. */
 #define jnode_prev(j, i) (((i) == 0) ? (j)->max_nodes - 1 : (i) - 1)
 
+/*! \bref Starting node data position. */
+#define jnode_base_pos(max_nodes) (JOURNAL_HSIZE + (max_nodes + 1) * sizeof(journal_node_t))
+
 typedef uint32_t crc_t;
 static const crc_t CRC_PLACEHOLDER = 0;
 
@@ -167,7 +170,7 @@ static int journal_create_file(const char *fn, uint16_t max_nodes)
 	memset(&jn, 0, sizeof(journal_node_t));
 	jn.id = 0;
 	jn.flags = JOURNAL_VALID;
-	jn.pos = JOURNAL_HSIZE + (max_nodes + 1) * sizeof(journal_node_t);
+	jn.pos = jnode_base_pos(max_nodes);
 	jn.len = 0;
 	if (!sfwrite(&jn, sizeof(journal_node_t), fd)) {
 		close(fd);
@@ -424,8 +427,8 @@ int journal_write_in(journal_t *j, journal_node_t **rn, uint64_t id, size_t len)
 		} else {
 			/*  Rewind if resize is needed, but the limit is reached. */
 			journal_node_t *head = j->nodes + j->qhead;
-			j->free.pos = head->pos;
-			j->free.len = 0;
+			j->free.pos = jnode_base_pos(j->max_nodes);
+			j->free.len = head->pos - j->free.pos;
 			dbg_journal_verb("journal: * fslimit reached, "
 			                 "rewinding to %u\n",
 			                 head->pos);
