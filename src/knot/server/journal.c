@@ -276,6 +276,13 @@ static int journal_open_file(journal_t *j)
 		goto open_file_error;
 	}
 
+	/* Check minimum fsize limit. */
+	size_t fslimit_min = jnode_base_pos(j->max_nodes) + 1024; /* At least 1K block */
+	if (j->fslimit < fslimit_min) {
+		log_error("journal '%s', filesize limit smaller than '%zu'", j->path, fslimit_min);
+		goto open_file_error;
+	}
+
 	/* Allocate nodes. */
 	const size_t node_len = sizeof(journal_node_t);
 	j->nodes = malloc(j->max_nodes * node_len);
