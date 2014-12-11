@@ -41,7 +41,11 @@ static void discard_zone(zone_t *zone)
 {
 	/* Flush bootstrapped zones. */
 	if (zone->zonefile_mtime == 0) {
+
+		pthread_mutex_lock(&zone->journal_lock);
 		zone_flush_journal(zone);
+		pthread_mutex_unlock(&zone->journal_lock);
+
 	}
 	zone_free(&zone);
 }
