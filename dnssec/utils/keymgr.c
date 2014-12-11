@@ -128,6 +128,12 @@ static bool zone_add_dnskey(dnssec_kasp_zone_t *zone, dnssec_key_t *dnskey,
 	return true;
 }
 
+static void print_key(const dnssec_key_t *key)
+{
+	printf("id %s keytag %d\n", dnssec_key_get_id(key), dnssec_key_get_keytag(key));
+}
+
+
 /* -- actions implementation ----------------------------------------------- */
 
 /*
@@ -349,10 +355,7 @@ static int cmd_zone_key_list(int argc, char *argv[])
 	dnssec_list_t *zone_keys = dnssec_kasp_zone_get_keys(zone);
 	dnssec_list_foreach(item, zone_keys) {
 		const dnssec_kasp_key_t *key = dnssec_item_get(item);
-		const dnssec_key_t *dnskey = key->key;
-
-		printf("id %s keytag %d\n", dnssec_key_get_id(dnskey),
-					    dnssec_key_get_keytag(dnskey));
+		print_key(key->key);
 	}
 
 	return 0;
@@ -550,7 +553,7 @@ static int cmd_zone_key_generate(int argc, char *argv[])
 		return 1;
 	}
 
-	printf("id %s keytag %d\n", keyid, dnssec_key_get_keytag(dnskey));
+	print_key(dnskey);
 
 	return 0;
 }
