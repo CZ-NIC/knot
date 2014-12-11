@@ -21,6 +21,10 @@ serial = master.zone_wait(zone)
 master.update_zonefile(zone, version=1)
 master.reload()
 master.zone_wait(zone, serial)
+
+# check that master properly sends AXFR-style IXFR
+t.check_axfr_style_ixfr(master, "xfr", serial)
+
 serial = slave.zone_wait(zone, serial)
 
 t.xfr_diff(master, slave, zone)
@@ -40,6 +44,10 @@ os.remove(filename)
 master.reload()
 master.zone_wait(zone, serial)
 slave.zone_wait(zone, serial)
+
+# check that master properly sends AXFR-style IXFR again
+t.check_axfr_style_ixfr(master, "xfr", serial)
+
 t.xfr_diff(master, slave, zone)
 
 t.stop()
