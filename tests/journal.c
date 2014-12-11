@@ -41,6 +41,7 @@ static void test_fillup(journal_t *journal, size_t fsize, unsigned iter, size_t 
 	int ret = KNOT_EOK;
 	char *mptr = NULL;
 	char *large_entry = malloc(chunk_size);
+	randstr(large_entry, chunk_size);
 	assert(large_entry);
 
 	unsigned i = 0;
@@ -48,7 +49,6 @@ static void test_fillup(journal_t *journal, size_t fsize, unsigned iter, size_t 
 	for (; i < 2 * JOURNAL_NCOUNT; ++i) {
 		uint64_t chk_key = 0xBEBE + i;
 		size_t entry_len = chunk_size/2 + rand() % (chunk_size/2);
-		randstr(large_entry, entry_len);
 
 		/* Write */
 		ret = journal_map(journal, chk_key, &mptr, entry_len, false);
@@ -182,8 +182,9 @@ int main(int argc, char *argv[])
 	ok(ret != KNOT_EOK, "journal: overfill");
 
 	/* Fillup */
-	size_t sizes[] = {16, 64, 1024, 4096, 512 * 1024, 1024 * 1024, 1024, 64, 16};
-	for (unsigned i = 0; i < sizeof(sizes)/sizeof(size_t); ++i) {
+	size_t sizes[] = {16, 64, 1024, 4096, 512 * 1024, 1024 * 1024 };
+	const int num_sizes = sizeof(sizes)/sizeof(size_t);
+	for (unsigned i = 0; i < 2 * num_sizes; ++i) {
 		/* Journal flush. */
 		journal_close(journal);
 		ret = journal_mark_synced(jfilename);
@@ -191,7 +192,7 @@ int main(int argc, char *argv[])
 		journal = journal_open(jfilename, fsize);
 		ok(journal != NULL, "journal: reopen after flush #%u", i);
 		/* Journal fillup. */
-		test_fillup(journal, fsize, i, sizes[i]);
+		test_fillup(journal, fsize, i, sizes[i % num_sizes]);
 	}
 	
 	
