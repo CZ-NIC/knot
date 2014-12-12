@@ -299,8 +299,12 @@ int main(int argc, char *argv[])
 	close(tmp_fd);
 	remove(jfilename);
 
+	/* Try to open journal with too small fsize. */
+	journal_t *journal = journal_open(jfilename, 1024);
+	ok(journal == NULL, "journal: open too small");
+
 	/* Open/create new journal. */
-	journal_t *journal = journal_open(jfilename, fsize);
+	journal = journal_open(jfilename, fsize);
 	ok(journal != NULL, "journal: open journal '%s'", jfilename);
 	if (journal == NULL) {
 		goto skip_all;
