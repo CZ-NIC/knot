@@ -1,3 +1,16 @@
+Knot DNS 1.6.1 (2014-12-13)
+===========================
+
+Bugfixes:
+---------
+ - Journal file would sometimes outgrow its limit (ixfr-fslimit in configuration)
+ - Fixed incompatibility with OpenSSL 0.9.8
+ - Proper handling when hostname cannot be retreived (for NSID and CH)
+
+Features:
+---------
+ - DNSSEC Single Type Signing Scheme is now supported
+
 Knot DNS 1.6.0 (2014-10-23)
 ===========================
 
