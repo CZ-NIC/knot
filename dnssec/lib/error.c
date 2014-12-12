@@ -62,7 +62,7 @@ const error_message_t ERROR_MESSAGES[] = {
 	{ 0 }
 };
 
-const char *FALLBACK_ERROR_MESSAGE = "Unknown error.";
+const char *FALLBACK_ERROR_MESSAGE = "Unknown error";
 
 _public_
 const char *dnssec_strerror(int error)
