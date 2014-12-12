@@ -19,6 +19,7 @@
 #include <gnutls/gnutls.h>
 #include <gnutls/abstract.h>
 
+#include "binary.h"
 #include "key.h"
 #include "keystore.h"
 #include "list.h"
@@ -35,6 +36,7 @@ typedef struct keystore_functions {
 	int (*list_keys)(void *ctx, dnssec_list_t **list);
 	int (*generate_key)(void *ctx, gnutls_pk_algorithm_t algorithm,
 			    unsigned bits, char **id_ptr);
+	int (*import_key)(void *ctx, const dnssec_binary_t *pem, char **id_ptr);
 	int (*remove_key)(void *ctx, const char *id);
 	// private key access
 	int (*get_private)(void *ctx, const char *id, gnutls_privkey_t *key_ptr);

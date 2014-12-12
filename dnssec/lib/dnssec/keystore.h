@@ -263,6 +263,18 @@ int dnssec_keystore_generate_key(dnssec_keystore_t *store,
 				 unsigned bits, char **id_ptr);
 
 /*!
+ * Import an existing key into the key store.
+ *
+ * \param[in]  store   Key store.
+ * \param[in]  pem     Private key material in PEM format.
+ * \param[out] id_ptr  ID of the imported key. Must be freed by the caller.
+ *
+ * \return Error code, DNSSEC_EOK if successful.
+ */
+int dnssec_keystore_import(dnssec_keystore_t *store, const dnssec_binary_t *pem,
+			   char **id_ptr);
+
+/*!
  * Remove a private key from the key store.
  *
  * \param store  Key store.

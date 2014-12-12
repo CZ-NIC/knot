@@ -136,6 +136,17 @@ int dnssec_keystore_generate_key(dnssec_keystore_t *store,
 }
 
 _public_
+int dnssec_keystore_import(dnssec_keystore_t *store, const dnssec_binary_t *pem,
+			   char **id_ptr)
+{
+	if (!store || !pem || !id_ptr) {
+		return DNSSEC_EINVAL;
+	}
+
+	return store->functions->import_key(store->ctx, pem, id_ptr);
+}
+
+_public_
 int dnssec_keystore_remove_key(dnssec_keystore_t *store, const char *key_id)
 {
 	if (!store || !key_id) {
