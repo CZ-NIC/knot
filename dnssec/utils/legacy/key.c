@@ -22,6 +22,7 @@
 
 #include "dnssec/binary.h"
 #include "dnssec/error.h"
+#include "dnssec/kasp.h"
 #include "legacy/key.h"
 #include "legacy/privkey.h"
 #include "legacy/pubkey.h"
@@ -147,6 +148,16 @@ static int params_to_pem(dnssec_key_t *key, legacy_privkey_t *params, dnssec_bin
 	}
 }
 
+static void params_to_timing(legacy_privkey_t *params, dnssec_kasp_key_timing_t *timing)
+{
+	// unsupported: time_created, time_revoke
+
+	timing->publish = params->time_publish;
+	timing->active  = params->time_activate;
+	timing->retire  = params->time_inactive;
+	timing->remove  = params->time_delete;
+}
+
 /*!
  * \brief Extract private and public key file names from input filename.
  *
@@ -190,9 +201,13 @@ static int get_key_names(const char *input, char **public_ptr, char **private_pt
 	return DNSSEC_EOK;
 }
 
-int legacy_key_parse(const char *filename, dnssec_key_t **key_ptr, dnssec_binary_t *pem_ptr)
+/*!
+ * Parse legacy key files and get public key, private key, and key timing.
+ */
+int legacy_key_parse(const char *filename, dnssec_key_t **key_ptr,
+		     dnssec_binary_t *pem_ptr, dnssec_kasp_key_timing_t *timing)
 {
-	if (!filename) {
+	if (!filename || !key_ptr || !pem_ptr || !timing) {
 		return DNSSEC_EINVAL;
 	}
 
@@ -225,6 +240,7 @@ int legacy_key_parse(const char *filename, dnssec_key_t **key_ptr, dnssec_binary
 
 	*key_ptr = key;
 	*pem_ptr = pem;
+	params_to_timing(&params, timing);
 
 	return DNSSEC_EOK;
 }

@@ -661,8 +661,9 @@ static int cmd_zone_key_import(int argc, char *argv[])
 
 	dnssec_key_t *key = NULL;
 	_cleanup_binary_ dnssec_binary_t pem = { 0 };
+	dnssec_kasp_key_timing_t timing = { 0 };
 
-	int r = legacy_key_parse(input_file, &key, &pem);
+	int r = legacy_key_parse(input_file, &key, &pem, &timing);
 	if (r != DNSSEC_EOK) {
 		error("Failed to parse the input key (%s).", dnssec_strerror(r));
 		return 1;
@@ -676,19 +677,16 @@ static int cmd_zone_key_import(int argc, char *argv[])
 		return 1;
 	}
 
-#warning Keystore import not implemented.
-
-	r = DNSSEC_NOT_IMPLEMENTED_ERROR;
+	_cleanup_free_ char *keyid = NULL;
+	r = dnssec_keystore_import(store, &pem, &keyid);
 	if (r != DNSSEC_EOK) {
 		error("Failed to import private key (%s).", dnssec_strerror(r));
 		dnssec_key_free(key);
 		return 1;
 	}
 
-#warning No way to set timing.
-
-	if (!zone_add_dnskey(zone, key, NULL)) {
-		dnssec_keystore_remove_key(store, dnssec_key_get_id(key));
+	if (!zone_add_dnskey(zone, key, &timing)) {
+		dnssec_keystore_remove_key(store, keyid);
 		dnssec_key_free(key);
 		return 1;
 	}
@@ -696,10 +694,12 @@ static int cmd_zone_key_import(int argc, char *argv[])
 	r = dnssec_kasp_zone_save(kasp, zone);
 	if (r != DNSSEC_EOK) {
 		error("Failed to save updated zone (%s).", dnssec_strerror(r));
-		dnssec_keystore_remove_key(store, dnssec_key_get_id(key));
+		dnssec_keystore_remove_key(store, keyid);
 		dnssec_key_free(key);
 		return 1;
 	}
+
+	print_key(key);
 
 	return 0;
 }

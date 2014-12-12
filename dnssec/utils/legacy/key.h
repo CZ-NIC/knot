@@ -16,16 +16,19 @@
 
 #pragma once
 
-#include <dnssec/key.h>
-#include <dnssec/binary.h>
+#include "dnssec/binary.h"
+#include "dnssec/kasp.h"
+#include "dnssec/key.h"
 
 /*!
- * Parse legacy key files and get a DNSKEY and private key in PEM.
+ * Parse legacy key files and get public key, private key, and key timing.
  *
  * \param[in]  filename  File name of private key, public key, or without extension.
  * \param[out] key       Resulting DNSKEY.
- * \param[out] pem       Private key material in PEM format.
+ * \param[out] pem       Resulting private key material in PEM format.
+ * \param[out] timing    Resulting key timing.
  *
  * \return Error code, DNSSEC_EOK if successful.
  */
-int legacy_key_parse(const char *filename, dnssec_key_t **key, dnssec_binary_t *pem);
+int legacy_key_parse(const char *filename, dnssec_key_t **key,
+		     dnssec_binary_t *pem, dnssec_kasp_key_timing_t *timing);
