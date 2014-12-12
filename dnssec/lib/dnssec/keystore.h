@@ -184,7 +184,7 @@ typedef struct dnssec_keystore_pkcs8_functions {
  *
  * \param[out] store  Opened key store.
  *
- * \return Error code, KNOT_EOK if successful.
+ * \return Error code, DNSSEC_EOK if successful.
  */
 int dnssec_keystore_init_pkcs8_dir(dnssec_keystore_t **store);
 
@@ -194,7 +194,7 @@ int dnssec_keystore_init_pkcs8_dir(dnssec_keystore_t **store);
  * \param[out] store   Opened key store.
  * \param[in]  impl    Implementation of the key store provider.
  *
- * \return Error code, KNOT_EOK if successful.
+ * \return Error code, DNSSEC_EOK if successful.
  */
 int dnssec_keystore_init_pkcs8_custom(dnssec_keystore_t **store,
 				      const dnssec_keystore_pkcs8_functions_t *impl);
@@ -206,7 +206,7 @@ int dnssec_keystore_init_pkcs8_custom(dnssec_keystore_t **store,
  *
  * \param[out]  store   Opened key store.
  *
- * \return Error code, KNOT_EOK if successful.
+ * \return Error code, DNSSEC_EOK if successful.
  */
 int dnssec_keystore_init_pkcs11(dnssec_keystore_t **store);
 
@@ -232,7 +232,7 @@ int dnssec_keystore_open(dnssec_keystore_t *store, const char *config);
  *
  * \param store  Key store to be closed.
  *
- * \return Error code, KNOT_EOK if successful.
+ * \return Error code, DNSSEC_EOK if successful.
  */
 int dnssec_keystore_close(dnssec_keystore_t *store);
 
@@ -244,7 +244,7 @@ int dnssec_keystore_close(dnssec_keystore_t *store);
  * \param[in]  store  Key store.
  * \param[out] list   Resulting list of key IDs.
  *
- * \return Error code, KNOT_EOK if successful.
+ * \return Error code, DNSSEC_EOK if successful.
  */
 int dnssec_keystore_list_keys(dnssec_keystore_t *store, dnssec_list_t **list);
 
@@ -256,7 +256,7 @@ int dnssec_keystore_list_keys(dnssec_keystore_t *store, dnssec_list_t **list);
  * \param[in]  bits       Bit length of the key to be generated.
  * \param[out] id_ptr     ID of the generated key. Must be freed by the caller.
  *
- * \return Error code, KNOT_EOK if successful.
+ * \return Error code, DNSSEC_EOK if successful.
  */
 int dnssec_keystore_generate_key(dnssec_keystore_t *store,
 				 dnssec_key_algorithm_t algorithm,
@@ -268,7 +268,7 @@ int dnssec_keystore_generate_key(dnssec_keystore_t *store,
  * \param store  Key store.
  * \param id     ID of the private key to be deleted.
  *
- * \return Error code, KNOT_EOK if successful.
+ * \return Error code, DNSSEC_EOK if successful.
  */
 int dnssec_keystore_remove_key(dnssec_keystore_t *store, const char *id);
 
@@ -280,7 +280,7 @@ int dnssec_keystore_remove_key(dnssec_keystore_t *store, const char *id);
  * \param id         ID of the key.
  * \param algorithm  Algorithm of the key.
  *
- * \return Error code, KNOT_EOK if successful.
+ * \return Error code, DNSSEC_EOK if successful.
  */
 int dnssec_key_import_keystore(dnssec_key_t *key, dnssec_keystore_t *keystore,
 			       const char *id, dnssec_key_algorithm_t algorithm);
