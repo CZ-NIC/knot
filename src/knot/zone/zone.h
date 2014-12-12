@@ -61,6 +61,9 @@ typedef struct zone_t
 	pthread_mutex_t ddns_lock;
 	size_t ddns_queue_size;
 	list_t ddns_queue;
+	
+	/*! \brief Journal access lock. */
+	pthread_mutex_t journal_lock;
 
 	/*! \brief Zone events. */
 	zone_events_t events;     /*!< Zone events timers. */

@@ -97,7 +97,11 @@ int zone_load_journal(zone_t *zone, zone_contents_t *contents)
 	/*! \todo Check what should be the upper bound. */
 	list_t chgs;
 	init_list(&chgs);
+
+	pthread_mutex_lock(&zone->journal_lock);
 	int ret = journal_load_changesets(zone, &chgs, serial, serial - 1);
+	pthread_mutex_unlock(&zone->journal_lock);
+
 	if ((ret != KNOT_EOK && ret != KNOT_ERANGE) || EMPTY_LIST(chgs)) {
 		changesets_free(&chgs);
 		/* Absence of records is not an error. */
