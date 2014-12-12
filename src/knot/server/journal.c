@@ -32,9 +32,6 @@
 /*! \brief Infinite file size limit. */
 #define FSLIMIT_INF (~((size_t)0))
 
-/*! \brief Node classification macros. */
-#define jnode_flags(j, i) ((j)->nodes[(i)].flags)
-
 /*! \brief Next node. */
 #define jnode_next(j, i) (((i) + 1) % (j)->max_nodes)
 
@@ -55,10 +52,6 @@ static inline int sfread(void *dst, size_t len, int fd)
 static inline int sfwrite(const void *src, size_t len, int fd)
 {
 	return write(fd, src, len) == len;
-}
-
-static inline journal_node_t *journal_end(journal_t *journal) {
-	return journal->nodes +  journal->qtail;
 }
 
 /*! \brief Equality compare function. */
