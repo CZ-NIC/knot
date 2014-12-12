@@ -43,8 +43,7 @@
 /*! \bref Starting node data position. */
 #define jnode_base_pos(max_nodes) (JOURNAL_HSIZE + (max_nodes + 1) * sizeof(journal_node_t))
 
-typedef uint32_t crc_t;
-static const crc_t CRC_PLACEHOLDER = 0;
+static const uint32_t CRC_PLACEHOLDER = 0;
 
 static inline int sfread(void *dst, size_t len, int fd)
 {
@@ -245,7 +244,7 @@ static int journal_open_file(journal_t *j)
 	}
 
 	/* Skip CRC */
-	if (lseek(j->fd, MAGIC_LENGTH + sizeof(crc_t), SEEK_SET) < 0) {
+	if (lseek(j->fd, MAGIC_LENGTH + sizeof(CRC_PLACEHOLDER), SEEK_SET) < 0) {
 		goto open_file_error;
 	}
 
