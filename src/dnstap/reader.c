@@ -19,6 +19,7 @@
 #include <stdlib.h>                     // calloc, free
 #include <string.h>                     // strdup
 
+#include "common/macros.h"
 #include "libknot/errcode.h"
 
 #include "dnstap/dnstap.h"

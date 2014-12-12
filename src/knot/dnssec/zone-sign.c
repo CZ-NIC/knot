@@ -809,9 +809,6 @@ static int add_missing_dnskeys(const knot_rrset_t *soa,
 			continue;
 		}
 
-		dbg_dnssec_detail("adding DNSKEY with tag %d\n",
-		                  key->key.keytag);
-
 		if (knot_rrset_empty(&to_add)) {
 			to_add = create_dnskey_rrset_from_soa(soa);
 		}
