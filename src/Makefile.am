@@ -64,7 +64,6 @@ knsec3hash_SOURCES =				\
 libknots_la_SOURCES =				\
 	common-knot/array-sort.h		\
 	common-knot/binsearch.h			\
-	common-knot/crc.h			\
 	common-knot/evsched.c			\
 	common-knot/evsched.h			\
 	common-knot/fdset.c			\

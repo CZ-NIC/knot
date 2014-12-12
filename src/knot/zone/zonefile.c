@@ -26,7 +26,6 @@
 #include <unistd.h>
 #include <inttypes.h>
 
-#include "common-knot/crc.h"
 #include "common-knot/strlcat.h"
 #include "common-knot/strlcpy.h"
 #include "libknot/common.h"

@@ -24,7 +24,6 @@
 #include <sys/mman.h>
 #include <assert.h>
 
-#include "common-knot/crc.h"
 #include "libknot/common.h"
 #include "knot/other/debug.h"
 #include "knot/server/journal.h"
