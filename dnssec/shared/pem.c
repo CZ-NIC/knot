@@ -38,8 +38,7 @@ int pem_to_privkey(const dnssec_binary_t *data, gnutls_privkey_t *key, char **id
 	assert(key);
 	assert(id_ptr);
 
-	gnutls_datum_t pem;
-	binary_to_datum(data, &pem);
+	gnutls_datum_t pem = binary_to_datum(data);
 
 	// create X.509 private key
 

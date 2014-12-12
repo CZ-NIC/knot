@@ -469,8 +469,7 @@ int dnssec_sign_write(dnssec_sign_ctx_t *ctx, dnssec_binary_t *signature)
 		return DNSSEC_SIGN_ERROR;
 	}
 
-	dnssec_binary_t bin_raw = { 0 };
-	datum_to_binary(&raw, &bin_raw);
+	dnssec_binary_t bin_raw = datum_to_binary(&raw);
 
 	return ctx->functions->x509_to_dnssec(ctx, &bin_raw, signature);
 }
@@ -498,9 +497,7 @@ int dnssec_sign_verify(dnssec_sign_ctx_t *ctx, const dnssec_binary_t *signature)
 		return result;
 	}
 
-	gnutls_datum_t raw = { 0 };
-	binary_to_datum(&bin_raw, &raw);
-
+	gnutls_datum_t raw = binary_to_datum(&bin_raw);
 	gnutls_sign_algorithm_t algorithm = get_sign_algorithm(ctx);
 
 	assert(ctx->key->public_key);

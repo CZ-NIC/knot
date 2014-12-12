@@ -40,10 +40,9 @@ static void trim_leading_zeros(gnutls_datum_t *data)
 {
 	assert(data);
 
-	dnssec_binary_t tmp = { 0 };
-	datum_to_binary(data, &tmp);
+	dnssec_binary_t tmp = datum_to_binary(data);
 	dnssec_binary_ltrim(&tmp);
-	binary_to_datum(&tmp, data);
+	*data = binary_to_datum(&tmp);
 }
 
 /* -- DNSSEC to crypto ------------------------------------------------------*/

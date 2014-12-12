@@ -107,22 +107,14 @@ static inline void free_gnutls_hash_ptr(gnutls_hash_hd_t *ptr)
 
 /* -- crypto helpers ------------------------------------------------------- */
 
-static inline void binary_to_datum(const dnssec_binary_t *binary,
-				   gnutls_datum_t *datum)
+static inline gnutls_datum_t binary_to_datum(const dnssec_binary_t *from)
 {
-	assert(binary);
-	assert(datum);
-
-	datum->data = binary->data;
-	datum->size = binary->size;
+	gnutls_datum_t to = { .size = from->size, .data = from->data };
+	return to;
 }
 
-static inline void datum_to_binary(const gnutls_datum_t *datum,
-				   dnssec_binary_t *binary)
+static inline dnssec_binary_t datum_to_binary(const gnutls_datum_t *from)
 {
-	assert(datum);
-	assert(binary);
-
-	binary->data = datum->data;
-	binary->size = datum->size;
+	dnssec_binary_t to = { .size = from->size, .data = from->data };
+	return to;
 }

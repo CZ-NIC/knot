@@ -28,12 +28,6 @@
 #include "pem.h"
 #include "shared.h"
 
-static gnutls_datum_t binary2datum(const dnssec_binary_t *from)
-{
-	gnutls_datum_t to = { .size = from->size, .data = from->data };
-	return to;
-}
-
 static int rsa_params_to_pem(const legacy_privkey_t *params, dnssec_binary_t *pem)
 {
 	_cleanup_x509_privkey_ gnutls_x509_privkey_t key = NULL;
@@ -42,12 +36,12 @@ static int rsa_params_to_pem(const legacy_privkey_t *params, dnssec_binary_t *pe
 		return DNSSEC_ENOMEM;
 	}
 
-	gnutls_datum_t m = binary2datum(&params->modulus);
-	gnutls_datum_t e = binary2datum(&params->public_exponent);
-	gnutls_datum_t d = binary2datum(&params->private_exponent);
-	gnutls_datum_t p = binary2datum(&params->prime_one);
-	gnutls_datum_t q = binary2datum(&params->prime_two);
-	gnutls_datum_t u = binary2datum(&params->coefficient);
+	gnutls_datum_t m = binary_to_datum(&params->modulus);
+	gnutls_datum_t e = binary_to_datum(&params->public_exponent);
+	gnutls_datum_t d = binary_to_datum(&params->private_exponent);
+	gnutls_datum_t p = binary_to_datum(&params->prime_one);
+	gnutls_datum_t q = binary_to_datum(&params->prime_two);
+	gnutls_datum_t u = binary_to_datum(&params->coefficient);
 
 	result = gnutls_x509_privkey_import_rsa_raw(key, &m, &e, &d, &p, &q, &u);
 	if (result != GNUTLS_E_SUCCESS) {
@@ -65,11 +59,11 @@ static int dsa_params_to_pem(const legacy_privkey_t *params, dnssec_binary_t *pe
 		return DNSSEC_ENOMEM;
 	}
 
-	gnutls_datum_t p = binary2datum(&params->prime);
-	gnutls_datum_t q = binary2datum(&params->subprime);
-	gnutls_datum_t g = binary2datum(&params->base);
-	gnutls_datum_t x = binary2datum(&params->private_value);
-	gnutls_datum_t y = binary2datum(&params->public_value);
+	gnutls_datum_t p = binary_to_datum(&params->prime);
+	gnutls_datum_t q = binary_to_datum(&params->subprime);
+	gnutls_datum_t g = binary_to_datum(&params->base);
+	gnutls_datum_t x = binary_to_datum(&params->private_value);
+	gnutls_datum_t y = binary_to_datum(&params->public_value);
 
 	result = gnutls_x509_privkey_import_dsa_raw(key, &p, &q, &g, &y, &x);
 	if (result != DNSSEC_EOK) {
@@ -121,7 +115,7 @@ static int ecdsa_params_to_pem(dnssec_key_t *dnskey, const legacy_privkey_t *par
 	gnutls_datum_t y = { 0 };
 	ecdsa_extract_public_params(dnskey, &curve, &x, &y);
 
-	gnutls_datum_t k = binary2datum(&params->private_key);
+	gnutls_datum_t k = binary_to_datum(&params->private_key);
 
 	result = gnutls_x509_privkey_import_ecc_raw(key, curve, &x, &y, &k);
 	if (result != DNSSEC_EOK) {
