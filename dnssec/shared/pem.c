@@ -27,6 +27,31 @@
 #include "pem.h"
 #include "shared.h"
 
+
+static int pem_to_x509(const dnssec_binary_t *data, gnutls_x509_privkey_t *key_ptr)
+{
+	assert(data);
+
+	gnutls_datum_t pem = binary_to_datum(data);
+
+	gnutls_x509_privkey_t key = NULL;
+	int r = gnutls_x509_privkey_init(&key);
+	if (r != GNUTLS_E_SUCCESS) {
+		return DNSSEC_ENOMEM;
+	}
+
+	int format = GNUTLS_X509_FMT_PEM;
+	r = gnutls_x509_privkey_import_pkcs8(key, &pem, format, NULL, 0);
+	if (r != GNUTLS_E_SUCCESS) {
+		gnutls_x509_privkey_deinit(key);
+		return DNSSEC_PKCS8_IMPORT_ERROR;
+	}
+
+	*key_ptr = key;
+
+	return DNSSEC_EOK;
+}
+
 /* -- internal API --------------------------------------------------------- */
 
 /*!
@@ -38,24 +63,13 @@ int pem_to_privkey(const dnssec_binary_t *data, gnutls_privkey_t *key, char **id
 	assert(key);
 	assert(id_ptr);
 
-	gnutls_datum_t pem = binary_to_datum(data);
-
-	// create X.509 private key
+	// create abstract private key
 
 	gnutls_x509_privkey_t key_x509 = NULL;
-	int result = gnutls_x509_privkey_init(&key_x509);
-	if (result != GNUTLS_E_SUCCESS) {
-		return DNSSEC_ENOMEM;
+	int result = pem_to_x509(data, &key_x509);
+	if (result != DNSSEC_EOK) {
+		return result;
 	}
-
-	int format = GNUTLS_X509_FMT_PEM;
-	result = gnutls_x509_privkey_import_pkcs8(key_x509, &pem, format, NULL, 0);
-	if (result != GNUTLS_E_SUCCESS) {
-		gnutls_x509_privkey_deinit(key_x509);
-		return DNSSEC_PKCS8_IMPORT_ERROR;
-	}
-
-	// convert to abstract private key
 
 	gnutls_privkey_t key_abs = NULL;
 	result = gnutls_privkey_init(&key_abs);
@@ -164,6 +178,30 @@ int pem_gnutls_x509_export(gnutls_x509_privkey_t key, dnssec_binary_t *pem_ptr)
 	}
 
 	*pem_ptr = pem;
+
+	return DNSSEC_EOK;
+}
+
+/*!
+ * Get key ID of a private key in PEM format.
+ */
+int pem_get_id(const dnssec_binary_t *pem, char **id_ptr)
+{
+	assert(pem && pem->size > 0 && pem->data);
+	assert(id_ptr);
+
+	_cleanup_x509_privkey_ gnutls_x509_privkey_t key = NULL;
+	int r = pem_to_x509(pem, &key);
+	if (r != DNSSEC_EOK) {
+		return r;
+	}
+
+	char *id = gnutls_x509_privkey_hex_key_id(key);
+	if (!id) {
+		return DNSSEC_ENOMEM;
+	}
+
+	*id_ptr = id;
 
 	return DNSSEC_EOK;
 }

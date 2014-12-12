@@ -54,3 +54,14 @@ int pem_generate(gnutls_pk_algorithm_t algorithm, unsigned bits,
  * \return Error code, DNSSEC_EOK if successful.
  */
 int pem_gnutls_x509_export(gnutls_x509_privkey_t key, dnssec_binary_t *pem);
+
+
+/*!
+ * Get key ID of a private key in PEM format.
+ *
+ * \param[in]  pem  Key in unencrypted PEM format.
+ * \param[out] id   ID of the key.
+ *
+ * \return Error code, DNSSEC_EOK if successful.
+ */
+int pem_get_id(const dnssec_binary_t *pem, char **id);
