@@ -103,7 +103,7 @@ typedef struct journal
 #define JOURNAL_MAGIC {'k', 'n', 'o', 't', '1', '5', '2'}
 #define MAGIC_LENGTH 7
 /* HEADER = magic, crc, max_entries, qhead, qtail */
-#define JOURNAL_HSIZE (MAGIC_LENGTH + sizeof(crc_t) + sizeof(uint16_t) * 3)
+#define JOURNAL_HSIZE (MAGIC_LENGTH + sizeof(uint32_t) + sizeof(uint16_t) * 3)
 
 /*!
  * \brief Open journal.
