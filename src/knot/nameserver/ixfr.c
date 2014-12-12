@@ -162,7 +162,7 @@ static int ixfr_process_changeset(knot_pkt_t *pkt, const void *item,
 #undef IXFR_SAFE_PUT
 
 /*! \brief Loads IXFRs from journal. */
-static int ixfr_load_chsets(list_t *chgsets, const zone_t *zone,
+static int ixfr_load_chsets(list_t *chgsets, zone_t *zone,
                             const knot_rrset_t *their_soa)
 {
 	assert(chgsets);
@@ -176,7 +176,10 @@ static int ixfr_load_chsets(list_t *chgsets, const zone_t *zone,
 		return KNOT_EUPTODATE;
 	}
 
+	pthread_mutex_lock(&zone->journal_lock);
 	ret = journal_load_changesets(zone, chgsets, serial_from, serial_to);
+	pthread_mutex_unlock(&zone->journal_lock);
+
 	if (ret != KNOT_EOK) {
 		changesets_free(chgsets);
 	}
@@ -241,7 +244,7 @@ static int ixfr_answer_init(struct query_data *qdata)
 	const knot_rrset_t *their_soa = &knot_pkt_section(qdata->query, KNOT_AUTHORITY)->rr[0];
 	list_t chgsets;
 	init_list(&chgsets);
-	int ret = ixfr_load_chsets(&chgsets, qdata->zone, their_soa);
+	int ret = ixfr_load_chsets(&chgsets, (zone_t *)qdata->zone, their_soa);
 	if (ret != KNOT_EOK) {
 		dbg_ns("%s: failed to load changesets => %d\n", __func__, ret);
 		return ret;
