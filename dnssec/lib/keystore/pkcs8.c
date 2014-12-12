@@ -120,6 +120,31 @@ static int pkcs8_generate_key(void *_ctx, gnutls_pk_algorithm_t algorithm,
 	return DNSSEC_EOK;
 }
 
+static int pkcs8_import_key(void *_ctx, const dnssec_binary_t *pem, char **id_ptr)
+{
+	pkcs8_ctx_t *ctx = _ctx;
+
+	// retrieve key ID
+
+	char *id = NULL;
+	int r = pem_get_id(pem, &id);
+	if (r != DNSSEC_EOK) {
+		return r;
+	}
+
+	// save the key
+
+	r = ctx->functions->write(ctx->data, id, pem);
+	if (r != DNSSEC_EOK) {
+		free(id);
+		return r;
+	}
+
+	*id_ptr = id;
+
+	return DNSSEC_EOK;
+}
+
 static int pkcs8_remove_key(void *_ctx, const char *id)
 {
 	pkcs8_ctx_t *ctx = _ctx;
@@ -171,6 +196,7 @@ static const keystore_functions_t PKCS8_FUNCTIONS = {
 	.close        = pkcs8_close,
 	.list_keys    = pkcs8_list_keys,
 	.generate_key = pkcs8_generate_key,
+	.import_key   = pkcs8_import_key,
 	.remove_key   = pkcs8_remove_key,
 	.get_private  = pkcs8_get_private,
 };
