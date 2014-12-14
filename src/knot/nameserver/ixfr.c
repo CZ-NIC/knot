@@ -197,7 +197,7 @@ static int ixfr_query_check(struct query_data *qdata)
 	NS_NEED_QTYPE(qdata, KNOT_RRTYPE_IXFR, KNOT_RCODE_FORMERR);
 	/* Need SOA authority record. */
 	const knot_pktsection_t *authority = knot_pkt_section(qdata->query, KNOT_AUTHORITY);
-	const knot_rrset_t *their_soa = &authority->rr[0];
+	const knot_rrset_t *their_soa = knot_pkt_rr(authority, 0);
 	if (authority->count < 1 || their_soa->type != KNOT_RRTYPE_SOA) {
 		qdata->rcode = KNOT_RCODE_FORMERR;
 		return KNOT_NS_PROC_FAIL;
@@ -241,7 +241,8 @@ static int ixfr_answer_init(struct query_data *qdata)
 	}
 
 	/* Compare serials. */
-	const knot_rrset_t *their_soa = &knot_pkt_section(qdata->query, KNOT_AUTHORITY)->rr[0];
+	const knot_pktsection_t *authority = knot_pkt_section(qdata->query, KNOT_AUTHORITY);
+	const knot_rrset_t *their_soa = knot_pkt_rr(authority, 0);
 	list_t chgsets;
 	init_list(&chgsets);
 	int ret = ixfr_load_chsets(&chgsets, (zone_t *)qdata->zone, their_soa);
@@ -332,8 +333,8 @@ static bool ixfr_is_axfr(const knot_pkt_t *pkt)
 {
 	const knot_pktsection_t *answer = knot_pkt_section(pkt, KNOT_ANSWER);
 	return answer->count >= 2 &&
-	       answer->rr[0].type == KNOT_RRTYPE_SOA &&
-	       answer->rr[1].type != KNOT_RRTYPE_SOA;
+	       knot_pkt_rr(answer, 0)->type == KNOT_RRTYPE_SOA &&
+	       knot_pkt_rr(answer, 1)->type != KNOT_RRTYPE_SOA;
 }
 
 /*! \brief Cleans up data allocated by IXFR-in processing. */
@@ -584,7 +585,7 @@ static int process_ixfrin_packet(knot_pkt_t *pkt, struct answer_data *adata)
 			return KNOT_NS_PROC_FAIL;
 		}
 
-		const knot_rrset_t *rr = &answer->rr[i];
+		const knot_rrset_t *rr = knot_pkt_rr(answer, i);
 		if (out_of_zone(rr, ixfr)) {
 			continue;
 		}
@@ -674,7 +675,7 @@ static int check_format(knot_pkt_t *pkt)
 {
 	const knot_pktsection_t *answer = knot_pkt_section(pkt, KNOT_ANSWER);
 
-	if (answer->count >= 1 && answer->rr[0].type == KNOT_RRTYPE_SOA) {
+	if (answer->count >= 1 && knot_pkt_rr(answer, 0)->type == KNOT_RRTYPE_SOA) {
 		return KNOT_EOK;
 	} else {
 		return KNOT_EMALF;

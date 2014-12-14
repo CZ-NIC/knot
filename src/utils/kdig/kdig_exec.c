@@ -438,7 +438,7 @@ static int64_t first_serial_check(const knot_pkt_t *reply)
 		return -1;
 	}
 
-	const knot_rrset_t *first = &answer->rr[0];
+	const knot_rrset_t *first = knot_pkt_rr(answer, 0);
 
 	if (first->type != KNOT_RRTYPE_SOA) {
 		return -1;
@@ -454,7 +454,7 @@ static bool last_serial_check(const uint32_t serial, const knot_pkt_t *reply)
 		return false;
 	}
 
-	const knot_rrset_t *last = &answer->rr[answer->count - 1];
+	const knot_rrset_t *last = knot_pkt_rr(answer, answer->count - 1);
 
 	if (last->type != KNOT_RRTYPE_SOA) {
 		return false;
