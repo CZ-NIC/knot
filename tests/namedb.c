@@ -210,7 +210,7 @@ int main(int argc, char *argv[])
 	plan_lazy();
 
 	mm_ctx_t pool;
-	mm_ctx_mempool(&pool, 4096);
+	mm_ctx_mempool(&pool, MM_DEFAULT_BLKSIZE);
 
 	/* Temporary DB identifier. */
 	char dbid_buf[] = "/tmp/namedb.XXXXXX";

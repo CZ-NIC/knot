@@ -507,7 +507,7 @@ int udp_master(dthread_t *thread)
 
 	/* Create big enough memory cushion. */
 	mm_ctx_t mm;
-	mm_ctx_mempool(&mm, 4 * sizeof(knot_pkt_t));
+	mm_ctx_mempool(&mm, 16 * MM_DEFAULT_BLKSIZE);
 	udp.overlay.mm = &mm;
 
 	/* Chose select as epoll/kqueue has larger overhead for a
