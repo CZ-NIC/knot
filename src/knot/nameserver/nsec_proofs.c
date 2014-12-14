@@ -3,7 +3,7 @@
 #include "knot/nameserver/internet.h"
 #include "knot/dnssec/zone-nsec.h"
 
-#include "common/debug.h"
+#include "knot/common/debug.h"
 
 #define DNSSEC_ENABLED 1
 

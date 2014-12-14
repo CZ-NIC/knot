@@ -26,10 +26,10 @@
 #include "libknot/dname.h"
 #include "libknot/packet/wire.h"
 #include "knot/zone/node.h"
-#include "common/debug.h"
-#include "common/macros.h"
-#include "common/mempattern.h"
-#include "common/mempool.h"
+#include "knot/common/debug.h"
+#include "libknot/internal/mempattern.h"
+#include "libknot/internal/mempool.h"
+#include "libknot/internal/macros.h"
 
 
 /*----------------------------------------------------------------------------*/
@@ -41,7 +41,11 @@ static void discard_zone(zone_t *zone)
 {
 	/* Flush bootstrapped zones. */
 	if (zone->zonefile_mtime == 0) {
+
+		pthread_mutex_lock(&zone->journal_lock);
 		zone_flush_journal(zone);
+		pthread_mutex_unlock(&zone->journal_lock);
+
 	}
 	zone_free(&zone);
 }

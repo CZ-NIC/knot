@@ -18,11 +18,11 @@
 #include <stdlib.h>
 #include <inttypes.h>
 
-#include "common/debug.h"
+#include "knot/common/debug.h"
 #include "libknot/errcode.h"
 #include "knot/zone/zone-diff.h"
 #include "libknot/descriptor.h"
-#include "libknot/util/utils.h"
+#include "libknot/internal/utils.h"
 #include "libknot/rrtype/soa.h"
 
 struct zone_diff_param {
@@ -63,11 +63,11 @@ static int knot_zone_diff_load_soas(const zone_contents_t *zone1,
 	int64_t soa_serial1 = knot_soa_serial(&soa_rrset1.rrs);
 	int64_t soa_serial2 = knot_soa_serial(&soa_rrset2.rrs);
 
-	if (knot_serial_compare(soa_serial1, soa_serial2) == 0) {
+	if (serial_compare(soa_serial1, soa_serial2) == 0) {
 		return KNOT_ENODIFF;
 	}
 
-	if (knot_serial_compare(soa_serial1, soa_serial2) > 0) {
+	if (serial_compare(soa_serial1, soa_serial2) > 0) {
 		return KNOT_ERANGE;
 	}
 

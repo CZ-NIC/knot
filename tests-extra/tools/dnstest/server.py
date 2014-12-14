@@ -155,6 +155,7 @@ class Server(object):
         self.disable_notify = None
         self.max_conn_idle = None
         self.zonefile_sync = None
+        self.ixfr_fslimit = None
 
         self.inquirer = None
 
@@ -184,7 +185,7 @@ class Server(object):
             if len(pids) == 1 and str(self.proc.pid) in pids:
                 return True
 
-            time.sleep(1)
+            time.sleep(2)
 
         return False
 
@@ -937,6 +938,8 @@ class Knot(Server):
             s.item("zonefile-sync", self.zonefile_sync)
         else:
             s.item("zonefile-sync", "1d")
+        if self.ixfr_fslimit:
+            s.item("ixfr-fslimit", self.ixfr_fslimit)
         s.item("notify-timeout", "5")
         s.item("notify-retries", "5")
         s.item("semantic-checks", "on")

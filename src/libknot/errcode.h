@@ -79,7 +79,6 @@ enum knot_error {
 	KNOT_ENONODE,
 	KNOT_EDNAMEPTR,
 	KNOT_EPAYLOAD,
-	KNOT_ECRC,
 	KNOT_EPREREQ,
 	KNOT_ETTL,
 	KNOT_ENOXFR,
@@ -100,6 +99,7 @@ enum knot_error {
 	/* Control states. */
 	KNOT_CTL_STOP,
 	KNOT_CTL_ACCEPTED,
+	KNOT_CTL_ARG_REQ,
 
 	/* Network errors. */
 	KNOT_NET_EADDR,

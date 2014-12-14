@@ -33,7 +33,6 @@ Required libraries
 Knot DNS requires few libraries to be compiled:
 
 * OpenSSL, at least 1.0.0 (1.0.1 is required for ECDSA)
-* zlib
 * Userspace RCU, at least 0.5.4
 * libcap-ng, at least 0.6.4 (optional library)
 * lmdb (optional library)
@@ -50,9 +49,9 @@ server restarts.
 If the libsystemd library is available, the server will use systemd's startup
 notifications mechanism and journald for logging.
 
-You can probably find OpenSSL and zlib libraries already included in
-your system or distribution.  If not, zlib resides at http://zlib.net,
-and OpenSSL can be found at http://www.openssl.org.
+You can probably find OpenSSL library already included in
+your system or distribution.  If not, OpenSSL can be found at
+http://www.openssl.org.
 
 .. _Userspace RCU:
 
@@ -116,7 +115,7 @@ resulting binaries.
 
 If you want to add debug messages, there are two steps to do that.
 First you have to enable modules you are interested in.
-Available are: ``server, zones, xfr, packet, dname, rr, ns, hash, compiler``.
+Available are: ``server, zones, ns, loader, dnssec``.
 You can combine multiple modules as a comma-separated list.
 Then you can narrow the verbosity of the debugging message by specifying the
 verbosity as ``brief, verbose, details``.

@@ -29,7 +29,7 @@
 #include <stdint.h>
 #include <assert.h>
 
-#include "libknot/util/utils.h"
+#include "libknot/internal/utils.h"
 
 /*! \brief Offset of DNS header fields in wireformat. */
 enum knot_wire_offsets {
@@ -67,7 +67,7 @@ enum knot_wire_sizes {
  */
 static inline uint16_t knot_wire_get_id(const uint8_t *packet)
 {
-	return knot_wire_read_u16(packet + KNOT_WIRE_OFFSET_ID);
+	return wire_read_u16(packet + KNOT_WIRE_OFFSET_ID);
 }
 
 /*!
@@ -78,7 +78,7 @@ static inline uint16_t knot_wire_get_id(const uint8_t *packet)
  */
 static inline void knot_wire_set_id(uint8_t *packet, uint16_t id)
 {
-	knot_wire_write_u16(packet + KNOT_WIRE_OFFSET_ID, id);
+	wire_write_u16(packet + KNOT_WIRE_OFFSET_ID, id);
 }
 
 /*!
@@ -137,7 +137,7 @@ static inline uint8_t knot_wire_set_flags2(uint8_t *packet, uint8_t flags2)
  */
 static inline uint16_t knot_wire_get_qdcount(const uint8_t *packet)
 {
-	return knot_wire_read_u16(packet + KNOT_WIRE_OFFSET_QDCOUNT);
+	return wire_read_u16(packet + KNOT_WIRE_OFFSET_QDCOUNT);
 }
 
 /*!
@@ -149,7 +149,7 @@ static inline uint16_t knot_wire_get_qdcount(const uint8_t *packet)
  */
 static inline void knot_wire_set_qdcount(uint8_t *packet, uint16_t qdcount)
 {
-	knot_wire_write_u16(packet + KNOT_WIRE_OFFSET_QDCOUNT, qdcount);
+	wire_write_u16(packet + KNOT_WIRE_OFFSET_QDCOUNT, qdcount);
 }
 
 /*!
@@ -157,7 +157,7 @@ static inline void knot_wire_set_qdcount(uint8_t *packet, uint16_t qdcount)
  */
 static inline void knot_wire_add_qdcount(uint8_t *packet, int16_t n)
 {
-	knot_wire_write_u16(packet + KNOT_WIRE_OFFSET_QDCOUNT,
+	wire_write_u16(packet + KNOT_WIRE_OFFSET_QDCOUNT,
 	                    knot_wire_get_qdcount(packet) + n);
 }
 
@@ -171,7 +171,7 @@ static inline void knot_wire_add_qdcount(uint8_t *packet, int16_t n)
  */
 static inline uint16_t knot_wire_get_ancount(const uint8_t *packet)
 {
-	return knot_wire_read_u16(packet + KNOT_WIRE_OFFSET_ANCOUNT);
+	return wire_read_u16(packet + KNOT_WIRE_OFFSET_ANCOUNT);
 }
 
 /*!
@@ -183,7 +183,7 @@ static inline uint16_t knot_wire_get_ancount(const uint8_t *packet)
  */
 static inline void knot_wire_set_ancount(uint8_t *packet, uint16_t ancount)
 {
-	knot_wire_write_u16(packet + KNOT_WIRE_OFFSET_ANCOUNT, ancount);
+	wire_write_u16(packet + KNOT_WIRE_OFFSET_ANCOUNT, ancount);
 }
 
 /*!
@@ -191,7 +191,7 @@ static inline void knot_wire_set_ancount(uint8_t *packet, uint16_t ancount)
  */
 static inline void knot_wire_add_ancount(uint8_t *packet, int16_t n)
 {
-	knot_wire_write_u16(packet + KNOT_WIRE_OFFSET_ANCOUNT,
+	wire_write_u16(packet + KNOT_WIRE_OFFSET_ANCOUNT,
 	                    knot_wire_get_ancount(packet) + n);
 }
 
@@ -205,7 +205,7 @@ static inline void knot_wire_add_ancount(uint8_t *packet, int16_t n)
  */
 static inline uint16_t knot_wire_get_nscount(const uint8_t *packet)
 {
-	return knot_wire_read_u16(packet + KNOT_WIRE_OFFSET_NSCOUNT);
+	return wire_read_u16(packet + KNOT_WIRE_OFFSET_NSCOUNT);
 }
 
 /*!
@@ -217,7 +217,7 @@ static inline uint16_t knot_wire_get_nscount(const uint8_t *packet)
  */
 static inline void knot_wire_set_nscount(uint8_t *packet, uint16_t nscount)
 {
-	knot_wire_write_u16(packet + KNOT_WIRE_OFFSET_NSCOUNT, nscount);
+	wire_write_u16(packet + KNOT_WIRE_OFFSET_NSCOUNT, nscount);
 }
 
 /*!
@@ -225,7 +225,7 @@ static inline void knot_wire_set_nscount(uint8_t *packet, uint16_t nscount)
  */
 static inline void knot_wire_add_nscount(uint8_t *packet, int16_t n)
 {
-	knot_wire_write_u16(packet + KNOT_WIRE_OFFSET_NSCOUNT,
+	wire_write_u16(packet + KNOT_WIRE_OFFSET_NSCOUNT,
 	                    knot_wire_get_nscount(packet) + n);
 }
 
@@ -239,7 +239,7 @@ static inline void knot_wire_add_nscount(uint8_t *packet, int16_t n)
  */
 static inline uint16_t knot_wire_get_arcount(const uint8_t *packet)
 {
-	return knot_wire_read_u16(packet + KNOT_WIRE_OFFSET_ARCOUNT);
+	return wire_read_u16(packet + KNOT_WIRE_OFFSET_ARCOUNT);
 }
 
 /*!
@@ -251,7 +251,7 @@ static inline uint16_t knot_wire_get_arcount(const uint8_t *packet)
  */
 static inline void knot_wire_set_arcount(uint8_t *packet, uint16_t arcount)
 {
-	knot_wire_write_u16(packet + KNOT_WIRE_OFFSET_ARCOUNT, arcount);
+	wire_write_u16(packet + KNOT_WIRE_OFFSET_ARCOUNT, arcount);
 }
 
 /*!
@@ -259,7 +259,7 @@ static inline void knot_wire_set_arcount(uint8_t *packet, uint16_t arcount)
  */
 static inline void knot_wire_add_arcount(uint8_t *packet, int16_t n)
 {
-	knot_wire_write_u16(packet + KNOT_WIRE_OFFSET_ARCOUNT,
+	wire_write_u16(packet + KNOT_WIRE_OFFSET_ARCOUNT,
 	                    knot_wire_get_arcount(packet) + n);
 }
 
@@ -943,7 +943,7 @@ enum knot_wire_pointer_consts {
  */
 static inline void knot_wire_put_pointer(uint8_t *pos, uint16_t ptr)
 {
-	knot_wire_write_u16(pos, ptr);		// Write pointer offset.
+	wire_write_u16(pos, ptr);		// Write pointer offset.
 	assert((pos[0] & KNOT_WIRE_PTR) == 0);	// Check for maximal offset.
 	pos[0] |= KNOT_WIRE_PTR;		// Add pointer mark.
 }
@@ -956,7 +956,7 @@ static inline int knot_wire_is_pointer(const uint8_t *pos)
 static inline uint16_t knot_wire_get_pointer(const uint8_t *pos)
 {
 	assert((pos[0] & KNOT_WIRE_PTR) == KNOT_WIRE_PTR);	// Check pointer.
-	return (knot_wire_read_u16(pos) - KNOT_WIRE_PTR_BASE);	// Return offset.
+	return (wire_read_u16(pos) - KNOT_WIRE_PTR_BASE);	// Return offset.
 }
 
 static inline const uint8_t *knot_wire_seek_label(const uint8_t *lp, const uint8_t *wire)

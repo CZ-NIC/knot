@@ -1,7 +1,7 @@
 #include "knot/nameserver/query_module.h"
-#include "common/mempattern.h"
+#include "libknot/internal/mempattern.h"
 #include "libknot/errcode.h"
-#include "common/strlcpy.h"
+#include "libknot/internal/strlcpy.h"
 
 /* Compiled-in module headers. */
 #include "knot/modules/synth_record.h"
@@ -81,7 +81,7 @@ int query_plan_step(struct query_plan *plan, int stage, qmodule_process_t proces
 	return KNOT_EOK;
 }
 
-struct query_module *query_module_open(struct conf_t *config, const char *name,
+struct query_module *query_module_open(struct conf *config, const char *name,
                                        const char *param, mm_ctx_t *mm)
 {
 	/* Locate compiled-in modules. */

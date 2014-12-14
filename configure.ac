@@ -9,6 +9,7 @@ AC_CONFIG_HEADERS([src/config.h])
 AC_CONFIG_MACRO_DIR([m4])
 AC_USE_SYSTEM_EXTENSIONS([_GNU_SOURCE])
 AC_CANONICAL_HOST
+AX_SET_VERSION_INFO
 
 # Automatically update release date based on configure.ac date
 case "$host_os" in
@@ -38,7 +39,8 @@ AC_PROG_LIBTOOL
 LT_INIT
 
 # Use pkg-config
-PKG_PROG_PKG_CONFIG
+m4_ifdef([PKG_INSTALLDIR], [PKG_INSTALLDIR], [AC_SUBST([pkgconfigdir], ['${libdir}/pkgconfig'])])
+AC_CONFIG_FILES([libknot.pc])
 
 AC_CACHE_CHECK([for reentrant lex], [ac_cv_path_LEX],
   [AC_PATH_PROGS_FEATURE_CHECK([LEX], [$LEX flex gflex],
@@ -102,16 +104,13 @@ PKG_CHECK_MODULES([jansson], [jansson >= 2.5])
 
 # Debug modules
 AC_ARG_ENABLE([debug],
-    AS_HELP_STRING([--enable-debug=server,zones,xfr,packet,rr,ns,loader,dnssec],
+    AS_HELP_STRING([--enable-debug=server,zones,ns,loader,dnssec],
     [compile selected debug modules [default=none]]),
     [
     echo ${enableval}|tr "," "\n"|while read val; do
         case "${val}" in
             server) AC_DEFINE([KNOTD_SERVER_DEBUG], [1], [Server debug.]) ;;
             zones) AC_DEFINE([KNOT_ZONES_DEBUG], [1], [Zones debug.]) ;;
-            xfr) AC_DEFINE([KNOT_XFR_DEBUG], [1], [XFR debug.]) ;;
-            packet) AC_DEFINE([KNOT_PACKET_DEBUG], [1], [Packet debug.]) ;;
-            rr) AC_DEFINE([KNOT_RR_DEBUG], [1], [RR debug.]) ;;
             ns) AC_DEFINE([KNOT_NS_DEBUG], [1], [Nameserver debug.]) ;;
             loader) AC_DEFINE([KNOT_LOADER_DEBUG], [1], [Zone loading debug.]) ;;
             dnssec) AC_DEFINE([KNOT_DNSSEC_DEBUG], [1], [DNSSEC debug.]) ;;
@@ -272,7 +271,6 @@ AC_SEARCH_LIBS([pthread_create], [pthread], [], [AC_MSG_ERROR([pthreads not foun
 AC_SEARCH_LIBS([dlopen], [dl])
 AC_SEARCH_LIBS([clock_gettime], [rt])
 AC_SEARCH_LIBS([capng_apply], [cap-ng])
-AC_SEARCH_LIBS([adler32], [z])
 
 # Checks for header files.
 AC_HEADER_RESOLV
@@ -285,7 +283,7 @@ AC_TYPE_SIZE_T
 AC_TYPE_SSIZE_T
 
 # Checks for library functions.
-AC_CHECK_FUNCS([clock_gettime gettimeofday fgetln getline madvise malloc_trim poll posix_memalign pselect pthread_setaffinity_np regcomp select setgroups strlcat strlcpy initgroups])
+AC_CHECK_FUNCS([clock_gettime gettimeofday fgetln getline madvise malloc_trim poll posix_memalign pthread_setaffinity_np regcomp select setgroups strlcat strlcpy initgroups])
 
 # Check for be64toh function
 AC_LINK_IFELSE([AC_LANG_PROGRAM([[#include <endian.h>]], [[return be64toh(0);]])],
@@ -299,15 +297,14 @@ AC_LINK_IFELSE([AC_LANG_PROGRAM([[#include <pthread_np.h>]], [[cpuset_t set; CPU
 AC_LINK_IFELSE([AC_LANG_PROGRAM([[#include <sched.h>]], [[cpuset_t* set = cpuset_create(); cpuset_destroy(set);]])],
 [AC_DEFINE(HAVE_CPUSET_NETBSD, 1, [Define if cpuset_t and cpuset(3) exists.])])
 
-# Use -fvisibility=hidden when linking.
-# Let's leave it default now and use -export-symbols-regex in LDFLAGS
+# Hide all exported symbols by default
 gl_VISIBILITY()
-CFLAGS="$CFLAGS $CFLAG_VISIBILITY"
+CPPFLAGS="$CPPFLAGS $CFLAG_VISIBILITY"
 
 # Add code coverage macro
 AX_CODE_COVERAGE
 
-AC_PATH_PROG([SPHINXBUILD], [sphinx-build], [false])
+AC_PATH_PROGS([SPHINXBUILD], [sphinx-build sphinx-build-3], [false])
 AS_IF([test "$SPHINXBUILD" = "false"],
   [AC_MSG_WARN([Could not find the 'sphinx-build' executable, you will be unable to regenerate documentation.])],
   [AC_PATH_PROG([PDFLATEX], [pdflatex], [false])
@@ -344,6 +341,7 @@ AC_CONFIG_FILES([Makefile
 		 man/knot.conf.5
 		 man/knsec3hash.1
 		 ])
+
 
 AC_OUTPUT
 

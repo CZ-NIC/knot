@@ -20,9 +20,9 @@
 #include "knot/nameserver/process_query.h"
 #include "knot/nameserver/process_answer.h"
 #include "knot/updates/apply.h"
-#include "common/debug.h"
+#include "knot/common/debug.h"
 #include "libknot/descriptor.h"
-#include "libknot/util/utils.h"
+#include "libknot/internal/utils.h"
 #include "libknot/rrtype/soa.h"
 
 /* ------------------------ IXFR-out processing ----------------------------- */
@@ -162,7 +162,7 @@ static int ixfr_process_changeset(knot_pkt_t *pkt, const void *item,
 #undef IXFR_SAFE_PUT
 
 /*! \brief Loads IXFRs from journal. */
-static int ixfr_load_chsets(list_t *chgsets, const zone_t *zone,
+static int ixfr_load_chsets(list_t *chgsets, zone_t *zone,
                             const knot_rrset_t *their_soa)
 {
 	assert(chgsets);
@@ -171,12 +171,15 @@ static int ixfr_load_chsets(list_t *chgsets, const zone_t *zone,
 	/* Compare serials. */
 	uint32_t serial_to = zone_contents_serial(zone->contents);
 	uint32_t serial_from = knot_soa_serial(&their_soa->rrs);
-	int ret = knot_serial_compare(serial_to, serial_from);
+	int ret = serial_compare(serial_to, serial_from);
 	if (ret <= 0) { /* We have older/same age zone. */
 		return KNOT_EUPTODATE;
 	}
 
+	pthread_mutex_lock(&zone->journal_lock);
 	ret = journal_load_changesets(zone, chgsets, serial_from, serial_to);
+	pthread_mutex_unlock(&zone->journal_lock);
+
 	if (ret != KNOT_EOK) {
 		changesets_free(chgsets);
 	}
@@ -241,7 +244,7 @@ static int ixfr_answer_init(struct query_data *qdata)
 	const knot_rrset_t *their_soa = &knot_pkt_section(qdata->query, KNOT_AUTHORITY)->rr[0];
 	list_t chgsets;
 	init_list(&chgsets);
-	int ret = ixfr_load_chsets(&chgsets, qdata->zone, their_soa);
+	int ret = ixfr_load_chsets(&chgsets, (zone_t *)qdata->zone, their_soa);
 	if (ret != KNOT_EOK) {
 		dbg_ns("%s: failed to load changesets => %d\n", __func__, ret);
 		return ret;
@@ -324,18 +327,12 @@ static int ixfr_answer_soa(knot_pkt_t *pkt, struct query_data *qdata)
 #define IXFRIN_LOG(severity, msg...) \
 	ANSWER_LOG(severity, adata, "IXFR, incoming", msg)
 
-/*! \brief Checks whether IXFR response contains enough data for processing. */
-static bool ixfr_enough_data(const knot_pkt_t *pkt)
-{
-	const knot_pktsection_t *answer = knot_pkt_section(pkt, KNOT_ANSWER);
-	return answer->count >= 2;
-}
-
 /*! \brief Checks whether server responded with AXFR-style IXFR. */
 static bool ixfr_is_axfr(const knot_pkt_t *pkt)
 {
 	const knot_pktsection_t *answer = knot_pkt_section(pkt, KNOT_ANSWER);
-	return answer->rr[0].type == KNOT_RRTYPE_SOA &&
+	return answer->count >= 2 &&
+	       answer->rr[0].type == KNOT_RRTYPE_SOA &&
 	       answer->rr[1].type != KNOT_RRTYPE_SOA;
 }
 
@@ -673,41 +670,55 @@ int ixfr_query(knot_pkt_t *pkt, struct query_data *qdata)
 	return ret;
 }
 
+static int check_format(knot_pkt_t *pkt)
+{
+	const knot_pktsection_t *answer = knot_pkt_section(pkt, KNOT_ANSWER);
+
+	if (answer->count >= 1 && answer->rr[0].type == KNOT_RRTYPE_SOA) {
+		return KNOT_EOK;
+	} else {
+		return KNOT_EMALF;
+	}
+}
+
 int ixfr_process_answer(knot_pkt_t *pkt, struct answer_data *adata)
 {
 	if (pkt == NULL || adata == NULL) {
 		return KNOT_NS_PROC_FAIL;
 	}
-	
-	if (adata->ext == NULL) {
-		if (!ixfr_enough_data(pkt)) {
-			return KNOT_NS_PROC_FAIL;
-		}
-	
-		/* Check for AXFR-style IXFR. */
-		if (ixfr_is_axfr(pkt)) {
-			IXFRIN_LOG(LOG_NOTICE, "receiving AXFR-style IXFR");
-			adata->response_type = KNOT_RESPONSE_AXFR;
-			return axfr_answer_process(pkt, adata);
-		}
-	}
-	
+
 	/* Check RCODE. */
 	uint8_t rcode = knot_wire_get_rcode(pkt->wire);
 	if (rcode != KNOT_RCODE_NOERROR) {
-		knot_lookup_table_t *lut = knot_lookup_by_id(knot_rcode_names, rcode);
+		lookup_table_t *lut = lookup_by_id(knot_rcode_names, rcode);
 		if (lut != NULL) {
 			IXFRIN_LOG(LOG_WARNING, "server responded with %s", lut->name);
 		}
 		return KNOT_NS_PROC_FAIL;
 	}
 	
-	/* Initialize processing with first packet. */
 	if (adata->ext == NULL) {
+		if (check_format(pkt) != KNOT_EOK) {
+			IXFRIN_LOG(LOG_WARNING, "malformed response");
+			return KNOT_NS_PROC_FAIL;
+		}
+
+		/* Check for AXFR-style IXFR. */
+		if (ixfr_is_axfr(pkt)) {
+			IXFRIN_LOG(LOG_NOTICE, "receiving AXFR-style IXFR");
+			adata->response_type = KNOT_RESPONSE_AXFR;
+			return axfr_answer_process(pkt, adata);
+		}
+	
+		/* Initialize processing with first packet. */
 		NS_NEED_TSIG_SIGNED(&adata->param->tsig_ctx, 0);
 		if (!zone_transfer_needed(adata->param->zone, pkt)) {
-			IXFRIN_LOG(LOG_WARNING, "master sent older serial, "
-			                        "ignoring");
+			if (knot_pkt_section(pkt, KNOT_ANSWER)->count > 1) {
+				IXFRIN_LOG(LOG_WARNING, "old data, ignoring");
+			} else {
+				/* Single-SOA answer. */
+				IXFRIN_LOG(LOG_INFO, "zone is up-to-date");
+			}
 			return KNOT_NS_PROC_DONE;
 		}
 

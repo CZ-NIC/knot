@@ -31,7 +31,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <time.h>
-#include "libknot/dname.h"
+
 #include "dnssec/kasp.h"
 #include "dnssec/sign.h"
 
@@ -78,7 +78,7 @@ int load_zone_keys(const char *keydir_name, const char *zone_name,
  *
  * \return Pointer to key or NULL if not found.
  */
-zone_key_t *get_zone_key(const zone_keyset_t *keyset, uint16_t keytag);
+const zone_key_t *get_zone_key(const zone_keyset_t *keyset, uint16_t keytag);
 
 /*!
  * \brief Free structure with zone keys and associated DNSSEC contexts.

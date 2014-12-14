@@ -19,10 +19,11 @@
 #include <string.h>
 #include <sys/stat.h>
 
+#include "dnssec/random.h"
 #include "libknot/descriptor.h"
-#include "common-knot/evsched.h"
-#include "common/lists.h"
-#include "common-knot/trim.h"
+#include "knot/common/evsched.h"
+#include "libknot/internal/lists.h"
+#include "knot/common/trim.h"
 #include "knot/zone/node.h"
 #include "knot/zone/zone.h"
 #include "knot/zone/zonefile.h"
@@ -32,8 +33,7 @@
 #include "knot/nameserver/process_query.h"
 #include "libknot/errcode.h"
 #include "libknot/dname.h"
-#include "dnssec/random.h"
-#include "libknot/util/utils.h"
+#include "libknot/internal/utils.h"
 #include "libknot/rrtype/soa.h"
 
 static void free_ddns_queue(zone_t *z)
@@ -75,6 +75,9 @@ zone_t* zone_new(conf_zone_t *conf)
 	zone->ddns_queue_size = 0;
 	init_list(&zone->ddns_queue);
 
+	// Journal lock
+	pthread_mutex_init(&zone->journal_lock, NULL);
+
 	// Initialize events
 	zone_events_init(zone);
 
@@ -95,6 +98,7 @@ void zone_free(zone_t **zone_ptr)
 
 	free_ddns_queue(zone);
 	pthread_mutex_destroy(&zone->ddns_lock);
+	pthread_mutex_destroy(&zone->journal_lock);
 
 	/* Free assigned config. */
 	conf_free_zone(zone->conf);
@@ -113,18 +117,18 @@ int zone_change_store(zone_t *zone, changeset_t *change)
 
 	conf_zone_t *conf = zone->conf;
 
+	pthread_mutex_lock(&zone->journal_lock);
 	int ret = journal_store_changeset(change, conf->ixfr_db, conf->ixfr_fslimit);
 	if (ret == KNOT_EBUSY) {
 		log_zone_notice(zone->name, "journal is full, flushing");
 
 		/* Transaction rolled back, journal released, we may flush. */
 		ret = zone_flush_journal(zone);
-		if (ret != KNOT_EOK) {
-			return ret;
+		if (ret == KNOT_EOK) {
+			ret = journal_store_changeset(change, conf->ixfr_db, conf->ixfr_fslimit);
 		}
-
-		return journal_store_changeset(change, conf->ixfr_db, conf->ixfr_fslimit);
 	}
+	pthread_mutex_unlock(&zone->journal_lock);
 
 	return ret;
 }
@@ -136,18 +140,19 @@ int zone_changes_store(zone_t *zone, list_t *chgs)
 
 	conf_zone_t *conf = zone->conf;
 
+	pthread_mutex_lock(&zone->journal_lock);
 	int ret = journal_store_changesets(chgs, conf->ixfr_db, conf->ixfr_fslimit);
+
 	if (ret == KNOT_EBUSY) {
 		log_zone_notice(zone->name, "journal is full, flushing");
 
 		/* Transaction rolled back, journal released, we may flush. */
 		ret = zone_flush_journal(zone);
-		if (ret != KNOT_EOK) {
-			return ret;
+		if (ret == KNOT_EOK) {
+			ret = journal_store_changesets(chgs, conf->ixfr_db, conf->ixfr_fslimit);
 		}
-
-		return journal_store_changesets(chgs, conf->ixfr_db, conf->ixfr_fslimit);
 	}
+	pthread_mutex_unlock(&zone->journal_lock);
 
 	return ret;
 }
@@ -314,7 +319,7 @@ bool zone_transfer_needed(const zone_t *zone, const knot_pkt_t *pkt)
 		return false;
 	}
 
-	return knot_serial_compare(zone_contents_serial(zone->contents),
+	return serial_compare(zone_contents_serial(zone->contents),
 	                           knot_soa_serial(&soa.rrs)) < 0;
 }
 

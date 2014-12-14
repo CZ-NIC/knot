@@ -11,16 +11,16 @@
 \fB\-c\fR, \fB\-\-config\fR \fIfile\fR
 Select configuration file.
 .TP
-\fB\-s\fR \fIserver\fR
+\fB\-s\fR, \fB\-\-server\fR \fIserver\fR
 Remote UNIX socket/IP address (default @run_dir@/knot.sock).
 .TP
-\fB\-p\fR \fIport\fR
+\fB\-p\fR, \fB\-\-port\fR \fIport\fR
 Remote server port (only for IP).
 .TP
-\fB\-y\fR [\fIhmac\fR:]\fIname\fR:\fIkey\fR
+\fB\-y\fR, \fB\-\-key\fR [\fIhmac\fR:]\fIname\fR:\fIkey\fR
 Use key specified on the command line (default algorithm is hmac\-md5).
 .TP
-\fB\-k\fR \fIfile\fR
+\fB\-k\fR, \fB\-\-keyfile\fR \fIfile\fR
 Use key file (as in config section 'keys').
 .TP
 \fB\-f\fR, \fB\-\-force\fR
@@ -36,32 +36,37 @@ Print version of the server.
 Print help and usage.
 .SS "Actions:"
 .TP
+If an optional \fIzone\fR argument is not specified, the command is applied to all zones.
+.TP
 \fBstop\fR
 Stop server (no\-op if not running).
 .TP
-\fBreload\fR [\fIzone\fR]...
-Reload configuration and changed zones (all if not specified).
+\fBreload\fR [\fIzone\fR] ...
+Reload particular zones or reload whole configuration and changed zones.
 .TP
-\fBflush\fR [\fIzone\fR]...
-Flush journal and update zone files (all if not specified).
+\fBflush\fR [\fIzone\fR] ...
+Flush journal and update zone files.
 .TP
 \fBstatus\fR
 Check if server is running.
 .TP
-\fBzonestatus\fR
+\fBzonestatus\fR [\fIzone\fR] ...
 Show status of configured zones.
 .TP
-\fBrefresh\fR [\fIzone\fR]...
-Refresh slave zones (all if not specified).
+\fBrefresh\fR [\fIzone\fR] ...
+Refresh slave zones. Flag '-f' forces retransfer (zone(s) must be specified).
 .TP
 \fBcheckconf\fR
 Check current server configuration.
 .TP
-\fBcheckzone\fR [\fIzone\fR]...
-Check zone (all if not specified).
+\fBcheckzone\fR [\fIzone\fR] ...
+Check zones.
 .TP
-\fBmemstats\fR [\fIzone\fR]...
-Estimate memory consumption for zone (all if not specified).
+\fBmemstats\fR [\fIzone\fR] ...
+Estimate memory consumption for zones.
+.TP
+\fBsignzone\fR \fIzone\fR ...
+Sign zones with available DNSSEC keys.
 .SH EXAMPLES
 .TP
 .B Setup a keyfile for remote control
@@ -83,7 +88,5 @@ Make sure the key can be read/written only by the owner for security reasons.
 .BR knotd (8),
 .BR knot.conf (5).
 .SH NOTE
-The full documentation for \fBKnot DNS\fR is maintained
-as a Texinfo manual. If the \fBinfo\fR program is properly
-installed at your site, the \fBinfo\ Knot\fR command should
-give you an access to the complete manual.
+If the \fBinfo\fR program is properly installed at your site,
+the \fBinfo\ Knot\fR command should give you an access to the complete manual.

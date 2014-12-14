@@ -14,7 +14,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "common/debug.h"
+#include "knot/common/debug.h"
 #include "libknot/descriptor.h"
 #include "libknot/rrtype/rdname.h"
 #include "libknot/rrtype/soa.h"
@@ -120,7 +120,6 @@ static bool dname_cname_cannot_synth(const knot_rrset_t *rrset, const knot_dname
 static bool have_dnssec(struct query_data *qdata)
 {
 	return knot_pkt_has_dnssec(qdata->query) &&
-	       qdata->rcode_ext != KNOT_RCODE_BADVERS &&
 	       zone_contents_is_signed(qdata->zone->contents);
 }
 
@@ -881,7 +880,7 @@ static int process_soa_answer(knot_pkt_t *pkt, struct answer_data *data)
 	knot_rdataset_t *soa = node_rdataset(zone->contents->apex, KNOT_RRTYPE_SOA);
 	uint32_t our_serial = knot_soa_serial(soa);
 	uint32_t their_serial =	knot_soa_serial(&answer->rr[0].rrs);
-	if (knot_serial_compare(our_serial, their_serial) >= 0) {
+	if (serial_compare(our_serial, their_serial) >= 0) {
 		ANSWER_LOG(LOG_INFO, data, "refresh, outgoing", "zone is up-to-date");
 		zone_events_cancel(zone, ZONE_EVENT_EXPIRE);
 		return KNOT_NS_PROC_DONE; /* Our zone is up to date. */

@@ -24,9 +24,9 @@
 #include "libknot/packet/pkt.h"
 #include "libknot/consts.h"
 #include "libknot/rrtype/soa.h"
-#include "common/mempattern.h"
+#include "libknot/internal/mempattern.h"
 #include "libknot/descriptor.h"
-#include "common/lists.h"
+#include "libknot/internal/lists.h"
 
 /* ----------------------------- prereq check ------------------------------- */
 
@@ -419,7 +419,7 @@ static bool skip_soa(const knot_rrset_t *rr, int64_t sn)
 {
 	if (rr->type == KNOT_RRTYPE_SOA &&
 	    (rr->rclass == KNOT_CLASS_NONE || rr->rclass == KNOT_CLASS_ANY ||
-	     knot_serial_compare(knot_soa_serial(&rr->rrs), sn) <= 0)) {
+	     serial_compare(knot_soa_serial(&rr->rrs), sn) <= 0)) {
 		return true;
 	}
 

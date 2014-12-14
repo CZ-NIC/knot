@@ -29,7 +29,7 @@ static volatile int _runnable_i = 0;
 static const int _runnable_cycles = 10000;
 
 /*! \brief Unit runnable. */
-int runnable(struct dthread_t *thread)
+int runnable(struct dthread *thread)
 {
 	for (int i = 0; i < _runnable_cycles; ++i) {
 
@@ -55,7 +55,7 @@ static volatile int _destructor_data = 0;
 static pthread_mutex_t _destructor_mx;
 
 /*! \brief Thread destructor. */
-int destruct(struct dthread_t *thread)
+int destruct(struct dthread *thread)
 {
 	pthread_mutex_lock(&_destructor_mx);
 	_destructor_data += 1;

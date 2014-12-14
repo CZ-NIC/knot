@@ -20,23 +20,19 @@
 #include <sys/types.h>
 #include <time.h>
 
-#include "common/debug.h"
-#include "common/macros.h"
-#include "common/trie/hat-trie.h"
 #include "dnssec/key.h"
 #include "dnssec/keytag.h"
 #include "dnssec/sign.h"
 #include "knot/dnssec/zone-keys.h"
 #include "knot/dnssec/zone-sign.h"
+#include "knot/updates/changesets.h"
 #include "libknot/descriptor.h"
 #include "libknot/dname.h"
-#include "libknot/dnssec/key.h"
 #include "libknot/dnssec/policy.h"
 #include "libknot/dnssec/rrset-sign.h"
 #include "libknot/errcode.h"
-#include "libknot/errcode.h"
+#include "libknot/internal/macros.h"
 #include "libknot/rrset.h"
-#include "libknot/rrtype/rdname.h"
 #include "libknot/rrtype/rrsig.h"
 #include "libknot/rrtype/soa.h"
 
@@ -112,19 +108,12 @@ static bool use_key(const zone_key_t *key, const knot_rrset_t *covered)
 		return false;
 	}
 
-	if (key->is_ksk) {
-		if (covered->type != KNOT_RRTYPE_DNSKEY) {
-			return false;
-		}
+	bool is_apex = knot_dname_is_equal(covered->owner,
+	                                   dnssec_key_get_dname(key->key));
 
-		// use KSK only in the zone apex
-		const uint8_t *key_name = dnssec_key_get_dname(key->key);
-		if (!knot_dname_is_equal(key_name, covered->owner)) {
-			return false;
-		}
-	}
+	bool is_zone_key = is_apex && covered->type == KNOT_RRTYPE_DNSKEY;
 
-	return true;
+	return (key->is_ksk && is_zone_key) || (key->is_zsk && !is_zone_key);
 }
 
 /*!
@@ -707,7 +696,6 @@ static int remove_invalid_dnskeys(const knot_rrset_t *soa,
 	const knot_rdata_t *dnskeys_data = knot_rdataset_at(&dnskeys->rrs, 0);
 	const knot_rdata_t *soa_data = knot_rdataset_at(&soa->rrs, 0);
 	if (knot_rdata_ttl(dnskeys_data) != knot_rdata_ttl(soa_data)) {
-		dbg_dnssec_detail("removing DNSKEYs (SOA TTL differs)\n");
 		result = knot_rdataset_copy(&to_remove.rrs, &dnskeys->rrs, NULL);
 		goto done;
 	}
@@ -724,18 +712,12 @@ static int remove_invalid_dnskeys(const knot_rrset_t *soa,
 
 		const zone_key_t *key = get_zone_key(zone_keys, keytag);
 		if (key == NULL) {
-			dbg_dnssec_detail("keeping unknown DNSKEY with tag "
-			                  "%d\n", keytag);
 			continue;
 		}
 
 		if (dnskey_rdata_match(key, rdata.data, rdata.size) && key->is_public) {
-			dbg_dnssec_detail("keeping known DNSKEY with tag "
-			                  "%d\n", keytag);
 			continue;
 		}
-
-		dbg_dnssec_detail("removing DNSKEY with tag %d\n", keytag);
 
 		knot_rdata_t *to_rem = knot_rdataset_at(&dnskeys->rrs, i);
 		result = knot_rdataset_add(&to_remove.rrs, to_rem, NULL);
@@ -968,7 +950,6 @@ static int update_dnskeys(const zone_contents_t *zone,
 		return KNOT_EOK;
 	}
 
-	dbg_dnssec_detail("Creating new signatures for DNSKEYs\n");
 	return update_dnskeys_rrsigs(&dnskeys, &rrsigs, &soa, zone_keys, policy, changeset);
 }
 
@@ -1200,7 +1181,6 @@ int knot_zone_sign(const zone_contents_t *zone,
 
 	result = update_dnskeys(zone, zone_keys, policy, changeset);
 	if (result != KNOT_EOK) {
-		dbg_dnssec_detail("update_dnskeys() failed\n");
 		return result;
 	}
 
@@ -1208,7 +1188,6 @@ int knot_zone_sign(const zone_contents_t *zone,
 	result = zone_tree_sign(zone->nodes, zone_keys, policy, changeset,
 	                        &normal_tree_expiration);
 	if (result != KNOT_EOK) {
-		dbg_dnssec_detail("zone_tree_sign() on normal nodes failed\n");
 		return result;
 	}
 
@@ -1216,7 +1195,6 @@ int knot_zone_sign(const zone_contents_t *zone,
 	result = zone_tree_sign(zone->nsec3_nodes, zone_keys, policy,
 	                        changeset, &nsec3_tree_expiration);
 	if (result != KNOT_EOK) {
-		dbg_dnssec_detail("zone_tree_sign() on nsec3 nodes failed\n");
 		return result;
 	}
 
@@ -1266,8 +1244,6 @@ int knot_zone_sign_update_soa(const knot_rrset_t *soa,
 	if (knot_rrset_empty(soa) || !zone_keys || !policy || !changeset) {
 		return KNOT_EINVAL;
 	}
-
-	dbg_dnssec_verb("Updating SOA...\n");
 
 	uint32_t serial = knot_soa_serial(&soa->rrs);
 	if (serial == UINT32_MAX && policy->soa_up == KNOT_SOA_SERIAL_UPDATE) {

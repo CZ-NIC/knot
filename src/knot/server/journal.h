@@ -63,11 +63,11 @@ typedef enum journal_flag_t {
  * Each node represents journal entry and points
  * to position of the data in the permanent storage.
  */
-typedef struct journal_node_t
+typedef struct journal_node
 {
 	uint64_t id;    /*!< Node ID. */
 	uint16_t flags; /*!< Node flags. */
-	uint16_t next;  /*!< Next node ptr. */
+	uint16_t next;  /*!< UNUSED */
 	uint32_t pos;   /*!< Position in journal file. */
 	uint32_t len;   /*!< Entry data length. */
 } journal_node_t;
@@ -81,7 +81,7 @@ typedef struct journal_node_t
  * Each journal has a fixed number of nodes.
  *
  */
-typedef struct journal_t
+typedef struct journal
 {
 	int fd;
 	char *path;             /*!< Path to journal file. */
@@ -103,7 +103,7 @@ typedef struct journal_t
 #define JOURNAL_MAGIC {'k', 'n', 'o', 't', '1', '5', '2'}
 #define MAGIC_LENGTH 7
 /* HEADER = magic, crc, max_entries, qhead, qtail */
-#define JOURNAL_HSIZE (MAGIC_LENGTH + sizeof(crc_t) + sizeof(uint16_t) * 3)
+#define JOURNAL_HSIZE (MAGIC_LENGTH + sizeof(uint32_t) + sizeof(uint16_t) * 3)
 
 /*!
  * \brief Open journal.
@@ -177,7 +177,7 @@ bool journal_exists(const char *path);
  * \retval KNOT_ERANGE if given entry was not found.
  * \return < KNOT_EOK on error.
  */
-int journal_load_changesets(const struct zone_t *zone, list_t *dst,
+int journal_load_changesets(const struct zone *zone, list_t *dst,
                             uint32_t from, uint32_t to);
 
 /*!

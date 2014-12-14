@@ -16,8 +16,8 @@
 
 #include <tap/basic.h>
 
-#include "common/mempool.h"
-#include "dnssec/tsig.h"
+#include "libknot/errcode.h"
+#include "libknot/internal/mempool.h"
 #include "libknot/descriptor.h"
 #include "libknot/errcode.h"
 #include "libknot/packet/pkt.h"

@@ -18,12 +18,10 @@
 #include <string.h>
 
 #include "libknot/binary.h"
-
-#include "common/base64.h"
-#include "common/macros.h"
-#include "common/mem.h"
-
 #include "libknot/errcode.h"
+#include "libknot/internal/base64.h"
+#include "libknot/internal/mem.h"
+#include "libknot/internal/macros.h"
 
 _public_
 int knot_binary_from_base64(const char *base64, knot_binary_t *to)

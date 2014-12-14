@@ -26,12 +26,12 @@
 
 #pragma once
 
-#include <stdint.h>			// uint16_t
-#include <limits.h>			// INT_MAX
-#include <stdbool.h>			// bool
+#include <limits.h>
+#include <stdint.h>
+#include <stdbool.h>
 
 #include "libknot/libknot.h"
-#include "common/lists.h"		// list
+#include "libknot/internal/lists.h"
 
 #define DEFAULT_IPV4_NAME	"127.0.0.1"
 #define DEFAULT_IPV6_NAME	"::1"

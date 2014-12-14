@@ -15,10 +15,10 @@
 */
 
 #include "libknot/consts.h"
-#include "common/macros.h"
+#include "libknot/internal/macros.h"
 
 _public_
-knot_lookup_table_t knot_opcode_names[] = {
+lookup_table_t knot_opcode_names[] = {
 	{ KNOT_OPCODE_QUERY,  "QUERY" },
 	{ KNOT_OPCODE_IQUERY, "IQUERY" },
 	{ KNOT_OPCODE_STATUS, "STATUS" },
@@ -28,7 +28,7 @@ knot_lookup_table_t knot_opcode_names[] = {
 };
 
 _public_
-knot_lookup_table_t knot_rcode_names[] = {
+lookup_table_t knot_rcode_names[] = {
 	{ KNOT_RCODE_NOERROR,  "NOERROR" },
 	{ KNOT_RCODE_FORMERR,  "FORMERR" },
 	{ KNOT_RCODE_SERVFAIL, "SERVFAIL" },
@@ -45,7 +45,7 @@ knot_lookup_table_t knot_rcode_names[] = {
 };
 
 _public_
-knot_lookup_table_t knot_tsig_err_names[] = {
+lookup_table_t knot_tsig_err_names[] = {
 	{ KNOT_TSIG_ERR_BADSIG,   "BADSIG" },
 	{ KNOT_TSIG_ERR_BADKEY,   "BADKEY" },
 	{ KNOT_TSIG_ERR_BADTIME,  "BADTIME" },
@@ -54,7 +54,7 @@ knot_lookup_table_t knot_tsig_err_names[] = {
 };
 
 _public_
-knot_lookup_table_t knot_tkey_err_names[] = {
+lookup_table_t knot_tkey_err_names[] = {
 	{ KNOT_TKEY_ERR_BADMODE,  "BADMODE" },
 	{ KNOT_TKEY_ERR_BADNAME,  "BADNAME" },
 	{ KNOT_TKEY_ERR_BADALG,   "BADALG" },
@@ -62,7 +62,7 @@ knot_lookup_table_t knot_tkey_err_names[] = {
 };
 
 _public_
-knot_lookup_table_t knot_dnssec_alg_names[] = {
+lookup_table_t knot_dnssec_alg_names[] = {
 	{ KNOT_DNSSEC_ALG_RSAMD5,             "RSAMD5" },
 	{ KNOT_DNSSEC_ALG_DH,                 "DH" },
 	{ KNOT_DNSSEC_ALG_DSA,                "DSA" },

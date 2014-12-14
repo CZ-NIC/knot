@@ -28,8 +28,8 @@
 
 #include <stdint.h>
 
-#include "libknot/util/utils.h"
 #include "libknot/rrset.h"
+#include "libknot/internal/utils.h"
 
 /* Forward declaration. */
 struct knot_packet;
@@ -48,7 +48,9 @@ enum knot_edns_const {
 
 	/*! \brief Minimum size of EDNS OPT RR in wire format. */
 	KNOT_EDNS_MIN_SIZE                 = 11,
-	/*! \brief EDNS OPT header size. */
+	/*! \brief Position of the Ext RCODE field in wire format of OPT RR. */
+	KNOT_EDNS_EXT_RCODE_POS            = 5,
+	/*! \brief EDNS OPTION header size. */
 	KNOT_EDNS_OPTION_HDRLEN            = 4,
 	/*! \brief Maximal edns client subnet data size (IPv6). */
 	KNOT_EDNS_MAX_OPTION_CLIENT_SUBNET = 20,
@@ -62,7 +64,7 @@ enum knot_edns_const {
 };
 
 /* Helpers for splitting extended RCODE. */
-#define KNOT_EDNS_RCODE_HI(rc) (rc >> 4)
+#define KNOT_EDNS_RCODE_HI(rc) ((rc >> 4) & 0x00ff)
 #define KNOT_EDNS_RCODE_LO(rc) (rc & 0x000f)
 
 /*!
@@ -168,6 +170,18 @@ static inline uint16_t knot_edns_whole_rcode(uint8_t ext_rcode, uint8_t rcode)
  * \param ext_rcode Extended RCODE to set.
  */
 void knot_edns_set_ext_rcode(knot_rrset_t *opt_rr, uint8_t ext_rcode);
+
+/*!
+ * \brief Sets the Extended RCODE field in OPT RR wire.
+ *
+ * \param opt_rr     Position of the OPT RR in packet.
+ * \param ext_rcode  Higher 8 bits of Extended RCODE.
+ */
+static inline void knot_edns_set_ext_rcode_wire(uint8_t *opt_rr,
+                                                uint8_t ext_rcode)
+{
+	*(opt_rr + KNOT_EDNS_EXT_RCODE_POS) = ext_rcode;
+}
 
 /*!
  * \brief Returns the EDNS version stored in the OPT RR.

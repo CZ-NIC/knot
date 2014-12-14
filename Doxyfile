@@ -38,7 +38,7 @@ PROJECT_NAME           = Knot
 # could be handy for archiving the generated documentation or if some version
 # control system is used.
 
-PROJECT_NUMBER         = 1.5
+PROJECT_NUMBER         = 1.6
 
 # Using the PROJECT_BRIEF tag one can provide an optional one line description
 # for a project that appears at the top of each page and should give viewer a
@@ -753,12 +753,11 @@ WARN_LOGFILE           =
 # spaces.
 # Note: If this tag is empty the current directory is searched.
 
-INPUT                  = src/common \
-                         src/libknot \
-                         src/common \
+INPUT                  = src/dnstap \
                          src/knot \
-                         src/zscanner \
+                         src/libknot \
                          src/utils \
+                         src/zscanner \
                          Doxy.page.h
 
 # This tag can be used to specify the character encoding of the source files

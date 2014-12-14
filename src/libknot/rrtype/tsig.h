@@ -30,10 +30,10 @@
 
 #include "dnssec/binary.h"
 #include "dnssec/tsig.h"
-#include "libknot/rrset.h"
 #include "libknot/binary.h"
-#include "libknot/util/utils.h"
 #include "libknot/consts.h"
+#include "libknot/rrset.h"
+#include "libknot/internal/utils.h"
 
 struct knot_tsig_key {
 	knot_dname_t *name;

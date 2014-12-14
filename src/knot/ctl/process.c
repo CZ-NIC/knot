@@ -29,8 +29,7 @@
 #include <sys/types.h>
 #include <pwd.h>
 
-#include "common/mem.h"
-#include "knot/knot.h"
+#include "libknot/internal/mem.h"
 #include "knot/ctl/process.h"
 #include "knot/conf/conf.h"
 

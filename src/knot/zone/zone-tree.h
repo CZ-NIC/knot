@@ -28,7 +28,7 @@
 
 #pragma once
 
-#include "common/trie/hat-trie.h"
+#include "libknot/internal/trie/hat-trie.h"
 #include "knot/zone/node.h"
 
 /*----------------------------------------------------------------------------*/

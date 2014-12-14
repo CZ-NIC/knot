@@ -26,7 +26,10 @@
 
 #pragma once
 
-#include "libknot/util/utils.h"
+#include <stdbool.h>
+#include <stdint.h>
+
+#include "libknot/internal/utils.h"
 
 /*!
  * \brief Basic limits for domain names (RFC 1035).
@@ -82,6 +85,12 @@ typedef enum {
 	KNOT_RCODE_BADVERS  = 16  /*!< Bad OPT Version. */
 } knot_rcode_t;
 
+/*!
+ * \brief TSIG error codes to be set in the TSIG RR's RDATA.
+ *
+ * Defined in RFC 2845 and RFC 4635.
+ * See also https://www.iana.org/assignments/dns-parameters/dns-parameters.xhtml
+ */
 typedef enum {
 	KNOT_TSIG_ERR_BADSIG   = 16, /*!< TSIG signature failed. */
 	KNOT_TSIG_ERR_BADKEY   = 17, /*!< Key is not supported. */
@@ -89,6 +98,9 @@ typedef enum {
 	KNOT_TSIG_ERR_BADTRUNC = 22  /*!< Bad truncation. */
 } knot_tsig_error_t;
 
+/*!
+ * \brief TKEY error codes. (Defined in RFC 2930.)
+ */
 typedef enum {
 	KNOT_TKEY_ERR_BADMODE  = 19, /*!< Bad TKEY mode. */
 	KNOT_TKEY_ERR_BADNAME  = 20, /*!< Duplicate key name. */
@@ -159,26 +171,26 @@ typedef enum {
 /*!
  * \brief DNS operation code names.
  */
-extern knot_lookup_table_t knot_opcode_names[];
+extern lookup_table_t knot_opcode_names[];
 
 /*!
  * \brief DNS reply code names.
  */
-extern knot_lookup_table_t knot_rcode_names[];
+extern lookup_table_t knot_rcode_names[];
 
 /*!
  * \brief TSIG error names.
  */
-extern knot_lookup_table_t knot_tsig_err_names[];
+extern lookup_table_t knot_tsig_err_names[];
 
 /*!
  * \brief TKEY error names.
  */
-extern knot_lookup_table_t knot_tkey_err_names[];
+extern lookup_table_t knot_tkey_err_names[];
 
 /*!
  * \brief DNSSEC algorithm names.
  */
-extern knot_lookup_table_t knot_dnssec_alg_names[];
+extern lookup_table_t knot_dnssec_alg_names[];
 
 /*! @} */

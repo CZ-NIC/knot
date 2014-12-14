@@ -25,9 +25,9 @@
 
 #pragma once
 
-#include <stdint.h>			// uint16_t
-#include <stdio.h>			// size_t
-#include <stdbool.h>			// bool
+#include <stdbool.h>
+#include <stdint.h>
+#include <stdio.h>
 
 #define KNOT_MAX_RDATA_BLOCKS	8
 #define KNOT_MAX_RDATA_DNAMES	2	// update this when defining new RR types

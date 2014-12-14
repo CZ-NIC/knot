@@ -10,19 +10,21 @@ import dnstest.zonefile
 from dnstest.test import Test
 
 TEST_CASES = {
-    # valid cases
-    "rsa_ok":             True,
-    "rsa_ecdsa_ok":       True,
-    "rsa_ecdsa_roll_ok":  True,
-    # invalid cases
-    "rsa_future_all":     False,
-    "rsa_future_publish": False,
-    "rsa_future_active":  False,
-    "rsa_inactive_zsk":   False,
-    "rsa_no_zsk":         False,
-    "rsa_twice_ksk":      False,
-    "rsa_ecdsa_ksk_only": False,
-    "rsa256_rsa512":      False,
+    "rsa":                  True,
+    "rsa_ecdsa":            True,
+    "rsa_now_ecdsa_future": True,
+    "rsa_ecdsa_roll":       True,
+    "stss_ksk":             True,
+    "stss_zsk":             True,
+    "stss_two_ksk":         True,
+    "stss_rsa256_rsa512":   True,
+    "rsa_split_ecdsa_stss": True,
+
+    "rsa_future_all":       False,
+    "rsa_future_publish":   False,
+    "rsa_future_active":    False,
+    "rsa_inactive_zsk":     False,
+    "rsa_no_zsk":           False,
 }
 
 t = Test()
@@ -48,6 +50,9 @@ for zone_name in TEST_CASES:
 t.link(zones, knot)
 
 t.start()
+
+for zone in [zone for zone in zones if TEST_CASES[zone.name.rstrip(".")]]:
+    knot.zone_wait(zone)
 
 for zone, valid in TEST_CASES.items():
     expected_rcode = "NOERROR" if valid else "SERVFAIL"

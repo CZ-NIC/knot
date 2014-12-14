@@ -61,11 +61,12 @@ int remote_unbind(conf_iface_t *desc, int sock);
 /*!
  * \brief Poll new events on RC socket.
  *
- * \param r RC interface socket.
+ * \param sock     RC interface socket.
+ * \param sigmask  Signal mask to use during blocking waiting.
  *
  * \return number of polled events or -1 on error.
  */
-int remote_poll(int sock);
+int remote_poll(int sock, const sigset_t *sigmask);
 
 /*!
  * \brief Start a RC connection with remote.

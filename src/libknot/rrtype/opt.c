@@ -20,13 +20,10 @@
 #include <string.h>
 
 #include "libknot/rrtype/opt.h"
-
-#include "common/debug.h"
-#include "common/macros.h"
-#include "common/sockaddr.h"
-
-#include "libknot/errcode.h"
 #include "libknot/descriptor.h"
+#include "libknot/errcode.h"
+#include "libknot/internal/macros.h"
+#include "libknot/internal/sockaddr.h"
 
 /*! \brief Some implementation-related constants. */
 enum knot_edns_private_consts {
@@ -115,7 +112,7 @@ uint8_t knot_edns_get_ext_rcode(const knot_rrset_t *opt_rr)
 	uint32_t ttl = 0;
 	uint8_t *ttl_ptr = (uint8_t *)&ttl;
 	// TTL is stored in machine byte order. Convert it to wire order first.
-	knot_wire_write_u32(ttl_ptr, knot_rrset_ttl(opt_rr));
+	wire_write_u32(ttl_ptr, knot_rrset_ttl(opt_rr));
 
 	uint8_t rcode;
 	memcpy(&rcode, ttl_ptr + EDNS_OFFSET_RCODE, sizeof(uint8_t));
@@ -131,11 +128,11 @@ static void set_value_to_ttl(knot_rrset_t *opt_rr, size_t offset, uint8_t value)
 	uint8_t *ttl_ptr = (uint8_t *)&ttl;
 
 	// TTL is stored in machine byte order. Convert it to wire order first.
-	knot_wire_write_u32(ttl_ptr, knot_rrset_ttl(opt_rr));
+	wire_write_u32(ttl_ptr, knot_rrset_ttl(opt_rr));
 	// Set the Extended RCODE in the converted TTL
 	memcpy(ttl_ptr + offset, &value, sizeof(uint8_t));
 	// Convert it back to machine byte order
-	uint32_t ttl_local = knot_wire_read_u32(ttl_ptr);
+	uint32_t ttl_local = wire_read_u32(ttl_ptr);
 	// Store the TTL to the RDATA
 	knot_rdata_set_ttl(knot_rdataset_at(&opt_rr->rrs, 0), ttl_local);
 }
@@ -157,7 +154,7 @@ uint8_t knot_edns_get_version(const knot_rrset_t *opt_rr)
 	uint32_t ttl = 0;
 	uint8_t *ttl_ptr = (uint8_t *)&ttl;
 	// TTL is stored in machine byte order. Convert it to wire order first.
-	knot_wire_write_u32(ttl_ptr, knot_rrset_ttl(opt_rr));
+	wire_write_u32(ttl_ptr, knot_rrset_ttl(opt_rr));
 
 	uint8_t version;
 	memcpy(&version, ttl_ptr + EDNS_OFFSET_VERSION, sizeof(uint8_t));
@@ -215,12 +212,12 @@ static uint8_t *find_option(knot_rdata_t *rdata, uint16_t opt_code)
 
 	int i = 0;
 	while (i + KNOT_EDNS_OPTION_HDRLEN <= rdlength) {
-		uint16_t code = knot_wire_read_u16(data + i);
+		uint16_t code = wire_read_u16(data + i);
 		if (opt_code == code) {
 			pos = data + i;
 			break;
 		}
-		uint16_t opt_len = knot_wire_read_u16(data + i
+		uint16_t opt_len = wire_read_u16(data + i
 		                                      + sizeof(uint16_t));
 		i += (KNOT_EDNS_OPTION_HDRLEN + opt_len);
 	}
@@ -251,14 +248,10 @@ int knot_edns_add_option(knot_rrset_t *opt_rr, uint16_t code,
 
 	uint8_t new_data[new_data_len];
 
-	dbg_edns_verb("EDNS: Adding option. Code: %u, length: %u, data:\n",
-	              code, length);
-	dbg_edns_hex_verb((char *)data, length);
-
 	memcpy(new_data, old_data, old_data_len);
 	// write length and code in wireformat (convert endian)
-	knot_wire_write_u16(new_data + old_data_len, code);
-	knot_wire_write_u16(new_data + old_data_len + sizeof(uint16_t), length);
+	wire_write_u16(new_data + old_data_len, code);
+	wire_write_u16(new_data + old_data_len + sizeof(uint16_t), length);
 	// write the option data
 	memcpy(new_data + old_data_len + KNOT_EDNS_OPTION_HDRLEN, data, length);
 
@@ -309,7 +302,7 @@ bool knot_edns_check_record(knot_rrset_t *opt_rr)
 
 	/* RFC2671 4.4: {uint16_t code, uint16_t len, data} */
 	while (pos + KNOT_EDNS_OPTION_HDRLEN <= rdlength) {
-		uint16_t opt_len = knot_wire_read_u16(data + pos
+		uint16_t opt_len = wire_read_u16(data + pos
 		                                      + sizeof(uint16_t));
 		pos += KNOT_EDNS_OPTION_HDRLEN + opt_len;
 	}
@@ -346,7 +339,7 @@ int knot_edns_client_subnet_create(const knot_addr_family_t family,
 		return KNOT_EINVAL;
 	}
 
-	knot_wire_write_u16(data + EDNS_OFFSET_CLIENT_SUBNET_FAMILY, family);
+	wire_write_u16(data + EDNS_OFFSET_CLIENT_SUBNET_FAMILY, family);
 	data[EDNS_OFFSET_CLIENT_SUBNET_SRC_MASK] = src_mask;
 	data[EDNS_OFFSET_CLIENT_SUBNET_DST_MASK] = dst_mask;
 	memcpy(data + EDNS_OFFSET_CLIENT_SUBNET_ADDR, addr, addr_prefix_len);
@@ -381,7 +374,7 @@ int knot_edns_client_subnet_parse(const uint8_t *data,
 		return KNOT_ESPACE;
 	}
 
-	*family = knot_wire_read_u16(data + EDNS_OFFSET_CLIENT_SUBNET_FAMILY);
+	*family = wire_read_u16(data + EDNS_OFFSET_CLIENT_SUBNET_FAMILY);
 	*src_mask = data[EDNS_OFFSET_CLIENT_SUBNET_SRC_MASK];
 	*dst_mask = data[EDNS_OFFSET_CLIENT_SUBNET_DST_MASK];
 	memcpy(addr, data + EDNS_OFFSET_CLIENT_SUBNET_ADDR, rest);

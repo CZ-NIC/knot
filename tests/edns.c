@@ -20,7 +20,7 @@
 #include "libknot/errcode.h"
 #include "libknot/rrtype/opt.h"
 #include "libknot/descriptor.h"
-#include "common/sockaddr.h"
+#include "libknot/internal/sockaddr.h"
 
 static const uint16_t E_MAX_PLD = 10000;
 static const uint16_t E_MAX_PLD2 = 20000;
@@ -69,11 +69,11 @@ static bool check_ttl(knot_rdata_t *rdata, uint8_t ext_rcode, uint8_t ver,
 	/* TTL should be stored in machine byte order.
 	   We need network byte order to compare its parts. */
 	uint8_t ttl_wire[4] = { 0, 0, 0, 0 };
-	knot_wire_write_u32(ttl_wire, knot_rdata_ttl(rdata));
+	wire_write_u32(ttl_wire, knot_rdata_ttl(rdata));
 
 	/* Convert Flags from EDNS parameters to wire format for comparison. */
 	uint8_t flags_wire[2] = { 0, 0 };
-	knot_wire_write_u16(flags_wire, flags);
+	wire_write_u16(flags_wire, flags);
 
 	bool success = true;
 
@@ -116,12 +116,12 @@ static bool check_option(knot_rdata_t *rdata, uint16_t opt_code,
 	bool found = false;
 	int pos = 0;
 	while (pos <= data_len - 4) {
-		uint16_t code = knot_wire_read_u16(data + pos + OFFSET_OPT_CODE);
+		uint16_t code = wire_read_u16(data + pos + OFFSET_OPT_CODE);
 		if (code == opt_code) {
 			found = true;
 			break;
 		}
-		uint16_t len = knot_wire_read_u16(data + pos + OFFSET_OPT_SIZE);
+		uint16_t len = wire_read_u16(data + pos + OFFSET_OPT_SIZE);
 		pos += 4 + len;
 	}
 
@@ -131,7 +131,7 @@ static bool check_option(knot_rdata_t *rdata, uint16_t opt_code,
 	(*done)++;
 
 	/* Check that the first OPTION's size si the size of the option data. */
-	uint16_t opt_size = knot_wire_read_u16(data + pos + OFFSET_OPT_SIZE);
+	uint16_t opt_size = wire_read_u16(data + pos + OFFSET_OPT_SIZE);
 	check = (opt_size == opt_len);
 	ok(check, "%s: OPTION data size", msg);
 	success &= check;

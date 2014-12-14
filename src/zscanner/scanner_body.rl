@@ -259,10 +259,10 @@
 
 	# BEGIN - Number processing
 	action _number_digit {
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)fc <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)fc <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -523,7 +523,7 @@
 	action _text_dec {
 		if ((*rdata_tail < (UINT8_MAX / 10)) ||   // Dominant fast check.
 			((*rdata_tail == (UINT8_MAX / 10)) && // Marginal case.
-			 (fc <= (UINT8_MAX % 10) + ASCII_0)
+			 (fc <= (UINT8_MAX % 10) + '0')
 			)
 		   ) {
 			*rdata_tail *= 10;

@@ -15,29 +15,20 @@
  */
 
 #include <assert.h>
-#include <dirent.h>
-#include <stdbool.h>
-#include <inttypes.h>
 #include <limits.h>
+#include <stdbool.h>
 
-#include "common/debug.h"
-#include "common/macros.h"
-#include "common/mem.h"
 #include "dnssec/error.h"
-#include "dnssec/kasp.h"
 #include "dnssec/keystore.h"
-#include "dnssec/sign.h"
+#include "knot/common/log.h"
 #include "knot/dnssec/zone-keys.h"
-#include "libknot/consts.h"
-#include "libknot/dname.h"
-#include "libknot/errcode.h"
 #include "libknot/errcode.h"
 #include "libknot/rrtype/dnskey.h"
 
 /*!
  * \brief Get zone key by a keytag.
  */
-zone_key_t *get_zone_key(const zone_keyset_t *keyset, uint16_t search)
+const zone_key_t *get_zone_key(const zone_keyset_t *keyset, uint16_t search)
 {
 	if (!keyset) {
 		return NULL;
@@ -45,8 +36,7 @@ zone_key_t *get_zone_key(const zone_keyset_t *keyset, uint16_t search)
 
 	for (size_t i = 0; i < keyset->count; i++) {
 		zone_key_t *key = &keyset->keys[i];
-		uint16_t keytag = dnssec_key_get_keytag(key->key);
-		if (keytag == search) {
+		if (dnssec_key_get_keytag(key->key) == search) {
 			return key;
 		}
 	}
@@ -95,7 +85,7 @@ static int set_key(dnssec_kasp_key_t *kasp_key, zone_key_t *zone_key)
 
 	zone_key->next_event = next;
 
-	// build flags
+	// key use flags
 
 	uint16_t flags = dnssec_key_get_flags(kasp_key->key);
 	zone_key->is_ksk = flags & KNOT_RDATA_DNSKEY_FLAG_KSK;
@@ -105,6 +95,104 @@ static int set_key(dnssec_kasp_key_t *kasp_key, zone_key_t *zone_key)
 	                      (timing->retire == 0 || now < timing->retire);
 	zone_key->is_public = timing->publish <= now &&
 	                      (timing->remove == 0 || now < timing->remove);
+
+	return KNOT_EOK;
+}
+
+/*!
+ * \brief Algorithm usage information.
+ */
+typedef struct algorithm_usage {
+	unsigned ksk_count;  //!< Available KSK count.
+	unsigned zsk_count;  //!< Available ZSK count.
+
+	bool is_public;      //!< DNSKEY is published.
+	bool is_stss;        //!< Used to sign all types of records.
+	bool is_ksk_active;  //!< Used to sign DNSKEY records.
+	bool is_zsk_active;  //!< Used to sign non-DNSKEY records.
+} algorithm_usage_t;
+
+/*!
+ * \brief Check correct key usage, enable Single-Type Signing Scheme if needed.
+ *
+ * Each record in the zone has to be signed at least by one key for each
+ * algorithm published in the DNSKEY RR set in the zone apex.
+ *
+ * Therefore, publishing a DNSKEY creates a requirement on active keys with
+ * the same algorithm. At least one KSK key and one ZSK has to be enabled.
+ * If one key type is unavailable (not just inactive and not-published), the
+ * algorithm is switched to Single-Type Signing Scheme.
+ */
+static int prepare_and_check_keys(const char *zone_name, zone_keyset_t *keyset)
+{
+	assert(zone_name);
+	assert(keyset);
+
+	const size_t max_algorithms = KNOT_DNSSEC_ALG_ECDSAP384SHA384 + 1;
+	algorithm_usage_t usage[max_algorithms];
+	memset(usage, 0, max_algorithms * sizeof(algorithm_usage_t));
+
+	// count available keys
+
+	for (size_t i = 0; i < keyset->count; i++) {
+		zone_key_t *key = &keyset->keys[i];
+		uint8_t algorithm = dnssec_key_get_algorithm(key->key);
+
+		assert(algorithm < max_algorithms);
+		algorithm_usage_t *u = &usage[algorithm];
+
+		if (key->is_ksk) { u->ksk_count += 1; }
+		if (key->is_zsk) { u->zsk_count += 1; }
+	}
+
+	// enable Single-Type Signing scheme if applicable
+
+	for (int i = 0; i < max_algorithms; i++) {
+		algorithm_usage_t *u = &usage[i];
+
+		// either KSK or ZSK keys are available
+		if ((u->ksk_count == 0) != (u->zsk_count == 0)) {
+			u->is_stss = true;
+			log_zone_str_info(zone_name, "DNSSEC, Single-Type Signing "
+			                  "scheme enabled, algorithm '%d'", i);
+		}
+	}
+
+	// update key flags for STSS, collect information about usage
+
+	for (size_t i = 0; i < keyset->count; i++) {
+		zone_key_t *key = &keyset->keys[i];
+		algorithm_usage_t *u = &usage[dnssec_key_get_algorithm(key->key)];
+
+		if (u->is_stss) {
+			key->is_ksk = true;
+			key->is_zsk = true;
+		}
+
+		if (key->is_public) { u->is_public = true; }
+		if (key->is_active) {
+			if (key->is_ksk) { u->is_ksk_active = true; }
+			if (key->is_zsk) { u->is_zsk_active = true; }
+		}
+	}
+
+	// validate conditions for used algorithms
+
+	unsigned public_count = 0;
+
+	for (int i = 0; i < max_algorithms; i++) {
+		algorithm_usage_t *u = &usage[i];
+		if (u->is_public) {
+			public_count += 1;
+			if (!u->is_ksk_active || !u->is_zsk_active) {
+				return KNOT_DNSSEC_EMISSINGKEYTYPE;
+			}
+		}
+	}
+
+	if (public_count == 0) {
+		return KNOT_DNSSEC_ENOKEY;
+	}
 
 	return KNOT_EOK;
 }
@@ -155,68 +243,6 @@ fail:
 }
 
 /*!
- * \brief Check if there is a functional KSK and ZSK for each used algorithm.
- *
- * \todo [dnssec] move to library
- */
-static int check_keys_validity(const zone_keyset_t *keyset)
-{
-	assert(keyset);
-
-	const int MAX_ALGORITHMS = DNSSEC_KEY_ALGORITHM_ECDSA_P384_SHA384 + 1;
-	struct {
-		bool published;
-		bool ksk_enabled;
-		bool zsk_enabled;
-	} algorithms[MAX_ALGORITHMS];
-	memset(algorithms, 0, sizeof(algorithms));
-
-	/* Make a list of used algorithms */
-
-	for (size_t i = 0; i < keyset->count; i++) {
-		const zone_key_t *key = &keyset->keys[i];
-		dnssec_key_algorithm_t a = dnssec_key_get_algorithm(key->key);
-		assert(a < MAX_ALGORITHMS);
-
-		if (key->is_public) {
-			// public key creates a requirement for an algorithm
-			algorithms[a].published = true;
-
-			// need fully enabled ZSK and KSK for each algorithm
-			if (key->is_active) {
-				if (key->is_ksk) {
-					algorithms[a].ksk_enabled = true;
-				}
-				if (key->is_zsk) {
-					algorithms[a].zsk_enabled = true;
-				}
-			}
-		}
-	}
-
-	/* Validate enabled algorithms */
-
-	int enabled_count = 0;
-	for (int a = 0; a < MAX_ALGORITHMS; a++) {
-		if (!algorithms[a].published) {
-			continue;
-		}
-
-		if (!algorithms[a].ksk_enabled || !algorithms[a].zsk_enabled) {
-			return KNOT_DNSSEC_EMISSINGKEYTYPE;
-		}
-
-		enabled_count += 1;
-	}
-
-	if (enabled_count == 0) {
-		return KNOT_DNSSEC_ENOKEY;
-	}
-
-	return KNOT_EOK;
-}
-
-/*!
  * \brief Log information about zone keys.
  */
 static void log_key_info(const zone_key_t *key, const char *zone_name)
@@ -239,11 +265,13 @@ static void log_key_info(const zone_key_t *key, const char *zone_name)
 int load_zone_keys(const char *keydir_name, const char *zone_name,
                    zone_keyset_t *keyset_ptr)
 {
+	#warning "Doesn't check if NSEC3 is enabled."
+
 	if (!keydir_name || !zone_name || !keyset_ptr) {
 		return KNOT_EINVAL;
 	}
 
-	zone_keyset_t keyset = {0};
+	zone_keyset_t keyset = { 0 };
 
 	dnssec_kasp_init_dir(&keyset.kasp);
 	assert(keyset.kasp);
@@ -286,7 +314,7 @@ int load_zone_keys(const char *keydir_name, const char *zone_name,
 	}
 	assert(i == keyset.count);
 
-	r = check_keys_validity(&keyset);
+	r = prepare_and_check_keys(zone_name, &keyset);
 	if (r != KNOT_EOK) {
 		log_zone_str_error(zone_name, "DNSSEC, keys validation failed (%s)",
 		                   knot_strerror(r));
@@ -297,11 +325,10 @@ int load_zone_keys(const char *keydir_name, const char *zone_name,
 	r = load_private_keys(keydir_name, &keyset);
 	if (r != KNOT_EOK) {
 		free_zone_keys(&keyset);
-		return r;
+		return KNOT_ERROR;
 	}
 
-	*keyset_ptr = keyset;
-	return KNOT_EOK;
+	return DNSSEC_EOK;
 }
 
 /*!
@@ -318,14 +345,14 @@ void free_zone_keys(zone_keyset_t *keyset)
 	}
 
 	dnssec_kasp_zone_free(keyset->kasp_zone);
-	dnssec_kasp_close(keyset->kasp);
+	dnssec_kasp_deinit(keyset->kasp);
 	free(keyset->keys);
 
 	memset(keyset, '\0', sizeof(*keyset));
 }
 
 /*!
- * \brief Get timestamp of the next key event.
+ * \brief Get timestamp of next key event.
  */
 time_t knot_get_next_zone_key_event(const zone_keyset_t *keyset)
 {

@@ -14,15 +14,14 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <stdio.h>
+#include <stdlib.h>
+
 #include "utils/common/resolv.h"
-
-#include <stdio.h>			// fopen
-#include <stdlib.h>			// free
-
-#include "common/lists.h"		// list
-#include "libknot/errcode.h"		// KNOT_ENOENT
-#include "utils/common/msg.h"		// DBG_NULL
-#include "utils/common/params.h"	// DEFAULT_IPV6_NAME
+#include "utils/common/msg.h"
+#include "utils/common/params.h"
+#include "libknot/libknot.h"
+#include "libknot/internal/lists.h"
 
 #define RESOLV_FILE	"/etc/resolv.conf"
 

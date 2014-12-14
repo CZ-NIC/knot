@@ -16,7 +16,7 @@
 
 #pragma once
 
-#include "common/lists.h"
+#include "libknot/internal/lists.h"
 
 struct task;
 typedef void (*task_cb)(struct task *);

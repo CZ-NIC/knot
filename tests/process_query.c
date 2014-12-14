@@ -18,7 +18,7 @@
 #include <string.h>
 #include <stdlib.h>
 
-#include "common/mempool.h"
+#include "libknot/internal/mempool.h"
 #include "libknot/descriptor.h"
 #include "libknot/packet/wire.h"
 #include "knot/nameserver/process_query.h"

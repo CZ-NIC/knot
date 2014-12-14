@@ -14,13 +14,13 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <inttypes.h>			// PRIu64
-#include <stdlib.h>			// putenv
-#include <stdio.h>			// printf
-#include <time.h>			// mktime
+#include <inttypes.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <time.h>
 
 #include "tests/tests.h"
-#include "functions.c"			// date_to_timestamp (implementation)
+#include "functions.c"
 
 int test__date_to_timestamp()
 {

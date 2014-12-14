@@ -20,9 +20,8 @@
 #include <stdlib.h>
 
 #include "libknot/rdataset.h"
-
 #include "libknot/errcode.h"
-#include "common/macros.h"
+#include "libknot/internal/macros.h"
 
 static knot_rdata_t *rr_seek(knot_rdata_t *d, size_t pos)
 {
@@ -113,8 +112,8 @@ static int remove_rr_at(knot_rdataset_t *rrs, size_t pos, mm_ctx_t *mm)
 	size_t total_size = knot_rdataset_size(rrs);
 	uint16_t old_size = knot_rdata_rdlen(old_rr);
 
-	void *old_threshold = old_rr + knot_rdata_array_size(old_size);
-	void *last_threshold = last_rr + knot_rdata_array_size(knot_rdata_rdlen(last_rr));
+	uint8_t *old_threshold = old_rr + knot_rdata_array_size(old_size);
+	uint8_t *last_threshold = last_rr + knot_rdata_array_size(knot_rdata_rdlen(last_rr));
 	// Move RDATA
 	memmove(old_rr, old_threshold,
 	        last_threshold - old_threshold);

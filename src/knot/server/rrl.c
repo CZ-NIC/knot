@@ -20,15 +20,14 @@
 #include <sys/socket.h>
 #include <assert.h>
 
-#include "common/errors.h"
-#include "common/trie/murmurhash3.h"
 #include "dnssec/random.h"
-#include "knot/knot.h"
+#include "knot/common/debug.h"
 #include "knot/server/rrl.h"
 #include "knot/zone/zone.h"
-#include "libknot/consts.h"
-#include "libknot/descriptor.h"
-#include "libknot/packet/wire.h"
+#include "libknot/libknot.h"
+#include "libknot/dnssec/random.h"
+#include "libknot/internal/trie/murmurhash3.h"
+#include "libknot/internal/errors.h"
 
 /* Hopscotch defines. */
 #define HOP_LEN (sizeof(unsigned)*8)

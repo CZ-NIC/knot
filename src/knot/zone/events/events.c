@@ -17,8 +17,8 @@
 #include <assert.h>
 #include <time.h>
 
-#include "common-knot/evsched.h"
-#include "common/namedb/namedb.h"
+#include "knot/common/evsched.h"
+#include "libknot/internal//namedb/namedb.h"
 #include "knot/server/server.h"
 #include "knot/worker/pool.h"
 #include "knot/zone/zone.h"
@@ -35,7 +35,7 @@
 
 typedef int (*zone_event_cb)(zone_t *zone);
 
-typedef struct event_info_t {
+typedef struct event_info {
 	zone_event_type_t type;
 	const zone_event_cb callback;
 	const char *name;
@@ -234,8 +234,8 @@ int zone_events_init(zone_t *zone)
 	return KNOT_EOK;
 }
 
-int zone_events_setup(struct zone_t *zone, worker_pool_t *workers,
-                      evsched_t *scheduler, knot_namedb_t *timers_db)
+int zone_events_setup(struct zone *zone, worker_pool_t *workers,
+                      evsched_t *scheduler, namedb_t *timers_db)
 {
 	if (!zone || !workers || !scheduler) {
 		return KNOT_EINVAL;
@@ -315,7 +315,7 @@ void zone_events_enqueue(zone_t *zone, zone_event_type_t type)
 void zone_events_schedule(zone_t *zone, zone_event_type_t type, unsigned dt)
 {
 	time_t abstime = time(NULL) + dt;
-	return zone_events_schedule_at(zone, type, abstime);
+	zone_events_schedule_at(zone, type, abstime);
 }
 
 void zone_events_cancel(zone_t *zone, zone_event_type_t type)
@@ -351,7 +351,7 @@ void zone_events_start(zone_t *zone)
 	pthread_mutex_unlock(&zone->events.mx);
 }
 
-time_t zone_events_get_time(const struct zone_t *zone, zone_event_type_t type)
+time_t zone_events_get_time(const struct zone *zone, zone_event_type_t type)
 {
 	if (zone == NULL) {
 		return KNOT_EINVAL;
@@ -383,7 +383,7 @@ const char *zone_events_get_name(zone_event_type_t type)
 	return info->name;
 }
 
-time_t zone_events_get_next(const struct zone_t *zone, zone_event_type_t *type)
+time_t zone_events_get_next(const struct zone *zone, zone_event_type_t *type)
 {
 	if (zone == NULL || type == NULL) {
 		return KNOT_EINVAL;
@@ -412,7 +412,7 @@ void zone_events_update(zone_t *zone, zone_t *old_zone)
 	replan_events(zone, old_zone);
 }
 
-void zone_events_replan_ddns(struct zone_t *zone, const struct zone_t *old_zone)
+void zone_events_replan_ddns(struct zone *zone, const struct zone *old_zone)
 {
 	if (old_zone) {
 		replan_update(zone, (zone_t *)old_zone);

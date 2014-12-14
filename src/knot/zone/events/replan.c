@@ -19,7 +19,7 @@
 #include "knot/zone/events/replan.h"
 #include "knot/zone/events/handlers.h"
 #include "knot/zone/zone.h"
-#include "common/macros.h"
+#include "libknot/internal/macros.h"
 
 /* -- Zone event replanning functions --------------------------------------- */
 
@@ -96,7 +96,7 @@ static void replan_flush(zone_t *zone, const zone_t *old_zone)
 /*!< \brief Creates new DDNS q in the new zone - q contains references from the old zone. */
 static void duplicate_ddns_q(zone_t *zone, zone_t *old_zone)
 {
-	struct request_data *d, *nxt;
+	struct knot_request *d, *nxt;
 	WALK_LIST_DELSAFE(d, nxt, old_zone->ddns_queue) {
 		add_tail(&zone->ddns_queue, (node_t *)d);
 	}

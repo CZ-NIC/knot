@@ -26,7 +26,7 @@
 
 #pragma once
 
-#include "common/trie/hat-trie.h"
+#include "libknot/internal/trie/hat-trie.h"
 #include "zscanner/scanner.h"
 
 // Mutiplicative constant, needed because of malloc's fragmentation

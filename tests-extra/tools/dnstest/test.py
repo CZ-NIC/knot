@@ -479,3 +479,10 @@ class Test(object):
         unique2, rrsets2 = self._axfr_records(resp2, zone)
 
         self._axfr_diff_resp(unique1, rrsets1, unique2, rrsets2, server1, server2)
+
+    def check_axfr_style_ixfr(self, server, zone_name, serial):
+        resp_ixfr = server.dig(zone_name, "IXFR", serial=serial)
+        resp_axfr = server.dig(zone_name, "AXFR")
+
+        resp_ixfr.check_axfr_style_ixfr(resp_axfr)
+

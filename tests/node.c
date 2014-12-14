@@ -40,7 +40,7 @@ static knot_rrset_t *create_dummy_rrsig(const knot_dname_t *owner,
 	                                 KNOT_CLASS_IN, NULL);
 	assert(r);
 	uint8_t wire[sizeof(uint16_t)];
-	knot_wire_write_u16(wire, type);
+	wire_write_u16(wire, type);
 	int ret = knot_rrset_add_rdata(r, wire, sizeof(uint16_t), 3600, NULL);
 	assert(ret == KNOT_EOK);
 	return r;

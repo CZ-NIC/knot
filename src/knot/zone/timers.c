@@ -15,9 +15,9 @@
  */
 
 #include "libknot/dname.h"
-#include "common/mem.h"
-#include "common/namedb/namedb.h"
-#include "common/namedb/namedb_lmdb.h"
+#include "libknot/internal/namedb/namedb.h"
+#include "libknot/internal/namedb/namedb_lmdb.h"
+#include "libknot/internal/mem.h"
 #include "knot/zone/timers.h"
 #include "knot/zone/zonedb.h"
 
@@ -33,15 +33,15 @@ enum {
 
 // Do not change these mappings if you want backwards compatibility.
 static const uint8_t event_id_to_key[ZONE_EVENT_COUNT] = {
- [ZONE_EVENT_REFRESH] = KEY_REFRESH,
- [ZONE_EVENT_EXPIRE] = KEY_EXPIRE,
- [ZONE_EVENT_FLUSH] = KEY_FLUSH
+	[ZONE_EVENT_REFRESH] = KEY_REFRESH,
+	[ZONE_EVENT_EXPIRE] = KEY_EXPIRE,
+	[ZONE_EVENT_FLUSH] = KEY_FLUSH
 };
 
 static const int key_to_event_id[PERSISTENT_EVENT_COUNT + 1] = {
- [KEY_REFRESH] = ZONE_EVENT_REFRESH,
- [KEY_EXPIRE] = ZONE_EVENT_EXPIRE,
- [KEY_FLUSH] = ZONE_EVENT_FLUSH
+	[KEY_REFRESH] = ZONE_EVENT_REFRESH,
+	[KEY_EXPIRE] = ZONE_EVENT_EXPIRE,
+	[KEY_FLUSH] = ZONE_EVENT_FLUSH
 };
 
 static bool known_event_key(uint8_t key)
@@ -63,11 +63,11 @@ static void clear_timers(time_t *timers)
 }
 
 /*! \brief Stores timers for persistent events. */
-static int store_timers(knot_txn_t *txn, zone_t *zone)
+static int store_timers(namedb_txn_t *txn, zone_t *zone)
 {
 	// Create key
-	knot_val_t key = { .len = knot_dname_size(zone->name), .data = zone->name };
-	
+	namedb_val_t key = { .len = knot_dname_size(zone->name), .data = zone->name };
+
 	// Create value
 	uint8_t packed_timer[EVENT_KEY_PAIR_SIZE * PERSISTENT_EVENT_COUNT];
 	size_t offset = 0;
@@ -79,24 +79,24 @@ static int store_timers(knot_txn_t *txn, zone_t *zone)
 		// Write event key and timer to buffer
 		packed_timer[offset] = event_id_to_key[event];
 		offset += 1;
-		knot_wire_write_u64(packed_timer + offset,
+		wire_write_u64(packed_timer + offset,
 		                    (int64_t)zone_events_get_time(zone, event));
 		offset += sizeof(uint64_t);
 	}
-	knot_val_t val = { .len = sizeof(packed_timer), .data = packed_timer };
+	namedb_val_t val = { .len = sizeof(packed_timer), .data = packed_timer };
 
 	// Store
 	return namedb_lmdb_api()->insert(txn, &key, &val, 0);
 }
 
 /*! \brief Reads timers for persistent events. */
-static int read_timers(knot_txn_t *txn, const zone_t *zone, time_t *timers)
+static int read_timers(namedb_txn_t *txn, const zone_t *zone, time_t *timers)
 {
-	const struct namedb_api *db_api = namedb_lmdb_api();
+	const namedb_api_t *db_api = namedb_lmdb_api();
 	assert(db_api);
 
-	knot_val_t key = { .len = knot_dname_size(zone->name), .data = zone->name };
-	knot_val_t val;
+	namedb_val_t key = { .len = knot_dname_size(zone->name), .data = zone->name };
+	namedb_val_t val;
 
 	int ret = db_api->find(txn, &key, &val, 0);
 	if (ret != KNOT_EOK && ret != KNOT_ENOENT) {
@@ -115,7 +115,8 @@ static int read_timers(knot_txn_t *txn, const zone_t *zone, time_t *timers)
 		offset += 1;
 		if (known_event_key(db_key)) {
 			const zone_event_type_t event = key_to_event_id[db_key];
-			timers[event] = (time_t)knot_wire_read_u64(val.data + offset);
+			timers[event] =
+				(time_t)wire_read_u64((uint8_t *)val.data + offset);
 		}
 		offset += sizeof(uint64_t);
 	}
@@ -125,53 +126,54 @@ static int read_timers(knot_txn_t *txn, const zone_t *zone, time_t *timers)
 
 /* -------- API ------------------------------------------------------------- */
 
-int open_timers_db(const char *storage, knot_namedb_t **db_ptr)
+int open_timers_db(const char *storage, namedb_t **db_ptr)
 {
-	if (!storage || !db_ptr) {
+	if (storage == NULL || db_ptr == NULL) {
 		return KNOT_EINVAL;
 	}
 
-	const struct namedb_api *api = namedb_lmdb_api();
-	if (!api) {
+	struct namedb_lmdb_opts opts = NAMEDB_LMDB_OPTS_INITIALIZER;
+	const namedb_api_t *db_api = namedb_lmdb_api();
+	if (db_api == NULL) {
 		return KNOT_ENOTSUP;
 	}
 
-	char *path = sprintf_alloc("%s/timers", storage);
-	if (!path) {
+	opts.path = sprintf_alloc("%s/timers", storage);
+	if (opts.path == NULL) {
 		return KNOT_ENOMEM;
 	}
 
-	int ret = api->init(path, db_ptr, NULL);
+	int ret = db_api->init(db_ptr, NULL, &opts);
 
-	free(path);
+	free((char *)opts.path);
 
 	return ret;
 }
 
-void close_timers_db(knot_namedb_t *timer_db)
+void close_timers_db(namedb_t *timer_db)
 {
-	if (!timer_db) {
+	if (timer_db == NULL) {
 		return;
 	}
 
-	const struct namedb_api *db_api = namedb_lmdb_api();
+	const namedb_api_t *db_api = namedb_lmdb_api();
 	assert(db_api);
 
 	db_api->deinit(timer_db);
 }
 
-int read_zone_timers(knot_namedb_t *timer_db, const zone_t *zone, time_t *timers)
+int read_zone_timers(namedb_t *timer_db, const zone_t *zone, time_t *timers)
 {
 	if (timer_db == NULL) {
 		clear_timers(timers);
 		return KNOT_EOK;
 	}
 
-	const struct namedb_api *db_api = namedb_lmdb_api();
+	const namedb_api_t *db_api = namedb_lmdb_api();
 	assert(db_api);
 
-	knot_txn_t txn;
-	int ret = db_api->txn_begin(timer_db, &txn, KNOT_NAMEDB_RDONLY);
+	namedb_txn_t txn;
+	int ret = db_api->txn_begin(timer_db, &txn, NAMEDB_RDONLY);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
@@ -185,16 +187,16 @@ int read_zone_timers(knot_namedb_t *timer_db, const zone_t *zone, time_t *timers
 	return KNOT_EOK;
 }
 
-int write_zone_timers(knot_namedb_t *timer_db, zone_t *zone)
+int write_zone_timers(namedb_t *timer_db, zone_t *zone)
 {
 	if (timer_db == NULL) {
 		return KNOT_EOK;
 	}
 
-	const struct namedb_api *db_api = namedb_lmdb_api();
+	const namedb_api_t *db_api = namedb_lmdb_api();
 	assert(db_api);
 
-	knot_txn_t txn;
+	namedb_txn_t txn;
 	int ret = db_api->txn_begin(timer_db, &txn, 0);
 	if (ret != KNOT_EOK) {
 		return ret;
@@ -209,17 +211,17 @@ int write_zone_timers(knot_namedb_t *timer_db, zone_t *zone)
 	return db_api->txn_commit(&txn);
 }
 
-int sweep_timer_db(knot_namedb_t *timer_db, knot_zonedb_t *zone_db)
+int sweep_timer_db(namedb_t *timer_db, knot_zonedb_t *zone_db)
 {
 	if (timer_db == NULL) {
 		return KNOT_EOK;
 	}
 
-	const struct namedb_api *db_api = namedb_lmdb_api();
+	const namedb_api_t *db_api = namedb_lmdb_api();
 	assert(db_api);
 
-	knot_txn_t txn;
-	int ret = db_api->txn_begin(timer_db, &txn, KNOT_NAMEDB_SORTED);
+	namedb_txn_t txn;
+	int ret = db_api->txn_begin(timer_db, &txn, NAMEDB_SORTED);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
@@ -229,14 +231,14 @@ int sweep_timer_db(knot_namedb_t *timer_db, knot_zonedb_t *zone_db)
 		return KNOT_EOK;
 	}
 
-	knot_iter_t *it = db_api->iter_begin(&txn, 0);
+	namedb_iter_t *it = db_api->iter_begin(&txn, 0);
 	if (it == NULL) {
 		db_api->txn_abort(&txn);
 		return KNOT_ERROR;
 	}
 
 	while (it) {
-		knot_val_t key;
+		namedb_val_t key;
 		ret = db_api->iter_key(it, &key);
 		if (ret != KNOT_EOK) {
 			db_api->txn_abort(&txn);

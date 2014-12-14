@@ -20,15 +20,15 @@
 #include <string.h>
 #include <limits.h>
 
-#include "common/base32hex.h"
-#include "common/debug.h"
 #include "dnssec/error.h"
 #include "dnssec/nsec.h"
+#include "libknot/internal/base32hex.h"
+#include "knot/common/debug.h"
 #include "libknot/descriptor.h"
+#include "libknot/dnssec/bitmap.h"
 #include "libknot/packet/wire.h"
 #include "libknot/rrtype/nsec3.h"
 #include "libknot/rrtype/soa.h"
-#include "libknot/util/utils.h"
 #include "knot/dnssec/nsec-chain.h"
 #include "knot/dnssec/nsec3-chain.h"
 #include "knot/dnssec/zone-nsec.h"
