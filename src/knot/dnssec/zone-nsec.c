@@ -25,7 +25,6 @@
 #include "libknot/internal/base32hex.h"
 #include "knot/common/debug.h"
 #include "libknot/descriptor.h"
-#include "libknot/dnssec/bitmap.h"
 #include "libknot/packet/wire.h"
 #include "libknot/rrtype/nsec3.h"
 #include "libknot/rrtype/soa.h"

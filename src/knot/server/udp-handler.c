@@ -44,7 +44,6 @@
 #include "libknot/internal/mempool.h"
 #include "libknot/internal/macros.h"
 #include "libknot/libknot.h"
-#include "libknot/dnssec/crypto.h"
 #include "libknot/processing/overlay.h"
 
 /* Buffer identifiers. */

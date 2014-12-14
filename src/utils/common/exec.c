@@ -28,8 +28,6 @@
 #include "libknot/internal/print.h"
 #include "libknot/internal/sockaddr.h"
 #include "libknot/internal/strlcat.h"
-#include "libknot/dnssec/random.h"
-#include "libknot/dnssec/sig0.h"
 
 static lookup_table_t rtypes[] = {
 	{ KNOT_RRTYPE_A,      "has IPv4 address" },

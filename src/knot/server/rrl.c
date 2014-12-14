@@ -25,7 +25,6 @@
 #include "knot/server/rrl.h"
 #include "knot/zone/zone.h"
 #include "libknot/libknot.h"
-#include "libknot/dnssec/random.h"
 #include "libknot/internal/trie/murmurhash3.h"
 #include "libknot/internal/errors.h"
 

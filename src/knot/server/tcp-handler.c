@@ -41,8 +41,6 @@
 #include "libknot/internal/macros.h"
 #include "libknot/internal/net.h"
 #include "libknot/internal/sockaddr.h"
-#include "libknot/dnssec/crypto.h"
-#include "libknot/dnssec/random.h"
 #include "libknot/processing/overlay.h"
 
 /*! \brief TCP context data. */
