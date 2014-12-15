@@ -8,6 +8,7 @@ import dns.tsigkeyring
 from subprocess import DEVNULL, PIPE, Popen
 
 import dnstest.server
+import dnstest.params
 from dnstest.utils import *
 
 class Tsig(object):
@@ -86,24 +87,53 @@ class Tsig(object):
 class Key(object):
     '''DNSSEC key generator'''
 
-    def __init__(self, key_dir, zone_name, ksk=False, alg="NSEC3RSASHA1", \
-                 key_len="512", type="ZONE"):
+    def __init__(self, key_dir, zone_name, ksk=False, alg="rsasha256", key_len=512):
         self.dir = key_dir
         self.zone_name = zone_name
         self.alg = alg
         self.len = key_len
-        self.type = type
-        self.flags = ["-f", "KSK"] if ksk else []
-        self.name = None
+        self.ksk = ksk
+
+    def _keymgr(self, *args):
+        cmd = Popen([dnstest.params.keymgr_bin, "--dir", self.dir] + list(args),
+                    stdout=PIPE, stderr=PIPE, universal_newlines=True)
+        (stdout, stderr) = cmd.communicate()
+
+        return (cmd.returncode, stdout, stderr)
+
+    def _ensure_zone(self):
+        # initialize KASP (currently NOOP if initialized)
+        (exit_code, _, _) = self._keymgr("init");
+        if exit_code != 0:
+            raise Failed("Failed to initialize the KASP.")
+
+        # check if zone exists in KASP
+        (exit_code, _, _) = self._keymgr("zone", "show", self.zone_name)
+        if exit_code == 0:
+            return
+
+        # add zone into KASP
+        (exit_code, _, _) = self._keymgr("zone", "add", self.zone_name)
+        if exit_code == 0:
+            return
+
+        raise Failed("Unable to add zone '%s' into KASP." % self.zone_name)
+
+    def _gen_command(self):
+        cmd = [
+            "zone", "key", "generate", self.zone_name,
+            "algorithm", str(self.alg),
+            "size", str(self.len)
+        ]
+
+        if self.ksk:
+            cmd.append("ksk")
+
+        return cmd
 
     def generate(self):
-        cmd = Popen(["dnssec-keygen", "-r", "/dev/urandom", "-n", self.type, \
-                     "-a", self.alg, "-b", self.len, "-K", self.dir, \
-                     "-q"] + self.flags + [self.zone_name],
-                     stdout=PIPE, stderr=PIPE, universal_newlines=True)
-        (out, err) = cmd.communicate()
-
-        self.name = out.strip()
-        if cmd.returncode != 0 or self.name[0] != "K":
-            raise Failed("Can't generate key for %s zone" % self.zone_name)
-
+        self._ensure_zone()
+        command = self._gen_command()
+        (exit_code, _, _) = self._keymgr(*command)
+        if exit_code != 0:
+            raise Failed("Can't generate key for zone '%s'." % self.zone_name)
