@@ -63,12 +63,13 @@ typedef struct {
  *
  * \param keydir_name    Name of the directory with DNSSEC keys.
  * \param zone_name      Name of the zone.
+ * \param nsec3_enabled  Zone uses NSEC3 for authenticated denial.
  * \param keys           Structure with loaded keys.
  *
  * \return Error code, KNOT_EOK if successful.
  */
 int load_zone_keys(const char *keydir_name, const char *zone_name,
-                   zone_keyset_t *keyset);
+                   bool nsec3_enabled, zone_keyset_t *keyset);
 
 /*!
  * \brief Get zone key by a keytag.

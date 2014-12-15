@@ -100,6 +100,20 @@ static int set_key(dnssec_kasp_key_t *kasp_key, zone_key_t *zone_key)
 }
 
 /*!
+ * \brief Check if algorithm is allowed with NSEC3.
+ */
+static bool is_nsec3_allowed(uint8_t algorithm)
+{
+	switch (algorithm) {
+	case DNSSEC_KEY_ALGORITHM_RSA_SHA1:
+	case DNSSEC_KEY_ALGORITHM_DSA_SHA1:
+		return false;
+	default:
+		return true;
+	}
+}
+
+/*!
  * \brief Algorithm usage information.
  */
 typedef struct algorithm_usage {
@@ -123,7 +137,8 @@ typedef struct algorithm_usage {
  * If one key type is unavailable (not just inactive and not-published), the
  * algorithm is switched to Single-Type Signing Scheme.
  */
-static int prepare_and_check_keys(const char *zone_name, zone_keyset_t *keyset)
+static int prepare_and_check_keys(const char *zone_name, bool nsec3_enabled,
+                                  zone_keyset_t *keyset)
 {
 	assert(zone_name);
 	assert(keyset);
@@ -140,6 +155,15 @@ static int prepare_and_check_keys(const char *zone_name, zone_keyset_t *keyset)
 
 		assert(algorithm < max_algorithms);
 		algorithm_usage_t *u = &usage[algorithm];
+
+		if (nsec3_enabled && !is_nsec3_allowed(algorithm)) {
+			log_zone_str_warning(zone_name, "DNSSEC, key '%d' "
+			                     "cannot be used with NSEC3",
+			                     dnssec_key_get_keytag(key->key));
+			key->is_public = false;
+			key->is_active = false;
+			continue;
+		}
 
 		if (key->is_ksk) { u->ksk_count += 1; }
 		if (key->is_zsk) { u->zsk_count += 1; }
@@ -251,8 +275,9 @@ static void log_key_info(const zone_key_t *key, const char *zone_name)
 	assert(zone_name);
 
 	log_zone_str_info(zone_name, "DNSSEC, loaded key, tag %5d, "
-			  "KSK %s, ZSK %s, public %s, active %s",
+			  "algorithm %d, KSK %s, ZSK %s, public %s, active %s",
 			  dnssec_key_get_keytag(key->key),
+			  dnssec_key_get_algorithm(key->key),
 			  key->is_ksk ? "yes" : "no",
 			  key->is_zsk ? "yes" : "no",
 			  key->is_public ? "yes" : "no",
@@ -263,10 +288,8 @@ static void log_key_info(const zone_key_t *key, const char *zone_name)
  * \brief Load zone keys from a key directory.
  */
 int load_zone_keys(const char *keydir_name, const char *zone_name,
-                   zone_keyset_t *keyset_ptr)
+                   bool nsec3_enabled, zone_keyset_t *keyset_ptr)
 {
-	#warning "Doesn't check if NSEC3 is enabled."
-
 	if (!keydir_name || !zone_name || !keyset_ptr) {
 		return KNOT_EINVAL;
 	}
@@ -314,7 +337,7 @@ int load_zone_keys(const char *keydir_name, const char *zone_name,
 	}
 	assert(i == keyset.count);
 
-	r = prepare_and_check_keys(zone_name, &keyset);
+	r = prepare_and_check_keys(zone_name, nsec3_enabled, &keyset);
 	if (r != KNOT_EOK) {
 		log_zone_str_error(zone_name, "DNSSEC, keys validation failed (%s)",
 		                   knot_strerror(r));

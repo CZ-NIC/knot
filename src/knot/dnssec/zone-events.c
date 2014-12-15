@@ -39,7 +39,9 @@ static int init_dnssec_structs(const zone_contents_t *zone,
 	assert(policy);
 
 	// Read zone keys from disk
-	int result = load_zone_keys(config->dnssec_keydir, config->name, zone_keys);
+	bool nsec3_enabled = knot_is_nsec3_enabled(zone);
+	int result = load_zone_keys(config->dnssec_keydir, config->name,
+	                            nsec3_enabled, zone_keys);
 	if (result != KNOT_EOK) {
 		log_zone_error(zone->apex->owner, "DNSSEC, failed to load keys (%s)",
 		               knot_strerror(result));
