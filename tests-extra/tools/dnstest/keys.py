@@ -8,6 +8,7 @@ import dns.tsigkeyring
 from subprocess import DEVNULL, PIPE, Popen
 
 import dnstest.server
+from dnstest.utils import *
 
 class Tsig(object):
     '''TSIG key generator'''
