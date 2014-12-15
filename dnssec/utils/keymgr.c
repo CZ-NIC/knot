@@ -257,11 +257,15 @@ static int cmd_zone_list(int argc, char *argv[])
 		}
 	}
 
+	dnssec_list_free_full(zones, NULL, NULL);
+
 	if (!found_match) {
 		error("No matching zone found.");
+		return 1;
 	}
 
-	dnssec_list_free_full(zones, NULL, NULL);
+	return 0;
+}
 
 	return 0;
 }
