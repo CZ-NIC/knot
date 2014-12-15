@@ -27,10 +27,10 @@ master.stop()
 # Enable autosigning.
 master.dnssec_enable = True
 master.enable_nsec3(zone)
-master.gen_key(zone, ksk=True, alg="NSEC3RSASHA1")
-master.gen_key(zone, alg="NSEC3RSASHA1")
-master.gen_key(zone, ksk=True, alg="RSASHA256")
-master.gen_key(zone, alg="RSASHA256")
+master.gen_key(zone, ksk=True, alg="rsasha1-nsec3-sha1")
+master.gen_key(zone, alg="rsasha1-nsec3-sha1")
+master.gen_key(zone, ksk=True, alg="rsasha256")
+master.gen_key(zone, alg="rsasha256")
 master.gen_confile()
 master.start()
 
