@@ -267,6 +267,28 @@ static int cmd_zone_list(int argc, char *argv[])
 	return 0;
 }
 
+static int cmd_zone_show(int argc, char *argv[])
+{
+	if (argc != 1) {
+		error("Name of one zone has to be specified.");
+		return 1;
+	}
+
+	char *zone_name = argv[0];
+
+	_cleanup_kasp_ dnssec_kasp_t *kasp = get_kasp();
+	if (!kasp) {
+		return 1;
+	}
+
+	_cleanup_zone_ dnssec_kasp_zone_t *zone = get_zone(kasp, zone_name);
+	if (!zone) {
+		return 1;
+	}
+
+	printf("zone: %s\n", zone_name);
+	printf("keys: %zu\n", dnssec_list_size(dnssec_kasp_zone_get_keys(zone)));
+
 	return 0;
 }
 
@@ -728,6 +750,7 @@ static int cmd_zone(int argc, char *argv[])
 		{ "add",    cmd_zone_add },
 		{ "list",   cmd_zone_list },
 		{ "remove", cmd_zone_remove },
+		{ "show",   cmd_zone_show },
 		{ "key",    cmd_zone_key },
 		{ NULL }
 	};
