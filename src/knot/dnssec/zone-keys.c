@@ -328,6 +328,8 @@ int load_zone_keys(const char *keydir_name, const char *zone_name,
 		return KNOT_ERROR;
 	}
 
+	*keyset_ptr = keyset;
+
 	return DNSSEC_EOK;
 }
 
