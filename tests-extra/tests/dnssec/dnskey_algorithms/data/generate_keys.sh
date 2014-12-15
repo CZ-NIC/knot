@@ -1,92 +1,104 @@
 #!/bin/sh
 #
-# Run this script every 50 years to refresh the keys. :-)
+# Run this script every 40 years to refresh the keys. :-)
 #
 
 set -xe
 
-TIME_PAST="-50y"
-TIME_FUTURE="+50y"
-
-keygen()
-{
-	dnssec-keygen -r/dev/urandom $@
-}
-
+KEYMGR=${1:-keymgr}
 dir=$(pwd)
 keydir=$(mktemp -d)
 
+TIME_PAST="-40y"
+TIME_FUTURE="+40y"
+
 pushd "$keydir"
+
+"$KEYMGR" init
 
 #
 # valid scenarios
 #
 
 # KSK+ZSK, simple
-keygen -a RSASHA256 -b 2048 -P $TIME_PAST -A $TIME_PAST -f KSK rsa
-keygen -a RSASHA256 -b 1024 -P $TIME_PAST -A $TIME_PAST rsa
+"$KEYMGR" zone add rsa
+"$KEYMGR" zone key generate rsa algorithm 8 size 2048 publish "$TIME_PAST" active "$TIME_PAST" ksk
+"$KEYMGR" zone key generate rsa algorithm 8 size 1024 publish "$TIME_PAST" active "$TIME_PAST"
 
 # KSK+ZSK, two algorithms
-keygen -a RSASHA256 -b 2048 -P $TIME_PAST -A $TIME_PAST rsa_ecdsa
-keygen -a RSASHA256 -b 1024 -P $TIME_PAST -A $TIME_PAST -f KSK rsa_ecdsa
-keygen -a ECDSAP256SHA256 -P $TIME_PAST -A $TIME_PAST rsa_ecdsa
-keygen -a ECDSAP256SHA256 -P $TIME_PAST -A $TIME_PAST -f KSK rsa_ecdsa
+"$KEYMGR" zone add rsa_ecdsa
+"$KEYMGR" zone key generate rsa_ecdsa algorithm 8 size 2048 publish "$TIME_PAST" active "$TIME_PAST" ksk
+"$KEYMGR" zone key generate rsa_ecdsa algorithm 8 size 1024 publish "$TIME_PAST" active "$TIME_PAST"
+"$KEYMGR" zone key generate rsa_ecdsa algorithm 13 size 256 publish "$TIME_PAST" active "$TIME_PAST" ksk
+"$KEYMGR" zone key generate rsa_ecdsa algorithm 13 size 256 publish "$TIME_PAST" active "$TIME_PAST"
 
 # KSK+ZSK: RSA enabled, ECDSA in future
-keygen -a RSASHA256 -b 2048 -P $TIME_PAST -A $TIME_PAST -f KSK rsa_now_ecdsa_future
-keygen -a RSASHA256 -b 1024 -P $TIME_PAST -A $TIME_PAST rsa_now_ecdsa_future
-keygen -a ECDSAP256SHA256 -P $TIME_FUTURE -A $TIME_FUTURE -f KSK rsa_now_ecdsa_future
-keygen -a ECDSAP256SHA256 -P $TIME_FUTURE -A $TIME_FUTURE rsa_now_ecdsa_future
+"$KEYMGR" zone add rsa_now_ecdsa_future
+"$KEYMGR" zone key generate rsa_now_ecdsa_future algorithm 8 size 2048 publish "$TIME_PAST" active "$TIME_PAST" ksk
+"$KEYMGR" zone key generate rsa_now_ecdsa_future algorithm 8 size 1024 publish "$TIME_PAST" active "$TIME_PAST"
+"$KEYMGR" zone key generate rsa_now_ecdsa_future algorithm 13 size 256 publish "$TIME_FUTURE" active "$TIME_FUTURE" ksk
+"$KEYMGR" zone key generate rsa_now_ecdsa_future algorithm 13 size 256 publish "$TIME_FUTURE" active "$TIME_FUTURE"
 
 # KSK+ZSK, algorithm rollover (signatures pre-published)
-keygen -a RSASHA256 -b 2048 -P $TIME_PAST -A $TIME_PAST -f KSK rsa_ecdsa_roll
-keygen -a RSASHA256 -b 1024 -P $TIME_PAST -A $TIME_PAST rsa_ecdsa_roll
-keygen -a ECDSAP256SHA256 -P $TIME_FUTURE -A $TIME_PAST -f KSK rsa_ecdsa_roll
-keygen -a ECDSAP256SHA256 -P $TIME_FUTURE -A $TIME_PAST rsa_ecdsa_roll
+"$KEYMGR" zone add rsa_ecdsa_roll
+"$KEYMGR" zone key generate rsa_ecdsa_roll algorithm 8 size 2048 publish "$TIME_PAST" active "$TIME_PAST" ksk
+"$KEYMGR" zone key generate rsa_ecdsa_roll algorithm 8 size 1024 publish "$TIME_PAST" active "$TIME_PAST"
+"$KEYMGR" zone key generate rsa_ecdsa_roll algorithm 13 size 256 publish "$TIME_FUTURE" active "$TIME_PAST" ksk
+"$KEYMGR" zone key generate rsa_ecdsa_roll algorithm 13 size 256 publish "$TIME_FUTURE" active "$TIME_PAST"
 
 # STSS: KSK only
-keygen -a RSASHA256 -b 2048 -P $TIME_PAST -A $TIME_PAST -f KSK stss_ksk
+"$KEYMGR" zone add stss_ksk
+keymgr zone key generate stss_ksk algorithm 8 size 2048 publish "$TIME_PAST" active "$TIME_PAST" ksk
 
 # STSS: ZSK only
-keygen -a RSASHA256 -b 2048 -P $TIME_PAST -A $TIME_PAST stss_zsk
+"$KEYMGR" zone add stss_zsk
+"$KEYMGR" zone key generate stss_zsk algorithm 8 size 2048 publish "$TIME_PAST" active "$TIME_PAST"
 
 # STSS: two KSKs
-keygen -a RSASHA256 -b 1024 -P $TIME_PAST -A $TIME_PAST -f KSK stss_two_ksk
-keygen -a RSASHA256 -b 1024 -P $TIME_PAST -A $TIME_PAST -f KSK stss_two_ksk
+"$KEYMGR" zone add stss_two_ksk
+"$KEYMGR" zone key generate stss_two_ksk algorithm 8 size 1024 publish "$TIME_PAST" active "$TIME_PAST" ksk
+"$KEYMGR" zone key generate stss_two_ksk algorithm 8 size 1024 publish "$TIME_PAST" active "$TIME_PAST" ksk
 
 # STSS: different algorithms
-keygen -a RSASHA256 -b 2048 -P $TIME_PAST -A $TIME_PAST -f KSK stss_rsa256_rsa512
-keygen -a RSASHA512 -b 2048 -P $TIME_PAST -A $TIME_PAST stss_rsa256_rsa512
+"$KEYMGR" zone add stss_rsa256_rsa512
+"$KEYMGR" zone key generate stss_rsa256_rsa512 algorithm 8 size 2048 publish "$TIME_PAST" active "$TIME_PAST" ksk
+"$KEYMGR" zone key generate stss_rsa256_rsa512 algorithm 10 size 2048 publish "$TIME_PAST" active "$TIME_PAST"
 
 # KSK+ZSK for RSA, STSS for ECDSA
-keygen -a RSASHA256 -b 2048 -P $TIME_PAST -A $TIME_PAST -f KSK rsa_split_ecdsa_stss
-keygen -a RSASHA256 -b 1024 -P $TIME_PAST -A $TIME_PAST rsa_split_ecdsa_stss
-keygen -a ECDSAP256SHA256 -P $TIME_PAST -A $TIME_PAST -f KSK rsa_split_ecdsa_stss
+"$KEYMGR" zone add rsa_split_ecdsa_stss
+"$KEYMGR" zone key generate rsa_split_ecdsa_stss algorithm 8 size 2048 publish "$TIME_PAST" active "$TIME_PAST" ksk
+"$KEYMGR" zone key generate rsa_split_ecdsa_stss algorithm 8 size 1024 publish "$TIME_PAST" active "$TIME_PAST"
+"$KEYMGR" zone key generate rsa_split_ecdsa_stss algorithm 13 size 256 publish "$TIME_PAST" active "$TIME_PAST" ksk
 
 #
 # invalid scenarios
 #
 
 # no key for now
-keygen -a RSASHA256 -b 2048 -P $TIME_FUTURE -A $TIME_FUTURE -f KSK rsa_future_all
-keygen -a RSASHA256 -b 1024 -P $TIME_FUTURE -A $TIME_FUTURE rsa_future_all
+"$KEYMGR" zone add rsa_future_all
+"$KEYMGR" zone key generate rsa_future_all algorithm 8 size 2048 publish "$TIME_FUTURE" active "$TIME_FUTURE" ksk
+"$KEYMGR" zone key generate rsa_future_all algorithm 8 size 1024 publish "$TIME_FUTURE" active "$TIME_FUTURE"
 
 # key active, not published
-keygen -a RSASHA512 -b 2048 -P $TIME_FUTURE -A $TIME_PAST -f KSK rsa_future_publish
-keygen -a RSASHA256 -b 1024 -P $TIME_FUTURE -A $TIME_PAST rsa_future_publish
+"$KEYMGR" zone add rsa_future_publish
+"$KEYMGR" zone key generate rsa_future_publish algorithm 8 size 2048 publish "$TIME_FUTURE" active "$TIME_PAST" ksk
+"$KEYMGR" zone key generate rsa_future_publish algorithm 8 size 1024 publish "$TIME_FUTURE" active "$TIME_PAST"
 
 # key published, not active
-keygen -a RSASHA512 -b 2048 -P $TIME_PAST -A $TIME_FUTURE -f KSK rsa_future_active
-keygen -a RSASHA256 -b 1024 -P $TIME_PAST -A $TIME_FUTURE rsa_future_active
+"$KEYMGR" zone add rsa_future_active
+"$KEYMGR" zone key generate rsa_future_active algorithm 8 size 2048 publish "$TIME_PAST" active "$TIME_FUTURE" ksk
+"$KEYMGR" zone key generate rsa_future_active algorithm 8 size 1024 publish "$TIME_PAST" active "$TIME_FUTURE"
 
 # no signatures for KSK
-keygen -a RSASHA256 -b 2048 -P $TIME_PAST -A $TIME_PAST -f KSK rsa_inactive_zsk
-keygen -a RSASHA256 -b 1024 -P $TIME_PAST -A $TIME_FUTURE rsa_inactive_zsk
+"$KEYMGR" zone add rsa_inactive_zsk
+"$KEYMGR" zone key generate rsa_inactive_zsk algorithm 8 size 2048 publish "$TIME_PAST" active "$TIME_PAST" ksk
+"$KEYMGR" zone key generate rsa_inactive_zsk algorithm 8 size 1024 publish "$TIME_PAST" active "$TIME_FUTURE"
 
 # no signatures for ZSK
-keygen -a RSASHA256 -b 2048 -P $TIME_FUTURE -A $TIME_FUTURE -f KSK rsa_no_zsk
-keygen -a RSASHA256 -b 1024 -P $TIME_PAST -A $TIME_PAST rsa_no_zsk
+"$KEYMGR" zone add rsa_no_zsk
+"$KEYMGR" zone key generate rsa_no_zsk algorithm 8 size 2048 publish "$TIME_FUTURE" active "$TIME_FUTURE" ksk
+"$KEYMGR" zone key generate rsa_no_zsk algorithm 8 size 1024 publish "$TIME_PAST" active "$TIME_PAST"
 
-tar czf "$dir/keys.tgz" K*.{key,private}
+tar czf "$dir/keys.tgz" keys zone_*.json
 popd
 rm -rf "$keydir"
