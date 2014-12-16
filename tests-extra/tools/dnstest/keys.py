@@ -84,6 +84,24 @@ class Tsig(object):
         file.write(s.conf)
         file.close()
 
+class Keymgr(object):
+    @classmethod
+    def run(cls, kasp_dir, *args):
+        cmdline = [dnstest.params.keymgr_bin]
+        if kasp_dir:
+            cmdline += ["--dir", kasp_dir]
+        cmdline += list(args)
+
+        cmd = Popen(cmdline, stdout=PIPE, stderr=PIPE, universal_newlines=True)
+        (stdout, stderr) = cmd.communicate()
+        return (cmd.returncode, stdout, stderr)
+
+    @classmethod
+    def run_check(cls, kasp_dir, *args):
+        exit_code, _, _ = cls.run(kasp_dir, *args)
+        if exit_code != 0:
+            raise Failed("Failed to run keymgr command %s.", list(args))
+
 class Key(object):
     '''DNSSEC key generator'''
 
@@ -95,11 +113,7 @@ class Key(object):
         self.ksk = ksk
 
     def _keymgr(self, *args):
-        cmd = Popen([dnstest.params.keymgr_bin, "--dir", self.dir] + list(args),
-                    stdout=PIPE, stderr=PIPE, universal_newlines=True)
-        (stdout, stderr) = cmd.communicate()
-
-        return (cmd.returncode, stdout, stderr)
+        return Keymgr.run(self.dir, *args)
 
     def _ensure_zone(self):
         # initialize KASP (currently NOOP if initialized)
