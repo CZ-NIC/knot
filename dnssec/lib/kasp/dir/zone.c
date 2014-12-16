@@ -230,8 +230,8 @@ static int load_zone_keys(dnssec_kasp_zone_t *zone, json_t *keys)
 		return DNSSEC_CONFIG_MALFORMED;
 	}
 
-	zone->keys = dnssec_list_new();
-	if (!zone->keys) {
+	dnssec_list_t *new_keys = dnssec_list_new();
+	if (!new_keys) {
 		return DNSSEC_ENOMEM;
 	}
 
@@ -253,16 +253,18 @@ static int load_zone_keys(dnssec_kasp_zone_t *zone, json_t *keys)
 			break;
 		}
 
-		result = keyset_add_dnskey(zone->keys, dnskey, &params.timing);
+		result = keyset_add_dnskey(new_keys, dnskey, &params.timing);
 		if (result != DNSSEC_EOK) {
 			dnssec_key_free(dnskey);
 			break;
 		}
 	}
 
-	if (result != DNSSEC_EOK) {
+	if (result == DNSSEC_EOK) {
 		kasp_zone_keys_free(zone->keys);
-		zone->keys = NULL;
+		zone->keys = new_keys;
+	} else {
+		kasp_zone_keys_free(new_keys);
 	}
 
 	return result;
