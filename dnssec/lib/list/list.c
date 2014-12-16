@@ -80,7 +80,7 @@ dnssec_list_t *dnssec_list_new(void)
 }
 
 _public_
-void dnssec_list_free(dnssec_list_t *list)
+void dnssec_list_clear(dnssec_list_t *list)
 {
 	if (!list) {
 		return;
@@ -89,13 +89,11 @@ void dnssec_list_free(dnssec_list_t *list)
 	dnssec_list_foreach(item, list) {
 		free(item);
 	}
-
-	free(list);
 }
 
 _public_
-void dnssec_list_free_full(dnssec_list_t *list, dnssec_item_free_cb free_cb,
-			   void *free_ctx)
+void dnssec_list_clear_full(dnssec_list_t *list, dnssec_item_free_cb free_cb,
+			    void *free_ctx)
 {
 	if (!list) {
 		return;
@@ -109,7 +107,28 @@ void dnssec_list_free_full(dnssec_list_t *list, dnssec_item_free_cb free_cb,
 		free_cb(item->data, free_ctx);
 		free(item);
 	}
+}
 
+_public_
+void dnssec_list_free(dnssec_list_t *list)
+{
+	if (!list) {
+		return;
+	}
+
+	dnssec_list_clear(list);
+	free(list);
+}
+
+_public_
+void dnssec_list_free_full(dnssec_list_t *list, dnssec_item_free_cb free_cb,
+			   void *free_ctx)
+{
+	if (!list) {
+		return;
+	}
+
+	dnssec_list_clear_full(list, free_cb, free_ctx);
 	free(list);
 }
 

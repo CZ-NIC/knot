@@ -54,6 +54,10 @@ typedef void (*dnssec_item_free_cb)(void *data, void *ctx);
 void dnssec_list_free_full(dnssec_list_t *list, dnssec_item_free_cb free_cb,
 			   void *free_ctx);
 
+void dnssec_list_clear(dnssec_list_t *list);
+void dnssec_list_clear_full(dnssec_list_t *list, dnssec_item_free_cb free_cb,
+			    void *free_ctx);
+
 dnssec_item_t *dnssec_list_head(dnssec_list_t *list);
 dnssec_item_t *dnssec_list_tail(dnssec_list_t *list);
 dnssec_item_t *dnssec_list_next(dnssec_list_t *list, dnssec_item_t *item);
