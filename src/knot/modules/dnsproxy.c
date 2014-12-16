@@ -43,7 +43,11 @@ static int dnsproxy_fwd(int state, knot_pkt_t *pkt, struct query_data *qdata, vo
 	knot_requestor_init(&re, qdata->mm);
 	struct capture_param param;
 	param.sink = pkt;
-	knot_requestor_overlay(&re, LAYER_CAPTURE, &param);
+	int ret = knot_requestor_overlay(&re, LAYER_CAPTURE, &param);
+	if (ret != KNOT_EOK) {
+		return KNOT_NS_PROC_FAIL;
+	}
+
 	bool is_tcp = net_is_connected(qdata->param->socket);
 	struct knot_request *req = knot_request_make(re.mm, (struct sockaddr *)&proxy->remote.addr,
 	                                             NULL, qdata->query, is_tcp ? 0 : KNOT_RQ_UDP);
@@ -52,7 +56,7 @@ static int dnsproxy_fwd(int state, knot_pkt_t *pkt, struct query_data *qdata, vo
 	}
 
 	/* Forward request. */
-	int ret = knot_requestor_enqueue(&re, req);
+	ret = knot_requestor_enqueue(&re, req);
 	if (ret == KNOT_EOK) {
 		struct timeval tv = { conf()->max_conn_hs, 0 };
 		ret = knot_requestor_exec(&re, &tv);
