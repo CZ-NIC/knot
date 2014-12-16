@@ -4,8 +4,12 @@ import os
 import random
 import shutil
 import zone_generate
+import glob
+import distutils.dir_util
+
 from subprocess import DEVNULL, PIPE, Popen
 from dnstest.utils import *
+from dnstest.keys import Keymgr
 
 class ZoneFile(object):
     '''A zone file handler.'''
@@ -13,7 +17,7 @@ class ZoneFile(object):
     def __init__(self, file_dir):
         prepare_dir(file_dir)
         self.file_dir = file_dir
-        self.key_dir = file_dir + "/keys/"
+        self.key_dir = os.path.join(file_dir, "keys")
         self.file_name = ""
         self.name = ""
 
@@ -27,6 +31,11 @@ class ZoneFile(object):
         '''Get absolute path of the zone file.'''
 
         return os.path.join(self.file_dir, self.file_name)
+
+    @property
+    def key_dir_bind(self):
+        '''Path to legacy BIND keys.'''
+        return os.path.join(self.key_dir, "bind")
 
     def set_name(self, name=None):
         '''Set specified or generate zone name.'''
@@ -68,14 +77,7 @@ class ZoneFile(object):
             # Copy zone keys.
             keydir = self.storage + "/keys"
             if os.path.isdir(keydir):
-                prepare_dir(self.key_dir)
-
-                src_files = os.listdir(keydir)
-                for file_name in src_files:
-                    if (self.name[:-1]).lower() in file_name:
-                        full_file_name = os.path.join(keydir, file_name)
-                        if (os.path.isfile(full_file_name)):
-                            shutil.copy(full_file_name, self.key_dir)
+                distutils.dir_util.copy_tree(keydir, self.key_dir, update=True)
 
         except:
             raise Exception("Can't use zone file '%s'" % src_file)
@@ -84,6 +86,15 @@ class ZoneFile(object):
         '''Replace zone file with a different one.'''
 
         self.set_file(file_name=file_name, storage=storage, version=version)
+
+    def _kasp_import_keys(self, keydir, bind_keydir, zone_name):
+        Keymgr.run_check(keydir, "init")
+        Keymgr.run_check(keydir, "zone", "add", zone_name)
+        assert(zone_name.endswith("."))
+        match = "%s/K%s+*.private" % ( glob.escape(bind_keydir),
+                                       glob.escape(zone_name.lower()) )
+        for pkey in glob.glob(match):
+            Keymgr.run_check(keydir, "zone", "key", "import", zone_name, pkey)
 
     def gen_file(self, dnssec=None, nsec3=None, records=None, serial=None):
         '''Generate zone file.'''
@@ -102,11 +113,13 @@ class ZoneFile(object):
         try:
             params = ["-i", serial, "-o", self.path, self.name, records]
             if dnssec:
-                prepare_dir(self.key_dir)
-                params = ["-s", "-3", "y" if nsec3 else "n", "-k", self.key_dir] \
-                         + params
+                prepare_dir(self.key_dir_bind)
+                params = ["-s", "-3", "y" if nsec3 else "n",
+                          "-k", self.key_dir_bind] + params
             if zone_generate.main(params) != 0:
                 raise OSError
+            if dnssec:
+                self._kasp_import_keys(self.key_dir, self.key_dir_bind, self.name)
 
         except OSError:
             raise Exception("Can't create zone file '%s'" % self.path)
@@ -226,10 +239,12 @@ class ZoneFile(object):
         try:
             params = ["-u", old_name, "-o", self.path, self.name]
             if dnssec:
-                prepare_dir(self.key_dir)
-                params = ["-s", "-3", "y" if nsec3 else "n", "-k", self.key_dir] \
+                prepare_dir(self.key_dir_bind)
+                params = ["-s", "-3", "y" if nsec3 else "n", "-k", self.key_dir_bind] \
                          + params
             zone_generate.main(params)
+            if dnssec:
+                self._kasp_import_keys(self.key_dir, self.key_dir_bind, self.name)
         except OSError:
             raise Exception("Can't modify zone file '%s'" % self.path)
 
