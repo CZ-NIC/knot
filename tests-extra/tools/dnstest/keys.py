@@ -100,7 +100,7 @@ class Keymgr(object):
     def run_check(cls, kasp_dir, *args):
         exit_code, _, _ = cls.run(kasp_dir, *args)
         if exit_code != 0:
-            raise Failed("Failed to run keymgr command %s.", list(args))
+            raise Failed("Failed to run keymgr command %s." % list(args))
 
 class Key(object):
     '''DNSSEC key generator'''
