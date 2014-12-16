@@ -351,7 +351,8 @@ static int stream_skip(char **stream, size_t *maxlen, int nbytes)
 		return KNOT_ESPACE; \
 	}
 
-static int rosedb_log_message(char *stream, size_t *maxlen, knot_pkt_t *pkt, const char *threat_code, struct query_data *qdata)
+static int rosedb_log_message(char *stream, size_t *maxlen, knot_pkt_t *pkt,
+                              const char *threat_code, struct query_data *qdata)
 {
 	char dname_buf[KNOT_DNAME_MAXLEN] = {'\0'};
 	struct sockaddr_storage addr;
@@ -428,7 +429,8 @@ static int rosedb_log_message(char *stream, size_t *maxlen, knot_pkt_t *pkt, con
 	return KNOT_EOK;
 }
 
-static int rosedb_send_log(int sock, struct sockaddr *dst_addr, knot_pkt_t *pkt, const char *threat_code, struct query_data *qdata)
+static int rosedb_send_log(int sock, struct sockaddr *dst_addr, knot_pkt_t *pkt,
+                           const char *threat_code, struct query_data *qdata)
 {
 	char buf[SYSLOG_BUFLEN];
 	char *stream = buf;
@@ -477,14 +479,15 @@ static int rosedb_synth_rr(knot_pkt_t *pkt, struct entry *entry, uint16_t qtype)
 	return ret;
 }
 
-static int rosedb_synth(knot_pkt_t *pkt, const knot_dname_t *key, struct iter *it, struct query_data *qdata)
+static int rosedb_synth(knot_pkt_t *pkt, const knot_dname_t *key, struct iter *it,
+                        struct query_data *qdata)
 {
 	struct entry entry;
 	int ret = KNOT_EOK;
 	uint16_t qtype = knot_pkt_qtype(qdata->query);
 
 	/* Answer section. */
-	while(ret == KNOT_EOK) {
+	while (ret == KNOT_EOK) {
 		if (cache_iter_val(it, &entry) == 0) {
 			ret = rosedb_synth_rr(pkt, &entry, qtype);
 		}
@@ -498,7 +501,7 @@ static int rosedb_synth(knot_pkt_t *pkt, const knot_dname_t *key, struct iter *i
 	
 	/* Not found (zone cut if records exist). */
 	ret = cache_iter_begin(it, key);
-	while(ret == KNOT_EOK) {
+	while (ret == KNOT_EOK) {
 		if (cache_iter_val(it, &entry) == 0) {
 			ret = rosedb_synth_rr(pkt, &entry, KNOT_RRTYPE_NS);
 			ret = rosedb_synth_rr(pkt, &entry, KNOT_RRTYPE_SOA);
@@ -521,7 +524,8 @@ static int rosedb_synth(knot_pkt_t *pkt, const knot_dname_t *key, struct iter *i
 	if (sockaddr_set(&syslog_addr, AF_INET, entry.syslog_ip, DEFAULT_PORT) == KNOT_EOK) {
 		int sock = net_unbound_socket(AF_INET, &syslog_addr);
 		if (sock > 0) {
-			rosedb_send_log(sock, (struct sockaddr *)&syslog_addr, pkt, entry.threat_code, qdata);
+			rosedb_send_log(sock, (struct sockaddr *)&syslog_addr, pkt,
+			                entry.threat_code, qdata);
 			close(sock);
 		}
 	}
@@ -532,12 +536,12 @@ static int rosedb_synth(knot_pkt_t *pkt, const knot_dname_t *key, struct iter *i
 static int rosedb_query_txn(MDB_txn *txn, MDB_dbi dbi, knot_pkt_t *pkt, struct query_data *qdata)
 {
 	struct iter it;
-	int ret = 0;
+	int ret = KNOT_EOK;
 
 	/* Find suffix for QNAME. */
 	const knot_dname_t *qname = knot_pkt_qname(qdata->query);
 	const knot_dname_t *key = qname;
-	while(key) {
+	while (key) {
 		ret = cache_query_fetch(txn, dbi, &it, key);
 		if (ret == 0) { /* Found */
 			break;
@@ -584,6 +588,10 @@ static int rosedb_query(int state, knot_pkt_t *pkt, struct query_data *qdata, vo
 
 int rosedb_load(struct query_plan *plan, struct query_module *self)
 {
+	if (self == NULL || plan == NULL) {
+		return KNOT_EINVAL;
+	}
+	
 	struct cache *cache = cache_open(self->param, 0, self->mm);
 	if (cache == NULL) {
 		MODULE_ERR("couldn't open db '%s'", self->param);
@@ -597,6 +605,10 @@ int rosedb_load(struct query_plan *plan, struct query_module *self)
 
 int rosedb_unload(struct query_module *self)
 {
+	if (self == NULL) {
+		return KNOT_EINVAL;
+	}
+
 	cache_close(self->ctx);
 	return KNOT_EOK;
 }

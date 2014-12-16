@@ -265,7 +265,8 @@ static int rosedb_import_line(struct cache *cache, MDB_txn *txn, char *line, con
 			argv[argc] = token;
 			argc += 1;
 		} else {
-			fprintf(stderr, "%s#%d command '%s' - too much parameters (%d)\n", file, lineno, line, argc);
+			fprintf(stderr, "%s#%d command '%s' - too much parameters (%d)\n",
+			        file, lineno, line, argc);
 			return KNOT_EPARSEFAIL;
 		}
 	}
@@ -304,17 +305,15 @@ static int rosedb_import(struct cache *cache, MDB_txn *txn, int argc, char *argv
 	char *line = NULL;
 	int lineno = 0;
 	size_t line_len = 0;
-	ssize_t rb = 0;
 	FILE *fp = fopen(argv[0], "r");
 	if (fp == NULL) {
 		return KNOT_ENOENT;
 	}
 
-	while ((rb = knot_getline(&line, &line_len, fp)) != -1) {
+	while (knot_getline(&line, &line_len, fp) != -1) {
 		lineno += 1;
 		ret = rosedb_import_line(cache, txn, line, argv[0], lineno);
 		if (ret != 0) {
-			assert(0);
 			break;
 		}
 	}
