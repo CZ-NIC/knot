@@ -85,6 +85,10 @@ int sockaddr_set(struct sockaddr_storage *ss, int family, const char *straddr, i
 
 void *sockaddr_raw(struct sockaddr_storage *ss, size_t *addr_size)
 {
+	if (ss == NULL || addr_size == NULL) {
+		return NULL;
+	}
+
 	if (ss->ss_family == AF_INET) {
 		struct sockaddr_in *ipv4 = (struct sockaddr_in *)ss;
 		*addr_size = sizeof(ipv4->sin_addr);

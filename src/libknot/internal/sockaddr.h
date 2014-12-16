@@ -92,7 +92,7 @@ void *sockaddr_raw(struct sockaddr_storage *ss, size_t *addr_size);
  * \param raw_addr IP address in binary format.
  * \param raw_addr_size Size of the binary address.
  *
- * return KNOT_EOK on success or an error code
+ * \return KNOT_EOK on success or an error code
  */
 int sockaddr_set_raw(struct sockaddr_storage *ss, int family,
                      const uint8_t *raw_addr, size_t raw_addr_size);
@@ -106,7 +106,7 @@ int sockaddr_set_raw(struct sockaddr_storage *ss, int family,
  * \param buf Destination for string representation.
  * \param maxlen Maximum number of written bytes.
  *
- * \return EOK on success, error code on failure
+ * \return Number of bytes written on success, error code on failure
  */
 int sockaddr_tostr(char *buf, size_t maxlen, const struct sockaddr_storage *ss);
 
