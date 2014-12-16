@@ -62,7 +62,11 @@ static int pkcs8_ctx_new(void **ctx_ptr, void *_functions)
 static int pkcs8_ctx_free(void *_ctx)
 {
 	pkcs8_ctx_t *ctx = _ctx;
-	return ctx->functions->handle_free(ctx->data);
+	int r = ctx->functions->handle_free(ctx->data);
+
+	free(ctx);
+
+	return r;
 }
 
 static int pkcs8_init(void *_ctx, const char *config)
