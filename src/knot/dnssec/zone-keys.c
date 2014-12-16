@@ -260,7 +260,7 @@ static int load_private_keys(const char *kasp_dir, zone_keyset_t *keyset)
 
 	result = KNOT_EOK;
 fail:
-	dnssec_keystore_close(keystore);
+	dnssec_keystore_deinit(keystore);
 	free(keystore_dir);
 
 	return result;
