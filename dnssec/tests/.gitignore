@@ -4,6 +4,21 @@
 
 # test binaries
 /binary
+/crypto
+/kasp_dir_escape
 /key
+/key_algorithm
+/keyid
+/keystore_pkcs8
+/keystore_pkcs8_dir
+/keytag
+/list
+/nsec_bitmap
+/nsec_hash
+/random
+/runtests.log
+/shared_dname
+/shared_wire
 /sign
-/key_pubkey
+/sign_der
+/tsig
