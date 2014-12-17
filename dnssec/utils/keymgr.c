@@ -206,13 +206,20 @@ static int cmd_zone_add(int argc, char *argv[])
 		return 1;
 	}
 
-	dnssec_kasp_zone_t *zone = dnssec_kasp_zone_new(zone_name);
+	_cleanup_zone_ dnssec_kasp_zone_t *zone = NULL;
+	int r = dnssec_kasp_zone_load(kasp, zone_name, &zone);
+	if (r == DNSSEC_EOK || zone != NULL) {
+		error("Zone with given name alredy exists.");
+		return 1;
+	}
+
+	zone = dnssec_kasp_zone_new(zone_name);
 	if (!zone) {
 		error("Failed to create new zone.");
 		return 1;
 	}
 
-	int r = dnssec_kasp_zone_save(kasp, zone);
+	r = dnssec_kasp_zone_save(kasp, zone);
 	if (r != DNSSEC_EOK) {
 		error("Failed to save new zone (%s).", dnssec_strerror(r));
 		return 1;
