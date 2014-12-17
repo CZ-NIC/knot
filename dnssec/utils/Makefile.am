@@ -38,8 +38,4 @@ libutils_la_SOURCES = \
 LDADD = libutils.la
 
 bin_PROGRAMS = \
-	generate \
-	genzonekey \
-	getpub \
-	keymgr \
-	parsekey
+	keymgr
