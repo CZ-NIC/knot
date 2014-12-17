@@ -2,7 +2,9 @@ SUBDIRS = . utils tests
 
 AM_CPPFLAGS = \
 	-include $(top_builddir)/src/config.h \
-	-Ishared -Ilib -Ilib/dnssec \
+	-I$(srcdir)/shared \
+	-I$(srcdir)/lib \
+	-I$(srcdir)/lib/dnssec \
 	$(CODE_COVERAGE_CFLAGS) \
 	$(gnutls_CFLAGS) \
 	$(jannson_CFLAGS)
