@@ -2,6 +2,7 @@
 
 import os
 import random
+import re
 import shutil
 import zone_generate
 import glob
@@ -88,13 +89,24 @@ class ZoneFile(object):
         self.set_file(file_name=file_name, storage=storage, version=version)
 
     def _kasp_import_keys(self, keydir, bind_keydir, zone_name):
-        Keymgr.run_check(keydir, "init")
-        Keymgr.run_check(keydir, "zone", "add", zone_name)
+        Keymgr.run(keydir, "init")
+
+        # add zone if not exists
+        exitcode, _, _ = Keymgr.run(keydir, "zone", "show", zone_name)
+        if exitcode != 0:
+            Keymgr.run_check(keydir, "zone", "add", zone_name)
+
+        # retrieve existing keys
+        _, stdout, _ = Keymgr.run_check(keydir, "zone", "key", "list", zone_name)
+        tags = [int(re.search(r'\bkeytag\s+(\d+)\b', x).group(1)) for x in stdout.splitlines()]
+
+        # import new keys, ignore existing (compare keytag)
         assert(zone_name.endswith("."))
-        match = "%s/K%s+*.private" % ( glob.escape(bind_keydir),
-                                       glob.escape(zone_name.lower()) )
-        for pkey in glob.glob(match):
-            Keymgr.run_check(keydir, "zone", "key", "import", zone_name, pkey)
+        for pkey_path in glob.glob("%s/K*.private" % glob.escape(bind_keydir)):
+            pkey = os.path.basename(pkey_path)
+            m = re.match(r'K(?P<name>[^+]+)\+(?P<algo>\d+)\+(?P<tag>\d+)\.private', pkey)
+            if m and m.group("name") == zone_name.lower() and int(m.group("tag")) not in tags:
+                Keymgr.run_check(keydir, "zone", "key", "import", zone_name, pkey_path)
 
     def gen_file(self, dnssec=None, nsec3=None, records=None, serial=None):
         '''Generate zone file.'''
