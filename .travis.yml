@@ -2,8 +2,9 @@ language: c
 compiler:
   - gcc
 before_install:
+  - sudo add-apt-repository --yes ppa:cz.nic-labs/knot-dns
   - sudo apt-get update -qq
-  - sudo apt-get install -qq autotools-dev autoconf automake libtool libssl-dev liburcu-dev flex bison ragel pkg-config texinfo texlive lcov
+  - sudo apt-get install -qq autotools-dev autoconf automake libtool libssl-dev liburcu-dev flex bison ragel pkg-config texinfo texlive lcov liblmdb-dev
   - sudo pip install cpp-coveralls --use-mirrors
 before_script:
   - autoreconf -fi

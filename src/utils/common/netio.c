@@ -140,7 +140,7 @@ void get_addr_str(const struct sockaddr_storage *ss,
 	char addr_str[SOCKADDR_STRLEN] = {0};
 
 	// Get network address string and port number.
-	sockaddr_tostr(ss, addr_str, sizeof(addr_str));
+	sockaddr_tostr(addr_str, sizeof(addr_str), ss);
 
 	// Calculate needed buffer size
 	const char *sock_name = get_sockname(socktype);

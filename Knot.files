@@ -74,8 +74,13 @@ src/knot/dnssec/zone-nsec.h
 src/knot/dnssec/zone-sign.c
 src/knot/dnssec/zone-sign.h
 src/knot/main.c
+src/knot/modules/dnsproxy.c
+src/knot/modules/dnsproxy.h
 src/knot/modules/dnstap.c
 src/knot/modules/dnstap.h
+src/knot/modules/rosedb.c
+src/knot/modules/rosedb.h
+src/knot/modules/rosedb_tool.c
 src/knot/modules/synth_record.c
 src/knot/modules/synth_record.h
 src/knot/nameserver/axfr.c

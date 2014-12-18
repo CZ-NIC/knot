@@ -233,6 +233,8 @@ libknotd_la_SOURCES =				\
 	knot/dnssec/zone-sign.h			\
 	knot/modules/synth_record.c		\
 	knot/modules/synth_record.h		\
+	knot/modules/dnsproxy.c		\
+	knot/modules/dnsproxy.h		\
 	knot/nameserver/axfr.c			\
 	knot/nameserver/axfr.h			\
 	knot/nameserver/capture.c		\
@@ -366,6 +368,19 @@ libknotd_la_SOURCES +=				\
 kdig_LDADD         += dnstap/libdnstap.la
 khost_LDADD        += dnstap/libdnstap.la
 libknotd_la_LIBADD += dnstap/libdnstap.la
+endif
+
+# rose sources and client tool
+if HAVE_ROSEDB
+libknotd_la_SOURCES +=				\
+	knot/modules/rosedb.c				\
+	knot/modules/rosedb.h
+
+rosedb_tool_SOURCES =					\
+	knot/modules/rosedb_tool.c
+
+bin_PROGRAMS += rosedb_tool
+rosedb_tool_LDADD = libknot.la libknotd.la
 endif
 
 # pkg-config
