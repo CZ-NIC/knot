@@ -35,7 +35,7 @@ libutils_la_SOURCES = \
 	legacy/pubkey.h \
 	print.h
 
-LDADD = libutils.la
+keymgr_LDADD = libutils.la
 
 bin_PROGRAMS = \
 	keymgr
