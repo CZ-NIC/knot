@@ -332,6 +332,7 @@ AC_CONFIG_FILES([Makefile
 		 dnssec/Makefile
 		 dnssec/man/Makefile
 		 dnssec/man/keymgr.8
+		 dnssec/man/knsec3hash.1
 		 dnssec/tests/Makefile
 		 dnssec/utils/Makefile
 		 doc/conf.py
@@ -341,7 +342,6 @@ AC_CONFIG_FILES([Makefile
 		 man/kdig.1
 		 man/knsupdate.1
 		 man/knot.conf.5
-		 man/knsec3hash.1
 		 ])
 
 

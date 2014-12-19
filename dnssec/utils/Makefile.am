@@ -35,7 +35,13 @@ libutils_la_SOURCES = \
 	legacy/pubkey.h \
 	print.h
 
-keymgr_LDADD = libutils.la
+keymgr_LDADD = \
+	libutils.la
+
+knsec3hash_LDADD = \
+	$(builddir)/../libdnssec.la \
+	$(builddir)/../libshared.la
 
 bin_PROGRAMS = \
-	keymgr
+	keymgr \
+	knsec3hash

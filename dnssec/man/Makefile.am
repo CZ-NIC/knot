@@ -1,5 +1,5 @@
-MANPAGES = keymgr.8
+MANPAGES = keymgr.8 knsec3hash.1
 dist_man_MANS = $(MANPAGES)
 
 clean-local:
-	-rm *.8
+	-rm *.1 *.8
