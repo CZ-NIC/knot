@@ -16,7 +16,7 @@
 /nsec_bitmap
 /nsec_hash
 /random
-/runtests.log
+/shared_base32hex
 /shared_dname
 /shared_wire
 /sign

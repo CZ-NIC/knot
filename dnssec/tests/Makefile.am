@@ -29,6 +29,7 @@ check_PROGRAMS = \
 	random		\
 	sign		\
 	sign_der	\
+	shared_base32hex \
 	shared_dname	\
 	shared_wire	\
 	tsig
