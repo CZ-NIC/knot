@@ -47,9 +47,8 @@ libdnssec_la_LDFLAGS = \
 libdnssec_la_LIBADD = \
 	libshared.la
 
-libdnssec_la_SOURCES = \
-	lib/binary.c \
-	lib/crypto.c \
+include_dnssecdir=$(includedir)/dnssec
+include_dnssec_HEADERS = \
 	lib/dnssec/binary.h \
 	lib/dnssec/crypto.h \
 	lib/dnssec/error.h \
@@ -62,7 +61,11 @@ libdnssec_la_SOURCES = \
 	lib/dnssec/nsec.h \
 	lib/dnssec/random.h \
 	lib/dnssec/sign.h \
-	lib/dnssec/tsig.h \
+	lib/dnssec/tsig.h
+
+libdnssec_la_SOURCES = \
+	lib/binary.c \
+	lib/crypto.c \
 	lib/error.c \
 	lib/kasp/dir/dir.c \
 	lib/kasp/dir/escape.c \
