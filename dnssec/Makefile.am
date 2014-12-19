@@ -1,4 +1,4 @@
-SUBDIRS = . utils tests
+SUBDIRS = . utils tests man
 
 AM_CPPFLAGS = \
 	-include $(top_builddir)/src/config.h \
