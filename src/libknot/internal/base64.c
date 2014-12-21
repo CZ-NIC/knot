@@ -17,8 +17,8 @@
 #include "libknot/internal/base64.h"
 #include "libknot/errcode.h"
 
-#include <stdlib.h>			// malloc
-#include <stdint.h>			// uint8_t
+#include <stdlib.h>
+#include <stdint.h>
 
 /*! \brief Maximal length of binary input to Base64 encoding. */
 #define MAX_BIN_DATA_LEN	((INT32_MAX / 4) * 3)
@@ -86,12 +86,6 @@ int32_t base64_encode(const uint8_t  *in,
                       uint8_t        *out,
                       const uint32_t out_len)
 {
-	uint8_t		rest_len = in_len % 3;
-	const uint8_t	*data = in;
-	const uint8_t	*stop = in + in_len - rest_len;
-	uint8_t		*text = out;
-	uint8_t		num;
-
 	// Checking inputs.
 	if (in == NULL || out == NULL) {
 		return KNOT_EINVAL;
@@ -100,62 +94,35 @@ int32_t base64_encode(const uint8_t  *in,
 		return KNOT_ERANGE;
 	}
 
+	uint8_t		rest_len = in_len % 3;
+	const uint8_t	*stop = in + in_len - rest_len;
+	uint8_t		*text = out;
+
 	// Encoding loop takes 3 bytes and creates 4 characters.
-	while (data < stop) {
-		// Computing 1. Base64 character.
-		num = *data >> 2;
-		*text++ = base64_enc[num];
-
-		// Computing 2. Base64 character.
-		num = (*data++ & 0x03) << 4;
-		num += *data >> 4;
-		*text++ = base64_enc[num];
-
-		// Computing 3. Base64 character.
-		num = (*data++ & 0x0F) << 2;
-		num += *data >> 6;
-		*text++ = base64_enc[num];
-
-		// Computing 4. Base64 character.
-		num = *data++ & 0x3F;
-		*text++ = base64_enc[num];
+	while (in < stop) {
+		text[0] = base64_enc[in[0] >> 2];
+		text[1] = base64_enc[(in[0] & 0x03) << 4 | in[1] >> 4];
+		text[2] = base64_enc[(in[1] & 0x0F) << 2 | in[2] >> 6];
+		text[3] = base64_enc[in[2] & 0x3F];
+		text += 4;
+		in += 3;
 	}
 
 	// Processing of padding, if any.
 	switch (rest_len) {
-	// Input data has 2-byte last block => 1-char padding.
 	case 2:
-		// Computing 1. Base64 character.
-		num = *data >> 2;
-		*text++ = base64_enc[num];
-
-		// Computing 2. Base64 character.
-		num = (*data++ & 0x03) << 4;
-		num += *data >> 4;
-		*text++ = base64_enc[num];
-
-		// Computing 3. Base64 character.
-		num = (*data++ & 0x0F) << 2;
-		*text++ = base64_enc[num];
-
-		// 1 padding character.
-		*text++ = base64_pad;
-
+		text[0] = base64_enc[in[0] >> 2];
+		text[1] = base64_enc[(in[0] & 0x03) << 4 | in[1] >> 4];
+		text[2] = base64_enc[(in[1] & 0x0F) << 2];
+		text[3] = base64_pad;
+		text += 4;
 		break;
-	// Input data has 1-byte last block => 2-char padding.
 	case 1:
-		// Computing 1. Base64 character.
-		num = *data >> 2;
-		*text++ = base64_enc[num];
-
-		// Computing 2. Base64 character.
-		num = (*data++ & 0x03) << 4;
-		*text++ = base64_enc[num];
-
-		// 2 padding character.
-		*text++ = base64_pad;
-		*text++ = base64_pad;
-
+		text[0] = base64_enc[in[0] >> 2];
+		text[1] = base64_enc[(in[0] & 0x03) << 4];
+		text[2] = base64_pad;
+		text[3] = base64_pad;
+		text += 4;
 		break;
 	}
 
@@ -197,12 +164,6 @@ int32_t base64_decode(const uint8_t  *in,
                       uint8_t        *out,
                       const uint32_t out_len)
 {
-	const uint8_t	*data = in;
-	const uint8_t	*stop = in + in_len;
-	uint8_t		*bin = out;
-	uint8_t		pad_len = 0;
-	uint8_t		c1, c2, c3, c4;
-
 	// Checking inputs.
 	if (in == NULL || out == NULL) {
 		return KNOT_EINVAL;
@@ -214,13 +175,18 @@ int32_t base64_decode(const uint8_t  *in,
 		return KNOT_BASE64_ESIZE;
 	}
 
+	const uint8_t	*stop = in + in_len;
+	uint8_t		*bin = out;
+	uint8_t		pad_len = 0;
+	uint8_t		c1, c2, c3, c4;
+
 	// Decoding loop takes 4 characters and creates 3 bytes.
-	while (data < stop) {
+	while (in < stop) {
 		// Filling and transforming 4 Base64 chars.
-		c1 = base64_dec[*data++];
-		c2 = base64_dec[*data++];
-		c3 = base64_dec[*data++];
-		c4 = base64_dec[*data++];
+		c1 = base64_dec[in[0]];
+		c2 = base64_dec[in[1]];
+		c3 = base64_dec[in[2]];
+		c4 = base64_dec[in[3]];
 
 		// Check 4. char if is bad or padding.
 		if (c4 >= PD) {
@@ -240,29 +206,35 @@ int32_t base64_decode(const uint8_t  *in,
 			}
 		}
 
-		// 1. and 2. chars must not be padding.
+		// Check 1. and 2. chars if are not padding.
 		if (c2 >= PD || c1 >= PD) {
 			return KNOT_BASE64_ECHAR;
 		}
 
 		// Computing of output data based on padding length.
 		switch (pad_len) {
-		// No padding => output has 3 bytess.
 		case 0:
-			*bin++ = (c1 << 2) + (c2 >> 4);
-			*bin++ = (c2 << 4) + (c3 >> 2);
-			*bin++ = (c3 << 6) + c4;
-			break;
-		// 1-char padding => output has 2 bytes.
+			bin[2] = (c3 << 6) + c4;
 		case 1:
-			*bin++ = (c1 << 2) + (c2 >> 4);
-			*bin++ = (c2 << 4) + (c3 >> 2);
-			break;
-		// 2-char padding => output has 1 bytes.
+			bin[1] = (c2 << 4) + (c3 >> 2);
 		case 2:
-			*bin++ = (c1 << 2) + (c2 >> 4);
+			bin[0] = (c1 << 2) + (c2 >> 4);
+		}
+
+		// Update output end.
+		switch (pad_len) {
+		case 0:
+			bin += 3;
+			break;
+		case 1:
+			bin += 2;
+			break;
+		case 2:
+			bin += 1;
 			break;
 		}
+
+		in += 4;
 	}
 
 	return (bin - out);
