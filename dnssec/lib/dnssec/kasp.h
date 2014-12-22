@@ -195,20 +195,6 @@ int dnssec_kasp_zone_remove(dnssec_kasp_t *kasp, const char *zone_name);
  */
 int dnssec_kasp_zone_list(dnssec_kasp_t *kasp, dnssec_list_t **list);
 
-struct dnssec_kasp_policy;
-
-/*!
- * Key and signature policy.
- */
-typedef struct dnssec_kasp_policy dnssec_kasp_policy_t;
-
-struct dnssec_kasp_event;
-
-/*!
- * External signing policy event.
- */
-typedef struct dnssec_kasp_event dnssec_kasp_event_t;
-
 /*!
  * KASP key timing information.
  */
@@ -249,5 +235,77 @@ bool dnssec_kasp_key_is_used(dnssec_kasp_key_timing_t *timing, time_t at);
  * Get the set of keys associated with the zone.
  */
 dnssec_list_t *dnssec_kasp_zone_get_keys(dnssec_kasp_zone_t *zone);
+
+/*!
+ * Key and signature policy.
+ *
+ * \todo Move into internal API and add getters/setters (probably).
+ */
+typedef struct dnssec_kasp_policy {
+	char *name;
+	// DNSKEY
+	dnssec_key_algorithm_t algorithm;
+	unsigned ksk_size;
+	unsigned zsk_size;
+	uint16_t dnskey_ttl;
+	// RRSIG
+	uint32_t rrsig_lifetime;
+	// SOA
+	uint16_t soa_minimal_ttl;
+	// zone
+	uint16_t zone_maximal_ttl;
+	// data propagation delay
+	uint32_t propagation_delay;
+} dnssec_kasp_policy_t;
+
+/*!
+ * Create new KASP policy.
+ *
+ * \param name  Name of the policy to be created.
+ *
+ * \return Pointer to KASP policy.
+ */
+dnssec_kasp_policy_t *dnssec_kasp_policy_new(const char *name);
+
+/*!
+ * Free a KASP policy.
+ *
+ * \param policy  Policy to be freed.
+ */
+void dnssec_kasp_policy_free(dnssec_kasp_policy_t *policy);
+
+/*!
+ * Retrieve a policy from the KASP.
+ *
+ * \param[in]  kasp    KASP instance.
+ * \param[in]  name    Name of the policy.
+ * \param[out] policy  Retrieved policy.
+ */
+int dnssec_kasp_policy_load(dnssec_kasp_t *kasp, const char *name,
+			    dnssec_kasp_policy_t **policy);
+
+/*!
+ * Save the policy into the KASP.
+ *
+ * \param kasp    KASP instance.
+ * \param policy  Policy to be saved.
+ */
+int dnssec_kasp_policy_save(dnssec_kasp_t *kasp, dnssec_kasp_policy_t *policy);
+
+/*!
+ * Remove a policy from the KASP.
+ *
+ * \param kasp  KASP instance.
+ * \param name  Name of the policy to be removed.
+ */
+int dnssec_kasp_policy_remove(dnssec_kasp_t *kasp, const char *name);
+
+/*!
+ * Get a list of policy names in the KASP.
+ *
+ * \param[in]  kasp  KASP instance.
+ * \param[out] list  List of policy names (as strings).
+ */
+int dnssec_kasp_policy_list(dnssec_kasp_t *kasp, dnssec_list_t **list);
 
 /*! @} */

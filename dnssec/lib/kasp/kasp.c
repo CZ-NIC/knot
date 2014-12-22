@@ -158,3 +158,70 @@ int dnssec_kasp_zone_list(dnssec_kasp_t *kasp, dnssec_list_t **list_ptr)
 	*list_ptr = list;
 	return DNSSEC_EOK;
 }
+
+_public_
+int dnssec_kasp_policy_load(dnssec_kasp_t *kasp, const char *name,
+			    dnssec_kasp_policy_t **policy_ptr)
+{
+	if (!kasp || !name || !policy_ptr) {
+		return DNSSEC_EINVAL;
+	}
+
+	dnssec_kasp_policy_t *policy = dnssec_kasp_policy_new(name);
+	if (!policy) {
+		return DNSSEC_ENOMEM;
+	}
+
+	int r = kasp->functions->policy_load(kasp->ctx, policy);
+	if (r != DNSSEC_EOK) {
+		dnssec_kasp_policy_free(policy);
+		return r;
+	}
+
+	*policy_ptr = policy;
+
+	return DNSSEC_EOK;
+}
+
+_public_
+int dnssec_kasp_policy_save(dnssec_kasp_t *kasp, dnssec_kasp_policy_t *policy)
+{
+	if (!kasp || !policy) {
+		return DNSSEC_EINVAL;
+	}
+
+	return kasp->functions->policy_save(kasp->ctx, policy);
+}
+
+_public_
+int dnssec_kasp_policy_remove(dnssec_kasp_t *kasp, const char *name)
+{
+	if (!kasp || !name) {
+		return DNSSEC_EINVAL;
+	}
+
+	return kasp->functions->policy_remove(kasp->ctx, name);
+}
+
+_public_
+int dnssec_kasp_policy_list(dnssec_kasp_t *kasp, dnssec_list_t **list_ptr)
+{
+	if (!kasp || !list_ptr) {
+		return DNSSEC_EINVAL;
+	}
+
+	dnssec_list_t *list = dnssec_list_new();
+	if (!list) {
+		return DNSSEC_ENOMEM;
+	}
+
+	int r = kasp->functions->policy_list(kasp->ctx, list);
+	if (r != DNSSEC_EOK) {
+		dnssec_list_free_full(list, NULL, NULL);
+		return r;
+	}
+
+	*list_ptr = list;
+
+	return DNSSEC_EOK;
+}

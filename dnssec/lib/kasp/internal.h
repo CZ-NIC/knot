@@ -32,6 +32,11 @@ typedef struct dnssec_kasp_store_functions {
 	int (*zone_save)(void *ctx, dnssec_kasp_zone_t *zone);
 	int (*zone_remove)(void *ctx, const char *zone_name);
 	int (*zone_list)(void *ctx, dnssec_list_t *zone_names);
+	// policy serialization/deserialization
+	int (*policy_load)(void *ctx, dnssec_kasp_policy_t *policy);
+	int (*policy_save)(void *ctx, dnssec_kasp_policy_t *policy);
+	int (*policy_remove)(void *ctx, const char *name);
+	int (*policy_list)(void *ctx, dnssec_list_t *policy_names);
 } dnssec_kasp_store_functions_t;
 
 /*!
