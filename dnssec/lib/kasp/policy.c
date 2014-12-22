@@ -42,5 +42,6 @@ void dnssec_kasp_policy_free(dnssec_kasp_policy_t *policy)
 		return;
 	}
 
+	free(policy->name);
 	free(policy);
 }
