@@ -107,14 +107,14 @@ static int kasp_dir_zone_save(void *_ctx, dnssec_kasp_zone_t *zone)
 	return save_zone_config(zone, config);
 }
 
-static int kasp_dir_zone_remove(void *_ctx, const char *zone_name)
+static int kasp_dir_zone_remove(void *_ctx, const char *name)
 {
 	assert(_ctx);
-	assert(zone_name);
+	assert(name);
 
 	kasp_dir_ctx_t *ctx = _ctx;
 
-	_cleanup_free_ char *config = zone_config_file(ctx->path, zone_name);
+	_cleanup_free_ char *config = zone_config_file(ctx->path, name);
 	if (!config) {
 		return DNSSEC_ENOMEM;
 	}
@@ -126,10 +126,10 @@ static int kasp_dir_zone_remove(void *_ctx, const char *zone_name)
 	return DNSSEC_EOK;
 }
 
-static int kasp_dir_zone_list(void *_ctx, dnssec_list_t *list)
+static int kasp_dir_zone_list(void *_ctx, dnssec_list_t *names)
 {
 	assert(_ctx);
-	assert(list);
+	assert(names);
 
 	kasp_dir_ctx_t *ctx = _ctx;
 
@@ -143,7 +143,7 @@ static int kasp_dir_zone_list(void *_ctx, dnssec_list_t *list)
 	while (error = readdir_r(dir, &entry, &result), error == 0 && result) {
 		char *zone = zone_name_from_config_file(entry.d_name);
 		if (zone) {
-			dnssec_list_append(list, zone);
+			dnssec_list_append(names, zone);
 		}
 	}
 

@@ -31,7 +31,7 @@ typedef struct dnssec_kasp_store_functions {
 	int (*zone_load)(void *ctx, dnssec_kasp_zone_t *zone);
 	int (*zone_save)(void *ctx, dnssec_kasp_zone_t *zone);
 	int (*zone_remove)(void *ctx, const char *zone_name);
-	int (*zone_list)(void *ctx, dnssec_list_t *zones);
+	int (*zone_list)(void *ctx, dnssec_list_t *zone_names);
 } dnssec_kasp_store_functions_t;
 
 /*!
