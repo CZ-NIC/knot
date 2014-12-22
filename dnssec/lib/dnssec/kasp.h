@@ -160,15 +160,15 @@ dnssec_kasp_zone_t *dnssec_kasp_zone_new(const char *name);
 void dnssec_kasp_zone_free(dnssec_kasp_zone_t *zone);
 
 /*!
- * Retrieve a zone from the KASP
+ * Retrieve a zone from the KASP.
  *
- * \param kasp       KASP instance.
- * \param zone_name  Name of the zone to be retrieved.
- * \param zone       Loaded zone.
+ * \param[in]  kasp  KASP instance.
+ * \param[in]  name  Name of the zone to be retrieved.
+ * \param[out] zone  Loaded zone.
  *
  * \return Error code, DNSSEC_EOK if successful.
  */
-int dnssec_kasp_zone_load(dnssec_kasp_t *kasp, const char *zone_name,
+int dnssec_kasp_zone_load(dnssec_kasp_t *kasp, const char *name,
 			  dnssec_kasp_zone_t **zone);
 
 /*!
@@ -188,10 +188,10 @@ int dnssec_kasp_zone_save(dnssec_kasp_t *kasp, dnssec_kasp_zone_t *zone);
 int dnssec_kasp_zone_remove(dnssec_kasp_t *kasp, const char *zone_name);
 
 /*!
- * Get list of zones in the KASP.
+ * Get list of zone names in the KASP.
  *
  * \param[in]  kasp  KASP instance.
- * \param[out] list  List of zones (as strings).
+ * \param[out] list  List of zone names (as strings).
  */
 int dnssec_kasp_zone_list(dnssec_kasp_t *kasp, dnssec_list_t **list);
 
