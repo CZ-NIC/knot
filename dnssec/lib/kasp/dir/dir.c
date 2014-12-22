@@ -154,6 +154,38 @@ static int kasp_dir_zone_list(void *_ctx, dnssec_list_t *names)
 	return DNSSEC_EOK;
 }
 
+static int kasp_dir_policy_load(void *_ctx, dnssec_kasp_policy_t *policy)
+{
+	assert(_ctx);
+	assert(policy);
+
+	return DNSSEC_NOT_IMPLEMENTED_ERROR;
+}
+
+static int kasp_dir_policy_save(void *_ctx, dnssec_kasp_policy_t *policy)
+{
+	assert(_ctx);
+	assert(policy);
+
+	return DNSSEC_NOT_IMPLEMENTED_ERROR;
+}
+
+static int kasp_dir_policy_remove(void *_ctx, const char *name)
+{
+	assert(_ctx);
+	assert(name);
+
+	return DNSSEC_NOT_IMPLEMENTED_ERROR;
+}
+
+static int kasp_dir_policy_list(void *_ctx, dnssec_list_t *names)
+{
+	assert(_ctx);
+	assert(names);
+
+	return DNSSEC_NOT_IMPLEMENTED_ERROR;
+}
+
 static const dnssec_kasp_store_functions_t KASP_DIR_FUNCTIONS = {
 	.init = kasp_dir_init,
 	.open = kasp_dir_open,
@@ -162,6 +194,10 @@ static const dnssec_kasp_store_functions_t KASP_DIR_FUNCTIONS = {
 	.zone_save = kasp_dir_zone_save,
 	.zone_remove = kasp_dir_zone_remove,
 	.zone_list = kasp_dir_zone_list,
+	.policy_load = kasp_dir_policy_load,
+	.policy_save = kasp_dir_policy_save,
+	.policy_remove = kasp_dir_policy_remove,
+	.policy_list = kasp_dir_policy_list,
 };
 
 /* -- public API ----------------------------------------------------------- */
