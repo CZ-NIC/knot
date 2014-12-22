@@ -21,16 +21,7 @@
 #include "base32hex.h"
 #include "binary.h"
 #include "error.h"
-
-/*!
- * Shift pointer in binary.
- */
-static void shift(dnssec_binary_t *data, size_t len)
-{
-	assert(data->size >= len);
-	data->data += len;
-	data->size -= len;
-}
+#include "wire.h"
 
 /*!
  * Reorder five eight-bit groups into eight five-bit groups.
@@ -50,17 +41,17 @@ static void reorder_block(const uint8_t in[5], uint8_t out[8])
 /*!
  * Write one reordered block into output binary.
  */
-static void write_block(const uint8_t data[8], dnssec_binary_t *dst)
+static void write_block(const uint8_t data[8], wire_ctx_t *dst_ctx)
 {
 	for (int i = 0; i < 8; i++) {
 		assert(data[i] < 32);
-		if (data[i] < 10) {
-			*dst->data = '0' + data[i];
-		} else {
-			*dst->data = 'A' - 10 + data[i];
-		}
+		assert(wire_available(dst_ctx) > 0);
 
-		shift(dst, 1);
+		if (data[i] < 10) {
+			wire_write_u8(dst_ctx, '0' + data[i]);
+		} else {
+			wire_write_u8(dst_ctx, 'A' - 10 + data[i]);
+		}
 	}
 }
 
@@ -81,22 +72,21 @@ int base32hex_encode(const dnssec_binary_t *src, dnssec_binary_t *dst)
 		return r;
 	}
 
-	dnssec_binary_t src_pos = *src;
-	dnssec_binary_t dst_pos = *dst;
+	wire_ctx_t src_ctx = wire_init_binary(src);
+	wire_ctx_t dst_ctx = wire_init_binary(dst);
 
-	while (src_pos.size > 0) {
+	while (wire_available(&src_ctx) > 0) {
 		uint8_t in[5] = { 0 };
-		assert(src_pos.size >= sizeof(in));
-		memcpy(in, src_pos.data, sizeof(in));
-		shift(&src_pos, sizeof(in));
+		assert(wire_available(&src_ctx) >= sizeof(in));
+		wire_read(&src_ctx, in, sizeof(in));
 
 		uint8_t out[8];
 		reorder_block(in, out);
-		write_block(out, &dst_pos);
+		write_block(out, &dst_ctx);
 	}
 
-	assert(src_pos.size == 0);
-	assert(dst_pos.size == 0);
+	assert(wire_available(&src_ctx) == 0);
+	assert(wire_available(&dst_ctx) == 0);
 
 	return DNSSEC_EOK;
 }
