@@ -61,9 +61,15 @@ static void cleanup_kasp_zone(dnssec_kasp_zone_t **zone_ptr)
 	dnssec_kasp_zone_free(*zone_ptr);
 }
 
+static void cleanup_kasp_policy(dnssec_kasp_policy_t **policy_ptr)
+{
+	dnssec_kasp_policy_free(*policy_ptr);
+}
+
 #define _cleanup_kasp_ _cleanup_(cleanup_kasp)
 #define _cleanup_keystore_ _cleanup_(cleanup_keystore)
 #define _cleanup_zone_ _cleanup_(cleanup_kasp_zone)
+#define _cleanup_policy_ _cleanup_(cleanup_kasp_policy)
 
 /* -- frequent operations -------------------------------------------------- */
 
@@ -107,6 +113,18 @@ static dnssec_kasp_zone_t *get_zone(dnssec_kasp_t *kasp, const char *name)
 	}
 
 	return zone;
+}
+
+static dnssec_kasp_policy_t *get_policy(dnssec_kasp_t *kasp, const char *name)
+{
+	dnssec_kasp_policy_t *policy = NULL;
+	int r = dnssec_kasp_policy_load(kasp, name, &policy);
+	if (r != DNSSEC_EOK) {
+		error("Cannot retrieve policy from KASP (%s).", dnssec_strerror(r));
+		return NULL;
+	}
+
+	return policy;
 }
 
 static bool zone_add_dnskey(dnssec_kasp_zone_t *zone, dnssec_key_t *dnskey,
@@ -765,10 +783,45 @@ static int cmd_zone(int argc, char *argv[])
 	return subcommand(commands, argc, argv);
 }
 
+static int cmd_policy_show(int argc, char *argv[])
+{
+	if (argc != 1) {
+		error("Policy name is required.");
+		return 1;
+	}
+
+	char *name = argv[0];
+
+	_cleanup_kasp_ dnssec_kasp_t *kasp = get_kasp();
+	if (!kasp) {
+		return 1;
+	}
+
+	_cleanup_policy_ dnssec_kasp_policy_t *policy = get_policy(kasp, name);
+	if (!policy) {
+		return 1;
+	}
+
+	printf("algorithm:        %d\n", policy->algorithm);
+	printf("KSK key size:     %u\n", policy->ksk_size);
+	printf("ZSK key size:     %u\n", policy->zsk_size);
+	printf("DNSKEY TTL:       %u\n", policy->dnskey_ttl);
+	printf("RRSIG lifetime:   %u\n", policy->rrsig_lifetime);
+	printf("SOA minimum:      %u\n", policy->soa_minimal_ttl);
+	printf("maximal zone TTL: %u\n", policy->zone_maximal_ttl);
+	printf("data propagation: %u\n", policy->propagation_delay);
+
+	return 0;
+}
+
 static int cmd_policy(int argc, char *argv[])
 {
-	error("Not implemented.");
-	return 1;
+	static const command_t commands[] = {
+		{ "show", cmd_policy_show },
+		{ NULL }
+	};
+
+	return subcommand(commands, argc, argv);
 }
 
 static int cmd_keystore_list(int argc, char *argv[])
