@@ -37,12 +37,12 @@ static void test_function(int (*function)(const char *, char **),
 
 static void test_escape(const char *input, const char *expected)
 {
-	test_function(escape_zone_name, "escape", input, expected);
+	test_function(escape_entity_name, "escape", input, expected);
 }
 
 static void test_unescape(const char *input, const char *expected)
 {
-	test_function(unescape_zone_name, "unescape", input, expected);
+	test_function(unescape_entity_name, "unescape", input, expected);
 }
 
 int main(int argc, char *argv[])

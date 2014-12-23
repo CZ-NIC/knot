@@ -22,6 +22,7 @@
 
 #include "error.h"
 #include "fs.h"
+#include "kasp/dir/file.h"
 #include "kasp/dir/zone.h"
 #include "kasp/internal.h"
 #include "key.h"

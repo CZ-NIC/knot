@@ -211,12 +211,12 @@ static int filter_str(const char *input, char **output, filter_cb filter)
 
 /* -- internal API --------------------------------------------------------- */
 
-int escape_zone_name(const char *name, char **escaped)
+int escape_entity_name(const char *name, char **escaped)
 {
 	return filter_str(name, escaped, filter_escape);
 }
 
-int unescape_zone_name(const char *escaped, char **name)
+int unescape_entity_name(const char *escaped, char **name)
 {
 	return filter_str(escaped, name, filter_unescape);
 }

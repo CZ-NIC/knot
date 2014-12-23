@@ -72,6 +72,8 @@ libdnssec_la_SOURCES = \
 	lib/kasp/dir/dir.c \
 	lib/kasp/dir/escape.c \
 	lib/kasp/dir/escape.h \
+	lib/kasp/dir/file.c \
+	lib/kasp/dir/file.h \
 	lib/kasp/dir/json.c \
 	lib/kasp/dir/json.h \
 	lib/kasp/dir/zone.c \

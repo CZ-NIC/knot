@@ -16,8 +16,26 @@
 
 #pragma once
 
-#include "kasp.h"
+/*!
+ * Get a file name from a configuration entity name.
+ *
+ * \param dir   Destination directory.
+ * \param type  Entity type.
+ * \param name  Entity name.
+ *
+ * \return File name '<dir>/<type><escaped-name>.json'
+ */
+char *file_from_entity(const char *dir, const char *type, const char *name);
 
-int load_zone_config(dnssec_kasp_zone_t *zone, const char *filename);
+/*!
+ * Get a configuration entity name from a file name.
+ *
+ * \param type      Entity type.
+ * \param basename  Base name of the configuration file.
+ *
+ * \return Unescaped entity name from a basename.
+ */
+char *file_to_entity(const char *type, const char *basename);
 
-int save_zone_config(dnssec_kasp_zone_t *zone, const char *filename);
+#define zone_config_file(dir, name) file_from_entity((dir), "zone", (name))
+#define zone_name_from_config_file(basename) file_to_entity("zone", (basename))
