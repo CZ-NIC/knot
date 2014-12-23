@@ -27,14 +27,14 @@ bool streq(const char *a, const char *b)
 	return a && b && strcmp(a, b) == 0;
 }
 
-static void *mock_ctx = (void *)0xaced7e57;
+static void *MOCK_CTX = (void *)0xaced7e57;
 
 static bool mock_policy_open_ok = false;
 static int mock_policy_policy_open(void **ctx_ptr, const char *config)
 {
 	mock_policy_open_ok = ctx_ptr && streq(config, "valid config");
 	if (ctx_ptr) {
-		*ctx_ptr = mock_ctx;
+		*ctx_ptr = MOCK_CTX;
 	}
 
 	return DNSSEC_EOK;
@@ -43,13 +43,13 @@ static int mock_policy_policy_open(void **ctx_ptr, const char *config)
 static bool mock_policy_close_ok = false;
 static void mock_policy_close(void *ctx)
 {
-	mock_policy_close_ok = ctx == mock_ctx;
+	mock_policy_close_ok = ctx == MOCK_CTX;
 }
 
 static bool mock_policy_load_ok = false;
 static int mock_policy_load(void *ctx, dnssec_kasp_policy_t *policy)
 {
-	mock_policy_load_ok = ctx == mock_ctx && policy && streq(policy->name, "happy");
+	mock_policy_load_ok = ctx == MOCK_CTX && policy && streq(policy->name, "happy");
 	if (policy) {
 		policy->rrsig_lifetime = 12345;
 	}
@@ -60,7 +60,7 @@ static int mock_policy_load(void *ctx, dnssec_kasp_policy_t *policy)
 static bool mock_policy_save_ok = false;
 static int mock_policy_save(void *ctx, dnssec_kasp_policy_t *policy)
 {
-	mock_policy_save_ok = ctx == mock_ctx && policy &&
+	mock_policy_save_ok = ctx == MOCK_CTX && policy &&
 			      streq(policy->name, "happy") &&
 			      policy->rrsig_lifetime == 54321;
 
@@ -70,7 +70,7 @@ static int mock_policy_save(void *ctx, dnssec_kasp_policy_t *policy)
 static bool mock_policy_remove_ok = false;
 static int mock_policy_remove(void *ctx, const char *name)
 {
-	mock_policy_remove_ok = ctx == mock_ctx && streq(name, "remove-me");
+	mock_policy_remove_ok = ctx == MOCK_CTX && streq(name, "remove-me");
 
 	return DNSSEC_EOK;
 }
@@ -78,7 +78,7 @@ static int mock_policy_remove(void *ctx, const char *name)
 static bool mock_policy_list_ok = false;
 static int mock_policy_list(void *ctx, dnssec_list_t *names)
 {
-	mock_policy_list_ok = ctx == mock_ctx && names && dnssec_list_size(names) == 0;
+	mock_policy_list_ok = ctx == MOCK_CTX && names && dnssec_list_size(names) == 0;
 	if (names) {
 		dnssec_list_append(names, strdup("banana"));
 	}
@@ -101,9 +101,11 @@ static void test_policy(dnssec_kasp_t *kasp)
 
 	dnssec_kasp_policy_t *policy = NULL;
 	int r = dnssec_kasp_policy_load(kasp, "happy", &policy);
-	ok(r == DNSSEC_EOK && policy && mock_policy_load_ok &&
-	   streq(policy->name, "happy") && policy->rrsig_lifetime == 12345,
-	   "policy: load");
+	ok(r == DNSSEC_EOK && policy, "policy load: call");
+	ok(mock_policy_load_ok, "policy load: input");
+	ok(policy && streq(policy->name, "happy") &&
+	   policy->rrsig_lifetime == 12345,
+	   "policy load: output");
 
 	// save
 
@@ -111,23 +113,26 @@ static void test_policy(dnssec_kasp_t *kasp)
 		policy->rrsig_lifetime = 54321;
 	}
 	r = dnssec_kasp_policy_save(kasp, policy);
-	ok(r == DNSSEC_EOK && mock_policy_save_ok, "policy: save");
+	ok(r == DNSSEC_EOK, "policy save: call");
+	ok(mock_policy_save_ok, "policy save: input");
 
 	dnssec_kasp_policy_free(policy);
 
 	// remove
 
 	r = dnssec_kasp_policy_remove(kasp, "remove-me");
-	ok(r == DNSSEC_EOK && mock_policy_remove_ok, "policy: remove");
+	ok(r == DNSSEC_EOK, "policy remove: call");
+	ok(mock_policy_remove_ok, "policy remove: input");
 
 	// list
 
 	dnssec_list_t *names = NULL;
 	r = dnssec_kasp_policy_list(kasp, &names);
-	ok(r == DNSSEC_EOK && names && mock_policy_list_ok &&
-	   dnssec_list_size(names) == 1 &&
+	ok(r == DNSSEC_EOK && names, "policy list: call");
+	ok(mock_policy_list_ok, "policy list: input");
+	ok(dnssec_list_size(names) == 1 &&
 	   streq("banana", dnssec_item_get(dnssec_list_tail(names))),
-	   "policy: list");
+	   "policy list: output");
 
 	dnssec_list_free_full(names, NULL, NULL);
 }
