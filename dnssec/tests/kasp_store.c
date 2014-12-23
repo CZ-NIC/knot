@@ -46,6 +46,47 @@ static void mock_policy_close(void *ctx)
 	mock_policy_close_ok = ctx == MOCK_CTX;
 }
 
+static bool mock_zone_load_ok = false;
+static int mock_zone_load(void *ctx, dnssec_kasp_zone_t *zone)
+{
+	mock_zone_load_ok = ctx == MOCK_CTX && zone &&
+			    streq(zone->name, "some.zone") &&
+			    streq((char *)zone->dname, "\x04some\x04zone\x00");
+	if (zone) {
+		zone->policy = strdup("bleedingedge");
+	}
+
+	return DNSSEC_EOK;
+}
+
+static bool mock_zone_save_ok = false;
+static int mock_zone_save(void *ctx, dnssec_kasp_zone_t *zone)
+{
+	mock_zone_save_ok = ctx == MOCK_CTX && zone &&
+			    streq(zone->policy, "cuttingedge");
+
+	return DNSSEC_EOK;
+}
+
+static bool mock_zone_remove_ok = false;
+static int mock_zone_remove(void *ctx, const char *name)
+{
+	mock_zone_remove_ok = ctx == MOCK_CTX && streq(name, "zone.to.remove");
+
+	return DNSSEC_EOK;
+}
+
+static bool mock_zone_list_ok = false;
+static int mock_zone_list(void *ctx, dnssec_list_t *names)
+{
+	mock_zone_list_ok = ctx == MOCK_CTX && names && dnssec_list_size(names) == 0;
+	if (names) {
+		dnssec_list_append(names, strdup("coconut"));
+	}
+
+	return DNSSEC_EOK;
+}
+
 static bool mock_policy_load_ok = false;
 static int mock_policy_load(void *ctx, dnssec_kasp_policy_t *policy)
 {
@@ -89,11 +130,52 @@ static int mock_policy_list(void *ctx, dnssec_list_t *names)
 static const dnssec_kasp_store_functions_t MOCK = {
 	.open          = mock_policy_policy_open,
 	.close         = mock_policy_close,
+	.zone_load     = mock_zone_load,
+	.zone_save     = mock_zone_save,
+	.zone_remove   = mock_zone_remove,
+	.zone_list     = mock_zone_list,
 	.policy_load   = mock_policy_load,
 	.policy_save   = mock_policy_save,
 	.policy_remove = mock_policy_remove,
 	.policy_list   = mock_policy_list
 };
+
+static void test_zone(dnssec_kasp_t *kasp)
+{
+	// load
+
+	dnssec_kasp_zone_t *zone = NULL;
+	int r = dnssec_kasp_zone_load(kasp, "some.ZONE..", &zone);
+	ok(r == DNSSEC_EOK && zone, "zone load, call");
+	ok(mock_zone_load_ok, "zone load, input");
+	ok(zone && streq(zone->policy, "bleedingedge"), "zone load, output");
+
+	// save
+
+	free(zone->policy);
+	zone->policy = strdup("cuttingedge");
+	r = dnssec_kasp_zone_save(kasp, zone);
+	ok(r == DNSSEC_EOK, "zone save, call");
+	ok(mock_zone_save_ok, "zone save, input");
+
+	// remove
+
+	r = dnssec_kasp_zone_remove(kasp, "ZONE.to.REMOVE");
+	ok(r == DNSSEC_EOK, "zone remove, call");
+	ok(mock_zone_remove_ok, "zone remove, input");
+
+	// list
+
+	dnssec_list_t *zones = NULL;
+	r = dnssec_kasp_zone_list(kasp, &zones);
+	ok(r == DNSSEC_EOK && zones, "zone list, call");
+	ok(mock_zone_list_ok, "zone list, input");
+	ok(dnssec_list_size(zones) == 1 &&
+	   streq(dnssec_item_get(dnssec_list_tail(zones)), "coconut"),
+	   "zone list, output");
+
+	dnssec_list_free_full(zones, NULL, NULL);
+}
 
 static void test_policy(dnssec_kasp_t *kasp)
 {
@@ -148,6 +230,7 @@ int main(int argc, char *argv[])
 	r = dnssec_kasp_open(kasp, "valid config");
 	ok(r == DNSSEC_EOK && mock_policy_open_ok, "open mock KASP");
 
+	test_zone(kasp);
 	test_policy(kasp);
 
 	dnssec_kasp_deinit(kasp);
