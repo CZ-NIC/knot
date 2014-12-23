@@ -17,7 +17,7 @@ check_PROGRAMS = \
 	binary		\
 	crypto		\
 	kasp_dir_escape	\
-	kasp_policy	\
+	kasp_store	\
 	key		\
 	key_algorithm	\
 	keyid		\
