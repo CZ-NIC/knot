@@ -26,7 +26,7 @@ struct dnssec_kasp_zone {
 	char *name;
 	uint8_t *dname;
 
-	dnssec_kasp_t *policy;
+	char *policy;
 
 	dnssec_list_t *keys;
 };
