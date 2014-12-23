@@ -79,6 +79,7 @@ void dnssec_kasp_zone_free(dnssec_kasp_zone_t *zone)
 	kasp_zone_keys_free(zone->keys);
 	free(zone->dname);
 	free(zone->name);
+	free(zone->policy);
 
 	free(zone);
 }
