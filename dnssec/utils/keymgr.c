@@ -884,6 +884,7 @@ int main(int argc, char *argv[])
 
 	if (asprintf(&global.keystore_dir, "%s/keys", global.kasp_dir) == -1) {
 		error("failed to allocate memory");
+		global.keystore_dir = NULL;
 		goto failed;
 	}
 
