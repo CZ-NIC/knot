@@ -337,7 +337,7 @@ int encode_object(const encode_attr_t attrs[], const void *object, json_t **enco
 			return r;
 		}
 
-		if (encoded == NULL) {
+		if (value == NULL) {
 			// missing value (valid)
 			continue;
 		}
