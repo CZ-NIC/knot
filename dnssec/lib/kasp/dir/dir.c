@@ -24,6 +24,7 @@
 #include "fs.h"
 #include "kasp/dir/file.h"
 #include "kasp/dir/zone.h"
+#include "kasp/dir/policy.h"
 #include "kasp/internal.h"
 #include "key.h"
 #include "list.h"
@@ -33,6 +34,7 @@
 #define KASP_DIR_INIT_MODE (S_IRWXU | S_IRGRP|S_IXGRP)
 
 #define ENTITY_ZONE   "zone"
+#define ENTITY_POLICY "policy"
 
 typedef struct kasp_dir_ctx {
 	char *path;
@@ -162,12 +164,24 @@ static int kasp_dir_zone_list(void *_ctx, dnssec_list_t *names)
 	return DNSSEC_EOK;
 }
 
+static char *policy_file(const char *dir, const char *name)
+{
+	return file_from_entity(dir, ENTITY_POLICY, name);
+}
+
 static int kasp_dir_policy_load(void *_ctx, dnssec_kasp_policy_t *policy)
 {
 	assert(_ctx);
 	assert(policy);
 
-	return DNSSEC_NOT_IMPLEMENTED_ERROR;
+	kasp_dir_ctx_t *ctx = _ctx;
+
+	_cleanup_free_ char *config = policy_file(ctx->path, policy->name);
+	if (!config) {
+		return DNSSEC_ENOMEM;
+	}
+
+	return load_policy_config(policy, config);
 }
 
 static int kasp_dir_policy_save(void *_ctx, dnssec_kasp_policy_t *policy)
@@ -175,7 +189,14 @@ static int kasp_dir_policy_save(void *_ctx, dnssec_kasp_policy_t *policy)
 	assert(_ctx);
 	assert(policy);
 
-	return DNSSEC_NOT_IMPLEMENTED_ERROR;
+	kasp_dir_ctx_t *ctx = _ctx;
+
+	_cleanup_free_ char *config = policy_file(ctx->path, policy->name);
+	if (!config) {
+		return DNSSEC_ENOMEM;
+	}
+
+	return save_policy_config(policy, config);
 }
 
 static int kasp_dir_policy_remove(void *_ctx, const char *name)
@@ -183,7 +204,18 @@ static int kasp_dir_policy_remove(void *_ctx, const char *name)
 	assert(_ctx);
 	assert(name);
 
-	return DNSSEC_NOT_IMPLEMENTED_ERROR;
+	kasp_dir_ctx_t *ctx = _ctx;
+
+	_cleanup_free_ char *config = policy_file(ctx->path, name);
+	if (!config) {
+		return DNSSEC_ENOMEM;
+	}
+
+	if (unlink(config) != 0) {
+		return dnssec_errno_to_error(errno);
+	}
+
+	return DNSSEC_EOK;
 }
 
 static int kasp_dir_policy_list(void *_ctx, dnssec_list_t *names)
