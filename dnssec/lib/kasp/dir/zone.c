@@ -328,7 +328,10 @@ int save_zone_config(dnssec_kasp_zone_t *zone, const char *filename)
 	}
 
 	r = json_dumpf(config, file, JSON_DUMP_OPTIONS);
-	fputc('\n', file);
+	if (r != DNSSEC_EOK) {
+		return r;
+	}
 
-	return (r == 0) ? DNSSEC_EOK : DNSSEC_NOT_FOUND;
+	fputc('\n', file);
+	return DNSSEC_EOK;
 }
