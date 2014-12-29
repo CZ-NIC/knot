@@ -60,7 +60,7 @@ static char *key_path(const char *dir, const char *id)
  */
 static int file_size(int fd, size_t *size)
 {
-	loff_t offset = lseek(fd, 0, SEEK_END);
+	off_t offset = lseek(fd, 0, SEEK_END);
 	if (offset == -1) {
 		return dnssec_errno_to_error(errno);
 	}
