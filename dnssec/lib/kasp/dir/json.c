@@ -165,6 +165,31 @@ int encode_uint16(const void *value, json_t **result)
 }
 
 /*!
+ * Decode unsigned 32-bit integer from JSON.
+ */
+int decode_uint32(const json_t *value, void *result)
+{
+	json_int_t decoded;
+	int r = decode_int(0, UINT32_MAX, value, &decoded);
+	if (r != DNSSEC_EOK) {
+		return r;
+	}
+
+	uint16_t *uint32_ptr = result;
+	*uint32_ptr = decoded;
+
+	return DNSSEC_EOK;
+}
+
+/*!
+ * Encode unsigned 32-bit integer to JSON.
+ */
+int encode_uint32(const void *value, json_t **result)
+{
+	return encode_int(0, UINT32_MAX, *((uint32_t *)value), result);
+}
+
+/*!
  * Decode binary data storead as Base64 in JSON.
  */
 int decode_binary(const json_t *value, void *result)

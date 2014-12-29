@@ -44,6 +44,9 @@ int encode_uint8(const void *value, json_t **result);
 int decode_uint16(const json_t *value, void *result);
 int encode_uint16(const void *value, json_t **result);
 
+int decode_uint32(const json_t *value, void *result);
+int encode_uint32(const void *value, json_t **result);
+
 int decode_binary(const json_t *value, void *result);
 int encode_binary(const void *value, json_t **result);
 
