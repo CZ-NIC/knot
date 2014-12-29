@@ -17,6 +17,7 @@ libutils_la_LIBADD = \
 
 libutils_la_CPPFLAGS = \
 	$(AM_CPPFLAGS) \
+	$(gnutls_CFLAGS) \
 	-I$(top_srcdir)/src/zscanner
 
 libutils_la_SOURCES = \
