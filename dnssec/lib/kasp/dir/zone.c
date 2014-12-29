@@ -181,13 +181,9 @@ static int keyset_add_dnskey(dnssec_list_t *keyset, dnssec_key_t *dnskey,
 /*!
  * Load zone keys.
  */
-static int load_zone_keys(dnssec_kasp_zone_t *zone, json_t *keys)
+static int load_zone_keys(const uint8_t *zone, dnssec_list_t **list_ptr, json_t *keys)
 {
-	if (!keys) {
-		return DNSSEC_NO_PUBLIC_KEY;
-	}
-
-	if (!json_is_array(keys)) {
+	if (!keys || !json_is_array(keys)) {
 		return DNSSEC_CONFIG_MALFORMED;
 	}
 
@@ -209,7 +205,7 @@ static int load_zone_keys(dnssec_kasp_zone_t *zone, json_t *keys)
 		}
 
 		dnssec_key_t *dnskey = NULL;
-		result = create_dnskey(zone->dname, &params, &dnskey);
+		result = create_dnskey(zone, &params, &dnskey);
 		if (result != DNSSEC_EOK) {
 			break;
 		}
@@ -221,14 +217,13 @@ static int load_zone_keys(dnssec_kasp_zone_t *zone, json_t *keys)
 		}
 	}
 
-	if (result == DNSSEC_EOK) {
-		kasp_zone_keys_free(zone->keys);
-		zone->keys = new_keys;
-	} else {
+	if (result != DNSSEC_EOK) {
 		kasp_zone_keys_free(new_keys);
+		return result;
 	}
 
-	return result;
+	*list_ptr = new_keys;
+	return DNSSEC_EOK;
 }
 
 /*!
@@ -281,6 +276,64 @@ static int export_zone_keys(dnssec_kasp_zone_t *zone, json_t **keys_ptr)
 	return DNSSEC_EOK;
 }
 
+static int export_zone_config(dnssec_kasp_zone_t *zone, json_t **config_ptr)
+{
+	assert(zone);
+	assert(config_ptr);
+
+	_json_cleanup_ json_t *keys = NULL;
+	int r = export_zone_keys(zone, &keys);
+	if (r != DNSSEC_EOK) {
+		return r;
+	}
+
+	_json_cleanup_ json_t *policy = zone->policy ? json_string(zone->policy) : json_null();
+	if (!policy) {
+		return DNSSEC_ENOMEM;
+	}
+
+	json_t *config = json_pack("{sOsO}", "policy", policy, "keys", keys);
+	if (!config) {
+		return DNSSEC_ENOMEM;
+	}
+
+	*config_ptr = config;
+	return DNSSEC_EOK;
+}
+
+static int parse_zone_config(dnssec_kasp_zone_t *zone, json_t *config)
+{
+	assert(zone);
+	assert(config);
+
+	// get policy
+
+	char *policy = NULL;
+	json_t *json_policy = json_object_get(config, "policy");
+	if (json_policy && !json_is_null(json_policy)) {
+		policy = strdup(json_string_value(json_policy));
+		if (!policy) {
+			return DNSSEC_ENOMEM;
+		}
+	}
+
+	// get keys
+
+	dnssec_list_t *keys = NULL;
+	json_t *json_keys = json_object_get(config, "keys");
+	int r = load_zone_keys(zone->dname, &keys, json_keys);
+	if (r != DNSSEC_EOK) {
+		free(policy);
+		return r;
+	}
+
+	// store the result
+
+	zone->policy = policy;
+	zone->keys = keys;
+	return DNSSEC_EOK;
+}
+
 /* -- internal API --------------------------------------------------------- */
 
 /*!
@@ -303,8 +356,7 @@ int load_zone_config(dnssec_kasp_zone_t *zone, const char *filename)
 		return DNSSEC_CONFIG_MALFORMED;
 	}
 
-	json_t *config_keys = json_object_get(config, "keys");
-	return load_zone_keys(zone, config_keys);
+	return parse_zone_config(zone, config);
 }
 
 /*!
@@ -315,13 +367,12 @@ int save_zone_config(dnssec_kasp_zone_t *zone, const char *filename)
 	assert(zone);
 	assert(filename);
 
-	json_t *keys = NULL;
-	int r = export_zone_keys(zone, &keys);
+	_json_cleanup_ json_t *config = NULL;
+	int r = export_zone_config(zone, &config);
 	if (r != DNSSEC_EOK) {
 		return r;
 	}
 
-	_json_cleanup_ json_t *config = json_pack("{so}", "keys", keys);
 	_cleanup_fclose_ FILE *file = fopen(filename, "w");
 	if (!file) {
 		return DNSSEC_NOT_FOUND;
