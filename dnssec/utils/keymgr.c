@@ -814,10 +814,39 @@ static int cmd_policy_show(int argc, char *argv[])
 	return 0;
 }
 
+static int cmd_policy_set(int argc, char *argv[])
+{
+	if (argc < 1) {
+		error("Policy name is required.");
+		return 1;
+	}
+
+	char *name = argv[0];
+
+	_cleanup_kasp_ dnssec_kasp_t *kasp = get_kasp();
+	if (!kasp) {
+		return 1;
+	}
+
+	_cleanup_policy_ dnssec_kasp_policy_t *policy = get_policy(kasp, name);
+	if (!policy) {
+		return 1;
+	}
+
+	int r = dnssec_kasp_policy_save(kasp, policy);
+	if (r != DNSSEC_EOK) {
+		error("Failed to save updated policy (%s).", dnssec_strerror(r));
+		return 1;
+	}
+
+	return 0;
+}
+
 static int cmd_policy(int argc, char *argv[])
 {
 	static const command_t commands[] = {
-		{ "show", cmd_policy_show },
+		{ "show",   cmd_policy_show   },
+		{ "set",    cmd_policy_set    },
 		{ NULL }
 	};
 
