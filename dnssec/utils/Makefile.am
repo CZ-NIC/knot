@@ -5,6 +5,7 @@ AM_CPPFLAGS = \
 	-I$(srcdir)/../shared \
 	-I$(srcdir)/../lib/dnssec \
 	-I$(srcdir)/../lib \
+	$(gnutls_CFLAGS) \
 	$(CODE_COVERAGE_CFLAGS)
 
 AM_LDFLAGS = \
@@ -17,7 +18,6 @@ libutils_la_LIBADD = \
 
 libutils_la_CPPFLAGS = \
 	$(AM_CPPFLAGS) \
-	$(gnutls_CFLAGS) \
 	-I$(top_srcdir)/src/zscanner
 
 libutils_la_SOURCES = \
