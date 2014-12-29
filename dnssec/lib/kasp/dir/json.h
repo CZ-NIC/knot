@@ -52,3 +52,18 @@ int encode_bool(const void *value, json_t **result);
 
 int decode_time(const json_t *value, void *result);
 int encode_time(const void *value, json_t **result);
+
+/*!
+ * Object attribute serialization parameters.
+ */
+struct encode_attr {
+	const char *name;
+	size_t offset;
+	int (*encode)(const void *value, json_t **result);
+	int (*decode)(const json_t *value, void *result);
+};
+
+typedef struct encode_attr encode_attr_t;
+
+int encode_object(const encode_attr_t attrs[], const void *object, json_t **encoded);
+int decode_object(const encode_attr_t attrs[], const json_t *encoded, void *object);

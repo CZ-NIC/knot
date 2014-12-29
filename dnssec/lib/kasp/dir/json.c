@@ -19,6 +19,7 @@
 #include <time.h>
 
 #include "error.h"
+#include "kasp/dir/json.h"
 #include "key.h"
 #include "shared.h"
 #include "strtonum.h"
@@ -287,6 +288,68 @@ int encode_time(const void *value, json_t **result)
 	}
 
 	*result = encoded;
+
+	return DNSSEC_EOK;
+}
+
+int encode_object(const encode_attr_t attrs[], const void *object, json_t **encoded_ptr)
+{
+	assert(attrs);
+	assert(object);
+	assert(encoded_ptr);
+
+	json_t *encoded = json_object();
+	if (!encoded) {
+		return DNSSEC_ENOMEM;
+	}
+
+	for (const encode_attr_t *attr = attrs; attr->name != NULL; attr++) {
+		const void *src = object + attr->offset;
+		json_t *value = NULL;
+		int r = attr->encode(src, &value);
+		if (r != DNSSEC_EOK) {
+			json_decref(encoded);
+			return r;
+		}
+
+		if (encoded == NULL) {
+			// missing value (valid)
+			continue;
+		}
+
+		if (json_object_set_new(encoded, attr->name, value) != 0) {
+			json_decref(value);
+			json_decref(encoded);
+			return DNSSEC_ENOMEM;
+		}
+	}
+
+	*encoded_ptr = encoded;
+	return DNSSEC_EOK;
+}
+
+int decode_object(const encode_attr_t attrs[], const json_t *encoded, void *object)
+{
+	assert(attrs);
+	assert(encoded);
+	assert(object);
+
+	if (!json_is_object(encoded)) {
+		return DNSSEC_CONFIG_MALFORMED;
+	}
+
+	for (const encode_attr_t *attr = attrs; attr->name != NULL; attr++) {
+		json_t *value = json_object_get(encoded, attr->name);
+		if (!value || json_is_null(value)) {
+			continue;
+		}
+
+		void *dst = object + attr->offset;
+		int r = attr->decode(value, dst);
+		if (r != DNSSEC_EOK) {
+			return r;
+		}
+	}
 
 	return DNSSEC_EOK;
 }
