@@ -212,11 +212,6 @@ static int cmd_zone_add(int argc, char *argv[])
 		return 1;
 	}
 
-	if (policy) {
-		error("Not implemented. Setting policy '%s' failed.", policy);
-		return 1;
-	}
-
 	// create zone
 
 	_cleanup_kasp_ dnssec_kasp_t *kasp = get_kasp();
@@ -234,6 +229,12 @@ static int cmd_zone_add(int argc, char *argv[])
 	zone = dnssec_kasp_zone_new(zone_name);
 	if (!zone) {
 		error("Failed to create new zone.");
+		return 1;
+	}
+
+	r = dnssec_kasp_zone_set_policy(zone, policy);
+	if (r != DNSSEC_EOK) {
+		error("Unable to set zone policy.");
 		return 1;
 	}
 
@@ -312,6 +313,8 @@ static int cmd_zone_show(int argc, char *argv[])
 	}
 
 	printf("zone: %s\n", zone_name);
+	const char *policy = dnssec_kasp_zone_get_policy(zone);
+	printf("policy: %s\n", policy ? policy : "(not set)");
 	printf("keys: %zu\n", dnssec_list_size(dnssec_kasp_zone_get_keys(zone)));
 
 	return 0;

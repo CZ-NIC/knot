@@ -20,6 +20,7 @@
 #include <string.h>
 
 #include "dname.h"
+#include "error.h"
 #include "kasp.h"
 #include "kasp/internal.h"
 #include "kasp/zone.h"
@@ -132,9 +133,39 @@ bool dnssec_kasp_key_is_used(dnssec_kasp_key_timing_t *timing, time_t at)
 _public_
 dnssec_list_t *dnssec_kasp_zone_get_keys(dnssec_kasp_zone_t *zone)
 {
+	return zone ? zone->keys : NULL;
+}
+
+/*!
+ * Get zone policy.
+ */
+_public_
+const char *dnssec_kasp_zone_get_policy(dnssec_kasp_zone_t *zone)
+{
+	return zone ? zone->policy : NULL;
+}
+
+/*!
+ * Set or clear zone policy name.
+ */
+_public_
+int dnssec_kasp_zone_set_policy(dnssec_kasp_zone_t *zone, const char *name)
+{
 	if (!zone) {
-		return NULL;
+		return DNSSEC_EINVAL;
 	}
 
-	return zone->keys;
+	char *new_name = NULL;
+
+	if (name) {
+		new_name = strdup(name);
+		if (!new_name) {
+			return DNSSEC_ENOMEM;
+		}
+	}
+
+	free(zone->policy);
+	zone->policy = new_name;
+
+	return DNSSEC_EOK;
 }

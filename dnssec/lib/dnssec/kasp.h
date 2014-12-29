@@ -237,6 +237,23 @@ bool dnssec_kasp_key_is_used(dnssec_kasp_key_timing_t *timing, time_t at);
 dnssec_list_t *dnssec_kasp_zone_get_keys(dnssec_kasp_zone_t *zone);
 
 /*!
+ * Get zone policy name.
+ *
+ * \param zone  KASP zone.
+ *
+ * \return Name of the policy, NULL if the policy is unset.
+ */
+const char *dnssec_kasp_zone_get_policy(dnssec_kasp_zone_t *zone);
+
+/*!
+ * Set or clear zone policy name.
+ *
+ * \param zone  KASP zone.
+ * \param name  Name of the policy to set, NULL to clear the policy.
+ */
+int dnssec_kasp_zone_set_policy(dnssec_kasp_zone_t *zone, const char *name);
+
+/*!
  * Key and signature policy.
  *
  * \todo Move into internal API and add getters/setters (probably).
