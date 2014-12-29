@@ -245,8 +245,8 @@ typedef struct dnssec_kasp_policy {
 	char *name;
 	// DNSKEY
 	dnssec_key_algorithm_t algorithm;
-	unsigned ksk_size;
-	unsigned zsk_size;
+	uint16_t ksk_size;
+	uint16_t zsk_size;
 	uint16_t dnskey_ttl;
 	// RRSIG
 	uint32_t rrsig_lifetime;

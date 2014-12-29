@@ -20,13 +20,39 @@
 #include "json.h"
 #include "kasp.h"
 #include "policy.h"
+#include "shared.h"
+
+static const encode_attr_t POLICY_ATTRS[] = {
+	#define attr(name) #name, offsetof(dnssec_kasp_policy_t, name)
+	{ attr(algorithm),         encode_uint8,  decode_uint8  },
+	{ attr(ksk_size),          encode_uint16, decode_uint16 },
+	{ attr(zsk_size),          encode_uint16, decode_uint16 },
+	{ attr(dnskey_ttl),        encode_uint16, decode_uint16 },
+	{ attr(rrsig_lifetime),    encode_uint32, decode_uint32 },
+	{ attr(soa_minimal_ttl),   encode_uint16, decode_uint16 },
+	{ attr(zone_maximal_ttl),  encode_uint16, decode_uint16 },
+	{ attr(propagation_delay), encode_uint32, decode_uint32 },
+	{ NULL }
+	#undef attr
+};
 
 int load_policy_config(dnssec_kasp_policy_t *policy, const char *filename)
 {
 	assert(policy);
 	assert(filename);
 
-	return DNSSEC_NOT_IMPLEMENTED_ERROR;
+	_cleanup_fclose_ FILE *file = fopen(filename, "r");
+	if (!file) {
+		return DNSSEC_NOT_FOUND;
+	}
+
+	json_error_t error = { 0 };
+	_json_cleanup_ json_t *config = json_loadf(file, JSON_LOAD_OPTIONS, &error);
+	if (!config) {
+		return DNSSEC_CONFIG_MALFORMED;
+	}
+
+	return decode_object(POLICY_ATTRS, config, policy);
 }
 
 int save_policy_config(dnssec_kasp_policy_t *policy, const char *filename)
@@ -34,5 +60,22 @@ int save_policy_config(dnssec_kasp_policy_t *policy, const char *filename)
 	assert(policy);
 	assert(filename);
 
-	return DNSSEC_NOT_IMPLEMENTED_ERROR;
+	_json_cleanup_ json_t *config = NULL;
+	int r = encode_object(POLICY_ATTRS, policy, &config);
+	if (r != DNSSEC_EOK) {
+		return r;
+	}
+
+	_cleanup_fclose_ FILE *file = fopen(filename, "w");
+	if (!file) {
+		return DNSSEC_NOT_FOUND;
+	}
+
+	r = json_dumpf(config, file, JSON_DUMP_OPTIONS);
+	if (r != DNSSEC_EOK) {
+		return r;
+	}
+
+	fputc('\n', file);
+	return DNSSEC_EOK;
 }
