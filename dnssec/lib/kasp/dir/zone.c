@@ -60,19 +60,7 @@ static void key_params_free(key_params_t *params)
 
 #define _cleanup_key_params_ _cleanup_(key_params_free)
 
-/*!
- * Instruction for parsing of individual key parameters.
- */
-struct key_params_field {
-	const char *key;
-	size_t offset;
-	int (*encode_cb)(const void *value, json_t **result);
-	int (*decode_cb)(const json_t *value, void *result);
-};
-
-typedef struct key_params_field key_params_field_t;
-
-static const key_params_field_t KEY_PARAMS_FIELDS[] = {
+static const encode_attr_t KEY_ATTRIBUTES[] = {
 	#define off(member) offsetof(key_params_t, member)
 	{ "id",         off(id),             encode_keyid,  decode_keyid  },
 	{ "keytag",     off(keytag),         encode_uint16, decode_ignore },
@@ -88,32 +76,6 @@ static const key_params_field_t KEY_PARAMS_FIELDS[] = {
 };
 
 /* -- configuration loading ------------------------------------------------ */
-
-/*!
- * Parse key parameters from JSON object.
- */
-static int parse_key(json_t *key, key_params_t *params)
-{
-	if (!json_is_object(key)) {
-		return DNSSEC_CONFIG_MALFORMED;
-	}
-
-	const key_params_field_t *field;
-	for (field = KEY_PARAMS_FIELDS; field->key != NULL; field++) {
-		json_t *value = json_object_get(key, field->key);
-		if (!value || json_is_null(value)) {
-			continue;
-		}
-
-		void *dest = ((void *)params) + field->offset;
-		int r = field->decode_cb(value, dest);
-		if (r != DNSSEC_EOK) {
-			return r;
-		}
-	}
-
-	return DNSSEC_EOK;
-}
 
 /*!
  * Check if key parameters allow to create a key.
@@ -241,7 +203,7 @@ static int load_zone_keys(dnssec_kasp_zone_t *zone, json_t *keys)
 	json_array_foreach(keys, index, key) {
 		_cleanup_key_params_ key_params_t params = { 0 };
 
-		result = parse_key(key, &params);
+		result = decode_object(KEY_ATTRIBUTES, key, &params);
 		if (result != DNSSEC_EOK) {
 			break;
 		}
@@ -267,46 +229,6 @@ static int load_zone_keys(dnssec_kasp_zone_t *zone, json_t *keys)
 	}
 
 	return result;
-}
-
-/*!
- * Convert KASP key parameters to JSON.
- */
-static int export_key(const key_params_t *params, json_t **key_ptr)
-{
-	assert(params);
-	assert(key_ptr);
-
-	json_t *key = json_object();
-	if (!key) {
-		return DNSSEC_ENOMEM;
-	}
-
-	const key_params_field_t *field;
-	for (field = KEY_PARAMS_FIELDS; field->key != NULL; field++) {
-		const void *src = ((void *)params) + field->offset;
-		json_t *encoded = NULL;
-		int r = field->encode_cb(src, &encoded);
-		if (r != DNSSEC_EOK) {
-			json_decref(key);
-			return r;
-		}
-
-		if (encoded == NULL) {
-			// missing value (valid)
-			continue;
-		}
-
-		if (json_object_set_new(key, field->key, encoded) != 0) {
-			json_decref(encoded);
-			json_decref(key);
-			return DNSSEC_ENOMEM;
-		}
-	}
-
-	*key_ptr = key;
-
-	return DNSSEC_EOK;
 }
 
 /*!
@@ -341,7 +263,7 @@ static int export_zone_keys(dnssec_kasp_zone_t *zone, json_t **keys_ptr)
 		key_to_params(kasp_key, &params);
 
 		json_t *key = NULL;
-		int r = export_key(&params, &key);
+		int r = encode_object(KEY_ATTRIBUTES, &params, &key);
 		if (r != DNSSEC_EOK) {
 			json_decref(keys);
 			return r;
