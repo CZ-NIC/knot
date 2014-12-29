@@ -36,6 +36,3 @@ char *file_from_entity(const char *dir, const char *type, const char *name);
  * \return Unescaped entity name from a basename.
  */
 char *file_to_entity(const char *type, const char *basename);
-
-#define zone_config_file(dir, name) file_from_entity((dir), "zone", (name))
-#define zone_name_from_config_file(basename) file_to_entity("zone", (basename))

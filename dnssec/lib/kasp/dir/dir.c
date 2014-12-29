@@ -32,11 +32,13 @@
 
 #define KASP_DIR_INIT_MODE (S_IRWXU | S_IRGRP|S_IXGRP)
 
-/* -- internal API --------------------------------------------------------- */
+#define ENTITY_ZONE   "zone"
 
 typedef struct kasp_dir_ctx {
 	char *path;
 } kasp_dir_ctx_t;
+
+/* -- internal API --------------------------------------------------------- */
 
 static int kasp_dir_init(const char *config)
 {
@@ -78,6 +80,11 @@ static void kasp_dir_close(void *_ctx)
 	free(ctx);
 }
 
+static char *zone_file(const char *dir, const char *name)
+{
+	return file_from_entity(dir, ENTITY_ZONE, name);
+}
+
 static int kasp_dir_zone_load(void *_ctx, dnssec_kasp_zone_t *zone)
 {
 	assert(_ctx);
@@ -85,7 +92,7 @@ static int kasp_dir_zone_load(void *_ctx, dnssec_kasp_zone_t *zone)
 
 	kasp_dir_ctx_t *ctx = _ctx;
 
-	_cleanup_free_ char *config = zone_config_file(ctx->path, zone->name);
+	_cleanup_free_ char *config = zone_file(ctx->path, zone->name);
 	if (!config) {
 		return DNSSEC_ENOMEM;
 	}
@@ -100,7 +107,7 @@ static int kasp_dir_zone_save(void *_ctx, dnssec_kasp_zone_t *zone)
 
 	kasp_dir_ctx_t *ctx = _ctx;
 
-	_cleanup_free_ char *config = zone_config_file(ctx->path, zone->name);
+	_cleanup_free_ char *config = zone_file(ctx->path, zone->name);
 	if (!config) {
 		return DNSSEC_ENOMEM;
 	}
@@ -115,7 +122,7 @@ static int kasp_dir_zone_remove(void *_ctx, const char *name)
 
 	kasp_dir_ctx_t *ctx = _ctx;
 
-	_cleanup_free_ char *config = zone_config_file(ctx->path, name);
+	_cleanup_free_ char *config = zone_file(ctx->path, name);
 	if (!config) {
 		return DNSSEC_ENOMEM;
 	}
@@ -142,7 +149,7 @@ static int kasp_dir_zone_list(void *_ctx, dnssec_list_t *names)
 	int error;
 	struct dirent entry, *result;
 	while (error = readdir_r(dir, &entry, &result), error == 0 && result) {
-		char *zone = zone_name_from_config_file(entry.d_name);
+		char *zone = file_to_entity(ENTITY_ZONE, entry.d_name);
 		if (zone) {
 			dnssec_list_append(names, zone);
 		}
