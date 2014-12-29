@@ -253,9 +253,11 @@ static int request_io(struct knot_requestor *req, struct knot_request *last,
 		/* Process query and send it out. */
 		knot_overlay_out(&req->overlay, query);
 
-		ret = request_send(last, timeout);
-		if (ret != KNOT_EOK) {
-			return ret;
+		if (req->overlay.state == KNOT_NS_PROC_MORE) {
+			ret = request_send(last, timeout);
+			if (ret != KNOT_EOK) {
+				return ret;
+			}
 		}
 	}
 
