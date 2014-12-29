@@ -603,7 +603,6 @@ static int cmd_zone_key_generate(int argc, char *argv[])
 	r = dnssec_kasp_zone_save(kasp, zone);
 	if (r != DNSSEC_EOK) {
 		error("Failed to save updated zone (%s).", dnssec_strerror(r));
-		free(dnskey);
 		dnssec_keystore_remove_key(store, keyid);
 		return 1;
 	}
