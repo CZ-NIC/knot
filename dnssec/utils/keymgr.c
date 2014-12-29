@@ -783,6 +783,12 @@ static int cmd_zone(int argc, char *argv[])
 	return subcommand(commands, argc, argv);
 }
 
+static int cmd_policy_list(int argc, char *argv[])
+{
+	error("Not implemented.");
+	return 1;
+}
+
 static int cmd_policy_show(int argc, char *argv[])
 {
 	if (argc != 1) {
@@ -814,6 +820,12 @@ static int cmd_policy_show(int argc, char *argv[])
 	return 0;
 }
 
+static int cmd_policy_add(int argc, char *argv[])
+{
+	error("Not implemented.");
+	return 1;
+}
+
 static int cmd_policy_set(int argc, char *argv[])
 {
 	if (argc < 1) {
@@ -842,11 +854,21 @@ static int cmd_policy_set(int argc, char *argv[])
 	return 0;
 }
 
+static int cmd_policy_remove(int argc, char *argv[])
+{
+	error("Not implemented");
+
+	return 1;
+}
+
 static int cmd_policy(int argc, char *argv[])
 {
 	static const command_t commands[] = {
+		{ "list",   cmd_policy_list   },
 		{ "show",   cmd_policy_show   },
+		{ "add",    cmd_policy_add    },
 		{ "set",    cmd_policy_set    },
+		{ "remove", cmd_policy_remove },
 		{ NULL }
 	};
 
