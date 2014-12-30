@@ -330,7 +330,9 @@ static int parse_zone_config(dnssec_kasp_zone_t *zone, json_t *config)
 	// store the result
 
 	zone->policy = policy;
+	kasp_zone_keys_free(zone->keys);
 	zone->keys = keys;
+
 	return DNSSEC_EOK;
 }
 
