@@ -59,6 +59,10 @@ static int lmdb_error_to_knot(int error)
 		return KNOT_EOK;
 	}
 
+	if (error == MDB_MAP_FULL || error == MDB_TXN_FULL || error == ENOSPC) {
+		return KNOT_ESPACE;
+	}
+
 	if (MDB_KEYEXIST <= error && error <= MDB_LAST_ERRCODE) {
 		return KNOT_DATABASE_ERROR;
 	}
