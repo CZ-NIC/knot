@@ -226,7 +226,7 @@ static int conf_process(conf_t *conf)
 		if (ctl_if->addr.ss_family == AF_UNIX) {
 			char *full_path = malloc(SOCKADDR_STRLEN);
 			memset(full_path, 0, SOCKADDR_STRLEN);
-			sockaddr_tostr(&ctl_if->addr, full_path, SOCKADDR_STRLEN);
+			sockaddr_tostr(full_path, SOCKADDR_STRLEN, &ctl_if->addr);
 
 			/* Convert to absolute path. */
 			full_path = conf_abs_path(conf->rundir, full_path);

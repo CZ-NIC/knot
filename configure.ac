@@ -1,7 +1,7 @@
 #                                               -*- Autoconf -*-
 
 AC_PREREQ([2.60])
-AC_INIT([knot], [1.6.0], [knot-dns@labs.nic.cz])
+AC_INIT([knot], [1.6.1], [knot-dns@labs.nic.cz])
 AM_INIT_AUTOMAKE([gnits subdir-objects dist-xz -Wall -Werror])
 AM_SILENT_RULES([yes])
 AC_CONFIG_SRCDIR([src/knot/main.c])
@@ -265,6 +265,14 @@ AM_CONDITIONAL([HAVE_DNSTAP], test "$opt_dnstap" != "no")
 dnl Check for LMDB
 KNOT_CHECK_HEADER([lmdb], [LMDB], [auto], [lmdb.h], [], [-llmdb])
 AS_IF([test "$enable_lmdb" = yes], [AC_DEFINE([HAVE_LMDB], [1], [Define to 1 to enable LMDB support])])
+AM_CONDITIONAL([HAVE_LMDB], test "$enable_lmdb" != "no")
+
+dnl Check for rosedb module 
+AC_ARG_ENABLE([rosedb],
+    AS_HELP_STRING([--disable-rosedb], [Do not enable static RR query module.]),
+    [], [enable_rosedb=no])
+AM_CONDITIONAL([HAVE_ROSEDB], [test "$enable_rosedb" = yes])
+AS_IF([test "$enable_rosedb" = yes], [AC_DEFINE([HAVE_ROSEDB], [1], [Define to 1 to enable static RR query module.])])
 
 AC_SEARCH_LIBS([pow], [m])
 AC_SEARCH_LIBS([pthread_create], [pthread], [], [AC_MSG_ERROR([pthreads not found])])

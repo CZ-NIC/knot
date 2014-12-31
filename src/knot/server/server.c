@@ -101,7 +101,7 @@ static int server_init_iface(iface_t *new_if, conf_iface_t *cfg_if)
 
 	/* Convert to string address format. */
 	char addr_str[SOCKADDR_STRLEN] = {0};
-	sockaddr_tostr(&cfg_if->addr, addr_str, sizeof(addr_str));
+	sockaddr_tostr(addr_str, sizeof(addr_str), &cfg_if->addr);
 
 	/* Create bound UDP socket. */
 	int sock = net_bound_socket(SOCK_DGRAM, &cfg_if->addr);
@@ -153,7 +153,7 @@ static void remove_ifacelist(struct ref *p)
 	char addr_str[SOCKADDR_STRLEN] = {0};
 	iface_t *n = NULL, *m = NULL;
 	WALK_LIST_DELSAFE(n, m, ifaces->u) {
-		sockaddr_tostr(&n->addr, addr_str, sizeof(addr_str));
+		sockaddr_tostr(addr_str, sizeof(addr_str), &n->addr);
 		log_info("removing interface '%s'", addr_str);
 		server_remove_iface(n);
 	}
@@ -210,7 +210,7 @@ static int reconfigure_sockets(const struct conf *conf, server_t *s)
 		if (found_match) {
 			rem_node((node_t *)m);
 		} else {
-			sockaddr_tostr(&cfg_if->addr, addr_str, sizeof(addr_str));
+			sockaddr_tostr(addr_str, sizeof(addr_str), &cfg_if->addr);
 			log_info("binding to interface '%s'", addr_str);
 
 			/* Create new interface. */
