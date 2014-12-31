@@ -905,6 +905,16 @@ static int cmd_keystore(int argc, char *argv[])
 	return subcommand(commands, argc, argv);
 }
 
+static void print_help(void)
+{
+	printf("TBD.\n");
+}
+
+static void print_version(void)
+{
+	printf("keymgr, version %s\n", PACKAGE_VERSION);
+}
+
 int main(int argc, char *argv[])
 {
 	int exit_code = 1;
@@ -917,7 +927,9 @@ int main(int argc, char *argv[])
 	// global options
 
 	static const struct option opts[] = {
-		{ "dir", required_argument, NULL, 'd' },
+		{ "dir",     required_argument, NULL, 'd' },
+		{ "help",    no_argument,       NULL, 'h' },
+		{ "version", no_argument,       NULL, 'V' },
 		{ NULL }
 	};
 
@@ -928,6 +940,14 @@ int main(int argc, char *argv[])
 			free(global.kasp_dir);
 			global.kasp_dir = strdup(optarg);
 			break;
+		case 'h':
+			print_help();
+			exit_code = 0;
+			goto failed;
+		case 'V':
+			print_version();
+			exit_code = 0;
+			goto failed;
 		case '?':
 			goto failed;
 		default:
