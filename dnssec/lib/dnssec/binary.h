@@ -55,11 +55,8 @@
  * Universal structure to hold binary data.
  */
 typedef struct dnssec_binary {
-	size_t size;				/*!< Size of the binary data. */
-	union {
-		uint8_t *data;			/*!< Stored non-const data. */
-		const uint8_t *const_data;	/*!< Stored const data. */
-	};
+	size_t size;	/*!< Size of the binary data. */
+	uint8_t *data;	/*!< Stored data. */
 } dnssec_binary_t;
 
 /*!

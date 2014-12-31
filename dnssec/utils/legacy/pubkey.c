@@ -53,7 +53,7 @@ static void parse_record(zs_scanner_t *scanner)
 	}
 
 	dnssec_binary_t rdata = {
-		.const_data = scanner->r_data,
+		.data = scanner->r_data,
 		.size = scanner->r_data_length
 	};
 	dnssec_key_set_dname(key, scanner->dname);

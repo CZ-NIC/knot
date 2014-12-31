@@ -133,7 +133,7 @@ static int sign_ctx_add_self(dnssec_sign_ctx_t *ctx, const uint8_t *rdata)
 	// static header
 
 	dnssec_binary_t header = { 0 };
-	header.const_data = rdata;
+	header.data = (uint8_t *)rdata;
 	header.size = RRSIG_RDATA_SIGNER_OFFSET;
 
 	result = dnssec_sign_add(ctx, &header);
