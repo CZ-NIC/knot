@@ -1,5 +1,8 @@
 noinst_LTLIBRARIES = libutils.la
 
+# symlink
+EXTRA_DIST = zscanner
+
 AM_CPPFLAGS = \
 	-include $(top_builddir)/src/config.h \
 	-I$(srcdir)/../shared \
@@ -15,10 +18,6 @@ libutils_la_LIBADD = \
 	$(builddir)/../libdnssec.la \
 	$(builddir)/../libshared.la \
 	$(top_builddir)/src/zscanner/libzscanner.la
-
-libutils_la_CPPFLAGS = \
-	$(AM_CPPFLAGS) \
-	-I$(top_srcdir)/src/zscanner
 
 libutils_la_SOURCES = \
 	cmdparse/command.c \

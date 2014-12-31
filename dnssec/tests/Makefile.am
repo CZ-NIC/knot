@@ -13,6 +13,10 @@ LDADD = \
 	$(top_builddir)/libtap/libtap.a \
 	$(builddir)/../libdnssec.la
 
+CLEANFILES = runtests.log
+
+EXTRA_DIST = sample_keys.h
+
 check_PROGRAMS = \
 	binary		\
 	crypto		\

@@ -17,7 +17,7 @@
 #include <assert.h>
 
 // Knot zone scanner
-#include "scanner.h"
+#include "zscanner/scanner.h"
 
 #include "dnssec/error.h"
 #include "dnssec/binary.h"
