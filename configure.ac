@@ -100,7 +100,7 @@ fi
 PKG_CHECK_MODULES([gnutls], [gnutls >= 3.0 nettle])
 
 # JSON for DNSSEC status storage
-PKG_CHECK_MODULES([jansson], [jansson >= 2.4])
+PKG_CHECK_MODULES([jansson], [jansson >= 2.3])
 
 # Debug modules
 AC_ARG_ENABLE([debug],

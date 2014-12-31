@@ -18,6 +18,13 @@
 
 #include <jansson.h>
 
+// Compatibility with Jansson 2.3, json_array_foreach exists since 2.7
+#ifndef json_array_foreach
+#define json_array_foreach(array, index, value) \
+	for(index = 0; \
+		index < json_array_size(array) && (value = json_array_get(array, index)); \
+		index++)
+#endif
 
 static inline void json_decref_ptr(json_t **json_ptr)
 {

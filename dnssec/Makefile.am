@@ -7,7 +7,7 @@ AM_CPPFLAGS = \
 	-I$(srcdir)/lib/dnssec \
 	$(CODE_COVERAGE_CFLAGS) \
 	$(gnutls_CFLAGS) \
-	$(jannson_CFLAGS)
+	$(jansson_CFLAGS)
 
 AM_LDFLAGS = \
 	$(CODE_COVERAGE_LDFLAGS)
