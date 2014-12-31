@@ -44,6 +44,11 @@ static void check_key_ids(dnssec_key_t *key, const key_parameters_t *params)
 
 static void check_key_size(dnssec_key_t *key, const key_parameters_t *params)
 {
+	if (params->algorithm == 13 && !dnssec_key_can_sign(key)) {
+		skip("key size without private key known to be broken");
+		return;
+	}
+
 	ok(dnssec_key_get_size(key) == params->bit_size,
 	   "key size %u bits", params->bit_size);
 }

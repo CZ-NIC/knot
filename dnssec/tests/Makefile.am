@@ -42,4 +42,4 @@ check-local: $(check_PROGRAMS)
 	$(top_builddir)/libtap/runtests -s $(srcdir) \
 					-b $(builddir) \
 					-L $(builddir)/runtests.log \
-					$(check_PROGRAMS) || :
+					$(check_PROGRAMS)
