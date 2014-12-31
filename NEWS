@@ -1,3 +1,10 @@
+Knot DNS 1.99.0 (2014-12-31)
+============================
+
+Features:
+---------
+ - DNSSEC: separate library, switch to GnuTLS, new utilities
+
 Knot DNS 1.6.1 (2014-12-13)
 ===========================
 
