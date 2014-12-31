@@ -16,8 +16,6 @@
 
 #include <assert.h>
 #include <inttypes.h>
-#include <openssl/hmac.h>
-#include <openssl/evp.h>
 #include <time.h>
 #include <stdint.h>
 
