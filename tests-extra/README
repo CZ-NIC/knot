@@ -27,3 +27,23 @@ Allow ptrace:
 or
 change file /etc/sysctl.d/10-ptrace.conf
 kernel.yama.ptrace_scope = 0
+
+Running in docker container:
+----------------------------
+
+There is a Dockerfile that can be used to build containers with the tests-extra,
+the main benefit is that each test runs in an isolated container and can be run in parallel.
+
+Run tests on the upstream branch:
+---------------------------------
+
+$ docker pull cznic/knot-tests-extra # Or build with 'docker build -t knot-tests-extra .'
+$ docker run -v $(pwd):/tests cznic/knot-tests-extra basic
+
+Run tests on the local executables:
+-----------------------------------
+
+You can bind-mount the /src with the current working copy.
+
+$ docker run -v $(pwd)../src:/src $(pwd):/tests cznic/knot-tests-extra basic
+

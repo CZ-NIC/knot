@@ -2,7 +2,7 @@ FROM debian:jessie
 MAINTAINER Marek Vavrusa <marek.vavrusa@nic.cz>
 
 # Nprocs
-ENV THREADS 2
+ENV THREADS 4 
 
 # Install dependencies and sources 
 RUN apt-get -y update; \
@@ -27,8 +27,7 @@ apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /src
 
 # Select entrypoint
 WORKDIR /root
-ENTRYPOINT "/usr/local/sbin/knotd"
-CMD ["--help"]
+CMD ["/usr/local/sbin/knotd"]
 
 # Expose port
 EXPOSE 53
