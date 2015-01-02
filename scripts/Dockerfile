@@ -17,13 +17,15 @@ libssl-dev \
 liburcu-dev \
 pkg-config \
 liblmdb-dev; \
-# Fetch sources
-mkdir /src; \
+# Trim down the image
+apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/*
+
+# Fetch and compile sources
+RUN mkdir /src; \
 git clone https://gitlab.labs.nic.cz/labs/knot.git /src/knot; \
-# Compile sources in the right order
 cd /src/knot && autoreconf -if && ./configure && make -j${THREADS} && make install && ldconfig; \
 # Trim down the image
-apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /src
+rm -rf /src
 
 # Select entrypoint
 WORKDIR /root
