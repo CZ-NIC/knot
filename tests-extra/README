@@ -37,8 +37,8 @@ the main benefit is that each test runs in an isolated container and can be run 
 Run tests on the upstream branch:
 ---------------------------------
 
-$ docker pull cznic/knot-tests-extra # Or build with 'docker build -t knot-tests-extra .'
-$ docker run -v $(pwd):/tests cznic/knot-tests-extra basic
+$ docker pull cznic/knot:tests-extra # Or build with 'docker build -t tests-extra .'
+$ docker run -v $(pwd):/tests cznic/knot:tests-extra basic
 
 Run tests on the local executables:
 -----------------------------------
