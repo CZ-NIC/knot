@@ -13,15 +13,15 @@ lsof \
 gdb; \
 pip3 install dnspython3; \
 pip3 install psutil; \
+apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/*
+
 # Prepare the tests
-mkdir /tests; \
+RUN mkdir /tests; \
 # Link the tested executables
 mkdir /src; \
 ln -sfn /usr/local/sbin/knotd /src/knotd; \
 ln -sfn /usr/local/bin/knotc /src/knotc; \
-# Trim down the image
-apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/*
 
 # Select entrypoint
 WORKDIR /tests 
-ENTRYPOINT "/tests/runtests.py"
+ENTRYPOINT ["/tests/runtests.py"]
