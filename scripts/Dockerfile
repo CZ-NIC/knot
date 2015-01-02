@@ -19,7 +19,7 @@ pkg-config \
 liblmdb-dev; \
 # Fetch sources
 mkdir /src; \
-git clone https://gitlab.labs.nic.cz/labs/knot.git /src/knot; \
+git clone -b resolver_improvements https://gitlab.labs.nic.cz/labs/knot.git /src/knot; \
 # Compile sources in the right order
 cd /src/knot && autoreconf -if && ./configure && make -j${THREADS} && make install && ldconfig; \
 # Trim down the image
