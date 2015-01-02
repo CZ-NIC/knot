@@ -38,7 +38,7 @@ const knot_layer_api_t *process_query_get_module(void);
 /*! \brief Query processing logging common base. */
 #define NS_PROC_LOG(severity, remote, zone_name, operation, msg, ...) do { \
 	char addr_str[SOCKADDR_STRLEN] = {0}; \
-	sockaddr_tostr(remote, addr_str, sizeof(addr_str)); \
+	sockaddr_tostr(addr_str, sizeof(addr_str), remote); \
 	log_msg_zone(severity, zone_name, operation ", %s: " msg, \
 	             addr_str, ##__VA_ARGS__); \
 	} while (0)

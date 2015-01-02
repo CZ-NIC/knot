@@ -17,8 +17,8 @@
 #include "libknot/internal/base32hex.h"
 #include "libknot/errcode.h"
 
-#include <stdlib.h>			// malloc
-#include <stdint.h>			// uint8_t
+#include <stdlib.h>
+#include <stdint.h>
 
 /*! \brief Maximal length of binary input to Base32hex encoding. */
 #define MAX_BIN_DATA_LEN	((INT32_MAX / 8) * 5)
@@ -85,12 +85,6 @@ int32_t base32hex_encode(const uint8_t  *in,
                          uint8_t        *out,
                          const uint32_t out_len)
 {
-	uint8_t		rest_len = in_len % 5;
-	const uint8_t	*data = in;
-	const uint8_t	*stop = in + in_len - rest_len;
-	uint8_t		*text = out;
-	uint8_t		num;
-
 	// Checking inputs.
 	if (in == NULL || out == NULL) {
 		return KNOT_EINVAL;
@@ -99,158 +93,69 @@ int32_t base32hex_encode(const uint8_t  *in,
 		return KNOT_ERANGE;
 	}
 
+	uint8_t		rest_len = in_len % 5;
+	const uint8_t	*stop = in + in_len - rest_len;
+	uint8_t		*text = out;
+
 	// Encoding loop takes 5 bytes and creates 8 characters.
-	while (data < stop) {
-		// Computing 1. Base32hex character.
-		num = *data >> 3;
-		*text++ = base32hex_enc[num];
-
-		// Computing 2. Base32hex character.
-		num = (*data++ & 0x07) << 2;
-		num += *data >> 6;
-		*text++ = base32hex_enc[num];
-
-		// Computing 3. Base32hex character.
-		num = (*data & 0x3E) >> 1;
-		*text++ = base32hex_enc[num];
-
-		// Computing 4. Base32hex character.
-		num = (*data++ & 0x01) << 4;
-		num += *data >> 4;
-		*text++ = base32hex_enc[num];
-
-		// Computing 5. Base32hex character.
-		num = (*data++ & 0x0F) << 1;
-		num += *data >> 7;
-		*text++ = base32hex_enc[num];
-
-		// Computing 6. Base32hex character.
-		num = (*data & 0x7C) >> 2;
-		*text++ = base32hex_enc[num];
-
-		// Computing 7. Base32hex character.
-		num = (*data++ & 0x03) << 3;
-		num += *data >> 5;
-		*text++ = base32hex_enc[num];
-
-		// Computing 8. Base32hex character.
-		num = *data++ & 0x1F;
-		*text++ = base32hex_enc[num];
+	while (in < stop) {
+		text[0] = base32hex_enc[in[0] >> 3];
+		text[1] = base32hex_enc[(in[0] & 0x07) << 2 | in[1] >> 6];
+		text[2] = base32hex_enc[(in[1] & 0x3E) >> 1];
+		text[3] = base32hex_enc[(in[1] & 0x01) << 4 | in[2] >> 4];
+		text[4] = base32hex_enc[(in[2] & 0x0F) << 1 | in[3] >> 7];
+		text[5] = base32hex_enc[(in[3] & 0x7C) >> 2];
+		text[6] = base32hex_enc[(in[3] & 0x03) << 3 | in[4] >> 5];
+		text[7] = base32hex_enc[in[4] & 0x1F];
+		text += 8;
+		in += 5;
 	}
 
 	// Processing of padding, if any.
 	switch (rest_len) {
-	// Input data has 4-byte last block => 1-char padding.
 	case 4:
-		// Computing 1. Base32hex character.
-		num = *data >> 3;
-		*text++ = base32hex_enc[num];
-
-		// Computing 2. Base32hex character.
-		num = (*data++ & 0x07) << 2;
-		num += *data >> 6;
-		*text++ = base32hex_enc[num];
-
-		// Computing 3. Base32hex character.
-		num = (*data & 0x3E) >> 1;
-		*text++ = base32hex_enc[num];
-
-		// Computing 4. Base32hex character.
-		num = (*data++ & 0x01) << 4;
-		num += *data >> 4;
-		*text++ = base32hex_enc[num];
-
-		// Computing 5. Base32hex character.
-		num = (*data++ & 0x0F) << 1;
-		num += *data >> 7;
-		*text++ = base32hex_enc[num];
-
-		// Computing 6. Base32hex character.
-		num = (*data & 0x7C) >> 2;
-		*text++ = base32hex_enc[num];
-
-		// Computing 7. Base32hex character.
-		num = (*data++ & 0x03) << 3;
-		*text++ = base32hex_enc[num];
-
-		// 1 padding character.
-		*text++ = base32hex_pad;
-
+		text[0] = base32hex_enc[in[0] >> 3];
+		text[1] = base32hex_enc[(in[0] & 0x07) << 2 | in[1] >> 6];
+		text[2] = base32hex_enc[(in[1] & 0x3E) >> 1];
+		text[3] = base32hex_enc[(in[1] & 0x01) << 4 | in[2] >> 4];
+		text[4] = base32hex_enc[(in[2] & 0x0F) << 1 | in[3] >> 7];
+		text[5] = base32hex_enc[(in[3] & 0x7C) >> 2];
+		text[6] = base32hex_enc[(in[3] & 0x03) << 3];
+		text[7] = base32hex_pad;
+		text += 8;
 		break;
-	// Input data has 3-byte last block => 3-char padding.
 	case 3:
-		// Computing 1. Base32hex character.
-		num = *data >> 3;
-		*text++ = base32hex_enc[num];
-
-		// Computing 2. Base32hex character.
-		num = (*data++ & 0x07) << 2;
-		num += *data >> 6;
-		*text++ = base32hex_enc[num];
-
-		// Computing 3. Base32hex character.
-		num = (*data & 0x3E) >> 1;
-		*text++ = base32hex_enc[num];
-
-		// Computing 4. Base32hex character.
-		num = (*data++ & 0x01) << 4;
-		num += *data >> 4;
-		*text++ = base32hex_enc[num];
-
-		// Computing 5. Base32hex character.
-		num = (*data++ & 0x0F) << 1;
-		*text++ = base32hex_enc[num];
-
-		// 3 padding characters.
-		*text++ = base32hex_pad;
-		*text++ = base32hex_pad;
-		*text++ = base32hex_pad;
-
+		text[0] = base32hex_enc[in[0] >> 3];
+		text[1] = base32hex_enc[(in[0] & 0x07) << 2 | in[1] >> 6];
+		text[2] = base32hex_enc[(in[1] & 0x3E) >> 1];
+		text[3] = base32hex_enc[(in[1] & 0x01) << 4 | in[2] >> 4];
+		text[4] = base32hex_enc[(in[2] & 0x0F) << 1];
+		text[5] = base32hex_pad;
+		text[6] = base32hex_pad;
+		text[7] = base32hex_pad;
+		text += 8;
 		break;
-	// Input data has 2-byte last block => 4-char padding.
 	case 2:
-		// Computing 1. Base32hex character.
-		num = *data >> 3;
-		*text++ = base32hex_enc[num];
-
-		// Computing 2. Base32hex character.
-		num = (*data++ & 0x07) << 2;
-		num += *data >> 6;
-		*text++ = base32hex_enc[num];
-
-		// Computing 3. Base32hex character.
-		num = (*data & 0x3E) >> 1;
-		*text++ = base32hex_enc[num];
-
-		// Computing 4. Base32hex character.
-		num = (*data++ & 0x01) << 4;
-		*text++ = base32hex_enc[num];
-
-		// 4 padding characters.
-		*text++ = base32hex_pad;
-		*text++ = base32hex_pad;
-		*text++ = base32hex_pad;
-		*text++ = base32hex_pad;
-
+		text[0] = base32hex_enc[in[0] >> 3];
+		text[1] = base32hex_enc[(in[0] & 0x07) << 2 | in[1] >> 6];
+		text[2] = base32hex_enc[(in[1] & 0x3E) >> 1];
+		text[3] = base32hex_enc[(in[1] & 0x01) << 4];
+		text[4] = base32hex_pad;
+		text[5] = base32hex_pad;
+		text[6] = base32hex_pad;
+		text[7] = base32hex_pad;
+		text += 8;
 		break;
-	// Input data has 1-byte last block => 6-char padding.
 	case 1:
-		// Computing 1. Base32hex character.
-		num = *data >> 3;
-		*text++ = base32hex_enc[num];
-
-		// Computing 2. Base32hex character.
-		num = (*data++ & 0x07) << 2;
-		*text++ = base32hex_enc[num];
-
-		// 6 padding characters.
-		*text++ = base32hex_pad;
-		*text++ = base32hex_pad;
-		*text++ = base32hex_pad;
-		*text++ = base32hex_pad;
-		*text++ = base32hex_pad;
-		*text++ = base32hex_pad;
-
+		text[0] = base32hex_enc[in[0] >> 3];
+		text[1] = base32hex_enc[(in[0] & 0x07) << 2];
+		text[2] = base32hex_pad;
+		text[3] = base32hex_pad;
+		text[4] = base32hex_pad;
+		text[5] = base32hex_pad;
+		text[6] = base32hex_pad;
+		text[7] = base32hex_pad;
+		text += 8;
 		break;
 	}
 
@@ -292,12 +197,6 @@ int32_t base32hex_decode(const uint8_t  *in,
                          uint8_t        *out,
                          const uint32_t out_len)
 {
-	const uint8_t	*data = in;
-	const uint8_t	*stop = in + in_len;
-	uint8_t		*bin = out;
-	uint8_t		pad_len = 0;
-	uint8_t		c1, c2, c3, c4, c5, c6, c7, c8;
-
 	// Checking inputs.
 	if (in == NULL || out == NULL) {
 		return KNOT_EINVAL;
@@ -309,17 +208,22 @@ int32_t base32hex_decode(const uint8_t  *in,
 		return KNOT_BASE32HEX_ESIZE;
 	}
 
+	const uint8_t	*stop = in + in_len;
+	uint8_t		*bin = out;
+	uint8_t		pad_len = 0;
+	uint8_t		c1, c2, c3, c4, c5, c6, c7, c8;
+
 	// Decoding loop takes 8 characters and creates 5 bytes.
-	while (data < stop) {
+	while (in < stop) {
 		// Filling and transforming 8 Base32hex chars.
-		c1 = base32hex_dec[*data++];
-		c2 = base32hex_dec[*data++];
-		c3 = base32hex_dec[*data++];
-		c4 = base32hex_dec[*data++];
-		c5 = base32hex_dec[*data++];
-		c6 = base32hex_dec[*data++];
-		c7 = base32hex_dec[*data++];
-		c8 = base32hex_dec[*data++];
+		c1 = base32hex_dec[in[0]];
+		c2 = base32hex_dec[in[1]];
+		c3 = base32hex_dec[in[2]];
+		c4 = base32hex_dec[in[3]];
+		c5 = base32hex_dec[in[4]];
+		c6 = base32hex_dec[in[5]];
+		c7 = base32hex_dec[in[6]];
+		c8 = base32hex_dec[in[7]];
 
 		// Check 8. char if is bad or padding.
 		if (c8 >= PD) {
@@ -378,37 +282,38 @@ int32_t base32hex_decode(const uint8_t  *in,
 
 		// Computing of output data based on padding length.
 		switch (pad_len) {
-		// No padding => output has 5 bytess.
 		case 0:
-			*bin++ = (c1 << 3) + (c2 >> 2);
-			*bin++ = (c2 << 6) + (c3 << 1) + (c4 >> 4);
-			*bin++ = (c4 << 4) + (c5 >> 1);
-			*bin++ = (c5 << 7) + (c6 << 2) + (c7 >> 3);
-			*bin++ = (c7 << 5) + c8;
-			break;
-		// 1-char padding => output has 4 bytes.
+			bin[4] = (c7 << 5) + c8;
 		case 1:
-			*bin++ = (c1 << 3) + (c2 >> 2);
-			*bin++ = (c2 << 6) + (c3 << 1) + (c4 >> 4);
-			*bin++ = (c4 << 4) + (c5 >> 1);
-			*bin++ = (c5 << 7) + (c6 << 2) + (c7 >> 3);
-			break;
-		// 3-char padding => output has 3 bytes.
+			bin[3] = (c5 << 7) + (c6 << 2) + (c7 >> 3);
 		case 3:
-			*bin++ = (c1 << 3) + (c2 >> 2);
-			*bin++ = (c2 << 6) + (c3 << 1) + (c4 >> 4);
-			*bin++ = (c4 << 4) + (c5 >> 1);
-			break;
-		// 4-char padding => output has 2 bytes.
+			bin[2] = (c4 << 4) + (c5 >> 1);
 		case 4:
-			*bin++ = (c1 << 3) + (c2 >> 2);
-			*bin++ = (c2 << 6) + (c3 << 1) + (c4 >> 4);
-			break;
-		// 6-char padding => output has 1 byte.
+			bin[1] = (c2 << 6) + (c3 << 1) + (c4 >> 4);
 		case 6:
-			*bin++ = (c1 << 3) + (c2 >> 2);
+			bin[0] = (c1 << 3) + (c2 >> 2);
+		}
+
+		// Update output end.
+		switch (pad_len) {
+		case 0:
+			bin += 5;
+			break;
+		case 1:
+			bin += 4;
+			break;
+		case 3:
+			bin += 3;
+			break;
+		case 4:
+			bin += 2;
+			break;
+		case 6:
+			bin += 1;
 			break;
 		}
+
+		in += 8;
 	}
 
 	return (bin - out);

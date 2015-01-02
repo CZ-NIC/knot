@@ -83,6 +83,25 @@ int sockaddr_set(struct sockaddr_storage *ss, int family, const char *straddr, i
 	return KNOT_EINVAL;
 }
 
+void *sockaddr_raw(struct sockaddr_storage *ss, size_t *addr_size)
+{
+	if (ss == NULL || addr_size == NULL) {
+		return NULL;
+	}
+
+	if (ss->ss_family == AF_INET) {
+		struct sockaddr_in *ipv4 = (struct sockaddr_in *)ss;
+		*addr_size = sizeof(ipv4->sin_addr);
+		return &ipv4->sin_addr;
+	} else if (ss->ss_family == AF_INET6) {
+		struct sockaddr_in6 *ipv6 = (struct sockaddr_in6 *)ss;
+		*addr_size = sizeof(ipv6->sin6_addr);
+		return &ipv6->sin6_addr;
+	} else {
+		return NULL;
+	}
+}
+
 int sockaddr_set_raw(struct sockaddr_storage *ss, int family,
                      const uint8_t *raw_addr, size_t raw_addr_size)
 {
@@ -90,18 +109,10 @@ int sockaddr_set_raw(struct sockaddr_storage *ss, int family,
 		return KNOT_EINVAL;
 	}
 
-	void *sa_data = NULL;
-	size_t sa_size = 0;
+	ss->ss_family = family;
 
-	if (family == AF_INET) {
-		struct sockaddr_in *ipv4 = (struct sockaddr_in *)ss;
-		sa_data = &ipv4->sin_addr;
-		sa_size = sizeof(ipv4->sin_addr);
-	} else if (family == AF_INET6) {
-		struct sockaddr_in6 *ipv6 = (struct sockaddr_in6 *)ss;
-		sa_data = &ipv6->sin6_addr;
-		sa_size = sizeof(ipv6->sin6_addr);
-	}
+	size_t sa_size = 0;
+	void *sa_data = sockaddr_raw(ss, &sa_size);
 
 	if (sa_data == NULL || sa_size != raw_addr_size) {
 		return KNOT_EINVAL;
@@ -114,7 +125,7 @@ int sockaddr_set_raw(struct sockaddr_storage *ss, int family,
 	return KNOT_EOK;
 }
 
-int sockaddr_tostr(const struct sockaddr_storage *ss, char *buf, size_t maxlen)
+int sockaddr_tostr(char *buf, size_t maxlen, const struct sockaddr_storage *ss)
 {
 	if (ss == NULL || buf == NULL) {
 		return KNOT_EINVAL;
@@ -143,17 +154,19 @@ int sockaddr_tostr(const struct sockaddr_storage *ss, char *buf, size_t maxlen)
 	}
 
 	/* Write separator and port. */
+	int written = strlen(buf);
 	int port = sockaddr_port(ss);
 	if (port > 0) {
-		size_t written = strlen(buf);
 		int ret = snprintf(&buf[written], maxlen - written, "@%d", port);
 		if (ret <= 0 || (size_t)ret >= maxlen - written) {
 			*buf = '\0';
 			return KNOT_ESPACE;
 		}
+
+		written += ret;
 	}
 
-	return KNOT_EOK;
+	return written;
 }
 
 int sockaddr_port(const struct sockaddr_storage *ss)

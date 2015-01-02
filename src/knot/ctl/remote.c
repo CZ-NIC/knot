@@ -501,7 +501,7 @@ int remote_bind(conf_iface_t *desc)
 	}
 
 	char addr_str[SOCKADDR_STRLEN] = {0};
-	sockaddr_tostr(&desc->addr, addr_str, sizeof(addr_str));
+	sockaddr_tostr(addr_str, sizeof(addr_str), &desc->addr);
 	log_info("binding remote control interface to '%s'", addr_str);
 
 	/* Create new socket. */
@@ -532,7 +532,7 @@ int remote_unbind(conf_iface_t *desc, int sock)
 	/* Remove control socket file.  */
 	if (desc->addr.ss_family == AF_UNIX) {
 		char addr_str[SOCKADDR_STRLEN] = {0};
-		sockaddr_tostr(&desc->addr, addr_str, sizeof(addr_str));
+		sockaddr_tostr(addr_str, sizeof(addr_str), &desc->addr);
 		unlink(addr_str);
 	}
 
@@ -870,7 +870,7 @@ int remote_process(server_t *s, conf_iface_t *ctl_if, int sock,
 
 		/* Check ACL list. */
 		char addr_str[SOCKADDR_STRLEN] = {0};
-		sockaddr_tostr(&ss, addr_str, sizeof(addr_str));
+		sockaddr_tostr(addr_str, sizeof(addr_str), &ss);
 		knot_tsig_key_t *tsig_key = NULL;
 		const knot_dname_t *tsig_name = NULL;
 		if (pkt->tsig_rr) {
