@@ -20,7 +20,7 @@ RUN mkdir /tests; \
 # Link the tested executables
 mkdir /src; \
 ln -sfn /usr/local/sbin/knotd /src/knotd; \
-ln -sfn /usr/local/bin/knotc /src/knotc
+ln -sfn /usr/local/sbin/knotc /src/knotc
 
 # Select entrypoint
 WORKDIR /tests 
