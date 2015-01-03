@@ -4,6 +4,7 @@ MAINTAINER Marek Vavrusa <marek.vavrusa@nic.cz>
 # Install dependencies and sources 
 RUN apt-get -q -y update; \
 apt-get install -q -y \
+gawk \
 python3 \
 python3-pip \
 bind9 \
