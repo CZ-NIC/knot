@@ -23,11 +23,9 @@
 #include "kasp.h"
 #include "kasp/dir/json.h"
 #include "kasp/zone.h"
+#include "key/internal.h"
 #include "list.h"
 #include "shared.h"
-
-#define DNSKEY_KSK_FLAGS 257
-#define DNSKEY_ZSK_FLAGS 256
 
 /* -- key parameters ------------------------------------------------------- */
 
@@ -128,7 +126,7 @@ static int create_dnskey(const uint8_t *dname, key_params_t *params,
 
 	dnssec_key_set_algorithm(key, params->algorithm);
 
-	uint16_t flags = params->is_ksk ? DNSKEY_KSK_FLAGS : DNSKEY_ZSK_FLAGS;
+	uint16_t flags = dnskey_flags(params->is_ksk);
 	dnssec_key_set_flags(key, flags);
 
 	result = dnssec_key_set_pubkey(key, &params->public_key);
@@ -238,7 +236,7 @@ static void key_to_params(dnssec_kasp_key_t *key, key_params_t *params)
 	params->keytag = dnssec_key_get_keytag(key->key);
 	dnssec_key_get_pubkey(key->key, &params->public_key);
 	params->algorithm = dnssec_key_get_algorithm(key->key);
-	params->is_ksk = dnssec_key_get_flags(key->key) == DNSKEY_KSK_FLAGS;
+	params->is_ksk = dnssec_key_get_flags(key->key) == DNSKEY_FLAGS_KSK;
 	params->timing = key->timing;
 }
 

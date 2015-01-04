@@ -39,3 +39,11 @@ struct dnssec_key {
 };
 
 void key_update_identifiers(dnssec_key_t *key);
+
+static const uint16_t DNSKEY_FLAGS_KSK = 257;
+static const uint16_t DNSKEY_FLAGS_ZSK = 256;
+
+static inline uint16_t dnskey_flags(bool is_ksk)
+{
+	return is_ksk ? DNSKEY_FLAGS_KSK : DNSKEY_FLAGS_ZSK;
+}
