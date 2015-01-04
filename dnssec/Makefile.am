@@ -54,6 +54,7 @@ include_dnssec_HEADERS = \
 	lib/dnssec/binary.h \
 	lib/dnssec/crypto.h \
 	lib/dnssec/error.h \
+	lib/dnssec/event.h \
 	lib/dnssec/kasp.h \
 	lib/dnssec/key.h \
 	lib/dnssec/keyid.h \
@@ -69,6 +70,11 @@ libdnssec_la_SOURCES = \
 	lib/binary.c \
 	lib/crypto.c \
 	lib/error.c \
+	lib/event/event.c \
+	lib/event/exec.c \
+	lib/event/info.c \
+	lib/event/keystate.c \
+	lib/event/keystate.h \
 	lib/kasp/dir/dir.c \
 	lib/kasp/dir/escape.c \
 	lib/kasp/dir/escape.h \
