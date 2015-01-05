@@ -36,6 +36,17 @@
 #include "libknot/rrtype/rrsig.h"
 #include "libknot/rrtype/soa.h"
 
+typedef struct type_node {
+	node_t n;
+	uint16_t type;
+} type_node_t;
+
+typedef struct signed_info {
+	knot_dname_t *dname;
+	knot_dname_t *hashed_dname;
+	list_t *type_list;
+} signed_info_t;
+
 /*- private API - common functions -------------------------------------------*/
 
 /*!

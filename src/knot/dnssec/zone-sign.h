@@ -34,17 +34,6 @@
 #include "knot/dnssec/zone-keys.h"
 #include "libknot/dnssec/policy.h"
 
-typedef struct type_node {
-	node_t n;
-	uint16_t type;
-} type_node_t;
-
-typedef struct signed_info {
-	knot_dname_t *dname;
-	knot_dname_t *hashed_dname;
-	list_t *type_list;
-} signed_info_t;
-
 /*!
  * \brief Update zone signatures and store performed changes in changeset.
  *
