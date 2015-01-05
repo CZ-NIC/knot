@@ -37,7 +37,6 @@
 #endif /* HAVE_CAP_NG_H */
 
 #include "knot/server/udp-handler.h"
-#include "knot/common/debug.h"
 #include "knot/server/server.h"
 #include "libknot/internal/sockaddr.h"
 #include "libknot/internal/mempattern.h"
@@ -110,12 +109,6 @@ static inline void udp_pps_sample(unsigned n, unsigned thr_id) {}
 void udp_handle(udp_context_t *udp, int fd, struct sockaddr_storage *ss,
                 struct iovec *rx, struct iovec *tx)
 {
-#ifdef DEBUG_ENABLE_BRIEF
-	char addr_str[SOCKADDR_STRLEN] = {0};
-	sockaddr_tostr(ss, addr_str, sizeof(addr_str));
-	dbg_net("%s: received %zd bytes from '%s'\n", __func__, rx->iov_len, addr_str);
-#endif
-
 	/* Create query processing parameter. */
 	struct process_query_param param = {0};
 	param.remote = ss;
