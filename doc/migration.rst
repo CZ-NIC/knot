@@ -1,3 +1,6 @@
+.. meta::
+   :description: reStructuredText plaintext markup language
+
 .. _Migration from other DNS servers:
 
 ********************************
