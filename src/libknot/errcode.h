@@ -137,7 +137,10 @@ enum knot_error {
 	KNOT_NSEC3_ECOMPUTE_HASH,
 
 	/* Database backend. */
-	KNOT_DATABASE_ERROR
+	KNOT_DATABASE_ERROR,
+
+	/* Processing error. */
+	KNOT_LAYER_ERROR
 };
 
 /*!

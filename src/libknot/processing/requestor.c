@@ -99,12 +99,17 @@ static int request_send(struct knot_request *request,
 static int request_recv(struct knot_request *request,
                         const struct timeval *timeout)
 {
-	int ret = 0;
 	knot_pkt_t *resp = request->resp;
 	knot_pkt_clear(resp);
 
 	/* Each request has unique timeout. */
 	struct timeval tv = { timeout->tv_sec, timeout->tv_usec };
+
+	/* Wait for readability */
+	int ret = request_wait(request->fd, KNOT_NS_PROC_MORE, &tv);
+	if (ret == 0) {
+		return KNOT_ETIMEOUT;
+	}
 
 	/* Receive it */
 	if (use_tcp(request)) {
@@ -291,7 +296,7 @@ static int exec_request(struct knot_requestor *req, struct knot_request *last,
 
 	/* Expect complete request. */
 	if (req->overlay.state == KNOT_NS_PROC_FAIL) {
-		ret = KNOT_ERROR;
+		ret = KNOT_LAYER_ERROR;
 	}
 
 	/* Finish current query processing. */

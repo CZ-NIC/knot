@@ -124,6 +124,9 @@ const error_table_t error_messages[] = {
 	/* Dynamic backend errors. */
 	{ KNOT_DATABASE_ERROR, "unspecified database error" },
 
+	/* Processing errors. */
+	{ KNOT_LAYER_ERROR, "processing layer error" },
+
 	{ KNOT_ERROR, NULL } /* Terminator */
 };
 
