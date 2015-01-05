@@ -303,14 +303,17 @@ int event_refresh(zone_t *zone)
 {
 	assert(zone);
 
+	const conf_iface_t *master = zone_master(zone);
+	if (master == NULL) {
+		/* If not slave zone, ignore. */
+		return KNOT_EOK;
+	}
+
 	if (zone_contents_is_empty(zone->contents)) {
 		/* No contents, schedule retransfer now. */
 		zone_events_schedule(zone, ZONE_EVENT_XFER, ZONE_EVENT_NOW);
 		return KNOT_EOK;
 	}
-
-	const conf_iface_t *master = zone_master(zone);
-	assert(master);
 
 	int ret = zone_query_execute(zone, KNOT_QUERY_NORMAL, master);
 	const knot_rdataset_t *soa = zone_soa(zone);
@@ -335,6 +338,12 @@ int event_xfer(zone_t *zone)
 {
 	assert(zone);
 
+	const conf_iface_t *master = zone_master(zone);
+	if (master == NULL) {
+		/* If not slave zone, ignore. */
+		return KNOT_EOK;
+	}
+
 	/* Determine transfer type. */
 	bool is_boostrap = zone_contents_is_empty(zone->contents);
 	uint16_t pkt_type = KNOT_QUERY_IXFR;
@@ -343,7 +352,7 @@ int event_xfer(zone_t *zone)
 	}
 
 	/* Execute zone transfer and reschedule timers. */
-	int ret = zone_query_transfer(zone, zone_master(zone), pkt_type);
+	int ret = zone_query_transfer(zone, master, pkt_type);
 
 	/* Handle failure during transfer. */
 	if (ret != KNOT_EOK) {
