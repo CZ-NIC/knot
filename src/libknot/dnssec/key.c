@@ -23,8 +23,6 @@
 #include "libknot/internal/getline.h"
 #include "libknot/internal/macros.h"
 
-#include "zscanner/scanner.h"		// TODO: remove dependency!!
-
 #include "libknot/descriptor.h"
 #include "libknot/errcode.h"
 #include "libknot/binary.h"
