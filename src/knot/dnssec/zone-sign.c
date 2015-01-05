@@ -50,14 +50,28 @@ typedef struct signed_info {
 /*- private API - common functions -------------------------------------------*/
 
 /*!
+ * \brief Initializes RR set and set owner and rclass from template RR set.
+ */
+static knot_rrset_t rrset_init_from(const knot_rrset_t *src, uint16_t type)
+{
+	assert(src);
+	knot_rrset_t rrset;
+	knot_rrset_init(&rrset, src->owner, type, src->rclass);
+	return rrset;
+}
+
+/*!
  * \brief Create empty RRSIG RR set for a given RR set to be covered.
  */
 static knot_rrset_t create_empty_rrsigs_for(const knot_rrset_t *covered)
 {
 	assert(!knot_rrset_empty(covered));
-	knot_rrset_t ret;
-	knot_rrset_init(&ret, covered->owner, KNOT_RRTYPE_RRSIG, covered->rclass);
-	return ret;
+	return rrset_init_from(covered, KNOT_RRTYPE_RRSIG);
+}
+
+static knot_rrset_t dnskey_rrset_from_soa(const knot_rrset_t *soa)
+{
+	return rrset_init_from(soa, KNOT_RRTYPE_DNSKEY);
 }
 
 /*- private API - signing of in-zone nodes -----------------------------------*/
@@ -231,9 +245,7 @@ static int remove_expired_rrsigs(const knot_rrset_t *covered,
 	knot_rrset_init_empty(&to_remove);
 	int result = KNOT_EOK;
 
-	knot_rrset_t synth_rrsig;
-	knot_rrset_init(&synth_rrsig, rrsigs->owner, KNOT_RRTYPE_RRSIG,
-	                KNOT_CLASS_IN);
+	knot_rrset_t synth_rrsig = rrset_init_from(rrsigs, KNOT_RRTYPE_RRSIG);
 	result = knot_synth_rrsig(covered->type, &rrsigs->rrs,
 	                          &synth_rrsig.rrs, NULL);
 	if (result != KNOT_EOK) {
@@ -356,7 +368,7 @@ static int remove_rrset_rrsigs(const knot_dname_t *owner, uint16_t type,
 	assert(changeset);
 	knot_rrset_t synth_rrsig;
 	knot_rrset_init(&synth_rrsig, (knot_dname_t *)owner,
-	                KNOT_RRTYPE_RRSIG, KNOT_CLASS_IN);
+	                KNOT_RRTYPE_RRSIG, rrsigs->rclass);
 	int ret = knot_synth_rrsig(type, &rrsigs->rrs, &synth_rrsig.rrs, NULL);
 	if (ret != KNOT_EOK) {
 		if (ret != KNOT_ENOENT) {
@@ -607,7 +619,6 @@ typedef struct {
 	hattrie_t *signed_tree;
 } changeset_signing_data_t;
 
-
 /*- private API - DNSKEY handling --------------------------------------------*/
 
 /*!
@@ -615,12 +626,11 @@ typedef struct {
  *
  * \param zone_key    Zone key.
  * \param rdata       DNSKEY RDATA.
- * \param rdata_size  DNSKEY RDATA size.
  *
  * \return DNSKEY RDATA match with DNSSEC key.
  */
 static bool dnskey_rdata_match(const zone_key_t *key,
-                               const uint8_t *rdata, size_t rdata_size)
+                               const dnssec_binary_t *rdata)
 {
 	assert(key);
 	assert(rdata);
@@ -628,30 +638,56 @@ static bool dnskey_rdata_match(const zone_key_t *key,
 	dnssec_binary_t dnskey_rdata = { 0 };
 	dnssec_key_get_rdata(key->key, &dnskey_rdata);
 
-	return dnskey_rdata.size == rdata_size &&
-	       memcmp(dnskey_rdata.data, rdata, rdata_size) == 0;
+	return dnssec_binary_cmp(&dnskey_rdata, rdata) == 0;
 }
 
 /*!
- * \brief Check if DNSKEY (key struct given) exists in zone.
+ * \brief Check if DNSKEY is present in public zone key set.
+ */
+static bool dnskey_in_keyset(const zone_keyset_t *keyset,
+                             const knot_rdata_t *dnskey)
+{
+	assert(keyset);
+	assert(dnskey);
+
+	dnssec_binary_t rdata = {
+		.data = knot_rdata_data(dnskey),
+		.size = knot_rdata_rdlen(dnskey)
+	};
+
+	uint16_t tag = 0;
+	dnssec_keytag(&rdata, &tag);
+	const zone_key_t *key = get_zone_key(keyset, tag);
+
+	return (key && key->is_public && dnskey_rdata_match(key, &rdata));
+}
+
+/*!
+ * \brief Check if DNSKEY is present in the zone.
  *
  * \param dnskeys  DNSKEYS RR set in zone apex.
  * \param key      Key to be searched for.
+ * \param ttl      Key TTL.
  *
  * \return DNSKEY exists in the zone.
  */
-static bool dnskey_exists_in_zone(const knot_rrset_t *dnskeys,
-                                  const zone_key_t *key)
+static bool dnskey_in_zone(const knot_rrset_t *dnskeys,
+                           const zone_key_t *key,
+                           uint32_t ttl)
 {
 	assert(!knot_rrset_empty(dnskeys));
 	assert(key);
 
 	uint16_t dnskeys_rdata_count = dnskeys->rrs.rr_count;
 	for (uint16_t i = 0; i < dnskeys_rdata_count; i++) {
-		const knot_rdata_t *rr_data = knot_rdataset_at(&dnskeys->rrs, i);
-		uint8_t *rdata = knot_rdata_data(rr_data);
-		uint16_t rdata_size = knot_rdata_rdlen(rr_data);
-		if (dnskey_rdata_match(key, rdata, rdata_size)) {
+		const knot_rdata_t *dnskey = knot_rdataset_at(&dnskeys->rrs, i);
+		uint32_t dnskey_ttl = knot_rdata_ttl(dnskey);
+		const dnssec_binary_t rdata = {
+			.data = knot_rdata_data(dnskey),
+			.size = knot_rdata_rdlen(dnskey)
+		};
+
+		if (dnskey_ttl == ttl && dnskey_rdata_match(key, &rdata)) {
 			return true;
 		}
 	}
@@ -674,70 +710,50 @@ static int rrset_add_zone_key(knot_rrset_t *rrset,
 }
 
 /*!
- * \brief Remove invalid DNSKEYs from the zone by updating the changeset.
+ * \brief Remove extra DNSKEYs from the zone by updating the changeset.
  *
- * Invalid DNSKEY has wrong TTL, or the same keytag as some zone key
- * but different RDATA.
+ * Extra DNSKEY is a key, which is not present in zone public key set.
  *
  * \param soa        RR set with SOA (to get TTL value from).
  * \param dnskeys    RR set with DNSKEYs.
- * \param zone_keys  Zone keys.
+ * \param keyset     Zone keys.
  * \param changeset  Changeset to be updated.
  *
  * \return Error code, KNOT_EOK if successful.
  */
 static int remove_invalid_dnskeys(const knot_rrset_t *soa,
                                   const knot_rrset_t *dnskeys,
-                                  const zone_keyset_t *zone_keys,
+                                  const zone_keyset_t *keyset,
                                   changeset_t *changeset)
 {
-	assert(soa->type == KNOT_RRTYPE_SOA);
-	assert(changeset);
-
 	if (knot_rrset_empty(dnskeys)) {
 		return KNOT_EOK;
 	}
+
+	assert(soa->type == KNOT_RRTYPE_SOA);
 	assert(dnskeys->type == KNOT_RRTYPE_DNSKEY);
+	assert(keyset);
+	assert(changeset);
 
 	knot_rrset_t to_remove;
-	knot_rrset_init(&to_remove, dnskeys->owner, dnskeys->type,
-	                dnskeys->rclass);
-	int result = KNOT_EOK;
+	knot_rrset_init(&to_remove, dnskeys->owner, dnskeys->type, dnskeys->rclass);
 
-	const knot_rdata_t *dnskeys_data = knot_rdataset_at(&dnskeys->rrs, 0);
 	const knot_rdata_t *soa_data = knot_rdataset_at(&soa->rrs, 0);
-	if (knot_rdata_ttl(dnskeys_data) != knot_rdata_ttl(soa_data)) {
-		result = knot_rdataset_copy(&to_remove.rrs, &dnskeys->rrs, NULL);
-		goto done;
-	}
+	uint32_t soa_ttl = knot_rdata_ttl(soa_data);
 
-	uint16_t dnskeys_rdata_count = dnskeys->rrs.rr_count;
-	for (uint16_t i = 0; i < dnskeys_rdata_count; i++) {
-		dnskeys_data = knot_rdataset_at(&dnskeys->rrs, i);
-		dnssec_binary_t rdata = {
-		        .data = knot_rdata_data(dnskeys_data),
-		        .size = knot_rdata_rdlen(dnskeys_data)
-		};
-		uint16_t keytag = 0;
-		dnssec_keytag(&rdata, &keytag);
-
-		const zone_key_t *key = get_zone_key(zone_keys, keytag);
-		if (key == NULL) {
+	int result = KNOT_EOK;
+	for (uint16_t i = 0; i < dnskeys->rrs.rr_count; i++) {
+		const knot_rdata_t *dnskey = knot_rdataset_at(&dnskeys->rrs, i);
+		uint32_t dnskey_ttl = knot_rdata_ttl(dnskey);
+		if (dnskey_ttl == soa_ttl && dnskey_in_keyset(keyset, dnskey)) {
 			continue;
 		}
 
-		if (dnskey_rdata_match(key, rdata.data, rdata.size) && key->is_public) {
-			continue;
-		}
-
-		knot_rdata_t *to_rem = knot_rdataset_at(&dnskeys->rrs, i);
-		result = knot_rdataset_add(&to_remove.rrs, to_rem, NULL);
+		result = knot_rdataset_add(&to_remove.rrs, dnskey, NULL);
 		if (result != KNOT_EOK) {
 			break;
 		}
 	}
-
-done:
 
 	if (!knot_rrset_empty(&to_remove) && result == KNOT_EOK) {
 		result = changeset_rem_rrset(changeset, &to_remove);
@@ -749,64 +765,47 @@ done:
 }
 
 /*!
- * \brief Create DNSKEY RR set from SOA RR set.
- *
- * \param soa  RR set with zone SOA.
- *
- * \return Empty DNSKEY RR set.
- */
-static knot_rrset_t create_dnskey_rrset_from_soa(const knot_rrset_t *soa)
-{
-	assert(soa);
-	knot_rrset_t rrset;
-	knot_rrset_init(&rrset, soa->owner, KNOT_RRTYPE_DNSKEY, soa->rclass);
-	return rrset;
-}
-
-/*!
  * \brief Add missing DNSKEYs into the zone by updating the changeset.
  *
  * \param soa        RR set with SOA (to get TTL value from).
  * \param dnskeys    RR set with DNSKEYs.
- * \param zone_keys  Zone keys.
+ * \param keyset     Zone keys.
  * \param changeset  Changeset to be updated.
  *
  * \return Error code, KNOT_EOK if successful.
  */
 static int add_missing_dnskeys(const knot_rrset_t *soa,
                                const knot_rrset_t *dnskeys,
-                               const zone_keyset_t *zone_keys,
+                               const zone_keyset_t *keyset,
                                changeset_t *changeset)
 {
-	assert(soa);
-	assert(soa->type == KNOT_RRTYPE_SOA);
+	assert(soa && soa->type == KNOT_RRTYPE_SOA);
 	assert(knot_rrset_empty(dnskeys) || dnskeys->type == KNOT_RRTYPE_DNSKEY);
-	assert(zone_keys);
+	assert(keyset);
 	assert(changeset);
+
+	const knot_rdata_t *soa_rr = knot_rdataset_at(&soa->rrs, 0);
+	uint32_t soa_ttl = knot_rdata_ttl(soa_rr);
 
 	knot_rrset_t to_add;
 	knot_rrset_init_empty(&to_add);
+
 	int result = KNOT_EOK;
-	const knot_rdata_t *dnskeys_data = knot_rdataset_at(&dnskeys->rrs, 0);
-	const knot_rdata_t *soa_data = knot_rdataset_at(&soa->rrs, 0);
-	bool add_all = (knot_rrset_empty(dnskeys) ||
-	                knot_rdata_ttl(dnskeys_data) != knot_rdata_ttl(soa_data));
-
-	for (int i = 0; i < zone_keys->count; i++) {
-		const zone_key_t *key = &zone_keys->keys[i];
-		if (!add_all && dnskey_exists_in_zone(dnskeys, key)) {
-			continue;
-		}
-
+	for (int i = 0; i < keyset->count; i++) {
+		const zone_key_t *key = &keyset->keys[i];
 		if (!key->is_public) {
 			continue;
 		}
 
-		if (knot_rrset_empty(&to_add)) {
-			to_add = create_dnskey_rrset_from_soa(soa);
+		if (dnskey_in_zone(dnskeys, key, soa_ttl)) {
+			continue;
 		}
 
-		result = rrset_add_zone_key(&to_add, key, knot_rdata_ttl(soa_data));
+		if (knot_rrset_empty(&to_add)) {
+			to_add = dnskey_rrset_from_soa(soa);
+		}
+
+		result = rrset_add_zone_key(&to_add, key, soa_ttl);
 		if (result != KNOT_EOK) {
 			break;
 		}
@@ -847,30 +846,7 @@ static int update_dnskeys_rrsigs(const knot_rrset_t *dnskeys,
 	// We know how the DNSKEYs in zone should look like after applying
 	// the changeset. RRSIGs can be then built easily.
 
-	knot_rrset_t new_dnskeys = create_dnskey_rrset_from_soa(soa);
-
-	// add unknown keys from zone
-	uint16_t dnskeys_rdata_count = dnskeys->rrs.rr_count;
-	for (uint16_t i = 0; i < dnskeys_rdata_count; i++) {
-		const knot_rdata_t *rr_data = knot_rdataset_at(&dnskeys->rrs, i);
-		dnssec_binary_t dnskey_rdata = {
-		        .size = knot_rdata_rdlen(rr_data),
-		        .data = knot_rdata_data(rr_data)
-		};
-		uint16_t keytag = 0;
-		dnssec_keytag(&dnskey_rdata, &keytag);
-		if (get_zone_key(zone_keys, keytag) != NULL) {
-			continue;
-		}
-
-		knot_rdata_t *to_add = knot_rdataset_at(&dnskeys->rrs, i);
-		result = knot_rdataset_add(&new_dnskeys.rrs, to_add, NULL);
-		if (result != KNOT_EOK) {
-			goto fail;
-		}
-	}
-
-	// add known keys from key database
+	knot_rrset_t new_dnskeys = dnskey_rrset_from_soa(soa);
 	for (int i = 0; i < zone_keys->count; i++) {
 		const zone_key_t *key = &zone_keys->keys[i];
 		if (!key->is_public) {
@@ -941,9 +917,7 @@ static int update_dnskeys(const zone_contents_t *zone,
 	if (result != KNOT_EOK) {
 		return result;
 	}
-	knot_rrset_t dnskey_rrsig;
-	knot_rrset_init(&dnskey_rrsig, apex->owner, KNOT_RRTYPE_RRSIG,
-	                KNOT_CLASS_IN);
+	knot_rrset_t dnskey_rrsig = rrset_init_from(&soa, KNOT_RRTYPE_RRSIG);
 	result = knot_synth_rrsig(KNOT_RRTYPE_DNSKEY, &rrsigs.rrs,
 	                          &dnskey_rrsig.rrs, NULL);
 	if (result != KNOT_EOK) {
