@@ -675,7 +675,7 @@ static bool dnskey_in_zone(const knot_rrset_t *dnskeys,
                            const zone_key_t *key,
                            uint32_t ttl)
 {
-	assert(!knot_rrset_empty(dnskeys));
+	assert(dnskeys);
 	assert(key);
 
 	uint16_t dnskeys_rdata_count = dnskeys->rrs.rr_count;
