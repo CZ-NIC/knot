@@ -244,14 +244,14 @@ int knot_rrclass_from_string(const char *name, uint16_t *num);
 int knot_rrtype_is_metatype(const uint16_t type);
 
 /*!
- * \brief Checks if given item is one of the types we do not accept via DDNS.
+ * \brief Checks if given item is one of the DNSSEC types.
  *
  * \param item Item value.
  *
  * \retval > 0 if YES.
  * \retval 0 if NO.
  */
-int knot_rrtype_is_ddns_forbidden(const uint16_t type);
+int knot_rrtype_is_dnssec(const uint16_t type);
 
 /*!
  * \brief Checks whether the given type requires additional processing.

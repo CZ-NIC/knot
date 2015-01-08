@@ -698,8 +698,7 @@ static int process_rem_rrset(const knot_rrset_t *rrset,
                              const zone_node_t *node,
                              changeset_t *changeset)
 {
-	if (rrset->type == KNOT_RRTYPE_SOA ||
-	    knot_rrtype_is_ddns_forbidden(rrset->type)) {
+	if (rrset->type == KNOT_RRTYPE_SOA || knot_rrtype_is_dnssec(rrset->type)) {
 		// Ignore SOA and DNSSEC removals.
 		return KNOT_EOK;
 	}
@@ -813,7 +812,7 @@ static int check_update(const knot_rrset_t *rrset, const knot_pkt_t *query,
 		return KNOT_EOUTOFZONE;
 	}
 
-	if (knot_rrtype_is_ddns_forbidden(rrset->type)) {
+	if (knot_rrtype_is_dnssec(rrset->type)) {
 		*rcode = KNOT_RCODE_REFUSED;
 		log_warning("DDNS, refusing to update DNSSEC-related record");
 		return KNOT_EDENIED;
