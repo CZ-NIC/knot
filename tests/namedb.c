@@ -14,6 +14,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <dirent.h>
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
@@ -172,7 +173,22 @@ int main(int argc, char *argv[])
 	namedb_test_set(nkeys, keys, dbid, namedb_lmdb_api(), &pool);
 	namedb_test_set(nkeys, keys, NULL, namedb_trie_api(), &pool);
 
-	/* Cleanup */
+	/* Cleanup. */
 	mp_delete(pool.ctx);
+
+	/* Cleanup temporary DB. */
+	DIR *dir = opendir(dbid);
+	struct dirent *dp;
+	while ((dp = readdir(dir)) != NULL) {
+		if (dp->d_name[0] == '.') {
+			continue;
+		}
+		char *file = sprintf_alloc("%s/%s", dbid, dp->d_name);
+		remove(file);
+		free(file);
+	}
+	closedir(dir);
+	remove(dbid);
+
 	return 0;
 }
