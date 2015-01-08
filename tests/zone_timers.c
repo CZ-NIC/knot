@@ -14,12 +14,14 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <dirent.h>
 #include <stdlib.h>
 #include <time.h>
 #include <tap/basic.h>
 
 #include "libknot/internal/namedb/namedb.h"
 #include "libknot/internal/namedb/namedb_lmdb.h"
+#include "libknot/internal/mem.h"
 #include "libknot/errcode.h"
 #include "knot/zone/timers.h"
 #include "knot/zone/zone.h"
@@ -118,6 +120,23 @@ int main(int argc, char *argv[])
 	zone_free(&zone_1);
 	zone_free(&zone_2);
 	close_timers_db(db);
+
+	// Cleanup temporary DB.
+	char *timers_dir = sprintf_alloc("%s/timers", dbid);
+	DIR *dir = opendir(timers_dir);
+	struct dirent *dp;
+	while ((dp = readdir(dir)) != NULL) {
+		if (dp->d_name[0] == '.') {
+			continue;
+		}
+		char *file = sprintf_alloc("%s/%s", timers_dir, dp->d_name);
+		remove(file);
+		free(file);
+	}
+	closedir(dir);
+	remove(timers_dir);
+	free(timers_dir);
+	remove(dbid);
 
 	return EXIT_SUCCESS;
 }
