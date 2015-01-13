@@ -158,6 +158,8 @@ static void test_zone(dnssec_kasp_t *kasp)
 	ok(r == DNSSEC_EOK, "zone save, call");
 	ok(mock_zone_save_ok, "zone save, input");
 
+	dnssec_kasp_zone_free(zone);
+
 	// remove
 
 	r = dnssec_kasp_zone_remove(kasp, "ZONE.to.REMOVE");
