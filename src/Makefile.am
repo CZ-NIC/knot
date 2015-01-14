@@ -211,6 +211,8 @@ libknotd_la_SOURCES =				\
 	knot/ctl/process.h			\
 	knot/ctl/remote.c			\
 	knot/ctl/remote.h			\
+	knot/dnssec/context.c			\
+	knot/dnssec/context.h			\
 	knot/dnssec/nsec-chain.c		\
 	knot/dnssec/nsec-chain.h		\
 	knot/dnssec/nsec3-chain.c		\

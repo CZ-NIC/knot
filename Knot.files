@@ -64,6 +64,8 @@ src/knot/ctl/process.c
 src/knot/ctl/process.h
 src/knot/ctl/remote.c
 src/knot/ctl/remote.h
+src/knot/dnssec/context.c
+src/knot/dnssec/context.h
 src/knot/dnssec/nsec-chain.c
 src/knot/dnssec/nsec-chain.h
 src/knot/dnssec/nsec3-chain.c
