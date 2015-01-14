@@ -30,7 +30,15 @@
 
 #include "knot/zone/zone.h"
 #include "knot/updates/changesets.h"
-#include "libknot/dnssec/policy.h"
+
+enum zone_sign_flags {
+	ZONE_SIGN_NONE = 0,
+	ZONE_SIGN_DROP_SIGNATURES = (1 << 0),
+	ZONE_SIGN_KEEP_SOA_SERIAL = (1 << 1),
+};
+
+typedef enum zone_sign_flags zone_sign_flags_t;
+
 /*!
  * \brief DNSSEC resign zone, store new records into changeset. Valid signatures
  *        and NSEC(3) records will not be changed.
@@ -38,29 +46,14 @@
  * \param zone         Zone contents to be signed.
  * \param zone_config  Zone/DNSSEC configuration.
  * \param out_ch       New records will be added to this changeset.
- * \param soa_up       SOA serial update policy.
+ * \param flags        Zone signing flags.
  * \param refresh_at   Signature refresh time of the oldest signature in zone.
  *
  * \return Error code, KNOT_EOK if successful.
  */
 int knot_dnssec_zone_sign(zone_contents_t *zone, const conf_zone_t *zone_config,
-                          changeset_t *out_ch,
-                          knot_update_serial_t soa_up, uint32_t *refresh_at);
-
-/*!
- * \brief DNSSEC sign zone, store new records into changeset. Even valid
- *        signatures will be dropped.
- *
- * \param zone         Zone contents to be signed.
- * \param zone_config  Zone/DNSSEC configuration.
- * \param out_ch       New records will be added to this changeset.
- * \param refresh_at   Signature refresh time of the oldest signature in zone.
- *
- * \return Error code, KNOT_EOK if successful.
- */
-int knot_dnssec_zone_sign_force(zone_contents_t *zone, const conf_zone_t *zone_config,
-                                changeset_t *out_ch,
-                                uint32_t *refresh_at);
+                          changeset_t *out_ch, zone_sign_flags_t flags,
+                          uint32_t *refresh_at);
 
 /*!
  * \brief Sign changeset created by DDNS or zone-diff.
