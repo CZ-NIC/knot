@@ -217,6 +217,8 @@ libknotd_la_SOURCES =				\
 	knot/dnssec/nsec-chain.h		\
 	knot/dnssec/nsec3-chain.c		\
 	knot/dnssec/nsec3-chain.h		\
+	knot/dnssec/policy.c			\
+	knot/dnssec/policy.h			\
 	knot/dnssec/zone-events.c		\
 	knot/dnssec/zone-events.h		\
 	knot/dnssec/zone-keys.c			\

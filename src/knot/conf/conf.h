@@ -36,7 +36,6 @@
 #include "libknot/dname.h"
 #include "libknot/rrtype/tsig.h"
 #include "libknot/dnssec/key.h"
-#include "libknot/dnssec/policy.h"
 #include "libknot/internal/lists.h"
 #include "libknot/internal/namedb/namedb.h"
 #include "knot/common/log.h"

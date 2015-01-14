@@ -71,6 +71,8 @@ src/knot/dnssec/nsec-chain.c
 src/knot/dnssec/nsec-chain.h
 src/knot/dnssec/nsec3-chain.c
 src/knot/dnssec/nsec3-chain.h
+src/knot/dnssec/policy.c
+src/knot/dnssec/policy.h
 src/knot/dnssec/zone-events.c
 src/knot/dnssec/zone-events.h
 src/knot/dnssec/zone-keys.c
