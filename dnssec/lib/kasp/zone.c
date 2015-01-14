@@ -128,7 +128,16 @@ bool dnssec_kasp_key_is_used(dnssec_kasp_key_timing_t *timing, time_t at)
 }
 
 /*!
- * Get the set of keys associated with the zone.
+ * Get name of the zone.
+ */
+_public_
+const char *dnssec_kasp_zone_get_name(dnssec_kasp_zone_t *zone)
+{
+	return zone ? zone->name : NULL;
+}
+
+/*!
+ * Get name of the zone.
  */
 _public_
 dnssec_list_t *dnssec_kasp_zone_get_keys(dnssec_kasp_zone_t *zone)

@@ -232,6 +232,11 @@ bool dnssec_kasp_key_is_active(dnssec_kasp_key_timing_t *timing, time_t at);
 bool dnssec_kasp_key_is_used(dnssec_kasp_key_timing_t *timing, time_t at);
 
 /*!
+ * Get name of the zone.
+ */
+const char *dnssec_kasp_zone_get_name(dnssec_kasp_zone_t *zone);
+
+/*!
  * Get the set of keys associated with the zone.
  */
 dnssec_list_t *dnssec_kasp_zone_get_keys(dnssec_kasp_zone_t *zone);
