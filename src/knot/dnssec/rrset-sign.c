@@ -20,19 +20,18 @@
 #include <stdlib.h>
 
 #include "dnssec/error.h"
+#include "dnssec/kasp.h"
 #include "dnssec/key.h"
 #include "dnssec/sign.h"
+#include "knot/dnssec/rrset-sign.h"
 #include "libknot/descriptor.h"
 #include "libknot/dnssec/key.h"
-#include "libknot/dnssec/policy.h"
-#include "libknot/dnssec/rrset-sign.h"
 #include "libknot/errcode.h"
 #include "libknot/packet/rrset-wire.h"
 #include "libknot/packet/wire.h"
 #include "libknot/rrset.h"
 #include "libknot/rrtype/rrsig.h"
 #include "libknot/packet/rrset-wire.h"
-#include "libknot/internal/macros.h"
 
 #define RRSIG_RDATA_SIGNER_OFFSET 18
 
@@ -41,8 +40,7 @@
 /*!
  * \brief Get size of RRSIG RDATA for a given key without signature.
  */
-_public_
-size_t knot_rrsig_rdata_size(const dnssec_key_t *key)
+static size_t rrsig_rdata_header_size(const dnssec_key_t *key)
 {
 	if (!key) {
 		return 0;
@@ -73,12 +71,20 @@ size_t knot_rrsig_rdata_size(const dnssec_key_t *key)
 
 /*!
  * \brief Write RRSIG RDATA except signature.
+ *
+ * \note This can be also used for SIG(0) if proper parameters are supplied.
+ *
+ * \param rdata         Pointer to RDATA.
+ * \param key           Key used for signing.
+ * \param covered_type  Type of the covered RR.
+ * \param owner_labels  Number of labels covered by the signature.
+ * \param sig_incepted  Timestamp of signature inception.
+ * \param sig_expires   Timestamp of signature expiration.
  */
-_public_
-int knot_rrsig_write_rdata(uint8_t *rdata, const dnssec_key_t *key,
-                           uint16_t covered_type, uint8_t owner_labels,
-                           uint32_t owner_ttl,  uint32_t sig_incepted,
-                           uint32_t sig_expires)
+static int rrsig_write_rdata(uint8_t *rdata, const dnssec_key_t *key,
+                            uint16_t covered_type, uint8_t owner_labels,
+                            uint32_t owner_ttl,  uint32_t sig_incepted,
+                            uint32_t sig_expires)
 {
 	if (!rdata || !key || sig_incepted >= sig_expires) {
 		return KNOT_EINVAL;
@@ -236,7 +242,7 @@ static int rrsigs_create_rdata(knot_rrset_t *rrsigs, dnssec_sign_ctx_t *ctx,
 	assert(!knot_rrset_empty(covered));
 	assert(key);
 
-	size_t header_size = knot_rrsig_rdata_size(key);
+	size_t header_size = rrsig_rdata_header_size(key);
 	assert(header_size != 0);
 
 	uint8_t owner_labels = knot_dname_labels(covered->owner, NULL);
@@ -246,9 +252,9 @@ static int rrsigs_create_rdata(knot_rrset_t *rrsigs, dnssec_sign_ctx_t *ctx,
 
 	uint8_t header[header_size];
 	const knot_rdata_t *covered_data = knot_rdataset_at(&covered->rrs, 0);
-	int res = knot_rrsig_write_rdata(header, key, covered->type, owner_labels,
-	                                 knot_rdata_ttl(covered_data),
-	                                 sig_incepted, sig_expires);
+	int res = rrsig_write_rdata(header, key, covered->type, owner_labels,
+	                            knot_rdata_ttl(covered_data),
+	                            sig_incepted, sig_expires);
 	assert(res == KNOT_EOK);
 
 	res = dnssec_sign_init(ctx);
@@ -279,28 +285,26 @@ static int rrsigs_create_rdata(knot_rrset_t *rrsigs, dnssec_sign_ctx_t *ctx,
 	                            knot_rdata_ttl(covered_data), NULL);
 }
 
-_public_
 int knot_sign_rrset(knot_rrset_t *rrsigs, const knot_rrset_t *covered,
-                    const dnssec_key_t *key, dnssec_sign_ctx_t *sign_ctx,
-                    const knot_dnssec_policy_t *policy)
+               const dnssec_key_t *key, dnssec_sign_ctx_t *sign_ctx,
+               const kdnssec_ctx_t *dnssec_ctx)
 {
-	if (knot_rrset_empty(covered) || !key || !sign_ctx || !policy ||
+	if (knot_rrset_empty(covered) || !key || !sign_ctx || !dnssec_ctx ||
 	    rrsigs->type != KNOT_RRTYPE_RRSIG ||
 	    !knot_dname_is_equal(rrsigs->owner, covered->owner)
 	) {
 		return KNOT_EINVAL;
 	}
 
-	uint32_t sig_incept = policy->now;
-	uint32_t sig_expire = sig_incept + policy->sign_lifetime;
+	uint32_t sig_incept = dnssec_ctx->now;
+	uint32_t sig_expire = sig_incept + dnssec_ctx->policy->rrsig_lifetime;
 
 	return rrsigs_create_rdata(rrsigs, sign_ctx, covered, key, sig_incept,
 	                           sig_expire);
 }
 
-_public_
 int knot_synth_rrsig(uint16_t type, const knot_rdataset_t *rrsig_rrs,
-                     knot_rdataset_t *out_sig, mm_ctx_t *mm)
+                knot_rdataset_t *out_sig, mm_ctx_t *mm)
 {
 	if (rrsig_rrs == NULL) {
 		return KNOT_ENOENT;
@@ -336,29 +340,30 @@ int knot_synth_rrsig(uint16_t type, const knot_rdataset_t *rrsig_rrs,
  * \return Signature is expired or should be replaced soon.
  */
 static bool is_expired_signature(const knot_rrset_t *rrsigs, size_t pos,
-                                 const knot_dnssec_policy_t *policy)
+                                 uint32_t now, uint32_t refresh_before)
 {
 	assert(!knot_rrset_empty(rrsigs));
 	assert(rrsigs->type == KNOT_RRTYPE_RRSIG);
-	assert(policy);
 
-	uint32_t expiration = knot_rrsig_sig_expiration(&rrsigs->rrs, pos);
+	uint32_t expire_at = knot_rrsig_sig_expiration(&rrsigs->rrs, pos);
+	uint32_t expire_in = expire_at > now ? expire_at - now : 0;
 
-	return (expiration <= policy->refresh_before);
+	return expire_in <= refresh_before;
 }
 
-_public_
-int knot_is_valid_signature(const knot_rrset_t *covered,
-                            const knot_rrset_t *rrsigs, size_t pos,
-                            const dnssec_key_t *key, dnssec_sign_ctx_t *ctx,
-                            const knot_dnssec_policy_t *policy)
+int knot_check_signature(const knot_rrset_t *covered,
+                    const knot_rrset_t *rrsigs, size_t pos,
+                    const dnssec_key_t *key,
+                    dnssec_sign_ctx_t *sign_ctx,
+                    const kdnssec_ctx_t *dnssec_ctx)
 {
-	if (knot_rrset_empty(covered) ||
-	    knot_rrset_empty(rrsigs) || !key || !ctx || !policy) {
+	if (knot_rrset_empty(covered) || knot_rrset_empty(rrsigs) || !key ||
+	    !sign_ctx || !dnssec_ctx) {
 		return KNOT_EINVAL;
 	}
 
-	if (is_expired_signature(rrsigs, pos, policy)) {
+	if (is_expired_signature(rrsigs, pos, dnssec_ctx->now,
+	                         dnssec_ctx->policy->rrsig_refresh_before)) {
 		return KNOT_DNSSEC_EINVALID_SIGNATURE;
 	}
 
@@ -378,17 +383,17 @@ int knot_is_valid_signature(const knot_rrset_t *covered,
 
 	// perform the validation
 
-	int result = dnssec_sign_init(ctx);
+	int result = dnssec_sign_init(sign_ctx);
 	if (result != KNOT_EOK) {
 		return result;
 	}
 
-	result = sign_ctx_add_data(ctx, rdata, covered);
+	result = sign_ctx_add_data(sign_ctx, rdata, covered);
 	if (result != KNOT_EOK) {
 		return result;
 	}
 
-	result = dnssec_sign_verify(ctx, &signature);
+	result = dnssec_sign_verify(sign_ctx, &signature);
 	switch (result) {
 	case DNSSEC_EOK:
 		return KNOT_EOK;

@@ -24,9 +24,9 @@
 #include "dnssec/keytag.h"
 #include "knot/zone/semantic-check.h"
 #include "knot/common/debug.h"
+#include "knot/dnssec/rrset-sign.h"
 #include "knot/dnssec/zone-nsec.h"
 #include "libknot/libknot.h"
-#include "libknot/dnssec/rrset-sign.h"
 #include "libknot/internal/base32hex.h"
 #include "libknot/internal/mempattern.h"
 

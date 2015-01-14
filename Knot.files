@@ -73,6 +73,8 @@ src/knot/dnssec/nsec3-chain.c
 src/knot/dnssec/nsec3-chain.h
 src/knot/dnssec/policy.c
 src/knot/dnssec/policy.h
+src/knot/dnssec/rrset-sign.c
+src/knot/dnssec/rrset-sign.h
 src/knot/dnssec/zone-events.c
 src/knot/dnssec/zone-events.h
 src/knot/dnssec/zone-keys.c
@@ -187,8 +189,6 @@ src/libknot/dnssec/key.c
 src/libknot/dnssec/key.h
 src/libknot/dnssec/policy.c
 src/libknot/dnssec/policy.h
-src/libknot/dnssec/rrset-sign.c
-src/libknot/dnssec/rrset-sign.h
 src/libknot/errcode.c
 src/libknot/errcode.h
 src/libknot/internal/array-sort.h
