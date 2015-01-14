@@ -26,10 +26,12 @@ dnssec_kasp_policy_t *dnssec_kasp_policy_new(const char *name)
 	dnssec_kasp_policy_t *policy = malloc(sizeof(*policy));
 	clear_struct(policy);
 
-	policy->name = strdup(name);
-	if (!policy->name) {
-		free(policy);
-		return NULL;
+	if (name) {
+		policy->name = strdup(name);
+		if (!policy->name) {
+			free(policy);
+			return NULL;
+		}
 	}
 
 	return policy;
