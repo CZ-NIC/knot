@@ -227,8 +227,8 @@ libknotd_la_SOURCES =				\
 	knot/dnssec/zone-sign.h			\
 	knot/modules/synth_record.c		\
 	knot/modules/synth_record.h		\
-	knot/modules/dnsproxy.c		\
-	knot/modules/dnsproxy.h		\
+	knot/modules/dnsproxy.c			\
+	knot/modules/dnsproxy.h			\
 	knot/nameserver/axfr.c			\
 	knot/nameserver/axfr.h			\
 	knot/nameserver/capture.c		\

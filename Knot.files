@@ -4,6 +4,7 @@ Makefile.am
 README
 configure.ac
 dnssec/Makefile.am
+dnssec/man/Makefile.am
 dnssec/tests/Makefile.am
 dnssec/utils/Makefile.am
 doc/Makefile.am
@@ -297,7 +298,6 @@ src/utils/kdig/kdig_params.h
 src/utils/khost/khost_main.c
 src/utils/khost/khost_params.c
 src/utils/khost/khost_params.h
-src/utils/knsec3hash/knsec3hash_main.c
 src/utils/knsupdate/knsupdate_exec.c
 src/utils/knsupdate/knsupdate_exec.h
 src/utils/knsupdate/knsupdate_main.c
