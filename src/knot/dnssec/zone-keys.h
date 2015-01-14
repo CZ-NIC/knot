@@ -16,10 +16,6 @@
 /*!
  * \file zone-keys.h
  *
- * \author Jan Vcelak <jan.vcelak@nic.cz>
- * \author Lubos Slovak <lubos.slovak@nic.cz>
- * \author Jan Kadlec <jan.kadlec@nic.cz>
- *
  * \brief Loading of zone keys.
  *
  * \addtogroup dnssec
@@ -33,10 +29,13 @@
 #include <time.h>
 
 #include "dnssec/kasp.h"
+#include "dnssec/keystore.h"
 #include "dnssec/sign.h"
 
-// [dnssec] will be replaced
-typedef struct zone_key {
+/*!
+ * \brief Zone key context used during signing.
+ */
+struct zone_key {
 	dnssec_key_t *key;
 	dnssec_sign_ctx_t *ctx;
 
@@ -44,32 +43,32 @@ typedef struct zone_key {
 
 	bool is_ksk;
 	bool is_zsk;
-	bool is_public;
 	bool is_active;
-} zone_key_t;
+	bool is_public;
+};
 
-// [dnssec] will be replaced
-typedef struct {
-	// [dnssec] temporary, one instance per server
-	dnssec_kasp_t *kasp;
+typedef struct zone_key zone_key_t;
 
-	dnssec_kasp_zone_t *kasp_zone;
+struct zone_keyset {
 	size_t count;
 	zone_key_t *keys;
-} zone_keyset_t;
+};
+
+typedef struct zone_keyset zone_keyset_t;
 
 /*!
- * \brief Load zone keys from a key directory.
+ * \brief Load zone keys and init cryptographic context.
  *
- * \param keydir_name    Name of the directory with DNSSEC keys.
- * \param zone_name      Name of the zone.
+ * \param zone           KASP zone.
+ * \param keystore       KASP key store.
  * \param nsec3_enabled  Zone uses NSEC3 for authenticated denial.
- * \param keys           Structure with loaded keys.
+ * \param now            Current time.
+ * \param keyset         Resulting zone keyset.
  *
  * \return Error code, KNOT_EOK if successful.
  */
-int load_zone_keys(const char *keydir_name, const char *zone_name,
-                   bool nsec3_enabled, zone_keyset_t *keyset);
+int load_zone_keys(dnssec_kasp_zone_t *zone, dnssec_keystore_t *store,
+                   bool nsec3_enabled, time_t now, zone_keyset_t *keyset_ptr);
 
 /*!
  * \brief Get zone key by a keytag.
