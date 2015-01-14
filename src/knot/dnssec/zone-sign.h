@@ -31,8 +31,8 @@
 #include "knot/updates/changesets.h"
 #include "knot/zone/zone.h"
 #include "knot/zone/contents.h"
+#include "knot/dnssec/context.h"
 #include "knot/dnssec/zone-keys.h"
-#include "libknot/dnssec/policy.h"
 
 /*!
  * \brief Update zone signatures and store performed changes in changeset.
@@ -41,7 +41,7 @@
  *
  * \param zone        Zone to be signed.
  * \param zone_keys   Zone keys.
- * \param policy      DNSSEC policy.
+ * \param dnssec_ctx  DNSSEC context.
  * \param changeset   Changeset to be updated.
  * \param refresh_at  Pointer to refresh time when the zone should be resigned.
  *
@@ -49,7 +49,7 @@
  */
 int knot_zone_sign(const zone_contents_t *zone,
                    const zone_keyset_t *zone_keys,
-                   const knot_dnssec_policy_t *policy,
+                   const kdnssec_ctx_t *dnssec_ctx,
                    changeset_t *out_ch, uint32_t *refresh_at);
 
 /*!
@@ -64,8 +64,8 @@ int knot_zone_sign(const zone_contents_t *zone,
  */
 int knot_zone_sign_update_soa(const knot_rrset_t *soa, const knot_rrset_t *rrsigs,
                               const zone_keyset_t *zone_keys,
-                              const knot_dnssec_policy_t *policy,
-                              uint32_t new_serial, changeset_t *changeset);
+                              const kdnssec_ctx_t *dnssec_ctx,
+                              changeset_t *changeset);
 
 /*!
  * \brief Check if zone SOA signatures are expired.
@@ -79,7 +79,7 @@ int knot_zone_sign_update_soa(const knot_rrset_t *soa, const knot_rrset_t *rrsig
  */
 bool knot_zone_sign_soa_expired(const zone_contents_t *zone,
                                 const zone_keyset_t *zone_keys,
-                                const knot_dnssec_policy_t *policy);
+                                const kdnssec_ctx_t *dnssec_ctx);
 
 /*!
  * \brief Sign changeset created by DDNS or zone-diff.
@@ -96,19 +96,19 @@ int knot_zone_sign_changeset(const zone_contents_t *zone,
                              const changeset_t *in_ch,
                              changeset_t *out_ch,
                              const zone_keyset_t *zone_keys,
-                             const knot_dnssec_policy_t *policy);
+                             const kdnssec_ctx_t *dnssec_ctx);
 
 /*!
  * \brief Sign NSEC/NSEC3 nodes in changeset and update the changeset.
  *
  * \param zone_keys  Zone keys.
- * \param policy     DNSSEC policy.
+ * \param dnssec_ctx DNSSEC context.
  * \param changeset  Changeset to be updated.
  *
  * \return Error code, KNOT_EOK if successful.
  */
 int knot_zone_sign_nsecs_in_changeset(const zone_keyset_t *zone_keys,
-                                      const knot_dnssec_policy_t *policy,
+                                      const kdnssec_ctx_t *dnssec_ctx,
                                       changeset_t *changeset);
 
 /*!

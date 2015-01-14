@@ -23,7 +23,6 @@
 #include "dnssec/error.h"
 #include "dnssec/nsec.h"
 #include "libknot/internal/base32hex.h"
-#include "knot/common/debug.h"
 #include "libknot/descriptor.h"
 #include "libknot/packet/wire.h"
 #include "libknot/rrtype/nsec3.h"
@@ -52,7 +51,6 @@ static int delete_nsec3_chain(const zone_contents_t *zone,
 		return KNOT_EOK;
 	}
 
-	dbg_dnssec_detail("deleting NSEC3 chain\n");
 	zone_tree_t *empty_tree = zone_tree_create();
 	if (!empty_tree) {
 		return KNOT_ENOMEM;
@@ -271,7 +269,7 @@ knot_dname_t *knot_nsec3_hash_to_dname(const uint8_t *hash, size_t hash_size,
 int knot_zone_create_nsec_chain(const zone_contents_t *zone,
                                 changeset_t *changeset,
                                 const zone_keyset_t *zone_keys,
-                                const knot_dnssec_policy_t *policy)
+                                const kdnssec_ctx_t *dnssec_ctx)
 {
 	if (!zone || !changeset) {
 		return KNOT_EINVAL;
@@ -305,5 +303,5 @@ int knot_zone_create_nsec_chain(const zone_contents_t *zone,
 	}
 
 	// Sign newly created records right away
-	return knot_zone_sign_nsecs_in_changeset(zone_keys, policy, changeset);
+	return knot_zone_sign_nsecs_in_changeset(zone_keys, dnssec_ctx, changeset);
 }

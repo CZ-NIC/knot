@@ -493,19 +493,19 @@ int event_dnssec(zone_t *zone)
 	}
 
 	uint32_t refresh_at = time(NULL);
+	int sign_flags = 0;
+
 	if (zone->flags & ZONE_FORCE_RESIGN) {
 		log_zone_info(zone->name, "DNSSEC, dropping previous "
 		              "signatures, resigning zone");
-
 		zone->flags &= ~ZONE_FORCE_RESIGN;
-		ret = knot_dnssec_zone_sign_force(zone->contents, zone->conf,
-		                                  &ch, &refresh_at);
+		sign_flags = ZONE_SIGN_DROP_SIGNATURES;
 	} else {
 		log_zone_info(zone->name, "DNSSEC, signing zone");
-		ret = knot_dnssec_zone_sign(zone->contents, zone->conf,
-		                            &ch, KNOT_SOA_SERIAL_UPDATE,
-		                            &refresh_at);
+		sign_flags = 0;
 	}
+
+	ret = knot_dnssec_zone_sign(zone->contents, zone->conf, &ch, sign_flags, &refresh_at);
 	if (ret != KNOT_EOK) {
 		goto done;
 	}

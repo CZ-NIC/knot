@@ -78,7 +78,7 @@ static int sign_update(zone_t *zone, const zone_contents_t *old_contents,
 	if (apex_rr_changed(old_contents, new_contents, KNOT_RRTYPE_DNSKEY) ||
 	    apex_rr_changed(old_contents, new_contents, KNOT_RRTYPE_NSEC3PARAM)) {
 		ret = knot_dnssec_zone_sign(new_contents, zone->conf,
-		                            sec_ch, KNOT_SOA_SERIAL_KEEP,
+		                            sec_ch, ZONE_SIGN_KEEP_SOA_SERIAL,
 		                            &refresh_at);
 	} else {
 		// Sign the created changeset
