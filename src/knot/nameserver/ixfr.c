@@ -21,6 +21,7 @@
 #include "knot/nameserver/process_answer.h"
 #include "knot/updates/apply.h"
 #include "knot/common/debug.h"
+#include "knot/zone/serial.h"
 #include "libknot/descriptor.h"
 #include "libknot/internal/utils.h"
 #include "libknot/rrtype/soa.h"

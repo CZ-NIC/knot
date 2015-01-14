@@ -25,6 +25,7 @@
 #include "libknot/internal/lists.h"
 #include "knot/common/trim.h"
 #include "knot/zone/node.h"
+#include "knot/zone/serial.h"
 #include "knot/zone/zone.h"
 #include "knot/zone/zonefile.h"
 #include "knot/zone/contents.h"

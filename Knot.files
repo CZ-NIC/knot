@@ -150,6 +150,8 @@ src/knot/zone/node.c
 src/knot/zone/node.h
 src/knot/zone/semantic-check.c
 src/knot/zone/semantic-check.h
+src/knot/zone/serial.c
+src/knot/zone/serial.h
 src/knot/zone/timers.c
 src/knot/zone/timers.h
 src/knot/zone/zone-diff.c
@@ -348,6 +350,7 @@ tests/wire.c
 tests/worker_pool.c
 tests/worker_queue.c
 tests/zone_events.c
+tests/zone_serial.c
 tests/zone_timers.c
 tests/zone_update.c
 tests/zonedb.c

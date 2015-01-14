@@ -45,6 +45,7 @@ check_PROGRAMS = \
 	worker_pool			\
 	worker_queue			\
 	zone_events			\
+	zone_serial			\
 	zone_timers			\
 	zone_update			\
 	zonedb				\
