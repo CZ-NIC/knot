@@ -267,6 +267,9 @@ typedef struct dnssec_kasp_policy {
 	uint16_t dnskey_ttl;
 	// RRSIG
 	uint32_t rrsig_lifetime;
+	uint32_t rrsig_refresh_before;
+	// NSEC3
+	bool nsec3_enabled;
 	// SOA
 	uint16_t soa_minimal_ttl;
 	// zone
