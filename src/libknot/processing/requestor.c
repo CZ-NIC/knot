@@ -110,8 +110,11 @@ static int request_recv(struct knot_request *request,
 		ret = udp_recv_msg(request->fd, resp->wire, resp->max_size,
 		                   (struct sockaddr *)&request->remote);
 	}
-	if (ret < 0) {
+	if (ret <= 0) {
 		resp->size = 0;
+		if (ret == 0) {
+			return KNOT_ECONN;
+		}
 		return ret;
 	}
 
