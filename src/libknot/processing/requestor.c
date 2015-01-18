@@ -40,41 +40,33 @@ static struct knot_request *request_make(mm_ctx_t *mm)
 	return request;
 }
 
-/*! \brief Wait for socket readiness. */
-static int request_wait(int fd, int state, struct timeval *timeout)
+/*! \brief Ensure a socket is connected. */
+static int request_ensure_connected(struct knot_request *request)
 {
-	fd_set set;
-	FD_ZERO(&set);
-	FD_SET(fd, &set);
+	/* Connect the socket if not already connected. */
+	if (request->fd < 0) {
 
-	switch(state) {
-	case KNOT_NS_PROC_FULL: /* Wait for writeability. */
-		return select(fd + 1, NULL, &set, NULL, timeout);
-	case KNOT_NS_PROC_MORE: /* Wait for data. */
-		return select(fd + 1, &set, NULL, NULL, timeout);
-	default:
-		return -1;
+		/* Determine comm protocol. */
+		int sock_type = SOCK_DGRAM;
+		if (use_tcp(request)) {
+			sock_type = SOCK_STREAM;
+		}
+		request->fd = net_connected_socket(sock_type, &request->remote, &request->origin, 0);
+		if (request->fd < 0) {
+			return KNOT_ECONN;
+		}
 	}
+
+	return KNOT_EOK;
 }
 
 static int request_send(struct knot_request *request,
                         const struct timeval *timeout)
 {
-	/* Each request has unique timeout. */
-	struct timeval tv = { timeout->tv_sec, timeout->tv_usec };
-
 	/* Wait for writeability or error. */
-	int ret = request_wait(request->fd, KNOT_NS_PROC_FULL, &tv);
-	if (ret == 0) {
-		return KNOT_ETIMEOUT;
-	}
-
-	/* Check socket error. */
-	int err = 0;
-	socklen_t len = sizeof(int);
-	getsockopt(request->fd, SOL_SOCKET, SO_ERROR, &err, &len);
-	if (err != 0) {
-		return KNOT_ECONNREFUSED;
+	int ret = request_ensure_connected(request);
+	if (ret != KNOT_EOK) {
+		return ret;
 	}
 
 	/* Send query, construct if not exists. */
@@ -106,9 +98,9 @@ static int request_recv(struct knot_request *request,
 	struct timeval tv = { timeout->tv_sec, timeout->tv_usec };
 
 	/* Wait for readability */
-	int ret = request_wait(request->fd, KNOT_NS_PROC_MORE, &tv);
-	if (ret == 0) {
-		return KNOT_ETIMEOUT;
+	int ret = request_ensure_connected(request);
+	if (ret != KNOT_EOK) {
+		return ret;
 	}
 
 	/* Receive it */
@@ -209,18 +201,8 @@ int knot_requestor_enqueue(struct knot_requestor *requestor,
 		return KNOT_EINVAL;
 	}
 
-	/* Determine comm protocol. */
-	int sock_type = SOCK_DGRAM;
-	if (use_tcp(request)) {
-		sock_type = SOCK_STREAM;
-	}
-
-	/* Fetch a bound socket. */
-	request->fd = net_connected_socket(sock_type, &request->remote,
-	                                   &request->origin, O_NONBLOCK);
-	if (request->fd < 0) {
-		return KNOT_ECONN;
-	}
+	/* Set socket as uninitialized. */
+	request->fd = -1;
 
 	/* Prepare response buffers. */
 	request->resp  = knot_pkt_new(NULL, KNOT_WIRE_MAX_PKTSIZE, requestor->mm);

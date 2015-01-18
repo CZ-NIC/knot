@@ -79,12 +79,12 @@ static void test_disconnected(struct knot_requestor *requestor, conf_iface_t *re
 {
 	/* Enqueue packet. */
 	int ret = knot_requestor_enqueue(requestor, make_query(requestor, remote));
-	is_int(KNOT_ECONN, ret, "requestor: disconnected/enqueue");
+	is_int(KNOT_EOK, ret, "requestor: disconnected/enqueue");
 
 	/* Wait for completion. */
 	struct timeval tv = { 5, 0 };
 	ret = knot_requestor_exec(requestor, &tv);
-	is_int(KNOT_ENOENT, ret, "requestor: disconnected/wait");
+	is_int(KNOT_ECONN, ret, "requestor: disconnected/wait");
 }
 
 static void test_connected(struct knot_requestor *requestor, conf_iface_t *remote)

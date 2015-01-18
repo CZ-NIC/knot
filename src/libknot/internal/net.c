@@ -182,7 +182,7 @@ static int tcp_recv_data(int fd, uint8_t *buf, int len, struct timeval *timeout)
 {
 	int ret = 0;
 	int rcvd = 0;
-	int flags = 0;
+	int flags = MSG_DONTWAIT;
 
 #ifdef MSG_NOSIGNAL
 	flags |= MSG_NOSIGNAL;
