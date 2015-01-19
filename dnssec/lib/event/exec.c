@@ -21,6 +21,8 @@
 #include "dnssec/kasp.h"
 #include "dnssec/key.h"
 #include "dnssec/keystore.h"
+#include "kasp/zone.h"
+#include "key/internal.h"
 #include "shared.h"
 
 /*!
@@ -50,6 +52,14 @@ static int generate_key(dnssec_event_ctx_t *ctx, bool ksk)
 	if (r != DNSSEC_EOK) {
 		return r;
 	}
+
+	r = dnssec_key_set_dname(dnskey, ctx->zone->dname);
+	if (r != DNSSEC_EOK) {
+		dnssec_key_free(dnskey);
+		return r;
+	}
+
+	dnssec_key_set_flags(dnskey, dnskey_flags(ksk));
 
 	r = dnssec_key_import_keystore(dnskey, ctx->keystore, id, algorithm);
 	if (r != DNSSEC_EOK) {
