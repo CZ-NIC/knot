@@ -17,6 +17,8 @@
 #include <assert.h>
 #include <time.h>
 
+#include "dnssec/error.h"
+#include "dnssec/event.h"
 #include "libknot/internal/mem.h"
 #include "knot/conf/conf.h"
 #include "knot/dnssec/context.h"
@@ -67,9 +69,38 @@ static int sign_init(const zone_contents_t *zone, const conf_zone_t *config,
 	return KNOT_EOK;
 }
 
-static int sign_process_events(kdnssec_ctx_t *ctx)
+static int sign_process_events(const knot_dname_t *zone_name, kdnssec_ctx_t *kctx)
 {
-	log_warning("[DEBUG] DNSSEC add event processing");
+	dnssec_event_t event = { 0 };
+	dnssec_event_ctx_t ctx = {
+		.now      = kctx->now,
+		.kasp     = kctx->kasp,
+		.zone     = kctx->zone,
+		.policy   = kctx->policy,
+		.keystore = kctx->keystore
+	};
+
+	int r = dnssec_event_get_next(&ctx, &event);
+	if (r != DNSSEC_EOK) {
+		log_zone_error(zone_name, "DNSSEC, failed to get next event (%s)",
+		               dnssec_strerror(r));
+		return KNOT_ERROR;
+	}
+
+	if (event.type == DNSSEC_EVENT_NONE || kctx->now < event.time) {
+		return DNSSEC_EOK;
+	}
+
+	log_zone_info(zone_name, "DNSSEC, executing event '%s'",
+	              dnssec_event_name(event.type));
+
+	r = dnssec_event_execute(&ctx, &event);
+	if (r != DNSSEC_EOK) {
+		log_zone_error(zone_name, "DNSSEC, failed to execute event (%s)",
+		               dnssec_strerror(r));
+		return KNOT_ERROR;
+	}
+
 	return KNOT_EOK;
 }
 
@@ -105,7 +136,7 @@ int knot_dnssec_zone_sign(zone_contents_t *zone, const conf_zone_t *config,
 		goto done;
 	}
 
-	result = sign_process_events(&ctx);
+	result = sign_process_events(zone_name, &ctx);
 	if (result != KNOT_EOK) {
 		log_zone_error(zone_name, "DNSSEC, failed to process events (%s)",
 		knot_strerror(result));
