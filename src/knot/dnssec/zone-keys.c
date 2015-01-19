@@ -217,7 +217,7 @@ static int load_private_keys(dnssec_keystore_t *keystore, zone_keyset_t *keyset)
 
 		dnssec_key_t *key = keyset->keys[i].key;
 		int r = dnssec_key_import_private_keystore(key, keystore);
-		if (r != DNSSEC_EOK) {
+		if (r != DNSSEC_EOK && r != DNSSEC_KEY_ALREADY_PRESENT) {
 			return KNOT_DNSSEC_EINVALID_KEY;
 		}
 	}
