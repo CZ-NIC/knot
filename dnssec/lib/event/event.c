@@ -56,11 +56,10 @@ int dnssec_event_get_next(dnssec_event_ctx_t *ctx, dnssec_event_t *event_ptr)
 	// initial keys
 
 	dnssec_kasp_key_t *last_ksk = get_last_key(ctx->zone, true);
-	dnssec_kasp_key_t *last_zsk = get_last_key(ctx->zone, true);
+	dnssec_kasp_key_t *last_zsk = get_last_key(ctx->zone, false);
 	if (!last_ksk || !last_zsk) {
 		event.time = ctx->now;
 		event.type = DNSSEC_EVENT_GENERATE_INITIAL_KEY;
-		return DNSSEC_EOK;
 	}
 
 	*event_ptr = event;
