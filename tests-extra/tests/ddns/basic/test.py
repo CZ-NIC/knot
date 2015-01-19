@@ -422,17 +422,6 @@ def do_normal_tests(master, zone, dnssec=False):
         resp.check_record(section="authority", rtype="RRSIG")
         verify(master, zone, dnssec)
 
-        # add extra DNSKEY
-        check_log("DNSKEY addition")
-        up = master.update(zone)
-        up.add("ddns.", "3600", "DNSKEY",
-               "256 3 5 AwEAAbs0AlA6xWQn/lECfGt3S6TaeEmgJfEVVEMh06iNMNWMRHOfbqLF h3N52Ob7trmzlrzGlGLPnAZJvMB8lsFGC5CtaLUBD+4xCh5tl5QifZ+y o+MJvPGlVQI2cs7aMWV9CyFrRmuRcJaSZU2uBz9KFJ955UCq/WIy5KqS 7qaKLzzN")
-        up.send("NOERROR")
-        resp = master.dig("ddns.", "DNSKEY")
-        resp.check(rcode="NOERROR",
-                   rdata="256 3 5 AwEAAbs0AlA6xWQn/lECfGt3S6TaeEmgJfEVVEMh06iNMNWMRHOfbqLF h3N52Ob7trmzlrzGlGLPnAZJvMB8lsFGC5CtaLUBD+4xCh5tl5QifZ+y o+MJvPGlVQI2cs7aMWV9CyFrRmuRcJaSZU2uBz9KFJ955UCq/WIy5KqS 7qaKLzzN")
-        verify(master, zone, dnssec)
-
 def do_refusal_tests(master, zone, dnssec=False):
 
     forbidden = [{'type':"RRSIG", 'data':"A 5 2 1800 20140331062706 20140317095503 132 nic.cz. rc7TwX4GnExDQBNDCdbgf0PS7zabtymSKQ0VhmbFJAcYZxN+yFF9PXAo SpsDVR5H0PIuUM4oqoe7gsKfqqpTdOuB9M6cN/Mni99u7XfKHkopDjYc qTJXKn3x2TER4WkGtG5uthuSEc9lseCr6XqAqkDnJlUa6pB2a3mEHwu/ Elk="},
@@ -505,50 +494,25 @@ def do_refusal_tests(master, zone, dnssec=False):
     check_soa(master, prev_soa)
 
     if dnssec:
-        # NSEC3PARAM for non-apex node
-        check_log("Non-apex NSEC3PARAM")
+        # Add DNSKEY
+        check_log("DNSKEY addition")
         up = master.update(zone)
-        up.add("not.apex.ddns.", "0", "NSEC3PARAM", "1 0 10 B8399FF56C1C0C7E")
+        up.add("ddns.", "3600", "DNSKEY",
+               "256 3 5 AwEAAbs0AlA6xWQn/lECfGt3S6TaeEmgJfEVVEMh06iNMNWMRHOfbqLF h3N52Ob7trmzlrzGlGLPnAZJvMB8lsFGC5CtaLUBD+4xCh5tl5QifZ+y o+MJvPGlVQI2cs7aMWV9CyFrRmuRcJaSZU2uBz9KFJ955UCq/WIy5KqS 7qaKLzzN")
         up.send("REFUSED")
-        resp = master.dig("not.apex.ddns", "NSEC3PARAM")
-        resp.check(rcode="NXDOMAIN")
+        resp = master.dig("ddns.", "DNSKEY")
+        resp.check(rcode="NOERROR",
+                   nordata="256 3 5 AwEAAbs0AlA6xWQn/lECfGt3S6TaeEmgJfEVVEMh06iNMNWMRHOfbqLF h3N52Ob7trmzlrzGlGLPnAZJvMB8lsFGC5CtaLUBD+4xCh5tl5QifZ+y o+MJvPGlVQI2cs7aMWV9CyFrRmuRcJaSZU2uBz9KFJ955UCq/WIy5KqS 7qaKLzzN")
+
+        # Add NSEC3PARAM
+        check_log("NSEC3PARAM addition")
+        up = master.update(zone)
+        up.add("ddns.", "0", "NSEC3PARAM", "1 0 10 B8399FF56C1C0C7E")
+        up.send("REFUSED")
+        resp = master.dig("ddns.", "NSEC3PARAM")
+        resp.check(rcode="NOERROR", nordata="1 0 10 B8399FF56C1C0C7E")
+
         check_soa(master, prev_soa)
-
-
-def do_nsec3param_tests(master, zone):
-    assert(master.dig("ddns", "NSEC3PARAM").count() == 0)
-
-    # Add NSEC3PARAM
-    check_log("Add NSEC3PARAM")
-    up = master.update(zone)
-    up.add("ddns.", "0", "NSEC3PARAM", "1 0 10 CAFEBABE")
-    up.send("NOERROR")
-    resp = master.dig("ddns", "NSEC3PARAM")
-    resp.check(rcode="NOERROR", rdata="1 0 10 CAFEBABE")
-    verify(master, zone, dnssec=True)
-
-    # Change NSEC3PARAM - silently ignore
-    check_log("Change NSEC3PARAM")
-    up = master.update(zone)
-    up.add("ddns.", "0", "NSEC3PARAM", "1 0 10 BADDCAFE")
-    up.send("NOERROR")
-    resp = master.dig("ddns", "NSEC3PARAM")
-    resp.check(rcode="NOERROR", rdata="1 0 10 CAFEBABE")
-    resp.check(rcode="NOERROR", nordata="1 0 10 BADDCAFE")
-    verify(master, zone, dnssec=True)
-
-    # Delete and add NSEC3PARAM
-    check_log("Delete and add NSEC3PARAM")
-    up = master.update(zone)
-    up.delete("ddns.", "NSEC3PARAM", "1 0 10 CAFEBABE")
-    up.add("ddns.", "0", "NSEC3PARAM", "1 0 10 BADDCAFE")
-    up.send("NOERROR")
-    resp = master.dig("ddns", "NSEC3PARAM")
-    resp.check(rcode="NOERROR", nordata="1 0 10 CAFEBABE")
-    resp.check(rcode="NOERROR", rdata="1 0 10 BADDCAFE")
-    verify(master, zone, dnssec=True)
-
-    # Normal deletion tested in DNSSEC tests
 
 zone = t.zone("ddns.", storage=".")
 
@@ -579,7 +543,6 @@ do_refusal_tests(master_plain, zone)
 check_log("============ NSEC test ============")
 do_normal_tests(master_nsec, zone, dnssec=True)
 do_refusal_tests(master_nsec, zone, dnssec=True)
-do_nsec3param_tests(master_nsec, zone)
 
 # DNSSEC with NSEC3 test
 check_log("============ NSEC3 test ===========")
