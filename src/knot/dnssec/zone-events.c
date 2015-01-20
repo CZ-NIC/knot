@@ -307,8 +307,8 @@ int knot_dnssec_sign_changeset(const zone_contents_t *zone,
 
 	// schedule next resigning (only new signatures are made)
 
-	uint32_t refresh = ctx.policy->rrsig_refresh_before;
-	*refresh_at = ctx.now > refresh ? ctx.now - refresh : 0;
+	*refresh_at = ctx.now + ctx.policy->rrsig_lifetime - ctx.policy->rrsig_refresh_before;
+	assert(refresh_at > 0);
 
 done:
 	free_zone_keys(&keyset);
