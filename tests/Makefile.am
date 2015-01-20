@@ -5,6 +5,7 @@ AM_CPPFLAGS = \
 
 LDADD = \
 	$(top_builddir)/libtap/libtap.a \
+	$(top_builddir)/src/libknot-int.la \
 	$(top_builddir)/src/libknotd.la
 
 check_PROGRAMS = \
@@ -44,6 +45,9 @@ check_PROGRAMS = \
 	wire				\
 	worker_pool			\
 	worker_queue			\
+	yparser				\
+	ypscheme			\
+	yptrafo				\
 	zone_events			\
 	zone_timers			\
 	zone_update			\
