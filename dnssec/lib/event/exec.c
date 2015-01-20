@@ -21,6 +21,7 @@
 #include "dnssec/kasp.h"
 #include "dnssec/key.h"
 #include "dnssec/keystore.h"
+#include "event/internal.h"
 #include "kasp/zone.h"
 #include "key/internal.h"
 #include "shared.h"
@@ -86,18 +87,35 @@ static int generate_key(dnssec_event_ctx_t *ctx, bool ksk)
 	return DNSSEC_EOK;
 }
 
+static int generate_key_safe(dnssec_event_ctx_t *ctx, bool ksk, bool *generated)
+{
+	dnssec_kasp_key_t *key = event_get_last_key(ctx->zone, ksk);
+	if (key) {
+		return DNSSEC_EOK;
+	}
+
+	*generated = true;
+	return generate_key(ctx, ksk);
+}
+
 static int generate_initial_keys(dnssec_event_ctx_t *ctx)
 {
 	assert(ctx);
 
-	int r = generate_key(ctx, true);
+	bool generated = false;
+
+	int r = generate_key_safe(ctx, true, &generated);
 	if (r != DNSSEC_EOK) {
 		return r;
 	}
 
-	r = generate_key(ctx, false);
+	r = generate_key_safe(ctx, false, &generated);
 	if (r != DNSSEC_EOK) {
 		return r;
+	}
+
+	if (!generated) {
+		return DNSSEC_EINVAL;
 	}
 
 	return dnssec_kasp_zone_save(ctx->kasp, ctx->zone);

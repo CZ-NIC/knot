@@ -23,7 +23,14 @@
 #include "key/internal.h"
 #include "shared.h"
 
-static dnssec_kasp_key_t *get_last_key(dnssec_kasp_zone_t *zone, bool ksk)
+static bool key_created_later(const dnssec_kasp_key_t *prev,
+			      const dnssec_kasp_key_t *cur)
+{
+	return cur->timing.created == 0 ||
+	       cur->timing.created >= prev->timing.created;
+}
+
+dnssec_kasp_key_t *event_get_last_key(dnssec_kasp_zone_t *zone, bool ksk)
 {
 	assert(zone);
 
@@ -32,11 +39,12 @@ static dnssec_kasp_key_t *get_last_key(dnssec_kasp_zone_t *zone, bool ksk)
 	dnssec_list_t *keys = dnssec_kasp_zone_get_keys(zone);
 	dnssec_list_foreach(i, keys) {
 		dnssec_kasp_key_t *key = dnssec_item_get(i);
-		if (dnssec_key_get_flags(key->key) != dnskey_flags(ksk)) {
-			continue;
-		}
 
-		last = key;
+		if (dnssec_key_get_flags(key->key) == dnskey_flags(ksk) &&
+		    (last == NULL || key_created_later(last, key))
+		) {
+			last = key;
+		}
 	}
 
 	return last;
@@ -55,8 +63,8 @@ int dnssec_event_get_next(dnssec_event_ctx_t *ctx, dnssec_event_t *event_ptr)
 
 	// initial keys
 
-	dnssec_kasp_key_t *last_ksk = get_last_key(ctx->zone, true);
-	dnssec_kasp_key_t *last_zsk = get_last_key(ctx->zone, false);
+	dnssec_kasp_key_t *last_ksk = event_get_last_key(ctx->zone, true);
+	dnssec_kasp_key_t *last_zsk = event_get_last_key(ctx->zone, false);
 	if (!last_ksk || !last_zsk) {
 		event.time = ctx->now;
 		event.type = DNSSEC_EVENT_GENERATE_INITIAL_KEY;
