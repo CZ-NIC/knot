@@ -146,14 +146,19 @@ static uint32_t schedule_next(kdnssec_ctx_t *kctx, const zone_keyset_t *keyset,
 	// zone events
 
 	dnssec_event_t event = { 0 };
-	event.time = UINT32_MAX;
-
 	if (has_policy(kctx)) {
 		dnssec_event_ctx_t ctx = kctx2ctx(kctx);
 		dnssec_event_get_next(&ctx, &event);
 	}
 
-	return MIN(MIN(zone_refresh, dnskey_update), event.time);
+	// result
+
+	uint32_t next = MIN(zone_refresh, dnskey_update);
+	if (event.type != ZONE_EVENT_NOW) {
+		next = MIN(next, event.time);
+	}
+
+	return next;
 }
 
 int knot_dnssec_zone_sign(zone_contents_t *zone, const conf_zone_t *config,
@@ -225,11 +230,13 @@ int knot_dnssec_zone_sign(zone_contents_t *zone, const conf_zone_t *config,
 		goto done;
 	}
 
-	*refresh_at = schedule_next(&ctx, &keyset, zone_expire);
-
 	log_zone_info(zone_name, "DNSSEC, successfully signed");
 
 done:
+	if (result == KNOT_EOK) {
+		*refresh_at = schedule_next(&ctx, &keyset, zone_expire);
+	}
+
 	free_zone_keys(&keyset);
 	kdnssec_ctx_deinit(&ctx);
 
