@@ -199,6 +199,7 @@ int dnssec_kasp_zone_list(dnssec_kasp_t *kasp, dnssec_list_t **list);
  * KASP key timing information.
  */
 typedef struct dnssec_kasp_key_timing {
+	time_t created;		/*!< Time the key was generated/imported. */
 	time_t publish;		/*!< Time of DNSKEY record publication. */
 	time_t active;		/*!< Start of RRSIG records generating. */
 	time_t retire;		/*!< End of RRSIG records generating. */

@@ -74,6 +74,7 @@ static int generate_key(dnssec_event_ctx_t *ctx, bool ksk)
 	}
 
 	key->key = dnskey;
+	key->timing.created = ctx->now;
 	key->timing.publish = ctx->now;
 	key->timing.active  = ctx->now;
 

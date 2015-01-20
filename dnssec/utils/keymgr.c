@@ -595,6 +595,7 @@ static int cmd_zone_key_generate(int argc, char *argv[])
 
 	// add DNSKEY into zone keys
 
+	config.timing.created = time(NULL);
 	if (!zone_add_dnskey(zone, dnskey, &config.timing)) {
 		free(dnskey);
 		return 1;
@@ -738,6 +739,7 @@ static int cmd_zone_key_import(int argc, char *argv[])
 		return 1;
 	}
 
+	timing.created = time(NULL);
 	if (!zone_add_dnskey(zone, key, &timing)) {
 		dnssec_keystore_remove_key(store, keyid);
 		dnssec_key_free(key);

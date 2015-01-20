@@ -65,6 +65,7 @@ static const encode_attr_t KEY_ATTRIBUTES[] = {
 	{ "algorithm",  off(algorithm),      encode_uint8,  decode_uint8  },
 	{ "public_key", off(public_key),     encode_binary, decode_binary },
 	{ "ksk",        off(is_ksk),         encode_bool,   decode_bool   },
+	{ "created",    off(timing.created), encode_time,   decode_time   },
 	{ "publish",    off(timing.publish), encode_time,   decode_time   },
 	{ "active",     off(timing.active),  encode_time,   decode_time   },
 	{ "retire",     off(timing.retire),  encode_time,   decode_time   },
