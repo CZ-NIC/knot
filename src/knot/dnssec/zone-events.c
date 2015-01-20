@@ -31,6 +31,11 @@
 #include "knot/zone/serial.h"
 #include "knot/zone/zone.h"
 
+static bool has_policy(const kdnssec_ctx_t *ctx)
+{
+	return ctx && ctx->policy && ctx->policy->name;
+}
+
 static int sign_init(const zone_contents_t *zone, const conf_zone_t *config,
                      int flags, kdnssec_ctx_t *ctx)
 {
@@ -45,7 +50,7 @@ static int sign_init(const zone_contents_t *zone, const conf_zone_t *config,
 
 	// update policy based on the zone content
 
-	if (ctx->policy->name) {
+	if (has_policy(ctx)) {
 		update_policy_from_zone(ctx->policy, zone);
 	} else {
 		set_default_policy(ctx->policy, config, zone);
@@ -71,6 +76,10 @@ static int sign_init(const zone_contents_t *zone, const conf_zone_t *config,
 
 static int sign_process_events(const knot_dname_t *zone_name, kdnssec_ctx_t *kctx)
 {
+	if (!has_policy(kctx)) {
+		return KNOT_EOK;
+	}
+
 	dnssec_event_t event = { 0 };
 	dnssec_event_ctx_t ctx = {
 		.now      = kctx->now,
