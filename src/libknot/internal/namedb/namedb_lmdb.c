@@ -15,6 +15,8 @@
 */
 
 #include <assert.h>
+#include <stdbool.h>
+#include <string.h>
 #include <sys/stat.h>
 #include <unistd.h>
 
