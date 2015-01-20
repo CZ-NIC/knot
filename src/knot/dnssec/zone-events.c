@@ -19,6 +19,7 @@
 
 #include "dnssec/error.h"
 #include "dnssec/event.h"
+#include "libknot/internal/macros.h"
 #include "libknot/internal/mem.h"
 #include "knot/conf/conf.h"
 #include "knot/dnssec/context.h"
@@ -74,13 +75,8 @@ static int sign_init(const zone_contents_t *zone, const conf_zone_t *config,
 	return KNOT_EOK;
 }
 
-static int sign_process_events(const knot_dname_t *zone_name, kdnssec_ctx_t *kctx)
+static dnssec_event_ctx_t kctx2ctx(const kdnssec_ctx_t *kctx)
 {
-	if (!has_policy(kctx)) {
-		return KNOT_EOK;
-	}
-
-	dnssec_event_t event = { 0 };
 	dnssec_event_ctx_t ctx = {
 		.now      = kctx->now,
 		.kasp     = kctx->kasp,
@@ -88,6 +84,19 @@ static int sign_process_events(const knot_dname_t *zone_name, kdnssec_ctx_t *kct
 		.policy   = kctx->policy,
 		.keystore = kctx->keystore
 	};
+
+	return ctx;
+}
+
+static int sign_process_events(const knot_dname_t *zone_name,
+                               const kdnssec_ctx_t *kctx)
+{
+	if (!has_policy(kctx)) {
+		return KNOT_EOK;
+	}
+
+	dnssec_event_t event = { 0 };
+	dnssec_event_ctx_t ctx = kctx2ctx(kctx);
 
 	int r = dnssec_event_get_next(&ctx, &event);
 	if (r != DNSSEC_EOK) {
@@ -122,6 +131,30 @@ static int sign_update_soa(const zone_contents_t *zone, changeset_t *chset,
 	return knot_zone_sign_update_soa(&soa, &rrsigs, keyset, ctx, chset);
 }
 
+static uint32_t schedule_next(kdnssec_ctx_t *kctx, const zone_keyset_t *keyset,
+                              uint32_t zone_expire)
+{
+	// signatures refresh
+
+	uint32_t zone_refresh = zone_expire - kctx->policy->rrsig_refresh_before;
+	assert(zone_refresh > 0);
+
+	// DNSKEY modification
+
+	uint32_t dnskey_update = knot_get_next_zone_key_event(keyset);
+
+	// zone events
+
+	dnssec_event_t event = { 0 };
+	event.time = UINT32_MAX;
+
+	if (has_policy(kctx)) {
+		dnssec_event_ctx_t ctx = kctx2ctx(kctx);
+		dnssec_event_get_next(&ctx, &event);
+	}
+
+	return MIN(MIN(zone_refresh, dnskey_update), event.time);
+}
 
 int knot_dnssec_zone_sign(zone_contents_t *zone, const conf_zone_t *config,
                           changeset_t *out_ch, zone_sign_flags_t flags,
@@ -169,7 +202,8 @@ int knot_dnssec_zone_sign(zone_contents_t *zone, const conf_zone_t *config,
 		goto done;
 	}
 
-	result = knot_zone_sign(zone, &keyset, &ctx, out_ch, refresh_at);
+	uint32_t zone_expire = 0;
+	result = knot_zone_sign(zone, &keyset, &ctx, out_ch, &zone_expire);
 	if (result != KNOT_EOK) {
 		log_zone_error(zone_name, "DNSSEC, failed to sign zone content (%s)",
 		               knot_strerror(result));
@@ -190,6 +224,8 @@ int knot_dnssec_zone_sign(zone_contents_t *zone, const conf_zone_t *config,
 		               knot_strerror(result));
 		goto done;
 	}
+
+	*refresh_at = schedule_next(&ctx, &keyset, zone_expire);
 
 	log_zone_info(zone_name, "DNSSEC, successfully signed");
 

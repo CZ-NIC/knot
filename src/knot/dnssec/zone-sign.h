@@ -43,14 +43,14 @@
  * \param zone_keys   Zone keys.
  * \param dnssec_ctx  DNSSEC context.
  * \param changeset   Changeset to be updated.
- * \param refresh_at  Pointer to refresh time when the zone should be resigned.
+ * \param expire_at   Time, when the oldest signature in the zone expires.
  *
  * \return Error code, KNOT_EOK if successful.
  */
 int knot_zone_sign(const zone_contents_t *zone,
                    const zone_keyset_t *zone_keys,
                    const kdnssec_ctx_t *dnssec_ctx,
-                   changeset_t *out_ch, uint32_t *refresh_at);
+                   changeset_t *out_ch, uint32_t *expire_at);
 
 /*!
  * \brief Update and sign SOA and store performed changes in changeset.
