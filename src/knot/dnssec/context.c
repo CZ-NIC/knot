@@ -57,14 +57,14 @@ static int ctx_init_dnssec(kdnssec_ctx_t *ctx, const char *kasp_path,
 	dnssec_kasp_init_dir(&ctx->kasp);
 	int r = dnssec_kasp_open(ctx->kasp, kasp_path);
 	if (r != DNSSEC_EOK) {
-		return KNOT_ERROR;
+		return r;
 	}
 
 	// KASP zone
 
 	r = dnssec_kasp_zone_load(ctx->kasp, zone_name, &ctx->zone);
 	if (r != DNSSEC_EOK) {
-		return KNOT_ERROR;
+		return r;
 	}
 
 	// keystore
@@ -74,7 +74,7 @@ static int ctx_init_dnssec(kdnssec_ctx_t *ctx, const char *kasp_path,
 	r = dnssec_keystore_open(ctx->keystore, keystore_path);
 	free(keystore_path);
 	if (r != DNSSEC_EOK) {
-		return KNOT_ERROR;
+		return r;
 	}
 
 	// policy
@@ -87,7 +87,7 @@ static int ctx_init_dnssec(kdnssec_ctx_t *ctx, const char *kasp_path,
 
 	r = dnssec_kasp_policy_load(ctx->kasp, policy_name, &ctx->policy);
 	if (r != DNSSEC_EOK) {
-		return KNOT_ERROR;
+		return r;
 	}
 
 	return KNOT_EOK;

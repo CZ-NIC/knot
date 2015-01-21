@@ -144,8 +144,7 @@ static int sign_ctx_add_self(dnssec_sign_ctx_t *ctx, const uint8_t *rdata)
 
 	result = dnssec_sign_add(ctx, &header);
 	if (result != DNSSEC_EOK) {
-		// todo: error mapping from libdnssec to Knot
-		return KNOT_DNSSEC_ESIGN;
+		return result;
 	}
 
 	// signer name
@@ -191,7 +190,7 @@ static int sign_ctx_add_records(dnssec_sign_ctx_t *ctx, const knot_rrset_t *cove
 	int result = dnssec_sign_add(ctx, &rrset_wire);
 	free(rrwf);
 
-	return (result == DNSSEC_EOK ? KNOT_EOK : KNOT_DNSSEC_ESIGN);
+	return result;
 }
 
 /*!
@@ -270,7 +269,7 @@ static int rrsigs_create_rdata(knot_rrset_t *rrsigs, dnssec_sign_ctx_t *ctx,
 	dnssec_binary_t signature = { 0 };
 	res = dnssec_sign_write(ctx, &signature);
 	if (res != DNSSEC_EOK) {
-		return KNOT_DNSSEC_ESIGN;
+		return res;
 	}
 	assert(signature.size > 0);
 
@@ -364,7 +363,7 @@ int knot_check_signature(const knot_rrset_t *covered,
 
 	if (is_expired_signature(rrsigs, pos, dnssec_ctx->now,
 	                         dnssec_ctx->policy->rrsig_refresh_before)) {
-		return KNOT_DNSSEC_EINVALID_SIGNATURE;
+		return DNSSEC_INVALID_SIGNATURE;
 	}
 
 	// identify fields in the signature being validated
@@ -393,13 +392,5 @@ int knot_check_signature(const knot_rrset_t *covered,
 		return result;
 	}
 
-	result = dnssec_sign_verify(sign_ctx, &signature);
-	switch (result) {
-	case DNSSEC_EOK:
-		return KNOT_EOK;
-	case DNSSEC_INVALID_SIGNATURE:
-		return KNOT_DNSSEC_EINVALID_SIGNATURE;
-	default:
-		return KNOT_ERROR;
-	}
+	return dnssec_sign_verify(sign_ctx, &signature);
 }

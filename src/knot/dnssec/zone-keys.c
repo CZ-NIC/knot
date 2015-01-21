@@ -41,7 +41,7 @@ static int set_key(dnssec_kasp_key_t *kasp_key, time_t now, zone_key_t *zone_key
 	dnssec_sign_ctx_t *ctx = NULL;
 	int r = dnssec_sign_new(&ctx, kasp_key->key);
 	if (r != DNSSEC_EOK) {
-		return KNOT_ERROR;
+		return r;
 	}
 
 	zone_key->key = kasp_key->key;
@@ -218,7 +218,7 @@ static int load_private_keys(dnssec_keystore_t *keystore, zone_keyset_t *keyset)
 		dnssec_key_t *key = keyset->keys[i].key;
 		int r = dnssec_key_import_private_keystore(key, keystore);
 		if (r != DNSSEC_EOK && r != DNSSEC_KEY_ALREADY_PRESENT) {
-			return KNOT_DNSSEC_EINVALID_KEY;
+			return r;
 		}
 	}
 
@@ -259,7 +259,7 @@ int load_zone_keys(dnssec_kasp_zone_t *zone, dnssec_keystore_t *store,
 	dnssec_list_t *kasp_keys = dnssec_kasp_zone_get_keys(zone);
 	if (dnssec_list_is_empty(kasp_keys)) {
 		log_zone_str_error(zone_name, "DNSSEC, no keys are available");
-		return KNOT_ERROR;
+		return KNOT_DNSSEC_ENOKEY;
 	}
 
 	keyset.count = dnssec_list_size(kasp_keys);
@@ -283,7 +283,7 @@ int load_zone_keys(dnssec_kasp_zone_t *zone, dnssec_keystore_t *store,
 		log_zone_str_error(zone_name, "DNSSEC, keys validation failed (%s)",
 		                   knot_strerror(r));
 		free_zone_keys(&keyset);
-		return KNOT_ERROR;
+		return r;
 	}
 
 	r = load_private_keys(store, &keyset);
@@ -291,7 +291,7 @@ int load_zone_keys(dnssec_kasp_zone_t *zone, dnssec_keystore_t *store,
 		log_zone_str_error(zone_name, "DNSSEC, failed to load private "
 		                   "keys (%s)", knot_strerror(r));
 		free_zone_keys(&keyset);
-		return KNOT_ERROR;
+		return r;
 	}
 
 	*keyset_ptr = keyset;

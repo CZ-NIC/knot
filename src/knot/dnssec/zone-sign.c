@@ -20,6 +20,7 @@
 #include <sys/types.h>
 #include <time.h>
 
+#include "dnssec/error.h"
 #include "dnssec/key.h"
 #include "dnssec/keytag.h"
 #include "dnssec/sign.h"
@@ -268,7 +269,7 @@ static int remove_expired_rrsigs(const knot_rrset_t *covered,
 				continue;
 			}
 
-			if (result != KNOT_DNSSEC_EINVALID_SIGNATURE) {
+			if (result != DNSSEC_INVALID_SIGNATURE) {
 				break;
 			}
 		}

@@ -107,24 +107,11 @@ static const error_table_t error_messages[] = {
 	{ KNOT_KEY_EPRIVATE_KEY_OPEN,   "cannot open private key file" },
 	{ KNOT_KEY_EPUBLIC_KEY_INVALID, "public key file is invalid" },
 
-	/* Key signing/verification errors. */
-	{ KNOT_DNSSEC_ENOTSUP,                    "algorithm is not supported" },
-	{ KNOT_DNSSEC_EINVALID_KEY,               "the signing key is invalid" },
-	{ KNOT_DNSSEC_EASSIGN_KEY,                "cannot assign the key" },
-	{ KNOT_DNSSEC_ECREATE_DIGEST_CONTEXT,     "cannot create digest context" },
-	{ KNOT_DNSSEC_EUNEXPECTED_SIGNATURE_SIZE, "unexpected signature size" },
-	{ KNOT_DNSSEC_EDECODE_RAW_SIGNATURE,      "cannot decode the raw signature" },
-	{ KNOT_DNSSEC_EINVALID_SIGNATURE,         "signature is invalid" },
-	{ KNOT_DNSSEC_ESIGN,                      "cannot create the signature" },
-	{ KNOT_DNSSEC_ENOKEY,                     "no keys for signing" },
-	{ KNOT_DNSSEC_ENOKEYDIR,                  "keydir does not exist" },
-	{ KNOT_DNSSEC_EMISSINGKEYTYPE,            "missing active KSK or ZSK" },
-
-	/* NSEC3 errors. */
-	{ KNOT_NSEC3_ECOMPUTE_HASH, "cannot compute NSEC3 hash" },
-
 	/* Dynamic backend errors. */
 	{ KNOT_DATABASE_ERROR, "unspecified database error" },
+	/* DNSSEC errors. */
+	{ KNOT_DNSSEC_ENOKEY,          "no keys for signing" },
+	{ KNOT_DNSSEC_EMISSINGKEYTYPE, "missing active KSK or ZSK" },
 
 	{ KNOT_ERROR, NULL } /* Terminator */
 };

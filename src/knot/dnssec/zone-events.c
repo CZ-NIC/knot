@@ -102,7 +102,7 @@ static int sign_process_events(const knot_dname_t *zone_name,
 	if (r != DNSSEC_EOK) {
 		log_zone_error(zone_name, "DNSSEC, failed to get next event (%s)",
 		               dnssec_strerror(r));
-		return KNOT_ERROR;
+		return r;
 	}
 
 	if (event.type == DNSSEC_EVENT_NONE || kctx->now < event.time) {
@@ -116,7 +116,7 @@ static int sign_process_events(const knot_dname_t *zone_name,
 	if (r != DNSSEC_EOK) {
 		log_zone_error(zone_name, "DNSSEC, failed to execute event (%s)",
 		               dnssec_strerror(r));
-		return KNOT_ERROR;
+		return r;
 	}
 
 	return KNOT_EOK;
