@@ -21,7 +21,7 @@
 #include "dnssec/kasp.h"
 #include "dnssec/key.h"
 #include "dnssec/keystore.h"
-#include "event/internal.h"
+#include "event/keysearch.h"
 #include "kasp/zone.h"
 #include "key/internal.h"
 #include "shared.h"
@@ -29,7 +29,7 @@
 /*!
  * Generate initial KSK or ZSK key.
  */
-static int generate_key(dnssec_event_ctx_t *ctx, bool ksk)
+static int generate_key(dnssec_event_ctx_t *ctx, bool ksk, dnssec_kasp_key_t **key_ptr)
 {
 	assert(ctx->zone);
 	assert(ctx->keystore);
@@ -74,6 +74,7 @@ static int generate_key(dnssec_event_ctx_t *ctx, bool ksk)
 		return DNSSEC_ENOMEM;
 	}
 
+#warning Needs more systematic approach for initial timing values.
 	key->key = dnskey;
 	key->timing.created = ctx->now;
 	key->timing.publish = ctx->now;
@@ -84,39 +85,87 @@ static int generate_key(dnssec_event_ctx_t *ctx, bool ksk)
 	dnssec_list_t *keys = dnssec_kasp_zone_get_keys(ctx->zone);
 	dnssec_list_append(keys, key);
 
-	return DNSSEC_EOK;
-}
-
-static int generate_key_safe(dnssec_event_ctx_t *ctx, bool ksk, bool *generated)
-{
-	dnssec_kasp_key_t *key = event_get_last_key(ctx->zone, ksk);
-	if (key) {
-		return DNSSEC_EOK;
+	if (key_ptr) {
+		*key_ptr = key;
 	}
 
-	*generated = true;
-	return generate_key(ctx, ksk);
+	return DNSSEC_EOK;
 }
 
 static int generate_initial_keys(dnssec_event_ctx_t *ctx)
 {
 	assert(ctx);
 
-	bool generated = false;
-
-	int r = generate_key_safe(ctx, true, &generated);
-	if (r != DNSSEC_EOK) {
-		return r;
-	}
-
-	r = generate_key_safe(ctx, false, &generated);
-	if (r != DNSSEC_EOK) {
-		return r;
-	}
-
-	if (!generated) {
+	bool has_ksk, has_zsk;
+	zone_check_ksk_and_zsk(ctx->zone, &has_ksk, &has_zsk);
+	if (has_ksk && has_zsk) {
 		return DNSSEC_EINVAL;
 	}
+
+	int r;
+
+	if (!has_ksk) {
+		r = generate_key(ctx, true, NULL);
+		if (r != DNSSEC_EOK) {
+			return r;
+		}
+	}
+
+	if (!has_zsk) {
+		r = generate_key(ctx, false, NULL);
+		if (r != DNSSEC_EOK) {
+			return r;
+		}
+	}
+
+	return dnssec_kasp_zone_save(ctx->kasp, ctx->zone);
+}
+
+static int zsk_rotation_init(dnssec_event_ctx_t *ctx)
+{
+	dnssec_kasp_key_t *new_key = NULL;
+	int r = generate_key(ctx, false, &new_key);
+	if (r != DNSSEC_EOK) {
+		return r;
+	}
+
+#warning Can't set "active" to zero.
+	new_key->timing.publish = ctx->now;
+	new_key->timing.active = UINT32_MAX;
+
+	return dnssec_kasp_zone_save(ctx->kasp, ctx->zone);
+}
+
+#warning COPY-PASTE
+#include "event/keystate.h"
+static bool active_zsk_key(const dnssec_kasp_key_t *key, void *data)
+{
+	dnssec_event_ctx_t *ctx = data;
+
+	return dnssec_key_get_flags(key->key) == DNSKEY_FLAGS_ZSK &&
+	       get_key_state(key, ctx->now) == DNSSEC_KEY_STATE_ACTIVE;
+}
+
+#warning COPY-PASTE
+static bool rolling_zsk_key(const dnssec_kasp_key_t *key, void *data)
+{
+	dnssec_event_ctx_t *ctx = data;
+
+	return dnssec_key_get_flags(key->key) == DNSKEY_FLAGS_ZSK &&
+	       get_key_state(key, ctx->now) == DNSSEC_KEY_STATE_PUBLISHED;
+}
+
+
+static int zsk_rotation_finish(dnssec_event_ctx_t *ctx)
+{
+#warning Missing checks.
+	dnssec_kasp_key_t *active = last_matching_key(ctx->zone, active_zsk_key, ctx);
+	dnssec_kasp_key_t *rolling = last_matching_key(ctx->zone, rolling_zsk_key, ctx);
+
+	rolling->timing.active = ctx->now;
+
+	active->timing.retire = ctx->now;
+	active->timing.remove = ctx->now;
 
 	return dnssec_kasp_zone_save(ctx->kasp, ctx->zone);
 }
@@ -135,6 +184,10 @@ int dnssec_event_execute(dnssec_event_ctx_t *ctx, dnssec_event_t *event)
 		return DNSSEC_EOK;
 	case DNSSEC_EVENT_GENERATE_INITIAL_KEY:
 		return generate_initial_keys(ctx);
+	case DNSSEC_EVENT_ZSK_ROTATION_INIT:
+		return zsk_rotation_init(ctx);
+	case DNSSEC_EVENT_ZSK_ROTATION_FINISH:
+		return zsk_rotation_finish(ctx);
 	default:
 		return DNSSEC_EINVAL;
 	};
