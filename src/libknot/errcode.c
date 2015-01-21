@@ -17,6 +17,9 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
+#if HAVE_LMDB
+#include <lmdb.h>
+#endif
 
 #include "libknot/errcode.h"
 #include "libknot/internal/errors.h"
@@ -107,8 +110,6 @@ static const error_table_t error_messages[] = {
 	{ KNOT_KEY_EPRIVATE_KEY_OPEN,   "cannot open private key file" },
 	{ KNOT_KEY_EPUBLIC_KEY_INVALID, "public key file is invalid" },
 
-	/* Dynamic backend errors. */
-	{ KNOT_DATABASE_ERROR, "unspecified database error" },
 	/* DNSSEC errors. */
 	{ KNOT_DNSSEC_ENOKEY,          "no keys for signing" },
 	{ KNOT_DNSSEC_EMISSINGKEYTYPE, "missing active KSK or ZSK" },
@@ -126,6 +127,12 @@ const char *knot_strerror(int code)
 	if (DNSSEC_ERROR_MIN <= code && code <= DNSSEC_ERROR_MAX) {
 		return dnssec_strerror(code);
 	}
+
+#if HAVE_LMDB
+	if (MDB_KEYEXIST <= code && code <= MDB_LAST_ERRCODE) {
+		return mdb_strerror(code);
+	}
+#endif
 
 	__thread static char buffer[128];
 	snprintf(buffer, sizeof(buffer), "unknown error %d", code);
