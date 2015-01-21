@@ -16,11 +16,18 @@
 
 #pragma once
 
-#include <stdbool.h>
-
 #include "dnssec/kasp.h"
 
+typedef bool (*key_match_cb)(const dnssec_kasp_key_t *key, void *data);
+
 /*!
- * Get latest KSK/ZSK key for the zone.
+ * Get latest matching key for a zone.
  */
-dnssec_kasp_key_t *event_get_last_key(dnssec_kasp_zone_t *zone, bool ksk);
+dnssec_kasp_key_t *last_matching_key(dnssec_kasp_zone_t *zone,
+				     key_match_cb match_cb, void *data);
+
+/*!
+ * Check if zone has KSK and ZSK key.
+ */
+void zone_check_ksk_and_zsk(dnssec_kasp_zone_t *zone,
+			    bool *has_ksk, bool *has_zsk);

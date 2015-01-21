@@ -73,7 +73,8 @@ libdnssec_la_SOURCES = \
 	lib/event/event.c \
 	lib/event/exec.c \
 	lib/event/info.c \
-	lib/event/internal.h \
+	lib/event/keysearch.c \
+	lib/event/keysearch.h \
 	lib/event/keystate.c \
 	lib/event/keystate.h \
 	lib/kasp/dir/dir.c \
