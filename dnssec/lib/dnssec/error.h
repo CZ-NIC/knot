@@ -42,21 +42,19 @@
 
 #include <errno.h>
 
-/*! \cond */
-#define errno2error(errno) (-(100 + (errno)))
-/*! \endcond */
-
 /*!
  * Library error codes.
  */
 enum dnssec_error {
 	DNSSEC_EOK = 0,
 
-	DNSSEC_ENOMEM = errno2error(ENOMEM),
-	DNSSEC_EINVAL = errno2error(EINVAL),
-	DNSSEC_ENOENT = errno2error(ENOENT),
+	DNSSEC_ENOMEM = -ENOMEM,
+	DNSSEC_EINVAL = -EINVAL,
+	DNSSEC_ENOENT = -ENOENT,
 
-	DNSSEC_ERROR = -1000,
+	DNSSEC_ERROR_MIN = -1500,
+
+	DNSSEC_ERROR = DNSSEC_ERROR_MIN,
 	DNSSEC_NOT_IMPLEMENTED_ERROR,
 	DNSSEC_MALFORMED_DATA,
 	DNSSEC_OUT_OF_RANGE,
@@ -85,6 +83,8 @@ enum dnssec_error {
 
 	DNSSEC_CONFIG_MALFORMED,
 	DNSSEC_CONFIG_INVALID_KEY_ID,
+
+	DNSSEC_ERROR_MAX = -1001
 };
 
 /*!
@@ -101,9 +101,7 @@ const char *dnssec_strerror(int error);
  */
 static inline int dnssec_errno_to_error(int ecode)
 {
-	return errno2error(ecode);
+	return -ecode;
 }
-
-#undef errno2error
 
 /*! @} */
