@@ -78,8 +78,7 @@ static int request_send(struct knot_request *request,
 	if (use_tcp(request)) {
 		ret = tcp_send_msg(request->fd, wire, wire_len);
 	} else {
-		ret = udp_send_msg(request->fd, wire, wire_len,
-		                   (const struct sockaddr *)&request->remote);
+		ret = udp_send_msg(request->fd, wire, wire_len, NULL);
 	}
 	if (ret != wire_len) {
 		return KNOT_ECONN;
@@ -107,8 +106,7 @@ static int request_recv(struct knot_request *request,
 	if (use_tcp(request)) {
 		ret = tcp_recv_msg(request->fd, resp->wire, resp->max_size, &tv);
 	} else {
-		ret = udp_recv_msg(request->fd, resp->wire, resp->max_size,
-		                   (struct sockaddr *)&request->remote);
+		ret = udp_recv_msg(request->fd, resp->wire, resp->max_size, &tv);
 	}
 	if (ret <= 0) {
 		resp->size = 0;
