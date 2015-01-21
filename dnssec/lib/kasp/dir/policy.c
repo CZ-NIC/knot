@@ -25,9 +25,10 @@
 static const encode_attr_t POLICY_ATTRS[] = {
 	#define attr(name) #name, offsetof(dnssec_kasp_policy_t, name)
 	{ attr(algorithm),         encode_uint8,  decode_uint8  },
+	{ attr(dnskey_ttl),        encode_uint16, decode_uint16 },
 	{ attr(ksk_size),          encode_uint16, decode_uint16 },
 	{ attr(zsk_size),          encode_uint16, decode_uint16 },
-	{ attr(dnskey_ttl),        encode_uint16, decode_uint16 },
+	{ attr(zsk_lifetime),      encode_uint32, decode_uint32 },
 	{ attr(rrsig_lifetime),    encode_uint32, decode_uint32 },
 	{ attr(soa_minimal_ttl),   encode_uint16, decode_uint16 },
 	{ attr(zone_maximal_ttl),  encode_uint16, decode_uint16 },

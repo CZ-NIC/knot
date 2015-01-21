@@ -813,9 +813,10 @@ static int cmd_policy_show(int argc, char *argv[])
 	}
 
 	printf("algorithm:        %d\n", policy->algorithm);
+	printf("DNSKEY TTL:       %u\n", policy->dnskey_ttl);
 	printf("KSK key size:     %u\n", policy->ksk_size);
 	printf("ZSK key size:     %u\n", policy->zsk_size);
-	printf("DNSKEY TTL:       %u\n", policy->dnskey_ttl);
+	printf("ZSK lifetime:     %u\n", policy->zsk_lifetime);
 	printf("RRSIG lifetime:   %u\n", policy->rrsig_lifetime);
 	printf("SOA minimum:      %u\n", policy->soa_minimal_ttl);
 	printf("maximal zone TTL: %u\n", policy->zone_maximal_ttl);
