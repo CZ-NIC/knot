@@ -15,11 +15,13 @@
 */
 
 #include <stdarg.h>
+#include <stdio.h>
 #include <stdlib.h>
 
 #include "libknot/errcode.h"
 #include "libknot/internal/errors.h"
 #include "libknot/internal/macros.h"
+#include "dnssec/error.h"
 
 static const error_table_t error_messages[] = {
 	{ KNOT_EOK, "OK" },
@@ -130,7 +132,17 @@ static const error_table_t error_messages[] = {
 _public_
 const char *knot_strerror(int code)
 {
-	return error_to_str(error_messages, code);
+	if (code == 0 || (KNOT_ERROR_MIN <= code && code <= KNOT_ERROR_MAX)) {
+		return error_to_str(error_messages, code);
+	}
+
+	if (DNSSEC_ERROR_MIN <= code && code <= DNSSEC_ERROR_MAX) {
+		return dnssec_strerror(code);
+	}
+
+	__thread static char buffer[128];
+	snprintf(buffer, sizeof(buffer), "unknown error %d", code);
+	return buffer;
 }
 
 _public_
