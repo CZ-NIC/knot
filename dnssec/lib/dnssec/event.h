@@ -24,6 +24,8 @@
 enum dnssec_event_type {
 	DNSSEC_EVENT_NONE = 0,
 	DNSSEC_EVENT_GENERATE_INITIAL_KEY,
+	DNSSEC_EVENT_ZSK_ROTATION_INIT,
+	DNSSEC_EVENT_ZSK_ROTATION_FINISH,
 };
 
 typedef enum dnssec_event_type dnssec_event_type_t;

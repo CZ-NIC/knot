@@ -25,6 +25,10 @@ const char *dnssec_event_name(dnssec_event_type_t event)
 		return "no event";
 	case DNSSEC_EVENT_GENERATE_INITIAL_KEY:
 		return "generate initial keys";
+	case DNSSEC_EVENT_ZSK_ROTATION_INIT:
+		return "initialize ZSK rotation";
+	case DNSSEC_EVENT_ZSK_ROTATION_FINISH:
+		return "finish ZSK rotation";
 	default:
 		return "unknown event";
 	}
