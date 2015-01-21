@@ -180,7 +180,7 @@ int main(int argc, char *argv[])
 	ret += rrl_query(rrl, 0, 0, 0); // -1
 	ret += rrl_query(rrl, (void*)0x1, 0, 0); // -1
 	ret += rrl_destroy(0); // -1
-	is_int(-488, ret, "rrl: not crashed while executing functions on NULL context");
+	is_int(-88, ret, "rrl: not crashed while executing functions on NULL context");
 
 #ifdef ENABLE_TIMED_TESTS
 	/* 8. hopscotch test */

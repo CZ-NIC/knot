@@ -21,13 +21,8 @@
 #include "libknot/internal/errors.h"
 #include "libknot/internal/macros.h"
 
-const error_table_t error_messages[] = {
+static const error_table_t error_messages[] = {
 	{ KNOT_EOK, "OK" },
-
-	/* TSIG errors. */
-	{ KNOT_TSIG_EBADSIG,  "failed to verify TSIG MAC" },
-	{ KNOT_TSIG_EBADKEY,  "TSIG key not recognized or invalid" },
-	{ KNOT_TSIG_EBADTIME, "TSIG signing time out of range" },
 
 	/* Directly mapped error codes. */
 	{ KNOT_ENOMEM,       "not enough memory" },
@@ -100,6 +95,11 @@ const error_table_t error_messages[] = {
 	{ KNOT_BASE32HEX_ESIZE, "invalid base32hex string length" },
 	{ KNOT_BASE32HEX_ECHAR, "invalid base32hex character" },
 
+	/* TSIG errors. */
+	{ KNOT_TSIG_EBADSIG,  "failed to verify TSIG MAC" },
+	{ KNOT_TSIG_EBADKEY,  "TSIG key not recognized or invalid" },
+	{ KNOT_TSIG_EBADTIME, "TSIG signing time out of range" },
+
 	/* Key parsing errors. */
 	{ KNOT_KEY_EPUBLIC_KEY_OPEN,    "cannot open public key file" },
 	{ KNOT_KEY_EPRIVATE_KEY_OPEN,   "cannot open private key file" },
@@ -147,7 +147,7 @@ int knot_map_errno_internal(int fallback, int arg0, ...)
 		if (c == errno) {
 			/* Return negative value of the code. */
 			va_end(ap);
-			return knot_errno_to_error(abs(c));
+			return -abs(c);
 		}
 	}
 	va_end(ap);
