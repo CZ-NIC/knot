@@ -14,6 +14,8 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <string.h>
+
 #include "error.h"
 #include "shared.h"
 
@@ -62,8 +64,6 @@ static const error_message_t ERROR_MESSAGES[] = {
 	{ 0 }
 };
 
-const char *FALLBACK_ERROR_MESSAGE = "Unknown error";
-
 _public_
 const char *dnssec_strerror(int error)
 {
@@ -73,5 +73,7 @@ const char *dnssec_strerror(int error)
 		}
 	}
 
-	return FALLBACK_ERROR_MESSAGE;
+	__thread static char buffer[128];
+	snprintf(buffer, sizeof(buffer), "unknown error %d", error);
+	return buffer;
 }
