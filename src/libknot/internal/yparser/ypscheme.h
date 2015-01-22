@@ -26,7 +26,6 @@
 #pragma once
 
 #include <stdint.h>
-#include <stdbool.h>
 
 #include "libknot/internal/utils.h"
 #include "libknot/internal/yparser/yparser.h"

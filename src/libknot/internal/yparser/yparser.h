@@ -25,7 +25,6 @@
 
 #pragma once
 
-#include <stdint.h>
 #include <stdbool.h>
 
 /*! Maximal length of textual key value. */
