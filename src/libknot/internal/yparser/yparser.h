@@ -48,7 +48,7 @@ typedef struct {
 	/*! Indication if the current item was already processed. */
 	bool processed;
 
-	/*! Parsing context for the current input block. */
+	/*! Input parameters. */
 	struct {
 		/*! Start of the block. */
 		const char *start;
@@ -60,20 +60,12 @@ typedef struct {
 		bool eof;
 	} input;
 
-	/*! Block context for file input. */
+	/*! File input parameters. */
 	struct {
-		/*! Current working directory. */
-		char *path;
-		/*! File descriptor. */
-		int descriptor;
 		/*! File name. */
 		char *name;
-		/*! File size. */
-		size_t size;
-		/*! Used block size. */
-		size_t block_size;
-		/*! Position of the current block end. */
-		size_t block_end;
+		/*! File descriptor. */
+		int descriptor;
 	} file;
 
 	/*! [out] Current line number (error location). */
