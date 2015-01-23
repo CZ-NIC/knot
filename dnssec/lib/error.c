@@ -73,7 +73,7 @@ const char *dnssec_strerror(int error)
 		}
 	}
 
-	__thread static char buffer[128];
+	static __thread char buffer[128];
 	snprintf(buffer, sizeof(buffer), "unknown error %d", error);
 	return buffer;
 }
