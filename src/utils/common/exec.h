@@ -26,6 +26,8 @@
 
 #pragma once
 
+#include <time.h>
+
 #include "utils/common/netio.h"
 #include "utils/common/params.h"
 #include "libknot/libknot.h"
