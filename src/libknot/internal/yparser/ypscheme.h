@@ -242,7 +242,7 @@ yp_check_ctx_t* yp_scheme_check_init(
  * If the item is correct, context also contains binary value of the item.
  *
  * \param[in,out] ctx New copy of the scheme.
- * \param[in] parser Parser returned by #yp_create().
+ * \param[in] parser Parser context.
  *
  * \return Error code, KNOT_EOK if success.
  */

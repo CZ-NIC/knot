@@ -82,27 +82,27 @@ typedef struct {
 } yp_parser_t;
 
 /*!
- * Allocates new parser.
+ * Initializes the parser.
  *
- * \return NULL if error.
+ * \param[in] parser Parser context.
  */
-yp_parser_t* yp_create(
-	void
+void yp_init(
+	yp_parser_t *parser
 );
 
 /*!
- * Deallocates the parser.
+ * Deinitializes the parser.
  *
- * \param[in] parser Parser returned by #yp_create().
+ * \param[in] parser Parser context.
  */
-void yp_free(
+void yp_deinit(
 	yp_parser_t *parser
 );
 
 /*!
  * Sets the parser to parse given string.
  *
- * \param[in] parser Parser returned by #yp_create().
+ * \param[in] parser Parser context.
  * \param[in] input The string to parse.
  * \param[in] size Length of the string.
  *
@@ -117,7 +117,7 @@ int yp_set_input_string(
 /*!
  * Sets the parser to parse given file.
  *
- * \param[in] parser Parser returned by #yp_create().
+ * \param[in] parser Parser context.
  * \param[in] file_name The filename to parse.
  *
  * \return Error code, KNOT_EOK if success.
@@ -133,7 +133,7 @@ int yp_set_input_file(
  * If the item have more values, this function returns for each value. The item
  * can also have no value.
  *
- * \param[in] parser Parser returned by #yp_create().
+ * \param[in] parser Parser context.
  *
  * \return Error code, KNOT_EOK if success, KNOT_EOF if end of data.
  */

@@ -73,8 +73,9 @@ int main(int argc, char *argv[])
 	ret = yp_scheme_copy(&scheme, static_scheme);
 	ok(ret == KNOT_EOK, "scheme copy");
 
-	yp_parser_t *yp = yp_create();
-	ok(yp != NULL, "create yparser");
+	yp_parser_t yparser;
+	yp_parser_t *yp = &yparser;
+	yp_init(yp);
 
 	yp_check_ctx_t *ctx = yp_scheme_check_init(scheme);
 	ok(ctx != NULL, "create check ctx");
@@ -175,7 +176,7 @@ int main(int argc, char *argv[])
 	ok(strcmp(i->name + 1, "string") == 0, "name check");
 
 	yp_scheme_check_deinit(ctx);
-	yp_free(yp);
+	yp_deinit(yp);
 	yp_scheme_free(scheme);
 
 	return 0;

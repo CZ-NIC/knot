@@ -37,7 +37,7 @@ int _start_state(
 /*!
  * Executes the parser on the current input block.
  *
- * \param[in] parser A parser returned by #yp_create().
+ * \param[in] parser Parser context.
  */
 int _parse(
 	yp_parser_t *parser

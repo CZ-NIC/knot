@@ -77,8 +77,9 @@ int main(int argc, char *argv[])
 	int ret;
 	size_t line;
 
-	yp_parser_t *yp = yp_create();
-	ok(yp != NULL, "create yparser");
+	yp_parser_t yparser;
+	yp_parser_t *yp = &yparser;
+	yp_init(yp);
 
 	ret = yp_set_input_string(yp, syntax, strlen(syntax));
 	ok(ret == KNOT_EOK, "set input string");
@@ -150,7 +151,7 @@ int main(int argc, char *argv[])
 	ret = yp_parse(yp);
 	ok(ret == KNOT_EOF, "parse EOF");
 
-	yp_free(yp);
+	yp_deinit(yp);
 
 	return 0;
 }

@@ -25,9 +25,13 @@
 #include "libknot/internal/yparser/ypbody.h"
 #include "libknot/errcode.h"
 
-static void init_parser(
+void yp_init(
 	yp_parser_t *parser)
 {
+	if (parser == NULL) {
+		return;
+	}
+
 	memset(parser, 0, sizeof(*parser));
 
 	parser->cs = _start_state();
@@ -35,40 +39,19 @@ static void init_parser(
 	parser->line_count = 1;
 }
 
-static void purge_parser(
-	yp_parser_t *parser)
-{
-	// Cleanup the current file context if any.
-	if (parser->file.descriptor != -1) {
-		munmap((void *)parser->input.start,
-		       parser->input.end - parser->input.start);
-		close(parser->file.descriptor);
-		free(parser->file.name);
-	}
-}
-
-yp_parser_t* yp_create(
-	void)
-{
-	yp_parser_t *parser = malloc(sizeof(yp_parser_t));
-	if (parser == NULL) {
-		return NULL;
-	}
-
-	init_parser(parser);
-
-	return parser;
-}
-
-void yp_free(
+void yp_deinit(
 	yp_parser_t *parser)
 {
 	if (parser == NULL) {
 		return;
 	}
 
-	purge_parser(parser);
-	free(parser);
+	if (parser->file.descriptor != -1) {
+		munmap((void *)parser->input.start,
+		       parser->input.end - parser->input.start);
+		close(parser->file.descriptor);
+		free(parser->file.name);
+	}
 }
 
 int yp_set_input_string(
@@ -80,9 +63,9 @@ int yp_set_input_string(
 		return KNOT_EINVAL;
 	}
 
-	// Initialize the parser.
-	purge_parser(parser);
-	init_parser(parser);
+	// Reinitialize the parser.
+	yp_deinit(parser);
+	yp_init(parser);
 
 	// Set the parser input limits.
 	parser->input.start   = input;
@@ -101,9 +84,9 @@ int yp_set_input_file(
 		return KNOT_EINVAL;
 	}
 
-	// Initialize the parser.
-	purge_parser(parser);
-	init_parser(parser);
+	// Reinitialize the parser.
+	yp_deinit(parser);
+	yp_init(parser);
 
 	// Try to open the file.
 	parser->file.descriptor = open(file_name, O_RDONLY);
