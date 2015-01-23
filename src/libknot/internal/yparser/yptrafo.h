@@ -153,17 +153,4 @@ inline static const knot_dname_t* yp_dname(
 	return (const knot_dname_t *)data;
 }
 
-/*!
- * Converts binary value to data pointer.
- *
- * \param[in] data Binary value to to transform.
- *
- * \return Data pointer.
- */
-inline static const uint8_t* yp_data(
-	const uint8_t *data)
-{
-	return data;
-}
-
 /*! @} */

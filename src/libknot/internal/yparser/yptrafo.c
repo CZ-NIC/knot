@@ -23,8 +23,8 @@
 #include "libknot/internal/sockaddr.h"
 #include "libknot/errcode.h"
 
-#define TXT_BIN char const *txt, size_t txt_len, uint8_t *bin, size_t *bin_len
-#define BIN_TXT uint8_t const *bin, size_t bin_len, char *txt, size_t *txt_len
+#define TXT_BIN_PARAMS char const *txt, size_t txt_len, uint8_t *bin, size_t *bin_len
+#define BIN_TXT_PARAMS uint8_t const *bin, size_t bin_len, char *txt, size_t *txt_len
 
 enum {
 	UNIT_BYTE = 'B',
@@ -49,7 +49,7 @@ enum {
 };
 
 static int yp_str_to_bin(
-	TXT_BIN)
+	TXT_BIN_PARAMS)
 {
 	if (*bin_len <= txt_len) {
 		return KNOT_ESPACE;
@@ -63,7 +63,7 @@ static int yp_str_to_bin(
 }
 
 static int yp_str_to_txt(
-	BIN_TXT)
+	BIN_TXT_PARAMS)
 {
 	if (*txt_len < bin_len) {
 		return KNOT_ESPACE;
@@ -76,7 +76,7 @@ static int yp_str_to_txt(
 }
 
 static int yp_bool_to_bin(
-	TXT_BIN)
+	TXT_BIN_PARAMS)
 {
 	if (strcasecmp(txt, "on") == 0) {
 		bin[0] = '\0';
@@ -91,7 +91,7 @@ static int yp_bool_to_bin(
 }
 
 static int yp_bool_to_txt(
-	BIN_TXT)
+	BIN_TXT_PARAMS)
 {
 	int ret;
 
@@ -175,7 +175,7 @@ static int remove_unit(
 }
 
 static int yp_int_to_bin(
-	TXT_BIN,
+	TXT_BIN_PARAMS,
 	int64_t min,
 	int64_t max,
 	uint8_t min_bytes,
@@ -275,7 +275,7 @@ static void add_unit(
 }
 
 static int yp_int_to_txt(
-	BIN_TXT,
+	BIN_TXT_PARAMS,
 	yp_style_t style)
 {
 	int64_t data = 0, number = 0;
@@ -296,7 +296,7 @@ static int yp_int_to_txt(
 }
 
 static int addr_to_bin(
-	TXT_BIN,
+	TXT_BIN_PARAMS,
 	bool allow_unix)
 {
 	struct in_addr  addr4;
@@ -334,7 +334,7 @@ static int addr_to_bin(
 }
 
 static int addr_to_txt(
-	BIN_TXT)
+	BIN_TXT_PARAMS)
 {
 	struct in_addr  addr4;
 	struct in6_addr addr6;
@@ -379,7 +379,7 @@ static int addr_to_txt(
 }
 
 static int yp_addr_to_bin(
-	TXT_BIN,
+	TXT_BIN_PARAMS,
 	bool net)
 {
 	// Check for separator.
@@ -441,7 +441,7 @@ static int yp_addr_to_bin(
 }
 
 static int yp_addr_to_txt(
-	BIN_TXT,
+	BIN_TXT_PARAMS,
 	bool net)
 {
 	// Set binary address length.
@@ -498,7 +498,7 @@ static int yp_addr_to_txt(
 }
 
 static int yp_option_to_bin(
-	TXT_BIN,
+	TXT_BIN_PARAMS,
 	const lookup_table_t *opts)
 {
 	while (opts->name != NULL) {
@@ -514,7 +514,7 @@ static int yp_option_to_bin(
 }
 
 static int yp_option_to_txt(
-	BIN_TXT,
+	BIN_TXT_PARAMS,
 	const lookup_table_t *opts)
 {
 	while (opts->name != NULL) {
@@ -533,7 +533,7 @@ static int yp_option_to_txt(
 }
 
 static int yp_base64_to_bin(
-	TXT_BIN)
+	TXT_BIN_PARAMS)
 {
 	int ret = base64_decode((uint8_t *)txt, txt_len, bin, *bin_len);
 	if (ret < 0) {
@@ -546,7 +546,7 @@ static int yp_base64_to_bin(
 }
 
 static int yp_base64_to_txt(
-	BIN_TXT)
+	BIN_TXT_PARAMS)
 {
 	int ret = base64_encode(bin, bin_len, (uint8_t *)txt, *txt_len);
 	if (ret < 0) {
@@ -563,7 +563,7 @@ static int yp_base64_to_txt(
 }
 
 static int yp_dname_to_bin(
-	TXT_BIN)
+	TXT_BIN_PARAMS)
 {
 	knot_dname_t *dname = knot_dname_from_str(bin, txt, *bin_len);
 	if (dname == NULL) {
@@ -585,7 +585,7 @@ static int yp_dname_to_bin(
 }
 
 static int yp_dname_to_txt(
-	BIN_TXT)
+	BIN_TXT_PARAMS)
 {
 	char *name = knot_dname_to_str(txt, bin, *txt_len);
 	if (name == NULL) {

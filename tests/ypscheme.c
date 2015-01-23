@@ -156,7 +156,7 @@ int main(int argc, char *argv[])
 	ok(ctx->event == YP_EKEY1, "event check");
 	ok(strcmp(ctx->key1->name + 1, "base64") == 0, "name check");
 	ok(ctx->key1->type == YP_TB64, "type check");
-	ok(memcmp(yp_data(ctx->data), "foobar", ctx->data_len) == 0, "value check");
+	ok(memcmp(ctx->data, "foobar", ctx->data_len) == 0, "value check");
 	ret = yp_parse(yp);
 	ok(ret == KNOT_EOK, "parse");
 	ret = yp_scheme_check_parser(ctx, yp);

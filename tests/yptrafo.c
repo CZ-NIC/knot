@@ -236,7 +236,7 @@ static void base64_test(const char *txt, const char *val)
 	diag("base64 \"%s\":", txt);
 	ret = yp_item_to_bin(&i, txt, strlen(txt), b, &b_len);
 	ok(ret == KNOT_EOK, "txt to bin");
-	ok(memcmp(yp_data(b), val, b_len) == 0, "compare");
+	ok(memcmp(b, val, b_len) == 0, "compare");
 	ret = yp_item_to_txt(&i, b, b_len, t, &t_len, YP_SNOQUOTE);
 	ok(ret == KNOT_EOK, "bin to txt");
 	ok(strlen(t) == t_len, "txt length");
