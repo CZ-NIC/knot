@@ -66,7 +66,7 @@ static int format_item(
 	ret = snprintf(out, out_len, "%s%s",
 	               last_value && !first_value ? " ]" : "",
 	               last_value ? "\n" : ",");
-	if (ret < 0 || ret > out_len) {
+	if (ret < 0 || ret >= out_len) {
 		return KNOT_ESPACE;
 	}
 
