@@ -120,12 +120,15 @@ int yp_set_input_file(
 	}
 
 	// Map the file to the memory.
-	const char *start = mmap(0, file_stat.st_size, PROT_READ, MAP_SHARED,
-	                         parser->file.descriptor, 0);
+	char *start = mmap(0, file_stat.st_size, PROT_READ, MAP_SHARED,
+	                   parser->file.descriptor, 0);
 	if (start == MAP_FAILED) {
 		close(parser->file.descriptor);
 		return KNOT_ENOMEM;
 	}
+
+	// Try to set the mapped memory advise to sequential.
+	(void)madvise(start, file_stat.st_size, MADV_SEQUENTIAL);
 
 	parser->file.name = strdup(file_name);
 
