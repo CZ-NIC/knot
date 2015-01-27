@@ -954,7 +954,8 @@ int main(int argc, char *argv[])
 		case '?':
 			goto failed;
 		default:
-			assert(0);
+			assert_unreachable();
+			goto failed;
 		}
 	}
 
