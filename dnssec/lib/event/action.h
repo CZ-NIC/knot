@@ -28,8 +28,8 @@ struct event_action_functions {
 
 typedef struct event_action_functions event_action_functions_t;
 
-const event_action_functions_t event_action_initial_key;
-const event_action_functions_t event_action_zsk_rollover;
+extern const event_action_functions_t event_action_initial_key;
+extern const event_action_functions_t event_action_zsk_rollover;
 
 /*!
  * List of event implementations sorted by priority.
