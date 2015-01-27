@@ -70,10 +70,14 @@ libdnssec_la_SOURCES = \
 	lib/binary.c \
 	lib/crypto.c \
 	lib/error.c \
+	lib/event/action/initial_key.c \
+	lib/event/action/zsk_rollover.c \
 	lib/event/action.h \
 	lib/event/event.c \
 	lib/event/keystate.c \
 	lib/event/keystate.h \
+	lib/event/utils.c \
+	lib/event/utils.h \
 	lib/kasp/dir/dir.c \
 	lib/kasp/dir/escape.c \
 	lib/kasp/dir/escape.h \
