@@ -32,10 +32,7 @@ struct parameter {
 	bool req_full_match;
 	char *hint;
 
-	union {
-		void *data;
-		size_t offset;
-	};
+	size_t offset;
 };
 
 int parse_parameters(const parameter_t *params, int argc, char *argv[], void *data);
