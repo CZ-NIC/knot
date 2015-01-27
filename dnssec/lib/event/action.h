@@ -16,18 +16,26 @@
 
 #pragma once
 
-#include "dnssec/kasp.h"
+#include <stdbool.h>
 
-typedef bool (*key_match_cb)(const dnssec_kasp_key_t *key, void *data);
+#include "dnssec/event.h"
+
+struct event_action_functions {
+	bool (*responds_to)(dnssec_event_type_t event);
+	int (*plan)(dnssec_event_ctx_t *ctx, dnssec_event_t *event);
+	int (*exec)(dnssec_event_ctx_t *ctx, const dnssec_event_t *event);
+};
+
+typedef struct event_action_functions event_action_functions_t;
+
+const event_action_functions_t event_action_initial_key;
+const event_action_functions_t event_action_zsk_rollover;
 
 /*!
- * Get latest matching key for a zone.
+ * List of event implementations sorted by priority.
  */
-dnssec_kasp_key_t *last_matching_key(dnssec_kasp_zone_t *zone,
-				     key_match_cb match_cb, void *data);
-
-/*!
- * Check if zone has KSK and ZSK key.
- */
-void zone_check_ksk_and_zsk(dnssec_kasp_zone_t *zone,
-			    bool *has_ksk, bool *has_zsk);
+static const event_action_functions_t * const EVENT_ACTION_HANDLERS[] = {
+	&event_action_initial_key,
+	&event_action_zsk_rollover,
+	NULL,
+};

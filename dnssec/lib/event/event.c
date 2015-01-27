@@ -19,34 +19,24 @@
 
 #include "dnssec/error.h"
 #include "dnssec/event.h"
-#include "dnssec/kasp.h"
-#include "event/keysearch.h"
-#include "event/keystate.h"
-#include "key/internal.h"
+#include "event/action.h"
 #include "shared.h"
 
-static bool missing_ksk_or_zsk(dnssec_kasp_zone_t *zone)
+_public_
+const char *dnssec_event_name(dnssec_event_type_t event)
 {
-	bool has_ksk, has_zsk;
-	zone_check_ksk_and_zsk(zone, &has_ksk, &has_zsk);
-
-	return !has_ksk || !has_zsk;
-}
-
-static bool active_zsk_key(const dnssec_kasp_key_t *key, void *data)
-{
-	dnssec_event_ctx_t *ctx = data;
-
-	return dnssec_key_get_flags(key->key) == DNSKEY_FLAGS_ZSK &&
-	       get_key_state(key, ctx->now) == DNSSEC_KEY_STATE_ACTIVE;
-}
-
-static bool rolling_zsk_key(const dnssec_kasp_key_t *key, void *data)
-{
-	dnssec_event_ctx_t *ctx = data;
-
-	return dnssec_key_get_flags(key->key) == DNSKEY_FLAGS_ZSK &&
-	       get_key_state(key, ctx->now) == DNSSEC_KEY_STATE_PUBLISHED;
+	switch (event) {
+	case DNSSEC_EVENT_NONE:
+		return "no event";
+	case DNSSEC_EVENT_GENERATE_INITIAL_KEY:
+		return "generate initial keys";
+	case DNSSEC_EVENT_ZSK_ROTATION_INIT:
+		return "initialize ZSK rotation";
+	case DNSSEC_EVENT_ZSK_ROTATION_FINISH:
+		return "finish ZSK rotation";
+	default:
+		return "unknown event";
+	}
 }
 
 _public_
@@ -56,54 +46,46 @@ int dnssec_event_get_next(dnssec_event_ctx_t *ctx, dnssec_event_t *event)
 		return DNSSEC_EINVAL;
 	}
 
-	// TODO: additional checks on ctx content
+	dnssec_event_t first = { 0 };
 
-	// initial keys
+	const event_action_functions_t * const *action;
+	for (action = EVENT_ACTION_HANDLERS; *action; action++) {
+		dnssec_event_t search = { 0 };
+		int r = (*action)->plan(ctx, &search);
+		if (r != DNSSEC_EOK) {
+			return r;
+		}
 
-	if (missing_ksk_or_zsk(ctx->zone)) {
-		event->time = ctx->now;
-		event->type = DNSSEC_EVENT_GENERATE_INITIAL_KEY;
-		return DNSSEC_EOK;
+		if (search.type == DNSSEC_EVENT_NONE) {
+			continue;
+		}
+
+		if (first.time == 0 || search.time < first.time) {
+			first = search;
+			if (first.time <= ctx->now) {
+				break;
+			}
+		}
 	}
 
-	// ZSK rotation
+	*event = first;
 
-#warning Concept code, needs cleanup.
+	return DNSSEC_EOK;
+}
 
-	dnssec_kasp_key_t *active = last_matching_key(ctx->zone, active_zsk_key, ctx);
-	if (!active) {
+_public_
+int dnssec_event_execute(dnssec_event_ctx_t *ctx, dnssec_event_t *event)
+{
+	if (!ctx || !event) {
 		return DNSSEC_EINVAL;
 	}
 
-	assert(ctx->now >= active->timing.publish);
-	uint32_t key_age = ctx->now - active->timing.publish;
-	if (key_age < ctx->policy->zsk_lifetime) {
-		event->time = ctx->now + (ctx->policy->zsk_lifetime - key_age);
-		event->type = DNSSEC_EVENT_ZSK_ROTATION_INIT;
-		return DNSSEC_EOK;
-	} else {
-		dnssec_kasp_key_t *rolling = last_matching_key(ctx->zone, rolling_zsk_key, ctx);
-		if (!rolling) {
-			event->type = DNSSEC_EVENT_ZSK_ROTATION_INIT;
-			event->time = ctx->now;
-			return DNSSEC_EOK;
-		}
-
-		assert(ctx->now >= rolling->timing.publish);
-		uint32_t pub_age = ctx->now - rolling->timing.publish;
-		uint32_t need_age = ctx->policy->dnskey_ttl + ctx->policy->propagation_delay;
-		printf("[debug] need_age %u pub_age %u\n", need_age, pub_age);
-		if (pub_age < need_age) {
-			event->type = DNSSEC_EVENT_ZSK_ROTATION_FINISH;
-			event->time = ctx->now + (need_age - pub_age);
-			return DNSSEC_EOK;
-		} else {
-			event->type = DNSSEC_EVENT_ZSK_ROTATION_FINISH;
-			event->time = ctx->now;
-			return DNSSEC_EOK;
+	const event_action_functions_t * const *action;
+	for (action = EVENT_ACTION_HANDLERS; *action; action++) {
+		if ((*action)->responds_to(event->type)) {
+			return (*action)->exec(ctx, event);
 		}
 	}
 
-	clear_struct(event);
-	return DNSSEC_EOK;
+	return DNSSEC_EINVAL;
 }
