@@ -203,7 +203,7 @@ static int cmd_zone_add(int argc, char *argv[])
 	char *zone_name = argv[0];
 	char *policy = NULL;
 
-	parameter_t params[] = {
+	static const parameter_t params[] = {
 		{ "policy", value_string },
 		{ NULL }
 	};
@@ -347,7 +347,7 @@ static int cmd_zone_remove(int argc, char *argv[])
 	char *zone_name = argv[0];
 	bool force = false;
 
-	parameter_t params[] = {
+	static const parameter_t params[] = {
 		{ "force", value_flag, .req_full_match = true },
 		{ NULL }
 	};
@@ -519,7 +519,7 @@ static int cmd_zone_key_generate(int argc, char *argv[])
 		dnssec_kasp_key_timing_t timing;
 	};
 
-	parameter_t params[] =   {
+	static const parameter_t params[] = {
 		#define o(member) offsetof(struct config, member)
 		{ "algorithm", value_algorithm, .offset = o(algorithm) },
 		{ "size",      value_key_size,  .offset = o(size) },
@@ -627,7 +627,7 @@ static int cmd_zone_key_set(int argc, char *argv[])
 	char *zone_name = argv[0];
 	char *search = argv[1];
 
-	parameter_t params[] = {
+	static const parameter_t params[] = {
 		#define o(member) offsetof(dnssec_kasp_key_timing_t, member)
 		{ "publish", value_time, .offset = o(publish) },
 		{ "active",  value_time, .offset = o(active) },
@@ -793,6 +793,21 @@ static int cmd_policy_list(int argc, char *argv[])
 	return 1;
 }
 
+static void print_policy(const dnssec_kasp_policy_t *policy)
+{
+	printf("algorithm:        %d\n", policy->algorithm);
+	printf("DNSKEY TTL:       %u\n", policy->dnskey_ttl);
+	printf("KSK key size:     %u\n", policy->ksk_size);
+	printf("ZSK key size:     %u\n", policy->zsk_size);
+	printf("ZSK lifetime:     %u\n", policy->zsk_lifetime);
+	printf("RRSIG lifetime:   %u\n", policy->rrsig_lifetime);
+	printf("RRSIG refresh:    %u\n", policy->rrsig_refresh_before);
+	printf("NSEC3 enabled:    %s\n", policy->nsec3_enabled ? "true" : "false");
+	printf("SOA min TTL:      %u\n", policy->soa_minimal_ttl);
+	printf("zone max TTL:     %u\n", policy->zone_maximal_ttl);
+	printf("data propagation: %u\n", policy->propagation_delay);
+}
+
 static int cmd_policy_show(int argc, char *argv[])
 {
 	if (argc != 1) {
@@ -812,23 +827,61 @@ static int cmd_policy_show(int argc, char *argv[])
 		return 1;
 	}
 
-	printf("algorithm:        %d\n", policy->algorithm);
-	printf("DNSKEY TTL:       %u\n", policy->dnskey_ttl);
-	printf("KSK key size:     %u\n", policy->ksk_size);
-	printf("ZSK key size:     %u\n", policy->zsk_size);
-	printf("ZSK lifetime:     %u\n", policy->zsk_lifetime);
-	printf("RRSIG lifetime:   %u\n", policy->rrsig_lifetime);
-	printf("SOA minimum:      %u\n", policy->soa_minimal_ttl);
-	printf("maximal zone TTL: %u\n", policy->zone_maximal_ttl);
-	printf("data propagation: %u\n", policy->propagation_delay);
+	print_policy(policy);
 
 	return 0;
 }
 
 static int cmd_policy_add(int argc, char *argv[])
 {
-	error("Not implemented.");
-	return 1;
+	if (argc < 1) {
+		error("Name of the policy has to be specified.");
+		return 1;
+	}
+
+	_cleanup_policy_ dnssec_kasp_policy_t *policy = dnssec_kasp_policy_new(argv[0]);
+	if (!policy) {
+		error("Failed to create new policy.");
+		return 1;
+	}
+
+	static const parameter_t params[] = {
+		#define o(member) offsetof(dnssec_kasp_policy_t, member)
+		{ "algorithm",      value_algorithm, .offset = o(algorithm) },
+		{ "dnskey-ttl",     value_uint32,    .offset = o(dnskey_ttl) },
+		{ "ksk-size",       value_key_size,  .offset = o(ksk_size) },
+		{ "zsk-size",       value_key_size,  .offset = o(zsk_size) },
+		{ "zsk-lifetime",   value_uint32,    .offset = o(zsk_lifetime) },
+		{ "rrsig-lifetime", value_uint32,    .offset = o(rrsig_lifetime) },
+		{ "rrsig-refresh",  value_uint32,    .offset = o(rrsig_refresh_before) },
+		{ "nsec3",          value_bool,      .offset = o(nsec3_enabled) },
+		{ "soa-min-ttl",    value_uint32,    .offset = o(soa_minimal_ttl) },
+		{ "zone-max-ttl",   value_uint32,    .offset = o(zone_maximal_ttl) },
+		{ "delay",          value_uint32,    .offset = o(propagation_delay) },
+		{ NULL }
+		#undef o
+	};
+
+	dnssec_kasp_policy_defaults(policy);
+	if (parse_parameters(params, argc -1, argv + 1, policy) != 0) {
+		return 1;
+	}
+
+	_cleanup_kasp_ dnssec_kasp_t *kasp = get_kasp();
+	if (!kasp) {
+		return 1;
+	}
+
+	// TODO: check if policy exists
+
+	int r = dnssec_kasp_policy_save(kasp, policy);
+	if (r != DNSSEC_EOK) {
+		error("Failed to save new policy (%s).", dnssec_strerror(r));
+		return 1;
+	}
+
+	print_policy(policy);
+	return 0;
 }
 
 static int cmd_policy_set(int argc, char *argv[])
