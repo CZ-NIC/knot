@@ -6,16 +6,14 @@ bin_PROGRAMS = kdig khost knsupdate
 lib_LTLIBRARIES = libknot-int.la libknot.la
 noinst_LTLIBRARIES = libknotd.la libknotus.la
 
-# symlink
-EXTRA_DIST = dnssec
-
 # $(YACC) will generate header file
 AM_CPPFLAGS = \
 	-include $(top_builddir)/src/config.h	\
 	-DCONFIG_DIR='"${config_dir}"'		\
 	-DSTORAGE_DIR='"${storage_dir}"'	\
 	-DRUN_DIR='"${run_dir}"'		\
-	-I$(top_srcdir)/dnssec/lib/
+	-I$(top_srcdir)/dnssec/lib
+
 AM_CFLAGS = $(CODE_COVERAGE_CFLAGS)
 AM_LDFLAGS = $(CODE_COVERAGE_LDFLAGS)
 AM_YFLAGS = -d

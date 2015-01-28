@@ -1,7 +1,8 @@
 AM_CPPFLAGS = \
 	-include $(top_builddir)/src/config.h \
 	-I$(top_srcdir)/libtap \
-	-I$(top_srcdir)/src
+	-I$(top_srcdir)/src \
+	-I$(top_srcdir)/dnssec/lib
 
 AM_LDFLAGS = \
 	$(libcrypto_LIBS)
