@@ -920,9 +920,25 @@ static int cmd_policy_set(int argc, char *argv[])
 
 static int cmd_policy_remove(int argc, char *argv[])
 {
-	error("Not implemented");
+	if (argc != 1) {
+		error("Name of a policy has to be specified.");
+		return 1;
+	}
 
-	return 1;
+	const char *name = argv[0];
+
+	_cleanup_kasp_ dnssec_kasp_t *kasp = get_kasp();
+	if (!kasp) {
+		return 1;
+	}
+
+	int r = dnssec_kasp_policy_remove(kasp, name);
+	if (r != DNSSEC_EOK) {
+		error("Failed to remove the policy (%s).", dnssec_strerror(r));
+		return 1;
+	}
+
+	return 0;
 }
 
 static int cmd_policy(int argc, char *argv[])
