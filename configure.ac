@@ -80,6 +80,13 @@ AC_ARG_ENABLE([fastparser],
     [], [enable_fastparser=yes])
 AM_CONDITIONAL([FAST_PARSER], [test "$enable_fastparser" = yes])
 
+
+# GnuTLS crypto backend
+PKG_CHECK_MODULES([gnutls], [gnutls >= 3.0 nettle])
+
+# JSON for DNSSEC status storage
+PKG_CHECK_MODULES([jansson], [jansson >= 2.3])
+
 # Systemd integration
 AC_ARG_ENABLE([systemd],
     AS_HELP_STRING([--enable-systemd=auto|yes|no], [enable systemd integration [default=auto]]),
@@ -95,12 +102,6 @@ esac
 if test "$enable_systemd" = yes; then
     AC_DEFINE([ENABLE_SYSTEMD], [1], [Use systemd integration.])
 fi
-
-# GnuTLS crypto backend
-PKG_CHECK_MODULES([gnutls], [gnutls >= 3.0 nettle])
-
-# JSON for DNSSEC status storage
-PKG_CHECK_MODULES([jansson], [jansson >= 2.3])
 
 # Debug modules
 AC_ARG_ENABLE([debug],
