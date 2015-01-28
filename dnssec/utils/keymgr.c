@@ -832,6 +832,23 @@ static int cmd_policy_show(int argc, char *argv[])
 	return 0;
 }
 
+static const parameter_t POLICY_PARAMS[] = {
+	#define o(member) offsetof(dnssec_kasp_policy_t, member)
+	{ "algorithm",      value_algorithm, .offset = o(algorithm) },
+	{ "dnskey-ttl",     value_uint32,    .offset = o(dnskey_ttl) },
+	{ "ksk-size",       value_key_size,  .offset = o(ksk_size) },
+	{ "zsk-size",       value_key_size,  .offset = o(zsk_size) },
+	{ "zsk-lifetime",   value_uint32,    .offset = o(zsk_lifetime) },
+	{ "rrsig-lifetime", value_uint32,    .offset = o(rrsig_lifetime) },
+	{ "rrsig-refresh",  value_uint32,    .offset = o(rrsig_refresh_before) },
+	{ "nsec3",          value_bool,      .offset = o(nsec3_enabled) },
+	{ "soa-min-ttl",    value_uint32,    .offset = o(soa_minimal_ttl) },
+	{ "zone-max-ttl",   value_uint32,    .offset = o(zone_maximal_ttl) },
+	{ "delay",          value_uint32,    .offset = o(propagation_delay) },
+	{ NULL }
+	#undef o
+};
+
 static int cmd_policy_add(int argc, char *argv[])
 {
 	if (argc < 1) {
@@ -845,25 +862,8 @@ static int cmd_policy_add(int argc, char *argv[])
 		return 1;
 	}
 
-	static const parameter_t params[] = {
-		#define o(member) offsetof(dnssec_kasp_policy_t, member)
-		{ "algorithm",      value_algorithm, .offset = o(algorithm) },
-		{ "dnskey-ttl",     value_uint32,    .offset = o(dnskey_ttl) },
-		{ "ksk-size",       value_key_size,  .offset = o(ksk_size) },
-		{ "zsk-size",       value_key_size,  .offset = o(zsk_size) },
-		{ "zsk-lifetime",   value_uint32,    .offset = o(zsk_lifetime) },
-		{ "rrsig-lifetime", value_uint32,    .offset = o(rrsig_lifetime) },
-		{ "rrsig-refresh",  value_uint32,    .offset = o(rrsig_refresh_before) },
-		{ "nsec3",          value_bool,      .offset = o(nsec3_enabled) },
-		{ "soa-min-ttl",    value_uint32,    .offset = o(soa_minimal_ttl) },
-		{ "zone-max-ttl",   value_uint32,    .offset = o(zone_maximal_ttl) },
-		{ "delay",          value_uint32,    .offset = o(propagation_delay) },
-		{ NULL }
-		#undef o
-	};
-
 	dnssec_kasp_policy_defaults(policy);
-	if (parse_parameters(params, argc -1, argv + 1, policy) != 0) {
+	if (parse_parameters(POLICY_PARAMS, argc -1, argv + 1, policy) != 0) {
 		return 1;
 	}
 
@@ -903,11 +903,17 @@ static int cmd_policy_set(int argc, char *argv[])
 		return 1;
 	}
 
+	if (parse_parameters(POLICY_PARAMS, argc -1, argv + 1, policy) != 0) {
+		return 1;
+	}
+
 	int r = dnssec_kasp_policy_save(kasp, policy);
 	if (r != DNSSEC_EOK) {
 		error("Failed to save updated policy (%s).", dnssec_strerror(r));
 		return 1;
 	}
+
+	print_policy(policy);
 
 	return 0;
 }
