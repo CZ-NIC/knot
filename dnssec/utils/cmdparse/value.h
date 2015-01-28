@@ -19,9 +19,14 @@
 #include "cmdparse/parameter.h"
 
 /*!
- * bool
+ * bool (set only)
  */
 int value_flag(int argc, char *argv[], const parameter_t *p, void *data);
+
+/*!
+ * bool
+ */
+int value_bool(int argc, char *argv[], const parameter_t *p, void *data);
 
 /*!
  * char *

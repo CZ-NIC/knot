@@ -30,6 +30,11 @@ static void error_missing_option(const parameter_t *p)
 	error("Missing value for option '%s'.", p->name);
 }
 
+static void error_invalid_value(const parameter_t *p, const char *value)
+{
+	error("Invalid value '%s' for option '%s'.", value, p->name);
+}
+
 int value_flag(int argc, char *argv[], const parameter_t *p, void *data)
 {
 	assert(p);
@@ -41,7 +46,7 @@ int value_flag(int argc, char *argv[], const parameter_t *p, void *data)
 	return 0;
 }
 
-int value_string(int argc, char *argv[], const parameter_t *p, void *data)
+int value_bool(int argc, char *argv[], const parameter_t *p, void *data)
 {
 	assert(p);
 	assert(data);
@@ -51,10 +56,32 @@ int value_string(int argc, char *argv[], const parameter_t *p, void *data)
 		return -1;
 	}
 
-	char **string = data + p->offset;
-	*string = argv[0];
+	bool *value = data + p->offset;
+	char *input = argv[0];
 
-	return 1;
+	struct value {
+		char *value;
+		bool flag;
+	};
+
+	static const struct value VALUES[] = {
+		{ "true", true }, { "false", false },
+		{ "yes",  true }, { "no",    false },
+		{ "on",   true }, { "off",   false },
+		{ "t",    true }, { "f",     false },
+		{ "y",    true }, { "n",     false },
+		{ NULL }
+	};
+
+	for (const struct value *v = VALUES; v->value; v++) {
+		if (strcasecmp(v->value, input) == 0) {
+			*value = v->flag;
+			return 1;
+		}
+	}
+
+	error_invalid_value(p, input);
+	return -1;
 }
 
 int value_unsigned(int argc, char *argv[], const parameter_t *p, void *data)
