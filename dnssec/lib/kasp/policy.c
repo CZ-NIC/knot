@@ -38,6 +38,32 @@ dnssec_kasp_policy_t *dnssec_kasp_policy_new(const char *name)
 }
 
 _public_
+void dnssec_kasp_policy_defaults(dnssec_kasp_policy_t *policy)
+{
+	if (!policy) {
+		return;
+	}
+
+	// TODO: not all fields are filled
+	// TODO: key sizes not algorithm aware
+	// TODO: determine defaults for NSEC
+
+	policy->dnskey_ttl = 1200;
+
+	policy->algorithm = DNSSEC_KEY_ALGORITHM_RSA_SHA512;
+	policy->ksk_size = 2048;
+	policy->zsk_size = 1024;
+	policy->zsk_lifetime = 30 * 24 * 60 * 60;
+
+	policy->rrsig_lifetime = 14 * 24 * 60 * 60;
+	policy->rrsig_refresh_before = 7 * 24 * 60 * 60;
+
+	policy->propagation_delay = 60 * 60;
+
+	policy->nsec3_enabled = false;
+}
+
+_public_
 void dnssec_kasp_policy_free(dnssec_kasp_policy_t *policy)
 {
 	if (!policy) {

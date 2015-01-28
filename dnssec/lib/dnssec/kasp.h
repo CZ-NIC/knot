@@ -302,6 +302,13 @@ dnssec_kasp_policy_t *dnssec_kasp_policy_new(const char *name);
 void dnssec_kasp_policy_free(dnssec_kasp_policy_t *policy);
 
 /*!
+ * Set default policy.
+ *
+ * \param policy  Policy to be set to defaults.
+ */
+void dnssec_kasp_policy_defaults(dnssec_kasp_policy_t *policy);
+
+/*!
  * Retrieve a policy from the KASP.
  *
  * \param[in]  kasp    KASP instance.
