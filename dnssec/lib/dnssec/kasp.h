@@ -268,9 +268,9 @@ typedef struct dnssec_kasp_policy {
 	char *name;
 	// DNSKEY
 	dnssec_key_algorithm_t algorithm;
-	uint16_t dnskey_ttl;
-	uint16_t ksk_size;
-	uint16_t zsk_size;
+	uint32_t dnskey_ttl;
+	unsigned ksk_size;
+	unsigned zsk_size;
 	uint32_t zsk_lifetime;
 	// RRSIG
 	uint32_t rrsig_lifetime;
@@ -278,9 +278,9 @@ typedef struct dnssec_kasp_policy {
 	// NSEC3
 	bool nsec3_enabled;
 	// SOA
-	uint16_t soa_minimal_ttl;
+	uint32_t soa_minimal_ttl;
 	// zone
-	uint16_t zone_maximal_ttl;
+	uint32_t zone_maximal_ttl;
 	// data propagation delay
 	uint32_t propagation_delay;
 } dnssec_kasp_policy_t;
