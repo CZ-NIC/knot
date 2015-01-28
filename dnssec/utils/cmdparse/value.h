@@ -44,6 +44,11 @@ int value_algorithm(int argc, char *argv[], const parameter_t *p, void *data);
 int value_key_size(int argc, char *argv[], const parameter_t *p, void *data);
 
 /*!
+ * uint32_t
+ */
+int value_uint32(int argc, char *argv[], const parameter_t *p, void *data);
+
+/*!
  * time_t
  */
 int value_time(int argc, char *argv[], const parameter_t *p, void *data);

@@ -84,8 +84,20 @@ int value_bool(int argc, char *argv[], const parameter_t *p, void *data)
 	return -1;
 }
 
-int value_unsigned(int argc, char *argv[], const parameter_t *p, void *data)
+
+int value_string(int argc, char *argv[], const parameter_t *p, void *data)
 {
+	assert(p);
+	assert(data);
+
+	if (argc < 1) {
+		error_missing_option(p);
+		return -1;
+	}
+
+	char **string = data + p->offset;
+	*string = argv[0];
+
 	return 1;
 }
 
@@ -170,6 +182,37 @@ int value_key_size(int argc, char *argv[], const parameter_t *p, void *data)
 	}
 
 	*key_size = value;
+
+	return 1;
+}
+
+int value_uint32(int argc, char *argv[], const parameter_t *p, void *data)
+{
+	assert(p);
+	assert(data);
+
+	if (argc < 1) {
+		error_missing_option(p);
+		return -1;
+	}
+
+	uint32_t *value_ptr = data + p->offset;
+	char *input = argv[0];
+
+	errno = 0;
+	char *end = NULL;
+	unsigned long value = strtoul(input, &end, 10);
+	if (*end != '\0' || errno != 0) {
+		error_invalid_value(p, input);
+		return -1;
+	}
+
+	if (value > UINT32_MAX) {
+		error_invalid_value(p, input);
+		return -1;
+	}
+
+	*value_ptr = value;
 
 	return 1;
 }
