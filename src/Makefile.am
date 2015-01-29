@@ -107,7 +107,6 @@ nobase_libknot_int_la_HEADERS =			\
 	libknot/internal/trie/murmurhash3.h	\
 	libknot/internal/utils.h		\
 	libknot/internal/yparser/yparser.h	\
-	libknot/internal/yparser/ypbody.h	\
 	libknot/internal/yparser/ypformat.h	\
 	libknot/internal/yparser/ypscheme.h	\
 	libknot/internal/yparser/yptrafo.h

@@ -16,7 +16,7 @@
 
 #include <string.h>
 
-#include "libknot/internal/yparser/ypbody.h"
+#include "libknot/internal/yparser/yparser.h"
 #include "libknot/errcode.h"
 
 %%{
@@ -132,7 +132,9 @@
 // Include parser static data (Ragel internals).
 %% write data;
 
-int _parse(
+int _yp_start_state = %%{ write start; }%%;
+
+int _yp_parse(
 	yp_parser_t *parser)
 {
 	// Parser input limits (Ragel internals).
@@ -172,10 +174,4 @@ int _parse(
 	} else {
 		return KNOT_EFEWDATA;
 	}
-}
-
-int _start_state(
-	void)
-{
-	return %%{ write start; }%%;
 }

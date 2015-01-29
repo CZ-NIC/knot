@@ -17,7 +17,7 @@
 
 #include <string.h>
 
-#include "libknot/internal/yparser/ypbody.h"
+#include "libknot/internal/yparser/yparser.h"
 #include "libknot/errcode.h"
 
 
@@ -154,7 +154,11 @@ static const char _yparser_eof_actions[] = {
 
 
 
-int _parse(
+int _yp_start_state = 
+25
+;
+
+int _yp_parse(
 	yp_parser_t *parser)
 {
 	// Parser input limits (Ragel internals).
@@ -381,12 +385,4 @@ _again:
 	} else {
 		return KNOT_EFEWDATA;
 	}
-}
-
-int _start_state(
-	void)
-{
-	return 
-25
-;
 }

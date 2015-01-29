@@ -22,8 +22,10 @@
 #include <unistd.h>
 
 #include "libknot/internal/yparser/yparser.h"
-#include "libknot/internal/yparser/ypbody.h"
 #include "libknot/errcode.h"
+
+extern int _yp_start_state;
+extern int _yp_parse(yp_parser_t *parser);
 
 void yp_init(
 	yp_parser_t *parser)
@@ -34,7 +36,7 @@ void yp_init(
 
 	memset(parser, 0, sizeof(*parser));
 
-	parser->cs = _start_state();
+	parser->cs = _yp_start_state;
 	parser->file.descriptor = -1;
 	parser->line_count = 1;
 }
@@ -147,7 +149,7 @@ int yp_parse(
 		}
 
 		// Parse the next item.
-		ret = _parse(parser);
+		ret = _yp_parse(parser);
 	} while (ret == KNOT_EFEWDATA);
 
 	return ret;
