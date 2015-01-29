@@ -773,6 +773,51 @@ static int cmd_zone_key(int argc, char *argv[])
 	return subcommand(commands, argc, argv);
 }
 
+static int cmd_zone_set(int argc, char *argv[])
+{
+	if (argc < 1) {
+		error("Name of the zone has to be specified.");
+		return 1;
+	}
+
+	char *zone_name = argv[0];
+
+	_cleanup_kasp_ dnssec_kasp_t *kasp = get_kasp();
+	if (!kasp) {
+		return 1;
+	}
+
+	_cleanup_zone_ dnssec_kasp_zone_t *zone = get_zone(kasp, zone_name);
+	if (!zone) {
+		return 1;
+	}
+
+	const char *policy = dnssec_kasp_zone_get_policy(zone);
+
+	static const parameter_t params[] = {
+		{ "policy", value_policy },
+		{ NULL }
+	};
+
+	if (parse_parameters(params, argc - 1, argv + 1, &policy) != 0) {
+		return 1;
+	}
+
+	int r = dnssec_kasp_zone_set_policy(zone, policy);
+	if (r != DNSSEC_EOK) {
+		error("Failed to set new policy (%s).", dnssec_strerror(r));
+		return 1;
+	}
+
+	r = dnssec_kasp_zone_save(kasp, zone);
+	if (r != DNSSEC_EOK) {
+		error("Failed to save updated zone (%s).", dnssec_strerror(r));
+		return 1;
+	}
+
+	return 0;
+}
+
 static int cmd_zone(int argc, char *argv[])
 {
 	static const command_t commands[] = {
@@ -781,6 +826,7 @@ static int cmd_zone(int argc, char *argv[])
 		{ "remove", cmd_zone_remove },
 		{ "show",   cmd_zone_show },
 		{ "key",    cmd_zone_key },
+		{ "set",    cmd_zone_set },
 		{ NULL }
 	};
 
