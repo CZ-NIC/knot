@@ -46,6 +46,10 @@ typedef struct {
 	int cs;
 	/*! Indication if the current item was already processed. */
 	bool processed;
+	/*! Current block indentation. */
+	size_t indent;
+	/*! Last id dash position. */
+	size_t id_pos;
 
 	/*! Input parameters. */
 	struct {

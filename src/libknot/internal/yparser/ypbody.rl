@@ -45,10 +45,11 @@
 	comment      = comment_char . (^newline_char)*;
 
 	# White space processing.
-	sep_char = [ \t\r];
+	sep_char = ' ';
 	sep = sep_char+;
 
 	blank = (sep? :> comment?). newline_char;
+	rest  = ((sep :> comment) | sep?). newline_char;
 
 	# Data processing.
 	action _item_data_init {
@@ -78,15 +79,15 @@
 		) $_item_data;
 	data_str = (quote_char . data_str_char* . quote_char);
 	item_data = (data_char+ | data_str) >_item_data_init %_item_data_exit;
-	item_data_plus =
-		item_data .
-		((sep | ',' | (sep . ',' . sep) | (sep . ',') | (',' . sep)) .
-		 item_data)*;
-	item_data_list =
-		('\[' . sep? . item_data_plus . sep? . '\]') | item_data_plus;
+	item_data_plus = item_data . ((sep? . ',' . sep?) . item_data)*;
+	item_data_list = '\[' . sep? . item_data_plus . sep? . '\]';
 
 	# Key processing.
 	action _key_init {
+		if (indent > 0 && parser->indent > 0 &&
+		    indent != parser->indent) {
+			return KNOT_EPARSEFAIL;
+		}
 		parser->processed = false;
 		parser->key_len = 0;
 		parser->data_len = 0;
@@ -100,25 +101,41 @@
 	}
 	action _key0_exit {
 		parser->key[parser->key_len] = '\0';
+		parser->indent = 0;
 		parser->event = YP_EKEY0;
 	}
 	action _key1_exit {
 		parser->key[parser->key_len] = '\0';
+		parser->indent = indent;
 		parser->event = YP_EKEY1;
 	}
 	action _id_exit {
 		parser->key[parser->key_len] = '\0';
+		parser->indent = indent;
+		parser->id_pos = id_pos;
 		parser->event = YP_EID;
 	}
-	key_data_sep = sep? . ":" . sep?;
-	key_name = alnum . ("-" | alnum)*;
-	key0 =        key_name              >_key_init $_key %_key0_exit;
-	key1 = sep .  key_name              >_key_init $_key %_key1_exit;
-	id   = sep? . "-" . sep? . key_name >_key_init $_key %_id_exit;
-	item = (((key0 . key_data_sep . item_data_list?)
-	        |(key1 . key_data_sep . item_data_list?)
-	        |(id   . key_data_sep . item_data )
-	        ) . blank
+	action _indent {
+		indent++;
+	}
+	action _id {
+		id_pos++;
+	}
+	action _dash_init {
+		if (id_pos > 0 && parser->id_pos > 0 &&
+		    id_pos != parser->id_pos) {
+			return KNOT_EPARSEFAIL;
+		}
+		parser->indent = 0;
+	}
+	key_name = (alnum . ("-" | alnum)*) >_key_init $_key;
+	key0 =                                                  key_name %_key0_exit;
+	key1 =   sep $_indent .                                 key_name %_key1_exit;
+	id   = ((sep $_id)? . "-" >_dash_init . sep) $_indent . key_name %_id_exit;
+	item = (((key0 . sep? . ":" . (sep . (item_data_list | item_data))?)
+	        |(key1 . sep? . ":" .  sep . (item_data_list | item_data))
+	        |(id   . sep? . ":" .  sep . item_data)
+	        ) . rest
 	       );
 
 	# Main processing loop.
@@ -140,6 +157,10 @@ int _yp_parse(
 	// Parser input limits (Ragel internals).
 	const char *p, *pe, *eof;
 
+	// Current item indent.
+	size_t indent = 0;
+	// Current id dash position.
+	size_t id_pos = 0;
 	// Indicates if the current parsing step contains an item.
 	bool found = false;
 

@@ -94,7 +94,7 @@ int main(int argc, char *argv[])
 	ok(yp_opt(ctx->data) == 1, "value check");
 
 	/* Group test. */
-	str = "group:\n integer: 20\n string: short, \"long string\"";
+	str = "group:\n integer: 20\n string: [short, \"long string\"]";
 	ret = yp_set_input_string(yp, str, strlen(str));
 	ok(ret == KNOT_EOK, "set input string");
 	ret = yp_parse(yp);
@@ -131,7 +131,7 @@ int main(int argc, char *argv[])
 	ok(strcmp(yp_str(ctx->data), "long string") == 0, "value check");
 
 	/* Multi-group test. */
-	str = "multi-group:\n - id: foo\n base64: Zm9vYmFy\nreference: foo";
+	str = "multi-group:\n - id: foo\n   base64: Zm9vYmFy\nreference: foo";
 	ret = yp_set_input_string(yp, str, strlen(str));
 	ok(ret == KNOT_EOK, "set input string");
 	ret = yp_parse(yp);
