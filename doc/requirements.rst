@@ -1,3 +1,6 @@
+.. meta::
+   :description: reStructuredText plaintext markup language
+
 Knot DNS Resource Requirements
 ==============================
 
