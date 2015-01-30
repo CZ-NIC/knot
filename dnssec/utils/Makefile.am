@@ -1,13 +1,11 @@
 noinst_LTLIBRARIES = libutils.la
 
-# symlink
-EXTRA_DIST = zscanner
-
 AM_CPPFLAGS = \
 	-include $(top_builddir)/src/config.h \
 	-I$(srcdir)/../shared \
 	-I$(srcdir)/../lib/dnssec \
 	-I$(srcdir)/../lib \
+	-I$(top_srcdir)/src \
 	$(gnutls_CFLAGS) \
 	$(CODE_COVERAGE_CFLAGS)
 

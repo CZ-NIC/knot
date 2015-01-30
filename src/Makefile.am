@@ -6,15 +6,14 @@ bin_PROGRAMS = kdig khost knsupdate
 lib_LTLIBRARIES = libknot-int.la libknot.la
 noinst_LTLIBRARIES = libknotd.la libknotus.la
 
-# symlink
-EXTRA_DIST = dnssec
-
 # $(YACC) will generate header file
 AM_CPPFLAGS = \
 	-include $(top_builddir)/src/config.h	\
 	-DCONFIG_DIR='"${config_dir}"'		\
 	-DSTORAGE_DIR='"${storage_dir}"'	\
-	-DRUN_DIR='"${run_dir}"'
+	-DRUN_DIR='"${run_dir}"'		\
+	-I$(top_srcdir)/dnssec/lib
+
 AM_CFLAGS = $(CODE_COVERAGE_CFLAGS)
 AM_LDFLAGS = $(CODE_COVERAGE_LDFLAGS)
 AM_YFLAGS = -d
@@ -330,6 +329,7 @@ libknot_int_la_CPPFLAGS = $(AM_CPPFLAGS) $(lmdb_CFLAGS)
 libknot_int_la_CFLAGS = $(AM_CFLAGS) -fvisibility=default
 libknot_int_la_LDFLAGS = $(AM_LDFLAGS) $(RELEASE_INFO) $(VERSION_INFO) $(lmdb_LIBS)
 
+libknot_la_CPPFLAGS = $(AM_CPPFLAGS)
 libknot_la_LDFLAGS = $(AM_LDFLAGS) $(RELEASE_INFO) $(VERSION_INFO)
 libknot_la_LIBADD  = libknot-int.la ../dnssec/libdnssec.la zscanner/libzscanner.la
 

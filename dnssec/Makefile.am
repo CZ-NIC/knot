@@ -5,6 +5,7 @@ AM_CPPFLAGS = \
 	-I$(srcdir)/shared \
 	-I$(srcdir)/lib \
 	-I$(srcdir)/lib/dnssec \
+	-I$(top_srcdir)/src \
 	$(CODE_COVERAGE_CFLAGS) \
 	$(gnutls_CFLAGS) \
 	$(jansson_CFLAGS)
