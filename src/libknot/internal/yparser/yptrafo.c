@@ -79,7 +79,7 @@ static int yp_bool_to_bin(
 	TXT_BIN_PARAMS)
 {
 	if (strcasecmp(txt, "on") == 0) {
-		bin[0] = '\0';
+		bin[0] = '\0'; // Just in case.
 		*bin_len = 1;
 		return KNOT_EOK;
 	} else if (strcasecmp(txt, "off") == 0) {
@@ -104,15 +104,12 @@ static int yp_bool_to_txt(
 		*txt_len = ret;
 		return KNOT_EOK;
 	case 1:
-		if (bin[0] == '\0') {
-			ret = snprintf(txt, *txt_len, "on");
-			if (ret <= 0 || ret >= *txt_len) {
-				return KNOT_ERANGE;
-			}
-			*txt_len = ret;
-			return KNOT_EOK;
+		ret = snprintf(txt, *txt_len, "on");
+		if (ret <= 0 || ret >= *txt_len) {
+			return KNOT_ERANGE;
 		}
-		break;
+		*txt_len = ret;
+		return KNOT_EOK;
 	}
 
 	return KNOT_EINVAL;
