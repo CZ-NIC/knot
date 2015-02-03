@@ -228,7 +228,7 @@ static void add_unit(
 	yp_style_t style)
 {
 	int64_t new_multi = 1;
-	int64_t new_unit = '\0';
+	char new_unit = '\0';
 
 	if (*number == 0) {
 		return;
