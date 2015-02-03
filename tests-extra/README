@@ -8,6 +8,7 @@ dnssec-keygen
 dnssec-verify
 Bind 9.9.x
 lsof
+gawk
 (valgrind)
 (gdb)
 
@@ -38,12 +39,11 @@ Run tests on the upstream branch:
 ---------------------------------
 
 $ docker pull cznic/knot:tests-extra # Or build with 'docker build -t tests-extra .'
-$ docker run -v $(pwd):/tests cznic/knot:tests-extra basic
+$ docker run -it -v cznic/knot:tests-extra basic
 
 Run tests on the local executables:
 -----------------------------------
 
 You can bind-mount the /src with the current working copy.
 
-$ docker run -v $(pwd)../src:/src $(pwd):/tests cznic/knot-tests-extra basic
-
+$ docker run -it -v $(pwd)/..:/knot-src cznic/knot:tests-extra basic
