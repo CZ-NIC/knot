@@ -22,7 +22,6 @@ cd /knot-src && \
 autoreconf -if && \
 ./configure --disable-static && \
 make -j${THREADS} && \
-make check && \
 make install && \
 ldconfig && \
 # Trim down the image
