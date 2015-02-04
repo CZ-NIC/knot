@@ -315,7 +315,6 @@ bool zone_transfer_needed(const zone_t *zone, const knot_pkt_t *pkt)
 
 	const knot_pktsection_t *answer = knot_pkt_section(pkt, KNOT_ANSWER);
 	if (answer->count < 1) {
-		log_zone_warning(zone->name, "empty SOA response received, ignoring");
 		return false;
 	}
 

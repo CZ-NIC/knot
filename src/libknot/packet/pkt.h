@@ -81,8 +81,8 @@ enum {
  */
 typedef struct {
 	struct knot_pkt *pkt; /*!< Owner. */
-	uint16_t pos;    /*!< Position in the rr/rrinfo fields in packet. */
-	uint16_t count;  /*!< Number of RRSets in this section. */
+	uint16_t pos;         /*!< Position in the rr/rrinfo fields in packet. */
+	uint16_t count;       /*!< Number of RRSets in this section. */
 } knot_pktsection_t;
 
 /*!
