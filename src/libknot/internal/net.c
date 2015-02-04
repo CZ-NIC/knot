@@ -15,6 +15,7 @@
  */
 
 #include <stdlib.h>
+#include <stdbool.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <string.h>
@@ -169,7 +170,7 @@ int net_is_connected(int fd)
 }
 
 /*! \brief Wait for data and return true if data arrived. */
-static int tcp_wait_for_data(int fd, struct timeval *timeout)
+static int wait_for_data(int fd, struct timeval *timeout)
 {
 	fd_set set;
 	FD_ZERO(&set);
@@ -178,11 +179,11 @@ static int tcp_wait_for_data(int fd, struct timeval *timeout)
 }
 
 /* \brief Receive a block of data from TCP socket with wait. */
-static int tcp_recv_data(int fd, uint8_t *buf, int len, struct timeval *timeout)
+static int recv_data(int fd, uint8_t *buf, int len, bool oneshot, struct timeval *timeout)
 {
 	int ret = 0;
 	int rcvd = 0;
-	int flags = 0;
+	int flags = MSG_DONTWAIT;
 
 #ifdef MSG_NOSIGNAL
 	flags |= MSG_NOSIGNAL;
@@ -193,7 +194,12 @@ static int tcp_recv_data(int fd, uint8_t *buf, int len, struct timeval *timeout)
 		ret = recv(fd, buf + rcvd, len - rcvd, flags);
 		if (ret > 0) {
 			rcvd += ret;
-			continue;
+			/* One-shot recv() */
+			if (oneshot) {
+				return ret;
+			} else {
+				continue;
+			}
 		}
 		/* Check for disconnected socket. */
 		if (ret == 0) {
@@ -203,7 +209,7 @@ static int tcp_recv_data(int fd, uint8_t *buf, int len, struct timeval *timeout)
 		/* Check for no data available. */
 		if (errno == EAGAIN || errno == EINTR) {
 			/* Continue only if timeout didn't expire. */
-			ret = tcp_wait_for_data(fd, timeout);
+			ret = wait_for_data(fd, timeout);
 			if (ret) {
 				continue;
 			} else {
@@ -217,8 +223,7 @@ static int tcp_recv_data(int fd, uint8_t *buf, int len, struct timeval *timeout)
 	return rcvd;
 }
 
-int udp_send_msg(int fd, const uint8_t *msg, size_t msglen,
-                 const struct sockaddr *addr)
+int udp_send_msg(int fd, const uint8_t *msg, size_t msglen, const struct sockaddr *addr)
 {
 	socklen_t addr_len = sockaddr_len(addr);
 	int ret = sendto(fd, msg, msglen, 0, addr, addr_len);
@@ -229,15 +234,9 @@ int udp_send_msg(int fd, const uint8_t *msg, size_t msglen,
 	return ret;
 }
 
-int udp_recv_msg(int fd, uint8_t *buf, size_t len, struct sockaddr *addr)
+int udp_recv_msg(int fd, uint8_t *buf, size_t len, struct timeval *timeout)
 {
-	socklen_t addr_len = sizeof(struct sockaddr_storage);
-	int ret = recvfrom(fd, buf, len, 0, addr, &addr_len);
-	if (ret < 0) {
-		return KNOT_ECONN;
-	}
-
-	return ret;
+	return recv_data(fd, buf, len, true, timeout);
 }
 
 int tcp_send_msg(int fd, const uint8_t *msg, size_t msglen)
@@ -268,7 +267,7 @@ int tcp_recv_msg(int fd, uint8_t *buf, size_t len, struct timeval *timeout)
 
 	/* Receive size. */
 	unsigned short pktsize = 0;
-	int ret = tcp_recv_data(fd, (uint8_t *)&pktsize, sizeof(pktsize), timeout);
+	int ret = recv_data(fd, (uint8_t *)&pktsize, sizeof(pktsize), false,  timeout);
 	if (ret != sizeof(pktsize)) {
 		return ret;
 	}
@@ -281,10 +280,5 @@ int tcp_recv_msg(int fd, uint8_t *buf, size_t len, struct timeval *timeout)
 	}
 
 	/* Receive payload. */
-	ret = tcp_recv_data(fd, buf, pktsize, timeout);
-	if (ret != pktsize) {
-		return ret;
-	}
-
-	return ret;
+	return recv_data(fd, buf, pktsize, false, timeout);
 }

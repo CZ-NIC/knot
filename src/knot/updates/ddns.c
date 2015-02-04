@@ -892,9 +892,10 @@ int ddns_process_prereqs(const knot_pkt_t *query, zone_update_t *update,
 	init_list(&rrset_list);
 
 	const knot_pktsection_t *answer = knot_pkt_section(query, KNOT_ANSWER);
+	const knot_rrset_t *answer_rr = knot_pkt_rr(answer, 0);
 	for (int i = 0; i < answer->count; ++i) {
 		// Check what can be checked, store full RRs into list
-		ret = process_prereq(&answer->rr[i], knot_pkt_qclass(query),
+		ret = process_prereq(&answer_rr[i], knot_pkt_qclass(query),
 		                     update, rcode, &rrset_list);
 		if (ret != KNOT_EOK) {
 			rrset_list_clear(&rrset_list);
@@ -934,10 +935,10 @@ int ddns_process_update(const zone_t *zone, const knot_pkt_t *query,
 
 	// Process all RRs in the authority section.
 	int apex_ns_rem = 0;
-	const knot_pktsection_t *authority =
-	                knot_pkt_section(query, KNOT_AUTHORITY);
+	const knot_pktsection_t *authority = knot_pkt_section(query, KNOT_AUTHORITY);
+	const knot_rrset_t *authority_rr = knot_pkt_rr(authority, 0);
 	for (uint16_t i = 0; i < authority->count; ++i) {
-		const knot_rrset_t *rr = &authority->rr[i];
+		const knot_rrset_t *rr = &authority_rr[i];
 		// Check if RR is correct.
 		int ret = check_update(rr, query, rcode);
 		if (ret != KNOT_EOK) {

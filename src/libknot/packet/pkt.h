@@ -39,8 +39,8 @@
 /* Number of packet sections (ANSWER, AUTHORITY, ADDITIONAL). */
 #define KNOT_PKT_SECTIONS 3
 
-/* Number of maximum RRs in packet. */
-#define KNOT_PKT_MAX_RRS (KNOT_WIRE_MAX_PAYLOAD / KNOT_WIRE_RR_MIN_SIZE)
+/* Forward decls */
+struct knot_pkt;
 
 /*!
  * \brief DNS query types (internal use only).
@@ -80,9 +80,9 @@ enum {
  * This structure is required for random access to packet sections.
  */
 typedef struct {
-	const knot_rrset_t *rr;     /*!< Array of RRSets for this section. */
-	knot_rrinfo_t *rrinfo;      /*!< Compression info for each RRSet. */
-	uint16_t count;             /*!< Number of RRSets in this section. */
+	struct knot_pkt *pkt; /*!< Owner. */
+	uint16_t pos;         /*!< Position in the rr/rrinfo fields in packet. */
+	uint16_t count;       /*!< Number of RRSets in this section. */
 } knot_pktsection_t;
 
 /*!
@@ -106,11 +106,10 @@ typedef struct knot_pkt {
 	knot_section_t current;
 	knot_pktsection_t sections[KNOT_PKT_SECTIONS];
 
-	/*! \note <== Memory below this point is not cleared on init for performance reasons. */
-
 	/* Packet RRSet (meta)data. */
-	knot_rrinfo_t rr_info[KNOT_PKT_MAX_RRS];
-	knot_rrset_t rr[KNOT_PKT_MAX_RRS];
+	size_t rrset_allocd;
+	knot_rrinfo_t *rr_info;
+	knot_rrset_t *rr;
 
 	mm_ctx_t mm; /*!< Memory allocation context. */
 } knot_pkt_t;
@@ -244,6 +243,8 @@ int knot_pkt_put(knot_pkt_t *pkt, uint16_t compr_hint, const knot_rrset_t *rr,
 const knot_pktsection_t *knot_pkt_section(const knot_pkt_t *pkt,
                                           knot_section_t section_id);
 
+/*! \brief Get RRSet from the packet section. */
+const knot_rrset_t *knot_pkt_rr(const knot_pktsection_t *section, uint16_t i);
 /*
  * Packet parsing API.
  */

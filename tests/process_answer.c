@@ -112,7 +112,7 @@ int main(int argc, char *argv[])
 
 	/* Create processing context. */
 	mm_ctx_t mm;
-	mm_ctx_mempool(&mm, sizeof(knot_pkt_t));
+	mm_ctx_mempool(&mm, MM_DEFAULT_BLKSIZE);
 
 	knot_layer_t proc;
 	memset(&proc, 0, sizeof(knot_layer_t));

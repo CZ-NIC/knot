@@ -25,6 +25,10 @@
 
 int sockaddr_len(const struct sockaddr *ss)
 {
+	if (ss == NULL) {
+		return 0;
+	}
+
 	const struct sockaddr_storage *sa = (const struct sockaddr_storage *)ss;
 	switch(sa->ss_family) {
 	case AF_INET:
