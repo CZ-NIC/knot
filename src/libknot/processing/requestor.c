@@ -45,12 +45,7 @@ static int request_ensure_connected(struct knot_request *request)
 {
 	/* Connect the socket if not already connected. */
 	if (request->fd < 0) {
-
-		/* Determine comm protocol. */
-		int sock_type = SOCK_DGRAM;
-		if (use_tcp(request)) {
-			sock_type = SOCK_STREAM;
-		}
+		int sock_type = use_tcp(request) ? SOCK_STREAM : SOCK_DGRAM;
 		request->fd = net_connected_socket(sock_type, &request->remote, &request->origin, 0);
 		if (request->fd < 0) {
 			return KNOT_ECONN;
