@@ -16,6 +16,8 @@
 
 #pragma once
 
+#include <sys/time.h>
+
 #include "libknot/processing/overlay.h"
 #include "libknot/internal/lists.h"
 #include "libknot/internal/sockaddr.h"

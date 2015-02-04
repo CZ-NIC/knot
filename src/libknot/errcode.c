@@ -134,6 +134,9 @@ const error_table_t error_messages[] = {
 	{ KNOT_YP_ENODATA,      "missing value" },
 	{ KNOT_YP_ENOID,        "missing identifier" },
 
+	/* Processing errors. */
+	{ KNOT_LAYER_ERROR, "processing layer error" },
+
 	{ KNOT_ERROR, NULL } /* Terminator */
 };
 

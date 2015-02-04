@@ -15,6 +15,8 @@
 */
 
 #include <assert.h>
+#include <stdbool.h>
+#include <string.h>
 #include <sys/stat.h>
 #include <unistd.h>
 
@@ -57,6 +59,10 @@ static int lmdb_error_to_knot(int error)
 {
 	if (error == MDB_SUCCESS) {
 		return KNOT_EOK;
+	}
+
+	if (error == MDB_MAP_FULL || error == MDB_TXN_FULL || error == ENOSPC) {
+		return KNOT_ESPACE;
 	}
 
 	if (MDB_KEYEXIST <= error && error <= MDB_LAST_ERRCODE) {
@@ -400,10 +406,20 @@ static int insert(namedb_txn_t *txn, namedb_val_t *key, namedb_val_t *val, unsig
 	MDB_val db_key = { key->len, key->data };
 	MDB_val data = { val->len, val->data };
 
-	int ret = mdb_put(txn->txn, env->dbi, &db_key, &data, 0);
+	/* Reserve if only size is declared. */
+	unsigned mdb_flags = 0;
+	if (val->len > 0 && val->data == NULL) {
+		mdb_flags |= MDB_RESERVE;
+	}
+
+	int ret = mdb_put(txn->txn, env->dbi, &db_key, &data, mdb_flags);
 	if (ret != MDB_SUCCESS) {
 		return lmdb_error_to_knot(ret);
 	}
+
+	/* Update the result. */
+	val->data = data.mv_data;
+	val->len = data.mv_size;
 
 	return KNOT_EOK;
 }

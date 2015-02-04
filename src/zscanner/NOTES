@@ -3,14 +3,11 @@
                    IPSECKEY, RRSIG, NSEC, KEY, DNSKEY, DHCID, NSEC3, NSEC3PARAM,
                    TLSA, APL, EUI48, EUI64, NID, L32, L64, LP, TYPE12345
 - the class IN is supported only (CLASS12345 notation is not supported too)
-- the newline character is appended to each zone file during processing
-  (for simplicity)
 - domain names can contain alphanumeric, '-', '_' and '/' characters
 - \x and \DDD notations are allowed in domain names and in text strings
 - @ can be used instead of domain names anywhere (excluding directives)
 - directive $INCLUDE is allowed in included zone files (BEWARE of recursion)
 - relative file path is relative to parent zone file
-- blank zone file causes error (the same rule is for included zone file)
 - line numbers of multiline records are numbers of the last lines with
   appropriate record parts
 - items parts lengths must be multiples of 2 for HEX, 4 for base64 and 8 for

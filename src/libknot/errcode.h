@@ -147,7 +147,10 @@ enum knot_error {
 	KNOT_YP_ENOTSUP_DATA,
 	KNOT_YP_ENOTSUP_ID,
 	KNOT_YP_ENODATA,
-	KNOT_YP_ENOID
+	KNOT_YP_ENOID,
+
+	/* Processing error. */
+	KNOT_LAYER_ERROR
 };
 
 /*!

@@ -27,6 +27,10 @@
 #include "libknot/packet/rrset-wire.h"
 #include "libknot/internal/macros.h"
 
+/*! \brief Packet RR array growth step. */
+#define NEXT_RR_ALIGN 16
+#define NEXT_RR_COUNT(count) (((count) / NEXT_RR_ALIGN + 1) * NEXT_RR_ALIGN)
+
 /*! \brief Scan packet for RRSet existence. */
 static bool pkt_contains(const knot_pkt_t *packet,
 			 const knot_rrset_t *rrset)
@@ -124,6 +128,41 @@ static void pkt_rr_wirecount_add(knot_pkt_t *pkt, knot_section_t section_id,
 	}
 }
 
+/*! \brief Reserve enough space in the RR arrays. */
+static int pkt_rr_array_alloc(knot_pkt_t *pkt, uint16_t count)
+{
+	/* Enough space. */
+	if (pkt->rrset_allocd >= count) {
+		return KNOT_EOK;
+	}
+
+	/* Allocate rr_info and rr fields to next size. */
+	size_t next_size = NEXT_RR_COUNT(count);
+	knot_rrinfo_t *rr_info = mm_alloc(&pkt->mm, sizeof(knot_rrinfo_t) * next_size);
+	if (rr_info == NULL) {
+		return KNOT_ENOMEM;
+	}
+
+	knot_rrset_t *rr = mm_alloc(&pkt->mm, sizeof(knot_rrset_t) * next_size);
+	if (rr == NULL) {
+		mm_free(&pkt->mm, rr_info);
+		return KNOT_ENOMEM;
+	}
+
+	/* Copy the old data. */
+	memcpy(rr_info, pkt->rr_info, pkt->rrset_allocd * sizeof(knot_rrinfo_t));
+	memcpy(rr, pkt->rr, pkt->rrset_allocd * sizeof(knot_rrset_t));
+
+	/* Reassign and free old data. */
+	mm_free(&pkt->mm, pkt->rr);
+	mm_free(&pkt->mm, pkt->rr_info);
+	pkt->rr = rr;
+	pkt->rr_info = rr_info;
+	pkt->rrset_allocd = next_size;
+
+	return KNOT_EOK;
+}
+
 /*! \brief Clear the packet and switch wireformat pointers (possibly allocate new). */
 static int pkt_reset(knot_pkt_t *pkt, void *wire, uint16_t len)
 {
@@ -131,14 +170,12 @@ static int pkt_reset(knot_pkt_t *pkt, void *wire, uint16_t len)
 
 	/* Free allocated data. */
 	pkt_free_data(pkt);
-
-	/* NULL everything up to 'sections' (not the large data fields). */
-	int ret = KNOT_EOK;
 	mm_ctx_t mm = pkt->mm;
-	memset(pkt, 0, offsetof(knot_pkt_t, rr_info));
+	memset(pkt, 0, sizeof(knot_pkt_t));
 	pkt->mm = mm;
 
 	/* Initialize wire. */
+	int ret = KNOT_EOK;
 	if (wire == NULL) {
 		ret = pkt_wire_alloc(pkt, len);
 	} else {
@@ -185,9 +222,9 @@ static knot_pkt_t *pkt_new_mm(void *wire, uint16_t len, mm_ctx_t *mm)
 	if (pkt == NULL) {
 		return NULL;
 	}
+	memset(pkt, 0, sizeof(knot_pkt_t));
 
 	/* No data to free, set memory context. */
-	pkt->rrset_count = 0;
 	memcpy(&pkt->mm, mm, sizeof(mm_ctx_t));
 	if (pkt_reset(pkt, wire, len) != KNOT_EOK) {
 		mm_free(mm, pkt);
@@ -232,6 +269,12 @@ int knot_pkt_copy(knot_pkt_t *dst, const knot_pkt_t *src)
 			return ret;
 		}
 	}
+
+	/* Invalidate arrays . */
+	dst->rr = NULL;
+	dst->rr_info = NULL;
+	dst->rrset_count = 0;
+	dst->rrset_allocd = 0;
 
 	/* @note This could be done more effectively if needed. */
 	return knot_pkt_parse(dst, 0);
@@ -290,6 +333,10 @@ void knot_pkt_free(knot_pkt_t **pkt)
 
 	/* Free temporary RRSets. */
 	pkt_free_data(*pkt);
+
+	/* Free RR/RR info arrays. */
+	mm_free(&(*pkt)->mm, (*pkt)->rr);
+	mm_free(&(*pkt)->mm, (*pkt)->rr_info);
 
 	// free the space for wireformat
 	if ((*pkt)->flags & KNOT_PF_FREE) {
@@ -423,8 +470,9 @@ int knot_pkt_begin(knot_pkt_t *pkt, knot_section_t section_id)
 	pkt->current = section_id;
 
 	/* Remember watermark. */
-	pkt->sections[section_id].rr = pkt->rr + pkt->rrset_count;
-	pkt->sections[section_id].rrinfo = pkt->rr_info + pkt->rrset_count;
+	pkt->sections[section_id].pkt = pkt;
+	pkt->sections[section_id].pos = pkt->rrset_count;
+
 	return KNOT_EOK;
 }
 
@@ -474,12 +522,18 @@ int knot_pkt_put(knot_pkt_t *pkt, uint16_t compr_hint, const knot_rrset_t *rr,
 		return KNOT_EINVAL;
 	}
 
+	/* Reserve memory for RR descriptors. */
+	int ret = pkt_rr_array_alloc(pkt, pkt->rrset_count + 1);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
 	knot_rrinfo_t *rrinfo = &pkt->rr_info[pkt->rrset_count];
 	memset(rrinfo, 0, sizeof(knot_rrinfo_t));
 	rrinfo->pos = pkt->size;
 	rrinfo->flags = flags;
 	rrinfo->compress_ptr[0] = compr_hint;
-	pkt->rr[pkt->rrset_count] = *rr;
+	memcpy(pkt->rr + pkt->rrset_count, rr, sizeof(knot_rrset_t));
 
 	/* Check for double insertion. */
 	if ((flags & KNOT_PF_CHECKDUP) &&
@@ -499,7 +553,7 @@ int knot_pkt_put(knot_pkt_t *pkt, uint16_t compr_hint, const knot_rrset_t *rr,
 	                                        compr.wire);
 
 	/* Write RRSet to wireformat. */
-	int ret = knot_rrset_to_wire(rr, pos, maxlen, &compr);
+	ret = knot_rrset_to_wire(rr, pos, maxlen, &compr);
 	if (ret < 0) {
 		/* Truncate packet if required. */
 		if (ret == KNOT_ESPACE && !(flags & KNOT_PF_NOTRUNC)) {
@@ -535,6 +589,16 @@ const knot_pktsection_t *knot_pkt_section(const knot_pkt_t *pkt,
 	}
 
 	return &pkt->sections[section_id];
+}
+
+_public_
+const knot_rrset_t *knot_pkt_rr(const knot_pktsection_t *section, uint16_t i)
+{
+	if (section == NULL) {
+		return NULL;
+	}
+
+	return section->pkt->rr + section->pos + i;
 }
 
 _public_
@@ -656,8 +720,13 @@ int knot_pkt_parse_rr(knot_pkt_t *pkt, unsigned flags)
 		return KNOT_EFEWDATA;
 	}
 
+	/* Reserve memory for RR descriptors. */
+	int ret = pkt_rr_array_alloc(pkt, pkt->rrset_count + 1);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
 	/* Initialize RR info. */
-	int ret = KNOT_EOK;
 	memset(&pkt->rr_info[pkt->rrset_count], 0, sizeof(knot_rrinfo_t));
 	pkt->rr_info[pkt->rrset_count].pos = pkt->parsed;
 	pkt->rr_info[pkt->rrset_count].flags = KNOT_PF_FREE;
@@ -714,7 +783,14 @@ int knot_pkt_parse_payload(knot_pkt_t *pkt, unsigned flags)
 	assert(pkt->wire != NULL);
 	assert(pkt->size > 0);
 
-	int ret = KNOT_ERROR;
+	/* Reserve memory in advance to avoid resizing. */
+	size_t rr_count = knot_wire_get_ancount(pkt->wire) +
+	                  knot_wire_get_nscount(pkt->wire) +
+	                  knot_wire_get_arcount(pkt->wire);
+	int ret = pkt_rr_array_alloc(pkt, rr_count);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
 
 	for (knot_section_t i = KNOT_ANSWER; i <= KNOT_ADDITIONAL; ++i) {
 		ret = knot_pkt_begin(pkt, i);
@@ -730,7 +806,8 @@ int knot_pkt_parse_payload(knot_pkt_t *pkt, unsigned flags)
 	/* TSIG must be last record of AR if present. */
 	const knot_pktsection_t *ar = knot_pkt_section(pkt, KNOT_ADDITIONAL);
 	if (pkt->tsig_rr != NULL) {
-		if (ar->count > 0 && pkt->tsig_rr->rrs.data != ar->rr[ar->count - 1].rrs.data) {
+		const knot_rrset_t *last_rr = knot_pkt_rr(ar, ar->count - 1);
+		if (ar->count > 0 && pkt->tsig_rr->rrs.data != last_rr->rrs.data) {
 			return KNOT_EMALF;
 		}
 	}

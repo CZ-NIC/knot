@@ -119,7 +119,7 @@ void zone_update_init(zone_update_t *update, const zone_contents_t *zone, change
 {
 	update->zone = zone;
 	update->change = change;
-	mm_ctx_mempool(&update->mm, 4096);
+	mm_ctx_mempool(&update->mm, MM_DEFAULT_BLKSIZE);
 }
 
 const zone_node_t *zone_update_get_node(zone_update_t *update, const knot_dname_t *dname)

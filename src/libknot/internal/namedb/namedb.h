@@ -16,8 +16,6 @@
 
 #pragma once
 
-#include "libknot/dname.h"
-
 #include "libknot/internal/mempattern.h"
 
 enum {
