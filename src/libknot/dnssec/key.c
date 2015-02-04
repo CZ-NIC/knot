@@ -145,7 +145,8 @@ static int get_key_info_from_public_key(const char *filename,
 	free(buffer);
 	fclose(keyfile);
 
-	if (scanner->r_type != KNOT_RRTYPE_DNSKEY) {
+	if (scanner->r_type != KNOT_RRTYPE_DNSKEY &&
+	    scanner->r_type != KNOT_RRTYPE_KEY) {
 		zs_scanner_free(scanner);
 		return KNOT_KEY_EPUBLIC_KEY_INVALID;
 	}
