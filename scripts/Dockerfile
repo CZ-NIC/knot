@@ -17,7 +17,7 @@ ENV RUNTIME_PKGS libssl1.0.0 liburcu2 liblmdb0
 RUN apt-get -q -y update && \
 apt-get install -q -y ${BUILD_PKGS} ${RUNTIME_PKGS} && \
 # Compile sources
-git clone -b resolver_improvements https://gitlab.labs.nic.cz/labs/knot.git /knot-src && \
+git clone -b master https://gitlab.labs.nic.cz/labs/knot.git /knot-src && \
 cd /knot-src && \
 autoreconf -if && \
 ./configure --disable-static && \
