@@ -120,6 +120,9 @@ enum knot_error {
 	KNOT_DNSSEC_EMISSINGKEYTYPE,
 	KNOT_DNSSEC_ENOKEY,
 
+	/* Processing error. */
+	KNOT_LAYER_ERROR,
+
 	KNOT_ERROR_MAX = -501
 };
 

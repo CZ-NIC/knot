@@ -515,13 +515,13 @@ void print_data_xfr(const knot_pkt_t *packet,
 
 	switch (style->format) {
 	case FORMAT_DIG:
-		print_section_dig(answers->rr, answers->count, style);
+		print_section_dig(knot_pkt_rr(answers, 0), answers->count, style);
 		break;
 	case FORMAT_HOST:
-		print_section_host(answers->rr, answers->count, style);
+		print_section_host(knot_pkt_rr(answers, 0), answers->count, style);
 		break;
 	case FORMAT_FULL:
-		print_section_full(answers->rr, answers->count, style, true);
+		print_section_full(knot_pkt_rr(answers, 0), answers->count, style, true);
 
 		// Print TSIG record.
 		if (style->show_tsig && knot_pkt_has_tsig(packet)) {
@@ -602,12 +602,12 @@ void print_packet(const knot_pkt_t *packet,
 	switch (style->format) {
 	case FORMAT_DIG:
 		if (ancount > 0) {
-			print_section_dig(answers->rr, ancount, style);
+			print_section_dig(knot_pkt_rr(answers, 0), ancount, style);
 		}
 		break;
 	case FORMAT_HOST:
 		if (ancount > 0) {
-			print_section_host(answers->rr, ancount, style);
+			print_section_host(knot_pkt_rr(answers, 0), ancount, style);
 		} else {
 			print_error_host(rcode, packet, style);
 		}
@@ -623,17 +623,17 @@ void print_packet(const knot_pkt_t *packet,
 
 		if (style->show_answer && ancount > 0) {
 			printf("\n;; PREREQUISITE SECTION:\n");
-			print_section_full(answers->rr, ancount, style, true);
+			print_section_full(knot_pkt_rr(answers, 0), ancount, style, true);
 		}
 
 		if (style->show_authority && nscount > 0) {
 			printf("\n;; UPDATE SECTION:\n");
-			print_section_full(authority->rr, nscount, style, true);
+			print_section_full(knot_pkt_rr(authority, 0), nscount, style, true);
 		}
 
 		if (style->show_additional && arcount > 0) {
 			printf("\n;; ADDITIONAL DATA:\n");
-			print_section_full(additional->rr, arcount, style, true);
+			print_section_full(knot_pkt_rr(additional, 0), arcount, style, true);
 		}
 		break;
 	case FORMAT_FULL:
@@ -647,17 +647,17 @@ void print_packet(const knot_pkt_t *packet,
 
 		if (style->show_answer && ancount > 0) {
 			printf("\n;; ANSWER SECTION:\n");
-			print_section_full(answers->rr, ancount, style, true);
+			print_section_full(knot_pkt_rr(answers, 0), ancount, style, true);
 		}
 
 		if (style->show_authority && nscount > 0) {
 			printf("\n;; AUTHORITY SECTION:\n");
-			print_section_full(authority->rr, nscount, style, true);
+			print_section_full(knot_pkt_rr(authority, 0), nscount, style, true);
 		}
 
 		if (style->show_additional && arcount > 0) {
 			printf("\n;; ADDITIONAL SECTION:\n");
-			print_section_full(additional->rr, arcount, style, true);
+			print_section_full(knot_pkt_rr(additional, 0), arcount, style, true);
 		}
 		break;
 	default:

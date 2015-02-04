@@ -114,6 +114,9 @@ static const error_table_t error_messages[] = {
 	{ KNOT_DNSSEC_ENOKEY,          "no keys for signing" },
 	{ KNOT_DNSSEC_EMISSINGKEYTYPE, "missing active KSK or ZSK" },
 
+	/* Processing errors. */
+	{ KNOT_LAYER_ERROR, "processing layer error" },
+
 	{ KNOT_ERROR, NULL } /* Terminator */
 };
 

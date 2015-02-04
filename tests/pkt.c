@@ -71,7 +71,7 @@ int main(int argc, char *argv[])
 	/* Create memory pool context. */
 	int ret = 0;
 	mm_ctx_t mm;
-	mm_ctx_mempool(&mm, sizeof(knot_pkt_t));
+	mm_ctx_mempool(&mm, MM_DEFAULT_BLKSIZE);
 
 	/* Create names and data. */
 	knot_dname_t* dnames[NAMECOUNT] = {0};

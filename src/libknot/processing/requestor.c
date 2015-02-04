@@ -40,41 +40,28 @@ static struct knot_request *request_make(mm_ctx_t *mm)
 	return request;
 }
 
-/*! \brief Wait for socket readiness. */
-static int request_wait(int fd, int state, struct timeval *timeout)
+/*! \brief Ensure a socket is connected. */
+static int request_ensure_connected(struct knot_request *request)
 {
-	fd_set set;
-	FD_ZERO(&set);
-	FD_SET(fd, &set);
-
-	switch(state) {
-	case KNOT_NS_PROC_FULL: /* Wait for writeability. */
-		return select(fd + 1, NULL, &set, NULL, timeout);
-	case KNOT_NS_PROC_MORE: /* Wait for data. */
-		return select(fd + 1, &set, NULL, NULL, timeout);
-	default:
-		return -1;
+	/* Connect the socket if not already connected. */
+	if (request->fd < 0) {
+		int sock_type = use_tcp(request) ? SOCK_STREAM : SOCK_DGRAM;
+		request->fd = net_connected_socket(sock_type, &request->remote, &request->origin, 0);
+		if (request->fd < 0) {
+			return KNOT_ECONN;
+		}
 	}
+
+	return KNOT_EOK;
 }
 
 static int request_send(struct knot_request *request,
                         const struct timeval *timeout)
 {
-	/* Each request has unique timeout. */
-	struct timeval tv = { timeout->tv_sec, timeout->tv_usec };
-
 	/* Wait for writeability or error. */
-	int ret = request_wait(request->fd, KNOT_NS_PROC_FULL, &tv);
-	if (ret == 0) {
-		return KNOT_ETIMEOUT;
-	}
-
-	/* Check socket error. */
-	int err = 0;
-	socklen_t len = sizeof(int);
-	getsockopt(request->fd, SOL_SOCKET, SO_ERROR, &err, &len);
-	if (err != 0) {
-		return KNOT_ECONNREFUSED;
+	int ret = request_ensure_connected(request);
+	if (ret != KNOT_EOK) {
+		return ret;
 	}
 
 	/* Send query, construct if not exists. */
@@ -86,8 +73,7 @@ static int request_send(struct knot_request *request,
 	if (use_tcp(request)) {
 		ret = tcp_send_msg(request->fd, wire, wire_len);
 	} else {
-		ret = udp_send_msg(request->fd, wire, wire_len,
-		                   (const struct sockaddr *)&request->remote);
+		ret = udp_send_msg(request->fd, wire, wire_len, NULL);
 	}
 	if (ret != wire_len) {
 		return KNOT_ECONN;
@@ -99,22 +85,29 @@ static int request_send(struct knot_request *request,
 static int request_recv(struct knot_request *request,
                         const struct timeval *timeout)
 {
-	int ret = 0;
 	knot_pkt_t *resp = request->resp;
 	knot_pkt_clear(resp);
 
 	/* Each request has unique timeout. */
 	struct timeval tv = { timeout->tv_sec, timeout->tv_usec };
 
+	/* Wait for readability */
+	int ret = request_ensure_connected(request);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
 	/* Receive it */
 	if (use_tcp(request)) {
 		ret = tcp_recv_msg(request->fd, resp->wire, resp->max_size, &tv);
 	} else {
-		ret = udp_recv_msg(request->fd, resp->wire, resp->max_size,
-		                   (struct sockaddr *)&request->remote);
+		ret = udp_recv_msg(request->fd, resp->wire, resp->max_size, &tv);
 	}
-	if (ret < 0) {
+	if (ret <= 0) {
 		resp->size = 0;
+		if (ret == 0) {
+			return KNOT_ECONN;
+		}
 		return ret;
 	}
 
@@ -204,18 +197,8 @@ int knot_requestor_enqueue(struct knot_requestor *requestor,
 		return KNOT_EINVAL;
 	}
 
-	/* Determine comm protocol. */
-	int sock_type = SOCK_DGRAM;
-	if (use_tcp(request)) {
-		sock_type = SOCK_STREAM;
-	}
-
-	/* Fetch a bound socket. */
-	request->fd = net_connected_socket(sock_type, &request->remote,
-	                                   &request->origin, O_NONBLOCK);
-	if (request->fd < 0) {
-		return KNOT_ECONN;
-	}
+	/* Set socket as uninitialized. */
+	request->fd = -1;
 
 	/* Prepare response buffers. */
 	request->resp  = knot_pkt_new(NULL, KNOT_WIRE_MAX_PKTSIZE, requestor->mm);
@@ -253,9 +236,11 @@ static int request_io(struct knot_requestor *req, struct knot_request *last,
 		/* Process query and send it out. */
 		knot_overlay_out(&req->overlay, query);
 
-		ret = request_send(last, timeout);
-		if (ret != KNOT_EOK) {
-			return ret;
+		if (req->overlay.state == KNOT_NS_PROC_MORE) {
+			ret = request_send(last, timeout);
+			if (ret != KNOT_EOK) {
+				return ret;
+			}
 		}
 	}
 
@@ -289,7 +274,7 @@ static int exec_request(struct knot_requestor *req, struct knot_request *last,
 
 	/* Expect complete request. */
 	if (req->overlay.state == KNOT_NS_PROC_FAIL) {
-		ret = KNOT_ERROR;
+		ret = KNOT_LAYER_ERROR;
 	}
 
 	/* Finish current query processing. */

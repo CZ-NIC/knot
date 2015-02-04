@@ -702,7 +702,7 @@ int remote_answer(int sock, server_t *s, knot_pkt_t *pkt)
 	}
 
 	const knot_pktsection_t *authority = knot_pkt_section(pkt, KNOT_AUTHORITY);
-	args.arg = authority->rr;
+	args.arg = knot_pkt_rr(authority, 0);
 	args.argc = authority->count;
 	args.rc = KNOT_RCODE_NOERROR;
 

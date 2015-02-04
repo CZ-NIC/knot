@@ -867,7 +867,8 @@ static int process_soa_answer(knot_pkt_t *pkt, struct answer_data *data)
 
 	/* Expect SOA in answer section. */
 	const knot_pktsection_t *answer = knot_pkt_section(pkt, KNOT_ANSWER);
-	if (answer->count < 1 || answer->rr[0].type != KNOT_RRTYPE_SOA) {
+	const knot_rrset_t *first_rr = knot_pkt_rr(answer, 0);
+	if (answer->count < 1 || first_rr->type != KNOT_RRTYPE_SOA) {
 		return KNOT_NS_PROC_FAIL;
 	}
 
@@ -880,7 +881,7 @@ static int process_soa_answer(knot_pkt_t *pkt, struct answer_data *data)
 	/* Check if master has newer zone and schedule transfer. */
 	knot_rdataset_t *soa = node_rdataset(zone->contents->apex, KNOT_RRTYPE_SOA);
 	uint32_t our_serial = knot_soa_serial(soa);
-	uint32_t their_serial =	knot_soa_serial(&answer->rr[0].rrs);
+	uint32_t their_serial =	knot_soa_serial(&first_rr->rrs);
 	if (serial_compare(our_serial, their_serial) >= 0) {
 		ANSWER_LOG(LOG_INFO, data, "refresh, outgoing", "zone is up-to-date");
 		zone_events_cancel(zone, ZONE_EVENT_EXPIRE);

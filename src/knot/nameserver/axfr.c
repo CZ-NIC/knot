@@ -355,13 +355,13 @@ static int axfr_answer_packet(knot_pkt_t *pkt, struct xfr_proc *proc)
 	zcreator_t zc = {.z = proc->contents, .master = false, .ret = KNOT_EOK };
 
 	const knot_pktsection_t *answer = knot_pkt_section(pkt, KNOT_ANSWER);
+	const knot_rrset_t *answer_rr = knot_pkt_rr(answer, 0);
 	for (uint16_t i = 0; i < answer->count; ++i) {
-		const knot_rrset_t *rr = &answer->rr[i];
-		if (rr->type == KNOT_RRTYPE_SOA &&
+		if (answer_rr[i].type == KNOT_RRTYPE_SOA &&
 		    node_rrtype_exists(zc.z->apex, KNOT_RRTYPE_SOA)) {
 			return KNOT_NS_PROC_DONE;
 		} else {
-			int ret = zcreator_step(&zc, rr);
+			int ret = zcreator_step(&zc, &answer_rr[i]);
 			if (ret != KNOT_EOK) {
 				return KNOT_NS_PROC_FAIL;
 			}
