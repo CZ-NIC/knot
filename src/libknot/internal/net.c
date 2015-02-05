@@ -210,7 +210,7 @@ static int recv_data(int fd, uint8_t *buf, int len, bool oneshot, struct timeval
 		if (errno == EAGAIN || errno == EINTR) {
 			/* Continue only if timeout didn't expire. */
 			ret = wait_for_data(fd, timeout);
-			if (ret) {
+			if (ret > 0) {
 				continue;
 			} else {
 				return KNOT_ETIMEOUT;

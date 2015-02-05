@@ -51,6 +51,7 @@ typedef struct tcp_context {
 	struct iovec iov[2];        /*!< TX/RX buffers. */
 	unsigned client_threshold;  /*!< Index of first TCP client. */
 	timev_t last_poll_time;     /*!< Time of the last socket poll. */
+	timev_t throttle_end;       /*!< End of accept() throttling. */
 	fdset_t set;                /*!< Set of server/client sockets. */
 	unsigned thread_id;         /*!< Thread identifier. */
 } tcp_context_t;
@@ -111,7 +112,9 @@ static int tcp_handle(tcp_context_t *tcp, int fd,
 	}
 
 	/* Timeout. */
+	rcu_read_lock();
 	struct timeval tmout = { conf()->max_conn_reply, 0 };
+	rcu_read_unlock();
 
 	/* Receive data. */
 	int ret = tcp_recv_msg(fd, rx->iov_base, rx->iov_len, &tmout);
@@ -177,17 +180,9 @@ int tcp_accept(int fd)
 	if (incoming < 0) {
 		int en = errno;
 		if (en != EINTR && en != EAGAIN) {
-			log_error("cannot accept connection (%d)", errno);
-			if (en == EMFILE || en == ENFILE ||
-			    en == ENOBUFS || en == ENOMEM) {
-				int throttle = tcp_throttle();
-				log_error("throttling TCP connection pool for "
-				          "%d seconds, too many allocated "
-				          "resources", throttle);
-				sleep(throttle);
-			}
-
+			return KNOT_EBUSY;
 		}
+		return KNOT_ERROR;
 	} else {
 		dbg_net("tcp: accepted connection fd=%d\n", incoming);
 		/* Set recv() timeout. */
@@ -212,7 +207,7 @@ static int tcp_event_accept(tcp_context_t *tcp, unsigned i)
 	/* Accept client. */
 	int fd = tcp->set.pfd[i].fd;
 	int client = tcp_accept(fd);
-	if (client >= 0) {
+	if (client > 0) {
 		/* Assign to fdset. */
 		int next_id = fdset_add(&tcp->set, client, POLLIN, NULL);
 		if (next_id < 0) {
@@ -224,9 +219,11 @@ static int tcp_event_accept(tcp_context_t *tcp, unsigned i)
 		rcu_read_lock();
 		fdset_set_watchdog(&tcp->set, next_id, conf()->max_conn_hs);
 		rcu_read_unlock();
+
+		return KNOT_EOK;
 	}
 
-	return KNOT_EOK;
+	return client;
 }
 
 static int tcp_event_serve(tcp_context_t *tcp, unsigned i)
@@ -255,6 +252,15 @@ static int tcp_wait_for_events(tcp_context_t *tcp)
 
 	/* Mark the time of last poll call. */
 	time_now(&tcp->last_poll_time);
+	bool is_throttled = (tcp->last_poll_time.tv_sec < tcp->throttle_end.tv_sec);
+	rcu_read_lock();
+	if (!is_throttled) {
+		/* Configuration limit, infer maximal pool size. */
+		unsigned max_per_set = MAX(conf()->max_tcp_clients / conf_tcp_threads(conf()), 1);
+		/* Subtract master sockets check limits. */
+		is_throttled = (set->n - tcp->client_threshold) >= max_per_set;
+	}
+	rcu_read_unlock();
 
 	/* Process events. */
 	unsigned i = 0;
