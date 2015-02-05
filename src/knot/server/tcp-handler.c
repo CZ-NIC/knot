@@ -352,37 +352,34 @@ static int tcp_wait_for_events(tcp_context_t *tcp)
 	/* Process events. */
 	unsigned i = 0;
 	while (nfds > 0 && i < set->n) {
-
-		/* Terminate faulty connections. */
+		bool should_close = false;
 		int fd = set->pfd[i].fd;
-
-		/* Active sockets. */
-		if (set->pfd[i].revents & POLLIN) {
-			--nfds; /* One less active event. */
-
-			/* Indexes <0, client_threshold) are master sockets. */
+		if (set->pfd[i].revents & (POLLERR|POLLHUP|POLLNVAL)) {
+			should_close = (i >= tcp->client_threshold);
+			--nfds;
+		} else if (set->pfd[i].revents & (POLLIN)) {
+			/* Master sockets */
 			if (i < tcp->client_threshold) {
-				/* Faulty master sockets shall be sorted later. */
-				(void) tcp_event_accept(tcp, i);
+				if (!is_throttled && tcp_event_accept(tcp, i) == KNOT_EBUSY) {
+					time_now(&tcp->throttle_end);
+					tcp->throttle_end.tv_sec += tcp_throttle();
+				}
+			/* Client sockets */
 			} else {
 				if (tcp_event_serve(tcp, i) != KNOT_EOK) {
-					fdset_remove(set, i);
-					close(fd);
-					continue; /* Stay on the same index. */
+					should_close = true;
 				}
 			}
-
+			--nfds;
 		}
-
-		if (set->pfd[i].revents & (POLLERR|POLLHUP|POLLNVAL)) {
-			--nfds; /* One less active event. */
+	
+		/* Evaluate */
+		if (should_close) {
 			fdset_remove(set, i);
 			close(fd);
-			continue; /* Stay on the same index. */
+		} else {
+			++i;
 		}
-
-		/* Next socket. */
-		++i;
 	}
 
 	return nfds;
