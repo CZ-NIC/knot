@@ -68,23 +68,19 @@ static enum fdset_sweep_state tcp_sweep(fdset_t *set, int i, void *data)
 {
 	UNUSED(data);
 	assert(set && i < set->n && i >= 0);
-
 	int fd = set->pfd[i].fd;
-
+	
+	/* Best-effort, name and shame. */
 	struct sockaddr_storage ss;
 	socklen_t len = sizeof(struct sockaddr_storage);
-	memset(&ss, 0, len);
-	if (getpeername(fd, (struct sockaddr*)&ss, &len) < 0) {
-		dbg_net("tcp: sweep getpeername() on invalid socket=%d\n", fd);
-		return FDSET_SWEEP;
+	if (getpeername(fd, (struct sockaddr*)&ss, &len) == 0) {
+		char addr_str[SOCKADDR_STRLEN] = {0};
+		sockaddr_tostr(&ss, addr_str, sizeof(addr_str));
+		log_notice("connection terminated due to inactivity, address '%s'", addr_str);
 	}
 
-	/* Translate */
-	char addr_str[SOCKADDR_STRLEN] = {0};
-	sockaddr_tostr(&ss, addr_str, sizeof(addr_str));
-
-	log_notice("connection terminated due to inactivity, address '%s'", addr_str);
 	close(fd);
+
 	return FDSET_SWEEP;
 }
 
