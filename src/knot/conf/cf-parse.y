@@ -518,6 +518,7 @@ static void ident_auto(void *scanner, int tok, conf_t *conf, bool val)
 %token <tok> MAX_CONN_IDLE
 %token <tok> MAX_CONN_HS
 %token <tok> MAX_CONN_REPLY
+%token <tok> MAX_TCP_CLIENTS
 %token <tok> RATE_LIMIT
 %token <tok> RATE_LIMIT_SIZE
 %token <tok> RATE_LIMIT_SLIP
@@ -658,6 +659,9 @@ system:
  }
  | system MAX_CONN_REPLY INTERVAL ';' {
 	SET_INT(new_config->max_conn_reply, $3.i, "max-conn-reply");
+ }
+ | system MAX_TCP_CLIENTS NUM ';' {
+	SET_INT(new_config->max_tcp_clients, $3.i, "max-tcp-clients");
  }
  | system RATE_LIMIT NUM ';' {
 	SET_INT(new_config->rrl, $3.i, "rate-limit");

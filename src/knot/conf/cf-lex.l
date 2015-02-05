@@ -127,6 +127,7 @@ serial-policy   { lval.t = yytext; return SERIAL_POLICY; }
 max-conn-idle   { lval.t = yytext; return MAX_CONN_IDLE; }
 max-conn-handshake { lval.t = yytext; return MAX_CONN_HS; }
 max-conn-reply  { lval.t = yytext; return MAX_CONN_REPLY; }
+max-tcp-clients { lval.t = yytext; return MAX_TCP_CLIENTS; }
 rate-limit      { lval.t = yytext; return RATE_LIMIT; }
 rate-limit-size { lval.t = yytext; return RATE_LIMIT_SIZE; }
 rate-limit-slip { lval.t = yytext; return RATE_LIMIT_SLIP; }

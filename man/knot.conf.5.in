@@ -83,6 +83,11 @@ system {
   # Default: 10s
   max-conn-reply 10s;
 
+  # Number of parallel TCP clients
+  # Set this below the descriptor limit to avoid resource exhaustion
+  # Default: 100
+  max-tcp-clients 100;
+
   # Number of parallel transfers
   # This number also includes pending SOA queries
   # Minimal value is number of CPUs
