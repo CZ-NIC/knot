@@ -51,8 +51,8 @@
 #define CONFIG_NOTIFY_TIMEOUT 60 /*!< 60s (suggested in RFC1996) */
 #define CONFIG_DBSYNC_TIMEOUT 0 /*!< Sync immediately. */
 #define CONFIG_REPLY_WD 10 /*!< SOA/NOTIFY query timeout [s]. */
-#define CONFIG_HANDSHAKE_WD 10 /*!< [secs] for connection to make a request.*/
-#define CONFIG_IDLE_WD  60 /*!< [secs] of allowed inactivity between requests */
+#define CONFIG_HANDSHAKE_WD 5 /*!< [secs] for connection to make a request.*/
+#define CONFIG_IDLE_WD  20 /*!< [secs] of allowed inactivity between requests */
 #define CONFIG_MAXTCP 100  /*!< Default limit on incoming TCP clients. */
 #define CONFIG_RRL_SLIP 1 /*!< Default slip value. */
 #define CONFIG_RRL_SIZE 393241 /*!< Htable default size. */
