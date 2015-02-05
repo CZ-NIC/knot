@@ -211,6 +211,9 @@ static int conf_process(conf_t *conf)
 	if (conf->max_conn_reply < 1) {
 		conf->max_conn_reply = CONFIG_REPLY_WD;
 	}
+	if (conf->max_tcp_clients < 1) {
+		conf->max_tcp_clients = CONFIG_MAXTCP;
+	}
 
 	/* Default interface. */
 	conf_iface_t *ctl_if = conf->ctl.iface;
