@@ -113,10 +113,6 @@ int yp_format_key1(
 	bool first_value,
 	bool last_value)
 {
-	if (data == NULL) {
-		return KNOT_EINVAL;
-	}
-
 	return format_item(item, data, data_len, out, out_len, style, "    ",
 	                   first_value, last_value);
 }
