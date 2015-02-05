@@ -55,8 +55,8 @@ typedef struct tcp_context {
 /*
  * Forward decls.
  */
-#define TCP_THROTTLE_LO 5 /*!< Minimum recovery time on errors. */
-#define TCP_THROTTLE_HI 50 /*!< Maximum recovery time on errors. */
+#define TCP_THROTTLE_LO 0 /*!< Minimum recovery time on errors. */
+#define TCP_THROTTLE_HI 2 /*!< Maximum recovery time on errors. */
 
 /*! \brief Calculate TCP throttle time (random). */
 static inline int tcp_throttle() {
