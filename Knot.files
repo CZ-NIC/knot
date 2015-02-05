@@ -237,6 +237,17 @@ src/libknot/internal/trie/murmurhash3.c
 src/libknot/internal/trie/murmurhash3.h
 src/libknot/internal/utils.c
 src/libknot/internal/utils.h
+src/libknot/internal/yparser/yparser.c
+src/libknot/internal/yparser/yparser.h
+src/libknot/internal/yparser/ypbody.c
+src/libknot/internal/yparser/ypbody.h
+src/libknot/internal/yparser/ypbody.rl
+src/libknot/internal/yparser/ypformat.c
+src/libknot/internal/yparser/ypformat.h
+src/libknot/internal/yparser/ypscheme.c
+src/libknot/internal/yparser/ypscheme.h
+src/libknot/internal/yparser/yptrafo.c
+src/libknot/internal/yparser/yptrafo.h
 src/libknot/libknot.h
 src/libknot/packet/compr.c
 src/libknot/packet/compr.h
@@ -357,6 +368,9 @@ tests/utils.c
 tests/wire.c
 tests/worker_pool.c
 tests/worker_queue.c
+tests/yparser.c
+tests/ypscheme.c
+tests/yptrafo.c
 tests/zone_events.c
 tests/zone_timers.c
 tests/zone_update.c

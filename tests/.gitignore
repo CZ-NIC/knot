@@ -40,6 +40,9 @@ utils
 wire
 worker_pool
 worker_queue
+yparser
+ypscheme
+yptrafo
 zone_events
 zone_timers
 zone_update

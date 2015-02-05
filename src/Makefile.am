@@ -105,7 +105,11 @@ nobase_libknot_int_la_HEADERS =			\
 	libknot/internal/tolower.h		\
 	libknot/internal/trie/hat-trie.h	\
 	libknot/internal/trie/murmurhash3.h	\
-	libknot/internal/utils.h
+	libknot/internal/utils.h		\
+	libknot/internal/yparser/yparser.h	\
+	libknot/internal/yparser/ypformat.h	\
+	libknot/internal/yparser/ypscheme.h	\
+	libknot/internal/yparser/yptrafo.h
 
 # dynamic: libknot internal sources
 libknot_int_la_SOURCES =			\
@@ -130,6 +134,11 @@ libknot_int_la_SOURCES =			\
 	libknot/internal/trie/hat-trie.c	\
 	libknot/internal/trie/murmurhash3.c	\
 	libknot/internal/utils.c		\
+	libknot/internal/yparser/yparser.c	\
+	libknot/internal/yparser/ypbody.c	\
+	libknot/internal/yparser/ypformat.c	\
+	libknot/internal/yparser/ypscheme.c	\
+	libknot/internal/yparser/yptrafo.c	\
 	$(libknot_int_la_HEADERS)
 
 # dynamic: libknot headers

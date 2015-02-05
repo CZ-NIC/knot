@@ -80,6 +80,8 @@ const error_table_t error_messages[] = {
 	{ KNOT_ELIMIT,       "exceeded response rate limit" },
 	{ KNOT_EWRITABLE,    "file is not writable" },
 	{ KNOT_EOF,          "end of file" },
+	{ KNOT_ESYSTEM,      "system error" },
+	{ KNOT_EFILE,        "file error" },
 
 	/* Control states. */
 	{ KNOT_CTL_STOP,     "stopping server" },
@@ -123,6 +125,14 @@ const error_table_t error_messages[] = {
 
 	/* Dynamic backend errors. */
 	{ KNOT_DATABASE_ERROR, "unspecified database error" },
+
+	/* Yparser errors. */
+	{ KNOT_YP_EINVAL_ITEM,  "invalid item" },
+	{ KNOT_YP_EINVAL_DATA,  "invalid value" },
+	{ KNOT_YP_ENOTSUP_DATA, "value not supported" },
+	{ KNOT_YP_ENOTSUP_ID,   "identifier not supported" },
+	{ KNOT_YP_ENODATA,      "missing value" },
+	{ KNOT_YP_ENOID,        "missing identifier" },
 
 	/* Processing errors. */
 	{ KNOT_LAYER_ERROR, "processing layer error" },
