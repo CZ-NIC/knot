@@ -681,7 +681,7 @@ int yp_item_to_txt(
 	size_t *txt_len,
 	yp_style_t style)
 {
-	if (item == NULL || bin == NULL || txt == NULL || txt_len == NULL) {
+	if (item == NULL || txt == NULL || txt_len == NULL) {
 		return KNOT_EINVAL;
 	}
 

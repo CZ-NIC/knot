@@ -130,10 +130,10 @@
 	}
 	key_name = (alnum . ("-" | alnum)*) >_key_init $_key;
 	key0 =                                                  key_name %_key0_exit;
-	key1 =   sep $_indent .                                 key_name %_key1_exit;
+	key1 =   sep                                 $_indent . key_name %_key1_exit;
 	id   = ((sep $_id)? . "-" >_dash_init . sep) $_indent . key_name %_id_exit;
 	item = (((key0 . sep? . ":" . (sep . (item_data_list | item_data))?)
-	        |(key1 . sep? . ":" .  sep . (item_data_list | item_data))
+	        |(key1 . sep? . ":" . (sep . (item_data_list | item_data))?)
 	        |(id   . sep? . ":" .  sep . item_data)
 	        ) . rest
 	       );

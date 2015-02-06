@@ -38,8 +38,8 @@ static int format_item(
 	                   first_value ? prefix : "",
 	                   first_value ? item->name + 1 : "",
 	                   first_value ? ":" : "",
-	                   data == NULL ? "\n" : (first_value && !last_value ?
-	                                          " [ " : " "));
+	                   item->type == YP_TGRP ?
+	                     "\n" : (first_value && !last_value ? " [ " : " "));
 	if (ret < 0 || ret >= out_len) {
 		return KNOT_ESPACE;
 	}
@@ -47,8 +47,8 @@ static int format_item(
 	out   += ret;
 	out_len -= ret;
 
-	// Finish if no data.
-	if (data == NULL) {
+	// Finish if group.
+	if (item->type == YP_TGRP) {
 		return KNOT_EOK;
 	}
 
