@@ -56,7 +56,7 @@
 		parser->data_len = 0;
 	}
 	action _item_data {
-		if (parser->data_len >= sizeof(parser->data)) {
+		if (parser->data_len >= sizeof(parser->data) - 1) {
 			return KNOT_ESPACE;
 		}
 		parser->data[parser->data_len++] = fc;
@@ -94,7 +94,7 @@
 		parser->event = YP_ENULL;
 	}
 	action _key {
-		if (parser->key_len >= sizeof(parser->key)) {
+		if (parser->key_len >= sizeof(parser->key) - 1) {
 			return KNOT_ESPACE;
 		}
 		parser->key[parser->key_len++] = fc;

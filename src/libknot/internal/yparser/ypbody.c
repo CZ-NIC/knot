@@ -264,7 +264,7 @@ _match:
 	break;
 	case 3:
 	{
-		if (parser->data_len >= sizeof(parser->data)) {
+		if (parser->data_len >= sizeof(parser->data) - 1) {
 			return KNOT_ESPACE;
 		}
 		parser->data[parser->data_len++] = (*p);
@@ -293,7 +293,7 @@ _match:
 	break;
 	case 6:
 	{
-		if (parser->key_len >= sizeof(parser->key)) {
+		if (parser->key_len >= sizeof(parser->key) - 1) {
 			return KNOT_ESPACE;
 		}
 		parser->key[parser->key_len++] = (*p);
