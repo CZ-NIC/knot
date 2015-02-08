@@ -252,14 +252,14 @@ static int tcp_wait_for_events(tcp_context_t *tcp)
 	/* Mark the time of last poll call. */
 	time_now(&tcp->last_poll_time);
 	bool is_throttled = (tcp->last_poll_time.tv_sec < tcp->throttle_end.tv_sec);
-	rcu_read_lock();
 	if (!is_throttled) {
 		/* Configuration limit, infer maximal pool size. */
+		rcu_read_lock();
 		unsigned max_per_set = MAX(conf()->max_tcp_clients / conf_tcp_threads(conf()), 1);
+		rcu_read_unlock();
 		/* Subtract master sockets check limits. */
 		is_throttled = (set->n - tcp->client_threshold) >= max_per_set;
 	}
-	rcu_read_unlock();
 
 	/* Process events. */
 	unsigned i = 0;
