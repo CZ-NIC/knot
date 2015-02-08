@@ -80,7 +80,7 @@ static enum fdset_sweep_state tcp_sweep(fdset_t *set, int i, void *data)
 	if (getpeername(fd, (struct sockaddr*)&ss, &len) == 0) {
 		char addr_str[SOCKADDR_STRLEN] = {0};
 		sockaddr_tostr(addr_str, sizeof(addr_str), &ss);
-		log_notice("connection terminated due to inactivity, address '%s'", addr_str);
+		log_notice("TCP, terminated inactive client, address '%s'", addr_str);
 	}
 
 	close(fd);
@@ -124,9 +124,8 @@ static int tcp_handle(tcp_context_t *tcp, int fd,
 			rcu_read_lock();
 			char addr_str[SOCKADDR_STRLEN] = {0};
 			sockaddr_tostr(addr_str, sizeof(addr_str), &ss);
-			log_warning("connection timed out, address '%s', "
-			            "timeout %d seconds",
-			            addr_str, conf()->max_conn_idle);
+			log_warning("TCP, connection timed out, address '%s'",
+			            addr_str);
 			rcu_read_unlock();
 		}
 		return KNOT_ECONNREFUSED;
@@ -193,8 +192,8 @@ int tcp_accept(int fd)
 		rcu_read_unlock();
 		tv.tv_usec = 0;
 		if (setsockopt(incoming, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) < 0) {
-			log_warning("cannot set up TCP connection watchdog "
-			            "timer, fd %d", incoming);
+			log_warning("TCP, failed to set up watchdog timer"
+			            ", fd %d", incoming);
 		}
 #endif
 	}
