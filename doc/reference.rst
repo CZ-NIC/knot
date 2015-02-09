@@ -35,6 +35,7 @@ else.
       [ max-conn-idle ( integer | integer(s | m | h | d); ) ]
       [ max-conn-handshake ( integer | integer(s | m | h | d); ) ]
       [ max-conn-reply ( integer | integer(s | m | h | d); ) ]
+      [ max-tcp-clients integer; ]
       [ transfers integer; ]
       [ rate-limit integer; ]
       [ rate-limit-size integer; ]
@@ -226,6 +227,13 @@ max-conn-reply
 ^^^^^^^^^^^^^^
 
 Maximum time to wait for a reply to an issued SOA query.
+
+.. _max-tcp-clients:
+
+max-tcp-clients
+^^^^^^^^^^^^^^^
+
+Maximum number of TCP clients connected in parallel, set this below file descriptor limit to avoid resource exhaustion.
 
 .. _transfers:
 

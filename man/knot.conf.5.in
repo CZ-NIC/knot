@@ -67,21 +67,26 @@ system {
   # Maximum idle time between requests on a TCP connection
   # It is also possible to suffix with unit size [s/m/h/d]
   # f.e. 1s = 1 second, 1m = 1 minute, 1h = 1 hour, 1d = 1 day
-  # Default: 60s
-  max-conn-idle 60s;
+  # Default: 20s
+  max-conn-idle 20s;
 
   # Maximum time between newly accepted TCP connection and first query
   # This is useful to disconnect inactive connections faster
   # It is also possible to suffix with unit size [s/m/h/d]
   # f.e. 1s = 1 second, 1m = 1 minute, 1h = 1 hour, 1d = 1 day
-  # Default: 10s
-  max-conn-handshake 10s;
+  # Default: 5s
+  max-conn-handshake 5s;
 
   # Maximum time to wait for a reply to SOA query
   # It is also possible to suffix with unit size [s/m/h/d]
   # f.e. 1s = 1 second, 1m = 1 minute, 1h = 1 hour, 1d = 1 day
   # Default: 10s
   max-conn-reply 10s;
+
+  # Number of parallel TCP clients
+  # Set this below the descriptor limit to avoid resource exhaustion
+  # Default: 100
+  max-tcp-clients 100;
 
   # Number of parallel transfers
   # This number also includes pending SOA queries
