@@ -86,16 +86,15 @@ AC_ARG_ENABLE([systemd],
     AS_HELP_STRING([--enable-systemd=auto|yes|no], [enable systemd integration [default=auto]]),
     [enable_systemd="$enableval"], [enable_systemd=auto])
 
-case "$enable_systemd" in
-    auto) PKG_CHECK_MODULES([systemd], [libsystemd-daemon libsystemd-journal], [enable_systemd=yes], [enable_systemd=no]) ;;
-    yes)  PKG_CHECK_MODULES([systemd], [libsystemd-daemon libsystemd-journal]) ;;
-    no)   ;;
-    *)    AC_MSG_ERROR([Invalid value of --enable-systemd.]) ;;
-esac
+AS_IF([test "$enable_system" != "no"],[
+  AS_CASE([$enable_systemd],
+    [auto],[PKG_CHECK_MODULES([systemd], [libsystemd-daemon libsystemd-journal], [enable_systemd=yes], [enable_systemd=no])],
+    [yes],[PKG_CHECK_MODULES([systemd], [libsystemd-daemon libsystemd-journal])],
+    [*],[AC_MSG_ERROR([Invalid value of --enable-systemd.])])
+    ])
 
-if test "$enable_systemd" = yes; then
-    AC_DEFINE([ENABLE_SYSTEMD], [1], [Use systemd integration.])
-fi
+AS_IF([test "$enable_systemd" = "yes"],[
+  AC_DEFINE([ENABLE_SYSTEMD], [1], [Use systemd integration.])])
 
 # Debug modules
 AC_ARG_ENABLE([debug],
@@ -312,9 +311,52 @@ dt_DNSTAP([
 AM_CONDITIONAL([HAVE_DNSTAP], test "$opt_dnstap" != "no")
 
 dnl Check for LMDB
-KNOT_CHECK_HEADER([lmdb], [LMDB], [auto], [lmdb.h], [], [-llmdb])
-AS_IF([test "$enable_lmdb" = yes], [AC_DEFINE([HAVE_LMDB], [1], [Define to 1 to enable LMDB support])])
-AM_CONDITIONAL([HAVE_LMDB], test "$enable_lmdb" != "no")
+AC_ARG_WITH([lmdb],
+    AC_HELP_STRING([--with-lmdb=[DIR]], [Link with external LMDB]),[
+    with_lmdb=$withval,
+    with_lmdb=yes
+    ])
+
+have_lmdb=no
+AS_IF([test "$with_lmdb" != "no"],[
+    save_CPPFLAGS=$CPPFLAGS
+    save_LIBS=$LIBS
+    for try_lmdb in "$with_lmdb" "" "/usr/local"; do
+
+      AS_IF([test -d "$try_openssl"], [
+        lmdb_CFLAGS="-I$with_lmdb/include"
+        lmdb_LIBS=""
+        ],[
+        lmdb_CFLAGS=""
+        lmdb_LIBS=""
+	])
+
+      CPPFLAGS="$CPPFLAGS $lmdb_CFLAGS"
+      LIBS="$LIBS $lmdb_LIBS"
+
+      AC_SEARCH_LIBS([mdb_env_open], [lmdb], [
+          AC_CHECK_HEADERS([lmdb.h], [], [
+              AC_ERROR([lmdb headers not found in `$try_lmdb', is your installation complete?])])
+          have_lmdb=yes
+          break
+          ],[
+	  have_lmdb=no
+	  # do not cache result of AC_SEARCH_LIBS test
+	  unset ac_cv_search_mdb_env_open	
+	  ])
+
+      CPPFLAGS="$save_CPPFLAGS"
+      LIBS="$save_LIBS"
+    done
+    ])
+
+AS_IF([test "$have_lmdb" != "no"],[
+  enable_lmdb=shared
+  ],[
+  enable_lmdb=embedded
+  ])
+
+AM_CONDITIONAL([HAVE_LMDB], test "$have_lmdb" != "no")
 
 dnl Check for rosedb module 
 AC_ARG_ENABLE([rosedb],
