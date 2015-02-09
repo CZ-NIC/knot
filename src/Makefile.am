@@ -400,6 +400,8 @@ libknot_int_la_SOURCES +=		\
 nobase_libknot_int_la_HEADERS +=	\
 	libknot/internal/namedb/lmdb.h	\
 	libknot/internal/namedb/midl.h
+libknot_int_la_CPPFLAGS +=		\
+	-I$(srcdir)/libknot/internal/namedb/
 endif
 
 # pkg-config
