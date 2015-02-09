@@ -392,6 +392,16 @@ bin_PROGRAMS += rosedb_tool
 rosedb_tool_LDADD = libknot.la libknotd.la
 endif
 
+if HAVE_LMDB
+else
+libknot_int_la_SOURCES +=		\
+	libknot/internal/namedb/mdb.c	\
+	libknot/internal/namedb/midl.c
+nobase_libknot_int_la_HEADERS +=	\
+	libknot/internal/namedb/lmdb.h	\
+	libknot/internal/namedb/midl.h
+endif
+
 # pkg-config
 pkgconfig_DATA = $(top_srcdir)/libknot.pc
 
