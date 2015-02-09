@@ -73,7 +73,7 @@ static enum fdset_sweep_state tcp_sweep(fdset_t *set, int i, void *data)
 	UNUSED(data);
 	assert(set && i < set->n && i >= 0);
 	int fd = set->pfd[i].fd;
-	
+
 	/* Best-effort, name and shame. */
 	struct sockaddr_storage ss;
 	socklen_t len = sizeof(struct sockaddr_storage);
@@ -284,7 +284,7 @@ static int tcp_wait_for_events(tcp_context_t *tcp)
 			}
 			--nfds;
 		}
-	
+
 		/* Evaluate */
 		if (should_close) {
 			fdset_remove(set, i);
