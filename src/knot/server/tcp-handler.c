@@ -293,7 +293,7 @@ static int tcp_event_accept(tcp_context_t *tcp, unsigned i)
 	/* Accept client. */
 	int fd = tcp->set.pfd[i].fd;
 	int client = tcp_accept(fd);
-	if (client > 0) {
+	if (client >= 0) {
 		/* Assign to fdset. */
 		int next_id = fdset_add(&tcp->set, client, POLLIN, NULL);
 		if (next_id < 0) {
