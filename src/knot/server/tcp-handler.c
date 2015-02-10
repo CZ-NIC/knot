@@ -50,6 +50,7 @@ typedef struct tcp_context {
 	struct iovec iov[2];        /*!< TX/RX buffers. */
 	unsigned client_threshold;  /*!< Index of first TCP client. */
 	timev_t last_poll_time;     /*!< Time of the last socket poll. */
+	timev_t throttle_end;       /*!< End of accept() throttling. */
 	fdset_t set;                /*!< Set of server/client sockets. */
 	unsigned thread_id;         /*!< Thread identifier. */
 } tcp_context_t;
@@ -57,8 +58,8 @@ typedef struct tcp_context {
 /*
  * Forward decls.
  */
-#define TCP_THROTTLE_LO 5 /*!< Minimum recovery time on errors. */
-#define TCP_THROTTLE_HI 50 /*!< Maximum recovery time on errors. */
+#define TCP_THROTTLE_LO 0 /*!< Minimum recovery time on errors. */
+#define TCP_THROTTLE_HI 2 /*!< Maximum recovery time on errors. */
 
 /*! \brief Calculate TCP throttle time (random). */
 static inline int tcp_throttle() {
@@ -70,23 +71,19 @@ static enum fdset_sweep_state tcp_sweep(fdset_t *set, int i, void *data)
 {
 	UNUSED(data);
 	assert(set && i < set->n && i >= 0);
-
 	int fd = set->pfd[i].fd;
 
+	/* Best-effort, name and shame. */
 	struct sockaddr_storage ss;
 	socklen_t len = sizeof(struct sockaddr_storage);
-	memset(&ss, 0, len);
-	if (getpeername(fd, (struct sockaddr*)&ss, &len) < 0) {
-		dbg_net("tcp: sweep getpeername() on invalid socket=%d\n", fd);
-		return FDSET_SWEEP;
+	if (getpeername(fd, (struct sockaddr*)&ss, &len) == 0) {
+		char addr_str[SOCKADDR_STRLEN] = {0};
+		sockaddr_tostr(addr_str, sizeof(addr_str), &ss);
+		log_notice("TCP, terminated inactive client, address '%s'", addr_str);
 	}
 
-	/* Translate */
-	char addr_str[SOCKADDR_STRLEN] = {0};
-	sockaddr_tostr(addr_str, sizeof(addr_str), &ss);
-
-	log_notice("connection terminated due to inactivity, address '%s'", addr_str);
 	close(fd);
+
 	return FDSET_SWEEP;
 }
 
@@ -114,7 +111,9 @@ static int tcp_handle(tcp_context_t *tcp, int fd,
 	}
 
 	/* Timeout. */
+	rcu_read_lock();
 	struct timeval tmout = { conf()->max_conn_reply, 0 };
+	rcu_read_unlock();
 
 	/* Receive data. */
 	int ret = tcp_recv_msg(fd, rx->iov_base, rx->iov_len, &tmout);
@@ -124,9 +123,8 @@ static int tcp_handle(tcp_context_t *tcp, int fd,
 			rcu_read_lock();
 			char addr_str[SOCKADDR_STRLEN] = {0};
 			sockaddr_tostr(addr_str, sizeof(addr_str), &ss);
-			log_warning("connection timed out, address '%s', "
-			            "timeout %d seconds",
-			            addr_str, conf()->max_conn_idle);
+			log_warning("TCP, connection timed out, address '%s'",
+			            addr_str);
 			rcu_read_unlock();
 		}
 		return KNOT_ECONNREFUSED;
@@ -180,17 +178,9 @@ int tcp_accept(int fd)
 	if (incoming < 0) {
 		int en = errno;
 		if (en != EINTR && en != EAGAIN) {
-			log_error("cannot accept connection (%d)", errno);
-			if (en == EMFILE || en == ENFILE ||
-			    en == ENOBUFS || en == ENOMEM) {
-				int throttle = tcp_throttle();
-				log_error("throttling TCP connection pool for "
-				          "%d seconds, too many allocated "
-				          "resources", throttle);
-				sleep(throttle);
-			}
-
+			return KNOT_EBUSY;
 		}
+		return KNOT_ERROR;
 	} else {
 		dbg_net("tcp: accepted connection fd=%d\n", incoming);
 		/* Set recv() timeout. */
@@ -201,8 +191,8 @@ int tcp_accept(int fd)
 		rcu_read_unlock();
 		tv.tv_usec = 0;
 		if (setsockopt(incoming, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) < 0) {
-			log_warning("cannot set up TCP connection watchdog "
-			            "timer, fd %d", incoming);
+			log_warning("TCP, failed to set up watchdog timer"
+			            ", fd %d", incoming);
 		}
 #endif
 	}
@@ -215,7 +205,7 @@ static int tcp_event_accept(tcp_context_t *tcp, unsigned i)
 	/* Accept client. */
 	int fd = tcp->set.pfd[i].fd;
 	int client = tcp_accept(fd);
-	if (client >= 0) {
+	if (client > 0) {
 		/* Assign to fdset. */
 		int next_id = fdset_add(&tcp->set, client, POLLIN, NULL);
 		if (next_id < 0) {
@@ -227,9 +217,11 @@ static int tcp_event_accept(tcp_context_t *tcp, unsigned i)
 		rcu_read_lock();
 		fdset_set_watchdog(&tcp->set, next_id, conf()->max_conn_hs);
 		rcu_read_unlock();
+
+		return KNOT_EOK;
 	}
 
-	return KNOT_EOK;
+	return client;
 }
 
 static int tcp_event_serve(tcp_context_t *tcp, unsigned i)
@@ -258,41 +250,47 @@ static int tcp_wait_for_events(tcp_context_t *tcp)
 
 	/* Mark the time of last poll call. */
 	time_now(&tcp->last_poll_time);
+	bool is_throttled = (tcp->last_poll_time.tv_sec < tcp->throttle_end.tv_sec);
+	if (!is_throttled) {
+		/* Configuration limit, infer maximal pool size. */
+		rcu_read_lock();
+		unsigned max_per_set = MAX(conf()->max_tcp_clients / conf_tcp_threads(conf()), 1);
+		rcu_read_unlock();
+		/* Subtract master sockets check limits. */
+		is_throttled = (set->n - tcp->client_threshold) >= max_per_set;
+	}
 
 	/* Process events. */
 	unsigned i = 0;
 	while (nfds > 0 && i < set->n) {
-
-		/* Terminate faulty connections. */
+		bool should_close = false;
 		int fd = set->pfd[i].fd;
-
-		/* Active sockets. */
-		if (set->pfd[i].revents & POLLIN) {
-			--nfds; /* One less active event. */
-
-			/* Indexes <0, client_threshold) are master sockets. */
+		if (set->pfd[i].revents & (POLLERR|POLLHUP|POLLNVAL)) {
+			should_close = (i >= tcp->client_threshold);
+			--nfds;
+		} else if (set->pfd[i].revents & (POLLIN)) {
+			/* Master sockets */
 			if (i < tcp->client_threshold) {
-				/* Faulty master sockets shall be sorted later. */
-				(void) tcp_event_accept(tcp, i);
+				if (!is_throttled && tcp_event_accept(tcp, i) == KNOT_EBUSY) {
+					time_now(&tcp->throttle_end);
+					tcp->throttle_end.tv_sec += tcp_throttle();
+				}
+			/* Client sockets */
 			} else {
 				if (tcp_event_serve(tcp, i) != KNOT_EOK) {
-					fdset_remove(set, i);
-					close(fd);
-					continue; /* Stay on the same index. */
+					should_close = true;
 				}
 			}
-
+			--nfds;
 		}
 
-		if (set->pfd[i].revents & (POLLERR|POLLHUP|POLLNVAL)) {
-			--nfds; /* One less active event. */
+		/* Evaluate */
+		if (should_close) {
 			fdset_remove(set, i);
 			close(fd);
-			continue; /* Stay on the same index. */
+		} else {
+			++i;
 		}
-
-		/* Next socket. */
-		++i;
 	}
 
 	return nfds;

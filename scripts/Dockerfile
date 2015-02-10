@@ -10,8 +10,8 @@ EXPOSE 53
 
 # Environment
 ENV THREADS 4
-ENV BUILD_PKGS git-core make gcc libtool autoconf pkg-config flex bison libssl-dev liburcu-dev liblmdb-dev
-ENV RUNTIME_PKGS libssl1.0.0 liburcu2 liblmdb0
+ENV BUILD_PKGS git-core make gcc libtool autoconf pkg-config flex bison libssl-dev
+ENV RUNTIME_PKGS libssl1.0.0 liburcu-dev liblmdb-dev
 
 # Install dependencies and sources
 RUN apt-get -q -y update && \

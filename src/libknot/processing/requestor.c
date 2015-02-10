@@ -135,6 +135,8 @@ struct knot_request *knot_request_make(mm_ctx_t *mm,
 	memcpy(&request->remote, dst, sockaddr_len(dst));
 	if (src) {
 		memcpy(&request->origin, src, sockaddr_len(src));
+	} else {
+		request->origin.ss_family = AF_UNSPEC;
 	}
 
 	request->fd = -1;

@@ -86,6 +86,8 @@ enum knot_error {
 	KNOT_ELIMIT,
 	KNOT_EWRITABLE,
 	KNOT_EOF,
+	KNOT_ESYSTEM,
+	KNOT_EFILE,
 
 	/* Control states. */
 	KNOT_CTL_STOP,
@@ -119,6 +121,14 @@ enum knot_error {
 	/* DNSSEC errors. */
 	KNOT_DNSSEC_EMISSINGKEYTYPE,
 	KNOT_DNSSEC_ENOKEY,
+
+	/* Yparser errors. */
+	KNOT_YP_EINVAL_ITEM,
+	KNOT_YP_EINVAL_DATA,
+	KNOT_YP_ENOTSUP_DATA,
+	KNOT_YP_ENOTSUP_ID,
+	KNOT_YP_ENODATA,
+	KNOT_YP_ENOID,
 
 	/* Processing error. */
 	KNOT_LAYER_ERROR,

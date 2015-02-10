@@ -137,7 +137,7 @@ int net_connected_socket(int type, const struct sockaddr_storage *dst_addr,
 	}
 
 	/* Bind to specific source address - if set. */
-	if (src_addr != NULL && src_addr->ss_family != AF_UNSPEC) {
+	if (sockaddr_len((const struct sockaddr *)src_addr) > 0) {
 		socket = net_bound_socket(type, src_addr);
 	} else {
 		socket = net_unbound_socket(type, dst_addr);
@@ -210,7 +210,7 @@ static int recv_data(int fd, uint8_t *buf, int len, bool oneshot, struct timeval
 		if (errno == EAGAIN || errno == EINTR) {
 			/* Continue only if timeout didn't expire. */
 			ret = wait_for_data(fd, timeout);
-			if (ret) {
+			if (ret > 0) {
 				continue;
 			} else {
 				return KNOT_ETIMEOUT;

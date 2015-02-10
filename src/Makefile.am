@@ -104,7 +104,11 @@ nobase_libknot_int_la_HEADERS =			\
 	libknot/internal/tolower.h		\
 	libknot/internal/trie/hat-trie.h	\
 	libknot/internal/trie/murmurhash3.h	\
-	libknot/internal/utils.h
+	libknot/internal/utils.h		\
+	libknot/internal/yparser/yparser.h	\
+	libknot/internal/yparser/ypformat.h	\
+	libknot/internal/yparser/ypscheme.h	\
+	libknot/internal/yparser/yptrafo.h
 
 # dynamic: libknot internal sources
 libknot_int_la_SOURCES =			\
@@ -129,6 +133,11 @@ libknot_int_la_SOURCES =			\
 	libknot/internal/trie/hat-trie.c	\
 	libknot/internal/trie/murmurhash3.c	\
 	libknot/internal/utils.c		\
+	libknot/internal/yparser/yparser.c	\
+	libknot/internal/yparser/ypbody.c	\
+	libknot/internal/yparser/ypformat.c	\
+	libknot/internal/yparser/ypscheme.c	\
+	libknot/internal/yparser/yptrafo.c	\
 	$(libknot_int_la_HEADERS)
 
 # dynamic: libknot headers
@@ -376,6 +385,18 @@ rosedb_tool_SOURCES =					\
 
 bin_PROGRAMS += rosedb_tool
 rosedb_tool_LDADD = libknot.la libknotd.la
+endif
+
+if HAVE_LMDB
+else
+libknot_int_la_SOURCES +=		\
+	libknot/internal/namedb/mdb.c	\
+	libknot/internal/namedb/midl.c
+nobase_libknot_int_la_HEADERS +=	\
+	libknot/internal/namedb/lmdb.h	\
+	libknot/internal/namedb/midl.h
+libknot_int_la_CPPFLAGS +=		\
+	-I$(srcdir)/libknot/internal/namedb/
 endif
 
 # pkg-config

@@ -24,8 +24,6 @@
 #include "libknot/internal/namedb/namedb_lmdb.h"
 #include "libknot/errcode.h"
 
-#ifdef HAVE_LMDB
-
 #include <lmdb.h>
 
 /* Defines */
@@ -441,12 +439,3 @@ const namedb_api_t *namedb_lmdb_api(void)
 
 	return &api;
 }
-
-#else
-
-const namedb_api_t *namedb_lmdb_api(void)
-{
-	return NULL;
-}
-
-#endif
