@@ -98,6 +98,7 @@ static void dbase_close(struct lmdb_env *env)
 		mdb_env_close(env->env);
 	} else {
 		--env->shared;
+	}
 }
 
 /*! \brief Open database environment. */
