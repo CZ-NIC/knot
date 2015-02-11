@@ -453,9 +453,9 @@ AC_MSG_RESULT([
 
     Target:   $host_os $host_cpu
     Compiler: ${CC}
-    CFlags:   ${CFLAGS} ${CPPFLAGS}
-    LDFlags:  ${LDFLAGS}
-    Libs:     ${LIBS}
+    CFLAGS:   ${CFLAGS} ${CPPFLAGS}
+    LDFLAGS:  ${LDFLAGS}
+    LIBS:     ${LIBS}
 
     Prefix:      ${prefix}
     Run dir:     ${run_dir}
