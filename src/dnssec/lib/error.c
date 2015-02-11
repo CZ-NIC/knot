@@ -74,6 +74,8 @@ const char *dnssec_strerror(int error)
 	}
 
 	static __thread char buffer[128];
-	snprintf(buffer, sizeof(buffer), "unknown error %d", error);
+	if (snprintf(buffer, sizeof(buffer), "unknown error %d", error) < 0) {
+		buffer[0] = '\0';
+	}
 	return buffer;
 }

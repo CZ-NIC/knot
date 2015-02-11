@@ -148,7 +148,9 @@ const char *knot_strerror(int code)
 #endif
 
 	static __thread char buffer[128];
-	snprintf(buffer, sizeof(buffer), "unknown error %d", code);
+	if (snprintf(buffer, sizeof(buffer), "unknown error %d", code) < 0) {
+		buffer[0] = '\0';
+	}
 	return buffer;
 }
 
