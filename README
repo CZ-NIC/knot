@@ -6,13 +6,16 @@ Knot DNS has several dependencies:
 * autoconf > 2.65
 * flex >= 2.5.31
 * bison >= 2.3
-* libssl >= 1.0.0    (>= 1.0.1 is required for ECDSA)
 * liburcu >= 0.5.4
+* gnutls >= 3.0
+* jansson >= 2.3
+
+Embeded libraries:
+* lmdb               (system library is preferred)
 
 Optional packages:
 * libcap-ng >= 0.6.4 (for POSIX 1003.1e capabilites(7))
 * libidn             (for IDNA2003 support in Knot utilities)
-* lmdb               (for persistent events for slave zones)
 * libsystemd         (for systemd init system support)
 
 Dependencies for building documentation:
@@ -37,34 +40,38 @@ $ sudo apt-get update
 $ sudo apt-get upgrade
 
 Install prerequisites:
-$ sudo apt-get install git-core libtool autoconf flex bison libssl-dev liburcu-dev
+$ sudo apt-get install \
+  libtool autoconf flex bison liburcu-dev libgnutls28-dev libjansson-dev
+
+Install optional packages to override embeded libraries:
+$ sudo apt-get install liblmdb-dev
 
 Install optional packages:
-($ sudo apt-get install libcap-ng-dev liblmdb-dev libsystemd-dev)
-
-If the liburcu-dev package is not present, install it from the source code
-(http://lttng.org/urcu)
+$ sudo apt-get install libcap-ng-dev libsystemd-dev
 
 Fedora like distributions
 -------------------------
 Update the system:
-$ yum upgrade
+# yum upgrade
 
-Ensure all base development tools are available:
-$ yum install @buildsys-build
+Install basic development tools:
+# yum install @buildsys-build
 
-Ensure all prerequisites are installed:
-$ yum install libtool autoconf flex bison openssl-devel userspace-rcu-devel
+Install prerequisites:
+# yum install \
+  libtool autoconf flex bison userspace-rcu-devel gnutls-devel jansson-devel
+
+Install optional packages to override embeded libraries:
+# yum install lmdb-devel
 
 Install optional packages:
-($ yum install libcap-ng-devel lmdb-devel systemd-devel)
+# yum install libcap-ng-devel systemd-devel
 
 2) Install Knot DNS
 
 Knot DNS requires compiler to support atomic intrinsics.
 GCC version at least 4.1 supports legacy atomic builtins, however 4.7
-or newer is preferred.
-Clang supports atomics since version 2.9.
+or newer is preferred. Clang supports atomics since version 2.9.
 
 Get the source code:
 $ git clone git://git.nic.cz/knot-dns.git
