@@ -433,12 +433,12 @@ AC_CONFIG_FILES([Makefile
 		 tests/Makefile
 		 src/dnstap/Makefile
 		 src/zscanner/Makefile
-		 dnssec/Makefile
-		 dnssec/man/Makefile
-		 dnssec/man/keymgr.8
-		 dnssec/man/knsec3hash.1
-		 dnssec/tests/Makefile
-		 dnssec/utils/Makefile
+		 src/dnssec/Makefile
+		 src/dnssec/man/Makefile
+		 src/dnssec/man/keymgr.8
+		 src/dnssec/man/knsec3hash.1
+		 src/dnssec/tests/Makefile
+		 src/dnssec/utils/Makefile
 		 doc/conf.py
 		 man/khost.1
 		 man/knotc.8

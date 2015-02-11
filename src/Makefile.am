@@ -1,5 +1,5 @@
 ACLOCAL_AMFLAGS = -I $(top_srcdir)/m4
-SUBDIRS = dnstap .
+SUBDIRS = zscanner dnssec dnstap .
 
 lib_LTLIBRARIES = libknot-int.la libknot.la
 noinst_LTLIBRARIES =
@@ -20,7 +20,7 @@ AM_CPPFLAGS = \
 	-DCONFIG_DIR='"${config_dir}"'		\
 	-DSTORAGE_DIR='"${storage_dir}"'	\
 	-DRUN_DIR='"${run_dir}"'		\
-	-I$(top_srcdir)/dnssec/lib
+	-I$(srcdir)/dnssec/lib
 
 AM_CFLAGS = $(CODE_COVERAGE_CFLAGS)
 AM_LDFLAGS = $(CODE_COVERAGE_LDFLAGS)
@@ -360,7 +360,7 @@ libknot_int_la_LDFLAGS = $(AM_LDFLAGS) $(RELEASE_INFO) $(VERSION_INFO) $(lmdb_LI
 
 libknot_la_CPPFLAGS = $(AM_CPPFLAGS)
 libknot_la_LDFLAGS = $(AM_LDFLAGS) $(RELEASE_INFO) $(VERSION_INFO)
-libknot_la_LIBADD  = libknot-int.la ../dnssec/libdnssec.la zscanner/libzscanner.la
+libknot_la_LIBADD  = libknot-int.la dnssec/libdnssec.la zscanner/libzscanner.la
 
 if HAVE_DAEMON
 
@@ -389,7 +389,7 @@ endif # HAVE_DAEMON
 if HAVE_UTILS
 
 # bin programs
-BIN_LIBS = ../dnssec/libdnssec.la libknot.la libknot-int.la libknotus.la
+BIN_LIBS = dnssec/libdnssec.la libknot.la libknot-int.la libknotus.la
 kdig_LDADD       = $(BIN_LIBS) $(libidn_LIBS)
 khost_LDADD      = $(BIN_LIBS) $(libidn_LIBS)
 knsupdate_LDADD  = $(BIN_LIBS) zscanner/libzscanner.la
