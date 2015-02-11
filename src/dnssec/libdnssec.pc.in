@@ -1,0 +1,13 @@
+prefix=@prefix@
+exec_prefix=@prefix@
+libdir=@libdir@
+includedir=@includedir@
+
+Name: libdnssec
+Description: Knot DNSSEC library
+URL: https://www.knot-dns.cz
+Version: @PACKAGE_VERSION@
+Requires: gnutls >= 3.0
+Requires.private: nettle, jansson
+Libs: -L${libdir} -lknot
+Cflags: -I${includedir}

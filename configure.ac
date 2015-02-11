@@ -34,7 +34,9 @@ LT_INIT
 
 # Use pkg-config
 m4_ifdef([PKG_INSTALLDIR], [PKG_INSTALLDIR], [AC_SUBST([pkgconfigdir], ['${libdir}/pkgconfig'])])
-AC_CONFIG_FILES([libknot.pc])
+AC_CONFIG_FILES([src/libknot.pc
+		 src/libknot-int.pc
+		 src/dnssec/libdnssec.pc])
 
 # Build Knot DNS daemon
 AC_ARG_ENABLE([daemon],
@@ -222,7 +224,7 @@ AS_IF([test "$with_urcu" != "no"], [
   PKG_CHECK_MODULES([liburcu], liburcu, [
     CPPFLAGS="$CPPFLAGS $liburcu_CFLAGS"
     LIBS="$LIBS $liburcu_LIBS"
-    liburcu_PKGCONFIG="liburcu"
+    liburcu_PKGCONFIG="liburcu >= 0.4.0"
     AC_SUBST([liburcu_PKGCONFIG])
     with_urcu=yes
   ],[
@@ -413,11 +415,6 @@ AS_IF([test "$SPHINXBUILD" = "false"],
   ])
 
 ])
-
-AC_SUBST([libknot_pc_REQ])
-AC_SUBST([libknot_pc_REQP])
-AC_SUBST([libknot_pc_LIBS])
-AC_SUBST([libknot_pc_LIBSP])
 
 AM_CONDITIONAL([HAVE_SPHINXBUILD], test "$SPHINXBUILD" != "false")
 AM_CONDITIONAL([HAVE_PDFLATEX], test "$PDFLATEX" != "false")

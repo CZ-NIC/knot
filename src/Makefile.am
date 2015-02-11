@@ -442,7 +442,7 @@ libknot_int_la_CPPFLAGS +=		\
 endif
 
 # pkg-config
-pkgconfig_DATA = $(top_srcdir)/libknot.pc
+pkgconfig_DATA = libknot.pc libknot-int.pc
 
 if HAVE_DAEMON
 # Create storage and run-time directories

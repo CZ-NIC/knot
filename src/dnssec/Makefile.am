@@ -123,3 +123,6 @@ libdnssec_la_SOURCES = \
 	lib/sign/der.h \
 	lib/sign/sign.c \
 	lib/tsig.c
+
+# pkg-config
+pkgconfig_DATA = libdnssec.pc
