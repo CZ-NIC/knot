@@ -10,11 +10,11 @@ Knot DNS has several dependencies:
 * gnutls >= 3.0
 * jansson >= 2.3
 
-Embeded libraries:
+Embedded libraries:
 * lmdb               (system library is preferred)
 
 Optional packages:
-* libcap-ng >= 0.6.4 (for POSIX 1003.1e capabilites(7))
+* libcap-ng >= 0.6.4 (for POSIX 1003.1e capabilities(7))
 * libidn             (for IDNA2003 support in Knot utilities)
 * libsystemd         (for systemd init system support)
 
@@ -43,7 +43,7 @@ Install prerequisites:
 $ sudo apt-get install \
   libtool autoconf flex bison liburcu-dev libgnutls28-dev libjansson-dev
 
-Install optional packages to override embeded libraries:
+Install optional packages to override embedded libraries:
 $ sudo apt-get install liblmdb-dev
 
 Install optional packages:
@@ -61,7 +61,7 @@ Install prerequisites:
 # yum install \
   libtool autoconf flex bison userspace-rcu-devel gnutls-devel jansson-devel
 
-Install optional packages to override embeded libraries:
+Install optional packages to override embedded libraries:
 # yum install lmdb-devel
 
 Install optional packages:
