@@ -6,11 +6,12 @@ AM_DISTCHECK_CONFIGURE_FLAGS = \
 
 CODE_COVERAGE_INFO = coverage.info
 CODE_COVERAGE_HTML = coverage.html
-CODE_COVERAGE_DIRS = \
-	src/knot \
-	src/libknot \
-	src/zscanner
-	dnssec/lib dnssec/shared
+CODE_COVERAGE_DIRS =	\
+	src/knot	\
+	src/libknot	\
+	src/zscanner	\
+	dnssec/lib	\
+	dnssec/shared
 
 code_coverage_quiet = --quiet
 

@@ -17,6 +17,8 @@ ALLSPHINXOPTS  = -n -d $(SPHINXBUILDDIR)/doctrees -D latex_paper_size=a4 $(SPHIN
 
 .PHONY: html-local singlehtml pdf-local info-local
 
+if HAVE_DOCS
+
 if HAVE_SPHINXBUILD
 html-local:
 	$(SPHINXBUILD) -b html $(ALLSPHINXOPTS) $(SPHINXBUILDDIR)/html
@@ -55,6 +57,8 @@ else
 html-local singlehtml pdf-local info-local:
 	@echo "Please install sphinx (python-sphinx) to generate Knot DNS documentation."
 endif
+
+endif # HAVE_DOCS
 
 clean-local:
 	-rm -rf _build

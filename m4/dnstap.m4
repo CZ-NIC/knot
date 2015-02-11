@@ -10,11 +10,11 @@ AC_DEFUN([dt_DNSTAP],
                    [Enable dnstap support (requires fstrm, protobuf-c)]),
     [opt_dnstap=$enableval], [opt_dnstap=no])
 
-  if test "x$opt_dnstap" != "xno"; then
+  AS_IF([test "$opt_dnstap" != "no"],[
     AC_PATH_PROG([PROTOC_C], [protoc-c])
-    if test -z "$PROTOC_C"; then
+    AS_IF([test -z "$PROTOC_C"],[
       AC_MSG_ERROR([The protoc-c program was not found. Please install protobuf-c!])
-    fi
+      ])
     PKG_CHECK_MODULES([libfstrm], [libfstrm])
     PKG_CHECK_MODULES([libprotobuf_c], [libprotobuf-c >= 1.0.0])
     DNSTAP_CFLAGS="$libfstrm_CFLAGS $libprotobuf_c_CFLAGS"
@@ -22,5 +22,5 @@ AC_DEFUN([dt_DNSTAP],
     $1
   m4_ifvaln([$2], [else
     $2])dnl
-  fi
+  ])
 ])

@@ -1,3 +1,5 @@
+if HAVE_UTILS
+
 noinst_LTLIBRARIES = libutils.la
 
 AM_CPPFLAGS = \
@@ -43,3 +45,5 @@ knsec3hash_LDADD = \
 bin_PROGRAMS = \
 	keymgr \
 	knsec3hash
+
+endif # HAVE_UTILS
