@@ -129,7 +129,3 @@ test_run(t, servers[1], zone, restart_server)
 test_run(t, servers[2], zone, reload_or_restart)
 
 t.stop()
-
-
-
-

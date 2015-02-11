@@ -29,7 +29,7 @@ def role_switch(t, master, slave, zone, action):
 
 def test_expire(zone, server):
     resp = server.dig("example.", "SOA")
-    resp.check(rcode="SERVFAIL")    
+    resp.check(rcode="SERVFAIL")
 
 def test_alive(zone, server):
     server.zone_wait(zone)
@@ -63,7 +63,7 @@ def expire_tests(t, zone, master, slave):
     # Stop the master, let refresh fail (= expire planned) then restart the slave and wait for expire.
     master.stop()
     t.sleep(EXPIRE_SLEEP // 2)
-    restart_server(slave) 
+    restart_server(slave)
     t.sleep((EXPIRE_SLEEP // 2) + 1 - START_SLEEP)
     test_expire(zone, slave)
 
@@ -89,7 +89,7 @@ def refresh_tests(t, zone, master, slave):
     # Stop the master.
     master.stop()
     # Wait for refresh to fail - expire will be planned in ~12s on the slave.
-    t.sleep(2) 
+    t.sleep(2)
     # Restart the slave - there should be no refresh on startup.
     restart_server(slave) # comes with START_SLEEP sleep.
     # Start the master again.
@@ -126,4 +126,3 @@ expire_tests(t, zone, master, slave)
 refresh_tests(t, zone, master, slave)
 
 t.stop()
-

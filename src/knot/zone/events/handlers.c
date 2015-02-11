@@ -14,9 +14,9 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "libknot/rrtype/soa.h"
-#include "libknot/dnssec/random.h"
+#include "dnssec/random.h"
 #include "libknot/processing/requestor.h"
+#include "libknot/rrtype/soa.h"
 
 #include "knot/common/trim.h"
 #include "libknot/internal/mempool.h"
@@ -64,7 +64,7 @@ static knot_pkt_t *zone_query(const zone_t *zone, uint16_t pkt_type, mm_ctx_t *m
 		return NULL;
 	}
 
-	knot_wire_set_id(pkt->wire, knot_random_uint16_t());
+	knot_wire_set_id(pkt->wire, dnssec_random_uint16_t());
 	knot_wire_set_aa(pkt->wire);
 	knot_wire_set_opcode(pkt->wire, opcode);
 	knot_pkt_put_question(pkt, zone->name, KNOT_CLASS_IN, query_type);
@@ -502,19 +502,19 @@ int event_dnssec(zone_t *zone)
 	}
 
 	uint32_t refresh_at = time(NULL);
+	int sign_flags = 0;
+
 	if (zone->flags & ZONE_FORCE_RESIGN) {
 		log_zone_info(zone->name, "DNSSEC, dropping previous "
 		              "signatures, resigning zone");
-
 		zone->flags &= ~ZONE_FORCE_RESIGN;
-		ret = knot_dnssec_zone_sign_force(zone->contents, zone->conf,
-		                                  &ch, &refresh_at);
+		sign_flags = ZONE_SIGN_DROP_SIGNATURES;
 	} else {
 		log_zone_info(zone->name, "DNSSEC, signing zone");
-		ret = knot_dnssec_zone_sign(zone->contents, zone->conf,
-		                            &ch, KNOT_SOA_SERIAL_UPDATE,
-		                            &refresh_at);
+		sign_flags = 0;
 	}
+
+	ret = knot_dnssec_zone_sign(zone->contents, zone->conf, &ch, sign_flags, &refresh_at);
 	if (ret != KNOT_EOK) {
 		goto done;
 	}
@@ -566,7 +566,7 @@ done:
 uint32_t bootstrap_next(uint32_t timer)
 {
 	timer *= 2;
-	timer += knot_random_uint32_t() % BOOTSTRAP_RETRY;
+	timer += dnssec_random_uint32_t() % BOOTSTRAP_RETRY;
 	if (timer > BOOTSTRAP_MAXTIME) {
 		timer = BOOTSTRAP_MAXTIME;
 	}

@@ -21,12 +21,12 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
+#include "dnssec/keytag.h"
 #include "knot/zone/semantic-check.h"
 #include "knot/common/debug.h"
+#include "knot/dnssec/rrset-sign.h"
 #include "knot/dnssec/zone-nsec.h"
 #include "libknot/libknot.h"
-#include "libknot/dnssec/key.h"
-#include "libknot/dnssec/rrset-sign.h"
 #include "libknot/internal/base32hex.h"
 #include "libknot/internal/mempattern.h"
 
@@ -358,16 +358,20 @@ static int check_rrsig_rdata(err_handler_t *handler,
 	uint16_t key_tag_rrsig = knot_rrsig_key_tag(rrsig, rr_pos);
 	for (uint16_t i = 0; i < dnskey_rrset->rrs.rr_count &&
 	     !match; ++i) {
-		uint8_t dnskey_alg =
-			knot_dnskey_alg(&dnskey_rrset->rrs, i);
+		uint8_t dnskey_alg = knot_dnskey_alg(&dnskey_rrset->rrs, i);
 		if (rrsig_alg != dnskey_alg) {
 			continue;
 		}
 
 		/* Calculate keytag. */
-		const knot_rdata_t *rr_data = knot_rdataset_at(&dnskey_rrset->rrs, i);
-		uint16_t dnskey_key_tag =
-			knot_keytag(knot_rdata_data(rr_data), knot_rdata_rdlen(rr_data));
+		const knot_rdata_t *dnskey_rr = knot_rdataset_at(&dnskey_rrset->rrs, i);
+		dnssec_binary_t rdata = {
+			.size = knot_rdata_rdlen(dnskey_rr),
+			.data = knot_rdata_data(dnskey_rr)
+		};
+		uint16_t dnskey_key_tag = 0;
+		dnssec_keytag(&rdata, &dnskey_key_tag);
+
 		if (key_tag_rrsig != dnskey_key_tag) {
 			continue;
 		}

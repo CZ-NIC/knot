@@ -11,7 +11,7 @@ COPY . /knot-src/tests-extra
 WORKDIR /knot-src/tests-extra
 ENTRYPOINT ["/knot-src/tests-extra/runtests.py"]
 
-# Install dependencies and sources 
+# Install dependencies and sources
 RUN apt-get -q -y update && \
 apt-get install -q -y ${RUNTIME_PKGS} && \
 pip3 install -r /knot-src/tests-extra/requirements.txt && \

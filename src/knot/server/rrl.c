@@ -20,11 +20,11 @@
 #include <sys/socket.h>
 #include <assert.h>
 
+#include "dnssec/random.h"
 #include "knot/common/debug.h"
 #include "knot/server/rrl.h"
 #include "knot/zone/zone.h"
 #include "libknot/libknot.h"
-#include "libknot/dnssec/random.h"
 #include "libknot/internal/trie/murmurhash3.h"
 #include "libknot/internal/errors.h"
 
@@ -489,7 +489,7 @@ bool rrl_slip_roll(int n_slip)
 	 * That represents a chance of 1/N that answer slips.
 	 * Therefore, on average, from 100 answers 100/N will slip. */
 	int threshold = RRL_SLIP_MAX / n_slip;
-	int roll = knot_random_uint16_t() % RRL_SLIP_MAX;
+	int roll = dnssec_random_uint16_t() % RRL_SLIP_MAX;
 	return (roll < threshold);
 }
 
@@ -519,7 +519,7 @@ int rrl_reseed(rrl_table_t *rrl)
 	}
 
 	memset(rrl->arr, 0, rrl->size * sizeof(rrl_item_t));
-	rrl->seed = knot_random_uint32_t();
+	rrl->seed = dnssec_random_uint32_t();
 	dbg_rrl("%s: reseed to '%u'\n", __func__, rrl->seed);
 
 	if (rrl->lk_count > 0) {

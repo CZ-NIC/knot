@@ -15,19 +15,19 @@
 */
 
 #include <stdarg.h>
+#include <stdio.h>
 #include <stdlib.h>
+#if HAVE_LMDB
+#include <lmdb.h>
+#endif
 
 #include "libknot/errcode.h"
 #include "libknot/internal/errors.h"
 #include "libknot/internal/macros.h"
+#include "dnssec/error.h"
 
-const error_table_t error_messages[] = {
+static const error_table_t error_messages[] = {
 	{ KNOT_EOK, "OK" },
-
-	/* TSIG errors. */
-	{ KNOT_TSIG_EBADSIG,  "failed to verify TSIG MAC" },
-	{ KNOT_TSIG_EBADKEY,  "TSIG key not recognized or invalid" },
-	{ KNOT_TSIG_EBADTIME, "TSIG signing time out of range" },
 
 	/* Directly mapped error codes. */
 	{ KNOT_ENOMEM,       "not enough memory" },
@@ -102,29 +102,19 @@ const error_table_t error_messages[] = {
 	{ KNOT_BASE32HEX_ESIZE, "invalid base32hex string length" },
 	{ KNOT_BASE32HEX_ECHAR, "invalid base32hex character" },
 
+	/* TSIG errors. */
+	{ KNOT_TSIG_EBADSIG,  "failed to verify TSIG MAC" },
+	{ KNOT_TSIG_EBADKEY,  "TSIG key not recognized or invalid" },
+	{ KNOT_TSIG_EBADTIME, "TSIG signing time out of range" },
+
 	/* Key parsing errors. */
 	{ KNOT_KEY_EPUBLIC_KEY_OPEN,    "cannot open public key file" },
 	{ KNOT_KEY_EPRIVATE_KEY_OPEN,   "cannot open private key file" },
 	{ KNOT_KEY_EPUBLIC_KEY_INVALID, "public key file is invalid" },
 
-	/* Key signing/verification errors. */
-	{ KNOT_DNSSEC_ENOTSUP,                    "algorithm is not supported" },
-	{ KNOT_DNSSEC_EINVALID_KEY,               "the signing key is invalid" },
-	{ KNOT_DNSSEC_EASSIGN_KEY,                "cannot assign the key" },
-	{ KNOT_DNSSEC_ECREATE_DIGEST_CONTEXT,     "cannot create digest context" },
-	{ KNOT_DNSSEC_EUNEXPECTED_SIGNATURE_SIZE, "unexpected signature size" },
-	{ KNOT_DNSSEC_EDECODE_RAW_SIGNATURE,      "cannot decode the raw signature" },
-	{ KNOT_DNSSEC_EINVALID_SIGNATURE,         "signature is invalid" },
-	{ KNOT_DNSSEC_ESIGN,                      "cannot create the signature" },
-	{ KNOT_DNSSEC_ENOKEY,                     "no keys for signing" },
-	{ KNOT_DNSSEC_ENOKEYDIR,                  "keydir does not exist" },
-	{ KNOT_DNSSEC_EMISSINGKEYTYPE,            "missing active KSK or ZSK" },
-
-	/* NSEC3 errors. */
-	{ KNOT_NSEC3_ECOMPUTE_HASH, "cannot compute NSEC3 hash" },
-
-	/* Dynamic backend errors. */
-	{ KNOT_DATABASE_ERROR, "unspecified database error" },
+	/* DNSSEC errors. */
+	{ KNOT_DNSSEC_ENOKEY,          "no keys for signing" },
+	{ KNOT_DNSSEC_EMISSINGKEYTYPE, "missing active KSK or ZSK" },
 
 	/* Yparser errors. */
 	{ KNOT_YP_EINVAL_ITEM,  "invalid item" },
@@ -143,7 +133,23 @@ const error_table_t error_messages[] = {
 _public_
 const char *knot_strerror(int code)
 {
-	return error_to_str(error_messages, code);
+	if (code == 0 || (KNOT_ERROR_MIN <= code && code <= KNOT_ERROR_MAX)) {
+		return error_to_str(error_messages, code);
+	}
+
+	if (DNSSEC_ERROR_MIN <= code && code <= DNSSEC_ERROR_MAX) {
+		return dnssec_strerror(code);
+	}
+
+#if HAVE_LMDB
+	if (MDB_KEYEXIST <= code && code <= MDB_LAST_ERRCODE) {
+		return mdb_strerror(code);
+	}
+#endif
+
+	static __thread char buffer[128];
+	snprintf(buffer, sizeof(buffer), "unknown error %d", code);
+	return buffer;
 }
 
 _public_
@@ -160,7 +166,7 @@ int knot_map_errno_internal(int fallback, int arg0, ...)
 		if (c == errno) {
 			/* Return negative value of the code. */
 			va_end(ap);
-			return knot_errno_to_error(abs(c));
+			return -abs(c);
 		}
 	}
 	va_end(ap);

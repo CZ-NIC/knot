@@ -1,4 +1,4 @@
-FROM debian:jessie 
+FROM debian:jessie
 MAINTAINER Marek Vavrusa <marek.vavrusa@nic.cz>
 
 # Select entrypoint

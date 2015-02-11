@@ -29,37 +29,28 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <errno.h>
 
-/* errno -> Knot error mapping.
- * \note offset is required, otherwise it would interfere with TSIG errors.
- */
-#define KNOT_ERROR_BASE 100
-#define knot_errno_to_error(x) (-(KNOT_ERROR_BASE + (x)))
-
 /*! \brief Error codes used in the library. */
 enum knot_error {
 	KNOT_EOK = 0,
 
-	/* TSIG errors. */
-	KNOT_TSIG_EBADSIG = -16,
-	KNOT_TSIG_EBADKEY = -17,
-	KNOT_TSIG_EBADTIME = -18,
-
 	/* Directly mapped error codes. */
-	KNOT_ENOMEM = knot_errno_to_error(ENOMEM),
-	KNOT_EINVAL = knot_errno_to_error(EINVAL),
-	KNOT_ENOTSUP = knot_errno_to_error(ENOTSUP),
-	KNOT_EBUSY = knot_errno_to_error(EBUSY),
-	KNOT_EAGAIN = knot_errno_to_error(EAGAIN),
-	KNOT_EACCES = knot_errno_to_error(EACCES),
-	KNOT_ECONNREFUSED = knot_errno_to_error(ECONNREFUSED),
-	KNOT_EISCONN = knot_errno_to_error(EISCONN),
-	KNOT_EADDRINUSE = knot_errno_to_error(EADDRINUSE),
-	KNOT_ENOENT = knot_errno_to_error(ENOENT),
-	KNOT_EEXIST = knot_errno_to_error(EEXIST),
-	KNOT_ERANGE = knot_errno_to_error(ERANGE),
+	KNOT_ENOMEM       = -ENOMEM,
+	KNOT_EINVAL       = -EINVAL,
+	KNOT_ENOTSUP      = -ENOTSUP,
+	KNOT_EBUSY        = -EBUSY,
+	KNOT_EAGAIN       = -EAGAIN,
+	KNOT_EACCES       = -EACCES,
+	KNOT_ECONNREFUSED = -ECONNREFUSED,
+	KNOT_EISCONN      = -EISCONN,
+	KNOT_EADDRINUSE   = -EADDRINUSE,
+	KNOT_ENOENT       = -ENOENT,
+	KNOT_EEXIST       = -EEXIST,
+	KNOT_ERANGE       = -ERANGE,
+
+	KNOT_ERROR_MIN = -1000,
 
 	/* General errors. */
-	KNOT_ERROR = -10000,
+	KNOT_ERROR = KNOT_ERROR_MIN,
 	KNOT_ENOTRUNNING,
 	KNOT_EPARSEFAIL,
 	KNOT_ESEMCHECK,
@@ -117,29 +108,19 @@ enum knot_error {
 	KNOT_BASE32HEX_ESIZE,
 	KNOT_BASE32HEX_ECHAR,
 
+	/* TSIG errors. */
+	KNOT_TSIG_EBADSIG,
+	KNOT_TSIG_EBADKEY,
+	KNOT_TSIG_EBADTIME,
+
 	/* Key parsing errors. */
 	KNOT_KEY_EPUBLIC_KEY_OPEN,
 	KNOT_KEY_EPRIVATE_KEY_OPEN,
 	KNOT_KEY_EPUBLIC_KEY_INVALID,
 
-	/* Key signing errors. */
-	KNOT_DNSSEC_ENOTSUP,
-	KNOT_DNSSEC_EINVALID_KEY,
-	KNOT_DNSSEC_EASSIGN_KEY,
-	KNOT_DNSSEC_ECREATE_DIGEST_CONTEXT,
-	KNOT_DNSSEC_EUNEXPECTED_SIGNATURE_SIZE,
-	KNOT_DNSSEC_EDECODE_RAW_SIGNATURE,
-	KNOT_DNSSEC_EINVALID_SIGNATURE,
-	KNOT_DNSSEC_ESIGN,
-	KNOT_DNSSEC_ENOKEY,
-	KNOT_DNSSEC_ENOKEYDIR,
+	/* DNSSEC errors. */
 	KNOT_DNSSEC_EMISSINGKEYTYPE,
-
-	/* NSEC3 errors. */
-	KNOT_NSEC3_ECOMPUTE_HASH,
-
-	/* Database backend. */
-	KNOT_DATABASE_ERROR,
+	KNOT_DNSSEC_ENOKEY,
 
 	/* Yparser errors. */
 	KNOT_YP_EINVAL_ITEM,
@@ -150,7 +131,9 @@ enum knot_error {
 	KNOT_YP_ENOID,
 
 	/* Processing error. */
-	KNOT_LAYER_ERROR
+	KNOT_LAYER_ERROR,
+
+	KNOT_ERROR_MAX = -501
 };
 
 /*!

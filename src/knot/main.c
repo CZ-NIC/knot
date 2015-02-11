@@ -30,13 +30,13 @@
 #include <systemd/sd-daemon.h>
 #endif
 
+#include "dnssec/crypto.h"
 #include "knot/ctl/process.h"
 #include "knot/ctl/remote.h"
 #include "knot/conf/conf.h"
 #include "knot/server/server.h"
 #include "knot/server/tcp-handler.h"
 #include "knot/zone/timers.h"
-#include "libknot/dnssec/crypto.h"
 
 /* Signal flags. */
 static volatile bool sig_req_stop = false;
@@ -48,13 +48,6 @@ static void init_signal_started(void)
 #ifdef ENABLE_SYSTEMD
 	sd_notify(0, "READY=1");
 #endif
-}
-
-/*! \brief atexit() handler for server code. */
-static void knot_crypto_deinit(void)
-{
-	knot_crypto_cleanup();
-	knot_crypto_cleanup_threads();
 }
 
 /*! \brief PID file cleanup handler. */
@@ -259,9 +252,8 @@ int main(int argc, char **argv)
 	setup_signals();
 
 	/* Initialize cryptographic backend. */
-	knot_crypto_init();
-	knot_crypto_init_threads();
-	atexit(knot_crypto_deinit);
+	dnssec_crypto_init();
+	atexit(dnssec_crypto_cleanup);
 
 	/* Initialize pseudorandom number generator. */
 	srand(time(NULL));

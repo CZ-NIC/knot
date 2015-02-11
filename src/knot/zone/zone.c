@@ -19,11 +19,13 @@
 #include <string.h>
 #include <sys/stat.h>
 
+#include "dnssec/random.h"
 #include "libknot/descriptor.h"
 #include "knot/common/evsched.h"
 #include "libknot/internal/lists.h"
 #include "knot/common/trim.h"
 #include "knot/zone/node.h"
+#include "knot/zone/serial.h"
 #include "knot/zone/zone.h"
 #include "knot/zone/zonefile.h"
 #include "knot/zone/contents.h"
@@ -32,7 +34,6 @@
 #include "knot/nameserver/process_query.h"
 #include "libknot/errcode.h"
 #include "libknot/dname.h"
-#include "libknot/dnssec/random.h"
 #include "libknot/internal/utils.h"
 #include "libknot/rrtype/soa.h"
 

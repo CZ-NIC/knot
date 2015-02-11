@@ -1,0 +1,74 @@
+/*  Copyright (C) 2014 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
+#include <gnutls/abstract.h>
+#include <gnutls/gnutls.h>
+
+#include "binary.h"
+#include "error.h"
+#include "key.h"
+#include "key/dnskey.h"
+#include "key/internal.h"
+#include "key/privkey.h"
+#include "pem.h"
+#include "shared.h"
+
+/* -- internal functions --------------------------------------------------- */
+
+/*!
+ * Check if DNSKEY has and algorithm set.
+ */
+static bool has_algorithm(dnssec_key_t *key)
+{
+	assert(key);
+
+	uint8_t algorithm = dnssec_key_get_algorithm(key);
+	return algorithm != 0;
+}
+
+/* -- public API ----------------------------------------------------------- */
+
+_public_
+int dnssec_key_load_pkcs8(dnssec_key_t *key, const dnssec_binary_t *pem)
+{
+	if (!key || !pem || !pem->data) {
+		return DNSSEC_EINVAL;
+	}
+
+	if (!key->public_key && !has_algorithm(key)) {
+		return DNSSEC_INVALID_KEY_ALGORITHM;
+	}
+
+	gnutls_privkey_t privkey = NULL;
+	_cleanup_free_ char *id = NULL;
+	int r = pem_to_privkey(pem, &privkey, &id);
+	if (r != DNSSEC_EOK) {
+		return r;
+	}
+
+	if (key->public_key && !dnssec_keyid_equal(key->id, id)) {
+		gnutls_privkey_deinit(privkey);
+		return DNSSEC_INVALID_KEY_ID;
+	}
+
+	r = key_set_private_key(key, privkey);
+	if (r != DNSSEC_EOK) {
+		gnutls_privkey_deinit(privkey);
+		return r;
+	}
+
+	return DNSSEC_EOK;
+}

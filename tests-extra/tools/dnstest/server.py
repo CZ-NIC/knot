@@ -18,6 +18,7 @@ import dnstest.params as params
 import dnstest.keys
 import dnstest.response
 import dnstest.update
+import distutils.dir_util
 
 def zone_arg_check(zone):
     # Convert one item list to single object.
@@ -630,16 +631,8 @@ class Server(object):
 
     def use_keys(self, zone):
         zone = zone_arg_check(zone)
-
-        # Copy generated keys to server key directory.
-        prepare_dir(self.keydir)
-
-        src_files = os.listdir(zone.key_dir)
-        for file_name in src_files:
-            if (zone.name[:-1]).lower() in file_name:
-                full_file_name = os.path.join(zone.key_dir, file_name)
-                if (os.path.isfile(full_file_name)):
-                    shutil.copy(full_file_name, self.keydir)
+        # copy all keys, even for other zones
+        distutils.dir_util.copy_tree(zone.key_dir, self.keydir, update=True)
 
     def enable_nsec3(self, zone, **args):
         zone = zone_arg_check(zone)

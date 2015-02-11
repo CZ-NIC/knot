@@ -142,13 +142,4 @@ void wire_write_u48(uint8_t *pos, uint64_t data);
  */
 void wire_write_u64(uint8_t *pos, uint64_t data);
 
-/*!
- * \brief Compares two zone serials.
- *
- * \retval < 0 if s1 is less than s2.
- * \retval > 0 if s1 is larger than s2.
- * \retval == 0 if s1 is equal to s2.
- */
-int serial_compare(uint32_t s1, uint32_t s2);
-
 /*! @} */

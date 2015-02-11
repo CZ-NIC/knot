@@ -8,26 +8,23 @@ import collections
 import os
 import shutil
 import datetime
+import subprocess
 
 from dnstest.utils import *
 from dnstest.test import Test
 
-# change timestamps in DNSSEC key file
-def key_settime(filename, **new_values):
-    lines = open(filename).readlines()
+def keymgr(server, args):
+    cmd = subprocess.Popen([params.keymgr_bin, "--dir", server.keydir] + args)
+    (stdout, stderr) = cmd.communicate()
+    return (cmd.returncode, stdout, stderr)
 
-    values = collections.OrderedDict()
-    for line in lines:
-        key, sep, value = line.partition(":")
-        values[key.strip()] = value.strip()
-
-    for key, value in new_values.items():
-        values[key] = value
-
-    with open(filename, "w") as keyfile:
-        for key, value in values.items():
-            if value is not None:
-                keyfile.write("%s: %s\n" % (key, value))
+def key_set(server, zone, key_id, **new_values):
+    cmd = ["zone", "key", "set", zone, key_id]
+    for option, value in new_values.items():
+        cmd += [option, value]
+    (exitcode, _x, _y) = keymgr(server, cmd)
+    if exitcode != 0:
+        raise Failed("Unable to modify key timing values.")
 
 # check zone if keys are present and used for signing
 def check_zone(server, expect_dnskey, expect_rrsig, msg):
@@ -49,13 +46,6 @@ def check_zone(server, expect_dnskey, expect_rrsig, msg):
 
     detail_log(SEP)
 
-# return date 'offset' seconds in future
-def date_offset(offset):
-    delta = datetime.timedelta(seconds = offset)
-    current_time = datetime.datetime.utcnow()
-    future_time = current_time + delta
-    return datetime.datetime.strftime(future_time, "%Y%m%d%H%M%S")
-
 t = Test()
 
 knot = t.server("knot")
@@ -67,9 +57,8 @@ t.link(zone, knot)
 shutil.copytree(os.path.join(t.data_dir, "keys"), knot.keydir)
 
 # parameters
-key_file = os.path.join(knot.keydir, "test.private")
-date_past = "19700101000001"
-date_future = "20400101000000"
+ZONE = "example.com"
+KEYID = "712d0d0d57fa0aa006b5e20cd84e23941e5f3ab2"
 WAIT_SIGN = 2
 
 #
@@ -79,37 +68,37 @@ WAIT_SIGN = 2
 check_log("Common cases")
 
 # key not published, not active
-key_settime(key_file, Publish=date_future, Activate=date_future)
+key_set(knot, ZONE, KEYID, publish="+10y", active="+10y")
 t.start()
 t.sleep(WAIT_SIGN)
 check_zone(knot, False, False, "not published, not active")
 
 # key published, not active
-key_settime(key_file, Publish=date_past)
+key_set(knot, ZONE, KEYID, publish="-10y")
 knot.reload()
 t.sleep(WAIT_SIGN)
 check_zone(knot, True, False, "published, not active")
 
 # key published, active
-key_settime(key_file, Activate=date_past)
+key_set(knot, ZONE, KEYID, active="-10y")
 knot.reload()
 t.sleep(WAIT_SIGN)
 check_zone(knot, True, True, "published, active")
 
 # key published, inactive
-key_settime(key_file, Inactive=date_past)
+key_set(knot, ZONE, KEYID, retire="-10y")
 knot.reload()
 t.sleep(WAIT_SIGN)
 check_zone(knot, True, False, "published, inactive")
 
 # key deleted, inactive
-key_settime(key_file, Delete=date_past)
+key_set(knot, ZONE, KEYID, remove="-10y")
 knot.reload()
 t.sleep(WAIT_SIGN)
 check_zone(knot, False, False, "deleted, inactive")
 
 # key not published, active (algorithm rotation)
-key_settime(key_file, Publish=date_future, Activate=date_past, Inactive=None, Delete=None)
+key_set(knot, ZONE, KEYID, publish="+10y", active="-10y", retire="0", remove="0")
 knot.reload()
 t.sleep(WAIT_SIGN)
 check_zone(knot, False, True, "not published, active")
@@ -122,7 +111,7 @@ check_log("Planned events")
 
 # key about to be published
 event_in = 7
-key_settime(key_file, Publish=date_offset(event_in), Activate=date_future, Inactive=None, Delete=None)
+key_set(knot, ZONE, KEYID, publish=("+%d" % event_in), active="+10y", retire="0", remove="0")
 knot.reload()
 t.sleep(WAIT_SIGN)
 check_zone(knot, False, False, "to be published - pre")
@@ -130,7 +119,7 @@ t.sleep(event_in)
 check_zone(knot, True, False, "to be published - post")
 
 # key about to be activated
-key_settime(key_file, Publish=date_past, Activate=date_offset(event_in), Inactive=None, Delete=None)
+key_set(knot, ZONE, KEYID, publish="-10y", active=("+%d" % event_in), retire="0", remove="0")
 knot.reload()
 t.sleep(WAIT_SIGN)
 check_zone(knot, True, False, "to be activated - pre")
@@ -138,7 +127,7 @@ t.sleep(event_in)
 check_zone(knot, True, True, "to be activated - post")
 
 #key about to be inactivated
-key_settime(key_file, Publish=date_past, Activate=date_past, Inactive=date_offset(event_in), Delete=None)
+key_set(knot, ZONE, KEYID, publish="-10y", active="-10y", retire=("+%d" % event_in), remove="0")
 knot.reload()
 t.sleep(WAIT_SIGN)
 check_zone(knot, True, True, "to be inactivated - pre")
@@ -146,7 +135,7 @@ t.sleep(event_in)
 check_zone(knot, True, False, "to be inactivated - post")
 
 #key about to be deleted
-key_settime(key_file, Publish=date_past, Activate=date_past, Inactive=date_past, Delete=date_offset(event_in))
+key_set(knot, ZONE, KEYID, publish="-10y", active="-10y", retire="-10y", remove=("+%d" % event_in))
 knot.reload()
 t.sleep(WAIT_SIGN)
 check_zone(knot, True, False, "to be deleted - pre")

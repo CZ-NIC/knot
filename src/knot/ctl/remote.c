@@ -16,6 +16,8 @@
 
 #include <assert.h>
 #include <sys/stat.h>
+
+#include "dnssec/random.h"
 #include "knot/common/debug.h"
 #include "knot/common/fdset.h"
 #include "knot/common/log.h"
@@ -30,7 +32,6 @@
 #include "libknot/internal/mem.h"
 #include "libknot/internal/net.h"
 #include "libknot/internal/strlcpy.h"
-#include "libknot/dnssec/random.h"
 
 #define KNOT_CTL_REALM "knot."
 #define KNOT_CTL_REALM_EXT ("." KNOT_CTL_REALM)
@@ -757,8 +758,8 @@ static int zones_verify_tsig_query(const knot_pkt_t *query,
 	/*
 	 * 1) Check if we support the requested algorithm.
 	 */
-	knot_tsig_algorithm_t alg = knot_tsig_rdata_alg(query->tsig_rr);
-	if (knot_tsig_digest_length(alg) == 0) {
+	dnssec_tsig_algorithm_t alg = knot_tsig_rdata_alg(query->tsig_rr);
+	if (alg == DNSSEC_TSIG_UNKNOWN) {
 		log_info("TSIG, unsupported algorithm, query NOTAUTH");
 		/*! \todo [TSIG] It is unclear from RFC if I
 		 *               should treat is as a bad key
@@ -789,7 +790,7 @@ static int zones_verify_tsig_query(const knot_pkt_t *query,
 	/* Prepare variables for TSIG */
 	/*! \todo These need to be saved to the response somehow. */
 	//size_t tsig_size = tsig_wire_maxsize(key);
-	size_t digest_max_size = knot_tsig_digest_length(key->algorithm);
+	size_t digest_max_size = dnssec_tsig_algorithm_size(alg);
 	//size_t digest_size = 0;
 	//uint64_t tsig_prev_time_signed = 0;
 	//uint8_t *digest = (uint8_t *)malloc(digest_max_size);
@@ -933,7 +934,7 @@ knot_pkt_t* remote_query(const char *query, const knot_tsig_key_t *key)
 		return NULL;
 	}
 
-	knot_wire_set_id(pkt->wire, knot_random_uint16_t());
+	knot_wire_set_id(pkt->wire, dnssec_random_uint16_t());
 	knot_pkt_reserve(pkt, knot_tsig_wire_maxsize(key));
 
 	/* Question section. */
@@ -963,7 +964,7 @@ int remote_query_sign(uint8_t *wire, size_t *size, size_t maxlen,
 		return KNOT_EINVAL;
 	}
 
-	size_t dlen = knot_tsig_digest_length(key->algorithm);
+	size_t dlen = dnssec_tsig_algorithm_size(key->algorithm);
 	uint8_t *digest = malloc(dlen);
 	if (!digest) {
 		return KNOT_ENOMEM;

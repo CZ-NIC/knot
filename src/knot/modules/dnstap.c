@@ -63,7 +63,7 @@ static int log_message(int state, const knot_pkt_t *pkt, struct query_data *qdat
 	                      protocol,
 	                      pkt->wire, pkt->size, &tv, &tv);
 	if (ret != KNOT_EOK) {
-		return KNOT_NS_PROC_FAIL; 
+		return KNOT_NS_PROC_FAIL;
 	}
 	Dnstap__Dnstap dnstap = DNSTAP__DNSTAP__INIT;
 	dnstap.type = DNSTAP__DNSTAP__TYPE__MESSAGE;

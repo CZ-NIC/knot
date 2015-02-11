@@ -313,11 +313,13 @@ int knot_rrtype_is_metatype(const uint16_t type)
 }
 
 _public_
-int knot_rrtype_is_ddns_forbidden(const uint16_t type)
+int knot_rrtype_is_dnssec(const uint16_t type)
 {
-	return type == KNOT_RRTYPE_RRSIG ||
-	       type == KNOT_RRTYPE_NSEC  ||
-	       type == KNOT_RRTYPE_NSEC3;
+	return type == KNOT_RRTYPE_DNSKEY ||
+	       type == KNOT_RRTYPE_RRSIG  ||
+	       type == KNOT_RRTYPE_NSEC   ||
+	       type == KNOT_RRTYPE_NSEC3  ||
+	       type == KNOT_RRTYPE_NSEC3PARAM;
 }
 
 _public_

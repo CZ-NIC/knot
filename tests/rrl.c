@@ -18,6 +18,9 @@
 #include <sys/socket.h>
 #include <tap/basic.h>
 
+#include "dnssec/crypto.h"
+#include "dnssec/random.h"
+#include "knot/conf/conf.h"
 #include "knot/server/rrl.h"
 #include "knot/zone/zone.h"
 #include "knot/conf/conf.h"
@@ -57,7 +60,7 @@ static void* rrl_runnable(void *arg)
 	uint32_t now = time(NULL);
 	struct bucketmap *m = malloc(RRL_INSERTS * sizeof(struct bucketmap_t));
 	for (unsigned i = 0; i < RRL_INSERTS; ++i) {
-		m[i].i = knot_random_uint32_t(UINT32_MAX);
+		m[i].i = dnssec_random_uint32_t(UINT32_MAX);
 		addr.addr4.sin_addr.s_addr = m[i].i;
 		rrl_item_t *b =  rrl_hash(d->rrl, &addr, d->rq, d->zone, now, &lock);
 		rrl_unlock(d->rrl, lock);
@@ -95,6 +98,8 @@ int main(int argc, char *argv[])
 #else
 	plan(5);
 #endif
+
+	dnssec_crypto_init();
 
 	/* Prepare query. */
 	knot_pkt_t *query = knot_pkt_new(NULL, 512, NULL);
@@ -175,7 +180,7 @@ int main(int argc, char *argv[])
 	ret += rrl_query(rrl, 0, 0, 0); // -1
 	ret += rrl_query(rrl, (void*)0x1, 0, 0); // -1
 	ret += rrl_destroy(0); // -1
-	is_int(-488, ret, "rrl: not crashed while executing functions on NULL context");
+	is_int(-88, ret, "rrl: not crashed while executing functions on NULL context");
 
 #ifdef ENABLE_TIMED_TESTS
 	/* 8. hopscotch test */
@@ -196,5 +201,6 @@ int main(int argc, char *argv[])
 	zone_free(&zone);
 	knot_pkt_free(&query);
 	rrl_destroy(rrl);
+	dnssec_crypto_cleanup();
 	return 0;
 }

@@ -25,6 +25,8 @@
 #include <netinet/in.h>
 #include <sys/socket.h>
 
+#include "dnssec/binary.h"
+#include "dnssec/keytag.h"
 #include "libknot/rrset-dump.h"
 #include "libknot/consts.h"
 #include "libknot/descriptor.h"
@@ -1301,10 +1303,16 @@ static void dnskey_info(const uint8_t *rdata,
                         char          *out,
                         const size_t  out_len)
 {
-	const uint8_t  sep = rdata[1] & 0x01;
-	const uint16_t key_tag = knot_keytag(rdata, rdata_len);
-	const size_t   key_len = dnskey_len(rdata, rdata_len);
-	const uint8_t  alg_id = rdata[3];
+	// TODO: migrate key info to libdnssec
+
+	const uint8_t sep = *(rdata + 1) & 0x01;
+	uint16_t      key_tag = 0;
+	const size_t  key_len = dnskey_len(rdata, rdata_len);
+	const uint8_t alg_id = rdata[3];
+
+	const dnssec_binary_t rdata_bin = { .data = (uint8_t *)rdata,
+	                                    .size = rdata_len };
+	dnssec_keytag(&rdata_bin, &key_tag);
 
 	lookup_table_t *alg = NULL;
 	alg = lookup_by_id(knot_dnssec_alg_names, alg_id);
@@ -1313,6 +1321,7 @@ static void dnskey_info(const uint8_t *rdata,
 	                   sep ? "KSK" : "ZSK",
 	                   alg ? alg->name : "UNKNOWN",
 	                   key_len, key_tag );
+
 	if (ret <= 0) {	// Truncated return is acceptable. Just check for errors.
 		out[0] = '\0';
 	}

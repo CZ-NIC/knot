@@ -22,6 +22,7 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
+#include "dnssec/random.h"
 #include "utils/knsupdate/knsupdate_exec.h"
 #include "utils/common/exec.h"
 #include "utils/common/msg.h"
@@ -29,7 +30,6 @@
 #include "utils/common/params.h"
 #include "utils/common/token.h"
 #include "libknot/libknot.h"
-#include "libknot/dnssec/random.h"
 #include "libknot/internal/macros.h"
 #include "libknot/internal/mem.h"
 #include "libknot/internal/strlcpy.h"
@@ -384,7 +384,7 @@ static int build_query(knsupdate_params_t *params)
 	knot_pkt_clear(query);
 
 	/* Write question. */
-	knot_wire_set_id(query->wire, knot_random_uint16_t());
+	knot_wire_set_id(query->wire, dnssec_random_uint16_t());
 	knot_wire_set_opcode(query->wire, KNOT_OPCODE_UPDATE);
 	knot_dname_t *qname = knot_dname_from_str_alloc(params->zone);
 	int ret = knot_pkt_put_question(query, qname, params->class_num,

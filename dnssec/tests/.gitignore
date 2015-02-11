@@ -1,0 +1,26 @@
+/Makefile
+/Makefile.in
+/runtests.log
+
+# test binaries
+/binary
+/crypto
+/kasp_dir_escape
+/kasp_dir_file
+/kasp_store
+/key
+/key_algorithm
+/keyid
+/keystore_pkcs8
+/keystore_pkcs8_dir
+/keytag
+/list
+/nsec_bitmap
+/nsec_hash
+/random
+/shared_base32hex
+/shared_dname
+/shared_wire
+/sign
+/sign_der
+/tsig

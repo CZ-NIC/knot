@@ -16,6 +16,7 @@
 
 #include <assert.h>
 #include <stdbool.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -37,37 +38,26 @@ struct lmdb_env
 	mm_ctx_t *pool;
 };
 
+/*!
+ * \brief Convert error code returned by LMDB to Knot DNS error code.
+ *
+ * LMDB defines own error codes but uses additional ones from libc:
+ * - LMDB error codes do not conflict with Knot DNS ones.
+ * - Standard errors are converted to negative value to match Knot DNS mapping.
+ */
+static int lmdb_error_to_knot(int error)
+{
+	return -abs(error);
+}
+
 static int create_env_dir(const char *path)
 {
 	int r = mkdir(path, LMDB_DIR_MODE);
 	if (r == -1 && errno != EEXIST) {
-		return knot_errno_to_error(errno);
+		return lmdb_error_to_knot(errno);
 	}
 
 	return KNOT_EOK;
-}
-
-/*!
- * \brief Convert error code returned by LMDB to Knot DNS error code.
- *
- * LMDB defines own error codes but uses additional ones from libc. All LMDB
- * specific error codes are translated to KNOT_DATABASE_ERROR.
- */
-static int lmdb_error_to_knot(int error)
-{
-	if (error == MDB_SUCCESS) {
-		return KNOT_EOK;
-	}
-
-	if (error == MDB_MAP_FULL || error == MDB_TXN_FULL || error == ENOSPC) {
-		return KNOT_ESPACE;
-	}
-
-	if (MDB_KEYEXIST <= error && error <= MDB_LAST_ERRCODE) {
-		return KNOT_DATABASE_ERROR;
-	}
-
-	return knot_errno_to_error(error);
 }
 
 /*! \brief Set the environment map size.

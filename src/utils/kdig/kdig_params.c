@@ -1025,13 +1025,7 @@ static int parse_class(const char *value, query_t *query)
 
 static int parse_keyfile(const char *value, query_t *query)
 {
-	knot_free_key_params(&query->key_params);
-
-	if (params_parse_keyfile(value, &query->key_params) != KNOT_EOK) {
-		return KNOT_EINVAL;
-	}
-
-	return KNOT_EOK;
+	return KNOT_ENOTSUP;
 }
 
 static int parse_local(const char *value, query_t *query)

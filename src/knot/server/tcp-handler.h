@@ -58,9 +58,4 @@ int tcp_accept(int fd);
  */
 int tcp_master(dthread_t *thread);
 
-/*!
- * \brief Destructor for TCP handler thread.
- */
-int tcp_master_destruct(dthread_t *thread);
-
 /*! @} */

@@ -1,0 +1,27 @@
+.TH "keymgr" "1" "@RELEASE_DATE@" "CZ.NIC Labs" "Knot DNS, version @VERSION@"
+.SH NAME
+.B keymgr
+\- DNSSEC Key and Signature Policy management utility
+.SH SYNOPSIS
+.B keymgr
+command...
+.SH DESCRIPTION
+TBD
+.SH ARGUMENTS
+TBD
+.SH EXAMPLE
+$ keymgr init
+
+$ keymgr zone add example.com
+
+$ keymgr zone key generate example.com algorithm rsasha256 size 2048 ksk
+.br
+$ keymgr zone key generate example.com algorithm rsasha256 size 1024
+
+.SH AUTHOR
+Jan Vcelak (\fBhttp://knot-dns.cz\fR)
+.TP
+Please send any bugs or comments to \fBknot-dns@labs.nic.cz\fR
+.SH SEE ALSO
+.BI knotc\fR(8),
+.BI knotd\fR(8).

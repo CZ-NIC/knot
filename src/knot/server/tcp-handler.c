@@ -31,6 +31,7 @@
 #include <cap-ng.h>
 #endif /* HAVE_CAP_NG_H */
 
+#include "dnssec/random.h"
 #include "knot/server/tcp-handler.h"
 #include "knot/common/debug.h"
 #include "knot/common/fdset.h"
@@ -40,8 +41,6 @@
 #include "libknot/internal/macros.h"
 #include "libknot/internal/net.h"
 #include "libknot/internal/sockaddr.h"
-#include "libknot/dnssec/crypto.h"
-#include "libknot/dnssec/random.h"
 #include "libknot/processing/overlay.h"
 
 /*! \brief TCP context data. */
@@ -64,7 +63,7 @@ typedef struct tcp_context {
 
 /*! \brief Calculate TCP throttle time (random). */
 static inline int tcp_throttle() {
-	return TCP_THROTTLE_LO + (knot_random_uint16_t() % TCP_THROTTLE_HI);
+	return TCP_THROTTLE_LO + (dnssec_random_uint16_t() % TCP_THROTTLE_HI);
 }
 
 /*! \brief Sweep TCP connection. */
@@ -382,10 +381,4 @@ finish:
 	ref_release(ref);
 
 	return ret;
-}
-
-int tcp_master_destruct(dthread_t *thread)
-{
-	knot_crypto_cleanup_thread();
-	return KNOT_EOK;
 }

@@ -31,7 +31,7 @@
 
 #include "knot/zone/contents.h"
 #include "knot/updates/changesets.h"
-#include "libknot/dnssec/bitmap.h"
+#include "dnssec/nsec.h"
 
 /*!
  * \brief Parameters to be used in connect_nsec_nodes callback.
@@ -58,14 +58,14 @@ typedef int (*chain_iterate_create_cb)(zone_node_t *, zone_node_t *,
 /*!
  * \brief Add all RR types from a node into the bitmap.
  */
-inline static void bitmap_add_node_rrsets(bitmap_t *bitmap,
+inline static void bitmap_add_node_rrsets(dnssec_nsec_bitmap_t *bitmap,
                                           const zone_node_t *node)
 {
 	for (int i = 0; i < node->rrset_count; i++) {
 		knot_rrset_t rr = node_rrset_at(node, i);
 		if (rr.type != KNOT_RRTYPE_NSEC &&
 		    rr.type != KNOT_RRTYPE_RRSIG) {
-			knot_bitmap_add_type(bitmap, rr.type);
+			dnssec_nsec_bitmap_add(bitmap, rr.type);
 		}
 	}
 }
@@ -119,5 +119,3 @@ bool knot_nsec_empty_nsec_and_rrsigs_in_node(const zone_node_t *n);
  */
 int knot_nsec_create_chain(const zone_contents_t *zone, uint32_t ttl,
                            changeset_t *changeset);
-
-/*! @} */

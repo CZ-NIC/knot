@@ -61,22 +61,6 @@ lookup_table_t *lookup_by_id(lookup_table_t *table, int id)
 
 /*----------------------------------------------------------------------------*/
 
-static int32_t serial_difference(uint32_t s1, uint32_t s2)
-{
-	return (((int64_t)s1 - s2) % ((int64_t)1 << 32));
-}
-
-_public_
-int serial_compare(uint32_t s1, uint32_t s2)
-{
-	int32_t diff = serial_difference(s1, s2);
-	return (s1 == s2) /* s1 equal to s2 */
-	        ? 0
-	        :((diff >= 1 && diff < ((uint32_t)1 << 31))
-	           ? 1	/* s1 larger than s2 */
-	           : -1); /* s1 less than s2 */
-}
-
 _public_
 uint16_t wire_read_u16(const uint8_t *pos)
 {

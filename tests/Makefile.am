@@ -1,7 +1,11 @@
 AM_CPPFLAGS = \
 	-include $(top_builddir)/src/config.h \
 	-I$(top_srcdir)/libtap \
-	-I$(top_srcdir)/src
+	-I$(top_srcdir)/src \
+	-I$(top_srcdir)/dnssec/lib
+
+AM_LDFLAGS = \
+	$(libcrypto_LIBS)
 
 LDADD = \
 	$(top_builddir)/libtap/libtap.a \
@@ -13,13 +17,10 @@ check_PROGRAMS = \
 	base32hex			\
 	base64				\
 	changeset			\
+	changeset			\
 	conf				\
 	descriptor			\
 	dname				\
-	dnssec_keys			\
-	dnssec_nsec3			\
-	dnssec_sign			\
-	dnssec_zone_nsec		\
 	dthreads			\
 	edns				\
 	endian				\
@@ -49,6 +50,7 @@ check_PROGRAMS = \
 	ypscheme			\
 	yptrafo				\
 	zone_events			\
+	zone_serial			\
 	zone_timers			\
 	zone_update			\
 	zonedb				\

@@ -236,7 +236,7 @@ int knsupdate_parse(knsupdate_params_t *params, int argc, char *argv[])
 			if (ret != KNOT_EOK) return ret;
 			break;
 		case 'k':
-			ret = params_parse_keyfile(optarg, &params->key_params);
+			ret = KNOT_ENOTSUP;
 			if (ret != KNOT_EOK) return ret;
 			break;
 		default:

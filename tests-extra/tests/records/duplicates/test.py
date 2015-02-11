@@ -24,5 +24,5 @@ for msg in resp.resp:
 	count += len(msg.answer)
 
 compare(count, 6, "AXFR record count")
-	
+
 t.end()

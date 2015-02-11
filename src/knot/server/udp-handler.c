@@ -43,7 +43,6 @@
 #include "libknot/internal/mempool.h"
 #include "libknot/internal/macros.h"
 #include "libknot/libknot.h"
-#include "libknot/dnssec/crypto.h"
 #include "libknot/processing/overlay.h"
 
 /* Buffer identifiers. */
@@ -557,11 +556,5 @@ int udp_master(dthread_t *thread)
 	_udp_deinit(rq);
 	forget_ifaces(ref, &fds, maxfd);
 	mp_delete(mm.ctx);
-	return KNOT_EOK;
-}
-
-int udp_master_destruct(dthread_t *thread)
-{
-	knot_crypto_cleanup_thread();
 	return KNOT_EOK;
 }

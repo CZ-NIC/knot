@@ -1,4 +1,4 @@
-/*  Copyright (C) 2013 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2014 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -12,8 +12,9 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
- */
+*/
 
+#include "dnssec/random.h"
 #include "knot/nameserver/update.h"
 #include "knot/nameserver/internet.h"
 #include "knot/nameserver/process_query.h"
@@ -31,7 +32,6 @@
 #include "knot/server/tcp-handler.h"
 #include "knot/server/udp-handler.h"
 #include "knot/nameserver/capture.h"
-#include "libknot/dnssec/random.h"
 #include "libknot/processing/requestor.h"
 
 /* UPDATE-specific logging (internal, expects 'qdata' variable set). */
@@ -78,7 +78,7 @@ static int sign_update(zone_t *zone, const zone_contents_t *old_contents,
 	if (apex_rr_changed(old_contents, new_contents, KNOT_RRTYPE_DNSKEY) ||
 	    apex_rr_changed(old_contents, new_contents, KNOT_RRTYPE_NSEC3PARAM)) {
 		ret = knot_dnssec_zone_sign(new_contents, zone->conf,
-		                            sec_ch, KNOT_SOA_SERIAL_KEEP,
+		                            sec_ch, ZONE_SIGN_KEEP_SOA_SERIAL,
 		                            &refresh_at);
 	} else {
 		// Sign the created changeset
@@ -105,8 +105,8 @@ static int sign_update(zone_t *zone, const zone_contents_t *old_contents,
 
 	// Plan next zone resign.
 	const time_t resign_time = zone_events_get_time(zone, ZONE_EVENT_DNSSEC);
-	if (time(NULL) + refresh_at < resign_time) {
-		zone_events_schedule(zone, ZONE_EVENT_DNSSEC, refresh_at);
+	if (refresh_at < resign_time) {
+		zone_events_schedule_at(zone, ZONE_EVENT_DNSSEC, refresh_at);
 	}
 
 	return KNOT_EOK;
@@ -346,7 +346,7 @@ static int forward_request(zone_t *zone, struct knot_request *request)
 		knot_wire_set_rcode(request->resp->wire, KNOT_RCODE_SERVFAIL);
 		return ret;
 	}
-	knot_wire_set_id(query->wire, knot_random_uint16_t());
+	knot_wire_set_id(query->wire, dnssec_random_uint16_t());
 	knot_tsig_append(query->wire, &query->size, query->max_size, query->tsig_rr);
 
 	/* Create a request. */

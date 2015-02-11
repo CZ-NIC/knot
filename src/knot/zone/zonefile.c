@@ -372,7 +372,7 @@ int zonefile_write(const char *path, zone_contents_t *zone,
 	FILE *f = fdopen(fd, "w");
 	if (f == NULL) {
 		WARNING(zname, "failed to open zone, file '%s' (%s)",
-		        new_fname, knot_strerror(knot_errno_to_error(errno)));
+		        new_fname, knot_strerror(-errno));
 		unlink(new_fname);
 		free(new_fname);
 		return KNOT_ERROR;

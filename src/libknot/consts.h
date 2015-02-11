@@ -117,35 +117,6 @@ typedef enum {
 } knot_section_t;
 
 /*!
- * \brief TSIG algorithm numbers.
- *
- * These constants were taken from the Bind file key format (dnssec-keygen).
- */
-typedef enum {
-	KNOT_TSIG_ALG_NULL        =   0,
-	KNOT_TSIG_ALG_GSS_TSIG    = 128,
-	KNOT_TSIG_ALG_HMAC_MD5    = 157,
-	KNOT_TSIG_ALG_HMAC_SHA1   = 161,
-	KNOT_TSIG_ALG_HMAC_SHA224 = 162,
-	KNOT_TSIG_ALG_HMAC_SHA256 = 163,
-	KNOT_TSIG_ALG_HMAC_SHA384 = 164,
-	KNOT_TSIG_ALG_HMAC_SHA512 = 165
-} knot_tsig_algorithm_t;
-
-/*!
- * \brief Lengths of TSIG algorithm digests.
- */
-typedef enum {
-	KNOT_TSIG_ALG_DIG_LENGTH_GSS_TSIG =  0,
-	KNOT_TSIG_ALG_DIG_LENGTH_HMAC_MD5 = 16,
-	KNOT_TSIG_ALG_DIG_LENGTH_SHA1     = 20,
-	KNOT_TSIG_ALG_DIG_LENGTH_SHA224   = 28,
-	KNOT_TSIG_ALG_DIG_LENGTH_SHA256   = 32,
-	KNOT_TSIG_ALG_DIG_LENGTH_SHA384   = 48,
-	KNOT_TSIG_ALG_DIG_LENGTH_SHA512   = 64
-} knot_tsig_algorithm_digest_length_t;
-
-/*!
  * \brief DS digest lengths.
  */
 enum knot_ds_algorithm_len
@@ -218,42 +189,8 @@ extern lookup_table_t knot_tsig_err_names[];
 extern lookup_table_t knot_tkey_err_names[];
 
 /*!
- * \brief TSIG key algorithm names.
- */
-extern lookup_table_t knot_tsig_alg_names[];
-
-/*!
- * \brief TSIG key algorithm names in a domain form.
- */
-extern lookup_table_t knot_tsig_alg_dnames_str[];
-
-/*!
- * \brief TSIG key algorithm domain names.
- */
-extern lookup_table_t knot_tsig_alg_dnames[];
-
-/*!
  * \brief DNSSEC algorithm names.
  */
 extern lookup_table_t knot_dnssec_alg_names[];
-
-/*!
- * \brief Returns length of TSIG digest for given algorithm.
- *
- * \param algorithm Algorithm code to be used.
- *
- * \retval Digest length for given algorithm.
- */
-size_t knot_tsig_digest_length(const uint8_t algorithm);
-
-/*!
- * \brief Check if algorithm is supported for zone signing.
- *
- * \param algorithm      Algorithm identification.
- * \param nsec3_enabled  NSEC3 enabled for signed zone.
- *
- * \return Given algorithm is allowed for zone signing.
- */
-bool knot_dnssec_algorithm_is_zonesign(uint8_t algorithm, bool nsec3_enabled);
 
 /*! @} */

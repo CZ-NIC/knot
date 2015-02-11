@@ -21,6 +21,7 @@
 #include <stdint.h>
 #include <time.h>
 
+#include "dnssec/tsig.h"
 #include "libknot/rrtype/tsig.h"
 #include "libknot/consts.h"
 #include "libknot/dname.h"
@@ -164,18 +165,6 @@ int knot_tsig_rdata_set_time_signed(knot_rrset_t *tsig, uint64_t time)
 }
 
 _public_
-int knot_tsig_rdata_store_current_time(knot_rrset_t *tsig)
-{
-	if (!tsig) {
-		return KNOT_EINVAL;
-	}
-	time_t curr_time = time(NULL);
-	/*! \todo bleeding eyes. */
-	knot_tsig_rdata_set_time_signed(tsig, (uint64_t)curr_time);
-	return KNOT_EOK;
-}
-
-_public_
 int knot_tsig_rdata_set_fudge(knot_rrset_t *tsig, uint16_t fudge)
 {
 	uint8_t *rd = rdata_seek(tsig, TSIG_FUDGE_O, sizeof(uint16_t));
@@ -244,26 +233,15 @@ const knot_dname_t *knot_tsig_rdata_alg_name(const knot_rrset_t *tsig)
 }
 
 _public_
-knot_tsig_algorithm_t knot_tsig_rdata_alg(const knot_rrset_t *tsig)
+dnssec_tsig_algorithm_t knot_tsig_rdata_alg(const knot_rrset_t *tsig)
 {
 	/* Get the algorithm name. */
 	const knot_dname_t *alg_name = knot_tsig_rdata_alg_name(tsig);
 	if (!alg_name) {
-		return KNOT_TSIG_ALG_NULL;
+		return DNSSEC_TSIG_UNKNOWN;
 	}
 
-	/* Convert alg name to string. */
-	char *name = knot_dname_to_str_alloc(alg_name);
-	if (!name) {
-		return KNOT_TSIG_ALG_NULL;
-	}
-
-	lookup_table_t *item = lookup_by_name(knot_tsig_alg_dnames_str, name);
-	free(name);
-	if (!item) {
-		return KNOT_TSIG_ALG_NULL;
-	}
-	return item->id;
+	return dnssec_tsig_algorithm_from_dname(alg_name);
 }
 
 _public_
@@ -348,29 +326,6 @@ uint16_t knot_tsig_rdata_other_data_length(const knot_rrset_t *tsig)
 }
 
 _public_
-int knot_tsig_alg_from_name(const knot_dname_t *alg_name)
-{
-	if (!alg_name) {
-		return 0;
-	}
-
-	char *name = knot_dname_to_str_alloc(alg_name);
-	if (!name) {
-		return 0;
-	}
-
-	lookup_table_t *found = lookup_by_name(knot_tsig_alg_dnames_str, name);
-	if (!found) {
-		free(name);
-		return 0;
-	}
-
-	free(name);
-
-	return found->id;
-}
-
-_public_
 size_t knot_tsig_rdata_tsig_variables_length(const knot_rrset_t *tsig)
 {
 	if (tsig == NULL) {
@@ -400,41 +355,6 @@ size_t knot_tsig_rdata_tsig_timers_length()
 	return KNOT_TSIG_TIMERS_LENGTH;
 }
 
-/*!
- * \brief Convert TSIG algorithm identifier to name.
- *
- * \param alg TSIG algorithm identifier.
- *
- * \retval TSIG algorithm string name.
- * \retval Empty string if undefined.
- */
-static const char *alg_to_str(knot_tsig_algorithm_t alg)
-{
-	lookup_table_t *item;
-
-	item = lookup_by_id(knot_tsig_alg_dnames_str, alg);
-
-	if (item != NULL) {
-		return item->name;
-	} else {
-		return "";
-	}
-}
-
-_public_
-const knot_dname_t *knot_tsig_alg_to_dname(knot_tsig_algorithm_t alg)
-{
-	lookup_table_t *item;
-
-	item = lookup_by_id(knot_tsig_alg_dnames, alg);
-
-	if (item != NULL) {
-		return (const knot_dname_t*)item->name;
-	} else {
-		return NULL;
-	}
-}
-
 _public_
 size_t knot_tsig_wire_maxsize(const knot_tsig_key_t *key)
 {
@@ -442,7 +362,7 @@ size_t knot_tsig_wire_maxsize(const knot_tsig_key_t *key)
 		return 0;
 	}
 
-	size_t alg_name_size = strlen(alg_to_str(key->algorithm)) + 1;
+	const uint8_t *alg_dname = dnssec_tsig_algorithm_to_dname(key->algorithm);
 
 	/*! \todo Used fixed size as a base. */
 	return knot_dname_size(key->name) +
@@ -450,11 +370,11 @@ size_t knot_tsig_wire_maxsize(const knot_tsig_key_t *key)
 	sizeof(uint16_t) + /* CLASS */
 	sizeof(uint32_t) + /* TTL */
 	sizeof(uint16_t) + /* RDLENGTH */
-	alg_name_size + /* Alg. name */
+	knot_dname_size(alg_dname) + /* Alg. name */
 	6 * sizeof(uint8_t) + /* Time signed */
 	sizeof(uint16_t) + /* Fudge */
 	sizeof(uint16_t) + /* MAC size */
-	knot_tsig_digest_length(key->algorithm) + /* MAC */
+	dnssec_tsig_algorithm_size(key->algorithm) + /* MAC */
 	sizeof(uint16_t) + /* Original ID */
 	sizeof(uint16_t) + /* Error */
 	sizeof(uint16_t) + /* Other len */

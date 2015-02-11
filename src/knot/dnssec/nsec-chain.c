@@ -19,9 +19,9 @@
 
 #include "knot/common/debug.h"
 #include "knot/dnssec/nsec-chain.h"
-#include "knot/dnssec/zone-sign.h"
-#include "libknot/dnssec/rrset-sign.h"
+#include "knot/dnssec/rrset-sign.h"
 #include "knot/dnssec/zone-nsec.h"
+#include "knot/dnssec/zone-sign.h"
 
 /* - NSEC chain construction ------------------------------------------------ */
 
@@ -33,7 +33,7 @@
  * \param to         Node that should be pointed to from 'from'.
  * \param ttl        Record TTL (SOA's minimum TTL).
  *
- * \return NSEC RR set, NULL on error.
+ * \return Error code, KNOT_EOK if successful.
  */
 static int create_nsec_rrset(knot_rrset_t *rrset, const zone_node_t *from,
                              const zone_node_t *to, uint32_t ttl)
@@ -43,23 +43,28 @@ static int create_nsec_rrset(knot_rrset_t *rrset, const zone_node_t *from,
 	knot_rrset_init(rrset, from->owner, KNOT_RRTYPE_NSEC, KNOT_CLASS_IN);
 
 	// Create bitmap
-	bitmap_t rr_types = { 0 };
-	bitmap_add_node_rrsets(&rr_types, from);
-	knot_bitmap_add_type(&rr_types, KNOT_RRTYPE_NSEC);
-	knot_bitmap_add_type(&rr_types, KNOT_RRTYPE_RRSIG);
+	dnssec_nsec_bitmap_t *rr_types = dnssec_nsec_bitmap_new();
+	if (!rr_types) {
+		return KNOT_ENOMEM;
+	}
+
+	bitmap_add_node_rrsets(rr_types, from);
+	dnssec_nsec_bitmap_add(rr_types, KNOT_RRTYPE_NSEC);
+	dnssec_nsec_bitmap_add(rr_types, KNOT_RRTYPE_RRSIG);
 	if (node_rrtype_exists(from, KNOT_RRTYPE_SOA)) {
-		knot_bitmap_add_type(&rr_types, KNOT_RRTYPE_DNSKEY);
+		dnssec_nsec_bitmap_add(rr_types, KNOT_RRTYPE_DNSKEY);
 	}
 
 	// Create RDATA
 	assert(to->owner);
 	size_t next_owner_size = knot_dname_size(to->owner);
-	size_t rdata_size = next_owner_size + knot_bitmap_size(&rr_types);
+	size_t rdata_size = next_owner_size + dnssec_nsec_bitmap_size(rr_types);
 	uint8_t rdata[rdata_size];
 
 	// Fill RDATA
 	memcpy(rdata, to->owner, next_owner_size);
-	knot_bitmap_write(&rr_types, rdata + next_owner_size);
+	dnssec_nsec_bitmap_write(rr_types, rdata + next_owner_size);
+	dnssec_nsec_bitmap_free(rr_types);
 
 	return knot_rrset_add_rdata(rrset, rdata, rdata_size, ttl, NULL);
 }

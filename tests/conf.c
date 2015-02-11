@@ -67,7 +67,7 @@ int main(int argc, char *argv[])
 		knot_tsig_key_t *k = &((conf_key_t *)HEAD(conf->keys))->k;
 		uint8_t decoded_secret[] = { 0x5a };
 
-		ok(k->algorithm == KNOT_TSIG_ALG_HMAC_MD5,
+		ok(k->algorithm == DNSSEC_TSIG_HMAC_MD5,
 		       "TSIG key algorithm check");
 		ok(k->secret.size == sizeof(decoded_secret)
 		   && memcmp(k->secret.data, decoded_secret,

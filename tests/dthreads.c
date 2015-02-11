@@ -126,7 +126,7 @@ int main(int argc, char *argv[])
 	ret += dt_stop(0);
 	ret += dt_unit_lock(0);
 	ret += dt_unit_unlock(0);
-	is_int(-1098, ret, "dthreads: correct values when passed NULL context");
+	is_int(-198, ret, "dthreads: correct values when passed NULL context");
 
 	/* Test 8: Thread destructor. */
 	_destructor_data = 0;

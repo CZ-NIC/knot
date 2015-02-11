@@ -16,6 +16,7 @@
 
 #include <stdlib.h>
 
+#include "dnssec/crypto.h"
 #include "utils/kdig/kdig_params.h"
 #include "utils/kdig/kdig_exec.h"
 #include "libknot/errcode.h"
@@ -27,8 +28,10 @@ int main(int argc, char *argv[])
 	kdig_params_t params;
 	if (kdig_parse(&params, argc, argv) == KNOT_EOK) {
 		if (!params.stop && kdig_exec(&params) != KNOT_EOK) {
+		dnssec_crypto_init();
 			ret = EXIT_FAILURE;
 		}
+		dnssec_crypto_cleanup();
 	} else {
 		ret = EXIT_FAILURE;
 	}

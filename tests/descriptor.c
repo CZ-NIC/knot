@@ -25,7 +25,7 @@
 
 int main(int argc, char *argv[])
 {
-	plan(122);
+	plan(124);
 
 	const    knot_rdata_descriptor_t *descr;
 	char     name[BUF_LEN];
@@ -277,15 +277,19 @@ int main(int argc, char *argv[])
 	ok(knot_rrtype_is_metatype(KNOT_RRTYPE_ANY) != 0,
 	   "rrtype is ANY");
 
-	// knot_rrtype_is_ddns_forbidden
-	ok(knot_rrtype_is_ddns_forbidden(0) == 0,
-	   "rrtype is not ddns forbidden");
-	ok(knot_rrtype_is_ddns_forbidden(KNOT_RRTYPE_RRSIG) != 0,
+	// knot_rrtype_is_dnssec
+	ok(knot_rrtype_is_dnssec(0) == 0,
+	   "rrtype is not DNSSEC");
+	ok(knot_rrtype_is_dnssec(KNOT_RRTYPE_DNSKEY) != 0,
+	   "rrtype is DNSKEY");
+	ok(knot_rrtype_is_dnssec(KNOT_RRTYPE_RRSIG) != 0,
 	   "rrtype is RRSIG");
-	ok(knot_rrtype_is_ddns_forbidden(KNOT_RRTYPE_NSEC) != 0,
+	ok(knot_rrtype_is_dnssec(KNOT_RRTYPE_NSEC) != 0,
 	   "rrtype is NSEC");
-	ok(knot_rrtype_is_ddns_forbidden(KNOT_RRTYPE_NSEC3) != 0,
+	ok(knot_rrtype_is_dnssec(KNOT_RRTYPE_NSEC3) != 0,
 	   "rrtype is NSEC3");
+	ok(knot_rrtype_is_dnssec(KNOT_RRTYPE_NSEC3PARAM) != 0,
+	   "rrtype is NSEC3PARAM");
 
 	// knot_rrtype_additional_needed
 	ok(knot_rrtype_additional_needed(0) == 0,
