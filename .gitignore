@@ -24,6 +24,7 @@
 /patches/Makefile.in
 /samples/Makefile
 /samples/Makefile.in
+/samples/knot.sample.conf
 /doc/Makefile
 /doc/Makefile.in
 /man/Makefile
@@ -58,9 +59,9 @@
 /src/knot/conf/libknotd_la-cf-lex.c
 /src/knot/conf/libknotd_la-cf-parse.c
 /src/knot/conf/libknotd_la-cf-parse.h
-src/dnssec/libdnssec.pc
-src/libknot-int.pc
-src/libknot.pc
+/src/dnssec/libdnssec.pc
+/src/libknot-int.pc
+/src/libknot.pc
 
 # dnstap
 /src/dnstap/Makefile
