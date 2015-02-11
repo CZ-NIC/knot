@@ -112,6 +112,7 @@ static int rrsig_write_rdata(uint8_t *rdata, const dnssec_key_t *key,
 	w += sizeof(uint16_t);
 
 	assert(w == rdata + RRSIG_RDATA_SIGNER_OFFSET);
+	assert(signer);
 	memcpy(w, signer, knot_dname_size(signer)); // signer
 
 	return KNOT_EOK;
