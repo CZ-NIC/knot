@@ -1,3 +1,9 @@
+Knot DNS 1.99.1 (UNRELEASED)
+
+Features:
+---------
+ - DNSSEC: updated version (vjan: TODO)
+
 Knot DNS 1.99.0 (2014-12-31)
 ============================
 
