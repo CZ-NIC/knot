@@ -45,7 +45,7 @@ libdnssec_la_CPPFLAGS = \
 libdnssec_la_LDFLAGS = \
 	$(gnutls_LIBS) \
 	$(jansson_LIBS) \
-	-version-info 0:1:0
+	$(VERSION_INFO)
 
 libdnssec_la_LIBADD = \
 	libshared.la

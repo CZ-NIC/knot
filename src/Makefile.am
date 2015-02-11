@@ -1,10 +1,18 @@
 ACLOCAL_AMFLAGS = -I $(top_srcdir)/m4
 SUBDIRS = dnstap .
 
-sbin_PROGRAMS = knotc knotd
-bin_PROGRAMS = kdig khost knsupdate
 lib_LTLIBRARIES = libknot-int.la libknot.la
-noinst_LTLIBRARIES = libknotd.la libknotus.la
+noinst_LTLIBRARIES =
+
+if HAVE_DAEMON
+sbin_PROGRAMS = knotc knotd
+noinst_LTLIBRARIES += libknotd.la
+endif
+
+if HAVE_UTILS
+bin_PROGRAMS = kdig khost knsupdate
+noinst_LTLIBRARIES += libknotus.la
+endif
 
 # $(YACC) will generate header file
 AM_CPPFLAGS = \
@@ -19,6 +27,8 @@ AM_LDFLAGS = $(CODE_COVERAGE_LDFLAGS)
 AM_YFLAGS = -d
 libknotd_la_YFLAGS = -pcf_ -d
 libknotd_la_LFLAGS = # TODO: reentrant parser, prefix
+
+if HAVE_DAEMON
 
 BUILT_SOURCES =					\
 	knot/conf/libknotd_la-cf-lex.c		\
@@ -35,6 +45,10 @@ knotc_SOURCES =					\
 
 knotd_SOURCES =					\
 	knot/main.c
+
+endif # HAVE_DAEMON
+
+if HAVE_UTILS
 
 kdig_SOURCES =					\
 	utils/kdig/kdig_exec.c			\
@@ -76,6 +90,8 @@ libknotus_la_SOURCES =				\
 	utils/common/strtonum.h			\
 	utils/common/token.c			\
 	utils/common/token.h
+
+endif # HAVE_UTILS
 
 # dynamic: libknot internal headers
 nobase_libknot_int_la_HEADERS =			\
@@ -198,6 +214,8 @@ libknot_la_SOURCES =				\
 	libknot/rrtype/tsig.c			\
 	libknot/tsig-op.c			\
 	$(libknot_la_HEADERS)
+
+if HAVE_DAEMON
 
 # static: server shared
 libknotd_la_SOURCES =				\
@@ -333,6 +351,8 @@ libknotd_la_SOURCES =				\
 	knot/zone/zonefile.c			\
 	knot/zone/zonefile.h
 
+endif # HAVE_DAEMON
+
 # linking
 libknot_int_la_CPPFLAGS = $(AM_CPPFLAGS) $(lmdb_CFLAGS)
 libknot_int_la_CFLAGS = $(AM_CFLAGS) -fvisibility=default
@@ -342,6 +362,8 @@ libknot_la_CPPFLAGS = $(AM_CPPFLAGS)
 libknot_la_LDFLAGS = $(AM_LDFLAGS) $(RELEASE_INFO) $(VERSION_INFO)
 libknot_la_LIBADD  = libknot-int.la ../dnssec/libdnssec.la zscanner/libzscanner.la
 
+if HAVE_DAEMON
+
 libknotd_la_CPPFLAGS  = $(AM_CPPFLAGS) $(systemd_CFLAGS)
 libknotd_la_LDFLAGS = $(AM_LDFLAGS) $(systemd_LIBS)
 libknotd_la_LIBADD = libknot.la
@@ -350,45 +372,65 @@ libknotus_la_CPPFLAGS = $(AM_CPPFLAGS) $(libidn_CFLAGS)
 libknotus_la_LDFLAGS = $(AM_LDFLAGS) $(libidn_LIBS)
 libknotus_la_LIBADD = libknot.la
 
+endif # HAVE_DAEMON
+
 # includes
 libknot_ladir = $(includedir)
 libknot_int_ladir = $(includedir)
+
+if HAVE_DAEMON
 
 # sbin programs
 knotd_LDADD = libknot.la libknotd.la
 knotc_LDADD = libknot.la libknotd.la
 
+endif # HAVE_DAEMON
+
+if HAVE_UTILS
+
 # bin programs
-BIN_LIBS = libknotus.la
+BIN_LIBS = ../dnssec/libdnssec.la libknot.la libknot-int.la libknotus.la
 kdig_LDADD       = $(BIN_LIBS) $(libidn_LIBS)
 khost_LDADD      = $(BIN_LIBS) $(libidn_LIBS)
 knsupdate_LDADD  = $(BIN_LIBS) zscanner/libzscanner.la
 
+endif # HAVE_UTILS
+
+
 if HAVE_DNSTAP
+
+if HAVE_DAEMON
 libknotd_la_SOURCES +=				\
 	knot/modules/dnstap.c			\
 	knot/modules/dnstap.h
+libknotd_la_LIBADD += dnstap/libdnstap.la
+endif # HAVE_DAEMOM
 
+if HAVE_UTILS
 kdig_LDADD         += dnstap/libdnstap.la
 khost_LDADD        += dnstap/libdnstap.la
-libknotd_la_LIBADD += dnstap/libdnstap.la
-endif
+endif # HAVE_UTILS
 
+endif # HAVE_DNSTAP
+
+if HAVE_DAEMON
 # rose sources and client tool
 if HAVE_ROSEDB
 libknotd_la_SOURCES +=				\
-	knot/modules/rosedb.c				\
+	knot/modules/rosedb.c			\
 	knot/modules/rosedb.h
 
-rosedb_tool_SOURCES =					\
+rosedb_tool_SOURCES =				\
 	knot/modules/rosedb_tool.c
 
+if HAVE_UTILS
 bin_PROGRAMS += rosedb_tool
 rosedb_tool_LDADD = libknot.la libknotd.la
-endif
+endif # HAVE_UTILS
+endif # HAVE_ROSEDB
+endif # HAVE_DAEMON
 
-if HAVE_LMDB
-else
+if !HAVE_LMDB
 libknot_int_la_SOURCES +=		\
 	libknot/internal/namedb/mdb.c	\
 	libknot/internal/namedb/midl.c
@@ -402,8 +444,10 @@ endif
 # pkg-config
 pkgconfig_DATA = $(top_srcdir)/libknot.pc
 
+if HAVE_DAEMON
 # Create storage and run-time directories
 install-data-hook:
 	$(INSTALL) -d $(DESTDIR)/@config_dir@
 	$(INSTALL) -d $(DESTDIR)/@run_dir@
 	$(INSTALL) -d $(DESTDIR)/@storage_dir@
+endif # HAVE_DAEMON
