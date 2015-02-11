@@ -32,7 +32,7 @@
 
 struct lmdb_env
 {
-	int shared;
+	bool shared;
 	MDB_dbi dbi;
 	MDB_env *env;
 	mm_ctx_t *pool;
@@ -84,10 +84,8 @@ static int set_mapsize(MDB_env *env, size_t map_size)
 static void dbase_close(struct lmdb_env *env)
 {
 	mdb_dbi_close(env->env, env->dbi);
-	if (env->shared == 0) {
+	if (!env->shared) {
 		mdb_env_close(env->env);
-	} else {
-		--env->shared;
 	}
 }
 
@@ -181,7 +179,7 @@ static int init(namedb_t **db_ptr, mm_ctx_t *mm, void *arg)
 	} else {
 		/* Shared environment, this instance just owns the DBI. */
 		env->env = old_env->env;
-		++env->shared;
+		env->shared = true;
 	}
 
 	/* Open the database. */
