@@ -12,15 +12,9 @@ AC_CANONICAL_HOST
 AX_SET_VERSION_INFO
 
 # Automatically update release date based on configure.ac date
-case "$host_os" in
-linux*)
-    release_date=`date +"%Y-%m-%d" -r configure.ac`
-    ;;
-*)
-    tmstamp=`stat -f %m configure.ac`
-    release_date=`date -r $tmstamp +"%Y-%m-%d"`
-    ;;
-esac
+AS_CASE([$host_os],
+    [linux*],[release_date=`date +"%Y-%m-%d" -r configure.ac`],
+    [*],[release_date=$(date -r "$(stat -f %m configure.ac)" +"%Y-%m-%d")])
 AC_SUBST([RELEASE_DATE], $release_date)
 
 # Set compiler compatibility flags
@@ -242,24 +236,24 @@ AC_ARG_WITH(libidn,
     AC_HELP_STRING([--with-libidn=[DIR]], [Support IDN (needs GNU Libidn)]),
     with_libidn=$withval,
     with_libidn=yes
-)
-if test "$with_libidn" != "no" ; then
-    PKG_CHECK_MODULES([libidn], [libidn >= 0.0.0], [with_libidn=yes], [with_libidn=no])
-    if test "$with_libidn" != "yes" ; then
-        with_libidn=no
-        AC_MSG_WARN([Libidn not found])
-    else
+    )
+
+AS_IF([test "$with_libidn" != "no"],[
+    PKG_CHECK_MODULES([libidn], [libidn >= 0.0.0], [
         with_libidn=yes
         AC_DEFINE([LIBIDN], [1], [Define to 1 to enable IDN support])
-    fi
-fi
+        ],[
+        with_libidn=no
+        AC_MSG_WARN([libidn not found])
+	])])
 
 dnl Check for dnstap.
 dt_DNSTAP([
     LIBS="$LIBS $DNSTAP_LIBS"
     CPPFLAGS="$CPPFLAGS $DNSTAP_CFLAGS"
     AC_DEFINE([USE_DNSTAP], [1], [Define to 1 to enable dnstap support])
-])
+    ])
+
 AM_CONDITIONAL([HAVE_DNSTAP], test "$opt_dnstap" != "no")
 
 dnl Check for LMDB
