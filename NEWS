@@ -1,8 +1,9 @@
-Knot DNS 1.99.1 (UNRELEASED)
+Knot DNS 1.99.1 (2015-02-11)
+============================
 
 Features:
 ---------
- - DNSSEC: updated version (vjan: TODO)
+ - DNSSEC: basic KASP support (generate initial keys, ZSK rollover)
 
 Knot DNS 1.99.0 (2014-12-31)
 ============================
