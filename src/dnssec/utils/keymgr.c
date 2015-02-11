@@ -461,7 +461,7 @@ static int cmd_zone_key_show(int argc, char *argv[])
 	}
 
 	_cleanup_zone_ dnssec_kasp_zone_t *zone = get_zone(kasp, zone_name);
-	if (zone) {
+	if (!zone) {
 		return 1;
 	}
 
