@@ -758,6 +758,7 @@ INPUT                  = src/dnstap \
                          src/libknot \
                          src/utils \
                          src/zscanner \
+			 src/dnssec \
                          Doxy.page.h
 
 # This tag can be used to specify the character encoding of the source files
