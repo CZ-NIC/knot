@@ -204,7 +204,7 @@ static int cmd_zone_add(int argc, char *argv[])
 	char *policy = NULL;
 
 	static const parameter_t params[] = {
-		{ "policy", value_string },
+		{ "policy", value_policy },
 		{ NULL }
 	};
 
