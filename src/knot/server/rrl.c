@@ -26,7 +26,6 @@
 #include "knot/zone/zone.h"
 #include "libknot/libknot.h"
 #include "libknot/internal/trie/murmurhash3.h"
-#include "libknot/internal/errors.h"
 
 /* Hopscotch defines. */
 #define HOP_LEN (sizeof(unsigned)*8)
@@ -57,7 +56,12 @@ enum {
 };
 
 /* Classification string. */
-const error_table_t rrl_clsstr_tbl[] = {
+struct cls_name {
+	int code;
+	const char *name;
+};
+
+static const struct cls_name rrl_cls_names[] = {
         {CLS_NORMAL,  "POSITIVE" },
         {CLS_ERROR,   "ERROR" },
         {CLS_NXDOMAIN,"NXDOMAIN"},
@@ -69,9 +73,16 @@ const error_table_t rrl_clsstr_tbl[] = {
         {CLS_NULL,    "NULL"},
         {CLS_NULL,    NULL}
 };
+
 static inline const char *rrl_clsstr(int code)
 {
-	return error_to_str(rrl_clsstr_tbl, code);
+	for (const struct cls_name *c = rrl_cls_names; c->name; c++) {
+		if (c->code == code) {
+			return c->name;
+		}
+	}
+
+	return "unknown class";
 }
 
 /* Bucket flags. */
