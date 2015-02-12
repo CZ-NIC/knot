@@ -22,11 +22,15 @@
 #endif
 
 #include "libknot/errcode.h"
-#include "libknot/internal/errors.h"
 #include "libknot/internal/macros.h"
 #include "dnssec/error.h"
 
-static const error_table_t error_messages[] = {
+struct error {
+	int code;
+	const char *message;
+};
+
+static const struct error errors[] = {
 	{ KNOT_EOK, "OK" },
 
 	/* Directly mapped error codes. */
@@ -130,11 +134,40 @@ static const error_table_t error_messages[] = {
 	{ KNOT_ERROR, NULL } /* Terminator */
 };
 
+/*!
+ * \brief Lookup error message by error code.
+ */
+static const char *lookup_message(int code)
+{
+	for (const struct error *e = errors; e->message; e++) {
+		if (e->code == code) {
+			return e->message;
+		}
+	}
+
+	return NULL;
+}
+
+/*!
+ * \brief Get a fallback error message for unknown error code.
+ */
+static const char *fallback_message(int code)
+{
+	static __thread char buffer[128];
+	if (snprintf(buffer, sizeof(buffer), "unknown error %d", code) < 0) {
+		buffer[0] = '\0';
+	}
+	return buffer;
+}
+
 _public_
 const char *knot_strerror(int code)
 {
-	if (code == 0 || (KNOT_ERROR_MIN <= code && code <= KNOT_ERROR_MAX)) {
-		return error_to_str(error_messages, code);
+	if (KNOT_ERROR_MIN <= code && code <= 0) {
+		const char *msg = lookup_message(code);
+		if (msg) {
+			return msg;
+		}
 	}
 
 	if (DNSSEC_ERROR_MIN <= code && code <= DNSSEC_ERROR_MAX) {
@@ -147,11 +180,7 @@ const char *knot_strerror(int code)
 	}
 #endif
 
-	static __thread char buffer[128];
-	if (snprintf(buffer, sizeof(buffer), "unknown error %d", code) < 0) {
-		buffer[0] = '\0';
-	}
-	return buffer;
+	return fallback_message(code);
 }
 
 _public_

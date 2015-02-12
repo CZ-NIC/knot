@@ -100,7 +100,6 @@ nobase_libknot_int_la_HEADERS =			\
 	libknot/internal/base64.h		\
 	libknot/internal/binsearch.h		\
 	libknot/internal/endian.h		\
-	libknot/internal/errors.h		\
 	libknot/internal/getline.h		\
 	libknot/internal/heap.h			\
 	libknot/internal/hhash.h		\
@@ -130,7 +129,6 @@ nobase_libknot_int_la_HEADERS =			\
 libknot_int_la_SOURCES =			\
 	libknot/internal/base32hex.c		\
 	libknot/internal/base64.c		\
-	libknot/internal/errors.c		\
 	libknot/internal/getline.c		\
 	libknot/internal/heap.c			\
 	libknot/internal/hhash.c		\
