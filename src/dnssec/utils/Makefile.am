@@ -42,8 +42,10 @@ knsec3hash_LDADD = \
 	$(builddir)/../libdnssec.la \
 	$(builddir)/../libshared.la
 
-bin_PROGRAMS = \
-	keymgr \
+sbin_PROGRAMS = \
+	keymgr
+
+bin_PROGRAMS =	\
 	knsec3hash
 
 endif # HAVE_UTILS
