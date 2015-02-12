@@ -26,9 +26,9 @@ int main(int argc, char *argv[])
 	int ret = EXIT_SUCCESS;
 
 	kdig_params_t params;
-	if (khost_parse(&params, argc, argv) == KNOT_EOK) {
+	if (khost_parse(&params, argc, argv) == KNOT_EOK && !params.stop) {
 		dnssec_crypto_init();
-		if (!params.stop && kdig_exec(&params) != KNOT_EOK) {
+		if (kdig_exec(&params) != KNOT_EOK) {
 			ret = EXIT_FAILURE;
 		}
 		dnssec_crypto_cleanup();
