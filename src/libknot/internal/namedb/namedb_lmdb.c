@@ -42,11 +42,20 @@ struct lmdb_env
  * \brief Convert error code returned by LMDB to Knot DNS error code.
  *
  * LMDB defines own error codes but uses additional ones from libc:
- * - LMDB error codes do not conflict with Knot DNS ones.
+ * - LMDB errors do not conflict with Knot DNS ones.
+ * - Significant LMDB errors are mapped to Knot DNS ones.
  * - Standard errors are converted to negative value to match Knot DNS mapping.
  */
 static int lmdb_error_to_knot(int error)
 {
+	if (error == MDB_SUCCESS) {
+		return KNOT_EOK;
+	}
+
+	if (error == MDB_MAP_FULL || error == MDB_TXN_FULL || error == ENOSPC) {
+		return KNOT_ESPACE;
+	}
+
 	return -abs(error);
 }
 
