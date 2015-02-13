@@ -509,6 +509,16 @@ int remote_bind(conf_iface_t *desc)
 	mode_t old_umask = umask(KNOT_CTL_SOCKET_UMASK);
 	int sock = net_bound_socket(SOCK_STREAM, &desc->addr, 0);
 	umask(old_umask);
+	if (sock == KNOT_EADDRNOTAVAIL) {
+		old_umask = umask(KNOT_CTL_SOCKET_UMASK);
+		sock = net_bound_socket(SOCK_STREAM, &desc->addr, NET_BIND_NONLOCAL);
+		umask(old_umask);
+		if (sock >= 0) {
+			log_warning("remote control, address '%s' is not available",
+			            addr_str);
+		}
+	}
+
 	if (sock < 0) {
 		log_error("remote control, failed to bind to '%s' (%s)",
 		          addr_str, knot_strerror(sock));
