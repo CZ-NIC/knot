@@ -264,7 +264,7 @@ AS_IF([test "$with_urcu" != "no"], [
   ])
 ])
 
-AC_SEARCH_LIBS([urcu_init], [urcu], [AC_MSG_ERROR([liburcu is too old (< 0.4.0), urcu_init symbol found])], [])
+AC_SEARCH_LIBS([urcu_init], [urcu], [AC_MSG_ERROR([liburcu is too old (< 0.4.0), urcu_init symbol found])])
 ])
 
 opt_dnstap=no
