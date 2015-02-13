@@ -105,6 +105,13 @@ static int server_init_iface(iface_t *new_if, conf_iface_t *cfg_if)
 
 	/* Create bound UDP socket. */
 	int sock = net_bound_socket(SOCK_DGRAM, &cfg_if->addr, 0);
+	if (sock == KNOT_EADDRNOTAVAIL) {
+		sock = net_bound_socket(SOCK_DGRAM, &cfg_if->addr, NET_BIND_NONLOCAL);
+		if (sock >= 0) {
+			log_warning("address '%s' is not available", addr_str);
+		}
+	}
+
 	if (sock < 0) {
 		log_error("cannot bind address '%s' (%s)", addr_str, knot_strerror(sock));
 		return sock;
@@ -116,7 +123,7 @@ static int server_init_iface(iface_t *new_if, conf_iface_t *cfg_if)
 	new_if->fd[IO_UDP] = sock;
 
 	/* Create bound TCP socket. */
-	sock = net_bound_socket(SOCK_STREAM, &cfg_if->addr, 0);
+	sock = net_bound_socket(SOCK_STREAM, &cfg_if->addr, NET_BIND_NONLOCAL);
 	if (sock < 0) {
 		close(new_if->fd[IO_UDP]);
 		return sock;
