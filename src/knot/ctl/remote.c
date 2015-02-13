@@ -507,7 +507,7 @@ int remote_bind(conf_iface_t *desc)
 
 	/* Create new socket. */
 	mode_t old_umask = umask(KNOT_CTL_SOCKET_UMASK);
-	int sock = net_bound_socket(SOCK_STREAM, &desc->addr);
+	int sock = net_bound_socket(SOCK_STREAM, &desc->addr, 0);
 	umask(old_umask);
 	if (sock < 0) {
 		return sock;

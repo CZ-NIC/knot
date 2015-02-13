@@ -57,30 +57,49 @@ int net_unbound_socket(int type, const struct sockaddr_storage *ss)
 	return socket_create(ss->ss_family, type, 0);
 }
 
-static void allow_freebind(int socket, int family)
+/*!
+ * \brief Get setsock option for binding non-local address.
+ */
+static int nonlocal_option(int family)
 {
-#if defined(IP_FREEBIND) || defined(IP_BINDANY) || defined(IPV6_BINDANY)
-	int flag = 1;
+	int opt4 = 0;
+	int opt6 = 0;
+
+#if defined(IP_FREEBIND)
+	opt4 = opt6 = IP_FREEBIND;
+#else
+#  if defined(IP_BINDANY)
+	opt4 = IP_BINDANY;
+#  endif
+#  if defined(IPV6_BINDANY)
+	opt6 = IPV6_BINDANY;
+#  endif
 #endif
 
-#ifdef IP_FREEBIND
-	(void) setsockopt(socket, IPPROTO_IP, IP_FREEBIND, &flag, sizeof(flag));
-#endif
-
-#ifdef IP_BINDANY
-	if (family == AF_INET) {
-		(void) setsockopt(socket, IPPROTO_IP, IP_BINDANY, &flag, sizeof(flag));
+	switch (family) {
+	case AF_INET:  return opt4;
+	case AF_INET6: return opt6;
+	default:
+		return 0;
 	}
-#endif
-#ifdef IPV6_BINDANY
-	if (family == AF_INET6) {
-		(void) setsockopt(socket, IPPROTO_IPV6, IPV6_BINDANY, &flag, sizeof(flag));
-	}
-#endif
 }
 
+static void enable_nonlocal(int socket, int family)
+{
+	int option = nonlocal_option(family);
+	if (option == 0) {
+		return;
+	}
 
-int net_bound_socket(int type, const struct sockaddr_storage *ss)
+	int enable = 1;
+	assert(family == AF_INET || family == AF_INET6);
+	int level = family == AF_INET ? IPPROTO_IP : IPPROTO_IPV6;
+
+	(void) setsockopt(socket, level, option, &enable, sizeof(enable));
+}
+
+int net_bound_socket(int type, const struct sockaddr_storage *ss,
+                     enum net_flags flags)
 {
 	/* Create socket. */
 	int socket = net_unbound_socket(type, ss);
@@ -108,13 +127,15 @@ int net_bound_socket(int type, const struct sockaddr_storage *ss)
 	}
 
 	/* Allow bind to non-local address. */
-	allow_freebind(socket, ss->ss_family);
+	if (flags & NET_BIND_NONLOCAL) {
+		enable_nonlocal(socket, ss->ss_family);
+	}
 
 	/* Bind to specified address. */
 	const struct sockaddr *sa = (const struct sockaddr *)ss;
 	int ret = bind(socket, sa, sockaddr_len(sa));
 	if (ret < 0) {
-		ret = knot_map_errno(EADDRINUSE, EINVAL, EACCES, ENOMEM);
+		ret = knot_map_errno(EADDRINUSE, EADDRNOTAVAIL, EINVAL, EACCES, ENOMEM);
 		close(socket);
 		return ret;
 	}
@@ -138,7 +159,7 @@ int net_connected_socket(int type, const struct sockaddr_storage *dst_addr,
 
 	/* Bind to specific source address - if set. */
 	if (sockaddr_len((const struct sockaddr *)src_addr) > 0) {
-		socket = net_bound_socket(type, src_addr);
+		socket = net_bound_socket(type, src_addr, 0);
 	} else {
 		socket = net_unbound_socket(type, dst_addr);
 	}
