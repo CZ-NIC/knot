@@ -31,7 +31,12 @@
 /* POSIX only. */
 #include "libknot/internal/sockaddr.h"
 
-/*******              #274, legacy API to be replaced below            ********/
+/*!
+ * \brief Network interface flags.
+ */
+enum net_flags {
+	NET_BIND_NONLOCAL = (1 << 0)
+};
 
 /*!
  * \brief Create unbound socket of given family and type.
@@ -46,12 +51,14 @@ int net_unbound_socket(int type, const struct sockaddr_storage *ss);
 /*!
  * \brief Create socket bound to given address.
  *
- * \param type  Socket transport type (SOCK_STREAM, SOCK_DGRAM).
- * \param ss    Socket address storage.
+ * \param type   Socket transport type (SOCK_STREAM, SOCK_DGRAM).
+ * \param ss     Socket address storage.
+ * \param flags  Allow binding to non-local address with NET_BIND_NONLOCAL.
  *
  * \return socket or error code
  */
-int net_bound_socket(int type, const struct sockaddr_storage *ss);
+int net_bound_socket(int type, const struct sockaddr_storage *ss,
+                     enum net_flags flags);
 
 /*!
  * \brief Create socket connected (asynchronously) to destination address.

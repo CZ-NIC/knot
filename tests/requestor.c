@@ -140,7 +140,7 @@ int main(int argc, char *argv[])
 	test_disconnected(&requestor, &remote);
 
 	/* Bind to random port. */
-	int origin_fd = net_bound_socket(SOCK_STREAM, &remote.addr);
+	int origin_fd = net_bound_socket(SOCK_STREAM, &remote.addr, 0);
 	assert(origin_fd > 0);
 	socklen_t addr_len = sockaddr_len((struct sockaddr *)&remote.addr);
 	getsockname(origin_fd, (struct sockaddr *)&remote.addr, &addr_len);
