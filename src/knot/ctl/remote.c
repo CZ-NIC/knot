@@ -514,11 +514,10 @@ int remote_bind(conf_iface_t *desc)
 	}
 
 	/* Start listening. */
-	int ret = listen(sock, TCP_BACKLOG_SIZE);
-	if (ret < 0) {
+	if (listen(sock, TCP_BACKLOG_SIZE) != 0) {
 		log_error("failed to bind to '%s'", addr_str);
 		close(sock);
-		return ret;
+		return knot_map_errno(EADDRINUSE);
 	}
 
 	return sock;
