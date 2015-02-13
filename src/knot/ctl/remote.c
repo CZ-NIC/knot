@@ -503,19 +503,21 @@ int remote_bind(conf_iface_t *desc)
 
 	char addr_str[SOCKADDR_STRLEN] = {0};
 	sockaddr_tostr(addr_str, sizeof(addr_str), &desc->addr);
-	log_info("binding remote control interface to '%s'", addr_str);
+	log_info("remote control, binding to '%s'", addr_str);
 
 	/* Create new socket. */
 	mode_t old_umask = umask(KNOT_CTL_SOCKET_UMASK);
 	int sock = net_bound_socket(SOCK_STREAM, &desc->addr, 0);
 	umask(old_umask);
 	if (sock < 0) {
+		log_error("remote control, failed to bind to '%s' (%s)",
+		          addr_str, knot_strerror(sock));
 		return sock;
 	}
 
 	/* Start listening. */
 	if (listen(sock, TCP_BACKLOG_SIZE) != 0) {
-		log_error("failed to bind to '%s'", addr_str);
+		log_error("remote control, failed to listen on '%s'", addr_str);
 		close(sock);
 		return knot_map_errno(EADDRINUSE);
 	}
