@@ -210,7 +210,7 @@ void dname_ascii_normalize(char *name)
 	}
 
 	for (size_t i = 0; i < length; i++) {
-		name[i] = tolower(name[i]);
+		name[i] = tolower((int)name[i]);
 	}
 
 	name[length] = '\0';
