@@ -14,6 +14,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <stdint.h>
 #include <tap/basic.h>
 
 #include "list.h"
@@ -77,7 +78,7 @@ int main(int argc, char *argv[])
 	bool increasing = true;
 
 	for (dnssec_item_t *i = dnssec_list_head(list); i; i = dnssec_list_next(list, i)) {
-		int number = (int)dnssec_item_get(i);
+		int number = (int)(intptr_t)dnssec_item_get(i);
 		sum += number;
 
 		if (previous + 1 != number) {
