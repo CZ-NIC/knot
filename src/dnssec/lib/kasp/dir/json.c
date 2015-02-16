@@ -175,7 +175,7 @@ int decode_uint32(const json_t *value, void *result)
 		return r;
 	}
 
-	uint16_t *uint32_ptr = result;
+	uint32_t *uint32_ptr = result;
 	*uint32_ptr = decoded;
 
 	return DNSSEC_EOK;
