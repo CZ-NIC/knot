@@ -259,7 +259,6 @@ AS_IF([test "$with_urcu" != "no"], [
 
     AS_IF([test "$with_urcu" = "no"],[
       AC_MSG_ERROR([liburcu is required])
-      ],[
       ])
   ])
 ])
