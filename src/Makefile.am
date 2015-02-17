@@ -4,16 +4,6 @@ SUBDIRS = zscanner dnssec dnstap .
 lib_LTLIBRARIES = libknot-int.la libknot.la
 noinst_LTLIBRARIES =
 
-if HAVE_DAEMON
-sbin_PROGRAMS = knotc knotd
-noinst_LTLIBRARIES += libknotd.la
-endif
-
-if HAVE_UTILS
-bin_PROGRAMS = kdig khost knsupdate
-noinst_LTLIBRARIES += libknotus.la
-endif
-
 # $(YACC) will generate header file
 AM_CPPFLAGS = \
 	-include $(top_builddir)/src/config.h	\
@@ -28,70 +18,9 @@ AM_YFLAGS = -d
 libknotd_la_YFLAGS = -pcf_ -d
 libknotd_la_LFLAGS = # TODO: reentrant parser, prefix
 
-if HAVE_DAEMON
-
-BUILT_SOURCES =					\
-	knot/conf/libknotd_la-cf-lex.c		\
-	knot/conf/libknotd_la-cf-parse.c	\
-	knot/conf/libknotd_la-cf-parse.h
-
-CLEANFILES =					\
-	knot/conf/libknotd_la-cf-lex.c		\
-	knot/conf/libknotd_la-cf-parse.c	\
-	knot/conf/libknotd_la-cf-parse.h
-
-knotc_SOURCES =					\
-	knot/ctl/knotc_main.c
-
-knotd_SOURCES =					\
-	knot/main.c
-
-endif # HAVE_DAEMON
-
-if HAVE_UTILS
-
-kdig_SOURCES =					\
-	utils/kdig/kdig_exec.c			\
-	utils/kdig/kdig_exec.h			\
-	utils/kdig/kdig_main.c			\
-	utils/kdig/kdig_params.c		\
-	utils/kdig/kdig_params.h
-
-khost_SOURCES =					\
-	utils/kdig/kdig_exec.c			\
-	utils/kdig/kdig_exec.h			\
-	utils/kdig/kdig_params.c		\
-	utils/kdig/kdig_params.h		\
-	utils/khost/khost_main.c		\
-	utils/khost/khost_params.c		\
-	utils/khost/khost_params.h
-
-knsupdate_SOURCES =				\
-	utils/knsupdate/knsupdate_exec.c	\
-	utils/knsupdate/knsupdate_exec.h	\
-	utils/knsupdate/knsupdate_main.c	\
-	utils/knsupdate/knsupdate_params.c	\
-	utils/knsupdate/knsupdate_params.h
-
-# static: utilities shared
-libknotus_la_SOURCES =				\
-	utils/common/exec.c			\
-	utils/common/exec.h			\
-	utils/common/hex.c			\
-	utils/common/hex.h			\
-	utils/common/msg.c			\
-	utils/common/msg.h			\
-	utils/common/netio.c			\
-	utils/common/netio.h			\
-	utils/common/params.c			\
-	utils/common/params.h			\
-	utils/common/resolv.c			\
-	utils/common/resolv.h			\
-	utils/common/strtonum.h			\
-	utils/common/token.c			\
-	utils/common/token.h
-
-endif # HAVE_UTILS
+######################
+# Knot DNS Libraries #
+######################
 
 # dynamic: libknot internal headers
 libknot_int_ladir = $(includedir)
@@ -214,7 +143,51 @@ libknot_la_SOURCES =				\
 	libknot/tsig-op.c			\
 	$(nobase_libknot_la_HEADERS)
 
+libknot_int_la_CPPFLAGS = $(AM_CPPFLAGS) $(lmdb_CFLAGS)
+libknot_int_la_CFLAGS = $(AM_CFLAGS) -fvisibility=default
+libknot_int_la_LDFLAGS = $(AM_LDFLAGS) $(RELEASE_INFO) $(VERSION_INFO) $(lmdb_LIBS)
+
+libknot_la_CPPFLAGS = $(AM_CPPFLAGS)
+libknot_la_LDFLAGS = $(AM_LDFLAGS) $(RELEASE_INFO) $(VERSION_INFO)
+libknot_la_LIBADD  = libknot-int.la dnssec/libdnssec.la zscanner/libzscanner.la
+
+# pkg-config
+pkgconfig_DATA = libknot.pc libknot-int.pc
+
+if !HAVE_LMDB
+libknot_int_la_SOURCES +=		\
+	libknot/internal/namedb/mdb.c	\
+	libknot/internal/namedb/midl.c	\
+	libknot/internal/namedb/lmdb.h	\
+	libknot/internal/namedb/midl.h
+libknot_int_la_CPPFLAGS +=		\
+	-I$(srcdir)/libknot/internal/namedb/
+endif
+
+###################
+# Knot DNS Daemon #
+###################
+
 if HAVE_DAEMON
+
+sbin_PROGRAMS = knotc knotd
+noinst_LTLIBRARIES += libknotd.la
+
+BUILT_SOURCES =					\
+	knot/conf/libknotd_la-cf-lex.c		\
+	knot/conf/libknotd_la-cf-parse.c	\
+	knot/conf/libknotd_la-cf-parse.h
+
+CLEANFILES =					\
+	knot/conf/libknotd_la-cf-lex.c		\
+	knot/conf/libknotd_la-cf-parse.c	\
+	knot/conf/libknotd_la-cf-parse.h
+
+knotc_SOURCES =					\
+	knot/ctl/knotc_main.c
+
+knotd_SOURCES =					\
+	knot/main.c
 
 # static: server shared
 libknotd_la_SOURCES =				\
@@ -350,98 +323,110 @@ libknotd_la_SOURCES =				\
 	knot/zone/zonefile.c			\
 	knot/zone/zonefile.h
 
-endif # HAVE_DAEMON
-
-# linking
-libknot_int_la_CPPFLAGS = $(AM_CPPFLAGS) $(lmdb_CFLAGS)
-libknot_int_la_CFLAGS = $(AM_CFLAGS) -fvisibility=default
-libknot_int_la_LDFLAGS = $(AM_LDFLAGS) $(RELEASE_INFO) $(VERSION_INFO) $(lmdb_LIBS)
-
-libknot_la_CPPFLAGS = $(AM_CPPFLAGS)
-libknot_la_LDFLAGS = $(AM_LDFLAGS) $(RELEASE_INFO) $(VERSION_INFO)
-libknot_la_LIBADD  = libknot-int.la dnssec/libdnssec.la zscanner/libzscanner.la
-
-if HAVE_DAEMON
-
 libknotd_la_CPPFLAGS  = $(AM_CPPFLAGS) $(systemd_CFLAGS)
 libknotd_la_LDFLAGS = $(AM_LDFLAGS) $(systemd_LIBS)
 libknotd_la_LIBADD = libknot.la
 
-libknotus_la_CPPFLAGS = $(AM_CPPFLAGS) $(libidn_CFLAGS)
-libknotus_la_LDFLAGS = $(AM_LDFLAGS) $(libidn_LIBS)
-libknotus_la_LIBADD = libknot.la
+knotd_LDADD = libknotd.la
+knotc_LDADD = libknotd.la
 
-endif # HAVE_DAEMON
-
-if HAVE_DAEMON
-
-# sbin programs
-knotd_LDADD = libknot.la libknotd.la
-knotc_LDADD = libknot.la libknotd.la
-
-endif # HAVE_DAEMON
-
-if HAVE_UTILS
-
-# bin programs
-BIN_LIBS = dnssec/libdnssec.la libknot.la libknot-int.la libknotus.la
-kdig_LDADD       = $(BIN_LIBS) $(libidn_LIBS)
-khost_LDADD      = $(BIN_LIBS) $(libidn_LIBS)
-knsupdate_LDADD  = $(BIN_LIBS) zscanner/libzscanner.la
-
-endif # HAVE_UTILS
-
+####################################
+# Optional Knot DNS Daemon modules #
+####################################
 
 if HAVE_DNSTAP
-
-if HAVE_DAEMON
 libknotd_la_SOURCES +=				\
 	knot/modules/dnstap.c			\
 	knot/modules/dnstap.h
 libknotd_la_LIBADD += dnstap/libdnstap.la
-endif # HAVE_DAEMOM
-
-if HAVE_UTILS
-kdig_LDADD         += dnstap/libdnstap.la
-khost_LDADD        += dnstap/libdnstap.la
-endif # HAVE_UTILS
-
 endif # HAVE_DNSTAP
 
-if HAVE_DAEMON
-# rose sources and client tool
 if HAVE_ROSEDB
 libknotd_la_SOURCES +=				\
 	knot/modules/rosedb.c			\
 	knot/modules/rosedb.h
-
-rosedb_tool_SOURCES =				\
-	knot/modules/rosedb_tool.c
-
-if HAVE_UTILS
-bin_PROGRAMS += rosedb_tool
-rosedb_tool_LDADD = libknot.la libknotd.la
-endif # HAVE_UTILS
 endif # HAVE_ROSEDB
-endif # HAVE_DAEMON
 
-if !HAVE_LMDB
-libknot_int_la_SOURCES +=		\
-	libknot/internal/namedb/mdb.c	\
-	libknot/internal/namedb/midl.c	\
-	libknot/internal/namedb/lmdb.h	\
-	libknot/internal/namedb/midl.h
-libknot_int_la_CPPFLAGS +=		\
-	-I$(srcdir)/libknot/internal/namedb/
-endif
-
-# pkg-config
-pkgconfig_DATA = libknot.pc libknot-int.pc
-
-if HAVE_DAEMON
 # Create storage and run-time directories
 install-data-hook:
 	$(INSTALL) -d $(DESTDIR)/@config_dir@
 	$(INSTALL) -d $(DESTDIR)/@run_dir@
 	$(INSTALL) -d $(DESTDIR)/@storage_dir@
+
 endif # HAVE_DAEMON
+
+######################
+# Knot DNS Utilities #
+######################
+
+if HAVE_UTILS
+
+bin_PROGRAMS = kdig khost knsupdate
+noinst_LTLIBRARIES += libknotus.la
+
+kdig_SOURCES =					\
+	utils/kdig/kdig_exec.c			\
+	utils/kdig/kdig_exec.h			\
+	utils/kdig/kdig_main.c			\
+	utils/kdig/kdig_params.c		\
+	utils/kdig/kdig_params.h
+
+khost_SOURCES =					\
+	utils/kdig/kdig_exec.c			\
+	utils/kdig/kdig_exec.h			\
+	utils/kdig/kdig_params.c		\
+	utils/kdig/kdig_params.h		\
+	utils/khost/khost_main.c		\
+	utils/khost/khost_params.c		\
+	utils/khost/khost_params.h
+
+knsupdate_SOURCES =				\
+	utils/knsupdate/knsupdate_exec.c	\
+	utils/knsupdate/knsupdate_exec.h	\
+	utils/knsupdate/knsupdate_main.c	\
+	utils/knsupdate/knsupdate_params.c	\
+	utils/knsupdate/knsupdate_params.h
+
+# static: utilities shared
+libknotus_la_SOURCES =				\
+	utils/common/exec.c			\
+	utils/common/exec.h			\
+	utils/common/hex.c			\
+	utils/common/hex.h			\
+	utils/common/msg.c			\
+	utils/common/msg.h			\
+	utils/common/netio.c			\
+	utils/common/netio.h			\
+	utils/common/params.c			\
+	utils/common/params.h			\
+	utils/common/resolv.c			\
+	utils/common/resolv.h			\
+	utils/common/strtonum.h			\
+	utils/common/token.c			\
+	utils/common/token.h
+
+libknotus_la_CPPFLAGS = $(AM_CPPFLAGS) $(libidn_CFLAGS)
+libknotus_la_LDFLAGS = $(AM_LDFLAGS) $(libidn_LIBS)
+libknotus_la_LIBADD = libknot-int.la libknot.la
+
+# bin programs
+kdig_LDADD       = $(libidn_LIBS) libknotus.la
+khost_LDADD      = $(libidn_LIBS) libknotus.la
+knsupdate_LDADD  = zscanner/libzscanner.la libknotus.la
+
+#######################################
+# Optional Knot DNS Utilities modules #
+#######################################
+
+if HAVE_DNSTAP
+kdig_LDADD         += dnstap/libdnstap.la
+khost_LDADD        += dnstap/libdnstap.la
+endif # HAVE_DNSTAP
+
+if HAVE_ROSEDB
+bin_PROGRAMS += rosedb_tool
+rosedb_tool_SOURCES = knot/modules/rosedb_tool.c
+rosedb_tool_LDADD = $(libknot_LIBS) libknotd.la
+endif # HAVE_ROSEDB
+
+endif # HAVE_UTILS
