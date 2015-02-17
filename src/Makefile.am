@@ -94,6 +94,7 @@ libknotus_la_SOURCES =				\
 endif # HAVE_UTILS
 
 # dynamic: libknot internal headers
+libknot_int_ladir = $(includedir)
 nobase_libknot_int_la_HEADERS =			\
 	libknot/internal/array-sort.h		\
 	libknot/internal/base32hex.h		\
@@ -152,16 +153,16 @@ libknot_int_la_SOURCES =			\
 	libknot/internal/yparser/ypformat.c	\
 	libknot/internal/yparser/ypscheme.c	\
 	libknot/internal/yparser/yptrafo.c	\
-	$(libknot_int_la_HEADERS)
+	$(nobase_libknot_int_la_HEADERS)
 
 # dynamic: libknot headers
+libknot_ladir = $(includedir)
 nobase_libknot_la_HEADERS =			\
 	libknot/binary.h			\
 	libknot/consts.h			\
 	libknot/descriptor.h			\
 	libknot/dname.h				\
 	libknot/dnssec/key.h			\
-	libknot/errcode.c			\
 	libknot/errcode.h			\
 	libknot/libknot.h			\
 	libknot/packet/compr.h			\
@@ -211,7 +212,7 @@ libknot_la_SOURCES =				\
 	libknot/rrtype/opt.c			\
 	libknot/rrtype/tsig.c			\
 	libknot/tsig-op.c			\
-	$(libknot_la_HEADERS)
+	$(nobase_libknot_la_HEADERS)
 
 if HAVE_DAEMON
 
@@ -372,10 +373,6 @@ libknotus_la_LIBADD = libknot.la
 
 endif # HAVE_DAEMON
 
-# includes
-libknot_ladir = $(includedir)
-libknot_int_ladir = $(includedir)
-
 if HAVE_DAEMON
 
 # sbin programs
@@ -431,7 +428,7 @@ endif # HAVE_DAEMON
 if !HAVE_LMDB
 libknot_int_la_SOURCES +=		\
 	libknot/internal/namedb/mdb.c	\
-	libknot/internal/namedb/midl.c
+	libknot/internal/namedb/midl.c	\
 nobase_libknot_int_la_HEADERS +=	\
 	libknot/internal/namedb/lmdb.h	\
 	libknot/internal/namedb/midl.h
