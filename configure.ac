@@ -36,6 +36,7 @@ LT_INIT
 m4_ifdef([PKG_INSTALLDIR], [PKG_INSTALLDIR], [AC_SUBST([pkgconfigdir], ['${libdir}/pkgconfig'])])
 AC_CONFIG_FILES([src/libknot.pc
 		 src/libknot-int.pc
+		 src/libknot-yparser.pc
 		 src/dnssec/libdnssec.pc])
 
 # Build Knot DNS daemon

@@ -1,0 +1,12 @@
+prefix=@prefix@
+exec_prefix=@prefix@
+libdir=@libdir@
+includedir=@includedir@
+
+Name: libknot-yparser
+Description: Knot DNS YParser library
+URL: https://www.knot-dns.cz
+Version: @PACKAGE_VERSION@
+Requires: libknot-int = @PACKAGE_VERSION@, libknot = @PACKAGE_VERSION@
+Libs: -L${libdir} -lknot -lknot-int
+Cflags: -I${includedir}
