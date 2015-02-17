@@ -125,6 +125,25 @@ static int dbase_open_env(struct lmdb_env *env, struct namedb_lmdb_opts *opts)
 		return lmdb_error_to_knot(ret);
 	}
 
+#ifdef __OpenBSD__ 
+	/*
+	 * Enforce that MDB_WRITEMAP is set.
+	 *
+	 * MDB assumes a unified buffer cache.
+	 *
+	 * See http://www.openldap.org/pub/hyc/mdm-paper.pdf section 3.1,
+	 * references 17, 18, and 19.
+	 *
+	 * From Howard Chu: "This requirement can be relaxed in the
+	 * current version of the library. If you create the environment
+	 * with the MDB_WRITEMAP option then all reads and writes are
+	 * performed using mmap, so the file buffer cache is irrelevant.
+	 * Of course then you lose the protection that the read-only
+	 * map offers."
+	 */
+	opts->flags.env |= MDB_WRITEMAP;
+#endif
+
 	ret = mdb_env_open(mdb_env, opts->path, opts->flags.env, LMDB_FILE_MODE);
 	if (ret != MDB_SUCCESS) {
 		mdb_env_close(mdb_env);
