@@ -429,7 +429,6 @@ if !HAVE_LMDB
 libknot_int_la_SOURCES +=		\
 	libknot/internal/namedb/mdb.c	\
 	libknot/internal/namedb/midl.c	\
-nobase_libknot_int_la_HEADERS +=	\
 	libknot/internal/namedb/lmdb.h	\
 	libknot/internal/namedb/midl.h
 libknot_int_la_CPPFLAGS +=		\
