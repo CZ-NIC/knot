@@ -10,6 +10,7 @@ AM_LDFLAGS = \
 LDADD = \
 	$(top_builddir)/libtap/libtap.a \
 	$(top_builddir)/src/libknot-int.la \
+	$(top_builddir)/src/libknot-yparser.la \
 	$(top_builddir)/src/libknotd.la
 
 check_PROGRAMS = \
