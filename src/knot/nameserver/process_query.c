@@ -14,10 +14,8 @@
 #include "knot/server/rrl.h"
 #include "knot/updates/acl.h"
 #include "knot/conf/conf.h"
-#include "libknot/rrtype/opt.h"
-#include "libknot/tsig-op.h"
-#include "libknot/descriptor.h"
 #include "knot/common/debug.h"
+#include "libknot/libknot.h"
 #include "libknot/internal/macros.h"
 
 /*! \brief Accessor to query-specific data. */
