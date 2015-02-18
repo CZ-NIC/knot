@@ -19,7 +19,7 @@
 #include <string.h>
 #include <tap/basic.h>
 
-#include "libknot/internal/yparser/yptrafo.h"
+#include "libknot/yparser/yptrafo.h"
 #include "libknot/internal/sockaddr.h"
 #include "libknot/libknot.h"
 

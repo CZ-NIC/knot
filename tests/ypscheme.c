@@ -19,8 +19,8 @@
 #include <string.h>
 #include <tap/basic.h>
 
-#include "libknot/internal/yparser/ypscheme.h"
-#include "libknot/internal/yparser/yptrafo.h"
+#include "libknot/yparser/ypscheme.h"
+#include "libknot/yparser/yptrafo.h"
 #include "libknot/libknot.h"
 
 #define C_ID		"\x02""id"
