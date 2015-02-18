@@ -57,10 +57,10 @@ nobase_libknot_int_la_HEADERS =			\
 
 libknot_yparser_ladir = $(includedir)
 nobase_libknot_yparser_la_HEADERS =		\
-	libknot/internal/yparser/yparser.h	\
-	libknot/internal/yparser/ypformat.h	\
-	libknot/internal/yparser/ypscheme.h	\
-	libknot/internal/yparser/yptrafo.h
+	libknot/yparser/yparser.h	\
+	libknot/yparser/ypformat.h	\
+	libknot/yparser/ypscheme.h	\
+	libknot/yparser/yptrafo.h
 
 # dynamic: libknot internal sources
 libknot_int_la_SOURCES =			\
@@ -88,11 +88,11 @@ libknot_int_la_SOURCES =			\
 	$(nobase_libknot_int_la_HEADERS)
 
 libknot_yparser_la_SOURCES =			\
-	libknot/internal/yparser/yparser.c	\
-	libknot/internal/yparser/ypbody.c	\
-	libknot/internal/yparser/ypformat.c	\
-	libknot/internal/yparser/ypscheme.c	\
-	libknot/internal/yparser/yptrafo.c	\
+	libknot/yparser/yparser.c	\
+	libknot/yparser/ypbody.c	\
+	libknot/yparser/ypformat.c	\
+	libknot/yparser/ypscheme.c	\
+	libknot/yparser/yptrafo.c	\
 	$(nobase_libknot_yparser_la_HEADERS)
 
 # dynamic: libknot headers
