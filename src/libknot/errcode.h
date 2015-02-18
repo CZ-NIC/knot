@@ -28,7 +28,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #pragma once
 
 #include <errno.h>
-#include <libknot/internal/errcode.h>
+#include "libknot/internal/errcode.h"
 
 /*!
  * \brief Returns error message for the given error code.

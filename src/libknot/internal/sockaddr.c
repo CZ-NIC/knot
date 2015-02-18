@@ -18,10 +18,11 @@
 #include <string.h>
 #include <netdb.h>
 
+#include "libknot/internal/utils.h"
 #include "libknot/internal/sockaddr.h"
 #include "libknot/internal/errcode.h"
 #include "libknot/internal/strlcpy.h"
-#include "libknot/consts.h" /* FIXME */
+#include "libknot/internal/consts.h"
 
 int sockaddr_len(const struct sockaddr *ss)
 {

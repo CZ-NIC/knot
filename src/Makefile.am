@@ -32,6 +32,7 @@ nobase_libknot_int_la_HEADERS =			\
 	libknot/internal/base32hex.h		\
 	libknot/internal/base64.h		\
 	libknot/internal/binsearch.h		\
+	libknot/internal/consts.h		\
 	libknot/internal/endian.h		\
 	libknot/internal/errcode.h		\
 	libknot/internal/getline.h		\
