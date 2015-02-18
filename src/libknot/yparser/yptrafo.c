@@ -19,7 +19,7 @@
 #include <arpa/inet.h>
 
 #include "libknot/internal/macros.h"
-#include "libknot/internal/yparser/yptrafo.h"
+#include "libknot/yparser/yptrafo.h"
 #include "libknot/internal/base64.h"
 #include "libknot/internal/sockaddr.h"
 #include "libknot/errcode.h"

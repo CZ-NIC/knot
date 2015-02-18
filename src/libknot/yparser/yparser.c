@@ -22,7 +22,7 @@
 #include <unistd.h>
 
 #include "libknot/internal/macros.h"
-#include "libknot/internal/yparser/yparser.h"
+#include "libknot/yparser/yparser.h"
 #include "libknot/errcode.h"
 
 extern int _yp_start_state;

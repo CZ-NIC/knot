@@ -17,8 +17,8 @@
 #include <stdlib.h>
 
 #include "libknot/internal/macros.h"
-#include "libknot/internal/yparser/ypscheme.h"
-#include "libknot/internal/yparser/yptrafo.h"
+#include "libknot/yparser/ypscheme.h"
+#include "libknot/yparser/yptrafo.h"
 #include "libknot/errcode.h"
 
 /*! Initializes the referenced item. */

@@ -25,7 +25,7 @@
 
 #pragma once
 
-#include "libknot/internal/yparser/ypscheme.h"
+#include "libknot/yparser/ypscheme.h"
 #include "libknot/internal/endian.h"
 #include "libknot/dname.h"
 

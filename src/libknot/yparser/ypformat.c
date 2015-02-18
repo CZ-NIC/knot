@@ -14,7 +14,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "libknot/internal/yparser/yptrafo.h"
+#include "libknot/yparser/yptrafo.h"
 #include "libknot/errcode.h"
 
 static int format_item(
