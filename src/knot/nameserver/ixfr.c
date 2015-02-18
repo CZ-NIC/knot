@@ -22,6 +22,7 @@
 #include "knot/updates/apply.h"
 #include "knot/common/debug.h"
 #include "knot/zone/serial.h"
+#include "libknot/errcode.h"
 #include "libknot/descriptor.h"
 #include "libknot/internal/utils.h"
 #include "libknot/rrtype/soa.h"

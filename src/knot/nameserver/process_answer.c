@@ -14,6 +14,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "libknot/errcode.h"
 #include "knot/nameserver/process_answer.h"
 #include "knot/nameserver/internet.h"
 #include "knot/nameserver/notify.h"

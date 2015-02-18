@@ -25,6 +25,7 @@
 #include "knot/dnssec/zone-events.h"
 #include "knot/updates/ddns.h"
 #include "knot/updates/zone-update.h"
+#include "libknot/errcode.h"
 #include "libknot/descriptor.h"
 #include "libknot/tsig-op.h"
 #include "knot/zone/zone.h"
