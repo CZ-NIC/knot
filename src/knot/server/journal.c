@@ -27,7 +27,7 @@
 #include "knot/common/debug.h"
 #include "knot/server/journal.h"
 #include "knot/server/serialization.h"
-#include "libknot/errcode.h"
+#include "libknot/libknot.h"
 #include "libknot/rrtype/soa.h"
 
 /*! \brief Infinite file size limit. */

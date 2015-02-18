@@ -22,7 +22,7 @@
 #include <sys/stat.h>
 #include <tap/basic.h>
 
-#include "libknot/errcode.h"
+#include "libknot/libknot.h"
 #include "knot/server/journal.h"
 #include "knot/zone/zone-diff.h"
 

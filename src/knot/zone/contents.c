@@ -19,7 +19,7 @@
 #include "knot/zone/contents.h"
 #include "knot/common/debug.h"
 #include "libknot/internal/macros.h"
-#include "libknot/errcode.h"
+#include "libknot/libknot.h"
 #include "libknot/rrset.h"
 #include "libknot/internal/base32hex.h"
 #include "libknot/descriptor.h"

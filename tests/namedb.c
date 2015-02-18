@@ -28,7 +28,7 @@
 #include "libknot/internal/namedb/namedb_lmdb.h"
 #include "libknot/internal/namedb/namedb_trie.h"
 #include "libknot/internal/strlcpy.h"
-#include "libknot/errcode.h"
+#include "libknot/libknot.h"
 
 /* Constants. */
 #define KEY_MAXLEN 64

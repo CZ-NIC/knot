@@ -19,7 +19,7 @@
 #include "libknot/internal/macros.h"
 #include "libknot/yparser/ypscheme.h"
 #include "libknot/yparser/yptrafo.h"
-#include "libknot/errcode.h"
+#include "libknot/libknot.h"
 
 /*! Initializes the referenced item. */
 static int set_ref_item(

@@ -22,7 +22,7 @@
 #include "libknot/internal/mempattern.h"
 #include "libknot/internal/mempool.h"
 #include "libknot/internal/macros.h"
-#include "libknot/errcode.h"
+#include "libknot/libknot.h"
 
 /* Test defines. */
 #define ELEM_COUNT 65535

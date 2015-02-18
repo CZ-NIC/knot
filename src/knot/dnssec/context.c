@@ -23,7 +23,7 @@
 #include <dnssec/kasp.h>
 #include <dnssec/keystore.h>
 
-#include "libknot/errcode.h"
+#include "libknot/libknot.h"
 #include "knot/dnssec/context.h"
 
 /*!

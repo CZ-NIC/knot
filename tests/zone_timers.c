@@ -22,7 +22,7 @@
 #include "libknot/internal/namedb/namedb.h"
 #include "libknot/internal/namedb/namedb_lmdb.h"
 #include "libknot/internal/mem.h"
-#include "libknot/errcode.h"
+#include "libknot/libknot.h"
 #include "knot/zone/timers.h"
 #include "knot/zone/zone.h"
 #include "knot/zone/events/events.h"

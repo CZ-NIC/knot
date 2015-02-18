@@ -23,6 +23,7 @@
 #include "dnstap/writer.h"
 #include "dnstap/message.h"
 #include "dnstap/dnstap.h"
+#include "libknot/libknot.h"
 #include "libknot/descriptor.h"
 
 /* Defines. */

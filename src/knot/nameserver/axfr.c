@@ -21,7 +21,7 @@
 #include "knot/updates/apply.h"
 #include "knot/zone/zonefile.h"
 #include "knot/common/debug.h"
-#include "libknot/errcode.h"
+#include "libknot/libknot.h"
 #include "libknot/descriptor.h"
 #include "libknot/internal/lists.h"
 

@@ -26,6 +26,7 @@
 #include <unistd.h>
 #include <inttypes.h>
 
+#include "libknot/libknot.h"
 #include "libknot/internal/strlcat.h"
 #include "libknot/internal/strlcpy.h"
 #include "libknot/internal/macros.h"

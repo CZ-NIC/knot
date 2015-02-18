@@ -22,7 +22,7 @@
 #include <assert.h>
 
 #include "dnssec/random.h"
-#include "libknot/errcode.h"
+#include "libknot/libknot.h"
 #include "knot/common/debug.h"
 #include "knot/common/trim.h"
 #include "knot/server/server.h"

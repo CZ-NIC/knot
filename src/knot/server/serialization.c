@@ -17,7 +17,7 @@
 #include <assert.h>
 
 #include "knot/server/serialization.h"
-#include "libknot/errcode.h"
+#include "libknot/libknot.h"
 
 static size_t rr_binary_size(const knot_rrset_t *rrset, size_t rdata_pos)
 {

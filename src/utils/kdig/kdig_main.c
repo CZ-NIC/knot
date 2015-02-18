@@ -19,7 +19,7 @@
 #include "dnssec/crypto.h"
 #include "utils/kdig/kdig_params.h"
 #include "utils/kdig/kdig_exec.h"
-#include "libknot/errcode.h"
+#include "libknot/libknot.h"
 
 int main(int argc, char *argv[])
 {

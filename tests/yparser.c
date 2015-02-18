@@ -20,7 +20,7 @@
 #include <tap/basic.h>
 
 #include "libknot/internal/yparser/yparser.h"
-#include "libknot/errcode.h"
+#include "libknot/libknot.h"
 
 const char *syntax_ok =
 	"a:\n"

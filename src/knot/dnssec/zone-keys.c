@@ -23,7 +23,7 @@
 #include "dnssec/keystore.h"
 #include "knot/common/log.h"
 #include "knot/dnssec/zone-keys.h"
-#include "libknot/errcode.h"
+#include "libknot/libknot.h"
 #include "libknot/rrtype/dnskey.h"
 
 /*!

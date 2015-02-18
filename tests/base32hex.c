@@ -19,7 +19,7 @@
 #include <string.h>
 #include <tap/basic.h>
 
-#include "libknot/errcode.h"
+#include "libknot/libknot.h"
 #include "libknot/internal/base32hex.h"
 #include "libknot/internal/strlcpy.h"
 

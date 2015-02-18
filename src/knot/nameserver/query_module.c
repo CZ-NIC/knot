@@ -1,6 +1,6 @@
 #include "knot/nameserver/query_module.h"
 #include "libknot/internal/mempattern.h"
-#include "libknot/errcode.h"
+#include "libknot/libknot.h"
 #include "libknot/internal/strlcpy.h"
 
 /* Compiled-in module headers. */

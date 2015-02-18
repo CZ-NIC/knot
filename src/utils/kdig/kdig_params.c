@@ -26,7 +26,7 @@
 #include "utils/common/params.h"
 #include "utils/common/resolv.h"
 #include "libknot/descriptor.h"
-#include "libknot/errcode.h"
+#include "libknot/libknot.h"
 #include "libknot/internal/lists.h"
 #include "libknot/internal/sockaddr.h"
 

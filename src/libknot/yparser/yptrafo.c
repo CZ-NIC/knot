@@ -22,7 +22,7 @@
 #include "libknot/yparser/yptrafo.h"
 #include "libknot/internal/base64.h"
 #include "libknot/internal/sockaddr.h"
-#include "libknot/errcode.h"
+#include "libknot/libknot.h"
 
 #define TXT_BIN_PARAMS char const *txt, size_t txt_len, uint8_t *bin, size_t *bin_len
 #define BIN_TXT_PARAMS uint8_t const *bin, size_t bin_len, char *txt, size_t *txt_len

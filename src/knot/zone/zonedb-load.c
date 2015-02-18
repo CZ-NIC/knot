@@ -17,7 +17,7 @@
 #include <assert.h>
 #include <sys/stat.h>
 
-#include "libknot/errcode.h"
+#include "libknot/libknot.h"
 #include "knot/zone/zonedb-load.h"
 #include "knot/zone/zone-load.h"
 #include "knot/conf/conf.h"

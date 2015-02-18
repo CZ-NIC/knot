@@ -18,7 +18,7 @@
 #include <tap/basic.h>
 
 #include "knot/zone/node.h"
-#include "libknot/errcode.h"
+#include "libknot/libknot.h"
 
 static knot_rrset_t *create_dummy_rrset(const knot_dname_t *owner,
                                         uint16_t type)

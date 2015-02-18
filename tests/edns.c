@@ -17,7 +17,7 @@
 #include <tap/basic.h>
 
 #include <assert.h>
-#include "libknot/errcode.h"
+#include "libknot/libknot.h"
 #include "libknot/rrtype/opt.h"
 #include "libknot/descriptor.h"
 #include "libknot/internal/sockaddr.h"

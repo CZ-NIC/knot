@@ -32,7 +32,7 @@
 #include "knot/updates/apply.h"
 #include "libknot/processing/requestor.h"
 #include "knot/nameserver/process_query.h"
-#include "libknot/errcode.h"
+#include "libknot/libknot.h"
 #include "libknot/dname.h"
 #include "libknot/internal/utils.h"
 #include "libknot/rrtype/soa.h"
