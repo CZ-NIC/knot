@@ -18,7 +18,8 @@
 #include <time.h>
 
 #include "knot/common/evsched.h"
-#include "libknot/internal//namedb/namedb.h"
+#include "libknot/libknot.h"
+#include "libknot/internal/namedb/namedb.h"
 #include "knot/server/server.h"
 #include "knot/worker/pool.h"
 #include "knot/zone/zone.h"

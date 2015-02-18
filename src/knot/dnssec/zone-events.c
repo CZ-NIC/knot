@@ -21,6 +21,7 @@
 #include "dnssec/event.h"
 #include "libknot/internal/macros.h"
 #include "libknot/internal/mem.h"
+#include "libknot/libknot.h"
 #include "knot/conf/conf.h"
 #include "knot/dnssec/context.h"
 #include "knot/dnssec/policy.h"

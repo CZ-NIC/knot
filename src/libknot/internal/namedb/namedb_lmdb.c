@@ -22,7 +22,7 @@
 #include <unistd.h>
 
 #include "libknot/internal/namedb/namedb_lmdb.h"
-#include "libknot/errcode.h"
+#include "libknot/internal/errcode.h"
 
 #include <lmdb.h>
 

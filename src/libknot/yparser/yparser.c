@@ -21,12 +21,14 @@
 #include <sys/mman.h>
 #include <unistd.h>
 
-#include "libknot/internal/yparser/yparser.h"
-#include "libknot/errcode.h"
+#include "libknot/internal/macros.h"
+#include "libknot/yparser/yparser.h"
+#include "libknot/libknot.h"
 
 extern int _yp_start_state;
 extern int _yp_parse(yp_parser_t *parser);
 
+_public_
 void yp_init(
 	yp_parser_t *parser)
 {
@@ -41,6 +43,7 @@ void yp_init(
 	parser->line_count = 1;
 }
 
+_public_
 void yp_deinit(
 	yp_parser_t *parser)
 {
@@ -56,6 +59,7 @@ void yp_deinit(
 	}
 }
 
+_public_
 int yp_set_input_string(
 	yp_parser_t *parser,
 	const char *input,
@@ -78,6 +82,7 @@ int yp_set_input_string(
 	return KNOT_EOK;
 }
 
+_public_
 int yp_set_input_file(
 	yp_parser_t *parser,
 	const char *file_name)
@@ -126,6 +131,7 @@ int yp_set_input_file(
 	return KNOT_EOK;
 }
 
+_public_
 int yp_parse(
 	yp_parser_t *parser)
 {

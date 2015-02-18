@@ -1,4 +1,4 @@
-/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2014 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -14,30 +14,35 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <stdarg.h>
+#include <stdio.h>
 #include <stdlib.h>
+#if HAVE_LMDB
+#include <lmdb.h>
+#endif
 
-#include "dnssec/crypto.h"
-#include "utils/kdig/kdig_params.h"
-#include "utils/kdig/kdig_exec.h"
-#include "libknot/libknot.h"
+#include "libknot/internal/errcode.h"
+#include "libknot/internal/macros.h"
 
-int main(int argc, char *argv[])
+_public_
+int knot_map_errno_internal(int fallback, int arg0, ...)
 {
-	int ret = EXIT_SUCCESS;
+	/* Iterate all variable-length arguments. */
+	va_list ap;
+	va_start(ap, arg0);
 
-	kdig_params_t params;
-	if (kdig_parse(&params, argc, argv) == KNOT_EOK) {
-		if (!params.stop) {
-			dnssec_crypto_init();
-			if (kdig_exec(&params) != KNOT_EOK) {
-				ret = EXIT_FAILURE;
-			}
-			dnssec_crypto_cleanup();
+	/* KNOT_ERROR serves as a sentinel. */
+	for (int c = arg0; c != 0; c = va_arg(ap, int)) {
+
+		/* Error code matches with mapped. */
+		if (c == errno) {
+			/* Return negative value of the code. */
+			va_end(ap);
+			return -abs(c);
 		}
-	} else {
-		ret = EXIT_FAILURE;
 	}
+	va_end(ap);
 
-	kdig_clean(&params);
-	return ret;
+	/* Fallback error code. */
+	return KNOT_ERROR;
 }

@@ -28,7 +28,7 @@
 #include <stdint.h>
 
 #include "libknot/internal/utils.h"
-#include "libknot/internal/yparser/yparser.h"
+#include "libknot/yparser/yparser.h"
 
 /*! Maximal length of item name. */
 #define YP_MAX_ITEM_NAME_LEN	64

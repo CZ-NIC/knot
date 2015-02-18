@@ -14,6 +14,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include "libknot/libknot.h"
 #include "knot/common/log.h"
 #include "knot/server/journal.h"
 #include "knot/zone/zone-diff.h"

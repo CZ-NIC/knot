@@ -15,6 +15,7 @@
 */
 
 #include "dnssec/random.h"
+#include "libknot/libknot.h"
 #include "libknot/processing/requestor.h"
 #include "libknot/rrtype/soa.h"
 

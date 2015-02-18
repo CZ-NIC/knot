@@ -29,7 +29,7 @@
 #endif
 
 #include "knot/common/log.h"
-#include "libknot/errcode.h"
+#include "libknot/libknot.h"
 #include "libknot/internal/lists.h"
 #include "libknot/internal/macros.h"
 #include "libknot/internal/strlcpy.h"

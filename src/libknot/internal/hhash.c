@@ -5,7 +5,7 @@
 #include "libknot/internal/hhash.h"
 #include "libknot/internal/binsearch.h"
 #include "libknot/internal/trie/murmurhash3.h"
-#include "libknot/errcode.h"
+#include "libknot/internal/errcode.h"
 
 /* UCW array sorting defines. */
 static int universal_cmp(uint32_t k1, uint32_t k2, hhash_t *tbl);

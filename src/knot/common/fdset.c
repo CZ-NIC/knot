@@ -19,7 +19,7 @@
 #include <unistd.h>
 #include <time.h>
 #include "knot/common/fdset.h"
-#include "libknot/errcode.h"
+#include "libknot/libknot.h"
 
 /* Workarounds for clock_gettime() not available on some platforms. */
 #ifdef HAVE_CLOCK_GETTIME

@@ -31,6 +31,7 @@
 #endif
 
 #include "dnssec/crypto.h"
+#include "libknot/libknot.h"
 #include "knot/ctl/process.h"
 #include "knot/ctl/remote.h"
 #include "knot/conf/conf.h"

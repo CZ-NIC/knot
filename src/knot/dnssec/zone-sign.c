@@ -31,7 +31,7 @@
 #include "knot/updates/changesets.h"
 #include "libknot/descriptor.h"
 #include "libknot/dname.h"
-#include "libknot/errcode.h"
+#include "libknot/libknot.h"
 #include "libknot/internal/macros.h"
 #include "libknot/rrset.h"
 #include "libknot/rrtype/rrsig.h"

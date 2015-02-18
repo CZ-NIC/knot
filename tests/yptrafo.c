@@ -19,9 +19,9 @@
 #include <string.h>
 #include <tap/basic.h>
 
-#include "libknot/internal/yparser/yptrafo.h"
+#include "libknot/yparser/yptrafo.h"
 #include "libknot/internal/sockaddr.h"
-#include "libknot/errcode.h"
+#include "libknot/libknot.h"
 
 static void int_test(const char *txt, int64_t num, yp_style_t s,
                      int64_t min, int64_t max)

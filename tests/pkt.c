@@ -16,10 +16,10 @@
 
 #include <tap/basic.h>
 
-#include "libknot/errcode.h"
+#include "libknot/libknot.h"
 #include "libknot/internal/mempool.h"
 #include "libknot/descriptor.h"
-#include "libknot/errcode.h"
+#include "libknot/libknot.h"
 #include "libknot/packet/pkt.h"
 #include "libknot/rrtype/tsig.h"
 

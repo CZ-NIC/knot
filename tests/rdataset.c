@@ -19,7 +19,7 @@
 #include <string.h>
 
 #include "libknot/rdataset.h"
-#include "libknot/errcode.h"
+#include "libknot/libknot.h"
 
 // Inits rdataset with given rdata.
 #define RDATASET_INIT_WITH(set, rdata) \

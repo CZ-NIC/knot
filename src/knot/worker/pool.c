@@ -20,7 +20,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "libknot/errcode.h"
+#include "libknot/libknot.h"
 #include "knot/server/dthreads.h"
 #include "knot/worker/pool.h"
 

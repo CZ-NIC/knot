@@ -1,7 +1,10 @@
 ACLOCAL_AMFLAGS = -I $(top_srcdir)/m4
 SUBDIRS = zscanner dnssec dnstap .
 
-lib_LTLIBRARIES = libknot-int.la libknot.la
+lib_LTLIBRARIES =		\
+	libknot-int.la		\
+	libknot.la		\
+	libknot-yparser.la
 noinst_LTLIBRARIES =
 
 # $(YACC) will generate header file
@@ -29,7 +32,9 @@ nobase_libknot_int_la_HEADERS =			\
 	libknot/internal/base32hex.h		\
 	libknot/internal/base64.h		\
 	libknot/internal/binsearch.h		\
+	libknot/internal/consts.h		\
 	libknot/internal/endian.h		\
+	libknot/internal/errcode.h		\
 	libknot/internal/getline.h		\
 	libknot/internal/heap.h			\
 	libknot/internal/hhash.h		\
@@ -49,16 +54,20 @@ nobase_libknot_int_la_HEADERS =			\
 	libknot/internal/tolower.h		\
 	libknot/internal/trie/hat-trie.h	\
 	libknot/internal/trie/murmurhash3.h	\
-	libknot/internal/utils.h		\
-	libknot/internal/yparser/yparser.h	\
-	libknot/internal/yparser/ypformat.h	\
-	libknot/internal/yparser/ypscheme.h	\
-	libknot/internal/yparser/yptrafo.h
+	libknot/internal/utils.h
+
+libknot_yparser_ladir = $(includedir)
+nobase_libknot_yparser_la_HEADERS =		\
+	libknot/yparser/yparser.h	\
+	libknot/yparser/ypformat.h	\
+	libknot/yparser/ypscheme.h	\
+	libknot/yparser/yptrafo.h
 
 # dynamic: libknot internal sources
 libknot_int_la_SOURCES =			\
 	libknot/internal/base32hex.c		\
 	libknot/internal/base64.c		\
+	libknot/internal/errcode.c		\
 	libknot/internal/getline.c		\
 	libknot/internal/heap.c			\
 	libknot/internal/hhash.c		\
@@ -77,12 +86,15 @@ libknot_int_la_SOURCES =			\
 	libknot/internal/trie/hat-trie.c	\
 	libknot/internal/trie/murmurhash3.c	\
 	libknot/internal/utils.c		\
-	libknot/internal/yparser/yparser.c	\
-	libknot/internal/yparser/ypbody.c	\
-	libknot/internal/yparser/ypformat.c	\
-	libknot/internal/yparser/ypscheme.c	\
-	libknot/internal/yparser/yptrafo.c	\
 	$(nobase_libknot_int_la_HEADERS)
+
+libknot_yparser_la_SOURCES =			\
+	libknot/yparser/yparser.c	\
+	libknot/yparser/ypbody.c	\
+	libknot/yparser/ypformat.c	\
+	libknot/yparser/ypscheme.c	\
+	libknot/yparser/yptrafo.c	\
+	$(nobase_libknot_yparser_la_HEADERS)
 
 # dynamic: libknot headers
 libknot_ladir = $(includedir)
@@ -146,6 +158,11 @@ libknot_la_SOURCES =				\
 libknot_int_la_CPPFLAGS = $(AM_CPPFLAGS) $(lmdb_CFLAGS)
 libknot_int_la_CFLAGS = $(AM_CFLAGS) -fvisibility=default
 libknot_int_la_LDFLAGS = $(AM_LDFLAGS) $(RELEASE_INFO) $(VERSION_INFO) $(lmdb_LIBS)
+
+libknot_yparser_la_CPPFLAGS = $(AM_CPPFLAGS) $(lmdb_CFLAGS)
+libknot_yparser_la_CFLAGS = $(AM_CFLAGS)
+libknot_yparser_la_LDFLAGS = $(AM_LDFLAGS) $(RELEASE_INFO) $(VERSION_INFO)
+libknot_yparser_la_LIBADD  = libknot-int.la libknot.la
 
 libknot_la_CPPFLAGS = $(AM_CPPFLAGS)
 libknot_la_LDFLAGS = $(AM_LDFLAGS) $(RELEASE_INFO) $(VERSION_INFO)
