@@ -156,6 +156,11 @@ libknot_int_la_CPPFLAGS = $(AM_CPPFLAGS) $(lmdb_CFLAGS)
 libknot_int_la_CFLAGS = $(AM_CFLAGS) -fvisibility=default
 libknot_int_la_LDFLAGS = $(AM_LDFLAGS) $(RELEASE_INFO) $(VERSION_INFO) $(lmdb_LIBS)
 
+libknot_yparser_la_CPPFLAGS = $(AM_CPPFLAGS) $(lmdb_CFLAGS)
+libknot_yparser_la_CFLAGS = $(AM_CFLAGS)
+libknot_yparser_la_LDFLAGS = $(AM_LDFLAGS) $(RELEASE_INFO) $(VERSION_INFO)
+libknot_yparser_la_LIBADD  = libknot-int.la libknot.la
+
 libknot_la_CPPFLAGS = $(AM_CPPFLAGS)
 libknot_la_LDFLAGS = $(AM_LDFLAGS) $(RELEASE_INFO) $(VERSION_INFO)
 libknot_la_LIBADD  = libknot-int.la dnssec/libdnssec.la zscanner/libzscanner.la
