@@ -60,15 +60,16 @@ AM_CONDITIONAL([HAVE_DOCS], [test "$enable_documentation" = "yes"])
 
 AC_PROG_INSTALL
 
-# Set zone parser type - fastest on release build, slowest on dev build
-AS_IF([test -d ".git" -o "$PATCH_VERSION" = "dev"],[
-    enable_fastparser=no
-    ],[
-    enable_fastparser=yes
-    ])
     
 AC_ARG_ENABLE([fastparser],
-    AS_HELP_STRING([--disable-fastparser], [Disable use of fastest zone parser]))
+    AS_HELP_STRING([--disable-fastparser], [Disable use of fastest zone parser]),[],[
+    # Set zone parser type - fastest on release build, slowest on dev build
+    AS_IF([test -d ".git" -o "$PATCH_VERSION" = "dev"],[
+        enable_fastparser=no
+    	],[
+    	enable_fastparser=yes
+    	])
+    ])
 AM_CONDITIONAL([FAST_PARSER], [test "$enable_fastparser" = "yes"])
 
 # GnuTLS crypto backend
