@@ -62,6 +62,7 @@
 /src/dnssec/libdnssec.pc
 /src/libknot-int.pc
 /src/libknot.pc
+/src/libknot-yparser.pc
 
 # dnstap
 /src/dnstap/Makefile
