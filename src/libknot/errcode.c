@@ -22,6 +22,7 @@
 #endif
 
 #include "libknot/errcode.h"
+#include "libknot/internal/errcode.h"
 #include "libknot/internal/macros.h"
 #include "dnssec/error.h"
 
@@ -185,24 +186,13 @@ const char *knot_strerror(int code)
 }
 
 _public_
-int knot_map_errno_internal(int fallback, int arg0, ...)
+int knot_map_errno(int arg0, ...)
 {
 	/* Iterate all variable-length arguments. */
 	va_list ap;
 	va_start(ap, arg0);
-
-	/* KNOT_ERROR serves as a sentinel. */
-	for (int c = arg0; c != 0; c = va_arg(ap, int)) {
-
-		/* Error code matches with mapped. */
-		if (c == errno) {
-			/* Return negative value of the code. */
-			va_end(ap);
-			return -abs(c);
-		}
-	}
+	int ret = knot_map_errno_internal(KNOT_ERROR, arg0, ap);
 	va_end(ap);
 
-	/* Fallback error code. */
-	return KNOT_ERROR;
+	return ret;
 }

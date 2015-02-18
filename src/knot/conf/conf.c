@@ -29,6 +29,7 @@
 #include "libknot/internal/strlcpy.h"
 #include "libknot/internal/mem.h"
 #include "libknot/internal/macros.h"
+#include "libknot/errcode.h"
 #include "knot/conf/conf.h"
 #include "knot/conf/extra.h"
 #include "knot/ctl/remote.h"
