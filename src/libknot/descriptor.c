@@ -14,9 +14,9 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <stdio.h>			// snprintf
-#include <stdlib.h>			// strtoul
-#include <strings.h>			// strcasecmp
+#include <stdio.h>
+#include <stdlib.h>
+#include <strings.h>
 
 #include "libknot/descriptor.h"
 
@@ -106,6 +106,10 @@ static const rdata_descriptor_t rdata_descriptors[] = {
 	                               KNOT_RDATA_WF_END }, "NSEC3PARAM" },
 	[KNOT_RRTYPE_TLSA]       = { { KNOT_RDATA_WF_REMAINDER,
 	                               KNOT_RDATA_WF_END }, "TLSA" },
+	[KNOT_RRTYPE_CDS]        = { { KNOT_RDATA_WF_REMAINDER,
+	                               KNOT_RDATA_WF_END }, "CDS" },
+	[KNOT_RRTYPE_CDNSKEY]    = { { KNOT_RDATA_WF_REMAINDER,
+	                               KNOT_RDATA_WF_END }, "CDNSKEY" },
 	[KNOT_RRTYPE_SPF]        = { { KNOT_RDATA_WF_REMAINDER,
 	                               KNOT_RDATA_WF_END }, "SPF" },
 	[KNOT_RRTYPE_NID]        = { { 10, KNOT_RDATA_WF_END }, "NID" },

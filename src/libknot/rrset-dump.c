@@ -1749,6 +1749,7 @@ int knot_rrset_txt_dump_data(const knot_rrset_t      *rrset,
 			break;
 		case KNOT_RRTYPE_KEY:
 		case KNOT_RRTYPE_DNSKEY:
+		case KNOT_RRTYPE_CDNSKEY:
 			ret = dump_dnskey(&p);
 			break;
 		case KNOT_RRTYPE_AAAA:
@@ -1770,6 +1771,7 @@ int knot_rrset_txt_dump_data(const knot_rrset_t      *rrset,
 			ret = dump_apl(&p);
 			break;
 		case KNOT_RRTYPE_DS:
+		case KNOT_RRTYPE_CDS:
 			ret = dump_ds(&p);
 			break;
 		case KNOT_RRTYPE_SSHFP:
