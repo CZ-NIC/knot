@@ -86,7 +86,7 @@ static const struct wire_data FROM_CASES[FROM_CASE_COUNT] = {
   .pos = QUERY_SIZE + QNAME_SIZE,
   .code = KNOT_EMALF,
   .msg = "Partial header" },
-{ .wire = { MESSAGE_HEADER(1, 0, 0), QUERY(QNAME, KNOT_RRTYPE_A), 
+{ .wire = { MESSAGE_HEADER(1, 0, 0), QUERY(QNAME, KNOT_RRTYPE_A),
             RR_HEADER(QNAME, KNOT_RRTYPE_A, 0x00, 0x04) },
   .size = QUERY_SIZE + RR_HEADER_SIZE + QNAME_SIZE * 2,
   .pos = QUERY_SIZE + QNAME_SIZE,
@@ -197,11 +197,11 @@ static const struct wire_data FROM_CASES[FROM_CASE_COUNT] = {
 int main(int argc, char *argv[])
 {
 	plan(1 + FROM_CASE_COUNT);
-	
+
 	// Test NULL params.
 	int ret = knot_rrset_rr_from_wire(NULL, NULL, 0, NULL, NULL);
 	ok(ret == KNOT_EINVAL, "rr wire: Invalid params");
-	
+
 	// Test defined cases
 	for (size_t i = 0; i < FROM_CASE_COUNT; ++i) {
 		knot_rrset_t rrset;
@@ -209,6 +209,6 @@ int main(int argc, char *argv[])
 		TEST_CASE_FROM(&rrset, i);
 		knot_rrset_clear(&rrset, NULL);
 	}
-	
+
 	return EXIT_SUCCESS;
 }

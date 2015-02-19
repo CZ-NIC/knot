@@ -105,7 +105,6 @@ int main(int argc, char *argv[])
 	ok(ret != -1, "get TYPE256 ret");
 	ok(strcmp(name, "TYPE256") == 0, "get TYPE256 name");
 
-
 	// Class num to string:
 	// 7. CLASS0
 	ret = knot_rrclass_to_string(0, name, BUF_LEN);

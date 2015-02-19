@@ -78,20 +78,20 @@ static void init_random_changeset(changeset_t *ch, const uint32_t from, const ui
 {
 	int ret = changeset_init(ch, apex);
 	assert(ret == KNOT_EOK);
-	
+
 	// Add SOAs
 	knot_rrset_t soa;
 	init_soa(&soa, from, apex);
-	
+
 	ch->soa_from = knot_rrset_copy(&soa, NULL);
 	assert(ch->soa_from);
 	knot_rrset_clear(&soa, NULL);
-	
+
 	init_soa(&soa, to, apex);
 	ch->soa_to = knot_rrset_copy(&soa, NULL);
 	assert(ch->soa_to);
 	knot_rrset_clear(&soa, NULL);
-	
+
 	// Add RRs to add section
 	for (size_t i = 0; i < size / 2; ++i) {
 		knot_rrset_t rr;

@@ -27,7 +27,6 @@
 #define WRITE_PATTERN ((char) 0xde)
 #define WRITE_PATTERN_LEN sizeof(char)
 
-
 /* Subtract the `struct timeval' values X and Y,
    storing the result in RESULT.
    Return 1 if the difference is negative, otherwise 0.

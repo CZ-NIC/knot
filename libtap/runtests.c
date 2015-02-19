@@ -260,7 +260,6 @@ static void *x_realloc(void *, size_t, const char *, int)
 static char *x_strdup(const char *, const char *, int)
     __attribute__((__malloc__, __nonnull__));
 
-
 /*
  * Report a fatal error, including the results of strerror, and exit.
  */
@@ -280,7 +279,6 @@ sysdie(const char *format, ...)
     exit(1);
 }
 
-
 /*
  * Allocate zeroed memory, reporting a fatal error and exiting on failure.
  */
@@ -298,7 +296,6 @@ x_calloc(size_t n, size_t size, const char *file, int line)
     return p;
 }
 
-
 /*
  * Allocate memory, reporting a fatal error and exiting on failure.
  */
@@ -314,7 +311,6 @@ x_malloc(size_t size, const char *file, int line)
     return p;
 }
 
-
 /*
  * Reallocate memory, reporting a fatal error and exiting on failure.
  */
@@ -327,7 +323,6 @@ x_realloc(void *p, size_t size, const char *file, int line)
                (unsigned long) size, file, line);
     return p;
 }
-
 
 /*
  * Copy a string, reporting a fatal error and exiting on failure.
@@ -347,7 +342,6 @@ x_strdup(const char *s, const char *file, int line)
     return p;
 }
 
-
 /*
  * Given a struct timeval, return the number of seconds it represents as a
  * double.  Use difftime() to convert a time_t to a double.
@@ -358,7 +352,6 @@ tv_seconds(const struct timeval *tv)
     return difftime(tv->tv_sec, 0) + tv->tv_usec * 1e-6;
 }
 
-
 /*
  * Given two struct timevals, return the difference in seconds.
  */
@@ -368,7 +361,6 @@ tv_diff(const struct timeval *tv1, const struct timeval *tv0)
     return tv_seconds(tv1) - tv_seconds(tv0);
 }
 
-
 /*
  * Given two struct timevals, return the sum in seconds as a double.
  */
@@ -377,7 +369,6 @@ tv_sum(const struct timeval *tv1, const struct timeval *tv2)
 {
     return tv_seconds(tv1) + tv_seconds(tv2);
 }
-
 
 /*
  * Given a pointer to a string, skip any leading whitespace and return a
@@ -390,7 +381,6 @@ skip_whitespace(const char *p)
         p++;
     return p;
 }
-
 
 /*
  * Start a program, connecting its stdout to a pipe on our end and its stderr
@@ -435,7 +425,6 @@ test_start(const char *path, int *fd)
     return child;
 }
 
-
 /*
  * Back up over the output saying what test we were executing.
  */
@@ -454,7 +443,6 @@ test_backspace(struct testset *ts)
         putchar('\b');
     ts->length = 0;
 }
-
 
 /*
  * Read the plan line of test output, which should contain the range of test
@@ -538,7 +526,6 @@ test_plan(const char *line, struct testset *ts)
     }
     return 1;
 }
-
 
 /*
  * Given a single line of output from a test, parse it and return the success
@@ -685,7 +672,6 @@ test_checkline(const char *line, struct testset *ts)
     }
 }
 
-
 /*
  * Print out a range of test numbers, returning the number of characters it
  * took up.  Takes the first number, the last number, the number of characters
@@ -730,7 +716,6 @@ test_print_range(unsigned long first, unsigned long last, unsigned int chars,
     }
     return needed;
 }
-
 
 /*
  * Summarize a single test set.  The second argument is 0 if the set exited
@@ -807,7 +792,6 @@ test_summarize(struct testset *ts, int status)
                WCOREDUMP(ts->status) ? ", core dumped" : "");
     putchar('\n');
 }
-
 
 /*
  * Given a test set, analyze the results, classify the exit status, handle a
@@ -931,7 +915,6 @@ test_run(struct testset *ts, FILE *logfile)
     return status;
 }
 
-
 /* Summarize a list of test failures. */
 static void
 test_fail_summary(const struct testlist *fails)
@@ -979,7 +962,6 @@ test_fail_summary(const struct testlist *fails)
     }
 }
 
-
 /*
  * Check whether a given file path is a valid test.  Currently, this checks
  * whether it is executable and is a regular file.  Returns true or false.
@@ -997,7 +979,6 @@ is_valid_test(const char *path)
         return 0;
     return 1;
 }
-
 
 /*
  * Given the name of a test, a pointer to the testset struct, and the source
@@ -1046,7 +1027,6 @@ find_test(const char *name, const char *source, const char *build)
         path = xstrdup(name);
     return path;
 }
-
 
 /*
  * Read a list of tests from a file, returning the list of tests as a struct
@@ -1102,7 +1082,6 @@ read_test_list(const char *filename)
     return listhead;
 }
 
-
 /*
  * Build a list of tests from command line arguments.  Takes the argv and argc
  * representing the command line arguments and returns a newly allocated test
@@ -1139,7 +1118,6 @@ build_test_list(char *argv[], int argc)
     return listhead;
 }
 
-
 /* Free a struct testset. */
 static void
 free_testset(struct testset *ts)
@@ -1151,7 +1129,6 @@ free_testset(struct testset *ts)
         free(ts->reason);
     free(ts);
 }
-
 
 /*
  * Run a batch of tests.  Takes two additional parameters: the root of the
@@ -1303,7 +1280,6 @@ test_batch(struct testlist *tests, const char *source, const char *build,
     return (failed == 0 && aborted == 0);
 }
 
-
 /*
  * Run a single test case.  This involves just running the test program after
  * having done the environment setup and finding the test program.
@@ -1317,7 +1293,6 @@ test_single(const char *program, const char *source, const char *build)
     if (execl(path, path, (char *) 0) == -1)
         sysdie("cannot exec %s", path);
 }
-
 
 /*
  * Main routine.  Set the SOURCE and BUILD environment variables and then,

@@ -171,7 +171,7 @@ int main(int argc, char *argv[])
 		}
 	}
 	ok(passed, "hattrie: find lesser or equal for all keys");
-	
+
 	/* Next lookup. */
 	passed = true;
 	for (unsigned i = 0; i < key_count - 1 && passed; ++i) {
@@ -180,7 +180,7 @@ int main(int argc, char *argv[])
 		passed = val && *val == (void *)keys[(i + 1)];
 	}
 	ok(passed, "hattrie: find next for all keys");
-	
+
 	/* Unsorted iteration */
 	size_t iterated = 0;
 	hattrie_iter_t *it = hattrie_iter_begin(trie, false);

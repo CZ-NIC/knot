@@ -105,10 +105,10 @@ int main(int argc, char *argv[])
 	synth_node = zone_update_get_node(&update, zone->apex->owner);
 	ok(synth_node && node_rdataset(synth_node, KNOT_RRTYPE_TXT)->rr_count == 1,
 	   "zone update: del change");
-	
+
 	zone_update_clear(&update);
 	ok(update.zone == NULL && update.change == NULL, "zone update: cleanup");
-	
+
 	changeset_clear(&ch);
 	zs_scanner_free(sc);
 	zone_contents_deep_free(&zone);

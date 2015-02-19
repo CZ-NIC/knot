@@ -79,7 +79,6 @@ static unsigned long _failed  = 0;
 static pid_t _process = 0;
 static int _lazy = 0;
 
-
 /*
  * Our exit handler.  Called on completion of the test to report a summary of
  * results provided we're still in the original process.  This also handles
@@ -115,7 +114,6 @@ finish(void)
     }
 }
 
-
 /*
  * Initialize things.  Turns on line buffering on stdout and then prints out
  * the number of tests in the test suite.
@@ -134,7 +132,6 @@ plan(unsigned long count)
     atexit(finish);
 }
 
-
 /*
  * Initialize things for lazy planning, where we'll automatically print out a
  * plan at the end of the program.  Turns on line buffering on stdout as well.
@@ -150,7 +147,6 @@ plan_lazy(void)
     _lazy = 1;
     atexit(finish);
 }
-
 
 /*
  * Skip the entire test suite and exits.  Should be called instead of plan(),
@@ -173,7 +169,6 @@ skip_all(const char *format, ...)
     exit(0);
 }
 
-
 /*
  * Print the test description.
  */
@@ -183,7 +178,6 @@ print_desc(const char *format, va_list args)
     printf(" - ");
     vprintf(format, args);
 }
-
 
 /*
  * Takes a boolean success value and assumes the test passes if that value
@@ -206,7 +200,6 @@ ok(int success, const char *format, ...)
     putchar('\n');
 }
 
-
 /*
  * Same as ok(), but takes the format arguments as a va_list.
  */
@@ -221,7 +214,6 @@ okv(int success, const char *format, va_list args)
         print_desc(format, args);
     putchar('\n');
 }
-
 
 /*
  * Skip a test.
@@ -241,7 +233,6 @@ skip(const char *reason, ...)
     }
     putchar('\n');
 }
-
 
 /*
  * Report the same status on the next count tests.
@@ -267,7 +258,6 @@ ok_block(unsigned long count, int status, const char *format, ...)
     }
 }
 
-
 /*
  * Skip the next count tests.
  */
@@ -290,7 +280,6 @@ skip_block(unsigned long count, const char *reason, ...)
         putchar('\n');
     }
 }
-
 
 /*
  * Takes an expected integer and a seen integer and assumes the test passes
@@ -316,7 +305,6 @@ is_int(long long wanted, long long seen, const char *format, ...)
     }
     putchar('\n');
 }
-
 
 /*
  * Takes a string and what the string should be, and assumes the test passes
@@ -347,7 +335,6 @@ is_string(const char *wanted, const char *seen, const char *format, ...)
     putchar('\n');
 }
 
-
 /*
  * Takes an expected unsigned long and a seen unsigned long and assumes the
  * test passes if the two numbers match.  Otherwise, reports them in hex.
@@ -376,7 +363,6 @@ is_hex(unsigned long long wanted, unsigned long long seen,
     putchar('\n');
 }
 
-
 /*
  * Bail out with an error.
  */
@@ -394,7 +380,6 @@ bail(const char *format, ...)
     printf("\n");
     exit(255);
 }
-
 
 /*
  * Bail out with an error, appending strerror(errno).
@@ -415,7 +400,6 @@ sysbail(const char *format, ...)
     exit(255);
 }
 
-
 /*
  * Report a diagnostic to stderr.
  */
@@ -432,7 +416,6 @@ diag(const char *format, ...)
     va_end(args);
     printf("\n");
 }
-
 
 /*
  * Report a diagnostic to stderr, appending strerror(errno).
@@ -452,7 +435,6 @@ sysdiag(const char *format, ...)
     printf(": %s\n", strerror(oerrno));
 }
 
-
 /*
  * Allocate cleared memory, reporting a fatal error with bail on failure.
  */
@@ -466,7 +448,6 @@ bcalloc(size_t n, size_t size)
         sysbail("failed to calloc %lu", (unsigned long)(n * size));
     return p;
 }
-
 
 /*
  * Allocate memory, reporting a fatal error with bail on failure.
@@ -482,7 +463,6 @@ bmalloc(size_t size)
     return p;
 }
 
-
 /*
  * Reallocate memory, reporting a fatal error with bail on failure.
  */
@@ -494,7 +474,6 @@ brealloc(void *p, size_t size)
         sysbail("failed to realloc %lu bytes", (unsigned long) size);
     return p;
 }
-
 
 /*
  * Copy a string, reporting a fatal error with bail on failure.
@@ -512,7 +491,6 @@ bstrdup(const char *s)
     memcpy(p, s, len);
     return p;
 }
-
 
 /*
  * Copy up to n characters of a string, reporting a fatal error with bail on
@@ -537,7 +515,6 @@ bstrndup(const char *s, size_t n)
     copy[length] = '\0';
     return copy;
 }
-
 
 /*
  * Locate a test file.  Given the partial path to a file, look under BUILD and
@@ -573,7 +550,6 @@ test_file_path(const char *file)
     return path;
 }
 
-
 /*
  * Free a path returned from test_file_path().  This function exists primarily
  * for Windows, where memory must be freed from the same library domain that
@@ -585,7 +561,6 @@ test_file_path_free(char *path)
     if (path != NULL)
         free(path);
 }
-
 
 /*
  * Create a temporary directory, tmp, under BUILD if set and the current
@@ -615,7 +590,6 @@ test_tmpdir(void)
             sysbail("error creating temporary directory %s", path);
     return path;
 }
-
 
 /*
  * Free a path returned from test_tmpdir() and attempt to remove the
