@@ -60,7 +60,6 @@ AM_CONDITIONAL([HAVE_DOCS], [test "$enable_documentation" = "yes"])
 
 AC_PROG_INSTALL
 
-    
 AC_ARG_ENABLE([fastparser],
     AS_HELP_STRING([--disable-fastparser], [Disable use of fastest zone parser]),[],[
     # Set zone parser type - fastest on release build, slowest on dev build
@@ -337,15 +336,14 @@ AM_CONDITIONAL([HAVE_LMDB], test "$have_lmdb" != "no")
 
 AS_IF([test "$enable_daemon" = "yes"],[
 
-dnl Check for rosedb module 
+dnl Check for rosedb module
 AC_ARG_ENABLE([rosedb],
-    AS_HELP_STRING([--disable-rosedb], [Do not enable static RR query module.]),
+    AS_HELP_STRING([--enable-rosedb], [Enable static RR query module.]),
     [], [enable_rosedb=no])
 ]) # Knot DNS daemon dependencies
 
 AS_IF([test "$enable_rosedb" = yes], [AC_DEFINE([HAVE_ROSEDB], [1], [Define to 1 to enable static RR query module.])])
 AM_CONDITIONAL([HAVE_ROSEDB], [test "$enable_rosedb" = yes])
-
 
 ############################################
 # Dependencies needed for Knot DNS utilities
@@ -451,7 +449,6 @@ AC_CONFIG_FILES([Makefile
 		 man/knsupdate.1
 		 man/knot.conf.5
 		 ])
-
 
 AC_OUTPUT
 
