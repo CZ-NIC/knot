@@ -25,7 +25,7 @@
 
 int main(int argc, char *argv[])
 {
-	plan(124);
+	plan(125);
 
 	const    knot_rdata_descriptor_t *descr;
 	char     name[BUF_LEN];
@@ -290,6 +290,8 @@ int main(int argc, char *argv[])
 	   "rrtype is NSEC3");
 	ok(knot_rrtype_is_dnssec(KNOT_RRTYPE_NSEC3PARAM) != 0,
 	   "rrtype is NSEC3PARAM");
+	ok(knot_rrtype_is_dnssec(KNOT_RRTYPE_CDNSKEY) != 0,
+	   "rrtype is CDNSKEY");
 
 	// knot_rrtype_additional_needed
 	ok(knot_rrtype_additional_needed(0) == 0,
