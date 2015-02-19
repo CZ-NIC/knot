@@ -16,6 +16,9 @@ sed -i '/#line/d' $OUT_T0
 sed -i '/static\ const\ int\ zone_scanner_en_/d' $OUT_T0
 sed -i '/zone_scanner_first_final/d' $OUT_T0
 
+# Remove trailing white spaces.
+sed -i 's/\s*$//g' $OUT_T0
+
 # Generate fast/huge zone parser.
 ragel -G2 -s -o $OUT_G2 $IN
 
@@ -23,6 +26,9 @@ ragel -G2 -s -o $OUT_G2 $IN
 sed -i '/#line/d' $OUT_G2
 sed -i '/static\ const\ int\ zone_scanner_en_/d' $OUT_G2
 sed -i '/zone_scanner_first_final/d' $OUT_G2
+
+# Remove trailing white spaces.
+sed -i 's/\s*$//g' $OUT_G2
 
 popd
 
@@ -39,5 +45,8 @@ ragel -T0 -s -o $OUT_Y $IN_Y
 # Remove redundant comments and unused constants (clang warnings).
 sed -i '/#line/d' $OUT_Y
 sed -i '/static\ const\ int\ yparser_/d' $OUT_Y
+
+# Remove trailing white spaces.
+sed -i 's/\s*$//g' $OUT_Y
 
 popd

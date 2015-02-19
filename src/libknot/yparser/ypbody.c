@@ -1,3 +1,4 @@
+
 /*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
@@ -18,6 +19,9 @@
 
 #include "libknot/yparser/yparser.h"
 #include "libknot/libknot.h"
+
+
+
 
 // Include parser static data (Ragel internals).
 
@@ -124,6 +128,10 @@ static const char _yparser_eof_actions[] = {
 	21, 21, 21, 21, 21, 21, 21, 21,
 	0, 3
 };
+
+
+
+
 
 int _yp_start_state =
 24
@@ -365,6 +373,7 @@ _again:
 
 	_out: {}
 	}
+
 
 	// Store the current parser position.
 	if (!parser->input.eof) {
