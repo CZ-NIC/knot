@@ -19,7 +19,7 @@
 #include "knot/modules/rosedb.h"
 #include "knot/nameserver/process_query.h"
 #include "libknot/rrtype/rdname.h"
-#include "libknot/dnssec/random.h"
+#include "dnssec/random.h"
 #include "libknot/rrset-dump.h"
 #include "libknot/internal/utils.h"
 
@@ -399,7 +399,7 @@ static int rosedb_log_message(char *stream, size_t *maxlen, knot_pkt_t *pkt,
 	 */
 	const knot_pktsection_t *ans = knot_pkt_section(pkt, KNOT_ANSWER);
 	if (ans->count > 0) {
-		const knot_rrset_t *rr = &ans->rr[knot_random_uint16_t() % ans->count];
+		const knot_rrset_t *rr = knot_pkt_rr(ans, dnssec_random_uint16_t() % ans->count);
 		int ret = knot_rrset_txt_dump_data(rr, 0, stream, *maxlen, &KNOT_DUMP_STYLE_DEFAULT);
 		if (ret < 0) {
 			return ret;
@@ -419,8 +419,8 @@ static int rosedb_log_message(char *stream, size_t *maxlen, knot_pkt_t *pkt,
 
 	/* Field 19 First authority. */
 	const knot_pktsection_t *ns = knot_pkt_section(pkt, KNOT_AUTHORITY);
-	if (ns->count > 0 && ns->rr[0].type == KNOT_RRTYPE_NS) {
-		const knot_dname_t *label = knot_ns_name(&ns->rr[0].rrs, 0);
+	if (ns->count > 0 && knot_pkt_rr(ns, 0)->type == KNOT_RRTYPE_NS) {
+		const knot_dname_t *label = knot_ns_name(&knot_pkt_rr(ns, 0)->rrs, 0);
 		memset(dname_buf, 0, sizeof(dname_buf));
 		memcpy(dname_buf, label + 1, *label);
 		STREAM_WRITE(stream, maxlen, snprintf, "%s", dname_buf);
