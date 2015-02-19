@@ -170,7 +170,6 @@ Default value: unset (auto-estimates optimal value for the number of online CPUs
       background-workers 4;
     }
 
-
 .. _asynchronous-start:
 
 asynchronous-start
@@ -671,7 +670,6 @@ will be created in ``rundir/knot.sock``.
 
 ``control`` Examples
 --------------------
-
 
 UNIX socket example::
 

@@ -116,4 +116,3 @@ Debug messages Example
 ::
 
     $ ./configure --enable-debug=server,zones --enable-debuglevel=verbose
-

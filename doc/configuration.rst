@@ -109,7 +109,6 @@ See :ref:`keys`::
       }
     }
 
-
 If Knot DNS is compiled with the LMDB library, the server will be able to
 preserve slave zone timers across full server restarts. The zone expire,
 refresh, and flush timers are stored in a file-backed database in the
@@ -473,7 +472,7 @@ Limitations
   since the module is hooked in the query processing plan, it will be
   possible to do online signing in the future.
 
-``dnsproxy`` - Tiny DNS proxy 
+``dnsproxy`` - Tiny DNS proxy
 -----------------------------
 
 The module catches all unsatisfied queries and forwards them to the configured server for resolution,
@@ -530,7 +529,7 @@ And we query the nameserver with following::
         $ kdig IN AAAA myrecord.com
           ... returns NOERROR, NODATA
         $ kdig IN AAAA ipv6.myrecord.com
-          ... returns NOERROR, ::1 
+          ... returns NOERROR, ::1
 
 *Note: An entry in the database matches anything at or below it, i.e. 'myrecord.com' matches 'a.a.myrecord.com' as well.
 This can be exploited to create a catch-all entries.*
@@ -551,7 +550,7 @@ In this case, the responses will:
 
 *Note: The SOA record applies only to the 'myrecord.com.', not to any other record (even below it). From this point of view,
 all records in the database are unrelated and not hierarchical. The reasoning is to provide a subtree isolation for each entry.*
-        
+
 In addition the module is able to log matching queries via remote syslog if you specify a syslog address endpoint and an
 optional string code.
 
@@ -559,10 +558,10 @@ Here is an example on how to use the module:
 
 * Create the entries in the database::
 
-        $ mkdir /tmp/static_rrdb 
+        $ mkdir /tmp/static_rrdb
         $ rosedb_tool /tmp/static_rrdb add myrecord.com. A 3600 "127.0.0.1" "-" "-" # No logging
-        $ rosedb_tool /tmp/static_rrdb add www.myrecord.com. A 3600 "127.0.0.1" "www_query" "10.0.0.1" # Syslog @ 10.0.0.1 
-        $ rosedb_tool /tmp/static_rrdb add ipv6.myrecord.com. AAAA 3600 "::1" "ipv6_query" "10.0.0.1" # Syslog @ 10.0.0.1 
+        $ rosedb_tool /tmp/static_rrdb add www.myrecord.com. A 3600 "127.0.0.1" "www_query" "10.0.0.1" # Syslog @ 10.0.0.1
+        $ rosedb_tool /tmp/static_rrdb add ipv6.myrecord.com. AAAA 3600 "::1" "ipv6_query" "10.0.0.1" # Syslog @ 10.0.0.1
         $ rosedb_tool /tmp/static_rrdb list # Verify
         www.myrecord.com.       A RDATA=10B     www_query       10.0.0.1
         ipv6.myrecord.com.      AAAA RDATA=22B  ipv6_query      10.0.0.1
