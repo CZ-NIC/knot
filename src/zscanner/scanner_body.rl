@@ -1220,6 +1220,8 @@
 	    | "NSEC3"i      %{ type_num(KNOT_RRTYPE_NSEC3, &rdata_tail); }
 	    | "NSEC3PARAM"i %{ type_num(KNOT_RRTYPE_NSEC3PARAM, &rdata_tail); }
 	    | "TLSA"i       %{ type_num(KNOT_RRTYPE_TLSA, &rdata_tail); }
+	    | "CDS"i        %{ type_num(KNOT_RRTYPE_CDS, &rdata_tail); }
+	    | "CDNSKEY"i    %{ type_num(KNOT_RRTYPE_CDNSKEY, &rdata_tail); }
 	    | "SPF"i        %{ type_num(KNOT_RRTYPE_SPF, &rdata_tail); }
 	    | "NID"i        %{ type_num(KNOT_RRTYPE_NID, &rdata_tail); }
 	    | "L32"i        %{ type_num(KNOT_RRTYPE_L32, &rdata_tail); }
@@ -1276,6 +1278,8 @@
 	    | "NSEC3"i      %{ window_add_bit(KNOT_RRTYPE_NSEC3, s); }
 	    | "NSEC3PARAM"i %{ window_add_bit(KNOT_RRTYPE_NSEC3PARAM, s); }
 	    | "TLSA"i       %{ window_add_bit(KNOT_RRTYPE_TLSA, s); }
+	    | "CDS"i        %{ window_add_bit(KNOT_RRTYPE_CDS, s); }
+	    | "CDNSKEY"i    %{ window_add_bit(KNOT_RRTYPE_CDNSKEY, s); }
 	    | "SPF"i        %{ window_add_bit(KNOT_RRTYPE_SPF, s); }
 	    | "NID"i        %{ window_add_bit(KNOT_RRTYPE_NID, s); }
 	    | "L32"i        %{ window_add_bit(KNOT_RRTYPE_L32, s); }
@@ -1760,6 +1764,7 @@
 		case KNOT_RRTYPE_APL:
 			fcall r_data_apl;
 		case KNOT_RRTYPE_DS:
+		case KNOT_RRTYPE_CDS:
 			fcall r_data_ds;
 		case KNOT_RRTYPE_SSHFP:
 			fcall r_data_sshfp;
@@ -1771,6 +1776,7 @@
 			fcall r_data_nsec;
 		case KNOT_RRTYPE_KEY:
 		case KNOT_RRTYPE_DNSKEY:
+		case KNOT_RRTYPE_CDNSKEY:
 			fcall r_data_dnskey;
 		case KNOT_RRTYPE_DHCID:
 			fcall r_data_dhcid;
@@ -1828,6 +1834,8 @@
 		case KNOT_RRTYPE_NSEC3:
 		case KNOT_RRTYPE_NSEC3PARAM:
 		case KNOT_RRTYPE_TLSA:
+		case KNOT_RRTYPE_CDS:
+		case KNOT_RRTYPE_CDNSKEY:
 		case KNOT_RRTYPE_NID:
 		case KNOT_RRTYPE_L32:
 		case KNOT_RRTYPE_L64:
@@ -1889,6 +1897,8 @@
 		| "NSEC3"i      %{ s->r_type = KNOT_RRTYPE_NSEC3; }
 		| "NSEC3PARAM"i %{ s->r_type = KNOT_RRTYPE_NSEC3PARAM; }
 		| "TLSA"i       %{ s->r_type = KNOT_RRTYPE_TLSA; }
+		| "CDS"i        %{ s->r_type = KNOT_RRTYPE_CDS; }
+		| "CDNSKEY"i    %{ s->r_type = KNOT_RRTYPE_CDNSKEY; }
 		| "SPF"i        %{ s->r_type = KNOT_RRTYPE_SPF; }
 		| "NID"i        %{ s->r_type = KNOT_RRTYPE_NID; }
 		| "L32"i        %{ s->r_type = KNOT_RRTYPE_L32; }

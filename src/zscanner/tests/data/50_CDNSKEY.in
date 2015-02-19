@@ -1,0 +1,32 @@
+$ORIGIN	.
+$TTL	1
+
+; OK
+@	CDNSKEY	0	0	0	AA==		; The simplest variant
+@	CDNSKEY	65535	255	255	AA==		; Maximal numbers
+@	CDNSKEY	0	0	RSAMD5	AA==		; Algorithm mnemonic
+@	CDNSKEY	0	0	0	Zm8=		; One char padding
+@	CDNSKEY	0	0	0	Zm9v		; Without padding
+@	CDNSKEY	0	0	0	Zm9vYg==	; Two base64 blocks
+@	CDNSKEY	0	0	0	Zm9v YmE=	; Two base64 blocks with blank space between them
+@	TYPE60	\# 5 0000000000				; TYPE + Hexadecimal rdata
+@	TYPE60	0	0	0	AA==		; TYPE
+@	cdnskey	0	0	0	AA==		; Type in lower-case
+
+; KO
+@	CDNSKEY
+@	CDNSKEY						; Empty rdata
+@	CDNSKEY	\# 0					; Hex empty rdata
+@	CDNSKEY	65536	0	0	AA==		; Type overflow
+@	CDNSKEY	0	256	0	AA==		; Key tag overflow
+@	CDNSKEY	0	0	256	AA==		; Algorithm overflow
+@	CDNSKEY	0	0	0	A		; Continuous block length must be multiple of 4
+@	CDNSKEY	0	0	0	AB		; Continuous block length must be multiple of 4
+@	CDNSKEY	0	0	0	ABC		; Continuous block length must be multiple of 4
+@	CDNSKEY	0	0	0	AA ==		; Continuous block length must be multiple of 4
+@	CDNSKEY	0	0	0	A===		; Bad padding
+@	CDNSKEY	0	0	0	=		; Bad padding
+@	CDNSKEY	0	0	0	==		; Bad padding
+@	CDNSKEY	0	0	0	===		; Bad padding
+@	CDNSKEY	0	0	0	====		; Bad padding
+@	CDNSKEY	0	0	0			; Missing item
