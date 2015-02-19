@@ -1,3 +1,16 @@
+Knot DNS 1.6.2 (2015-02-19)
+===========================
+
+Features:
+---------
+ - Limiting number of parallel TCP clients (max-tcp-clients config option)
+
+Bugfixes:
+---------
+ - Ignore refresh and transfer events on non-slave zones
+ - Compilation with Dnstap support on FreeBSD
+ - Possible file descriptor leak when terminating inactive TCP clients
+
 Knot DNS 1.6.1 (2014-12-13)
 ===========================
 
