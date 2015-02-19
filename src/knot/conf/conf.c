@@ -904,7 +904,6 @@ int conf_bg_threads(const conf_t *conf)
 	return conf->bg_workers;
 }
 
-
 void conf_init_zone(conf_zone_t *zone)
 {
 	if (!zone) {

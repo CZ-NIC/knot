@@ -163,7 +163,6 @@ typedef MDB_ID2 *MDB_ID2L;
 	 */
 unsigned mdb_mid2l_search( MDB_ID2L ids, MDB_ID id );
 
-
 	/** Insert an ID2 into a ID2L.
 	 * @param[in,out] ids	The ID2L to insert into.
 	 * @param[in] id	The ID2 to insert.

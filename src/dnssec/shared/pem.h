@@ -55,7 +55,6 @@ int pem_generate(gnutls_pk_algorithm_t algorithm, unsigned bits,
  */
 int pem_gnutls_x509_export(gnutls_x509_privkey_t key, dnssec_binary_t *pem);
 
-
 /*!
  * Get key ID of a private key in PEM format.
  *

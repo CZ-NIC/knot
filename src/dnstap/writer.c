@@ -30,7 +30,7 @@ dt_writer_t* dt_writer_create(const char *file_path, const char *version)
 	struct fstrm_writer_options *wopt = NULL;
 	dt_writer_t *writer = NULL;
 	fstrm_res res;
-	
+
 	writer = calloc(1, sizeof(dt_writer_t));
 	if (writer == NULL) {
 		goto fail;

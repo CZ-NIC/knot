@@ -83,7 +83,7 @@ static int deep_copy_node_data(zone_node_t *node_copy, const zone_node_t *node,
 	// Clear space for RRs
 	node_copy->rrs = NULL;
 	node_copy->rrset_count = 0;
-	
+
 	for (uint16_t i = 0; i < node->rrset_count; ++i) {
 		knot_rrset_t rr = node_rrset_at(node, i);
 		int ret = node_add_rrset(node_copy, &rr, mm);

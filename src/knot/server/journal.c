@@ -521,7 +521,6 @@ int journal_write_out(journal_t *journal, journal_node_t *n)
 	return KNOT_EOK;
 }
 
-
 journal_t* journal_open(const char *path, size_t fslimit)
 {
 	if (path == NULL) {
@@ -941,7 +940,7 @@ static int journal_walk(const char *fn, uint32_t from, uint32_t to,
 	if (ret != KNOT_EOK) {
 		goto finish;
 	}
-	
+
 	size_t i = n - journal->nodes;
 	assert(i < journal->max_nodes);
 

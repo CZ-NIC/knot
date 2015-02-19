@@ -85,7 +85,7 @@ static int set_mapsize(MDB_env *env, size_t map_size)
 	if (ret != MDB_SUCCESS) {
 		return lmdb_error_to_knot(ret);
 	}
-	
+
 	return KNOT_EOK;
 }
 
@@ -112,20 +112,20 @@ static int dbase_open_env(struct lmdb_env *env, struct namedb_lmdb_opts *opts)
 		mdb_env_close(mdb_env);
 		return ret;
 	}
-	
+
 	ret = set_mapsize(mdb_env, opts->mapsize);
 	if (ret != KNOT_EOK) {
 		mdb_env_close(mdb_env);
 		return ret;
 	}
-	
+
 	ret = mdb_env_set_maxdbs(mdb_env, opts->maxdbs);
 	if (ret != MDB_SUCCESS) {
 		mdb_env_close(mdb_env);
 		return lmdb_error_to_knot(ret);
 	}
 
-#ifdef __OpenBSD__ 
+#ifdef __OpenBSD__
 	/*
 	 * Enforce that MDB_WRITEMAP is set.
 	 *
@@ -149,10 +149,10 @@ static int dbase_open_env(struct lmdb_env *env, struct namedb_lmdb_opts *opts)
 		mdb_env_close(mdb_env);
 		return lmdb_error_to_knot(ret);
 	}
-	
+
 	/* Keep the environment pointer. */
 	env->env = mdb_env;
-	
+
 	return KNOT_EOK;
 }
 
@@ -192,7 +192,7 @@ static int init(namedb_t **db_ptr, mm_ctx_t *mm, void *arg)
 	if (env == NULL) {
 		return KNOT_ENOMEM;
 	}
-	
+
 	memset(env, 0, sizeof(struct lmdb_env));
 	env->pool = mm;
 
@@ -453,7 +453,6 @@ static int del(namedb_txn_t *txn, namedb_val_t *key)
 
 	return KNOT_EOK;
 }
-
 
 const namedb_api_t *namedb_lmdb_api(void)
 {

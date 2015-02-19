@@ -296,7 +296,6 @@ int main(int argc, char **argv)
 	log_info("configured %zu interfaces and %zu zones",
 	         list_size(&config->ifaces), hattrie_weight(config->zones));
 
-
 	/* Alter privileges. */
 	log_update_privileges(config->uid, config->gid);
 	if (proc_update_privileges(config->uid, config->gid) != KNOT_EOK) {

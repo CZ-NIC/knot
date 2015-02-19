@@ -481,7 +481,6 @@ static int process_query_out(knot_layer_t *ctx, knot_pkt_t *pkt)
 	 * Postprocessing.
 	 */
 
-
 	if (next_state == KNOT_NS_PROC_DONE || next_state == KNOT_NS_PROC_FULL) {
 
 		/* Restore original QNAME. */

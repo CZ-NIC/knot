@@ -128,7 +128,7 @@ static zone_t *create_zone_from(conf_zone_t *zone_conf, server_t *server)
 		zone_free(&zone);
 		return NULL;
 	}
-	
+
 	return zone;
 }
 
@@ -140,9 +140,9 @@ static zone_t *create_zone_reload(conf_zone_t *zone_conf, server_t *server,
 		return NULL;
 	}
 	zone->contents = old_zone->contents;
-	
+
 	const zone_status_t zstatus = zone_file_status(old_zone, zone_conf);
-	
+
 	switch (zstatus) {
 	case ZONE_STATUS_FOUND_UPDATED:
 		/* Enqueueing makes the first zone load waitable. */
@@ -161,7 +161,7 @@ static zone_t *create_zone_reload(conf_zone_t *zone_conf, server_t *server,
 	default:
 		assert(0);
 	}
-	
+
 	return zone;
 }
 
@@ -181,7 +181,7 @@ static void reuse_events(zone_t *zone, const time_t *timers)
 			// Slave-only event.
 			continue;
 		}
-		
+
 		zone_events_schedule_at(zone, event, timers[event]);
 	}
 }
@@ -198,10 +198,10 @@ static zone_t *create_zone_new(conf_zone_t *zone_conf, server_t *server)
 	if (!zone) {
 		return NULL;
 	}
-	
+
 	time_t timers[ZONE_EVENT_COUNT];
 	memset(timers, 0, sizeof(timers));
-	
+
 	// Get persistent timers
 	int ret = read_zone_timers(server->timers_db, zone, timers);
 	if (ret != KNOT_EOK) {
@@ -211,11 +211,11 @@ static zone_t *create_zone_new(conf_zone_t *zone_conf, server_t *server)
 		zone_free(&zone);
 		return NULL;
 	}
-	
+
 	reuse_events(zone, timers);
-	
+
 	const zone_status_t zstatus = zone_file_status(NULL, zone_conf);
-	
+
 	switch (zstatus) {
 	case ZONE_STATUS_FOUND_NEW:
 		if (!zone_expired(timers)) {
@@ -236,7 +236,7 @@ static zone_t *create_zone_new(conf_zone_t *zone_conf, server_t *server)
 	}
 
 	log_zone_load_info(zone, zone_conf->name, zstatus);
-	
+
 	return zone;
 }
 
@@ -370,7 +370,7 @@ int zonedb_reload(const conf_t *conf, struct server *server)
 
 	/* Wait for readers to finish reading old zone database. */
 	synchronize_rcu();
-	
+
 	/* Sweep the timer database. */
 	sweep_timer_db(server->timers_db, db_new);
 

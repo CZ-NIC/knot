@@ -12,7 +12,7 @@ static int universal_cmp(uint32_t k1, uint32_t k2, hhash_t *tbl);
 #define ASORT_PREFIX(X) hhash_##X
 #define ASORT_KEY_TYPE uint32_t
 #define ASORT_LT(x, y) (universal_cmp((x), (y), tbl) < 0)
-#define ASORT_EXTRA_ARGS , hhash_t *tbl 
+#define ASORT_EXTRA_ARGS , hhash_t *tbl
 #include "libknot/internal/array-sort.h"
 
 /* Hopscotch internal defines. */
@@ -387,7 +387,6 @@ void hhash_build_index(hhash_t* tbl)
 		tbl->index = NULL;
 	}
 
-
 	/* Rebuild index. */
 	uint32_t total = tbl->weight;
 	if (total == 0) {
@@ -576,7 +575,6 @@ const char* hhash_iter_key(hhash_iter_t* i, uint16_t* len)
 	if (i->flags & HH_SORTED) return hhash_sorted_iter_key(i, len);
 	else                      return hhash_unsorted_iter_key(i, len);
 }
-
 
 value_t *hhash_iter_val(hhash_iter_t* i)
 {

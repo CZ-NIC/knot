@@ -630,7 +630,6 @@ int dt_stop(dt_unit_t *unit)
 	return KNOT_EOK;
 }
 
-
 int dt_setaffinity(dthread_t *thread, unsigned* cpu_id, size_t cpu_count)
 {
 	if (thread == NULL) {

@@ -92,7 +92,6 @@ static const uint16_t KNOT_EDNS_FLAG_DO = (uint16_t)1 << 15;
 int knot_edns_init(knot_rrset_t *opt_rr, uint16_t max_pld,
                   uint8_t ext_rcode, uint8_t ver, mm_ctx_t *mm);
 
-
 /*!
  * \brief Returns size of the OPT RR in wire format.
  *

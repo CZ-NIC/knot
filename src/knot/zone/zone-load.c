@@ -201,4 +201,3 @@ bool zone_load_can_bootstrap(const conf_zone_t *zone_config)
 {
 	return zone_config && !EMPTY_LIST(zone_config->acl.xfr_in);
 }
-

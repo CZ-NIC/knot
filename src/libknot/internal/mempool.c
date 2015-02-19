@@ -8,7 +8,6 @@
  *	of the GNU Lesser General Public License.
  */
 
-
 #undef LOCAL_DEBUG
 
 #include "libknot/internal/mem.h"

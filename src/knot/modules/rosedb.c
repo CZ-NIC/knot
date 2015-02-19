@@ -498,7 +498,7 @@ static int rosedb_synth(knot_pkt_t *pkt, const knot_dname_t *key, struct iter *i
 
 	/* Authority section. */
 	knot_pkt_begin(pkt, KNOT_AUTHORITY);
-	
+
 	/* Not found (zone cut if records exist). */
 	ret = cache_iter_begin(it, key);
 	while (ret == KNOT_EOK) {
@@ -591,7 +591,7 @@ int rosedb_load(struct query_plan *plan, struct query_module *self)
 	if (self == NULL || plan == NULL) {
 		return KNOT_EINVAL;
 	}
-	
+
 	struct cache *cache = cache_open(self->param, 0, self->mm);
 	if (cache == NULL) {
 		MODULE_ERR("couldn't open db '%s'", self->param);
@@ -612,4 +612,3 @@ int rosedb_unload(struct query_module *self)
 	cache_close(self->ctx);
 	return KNOT_EOK;
 }
-

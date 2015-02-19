@@ -148,5 +148,4 @@ void knot_zonedb_free(knot_zonedb_t **db);
  */
 void knot_zonedb_deep_free(knot_zonedb_t **db);
 
-
 /*! @} */

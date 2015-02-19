@@ -53,5 +53,4 @@ int notify_process_query(knot_pkt_t *pkt, struct query_data *qdata);
  */
 int notify_process_answer(knot_pkt_t *pkt, struct answer_data *data);
 
-
 /*! @} */

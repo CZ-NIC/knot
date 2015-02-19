@@ -21,7 +21,6 @@
 #include "knot/conf/includes.h"
 #include "knot/conf/extra.h"
 
-
 /*!
  * \brief Init structure with custom data for config parser.
  */

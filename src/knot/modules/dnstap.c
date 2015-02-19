@@ -105,7 +105,7 @@ static struct fstrm_writer* dnstap_unix_writer(const char *path)
 	struct fstrm_unix_writer_options *opt = NULL;
 	struct fstrm_writer_options *wopt = NULL;
 	struct fstrm_writer *writer = NULL;
-	
+
 	opt = fstrm_unix_writer_options_init();
 	if (opt == NULL) {
 		goto finish;
@@ -133,7 +133,7 @@ static struct fstrm_writer* dnstap_file_writer(const char *path)
 	struct fstrm_file_options *fopt = NULL;
 	struct fstrm_writer_options *wopt = NULL;
 	struct fstrm_writer *writer = NULL;
-	
+
 	fopt = fstrm_file_options_init();
 	if (fopt == NULL) {
 		goto finish;

@@ -106,14 +106,14 @@ int main(int argc, char *argv[])
 			break;
 		}
 	}
-	
+
 	cache_close(cache);
 	zs_scanner_free(g_scanner);
 
 	if (!found) {
 		return help();
 	}
-	
+
 	return ret;
 }
 

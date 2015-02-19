@@ -93,7 +93,6 @@ int pid_running(pid_t pid);
  */
 int proc_update_privileges(int uid, int gid);
 
-
 /*!
  * \brief Check if PID file exists and create it if possible.
  * \retval NULL if failed

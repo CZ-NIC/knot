@@ -180,4 +180,3 @@ int estimator_free_trie_node(value_t *val, void *data)
 
 	return KNOT_EOK;
 }
-

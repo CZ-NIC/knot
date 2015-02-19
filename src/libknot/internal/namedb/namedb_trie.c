@@ -26,7 +26,7 @@ static int init(namedb_t **db, mm_ctx_t *mm, void *arg)
 	if (db == NULL || arg == NULL) {
 		return KNOT_EINVAL;
 	}
-	
+
 	struct namedb_trie_opts *opts = arg;
 	hattrie_t *trie = hattrie_create_n(opts->bucket_size, mm);
 	if (!trie) {

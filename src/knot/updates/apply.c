@@ -618,4 +618,3 @@ void update_free_zone(zone_contents_t **contents)
 	free(*contents);
 	*contents = NULL;
 }
-

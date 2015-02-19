@@ -105,4 +105,3 @@ int dnsproxy_unload(struct query_module *self)
 	mm_free(self->mm, self->ctx);
 	return KNOT_EOK;
 }
-

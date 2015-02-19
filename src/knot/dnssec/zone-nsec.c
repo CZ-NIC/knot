@@ -154,7 +154,7 @@ static int mark_removed_nsec3(changeset_t *out_ch,
 
 	changeset_iter_t itt;
 	changeset_iter_rem(&itt, out_ch, false);
-	
+
 	knot_rrset_t rr = changeset_iter_next(&itt);
 	while (!knot_rrset_empty(&rr)) {
 		int ret = mark_nsec3(&rr, zone->nsec3_nodes);
@@ -165,7 +165,7 @@ static int mark_removed_nsec3(changeset_t *out_ch,
 		rr = changeset_iter_next(&itt);
 	}
 	changeset_iter_clear(&itt);
-	
+
 	return KNOT_EOK;
 }
 

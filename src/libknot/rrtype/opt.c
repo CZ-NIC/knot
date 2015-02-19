@@ -72,7 +72,6 @@ int knot_edns_init(knot_rrset_t *opt_rr, uint16_t max_pld,
 	return ret;
 }
 
-
 /*----------------------------------------------------------------------------*/
 _public_
 size_t knot_edns_wire_size(knot_rrset_t *opt_rr)

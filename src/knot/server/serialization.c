@@ -138,7 +138,7 @@ int rrset_deserialize(const uint8_t *stream, size_t *stream_size,
 	    rrset == NULL) {
 		return KNOT_EINVAL;
 	}
-	
+
 	if (sizeof(uint64_t) > *stream_size) {
 		return KNOT_ESPACE;
 	}
@@ -190,4 +190,3 @@ int rrset_deserialize(const uint8_t *stream, size_t *stream_size,
 
 	return KNOT_EOK;
 }
-

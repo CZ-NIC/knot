@@ -61,7 +61,7 @@ typedef struct zone
 	pthread_mutex_t ddns_lock;
 	size_t ddns_queue_size;
 	list_t ddns_queue;
-	
+
 	/*! \brief Journal access lock. */
 	pthread_mutex_t journal_lock;
 
@@ -123,6 +123,5 @@ size_t zone_update_dequeue(zone_t *zone, list_t *updates);
 
 /*! \brief Returns true if final SOA in transfer has newer serial than zone */
 bool zone_transfer_needed(const zone_t *zone, const knot_pkt_t *pkt);
-
 
 /*! @} */

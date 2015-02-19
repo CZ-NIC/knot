@@ -27,7 +27,6 @@
 #include "pem.h"
 #include "shared.h"
 
-
 static int pem_to_x509(const dnssec_binary_t *data, gnutls_x509_privkey_t *key_ptr)
 {
 	assert(data);

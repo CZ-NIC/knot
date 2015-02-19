@@ -164,15 +164,15 @@ static int evsched_try_cancel(evsched_t *sched, event_t *ev)
 	if (sched == NULL || ev == NULL) {
 		return KNOT_EINVAL;
 	}
-	
+
 	/* Make sure not running. If an event is starting, we race for this lock
 	 * and either win or lose. If we lose, we may find it in heap because
 	 * it rescheduled itself. Either way, it will be marked as last running. */
 	pthread_mutex_lock(&sched->run_lock);
-	
+
 	/* Lock calendar. */
 	pthread_mutex_lock(&sched->heap_lock);
-	
+
 	if ((found = heap_find(&sched->heap, ev))) {
 		heap_delete(&sched->heap, found);
 	}
@@ -186,7 +186,7 @@ static int evsched_try_cancel(evsched_t *sched, event_t *ev)
 	/* Unlock calendar. */
 	pthread_cond_broadcast(&sched->notify);
 	pthread_mutex_unlock(&sched->heap_lock);
-	
+
 	/* Enable running events. */
 	pthread_mutex_unlock(&sched->run_lock);
 

@@ -227,4 +227,3 @@ int knot_rrset_rr_to_canonical(knot_rrset_t *rrset)
 
 	return KNOT_EOK;
 }
-

@@ -152,7 +152,6 @@ static void print_key(const dnssec_key_t *key)
 	printf("id %s keytag %d\n", dnssec_key_get_id(key), dnssec_key_get_keytag(key));
 }
 
-
 /* -- actions implementation ----------------------------------------------- */
 
 /*

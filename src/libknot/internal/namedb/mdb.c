@@ -79,7 +79,6 @@ extern int cacheflush(char *addr, int nbytes, int cache);
 #define CACHEFLUSH(addr, bytes, cache)
 #endif
 
-
 #include <errno.h>
 #include <limits.h>
 #include <stddef.h>
@@ -3912,7 +3911,6 @@ mdb_env_open2(MDB_env *env)
 	return MDB_SUCCESS;
 }
 
-
 /** Release a reader thread's slot in the reader lock table.
  *	This function is called automatically when a thread exits.
  * @param[in] ptr This points to the slot in the reader lock table.
@@ -4631,7 +4629,6 @@ mdb_env_close0(MDB_env *env, int excl)
 
 	env->me_flags &= ~(MDB_ENV_ACTIVE|MDB_ENV_TXKEY);
 }
-
 
 void ESECT
 mdb_env_close(MDB_env *env)

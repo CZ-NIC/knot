@@ -80,14 +80,14 @@ int apply_changeset_directly(zone_contents_t *contents, changeset_t *ch);
 
 /*!
  * \brief Cleanups successful zone updates.
- 
+
  * \param chgs  Changesets used to create the update.
  */
 void updates_cleanup(list_t *chgs);
 
 /*!
  * \brief Cleanups successful zone update.
- 
+
  * \param chgs  Changeset used to create the update.
  */
 void update_cleanup(changeset_t *change);

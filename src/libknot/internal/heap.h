@@ -49,5 +49,4 @@ int heap_insert(struct heap *, void *);
 int heap_find(struct heap *, void *);
 void heap_delete(struct heap *, int);
 
-
 /*! @} */

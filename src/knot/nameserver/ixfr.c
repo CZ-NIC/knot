@@ -699,7 +699,7 @@ int ixfr_process_answer(knot_pkt_t *pkt, struct answer_data *adata)
 		}
 		return KNOT_NS_PROC_FAIL;
 	}
-	
+
 	if (adata->ext == NULL) {
 		if (check_format(pkt) != KNOT_EOK) {
 			IXFRIN_LOG(LOG_WARNING, "malformed response");
@@ -712,7 +712,7 @@ int ixfr_process_answer(knot_pkt_t *pkt, struct answer_data *adata)
 			adata->response_type = KNOT_RESPONSE_AXFR;
 			return axfr_answer_process(pkt, adata);
 		}
-	
+
 		/* Initialize processing with first packet. */
 		NS_NEED_TSIG_SIGNED(&adata->param->tsig_ctx, 0);
 		if (!zone_transfer_needed(adata->param->zone, pkt)) {

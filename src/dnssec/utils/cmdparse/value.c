@@ -84,7 +84,6 @@ int value_bool(int argc, char *argv[], const parameter_t *p, void *data)
 	return -1;
 }
 
-
 int value_string(int argc, char *argv[], const parameter_t *p, void *data)
 {
 	assert(p);

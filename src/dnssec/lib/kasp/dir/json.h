@@ -33,7 +33,6 @@ static inline void json_decref_ptr(json_t **json_ptr)
 
 #define _json_cleanup_ _cleanup_(json_decref_ptr)
 
-
 /*! Options for JSON reading. */
 #define JSON_LOAD_OPTIONS JSON_REJECT_DUPLICATES
 

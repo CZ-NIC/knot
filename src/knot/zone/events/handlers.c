@@ -573,4 +573,3 @@ uint32_t bootstrap_next(uint32_t timer)
 	}
 	return timer;
 }
-

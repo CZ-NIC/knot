@@ -336,7 +336,6 @@ const zone_key_t *get_zone_key(const zone_keyset_t *keyset, uint16_t search)
 	return NULL;
 }
 
-
 /*!
  * \brief Get timestamp of next key event.
  */

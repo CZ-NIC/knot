@@ -38,12 +38,12 @@
  *
  * \note This function returns a copy of its parameter return value 'buf' to
  * make error checking slightly easier.
- * 
+ *
  * \param d             dnstap protobuf struct.
  * \param[out] buf      Serialized frame.
  * \param[out] sz       Size in bytes of the serialized frame.
- * 
- * \return              Serialized frame. 
+ *
+ * \return              Serialized frame.
  * \retval NULL         if error.
  */
 uint8_t* dt_pack(const Dnstap__Dnstap *d, uint8_t **buf, size_t *sz);

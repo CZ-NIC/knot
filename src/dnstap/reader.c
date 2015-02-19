@@ -31,7 +31,7 @@ dt_reader_t* dt_reader_create(const char *file_path)
 	struct fstrm_reader_options *ropt = NULL;
 	dt_reader_t *reader = NULL;
 	fstrm_res res;
-	
+
 	reader = calloc(1, sizeof(dt_reader_t));
 	if (reader == NULL) {
 		goto fail;

@@ -23,7 +23,6 @@ static const uint8_t NODE_TYPE_PURE_BUCKET   = 0x2;
 static const uint8_t NODE_TYPE_HYBRID_BUCKET = 0x4;
 static const uint8_t NODE_HAS_VAL            = 0x8;
 
-
 struct trie_node_t_;
 
 /* Node's may be trie nodes or buckets. This union allows us to keep
@@ -34,7 +33,6 @@ typedef union node_ptr_
     struct trie_node_t_* t;
     uint8_t*             flag;
 } node_ptr;
-
 
 typedef struct trie_node_t_
 {
@@ -544,7 +542,6 @@ static size_t hashnode_nextsize(unsigned items)
     return TRIE_BUCKET_SIZE + increment * TRIE_BUCKET_INCR;
 }
 
-
 static void hashnode_split(hattrie_t *T, node_ptr parent, node_ptr node)
 {
     /* Find split point. */
@@ -572,12 +569,10 @@ static void hashnode_split(hattrie_t *T, node_ptr parent, node_ptr node)
     right.b->flag = right.b->c0 == right.b->c1 ?
                       NODE_TYPE_PURE_BUCKET : NODE_TYPE_HYBRID_BUCKET;
 
-
     /* update the parent's pointer */
     unsigned int c;
     for (c = c0; c <= j; ++c) parent.t->xs[c] = left;
     for (; c <= c1; ++c)      parent.t->xs[c] = right;
-
 
     /* fill new tables */
     hashnode_split_reinsert(T, parent, node);
@@ -679,7 +674,6 @@ value_t* hattrie_get(hattrie_t* T, const char* key, size_t len)
 
     return val;
 }
-
 
 value_t* hattrie_tryget(hattrie_t* T, const char* key, size_t len)
 {
@@ -893,7 +887,6 @@ int hattrie_del(hattrie_t* T, const char* key, size_t len)
     return ret;
 }
 
-
 /* plan for iteration:
  * This is tricky, as we have no parent pointers currently, and I would like to
  * avoid adding them. That means maintaining a stack
@@ -909,7 +902,6 @@ typedef struct hattrie_node_stack_t_
     struct hattrie_node_stack_t_* next;
 
 } hattrie_node_stack_t;
-
 
 struct hattrie_iter_t_
 {
@@ -927,7 +919,6 @@ struct hattrie_iter_t_
     hattrie_node_stack_t* stack;
 };
 
-
 static void hattrie_iter_pushchar(hattrie_iter_t* i, size_t level, char c)
 {
     if (i->keysize < level) {
@@ -941,7 +932,6 @@ static void hattrie_iter_pushchar(hattrie_iter_t* i, size_t level, char c)
 
     i->level = level;
 }
-
 
 static void hattrie_iter_nextnode(hattrie_iter_t* i)
 {
@@ -998,7 +988,6 @@ static void hattrie_iter_nextnode(hattrie_iter_t* i)
     }
 }
 
-
 hattrie_iter_t* hattrie_iter_begin(const hattrie_t* T, bool sorted)
 {
     hattrie_iter_t* i = NULL;
@@ -1019,7 +1008,6 @@ hattrie_iter_t* hattrie_iter_begin(const hattrie_t* T, bool sorted)
         i->stack->c      = '\0';
         i->stack->level  = 0;
 
-
         while (((i->i == NULL || hhash_iter_finished(i->i)) && !i->has_nil_key) &&
                i->stack != NULL ) {
 
@@ -1036,7 +1024,6 @@ hattrie_iter_t* hattrie_iter_begin(const hattrie_t* T, bool sorted)
 
     return i;
 }
-
 
 void hattrie_iter_next(hattrie_iter_t* i)
 {
@@ -1065,12 +1052,10 @@ void hattrie_iter_next(hattrie_iter_t* i)
     }
 }
 
-
 bool hattrie_iter_finished(hattrie_iter_t* i)
 {
     return i->stack == NULL && i->i == NULL && !i->has_nil_key;
 }
-
 
 void hattrie_iter_free(hattrie_iter_t* i)
 {
@@ -1089,7 +1074,6 @@ void hattrie_iter_free(hattrie_iter_t* i)
     free(i->key);
     free(i);
 }
-
 
 const char* hattrie_iter_key(hattrie_iter_t* i, size_t* len)
 {
@@ -1117,7 +1101,6 @@ const char* hattrie_iter_key(hattrie_iter_t* i, size_t* len)
     *len = i->level + sublen;
     return i->key;
 }
-
 
 value_t* hattrie_iter_val(hattrie_iter_t* i)
 {

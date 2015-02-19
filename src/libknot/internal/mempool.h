@@ -103,7 +103,6 @@ void mp_flush(struct mempool *pool);
 void mp_stats(struct mempool *pool, struct mempool_stats *stats);
 uint64_t mp_total_size(struct mempool *pool);	/** How many bytes were allocated by the pool. **/
 
-
 /***
  * [[alloc]]
  * Allocation routines

@@ -39,7 +39,6 @@ void *mm_alloc(mm_ctx_t *mm, size_t size)
 	}
 }
 
-
 void *mm_realloc(mm_ctx_t *mm, void *what, size_t size, size_t prev_size)
 {
 	if (mm) {

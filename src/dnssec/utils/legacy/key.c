@@ -101,7 +101,6 @@ static void ecdsa_extract_public_params(dnssec_key_t *key, gnutls_ecc_curve_t *c
 	y->size = param_size;
 }
 
-
 static int ecdsa_params_to_pem(dnssec_key_t *dnskey, const legacy_privkey_t *params,
 			       dnssec_binary_t *pem)
 {

@@ -37,4 +37,3 @@ int event_dnssec(zone_t *zone);
 
 /*! \brief Progressive bootstrap retry timer. */
 uint32_t bootstrap_next(uint32_t timer);
-

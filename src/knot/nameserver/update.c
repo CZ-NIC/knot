@@ -293,7 +293,6 @@ static int process_normal(zone_t *zone, list_t *requests)
 	return ret;
 }
 
-
 static int process_requests(zone_t *zone, list_t *requests)
 {
 	if (zone == NULL || requests == NULL) {
@@ -565,4 +564,3 @@ int updates_execute(zone_t *zone)
 
 	return KNOT_EOK;
 }
-

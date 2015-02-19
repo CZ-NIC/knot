@@ -262,7 +262,6 @@ int dt_optimal_size(void);
  */
 int dt_is_cancelled(dthread_t *thread);
 
-
 /*!
  * \brief Return thread index in threading unit.
  *

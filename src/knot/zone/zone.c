@@ -327,4 +327,3 @@ bool zone_transfer_needed(const zone_t *zone, const knot_pkt_t *pkt)
 	return serial_compare(zone_contents_serial(zone->contents),
 	                           knot_soa_serial(&soa->rrs)) < 0;
 }
-

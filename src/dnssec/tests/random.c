@@ -65,7 +65,6 @@ int check_random_type(void)
 	return conflicts <= 50 ? 0 : 1;
 }
 
-
 int main(void)
 {
 	plan_lazy();
