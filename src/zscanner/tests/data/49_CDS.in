@@ -1,0 +1,23 @@
+$ORIGIN	.
+$TTL	1
+
+; OK
+@	CDS	0	0	0	00		; The simplest variant
+@	CDS	65535	255	255	00		; Maximal numbers
+@	CDS	0	RSAMD5	0	00		; Algorithm mnemonic
+@	CDS	0	0	0	01 02 0304	; Hex block with blank spaces between them
+@	TYPE59	\# 5 0000000000				; TYPE + Hexadecimal rdata
+@	TYPE59	0	0	0	00		; TYPE
+@	cds	0	0	0	00		; Type in lower-case
+
+; KO
+@	CDS
+@	CDS						; Empty rdata
+@	CDS	\# 0					; Hex empty rdata
+@	CDS	65536	0	0	00		; Key tag overflow
+@	CDS	0	256	0	00		; Algorithm overflow
+@	CDS	0	0	256	00		; Digest type overflow
+@	CDS	0	0	0	0		; Continuous block length must be multiple of 2
+@	CDS	0	0	0	00 0		; Continuous block length must be multiple of 2
+@	CDS	0	0	0	XX		; Bad hex character
+@	CDS	0	0	0			; Missing item

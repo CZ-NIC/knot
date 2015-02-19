@@ -98,6 +98,9 @@ enum knot_rr_type {
 	KNOT_RRTYPE_NSEC3PARAM =  51, /*!< NSEC3 parameters. */
 	KNOT_RRTYPE_TLSA       =  52, /*!< DANE record. */
 
+	KNOT_RRTYPE_CDS        =  59, /*!< Child delegation signer. */
+	KNOT_RRTYPE_CDNSKEY    =  60, /*!< Child DNS key. */
+
 	KNOT_RRTYPE_SPF        =  99, /*!< Sender policy framework. */
 
 	KNOT_RRTYPE_NID        = 104, /*!< Node identifier. */

@@ -107,6 +107,10 @@ static const knot_rdata_descriptor_t rdata_descriptors[] = {
 	                               KNOT_RDATA_WF_END }, "NSEC3PARAM" },
 	[KNOT_RRTYPE_TLSA]       = { { KNOT_RDATA_WF_REMAINDER,
 	                               KNOT_RDATA_WF_END }, "TLSA" },
+	[KNOT_RRTYPE_CDS]        = { { KNOT_RDATA_WF_REMAINDER,
+	                               KNOT_RDATA_WF_END }, "CDS" },
+	[KNOT_RRTYPE_CDNSKEY]    = { { KNOT_RDATA_WF_REMAINDER,
+	                               KNOT_RDATA_WF_END }, "CDNSKEY" },
 	[KNOT_RRTYPE_SPF]        = { { KNOT_RDATA_WF_REMAINDER,
 	                               KNOT_RDATA_WF_END }, "SPF" },
 	[KNOT_RRTYPE_NID]        = { { 10, KNOT_RDATA_WF_END }, "NID" },
@@ -315,11 +319,12 @@ int knot_rrtype_is_metatype(const uint16_t type)
 _public_
 int knot_rrtype_is_dnssec(const uint16_t type)
 {
-	return type == KNOT_RRTYPE_DNSKEY ||
-	       type == KNOT_RRTYPE_RRSIG  ||
-	       type == KNOT_RRTYPE_NSEC   ||
-	       type == KNOT_RRTYPE_NSEC3  ||
-	       type == KNOT_RRTYPE_NSEC3PARAM;
+	return type == KNOT_RRTYPE_DNSKEY     ||
+	       type == KNOT_RRTYPE_RRSIG      ||
+	       type == KNOT_RRTYPE_NSEC       ||
+	       type == KNOT_RRTYPE_NSEC3      ||
+	       type == KNOT_RRTYPE_NSEC3PARAM ||
+	       type == KNOT_RRTYPE_CDNSKEY;
 }
 
 _public_
