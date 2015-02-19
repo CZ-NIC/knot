@@ -31,7 +31,7 @@ popd
 IN_Y="./ypbody.rl"
 OUT_Y="./ypbody.c"
 
-pushd ../src/libknot/internal/yparser/
+pushd ../src/libknot/yparser/
 
 # Generate yparser.
 ragel -T0 -s -o $OUT_Y $IN_Y
