@@ -128,9 +128,8 @@ class Server(object):
         self.proc = None
         self.valgrind = []
         self.start_params = None
-        self.reload_params = None
-        self.flush_params = None
-        self.compile_params = None
+        self.ctl_params = None
+        self.compile_cmd = None
 
         self.data_dir = None
 
@@ -226,8 +225,8 @@ class Server(object):
         mode = "w" if clean else "a"
 
         try:
-            if self.compile_params:
-                self.compile()
+            if self.compile_cmd:
+                self.ctl(self.compile_cmd)
 
             if self.daemon_bin != None:
                 self.proc = Popen(self.valgrind + [self.daemon_bin] + \
@@ -246,27 +245,39 @@ class Server(object):
         if params.test.stress and self.inquirer:
             self.inquirer.start(self)
 
-    def reload(self):
+    def ctl(self, cmd, availability=True):
+        if availability:
+            # Check for listening control interface.
+            ok = False
+            for i in range(0, 5):
+                try:
+                    self.ctl("status", availability=False)
+                except Failed:
+                    time.sleep(1)
+                    continue
+                ok = True
+                break
+            if not ok:
+                self.backtrace()
+                raise Failed("Unavailable remote control server='%s'" % self.name)
+
+        # Send control command.
         try:
-            check_call([self.control_bin] + self.reload_params,
+            check_call([self.control_bin] + self.ctl_params + cmd.split(),
                        stdout=open(self.dir + "/call.out", mode="a"),
                        stderr=open(self.dir + "/call.err", mode="a"))
-            time.sleep(Server.START_WAIT)
         except CalledProcessError as e:
             self.backtrace()
-            raise Failed("Can't reload server='%s', ret='%i'" %
-                         (self.name, e.returncode))
+            raise Failed("Can't control='%s' server='%s', ret='%i'" %
+                         (cmd, self.name, e.returncode))
+
+    def reload(self):
+        self.ctl("reload")
+        time.sleep(Server.START_WAIT)
 
     def flush(self):
-        try:
-            check_call([self.control_bin] + self.flush_params,
-                       stdout=open(self.dir + "/call.out", mode="a"),
-                       stderr=open(self.dir + "/call.err", mode="a"))
-            time.sleep(Server.START_WAIT)
-        except CalledProcessError as e:
-            self.backtrace()
-            raise Failed("Can't flush server='%s', ret='%i'" %
-                         (self.name, e.returncode))
+        self.ctl("flush")
+        time.sleep(Server.START_WAIT)
 
     def running(self):
         proc = psutil.Process(self.proc.pid)
@@ -807,10 +818,8 @@ class Bind(Server):
             s.end()
 
         self.start_params = ["-c", self.confile, "-g"]
-        self.reload_params = ["-s", self.addr, "-p", str(self.ctlport), \
-                              "-k", self.ctlkeyfile, "reload"]
-        self.flush_params = ["-s", self.addr, "-p", str(self.ctlport), \
-                             "-k", self.ctlkeyfile, "flush"]
+        self.ctl_params = ["-s", self.addr, "-p", str(self.ctlport), \
+                           "-k", self.ctlkeyfile]
 
         return s.conf
 
@@ -986,21 +995,9 @@ class Knot(Server):
         s.end()
 
         self.start_params = ["-c", self.confile]
-        self.reload_params = ["-c", self.confile, "reload"]
-        self.flush_params = ["-c", self.confile, "flush"]
+        self.ctl_params = ["-c", self.confile]
 
         return s.conf
-
-    def ctl(self, params):
-        try:
-            check_call([self.control_bin] + self.start_params + params.split(),
-                       stdout=open(self.dir + "/call.out", mode="a"),
-                       stderr=open(self.dir + "/call.err", mode="a"))
-            time.sleep(Server.START_WAIT)
-        except CalledProcessError as e:
-            self.backtrace()
-            raise Failed("Can't control='%s' server='%s', ret='%i'" %
-                         (params, self.name, e.returncode))
 
 class Nsd(Server):
 
@@ -1013,7 +1010,11 @@ class Nsd(Server):
 
     def get_config(self):
         self.start_params = ["-c", self.confile, "-d"]
-        self.compile_params = ["-c", self.confile, "rebuild"]
+        self.ctl_params = ["-c", self.confile]
+        self.compile_cmd = "rebuild"
+
+    def flush(self):
+        return False # Not supported
 
 class Dummy(Server):
     ''' Dummy name server. '''
