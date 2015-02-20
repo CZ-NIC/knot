@@ -212,6 +212,14 @@ Maximum idle time between requests on a TCP connection.  This also
 limits receiving of a single query, each query must be received in
 this time limit.
 
+Default value: ``20``
+
+::
+
+    system {
+      max-conn-idle 20;
+    }
+
 .. _max-conn-handshake:
 
 max-conn-handshake
@@ -221,12 +229,28 @@ Maximum time between newly accepted TCP connection and first query.
 This is useful to disconnect inactive connections faster, than
 connection that already made at least 1 meaningful query.
 
+Default value: ``5``
+
+::
+
+    system {
+      max-conn-handshake 5;
+    }
+
 .. _max-conn-reply:
 
 max-conn-reply
 ^^^^^^^^^^^^^^
 
 Maximum time to wait for a reply to an issued SOA query.
+
+Default value: ``10``
+
+::
+
+    system {
+      max-conn-reply 10;
+    }
 
 .. _max-tcp-clients:
 
@@ -235,13 +259,29 @@ max-tcp-clients
 
 Maximum number of TCP clients connected in parallel, set this below file descriptor limit to avoid resource exhaustion.
 
+Default value: ``100``
+
+::
+
+    system {
+      max-tcp-clients 100;
+    }
+
 .. _transfers:
 
 transfers
 ^^^^^^^^^
 
 Maximum parallel transfers, including pending SOA queries.  Lowest
-possible number is the number of CPUs.  Default is 10.
+possible number is the number of CPUs.
+
+Default value: ``10``
+
+::
+
+    system {
+      transfers 10;
+    }
 
 .. _rate-limit:
 
@@ -259,6 +299,12 @@ response).  Number of available tokens is recalculated each second.
 
 Default value: ``0 (disabled)``
 
+::
+
+    system {
+      rate-limit 0;
+    }
+
 .. _rate-limit-size:
 
 rate-limit-size
@@ -274,6 +320,12 @@ rule of thumb is to select a prime near ``1.2 * maximum_qps``.
 
 Default value: ``393241``
 
+::
+
+    system {
+      rate-limit-size 393241;
+    }
+
 .. _rate-limit-slip:
 
 rate-limit-slip
@@ -288,6 +340,12 @@ noting, that some responses can't be truncated (f.e.  SERVFAIL).
 
 Default value: ``1``
 
+::
+
+    system {
+      rate-limit-slip 1;
+    }
+
 .. _max-udp-payload:
 
 max-udp-payload
@@ -296,6 +354,12 @@ max-udp-payload
 Maximum EDNS0 UDP payload size.
 
 Default value: ``4096``
+
+::
+
+    system {
+      max-udp-payload 4096;
+    }
 
 .. _system Example:
 
