@@ -133,15 +133,15 @@ void udp_handle(udp_context_t *udp, int fd, struct sockaddr_storage *ss,
 	knot_overlay_add(&udp->overlay, NS_PROC_QUERY, &param);
 
 	/* Input packet. */
-	int state = knot_overlay_in(&udp->overlay, query);
+	int state = knot_overlay_consume(&udp->overlay, query);
 
 	/* Process answer. */
-	while (state & (KNOT_NS_PROC_FULL|KNOT_NS_PROC_FAIL)) {
-		state = knot_overlay_out(&udp->overlay, ans);
+	while (state & (KNOT_STATE_PRODUCE|KNOT_STATE_FAIL)) {
+		state = knot_overlay_produce(&udp->overlay, ans);
 	}
 
 	/* Send response only if finished successfuly. */
-	if (state == KNOT_NS_PROC_DONE) {
+	if (state == KNOT_STATE_DONE) {
 		tx->iov_len = ans->size;
 	} else {
 		tx->iov_len = 0;

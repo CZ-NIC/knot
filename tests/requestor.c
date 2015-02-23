@@ -25,16 +25,16 @@
 
 /* @note Purpose of this test is not to verify process_answer functionality,
  *       but simply if the requesting/receiving works, so mirror is okay. */
-static int reset(knot_layer_t *ctx) { return KNOT_NS_PROC_FULL; }
+static int reset(knot_layer_t *ctx) { return KNOT_STATE_PRODUCE; }
 static int begin(knot_layer_t *ctx, void *module_param) { return reset(ctx); }
-static int finish(knot_layer_t *ctx) { return KNOT_NS_PROC_NOOP; }
-static int in(knot_layer_t *ctx, knot_pkt_t *pkt) { return KNOT_NS_PROC_DONE; }
-static int out(knot_layer_t *ctx, knot_pkt_t *pkt) { return KNOT_NS_PROC_MORE; }
+static int finish(knot_layer_t *ctx) { return KNOT_STATE_NOOP; }
+static int in(knot_layer_t *ctx, knot_pkt_t *pkt) { return KNOT_STATE_DONE; }
+static int out(knot_layer_t *ctx, knot_pkt_t *pkt) { return KNOT_STATE_CONSUME; }
 
 /*! \brief Dummy answer processing module. */
 const knot_layer_api_t dummy_module = {
         &begin, &reset, &finish,
-        &in, &out, &knot_layer_noop
+        &in, &out, NULL
 };
 
 static void* responder_thread(void *arg)

@@ -49,14 +49,13 @@ static int process_answer_begin(knot_layer_t *ctx, void *module_param)
 {
 	/* Initialize context. */
 	assert(ctx);
-	ctx->type = KNOT_NS_PROC_ANSWER_ID;
 	ctx->data = mm_alloc(ctx->mm, sizeof(struct answer_data));
 
 	/* Initialize persistent data. */
 	answer_data_init(ctx, module_param);
 
 	/* Issue the query. */
-	return KNOT_NS_PROC_FULL;
+	return KNOT_STATE_PRODUCE;
 }
 
 static int process_answer_reset(knot_layer_t *ctx)
@@ -76,7 +75,7 @@ static int process_answer_reset(knot_layer_t *ctx)
 	answer_data_init(ctx, module_param);
 
 	/* Issue the query. */
-	return KNOT_NS_PROC_FULL;
+	return KNOT_STATE_PRODUCE;
 }
 
 static int process_answer_finish(knot_layer_t *ctx)
@@ -85,7 +84,7 @@ static int process_answer_finish(knot_layer_t *ctx)
 	mm_free(ctx->mm, ctx->data);
 	ctx->data = NULL;
 
-	return KNOT_NS_PROC_NOOP;
+	return KNOT_STATE_NOOP;
 }
 
 /* \note Private helper for process_answer repetitive checks. */
@@ -101,27 +100,27 @@ static int process_answer(knot_layer_t *ctx, knot_pkt_t *pkt)
 	struct answer_data *data = ANSWER_DATA(ctx);
 
 	/* Check parse state. */
-	ANSWER_REQUIRES(pkt->parsed >= KNOT_WIRE_HEADER_SIZE, KNOT_NS_PROC_FAIL);
-	ANSWER_REQUIRES(pkt->parsed == pkt->size, KNOT_NS_PROC_FAIL);
+	ANSWER_REQUIRES(pkt->parsed >= KNOT_WIRE_HEADER_SIZE, KNOT_STATE_FAIL);
+	ANSWER_REQUIRES(pkt->parsed == pkt->size, KNOT_STATE_FAIL);
 	/* Accept only responses. */
-	ANSWER_REQUIRES(knot_wire_get_qr(pkt->wire), KNOT_NS_PROC_NOOP);
+	ANSWER_REQUIRES(knot_wire_get_qr(pkt->wire), KNOT_STATE_NOOP);
 	/* Check if we want answer paired to query. */
 	const knot_pkt_t *query = data->param->query;
 	if (!query) {
-		return KNOT_NS_PROC_FAIL;
+		return KNOT_STATE_FAIL;
 	}
-	ANSWER_REQUIRES(is_answer_to_query(query, pkt), KNOT_NS_PROC_NOOP);
+	ANSWER_REQUIRES(is_answer_to_query(query, pkt), KNOT_STATE_NOOP);
 
 	/* Verify incoming packet. */
 	int ret = tsig_verify_packet(&data->param->tsig_ctx, pkt);
 	if (ret != KNOT_EOK) {
 		ANSWER_LOG(LOG_WARNING, data, "response", "denied (%s)",
 		           knot_strerror(ret));
-		return KNOT_NS_PROC_FAIL;
+		return KNOT_STATE_FAIL;
 	}
 
 	/* Call appropriate processing handler. */
-	int next_state = KNOT_NS_PROC_NOOP;
+	int next_state = KNOT_STATE_NOOP;
 	if (data->response_type == RESPONSE_TYPE_UNSET) {
 		/* @note We can't derive type from response, as it may not contain QUESTION at all. */
 		data->response_type = knot_pkt_type(query) | KNOT_RESPONSE;
@@ -140,7 +139,7 @@ static int process_answer(knot_layer_t *ctx, knot_pkt_t *pkt)
 		next_state = notify_process_answer(pkt, data);
 		break;
 	default:
-		next_state = KNOT_NS_PROC_NOOP;
+		next_state = KNOT_STATE_NOOP;
 		break;
 	}
 
@@ -151,20 +150,18 @@ static int process_answer(knot_layer_t *ctx, knot_pkt_t *pkt)
 static int prepare_query(knot_layer_t *ctx, knot_pkt_t *pkt)
 {
 	/* \note Don't touch the query, expect answer. */
-	return KNOT_NS_PROC_MORE;
+	return KNOT_STATE_CONSUME;
 }
 
 /*! \brief Module implementation. */
-static const knot_layer_api_t PROCESS_ANSWER_MODULE = {
-	&process_answer_begin,
-	&process_answer_reset,
-	&process_answer_finish,
-	&process_answer,
-	&prepare_query,
-	&knot_layer_noop
-};
-
-const knot_layer_api_t *process_answer_get_module(void)
+const knot_layer_api_t *process_answer_layer(void)
 {
-	return &PROCESS_ANSWER_MODULE;
+	static const knot_layer_api_t _layer = {
+		.begin = &process_answer_begin,
+		.reset = &process_answer_reset,
+		.finish = &process_answer_finish,
+		.consume = &process_answer,
+		.produce = &prepare_query,
+	};
+	return &_layer;
 }

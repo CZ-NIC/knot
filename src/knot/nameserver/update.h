@@ -36,7 +36,7 @@ struct zone;
 /*!
  * \brief UPDATE query processing module.
  *
- * \return KNOT_NS_PROC_* processing states
+ * \return KNOT_STATE_* processing states
  */
 int update_query_process(knot_pkt_t *pkt, struct query_data *qdata);
 

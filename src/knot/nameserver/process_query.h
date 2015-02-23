@@ -31,9 +31,8 @@
 #include "knot/updates/acl.h"
 
 /* Query processing module implementation. */
-const knot_layer_api_t *process_query_get_module(void);
-#define NS_PROC_QUERY process_query_get_module()
-#define NS_PROC_QUERY_ID 1
+const knot_layer_api_t *process_query_layer(void);
+#define NS_PROC_QUERY process_query_layer()
 
 /*! \brief Query processing logging common base. */
 #define NS_PROC_LOG(severity, remote, zone_name, operation, msg, ...) do { \

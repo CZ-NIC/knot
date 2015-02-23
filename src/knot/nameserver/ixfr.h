@@ -35,7 +35,7 @@ struct answer_data;
 /*!
  * \brief IXFR query processing module.
  *
- * \retval FULL if it has an answer, but not yet finished.
+ * \retval PRODUCE if it has an answer, but not yet finished.
  * \retval FAIL if it encountered an error.
  * \retval DONE if finished.
  */
@@ -44,7 +44,7 @@ int ixfr_query(knot_pkt_t *pkt, struct query_data *qdata);
 /*!
  * \brief IXFR response processing module.
  *
- * \retval MORE if more data are required.
+ * \retval CONSUME if more data are required.
  * \retval FAIL if it encountered an error, retry over AXFR will be done.
  * \retval DONE if finished.
  */

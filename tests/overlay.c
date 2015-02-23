@@ -26,33 +26,33 @@
 #define transition(expect, generate) \
 { \
 	if (ctx->state != expect) { \
-		return KNOT_NS_PROC_FAIL; \
+		return KNOT_STATE_FAIL; \
 	} else { \
 		return generate; \
 	} \
 }
 
 static int fsm1_begin(knot_layer_t *ctx, void *param)
-transition(KNOT_NS_PROC_NOOP, KNOT_NS_PROC_NOOP)
+transition(KNOT_STATE_NOOP, KNOT_STATE_NOOP)
 static int fsm1_in(knot_layer_t *ctx, knot_pkt_t *pkt)
-transition(KNOT_NS_PROC_MORE, KNOT_NS_PROC_MORE)
+transition(KNOT_STATE_CONSUME, KNOT_STATE_CONSUME)
 static int fsm1_reset(knot_layer_t *ctx)
-transition(KNOT_NS_PROC_DONE, KNOT_NS_PROC_DONE)
+transition(KNOT_STATE_DONE, KNOT_STATE_DONE)
 static int fsm1_out(knot_layer_t *ctx, knot_pkt_t *pkt)
-transition(KNOT_NS_PROC_FULL, KNOT_NS_PROC_FAIL)
+transition(KNOT_STATE_PRODUCE, KNOT_STATE_FAIL)
 static int fsm1_finish(knot_layer_t *ctx)
-transition(KNOT_NS_PROC_DONE, KNOT_NS_PROC_DONE)
+transition(KNOT_STATE_DONE, KNOT_STATE_DONE)
 
 static int fsm2_begin(knot_layer_t *ctx, void *param)
-transition(KNOT_NS_PROC_NOOP, KNOT_NS_PROC_MORE)
+transition(KNOT_STATE_NOOP, KNOT_STATE_CONSUME)
 static int fsm2_in(knot_layer_t *ctx, knot_pkt_t *pkt)
-transition(KNOT_NS_PROC_MORE, KNOT_NS_PROC_DONE)
+transition(KNOT_STATE_CONSUME, KNOT_STATE_DONE)
 static int fsm2_reset(knot_layer_t *ctx)
-transition(KNOT_NS_PROC_DONE, KNOT_NS_PROC_FULL)
+transition(KNOT_STATE_DONE, KNOT_STATE_PRODUCE)
 static int fsm2_out(knot_layer_t *ctx, knot_pkt_t *pkt)
-transition(KNOT_NS_PROC_FAIL, KNOT_NS_PROC_DONE)
+transition(KNOT_STATE_FAIL, KNOT_STATE_DONE)
 static int fsm2_finish(knot_layer_t *ctx)
-transition(KNOT_NS_PROC_DONE, KNOT_NS_PROC_NOOP)
+transition(KNOT_STATE_DONE, KNOT_STATE_NOOP)
 
 const knot_layer_api_t fsm1_module = {
         &fsm1_begin, &fsm1_reset, &fsm1_finish, &fsm1_in, &fsm1_out, &fsm1_out
@@ -84,14 +84,14 @@ int main(int argc, char *argv[])
 	knot_overlay_add(&overlay, &fsm2_module, NULL);
 
 	/* Run the sequence. */
-	int state = knot_overlay_in(&overlay, buf);
-	is_int(KNOT_NS_PROC_DONE, state, "overlay: in");
+	int state = knot_overlay_consume(&overlay, buf);
+	is_int(KNOT_STATE_DONE, state, "overlay: in");
 	state = knot_overlay_reset(&overlay);
-	is_int(KNOT_NS_PROC_FULL, state, "overlay: reset");
-	state = knot_overlay_out(&overlay, buf);
-	is_int(KNOT_NS_PROC_DONE, state, "overlay: out");
+	is_int(KNOT_STATE_PRODUCE, state, "overlay: reset");
+	state = knot_overlay_produce(&overlay, buf);
+	is_int(KNOT_STATE_DONE, state, "overlay: out");
 	state = knot_overlay_finish(&overlay);
-	is_int(KNOT_NS_PROC_NOOP, state, "overlay: finish");
+	is_int(KNOT_STATE_NOOP, state, "overlay: finish");
 
 	/* Cleanup. */
 	knot_overlay_deinit(&overlay);

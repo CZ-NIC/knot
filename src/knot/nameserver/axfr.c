@@ -112,7 +112,7 @@ static int axfr_query_check(struct query_data *qdata)
 	/* Check expiration. */
 	NS_NEED_ZONE_CONTENTS(qdata, KNOT_RCODE_SERVFAIL);
 
-	return KNOT_NS_PROC_DONE;
+	return KNOT_STATE_DONE;
 }
 
 static int axfr_query_init(struct query_data *qdata)
@@ -121,7 +121,7 @@ static int axfr_query_init(struct query_data *qdata)
 
 	/* Check AXFR query validity. */
 	int state = axfr_query_check(qdata);
-	if (state == KNOT_NS_PROC_FAIL) {
+	if (state == KNOT_STATE_FAIL) {
 		if (qdata->rcode == KNOT_RCODE_FORMERR) {
 			return KNOT_EMALF;
 		} else {
@@ -213,7 +213,7 @@ int xfr_process_list(knot_pkt_t *pkt, xfr_put_cb process_item,
 int axfr_query_process(knot_pkt_t *pkt, struct query_data *qdata)
 {
 	if (pkt == NULL || qdata == NULL) {
-		return KNOT_NS_PROC_FAIL;
+		return KNOT_STATE_FAIL;
 	}
 
 	int ret = KNOT_EOK;
@@ -222,7 +222,7 @@ int axfr_query_process(knot_pkt_t *pkt, struct query_data *qdata)
 	/* If AXFR is disabled, respond with NOTIMPL. */
 	if (qdata->param->proc_flags & NS_QUERY_NO_AXFR) {
 		qdata->rcode = KNOT_RCODE_NOTIMPL;
-		return KNOT_NS_PROC_FAIL;
+		return KNOT_STATE_FAIL;
 	}
 
 	/* Initialize on first call. */
@@ -232,7 +232,7 @@ int axfr_query_process(knot_pkt_t *pkt, struct query_data *qdata)
 		if (ret != KNOT_EOK) {
 			AXFROUT_LOG(LOG_ERR, "failed to start (%s)",
 			            knot_strerror(ret));
-			return KNOT_NS_PROC_FAIL;
+			return KNOT_STATE_FAIL;
 		} else {
 			AXFROUT_LOG(LOG_INFO, "started, serial %u",
 			           zone_contents_serial(qdata->zone->contents));
@@ -247,18 +247,18 @@ int axfr_query_process(knot_pkt_t *pkt, struct query_data *qdata)
 	ret = xfr_process_list(pkt, &axfr_process_node_tree, qdata);
 	switch(ret) {
 	case KNOT_ESPACE: /* Couldn't write more, send packet and continue. */
-		return KNOT_NS_PROC_FULL; /* Check for more. */
+		return KNOT_STATE_PRODUCE; /* Check for more. */
 	case KNOT_EOK:    /* Last response. */
 		gettimeofday(&now, NULL);
 		AXFROUT_LOG(LOG_INFO,
 		            "finished, %.02f seconds, %u messages, %u bytes",
 		            time_diff(&axfr->proc.tstamp, &now) / 1000.0,
 		            axfr->proc.npkts, axfr->proc.nbytes);
-		return KNOT_NS_PROC_DONE;
+		return KNOT_STATE_DONE;
 		break;
 	default:          /* Generic error. */
 		AXFROUT_LOG(LOG_ERR, "failed (%s)", knot_strerror(ret));
-		return KNOT_NS_PROC_FAIL;
+		return KNOT_STATE_FAIL;
 	}
 }
 #undef AXFROUT_LOG
@@ -360,22 +360,22 @@ static int axfr_answer_packet(knot_pkt_t *pkt, struct xfr_proc *proc)
 	for (uint16_t i = 0; i < answer->count; ++i) {
 		if (answer_rr[i].type == KNOT_RRTYPE_SOA &&
 		    node_rrtype_exists(zc.z->apex, KNOT_RRTYPE_SOA)) {
-			return KNOT_NS_PROC_DONE;
+			return KNOT_STATE_DONE;
 		} else {
 			int ret = zcreator_step(&zc, &answer_rr[i]);
 			if (ret != KNOT_EOK) {
-				return KNOT_NS_PROC_FAIL;
+				return KNOT_STATE_FAIL;
 			}
 		}
 	}
 
-	return KNOT_NS_PROC_MORE;
+	return KNOT_STATE_CONSUME;
 }
 
 int axfr_answer_process(knot_pkt_t *pkt, struct answer_data *adata)
 {
 	if (pkt == NULL || adata == NULL) {
-		return KNOT_NS_PROC_FAIL;
+		return KNOT_STATE_FAIL;
 	}
 
 	/* Check RCODE. */
@@ -385,7 +385,7 @@ int axfr_answer_process(knot_pkt_t *pkt, struct answer_data *adata)
 		if (lut != NULL) {
 			AXFRIN_LOG(LOG_ERR, "server responded with %s", lut->name);
 		}
-		return KNOT_NS_PROC_FAIL;
+		return KNOT_STATE_FAIL;
 	}
 
 	/* Initialize processing with first packet. */
@@ -396,7 +396,7 @@ int axfr_answer_process(knot_pkt_t *pkt, struct answer_data *adata)
 		int ret = axfr_answer_init(adata);
 		if (ret != KNOT_EOK) {
 			AXFRIN_LOG(LOG_ERR, "failed (%s)", knot_strerror(ret));
-			return KNOT_NS_PROC_FAIL;
+			return KNOT_STATE_FAIL;
 		}
 	} else {
 		NS_NEED_TSIG_SIGNED(&adata->param->tsig_ctx, 100);
@@ -404,12 +404,12 @@ int axfr_answer_process(knot_pkt_t *pkt, struct answer_data *adata)
 
 	/* Process answer packet. */
 	int ret = axfr_answer_packet(pkt, (struct xfr_proc *)adata->ext);
-	if (ret == KNOT_NS_PROC_DONE) {
+	if (ret == KNOT_STATE_DONE) {
 		NS_NEED_TSIG_SIGNED(&adata->param->tsig_ctx, 0);
 		/* This was the last packet, finalize zone and publish it. */
 		int fret = axfr_answer_finalize(adata);
 		if (fret != KNOT_EOK) {
-			ret = KNOT_NS_PROC_FAIL;
+			ret = KNOT_STATE_FAIL;
 		}
 	}
 
