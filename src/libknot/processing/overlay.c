@@ -33,7 +33,7 @@ void knot_overlay_init(struct knot_overlay *overlay, mm_ctx_t *mm)
 {
 	init_list(&overlay->layers);
 	overlay->mm = mm;
-	overlay->state = KNOT_NS_PROC_NOOP;
+	overlay->state = KNOT_STATE_NOOP;
 }
 
 _public_
@@ -74,7 +74,7 @@ _public_
 int knot_overlay_finish(struct knot_overlay *overlay)
 {
 	/* Only in operable state. */
-	if (overlay->state == KNOT_NS_PROC_NOOP) {
+	if (overlay->state == KNOT_STATE_NOOP) {
 		return overlay->state;
 	}
 
@@ -82,25 +82,25 @@ int knot_overlay_finish(struct knot_overlay *overlay)
 }
 
 _public_
-int knot_overlay_in(struct knot_overlay *overlay, knot_pkt_t *pkt)
+int knot_overlay_consume(struct knot_overlay *overlay, knot_pkt_t *pkt)
 {
 	/* Only if expecting data. */
-	if (overlay->state != KNOT_NS_PROC_MORE) {
+	if (overlay->state != KNOT_STATE_CONSUME) {
 		return overlay->state;
 	}
 
 	knot_pkt_parse(pkt, 0);
 
-	ITERATE_LAYERS(overlay, knot_layer_in, pkt);
+	ITERATE_LAYERS(overlay, knot_layer_consume, pkt);
 }
 
 _public_
-int knot_overlay_out(struct knot_overlay *overlay, knot_pkt_t *pkt)
+int knot_overlay_produce(struct knot_overlay *overlay, knot_pkt_t *pkt)
 {
 	/* Only in operable state. */
-	if (overlay->state == KNOT_NS_PROC_NOOP) {
+	if (overlay->state == KNOT_STATE_NOOP) {
 		return overlay->state;
 	}
 
-	ITERATE_LAYERS(overlay, knot_layer_out, pkt);
+	ITERATE_LAYERS(overlay, knot_layer_produce, pkt);
 }

@@ -32,17 +32,16 @@
 #include "libknot/internal/lists.h"
 #include "libknot/internal/mempattern.h"
 
-/*! \brief Main packet processing states.
- *         Each state describes the current machine processing step
- *         and determines readiness for next action.
+/*! Layer processing states.
+ *  Each state represents the state machine transition,
+ *  and determines readiness for the next action.
  */
-
 enum knot_layer_state {
-	KNOT_NS_PROC_NOOP = 0,      /* N/A */
-	KNOT_NS_PROC_MORE = 1 << 0, /* More input data. */
-	KNOT_NS_PROC_FULL = 1 << 1, /* Has output data. */
-	KNOT_NS_PROC_DONE = 1 << 2, /* Finished. */
-	KNOT_NS_PROC_FAIL = 1 << 3  /* Error. */
+	KNOT_STATE_NOOP    = 0,      /*!< N/A */
+	KNOT_STATE_CONSUME = 1 << 0, /*!< Consume data. */
+	KNOT_STATE_PRODUCE = 1 << 1, /*!< Produce data. */
+	KNOT_STATE_DONE    = 1 << 2, /*!< Finished. */
+	KNOT_STATE_FAIL    = 1 << 3  /*!< Error. */
 };
 
 /* Forward declarations. */
@@ -54,7 +53,6 @@ typedef struct knot_layer
 	node_t node;
 
 	uint16_t state;  /* Bitmap of enum knot_layer_state. */
-	uint16_t type;   /* Module identifier. */
 	mm_ctx_t *mm;    /* Processing memory context. */
 
 	/* Module specific. */
@@ -67,18 +65,10 @@ typedef struct knot_layer_api {
 	int (*begin)(knot_layer_t *ctx, void *module_param);
 	int (*reset)(knot_layer_t *ctx);
 	int (*finish)(knot_layer_t *ctx);
-	int (*in)(knot_layer_t *ctx, knot_pkt_t *pkt);
-	int (*out)(knot_layer_t *ctx, knot_pkt_t *pkt);
-	int (*err)(knot_layer_t *ctx, knot_pkt_t *pkt);
+	int (*consume)(knot_layer_t *ctx, knot_pkt_t *pkt);
+	int (*produce)(knot_layer_t *ctx, knot_pkt_t *pkt);
+	int (*fail)(knot_layer_t *ctx, knot_pkt_t *pkt);
 } knot_layer_api_t;
-
-/*!
- * \brief Universal noop process function.
- */
-inline static int knot_layer_noop(knot_layer_t *ctx, knot_pkt_t *pkt)
-{
-	return KNOT_NS_PROC_NOOP;
-}
 
 /*!
  * \brief Initialize packet processing context.
@@ -100,8 +90,6 @@ int knot_layer_reset(knot_layer_t *ctx);
 /*!
  * \brief Finish and close packet processing context.
  *
- * Allowed from states: MORE, FULL, DONE, FAIL
- *
  * \param ctx   Layer context.
  * \return (module specific state)
  */
@@ -110,14 +98,12 @@ int knot_layer_finish(knot_layer_t *ctx);
 /*!
  * \brief Add more data to layer processing.
  *
- * Allowed from states: MORE
- *
  * \param ctx Layer context.
  * \param pkt Data packet.
  *
  * \return (module specific state)
  */
-int knot_layer_in(knot_layer_t *ctx, knot_pkt_t *pkt);
+int knot_layer_consume(knot_layer_t *ctx, knot_pkt_t *pkt);
 
 /*!
  * \brief Generate output from layer.
@@ -127,6 +113,6 @@ int knot_layer_in(knot_layer_t *ctx, knot_pkt_t *pkt);
  *
  * \return (module specific state)
  */
-int knot_layer_out(knot_layer_t *ctx, knot_pkt_t *pkt);
+int knot_layer_produce(knot_layer_t *ctx, knot_pkt_t *pkt);
 
 /*! @} */

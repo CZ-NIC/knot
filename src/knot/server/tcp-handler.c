@@ -142,15 +142,15 @@ static int tcp_handle(tcp_context_t *tcp, int fd,
 	knot_overlay_add(&tcp->overlay, NS_PROC_QUERY, &param);
 
 	/* Input packet. */
-	int state = knot_overlay_in(&tcp->overlay, query);
+	int state = knot_overlay_consume(&tcp->overlay, query);
 
 	/* Resolve until NOOP or finished. */
 	ret = KNOT_EOK;
-	while (state & (KNOT_NS_PROC_FULL|KNOT_NS_PROC_FAIL)) {
-		state = knot_overlay_out(&tcp->overlay, ans);
+	while (state & (KNOT_STATE_PRODUCE|KNOT_STATE_FAIL)) {
+		state = knot_overlay_produce(&tcp->overlay, ans);
 
 		/* Send, if response generation passed and wasn't ignored. */
-		if (ans->size > 0 && !(state & (KNOT_NS_PROC_FAIL|KNOT_NS_PROC_NOOP))) {
+		if (ans->size > 0 && !(state & (KNOT_STATE_FAIL|KNOT_STATE_NOOP))) {
 			if (tcp_send_msg(fd, ans->wire, ans->size) != ans->size) {
 				ret = KNOT_ECONNREFUSED;
 				break;

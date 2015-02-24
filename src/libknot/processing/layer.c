@@ -51,19 +51,19 @@ int knot_layer_finish(knot_layer_t *ctx)
 }
 
 _public_
-int knot_layer_in(knot_layer_t *ctx, knot_pkt_t *pkt)
+int knot_layer_consume(knot_layer_t *ctx, knot_pkt_t *pkt)
 {
-	LAYER_CALL(ctx, in, pkt);
+	LAYER_CALL(ctx, consume, pkt);
 	return ctx->state;
 }
 
 _public_
-int knot_layer_out(knot_layer_t *ctx, knot_pkt_t *pkt)
+int knot_layer_produce(knot_layer_t *ctx, knot_pkt_t *pkt)
 {
 	switch (ctx->state) {
-	case KNOT_NS_PROC_FAIL: LAYER_CALL(ctx, err, pkt); break;
-	case KNOT_NS_PROC_FULL:
-	default: LAYER_CALL(ctx, out, pkt); break;
+	case KNOT_STATE_FAIL: LAYER_CALL(ctx, fail, pkt); break;
+	case KNOT_STATE_PRODUCE:
+	default: LAYER_CALL(ctx, produce, pkt); break;
 	}
 
 	return ctx->state;

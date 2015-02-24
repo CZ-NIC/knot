@@ -27,7 +27,7 @@
 #include "libknot/processing/layer.h"
 #include "libknot/internal/lists.h"
 
-/*! \brief Processsing overlay (list of chained FSMs). */
+/*! \brief Processsing overlay (list of aggregated FSMs). */
 struct knot_overlay {
 	int state;
 	list_t layers;
@@ -73,8 +73,6 @@ int knot_overlay_reset(struct knot_overlay *overlay);
 /*!
  * \brief Finish layer processing.
  *
- * Allowed from states: MORE, FULL, DONE, FAIL
- *
  * \fn knot_layer_finish
  */
 int knot_overlay_finish(struct knot_overlay *overlay);
@@ -82,19 +80,15 @@ int knot_overlay_finish(struct knot_overlay *overlay);
 /*!
  * \brief Add more data to layer processing.
  *
- * Allowed from states: MORE
- *
- * \fn knot_layer_in
+ * \fn knot_layer_consume
  */
-int knot_overlay_in(struct knot_overlay *overlay, knot_pkt_t *pkt);
+int knot_overlay_consume(struct knot_overlay *overlay, knot_pkt_t *pkt);
 
 /*!
  * \brief Generate output from layers.
  *
- * Allowed from states: FULL, FAIL
- *
- * \fn knot_layer_out
+ * \fn knot_layer_produce
  */
-int knot_overlay_out(struct knot_overlay *overlay, knot_pkt_t *pkt);
+int knot_overlay_produce(struct knot_overlay *overlay, knot_pkt_t *pkt);
 
 /*! @} */

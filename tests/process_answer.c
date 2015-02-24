@@ -27,12 +27,12 @@
 /* @note Test helpers. */
 #define TEST_RESET() \
 	knot_layer_reset(proc); \
-	knot_layer_out(proc, pkt); \
+	knot_layer_produce(proc, pkt); \
 	knot_pkt_clear(pkt)
 
 #define TEST_EXEC(expect, info) {\
 	knot_pkt_parse(pkt, 0); \
-	int state = knot_layer_in(proc, pkt); \
+	int state = knot_layer_consume(proc, pkt); \
 	is_int((expect), state, "proc_answer: " info); \
 	}
 
@@ -46,13 +46,13 @@ static void test_invalid(knot_pkt_t *pkt, knot_layer_t *proc)
 	/* Invalid packet - query. */
 	TEST_RESET();
 	knot_pkt_put_question(pkt, ROOT_DNAME, KNOT_CLASS_IN, KNOT_RRTYPE_A);
-	TEST_EXEC(KNOT_NS_PROC_NOOP, "ignored query");
+	TEST_EXEC(KNOT_STATE_NOOP, "ignored query");
 
 	/* Invalid packet - mangled. */
 	TEST_RESET();
 	knot_pkt_put_question(pkt, ROOT_DNAME, KNOT_CLASS_IN, KNOT_RRTYPE_A);
 	pkt->size += 1; /* Mangle size. */
-	TEST_EXEC(KNOT_NS_PROC_FAIL, "malformed query");
+	TEST_EXEC(KNOT_STATE_FAIL, "malformed query");
 }
 
 /* Test if context accepts only answer to specific query. */
@@ -70,7 +70,7 @@ static void test_specific(knot_pkt_t *pkt, knot_layer_t *proc, struct process_an
 	TEST_RESET();
 	knot_pkt_init_response(pkt, param->query);
 	knot_wire_set_id(pkt->wire, 0xDEAD);
-	TEST_EXEC(KNOT_NS_PROC_NOOP, "ignored mismatching MSGID");
+	TEST_EXEC(KNOT_STATE_NOOP, "ignored mismatching MSGID");
 
 	/* Clear the specific query. */
 	knot_pkt_free(&query);
@@ -93,13 +93,13 @@ static void test_inclass(knot_pkt_t *pkt, knot_layer_t *proc, struct process_ans
 	knot_wire_set_qr(pkt->wire);
 	knot_pkt_begin(pkt, KNOT_ANSWER);
 	knot_pkt_put(pkt, KNOT_COMPR_HINT_OWNER, &soa, 0);
-	TEST_EXEC(KNOT_NS_PROC_DONE, "IN/SOA answer");
+	TEST_EXEC(KNOT_STATE_DONE, "IN/SOA answer");
 
 	/* Unsupported anwer. */
 	TEST_RESET();
 	knot_pkt_put_question(pkt, ROOT_DNAME, KNOT_CLASS_IN, KNOT_RRTYPE_TXT);
 	knot_wire_set_qr(pkt->wire);
-	TEST_EXEC(KNOT_NS_PROC_NOOP, "IN/unsupported answer");
+	TEST_EXEC(KNOT_STATE_NOOP, "IN/unsupported answer");
 
 	/* Clear the specific query. */
 	knot_pkt_free(&query);
@@ -133,8 +133,8 @@ int main(int argc, char *argv[])
 	knot_pkt_t *pkt = knot_pkt_new(NULL, KNOT_WIRE_MAX_PKTSIZE, proc.mm);
 
 	/* Begin processing. */
-	int state = knot_layer_begin(&proc, KNOT_NS_PROC_ANSWER, &param);
-	ok(state == KNOT_NS_PROC_FULL, "proc_answer: expects query to be sent");
+	int state = knot_layer_begin(&proc, KNOT_STATE_ANSWER, &param);
+	ok(state == KNOT_STATE_PRODUCE, "proc_answer: expects query to be sent");
 
 	/* Invalid generic input tests. */
 	test_invalid(pkt, &proc);
@@ -152,7 +152,7 @@ int main(int argc, char *argv[])
 
 	/* Finish. */
 	state = knot_layer_finish(&proc);
-	ok(state == KNOT_NS_PROC_NOOP, "proc_answer: processing end" );
+	ok(state == KNOT_STATE_NOOP, "proc_answer: processing end" );
 
 	/* Cleanup. */
 	mp_delete(mm.ctx);
