@@ -692,7 +692,7 @@ int process_query_qname_case_lower(knot_pkt_t *pkt)
 /*! \brief Module implementation. */
 const knot_layer_api_t *process_query_layer(void)
 {
-	static const knot_layer_api_t _layer = {
+	static const knot_layer_api_t api = {
 		.begin   = &process_query_begin,
 		.reset   = &process_query_reset,
 		.finish  = &process_query_finish,
@@ -700,5 +700,5 @@ const knot_layer_api_t *process_query_layer(void)
 		.produce = &process_query_out,
 		.fail    = &process_query_err
 	};
-	return &_layer;
+	return &api;
 }

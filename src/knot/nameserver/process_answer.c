@@ -156,12 +156,12 @@ static int prepare_query(knot_layer_t *ctx, knot_pkt_t *pkt)
 /*! \brief Module implementation. */
 const knot_layer_api_t *process_answer_layer(void)
 {
-	static const knot_layer_api_t _layer = {
+	static const knot_layer_api_t api = {
 		.begin = &process_answer_begin,
 		.reset = &process_answer_reset,
 		.finish = &process_answer_finish,
 		.consume = &process_answer,
 		.produce = &prepare_query,
 	};
-	return &_layer;
+	return &api;
 }

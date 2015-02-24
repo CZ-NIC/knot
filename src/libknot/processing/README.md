@@ -106,11 +106,11 @@ static int dnstrack_fail(knot_layer_t *ctx, knot_pkt_t *pkt)
 /*! Module implementation. */
 const knot_layer_api_t *dnstrack_layer(void)
 {
-	static const knot_layer_api_t _layer = {
+	static const knot_layer_api_t api = {
 		.consume = &dnstrack_query,
 		.fail    = &dnstrack_fail
 	};
-	return &_layer;
+	return &api;
 }
 
 ```
