@@ -66,10 +66,16 @@ static void cleanup_kasp_policy(dnssec_kasp_policy_t **policy_ptr)
 	dnssec_kasp_policy_free(*policy_ptr);
 }
 
+static void cleanup_list(dnssec_list_t **list_ptr)
+{
+	dnssec_list_free_full(*list_ptr, NULL, NULL);
+}
+
 #define _cleanup_kasp_ _cleanup_(cleanup_kasp)
 #define _cleanup_keystore_ _cleanup_(cleanup_keystore)
 #define _cleanup_zone_ _cleanup_(cleanup_kasp_zone)
 #define _cleanup_policy_ _cleanup_(cleanup_kasp_policy)
+#define _cleanup_list_ _cleanup_(cleanup_list)
 
 /* -- frequent operations -------------------------------------------------- */
 
@@ -150,6 +156,34 @@ static bool zone_add_dnskey(dnssec_kasp_zone_t *zone, dnssec_key_t *dnskey,
 static void print_key(const dnssec_key_t *key)
 {
 	printf("id %s keytag %d\n", dnssec_key_get_id(key), dnssec_key_get_keytag(key));
+}
+
+/* -- generic list operations ---------------------------------------------- */
+
+/*!
+ * Print filtered items from a string list.
+ *
+ * \param list    List of strings.
+ * \param filter  Filter for case-insensitive substring match. Can be NULL.
+ *
+ * \retval DNSSEC_EOK        At least one item was printed.
+ * \retval DNSSEC_NOT_FOUND  No item matched the filter.
+ */
+static int print_list(dnssec_list_t *list, const char *filter)
+{
+	assert(list);
+
+	bool found_match = NULL;
+
+	dnssec_list_foreach(item, list) {
+		const char *value = dnssec_item_get(item);
+		if (filter == NULL || strcasestr(value, filter) != NULL) {
+			found_match = true;
+			printf("%s\n", value);
+		}
+	}
+
+	return found_match ? DNSSEC_EOK : DNSSEC_NOT_FOUND;
 }
 
 /* -- actions implementation ----------------------------------------------- */
@@ -268,29 +302,20 @@ static int cmd_zone_list(int argc, char *argv[])
 		return 1;
 	}
 
-	dnssec_list_t *zones = NULL;
+	_cleanup_list_ dnssec_list_t *zones = NULL;
 	int r = dnssec_kasp_zone_list(kasp, &zones);
 	if (r != DNSSEC_EOK) {
 		error("Failed to get list of zones (%s).", dnssec_strerror(r));
+		return 1;
 	}
 
-	bool found_match = false;
-
-	dnssec_list_foreach(item, zones) {
-		const char *name = dnssec_item_get(item);
-		if (match == NULL || strcasestr(name, match) != NULL) {
-			found_match = true;
-			printf("%s\n", name);
-		}
-	}
-
-	dnssec_list_free_full(zones, NULL, NULL);
-
-	if (!found_match) {
+	r = print_list(zones, match);
+	if (r == DNSSEC_NOT_FOUND) {
 		error("No matching zone found.");
 		return 1;
 	}
 
+	assert(r == DNSSEC_EOK);
 	return 0;
 }
 
