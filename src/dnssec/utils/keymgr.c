@@ -861,8 +861,36 @@ static int cmd_zone(int argc, char *argv[])
 
 static int cmd_policy_list(int argc, char *argv[])
 {
-	error("Not implemented.");
-	return 1;
+	const char *match;
+	if (argc == 0) {
+		match = NULL;
+	} else if (argc == 1) {
+		match = argv[0];
+	} else {
+		error("Extra parameter specified.");
+		return 1;
+	}
+
+	_cleanup_kasp_ dnssec_kasp_t *kasp = get_kasp();
+	if (!kasp) {
+		return 1;
+	}
+
+	_cleanup_list_ dnssec_list_t *policies = NULL;
+	int r = dnssec_kasp_policy_list(kasp, &policies);
+	if (r != DNSSEC_EOK) {
+		error("Failed to get list of policies (%s).", dnssec_strerror(r));
+		return 1;
+	}
+
+	r = print_list(policies, match);
+	if (r == DNSSEC_NOT_FOUND) {
+		error("No matching policy found.");
+		return 1;
+	}
+
+	assert(r == DNSSEC_EOK);
+	return 0;
 }
 
 static void print_policy(const dnssec_kasp_policy_t *policy)
