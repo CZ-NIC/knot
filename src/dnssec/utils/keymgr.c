@@ -218,14 +218,16 @@ static int cmd_zone_add(int argc, char *argv[])
 		return 1;
 	}
 
-	_cleanup_zone_ dnssec_kasp_zone_t *zone = NULL;
-	int r = dnssec_kasp_zone_load(kasp, zone_name, &zone);
-	if (r == DNSSEC_EOK || zone != NULL) {
+	int r = dnssec_kasp_zone_exists(kasp, zone_name);
+	if (r == DNSSEC_EOK) {
 		error("Zone with given name alredy exists.");
+		return 1;
+	} else if (r != DNSSEC_NOT_FOUND) {
+		error("Failed to check if given zone exists (%s).", dnssec_strerror(r));
 		return 1;
 	}
 
-	zone = dnssec_kasp_zone_new(zone_name);
+	_cleanup_zone_ dnssec_kasp_zone_t *zone = dnssec_kasp_zone_new(zone_name);
 	if (!zone) {
 		error("Failed to create new zone.");
 		return 1;
@@ -901,7 +903,9 @@ static int cmd_policy_add(int argc, char *argv[])
 		return 1;
 	}
 
-	_cleanup_policy_ dnssec_kasp_policy_t *policy = dnssec_kasp_policy_new(argv[0]);
+	const char *policy_name = argv[0];
+
+	_cleanup_policy_ dnssec_kasp_policy_t *policy = dnssec_kasp_policy_new(policy_name);
 	if (!policy) {
 		error("Failed to create new policy.");
 		return 1;
@@ -917,9 +921,16 @@ static int cmd_policy_add(int argc, char *argv[])
 		return 1;
 	}
 
-	// TODO: check if policy exists
+	int r = dnssec_kasp_policy_exists(kasp, policy_name);
+	if (r == DNSSEC_EOK) {
+		error("Policy with given name alredy exists.");
+		return 1;
+	} else if (r != DNSSEC_NOT_FOUND) {
+		error("Failed to check if given policy exists (%s).", dnssec_strerror(r));
+		return 1;
+	}
 
-	int r = dnssec_kasp_policy_save(kasp, policy);
+	r = dnssec_kasp_policy_save(kasp, policy);
 	if (r != DNSSEC_EOK) {
 		error("Failed to save new policy (%s).", dnssec_strerror(r));
 		return 1;
