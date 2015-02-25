@@ -160,6 +160,16 @@ int dnssec_kasp_zone_list(dnssec_kasp_t *kasp, dnssec_list_t **list_ptr)
 }
 
 _public_
+int dnssec_kasp_zone_exists(dnssec_kasp_t *kasp, const char *zone_name)
+{
+	if (!kasp || !zone_name) {
+		return DNSSEC_EINVAL;
+	}
+
+	return kasp->functions->zone_exists(kasp->ctx, zone_name);
+}
+
+_public_
 int dnssec_kasp_policy_load(dnssec_kasp_t *kasp, const char *name,
 			    dnssec_kasp_policy_t **policy_ptr)
 {
@@ -224,4 +234,14 @@ int dnssec_kasp_policy_list(dnssec_kasp_t *kasp, dnssec_list_t **list_ptr)
 	*list_ptr = list;
 
 	return DNSSEC_EOK;
+}
+
+_public_
+int dnssec_kasp_policy_exists(dnssec_kasp_t *kasp, const char *policy_name)
+{
+	if (!kasp || !policy_name) {
+		return DNSSEC_EINVAL;
+	}
+
+	return kasp->functions->policy_exists(kasp->ctx, policy_name);
 }

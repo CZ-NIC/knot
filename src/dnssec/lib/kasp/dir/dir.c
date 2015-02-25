@@ -40,6 +40,17 @@ typedef struct kasp_dir_ctx {
 	char *path;
 } kasp_dir_ctx_t;
 
+static int file_exists(const char *path)
+{
+	if (access(path, F_OK) == 0) {
+		return DNSSEC_EOK;
+	} else if (errno == ENOENT) {
+		return DNSSEC_NOT_FOUND;
+	} else {
+		return dnssec_errno_to_error(errno);
+	}
+}
+
 /* -- internal API --------------------------------------------------------- */
 
 static int kasp_dir_init(const char *config)
@@ -164,6 +175,20 @@ static int kasp_dir_zone_list(void *_ctx, dnssec_list_t *names)
 	return DNSSEC_EOK;
 }
 
+static int kasp_dir_zone_exists(void *_ctx, const char *name)
+{
+	assert(_ctx);
+	assert(name);
+
+	kasp_dir_ctx_t *ctx = _ctx;
+	_cleanup_free_ char *config = zone_file(ctx->path, name);
+	if (!config) {
+		return DNSSEC_ENOMEM;
+	}
+
+	return file_exists(config);
+}
+
 static char *policy_file(const char *dir, const char *name)
 {
 	return file_from_entity(dir, ENTITY_POLICY, name);
@@ -226,6 +251,20 @@ static int kasp_dir_policy_list(void *_ctx, dnssec_list_t *names)
 	return DNSSEC_NOT_IMPLEMENTED_ERROR;
 }
 
+static int kasp_dir_policy_exists(void *_ctx, const char *name)
+{
+	assert(_ctx);
+	assert(name);
+
+	kasp_dir_ctx_t *ctx = _ctx;
+	_cleanup_free_ char *config = policy_file(ctx->path, name);
+	if (!config) {
+		return DNSSEC_ENOMEM;
+	}
+
+	return file_exists(config);
+}
+
 static const dnssec_kasp_store_functions_t KASP_DIR_FUNCTIONS = {
 	.init          = kasp_dir_init,
 	.open          = kasp_dir_open,
@@ -234,10 +273,12 @@ static const dnssec_kasp_store_functions_t KASP_DIR_FUNCTIONS = {
 	.zone_save     = kasp_dir_zone_save,
 	.zone_remove   = kasp_dir_zone_remove,
 	.zone_list     = kasp_dir_zone_list,
+	.zone_exists   = kasp_dir_zone_exists,
 	.policy_load   = kasp_dir_policy_load,
 	.policy_save   = kasp_dir_policy_save,
 	.policy_remove = kasp_dir_policy_remove,
 	.policy_list   = kasp_dir_policy_list,
+	.policy_exists = kasp_dir_policy_exists,
 };
 
 /* -- public API ----------------------------------------------------------- */

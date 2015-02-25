@@ -196,6 +196,18 @@ int dnssec_kasp_zone_remove(dnssec_kasp_t *kasp, const char *zone_name);
 int dnssec_kasp_zone_list(dnssec_kasp_t *kasp, dnssec_list_t **list);
 
 /*!
+ * Check if a zone exists in the KASP.
+ *
+ * \param kasp       KASP instance.
+ * \param zone_name  Name of the zone.
+ *
+ * \return Error code.
+ * \retval DNSSEC_EOK        Zone exists.
+ * \retval DNSSEC_NOT_FOUND  Zone doesn't exist.
+ */
+int dnssec_kasp_zone_exists(dnssec_kasp_t *kasp, const char *zone_name);
+
+/*!
  * KASP key timing information.
  */
 typedef struct dnssec_kasp_key_timing {
@@ -341,5 +353,17 @@ int dnssec_kasp_policy_remove(dnssec_kasp_t *kasp, const char *name);
  * \param[out] list  List of policy names (as strings).
  */
 int dnssec_kasp_policy_list(dnssec_kasp_t *kasp, dnssec_list_t **list);
+
+/*!
+ * Check if a policy exists in the KASP.
+ *
+ * \param kasp         KASP instance.
+ * \param policy_name  Name of the policy.
+ *
+ * \return Error code.
+ * \retval DNSSEC_EOK        Policy exists.
+ * \retval DNSSEC_NOT_FOUND  Policy doesn't exist.
+ */
+int dnssec_kasp_policy_exists(dnssec_kasp_t *kasp, const char *policy_name);
 
 /*! @} */

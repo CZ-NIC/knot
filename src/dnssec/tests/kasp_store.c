@@ -87,6 +87,14 @@ static int mock_zone_list(void *ctx, dnssec_list_t *names)
 	return DNSSEC_EOK;
 }
 
+static bool mock_zone_exists_ok = false;
+static int mock_zone_exists(void *ctx, const char *name)
+{
+	mock_zone_exists_ok = ctx == MOCK_CTX && streq(name, "cool.name");
+
+	return DNSSEC_EOK;
+}
+
 static bool mock_policy_load_ok = false;
 static int mock_policy_load(void *ctx, dnssec_kasp_policy_t *policy)
 {
@@ -127,6 +135,14 @@ static int mock_policy_list(void *ctx, dnssec_list_t *names)
 	return DNSSEC_EOK;
 }
 
+static bool mock_policy_exists_ok = false;
+static int mock_policy_exists(void *ctx, const char *name)
+{
+	mock_policy_exists_ok = ctx == MOCK_CTX && streq(name, "superstrict");
+
+	return DNSSEC_EOK;
+}
+
 static const dnssec_kasp_store_functions_t MOCK = {
 	.open          = mock_policy_policy_open,
 	.close         = mock_policy_close,
@@ -134,10 +150,12 @@ static const dnssec_kasp_store_functions_t MOCK = {
 	.zone_save     = mock_zone_save,
 	.zone_remove   = mock_zone_remove,
 	.zone_list     = mock_zone_list,
+	.zone_exists   = mock_zone_exists,
 	.policy_load   = mock_policy_load,
 	.policy_save   = mock_policy_save,
 	.policy_remove = mock_policy_remove,
-	.policy_list   = mock_policy_list
+	.policy_list   = mock_policy_list,
+	.policy_exists = mock_policy_exists,
 };
 
 static void test_zone(dnssec_kasp_t *kasp)
@@ -177,6 +195,12 @@ static void test_zone(dnssec_kasp_t *kasp)
 	   "zone list, output");
 
 	dnssec_list_free_full(zones, NULL, NULL);
+
+	// exists
+
+	r = dnssec_kasp_zone_exists(kasp, "cool.name");
+	ok(r == DNSSEC_EOK, "zone exists, call");
+	ok(mock_zone_exists_ok, "zone exists, input");
 }
 
 static void test_policy(dnssec_kasp_t *kasp)
@@ -219,6 +243,12 @@ static void test_policy(dnssec_kasp_t *kasp)
 	   "policy list: output");
 
 	dnssec_list_free_full(names, NULL, NULL);
+
+	// exists
+
+	r = dnssec_kasp_policy_exists(kasp, "superstrict");
+	ok(r == DNSSEC_EOK, "policy exists, call");
+	ok(mock_policy_exists_ok, "policy exists, input");
 }
 
 int main(int argc, char *argv[])
