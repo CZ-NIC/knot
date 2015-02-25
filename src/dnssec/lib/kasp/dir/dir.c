@@ -248,7 +248,27 @@ static int kasp_dir_policy_list(void *_ctx, dnssec_list_t *names)
 	assert(_ctx);
 	assert(names);
 
-	return DNSSEC_NOT_IMPLEMENTED_ERROR;
+	kasp_dir_ctx_t *ctx = _ctx;
+
+	_cleanup_closedir_ DIR *dir = opendir(ctx->path);
+	if (!dir) {
+		return DNSSEC_NOT_FOUND;
+	}
+
+	int error;
+	struct dirent entry, *result;
+	while (error = readdir_r(dir, &entry, &result), error == 0 && result) {
+		char *zone = file_to_entity(ENTITY_POLICY, entry.d_name);
+		if (zone) {
+			dnssec_list_append(names, zone);
+		}
+	}
+
+	if (error != 0) {
+		return dnssec_errno_to_error(error);
+	}
+
+	return DNSSEC_EOK;
 }
 
 static int kasp_dir_policy_exists(void *_ctx, const char *name)
