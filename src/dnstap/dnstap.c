@@ -23,7 +23,7 @@
 
 uint8_t* dt_pack(const Dnstap__Dnstap *d, uint8_t **buf, size_t *sz)
 {
-	ProtobufCBufferSimple sbuf = {0};
+	ProtobufCBufferSimple sbuf = { { NULL } };
 
 	sbuf.base.append = protobuf_c_buffer_simple_append;
 	sbuf.len = 0;
