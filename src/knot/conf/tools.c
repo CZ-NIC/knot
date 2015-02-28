@@ -129,6 +129,56 @@ int hex_text_to_txt(
 	return KNOT_EOK;
 }
 
+int mod_id_to_bin(
+	char const *txt,
+	size_t txt_len,
+	uint8_t *bin,
+	size_t *bin_len)
+{
+	// Check for "mod_name/mod_id" format.
+	char *pos = index(txt, '/');
+	if (pos == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	uint8_t name_len = pos - txt;
+	char *id = pos + 1;
+	size_t id_len = txt_len - name_len - 1;
+	// Output is mod_name in yp_name_t format and zero terminated id string.
+	size_t total_out_len = 1 + name_len + id_len + 1;
+
+	// Check for enough output room.
+	if (*bin_len < total_out_len) {
+		return KNOT_ESPACE;
+	}
+
+	// Write mod_name in yp_name_t format.
+	bin[0] = name_len;
+	memcpy(bin + 1, txt, name_len);
+	// Write mod_id as zero terminated string.
+	memcpy(bin + 1 + name_len, id, id_len + 1);
+	// Set output length.
+	*bin_len = total_out_len;
+
+	return KNOT_EOK;
+}
+
+int mod_id_to_txt(
+	uint8_t const *bin,
+	size_t bin_len,
+	char *txt,
+	size_t *txt_len)
+{
+	int ret = snprintf(txt, *txt_len, "%.*s/%s", (int)bin[0], bin + 1,
+	                   bin + 1 + bin[0]);
+	if (ret <= 0 || ret >= *txt_len) {
+		return KNOT_ESPACE;
+	}
+	*txt_len = ret;
+
+	return KNOT_EOK;
+}
+
 int check_ref(
 	conf_args_t *args)
 {
@@ -137,6 +187,18 @@ int check_ref(
 	// Try to find the id in the referenced category.
 	return conf_db_get(args->conf, args->txn, parent->name, NULL,
 	                   args->data, args->data_len, NULL);
+}
+
+int check_modref(
+	conf_args_t *args)
+{
+	const yp_name_t *mod_name = (const yp_name_t *)args->data;
+	const uint8_t *id = args->data + 1 + args->data[0];
+	size_t id_len = args->data_len - 1 - args->data[0];
+
+	// Try to find the module with id.
+	return conf_db_get(args->conf, args->txn, mod_name, NULL, id, id_len,
+	                   NULL);
 }
 
 int include_file(

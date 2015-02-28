@@ -52,6 +52,10 @@ typedef struct {
 	char *filename;
 	// Temporary database path.
 	char *tmp_dir;
+	// List of active query modules.
+	list_t query_modules;
+	// Default query modules plan.
+	struct query_plan *query_plan;
 } conf_t;
 
 typedef struct {
@@ -77,6 +81,12 @@ typedef struct {
 	// Public items.
 	int code; // Return code.
 } conf_iter_t;
+
+typedef struct {
+	yp_name_t *name;
+	uint8_t *data;
+	size_t len;
+} conf_mod_id_t;
 
 extern conf_t *s_conf;
 
@@ -105,6 +115,19 @@ void conf_update(
 void conf_free(
 	conf_t *conf,
 	bool is_clone
+);
+
+int conf_activate_modules(
+	conf_t *conf,
+	knot_dname_t *zone_name,
+	list_t *query_modules,
+	struct query_plan **query_plan
+);
+
+void conf_deactivate_modules(
+	conf_t *conf,
+	list_t *query_modules,
+	struct query_plan *query_plan
 );
 
 int conf_parse(
@@ -140,6 +163,12 @@ conf_val_t conf_id_get(
 	const yp_name_t *key0_name,
 	const yp_name_t *key1_name,
 	conf_val_t *id
+);
+
+conf_val_t conf_mod_get(
+	conf_t *conf,
+	const yp_name_t *key1_name,
+	const conf_mod_id_t *mod_id
 );
 
 conf_val_t conf_zone_get(
@@ -209,6 +238,14 @@ char* conf_abs_path(
 
 const knot_dname_t* conf_dname(
 	conf_val_t *val
+);
+
+conf_mod_id_t* conf_mod_id(
+	conf_val_t *val
+);
+
+void conf_free_mod_id(
+	conf_mod_id_t *mod_id
 );
 
 struct sockaddr_storage conf_addr(

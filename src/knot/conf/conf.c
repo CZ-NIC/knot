@@ -31,6 +31,8 @@
 #include "knot/conf/confdb.h"
 #include "knot/conf/tools.h"
 #include "knot/common/log.h"
+#include "knot/nameserver/query_module.h"
+#include "knot/nameserver/internet.h"
 #include "knot/server/dthreads.h"
 #include "libknot/errcode.h"
 #include "libknot/internal/macros.h"
@@ -181,6 +183,13 @@ int conf_post_open(
 
 	conf->hostname = sockaddr_hostname();
 
+	int ret = conf_activate_modules(conf, NULL, &conf->query_modules,
+	                                &conf->query_plan);
+	if (ret != KNOT_EOK) {
+		free(conf->hostname);
+		return ret;
+	}
+
 	return KNOT_EOK;
 }
 
@@ -212,6 +221,11 @@ void conf_free(
 	yp_scheme_free(conf->scheme);
 	conf->api->txn_abort(&conf->read_txn);
 	free(conf->hostname);
+
+	if (conf->query_plan != NULL) {
+		conf_deactivate_modules(conf, &conf->query_modules,
+		                        conf->query_plan);
+	}
 
 	if (!is_clone) {
 		conf->api->deinit(conf->db);
@@ -253,6 +267,94 @@ void conf_free(
 	}
 
 	free(conf);
+}
+
+int conf_activate_modules(
+	conf_t *conf,
+	knot_dname_t *zone_name,
+	list_t *query_modules,
+	struct query_plan **query_plan)
+{
+	if (conf == NULL || query_modules == NULL || query_plan == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	conf_val_t val;
+
+	// Get list of associated modules.
+	if (zone_name != NULL) {
+		val = conf_zone_get(conf, C_MODULE, zone_name);
+	} else {
+		val = conf_default_get(conf, C_MODULE);
+	}
+
+	if (val.code == KNOT_ENOENT) {
+		return KNOT_EOK;
+	} else if (val.code != KNOT_EOK) {
+		return val.code;
+	}
+
+	// Create query plan.
+	*query_plan = query_plan_create(conf->mm);
+	if (*query_plan == NULL) {
+		return KNOT_ENOMEM;
+	}
+
+	if (zone_name != NULL) {
+		// Only supported zone class is now IN.
+		internet_query_plan(*query_plan);
+	}
+
+	// Initialize query modules list.
+	init_list(query_modules);
+
+	// Open the modules.
+	while (val.code == KNOT_EOK) {
+		conf_mod_id_t *mod_id = conf_mod_id(&val);
+		if (mod_id == NULL) {
+			return KNOT_ENOMEM;
+		}
+
+		// Open the module.
+		struct query_module *mod = query_module_open(conf, mod_id, conf->mm);
+		if (mod == NULL) {
+			conf_free_mod_id(mod_id);
+			return KNOT_ENOMEM;
+		}
+
+		// Load the module.
+		int ret = mod->load(*query_plan, mod);
+		if (ret != KNOT_EOK) {
+			query_module_close(mod);
+			return ret;
+		}
+
+		add_tail(query_modules, &mod->node);
+
+		conf_val_next(&val);
+	}
+
+	return KNOT_EOK;
+}
+
+void conf_deactivate_modules(
+	conf_t *conf,
+	list_t *query_modules,
+	struct query_plan *query_plan)
+{
+	if (conf == NULL || query_modules == NULL || query_plan == NULL) {
+		return;
+	}
+
+	// Free query modules list.
+	struct query_module *mod = NULL, *next = NULL;
+	WALK_LIST_DELSAFE(mod, next, *query_modules) {
+		mod->unload(mod);
+		query_module_close(mod);
+	}
+
+	// Free query plan.
+	query_plan_free(query_plan);
 }
 
 static int parser_process(
@@ -628,6 +730,21 @@ conf_val_t conf_id_get(
 	                  (id == NULL) ? 0 : id->len);
 }
 
+conf_val_t conf_mod_get(
+	conf_t *conf,
+	const yp_name_t *key1_name,
+	const conf_mod_id_t *mod_id)
+{
+	// Check for empty input.
+	if (key1_name == NULL || mod_id == NULL) {
+		conf_val_t val = { NULL };
+		val.code = KNOT_EINVAL;
+		return val;
+	}
+
+	return raw_id_get(conf, mod_id->name, key1_name, mod_id->data, mod_id->len);
+}
+
 conf_val_t conf_zone_get(
 	conf_t *conf,
 	const yp_name_t *key1_name,
@@ -925,6 +1042,54 @@ const knot_dname_t* conf_dname(
 	} else {
 		return (const knot_dname_t *)val->item->var.d.dflt;
 	}
+}
+
+conf_mod_id_t* conf_mod_id(
+	conf_val_t *val)
+{
+	assert(val != NULL);
+	assert(val->item->type == YP_TDATA);
+
+	conf_mod_id_t *mod_id = NULL;
+
+	if (val->code == KNOT_EOK) {
+		conf_db_val(val);
+
+		// Make copy of mod_id because pointers are not persisent in db.
+		mod_id = malloc(sizeof(conf_mod_id_t));
+		if (mod_id == NULL) {
+			return NULL;
+		}
+
+		// Copy module name.
+		size_t name_len = 1 + val->data[0];
+		mod_id->name = malloc(name_len + 1);
+		if (mod_id->name == NULL) {
+			free(mod_id);
+			return NULL;
+		}
+		memcpy(mod_id->name, val->data, name_len);
+
+		// Copy module identifier.
+		mod_id->len = val->len - name_len;
+		mod_id->data = malloc(mod_id->len);
+		if (mod_id->data == NULL) {
+			free(mod_id->name);
+			free(mod_id);
+			return NULL;
+		}
+		memcpy(mod_id->data, val->data + name_len, mod_id->len);
+	}
+
+	return mod_id;
+}
+
+void conf_free_mod_id(
+	conf_mod_id_t *mod_id)
+{
+	free(mod_id->name);
+	free(mod_id->data);
+	free(mod_id);
 }
 
 struct sockaddr_storage conf_addr(

@@ -35,6 +35,10 @@
 
 #include "knot/nameserver/query_module.h"
 
+/*! \brief Module scheme. */
+#define C_MOD_DNSPROXY "\x0C""mod-dnsproxy"
+extern const yp_item_t scheme_mod_dnsproxy[];
+
 /*! \brief Module interface. */
 int dnsproxy_load(struct query_plan *plan, struct query_module *self);
 int dnsproxy_unload(struct query_module *self);

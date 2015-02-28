@@ -348,6 +348,7 @@ if HAVE_ROSEDB
 libknotd_la_SOURCES +=				\
 	knot/modules/rosedb.c			\
 	knot/modules/rosedb.h
+libknotd_la_LIBADD += libknot-yparser.la
 endif # HAVE_ROSEDB
 
 # Create storage and run-time directories

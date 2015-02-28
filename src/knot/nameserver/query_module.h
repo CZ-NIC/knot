@@ -40,10 +40,10 @@
 
 #pragma once
 
+#include "libknot/libknot.h"
 #include "libknot/internal/lists.h"
 #include "libknot/internal/mempattern.h"
-#include "libknot/consts.h"
-#include "libknot/packet/pkt.h"
+#include "knot/conf/conf.h"
 
 /* Query module processing stages. */
 enum query_stage {
@@ -61,7 +61,6 @@ enum query_stage {
 struct query_data;
 struct query_module;
 struct query_plan;
-struct conf;
 
 /* Module callback required API. */
 typedef int (*qmodule_load_t)(struct query_plan *plan, struct query_module *self);
@@ -75,10 +74,10 @@ typedef int (*qmodule_process_t)(int state, knot_pkt_t *pkt, struct query_data *
  */
 struct query_module {
 	node_t node;
-	void *ctx;
-	char *param;
 	mm_ctx_t *mm;
-	struct conf *config;
+	void *ctx;
+	conf_t *config;
+	conf_mod_id_t *id;
 	qmodule_load_t load;
 	qmodule_unload_t unload;
 };
@@ -106,19 +105,14 @@ struct query_plan *query_plan_create(mm_ctx_t *mm);
 void query_plan_free(struct query_plan *plan);
 
 /*! \brief Plan another step for given stage. */
-int query_plan_step(struct query_plan *plan, int stage, qmodule_process_t process, void *ctx);
+int query_plan_step(struct query_plan *plan, int stage, qmodule_process_t process,
+                    void *ctx);
 
-/*!
- * \brief Open query module identified by name.
- * \note Module 'load' hook is NOT called and left upon a caller to decide.
- */
-struct query_module *query_module_open(struct conf *config, const char *name,
-                                       const char *param, mm_ctx_t *mm);
+/*! \brief Open query module identified by name. */
+struct query_module *query_module_open(conf_t *config, conf_mod_id_t *mod_id,
+                                       mm_ctx_t *mm);
 
-/*!
- * \brief Close query module.
- * \note Module 'unload' hook is called before closing.
- */
+/*! \brief Close query module. */
 void query_module_close(struct query_module *module);
 
 /*! @} */

@@ -73,6 +73,10 @@ typedef struct zone
 
 	/*! \brief Config master list index of the current master server. */
 	size_t master_index;
+
+	/*! \brief Query modules. */
+	list_t query_modules;
+	struct query_plan *query_plan;
 } zone_t;
 
 /*----------------------------------------------------------------------------*/

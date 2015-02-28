@@ -60,7 +60,25 @@ int hex_text_to_txt(
 	size_t *txt_len
 );
 
+int mod_id_to_bin(
+	char const *txt,
+	size_t txt_len,
+	uint8_t *bin,
+	size_t *bin_len
+);
+
+int mod_id_to_txt(
+	uint8_t const *bin,
+	size_t bin_len,
+	char *txt,
+	size_t *txt_len
+);
+
 int check_ref(
+	conf_args_t *args
+);
+
+int check_modref(
 	conf_args_t *args
 );
 

@@ -13,9 +13,11 @@ import dns.query
 import dns.update
 from subprocess import Popen, PIPE, check_call, CalledProcessError
 from dnstest.utils import *
+import dnstest.config
 import dnstest.inquirer
 import dnstest.params as params
 import dnstest.keys
+import dnstest.module
 import dnstest.response
 import dnstest.update
 import distutils.dir_util
@@ -28,68 +30,6 @@ def zone_arg_check(zone):
         return zone[0]
     return zone
 
-class KnotConf(object):
-    '''Knot server config generator'''
-
-    def __init__(self):
-        self.conf = ""
-        self.first_item = True
-
-    def begin(self, name):
-        self.conf += "%s:\n" % name
-        self.first_item = True
-
-    def end(self):
-        self.conf += "\n"
-
-    def item(self, name, value):
-        self.conf += "        %s: %s\n" % (name, value)
-
-    def item_str(self, name, value):
-        self.conf += "        %s: \"%s\"\n" % (name, value)
-
-    def id_item(self, name, value):
-        if not self.first_item:
-            self.conf += "\n"
-        else:
-            self.first_item = False
-        self.conf += "      - %s: \"%s\"\n" % (name, value)
-
-class BindConf(object):
-    '''Bind server config generator'''
-
-    def __init__(self):
-        self.conf = ""
-        self.indent = ""
-
-    def sub(self):
-        self.indent += "\t"
-
-    def unsub(self):
-        self.indent = self.indent[:-1]
-
-    def begin(self, name, string=None):
-        if string:
-            self.conf += "%s%s \"%s\" {\n" % (self.indent, name, string)
-        else:
-            self.conf += "%s%s {\n" % (self.indent, name)
-        self.sub()
-
-    def end(self):
-        self.unsub()
-        self.conf += "%s};\n" % (self.indent)
-        if not self.indent:
-            self.conf += "\n"
-
-    def item(self, name, value=None):
-        if value:
-            self.conf += "%s%s %s;\n" % (self.indent, name, value)
-        else:
-            self.conf += "%s%s;\n" % (self.indent, name)
-
-    def item_str(self, name, value):
-        self.conf += "%s%s \"%s\";\n" % (self.indent, name, value)
-
 class Zone(object):
     '''DNS zone description'''
 
@@ -101,14 +41,14 @@ class Zone(object):
         # ixfr from differences
         self.ixfr = ixfr
         # modules
-        self.query_modules = []
+        self.modules = []
 
     @property
     def name(self):
         return self.zfile.name
 
-    def add_query_module(self, module, param):
-        self.query_modules.append((module, param))
+    def add_module(self, module):
+        self.modules.append(module)
 
 class Server(object):
     '''Specification of DNS server'''
@@ -156,6 +96,8 @@ class Server(object):
         self.ixfr_fslimit = None
 
         self.inquirer = None
+
+        self.modules = []
 
         # Working directory.
         self.dir = None
@@ -667,14 +609,13 @@ class Server(object):
             self.zones[zone.name].zfile.upd_file(storage=self.data_dir,
                                                  version=version)
 
-    def add_query_module(self, zone, module, param):
-        # Convert one item list to single object.
-        if isinstance(zone, list):
-            if len(zone) != 1:
-                raise Failed("One zone required")
-            zone = zone[0]
+    def add_module(self, zone, module):
+        zone = zone_arg_check(zone)
 
-        self.zones[zone.name].add_query_module(module, param)
+        if zone:
+            self.zones[zone.name].add_module(module)
+        else:
+            self.modules.append(module)
 
 class Bind(Server):
 
@@ -697,7 +638,7 @@ class Bind(Server):
             conf.item_str(name, value)
 
     def get_config(self):
-        s = BindConf()
+        s = dnstest.config.BindConf()
         s.begin("options")
         self._str(s, "server-id", self.ident)
         self._str(s, "version", self.version)
@@ -859,7 +800,7 @@ class Knot(Server):
         conf.item_str("secret", key.key)
 
     def get_config(self):
-        s = KnotConf()
+        s = dnstest.config.KnotConf()
         s.begin("server")
         self._on_str_hex(s, "identity", self.ident)
         self._on_str_hex(s, "version", self.version)
@@ -955,6 +896,16 @@ class Knot(Server):
                 servers.add(slave.name)
         s.end()
 
+        if len(self.modules) > 0:
+            for module in self.modules:
+                module.get_conf(s)
+
+        for zone in sorted(self.zones):
+            z = self.zones[zone]
+            if len(z.modules) > 0:
+                for module in z.modules:
+                    module.get_conf(s)
+
         s.begin("template")
         s.id_item("id", "default")
         s.item_str("storage", self.dir)
@@ -972,6 +923,13 @@ class Knot(Server):
         if self.dnssec_enable:
             s.item_str("dnssec-keydir", self.keydir)
             s.item_str("dnssec-enable", "on")
+        if len(self.modules) > 0:
+            modules = ""
+            for module in self.modules:
+                if modules:
+                    modules += ", "
+                modules += module.get_conf_ref()
+            s.item("module", "[%s]" % modules)
         s.end()
 
         s.begin("zone")
@@ -1005,11 +963,13 @@ class Knot(Server):
             if z.ixfr and not z.master:
                 s.item_str("ixfr-from-differences", "on")
 
-            if len(z.query_modules) > 0:
-                s.begin("query_module")
-                for query_module in z.query_modules:
-                    s.item_str(query_module[0], '"' + query_module[1] + '"')
-                s.end()
+            if len(z.modules) > 0:
+                modules = ""
+                for module in z.modules:
+                    if modules:
+                        modules += ", "
+                    modules += module.get_conf_ref()
+                s.item("module", "[%s]" % modules)
         s.end()
 
         s.begin("log")

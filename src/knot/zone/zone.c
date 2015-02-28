@@ -101,6 +101,11 @@ void zone_free(zone_t **zone_ptr)
 	/* Free zone contents. */
 	zone_contents_deep_free(&zone->contents);
 
+	if (zone->query_plan != NULL) {
+		conf_deactivate_modules(conf(), &zone->query_modules,
+		                        zone->query_plan);
+	}
+
 	free(zone);
 	*zone_ptr = NULL;
 }

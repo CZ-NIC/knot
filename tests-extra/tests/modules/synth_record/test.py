@@ -3,8 +3,11 @@
 ''' Check 'synth_record' query module synthetic responses. '''
 
 from dnstest.test import Test
+from dnstest.module import ModSynthRecord
 
 t = Test()
+
+ModSynthRecord.check()
 
 # Zone indexes
 FWD  = 0
@@ -25,10 +28,10 @@ for z in zone:
     knot.gen_key(z, alg="RSASHA256")
 
 # Configure 'synth_record' modules for auto forward/reverse zones
-knot.add_query_module(zone[FWD],  "synth_record", "forward dynamic4- 900 192.168.1.0/25")
-knot.add_query_module(zone[FWD],  "synth_record", "forward dynamic6- 900 2620:0:b61::/52")
-knot.add_query_module(zone[REV4], "synth_record", "reverse dynamic4- forward. 900 192.168.1.0/25")
-knot.add_query_module(zone[REV6], "synth_record", "reverse dynamic6- forward. 900 2620:0:b61::/52")
+knot.add_module(zone[FWD],  ModSynthRecord("forward", "dynamic4-", "900", "192.168.1.0/25"))
+knot.add_module(zone[FWD],  ModSynthRecord("forward", "dynamic6-", "900", "2620:0:b61::/52"))
+knot.add_module(zone[REV4], ModSynthRecord("reverse", "dynamic4-", "900", "192.168.1.0/25",  "forward."))
+knot.add_module(zone[REV6], ModSynthRecord("reverse", "dynamic6-", "900", "2620:0:b61::/52", "forward."))
 
 t.start()
 

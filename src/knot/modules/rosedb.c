@@ -16,12 +16,22 @@
 
 #include <lmdb.h>
 
+#include "dnssec/random.h"
+#include "knot/common/log.h"
 #include "knot/modules/rosedb.h"
 #include "knot/nameserver/process_query.h"
-#include "libknot/rrtype/rdname.h"
-#include "dnssec/random.h"
-#include "libknot/rrset-dump.h"
+#include "libknot/libknot.h"
 #include "libknot/internal/utils.h"
+
+/* Module configuration scheme. */
+#define MOD_DBDIR		"\x06""dbdir"
+
+const yp_item_t scheme_mod_rosedb[] = {
+	{ C_ID,      YP_TSTR, YP_VNONE },
+	{ MOD_DBDIR, YP_TSTR, YP_VNONE },
+	{ C_COMMENT, YP_TSTR, YP_VNONE },
+	{ NULL }
+};
 
 /*! \note Below is an implementation of basic RR cache in LMDB,
  *        it shall be replaced with the namedb API later, when
@@ -447,7 +457,12 @@ static int rosedb_send_log(int sock, struct sockaddr *dst_addr, knot_pkt_t *pkt,
 	STREAM_WRITE(stream, &maxlen, strftime, "%b %d %H:%M:%S ", &tm);
 
 	/* Host name / Component. */
-	STREAM_WRITE(stream, &maxlen, snprintf, "%s ", conf()->identity);
+	conf_val_t val = conf_get(conf(), C_SRV, C_IDENT);
+	if (val.code != KNOT_EOK || val.len <= 1) {
+		STREAM_WRITE(stream, &maxlen, snprintf, "%s ", conf()->hostname);
+	} else {
+		STREAM_WRITE(stream, &maxlen, snprintf, "%s ", conf_str(&val));
+	}
 	STREAM_WRITE(stream, &maxlen, snprintf, "%s[%lu]: ", PACKAGE_NAME, (unsigned long) getpid());
 
 	/* Prepare log message line. */
@@ -588,19 +603,28 @@ static int rosedb_query(int state, knot_pkt_t *pkt, struct query_data *qdata, vo
 
 int rosedb_load(struct query_plan *plan, struct query_module *self)
 {
-	if (self == NULL || plan == NULL) {
+	if (plan == NULL || self == NULL) {
 		return KNOT_EINVAL;
 	}
 
-	struct cache *cache = cache_open(self->param, 0, self->mm);
+	conf_val_t val = conf_mod_get(self->config, MOD_DBDIR, self->id);
+	if (val.code != KNOT_EOK) {
+		if (val.code == KNOT_EINVAL) {
+			MODULE_ERR("no dbdir for '%s'", self->id->data);
+		}
+		return val.code;
+	}
+	const char *db_dir = conf_str(&val);
+
+	struct cache *cache = cache_open(db_dir, 0, self->mm);
 	if (cache == NULL) {
-		MODULE_ERR("couldn't open db '%s'", self->param);
+		MODULE_ERR("failed to open db '%s'", db_dir);
 		return KNOT_ENOMEM;
 	}
 
 	self->ctx = cache;
 
-	return query_plan_step(plan, QPLAN_BEGIN, rosedb_query, cache);
+	return query_plan_step(plan, QPLAN_BEGIN, rosedb_query, self->ctx);
 }
 
 int rosedb_unload(struct query_module *self)

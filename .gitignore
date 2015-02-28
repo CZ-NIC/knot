@@ -80,6 +80,7 @@
 /src/khost
 /src/knsupdate
 /src/knsec3hash
+/src/rosedb_tool
 
 # Code coverage
 *.gcda

@@ -28,6 +28,15 @@
 #include "libknot/rrtype/opt.h"
 #include "dnssec/lib/dnssec/tsig.h"
 
+#include "knot/modules/synth_record.h"
+#include "knot/modules/dnsproxy.h"
+#ifdef HAVE_ROSEDB
+#include "knot/modules/rosedb.h"
+#endif
+#if USE_DNSTAP
+#include "knot/modules/dnstap.h"
+#endif
+
 static const lookup_table_t key_algs[] = {
 	{ DNSSEC_TSIG_HMAC_MD5,    "hmac-md5" },
 	{ DNSSEC_TSIG_HMAC_SHA1,   "hmac-sha1" },
@@ -139,6 +148,8 @@ static const yp_item_t desc_remote[] = {
 	{ C_DNSSEC_KEYDIR,  YP_TSTR,  YP_VSTR = { "keys" } }, \
 	{ C_SIG_LIFETIME,   YP_TINT,  YP_VINT = { 3 * 3600, INT32_MAX, 30 * 24 * 3600, YP_STIME } }, \
 	{ C_SERIAL_POLICY,  YP_TOPT,  YP_VOPT = { serial_policies, SERIAL_POLICY_INCREMENT } }, \
+	{ C_MODULE,         YP_TDATA, YP_VDATA = { 0, NULL, mod_id_to_bin, mod_id_to_txt }, \
+	                              YP_FMULTI, { check_modref } }, \
 	{ C_COMMENT,        YP_TSTR,  YP_VNONE },
 
 static const yp_item_t desc_template[] = {
@@ -170,6 +181,16 @@ const yp_item_t conf_scheme[] = {
 	{ C_ACL,  YP_TGRP, YP_VGRP = { desc_acl }, YP_FMULTI },
 	{ C_CTL,  YP_TGRP, YP_VGRP = { desc_control } },
 	{ C_RMT,  YP_TGRP, YP_VGRP = { desc_remote }, YP_FMULTI },
+/* MODULES */
+	{ C_MOD_SYNTH_RECORD, YP_TGRP, YP_VGRP = { scheme_mod_synth_record }, YP_FMULTI },
+	{ C_MOD_DNSPROXY,     YP_TGRP, YP_VGRP = { scheme_mod_dnsproxy }, YP_FMULTI },
+#if HAVE_ROSEDB
+	{ C_MOD_ROSEDB,       YP_TGRP, YP_VGRP = { scheme_mod_rosedb }, YP_FMULTI },
+#endif
+#if USE_DNSTAP
+	{ C_MOD_DNSTAP,       YP_TGRP, YP_VGRP = { scheme_mod_dnstap }, YP_FMULTI },
+#endif
+/***********/
 	{ C_TPL,  YP_TGRP, YP_VGRP = { desc_template }, YP_FMULTI },
 	{ C_ZONE, YP_TGRP, YP_VGRP = { desc_zone }, YP_FMULTI },
 	{ C_LOG,  YP_TGRP, YP_VGRP = { desc_log }, YP_FMULTI },
