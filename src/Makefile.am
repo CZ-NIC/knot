@@ -194,6 +194,14 @@ knotd_SOURCES =					\
 
 # static: server shared
 libknotd_la_SOURCES =				\
+	knot/conf/conf.c			\
+	knot/conf/conf.h			\
+	knot/conf/confdb.c			\
+	knot/conf/confdb.h			\
+	knot/conf/scheme.c			\
+	knot/conf/scheme.h			\
+	knot/conf/tools.c			\
+	knot/conf/tools.h			\
 	knot/ctl/estimator.c			\
 	knot/ctl/estimator.h			\
 	knot/ctl/process.c			\

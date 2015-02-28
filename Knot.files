@@ -176,14 +176,14 @@ src/knot/common/ref.c
 src/knot/common/ref.h
 src/knot/common/time.h
 src/knot/common/trim.h
-src/knot/conf/cf-lex.l
-src/knot/conf/cf-parse.y
 src/knot/conf/conf.c
 src/knot/conf/conf.h
-src/knot/conf/extra.c
-src/knot/conf/extra.h
-src/knot/conf/includes.c
-src/knot/conf/includes.h
+src/knot/conf/confdb.c
+src/knot/conf/confdb.h
+src/knot/conf/scheme.c
+src/knot/conf/scheme.h
+src/knot/conf/tools.c
+src/knot/conf/tools.h
 src/knot/ctl/estimator.c
 src/knot/ctl/estimator.h
 src/knot/ctl/knotc_main.c
@@ -462,7 +462,6 @@ tests/acl.c
 tests/base32hex.c
 tests/base64.c
 tests/changeset.c
-tests/conf.c
 tests/descriptor.c
 tests/dname.c
 tests/dthreads.c
@@ -486,7 +485,6 @@ tests/requestor.c
 tests/rrl.c
 tests/rrset.c
 tests/rrset_wire.c
-tests/sample_conf.h
 tests/server.c
 tests/utils.c
 tests/wire.c
