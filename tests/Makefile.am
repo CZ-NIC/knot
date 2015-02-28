@@ -10,14 +10,13 @@ AM_LDFLAGS = \
 LDADD = \
 	$(top_builddir)/libtap/libtap.a \
 	$(top_builddir)/src/libknot-int.la \
-	$(top_builddir)/src/libknot-yparser.la \
-	$(top_builddir)/src/libknotd.la
+	$(top_builddir)/src/libknotd.la \
+	$(top_builddir)/src/libknot-yparser.la
 
 check_PROGRAMS = \
 	acl				\
 	base32hex			\
 	base64				\
-	changeset			\
 	changeset			\
 	descriptor			\
 	dname				\

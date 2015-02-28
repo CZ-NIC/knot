@@ -23,8 +23,8 @@
 #include "knot/conf/conf.h"
 #include "knot/server/rrl.h"
 #include "knot/zone/zone.h"
-#include "knot/conf/conf.h"
 #include "libknot/descriptor.h"
+#include "libknot/internal/sockaddr.h"
 
 /* Enable time-dependent tests. */
 //#define ENABLE_TIMED_TESTS
@@ -141,10 +141,9 @@ int main(int argc, char *argv[])
 	is_int(KNOT_EOK, ret, "rrl: setlocks");
 
 	/* 4. N unlimited requests. */
-	conf_zone_t *zone_conf = malloc(sizeof(conf_zone_t));
-	conf_init_zone(zone_conf);
-	zone_conf->name = strdup("rrl.");
-	zone_t *zone = zone_new(zone_conf);
+	knot_dname_t *zone_name = knot_dname_from_str_alloc("rrl.");
+	zone_t *zone = zone_new(zone_name);
+	knot_dname_free(&zone_name, NULL);
 
 	struct sockaddr_storage addr;
 	struct sockaddr_storage addr6;

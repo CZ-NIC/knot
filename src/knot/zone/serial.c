@@ -38,9 +38,9 @@ int serial_compare(uint32_t s1, uint32_t s2)
 int serial_next(uint32_t current, int policy)
 {
 	switch (policy) {
-	case CONF_SERIAL_INCREMENT:
+	case SERIAL_POLICY_INCREMENT:
 		return current + 1;
-	case CONF_SERIAL_UNIXTIME:
+	case SERIAL_POLICY_UNIXTIME:
 		return time(NULL);
 	default:
 		assert(0);

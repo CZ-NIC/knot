@@ -69,7 +69,7 @@ static const struct error errors[] = {
 	{ KNOT_ENOZONE,      "no such zone found" },
 	{ KNOT_ENONODE,      "no such node in zone found" },
 	{ KNOT_EDNAMEPTR,    "domain name pointer larger than allowed" },
-	{ KNOT_EPAYLOAD,     "payload in OPT RR larger than max wire size" },
+	{ KNOT_EPAYLOAD,     "invalid EDNS payload size" },
 	{ KNOT_EPREREQ,      "UPDATE prerequisity not met" },
 	{ KNOT_ETTL,         "TTL mismatch" },
 	{ KNOT_ENOXFR,       "transfer was not sent" },

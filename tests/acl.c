@@ -14,6 +14,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <assert.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <tap/basic.h>
@@ -23,127 +24,78 @@
 #include "knot/updates/acl.h"
 #include "knot/conf/conf.h"
 
-static int acl_insert(list_t *acl, const struct sockaddr_storage *addr,
-                      uint8_t prefix, knot_tsig_key_t *key)
-{
-	assert(acl);
-	assert(addr);
-
-	conf_iface_t *iface = malloc(sizeof(conf_iface_t));
-	assert(iface);
-	conf_remote_t *remote = malloc(sizeof(conf_remote_t));
-	assert(remote);
-	remote->remote = iface;
-
-	memset(iface, 0, sizeof(conf_iface_t));
-	iface->prefix = prefix;
-	iface->key = key;
-	memcpy(&iface->addr, addr, sizeof(struct sockaddr_storage));
-
-	add_tail(acl, &remote->n);
-	return KNOT_EOK;
-}
-
 int main(int argc, char *argv[])
 {
-	plan(15);
+	plan_lazy();
 
-	conf_iface_t *match = NULL;
-	list_t acl;
-	init_list(&acl);
+	int ret;
+	struct sockaddr_storage t;
 
-	// Create IPv4 address
-	struct sockaddr_storage test_v4;
-	int ret = sockaddr_set(&test_v4, AF_INET, "127.0.0.1", 12345);
-	ok(ret == KNOT_EOK, "acl: new IPv4 address");
+	// 127 dec ~ 01111111 bin
+	// 170 dec ~ 10101010 bin
+	struct sockaddr_storage ref4;
+	assert(sockaddr_set(&ref4, AF_INET, "127.170.170.127", 0) == KNOT_EOK);
 
-	// Create IPv6 address
-	struct sockaddr_storage test_v6;
-	ret = sockaddr_set(&test_v6, AF_INET6, "::1", 54321);
-	ok(ret == KNOT_EOK, "acl: new IPv6 address");
+	// 7F hex ~ 01111111 bin
+	// AA hex ~ 10101010 bin
+	struct sockaddr_storage ref6;
+	assert(sockaddr_set(&ref6, AF_INET6, "7FAA::AA7F", 0) == KNOT_EOK);
 
-	// Create simple IPv4 rule
-	ret = acl_insert(&acl, &test_v4, IPV4_PREFIXLEN, NULL);
-	ok(ret == KNOT_EOK, "acl: inserted IPv4 rule");
+	ret = netblock_match(&ref4, &ref6, 32);
+	ok(ret == false, "match: family mismatch");
 
-	// Create simple IPv6 rule
-	ret = acl_insert(&acl, &test_v6, IPV6_PREFIXLEN, NULL);
-	ok(ret == KNOT_EOK, "acl: inserted IPv6 rule");
+	ret = netblock_match(NULL, &ref4, 32);
+	ok(ret == false, "match: NULL first parameter");
+	ret = netblock_match(&ref4, NULL, 32);
+	ok(ret == false, "match: NULL second parameter");
 
-	// Attempt to match unmatching address
-	struct sockaddr_storage unmatch_v4;
-	sockaddr_set(&unmatch_v4, AF_INET, "10.10.10.10", 24424);
-	match = acl_find(&acl, &unmatch_v4, NULL);
-	ok(match == NULL, "acl: matching non-existing address");
+	ret = netblock_match(&ref4, &ref4, 31);
+	ok(ret == true, "match: ipv4 - identity, subnet");
+	ret = netblock_match(&ref4, &ref4, 32);
+	ok(ret == true, "match: ipv4 - identity, full prefix");
+	ret = netblock_match(&ref4, &ref4, 33);
+	ok(ret == true, "match: ipv4 - identity, prefix overflow");
 
-	// Attempt to match unmatching IPv6 address
-	struct sockaddr_storage unmatch_v6;
-	sockaddr_set(&unmatch_v6, AF_INET6, "2001:db8::1428:57ab", 24424);
-	match = acl_find(&acl, &unmatch_v6, NULL);
-	ok(match == NULL, "acl: matching non-existing IPv6 address");
+	ret = netblock_match(&ref6, &ref6, 127);
+	ok(ret == true, "match: ipv6 - identity, subnet");
+	ret = netblock_match(&ref6, &ref6, 128);
+	ok(ret == true, "match: ipv6 - identity, full prefix");
+	ret = netblock_match(&ref6, &ref6, 129);
+	ok(ret == true, "match: ipv6 - identity, prefix overflow");
 
-	// Attempt to match matching address
-	match = acl_find(&acl, &test_v4, NULL);
-	ok(match != NULL, "acl: matching existing address");
+	// 124 dec ~ 01111100 bin
+	assert(sockaddr_set(&t, AF_INET, "124.0.0.0", 0) == KNOT_EOK);
+	ret = netblock_match(&t, &ref4, 5);
+	ok(ret == true, "match: ipv4 - first byte, shorter prefix");
+	ret = netblock_match(&t, &ref4, 6);
+	ok(ret == true, "match: ipv4 - first byte, precise prefix");
+	ret = netblock_match(&t, &ref4, 7);
+	ok(ret == false, "match: ipv4 - first byte, not match");
 
-	// Attempt to match matching address
-	match = acl_find(&acl, &test_v6, NULL);
-	ok(match != NULL, "acl: matching existing IPv6 address");
+	assert(sockaddr_set(&t, AF_INET, "127.170.170.124", 0) == KNOT_EOK);
+	ret = netblock_match(&t, &ref4, 29);
+	ok(ret == true, "match: ipv4 - last byte, shorter prefix");
+	ret = netblock_match(&t, &ref4, 30);
+	ok(ret == true, "match: ipv4 - last byte, precise prefix");
+	ret = netblock_match(&t, &ref4, 31);
+	ok(ret == false, "match: ipv4 - last byte, not match");
 
-	// Attempt to match subnet
-	struct sockaddr_storage match_pf4, test_pf4;
-	sockaddr_set(&match_pf4, AF_INET, "192.168.1.0", 0);
-	acl_insert(&acl, &match_pf4, 24, NULL);
-	sockaddr_set(&test_pf4, AF_INET, "192.168.1.20", 0);
-	match = acl_find(&acl, &test_pf4, NULL);
-	ok(match != NULL, "acl: searching address in matching prefix /24");
+	// 7C hex ~ 01111100 bin
+	assert(sockaddr_set(&t, AF_INET6, "7CAA::", 0) == KNOT_EOK);
+	ret = netblock_match(&t, &ref6, 5);
+	ok(ret == true, "match: ipv6 - first byte, shorter prefix");
+	ret = netblock_match(&t, &ref6, 6);
+	ok(ret == true, "match: ipv6 - first byte, precise prefix");
+	ret = netblock_match(&t, &ref6, 7);
+	ok(ret == false, "match: ipv6 - first byte, not match");
 
-	// Attempt to search non-matching subnet
-	sockaddr_set(&test_pf4, AF_INET, "192.168.2.20", 0);
-	match = acl_find(&acl, &test_pf4, NULL);
-	ok(match == NULL, "acl: searching address in non-matching prefix /24");
+	assert(sockaddr_set(&t, AF_INET6, "7FAA::AA7C", 0) == KNOT_EOK);
+	ret = netblock_match(&t, &ref6, 125);
+	ok(ret == true, "match: ipv6 - last byte, shorter prefix");
+	ret = netblock_match(&t, &ref6, 126);
+	ok(ret == true, "match: ipv6 - last byte, precise prefix");
+	ret = netblock_match(&t, &ref6, 127);
+	ok(ret == false, "match: ipv6 - last byte, not match");
 
-	// Attempt to match v6 subnet
-	struct sockaddr_storage match_pf6, test_pf6;
-	sockaddr_set(&match_pf6, AF_INET6, "2001:0DB8:0400:000e:0:0:0:AB00", 0);
-	acl_insert(&acl, &match_pf6, 120, NULL);
-	sockaddr_set(&test_pf6, AF_INET6, "2001:0DB8:0400:000e:0:0:0:AB03", 0);
-	match = acl_find(&acl, &test_pf6, NULL);
-	ok(match != NULL, "acl: searching v6 address in matching prefix /120");
-
-	// Attempt to search non-matching subnet
-	sockaddr_set(&test_pf6, AF_INET6, "2001:0DB8:0400:000e:0:0:0:CCCC", 0);
-	match = acl_find(&acl, &test_pf6, NULL);
-	ok(match == NULL, "acl: searching v6 address in non-matching prefix /120");
-
-	// Attempt to search subnet with key (multiple keys)
-	knot_tsig_key_t key_a, key_b;
-	knot_tsig_create_key("tsig-key1", DNSSEC_TSIG_HMAC_MD5, "Wg==", &key_a);
-	knot_tsig_create_key("tsig-key2", DNSSEC_TSIG_HMAC_MD5, "Wg==", &key_b);
-	acl_insert(&acl, &match_pf6, 120, &key_a);
-	acl_insert(&acl, &match_pf6, 120, &key_b);
-	sockaddr_set(&test_pf6, AF_INET6, "2001:0DB8:0400:000e:0:0:0:AB03", 0);
-	match = acl_find(&acl, &test_pf6, key_a.name);
-	ok(match != NULL && match->key == &key_a, "acl: searching v6 address with TSIG key A");
-	match = acl_find(&acl, &test_pf6, key_b.name);
-	ok(match != NULL && match->key == &key_b, "acl: searching v6 address with TSIG key B");
-
-	// Attempt to search subnet with mismatching key
-	knot_tsig_key_t badkey;
-	knot_tsig_create_key("tsig-bad", DNSSEC_TSIG_HMAC_MD5, "Wg==", &badkey);
-	match = acl_find(&acl, &test_pf6, badkey.name);
-	ok(match == NULL, "acl: searching v6 address with bad TSIG key");
-	knot_tsig_key_free(&badkey);
-
-	knot_tsig_key_free(&key_a);
-	knot_tsig_key_free(&key_b);
-
-	conf_remote_t *remote = NULL, *next = NULL;
-	WALK_LIST_DELSAFE(remote, next, acl) {
-		free(remote->remote);
-		free(remote);
-	}
-
-	// Return
 	return 0;
 }

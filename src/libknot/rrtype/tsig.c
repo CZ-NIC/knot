@@ -358,7 +358,7 @@ size_t knot_tsig_rdata_tsig_timers_length()
 _public_
 size_t knot_tsig_wire_maxsize(const knot_tsig_key_t *key)
 {
-	if (key == NULL) {
+	if (key == NULL || key->name == NULL) {
 		return 0;
 	}
 

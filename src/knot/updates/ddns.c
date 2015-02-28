@@ -17,7 +17,9 @@
 #include <assert.h>
 #include <stdlib.h>
 #include <inttypes.h>
+#include <urcu.h>
 
+#include "knot/common/log.h"
 #include "knot/updates/ddns.h"
 #include "knot/updates/changesets.h"
 #include "knot/updates/zone-update.h"
@@ -971,8 +973,9 @@ int ddns_process_update(const zone_t *zone, const knot_pkt_t *query,
 			return KNOT_ENOMEM;
 		}
 
+		conf_val_t val = conf_zone_get(conf(), C_SERIAL_POLICY, zone->name);
 		uint32_t old_serial = knot_soa_serial(&soa_cpy->rrs);
-		uint32_t new_serial = serial_next(old_serial, zone->conf->serial_policy);
+		uint32_t new_serial = serial_next(old_serial, conf_opt(&val));
 		if (serial_compare(old_serial, new_serial) >= 0) {
 			log_zone_warning(zone->name, "updated serial is lower "
 			                 "than current, serial %u -> %u",

@@ -15,6 +15,7 @@
  */
 
 #include "libknot/libknot.h"
+#include "knot/common/log.h"
 #include "knot/nameserver/process_answer.h"
 #include "knot/nameserver/internet.h"
 #include "knot/nameserver/notify.h"

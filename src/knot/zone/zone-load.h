@@ -24,40 +24,47 @@
 /*!
  * \brief Load zone contents according to the configuration.
  *
- * \param zone_config
+ * \param conf
+ * \param zone_name
  * \return new zone contents or NULL
  */
-zone_contents_t *zone_load_contents(conf_zone_t *zone_config);
+zone_contents_t *zone_load_contents(conf_t *conf, const knot_dname_t *zone_name);
 
 /*!
  * \brief Check loaded zone contents validity.
  *
+ * \param conf
  * \param contents
- * \param zone_config
  * \return KNOT_EOK or an error
  */
-int zone_load_check(zone_contents_t *contents, conf_zone_t *zone_config);
+int zone_load_check(conf_t *conf, zone_contents_t *contents);
 
 /*!
  * \brief Update zone contents from the journal.
  *
+ * \param conf
  * \param zone
  * \param contents
  * \return KNOT_EOK or an error
  */
-int zone_load_journal(zone_t *zone, zone_contents_t *contents);
+int zone_load_journal(conf_t *conf, zone_t *zone, zone_contents_t *contents);
 
 /*!
  * \brief Zone loading post-actions (zone resign, calculation of delta)
  *
+ * \param conf
  * \param contents
  * \param zone
  * \param dnssec_refresh
  * \return KNOT_EOK or an error
  */
-int zone_load_post(zone_contents_t *contents, zone_t *zone, uint32_t *dnssec_refresh);
+int zone_load_post(conf_t *conf, zone_contents_t *contents, zone_t *zone,
+                   uint32_t *dnssec_refresh);
 
 /*!
  * \brief Check if zone can be bootstrapped.
+ *
+ * \param conf
+ * \param zone_name
  */
-bool zone_load_can_bootstrap(const conf_zone_t *zone_config);
+bool zone_load_can_bootstrap(conf_t *conf, const knot_dname_t *zone_name);

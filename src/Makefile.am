@@ -1,9 +1,9 @@
 ACLOCAL_AMFLAGS = -I $(top_srcdir)/m4
 SUBDIRS = zscanner dnssec dnstap .
 
-lib_LTLIBRARIES =		\
-	libknot-int.la		\
-	libknot.la		\
+lib_LTLIBRARIES =				\
+	libknot-int.la				\
+	libknot.la				\
 	libknot-yparser.la
 noinst_LTLIBRARIES =
 
@@ -54,9 +54,9 @@ nobase_libknot_int_la_HEADERS =			\
 
 libknot_yparser_ladir = $(includedir)
 nobase_libknot_yparser_la_HEADERS =		\
-	libknot/yparser/yparser.h	\
-	libknot/yparser/ypformat.h	\
-	libknot/yparser/ypscheme.h	\
+	libknot/yparser/yparser.h		\
+	libknot/yparser/ypformat.h		\
+	libknot/yparser/ypscheme.h		\
 	libknot/yparser/yptrafo.h
 
 # dynamic: libknot internal sources
@@ -85,11 +85,11 @@ libknot_int_la_SOURCES =			\
 	$(nobase_libknot_int_la_HEADERS)
 
 libknot_yparser_la_SOURCES =			\
-	libknot/yparser/yparser.c	\
-	libknot/yparser/ypbody.c	\
-	libknot/yparser/ypformat.c	\
-	libknot/yparser/ypscheme.c	\
-	libknot/yparser/yptrafo.c	\
+	libknot/yparser/yparser.c		\
+	libknot/yparser/ypbody.c		\
+	libknot/yparser/ypformat.c		\
+	libknot/yparser/ypscheme.c		\
+	libknot/yparser/yptrafo.c		\
 	$(nobase_libknot_yparser_la_HEADERS)
 
 # dynamic: libknot headers
@@ -168,12 +168,12 @@ libknot_la_LIBADD  = libknot-int.la dnssec/libdnssec.la zscanner/libzscanner.la
 pkgconfig_DATA = libknot.pc libknot-int.pc
 
 if !HAVE_LMDB
-libknot_int_la_SOURCES +=		\
-	libknot/internal/namedb/mdb.c	\
-	libknot/internal/namedb/midl.c	\
-	libknot/internal/namedb/lmdb.h	\
+libknot_int_la_SOURCES +=			\
+	libknot/internal/namedb/mdb.c		\
+	libknot/internal/namedb/midl.c		\
+	libknot/internal/namedb/lmdb.h		\
 	libknot/internal/namedb/midl.h
-libknot_int_la_CPPFLAGS +=		\
+libknot_int_la_CPPFLAGS +=			\
 	-I$(srcdir)/libknot/internal/namedb/
 endif
 
@@ -330,8 +330,8 @@ libknotd_la_CPPFLAGS  = $(AM_CPPFLAGS) $(systemd_CFLAGS)
 libknotd_la_LDFLAGS = $(AM_LDFLAGS) $(systemd_LIBS)
 libknotd_la_LIBADD = libknot.la
 
-knotd_LDADD = libknotd.la
-knotc_LDADD = libknotd.la
+knotd_LDADD = libknotd.la libknot-yparser.la
+knotc_LDADD = libknotd.la libknot-yparser.la
 
 ####################################
 # Optional Knot DNS Daemon modules #

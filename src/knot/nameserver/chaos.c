@@ -19,6 +19,7 @@
 #include "knot/nameserver/chaos.h"
 #include "knot/conf/conf.h"
 #include "libknot/descriptor.h"
+#include "libknot/errcode.h"
 #include "libknot/packet/pkt.h"
 
 /*!
@@ -29,14 +30,24 @@ static const char *get_txt_response_string(const knot_dname_t *qname)
 	char *qname_str = knot_dname_to_str_alloc(qname);
 	const char *response = NULL;
 
-	/* id.server and hostname.bind should have similar meaning */
+	/* id.server and hostname.bind should have similar meaning. */
 	if (strcasecmp("id.server.",     qname_str) == 0 ||
 	    strcasecmp("hostname.bind.", qname_str) == 0) {
-		response = conf()->identity;
-	/* allow both version version.{server, bind}. for compatibility */
+		conf_val_t val = conf_get(conf(), C_SRV, C_IDENT);
+		response = conf_str(&val);
+		/* Empty string data (including '\0') means auto. */
+		if (val.code == KNOT_EOK && val.len <= 1) {
+			response = conf()->hostname;
+		}
+	/* Allow both version version.{server, bind}. for compatibility. */
 	} else if (strcasecmp("version.server.", qname_str) == 0 ||
 	           strcasecmp("version.bind.",   qname_str) == 0) {
-		response = conf()->version;
+		conf_val_t val = conf_get(conf(), C_SRV, C_VERSION);
+		response = conf_str(&val);
+		/* Empty string data (including '\0') means auto. */
+		if (val.code == KNOT_EOK && val.len <= 1) {
+			response = "Knot DNS " PACKAGE_VERSION;
+		}
 	}
 
 	free(qname_str);
@@ -57,7 +68,7 @@ static const char *get_txt_response_string(const knot_dname_t *qname)
 static int create_txt_rrset(knot_rrset_t *rrset, const knot_dname_t *owner,
                             const char *response, mm_ctx_t *mm)
 {
-	// truncate response to one TXT label
+	/* Truncate response to one TXT label. */
 	size_t response_len = strlen(response);
 	if (response_len > KNOT_DNAME_MAXLEN) {
 		response_len = KNOT_DNAME_MAXLEN;

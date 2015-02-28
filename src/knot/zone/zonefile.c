@@ -187,23 +187,8 @@ static void scanner_process(zs_scanner_t *scanner)
 	knot_rdataset_clear(&rr.rrs, NULL);
 }
 
-static zone_contents_t *create_zone_from_name(const char *origin)
-{
-	if (origin == NULL) {
-		return NULL;
-	}
-	knot_dname_t *owner = knot_dname_from_str_alloc(origin);
-	if (owner == NULL) {
-		return NULL;
-	}
-	knot_dname_to_lower(owner);
-	zone_contents_t *z = zone_contents_new(owner);
-	knot_dname_free(&owner, NULL);
-	return z;
-}
-
-int zonefile_open(zloader_t *loader, const char *source, const char *origin,
-		  bool semantic_checks)
+int zonefile_open(zloader_t *loader, const char *source,
+                  const knot_dname_t *origin, bool semantic_checks)
 {
 	if (!loader) {
 		return KNOT_EINVAL;
@@ -221,24 +206,32 @@ int zonefile_open(zloader_t *loader, const char *source, const char *origin,
 	}
 	memset(zc, 0, sizeof(zcreator_t));
 
-	zc->z = create_zone_from_name(origin);
+	zc->z = zone_contents_new(origin);
 	if (zc->z == NULL) {
+		free(zc);
+		return KNOT_ENOMEM;
+	}
+
+	/* Prepare textual owner for zone scanner. */
+	char *origin_str = knot_dname_to_str_alloc(origin);
+	if (origin_str == NULL) {
 		free(zc);
 		return KNOT_ENOMEM;
 	}
 
 	/* Create file loader. */
 	memset(loader, 0, sizeof(zloader_t));
-	loader->scanner = zs_scanner_create(origin, KNOT_CLASS_IN, 3600,
+	loader->scanner = zs_scanner_create(origin_str, KNOT_CLASS_IN, 3600,
 	                                    scanner_process, process_error,
 	                                    zc);
 	if (loader->scanner == NULL) {
+		free(origin_str);
 		free(zc);
 		return KNOT_ERROR;
 	}
 
 	loader->source = strdup(source);
-	loader->origin = strdup(origin);
+	loader->origin = origin_str;
 	loader->creator = zc;
 	loader->semantic_checks = semantic_checks;
 

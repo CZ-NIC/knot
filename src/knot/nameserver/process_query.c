@@ -3,6 +3,7 @@
 
 #include "dnssec/tsig.h"
 #include "knot/nameserver/process_query.h"
+#include "knot/nameserver/query_module.h"
 #include "knot/nameserver/chaos.h"
 #include "knot/nameserver/internet.h"
 #include "knot/nameserver/axfr.h"
@@ -219,7 +220,8 @@ static int answer_edns_init(const knot_pkt_t *query, knot_pkt_t *resp,
 	}
 
 	/* Initialize OPT record. */
-	int ret = knot_edns_init(&qdata->opt_rr, conf()->max_udp_payload, 0,
+	conf_val_t val = conf_get(conf(), C_SRV, C_MAX_UDP_PAYLOAD);
+	int ret = knot_edns_init(&qdata->opt_rr, conf_int(&val), 0,
 	                     KNOT_EDNS_VERSION, qdata->mm);
 	if (ret != KNOT_EOK) {
 		return ret;
@@ -236,10 +238,21 @@ static int answer_edns_init(const knot_pkt_t *query, knot_pkt_t *resp,
 	}
 
 	/* Append NSID if requested and available. */
-	if (knot_edns_has_nsid(query->opt_rr) && conf()->nsid_len > 0) {
+	val = conf_get(conf(), C_SRV, C_NSID);
+	if (knot_edns_has_nsid(query->opt_rr) && val.code == KNOT_EOK) {
+		conf_data(&val);
+		const uint8_t *data = val.data;
+		uint16_t len = val.len;
+
+		/* Empty data means automatic value. */
+		if (val.len == 0) {
+			data = (uint8_t *)conf()->hostname;
+			len = strlen(conf()->hostname);
+		}
+
 		ret = knot_edns_add_option(&qdata->opt_rr,
-		                           KNOT_EDNS_OPTION_NSID, conf()->nsid_len,
-		                           (const uint8_t*)conf()->nsid, qdata->mm);
+		                           KNOT_EDNS_OPTION_NSID, len, data,
+		                           qdata->mm);
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
@@ -317,8 +330,9 @@ static int prepare_answer(const knot_pkt_t *query, knot_pkt_t *resp, knot_layer_
 	if (has_limit) {
 		resp->max_size = KNOT_WIRE_MIN_PKTSIZE;
 		if (knot_pkt_has_edns(query)) {
+			conf_val_t val = conf_get(conf(), C_SRV, C_MAX_UDP_PAYLOAD);
 			uint16_t client = knot_edns_get_payload(query->opt_rr);
-			uint16_t server = conf()->max_udp_payload;
+			uint16_t server = conf_int(&val);
 			uint16_t transfer = MIN(client, server);
 			resp->max_size = MAX(resp->max_size, transfer);
 		}
@@ -408,7 +422,8 @@ static int ratelimit_apply(int state, knot_pkt_t *pkt, knot_layer_t *ctx)
 	}
 
 	/* Now it is slip or drop. */
-	if (rrl_slip_roll(conf()->rrl_slip)) {
+	conf_val_t val = conf_get(conf(), C_SRV, C_RATE_LIMIT_SLIP);
+	if (rrl_slip_roll(conf_int(&val))) {
 		/* Answer slips. */
 		if (process_query_err(ctx, pkt) != KNOT_EOK) {
 			return KNOT_STATE_FAIL;
@@ -532,27 +547,27 @@ finish:
 	return next_state;
 }
 
-bool process_query_acl_check(list_t *acl, struct query_data *qdata)
+bool process_query_acl_check(const knot_dname_t *zone_name, acl_action_t action,
+                             struct query_data *qdata)
 {
 	knot_pkt_t *query = qdata->query;
 	const struct sockaddr_storage *query_source = qdata->param->remote;
-	const knot_dname_t *key_name = NULL;
-	dnssec_tsig_algorithm_t key_alg = DNSSEC_TSIG_UNKNOWN;
+	knot_tsig_key_t tsig = { NULL };
 
 	/* Skip if already checked and valid. */
-	if (qdata->sign.tsig_key != NULL) {
+	if (qdata->sign.tsig_key.name != NULL) {
 		return true;
 	}
 
 	/* Authenticate with NOKEY if the packet isn't signed. */
 	if (query->tsig_rr) {
-		key_name = query->tsig_rr->owner;
-		key_alg = knot_tsig_rdata_alg(query->tsig_rr);
+		tsig.name = query->tsig_rr->owner;
+		tsig.algorithm = knot_tsig_rdata_alg(query->tsig_rr);
 	}
-	conf_iface_t *match = acl_find(acl, query_source, key_name);
 
-	/* Did not authenticate, no fitting rule found. */
-	if (match == NULL || (match->key && match->key->algorithm != key_alg)) {
+	/* Check if authenticated. */
+	conf_val_t acl = conf_zone_get(conf(), C_ACL, zone_name);
+	if (!acl_allowed(&acl, action, query_source, &tsig)) {
 		dbg_ns("%s: no ACL match => NOTAUTH\n", __func__);
 		qdata->rcode = KNOT_RCODE_NOTAUTH;
 		qdata->rcode_tsig = KNOT_TSIG_ERR_BADKEY;
@@ -560,7 +575,8 @@ bool process_query_acl_check(list_t *acl, struct query_data *qdata)
 	}
 
 	/* Remember used TSIG key. */
-	qdata->sign.tsig_key = match->key;
+	qdata->sign.tsig_key = tsig;
+
 	return true;
 }
 
@@ -582,7 +598,7 @@ int process_query_verify(struct query_data *qdata)
 	/* Checking query. */
 	process_query_qname_case_restore(qdata, query);
 	int ret = knot_tsig_server_check(query->tsig_rr, query->wire,
-	                                 query->size, ctx->tsig_key);
+	                                 query->size, &ctx->tsig_key);
 	process_query_qname_case_lower(query);
 
 	dbg_ns("%s: QUERY TSIG check result = %s\n", __func__, knot_strerror(ret));
@@ -628,22 +644,22 @@ int process_query_sign_response(knot_pkt_t *pkt, struct query_data *qdata)
 	knot_sign_context_t *ctx = &qdata->sign;
 
 	/* KEY provided and verified TSIG or BADTIME allows signing. */
-	if (ctx->tsig_key != NULL && knot_tsig_can_sign(qdata->rcode_tsig)) {
+	if (ctx->tsig_key.name != NULL && knot_tsig_can_sign(qdata->rcode_tsig)) {
 
 		/* Sign query response. */
-		dbg_ns("%s: signing response using key %p\n", __func__, ctx->tsig_key);
-		size_t new_digest_len = dnssec_tsig_algorithm_size(ctx->tsig_key->algorithm);
+		dbg_ns("%s: signing response using key %p\n", __func__, &ctx->tsig_key);
+		size_t new_digest_len = dnssec_tsig_algorithm_size(ctx->tsig_key.algorithm);
 		if (ctx->pkt_count == 0) {
 			ret = knot_tsig_sign(pkt->wire, &pkt->size, pkt->max_size,
 			                     ctx->tsig_digest, ctx->tsig_digestlen,
 			                     ctx->tsig_digest, &new_digest_len,
-			                     ctx->tsig_key, qdata->rcode_tsig,
+			                     &ctx->tsig_key, qdata->rcode_tsig,
 			                     ctx->tsig_time_signed);
 		} else {
 			ret = knot_tsig_sign_next(pkt->wire, &pkt->size, pkt->max_size,
 			                          ctx->tsig_digest, ctx->tsig_digestlen,
 			                          ctx->tsig_digest, &new_digest_len,
-			                          ctx->tsig_key,
+			                          &ctx->tsig_key,
 			                          pkt->wire, pkt->size);
 		}
 		if (ret != KNOT_EOK) {

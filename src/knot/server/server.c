@@ -14,6 +14,8 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <urcu.h>
+
 #include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -93,23 +95,23 @@ static void server_remove_iface(iface_t *iface)
  * \retval 0 if successful (EOK).
  * \retval <0 on errors (EACCES, EINVAL, ENOMEM, EADDRINUSE).
  */
-static int server_init_iface(iface_t *new_if, conf_iface_t *cfg_if)
+static int server_init_iface(iface_t *new_if, struct sockaddr_storage *addr)
 {
 	/* Initialize interface. */
 	int ret = 0;
 	memset(new_if, 0, sizeof(iface_t));
-	memcpy(&new_if->addr, &cfg_if->addr, sizeof(struct sockaddr_storage));
+	memcpy(&new_if->addr, addr, sizeof(struct sockaddr_storage));
 
 	/* Convert to string address format. */
-	char addr_str[SOCKADDR_STRLEN] = {0};
-	sockaddr_tostr(addr_str, sizeof(addr_str), &cfg_if->addr);
+	char addr_str[SOCKADDR_STRLEN] = { 0 };
+	sockaddr_tostr(addr_str, sizeof(addr_str), addr);
 
 	/* Create bound UDP socket. */
 	int bind_flags = 0;
-	int sock = net_bound_socket(SOCK_DGRAM, &cfg_if->addr, bind_flags);
+	int sock = net_bound_socket(SOCK_DGRAM, addr, bind_flags);
 	if (sock == KNOT_EADDRNOTAVAIL) {
 		bind_flags |= NET_BIND_NONLOCAL;
-		sock = net_bound_socket(SOCK_DGRAM, &cfg_if->addr, bind_flags);
+		sock = net_bound_socket(SOCK_DGRAM, addr, bind_flags);
 		if (sock >= 0) {
 			log_warning("address '%s' is not available", addr_str);
 		}
@@ -126,7 +128,7 @@ static int server_init_iface(iface_t *new_if, conf_iface_t *cfg_if)
 	new_if->fd[IO_UDP] = sock;
 
 	/* Create bound TCP socket. */
-	sock = net_bound_socket(SOCK_STREAM, &cfg_if->addr, bind_flags);
+	sock = net_bound_socket(SOCK_STREAM, addr, bind_flags);
 	if (sock < 0) {
 		close(new_if->fd[IO_UDP]);
 		return sock;
@@ -180,12 +182,10 @@ static void remove_ifacelist(struct ref *p)
  * \param server Server instance.
  * \return number of added sockets.
  */
-static int reconfigure_sockets(const struct conf *conf, server_t *s)
+static int reconfigure_sockets(conf_t *conf, server_t *s)
 {
 	/* Prepare helper lists. */
-	char addr_str[SOCKADDR_STRLEN] = {0};
 	int bound = 0;
-	iface_t *m = 0;
 	ifacelist_t *oldlist = s->ifaces;
 	ifacelist_t *newlist = malloc(sizeof(ifacelist_t));
 	ref_init(&newlist->ref, &remove_ifacelist);
@@ -200,16 +200,19 @@ static int reconfigure_sockets(const struct conf *conf, server_t *s)
 	}
 
 	/* Update bound interfaces. */
-	node_t *n = 0;
-	WALK_LIST(n, conf->ifaces) {
+	conf_val_t listen_val = conf_get(conf, C_SRV, C_LISTEN);
+	conf_val_t rundir_val = conf_get(conf, C_SRV, C_RUNDIR);
+	char *rundir = conf_abs_path(&rundir_val, NULL);
+	while (listen_val.code == KNOT_EOK) {
+		iface_t *m = NULL;
 
 		/* Find already matching interface. */
 		int found_match = 0;
-		conf_iface_t *cfg_if = (conf_iface_t*)n;
+		struct sockaddr_storage addr = conf_addr(&listen_val, rundir);
 		if (s->ifaces) {
 			WALK_LIST(m, s->ifaces->u) {
 				/* Matching port and address. */
-				if (sockaddr_cmp(&cfg_if->addr, &m->addr) == 0) {
+				if (sockaddr_cmp(&addr, &m->addr) == 0) {
 					found_match = 1;
 					break;
 				}
@@ -220,12 +223,13 @@ static int reconfigure_sockets(const struct conf *conf, server_t *s)
 		if (found_match) {
 			rem_node((node_t *)m);
 		} else {
-			sockaddr_tostr(addr_str, sizeof(addr_str), &cfg_if->addr);
+			char addr_str[SOCKADDR_STRLEN] = { 0 };
+			sockaddr_tostr(addr_str, sizeof(addr_str), &addr);
 			log_info("binding to interface '%s'", addr_str);
 
 			/* Create new interface. */
 			m = malloc(sizeof(iface_t));
-			if (server_init_iface(m, cfg_if) < 0) {
+			if (server_init_iface(m, &addr) < 0) {
 				free(m);
 				m = 0;
 			}
@@ -236,7 +240,10 @@ static int reconfigure_sockets(const struct conf *conf, server_t *s)
 			add_tail(&newlist->l, (node_t *)m);
 			++bound;
 		}
+
+		conf_val_next(&listen_val);
 	}
+	free(rundir);
 
 	/* Wait for readers that are reconfiguring right now. */
 	/*! \note This subsystem will be reworked in #239 */
@@ -436,27 +443,52 @@ void server_wait(server_t *s)
 
 int server_reload(server_t *server, const char *cf)
 {
-	if (!server || !cf) {
+	if (server == NULL) {
 		return KNOT_EINVAL;
 	}
 
-	log_info("reloading configuration");
-	int cf_ret = conf_open(cf);
-	switch (cf_ret) {
-	case KNOT_EOK:
-		log_info("configuration reloaded");
-		break;
-	case KNOT_ENOENT:
-		log_error("configuration file '%s' not found",
-			  conf()->filename);
-		break;
-	default:
-		log_error("failed to reload the configuration");
-		break;
+	int ret = KNOT_EOK;
+
+	if (cf != NULL) {
+		log_info("reloading configuration file '%s'", cf);
+		conf_t *new_conf = NULL;
+		ret = conf_clone(&new_conf);
+		if (ret != KNOT_EOK) {
+			log_fatal("failed to initialize configuration (%s)",
+			          knot_strerror(ret));
+			return EXIT_FAILURE;
+		}
+
+		/* Import the configuration file. */
+		ret = conf_import(new_conf, cf, true);
+		if (ret != KNOT_EOK) {
+			log_fatal("failed to load configuration file '%s' (%s)",
+			          cf, knot_strerror(ret));
+			conf_free(new_conf, false);
+			return EXIT_FAILURE;
+		}
+
+		/* Run post-open config operations. */
+		int res = conf_post_open(new_conf);
+		if (res != KNOT_EOK) {
+			log_fatal("failed to use configuration (%s)",
+			          knot_strerror(res));
+			conf_free(new_conf, false);
+			return EXIT_FAILURE;
+		}
+
+		conf_update(new_conf);
+	} else {
+		log_info("reloading configuration database");
 	}
 
-	/*! \todo Close and bind to new remote control. */
-	return cf_ret;
+	log_reconfigure(conf(), NULL);
+	server_reconfigure(conf(), server);
+	server_update_zones(conf(), server);
+
+	log_info("configuration reloaded");
+
+	return ret;
 }
 
 void server_stop(server_t *server)
@@ -476,7 +508,7 @@ void server_stop(server_t *server)
 }
 
 /*! \brief Reconfigure UDP and TCP query processing threads. */
-static int reconfigure_threads(const struct conf *conf, server_t *server)
+static int reconfigure_threads(conf_t *conf, server_t *server)
 {
 	/* Estimate number of threads/manager. */
 	int ret = KNOT_EOK;
@@ -520,11 +552,15 @@ static int reconfigure_threads(const struct conf *conf, server_t *server)
 	return ret;
 }
 
-static int reconfigure_rate_limits(const struct conf *conf, server_t *server)
+static int reconfigure_rate_limits(conf_t *conf, server_t *server)
 {
+	conf_val_t val = conf_get(conf, C_SRV, C_RATE_LIMIT);
+	int64_t rrl = conf_int(&val);
+
 	/* Rate limiting. */
-	if (!server->rrl && conf->rrl > 0) {
-		server->rrl = rrl_create(conf->rrl_size);
+	if (!server->rrl && rrl > 0) {
+		val = conf_get(conf, C_SRV, C_RATE_LIMIT_SIZE);
+		server->rrl = rrl_create(conf_int(&val));
 		if (!server->rrl) {
 			log_error("failed to initialize rate limiting table");
 		} else {
@@ -532,16 +568,16 @@ static int reconfigure_rate_limits(const struct conf *conf, server_t *server)
 		}
 	}
 	if (server->rrl) {
-		if (rrl_rate(server->rrl) != (uint32_t)conf->rrl) {
+		if (rrl_rate(server->rrl) != rrl) {
 			/* We cannot free it, threads may use it.
 			 * Setting it to <1 will disable rate limiting. */
-			if (conf->rrl < 1) {
+			if (rrl < 1) {
 				log_info("rate limiting, disabled");
 			} else {
-				log_info("rate limiting, enabled with %u responses/second",
-					 conf->rrl);
+				log_info("rate limiting, enabled with %i responses/second",
+					 (int)rrl);
 			}
-			rrl_setrate(server->rrl, conf->rrl);
+			rrl_setrate(server->rrl, rrl);
 
 		} /* At this point, old buckets will converge to new rate. */
 	}
@@ -549,7 +585,7 @@ static int reconfigure_rate_limits(const struct conf *conf, server_t *server)
 	return KNOT_EOK;
 }
 
-int server_reconfigure(const struct conf *conf, void *data)
+int server_reconfigure(conf_t *conf, void *data)
 {
 	server_t *server = (server_t *)data;
 	dbg_server("%s(%p, %p)\n", __func__, conf, server);
@@ -584,19 +620,22 @@ int server_reconfigure(const struct conf *conf, void *data)
 	return ret;
 }
 
-static void reopen_timers_database(const conf_t *conf, server_t *server)
+static void reopen_timers_database(conf_t *conf, server_t *server)
 {
 	close_timers_db(server->timers_db);
 	server->timers_db = NULL;
 
-	int ret = open_timers_db(conf->storage, &server->timers_db);
+	conf_val_t val = conf_default_get(conf, C_STORAGE);
+	char *storage = conf_abs_path(&val, NULL);
+	int ret = open_timers_db(storage, &server->timers_db);
+	free(storage);
 	if (ret != KNOT_EOK && ret != KNOT_ENOTSUP) {
 		log_warning("cannot open persistent timers DB (%s)",
 		            knot_strerror(ret));
 	}
 }
 
-int server_update_zones(const conf_t *conf, void *data)
+int server_update_zones(conf_t *conf, void *data)
 {
 	server_t *server = (server_t *)data;
 

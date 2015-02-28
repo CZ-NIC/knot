@@ -14,6 +14,8 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <urcu.h>
+
 #include "knot/nameserver/ixfr.h"
 #include "knot/nameserver/axfr.h"
 #include "knot/nameserver/internet.h"
@@ -164,7 +166,7 @@ static int ixfr_process_changeset(knot_pkt_t *pkt, const void *item,
 #undef IXFR_SAFE_PUT
 
 /*! \brief Loads IXFRs from journal. */
-static int ixfr_load_chsets(list_t *chgsets, zone_t *zone,
+static int ixfr_load_chsets(list_t *chgsets, const zone_t *zone,
                             const knot_rrset_t *their_soa)
 {
 	assert(chgsets);
@@ -178,9 +180,11 @@ static int ixfr_load_chsets(list_t *chgsets, zone_t *zone,
 		return KNOT_EUPTODATE;
 	}
 
-	pthread_mutex_lock(&zone->journal_lock);
-	ret = journal_load_changesets(zone, chgsets, serial_from, serial_to);
-	pthread_mutex_unlock(&zone->journal_lock);
+	char *path = conf_journalfile(conf(), zone->name);
+	pthread_mutex_lock((pthread_mutex_t *)&zone->journal_lock);
+	ret = journal_load_changesets(path, zone, chgsets, serial_from, serial_to);
+	pthread_mutex_unlock((pthread_mutex_t *)&zone->journal_lock);
+	free(path);
 
 	if (ret != KNOT_EOK) {
 		changesets_free(chgsets);
@@ -208,7 +212,7 @@ static int ixfr_query_check(struct query_data *qdata)
 	NS_NEED_QNAME(qdata, their_soa->owner, KNOT_RCODE_FORMERR);
 
 	/* Check transcation security and zone contents. */
-	NS_NEED_AUTH(&qdata->zone->conf->acl.xfr_out, qdata);
+	NS_NEED_AUTH(qdata, qdata->zone->name, ACL_ACTION_XFER);
 	NS_NEED_ZONE_CONTENTS(qdata, KNOT_RCODE_SERVFAIL); /* Check expiration. */
 
 	return KNOT_STATE_DONE;
@@ -307,7 +311,7 @@ static int ixfr_answer_soa(knot_pkt_t *pkt, struct query_data *qdata)
 	}
 
 	/* Reserve space for TSIG. */
-	knot_pkt_reserve(pkt, knot_tsig_wire_maxsize(qdata->sign.tsig_key));
+	knot_pkt_reserve(pkt, knot_tsig_wire_maxsize(&qdata->sign.tsig_key));
 
 	/* Guaranteed to have zone contents. */
 	const zone_node_t *apex = qdata->zone->contents->apex;
@@ -649,7 +653,7 @@ int ixfr_query(knot_pkt_t *pkt, struct query_data *qdata)
 	}
 
 	/* Reserve space for TSIG. */
-	knot_pkt_reserve(pkt, knot_tsig_wire_maxsize(qdata->sign.tsig_key));
+	knot_pkt_reserve(pkt, knot_tsig_wire_maxsize(&qdata->sign.tsig_key));
 
 	/* Answer current packet (or continue). */
 	ret = xfr_process_list(pkt, &ixfr_process_changeset, qdata);

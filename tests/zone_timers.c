@@ -46,10 +46,13 @@ int main(int argc, char *argv[])
 	const char *dbid = mkdtemp(dbid_buf);
 
 	// Mockup zones.
-	conf_zone_t zone_conf = { .name = "test1." };
-	zone_t *zone_1 = zone_new(&zone_conf);
-	zone_conf.name = "test2.";
-	zone_t *zone_2 = zone_new(&zone_conf);
+	knot_dname_t *zone_name;
+	zone_name = knot_dname_from_str_alloc("test1.");
+	zone_t *zone_1 = zone_new(zone_name);
+	knot_dname_free(&zone_name, NULL);
+	zone_name = knot_dname_from_str_alloc("test2.");
+	zone_t *zone_2 = zone_new(zone_name);
+	knot_dname_free(&zone_name, NULL);
 	assert(zone_1 && zone_2);
 
 	// Mockup zonedb.
@@ -115,8 +118,6 @@ int main(int argc, char *argv[])
 	   memcmp(timers, empty_timers, sizeof(timers)) == 0, "zone timers: sweep");
 
 	// Clean up.
-	zone_1->conf = NULL;
-	zone_2->conf = NULL;
 	zone_free(&zone_1);
 	zone_free(&zone_2);
 	close_timers_db(db);

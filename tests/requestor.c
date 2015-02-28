@@ -64,7 +64,7 @@ static void* responder_thread(void *arg)
 #define CONNECTED_TESTS    4
 #define TESTS_COUNT DISCONNECTED_TESTS + CONNECTED_TESTS
 
-static struct knot_request *make_query(struct knot_requestor *requestor,  conf_iface_t *remote)
+static struct knot_request *make_query(struct knot_requestor *requestor, conf_remote_t *remote)
 {
 	knot_pkt_t *pkt = knot_pkt_new(NULL, KNOT_WIRE_MAX_PKTSIZE, requestor->mm);
 	assert(pkt);
@@ -75,7 +75,7 @@ static struct knot_request *make_query(struct knot_requestor *requestor,  conf_i
 	return knot_request_make(requestor->mm, dst, src, pkt, 0);
 }
 
-static void test_disconnected(struct knot_requestor *requestor, conf_iface_t *remote)
+static void test_disconnected(struct knot_requestor *requestor, conf_remote_t *remote)
 {
 	/* Enqueue packet. */
 	int ret = knot_requestor_enqueue(requestor, make_query(requestor, remote));
@@ -87,7 +87,7 @@ static void test_disconnected(struct knot_requestor *requestor, conf_iface_t *re
 	is_int(KNOT_ECONN, ret, "requestor: disconnected/wait");
 }
 
-static void test_connected(struct knot_requestor *requestor, conf_iface_t *remote)
+static void test_connected(struct knot_requestor *requestor, conf_remote_t *remote)
 {
 	/* Enqueue packet. */
 	int ret = knot_requestor_enqueue(requestor, make_query(requestor, remote));
@@ -121,8 +121,8 @@ int main(int argc, char *argv[])
 	mm_ctx_t mm;
 	mm_ctx_mempool(&mm, MM_DEFAULT_BLKSIZE);
 
-	conf_iface_t remote;
-	memset(&remote, 0, sizeof(conf_iface_t));
+	conf_remote_t remote;
+	memset(&remote, 0, sizeof(conf_remote_t));
 	sockaddr_set(&remote.addr, AF_INET, "127.0.0.1", 0);
 	sockaddr_set(&remote.via, AF_INET, "127.0.0.1", 0);
 
@@ -170,7 +170,7 @@ int main(int argc, char *argv[])
 	/* Cleanup. */
 	mp_delete((struct mempool *)mm.ctx);
 	server_deinit(&server);
-	conf_free(conf());
+	conf_free(conf(), false);
 
 	return 0;
 }

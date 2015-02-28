@@ -14,16 +14,11 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 /*!
- * \file acl.h
+ * \file
  *
- * \author Marek Vavrusa <marek.vavrusa@nic.cz>
+ * Access control list.
  *
- * \brief Access control lists.
- *
- * Simple access control list is implemented as a linked list, sorted by
- * prefix length. This way, longest prefix match is always found first.
- *
- * \addtogroup common_lib
+ * \addtogroup server
  * @{
  */
 
@@ -33,23 +28,44 @@
 #include "libknot/internal/sockaddr.h"
 #include "libknot/internal/mempattern.h"
 #include "libknot/rrtype/tsig.h"
+#include "knot/conf/conf.h"
 
-struct conf_iface;
-
-/*! \brief Match address against netblock. */
-int netblock_match(struct conf_iface *a1, const struct sockaddr_storage *a2);
+/*! \brief ACL actions. */
+typedef enum {
+	ACL_ACTION_DENY = 0,
+	ACL_ACTION_XFER = 1,
+	ACL_ACTION_NOTF = 2,
+	ACL_ACTION_DDNS = 3,
+	ACL_ACTION_CNTL = 4
+} acl_action_t;
 
 /*!
- * \brief Match address against ACL.
+ * \brief Checks if two netblocks match.
  *
- * \param acl Pointer to ACL instance.
- * \param addr IP address.
- * \param key_name TSIG key name (optional)
- *
- * \retval Matching rule instance if found.
- * \retval NULL if it didn't find a match.
+ * \param ss1     First address storage.
+ * \param ss2     Second address storage.
+ * \param prefix  Netblock length.
  */
-struct conf_iface* acl_find(list_t *acl, const struct sockaddr_storage *addr,
-                              const knot_dname_t *key_name);
+bool netblock_match(const struct sockaddr_storage *ss1,
+                    const struct sockaddr_storage *ss2,
+                    unsigned prefix);
+
+/*!
+ * \brief Checks if the address and/or tsig key matches given ACL list.
+ *
+ * If a proper ACL rule is found and tsig.name is not empty,
+ * tsig.secret is filled.
+ *
+ * \param acl      Pointer to ACL config multivalued identifier.
+ * \param action   ACL action.
+ * \param addr     IP address.
+ * \param tsig     TSIG parameters.
+ *
+ * \retval true  if authenticated.
+ * \retval false if not authenticated.
+ */
+bool acl_allowed(conf_val_t *acl, acl_action_t action,
+                 const struct sockaddr_storage *addr,
+                 knot_tsig_key_t *tsig);
 
 /*! @} */

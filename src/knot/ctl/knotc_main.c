@@ -31,7 +31,6 @@
 #include "libknot/libknot.h"
 #include "knot/common/debug.h"
 #include "knot/ctl/estimator.h"
-#include "knot/ctl/process.h"
 #include "knot/ctl/remote.h"
 #include "knot/conf/conf.h"
 #include "knot/server/tcp-handler.h"
@@ -40,10 +39,9 @@
 
 /*! \brief Controller flags. */
 enum knotc_flag_t {
-	F_NULL =         0 << 0,
-	F_FORCE =        1 << 0,
-	F_VERBOSE =      1 << 1,
-	F_NOCONF =       1 << 2
+	F_NULL    = 0,
+	F_FORCE   = 1 << 0,
+	F_VERBOSE = 1 << 1
 };
 
 /*! \brief Check if flag is present. */
@@ -52,45 +50,58 @@ static inline unsigned has_flag(unsigned flags, enum knotc_flag_t f)
 	return flags & f;
 }
 
+/*! \brief Callback arguments. */
+typedef struct cmd_args {
+	struct sockaddr_storage *addr;
+	knot_tsig_key_t *key;
+	int argc;
+	char **argv;
+	unsigned flags;
+	const char *conf_db;
+} cmd_args_t;
+
 /*! \brief Callback prototype for command. */
-typedef int (*knot_cmdf_t)(int argc, char *argv[], unsigned flags);
+typedef int (*knot_cmdf_t)(cmd_args_t *args);
 
 /*! \brief Command table item. */
 typedef struct knot_cmd {
 	knot_cmdf_t cb;
-	int need_conf;
 	const char *name;
 	const char *params;
 	const char *desc;
 } knot_cmd_t;
 
 /* Forward decls. */
-static int cmd_stop(int argc, char *argv[], unsigned flags);
-static int cmd_reload(int argc, char *argv[], unsigned flags);
-static int cmd_refresh(int argc, char *argv[], unsigned flags);
-static int cmd_flush(int argc, char *argv[], unsigned flags);
-static int cmd_status(int argc, char *argv[], unsigned flags);
-static int cmd_zonestatus(int argc, char *argv[], unsigned flags);
-static int cmd_checkconf(int argc, char *argv[], unsigned flags);
-static int cmd_checkzone(int argc, char *argv[], unsigned flags);
-static int cmd_memstats(int argc, char *argv[], unsigned flags);
-static int cmd_signzone(int argc, char *argv[], unsigned flags);
+static int cmd_stop(cmd_args_t *args);
+static int cmd_reload(cmd_args_t *args);
+static int cmd_refresh(cmd_args_t *args);
+static int cmd_flush(cmd_args_t *args);
+static int cmd_status(cmd_args_t *args);
+static int cmd_zonestatus(cmd_args_t *args);
+static int cmd_checkconf(cmd_args_t *args);
+static int cmd_checkzone(cmd_args_t *args);
+static int cmd_memstats(cmd_args_t *args);
+static int cmd_signzone(cmd_args_t *args);
+static int cmd_import(cmd_args_t *args);
+static int cmd_export(cmd_args_t *args);
 
 /*! \brief Table of remote commands. */
 knot_cmd_t knot_cmd_tbl[] = {
-	{&cmd_stop,       0, "stop",       "",            "Stop server."},
-	{&cmd_reload,     0, "reload",     "[<zone>...]", "Reload particular zones or reload whole\n"
-	                   "                                configuration and changed zones."},
-	{&cmd_refresh,    0, "refresh",    "[<zone>...]", "Refresh slave zones. Flag '-f' forces retransfer\n"
-	                   "                                (zone(s) must be specified)."},
-	{&cmd_flush,      0, "flush",      "[<zone>...]", "Flush journal and update zone files."},
-	{&cmd_status,     0, "status",     "",            "Check if server is running."},
-	{&cmd_zonestatus, 0, "zonestatus", "[<zone>...]", "Show status of configured zones."},
-	{&cmd_checkconf,  1, "checkconf",  "",            "Check current server configuration."},
-	{&cmd_checkzone,  1, "checkzone",  "[<zone>...]", "Check zones."},
-	{&cmd_memstats,   1, "memstats",   "[<zone>...]", "Estimate memory use for zones."},
-	{&cmd_signzone,   0, "signzone",   "<zone>...",   "Sign zones with available DNSSEC keys."},
-	{NULL, 0, NULL, NULL, NULL}
+	{&cmd_stop,       "stop",       "",            "Stop server."},
+	{&cmd_reload,     "reload",     "[<zone>...]", "Reload particular zones or reload whole\n"
+	                "                                configuration and changed zones."},
+	{&cmd_refresh,    "refresh",    "[<zone>...]", "Refresh slave zones. Flag '-f' forces retransfer\n"
+	                "                                (zone(s) must be specified)."},
+	{&cmd_flush,      "flush",      "[<zone>...]", "Flush journal and update zone files."},
+	{&cmd_status,     "status",     "",            "Check if server is running."},
+	{&cmd_zonestatus, "zonestatus", "[<zone>...]", "Show status of configured zones."},
+	{&cmd_checkconf,  "checkconf",  "",            "Check current server configuration."},
+	{&cmd_checkzone,  "checkzone",  "[<zone>...]", "Check zones."},
+	{&cmd_memstats,   "memstats",   "[<zone>...]", "Estimate memory use for zones."},
+	{&cmd_signzone,   "signzone",   "<zone>...",   "Sign zones with available DNSSEC keys."},
+	{&cmd_import,     "import",     "<filename>",  "Import configuration database."},
+	{&cmd_export,     "export",     "<filename>",  "Export configuration database."},
+	{NULL, NULL, NULL, NULL}
 };
 
 /*! \brief Print help. */
@@ -99,17 +110,19 @@ void help(void)
 	printf("Usage: %sc [parameters] <action> [action_args]\n", PACKAGE_NAME);
 	printf("\nParameters:\n"
 	       " -c, --config <file>           Select configuration file.\n"
-	       " -s, --server <server>         Remote UNIX socket/IP address\n"
-	       "                                (default %s).\n"
+	       "                                (default %s)\n"
+	       " -C, --confdb <dir>            Select configuration database directory.\n"
+	       " -s, --server <server>         Remote UNIX socket/IP address.\n"
+	       "                                (default %s)\n"
 	       " -p, --port <port>             Remote server port (only for IP).\n"
-	       " -y, --key <[hmac:]name:key>   Use key specified on the command line\n"
-	       "                                (default algorithm is hmac-md5).\n"
+	       " -y, --key <[hmac:]name:key>   Use key specified on the command line.\n"
+	       "                                (default algorithm is hmac-md5)\n"
 	       " -k, --keyfile <file>          Use key file (as in config section 'keys').\n"
 	       " -f, --force                   Force operation - override some checks.\n"
 	       " -v, --verbose                 Verbose mode - additional runtime information.\n"
 	       " -V, --version                 Print %s server version.\n"
 	       " -h, --help                    Print help and usage.\n",
-	       RUN_DIR "/knot.sock", PACKAGE_NAME);
+	       CONF_DEFAULT_FILE, RUN_DIR "/knot.sock", PACKAGE_NAME);
 	printf("\nActions:\n");
 	knot_cmd_t *c = knot_cmd_tbl;
 	while (c->name != NULL) {
@@ -180,19 +193,13 @@ static int cmd_remote_reply(int c)
 	return ret;
 }
 
-static int cmd_remote(const char *cmd, uint16_t rrt, int argc, char *argv[])
+static int cmd_remote(struct sockaddr_storage *addr, knot_tsig_key_t *key,
+                      const char *cmd, uint16_t rrt, int argc, char *argv[])
 {
 	int rc = 0;
 
-	/* Check remote address. */
-	conf_iface_t *r = conf()->ctl.iface;
-	if (!r || r->addr.ss_family == AF_UNSPEC) {
-		log_error("no remote address for '%s' configured", cmd);
-		return 1;
-	}
-
 	/* Make query. */
-	knot_pkt_t *pkt = remote_query(cmd, r->key);
+	knot_pkt_t *pkt = remote_query(cmd, key);
 	if (!pkt) {
 		log_warning("failed to prepare query for '%s'", cmd);
 		return 1;
@@ -228,8 +235,9 @@ static int cmd_remote(const char *cmd, uint16_t rrt, int argc, char *argv[])
 		}
 	}
 
-	if (r->key) {
-		int res = remote_query_sign(pkt->wire, &pkt->size, pkt->max_size, r->key);
+	if (key) {
+		int res = remote_query_sign(pkt->wire, &pkt->size, pkt->max_size,
+		                            key);
 		if (res != KNOT_EOK) {
 			log_error("failed to sign the packet");
 			knot_pkt_free(&pkt);
@@ -241,9 +249,9 @@ static int cmd_remote(const char *cmd, uint16_t rrt, int argc, char *argv[])
 
 	/* Connect to remote. */
 	char addr_str[SOCKADDR_STRLEN] = {0};
-	sockaddr_tostr(addr_str, sizeof(addr_str), &r->addr);
+	sockaddr_tostr(addr_str, sizeof(addr_str), addr);
 
-	int s = net_connected_socket(SOCK_STREAM, &r->addr, &r->via, 0);
+	int s = net_connected_socket(SOCK_STREAM, addr, NULL, 0);
 	if (s < 0) {
 		log_error("failed to connect to remote host '%s'", addr_str);
 		knot_pkt_free(&pkt);
@@ -252,7 +260,8 @@ static int cmd_remote(const char *cmd, uint16_t rrt, int argc, char *argv[])
 
 	/* Wait for availability. */
 	struct pollfd pfd = { s, POLLOUT, 0 };
-	if (poll(&pfd, 1, conf()->max_conn_reply) != 1) {
+	conf_val_t val = conf_get(conf(), C_SRV, C_MAX_CONN_REPLY);
+	if (poll(&pfd, 1, conf_int(&val)) != 1) {
 		log_error("failed to connect to remote host '%s'", addr_str);
 		close(s);
 		knot_pkt_free(&pkt);
@@ -418,7 +427,8 @@ int main(int argc, char **argv)
 	/* Parse command line arguments */
 	int c = 0, li = 0, rc = 0;
 	unsigned flags = F_NULL;
-	const char *config_fn = conf_find_default();
+	const char *config_fn = CONF_DEFAULT_FILE;
+	const char *config_db = NULL;
 
 	/* Remote server descriptor. */
 	const char *r_addr = NULL;
@@ -433,6 +443,7 @@ int main(int argc, char **argv)
 	/* Long options. */
 	struct option opts[] = {
 		{"config",  required_argument, 0, 'c' },
+		{"confdb",  required_argument, 0, 'C' },
 		{"server",  required_argument, 0, 's' },
 		{"port",    required_argument, 0, 'p' },
 		{"key",     required_argument, 0, 'y' },
@@ -444,10 +455,13 @@ int main(int argc, char **argv)
 		{0, 0, 0, 0}
 	};
 
-	while ((c = getopt_long(argc, argv, "s:p:y:k:fc:vVh", opts, &li)) != -1) {
+	while ((c = getopt_long(argc, argv, "s:p:y:k:fc:C:vVh", opts, &li)) != -1) {
 		switch (c) {
 		case 'c':
 			config_fn = optarg;
+			break;
+		case 'C':
+			config_db = optarg;
 			break;
 		case 's':
 			r_addr = optarg;
@@ -509,43 +523,59 @@ int main(int argc, char **argv)
 
 	/* Command not found. */
 	if (!cmd->name) {
-		log_error("invalid command: '%s'", argv[optind]);
+		log_fatal("invalid command: '%s'", argv[optind]);
 		rc = 1;
 		goto exit;
 	}
 
-	/* Open config, create empty if not exists. */
-	if (conf_open(config_fn) != KNOT_EOK) {
-		s_config = conf_new("");
-		flags |= F_NOCONF;
-	}
+	/* Open configuration. */
+	conf_t *new_conf = NULL;
+	if (config_db == NULL) {
+		int ret = conf_new(&new_conf, conf_scheme, NULL);
+		if (ret != KNOT_EOK) {
+			log_fatal("failed to initialize configuration database "
+			          "(%s)", knot_strerror(ret));
+			rc = 1;
+			goto exit;
+		}
 
-	/* Check if config file is required. */
-	if (has_flag(flags, F_NOCONF) && cmd->need_conf) {
-		log_error("failed to find a config file, refusing to continue");
-		rc = 1;
-		goto exit;
-	}
+		/* Import the configuration file. */
+		ret = conf_import(new_conf, config_fn, true);
+		if (ret != KNOT_EOK) {
+			log_fatal("failed to load configuration file '%s' (%s)",
+			          config_fn, knot_strerror(ret));
+			rc = 1;
+			goto exit;
+		}
 
-	/* Create remote iface if not present in config. */
-	conf_iface_t *ctl_if = conf()->ctl.iface;
-	if (!ctl_if) {
-		ctl_if = malloc(sizeof(conf_iface_t));
-		memset(ctl_if, 0, sizeof(conf_iface_t));
-		conf()->ctl.iface = ctl_if;
-
-		/* Fill defaults. */
-		if (!r_addr) {
-			r_addr = RUN_DIR "/knot.sock";
-		} else if (r_port < 0) {
-			r_port = REMOTE_DPORT;
+		new_conf->filename = strdup(config_fn);
+	} else {
+		/* Open configuration database. */
+		int ret = conf_new(&new_conf, conf_scheme, config_db);
+		if (ret != KNOT_EOK) {
+			log_fatal("failed to open configuration database '%s' "
+			          "(%s)", config_db, knot_strerror(ret));
+			rc = 1;
+			goto exit;
 		}
 	}
 
-	/* Install the key. */
-	if (r_key.name) {
-		ctl_if->key = &r_key;
+	/* Run post-open config operations. */
+	int res = conf_post_open(new_conf);
+	if (res != KNOT_EOK) {
+		log_fatal("failed to use configuration (%s)", knot_strerror(res));
+		conf_free(new_conf, false);
+		return EXIT_FAILURE;
 	}
+
+	conf_update(new_conf);
+
+	/* Get control address. */
+	conf_val_t listen_val = conf_get(conf(), C_CTL, C_LISTEN);
+	conf_val_t rundir_val = conf_get(conf(), C_SRV, C_RUNDIR);
+	char *rundir = conf_abs_path(&rundir_val, NULL);
+	struct sockaddr_storage addr = conf_addr(&listen_val, rundir);
+	free(rundir);
 
 	/* Override from command line. */
 	if (r_addr) {
@@ -563,11 +593,11 @@ int main(int argc, char **argv)
 			family = AF_UNIX;
 		}
 
-		sockaddr_set(&ctl_if->addr, family, r_addr, sockaddr_port(&ctl_if->addr));
+		sockaddr_set(&addr, family, r_addr, sockaddr_port(&addr));
 	}
 
 	if (r_port > 0) {
-		sockaddr_port_set(&ctl_if->addr, r_port);
+		sockaddr_port_set(&addr, r_port);
 	}
 
 	/* Verbose mode. */
@@ -576,102 +606,132 @@ int main(int argc, char **argv)
 		               LOG_MASK(LOG_INFO) | LOG_MASK(LOG_DEBUG));
 	}
 
+	cmd_args_t args = {
+		&addr,
+		r_key.name != NULL ? &r_key : NULL,
+		argc - optind - 1,
+		argv + optind + 1,
+		flags,
+		config_db
+	};
+
 	/* Execute command. */
 	dnssec_crypto_init();
-	rc = cmd->cb(argc - optind - 1, argv + optind + 1, flags);
+	rc = cmd->cb(&args);
 	dnssec_crypto_cleanup();
 
 exit:
 	/* Finish */
 	knot_tsig_key_free(&r_key);
+	conf_free(conf(), false);
 	log_close();
 	return rc;
 }
 
-static int cmd_stop(int argc, char *argv[], unsigned flags)
+static int cmd_stop(cmd_args_t *args)
 {
-	UNUSED(argc);
-	UNUSED(argv);
-	UNUSED(flags);
-
-	if (argc > 0) {
+	if (args->argc > 0) {
 		printf("command does not take arguments\n");
 		return KNOT_EINVAL;
 	}
 
-	return cmd_remote("stop", KNOT_RRTYPE_TXT, 0, NULL);
+	return cmd_remote(args->addr, args->key, "stop", KNOT_RRTYPE_TXT,
+	                  0, NULL);
 }
 
-static int cmd_reload(int argc, char *argv[], unsigned flags)
+static int cmd_reload(cmd_args_t *args)
 {
-	UNUSED(flags);
-
-	return cmd_remote("reload", KNOT_RRTYPE_NS, argc, argv);
+	return cmd_remote(args->addr, args->key, "reload", KNOT_RRTYPE_NS,
+	                  args->argc, args->argv);
 }
 
-static int cmd_refresh(int argc, char *argv[], unsigned flags)
+static int cmd_refresh(cmd_args_t *args)
 {
-	UNUSED(flags);
+	const char *action = (args->flags & F_FORCE) ? "retransfer" : "refresh";
 
-	if (flags & F_FORCE) {
-		return cmd_remote("retransfer", KNOT_RRTYPE_NS, argc, argv);
-	} else {
-		return cmd_remote("refresh", KNOT_RRTYPE_NS, argc, argv);
-	}
+	return cmd_remote(args->addr, args->key, action, KNOT_RRTYPE_NS,
+	                  args->argc, args->argv);
 }
 
-static int cmd_flush(int argc, char *argv[], unsigned flags)
+static int cmd_flush(cmd_args_t *args)
 {
-	UNUSED(flags);
-
-	return cmd_remote("flush", KNOT_RRTYPE_NS, argc, argv);
+	return cmd_remote(args->addr, args->key, "flush", KNOT_RRTYPE_NS,
+	                  args->argc, args->argv);
 }
 
-static int cmd_status(int argc, char *argv[], unsigned flags)
+static int cmd_status(cmd_args_t *args)
 {
-	UNUSED(argv);
-	UNUSED(flags);
-
-	if (argc > 0) {
+	if (args->argc > 0) {
 		printf("command does not take arguments\n");
 		return KNOT_EINVAL;
 	}
 
-	return cmd_remote("status", KNOT_RRTYPE_TXT, 0, NULL);
+	return cmd_remote(args->addr, args->key, "status", KNOT_RRTYPE_TXT,
+	                  0, NULL);
 }
 
-static int cmd_zonestatus(int argc, char *argv[], unsigned flags)
+static int cmd_zonestatus(cmd_args_t *args)
 {
-	UNUSED(flags);
-
-	return cmd_remote("zonestatus", KNOT_RRTYPE_NS, argc, argv);
+	return cmd_remote(args->addr, args->key, "zonestatus", KNOT_RRTYPE_NS,
+	                  args->argc, args->argv);
 }
 
-static int cmd_signzone(int argc, char *argv[], unsigned flags)
+static int cmd_signzone(cmd_args_t *args)
 {
-	return cmd_remote("signzone", KNOT_RRTYPE_NS, argc, argv);
+	return cmd_remote(args->addr, args->key, "signzone", KNOT_RRTYPE_NS,
+	                  args->argc, args->argv);
 }
 
-static int cmd_checkconf(int argc, char *argv[], unsigned flags)
+static int cmd_import(cmd_args_t *args)
 {
-	UNUSED(argc);
-	UNUSED(argv);
-	UNUSED(flags);
+	if (args->argc != 1) {
+		printf("command takes one argument\n");
+		return KNOT_EINVAL;
+	}
+
+	if (!(args->flags & F_FORCE)) {
+		printf("use force option to import/replace config DB\n");
+		return KNOT_EINVAL;
+	}
+
+	conf_t *new_conf = NULL;
+	int ret = conf_new(&new_conf, conf_scheme, args->conf_db);
+	if (ret != KNOT_EOK) {
+		printf("failed to open configuration (%s)", args->conf_db);
+		return ret;
+	}
+
+	ret = conf_import(new_conf, args->argv[0], true);
+	if (ret != KNOT_EOK) {
+		printf("failed to import configuration (%s)", args->argv[0]);
+		conf_free(new_conf, false);
+		return ret;
+	}
+
+	return KNOT_EOK;
+}
+
+static int cmd_export(cmd_args_t *args)
+{
+	if (args->argc != 1) {
+		printf("command takes one argument\n");
+		return KNOT_EINVAL;
+	}
+
+	return conf_export(conf(), args->argv[0], YP_SNONE);
+}
+
+static int cmd_checkconf(cmd_args_t *args)
+{
+	UNUSED(args);
 
 	log_info("configuration is valid");
 
 	return 0;
 }
 
-static bool fetch_zone(int argc, char *argv[], conf_zone_t *zone)
+static bool fetch_zone(int argc, char *argv[], const knot_dname_t *name)
 {
-	/* Convert zone name to dname */
-	knot_dname_t *zone_name = knot_dname_from_str_alloc(zone->name);
-	if (zone_name == NULL) {
-		return false;
-	}
-	(void)knot_dname_to_lower(zone_name);
-
 	bool found = false;
 
 	int i = 0;
@@ -681,77 +741,61 @@ static bool fetch_zone(int argc, char *argv[], conf_zone_t *zone)
 
 		if (arg_name != NULL) {
 			(void)knot_dname_to_lower(arg_name);
-			found = knot_dname_is_equal(zone_name, arg_name);
+			found = knot_dname_is_equal(name, arg_name);
 		}
 
 		i++;
 		knot_dname_free(&arg_name, NULL);
 	}
 
-	knot_dname_free(&zone_name, NULL);
 	return found;
 }
 
-static int cmd_checkzone(int argc, char *argv[], unsigned flags)
+static int cmd_checkzone(cmd_args_t *args)
 {
-	UNUSED(flags);
-
 	/* Zone checking */
 	int rc = 0;
 
 	/* Generate databases for all zones */
-	const bool sorted = false;
-	hattrie_iter_t *z_iter = hattrie_iter_begin(conf()->zones, sorted);
-	if (z_iter == NULL) {
-		return KNOT_ERROR;
-	}
-	for (; !hattrie_iter_finished(z_iter); hattrie_iter_next(z_iter)) {
-		conf_zone_t *zone = (conf_zone_t *)*hattrie_iter_val(z_iter);
+	conf_iter_t iter = conf_iter(conf(), C_ZONE);
+	while (iter.code == KNOT_EOK) {
+		conf_val_t id = conf_iter_id(conf(), &iter);
 
 		/* Fetch zone */
-		int zone_match = fetch_zone(argc, argv, zone);
-
-		if (!zone_match && argc > 0) {
-			conf_free_zone(zone);
+		int zone_match = fetch_zone(args->argc, args->argv, conf_dname(&id));
+		if (!zone_match && args->argc > 0) {
 			continue;
 		}
 
 		/* Create zone loader context. */
-		zone_contents_t *loaded_zone = zone_load_contents(zone);
+		zone_contents_t *loaded_zone = zone_load_contents(conf(), conf_dname(&id));
 		if (loaded_zone == NULL) {
 			rc = 1;
 			continue;
 		}
 
-		log_zone_str_info(zone->name, "zone is valid");
+		log_zone_info(conf_dname(&id), "zone is valid");
 		zone_contents_deep_free(&loaded_zone);
+		conf_iter_next(conf(), &iter);
 	}
-	hattrie_iter_free(z_iter);
+	conf_iter_finish(conf(), &iter);
 
 	return rc;
 }
 
-static int cmd_memstats(int argc, char *argv[], unsigned flags)
+static int cmd_memstats(cmd_args_t *args)
 {
-	UNUSED(flags);
-
 	/* Zone checking */
 	double total_size = 0;
 
 	/* Generate databases for all zones */
-	const bool sorted = false;
-	hattrie_iter_t *z_iter = hattrie_iter_begin(conf()->zones, sorted);
-	if (z_iter == NULL) {
-		return KNOT_ERROR;
-	}
-	for (; !hattrie_iter_finished(z_iter); hattrie_iter_next(z_iter)) {
-		conf_zone_t *zone = (conf_zone_t *)*hattrie_iter_val(z_iter);
+	conf_iter_t iter = conf_iter(conf(), C_ZONE);
+	while (iter.code == KNOT_EOK) {
+		conf_val_t id = conf_iter_id(conf(), &iter);
 
 		/* Fetch zone */
-		int zone_match = fetch_zone(argc, argv, zone);
-
-		if (!zone_match && argc > 0) {
-			conf_free_zone(zone);
+		int zone_match = fetch_zone(args->argc, args->argv, conf_dname(&id));
+		if (!zone_match && args->argc > 0) {
 			continue;
 		}
 
@@ -772,24 +816,35 @@ static int cmd_memstats(int argc, char *argv[], unsigned flags)
 		}
 
 		/* Create zone scanner. */
-		zs_scanner_t *zs = zs_scanner_create(zone->name,
+		char *zone_name = knot_dname_to_str_alloc(conf_dname(&id));
+		if (zone_name == NULL) {
+			log_error("not enough memory");
+			hattrie_free(est.node_table);
+			break;
+		}
+		zs_scanner_t *zs = zs_scanner_create(zone_name,
 		                                     KNOT_CLASS_IN, 3600,
 		                                     estimator_rrset_memsize_wrap,
 		                                     process_error,
 		                                     &est);
+		free(zone_name);
 		if (zs == NULL) {
-			log_zone_str_error(zone->name, "failed to load zone");
+			log_zone_error(conf_dname(&id), "failed to load zone");
 			hattrie_free(est.node_table);
+			conf_iter_next(conf(), &iter);
 			continue;
 		}
 
 		/* Do a parser run, but do not actually create the zone. */
-		int ret = zs_scanner_parse_file(zs, zone->file);
+		char *zonefile = conf_zonefile(conf(), conf_dname(&id));
+		int ret = zs_scanner_parse_file(zs, zonefile);
+		free(zonefile);
 		if (ret != 0) {
-			log_zone_str_error(zone->name, "failed to parse zone");
+			log_zone_error(conf_dname(&id), "failed to parse zone");
 			hattrie_apply_rev(est.node_table, estimator_free_trie_node, NULL);
 			hattrie_free(est.node_table);
 			zs_scanner_free(zs);
+			conf_iter_next(conf(), &iter);
 			continue;
 		}
 
@@ -807,15 +862,15 @@ static int cmd_memstats(int argc, char *argv[], unsigned flags)
 		                   est.htable_size +
 		                   malloc_size) * ESTIMATE_MAGIC) / (1024.0 * 1024.0);
 
-		log_zone_str_info(zone->name, "%zu RRs, used memory estimation is %zu MB",
-		                  est.record_count, (size_t)zone_size);
+		log_zone_info(conf_dname(&id), "%zu RRs, used memory estimation is %zu MB",
+		              est.record_count, (size_t)zone_size);
 		zs_scanner_free(zs);
 		total_size += zone_size;
-		conf_free_zone(zone);
+		conf_iter_next(conf(), &iter);
 	}
-	hattrie_iter_free(z_iter);
+	conf_iter_finish(conf(), &iter);
 
-	if (argc == 0) { // for all zones
+	if (args->argc == 0) { // for all zones
 		log_info("estimated memory consumption for all zones is %zu MB",
 		         (size_t)total_size);
 	}

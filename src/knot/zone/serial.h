@@ -31,7 +31,7 @@ int serial_compare(uint32_t s1, uint32_t s2);
  * \brief Get next serial for given serial update policy.
  *
  * \param current  Current SOA serial.
- * \param policy   CONF_SERIAL_INCREMENT or CONF_SERIAL_UNIXTIME.
+ * \param policy   SERIAL_POLICY_INCREMENT or SERIAL_POLICY_UNIXTIME.
  *
  * \return New serial.
  */

@@ -33,29 +33,27 @@ class KnotConf(object):
 
     def __init__(self):
         self.conf = ""
-        self.indent = ""
-
-    def sub(self):
-        self.indent += "\t"
-
-    def unsub(self):
-        self.indent = self.indent[:-1]
+        self.first_item = True
 
     def begin(self, name):
-        self.conf += "%s%s {\n" % (self.indent, name)
-        self.sub()
+        self.conf += "%s:\n" % name
+        self.first_item = True
 
     def end(self):
-        self.unsub()
-        self.conf += "%s}\n" % (self.indent)
-        if not self.indent:
-            self.conf += "\n"
+        self.conf += "\n"
 
     def item(self, name, value):
-        self.conf += "%s%s %s;\n" % (self.indent, name, value)
+        self.conf += "        %s: %s\n" % (name, value)
 
     def item_str(self, name, value):
-        self.conf += "%s%s \"%s\";\n" % (self.indent, name, value)
+        self.conf += "        %s: \"%s\"\n" % (name, value)
+
+    def id_item(self, name, value):
+        if not self.first_item:
+            self.conf += "\n"
+        else:
+            self.first_item = False
+        self.conf += "      - %s: \"%s\"\n" % (name, value)
 
 class BindConf(object):
     '''Bind server config generator'''
@@ -775,11 +773,13 @@ class Bind(Server):
                 s.item("type", "slave")
 
                 if self.tsig:
-                    s.item("allow-notify", "{ key %s; }" % z.master.tsig.name)
+                    if not z.master.disable_notify:
+                        s.item("allow-notify", "{ key %s; }" % z.master.tsig.name)
                     s.item("masters", "{ %s port %i key %s; }" \
                            % (z.master.addr, z.master.port, z.master.tsig.name))
                 else:
-                    s.item("allow-notify", "{ %s; }" % z.master.addr)
+                    if not z.master.disable_notify:
+                        s.item("allow-notify", "{ %s; }" % z.master.addr)
                     s.item("masters", "{ %s port %i; }" \
                            % (z.master.addr, z.master.port))
             else:
@@ -792,12 +792,15 @@ class Bind(Server):
             if z.slaves:
                 slaves = ""
                 for slave in z.slaves:
+                    if slave.disable_notify:
+                        continue
                     if self.tsig:
                         slaves += "%s port %i key %s; " \
                                   % (slave.addr, slave.port, self.tsig.name)
                     else:
                         slaves += "%s port %i; " % (slave.addr, slave.port)
-                s.item("also-notify", "{ %s}" % slaves)
+                if slaves:
+                    s.item("also-notify", "{ %s}" % slaves)
 
             if z.ddns:
                 if self.tsig:
@@ -844,154 +847,174 @@ class Knot(Server):
 
     def _on_str_hex(self, conf, name, value):
         if value == True:
-            conf.item(name, "on")
+            conf.item_str(name, "")
         elif value == False:
-            conf.item(name, "off")
+            return
         elif value:
-            if isinstance(value, int) or value[:2] == "0x":
-                conf.item(name, value)
-            else:
-                conf.item_str(name, value)
+            conf.item_str(name, value)
+
+    def _key(self, conf, key):
+        conf.id_item("id", key.name)
+        conf.item_str("algorithm", key.alg)
+        conf.item_str("secret", key.key)
 
     def get_config(self):
         s = KnotConf()
-        s.begin("system")
+        s.begin("server")
         self._on_str_hex(s, "identity", self.ident)
         self._on_str_hex(s, "version", self.version)
         self._on_str_hex(s, "nsid", self.nsid)
-        self._on_str_hex(s, "rate-limit", self.ratelimit)
         s.item_str("rundir", self.dir)
+        s.item_str("listen", "%s@%s" % (self.addr, self.port))
         if (self.max_conn_idle):
-            s.item("max-conn-idle", self.max_conn_idle)
+            s.item_str("max-conn-idle", self.max_conn_idle)
+        if (self.ratelimit):
+            s.item_str("rate-limit", self.ratelimit)
         s.end()
 
         s.begin("control")
-        s.item_str("listen-on", "knot.sock")
-        s.end()
-
-        s.begin("interfaces")
-        if self.ip == 4:
-            s.begin("ipv4")
-        else:
-            s.begin("ipv6")
-        s.item("address", self.addr)
-        s.item("port", self.port)
-        s.end()
+        s.item_str("listen", "knot.sock")
         s.end()
 
         if self.tsig:
-            s.begin("keys")
-            t = self.tsig
-            s.item_str("\"%s\" %s" % (t.name, t.alg), t.key)
-            t = self.tsig_test
-            s.item_str("\"%s\" %s" % (t.name, t.alg), t.key)
+            s.begin("key")
+            self._key(s, self.tsig)
+            self._key(s, self.tsig_test)
 
             keys = set() # Duplicy check.
             for zone in sorted(self.zones):
                 z = self.zones[zone]
                 if z.master and z.master.tsig.name not in keys:
                     t = z.master.tsig
-                    s.item_str("\"%s\" %s" % (t.name, t.alg), t.key)
+                    self._key(s, t)
                     keys.add(t.name)
                 for slave in z.slaves:
                     if slave.tsig and slave.tsig.name not in keys:
                         t = slave.tsig
-                        s.item_str("\"%s\" %s" % (t.name, t.alg), t.key)
+                        self._key(s, t)
                         keys.add(t.name)
             s.end()
 
-        s.begin("remotes")
-        s.begin("local")
-        s.item("address", self.addr)
+        have_remote = False
+        servers = set() # Duplicity check.
+        for zone in sorted(self.zones):
+            z = self.zones[zone]
+            if z.master and z.master.name not in servers:
+                if not have_remote:
+                    s.begin("remote")
+                    have_remote = True
+                s.id_item("id", z.master.name)
+                s.item_str("address", "%s@%s" % (z.master.addr, z.master.port))
+                if z.master.tsig:
+                    s.item_str("key", z.master.tsig.name)
+                servers.add(z.master.name)
+            for slave in z.slaves:
+                if slave.name not in servers:
+                    if not have_remote:
+                        s.begin("remote")
+                        have_remote = True
+                    s.id_item("id", slave.name)
+                    s.item_str("address", "%s@%s" % (slave.addr, slave.port))
+                    if slave.tsig:
+                        s.item_str("key", slave.tsig.name)
+                    servers.add(slave.name)
+        if have_remote:
+            s.end()
+
+        s.begin("acl")
+        s.id_item("id", "acl_local")
+        s.item_str("address", self.addr)
         if self.tsig:
             s.item_str("key", self.tsig.name)
-        s.end()
-        s.begin("test")
-        s.item("address", self.addr)
+        s.item("action", "[xfer, notify, update]")
+
+        s.id_item("id", "acl_test")
+        s.item_str("address", self.addr)
         if self.tsig_test:
             s.item_str("key", self.tsig_test.name)
-        s.end()
+        s.item("action", "[xfer, notify, update]")
 
         servers = set() # Duplicity check.
         for zone in sorted(self.zones):
             z = self.zones[zone]
             if z.master and z.master.name not in servers:
-                s.begin(z.master.name)
-                s.item("address", z.master.addr)
-                s.item("port", z.master.port)
+                s.id_item("id", "acl_%s" % z.master.name)
+                s.item_str("address", z.master.addr)
                 if z.master.tsig:
                     s.item_str("key", z.master.tsig.name)
-                s.end()
+                s.item("action", "notify")
                 servers.add(z.master.name)
             for slave in z.slaves:
-                if slave.name not in servers:
-                    s.begin(slave.name)
-                    s.item("address", slave.addr)
-                    s.item("port", slave.port)
-                    if slave.tsig:
-                        s.item_str("key", self.tsig.name)
-                    s.end()
-                    servers.add(slave.name)
+                if slave.name in servers:
+                    continue
+                s.id_item("id", "acl_%s" % slave.name)
+                s.item_str("address", slave.addr)
+                if slave.tsig:
+                    s.item_str("key", slave.tsig.name)
+                s.item("action", "xfer")
+                servers.add(slave.name)
         s.end()
 
-        s.begin("zones")
+        s.begin("template")
+        s.id_item("id", "default")
         s.item_str("storage", self.dir)
         if self.zonefile_sync:
-            s.item("zonefile-sync", self.zonefile_sync)
+            s.item_str("zonefile-sync", self.zonefile_sync)
         else:
-            s.item("zonefile-sync", "1d")
+            s.item_str("zonefile-sync", "1d")
         if self.ixfr_fslimit:
-            s.item("ixfr-fslimit", self.ixfr_fslimit)
-        s.item("notify-timeout", "5")
-        s.item("notify-retries", "5")
-        s.item("semantic-checks", "on")
+            s.item_str("ixfr-fslimit", self.ixfr_fslimit)
+        s.item_str("notify-timeout", "5")
+        s.item_str("notify-retries", "5")
+        s.item_str("semantic-checks", "on")
         if self.disable_any:
-            s.item("disable-any", "on")
+            s.item_str("disable-any", "on")
         if self.dnssec_enable:
             s.item_str("dnssec-keydir", self.keydir)
-            s.item("dnssec-enable", "on")
+            s.item_str("dnssec-enable", "on")
+        s.end()
+
+        s.begin("zone")
         for zone in sorted(self.zones):
             z = self.zones[zone]
-            s.begin(z.name)
+            s.id_item("domain", z.name)
             s.item_str("file", z.zfile.path)
 
+            acl = ""
             if z.master:
-                if not self.disable_notify:
-                    s.item("notify-in", z.master.name)
-                s.item("xfr-in", z.master.name)
+                s.item("master", z.master.name)
+                if not z.master.disable_notify:
+                    acl = "acl_%s" % z.master.name
 
-            slaves = ""
             if z.slaves:
+                slaves = ""
                 for slave in z.slaves:
+                    if slave.disable_notify:
+                        continue
                     if slaves:
                         slaves += ", "
                     slaves += slave.name
-                s.item("notify-out", slaves)
+                if slaves:
+                    s.item("notify", "[%s]" % slaves)
 
-            s.item("xfr-out", "local, test")
-
-            if z.ddns:
-                s.item("update-in", "test")
+            if acl:
+                acl += ", "
+            acl += "acl_local, acl_test"
+            s.item("acl", "[%s]" % acl)
 
             if z.ixfr and not z.master:
-                s.item("ixfr-from-differences", "on")
+                s.item_str("ixfr-from-differences", "on")
 
             if len(z.query_modules) > 0:
                 s.begin("query_module")
                 for query_module in z.query_modules:
-                    s.item(query_module[0], '"' + query_module[1] + '"')
+                    s.item_str(query_module[0], '"' + query_module[1] + '"')
                 s.end()
-            s.end()
         s.end()
 
         s.begin("log")
-        s.begin("stdout")
-        s.item("any", "debug")
-        s.end()
-        s.begin("stderr")
-        s.end()
-        s.begin("syslog")
-        s.end()
+        s.id_item("to", "stdout")
+        s.item_str("any", "debug")
         s.end()
 
         self.start_params = ["-c", self.confile]

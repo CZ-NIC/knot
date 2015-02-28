@@ -14,6 +14,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include "libknot/internal/macros.h"
 #include "libknot/yparser/yptrafo.h"
 #include "libknot/libknot.h"
 
@@ -73,6 +74,7 @@ static int format_item(
 	return KNOT_EOK;
 }
 
+_public_
 int yp_format_key0(
 	const yp_item_t *item,
 	const uint8_t *data,
@@ -87,6 +89,7 @@ int yp_format_key0(
 	                   first_value, last_value);
 }
 
+_public_
 int yp_format_id(
 	const yp_item_t *item,
 	const uint8_t *data,
@@ -103,6 +106,7 @@ int yp_format_id(
 	                   true, true);
 }
 
+_public_
 int yp_format_key1(
 	const yp_item_t *item,
 	const uint8_t *data,

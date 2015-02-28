@@ -20,7 +20,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <sys/time.h>
-#include <time.h>			// strftime
+#include <time.h>
 #include <urcu.h>
 
 #ifdef ENABLE_SYSTEMD
@@ -165,11 +165,8 @@ int log_init()
 {
 	/* Setup initial state. */
 	int ret = KNOT_EOK;
-	int emask = LOG_MASK(LOG_WARNING)|LOG_MASK(LOG_ERR)|LOG_MASK(LOG_CRIT);
-	int imask = LOG_MASK(LOG_INFO)|LOG_MASK(LOG_NOTICE);
-
-	/* Add debug messages. */
-	emask |= LOG_MASK(LOG_DEBUG);
+	int emask = LOG_MASK(LOG_CRIT) | LOG_MASK(LOG_ERR) | LOG_MASK(LOG_WARNING);
+	int imask = LOG_MASK(LOG_NOTICE) | LOG_MASK(LOG_INFO) | LOG_MASK(LOG_DEBUG);
 
 	/* Publish base log sink. */
 	struct log_sink *log = sink_setup(0);
@@ -427,28 +424,6 @@ int log_msg_zone_str(int priority, const char *zone, const char *fmt, ...)
 	return result;
 }
 
-void hex_log(const char *data, int length)
-{
-	int ptr = 0;
-	char lbuf[512]={0}; int llen = 0;
-	for (; ptr < length; ptr++) {
-		if (ptr > 0 && ptr % 16 == 0) {
-			lbuf[llen] = '\0';
-			log_msg(LOG_DEBUG, "%s\n", lbuf);
-			llen = 0;
-		}
-		int ret = snprintf(lbuf + llen, sizeof(lbuf) - llen, "0x%02x ",
-		                   (unsigned char)*(data + ptr));
-		if (ret < 0 || ret >= sizeof(lbuf) - llen) {
-			return;
-		}
-		llen += ret;
-	}
-	if (llen > 0) {
-		log_msg(LOG_DEBUG, "%s\n", lbuf);
-	}
-}
-
 int log_update_privileges(int uid, int gid)
 {
 	for (unsigned i = 0; i < s_log->file_count; ++i) {
@@ -460,13 +435,28 @@ int log_update_privileges(int uid, int gid)
 	return KNOT_EOK;
 }
 
-int log_reconfigure(const list_t *logs, void *data)
+static logtype_t get_logtype(const char *logname)
+{
+	assert(logname);
+
+	if (strcasecmp(logname, "syslog") == 0) {
+		return LOGT_SYSLOG;
+	} else if (strcasecmp(logname, "stderr") == 0) {
+		return LOGT_STDERR;
+	} else if (strcasecmp(logname, "stdout") == 0) {
+		return LOGT_STDOUT;
+	} else {
+		return LOGT_FILE;
+	}
+}
+
+int log_reconfigure(conf_t *conf, void *data)
 {
 	// Data not used
 	UNUSED(data);
 
 	// Use defaults if no 'log' section is configured.
-	if (EMPTY_LIST(*logs)) {
+	if (conf_id_count(conf, C_LOG) == 0) {
 		log_close();
 		log_init();
 		return KNOT_EOK;
@@ -474,13 +464,16 @@ int log_reconfigure(const list_t *logs, void *data)
 
 	// Find maximum log facility id
 	unsigned files = 0;
-	node_t *list_node = NULL;
-	WALK_LIST(list_node, *logs) {
-		conf_log_t* log = (conf_log_t*)list_node;
-		if (log->type == LOGT_FILE) {
+	conf_iter_t iter = conf_iter(conf, C_LOG);
+	while (iter.code == KNOT_EOK) {
+		conf_val_t id = conf_iter_id(conf, &iter);
+		if (get_logtype(conf_str(&id)) == LOGT_FILE) {
 			++files;
 		}
+
+		conf_iter_next(conf, &iter);
 	}
+	conf_iter_finish(conf, &iter);
 
 	// Initialize logsystem
 	struct log_sink *log = sink_setup(files);
@@ -489,49 +482,46 @@ int log_reconfigure(const list_t *logs, void *data)
 	}
 
 	// Setup logs
-	list_node = NULL;
-	WALK_LIST(list_node, *logs) {
+	iter = conf_iter(conf, C_LOG);
+	while (iter.code == KNOT_EOK) {
+		conf_val_t id = conf_iter_id(conf, &iter);
+		const char *logname = conf_str(&id);
 
-		// Calculate offset
-		conf_log_t* facility_conf = (conf_log_t*)list_node;
-		int facility = facility_conf->type;
+		// Get facility.
+		int facility = get_logtype(logname);
 		if (facility == LOGT_FILE) {
-			facility = log_open_file(log, facility_conf->file);
+			facility = log_open_file(log, logname);
 			if (facility < 0) {
 				log_error("failed to open log, file '%s'",
-				          facility_conf->file);
+				          logname);
+				conf_iter_next(conf, &iter);
 				continue;
 			}
 		}
 
-		// Setup sources mapping
-		node_t *m = 0;
-		WALK_LIST(m, facility_conf->map) {
+		conf_val_t level_val;
+		unsigned level;
 
-			// Assign mapped level
-			conf_log_map_t *map = (conf_log_map_t*)m;
-			sink_levels_add(log, facility, map->source, map->prios);
-		}
+		// Set SERVER logging.
+		level_val = conf_id_get(conf, C_LOG, C_SERVER, &id);
+		level = conf_opt(&level_val);
+		sink_levels_add(log, facility, LOG_SERVER, level);
+
+		// Set ZONE logging.
+		level_val = conf_id_get(conf, C_LOG, C_ZONE, &id);
+		level = conf_opt(&level_val);
+		sink_levels_add(log, facility, LOG_ZONE, level);
+
+		// Set ANY logging.
+		level_val = conf_id_get(conf, C_LOG, C_ANY, &id);
+		level = conf_opt(&level_val);
+		sink_levels_add(log, facility, LOG_ANY, level);
+
+		conf_iter_next(conf, &iter);
 	}
+	conf_iter_finish(conf, &iter);
 
 	sink_publish(log);
 
 	return KNOT_EOK;
-}
-
-void log_free(conf_log_t *log)
-{
-	if (!log) {
-		return;
-	}
-
-	free(log->file);
-
-	/* Free loglevel mapping. */
-	node_t *n = NULL, *nxt = NULL;
-	WALK_LIST_DELSAFE(n, nxt, log->map) {
-		free((conf_log_map_t*)n);
-	}
-
-	free(log);
 }

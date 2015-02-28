@@ -5,7 +5,7 @@
 from dnstest.test import Test
 import random
 
-EXPIRE_SLEEP = 17
+EXPIRE_SLEEP = 20
 RETRY_SLEEP = 10
 START_SLEEP = 5
 
@@ -104,7 +104,7 @@ def refresh_tests(t, zone, master, slave):
 
 t = Test()
 
-# this zone has refresh = 1s, retry = 1s and expire = 1s + 2s for connection timeouts
+# this zone has refresh = 1s, retry = 1s and expire = 16s
 zone = t.zone("example.", storage=".")
 
 master = t.server("knot")
