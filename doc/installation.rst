@@ -25,8 +25,6 @@ Knot DNS build system relies on these standard tools:
 * make
 * libtool
 * autoconf >= 2.65
-* flex >= 2.5.31
-* bison >= 2.3
 
 .. _Required libraries:
 

@@ -4,8 +4,6 @@ Dependencies
 Knot DNS has several dependencies:
 * libtool
 * autoconf > 2.65
-* flex >= 2.5.31
-* bison >= 2.3
 * liburcu >= 0.5.4
 * gnutls >= 3.0
 * jansson >= 2.3
@@ -41,7 +39,7 @@ $ sudo apt-get upgrade
 
 Install prerequisites:
 $ sudo apt-get install \
-  libtool autoconf flex bison liburcu-dev libgnutls28-dev libjansson-dev
+  libtool autoconf liburcu-dev libgnutls28-dev libjansson-dev
 
 Install optional packages to override embedded libraries:
 $ sudo apt-get install liblmdb-dev
@@ -59,7 +57,7 @@ Install basic development tools:
 
 Install prerequisites:
 # yum install \
-  libtool autoconf flex bison userspace-rcu-devel gnutls-devel jansson-devel
+  libtool autoconf userspace-rcu-devel gnutls-devel jansson-devel
 
 Install optional packages to override embedded libraries:
 # yum install lmdb-devel

@@ -168,38 +168,6 @@ AC_SUBST(config_dir)
 # Dependencies needed for Knot DNS daemon
 #########################################
 AS_IF([test "$enable_daemon" = "yes"],[
-
-AC_CACHE_CHECK([for reentrant lex], [ac_cv_path_LEX],
-  [AC_PATH_PROGS_FEATURE_CHECK([LEX], [$LEX flex gflex],
-  [cat >conftest.l <<_ACEOF
-%{
-%}
-
-%option reentrant
-%option bison-bridge
-%option noinput
-%option nounput
-%option noreject
-
-BLANK [ \t\n]
-
-%%
-<<EOF>> return 0;
-%%
-_ACEOF
-_AC_DO_VAR(ac_path_LEX conftest.l)
-test $ac_status -eq 0 && ac_cv_path_LEX=$ac_path_LEX ac_path_LEX_found=true
-rm -f conftest.l lexyy.c lex.yy.c
-],
-[AC_MSG_ERROR([could not find lex that supports reentrant parsers])])])
-AC_SUBST([LEX], [$ac_cv_path_LEX])
-AM_PROG_LEX
-
-AC_PROG_YACC
-YACC_BISON=`bison --version | awk '{print $1;exit}'`
-AS_IF([test "x$YACC_BISON" != "xbison"],
-    [AC_MSG_ERROR([GNU bison needed for reentrant parsers, set the \$YACC variable before running configure])])
-
 ])
 
 # Systemd integration

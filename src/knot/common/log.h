@@ -43,8 +43,6 @@
 
 #include "libknot/dname.h"
 
-struct conf;
-
 /*! \brief Log facility types. */
 typedef enum {
 	LOGT_SYSLOG = 0, /*!< Logging to syslog(3) facility. */

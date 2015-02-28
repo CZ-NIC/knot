@@ -56,9 +56,6 @@
 /m4/ltsugar.m4
 /m4/ltversion.m4
 /m4/lt~obsolete.m4
-/src/knot/conf/libknotd_la-cf-lex.c
-/src/knot/conf/libknotd_la-cf-parse.c
-/src/knot/conf/libknotd_la-cf-parse.h
 /src/dnssec/libdnssec.pc
 /src/libknot-int.pc
 /src/libknot.pc

@@ -1,6 +1,5 @@
 Makefile
 Makefile.in
-sample_conf.c
 runtests.log
 
 # Test binaries:
@@ -8,7 +7,6 @@ acl
 base32hex
 base64
 changeset
-conf
 descriptor
 dname
 dnssec_keys

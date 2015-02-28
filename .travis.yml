@@ -4,11 +4,11 @@ compiler:
 before_install:
   - sudo add-apt-repository --yes ppa:cz.nic-labs/knot-dns
   - sudo apt-get update -qq
-  - sudo apt-get install -qq autotools-dev autoconf automake libtool libssl-dev liburcu-dev flex bison ragel pkg-config texinfo texlive lcov liblmdb-dev
+  - sudo apt-get install -qq autotools-dev autoconf automake libtool libssl-dev liburcu-dev pkg-config texinfo texlive lcov liblmdb-dev
   - sudo pip install cpp-coveralls --use-mirrors
 before_script:
   - autoreconf -fi
 script:
   - ./configure --disable-fastparser --disable-shared --enable-static --enable-code-coverage && make && make -k check
 after_success:
-  - coveralls --exclude tests/ --exclude src/cf-lex.l --exclude src/cf-parse.y --exclude ./src/utils/ --exclude ./src/libtap --exclude ./src/zscanner --build-root ./src/
+  - coveralls --exclude tests/ --exclude ./src/utils/ --exclude ./src/libtap --exclude ./src/zscanner --build-root ./src/

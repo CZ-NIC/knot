@@ -7,7 +7,6 @@ lib_LTLIBRARIES =		\
 	libknot-yparser.la
 noinst_LTLIBRARIES =
 
-# $(YACC) will generate header file
 AM_CPPFLAGS = \
 	-include $(top_builddir)/src/config.h	\
 	-DCONFIG_DIR='"${config_dir}"'		\
@@ -17,9 +16,6 @@ AM_CPPFLAGS = \
 
 AM_CFLAGS = $(CODE_COVERAGE_CFLAGS)
 AM_LDFLAGS = $(CODE_COVERAGE_LDFLAGS)
-AM_YFLAGS = -d
-libknotd_la_YFLAGS = -pcf_ -d
-libknotd_la_LFLAGS = # TODO: reentrant parser, prefix
 
 ######################
 # Knot DNS Libraries #
@@ -190,16 +186,6 @@ if HAVE_DAEMON
 sbin_PROGRAMS = knotc knotd
 noinst_LTLIBRARIES += libknotd.la
 
-BUILT_SOURCES =					\
-	knot/conf/libknotd_la-cf-lex.c		\
-	knot/conf/libknotd_la-cf-parse.c	\
-	knot/conf/libknotd_la-cf-parse.h
-
-CLEANFILES =					\
-	knot/conf/libknotd_la-cf-lex.c		\
-	knot/conf/libknotd_la-cf-parse.c	\
-	knot/conf/libknotd_la-cf-parse.h
-
 knotc_SOURCES =					\
 	knot/ctl/knotc_main.c
 
@@ -208,14 +194,6 @@ knotd_SOURCES =					\
 
 # static: server shared
 libknotd_la_SOURCES =				\
-	knot/conf/cf-lex.l			\
-	knot/conf/cf-parse.y			\
-	knot/conf/conf.c			\
-	knot/conf/conf.h			\
-	knot/conf/extra.c			\
-	knot/conf/extra.h			\
-	knot/conf/includes.c			\
-	knot/conf/includes.h			\
 	knot/ctl/estimator.c			\
 	knot/ctl/estimator.h			\
 	knot/ctl/process.c			\
