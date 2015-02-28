@@ -169,7 +169,7 @@ libknot_la_LDFLAGS = $(AM_LDFLAGS) $(RELEASE_INFO) $(VERSION_INFO)
 libknot_la_LIBADD  = libknot-int.la dnssec/libdnssec.la zscanner/libzscanner.la
 
 # pkg-config
-pkgconfig_DATA = libknot.pc libknot-int.pc
+pkgconfig_DATA = libknot.pc libknot-int.pc libknot-yparser.pc
 
 if !HAVE_LMDB
 libknot_int_la_SOURCES +=		\
