@@ -40,8 +40,9 @@ source_suffix = '.rst'
 master_doc = 'index'
 
 # General information about the project.
-project = u'Knot DNS'
-copyright = "%d, CZ.NIC, z.s.p.o." % time.localtime().tm_year
+project = 'Knot DNS'
+copyright = 'Copyright 2010-%d, CZ.NIC, z.s.p.o.' % time.localtime().tm_year
+author = 'CZ.NIC Labs <http://www.knot-dns.cz>'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -189,8 +190,7 @@ latex_elements = {
 # Grouping the document tree into LaTeX files. List of tuples
 # (source start file, target name, title, author, documentclass [howto/manual]).
 latex_documents = [
-  ('index', 'KnotDNS.tex', u'Knot DNS Documentation',
-   u'CZ.NIC, z.s.p.o.', 'manual'),
+  ('index', 'KnotDNS.tex', 'Knot DNS Documentation', copyright, 'manual'),
 ]
 
 # The name of an image file (relative to this directory) to place at the top of
@@ -218,10 +218,9 @@ latex_domain_indices = False
 
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
-#man_pages = [
-#    ('index', 'knotdns', u'Knot DNS Documentation',
-#     [u'CZ.NIC, z.s.p.o.'], 1)
-#]
+man_pages = [
+    ('reference', 'knot.conf', 'Knot DNS configuration file', author, 5)
+]
 
 # If true, show URL addresses after external links.
 #man_show_urls = False
@@ -233,10 +232,7 @@ latex_domain_indices = False
 # (source start file, target name, title, author,
 #  dir menu entry, description, category)
 texinfo_documents = [
-  ('index', 'KnotDNS', u'Knot DNS Documentation',
-   u'CZ.NIC, z.s.p.o.', 'KnotDNS',
-   'High-performance authoritative DNS server implementation',
-   'Miscellaneous'),
+  ('index', 'KnotDNS', 'Knot DNS Documentation', author)
 ]
 
 # Documents to append as an appendix to all manuals.

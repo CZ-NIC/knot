@@ -1,14 +1,14 @@
 .. meta::
    :description: reStructuredText plaintext markup language
 
-Introduction
-============
+.. _Introduction:
 
-The reader of this document is assumed to know the principles of
-Domain Name System.
+************
+Introduction
+************
 
 What is Knot DNS
-----------------
+================
 
 Knot DNS is a high-performance open source DNS server. It
 implements only authoritative domain name service. Knot DNS
@@ -20,9 +20,9 @@ implementation which allows it to scale well on SMP systems and
 operate non-stop even when adding or removing zones.
 
 Knot DNS features
------------------
+=================
 
-Knot DNS supports the following DNS features:
+DNS features:
 
 * IN class and partially CH class
 * TCP/UDP protocols
@@ -54,15 +54,9 @@ Knot DNS issue tracker: `gitlab.labs.nic.cz/labs/knot/issues <https://gitlab.lab
 
 Knot DNS users mailing list: `knot-dns-users@lists.nic.cz <mailto:knot-dns-users@lists.nic.cz>`_
 
-Scope of this document
-----------------------
-
-This document covers the basic information on installing, configuring
-and troubleshooting the Knot DNS server.
-
 License
--------
+=======
 
 Knot DNS is licensed under `GNU General Public License <https://www.gnu.org/copyleft/gpl.html>`_
 version 3 or (at your option) any later version. The full text of the license
-is available in the ``COPYING`` file distributed with the source codes.
+is available in the ``COPYING`` file distributed with the source code.

@@ -1,11 +1,11 @@
 .. meta::
    :description: reStructuredText plaintext markup language
 
-.. _Running Knot DNS:
+.. _Running:
 
-****************
-Running Knot DNS
-****************
+*******
+Running
+*******
 
 The Knot DNS server part ``knotd`` can run either in the foreground or in the background,
 with the ``-d`` option. When run in the foreground, it doesn't create a PID file.
@@ -15,9 +15,10 @@ The tool ``knotc`` is designed as a front-end for user, making it easier to cont
 server daemon. If you want to control the daemon directly, use ``SIGINT`` to quit
 the process or ``SIGHUP`` to reload configuration.
 
-If you do not pass any configuration via ``-c`` option, it will try to
-search configuration in default path that is ``SYSCONFDIR/knot.conf``. The ``SYSCONFDIR``
-depends on what you passed to the ``./configure``, usually ``/etc``.
+If you pass neither configuration file (``-c`` parameter) nor configuration
+database (``-C`` parameter), server will try to use the default configuration
+file stored in ``SYSCONFDIR/knot/knot.conf`` (configured with
+``--with-configdir=path``)
 
 Example of server start as a daemon::
 
@@ -30,24 +31,24 @@ Example of server stop::
 For a complete list of actions refer to ``knotd -h`` and ``knotc -h``
 or corresponding man pages.
 
-Also, the server needs to create several files in order to run properly. These
-files are stored in the folowing directories.
+Also, the server needs to create :ref:`server_rundir` and :ref:`template_storage`
+directories in order to run properly.
 
-``storage`` (:ref:`storage`):
+.. _Configuration database:
 
-* *Zone files* - default directory for storing zone files. This can be
-  overriden using absolute zone file location.
+Configuration database
+======================
 
-* *Journal files* - each zone has a journal file to store differences
-  for IXFR and dynamic updates. Journal for zone ``example.com`` will
-  be placed in ``example.com.diff.db``.
+In the case of a huge configuration file, the configuration can be preloaded
+into the server`s configuration database::
 
-``rundir`` (:ref:`rundir`):
+    $ knotc import input.conf
 
-* *PID file* - is created automatically when the server is run in background.
+Also the configuration database can be exported into the configuration file::
 
-* *Control sockets* - as a default, UNIX sockets are created here, but
-  this can be overriden.
+    $ knotc export output.conf
+
+It is recommended to process these operations without server running.
 
 .. _Running a slave server:
 
@@ -55,12 +56,10 @@ Running a slave server
 ======================
 
 Running the server as a slave is very straightforward as you usually
-bootstrap zones over AXFR and thus avoid any manual zone compilation.
+bootstrap zones over AXFR and thus avoid any manual zone operations.
 In contrast to AXFR, when the incremental transfer finishes, it stores
-the differences in a journal file and doesn't update the zone file
-immediately. There is a timer that checks periodically for new
-differences and updates the zone file. You can configure this timer
-with the ``zonefile-sync`` statement in ``zones`` (:ref:`zones`).
+the differences in the journal file and doesn't update the zone file
+immediately but after :ref:`template_zonefile-sync` period elapses.
 
 .. _Running a master server:
 
@@ -96,14 +95,14 @@ action::
 
     $ knotc -c master.conf reload
 
-If you want *IXFR-out* differences created from changes you make to a
-zone file, enable :ref:`ixfr-from-differences` in ``zones`` statement,
-then reload your server as seen above. If *SOA*'s *serial* is not
-changed no differences will be created.
+If you want to enable ixfr differences creation from changes you make to a
+zone file, enable :ref:`template_ixfr-from-differences` in the zone configuration
+and reload your server as seen above. If *SOA*'s *serial* is not changed,
+no differences will be created.
 
 If you want to refresh the slave zones, you can do this with the
 ``knotc refresh`` action::
 
     $ knotc -c slave.conf refresh
 
-For the zone retransfer, there is also additional command ``-f``.
+For the zone retransfer, there is also an additional command ``-f``.

@@ -9,10 +9,14 @@
 .SS "Parameters:"
 .TP
 \fB\-c\fR, \fB\-\-config\fR \fIfile\fR
-Select configuration file.
+Use textual configuration file (default is @config_dir@/knot.conf).
 .TP
-\fB\-d\fR, \fB\-\-daemonize\fR=[\fIdir\fR]
-Run server as a daemon. Working directory may be set.
+\fB\-C\fR, \fB\-\-confdb\fR \fIdirectory\fR
+Use configuration database.
+.TP
+\fB\-d\fR, \fB\-\-daemonize\fR=[\fIdirectory\fR]
+Run server as a daemon. Working directory may be set
+(default directory is /).
 .TP
 \fB\-V\fR, \fB\-\-version\fR
 Print version of the server.
