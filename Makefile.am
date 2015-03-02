@@ -1,5 +1,5 @@
 ACLOCAL_AMFLAGS = -I m4
-SUBDIRS = libtap src tests samples doc man patches
+SUBDIRS = libtap src tests samples doc man
 
 AM_DISTCHECK_CONFIGURE_FLAGS = \
 	--disable-code-coverage
