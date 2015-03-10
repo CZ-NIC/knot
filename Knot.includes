@@ -1,2 +1,7 @@
+libtap
 src
 src/dnssec/lib
+src/dnssec/lib/dnssec
+src/dnssec/shared
+src/dnssec/utils
+src/zscanner
