@@ -1,4 +1,4 @@
-/*  Copyright (C) 2014 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -14,11 +14,33 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <tap/basic.h>
 #include <stdlib.h>
+#include <unistd.h>
 
 #include "path.h"
 
-char *path_normalize(const char *path)
+static void test_normalize(const char *input, const char *expected)
 {
-	return realpath(path, NULL);
+	char *output = path_normalize(input);
+
+	is_string(expected, output, "path_normalize(\"%s\")", input);
+	free(output);
+}
+
+int main(int argc, char *argv[])
+{
+	plan_lazy();
+
+	test_normalize("/", "/");
+	test_normalize("/tmp", "/tmp");
+	test_normalize("/tmp/", "/tmp");
+	test_normalize("/tmp/../tmp/./", "/tmp");
+	test_normalize("/tmp/../../..", "/");
+
+	char *cwd = getcwd(NULL, 0);
+	test_normalize(".", cwd);
+	free(cwd);
+
+	return 0;
 }

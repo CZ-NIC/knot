@@ -38,6 +38,7 @@ check_PROGRAMS = \
 	sign_der	\
 	shared_base32hex \
 	shared_dname	\
+	shared_path	\
 	shared_wire	\
 	tsig
 

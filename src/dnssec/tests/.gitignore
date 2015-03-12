@@ -20,6 +20,7 @@
 /random
 /shared_base32hex
 /shared_dname
+/shared_path
 /shared_wire
 /sign
 /sign_der
