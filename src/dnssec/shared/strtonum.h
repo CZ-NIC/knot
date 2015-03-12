@@ -85,7 +85,7 @@ inline static int str_to_uintmax(const char *src, uintmax_t *dest)
 
 inline static int str_to_int(const char *src, int *dest)
 {
-	CONVERT(str_to_uintmax, uintmax_t, int, INT_MIN, INT_MAX, src, dest);
+	CONVERT(str_to_intmax, intmax_t, int, INT_MIN, INT_MAX, src, dest);
 }
 
 inline static int str_to_u8(const char *src, uint8_t *dest)
