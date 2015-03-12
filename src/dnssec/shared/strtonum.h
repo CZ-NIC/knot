@@ -21,11 +21,16 @@
 #include <limits.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <ctype.h>
 
 #include "error.h"
 
 inline static int str_to_intmax(const char *src, intmax_t *dest)
 {
+	if (!isdigit(*src) && *src != '-' && *src != '+') {
+		return DNSSEC_MALFORMED_DATA;
+	}
+
 	errno = 0;
 	char *end = NULL;
 	intmax_t result = strtoimax(src, &end, 10);
@@ -44,6 +49,10 @@ inline static int str_to_intmax(const char *src, intmax_t *dest)
 
 inline static int str_to_uintmax(const char *src, uintmax_t *dest)
 {
+	if (!isdigit(*src) && *src != '-' && *src != '+') {
+		return DNSSEC_MALFORMED_DATA;
+	}
+
 	errno = 0;
 	char *end = NULL;
 	uintmax_t result = strtoumax(src, &end, 10);
