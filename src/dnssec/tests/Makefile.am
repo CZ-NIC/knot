@@ -1,4 +1,5 @@
 AM_CPPFLAGS = \
+	-include $(top_builddir)/src/config.h \
 	-I$(top_srcdir)/libtap \
 	-I$(srcdir)/../shared \
 	-I$(srcdir)/../lib \
