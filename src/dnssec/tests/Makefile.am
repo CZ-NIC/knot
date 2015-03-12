@@ -40,6 +40,7 @@ check_PROGRAMS = \
 	shared_base32hex \
 	shared_dname	\
 	shared_path	\
+	shared_strtonum	\
 	shared_wire	\
 	tsig
 
