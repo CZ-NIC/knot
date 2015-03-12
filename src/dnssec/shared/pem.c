@@ -65,21 +65,21 @@ int pem_to_privkey(const dnssec_binary_t *data, gnutls_privkey_t *key, char **id
 	// create abstract private key
 
 	gnutls_x509_privkey_t key_x509 = NULL;
-	int result = pem_to_x509(data, &key_x509);
-	if (result != DNSSEC_EOK) {
-		return result;
+	int r = pem_to_x509(data, &key_x509);
+	if (r != DNSSEC_EOK) {
+		return r;
 	}
 
 	gnutls_privkey_t key_abs = NULL;
-	result = gnutls_privkey_init(&key_abs);
-	if (result != GNUTLS_E_SUCCESS) {
+	r = gnutls_privkey_init(&key_abs);
+	if (r != GNUTLS_E_SUCCESS) {
 		gnutls_x509_privkey_deinit(key_x509);
 		return DNSSEC_ENOMEM;
 	}
 
 	int flags = GNUTLS_PRIVKEY_IMPORT_AUTO_RELEASE;
-	result = gnutls_privkey_import_x509(key_abs, key_x509, flags);
-	if (result != GNUTLS_E_SUCCESS) {
+	r = gnutls_privkey_import_x509(key_abs, key_x509, flags);
+	if (r != GNUTLS_E_SUCCESS) {
 		gnutls_x509_privkey_deinit(key_x509);
 		gnutls_privkey_deinit(key_abs);
 		return DNSSEC_ENOMEM;
@@ -164,14 +164,14 @@ int pem_gnutls_x509_export(gnutls_x509_privkey_t key, dnssec_binary_t *pem_ptr)
 	assert(pem_ptr);
 
 	dnssec_binary_t pem = { 0 };
-	int result = try_export_pem(key, &pem);
-	if (result != GNUTLS_E_SHORT_MEMORY_BUFFER || pem.size == 0) {
+	int r = try_export_pem(key, &pem);
+	if (r != GNUTLS_E_SHORT_MEMORY_BUFFER || pem.size == 0) {
 		return DNSSEC_KEY_EXPORT_ERROR;
 	}
 
 	dnssec_binary_alloc(&pem, pem.size);
-	result = try_export_pem(key, &pem);
-	if (result != GNUTLS_E_SUCCESS) {
+	r = try_export_pem(key, &pem);
+	if (r != GNUTLS_E_SUCCESS) {
 		dnssec_binary_free(&pem);
 		return DNSSEC_KEY_EXPORT_ERROR;
 	}
