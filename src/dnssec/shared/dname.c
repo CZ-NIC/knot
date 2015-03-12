@@ -23,6 +23,8 @@
 #include "dname.h"
 #include "shared.h"
 
+#define DNAME_MAX_LABEL_LENGTH 63
+
 /*!
  * Get length of a domain name in wire format.
  */
@@ -72,6 +74,27 @@ uint8_t *dname_copy(const uint8_t *dname)
 }
 
 /*!
+ * Normalize dname label in-place.
+ *
+ * \return Number of processed bytes, 0 if we encounter the last label.
+ */
+static uint8_t normalize_label(uint8_t *label)
+{
+	assert(label);
+
+	uint8_t len = *label;
+	if (len == 0 || len > DNAME_MAX_LABEL_LENGTH) {
+		return 0;
+	}
+
+	for (uint8_t *scan = label + 1, *end = scan + len; scan < end; scan++) {
+		*scan = tolower(*scan);
+	}
+
+	return len + 1;
+}
+
+/*!
  * Normalize domain name in wire format.
  */
 void dname_normalize(uint8_t *dname)
@@ -80,12 +103,11 @@ void dname_normalize(uint8_t *dname)
 		return;
 	}
 
-	size_t length = dname_length(dname);
-	uint8_t *scan = dname;
-	for (size_t i = 0; i < length; i++) {
-		*scan = tolower(*scan);
-		scan += 1;
-	}
+	uint8_t read, *scan = dname;
+	do {
+		read = normalize_label(scan);
+		scan += read;
+	} while (read > 0);
 }
 
 /*!
