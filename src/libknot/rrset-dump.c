@@ -1716,6 +1716,10 @@ int knot_rrset_txt_dump_data(const knot_rrset_t      *rrset,
 		return ret;
 	}
 
+	if (style->generic) {
+		return dump_unknown(&p);
+	}
+
 	switch (rrset->type) {
 		case KNOT_RRTYPE_A:
 			ret = dump_a(&p);
@@ -1882,7 +1886,11 @@ int knot_rrset_txt_dump_header(const knot_rrset_t      *rrset,
 	}
 
 	// Dump rrset type.
-	if (knot_rrtype_to_string(rrset->type, buf, sizeof(buf)) < 0) {
+	if (style->generic) {
+		if (snprintf(buf, sizeof(buf), "TYPE%u", rrset->type) < 0) {
+			return KNOT_ESPACE;
+		}
+	} else if (knot_rrtype_to_string(rrset->type, buf, sizeof(buf)) < 0) {
 		return KNOT_ESPACE;
 	}
 	if (rrset->rrs.rr_count > 0) {
