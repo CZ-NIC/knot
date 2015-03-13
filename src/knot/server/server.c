@@ -449,7 +449,8 @@ int server_reload(server_t *server, const char *cf)
 			  conf()->filename);
 		break;
 	default:
-		log_error("failed to reload the configuration");
+		log_error("failed to reload the configuration (%s)",
+		          knot_strerror(cf_ret));
 		break;
 	}
 
