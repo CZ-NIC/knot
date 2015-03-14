@@ -143,6 +143,13 @@ static int server_init_iface(iface_t *new_if, conf_iface_t *cfg_if)
 		return KNOT_ERROR;
 	}
 
+	/* Set send buffer size to fit a maximum-sized DNS message. */
+	int sndbuf = sizeof(uint16_t) + UINT16_MAX;
+	ret = setsockopt(sock, SOL_SOCKET, SO_SNDBUF, &sndbuf, sizeof(sndbuf));
+	if (ret == -1) {
+		log_warning("failed to set maximum send buffer size for TCP");
+	}
+
 	/* accept() must not block */
 	if (fcntl(sock, F_SETFL, O_NONBLOCK) < 0) {
 		close(new_if->fd[IO_UDP]);
