@@ -143,12 +143,17 @@ static void test_naming(void)
 	const uint8_t *expected = (uint8_t *)"\x07""example""\x03""com";
 	size_t expected_size = 13;
 
+	ok(dnssec_key_get_dname(key) == NULL, "implicit key name");
+
 	dnssec_key_set_dname(key, input);
 	const uint8_t *output = dnssec_key_get_dname(key);
 
 	ok(strlen((char *)output) + 1 == 13 &&
 	   memcmp(output, expected, expected_size) == 0,
-	   "dnssec_key_get_dname()");
+	   "set key name");
+
+	dnssec_key_set_dname(key, NULL);
+	ok(dnssec_key_get_dname(key) == NULL, "clear key name");
 
 	dnssec_key_free(key);
 }

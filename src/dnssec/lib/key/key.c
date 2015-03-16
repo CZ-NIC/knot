@@ -199,16 +199,21 @@ const uint8_t *dnssec_key_get_dname(const dnssec_key_t *key)
 _public_
 int dnssec_key_set_dname(dnssec_key_t *key, const uint8_t *dname)
 {
-	if (!key || !dname) {
+	if (!key) {
 		return DNSSEC_EINVAL;
 	}
 
-	uint8_t *copy = dname_copy(dname);
-	if (!copy) {
-		return DNSSEC_ENOMEM;
+	uint8_t *copy = NULL;
+	if (dname) {
+		copy = dname_copy(dname);
+		if (!copy) {
+			return DNSSEC_ENOMEM;
+		}
+
+		dname_normalize(copy);
 	}
 
-	dname_normalize(copy);
+	free(key->dname);
 	key->dname = copy;
 
 	return DNSSEC_EOK;
