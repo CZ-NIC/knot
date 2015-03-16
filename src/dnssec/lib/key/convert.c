@@ -142,7 +142,7 @@ static int dsa_pubkey_to_rdata(gnutls_pubkey_t key, dnssec_binary_t *rdata)
 /*!
  * Convert ECDSA public key to DNSSEC format.
  */
-int ecdsa_pubkey_to_rdata(gnutls_pubkey_t key, dnssec_binary_t *rdata)
+static int ecdsa_pubkey_to_rdata(gnutls_pubkey_t key, dnssec_binary_t *rdata)
 {
 	assert(key);
 	assert(rdata);
@@ -267,7 +267,7 @@ static uint8_t expected_t_size(size_t size)
 /*!
  * Convert DSA key in DNSSEC format to crypto key.
  */
-int dsa_rdata_to_pubkey(const dnssec_binary_t *rdata, gnutls_pubkey_t key)
+static int dsa_rdata_to_pubkey(const dnssec_binary_t *rdata, gnutls_pubkey_t key)
 {
 	assert(rdata);
 	assert(key);
