@@ -356,22 +356,20 @@ int dnssec_key_set_pubkey(dnssec_key_t *key, const dnssec_binary_t *pubkey)
 		return DNSSEC_KEY_ALREADY_PRESENT;
 	}
 
-	dnssec_binary_t new_rdata = key->rdata;
-	int result = dnskey_rdata_set_pubkey(&new_rdata, pubkey);
+	if (dnssec_key_get_algorithm(key) == 0) {
+		return DNSSEC_INVALID_KEY_ALGORITHM;
+	}
+
+	int result = dnskey_rdata_set_pubkey(&key->rdata, pubkey);
 	if (result != DNSSEC_EOK) {
 		return result;
 	}
 
-	gnutls_pubkey_t new_pubkey = NULL;
-	result = dnskey_rdata_to_crypto_key(&new_rdata, &new_pubkey);
+	result = dnskey_rdata_to_crypto_key(&key->rdata, &key->public_key);
 	if (result != DNSSEC_EOK) {
+		key->rdata.size = DNSKEY_RDATA_OFFSET_PUBKEY; // downsize
 		return result;
 	}
-
-	// commit result
-
-	key->rdata = new_rdata;
-	key->public_key = new_pubkey;
 
 	key_update_identifiers(key);
 

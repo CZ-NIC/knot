@@ -39,7 +39,7 @@ static void check_key_ids(dnssec_key_t *key, const key_parameters_t *params)
 	ok(keytag == params->keytag, "get keytag");
 
 	const char *key_id = dnssec_key_get_id(key);
-	ok(strcmp(key_id, params->key_id) == 0, "get key ID");
+	is_string(params->key_id, key_id, "get key ID");
 }
 
 static void check_key_size(dnssec_key_t *key, const key_parameters_t *params)
@@ -69,12 +69,20 @@ static void test_public_key(const key_parameters_t *params)
 
 	// create from parameters
 
+	r = dnssec_key_set_pubkey(key, &params->public_key);
+	ok(r == DNSSEC_INVALID_KEY_ALGORITHM,
+	   "set public key (fails, no algorithm set)");
+
 	check_attr_scalar(key, uint16_t, flags,     256, params->flags);
 	check_attr_scalar(key, uint8_t,  protocol,  3,   params->protocol);
 	check_attr_scalar(key, uint8_t,  algorithm, 0,   params->algorithm);
 
 	r = dnssec_key_set_pubkey(key, &params->public_key);
-	ok(r == DNSSEC_EOK, "set public key");
+	ok(r == DNSSEC_EOK, "set public key (succeeds)");
+
+	r = dnssec_key_set_pubkey(key, &params->public_key);
+	ok(r == DNSSEC_KEY_ALREADY_PRESENT,
+	   "set public key (fails, already present)");
 
 	dnssec_binary_t rdata = { 0 };
 	r = dnssec_key_get_rdata(key, &rdata);
