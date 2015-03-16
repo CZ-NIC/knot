@@ -288,15 +288,15 @@ static bool can_change_algorithm(dnssec_key_t *key, uint8_t algorithm)
 		return true;
 	}
 
-	gnutls_pk_algorithm_t new = algorithm_to_gnutls(algorithm);
-	if (new == GNUTLS_PK_UNKNOWN) {
+	gnutls_pk_algorithm_t update = algorithm_to_gnutls(algorithm);
+	if (update == GNUTLS_PK_UNKNOWN) {
 		return false;
 	}
 
 	int current = gnutls_pubkey_get_pk_algorithm(key->public_key, NULL);
 	assert(current >= 0);
 
-	return current == new;
+	return current == update;
 }
 
 _public_
