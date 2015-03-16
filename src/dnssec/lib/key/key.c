@@ -275,7 +275,7 @@ int dnssec_key_set_protocol(dnssec_key_t *key, uint8_t protocol)
 	return DNSSEC_EOK;
 }
 
-/* -- restriced attributes ------------------------------------------------- */
+/* -- restricted attributes ------------------------------------------------ */
 
 /*!
  * Check if current public key algorithm matches with the new algorithm.

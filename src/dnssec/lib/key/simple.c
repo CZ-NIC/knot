@@ -29,7 +29,7 @@
 /* -- internal functions --------------------------------------------------- */
 
 /*!
- * Check if DNSKEY has and algorithm set.
+ * Check if DNSKEY was assigned an algorithm.
  */
 static bool has_algorithm(dnssec_key_t *key)
 {
