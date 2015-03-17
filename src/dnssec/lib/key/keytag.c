@@ -25,7 +25,7 @@
 /*!
  * Compute keytag for RSA/MD5 key.
  *
- * \see RFC 2537 (section 2) , RFC 4034 (appendix B.1)
+ * \see RFC 2537 (section 2), RFC 4034 (appendix B.1)
  */
 static uint16_t keytag_compat(const dnssec_binary_t *rdata)
 {
@@ -57,8 +57,7 @@ static uint16_t keytag_current(const dnssec_binary_t *rdata)
 		ac += (i & 1) ? rdata->data[i] : rdata->data[i] << 8;
 	}
 
-	ac += (ac >> 16) & 0xFFFF;
-	return ac & 0xFFFF;
+	return (ac >> 16) + ac;
 }
 
 /* -- public API ----------------------------------------------------------- */
