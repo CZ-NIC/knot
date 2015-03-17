@@ -109,16 +109,25 @@ int yp_set_input_file(
 		return KNOT_EFILE;
 	}
 
-	// Map the file to the memory.
-	char *start = mmap(0, file_stat.st_size, PROT_READ, MAP_SHARED,
-	                   parser->file.descriptor, 0);
-	if (start == MAP_FAILED) {
-		close(parser->file.descriptor);
-		return KNOT_ENOMEM;
-	}
+	char *start = NULL;
 
-	// Try to set the mapped memory advise to sequential.
-	(void)madvise(start, file_stat.st_size, MADV_SEQUENTIAL);
+	// Check for empty file (cannot mmap).
+	if (file_stat.st_size > 0) {
+		// Map the file to the memory.
+		start = mmap(0, file_stat.st_size, PROT_READ, MAP_SHARED,
+		             parser->file.descriptor, 0);
+		if (start == MAP_FAILED) {
+			close(parser->file.descriptor);
+			return KNOT_ENOMEM;
+		}
+
+		// Try to set the mapped memory advise to sequential.
+		(void)madvise(start, file_stat.st_size, MADV_SEQUENTIAL);
+
+		parser->input.eof = false;
+	} else {
+		parser->input.eof = true;
+	}
 
 	parser->file.name = strdup(file_name);
 
@@ -126,7 +135,6 @@ int yp_set_input_file(
 	parser->input.start   = start;
 	parser->input.current = start;
 	parser->input.end     = start + file_stat.st_size;
-	parser->input.eof     = false;
 
 	return KNOT_EOK;
 }
