@@ -31,7 +31,7 @@
  *
  * \todo Input data should be converted to lowercase.
  */
-static int nsec3_hash(gnutls_digest_algorithm_t algorithm, unsigned iterations,
+static int nsec3_hash(gnutls_digest_algorithm_t algorithm, int iterations,
 		      const dnssec_binary_t *salt, const dnssec_binary_t *data,
 		      dnssec_binary_t *hash)
 {
