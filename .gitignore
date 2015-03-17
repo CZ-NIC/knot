@@ -84,6 +84,9 @@
 /src/knsupdate
 /src/knsec3hash
 
+# Plugin binaries
+/src/rosedb_tool
+
 # Code coverage
 *.gcda
 *.gcno
