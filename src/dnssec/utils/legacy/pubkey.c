@@ -71,9 +71,9 @@ int legacy_pubkey_parse(const char *filename, dnssec_key_t **key_ptr)
 		return result;
 	}
 
-	uint16_t class = CLASS_IN;
+	uint16_t cls = CLASS_IN;
 	uint32_t ttl = 0;
-	zs_scanner_t *scanner = zs_scanner_create(".", class, ttl,
+	zs_scanner_t *scanner = zs_scanner_create(".", cls, ttl,
 						  parse_record, NULL, key);
 	if (!scanner) {
 		dnssec_key_free(key);
