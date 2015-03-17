@@ -74,7 +74,7 @@ int subcommand(const command_t *commands, int argc, char *argv[])
 
 		assert(m == CMD_MATCH_PREFIX);
 		if (match) {
-			error("Unambiguous command ('%s' or '%s').",
+			error("Ambiguous command ('%s' or '%s').",
 			      match->name, cmd->name);
 			return 1;
 		}
