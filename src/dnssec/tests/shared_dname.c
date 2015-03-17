@@ -36,14 +36,7 @@ static void test_length(void)
 
 static bool dname_binary_equal(const uint8_t *one, const uint8_t *two)
 {
-	size_t length_one = dname_length(one);
-	size_t length_two = dname_length(two);
-
-	if (length_one != length_two) {
-		return false;
-	}
-
-	return memcmp(one, two, length_one) == 0;
+	return one && two && strcmp((char *)one, (char *)two) == 0;
 }
 
 static void test_copy(void)
