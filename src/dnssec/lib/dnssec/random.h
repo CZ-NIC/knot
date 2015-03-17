@@ -53,7 +53,7 @@ int dnssec_random_buffer(uint8_t *data, size_t size);
 /*!
  * Fill a binary structure with random data.
  *
- * \param data  Preallocated binary structure to be filled..
+ * \param data  Preallocated binary structure to be filled.
  *
  * \return Error code, DNSEC_EOK if successful.
  */

@@ -116,8 +116,6 @@ typedef enum dnssec_nsec_algorithm {
 
 /*!
  * DNSSEC NSEC3 parameters.
- *
- * \todo Disclose this and add setters?
  */
 typedef struct dnssec_nsec3_params {
 	dnssec_nsec3_algorithm_t algorithm; /*!< NSEC3 algorithm. */
