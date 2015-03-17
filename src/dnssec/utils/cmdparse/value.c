@@ -59,12 +59,12 @@ int value_bool(int argc, char *argv[], const parameter_t *p, void *data)
 	bool *value = data + p->offset;
 	char *input = argv[0];
 
-	struct value {
+	struct value_name {
 		char *value;
 		bool flag;
 	};
 
-	static const struct value VALUES[] = {
+	static const struct value_name VALUE_NAMES[] = {
 		{ "true", true }, { "false", false },
 		{ "yes",  true }, { "no",    false },
 		{ "on",   true }, { "off",   false },
@@ -73,7 +73,7 @@ int value_bool(int argc, char *argv[], const parameter_t *p, void *data)
 		{ NULL }
 	};
 
-	for (const struct value *v = VALUES; v->value; v++) {
+	for (const struct value_name *v = VALUE_NAMES; v->value; v++) {
 		if (strcasecmp(v->value, input) == 0) {
 			*value = v->flag;
 			return 1;
