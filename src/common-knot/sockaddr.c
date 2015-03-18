@@ -186,10 +186,12 @@ void sockaddr_port_set(struct sockaddr_storage *ss, uint16_t port)
 char *sockaddr_hostname(void)
 {
 	/* Fetch hostname. */
-	char host[KNOT_DNAME_MAXLEN] = {'\0'};
-	if (gethostname(host, KNOT_DNAME_MAXLEN) != 0) {
+	char host[KNOT_DNAME_MAXLEN + 1] = { '\0' };
+	if (gethostname(host, sizeof(host)) != 0) {
 		return NULL;
 	}
+	/* Just to be sure. */
+	host[sizeof(host) - 1] = '\0';
 
 	/* Fetch canonical name for this address/DNS. */
 	struct addrinfo hints, *info = NULL;
