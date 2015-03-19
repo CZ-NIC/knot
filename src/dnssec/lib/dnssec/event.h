@@ -24,8 +24,9 @@
 enum dnssec_event_type {
 	DNSSEC_EVENT_NONE = 0,
 	DNSSEC_EVENT_GENERATE_INITIAL_KEY,
-	DNSSEC_EVENT_ZSK_ROTATION_INIT,
-	DNSSEC_EVENT_ZSK_ROTATION_FINISH,
+	DNSSEC_EVENT_ZSK_ROLL_PUBLISH_NEW_KEY,
+	DNSSEC_EVENT_ZSK_ROLL_REPLACE_SIGNATURES,
+	DNSSEC_EVENT_ZSK_ROLL_REMOVE_OLD_KEY,
 };
 
 typedef enum dnssec_event_type dnssec_event_type_t;
@@ -53,6 +54,12 @@ struct dnssec_event_ctx {
 
 typedef struct dnssec_event_ctx dnssec_event_ctx_t;
 
+/*!
+ * Get next DNSSEC event to be executed.
+ */
 int dnssec_event_get_next(dnssec_event_ctx_t *ctx, dnssec_event_t *event);
 
+/*!
+ * Execute given DNSSEC event.
+ */
 int dnssec_event_execute(dnssec_event_ctx_t *ctx, dnssec_event_t *event);
