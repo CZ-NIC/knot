@@ -5,6 +5,7 @@
 # test binaries
 /binary
 /crypto
+/event_keystate
 /kasp_dir_escape
 /kasp_dir_file
 /kasp_store
