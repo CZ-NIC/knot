@@ -19,9 +19,9 @@
 
 #include "event/keystate.h"
 
-static const time_t PAST   = 1426852710;
-static const time_t NOW    = 1426852711;
-static const time_t FUTURE = 1426852712;
+#define PAST   1426852710
+#define NOW    1426852711
+#define FUTURE 1426852712
 
 static const dnssec_kasp_key_timing_t INITIAL_TIMING = {
 	.created = PAST,
