@@ -47,7 +47,7 @@ int main(int argc, char *argv[])
 	r = getsockname(server, sa, &salen);
 	ok(r == 0, "server: get bound address");
 
-	r = fcntl(server, F_SETFL, SOCK_NONBLOCK);
+	r = fcntl(server, F_SETFL, O_NONBLOCK);
 	ok(r == 0, "server: set non-blocking mode");
 
 	// create TCP client
@@ -55,7 +55,7 @@ int main(int argc, char *argv[])
 	int client = net_connected_socket(SOCK_STREAM, &addr, NULL, 0);
 	ok(client >= 0, "client: connect to server");
 
-	r = fcntl(client, F_SETFL, SOCK_NONBLOCK);
+	r = fcntl(client, F_SETFL, O_NONBLOCK);
 	ok(r == 0, "client: set non-blocking mode");
 
 	int optval = 1;
@@ -79,7 +79,7 @@ int main(int argc, char *argv[])
 
 	uint8_t recvbuf[UINT16_MAX];
 	memset(recvbuf, 0, sizeof(recvbuf));
-	struct timeval timeout = { .tv_sec = 2 };
+	struct timeval timeout = { .tv_sec = 1 };
 	r = tcp_recv_msg(accepted, recvbuf, sizeof(recvbuf), &timeout);
 	ok(r == sizeof(recvbuf) && memcmp(sndbuf, recvbuf, sizeof(sndbuf)) == 0,
 	   "server: tcp_recv_msg() complete and valid data");
