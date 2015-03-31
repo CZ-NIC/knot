@@ -19,10 +19,26 @@
 #include <fcntl.h>
 #include <stdint.h>
 #include <string.h>
+#include <pthread.h>
 
 #include "libknot/internal/net.h"
 
 const struct timeval TIMEOUT = { .tv_sec = 1 };
+
+struct data {
+	int fd;
+	struct timeval timeout;
+	uint8_t *buffer;
+	size_t size;
+	int result;
+};
+
+static void *thr_receive(void *data)
+{
+	struct data *d = data;
+	d->result = tcp_recv_msg(d->fd, d->buffer, d->size, &d->timeout);
+	return NULL;
+}
 
 int main(int argc, char *argv[])
 {
@@ -61,6 +77,23 @@ int main(int argc, char *argv[])
 	r = setsockopt(client, SOL_SOCKET, SO_SNDBUF, &optval, optlen);
 	ok(r == 0, "client: configure small send buffer");
 
+	// accept TCP connection
+
+	int accepted = accept(server, NULL, NULL);
+	ok(accepted >= 0, "server: accepted connection");
+
+	uint8_t recvbuf[UINT16_MAX] = { 0 };
+	struct data recv_data = {
+		.fd = accepted,
+		.timeout = TIMEOUT,
+		.buffer = recvbuf,
+		.size = sizeof(recvbuf)
+	};
+
+	pthread_t thr;
+	r = pthread_create(&thr, NULL, thr_receive, &recv_data);
+	ok(r == 0, "server: start receiver thread");
+
 	// send message (should handle partial-write correctly)
 
 	uint8_t sndbuf[UINT16_MAX];
@@ -73,14 +106,11 @@ int main(int argc, char *argv[])
 
 	// receive message
 
-	int accepted = accept(server, NULL, NULL);
-	ok(accepted >= 0, "server: accepted connection");
+	r = pthread_join(thr, NULL);
+	ok(r == 0, "server: wait for reciever thread to terminate");
 
-	uint8_t recvbuf[UINT16_MAX];
-	memset(recvbuf, 0, sizeof(recvbuf));
-	timeout = TIMEOUT;
-	r = tcp_recv_msg(accepted, recvbuf, sizeof(recvbuf), &timeout);
-	ok(r == sizeof(recvbuf) && memcmp(sndbuf, recvbuf, sizeof(sndbuf)) == 0,
+	ok(recv_data.result == sizeof(recvbuf) &&
+	   memcmp(sndbuf, recvbuf, sizeof(recvbuf)) == 0,
 	   "server: tcp_recv_msg() complete and valid data");
 
 	// clean up
