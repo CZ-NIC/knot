@@ -56,7 +56,7 @@ int main(int argc, char *argv[])
 	r = fcntl(client, F_SETFL, O_NONBLOCK);
 	ok(r == 0, "client: set non-blocking mode");
 
-	int optval = 1;
+	int optval = 8192;
 	socklen_t optlen = sizeof(optval);
 	r = setsockopt(client, SOL_SOCKET, SO_SNDBUF, &optval, optlen);
 	ok(r == 0, "client: configure small send buffer");
