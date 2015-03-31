@@ -507,30 +507,15 @@ dbg_ns_exec_verb(
 	// search for previous until we find name lesser than wildcard
 	assert(closest_encloser != NULL);
 
-	knot_dname_t *wildcard =
-		ns_wildcard_child_name(closest_encloser->owner);
+	knot_dname_t *wildcard = ns_wildcard_child_name(closest_encloser->owner);
 	if (wildcard == NULL) {
 		return KNOT_ERROR; /* servfail */
 	}
 
-	const zone_node_t *prev_new = previous;
-
-	while (knot_dname_cmp(prev_new->owner, wildcard) > 0) {
-dbg_ns_exec_verb(
-		char *name = knot_dname_to_str_alloc(prev_new->owner);
-		dbg_ns_verb("Previous node: %s\n", name);
-		free(name);
-);
-		assert(prev_new != zone->apex);
+	const zone_node_t *prev_new = zone_contents_find_previous(zone, wildcard);
+	while (prev_new->flags != NODE_FLAGS_AUTH) {
 		prev_new = prev_new->prev;
 	}
-	assert(knot_dname_cmp(prev_new->owner, wildcard) < 0);
-
-dbg_ns_exec_verb(
-	char *name = knot_dname_to_str_alloc(prev_new->owner);
-	dbg_ns_verb("Previous node: %s\n", name);
-	free(name);
-);
 
 	/* Directly discard dname. */
 	knot_dname_free(&wildcard, NULL);
