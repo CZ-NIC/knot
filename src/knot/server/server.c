@@ -110,7 +110,7 @@ static bool setsockopt_min(int sock, int option, int min)
 /*!
  * \brief Enlarge send/receive buffers.
  */
-static bool enlarge_net_buffers(sock, min_recvsize, min_sndsize)
+static bool enlarge_net_buffers(int sock, int min_recvsize, int min_sndsize)
 {
 	return setsockopt_min(sock, SO_RCVBUF, min_recvsize) &&
 	       setsockopt_min(sock, SO_SNDBUF, min_sndsize);
