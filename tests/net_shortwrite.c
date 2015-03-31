@@ -16,14 +16,10 @@
 
 #include <tap/basic.h>
 
-#include <errno.h>
 #include <fcntl.h>
-#include <limits.h>
+#include <stdint.h>
 #include <string.h>
 
-#include <stdio.h>
-
-#include "libknot/errcode.h"
 #include "libknot/internal/net.h"
 
 int main(int argc, char *argv[])

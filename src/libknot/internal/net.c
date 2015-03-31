@@ -268,7 +268,10 @@ int udp_recv_msg(int fd, uint8_t *buf, size_t len, struct timeval *timeout)
 	return recv_data(fd, buf, len, true, timeout);
 }
 
-static void iovec_shift(struct iovec *iov, int iovcnt, size_t done)
+/*!
+ * \brief Shift processed data out of iovec structure.
+ */
+static void iovec_shift(struct iovec iov[], int iovcnt, size_t done)
 {
 	for (int i = 0; i < iovcnt && done > 0; i++) {
 		if (iov[i].iov_len > done) {
@@ -284,21 +287,24 @@ static void iovec_shift(struct iovec *iov, int iovcnt, size_t done)
 	assert(done == 0);
 }
 
-static int send_data(int fd, struct iovec *iov, int iovcnt, struct timeval *timeout)
+/*!
+ * \brief Send out TCP data with timeout in case the output buffer is full.
+ */
+static int send_data(int fd, struct iovec iov[], int iovcnt, struct timeval *timeout)
 {
 	size_t total = 0;
 	for (int i = 0; i < iovcnt; i++) {
 		total += iov[i].iov_len;
 	}
 
-	for (ssize_t avail = total; avail > 0; /* nop */) {
+	for (size_t avail = total; avail > 0; /* nop */) {
 		ssize_t sent = writev(fd, iov, iovcnt);
 		if (sent == avail) {
 			break;
 		}
 
 		/* Short write. */
-		if (sent >= 0) {
+		if (sent > 0) {
 			avail -= sent;
 			iovec_shift(iov, iovcnt, sent);
 			continue;
@@ -312,13 +318,14 @@ static int send_data(int fd, struct iovec *iov, int iovcnt, struct timeval *time
 					continue;
 				} else if (ret == 0) {
 					return KNOT_ETIMEOUT;
-				} else {
-					return KNOT_ECONN;
 				}
-			} else {
-				return KNOT_ECONN;
 			}
+
+			return KNOT_ECONN;
 		}
+
+		/* Unreachable. */
+		assert(0);
 	}
 
 	return total;
