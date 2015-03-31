@@ -331,7 +331,7 @@ static int send_data(int fd, struct iovec iov[], int iovcnt, struct timeval *tim
 	return total;
 }
 
-int tcp_send_msg(int fd, const uint8_t *msg, size_t msglen)
+int tcp_send_msg(int fd, const uint8_t *msg, size_t msglen, struct timeval *timeout)
 {
 	/* Create iovec for gathered write. */
 	struct iovec iov[2];
@@ -342,8 +342,7 @@ int tcp_send_msg(int fd, const uint8_t *msg, size_t msglen)
 	iov[1].iov_len = msglen;
 
 	/* Send. */
-	struct timeval timeout = { .tv_sec = 2 };
-	ssize_t ret = send_data(fd, iov, 2, &timeout);
+	ssize_t ret = send_data(fd, iov, 2, timeout);
 	if (ret < 0) {
 		return ret;
 	}

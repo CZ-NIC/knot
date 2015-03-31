@@ -22,6 +22,8 @@
 
 #include "libknot/internal/net.h"
 
+const struct timeval TIMEOUT = { .tv_sec = 1 };
+
 int main(int argc, char *argv[])
 {
 	plan_lazy();
@@ -65,7 +67,8 @@ int main(int argc, char *argv[])
 	for (size_t i = 0; i < sizeof(sndbuf); i++) {
 		sndbuf[i] = i;
 	}
-	r = tcp_send_msg(client, sndbuf, sizeof(sndbuf));
+	struct timeval timeout = TIMEOUT;
+	r = tcp_send_msg(client, sndbuf, sizeof(sndbuf), &timeout);
 	ok(r == sizeof(sndbuf), "client: tcp_send_msg() with short-write");
 
 	// receive message
@@ -75,7 +78,7 @@ int main(int argc, char *argv[])
 
 	uint8_t recvbuf[UINT16_MAX];
 	memset(recvbuf, 0, sizeof(recvbuf));
-	struct timeval timeout = { .tv_sec = 1 };
+	timeout = TIMEOUT;
 	r = tcp_recv_msg(accepted, recvbuf, sizeof(recvbuf), &timeout);
 	ok(r == sizeof(recvbuf) && memcmp(sndbuf, recvbuf, sizeof(sndbuf)) == 0,
 	   "server: tcp_recv_msg() complete and valid data");
