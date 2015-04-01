@@ -345,14 +345,13 @@ int load_zone_config(dnssec_kasp_zone_t *zone, const char *filename)
 	assert(zone);
 	assert(filename);
 
-	FILE *file = fopen(filename, "r");
+	_cleanup_fclose_ FILE *file = fopen(filename, "r");
 	if (!file) {
 		return DNSSEC_NOT_FOUND;
 	}
 
 	json_error_t error = { 0 };
 	_json_cleanup_ json_t *config = json_loadf(file, JSON_LOAD_OPTIONS, &error);
-	fclose(file);
 	if (!config) {
 		return DNSSEC_CONFIG_MALFORMED;
 	}
