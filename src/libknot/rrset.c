@@ -194,6 +194,7 @@ int knot_rrset_rr_to_canonical(knot_rrset_t *rrset)
 	assert(rdata);
 	uint16_t rdlen = knot_rdata_rdlen(rdata);
 	uint8_t *pos = knot_rdata_data(rdata);
+	uint8_t *endpos = pos + rdlen;
 
 	/* No RDATA */
 	if (rdlen == 0) {
@@ -214,7 +215,7 @@ int knot_rrset_rr_to_canonical(knot_rrset_t *rrset)
 			pos += knot_dname_size(pos);
 			break;
 		case KNOT_RDATA_WF_NAPTR_HEADER:
-			pos += knot_naptr_header_size(pos, rdata + rdlen);
+			pos += knot_naptr_header_size(pos, endpos);
 			break;
 		case KNOT_RDATA_WF_REMAINDER:
 			break;
