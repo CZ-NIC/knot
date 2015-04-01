@@ -271,16 +271,20 @@ int udp_recv_msg(int fd, uint8_t *buf, size_t len, struct timeval *timeout)
 /*!
  * \brief Shift processed data out of iovec structure.
  */
-static void iovec_shift(struct iovec iov[], int iovcnt, size_t done)
+static void iovec_shift(struct iovec **iov_ptr, int *iovcnt_ptr, size_t done)
 {
+	struct iovec *iov = *iov_ptr;
+	int iovcnt = *iovcnt_ptr;
+
 	for (int i = 0; i < iovcnt && done > 0; i++) {
 		if (iov[i].iov_len > done) {
 			iov[i].iov_base += done;
-			iov[i].iov_len  -= done;
+			iov[i].iov_len -= done;
 			done = 0;
 		} else {
 			done -= iov[i].iov_len;
-			iov[i].iov_len = 0;
+			*iov_ptr += 1;
+			*iovcnt_ptr -= 1;
 		}
 	}
 
@@ -306,7 +310,7 @@ static int send_data(int fd, struct iovec iov[], int iovcnt, struct timeval *tim
 		/* Short write. */
 		if (sent > 0) {
 			avail -= sent;
-			iovec_shift(iov, iovcnt, sent);
+			iovec_shift(&iov, &iovcnt, sent);
 			continue;
 		}
 
