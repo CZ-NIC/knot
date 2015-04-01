@@ -107,13 +107,13 @@ static int read_unsafe(wire_ctx_t *dest, wire_ctx_t *src)
 	char buffer[3] = { 0 };
 	wire_read(src, (uint8_t *)buffer, sizeof(buffer));
 
-	int value = 0;
+	unsigned value = 0;
 	int read = sscanf(buffer, "x%02x", &value);
 	if (read != 1 || value == 0) {
 		return DNSSEC_MALFORMED_DATA;
 	}
 
-	assert(0 < value && value <= UINT8_MAX);
+	assert(value <= UINT8_MAX);
 	wire_write_u8(dest, value);
 
 	return DNSSEC_EOK;
