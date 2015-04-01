@@ -23,7 +23,7 @@
  * \param type  Entity type.
  * \param name  Entity name.
  *
- * \return File name '<dir>/<type><escaped-name>.json'
+ * \return File name '<dir>/<type>_<escaped-name>.json'
  */
 char *file_from_entity(const char *dir, const char *type, const char *name);
 
