@@ -75,3 +75,6 @@ nodist_conf_SOURCES = sample_conf.c
 CLEANFILES = sample_conf.c runtests.log
 sample_conf.c: data/sample_conf
 	$(abs_srcdir)/resource.sh $(abs_srcdir)/data/sample_conf >$@
+
+noinst_PROGRAMS = \
+	afl/packet
