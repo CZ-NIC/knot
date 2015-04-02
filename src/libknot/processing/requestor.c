@@ -55,8 +55,7 @@ static int request_ensure_connected(struct knot_request *request)
 	return KNOT_EOK;
 }
 
-static int request_send(struct knot_request *request,
-                        const struct timeval *timeout)
+static int request_send(struct knot_request *request, struct timeval *timeout)
 {
 	/* Wait for writeability or error. */
 	int ret = request_ensure_connected(request);
@@ -71,7 +70,7 @@ static int request_send(struct knot_request *request,
 
 	/* Send query. */
 	if (use_tcp(request)) {
-		ret = tcp_send_msg(request->fd, wire, wire_len);
+		ret = tcp_send_msg(request->fd, wire, wire_len, timeout);
 	} else {
 		ret = udp_send_msg(request->fd, wire, wire_len, NULL);
 	}

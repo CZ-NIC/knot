@@ -23,6 +23,7 @@ hattrie
 hhash
 journal
 namedb
+net_shortwrite
 node
 overlay
 pkt

@@ -190,13 +190,21 @@ int net_is_connected(int fd)
 	return getpeername(fd, (struct sockaddr *)&ss, &len) == 0;
 }
 
-/*! \brief Wait for data and return true if data arrived. */
-static int wait_for_data(int fd, struct timeval *timeout)
+static int select_read(int fd, struct timeval *timeout)
 {
 	fd_set set;
 	FD_ZERO(&set);
 	FD_SET(fd, &set);
 	return select(fd + 1, &set, NULL, NULL, timeout);
+}
+
+static int select_write(int fd, struct timeval *timeout)
+{
+	fd_set set;
+	FD_ZERO(&set);
+	FD_SET(fd, &set);
+
+	return select(fd + 1, NULL, &set, NULL, timeout);
 }
 
 /* \brief Receive a block of data from TCP socket with wait. */
@@ -230,7 +238,7 @@ static int recv_data(int fd, uint8_t *buf, int len, bool oneshot, struct timeval
 		/* Check for no data available. */
 		if (errno == EAGAIN || errno == EINTR) {
 			/* Continue only if timeout didn't expire. */
-			ret = wait_for_data(fd, timeout);
+			ret = select_read(fd, timeout);
 			if (ret > 0) {
 				continue;
 			} else {
@@ -260,7 +268,74 @@ int udp_recv_msg(int fd, uint8_t *buf, size_t len, struct timeval *timeout)
 	return recv_data(fd, buf, len, true, timeout);
 }
 
-int tcp_send_msg(int fd, const uint8_t *msg, size_t msglen)
+/*!
+ * \brief Shift processed data out of iovec structure.
+ */
+static void iovec_shift(struct iovec **iov_ptr, int *iovcnt_ptr, size_t done)
+{
+	struct iovec *iov = *iov_ptr;
+	int iovcnt = *iovcnt_ptr;
+
+	for (int i = 0; i < iovcnt && done > 0; i++) {
+		if (iov[i].iov_len > done) {
+			iov[i].iov_base += done;
+			iov[i].iov_len -= done;
+			done = 0;
+		} else {
+			done -= iov[i].iov_len;
+			*iov_ptr += 1;
+			*iovcnt_ptr -= 1;
+		}
+	}
+
+	assert(done == 0);
+}
+
+/*!
+ * \brief Send out TCP data with timeout in case the output buffer is full.
+ */
+static int send_data(int fd, struct iovec iov[], int iovcnt, struct timeval *timeout)
+{
+	size_t total = 0;
+	for (int i = 0; i < iovcnt; i++) {
+		total += iov[i].iov_len;
+	}
+
+	for (size_t avail = total; avail > 0; /* nop */) {
+		ssize_t sent = writev(fd, iov, iovcnt);
+		if (sent == avail) {
+			break;
+		}
+
+		/* Short write. */
+		if (sent > 0) {
+			avail -= sent;
+			iovec_shift(&iov, &iovcnt, sent);
+			continue;
+		}
+
+		/* Error. */
+		if (sent == -1) {
+			if (errno == EAGAIN || errno == EINTR) {
+				int ret = select_write(fd, timeout);
+				if (ret > 0) {
+					continue;
+				} else if (ret == 0) {
+					return KNOT_ETIMEOUT;
+				}
+			}
+
+			return KNOT_ECONN;
+		}
+
+		/* Unreachable. */
+		assert(0);
+	}
+
+	return total;
+}
+
+int tcp_send_msg(int fd, const uint8_t *msg, size_t msglen, struct timeval *timeout)
 {
 	/* Create iovec for gathered write. */
 	struct iovec iov[2];
@@ -271,10 +346,9 @@ int tcp_send_msg(int fd, const uint8_t *msg, size_t msglen)
 	iov[1].iov_len = msglen;
 
 	/* Send. */
-	int total_len = iov[0].iov_len + iov[1].iov_len;
-	int sent = writev(fd, iov, 2);
-	if (sent != total_len) {
-		return KNOT_ECONN;
+	ssize_t ret = send_data(fd, iov, 2, timeout);
+	if (ret < 0) {
+		return ret;
 	}
 
 	return msglen; /* Do not count the size prefix. */
@@ -288,7 +362,7 @@ int tcp_recv_msg(int fd, uint8_t *buf, size_t len, struct timeval *timeout)
 
 	/* Receive size. */
 	unsigned short pktsize = 0;
-	int ret = recv_data(fd, (uint8_t *)&pktsize, sizeof(pktsize), false,  timeout);
+	int ret = recv_data(fd, (uint8_t *)&pktsize, sizeof(pktsize), false, timeout);
 	if (ret != sizeof(pktsize)) {
 		return ret;
 	}
