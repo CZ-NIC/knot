@@ -110,6 +110,7 @@
 		s->item_length_position = s->dname_tmp_length++;
 	}
 	action _label_char {
+		// Check for maximum dname label length.
 		if (s->item_length < MAX_LABEL_LENGTH) {
 			(s->dname)[s->dname_tmp_length++] = fc;
 			s->item_length++;
@@ -119,6 +120,8 @@
 		}
 	}
 	action _label_exit {
+		// Check for maximum dname length overflow after each label.
+		// (at least the next label length must follow).
 		if (s->dname_tmp_length < MAX_DNAME_LENGTH) {
 			(s->dname)[s->item_length_position] =
 				(uint8_t)(s->item_length);
@@ -164,21 +167,24 @@
 
 	# BEGIN - Domain name processing.
 	action _absolute_dname_exit {
+		// Enough room for the terminal label is garanteed (_label_exit).
 		(s->dname)[s->dname_tmp_length++] = 0;
 	}
 	action _relative_dname_exit {
-		memcpy(s->dname + s->dname_tmp_length,
-		       s->zone_origin,
-		       s->zone_origin_length);
+		// Check for (relative + origin) dname length overflow.
+		if (s->dname_tmp_length + s->zone_origin_length <= MAX_DNAME_LENGTH) {
+			memcpy(s->dname + s->dname_tmp_length,
+			       s->zone_origin,
+			       s->zone_origin_length);
 
-		s->dname_tmp_length += s->zone_origin_length;
-
-		if (s->dname_tmp_length > MAX_DNAME_LENGTH) {
+			s->dname_tmp_length += s->zone_origin_length;
+		} else {
 			WARN(ZS_DNAME_OVERFLOW);
 			fhold; fgoto err_line;
 		}
 	}
 	action _origin_dname_exit {
+		// Copy already verified zone origin.
 		memcpy(s->dname,
 		       s->zone_origin,
 		       s->zone_origin_length);
