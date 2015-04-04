@@ -42,14 +42,19 @@
 
 	# Comment processing.
 	comment_char = '#';
-	comment      = comment_char . (^newline_char)*;
+	comment = comment_char . (^newline_char)*;
 
 	# White space processing.
 	sep_char = ' ';
 	sep = sep_char+;
 
-	blank = (sep? :> comment?). newline_char;
-	rest  = ((sep :> comment) | sep?). newline_char;
+	action _blank_exit {
+		indent = 0;
+		id_pos = 0;
+	}
+
+	blank = ( sep? .  comment?       ) . newline_char %_blank_exit;
+	rest  = ((sep  :> comment) | sep?) . newline_char;
 
 	# Data processing.
 	action _item_data_init {
@@ -69,8 +74,8 @@
 		fbreak;
 	}
 	quote_char = '\"';
-	list_char  = [\[,\]];
-	data_char  =
+	list_char = [\[,\]];
+	data_char =
 		(ascii - space - cntrl - quote_char - sep_char -
 		 comment_char - list_char
 		) $_item_data;
