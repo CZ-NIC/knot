@@ -60,10 +60,12 @@ typedef enum tsig_off_t {
 static uint8_t* tsig_rdata_seek(const knot_rrset_t *rr, tsig_off_t id, size_t nb)
 {
 	const knot_rdata_t *rr_data = knot_rdataset_at(&rr->rrs, 0);
-	uint8_t *rd = knot_rdata_data(rr_data);
-	if (rd == NULL) {
+	if (!rr_data || knot_rdata_rdlen(rr_data) == 0) {
 		return NULL;
 	}
+
+	uint8_t *rd = knot_rdata_data(rr_data);
+	assert(rd);
 
 	/* TSIG RR names should be already sanitized on parse. */
 	int alg_len = knot_dname_size(rd);
