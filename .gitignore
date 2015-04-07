@@ -76,6 +76,7 @@
 # Binaries
 /src/knotc
 /src/knotd
+/src/knot1to2
 /src/kdig
 /src/khost
 /src/knsupdate

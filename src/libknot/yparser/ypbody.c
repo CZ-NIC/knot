@@ -141,9 +141,7 @@ static const char _yparser_eof_actions[] = {
 
 
 
-int _yp_start_state =
-25
-;
+int _yp_start_state = 25;
 
 int _yp_parse(
 	yp_parser_t *parser)
@@ -403,9 +401,7 @@ _again:
 	}
 
 	// Check for general parser error.
-	if (parser->cs ==
-0
-) {
+	if (parser->cs == 0) {
 		return KNOT_EPARSEFAIL;
 	}
 

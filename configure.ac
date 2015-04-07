@@ -416,6 +416,7 @@ AC_CONFIG_FILES([Makefile
 		 man/kdig.1
 		 man/knsupdate.1
 		 man/knot.conf.5
+		 man/knot1to2.1
 		 ])
 
 AC_OUTPUT

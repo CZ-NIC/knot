@@ -365,7 +365,7 @@ endif # HAVE_DAEMON
 
 if HAVE_UTILS
 
-bin_PROGRAMS = kdig khost knsupdate
+bin_PROGRAMS = kdig khost knsupdate knot1to2
 noinst_LTLIBRARIES += libknotus.la
 
 kdig_SOURCES =					\
@@ -390,6 +390,17 @@ knsupdate_SOURCES =				\
 	utils/knsupdate/knsupdate_main.c	\
 	utils/knsupdate/knsupdate_params.c	\
 	utils/knsupdate/knsupdate_params.h
+
+knot1to2_SOURCES =				\
+	utils/knot1to2/cf-lex.c			\
+	utils/knot1to2/cf-parse.tab.c		\
+	utils/knot1to2/cf-parse.tab.h		\
+	utils/knot1to2/extra.c			\
+	utils/knot1to2/extra.h			\
+	utils/knot1to2/includes.c		\
+	utils/knot1to2/includes.h		\
+	utils/knot1to2/main.c			\
+	utils/knot1to2/scheme.h
 
 # static: utilities shared
 libknotus_la_SOURCES =				\
@@ -417,6 +428,7 @@ libknotus_la_LIBADD = libknot-int.la libknot.la
 kdig_LDADD       = $(libidn_LIBS) libknotus.la
 khost_LDADD      = $(libidn_LIBS) libknotus.la
 knsupdate_LDADD  = zscanner/libzscanner.la libknotus.la
+knot1to2_LDADD   = libknot-int.la
 
 #######################################
 # Optional Knot DNS Utilities modules #
