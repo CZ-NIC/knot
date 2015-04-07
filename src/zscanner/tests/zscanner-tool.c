@@ -14,15 +14,15 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <inttypes.h>			// PRIu64
-#include <stdio.h>			// printf
-#include <stdlib.h>			// atoi
-#include <getopt.h>			// getopt
-#include <pthread.h>			// pthread_t
+#include <getopt.h>
+#include <inttypes.h>
+#include <pthread.h>
+#include <stdio.h>
+#include <stdlib.h>
 
-#include "scanner.h"
 #include "tests/processing.h"
 #include "tests/tests.h"
+#include "scanner.h"
 
 #define DEFAULT_MODE	1
 #define DEFAULT_CLASS	1

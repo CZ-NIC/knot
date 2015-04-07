@@ -14,22 +14,22 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <arpa/inet.h>
 #include <config.h>
-#include <stdint.h>			// uint32_t
-#include <stdlib.h>			// calloc
-#include <stdio.h>			// sprintf
-#include <fcntl.h>			// open
-#include <libgen.h>			// dirname
-#include <stdbool.h>			// bool
-#include <string.h>			// strdup
-#include <math.h>			// pow
-#include <sys/mman.h>			// mmap
-#include <sys/types.h>			// (OpenBSD)
-#include <sys/socket.h>			// AF_INET (BSD)
-#include <sys/stat.h>			// fstat
-#include <netinet/in.h>			// in_addr (BSD)
-#include <arpa/inet.h>			// inet_pton
-#include <unistd.h>			// sysconf
+#include <fcntl.h>
+#include <stdbool.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <libgen.h>
+#include <math.h>
+#include <netinet/in.h>
+#include <sys/socket.h>
+#include <sys/mman.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <unistd.h>
 
 #include "zscanner/scanner.h"
 #include "zscanner/functions.h"

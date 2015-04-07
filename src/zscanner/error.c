@@ -14,7 +14,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <stdlib.h>	// NULL
+#include <stdlib.h>
 
 #include "zscanner/error.h"
 
@@ -26,7 +26,7 @@ typedef struct {
 
 #define ERR_ITEM(code, text) { code, text, #code }
 
-const err_table_t err_msgs[] = {
+static const err_table_t err_msgs[] = {
 	ERR_ITEM( ZS_OK, "ok" ),
 
 	ERR_ITEM( ZS_SYSTEM,

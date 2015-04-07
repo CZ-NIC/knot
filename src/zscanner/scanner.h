@@ -26,8 +26,8 @@
 
 #pragma once
 
-#include <stdint.h>
 #include <stdbool.h>
+#include <stdint.h>
 
 #include "zscanner/error.h"
 
@@ -52,9 +52,6 @@
 
 /*! \brief Ragel call stack size (see Ragel internals). */
 #define RAGEL_STACK_SIZE		16
-
-/*! \brief ASCII value of '0' character. */
-#define ASCII_0				48
 
 /*! \brief Latitude value for equator (2^31). */
 #define LOC_LAT_ZERO	(uint32_t)2147483648
@@ -126,10 +123,10 @@ struct scanner {
 	uint32_t item_length_position;
 	/*! Auxiliary pointer to item length. */
 	uint8_t *item_length_location;
-	/*! Auxiliary buffer for data storing. */
-	uint8_t  buffer[MAX_RDATA_LENGTH];
 	/*! Auxiliary buffer length. */
 	uint32_t buffer_length;
+	/*! Auxiliary buffer for data storing. */
+	uint8_t  buffer[MAX_RDATA_LENGTH];
 	/*! Auxiliary buffer for current included file name. */
 	char     include_filename[MAX_RDATA_LENGTH + 1];
 
@@ -154,10 +151,14 @@ struct scanner {
 	/*! Position of the last free r_data byte. */
 	uint32_t r_data_tail;
 
-	/*! Wire format of the current origin (ORIGIN directive sets this). */
-	uint8_t  zone_origin[MAX_DNAME_LENGTH];
 	/*! Length of the current origin. */
 	uint32_t zone_origin_length;
+	/*!
+	 *  Wire format of the current origin (ORIGIN directive sets this).
+	 *
+	 * \note Maximal dname length check is after each valid label.
+	 */
+	uint8_t  zone_origin[MAX_DNAME_LENGTH + MAX_LABEL_LENGTH];
 	/*! Value of the default class. */
 	uint16_t default_class;
 	/*! Value of the current default ttl (TTL directive sets this). */
@@ -191,36 +192,35 @@ struct scanner {
 		int  descriptor;
 	} file;
 
+	/*! Length of the current record owner. */
+	uint32_t r_owner_length;
 	/*!
 	 * Owner of the current record.
 	 *
-	 * \note The double length of the r_owner is due to dname length
-	 *       check is after concatenation of relative and origin dnames.
+	 * \note Maximal dname length check is after each valid label.
 	 */
-	uint8_t  r_owner[2 * MAX_DNAME_LENGTH];
-	/*! Length of the current record owner. */
-	uint32_t r_owner_length;
+	uint8_t  r_owner[MAX_DNAME_LENGTH + MAX_LABEL_LENGTH];
 	/*! Class of the current record. */
 	uint16_t r_class;
 	/*! TTL of the current record. */
 	uint32_t r_ttl;
 	/*! Type of the current record data. */
 	uint16_t r_type;
-	/*! Current rdata. */
-	uint8_t  r_data[MAX_RDATA_LENGTH];
 	/*! Length of the current rdata. */
 	uint32_t r_data_length;
+	/*! Current rdata. */
+	uint8_t  r_data[MAX_RDATA_LENGTH];
 
 	/*
 	 * Example: a. IN 60 MX 1 b.
 	 *
-	 *          r_owner = 016100
 	 *          r_owner_length = 3
+	 *          r_owner = 016100
 	 *          r_class = 1
 	 *          r_ttl = 60
 	 *          r_type = 15
-	 *          r_data = 0001016200
 	 *          r_data_length = 5
+	 *          r_data = 0001016200
 	 */
 };
 

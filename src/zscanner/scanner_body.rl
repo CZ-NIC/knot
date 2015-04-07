@@ -110,6 +110,7 @@
 		s->item_length_position = s->dname_tmp_length++;
 	}
 	action _label_char {
+		// Check for maximum dname label length.
 		if (s->item_length < MAX_LABEL_LENGTH) {
 			(s->dname)[s->dname_tmp_length++] = fc;
 			s->item_length++;
@@ -119,6 +120,8 @@
 		}
 	}
 	action _label_exit {
+		// Check for maximum dname length overflow after each label.
+		// (at least the next label length must follow).
 		if (s->dname_tmp_length < MAX_DNAME_LENGTH) {
 			(s->dname)[s->item_length_position] =
 				(uint8_t)(s->item_length);
@@ -164,21 +167,24 @@
 
 	# BEGIN - Domain name processing.
 	action _absolute_dname_exit {
+		// Enough room for the terminal label is garanteed (_label_exit).
 		(s->dname)[s->dname_tmp_length++] = 0;
 	}
 	action _relative_dname_exit {
-		memcpy(s->dname + s->dname_tmp_length,
-		       s->zone_origin,
-		       s->zone_origin_length);
+		// Check for (relative + origin) dname length overflow.
+		if (s->dname_tmp_length + s->zone_origin_length <= MAX_DNAME_LENGTH) {
+			memcpy(s->dname + s->dname_tmp_length,
+			       s->zone_origin,
+			       s->zone_origin_length);
 
-		s->dname_tmp_length += s->zone_origin_length;
-
-		if (s->dname_tmp_length > MAX_DNAME_LENGTH) {
+			s->dname_tmp_length += s->zone_origin_length;
+		} else {
 			WARN(ZS_DNAME_OVERFLOW);
 			fhold; fgoto err_line;
 		}
 	}
 	action _origin_dname_exit {
+		// Copy already verified zone origin.
 		memcpy(s->dname,
 		       s->zone_origin,
 		       s->zone_origin_length);
@@ -259,10 +265,10 @@
 
 	# BEGIN - Number processing
 	action _number_digit {
-		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)fc <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)fc <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
@@ -523,7 +529,7 @@
 	action _text_dec {
 		if ((*rdata_tail < (UINT8_MAX / 10)) ||   // Dominant fast check.
 			((*rdata_tail == (UINT8_MAX / 10)) && // Marginal case.
-			 (fc <= (UINT8_MAX % 10) + ASCII_0)
+			 (fc <= (UINT8_MAX % 10) + '0')
 			)
 		   ) {
 			*rdata_tail *= 10;
@@ -1220,6 +1226,8 @@
 	    | "NSEC3"i      %{ type_num(KNOT_RRTYPE_NSEC3, &rdata_tail); }
 	    | "NSEC3PARAM"i %{ type_num(KNOT_RRTYPE_NSEC3PARAM, &rdata_tail); }
 	    | "TLSA"i       %{ type_num(KNOT_RRTYPE_TLSA, &rdata_tail); }
+	    | "CDS"i        %{ type_num(KNOT_RRTYPE_CDS, &rdata_tail); }
+	    | "CDNSKEY"i    %{ type_num(KNOT_RRTYPE_CDNSKEY, &rdata_tail); }
 	    | "SPF"i        %{ type_num(KNOT_RRTYPE_SPF, &rdata_tail); }
 	    | "NID"i        %{ type_num(KNOT_RRTYPE_NID, &rdata_tail); }
 	    | "L32"i        %{ type_num(KNOT_RRTYPE_L32, &rdata_tail); }
@@ -1276,6 +1284,8 @@
 	    | "NSEC3"i      %{ window_add_bit(KNOT_RRTYPE_NSEC3, s); }
 	    | "NSEC3PARAM"i %{ window_add_bit(KNOT_RRTYPE_NSEC3PARAM, s); }
 	    | "TLSA"i       %{ window_add_bit(KNOT_RRTYPE_TLSA, s); }
+	    | "CDS"i        %{ window_add_bit(KNOT_RRTYPE_CDS, s); }
+	    | "CDNSKEY"i    %{ window_add_bit(KNOT_RRTYPE_CDNSKEY, s); }
 	    | "SPF"i        %{ window_add_bit(KNOT_RRTYPE_SPF, s); }
 	    | "NID"i        %{ window_add_bit(KNOT_RRTYPE_NID, s); }
 	    | "L32"i        %{ window_add_bit(KNOT_RRTYPE_L32, s); }
@@ -1760,6 +1770,7 @@
 		case KNOT_RRTYPE_APL:
 			fcall r_data_apl;
 		case KNOT_RRTYPE_DS:
+		case KNOT_RRTYPE_CDS:
 			fcall r_data_ds;
 		case KNOT_RRTYPE_SSHFP:
 			fcall r_data_sshfp;
@@ -1771,6 +1782,7 @@
 			fcall r_data_nsec;
 		case KNOT_RRTYPE_KEY:
 		case KNOT_RRTYPE_DNSKEY:
+		case KNOT_RRTYPE_CDNSKEY:
 			fcall r_data_dnskey;
 		case KNOT_RRTYPE_DHCID:
 			fcall r_data_dhcid;
@@ -1828,6 +1840,8 @@
 		case KNOT_RRTYPE_NSEC3:
 		case KNOT_RRTYPE_NSEC3PARAM:
 		case KNOT_RRTYPE_TLSA:
+		case KNOT_RRTYPE_CDS:
+		case KNOT_RRTYPE_CDNSKEY:
 		case KNOT_RRTYPE_NID:
 		case KNOT_RRTYPE_L32:
 		case KNOT_RRTYPE_L64:
@@ -1889,6 +1903,8 @@
 		| "NSEC3"i      %{ s->r_type = KNOT_RRTYPE_NSEC3; }
 		| "NSEC3PARAM"i %{ s->r_type = KNOT_RRTYPE_NSEC3PARAM; }
 		| "TLSA"i       %{ s->r_type = KNOT_RRTYPE_TLSA; }
+		| "CDS"i        %{ s->r_type = KNOT_RRTYPE_CDS; }
+		| "CDNSKEY"i    %{ s->r_type = KNOT_RRTYPE_CDNSKEY; }
 		| "SPF"i        %{ s->r_type = KNOT_RRTYPE_SPF; }
 		| "NID"i        %{ s->r_type = KNOT_RRTYPE_NID; }
 		| "L32"i        %{ s->r_type = KNOT_RRTYPE_L32; }
