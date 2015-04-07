@@ -437,7 +437,9 @@ static void send_update_response(const zone_t *zone, struct request_data *req)
 		}
 
 		if (net_is_connected(req->fd)) {
-			tcp_send_msg(req->fd, req->resp->wire, req->resp->size);
+			struct timeval timeout = { conf()->max_conn_reply, 0 };
+			tcp_send_msg(req->fd, req->resp->wire, req->resp->size,
+			             &timeout);
 		} else {
 			udp_send_msg(req->fd, req->resp->wire, req->resp->size,
 			             (struct sockaddr *)&req->remote);

@@ -254,7 +254,7 @@ static int cmd_remote(const char *cmd, uint16_t rrt, int argc, char *argv[])
 	}
 
 	/* Send and free packet. */
-	int ret = tcp_send_msg(s, pkt->wire, pkt->size);
+	int ret = tcp_send_msg(s, pkt->wire, pkt->size, NULL);
 	knot_pkt_free(&pkt);
 
 	/* Evaluate and wait for reply. */

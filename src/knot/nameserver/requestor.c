@@ -103,7 +103,7 @@ static int request_send(struct request *request, const struct timeval *timeout)
 
 	/* Send query. */
 	knot_pkt_t *query = request->data.query;
-	ret = tcp_send_msg(request->data.fd, query->wire, query->size);
+	ret = tcp_send_msg(request->data.fd, query->wire, query->size, &tv);
 	if (ret != query->size) {
 		return KNOT_ECONN;
 	}

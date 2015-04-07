@@ -454,7 +454,8 @@ static int remote_senderr(int c, uint8_t *qbuf, size_t buflen)
 {
 	knot_wire_set_qr(qbuf);
 	knot_wire_set_rcode(qbuf, KNOT_RCODE_REFUSED);
-	return tcp_send_msg(c, qbuf, buflen);
+	struct timeval timeout = { conf()->max_conn_reply, 0 };
+	return tcp_send_msg(c, qbuf, buflen, &timeout);
 }
 
 /* Public APIs. */
@@ -584,7 +585,8 @@ static int remote_send_chunk(int c, knot_pkt_t *query, const char* d, uint16_t l
 		goto failed;
 	}
 
-	ret = tcp_send_msg(c, resp->wire, resp->size);
+	struct timeval timeout = { conf()->max_conn_reply, 0 };
+	ret = tcp_send_msg(c, resp->wire, resp->size, &timeout);
 
 failed:
 

@@ -34,6 +34,14 @@
 #include "libknot/dnssec/crypto.h"
 #include "libknot/dnssec/random.h"
 
+/*! \brief Minimal send/receive buffer sizes. */
+enum {
+	UDP_MIN_RCVSIZE = 4096,
+	UDP_MIN_SNDSIZE = 4096,
+	TCP_MIN_RCVSIZE = 4096,
+	TCP_MIN_SNDSIZE = sizeof(uint16_t) + UINT16_MAX
+};
+
 /*! \brief Event scheduler loop. */
 static int evsched_run(dthread_t *thread)
 {
@@ -90,6 +98,33 @@ static void server_remove_iface(iface_t *iface)
 	free(iface);
 }
 
+/*! \brief Set lower bound for socket option. */
+static bool setsockopt_min(int sock, int option, int min)
+{
+	int value = 0;
+	socklen_t len = sizeof(value);
+
+	if (getsockopt(sock, SOL_SOCKET, option, &value, &len) != 0) {
+		return false;
+	}
+
+	assert(len == sizeof(value));
+	if (value >= min) {
+		return true;
+	}
+
+	return setsockopt(sock, SOL_SOCKET, option, &min, sizeof(min)) == 0;
+}
+
+/*!
+ * \brief Enlarge send/receive buffers.
+ */
+static bool enlarge_net_buffers(int sock, int min_recvsize, int min_sndsize)
+{
+	return setsockopt_min(sock, SO_RCVBUF, min_recvsize) &&
+	       setsockopt_min(sock, SO_SNDBUF, min_sndsize);
+}
+
 /*!
  * \brief Initialize new interface from config value.
  *
@@ -118,6 +153,10 @@ static int server_init_iface(iface_t *new_if, conf_iface_t *cfg_if)
 		return sock;
 	}
 
+	if (!enlarge_net_buffers(sock, UDP_MIN_RCVSIZE, UDP_MIN_SNDSIZE)) {
+		log_warning("failed to set network buffer sizes for UDP");
+	}
+
 	/* Set UDP as non-blocking. */
 	fcntl(sock, F_SETFL, O_NONBLOCK);
 
@@ -128,6 +167,10 @@ static int server_init_iface(iface_t *new_if, conf_iface_t *cfg_if)
 	if (sock < 0) {
 		close(new_if->fd[IO_UDP]);
 		return sock;
+	}
+
+	if (!enlarge_net_buffers(sock, TCP_MIN_RCVSIZE, TCP_MIN_SNDSIZE)) {
+		log_warning("failed to set network buffer sizes for TCP");
 	}
 
 	new_if->fd[IO_TCP] = sock;

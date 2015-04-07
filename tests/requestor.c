@@ -51,7 +51,7 @@ static void* responder_thread(void *arg)
 			break;
 		}
 		knot_wire_set_qr(buf);
-		tcp_send_msg(client, buf, len);
+		tcp_send_msg(client, buf, len, NULL);
 		close(client);
 	}
 	return NULL;
@@ -154,7 +154,7 @@ int main(int argc, char *argv[])
 	/* Terminate responder. */
 	int responder = net_connected_socket(SOCK_STREAM, &remote.addr, NULL, 0);
 	assert(responder > 0);
-	tcp_send_msg(responder, (const uint8_t *)"", 1);
+	tcp_send_msg(responder, (const uint8_t *)"", 1, NULL);
 	(void) pthread_join(thread, 0);
 	close(responder);
 

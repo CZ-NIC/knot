@@ -66,11 +66,12 @@ int tcp_recv_data(int fd, uint8_t *buf, int len, struct timeval *timeout);
  * \param fd Associated socket.
  * \param msg Buffer for a query wireformat.
  * \param msglen Buffer maximum size.
+ * \param timeout Message send timeout.
  *
  * \retval Number of sent data on success.
  * \retval KNOT_ERROR on error.
  */
-int tcp_send_msg(int fd, const uint8_t *msg, size_t msglen);
+int tcp_send_msg(int fd, const uint8_t *msg, size_t msglen, struct timeval *timeout);
 
 /*!
  * \brief Receive a TCP message.
