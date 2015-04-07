@@ -9,6 +9,7 @@
 *.orig
 *.lo
 *.rej
+*.pyc
 .libs/
 .deps/
 .dirstamp
