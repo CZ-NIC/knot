@@ -21,9 +21,26 @@
 #include <string.h>
 #include <pthread.h>
 
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netdb.h>
+
 #include "libknot/internal/net.h"
 
 const struct timeval TIMEOUT = { .tv_sec = 1 };
+
+static struct sockaddr_storage localhost(void)
+{
+	struct sockaddr_storage addr = { 0 };
+
+	struct addrinfo *res = NULL;
+	if (getaddrinfo(NULL, "0", NULL, &res) == 0) {
+		memcpy(&addr, res->ai_addr, res->ai_addrlen);
+		freeaddrinfo(res);
+	}
+
+	return addr;
+}
 
 struct data {
 	int fd;
@@ -47,9 +64,7 @@ int main(int argc, char *argv[])
 	int r;
 
 	// create TCP server
-
-	struct sockaddr_storage addr = { 0 };
-	addr.ss_family = AF_INET;
+	struct sockaddr_storage addr = localhost();
 	int server = net_bound_socket(SOCK_STREAM, &addr, 0);
 	ok(server >= 0, "server: bind socket");
 
