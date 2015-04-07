@@ -21,10 +21,28 @@
 #include <string.h>
 #include <pthread.h>
 
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netdb.h>
+
 #include "knot/server/net.h"
 #include "knot/server/tcp-handler.h"
 
 const struct timeval TIMEOUT = { .tv_sec = 1 };
+
+static struct sockaddr_storage localhost(void)
+{
+	struct sockaddr_storage addr = { 0 };
+
+	struct addrinfo *res = NULL;
+	if (getaddrinfo(NULL, "0", NULL, &res) == 0) {
+		memcpy(&addr, res->ai_addr, res->ai_addrlen);
+		freeaddrinfo(res);
+	}
+
+	return addr;
+}
+
 
 struct data {
 	int fd;
@@ -48,9 +66,7 @@ int main(int argc, char *argv[])
 	int r;
 
 	// create TCP server
-
-	struct sockaddr_storage addr = { 0 };
-	addr.ss_family = AF_INET;
+	struct sockaddr_storage addr = localhost();
 	int server = net_bound_socket(SOCK_STREAM, &addr);
 	ok(server >= 0, "server: bind socket");
 
@@ -82,6 +98,9 @@ int main(int argc, char *argv[])
 
 	int accepted = accept(server, NULL, NULL);
 	ok(accepted >= 0, "server: accepted connection");
+
+	r = fcntl(accepted, F_SETFL, O_NONBLOCK);
+	ok(r == 0, "accepted: set non-blocking mode");
 
 	uint8_t recvbuf[UINT16_MAX] = { 0 };
 	struct data recv_data = {
