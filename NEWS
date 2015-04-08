@@ -1,3 +1,23 @@
+Knot DNS 1.6.3 (2015-04-08)
+===========================
+
+Bugfixes:
+---------
+ - Performance drop for NSEC-signed zones
+ - Proper handling of TCP short-writes
+ - Out-of-bound read in zone parser for long domain names in origin (AFL fuzzer)
+ - Out-of-bound read in packet parser for TSIG RR without RDATA (AFL fuzzer)
+ - Out-of-bound read in packet parser for malformed NAPTR RR (AFL fuzzer)
+
+Features:
+--------
+ - CDS and CDNSKEY support in zone parser
+
+Improvements:
+-------------
+ - Add defaults for TCP config options into documentation
+ - Detailed error message if zone reload fails
+
 Knot DNS 1.6.2 (2015-02-19)
 ===========================
 
