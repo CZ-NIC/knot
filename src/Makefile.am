@@ -359,6 +359,15 @@ khost_LDADD        += dnstap/libdnstap.la
 libknotd_la_LIBADD += dnstap/libdnstap.la
 endif
 
+if HAVE_ROSEDB
+libknotd_la_SOURCES +=				\
+	knot/modules/rosedb.c			\
+	knot/modules/rosedb.h
+bin_PROGRAMS += rosedb_tool
+rosedb_tool_SOURCES = knot/modules/rosedb_tool.c
+rosedb_tool_LDADD = libknot.la libknotd.la
+endif # HAVE_ROSEDB
+
 # Create storage and run-time directories
 install-data-hook:
 	$(INSTALL) -d $(DESTDIR)/@config_dir@
