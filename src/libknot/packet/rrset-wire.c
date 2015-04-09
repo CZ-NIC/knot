@@ -629,7 +629,7 @@ static int parse_rdata(const uint8_t *pkt_wire, size_t *pos, size_t pkt_size,
 		return ret;
 	}
 
-	uint8_t rdata_buffer[buffer_size];
+	uint8_t *rdata_buffer = mm_alloc(mm, buffer_size);
 	uint8_t *dst = rdata_buffer;
 	size_t dst_avail = buffer_size;
 
@@ -642,17 +642,20 @@ static int parse_rdata(const uint8_t *pkt_wire, size_t *pos, size_t pkt_size,
 
 	ret = rdata_traverse(&src, &src_avail, &dst, &dst_avail, desc, &dname_cfg);
 	if (ret != KNOT_EOK) {
+		mm_free(mm, rdata_buffer);
 		return ret;
 	}
 
 	if (src_avail > 0) {
 		/* Trailing data in message. */
+		mm_free(mm, rdata_buffer);
 		return KNOT_EMALF;
 	}
 
 	const size_t written = buffer_size - dst_avail;
 	if (written > MAX_RDLENGTH) {
 		/* DNAME compression caused RDATA overflow. */
+		mm_free(mm, rdata_buffer);
 		return KNOT_EMALF;
 	}
 
@@ -661,6 +664,8 @@ static int parse_rdata(const uint8_t *pkt_wire, size_t *pos, size_t pkt_size,
 		/* Update position pointer. */
 		*pos += rdlength;
 	}
+
+	mm_free(mm, rdata_buffer);
 
 	return ret;
 }
