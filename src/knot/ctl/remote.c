@@ -509,9 +509,13 @@ static int remote_c_signzone(server_t *server, remote_cmdargs_t* arguments)
  */
 static int remote_senderr(int c, uint8_t *qbuf, size_t buflen)
 {
+	rcu_read_lock();
+	conf_val_t val = conf_get(conf(), C_SRV, C_MAX_CONN_REPLY);
+	struct timeval timeout = { conf_int(&val), 0 };
+	rcu_read_unlock();
+
 	knot_wire_set_qr(qbuf);
 	knot_wire_set_rcode(qbuf, KNOT_RCODE_REFUSED);
-	struct timeval timeout = { conf()->max_conn_reply, 0 };
 	return tcp_send_msg(c, qbuf, buflen, &timeout);
 }
 
@@ -651,7 +655,11 @@ static int remote_send_chunk(int c, knot_pkt_t *query, const char* d, uint16_t l
 		goto failed;
 	}
 
-	struct timeval timeout = { conf()->max_conn_reply, 0 };
+	rcu_read_lock();
+	conf_val_t val = conf_get(conf(), C_SRV, C_MAX_CONN_REPLY);
+	struct timeval timeout = { conf_int(&val), 0 };
+	rcu_read_unlock();
+
 	ret = tcp_send_msg(c, resp->wire, resp->size, &timeout);
 
 failed:

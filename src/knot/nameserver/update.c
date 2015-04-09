@@ -454,7 +454,8 @@ static void send_update_response(const zone_t *zone, struct knot_request *req)
 		}
 
 		if (net_is_connected(req->fd)) {
-			struct timeval timeout = { conf()->max_conn_reply, 0 };
+			conf_val_t val = conf_get(conf(), C_SRV, C_MAX_CONN_REPLY);
+			struct timeval timeout = { conf_int(&val), 0 };
 			tcp_send_msg(req->fd, req->resp->wire, req->resp->size,
 			             &timeout);
 		} else {
