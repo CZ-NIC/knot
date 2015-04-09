@@ -183,19 +183,19 @@ static int get_key_names(const char *input, char **public_ptr, char **private_pt
 		base_length = strlen(input);
 	}
 
-	char *public = NULL;
-	if (asprintf(&public, "%.*s.key", base_length, input) < 0) {
+	char *pub = NULL;
+	if (asprintf(&pub, "%.*s.key", base_length, input) < 0) {
 		return DNSSEC_ENOMEM;
 	}
 
-	char *private = NULL;
-	if (asprintf(&private, "%.*s.private", base_length, input) < 0) {
-		free(public);
+	char *priv = NULL;
+	if (asprintf(&priv, "%.*s.private", base_length, input) < 0) {
+		free(pub);
 		return DNSSEC_ENOMEM;
 	}
 
-	*public_ptr = public;
-	*private_ptr = private;
+	*public_ptr = pub;
+	*private_ptr = priv;
 
 	return DNSSEC_EOK;
 }

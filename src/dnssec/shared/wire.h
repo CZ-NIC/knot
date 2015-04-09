@@ -78,7 +78,7 @@ static inline uint8_t wire_read_u8(wire_ctx_t *ctx)
 	assert(ctx);
 
 	uint8_t result = *ctx->position;
-	ctx->position += 1;
+	ctx->position += sizeof(uint8_t);
 
 	return result;
 }
@@ -88,7 +88,7 @@ static inline uint16_t wire_read_u16(wire_ctx_t *ctx)
 	assert(ctx);
 
 	uint16_t result = *((uint16_t *)ctx->position);
-	ctx->position += 2;
+	ctx->position += sizeof(uint16_t);
 
 	return ntohs(result);
 }
@@ -130,7 +130,7 @@ static inline void wire_write_u8(wire_ctx_t *ctx, uint8_t value)
 	assert(ctx);
 
 	*ctx->position = value;
-	ctx->position += 1;
+	ctx->position += sizeof(uint8_t);
 }
 
 static inline void wire_write_u16(wire_ctx_t *ctx, uint16_t value)
@@ -138,7 +138,7 @@ static inline void wire_write_u16(wire_ctx_t *ctx, uint16_t value)
 	assert(ctx);
 
 	*((uint16_t *)ctx->position) = htons(value);
-	ctx->position += 2;
+	ctx->position += sizeof(uint16_t);
 }
 
 static inline void wire_write(wire_ctx_t *ctx, const uint8_t *data, size_t size)

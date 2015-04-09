@@ -119,7 +119,8 @@ static int tcp_handle(tcp_context_t *tcp, int fd,
 	struct timeval tmout = { max_conn_reply, 0 };
 
 	/* Receive data. */
-	int ret = tcp_recv_msg(fd, rx->iov_base, rx->iov_len, &tmout);
+	struct timeval recv_tmout = tmout;
+	int ret = tcp_recv_msg(fd, rx->iov_base, rx->iov_len, &recv_tmout);
 	if (ret <= 0) {
 		dbg_net("tcp: client on fd=%d disconnected\n", fd);
 		if (ret == KNOT_EAGAIN) {
@@ -152,7 +153,8 @@ static int tcp_handle(tcp_context_t *tcp, int fd,
 
 		/* Send, if response generation passed and wasn't ignored. */
 		if (ans->size > 0 && !(state & (KNOT_STATE_FAIL|KNOT_STATE_NOOP))) {
-			if (tcp_send_msg(fd, ans->wire, ans->size) != ans->size) {
+			struct timeval send_tmout = tmout;
+			if (tcp_send_msg(fd, ans->wire, ans->size, &send_tmout) != ans->size) {
 				ret = KNOT_ECONNREFUSED;
 				break;
 			}

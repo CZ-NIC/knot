@@ -23,6 +23,8 @@
 #include "dname.h"
 #include "shared.h"
 
+#define DNAME_MAX_LABEL_LENGTH 63
+
 /*!
  * Get length of a domain name in wire format.
  */
@@ -72,6 +74,27 @@ uint8_t *dname_copy(const uint8_t *dname)
 }
 
 /*!
+ * Normalize dname label in-place.
+ *
+ * \return Number of processed bytes, 0 if we encounter the last label.
+ */
+static uint8_t normalize_label(uint8_t *label)
+{
+	assert(label);
+
+	uint8_t len = *label;
+	if (len == 0 || len > DNAME_MAX_LABEL_LENGTH) {
+		return 0;
+	}
+
+	for (uint8_t *scan = label + 1, *end = scan + len; scan < end; scan++) {
+		*scan = tolower(*scan);
+	}
+
+	return len + 1;
+}
+
+/*!
  * Normalize domain name in wire format.
  */
 void dname_normalize(uint8_t *dname)
@@ -80,12 +103,11 @@ void dname_normalize(uint8_t *dname)
 		return;
 	}
 
-	size_t length = dname_length(dname);
-	uint8_t *scan = dname;
-	for (size_t i = 0; i < length; i++) {
-		*scan = tolower(*scan);
-		scan += 1;
-	}
+	uint8_t read, *scan = dname;
+	do {
+		read = normalize_label(scan);
+		scan += read;
+	} while (read > 0);
 }
 
 /*!
@@ -236,6 +258,23 @@ char *dname_ascii_normalize_copy(const char *name)
 }
 
 /*!
+ * Compare dname labels case insensitively.
+ */
+static int label_casecmp(const uint8_t *a, const uint8_t *b, uint8_t len)
+{
+	assert(a);
+	assert(b);
+
+	for (const uint8_t *a_end = a + len; a < a_end; a++, b++) {
+		if (tolower(*a) != tolower(*b)) {
+			return false;
+		}
+	}
+
+	return true;
+}
+
+/*!
  * Check if two dnames are equal.
  */
 bool dname_equal(const uint8_t *one, const uint8_t *two)
@@ -244,5 +283,31 @@ bool dname_equal(const uint8_t *one, const uint8_t *two)
 		return false;
 	}
 
-	return (strcasecmp((char *)one, (char *)two) == 0);
+	const uint8_t *scan_one = one;
+	const uint8_t *scan_two = two;
+
+	for (;;) {
+		if (*scan_one != *scan_two) {
+			return false;
+		}
+
+		uint8_t len = *scan_one;
+		if (len == 0) {
+			return true;
+		} else if (len > DNAME_MAX_LABEL_LENGTH) {
+			return false;
+		}
+
+		scan_one += 1;
+		scan_two += 1;
+
+		if (!label_casecmp(scan_one, scan_two, len)) {
+			return false;
+		}
+
+		scan_one += len;
+		scan_two += len;
+	}
+
+	return true;
 }

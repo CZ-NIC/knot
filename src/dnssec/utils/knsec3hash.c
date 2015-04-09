@@ -134,6 +134,8 @@ int main(int argc, char *argv[])
 		goto fail;
 	}
 
+	dname_normalize(dname.data);
+
 	int r = dnssec_nsec3_hash(&dname, &nsec3_params, &digest);
 	if (r != DNSSEC_EOK) {
 		error("Cannot compute NSEC3 hash, %s.", dnssec_strerror(r));

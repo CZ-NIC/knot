@@ -80,6 +80,8 @@ typedef struct {
 	style_t		style;
 	/*!< Memory context. */
 	mm_ctx_t	mm;
+	/*!< Indication if an update failed. */
+	bool		reply_error;
 } knsupdate_params_t;
 
 int knsupdate_parse(knsupdate_params_t *params, int argc, char *argv[]);

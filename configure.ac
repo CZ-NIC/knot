@@ -397,10 +397,10 @@ AC_CONFIG_FILES([Makefile
 		 doc/Makefile
 		 man/Makefile
 		 samples/Makefile
-		 patches/Makefile
 		 libtap/Makefile
 		 src/Makefile
 		 tests/Makefile
+		 tests-fuzz/Makefile
 		 src/dnstap/Makefile
 		 src/zscanner/Makefile
 		 src/dnssec/Makefile

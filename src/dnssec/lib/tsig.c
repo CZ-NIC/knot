@@ -78,19 +78,19 @@ static const algorithm_id_t *lookup_algorithm(algorithm_match_cb match,
 	return NULL;
 }
 
-bool match_dname(const algorithm_id_t *algorithm, const void *data)
+static bool match_dname(const algorithm_id_t *algorithm, const void *data)
 {
 	const uint8_t *search = data;
 	return dname_equal(search, (uint8_t *)algorithm->dname);
 }
 
-bool match_name(const algorithm_id_t *algorithm, const void *data)
+static bool match_name(const algorithm_id_t *algorithm, const void *data)
 {
 	const char *search = data;
 	return strcasecmp(search, algorithm->name) == 0;
 }
 
-bool match_id(const algorithm_id_t *algorithm, const void *data)
+static bool match_id(const algorithm_id_t *algorithm, const void *data)
 {
 	dnssec_tsig_algorithm_t search = (dnssec_tsig_algorithm_t)data;
 	return algorithm->id == search;
@@ -153,6 +153,9 @@ int dnssec_tsig_new(dnssec_tsig_ctx_t **ctx_ptr,
 	}
 
 	dnssec_tsig_ctx_t *ctx = calloc(1, sizeof(*ctx));
+	if (!ctx) {
+		return DNSSEC_ENOMEM;
+	}
 
 	ctx->algorithm = algorithm_to_gnutls(algorithm);
 	if (ctx->algorithm == GNUTLS_MAC_UNKNOWN) {

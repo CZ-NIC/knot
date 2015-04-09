@@ -28,6 +28,7 @@ check_PROGRAMS = \
 	hhash				\
 	journal				\
 	namedb				\
+	net_shortwrite			\
 	node				\
 	overlay				\
 	pkt				\

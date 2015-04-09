@@ -188,10 +188,6 @@ int dnssec_binary_from_base64(const dnssec_binary_t *base64,
 		return DNSSEC_EINVAL;
 	}
 
-	if (real_size < raw_size) {
-		raw = realloc(raw, real_size);
-	}
-
 	binary->data = raw;
 	binary->size = real_size;
 

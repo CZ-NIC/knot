@@ -20,12 +20,13 @@
 
 #include "binary.h"
 #include "error.h"
+#include "key/dnskey.h"
 #include "shared.h"
 
 /*!
  * Compute keytag for RSA/MD5 key.
  *
- * \see RFC 2537 (section 2) , RFC 4034 (appendix B.1)
+ * \see RFC 2537 (section 2), RFC 4034 (appendix B.1)
  */
 static uint16_t keytag_compat(const dnssec_binary_t *rdata)
 {
@@ -57,8 +58,7 @@ static uint16_t keytag_current(const dnssec_binary_t *rdata)
 		ac += (i & 1) ? rdata->data[i] : rdata->data[i] << 8;
 	}
 
-	ac += (ac >> 16) & 0xFFFF;
-	return ac & 0xFFFF;
+	return (ac >> 16) + ac;
 }
 
 /* -- public API ----------------------------------------------------------- */
@@ -73,11 +73,11 @@ int dnssec_keytag(const dnssec_binary_t *rdata, uint16_t *keytag)
 		return DNSSEC_EINVAL;
 	}
 
-	if (!rdata->data || rdata->size < 4) {
+	if (!rdata->data || rdata->size < DNSKEY_RDATA_OFFSET_PUBKEY) {
 		return DNSSEC_MALFORMED_DATA;
 	}
 
-	uint8_t algorithm = rdata->data[3];
+	uint8_t algorithm = rdata->data[DNSKEY_RDATA_OFFSET_ALGORITHM];
 	if (algorithm == 1) {
 		*keytag = keytag_compat(rdata);
 	} else {

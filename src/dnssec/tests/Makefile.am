@@ -1,4 +1,5 @@
 AM_CPPFLAGS = \
+	-include $(top_builddir)/src/config.h \
 	-I$(top_srcdir)/libtap \
 	-I$(srcdir)/../shared \
 	-I$(srcdir)/../lib \
@@ -21,6 +22,7 @@ EXTRA_DIST = sample_keys.h
 check_PROGRAMS = \
 	binary		\
 	crypto		\
+	event_keystate	\
 	kasp_dir_escape	\
 	kasp_dir_file	\
 	kasp_store	\
@@ -38,6 +40,7 @@ check_PROGRAMS = \
 	sign_der	\
 	shared_base32hex \
 	shared_dname	\
+	shared_strtonum	\
 	shared_wire	\
 	tsig
 

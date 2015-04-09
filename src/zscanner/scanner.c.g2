@@ -29920,6 +29920,7 @@ tr803:
 		s->item_length_position = s->dname_tmp_length++;
 	}
 	{
+		// Check for maximum dname label length.
 		if (s->item_length < MAX_LABEL_LENGTH) {
 			(s->dname)[s->dname_tmp_length++] = (*p);
 			s->item_length++;
@@ -29931,6 +29932,7 @@ tr803:
 	goto st256;
 tr808:
 	{
+		// Check for maximum dname label length.
 		if (s->item_length < MAX_LABEL_LENGTH) {
 			(s->dname)[s->dname_tmp_length++] = (*p);
 			s->item_length++;
@@ -29946,6 +29948,7 @@ tr812:
 		s->item_length_position = s->dname_tmp_length++;
 	}
 	{
+		// Check for maximum dname label length.
 		if (s->item_length < MAX_LABEL_LENGTH) {
 			(s->dname)[s->dname_tmp_length++] = (*p);
 			s->item_length++;
@@ -29960,6 +29963,7 @@ tr819:
 		s->dname_tmp_length++;
 	}
 	{
+		// Check for maximum dname label length.
 		if (s->item_length < MAX_LABEL_LENGTH) {
 			(s->dname)[s->dname_tmp_length++] = (*p);
 			s->item_length++;
@@ -29998,6 +30002,8 @@ case 256:
 	goto tr802;
 tr807:
 	{
+		// Check for maximum dname length overflow after each label.
+		// (at least the next label length must follow).
 		if (s->dname_tmp_length < MAX_DNAME_LENGTH) {
 			(s->dname)[s->item_length_position] =
 				(uint8_t)(s->item_length);
@@ -30007,13 +30013,14 @@ tr807:
 		}
 	}
 	{
-		memcpy(s->dname + s->dname_tmp_length,
-		       s->zone_origin,
-		       s->zone_origin_length);
+		// Check for (relative + origin) dname length overflow.
+		if (s->dname_tmp_length + s->zone_origin_length <= MAX_DNAME_LENGTH) {
+			memcpy(s->dname + s->dname_tmp_length,
+			       s->zone_origin,
+			       s->zone_origin_length);
 
-		s->dname_tmp_length += s->zone_origin_length;
-
-		if (s->dname_tmp_length > MAX_DNAME_LENGTH) {
+			s->dname_tmp_length += s->zone_origin_length;
+		} else {
 			WARN(ZS_DNAME_OVERFLOW);
 			p--; {goto st253;}
 		}
@@ -30024,6 +30031,7 @@ tr807:
 	goto st1088;
 tr811:
 	{
+		// Enough room for the terminal label is garanteed (_label_exit).
 		(s->dname)[s->dname_tmp_length++] = 0;
 	}
 	{
@@ -30035,6 +30043,8 @@ tr818:
 		s->dname_tmp_length++;
 	}
 	{
+		// Check for maximum dname length overflow after each label.
+		// (at least the next label length must follow).
 		if (s->dname_tmp_length < MAX_DNAME_LENGTH) {
 			(s->dname)[s->item_length_position] =
 				(uint8_t)(s->item_length);
@@ -30044,13 +30054,14 @@ tr818:
 		}
 	}
 	{
-		memcpy(s->dname + s->dname_tmp_length,
-		       s->zone_origin,
-		       s->zone_origin_length);
+		// Check for (relative + origin) dname length overflow.
+		if (s->dname_tmp_length + s->zone_origin_length <= MAX_DNAME_LENGTH) {
+			memcpy(s->dname + s->dname_tmp_length,
+			       s->zone_origin,
+			       s->zone_origin_length);
 
-		s->dname_tmp_length += s->zone_origin_length;
-
-		if (s->dname_tmp_length > MAX_DNAME_LENGTH) {
+			s->dname_tmp_length += s->zone_origin_length;
+		} else {
 			WARN(ZS_DNAME_OVERFLOW);
 			p--; {goto st253;}
 		}
@@ -30061,6 +30072,7 @@ tr818:
 	goto st1088;
 tr822:
 	{
+		// Copy already verified zone origin.
 		memcpy(s->dname,
 		       s->zone_origin,
 		       s->zone_origin_length);
@@ -30078,6 +30090,8 @@ case 1088:
 	goto st0;
 tr809:
 	{
+		// Check for maximum dname length overflow after each label.
+		// (at least the next label length must follow).
 		if (s->dname_tmp_length < MAX_DNAME_LENGTH) {
 			(s->dname)[s->item_length_position] =
 				(uint8_t)(s->item_length);
@@ -30092,6 +30106,8 @@ tr820:
 		s->dname_tmp_length++;
 	}
 	{
+		// Check for maximum dname length overflow after each label.
+		// (at least the next label length must follow).
 		if (s->dname_tmp_length < MAX_DNAME_LENGTH) {
 			(s->dname)[s->item_length_position] =
 				(uint8_t)(s->item_length);
@@ -31279,6 +31295,7 @@ case 286:
 	goto tr882;
 tr891:
 	{
+		// Check for maximum dname label length.
 		if (s->item_length < MAX_LABEL_LENGTH) {
 			(s->dname)[s->dname_tmp_length++] = (*p);
 			s->item_length++;
@@ -31294,6 +31311,7 @@ tr898:
 		s->item_length_position = s->dname_tmp_length++;
 	}
 	{
+		// Check for maximum dname label length.
 		if (s->item_length < MAX_LABEL_LENGTH) {
 			(s->dname)[s->dname_tmp_length++] = (*p);
 			s->item_length++;
@@ -31308,6 +31326,7 @@ tr911:
 		s->dname_tmp_length++;
 	}
 	{
+		// Check for maximum dname label length.
 		if (s->item_length < MAX_LABEL_LENGTH) {
 			(s->dname)[s->dname_tmp_length++] = (*p);
 			s->item_length++;
@@ -31330,6 +31349,7 @@ tr888:
 		s->item_length_position = s->dname_tmp_length++;
 	}
 	{
+		// Check for maximum dname label length.
 		if (s->item_length < MAX_LABEL_LENGTH) {
 			(s->dname)[s->dname_tmp_length++] = (*p);
 			s->item_length++;
@@ -31360,6 +31380,8 @@ case 287:
 	goto tr882;
 tr892:
 	{
+		// Check for maximum dname length overflow after each label.
+		// (at least the next label length must follow).
 		if (s->dname_tmp_length < MAX_DNAME_LENGTH) {
 			(s->dname)[s->item_length_position] =
 				(uint8_t)(s->item_length);
@@ -31374,6 +31396,8 @@ tr912:
 		s->dname_tmp_length++;
 	}
 	{
+		// Check for maximum dname length overflow after each label.
+		// (at least the next label length must follow).
 		if (s->dname_tmp_length < MAX_DNAME_LENGTH) {
 			(s->dname)[s->item_length_position] =
 				(uint8_t)(s->item_length);
@@ -31442,11 +31466,13 @@ tr904:
 	goto st289;
 tr895:
 	{
+		// Enough room for the terminal label is garanteed (_label_exit).
 		(s->dname)[s->dname_tmp_length++] = 0;
 	}
 	goto st289;
 tr896:
 	{
+		// Enough room for the terminal label is garanteed (_label_exit).
 		(s->dname)[s->dname_tmp_length++] = 0;
 	}
 	{
@@ -31459,6 +31485,7 @@ tr896:
 	goto st289;
 tr897:
 	{
+		// Enough room for the terminal label is garanteed (_label_exit).
 		(s->dname)[s->dname_tmp_length++] = 0;
 	}
 	{
@@ -31498,6 +31525,7 @@ case 289:
 	goto tr894;
 tr900:
 	{
+		// Enough room for the terminal label is garanteed (_label_exit).
 		(s->dname)[s->dname_tmp_length++] = 0;
 	}
 	{
@@ -31528,6 +31556,7 @@ case 1092:
 	goto st0;
 tr901:
 	{
+		// Enough room for the terminal label is garanteed (_label_exit).
 		(s->dname)[s->dname_tmp_length++] = 0;
 	}
 	goto st290;
@@ -31930,6 +31959,7 @@ case 300:
 	goto tr928;
 tr939:
 	{
+		// Check for maximum dname label length.
 		if (s->item_length < MAX_LABEL_LENGTH) {
 			(s->dname)[s->dname_tmp_length++] = (*p);
 			s->item_length++;
@@ -31945,6 +31975,7 @@ tr945:
 		s->item_length_position = s->dname_tmp_length++;
 	}
 	{
+		// Check for maximum dname label length.
 		if (s->item_length < MAX_LABEL_LENGTH) {
 			(s->dname)[s->dname_tmp_length++] = (*p);
 			s->item_length++;
@@ -31959,6 +31990,7 @@ tr956:
 		s->dname_tmp_length++;
 	}
 	{
+		// Check for maximum dname label length.
 		if (s->item_length < MAX_LABEL_LENGTH) {
 			(s->dname)[s->dname_tmp_length++] = (*p);
 			s->item_length++;
@@ -31981,6 +32013,7 @@ tr932:
 		s->item_length_position = s->dname_tmp_length++;
 	}
 	{
+		// Check for maximum dname label length.
 		if (s->item_length < MAX_LABEL_LENGTH) {
 			(s->dname)[s->dname_tmp_length++] = (*p);
 			s->item_length++;
@@ -32011,6 +32044,8 @@ case 301:
 	goto tr938;
 tr940:
 	{
+		// Check for maximum dname length overflow after each label.
+		// (at least the next label length must follow).
 		if (s->dname_tmp_length < MAX_DNAME_LENGTH) {
 			(s->dname)[s->item_length_position] =
 				(uint8_t)(s->item_length);
@@ -32025,6 +32060,8 @@ tr957:
 		s->dname_tmp_length++;
 	}
 	{
+		// Check for maximum dname length overflow after each label.
+		// (at least the next label length must follow).
 		if (s->dname_tmp_length < MAX_DNAME_LENGTH) {
 			(s->dname)[s->item_length_position] =
 				(uint8_t)(s->item_length);
@@ -32093,6 +32130,7 @@ tr951:
 	goto st303;
 tr942:
 	{
+		// Enough room for the terminal label is garanteed (_label_exit).
 		(s->dname)[s->dname_tmp_length++] = 0;
 	}
 	{
@@ -32101,6 +32139,7 @@ tr942:
 	goto st303;
 tr943:
 	{
+		// Enough room for the terminal label is garanteed (_label_exit).
 		(s->dname)[s->dname_tmp_length++] = 0;
 	}
 	{
@@ -32116,6 +32155,7 @@ tr943:
 	goto st303;
 tr944:
 	{
+		// Enough room for the terminal label is garanteed (_label_exit).
 		(s->dname)[s->dname_tmp_length++] = 0;
 	}
 	{
@@ -32289,6 +32329,7 @@ tr935:
 	goto st1093;
 tr947:
 	{
+		// Enough room for the terminal label is garanteed (_label_exit).
 		(s->dname)[s->dname_tmp_length++] = 0;
 	}
 	{
@@ -32375,6 +32416,7 @@ tr926:
 	goto st304;
 tr948:
 	{
+		// Enough room for the terminal label is garanteed (_label_exit).
 		(s->dname)[s->dname_tmp_length++] = 0;
 	}
 	{

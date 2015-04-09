@@ -24,6 +24,16 @@
 #include "key/internal.h"
 #include "shared.h"
 
+/*
+ * Three stage ZSK key pre-publish rollover:
+ *
+ * 1. The new key is introduced in the key set.
+ * 2. All signatures are replaced with new ones.
+ * 3. The old key is removed from the key set.
+ *
+ * RFC 6781 (Section 4.1.1.1)
+ */
+
 typedef bool (*key_match_cb)(const dnssec_kasp_key_t *key, void *data);
 
 static bool newer_key(const dnssec_kasp_key_t *prev, const dnssec_kasp_key_t *cur)
@@ -32,17 +42,25 @@ static bool newer_key(const dnssec_kasp_key_t *prev, const dnssec_kasp_key_t *cu
 	       cur->timing.created >= prev->timing.created;
 }
 
-static dnssec_kasp_key_t *last_key(dnssec_kasp_zone_t *zone,
-				   key_match_cb match_cb, void *data)
+static bool zsk_match(const dnssec_kasp_key_t *key, time_t now, key_state_t state)
 {
-	assert(zone);
+	return dnssec_key_get_flags(key->key) == DNSKEY_FLAGS_ZSK &&
+	       get_key_state(key, now) == state;
+}
+
+static dnssec_kasp_key_t *last_key(dnssec_event_ctx_t *ctx, key_state_t state)
+{
+	assert(ctx);
+	assert(ctx->zone);
 
 	dnssec_kasp_key_t *match = NULL;
 
-	dnssec_list_t *keys = dnssec_kasp_zone_get_keys(zone);
+	dnssec_list_t *keys = dnssec_kasp_zone_get_keys(ctx->zone);
 	dnssec_list_foreach(i, keys) {
 		dnssec_kasp_key_t *key = dnssec_item_get(i);
-		if ((match == NULL || newer_key(match, key)) && match_cb(key, data)) {
+		if ((match == NULL || newer_key(match, key)) &&
+		    zsk_match(key, ctx->now, state)
+		) {
 			match = key;
 		}
 	}
@@ -50,74 +68,82 @@ static dnssec_kasp_key_t *last_key(dnssec_kasp_zone_t *zone,
 	return match;
 }
 
-static bool is_active_zsk(const dnssec_kasp_key_t *key, void *data)
-{
-	time_t now = (time_t)data;
-
-	return dnssec_key_get_flags(key->key) == DNSKEY_FLAGS_ZSK &&
-	       get_key_state(key, now) == DNSSEC_KEY_STATE_ACTIVE;
-}
-
-static bool is_rolling_zsk(const dnssec_kasp_key_t *key, void *data)
-{
-	time_t now = (time_t)data;
-
-	return dnssec_key_get_flags(key->key) == DNSKEY_FLAGS_ZSK &&
-	       get_key_state(key, now) == DNSSEC_KEY_STATE_PUBLISHED;
-}
-
 static bool responds_to(dnssec_event_type_t event)
 {
-	return event == DNSSEC_EVENT_ZSK_ROTATION_INIT ||
-	       event == DNSSEC_EVENT_ZSK_ROTATION_FINISH;
+	switch (event) {
+	case DNSSEC_EVENT_ZSK_ROLL_PUBLISH_NEW_KEY:
+	case DNSSEC_EVENT_ZSK_ROLL_REPLACE_SIGNATURES:
+	case DNSSEC_EVENT_ZSK_ROLL_REMOVE_OLD_KEY:
+		return true;
+	default:
+		return false;
+	}
 }
+
+#define subzero(a, b) ((a) > (b) ? (a) - (b) : 0)
 
 static int plan(dnssec_event_ctx_t *ctx, dnssec_event_t *event)
 {
 	assert(ctx);
 	assert(event);
 
-	dnssec_kasp_key_t *active = last_key(ctx->zone, is_active_zsk, (void *)ctx->now);
-	if (!active) {
-		return DNSSEC_EINVAL;
-	}
+	/*
+	 * We should not start another rollover, if there is a rollover
+	 * in progress. Therefore we will check the keys in reverse order
+	 * to make sure all stages are finished.
+	 */
 
-	if (ctx->now < active->timing.publish) {
-		return DNSSEC_EINVAL;
-	}
+	dnssec_kasp_key_t *retired = last_key(ctx, DNSSEC_KEY_STATE_RETIRED);
+	if (retired) {
+		if (ctx->now < retired->timing.retire) {
+			return DNSSEC_EINVAL;
+		}
 
-	uint32_t active_age = ctx->now - active->timing.publish;
-	if (active_age < ctx->policy->zsk_lifetime) {
-		event->type = DNSSEC_EVENT_ZSK_ROTATION_INIT;
-		event->time = ctx->now + (ctx->policy->zsk_lifetime - active_age);
+		uint32_t retired_time = ctx->now - retired->timing.retire;
+		uint32_t retired_need = ctx->policy->propagation_delay +
+					ctx->policy->zone_maximal_ttl;
+
+		event->type = DNSSEC_EVENT_ZSK_ROLL_REMOVE_OLD_KEY;
+		event->time = ctx->now + subzero(retired_need, retired_time);
+
 		return DNSSEC_EOK;
 	}
 
-	dnssec_kasp_key_t *rolling = last_key(ctx->zone, is_rolling_zsk, (void *)ctx->now);
-	if (!rolling) {
-		event->type = DNSSEC_EVENT_ZSK_ROTATION_INIT;
-		event->time = ctx->now;
+	dnssec_kasp_key_t *rolling = last_key(ctx, DNSSEC_KEY_STATE_PUBLISHED);
+	if (rolling) {
+		if (ctx->now < rolling->timing.publish) {
+			return DNSSEC_EINVAL;
+		}
+
+		uint32_t rolling_time = ctx->now - rolling->timing.publish;
+		uint32_t rolling_need = ctx->policy->propagation_delay +
+					ctx->policy->dnskey_ttl;
+
+		event->type = DNSSEC_EVENT_ZSK_ROLL_REPLACE_SIGNATURES;
+		event->time = ctx->now + subzero(rolling_need, rolling_time);
+
 		return DNSSEC_EOK;
 	}
 
-	if (ctx->now < rolling->timing.publish) {
-		return DNSSEC_EINVAL;
+	dnssec_kasp_key_t *active = last_key(ctx, DNSSEC_KEY_STATE_ACTIVE);
+	if (active) {
+		if (ctx->now < active->timing.publish) {
+			return DNSSEC_EINVAL;
+		}
+
+		uint32_t active_age = ctx->now - active->timing.publish;
+		uint32_t active_max = ctx->policy->zsk_lifetime;
+
+		event->type = DNSSEC_EVENT_ZSK_ROLL_PUBLISH_NEW_KEY;
+		event->time = ctx->now + subzero(active_max, active_age);
+
+		return DNSSEC_EOK;
 	}
 
-	uint32_t rolling_age = ctx->now - rolling->timing.publish;
-	uint32_t rolling_known = ctx->policy->dnskey_ttl + ctx->policy->propagation_delay;
-	if (rolling_age < rolling_known) {
-		event->type = DNSSEC_EVENT_ZSK_ROTATION_FINISH;
-		event->time = ctx->now + (rolling_known - rolling_age);
-		return DNSSEC_EOK;
-	} else {
-		event->type = DNSSEC_EVENT_ZSK_ROTATION_FINISH;
-		event->time = ctx->now;
-		return DNSSEC_EOK;
-	}
+	return DNSSEC_EINVAL;
 }
 
-static int exec_init(dnssec_event_ctx_t *ctx)
+static int exec_new_key(dnssec_event_ctx_t *ctx)
 {
 	dnssec_kasp_key_t *new_key = NULL;
 	int r = generate_key(ctx, false, &new_key);
@@ -125,25 +151,35 @@ static int exec_init(dnssec_event_ctx_t *ctx)
 		return r;
 	}
 
-	#warning TODO: Cannot set "active" to zero, using upper bound instead.
+	//! \todo Cannot set "active" to zero, using upper bound instead.
 	new_key->timing.publish = ctx->now;
 	new_key->timing.active = UINT32_MAX;
 
 	return dnssec_kasp_zone_save(ctx->kasp, ctx->zone);
 }
 
-static int exec_finish(dnssec_event_ctx_t *ctx)
+static int exec_new_signatures(dnssec_event_ctx_t *ctx)
 {
-	dnssec_kasp_key_t *active = last_key(ctx->zone, is_active_zsk, (void *)ctx->now);
-	dnssec_kasp_key_t *rolling = last_key(ctx->zone, is_rolling_zsk, (void *)ctx->now);
+	dnssec_kasp_key_t *active  = last_key(ctx, DNSSEC_KEY_STATE_ACTIVE);
+	dnssec_kasp_key_t *rolling = last_key(ctx, DNSSEC_KEY_STATE_PUBLISHED);
 	if (!active || !rolling) {
 		return DNSSEC_EINVAL;
 	}
 
+	active->timing.retire = ctx->now;
 	rolling->timing.active = ctx->now;
 
-	active->timing.retire = ctx->now;
-	active->timing.remove = ctx->now;
+	return dnssec_kasp_zone_save(ctx->kasp, ctx->zone);
+}
+
+static int exec_remove_old_key(dnssec_event_ctx_t *ctx)
+{
+	dnssec_kasp_key_t *retired = last_key(ctx, DNSSEC_KEY_STATE_RETIRED);
+	if (!retired) {
+		return DNSSEC_EINVAL;
+	}
+
+	retired->timing.remove = ctx->now;
 
 	return dnssec_kasp_zone_save(ctx->kasp, ctx->zone);
 }
@@ -154,14 +190,19 @@ static int exec(dnssec_event_ctx_t *ctx, const dnssec_event_t *event)
 	assert(event);
 
 	switch (event->type) {
-	case DNSSEC_EVENT_ZSK_ROTATION_INIT:   return exec_init(ctx);
-	case DNSSEC_EVENT_ZSK_ROTATION_FINISH: return exec_finish(ctx);
+	case DNSSEC_EVENT_ZSK_ROLL_PUBLISH_NEW_KEY:
+		return exec_new_key(ctx);
+	case DNSSEC_EVENT_ZSK_ROLL_REPLACE_SIGNATURES:
+		return exec_new_signatures(ctx);
+	case DNSSEC_EVENT_ZSK_ROLL_REMOVE_OLD_KEY:
+		return exec_remove_old_key(ctx);
 	default:
 		assert_unreachable();
 		return DNSSEC_EINVAL;
 	};
 }
 
+/*! Event API. */
 const event_action_functions_t event_action_zsk_rollover = {
 	.responds_to = responds_to,
 	.plan        = plan,

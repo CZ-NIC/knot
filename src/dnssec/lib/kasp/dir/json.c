@@ -323,6 +323,9 @@ int encode_time(const void *value, json_t **result)
 	return DNSSEC_EOK;
 }
 
+/*!
+ * Encode object according to attributes description.
+ */
 int encode_object(const encode_attr_t attrs[], const void *object, json_t **encoded_ptr)
 {
 	assert(attrs);
@@ -359,6 +362,9 @@ int encode_object(const encode_attr_t attrs[], const void *object, json_t **enco
 	return DNSSEC_EOK;
 }
 
+/*!
+ * Decode object according to attributes description.
+ */
 int decode_object(const encode_attr_t attrs[], const json_t *encoded, void *object)
 {
 	assert(attrs);

@@ -26,19 +26,6 @@
 #include "pem.h"
 #include "shared.h"
 
-/* -- internal functions --------------------------------------------------- */
-
-/*!
- * Check if DNSKEY has and algorithm set.
- */
-static bool has_algorithm(dnssec_key_t *key)
-{
-	assert(key);
-
-	uint8_t algorithm = dnssec_key_get_algorithm(key);
-	return algorithm != 0;
-}
-
 /* -- public API ----------------------------------------------------------- */
 
 _public_
@@ -48,7 +35,7 @@ int dnssec_key_load_pkcs8(dnssec_key_t *key, const dnssec_binary_t *pem)
 		return DNSSEC_EINVAL;
 	}
 
-	if (!key->public_key && !has_algorithm(key)) {
+	if (dnssec_key_get_algorithm(key) == 0) {
 		return DNSSEC_INVALID_KEY_ALGORITHM;
 	}
 

@@ -269,7 +269,7 @@ static int cmd_remote(struct sockaddr_storage *addr, knot_tsig_key_t *key,
 	}
 
 	/* Send and free packet. */
-	int ret = tcp_send_msg(s, pkt->wire, pkt->size);
+	int ret = tcp_send_msg(s, pkt->wire, pkt->size, NULL);
 	knot_pkt_free(&pkt);
 
 	/* Evaluate and wait for reply. */

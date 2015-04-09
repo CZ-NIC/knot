@@ -15,17 +15,10 @@
 */
 
 #include <stdlib.h>
-#include <string.h>
-#include <limits.h>
 
 #include "path.h"
 
 char *path_normalize(const char *path)
 {
-	char real[PATH_MAX] = { '\0' };
-	if (!realpath(path, real)) {
-		return NULL;
-	};
-
-	return strdup(real);
+	return realpath(path, NULL);
 }

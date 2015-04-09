@@ -199,16 +199,21 @@ const uint8_t *dnssec_key_get_dname(const dnssec_key_t *key)
 _public_
 int dnssec_key_set_dname(dnssec_key_t *key, const uint8_t *dname)
 {
-	if (!key || !dname) {
+	if (!key) {
 		return DNSSEC_EINVAL;
 	}
 
-	uint8_t *copy = dname_copy(dname);
-	if (!copy) {
-		return DNSSEC_ENOMEM;
+	uint8_t *copy = NULL;
+	if (dname) {
+		copy = dname_copy(dname);
+		if (!copy) {
+			return DNSSEC_ENOMEM;
+		}
+
+		dname_normalize(copy);
 	}
 
-	dname_normalize(copy);
+	free(key->dname);
 	key->dname = copy;
 
 	return DNSSEC_EOK;
@@ -270,7 +275,7 @@ int dnssec_key_set_protocol(dnssec_key_t *key, uint8_t protocol)
 	return DNSSEC_EOK;
 }
 
-/* -- restriced attributes ------------------------------------------------- */
+/* -- restricted attributes ------------------------------------------------ */
 
 /*!
  * Check if current public key algorithm matches with the new algorithm.
@@ -283,15 +288,15 @@ static bool can_change_algorithm(dnssec_key_t *key, uint8_t algorithm)
 		return true;
 	}
 
-	gnutls_pk_algorithm_t new = algorithm_to_gnutls(algorithm);
-	if (new == GNUTLS_PK_UNKNOWN) {
+	gnutls_pk_algorithm_t update = algorithm_to_gnutls(algorithm);
+	if (update == GNUTLS_PK_UNKNOWN) {
 		return false;
 	}
 
 	int current = gnutls_pubkey_get_pk_algorithm(key->public_key, NULL);
 	assert(current >= 0);
 
-	return current == new;
+	return current == update;
 }
 
 _public_
@@ -351,22 +356,20 @@ int dnssec_key_set_pubkey(dnssec_key_t *key, const dnssec_binary_t *pubkey)
 		return DNSSEC_KEY_ALREADY_PRESENT;
 	}
 
-	dnssec_binary_t new_rdata = key->rdata;
-	int result = dnskey_rdata_set_pubkey(&new_rdata, pubkey);
+	if (dnssec_key_get_algorithm(key) == 0) {
+		return DNSSEC_INVALID_KEY_ALGORITHM;
+	}
+
+	int result = dnskey_rdata_set_pubkey(&key->rdata, pubkey);
 	if (result != DNSSEC_EOK) {
 		return result;
 	}
 
-	gnutls_pubkey_t new_pubkey = NULL;
-	result = dnskey_rdata_to_crypto_key(&new_rdata, &new_pubkey);
+	result = dnskey_rdata_to_crypto_key(&key->rdata, &key->public_key);
 	if (result != DNSSEC_EOK) {
+		key->rdata.size = DNSKEY_RDATA_OFFSET_PUBKEY; // downsize
 		return result;
 	}
-
-	// commit result
-
-	key->rdata = new_rdata;
-	key->public_key = new_pubkey;
 
 	key_update_identifiers(key);
 

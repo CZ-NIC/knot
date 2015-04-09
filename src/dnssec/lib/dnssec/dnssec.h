@@ -105,11 +105,13 @@
 #include <dnssec/binary.h>
 #include <dnssec/crypto.h>
 #include <dnssec/error.h>
+#include <dnssec/event.h>
 #include <dnssec/kasp.h>
 #include <dnssec/key.h>
 #include <dnssec/keyid.h>
 #include <dnssec/keystore.h>
 #include <dnssec/keytag.h>
+#include <dnssec/list.h>
 #include <dnssec/nsec.h>
 #include <dnssec/random.h>
 #include <dnssec/sign.h>

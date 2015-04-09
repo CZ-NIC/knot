@@ -5,6 +5,7 @@
 # test binaries
 /binary
 /crypto
+/event_keystate
 /kasp_dir_escape
 /kasp_dir_file
 /kasp_store
@@ -20,6 +21,7 @@
 /random
 /shared_base32hex
 /shared_dname
+/shared_strtonum
 /shared_wire
 /sign
 /sign_der
