@@ -50,8 +50,6 @@ typedef struct {
 	char *hostname;
 	// For reload if started with config file.
 	char *filename;
-	// Temporary database path.
-	char *tmp_dir;
 	// List of active query modules.
 	list_t query_modules;
 	// Default query modules plan.

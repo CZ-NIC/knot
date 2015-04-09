@@ -48,6 +48,53 @@
 
 conf_t *s_conf;
 
+static void rm_dir(const char *path)
+{
+	DIR *dir = opendir(path);
+	if (dir == NULL) {
+		log_warning("failed to remove directory '%s'", path);
+		return;
+	}
+
+	// Prepare own dirent structure (see NOTES in man readdir_r).
+	size_t len = offsetof(struct dirent, d_name) +
+		     fpathconf(dirfd(dir), _PC_NAME_MAX) + 1;
+
+	struct dirent *entry = malloc(len);
+	if (entry == NULL) {
+		log_warning("failed to remove directory '%s'", path);
+		closedir(dir);
+		return;
+	}
+	memset(entry, 0, len);
+
+	// Firstly, delete all files in the directory.
+	int ret;
+	struct dirent *result = NULL;
+	while ((ret = readdir_r(dir, entry, &result)) == 0 &&
+	       result != NULL) {
+		if (entry->d_name[0] == '.') {
+			continue;
+		}
+
+		char *file = sprintf_alloc("%s/%s", path, entry->d_name);
+		if (file == NULL) {
+			ret = KNOT_ENOMEM;
+			continue;
+		}
+		remove(file);
+		free(file);
+	}
+
+	free(entry);
+	closedir(dir);
+
+	// Secondly, delete the directory if it is empty.
+	if (ret != 0 || remove(path) != 0) {
+		log_warning("failed to remove whole directory '%s'", path);
+	}
+}
+
 int conf_new(
 	conf_t **conf,
 	const yp_item_t *scheme,
@@ -79,18 +126,25 @@ int conf_new(
 	// A temporary solution until proper trie support in namedb is available.
 	if (db_dir == NULL) {
 		char tpl[] = "/tmp/knot-confdb.XXXXXX";
-		db_dir = mkdtemp(tpl);
-		if (db_dir == NULL) {
+		lmdb_opts.path = mkdtemp(tpl);
+		if (lmdb_opts.path == NULL) {
 			log_error("failed to create temporary directory");
 			return EXIT_FAILURE;
 		}
-		out->tmp_dir = strdup(db_dir);
+	} else {
+		lmdb_opts.path = db_dir;
 	}
-	lmdb_opts.path = db_dir;
 	out->api = namedb_lmdb_api();
 
 	// Open database.
 	ret = out->api->init(&out->db, out->mm, &lmdb_opts);
+
+	// Remove temporary database.
+	if (db_dir == NULL) {
+		rm_dir(lmdb_opts.path);
+	}
+
+	// Check database open return.
 	if (ret != KNOT_EOK) {
 		goto new_error;
 	}
@@ -159,7 +213,6 @@ int conf_clone(
 	out->mm = s_conf->mm;
 	out->db = s_conf->db;
 	out->filename = s_conf->filename;
-	out->tmp_dir = s_conf->tmp_dir;
 
 	// Open common read-only transaction.
 	ret = out->api->txn_begin(out->db, &out->read_txn, NAMEDB_RDONLY);
@@ -231,39 +284,6 @@ void conf_free(
 		conf->api->deinit(conf->db);
 		free(conf->mm);
 		free(conf->filename);
-	}
-
-	// Remove temporary database.
-	DIR *dir;
-	if (!is_clone && conf->tmp_dir != NULL &&
-	    (dir = opendir(conf->tmp_dir)) != NULL) {
-		// Prepare own dirent structure (see NOTES in man readdir_r).
-		size_t len = offsetof(struct dirent, d_name) +
-		             fpathconf(dirfd(dir), _PC_NAME_MAX) + 1;
-
-		struct dirent *entry = malloc(len);
-		if (entry != NULL) {
-			memset(entry, 0, len);
-			struct dirent *result = NULL;
-			int ret;
-
-			while ((ret = readdir_r(dir, entry, &result)) == 0 &&
-			       result != NULL) {
-				if (entry->d_name[0] == '.') {
-					continue;
-				}
-				char *file = sprintf_alloc("%s/%s",
-							   conf->tmp_dir,
-							   entry->d_name);
-				remove(file);
-				free(file);
-			}
-
-			free(entry);
-			closedir(dir);
-			remove(conf->tmp_dir);
-			free(conf->tmp_dir);
-		}
 	}
 
 	free(conf);
