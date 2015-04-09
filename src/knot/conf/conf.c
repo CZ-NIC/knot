@@ -1318,7 +1318,7 @@ void conf_user(
 
 	conf_val_t val = conf_get(conf, C_SRV, C_USER);
 	if (val.code == KNOT_EOK) {
-		const char *user = conf_str(&val);
+		char *user = strdup(conf_str(&val));
 
 		// Search for user:group separator.
 		char *sep_pos = strchr(user, ':');
@@ -1342,6 +1342,8 @@ void conf_user(
 		} else {
 			log_error("invalid user name '%s'", user);
 		}
+
+		free(user);
 	}
 
 	*uid = new_uid;
