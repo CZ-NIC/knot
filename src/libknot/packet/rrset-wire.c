@@ -183,6 +183,75 @@ static int rdata_traverse(const uint8_t **src, size_t *src_avail,
 	return KNOT_EOK;
 }
 
+/*!
+ * \brief Compute total length of RDATA blocks.
+ */
+static int rdata_len_block(const uint8_t **src, size_t *src_avail,
+                     const uint8_t *pkt_wire, int block_type)
+{
+	int ret, compr_size;
+
+	switch (block_type) {
+	case KNOT_RDATA_WF_COMPRESSIBLE_DNAME:
+	case KNOT_RDATA_WF_DECOMPRESSIBLE_DNAME:
+	case KNOT_RDATA_WF_FIXED_DNAME:
+		compr_size = knot_dname_wire_check(*src, *src + *src_avail,
+                                       pkt_wire);
+		if (compr_size <= 0) {
+			return compr_size;
+		}
+		ret = knot_dname_realsize(*src, pkt_wire);
+		*src += compr_size;
+		*src_avail -= compr_size;
+		break;
+	case KNOT_RDATA_WF_NAPTR_HEADER:
+		ret = knot_naptr_header_size(*src, *src + *src_avail);
+		*src += ret;
+		*src_avail -= ret;
+		break;
+	case KNOT_RDATA_WF_REMAINDER:
+		ret = *src_avail;
+		*src += ret;
+		*src_avail -= ret;
+		break;
+	default:
+		/* Fixed size block */
+		assert(block_type > 0);
+		ret = block_type;
+		*src += ret;
+		*src_avail -= ret;
+		break;
+	}
+
+	return ret;
+}
+
+/*!
+ * \brief Compute total length of RDATA blocks.
+ */
+static int rdata_len(const uint8_t **src, size_t *src_avail,
+                     const uint8_t *pkt_wire,
+                     const knot_rdata_descriptor_t *desc, size_t *len)
+{
+	int ret;
+	size_t _len = 0;
+	const uint8_t *_src = *src;
+	size_t _src_avail = *src_avail;
+
+	for (int i = 0; desc->block_types[i] != KNOT_RDATA_WF_END; i++) {
+		int block_type = desc->block_types[i];
+		ret = rdata_len_block(&_src, &_src_avail, pkt_wire, block_type);
+		if (ret < 0) {
+			return ret;
+		}
+		_len += ret;
+	}
+
+	*len = _len;
+
+	return KNOT_EOK;
+}
+
 /*- RRSet to wire -----------------------------------------------------------*/
 
 /*!
@@ -554,8 +623,12 @@ static int parse_rdata(const uint8_t *pkt_wire, size_t *pos, size_t pkt_size,
 	const uint8_t *src = pkt_wire + *pos;
 	size_t src_avail = rdlength;
 
-	const size_t buffer_size = rdlength +
-	                           KNOT_MAX_RDATA_DNAMES * KNOT_DNAME_MAXLEN;
+	size_t buffer_size = 0;
+	int ret = rdata_len(&src, &src_avail, pkt_wire, desc, &buffer_size);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
 	uint8_t rdata_buffer[buffer_size];
 	uint8_t *dst = rdata_buffer;
 	size_t dst_avail = buffer_size;
@@ -567,7 +640,7 @@ static int parse_rdata(const uint8_t *pkt_wire, size_t *pos, size_t pkt_size,
 		.pkt_wire = pkt_wire
 	};
 
-	int ret = rdata_traverse(&src, &src_avail, &dst, &dst_avail, desc, &dname_cfg);
+	ret = rdata_traverse(&src, &src_avail, &dst, &dst_avail, desc, &dname_cfg);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
