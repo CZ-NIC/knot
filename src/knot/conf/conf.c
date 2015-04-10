@@ -80,7 +80,7 @@ static void rm_dir(const char *path)
 		char *file = sprintf_alloc("%s/%s", path, entry->d_name);
 		if (file == NULL) {
 			ret = KNOT_ENOMEM;
-			continue;
+			break;
 		}
 		remove(file);
 		free(file);
