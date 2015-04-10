@@ -560,7 +560,7 @@ int conf_db_iter_id(
 		return ret;
 	}
 
-	*data = key.data + CONF_MIN_KEY_LEN;
+	*data = (uint8_t *)key.data + CONF_MIN_KEY_LEN;
 	*data_len = key.len - CONF_MIN_KEY_LEN;
 
 	return KNOT_EOK;
