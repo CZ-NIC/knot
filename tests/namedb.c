@@ -134,9 +134,10 @@ static void namedb_test_set(unsigned nkeys, char **keys, void *opts,
 	char last_key[KEY_MAXLEN] = { '\0' };
 	char key_buf[KEY_MAXLEN] = {'\0'};
 	iterated = 0;
+	memset(&key, 0, sizeof(key));
 	it = api->iter_begin(&txn, NAMEDB_SORTED);
 	while (it != NULL) {
-		ret = api->iter_key(it, &key);
+		api->iter_key(it, &key);
 		if (iterated > 0) { /* Only if previous exists. */
 			if (strcmp(key_buf, key.data) > 0) {
 				diag("%s: iter_sort '%s' <= '%s' FAIL\n",
@@ -160,47 +161,48 @@ static void namedb_test_set(unsigned nkeys, char **keys, void *opts,
 	/* Interactive iteration. */
 	it = api->iter_begin(&txn, NAMEDB_NOOP);
 	if (it != NULL) { /* If supported. */
+		ret = 0;
 		/* Check if first and last keys are reachable */
 		it = api->iter_seek(it, NULL, NAMEDB_FIRST);
-		ret = api->iter_key(it, &key);
+		ret += api->iter_key(it, &key);
 		is_string(first_key, key.data, "%s: iter_set(FIRST)", api->name);
 		/* Check left/right iteration. */
 		it = api->iter_seek(it, &key, NAMEDB_NEXT);
-		ret = api->iter_key(it, &key);
+		ret += api->iter_key(it, &key);
 		is_string(second_key, key.data, "%s: iter_set(NEXT)", api->name);
 		it = api->iter_seek(it, &key, NAMEDB_PREV);
-		ret = api->iter_key(it, &key);
+		ret += api->iter_key(it, &key);
 		is_string(first_key, key.data, "%s: iter_set(PREV)", api->name);
 		it = api->iter_seek(it, &key, NAMEDB_LAST);
-		ret = api->iter_key(it, &key);
+		ret += api->iter_key(it, &key);
 		is_string(last_key, key.data, "%s: iter_set(LAST)", api->name);
 		/* Check if prev(last_key + 1) is the last_key */
 		strlcpy(key_buf, last_key, sizeof(key_buf));
 		key_buf[0] += 1;
 		KEY_SET(key, key_buf);
 		it = api->iter_seek(it, &key, NAMEDB_LEQ);
-		ret = api->iter_key(it, &key);
+		ret += api->iter_key(it, &key);
 		is_string(last_key, key.data, "%s: iter_set(LEQ)", api->name);
 		/* Check if next(first_key - 1) is the first_key */
 		strlcpy(key_buf, first_key, sizeof(key_buf));
 		key_buf[0] -= 1;
 		KEY_SET(key, key_buf);
 		it = api->iter_seek(it, &key, NAMEDB_GEQ);
-		ret = api->iter_key(it, &key);
+		ret += api->iter_key(it, &key);
 		is_string(first_key, key.data, "%s: iter_set(GEQ)", api->name);
 		api->iter_finish(it);
+		is_int(ret, 0, "%s: iter_* error codes", api->name);
 	}
 	api->txn_abort(&txn);
 
 	/* Clear database and recheck. */
-	ret = api->txn_begin(db, &txn, 0);
-	ret = api->clear(&txn);
+	ret =  api->txn_begin(db, &txn, 0);
+	ret += api->clear(&txn);
+	ret += api->txn_commit(&txn);
 	is_int(0, ret, "%s: clear()", api->name);
-	ret = api->txn_commit(&txn);
-	is_int(0, ret, "%s: commit clear", api->name);
 
 	/* Check if the database is empty. */
-	ret = api->txn_begin(db, &txn, NAMEDB_RDONLY);
+	api->txn_begin(db, &txn, NAMEDB_RDONLY);
 	db_size = api->count(&txn);
 	is_int(0, db_size, "%s: count after clear = %d", api->name, db_size);
 	api->txn_abort(&txn);
