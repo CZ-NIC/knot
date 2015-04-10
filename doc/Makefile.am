@@ -15,7 +15,7 @@ EXTRA_DIST = \
 SPHINXBUILDDIR = _build
 ALLSPHINXOPTS  = -n -d $(SPHINXBUILDDIR)/doctrees -D latex_paper_size=a4 $(SPHINXOPTS) .
 
-.PHONY: html-local singlehtml pdf-local info-local
+.PHONY: html-local singlehtml pdf-local info-local man
 
 if HAVE_DOCS
 
@@ -37,7 +37,6 @@ pdf-local:
 	$(MAKE) -C $(SPHINXBUILDDIR)/latex all-pdf
 	@echo "pdflatex finished; the PDF files are in $(SPHINXBUILDDIR)/latex."
 else
-pdf:
 	@echo "You need to install pdflatex and re-run configure to be"
 	@echo "able to generate PDF documentation."
 endif
@@ -53,8 +52,13 @@ else
 	@echo "able to generate info pages."
 endif
 
+man:
+	$(SPHINXBUILD) -b man -D version="__VERSION__" -D today="__DATE__" $(ALLSPHINXOPTS) $(SPHINXBUILDDIR)/man
+	@echo
+	@echo "Build finished. The man pages are in $(SPHINXBUILDDIR)/man."
+
 else
-html-local singlehtml pdf-local info-local:
+html-local singlehtml pdf-local info-local man:
 	@echo "Please install sphinx (python-sphinx) to generate Knot DNS documentation."
 endif
 

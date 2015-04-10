@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 
-'''Test for SOA events and planning thereof'''
+'''Test for SOA events and planning thereof without NOTIFY'''
 
 from dnstest.utils import *
 from dnstest.test import Test
 import random
 
-EXPIRE_SLEEP = 4
+EXPIRE_SLEEP = 6
 
 def test_refresh(slave):
     resp = slave.dig("example.", "SOA")
@@ -14,7 +14,7 @@ def test_refresh(slave):
     t.sleep(EXPIRE_SLEEP)
     resp = slave.dig("example.", "SOA")
     resp.check(rcode="NOERROR")
-    
+
 def test_expire(slave):
     resp = slave.dig("example.", "SOA")
     resp.check(rcode="NOERROR")
@@ -27,6 +27,7 @@ def create_servers(t):
     for _ in range(3):
         master = t.server("bind")
         master.disable_notify = True
+        master.max_conn_idle = "1s"
 
         slave = t.server("knot")
         slave.disable_notify = True
@@ -112,14 +113,14 @@ t = Test()
 
 random.seed()
 
-# this zone has refresh = 1s, retry = 1s and expire = 1s + 2s for connection timeouts
+# This zone has refresh = 1s, retry = 1s and expire = 2s
 zone = t.zone("example.", storage=".")
 
 servers = create_servers(t)
 
 t.start()
 
-#stop the servers so that the zone does not expire
+# Stop the servers so that the zone does not expire
 for server_pair in servers:
     server_pair[0].stop()
     server_pair[1].stop()

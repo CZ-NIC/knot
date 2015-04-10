@@ -13,41 +13,26 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
-/*!
- * \file cf-lex.l
- *
- * \author Ondrej Sury <ondrej.sury@nic.cz>
- *
- * \brief Server configuration structures and API.
- *
- * IP address conversions from BIRD, (c) 1998--2000 Martin Mares <mj@ucw.cz>
- */
 %{
 
+#include <arpa/inet.h>
 #include <config.h>
 #include <dirent.h>
-#include <errno.h>
+#include <netinet/in.h>
 #include <stdlib.h>
-#include <stdarg.h>
-#include <stdbool.h>
+#include <sys/socket.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 
-#include "libknot/internal/sockaddr.h"
-#include "knot/conf/conf.h"
-#include "knot/conf/includes.h"
-#include "knot/conf/extra.h"
-#include "knot/common/log.h"
-#include "libknotd_la-cf-parse.h" /* Automake generated header. */
+#include "utils/knot1to2/scheme.h"
+#include "utils/knot1to2/includes.h"
+#include "utils/knot1to2/extra.h"
+#include "utils/knot1to2/cf-parse.tab.h"
+#include "libknot/internal/strlcpy.h"
 
 /* Imported symbols. */
 #define lval (yylval->tok)
 extern void cf_error(void *scanner, const char *format, ...);
-extern int (*cf_read_hook)(char *buf, size_t nbytes);
-void switch_input(const char *str, void *scanner)
-{
-	yy_scan_string(str, scanner);
-}
 
 /* Convert hex to binary. */
 static inline char xd(char d) {
@@ -63,7 +48,6 @@ int hex2bin(const char* src, char *dst, size_t len) {
 	return 0;
 }
 
-//#define YY_INPUT(buf,result,max) result = cf_read_hook(buf, max);
 #define YY_NO_UNPUT
 
 %}
@@ -76,7 +60,7 @@ int hex2bin(const char* src, char *dst, size_t len) {
 %option noreject
 %option yylineno
 %option prefix = "cf_"
-%option outfile = "lex.yy.c"
+%option outfile = "cf-lex.c"
 %option extra-type = "conf_extra_t *"
 
 %x include
@@ -148,39 +132,26 @@ listen-on       { lval.t = yytext; return LISTEN_ON; }
 
 log             { lval.t = yytext; return LOG; }
 
-any { lval.t = yytext; lval.i = LOG_ANY; return LOG_SRC; }
-server { lval.t = yytext; lval.i = LOG_SERVER; return LOG_SRC; }
-answering {
-	lval.t = yytext;
-	lval.i = LOG_SERVER;
-	fprintf(stderr, "Warning: log category 'answering' is no longer "
-	                "supported. Using 'server' instead.\n");
-	return LOG_SRC;
-}
-zone { lval.t = yytext; lval.i = LOG_ZONE; return LOG_SRC; }
-stdout { lval.t = yytext; lval.i = LOGT_STDOUT; return LOG_DEST; }
-stderr { lval.t = yytext; lval.i = LOGT_STDERR; return LOG_DEST; }
-syslog { lval.t = yytext; lval.i = LOGT_SYSLOG; return LOG_DEST; }
-debug { lval.t = yytext; lval.i = LOG_UPTO(LOG_DEBUG); return LOG_LEVEL; }
-info { lval.t = yytext; lval.i = LOG_UPTO(LOG_INFO); return LOG_LEVEL; }
-notice { lval.t = yytext; lval.i = LOG_UPTO(LOG_NOTICE); return LOG_LEVEL; }
-warning { lval.t = yytext; lval.i = LOG_UPTO(LOG_WARNING); return LOG_LEVEL; }
-error { lval.t = yytext; lval.i = LOG_UPTO(LOG_ERR); return LOG_LEVEL; }
-critical { lval.t = yytext; lval.i = LOG_UPTO(LOG_CRIT); return LOG_LEVEL; }
-all {
-	lval.t = yytext;
-	lval.i = LOG_UPTO(LOG_INFO);
-	fprintf(stderr, "Warning: log severity 'all' is no longer "
-	                "supported. Using 'info' instead.\n");
-	return LOG_LEVEL;
-}
+any { lval.t = C_ANY; return LOG_SRC; }
+server { lval.t = C_SRV; return LOG_SRC; }
+zone { lval.t = C_ZONE; return LOG_SRC; }
+
+stdout { lval.t = yytext; return LOG_DEST; }
+stderr { lval.t = yytext; return LOG_DEST; }
+syslog { lval.t = yytext; return LOG_DEST; }
+
+debug    { lval.t = "debug";    return LOG_LEVEL; }
+info     { lval.t = "info";     return LOG_LEVEL; }
+notice   { lval.t = "notice";   return LOG_LEVEL; }
+warning  { lval.t = "warning";  return LOG_LEVEL; }
+error    { lval.t = "error";    return LOG_LEVEL; }
+critical { lval.t = "critical"; return LOG_LEVEL; }
+all      { lval.t = "info";     return LOG_LEVEL; }
 
 increment|unixtime {
-  lval.t = yytext;
+  lval.t = "unixtime";
   if (strcmp(yytext, "increment") == 0) {
-    lval.i = CONF_SERIAL_INCREMENT;
-  } else {
-    lval.i = CONF_SERIAL_UNIXTIME;
+    lval.t = "increment";
   }
   return SERIAL_POLICY_VAL;
 }
@@ -272,37 +243,12 @@ include BEGIN(include);
   cf_error(yyscanner, "Invalid IPv6 address.");
 }
 
-[0][x]{HEXA}+ {
-  lval.t = NULL;
-  lval.l = 0;
-  yytext = yytext + 2; /* Cut off 0x */
-  size_t dlen = strlen(yytext);
-  if (dlen % 2 == 1) {
-    cf_error(yyscanner, "Invalid hex-string length.");
-  } else {
-    dlen = dlen / 2;
-    lval.t = malloc((dlen) * sizeof(char));
-    if (lval.t == NULL) {
-      cf_error(yyscanner, "Out of memory when allocating hex-string.\n");
-    } else {
-       memset(lval.t, 0, dlen);
-       if (hex2bin(yytext, lval.t, dlen) < 0) {
-         cf_error(yyscanner, "Failed to convert hex-string to binary.\n");
-       } else {
-         lval.l = dlen;
-       }
-    }
-  }
-
-  return HEXSTR;
-}
-
-hmac-md5        { lval.alg = DNSSEC_TSIG_HMAC_MD5;    return TSIG_ALGO_NAME; }
-hmac-sha1       { lval.alg = DNSSEC_TSIG_HMAC_SHA1;   return TSIG_ALGO_NAME; }
-hmac-sha224     { lval.alg = DNSSEC_TSIG_HMAC_SHA224; return TSIG_ALGO_NAME; }
-hmac-sha256     { lval.alg = DNSSEC_TSIG_HMAC_SHA256; return TSIG_ALGO_NAME; }
-hmac-sha384     { lval.alg = DNSSEC_TSIG_HMAC_SHA384; return TSIG_ALGO_NAME; }
-hmac-sha512     { lval.alg = DNSSEC_TSIG_HMAC_SHA512; return TSIG_ALGO_NAME; }
+hmac-md5        { lval.t = strdup(yytext); return TSIG_ALGO_NAME; }
+hmac-sha1       { lval.t = strdup(yytext); return TSIG_ALGO_NAME; }
+hmac-sha224     { lval.t = strdup(yytext); return TSIG_ALGO_NAME; }
+hmac-sha256     { lval.t = strdup(yytext); return TSIG_ALGO_NAME; }
+hmac-sha384     { lval.t = strdup(yytext); return TSIG_ALGO_NAME; }
+hmac-sha512     { lval.t = strdup(yytext); return TSIG_ALGO_NAME; }
 
 ["][^"\n]*["] {
   yytext[yyleng-1] = 0;

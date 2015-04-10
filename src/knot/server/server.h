@@ -178,7 +178,7 @@ void server_stop(server_t *server);
  * \retval KNOT_EINVAL on invalid parameters.
  * \retval KNOT_ERROR unspecified error.
  */
-int server_reconfigure(const struct conf *conf, void *data);
+int server_reconfigure(conf_t *conf, void *data);
 
 /*!
  * \brief Reconfigure zone database.
@@ -187,7 +187,7 @@ int server_reconfigure(const struct conf *conf, void *data);
  *
  * \return KNOT_EOK on success or KNOT_ error
  */
-int server_update_zones(const struct conf *conf, void *data);
+int server_update_zones(conf_t *conf, void *data);
 
 /*!
  * \brief Update fdsets from current interfaces list.

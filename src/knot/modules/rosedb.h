@@ -34,6 +34,10 @@
 
 #include "knot/nameserver/query_module.h"
 
+/*! \brief Module scheme. */
+#define C_MOD_ROSEDB "\x0A""mod-rosedb"
+extern const yp_item_t scheme_mod_rosedb[];
+
 /*! \brief Module interface. */
 int rosedb_load(struct query_plan *plan, struct query_module *self);
 int rosedb_unload(struct query_module *self);

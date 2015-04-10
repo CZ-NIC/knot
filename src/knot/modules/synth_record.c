@@ -15,22 +15,66 @@
  */
 
 #include "knot/modules/synth_record.h"
-#include "knot/nameserver/query_module.h"
 #include "knot/nameserver/process_query.h"
 #include "knot/nameserver/internet.h"
+#include "knot/conf/confdb.h"
+#include "knot/conf/tools.h"
+#include "knot/common/log.h"
 #include "libknot/descriptor.h"
-#include "knot/conf/conf.h"
+
+/* Module configuration scheme. */
+#define MOD_ADDR	"\x07""address"
+#define MOD_PREFIX	"\x06""prefix"
+#define MOD_TTL		"\x03""ttl"
+#define MOD_TYPE	"\x04""type"
+#define MOD_ZONE	"\x04""zone"
+
+/*! \brief Supported answer synthesis template types. */
+enum synth_template_type {
+	SYNTH_NULL    = 0,
+	SYNTH_FORWARD = 1,
+	SYNTH_REVERSE = 2
+};
+
+static const lookup_table_t synthetic_types[] = {
+	{ SYNTH_FORWARD, "forward" },
+	{ SYNTH_REVERSE, "reverse" },
+	{ 0, NULL }
+};
+
+static int check_zone(
+	conf_args_t *args)
+{
+	conf_val_t val = { NULL };
+
+	val.code = conf_db_get(args->conf, args->txn, C_MOD_SYNTH_RECORD,
+	                       MOD_TYPE, args->id, args->id_len, &val);
+	if (val.code != KNOT_EOK) {
+		return val.code;
+	}
+
+	// Only reverse module can have a zone specified.
+	if (conf_opt(&val) != SYNTH_REVERSE) {
+		return KNOT_EINVAL;
+	}
+
+	return KNOT_EOK;
+}
+
+const yp_item_t scheme_mod_synth_record[] = {
+	{ C_ID,       YP_TSTR,   YP_VNONE },
+	{ MOD_TYPE,   YP_TOPT,   YP_VOPT = { synthetic_types, SYNTH_NULL } },
+	{ MOD_PREFIX, YP_TSTR,   YP_VNONE },
+	{ MOD_ZONE,   YP_TDNAME, YP_VNONE, YP_FNONE, { check_zone } },
+	{ MOD_TTL,    YP_TINT,   YP_VINT = { 0, UINT32_MAX, 3600, YP_STIME } },
+	{ MOD_ADDR,   YP_TNET,   YP_VNONE },
+	{ C_COMMENT,  YP_TSTR,   YP_VNONE },
+	{ NULL }
+};
 
 /* Defines. */
 #define ARPA_ZONE_LABELS 2
 #define MODULE_ERR(msg...) log_error("module 'synth_record', " msg)
-
-/*! \brief Supported answer synthesis template types. */
-enum synth_template_type {
-	SYNTH_NULL = -1,
-	SYNTH_FORWARD,
-	SYNTH_REVERSE
-};
 
 /*!
  * \brief Synthetic response template.
@@ -38,10 +82,11 @@ enum synth_template_type {
 typedef struct synth_template {
 	node_t node;
 	enum synth_template_type type;
-	const char *prefix;
-	const char *zone;
+	char *prefix;
+	char *zone;
 	uint32_t ttl;
-	conf_iface_t subnet;
+	struct sockaddr_storage addr;
+	unsigned mask;
 } synth_template_t;
 
 /*! \brief Substitute all occurences of given character. */
@@ -94,7 +139,7 @@ static int reverse_addr_parse(struct query_data *qdata, synth_template_t *tpl, c
 	}
 
 	/* Write formatted address string. */
-	char sep = str_separator(tpl->subnet.addr.ss_family);
+	char sep = str_separator(tpl->addr.ss_family);
 	int sep_frequency = 1;
 	if (sep == ':') {
 		sep_frequency = 4; /* Separator per 4 hexdigits. */
@@ -134,7 +179,7 @@ static int forward_addr_parse(struct query_data *qdata, synth_template_t *tpl, c
 	memcpy(addr_str, addr_label + 1 + prefix_len, addr_len);
 
 	/* Restore correct address format. */
-	char sep = str_separator(tpl->subnet.addr.ss_family);
+	char sep = str_separator(tpl->addr.ss_family);
 	str_subst(addr_str, addr_len, '-', sep);
 
 	return KNOT_EOK;
@@ -174,7 +219,7 @@ static knot_dname_t *synth_ptrname(const char *addr_str, synth_template_t *tpl)
 	int written = prefix_len;
 
 	/* Write address with substituted separator to '-'. */
-	char sep = str_separator(tpl->subnet.addr.ss_family);
+	char sep = str_separator(tpl->addr.ss_family);
 	memcpy(ptrname + written, addr_str, addr_len);
 	str_subst(ptrname + written, addr_len, sep, '-');
 	written += addr_len;
@@ -206,15 +251,15 @@ static int reverse_rr(char *addr_str, synth_template_t *tpl, knot_pkt_t *pkt, kn
 static int forward_rr(char *addr_str, synth_template_t *tpl, knot_pkt_t *pkt, knot_rrset_t *rr)
 {
 	struct sockaddr_storage query_addr = {'\0'};
-	sockaddr_set(&query_addr, tpl->subnet.addr.ss_family, addr_str, 0);
+	sockaddr_set(&query_addr, tpl->addr.ss_family, addr_str, 0);
 
 	/* Specify address type and data. */
-	if (tpl->subnet.addr.ss_family == AF_INET6) {
+	if (tpl->addr.ss_family == AF_INET6) {
 		rr->type = KNOT_RRTYPE_AAAA;
 		const struct sockaddr_in6* ip = (const struct sockaddr_in6*)&query_addr;
 		knot_rrset_add_rdata(rr, (const uint8_t *)&ip->sin6_addr, sizeof(struct in6_addr),
 		                  tpl->ttl, &pkt->mm);
-	} else if (tpl->subnet.addr.ss_family == AF_INET) {
+	} else if (tpl->addr.ss_family == AF_INET) {
 		rr->type = KNOT_RRTYPE_A;
 		const struct sockaddr_in* ip = (const struct sockaddr_in*)&query_addr;
 		knot_rrset_add_rdata(rr, (const uint8_t *)&ip->sin_addr, sizeof(struct in_addr),
@@ -262,12 +307,12 @@ static int template_match(int state, synth_template_t *tpl, knot_pkt_t *pkt, str
 
 	/* Match against template netblock. */
 	struct sockaddr_storage query_addr = { '\0' };
-	int provided_af = tpl->subnet.addr.ss_family;
+	int provided_af = tpl->addr.ss_family;
 	ret = sockaddr_set(&query_addr, provided_af, addr_str, 0);
-	if (ret == KNOT_EOK) {
-		ret = netblock_match(&tpl->subnet, &query_addr);
+	if (ret != KNOT_EOK) {
+		return state;
 	}
-	if (ret != 0) {
+	if (!netblock_match(&tpl->addr, &query_addr, tpl->mask)) {
 		return state; /* Out of our netblock, not applicable. */
 	}
 
@@ -308,7 +353,7 @@ static int template_match(int state, synth_template_t *tpl, knot_pkt_t *pkt, str
 	return HIT;
 }
 
-int solve_synth_record(int state, knot_pkt_t *pkt, struct query_data *qdata, void *ctx)
+static int solve_synth_record(int state, knot_pkt_t *pkt, struct query_data *qdata, void *ctx)
 {
 	if (pkt == NULL || qdata == NULL || ctx == NULL) {
 		return ERROR;
@@ -325,86 +370,110 @@ int solve_synth_record(int state, knot_pkt_t *pkt, struct query_data *qdata, voi
 
 int synth_record_load(struct query_plan *plan, struct query_module *self)
 {
-	/* Parse first token. */
-	char *saveptr = NULL;
-	char *token = strtok_r(self->param, " ", &saveptr);
-	if (token == NULL) {
-		return KNOT_EFEWDATA;
+	if (plan == NULL || self == NULL) {
+		return KNOT_EINVAL;
 	}
 
 	/* Create synthesis template. */
 	struct synth_template *tpl = mm_alloc(self->mm, sizeof(struct synth_template));
 	if (tpl == NULL) {
+		MODULE_ERR("not enough memory");
 		return KNOT_ENOMEM;
 	}
 
-	/* Save in query module, it takes ownership from now on. */
+	conf_val_t val;
+
+	/* Set type. */
+	val = conf_mod_get(self->config, MOD_TYPE, self->id);
+	if (val.code != KNOT_EOK) {
+		if (val.code == KNOT_EINVAL) {
+			MODULE_ERR("no type for '%s'", self->id->data);
+		}
+		mm_free(self->mm, tpl);
+		return val.code;
+	}
+	tpl->type = conf_opt(&val);
+
+	/* Set prefix. */
+	val = conf_mod_get(self->config, MOD_PREFIX, self->id);
+	if (val.code != KNOT_EOK) {
+		if (val.code == KNOT_EINVAL) {
+			MODULE_ERR("no prefix for '%s'", self->id->data);
+		}
+		mm_free(self->mm, tpl);
+		return val.code;
+	}
+
+	const char *prefix = conf_str(&val);
+	if (strchr(prefix, '.') != NULL) {
+		MODULE_ERR("dots '.' are not allowed in the prefix for '%s'",
+		           self->id->data);
+		mm_free(self->mm, tpl);
+		return KNOT_EMALF;
+	}
+	tpl->prefix = strdup(prefix);
+
+	/* Set zone if generating reverse record. */
+	if (tpl->type == SYNTH_REVERSE) {
+		val = conf_mod_get(self->config, MOD_ZONE, self->id);
+		if (val.code != KNOT_EOK) {
+			if (val.code == KNOT_EINVAL) {
+				MODULE_ERR("no zone for '%s'", self->id->data);
+			}
+			free(tpl->prefix);
+			mm_free(self->mm, tpl);
+			return val.code;
+		}
+
+		tpl->zone = knot_dname_to_str_alloc(conf_dname(&val));
+		if (tpl->zone == NULL) {
+			MODULE_ERR("not enough memory");
+			free(tpl->prefix);
+			mm_free(self->mm, tpl);
+			return KNOT_ENOMEM;
+		}
+	}
+
+	/* Set ttl. */
+	val = conf_mod_get(self->config, MOD_TTL, self->id);
+	if (val.code != KNOT_EOK) {
+		if (val.code == KNOT_EINVAL) {
+			MODULE_ERR("no ttl for '%s'", self->id->data);
+		}
+		free(tpl->zone);
+		free(tpl->prefix);
+		mm_free(self->mm, tpl);
+		return val.code;
+	}
+	tpl->ttl = conf_int(&val);
+
+	/* Set address. */
+	val = conf_mod_get(self->config, MOD_ADDR, self->id);
+	if (val.code != KNOT_EOK) {
+		if (val.code == KNOT_EINVAL) {
+			MODULE_ERR("no address for '%s'", self->id->data);
+		}
+		free(tpl->zone);
+		free(tpl->prefix);
+		mm_free(self->mm, tpl);
+		return val.code;
+	}
+	tpl->addr = conf_net(&val, &tpl->mask);
+
 	self->ctx = tpl;
 
-	/* Supported types: reverse, forward */
-	if (strcmp(token, "reverse") == 0) {
-		tpl->type = SYNTH_REVERSE;
-	} else if (strcmp(token, "forward") == 0) {
-		tpl->type = SYNTH_FORWARD;
-	} else {
-		MODULE_ERR("invalid type '%s'", token);
-		return KNOT_ENOTSUP;
-	}
-
-	/* Parse format string. */
-	tpl->prefix = strtok_r(NULL, " ", &saveptr);
-	if (strchr(tpl->prefix, '.') != NULL) {
-		MODULE_ERR("dots '.' are not allowed in the prefix");
-		return KNOT_EMALF;
-	}
-
-	/* Parse zone if generating reverse record. */
-	if (tpl->type == SYNTH_REVERSE) {
-		tpl->zone = strtok_r(NULL, " ", &saveptr);
-		knot_dname_t *check_name = knot_dname_from_str_alloc(tpl->zone);
-		if (check_name == NULL) {
-			MODULE_ERR("invalid zone '%s'", tpl->zone);
-			return KNOT_EMALF;
-		}
-		knot_dname_free(&check_name, NULL);
-	}
-
-	/* Parse TTL. */
-	tpl->ttl = strtol(strtok_r(NULL, " ", &saveptr), NULL, 10);
-
-	/* Parse address. */
-	token = strtok_r(NULL, " ", &saveptr);
-	char *subnet = strchr(token, '/');
-	if (subnet) {
-		subnet[0] = '\0';
-		tpl->subnet.prefix = strtol(subnet + 1, NULL, 10);
-	}
-
-	/* Estimate family. */
-	int family = AF_INET;
-	int prefix_max = IPV4_PREFIXLEN;
-	if (strchr(token, ':') != NULL) {
-		family = AF_INET6;
-		prefix_max = IPV6_PREFIXLEN;
-	}
-
-	/* Check subnet. */
-	if (tpl->subnet.prefix > prefix_max) {
-		MODULE_ERR("invalid address prefix '%s'", subnet);
-		return KNOT_EMALF;
-	}
-
-	int ret = sockaddr_set(&tpl->subnet.addr, family, token, 0);
-	if (ret != KNOT_EOK) {
-		MODULE_ERR("invalid address '%s'", token);
-		return KNOT_EMALF;
-	}
-
-	return query_plan_step(plan, QPLAN_ANSWER, solve_synth_record, tpl);
+	return query_plan_step(plan, QPLAN_ANSWER, solve_synth_record, self->ctx);
 }
 
 int synth_record_unload(struct query_module *self)
 {
-	mm_free(self->mm, self->ctx);
+	if (self == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	synth_template_t *tpl = (synth_template_t *)self->ctx;
+	free(tpl->zone);
+	free(tpl->prefix);
+	mm_free(self->mm, tpl);
 	return KNOT_EOK;
 }

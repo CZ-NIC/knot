@@ -54,7 +54,7 @@ static int notify_check_query(struct query_data *qdata)
 	/* Check valid zone, transaction security. */
 	zone_t *zone = (zone_t *)qdata->zone;
 	NS_NEED_ZONE(qdata, KNOT_RCODE_NOTAUTH);
-	NS_NEED_AUTH(&zone->conf->acl.notify_in, qdata);
+	NS_NEED_AUTH(qdata, zone->name, ACL_ACTION_NOTF);
 
 	return KNOT_STATE_DONE;
 }
@@ -80,7 +80,7 @@ int notify_process_query(knot_pkt_t *pkt, struct query_data *qdata)
 	}
 
 	/* Reserve space for TSIG. */
-	knot_pkt_reserve(pkt, knot_tsig_wire_maxsize(qdata->sign.tsig_key));
+	knot_pkt_reserve(pkt, knot_tsig_wire_maxsize(&qdata->sign.tsig_key));
 
 	/* SOA RR in answer may be included, recover serial. */
 	const knot_pktsection_t *answer = knot_pkt_section(qdata->query, KNOT_ANSWER);

@@ -14,13 +14,14 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <dirent.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <getopt.h>
 #include <sys/stat.h>
-#include <limits.h>
+#include <urcu.h>
 
 #ifdef HAVE_CAP_NG_H
 #include <cap-ng.h>
@@ -35,6 +36,7 @@
 #include "knot/ctl/process.h"
 #include "knot/ctl/remote.h"
 #include "knot/conf/conf.h"
+#include "knot/common/log.h"
 #include "knot/server/server.h"
 #include "knot/server/tcp-handler.h"
 #include "knot/zone/timers.h"
@@ -142,7 +144,19 @@ static void event_loop(server_t *server)
 	/* Bind to control interface. */
 	uint8_t buf[KNOT_WIRE_MAX_PKTSIZE];
 	size_t buflen = sizeof(buf);
-	int remote = remote_bind(conf()->ctl.iface);
+
+	conf_val_t listen_val = conf_get(conf(), C_CTL, C_LISTEN);
+	conf_val_t rundir_val = conf_get(conf(), C_SRV, C_RUNDIR);
+	char *rundir = conf_abs_path(&rundir_val, NULL);
+	struct sockaddr_storage addr = conf_addr(&listen_val, rundir);
+	free(rundir);
+
+	int remote = remote_bind(&addr);
+	if (remote < 0) {
+		log_fatal("failed to bind control socket (%s)",
+		          knot_strerror(remote));
+		return;
+	}
 
 	sigset_t empty;
 	sigemptyset(&empty);
@@ -153,8 +167,7 @@ static void event_loop(server_t *server)
 
 		/* Events. */
 		if (ret > 0) {
-			ret = remote_process(server, conf()->ctl.iface,
-			                     remote, buf, buflen);
+			ret = remote_process(server, &addr, remote, buf, buflen);
 			if (ret == KNOT_CTL_STOP) {
 				break;
 			}
@@ -173,7 +186,7 @@ static void event_loop(server_t *server)
 	server_stop(server);
 
 	/* Close remote control interface. */
-	remote_unbind(conf()->ctl.iface, remote);
+	remote_unbind(&addr, remote);
 
 	/* Wait for server to finish. */
 	server_wait(server);
@@ -185,9 +198,12 @@ static void help(void)
 	       PACKAGE_NAME);
 	printf("\nParameters:\n"
 	       " -c, --config <file>     Select configuration file.\n"
+	       "                           (default %s)\n"
+	       " -C, --confdb <dir>      Select configuration database directory.\n"
 	       " -d, --daemonize=[dir]   Run server as a daemon.\n"
 	       " -V, --version           Print version of the server.\n"
-	       " -h, --help              Print help and usage.\n");
+	       " -h, --help              Print help and usage.\n",
+	       CONF_DEFAULT_FILE);
 }
 
 int main(int argc, char **argv)
@@ -195,23 +211,27 @@ int main(int argc, char **argv)
 	/* Parse command line arguments. */
 	int c = 0, li = 0;
 	int daemonize = 0;
-	const char *config_fn = conf_find_default();
+	const char *config_fn = CONF_DEFAULT_FILE;
+	const char *config_db = NULL;
 	const char *daemon_root = "/";
 
 	/* Long options. */
 	struct option opts[] = {
-		{"config",    required_argument, 0, 'c'},
+		{"config",    required_argument, 0, 'c' },
+		{"confdb",    required_argument, 0, 'C' },
 		{"daemonize", optional_argument, 0, 'd'},
 		{"version",   no_argument,       0, 'V'},
 		{"help",      no_argument,       0, 'h'},
 		{0, 0, 0, 0}
 	};
 
-	while ((c = getopt_long(argc, argv, "c:dVh", opts, &li)) != -1) {
-		switch (c)
-		{
+	while ((c = getopt_long(argc, argv, "c:C:dVh", opts, &li)) != -1) {
+		switch (c) {
 		case 'c':
 			config_fn = optarg;
+			break;
+		case 'C':
+			config_db = optarg;
 			break;
 		case 'd':
 			daemonize = 1;
@@ -266,41 +286,70 @@ int main(int argc, char **argv)
 	log_init();
 
 	/* Open configuration. */
-	int res = conf_open(config_fn);
-	conf_t *config = conf();
+	conf_t *new_conf = NULL;
+	if (config_db == NULL) {
+		int ret = conf_new(&new_conf, conf_scheme, NULL);
+		if (ret != KNOT_EOK) {
+			log_fatal("failed to initialize configuration database "
+			          "(%s)", knot_strerror(ret));
+			return EXIT_FAILURE;
+		}
+
+		/* Import the configuration file. */
+		ret = conf_import(new_conf, config_fn, true);
+		if (ret != KNOT_EOK) {
+			log_fatal("failed to load configuration file '%s' (%s)",
+			          config_fn, knot_strerror(ret));
+			conf_free(new_conf, false);
+			return EXIT_FAILURE;
+		}
+
+		new_conf->filename = strdup(config_fn);
+	} else {
+		/* Open configuration database. */
+		int ret = conf_new(&new_conf, conf_scheme, config_db);
+		if (ret != KNOT_EOK) {
+			log_fatal("failed to open configuration database '%s' "
+			          "(%s)", config_db, knot_strerror(ret));
+			return EXIT_FAILURE;
+		}
+	}
+
+	/* Run post-open config operations. */
+	int res = conf_post_open(new_conf);
 	if (res != KNOT_EOK) {
-		log_fatal("failed to load configuration file '%s' (%s)",
-		          config_fn, knot_strerror(res));
+		log_fatal("failed to use configuration (%s)", knot_strerror(res));
+		conf_free(new_conf, false);
 		return EXIT_FAILURE;
 	}
 
-	/* Initialize logging subsystem.
-	 * @note We're logging since now. */
-	conf_log_reconfigure(config, NULL);
-	conf_add_hook(config, CONF_LOG, conf_log_reconfigure, NULL);
+	conf_update(new_conf);
+
+	/* Initialize logging subsystem. */
+	log_reconfigure(conf(), NULL);
 
 	/* Initialize server. */
 	server_t server;
-	res = server_init(&server, conf_bg_threads(config));
+	res = server_init(&server, conf_bg_threads(conf()));
 	if (res != KNOT_EOK) {
 		log_fatal("failed to initialize server (%s)", knot_strerror(res));
-		conf_free(conf());
+		conf_free(conf(), false);
 		log_close();
 		return EXIT_FAILURE;
 	}
 
 	/* Reconfigure server interfaces.
 	 * @note This MUST be done before we drop privileges. */
-	server_reconfigure(config, &server);
-	conf_add_hook(config, CONF_ALL, server_reconfigure, &server);
-	log_info("configured %zu interfaces and %zu zones",
-	         list_size(&config->ifaces), hattrie_weight(config->zones));
+	server_reconfigure(conf(), &server);
+	log_info("configured %zu zones", conf_id_count(conf(), C_ZONE));
 
 	/* Alter privileges. */
-	log_update_privileges(config->uid, config->gid);
-	if (proc_update_privileges(config->uid, config->gid) != KNOT_EOK) {
+	int uid, gid;
+	conf_user(conf(), &uid, &gid);
+	log_update_privileges(uid, gid);
+	if (proc_update_privileges(uid, gid) != KNOT_EOK) {
 		server_deinit(&server);
-		conf_free(conf());
+		conf_free(conf(), false);
 		log_close();
 		return EXIT_FAILURE;
 	}
@@ -312,7 +361,7 @@ int main(int argc, char **argv)
 		pidfile = pid_check_and_create();
 		if (pidfile == NULL) {
 			server_deinit(&server);
-			conf_free(conf());
+			conf_free(conf(), false);
 			log_close();
 			return EXIT_FAILURE;
 		}
@@ -329,10 +378,9 @@ int main(int argc, char **argv)
 	/* Now we're going multithreaded. */
 	rcu_register_thread();
 
-	/* Populate zone database and add reconfiguration hook. */
+	/* Populate zone database. */
 	log_info("loading zones");
-	server_update_zones(config, &server);
-	conf_add_hook(config, CONF_ALL, server_update_zones, &server);
+	server_update_zones(conf(), &server);
 
 	/* Check number of loaded zones. */
 	if (knot_zonedb_size(server.zone_db) == 0) {
@@ -341,14 +389,15 @@ int main(int argc, char **argv)
 
 	/* Start it up. */
 	log_info("starting server");
-	res = server_start(&server, config->async_start);
+	conf_val_t async_val = conf_get(conf(), C_SRV, C_ASYNC_START);
+	res = server_start(&server, conf_bool(&async_val));
 	if (res != KNOT_EOK) {
 		log_fatal("failed to start server (%s)", knot_strerror(res));
 		server_deinit(&server);
 		rcu_unregister_thread();
 		pid_cleanup(pidfile);
 		log_close();
-		conf_free(conf());
+		conf_free(conf(), false);
 		return EXIT_FAILURE;
 	}
 
@@ -360,14 +409,13 @@ int main(int argc, char **argv)
 	}
 
 	/* Start the event loop. */
-	config = NULL; /* @note Invalidate pointer, as it may change now. */
 	event_loop(&server);
 
 	/* Teardown server and configuration. */
 	server_deinit(&server);
 
 	/* Free configuration. */
-	conf_free(conf());
+	conf_free(conf(), false);
 
 	/* Unhook from RCU. */
 	rcu_unregister_thread();

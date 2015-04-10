@@ -13,16 +13,6 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-/*!
- * \file includes.h
- *
- * \author Jan Vcelak <jan.vcelak@nic.cz>
- *
- * \brief Handing of includes in configuration file.
- *
- * \addtogroup config
- * @{
- */
 
 #pragma once
 
@@ -85,5 +75,3 @@ conf_include_t *conf_includes_pop(conf_includes_t *includes);
  * \return True if the include was removed.
  */
 bool conf_includes_remove(conf_includes_t *includes);
-
-/*! @} */

@@ -35,12 +35,12 @@ static void replan_event(zone_t *zone, const zone_t *old_zone, zone_event_type_t
 /*!< \brief Replans events that are dependent on the SOA record. */
 static void replan_soa_events(zone_t *zone, const zone_t *old_zone)
 {
-	if (!zone_master(zone)) {
+	if (zone_is_master(zone)) {
 		// Events only valid for slaves.
 		return;
 	}
 
-	if (zone_master(old_zone)) {
+	if (!zone_is_master(old_zone)) {
 		// Replan SOA events.
 		replan_event(zone, old_zone, ZONE_EVENT_REFRESH);
 		replan_event(zone, old_zone, ZONE_EVENT_EXPIRE);
@@ -58,12 +58,12 @@ static void replan_soa_events(zone_t *zone, const zone_t *old_zone)
 /*!< \brief Replans transfer event. */
 static void replan_xfer(zone_t *zone, const zone_t *old_zone)
 {
-	if (!zone_master(zone)) {
+	if (zone_is_master(zone)) {
 		// Only valid for slaves.
 		return;
 	}
 
-	if (zone_master(old_zone)) {
+	if (!zone_is_master(old_zone)) {
 		// Replan the transfer from old zone.
 		replan_event(zone, old_zone, ZONE_EVENT_XFER);
 	} else if (zone_contents_is_empty(zone->contents)) {
@@ -76,7 +76,9 @@ static void replan_xfer(zone_t *zone, const zone_t *old_zone)
 /*!< \brief Replans flush event. */
 static void replan_flush(zone_t *zone, const zone_t *old_zone)
 {
-	if (zone->conf->dbsync_timeout <= 0) {
+	conf_val_t val = conf_zone_get(conf(), C_ZONEFILE_SYNC, zone->name);
+	int64_t dbsync_timeout = conf_int(&val);
+	if (dbsync_timeout <= 0) {
 		// Immediate sync scheduled after events.
 		return;
 	}
@@ -84,12 +86,12 @@ static void replan_flush(zone_t *zone, const zone_t *old_zone)
 	const time_t flush_time = zone_events_get_time(old_zone, ZONE_EVENT_FLUSH);
 	if (flush_time <= ZONE_EVENT_NOW) {
 		// Not scheduled previously.
-		zone_events_schedule(zone, ZONE_EVENT_FLUSH, zone->conf->dbsync_timeout);
+		zone_events_schedule(zone, ZONE_EVENT_FLUSH, dbsync_timeout);
 		return;
 	}
 
 	// Pick time to schedule: either reuse or schedule sooner than old event.
-	const time_t schedule_at = MIN(time(NULL) + zone->conf->dbsync_timeout, flush_time);
+	const time_t schedule_at = MIN(time(NULL) + dbsync_timeout, flush_time);
 	zone_events_schedule_at(zone, ZONE_EVENT_FLUSH, schedule_at);
 }
 
@@ -109,7 +111,8 @@ static void duplicate_ddns_q(zone_t *zone, zone_t *old_zone)
 /*!< Replans DNSSEC event. Not whole resign needed, \todo #247 */
 static void replan_dnssec(zone_t *zone)
 {
-	if (zone->conf->dnssec_enable) {
+	conf_val_t val = conf_zone_get(conf(), C_DNSSEC_ENABLE, zone->name);
+	if (conf_bool(&val)) {
 		/* Keys could have changed, force resign. */
 		zone_events_schedule(zone, ZONE_EVENT_DNSSEC, ZONE_EVENT_NOW);
 	}

@@ -29,5 +29,5 @@ void update_policy_from_zone(dnssec_kasp_policy_t *policy,
 /*!
  * \brief Set default DNSSEC policy for zone without assigned policy.
  */
-void set_default_policy(dnssec_kasp_policy_t *policy, const conf_zone_t *config,
+void set_default_policy(dnssec_kasp_policy_t *policy,
                         const zone_contents_t *zone);

@@ -23,6 +23,8 @@
 #include "libknot/libknot.h"
 
 const char *syntax_ok =
+	"#comment\n"
+	" # comment\n"
 	"a:\n"
 	"a :\n"
 	"a : #comment\n"
@@ -53,7 +55,9 @@ const char *syntax_ok =
 	"e: \"a#b' c[d,]\"\n"
 	"\n"
 	"zone:\n"
-	"  -   domain: example.\n"
+	"#comment\n"
+	" # comment\n"
+	"  -   domain: example. # comment\n"
 	"      master: bind\n"
 	"  - domain: example.\n"
 	"    master: bind\n";
@@ -88,7 +92,7 @@ int main(int argc, char *argv[])
 	ret = yp_set_input_string(yp, syntax_ok, strlen(syntax_ok));
 	ok(ret == KNOT_EOK, "set input string");
 
-	line = 1;
+	line = 3;
 	for (int i = 0; i < 3; i++) {
 		ret = yp_parse(yp);
 		ok(ret == KNOT_EOK, "parse %i. key0", i);
@@ -97,7 +101,7 @@ int main(int argc, char *argv[])
 		   yp->line_count == line + i, "compare %i. key0", i);
 	}
 
-	line = 5;
+	line = 7;
 	for (int i = 0; i < 6; i++) {
 		ret = yp_parse(yp);
 		ok(ret == KNOT_EOK, "parse %i. key0 with value", i);
@@ -107,7 +111,7 @@ int main(int argc, char *argv[])
 		   "compare %i. key0 with value", i);
 	}
 
-	line = 12;
+	line = 14;
 	for (int i = 0; i < 6; i++) {
 		ret = yp_parse(yp);
 		ok(ret == KNOT_EOK, "parse %i. key1 with value", i);
@@ -117,7 +121,7 @@ int main(int argc, char *argv[])
 		   "compare %i. key1 with value", i);
 	}
 
-	line = 19;
+	line = 21;
 	for (int i = 0; i < 5; i++) {
 		ret = yp_parse(yp);
 		ok(ret == KNOT_EOK, "parse %i. key0 with first value", i);
@@ -134,7 +138,7 @@ int main(int argc, char *argv[])
 		   "compare %i. key0 with second value", i);
 	}
 
-	line = 25;
+	line = 27;
 	for (int i = 0; i < 2; i++) {
 		ret = yp_parse(yp);
 		ok(ret == KNOT_EOK, "parse %i. id", i);
@@ -144,7 +148,7 @@ int main(int argc, char *argv[])
 		   "compare %i. id", i);
 	}
 
-	line = 28;
+	line = 30;
 	ret = yp_parse(yp);
 	ok(ret == KNOT_EOK, "parse key0 with quoted value");
 	ok(yp->key_len == 1 && yp->key[0] == 'e' && yp->data_len == 10 &&
@@ -152,7 +156,7 @@ int main(int argc, char *argv[])
 	   yp->event == YP_EKEY0 && yp->line_count == line,
 	   "compare key0 with quoted value");
 
-	line = 30;
+	line = 32;
 	ret = yp_parse(yp);
 	ok(ret == KNOT_EOK, "parse key0");
 	ok(yp->key_len == 4 && strcmp(yp->key, "zone") == 0 &&
@@ -160,7 +164,7 @@ int main(int argc, char *argv[])
 	   yp->event == YP_EKEY0 && yp->line_count == line,
 	   "compare key0 value");
 
-	line = 31;
+	line = 35;
 	for (int i = 0; i < 2; i++) {
 		ret = yp_parse(yp);
 		ok(ret == KNOT_EOK, "parse %i. id", i);

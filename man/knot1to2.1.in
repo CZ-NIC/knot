@@ -1,0 +1,30 @@
+.TH "knot1to2" "1" "@RELEASE_DATE@" "CZ.NIC Labs" "Knot DNS, version @VERSION@"
+.SH NAME
+.TP 6
+.B knot1to2
+\- Simple Knot DNS configuration conversion utility
+.SH SYNOPSIS
+.B knot1to2
+-i \fIfile\fR -o \fIfile\fR
+.SH DESCRIPTION
+This utility converts Knot DNS configuration file from version 1.x to version 2.x.
+.TP 4
+.BR \-i ,\  \-\-in
+Input configuration file (Knot version 1.x).
+.TP
+.BR \-o ,\  \-\-out
+Output configuration file (Knot version 2.x)
+.TP
+.BR \-h ,\  \-\-help
+Print help.
+.TP
+.BR \-V ,\  \-\-version
+Print package version.
+.SH AUTHOR
+Daniel Salzman (\fBwww.knot\-dns.cz\fR)
+.TP
+Please send any bug reports or comments to \fBknot\-dns@labs.nic.cz\fR
+.SH SEE ALSO
+.BR kdig (1),
+.BR khost (1),
+.BR knsupdate (1).

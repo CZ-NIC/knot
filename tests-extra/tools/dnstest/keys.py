@@ -73,7 +73,7 @@ class Tsig(object):
         self.key_params = dict(keyname=self.name, keyalgorithm=_alg, keyring=_key)
 
     def dump(self, filename):
-        s = dnstest.server.BindConf()
+        s = dnstest.config.BindConf()
 
         s.begin("key", self.name)
         s.item("algorithm", self.alg)

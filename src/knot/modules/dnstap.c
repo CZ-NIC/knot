@@ -16,15 +16,24 @@
 
 #include <sys/stat.h>
 
+#include "knot/common/log.h"
 #include "knot/modules/dnstap.h"
-#include "knot/nameserver/query_module.h"
 #include "knot/nameserver/process_query.h"
 #include "dnstap/dnstap.pb-c.h"
 #include "dnstap/writer.h"
 #include "dnstap/message.h"
 #include "dnstap/dnstap.h"
 #include "libknot/libknot.h"
-#include "libknot/descriptor.h"
+
+/* Module configuration scheme. */
+#define MOD_SINK	"\x04""sink"
+
+const yp_item_t scheme_mod_dnstap[] = {
+	{ C_ID,      YP_TSTR, YP_VNONE },
+	{ MOD_SINK,  YP_TSTR, YP_VNONE },
+	{ C_COMMENT, YP_TSTR, YP_VNONE },
+	{ NULL }
+};
 
 /* Defines. */
 #define MODULE_ERR(msg...) log_error("module 'dnstap', " msg)
@@ -171,9 +180,21 @@ static struct fstrm_writer* dnstap_writer(const char *path)
 
 int dnstap_load(struct query_plan *plan, struct query_module *self)
 {
+	if (plan == NULL || self == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	conf_val_t val = conf_mod_get(self->config, MOD_SINK, self->id);
+	if (val.code != KNOT_EOK) {
+		if (val.code == KNOT_EINVAL) {
+			MODULE_ERR("no sink for '%s'", self->id->data);
+		}
+		return val.code;
+	}
+	const char *sink = conf_str(&val);
+
 	/* Initialize the writer and the options. */
-	int ret = KNOT_ENOMEM;
-	struct fstrm_writer *writer = dnstap_writer(self->param);
+	struct fstrm_writer *writer = dnstap_writer(sink);
 	if (writer == NULL) {
 		goto fail;
 	}
@@ -185,7 +206,8 @@ int dnstap_load(struct query_plan *plan, struct query_module *self)
 	}
 
 	/* Initialize queues. */
-	size_t qcount = conf_udp_threads(self->config) + conf_tcp_threads(self->config);
+	size_t qcount = conf_udp_threads(self->config) +
+	                conf_tcp_threads(self->config);
 	fstrm_iothr_options_set_num_input_queues(opt, qcount);
 
 	/* Create the I/O thread. */
@@ -196,6 +218,7 @@ int dnstap_load(struct query_plan *plan, struct query_module *self)
 		fstrm_writer_destroy(&writer);
 		goto fail;
 	}
+
 	self->ctx = iothread;
 
 	/* Hook to the query plan. */
@@ -205,12 +228,16 @@ int dnstap_load(struct query_plan *plan, struct query_module *self)
 	return KNOT_EOK;
 
 fail:
-	MODULE_ERR("init failed, params '%s' (%s)", self->param, knot_strerror(ret));
-	return ret;
+	MODULE_ERR("failed for init sink '%s'", sink);
+	return KNOT_ENOMEM;
 }
 
 int dnstap_unload(struct query_module *self)
 {
+	if (self == NULL) {
+		return KNOT_EINVAL;
+	}
+
 	struct fstrm_iothr* iothread = self->ctx;
 	fstrm_iothr_destroy(&iothread);
 	return KNOT_EOK;

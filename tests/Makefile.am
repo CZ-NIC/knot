@@ -10,16 +10,14 @@ AM_LDFLAGS = \
 LDADD = \
 	$(top_builddir)/libtap/libtap.a \
 	$(top_builddir)/src/libknot-int.la \
-	$(top_builddir)/src/libknot-yparser.la \
-	$(top_builddir)/src/libknotd.la
+	$(top_builddir)/src/libknotd.la \
+	$(top_builddir)/src/libknot-yparser.la
 
 check_PROGRAMS = \
 	acl				\
 	base32hex			\
 	base64				\
 	changeset			\
-	changeset			\
-	conf				\
 	descriptor			\
 	dname				\
 	dthreads			\
@@ -66,13 +64,6 @@ check-local: $(check_PROGRAMS)
 					-L $(top_builddir)/tests/runtests.log \
 					$(check_PROGRAMS)
 
-EXTRA_DIST = data
-dist_check_SCRIPTS = resource.sh
-
-conf_SOURCES = conf.c sample_conf.h
 process_query_SOURCES = process_query.c fake_server.h
 process_answer_SOURCES = process_answer.c fake_server.h
-nodist_conf_SOURCES = sample_conf.c
-CLEANFILES = sample_conf.c runtests.log
-sample_conf.c: data/sample_conf
-	$(abs_srcdir)/resource.sh $(abs_srcdir)/data/sample_conf >$@
+CLEANFILES = runtests.log

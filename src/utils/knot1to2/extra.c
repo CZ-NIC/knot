@@ -15,16 +15,15 @@
  */
 
 #include <stdlib.h>
-#include <stdbool.h>
 #include <string.h>
 
-#include "knot/conf/includes.h"
-#include "knot/conf/extra.h"
+#include "utils/knot1to2/includes.h"
+#include "utils/knot1to2/extra.h"
 
 /*!
  * \brief Init structure with custom data for config parser.
  */
-conf_extra_t *conf_extra_init(const char *file)
+conf_extra_t *conf_extra_init(const char *file, int run, share_t *share)
 {
 	conf_extra_t *extra = calloc(1, sizeof(conf_extra_t));
 	if (!extra) {
@@ -45,6 +44,8 @@ conf_extra_t *conf_extra_init(const char *file)
 
 	extra->error = false;
 	extra->includes = includes;
+	extra->run = run;
+	extra->share = share;
 
 	return extra;
 }

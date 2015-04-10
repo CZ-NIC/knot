@@ -26,37 +26,37 @@
 
 #pragma once
 
-#include "knot/conf/conf.h"
 #include "libknot/packet/pkt.h"
 #include "libknot/rrset.h"
 #include "libknot/dnssec/key.h"
 #include "knot/server/server.h"
 
-/*! \brief Default remote control tool port. */
-#define REMOTE_DPORT 5533
+/*! \brief Default connection control parameters. */
+#define REMOTE_PORT	5533
+#define REMOTE_SOCKET	"knot.sock"
 
 /*!
- * \brief Bind RC interface according to configuration.
+ * \brief Bind RC interface.
  *
- * \param desc Interface descriptor (address, port).
+ * \param addr Interface descriptor (address, port).
  *
  * \retval socket if passed.
  * \retval knot_error else.
  */
-int remote_bind(conf_iface_t *desc);
+int remote_bind(struct sockaddr_storage *addr);
 
 /*!
  * \brief Unbind from RC interface and close socket.
  *
  * \note Breaks all pending connections.
  *
- * \param desc Interface descriptor (address, port).
+ * \param addr Interface descriptor (address, port).
  * \param socket Interface socket
  *
  * \retval KNOT_EOK on success.
  * \retval knot_error else.
  */
-int remote_unbind(conf_iface_t *desc, int sock);
+int remote_unbind(struct sockaddr_storage *addr, int sock);
 
 /*!
  * \brief Poll new events on RC socket.
@@ -112,7 +112,7 @@ int remote_answer(int sock, server_t *s, knot_pkt_t *pkt);
  * \note This should be used as a high-level API for workers.
  *
  * \param s Server instance.
- * \param ctl_if Control interface.
+ * \param ctl_addr Control interface address.
  * \param sock RC interface socket.
  * \param buf Buffer for commands/responses.
  * \param buflen Maximum buffer size.
@@ -120,7 +120,7 @@ int remote_answer(int sock, server_t *s, knot_pkt_t *pkt);
  * \retval KNOT_EOK on success.
  * \retval knot_error else.
  */
-int remote_process(server_t *s, conf_iface_t *ctl_if, int sock,
+int remote_process(server_t *s, struct sockaddr_storage *ctl_addr, int sock,
                    uint8_t* buf, size_t buflen);
 
 /* Functions for creating RC packets. */

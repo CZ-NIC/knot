@@ -30,6 +30,8 @@
 #define LMDB_DIR_MODE   0770
 #define LMDB_FILE_MODE  0660
 
+const unsigned NAMEDB_LMDB_NOTLS = MDB_NOTLS;
+
 struct lmdb_env
 {
 	bool shared;

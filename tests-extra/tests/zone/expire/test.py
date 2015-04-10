@@ -13,12 +13,12 @@ def break_xfrout(server):
         config = f.read()
         f.seek(0)
         f.truncate()
-        config = config.replace("xfr-out ", "#xfr-out ")
+        config = config.replace(" acl:", " #acl:")
         f.write(config)
 
 t = Test(tsig=False)
 
-# this zone has refresh = 1s, retry = 1s and expire = 10s + 2s for connection timeouts
+# this zone has refresh = 1s, retry = 1s and expire = 8s
 zone = t.zone("example.", storage=".")
 EXPIRE_SLEEP = 15
 

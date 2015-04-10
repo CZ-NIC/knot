@@ -58,7 +58,7 @@ enum tsig_consts {
 /*! \brief Packet signing context.
  *  \todo This should be later moved to TSIG files when refactoring. */
 typedef struct knot_sign_context {
-	knot_tsig_key_t *tsig_key;
+	knot_tsig_key_t tsig_key;
 	uint8_t *tsig_buf;
 	uint8_t *tsig_digest;
 	size_t tsig_buflen;

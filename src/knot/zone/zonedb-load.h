@@ -31,4 +31,4 @@ struct server;
  * \retval KNOT_EINVAL
  * \retval KNOT_ERROR
  */
-int zonedb_reload(const conf_t *conf, struct server *server);
+int zonedb_reload(conf_t *conf, struct server *server);

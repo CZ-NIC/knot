@@ -69,7 +69,7 @@ static const struct error errors[] = {
 	{ KNOT_ENOZONE,      "no such zone found" },
 	{ KNOT_ENONODE,      "no such node in zone found" },
 	{ KNOT_EDNAMEPTR,    "domain name pointer larger than allowed" },
-	{ KNOT_EPAYLOAD,     "payload in OPT RR larger than max wire size" },
+	{ KNOT_EPAYLOAD,     "invalid EDNS payload size" },
 	{ KNOT_EPREREQ,      "UPDATE prerequisity not met" },
 	{ KNOT_ETTL,         "TTL mismatch" },
 	{ KNOT_ENOXFR,       "transfer was not sent" },
@@ -129,6 +129,11 @@ static const struct error errors[] = {
 	{ KNOT_YP_ENOTSUP_ID,   "identifier not supported" },
 	{ KNOT_YP_ENODATA,      "missing value" },
 	{ KNOT_YP_ENOID,        "missing identifier" },
+
+	/* Configuration errors. */
+	{ KNOT_CONF_EMPTY,     "empty configuration database" },
+	{ KNOT_CONF_EVERSION,  "invalid configuration database version" },
+	{ KNOT_CONF_EREDEFINE, "identifier already specified" },
 
 	/* Processing errors. */
 	{ KNOT_LAYER_ERROR, "processing layer error" },

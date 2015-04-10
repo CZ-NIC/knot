@@ -36,6 +36,7 @@
 #include "knot/zone/events/events.h"
 #include "knot/zone/contents.h"
 #include "libknot/dname.h"
+#include "libknot/packet/pkt.h"
 
 struct process_query_param;
 
@@ -54,7 +55,6 @@ typedef struct zone
 {
 	knot_dname_t *name;
 	zone_contents_t *contents;
-	conf_zone_t *conf;
 	zone_flag_t flags;
 
 	/*! \brief DDNS queue and lock. */
@@ -71,6 +71,12 @@ typedef struct zone
 	time_t zonefile_mtime;
 	uint32_t zonefile_serial;
 
+	/*! \brief Config master list index of the current master server. */
+	size_t master_index;
+
+	/*! \brief Query modules. */
+	list_t query_modules;
+	struct query_plan *query_plan;
 } zone_t;
 
 /*----------------------------------------------------------------------------*/
@@ -78,11 +84,11 @@ typedef struct zone
 /*!
  * \brief Creates new zone with emtpy zone content.
  *
- * \param conf  Zone configuration.
+ * \param name  Zone name.
  *
  * \return The initialized zone structure or NULL if an error occured.
  */
-zone_t *zone_new(conf_zone_t *conf);
+zone_t* zone_new(const knot_dname_t *name);
 
 /*!
  * \brief Deallocates the zone structure.
@@ -106,11 +112,14 @@ int zone_change_store(zone_t *zone, changeset_t *change);
 zone_contents_t *zone_switch_contents(zone_t *zone,
 					   zone_contents_t *new_contents);
 
-/*! \brief Return zone master remote. */
-const conf_iface_t *zone_master(const zone_t *zone);
+/*! \brief Check if the zone has some masters. */
+bool zone_is_master(const zone_t *zone);
 
-/*! \brief Rotate list of master remotes for current zone. */
-void zone_master_rotate(const zone_t *zone);
+/*! \brief Return the current zone master. */
+conf_remote_t zone_master(const zone_t *zone);
+
+/*! \brief Set the next zone master as a current. */
+void zone_master_rotate(zone_t *zone);
 
 /*! \brief Synchronize zone file with journal. */
 int zone_flush_journal(zone_t *zone);

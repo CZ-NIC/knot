@@ -50,11 +50,10 @@ int main(int argc, char *argv[])
 
 	/* Populate. */
 	for (unsigned i = 0; i < ZONE_COUNT; ++i) {
-		conf_zone_t *zone_conf = malloc(sizeof(conf_zone_t));
-		conf_init_zone(zone_conf);
-		zone_conf->name = strdup(zone_list[i]);
+		knot_dname_t *zone_name = knot_dname_from_str_alloc(zone_list[i]);
+		zones[i] = zone_new(zone_name);
+		knot_dname_free(&zone_name, NULL);
 
-		zones[i] = zone_new(zone_conf);
 		if (zones[i] == NULL) {
 			goto cleanup;
 		}

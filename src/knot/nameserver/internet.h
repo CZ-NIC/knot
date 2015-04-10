@@ -118,8 +118,8 @@ int ns_put_rr(knot_pkt_t *pkt, const knot_rrset_t *rr,
 	}
 
 /*! \brief Require authentication. */
-#define NS_NEED_AUTH(acl, qdata) \
-	if (!process_query_acl_check((acl), (qdata))) { \
+#define NS_NEED_AUTH(qdata, zone_name, action) \
+	if (!process_query_acl_check((zone_name), (action), (qdata))) { \
 		return KNOT_STATE_FAIL; \
 	} else { \
 		if (process_query_verify(qdata) != KNOT_EOK) { \

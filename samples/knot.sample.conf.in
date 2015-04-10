@@ -1,89 +1,57 @@
 #
 # This is a sample of a minimal configuration file for Knot DNS.
-#
 # For exhaustive list of all options see man 5 knot.conf or refer to user manual.
 #
 
-system {
-  # Identity of the server (see RFC 4892).
-  identity on;
+server:
+    # Identity of the server.
+    identity: "Knot DNS"
 
-  # Version of the server (see RFC 4892)
-  version on;
+    # Version of the server (automatic value).
+    version: ""
 
-  # User for running server
-  # May also specify user.group (e.g. knot.knot)
-  user knot.knot;
+    # Listening interfaces (all configured IPv4 and IPv6 interfaces).
+    listen: 0.0.0.0@53
+    listen: ::@53
 
-  # Directory for storing run-time data
-  # e.g. PID file and control sockets
-  # default: ${localstatedir}/run/knot, configured with --with-rundir
-  # rundir "@run_dir@";
-}
+remote:
+  - id: slave
+    address: 203.0.113.1@53
 
-interfaces {
-  all_ipv4 {
-    address 0.0.0.0;
-    port 53;
-  }
-  all_ipv6 {
-    address [::];
-    port 53;
-  }
-}
+  - id: master
+    address: 198.51.100.1@53
 
-control {
-  # Default: knot.sock (relative to rundir)
-  listen-on "knot.sock";
+acl:
+  - id: acl_slave
+    address: 203.0.113.1
+    action: xfer
 
-  # As an alternative, you can use an IPv4/v6 address and port
-  # Same syntax as for 'interfaces' items
-  # listen-on { address 127.0.0.1@5533; }
+  - id: acl_master
+    address: 198.51.100.1
+    action: notify
 
-  # Specifies ACL list for remote control
-  # Same syntax as for ACLs in zones
-  # List of remotes or groups delimited by comma
-  # Notice: keep in mind that ACLs bear no effect with UNIX sockets
-  # allow server0, admins;
-}
+template:
+  - id: default
+    storage: "@storage_dir@"
 
-#remotes {
-#  master0 {
-#    address 198.51.100.1@53;
-#  }
-#  slave0 {
-#    address 203.0.113.1@53;
-#  }
-#}
+zone:
+    # Master zone.
+  - domain: example.com
+    file: "@storage_dir@/example.com.zone"
+    notify: slave
+    acl: acl_slave
 
-zones {
-#  This is a default directory to place slave zone files, journals etc.
-#  default: ${localstatedir}/lib/knot, configured with --with-storage
-#  storage "@storage_dir@";
-#
-#  Example master zone
-#  example.com {
-#    file "@config_dir@/example.com.zone";
-#    xfr-out slave0;
-#    notify-out slave0;
-#  }
-#
-#  Example slave zone
-#  example.net {
-#    file "@storage_dir@/example.net.zone
-#    xfr-in master0;
-#    notify-in master0;
-#  }
-}
+    # Slave zone.
+  - domain: example.net
+    file: "@storage_dir@/example.net.zone"
+    master: master
+    acl: acl_master
 
-log {
-  syslog {
-    # Log info and more serious events to syslog
-    any info;
-  }
+log:
+    # Log info and more serious events to syslog.
+  - to: syslog
+    any: info
 
-  # Log warnings, errors and criticals to stderr
-  stderr {
-    any warning;
-  }
-}
+    # Log warnings, errors and criticals to stderr.
+  - to: stderr
+    any: warning

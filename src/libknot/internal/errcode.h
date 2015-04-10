@@ -131,6 +131,11 @@ enum knot_error {
 	KNOT_YP_ENODATA,
 	KNOT_YP_ENOID,
 
+	/* Configuration errors. */
+	KNOT_CONF_EMPTY,
+	KNOT_CONF_EVERSION,
+	KNOT_CONF_EREDEFINE,
+
 	/* Processing error. */
 	KNOT_LAYER_ERROR,
 

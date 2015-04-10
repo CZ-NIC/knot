@@ -22,135 +22,155 @@
 #include <limits.h>
 #include <stdbool.h>
 
-#include "libknot/libknot.h"
 #include "knot/updates/acl.h"
 #include "knot/conf/conf.h"
+#include "libknot/libknot.h"
 #include "libknot/internal/endian.h"
-#include "libknot/rrtype/tsig.h"
+#include "libknot/internal/sockaddr.h"
 
-static inline uint32_t ipv4_chunk(const struct sockaddr_in *ipv4)
-{
-	/* Stored as big end first. */
-	return ipv4->sin_addr.s_addr;
+static const uint8_t* ipv4_addr(const struct sockaddr_storage *ss) {
+	struct sockaddr_in *ipv4 = (struct sockaddr_in *)ss;
+	return (uint8_t *)&ipv4->sin_addr.s_addr;
 }
 
-static inline uint32_t ipv6_chunk(const struct sockaddr_in6 *ipv6, uint8_t idx)
-{
-	/* Is byte array, 4x 32bit value. */
-	return ((uint32_t *)&ipv6->sin6_addr)[idx];
+static const uint8_t* ipv6_addr(const struct sockaddr_storage *ss) {
+	struct sockaddr_in6 *ipv6 = (struct sockaddr_in6 *)ss;
+	return (uint8_t *)&ipv6->sin6_addr.s6_addr;
 }
 
-static inline uint32_t ip_chunk(const struct sockaddr_storage *ss, uint8_t idx)
+bool netblock_match(const struct sockaddr_storage *ss1,
+                    const struct sockaddr_storage *ss2,
+                    unsigned prefix)
 {
-	if (ss->ss_family == AF_INET6) {
-		return ipv6_chunk((const struct sockaddr_in6 *)ss, idx);
-	} else {
-		return ipv4_chunk((const struct sockaddr_in *)ss);
-	}
-}
-
-/*! \brief Compare chunks using given mask. */
-static int cmp_chunk(const conf_iface_t *a1, const struct sockaddr_storage *a2,
-                     uint8_t idx, uint32_t mask)
-{
-	const uint32_t c1 = ip_chunk(&a1->addr, idx) & mask;
-	const uint32_t c2 = ip_chunk(a2, idx) & mask;
-
-	if (c1 > c2)
-		return  1;
-	if (c1 < c2)
-		return -1;
-	return 0;
-}
-
-/*!
- * \brief Calculate bitmask for byte array from the MSB.
- *
- * \note i.e. 8 means top 8 bits set, 11111111000000000000000000000000
- *
- * \param nbits number of bits set to 1
- * \return mask
- */
-static uint32_t acl_fill_mask32(short nbits)
-{
-	assert(nbits >= 0 && nbits <= 32);
-	uint32_t r = 0;
-	for (char i = 0; i < nbits; ++i) {
-		r |= 1 << (31 - i);
+	if (ss1 == NULL || ss2 == NULL) {
+		return false;
 	}
 
-	/* Make sure the mask is in network byte order. */
-	return htonl(r);
-}
+	if (ss1->ss_family != ss2->ss_family) {
+		return false;
+	}
 
-int netblock_match(struct conf_iface *a1, const struct sockaddr_storage *a2)
-{
-	int ret = 0;
-	uint32_t mask = 0xffffffff;
-	short mask_bits = a1->prefix;
-	const short chunk_bits = sizeof(mask) * CHAR_BIT;
+	const uint8_t *addr1, *addr2;
+	switch (ss1->ss_family) {
+	case AF_INET:
+		addr1 = ipv4_addr(ss1);
+		addr2 = ipv4_addr(ss2);
+		prefix = prefix > IPV4_PREFIXLEN ? IPV4_PREFIXLEN : prefix;
+		break;
+	case AF_INET6:
+		addr1 = ipv6_addr(ss1);
+		addr2 = ipv6_addr(ss2);
+		prefix = prefix > IPV6_PREFIXLEN ? IPV6_PREFIXLEN : prefix;
+		break;
+	default:
+		return false;
+	}
 
-	/* Check different length, IPv4 goes first. */
-	if (a1->addr.ss_family != a2->ss_family) {
-		if (a1->addr.ss_family < a2->ss_family) {
-			return -1;
-		} else {
-			return 1;
+	/* Compare full bytes address block. */
+	uint8_t full_bytes = prefix / 8;
+	for (int i = 0; i < full_bytes; i++) {
+		if (addr1[i] != addr2[i]) {
+			return false;
 		}
 	}
 
-	/* At most 4xchunk_bits for IPv6 */
-	unsigned i = 0;
-	while (ret == 0 && mask_bits > 0) {
-		/* Compute mask for current chunk. */
-		if (mask_bits <= chunk_bits) {
-			mask = acl_fill_mask32(mask_bits);
-			mask_bits = 0; /* Last chunk */
-		} else {
-			mask_bits -= chunk_bits;
+	/* Compare last partial byte address block. */
+	uint8_t rest_bits = prefix % 8;
+	if (rest_bits > 0) {
+		uint8_t rest1 = addr1[full_bytes] >> (8 - rest_bits);
+		uint8_t rest2 = addr2[full_bytes] >> (8 - rest_bits);
+		if (rest1 != rest2) {
+			return false;
 		}
-
-		/* Empty mask - shortcut, we're done. */
-		if (mask > 0) {
-			ret = cmp_chunk(a1, a2, i, mask);
-		}
-		++i;
 	}
 
-	return ret;
+	return true;
 }
 
-struct conf_iface* acl_find(list_t *acl, const struct sockaddr_storage *addr,
-                              const knot_dname_t *key_name)
+bool acl_allowed(conf_val_t *acl, acl_action_t action,
+                 const struct sockaddr_storage *addr,
+                 knot_tsig_key_t *tsig)
 {
-	if (acl == NULL || addr == NULL) {
+	if (acl == NULL || addr == NULL || tsig == NULL) {
 		return NULL;
 	}
 
-	conf_remote_t *remote = NULL;
-	WALK_LIST(remote, *acl) {
-		conf_iface_t *cur = remote->remote;
-		if (netblock_match(cur, addr) == 0) {
-			/* NOKEY entry. */
-			if (cur->key == NULL) {
-				if (key_name == NULL) {
-					return cur;
-				}
-				/* NOKEY entry, but key provided. */
-				continue;
+	while (acl->code == KNOT_EOK) {
+		/* Check if the action is allowed. */
+		bool match = false, deny = false;
+		conf_val_t action_val = conf_id_get(conf(), C_ACL, C_ACTION, acl);
+		while (action_val.code == KNOT_EOK) {
+			unsigned act = conf_opt(&action_val);
+			if (act & action) {
+				match = true;
 			}
-
-			/* NOKEY provided, but key required. */
-			if (key_name == NULL) {
-				continue;
+			if (act == ACL_ACTION_DENY) {
+				deny = true;
 			}
+			conf_val_next(&action_val);
+		}
+		if (!match) {
+			conf_val_next(acl);
+			continue;
+		}
 
-			/* Key name match. */
-			if (knot_dname_is_equal(cur->key->name, key_name)) {
-				return cur;
+		/* Check if the address prefix matches. */
+		conf_val_t addr_val = conf_id_get(conf(), C_ACL, C_ADDR, acl);
+		if (addr_val.code == KNOT_EOK) {
+			unsigned prefix;
+			struct sockaddr_storage ss;
+			ss = conf_net(&addr_val, &prefix);
+			if (!netblock_match(addr, &ss, prefix)) {
+				conf_val_next(acl);
+				continue;
 			}
 		}
+
+		/* Check if the key matches. */
+		conf_val_t key_val = conf_id_get(conf(), C_ACL, C_KEY, acl);
+		if (key_val.code == KNOT_EOK) {
+			/* No key provided, but required. */
+			if (tsig->name == NULL) {
+				conf_val_next(acl);
+				continue;
+			}
+
+			/* Compare key names. */
+			const knot_dname_t *key_name = conf_dname(&key_val);
+			if (knot_dname_cmp(key_name, tsig->name) != 0) {
+				conf_val_next(acl);
+				continue;
+			}
+
+			/* Compare key algorithms. */
+			conf_val_t alg_val = conf_id_get(conf(), C_KEY, C_ALG,
+			                                 &key_val);
+			if (conf_opt(&alg_val) != tsig->algorithm) {
+				conf_val_next(acl);
+				continue;
+			}
+		/* No key required, but provided. */
+		} else if (tsig->name != NULL) {
+			conf_val_next(acl);
+			continue;
+		}
+
+		if (deny) {
+			conf_val_next(acl);
+			continue;
+		}
+
+		/* Fill the output with tsig secret. */
+		if (tsig->name != NULL) {
+			conf_val_t secret_val = conf_id_get(conf(), C_KEY,
+			                                    C_SECRET, &key_val);
+			conf_data(&secret_val);
+			tsig->secret.data = (uint8_t *)secret_val.data;
+			tsig->secret.size = secret_val.len;
+		}
+
+		return true;
 	}
 
-	return NULL;
+	return false;
 }

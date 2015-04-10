@@ -29,6 +29,7 @@
 #include <errno.h>
 #include <limits.h>
 #include <sys/param.h>
+#include <urcu.h>
 #ifdef HAVE_SYS_UIO_H /* 'struct iovec' for OpenBSD */
 #include <sys/uio.h>
 #endif /* HAVE_SYS_UIO_H */

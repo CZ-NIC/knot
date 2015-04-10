@@ -157,7 +157,7 @@ int main(int argc, char *argv[])
 	/* Cleanup. */
 	mp_delete(mm.ctx);
 	server_deinit(&server);
-	conf_free(conf());
+	conf_free(conf(), false);
 
 	return 0;
 }

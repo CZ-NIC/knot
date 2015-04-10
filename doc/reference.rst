@@ -1,1047 +1,603 @@
 .. meta::
    :description: reStructuredText plaintext markup language
 
-.. _Knot DNS Configuration Reference:
+.. _Configuration Reference:
 
-********************************
-Knot DNS Configuration Reference
-********************************
+***********************
+Configuration Reference
+***********************
 
-This reference describes every configuration option in Knot DNS server.
+.. _Description:
 
-.. _system:
+Description
+===========
 
-``system`` Statement
-====================
+Configuration file for Knot DNS uses simplified YAML format. Simplified means
+that not all features are supported.
 
-The ``system`` statement contains general options related to the
-operating system and other general options which do not fit anywhere
-else.
+For the configuration items description, there are some symbol with the
+folowing meaning:
 
-.. _system Syntax:
+- *INT* - Integer
+- *STR* - Textual string
+- *HEXSTR* - Hexadecimal string (with ``0x`` prefix)
+- *BOOL* - Boolean value (``on`` or ``off``)
+- *TIME* - Number of seconds, integer with possible time mutliplier suffix
+  (``s`` ~ 1, ``m`` ~ 60, ``h`` ~ 3600 or ``d`` ~ 24 * 3600)
+- *SIZE* - Number of bytes, integer with possible size multiplier suffix
+  (``B`` ~ 1, ``K`` ~ 1024, ``M`` ~ 1024^2 or ``G`` ~ 1024^3)
+- *BASE64* - Base64 encoded string
+- *ADDR* - IPv4 or IPv6 address
+- *DNAME* - Domain name
+- ... - Multi-valued item, order of the values is preserved
+- [ ] - Optional value
+- \| - Choice
 
-``system`` Syntax
------------------
+There are 8 main sections (``server``, ``key``, ``acl``, ``control``,
+``remote``, ``template``, ``zone`` and ``log``) and module sections with
+``mod-`` prefix . Most of the sections (excluding ``server`` and
+``control``) are sequences of settings blocks. Each settings block
+begins with a unique identifier, which can be used as a reference from other
+sections (such identifier must be defined in advance).
+
+Multi-valued item can be specified either as a YAML sequence [val1, val2, ...]
+or as more single-valued items each on the extra line.
+
+If an item value contains spaces or other special characters, it is necessary
+to double quote such value with ``"`` ``"``.
+
+.. _Comments:
+
+Comments
+========
+
+A comment begins with a ``#`` character and is ignored during the processing.
+Also each configuration section or sequence block allows to specify permanent
+comment using ``comment`` item which is stored in the server beside the
+configuration.
+
+.. _Includes:
+
+Includes
+========
+
+Another configuration file or all configuration files in a directory can be
+included at the top level in the current file. If the file or directory path
+is not absolute, then it is relative to the current file directory.
 
 ::
 
-    system {
-      [ identity ( on | "string" ); ]
-      [ version ( on | "string" ); ]
-      [ nsid ( on | "string" | hex_string ); ]
-      [ rundir "string"; ]
-      [ pidfile "string"; ]
-      [ workers integer; ]
-      [ background-workers integer; ]
-      [ asynchronous-start ( on | off ); ]
-      [ user string[.string]; ]
-      [ max-conn-idle ( integer | integer(s | m | h | d); ) ]
-      [ max-conn-handshake ( integer | integer(s | m | h | d); ) ]
-      [ max-conn-reply ( integer | integer(s | m | h | d); ) ]
-      [ max-tcp-clients integer; ]
-      [ transfers integer; ]
-      [ rate-limit integer; ]
-      [ rate-limit-size integer; ]
-      [ rate-limit-slip integer; ]
-      [ max-udp-payload integer; ]
-    }
+ include: STR
 
-.. _system Statement Definition and Usage:
+.. _Server section:
 
-``system`` Statement Definition and Usage
------------------------------------------
+Server section
+==============
 
-.. _identity:
+General options related to the server.
+
+::
+
+ server:
+     identity: [STR]
+     version: [STR]
+     nsid: [STR|HEXSTR]
+     rundir: STR
+     user: STR[:STR]
+     pidfile: STR
+     workers: INT
+     background-workers: INT
+     asynchronous-start: BOOL
+     max-conn-idle: TIME
+     max-conn-handshake: TIME
+     max-conn-reply: TIME
+     max-tcp-clients: INT
+     max-udp-payload: SIZE
+     transfers: INT
+     rate-limit: INT
+     rate-limit-slip: INT
+     rate-limit-size: INT
+     listen: ADDR[@INT] ...
+
+.. _server_identity:
 
 identity
-^^^^^^^^
+--------
 
-Identity of the server returned in a response for the query for TXT
-record ``id.server.`` or ``hostname.bind.`` in the CHAOS class (see
-`RFC\ 4892 <http://tools.ietf.org/html/rfc4892>`_).
+An identity of the server returned in the response for the query for TXT
+record ``id.server.`` or ``hostname.bind.`` in the CHAOS class (see RFC 4892).
+If empty, FQDN hostname is used.
 
-If not specified or empty, the server returns REFUSED status code.  If
-a boolean value of ``on`` is used, FQDN hostname is used as a default.
+Default: disabled
 
-::
-
-    system {
-      identity "ns01.example.com";
-      identity on;
-    }
-
-.. _version:
+.. _server_version:
 
 version
-^^^^^^^
+-------
 
-Version of the server software returned in a response for the query
+A version of the server software returned in the response for the query
 for TXT record ``version.server.`` or ``version.bind.`` in the CHAOS
-class (see `RFC\ 4892 <http://tools.ietf.org/html/rfc4892>`_).
+class (see RFC 4892). If empty, automatic version is used.
 
-Option allows a boolean value ``on|off``, if ``on``, automatic version
-string is set as a default.  If not specified or empty, the server
-returns REFUSED status code.
+Default: disabled
 
-::
-
-    system {
-      version "Knot DNS 1.3.0";
-      version on; # Reports current version
-    }
-
-.. _nsid:
+.. _server_nsid:
 
 nsid
-^^^^
+----
 
-DNS Name Server Identifier (see `RFC\ 5001 <http://tools.ietf.org/html/rfc5001>`_).
+A DNS name server identifier (see RFC 5001). If empty, FQDN hostname is used.
 
-Use a string format "text" or a hexstring (e.g.  0x01ab00) If a
-boolean value of ``on`` is used, FQDN hostname is used as a default.
+Default: disabled
 
-::
-
-    system {
-      nsid 0x00cafe;
-      nsid "cafe";
-      nsid on;
-    }
-
-.. _rundir:
+.. _server_rundir:
 
 rundir
-^^^^^^
+------
 
-Path for storing run-time data, for example PID file and unix sockets.
-Default value: ``${localstatedir}/run/knot``, configured with
-``--with-rundir=path``
+A path for storing run-time data (PID file, unix sockets, etc.).
 
-::
+Default: ``${localstatedir}/run/knot`` (configured with ``--with-rundir=path``)
 
-    system {
-      rundir "/var/run/knot";
-    }
-
-.. _pidfile:
-
-pidfile
-^^^^^^^
-
-Specifies a custom PID file location.
-
-Default value: ``knot.pid`` in ``rundir`` directory.
-
-::
-
-    system {
-      pidfile "/var/run/knot/knot_dmz.pid";
-    }
-
-.. _workers:
-
-workers
-^^^^^^^
-
-Number of workers (threads) per server interface.  This option is used
-to force number of threads used per interface.
-
-Default value: unset (auto-estimates optimal value from the number of
-online CPUs)
-
-::
-
-    system {
-      workers 16;
-    }
-
-.. _background-workers:
-
-background-workers
-^^^^^^^^^^^^^^^^^^
-This option is used to set number of threads used to execute background
-operations (e.g., zone loading, zone signing, XFR zone updates, ...).
-
-Default value: unset (auto-estimates optimal value for the number of online CPUs)
-
-::
-
-    system {
-      background-workers 4;
-    }
-
-.. _asynchronous-start:
-
-asynchronous-start
-^^^^^^^^^^^^^^^^^^
-
-When asynchronous startup is enabled, server doesn't wait for the zones to be
-loaded, and starts responding immediately with SERVFAIL answers until the zone
-loads. This may be useful in some scenarios, but it is disabled by default.
-
-Default value: ``off`` (wait for zones to be loaded before answering)
-
-::
-
-    system {
-      asynchronous-start off;
-    }
-
-.. _user:
+.. _server_user:
 
 user
-^^^^
+----
 
-System ``user`` or ``user``.``group`` under which the Knot DNS is run
-after starting and binding to interfaces.  Linux capabilities
-(:ref:`Required libraries`) are employed if supported and this
-configuration option is set.
+A system user with an optional system group (*user*:*group*) under which the
+server is run after starting and binding to interfaces. Linux capabilities
+are employed if supported.
 
-Default value: ``root.root``
+Default: root:root
 
-::
+.. _server_pidfile:
 
-    system {
-      user knot.knot;
-    }
+pidfile
+-------
 
-.. _max-conn-idle:
+A PID file location.
+
+Default: :ref:`rundir<server_rundir>`/knot.pid
+
+.. _server_workers:
+
+workers
+-------
+
+A number of quering workers (threads) per server interface.
+
+Default: auto-estimated optimal value based on the number of online CPUs
+
+.. _server_background-workers:
+
+background-workers
+------------------
+
+A number of workers (threads) used to execute background operations (zone
+loading, zone updates, etc.).
+
+Default: auto-estimated optimal value based on the number of online CPUs
+
+.. _server_asynchronous-start:
+
+asynchronous-start
+------------------
+
+If enabled, server doesn't wait for the zones to be loaded and starts
+responding immediately with SERVFAIL answers until the zone loads.
+
+Default: off
+
+.. _server_max-conn-idle:
 
 max-conn-idle
-^^^^^^^^^^^^^
+-------------
 
-Maximum idle time between requests on a TCP connection.  This also
-limits receiving of a single query, each query must be received in
-this time limit.
+Maximum idle time between requests on a TCP connection. This also limits
+receiving of a single query, each query must be received in this time limit.
 
-.. _max-conn-handshake:
+Default: 20
+
+.. _server_max-conn-handshake:
 
 max-conn-handshake
-^^^^^^^^^^^^^^^^^^
+------------------
 
-Maximum time between newly accepted TCP connection and first query.
-This is useful to disconnect inactive connections faster, than
-connection that already made at least 1 meaningful query.
+Maximum time between newly accepted TCP connection and the first query.
+This is useful to disconnect inactive connections faster than connections
+that already made at least 1 meaningful query.
 
-.. _max-conn-reply:
+Default: 5
+
+.. _server_max-conn-reply:
 
 max-conn-reply
-^^^^^^^^^^^^^^
+--------------
 
 Maximum time to wait for a reply to an issued SOA query.
 
-.. _max-tcp-clients:
+Default: 10
+
+.. _server_max-tcp-clients:
 
 max-tcp-clients
-^^^^^^^^^^^^^^^
+---------------
 
-Maximum number of TCP clients connected in parallel, set this below file descriptor limit to avoid resource exhaustion.
+A maximum number of TCP clients connected in parallel, set this below the file
+descriptor limit to avoid resource exhaustion.
 
-.. _transfers:
+Default: 100
+
+.. _server_transfers:
 
 transfers
-^^^^^^^^^
+---------
 
-Maximum parallel transfers, including pending SOA queries.  Lowest
-possible number is the number of CPUs.  Default is 10.
+A maximum number of parallel transfers, including pending SOA queries. The
+minimum value is determined by the number of CPUs.
 
-.. _rate-limit:
+Default: 10
+
+.. _server_rate-limit:
 
 rate-limit
-^^^^^^^^^^
+----------
 
-Rate limiting is based on a token bucket scheme, rate basically
-represents number of tokens available each second.  Each response is
-processed and classified (based on a several discriminators, f.e.
-source netblock, qtype, name, rcode, etc.).  Classified responses are
+Rate limiting is based on the token bucket scheme. Rate basically
+represents number of tokens available each second. Each response is
+processed and classified (based on several discriminators, e.g.
+source netblock, qtype, name, rcode, etc.). Classified responses are
 then hashed and assigned to a bucket containing number of available
-tokens, timestamp and metadata.  When available tokens are exhausted,
-response is rejected or enters SLIP (server responds with a truncated
-response).  Number of available tokens is recalculated each second.
+tokens, timestamp and metadata. When available tokens are exhausted,
+response is rejected or enters :ref:`SLIP<server_rate-limit-slip>`
+(server responds with a truncated response). Number of available tokens
+is recalculated each second.
 
-Default value: ``0 (disabled)``
+Default: 0 (disabled)
 
-.. _rate-limit-size:
+.. _server_rate-limit-size:
 
 rate-limit-size
-^^^^^^^^^^^^^^^
+---------------
 
-Option controls the size of a hashtable of buckets.  The larger the
-hashtable, the lesser probability of a hash collision, but at the
-expense of additional memory costs.  Each bucket is estimated roughly
-to 32B.  Size should be selected as a reasonably large prime due to
-the better hash function distribution properties.  Hash table is
-internally chained and works well up to a fill rate of 90%, general
-rule of thumb is to select a prime near ``1.2 * maximum_qps``.
+Size of hashtable buckets. The larger the hashtable, the lesser probability
+of a hash collision, but at the expense of additional memory costs. Each bucket
+is estimated roughly to 32 bytes. Size should be selected as a reasonably large
+prime due to the better hash function distribution properties. Hash table is
+internally chained and works well up to a fill rate of 90 %, general
+rule of thumb is to select a prime near 1.2 * maximum_qps.
 
-Default value: ``393241``
+Default: 393241
 
-.. _rate-limit-slip:
+.. _server_rate-limit-slip:
 
 rate-limit-slip
-^^^^^^^^^^^^^^^
+---------------
 
 As attacks using DNS/UDP are usually based on a forged source address,
 an attacker could deny services to the victim netblock if all
-responses would be completely blocked.  The idea behind SLIP mechanism
+responses would be completely blocked. The idea behind SLIP mechanism
 is to send each Nth response as truncated, thus allowing client to
-reconnect via TCP for at least some degree of service.  It is worth
-noting, that some responses can't be truncated (f.e.  SERVFAIL).
+reconnect via TCP for at least some degree of service. It is worth
+noting, that some responses can't be truncated (e.g. SERVFAIL).
 
-Default value: ``1``
+It is advisable not to set the slip interval to a value larger than 2,
+as too large slip value means more denial of service for legitimate
+requestors, and introduces excessive timeouts during resolution.
+On the other hand, slipping truncated answer gives the legitimate
+requestors a chance to reconnect over TCP.
 
-.. _max-udp-payload:
+Default: 1
+
+.. _server_max-udp-payload:
 
 max-udp-payload
-^^^^^^^^^^^^^^^
+---------------
 
 Maximum EDNS0 UDP payload size.
 
-Default value: ``4096``
+Default: 4096
 
-.. _system Example:
+.. _server_listen:
 
-system Example
---------------
+listen
+------
 
-.. parsed-literal ::
+One or more IP addresses where the server listens for incoming queries.
+Optional port specification (default is 53) can be appended to each address
+using ``@`` separator. Use ``0.0.0.0`` for all configured IPv4 addresses or
+``::`` for all configured IPv6 addresses.
 
-    system {
-      identity "Knot DNS |version|";
-      version "|version|";
-      nsid    "amaterasu";
-      rundir "/var/run/knot";
-      workers 16;
-      user knot.knot;
-      max-udp-payload 4096;
-    }
+Default: empty
 
-.. _keys:
+.. _Key section:
 
-``keys`` Statement
-==================
+Key section
+===========
 
-The ``keys`` statement sets up the TSIG keys used to authenticate
-zone transfers.
-
-.. _keys Syntax:
-
-keys Syntax
------------
+Shared TSIG keys used to authenticate communication with the server.
 
 ::
 
-    keys {
-      key_id algorithm "string";
-      [ key_id algorithm "string"; ... ]
-    }
-
-.. _keys Statement Definition and Usage:
-
-Statement Definition and Usage
-------------------------------
+ key:
+   - id: DNAME
+     algorithm: hmac-md5 | hmac-sha1 | hmac-sha224 | hmac-sha256 | hmac-sha384 | hmac-sha512
+     secret: BASE64
 
 .. _key_id:
 
-``key_id`` Statement
-^^^^^^^^^^^^^^^^^^^^
+id
+--
 
-The ``key_id`` statement defines a secret shared key for use with
-TSIG.  It consists of its ``name``, ``algorithm`` and ``key``
-contents.
+A key name identifier.
 
-Supported algoritms:
+.. _key_algorithm:
 
-* hmac-md5
-* hmac-sha1
-* hmac-sha224
-* hmac-sha256
-* hmac-sha384
-* hmac-sha512
+algorithm
+---------
 
-You need to use bind or ldns utils to generate TSIG keys.
-Unfortunately, Knot DNS does not have any own generation utilities
-yet.
+A key algorithm.
 
-::
+Default: empty
 
-    $ dnssec-keygen -a HMAC-SHA256 -b 256 -n HOST foobar.example.com
-    Kfoobar.example.com.+163+21239
-    $ cat Kfoobar.example.com.+163+21239.key
-    foobar.example.com.  ( IN KEY 512 3 163
-                          rqv2WRyDgIUaHcJi03Zssor9jtG1kOpb3dPywxZfTeo= )
+.. _key_secret:
 
-Key generated in previous paragraph would be written as::
+secret
+------
 
-    keys {
-      foobar.example.com.  hmac-sha256
-      "rqv2WRyDgIUaHcJi03Zssor9jtG1kOpb3dPywxZfTeo=";
-    }
+Shared key secret.
 
-.. _keys Example:
+Default: empty
 
-keys Example
-------------
+.. _ACL section:
+
+ACL section
+===========
+
+Access control list rules definition.
 
 ::
 
-    keys {
-      key0.server0 hmac-md5 "Wg==";
-      foobar.example.com.  hmac-sha256 "RQ==";
-    }
+ acl:
+   - id: STR
+     address: ADDR[/INT]
+     key: key_id
+     action: deny | xfer | notify | update | control ...
 
-.. _interfaces:
+.. _acl_id:
 
-``interfaces`` Statement
-========================
+id
+--
 
-The ``interfaces`` statement contains IP interfaces where Knot DNS
-listens for incoming queries.
+An ACL rule identifier.
 
-.. _interfaces Syntax:
+.. _acl_address:
 
-``interfaces`` Syntax
----------------------
+address
+-------
 
-::
+A single IP address or network subnet with the given prefix the query
+must match.
 
-    interfaces {
-      interface_id
-        ( ip_address[@port_number] |
-          { address ip_address; [ port port_number; ] @} )
-      [ interface_id ...; ...; ]
-    }
+Default: empty
 
-.. _interfaces Statement Definition and Usage:
+.. _acl_key:
 
-``interfaces`` Statement Definition and Usage
----------------------------------------------
+key
+---
 
-.. _interface_id:
+A :ref:`reference<key_id>` to the TSIG key the query must match.
 
-``interface_id``
-^^^^^^^^^^^^^^^^
+Default: empty
 
-The ``interface_id`` is a textual identifier of an IP interface, which
-consists of an IP address and a port.
+.. _acl_action:
 
-The definition of an interface can be written in long or a short form
-and it always contains IP (IPv4 or IPv6) address.
+action
+------
 
-.. _interfaces Example:
+An ordered list of allowed actions.
 
-``interfaces`` Example
-----------------------
+Possible values:
 
-Long form::
+- ``deny`` - Block the matching query
+- ``xfer`` - Allow zone transfer
+- ``notify`` - Allow incoming notify
+- ``update`` - Allow zone updates
+- ``control`` - Allow remote control
 
-    interfaces {
-      my_ip {
-        address 192.0.2.1;
-        port 53;
-      }
-    }
+Default: deny
 
-Short form::
+.. _Control section:
 
-    interfaces {
-      my_second_ip { address 198.51.100.1@53; }
-    }
+Control section
+===============
 
-Short form without port (defaults to 53)::
+Configuration of the server remote control.
 
-    interfaces {
-      my_third_ip { address 203.0.113.1; }
-    }
-
-.. _remotes:
-
-``remotes`` Statement
-=====================
-
-The ``remotes`` statement sets up all remote servers for zone
-transfers.  Knot DNS does not distinguish between client or server in
-this section.  Role of the server is determined at the time of its
-usage in the ``zones`` section.  One server may act as a client for
-one zone (e.g.  downloading the updates) and as a master server for a
-different zone.
-
-.. _remotes Syntax:
-
-``remotes`` Syntax
-------------------
+Caution: The control protocol is not encrypted, and susceptible to replay
+attacks in a short timeframe until message digest expires, for that reason,
+it is recommended to use default UNIX socket.
 
 ::
 
-    remotes {
-      remote_id
-        ( ip_address[@port_number] |
-          {   address ip_address;
-             [ port port_number; ]
-             [ key key_id; ]
-             [ via [ interface_id | ip_address ]; ]
-          }
-        )
-      [ remote_id ...; ...; ]
-    }
+ control:
+     listen: ADDR[@INT]
+     acl: acl_id ...
 
-.. _remotes Statement Definition and Grammar:
+.. _control_listen:
 
-``remotes`` Statement Definition and Grammar
---------------------------------------------
+listen
+------
+
+A UNIX socket path or IP address where the server listens for remote control
+commands. Optional port specification (default is 5533) can be appended to the
+address using ``@`` separator.
+
+Default: :ref:`rundir<server_rundir>`/knot.sock
+
+.. _control_acl:
+
+acl
+---
+
+An ordered list of :ref:`references<acl_id>` to ACL rules allowing the remote
+control.
+
+Caution: This option has no effect with UNIX socket.
+
+Default: empty
+
+.. _Remote section:
+
+Remote section
+==============
+
+Definition of remote servers for zone transfers or notifications.
+
+::
+
+ remote:
+   - id: STR
+     address: ADDR[@INT]
+     via: ADDR[@INT]
+     key: key_id
 
 .. _remote_id:
 
-``remote_id``
-^^^^^^^^^^^^^
+id
+--
 
-``remote_id`` contains a symbolic name for a remote server.
+A remote identifier.
 
-.. _address:
+.. _remote_address:
 
-``address``
-^^^^^^^^^^^
+address
+-------
 
-``address`` sets an IPv4 or an IPv6 address for this particular
-``remote``.
+A destination IP address of the remote server. Optional destination port
+specification (default is 53) can be appended to the address using ``@``
+separator.
 
-.. _port:
+Default: empty
 
-``port``
-^^^^^^^^
-
-``port`` section contains a port number for the current ``remote``.
-This section is optional with default port set to 53.
-
-.. _key:
-
-``key``
-^^^^^^^
-
-``key`` section contains a key associated with this ``remote``.  This
-section is optional.
-
-.. _via:
+.. _remote_via:
 
 via
-^^^
+---
 
-``via`` section specifies which interface will be used to communicate
-with this ``remote``.  This section is optional.
+A source IP address which is used to communicate with the remote server.
+Optional source port specification can be appended to the address using
+``@`` separator.
 
-.. _remotes Example:
+Default: empty
 
-``remotes`` Example
--------------------
+.. _remote_key:
 
-::
+key
+---
 
-    remotes {
-      # Long form:
-      server0 {
-        address 127.0.0.1;
-        port 53531;
-        key key0.server0;
-        via ipv4;             # reference to interface named ipv4
-        # via 82.35.64.59;    # direct IPv4
-        # via [::cafe];       # direct IPv6
-      }
+A :ref:`reference<key_id>` to the TSIG key which ise used to autenticate
+the communication with the remote server.
 
-      # Short form:
-      server1 {
-        address 127.0.0.1@53001;
-      }
-    }
+Default: empty
 
-.. _groups:
+.. _Template section:
 
-``groups`` Statement
-====================
+Template section
+================
 
-The ``groups`` statement is used to create groups of remote machines
-defined in :ref:`remotes` statement.  The group can substitute multiple
-machines specification anywhere in the configuration where the list of
-remotes is allowed to be used (namely ``allow`` in :ref:`control`
-section and ACLs in :ref:`zones` section).
-
-The remotes definitions must exist prior to using them in group
-definitions.  One remote can be a member of multiple groups.
-
-.. _groups Syntax:
-
-``groups`` Syntax
------------------
+A template is shareable zone settings which can be used for configuration of
+many zones at one place. A special default template (with *default* identifier)
+can be used for general quering configuration or as an implicit default
+configuration if a zone doesn't have a teplate specified.
 
 ::
 
-    groups {
-      group_id { remote_id [ , ... ] }
-      [ ... ]
-    }
+ template:
+   - id: STR
+     storage: STR
+     master: remote_id ...
+     notify: remote_id ...
+     acl: acl_id ...
+     semantic-checks: BOOL
+     disable-any: BOOL
+     notify-timeout: TIME
+     notify-retries: INT
+     zonefile-sync: TIME
+     ixfr-from-differences: BOOL
+     ixfr-fslimit: SIZE
+     dnssec-enable: BOOL
+     dnssec-keydir: STR
+     signature-lifetime: TIME
+     serial-policy: increment | unixtime
+     module: STR/STR ...
 
-.. _groups Statement Definition and Grammar:
+.. _template_id:
 
-``groups`` Statement Definition and Grammar
--------------------------------------------
+id
+--
 
-.. _group_id:
+A template identifier.
 
-``group_id``
-^^^^^^^^^^^^
+.. _template_storage:
 
-``group_id`` contains a symbolic name for a group of remotes.
+storage
+-------
 
-.. _groups-remote_id:
+A data directory for storing zone files, journal files and timers database.
 
-``remote_id``
-^^^^^^^^^^^^^
+Default: ``${localstatedir}/lib/knot`` (configured with ``--with-storage=path``)
 
-``remote_id`` contains a symbolic name for a remote server as
-specified in :ref:`remotes` section.
+.. _template_master:
 
-.. _groups Example:
+master
+------
 
-``groups`` Example
-------------------
+An ordered list of :ref:`references<remote_id>` to zone master servers.
 
-::
+Default: empty
 
-    remotes {
-      ctl {
-        # ...
-      }
-      alice {
-        # ...
-      }
-      bob {
-        # ...
-      }
-    }
+.. _template_notify:
 
-    groups {
-      admins { alice, bob }
-    }
+notify
+------
 
-    # example usage:
-    control {
-      # ...
-      allow ctl, admins;
-    }
-
-.. _control:
-
-``control`` Statement
-=====================
-
-The ``control`` statement specifies on which interface to listen for
-remote control commands.  Caution: The control protocol is not
-encrypted, and susceptible to replay attack in a short timeframe until
-message digest expires, for that reason, it is recommended to use
-default UNIX sockets.
+An ordered list of :ref:`references<remote_id>` to remotes to which notify
+message is sent if the zone changes.
 
-.. _control Syntax:
+Default: empty
 
-``control`` Syntax
-------------------
+.. _template_acl:
 
-::
+acl
+---
 
-    control {
-      [ listen-on {
-        ( address ip_address[@port_number] |
-          { address ip_address; [ port port_number; ] } )
-      } ]
-      [ allow remote_id [, remote_id, ... ]; ]
-    }
+An ordered list of :ref:`references<acl_id>` to ACL rules which can allow
+or disallow zone transfers, updates or incoming notifies.
 
-.. _control Statement Definition and Grammar:
+Default: empty
 
-``control`` Statement Definition and Grammar
---------------------------------------------
+.. _template_semantic-checks:
 
-Control interface ``listen-on`` either defines a UNIX socket or an
-IPv4/IPv6 ``interface`` definition as in :ref:`interfaces`.  Default
-port for IPv4/v6 control interface is ``5533``, however UNIX socket is
-preferred.  UNIX socket address is relative to ``rundir`` if not
-specified as an absolute path.  Without any configuration, the socket
-will be created in ``rundir/knot.sock``.
+semantic-checks
+---------------
 
-.. _control Examples:
+If enabled, extra zone file semantic checks are turned on.
 
-``control`` Examples
---------------------
+Several checks are enabled by default and cannot be turned off. An error in
+mandatory checks causes zone not to be loaded. An error in extra checks is
+logged only.
 
-UNIX socket example::
+Mandatory checks:
 
-    control {
-            listen-on "/var/run/knot/knot.sock";
-    }
-
-IPv4 socket example::
-
-    keys {
-            knotc-key hmac-md5 "Wg==";
-    }
-    remotes {
-            ctl { address 127.0.0.1; key knotc-key; }
-    }
-    control {
-            listen-on { address 127.0.0.1; }
-            allow ctl;
-    }
+- An extra record together with CNAME record (except for RRSIG and DS)
+- CNAME link chain length greater than 10 (including infinite cycles)
+- DNAME and CNAME records under the same owner (RFC 2672)
+- CNAME and DNAME wildcards pointing to themselves
+- SOA record missing in the zone (RFC 1034)
+- DNAME records having records under it (DNAME children) (RFC 2672)
 
-.. _zones:
-
-``zones`` Statement
-===================
-
-The ``zones`` statement contains definition of zones served by Knot DNS.
-
-.. _zones Syntax:
-
-``zones`` Syntax
-----------------
-
-::
-
-    zones {
-      [ zone_options ]
-      zone_id {
-        file "string";
-        [ xfr-in remote_id [, remote_id, ... ]; ]
-        [ xfr-out remote_id [, remote_id, ... ]; ]
-        [ notify-in remote_id [, remote_id, ... ]; ]
-        [ notify-out remote_id [, remote_id, ... ]; ]
-        [ update-in remote_id [, remote_id, ... ]; ]
-        [ zone_options ]
-      }
-    }
-
-    zone_options :=
-      [ storage "string"; ]
-      [ semantic-checks boolean; ]
-      [ ixfr-from-differences boolean; ]
-      [ disable-any boolean; ]
-      [ notify-timeout integer; ]
-      [ notify-retries integer; ]
-      [ zonefile-sync ( integer | integer(s | m | h | d); ) ]
-      [ ixfr-fslimit ( integer | integer(k | M | G) ); ]
-      [ ixfr-from-differences boolean; ]
-      [ dnssec-keydir "string"; ]
-      [ dnssec-enable ( on | off ); ]
-      [ signature-lifetime ( integer | integer(s | m | h | d); ) ]
-      [ serial-policy ( increment | unixtime ); ]
-      [ query_module { module_name "string"; [ module_name "string"; ... ] } ]
-
-.. _zones Statement Definition and Grammar:
-
-``zones`` Statement Definition and Grammar
-------------------------------------------
-
-.. _zone_id:
-
-``zone_id``
-^^^^^^^^^^^
-
-``zone_id`` is a zone origin, and as such is a domain name that may or
-may not end with a ".".  If no $ORIGIN directive is found inside
-actual zone file, this domain name will be used in place of "@".  SOA
-record in the zone must have this name as its owner.
-
-.. _file:
-
-``file``
-^^^^^^^^
-
-The ``file`` statement defines a path to the zone file.  You can
-either use an absolute path or a relative path.  In that case, the
-zone file path will be relative to the ``storage`` directory
-(:ref:`storage`).
-
-.. _xfr-in:
-
-``xfr-in``
-^^^^^^^^^^
-
-In ``xfr-in`` statement user specifies which remotes will be permitted
-to perform a zone transfer to update the zone.  Remotes are defined in
-``remotes`` section of configuration file (:ref:`remotes`).
-
-.. _xfr-out:
-
-``xfr-out``
-^^^^^^^^^^^
-
-In ``xfr-out`` statement user specifies which remotes will be
-permitted to obtain zone's contents via zone transfer.  Remotes are
-defined in ``remotes`` section of configuration file
-(:ref:`remotes`).
-
-.. _notify-in:
-
-``notify-in``
-^^^^^^^^^^^^^
-
-``notify-in`` defines which remotes will be permitted to send NOTIFY
-for this particular zone.  Remotes are defined in ``remotes`` section
-of configuration file (:ref:`remotes`).
-
-.. _notify-out:
-
-``notify-out``
-^^^^^^^^^^^^^^
-
-``notify-out`` defines to which remotes will your server send NOTIFYs
-about this particular zone.  Remotes are defined in ``remotes``
-section of configuration file (:ref:`remotes`).
-
-.. _update-in:
-
-``update-in``
-^^^^^^^^^^^^^
-
-In ``update-in`` statement user specifies which remotes will be
-permitted to perform a DNS UPDATE.  Remotes are defined in ``remotes``
-section of configuration file (:ref:`remotes`).
-
-.. _query_module :
-
-``query_module``
-^^^^^^^^^^^^^^^^
-
-Statement ``query_module`` takes a list of ``module_name
-"config_string"`` query modules separated by semicolon.
-
-.. _storage:
-
-``storage``
-^^^^^^^^^^^
-
-Data directory for zones.  It is used to store zone files and journal
-files. If compiled with LMDB support, a database storing persistent zone
-event timers for slave zones will be created in the ``timers`` subdirectory.
-
-Value of ``storage`` set in ``zone`` section is relative to
-``storage`` in ``zones`` section.
-
-Default value (in ``zones`` section): ``${localstatedir}/lib/knot``,
-configured with ``--with-storage=path``
-
-Default value (in ``zone`` config): inherited from ``zones`` section
-
-::
-
-    zones {
-      storage "/var/lib/knot";
-      example.com {
-        storage "com";
-        file "example.com"; # /var/lib/knot/com/example.com
-      }
-    }
-
-.. _semantic-checks:
-
-``semantic-checks``
-^^^^^^^^^^^^^^^^^^^
-
-``semantic-checks`` statement turns on optional semantic checks for
-this particular zone.  See :ref:`zones List of zone semantic checks` for
-more information.
-
-Possible values are ``on`` and ``off``.  Most checks are disabled by
-default.
-
-.. _ixfr-from-differences:
-
-``ixfr-from-differences``
-^^^^^^^^^^^^^^^^^^^^^^^^^
-
-Option ``ixfr-from-differences`` is only relevant if you are running
-Knot DNS as a master for this zone.  By turning the feature on you
-tell Knot to create differences from changes you made to a zone file
-upon server reload.  See :ref:`Controlling running daemon` for more
-information.
-
-Possible values are ``on`` and ``off``.  Disabled by default.
-
-.. _disable-any:
-
-``disable-any``
-^^^^^^^^^^^^^^^
-
-If you enable ``disable-any``, all authoritative ANY queries sent over
-UDP will be answered with an empty response and with the TC bit set.
-Use to minimize the risk of DNS reflection attack.  Disabled by default.
-
-.. _notify-timeout:
-
-``notify-timeout``
-^^^^^^^^^^^^^^^^^^
-
-``notify-timeout`` in seconds specifies how long will server wait for
-NOTIFY response.  Possible values are 1 to INT_MAX.  By default, this
-value is set to 60 seconds.
-
-.. _notify-retries:
-
-``notify-retries``
-^^^^^^^^^^^^^^^^^^
-
-``notify-retries`` tells the server how many times it can retry to
-send a NOTIFY.  Possible values are 1 to INT_MAX and default value
-is 5.
-
-.. _zonefile-sync:
-
-``zonefile-sync``
-^^^^^^^^^^^^^^^^^
-
-``zonefile-sync`` specifies a time in seconds after which current zone
-in memory will be synced to zone file on the disk (as set in
-:ref:`file`).  Knot DNS will serve the latest zone even after restart,
-but zone file on a disk will only be synced after ``zonefile-sync``
-time has expired (or synced manually via ``knotc flush`` - see
-:ref:`Running Knot DNS`).  This is applicable when the zone is updated
-via IXFR, DDNS or automatic DNSSEC signing.  Possible values are 0 to
-INT_MAX, optionally suffixed by unit size (s/m/h/d) - *1s* is one
-second, *1m* one minute, *1h* one hour and *1d* one day
-with default value set to *0s*.
-
-*Important note:* If you are serving large zones with frequent
-updates where the immediate sync to zone file is not desirable, set
-this value in the configuration file to other value.
-
-.. _ixfr-fslimit:
-
-``ixfr-fslimit``
-^^^^^^^^^^^^^^^^
-
-``ixfr-fslimit`` sets a maximum file size for zone's journal in bytes.
-Possible values are 1 to INT_MAX, with optional suffixes k, m and G.
-I.e.  *1k*, *1m* and *1G* with default value not being set, meaning
-that journal file can grow without limitations.
-
-.. _dnssec-keydir:
-
-``dnssec-keydir``
-^^^^^^^^^^^^^^^^^
-
-Location of DNSSEC signing keys, relative to ``storage``.
-
-Default value: not set
-
-.. _dnssec-enable:
-
-``dnssec-enable``
-^^^^^^^^^^^^^^^^^
-
-PREVIEW: Enable automatic DNSSEC signing for the zone.
-
-Default value (in ``zones`` section): ``off``
-
-Default value (in ``zone`` config): inherited from ``zones`` section
-
-.. _signature-lifetime:
-
-``signature-lifetime``
-^^^^^^^^^^^^^^^^^^^^^^
-
-Specifies how long should the automatically generated DNSSEC signatures be valid.
-Expiration will thus be set as current time (in the moment of signing)
-+ ``signature-lifetime``.  Possible values are from 10801 to INT_MAX.
-The signatures are refreshed one tenth of the signature lifetime
-before the signature expiration (i.e., 3 days before the expiration
-with the default value).  For information about zone expiration date,
-invoke the ``knotc zonestatus`` command.
-
-Default value: ``30d`` (``2592000``)
-
-.. _serial-policy:
-
-``serial-policy``
-^^^^^^^^^^^^^^^^^
-
-Specifies how the zone serial is updated after DDNS (dynamic update)
-and automatic DNSSEC signing.  If the serial is changed by the dynamic
-update, no change is made.
-
-* ``increment`` - After update or signing, the serial is automatically
-  incremented (according to serial number arithmetic).
-* ``unixtime`` - After update or signing, serial is set to the current
-  unix time.
-
-*Warning:* If your serial was in other than unix time format, be
-careful with transition to unix time.  It may happen that the new
-serial will be 'lower' than the old one.  If this is the case, the
-transition should be done by hand (see `RFC\ 1982
-<https://tools.ietf.org/html/rfc1982>`_).
-
-Default value: ``increment``
-
-.. _zones Example:
-
-``zones`` Example
------------------
-
-::
-
-    zones {
-
-      # Shared options for all listed zones
-      storage "/var/lib/knot";
-      ixfr-from-differences off;
-      semantic-checks off;
-      disable-any off;
-      notify-timeout 60;
-      notify-retries 5;
-      zonefile-sync 0;
-      ixfr-fslimit 1G;
-      dnssec-enable on;
-      dnssec-keydir "keys";
-      signature-lifetime 60d;
-      serial-policy increment;
-      example.com {
-        storage "samples";
-        file "example.com.zone";
-        ixfr-from-differences off;
-        disable-any off;
-        semantic-checks on;
-        notify-timeout 60;
-        notify-retries 5;
-        zonefile-sync 0;
-        dnssec-keydir "keys";
-        dnssec-enable off;
-        signature-lifetime 30d;
-        serial-policy increment;
-        xfr-in server0;
-        xfr-out server0, server1;
-        notify-in server0;
-        notify-out server0, server1;
-      }
-    }
-
-.. _zones List of zone semantic checks:
-
-``zones`` List of zone semantic checks
---------------------------------------
-
-The ``semantic-checks`` statement turns on extra zone file semantic
-checks.  Several checks are enabled by default and cannot be turned
-off.  If an error is found using these mandatory checks, the zone file
-will not be loaded.  Upon loading a zone file, occurred errors and
-counts of their occurrence will be logged to *stderr*.  These
-checks are the following:
-
-* An extra record together with CNAME record (except for RRSIG and DS)
-* CNAME link chain length greater than 10 (including infinite cycles)
-* DNAME and CNAME records under the same owner (RFC 2672)
-* CNAME and DNAME wildcards pointing to themselves
-* SOA record missing in the zone (RFC 1034)
-* DNAME records having records under it (DNAME children) (RFC 2672)
-
-Following checks have to be turned on using ``semantic-checks`` and a
-zone containing following errors will be loaded even upon discovering
-an error:
+Extra checks:
 
 - Missing NS record at the zone apex
 - Missing glue A or AAAA records
@@ -1049,8 +605,8 @@ an error:
 - Wrong NSEC(3) type bitmap
 - Multiple NSEC records at the same node
 - Missing NSEC records at authoritative nodes
-- Extra record types under same name as NSEC3 record (this is
-  RFC-valid, but Knot will not serve such a zone correctly)
+- Extra record types under same name as NSEC3 record (this is RFC-valid, but
+  Knot will not serve such a zone correctly)
 - NSEC3-unsecured delegation that is not part of Opt-out span
 - Wrong original TTL value in NSEC3 records
 - Wrong RDATA TTL value in RRSIG record
@@ -1059,153 +615,428 @@ an error:
 - Not all RRs in node are signed
 - Wrong key flags or wrong key in RRSIG record (not the same as ZSK)
 
-.. _log:
+Default: off
 
-``log`` Statement
-=================
+.. _template_disable-any:
 
-.. _log Syntax:
-
-``log`` Syntax
---------------
-
-::
-
-    log {
-      [ log_name {
-        [ category severity; ]
-      } ]
-      [ log_file filename {
-        [ category severity; ]
-      } ]
-    }
-
-.. _log Statement Definition and Grammar:
-
-``log`` Statement Definition and Grammar
-----------------------------------------
-
-The ``log`` statement configures logging output of Knot DNS.  You can
-configure Knot DNS to log into file or system log.  There are several
-logging categories to choose from.  Each log message has its severity
-and user can configure severities for each log destination.
-
-In case of missing log section, severities from ``warning`` and more
-serious will be logged to both ``stderr`` and ``syslog``.  The
-``info`` and ``notice`` severities will be logged to the ``stdout``.
-
-.. _log_name:
-
-``log_name``
-^^^^^^^^^^^^
-
-``log_name`` should be replaced with one of 3 symbolic log names:
-
-* ``stdout`` - logging to standard output
-* ``stderr`` - logging to standard error output
-* ``syslog`` - logging to syslog (or systemd journal, if systemd support is enabled)
-
-.. _category:
-
-``category``
-^^^^^^^^^^^^
-
-Knot DNS allows user to choose from these logging categories:
-
-* ``server`` - Messages related to general operation of the server.
-* ``zone`` - Messages related to zones, zone parsing and loading.
-* ``any`` - All categories.
-
-If systemd support is enabled, the log messages in the `zone` category are
-given the `ZONE` field containing a name of the zone. The field can be used
-to filter the log entries in the journal.
-
-.. _severity:
-
-``severity``
-^^^^^^^^^^^^
-
-Knot DNS has the following logging severities:
-
-* ``debug`` - Debug messages, must be turned on at compile time (:ref:`Enabling debug messages in server`).
-* ``info`` - Informational message.
-* ``notice`` - Server notices and hints.
-* ``warning`` - Warnings that might require user action.
-* ``error`` - Recoverable error.  Action should be taken.
-* ``critical`` - Non-recoverable error resulting in server shutdown.
-
-Each severity level includes all more serious levels, i.e. ``warning`` severity
-also includes ``error`` and ``critical`` severities.
-
-.. _log_file:
-
-``log_file``
-^^^^^^^^^^^^
-
-``log_file`` is either absolute or relative path to file user wants to
-log to.  See following example for clarification.
-
-.. _log Example:
-
-log Example
+disable-any
 -----------
 
-::
+If you enabled, all authoritative ANY queries sent over UDP will be answered
+with an empty response and with the TC bit set. Use this option to minimize
+the risk of DNS reflection attack.
 
-    log {
+Default: off
 
-      syslog {
-        any error;
-        zone warning, notice;
-        server info;
-      }
+.. _template_notify-timeout:
 
-      stderr {
-        any error, warning;
-      }
+notify-timeout
+--------------
 
-      file "/tmp/knot-sample/knotd.debug" {
-        server debug;
-      }
-    }
+The time how long will server wait for a notify response.
 
-.. _include:
+Default: 60
 
-``include`` Statement
-=====================
+.. _template_notify-retries:
 
-The ``include`` statement is a special statement which can be used
-almost anywhere on any level in the configuration file.  It allows
-inclusion of another file or all files in the given directory.
+notify-retries
+--------------
 
-The path of the included file can be either absolute or relative to a
-configuration file currently being processed.
+The number of retries the server sends a notify message.
 
-.. _include Syntax:
+Default: 5
 
-``include`` Syntax
+.. _template_zonefile-sync:
+
+zonefile-sync
+-------------
+
+The time after which the current zone in memory will be synced to zone file
+on the disk (see :ref:`file<zone_file>`). The server will serve the latest
+zone even after restart using zone journal, but the zone file on the disk will
+only be synced after ``zonefile-sync`` time has expired (or after manual zone
+flush) This is applicable when the zone is updated via IXFR, DDNS or automatic
+DNSSEC signing.
+
+*Caution:* If you are serving large zones with frequent updates where
+the immediate sync to zone file is not desirable, increase the default value.
+
+Default: 0 (immediate)
+
+.. _template_ixfr-from-differences:
+
+ixfr-from-differences
+---------------------
+
+If enabled, the server creates zone differences from changes you made to the
+zone file upon server reload. This option is only relevant if the server
+is a master server for the zone.
+
+Default: off
+
+.. _template_ixfr-fslimit:
+
+ixfr-fslimit
+------------
+
+Maximum zone journal file.
+
+Default: unlimited
+
+.. _template_dnssec-enable:
+
+dnssec-enable
+-------------
+
+If enabled, automatic DNSSEC signing for the zone is turned on.
+
+Default: off
+
+.. _template_dnssec-keydir:
+
+dnssec-keydir
+-------------
+
+A data directory for storing DNSSEC signing keys. Non absolute path is
+relative to :ref:`storage<template_storage>`.
+
+Default: :ref:`storage<template_storage>`/keys
+
+.. _template_signature-lifetime:
+
+signature-lifetime
 ------------------
 
+The time how long the automatically generated DNSSEC signatures should be valid.
+Expiration will thus be set as current time (in the moment of signing)
++ ``signature-lifetime``. The signatures are refreshed one tenth of the
+signature lifetime before the signature expiration (i.e. 3 days before the
+expiration with the default value). Minimum possible value is 10801.
+
+Default: 30 * 24 * 3600
+
+.. _template_serial-policy:
+
+serial-policy
+-------------
+
+Specifies how the zone serial is updated after a dynamic update or
+automatic DNSSEC signing. If the serial is changed by the dynamic update,
+no change is made.
+
+Possible values:
+
+- ``increment`` - The serial is incremented according to serial number arithmetic
+- ``unixtime`` - The serial is set to the current unix time
+
+*Caution:* If your serial was in other than unix time format, be careful
+with the transition to unix time.  It may happen that the new serial will
+be \'lower\' than the old one. If this is the case, the transition should be
+done by hand (see RFC 1982).
+
+Default: increment
+
+.. _template_module:
+
+module
+------
+
+An ordered list of references to query modules in the form
+*module_name/module_id*.
+
+Default: empty
+
+.. _Zone section:
+
+Zone section
+============
+
+Definitions of zones served by the server.
+
+Zone configuration is a superset of :ref:`template configuration<Template section>`,
+so each zone configuration can contain all template configuration options which
+may override possible template configuration.
+
 ::
 
-    include "filename";
-    include "dirname";
+ zone:
+   - domain: DNAME
+     file: STR
+     template: template_id
+     # All template options
 
-.. _include Examples:
+.. _zone_domain:
 
-``include`` Examples
---------------------
+domain
+------
+
+A zone name identifier.
+
+.. _zone_file:
+
+file
+----
+
+A path to the zone file. Non absolute path is relative to
+:ref:`storage<template_storage>`.
+
+Default: :ref:`storage<template_storage>`/``domain``.zone
+
+.. _zone_template:
+
+template
+--------
+
+A :ref:`reference<template_id>` to configuration template. If not specified
+and *default* template exists, then the default template is used.
+
+Default: empty
+
+.. _Logging section:
+
+Logging section
+===============
+
+Server can be configured to log to the standard output, standard error
+output, syslog (or systemd journal if systemd is enabled) or into an arbitrary
+file.
+
+There are 6 logging severities:
+
+- ``critical`` - Non-recoverable error resulting in server shutdown
+
+- ``error`` - Recoverable error, action should be taken
+
+- ``warning`` - Warning that might require user action
+
+- ``notice`` - Server notice or hint
+
+- ``info`` - Informational message
+
+- ``debug`` - Debug messages (must be turned on at compile time)
+
+In case of missing log section, ``warning`` or more serious messages
+will be logged to both standard error output and syslog. The ``info`` and
+``notice`` messages will be logged to standard output.
 
 ::
 
-    include "keys.conf";
+ log:
+   - to: stdout | stderr | syslog | STR
+     server: critical | error | warning | notice | info | debug
+     zone: critical | error | warning | notice | info | debug
+     any: critical | error | warning | notice | info | debug
 
-    remotes {
-      ctl {
-        address 127.0.0.1;
-        key knotc-key;
-      }
-      include "remotes.conf";
-    }
+.. _log_to:
 
-    include "zones";
+to
+--
+
+A logging output.
+
+Possible values:
+
+- ``stdout`` - Standard output
+- ``stderr`` - Standard error output
+- ``syslog`` - Syslog
+- *file_name* - File.
+
+.. _log_server:
+
+server
+------
+
+Minimum severity level for messages related to general operation of the server
+that are logged.
+
+Default: empty
+
+.. _log_zone:
+
+zone
+----
+
+Minimum severity level for messages related to zones that are logged.
+
+Default: empty
+
+.. _log_any:
+
+any
+---
+
+Minimum severity level for all message types that are logged.
+
+Default: empty
+
+.. _Module dnstap:
+
+Module dnstap
+=============
+
+Module dnstap allows query and response logging.
+
+For all queries logging, use this module in the *default* template. For
+zone-specific logging, use this module in the proper zone configuration.
+
+::
+
+ mod-dnstap:
+   - id: STR
+     sink: STR
+
+.. _mod-dnstap_id:
+
+id
+--
+
+A module identifier.
+
+.. _mod-dnstap_sink:
+
+sink
+----
+
+A sink path, which can either be a file or a UNIX socket prefixed with
+``unix:``.
+
+Default: empty
+
+.. _Module synth-record:
+
+Module synth-record
+===================
+
+This module is able to synthetise either forward or reverse records for the
+given prefix and subnet.
+
+::
+
+ mod-synth-record:
+   - id: STR
+     type: forward | reverse
+     prefix: STR
+     zone: DNAME
+     ttl: INT
+     address: ADDR[/INT]
+
+.. _mod-synth-record_id:
+
+id
+--
+
+A module identifier.
+
+.. _mod-synth-record_type:
+
+type
+----
+
+The type of generated records.
+
+Possible values:
+
+- ``forward`` - Forward records
+- ``reverse`` - Reverse records
+
+Default: empty
+
+.. _mod-synth-record_prefix:
+
+prefix
+------
+
+A record owner prefix.
+
+Caution: *prefix* doesn’t allow dots, address parts in the synthetic names are
+separated with a dash.
+
+Default: empty
+
+.. _mod-synth-record_zone:
+
+zone
+----
+
+A zone name suffix (only valid for :ref:`reverse type<mod-synth-record_type>`).
+
+Default: empty
+
+.. _mod-synth-record_ttl:
+
+ttl
+---
+
+Time to live of the generated records.
+
+Default: 3600
+
+.. _mod-synth-record_address:
+
+address
+-------
+
+A network subnet in the form of *address/prefix*.
+
+Default: empty
+
+.. _Module dnsproxy:
+
+Module dnsproxy
+===============
+
+The module catches all unsatisfied queries and forwards them to the configured
+server for resolution.
+
+::
+
+ mod-dnsproxy:
+   - id: STR
+     remote: ADDR[@INT]
+
+.. _mod-dnsproxy_id:
+
+id
+--
+
+A module identifier.
+
+.. _mod-dnsproxy_remote:
+
+remote
+------
+
+An IP address of the destination server. Optional port specification
+(default is 53) can be appended to the address using ``@`` separator.
+
+Default: empty
+
+.. _Module rosedb:
+
+Module rosedb
+=============
+
+The module provides a mean to override responses for certain queries before
+the record is searched in the available zones.
+
+::
+
+ mod-rosedb:
+   - id: STR
+     dbdir: STR
+
+.. _mod-rosedb_id:
+
+id
+--
+
+A module identifier.
+
+.. _mod-rosedb_dbdir:
+
+dbdir
+-----
+
+A path to the directory where the database will is stored.
+
+Default: empty

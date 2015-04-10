@@ -24,6 +24,7 @@
 #include "knot/nameserver/nsec_proofs.h"
 #include "knot/nameserver/process_query.h"
 #include "knot/nameserver/process_answer.h"
+#include "knot/nameserver/query_module.h"
 #include "knot/zone/serial.h"
 #include "knot/zone/zonedb.h"
 
@@ -187,9 +188,11 @@ static int put_answer(knot_pkt_t *pkt, uint16_t type, struct query_data *qdata)
 	int ret = KNOT_EOK;
 	switch (type) {
 	case KNOT_RRTYPE_ANY: /* Append all RRSets. */ {
+		conf_val_t val = conf_zone_get(conf(), C_DISABLE_ANY,
+		                               qdata->zone->name);
 		/* If ANY not allowed, set TC bit. */
 		if ((qdata->param->proc_flags & NS_QUERY_LIMIT_ANY) &&
-		    (qdata->zone->conf->disable_any)) {
+		    conf_bool(&val)) {
 			dbg_ns("%s: ANY/UDP disabled for this zone TC=1\n", __func__);
 			knot_wire_set_tc(pkt->wire);
 			return KNOT_ESPACE;
@@ -829,10 +832,10 @@ int internet_query(knot_pkt_t *response, struct query_data *qdata)
 	/* No applicable ACL, refuse transaction security. */
 	if (knot_pkt_has_tsig(qdata->query)) {
 		/* We have been challenged... */
-		NS_NEED_AUTH(&qdata->zone->conf->acl.xfr_out, qdata);
+		NS_NEED_AUTH(qdata, qdata->zone->name, ACL_ACTION_XFER);
 
 		/* Reserve space for TSIG. */
-		knot_pkt_reserve(response, knot_tsig_wire_maxsize(qdata->sign.tsig_key));
+		knot_pkt_reserve(response, knot_tsig_wire_maxsize(&qdata->sign.tsig_key));
 	}
 
 	NS_NEED_ZONE_CONTENTS(qdata, KNOT_RCODE_SERVFAIL); /* Expired */
@@ -841,12 +844,11 @@ int internet_query(knot_pkt_t *response, struct query_data *qdata)
 	qdata->name = knot_pkt_qname(qdata->query);
 
 	/* If the zone doesn't have a query plan, go for fast default. */
-	conf_zone_t *zone_config = qdata->zone->conf;
-	if (zone_config->query_plan == NULL) {
+	if (qdata->zone->query_plan == NULL) {
 		return default_answer(response, qdata);
 	}
 
-	return planned_answer(zone_config->query_plan, response, qdata);
+	return planned_answer(qdata->zone->query_plan, response, qdata);
 }
 
 int internet_query_plan(struct query_plan *plan)

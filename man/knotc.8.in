@@ -9,10 +9,13 @@
 .SS "Parameters:"
 .TP
 \fB\-c\fR, \fB\-\-config\fR \fIfile\fR
-Select configuration file.
+Use textual configuration file (default is @config_dir@/knot.conf).
+.TP
+\fB\-C\fR, \fB\-\-confdb\fR \fIdirectory\fR
+Use configuration database.
 .TP
 \fB\-s\fR, \fB\-\-server\fR \fIserver\fR
-Remote UNIX socket/IP address (default @run_dir@/knot.sock).
+Remote UNIX socket/IP address (default is @run_dir@/knot.sock).
 .TP
 \fB\-p\fR, \fB\-\-port\fR \fIport\fR
 Remote server port (only for IP).
@@ -21,7 +24,7 @@ Remote server port (only for IP).
 Use key specified on the command line (default algorithm is hmac\-md5).
 .TP
 \fB\-k\fR, \fB\-\-keyfile\fR \fIfile\fR
-Use key file (as in config section 'keys').
+Use key file.
 .TP
 \fB\-f\fR, \fB\-\-force\fR
 Force operation \- override some checks.
@@ -54,7 +57,7 @@ Check if server is running.
 Show status of configured zones.
 .TP
 \fBrefresh\fR [\fIzone\fR] ...
-Refresh slave zones. Flag '-f' forces retransfer (zone(s) must be specified).
+Refresh slave zones. Flag \fB-f\fR forces retransfer (zone(s) must be specified).
 .TP
 \fBcheckconf\fR
 Check current server configuration.
@@ -67,6 +70,12 @@ Estimate memory consumption for zones.
 .TP
 \fBsignzone\fR \fIzone\fR ...
 Sign zones with available DNSSEC keys.
+.TP
+\fBimport\fR \fIfile\fR
+Import configuration database from file.
+.TP
+\fBexport\fR \fIfile\fR
+Export configuration database to file. Flag \fB-f\fR is required.
 .SH EXAMPLES
 .TP
 .B Setup a keyfile for remote control

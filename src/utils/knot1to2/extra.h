@@ -13,29 +13,36 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-/*!
- * \file extra.h
- *
- * \author Jan Vcelak <jan.vcelak@nic.cz>
- *
- * \brief API for managing custom data in the configuration parser.
- *
- * \addtogroup config
- * @{
- */
 
 #pragma once
 
 #include <stdbool.h>
 
-#include "knot/conf/includes.h"
+#include "utils/knot1to2/includes.h"
+#include "utils/knot1to2/scheme.h"
+#include "libknot/internal/trie/hat-trie.h"
+
+typedef struct {
+	FILE *out;
+	bool have_sections[S_LAST - S_FIRST + 1];
+	hattrie_t *groups;
+	hattrie_t *remotes;
+	hattrie_t *acl_xfer;
+	hattrie_t *acl_notify;
+	hattrie_t *acl_update;
+	hattrie_t *acl_control;
+} share_t;
 
 /*!
  * \brief Custom data held within the parser context.
  */
 typedef struct {
-	bool error;                //!< Indicates that error was set.
-	conf_includes_t *includes; //!< Used to handle filenames in includes.
+	bool error;                // Indicates that error was set.
+	conf_includes_t *includes; // Used to handle filenames in includes.
+	int run;                   // Current run number.
+	share_t *share;            // Variables shared among all runs.
+	hattrie_t *current_trie;
+	const char *current_key;
 } conf_extra_t;
 
 /*!
@@ -45,7 +52,7 @@ typedef struct {
  *
  * \return Initialized stucture or NULL.
  */
-conf_extra_t *conf_extra_init(const char *file);
+conf_extra_t *conf_extra_init(const char *file, int run, share_t *share);
 
 /*!
  * \brief Free structure with custom data for config parser.
@@ -53,5 +60,3 @@ conf_extra_t *conf_extra_init(const char *file);
  * \param extra  Structure to be freed.
  */
 void conf_extra_free(conf_extra_t *extra);
-
-/*! @} */

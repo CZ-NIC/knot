@@ -15,12 +15,11 @@
 */
 
 #include <assert.h>
-#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-#include "knot/conf/includes.h"
+#include "utils/knot1to2/includes.h"
 
 #define INCLUDES_CAPACITY_BLOCK 128 	// Size of included files block.
 

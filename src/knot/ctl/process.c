@@ -21,36 +21,38 @@
 #include <string.h>
 #include <signal.h>
 #include <grp.h>
-#include <unistd.h>
 #include <assert.h>
 #include <sys/wait.h>
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <sys/types.h>
 #include <pwd.h>
+#include <urcu.h>
 
-#include "libknot/internal/mem.h"
-#include "libknot/libknot.h"
 #include "knot/ctl/process.h"
 #include "knot/conf/conf.h"
+#include "knot/common/log.h"
+#include "libknot/errcode.h"
+#include "libknot/internal/mem.h"
+#include "libknot/libknot.h"
+
+#define LOCK_FILE	"knot.lock"
 
 char* pid_filename()
 {
 	rcu_read_lock();
-
-	/* Read configuration. */
-	char* ret = NULL;
-
-	if (conf()) {
-		if (conf()->pidfile != NULL)
-			ret = strdup(conf()->pidfile);
-		else if (conf()->rundir != NULL)
-			ret = strcdup(conf()->rundir, "/knot.pid");
-	}
-
+	conf_val_t val = conf_get(conf(), C_SRV, C_RUNDIR);
+	char *rundir = conf_abs_path(&val, NULL);
+	val = conf_get(conf(), C_SRV, C_PIDFILE);
+	char *pidfile = conf_abs_path(&val, rundir);
 	rcu_read_unlock();
 
-	return ret;
+	if (rundir != NULL) {
+		free(rundir);
+		return pidfile;
+	} else {
+		return NULL;
+	}
 }
 
 pid_t pid_read(const char* fn)
@@ -171,35 +173,39 @@ int proc_update_privileges(int uid, int gid)
 		}
 	}
 
-	/* Check storage writeability. */
-	int ret = KNOT_EOK;
-	const bool sorted = false;
-	hattrie_iter_t *z_iter = hattrie_iter_begin(conf()->zones, sorted);
-	if (z_iter == NULL) {
-		return KNOT_ERROR;
-	}
-	for (; !hattrie_iter_finished(z_iter); hattrie_iter_next(z_iter)) {
-		conf_zone_t *zone = (conf_zone_t *)*hattrie_iter_val(z_iter);
-		char *lfile = strcdup(zone->storage, "/knot.lock");
+	/* Check storage writability. */
+	conf_iter_t iter = conf_iter(conf(), C_ZONE);
+	while (iter.code == KNOT_EOK) {
+		conf_val_t id = conf_iter_id(conf(), &iter);
+		conf_val_t val = conf_zone_get(conf(), C_STORAGE, conf_dname(&id));
+		char *storage = conf_abs_path(&val, NULL);
+		if (storage == NULL) {
+			conf_iter_finish(conf(), &iter);
+			return KNOT_ENOMEM;
+		}
+
+		char *lfile = sprintf_alloc("%s/%s", storage, LOCK_FILE);
 		assert(lfile != NULL);
-		FILE* fp = fopen(lfile, "w");
+		FILE *fp = fopen(lfile, "w");
 		if (fp == NULL) {
-			log_warning("storage directory '%s' is not writable",
-				    zone->storage);
-			ret = KNOT_EACCES;
+			log_error("storage directory '%s' is not writable",
+			          storage);
+			free(lfile);
+			free(storage);
+			conf_iter_finish(conf(), &iter);
+			return KNOT_EACCES;
 		} else {
 			fclose(fp);
 			unlink(lfile);
 		}
 		free(lfile);
+		free(storage);
 
-		if (ret != KNOT_EOK) {
-			break;
-		}
+		conf_iter_next(conf(), &iter);
 	}
-	hattrie_iter_free(z_iter);
+	conf_iter_finish(conf(), &iter);
 
-	return ret;
+	return KNOT_EOK;
 }
 
 char *pid_check_and_create()

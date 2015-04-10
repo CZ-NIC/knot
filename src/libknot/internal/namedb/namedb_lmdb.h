@@ -18,8 +18,11 @@
 
 #include "libknot/internal/namedb/namedb.h"
 
-/* Defines */
+/* Defines. */
 #define NAMEDB_LMDB_MAPSIZE    (100 * 1024 * 1024)
+
+/* LMDB specific flags. */
+extern const unsigned NAMEDB_LMDB_NOTLS;
 
 /* Native options. */
 struct namedb_lmdb_opts {

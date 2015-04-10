@@ -14,7 +14,6 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "libknot/libknot.h"
 #include "knot/common/log.h"
 #include "knot/server/journal.h"
 #include "knot/zone/zone-diff.h"
@@ -23,15 +22,18 @@
 #include "knot/zone/zonefile.h"
 #include "knot/dnssec/zone-events.h"
 #include "knot/updates/apply.h"
-#include "libknot/rdata.h"
+#include "libknot/libknot.h"
 
-zone_contents_t *zone_load_contents(conf_zone_t *zone_config)
+zone_contents_t *zone_load_contents(conf_t *conf, const knot_dname_t *zone_name)
 {
-	assert(zone_config);
+	assert(conf);
+	assert(zone_name);
 
 	zloader_t zl;
-	int ret = zonefile_open(&zl, zone_config->file, zone_config->name,
-	                        zone_config->enable_checks);
+	char *zonefile = conf_zonefile(conf, zone_name);
+	conf_val_t val = conf_zone_get(conf, C_SEM_CHECKS, zone_name);
+	int ret = zonefile_open(&zl, zonefile, zone_name, conf_bool(&val));
+	free(zonefile);
 	if (ret != KNOT_EOK) {
 		return NULL;
 	}
@@ -39,7 +41,7 @@ zone_contents_t *zone_load_contents(conf_zone_t *zone_config)
 	/* Set the zone type (master/slave). If zone has no master set, we
 	 * are the primary master for this zone (i.e. zone type = master).
 	 */
-	zl.creator->master = !zone_load_can_bootstrap(zone_config);
+	zl.creator->master = !zone_load_can_bootstrap(conf, zone_name);
 
 	zone_contents_t *zone_contents = zonefile_load(&zl);
 	zonefile_close(&zl);
@@ -51,7 +53,7 @@ zone_contents_t *zone_load_contents(conf_zone_t *zone_config)
 }
 
 /*! \brief Check zone configuration constraints. */
-int zone_load_check(zone_contents_t *contents, conf_zone_t *zone_config)
+int zone_load_check(conf_t *conf, zone_contents_t *contents)
 {
 	/* Bootstrapped zone, no checks apply. */
 	if (contents == NULL) {
@@ -62,11 +64,12 @@ int zone_load_check(zone_contents_t *contents, conf_zone_t *zone_config)
 
 	/* Check minimum EDNS0 payload if signed. (RFC4035/sec. 3) */
 	if (zone_contents_is_signed(contents)) {
-		if (conf()->max_udp_payload < KNOT_EDNS_MIN_DNSSEC_PAYLOAD) {
-			log_zone_warning(zone_name, "EDNS payload size is "
-			                 "lower than %u bytes for DNSSEC zone",
-					 KNOT_EDNS_MIN_DNSSEC_PAYLOAD);
-			conf()->max_udp_payload = KNOT_EDNS_MIN_DNSSEC_PAYLOAD;
+		conf_val_t val = conf_get(conf, C_SRV, C_MAX_UDP_PAYLOAD);
+		if (conf_int(&val) < KNOT_EDNS_MIN_DNSSEC_PAYLOAD) {
+			log_zone_error(zone_name, "EDNS payload size is "
+			               "lower than %u bytes for DNSSEC zone",
+			               KNOT_EDNS_MIN_DNSSEC_PAYLOAD);
+			return KNOT_EPAYLOAD;
 		}
 	}
 
@@ -84,11 +87,13 @@ int zone_load_check(zone_contents_t *contents, conf_zone_t *zone_config)
 /*!
  * \brief Apply changesets to zone from journal.
  */
-int zone_load_journal(zone_t *zone, zone_contents_t *contents)
+int zone_load_journal(conf_t *conf, zone_t *zone, zone_contents_t *contents)
 {
 	/* Check if journal is used and zone is not empty. */
-	if (!journal_exists(zone->conf->ixfr_db) ||
+	char *journal_name = conf_journalfile(conf, zone->name);
+	if (!journal_exists(journal_name) ||
 	    zone_contents_is_empty(contents)) {
+		free(journal_name);
 		return KNOT_EOK;
 	}
 
@@ -100,8 +105,10 @@ int zone_load_journal(zone_t *zone, zone_contents_t *contents)
 	init_list(&chgs);
 
 	pthread_mutex_lock(&zone->journal_lock);
-	int ret = journal_load_changesets(zone, &chgs, serial, serial - 1);
+	int ret = journal_load_changesets(journal_name, zone, &chgs, serial,
+	                                  serial - 1);
 	pthread_mutex_unlock(&zone->journal_lock);
+	free(journal_name);
 
 	if ((ret != KNOT_EOK && ret != KNOT_ERANGE) || EMPTY_LIST(chgs)) {
 		changesets_free(&chgs);
@@ -124,14 +131,14 @@ int zone_load_journal(zone_t *zone, zone_contents_t *contents)
 	return ret;
 }
 
-int zone_load_post(zone_contents_t *contents, zone_t *zone, uint32_t *dnssec_refresh)
+int zone_load_post(conf_t *conf, zone_contents_t *contents, zone_t *zone,
+                   uint32_t *dnssec_refresh)
 {
 	if (zone == NULL) {
 		return KNOT_EINVAL;
 	}
 
 	int ret = KNOT_EOK;
-	const conf_zone_t *conf = zone->conf;
 	changeset_t change;
 	ret = changeset_init(&change, zone->name);
 	if (ret != KNOT_EOK) {
@@ -139,9 +146,12 @@ int zone_load_post(zone_contents_t *contents, zone_t *zone, uint32_t *dnssec_ref
 	}
 
 	/* Sign zone using DNSSEC (if configured). */
-	if (conf->dnssec_enable) {
-		assert(conf->build_diffs);
-		ret = knot_dnssec_zone_sign(contents, conf, &change, 0, dnssec_refresh);
+	conf_val_t val = conf_zone_get(conf, C_DNSSEC_ENABLE, zone->name);
+	bool dnssec_enable = conf_bool(&val);
+	val = conf_zone_get(conf, C_IXFR_DIFF, zone->name);
+	bool build_diffs = conf_bool(&val);
+	if (dnssec_enable) {
+		ret = knot_dnssec_zone_sign(contents, &change, 0, dnssec_refresh);
 		if (ret != KNOT_EOK) {
 			changeset_clear(&change);
 			return ret;
@@ -160,9 +170,9 @@ int zone_load_post(zone_contents_t *contents, zone_t *zone, uint32_t *dnssec_ref
 		}
 	}
 
-	/* Calculate IXFR from differences (if configured). */
+	/* Calculate IXFR from differences (if configured or auto DNSSEC). */
 	const bool contents_changed = zone->contents && (contents != zone->contents);
-	if (contents_changed && conf->build_diffs) {
+	if (contents_changed && (build_diffs || dnssec_enable)) {
 		/* Replace changes from zone signing, the resulting diff will cover
 		 * those changes as well. */
 		changeset_clear(&change);
@@ -197,7 +207,10 @@ int zone_load_post(zone_contents_t *contents, zone_t *zone, uint32_t *dnssec_ref
 	return ret;
 }
 
-bool zone_load_can_bootstrap(const conf_zone_t *zone_config)
+bool zone_load_can_bootstrap(conf_t *conf, const knot_dname_t *zone_name)
 {
-	return zone_config && !EMPTY_LIST(zone_config->acl.xfr_in);
+	conf_val_t val = conf_zone_get(conf, C_MASTER, zone_name);
+	size_t count = conf_val_count(&val);
+
+	return count > 0;
 }
