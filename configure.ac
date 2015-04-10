@@ -167,8 +167,6 @@ AC_SUBST(config_dir)
 #########################################
 # Dependencies needed for Knot DNS daemon
 #########################################
-AS_IF([test "$enable_daemon" = "yes"],[
-])
 
 # Systemd integration
 AC_ARG_ENABLE([systemd],
