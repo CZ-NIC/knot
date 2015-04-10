@@ -219,6 +219,7 @@ int include_file(
 		char *full_current_name = realpath((args->file_name != NULL) ?
 		                                   args->file_name : "./", NULL);
 		if (full_current_name == NULL) {
+			free(path);
 			return KNOT_ENOMEM;
 		}
 

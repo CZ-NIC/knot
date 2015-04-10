@@ -1383,6 +1383,7 @@ conf_remote_t conf_remote(
 	conf_val_t val = conf_id_get(conf, C_RMT, C_ADDR, id);
 	if (val.code != KNOT_EOK) {
 		log_error("invalid remote in configuration");
+		free(rundir);
 		return out;
 	}
 	out.addr = conf_addr(&val, rundir);

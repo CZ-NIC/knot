@@ -738,6 +738,7 @@ int remote_answer(int sock, server_t *s, knot_pkt_t *pkt)
 	remote_cmdargs_t args = { 0 };
 	int ret = cmdargs_init(&args);
 	if (ret != KNOT_EOK) {
+		free(cmd);
 		return ret;
 	}
 
