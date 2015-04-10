@@ -212,10 +212,21 @@ int knot_rrset_rr_to_canonical(knot_rrset_t *rrset)
 			if (ret != KNOT_EOK) {
 				return ret;
 			}
-			pos += knot_dname_size(pos);
+
+			ret = knot_dname_size(pos);
+			if (ret < 0) {
+				return ret;
+			}
+
+			pos += ret;
 			break;
 		case KNOT_RDATA_WF_NAPTR_HEADER:
-			pos += knot_naptr_header_size(pos, endpos);
+			ret = knot_naptr_header_size(pos, endpos);
+			if (ret < 0) {
+				return ret;
+			}
+
+			pos += ret;
 			break;
 		case KNOT_RDATA_WF_REMAINDER:
 			break;

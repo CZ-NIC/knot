@@ -200,12 +200,21 @@ static int rdata_len_block(const uint8_t **src, size_t *src_avail,
 		if (compr_size <= 0) {
 			return compr_size;
 		}
+
 		ret = knot_dname_realsize(*src, pkt_wire);
+		if (ret < 0) {
+			return ret;
+		}
+
 		*src += compr_size;
 		*src_avail -= compr_size;
 		break;
 	case KNOT_RDATA_WF_NAPTR_HEADER:
 		ret = knot_naptr_header_size(*src, *src + *src_avail);
+		if (ret < 0) {
+			return ret;
+		}
+
 		*src += ret;
 		*src_avail -= ret;
 		break;
