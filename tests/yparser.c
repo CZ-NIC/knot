@@ -106,7 +106,7 @@ int main(int argc, char *argv[])
 		ret = yp_parse(yp);
 		ok(ret == KNOT_EOK, "parse %i. key0 with value", i);
 		ok(yp->key_len == 1 && yp->key[0] == 'b' &&
-		   yp->data_len == 1 && yp->key[0] == 'b' &&
+		   yp->data_len == 1 && yp->data[0] == 'b' &&
 		   yp->event == YP_EKEY0 && yp->line_count == line + i,
 		   "compare %i. key0 with value", i);
 	}
@@ -116,7 +116,7 @@ int main(int argc, char *argv[])
 		ret = yp_parse(yp);
 		ok(ret == KNOT_EOK, "parse %i. key1 with value", i);
 		ok(yp->key_len == 1 && yp->key[0] == 'f' &&
-		   yp->data_len == 1 && yp->key[0] == 'f' &&
+		   yp->data_len == 1 && yp->data[0] == 'f' &&
 		   yp->event == YP_EKEY1 && yp->line_count == line + i,
 		   "compare %i. key1 with value", i);
 	}
@@ -143,7 +143,7 @@ int main(int argc, char *argv[])
 		ret = yp_parse(yp);
 		ok(ret == KNOT_EOK, "parse %i. id", i);
 		ok(yp->key_len == 1 && yp->key[0] == 'd' &&
-		   yp->data_len == 1 && yp->key[0] == 'd' &&
+		   yp->data_len == 1 && yp->data[0] == 'd' &&
 		   yp->event == YP_EID && yp->line_count == line + i,
 		   "compare %i. id", i);
 	}

@@ -34,7 +34,6 @@ static int format_item(
 	}
 
 	// Format key part.
-	size_t total = 0;
 	int ret = snprintf(out, out_len, "%s%s%s%s",
 	                   first_value ? prefix : "",
 	                   first_value ? item->name + 1 : "",
@@ -44,8 +43,7 @@ static int format_item(
 	if (ret < 0 || ret >= out_len) {
 		return KNOT_ESPACE;
 	}
-	total += ret;
-	out   += ret;
+	out     += ret;
 	out_len -= ret;
 
 	// Finish if group.
@@ -59,8 +57,7 @@ static int format_item(
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
-	total += aux_len;
-	out   += aux_len;
+	out     += aux_len;
 	out_len -= aux_len;
 
 	// Format data end.

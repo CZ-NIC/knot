@@ -138,9 +138,8 @@ int zone_load_post(conf_t *conf, zone_contents_t *contents, zone_t *zone,
 		return KNOT_EINVAL;
 	}
 
-	int ret = KNOT_EOK;
 	changeset_t change;
-	ret = changeset_init(&change, zone->name);
+	int ret = changeset_init(&change, zone->name);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}

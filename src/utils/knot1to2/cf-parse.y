@@ -48,13 +48,12 @@ volatile int parser_ret = 0;
 
 static void cf_print_error(void *scanner, const char *prefix, const char *msg)
 {
-	conf_extra_t *extra = NULL;
 	int lineno = -1;
 	char *filename = "";
 	conf_include_t *inc = NULL;
 
 	if (scanner) {
-		extra = cf_get_extra(scanner);
+		conf_extra_t *extra = cf_get_extra(scanner);
 		lineno = cf_get_lineno(scanner);
 		inc = conf_includes_top(extra->includes);
 	}
@@ -63,8 +62,8 @@ static void cf_print_error(void *scanner, const char *prefix, const char *msg)
 		filename = inc->filename;
 	}
 
-	printf("%s: %s (file '%s', line %d)\n",
-		prefix, msg, filename, lineno);
+	printf("%s: %s (file '%s', line %d)\n", prefix, msg, filename, lineno);
+
 	fflush(stdout);
 }
 
