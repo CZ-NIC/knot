@@ -217,10 +217,6 @@ static int remote_zone_flush(zone_t *zone, remote_cmdargs_t *a)
 {
 	UNUSED(a);
 
-	if (zone == NULL) {
-		return KNOT_EINVAL;
-	}
-
 	zone_events_schedule(zone, ZONE_EVENT_FLUSH, ZONE_EVENT_NOW);
 	return KNOT_EOK;
 }
@@ -235,7 +231,7 @@ static int remote_zone_sign(zone_t *zone, remote_cmdargs_t *a)
 	bool dnssec_enable = conf_bool(&val);
 	rcu_read_unlock();
 
-	if (zone == NULL || !dnssec_enable) {
+	if (!dnssec_enable) {
 		return KNOT_EINVAL;
 	}
 
@@ -400,7 +396,7 @@ static int remote_c_zonestatus(server_t *s, remote_cmdargs_t* a)
 	if (a->argc == 0) {
 		knot_zonedb_foreach(s->zone_db, remote_zonestatus, a);
 	} else {
-		remote_rdata_apply(s, a, &remote_zonestatus);
+		remote_rdata_apply(s, a, remote_zonestatus);
 	}
 	rcu_read_unlock();
 
@@ -424,7 +420,7 @@ static int remote_c_refresh(server_t *s, remote_cmdargs_t* a)
 		knot_zonedb_foreach(s->zone_db, remote_zone_refresh, NULL);
 	} else {
 		/* Refresh specific zones. */
-		remote_rdata_apply(s, a, &remote_zone_refresh);
+		remote_rdata_apply(s, a, remote_zone_refresh);
 	}
 	rcu_read_unlock();
 
@@ -446,7 +442,7 @@ static int remote_c_retransfer(server_t *s, remote_cmdargs_t* a)
 	} else {
 		rcu_read_lock();
 		/* Retransfer specific zones. */
-		remote_rdata_apply(s, a, &remote_zone_retransfer);
+		remote_rdata_apply(s, a, remote_zone_retransfer);
 		rcu_read_unlock();
 	}
 
@@ -472,7 +468,7 @@ static int remote_c_flush(server_t *s, remote_cmdargs_t* a)
 		knot_zonedb_foreach(s->zone_db, remote_zone_flush, NULL);
 	} else {
 		/* Flush specific zones. */
-		remote_rdata_apply(s, a, &remote_zone_flush);
+		remote_rdata_apply(s, a, remote_zone_flush);
 	}
 	rcu_read_unlock();
 
@@ -483,17 +479,17 @@ static int remote_c_flush(server_t *s, remote_cmdargs_t* a)
  * \brief Remote command 'signzone' handler.
  *
  */
-static int remote_c_signzone(server_t *server, remote_cmdargs_t* arguments)
+static int remote_c_signzone(server_t *s, remote_cmdargs_t* a)
 {
 	dbg_server("remote: %s\n", __func__);
 
-	if (arguments->argc == 0) {
+	if (a->argc == 0) {
 		/* Resign all. */
 		return KNOT_CTL_ARG_REQ;
 	} else {
 		rcu_read_lock();
 		/* Resign specific zones. */
-		remote_rdata_apply(server, arguments, remote_zone_sign);
+		remote_rdata_apply(s, a, remote_zone_sign);
 		rcu_read_unlock();
 	}
 
