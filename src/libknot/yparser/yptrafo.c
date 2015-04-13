@@ -79,11 +79,11 @@ static int yp_str_to_txt(
 static int yp_bool_to_bin(
 	TXT_BIN_PARAMS)
 {
-	if (strcasecmp(txt, "on") == 0) {
+	if (strcasecmp(txt, "on") == 0 || strcasecmp(txt, "true") == 0) {
 		bin[0] = '\0'; // Just in case.
 		*bin_len = 1;
 		return KNOT_EOK;
-	} else if (strcasecmp(txt, "off") == 0) {
+	} else if (strcasecmp(txt, "off") == 0 || strcasecmp(txt, "false") == 0) {
 		*bin_len = 0;
 		return KNOT_EOK;
 	}
