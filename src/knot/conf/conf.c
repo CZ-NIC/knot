@@ -123,8 +123,9 @@ int conf_new(
 	struct namedb_lmdb_opts lmdb_opts = NAMEDB_LMDB_OPTS_INITIALIZER;
 	lmdb_opts.flags.env = NAMEDB_LMDB_NOTLS;
 
-	// A temporary solution until proper trie support in namedb is available.
+	// Open database.
 	if (db_dir == NULL) {
+		// A temporary solution until proper trie support is available.
 		char tpl[] = "/tmp/knot-confdb.XXXXXX";
 		lmdb_opts.path = mkdtemp(tpl);
 		if (lmdb_opts.path == NULL) {
@@ -132,20 +133,18 @@ int conf_new(
 			ret = KNOT_ENOMEM;
 			goto new_error;
 		}
+		out->api = namedb_lmdb_api();
+		ret = out->api->init(&out->db, out->mm, &lmdb_opts);
+
+		// Remove opened database to ensure it is temporary.
+		rm_dir(tpl);
 	} else {
 		lmdb_opts.path = db_dir;
-	}
-	out->api = namedb_lmdb_api();
-
-	// Open database.
-	ret = out->api->init(&out->db, out->mm, &lmdb_opts);
-
-	// Remove temporary database.
-	if (db_dir == NULL) {
-		rm_dir(lmdb_opts.path);
+		out->api = namedb_lmdb_api();
+		ret = out->api->init(&out->db, out->mm, &lmdb_opts);
 	}
 
-	// Check database open return.
+	// Check database opening.
 	if (ret != KNOT_EOK) {
 		goto new_error;
 	}
