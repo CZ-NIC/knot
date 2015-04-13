@@ -197,8 +197,11 @@ static int rdata_len_block(const uint8_t **src, size_t *src_avail,
 	case KNOT_RDATA_WF_FIXED_DNAME:
 		compr_size = knot_dname_wire_check(*src, *src + *src_avail,
                                        pkt_wire);
-		if (compr_size <= 0) {
+		if (compr_size < 0) {
 			return compr_size;
+		}
+		if (compr_size == 0) {
+			return KNOT_EMALF;
 		}
 
 		ret = knot_dname_realsize(*src, pkt_wire);
