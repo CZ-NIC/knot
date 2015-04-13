@@ -14,6 +14,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <assert.h>
 #include <stdio.h>
 #include <tap/basic.h>
 #include <assert.h>
@@ -54,6 +55,11 @@ static void test_int(const char *in, int expected, int errcode)
 	   "str_to_int %s on \"%s\"",
 	   (errcode == DNSSEC_EOK ? "succeeds" : "fails"), in);
 }
+
+// mute warn_unused_result
+#define asprintf(args...) do { \
+	int r = (asprintf)(args); assert(r >= 0); \
+} while (0);
 
 int main(int argc, char *argv[])
 {
