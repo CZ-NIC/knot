@@ -705,6 +705,7 @@ static conf_val_t raw_id_get(
 	default:
 		log_error("failed to read configuration '%s/%s' (%s)",
 		          key0_name + 1, key1_name + 1, knot_strerror(val.code));
+		// FALLTHROUGH
 	case KNOT_EOK:
 	case KNOT_ENOENT:
 		return val;
@@ -789,6 +790,7 @@ conf_val_t conf_zone_get(
 	default:
 		log_zone_error(dname, "failed to read configuration '%s/%s' (%s)",
 		               C_ZONE + 1, key1_name + 1, knot_strerror(val.code));
+		// FALLTHROUGH
 	case KNOT_ENOENT:
 		break;
 	}
@@ -806,6 +808,7 @@ conf_val_t conf_zone_get(
 	default:
 		log_zone_error(dname, "failed to read configuration '%s/%s' (%s)",
 		               C_ZONE + 1, C_TPL + 1, knot_strerror(val.code));
+		// FALLTHROUGH
 	case KNOT_ENOENT:
 		// Use the default template.
 		val.code = conf_db_get(conf, &conf->read_txn, C_TPL, key1_name,
@@ -817,6 +820,7 @@ conf_val_t conf_zone_get(
 	default:
 		log_zone_error(dname, "failed to read configuration '%s/%s' (%s)",
 		               C_TPL + 1, key1_name + 1, knot_strerror(val.code));
+		// FALLTHROUGH
 	case KNOT_EOK:
 	case KNOT_ENOENT:
 		break;
@@ -837,6 +841,7 @@ conf_val_t conf_default_get(
 	default:
 		log_error("failed to read configuration '%s/%s' (%s)",
 		          C_TPL + 1, key1_name + 1, knot_strerror(val.code));
+		// FALLTHROUGH
 	case KNOT_EOK:
 	case KNOT_ENOENT:
 		break;
@@ -859,6 +864,7 @@ size_t conf_id_count(
 	default:
 		log_error("failed to iterate through configuration '%s' (%s)",
 		          key0_name + 1, knot_strerror(ret));
+		// FALLTHROUGH
 	case KNOT_ENOENT:
 		return count;
 	}
@@ -883,6 +889,7 @@ conf_iter_t conf_iter(
 	default:
 		log_error("failed to iterate thgrough configuration '%s' (%s)",
 		          key0_name + 1, knot_strerror(iter.code));
+		// FALLTHROUGH
 	case KNOT_EOK:
 	case KNOT_ENOENT:
 		return iter;
@@ -898,6 +905,7 @@ void conf_iter_next(
 	default:
 		log_error("failed to read next configuration item (%s)",
 		          knot_strerror(iter->code));
+		// FALLTHROUGH
 	case KNOT_EOK:
 	case KNOT_EOF:
 		return;
@@ -916,6 +924,7 @@ conf_val_t conf_iter_id(
 	default:
 		log_error("failed to read configuration identifier (%s)",
 		          knot_strerror(val.code));
+		// FALLTHROUGH
 	case KNOT_EOK:
 		val.item = iter->item;
 		return val;
