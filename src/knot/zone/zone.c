@@ -226,8 +226,9 @@ int zone_flush_journal(zone_t *zone)
 
 	/* Fetch zone source (where it came from). */
 	const struct sockaddr_storage *from = NULL;
+	conf_remote_t master;
 	if (!zone_is_master(zone)) {
-		const conf_remote_t master = zone_master(zone);
+		master = zone_master(zone);
 		from = &master.addr;
 	}
 
