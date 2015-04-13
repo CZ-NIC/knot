@@ -14,7 +14,6 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <assert.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <tap/basic.h>
@@ -24,22 +23,29 @@
 #include "knot/updates/acl.h"
 #include "knot/conf/conf.h"
 
+static void check_sockaddr_set(struct sockaddr_storage *ss, int family,
+                               const char *straddr, int port)
+{
+	int ret = sockaddr_set(ss, family, straddr, port);
+	ok(ret == KNOT_EOK, "set address '%s'", straddr);
+}
+
 int main(int argc, char *argv[])
 {
 	plan_lazy();
 
 	int ret;
-	struct sockaddr_storage t;
+	struct sockaddr_storage t = { 0 };
 
 	// 127 dec ~ 01111111 bin
 	// 170 dec ~ 10101010 bin
-	struct sockaddr_storage ref4;
-	assert(sockaddr_set(&ref4, AF_INET, "127.170.170.127", 0) == KNOT_EOK);
+	struct sockaddr_storage ref4 = { 0 };
+	check_sockaddr_set(&ref4, AF_INET, "127.170.170.127", 0);
 
 	// 7F hex ~ 01111111 bin
 	// AA hex ~ 10101010 bin
-	struct sockaddr_storage ref6;
-	assert(sockaddr_set(&ref6, AF_INET6, "7FAA::AA7F", 0) == KNOT_EOK);
+	struct sockaddr_storage ref6 = { 0 };
+	check_sockaddr_set(&ref6, AF_INET6, "7FAA::AA7F", 0);
 
 	ret = netblock_match(&ref4, &ref6, 32);
 	ok(ret == false, "match: family mismatch");
@@ -64,7 +70,7 @@ int main(int argc, char *argv[])
 	ok(ret == true, "match: ipv6 - identity, prefix overflow");
 
 	// 124 dec ~ 01111100 bin
-	assert(sockaddr_set(&t, AF_INET, "124.0.0.0", 0) == KNOT_EOK);
+	check_sockaddr_set(&t, AF_INET, "124.0.0.0", 0);
 	ret = netblock_match(&t, &ref4, 5);
 	ok(ret == true, "match: ipv4 - first byte, shorter prefix");
 	ret = netblock_match(&t, &ref4, 6);
@@ -72,7 +78,7 @@ int main(int argc, char *argv[])
 	ret = netblock_match(&t, &ref4, 7);
 	ok(ret == false, "match: ipv4 - first byte, not match");
 
-	assert(sockaddr_set(&t, AF_INET, "127.170.170.124", 0) == KNOT_EOK);
+	check_sockaddr_set(&t, AF_INET, "127.170.170.124", 0);
 	ret = netblock_match(&t, &ref4, 29);
 	ok(ret == true, "match: ipv4 - last byte, shorter prefix");
 	ret = netblock_match(&t, &ref4, 30);
@@ -81,7 +87,7 @@ int main(int argc, char *argv[])
 	ok(ret == false, "match: ipv4 - last byte, not match");
 
 	// 7C hex ~ 01111100 bin
-	assert(sockaddr_set(&t, AF_INET6, "7CAA::", 0) == KNOT_EOK);
+	check_sockaddr_set(&t, AF_INET6, "7CAA::", 0);
 	ret = netblock_match(&t, &ref6, 5);
 	ok(ret == true, "match: ipv6 - first byte, shorter prefix");
 	ret = netblock_match(&t, &ref6, 6);
@@ -89,7 +95,7 @@ int main(int argc, char *argv[])
 	ret = netblock_match(&t, &ref6, 7);
 	ok(ret == false, "match: ipv6 - first byte, not match");
 
-	assert(sockaddr_set(&t, AF_INET6, "7FAA::AA7C", 0) == KNOT_EOK);
+	check_sockaddr_set(&t, AF_INET6, "7FAA::AA7C", 0);
 	ret = netblock_match(&t, &ref6, 125);
 	ok(ret == true, "match: ipv6 - last byte, shorter prefix");
 	ret = netblock_match(&t, &ref6, 126);
