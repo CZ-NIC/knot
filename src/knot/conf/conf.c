@@ -747,9 +747,7 @@ conf_val_t conf_id_get(
 		return val;
 	}
 
-	return raw_id_get(conf, key0_name, key1_name,
-	                  (id == NULL) ? NULL : id->data,
-	                  (id == NULL) ? 0 : id->len);
+	return raw_id_get(conf, key0_name, key1_name, id->data, id->len);
 }
 
 conf_val_t conf_mod_get(
