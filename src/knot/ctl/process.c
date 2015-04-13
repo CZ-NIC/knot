@@ -45,10 +45,10 @@ char* pid_filename()
 	char *rundir = conf_abs_path(&val, NULL);
 	val = conf_get(conf(), C_SRV, C_PIDFILE);
 	char *pidfile = conf_abs_path(&val, rundir);
+	free(rundir);
 	rcu_read_unlock();
 
 	if (rundir != NULL) {
-		free(rundir);
 		return pidfile;
 	} else {
 		return NULL;

@@ -264,6 +264,7 @@ int include_file(
 	             fpathconf(dirfd(dir), _PC_NAME_MAX) + 1;
 	struct dirent *entry = malloc(len);
 	if (entry == NULL) {
+		free(path);
 		return KNOT_ENOMEM;
 	}
 	memset(entry, 0, len);

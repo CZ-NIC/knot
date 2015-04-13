@@ -129,7 +129,8 @@ int conf_new(
 		lmdb_opts.path = mkdtemp(tpl);
 		if (lmdb_opts.path == NULL) {
 			log_error("failed to create temporary directory");
-			return EXIT_FAILURE;
+			ret = KNOT_ENOMEM;
+			goto new_error;
 		}
 	} else {
 		lmdb_opts.path = db_dir;
