@@ -79,6 +79,9 @@ int main(int argc, char *argv[])
 
 	yp_check_ctx_t *ctx = yp_scheme_check_init(scheme);
 	ok(ctx != NULL, "create check ctx");
+	if (ctx == NULL) {
+		goto skip_all;
+	}
 
 	/* Key0 test. */
 	str = "option: one";
@@ -170,14 +173,21 @@ int main(int argc, char *argv[])
 	/* Scheme find tests. */
 	const yp_item_t *i = yp_scheme_find(C_OPT, NULL, scheme);
 	ok(i != NULL, "scheme find");
+	if (i == NULL) {
+		goto skip_all;
+	}
 	ok(strcmp(i->name + 1, "option") == 0, "name check");
 	i = yp_scheme_find(C_STR, C_GRP, scheme);
 	ok(i != NULL, "scheme find");
+	if (i == NULL) {
+		goto skip_all;
+	}
 	ok(strcmp(i->name + 1, "string") == 0, "name check");
 
 	yp_scheme_check_deinit(ctx);
 	yp_deinit(yp);
 	yp_scheme_free(scheme);
 
+skip_all:
 	return 0;
 }
