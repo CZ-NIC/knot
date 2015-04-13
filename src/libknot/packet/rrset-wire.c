@@ -187,7 +187,7 @@ static int rdata_traverse(const uint8_t **src, size_t *src_avail,
  * \brief Compute total length of RDATA blocks.
  */
 static int rdata_len_block(const uint8_t **src, size_t *src_avail,
-                     const uint8_t *pkt_wire, int block_type)
+                           const uint8_t *pkt_wire, int block_type)
 {
 	int ret, compr_size;
 
