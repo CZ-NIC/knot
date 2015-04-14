@@ -35,8 +35,8 @@ static const char *get_txt_response_string(const knot_dname_t *qname)
 	    strcasecmp("hostname.bind.", qname_str) == 0) {
 		conf_val_t val = conf_get(conf(), C_SRV, C_IDENT);
 		response = conf_str(&val);
-		/* Empty string data (including '\0') means auto. */
-		if (val.code == KNOT_EOK && val.len <= 1) {
+		/* No item means auto. */
+		if (val.code != KNOT_EOK) {
 			response = conf()->hostname;
 		}
 	/* Allow both version version.{server, bind}. for compatibility. */
@@ -44,8 +44,8 @@ static const char *get_txt_response_string(const knot_dname_t *qname)
 	           strcasecmp("version.bind.",   qname_str) == 0) {
 		conf_val_t val = conf_get(conf(), C_SRV, C_VERSION);
 		response = conf_str(&val);
-		/* Empty string data (including '\0') means auto. */
-		if (val.code == KNOT_EOK && val.len <= 1) {
+		/* No item means auto. */
+		if (val.code != KNOT_EOK) {
 			response = "Knot DNS " PACKAGE_VERSION;
 		}
 	}

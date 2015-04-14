@@ -788,9 +788,9 @@ class Knot(Server):
 
     def _on_str_hex(self, conf, name, value):
         if value == True:
-            conf.item_str(name, "")
-        elif value == False:
             return
+        elif value == False:
+            conf.item_str(name, "")
         elif value:
             conf.item_str(name, value)
 

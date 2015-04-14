@@ -21,7 +21,7 @@ folowing meaning:
 - *INT* - Integer
 - *STR* - Textual string
 - *HEXSTR* - Hexadecimal string (with ``0x`` prefix)
-- *BOOL* - Boolean value (``on`` or ``off``)
+- *BOOL* - Boolean value (``on``, ``off``, ``true`` or ``false``)
 - *TIME* - Number of seconds, integer with possible time mutliplier suffix
   (``s`` ~ 1, ``m`` ~ 60, ``h`` ~ 3600 or ``d`` ~ 24 * 3600)
 - *SIZE* - Number of bytes, integer with possible size multiplier suffix
@@ -106,9 +106,9 @@ identity
 
 An identity of the server returned in the response for the query for TXT
 record ``id.server.`` or ``hostname.bind.`` in the CHAOS class (see RFC 4892).
-If empty, FQDN hostname is used.
+Set empty value to disable.
 
-Default: disabled
+Default: FQDN hostname
 
 .. _server_version:
 
@@ -117,18 +117,18 @@ version
 
 A version of the server software returned in the response for the query
 for TXT record ``version.server.`` or ``version.bind.`` in the CHAOS
-class (see RFC 4892). If empty, automatic version is used.
+class (see RFC 4892). Set empty value to disable.
 
-Default: disabled
+Default: server version
 
 .. _server_nsid:
 
 nsid
 ----
 
-A DNS name server identifier (see RFC 5001). If empty, FQDN hostname is used.
+A DNS name server identifier (see RFC 5001). Set empty value to disable.
 
-Default: disabled
+Default: FQDN hostname
 
 .. _server_rundir:
 

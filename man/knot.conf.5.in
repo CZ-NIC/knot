@@ -45,7 +45,7 @@ folowing meaning:
 .IP \(bu 2
 \fIHEXSTR\fP \- Hexadecimal string (with \fB0x\fP prefix)
 .IP \(bu 2
-\fIBOOL\fP \- Boolean value (\fBon\fP or \fBoff\fP)
+\fIBOOL\fP \- Boolean value (\fBon\fP, \fBoff\fP, \fBtrue\fP or \fBfalse\fP)
 .IP \(bu 2
 \fITIME\fP \- Number of seconds, integer with possible time mutliplier suffix
 (\fBs\fP ~ 1, \fBm\fP ~ 60, \fBh\fP ~ 3600 or \fBd\fP ~ 24 * 3600)
@@ -135,21 +135,21 @@ server:
 .sp
 An identity of the server returned in the response for the query for TXT
 record \fBid.server.\fP or \fBhostname.bind.\fP in the CHAOS class (see RFC 4892).
-If empty, FQDN hostname is used.
+Set empty value to disable.
 .sp
-Default: disabled
+Default: FQDN hostname
 .SS version
 .sp
 A version of the server software returned in the response for the query
 for TXT record \fBversion.server.\fP or \fBversion.bind.\fP in the CHAOS
-class (see RFC 4892). If empty, automatic version is used.
+class (see RFC 4892). Set empty value to disable.
 .sp
-Default: disabled
+Default: server version
 .SS nsid
 .sp
-A DNS name server identifier (see RFC 5001). If empty, FQDN hostname is used.
+A DNS name server identifier (see RFC 5001). Set empty value to disable.
 .sp
-Default: disabled
+Default: FQDN hostname
 .SS rundir
 .sp
 A path for storing run\-time data (PID file, unix sockets, etc.).

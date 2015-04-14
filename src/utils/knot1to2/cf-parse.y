@@ -149,7 +149,7 @@ static void f_str(void *scanner, int run, const char *name, const char *val)
 
 static void f_auto_str(void *scanner, int run, const char *name, long val)
 {
-	if (val != 0) {
+	if (val == 0) {
 		f_name(scanner, run, name, false);
 		f_val(scanner, run, true, "");
 		f_val(scanner, run, false, "\n");

@@ -8,9 +8,8 @@ t = Test()
 
 name = "Knot DNS server name"
 server1 = t.server("knot", ident=name)
-server2 = t.server("knot", ident=True)
+server2 = t.server("knot")
 server3 = t.server("knot", ident=False)
-server4 = t.server("knot")
 
 t.start()
 
@@ -22,16 +21,12 @@ resp.check('"' + name + '"')
 resp = server1.dig("hostname.bind", "TXT", "CH")
 resp.check('"' + name + '"')
 
-# 2) FQDN hostname.
+# 2) Default FQDN hostname.
 resp = server2.dig("id.server", "TXT", "CH")
 resp.check(t.hostname)
 
-# 3) Explicitly disabled.
+# 3) Disabled.
 resp = server3.dig("id.server", "TXT", "CH")
-resp.check(rcode="REFUSED")
-
-# 4) Disabled.
-resp = server4.dig("id.server", "TXT", "CH")
 resp.check(rcode="REFUSED")
 
 t.end()

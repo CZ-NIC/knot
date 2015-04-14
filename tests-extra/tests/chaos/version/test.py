@@ -8,9 +8,8 @@ t = Test()
 
 ver = "ver. 1.3.1-p3"
 server1 = t.server("knot", version=ver)
-server2 = t.server("knot", version=True)
+server2 = t.server("knot")
 server3 = t.server("knot", version=False)
-server4 = t.server("knot")
 
 t.start()
 
@@ -22,16 +21,12 @@ resp.check('"' + ver + '"')
 resp = server1.dig("version.bind", "TXT", "CH")
 resp.check('"' + ver + '"')
 
-# 2) Automatic version string (can't be tested).
+# 2) Default version string.
 resp = server2.dig("version.server", "TXT", "CH")
 resp.check(rcode="NOERROR")
 
-# 3) Explicitly disabled.
+# 3) Disabled.
 resp = server3.dig("version.server", "TXT", "CH")
-resp.check(rcode="REFUSED")
-
-# 4) Disabled.
-resp = server4.dig("version.server", "TXT", "CH")
 resp.check(rcode="REFUSED")
 
 t.end()
