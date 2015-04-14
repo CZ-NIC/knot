@@ -355,11 +355,7 @@ int knot_rdataset_subtract(knot_rdataset_t *from, const knot_rdataset_t *what,
 _public_
 int knot_rdataset_sort_at(knot_rdataset_t *rrs, size_t pos, mm_ctx_t *mm)
 {
-	if (rrs == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	if (rrs->rr_count == 0) {
+	if (rrs == NULL || rrs->rr_count == 0) {
 		return KNOT_EINVAL;
 	}
 
