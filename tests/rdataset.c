@@ -181,16 +181,16 @@ int main(int argc, char *argv[])
 	              rdataset.data == NULL;
 	ok(subtract_ok, "rdataset: subtract last.");
 
-	ret = knot_rdataset_reserve(&rdataset, 1, NULL);
-	ok(ret == KNOT_EINVAL, "rdataset: reserve too little");
+	ret = knot_rdataset_reserve(&rdataset, 65536, NULL);
+	ok(ret == KNOT_EINVAL, "rdataset: reserve too much");
 
 	RDATASET_INIT_WITH(rdataset, rdata_gt);
 
 	size_t old_rrs_size = knot_rdataset_size(&rdataset);
-	size_t rr_size = knot_rdata_array_size(knot_rdata_rdlen(rdata_lo));
+	size_t rr_size = knot_rdata_rdlen(rdata_lo);
 	ret = knot_rdataset_reserve(&rdataset, rr_size, NULL);
 	size_t new_rrs_size = knot_rdataset_size(&rdataset);
-	bool reserve_ok = ret == KNOT_EOK && new_rrs_size == (old_rrs_size + rr_size);
+	bool reserve_ok = ret == KNOT_EOK && new_rrs_size == (old_rrs_size + knot_rdata_array_size(rr_size));
 	ok(reserve_ok, "rdataset: reserve normal");
 
 	RDATASET_INIT_WITH(copy, rdata_lo);

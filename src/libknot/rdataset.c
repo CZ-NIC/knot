@@ -227,13 +227,13 @@ int knot_rdataset_add(knot_rdataset_t *rrs, const knot_rdata_t *rr, mm_ctx_t *mm
 _public_
 int knot_rdataset_reserve(knot_rdataset_t *rrs, size_t size, mm_ctx_t *mm)
 {
-	if (rrs == NULL || size < knot_rdata_array_size(0)) {
+	if (rrs == NULL) {
 		return KNOT_EINVAL;
 	}
 
 	size_t total_size = knot_rdataset_size(rrs);
 
-	void *tmp = mm_realloc(mm, rrs->data, total_size + size, total_size);
+	void *tmp = mm_realloc(mm, rrs->data, total_size + knot_rdata_array_size(size), total_size);
 
 	if (!tmp) {
 		return KNOT_ENOMEM;
@@ -245,7 +245,7 @@ int knot_rdataset_reserve(knot_rdataset_t *rrs, size_t size, mm_ctx_t *mm)
 	// We have to initialise the 'size' field in the reserved space.
 	knot_rdata_t *rr = knot_rdataset_at(rrs, rrs->rr_count - 1);
 	assert(rr);
-	knot_rdata_set_rdlen(rr, size - knot_rdata_array_size(0));
+	knot_rdata_set_rdlen(rr, size);
 
 	return KNOT_EOK;
 }
