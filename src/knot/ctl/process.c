@@ -48,11 +48,7 @@ char* pid_filename()
 	free(rundir);
 	rcu_read_unlock();
 
-	if (rundir != NULL) {
-		return pidfile;
-	} else {
-		return NULL;
-	}
+	return pidfile;
 }
 
 pid_t pid_read(const char* fn)
