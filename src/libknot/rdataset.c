@@ -208,7 +208,7 @@ int knot_rdataset_add(knot_rdataset_t *rrs, const knot_rdata_t *rr, mm_ctx_t *mm
 		return KNOT_EINVAL;
 	}
 
-	/*for (uint16_t i = 0; i < rrs->rr_count; ++i) {
+	for (uint16_t i = 0; i < rrs->rr_count; ++i) {
 		const knot_rdata_t *rrset_rr = knot_rdataset_at(rrs, i);
 		int cmp = knot_rdata_cmp(rrset_rr, rr);
 		if (cmp == 0) {
@@ -218,12 +218,31 @@ int knot_rdataset_add(knot_rdataset_t *rrs, const knot_rdata_t *rr, mm_ctx_t *mm
 			// Found position to insert
 			return add_rr_at(rrs, rr, i, mm);
 		}
-	}*/
+	}
 
 	// If flow gets here, it means that we should insert at the last position
-	//return add_rr_at(rrs, rr, rrs->rr_count, mm);
-	add_rr_at(rrs, rr, rrs->rr_count, mm);
-	return knot_rdataset_sort_at(rrs, rrs->rr_count - 1, mm);
+	return add_rr_at(rrs, rr, rrs->rr_count, mm);
+}
+
+_public_
+int knot_rdataset_reserve(knot_rdataset_t *rrs, size_t size, mm_ctx_t *mm)
+{
+	if (rrs == NULL || size < knot_rdata_array_size(0)) {
+		return KNOT_EINVAL;
+	}
+
+	size_t total_size = knot_rdataset_size(rrs);
+
+	void *tmp = mm_realloc(mm, rrs->data, total_size + size, total_size);
+
+	if (!tmp) {
+		return KNOT_ENOMEM;
+	}
+
+	rrs->data = tmp;
+	rrs->rr_count++;
+
+	return KNOT_EOK;
 }
 
 _public_

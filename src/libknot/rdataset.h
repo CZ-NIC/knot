@@ -91,6 +91,15 @@ size_t knot_rdataset_size(const knot_rdataset_t *rrs);
  */
 int knot_rdataset_add(knot_rdataset_t *rrs, const knot_rdata_t *rr, mm_ctx_t *mm);
 
+/*!
+ * \brief Reserves space at the end of the RRS structure.
+ * \param rrs   RRS structure to reserve space at.
+ * \param size  How much space to reserve.
+ * \param mm    Memory context.
+ * \return KNOT_E*
+ */
+int knot_rdataset_reserve(knot_rdataset_t *rrs, size_t size, mm_ctx_t *mm);
+
 /* ---------------------- RRs set-like operations --------------------------- */
 
 /*!
