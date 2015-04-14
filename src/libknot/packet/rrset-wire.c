@@ -31,6 +31,8 @@
 #include "libknot/rrtype/naptr.h"
 #include "libknot/internal/macros.h"
 
+#define RR_HEADER_SIZE 10
+
 /*!
  * \brief Get maximal size of a domain name in a wire with given capacity.
  */
@@ -512,9 +514,6 @@ int knot_rrset_to_wire(const knot_rrset_t *rrset, uint8_t *wire, uint16_t max_si
 }
 
 /*- RRSet from wire ---------------------------------------------------------*/
-
-#define RR_HEADER_SIZE 10
-#define MAX_RDLENGTH 65535
 
 /*!
  * \brief Parse header of one RR from packet wireformat.

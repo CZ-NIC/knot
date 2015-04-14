@@ -227,7 +227,7 @@ int knot_rdataset_add(knot_rdataset_t *rrs, const knot_rdata_t *rr, mm_ctx_t *mm
 _public_
 int knot_rdataset_reserve(knot_rdataset_t *rrs, size_t size, mm_ctx_t *mm)
 {
-	if (rrs == NULL) {
+	if (rrs == NULL || size > MAX_RDLENGTH) {
 		return KNOT_EINVAL;
 	}
 
