@@ -75,83 +75,84 @@ BLANK [ \t\n]
 \#.*\n          /* Ignore comments */;
 {BLANK}+        /* Ignore whitespace */;
 [\=\!\$\%\^\&\*\(\)\/\+\-\@\{\}\;\,] { return yytext[0]; }
-system          { lval.t = yytext; return SYSTEM; }
-identity        { lval.t = yytext; return IDENTITY; }
-hostname        { lval.t = yytext; return HOSTNAME; }
-version         { lval.t = yytext; return SVERSION; }
-nsid            { lval.t = yytext; return NSID; }
-max-udp-payload { lval.t = yytext; return MAX_UDP_PAYLOAD; }
-storage         { lval.t = yytext; return STORAGE; }
-key             { lval.t = yytext; return KEY; }
-keys            { lval.t = yytext; return KEYS; }
-remotes         { lval.t = yytext; return REMOTES; }
-groups          { lval.t = yytext; return GROUPS; }
+system                { lval.t = yytext; return SYSTEM; }
+identity              { lval.t = yytext; return IDENTITY; }
+hostname              { lval.t = yytext; return HOSTNAME; }
+version               { lval.t = yytext; return SVERSION; }
+nsid                  { lval.t = yytext; return NSID; }
+max-udp-payload       { lval.t = yytext; return MAX_UDP_PAYLOAD; }
+storage               { lval.t = yytext; return STORAGE; }
+key                   { lval.t = yytext; return KEY; }
+keys                  { lval.t = yytext; return KEYS; }
+remotes               { lval.t = yytext; return REMOTES; }
+groups                { lval.t = yytext; return GROUPS; }
 
-zones           { lval.t = yytext; return ZONES; }
-file            { lval.t = yytext; return FILENAME; }
-disable-any     { lval.t = yytext; return DISABLE_ANY; }
-semantic-checks { lval.t = yytext; return SEMANTIC_CHECKS; }
-notify-retries  { lval.t = yytext; return NOTIFY_RETRIES; }
-notify-timeout  { lval.t = yytext; return NOTIFY_TIMEOUT; }
-zonefile-sync   { lval.t = yytext; return DBSYNC_TIMEOUT; }
-ixfr-fslimit    { lval.t = yytext; return IXFR_FSLIMIT; }
-xfr-in          { lval.t = yytext; return XFR_IN; }
-xfr-out         { lval.t = yytext; return XFR_OUT; }
-update-in       { lval.t = yytext; return UPDATE_IN; }
-notify-in       { lval.t = yytext; return NOTIFY_IN; }
-notify-out      { lval.t = yytext; return NOTIFY_OUT; }
-workers         { lval.t = yytext; return WORKERS; }
-background-workers { lval.t = yytext; return BACKGROUND_WORKERS; }
-asynchronous-start { lval.t = yytext; return ASYNC_START; }
-user            { lval.t = yytext; return USER; }
-pidfile         { lval.t = yytext; return PIDFILE; }
-rundir          { lval.t = yytext; return RUNDIR; }
+zones                 { lval.t = yytext; return ZONES; }
+file                  { lval.t = yytext; return FILENAME; }
+disable-any           { lval.t = yytext; return DISABLE_ANY; }
+semantic-checks       { lval.t = yytext; return SEMANTIC_CHECKS; }
+notify-retries        { lval.t = yytext; return NOTIFY_RETRIES; }
+notify-timeout        { lval.t = yytext; return NOTIFY_TIMEOUT; }
+zonefile-sync         { lval.t = yytext; return DBSYNC_TIMEOUT; }
+ixfr-fslimit          { lval.t = yytext; return IXFR_FSLIMIT; }
+xfr-in                { lval.t = yytext; return XFR_IN; }
+xfr-out               { lval.t = yytext; return XFR_OUT; }
+update-in             { lval.t = yytext; return UPDATE_IN; }
+notify-in             { lval.t = yytext; return NOTIFY_IN; }
+notify-out            { lval.t = yytext; return NOTIFY_OUT; }
+workers               { lval.t = yytext; return WORKERS; }
+background-workers    { lval.t = yytext; return BACKGROUND_WORKERS; }
+asynchronous-start    { lval.t = yytext; return ASYNC_START; }
+user                  { lval.t = yytext; return USER; }
+pidfile               { lval.t = yytext; return PIDFILE; }
+rundir                { lval.t = yytext; return RUNDIR; }
 ixfr-from-differences { lval.t = yytext; return BUILD_DIFFS; }
-serial-policy   { lval.t = yytext; return SERIAL_POLICY; }
-max-conn-idle   { lval.t = yytext; return MAX_CONN_IDLE; }
-max-conn-handshake { lval.t = yytext; return MAX_CONN_HS; }
-max-conn-reply  { lval.t = yytext; return MAX_CONN_REPLY; }
-max-tcp-clients { lval.t = yytext; return MAX_TCP_CLIENTS; }
-rate-limit      { lval.t = yytext; return RATE_LIMIT; }
-rate-limit-size { lval.t = yytext; return RATE_LIMIT_SIZE; }
-rate-limit-slip { lval.t = yytext; return RATE_LIMIT_SLIP; }
-transfers       { lval.t = yytext; return TRANSFERS; }
-dnssec-enable   { lval.t = yytext; return DNSSEC_ENABLE; }
-dnssec-keydir   { lval.t = yytext; return DNSSEC_KEYDIR; }
-signature-lifetime { lval.t = yytext; return SIGNATURE_LIFETIME; }
-query_module    { lval.t = yytext; return QUERY_MODULE; }
+serial-policy         { lval.t = yytext; return SERIAL_POLICY; }
+max-conn-idle         { lval.t = yytext; return MAX_CONN_IDLE; }
+max-conn-handshake    { lval.t = yytext; return MAX_CONN_HS; }
+max-conn-reply        { lval.t = yytext; return MAX_CONN_REPLY; }
+max-tcp-clients       { lval.t = yytext; return MAX_TCP_CLIENTS; }
+rate-limit            { lval.t = yytext; return RATE_LIMIT; }
+rate-limit-size       { lval.t = yytext; return RATE_LIMIT_SIZE; }
+rate-limit-slip       { lval.t = yytext; return RATE_LIMIT_SLIP; }
+transfers             { lval.t = yytext; return TRANSFERS; }
+dnssec-enable         { lval.t = yytext; return DNSSEC_ENABLE; }
+dnssec-keydir         { lval.t = yytext; return DNSSEC_KEYDIR; }
+signature-lifetime    { lval.t = yytext; return SIGNATURE_LIFETIME; }
+query_module          { lval.t = yytext; return QUERY_MODULE; }
 
-interfaces      { lval.t = yytext; return INTERFACES; }
-address         { lval.t = yytext; return ADDRESS; }
-port            { lval.t = yytext; return PORT; }
-via             { lval.t = yytext; return VIA; }
+interfaces            { lval.t = yytext; return INTERFACES; }
+address               { lval.t = yytext; return ADDRESS; }
+port                  { lval.t = yytext; return PORT; }
+via                   { lval.t = yytext; return VIA; }
 
-control         { lval.t = yytext; return CONTROL; }
-allow           { lval.t = yytext; return ALLOW; }
-listen-on       { lval.t = yytext; return LISTEN_ON; }
+control               { lval.t = yytext; return CONTROL; }
+allow                 { lval.t = yytext; return ALLOW; }
+listen-on             { lval.t = yytext; return LISTEN_ON; }
 
-log             { lval.t = yytext; return LOG; }
+log                   { lval.t = yytext; return LOG; }
 
-any { lval.t = C_ANY; return LOG_SRC; }
-server { lval.t = C_SRV; return LOG_SRC; }
-zone { lval.t = C_ZONE; return LOG_SRC; }
+any                   { lval.t = C_ANY; return LOG_SRC; }
+server                { lval.t = C_SRV; return LOG_SRC; }
+zone                  { lval.t = C_ZONE; return LOG_SRC; }
 
-stdout { lval.t = yytext; return LOG_DEST; }
-stderr { lval.t = yytext; return LOG_DEST; }
-syslog { lval.t = yytext; return LOG_DEST; }
+stdout                { lval.t = yytext; return LOG_DEST; }
+stderr                { lval.t = yytext; return LOG_DEST; }
+syslog                { lval.t = yytext; return LOG_DEST; }
 
-debug    { lval.t = "debug";    return LOG_LEVEL; }
-info     { lval.t = "info";     return LOG_LEVEL; }
-notice   { lval.t = "notice";   return LOG_LEVEL; }
-warning  { lval.t = "warning";  return LOG_LEVEL; }
-error    { lval.t = "error";    return LOG_LEVEL; }
-critical { lval.t = "critical"; return LOG_LEVEL; }
-all      { lval.t = "info";     return LOG_LEVEL; }
+debug                 { lval.t = "debug";    return LOG_LEVEL; }
+info                  { lval.t = "info";     return LOG_LEVEL; }
+notice                { lval.t = "notice";   return LOG_LEVEL; }
+warning               { lval.t = "warning";  return LOG_LEVEL; }
+error                 { lval.t = "error";    return LOG_LEVEL; }
+critical              { lval.t = "critical"; return LOG_LEVEL; }
+all                   { lval.t = "info";     return LOG_LEVEL; }
 
 increment|unixtime {
-  lval.t = "unixtime";
   if (strcmp(yytext, "increment") == 0) {
     lval.t = "increment";
+  } else {
+    lval.t = "unixtime";
   }
   return SERIAL_POLICY_VAL;
 }

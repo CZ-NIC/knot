@@ -377,12 +377,12 @@ conf_entries:
  ;
 
 interface_start:
- | TEXT
- | REMOTES
- | LOG_SRC
- | LOG
- | LOG_LEVEL
- | CONTROL
+ | TEXT		{ free($1.t); }
+ | REMOTES	{ free($1.t); }
+ | LOG_SRC	{ free($1.t); }
+ | LOG		{ free($1.t); }
+ | LOG_LEVEL	{ free($1.t); }
+ | CONTROL	{ free($1.t); }
  ;
 
 interface:
@@ -410,15 +410,15 @@ interfaces:
 
 system:
    SYSTEM '{'				{ f_section(scanner, R_SYS, S_SRV); }
- | system SVERSION TEXT ';'		{ f_quote(scanner, R_SYS, C_VERSION, $3.t); }
+ | system SVERSION TEXT ';'		{ f_quote(scanner, R_SYS, C_VERSION, $3.t); free($3.t); }
  | system SVERSION BOOL ';'		{ f_auto_str(scanner, R_SYS, C_VERSION, $3.i); }
- | system IDENTITY TEXT ';'		{ f_quote(scanner, R_SYS, C_IDENT, $3.t); }
+ | system IDENTITY TEXT ';'		{ f_quote(scanner, R_SYS, C_IDENT, $3.t); free($3.t); }
  | system IDENTITY BOOL ';'		{ f_auto_str(scanner, R_SYS, C_IDENT, $3.i); }
- | system NSID TEXT ';'			{ f_quote(scanner, R_SYS, C_NSID,  $3.t); }
+ | system NSID TEXT ';'			{ f_quote(scanner, R_SYS, C_NSID,  $3.t); free($3.t); }
  | system NSID BOOL ';'			{ f_auto_str(scanner, R_SYS, C_NSID, $3.i); }
  | system MAX_UDP_PAYLOAD NUM ';'	{ f_int(scanner, R_SYS, C_MAX_UDP_PAYLOAD, $3.i); }
- | system RUNDIR TEXT ';'		{ f_quote(scanner, R_SYS, C_RUNDIR, $3.t); }
- | system PIDFILE TEXT ';'		{ f_quote(scanner, R_SYS, C_PIDFILE, $3.t); }
+ | system RUNDIR TEXT ';'		{ f_quote(scanner, R_SYS, C_RUNDIR, $3.t); free($3.t); }
+ | system PIDFILE TEXT ';'		{ f_quote(scanner, R_SYS, C_PIDFILE, $3.t); free($3.t); }
  | system WORKERS NUM ';'		{ f_int(scanner, R_SYS, C_WORKERS, $3.i); }
  | system BACKGROUND_WORKERS NUM ';'	{ f_int(scanner, R_SYS, C_BG_WORKERS, $3.i); }
  | system ASYNC_START BOOL ';'		{ f_bool(scanner, R_SYS, C_ASYNC_START, $3.i); }
@@ -437,19 +437,23 @@ system:
  		*sep = ':';
  	}
  	f_str(scanner, R_SYS, C_USER, $3.t);
+ 	free($3.t);
    }
  | system HOSTNAME TEXT ';' {
      cf_warning(scanner, "option 'system.hostname' is deprecated, "
                          "use 'system.identity' instead");
+     free($3.t);
    }
  | system STORAGE TEXT ';' {
      cf_warning(scanner, "option 'system.storage' was relocated, "
                          "use 'zones.storage' instead");
+     free($3.t);
    }
  | system KEY TSIG_ALGO_NAME TEXT ';' {
      free($3.t);
      cf_warning(scanner, "option 'system.key' is deprecated and "
                          "it has no effect");
+     free($3.t);
    }
  ;
 
@@ -458,9 +462,9 @@ keys:
    	f_section(scanner, R_KEY, S_KEY);
    }
  | keys TEXT TSIG_ALGO_NAME TEXT ';' {
-	f_id(scanner, R_KEY, C_ID, $2.t);
+	f_id(scanner, R_KEY, C_ID, $2.t); free($2.t);
 	f_str(scanner, R_KEY, C_ALG, $3.t); free($3.t);
-	f_quote(scanner, R_KEY, C_SECRET, $4.t);
+	f_quote(scanner, R_KEY, C_SECRET, $4.t); free($4.t);
    }
  ;
 
@@ -483,6 +487,7 @@ remote:
  | remote KEY TEXT ';' {
  	f_str(scanner, R_RMT, C_KEY, $3.t);
  	f_str(scanner, R_RMT_ACL, C_KEY, $3.t);
+ 	free($3.t);
    }
  | remote VIA IPA ';'	{ f_str(scanner, R_RMT, C_VIA, $3.t); }
  | remote VIA IPA6 ';'	{ f_str(scanner, R_RMT, C_VIA, $3.t); }
@@ -494,6 +499,7 @@ remote:
 
 remotes:
    REMOTES '{' {
+   	_str = NULL;
    	if (have_remote(scanner)) {
 		f_section(scanner, R_RMT, S_RMT);
 	}
@@ -535,6 +541,8 @@ remotes:
 		f_name(scanner, R_RMT_ACL, C_ACTION, false);
 		f_val(scanner, R_RMT_ACL, false, "%s\n", acl_actions(scanner, _str));
 	}
+	free(_addr);
+	free(_str);
    }
  ;
 
@@ -569,11 +577,11 @@ zone_acl_start:
  ;
 
 zone_acl_item:
- | TEXT		{ acl_next(scanner, $1.t); }
- | LOG_SRC	{ acl_next(scanner, $1.t); }
- | LOG		{ acl_next(scanner, $1.t); }
- | LOG_LEVEL	{ acl_next(scanner, $1.t); }
- | CONTROL	{ acl_next(scanner, $1.t); }
+ | TEXT		{ acl_next(scanner, $1.t); free($1.t); }
+ | LOG_SRC	{ acl_next(scanner, $1.t); free($1.t); }
+ | LOG		{ acl_next(scanner, $1.t); free($1.t); }
+ | LOG_LEVEL	{ acl_next(scanner, $1.t); free($1.t); }
+ | CONTROL	{ acl_next(scanner, $1.t); free($1.t); }
  ;
 
 zone_acl_list:
@@ -590,24 +598,25 @@ query_module_list:
  ;
 
 zone_start:
- | USER		{ f_id(scanner, R_ZONE, C_DOMAIN, $1.t); }
- | REMOTES	{ f_id(scanner, R_ZONE, C_DOMAIN, $1.t); }
- | LOG_SRC	{ f_id(scanner, R_ZONE, C_DOMAIN, $1.t); }
- | LOG		{ f_id(scanner, R_ZONE, C_DOMAIN, $1.t); }
- | LOG_LEVEL	{ f_id(scanner, R_ZONE, C_DOMAIN, $1.t); }
- | CONTROL	{ f_id(scanner, R_ZONE, C_DOMAIN, $1.t); }
+ | USER		{ f_id(scanner, R_ZONE, C_DOMAIN, $1.t); free($1.t); }
+ | REMOTES	{ f_id(scanner, R_ZONE, C_DOMAIN, $1.t); free($1.t); }
+ | LOG_SRC	{ f_id(scanner, R_ZONE, C_DOMAIN, $1.t); free($1.t); }
+ | LOG		{ f_id(scanner, R_ZONE, C_DOMAIN, $1.t); free($1.t); }
+ | LOG_LEVEL	{ f_id(scanner, R_ZONE, C_DOMAIN, $1.t); free($1.t); }
+ | CONTROL	{ f_id(scanner, R_ZONE, C_DOMAIN, $1.t); free($1.t); }
  | NUM '/' TEXT	{
       f_name(scanner, R_ZONE, C_DOMAIN, true);
       f_val(scanner, R_ZONE, false, "%i/%s", $1.i, $3.t);
       f_val(scanner, R_ZONE, false, "\n");
+      free($3.t);
    }
- | TEXT		{ f_id(scanner, R_ZONE, C_DOMAIN, $1.t); }
+ | TEXT		{ f_id(scanner, R_ZONE, C_DOMAIN, $1.t); free($1.t); }
  ;
 
 zone:
    zone_start '{'
  | zone zone_acl_start zone_acl_list
- | zone FILENAME TEXT ';'			{ f_quote(scanner, R_ZONE, C_FILE,           $3.t); }
+ | zone FILENAME TEXT ';'			{ f_quote(scanner, R_ZONE, C_FILE,           $3.t); free($3.t); }
  | zone DISABLE_ANY BOOL ';'			{ f_bool(scanner,  R_ZONE, C_DISABLE_ANY,    $3.i); }
  | zone BUILD_DIFFS BOOL ';'			{ f_bool(scanner,  R_ZONE, C_IXFR_DIFF,      $3.i); }
  | zone SEMANTIC_CHECKS BOOL ';'		{ f_bool(scanner,  R_ZONE, C_SEM_CHECKS,     $3.i); }
@@ -617,9 +626,9 @@ zone:
  | zone NOTIFY_TIMEOUT NUM ';'			{ f_int(scanner,   R_ZONE, C_NOTIFY_TIMEOUT, $3.i); }
  | zone DBSYNC_TIMEOUT NUM ';'			{ f_int(scanner,   R_ZONE, C_ZONEFILE_SYNC,  $3.i); }
  | zone DBSYNC_TIMEOUT INTERVAL ';'		{ f_int(scanner,   R_ZONE, C_ZONEFILE_SYNC,  $3.i); }
- | zone STORAGE TEXT ';'			{ f_quote(scanner, R_ZONE, C_STORAGE,        $3.t); }
+ | zone STORAGE TEXT ';'			{ f_quote(scanner, R_ZONE, C_STORAGE,        $3.t); free($3.t); }
  | zone DNSSEC_ENABLE BOOL ';'			{ f_bool(scanner,  R_ZONE, C_DNSSEC_ENABLE,  $3.i); }
- | zone DNSSEC_KEYDIR TEXT ';'			{ f_quote(scanner, R_ZONE, C_DNSSEC_KEYDIR,  $3.t); }
+ | zone DNSSEC_KEYDIR TEXT ';'			{ f_quote(scanner, R_ZONE, C_DNSSEC_KEYDIR,  $3.t); free($3.t); }
  | zone SIGNATURE_LIFETIME NUM ';'		{ f_int(scanner,   R_ZONE, C_SIG_LIFETIME,   $3.i); }
  | zone SIGNATURE_LIFETIME INTERVAL ';'		{ f_int(scanner,   R_ZONE, C_SIG_LIFETIME,   $3.i); }
  | zone SERIAL_POLICY SERIAL_POLICY_VAL ';'	{ f_str(scanner,   R_ZONE, C_SERIAL_POLICY,  $3.t); }
@@ -654,9 +663,9 @@ zones:
  | zones NOTIFY_TIMEOUT NUM ';'			{ f_int(scanner,   R_ZONE_TPL, C_NOTIFY_TIMEOUT, $3.i); }
  | zones DBSYNC_TIMEOUT NUM ';'			{ f_int(scanner,   R_ZONE_TPL, C_ZONEFILE_SYNC,  $3.i); }
  | zones DBSYNC_TIMEOUT INTERVAL ';'		{ f_int(scanner,   R_ZONE_TPL, C_ZONEFILE_SYNC,  $3.i); }
- | zones STORAGE TEXT ';'			{ f_quote(scanner, R_ZONE_TPL, C_STORAGE,        $3.t); }
+ | zones STORAGE TEXT ';'			{ f_quote(scanner, R_ZONE_TPL, C_STORAGE,        $3.t); free($3.t); }
  | zones DNSSEC_ENABLE BOOL ';'			{ f_bool(scanner,  R_ZONE_TPL, C_DNSSEC_ENABLE,  $3.i); }
- | zones DNSSEC_KEYDIR TEXT ';'			{ f_quote(scanner, R_ZONE_TPL, C_DNSSEC_KEYDIR,  $3.t); }
+ | zones DNSSEC_KEYDIR TEXT ';'			{ f_quote(scanner, R_ZONE_TPL, C_DNSSEC_KEYDIR,  $3.t); free($3.t); }
  | zones SIGNATURE_LIFETIME NUM ';'		{ f_int(scanner,   R_ZONE_TPL, C_SIG_LIFETIME,   $3.i); }
  | zones SIGNATURE_LIFETIME INTERVAL ';'	{ f_int(scanner,   R_ZONE_TPL, C_SIG_LIFETIME,   $3.i); }
  | zones SERIAL_POLICY SERIAL_POLICY_VAL ';'	{ f_str(scanner,   R_ZONE_TPL, C_SERIAL_POLICY,  $3.t); }
@@ -690,6 +699,7 @@ log_file:
       f_name(scanner, R_LOG, C_TO, true);
       f_val(scanner, R_LOG, true, "%s", $2.t);
       f_val(scanner, R_LOG, false, "\n");
+      free($2.t);
    }
 ;
 
@@ -722,8 +732,9 @@ control:
 	} else {
         	f_val(scanner, R_CTL, false, "%s@%i\n", _addr, _port);
 	}
+	free(_addr);
    }
- | control ctl_listen_start TEXT ';' { f_quote(scanner, R_CTL, C_LISTEN, $3.t); }
+ | control ctl_listen_start TEXT ';' { f_quote(scanner, R_CTL, C_LISTEN, $3.t); free($3.t); }
  | control ctl_allow_start zone_acl_list
  ;
 

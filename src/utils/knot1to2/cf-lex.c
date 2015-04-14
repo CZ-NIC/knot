@@ -1564,16 +1564,17 @@ case 69:
 YY_RULE_SETUP
 #line 151 "cf-lex.l"
 {
-  lval.t = "unixtime";
   if (strcmp(yytext, "increment") == 0) {
     lval.t = "increment";
+  } else {
+    lval.t = "unixtime";
   }
   return SERIAL_POLICY_VAL;
 }
 	YY_BREAK
 case 70:
 YY_RULE_SETUP
-#line 159 "cf-lex.l"
+#line 160 "cf-lex.l"
 {
   lval.t = yytext;
   lval.i = 0;
@@ -1585,12 +1586,12 @@ YY_RULE_SETUP
 	YY_BREAK
 case 71:
 YY_RULE_SETUP
-#line 168 "cf-lex.l"
+#line 169 "cf-lex.l"
 BEGIN(include);
 	YY_BREAK
 case 72:
 YY_RULE_SETUP
-#line 170 "cf-lex.l"
+#line 171 "cf-lex.l"
 {
   size_t mpos = strlen(yytext) - 1;
   char multiplier = yytext[mpos];
@@ -1615,7 +1616,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 73:
 YY_RULE_SETUP
-#line 192 "cf-lex.l"
+#line 193 "cf-lex.l"
 {
   size_t mpos = strlen(yytext) - 1;
   char multiplier = yytext[mpos];
@@ -1639,7 +1640,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 74:
 YY_RULE_SETUP
-#line 213 "cf-lex.l"
+#line 214 "cf-lex.l"
 {
   lval.i = atol(yytext);
   return NUM;
@@ -1647,7 +1648,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 75:
 YY_RULE_SETUP
-#line 218 "cf-lex.l"
+#line 219 "cf-lex.l"
 {
   unsigned char buf[sizeof(struct in_addr)];
   if (inet_pton(AF_INET, yytext, buf)) {
@@ -1659,7 +1660,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 76:
 YY_RULE_SETUP
-#line 227 "cf-lex.l"
+#line 228 "cf-lex.l"
 {
   unsigned char buf[sizeof(struct in6_addr)];
   yytext[strlen(yytext)-1] = '\0';
@@ -1672,7 +1673,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 77:
 YY_RULE_SETUP
-#line 237 "cf-lex.l"
+#line 238 "cf-lex.l"
 {
   unsigned char buf[sizeof(struct in6_addr)];
   if (inet_pton(AF_INET6, yytext, buf)) {
@@ -1684,37 +1685,37 @@ YY_RULE_SETUP
 	YY_BREAK
 case 78:
 YY_RULE_SETUP
-#line 246 "cf-lex.l"
+#line 247 "cf-lex.l"
 { lval.t = strdup(yytext); return TSIG_ALGO_NAME; }
 	YY_BREAK
 case 79:
 YY_RULE_SETUP
-#line 247 "cf-lex.l"
+#line 248 "cf-lex.l"
 { lval.t = strdup(yytext); return TSIG_ALGO_NAME; }
 	YY_BREAK
 case 80:
 YY_RULE_SETUP
-#line 248 "cf-lex.l"
+#line 249 "cf-lex.l"
 { lval.t = strdup(yytext); return TSIG_ALGO_NAME; }
 	YY_BREAK
 case 81:
 YY_RULE_SETUP
-#line 249 "cf-lex.l"
+#line 250 "cf-lex.l"
 { lval.t = strdup(yytext); return TSIG_ALGO_NAME; }
 	YY_BREAK
 case 82:
 YY_RULE_SETUP
-#line 250 "cf-lex.l"
+#line 251 "cf-lex.l"
 { lval.t = strdup(yytext); return TSIG_ALGO_NAME; }
 	YY_BREAK
 case 83:
 YY_RULE_SETUP
-#line 251 "cf-lex.l"
+#line 252 "cf-lex.l"
 { lval.t = strdup(yytext); return TSIG_ALGO_NAME; }
 	YY_BREAK
 case 84:
 YY_RULE_SETUP
-#line 253 "cf-lex.l"
+#line 254 "cf-lex.l"
 {
   yytext[yyleng-1] = 0;
   lval.t = strdup(yytext + 1);
@@ -1724,12 +1725,12 @@ YY_RULE_SETUP
 case 85:
 /* rule 85 can match eol */
 YY_RULE_SETUP
-#line 259 "cf-lex.l"
+#line 260 "cf-lex.l"
 cf_error(yyscanner, "Unterminated string.");
 	YY_BREAK
 case 86:
 YY_RULE_SETUP
-#line 261 "cf-lex.l"
+#line 262 "cf-lex.l"
 {
   lval.t = strdup(yytext);
   return TEXT /* Last resort, alphanumeric word. */;
@@ -1737,12 +1738,12 @@ YY_RULE_SETUP
 	YY_BREAK
 case 87:
 YY_RULE_SETUP
-#line 266 "cf-lex.l"
+#line 267 "cf-lex.l"
 /* Optional : in assignments. */;
 	YY_BREAK
 case YY_STATE_EOF(INITIAL):
 case YY_STATE_EOF(include):
-#line 268 "cf-lex.l"
+#line 269 "cf-lex.l"
 {
 	conf_includes_remove(yyextra->includes);
 
@@ -1756,12 +1757,12 @@ case YY_STATE_EOF(include):
 case 88:
 /* rule 88 can match eol */
 YY_RULE_SETUP
-#line 278 "cf-lex.l"
+#line 279 "cf-lex.l"
 
 	YY_BREAK
 case 89:
 YY_RULE_SETUP
-#line 279 "cf-lex.l"
+#line 280 "cf-lex.l"
 {
 	BEGIN(INITIAL);
 
@@ -1869,15 +1870,15 @@ YY_RULE_SETUP
 case 90:
 /* rule 90 can match eol */
 YY_RULE_SETUP
-#line 385 "cf-lex.l"
+#line 386 "cf-lex.l"
 cf_error(yyscanner, "Unterminated string.");
 	YY_BREAK
 case 91:
 YY_RULE_SETUP
-#line 387 "cf-lex.l"
+#line 388 "cf-lex.l"
 ECHO;
 	YY_BREAK
-#line 1881 "cf-lex.c"
+#line 1882 "cf-lex.c"
 
 	case YY_END_OF_BUFFER:
 		{
@@ -3011,7 +3012,7 @@ void cf_free (void * ptr , yyscan_t yyscanner)
 
 #define YYTABLES_NAME "yytables"
 
-#line 387 "cf-lex.l"
+#line 388 "cf-lex.l"
 
 
 

@@ -787,20 +787,20 @@ static const yytype_uint16 yyrline[] =
      384,   385,   388,   389,   390,   391,   392,   393,   397,   398,
      398,   412,   413,   414,   415,   416,   417,   418,   419,   420,
      421,   422,   423,   424,   425,   426,   427,   428,   429,   430,
-     431,   432,   433,   434,   441,   445,   449,   457,   460,   467,
-     468,   469,   470,   471,   472,   475,   476,   477,   478,   479,
-     480,   481,   482,   483,   487,   488,   489,   496,   504,   504,
-     542,   545,   547,   548,   552,   556,   560,   564,   565,   566,
-     567,   568,   571,   572,   573,   574,   575,   576,   579,   580,
-     581,   585,   588,   589,   592,   593,   594,   595,   596,   597,
-     598,   599,   604,   608,   609,   610,   611,   612,   613,   614,
-     615,   616,   617,   618,   619,   620,   621,   622,   623,   624,
-     625,   626,   626,   633,   635,   636,   640,   647,   648,   649,
-     650,   651,   652,   653,   654,   655,   656,   657,   658,   659,
-     660,   661,   662,   663,   663,   669,   670,   671,   674,   675,
-     675,   685,   689,   696,   697,   698,   702,   702,   707,   711,
-     715,   716,   716,   726,   727,   730,   730,   730,   730,   730,
-     730,   730,   730,   730
+     431,   432,   433,   434,   442,   447,   452,   461,   464,   471,
+     472,   473,   474,   475,   476,   479,   480,   481,   482,   483,
+     484,   485,   486,   487,   492,   493,   494,   501,   510,   510,
+     550,   553,   555,   556,   560,   564,   568,   572,   573,   574,
+     575,   576,   579,   580,   581,   582,   583,   584,   587,   588,
+     589,   593,   596,   597,   600,   601,   602,   603,   604,   605,
+     606,   607,   613,   617,   618,   619,   620,   621,   622,   623,
+     624,   625,   626,   627,   628,   629,   630,   631,   632,   633,
+     634,   635,   635,   642,   644,   645,   649,   656,   657,   658,
+     659,   660,   661,   662,   663,   664,   665,   666,   667,   668,
+     669,   670,   671,   672,   672,   678,   679,   680,   683,   684,
+     684,   694,   698,   706,   707,   708,   712,   712,   717,   721,
+     725,   726,   726,   737,   738,   741,   741,   741,   741,   741,
+     741,   741,   741,   741
 };
 #endif
 
@@ -1817,46 +1817,82 @@ yyreduce:
 #line 1818 "cf-parse.tab.c" /* yacc.c:1646  */
     break;
 
+  case 6:
+#line 380 "cf-parse.y" /* yacc.c:1646  */
+    { free((yyvsp[0].tok).t); }
+#line 1824 "cf-parse.tab.c" /* yacc.c:1646  */
+    break;
+
+  case 7:
+#line 381 "cf-parse.y" /* yacc.c:1646  */
+    { free((yyvsp[0].tok).t); }
+#line 1830 "cf-parse.tab.c" /* yacc.c:1646  */
+    break;
+
+  case 8:
+#line 382 "cf-parse.y" /* yacc.c:1646  */
+    { free((yyvsp[0].tok).t); }
+#line 1836 "cf-parse.tab.c" /* yacc.c:1646  */
+    break;
+
+  case 9:
+#line 383 "cf-parse.y" /* yacc.c:1646  */
+    { free((yyvsp[0].tok).t); }
+#line 1842 "cf-parse.tab.c" /* yacc.c:1646  */
+    break;
+
+  case 10:
+#line 384 "cf-parse.y" /* yacc.c:1646  */
+    { free((yyvsp[0].tok).t); }
+#line 1848 "cf-parse.tab.c" /* yacc.c:1646  */
+    break;
+
+  case 11:
+#line 385 "cf-parse.y" /* yacc.c:1646  */
+    { free((yyvsp[0].tok).t); }
+#line 1854 "cf-parse.tab.c" /* yacc.c:1646  */
+    break;
+
   case 13:
 #line 389 "cf-parse.y" /* yacc.c:1646  */
     { _port = (yyvsp[-1].tok).i; }
-#line 1824 "cf-parse.tab.c" /* yacc.c:1646  */
+#line 1860 "cf-parse.tab.c" /* yacc.c:1646  */
     break;
 
   case 14:
 #line 390 "cf-parse.y" /* yacc.c:1646  */
     { _addr = (yyvsp[-1].tok).t; }
-#line 1830 "cf-parse.tab.c" /* yacc.c:1646  */
+#line 1866 "cf-parse.tab.c" /* yacc.c:1646  */
     break;
 
   case 15:
 #line 391 "cf-parse.y" /* yacc.c:1646  */
     { _addr = (yyvsp[-3].tok).t; _port = (yyvsp[-1].tok).i;  }
-#line 1836 "cf-parse.tab.c" /* yacc.c:1646  */
+#line 1872 "cf-parse.tab.c" /* yacc.c:1646  */
     break;
 
   case 16:
 #line 392 "cf-parse.y" /* yacc.c:1646  */
     { _addr = (yyvsp[-1].tok).t; }
-#line 1842 "cf-parse.tab.c" /* yacc.c:1646  */
+#line 1878 "cf-parse.tab.c" /* yacc.c:1646  */
     break;
 
   case 17:
 #line 393 "cf-parse.y" /* yacc.c:1646  */
     { _addr = (yyvsp[-3].tok).t; _port = (yyvsp[-1].tok).i; }
-#line 1848 "cf-parse.tab.c" /* yacc.c:1646  */
+#line 1884 "cf-parse.tab.c" /* yacc.c:1646  */
     break;
 
   case 18:
 #line 397 "cf-parse.y" /* yacc.c:1646  */
     { f_section(scanner, R_IF, S_SRV); }
-#line 1854 "cf-parse.tab.c" /* yacc.c:1646  */
+#line 1890 "cf-parse.tab.c" /* yacc.c:1646  */
     break;
 
   case 19:
 #line 398 "cf-parse.y" /* yacc.c:1646  */
     { f_name(scanner, R_IF, C_LISTEN, false); _addr = NULL, _port = -1; }
-#line 1860 "cf-parse.tab.c" /* yacc.c:1646  */
+#line 1896 "cf-parse.tab.c" /* yacc.c:1646  */
     break;
 
   case 20:
@@ -1871,139 +1907,139 @@ yyreduce:
 	}
 	free(_addr);
    }
-#line 1875 "cf-parse.tab.c" /* yacc.c:1646  */
+#line 1911 "cf-parse.tab.c" /* yacc.c:1646  */
     break;
 
   case 21:
 #line 412 "cf-parse.y" /* yacc.c:1646  */
     { f_section(scanner, R_SYS, S_SRV); }
-#line 1881 "cf-parse.tab.c" /* yacc.c:1646  */
+#line 1917 "cf-parse.tab.c" /* yacc.c:1646  */
     break;
 
   case 22:
 #line 413 "cf-parse.y" /* yacc.c:1646  */
-    { f_quote(scanner, R_SYS, C_VERSION, (yyvsp[-1].tok).t); }
-#line 1887 "cf-parse.tab.c" /* yacc.c:1646  */
+    { f_quote(scanner, R_SYS, C_VERSION, (yyvsp[-1].tok).t); free((yyvsp[-1].tok).t); }
+#line 1923 "cf-parse.tab.c" /* yacc.c:1646  */
     break;
 
   case 23:
 #line 414 "cf-parse.y" /* yacc.c:1646  */
     { f_auto_str(scanner, R_SYS, C_VERSION, (yyvsp[-1].tok).i); }
-#line 1893 "cf-parse.tab.c" /* yacc.c:1646  */
+#line 1929 "cf-parse.tab.c" /* yacc.c:1646  */
     break;
 
   case 24:
 #line 415 "cf-parse.y" /* yacc.c:1646  */
-    { f_quote(scanner, R_SYS, C_IDENT, (yyvsp[-1].tok).t); }
-#line 1899 "cf-parse.tab.c" /* yacc.c:1646  */
+    { f_quote(scanner, R_SYS, C_IDENT, (yyvsp[-1].tok).t); free((yyvsp[-1].tok).t); }
+#line 1935 "cf-parse.tab.c" /* yacc.c:1646  */
     break;
 
   case 25:
 #line 416 "cf-parse.y" /* yacc.c:1646  */
     { f_auto_str(scanner, R_SYS, C_IDENT, (yyvsp[-1].tok).i); }
-#line 1905 "cf-parse.tab.c" /* yacc.c:1646  */
+#line 1941 "cf-parse.tab.c" /* yacc.c:1646  */
     break;
 
   case 26:
 #line 417 "cf-parse.y" /* yacc.c:1646  */
-    { f_quote(scanner, R_SYS, C_NSID,  (yyvsp[-1].tok).t); }
-#line 1911 "cf-parse.tab.c" /* yacc.c:1646  */
+    { f_quote(scanner, R_SYS, C_NSID,  (yyvsp[-1].tok).t); free((yyvsp[-1].tok).t); }
+#line 1947 "cf-parse.tab.c" /* yacc.c:1646  */
     break;
 
   case 27:
 #line 418 "cf-parse.y" /* yacc.c:1646  */
     { f_auto_str(scanner, R_SYS, C_NSID, (yyvsp[-1].tok).i); }
-#line 1917 "cf-parse.tab.c" /* yacc.c:1646  */
+#line 1953 "cf-parse.tab.c" /* yacc.c:1646  */
     break;
 
   case 28:
 #line 419 "cf-parse.y" /* yacc.c:1646  */
     { f_int(scanner, R_SYS, C_MAX_UDP_PAYLOAD, (yyvsp[-1].tok).i); }
-#line 1923 "cf-parse.tab.c" /* yacc.c:1646  */
+#line 1959 "cf-parse.tab.c" /* yacc.c:1646  */
     break;
 
   case 29:
 #line 420 "cf-parse.y" /* yacc.c:1646  */
-    { f_quote(scanner, R_SYS, C_RUNDIR, (yyvsp[-1].tok).t); }
-#line 1929 "cf-parse.tab.c" /* yacc.c:1646  */
+    { f_quote(scanner, R_SYS, C_RUNDIR, (yyvsp[-1].tok).t); free((yyvsp[-1].tok).t); }
+#line 1965 "cf-parse.tab.c" /* yacc.c:1646  */
     break;
 
   case 30:
 #line 421 "cf-parse.y" /* yacc.c:1646  */
-    { f_quote(scanner, R_SYS, C_PIDFILE, (yyvsp[-1].tok).t); }
-#line 1935 "cf-parse.tab.c" /* yacc.c:1646  */
+    { f_quote(scanner, R_SYS, C_PIDFILE, (yyvsp[-1].tok).t); free((yyvsp[-1].tok).t); }
+#line 1971 "cf-parse.tab.c" /* yacc.c:1646  */
     break;
 
   case 31:
 #line 422 "cf-parse.y" /* yacc.c:1646  */
     { f_int(scanner, R_SYS, C_WORKERS, (yyvsp[-1].tok).i); }
-#line 1941 "cf-parse.tab.c" /* yacc.c:1646  */
+#line 1977 "cf-parse.tab.c" /* yacc.c:1646  */
     break;
 
   case 32:
 #line 423 "cf-parse.y" /* yacc.c:1646  */
     { f_int(scanner, R_SYS, C_BG_WORKERS, (yyvsp[-1].tok).i); }
-#line 1947 "cf-parse.tab.c" /* yacc.c:1646  */
+#line 1983 "cf-parse.tab.c" /* yacc.c:1646  */
     break;
 
   case 33:
 #line 424 "cf-parse.y" /* yacc.c:1646  */
     { f_bool(scanner, R_SYS, C_ASYNC_START, (yyvsp[-1].tok).i); }
-#line 1953 "cf-parse.tab.c" /* yacc.c:1646  */
+#line 1989 "cf-parse.tab.c" /* yacc.c:1646  */
     break;
 
   case 34:
 #line 425 "cf-parse.y" /* yacc.c:1646  */
     { f_int(scanner, R_SYS, C_MAX_CONN_IDLE, (yyvsp[-1].tok).i); }
-#line 1959 "cf-parse.tab.c" /* yacc.c:1646  */
+#line 1995 "cf-parse.tab.c" /* yacc.c:1646  */
     break;
 
   case 35:
 #line 426 "cf-parse.y" /* yacc.c:1646  */
     { f_int(scanner, R_SYS, C_MAX_CONN_HANDSHAKE, (yyvsp[-1].tok).i); }
-#line 1965 "cf-parse.tab.c" /* yacc.c:1646  */
+#line 2001 "cf-parse.tab.c" /* yacc.c:1646  */
     break;
 
   case 36:
 #line 427 "cf-parse.y" /* yacc.c:1646  */
     { f_int(scanner, R_SYS, C_MAX_CONN_REPLY, (yyvsp[-1].tok).i); }
-#line 1971 "cf-parse.tab.c" /* yacc.c:1646  */
+#line 2007 "cf-parse.tab.c" /* yacc.c:1646  */
     break;
 
   case 37:
 #line 428 "cf-parse.y" /* yacc.c:1646  */
     { f_int(scanner, R_SYS, C_MAX_TCP_CLIENTS, (yyvsp[-1].tok).i); }
-#line 1977 "cf-parse.tab.c" /* yacc.c:1646  */
+#line 2013 "cf-parse.tab.c" /* yacc.c:1646  */
     break;
 
   case 38:
 #line 429 "cf-parse.y" /* yacc.c:1646  */
     { f_int(scanner, R_SYS, C_RATE_LIMIT, (yyvsp[-1].tok).i); }
-#line 1983 "cf-parse.tab.c" /* yacc.c:1646  */
+#line 2019 "cf-parse.tab.c" /* yacc.c:1646  */
     break;
 
   case 39:
 #line 430 "cf-parse.y" /* yacc.c:1646  */
     { f_int(scanner, R_SYS, C_RATE_LIMIT_SIZE, (yyvsp[-1].tok).l); }
-#line 1989 "cf-parse.tab.c" /* yacc.c:1646  */
+#line 2025 "cf-parse.tab.c" /* yacc.c:1646  */
     break;
 
   case 40:
 #line 431 "cf-parse.y" /* yacc.c:1646  */
     { f_int(scanner, R_SYS, C_RATE_LIMIT_SIZE, (yyvsp[-1].tok).i); }
-#line 1995 "cf-parse.tab.c" /* yacc.c:1646  */
+#line 2031 "cf-parse.tab.c" /* yacc.c:1646  */
     break;
 
   case 41:
 #line 432 "cf-parse.y" /* yacc.c:1646  */
     { f_int(scanner, R_SYS, C_RATE_LIMIT_SLIP, (yyvsp[-1].tok).i); }
-#line 2001 "cf-parse.tab.c" /* yacc.c:1646  */
+#line 2037 "cf-parse.tab.c" /* yacc.c:1646  */
     break;
 
   case 42:
 #line 433 "cf-parse.y" /* yacc.c:1646  */
     { f_int(scanner, R_SYS, C_TRANSFERS, (yyvsp[-1].tok).i); }
-#line 2007 "cf-parse.tab.c" /* yacc.c:1646  */
+#line 2043 "cf-parse.tab.c" /* yacc.c:1646  */
     break;
 
   case 43:
@@ -2014,161 +2050,167 @@ yyreduce:
  		*sep = ':';
  	}
  	f_str(scanner, R_SYS, C_USER, (yyvsp[-1].tok).t);
+ 	free((yyvsp[-1].tok).t);
    }
-#line 2019 "cf-parse.tab.c" /* yacc.c:1646  */
+#line 2056 "cf-parse.tab.c" /* yacc.c:1646  */
     break;
 
   case 44:
-#line 441 "cf-parse.y" /* yacc.c:1646  */
+#line 442 "cf-parse.y" /* yacc.c:1646  */
     {
      cf_warning(scanner, "option 'system.hostname' is deprecated, "
                          "use 'system.identity' instead");
+     free((yyvsp[-1].tok).t);
    }
-#line 2028 "cf-parse.tab.c" /* yacc.c:1646  */
+#line 2066 "cf-parse.tab.c" /* yacc.c:1646  */
     break;
 
   case 45:
-#line 445 "cf-parse.y" /* yacc.c:1646  */
+#line 447 "cf-parse.y" /* yacc.c:1646  */
     {
      cf_warning(scanner, "option 'system.storage' was relocated, "
                          "use 'zones.storage' instead");
+     free((yyvsp[-1].tok).t);
    }
-#line 2037 "cf-parse.tab.c" /* yacc.c:1646  */
+#line 2076 "cf-parse.tab.c" /* yacc.c:1646  */
     break;
 
   case 46:
-#line 449 "cf-parse.y" /* yacc.c:1646  */
+#line 452 "cf-parse.y" /* yacc.c:1646  */
     {
      free((yyvsp[-2].tok).t);
      cf_warning(scanner, "option 'system.key' is deprecated and "
                          "it has no effect");
+     free((yyvsp[-2].tok).t);
    }
-#line 2047 "cf-parse.tab.c" /* yacc.c:1646  */
+#line 2087 "cf-parse.tab.c" /* yacc.c:1646  */
     break;
 
   case 47:
-#line 457 "cf-parse.y" /* yacc.c:1646  */
+#line 461 "cf-parse.y" /* yacc.c:1646  */
     {
    	f_section(scanner, R_KEY, S_KEY);
    }
-#line 2055 "cf-parse.tab.c" /* yacc.c:1646  */
-    break;
-
-  case 48:
-#line 460 "cf-parse.y" /* yacc.c:1646  */
-    {
-	f_id(scanner, R_KEY, C_ID, (yyvsp[-3].tok).t);
-	f_str(scanner, R_KEY, C_ALG, (yyvsp[-2].tok).t); free((yyvsp[-2].tok).t);
-	f_quote(scanner, R_KEY, C_SECRET, (yyvsp[-1].tok).t);
-   }
-#line 2065 "cf-parse.tab.c" /* yacc.c:1646  */
-    break;
-
-  case 50:
-#line 468 "cf-parse.y" /* yacc.c:1646  */
-    { _str = (yyvsp[0].tok).t; }
-#line 2071 "cf-parse.tab.c" /* yacc.c:1646  */
-    break;
-
-  case 51:
-#line 469 "cf-parse.y" /* yacc.c:1646  */
-    { _str = (yyvsp[0].tok).t; }
-#line 2077 "cf-parse.tab.c" /* yacc.c:1646  */
-    break;
-
-  case 52:
-#line 470 "cf-parse.y" /* yacc.c:1646  */
-    { _str = (yyvsp[0].tok).t; }
-#line 2083 "cf-parse.tab.c" /* yacc.c:1646  */
-    break;
-
-  case 53:
-#line 471 "cf-parse.y" /* yacc.c:1646  */
-    { _str = (yyvsp[0].tok).t; }
-#line 2089 "cf-parse.tab.c" /* yacc.c:1646  */
-    break;
-
-  case 54:
-#line 472 "cf-parse.y" /* yacc.c:1646  */
-    { _str = (yyvsp[0].tok).t; }
 #line 2095 "cf-parse.tab.c" /* yacc.c:1646  */
     break;
 
-  case 56:
+  case 48:
+#line 464 "cf-parse.y" /* yacc.c:1646  */
+    {
+	f_id(scanner, R_KEY, C_ID, (yyvsp[-3].tok).t); free((yyvsp[-3].tok).t);
+	f_str(scanner, R_KEY, C_ALG, (yyvsp[-2].tok).t); free((yyvsp[-2].tok).t);
+	f_quote(scanner, R_KEY, C_SECRET, (yyvsp[-1].tok).t); free((yyvsp[-1].tok).t);
+   }
+#line 2105 "cf-parse.tab.c" /* yacc.c:1646  */
+    break;
+
+  case 50:
+#line 472 "cf-parse.y" /* yacc.c:1646  */
+    { _str = (yyvsp[0].tok).t; }
+#line 2111 "cf-parse.tab.c" /* yacc.c:1646  */
+    break;
+
+  case 51:
+#line 473 "cf-parse.y" /* yacc.c:1646  */
+    { _str = (yyvsp[0].tok).t; }
+#line 2117 "cf-parse.tab.c" /* yacc.c:1646  */
+    break;
+
+  case 52:
+#line 474 "cf-parse.y" /* yacc.c:1646  */
+    { _str = (yyvsp[0].tok).t; }
+#line 2123 "cf-parse.tab.c" /* yacc.c:1646  */
+    break;
+
+  case 53:
+#line 475 "cf-parse.y" /* yacc.c:1646  */
+    { _str = (yyvsp[0].tok).t; }
+#line 2129 "cf-parse.tab.c" /* yacc.c:1646  */
+    break;
+
+  case 54:
 #line 476 "cf-parse.y" /* yacc.c:1646  */
+    { _str = (yyvsp[0].tok).t; }
+#line 2135 "cf-parse.tab.c" /* yacc.c:1646  */
+    break;
+
+  case 56:
+#line 480 "cf-parse.y" /* yacc.c:1646  */
     { _port = (yyvsp[-1].tok).i; }
-#line 2101 "cf-parse.tab.c" /* yacc.c:1646  */
+#line 2141 "cf-parse.tab.c" /* yacc.c:1646  */
     break;
 
   case 57:
-#line 477 "cf-parse.y" /* yacc.c:1646  */
+#line 481 "cf-parse.y" /* yacc.c:1646  */
     { _addr = (yyvsp[-1].tok).t; }
-#line 2107 "cf-parse.tab.c" /* yacc.c:1646  */
+#line 2147 "cf-parse.tab.c" /* yacc.c:1646  */
     break;
 
   case 58:
-#line 478 "cf-parse.y" /* yacc.c:1646  */
+#line 482 "cf-parse.y" /* yacc.c:1646  */
     { _addr = (yyvsp[-3].tok).t; _port = (yyvsp[-1].tok).i;  }
-#line 2113 "cf-parse.tab.c" /* yacc.c:1646  */
+#line 2153 "cf-parse.tab.c" /* yacc.c:1646  */
     break;
 
   case 59:
-#line 479 "cf-parse.y" /* yacc.c:1646  */
+#line 483 "cf-parse.y" /* yacc.c:1646  */
     { _addr = (yyvsp[-1].tok).t; }
-#line 2119 "cf-parse.tab.c" /* yacc.c:1646  */
+#line 2159 "cf-parse.tab.c" /* yacc.c:1646  */
     break;
 
   case 60:
-#line 480 "cf-parse.y" /* yacc.c:1646  */
+#line 484 "cf-parse.y" /* yacc.c:1646  */
     { _addr = (yyvsp[-3].tok).t; _port = (yyvsp[-1].tok).i; }
-#line 2125 "cf-parse.tab.c" /* yacc.c:1646  */
+#line 2165 "cf-parse.tab.c" /* yacc.c:1646  */
     break;
 
   case 61:
-#line 481 "cf-parse.y" /* yacc.c:1646  */
+#line 485 "cf-parse.y" /* yacc.c:1646  */
     { _addr = (yyvsp[-3].tok).t; _mask = (yyvsp[-1].tok).i; }
-#line 2131 "cf-parse.tab.c" /* yacc.c:1646  */
+#line 2171 "cf-parse.tab.c" /* yacc.c:1646  */
     break;
 
   case 62:
-#line 482 "cf-parse.y" /* yacc.c:1646  */
+#line 486 "cf-parse.y" /* yacc.c:1646  */
     { _addr = (yyvsp[-3].tok).t; _mask = (yyvsp[-1].tok).i; }
-#line 2137 "cf-parse.tab.c" /* yacc.c:1646  */
+#line 2177 "cf-parse.tab.c" /* yacc.c:1646  */
     break;
 
   case 63:
-#line 483 "cf-parse.y" /* yacc.c:1646  */
+#line 487 "cf-parse.y" /* yacc.c:1646  */
     {
  	f_str(scanner, R_RMT, C_KEY, (yyvsp[-1].tok).t);
  	f_str(scanner, R_RMT_ACL, C_KEY, (yyvsp[-1].tok).t);
+ 	free((yyvsp[-1].tok).t);
    }
-#line 2146 "cf-parse.tab.c" /* yacc.c:1646  */
+#line 2187 "cf-parse.tab.c" /* yacc.c:1646  */
     break;
 
   case 64:
-#line 487 "cf-parse.y" /* yacc.c:1646  */
+#line 492 "cf-parse.y" /* yacc.c:1646  */
     { f_str(scanner, R_RMT, C_VIA, (yyvsp[-1].tok).t); }
-#line 2152 "cf-parse.tab.c" /* yacc.c:1646  */
+#line 2193 "cf-parse.tab.c" /* yacc.c:1646  */
     break;
 
   case 65:
-#line 488 "cf-parse.y" /* yacc.c:1646  */
+#line 493 "cf-parse.y" /* yacc.c:1646  */
     { f_str(scanner, R_RMT, C_VIA, (yyvsp[-1].tok).t); }
-#line 2158 "cf-parse.tab.c" /* yacc.c:1646  */
+#line 2199 "cf-parse.tab.c" /* yacc.c:1646  */
     break;
 
   case 66:
-#line 489 "cf-parse.y" /* yacc.c:1646  */
+#line 494 "cf-parse.y" /* yacc.c:1646  */
     {
      cf_warning(scanner, "interface name in 'via' option is not valid in the new "
                 "format, use address specification instead (see documentation)");
    }
-#line 2167 "cf-parse.tab.c" /* yacc.c:1646  */
+#line 2208 "cf-parse.tab.c" /* yacc.c:1646  */
     break;
 
   case 67:
-#line 496 "cf-parse.y" /* yacc.c:1646  */
+#line 501 "cf-parse.y" /* yacc.c:1646  */
     {
+   	_str = NULL;
    	if (have_remote(scanner)) {
 		f_section(scanner, R_RMT, S_RMT);
 	}
@@ -2176,11 +2218,11 @@ yyreduce:
 		f_section(scanner, R_RMT_ACL, S_ACL);
 	}
    }
-#line 2180 "cf-parse.tab.c" /* yacc.c:1646  */
+#line 2222 "cf-parse.tab.c" /* yacc.c:1646  */
     break;
 
   case 68:
-#line 504 "cf-parse.y" /* yacc.c:1646  */
+#line 510 "cf-parse.y" /* yacc.c:1646  */
     {
 	_addr = NULL, _port = -1; _mask = -1;
  	if (is_remote(scanner, _str)) {
@@ -2191,11 +2233,11 @@ yyreduce:
 		f_val(scanner, R_RMT_ACL, false, "acl_%s\n", _str);
 	}
    }
-#line 2195 "cf-parse.tab.c" /* yacc.c:1646  */
+#line 2237 "cf-parse.tab.c" /* yacc.c:1646  */
     break;
 
   case 69:
-#line 514 "cf-parse.y" /* yacc.c:1646  */
+#line 520 "cf-parse.y" /* yacc.c:1646  */
     {
  	if (is_remote(scanner, _str)) {
 		if (_addr == NULL) {
@@ -2220,243 +2262,246 @@ yyreduce:
 		f_name(scanner, R_RMT_ACL, C_ACTION, false);
 		f_val(scanner, R_RMT_ACL, false, "%s\n", acl_actions(scanner, _str));
 	}
+	free(_addr);
+	free(_str);
    }
-#line 2225 "cf-parse.tab.c" /* yacc.c:1646  */
+#line 2269 "cf-parse.tab.c" /* yacc.c:1646  */
     break;
 
   case 75:
-#line 556 "cf-parse.y" /* yacc.c:1646  */
+#line 564 "cf-parse.y" /* yacc.c:1646  */
     {
      cf_warning(scanner, "group section is not valid in the new format, "
                 "use a zone template instead (see the documentation)");
    }
-#line 2234 "cf-parse.tab.c" /* yacc.c:1646  */
+#line 2278 "cf-parse.tab.c" /* yacc.c:1646  */
     break;
 
   case 77:
-#line 564 "cf-parse.y" /* yacc.c:1646  */
+#line 572 "cf-parse.y" /* yacc.c:1646  */
     { f_name(scanner, R_ZONE, C_MASTER, false); acl_start(scanner, ACL_RMT); _str = ""; }
-#line 2240 "cf-parse.tab.c" /* yacc.c:1646  */
+#line 2284 "cf-parse.tab.c" /* yacc.c:1646  */
     break;
 
   case 78:
-#line 565 "cf-parse.y" /* yacc.c:1646  */
+#line 573 "cf-parse.y" /* yacc.c:1646  */
     { f_name(scanner, R_ZONE, C_ACL, false);    acl_start(scanner, ACL_XFR); _str = "acl_"; }
-#line 2246 "cf-parse.tab.c" /* yacc.c:1646  */
+#line 2290 "cf-parse.tab.c" /* yacc.c:1646  */
     break;
 
   case 79:
-#line 566 "cf-parse.y" /* yacc.c:1646  */
+#line 574 "cf-parse.y" /* yacc.c:1646  */
     { f_name(scanner, R_ZONE, C_ACL, false);    acl_start(scanner, ACL_NTF); _str = "acl_"; }
-#line 2252 "cf-parse.tab.c" /* yacc.c:1646  */
+#line 2296 "cf-parse.tab.c" /* yacc.c:1646  */
     break;
 
   case 80:
-#line 567 "cf-parse.y" /* yacc.c:1646  */
+#line 575 "cf-parse.y" /* yacc.c:1646  */
     { f_name(scanner, R_ZONE, C_NOTIFY, false); acl_start(scanner, ACL_RMT); _str = ""; }
-#line 2258 "cf-parse.tab.c" /* yacc.c:1646  */
+#line 2302 "cf-parse.tab.c" /* yacc.c:1646  */
     break;
 
   case 81:
-#line 568 "cf-parse.y" /* yacc.c:1646  */
+#line 576 "cf-parse.y" /* yacc.c:1646  */
     { f_name(scanner, R_ZONE, C_ACL, false);    acl_start(scanner, ACL_UPD); _str = "acl_"; }
-#line 2264 "cf-parse.tab.c" /* yacc.c:1646  */
+#line 2308 "cf-parse.tab.c" /* yacc.c:1646  */
     break;
 
   case 83:
-#line 572 "cf-parse.y" /* yacc.c:1646  */
-    { acl_next(scanner, (yyvsp[0].tok).t); }
-#line 2270 "cf-parse.tab.c" /* yacc.c:1646  */
+#line 580 "cf-parse.y" /* yacc.c:1646  */
+    { acl_next(scanner, (yyvsp[0].tok).t); free((yyvsp[0].tok).t); }
+#line 2314 "cf-parse.tab.c" /* yacc.c:1646  */
     break;
 
   case 84:
-#line 573 "cf-parse.y" /* yacc.c:1646  */
-    { acl_next(scanner, (yyvsp[0].tok).t); }
-#line 2276 "cf-parse.tab.c" /* yacc.c:1646  */
+#line 581 "cf-parse.y" /* yacc.c:1646  */
+    { acl_next(scanner, (yyvsp[0].tok).t); free((yyvsp[0].tok).t); }
+#line 2320 "cf-parse.tab.c" /* yacc.c:1646  */
     break;
 
   case 85:
-#line 574 "cf-parse.y" /* yacc.c:1646  */
-    { acl_next(scanner, (yyvsp[0].tok).t); }
-#line 2282 "cf-parse.tab.c" /* yacc.c:1646  */
+#line 582 "cf-parse.y" /* yacc.c:1646  */
+    { acl_next(scanner, (yyvsp[0].tok).t); free((yyvsp[0].tok).t); }
+#line 2326 "cf-parse.tab.c" /* yacc.c:1646  */
     break;
 
   case 86:
-#line 575 "cf-parse.y" /* yacc.c:1646  */
-    { acl_next(scanner, (yyvsp[0].tok).t); }
-#line 2288 "cf-parse.tab.c" /* yacc.c:1646  */
+#line 583 "cf-parse.y" /* yacc.c:1646  */
+    { acl_next(scanner, (yyvsp[0].tok).t); free((yyvsp[0].tok).t); }
+#line 2332 "cf-parse.tab.c" /* yacc.c:1646  */
     break;
 
   case 87:
-#line 576 "cf-parse.y" /* yacc.c:1646  */
-    { acl_next(scanner, (yyvsp[0].tok).t); }
-#line 2294 "cf-parse.tab.c" /* yacc.c:1646  */
+#line 584 "cf-parse.y" /* yacc.c:1646  */
+    { acl_next(scanner, (yyvsp[0].tok).t); free((yyvsp[0].tok).t); }
+#line 2338 "cf-parse.tab.c" /* yacc.c:1646  */
     break;
 
   case 90:
-#line 581 "cf-parse.y" /* yacc.c:1646  */
+#line 589 "cf-parse.y" /* yacc.c:1646  */
     { acl_end(scanner); }
-#line 2300 "cf-parse.tab.c" /* yacc.c:1646  */
+#line 2344 "cf-parse.tab.c" /* yacc.c:1646  */
     break;
 
   case 95:
-#line 593 "cf-parse.y" /* yacc.c:1646  */
-    { f_id(scanner, R_ZONE, C_DOMAIN, (yyvsp[0].tok).t); }
-#line 2306 "cf-parse.tab.c" /* yacc.c:1646  */
+#line 601 "cf-parse.y" /* yacc.c:1646  */
+    { f_id(scanner, R_ZONE, C_DOMAIN, (yyvsp[0].tok).t); free((yyvsp[0].tok).t); }
+#line 2350 "cf-parse.tab.c" /* yacc.c:1646  */
     break;
 
   case 96:
-#line 594 "cf-parse.y" /* yacc.c:1646  */
-    { f_id(scanner, R_ZONE, C_DOMAIN, (yyvsp[0].tok).t); }
-#line 2312 "cf-parse.tab.c" /* yacc.c:1646  */
+#line 602 "cf-parse.y" /* yacc.c:1646  */
+    { f_id(scanner, R_ZONE, C_DOMAIN, (yyvsp[0].tok).t); free((yyvsp[0].tok).t); }
+#line 2356 "cf-parse.tab.c" /* yacc.c:1646  */
     break;
 
   case 97:
-#line 595 "cf-parse.y" /* yacc.c:1646  */
-    { f_id(scanner, R_ZONE, C_DOMAIN, (yyvsp[0].tok).t); }
-#line 2318 "cf-parse.tab.c" /* yacc.c:1646  */
+#line 603 "cf-parse.y" /* yacc.c:1646  */
+    { f_id(scanner, R_ZONE, C_DOMAIN, (yyvsp[0].tok).t); free((yyvsp[0].tok).t); }
+#line 2362 "cf-parse.tab.c" /* yacc.c:1646  */
     break;
 
   case 98:
-#line 596 "cf-parse.y" /* yacc.c:1646  */
-    { f_id(scanner, R_ZONE, C_DOMAIN, (yyvsp[0].tok).t); }
-#line 2324 "cf-parse.tab.c" /* yacc.c:1646  */
+#line 604 "cf-parse.y" /* yacc.c:1646  */
+    { f_id(scanner, R_ZONE, C_DOMAIN, (yyvsp[0].tok).t); free((yyvsp[0].tok).t); }
+#line 2368 "cf-parse.tab.c" /* yacc.c:1646  */
     break;
 
   case 99:
-#line 597 "cf-parse.y" /* yacc.c:1646  */
-    { f_id(scanner, R_ZONE, C_DOMAIN, (yyvsp[0].tok).t); }
-#line 2330 "cf-parse.tab.c" /* yacc.c:1646  */
+#line 605 "cf-parse.y" /* yacc.c:1646  */
+    { f_id(scanner, R_ZONE, C_DOMAIN, (yyvsp[0].tok).t); free((yyvsp[0].tok).t); }
+#line 2374 "cf-parse.tab.c" /* yacc.c:1646  */
     break;
 
   case 100:
-#line 598 "cf-parse.y" /* yacc.c:1646  */
-    { f_id(scanner, R_ZONE, C_DOMAIN, (yyvsp[0].tok).t); }
-#line 2336 "cf-parse.tab.c" /* yacc.c:1646  */
+#line 606 "cf-parse.y" /* yacc.c:1646  */
+    { f_id(scanner, R_ZONE, C_DOMAIN, (yyvsp[0].tok).t); free((yyvsp[0].tok).t); }
+#line 2380 "cf-parse.tab.c" /* yacc.c:1646  */
     break;
 
   case 101:
-#line 599 "cf-parse.y" /* yacc.c:1646  */
+#line 607 "cf-parse.y" /* yacc.c:1646  */
     {
       f_name(scanner, R_ZONE, C_DOMAIN, true);
       f_val(scanner, R_ZONE, false, "%i/%s", (yyvsp[-2].tok).i, (yyvsp[0].tok).t);
       f_val(scanner, R_ZONE, false, "\n");
+      free((yyvsp[0].tok).t);
    }
-#line 2346 "cf-parse.tab.c" /* yacc.c:1646  */
+#line 2391 "cf-parse.tab.c" /* yacc.c:1646  */
     break;
 
   case 102:
-#line 604 "cf-parse.y" /* yacc.c:1646  */
-    { f_id(scanner, R_ZONE, C_DOMAIN, (yyvsp[0].tok).t); }
-#line 2352 "cf-parse.tab.c" /* yacc.c:1646  */
+#line 613 "cf-parse.y" /* yacc.c:1646  */
+    { f_id(scanner, R_ZONE, C_DOMAIN, (yyvsp[0].tok).t); free((yyvsp[0].tok).t); }
+#line 2397 "cf-parse.tab.c" /* yacc.c:1646  */
     break;
 
   case 105:
-#line 610 "cf-parse.y" /* yacc.c:1646  */
-    { f_quote(scanner, R_ZONE, C_FILE,           (yyvsp[-1].tok).t); }
-#line 2358 "cf-parse.tab.c" /* yacc.c:1646  */
+#line 619 "cf-parse.y" /* yacc.c:1646  */
+    { f_quote(scanner, R_ZONE, C_FILE,           (yyvsp[-1].tok).t); free((yyvsp[-1].tok).t); }
+#line 2403 "cf-parse.tab.c" /* yacc.c:1646  */
     break;
 
   case 106:
-#line 611 "cf-parse.y" /* yacc.c:1646  */
+#line 620 "cf-parse.y" /* yacc.c:1646  */
     { f_bool(scanner,  R_ZONE, C_DISABLE_ANY,    (yyvsp[-1].tok).i); }
-#line 2364 "cf-parse.tab.c" /* yacc.c:1646  */
+#line 2409 "cf-parse.tab.c" /* yacc.c:1646  */
     break;
 
   case 107:
-#line 612 "cf-parse.y" /* yacc.c:1646  */
+#line 621 "cf-parse.y" /* yacc.c:1646  */
     { f_bool(scanner,  R_ZONE, C_IXFR_DIFF,      (yyvsp[-1].tok).i); }
-#line 2370 "cf-parse.tab.c" /* yacc.c:1646  */
+#line 2415 "cf-parse.tab.c" /* yacc.c:1646  */
     break;
 
   case 108:
-#line 613 "cf-parse.y" /* yacc.c:1646  */
+#line 622 "cf-parse.y" /* yacc.c:1646  */
     { f_bool(scanner,  R_ZONE, C_SEM_CHECKS,     (yyvsp[-1].tok).i); }
-#line 2376 "cf-parse.tab.c" /* yacc.c:1646  */
+#line 2421 "cf-parse.tab.c" /* yacc.c:1646  */
     break;
 
   case 109:
-#line 614 "cf-parse.y" /* yacc.c:1646  */
+#line 623 "cf-parse.y" /* yacc.c:1646  */
     { f_int(scanner,   R_ZONE, C_IXFR_FSLIMIT,   (yyvsp[-1].tok).l); }
-#line 2382 "cf-parse.tab.c" /* yacc.c:1646  */
+#line 2427 "cf-parse.tab.c" /* yacc.c:1646  */
     break;
 
   case 110:
-#line 615 "cf-parse.y" /* yacc.c:1646  */
+#line 624 "cf-parse.y" /* yacc.c:1646  */
     { f_int(scanner,   R_ZONE, C_IXFR_FSLIMIT,   (yyvsp[-1].tok).i); }
-#line 2388 "cf-parse.tab.c" /* yacc.c:1646  */
+#line 2433 "cf-parse.tab.c" /* yacc.c:1646  */
     break;
 
   case 111:
-#line 616 "cf-parse.y" /* yacc.c:1646  */
+#line 625 "cf-parse.y" /* yacc.c:1646  */
     { f_int(scanner,   R_ZONE, C_NOTIFY_RETRIES, (yyvsp[-1].tok).i); }
-#line 2394 "cf-parse.tab.c" /* yacc.c:1646  */
+#line 2439 "cf-parse.tab.c" /* yacc.c:1646  */
     break;
 
   case 112:
-#line 617 "cf-parse.y" /* yacc.c:1646  */
+#line 626 "cf-parse.y" /* yacc.c:1646  */
     { f_int(scanner,   R_ZONE, C_NOTIFY_TIMEOUT, (yyvsp[-1].tok).i); }
-#line 2400 "cf-parse.tab.c" /* yacc.c:1646  */
+#line 2445 "cf-parse.tab.c" /* yacc.c:1646  */
     break;
 
   case 113:
-#line 618 "cf-parse.y" /* yacc.c:1646  */
+#line 627 "cf-parse.y" /* yacc.c:1646  */
     { f_int(scanner,   R_ZONE, C_ZONEFILE_SYNC,  (yyvsp[-1].tok).i); }
-#line 2406 "cf-parse.tab.c" /* yacc.c:1646  */
+#line 2451 "cf-parse.tab.c" /* yacc.c:1646  */
     break;
 
   case 114:
-#line 619 "cf-parse.y" /* yacc.c:1646  */
+#line 628 "cf-parse.y" /* yacc.c:1646  */
     { f_int(scanner,   R_ZONE, C_ZONEFILE_SYNC,  (yyvsp[-1].tok).i); }
-#line 2412 "cf-parse.tab.c" /* yacc.c:1646  */
+#line 2457 "cf-parse.tab.c" /* yacc.c:1646  */
     break;
 
   case 115:
-#line 620 "cf-parse.y" /* yacc.c:1646  */
-    { f_quote(scanner, R_ZONE, C_STORAGE,        (yyvsp[-1].tok).t); }
-#line 2418 "cf-parse.tab.c" /* yacc.c:1646  */
+#line 629 "cf-parse.y" /* yacc.c:1646  */
+    { f_quote(scanner, R_ZONE, C_STORAGE,        (yyvsp[-1].tok).t); free((yyvsp[-1].tok).t); }
+#line 2463 "cf-parse.tab.c" /* yacc.c:1646  */
     break;
 
   case 116:
-#line 621 "cf-parse.y" /* yacc.c:1646  */
+#line 630 "cf-parse.y" /* yacc.c:1646  */
     { f_bool(scanner,  R_ZONE, C_DNSSEC_ENABLE,  (yyvsp[-1].tok).i); }
-#line 2424 "cf-parse.tab.c" /* yacc.c:1646  */
+#line 2469 "cf-parse.tab.c" /* yacc.c:1646  */
     break;
 
   case 117:
-#line 622 "cf-parse.y" /* yacc.c:1646  */
-    { f_quote(scanner, R_ZONE, C_DNSSEC_KEYDIR,  (yyvsp[-1].tok).t); }
-#line 2430 "cf-parse.tab.c" /* yacc.c:1646  */
+#line 631 "cf-parse.y" /* yacc.c:1646  */
+    { f_quote(scanner, R_ZONE, C_DNSSEC_KEYDIR,  (yyvsp[-1].tok).t); free((yyvsp[-1].tok).t); }
+#line 2475 "cf-parse.tab.c" /* yacc.c:1646  */
     break;
 
   case 118:
-#line 623 "cf-parse.y" /* yacc.c:1646  */
+#line 632 "cf-parse.y" /* yacc.c:1646  */
     { f_int(scanner,   R_ZONE, C_SIG_LIFETIME,   (yyvsp[-1].tok).i); }
-#line 2436 "cf-parse.tab.c" /* yacc.c:1646  */
+#line 2481 "cf-parse.tab.c" /* yacc.c:1646  */
     break;
 
   case 119:
-#line 624 "cf-parse.y" /* yacc.c:1646  */
+#line 633 "cf-parse.y" /* yacc.c:1646  */
     { f_int(scanner,   R_ZONE, C_SIG_LIFETIME,   (yyvsp[-1].tok).i); }
-#line 2442 "cf-parse.tab.c" /* yacc.c:1646  */
+#line 2487 "cf-parse.tab.c" /* yacc.c:1646  */
     break;
 
   case 120:
-#line 625 "cf-parse.y" /* yacc.c:1646  */
+#line 634 "cf-parse.y" /* yacc.c:1646  */
     { f_str(scanner,   R_ZONE, C_SERIAL_POLICY,  (yyvsp[-1].tok).t); }
-#line 2448 "cf-parse.tab.c" /* yacc.c:1646  */
+#line 2493 "cf-parse.tab.c" /* yacc.c:1646  */
     break;
 
   case 121:
-#line 626 "cf-parse.y" /* yacc.c:1646  */
+#line 635 "cf-parse.y" /* yacc.c:1646  */
     {
      cf_warning(scanner, "query module is not yet implemented");
    }
-#line 2456 "cf-parse.tab.c" /* yacc.c:1646  */
+#line 2501 "cf-parse.tab.c" /* yacc.c:1646  */
     break;
 
   case 126:
-#line 640 "cf-parse.y" /* yacc.c:1646  */
+#line 649 "cf-parse.y" /* yacc.c:1646  */
     {
 	f_section(scanner, R_ZONE, S_ZONE); _acl_run = R_ZONE;
 
@@ -2464,178 +2509,179 @@ yyreduce:
 		f_id(scanner, R_ZONE_TPL, C_ID, "default");
 	}
    }
-#line 2468 "cf-parse.tab.c" /* yacc.c:1646  */
+#line 2513 "cf-parse.tab.c" /* yacc.c:1646  */
     break;
 
   case 128:
-#line 648 "cf-parse.y" /* yacc.c:1646  */
+#line 657 "cf-parse.y" /* yacc.c:1646  */
     { f_bool(scanner,  R_ZONE_TPL, C_DISABLE_ANY,    (yyvsp[-1].tok).i); }
-#line 2474 "cf-parse.tab.c" /* yacc.c:1646  */
+#line 2519 "cf-parse.tab.c" /* yacc.c:1646  */
     break;
 
   case 129:
-#line 649 "cf-parse.y" /* yacc.c:1646  */
+#line 658 "cf-parse.y" /* yacc.c:1646  */
     { f_bool(scanner,  R_ZONE_TPL, C_IXFR_DIFF,      (yyvsp[-1].tok).i); }
-#line 2480 "cf-parse.tab.c" /* yacc.c:1646  */
+#line 2525 "cf-parse.tab.c" /* yacc.c:1646  */
     break;
 
   case 130:
-#line 650 "cf-parse.y" /* yacc.c:1646  */
+#line 659 "cf-parse.y" /* yacc.c:1646  */
     { f_bool(scanner,  R_ZONE_TPL, C_SEM_CHECKS,     (yyvsp[-1].tok).i); }
-#line 2486 "cf-parse.tab.c" /* yacc.c:1646  */
+#line 2531 "cf-parse.tab.c" /* yacc.c:1646  */
     break;
 
   case 131:
-#line 651 "cf-parse.y" /* yacc.c:1646  */
+#line 660 "cf-parse.y" /* yacc.c:1646  */
     { f_int(scanner,   R_ZONE_TPL, C_IXFR_FSLIMIT,   (yyvsp[-1].tok).l); }
-#line 2492 "cf-parse.tab.c" /* yacc.c:1646  */
+#line 2537 "cf-parse.tab.c" /* yacc.c:1646  */
     break;
 
   case 132:
-#line 652 "cf-parse.y" /* yacc.c:1646  */
+#line 661 "cf-parse.y" /* yacc.c:1646  */
     { f_int(scanner,   R_ZONE_TPL, C_IXFR_FSLIMIT,   (yyvsp[-1].tok).i); }
-#line 2498 "cf-parse.tab.c" /* yacc.c:1646  */
+#line 2543 "cf-parse.tab.c" /* yacc.c:1646  */
     break;
 
   case 133:
-#line 653 "cf-parse.y" /* yacc.c:1646  */
+#line 662 "cf-parse.y" /* yacc.c:1646  */
     { f_int(scanner,   R_ZONE_TPL, C_NOTIFY_RETRIES, (yyvsp[-1].tok).i); }
-#line 2504 "cf-parse.tab.c" /* yacc.c:1646  */
+#line 2549 "cf-parse.tab.c" /* yacc.c:1646  */
     break;
 
   case 134:
-#line 654 "cf-parse.y" /* yacc.c:1646  */
+#line 663 "cf-parse.y" /* yacc.c:1646  */
     { f_int(scanner,   R_ZONE_TPL, C_NOTIFY_TIMEOUT, (yyvsp[-1].tok).i); }
-#line 2510 "cf-parse.tab.c" /* yacc.c:1646  */
+#line 2555 "cf-parse.tab.c" /* yacc.c:1646  */
     break;
 
   case 135:
-#line 655 "cf-parse.y" /* yacc.c:1646  */
+#line 664 "cf-parse.y" /* yacc.c:1646  */
     { f_int(scanner,   R_ZONE_TPL, C_ZONEFILE_SYNC,  (yyvsp[-1].tok).i); }
-#line 2516 "cf-parse.tab.c" /* yacc.c:1646  */
+#line 2561 "cf-parse.tab.c" /* yacc.c:1646  */
     break;
 
   case 136:
-#line 656 "cf-parse.y" /* yacc.c:1646  */
+#line 665 "cf-parse.y" /* yacc.c:1646  */
     { f_int(scanner,   R_ZONE_TPL, C_ZONEFILE_SYNC,  (yyvsp[-1].tok).i); }
-#line 2522 "cf-parse.tab.c" /* yacc.c:1646  */
+#line 2567 "cf-parse.tab.c" /* yacc.c:1646  */
     break;
 
   case 137:
-#line 657 "cf-parse.y" /* yacc.c:1646  */
-    { f_quote(scanner, R_ZONE_TPL, C_STORAGE,        (yyvsp[-1].tok).t); }
-#line 2528 "cf-parse.tab.c" /* yacc.c:1646  */
+#line 666 "cf-parse.y" /* yacc.c:1646  */
+    { f_quote(scanner, R_ZONE_TPL, C_STORAGE,        (yyvsp[-1].tok).t); free((yyvsp[-1].tok).t); }
+#line 2573 "cf-parse.tab.c" /* yacc.c:1646  */
     break;
 
   case 138:
-#line 658 "cf-parse.y" /* yacc.c:1646  */
+#line 667 "cf-parse.y" /* yacc.c:1646  */
     { f_bool(scanner,  R_ZONE_TPL, C_DNSSEC_ENABLE,  (yyvsp[-1].tok).i); }
-#line 2534 "cf-parse.tab.c" /* yacc.c:1646  */
+#line 2579 "cf-parse.tab.c" /* yacc.c:1646  */
     break;
 
   case 139:
-#line 659 "cf-parse.y" /* yacc.c:1646  */
-    { f_quote(scanner, R_ZONE_TPL, C_DNSSEC_KEYDIR,  (yyvsp[-1].tok).t); }
-#line 2540 "cf-parse.tab.c" /* yacc.c:1646  */
+#line 668 "cf-parse.y" /* yacc.c:1646  */
+    { f_quote(scanner, R_ZONE_TPL, C_DNSSEC_KEYDIR,  (yyvsp[-1].tok).t); free((yyvsp[-1].tok).t); }
+#line 2585 "cf-parse.tab.c" /* yacc.c:1646  */
     break;
 
   case 140:
-#line 660 "cf-parse.y" /* yacc.c:1646  */
+#line 669 "cf-parse.y" /* yacc.c:1646  */
     { f_int(scanner,   R_ZONE_TPL, C_SIG_LIFETIME,   (yyvsp[-1].tok).i); }
-#line 2546 "cf-parse.tab.c" /* yacc.c:1646  */
+#line 2591 "cf-parse.tab.c" /* yacc.c:1646  */
     break;
 
   case 141:
-#line 661 "cf-parse.y" /* yacc.c:1646  */
+#line 670 "cf-parse.y" /* yacc.c:1646  */
     { f_int(scanner,   R_ZONE_TPL, C_SIG_LIFETIME,   (yyvsp[-1].tok).i); }
-#line 2552 "cf-parse.tab.c" /* yacc.c:1646  */
+#line 2597 "cf-parse.tab.c" /* yacc.c:1646  */
     break;
 
   case 142:
-#line 662 "cf-parse.y" /* yacc.c:1646  */
+#line 671 "cf-parse.y" /* yacc.c:1646  */
     { f_str(scanner,   R_ZONE_TPL, C_SERIAL_POLICY,  (yyvsp[-1].tok).t); }
-#line 2558 "cf-parse.tab.c" /* yacc.c:1646  */
+#line 2603 "cf-parse.tab.c" /* yacc.c:1646  */
     break;
 
   case 143:
-#line 663 "cf-parse.y" /* yacc.c:1646  */
+#line 672 "cf-parse.y" /* yacc.c:1646  */
     {
      cf_warning(scanner, "query module is not yet implemented");
-   }
-#line 2566 "cf-parse.tab.c" /* yacc.c:1646  */
-    break;
-
-  case 146:
-#line 670 "cf-parse.y" /* yacc.c:1646  */
-    { if (_str == NULL) _str = (yyvsp[-1].tok).t; }
-#line 2572 "cf-parse.tab.c" /* yacc.c:1646  */
-    break;
-
-  case 147:
-#line 671 "cf-parse.y" /* yacc.c:1646  */
-    { if (_str == NULL) _str = (yyvsp[-1].tok).t; }
-#line 2578 "cf-parse.tab.c" /* yacc.c:1646  */
-    break;
-
-  case 149:
-#line 675 "cf-parse.y" /* yacc.c:1646  */
-    {
-     f_name(scanner, R_LOG, (yyvsp[0].tok).t, false);
-     _str = NULL;
-   }
-#line 2587 "cf-parse.tab.c" /* yacc.c:1646  */
-    break;
-
-  case 150:
-#line 679 "cf-parse.y" /* yacc.c:1646  */
-    {
-     f_val(scanner, R_LOG, false, "%s\n", _str);
-   }
-#line 2595 "cf-parse.tab.c" /* yacc.c:1646  */
-    break;
-
-  case 151:
-#line 685 "cf-parse.y" /* yacc.c:1646  */
-    { f_id(scanner, R_LOG, C_TO, (yyvsp[0].tok).t); }
-#line 2601 "cf-parse.tab.c" /* yacc.c:1646  */
-    break;
-
-  case 152:
-#line 689 "cf-parse.y" /* yacc.c:1646  */
-    {
-      f_name(scanner, R_LOG, C_TO, true);
-      f_val(scanner, R_LOG, true, "%s", (yyvsp[0].tok).t);
-      f_val(scanner, R_LOG, false, "\n");
    }
 #line 2611 "cf-parse.tab.c" /* yacc.c:1646  */
     break;
 
-  case 156:
-#line 702 "cf-parse.y" /* yacc.c:1646  */
-    { f_section(scanner, R_LOG, S_LOG); }
+  case 146:
+#line 679 "cf-parse.y" /* yacc.c:1646  */
+    { if (_str == NULL) _str = (yyvsp[-1].tok).t; }
 #line 2617 "cf-parse.tab.c" /* yacc.c:1646  */
     break;
 
-  case 159:
-#line 711 "cf-parse.y" /* yacc.c:1646  */
-    { f_name(scanner, R_CTL, C_ACL, false); acl_start(scanner, ACL_CTL); _str = "acl_"; }
+  case 147:
+#line 680 "cf-parse.y" /* yacc.c:1646  */
+    { if (_str == NULL) _str = (yyvsp[-1].tok).t; }
 #line 2623 "cf-parse.tab.c" /* yacc.c:1646  */
     break;
 
+  case 149:
+#line 684 "cf-parse.y" /* yacc.c:1646  */
+    {
+     f_name(scanner, R_LOG, (yyvsp[0].tok).t, false);
+     _str = NULL;
+   }
+#line 2632 "cf-parse.tab.c" /* yacc.c:1646  */
+    break;
+
+  case 150:
+#line 688 "cf-parse.y" /* yacc.c:1646  */
+    {
+     f_val(scanner, R_LOG, false, "%s\n", _str);
+   }
+#line 2640 "cf-parse.tab.c" /* yacc.c:1646  */
+    break;
+
+  case 151:
+#line 694 "cf-parse.y" /* yacc.c:1646  */
+    { f_id(scanner, R_LOG, C_TO, (yyvsp[0].tok).t); }
+#line 2646 "cf-parse.tab.c" /* yacc.c:1646  */
+    break;
+
+  case 152:
+#line 698 "cf-parse.y" /* yacc.c:1646  */
+    {
+      f_name(scanner, R_LOG, C_TO, true);
+      f_val(scanner, R_LOG, true, "%s", (yyvsp[0].tok).t);
+      f_val(scanner, R_LOG, false, "\n");
+      free((yyvsp[0].tok).t);
+   }
+#line 2657 "cf-parse.tab.c" /* yacc.c:1646  */
+    break;
+
+  case 156:
+#line 712 "cf-parse.y" /* yacc.c:1646  */
+    { f_section(scanner, R_LOG, S_LOG); }
+#line 2663 "cf-parse.tab.c" /* yacc.c:1646  */
+    break;
+
+  case 159:
+#line 721 "cf-parse.y" /* yacc.c:1646  */
+    { f_name(scanner, R_CTL, C_ACL, false); acl_start(scanner, ACL_CTL); _str = "acl_"; }
+#line 2669 "cf-parse.tab.c" /* yacc.c:1646  */
+    break;
+
   case 160:
-#line 715 "cf-parse.y" /* yacc.c:1646  */
+#line 725 "cf-parse.y" /* yacc.c:1646  */
     { f_section(scanner, R_CTL, S_CTL); _acl_run = R_CTL; }
-#line 2629 "cf-parse.tab.c" /* yacc.c:1646  */
+#line 2675 "cf-parse.tab.c" /* yacc.c:1646  */
     break;
 
   case 161:
-#line 716 "cf-parse.y" /* yacc.c:1646  */
+#line 726 "cf-parse.y" /* yacc.c:1646  */
     { f_name(scanner, R_CTL, C_LISTEN, false); _addr = NULL, _port = -1; }
-#line 2635 "cf-parse.tab.c" /* yacc.c:1646  */
+#line 2681 "cf-parse.tab.c" /* yacc.c:1646  */
     break;
 
   case 162:
-#line 717 "cf-parse.y" /* yacc.c:1646  */
+#line 727 "cf-parse.y" /* yacc.c:1646  */
     {
  	if (_addr == NULL) {
         	cf_error(scanner, "control.listen address not defined");
@@ -2644,18 +2690,19 @@ yyreduce:
 	} else {
         	f_val(scanner, R_CTL, false, "%s@%i\n", _addr, _port);
 	}
+	free(_addr);
    }
-#line 2649 "cf-parse.tab.c" /* yacc.c:1646  */
+#line 2696 "cf-parse.tab.c" /* yacc.c:1646  */
     break;
 
   case 163:
-#line 726 "cf-parse.y" /* yacc.c:1646  */
-    { f_quote(scanner, R_CTL, C_LISTEN, (yyvsp[-1].tok).t); }
-#line 2655 "cf-parse.tab.c" /* yacc.c:1646  */
+#line 737 "cf-parse.y" /* yacc.c:1646  */
+    { f_quote(scanner, R_CTL, C_LISTEN, (yyvsp[-1].tok).t); free((yyvsp[-1].tok).t); }
+#line 2702 "cf-parse.tab.c" /* yacc.c:1646  */
     break;
 
 
-#line 2659 "cf-parse.tab.c" /* yacc.c:1646  */
+#line 2706 "cf-parse.tab.c" /* yacc.c:1646  */
       default: break;
     }
   /* User semantic actions sometimes alter yychar, and that requires
@@ -2883,5 +2930,5 @@ yyreturn:
 #endif
   return yyresult;
 }
-#line 732 "cf-parse.y" /* yacc.c:1906  */
+#line 743 "cf-parse.y" /* yacc.c:1906  */
 
