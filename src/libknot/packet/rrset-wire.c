@@ -639,9 +639,22 @@ static int parse_rdata(const uint8_t *pkt_wire, size_t *pos, size_t pkt_size,
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
+	
+	if (buffer_size > MAX_RDLENGTH) {
+		/* DNAME compression caused RDATA overflow. */
+		return KNOT_EMALF;
+	}
 
-	uint8_t *rdata_buffer = mm_alloc(mm, buffer_size);
-	uint8_t *dst = rdata_buffer;
+	knot_rdataset_t *rrs = &rrset->rrs;
+	ret = knot_rdataset_reserve(rrs, buffer_size, mm);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	knot_rdata_t *rr = knot_rdataset_at(rrs, rrs->rr_count - 1);
+	assert(rr);
+	knot_rdata_set_ttl(rr, ttl);
+	uint8_t *dst = knot_rdata_data(rr);;
 	size_t dst_avail = buffer_size;
 
 	/* Parse RDATA */
@@ -653,30 +666,19 @@ static int parse_rdata(const uint8_t *pkt_wire, size_t *pos, size_t pkt_size,
 
 	ret = rdata_traverse(&src, &src_avail, &dst, &dst_avail, desc, &dname_cfg);
 	if (ret != KNOT_EOK) {
-		mm_free(mm, rdata_buffer);
 		return ret;
 	}
 
 	if (src_avail > 0) {
 		/* Trailing data in message. */
-		mm_free(mm, rdata_buffer);
 		return KNOT_EMALF;
 	}
 
-	const size_t written = buffer_size - dst_avail;
-	if (written > MAX_RDLENGTH) {
-		/* DNAME compression caused RDATA overflow. */
-		mm_free(mm, rdata_buffer);
-		return KNOT_EMALF;
-	}
-
-	ret = knot_rrset_add_rdata(rrset, rdata_buffer, written, ttl, mm);
+	ret = knot_rdataset_sort_at(rrs, rrs->rr_count - 1, mm);
 	if (ret == KNOT_EOK) {
 		/* Update position pointer. */
 		*pos += rdlength;
 	}
-
-	mm_free(mm, rdata_buffer);
 
 	return ret;
 }
