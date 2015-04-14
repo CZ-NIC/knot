@@ -130,7 +130,7 @@ void knot_rrset_clear(knot_rrset_t *rrset, mm_ctx_t *mm);
  * \param rrset  RRSet to add the RDATA to.
  * \param rdata  RDATA to add to the RRSet.
  * \param size   Size of RDATA.
- * \param ttl   TTL for RR.
+ * \param ttl    TTL for RR.
  * \param mm     Memory context.
  *
  * \return KNOT_E*
