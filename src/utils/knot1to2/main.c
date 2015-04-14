@@ -22,6 +22,7 @@
 
 #include "utils/knot1to2/extra.h"
 #include "utils/knot1to2/scheme.h"
+#include "libknot/internal/mem.h"
 #include "libknot/internal/trie/hat-trie.h"
 
 static int run_parser(const char *file_in, int run, share_t *share)
@@ -68,7 +69,7 @@ static int convert(const char *file_out, const char *file_in)
 		"# It is also possible to reformat the file via knotc, like:\n"
 		"#   knotc -c ./this_file.conf export ./reformatted_file.conf\n"
 	       );
-	
+
 	share_t share = {
 		.out = out,
 		.groups = hattrie_create(),
@@ -100,13 +101,37 @@ static int convert(const char *file_out, const char *file_in)
 	return 0;
 }
 
+static int reformat(const char *file_out, const char *file_in, const char *path)
+{
+	char *cmd = sprintf_alloc("%s%sknotc -c %s export %s",
+	                          path == NULL ? "" : path,
+	                          path == NULL ? "" : "/",
+	                          file_in, file_out);
+	if (cmd == NULL) {
+		printf("Failed to reformat file '%s'\n", file_in);
+		return -1;
+	}
+
+	int ret = system(cmd);
+	free(cmd);
+	if (ret != 0) {
+		return -1;
+	}
+
+	return 0;
+}
+
 void help(void)
 {
-	printf("Usage: knot1to2 -i <file> -o <file>\n");
-	printf("\nParameters:\n"
-	       " -i, --in <file>      Input config file (Knot version 1.x)\n"
-	       " -o, --out <file>     Output config file (Knot version 2.x)\n"
-	       " -V, --version        Print package version.\n"
+	printf("Usage: knot1to2 [options] -i <file> -o <file>\n");
+	printf("\n"
+	       " -i, --in <file>      Input config file (Knot version 1.x).\n"
+	       " -o, --out <file>     Output config file (Knot version 2.x).\n"
+	       "\nOptions:\n"
+	       " -p, --path <dir>     Path to knotc utility.\n"
+	       " -r, --raw            Raw output, do not reformat via knotc.\n"
+	       "\n"
+	       " -v, --version        Print package version.\n"
 	       " -h, --help           Print help and usage.\n");
 }
 
@@ -115,17 +140,21 @@ int main(int argc, char **argv)
 	int c = 0, li = 0;
 	const char *file_in = NULL;
 	const char *file_out = NULL;
+	const char *path = NULL;
+	bool raw = false;
 
 	struct option opts[] = {
 		{ "in",      required_argument, NULL, 'i' },
 		{ "out",     required_argument, NULL, 'o' },
-		{ "version", no_argument,       NULL, 'V' },
+		{ "path",    required_argument, NULL, 'p' },
+		{ "raw",     no_argument,       NULL, 'r' },
+		{ "version", no_argument,       NULL, 'v' },
 		{ "help",    no_argument,       NULL, 'h' },
 		{ NULL }
 	};
 
 	// Parse parameters.
-	while ((c = getopt_long(argc, argv, "i:o:Vh", opts, &li)) != -1) {
+	while ((c = getopt_long(argc, argv, "i:o:p:rvh", opts, &li)) != -1) {
 		switch (c)
 		{
 		case 'i':
@@ -134,11 +163,16 @@ int main(int argc, char **argv)
 		case 'o':
 			file_out = optarg;
 			break;
-		case 'V':
+		case 'p':
+			path = optarg;
+			break;
+		case 'r':
+			raw = true;
+			break;
+		case 'v':
 			printf("%s, version %s\n", "Knot DNS", PACKAGE_VERSION);
 			return EXIT_SUCCESS;
 		case 'h':
-		case '?':
 			help();
 			return EXIT_SUCCESS;
 		default:
@@ -157,6 +191,27 @@ int main(int argc, char **argv)
 	int ret = convert(file_out, file_in);
 	if (ret != 0) {
 		return EXIT_FAILURE;
+	}
+
+	if (!raw) {
+		char *file_tmp = sprintf_alloc("%s.tmp", file_out);
+		if (file_tmp == NULL) {
+			printf("Failed to reformat file '%s'\n", file_out);
+			return EXIT_FAILURE;
+		}
+
+		// Store intermediate file.
+		ret = rename(file_out, file_tmp);
+		if (ret != 0) {
+			printf("Failed to reformat file '%s'\n", file_out);
+		}
+
+		// Reformat converted file.
+		ret = reformat(file_out, file_tmp, path);
+		free(file_tmp);
+		if (ret != 0) {
+			return EXIT_FAILURE;
+		}
 	}
 
 	return EXIT_SUCCESS;

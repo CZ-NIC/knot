@@ -5,15 +5,22 @@
 \- Simple Knot DNS configuration conversion utility
 .SH SYNOPSIS
 .B knot1to2
--i \fIfile\fR -o \fIfile\fR
+[\fIoptions\fR] -i \fIfile\fR -o \fIfile\fR
 .SH DESCRIPTION
 This utility converts Knot DNS configuration file from version 1.x to version 2.x.
-.TP 4
-.BR \-i ,\  \-\-in
+.TP
+\fB\-i\fR, \fB\-\-in\fR \fIfile\fR
 Input configuration file (Knot version 1.x).
 .TP
-.BR \-o ,\  \-\-out
-Output configuration file (Knot version 2.x)
+\fB\-o\fR, \fB\-\-out\fR \fIfile\fR
+Output configuration file (Knot version 2.x).
+.SH OPTIONS
+.TP
+.BR \-r ,\  \-\-raw
+Raw output, do not reformat via \fBknotc\fR.
+.TP
+\fB\-p\fR, \fB\-\-path\fR \fIdir\fR
+Path to \fBknotc\fR utility.
 .TP
 .BR \-h ,\  \-\-help
 Print help.
@@ -25,6 +32,5 @@ Daniel Salzman (\fBwww.knot\-dns.cz\fR)
 .TP
 Please send any bug reports or comments to \fBknot\-dns@labs.nic.cz\fR
 .SH SEE ALSO
-.BR kdig (1),
-.BR khost (1),
-.BR knsupdate (1).
+.BR knotc (8),
+.BR knot.conf (5).
