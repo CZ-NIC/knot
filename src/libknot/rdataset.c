@@ -208,7 +208,7 @@ int knot_rdataset_add(knot_rdataset_t *rrs, const knot_rdata_t *rr, mm_ctx_t *mm
 		return KNOT_EINVAL;
 	}
 
-	for (uint16_t i = 0; i < rrs->rr_count; ++i) {
+	/*for (uint16_t i = 0; i < rrs->rr_count; ++i) {
 		const knot_rdata_t *rrset_rr = knot_rdataset_at(rrs, i);
 		int cmp = knot_rdata_cmp(rrset_rr, rr);
 		if (cmp == 0) {
@@ -218,10 +218,12 @@ int knot_rdataset_add(knot_rdataset_t *rrs, const knot_rdata_t *rr, mm_ctx_t *mm
 			// Found position to insert
 			return add_rr_at(rrs, rr, i, mm);
 		}
-	}
+	}*/
 
 	// If flow gets here, it means that we should insert at the last position
-	return add_rr_at(rrs, rr, rrs->rr_count, mm);
+	//return add_rr_at(rrs, rr, rrs->rr_count, mm);
+	add_rr_at(rrs, rr, rrs->rr_count, mm);
+	return knot_rdataset_sort_at(rrs, rrs->rr_count - 1, mm);
 }
 
 _public_
@@ -327,6 +329,60 @@ int knot_rdataset_subtract(knot_rdataset_t *from, const knot_rdataset_t *what,
 			}
 		}
 	}
+
+	return KNOT_EOK;
+}
+
+_public_
+int knot_rdataset_sort_at(knot_rdataset_t *rrs, size_t pos, mm_ctx_t *mm)
+{
+	if (rrs == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	if (rrs->rr_count == 0) {
+		return KNOT_EINVAL;
+	}
+
+	knot_rdata_t *rr = knot_rdataset_at(rrs, pos);
+	assert(rr);
+
+	knot_rdata_t *earlier_rr;
+	for (uint16_t i = 0; i < rrs->rr_count; ++i) {
+		if (i == pos) {
+			// It already is at the position
+			return KNOT_EOK;
+		}
+		earlier_rr = knot_rdataset_at(rrs, i);
+		int cmp = knot_rdata_cmp(earlier_rr, rr);
+		if (cmp == 0) {
+			// Duplication - we need to remove this RR
+			return remove_rr_at(rrs, pos, mm);
+		} else if (cmp > 0) {
+			// Found position to move
+			break;
+		}
+	}
+
+	// RDATA have to be rearanged.
+	knot_rdata_t *last_rr = knot_rdataset_at(rrs, pos - 1);
+	assert(last_rr);
+	assert(earlier_rr);
+
+	// Save the RR to be moved
+	const uint16_t size = knot_rdata_rdlen(rr);
+	const uint32_t ttl = knot_rdata_ttl(rr);
+	const uint8_t *rdata = knot_rdata_data(rr);
+
+	knot_rdata_t tmp_rr[knot_rdata_array_size(size)];
+	knot_rdata_init(tmp_rr, size, rdata, ttl);
+
+	// Move the array or just part of it
+	memmove(earlier_rr + knot_rdata_array_size(size), earlier_rr,
+	        (last_rr + knot_rdata_array_size(knot_rdata_rdlen(last_rr))) - earlier_rr);
+
+	// Set new RR
+	knot_rdata_init(earlier_rr, size, knot_rdata_data(tmp_rr), ttl);
 
 	return KNOT_EOK;
 }
