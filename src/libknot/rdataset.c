@@ -242,6 +242,11 @@ int knot_rdataset_reserve(knot_rdataset_t *rrs, size_t size, mm_ctx_t *mm)
 	rrs->data = tmp;
 	rrs->rr_count++;
 
+	// We have to initialise the 'size' field in the reserved space.
+	knot_rdata_t *rr = knot_rdataset_at(rrs, rrs->rr_count - 1);
+	assert(rr);
+	knot_rdata_set_rdlen(rr, size - knot_rdata_array_size(0));
+
 	return KNOT_EOK;
 }
 
