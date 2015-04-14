@@ -202,6 +202,8 @@ int main(int argc, char *argv[])
 	bool sort_ok = ret == KNOT_EOK && knot_rdataset_eq(&rdataset, &copy);
 	ok(sort_ok, "rdataset: sort reserved space");
 
+	knot_rdataset_clear(&copy, NULL);
+	knot_rdataset_clear(&rdataset, NULL);
 	knot_rdataset_clear(&rdataset_lo, NULL);
 	knot_rdataset_clear(&rdataset_gt, NULL);
 
