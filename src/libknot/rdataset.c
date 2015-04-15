@@ -251,6 +251,12 @@ int knot_rdataset_reserve(knot_rdataset_t *rrs, size_t size, mm_ctx_t *mm)
 }
 
 _public_
+int knot_rdataset_unreserve(knot_rdataset_t *rrs, mm_ctx_t *mm)
+{
+	return remove_rr_at(rrs, rrs->rr_count - 1, mm);
+}
+
+_public_
 bool knot_rdataset_eq(const knot_rdataset_t *rrs1, const knot_rdataset_t *rrs2)
 {
 	if (rrs1->rr_count != rrs2->rr_count) {

@@ -100,6 +100,14 @@ int knot_rdataset_add(knot_rdataset_t *rrs, const knot_rdata_t *rr, mm_ctx_t *mm
  */
 int knot_rdataset_reserve(knot_rdataset_t *rrs, size_t size, mm_ctx_t *mm);
 
+/*!
+ * \brief Removes the last RR from RRS structure, i.e. does the opposite of _reserve.
+ * \param rrs  RRS structure to remove RR from.
+ * \param mm   Memory context.
+ * \return KNOT_E*
+ */
+int knot_rdataset_unreserve(knot_rdataset_t *rrs, mm_ctx_t *mm);
+
 /* ---------------------- RRs set-like operations --------------------------- */
 
 /*!

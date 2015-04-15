@@ -666,21 +666,26 @@ static int parse_rdata(const uint8_t *pkt_wire, size_t *pos, size_t pkt_size,
 
 	ret = rdata_traverse(&src, &src_avail, &dst, &dst_avail, desc, &dname_cfg);
 	if (ret != KNOT_EOK) {
+		knot_rdataset_unreserve(rrs, mm);
 		return ret;
 	}
 
 	if (src_avail > 0) {
 		/* Trailing data in message. */
+		knot_rdataset_unreserve(rrs, mm);
 		return KNOT_EMALF;
 	}
 
 	ret = knot_rdataset_sort_at(rrs, rrs->rr_count - 1, mm);
-	if (ret == KNOT_EOK) {
-		/* Update position pointer. */
-		*pos += rdlength;
+	if (ret != KNOT_EOK) {
+		knot_rdataset_unreserve(rrs, mm);
+		return ret;
 	}
+	
+	/* Update position pointer. */
+	*pos += rdlength;
 
-	return ret;
+	return KNOT_EOK;
 }
 
 _public_
