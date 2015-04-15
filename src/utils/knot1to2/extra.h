@@ -25,6 +25,7 @@
 typedef struct {
 	FILE *out;
 	bool have_sections[S_LAST - S_FIRST + 1];
+	hattrie_t *ifaces;
 	hattrie_t *groups;
 	hattrie_t *remotes;
 	hattrie_t *acl_xfer;

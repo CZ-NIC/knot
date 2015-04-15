@@ -72,6 +72,7 @@ static int convert(const char *file_out, const char *file_in)
 
 	share_t share = {
 		.out = out,
+		.ifaces = hattrie_create(),
 		.groups = hattrie_create(),
 		.remotes = hattrie_create(),
 		.acl_xfer = hattrie_create(),
@@ -89,6 +90,15 @@ static int convert(const char *file_out, const char *file_in)
 		}
 	}
 
+	// Remove ifaces data.
+	hattrie_iter_t *it = hattrie_iter_begin(share.ifaces, false);
+	for (; !hattrie_iter_finished(it); hattrie_iter_next(it)) {
+		char *data = *hattrie_iter_val(it);
+		free(data);
+	}
+	hattrie_iter_free(it);
+
+	hattrie_free(share.ifaces);
 	hattrie_free(share.groups);
 	hattrie_free(share.remotes);
 	hattrie_free(share.acl_xfer);

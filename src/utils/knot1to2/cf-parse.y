@@ -143,8 +143,10 @@ static void f_quote(void *scanner, int run, const char *name, const char *val)
 
 static void f_str(void *scanner, int run, const char *name, const char *val)
 {
-	f_name(scanner, run, name, false);
-	f_val(scanner, run, false, "%s\n", val);
+	if (val != NULL) {
+		f_name(scanner, run, name, false);
+		f_val(scanner, run, false, "%s\n", val);
+	}
 }
 
 static void f_auto_str(void *scanner, int run, const char *name, long val)
@@ -172,6 +174,26 @@ static void f_id(void *scanner, int run, const char *name, const char *val)
 {
 	f_name(scanner, run, name, true);
 	f_val(scanner, run, false, "%s\n", val);
+}
+
+static void if_add(void *scanner, const char *key, const char *value)
+{
+	conf_extra_t *extra = cf_get_extra(scanner);
+
+	if (extra->run == S_FIRST) {
+		*hattrie_get(extra->share->ifaces, key, strlen(key)) = strdup(value);
+	}
+}
+
+static const char* if_get(void *scanner, int run, const char *key)
+{
+	conf_extra_t *extra = cf_get_extra(scanner);
+
+	if (extra->run == run) {
+		return *hattrie_get(extra->share->ifaces, key, strlen(key));
+	}
+
+	return NULL;
 }
 
 typedef enum {
@@ -377,34 +399,41 @@ conf_entries:
  ;
 
 interface_start:
- | TEXT		{ free($1.t); }
- | REMOTES	{ free($1.t); }
- | LOG_SRC	{ free($1.t); }
- | LOG		{ free($1.t); }
- | LOG_LEVEL	{ free($1.t); }
- | CONTROL	{ free($1.t); }
+ | TEXT		{ _str = $1.t; }
+ | REMOTES	{ _str = $1.t; }
+ | LOG_SRC	{ _str = $1.t; }
+ | LOG		{ _str = $1.t; }
+ | LOG_LEVEL	{ _str = $1.t; }
+ | CONTROL	{ _str = $1.t; }
  ;
 
 interface:
  | interface PORT NUM ';'		{ _port = $3.i; }
  | interface ADDRESS IPA ';'		{ _addr = $3.t; }
- | interface ADDRESS IPA '@' NUM ';'	{ _addr = $3.t; _port = $5.i;  }
+ | interface ADDRESS IPA '@' NUM ';'	{ _addr = $3.t; _port = $5.i; }
  | interface ADDRESS IPA6 ';'		{ _addr = $3.t; }
  | interface ADDRESS IPA6 '@' NUM ';'	{ _addr = $3.t; _port = $5.i; }
  ;
 
 interfaces:
-   INTERFACES '{'			{ f_section(scanner, R_IF, S_SRV); }
- | interfaces interface_start '{'	{ f_name(scanner, R_IF, C_LISTEN, false); _addr = NULL, _port = -1; }
+   INTERFACES '{' {
+   	_str = NULL;
+   	f_section(scanner, R_IF, S_SRV);
+   }
+ | interfaces interface_start '{' {
+   	_addr = NULL, _port = -1;
+   	f_name(scanner, R_IF, C_LISTEN, false);
+   }
    interface '}' {
- 	if (_addr == NULL) {
-        	cf_error(scanner, "interface.listen address not defined");
-	} else if (_port == -1) {
-        	f_val(scanner, R_IF, false, "%s\n", _addr);
-	} else {
-        	f_val(scanner, R_IF, false, "%s@%i\n", _addr, _port);
-	}
-	free(_addr);
+   	if (_addr != NULL && _port == -1) {
+   		if_add(scanner, _str, _addr);
+   		f_val(scanner, R_IF, false, "%s\n", _addr);
+   	} else if (_addr != NULL) {
+   		if_add(scanner, _str, _addr);
+   		f_val(scanner, R_IF, false, "%s@%i\n", _addr, _port);
+   	}
+   	free(_str);
+   	free(_addr);
    }
  ;
 
@@ -431,29 +460,16 @@ system:
  | system RATE_LIMIT_SIZE NUM ';'	{ f_int(scanner, R_SYS, C_RATE_LIMIT_SIZE, $3.i); }
  | system RATE_LIMIT_SLIP NUM ';'	{ f_int(scanner, R_SYS, C_RATE_LIMIT_SLIP, $3.i); }
  | system TRANSFERS NUM ';'		{ f_int(scanner, R_SYS, C_TRANSFERS, $3.i); }
+ | system HOSTNAME TEXT ';'		{ /* Deprecated */ free($3.t); }
+ | system STORAGE TEXT ';'		{ /* Deprecated */ free($3.t); }
+ | system KEY TSIG_ALGO_NAME TEXT ';'	{ /* Deprecated */ free($3.t); free($4.t); }
  | system USER TEXT ';' {
- 	char *sep = strchr($3.t, '.');
- 	if (sep != NULL) {
- 		*sep = ':';
- 	}
- 	f_str(scanner, R_SYS, C_USER, $3.t);
- 	free($3.t);
-   }
- | system HOSTNAME TEXT ';' {
-     cf_warning(scanner, "option 'system.hostname' is deprecated, "
-                         "use 'system.identity' instead");
-     free($3.t);
-   }
- | system STORAGE TEXT ';' {
-     cf_warning(scanner, "option 'system.storage' was relocated, "
-                         "use 'zones.storage' instead");
-     free($3.t);
-   }
- | system KEY TSIG_ALGO_NAME TEXT ';' {
-     free($3.t);
-     cf_warning(scanner, "option 'system.key' is deprecated and "
-                         "it has no effect");
-     free($3.t);
+   	char *sep = strchr($3.t, '.');
+   	if (sep != NULL) {
+   		*sep = ':';
+   	}
+   	f_str(scanner, R_SYS, C_USER, $3.t);
+   	free($3.t);
    }
  ;
 
@@ -462,9 +478,9 @@ keys:
    	f_section(scanner, R_KEY, S_KEY);
    }
  | keys TEXT TSIG_ALGO_NAME TEXT ';' {
-	f_id(scanner, R_KEY, C_ID, $2.t); free($2.t);
-	f_str(scanner, R_KEY, C_ALG, $3.t); free($3.t);
-	f_quote(scanner, R_KEY, C_SECRET, $4.t); free($4.t);
+   	f_id(scanner, R_KEY, C_ID, $2.t); free($2.t);
+   	f_str(scanner, R_KEY, C_ALG, $3.t); free($3.t);
+   	f_quote(scanner, R_KEY, C_SECRET, $4.t); free($4.t);
    }
  ;
 
@@ -479,22 +495,19 @@ remote_start:
 remote:
  | remote PORT NUM ';'			{ _port = $3.i; }
  | remote ADDRESS IPA ';'		{ _addr = $3.t; }
- | remote ADDRESS IPA '@' NUM ';'	{ _addr = $3.t; _port = $5.i;  }
+ | remote ADDRESS IPA '@' NUM ';'	{ _addr = $3.t; _port = $5.i; }
+ | remote ADDRESS IPA '/' NUM ';'	{ _addr = $3.t; _mask = $5.i; }
  | remote ADDRESS IPA6 ';'		{ _addr = $3.t; }
  | remote ADDRESS IPA6 '@' NUM ';'	{ _addr = $3.t; _port = $5.i; }
- | remote ADDRESS IPA '/' NUM ';'	{ _addr = $3.t; _mask = $5.i; }
  | remote ADDRESS IPA6 '/' NUM ';'	{ _addr = $3.t; _mask = $5.i; }
  | remote KEY TEXT ';' {
- 	f_str(scanner, R_RMT, C_KEY, $3.t);
- 	f_str(scanner, R_RMT_ACL, C_KEY, $3.t);
- 	free($3.t);
+   	f_str(scanner, R_RMT, C_KEY, $3.t);
+   	f_str(scanner, R_RMT_ACL, C_KEY, $3.t);
+   	free($3.t);
    }
- | remote VIA IPA ';'	{ f_str(scanner, R_RMT, C_VIA, $3.t); }
- | remote VIA IPA6 ';'	{ f_str(scanner, R_RMT, C_VIA, $3.t); }
- | remote VIA TEXT ';' {
-     cf_warning(scanner, "interface name in 'via' option is not valid in the new "
-                "format, use address specification instead (see documentation)");
-   }
+ | remote VIA IPA ';'	{ f_str(scanner, R_RMT, C_VIA, $3.t); free($3.t); }
+ | remote VIA IPA6 ';'	{ f_str(scanner, R_RMT, C_VIA, $3.t); free($3.t); }
+ | remote VIA TEXT ';'	{ f_str(scanner, R_RMT, C_VIA, if_get(scanner, R_RMT, $3.t)); free($3.t); }
  ;
 
 remotes:
