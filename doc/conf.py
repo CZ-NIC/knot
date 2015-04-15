@@ -224,6 +224,7 @@ latex_domain_indices = False
 man_pages = [
     ('reference', 'knot.conf', 'Knot DNS configuration file', author, 5),
     ('man_knsec3hash', 'knsec3hash', "Simple utility to compute NSEC3 hash", author, 1),
+    ('man_kdig', 'kdig', 'Advanced DNS lookup utility', author, 1),
 ]
 
 # If true, show URL addresses after external links.
