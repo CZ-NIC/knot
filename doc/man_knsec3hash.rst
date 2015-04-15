@@ -18,7 +18,7 @@ Arguments
   Specifies binary salt encoded as a hexadecimal string.
 
 `allgorithm`
-  Speifies hashing algorithm number. Currently the only supported algorithm is SHA-1 (number 1).
+  Specifies hashing algorithm number. Currently the only supported algorithm is SHA-1 (number 1).
 
 `iterations`
   Specifies the number of additional iterations of the hashing algorithm.
