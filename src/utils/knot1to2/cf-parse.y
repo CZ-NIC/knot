@@ -30,8 +30,6 @@
 #define DEFAULT_PORT		53
 #define DEFAULT_CTL_PORT	5533
 
-#define EXTRA	(cf_get_extra(scanner))
-
 static char *_addr = NULL;
 static int _port = -1;
 static int _mask = -1;
@@ -228,8 +226,21 @@ static void acl_next(void *scanner, const char *value)
 {
 	conf_extra_t *extra = cf_get_extra(scanner);
 
+	hattrie_t **trie = (hattrie_t **)hattrie_tryget(extra->share->groups,
+	                                                value, strlen(value));
+
 	if (extra->run == S_FIRST) {
-		*hattrie_get(extra->current_trie, value, strlen(value)) = NULL;
+		if (trie != NULL) {
+			hattrie_iter_t *it = hattrie_iter_begin(*trie, false);
+			for (; !hattrie_iter_finished(it); hattrie_iter_next(it)) {
+				size_t len = 0;
+				const char *data = hattrie_iter_key(it, &len);
+				*hattrie_get(extra->current_trie, data, len) = NULL;
+			}
+			hattrie_iter_free(it);
+		} else {
+			*hattrie_get(extra->current_trie, value, strlen(value)) = NULL;
+		}
 	}
 
 	if (extra->run != _acl_run) return;
@@ -240,8 +251,25 @@ static void acl_next(void *scanner, const char *value)
 		fprintf(extra->share->out, ", ");
 	}
 
-	f_val(scanner, extra->run, false, "%s", _str);
-	f_val(scanner, extra->run, false, "%s", value);
+	if (trie != NULL) {
+		bool init = true;
+		hattrie_iter_t *it = hattrie_iter_begin(*trie, false);
+		for (; !hattrie_iter_finished(it); hattrie_iter_next(it)) {
+			size_t len = 0;
+			const char *data = hattrie_iter_key(it, &len);
+			if (init) {
+				init = false;
+			} else {
+				fprintf(extra->share->out, ", ");
+			}
+			f_val(scanner, extra->run, false, "%s", _str);
+			f_val(scanner, extra->run, false, "%.*s", (int)len, data);
+		}
+		hattrie_iter_free(it);
+	} else {
+		f_val(scanner, extra->run, false, "%s", _str);
+		f_val(scanner, extra->run, false, "%s", value);
+	}
 }
 
 static void acl_end(void *scanner)
@@ -252,12 +280,6 @@ static void acl_end(void *scanner)
 	fprintf(extra->share->out, "]\n");
 }
 
-static bool is_remote(void *scanner, const char *str) {
-	conf_extra_t *extra = cf_get_extra(scanner);
-
-	return hattrie_tryget(extra->share->remotes, str, strlen(str)) != NULL;
-}
-
 static bool is_acl(void *scanner, const char *str) {
 	conf_extra_t *extra = cf_get_extra(scanner);
 
@@ -266,13 +288,6 @@ static bool is_acl(void *scanner, const char *str) {
 	       hattrie_tryget(extra->share->acl_update, str, strlen(str))  != NULL ||
 	       hattrie_tryget(extra->share->acl_control, str, strlen(str)) != NULL;
 }
-
-static bool have_remote(void *scanner) {
-	conf_extra_t *extra = cf_get_extra(scanner);
-
-	return hattrie_weight(extra->share->remotes) > 0;
-}
-
 
 static bool have_acl(void *scanner) {
 	conf_extra_t *extra = cf_get_extra(scanner);
@@ -311,6 +326,29 @@ static char *acl_actions(void *scanner, const char *str) {
 	strlcat(actions, "]", sizeof(actions));
 
 	return actions;
+}
+
+static void grp_init(void *scanner, const char *name)
+{
+	conf_extra_t *extra = cf_get_extra(scanner);
+
+	if (extra->run == S_FIRST) {
+		hattrie_t **trie = (hattrie_t **)hattrie_get(extra->share->groups,
+		                                             name, strlen(name));
+		if (*trie == NULL) {
+			*trie = hattrie_create();
+		}
+		extra->current_trie = *trie;
+	}
+}
+
+static void grp_add(void *scanner, const char *value)
+{
+	conf_extra_t *extra = cf_get_extra(scanner);
+
+	if (extra->run == S_FIRST) {
+		*hattrie_get(extra->current_trie, value, strlen(value)) = NULL;
+	}
 }
 
 %}
@@ -502,7 +540,9 @@ remote:
  | remote ADDRESS IPA6 '/' NUM ';'	{ _addr = $3.t; _mask = $5.i; }
  | remote KEY TEXT ';' {
    	f_str(scanner, R_RMT, C_KEY, $3.t);
-   	f_str(scanner, R_RMT_ACL, C_KEY, $3.t);
+   	if (is_acl(scanner, _str)) {
+   		f_str(scanner, R_RMT_ACL, C_KEY, $3.t);
+   	}
    	free($3.t);
    }
  | remote VIA IPA ';'	{ f_str(scanner, R_RMT, C_VIA, $3.t); free($3.t); }
@@ -513,54 +553,48 @@ remote:
 remotes:
    REMOTES '{' {
    	_str = NULL;
-   	if (have_remote(scanner)) {
-		f_section(scanner, R_RMT, S_RMT);
-	}
-	if (have_acl(scanner)) {
-		f_section(scanner, R_RMT_ACL, S_ACL);
-	}
+   	f_section(scanner, R_RMT, S_RMT);
+   	if (have_acl(scanner)) {
+   		f_section(scanner, R_RMT_ACL, S_ACL);
+   	}
    }
  | remotes remote_start '{' {
-	_addr = NULL, _port = -1; _mask = -1;
- 	if (is_remote(scanner, _str)) {
-		f_id(scanner, R_RMT, C_ID, _str);
-	}
- 	if (is_acl(scanner, _str)) {
-		f_name(scanner, R_RMT_ACL, C_ID, true);
-		f_val(scanner, R_RMT_ACL, false, "acl_%s\n", _str);
-	}
+   	_addr = NULL, _port = -1; _mask = -1;
+   	f_id(scanner, R_RMT, C_ID, _str);
+   	if (is_acl(scanner, _str)) {
+   		f_name(scanner, R_RMT_ACL, C_ID, true);
+   		f_val(scanner, R_RMT_ACL, false, "acl_%s\n", _str);
+   	}
    }
    remote '}' {
- 	if (is_remote(scanner, _str)) {
-		if (_addr == NULL) {
-			cf_error(scanner, "remote.address not defined");
-		} else if (_port == -1) {
-			f_name(scanner, R_RMT, C_ADDR, false);
-			f_val(scanner, R_RMT, false, "%s\n", _addr);
-		} else {
-			f_name(scanner, R_RMT, C_ADDR, false);
-			f_val(scanner, R_RMT, false, "%s@%i\n", _addr, _port);
-		}
-	}
-	if (is_acl(scanner, _str) && _addr != NULL) {
-		if (_mask == -1) {
-			f_name(scanner, R_RMT_ACL, C_ADDR, false);
-			f_val(scanner, R_RMT_ACL, false, "%s\n", _addr);
-		} else {
-			f_name(scanner, R_RMT_ACL, C_ADDR, false);
-			f_val(scanner, R_RMT_ACL, false, "%s/%i\n", _addr, _mask);
-		}
+   	if (_addr == NULL) {
+   		cf_error(scanner, "remote.address not defined");
+   	} else if (_port == -1) {
+   		f_name(scanner, R_RMT, C_ADDR, false);
+   		f_val(scanner, R_RMT, false, "%s\n", _addr);
+   	} else {
+   		f_name(scanner, R_RMT, C_ADDR, false);
+   		f_val(scanner, R_RMT, false, "%s@%i\n", _addr, _port);
+   	}
+   	if (is_acl(scanner, _str) && _addr != NULL) {
+   		if (_mask == -1) {
+   			f_name(scanner, R_RMT_ACL, C_ADDR, false);
+   			f_val(scanner, R_RMT_ACL, false, "%s\n", _addr);
+   		} else {
+   			f_name(scanner, R_RMT_ACL, C_ADDR, false);
+   			f_val(scanner, R_RMT_ACL, false, "%s/%i\n", _addr, _mask);
+   		}
 
-		f_name(scanner, R_RMT_ACL, C_ACTION, false);
-		f_val(scanner, R_RMT_ACL, false, "%s\n", acl_actions(scanner, _str));
-	}
-	free(_addr);
-	free(_str);
+   		f_name(scanner, R_RMT_ACL, C_ACTION, false);
+   		f_val(scanner, R_RMT_ACL, false, "%s\n", acl_actions(scanner, _str));
+   	}
+   	free(_addr);
+   	free(_str);
    }
  ;
 
 group_member:
- TEXT
+ TEXT { grp_add(scanner, $1.t); free($1.t); }
  ;
 
 group:
@@ -570,14 +604,11 @@ group:
  ;
 
 group_start:
- TEXT
+ TEXT { grp_init(scanner, $1.t); free($1.t); }
  ;
 
 groups:
-   GROUPS '{' {
-     cf_warning(scanner, "group section is not valid in the new format, "
-                "use a zone template instead (see the documentation)");
-   }
+   GROUPS '{'
  | groups group_start '{' group '}'
  ;
 
@@ -618,10 +649,10 @@ zone_start:
  | LOG_LEVEL	{ f_id(scanner, R_ZONE, C_DOMAIN, $1.t); free($1.t); }
  | CONTROL	{ f_id(scanner, R_ZONE, C_DOMAIN, $1.t); free($1.t); }
  | NUM '/' TEXT	{
-      f_name(scanner, R_ZONE, C_DOMAIN, true);
-      f_val(scanner, R_ZONE, false, "%i/%s", $1.i, $3.t);
-      f_val(scanner, R_ZONE, false, "\n");
-      free($3.t);
+   	f_name(scanner, R_ZONE, C_DOMAIN, true);
+   	f_val(scanner, R_ZONE, false, "%i/%s", $1.i, $3.t);
+   	f_val(scanner, R_ZONE, false, "\n");
+   	free($3.t);
    }
  | TEXT		{ f_id(scanner, R_ZONE, C_DOMAIN, $1.t); free($1.t); }
  ;
@@ -646,7 +677,9 @@ zone:
  | zone SIGNATURE_LIFETIME INTERVAL ';'		{ f_int(scanner,   R_ZONE, C_SIG_LIFETIME,   $3.i); }
  | zone SERIAL_POLICY SERIAL_POLICY_VAL ';'	{ f_str(scanner,   R_ZONE, C_SERIAL_POLICY,  $3.t); }
  | zone QUERY_MODULE '{' {
-     cf_warning(scanner, "query module is not yet implemented");
+   	if (cf_get_extra(scanner)->run == S_FIRST) {
+   		cf_warning(scanner, "query module is not yet implemented");
+   	}
    }
    query_module_list '}'
  ;
@@ -660,11 +693,10 @@ query_genmodule_list:
 
 zones:
    ZONES '{' {
-	f_section(scanner, R_ZONE, S_ZONE); _acl_run = R_ZONE;
-
-	if (f_section(scanner, R_ZONE_TPL, S_TPL)) {
-		f_id(scanner, R_ZONE_TPL, C_ID, "default");
-	}
+   	f_section(scanner, R_ZONE, S_ZONE); _acl_run = R_ZONE;
+   	if (f_section(scanner, R_ZONE_TPL, S_TPL)) {
+   		f_id(scanner, R_ZONE_TPL, C_ID, "default");
+   	}
    }
  | zones zone '}'
  | zones DISABLE_ANY BOOL ';'			{ f_bool(scanner,  R_ZONE_TPL, C_DISABLE_ANY,    $3.i); }
@@ -683,7 +715,9 @@ zones:
  | zones SIGNATURE_LIFETIME INTERVAL ';'	{ f_int(scanner,   R_ZONE_TPL, C_SIG_LIFETIME,   $3.i); }
  | zones SERIAL_POLICY SERIAL_POLICY_VAL ';'	{ f_str(scanner,   R_ZONE_TPL, C_SERIAL_POLICY,  $3.t); }
  | zones QUERY_MODULE '{' {
-     cf_warning(scanner, "query module is not yet implemented");
+   	if (cf_get_extra(scanner)->run == S_FIRST) {
+   		cf_warning(scanner, "query module is not yet implemented");
+   	}
    }
    query_genmodule_list '}'
  ;
@@ -694,13 +728,8 @@ log_prios:
  ;
 
 log_src:
- | log_src LOG_SRC {
-     f_name(scanner, R_LOG, $2.t, false);
-     _str = NULL;
-   }
-   log_prios {
-     f_val(scanner, R_LOG, false, "%s\n", _str);
-   }
+ | log_src LOG_SRC { f_name(scanner, R_LOG, $2.t, false); _str = NULL; }
+   log_prios { f_val(scanner, R_LOG, false, "%s\n", _str); }
  ;
 
 log_dest:
@@ -709,10 +738,10 @@ log_dest:
 
 log_file:
    FILENAME TEXT {
-      f_name(scanner, R_LOG, C_TO, true);
-      f_val(scanner, R_LOG, true, "%s", $2.t);
-      f_val(scanner, R_LOG, false, "\n");
-      free($2.t);
+   	f_name(scanner, R_LOG, C_TO, true);
+   	f_val(scanner, R_LOG, true, "%s", $2.t);
+   	f_val(scanner, R_LOG, false, "\n");
+   	free($2.t);
    }
 ;
 
@@ -731,21 +760,21 @@ ctl_listen_start:
   ;
 
 ctl_allow_start:
-  ALLOW	{ f_name(scanner, R_CTL, C_ACL, false); acl_start(scanner, ACL_CTL); _str = "acl_"; }
+  ALLOW { f_name(scanner, R_CTL, C_ACL, false); acl_start(scanner, ACL_CTL); _str = "acl_"; }
   ;
 
 control:
    CONTROL '{' { f_section(scanner, R_CTL, S_CTL); _acl_run = R_CTL; }
  | control ctl_listen_start '{' { f_name(scanner, R_CTL, C_LISTEN, false); _addr = NULL, _port = -1; }
    interface '}' {
- 	if (_addr == NULL) {
-        	cf_error(scanner, "control.listen address not defined");
-	} else if (_port == -1) {
-        	f_val(scanner, R_CTL, false, "%s\n", _addr);
-	} else {
-        	f_val(scanner, R_CTL, false, "%s@%i\n", _addr, _port);
-	}
-	free(_addr);
+   	if (_addr == NULL) {
+   		cf_error(scanner, "control.listen address not defined");
+   	} else if (_port == -1) {
+   		f_val(scanner, R_CTL, false, "%s\n", _addr);
+   	} else {
+   		f_val(scanner, R_CTL, false, "%s@%i\n", _addr, _port);
+   	}
+   	free(_addr);
    }
  | control ctl_listen_start TEXT ';' { f_quote(scanner, R_CTL, C_LISTEN, $3.t); free($3.t); }
  | control ctl_allow_start zone_acl_list

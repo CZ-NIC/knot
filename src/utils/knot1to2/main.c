@@ -98,6 +98,25 @@ static int convert(const char *file_out, const char *file_in)
 	}
 	hattrie_iter_free(it);
 
+	// Remove groups data.
+	it = hattrie_iter_begin(share.groups, false);
+	for (; !hattrie_iter_finished(it); hattrie_iter_next(it)) {
+		hattrie_t *trie = *hattrie_iter_val(it);
+		if (trie == NULL) {
+			continue;
+		}
+
+		hattrie_iter_t *it2 = hattrie_iter_begin(trie, false);
+		for (; !hattrie_iter_finished(it2); hattrie_iter_next(it2)) {
+			char *data = *hattrie_iter_val(it2);
+			free(data);
+		}
+		hattrie_iter_free(it2);
+		hattrie_free(trie);
+	}
+	hattrie_iter_free(it);
+
+	// Remove empty tries without data.
 	hattrie_free(share.ifaces);
 	hattrie_free(share.groups);
 	hattrie_free(share.remotes);
