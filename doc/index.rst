@@ -14,4 +14,5 @@ Welcome to Knot DNS's documentation!
    running
    troubleshooting
    reference
+   utilities
    migration
