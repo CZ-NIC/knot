@@ -407,7 +407,7 @@ AC_CONFIG_FILES([Makefile
 		 src/dnssec/man/knsec3hash.1
 		 src/dnssec/tests/Makefile
 		 src/dnssec/utils/Makefile
-		 doc/conf.py
+		 doc/conf_autotools.py
 		 man/khost.1
 		 man/knotc.8
 		 man/knotd.8

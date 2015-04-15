@@ -92,7 +92,3 @@
 *.gcno
 /coverage.info
 /coverage.html
-
-# sphinx documentation
-/doc/_build/
-/doc/conf.py
