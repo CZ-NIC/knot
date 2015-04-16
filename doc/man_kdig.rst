@@ -1,5 +1,5 @@
-kdig
-====
+kdig -- Advanced DNS lookup utility
+===================================
 
 Synopsis
 --------

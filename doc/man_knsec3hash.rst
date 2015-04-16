@@ -1,5 +1,5 @@
-knsec3hash
-==========
+knsec3hash -- NSEC hash computation utility
+===========================================
 
 Synopsis
 --------
