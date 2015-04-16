@@ -1,6 +1,3 @@
-.. meta::
-   :description: reStructuredText plaintext markup language
-
 .. _Introduction:
 
 ************

@@ -1,6 +1,3 @@
-.. meta::
-   :description: reStructuredText plaintext markup language
-
 Welcome to Knot DNS's documentation!
 ====================================
 
