@@ -1,4 +1,6 @@
 EXTRA_DIST = \
+	conf.py		\
+	\
 	configuration.rst	\
 	index.rst		\
 	installation.rst	\
@@ -8,6 +10,10 @@ EXTRA_DIST = \
 	requirements.rst	\
 	running.rst		\
 	troubleshooting.rst	\
+	utilities.rst		\
+	\
+	man_kdig.rst		\
+	man_knsec3hash.rst	\
 	\
 	logo.eps		\
 	logo.png
