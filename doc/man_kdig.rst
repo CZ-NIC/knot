@@ -19,7 +19,7 @@ which must precede *query* specification.
   *name* | **-q** *name* | **-x** *address* | **-G** *tapfile*
 
 *common-settings*, *settings*
-  [*class*] [*type*] [*@server*]... [*options*]
+  [*class*] [*type*] [**@**\ *server*]... [*options*]
 
 *name*
   Is a domain name that is to be looked up.
@@ -205,7 +205,7 @@ Options
 Notes
 -----
 
-Options *-k* and *-y* cannot be used mutually.
+Options **-k** and **-y** cannot be used mutually.
 
 Missing features with regard to ISC dig:
 
@@ -231,7 +231,7 @@ Missing features with regard to ISC dig:
   **+**\ [\ **no**\ ]\ **nssearch**, and
   **+**\ [\ **no**\ ]\ **trace**.
 
-Per-user file configuration via :file:`~/.digrc`.
+  Per-user file configuration via :file:`~/.digrc`.
 
 Examples
 --------
