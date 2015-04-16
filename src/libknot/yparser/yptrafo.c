@@ -314,7 +314,7 @@ static int addr_to_bin(
 		addr = &(addr6.s6_addr);
 	} else if (allow_unix && txt_len > 0) {
 		type = 0;
-		addr_len = txt_len;
+		addr_len = txt_len + 1; // + trailing zero.
 		addr = txt;
 	} else {
 		return KNOT_EINVAL;
@@ -344,7 +344,7 @@ static int addr_to_txt(
 	int ret;
 	switch (type) {
 	case 0:
-		ret = snprintf(txt, *txt_len, "%.*s", (int)bin_len, bin);
+		ret = snprintf(txt, *txt_len, "%s", bin);
 		if (ret <= 0 || ret >= *txt_len) {
 			return KNOT_ESPACE;
 		}

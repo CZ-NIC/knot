@@ -1135,14 +1135,17 @@ struct sockaddr_storage conf_addr(
 		conf_db_val(val);
 		out = yp_addr(val->data, val->len, &port);
 
-		// val->data[0] is socket type identifier.
-		if (out.ss_family == AF_UNIX && val->data[1] != '/' &&
-		    sock_base_dir != NULL) {
-			char *tmp = sprintf_alloc("%s/%.*s", sock_base_dir,
-			                          (int)val->len - 1,
-			                          val->data + 1);
-			val->code = sockaddr_set(&out, AF_UNIX, tmp, 0);
-			free(tmp);
+		if (out.ss_family == AF_UNIX) {
+			// val->data[0] is socket type identifier!
+			if (val->data[1] == '/' || sock_base_dir == NULL) {
+				val->code = sockaddr_set(&out, AF_UNIX,
+				                         (char *)val->data + 1, 0);
+			} else {
+				char *tmp = sprintf_alloc("%s/%s", sock_base_dir,
+				                          val->data + 1);
+				val->code = sockaddr_set(&out, AF_UNIX, tmp, 0);
+				free(tmp);
+			}
 		} else if (port != -1) {
 			sockaddr_port_set(&out, port);
 		} else {
@@ -1151,14 +1154,14 @@ struct sockaddr_storage conf_addr(
 	} else {
 		const char *dflt_socket = val->item->var.a.dflt_socket;
 		if (dflt_socket != NULL) {
-			if (dflt_socket[0] != '/' && sock_base_dir != NULL) {
+			if (dflt_socket[0] == '/' || sock_base_dir == NULL) {
+				val->code = sockaddr_set(&out, AF_UNIX,
+				                         dflt_socket, 0);
+			} else {
 				char *tmp = sprintf_alloc("%s/%s", sock_base_dir,
 				                          dflt_socket);
 				val->code = sockaddr_set(&out, AF_UNIX, tmp, 0);
 				free(tmp);
-			} else {
-				val->code = sockaddr_set(&out, AF_UNIX,
-				                         dflt_socket, 0);
 			}
 		}
 	}
