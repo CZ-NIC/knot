@@ -83,7 +83,7 @@ Options
   Send reverse (*PTR*) query for IPv4 or IPv6 *address*. Correct name, class
   and type is set automatically.
 
-**-y** [*aglo*:]\ *keyname*:*key*
+**-y** [*algo*:]\ *keyname*:*key*
   Use TSIG key with a name *keyname* to authenticate the request. The *algo*
   part specifies the algorithm (the default is hmac-md5) and *key* specifies
   the shared secret encoded in Base64.
