@@ -141,22 +141,18 @@ static void setup_capabilities(void)
 /*! \brief Event loop listening for signals and remote commands. */
 static void event_loop(server_t *server)
 {
-	/* Bind to control interface. */
 	uint8_t buf[KNOT_WIRE_MAX_PKTSIZE];
 	size_t buflen = sizeof(buf);
 
+	/* Read control socket configuration. */
 	conf_val_t listen_val = conf_get(conf(), C_CTL, C_LISTEN);
 	conf_val_t rundir_val = conf_get(conf(), C_SRV, C_RUNDIR);
 	char *rundir = conf_abs_path(&rundir_val, NULL);
 	struct sockaddr_storage addr = conf_addr(&listen_val, rundir);
 	free(rundir);
 
+	/* Bind to control interface (error logging is inside the function. */
 	int remote = remote_bind(&addr);
-	if (remote < 0) {
-		log_fatal("failed to bind control socket (%s)",
-		          knot_strerror(remote));
-		return;
-	}
 
 	sigset_t empty;
 	sigemptyset(&empty);
