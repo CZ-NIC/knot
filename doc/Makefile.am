@@ -13,6 +13,7 @@ EXTRA_DIST = \
 	utilities.rst		\
 	\
 	man_kdig.rst		\
+	man_knotd.rst		\
 	man_knsec3hash.rst	\
 	\
 	logo.eps		\

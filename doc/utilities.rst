@@ -10,4 +10,5 @@ the server. This section collects manual pages for these utilities.
    :titlesonly:
 
    man_kdig
+   man_knotd
    man_knsec3hash
