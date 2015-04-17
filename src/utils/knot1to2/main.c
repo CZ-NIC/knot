@@ -237,10 +237,14 @@ int main(int argc, char **argv)
 
 		// Reformat converted file.
 		ret = reformat(file_out, file_tmp, path);
-		free(file_tmp);
 		if (ret != 0) {
+			free(file_tmp);
 			return EXIT_FAILURE;
 		}
+
+		// Remove temporary file if successfully reformatted.
+		remove(file_tmp);
+		free(file_tmp);
 	}
 
 	return EXIT_SUCCESS;
