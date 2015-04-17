@@ -15,6 +15,9 @@ This utility sends one or more DNS queries to a nameserver. Each query can have
 individual *settings*, or it can be specified globally via *common-settings*,
 which must precede *query* specification.
 
+Parameters
+..........
+
 *query*
   *name* | **-q** *name* | **-x** *address* | **-G** *tapfile*
 
@@ -30,11 +33,11 @@ which must precede *query* specification.
   for IPv6 address), address@port, or address#port notation. If no server is
   specified, the servers from :file:`/etc/resolv.conf` are used.
 
-If no arguments are provided, :program:`kdig` sends *NS* query for the root
+If no arguments are provided, :program:`kdig` sends NS query for the root
 zone.
 
 Options
--------
+.......
 
 **-4**
   Use IPv4 protocol only.
@@ -48,14 +51,14 @@ Options
   can be specified in the same format as *server* value.
 
 **-c** *class*
-  Set query class (e.g. *CH*, *CLASS4*). An explicit variant of *class*
-  specification. The default class is *IN*.
+  Set query class (e.g. CH, CLASS4). An explicit variant of *class*
+  specification. The default class is IN.
 
 **-d**
-  Enable debug messages if any.
+  Enable debug messages.
 
 **-h**, **--help**
-  Print short help.
+  Print help and usage.
 
 **-k** *keyfile*
   Use TSIG or SIG-0 key stored in a file *keyfile* to authenticate the request.
@@ -66,25 +69,25 @@ Options
 
 **-p** *port*
   Set nameserver port number or service name to send a query to. The default
-  port is *53*.
+  port is 53.
 
 **-q** *name*
   Set query name. An explicit variant of *name* specification.
 
 **-t** *type*
-  Set query type (e.g. *NS*, *IXFR=12345*, *TYPE65535*). An explicit variant of
-  *type* specification. The default type is *A*. It is also possible to use
-  *NOTIFY* parameter to send a notify message.
+  Set query type (e.g. NS, IXFR=12345, TYPE65535). An explicit variant of
+  *type* specification. The default type is A. It is also possible to use
+  NOTIFY parameter to send a notify message.
 
 **-v**, **--version**
   Print program version.
 
 **-x** *address*
-  Send reverse (*PTR*) query for IPv4 or IPv6 *address*. Correct name, class
+  Send reverse (PTR) query for IPv4 or IPv6 *address*. Correct name, class
   and type is set automatically.
 
-**-y** [*algo*:]\ *keyname*:*key*
-  Use TSIG key with a name *keyname* to authenticate the request. The *algo*
+**-y** [*alg*:]\ *name*:*key*
+  Use TSIG key with a name *name* to authenticate the request. The *alg*
   part specifies the algorithm (the default is hmac-md5) and *key* specifies
   the shared secret encoded in Base64.
 

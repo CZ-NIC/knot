@@ -12,7 +12,7 @@ Description
 Configuration file for Knot DNS uses simplified YAML format. Simplified means
 that not all features are supported.
 
-For the configuration items description, there are some symbol with the
+For the configuration items description, there are some symbols with the
 folowing meaning:
 
 - *INT* - Integer
@@ -836,7 +836,7 @@ Possible values:
 - ``stdout`` - Standard output
 - ``stderr`` - Standard error output
 - ``syslog`` - Syslog
-- *file_name* - File.
+- *file\_name* - File.
 
 .. _log_server:
 
@@ -1034,6 +1034,6 @@ A module identifier.
 dbdir
 -----
 
-A path to the directory where the database will is stored.
+A path to the directory where the database is stored.
 
 Default: empty

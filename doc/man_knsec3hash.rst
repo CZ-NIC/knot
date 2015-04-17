@@ -4,26 +4,26 @@ knsec3hash -- NSEC hash computation utility
 Synopsis
 --------
 
-:program:`knsec3hash` {*salt*} {*algorithm*} {*iterations*} {*domain-name*}
+:program:`knsec3hash` *salt* *alg* *iters* *dname*
 
 Description
 -----------
 
 The utility generates NSEC3 hash for given domain name and parameters of NSEC3 hash.
 
-Arguments
----------
+Parameters
+..........
 
 `salt`
   Specifies binary salt encoded as a hexadecimal string.
 
-`allgorithm`
+`alg`
   Specifies hashing algorithm number. Currently the only supported algorithm is SHA-1 (number 1).
 
-`iterations`
+`iters`
   Specifies the number of additional iterations of the hashing algorithm.
 
-`domain-name`
+`dname`
   Specifies the domain name to be hashed.
 
 Example

@@ -31,7 +31,7 @@ Options
   Path to :program:`knotc` utility.
 
 **-V**, **--version**
-  Print package version.
+  Print program version.
 
 **-h**, **--help**
   Print help and usage.

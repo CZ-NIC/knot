@@ -22,7 +22,7 @@ Parameters
   Run server as a daemon. Working directory may be set (default is :file:`/`).
 
 **-V**, **--version**
-  Print version of the server.
+  Print program versiom.
 
 **-h**, **--help**
   Print help and usage.

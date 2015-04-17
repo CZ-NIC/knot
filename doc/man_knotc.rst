@@ -37,7 +37,7 @@ Parameters
   Verbose mode. Print additional runtime information.
 
 **-V**, **--version**
-  Print version of the server.
+  Print program version.
 
 **-h**, **--help**
   Print help and usage.
