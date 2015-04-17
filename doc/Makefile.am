@@ -13,6 +13,7 @@ EXTRA_DIST = \
 	utilities.rst		\
 	\
 	man_kdig.rst		\
+	man_knot1to2.rst	\
 	man_knotc.rst		\
 	man_knotd.rst		\
 	man_knsec3hash.rst	\
