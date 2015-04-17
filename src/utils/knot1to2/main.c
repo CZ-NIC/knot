@@ -25,6 +25,8 @@
 #include "libknot/internal/mem.h"
 #include "libknot/internal/trie/hat-trie.h"
 
+#define KNOT1TO2_VERSION "knot1to2, version " PACKAGE_VERSION "\n"
+
 static int run_parser(const char *file_in, int run, share_t *share)
 {
 	extern int cf_parse(void *scanner);
@@ -199,7 +201,7 @@ int main(int argc, char **argv)
 			raw = true;
 			break;
 		case 'v':
-			printf("%s, version %s\n", "Knot DNS", PACKAGE_VERSION);
+			printf(KNOT1TO2_VERSION);
 			return EXIT_SUCCESS;
 		case 'h':
 			help();
