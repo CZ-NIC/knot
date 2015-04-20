@@ -35,7 +35,7 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 Configuration file for Knot DNS uses simplified YAML format. Simplified means
 that not all features are supported.
 .sp
-For the configuration items description, there are some symbol with the
+For the configuration items description, there are some symbols with the
 folowing meaning:
 .INDENT 0.0
 .IP \(bu 2
@@ -861,7 +861,7 @@ mod\-rosedb:
 A module identifier.
 .SS dbdir
 .sp
-A path to the directory where the database will is stored.
+A path to the directory where the database is stored.
 .sp
 Default: empty
 .SH AUTHOR

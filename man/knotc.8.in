@@ -1,101 +1,173 @@
-.TH knotc "8" "@RELEASE_DATE@" "CZ.NIC Labs" "Knot DNS, version @VERSION@"
+.\" Man page generated from reStructuredText.
+.
+.TH "KNOTC" "8" "@RELEASE_DATE@" "@VERSION@" "Knot DNS"
 .SH NAME
-.B knotc
-\- Knot DNS control utility
+knotc \- Knot DNS control utility
+.
+.nr rst2man-indent-level 0
+.
+.de1 rstReportMargin
+\\$1 \\n[an-margin]
+level \\n[rst2man-indent-level]
+level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
+-
+\\n[rst2man-indent0]
+\\n[rst2man-indent1]
+\\n[rst2man-indent2]
+..
+.de1 INDENT
+.\" .rstReportMargin pre:
+. RS \\$1
+. nr rst2man-indent\\n[rst2man-indent-level] \\n[an-margin]
+. nr rst2man-indent-level +1
+.\" .rstReportMargin post:
+..
+.de UNINDENT
+. RE
+.\" indent \\n[an-margin]
+.\" old: \\n[rst2man-indent\\n[rst2man-indent-level]]
+.nr rst2man-indent-level -1
+.\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
+.in \\n[rst2man-indent\\n[rst2man-indent-level]]u
+..
 .SH SYNOPSIS
-.B knotc
-[\fIparameters\fR] \fIaction\fR [\fIaction_args\fR]
+.sp
+\fBknotc\fP [\fIparameters\fP] \fIaction\fP [\fIaction_args\fP]
 .SH DESCRIPTION
-.SS "Parameters:"
+.SS Parameters
+.INDENT 0.0
 .TP
-\fB\-c\fR, \fB\-\-config\fR \fIfile\fR
-Use textual configuration file (default is @config_dir@/knot.conf).
+\fB\-c\fP, \fB\-\-config\fP \fIfile\fP
+Use textual configuration file (default is \fB@conf_dir@/knot.conf\fP).
 .TP
-\fB\-C\fR, \fB\-\-confdb\fR \fIdirectory\fR
-Use configuration database.
+\fB\-C\fP, \fB\-\-confdb\fP \fIdirectory\fP
+Use binary configuration database.
 .TP
-\fB\-s\fR, \fB\-\-server\fR \fIserver\fR
-Remote UNIX socket/IP address (default is @run_dir@/knot.sock).
+\fB\-s\fP, \fB\-\-server\fP \fIserver\fP
+Remote UNIX socket/IP address (default is \fB@run_dir@/knot.sock\fP).
 .TP
-\fB\-p\fR, \fB\-\-port\fR \fIport\fR
+\fB\-p\fP, \fB\-\-port\fP \fIport\fP
 Remote server port (only for IP).
 .TP
-\fB\-y\fR, \fB\-\-key\fR [\fIhmac\fR:]\fIname\fR:\fIkey\fR
+\fB\-y\fP, \fB\-\-key\fP [\fIalg\fP:]\fIname\fP:\fIkey\fP
 Use key specified on the command line (default algorithm is hmac\-md5).
 .TP
-\fB\-k\fR, \fB\-\-keyfile\fR \fIfile\fR
+\fB\-k\fP, \fB\-\-keyfile\fP \fIfile\fP
 Use key file.
 .TP
-\fB\-f\fR, \fB\-\-force\fR
-Force operation \- override some checks.
+\fB\-f\fP, \fB\-\-force\fP
+Force operation. Overrides some checks.
 .TP
-\fB\-v\fR, \fB\-\-verbose\fR
-Verbose mode \- additional runtime information.
+\fB\-v\fP, \fB\-\-verbose\fP
+Verbose mode. Print additional runtime information.
 .TP
-\fB\-V\fR, \fB\-\-version\fR
-Print version of the server.
+\fB\-V\fP, \fB\-\-version\fP
+Print program version.
 .TP
-\fB\-h\fR, \fB\-\-help\fR
+\fB\-h\fP, \fB\-\-help\fP
 Print help and usage.
-.SS "Actions:"
+.UNINDENT
+.SS Actions
+.sp
+If an optional \fIzone\fP argument is not specified, the command is applied to all
+zones.
+.INDENT 0.0
 .TP
-If an optional \fIzone\fR argument is not specified, the command is applied to all zones.
-.TP
-\fBstop\fR
+\fBstop\fP
 Stop server (no\-op if not running).
 .TP
-\fBreload\fR [\fIzone\fR] ...
+\fBreload\fP [\fIzone\fP\&...]
 Reload particular zones or reload whole configuration and changed zones.
 .TP
-\fBflush\fR [\fIzone\fR] ...
+\fBflush\fP [\fIzone\fP\&...]
 Flush journal and update zone files.
 .TP
-\fBstatus\fR
+\fBstatus\fP
 Check if server is running.
 .TP
-\fBzonestatus\fR [\fIzone\fR] ...
+\fBzonestatus\fP [\fIzone\fP\&...]
 Show status of configured zones.
 .TP
-\fBrefresh\fR [\fIzone\fR] ...
-Refresh slave zones. Flag \fB-f\fR forces retransfer (zone(s) must be specified).
+\fBrefresh\fP [\fIzone\fP\&...]
+Refresh slave zones. Flag \fB\-f\fP forces re\-transfer (zones must be specified).
 .TP
-\fBcheckconf\fR
-Check current server configuration.
+\fBcheckconf\fP
+Check current configuration.
 .TP
-\fBcheckzone\fR [\fIzone\fR] ...
+\fBcheckzone\fP [\fIzone\fP\&...]
 Check zones.
 .TP
-\fBmemstats\fR [\fIzone\fR] ...
+\fBmemstats\fP [\fIzone\fP\&...]
 Estimate memory consumption for zones.
 .TP
-\fBsignzone\fR \fIzone\fR ...
-Sign zones with available DNSSEC keys.
+\fBsignzone\fP \fIzone\fP\&...
+Resign the zone (drop all existing signatures and create new ones).
 .TP
-\fBimport\fR \fIfile\fR
-Import configuration database from file.
+\fBimport\fP \fIfile\fP
+Import configuration database from file. This is potentially dangerous
+operation, thus flag \fB\-f\fP is required.
 .TP
-\fBexport\fR \fIfile\fR
-Export configuration database to file. Flag \fB-f\fR is required.
+\fBexport\fP \fIfile\fP
+Export configuration database to file.
+.UNINDENT
 .SH EXAMPLES
-.TP
-.B Setup a keyfile for remote control
-.TP
-1. Generate key:
-.TP
+.SS Setup a keyfile for remote control
+.INDENT 0.0
+.IP 1. 3
+Generate key:
+.INDENT 3.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
 # dnssec\-keygen \-a hmac\-md5 \-b 256 \-n HOST knotc\-key
-.TP
-2. Extract secret in base64 format and create keyfile:
-.TP
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.IP 2. 3
+Extract secret in base64 format and create keyfile:
+.INDENT 3.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
 # echo "knotc\-key hmac\-md5 <secret>" > knotc.key
-.TP
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.UNINDENT
+.sp
 Make sure the key can be read/written only by the owner for security reasons.
-.TP
-.B Reload server remotely
-.TP
+.SS Reload server remotely
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
 # knotc \-s 127.0.0.1 \-k knotc.key reload
-.SH "SEE ALSO"
-.BR knotd (8),
-.BR knot.conf (5).
-.SH NOTE
-If the \fBinfo\fR program is properly installed at your site,
-the \fBinfo\ Knot\fR command should give you an access to the complete manual.
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.SS Flush all zones locally
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+# knotc \-c knot.conf flush
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.SH SEE ALSO
+.sp
+\fIknotd(8)\fP, \fIknot.conf(5)\fP\&.
+.SH AUTHOR
+CZ.NIC Labs <http://www.knot-dns.cz>
+.SH COPYRIGHT
+Copyright 2010-2015, CZ.NIC, z.s.p.o.
+.\" Generated by docutils manpage writer.
+.

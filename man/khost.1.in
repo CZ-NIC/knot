@@ -1,100 +1,174 @@
-.TH "khost" "1" "@RELEASE_DATE@" "CZ.NIC Labs" "Knot DNS, version @VERSION@"
+.\" Man page generated from reStructuredText.
+.
+.TH "KHOST" "1" "@RELEASE_DATE@" "@VERSION@" "Knot DNS"
 .SH NAME
-.TP 6
-.B khost
-\- Simple DNS lookup utility (libknot equivalent of ISC host)
+khost \- Simple DNS lookup utility
+.
+.nr rst2man-indent-level 0
+.
+.de1 rstReportMargin
+\\$1 \\n[an-margin]
+level \\n[rst2man-indent-level]
+level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
+-
+\\n[rst2man-indent0]
+\\n[rst2man-indent1]
+\\n[rst2man-indent2]
+..
+.de1 INDENT
+.\" .rstReportMargin pre:
+. RS \\$1
+. nr rst2man-indent\\n[rst2man-indent-level] \\n[an-margin]
+. nr rst2man-indent-level +1
+.\" .rstReportMargin post:
+..
+.de UNINDENT
+. RE
+.\" indent \\n[an-margin]
+.\" old: \\n[rst2man-indent\\n[rst2man-indent-level]]
+.nr rst2man-indent-level -1
+.\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
+.in \\n[rst2man-indent\\n[rst2man-indent-level]]u
+..
 .SH SYNOPSIS
-.B khost
-[\fIoptions\fR] \fIname\fR [\fIserver\fR]
+.sp
+\fBkhost\fP [\fIoptions\fP] \fIname\fP [\fIserver\fP]
 .SH DESCRIPTION
-This utility sends a DNS query for the \fIname\fR to the \fIserver\fR and prints
-a reply in more user\-readable form. For more advanced DNS queries use \fBkdig\fR instead.
-.TP 4
-.I name
-Is a domain name that is to be looked up.
-If the \fIname\fR is IPv4 or IPv6 address the \fIPTR\fR query type is used.
+.sp
+This utility sends a DNS query for the \fIname\fP to the \fIserver\fP and prints a reply
+in more user\-readable form. For more advanced DNS queries use \fBkdig\fP
+instead.
+.SS Parameters
+.INDENT 0.0
 .TP
-.I server
-Is a name or an address of the nameserver to send a query to. The address
+\fIname\fP
+Is a domain name that is to be looked up. If the \fIname\fP is IPv4 or IPv6
+address the PTR query type is used.
+.TP
+\fIserver\fP
+Is a name or an address of the nameserver to send a query to.  The address
 can be specified using [address]:port notation. If no server is specified
-the servers from \fB/etc/resolv.conf\fR are used.
+the servers from \fB/etc/resolv.conf\fP are used.
+.UNINDENT
+.sp
+If no arguments are provided, \fBkhost\fP prints short help.
+.SS Options
+.INDENT 0.0
 .TP
-If no arguments are provided, \fBkhost\fR prints short help.
-.SH OPTIONS
-.TP 4
-.B \-4
+\fB\-4\fP
 Use IPv4 protocol only.
 .TP
-.B \-6
+\fB\-6\fP
 Use IPv6 protocol only.
 .TP
-.B \-a
+\fB\-a\fP
 Send ANY query with verbose mode.
 .TP
-.B \-d
-Enable debug messages if any.
+\fB\-d\fP
+Enable debug messages.
 .TP
-.BR \-h ,\  \-\-help
-Print help.
+\fB\-h\fP, \fB\-\-help\fP
+Print help and usage.
 .TP
-.B \-r
+\fB\-r\fP
 Disable recursion.
 .TP
-.B \-s
-Stop querying next nameserver if SERVFAIL response is received.
+\fB\-s\fP
+Stop querying the next nameserver if SERVFAIL response is received
 .TP
-.B \-T
+\fB\-T\fP
 Use TCP protocol.
 .TP
-.B \-v
+\fB\-v\fP
 Enable verbose output.
 .TP
-.BR \-V ,\  \-\-version
+\fB\-V\fP, \fB\-\-version\fP
 Print program version.
 .TP
-.B \-w
+\fB\-w\fP
 Wait forever for the reply.
 .TP
-.BI \-c \ class
-Set query class (e.g. \fICH\fR, \fICLASS4\fR). The default class is \fIIN\fR.
+\fB\-c\fP \fIclass\fP
+Set query class (e.g. CH, CLASS4). The default class is IN.
 .TP
-.BI \-t \ type
-Set query type (e.g. \fINS\fR, \fIIXFR=12345\fR, \fITYPE65535\fR).
-The default is to send 3 queries (\fIA\fR, \fIAAAA\fR and \fIMX\fR).
+\fB\-t\fP \fItype\fP
+Set query type (e.g. NS, IXFR=12345, TYPE65535). The default is to send 3
+queries (A, AAAA and MX).
 .TP
-.BI \-R \ retries
-The number (>=0) of UDP retries to query a nameserver. The default is \fI1\fR.
+\fB\-R\fP \fIretries\fP
+The number (>=0) of UDP retries to query a nameserver. The default is 1.
 .TP
-.BI \-W \ wait
-The time to wait for a reply in seconds. This timeout applies to each query try.
-The default is \fI2\fR seconds.
+\fB\-W\fP \fIwait\fP
+The time to wait for a reply in seconds. This timeout applies to each query
+try. The default is 2 seconds.
+.UNINDENT
 .SH NOTES
-.SS Missing features with regard to ISC host
-Options \fB\-C, \-i, \-l, \-m, \-N\fR.
-.SS Differences with regard to ISC host
-Option \fB\-d\fR is not equivalent to \fB-v\fR, but enables debug messages.
-.TP
+.sp
+Missing features with regard to ISC dig:
+.INDENT 0.0
+.INDENT 3.5
+Options \fB\-C\fP, \fB\-i\fP, \fB\-l\fP, \fB\-m\fP and \fB\-N\fP\&.
+.UNINDENT
+.UNINDENT
+.sp
+Differences with regard to ISC host:
+.INDENT 0.0
+.INDENT 3.5
+Option \fB\-d\fP is not equivalent to \fB\-v\fP, but enables debug messages.
+.sp
 The number of retries can be set to zero.
-.TP
-Verbose mode has slightly different format (same as \fBkdig\fR).
+.sp
+Verbose mode has slightly different format (same as \fBkdig\fP).
+.UNINDENT
+.UNINDENT
 .SH EXAMPLES
-.B Example 1. Get A, AAAA and MX records for example.com:
-.TP
-# khost example.com
-.TP
-.B Example 2. Get reverse record for address 192.0.2.1:
-.TP
-# khost 192.0.2.1
-.TP
-.B Example 3. Perform verbose zone transfer for zone example.com:
-.TP
-# khost \-t AXFR \-v example.com
+.INDENT 0.0
+.IP 1. 3
+Get A, AAAA and MX records for example.com:
+.INDENT 3.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+$ khost example.com
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.IP 2. 3
+Get reverse record for address 192.0.2.1:
+.INDENT 3.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+$ khost 192.0.2.1
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.IP 3. 3
+Perform verbose zone transfer for zone example.com:
+.INDENT 3.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+$ khost \-t AXFR \-v example.com
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.UNINDENT
 .SH FILES
-.I /etc/resolv.conf
-.SH AUTHOR
-Daniel Salzman (\fBwww.knot\-dns.cz\fR)
-.TP
-Please send any bug reports or comments to \fBknot\-dns@labs.nic.cz\fR
+.sp
+\fB/etc/resolv.conf\fP
 .SH SEE ALSO
-.BR kdig (1),
-.BR knsupdate (1).
+.sp
+\fIkdig(1)\fP, \fIknsupdate(1)\fP\&.
+.SH AUTHOR
+CZ.NIC Labs <http://www.knot-dns.cz>
+.SH COPYRIGHT
+Copyright 2010-2015, CZ.NIC, z.s.p.o.
+.\" Generated by docutils manpage writer.
+.
