@@ -7,7 +7,7 @@
 # 3. Replaces version placeholders
 #
 
-pushd ../doc
+pushd "$(dirname "$(readlink -e "$0")")/../doc"
 
 make man
 
@@ -20,4 +20,3 @@ for f in ./_build/man/*; do
 done
 
 popd
-
