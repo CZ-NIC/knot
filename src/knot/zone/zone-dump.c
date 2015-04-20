@@ -44,7 +44,6 @@ static int apex_node_dump_text(zone_node_t *node, dump_params_t *params)
 
 	// Dump SOA record as a first.
 	if (!params->dump_nsec) {
-		soa_style.show_class = true;
 		if (knot_rrset_txt_dump(&soa, params->buf, params->buflen,
 					&soa_style) < 0) {
 			return KNOT_ENOMEM;
