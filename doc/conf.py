@@ -224,6 +224,7 @@ latex_domain_indices = False
 man_pages = [
     ('reference', 'knot.conf', 'Knot DNS configuration file', author, 5),
     ('man_kdig', 'kdig', 'Advanced DNS lookup utility', author, 1),
+    ('man_keymgr', 'keymgr', ' DNSSEC key management utility', author, 8),
     ('man_khost', 'khost', 'Simple DNS lookup utility', author, 1),
     ('man_knot1to2', 'knot1to2', 'Knot DNS configuration conversion utility', author, 1),
     ('man_knotc', 'knotc', 'Knot DNS control utility', author, 8),

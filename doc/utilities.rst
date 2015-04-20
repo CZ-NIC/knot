@@ -10,6 +10,7 @@ the server. This section collects manual pages for these utilities.
    :titlesonly:
 
    man_kdig
+   man_keymgr
    man_khost
    man_knot1to2
    man_knotc
