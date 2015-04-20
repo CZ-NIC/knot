@@ -177,6 +177,7 @@ static const yp_item_t desc_log[] = {
 
 const yp_item_t conf_scheme[] = {
 	{ C_SRV,  YP_TGRP, YP_VGRP = { desc_server } },
+	{ C_LOG,  YP_TGRP, YP_VGRP = { desc_log }, YP_FMULTI },
 	{ C_KEY,  YP_TGRP, YP_VGRP = { desc_key }, YP_FMULTI },
 	{ C_ACL,  YP_TGRP, YP_VGRP = { desc_acl }, YP_FMULTI },
 	{ C_CTL,  YP_TGRP, YP_VGRP = { desc_control } },
@@ -193,7 +194,6 @@ const yp_item_t conf_scheme[] = {
 /***********/
 	{ C_TPL,  YP_TGRP, YP_VGRP = { desc_template }, YP_FMULTI },
 	{ C_ZONE, YP_TGRP, YP_VGRP = { desc_zone }, YP_FMULTI },
-	{ C_LOG,  YP_TGRP, YP_VGRP = { desc_log }, YP_FMULTI },
 	{ C_INCL, YP_TSTR, YP_VNONE, YP_FNONE, { NULL, include_file } },
 	{ NULL }
 };
