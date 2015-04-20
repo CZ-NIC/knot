@@ -43,6 +43,19 @@ static void usage(FILE *stream)
 }
 
 /*!
+ * \brief Parse NSEC3 salt.
+ */
+static int str_to_salt(const char *str, dnssec_binary_t *salt)
+{
+	if (strcmp(str, "-") == 0) {
+		salt->size = 0;
+		return DNSSEC_EOK;
+	} else {
+		return hex_to_bin(str, salt);
+	}
+}
+
+/*!
  * \brief Parse NSEC3 parameters and fill structure with NSEC3 parameters.
  */
 static bool parse_nsec3_params(dnssec_nsec3_params_t *params, const char *salt_str,
@@ -63,7 +76,7 @@ static bool parse_nsec3_params(dnssec_nsec3_params_t *params, const char *salt_s
 	}
 
 	dnssec_binary_t salt = { 0 };
-	r = hex_to_bin(salt_str, &salt);
+	r = str_to_salt(salt_str, &salt);
 	if (r != DNSSEC_EOK) {
 		error("Invalid salt, %s.", dnssec_strerror(r));
 		return false;
