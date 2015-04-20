@@ -84,11 +84,11 @@ static int convert(const char *file_out, const char *file_in)
 	};
 
 	// Parse the input file multiple times to get some context.
+	int ret = 0;
 	for (int i = R_SYS; i <= R_LOG; i++) {
-		int ret = run_parser(file_in, i, &share);
+		ret = run_parser(file_in, i, &share);
 		if (ret != 0) {
-			fclose(out);
-			return ret;
+			break;
 		}
 	}
 
@@ -104,16 +104,6 @@ static int convert(const char *file_out, const char *file_in)
 	it = hattrie_iter_begin(share.groups, false);
 	for (; !hattrie_iter_finished(it); hattrie_iter_next(it)) {
 		hattrie_t *trie = *hattrie_iter_val(it);
-		if (trie == NULL) {
-			continue;
-		}
-
-		hattrie_iter_t *it2 = hattrie_iter_begin(trie, false);
-		for (; !hattrie_iter_finished(it2); hattrie_iter_next(it2)) {
-			char *data = *hattrie_iter_val(it2);
-			free(data);
-		}
-		hattrie_iter_free(it2);
 		hattrie_free(trie);
 	}
 	hattrie_iter_free(it);
@@ -129,7 +119,7 @@ static int convert(const char *file_out, const char *file_in)
 
 	fclose(out);
 
-	return 0;
+	return ret;
 }
 
 static int reformat(const char *file_out, const char *file_in, const char *path)

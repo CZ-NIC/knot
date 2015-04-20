@@ -1498,12 +1498,12 @@ YY_RULE_SETUP
 case 56:
 YY_RULE_SETUP
 #line 135 "cf-lex.l"
-{ lval.t = C_ANY; return LOG_SRC; }
+{ lval.t = C_ANY;  return LOG_SRC; }
 	YY_BREAK
 case 57:
 YY_RULE_SETUP
 #line 136 "cf-lex.l"
-{ lval.t = C_SRV; return LOG_SRC; }
+{ lval.t = C_SRV;  return LOG_SRC; }
 	YY_BREAK
 case 58:
 YY_RULE_SETUP

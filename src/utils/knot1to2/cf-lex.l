@@ -132,8 +132,8 @@ listen-on             { lval.t = yytext; return LISTEN_ON; }
 
 log                   { lval.t = yytext; return LOG; }
 
-any                   { lval.t = C_ANY; return LOG_SRC; }
-server                { lval.t = C_SRV; return LOG_SRC; }
+any                   { lval.t = C_ANY;  return LOG_SRC; }
+server                { lval.t = C_SRV;  return LOG_SRC; }
 zone                  { lval.t = C_ZONE; return LOG_SRC; }
 
 stdout                { lval.t = yytext; return LOG_DEST; }

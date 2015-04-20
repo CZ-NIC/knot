@@ -438,11 +438,11 @@ conf_entries:
 
 interface_start:
  | TEXT		{ _str = $1.t; }
- | REMOTES	{ _str = $1.t; }
- | LOG_SRC	{ _str = $1.t; }
- | LOG		{ _str = $1.t; }
- | LOG_LEVEL	{ _str = $1.t; }
- | CONTROL	{ _str = $1.t; }
+ | REMOTES	{ _str = strdup($1.t); }
+ | LOG_SRC	{ _str = strdup($1.t + 1); }
+ | LOG		{ _str = strdup($1.t); }
+ | LOG_LEVEL	{ _str = strdup($1.t); }
+ | CONTROL	{ _str = strdup($1.t); }
  ;
 
 interface:
@@ -524,10 +524,10 @@ keys:
 
 remote_start:
  | TEXT		{ _str = $1.t; }
- | LOG_SRC	{ _str = $1.t; }
- | LOG		{ _str = $1.t; }
- | LOG_LEVEL	{ _str = $1.t; }
- | CONTROL	{ _str = $1.t; }
+ | LOG_SRC	{ _str = strdup($1.t + 1); }
+ | LOG		{ _str = strdup($1.t); }
+ | LOG_LEVEL	{ _str = strdup($1.t); }
+ | CONTROL	{ _str = strdup($1.t); }
  ;
 
 remote:
@@ -622,10 +622,10 @@ zone_acl_start:
 
 zone_acl_item:
  | TEXT		{ acl_next(scanner, $1.t); free($1.t); }
- | LOG_SRC	{ acl_next(scanner, $1.t); free($1.t); }
- | LOG		{ acl_next(scanner, $1.t); free($1.t); }
- | LOG_LEVEL	{ acl_next(scanner, $1.t); free($1.t); }
- | CONTROL	{ acl_next(scanner, $1.t); free($1.t); }
+ | LOG_SRC	{ acl_next(scanner, $1.t + 1); }
+ | LOG		{ acl_next(scanner, $1.t); }
+ | LOG_LEVEL	{ acl_next(scanner, $1.t); }
+ | CONTROL	{ acl_next(scanner, $1.t); }
  ;
 
 zone_acl_list:
@@ -643,11 +643,11 @@ query_module_list:
 
 zone_start:
  | USER		{ f_id(scanner, R_ZONE, C_DOMAIN, $1.t); free($1.t); }
- | REMOTES	{ f_id(scanner, R_ZONE, C_DOMAIN, $1.t); free($1.t); }
- | LOG_SRC	{ f_id(scanner, R_ZONE, C_DOMAIN, $1.t); free($1.t); }
- | LOG		{ f_id(scanner, R_ZONE, C_DOMAIN, $1.t); free($1.t); }
- | LOG_LEVEL	{ f_id(scanner, R_ZONE, C_DOMAIN, $1.t); free($1.t); }
- | CONTROL	{ f_id(scanner, R_ZONE, C_DOMAIN, $1.t); free($1.t); }
+ | REMOTES	{ f_id(scanner, R_ZONE, C_DOMAIN, $1.t); }
+ | LOG_SRC	{ f_id(scanner, R_ZONE, C_DOMAIN, $1.t + 1); }
+ | LOG		{ f_id(scanner, R_ZONE, C_DOMAIN, $1.t); }
+ | LOG_LEVEL	{ f_id(scanner, R_ZONE, C_DOMAIN, $1.t); }
+ | CONTROL	{ f_id(scanner, R_ZONE, C_DOMAIN, $1.t); }
  | NUM '/' TEXT	{
    	f_name(scanner, R_ZONE, C_DOMAIN, true);
    	f_val(scanner, R_ZONE, false, "%i/%s", $1.i, $3.t);
@@ -739,9 +739,8 @@ log_dest:
 log_file:
    FILENAME TEXT {
    	f_name(scanner, R_LOG, C_TO, true);
-   	f_val(scanner, R_LOG, true, "%s", $2.t);
+   	f_val(scanner, R_LOG, true, "%s", $2.t); free($2.t);
    	f_val(scanner, R_LOG, false, "\n");
-   	free($2.t);
    }
 ;
 
