@@ -402,19 +402,18 @@ AC_CONFIG_FILES([Makefile
 		 src/dnstap/Makefile
 		 src/zscanner/Makefile
 		 src/dnssec/Makefile
-		 src/dnssec/man/Makefile
-		 src/dnssec/man/keymgr.8
-		 src/dnssec/man/knsec3hash.1
 		 src/dnssec/tests/Makefile
 		 src/dnssec/utils/Makefile
 		 doc/conf_autotools.py
-		 man/khost.1
-		 man/knotc.8
-		 man/knotd.8
 		 man/kdig.1
-		 man/knsupdate.1
+		 man/keymgr.8
+		 man/khost.1
 		 man/knot.conf.5
 		 man/knot1to2.1
+		 man/knotc.8
+		 man/knotd.8
+		 man/knsec3hash.1
+		 man/knsupdate.1
 		 ])
 
 AC_OUTPUT
