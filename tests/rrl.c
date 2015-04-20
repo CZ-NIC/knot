@@ -46,7 +46,7 @@ struct bucketmap {
 struct runnable_data {
 	int passed;
 	rrl_table_t *rrl;
-	sockaddr_t *addr;
+	struct sockaddr_storage *addr;
 	rrl_req_t *rq;
 	zone_t *zone;
 };
@@ -54,20 +54,20 @@ struct runnable_data {
 static void* rrl_runnable(void *arg)
 {
 	struct runnable_data* d = (struct runnable_data*)arg;
-	sockaddr_t addr;
-	memcpy(&addr, d->addr, sizeof(sockaddr_t));
+	struct sockaddr_storage addr;
+	memcpy(&addr, d->addr, sizeof(struct sockaddr_storage));
 	int lock = -1;
 	uint32_t now = time(NULL);
-	struct bucketmap *m = malloc(RRL_INSERTS * sizeof(struct bucketmap_t));
+	struct bucketmap *m = malloc(RRL_INSERTS * sizeof(struct bucketmap));
 	for (unsigned i = 0; i < RRL_INSERTS; ++i) {
-		m[i].i = dnssec_random_uint32_t(UINT32_MAX);
-		addr.addr4.sin_addr.s_addr = m[i].i;
-		rrl_item_t *b =  rrl_hash(d->rrl, &addr, d->rq, d->zone, now, &lock);
+		m[i].i = dnssec_random_uint32_t();
+		((struct sockaddr_in *) &addr)->sin_addr.s_addr = m[i].i;
+		rrl_item_t *b = rrl_hash(d->rrl, &addr, d->rq, d->zone, now, &lock);
 		rrl_unlock(d->rrl, lock);
 		m[i].x = b->netblk;
 	}
 	for (unsigned i = 0; i < RRL_INSERTS; ++i) {
-		addr.addr4.sin_addr.s_addr = m[i].i;
+		((struct sockaddr_in *) &addr)->sin_addr.s_addr = m[i].i;
 		rrl_item_t *b = rrl_hash(d->rrl, &addr, d->rq, d->zone, now, &lock);
 		rrl_unlock(d->rrl, lock);
 		if (b->netblk != m[i].x) {
