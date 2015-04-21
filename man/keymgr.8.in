@@ -37,13 +37,13 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 \fBkeymgr\fP [\fIglobal\-options\fP] [\fIcommand\fP\&...] \fBhelp\fP
 .SH DESCRIPTION
 .sp
-The \fBkeymgr\fP utility serves for DNSSEC keys and Key And Signature
-Policy (KASP) management in Knot DNS server. The configuration is stored in a
-so called KASP database. The database is simply a directory on the
+The \fBkeymgr\fP utility serves for DNSSEC keys and KASP (Key And
+Signature Policy) management in Knot DNS server. The configuration is stored
+in a so called KASP database. The database is simply a directory on the
 file\-system containing files in the JSON format.
 .sp
 The operations are organized into commands and subcommands. The command
-specifies an operation to be performed with the KASP database. It is usually
+specifies the operation to be performed with the KASP database. It is usually
 followed by named arguments. A special command \fBhelp\fP can be used to list
 available subcommands at that position. Listing of available command arguments
 is not supported yet.
@@ -97,12 +97,12 @@ Change zone configuration. At the moment, only a policy can be changed.
 Show zone details.
 .TP
 \fBzone\fP \fBkey\fP \fBlist\fP \fIzone\-name\fP
-List IDs and key tags for of zone keys.
+List key IDs and tags of zone keys.
 .TP
 \fBzone\fP \fBkey\fP \fBshow\fP \fIzone\-name\fP \fIkey\fP
-Show a zone key details. The \fIkey\fP can be a key tag or a key ID prefix.
+Show zone key details. The \fIkey\fP can be a key tag or a key ID prefix.
 .TP
-\fBzone\fP \fBkey\fP \fBgenerate\fP \fIzone\-name\fP [\fIkey\-attribute\fP\&...]
+\fBzone\fP \fBkey\fP \fBgenerate\fP \fIzone\-name\fP [\fIkey\-parameter\fP\&...]
 Generate a new key for a zone.
 .TP
 \fBzone\fP \fBkey\fP \fBimport\fP \fIzone\-name\fP \fIkey\-file\fP
@@ -110,11 +110,11 @@ Import an existing key in the legacy format. The \fIkey\-file\fP suffix
 \fB\&.private\fP or \fB\&.key\fP is not required. A public key without
 a matching private key cannot be imported.
 .TP
-\fBzone\fP \fBkey\fP \fBset\fP \fIzone\-name\fP \fIkey\fP [\fIkey\-attribute\fP\&...]
+\fBzone\fP \fBkey\fP \fBset\fP \fIzone\-name\fP \fIkey\fP [\fIkey\-parameter\fP\&...]
 Change a key parameter. Only key timing parameters can be changed.
 .UNINDENT
 .sp
-Available \fIkey\-attribute\fPs:
+Available \fIkey\-parameter\fPs:
 .INDENT 0.0
 .INDENT 3.5
 .INDENT 0.0
@@ -145,7 +145,7 @@ The time the key\(aqs DNSKEY is removed from the zone.
 .sp
 The \fItime\fP accepts YYYYMMDDHHMMSS format, unix timestamp, or offset from the
 current time. For the offset, add \fB+\fP or \fB\-\fP prefix and optionally a
-suffix \fBmi\fP, \fBh\fP, \fBd\fP, \fBw\fP, \fBmo\fP, or, \fBy\fP\&. If no suffix is specified,
+suffix \fBmi\fP, \fBh\fP, \fBd\fP, \fBw\fP, \fBmo\fP, or \fBy\fP\&. If no suffix is specified,
 the offset is in seconds.
 .SS policy commands
 .INDENT 0.0
@@ -156,18 +156,18 @@ List policies in the database.
 \fBpolicy\fP \fBshow\fP \fIpolicy\-name\fP
 Show policy details.
 .TP
-\fBpolicy\fP \fBadd\fP \fIpolicy\-name\fP [\fIpolicy\-attribute\fP\&...]
+\fBpolicy\fP \fBadd\fP \fIpolicy\-name\fP [\fIpolicy\-parameter\fP\&...]
 Add a new policy into the database.
 .TP
-\fBpolicy\fP \fBset\fP \fIpolicy\-name\fP [\fIpolicy\-attribute\fP\&...]
-Update policy settings.
+\fBpolicy\fP \fBset\fP \fIpolicy\-name\fP [\fIpolicy\-parameter\fP\&...]
+Change policy configuration.
 .TP
 \fBpolicy\fP \fBremove\fP \fIpolicy\-name\fP
 Remove a policy from the database.
-\fBNote\fP, the utility does not check, if the policy is used.
+\fBNote\fP, the utility does not check if the policy is used.
 .UNINDENT
 .sp
-Available \fIpolicy\-attribute\fPs:
+Available \fIpolicy\-parameter\fPs:
 .INDENT 0.0
 .INDENT 3.5
 .INDENT 0.0
@@ -276,8 +276,8 @@ with the one configured in the policy:
 .nf
 .ft C
 $ keymgr zone add example.com policy default
-$ keymgr zone key import Kexample.com+010+12345.private
-$ keymgr zone key import Kexample.com+010+67890.private
+$ keymgr zone key import example.com Kexample.com+010+12345.private
+$ keymgr zone key import example.com Kexample.com+010+67890.private
 .ft P
 .fi
 .UNINDENT
@@ -303,7 +303,23 @@ signing key. The Single\-Type Signing scheme will be used:
 .nf
 .ft C
 $ keymgr zone add example.com policy none
-$ keymgr zone key gen algo 13 size 256
+$ keymgr zone key gen example.com algo 13 size 256
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.IP 7. 3
+Add a zone to be signed with manual key maintenance. Generate two
+RSA\-SHA\-256 signing keys. The first key will be used as a KSK, the second
+one as a ZSK:
+.INDENT 3.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+$ keymgr zone add example.com policy none
+$ keymgr zone key generate example.com algorithm rsasha256 size 2048 ksk
+$ keymgr zone key generate example.com algorithm rsasha256 size 1024
 .ft P
 .fi
 .UNINDENT
