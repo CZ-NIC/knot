@@ -11,13 +11,13 @@ Synopsis
 Description
 -----------
 
-The :program:`keymgr` utility serves for DNSSEC keys and Key And Signature
-Policy (KASP) management in Knot DNS server. The configuration is stored in a
-so called KASP database. The database is simply a directory on the
+The :program:`keymgr` utility serves for DNSSEC keys and KASP (Key And
+Signature Policy) management in Knot DNS server. The configuration is stored
+in a so called KASP database. The database is simply a directory on the
 file-system containing files in the JSON format.
 
 The operations are organized into commands and subcommands. The command
-specifies an operation to be performed with the KASP database. It is usually
+specifies the operation to be performed with the KASP database. It is usually
 followed by named arguments. A special command **help** can be used to list
 available subcommands at that position. Listing of available command arguments
 is not supported yet.
@@ -72,12 +72,12 @@ zone commands
   Show zone details.
 
 **zone** **key** **list** *zone-name*
-  List IDs and key tags for of zone keys.
+  List key IDs and tags of zone keys.
 
 **zone** **key** **show** *zone-name* *key*
-  Show a zone key details. The *key* can be a key tag or a key ID prefix.
+  Show zone key details. The *key* can be a key tag or a key ID prefix.
 
-**zone** **key** **generate** *zone-name* [*key-attribute*...]
+**zone** **key** **generate** *zone-name* [*key-parameter*...]
   Generate a new key for a zone.
 
 **zone** **key** **import** *zone-name* *key-file*
@@ -85,10 +85,10 @@ zone commands
   :file:`.private` or :file:`.key` is not required. A public key without
   a matching private key cannot be imported.
 
-**zone** **key** **set** *zone-name* *key* [*key-attribute*...]
+**zone** **key** **set** *zone-name* *key* [*key-parameter*...]
   Change a key parameter. Only key timing parameters can be changed.
 
-Available *key-attribute*\ s:
+Available *key-parameter*\ s:
 
   **algorithm** *id*
     Algorithm number or IANA mnemonic.
@@ -113,7 +113,7 @@ Available *key-attribute*\ s:
 
 The *time* accepts YYYYMMDDHHMMSS format, unix timestamp, or offset from the
 current time. For the offset, add **+** or **-** prefix and optionally a
-suffix **mi**, **h**, **d**, **w**, **mo**, or, **y**. If no suffix is specified,
+suffix **mi**, **h**, **d**, **w**, **mo**, or **y**. If no suffix is specified,
 the offset is in seconds.
 
 policy commands
@@ -125,17 +125,17 @@ policy commands
 **policy** **show** *policy-name*
   Show policy details.
 
-**policy** **add** *policy-name* [*policy-attribute*...]
+**policy** **add** *policy-name* [*policy-parameter*...]
   Add a new policy into the database.
 
-**policy** **set** *policy-name* [*policy-attribute*...]
-  Update policy settings.
+**policy** **set** *policy-name* [*policy-parameter*...]
+  Change policy configuration.
 
 **policy** **remove** *policy-name*
   Remove a policy from the database.
-  **Note**, the utility does not check, if the policy is used.
+  **Note**, the utility does not check if the policy is used.
 
-Available *policy-attribute*\ s:
+Available *policy-parameter*\ s:
 
   **algorithm** *id*
     DNSKEY algorithm number or IANA mnemonic.
