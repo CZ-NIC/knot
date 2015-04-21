@@ -211,8 +211,8 @@ Examples
    with the one configured in the policy::
 
    $ keymgr zone add example.com policy default
-   $ keymgr zone key import Kexample.com+010+12345.private
-   $ keymgr zone key import Kexample.com+010+67890.private
+   $ keymgr zone key import example.com Kexample.com+010+12345.private
+   $ keymgr zone key import example.com Kexample.com+010+67890.private
 
 5. Disable automatic key management for a secured zone::
 
@@ -222,7 +222,15 @@ Examples
    signing key. The Single-Type Signing scheme will be used::
 
    $ keymgr zone add example.com policy none
-   $ keymgr zone key gen algo 13 size 256
+   $ keymgr zone key gen example.com algo 13 size 256
+
+7. Add a zone to be signed with manual key maintenance. Generate two
+   RSA-SHA-256 signing keys. The first key will be used as a KSK, the second
+   one as a ZSK::
+
+   $ keymgr zone add example.com policy none
+   $ keymgr zone key generate example.com algorithm rsasha256 size 2048 ksk
+   $ keymgr zone key generate example.com algorithm rsasha256 size 1024
 
 See Also
 --------
