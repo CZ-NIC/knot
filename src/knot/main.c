@@ -55,7 +55,7 @@ static int make_daemon(int nochdir, int noclose)
 {
 	int fd, ret;
 
-	switch(fork()) {
+	switch (fork()) {
 	case -1:
 		/* Error */
 		return -1;
