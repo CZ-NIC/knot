@@ -156,7 +156,7 @@ static int ixfr_process_changeset(knot_pkt_t *pkt, const void *item,
 	struct query_data *qdata = ixfr->qdata; /*< Required for IXFROUT_LOG() */
 	const uint32_t serial_from = knot_soa_serial(&chgset->soa_from->rrs);
 	const uint32_t serial_to = knot_soa_serial(&chgset->soa_to->rrs);
-	IXFROUT_LOG(LOG_INFO, "serial %u -> %u", serial_from, serial_to);
+	IXFROUT_LOG(LOG_DEBUG, "serial %u -> %u", serial_from, serial_to);
 
 	return ret;
 }
