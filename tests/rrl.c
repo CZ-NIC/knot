@@ -35,6 +35,8 @@
 
 /* Disabled as default as it depends on random input.
  * Table may be consistent even if some collision occur (and they may occur).
+ * Note: Disabled due to reported problems when running on VMs due to time
+ * flow inconsistencies. Should work alright on a host machine.
  */
 #ifdef ENABLE_TIMED_TESTS
 struct bucketmap {
@@ -163,11 +165,11 @@ int main(int argc, char *argv[])
 #ifdef ENABLE_TIMED_TESTS
 	/* 5. limited request */
 	ret = rrl_query(rrl, &addr, &rq, zone);
-	is_int(0, ret, "rrl: throttled IPv4 request");
+	is_int(KNOT_ELIMIT, ret, "rrl: throttled IPv4 request");
 
 	/* 6. limited IPv6 request */
 	ret = rrl_query(rrl, &addr6, &rq, zone);
-	is_int(0, ret, "rrl: throttled IPv6 request");
+	is_int(KNOT_ELIMIT, ret, "rrl: throttled IPv6 request");
 #endif
 
 	/* 7. invalid values. */
