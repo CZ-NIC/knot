@@ -51,6 +51,52 @@ static void init_signal_started(void)
 #endif
 }
 
+static int make_daemon(int nochdir, int noclose)
+{
+	int fd, ret;
+
+	switch(fork()) {
+	case -1:
+		/* Error */
+		return -1;
+	case 0:
+		/* Forked */
+		break;
+	default:
+		/* Exit the main process */
+		_exit(0);
+	}
+
+	if (setsid() == -1)
+		return -1;
+
+	if (!nochdir) {
+		ret = chdir("/");
+		if (ret == -1)
+			return errno;
+	}
+
+	if (!noclose) {
+		ret  = close(STDIN_FILENO);
+		ret += close(STDOUT_FILENO);
+		ret += close(STDERR_FILENO);
+		if (ret < 0)
+			return errno;
+
+		fd = open("/dev/null", O_RDWR);
+		if (fd == -1)
+			return errno;
+
+		ret  = dup2(fd, STDIN_FILENO);
+		ret += dup2(fd, STDOUT_FILENO);
+		ret += dup2(fd, STDERR_FILENO);
+		if (ret < 0)
+			return errno;
+	}
+
+	return 0;
+}
+
 /*! \brief PID file cleanup handler. */
 static void pid_cleanup(char *pidfile)
 {
@@ -240,7 +286,7 @@ int main(int argc, char **argv)
 
 	/* Now check if we want to daemonize. */
 	if (daemonize) {
-		if (daemon(1, 0) != 0) {
+		if (make_daemon(1, 0) != 0) {
 			fprintf(stderr, "Daemonization failed, shutting down...\n");
 			return EXIT_FAILURE;
 		}
