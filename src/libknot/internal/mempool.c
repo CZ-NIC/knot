@@ -31,7 +31,7 @@
 #define MAX(a, b) \
 	({ typeof (a) _a = (a); typeof (b) _b = (b); _a > _b ? _a : _b; })
 #endif
-#define DBG(s...)
+#define DBG(s, ...)
 
 /** \note Imported MMAP backend from bigalloc.c */
 #define CONFIG_UCW_POOL_IS_MMAP

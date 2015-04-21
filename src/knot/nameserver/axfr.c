@@ -209,8 +209,8 @@ int xfr_process_list(knot_pkt_t *pkt, xfr_put_cb process_item,
 }
 
 /* AXFR-specific logging (internal, expects 'qdata' variable set). */
-#define AXFROUT_LOG(severity, msg...) \
-	QUERY_LOG(severity, qdata, "AXFR, outgoing", msg)
+#define AXFROUT_LOG(severity, msg, ...)				\
+	QUERY_LOG(severity, qdata, "AXFR, outgoing", msg, ##__VA_ARGS__)
 
 int axfr_query_process(knot_pkt_t *pkt, struct query_data *qdata)
 {
@@ -307,8 +307,8 @@ static int axfr_answer_init(struct answer_data *data)
 }
 
 /* AXFR-specific logging (internal, expects 'adata' variable set). */
-#define AXFRIN_LOG(severity, msg...) \
-	ANSWER_LOG(severity, adata, "AXFR, incoming", msg)
+#define AXFRIN_LOG(severity, msg, ...)				\
+	ANSWER_LOG(severity, adata, "AXFR, incoming", msg, ##__VA_ARGS__)
 
 static int axfr_answer_finalize(struct answer_data *adata)
 {

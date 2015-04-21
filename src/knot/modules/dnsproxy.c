@@ -31,7 +31,7 @@ const yp_item_t scheme_mod_dnsproxy[] = {
 };
 
 /* Defines. */
-#define MODULE_ERR(msg...) log_error("module 'dnsproxy', " msg)
+#define MODULE_ERR(msg, ...) log_error("module 'dnsproxy', " msg, ##__VA_ARGS__)
 
 struct dnsproxy {
 	struct sockaddr_storage remote;

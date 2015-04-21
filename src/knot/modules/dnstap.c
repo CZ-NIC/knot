@@ -36,7 +36,7 @@ const yp_item_t scheme_mod_dnstap[] = {
 };
 
 /* Defines. */
-#define MODULE_ERR(msg...) log_error("module 'dnstap', " msg)
+#define MODULE_ERR(msg, ...) log_error("module 'dnstap', " msg, ##__VA_ARGS__)
 
 static int log_message(int state, const knot_pkt_t *pkt, struct query_data *qdata, void *ctx)
 {
