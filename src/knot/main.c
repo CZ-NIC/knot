@@ -67,8 +67,9 @@ static int make_daemon(int nochdir, int noclose)
 		_exit(0);
 	}
 
-	if (setsid() == -1)
+	if (setsid() == -1) {
 		return -1;
+	}
 
 	if (!nochdir) {
 		ret = chdir("/");
@@ -80,18 +81,21 @@ static int make_daemon(int nochdir, int noclose)
 		ret  = close(STDIN_FILENO);
 		ret += close(STDOUT_FILENO);
 		ret += close(STDERR_FILENO);
-		if (ret < 0)
+		if (ret < 0) {
 			return errno;
+		}
 
 		fd = open("/dev/null", O_RDWR);
-		if (fd == -1)
+		if (fd == -1) {
 			return errno;
+		}
 
 		ret  = dup2(fd, STDIN_FILENO);
 		ret += dup2(fd, STDOUT_FILENO);
 		ret += dup2(fd, STDERR_FILENO);
-		if (ret < 0)
+		if (ret < 0) {
 			return errno;
+		}
 	}
 
 	return 0;
