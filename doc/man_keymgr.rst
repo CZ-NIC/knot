@@ -13,8 +13,8 @@ Description
 
 The :program:`keymgr` utility serves for DNSSEC keys and Key And Signature
 Policy (KASP) management in Knot DNS server. The configuration is stored in a
-so called KASP database. The database is simply a directory on a file
-file-system containing files in JSON format.
+so called KASP database. The database is simply a directory on the
+file-system containing files in the JSON format.
 
 The operations are organized into commands and subcommands. The command
 specifies an operation to be performed with the KASP database. It is usually
@@ -22,7 +22,7 @@ followed by named arguments. A special command **help** can be used to list
 available subcommands at that position. Listing of available command arguments
 is not supported yet.
 
-The command and argument names and parsed in a smart way. Only a beginning
+The command and argument names are parsed in a smart way. Only a beginning
 of the name can be specified and will be recognized. The specified part must
 be unique amongst the other names.
 
@@ -54,51 +54,46 @@ Main commands
 zone commands
 .............
 
-**zone** **add** *name* [**policy** *policy*\ \|none]
-  Add a new zone into the database. The **policy** defaults to none.
+**zone** **add** *zone-name* [**policy** *policy-name*\|\ **none**]
+  Add a zone into the database. The policy defaults to **none**, meaning that
+  no automatic key management is to be performed.
 
-**zone** **list** [*search*]
-  List matching zones in the database.
+**zone** **list** [*pattern*]
+  List zones in the database matching the *pattern* as a substring.
 
-**zone** **remove** *name* [**force**]
+**zone** **remove** *zone-name* [**force**]
   Remove a zone from the database. If some keys are currently active, the
   **force** argument must be specified.
 
-**zone** **show** *name*
+**zone** **set** *zone-name* [**policy** *policy-name*\|\ **none**]
+  Change zone configuration. At the moment, only a policy can be changed.
+
+**zone** **show** *zone-name*
   Show zone details.
 
-**zone** **key** ...
-  Operations with zone keys.
+**zone** **key** **list** *zone-name*
+  List IDs and key tags for of zone keys.
 
-**zone** **set** *name* [**policy** *policy*\ \|none]
-  Change zone parameters.
+**zone** **key** **show** *zone-name* *key*
+  Show a zone key details. The *key* can be a key tag or a key ID prefix.
 
-zone key commands
-.................
-
-**zone** **key** **list** *zone*
-  List zone key IDs and tags.
-
-**zone** **key** **show** *zone* *key*
-  Show zone key details. The *key* can be a key tag or a key ID prefix.
-
-**zone** **key** **generate** *zone* [*key-attribute*...]
+**zone** **key** **generate** *zone-name* [*key-attribute*...]
   Generate a new key for a zone.
 
-**zone** **key** **set** *zone* *key* [*key-attribute*...]
-  Change a key parameter. Only key timing parameters can be changed.
+**zone** **key** **import** *zone-name* *key-file*
+  Import an existing key in the legacy format. The *key-file* suffix
+  :file:`.private` or :file:`.key` is not required. A public key without
+  a matching private key cannot be imported.
 
-**zone** **key** *import* *zone* *filename*
-  Import existing key in the legacy format. The file suffix :file:`.private`
-  or :file:`.key` is automatically removed if necessary. Currently only keys
-  with private key can be imported.
+**zone** **key** **set** *zone-name* *key* [*key-attribute*...]
+  Change a key parameter. Only key timing parameters can be changed.
 
 Available *key-attribute*\ s:
 
   **algorithm** *id*
     Algorithm number or IANA mnemonic.
 
-  **size** *size*
+  **size** *bits*
     Size of the key in bits.
 
   **ksk**
@@ -117,26 +112,27 @@ Available *key-attribute*\ s:
     The time the key's DNSKEY is removed from the zone.
 
 The *time* accepts YYYYMMDDHHMMSS format, unix timestamp, or offset from the
-current time. For the offset, add + or - prefix and optionally a suffix mi, h,
-d, w, mo, or, y. If no suffix is specified, the offset is in seconds.
+current time. For the offset, add **+** or **-** prefix and optionally a
+suffix **mi**, **h**, **d**, **w**, **mo**, or, **y**. If no suffix is specified,
+the offset is in seconds.
 
-zone policy commands
-....................
+policy commands
+...............
 
-**zone** **policy** **list**
+**policy** **list**
   List policies in the database.
 
-**zone** **policy** **show** *name*
+**policy** **show** *policy-name*
   Show policy details.
 
-**zone** **policy** **add** *name* [*policy-attribute*...]
+**policy** **add** *policy-name* [*policy-attribute*...]
   Add a new policy into the database.
 
-**zone** **policy** **set** *name* [*policy-attribute*...]
-  Updates the policy settings. The accepted options are the same as for *add*.
+**policy** **set** *policy-name* [*policy-attribute*...]
+  Update policy settings.
 
-**zone** **policy** **remove** *name*
-  Remove policy from the database.
+**policy** **remove** *policy-name*
+  Remove a policy from the database.
   **Note**, the utility does not check, if the policy is used.
 
 Available *policy-attribute*\ s:
@@ -144,20 +140,20 @@ Available *policy-attribute*\ s:
   **algorithm** *id*
     DNSKEY algorithm number or IANA mnemonic.
 
-  **dnskey-ttl** *interval*
+  **dnskey-ttl** *seconds*
     TTL value for DNSKEY records.
-    **Note**, the value is temporarily overridden by the SOA TTL**.
+    **Note**, the value is temporarily overridden by the SOA TTL.
 
-  **ksk-size** *size*
+  **ksk-size** *bits*
     Set size of the KSK in bits.
 
-  **zsk-size** *size*
+  **zsk-size** *bits*
     Set size of the ZSK in bits.
 
-  **zsk-lifetime** *interval*
-    Interval, after which the ZSK rollover will be initiated.
+  **zsk-lifetime** *seconds*
+    Interval after which the ZSK rollover will be initiated.
 
-  **rrsig-lifetime** *interval*
+  **rrsig-lifetime** *seconds*
     Lifetime of issued RRSIGs.
 
   **rrsig-refresh** *seconds*
@@ -166,27 +162,27 @@ Available *policy-attribute*\ s:
   **nsec3** *enable*
     Specifies if NSEC3 will be used instead of NSEC.
     **Note**, currently unused (the setting is derived from NSEC3PARAM presence
-    in the zone.)
+    in the zone).
 
-  **soa-min-ttl** *interval*
+  **soa-min-ttl** *seconds*
     SOA Minimum TTL field.
     **Note**, Knot DNS overwrites the value with the real used value.
 
-  **zone-max-ttl** *interval*
+  **zone-max-ttl** *seconds*
     Max TTL in the zone.
     **Note**, Knot DNS will determine the value automatically in the future.
 
-  **delay** *interval*
+  **delay** *secones*
     Zone signing and data propagation delay. The value is added for safety to
     timing of all rollover steps.
 
-zone keystore commands
-......................
+keystore commands
+.................
 
-The key store functionality is limited at the moment. Only one file-based key
-store is supported. This command is subject to change.
+The key store functionality is limited at the moment. Only one instance of
+file-based key store is supported. This command is subject to change.
 
-**zone** **keystore** **list**
+**keystore** **list**
   List private keys in the key store.
 
 Examples
@@ -227,23 +223,6 @@ Examples
 
    $ keymgr zone add example.com policy none
    $ keymgr zone key gen algo 13 size 256
-
-Legacy utilities
-----------------
-
-The :program:`keymgr` utility provides partial support for legacy key format.
-
-The following table shows commands equivalent to BIND utilities:
-
-================   ========================
-**BIND**           **Knot DNS**
-================   ========================
-dnssec-keygen      keymgr zone key generate
-dnssec-settime     keymgr zone key set
-dnssec-dsfromkey   N/A
-dnssec-revoke      N/A
-nsec3hash          knsec3hash
-================   ========================
 
 See Also
 --------
