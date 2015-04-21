@@ -35,6 +35,8 @@
 
 /* Disabled as default as it depends on random input.
  * Table may be consistent even if some collision occur (and they may occur).
+ * Note: Disabled due to reported problems when running on VMs due to time
+ * flow inconsistencies. Should work alright on a host machine.
  */
 #ifdef ENABLE_TIMED_TESTS
 struct bucketmap {
@@ -46,7 +48,7 @@ struct bucketmap {
 struct runnable_data {
 	int passed;
 	rrl_table_t *rrl;
-	sockaddr_t *addr;
+	struct sockaddr_storage *addr;
 	rrl_req_t *rq;
 	zone_t *zone;
 };
@@ -54,20 +56,20 @@ struct runnable_data {
 static void* rrl_runnable(void *arg)
 {
 	struct runnable_data* d = (struct runnable_data*)arg;
-	sockaddr_t addr;
-	memcpy(&addr, d->addr, sizeof(sockaddr_t));
+	struct sockaddr_storage addr;
+	memcpy(&addr, d->addr, sizeof(struct sockaddr_storage));
 	int lock = -1;
 	uint32_t now = time(NULL);
-	struct bucketmap *m = malloc(RRL_INSERTS * sizeof(struct bucketmap_t));
+	struct bucketmap *m = malloc(RRL_INSERTS * sizeof(struct bucketmap));
 	for (unsigned i = 0; i < RRL_INSERTS; ++i) {
-		m[i].i = dnssec_random_uint32_t(UINT32_MAX);
-		addr.addr4.sin_addr.s_addr = m[i].i;
-		rrl_item_t *b =  rrl_hash(d->rrl, &addr, d->rq, d->zone, now, &lock);
+		m[i].i = dnssec_random_uint32_t();
+		((struct sockaddr_in *) &addr)->sin_addr.s_addr = m[i].i;
+		rrl_item_t *b = rrl_hash(d->rrl, &addr, d->rq, d->zone, now, &lock);
 		rrl_unlock(d->rrl, lock);
 		m[i].x = b->netblk;
 	}
 	for (unsigned i = 0; i < RRL_INSERTS; ++i) {
-		addr.addr4.sin_addr.s_addr = m[i].i;
+		((struct sockaddr_in *) &addr)->sin_addr.s_addr = m[i].i;
 		rrl_item_t *b = rrl_hash(d->rrl, &addr, d->rq, d->zone, now, &lock);
 		rrl_unlock(d->rrl, lock);
 		if (b->netblk != m[i].x) {
@@ -162,11 +164,11 @@ int main(int argc, char *argv[])
 #ifdef ENABLE_TIMED_TESTS
 	/* 5. limited request */
 	ret = rrl_query(rrl, &addr, &rq, zone);
-	is_int(0, ret, "rrl: throttled IPv4 request");
+	is_int(KNOT_ELIMIT, ret, "rrl: throttled IPv4 request");
 
 	/* 6. limited IPv6 request */
 	ret = rrl_query(rrl, &addr6, &rq, zone);
-	is_int(0, ret, "rrl: throttled IPv6 request");
+	is_int(KNOT_ELIMIT, ret, "rrl: throttled IPv6 request");
 #endif
 
 	/* 7. invalid values. */
