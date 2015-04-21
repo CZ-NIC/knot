@@ -90,10 +90,13 @@ static int make_daemon(int nochdir, int noclose)
 			return errno;
 		}
 
-		ret  = dup2(fd, STDIN_FILENO);
-		ret += dup2(fd, STDOUT_FILENO);
-		ret += dup2(fd, STDERR_FILENO);
-		if (ret < 0) {
+		if (dup2(fd, STDIN_FILENO) < 0) {
+			return errno;
+		}
+		if (dup2(fd, STDOUT_FILENO) < 0) {
+			return errno;
+		}
+		if (dup2(fd, STDERR_FILENO) < 0) {
 			return errno;
 		}
 	}
