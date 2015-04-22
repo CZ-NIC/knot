@@ -39,9 +39,12 @@ Server features:
 
 * Adding/removing zones on-the-fly
 * Reconfiguring server instance on-the-fly
-* IPv4 / IPv6 support
+* IPv4 and IPv6 support
 * Semantic checks of zones
+* DDNS support
 * Persistent zone timers
+* Automatic DNSSEC signing
+* Forward and reverse records synthesis
 
 For more info and downloads see `www.knot-dns.cz <https://www.knot-dns.cz>`_.
 
