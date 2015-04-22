@@ -93,11 +93,11 @@ Setup a keyfile for remote control
 
 1. Generate key::
 
-     # dnssec-keygen -a hmac-md5 -b 256 -n HOST knotc-key
+     $ dnssec-keygen -a hmac-md5 -b 256 -n HOST knotc-key
 
 2. Extract secret in base64 format and create keyfile::
 
-     # echo "knotc-key hmac-md5 <secret>" > knotc.key
+     $ echo "knotc-key hmac-md5 <secret>" > knotc.key
 
 Make sure the key can be read/written only by the owner for security reasons.
 
@@ -106,14 +106,14 @@ Reload server remotely
 
 ::
 
-  # knotc -s 127.0.0.1 -k knotc.key reload
+  $ knotc -s 127.0.0.1 -k knotc.key reload
 
 Flush all zones locally
 .......................
 
 ::
 
-  # knotc -c knot.conf flush
+  $ knotc -c knot.conf flush
 
 See Also
 --------

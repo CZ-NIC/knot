@@ -120,7 +120,7 @@ Generate key:
 .sp
 .nf
 .ft C
-# dnssec\-keygen \-a hmac\-md5 \-b 256 \-n HOST knotc\-key
+$ dnssec\-keygen \-a hmac\-md5 \-b 256 \-n HOST knotc\-key
 .ft P
 .fi
 .UNINDENT
@@ -132,7 +132,7 @@ Extract secret in base64 format and create keyfile:
 .sp
 .nf
 .ft C
-# echo "knotc\-key hmac\-md5 <secret>" > knotc.key
+$ echo "knotc\-key hmac\-md5 <secret>" > knotc.key
 .ft P
 .fi
 .UNINDENT
@@ -146,7 +146,7 @@ Make sure the key can be read/written only by the owner for security reasons.
 .sp
 .nf
 .ft C
-# knotc \-s 127.0.0.1 \-k knotc.key reload
+$ knotc \-s 127.0.0.1 \-k knotc.key reload
 .ft P
 .fi
 .UNINDENT
@@ -157,7 +157,7 @@ Make sure the key can be read/written only by the owner for security reasons.
 .sp
 .nf
 .ft C
-# knotc \-c knot.conf flush
+$ knotc \-c knot.conf flush
 .ft P
 .fi
 .UNINDENT
