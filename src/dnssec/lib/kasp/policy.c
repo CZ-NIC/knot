@@ -50,7 +50,7 @@ void dnssec_kasp_policy_defaults(dnssec_kasp_policy_t *policy)
 
 	policy->dnskey_ttl = 1200;
 
-	policy->algorithm = DNSSEC_KEY_ALGORITHM_RSA_SHA512;
+	policy->algorithm = DNSSEC_KEY_ALGORITHM_RSA_SHA256;
 	policy->ksk_size = 2048;
 	policy->zsk_size = 1024;
 	policy->zsk_lifetime = 30 * 24 * 60 * 60;
