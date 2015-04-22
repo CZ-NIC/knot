@@ -33,7 +33,7 @@ Now let's go step by step through this configuration:
   all on port 53.
 - The :ref:`zone section<Zone section>` defines the zones that the server will
   serve. In this case we defined one zone named *example.com* which is stored
-  in the zone file */var/lib/knot/zones/example.com.zone*.
+  in the zone file :file:`/var/lib/knot/zones/example.com.zone`.
 - The :ref:`log section<Logging section>` defines the log facilities for
   the server. In this example we told Knot DNS to send its log messages with
   the severity ``info`` or more serious to the syslog.
