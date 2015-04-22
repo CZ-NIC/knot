@@ -51,31 +51,6 @@ support in Knot DNS utilities.
 If the libsystemd library is available, the server will use systemd's startup
 notifications mechanism and journald for logging.
 
-You can probably find OpenSSL library already included in
-your system or distribution.  If not, OpenSSL can be found at
-http://www.openssl.org.
-
-.. _Userspace RCU:
-
-Userspace RCU
--------------
-
-`Liburcu <http://urcu.so>`_ is a userspace RCU (read-copy-update) library.
-This data synchronization library provides read-side access which scales
-linearly with the number of cores. It does so by allowing multiple
-copies of a given data structure to live at the same time, and by
-monitoring the data structure accesses to detect grace periods after
-which memory reclamation is possible.
-
-Binary packages for Debian can be found under ``liburcu1`` for the
-library and ``liburcu-dev`` for development files.
-
-Minimum supported version of Userspace RCU library is 0.5.4,
-but we recommend using latest available version.
-It is crucial especially on non-Linux systems, as we got some compatibility
-patches accepted to later releases of Userspace RCU.
-OpenBSD, NetBSD and OS X platforms are supported from version 0.7.0.
-
 .. _Installation from source code:
 
 Installation from source code
@@ -105,16 +80,6 @@ For all available configure options run::
 
     $ ./configure --help
 
-If you have trouble with unknown syscalls under valgrind, disable recvmmsg by
-adding a parameter ``--enable-recvmmsg=no`` to configure.
-
-Knot DNS has also support for link time optimizations.  You can enable
-it by the configure parameter ``./configure --enable-lto=yes``.  It is
-however disabled by default as it is known to be broken in some
-compiler versions and may result in an unexpected behaviour.  Link
-time optimizations also disables the possibility to debug the
-resulting binaries.
-
 Compilation
 -----------
 
@@ -123,10 +88,6 @@ After running ``./configure`` you can compile Knot DNS by running
 files::
 
     $ make
-
-Knot DNS build process is safe to parallelize using ``make -j N``,
-where N is a number of concurrent processes. Using this the compilation speed
-can be increased.
 
 Installation
 ------------
