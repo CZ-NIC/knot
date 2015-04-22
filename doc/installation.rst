@@ -159,7 +159,7 @@ Fedora Linux
 ------------
 
 The RPM packages for Knot DNS are available in official Fedora
-repositories since Fedora 18 (Spherical Cow). Look for ``knot``
+repositories since Fedora 18 (Spherical Cow). Search for the ``knot``
 package in your package manager. To install the package using Yum, run
 the following command as the root user::
 
