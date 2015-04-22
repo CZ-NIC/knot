@@ -60,8 +60,11 @@ _keymgr()
 			;;
 		policy)
 			case $subcmd in
-				add|list|remove|set|show)
-					# TODO
+				add|list)
+					;;
+				remove|set|show)
+					local c=$( keymgr policy list )
+					COMPREPLY=( $( compgen -W "$c" -- "$cur" ) )
 					;;
 				*)
 					[[ $cword -eq $subcword ]] && \
@@ -72,8 +75,11 @@ _keymgr()
 			;;
 		zone)
 			case $subcmd in
-				add|key|list|remove|set|show)
-					# TODO
+				add|list)
+					;;
+				key|remove|set|show)
+					local c=$( keymgr zone list )
+					COMPREPLY=( $( compgen -W "$c" -- "$cur" ) )
 					;;
 				*)
 					[[ $cword -eq $subcword ]] && \
