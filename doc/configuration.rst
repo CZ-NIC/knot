@@ -306,11 +306,11 @@ DNSSEC KASP database
 
 The configuration for DNSSEC is stored in a :abbr:`KASP (Key And Signature
 Policy)` database. The database is simply a directory on the file-system
-containing files in the JSON format. The database contains:
+containing files in the JSON format. The database contains
 
-- definitions of signing policies,
-- zones configuration,
-- and private key material.
+- definitions of signing policies;
+- zones configuration; and
+- private key material.
 
 The :doc:`keymgr <man_keymgr>` utility serves for the database maintenance.
 To initialize the database, run::
@@ -330,9 +330,9 @@ To initialize the database, run::
 Automatic key management
 ------------------------
 
-For use automatic key management, a signing policy has to be defined in the
+For automatic key management, a signing policy has to be defined in the
 first place. This policy specifies how a zone is signed (i.e. signing
-algorithm, key size, signature lifetime, and key lifetime, etc.).
+algorithm, key size, signature lifetime, key lifetime, etc.).
 
 To create a new policy named *default_rsa* using *RSA-SHA-256* algorithm for
 signing keys, 1024-bit long ZSK, and 2048-bit long KSK, run::
@@ -357,16 +357,16 @@ The configuration fragment might look similar to::
 
   template:
     - id: default
-    - storage: /var/lib/knot
-    - dnssec-keydir: kasp
+      storage: /var/lib/knot
+      dnssec-keydir: kasp
 
   zone:
     - domain: myzone.test
-    - dnssec-enable: on
+      dnssec-enable: on
 
 Finally, reload the server::
 
-  $ knotd reload
+  $ knotc reload
 
 The server will generate initial signing keys and sign the zone properly. Check
 the server logs to see whether everything went well.
@@ -501,11 +501,11 @@ The signing process consists of the following steps:
 
 The signing is initiated on the following occasions:
 
-- start of the server,
-- zone reload,
-- reaching the signature refresh period,
-- received DDNS update, and
-- forced zone resign was issued with ``knotc signzone``.
+- Start of the server
+- Zone reload
+- Reaching the signature refresh period
+- Received DDNS update
+- Forced zone resign issued with ``knotc signzone``
 
 On forced zone resign, all signatures in the zone are dropped and recreated.
 
