@@ -30,19 +30,23 @@ Required libraries
 
 Knot DNS requires few libraries to be compiled:
 
-* OpenSSL, at least 1.0.0 (1.0.1 is required for ECDSA)
+* GnuTLS, at least 3.0
+* Jansson, at least 2.3
 * Userspace RCU, at least 0.5.4
-* libcap-ng, at least 0.6.4 (optional library)
-* lmdb (optional library)
-* libsystemd (optional library)
+* lmdb (included)
+* libcap-ng, at least 0.6.4 (optional)
+* libidn (optional)
+* libsystemd (optional)
+
+The LMDB library is required. It is included with the Knot DNS source code,
+however linking with the system library is preferred.
 
 If the libcap-ng library is available, Knot DNS will take advantage of the
-POSIX 1003.1e capabilites(7) by sandboxing the exposed threads.  Most
-rights are stripped from the exposed threads for security reasons.
+POSIX 1003.1e :manpage:`capabilites(7)` by sandboxing the exposed threads.
+Most rights are stripped from the exposed threads for security reasons.
 
-If the LMDB library is available, the server will be able to store timers
-for slave zones in file-backed storage and the timers will persist across
-server restarts.
+The libidn library is a prerequisite for IDNA2003 (International Domain Names)
+support in Knot DNS utilities.
 
 If the libsystemd library is available, the server will use systemd's startup
 notifications mechanism and journald for logging.
