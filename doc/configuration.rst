@@ -116,8 +116,8 @@ Knot DNS doesn't strictly differ between master and slave zones. The
 only requirement is to have :ref:`master<template_master>` statement set for
 the given zone. Also note that you need to explicitly allow incoming zone
 changed notifications via ``notify`` :ref:`acl_action` through zone's
-:ref:`template_acl` list, otherwise the server reject them. If the zone
-file doesn't exist it will be bootstrapped over AXFR::
+:ref:`template_acl` list, otherwise the update will be rejected by the server.
+If the zone file doesn't exist it will be bootstrapped over AXFR::
 
     remote:
       - id: master
@@ -141,8 +141,9 @@ for failover if the connection with the primary master fails.
 The list is rotated in this case, and a new primary is elected.
 The preference list is reset on the configuration reload.
 
-You can also use TSIG for authenticated communication. For this, you need
-to configure a key and assign it to the remote and to the proper ACL rule::
+To use TSIG for transfer authentication, configure a TSIG key and assign the
+key to the remote. If the notifications are used, the same key should be
+configured in a proper ACL rule::
 
     key:
       - id: slave1_key
@@ -163,9 +164,8 @@ to configure a key and assign it to the remote and to the proper ACL rule::
 Master zone
 ===========
 
-Master zone often needs to specify who is allowed to transfer the zone. This
-is done by defining ACL rules with ``xfer`` action. An ACL rule can consists
-of single address or network subnet or/with a TSIG key::
+An ACL with the ``xfer`` action must be configured to allow outgoing zone
+transfers. An ACL rule consists of a single address or a network subnet::
 
     remote:
       - id: slave1
@@ -187,7 +187,7 @@ of single address or network subnet or/with a TSIG key::
         notify: slave1
         acl: [slave1_acl, others_acl]
 
-And TSIG application::
+Optionally a TSIG key can be specified::
 
     key:
       - id: slave1_key
@@ -212,14 +212,13 @@ And TSIG application::
 Dynamic updates
 ===============
 
-Dynamic updates for the zone is allowed via proper ACL rule with ``update``
-action. If the zone is configured as a slave and DNS update messages is
-accepted, server forwards the message to its primary master. When it
-receives the response from primary master, it forwards it back to the
-originator. This finishes the transaction.
+Dynamic updates for the zone are allowed via proper ACL rule with the
+``update`` action. If the zone is configured as a slave and DNS update
+message is accepted, the server forwards the message to its primary master.
+The master's response is then forwarded back to the originator.
 
-However, if the zone is configured as master, it accepts such an UPDATE and
-processes it::
+However, if the zone is configured as master, the update is accepted and
+processed::
 
     acl:
       - id: update_acl
@@ -246,8 +245,8 @@ You can enable RRL with the :ref:`server_rate-limit` option in the
 :ref:`server section<Server section>`. Setting to a value greater than ``0``
 means that every flow is allowed N responses per second, (i.e. ``rate-limit
 50;`` means ``50`` responses per second). It is also possible to
-configure :ref:`server_rate-limit-slip` interval, which causes every Nth
-``blocked`` response to be slipped as a truncated response::
+configure :ref:`server_rate-limit-slip` interval, which causes every N\ :sup:`th`
+blocked response to be slipped as a truncated response::
 
     server:
         rate-limit: 200     # Each flow is allowed to 200 resp. per second
@@ -557,7 +556,7 @@ Query modules
 =============
 
 Knot DNS supports configurable query modules that can alter the way
-queries are processed. The concept is quite simple - each query
+queries are processed. The concept is quite simple -- each query
 requires a finite number of steps to be resolved. We call this set of
 steps a query plan, an abstraction that groups these steps into
 several stages.
@@ -600,10 +599,10 @@ a UNIX socket::
 ``synth_record`` - Automatic forward/reverse records
 ----------------------------------------------------
 
-This module is able to synthetise either forward or reverse records for
+This module is able to synthesize either forward or reverse records for
 given prefix and subnet.
 
-Records are synthetised only if the query can't be satisfied from the zone.
+Records are synthesized only if the query can't be satisfied from the zone.
 Both IPv4 and IPv6 are supported.
 
 *Note: long names are snipped for readability.*
