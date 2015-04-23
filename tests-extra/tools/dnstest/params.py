@@ -35,7 +35,8 @@ debug = False
 valgrind_bin = get_binary("KNOT_TEST_VALGRIND", "valgrind")
 # KNOT_TEST_VALGRIND_FLAGS - valgrind flags.
 valgrind_flags = get_param("KNOT_TEST_VALGRIND_FLAGS",
-                           "--leak-check=full --track-origins=yes --vgdb=yes")
+                           "--leak-check=full --track-origins=yes --vgdb=yes " +
+                           "--verbose")
 # KNOT_TEST_GDB - gdb binary.
 gdb_bin = get_binary("KNOT_TEST_GDB", "gdb")
 # KNOT_TEST_VGDB - vgdb binary.
