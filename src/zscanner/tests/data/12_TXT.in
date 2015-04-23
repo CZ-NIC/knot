@@ -24,6 +24,8 @@ second"
 third						; Second string
 )
 @	TXT	"abcdefghijklmnopqrstuvwxyz1234567890ABCDEFGHIJKLMNabcdefghijklmnopqrstuvwxyz1234567890ABCDEFGHIJKLMNabcdefghijklmnopqrstuvwxyz1234567890ABCDEFGHIJKLMNabcdefghijklmnopqrstuvwxyz1234567890ABCDEFGHIJKLMNabcdefghijklmnopqrstuvwxyz1234567890ABCDEFGHIJKLMN1234\053"	; Text string of maximal length (255 chars)
+@	TXT	"abcdefghijklmnopqrstuvwxyz1234567890ABCDEFGHIJKLMNabcdefghijklmnopqrstuvwxyz1234567890ABCDEFGHIJKLMNabcdefghijklmnopqrstuvwxyz1234567890ABCDEFGHIJKLMNabcdefghijklmnopqrstuvwxyz1234567890ABCDEFGHIJKLMNabcdefghijklmnopqrstuvwxyz1234567890ABCDEFGHIJKLMN1234\0536"	; Minimum overflowed text string which should be divided into two strings.
+@	TXT	"abcdefghijklmnopqrstuvwxyz1234567890ABCDEFGHIJKLMNabcdefghijklmnopqrstuvwxyz1234567890ABCDEFGHIJKLMNabcdefghijklmnopqrstuvwxyz1234567890ABCDEFGHIJKLMNabcdefghijklmnopqrstuvwxyz1234567890ABCDEFGHIJKLMNabcdefghijklmnopqrstuvwxyz1234567890ABCDEFGHIJKLMN1234\053\054"	; Minimum overflowed text string which should be divided into two strings (decimal version).
 @	txt	""				; Type in lower-case
 
 ; KO
@@ -33,4 +35,3 @@ third						; Second string
 @	TXT	\01		; Missing digit in decimal notation
 @	TXT	\256		; 8bit overflow in decimal notation
 @	TXT	"""		; '"' char without forward slash
-@	TXT	"abcdefghijklmnopqrstuvwxyz1234567890ABCDEFGHIJKLMNabcdefghijklmnopqrstuvwxyz1234567890ABCDEFGHIJKLMNabcdefghijklmnopqrstuvwxyz1234567890ABCDEFGHIJKLMNabcdefghijklmnopqrstuvwxyz1234567890ABCDEFGHIJKLMNabcdefghijklmnopqrstuvwxyz1234567890ABCDEFGHIJKLMN1234\0536"	; Maximal length overflow
