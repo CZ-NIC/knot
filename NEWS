@@ -1,16 +1,11 @@
-Knot DNS 1.99.1 (2015-02-11)
-============================
-
-Features:
----------
- - DNSSEC: basic KASP support (generate initial keys, ZSK rollover)
-
-Knot DNS 1.99.0 (2014-12-31)
-============================
+Knot DNS 2.0.0-beta (2015-04-23)
+================================
 
 Features:
 ---------
  - DNSSEC: separate library, switch to GnuTLS, new utilities
+ - DNSSEC: basic KASP support (generate initial keys, ZSK rollover)
+ - configuration: new text format in YAML, binary store in LMDB
 
 Knot DNS 1.6.3 (2015-04-08)
 ===========================
