@@ -97,10 +97,14 @@ _keymgr()
 				add)
 					count=$(($count + 1))
 					if ! [[ $count -eq $cword ]]; then
+						count=$(($count + 1))
 						case $sub3cmd in
 							policy)
-								local c=$( keymgr policy list 2>/dev/null )
-								COMPREPLY=( $( compgen -W "$c" -- "$cur" ) )
+								count=$(($count + 1))
+								if [[ $count -eq $cword ]]; then
+									local c=$( keymgr policy list 2>/dev/null )
+									COMPREPLY=( $( compgen -W "$c" -- "$cur" ) )
+								fi
 								;;
 							*)
 								COMPREPLY=( $( compgen -W 'policy' -- "$cur" ) )
@@ -196,10 +200,14 @@ _keymgr()
 				set)
 					count=$(($count + 1))
 					if ! [[ $count -eq $cword ]]; then
+						count=$(($count + 1))
 						case $sub3cmd in
 							policy)
-								local c=$( keymgr policy list 2>/dev/null )
-								COMPREPLY=( $( compgen -W "$c" -- "$cur" ) )
+								count=$(($count + 1))
+								if [[ $count -eq $cword ]]; then
+									local c=$( keymgr policy list 2>/dev/null )
+									COMPREPLY=( $( compgen -W "$c" -- "$cur" ) )
+								fi
 								;;
 							*)
 								COMPREPLY=( $( compgen -W 'policy' -- "$cur" ) )
