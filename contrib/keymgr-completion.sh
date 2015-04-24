@@ -14,21 +14,12 @@ _keymgr()
 			return 0
 			;;
 		-d|--dir)
-			_filedir
+			_filedir -d
 			return 0;
 			;;
 	esac
 
-	#local subcword cmd subcmd
-	#for (( subcword=1; subcword < ${#words[@]}-1; subcword++ )); do
-		#[[ ${words[subcword]} == @(-d|--dir) ]] && return 0
-		#[[ -n $cmd ]] && subcmd=${words[subcword]} && break
-		#[[ ${words[subcword]} != -* ]] && \
-			#cmd=${words[subcword]}
-	#done
-
 	local count start cmd sub1cmd sub2cmd sub3cmd
-	count=$(( ${#words[@]} - 1 ))
 	if [[ ${words[1]} == -* ]]; then
 		start=3
 	else
@@ -38,33 +29,19 @@ _keymgr()
 	sub1cmd=${words[$((start + 1))]}
 	sub2cmd=${words[$((start + 2))]}
 	sub3cmd=${words[$((start + 3))]}
+	sub4cmd=${words[$((start + 4))]}
 
-	#echo $count
-	#echo -n "[cmd:"
-	#echo -n $cmd
-	#echo -n "; sub1cmd:"
-	#echo -n $sub1cmd
-	#echo -n "; sub2cmd:"
-	#echo -n $sub2cmd
-	#echo -n "; sub3cmd:"
-	#echo -n $sub3cmd
-	#echo "]"
+	if [[ -z $cmd ]]; then
+		case $cur in
+			-*)
+				local c="--version --help --dir"
+				COMPREPLY=( $( compgen -W "$c" -- "$cur" ) )
+				return 0
+				;;
+		esac
+	fi
 
-	#if [[ -z $cmd ]]; then
-		#case $cur in
-			#-*)
-				#local c="--version --help --dir"
-				#COMPREPLY=( $( compgen -W "$c" -- "$cur" ) )
-				#return 0
-				#;;
-			#*)
-				#local c="init zone policy keystore"
-				#COMPREPLY=( $( compgen -W "$c" -- "$cur" ) )
-				#return 0
-				#;;
-		#esac
-	#fi
-
+	count=1      #counts how many levels are we deep; required for user-input strings
 	case $cmd in
 		init)
 			;;
@@ -73,77 +50,171 @@ _keymgr()
 				list)
 					;;
 				*)
-					[[ $cword -eq $subcword ]] && \
-						COMPREPLY=( $( compgen -W 'list' \
-						-- "$cur" ) )
+					COMPREPLY=( $( compgen -W 'list' -- "$cur" ) )
 					;;
 			esac
 			;;
 		policy)
+			count=$(($count + 1))
 			case $sub1cmd in
 				add)
-					if [[ -n $sub2cmd ]]; then
-						case $sub3cmd in
-							*)
-								COMPREPLY=( $( compgen -W 'algorithm dnskey-ttl \
-									ksk-size zsk-size zsk-lifetime rrsig-lifetime \
-									rrsig-refresh nsec3 soa-min-ttl zone-max-ttl delay' \
-									-- "$cur" ) )
-								;;
-						esac
+					count=$(($count + 1))
+					if ! [[ $count -eq $cword ]]; then
+						COMPREPLY=( $( compgen -W 'algorithm dnskey-ttl \
+							ksk-size zsk-size zsk-lifetime rrsig-lifetime \
+							rrsig-refresh nsec3 soa-min-ttl zone-max-ttl delay' \
+							-- "$cur" ) )
 					fi
 					;;
-				list)
-					;;
-				remove|show)
-					local c=$( keymgr policy list )
-					COMPREPLY=( $( compgen -W "$c" -- "$cur" ) )
-					;;
-				set)
-					if [[ -z $sub2cmd ]]; then
+				list|remove|show)
+					count=$(($count + 1))
+					if [[ $count -eq $cword ]]; then
 						local c=$( keymgr policy list )
 						COMPREPLY=( $( compgen -W "$c" -- "$cur" ) )
-					else
+					fi
+					;;
+				set)
+					count=$(($count + 1))
+					if ! [[ $count -eq $cword ]]; then
 						COMPREPLY=( $( compgen -W 'algorithm dnskey-ttl \
 									ksk-size zsk-size zsk-lifetime rrsig-lifetime \
 									rrsig-refresh nsec3 soa-min-ttl zone-max-ttl delay' \
 									-- "$cur" ) )
+					else
+						local c=$( keymgr policy list )
+						COMPREPLY=( $( compgen -W "$c" -- "$cur" ) )
 					fi
 					;;
 				*)
 					COMPREPLY=( $( compgen -W 'add list remove set show' \
-						-- "$cur" ) )
+						        -- "$cur" ) )
 					;;
 			esac
 			;;
 		zone)
+			count=$(($count + 1))
 			case $sub1cmd in
 				add)
+					count=$(($count + 1))
+					if ! [[ $count -eq $cword ]]; then
+						case $sub3cmd in
+							policy)
+								local c=$( keymgr policy list )
+								COMPREPLY=( $( compgen -W "$c" -- "$cur" ) )
+								;;
+							*)
+								COMPREPLY=( $( compgen -W 'policy' -- "$cur" ) )
+								;;
+						esac
+					fi
+					;;
+				key)
+					count=$(($count + 1))
+					case $sub2cmd in
+						generate)
+							count=$(($count + 1))
+							if [[ $count -eq $cword ]]; then
+								local c=$( keymgr zone list )
+								COMPREPLY=( $( compgen -W "$c" -- "$cur" ) )
+							else
+								COMPREPLY=( $( compgen -W 'algorithm size \
+								    ksk publish active retire remove' -- "$cur" ) )
+							fi
+							;;
+						import)
+							count=$(($count + 1))
+							if ! [[ $count -eq $cword ]]; then
+								_filedir
+							else
+								local c=$( keymgr zone list )
+								COMPREPLY=( $( compgen -W "$c" -- "$cur" ) )
+							fi
+							;;
+						list)
+							count=$(($count + 1))
+							if [[ $count -eq $cword ]]; then
+								local c=$( keymgr zone list )
+								COMPREPLY=( $( compgen -W "$c" -- "$cur" ) )
+							fi
+							;;
+						set)
+							count=$(($count + 1))
+							if ! [[ $count -eq $cword ]]; then
+								count=$(($count + 1))
+								if ! [[ $count -eq $cword ]]; then
+									COMPREPLY=( $( compgen -W ' publish \
+										active retire remove' -- "$cur" ) )
+								else
+									local c=$( keymgr zone key list $sub3cmd )
+									COMPREPLY=( $( compgen -W "$c" -- "$cur" ) )
+								fi
+							else
+								local c=$( keymgr zone list )
+								COMPREPLY=( $( compgen -W "$c" -- "$cur" ) )
+							fi
+							;;
+						show)
+							count=$(($count + 1))
+							if ! [[ $count -eq $cword ]]; then
+								local c=$( keymgr zone key list $sub3cmd )
+								COMPREPLY=( $( compgen -W "$c" -- "$cur" ) )
+							else
+								local c=$( keymgr zone list )
+								COMPREPLY=( $( compgen -W "$c" -- "$cur" ) )
+							fi
+							;;
+						*)
+							COMPREPLY=( $( compgen -W 'generate import \
+						        list set show' -- "$cur" ) )
+							;;
+					esac
 					;;
 				list)
 					;;
-				key)
+				remove)
+					count=$(($count + 1))
+					if ! [[ $count -eq $cword ]]; then
+						case $sub3cmd in
+							force)
+								;;
+							*)
+								COMPREPLY=( $( compgen -W 'force' -- "$cur" ) )
+								;;
+						esac
+					else
+						local c=$( keymgr zone list )
+						COMPREPLY=( $( compgen -W "$c" -- "$cur" ) )
+					fi
 					;;
-				remove|show)
-					local c=$( keymgr zone list )
-					COMPREPLY=( $( compgen -W "$c" -- "$cur" ) )
+				show)
+					count=$(($count + 1))
+					if [[ $count -eq $cword ]]; then
+						local c=$( keymgr zone list )
+						COMPREPLY=( $( compgen -W "$c" -- "$cur" ) )
+					fi
 					;;
 				set)
+					count=$(($count + 1))
+					if ! [[ $count -eq $cword ]]; then
+						case $sub3cmd in
+							policy)
+								local c=$( keymgr policy list )
+								COMPREPLY=( $( compgen -W "$c" -- "$cur" ) )
+								;;
+							*)
+								COMPREPLY=( $( compgen -W 'policy' -- "$cur" ) )
+								;;
+						esac
+					else
+						local c=$( keymgr zone list )
+						COMPREPLY=( $( compgen -W "$c" -- "$cur" ) )
+					fi
 					;;
 				*)
 					COMPREPLY=( $( compgen -W 'add key list remove set show' \
-						-- "$cur" ) )
+					    -- "$cur" ) )
 					;;
 			esac
-			;;
-		-d|--dir)
-			_filedir
-			;;
-		-v|--version|-h|--help)
-			;;
-		-*)
-			local c="--version --help --dir"
-			COMPREPLY=( $( compgen -W "$c" -- "$cur" ) )
 			;;
 		*)
 			local c="init zone policy keystore"

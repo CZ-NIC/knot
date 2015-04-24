@@ -95,7 +95,7 @@ _regex_words zone-commands "zone commands" \
 	'l*ist:list all added zones' \
 	'r*emove:remove a zone:$zones' \
 	'se*t:set zone attributes:$zone_set_cmds' \
-	'sh*ow:show zone attributes::$zones'
+	'sh*ow:show zone attributes:$zones'
 zone_cmds=("$reply[@]")
 
 # Arguments to _regex_arguments, built up in array $args.
