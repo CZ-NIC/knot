@@ -30307,6 +30307,11 @@ tr824:
 				*(s->item_length_location) = MAX_ITEM_LENGTH;
 				// _item_length_init equivalent.
 				s->item_length_location = rdata_tail++;
+
+				if (rdata_tail > rdata_stop) {
+					WARN(ZS_TEXT_OVERFLOW);
+					p--; {goto st253;}
+				}
 			}
 
 			*(rdata_tail++) = (*p);
@@ -30329,6 +30334,11 @@ tr834:
 				*(s->item_length_location) = MAX_ITEM_LENGTH;
 				// _item_length_init equivalent.
 				s->item_length_location = rdata_tail++;
+
+				if (rdata_tail > rdata_stop) {
+					WARN(ZS_TEXT_OVERFLOW);
+					p--; {goto st253;}
+				}
 			}
 
 			*(rdata_tail++) = (*p);
@@ -30388,6 +30398,11 @@ tr828:
 				*(s->item_length_location) = MAX_ITEM_LENGTH;
 				// _item_length_init equivalent.
 				s->item_length_location = rdata_tail++;
+
+				if (rdata_tail > rdata_stop) {
+					WARN(ZS_TEXT_OVERFLOW);
+					p--; {goto st253;}
+				}
 			}
 
 			*(rdata_tail++) = (*p);
@@ -30413,6 +30428,11 @@ tr835:
 				*(s->item_length_location) = MAX_ITEM_LENGTH;
 				// _item_length_init equivalent.
 				s->item_length_location = rdata_tail++;
+
+				if (rdata_tail > rdata_stop) {
+					WARN(ZS_TEXT_OVERFLOW);
+					p--; {goto st253;}
+				}
 			}
 
 			*(rdata_tail++) = (*p);
@@ -30469,6 +30489,11 @@ tr829:
 				*(s->item_length_location) = MAX_ITEM_LENGTH;
 				// _item_length_init equivalent.
 				s->item_length_location = rdata_tail++;
+
+				if (rdata_tail > rdata_stop) {
+					WARN(ZS_TEXT_OVERFLOW);
+					p--; {goto st253;}
+				}
 			}
 
 			*rdata_tail = 0;
@@ -30568,6 +30593,11 @@ tr837:
 				*(s->item_length_location) = MAX_ITEM_LENGTH;
 				// _item_length_init equivalent.
 				s->item_length_location = rdata_tail++;
+
+				if (rdata_tail > rdata_stop) {
+					WARN(ZS_TEXT_OVERFLOW);
+					p--; {goto st253;}
+				}
 			}
 
 			*(rdata_tail++) = (*p);
@@ -30590,6 +30620,11 @@ tr844:
 				*(s->item_length_location) = MAX_ITEM_LENGTH;
 				// _item_length_init equivalent.
 				s->item_length_location = rdata_tail++;
+
+				if (rdata_tail > rdata_stop) {
+					WARN(ZS_TEXT_OVERFLOW);
+					p--; {goto st253;}
+				}
 			}
 
 			*(rdata_tail++) = (*p);
@@ -30659,6 +30694,11 @@ tr841:
 				*(s->item_length_location) = MAX_ITEM_LENGTH;
 				// _item_length_init equivalent.
 				s->item_length_location = rdata_tail++;
+
+				if (rdata_tail > rdata_stop) {
+					WARN(ZS_TEXT_OVERFLOW);
+					p--; {goto st253;}
+				}
 			}
 
 			*rdata_tail = 0;

@@ -514,6 +514,11 @@
 				*(s->item_length_location) = MAX_ITEM_LENGTH;
 				// _item_length_init equivalent.
 				s->item_length_location = rdata_tail++;
+
+				if (rdata_tail > rdata_stop) {
+					WARN(ZS_TEXT_OVERFLOW);
+					fhold; fgoto err_line;
+				}
 			}
 
 			*(rdata_tail++) = fc;
@@ -540,6 +545,11 @@
 				*(s->item_length_location) = MAX_ITEM_LENGTH;
 				// _item_length_init equivalent.
 				s->item_length_location = rdata_tail++;
+
+				if (rdata_tail > rdata_stop) {
+					WARN(ZS_TEXT_OVERFLOW);
+					fhold; fgoto err_line;
+				}
 			}
 
 			*rdata_tail = 0;

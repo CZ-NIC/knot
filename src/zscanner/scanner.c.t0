@@ -5750,6 +5750,11 @@ _match:
 				*(s->item_length_location) = MAX_ITEM_LENGTH;
 				// _item_length_init equivalent.
 				s->item_length_location = rdata_tail++;
+
+				if (rdata_tail > rdata_stop) {
+					WARN(ZS_TEXT_OVERFLOW);
+					p--; {cs = 253; goto _again;}
+				}
 			}
 
 			*(rdata_tail++) = (*p);
@@ -5781,6 +5786,11 @@ _match:
 				*(s->item_length_location) = MAX_ITEM_LENGTH;
 				// _item_length_init equivalent.
 				s->item_length_location = rdata_tail++;
+
+				if (rdata_tail > rdata_stop) {
+					WARN(ZS_TEXT_OVERFLOW);
+					p--; {cs = 253; goto _again;}
+				}
 			}
 
 			*rdata_tail = 0;
