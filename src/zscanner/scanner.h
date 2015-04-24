@@ -138,6 +138,8 @@ struct scanner {
 	apl_t    apl;
 	/*! Auxiliary loc structure. */
 	loc_t    loc;
+	/*! Allow text strings longer than 255 characters. */
+	bool     long_string;
 
 	/*! Pointer to the actual dname storage (origin/owner/rdata). */
 	uint8_t  *dname;

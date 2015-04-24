@@ -213,7 +213,12 @@
 
 	# BEGIN - Common r_data item processing
 	action _item_length_init {
-		s->item_length_location = rdata_tail++;
+		if (rdata_tail <= rdata_stop) {
+			s->item_length_location = rdata_tail++;
+		} else {
+			WARN(ZS_RDATA_OVERFLOW);
+			fhold; fgoto err_line;
+		}
 	}
 	action _item_length_exit {
 		s->item_length = rdata_tail - s->item_length_location - 1;
@@ -502,6 +507,15 @@
 	# BEGIN - Text processing
 	action _text_char {
 		if (rdata_tail <= rdata_stop) {
+			// Split long string.
+			if (s->long_string &&
+			    rdata_tail - s->item_length_location == 1 + MAX_ITEM_LENGTH) {
+				// _item_length_exit equivalent.
+				*(s->item_length_location) = MAX_ITEM_LENGTH;
+				// _item_length_init equivalent.
+				s->item_length_location = rdata_tail++;
+			}
+
 			*(rdata_tail++) = fc;
 		} else {
 			WARN(ZS_TEXT_OVERFLOW);
@@ -519,6 +533,15 @@
 
 	action _text_dec_init {
 		if (rdata_tail <= rdata_stop) {
+			// Split long string.
+			if (s->long_string &&
+			    rdata_tail - s->item_length_location == 1 + MAX_ITEM_LENGTH) {
+				// _item_length_exit equivalent.
+				*(s->item_length_location) = MAX_ITEM_LENGTH;
+				// _item_length_init equivalent.
+				s->item_length_location = rdata_tail++;
+			}
+
 			*rdata_tail = 0;
 			s->item_length++;
 		} else {
@@ -569,8 +592,17 @@
 	# Text string with forward 1-byte length.
 	text_string = text >_item_length_init %_item_length_exit;
 
+	action _text_array_init {
+		s->long_string = true;
+	}
+	action _text_array_exit {
+		s->long_string = false;
+	}
+
 	# Text string array as one rdata item.
-	text_array = (text_string . (sep . text_string)* . sep?);
+	text_array =
+		( (text_string . (sep . text_string)* . sep?)
+		) >_text_array_init %_text_array_exit $!_text_array_exit;
 	# END
 
 	# BEGIN - TTL directive processing
