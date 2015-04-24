@@ -69,7 +69,7 @@ _keymgr()
 				list|remove|show)
 					count=$(($count + 1))
 					if [[ $count -eq $cword ]]; then
-						local c=$( keymgr policy list )
+						local c=$( keymgr policy list 2>/dev/null )
 						COMPREPLY=( $( compgen -W "$c" -- "$cur" ) )
 					fi
 					;;
@@ -81,7 +81,7 @@ _keymgr()
 									rrsig-refresh nsec3 soa-min-ttl zone-max-ttl delay' \
 									-- "$cur" ) )
 					else
-						local c=$( keymgr policy list )
+						local c=$( keymgr policy list 2>/dev/null )
 						COMPREPLY=( $( compgen -W "$c" -- "$cur" ) )
 					fi
 					;;
@@ -99,7 +99,7 @@ _keymgr()
 					if ! [[ $count -eq $cword ]]; then
 						case $sub3cmd in
 							policy)
-								local c=$( keymgr policy list )
+								local c=$( keymgr policy list 2>/dev/null )
 								COMPREPLY=( $( compgen -W "$c" -- "$cur" ) )
 								;;
 							*)
@@ -114,7 +114,7 @@ _keymgr()
 						generate)
 							count=$(($count + 1))
 							if [[ $count -eq $cword ]]; then
-								local c=$( keymgr zone list )
+								local c=$( keymgr zone list 2>/dev/null )
 								COMPREPLY=( $( compgen -W "$c" -- "$cur" ) )
 							else
 								COMPREPLY=( $( compgen -W 'algorithm size \
@@ -126,14 +126,14 @@ _keymgr()
 							if ! [[ $count -eq $cword ]]; then
 								_filedir
 							else
-								local c=$( keymgr zone list )
+								local c=$( keymgr zone list 2>/dev/null )
 								COMPREPLY=( $( compgen -W "$c" -- "$cur" ) )
 							fi
 							;;
 						list)
 							count=$(($count + 1))
 							if [[ $count -eq $cword ]]; then
-								local c=$( keymgr zone list )
+								local c=$( keymgr zone list 2>/dev/null )
 								COMPREPLY=( $( compgen -W "$c" -- "$cur" ) )
 							fi
 							;;
@@ -145,21 +145,21 @@ _keymgr()
 									COMPREPLY=( $( compgen -W ' publish \
 										active retire remove' -- "$cur" ) )
 								else
-									local c=$( keymgr zone key list $sub3cmd )
+									local c=$( keymgr zone key list $sub3cmd 2>/dev/null )
 									COMPREPLY=( $( compgen -W "$c" -- "$cur" ) )
 								fi
 							else
-								local c=$( keymgr zone list )
+								local c=$( keymgr zone list 2>/dev/null )
 								COMPREPLY=( $( compgen -W "$c" -- "$cur" ) )
 							fi
 							;;
 						show)
 							count=$(($count + 1))
 							if ! [[ $count -eq $cword ]]; then
-								local c=$( keymgr zone key list $sub3cmd )
+								local c=$( keymgr zone key list $sub3cmd 2>/dev/null )
 								COMPREPLY=( $( compgen -W "$c" -- "$cur" ) )
 							else
-								local c=$( keymgr zone list )
+								local c=$( keymgr zone list 2>/dev/null )
 								COMPREPLY=( $( compgen -W "$c" -- "$cur" ) )
 							fi
 							;;
@@ -182,14 +182,14 @@ _keymgr()
 								;;
 						esac
 					else
-						local c=$( keymgr zone list )
+						local c=$( keymgr zone list 2>/dev/null )
 						COMPREPLY=( $( compgen -W "$c" -- "$cur" ) )
 					fi
 					;;
 				show)
 					count=$(($count + 1))
 					if [[ $count -eq $cword ]]; then
-						local c=$( keymgr zone list )
+						local c=$( keymgr zone list 2>/dev/null )
 						COMPREPLY=( $( compgen -W "$c" -- "$cur" ) )
 					fi
 					;;
@@ -198,7 +198,7 @@ _keymgr()
 					if ! [[ $count -eq $cword ]]; then
 						case $sub3cmd in
 							policy)
-								local c=$( keymgr policy list )
+								local c=$( keymgr policy list 2>/dev/null )
 								COMPREPLY=( $( compgen -W "$c" -- "$cur" ) )
 								;;
 							*)
@@ -206,7 +206,7 @@ _keymgr()
 								;;
 						esac
 					else
-						local c=$( keymgr zone list )
+						local c=$( keymgr zone list 2>/dev/null )
 						COMPREPLY=( $( compgen -W "$c" -- "$cur" ) )
 					fi
 					;;
