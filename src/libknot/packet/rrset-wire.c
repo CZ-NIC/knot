@@ -658,7 +658,7 @@ static int parse_rdata(const uint8_t *pkt_wire, size_t *pos, size_t pkt_size,
 	knot_rdata_t *rr = knot_rdataset_at(rrs, rrs->rr_count - 1);
 	assert(rr);
 	knot_rdata_set_ttl(rr, ttl);
-	uint8_t *dst = knot_rdata_data(rr);;
+	uint8_t *dst = knot_rdata_data(rr);
 	size_t dst_avail = buffer_size;
 
 	/* Parse RDATA */
