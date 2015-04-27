@@ -149,7 +149,7 @@ _keymgr()
 									COMPREPLY=( $( compgen -W ' publish \
 										active retire remove' -- "$cur" ) )
 								else
-									local c=$( keymgr zone key list $sub3cmd 2>/dev/null )
+									local c=$( keymgr zone key list $sub3cmd 2>/dev/null | cut -f 2 -d ' ' )
 									COMPREPLY=( $( compgen -W "$c" -- "$cur" ) )
 								fi
 							else
@@ -160,7 +160,7 @@ _keymgr()
 						show)
 							count=$(($count + 1))
 							if ! [[ $count -eq $cword ]]; then
-								local c=$( keymgr zone key list $sub3cmd 2>/dev/null )
+								local c=$( keymgr zone key list $sub3cmd 2>/dev/null | cut -f 2 -d ' ' )
 								COMPREPLY=( $( compgen -W "$c" -- "$cur" ) )
 							else
 								local c=$( keymgr zone list 2>/dev/null )
