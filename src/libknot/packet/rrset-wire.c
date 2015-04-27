@@ -249,10 +249,10 @@ static int rdata_len_block(const uint8_t **src, size_t *src_avail,
  */
 static int rdata_len(const uint8_t **src, size_t *src_avail,
                      const uint8_t *pkt_wire,
-                     const knot_rdata_descriptor_t *desc, size_t *len)
+                     const knot_rdata_descriptor_t *desc)
 {
 	int ret;
-	size_t _len = 0;
+	int _len = 0;
 	const uint8_t *_src = *src;
 	size_t _src_avail = *src_avail;
 
@@ -265,9 +265,7 @@ static int rdata_len(const uint8_t **src, size_t *src_avail,
 		_len += ret;
 	}
 
-	*len = _len;
-
-	return KNOT_EOK;
+	return _len;
 }
 
 /*- RRSet to wire -----------------------------------------------------------*/
@@ -638,10 +636,10 @@ static int parse_rdata(const uint8_t *pkt_wire, size_t *pos, size_t pkt_size,
 	const uint8_t *src = pkt_wire + *pos;
 	size_t src_avail = rdlength;
 
-	size_t buffer_size = 0;
-	int ret = rdata_len(&src, &src_avail, pkt_wire, desc, &buffer_size);
-	if (ret != KNOT_EOK) {
-		return ret;
+	int buffer_size = 0;
+	buffer_size = rdata_len(&src, &src_avail, pkt_wire, desc);
+	if (buffer_size < 0) {
+		return buffer_size;
 	}
 	
 	if (buffer_size > MAX_RDLENGTH) {
@@ -650,7 +648,7 @@ static int parse_rdata(const uint8_t *pkt_wire, size_t *pos, size_t pkt_size,
 	}
 
 	knot_rdataset_t *rrs = &rrset->rrs;
-	ret = knot_rdataset_reserve(rrs, buffer_size, mm);
+	int ret = knot_rdataset_reserve(rrs, buffer_size, mm);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
@@ -674,7 +672,11 @@ static int parse_rdata(const uint8_t *pkt_wire, size_t *pos, size_t pkt_size,
 		return ret;
 	}
 
-	assert(src_avail > 0); /* Trailing data in message. */
+	if (src_avail > 0) {
+		/* Trailing data in message. */
+		knot_rdataset_unreserve(rrs, mm);
+		return KNOT_EMALF;
+	}
 
 	ret = knot_rdataset_sort_at(rrs, rrs->rr_count - 1, mm);
 	if (ret != KNOT_EOK) {
