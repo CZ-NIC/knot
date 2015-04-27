@@ -234,7 +234,7 @@ int knot_rdataset_reserve(knot_rdataset_t *rrs, size_t size, mm_ctx_t *mm)
 	size_t total_size = knot_rdataset_size(rrs);
 	size_t new_size = total_size + knot_rdata_array_size(size);
 
-	void *tmp = mm_realloc(mm, rrs->data, new_size, total_size);
+	uint8_t *tmp = mm_realloc(mm, rrs->data, new_size, total_size);
 
 	if (!tmp) {
 		return KNOT_ENOMEM;
@@ -405,8 +405,9 @@ int knot_rdataset_sort_at(knot_rdataset_t *rrs, size_t pos, mm_ctx_t *mm)
 	knot_rdata_init(tmp_rr, size, rdata, ttl);
 
 	// Move the array or just part of it
-	memmove(earlier_rr + knot_rdata_array_size(size), earlier_rr,
-	        (last_rr + knot_rdata_array_size(knot_rdata_rdlen(last_rr))) - earlier_rr);
+	knot_rdata_t *earlier_rr_moved = earlier_rr + knot_rdata_array_size(size);
+	size_t last_rr_size = knot_rdata_array_size(knot_rdata_rdlen(last_rr));
+	memmove(earlier_rr_moved, earlier_rr, (last_rr + last_rr_size) - earlier_rr);
 
 	// Set new RR
 	knot_rdata_init(earlier_rr, size, knot_rdata_data(tmp_rr), ttl);
