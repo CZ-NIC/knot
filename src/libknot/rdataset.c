@@ -232,8 +232,9 @@ int knot_rdataset_reserve(knot_rdataset_t *rrs, size_t size, mm_ctx_t *mm)
 	}
 
 	size_t total_size = knot_rdataset_size(rrs);
+	size_t new_size = total_size + knot_rdata_array_size(size);
 
-	void *tmp = mm_realloc(mm, rrs->data, total_size + knot_rdata_array_size(size), total_size);
+	void *tmp = mm_realloc(mm, rrs->data, new_size, total_size);
 
 	if (!tmp) {
 		return KNOT_ENOMEM;
