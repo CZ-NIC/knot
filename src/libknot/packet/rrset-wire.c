@@ -674,11 +674,7 @@ static int parse_rdata(const uint8_t *pkt_wire, size_t *pos, size_t pkt_size,
 		return ret;
 	}
 
-	if (src_avail > 0) {
-		/* Trailing data in message. */
-		knot_rdataset_unreserve(rrs, mm);
-		return KNOT_EMALF;
-	}
+	assert(src_avail > 0); /* Trailing data in message. */
 
 	ret = knot_rdataset_sort_at(rrs, rrs->rr_count - 1, mm);
 	if (ret != KNOT_EOK) {
