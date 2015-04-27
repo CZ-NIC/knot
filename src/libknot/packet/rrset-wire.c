@@ -232,6 +232,10 @@ static int rdata_len_block(const uint8_t **src, size_t *src_avail,
 		/* Fixed size block */
 		assert(block_type > 0);
 		ret = block_type;
+		if (*src_avail < ret) {
+			return KNOT_EMALF;
+		}
+		
 		*src += ret;
 		*src_avail -= ret;
 		break;
