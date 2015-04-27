@@ -265,6 +265,11 @@ static int rdata_len(const uint8_t **src, size_t *src_avail,
 		_len += ret;
 	}
 
+	if (_src_avail > 0) {
+		/* Trailing data in message. */
+		return KNOT_EMALF;
+	}
+
 	return _len;
 }
 
@@ -670,12 +675,6 @@ static int parse_rdata(const uint8_t *pkt_wire, size_t *pos, size_t pkt_size,
 	if (ret != KNOT_EOK) {
 		knot_rdataset_unreserve(rrs, mm);
 		return ret;
-	}
-
-	if (src_avail > 0) {
-		/* Trailing data in message. */
-		knot_rdataset_unreserve(rrs, mm);
-		return KNOT_EMALF;
 	}
 
 	ret = knot_rdataset_sort_at(rrs, rrs->rr_count - 1, mm);
