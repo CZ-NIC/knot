@@ -265,9 +265,9 @@ AS_IF([test "$with_lmdb" != "no"],[
     save_LIBS=$LIBS
     for try_lmdb in "$with_lmdb" "" "/usr/local"; do
 
-      AS_IF([test -d "$try_openssl"], [
-        lmdb_CFLAGS="-I$with_lmdb/include"
-        lmdb_LIBS=""
+      AS_IF([test -d "$try_lmdb"], [
+        lmdb_CFLAGS="-I$try_lmdb/include"
+        lmdb_LIBS="-L$try_lmdb/lib"
         ],[
         lmdb_CFLAGS=""
         lmdb_LIBS=""
