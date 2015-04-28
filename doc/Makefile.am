@@ -39,7 +39,7 @@ endif # HAVE_DAEMON
 
 if HAVE_UTILS
 MANPAGES += man/kdig.1 man/khost.1 man/knsupdate.1 man/knot1to2.1 man/knsec3hash.1 man/keymgr.8
-MANPAGES_IN += man_kdig.rst man_khost.rst man_knsupdate.rst man_knot1to2.rst man_knsec3hash.rst man_keymgr.rst 
+MANPAGES_IN += man_kdig.rst man_khost.rst man_knsupdate.rst man_knot1to2.rst man_knsec3hash.rst man_keymgr.rst
 endif # HAVE_UTILS
 
 dist_man_MANS = $(MANPAGES)
