@@ -77,7 +77,7 @@ pdf-local:
 
 install-pdf-local:
 	$(INSTALL) -d $(DESTDIR)/$(docdir)
-	$(INSTALL_DATA) $(SPHINXBUILDDIR)/latex/KnotDNS.pdf $(DESTDIR)/$(docdir)/
+	$(INSTALL_DATA) $(SPHINXBUILDDIR)/latex/knot.pdf $(DESTDIR)/$(docdir)/
 
 else
 pdf-local install-pdf-local:
@@ -94,7 +94,7 @@ info-local:
 
 install-info-local:
 	$(INSTALL) -d $(DESTDIR)/$(infodir)
-	$(INSTALL_DATA) $(SPHINXBUILDDIR)/texinfo/KnotDNS.info $(DESTDIR)/$(infodir)/knot.info
+	$(INSTALL_DATA) $(SPHINXBUILDDIR)/texinfo/knot.info $(DESTDIR)/$(infodir)/
 
 else
 info-local install-info-local:
