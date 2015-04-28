@@ -29,7 +29,7 @@
 
 int main(int argc, char *argv[])
 {
-	plan(31);
+	plan(34);
 
 	// Test init
 	knot_rdataset_t rdataset;
@@ -181,6 +181,29 @@ int main(int argc, char *argv[])
 	              rdataset.data == NULL;
 	ok(subtract_ok, "rdataset: subtract last.");
 
+	ret = knot_rdataset_reserve(&rdataset, 65536, NULL);
+	ok(ret == KNOT_EINVAL, "rdataset: reserve too much");
+
+	RDATASET_INIT_WITH(rdataset, rdata_gt);
+
+	size_t old_rrs_size = knot_rdataset_size(&rdataset);
+	size_t rr_size = knot_rdata_rdlen(rdata_lo);
+	ret = knot_rdataset_reserve(&rdataset, rr_size, NULL);
+	size_t new_rrs_size = knot_rdataset_size(&rdataset);
+	bool reserve_ok = ret == KNOT_EOK && new_rrs_size == (old_rrs_size + knot_rdata_array_size(rr_size));
+	ok(reserve_ok, "rdataset: reserve normal");
+
+	RDATASET_INIT_WITH(copy, rdata_lo);
+	knot_rdataset_add(&copy, rdata_gt, NULL);
+
+	knot_rdata_init(knot_rdataset_at(&rdataset, 1), 4, (uint8_t *)"abcd", 3600);
+
+	ret = knot_rdataset_sort_at(&rdataset, 1, NULL);
+	bool sort_ok = ret == KNOT_EOK && knot_rdataset_eq(&rdataset, &copy);
+	ok(sort_ok, "rdataset: sort reserved space");
+
+	knot_rdataset_clear(&copy, NULL);
+	knot_rdataset_clear(&rdataset, NULL);
 	knot_rdataset_clear(&rdataset_lo, NULL);
 	knot_rdataset_clear(&rdataset_gt, NULL);
 

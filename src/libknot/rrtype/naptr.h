@@ -45,7 +45,7 @@
  */
 static inline int knot_naptr_header_size(const uint8_t *naptr, const uint8_t *maxp)
 {
-	size_t size = 0;
+	int size = 0;
 
 	/* Fixed fields size (order, preference) */
 	size += 2 * sizeof(uint16_t);

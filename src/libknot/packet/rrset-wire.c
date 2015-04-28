@@ -31,6 +31,8 @@
 #include "libknot/rrtype/naptr.h"
 #include "libknot/internal/macros.h"
 
+#define RR_HEADER_SIZE 10
+
 /*!
  * \brief Get maximal size of a domain name in a wire with given capacity.
  */
@@ -181,6 +183,94 @@ static int rdata_traverse(const uint8_t **src, size_t *src_avail,
 	}
 
 	return KNOT_EOK;
+}
+
+/*!
+ * \brief Compute total length of RDATA blocks.
+ */
+static int rdata_len_block(const uint8_t **src, size_t *src_avail,
+                           const uint8_t *pkt_wire, int block_type)
+{
+	int ret, compr_size;
+
+	switch (block_type) {
+	case KNOT_RDATA_WF_COMPRESSIBLE_DNAME:
+	case KNOT_RDATA_WF_DECOMPRESSIBLE_DNAME:
+	case KNOT_RDATA_WF_FIXED_DNAME:
+		compr_size = knot_dname_wire_check(*src, *src + *src_avail,
+		                                   pkt_wire);
+		if (compr_size < 0) {
+			return compr_size;
+		}
+		if (compr_size == 0) {
+			return KNOT_EMALF;
+		}
+
+		ret = knot_dname_realsize(*src, pkt_wire);
+		if (ret < 0) {
+			return ret;
+		}
+
+		*src += compr_size;
+		*src_avail -= compr_size;
+		break;
+	case KNOT_RDATA_WF_NAPTR_HEADER:
+		ret = knot_naptr_header_size(*src, *src + *src_avail);
+		if (ret < 0) {
+			return ret;
+		}
+
+		*src += ret;
+		*src_avail -= ret;
+		break;
+	case KNOT_RDATA_WF_REMAINDER:
+		ret = *src_avail;
+		*src += ret;
+		*src_avail -= ret;
+		break;
+	default:
+		/* Fixed size block */
+		assert(block_type > 0);
+		ret = block_type;
+		if (*src_avail < ret) {
+			return KNOT_EMALF;
+		}
+
+		*src += ret;
+		*src_avail -= ret;
+		break;
+	}
+
+	return ret;
+}
+
+/*!
+ * \brief Compute total length of RDATA blocks.
+ */
+static int rdata_len(const uint8_t **src, size_t *src_avail,
+                     const uint8_t *pkt_wire,
+                     const knot_rdata_descriptor_t *desc)
+{
+	int ret;
+	int _len = 0;
+	const uint8_t *_src = *src;
+	size_t _src_avail = *src_avail;
+
+	for (int i = 0; desc->block_types[i] != KNOT_RDATA_WF_END; i++) {
+		int block_type = desc->block_types[i];
+		ret = rdata_len_block(&_src, &_src_avail, pkt_wire, block_type);
+		if (ret < 0) {
+			return ret;
+		}
+		_len += ret;
+	}
+
+	if (_src_avail > 0) {
+		/* Trailing data in message. */
+		return KNOT_EMALF;
+	}
+
+	return _len;
 }
 
 /*- RRSet to wire -----------------------------------------------------------*/
@@ -432,9 +522,6 @@ int knot_rrset_to_wire(const knot_rrset_t *rrset, uint8_t *wire, uint16_t max_si
 
 /*- RRSet from wire ---------------------------------------------------------*/
 
-#define RR_HEADER_SIZE 10
-#define MAX_RDLENGTH 65535
-
 /*!
  * \brief Parse header of one RR from packet wireformat.
  */
@@ -554,10 +641,27 @@ static int parse_rdata(const uint8_t *pkt_wire, size_t *pos, size_t pkt_size,
 	const uint8_t *src = pkt_wire + *pos;
 	size_t src_avail = rdlength;
 
-	const size_t buffer_size = rdlength +
-	                           KNOT_MAX_RDATA_DNAMES * KNOT_DNAME_MAXLEN;
-	uint8_t rdata_buffer[buffer_size];
-	uint8_t *dst = rdata_buffer;
+	int buffer_size = 0;
+	buffer_size = rdata_len(&src, &src_avail, pkt_wire, desc);
+	if (buffer_size < 0) {
+		return buffer_size;
+	}
+	
+	if (buffer_size > MAX_RDLENGTH) {
+		/* DNAME compression caused RDATA overflow. */
+		return KNOT_EMALF;
+	}
+
+	knot_rdataset_t *rrs = &rrset->rrs;
+	int ret = knot_rdataset_reserve(rrs, buffer_size, mm);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	knot_rdata_t *rr = knot_rdataset_at(rrs, rrs->rr_count - 1);
+	assert(rr);
+	knot_rdata_set_ttl(rr, ttl);
+	uint8_t *dst = knot_rdata_data(rr);
 	size_t dst_avail = buffer_size;
 
 	/* Parse RDATA */
@@ -567,29 +671,22 @@ static int parse_rdata(const uint8_t *pkt_wire, size_t *pos, size_t pkt_size,
 		.pkt_wire = pkt_wire
 	};
 
-	int ret = rdata_traverse(&src, &src_avail, &dst, &dst_avail, desc, &dname_cfg);
+	ret = rdata_traverse(&src, &src_avail, &dst, &dst_avail, desc, &dname_cfg);
 	if (ret != KNOT_EOK) {
+		knot_rdataset_unreserve(rrs, mm);
 		return ret;
 	}
 
-	if (src_avail > 0) {
-		/* Trailing data in message. */
-		return KNOT_EMALF;
+	ret = knot_rdataset_sort_at(rrs, rrs->rr_count - 1, mm);
+	if (ret != KNOT_EOK) {
+		knot_rdataset_unreserve(rrs, mm);
+		return ret;
 	}
+	
+	/* Update position pointer. */
+	*pos += rdlength;
 
-	const size_t written = buffer_size - dst_avail;
-	if (written > MAX_RDLENGTH) {
-		/* DNAME compression caused RDATA overflow. */
-		return KNOT_EMALF;
-	}
-
-	ret = knot_rrset_add_rdata(rrset, rdata_buffer, written, ttl, mm);
-	if (ret == KNOT_EOK) {
-		/* Update position pointer. */
-		*pos += rdlength;
-	}
-
-	return ret;
+	return KNOT_EOK;
 }
 
 _public_

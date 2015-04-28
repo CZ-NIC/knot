@@ -34,6 +34,9 @@
 
 /* ---------------------------- Single RR ----------------------------------- */
 
+/*!< \brief Maximum rdata data size. */
+#define MAX_RDLENGTH 65535
+
 /*!
  * \brief knot_rdata_t Array holding single RR payload, i.e. TTL, RDLENGTH and RDATA.
  */

@@ -91,6 +91,23 @@ size_t knot_rdataset_size(const knot_rdataset_t *rrs);
  */
 int knot_rdataset_add(knot_rdataset_t *rrs, const knot_rdata_t *rr, mm_ctx_t *mm);
 
+/*!
+ * \brief Reserves space at the end of the RRS structure.
+ * \param rrs   RRS structure to reserve space at.
+ * \param size  How much space to reserve.
+ * \param mm    Memory context.
+ * \return KNOT_E*
+ */
+int knot_rdataset_reserve(knot_rdataset_t *rrs, size_t size, mm_ctx_t *mm);
+
+/*!
+ * \brief Removes the last RR from RRS structure, i.e. does the opposite of _reserve.
+ * \param rrs  RRS structure to remove RR from.
+ * \param mm   Memory context.
+ * \return KNOT_E*
+ */
+int knot_rdataset_unreserve(knot_rdataset_t *rrs, mm_ctx_t *mm);
+
 /* ---------------------- RRs set-like operations --------------------------- */
 
 /*!
@@ -145,6 +162,15 @@ int knot_rdataset_intersect(const knot_rdataset_t *a, const knot_rdataset_t *b,
  */
 int knot_rdataset_subtract(knot_rdataset_t *from, const knot_rdataset_t *what,
                            mm_ctx_t *mm);
+
+/*!
+ * \brief Sorts the dataset. Removes the element if found to be duplicate.
+ * \param rss   RRS to sort.
+ * \param pos   Position of the element to sort.
+ * \param mm    Memory context used to remove the element if duplicate.
+ * \return KNOT_E*
+ */
+int knot_rdataset_sort_at(knot_rdataset_t *rrs, size_t pos, mm_ctx_t *mm);
 
 /*! \brief Accession helpers. */
 #define KNOT_RDATASET_CHECK(rrs, pos, code) \
