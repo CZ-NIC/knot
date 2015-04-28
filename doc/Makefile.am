@@ -29,7 +29,7 @@ ALLSPHINXOPTS  = -n -D latex_paper_size=a4 $(SPHINXOPTS) .
 
 .PHONY: html-local singlehtml pdf-local info-local man install-html-local install-singlehtml install-pdf-local install-info-local
 
-MANPAGES = 
+MANPAGES =
 MANPAGES_IN =
 
 if HAVE_DAEMON
