@@ -29,6 +29,21 @@ ALLSPHINXOPTS  = -n -D latex_paper_size=a4 $(SPHINXOPTS) .
 
 .PHONY: html-local singlehtml pdf-local info-local man install-html-local install-singlehtml install-pdf-local install-info-local
 
+MANPAGES = 
+MANPAGES_IN =
+
+if HAVE_DAEMON
+MANPAGES += man/knot.conf.5 man/knotc.8 man/knotd.8
+MANPAGES_IN += reference.rst man_knotc.rst man_knotd.rst
+endif # HAVE_DAEMON
+
+if HAVE_UTILS
+MANPAGES += man/kdig.1 man/khost.1 man/knsupdate.1 man/knot1to2.1 man/knsec3hash.1 man/keymgr.8
+MANPAGES_IN += man_kdig.rst man_khost.rst man_knsupdate.rst man_knot1to2.rst man_knsec3hash.rst man_keymgr.rst 
+endif # HAVE_UTILS
+
+dist_man_MANS = $(MANPAGES)
+
 if HAVE_DOCS
 
 if HAVE_SPHINXBUILD
@@ -87,23 +102,15 @@ info-local install-info-local:
 	@echo "able to generate info pages."
 endif
 
-MANPAGES = 
-
-if HAVE_DAEMON
-MANPAGES += _build/man/knot.conf.5 _build/man/knotc.8 _build/man/knotd.8
-endif # HAVE_DAEMON
-
-if HAVE_UTILS
-MANPAGES += _build/man/kdig.1 _build/man/khost.1 _build/man/knsupdate.1 _build/man/knot1to2.1 _build/man/knsec3hash.1 _build/man/keymgr.8
-endif # HAVE_UTILS
-
-dist_man_MANS = $(MANPAGES)
-
 man: $(MANPAGES)
-$(MANPAGES):
+$(MANPAGES): $(MANPAGES_IN)
 	$(SPHINXBUILD) -b man -D version="@VERSION@" -D today="@RELEASE_DATE@" -d $(SPHINXBUILDDIR)/doctrees-man $(ALLSPHINXOPTS) $(SPHINXBUILDDIR)/man
+	mkdir -p man
+	for f in $(SPHINXBUILDDIR)/man/*; do \
+	  sed -e '/^.TP$$/{n;s/^.B //}' "$$f" > "man/$$(basename $$f)"; \
+	done
 	@echo
-	@echo "Build finished. The man pages are in $(SPHINXBUILDDIR)/man."
+	@echo "Build finished. The man pages are in man/."
 
 else
 html-local singlehtml pdf-local info-local man install-html-local install-singlehtml install-pdf-local install-info-local:
