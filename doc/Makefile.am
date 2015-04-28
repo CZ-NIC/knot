@@ -103,7 +103,7 @@ info-local install-info-local:
 endif
 
 man: $(MANPAGES)
-$(MANPAGES): $(MANPAGES_IN)
+$(MANPAGES): $(MANPAGES_IN) ../configure.ac
 	$(SPHINXBUILD) -b man -D version="@VERSION@" -D today="@RELEASE_DATE@" -d $(SPHINXBUILDDIR)/doctrees-man $(ALLSPHINXOPTS) $(SPHINXBUILDDIR)/man
 	mkdir -p man
 	for f in $(SPHINXBUILDDIR)/man/*; do \
