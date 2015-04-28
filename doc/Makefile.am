@@ -48,7 +48,7 @@ singlehtml:
 	@echo
 	@echo "Build finished. The HTML page is in $(SPHINXBUILDDIR)/singlehtml."
 
-install-singlehtml:
+install-singlehtml: singlehtml
 	$(INSTALL) -d $(DESTDIR)/$(docdir) $(DESTDIR)/$(docdir)/_static
 	$(INSTALL_DATA) $(SPHINXBUILDDIR)/singlehtml/*.html $(DESTDIR)/$(docdir)/
 	$(INSTALL_DATA) $(SPHINXBUILDDIR)/singlehtml/_static/* $(DESTDIR)/$(docdir)/_static/
@@ -62,7 +62,7 @@ pdf-local:
 
 install-pdf-local:
 	$(INSTALL) -d $(DESTDIR)/$(docdir)
-	$(INSTALL_DATA) $(SPHINXBUILDDIR)/latex/* $(DESTDIR)/$(docdir)/
+	$(INSTALL_DATA) $(SPHINXBUILDDIR)/latex/KnotDNS.pdf $(DESTDIR)/$(docdir)/
 
 else
 pdf-local install-pdf-local:
