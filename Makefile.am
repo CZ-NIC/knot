@@ -1,5 +1,5 @@
 ACLOCAL_AMFLAGS = -I m4
-SUBDIRS = libtap src tests tests-fuzz samples doc man
+SUBDIRS = libtap src tests tests-fuzz samples doc
 
 singlehtml install-singlehtml:
 	$(MAKE) -C doc $@

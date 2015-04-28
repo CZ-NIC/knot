@@ -87,8 +87,21 @@ info-local install-info-local:
 	@echo "able to generate info pages."
 endif
 
-man:
-	$(SPHINXBUILD) -b man -D version="__VERSION__" -D today="__DATE__" -d $(SPHINXBUILDDIR)/doctrees-man $(ALLSPHINXOPTS) $(SPHINXBUILDDIR)/man
+MANPAGES = 
+
+if HAVE_DAEMON
+MANPAGES += _build/man/knot.conf.5 _build/man/knotc.8 _build/man/knotd.8
+endif # HAVE_DAEMON
+
+if HAVE_UTILS
+MANPAGES += _build/man/kdig.1 _build/man/khost.1 _build/man/knsupdate.1 _build/man/knot1to2.1 _build/man/knsec3hash.1 _build/man/keymgr.8
+endif # HAVE_UTILS
+
+dist_man_MANS = $(MANPAGES)
+
+man: $(MANPAGES)
+$(MANPAGES):
+	$(SPHINXBUILD) -b man -D version="@VERSION@" -D today="@RELEASE_DATE@" -d $(SPHINXBUILDDIR)/doctrees-man $(ALLSPHINXOPTS) $(SPHINXBUILDDIR)/man
 	@echo
 	@echo "Build finished. The man pages are in $(SPHINXBUILDDIR)/man."
 
