@@ -25,7 +25,7 @@ EXTRA_DIST = \
 	logo.png
 
 SPHINXBUILDDIR = _build
-ALLSPHINXOPTS  = -n -d $(SPHINXBUILDDIR)/doctrees -D latex_paper_size=a4 $(SPHINXOPTS) .
+ALLSPHINXOPTS  = -n -D latex_paper_size=a4 $(SPHINXOPTS) .
 
 .PHONY: html-local singlehtml pdf-local info-local man
 
@@ -33,18 +33,18 @@ if HAVE_DOCS
 
 if HAVE_SPHINXBUILD
 html-local:
-	$(SPHINXBUILD) -b html $(ALLSPHINXOPTS) $(SPHINXBUILDDIR)/html
+	$(SPHINXBUILD) -b html -d $(SPHINXBUILDDIR)/doctrees-html $(ALLSPHINXOPTS) $(SPHINXBUILDDIR)/html
 	@echo
 	@echo "Build finished. The HTML pages are in $(SPHINXBUILDDIR)/html."
 
 singlehtml:
-	$(SPHINXBUILD) -b singlehtml $(ALLSPHINXOPTS) $(SPHINXBUILDDIR)/singlehtml
+	$(SPHINXBUILD) -b singlehtml -d $(SPHINXBUILDDIR)/doctrees-singlehtml $(ALLSPHINXOPTS) $(SPHINXBUILDDIR)/singlehtml
 	@echo
 	@echo "Build finished. The HTML page is in $(SPHINXBUILDDIR)/singlehtml."
 
 if HAVE_PDFLATEX
 pdf-local:
-	$(SPHINXBUILD) -b latex $(ALLSPHINXOPTS) $(SPHINXBUILDDIR)/latex
+	$(SPHINXBUILD) -b latex -d $(SPHINXBUILDDIR)/doctrees-latex $(ALLSPHINXOPTS) $(SPHINXBUILDDIR)/latex
 	@echo "Running LaTeX files through pdflatex..."
 	$(MAKE) -C $(SPHINXBUILDDIR)/latex all-pdf
 	@echo "pdflatex finished; the PDF files are in $(SPHINXBUILDDIR)/latex."
@@ -55,9 +55,9 @@ endif
 
 if HAVE_MAKEINFO
 info-local:
-	$(SPHINXBUILD) -b texinfo $(ALLSPHINXOPTS) $(SPHINXBUILDDIR)/texinfo
+	$(SPHINXBUILD) -b texinfo -d $(SPHINXBUILDDIR)/doctrees-texinfo $(ALLSPHINXOPTS) $(SPHINXBUILDDIR)/texinfo
 	@echo "Running Texinfo files through makeinfo..."
-	make -C $(SPHINXBUILDDIR)/texinfo info
+	$(MAKE) -C $(SPHINXBUILDDIR)/texinfo info
 	@echo "makeinfo finished; the Info files are in $(SPHINXBUILDDIR)/texinfo."
 else
 	@echo "You need to install GNU Texinfo and re-run configure to be"
@@ -65,14 +65,14 @@ else
 endif
 
 man:
-	$(SPHINXBUILD) -b man -D version="__VERSION__" -D today="__DATE__" $(ALLSPHINXOPTS) $(SPHINXBUILDDIR)/man
+	$(SPHINXBUILD) -b man -D version="__VERSION__" -D today="__DATE__" -d $(SPHINXBUILDDIR)/doctrees-man $(ALLSPHINXOPTS) $(SPHINXBUILDDIR)/man
 	@echo
 	@echo "Build finished. The man pages are in $(SPHINXBUILDDIR)/man."
 
 else
 html-local singlehtml pdf-local info-local man:
 	@echo "Please install sphinx (python-sphinx) to generate Knot DNS documentation."
-endif
+endif # HAVE_SPHINXBUILD
 
 endif # HAVE_DOCS
 
