@@ -93,7 +93,7 @@ man:
 	@echo "Build finished. The man pages are in $(SPHINXBUILDDIR)/man."
 
 else
-html-local singlehtml pdf-local info-local man install-html-local install-singlehtml-local install-pdf-local install-info-local:
+html-local singlehtml pdf-local info-local man install-html-local install-singlehtml install-pdf-local install-info-local:
 	@echo "Please install sphinx (python-sphinx) to generate Knot DNS documentation."
 endif # HAVE_SPHINXBUILD
 
