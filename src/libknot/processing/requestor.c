@@ -148,7 +148,9 @@ struct knot_request *knot_request_make(mm_ctx_t *mm,
 _public_
 int knot_request_free(mm_ctx_t *mm, struct knot_request *request)
 {
-	close(request->fd);
+	if (request->fd >= 0) {
+		close(request->fd);
+	}
 	knot_pkt_free(&request->query);
 	knot_pkt_free(&request->resp);
 
