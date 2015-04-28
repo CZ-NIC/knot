@@ -50,7 +50,7 @@ if HAVE_SPHINXBUILD
 html-local:
 	$(SPHINXBUILD) -b html -d $(SPHINXBUILDDIR)/doctrees-html $(ALLSPHINXOPTS) $(SPHINXBUILDDIR)/html
 	@echo
-	@echo "Build finished. The HTML pages are in $(SPHINXBUILDDIR)/html."
+	@echo "Build finished. The HTML pages are in $(SPHINXBUILDDIR)/html/."
 
 install-html-local:
 	$(INSTALL) -d $(DESTDIR)/$(docdir) $(DESTDIR)/$(docdir)/_static $(DESTDIR)/$(docdir)/_sources
@@ -61,7 +61,7 @@ install-html-local:
 singlehtml:
 	$(SPHINXBUILD) -b singlehtml -d $(SPHINXBUILDDIR)/doctrees-singlehtml $(ALLSPHINXOPTS) $(SPHINXBUILDDIR)/singlehtml
 	@echo
-	@echo "Build finished. The HTML page is in $(SPHINXBUILDDIR)/singlehtml."
+	@echo "Build finished. The HTML page is in $(SPHINXBUILDDIR)/singlehtml/."
 
 install-singlehtml: singlehtml
 	$(INSTALL) -d $(DESTDIR)/$(docdir) $(DESTDIR)/$(docdir)/_static
@@ -73,7 +73,7 @@ pdf-local:
 	$(SPHINXBUILD) -b latex -d $(SPHINXBUILDDIR)/doctrees-latex $(ALLSPHINXOPTS) $(SPHINXBUILDDIR)/latex
 	$(MAKE) -C $(SPHINXBUILDDIR)/latex all-pdf
 	@echo
-	@echo "Build finished. The PDF files are in $(SPHINXBUILDDIR)/latex."
+	@echo "Build finished. The PDF file is in $(SPHINXBUILDDIR)/latex/."
 
 install-pdf-local:
 	$(INSTALL) -d $(DESTDIR)/$(docdir)
@@ -90,7 +90,7 @@ info-local:
 	$(SPHINXBUILD) -b texinfo -d $(SPHINXBUILDDIR)/doctrees-texinfo $(ALLSPHINXOPTS) $(SPHINXBUILDDIR)/texinfo
 	$(MAKE) -C $(SPHINXBUILDDIR)/texinfo info
 	@echo
-	@echo "Build finished. The Info files are in $(SPHINXBUILDDIR)/texinfo."
+	@echo "Build finished. The Info file is in $(SPHINXBUILDDIR)/texinfo/."
 
 install-info-local:
 	$(INSTALL) -d $(DESTDIR)/$(infodir)
