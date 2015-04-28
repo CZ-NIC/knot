@@ -27,7 +27,7 @@ EXTRA_DIST = \
 SPHINXBUILDDIR = _build
 ALLSPHINXOPTS  = -n -D latex_paper_size=a4 $(SPHINXOPTS) .
 
-.PHONY: html-local singlehtml pdf-local info-local man
+.PHONY: html-local singlehtml pdf-local info-local man install-html-local install-singlehtml install-pdf-local install-info-local
 
 if HAVE_DOCS
 
@@ -37,18 +37,35 @@ html-local:
 	@echo
 	@echo "Build finished. The HTML pages are in $(SPHINXBUILDDIR)/html."
 
+install-html-local:
+	$(INSTALL) -d $(DESTDIR)/$(docdir) $(DESTDIR)/$(docdir)/_static $(DESTDIR)/$(docdir)/_sources
+	$(INSTALL) -D $(SPHINXBUILDDIR)/html/*.html $(DESTDIR)/$(docdir)/
+	$(INSTALL_DATA) $(SPHINXBUILDDIR)/html/_sources/* $(DESTDIR)/$(docdir)/_sources/
+	$(INSTALL_DATA) $(SPHINXBUILDDIR)/html/_static/* $(DESTDIR)/$(docdir)/_static/
+
 singlehtml:
 	$(SPHINXBUILD) -b singlehtml -d $(SPHINXBUILDDIR)/doctrees-singlehtml $(ALLSPHINXOPTS) $(SPHINXBUILDDIR)/singlehtml
 	@echo
 	@echo "Build finished. The HTML page is in $(SPHINXBUILDDIR)/singlehtml."
 
+install-singlehtml:
+	$(INSTALL) -d $(DESTDIR)/$(docdir) $(DESTDIR)/$(docdir)/_static
+	$(INSTALL_DATA) $(SPHINXBUILDDIR)/singlehtml/*.html $(DESTDIR)/$(docdir)/
+	$(INSTALL_DATA) $(SPHINXBUILDDIR)/singlehtml/_static/* $(DESTDIR)/$(docdir)/_static/
+
 if HAVE_PDFLATEX
 pdf-local:
 	$(SPHINXBUILD) -b latex -d $(SPHINXBUILDDIR)/doctrees-latex $(ALLSPHINXOPTS) $(SPHINXBUILDDIR)/latex
-	@echo "Running LaTeX files through pdflatex..."
 	$(MAKE) -C $(SPHINXBUILDDIR)/latex all-pdf
-	@echo "pdflatex finished; the PDF files are in $(SPHINXBUILDDIR)/latex."
+	@echo
+	@echo "Build finished. The PDF files are in $(SPHINXBUILDDIR)/latex."
+
+install-pdf-local:
+	$(INSTALL) -d $(DESTDIR)/$(docdir)
+	$(INSTALL_DATA) $(SPHINXBUILDDIR)/latex/* $(DESTDIR)/$(docdir)/
+
 else
+pdf-local install-pdf-local:
 	@echo "You need to install pdflatex and re-run configure to be"
 	@echo "able to generate PDF documentation."
 endif
@@ -56,10 +73,16 @@ endif
 if HAVE_MAKEINFO
 info-local:
 	$(SPHINXBUILD) -b texinfo -d $(SPHINXBUILDDIR)/doctrees-texinfo $(ALLSPHINXOPTS) $(SPHINXBUILDDIR)/texinfo
-	@echo "Running Texinfo files through makeinfo..."
 	$(MAKE) -C $(SPHINXBUILDDIR)/texinfo info
-	@echo "makeinfo finished; the Info files are in $(SPHINXBUILDDIR)/texinfo."
+	@echo
+	@echo "Build finished. The Info files are in $(SPHINXBUILDDIR)/texinfo."
+
+install-info-local:
+	$(INSTALL) -d $(DESTDIR)/$(infodir)
+	$(INSTALL_DATA) $(SPHINXBUILDDIR)/texinfo/KnotDNS.info $(DESTDIR)/$(infodir)/knot.info
+
 else
+info-local install-info-local:
 	@echo "You need to install GNU Texinfo and re-run configure to be"
 	@echo "able to generate info pages."
 endif
@@ -70,7 +93,7 @@ man:
 	@echo "Build finished. The man pages are in $(SPHINXBUILDDIR)/man."
 
 else
-html-local singlehtml pdf-local info-local man:
+html-local singlehtml pdf-local info-local man install-html-local install-singlehtml-local install-pdf-local install-info-local:
 	@echo "Please install sphinx (python-sphinx) to generate Knot DNS documentation."
 endif # HAVE_SPHINXBUILD
 
