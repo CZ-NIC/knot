@@ -276,7 +276,7 @@ static int exec_request(struct knot_requestor *req, struct knot_request *last,
 	}
 
 	/* Expect complete request. */
-	if (req->overlay.state == KNOT_STATE_FAIL) {
+	if (req->overlay.state != KNOT_STATE_DONE) {
 		ret = KNOT_LAYER_ERROR;
 	}
 
