@@ -235,8 +235,7 @@ int knot_rdataset_reserve(knot_rdataset_t *rrs, size_t size, mm_ctx_t *mm)
 	size_t new_size = total_size + knot_rdata_array_size(size);
 
 	uint8_t *tmp = mm_realloc(mm, rrs->data, new_size, total_size);
-
-	if (!tmp) {
+	if (tmp == NULL) {
 		return KNOT_ENOMEM;
 	}
 
@@ -374,7 +373,7 @@ int knot_rdataset_sort_at(knot_rdataset_t *rrs, size_t pos, mm_ctx_t *mm)
 	knot_rdata_t *rr = knot_rdataset_at(rrs, pos);
 	assert(rr);
 
-	knot_rdata_t *earlier_rr;
+	knot_rdata_t *earlier_rr = NULL;
 	for (uint16_t i = 0; i < rrs->rr_count; ++i) {
 		if (i == pos) {
 			// It already is at the position

@@ -251,14 +251,13 @@ static int rdata_len(const uint8_t **src, size_t *src_avail,
                      const uint8_t *pkt_wire,
                      const knot_rdata_descriptor_t *desc)
 {
-	int ret;
 	int _len = 0;
 	const uint8_t *_src = *src;
 	size_t _src_avail = *src_avail;
 
 	for (int i = 0; desc->block_types[i] != KNOT_RDATA_WF_END; i++) {
 		int block_type = desc->block_types[i];
-		ret = rdata_len_block(&_src, &_src_avail, pkt_wire, block_type);
+		int ret = rdata_len_block(&_src, &_src_avail, pkt_wire, block_type);
 		if (ret < 0) {
 			return ret;
 		}
@@ -641,8 +640,7 @@ static int parse_rdata(const uint8_t *pkt_wire, size_t *pos, size_t pkt_size,
 	const uint8_t *src = pkt_wire + *pos;
 	size_t src_avail = rdlength;
 
-	int buffer_size = 0;
-	buffer_size = rdata_len(&src, &src_avail, pkt_wire, desc);
+	int buffer_size = rdata_len(&src, &src_avail, pkt_wire, desc);
 	if (buffer_size < 0) {
 		return buffer_size;
 	}
