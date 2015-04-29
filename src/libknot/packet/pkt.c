@@ -317,7 +317,7 @@ void knot_pkt_clear(knot_pkt_t *pkt)
 
 	/* Reset to header size. */
 	pkt->size = KNOT_WIRE_HEADER_SIZE;
-	memset(pkt->wire, 0, pkt->size);
+	memset(pkt->wire, 0, pkt->max_size);
 }
 
 _public_
