@@ -20,6 +20,7 @@
 /nsec_hash
 /random
 /shared_base32hex
+/shared_bignum
 /shared_dname
 /shared_strtonum
 /shared_wire
