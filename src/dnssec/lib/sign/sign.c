@@ -433,7 +433,7 @@ int dnssec_sign_write(dnssec_sign_ctx_t *ctx, dnssec_binary_t *signature)
 		return DNSSEC_SIGN_ERROR;
 	}
 
-	dnssec_binary_t bin_raw = datum_to_binary(&raw);
+	dnssec_binary_t bin_raw = binary_from_datum(&raw);
 
 	return ctx->functions->x509_to_dnssec(ctx, &bin_raw, signature);
 }
