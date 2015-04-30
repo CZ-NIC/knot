@@ -24,8 +24,8 @@ EXTRA_DIST = \
 	logo.eps		\
 	logo.png
 
-SPHINXBUILDDIR = _build
-ALLSPHINXOPTS  = -n -D latex_paper_size=a4 $(SPHINXOPTS) .
+SPHINXBUILDDIR = $(builddir)/_build
+ALLSPHINXOPTS  = -c $(srcdir) -n -D latex_paper_size=a4 -D version="@VERSION@" -D today="@RELEASE_DATE@" -D release="@VERSION@" $(SPHINXOPTS) $(srcdir)
 
 .PHONY: html-local singlehtml pdf-local info-local man install-html-local install-singlehtml install-pdf-local install-info-local
 
@@ -104,7 +104,7 @@ endif
 
 man: $(MANPAGES)
 $(MANPAGES): $(MANPAGES_IN) ../configure.ac
-	$(SPHINXBUILD) -b man -D version="@VERSION@" -D today="@RELEASE_DATE@" -d $(SPHINXBUILDDIR)/doctrees-man $(ALLSPHINXOPTS) $(SPHINXBUILDDIR)/man
+	$(SPHINXBUILD) -b man -d $(SPHINXBUILDDIR)/doctrees-man $(ALLSPHINXOPTS) $(SPHINXBUILDDIR)/man
 	mkdir -p man
 	for f in $(SPHINXBUILDDIR)/man/*; do \
 	  sed -e '/^.TP$$/{n;s/^.B //}' "$$f" > "man/$$(basename $$f)"; \
@@ -120,4 +120,4 @@ endif # HAVE_SPHINXBUILD
 endif # HAVE_DOCS
 
 clean-local:
-	-rm -rf _build
+	-rm -rf $(SPHINXBUILDDIR)
