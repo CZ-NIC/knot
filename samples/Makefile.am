@@ -17,6 +17,8 @@ knot.sample.conf: knot.sample.conf.in
 
 EXTRA_DIST = knot.sample.conf.in example.com.zone
 
+if HAVE_DAEMON
+
 install-data-local: knot.sample.conf
 	[ -d $(DESTDIR)/$(config_dir) ] || \
 	  $(INSTALL) -d $(DESTDIR)/$(config_dir)
@@ -28,6 +30,8 @@ uninstall-local:
 	  rm -f $(DESTDIR)/$(config_dir)/knot.sample.conf
 	[ -f $(DESTDIR)/$(config_dir)/example.com.zone ] && \
 	  rm -f $(DESTDIR)/$(config_dir)/example.com.zone
+
+endif # HAVE_DAEMON
 
 clean-local:
 	rm -f knot.sample.conf
