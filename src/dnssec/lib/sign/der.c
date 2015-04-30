@@ -16,6 +16,7 @@
 
 #include <stdbool.h>
 
+#include "bignum.h"
 #include "binary.h"
 #include "error.h"
 #include "sign/der.h"
@@ -68,12 +69,12 @@ static int asn1_decode_size(wire_ctx_t *wire, size_t *size)
 }
 
 /*!
- * Decode an integer object and retrieves a pointer to it.
+ * Decode an unsigned integer object.
  */
-static int asn1_decode_integer(wire_ctx_t *wire, dnssec_binary_t *value)
+static int asn1_decode_integer(wire_ctx_t *wire, dnssec_binary_t *_value)
 {
 	assert(wire);
-	assert(value);
+	assert(_value);
 
 	if (!asn1_expect_type(wire, ASN1_TYPE_INTEGER)) {
 		return DNSSEC_MALFORMED_DATA;
@@ -85,13 +86,20 @@ static int asn1_decode_integer(wire_ctx_t *wire, dnssec_binary_t *value)
 		return result;
 	}
 
-	if (size > wire_available(wire)) {
+	if (size == 0 || size > wire_available(wire)) {
 		return DNSSEC_MALFORMED_DATA;
 	}
 
-	value->size = size;
-	value->data = wire->position;
+	dnssec_binary_t value = { .data = wire->position, .size = size };
 	wire->position += size;
+
+	// skip leading zeroes (unless equal to zero)
+	while (value.size > 1 && value.data[0] == 0) {
+		value.data += 1;
+		value.size -= 1;
+	}
+
+	*_value = value;
 
 	return DNSSEC_EOK;
 }
@@ -109,16 +117,17 @@ static void asn1_write_header(wire_ctx_t *wire, uint8_t type, size_t length)
 }
 
 /*!
- * Encode integer object.
+ * Encode unsigned integer object.
  */
-static void asn1_write_integer(wire_ctx_t *wire, const dnssec_binary_t *integer)
+static void asn1_write_integer(wire_ctx_t *wire, size_t integer_size,
+			       const dnssec_binary_t *integer)
 {
 	assert(wire);
 	assert(integer);
 	assert(integer->data);
 
-	asn1_write_header(wire, ASN1_TYPE_INTEGER, integer->size);
-	wire_write_binary(wire, integer);
+	asn1_write_header(wire, ASN1_TYPE_INTEGER, integer_size);
+	wire_write_bignum(wire, integer_size, integer);
 }
 
 /*!
@@ -179,19 +188,22 @@ int dss_sig_value_decode(const dnssec_binary_t *der,
  * Encode signature parameters from X.509 (EC)DSA signature.
  */
 int dss_sig_value_encode(const dnssec_binary_t *r, const dnssec_binary_t *s,
-			 dnssec_binary_t *der)
+			 dnssec_binary_t *_der)
 {
-	if (!r || !r->data || !s || !s->data || !der) {
+	if (!r || !r->data || !s || !s->data || !_der) {
 		return DNSSEC_EINVAL;
 	}
 
+	size_t r_size = bignum_size_s(r);
+	size_t s_size = bignum_size_s(s);
+
 	// check supported inputs range
 
-	if (r->size > ASN1_MAX_SIZE || s->size > ASN1_MAX_SIZE) {
+	if (r_size > ASN1_MAX_SIZE || s_size > ASN1_MAX_SIZE) {
 		return DNSSEC_NOT_IMPLEMENTED_ERROR;
 	}
 
-	size_t seq_size = 2 + r->size + 2 + s->size;
+	size_t seq_size = 2 + r_size + 2 + s_size;
 	if (seq_size > ASN1_MAX_SIZE) {
 		return DNSSEC_NOT_IMPLEMENTED_ERROR;
 	}
@@ -199,20 +211,19 @@ int dss_sig_value_encode(const dnssec_binary_t *r, const dnssec_binary_t *s,
 	// encode result
 
 	size_t total_size = 2 + seq_size;
-	uint8_t *encoded = malloc(total_size);
-	if (!encoded) {
+
+	dnssec_binary_t der = { 0 };
+	if (dnssec_binary_alloc(&der, total_size)) {
 		return DNSSEC_ENOMEM;
 	}
 
-	wire_ctx_t wire = wire_init(encoded, total_size);
-
+	wire_ctx_t wire = wire_init_binary(&der);
 	asn1_write_header(&wire, ASN1_TYPE_SEQUENCE, seq_size);
-	asn1_write_integer(&wire, r);
-	asn1_write_integer(&wire, s);
+	asn1_write_integer(&wire, r_size, r);
+	asn1_write_integer(&wire, s_size, s);
 	assert(wire_available(&wire) == 0);
 
-	der->size = total_size;
-	der->data = encoded;
+	*_der = der;
 
 	return DNSSEC_EOK;
 }
