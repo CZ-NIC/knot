@@ -20,9 +20,6 @@ sys.path.insert(0, os.path.abspath('.'))
 
 # -- General configuration -----------------------------------------------------
 
-# variables generated on './configure'
-from conf_autotools import version, release, today
-
 # If your documentation needs a minimal Sphinx version, state it here.
 #needs_sphinx = '1.0'
 

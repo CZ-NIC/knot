@@ -403,7 +403,6 @@ AC_CONFIG_FILES([Makefile
 		 src/dnssec/Makefile
 		 src/dnssec/tests/Makefile
 		 src/dnssec/utils/Makefile
-		 doc/conf_autotools.py
 		 ])
 
 AC_OUTPUT
