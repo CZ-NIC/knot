@@ -22,6 +22,8 @@ libshared_la_CPPFLAGS = \
 libshared_la_SOURCES = \
 	shared/base32hex.c \
 	shared/base32hex.h \
+	shared/bignum.c \
+	shared/bignum.h \
 	shared/dname.c \
 	shared/dname.h \
 	shared/fs.c \
