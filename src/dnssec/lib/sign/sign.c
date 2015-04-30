@@ -20,6 +20,7 @@
 #include <gnutls/gnutls.h>
 #include <gnutls/crypto.h>
 
+#include "bignum.h"
 #include "error.h"
 #include "key.h"
 #include "key/internal.h"
@@ -123,10 +124,10 @@ static int dsa_x509_to_dnssec(dnssec_sign_ctx_t *ctx,
 		return result;
 	}
 
-	dnssec_binary_ltrim(&value_r);
-	dnssec_binary_ltrim(&value_s);
+	size_t r_size = bignum_size_u(&value_r);
+	size_t s_size = bignum_size_u(&value_s);
 
-	if (value_r.size > 20 || value_s.size > 20) {
+	if (r_size > 20 || s_size > 20) {
 		return DNSSEC_MALFORMED_DATA;
 	}
 
@@ -139,8 +140,8 @@ static int dsa_x509_to_dnssec(dnssec_sign_ctx_t *ctx,
 
 	wire_ctx_t wire = wire_init_binary(dnssec);
 	wire_write_u8(&wire, value_t);
-	wire_write_ralign_binary(&wire, 20, &value_r);
-	wire_write_ralign_binary(&wire, 20, &value_s);
+	wire_write_bignum(&wire, 20, &value_r);
+	wire_write_bignum(&wire, 20, &value_s);
 	assert(wire_tell(&wire) == dnssec->size);
 
 	return DNSSEC_EOK;
@@ -201,13 +202,12 @@ static int ecdsa_x509_to_dnssec(dnssec_sign_ctx_t *ctx,
 		return result;
 	}
 
-	dnssec_binary_ltrim(&value_r);
-	dnssec_binary_ltrim(&value_s);
-
 	size_t int_size = ecdsa_sign_integer_size(ctx);
 	assert(int_size > 0);
+	size_t r_size = bignum_size_u(&value_r);
+	size_t s_size = bignum_size_u(&value_s);
 
-	if (value_r.size > int_size || value_s.size > int_size) {
+	if (r_size > int_size || s_size > int_size) {
 		return DNSSEC_MALFORMED_DATA;
 	}
 
@@ -217,9 +217,8 @@ static int ecdsa_x509_to_dnssec(dnssec_sign_ctx_t *ctx,
 	}
 
 	wire_ctx_t wire = wire_init_binary(dnssec);
-	wire_write_ralign_binary(&wire, int_size, &value_r);
-	wire_write_ralign_binary(&wire, int_size, &value_s);
-	assert(wire_tell(&wire) == size);
+	wire_write_bignum(&wire, int_size, &value_r);
+	wire_write_bignum(&wire, int_size, &value_s);
 	assert(wire_tell(&wire) == dnssec->size);
 
 	return DNSSEC_EOK;
