@@ -203,7 +203,6 @@ static int ecdsa_x509_to_dnssec(dnssec_sign_ctx_t *ctx,
 	}
 
 	size_t int_size = ecdsa_sign_integer_size(ctx);
-	assert(int_size > 0);
 	size_t r_size = bignum_size_u(&value_r);
 	size_t s_size = bignum_size_u(&value_s);
 
@@ -233,7 +232,6 @@ static int ecdsa_dnssec_to_x509(dnssec_sign_ctx_t *ctx,
 	assert(dnssec);
 
 	size_t int_size = ecdsa_sign_integer_size(ctx);
-	assert(int_size > 0);
 
 	if (dnssec->size != 2 * int_size) {
 		return DNSSEC_INVALID_SIGNATURE;
