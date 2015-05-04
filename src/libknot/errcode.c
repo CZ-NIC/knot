@@ -14,15 +14,12 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <stdarg.h>
 #include <stdio.h>
-#include <stdlib.h>
 #if HAVE_LMDB
 #include <lmdb.h>
 #endif
 
 #include "libknot/errcode.h"
-#include "libknot/internal/errcode.h"
 #include "libknot/internal/macros.h"
 #include "dnssec/error.h"
 
@@ -188,16 +185,4 @@ const char *knot_strerror(int code)
 #endif
 
 	return fallback_message(code);
-}
-
-_public_
-int knot_map_errno(int arg0, ...)
-{
-	/* Iterate all variable-length arguments. */
-	va_list ap;
-	va_start(ap, arg0);
-	int ret = knot_map_errno_internal(KNOT_ERROR, arg0, ap);
-	va_end(ap);
-
-	return ret;
 }
