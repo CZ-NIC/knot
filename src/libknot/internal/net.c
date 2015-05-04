@@ -41,7 +41,7 @@ static int socket_create(int family, int type, int proto)
 	/* Create socket. */
 	int ret = socket(family, type, proto);
 	if (ret < 0) {
-		return knot_map_errno_internal(KNOT_ERROR, EACCES, EINVAL, ENOMEM);
+		return knot_map_errno();
 	}
 
 	return ret;
@@ -135,7 +135,7 @@ int net_bound_socket(int type, const struct sockaddr_storage *ss,
 	const struct sockaddr *sa = (const struct sockaddr *)ss;
 	int ret = bind(socket, sa, sockaddr_len(sa));
 	if (ret < 0) {
-		ret = knot_map_errno_internal(KNOT_ERROR, EADDRINUSE, EADDRNOTAVAIL, EINVAL, EACCES, ENOMEM);
+		ret = knot_map_errno();
 		close(socket);
 		return ret;
 	}
@@ -176,8 +176,7 @@ int net_connected_socket(int type, const struct sockaddr_storage *dst_addr,
 	int ret = connect(socket, sa, sockaddr_len(sa));
 	if (ret != 0 && errno != EINPROGRESS) {
 		close(socket);
-		return knot_map_errno_internal(KNOT_ERROR, EACCES, EADDRINUSE, EAGAIN,
-		                      ECONNREFUSED, EISCONN);
+		return knot_map_errno();
 	}
 
 	return socket;

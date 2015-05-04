@@ -108,7 +108,7 @@ static int journal_create_file(const char *fn, uint16_t max_nodes)
 	int fd = open(fn, O_RDWR|O_CREAT|O_TRUNC, S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP);
 	if (fd < 0) {
 		dbg_journal("journal: failed to create file '%s'\n", fn);
-		return knot_map_errno(errno);
+		return knot_map_errno();
 	}
 
 	/* Lock. */
@@ -202,7 +202,7 @@ static int journal_open_file(journal_t *j)
 	dbg_journal_verb("journal: open_file '%s'\n", j->path);
 	if (j->fd < 0) {
 		if (errno != ENOENT) {
-			return knot_map_errno(errno);
+			return knot_map_errno();
 		}
 
 		/* Create new journal file and open if not exists. */
@@ -220,7 +220,7 @@ static int journal_open_file(journal_t *j)
 	dbg_journal_verb("journal: locking journal %s\n", j->path);
 	ret = fcntl(j->fd, F_SETLKW, &lock);
 	if (ret < 0) {
-		return knot_map_errno(errno);
+		return knot_map_errno();
 	}
 
 	/* Read magic bytes. */
