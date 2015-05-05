@@ -169,13 +169,13 @@ int value_key_size(int argc, char *argv[], const parameter_t *p, void *data)
 		return -1;
 	}
 
-	unsigned *key_size = data + p->offset;
+	uint16_t *key_size = data + p->offset;
 	char *input = argv[0];
 
 	errno = 0;
 	char *end = NULL;
 	unsigned long value = strtoul(input, &end, 10);
-	if (*end != '\0' || errno != 0) {
+	if (*end != '\0' || errno != 0 || value > UINT16_MAX) {
 		error("Invalid key size.");
 		return -1;
 	}
