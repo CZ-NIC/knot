@@ -14,35 +14,46 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <stdarg.h>
-#include <stdio.h>
-#include <stdlib.h>
-#if HAVE_LMDB
-#include <lmdb.h>
-#endif
-
 #include "libknot/internal/errcode.h"
 #include "libknot/internal/macros.h"
 
+#define ERR_ITEM(name) { name, KNOT_##name }
+
+typedef struct {
+	int errno_code;
+	int libknot_code;
+} err_table_t;
+
+/*!
+ * \brief Errno to libknot error mapping table.
+ */
+static const err_table_t errno_to_errcode[] = {
+	ERR_ITEM(ENOMEM),
+	ERR_ITEM(EINVAL),
+	ERR_ITEM(ENOTSUP),
+	ERR_ITEM(EBUSY),
+	ERR_ITEM(EAGAIN),
+	ERR_ITEM(EACCES),
+	ERR_ITEM(ECONNREFUSED),
+	ERR_ITEM(EISCONN),
+	ERR_ITEM(EADDRINUSE),
+	ERR_ITEM(ENOENT),
+	ERR_ITEM(EEXIST),
+	ERR_ITEM(ERANGE),
+	ERR_ITEM(EADDRNOTAVAIL),
+
+	/* Terminator - default value. */
+	{ 0, KNOT_ERROR }
+};
+
 _public_
-int knot_map_errno_internal(int fallback, int arg0, ...)
+int knot_map_errno(void)
 {
-	/* Iterate all variable-length arguments. */
-	va_list ap;
-	va_start(ap, arg0);
+	const err_table_t *err = errno_to_errcode;
 
-	/* KNOT_ERROR serves as a sentinel. */
-	for (int c = arg0; c != 0; c = va_arg(ap, int)) {
-
-		/* Error code matches with mapped. */
-		if (c == errno) {
-			/* Return negative value of the code. */
-			va_end(ap);
-			return -abs(c);
-		}
+	while (err->errno_code != 0 && err->errno_code != errno) {
+		err++;
 	}
-	va_end(ap);
 
-	/* Fallback error code. */
-	return KNOT_ERROR;
+	return err->libknot_code;
 }

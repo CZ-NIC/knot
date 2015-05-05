@@ -111,7 +111,7 @@ int pid_write(const char* fn)
 			ret = KNOT_ERROR;
 		close(fd);
 	} else {
-		ret = knot_map_errno(errno);
+		ret = knot_map_errno();
 	}
 
 	return ret;

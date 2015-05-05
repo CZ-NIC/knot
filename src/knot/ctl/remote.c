@@ -549,7 +549,7 @@ int remote_bind(struct sockaddr_storage *addr)
 	if (listen(sock, TCP_BACKLOG_SIZE) != 0) {
 		log_error("remote control, failed to listen on '%s'", addr_str);
 		close(sock);
-		return knot_map_errno(EADDRINUSE);
+		return knot_map_errno();
 	}
 
 	return sock;

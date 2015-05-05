@@ -27,7 +27,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #pragma once
 
-#include <errno.h>
 #include "libknot/internal/errcode.h"
 
 /*!
@@ -38,12 +37,5 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
  * \return String containing the error message.
  */
 const char *knot_strerror(int code);
-
-/*!
- * \brief Map POSIX errno to Knot error code.
- *
- * KNOT_ERROR is used as a fallback error, the list is terminated implicitly.
- */
-int knot_map_errno(int arg0, ...);
 
 /*! @} */
