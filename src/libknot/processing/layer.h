@@ -51,12 +51,9 @@ struct knot_layer_api;
 typedef struct knot_layer
 {
 	node_t node;
-
 	uint16_t state;  /* Bitmap of enum knot_layer_state. */
 	mm_ctx_t *mm;    /* Processing memory context. */
-
-	/* Module specific. */
-	void *data;
+	void *data;      /* Module specific. */
 	const struct knot_layer_api *api;
 } knot_layer_t;
 
@@ -68,6 +65,7 @@ typedef struct knot_layer_api {
 	int (*consume)(knot_layer_t *ctx, knot_pkt_t *pkt);
 	int (*produce)(knot_layer_t *ctx, knot_pkt_t *pkt);
 	int (*fail)(knot_layer_t *ctx, knot_pkt_t *pkt);
+	void *data;
 } knot_layer_api_t;
 
 /*!
