@@ -1,6 +1,6 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "KEYMGR" "8" "2015-04-23" "2.0.0-beta" "Knot DNS"
+.TH "KEYMGR" "8" "@RELEASE_DATE@" "@VERSION@" "Knot DNS"
 .SH NAME
 keymgr \-  DNSSEC key management utility
 .

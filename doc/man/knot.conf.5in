@@ -1,6 +1,6 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "KNOT.CONF" "5" "2015-04-23" "2.0.0-beta" "Knot DNS"
+.TH "KNOT.CONF" "5" "@RELEASE_DATE@" "@VERSION@" "Knot DNS"
 .SH NAME
 knot.conf \- Knot DNS configuration file
 .

@@ -1,8 +1,8 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "KNOTD" "8" "2015-04-23" "2.0.0-beta" "Knot DNS"
+.TH "KNOT1TO2" "1" "@RELEASE_DATE@" "@VERSION@" "Knot DNS"
 .SH NAME
-knotd \- Knot DNS server daemon
+knot1to2 \- Knot DNS configuration conversion utility
 .
 .nr rst2man-indent-level 0
 .
@@ -32,29 +32,38 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 ..
 .SH SYNOPSIS
 .sp
-\fBknotd\fP [\fIparameters\fP]
+\fBknot1to2\fP [\fIoptions\fP] \-i \fIfile\fP \-o \fIfile\fP
 .SH DESCRIPTION
+.sp
+This utility generates Knot DNS configuration file version 2.x from configuration
+file version 1.x.
 .SS Parameters
 .INDENT 0.0
 .TP
-\fB\-c\fP, \fB\-\-config\fP \fIfile\fP
-Use textual configuration file (default is \fB@config_dir@/knot.conf\fP).
+\fB\-i\fP, \fB\-\-in\fP \fIfile\fP
+Input configuration file (Knot version 1.x).
 .TP
-\fB\-C\fP, \fB\-\-confdb\fP \fIdirectory\fP
-Use binary configuration database.
+\fB\-o\fP, \fB\-\-out\fP \fIfile\fP
+Output configuration file (Knot version 2.x).
+.UNINDENT
+.SS Options
+.INDENT 0.0
 .TP
-\fB\-d\fP, \fB\-\-daemonize\fP [\fIdirectory\fP]
-Run server as a daemon. Working directory may be set (default is \fB/\fP).
+\fB\-r\fP, \fB\-\-raw\fP
+Raw output, do not reformat via \fBknotc\fP\&.
+.TP
+\fB\-p\fP, \fB\-\-path\fP \fIdirectory\fP
+Path to \fBknotc\fP utility.
 .TP
 \fB\-V\fP, \fB\-\-version\fP
-Print program versiom.
+Print program version.
 .TP
 \fB\-h\fP, \fB\-\-help\fP
 Print help and usage.
 .UNINDENT
 .SH SEE ALSO
 .sp
-\fIknotc(8)\fP, \fIknot.conf(5)\fP\&.
+\fIknotc(8)\fP, \fIknotd(8)\fP, \fIknot.conf(5)\fP\&.
 .SH AUTHOR
 CZ.NIC Labs <http://www.knot-dns.cz>
 .SH COPYRIGHT
