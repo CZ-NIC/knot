@@ -32,10 +32,6 @@ install-data-local: knot.sample.conf
 	  $(INSTALL) -d $(DESTDIR)/$(sysconfdir)/bash_completion.d
 	[ -f $(DESTDIR)/$(sysconfdir)/keymgr-completion.sh ] || \
 	  $(INSTALL_DATA) keymgr-completion.sh $(DESTDIR)/$(sysconfdir)/bash_completion.d/
-	[ -d $(DESTDIR)/$(datadir)/zsh/functions/Completion/Knot ] || \
-	  $(INSTALL) -d $(DESTDIR)/$(datadir)/zsh/functions/Completion/Knot
-	[ -f $(DESTDIR)/$(datadir)/zsh/functions/Completion/Knot/_keymgr ] || \
-	  $(INSTALL_DATA) keymgr-completion.zsh $(DESTDIR)/$(datadir)/zsh/functions/Completion/Knot/_keymgr
 
 uninstall-local:
 	[ -f $(DESTDIR)/$(config_dir)/knot.sample.conf ] && \
@@ -44,8 +40,6 @@ uninstall-local:
 	  rm -f $(DESTDIR)/$(config_dir)/example.com.zone
 	[ -f $(DESTDIR)/$(sysconfdir)/keymgr-completion.sh ] && \
 	  rm -f $(DESTDIR)/$(sysconfdir)/bash_completion.d/keymgr
-	[ -f $(DESTDIR)/$(datadir)/zsh/functions/Completion/Knot/_keymgr ] && \
-	  rm -f $(DESTDIR)/$(datadir)/zsh/functions/Completion/Knot/_keymgr
 
 endif # HAVE_DAEMON
 
