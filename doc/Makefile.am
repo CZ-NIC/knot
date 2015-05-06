@@ -44,9 +44,9 @@ man/khost.1: man/khost.1in
 man/knsupdate.1: man/knsupdate.1in
 man/knot1to2.1: man/knot1to2.1in
 man/knsec3hash.1: man/knsec3hash.1in
-man/keymgr.8:  man/keymgr.8in
+man/keymgr.8: man/keymgr.8in
 
-man_SUBST = sed -e 's,[@]VERSION@,$(VERSION),' -e 's,[@]RELEASE_DATE@,$(RELEASE_DATE),' $< > $@
+man_SUBST = mkdir -p man; sed -e 's,[@]VERSION@,$(VERSION),' -e 's,[@]RELEASE_DATE@,$(RELEASE_DATE),' $< > $@
 
 .1in.1:
 	$(man_SUBST)
@@ -119,9 +119,9 @@ endif
 man: $(man_MANS)
 $(MANPAGES_IN): $(MANPAGES_RST)
 	$(SPHINXBUILD) -b man -d $(SPHINXBUILDDIR)/doctrees-man $(ALLSPHINXOPTS) $(SPHINXBUILDDIR)/man
-	mkdir -p man
+	mkdir -p $(srcdir)/man
 	for f in $(SPHINXBUILDDIR)/man/*; do \
-	  sed -e '/^.TP$$/{n;s/^.B //}' "$$f" > "man/$$(basename $$f)in"; \
+	  sed -e '/^.TP$$/{n;s/^.B //}' "$$f" > "$(srcdir)/man/$$(basename $$f)in"; \
 	done
 	@echo
 	@echo "Build finished. The man pages are in man/."
@@ -135,3 +135,4 @@ endif # HAVE_DOCS
 
 clean-local:
 	-rm -rf $(SPHINXBUILDDIR)
+	-rm -f man/*.1 man/*.5 man/*.8
