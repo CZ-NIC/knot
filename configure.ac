@@ -12,9 +12,7 @@ AC_CANONICAL_HOST
 AX_SET_VERSION_INFO
 
 # Automatically update release date based on configure.ac date
-AS_CASE([$host_os],
-    [linux*],[release_date=`date +"%Y-%m-%d" -r ${srcdir}/configure.ac`],
-    [*],[release_date=$(date -r "$(stat -f %m ${srcdir}/configure.ac)" +"%Y-%m-%d")])
+release_date=$(sed -n 's/^Knot DNS .* (\(.*\))/\1/p;q;' ${srcdir}/NEWS)
 AC_SUBST([RELEASE_DATE], $release_date)
 
 # Set compiler compatibility flags
