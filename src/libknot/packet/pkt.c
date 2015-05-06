@@ -317,7 +317,7 @@ void knot_pkt_clear(knot_pkt_t *pkt)
 
 	/* Reset to header size. */
 	pkt->size = KNOT_WIRE_HEADER_SIZE;
-	memset(pkt->wire, 0, pkt->max_size);
+	memset(pkt->wire, 0, pkt->size);
 }
 
 _public_
@@ -730,7 +730,7 @@ int knot_pkt_parse_rr(knot_pkt_t *pkt, unsigned flags)
 	/* Parse wire format. */
 	size_t rr_size = pkt->parsed;
 	knot_rrset_t *rr = &pkt->rr[pkt->rrset_count];
-	ret = knot_rrset_rr_from_wire(pkt->wire, &pkt->parsed, pkt->max_size,
+	ret = knot_rrset_rr_from_wire(pkt->wire, &pkt->parsed, pkt->size,
 	                              &pkt->mm, rr);
 	if (ret != KNOT_EOK) {
 		return ret;
