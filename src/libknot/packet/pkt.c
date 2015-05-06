@@ -164,15 +164,14 @@ static int pkt_rr_array_alloc(knot_pkt_t *pkt, uint16_t count)
 }
 
 /*! \brief Clear the packet and switch wireformat pointers (possibly allocate new). */
-static int pkt_reset(knot_pkt_t *pkt, void *wire, uint16_t len)
+static int pkt_init(knot_pkt_t *pkt, void *wire, uint16_t len, mm_ctx_t *mm)
 {
 	assert(pkt);
 
-	/* Free allocated data. */
-	pkt_free_data(pkt);
-	mm_ctx_t mm = pkt->mm;
 	memset(pkt, 0, sizeof(knot_pkt_t));
-	pkt->mm = mm;
+
+	/* No data to free, set memory context. */
+	memcpy(&pkt->mm, mm, sizeof(mm_ctx_t));
 
 	/* Initialize wire. */
 	int ret = KNOT_EOK;
@@ -222,11 +221,8 @@ static knot_pkt_t *pkt_new_mm(void *wire, uint16_t len, mm_ctx_t *mm)
 	if (pkt == NULL) {
 		return NULL;
 	}
-	memset(pkt, 0, sizeof(knot_pkt_t));
 
-	/* No data to free, set memory context. */
-	memcpy(&pkt->mm, mm, sizeof(mm_ctx_t));
-	if (pkt_reset(pkt, wire, len) != KNOT_EOK) {
+	if (pkt_init(pkt, wire, len, mm) != KNOT_EOK) {
 		mm_free(mm, pkt);
 		return NULL;
 	}
@@ -734,7 +730,7 @@ int knot_pkt_parse_rr(knot_pkt_t *pkt, unsigned flags)
 	/* Parse wire format. */
 	size_t rr_size = pkt->parsed;
 	knot_rrset_t *rr = &pkt->rr[pkt->rrset_count];
-	ret = knot_rrset_rr_from_wire(pkt->wire, &pkt->parsed, pkt->max_size,
+	ret = knot_rrset_rr_from_wire(pkt->wire, &pkt->parsed, pkt->size,
 	                              &pkt->mm, rr);
 	if (ret != KNOT_EOK) {
 		return ret;
