@@ -28,7 +28,7 @@ SPHINX_V_1 = -vv -n
 
 AM_V_SPHINX = $(AM_V_SPHINX_@AM_V@)
 AM_V_SPHINX_ = $(AM_V_SPHINX_@AM_DEFAULT_V@)
-AM_V_SPHINX_0 = @echo SPHINX $@;
+AM_V_SPHINX_0 = @echo "  SPHINX   $@";
 
 AM_V_ECHO = @sh -c 'if $(AM_V_P); then echo $$1; fi' -- 
 
@@ -65,7 +65,7 @@ man/knot1to2.1: man/knot1to2.1in
 man/knsec3hash.1: man/knsec3hash.1in
 man/keymgr.8: man/keymgr.8in
 
-man_SUBST = mkdir -p man; sed -e 's,[@]VERSION@,$(VERSION),' -e 's,[@]RELEASE_DATE@,$(RELEASE_DATE),' $< > $@
+man_SUBST = $(AM_V_GEN)mkdir -p man; sed -e 's,[@]VERSION@,$(VERSION),' -e 's,[@]RELEASE_DATE@,$(RELEASE_DATE),' $< > $@
 
 .1in.1:
 	$(man_SUBST)
