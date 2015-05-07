@@ -20,6 +20,7 @@
 #include <gnutls/gnutls.h>
 #include <gnutls/crypto.h>
 
+#include "bignum.h"
 #include "error.h"
 #include "key.h"
 #include "key/internal.h"
@@ -77,17 +78,7 @@ static int rsa_copy_signature(dnssec_sign_ctx_t *ctx,
 	assert(from);
 	assert(to);
 
-	uint8_t *data = malloc(from->size);
-	if (!data) {
-		return DNSSEC_ENOMEM;
-	}
-
-	memmove(data, from->data, from->size);
-
-	to->size = from->size;
-	to->data = data;
-
-	return DNSSEC_EOK;
+	return dnssec_binary_dup(from, to);
 }
 
 static const algorithm_functions_t rsa_functions = {
@@ -133,29 +124,25 @@ static int dsa_x509_to_dnssec(dnssec_sign_ctx_t *ctx,
 		return result;
 	}
 
-	dnssec_binary_ltrim(&value_r);
-	dnssec_binary_ltrim(&value_s);
+	size_t r_size = bignum_size_u(&value_r);
+	size_t s_size = bignum_size_u(&value_s);
 
-	if (value_r.size > 20 || value_s.size > 20) {
+	if (r_size > 20 || s_size > 20) {
 		return DNSSEC_MALFORMED_DATA;
 	}
 
 	uint8_t value_t = dsa_dnskey_get_t_value(ctx->key);
 
-	size_t size = 41;
-	uint8_t *data = malloc(size);
-	if (!data) {
-		return DNSSEC_ENOMEM;
+	result = dnssec_binary_alloc(dnssec, 41);
+	if (result != DNSSEC_EOK) {
+		return result;
 	}
 
-	wire_ctx_t wire = wire_init(data, size);
+	wire_ctx_t wire = wire_init_binary(dnssec);
 	wire_write_u8(&wire, value_t);
-	wire_write_ralign_binary(&wire, 20, &value_r);
-	wire_write_ralign_binary(&wire, 20, &value_s);
-	assert(wire_tell(&wire) == size);
-
-	dnssec->size = size;
-	dnssec->data = data;
+	wire_write_bignum(&wire, 20, &value_r);
+	wire_write_bignum(&wire, 20, &value_s);
+	assert(wire_tell(&wire) == dnssec->size);
 
 	return DNSSEC_EOK;
 }
@@ -174,16 +161,8 @@ static int dsa_dnssec_to_x509(dnssec_sign_ctx_t *ctx,
 
 	const dnssec_binary_t value_r = { .size = 20, .data = dnssec->data + 1 };
 	const dnssec_binary_t value_s = { .size = 20, .data = dnssec->data + 21 };
-	dnssec_binary_t der = { 0 };
 
-	int result = dss_sig_value_encode(&value_r, &value_s, &der);
-	if (result != DNSSEC_EOK) {
-		return result;
-	}
-
-	*x509 = der;
-
-	return DNSSEC_EOK;
+	return dss_sig_value_encode(&value_r, &value_s, x509);
 }
 
 static const algorithm_functions_t dsa_functions = {
@@ -223,29 +202,23 @@ static int ecdsa_x509_to_dnssec(dnssec_sign_ctx_t *ctx,
 		return result;
 	}
 
-	dnssec_binary_ltrim(&value_r);
-	dnssec_binary_ltrim(&value_s);
-
 	size_t int_size = ecdsa_sign_integer_size(ctx);
-	assert(int_size > 0);
+	size_t r_size = bignum_size_u(&value_r);
+	size_t s_size = bignum_size_u(&value_s);
 
-	if (value_r.size > int_size || value_s.size > int_size) {
+	if (r_size > int_size || s_size > int_size) {
 		return DNSSEC_MALFORMED_DATA;
 	}
 
-	size_t size = 2 * int_size;
-	uint8_t *data = malloc(size);
-	if (!data) {
-		return DNSSEC_ENOMEM;
+	result = dnssec_binary_alloc(dnssec, 2 * int_size);
+	if (result != DNSSEC_EOK) {
+		return result;
 	}
 
-	wire_ctx_t wire = wire_init(data, size);
-	wire_write_ralign_binary(&wire, int_size, &value_r);
-	wire_write_ralign_binary(&wire, int_size, &value_s);
-	assert(wire_tell(&wire) == size);
-
-	dnssec->size = size;
-	dnssec->data = data;
+	wire_ctx_t wire = wire_init_binary(dnssec);
+	wire_write_bignum(&wire, int_size, &value_r);
+	wire_write_bignum(&wire, int_size, &value_s);
+	assert(wire_tell(&wire) == dnssec->size);
 
 	return DNSSEC_EOK;
 }
@@ -259,7 +232,6 @@ static int ecdsa_dnssec_to_x509(dnssec_sign_ctx_t *ctx,
 	assert(dnssec);
 
 	size_t int_size = ecdsa_sign_integer_size(ctx);
-	assert(int_size > 0);
 
 	if (dnssec->size != 2 * int_size) {
 		return DNSSEC_INVALID_SIGNATURE;
@@ -267,16 +239,8 @@ static int ecdsa_dnssec_to_x509(dnssec_sign_ctx_t *ctx,
 
 	const dnssec_binary_t value_r = { .size = int_size, .data = dnssec->data };
 	const dnssec_binary_t value_s = { .size = int_size, .data = dnssec->data + int_size };
-	dnssec_binary_t der = { 0 };
 
-	int result = dss_sig_value_encode(&value_r, &value_s, &der);
-	if (result != DNSSEC_EOK) {
-		return result;
-	}
-
-	*x509 = der;
-
-	return DNSSEC_EOK;
+	return dss_sig_value_encode(&value_r, &value_s, x509);
 }
 
 static const algorithm_functions_t ecdsa_functions = {
@@ -469,7 +433,7 @@ int dnssec_sign_write(dnssec_sign_ctx_t *ctx, dnssec_binary_t *signature)
 		return DNSSEC_SIGN_ERROR;
 	}
 
-	dnssec_binary_t bin_raw = datum_to_binary(&raw);
+	dnssec_binary_t bin_raw = binary_from_datum(&raw);
 
 	return ctx->functions->x509_to_dnssec(ctx, &bin_raw, signature);
 }

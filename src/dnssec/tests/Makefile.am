@@ -39,6 +39,7 @@ check_PROGRAMS = \
 	sign		\
 	sign_der	\
 	shared_base32hex \
+	shared_bignum	\
 	shared_dname	\
 	shared_strtonum	\
 	shared_wire	\

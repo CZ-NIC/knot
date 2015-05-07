@@ -112,15 +112,6 @@ int dnssec_binary_resize(dnssec_binary_t *data, size_t new_size);
 int dnssec_binary_cmp(const dnssec_binary_t *one, const dnssec_binary_t *two);
 
 /*!
- * Trim leading zeroes from the binary data.
- *
- * If the input are zeroes only, the last zero will be preserved.
- *
- * \param binary  Input to be trimmed.
- */
-void dnssec_binary_ltrim(dnssec_binary_t *binary);
-
-/*!
  * Allocate binary from Base64 encoded string.
  *
  * \param[in]  base64  Base64 encoded data.

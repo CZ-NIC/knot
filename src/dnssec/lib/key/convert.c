@@ -21,6 +21,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "bignum.h"
 #include "binary.h"
 #include "error.h"
 #include "key.h"
@@ -29,20 +30,27 @@
 #include "shared.h"
 #include "wire.h"
 
-/**
- * Trim leading zeroes from binary data.
- *
- * GnuTLS uses Nettle, Nettle uses GMP, and some GMP conversions operations
- * return numbers prefixed with a zero byte. The byte is useless and can
- * create incompatibility with other DNSSEC software.
- */
-static void trim_leading_zeros(gnutls_datum_t *data)
-{
-	assert(data);
+/* -- wrappers for GnuTLS types -------------------------------------------- */
 
-	dnssec_binary_t tmp = datum_to_binary(data);
-	dnssec_binary_ltrim(&tmp);
-	*data = binary_to_datum(&tmp);
+static size_t bignum_size_u_datum(const gnutls_datum_t *_bignum)
+{
+	const dnssec_binary_t bignum = binary_from_datum(_bignum);
+	return bignum_size_u(&bignum);
+}
+
+static void wire_write_bignum_datum(wire_ctx_t *ctx, size_t width,
+				    const gnutls_datum_t *_bignum)
+{
+	const dnssec_binary_t bignum = binary_from_datum(_bignum);
+	wire_write_bignum(ctx, width, &bignum);
+}
+
+static gnutls_datum_t wire_take_datum(wire_ctx_t *ctx, size_t count)
+{
+	gnutls_datum_t result = { .data = ctx->position, .size = count };
+	ctx->position += count;
+
+	return result;
 }
 
 /* -- DNSSEC to crypto ------------------------------------------------------*/
@@ -56,32 +64,30 @@ static int rsa_pubkey_to_rdata(gnutls_pubkey_t key, dnssec_binary_t *rdata)
 	assert(rdata);
 
 	_cleanup_datum_ gnutls_datum_t modulus = { 0 };
-	_cleanup_datum_ gnutls_datum_t pub_exponent = { 0 };
+	_cleanup_datum_ gnutls_datum_t exponent = { 0 };
 
-	int result = gnutls_pubkey_get_pk_rsa_raw(key, &modulus, &pub_exponent);
+	int result = gnutls_pubkey_get_pk_rsa_raw(key, &modulus, &exponent);
 	if (result != GNUTLS_E_SUCCESS) {
 		return DNSSEC_KEY_EXPORT_ERROR;
 	}
 
-	trim_leading_zeros(&modulus);
-	trim_leading_zeros(&pub_exponent);
-
-	assert(pub_exponent.size <= UINT8_MAX);
-
-	size_t size = 1 + pub_exponent.size + modulus.size;
-	uint8_t *data = malloc(size);
-	if (!data) {
-		return DNSSEC_ENOMEM;
+	size_t exponent_size = bignum_size_u_datum(&exponent);
+	if (exponent_size > UINT8_MAX) {
+		return DNSSEC_KEY_EXPORT_ERROR;
 	}
 
-	wire_ctx_t wire = wire_init(data, size);
-	wire_write_u8(&wire, pub_exponent.size);
-	wire_write_datum(&wire, &pub_exponent);
-	wire_write_datum(&wire, &modulus);
-	assert(wire_tell(&wire) == size);
+	size_t modulus_size = bignum_size_u_datum(&modulus);
 
-	rdata->size = size;
-	rdata->data = data;
+	result = dnssec_binary_alloc(rdata, 1 + exponent_size + modulus_size);
+	if (result != DNSSEC_EOK) {
+		return result;
+	}
+
+	wire_ctx_t wire = wire_init_binary(rdata);
+	wire_write_u8(&wire, exponent_size);
+	wire_write_bignum_datum(&wire, exponent_size, &exponent);
+	wire_write_bignum_datum(&wire, modulus_size, &modulus);
+	assert(wire_tell(&wire) == rdata->size);
 
 	return DNSSEC_EOK;
 }
@@ -104,39 +110,53 @@ static int dsa_pubkey_to_rdata(gnutls_pubkey_t key, dnssec_binary_t *rdata)
 		return DNSSEC_KEY_EXPORT_ERROR;
 	}
 
-	trim_leading_zeros(&p);
-	trim_leading_zeros(&q);
-	trim_leading_zeros(&g);
-	trim_leading_zeros(&y);
+	size_t p_size = bignum_size_u_datum(&p);
+	size_t q_size = bignum_size_u_datum(&q);
+	size_t g_size = bignum_size_u_datum(&g);
+	size_t y_size = bignum_size_u_datum(&y);
 
-	if (q.size != 20) {
+	if (q_size != 20) {
 		// only certain key size range can be exported in DNSKEY
 		return DNSSEC_INVALID_KEY_SIZE;
 	}
 
-	assert(p.size == g.size && g.size == y.size);
-	assert(p.size >= 64 && (p.size - 64) % 8 == 0);
-
-	uint8_t t = (p.size - 64) / 8;
-
-	size_t size = 1 + q.size + (3 * p.size);
-	uint8_t *data = malloc(size);
-	if (!data) {
-		return DNSSEC_ENOMEM;
+	if (p_size != g_size || g_size != y_size) {
+		return DNSSEC_INVALID_KEY_SIZE;
 	}
 
-	wire_ctx_t ctx = wire_init(data, size);
-	wire_write_u8(&ctx, t);
-	wire_write_datum(&ctx, &q);
-	wire_write_datum(&ctx, &p);
-	wire_write_datum(&ctx, &g);
-	wire_write_datum(&ctx, &y);
-	assert(wire_tell(&ctx) == size);
+	if (p_size < 64 || (p_size - 64) % 8 != 0) {
+		return DNSSEC_INVALID_KEY_SIZE;
+	}
 
-	rdata->size = size;
-	rdata->data = data;
+	uint8_t t = (p_size - 64) / 8;
+
+	size_t size = 1 + q_size + p_size + g_size + y_size;
+	result = dnssec_binary_alloc(rdata, size);
+	if (result != DNSSEC_EOK) {
+		return result;
+	}
+
+	wire_ctx_t ctx = wire_init_binary(rdata);
+	wire_write_u8(&ctx, t);
+	wire_write_bignum_datum(&ctx, q_size, &q);
+	wire_write_bignum_datum(&ctx, p_size, &p);
+	wire_write_bignum_datum(&ctx, g_size, &g);
+	wire_write_bignum_datum(&ctx, y_size, &y);
+	assert(wire_tell(&ctx) == rdata->size);
 
 	return DNSSEC_EOK;
+}
+
+/*!
+ * Get point size for an ECDSA curve.
+ */
+static size_t ecdsa_curve_point_size(gnutls_ecc_curve_t curve)
+{
+	switch (curve) {
+	case GNUTLS_ECC_CURVE_SECP256R1: return 32;
+	case GNUTLS_ECC_CURVE_SECP384R1: return 48;
+	default: return 0;
+	}
 }
 
 /*!
@@ -156,24 +176,20 @@ static int ecdsa_pubkey_to_rdata(gnutls_pubkey_t key, dnssec_binary_t *rdata)
 		return DNSSEC_KEY_EXPORT_ERROR;
 	}
 
-	trim_leading_zeros(&point_x);
-	trim_leading_zeros(&point_y);
-
-	assert(point_x.size == point_y.size);
-
-	size_t size = point_x.size + point_y.size;
-	uint8_t *data = malloc(size);
-	if (!data) {
-		return DNSSEC_ENOMEM;
+	size_t point_size = ecdsa_curve_point_size(curve);
+	if (point_size == 0) {
+		return DNSSEC_INVALID_PUBLIC_KEY;
 	}
 
-	wire_ctx_t wire = wire_init(data, size);
-	wire_write_datum(&wire, &point_x);
-	wire_write_datum(&wire, &point_y);
-	assert(wire_tell(&wire) == size);
+	result = dnssec_binary_alloc(rdata, 2 * point_size);
+	if (result != DNSSEC_EOK) {
+		return result;
+	}
 
-	rdata->size = size;
-	rdata->data = data;
+	wire_ctx_t wire = wire_init_binary(rdata);
+	wire_write_bignum_datum(&wire, point_size, &point_x);
+	wire_write_bignum_datum(&wire, point_size, &point_y);
+	assert(wire_tell(&wire) == rdata->size);
 
 	return DNSSEC_EOK;
 }
@@ -194,35 +210,27 @@ static int rsa_rdata_to_pubkey(const dnssec_binary_t *rdata, gnutls_pubkey_t key
 
 	wire_ctx_t ctx = wire_init_binary(rdata);
 
-	// parse exponent
+	// parse public exponent
 
-	_cleanup_datum_ gnutls_datum_t pub_exponent = { 0 };
-	pub_exponent.size = wire_read_u8(&ctx);
-	if (pub_exponent.size == 0 || wire_available(&ctx) < pub_exponent.size) {
+	uint8_t exponent_size = wire_read_u8(&ctx);
+	if (exponent_size == 0 || wire_available(&ctx) < exponent_size) {
 		return DNSSEC_INVALID_PUBLIC_KEY;
 	}
-	pub_exponent.data = gnutls_malloc(pub_exponent.size);
-	if (!pub_exponent.data) {
-		return DNSSEC_ENOMEM;
-	}
-	wire_read_datum(&ctx, &pub_exponent);
+
+	gnutls_datum_t exponent = wire_take_datum(&ctx, exponent_size);
 
 	// parse modulus
 
-	_cleanup_datum_ gnutls_datum_t modulus = { 0 };
-	modulus.size = wire_available(&ctx);
-	if (modulus.size == 0) {
+	size_t modulus_size = wire_available(&ctx);
+	if (modulus_size == 0) {
 		return DNSSEC_INVALID_PUBLIC_KEY;
 	}
-	modulus.data = gnutls_malloc(modulus.size);
-	if (!modulus.data) {
-		return DNSSEC_ENOMEM;
-	}
-	wire_read_datum(&ctx, &modulus);
+
+	gnutls_datum_t modulus = wire_take_datum(&ctx, modulus_size);
 
 	assert(wire_tell(&ctx) == rdata->size);
 
-	int result = gnutls_pubkey_import_rsa_raw(key, &modulus, &pub_exponent);
+	int result = gnutls_pubkey_import_rsa_raw(key, &modulus, &exponent);
 	if (result != GNUTLS_E_SUCCESS) {
 		return DNSSEC_KEY_IMPORT_ERROR;
 	}
@@ -276,7 +284,7 @@ static int dsa_rdata_to_pubkey(const dnssec_binary_t *rdata, gnutls_pubkey_t key
 		return DNSSEC_INVALID_PUBLIC_KEY;
 	}
 
-	wire_ctx_t ctx =wire_init_binary(rdata);
+	wire_ctx_t ctx = wire_init_binary(rdata);
 
 	// read t
 
@@ -287,29 +295,14 @@ static int dsa_rdata_to_pubkey(const dnssec_binary_t *rdata, gnutls_pubkey_t key
 
 	// parse q
 
-	_cleanup_datum_ gnutls_datum_t q = { 0 };
-	q.size = 20;
-	q.data = gnutls_malloc(q.size);
-	if (!q.data) {
-		return DNSSEC_ENOMEM;
-	}
-	wire_read_datum(&ctx, &q);
+	gnutls_datum_t q = wire_take_datum(&ctx, 20);
 
 	// parse p, g, and y
 
-	_cleanup_datum_ gnutls_datum_t p = { 0 };
-	_cleanup_datum_ gnutls_datum_t g = { 0 };
-	_cleanup_datum_ gnutls_datum_t y = { 0 };
-	p.size = g.size = y.size = wire_available(&ctx) / 3;
-	p.data = gnutls_malloc(p.size);
-	g.data = gnutls_malloc(g.size);
-	y.data = gnutls_malloc(y.size);
-	if (!p.data || !g.data || !y.data) {
-		return DNSSEC_ENOMEM;
-	}
-	wire_read_datum(&ctx, &p);
-	wire_read_datum(&ctx, &g);
-	wire_read_datum(&ctx, &y);
+	size_t param_size = wire_available(&ctx) / 3;
+	gnutls_datum_t p = wire_take_datum(&ctx, param_size);
+	gnutls_datum_t g = wire_take_datum(&ctx, param_size);
+	gnutls_datum_t y = wire_take_datum(&ctx, param_size);
 
 	assert(wire_tell(&ctx) == rdata->size);
 
@@ -322,9 +315,9 @@ static int dsa_rdata_to_pubkey(const dnssec_binary_t *rdata, gnutls_pubkey_t key
 }
 
 /**
- * Choose proper ECDSA curve based on RDATA public key size.
+ * Get ECDSA curve based on DNSKEY RDATA size.
  */
-static gnutls_ecc_curve_t choose_ecdsa_curve(size_t rdata_size)
+static gnutls_ecc_curve_t ecdsa_curve_from_rdata_size(size_t rdata_size)
 {
 	switch (rdata_size) {
 	case 64: return GNUTLS_ECC_CURVE_SECP256R1;
@@ -341,26 +334,18 @@ static int ecdsa_rdata_to_pubkey(const dnssec_binary_t *rdata, gnutls_pubkey_t k
 	assert(rdata);
 	assert(key);
 
-	gnutls_ecc_curve_t curve = choose_ecdsa_curve(rdata->size);
+	gnutls_ecc_curve_t curve = ecdsa_curve_from_rdata_size(rdata->size);
 	if (curve == GNUTLS_ECC_CURVE_INVALID) {
 		return DNSSEC_INVALID_PUBLIC_KEY;
 	}
 
-	wire_ctx_t ctx = wire_init_binary(rdata);
-
 	// parse points
 
-	_cleanup_datum_ gnutls_datum_t point_x = { 0 };
-	_cleanup_datum_ gnutls_datum_t point_y = { 0 };
-	point_x.size = point_y.size = rdata->size / 2;
-	point_x.data = gnutls_malloc(point_x.size);
-	point_y.data = gnutls_malloc(point_y.size);
-	if (!point_x.data || !point_y.data) {
-		return DNSSEC_ENOMEM;
-	}
-	wire_read_datum(&ctx, &point_x);
-	wire_read_datum(&ctx, &point_y);
+	wire_ctx_t ctx = wire_init_binary(rdata);
 
+	size_t point_size = wire_available(&ctx) / 2;
+	gnutls_datum_t point_x = wire_take_datum(&ctx, point_size);
+	gnutls_datum_t point_y = wire_take_datum(&ctx, point_size);
 	assert(wire_tell(&ctx) == rdata->size);
 
 	int result = gnutls_pubkey_import_ecc_raw(key, curve, &point_x, &point_y);

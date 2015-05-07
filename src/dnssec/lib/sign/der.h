@@ -25,6 +25,10 @@
  * of the signature.
  *
  * This module provides decoding and encoding of this format.
+ *
+ * The 'r' and 's' values are treated as unsigned values: The leading zeroes
+ * are stripped on decoding; an extra leading zero is added on encoding in case
+ * the value starts with a set bit.
  */
 
 /*!

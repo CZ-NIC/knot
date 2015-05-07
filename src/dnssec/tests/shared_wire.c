@@ -76,9 +76,10 @@ int main(void)
 	ok(memcmp(buffer.data + 12, out, 7) == 0 && wire_tell(&wire) == 19,
 	   "wire_write()");
 
+	dnssec_binary_t bignum = { .data = (uint8_t *)out, .size = 4 };
 	const uint8_t expect[8] = { 0x00, 0x00, 0x00, 0x00, 0xc0, 0x1d, 0xca, 0xfe };
 	wire_seek(&wire, 2);
-	wire_write_ralign(&wire, 8, out, 4);
+	wire_write_bignum(&wire, 8, &bignum);
 	ok(memcmp(buffer.data + 2, expect, 8) == 0 && wire_tell(&wire) == 10,
 	   "wire_write_ralign()");
 

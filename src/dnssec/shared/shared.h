@@ -113,7 +113,7 @@ static inline gnutls_datum_t binary_to_datum(const dnssec_binary_t *from)
 	return to;
 }
 
-static inline dnssec_binary_t datum_to_binary(const gnutls_datum_t *from)
+static inline dnssec_binary_t binary_from_datum(const gnutls_datum_t *from)
 {
 	dnssec_binary_t to = { .size = from->size, .data = from->data };
 	return to;
