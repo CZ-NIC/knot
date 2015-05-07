@@ -21,8 +21,27 @@ EXTRA_DIST = \
 	logo.eps		\
 	logo.png
 
+SPHINX_V = $(SPHINX_V_@AM_V@)
+SPHINX_V_ = $(SPHINX_V_@AM_DEFAULT_V@)
+SPHINX_V_0 = -q
+SPHINX_V_1 = -vv -n
+
+AM_V_SPHINX = $(AM_V_SPHINX_@AM_V@)
+AM_V_SPHINX_ = $(AM_V_SPHINX_@AM_DEFAULT_V@)
+AM_V_SPHINX_0 = @echo "  SPHINX   $@";
+
+AM_V_ECHO = @sh -c 'if $(AM_V_P); then echo $$1; fi' -- 
+
 SPHINXBUILDDIR = $(builddir)/_build
-ALLSPHINXOPTS  = -c $(srcdir) -n -D latex_paper_size=a4 -D version="@""VERSION@" -D today="@""RELEASE_DATE@" -D release="@""VERSION@" $(SPHINXOPTS) $(srcdir)
+ALLSPHINXOPTS  = -c $(srcdir) \
+	         -a \
+	         $(SPHINX_V) \
+	         -D latex_paper_size=a4 \
+	         -D version="@""VERSION@" \
+	         -D today="@""RELEASE_DATE@" \
+	         -D release="@""VERSION@" \
+	         $(SPHINXOPTS) \
+	         $(srcdir)
 
 .PHONY: html-local singlehtml pdf-local info-local man install-html-local install-singlehtml install-pdf-local install-info-local
 
@@ -46,7 +65,7 @@ man/knot1to2.1: man/knot1to2.1in
 man/knsec3hash.1: man/knsec3hash.1in
 man/keymgr.8: man/keymgr.8in
 
-man_SUBST = mkdir -p man; sed -e 's,[@]VERSION@,$(VERSION),' -e 's,[@]RELEASE_DATE@,$(RELEASE_DATE),' $< > $@
+man_SUBST = $(AM_V_GEN)mkdir -p man; sed -e 's,[@]VERSION@,$(VERSION),' -e 's,[@]RELEASE_DATE@,$(RELEASE_DATE),' $< > $@
 
 .1in.1:
 	$(man_SUBST)
@@ -62,9 +81,9 @@ if HAVE_DOCS
 
 if HAVE_SPHINXBUILD
 html-local:
-	$(SPHINXBUILD) -b html -d $(SPHINXBUILDDIR)/doctrees-html $(ALLSPHINXOPTS) $(SPHINXBUILDDIR)/html
-	@echo
-	@echo "Build finished. The HTML pages are in $(SPHINXBUILDDIR)/html/."
+	$(AM_V_SPHINX)$(SPHINXBUILD) -b html -d $(SPHINXBUILDDIR)/doctrees-html $(ALLSPHINXOPTS) $(SPHINXBUILDDIR)/html
+	$(AM_V_ECHO)
+	$(AM_V_ECHO) "Build finished. The HTML pages are in $(SPHINXBUILDDIR)/html/."
 
 install-html-local:
 	$(INSTALL) -d $(DESTDIR)/$(docdir) $(DESTDIR)/$(docdir)/_static $(DESTDIR)/$(docdir)/_sources
@@ -73,9 +92,9 @@ install-html-local:
 	$(INSTALL_DATA) $(SPHINXBUILDDIR)/html/_static/* $(DESTDIR)/$(docdir)/_static/
 
 singlehtml:
-	$(SPHINXBUILD) -b singlehtml -d $(SPHINXBUILDDIR)/doctrees-singlehtml $(ALLSPHINXOPTS) $(SPHINXBUILDDIR)/singlehtml
-	@echo
-	@echo "Build finished. The HTML page is in $(SPHINXBUILDDIR)/singlehtml/."
+	$(AM_V_SPHINX)$(SPHINXBUILD) -b singlehtml -d $(SPHINXBUILDDIR)/doctrees-singlehtml $(ALLSPHINXOPTS) $(SPHINXBUILDDIR)/singlehtml
+	$(AM_V_ECHO)
+	$(AM_V_ECHO) "Build finished. The HTML page is in $(SPHINXBUILDDIR)/singlehtml/."
 
 install-singlehtml: singlehtml
 	$(INSTALL) -d $(DESTDIR)/$(docdir) $(DESTDIR)/$(docdir)/_static
@@ -84,10 +103,10 @@ install-singlehtml: singlehtml
 
 if HAVE_PDFLATEX
 pdf-local:
-	$(SPHINXBUILD) -b latex -d $(SPHINXBUILDDIR)/doctrees-latex $(ALLSPHINXOPTS) $(SPHINXBUILDDIR)/latex
+	$(AM_V_SPHINX)$(SPHINXBUILD) -b latex -d $(SPHINXBUILDDIR)/doctrees-latex $(ALLSPHINXOPTS) $(SPHINXBUILDDIR)/latex
 	$(MAKE) -C $(SPHINXBUILDDIR)/latex all-pdf
-	@echo
-	@echo "Build finished. The PDF file is in $(SPHINXBUILDDIR)/latex/."
+	$(AM_V_ECHO)
+	$(AM_V_ECHO) "Build finished. The PDF file is in $(SPHINXBUILDDIR)/latex/."
 
 install-pdf-local:
 	$(INSTALL) -d $(DESTDIR)/$(docdir)
@@ -95,16 +114,16 @@ install-pdf-local:
 
 else
 pdf-local install-pdf-local:
-	@echo "You need to install pdflatex and re-run configure to be"
-	@echo "able to generate PDF documentation."
+	$(AM_V_ECHO) "You need to install pdflatex and re-run configure to be"
+	$(AM_V_ECHO) "able to generate PDF documentation."
 endif
 
 if HAVE_MAKEINFO
 info-local:
-	$(SPHINXBUILD) -b texinfo -d $(SPHINXBUILDDIR)/doctrees-texinfo $(ALLSPHINXOPTS) $(SPHINXBUILDDIR)/texinfo
+	$(AM_V_SPHINX)$(SPHINXBUILD) -b texinfo -d $(SPHINXBUILDDIR)/doctrees-texinfo $(ALLSPHINXOPTS) $(SPHINXBUILDDIR)/texinfo
 	$(MAKE) -C $(SPHINXBUILDDIR)/texinfo info
-	@echo
-	@echo "Build finished. The Info file is in $(SPHINXBUILDDIR)/texinfo/."
+	$(AM_V_ECHO)
+	$(AM_V_ECHO) "Build finished. The Info file is in $(SPHINXBUILDDIR)/texinfo/."
 
 install-info-local:
 	$(INSTALL) -d $(DESTDIR)/$(infodir)
@@ -112,23 +131,23 @@ install-info-local:
 
 else
 info-local install-info-local:
-	@echo "You need to install GNU Texinfo and re-run configure to be"
-	@echo "able to generate info pages."
+	$(AM_V_ECHO) "You need to install GNU Texinfo and re-run configure to be"
+	$(AM_V_ECHO) "able to generate info pages."
 endif
 
 man: $(man_MANS)
 $(MANPAGES_IN): $(MANPAGES_RST)
-	$(SPHINXBUILD) -b man -d $(SPHINXBUILDDIR)/doctrees-man $(ALLSPHINXOPTS) $(SPHINXBUILDDIR)/man
+	$(AM_V_SPHINX)$(SPHINXBUILD) -b man -d $(SPHINXBUILDDIR)/doctrees-man $(ALLSPHINXOPTS) $(SPHINXBUILDDIR)/man
 	mkdir -p $(srcdir)/man
 	for f in $(SPHINXBUILDDIR)/man/*; do \
 	  sed -e '/^.TP$$/{n;s/^.B //}' "$$f" > "$(srcdir)/man/$$(basename $$f)in"; \
 	done
-	@echo
-	@echo "Build finished. The man pages are in man/."
+	$(AM_V_ECHO)
+	$(AM_V_ECHO) "Build finished. The man pages are in man/."
 
 else
 html-local singlehtml pdf-local info-local man install-html-local install-singlehtml install-pdf-local install-info-local:
-	@echo "Please install sphinx (python-sphinx) to generate Knot DNS documentation."
+	$(AM_V_ECHO) "Please install sphinx (python-sphinx) to generate Knot DNS documentation."
 endif # HAVE_SPHINXBUILD
 
 endif # HAVE_DOCS
