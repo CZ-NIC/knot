@@ -173,7 +173,7 @@ AC_ARG_ENABLE([systemd],
 
 AS_IF([test "$enable_daemon" = "yes"],[
 
-AS_IF([test "$enable_system" != "no"],[
+AS_IF([test "$enable_systemd" != "no"],[
   AS_CASE([$enable_systemd],
     [auto],[PKG_CHECK_MODULES([systemd], [libsystemd-daemon libsystemd-journal], [enable_systemd=yes], [enable_systemd=no])],
     [yes],[PKG_CHECK_MODULES([systemd], [libsystemd-daemon libsystemd-journal])],
