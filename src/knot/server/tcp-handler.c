@@ -144,6 +144,7 @@ static int tcp_handle(tcp_context_t *tcp, int fd,
 	knot_overlay_add(&tcp->overlay, NS_PROC_QUERY, &param);
 
 	/* Input packet. */
+	(void) knot_pkt_parse(query, 0);
 	int state = knot_overlay_consume(&tcp->overlay, query);
 
 	/* Resolve until NOOP or finished. */

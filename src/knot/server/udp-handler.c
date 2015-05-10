@@ -134,6 +134,7 @@ void udp_handle(udp_context_t *udp, int fd, struct sockaddr_storage *ss,
 	knot_overlay_add(&udp->overlay, NS_PROC_QUERY, &param);
 
 	/* Input packet. */
+	(void) knot_pkt_parse(query, 0);
 	int state = knot_overlay_consume(&udp->overlay, query);
 
 	/* Process answer. */

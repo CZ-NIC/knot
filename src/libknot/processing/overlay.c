@@ -89,8 +89,6 @@ int knot_overlay_consume(struct knot_overlay *overlay, knot_pkt_t *pkt)
 		return overlay->state;
 	}
 
-	knot_pkt_parse(pkt, 0);
-
 	ITERATE_LAYERS(overlay, knot_layer_consume, pkt);
 }
 
