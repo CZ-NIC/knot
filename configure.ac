@@ -58,6 +58,8 @@ AM_CONDITIONAL([HAVE_DOCS], [test "$enable_documentation" = "yes"])
 
 AC_PROG_INSTALL
 
+AX_CC_LLVM
+
 AC_ARG_ENABLE([fastparser],
     AS_HELP_STRING([--disable-fastparser], [Disable use of fastest zone parser]),[],[
     # Set zone parser type - fastest on release build, slowest on dev build
@@ -67,6 +69,14 @@ AC_ARG_ENABLE([fastparser],
     	enable_fastparser=yes
     	])
     ])
+
+AS_IF([test "$enable_fastparser" = "yes"],[
+    AS_IF([test "${CC_LLVM}" = "yes"],[
+        AC_MSG_WARN([LLVM based compiler detected; disabling fastest zone parser, see https://gitlab.labs.nic.cz/labs/knot/issues/351])
+        enable_fastparser=no
+        ])
+    ])
+
 AM_CONDITIONAL([FAST_PARSER], [test "$enable_fastparser" = "yes"])
 
 # GnuTLS crypto backend
