@@ -102,8 +102,7 @@ network subnet. Also a TSIG key can be specified::
         key: key1                 # Access based just on TSIG key
         action: xfer
 
-Then the rules are referenced from zone :ref:`template_acl` or from
-control :ref:`control_acl`::
+These rules can then be referenced from a zone :ref:`template_acl`::
 
     zone:
       - domain: example.com

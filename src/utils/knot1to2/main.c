@@ -80,7 +80,6 @@ static int convert(const char *file_out, const char *file_in)
 		.acl_xfer = hattrie_create(),
 		.acl_notify = hattrie_create(),
 		.acl_update = hattrie_create(),
-		.acl_control = hattrie_create(),
 	};
 
 	// Parse the input file multiple times to get some context.
@@ -115,7 +114,6 @@ static int convert(const char *file_out, const char *file_in)
 	hattrie_free(share.acl_xfer);
 	hattrie_free(share.acl_notify);
 	hattrie_free(share.acl_update);
-	hattrie_free(share.acl_control);
 
 	fclose(out);
 

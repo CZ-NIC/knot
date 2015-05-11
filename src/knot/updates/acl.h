@@ -35,8 +35,7 @@ typedef enum {
 	ACL_ACTION_DENY = 0,
 	ACL_ACTION_XFER = 1,
 	ACL_ACTION_NOTF = 2,
-	ACL_ACTION_DDNS = 3,
-	ACL_ACTION_CNTL = 4
+	ACL_ACTION_DDNS = 3
 } acl_action_t;
 
 /*!

@@ -119,7 +119,7 @@ extern int cf_debug;
 typedef union YYSTYPE YYSTYPE;
 union YYSTYPE
 {
-#line 361 "cf-parse.y" /* yacc.c:1909  */
+#line 353 "cf-parse.y" /* yacc.c:1909  */
 
 	struct {
 		char *t;

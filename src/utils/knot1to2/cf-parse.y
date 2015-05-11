@@ -199,7 +199,6 @@ typedef enum {
 	ACL_XFR,
 	ACL_NTF,
 	ACL_UPD,
-	ACL_CTL
 } acl_type_t;
 
 static void acl_start(void *scanner, acl_type_t type)
@@ -212,7 +211,6 @@ static void acl_start(void *scanner, acl_type_t type)
 		case ACL_XFR: extra->current_trie = extra->share->acl_xfer; break;
 		case ACL_NTF: extra->current_trie = extra->share->acl_notify; break;
 		case ACL_UPD: extra->current_trie = extra->share->acl_update; break;
-		case ACL_CTL: extra->current_trie = extra->share->acl_control; break;
 		}
 	}
 
@@ -285,8 +283,7 @@ static bool is_acl(void *scanner, const char *str) {
 
 	return hattrie_tryget(extra->share->acl_xfer, str, strlen(str))    != NULL ||
 	       hattrie_tryget(extra->share->acl_notify, str, strlen(str))  != NULL ||
-	       hattrie_tryget(extra->share->acl_update, str, strlen(str))  != NULL ||
-	       hattrie_tryget(extra->share->acl_control, str, strlen(str)) != NULL;
+	       hattrie_tryget(extra->share->acl_update, str, strlen(str))  != NULL;
 }
 
 static bool have_acl(void *scanner) {
@@ -294,8 +291,7 @@ static bool have_acl(void *scanner) {
 
 	return (hattrie_weight(extra->share->acl_xfer) +
 	        hattrie_weight(extra->share->acl_notify) +
-	        hattrie_weight(extra->share->acl_update) +
-	        hattrie_weight(extra->share->acl_control)) > 0;
+	        hattrie_weight(extra->share->acl_update)) > 0;
 }
 
 static char *acl_actions(void *scanner, const char *str) {
@@ -317,10 +313,6 @@ static char *acl_actions(void *scanner, const char *str) {
 	if (hattrie_tryget(extra->share->acl_update, str, strlen(str)) != NULL) {
 		strlcat(actions, _first ? "" : ", ", sizeof(actions)); _first = false;
 		strlcat(actions, "update", sizeof(actions));
-	}
-	if (hattrie_tryget(extra->share->acl_control, str, strlen(str)) != NULL) {
-		strlcat(actions, _first ? "" : ", ", sizeof(actions)); _first = false;
-		strlcat(actions, "control", sizeof(actions));
 	}
 
 	strlcat(actions, "]", sizeof(actions));
@@ -758,8 +750,21 @@ ctl_listen_start:
   LISTEN_ON
   ;
 
+ctl_allow_item:
+ | TEXT { free($1.t); }
+ | LOG_SRC
+ | LOG
+ | LOG_LEVEL
+ | CONTROL
+ ;
+
+ctl_allow_list:
+ | ctl_allow_list ctl_allow_item ','
+ | ctl_allow_list ctl_allow_item ';'
+ ;
+
 ctl_allow_start:
-  ALLOW { f_name(scanner, R_CTL, C_ACL, false); acl_start(scanner, ACL_CTL); _str = "acl_"; }
+  ALLOW
   ;
 
 control:
@@ -776,7 +781,7 @@ control:
    	free(_addr);
    }
  | control ctl_listen_start TEXT ';' { f_quote(scanner, R_CTL, C_LISTEN, $3.t); free($3.t); }
- | control ctl_allow_start zone_acl_list
+ | control ctl_allow_start ctl_allow_list
  ;
 
 conf: ';' | system '}' | interfaces '}' | keys '}' | remotes '}' | groups '}' | zones '}' | log '}' | control '}';

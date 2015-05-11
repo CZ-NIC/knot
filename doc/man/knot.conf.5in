@@ -307,7 +307,7 @@ acl:
   \- id: STR
     address: ADDR[/INT]
     key: key_id
-    action: deny | xfer | notify | update | control ...
+    action: deny | xfer | notify | update ...
 .ft P
 .fi
 .UNINDENT
@@ -340,8 +340,6 @@ Possible values:
 \fBnotify\fP \- Allow incoming notify
 .IP \(bu 2
 \fBupdate\fP \- Allow zone updates
-.IP \(bu 2
-\fBcontrol\fP \- Allow remote control
 .UNINDENT
 .sp
 Default: deny
@@ -349,8 +347,8 @@ Default: deny
 .sp
 Configuration of the server remote control.
 .sp
-Caution: The control protocol is not encrypted, and susceptible to replay
-attacks in a short timeframe until message digest expires, for that reason,
+Caution: The control protocol is not encrypted and is susceptible to replay
+attacks in a short timeframe until message digest expires. For that reason,
 it is recommended to use default UNIX socket.
 .INDENT 0.0
 .INDENT 3.5
@@ -359,7 +357,6 @@ it is recommended to use default UNIX socket.
 .ft C
 control:
     listen: ADDR[@INT]
-    acl: acl_id ...
 .ft P
 .fi
 .UNINDENT
@@ -371,14 +368,6 @@ commands. Optional port specification (default is 5533) can be appended to the
 address using \fB@\fP separator.
 .sp
 Default: \fI\%rundir\fP/knot.sock
-.SS acl
-.sp
-An ordered list of \fI\%references\fP to ACL rules allowing the remote
-control.
-.sp
-Caution: This option has no effect with UNIX socket.
-.sp
-Default: empty
 .SH REMOTE SECTION
 .sp
 Definition of remote servers for zone transfers or notifications.

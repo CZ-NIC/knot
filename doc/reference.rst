@@ -359,7 +359,7 @@ Access control list rules definition.
    - id: STR
      address: ADDR[/INT]
      key: key_id
-     action: deny | xfer | notify | update | control ...
+     action: deny | xfer | notify | update ...
 
 .. _acl_id:
 
@@ -400,7 +400,6 @@ Possible values:
 - ``xfer`` - Allow zone transfer
 - ``notify`` - Allow incoming notify
 - ``update`` - Allow zone updates
-- ``control`` - Allow remote control
 
 Default: deny
 
@@ -411,15 +410,14 @@ Control section
 
 Configuration of the server remote control.
 
-Caution: The control protocol is not encrypted, and susceptible to replay
-attacks in a short timeframe until message digest expires, for that reason,
+Caution: The control protocol is not encrypted and is susceptible to replay
+attacks in a short timeframe until message digest expires. For that reason,
 it is recommended to use default UNIX socket.
 
 ::
 
  control:
      listen: ADDR[@INT]
-     acl: acl_id ...
 
 .. _control_listen:
 
@@ -433,16 +431,6 @@ address using ``@`` separator.
 Default: :ref:`rundir<server_rundir>`/knot.sock
 
 .. _control_acl:
-
-acl
----
-
-An ordered list of :ref:`references<acl_id>` to ACL rules allowing the remote
-control.
-
-Caution: This option has no effect with UNIX socket.
-
-Default: empty
 
 .. _Remote section:
 

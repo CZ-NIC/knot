@@ -31,7 +31,6 @@ typedef struct {
 	hattrie_t *acl_xfer;
 	hattrie_t *acl_notify;
 	hattrie_t *acl_update;
-	hattrie_t *acl_control;
 } share_t;
 
 /*!
