@@ -135,6 +135,7 @@ info-local install-info-local:
 	$(AM_V_ECHO) "able to generate info pages."
 endif
 
+.NOTPARALLEL: man
 man: $(man_MANS)
 $(MANPAGES_IN): $(MANPAGES_RST)
 	$(AM_V_SPHINX)$(SPHINXBUILD) -b man -d $(SPHINXBUILDDIR)/doctrees-man $(ALLSPHINXOPTS) $(SPHINXBUILDDIR)/man
