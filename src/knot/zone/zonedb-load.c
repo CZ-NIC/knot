@@ -291,6 +291,7 @@ static knot_zonedb_t *create_zonedb(conf_t *conf, server_t *server)
 		zone_t *zone = create_zone(conf, conf_dname(&id), server, old_zone);
 		if (!zone) {
 			log_zone_error(id.data, "zone cannot be created");
+			conf_iter_next(conf, &iter);
 			continue;
 		}
 
@@ -299,6 +300,7 @@ static knot_zonedb_t *create_zonedb(conf_t *conf, server_t *server)
 		if (ret != KNOT_EOK) {
 			zone_free(&zone);
 			log_zone_error(id.data, "cannot activate modules");
+			conf_iter_next(conf, &iter);
 			continue;
 		}
 
