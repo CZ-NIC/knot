@@ -255,7 +255,7 @@ static int request_io(struct knot_requestor *req, struct knot_request *last,
 			return ret;
 		}
 
-		(void) knot_pkt_parse(query, 0);
+		(void) knot_pkt_parse(resp, 0);
 		knot_overlay_consume(&req->overlay, resp);
 	}
 
