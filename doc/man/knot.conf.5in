@@ -758,9 +758,9 @@ mod\-synth\-record:
   \- id: STR
     type: forward | reverse
     prefix: STR
-    zone: DNAME
+    origin: DNAME
     ttl: INT
-    address: ADDR[/INT]
+    network: ADDR[/INT]
 .ft P
 .fi
 .UNINDENT
@@ -789,9 +789,9 @@ Caution: \fIprefix\fP doesn’t allow dots, address parts in the synthetic names
 separated with a dash.
 .sp
 Default: empty
-.SS zone
+.SS origin
 .sp
-A zone name suffix (only valid for \fI\%reverse type\fP).
+A zone origin (only valid for \fI\%reverse type\fP).
 .sp
 Default: empty
 .SS ttl
@@ -799,7 +799,7 @@ Default: empty
 Time to live of the generated records.
 .sp
 Default: 3600
-.SS address
+.SS network
 .sp
 A network subnet in the form of \fIaddress/prefix\fP\&.
 .sp

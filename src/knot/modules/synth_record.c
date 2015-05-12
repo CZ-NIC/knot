@@ -23,11 +23,11 @@
 #include "libknot/descriptor.h"
 
 /* Module configuration scheme. */
-#define MOD_ADDR	"\x07""address"
+#define MOD_NET		"\x07""network"
+#define MOD_ORIGIN	"\x06""origin"
 #define MOD_PREFIX	"\x06""prefix"
 #define MOD_TTL		"\x03""ttl"
 #define MOD_TYPE	"\x04""type"
-#define MOD_ZONE	"\x04""zone"
 
 /*! \brief Supported answer synthesis template types. */
 enum synth_template_type {
@@ -42,7 +42,7 @@ static const lookup_table_t synthetic_types[] = {
 	{ 0, NULL }
 };
 
-static int check_zone(
+static int check_origin(
 	conf_args_t *args)
 {
 	conf_val_t val = { NULL };
@@ -53,7 +53,7 @@ static int check_zone(
 		return val.code;
 	}
 
-	// Only reverse module can have a zone specified.
+	// Only reverse module can have an origin specified.
 	if (conf_opt(&val) != SYNTH_REVERSE) {
 		return KNOT_EINVAL;
 	}
@@ -65,9 +65,9 @@ const yp_item_t scheme_mod_synth_record[] = {
 	{ C_ID,       YP_TSTR,   YP_VNONE },
 	{ MOD_TYPE,   YP_TOPT,   YP_VOPT = { synthetic_types, SYNTH_NULL } },
 	{ MOD_PREFIX, YP_TSTR,   YP_VNONE },
-	{ MOD_ZONE,   YP_TDNAME, YP_VNONE, YP_FNONE, { check_zone } },
+	{ MOD_ORIGIN, YP_TDNAME, YP_VNONE, YP_FNONE, { check_origin } },
 	{ MOD_TTL,    YP_TINT,   YP_VINT = { 0, UINT32_MAX, 3600, YP_STIME } },
-	{ MOD_ADDR,   YP_TNET,   YP_VNONE },
+	{ MOD_NET,    YP_TNET,   YP_VNONE },
 	{ C_COMMENT,  YP_TSTR,   YP_VNONE },
 	{ NULL }
 };
@@ -413,12 +413,12 @@ int synth_record_load(struct query_plan *plan, struct query_module *self)
 	}
 	tpl->prefix = strdup(prefix);
 
-	/* Set zone if generating reverse record. */
+	/* Set origin if generating reverse record. */
 	if (tpl->type == SYNTH_REVERSE) {
-		val = conf_mod_get(self->config, MOD_ZONE, self->id);
+		val = conf_mod_get(self->config, MOD_ORIGIN, self->id);
 		if (val.code != KNOT_EOK) {
 			if (val.code == KNOT_EINVAL) {
-				MODULE_ERR("no zone for '%s'", self->id->data);
+				MODULE_ERR("no origin for '%s'", self->id->data);
 			}
 			free(tpl->prefix);
 			mm_free(self->mm, tpl);
@@ -448,10 +448,10 @@ int synth_record_load(struct query_plan *plan, struct query_module *self)
 	tpl->ttl = conf_int(&val);
 
 	/* Set address. */
-	val = conf_mod_get(self->config, MOD_ADDR, self->id);
+	val = conf_mod_get(self->config, MOD_NET, self->id);
 	if (val.code != KNOT_EOK) {
 		if (val.code == KNOT_EINVAL) {
-			MODULE_ERR("no address for '%s'", self->id->data);
+			MODULE_ERR("no network for '%s'", self->id->data);
 		}
 		free(tpl->zone);
 		free(tpl->prefix);

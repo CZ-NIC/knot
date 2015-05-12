@@ -901,9 +901,9 @@ given prefix and subnet.
    - id: STR
      type: forward | reverse
      prefix: STR
-     zone: DNAME
+     origin: DNAME
      ttl: INT
-     address: ADDR[/INT]
+     network: ADDR[/INT]
 
 .. _mod-synth-record_id:
 
@@ -938,12 +938,12 @@ separated with a dash.
 
 Default: empty
 
-.. _mod-synth-record_zone:
+.. _mod-synth-record_origin:
 
-zone
-----
+origin
+------
 
-A zone name suffix (only valid for :ref:`reverse type<mod-synth-record_type>`).
+A zone origin (only valid for :ref:`reverse type<mod-synth-record_type>`).
 
 Default: empty
 
@@ -956,9 +956,9 @@ Time to live of the generated records.
 
 Default: 3600
 
-.. _mod-synth-record_address:
+.. _mod-synth-record_network:
 
-address
+network
 -------
 
 A network subnet in the form of *address/prefix*.

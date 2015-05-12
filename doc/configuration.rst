@@ -616,7 +616,7 @@ Example::
        type: forward
        prefix: dynamic-
        ttl: 400
-       address: 2620:0:b61::/52
+       network: 2620:0:b61::/52
 
    zone:
      - domain: example.
@@ -654,9 +654,9 @@ Example::
      - id: test2
        type: reverse
        prefix: dynamic-
-       zone: example
+       origin: example
        ttl: 400
-       address: 2620:0:b61::/52
+       network: 2620:0:b61::/52
 
    zone:
      - domain: 1.6.b.0.0.0.0.0.0.2.6.2.ip6.arpa.
@@ -677,7 +677,7 @@ Limitations
 ^^^^^^^^^^^
 
 * As of now, there is no authenticated denial of nonexistence (neither
-  NSEC or NSEC3 is supported) nor DNSSEC signed records.  However,
+  NSEC or NSEC3 is supported) nor DNSSEC signed records. However,
   since the module is hooked in the query processing plan, it will be
   possible to do online signing in the future.
 

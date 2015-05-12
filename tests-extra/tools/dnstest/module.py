@@ -48,13 +48,13 @@ class ModSynthRecord(KnotModule):
     src_name = "synth_record_load"
     conf_name = "mod-synth-record"
 
-    def __init__(self, mtype, prefix, ttl, address, zone=None):
+    def __init__(self, mtype, prefix, ttl, network, origin=None):
         super().__init__()
         self.mtype = mtype
         self.prefix = prefix
         self.ttl = ttl
-        self.address = address
-        self.zone = zone
+        self.network = network
+        self.origin = origin
 
     def get_conf(self, conf=None):
         if not conf:
@@ -65,9 +65,9 @@ class ModSynthRecord(KnotModule):
         conf.item_str("type", self.mtype)
         conf.item_str("prefix", self.prefix)
         conf.item_str("ttl", self.ttl)
-        conf.item_str("address", self.address)
-        if (self.zone):
-            conf.item_str("zone", self.zone)
+        conf.item_str("network", self.network)
+        if (self.origin):
+            conf.item_str("origin", self.origin)
         conf.end()
 
         return conf
