@@ -725,12 +725,12 @@ log_src:
  ;
 
 log_dest:
-   LOG_DEST { f_id(scanner, R_LOG, C_TO, $1.t); }
+   LOG_DEST { f_id(scanner, R_LOG, C_TARGET, $1.t); }
 ;
 
 log_file:
    FILENAME TEXT {
-   	f_name(scanner, R_LOG, C_TO, true);
+   	f_name(scanner, R_LOG, C_TARGET, true);
    	f_val(scanner, R_LOG, true, "%s", $2.t); free($2.t);
    	f_val(scanner, R_LOG, false, "\n");
    }

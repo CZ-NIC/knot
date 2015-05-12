@@ -22,7 +22,7 @@ which can be used as a base for your Knot DNS setup::
         file: example.com.zone
 
     log:
-      - to: syslog
+      - target: syslog
         any: info
 
 Now let's go step by step through this configuration:

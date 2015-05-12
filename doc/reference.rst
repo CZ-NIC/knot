@@ -807,15 +807,15 @@ will be logged to both standard error output and syslog. The ``info`` and
 ::
 
  log:
-   - to: stdout | stderr | syslog | STR
+   - target: stdout | stderr | syslog | STR
      server: critical | error | warning | notice | info | debug
      zone: critical | error | warning | notice | info | debug
      any: critical | error | warning | notice | info | debug
 
-.. _log_to:
+.. _log_target:
 
-to
---
+target
+------
 
 A logging output.
 

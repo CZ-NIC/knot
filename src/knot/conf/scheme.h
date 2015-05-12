@@ -73,7 +73,7 @@
 #define C_SIG_LIFETIME		"\x12""signature-lifetime"
 #define C_STORAGE		"\x07""storage"
 #define C_SRV			"\x06""server"
-#define C_TO			"\x02""to"
+#define C_TARGET		"\x06""target"
 #define C_TPL			"\x08""template"
 #define C_TRANSFERS		"\x09""transfers"
 #define C_USER			"\x04""user"

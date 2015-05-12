@@ -2690,14 +2690,14 @@ yyreduce:
 
   case 151:
 #line 728 "cf-parse.y" /* yacc.c:1646  */
-    { f_id(scanner, R_LOG, C_TO, (yyvsp[0].tok).t); }
+    { f_id(scanner, R_LOG, C_TARGET, (yyvsp[0].tok).t); }
 #line 2695 "cf-parse.tab.c" /* yacc.c:1646  */
     break;
 
   case 152:
 #line 732 "cf-parse.y" /* yacc.c:1646  */
     {
-   	f_name(scanner, R_LOG, C_TO, true);
+   	f_name(scanner, R_LOG, C_TARGET, true);
    	f_val(scanner, R_LOG, true, "%s", (yyvsp[0].tok).t); free((yyvsp[0].tok).t);
    	f_val(scanner, R_LOG, false, "\n");
    }

@@ -679,7 +679,7 @@ will be logged to both standard error output and syslog. The \fBinfo\fP and
 .nf
 .ft C
 log:
-  \- to: stdout | stderr | syslog | STR
+  \- target: stdout | stderr | syslog | STR
     server: critical | error | warning | notice | info | debug
     zone: critical | error | warning | notice | info | debug
     any: critical | error | warning | notice | info | debug
@@ -687,7 +687,7 @@ log:
 .fi
 .UNINDENT
 .UNINDENT
-.SS to
+.SS target
 .sp
 A logging output.
 .sp

@@ -973,7 +973,7 @@ class Knot(Server):
         s.end()
 
         s.begin("log")
-        s.id_item("to", "stdout")
+        s.id_item("target", "stdout")
         s.item_str("any", "debug")
         s.end()
 
