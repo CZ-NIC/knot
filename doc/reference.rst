@@ -359,7 +359,7 @@ Access control list rules definition.
    - id: STR
      address: ADDR[/INT]
      key: key_id
-     action: deny | xfer | notify | update ...
+     action: deny | transfer | notify | update ...
 
 .. _acl_id:
 
@@ -397,7 +397,7 @@ An ordered list of allowed actions.
 Possible values:
 
 - ``deny`` - Block the matching query
-- ``xfer`` - Allow zone transfer
+- ``transfer`` - Allow zone transfer
 - ``notify`` - Allow incoming notify
 - ``update`` - Allow zone updates
 

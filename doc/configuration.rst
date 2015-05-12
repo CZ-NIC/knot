@@ -92,7 +92,7 @@ network subnet. Also a TSIG key can be specified::
 
       - id: subnet_rule
         address: 192.168.2.0/24   # Network subnet
-        action: xfer              # Allow zone transfers
+        action: transfer          # Allow zone transfers
 
       - id: deny_rule
         address: 192.168.2.100    # Negative match
@@ -100,7 +100,7 @@ network subnet. Also a TSIG key can be specified::
 
       - id: key_rule
         key: key1                 # Access based just on TSIG key
-        action: xfer
+        action: transfer
 
 These rules can then be referenced from a zone :ref:`template_acl`::
 
@@ -163,7 +163,7 @@ configured in a proper ACL rule::
 Master zone
 ===========
 
-An ACL with the ``xfer`` action must be configured to allow outgoing zone
+An ACL with the ``transfer`` action must be configured to allow outgoing zone
 transfers. An ACL rule consists of a single address or a network subnet::
 
     remote:
@@ -173,11 +173,11 @@ transfers. An ACL rule consists of a single address or a network subnet::
     acl:
       - id: slave1_acl
         address: 192.168.2.1
-        action: xfer
+        action: transfer
 
       - id: others_acl
         address: 192.168.3.0/24
-        action: xfer
+        action: transfer
 
     zone:
       - domain: example.com
@@ -202,11 +202,11 @@ Optionally a TSIG key can be specified::
       - id: slave1_acl
         address: 192.168.2.1
         key: slave1_key
-        action: xfer
+        action: transfer
 
       - id: others_acl
         address: 192.168.3.0/24
-        action: xfer
+        action: transfer
 
 Dynamic updates
 ===============

@@ -281,9 +281,9 @@ static void acl_end(void *scanner)
 static bool is_acl(void *scanner, const char *str) {
 	conf_extra_t *extra = cf_get_extra(scanner);
 
-	return hattrie_tryget(extra->share->acl_xfer, str, strlen(str))    != NULL ||
-	       hattrie_tryget(extra->share->acl_notify, str, strlen(str))  != NULL ||
-	       hattrie_tryget(extra->share->acl_update, str, strlen(str))  != NULL;
+	return hattrie_tryget(extra->share->acl_xfer, str, strlen(str))   != NULL ||
+	       hattrie_tryget(extra->share->acl_notify, str, strlen(str)) != NULL ||
+	       hattrie_tryget(extra->share->acl_update, str, strlen(str)) != NULL;
 }
 
 static bool have_acl(void *scanner) {
@@ -304,7 +304,7 @@ static char *acl_actions(void *scanner, const char *str) {
 
 	if (hattrie_tryget(extra->share->acl_xfer, str, strlen(str)) != NULL) {
 		strlcat(actions, _first ? "" : ", ", sizeof(actions)); _first = false;
-		strlcat(actions, "xfer", sizeof(actions));
+		strlcat(actions, "transfer", sizeof(actions));
 	}
 	if (hattrie_tryget(extra->share->acl_notify, str, strlen(str)) != NULL) {
 		strlcat(actions, _first ? "" : ", ", sizeof(actions)); _first = false;

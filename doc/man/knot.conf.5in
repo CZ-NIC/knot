@@ -307,7 +307,7 @@ acl:
   \- id: STR
     address: ADDR[/INT]
     key: key_id
-    action: deny | xfer | notify | update ...
+    action: deny | transfer | notify | update ...
 .ft P
 .fi
 .UNINDENT
@@ -335,7 +335,7 @@ Possible values:
 .IP \(bu 2
 \fBdeny\fP \- Block the matching query
 .IP \(bu 2
-\fBxfer\fP \- Allow zone transfer
+\fBtransfer\fP \- Allow zone transfer
 .IP \(bu 2
 \fBnotify\fP \- Allow incoming notify
 .IP \(bu 2

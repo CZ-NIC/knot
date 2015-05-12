@@ -49,7 +49,7 @@ static const lookup_table_t key_algs[] = {
 
 static const lookup_table_t acl_actions[] = {
 	{ ACL_ACTION_DENY, "deny" },
-	{ ACL_ACTION_XFER, "xfer" },
+	{ ACL_ACTION_XFER, "transfer" },
 	{ ACL_ACTION_NOTF, "notify" },
 	{ ACL_ACTION_DDNS, "update" },
 	{ 0, NULL }

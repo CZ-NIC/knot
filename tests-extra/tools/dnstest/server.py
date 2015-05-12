@@ -867,13 +867,13 @@ class Knot(Server):
         s.item_str("address", self.addr)
         if self.tsig:
             s.item_str("key", self.tsig.name)
-        s.item("action", "[xfer, notify, update]")
+        s.item("action", "[transfer, notify, update]")
 
         s.id_item("id", "acl_test")
         s.item_str("address", self.addr)
         if self.tsig_test:
             s.item_str("key", self.tsig_test.name)
-        s.item("action", "[xfer, notify, update]")
+        s.item("action", "[transfer, notify, update]")
 
         servers = set() # Duplicity check.
         for zone in sorted(self.zones):
@@ -892,7 +892,7 @@ class Knot(Server):
                 s.item_str("address", slave.addr)
                 if slave.tsig:
                     s.item_str("key", slave.tsig.name)
-                s.item("action", "xfer")
+                s.item("action", "transfer")
                 servers.add(slave.name)
         s.end()
 
