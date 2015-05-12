@@ -664,7 +664,7 @@ zone:
  | zone DBSYNC_TIMEOUT INTERVAL ';'		{ f_int(scanner,   R_ZONE, C_ZONEFILE_SYNC,  $3.i); }
  | zone STORAGE TEXT ';'			{ f_quote(scanner, R_ZONE, C_STORAGE,        $3.t); free($3.t); }
  | zone DNSSEC_ENABLE BOOL ';'			{ f_bool(scanner,  R_ZONE, C_DNSSEC_ENABLE,  $3.i); }
- | zone DNSSEC_KEYDIR TEXT ';'			{ f_quote(scanner, R_ZONE, C_DNSSEC_KEYDIR,  $3.t); free($3.t); }
+ | zone DNSSEC_KEYDIR TEXT ';'			{ f_quote(scanner, R_ZONE, C_KASP_DB,        $3.t); free($3.t); }
  | zone SIGNATURE_LIFETIME NUM ';'		{ f_int(scanner,   R_ZONE, C_SIG_LIFETIME,   $3.i); }
  | zone SIGNATURE_LIFETIME INTERVAL ';'		{ f_int(scanner,   R_ZONE, C_SIG_LIFETIME,   $3.i); }
  | zone SERIAL_POLICY SERIAL_POLICY_VAL ';'	{ f_str(scanner,   R_ZONE, C_SERIAL_POLICY,  $3.t); }
@@ -702,7 +702,7 @@ zones:
  | zones DBSYNC_TIMEOUT INTERVAL ';'		{ f_int(scanner,   R_ZONE_TPL, C_ZONEFILE_SYNC,  $3.i); }
  | zones STORAGE TEXT ';'			{ f_quote(scanner, R_ZONE_TPL, C_STORAGE,        $3.t); free($3.t); }
  | zones DNSSEC_ENABLE BOOL ';'			{ f_bool(scanner,  R_ZONE_TPL, C_DNSSEC_ENABLE,  $3.i); }
- | zones DNSSEC_KEYDIR TEXT ';'			{ f_quote(scanner, R_ZONE_TPL, C_DNSSEC_KEYDIR,  $3.t); free($3.t); }
+ | zones DNSSEC_KEYDIR TEXT ';'			{ f_quote(scanner, R_ZONE_TPL, C_KASP_DB,        $3.t); free($3.t); }
  | zones SIGNATURE_LIFETIME NUM ';'		{ f_int(scanner,   R_ZONE_TPL, C_SIG_LIFETIME,   $3.i); }
  | zones SIGNATURE_LIFETIME INTERVAL ';'	{ f_int(scanner,   R_ZONE_TPL, C_SIG_LIFETIME,   $3.i); }
  | zones SERIAL_POLICY SERIAL_POLICY_VAL ';'	{ f_str(scanner,   R_ZONE_TPL, C_SERIAL_POLICY,  $3.t); }

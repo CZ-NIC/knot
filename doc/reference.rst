@@ -512,7 +512,7 @@ configuration if a zone doesn't have a teplate specified.
      ixfr-from-differences: BOOL
      ixfr-fslimit: SIZE
      dnssec-enable: BOOL
-     dnssec-keydir: STR
+     kasp-db: STR
      signature-lifetime: TIME
      serial-policy: increment | unixtime
      module: STR/STR ...
@@ -677,13 +677,13 @@ If enabled, automatic DNSSEC signing for the zone is turned on.
 
 Default: off
 
-.. _template_dnssec-keydir:
+.. _template_kasp_db:
 
-dnssec-keydir
--------------
+kasp_db
+-------
 
-A data directory for storing DNSSEC signing keys. Non absolute path is
-relative to :ref:`storage<template_storage>`.
+A KASP database path. Non absolute path is relative to
+:ref:`storage<template_storage>`.
 
 Default: :ref:`storage<template_storage>`/keys
 

@@ -2521,7 +2521,7 @@ yyreduce:
 
   case 117:
 #line 667 "cf-parse.y" /* yacc.c:1646  */
-    { f_quote(scanner, R_ZONE, C_DNSSEC_KEYDIR,  (yyvsp[-1].tok).t); free((yyvsp[-1].tok).t); }
+    { f_quote(scanner, R_ZONE, C_KASP_DB,        (yyvsp[-1].tok).t); free((yyvsp[-1].tok).t); }
 #line 2526 "cf-parse.tab.c" /* yacc.c:1646  */
     break;
 
@@ -2632,7 +2632,7 @@ yyreduce:
 
   case 139:
 #line 705 "cf-parse.y" /* yacc.c:1646  */
-    { f_quote(scanner, R_ZONE_TPL, C_DNSSEC_KEYDIR,  (yyvsp[-1].tok).t); free((yyvsp[-1].tok).t); }
+    { f_quote(scanner, R_ZONE_TPL, C_KASP_DB,        (yyvsp[-1].tok).t); free((yyvsp[-1].tok).t); }
 #line 2637 "cf-parse.tab.c" /* yacc.c:1646  */
     break;
 

@@ -921,7 +921,7 @@ class Knot(Server):
         if self.disable_any:
             s.item_str("disable-any", "on")
         if self.dnssec_enable:
-            s.item_str("dnssec-keydir", self.keydir)
+            s.item_str("kasp-db", self.keydir)
             s.item_str("dnssec-enable", "on")
         if len(self.modules) > 0:
             modules = ""

@@ -143,7 +143,7 @@ static const yp_item_t desc_remote[] = {
 	{ C_IXFR_DIFF,      YP_TBOOL, YP_VNONE }, \
 	{ C_IXFR_FSLIMIT,   YP_TINT,  YP_VINT = { 0, INT64_MAX, INT64_MAX, YP_SSIZE } }, \
 	{ C_DNSSEC_ENABLE,  YP_TBOOL, YP_VNONE }, \
-	{ C_DNSSEC_KEYDIR,  YP_TSTR,  YP_VSTR = { "keys" } }, \
+	{ C_KASP_DB,        YP_TSTR,  YP_VSTR = { "keys" } }, \
 	{ C_SIG_LIFETIME,   YP_TINT,  YP_VINT = { 3 * 3600, INT32_MAX, 30 * 24 * 3600, YP_STIME } }, \
 	{ C_SERIAL_POLICY,  YP_TOPT,  YP_VOPT = { serial_policies, SERIAL_POLICY_INCREMENT } }, \
 	{ C_MODULE,         YP_TDATA, YP_VDATA = { 0, NULL, mod_id_to_bin, mod_id_to_txt }, \

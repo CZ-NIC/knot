@@ -433,7 +433,7 @@ template:
     ixfr\-from\-differences: BOOL
     ixfr\-fslimit: SIZE
     dnssec\-enable: BOOL
-    dnssec\-keydir: STR
+    kasp\-db: STR
     signature\-lifetime: TIME
     serial\-policy: increment | unixtime
     module: STR/STR ...
@@ -571,10 +571,10 @@ Default: unlimited
 If enabled, automatic DNSSEC signing for the zone is turned on.
 .sp
 Default: off
-.SS dnssec\-keydir
+.SS kasp_db
 .sp
-A data directory for storing DNSSEC signing keys. Non absolute path is
-relative to \fI\%storage\fP\&.
+A KASP database path. Non absolute path is relative to
+\fI\%storage\fP\&.
 .sp
 Default: \fI\%storage\fP/keys
 .SS signature\-lifetime

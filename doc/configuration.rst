@@ -271,7 +271,7 @@ can operate in two modes:
    No zone operator intervention is necessary.
 
 The DNSSEC signing is controlled by the :ref:`template_dnssec-enable` and
-:ref:`template_dnssec-keydir` configuration options. The first option states
+:ref:`template_kasp_db` configuration options. The first option states
 if the signing is enabled for a particular zone, the second option points to
 a KASP database holding the signing configuration.
 
@@ -287,7 +287,7 @@ default template, but the signing is explicitly disabled for zone
     template:
       - id: default
         dnssec-enable: on
-        dnssec-keydir: /var/lib/knot/kasp
+        kasp-db: /var/lib/knot/kasp
 
     zone:
       - domain: example.com
@@ -356,7 +356,7 @@ The configuration fragment might look similar to::
   template:
     - id: default
       storage: /var/lib/knot
-      dnssec-keydir: kasp
+      kasp-db: kasp
 
   zone:
     - domain: myzone.test
