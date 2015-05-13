@@ -91,7 +91,7 @@
 	action _key_init {
 		if (indent > 0 && parser->indent > 0 &&
 		    indent != parser->indent) {
-			return KNOT_EPARSEFAIL;
+			return KNOT_YP_EINVAL_INDENT;
 		}
 		parser->processed = false;
 		parser->key_len = 0;
@@ -107,6 +107,7 @@
 	action _key0_exit {
 		parser->key[parser->key_len] = '\0';
 		parser->indent = 0;
+		parser->id_pos = 0;
 		parser->event = YP_EKEY0;
 	}
 	action _key1_exit {
@@ -129,7 +130,7 @@
 	action _dash_init {
 		if (id_pos > 0 && parser->id_pos > 0 &&
 		    id_pos != parser->id_pos) {
-			return KNOT_EPARSEFAIL;
+			return KNOT_YP_EINVAL_INDENT;
 		}
 		parser->indent = 0;
 	}

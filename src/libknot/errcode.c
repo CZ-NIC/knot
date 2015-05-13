@@ -120,12 +120,13 @@ static const struct error errors[] = {
 	{ KNOT_DNSSEC_EMISSINGKEYTYPE, "missing active KSK or ZSK" },
 
 	/* Yparser errors. */
-	{ KNOT_YP_EINVAL_ITEM,  "invalid item" },
-	{ KNOT_YP_EINVAL_DATA,  "invalid value" },
-	{ KNOT_YP_ENOTSUP_DATA, "value not supported" },
-	{ KNOT_YP_ENOTSUP_ID,   "identifier not supported" },
-	{ KNOT_YP_ENODATA,      "missing value" },
-	{ KNOT_YP_ENOID,        "missing identifier" },
+	{ KNOT_YP_EINVAL_ITEM,   "invalid item" },
+	{ KNOT_YP_EINVAL_DATA,   "invalid value" },
+	{ KNOT_YP_EINVAL_INDENT, "invalid indentation" },
+	{ KNOT_YP_ENOTSUP_DATA,  "value not supported" },
+	{ KNOT_YP_ENOTSUP_ID,    "identifier not supported" },
+	{ KNOT_YP_ENODATA,       "missing value" },
+	{ KNOT_YP_ENOID,         "missing identifier" },
 
 	/* Configuration errors. */
 	{ KNOT_CONF_EMPTY,     "empty configuration database" },
