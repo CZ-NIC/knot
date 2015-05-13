@@ -347,8 +347,8 @@ int main(int argc, char **argv)
 		/* Import the configuration file. */
 		ret = conf_import(new_conf, config_fn, true);
 		if (ret != KNOT_EOK) {
-			log_fatal("failed to load configuration file '%s' (%s)",
-			          config_fn, knot_strerror(ret));
+			log_fatal("failed to load configuration file (%s)",
+			          knot_strerror(ret));
 			conf_free(new_conf, false);
 			return EXIT_FAILURE;
 		}

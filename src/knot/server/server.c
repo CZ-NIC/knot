@@ -504,8 +504,8 @@ int server_reload(server_t *server, const char *cf)
 		/* Import the configuration file. */
 		ret = conf_import(new_conf, cf, true);
 		if (ret != KNOT_EOK) {
-			log_fatal("failed to load configuration file '%s' (%s)",
-			          cf, knot_strerror(ret));
+			log_fatal("failed to load configuration file (%s)",
+			          knot_strerror(ret));
 			conf_free(new_conf, false);
 			return EXIT_FAILURE;
 		}
