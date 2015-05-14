@@ -1,5 +1,6 @@
 #pragma once
 
+#include "test_conf.h"
 #include "knot/server/server.h"
 #include "libknot/internal/mempattern.h"
 
@@ -52,24 +53,12 @@ static inline int create_fake_server(server_t *server, mm_ctx_t *mm)
 		return ret;
 	}
 
-	/* Create configuration. */
+	/* Load test configuration. */
 	const char *conf_str = 	"server:\n identity: bogus.ns\n version: 0.11\n";
-	conf_t *conf;
-	ret = conf_new(&conf, conf_scheme, NULL);
+	ret = test_conf(conf_str, NULL);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
-	ret = conf_import(conf, conf_str, false);
-	if (ret != KNOT_EOK) {
-		conf_free(conf, false);
-		return ret;
-	}
-	ret = conf_post_open(conf);
-	if (ret != KNOT_EOK) {
-		conf_free(conf, false);
-		return ret;
-	}
-	conf_update(conf);
 
 	/* Insert root zone. */
 	create_root_zone(server, mm);

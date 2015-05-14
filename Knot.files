@@ -8,11 +8,20 @@ doc/configuration.rst
 doc/index.rst
 doc/installation.rst
 doc/introduction.rst
+doc/man_kdig.rst
+doc/man_keymgr.rst
+doc/man_khost.rst
+doc/man_knot1to2.rst
+doc/man_knotc.rst
+doc/man_knotd.rst
+doc/man_knsec3hash.rst
+doc/man_knsupdate.rst
 doc/migration.rst
 doc/reference.rst
 doc/requirements.rst
 doc/running.rst
 doc/troubleshooting.rst
+doc/utilities.rst
 libtap/Makefile.am
 libtap/runtests.c
 libtap/tap/basic.c
@@ -20,8 +29,6 @@ libtap/tap/basic.h
 libtap/tap/float.c
 libtap/tap/float.h
 libtap/tap/macros.h
-man/Makefile.am
-patches/Makefile.am
 samples/Makefile.am
 src/Makefile.am
 src/dnssec/Makefile.am
@@ -96,9 +103,10 @@ src/dnssec/lib/sign/der.c
 src/dnssec/lib/sign/der.h
 src/dnssec/lib/sign/sign.c
 src/dnssec/lib/tsig.c
-src/dnssec/man/Makefile.am
 src/dnssec/shared/base32hex.c
 src/dnssec/shared/base32hex.h
+src/dnssec/shared/bignum.c
+src/dnssec/shared/bignum.h
 src/dnssec/shared/dname.c
 src/dnssec/shared/dname.h
 src/dnssec/shared/fs.c
@@ -117,6 +125,7 @@ src/dnssec/shared/wire.h
 src/dnssec/tests/Makefile.am
 src/dnssec/tests/binary.c
 src/dnssec/tests/crypto.c
+src/dnssec/tests/event_keystate.c
 src/dnssec/tests/kasp_dir_escape.c
 src/dnssec/tests/kasp_dir_file.c
 src/dnssec/tests/kasp_store.c
@@ -132,7 +141,9 @@ src/dnssec/tests/nsec_hash.c
 src/dnssec/tests/random.c
 src/dnssec/tests/sample_keys.h
 src/dnssec/tests/shared_base32hex.c
+src/dnssec/tests/shared_bignum.c
 src/dnssec/tests/shared_dname.c
+src/dnssec/tests/shared_strtonum.c
 src/dnssec/tests/shared_wire.c
 src/dnssec/tests/sign.c
 src/dnssec/tests/sign_der.c
@@ -468,6 +479,7 @@ src/zscanner/tests/processing.h
 src/zscanner/tests/tests.c
 src/zscanner/tests/tests.h
 src/zscanner/tests/zscanner-tool.c
+tests-fuzz/Makefile.am
 tests/Makefile.am
 tests/acl.c
 tests/base32hex.c
@@ -484,6 +496,7 @@ tests/hattrie.c
 tests/hhash.c
 tests/journal.c
 tests/namedb.c
+tests/net_shortwrite.c
 tests/node.c
 tests/overlay.c
 tests/pkt.c
@@ -497,6 +510,7 @@ tests/rrl.c
 tests/rrset.c
 tests/rrset_wire.c
 tests/server.c
+tests/test_conf.h
 tests/utils.c
 tests/wire.c
 tests/worker_pool.c
