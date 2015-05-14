@@ -351,15 +351,16 @@ Default: empty
 ACL section
 ===========
 
-Access control list rules definition.
+Access control list rule definition.
 
 ::
 
  acl:
    - id: STR
-     address: ADDR[/INT]
-     key: key_id
-     action: deny | transfer | notify | update ...
+     address: ADDR[/INT] ...
+     key: key_id ...
+     action: transfer | notify | update ...
+     deny: BOOL
 
 .. _acl_id:
 
@@ -373,8 +374,8 @@ An ACL rule identifier.
 address
 -------
 
-A single IP address or network subnet with the given prefix the query
-must match.
+An ordered list of IP addresses or network subnets. The query must match
+one of them. Empty value means that address match is not required.
 
 Default: empty
 
@@ -383,7 +384,8 @@ Default: empty
 key
 ---
 
-A :ref:`reference<key_id>` to the TSIG key the query must match.
+An ordered list of :ref:`reference<key_id>`\ s to TSIG keys. The query must
+match one of them. Empty value means that TSIG key is not required.
 
 Default: empty
 
@@ -396,12 +398,21 @@ An ordered list of allowed actions.
 
 Possible values:
 
-- ``deny`` - Block the matching query
 - ``transfer`` - Allow zone transfer
 - ``notify`` - Allow incoming notify
 - ``update`` - Allow zone updates
 
-Default: deny
+Default: empty
+
+.. _acl_deny:
+
+deny
+----
+
+Deny if :ref:`address<acl_address>`, :ref:`key<acl_key>` and
+:ref:`action<acl_action>` match.
+
+Default: off
 
 .. _Control section:
 

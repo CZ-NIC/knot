@@ -32,10 +32,10 @@
 
 /*! \brief ACL actions. */
 typedef enum {
-	ACL_ACTION_DENY = 0,
-	ACL_ACTION_XFER = 1,
-	ACL_ACTION_NOTF = 2,
-	ACL_ACTION_DDNS = 3
+	ACL_ACTION_NONE     = 0,
+	ACL_ACTION_NOTIFY   = 1,
+	ACL_ACTION_TRANSFER = 2,
+	ACL_ACTION_UPDATE   = 3
 } acl_action_t;
 
 /*!

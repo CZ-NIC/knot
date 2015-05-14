@@ -54,7 +54,7 @@ static int notify_check_query(struct query_data *qdata)
 	/* Check valid zone, transaction security. */
 	zone_t *zone = (zone_t *)qdata->zone;
 	NS_NEED_ZONE(qdata, KNOT_RCODE_NOTAUTH);
-	NS_NEED_AUTH(qdata, zone->name, ACL_ACTION_NOTF);
+	NS_NEED_AUTH(qdata, zone->name, ACL_ACTION_NOTIFY);
 
 	return KNOT_STATE_DONE;
 }

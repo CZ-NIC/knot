@@ -419,7 +419,7 @@ static void forward_requests(zone_t *zone, list_t *requests)
 static bool update_tsig_check(struct query_data *qdata, struct knot_request *req)
 {
 	// Check that ACL is still valid.
-	if (!process_query_acl_check(qdata->zone->name, ACL_ACTION_DDNS, qdata)) {
+	if (!process_query_acl_check(qdata->zone->name, ACL_ACTION_UPDATE, qdata)) {
 		UPDATE_LOG(LOG_WARNING, "ACL check failed");
 		knot_wire_set_rcode(req->resp->wire, qdata->rcode);
 		return false;
@@ -529,7 +529,7 @@ int update_query_process(knot_pkt_t *pkt, struct query_data *qdata)
 
 	/* Need valid transaction security. */
 	zone_t *zone = (zone_t *)qdata->zone;
-	NS_NEED_AUTH(qdata, zone->name, ACL_ACTION_DDNS);
+	NS_NEED_AUTH(qdata, zone->name, ACL_ACTION_UPDATE);
 	/* Check expiration. */
 	NS_NEED_ZONE_CONTENTS(qdata, KNOT_RCODE_SERVFAIL);
 

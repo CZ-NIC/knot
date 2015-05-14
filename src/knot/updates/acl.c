@@ -96,49 +96,39 @@ bool acl_allowed(conf_val_t *acl, acl_action_t action,
 	}
 
 	while (acl->code == KNOT_EOK) {
-		/* Check if the action is allowed. */
-		bool match = false, deny = false;
-		conf_val_t action_val = conf_id_get(conf(), C_ACL, C_ACTION, acl);
-		while (action_val.code == KNOT_EOK) {
-			unsigned act = conf_opt(&action_val);
-			if (act & action) {
-				match = true;
-			}
-			if (act == ACL_ACTION_DENY) {
-				deny = true;
-			}
-			conf_val_next(&action_val);
-		}
-		if (!match) {
-			conf_val_next(acl);
-			continue;
-		}
+		conf_val_t val;
 
-		/* Check if the address prefix matches. */
-		conf_val_t addr_val = conf_id_get(conf(), C_ACL, C_ADDR, acl);
-		if (addr_val.code == KNOT_EOK) {
+		/* Check if the address matches the current acl address list. */
+		val = conf_id_get(conf(), C_ACL, C_ADDR, acl);
+		while (val.code == KNOT_EOK) {
 			unsigned prefix;
 			struct sockaddr_storage ss;
-			ss = conf_net(&addr_val, &prefix);
+			ss = conf_net(&val, &prefix);
 			if (!netblock_match(addr, &ss, prefix)) {
-				conf_val_next(acl);
+				conf_val_next(&val);
 				continue;
 			}
+
+			break;
+		}
+		/* Check for address match or empty list. */
+		if (val.code != KNOT_EOK && val.code != KNOT_ENOENT) {
+			goto next_acl;
 		}
 
-		/* Check if the key matches. */
+		/* Check if the key matches the current acl key list. */
 		conf_val_t key_val = conf_id_get(conf(), C_ACL, C_KEY, acl);
-		if (key_val.code == KNOT_EOK) {
+		while (key_val.code == KNOT_EOK) {
 			/* No key provided, but required. */
 			if (tsig->name == NULL) {
-				conf_val_next(acl);
+				conf_val_next(&key_val);
 				continue;
 			}
 
 			/* Compare key names. */
 			const knot_dname_t *key_name = conf_dname(&key_val);
 			if (knot_dname_cmp(key_name, tsig->name) != 0) {
-				conf_val_next(acl);
+				conf_val_next(&key_val);
 				continue;
 			}
 
@@ -146,30 +136,50 @@ bool acl_allowed(conf_val_t *acl, acl_action_t action,
 			conf_val_t alg_val = conf_id_get(conf(), C_KEY, C_ALG,
 			                                 &key_val);
 			if (conf_opt(&alg_val) != tsig->algorithm) {
-				conf_val_next(acl);
+				conf_val_next(&key_val);
 				continue;
 			}
-		/* No key required, but provided. */
-		} else if (tsig->name != NULL) {
-			conf_val_next(acl);
-			continue;
+
+			break;
+		}
+		/* Check for key match or empty list without key provided. */
+		if (key_val.code != KNOT_EOK &&
+		    !(key_val.code == KNOT_ENOENT && tsig->name == NULL)) {
+			goto next_acl;
 		}
 
-		if (deny) {
-			conf_val_next(acl);
-			continue;
+		/* Check if the action is allowed. */
+		val = conf_id_get(conf(), C_ACL, C_ACTION, acl);
+		while (val.code == KNOT_EOK) {
+			if (conf_opt(&val) != action) {
+				conf_val_next(&val);
+				continue;
+			}
+
+			break;
+		}
+		/* Check for action match. */
+		if (val.code != KNOT_EOK) {
+			goto next_acl;
 		}
 
-		/* Fill the output with tsig secret. */
+		/* Check if denied. */
+		val = conf_id_get(conf(), C_ACL, C_DENY, acl);
+		if (conf_bool(&val)) {
+			return false;
+		}
+
+		/* Fill the output with tsig secret if provided. */
 		if (tsig->name != NULL) {
-			conf_val_t secret_val = conf_id_get(conf(), C_KEY,
-			                                    C_SECRET, &key_val);
-			conf_data(&secret_val);
-			tsig->secret.data = (uint8_t *)secret_val.data;
-			tsig->secret.size = secret_val.len;
+			val = conf_id_get(conf(), C_KEY, C_SECRET, &key_val);
+			conf_data(&val);
+			tsig->secret.data = (uint8_t *)val.data;
+			tsig->secret.size = val.len;
 		}
 
 		return true;
+next_acl:
+		conf_val_next(acl);
 	}
 
 	return false;

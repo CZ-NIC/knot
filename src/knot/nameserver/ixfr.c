@@ -212,7 +212,7 @@ static int ixfr_query_check(struct query_data *qdata)
 	NS_NEED_QNAME(qdata, their_soa->owner, KNOT_RCODE_FORMERR);
 
 	/* Check transcation security and zone contents. */
-	NS_NEED_AUTH(qdata, qdata->zone->name, ACL_ACTION_XFER);
+	NS_NEED_AUTH(qdata, qdata->zone->name, ACL_ACTION_TRANSFER);
 	NS_NEED_ZONE_CONTENTS(qdata, KNOT_RCODE_SERVFAIL); /* Check expiration. */
 
 	return KNOT_STATE_DONE;

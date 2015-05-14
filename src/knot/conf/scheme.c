@@ -48,10 +48,9 @@ static const lookup_table_t key_algs[] = {
 };
 
 static const lookup_table_t acl_actions[] = {
-	{ ACL_ACTION_DENY, "deny" },
-	{ ACL_ACTION_XFER, "transfer" },
-	{ ACL_ACTION_NOTF, "notify" },
-	{ ACL_ACTION_DDNS, "update" },
+	{ ACL_ACTION_NOTIFY,   "notify" },
+	{ ACL_ACTION_TRANSFER, "transfer" },
+	{ ACL_ACTION_UPDATE,   "update" },
 	{ 0, NULL }
 };
 
@@ -107,11 +106,12 @@ static const yp_item_t desc_key[] = {
 };
 
 static const yp_item_t desc_acl[] = {
-	{ C_ID,      YP_TSTR, YP_VNONE },
-	{ C_ADDR,    YP_TNET, YP_VNONE },
-	{ C_KEY,     YP_TREF, YP_VREF = { C_KEY }, YP_FNONE, { check_ref } },
-	{ C_ACTION,  YP_TOPT, YP_VOPT = { acl_actions, ACL_ACTION_DENY }, YP_FMULTI },
-	{ C_COMMENT, YP_TSTR, YP_VNONE },
+	{ C_ID,      YP_TSTR,  YP_VNONE },
+	{ C_ADDR,    YP_TNET,  YP_VNONE, YP_FMULTI },
+	{ C_KEY,     YP_TREF,  YP_VREF = { C_KEY }, YP_FMULTI, { check_ref } },
+	{ C_ACTION,  YP_TOPT,  YP_VOPT = { acl_actions, ACL_ACTION_NONE }, YP_FMULTI },
+	{ C_DENY,    YP_TBOOL, YP_VNONE },
+	{ C_COMMENT, YP_TSTR,  YP_VNONE },
 	{ NULL }
 };
 

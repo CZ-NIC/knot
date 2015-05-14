@@ -82,21 +82,18 @@ Access control list (ACL)
 =========================
 
 ACL list specifies which remotes are allowed to send the server a specific
-query or do a specific action. A remote can be a single IP address or a
-network subnet. Also a TSIG key can be specified::
+request. A remote can be a single IP address or a network subnet. Also a TSIG
+key can be specified::
 
     acl:
-      - id: single_rule
-        address: 192.168.1.1      # Single IP address
-        action: [notify, update]  # Allow zone notifications and updates zone
+      - id: address_rule
+        address: [2001:db8::1, 192.168.2.0/24] # Allowed IP address list
+        action: [transfer, update]  # Allow zone transfers and updates
 
-      - id: subnet_rule
-        address: 192.168.2.0/24   # Network subnet
-        action: transfer          # Allow zone transfers
-
-      - id: deny_rule
-        address: 192.168.2.100    # Negative match
-        action: deny              # The remote query is denied
+      - id: deny_rule             # Negative match rule
+        address: 192.168.2.100
+        action: transfer
+        deny: on                  # The request is denied
 
       - id: key_rule
         key: key1                 # Access based just on TSIG key
@@ -106,7 +103,7 @@ These rules can then be referenced from a zone :ref:`template_acl`::
 
     zone:
       - domain: example.com
-        acl: [single_rule, deny_rule, subnet_rule, key_rule]
+        acl: [address_rule, deny_rule, key_rule]
 
 Slave zone
 ==========

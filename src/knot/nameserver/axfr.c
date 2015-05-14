@@ -110,7 +110,7 @@ static int axfr_query_check(struct query_data *qdata)
 {
 	/* Check valid zone, transaction security and contents. */
 	NS_NEED_ZONE(qdata, KNOT_RCODE_NOTAUTH);
-	NS_NEED_AUTH(qdata, qdata->zone->name, ACL_ACTION_XFER);
+	NS_NEED_AUTH(qdata, qdata->zone->name, ACL_ACTION_TRANSFER);
 	/* Check expiration. */
 	NS_NEED_ZONE_CONTENTS(qdata, KNOT_RCODE_SERVFAIL);
 

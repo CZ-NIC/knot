@@ -297,7 +297,7 @@ Shared key secret.
 Default: empty
 .SH ACL SECTION
 .sp
-Access control list rules definition.
+Access control list rule definition.
 .INDENT 0.0
 .INDENT 3.5
 .sp
@@ -305,9 +305,10 @@ Access control list rules definition.
 .ft C
 acl:
   \- id: STR
-    address: ADDR[/INT]
-    key: key_id
-    action: deny | transfer | notify | update ...
+    address: ADDR[/INT] ...
+    key: key_id ...
+    action: transfer | notify | update ...
+    deny: BOOL
 .ft P
 .fi
 .UNINDENT
@@ -317,13 +318,14 @@ acl:
 An ACL rule identifier.
 .SS address
 .sp
-A single IP address or network subnet with the given prefix the query
-must match.
+An ordered list of IP addresses or network subnets. The query must match
+one of them. Empty value means that address match is not required.
 .sp
 Default: empty
 .SS key
 .sp
-A \fI\%reference\fP to the TSIG key the query must match.
+An ordered list of \fI\%reference\fPs to TSIG keys. The query must
+match one of them. Empty value means that TSIG key is not required.
 .sp
 Default: empty
 .SS action
@@ -333,8 +335,6 @@ An ordered list of allowed actions.
 Possible values:
 .INDENT 0.0
 .IP \(bu 2
-\fBdeny\fP \- Block the matching query
-.IP \(bu 2
 \fBtransfer\fP \- Allow zone transfer
 .IP \(bu 2
 \fBnotify\fP \- Allow incoming notify
@@ -342,7 +342,13 @@ Possible values:
 \fBupdate\fP \- Allow zone updates
 .UNINDENT
 .sp
-Default: deny
+Default: empty
+.SS deny
+.sp
+Deny if \fI\%address\fP, \fI\%key\fP and
+\fI\%action\fP match.
+.sp
+Default: off
 .SH CONTROL SECTION
 .sp
 Configuration of the server remote control.

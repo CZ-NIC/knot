@@ -64,6 +64,7 @@ check-local: $(check_PROGRAMS)
 					-L $(top_builddir)/tests/runtests.log \
 					$(check_PROGRAMS)
 
+acl_SOURCES = acl.c test_conf.h
 process_query_SOURCES = process_query.c fake_server.h test_conf.h
 process_answer_SOURCES = process_answer.c fake_server.h test_conf.h
 CLEANFILES = runtests.log
