@@ -15,6 +15,7 @@ SOURCES = [
     # sources
     "src/*.c", "src/*.h", "src/*.rl", "src/*.l",
     "src/*.y", "tests/*.c", "tests/*.h",
+    "tests-fuzz/*.c", "tests-fuzz/*.h",
     "libtap/*.c", "libtap/*.h",
 ]
 

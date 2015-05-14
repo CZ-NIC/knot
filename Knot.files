@@ -480,6 +480,7 @@ src/zscanner/tests/tests.c
 src/zscanner/tests/tests.h
 src/zscanner/tests/zscanner-tool.c
 tests-fuzz/Makefile.am
+tests-fuzz/packet.c
 tests/Makefile.am
 tests/acl.c
 tests/base32hex.c
