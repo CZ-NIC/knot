@@ -169,7 +169,11 @@ int pem_gnutls_x509_export(gnutls_x509_privkey_t key, dnssec_binary_t *pem_ptr)
 		return DNSSEC_KEY_EXPORT_ERROR;
 	}
 
-	dnssec_binary_alloc(&pem, pem.size);
+	r = dnssec_binary_alloc(&pem, pem.size);
+	if (r != DNSSEC_EOK) {
+		return r;
+	}
+
 	r = try_export_pem(key, &pem);
 	if (r != GNUTLS_E_SUCCESS) {
 		dnssec_binary_free(&pem);
