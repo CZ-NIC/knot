@@ -97,7 +97,7 @@ int sockaddr_set_raw(struct sockaddr_storage *ss, int family,
  * \param buf Destination for string representation.
  * \param maxlen Maximum number of written bytes.
  *
- * \return EOK on success, error code on failure
+ * \return Number of bytes written on success, error code on failure
  */
 int sockaddr_tostr(const struct sockaddr_storage *ss, char *buf, size_t maxlen);
 
