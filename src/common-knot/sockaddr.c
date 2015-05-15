@@ -142,17 +142,19 @@ int sockaddr_tostr(const struct sockaddr_storage *ss, char *buf, size_t maxlen)
 	}
 
 	/* Write separator and port. */
+	int written = strlen(buf);
 	int port = sockaddr_port(ss);
 	if (port > 0) {
-		size_t written = strlen(buf);
 		int ret = snprintf(&buf[written], maxlen - written, "@%d", port);
 		if (ret <= 0 || (size_t)ret >= maxlen - written) {
 			*buf = '\0';
 			return KNOT_ESPACE;
 		}
+
+		written += ret;
 	}
 
-	return KNOT_EOK;
+	return written;
 }
 
 int sockaddr_port(const struct sockaddr_storage *ss)
