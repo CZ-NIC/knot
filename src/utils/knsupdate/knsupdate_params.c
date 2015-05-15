@@ -237,9 +237,7 @@ int knsupdate_parse(knsupdate_params_t *params, int argc, char *argv[])
 			if (ret != KNOT_EOK) return ret;
 			break;
 		case 'k':
-			ret = KNOT_ENOTSUP;
-			if (ret != KNOT_EOK) return ret;
-			break;
+			return KNOT_ENOTSUP;
 		default:
 			knsupdate_help();
 			return KNOT_ENOTSUP;
