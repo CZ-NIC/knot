@@ -450,9 +450,8 @@ static bool key_match(const dnssec_key_t *key, const char *search)
 	// keytag exact match
 
 	char keytag[10] = { 0 };
-	snprintf(keytag, sizeof(keytag), "%d", dnssec_key_get_keytag(key));
-
-	if (strcmp(search, keytag) == 0) {
+	int len = snprintf(keytag, sizeof(keytag), "%d", dnssec_key_get_keytag(key));
+	if (len > 0 && strcmp(search, keytag) == 0) {
 		return true;
 	}
 
