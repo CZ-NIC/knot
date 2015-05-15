@@ -157,7 +157,7 @@ static uint32_t schedule_next(kdnssec_ctx_t *kctx, const zone_keyset_t *keyset,
 
 	// DNSKEY modification
 
-	uint32_t dnskey_update = knot_get_next_zone_key_event(keyset);
+	uint32_t dnskey_update = MIN(MAX(knot_get_next_zone_key_event(keyset), 0), UINT32_MAX);
 
 	// zone events
 
