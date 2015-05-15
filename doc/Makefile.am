@@ -33,13 +33,23 @@ AM_V_SPHINX_0 = @echo "  SPHINX   $@";
 AM_V_ECHO = @sh -c 'if $(AM_V_P); then echo $$1; fi' -- 
 
 SPHINXBUILDDIR = $(builddir)/_build
-ALLSPHINXOPTS  = -c $(srcdir) \
+
+_SPHINXOPTS    = -c $(srcdir) \
 	         -a \
 	         $(SPHINX_V) \
-	         -D latex_paper_size=a4 \
+	         -D latex_paper_size=a4
+
+ALLSPHINXOPTS  = $(_SPHINXOPTS) \
+	         -D version="$(VERSION)" \
+	         -D today="$(RELEASE_DATE)" \
+	         -D release="$(VERSION)" \
+	         $(SPHINXOPTS) \
+	         $(srcdir)
+
+man_SPHINXOPTS = $(_SPHINXOPTS) \
 	         -D version="@""VERSION@" \
 	         -D today="@""RELEASE_DATE@" \
-	         -D release="@""VERSION@" \
+	         -D release="@""VERSION@"
 	         $(SPHINXOPTS) \
 	         $(srcdir)
 
@@ -138,7 +148,7 @@ endif
 .NOTPARALLEL: man
 man: $(man_MANS)
 $(MANPAGES_IN): $(MANPAGES_RST)
-	$(AM_V_SPHINX)$(SPHINXBUILD) -b man -d $(SPHINXBUILDDIR)/doctrees-man $(ALLSPHINXOPTS) $(SPHINXBUILDDIR)/man
+	$(AM_V_SPHINX)$(SPHINXBUILD) -b man -d $(SPHINXBUILDDIR)/doctrees-man $(man_SPHINXOPTS) $(SPHINXBUILDDIR)/man
 	mkdir -p $(srcdir)/man
 	for f in $(SPHINXBUILDDIR)/man/*; do \
 	  sed -e '/^.TP$$/{n;s/^.B //}' "$$f" > "$(srcdir)/man/$$(basename $$f)in"; \
