@@ -49,7 +49,7 @@ ALLSPHINXOPTS  = $(_SPHINXOPTS) \
 man_SPHINXOPTS = $(_SPHINXOPTS) \
 	         -D version="@""VERSION@" \
 	         -D today="@""RELEASE_DATE@" \
-	         -D release="@""VERSION@"
+	         -D release="@""VERSION@" \
 	         $(SPHINXOPTS) \
 	         $(srcdir)
 
