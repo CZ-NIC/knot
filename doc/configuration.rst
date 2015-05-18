@@ -813,7 +813,7 @@ Here is an example on how to use the module:
    ipv6.myrecord.com.      AAAA RDATA=22B  ipv6_query      10.0.0.1
    myrecord.com.           A RDATA=10B     -               -
 
- *Note: the database may be modified while the server is running later on.*
+  *Note: the database may be modified while the server is running later on.*
 
 * Configure the query module::
 
