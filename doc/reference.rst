@@ -1,3 +1,4 @@
+.. highlight:: yaml
 .. _Configuration Reference:
 
 ***********************

@@ -1,3 +1,5 @@
+.. highlight:: console
+
 keymgr -- DNSSEC key management utility
 =======================================
 

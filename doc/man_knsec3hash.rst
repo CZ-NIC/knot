@@ -1,3 +1,5 @@
+.. highlight:: console
+
 knsec3hash -- NSEC hash computation utility
 ===========================================
 

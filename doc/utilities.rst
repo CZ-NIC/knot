@@ -1,4 +1,5 @@
-:. _Utilities:
+.. highlight:: none
+.. _Utilities:
 
 Utilities
 =========

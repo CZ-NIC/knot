@@ -1,3 +1,5 @@
+.. highlight:: console
+
 knot1to2 -- Knot DNS configuration conversion utility
 =====================================================
 

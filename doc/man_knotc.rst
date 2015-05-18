@@ -1,3 +1,5 @@
+.. highlight:: console
+
 knotc -- Knot DNS control utility
 =================================
 

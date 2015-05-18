@@ -1,3 +1,5 @@
+.. highlight:: console
+
 knsupdate -- Dynamic DNS update utility
 =======================================
 

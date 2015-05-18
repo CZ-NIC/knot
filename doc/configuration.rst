@@ -1,3 +1,4 @@
+.. highlight:: yaml
 .. _Configuration:
 
 *************
@@ -308,7 +309,9 @@ containing files in the JSON format. The database contains
 - private key material.
 
 The :doc:`keymgr <man_keymgr>` utility serves for the database maintenance.
-To initialize the database, run::
+To initialize the database, run:
+
+.. code-block:: console
 
   $ mkdir -p /var/lib/knot/kasp
   $ cd /var/lib/knot/kasp
@@ -330,7 +333,9 @@ first place. This policy specifies how a zone is signed (i.e. signing
 algorithm, key size, signature lifetime, key lifetime, etc.).
 
 To create a new policy named *default_rsa* using *RSA-SHA-256* algorithm for
-signing keys, 1024-bit long ZSK, and 2048-bit long KSK, run::
+signing keys, 1024-bit long ZSK, and 2048-bit long KSK, run:
+
+.. code-block:: console
 
   $ keymgr policy add default_rsa algorithm RSASHA256 zsk-size 1024 ksk-size 2048
 
@@ -338,11 +343,15 @@ The unspecified policy parameters are set to defaults. The complete definition
 of the policy will be printed after executing the command.
 
 Next, create a zone entry for zone *myzone.test* and assign it the newly
-created policy::
+created policy:
+
+.. code-block:: console
 
   $ keymgr zone add myzone.test policy default_rsa
 
-Make sure everything is set correctly::
+Make sure everything is set correctly:
+
+.. code-block:: console
 
   $ keymgr policy show default_rsa
   $ keymgr zone show myzone.test
@@ -359,7 +368,9 @@ The configuration fragment might look similar to::
     - domain: myzone.test
       dnssec-enable: on
 
-Finally, reload the server::
+Finally, reload the server:
+
+.. code-block:: console
 
   $ knotc reload
 
@@ -381,13 +392,17 @@ Manual key management
 For automatic DNSSEC signing with manual key management, a signing policy
 need not be defined.
 
-Create a zone entry for the zone *myzone.test* without a policy::
+Create a zone entry for the zone *myzone.test* without a policy:
+
+.. code-block:: console
 
   $ keymgr zone add myzone.test
 
 Generate a signing keys for the zone. Let's use the Single-Type Signing scheme
 with two algorithms (this scheme is not supported in automatic key management).
-Run::
+Run:
+
+.. code-block:: console
 
   $ keymgr zone key generate myzone.test algorithm RSASHA256 size 1024
   $ keymgr zone key generate myzone.test algorithm ECDSAP256SHA256 size 256
@@ -398,12 +413,16 @@ reload the server. Use the same steps as in
 
 To perform a manual rollover of a key, the timing parameters of the key need
 to be set. Let's roll the RSA key. Generate a new RSA key, but do not activate
-it yet::
+it yet:
+
+.. code-block:: console
 
   $ keymgr zone key generate myzone.test algorithm RSASHA256 size 1024 activate +1d
 
 Take the key ID (or key tag) of the old RSA key and disable it the same time
-the new key gets activated::
+the new key gets activated:
+
+.. code-block:: console
 
   $ keymgr zone key set myzone.test <old_key_id> retire +1d remove +1d
 
@@ -620,7 +639,9 @@ Example::
        file: example.zone # Zone file have to exist!
        module: mod-synth-record/test1
 
-Result::
+Result:
+
+.. code-block:: console
 
    $ kdig AAAA dynamic-2620-0000-0b61-0100-0000-0000-0000-0000.example.
    ...
@@ -631,7 +652,9 @@ Result::
    dynamic-2620-0000-0b61-0100... 400 IN AAAA 2620:0:b61:100::
 
 You can also have CNAME aliases to the dynamic records, which are going to be
-further resoluted::
+further resoluted:
+
+.. code-block:: console
 
    $ kdig AAAA hostalias.example.
    ...
@@ -660,7 +683,9 @@ Example::
        file: 1.6.b.0.0.0.0.0.0.2.6.2.ip6.arpa.zone # Zone file have to exist!
        module: mod-synth-record/test2
 
-Result::
+Result:
+
+.. code-block:: console
 
    $ kdig PTR 1.0.0...1.6.b.0.0.0.0.0.0.2.6.2.ip6.arpa.
    ...
@@ -719,13 +744,17 @@ the record is searched in the available zones. The modules comes with a tool
 Neither the tool nor the module are enabled by default, recompile with
 the configure flag ``--enable-rosedb`` to enable them.
 
-For example, suppose we have a database of following records::
+For example, suppose we have a database of following records:
+
+.. code-block:: none
 
    myrecord.com.      3600 IN A 127.0.0.1
    www.myrecord.com.  3600 IN A 127.0.0.2
    ipv6.myrecord.com. 3600 IN AAAA ::1
 
-And we query the nameserver with following::
+And we query the nameserver with following:
+
+.. code-block:: console
 
    $ kdig IN A myrecord.com
      ... returns NOERROR, 127.0.0.1
@@ -743,7 +772,9 @@ i.e. 'myrecord.com' matches 'a.a.myrecord.com' as well.
 This can be exploited to create a catch-all entries.*
 
 You can also add an authority information for the entries, provided you create
-a SOA + NS records for a name, like so::
+a SOA + NS records for a name, like so:
+
+.. code-block:: none
 
    myrecord.com.     3600 IN SOA master host 1 3600 60 3600 3600
    myrecord.com.     3600 IN NS ns1.myrecord.com.
@@ -769,7 +800,9 @@ you specify a syslog address endpoint and an optional string code.
 
 Here is an example on how to use the module:
 
-* Create the entries in the database::
+* Create the entries in the database:
+
+  .. code-block:: console
 
    $ mkdir /tmp/static_rrdb
    $ rosedb_tool /tmp/static_rrdb add myrecord.com. A 3600 "127.0.0.1" "-" "-" # No logging
@@ -795,10 +828,14 @@ Here is an example on how to use the module:
   *Note: The module accepts just one parameter - path to the directory where
   the database will be stored.*
 
-* Start the server::
+* Start the server:
+
+  .. code-block:: console
 
    $ knotd -c knot.conf
 
-* Verify the running instance::
+* Verify the running instance:
+
+  .. code-block:: console
 
    $ kdig @127.0.0.1#6667 A myrecord.com

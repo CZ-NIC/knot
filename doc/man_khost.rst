@@ -1,3 +1,5 @@
+.. highlight:: console
+
 khost -- Simple DNS lookup utility
 ==================================
 

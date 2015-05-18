@@ -1,3 +1,4 @@
+.. highlight:: console
 .. _Troubleshooting:
 
 ***************

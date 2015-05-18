@@ -1,3 +1,5 @@
+.. highlight:: none
+
 Welcome to Knot DNS's documentation!
 ====================================
 

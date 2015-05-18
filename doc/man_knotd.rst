@@ -1,3 +1,5 @@
+.. highlight:: console
+
 knotd -- Knot DNS server daemon
 ===============================
 

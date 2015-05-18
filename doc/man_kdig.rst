@@ -1,3 +1,5 @@
+.. highlight:: console
+
 kdig -- Advanced DNS lookup utility
 ===================================
 

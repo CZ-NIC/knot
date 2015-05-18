@@ -1,3 +1,4 @@
+.. highlight:: yaml
 .. _Migration from other DNS servers:
 
 ********************************
