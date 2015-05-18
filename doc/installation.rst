@@ -124,15 +124,15 @@ be used by adding::
 to your ``/etc/apt/sources.list`` or into separate file in
 ``/etc/apt/sources.list.d/``.
 
-As an example, for Debian wheezy the Knot DNS packages can be added by
+As an example, for Debian jessie the Knot DNS packages can be added by
 executing following command as the root user::
 
-    $ cat >/etc/apt/sources.list.d/knot.list <<EOF
-    deb     http://deb.knot-dns.cz/debian/ wheezy main
-    deb-src http://deb.knot-dns.cz/debian/ wheezy main
+    # cat >/etc/apt/sources.list.d/knot.list <<EOF
+    deb     http://deb.knot-dns.cz/debian/ jessie main
+    deb-src http://deb.knot-dns.cz/debian/ jessie main
     EOF
-    $ apt-get update
-    $ apt-get install knot
+    # apt-get update
+    # apt-get install knot
 
 Ubuntu Linux
 ------------
@@ -165,26 +165,28 @@ repositories since Fedora 18 (Spherical Cow). Search for the ``knot``
 package in your package manager. To install the package using Yum, run
 the following command as the root user::
 
-    $ yum install knot
-
-FreeBSD
--------
-
-Knot DNS is in ports tree under ``dns/knot``::
-
-    $ cd /usr/ports/dns/knot
-    $ sudo make install
+    # yum install knot
 
 Arch Linux
 ----------
 
-Knot DNS is available official package repository (AUR)::
+Knot DNS is available official package repository (AUR). To install the
+package, run::
 
-    https://aur.archlinux.org/packages/knot/
+    # pacman -S knot
 
 Gentoo Linux
 ------------
 
-Knot DNS is available from Gentoo package repository::
+Knot DNS is also available in Gentoo package repository. However, you will
+probably need to unmask the package prior starting the installation::
 
-    https://packages.gentoo.org/package/net-dns/knot
+    # emerge -a knot
+
+FreeBSD
+-------
+
+Knot DNS is in ports tree under ``dns/knot``. To install the port, run::
+
+    # cd /usr/ports/dns/knot
+    # make install
