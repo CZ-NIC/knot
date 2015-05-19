@@ -1,6 +1,5 @@
-.. _Installation:
-
 .. highlight:: console
+.. _Installation:
 
 ************
 Installation
