@@ -36,6 +36,6 @@ nodist_libzscanner_la_SOURCES =		\
 libzscanner_la_CFLAGS = $(CODE_COVERAGE_CFLAGS)
 libzscanner_la_LDFLAGS =		\
 	$(CODE_COVERAGE_LDFLAGS)	\
-	$(VERSION_INFO)
+	$(libzscanner_VERSION_INFO)
 
 include $(srcdir)/tests/Makefile.inc
