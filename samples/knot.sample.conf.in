@@ -1,57 +1,49 @@
 #
 # This is a sample of a minimal configuration file for Knot DNS.
-# For exhaustive list of all options see man 5 knot.conf or refer to user manual.
+# For more details, see man 5 knot.conf or refer to the server documentation.
 #
 
 server:
-    # Identity of the server.
-    identity: "Knot DNS"
-
-    # Version of the server (automatic value).
-    version: ""
-
-    # Listening interfaces (all configured IPv4 and IPv6 interfaces).
+    # Listen on all configured IPv4 interfaces.
     listen: 0.0.0.0@53
+    # Listen on all configured IPv6 interfaces.
     listen: ::@53
-
-remote:
-  - id: slave
-    address: 203.0.113.1@53
-
-  - id: master
-    address: 198.51.100.1@53
-
-acl:
-  - id: acl_slave
-    address: 203.0.113.1
-    action: xfer
-
-  - id: acl_master
-    address: 198.51.100.1
-    action: notify
-
-template:
-  - id: default
-    storage: "@storage_dir@"
-
-zone:
-    # Master zone.
-  - domain: example.com
-    file: "@storage_dir@/example.com.zone"
-    notify: slave
-    acl: acl_slave
-
-    # Slave zone.
-  - domain: example.net
-    file: "@storage_dir@/example.net.zone"
-    master: master
-    acl: acl_master
+    # User for running the server.
+    # user: knot:knot
 
 log:
     # Log info and more serious events to syslog.
-  - to: syslog
+  - target: syslog
     any: info
 
-    # Log warnings, errors and criticals to stderr.
-  - to: stderr
-    any: warning
+remote:
+#  - id: slave
+#    address: 203.0.113.1@53
+#
+#  - id: master
+#    address: 198.51.100.1@53
+
+acl:
+#  - id: acl_slave
+#    address: 203.0.113.1
+#    action: transfer
+
+#  - id: acl_master
+#    address: 198.51.100.1
+#    action: notify
+
+template:
+#  - id: default
+#    storage: "@storage_dir@"
+
+zone:
+#    # Master zone.
+#  - domain: example.com
+#    file: "example.com.zone"
+#    notify: slave
+#    acl: acl_slave
+
+#    # Slave zone.
+#  - domain: example.net
+#    master: master
+#    acl: acl_master
