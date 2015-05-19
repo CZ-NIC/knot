@@ -463,11 +463,13 @@ AC_MSG_RESULT([
     Fast zone parser:      ${enable_fastparser}
     Utilities with IDN:    ${with_libidn}
     Systemd integration:   ${enable_systemd}
+    liburcu:		   ${liburcu_CFLAGS} ${liburcu_LIBS}
     GnuTLS:                ${gnutls_CFLAGS} ${gnutls_LIBS}
     Jansson:               ${jansson_CFLAGS} ${jansson_LIBS}
     Dnstap support:        ${opt_dnstap}
     Code coverage:         ${enable_code_coverage}
     LMDB support:          ${enable_lmdb}
+    LMDB:		   ${lmdb_CFLAGS} ${lmdb_LIBS}
 
   Continue with 'make' command
 ])
