@@ -81,7 +81,6 @@ const uint8_t base32hex_dec[256] = {
 	[ 42] = KO, ['U'] = 30, [128] = KO, [171] = KO, [214] = KO,
 };
 
-_public_
 int32_t base32hex_encode(const uint8_t  *in,
                          const uint32_t in_len,
                          uint8_t        *out,
@@ -164,7 +163,6 @@ int32_t base32hex_encode(const uint8_t  *in,
 	return (text - out);
 }
 
-_public_
 int32_t base32hex_encode_alloc(const uint8_t  *in,
                                const uint32_t in_len,
                                uint8_t        **out)
@@ -195,7 +193,6 @@ int32_t base32hex_encode_alloc(const uint8_t  *in,
 	return ret;
 }
 
-_public_
 int32_t base32hex_decode(const uint8_t  *in,
                          const uint32_t in_len,
                          uint8_t        *out,
@@ -323,7 +320,6 @@ int32_t base32hex_decode(const uint8_t  *in,
 	return (bin - out);
 }
 
-_public_
 int32_t base32hex_decode_alloc(const uint8_t  *in,
                                const uint32_t in_len,
                                uint8_t        **out)

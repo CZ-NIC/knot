@@ -51,7 +51,6 @@ static inline void heap_swap(heap_val_t *e1, heap_val_t *e2)
 	*e2 = tmp;
 }
 
-_public_
 int heap_init(struct heap *h, int (*cmp)(void *, void *), int init_size)
 {
 	int isize = init_size ? init_size : INITIAL_HEAP_SIZE;
@@ -91,7 +90,6 @@ static inline void _heap_bubble_up(struct heap *h, int e)
 
 }
 
-_public_
 void heap_delmin(struct heap *h)
 {
 	if(h->num == 0) return;
@@ -103,7 +101,6 @@ void heap_delmin(struct heap *h)
 	_heap_bubble_down(h, 1);
 }
 
-_public_
 int heap_insert(struct heap *h, void *e)
 {
 	if(h->num == h->max_size)
@@ -121,7 +118,6 @@ int heap_insert(struct heap *h, void *e)
 	return 1;
 }
 
-_public_
 int heap_find(struct heap *h, void *elm)	/* FIXME - very slow */
 {
 	int i = 1; /* Skip tmp element. */
@@ -134,7 +130,6 @@ int heap_find(struct heap *h, void *elm)	/* FIXME - very slow */
 	return 0;
 }
 
-_public_
 void heap_delete(struct heap *h, int e)
 {
 	heap_swap(HELEMENT(h, e), HELEMENT(h, h->num));

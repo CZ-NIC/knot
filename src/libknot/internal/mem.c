@@ -23,7 +23,6 @@
 #include "libknot/internal/macros.h"
 #include "libknot/internal/mem.h"
 
-_public_
 uint8_t *knot_memdup(const uint8_t *data, size_t data_size)
 {
 	uint8_t *result = (uint8_t *)malloc(data_size);
@@ -34,7 +33,6 @@ uint8_t *knot_memdup(const uint8_t *data, size_t data_size)
 	return memcpy(result, data, data_size);
 }
 
-_public_
 void* xmalloc(size_t l)
 {
 	void *p = malloc(l);
@@ -44,7 +42,6 @@ void* xmalloc(size_t l)
 	return p;
 }
 
-_public_
 void *xrealloc(void *p, size_t l)
 {
 	p = realloc(p, l);
@@ -54,7 +51,6 @@ void *xrealloc(void *p, size_t l)
 	return p;
 }
 
-_public_
 int mreserve(char **p, size_t tlen, size_t min, size_t allow, size_t *reserved)
 {
 	/* Trim excessive memory if possible. */
@@ -77,7 +73,6 @@ int mreserve(char **p, size_t tlen, size_t min, size_t allow, size_t *reserved)
 	return 0;
 }
 
-_public_
 char *sprintf_alloc(const char *fmt, ...)
 {
 	int size = 100;
@@ -116,7 +111,6 @@ char *sprintf_alloc(const char *fmt, ...)
 	return p;
 }
 
-_public_
 char *strcdup(const char *s1, const char *s2)
 {
 	if (!s1 || !s2) {

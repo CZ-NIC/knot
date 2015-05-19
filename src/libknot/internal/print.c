@@ -45,25 +45,21 @@ static void array_printf(const uint8_t *data, const unsigned length,
 	print_handler("\n");
 }
 
-_public_
 void hex_print(const uint8_t *data, unsigned length)
 {
 	array_printf(data, length, &printf, 0);
 }
 
-_public_
 void short_hex_print(const uint8_t *data, unsigned length)
 {
 	array_printf(data, length, &printf, 'x');
 }
 
-_public_
 void txt_print(const uint8_t *data, unsigned length)
 {
 	array_printf(data, length, &printf, 't');
 }
 
-_public_
 float time_diff(struct timeval *begin, struct timeval *end)
 {
 	return (end->tv_sec - begin->tv_sec) * 1000 +

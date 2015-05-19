@@ -31,7 +31,6 @@ static void *mm_malloc(void *ctx, size_t n)
 	return malloc(n);
 }
 
-_public_
 void *mm_alloc(mm_ctx_t *mm, size_t size)
 {
 	if (mm) {
@@ -41,7 +40,6 @@ void *mm_alloc(mm_ctx_t *mm, size_t size)
 	}
 }
 
-_public_
 void *mm_realloc(mm_ctx_t *mm, void *what, size_t size, size_t prev_size)
 {
 	if (mm) {
@@ -61,7 +59,6 @@ void *mm_realloc(mm_ctx_t *mm, void *what, size_t size, size_t prev_size)
 	}
 }
 
-_public_
 void mm_free(mm_ctx_t *mm, void *what)
 {
 	if (mm) {
@@ -73,7 +70,6 @@ void mm_free(mm_ctx_t *mm, void *what)
 	}
 }
 
-_public_
 void mm_ctx_init(mm_ctx_t *mm)
 {
 	mm->ctx = NULL;
@@ -81,7 +77,6 @@ void mm_ctx_init(mm_ctx_t *mm)
 	mm->free = free;
 }
 
-_public_
 void mm_ctx_mempool(mm_ctx_t *mm, size_t chunk_size)
 {
 	mm->ctx = mp_new(chunk_size);

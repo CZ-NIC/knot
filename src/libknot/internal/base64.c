@@ -82,7 +82,6 @@ const uint8_t base64_dec[256] = {
 	[ 42] = KO, ['U'] = 20, [128] = KO, [171] = KO, [214] = KO,
 };
 
-_public_
 int32_t base64_encode(const uint8_t  *in,
                       const uint32_t in_len,
                       uint8_t        *out,
@@ -131,7 +130,6 @@ int32_t base64_encode(const uint8_t  *in,
 	return (text - out);
 }
 
-_public_
 int32_t base64_encode_alloc(const uint8_t  *in,
                             const uint32_t in_len,
                             uint8_t        **out)
@@ -162,7 +160,6 @@ int32_t base64_encode_alloc(const uint8_t  *in,
 	return ret;
 }
 
-_public_
 int32_t base64_decode(const uint8_t  *in,
                       const uint32_t in_len,
                       uint8_t        *out,
@@ -244,7 +241,6 @@ int32_t base64_decode(const uint8_t  *in,
 	return (bin - out);
 }
 
-_public_
 int32_t base64_decode_alloc(const uint8_t  *in,
                             const uint32_t in_len,
                             uint8_t        **out)

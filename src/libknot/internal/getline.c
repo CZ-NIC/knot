@@ -26,7 +26,6 @@
 #include <stdlib.h>		// free
 #include <string.h>		// memcpy
 
-_public_
 ssize_t knot_getline(char **lineptr, size_t *n, FILE *stream)
 {
 #ifdef HAVE_GETLINE

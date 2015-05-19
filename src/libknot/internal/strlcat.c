@@ -20,7 +20,6 @@
 #include "libknot/internal/macros.h"
 #include "libknot/internal/strlcat.h"
 
-_public_
 size_t
 knot_strlcat(char *dst, const char *src, size_t siz)
 {

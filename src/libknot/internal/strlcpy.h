@@ -27,6 +27,5 @@
  * will be copied.  Always NUL terminates (unless siz == 0).
  * Returns strlen(src); if retval >= siz, truncation occurred.
  */
-_public_
 size_t
 knot_strlcpy(char *dst, const char *src, size_t siz);

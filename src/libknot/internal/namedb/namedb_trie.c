@@ -168,7 +168,6 @@ static void iter_finish(namedb_iter_t *iter)
 	hattrie_iter_free((hattrie_iter_t *)iter);
 }
 
-_public_
 const namedb_api_t *namedb_trie_api(void)
 {
 	static const namedb_api_t api = {

@@ -31,7 +31,6 @@
 #define LMDB_DIR_MODE   0770
 #define LMDB_FILE_MODE  0660
 
-_public_
 const unsigned NAMEDB_LMDB_NOTLS = MDB_NOTLS;
 
 struct lmdb_env
@@ -458,7 +457,6 @@ static int del(namedb_txn_t *txn, namedb_val_t *key)
 	return KNOT_EOK;
 }
 
-_public_
 const namedb_api_t *namedb_lmdb_api(void)
 {
 	static const namedb_api_t api = {

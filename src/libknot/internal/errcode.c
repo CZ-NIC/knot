@@ -46,7 +46,6 @@ static const err_table_t errno_to_errcode[] = {
 	{ 0, KNOT_ERROR }
 };
 
-_public_
 int knot_map_errno(void)
 {
 	const err_table_t *err = errno_to_errcode;

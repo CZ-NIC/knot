@@ -314,7 +314,6 @@ static void hattrie_deinit(hattrie_t * T)
         hattrie_free_node(T->root, T->mm.free);
 }
 
-_public_
 hattrie_t* hattrie_create()
 {
     mm_ctx_t mm;
@@ -322,7 +321,6 @@ hattrie_t* hattrie_create()
     return hattrie_create_n(TRIE_BUCKET_SIZE, &mm);
 }
 
-_public_
 void hattrie_free(hattrie_t* T)
 {
     if (T == NULL) {
@@ -333,7 +331,6 @@ void hattrie_free(hattrie_t* T)
         T->mm.free(T);
 }
 
-_public_
 void hattrie_clear(hattrie_t* T)
 {
     if (T == NULL) {
@@ -344,7 +341,6 @@ void hattrie_clear(hattrie_t* T)
     hattrie_init(T, T->bsize);
 }
 
-_public_
 hattrie_t* hattrie_dup(const hattrie_t* T, value_t (*nval)(value_t))
 {
     hattrie_t *N = hattrie_create_n(T->bsize, &T->mm);
@@ -367,7 +363,6 @@ hattrie_t* hattrie_dup(const hattrie_t* T, value_t (*nval)(value_t))
     return N;
 }
 
-_public_
 size_t hattrie_weight (const hattrie_t *T)
 {
     if (T == NULL) {
@@ -377,7 +372,6 @@ size_t hattrie_weight (const hattrie_t *T)
     return T->m;
 }
 
-_public_
 hattrie_t* hattrie_create_n(unsigned bucket_size, const mm_ctx_t *mm)
 {
     hattrie_t* T = mm_alloc((mm_ctx_t *)mm, sizeof(hattrie_t));
@@ -401,7 +395,6 @@ static void node_build_index(node_ptr node)
     }
 }
 
-_public_
 void hattrie_build_index(hattrie_t *T)
 {
     node_build_index(T->root);
@@ -468,19 +461,16 @@ static int node_apply_ahtable(node_ptr node, int (*f)(void*,void*), void* d)
     return result;
 }
 
-_public_
 int hattrie_apply_rev(hattrie_t* T, int (*f)(value_t*,void*), void* d)
 {
     return node_apply(T->root, f, d);
 }
 
-_public_
 int hattrie_apply_rev_ahtable(hattrie_t* T, int (*f)(void*,void*), void* d)
 {
     return node_apply_ahtable(T->root, f, d);
 }
 
-_public_
 int hattrie_split_mid(node_ptr node, unsigned *left_m, unsigned *right_m)
 {
     /* count the number of occourances of every leading character */
@@ -665,7 +655,6 @@ static value_t *find_below(hattrie_t *T, node_ptr parent, const char *key, size_
     return val;
 }
 
-_public_
 value_t* hattrie_get(hattrie_t* T, const char* key, size_t len)
 {
     node_ptr parent = T->root;
@@ -687,7 +676,6 @@ value_t* hattrie_get(hattrie_t* T, const char* key, size_t len)
     return val;
 }
 
-_public_
 value_t* hattrie_tryget(hattrie_t* T, const char* key, size_t len)
 {
     /* find node for given key */
@@ -776,7 +764,6 @@ static value_t* hattrie_walk_right(node_ptr* s, size_t sp,
     return NULL;
 }
 
-_public_
 int hattrie_find_leq (hattrie_t* T, const char* key, size_t len, value_t** dst)
 {
     /* create node stack for traceback */
@@ -829,7 +816,6 @@ int hattrie_find_leq (hattrie_t* T, const char* key, size_t len, value_t** dst)
     return ret;
 }
 
-_public_
 int hattrie_find_next (hattrie_t* T, const char* key, size_t len, value_t **dst)
 {
     /* create node stack for traceback */
@@ -875,7 +861,6 @@ int hattrie_find_next (hattrie_t* T, const char* key, size_t len, value_t **dst)
     return ret;
 }
 
-_public_
 int hattrie_del(hattrie_t* T, const char* key, size_t len)
 {
     node_ptr parent = T->root;
@@ -1004,7 +989,6 @@ static void hattrie_iter_nextnode(hattrie_iter_t* i)
     }
 }
 
-_public_
 hattrie_iter_t* hattrie_iter_begin(const hattrie_t* T, bool sorted)
 {
     hattrie_iter_t* i = NULL;
@@ -1042,7 +1026,6 @@ hattrie_iter_t* hattrie_iter_begin(const hattrie_t* T, bool sorted)
     return i;
 }
 
-_public_
 void hattrie_iter_next(hattrie_iter_t* i)
 {
     if (hattrie_iter_finished(i)) return;
@@ -1070,13 +1053,11 @@ void hattrie_iter_next(hattrie_iter_t* i)
     }
 }
 
-_public_
 bool hattrie_iter_finished(hattrie_iter_t* i)
 {
     return i->stack == NULL && i->i == NULL && !i->has_nil_key;
 }
 
-_public_
 void hattrie_iter_free(hattrie_iter_t* i)
 {
     if (i == NULL) return;
@@ -1095,7 +1076,6 @@ void hattrie_iter_free(hattrie_iter_t* i)
     free(i);
 }
 
-_public_
 const char* hattrie_iter_key(hattrie_iter_t* i, size_t* len)
 {
     if (hattrie_iter_finished(i)) return NULL;
@@ -1123,7 +1103,6 @@ const char* hattrie_iter_key(hattrie_iter_t* i, size_t* len)
     return i->key;
 }
 
-_public_
 value_t* hattrie_iter_val(hattrie_iter_t* i)
 {
     if (i->has_nil_key) return &i->nil_val;

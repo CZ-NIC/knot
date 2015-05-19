@@ -17,7 +17,6 @@
 #include "libknot/internal/macros.h"
 #include "libknot/internal/tolower.h"
 
-_public_
 const uint8_t knot_char_table[KNOT_CHAR_TABLE_SIZE] = {
 	'\x00',
 	'\x01',

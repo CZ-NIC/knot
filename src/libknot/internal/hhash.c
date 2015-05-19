@@ -204,7 +204,6 @@ static void hhash_free_buckets(hhash_t *tbl)
 	}
 }
 
-_public_
 hhash_t *hhash_create(uint32_t size)
 {
 	mm_ctx_t mm;
@@ -212,7 +211,6 @@ hhash_t *hhash_create(uint32_t size)
 	return hhash_create_mm(size, &mm);
 }
 
-_public_
 hhash_t *hhash_create_mm(uint32_t size, const mm_ctx_t *mm)
 {
 	if (size == 0) {
@@ -230,7 +228,6 @@ hhash_t *hhash_create_mm(uint32_t size, const mm_ctx_t *mm)
 	return tbl;
 }
 
-_public_
 void hhash_clear(hhash_t *tbl)
 {
 	if (tbl == NULL) {
@@ -246,7 +243,6 @@ void hhash_clear(hhash_t *tbl)
 	tbl->weight = 0;
 }
 
-_public_
 void hhash_free(hhash_t *tbl)
 {
 	if (tbl == NULL) {
@@ -262,7 +258,6 @@ void hhash_free(hhash_t *tbl)
 	}
 }
 
-_public_
 value_t *hhash_find(hhash_t* tbl, const char* key, uint16_t len)
 {
 	/* It is faster to scan index using binary search for low fill,
@@ -281,7 +276,6 @@ value_t *hhash_find(hhash_t* tbl, const char* key, uint16_t len)
 	return hhash_map(tbl, key, len, 0); /* Don't insert. */
 }
 
-_public_
 value_t *hhash_map(hhash_t* tbl, const char* key, uint16_t len, uint16_t mode)
 {
 	if (tbl == NULL) {
@@ -346,7 +340,6 @@ value_t *hhash_map(hhash_t* tbl, const char* key, uint16_t len, uint16_t mode)
 	return (value_t *)KEY_VAL(new_key);
 }
 
-_public_
 int hhash_insert(hhash_t* tbl, const char* key, uint16_t len, value_t val)
 {
 	value_t *rval = hhash_map(tbl, key, len, HHASH_INSERT);
@@ -357,7 +350,6 @@ int hhash_insert(hhash_t* tbl, const char* key, uint16_t len, value_t val)
 	return KNOT_ESPACE;
 }
 
-_public_
 int hhash_del(hhash_t* tbl, const char* key, uint16_t len)
 {
 	if (tbl == NULL) {
@@ -373,7 +365,6 @@ int hhash_del(hhash_t* tbl, const char* key, uint16_t len)
 	return hhelem_free(tbl, idx, dist, NULL);
 }
 
-_public_
 value_t *hhash_indexval(hhash_t* tbl, unsigned i)
 {
 	if (tbl != NULL && tbl->index != NULL) {
@@ -383,7 +374,6 @@ value_t *hhash_indexval(hhash_t* tbl, unsigned i)
 	return 0;
 }
 
-_public_
 void hhash_build_index(hhash_t* tbl)
 {
 	if (tbl == NULL) {
@@ -418,7 +408,6 @@ void hhash_build_index(hhash_t* tbl)
 	hhash_sort(tbl->index, indexed, tbl);
 }
 
-_public_
 int hhash_find_leq(hhash_t* tbl, const char* key, uint16_t len, value_t** dst)
 {
 	*dst = NULL;
@@ -442,7 +431,6 @@ int hhash_find_leq(hhash_t* tbl, const char* key, uint16_t len, value_t** dst)
 	return 1;
 }
 
-_public_
 int hhash_find_next(hhash_t* tbl, const char* key, uint16_t len, value_t** dst)
 {
 	*dst = NULL;
@@ -557,7 +545,6 @@ static value_t *hhash_unsorted_iter_val(hhash_iter_t* i)
 	return (value_t *)KEY_VAL(i->tbl->item[i->i].d);
 }
 
-_public_
 void hhash_iter_begin(hhash_t* tbl, hhash_iter_t* i, bool sorted)
 {
 	memset(i, 0, sizeof(hhash_iter_t));
@@ -572,28 +559,24 @@ void hhash_iter_begin(hhash_t* tbl, hhash_iter_t* i, bool sorted)
 	}
 }
 
-_public_
 void hhash_iter_next(hhash_iter_t* i)
 {
 	if (i->flags & HH_SORTED) hhash_sorted_iter_next(i);
 	else                      hhash_unsorted_iter_next(i);
 }
 
-_public_
 bool hhash_iter_finished(hhash_iter_t* i)
 {
 	if (i->flags & HH_SORTED) return hhash_sorted_iter_finished(i);
 	else                      return hhash_unsorted_iter_finished(i);
 }
 
-_public_
 const char* hhash_iter_key(hhash_iter_t* i, uint16_t* len)
 {
 	if (i->flags & HH_SORTED) return hhash_sorted_iter_key(i, len);
 	else                      return hhash_unsorted_iter_key(i, len);
 }
 
-_public_
 value_t *hhash_iter_val(hhash_iter_t* i)
 {
 	if (i->flags & HH_SORTED) return hhash_sorted_iter_val(i);
