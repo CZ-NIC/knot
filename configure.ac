@@ -251,6 +251,8 @@ AS_IF([test "$enable_daemon" = "yes"],[
 dnl Check for dnstap.
 dt_DNSTAP([
     AC_DEFINE([USE_DNSTAP], [1], [Define to 1 to enable dnstap support])
+    AC_SUBST(DNSTAP_CFLAGS)
+    AC_SUBST(DNSTAP_LIBS)
     ])
 ])
 
