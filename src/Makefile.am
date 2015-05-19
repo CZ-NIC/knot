@@ -166,12 +166,12 @@ endif
 pkgconfig_DATA = libknot.pc
 
 if !HAVE_LMDB
-libknot_la_SOURCES +=				\
+libknot_internal_la_SOURCES +=			\
 	libknot/internal/namedb/mdb.c		\
 	libknot/internal/namedb/midl.c		\
 	libknot/internal/namedb/lmdb.h		\
 	libknot/internal/namedb/midl.h
-libknot_la_CPPFLAGS +=				\
+libknot_internal_la_CPPFLAGS +=			\
 	-I$(srcdir)/libknot/internal/namedb/
 endif
 
