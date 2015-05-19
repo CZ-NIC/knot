@@ -29,7 +29,6 @@ _keymgr()
 	sub1cmd=${words[$((start + 1))]}
 	sub2cmd=${words[$((start + 2))]}
 	sub3cmd=${words[$((start + 3))]}
-	sub4cmd=${words[$((start + 4))]}
 
 	if [[ -z $cmd ]]; then
 		case $cur in
@@ -55,13 +54,13 @@ _keymgr()
 			esac
 			;;
 		policy)
-			count=$(($count + 1))
+			count=$((count + 1))
 			case $sub1cmd in
 				add)
 					count=$(($count + 1))
-					if ! [[ $count -eq $cword ]]; then
-						COMPREPLY=( $( compgen -W 'algorithm dnskey-ttl \
-							ksk-size zsk-size zsk-lifetime rrsig-lifetime \
+					if [[ $count -ne $cword ]]; then
+						COMPREPLY=( $( compgen -W 'algorithm dnskey-ttl
+							ksk-size zsk-size zsk-lifetime rrsig-lifetime
 							rrsig-refresh nsec3 soa-min-ttl zone-max-ttl delay' \
 							-- "$cur" ) )
 					fi
@@ -75,9 +74,9 @@ _keymgr()
 					;;
 				set)
 					count=$(($count + 1))
-					if ! [[ $count -eq $cword ]]; then
-						COMPREPLY=( $( compgen -W 'algorithm dnskey-ttl \
-									ksk-size zsk-size zsk-lifetime rrsig-lifetime \
+					if [[ $count -ne $cword ]]; then
+						COMPREPLY=( $( compgen -W 'algorithm dnskey-ttl
+									ksk-size zsk-size zsk-lifetime rrsig-lifetime
 									rrsig-refresh nsec3 soa-min-ttl zone-max-ttl delay' \
 									-- "$cur" ) )
 					else
@@ -96,7 +95,7 @@ _keymgr()
 			case $sub1cmd in
 				add)
 					count=$(($count + 1))
-					if ! [[ $count -eq $cword ]]; then
+					if [[ $count -ne $cword ]]; then
 						count=$(($count + 1))
 						case $sub3cmd in
 							policy)
@@ -121,13 +120,13 @@ _keymgr()
 								local c=$( keymgr zone list 2>/dev/null )
 								COMPREPLY=( $( compgen -W "$c" -- "$cur" ) )
 							else
-								COMPREPLY=( $( compgen -W 'algorithm size \
+								COMPREPLY=( $( compgen -W 'algorithm size
 								    ksk publish active retire remove' -- "$cur" ) )
 							fi
 							;;
 						import)
 							count=$(($count + 1))
-							if ! [[ $count -eq $cword ]]; then
+							if [[ $count -ne $cword ]]; then
 								_filedir
 							else
 								local c=$( keymgr zone list 2>/dev/null )
@@ -143,13 +142,13 @@ _keymgr()
 							;;
 						set)
 							count=$(($count + 1))
-							if ! [[ $count -eq $cword ]]; then
+							if [[ $count -ne $cword ]]; then
 								count=$(($count + 1))
-								if ! [[ $count -eq $cword ]]; then
-									COMPREPLY=( $( compgen -W ' publish \
+								if [[ $count -ne $cword ]]; then
+									COMPREPLY=( $( compgen -W ' publish
 										active retire remove' -- "$cur" ) )
 								else
-									local c=$( keymgr zone key list $sub3cmd 2>/dev/null | cut -f 2 -d ' ' )
+									local c=$( keymgr zone key list "$sub3cmd" 2>/dev/null | cut -f 2 -d ' ' )
 									COMPREPLY=( $( compgen -W "$c" -- "$cur" ) )
 								fi
 							else
@@ -159,8 +158,8 @@ _keymgr()
 							;;
 						show)
 							count=$(($count + 1))
-							if ! [[ $count -eq $cword ]]; then
-								local c=$( keymgr zone key list $sub3cmd 2>/dev/null | cut -f 2 -d ' ' )
+							if [[ $count -ne $cword ]]; then
+								local c=$( keymgr zone key list "$sub3cmd" 2>/dev/null | cut -f 2 -d ' ' )
 								COMPREPLY=( $( compgen -W "$c" -- "$cur" ) )
 							else
 								local c=$( keymgr zone list 2>/dev/null )
@@ -168,7 +167,7 @@ _keymgr()
 							fi
 							;;
 						*)
-							COMPREPLY=( $( compgen -W 'generate import \
+							COMPREPLY=( $( compgen -W 'generate import
 						        list set show' -- "$cur" ) )
 							;;
 					esac
@@ -177,7 +176,7 @@ _keymgr()
 					;;
 				remove)
 					count=$(($count + 1))
-					if ! [[ $count -eq $cword ]]; then
+					if [[ $count -ne $cword ]]; then
 						case $sub3cmd in
 							force)
 								;;
@@ -199,7 +198,7 @@ _keymgr()
 					;;
 				set)
 					count=$(($count + 1))
-					if ! [[ $count -eq $cword ]]; then
+					if [[ $count -ne $cword ]]; then
 						count=$(($count + 1))
 						case $sub3cmd in
 							policy)
