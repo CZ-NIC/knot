@@ -202,8 +202,6 @@ AS_IF([test "$enable_daemon" = "yes"],[
 
 AS_IF([test "$with_urcu" != "no"], [
   PKG_CHECK_MODULES([liburcu], liburcu, [
-    CPPFLAGS="$CPPFLAGS $liburcu_CFLAGS"
-    LIBS="$LIBS $liburcu_LIBS"
     liburcu_PKGCONFIG="liburcu >= 0.4.0"
     AC_SUBST([liburcu_PKGCONFIG])
     with_urcu=yes
@@ -236,6 +234,8 @@ AS_IF([test "$with_urcu" != "no"], [
 	unset ac_cv_search_rcu_set_pointer_sym
       ])
     done
+    CPPFLAGS="$save_CPPFLAGS"
+    LIBS="$save_LIBS"
 
     AS_IF([test "$with_urcu" = "no"],[
       AC_MSG_ERROR([liburcu is required])
@@ -250,8 +250,6 @@ opt_dnstap=no
 AS_IF([test "$enable_daemon" = "yes"],[
 dnl Check for dnstap.
 dt_DNSTAP([
-    LIBS="$LIBS $DNSTAP_LIBS"
-    CPPFLAGS="$CPPFLAGS $DNSTAP_CFLAGS"
     AC_DEFINE([USE_DNSTAP], [1], [Define to 1 to enable dnstap support])
     ])
 ])
@@ -287,7 +285,7 @@ AS_IF([test "$with_lmdb" != "no"],[
       AC_SEARCH_LIBS([mdb_env_open], [lmdb], [
           AC_CHECK_HEADERS([lmdb.h], [], [
               AC_ERROR([lmdb headers not found in `$try_lmdb', is your installation complete?])])
-	  lmdb_LIBS="-llmdb"
+	  lmdb_LIBS="$lmdb_LIBS -llmdb"
           have_lmdb=yes
           break
           ],[
@@ -299,6 +297,8 @@ AS_IF([test "$with_lmdb" != "no"],[
       CPPFLAGS="$save_CPPFLAGS"
       LIBS="$save_LIBS"
     done
+    CPPFLAGS="$save_CPPFLAGS"
+    LIBS="$save_LIBS"
     ])
 
 AS_IF([test "$have_lmdb" != "no"],[

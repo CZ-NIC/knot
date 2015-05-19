@@ -338,8 +338,8 @@ libknotd_la_SOURCES =				\
 	knot/zone/zonefile.c			\
 	knot/zone/zonefile.h
 
-libknotd_la_CPPFLAGS  = $(AM_CPPFLAGS) $(systemd_CFLAGS)
-libknotd_la_LDFLAGS = $(AM_LDFLAGS) $(systemd_LIBS)
+libknotd_la_CPPFLAGS  = $(AM_CPPFLAGS) $(systemd_CFLAGS) $(liburcu_CFLAGS)
+libknotd_la_LDFLAGS = $(AM_LDFLAGS) $(systemd_LIBS) $(liburcu_LIBS)
 libknotd_la_LIBADD = libknot.la
 
 knotd_LDADD = libknotd.la libknot-yparser.la
@@ -354,7 +354,8 @@ if HAVE_DNSTAP
 libknotd_la_SOURCES +=				\
 	knot/modules/dnstap.c			\
 	knot/modules/dnstap.h
-libknotd_la_LIBADD += dnstap/libdnstap.la
+libknotd_la_CPPFLAGS += $(DNSTAP_CFLAGS)
+libknotd_la_LIBADD += $(DNSTAP_LIBS) dnstap/libdnstap.la
 endif # HAVE_DNSTAP
 
 if HAVE_ROSEDB
@@ -443,7 +444,7 @@ endif # HAVE_DNSTAP
 if HAVE_ROSEDB
 bin_PROGRAMS += rosedb_tool
 rosedb_tool_SOURCES = knot/modules/rosedb_tool.c
-rosedb_tool_LDADD = $(libknot_LIBS) libknotd.la
+rosedb_tool_LDADD = libknotd.la
 endif # HAVE_ROSEDB
 
 endif # HAVE_UTILS
