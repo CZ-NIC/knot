@@ -18,12 +18,14 @@
 #include <string.h>
 #include <netdb.h>
 
+#include "libknot/internal/macros.h"
 #include "libknot/internal/utils.h"
 #include "libknot/internal/sockaddr.h"
 #include "libknot/internal/errcode.h"
 #include "libknot/internal/strlcpy.h"
 #include "libknot/internal/consts.h"
 
+_public_
 int sockaddr_len(const struct sockaddr *ss)
 {
 	if (ss == NULL) {
@@ -43,6 +45,7 @@ int sockaddr_len(const struct sockaddr *ss)
 	}
 }
 
+_public_
 int sockaddr_cmp(const struct sockaddr_storage *k1, const struct sockaddr_storage *k2)
 {
 	if (k1->ss_family != k2->ss_family) {
@@ -52,6 +55,7 @@ int sockaddr_cmp(const struct sockaddr_storage *k1, const struct sockaddr_storag
 	return memcmp(k1, k2, sockaddr_len((const struct sockaddr *)k1));
 }
 
+_public_
 int sockaddr_set(struct sockaddr_storage *ss, int family, const char *straddr, int port)
 {
 	if (ss == NULL || straddr == NULL) {
@@ -88,6 +92,7 @@ int sockaddr_set(struct sockaddr_storage *ss, int family, const char *straddr, i
 	return KNOT_EINVAL;
 }
 
+_public_
 void *sockaddr_raw(struct sockaddr_storage *ss, size_t *addr_size)
 {
 	if (ss == NULL || addr_size == NULL) {
@@ -107,6 +112,7 @@ void *sockaddr_raw(struct sockaddr_storage *ss, size_t *addr_size)
 	}
 }
 
+_public_
 int sockaddr_set_raw(struct sockaddr_storage *ss, int family,
                      const uint8_t *raw_addr, size_t raw_addr_size)
 {
@@ -130,6 +136,7 @@ int sockaddr_set_raw(struct sockaddr_storage *ss, int family,
 	return KNOT_EOK;
 }
 
+_public_
 int sockaddr_tostr(char *buf, size_t maxlen, const struct sockaddr_storage *ss)
 {
 	if (ss == NULL || buf == NULL) {
@@ -174,6 +181,7 @@ int sockaddr_tostr(char *buf, size_t maxlen, const struct sockaddr_storage *ss)
 	return written;
 }
 
+_public_
 int sockaddr_port(const struct sockaddr_storage *ss)
 {
 	if (ss == NULL) {
@@ -189,6 +197,7 @@ int sockaddr_port(const struct sockaddr_storage *ss)
 	}
 }
 
+_public_
 void sockaddr_port_set(struct sockaddr_storage *ss, uint16_t port)
 {
 	if (ss == NULL) {
@@ -202,6 +211,7 @@ void sockaddr_port_set(struct sockaddr_storage *ss, uint16_t port)
 	}
 }
 
+_public_
 char *sockaddr_hostname(void)
 {
 	/* Fetch hostname. */

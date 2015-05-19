@@ -14,8 +14,8 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "libknot/internal/errcode.h"
 #include "libknot/internal/macros.h"
+#include "libknot/internal/errcode.h"
 
 #define ERR_ITEM(name) { name, KNOT_##name }
 

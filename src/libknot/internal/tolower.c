@@ -14,9 +14,8 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "libknot/internal/tolower.h"
-
 #include "libknot/internal/macros.h"
+#include "libknot/internal/tolower.h"
 
 _public_
 const uint8_t knot_char_table[KNOT_CHAR_TABLE_SIZE] = {

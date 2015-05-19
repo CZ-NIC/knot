@@ -20,10 +20,13 @@
 #define strlcpy(dst, src, size) knot_strlcpy(dst, src, size)
 #endif
 
+#include "libknot/internal/macros.h"
+
 /*
  * Copy src to string dst of size siz.  At most siz-1 characters
  * will be copied.  Always NUL terminates (unless siz == 0).
  * Returns strlen(src); if retval >= siz, truncation occurred.
  */
+_public_
 size_t
 knot_strlcpy(char *dst, const char *src, size_t siz);

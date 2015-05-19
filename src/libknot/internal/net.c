@@ -33,6 +33,7 @@
 #include <sys/stat.h>
 #include <assert.h>
 
+#include "libknot/internal/macros.h"
 #include "libknot/internal/net.h"
 #include "libknot/internal/errcode.h"
 
@@ -47,6 +48,7 @@ static int socket_create(int family, int type, int proto)
 	return ret;
 }
 
+_public_
 int net_unbound_socket(int type, const struct sockaddr_storage *ss)
 {
 	if (ss == NULL) {
@@ -98,6 +100,7 @@ static void enable_nonlocal(int socket, int family)
 	(void) setsockopt(socket, level, option, &enable, sizeof(enable));
 }
 
+_public_
 int net_bound_socket(int type, const struct sockaddr_storage *ss,
                      enum net_flags flags)
 {
@@ -143,6 +146,7 @@ int net_bound_socket(int type, const struct sockaddr_storage *ss,
 	return socket;
 }
 
+_public_
 int net_connected_socket(int type, const struct sockaddr_storage *dst_addr,
                          const struct sockaddr_storage *src_addr, unsigned flags)
 {
@@ -182,6 +186,7 @@ int net_connected_socket(int type, const struct sockaddr_storage *dst_addr,
 	return socket;
 }
 
+_public_
 int net_is_connected(int fd)
 {
 	struct sockaddr_storage ss;
@@ -251,6 +256,7 @@ static int recv_data(int fd, uint8_t *buf, int len, bool oneshot, struct timeval
 	return rcvd;
 }
 
+_public_
 int udp_send_msg(int fd, const uint8_t *msg, size_t msglen, const struct sockaddr *addr)
 {
 	socklen_t addr_len = sockaddr_len(addr);
@@ -262,6 +268,7 @@ int udp_send_msg(int fd, const uint8_t *msg, size_t msglen, const struct sockadd
 	return ret;
 }
 
+_public_
 int udp_recv_msg(int fd, uint8_t *buf, size_t len, struct timeval *timeout)
 {
 	return recv_data(fd, buf, len, true, timeout);
@@ -334,6 +341,7 @@ static int send_data(int fd, struct iovec iov[], int iovcnt, struct timeval *tim
 	return total;
 }
 
+_public_
 int tcp_send_msg(int fd, const uint8_t *msg, size_t msglen, struct timeval *timeout)
 {
 	/* Create iovec for gathered write. */
@@ -353,6 +361,7 @@ int tcp_send_msg(int fd, const uint8_t *msg, size_t msglen, struct timeval *time
 	return msglen; /* Do not count the size prefix. */
 }
 
+_public_
 int tcp_recv_msg(int fd, uint8_t *buf, size_t len, struct timeval *timeout)
 {
 	if (buf == NULL || fd < 0) {

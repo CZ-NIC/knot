@@ -16,6 +16,7 @@
 
 #include <assert.h>
 
+#include "libknot/internal/macros.h"
 #include "libknot/internal/errcode.h"
 #include "libknot/internal/namedb/namedb_trie.h"
 #include "libknot/internal/trie/hat-trie.h"
@@ -167,6 +168,7 @@ static void iter_finish(namedb_iter_t *iter)
 	hattrie_iter_free((hattrie_iter_t *)iter);
 }
 
+_public_
 const namedb_api_t *namedb_trie_api(void)
 {
 	static const namedb_api_t api = {

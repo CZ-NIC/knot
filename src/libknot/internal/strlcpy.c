@@ -17,8 +17,10 @@
 #include <sys/types.h>
 #include <string.h>
 
+#include "libknot/internal/macros.h"
 #include "libknot/internal/strlcpy.h"
 
+_public_
 size_t
 knot_strlcpy(char *dst, const char *src, size_t siz)
 {

@@ -10,6 +10,7 @@
 
 #undef LOCAL_DEBUG
 
+#include "libknot/internal/macros.h"
 #include "libknot/internal/mem.h"
 #include "libknot/internal/mempool.h"
 #include "libknot/internal/mempattern.h"
@@ -74,6 +75,7 @@ mp_align_size(unsigned size)
 #endif
 }
 
+_public_
 void
 mp_init(struct mempool *pool, unsigned chunk_size)
 {
@@ -122,6 +124,7 @@ mp_free_chunk(struct mempool_chunk *chunk)
 #endif
 }
 
+_public_
 struct mempool *
 mp_new(unsigned chunk_size)
 {
@@ -160,6 +163,7 @@ mp_free_big_chain(struct mempool_chunk *chunk)
     }
 }
 
+_public_
 void
 mp_delete(struct mempool *pool)
 {
@@ -169,6 +173,7 @@ mp_delete(struct mempool *pool)
   mp_free_chain(pool->state.last[0]); // can contain the mempool structure
 }
 
+_public_
 void
 mp_flush(struct mempool *pool)
 {
@@ -200,6 +205,7 @@ mp_stats_chain(struct mempool_chunk *chunk, struct mempool_stats *stats, unsigne
   stats->total_size += stats->chain_size[idx];
 }
 
+_public_
 void
 mp_stats(struct mempool *pool, struct mempool_stats *stats)
 {
@@ -209,6 +215,7 @@ mp_stats(struct mempool *pool, struct mempool_stats *stats)
   mp_stats_chain(pool->unused, stats, 2);
 }
 
+_public_
 uint64_t
 mp_total_size(struct mempool *pool)
 {
@@ -217,6 +224,7 @@ mp_total_size(struct mempool *pool)
   return stats.total_size;
 }
 
+_public_
 void *
 mp_alloc_internal(struct mempool *pool, unsigned size)
 {
@@ -253,18 +261,21 @@ mp_alloc_internal(struct mempool *pool, unsigned size)
   }
 }
 
+_public_
 void *
 mp_alloc(struct mempool *pool, unsigned size)
 {
   return mp_alloc_fast(pool, size);
 }
 
+_public_
 void *
 mp_alloc_noalign(struct mempool *pool, unsigned size)
 {
   return mp_alloc_fast_noalign(pool, size);
 }
 
+_public_
 void *
 mp_alloc_zero(struct mempool *pool, unsigned size)
 {
@@ -273,6 +284,7 @@ mp_alloc_zero(struct mempool *pool, unsigned size)
   return ptr;
 }
 
+_public_
 void *
 mp_start_internal(struct mempool *pool, unsigned size)
 {
@@ -281,18 +293,21 @@ mp_start_internal(struct mempool *pool, unsigned size)
   return ptr;
 }
 
+_public_
 void *
 mp_start(struct mempool *pool, unsigned size)
 {
   return mp_start_fast(pool, size);
 }
 
+_public_
 void *
 mp_start_noalign(struct mempool *pool, unsigned size)
 {
   return mp_start_fast_noalign(pool, size);
 }
 
+_public_
 void *
 mp_grow_internal(struct mempool *pool, unsigned size)
 {
@@ -325,18 +340,21 @@ mp_grow_internal(struct mempool *pool, unsigned size)
     }
 }
 
+_public_
 unsigned
 mp_open(struct mempool *pool, void *ptr)
 {
   return mp_open_fast(pool, ptr);
 }
 
+_public_
 void *
 mp_realloc(struct mempool *pool, void *ptr, unsigned size)
 {
   return mp_realloc_fast(pool, ptr, size);
 }
 
+_public_
 void *
 mp_realloc_zero(struct mempool *pool, void *ptr, unsigned size)
 {
@@ -348,6 +366,7 @@ mp_realloc_zero(struct mempool *pool, void *ptr, unsigned size)
   return ptr;
 }
 
+_public_
 void *
 mp_spread_internal(struct mempool *pool, void *p, unsigned size)
 {

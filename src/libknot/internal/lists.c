@@ -28,6 +28,7 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include "libknot/internal/macros.h"
 #include "libknot/internal/lists.h"
 
 /**
@@ -37,6 +38,7 @@
  *
  * add_tail() takes a node @n and appends it at the end of the list @l.
  */
+_public_
 LIST_INLINE void
 add_tail(list_t *l, node_t *n)
 {
@@ -55,6 +57,7 @@ add_tail(list_t *l, node_t *n)
  *
  * add_head() takes a node @n and prepends it at the start of the list @l.
  */
+_public_
 LIST_INLINE void
 add_head(list_t *l, node_t *n)
 {
@@ -74,6 +77,7 @@ add_head(list_t *l, node_t *n)
  * Inserts a node @n to a linked list after an already inserted
  * node @after.
  */
+_public_
 LIST_INLINE void
 insert_node(node_t *n, node_t *after)
 {
@@ -91,6 +95,7 @@ insert_node(node_t *n, node_t *after)
  *
  * Removes a node @n from the list it's linked in.
  */
+_public_
 LIST_INLINE void
 rem_node(node_t *n)
 {
@@ -110,6 +115,7 @@ rem_node(node_t *n)
  * init_list() takes a &list structure and initializes its
  * fields, so that it represents an empty list.
  */
+_public_
 LIST_INLINE void
 init_list(list_t *l)
 {
@@ -126,6 +132,7 @@ init_list(list_t *l)
  * This function appends all elements of the list @l to
  * the list @to in constant time.
  */
+_public_
 LIST_INLINE void
 add_tail_list(list_t *to, list_t *l)
 {
@@ -149,6 +156,7 @@ add_tail_list(list_t *to, list_t *l)
  *
  * This function only works with a homogenous item size.
  */
+_public_
 void list_dup(list_t *dst, list_t *src, size_t itemsz)
 {
 	node_t *n = 0;
@@ -165,6 +173,7 @@ void list_dup(list_t *dst, list_t *src, size_t itemsz)
  *
  * This function counts nodes in list @l and returns this number.
  */
+_public_
 size_t list_size(const list_t *l)
 {
 	size_t count = 0;
@@ -183,6 +192,7 @@ size_t list_size(const list_t *l)
  * @val: added pointer
  * @mm: memory context
  */
+_public_
 ptrnode_t *ptrlist_add(list_t *to, const void *val, mm_ctx_t *mm)
 {
 	ptrnode_t *node = mm_alloc(mm , sizeof(ptrnode_t));
@@ -200,6 +210,7 @@ ptrnode_t *ptrlist_add(list_t *to, const void *val, mm_ctx_t *mm)
  * @list: list nodes
  * @mm: memory context
  */
+_public_
 void ptrlist_free(list_t *list, mm_ctx_t *mm)
 {
 	node_t *n = NULL, *nxt = NULL;
@@ -214,6 +225,7 @@ void ptrlist_free(list_t *list, mm_ctx_t *mm)
  * @list: target list
  * @val: searched pointer
  */
+_public_
 bool ptrlist_contains(list_t *list, const void *val)
 {
 	ptrnode_t *n = NULL;

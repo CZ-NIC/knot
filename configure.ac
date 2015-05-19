@@ -34,7 +34,6 @@ AC_CANONICAL_HOST
 
 AC_SUBST([libknot_VERSION_INFO],["-version-info 1:0:1"])
 AC_SUBST([libdnssec_VERSION_INFO],["-version-info 0:0:0"])
-AC_SUBST([libknot_int_VERSION_INFO],["-avoid-version"])
 AC_SUBST([libzscanner_VERSION_INFO],["-version-info 0:1:0"])
 
 # Automatically update release date based on configure.ac date
@@ -56,10 +55,12 @@ m4_ifdef([AM_PROG_AR], [AM_PROG_AR]) # call AM_PROG_AR only if available
 AC_PROG_LIBTOOL
 LT_INIT
 
+# Use -version-script if supported
+gl_LD_VERSION_SCRIPT
+
 # Use pkg-config
 m4_ifdef([PKG_INSTALLDIR], [PKG_INSTALLDIR], [AC_SUBST([pkgconfigdir], ['${libdir}/pkgconfig'])])
 AC_CONFIG_FILES([src/libknot.pc
-		 src/libknot-int.pc
 		 src/dnssec/libdnssec.pc])
 
 # Build Knot DNS daemon
