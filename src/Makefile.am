@@ -323,7 +323,7 @@ libknotd_la_CPPFLAGS  = $(AM_CPPFLAGS) $(systemd_CFLAGS) $(liburcu_CFLAGS)
 libknotd_la_LDFLAGS = $(AM_LDFLAGS) $(systemd_LIBS) $(liburcu_LIBS)
 libknotd_la_LIBADD = libknot.la $(liburcu_LIBS)
 
-knotd_CPPFLAGS = $(liburcu_CFLAGS)
+knotd_CPPFLAGS = $(AM_CPPFLAGS) $(liburcu_CFLAGS)
 knotd_LDADD = libknotd.la
 knotc_LDADD = libknotd.la libknot.la
 knot1to2_LDADD = libknot.la
