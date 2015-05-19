@@ -437,8 +437,8 @@ knsupdate_LDADD  = zscanner/libzscanner.la libknotus.la
 #######################################
 
 if HAVE_DNSTAP
-kdig_LDADD         += dnstap/libdnstap.la
-khost_LDADD        += dnstap/libdnstap.la
+kdig_LDADD         += $(DNSTAP_LIBS) dnstap/libdnstap.la
+khost_LDADD        += $(DNSTAP_LIBS) dnstap/libdnstap.la
 endif # HAVE_DNSTAP
 
 if HAVE_ROSEDB
