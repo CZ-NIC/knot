@@ -32,15 +32,10 @@ AC_CANONICAL_HOST
 # 6. If any interfaces have been removed or changed since the last
 #    public release, then set age to 0.
 
-libknot_VERSION_INFO         = -version-info 1:0:1
-libdnssec_VERSION_INFO       = -version-info 0:0:0
-libknot_int_VERSION_INFO     = -version-info 0:0:0
-libzscanner_VERSION_INFO     = -version-info 0:1:0
-
-AC_SUBST(libknot_VERSION_INFO)
-AC_SUBST(libdnssec_VERSION_INFO)
-AC_SUBST(libknot_int_VERSION_INFO)
-AC_SUBST(libzscanner_VERSION_INFO)
+AC_SUBST([libknot_VERSION_INFO],["-version-info 1:0:1"])
+AC_SUBST([libdnssec_VERSION_INFO],["-version-info 0:0:0"])
+AC_SUBST([libknot_int_VERSION_INFO],["-avoid-version"])
+AC_SUBST([libzscanner_VERSION_INFO],["-version-info 0:1:0"])
 
 # Automatically update release date based on configure.ac date
 release_date=$(sed -n 's/^Knot DNS .* (\(.*\))/\1/p;q;' ${srcdir}/NEWS)
