@@ -223,6 +223,7 @@ AS_IF([test "$with_urcu" != "no"], [
 
       AC_SEARCH_LIBS([rcu_set_pointer_sym], [urcu], [
         with_urcu=yes
+	liburcu_LIBS="$liburcu_LIBS -lurcu"
 	AC_SUBST([liburcu_CFLAGS])
 	AC_SUBST([liburcu_LIBS])
 	break
