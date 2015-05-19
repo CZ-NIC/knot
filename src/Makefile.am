@@ -150,6 +150,8 @@ libknot_internal_la_SOURCES = 			\
 	libknot/internal/utils.c		\
 	$(libknot_internal_la_HEADERS)
 
+libknot_internal_la_CPPFLAGS = $(AM_CPPFLAGS) $(lmdb_CFLAGS)
+
 libknot_la_CPPFLAGS = $(AM_CPPFLAGS) $(lmdb_CFLAGS)
 libknot_la_CFLAGS = $(AM_CFLAGS)
 libknot_la_LDFLAGS = $(AM_LDFLAGS) $(libknot_VERSION_INFO) $(lmdb_LIBS)
