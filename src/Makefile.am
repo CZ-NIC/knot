@@ -94,7 +94,6 @@ libknot_internal_la_HEADERS = 			\
 
 # dynamic: libknot sources
 libknot_la_SOURCES =				\
-	libknot.map				\
 	libknot/binary.c			\
 	libknot/consts.c			\
 	libknot/descriptor.c			\
@@ -157,10 +156,6 @@ libknot_la_CPPFLAGS = $(AM_CPPFLAGS) $(lmdb_CFLAGS)
 libknot_la_CFLAGS = $(AM_CFLAGS)
 libknot_la_LDFLAGS = $(AM_LDFLAGS) $(libknot_VERSION_INFO) $(lmdb_LIBS)
 libknot_la_LIBADD  = dnssec/libdnssec.la zscanner/libzscanner.la libknot-internal.la
-
-if HAVE_LD_VERSION_SCRIPT
-libknot_la_LDFLAGS += -Wl,--version-script,$(srcdir)/libknot.map
-endif
 
 # pkg-config
 pkgconfig_DATA = libknot.pc
