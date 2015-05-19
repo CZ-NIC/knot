@@ -36,13 +36,11 @@ libknot_VERSION_INFO         = -version-info 1:0:1
 libdnssec_VERSION_INFO       = -version-info 0:0:0
 libknot_int_VERSION_INFO     = -version-info 0:0:0
 libzscanner_VERSION_INFO     = -version-info 0:1:0
-libknot_yparser_VERSION_INFO = -version-info 0:0:0
 
 AC_SUBST(libknot_VERSION_INFO)
 AC_SUBST(libdnssec_VERSION_INFO)
 AC_SUBST(libknot_int_VERSION_INFO)
 AC_SUBST(libzscanner_VERSION_INFO)
-AC_SUBST(libknot_yparser_VERSION_INFO)
 
 # Automatically update release date based on configure.ac date
 release_date=$(sed -n 's/^Knot DNS .* (\(.*\))/\1/p;q;' ${srcdir}/NEWS)
@@ -67,7 +65,6 @@ LT_INIT
 m4_ifdef([PKG_INSTALLDIR], [PKG_INSTALLDIR], [AC_SUBST([pkgconfigdir], ['${libdir}/pkgconfig'])])
 AC_CONFIG_FILES([src/libknot.pc
 		 src/libknot-int.pc
-		 src/libknot-yparser.pc
 		 src/dnssec/libdnssec.pc])
 
 # Build Knot DNS daemon
