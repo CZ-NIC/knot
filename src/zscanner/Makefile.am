@@ -5,6 +5,9 @@ AM_CPPFLAGS = \
 
 lib_LTLIBRARIES = libzscanner.la
 
+# pkg-config
+pkgconfig_DATA = libzscanner.pc
+
 EXTRA_DIST =				\
 	scanner.rl			\
 	scanner_body.rl			\
