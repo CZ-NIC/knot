@@ -57,8 +57,8 @@ static void test_int(const char *in, int expected, int errcode)
 }
 
 // mute warn_unused_result
-#define asprintf(args, ...) do {			  \
-	int r = (asprintf)(args, ##__VA_ARGS__); assert(r >= 0);	\
+#define asprintf(args, ...) do { \
+	int r = (asprintf)(args, ##__VA_ARGS__); assert(r >= 0); \
 } while (0);
 
 int main(int argc, char *argv[])

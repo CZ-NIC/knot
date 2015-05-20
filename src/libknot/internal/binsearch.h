@@ -26,9 +26,9 @@
     {								\
       uns m = (l+r)/2;						\
       if (ary_lt_x(ary, m, x, __VA_ARGS__))			\
-	l = m+1;						\
+        l = m+1;						\
       else							\
-	r = m;							\
+        r = m;							\
     }								\
   l;								\
 })

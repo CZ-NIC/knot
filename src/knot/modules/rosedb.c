@@ -356,7 +356,7 @@ static int stream_skip(char **stream, size_t *maxlen, int nbytes)
 }
 
 /*! \brief Stream write with constraints checks. */
-#define STREAM_WRITE(stream, maxlen, fn, args, ...)			\
+#define STREAM_WRITE(stream, maxlen, fn, args, ...) \
 	if (stream_skip(&(stream), (maxlen), fn(stream, *(maxlen), args, ##__VA_ARGS__)) != KNOT_EOK) { \
 		return KNOT_ESPACE; \
 	}
