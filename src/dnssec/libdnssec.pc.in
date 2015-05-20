@@ -4,10 +4,10 @@ libdir=@libdir@
 includedir=@includedir@
 
 Name: libdnssec
-Description: Knot DNSSEC library
+Description: Knot DNS DNSSEC library
 URL: https://www.knot-dns.cz
 Version: @PACKAGE_VERSION@
-Requires: gnutls >= 3.0
-Requires.private: nettle, jansson
+Requires.private: gnutls >= 3.0, jansson
 Libs: -L${libdir} -ldnssec
+Libs.private: -lm
 Cflags: -I${includedir}
