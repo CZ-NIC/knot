@@ -447,8 +447,11 @@ AC_MSG_RESULT([
     Target:   $host_os $host_cpu
     Compiler: ${CC}
     CFLAGS:   ${CFLAGS} ${CPPFLAGS}
-    LDFLAGS:  ${LDFLAGS}
-    LIBS:     ${LIBS}
+    LIBS:     ${LIBS} ${LDFLAGS}
+    LibURCU:  ${liburcu_LIBS} ${liburcu_CFLAGS}
+    GnuTLS:   ${gnutls_LIBS} ${gnutls_CFLAGS}
+    Jansson:  ${jansson_LIBS} ${jansson_CFLAGS}
+    LMDB:     ${enable_lmdb} ${lmdb_LIBS} ${lmdb_CFLAGS}
 
     Prefix:      ${prefix}
     Run dir:     ${run_dir}
@@ -460,16 +463,11 @@ AC_MSG_RESULT([
     Knot DNS utils:         ${enable_utilities}
     Knot DNS documentation: ${enable_documentation}
 
-    Fast zone parser:      ${enable_fastparser}
-    Utilities with IDN:    ${with_libidn}
-    Systemd integration:   ${enable_systemd}
-    liburcu:		   ${liburcu_CFLAGS} ${liburcu_LIBS}
-    GnuTLS:                ${gnutls_CFLAGS} ${gnutls_LIBS}
-    Jansson:               ${jansson_CFLAGS} ${jansson_LIBS}
-    Dnstap support:        ${opt_dnstap}
-    Code coverage:         ${enable_code_coverage}
-    LMDB support:          ${enable_lmdb}
-    LMDB:		   ${lmdb_CFLAGS} ${lmdb_LIBS}
+    Fast zone parser:    ${enable_fastparser}
+    Utilities with IDN:  ${with_libidn}
+    Systemd integration: ${enable_systemd}
+    Dnstap support:      ${opt_dnstap}
+    Code coverage:       ${enable_code_coverage}
 
   Continue with 'make' command
 ])
