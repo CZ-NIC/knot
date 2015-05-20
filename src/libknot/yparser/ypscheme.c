@@ -129,7 +129,6 @@ static void unset_item(
 	memset(item, 0, sizeof(yp_item_t));
 }
 
-_public_
 int yp_scheme_copy(
 	yp_item_t **dst,
 	const yp_item_t *src)
@@ -168,7 +167,6 @@ int yp_scheme_copy(
 	return KNOT_EOK;
 }
 
-_public_
 void yp_scheme_free(
 	yp_item_t *scheme)
 {
@@ -204,7 +202,6 @@ static const yp_item_t* find_item(
 	return NULL;
 }
 
-_public_
 const yp_item_t* yp_scheme_find(
 	const yp_name_t *name,
 	const yp_name_t *parent_name,
@@ -226,7 +223,6 @@ const yp_item_t* yp_scheme_find(
 	}
 }
 
-_public_
 yp_check_ctx_t* yp_scheme_check_init(
 	const yp_item_t *scheme)
 {
@@ -368,7 +364,6 @@ static int check_id(
 	return KNOT_EOK;
 }
 
-_public_
 int yp_scheme_check_parser(
 	yp_check_ctx_t *ctx,
 	const yp_parser_t *parser)
@@ -402,7 +397,6 @@ int yp_scheme_check_parser(
 	return ret;
 }
 
-_public_
 void yp_scheme_check_deinit(
 	yp_check_ctx_t* ctx)
 {

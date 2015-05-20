@@ -8,6 +8,7 @@
 #include <stdint.h>
 #include <assert.h>
 #include <string.h>
+#include "libknot/internal/macros.h"
 #include "libknot/internal/trie/hat-trie.h"
 #include "libknot/internal/hhash.h"
 

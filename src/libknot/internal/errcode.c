@@ -14,8 +14,8 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "libknot/internal/errcode.h"
 #include "libknot/internal/macros.h"
+#include "libknot/internal/errcode.h"
 
 #define ERR_ITEM(name) { name, KNOT_##name }
 
@@ -46,7 +46,6 @@ static const err_table_t errno_to_errcode[] = {
 	{ 0, KNOT_ERROR }
 };
 
-_public_
 int knot_map_errno(void)
 {
 	const err_table_t *err = errno_to_errcode;

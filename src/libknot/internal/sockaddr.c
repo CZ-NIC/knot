@@ -18,6 +18,7 @@
 #include <string.h>
 #include <netdb.h>
 
+#include "libknot/internal/macros.h"
 #include "libknot/internal/utils.h"
 #include "libknot/internal/sockaddr.h"
 #include "libknot/internal/errcode.h"

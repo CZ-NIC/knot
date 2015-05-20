@@ -3,11 +3,9 @@ exec_prefix=@prefix@
 libdir=@libdir@
 includedir=@includedir@
 
-Name: libdnssec
-Description: Knot DNS DNSSEC library
+Name: libzscanner
+Description: Knot DNS Zone Parsing library
 URL: https://www.knot-dns.cz
 Version: @PACKAGE_VERSION@
-Requires.private: gnutls >= 3.0, jansson
-Libs: -L${libdir} -ldnssec
-Libs.private: -lm
+Libs: -L${libdir} -lzscanner
 Cflags: -I${includedir}

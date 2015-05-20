@@ -16,6 +16,7 @@
 
 #include <stdio.h>
 #include <ctype.h>
+#include "libknot/internal/macros.h"
 #include "libknot/internal/print.h"
 
 typedef int (*printf_t)(const char *fmt, ...);

@@ -17,6 +17,7 @@
 #include <sys/types.h>
 #include <string.h>
 
+#include "libknot/internal/macros.h"
 #include "libknot/internal/strlcpy.h"
 
 size_t

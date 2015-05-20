@@ -5,6 +5,9 @@ AM_CPPFLAGS = \
 
 lib_LTLIBRARIES = libzscanner.la
 
+# pkg-config
+pkgconfig_DATA = libzscanner.pc
+
 EXTRA_DIST =				\
 	scanner.rl			\
 	scanner_body.rl			\
@@ -33,9 +36,10 @@ libzscanner_la_SOURCES =		\
 nodist_libzscanner_la_SOURCES =		\
 	scanner.c
 
+libzscanner_la_CPPFLAGS = $(AM_CPPFLAGS) $(CFLAG_VISIBILITY)
 libzscanner_la_CFLAGS = $(CODE_COVERAGE_CFLAGS)
 libzscanner_la_LDFLAGS =		\
 	$(CODE_COVERAGE_LDFLAGS)	\
-	$(VERSION_INFO)
+	$(libzscanner_VERSION_INFO)
 
 include $(srcdir)/tests/Makefile.inc

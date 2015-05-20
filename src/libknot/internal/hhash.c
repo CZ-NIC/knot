@@ -2,6 +2,7 @@
 #include <assert.h>
 #include <stdbool.h>
 
+#include "libknot/internal/macros.h"
 #include "libknot/internal/hhash.h"
 #include "libknot/internal/binsearch.h"
 #include "libknot/internal/trie/murmurhash3.h"

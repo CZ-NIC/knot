@@ -28,6 +28,7 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include "libknot/internal/macros.h"
 #include "libknot/internal/lists.h"
 
 /**

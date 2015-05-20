@@ -16,6 +16,7 @@
 
 #include <stdlib.h>
 
+#include "libknot/internal/macros.h"
 #include "libknot/internal/mempattern.h"
 #include "libknot/internal/mempool.h"
 

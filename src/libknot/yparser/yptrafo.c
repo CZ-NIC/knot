@@ -595,7 +595,6 @@ static int yp_dname_to_txt(
 	return KNOT_EOK;
 }
 
-_public_
 int yp_item_to_bin(
 	const yp_item_t *item,
 	const char *txt,
@@ -675,7 +674,6 @@ static int yp_item_to_txt_unquoted(
 	}
 }
 
-_public_
 int yp_item_to_txt(
 	const yp_item_t *item,
 	const uint8_t *bin,
@@ -726,7 +724,6 @@ int yp_item_to_txt(
 	return KNOT_EOK;
 }
 
-_public_
 struct sockaddr_storage yp_addr(
 	const uint8_t *data,
 	size_t data_len,

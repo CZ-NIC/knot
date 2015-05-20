@@ -10,6 +10,7 @@
 
 #undef LOCAL_DEBUG
 
+#include "libknot/internal/macros.h"
 #include "libknot/internal/mem.h"
 #include "libknot/internal/mempool.h"
 #include "libknot/internal/mempattern.h"

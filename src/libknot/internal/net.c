@@ -33,6 +33,7 @@
 #include <sys/stat.h>
 #include <assert.h>
 
+#include "libknot/internal/macros.h"
 #include "libknot/internal/net.h"
 #include "libknot/internal/errcode.h"
 

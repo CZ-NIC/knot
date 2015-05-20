@@ -37,6 +37,8 @@
  * ------
  ***/
 
+
+#include "libknot/internal/macros.h"
 #include "libknot/internal/heap.h"
 #include <string.h>
 #include <stdlib.h>
