@@ -4,13 +4,11 @@ AM_CPPFLAGS = \
 	-I$(top_srcdir)/src \
 	-I$(top_srcdir)/src/dnssec/lib
 
-AM_LDFLAGS = \
-	$(libcrypto_LIBS)
-
 LDADD = \
 	$(top_builddir)/libtap/libtap.a \
 	$(top_builddir)/src/libknot.la \
-	$(top_builddir)/src/libknotd.la
+	$(top_builddir)/src/libknotd.la \
+	$(libcrypto_LIBS)
 
 check_PROGRAMS = \
 	acl				\

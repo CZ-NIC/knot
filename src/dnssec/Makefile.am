@@ -42,7 +42,7 @@ libshared_la_SOURCES = \
 
 libdnssec_la_CPPFLAGS = \
 	$(AM_CPPFLAGS) \
-	-fvisibility=hidden
+	$(CFLAG_VISIBILITY)
 
 libdnssec_la_LDFLAGS = \
 	$(gnutls_LIBS) \
