@@ -155,7 +155,7 @@ libknot_internal_la_CFLAGS = $(AM_CFLAGS)
 libknot_la_CPPFLAGS = $(AM_CPPFLAGS) $(lmdb_CFLAGS)
 libknot_la_CFLAGS = $(AM_CFLAGS)
 libknot_la_LDFLAGS = $(AM_LDFLAGS) $(libknot_VERSION_INFO) $(lmdb_LIBS)
-libknot_la_LIBADD  = dnssec/libdnssec.la zscanner/libzscanner.la libknot-internal.la
+libknot_la_LIBADD  = dnssec/libdnssec.la libknot-internal.la
 
 # pkg-config
 pkgconfig_DATA = libknot.pc
@@ -333,12 +333,11 @@ libknotd_la_SOURCES =				\
 
 libknotd_la_CPPFLAGS  = $(AM_CPPFLAGS) $(systemd_CFLAGS) $(liburcu_CFLAGS)
 libknotd_la_LDFLAGS = $(AM_LDFLAGS) $(systemd_LIBS) $(liburcu_LIBS)
-libknotd_la_LIBADD = libknot.la libknot-yparser.la libknot-internal.la $(liburcu_LIBS)
+libknotd_la_LIBADD = libknot.la libknot-yparser.la libknot-internal.la zscanner/libzscanner.la $(liburcu_LIBS)
 
 knotd_CPPFLAGS = $(AM_CPPFLAGS) $(liburcu_CFLAGS)
 knotd_LDADD = libknotd.la libknot.la $(liburcu_LIBS)
 knotc_LDADD = libknotd.la libknot.la
-knot1to2_LDADD = libknotd.la libknot.la
 
 ####################################
 # Optional Knot DNS Daemon modules #
