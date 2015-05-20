@@ -58,8 +58,8 @@ struct ixfr_proc {
 };
 
 /* IXFR-out-specific logging (internal, expects 'qdata' variable set). */
-#define IXFROUT_LOG(severity, msg...) \
-	QUERY_LOG(severity, qdata, "IXFR, outgoing", msg)
+#define IXFROUT_LOG(severity, msg, ...) \
+	QUERY_LOG(severity, qdata, "IXFR, outgoing", msg, ##__VA_ARGS__)
 
 /*! \brief Helper macro for putting RRs into packet. */
 #define IXFR_SAFE_PUT(pkt, rr) \
@@ -331,8 +331,8 @@ static int ixfr_answer_soa(knot_pkt_t *pkt, struct query_data *qdata)
 /* ------------------------- IXFR-in processing ----------------------------- */
 
 /* IXFR-in-specific logging (internal, expects 'adata' variable set). */
-#define IXFRIN_LOG(severity, msg...) \
-	ANSWER_LOG(severity, adata, "IXFR, incoming", msg)
+#define IXFRIN_LOG(severity, msg, ...) \
+	ANSWER_LOG(severity, adata, "IXFR, incoming", msg, ##__VA_ARGS__)
 
 /*! \brief Checks whether server responded with AXFR-style IXFR. */
 static bool ixfr_is_axfr(const knot_pkt_t *pkt)

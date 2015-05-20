@@ -20,15 +20,15 @@
  * Returns the index of the found element or @N if no exists. Uses `ary_lt_x(ary,i,x)` to compare the @i'th element with @x.
  * The time complexity is `O(log(N))`.
  **/
-#define BIN_SEARCH_FIRST_GE_CMP(ary,N,ary_lt_x, x...)  ({		\
+#define BIN_SEARCH_FIRST_GE_CMP(ary, N, ary_lt_x, x, ...)  ({	\
   uns l = 0, r = (N);						\
   while (l < r)							\
     {								\
       uns m = (l+r)/2;						\
-      if (ary_lt_x(ary,m,x))					\
-	l = m+1;						\
+      if (ary_lt_x(ary, m, x, __VA_ARGS__))			\
+        l = m+1;						\
       else							\
-	r = m;							\
+        r = m;							\
     }								\
   l;								\
 })

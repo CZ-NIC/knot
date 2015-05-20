@@ -74,7 +74,7 @@ const yp_item_t scheme_mod_synth_record[] = {
 
 /* Defines. */
 #define ARPA_ZONE_LABELS 2
-#define MODULE_ERR(msg...) log_error("module 'synth_record', " msg)
+#define MODULE_ERR(msg, ...) log_error("module 'synth_record', " msg, ##__VA_ARGS__)
 
 /*!
  * \brief Synthetic response template.

@@ -33,10 +33,10 @@
 #define WARNING_	"; Warning: "
 #define DEBUG_		"; Debug: "
 
-#define ERR(m...)	{ printf(ERROR_ m); fflush(stdout); }
-#define INFO(m...)	{ printf(INFO_ m); fflush(stdout); }
-#define WARN(m...)	{ printf(WARNING_ m); fflush(stdout); }
-#define DBG(m...)	msg_debug(DEBUG_ m)
+#define ERR(msg, ...)	{ printf(ERROR_ msg, ##__VA_ARGS__); fflush(stdout); }
+#define INFO(msg, ...)	{ printf(INFO_ msg, ##__VA_ARGS__); fflush(stdout); }
+#define WARN(msg, ...)	{ printf(WARNING_ msg, ##__VA_ARGS__); fflush(stdout); }
+#define DBG(msg, ...)	msg_debug(DEBUG_ msg, ##__VA_ARGS__)
 
 /*! \brief Enable/disable debugging. */
 int msg_enable_debug(int val);

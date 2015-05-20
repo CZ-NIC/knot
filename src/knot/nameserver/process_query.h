@@ -43,9 +43,9 @@ const knot_layer_api_t *process_query_layer(void);
 	} while (0)
 
 /*! \brief Query logging common base. */
-#define QUERY_LOG(severity, qdata, operation, msg...) \
+#define QUERY_LOG(severity, qdata, operation, msg, ...) \
 	NS_PROC_LOG(severity, (qdata)->param->remote, knot_pkt_qname((qdata)->query), \
-	            operation, msg);
+	            operation, msg, ##__VA_ARGS__);
 
 /* Query processing specific flags. */
 enum process_query_flag {

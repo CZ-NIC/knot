@@ -34,9 +34,9 @@ const knot_layer_api_t *process_answer_layer(void);
 #define KNOT_STATE_ANSWER process_answer_layer()
 
 /*! \brief Answer processing logging base. */
-#define ANSWER_LOG(severity, data, operation, msg...) \
+#define ANSWER_LOG(severity, data, operation, msg, ...) \
 	NS_PROC_LOG(severity, (data)->param->remote, (data)->param->zone->name, \
-		    operation, msg);
+	            operation, msg, ##__VA_ARGS__);
 
 /*!
  * \brief Processing module parameters.

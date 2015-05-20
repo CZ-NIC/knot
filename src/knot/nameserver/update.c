@@ -38,8 +38,8 @@
 #include "libknot/processing/requestor.h"
 
 /* UPDATE-specific logging (internal, expects 'qdata' variable set). */
-#define UPDATE_LOG(severity, msg...) \
-	QUERY_LOG(severity, qdata, "DDNS", msg)
+#define UPDATE_LOG(severity, msg, ...) \
+	QUERY_LOG(severity, qdata, "DDNS", msg, ##__VA_ARGS__)
 
 static void init_qdata_from_request(struct query_data *qdata,
                                     const zone_t *zone,

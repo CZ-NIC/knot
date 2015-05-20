@@ -39,9 +39,9 @@
 #include "knot/zone/zone-dump.h"
 #include "libknot/rrtype/naptr.h"
 
-#define ERROR(zone, fmt...) log_zone_error(zone, "zone loader, " fmt)
-#define WARNING(zone, fmt...) log_zone_warning(zone, "zone loader, " fmt)
-#define INFO(zone, fmt...) log_zone_info(zone, "zone loader, " fmt)
+#define ERROR(zone, fmt, ...) log_zone_error(zone, "zone loader, " fmt, ##__VA_ARGS__)
+#define WARNING(zone, fmt, ...) log_zone_warning(zone, "zone loader, " fmt, ##__VA_ARGS__)
+#define INFO(zone, fmt, ...) log_zone_info(zone, "zone loader, " fmt, ##__VA_ARGS__)
 
 void process_error(zs_scanner_t *s)
 {

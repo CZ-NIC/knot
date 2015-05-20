@@ -46,8 +46,8 @@
 /* ------------------------- zone query requesting -------------------------- */
 
 /*! \brief Zone event logging. */
-#define ZONE_QUERY_LOG(severity, zone, remote, operation, msg...) \
-	NS_PROC_LOG(severity, &(remote)->addr, zone->name, operation, msg)
+#define ZONE_QUERY_LOG(severity, zone, remote, operation, msg, ...) \
+	NS_PROC_LOG(severity, &(remote)->addr, zone->name, operation, msg, ##__VA_ARGS__)
 
 /*! \brief Create zone query packet. */
 static knot_pkt_t *zone_query(const zone_t *zone, uint16_t pkt_type, mm_ctx_t *mm)
@@ -152,11 +152,11 @@ fail:
 }
 
 /* @note Module specific, expects some variables set. */
-#define ZONE_XFER_LOG(severity, pkt_type, msg...) \
+#define ZONE_XFER_LOG(severity, pkt_type, msg, ...) \
 	if (pkt_type == KNOT_QUERY_AXFR) { \
-		ZONE_QUERY_LOG(severity, zone, master, "AXFR, incoming", msg); \
+		ZONE_QUERY_LOG(severity, zone, master, "AXFR, incoming", msg, ##__VA_ARGS__); \
 	} else { \
-		ZONE_QUERY_LOG(severity, zone, master, "IXFR, incoming", msg); \
+		ZONE_QUERY_LOG(severity, zone, master, "IXFR, incoming", msg, ##__VA_ARGS__); \
 	}
 
 /*! \brief Execute zone transfer request. */
