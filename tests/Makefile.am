@@ -5,7 +5,7 @@ AM_CPPFLAGS = \
 	-I$(top_srcdir)/src/dnssec/lib
 
 LDADD = \
-	$(top_builddir)/libtap/libtap.a \
+	$(top_builddir)/libtap/libtap.la \
 	$(top_builddir)/src/libknot.la \
 	$(top_builddir)/src/libknotd.la \
 	$(libcrypto_LIBS)

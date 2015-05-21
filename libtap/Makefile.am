@@ -1,9 +1,9 @@
-libtap_a_SOURCES = \
+libtap_la_SOURCES = \
 	tap/basic.c tap/basic.h \
 	tap/float.c tap/float.h \
 	tap/macros.h
 
-check_LIBRARIES = libtap.a
+check_LTLIBRARIES = libtap.la
 
 check_PROGRAMS = \
 	runtests
