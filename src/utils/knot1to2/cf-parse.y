@@ -481,9 +481,9 @@ system:
  | system WORKERS NUM ';'		{ f_int(scanner,      R_SYS, C_WORKERS,             $3.i); }
  | system BACKGROUND_WORKERS NUM ';'	{ f_int(scanner,      R_SYS, C_BG_WORKERS,          $3.i); }
  | system ASYNC_START BOOL ';'		{ f_bool(scanner,     R_SYS, C_ASYNC_START,         $3.i); }
- | system MAX_CONN_IDLE INTERVAL ';'	{ f_int(scanner,      R_SYS, C_MAX_CONN_IDLE,       $3.i); }
- | system MAX_CONN_HS INTERVAL ';'	{ f_int(scanner,      R_SYS, C_MAX_CONN_HANDSHAKE,  $3.i); }
- | system MAX_CONN_REPLY INTERVAL ';'	{ f_int(scanner,      R_SYS, C_MAX_CONN_REPLY,      $3.i); }
+ | system MAX_CONN_IDLE INTERVAL ';'	{ f_int(scanner,      R_SYS, C_TCP_IDLE_TIMEOUT,    $3.i); }
+ | system MAX_CONN_HS INTERVAL ';'	{ f_int(scanner,      R_SYS, C_TCP_HSHAKE_TIMEOUT,  $3.i); }
+ | system MAX_CONN_REPLY INTERVAL ';'	{ f_int(scanner,      R_SYS, C_TCP_REPLY_TIMEOUT,   $3.i); }
  | system MAX_TCP_CLIENTS NUM ';'	{ f_int(scanner,      R_SYS, C_MAX_TCP_CLIENTS,     $3.i); }
  | system RATE_LIMIT NUM ';'		{ f_int(scanner,      R_SYS, C_RATE_LIMIT,          $3.i); }
  | system RATE_LIMIT_SIZE SIZE ';'	{ f_int(scanner,      R_SYS, C_RATE_LIMIT_TBL_SIZE, $3.l); }

@@ -260,7 +260,7 @@ static int cmd_remote(struct sockaddr_storage *addr, knot_tsig_key_t *key,
 
 	/* Wait for availability. */
 	struct pollfd pfd = { s, POLLOUT, 0 };
-	conf_val_t val = conf_get(conf(), C_SRV, C_MAX_CONN_REPLY);
+	conf_val_t val = conf_get(conf(), C_SRV, C_TCP_REPLY_TIMEOUT);
 	if (poll(&pfd, 1, conf_int(&val)) != 1) {
 		log_error("failed to connect to remote host '%s'", addr_str);
 		close(s);

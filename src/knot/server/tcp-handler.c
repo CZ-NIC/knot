@@ -113,7 +113,7 @@ static int tcp_handle(tcp_context_t *tcp, int fd,
 
 	/* Timeout. */
 	rcu_read_lock();
-	conf_val_t val = conf_get(conf(), C_SRV, C_MAX_CONN_REPLY);
+	conf_val_t val = conf_get(conf(), C_SRV, C_TCP_REPLY_TIMEOUT);
 	int64_t max_conn_reply = conf_int(&val);
 	rcu_read_unlock();
 	struct timeval tmout = { max_conn_reply, 0 };
@@ -191,7 +191,7 @@ int tcp_accept(int fd)
 #ifdef SO_RCVTIMEO
 		struct timeval tv;
 		rcu_read_lock();
-		conf_val_t val = conf_get(conf(), C_SRV, C_MAX_CONN_IDLE);
+		conf_val_t val = conf_get(conf(), C_SRV, C_TCP_IDLE_TIMEOUT);
 		tv.tv_sec = conf_int(&val);
 		rcu_read_unlock();
 		tv.tv_usec = 0;
@@ -220,7 +220,7 @@ static int tcp_event_accept(tcp_context_t *tcp, unsigned i)
 
 		/* Update watchdog timer. */
 		rcu_read_lock();
-		conf_val_t val = conf_get(conf(), C_SRV, C_MAX_CONN_HANDSHAKE);
+		conf_val_t val = conf_get(conf(), C_SRV, C_TCP_HSHAKE_TIMEOUT);
 		fdset_set_watchdog(&tcp->set, next_id, conf_int(&val));
 		rcu_read_unlock();
 
@@ -241,7 +241,7 @@ static int tcp_event_serve(tcp_context_t *tcp, unsigned i)
 	if (ret == KNOT_EOK) {
 		/* Update socket activity timer. */
 		rcu_read_lock();
-		conf_val_t val = conf_get(conf(), C_SRV, C_MAX_CONN_IDLE);
+		conf_val_t val = conf_get(conf(), C_SRV, C_TCP_IDLE_TIMEOUT);
 		fdset_set_watchdog(&tcp->set, i, conf_int(&val));
 		rcu_read_unlock();
 	}

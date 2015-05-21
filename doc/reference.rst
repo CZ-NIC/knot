@@ -86,9 +86,9 @@ General options related to the server.
      workers: INT
      background-workers: INT
      async-start: BOOL
-     max-conn-idle: TIME
-     max-conn-handshake: TIME
-     max-conn-reply: TIME
+     tcp-idle-timeout: TIME
+     tcp-handshake-timeout: TIME
+     tcp-reply-timeout: TIME
      max-tcp-clients: INT
      max-udp-payload: SIZE
      transfers: INT
@@ -186,20 +186,20 @@ responding immediately with SERVFAIL answers until the zone loads.
 
 Default: off
 
-.. _server_max-conn-idle:
+.. _server_tcp-idle-timeout:
 
-max-conn-idle
--------------
+tcp-idle-timeout
+----------------
 
 Maximum idle time between requests on a TCP connection. This also limits
 receiving of a single query, each query must be received in this time limit.
 
 Default: 20
 
-.. _server_max-conn-handshake:
+.. _server_tcp-handshake-timeout:
 
-max-conn-handshake
-------------------
+tcp-handshake-timeout
+---------------------
 
 Maximum time between newly accepted TCP connection and the first query.
 This is useful to disconnect inactive connections faster than connections
@@ -207,10 +207,10 @@ that already made at least 1 meaningful query.
 
 Default: 5
 
-.. _server_max-conn-reply:
+.. _server_tcp-reply-timeout:
 
-max-conn-reply
---------------
+tcp-reply-timeout
+-----------------
 
 Maximum time to wait for a reply to an issued SOA query.
 

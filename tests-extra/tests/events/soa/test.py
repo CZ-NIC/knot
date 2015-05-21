@@ -27,11 +27,11 @@ def create_servers(t):
     for _ in range(3):
         master = t.server("bind")
         master.disable_notify = True
-        master.max_conn_idle = "1s"
+        master.tcp_idle_timeout = "1s"
 
         slave = t.server("knot")
         slave.disable_notify = True
-        slave.max_conn_idle = "1s"
+        slave.tcp_idle_timeout = "1s"
 
         t.link(zone, master, slave)
 

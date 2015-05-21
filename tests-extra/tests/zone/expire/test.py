@@ -24,7 +24,7 @@ EXPIRE_SLEEP = 15
 
 master = t.server("knot")
 slave = t.server("knot")
-slave.max_conn_idle = "1s"
+slave.tcp_idle_timeout = "1s"
 
 t.link(zone, master, slave)
 

@@ -384,7 +384,7 @@ static int forward_request(zone_t *zone, struct knot_request *request)
 	/* Enqueue and execute request. */
 	ret = knot_requestor_enqueue(&re, req);
 	if (ret == KNOT_EOK) {
-		conf_val_t val = conf_get(conf(), C_SRV, C_MAX_CONN_REPLY);
+		conf_val_t val = conf_get(conf(), C_SRV, C_TCP_REPLY_TIMEOUT);
 		struct timeval tv = { conf_int(&val), 0 };
 		ret = knot_requestor_exec(&re, &tv);
 	}
@@ -454,7 +454,7 @@ static void send_update_response(const zone_t *zone, struct knot_request *req)
 		}
 
 		if (net_is_connected(req->fd)) {
-			conf_val_t val = conf_get(conf(), C_SRV, C_MAX_CONN_REPLY);
+			conf_val_t val = conf_get(conf(), C_SRV, C_TCP_REPLY_TIMEOUT);
 			struct timeval timeout = { conf_int(&val), 0 };
 			tcp_send_msg(req->fd, req->resp->wire, req->resp->size,
 			             &timeout);

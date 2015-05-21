@@ -2058,19 +2058,19 @@ yyreduce:
 
   case 34:
 #line 484 "cf-parse.y" /* yacc.c:1646  */
-    { f_int(scanner,      R_SYS, C_MAX_CONN_IDLE,       (yyvsp[-1].tok).i); }
+    { f_int(scanner,      R_SYS, C_TCP_IDLE_TIMEOUT,    (yyvsp[-1].tok).i); }
 #line 2063 "cf-parse.tab.c" /* yacc.c:1646  */
     break;
 
   case 35:
 #line 485 "cf-parse.y" /* yacc.c:1646  */
-    { f_int(scanner,      R_SYS, C_MAX_CONN_HANDSHAKE,  (yyvsp[-1].tok).i); }
+    { f_int(scanner,      R_SYS, C_TCP_HSHAKE_TIMEOUT,  (yyvsp[-1].tok).i); }
 #line 2069 "cf-parse.tab.c" /* yacc.c:1646  */
     break;
 
   case 36:
 #line 486 "cf-parse.y" /* yacc.c:1646  */
-    { f_int(scanner,      R_SYS, C_MAX_CONN_REPLY,      (yyvsp[-1].tok).i); }
+    { f_int(scanner,      R_SYS, C_TCP_REPLY_TIMEOUT,   (yyvsp[-1].tok).i); }
 #line 2075 "cf-parse.tab.c" /* yacc.c:1646  */
     break;
 
