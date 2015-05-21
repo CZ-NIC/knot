@@ -2040,7 +2040,7 @@ yyreduce:
 
   case 31:
 #line 481 "cf-parse.y" /* yacc.c:1646  */
-    { f_int(scanner,      R_SYS, C_WORKERS,             (yyvsp[-1].tok).i); }
+    { f_int(scanner,      R_SYS, C_UDP_WORKERS,         (yyvsp[-1].tok).i); }
 #line 2045 "cf-parse.tab.c" /* yacc.c:1646  */
     break;
 
@@ -2106,7 +2106,7 @@ yyreduce:
 
   case 42:
 #line 492 "cf-parse.y" /* yacc.c:1646  */
-    { f_int(scanner,      R_SYS, C_TRANSFERS,           (yyvsp[-1].tok).i); }
+    { /* Not used. */ }
 #line 2111 "cf-parse.tab.c" /* yacc.c:1646  */
     break;
 

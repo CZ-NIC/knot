@@ -278,7 +278,7 @@ size_t conf_tcp_threads(
 	conf_t *conf
 );
 
-int conf_bg_threads(
+size_t conf_bg_threads(
 	conf_t *conf
 );
 

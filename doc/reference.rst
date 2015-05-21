@@ -83,7 +83,8 @@ General options related to the server.
      rundir: STR
      user: STR[:STR]
      pidfile: STR
-     workers: INT
+     udp-workers: INT
+     tcp-workers: INT
      background-workers: INT
      async-start: BOOL
      tcp-idle-timeout: TIME
@@ -91,7 +92,6 @@ General options related to the server.
      tcp-reply-timeout: TIME
      max-tcp-clients: INT
      max-udp-payload: SIZE
-     transfers: INT
      rate-limit: INT
      rate-limit-slip: INT
      rate-limit-table-size: INT
@@ -157,12 +157,21 @@ A PID file location.
 
 Default: :ref:`rundir<server_rundir>`/knot.pid
 
-.. _server_workers:
+.. _server_udp-workers:
 
-workers
--------
+udp-workers
+-----------
 
-A number of quering workers (threads) per server interface.
+A number of quering UDP workers (threads).
+
+Default: auto-estimated optimal value based on the number of online CPUs
+
+.. _server_tcp-workers:
+
+tcp-workers
+-----------
+
+A number of quering TCP workers (threads).
 
 Default: auto-estimated optimal value based on the number of online CPUs
 
@@ -225,16 +234,6 @@ A maximum number of TCP clients connected in parallel, set this below the file
 descriptor limit to avoid resource exhaustion.
 
 Default: 100
-
-.. _server_transfers:
-
-transfers
----------
-
-A maximum number of parallel transfers, including pending SOA queries. The
-minimum value is determined by the number of CPUs.
-
-Default: 10
 
 .. _server_rate-limit:
 

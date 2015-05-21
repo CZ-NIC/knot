@@ -478,7 +478,7 @@ system:
  | system MAX_UDP_PAYLOAD NUM ';'	{ f_int(scanner,      R_SYS, C_MAX_UDP_PAYLOAD,     $3.i); }
  | system RUNDIR TEXT ';'		{ f_quote(scanner,    R_SYS, C_RUNDIR,              $3.t); free($3.t); }
  | system PIDFILE TEXT ';'		{ f_quote(scanner,    R_SYS, C_PIDFILE,             $3.t); free($3.t); }
- | system WORKERS NUM ';'		{ f_int(scanner,      R_SYS, C_WORKERS,             $3.i); }
+ | system WORKERS NUM ';'		{ f_int(scanner,      R_SYS, C_UDP_WORKERS,         $3.i); }
  | system BACKGROUND_WORKERS NUM ';'	{ f_int(scanner,      R_SYS, C_BG_WORKERS,          $3.i); }
  | system ASYNC_START BOOL ';'		{ f_bool(scanner,     R_SYS, C_ASYNC_START,         $3.i); }
  | system MAX_CONN_IDLE INTERVAL ';'	{ f_int(scanner,      R_SYS, C_TCP_IDLE_TIMEOUT,    $3.i); }
@@ -489,7 +489,7 @@ system:
  | system RATE_LIMIT_SIZE SIZE ';'	{ f_int(scanner,      R_SYS, C_RATE_LIMIT_TBL_SIZE, $3.l); }
  | system RATE_LIMIT_SIZE NUM ';'	{ f_int(scanner,      R_SYS, C_RATE_LIMIT_TBL_SIZE, $3.i); }
  | system RATE_LIMIT_SLIP NUM ';'	{ f_int(scanner,      R_SYS, C_RATE_LIMIT_SLIP,     $3.i); }
- | system TRANSFERS NUM ';'		{ f_int(scanner,      R_SYS, C_TRANSFERS,           $3.i); }
+ | system TRANSFERS NUM ';'		{ /* Not used. */ }
  | system HOSTNAME TEXT ';'		{ /* Deprecated */ free($3.t); }
  | system STORAGE TEXT ';'		{ /* Deprecated */ free($3.t); }
  | system KEY TSIG_ALGO_NAME TEXT ';'	{ /* Deprecated */ free($3.t); free($4.t); }

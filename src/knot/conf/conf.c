@@ -1307,9 +1307,9 @@ char* conf_journalfile(
 size_t conf_udp_threads(
 	conf_t *conf)
 {
-	conf_val_t val = conf_get(conf, C_SRV, C_WORKERS);
+	conf_val_t val = conf_get(conf, C_SRV, C_UDP_WORKERS);
 	int64_t workers = conf_int(&val);
-	if (workers < 1) {
+	if (workers == YP_NIL) {
 		return dt_optimal_size();
 	}
 
@@ -1319,20 +1319,25 @@ size_t conf_udp_threads(
 size_t conf_tcp_threads(
 	conf_t *conf)
 {
-	size_t thrcount = conf_udp_threads(conf);
-	return MAX(thrcount * 2, CONF_XFERS);
+	conf_val_t val = conf_get(conf, C_SRV, C_TCP_WORKERS);
+	int64_t workers = conf_int(&val);
+	if (workers == YP_NIL) {
+		return MAX(conf_udp_threads(conf) * 2, CONF_XFERS);
+	}
+
+	return workers;
 }
 
-int conf_bg_threads(
+size_t conf_bg_threads(
 	conf_t *conf)
 {
 	conf_val_t val = conf_get(conf, C_SRV, C_BG_WORKERS);
-	int64_t bg_workers = conf_int(&val);
-	if (bg_workers < 1) {
+	int64_t workers = conf_int(&val);
+	if (workers == YP_NIL) {
 		return MIN(dt_optimal_size(), CONF_XFERS);
 	}
 
-	return bg_workers;
+	return workers;
 }
 
 void conf_user(

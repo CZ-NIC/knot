@@ -114,7 +114,8 @@ server:
     rundir: STR
     user: STR[:STR]
     pidfile: STR
-    workers: INT
+    udp\-workers: INT
+    tcp\-workers: INT
     background\-workers: INT
     async\-start: BOOL
     tcp\-idle\-timeout: TIME
@@ -122,7 +123,6 @@ server:
     tcp\-reply\-timeout: TIME
     max\-tcp\-clients: INT
     max\-udp\-payload: SIZE
-    transfers: INT
     rate\-limit: INT
     rate\-limit\-slip: INT
     rate\-limit\-table\-size: INT
@@ -167,9 +167,14 @@ Default: root:root
 A PID file location.
 .sp
 Default: \fI\%rundir\fP/knot.pid
-.SS workers
+.SS udp\-workers
 .sp
-A number of quering workers (threads) per server interface.
+A number of quering UDP workers (threads).
+.sp
+Default: auto\-estimated optimal value based on the number of online CPUs
+.SS tcp\-workers
+.sp
+A number of quering TCP workers (threads).
 .sp
 Default: auto\-estimated optimal value based on the number of online CPUs
 .SS background\-workers
@@ -208,12 +213,6 @@ A maximum number of TCP clients connected in parallel, set this below the file
 descriptor limit to avoid resource exhaustion.
 .sp
 Default: 100
-.SS transfers
-.sp
-A maximum number of parallel transfers, including pending SOA queries. The
-minimum value is determined by the number of CPUs.
-.sp
-Default: 10
 .SS rate\-limit
 .sp
 Rate limiting is based on the token bucket scheme. Rate basically
