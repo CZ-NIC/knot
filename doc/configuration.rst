@@ -56,7 +56,7 @@ A ``default`` template identifier is reserved for the default template::
 
       - id: signed
         storage: /var/lib/knot/signed
-        dnssec-enable: on
+        dnssec-signing: on
         semantic-checks: on
 
       - id: slave
@@ -268,7 +268,7 @@ can operate in two modes:
    according to assigned policy and are rolled automatically in a safe manner.
    No zone operator intervention is necessary.
 
-The DNSSEC signing is controlled by the :ref:`template_dnssec-enable` and
+The DNSSEC signing is controlled by the :ref:`template_dnssec-signing` and
 :ref:`template_kasp_db` configuration options. The first option states
 if the signing is enabled for a particular zone, the second option points to
 a KASP database holding the signing configuration.
@@ -284,7 +284,7 @@ default template, but the signing is explicitly disabled for zone
 
     template:
       - id: default
-        dnssec-enable: on
+        dnssec-signing: on
         kasp-db: /var/lib/knot/kasp
 
     zone:
@@ -293,7 +293,7 @@ default template, but the signing is explicitly disabled for zone
 
       - domain: example.dev
         file: example.dev.zone
-        dnssec-enable: off
+        dnssec-signing: off
 
 .. _dnssec-kasp:
 
@@ -366,7 +366,7 @@ The configuration fragment might look similar to::
 
   zone:
     - domain: myzone.test
-      dnssec-enable: on
+      dnssec-signing: on
 
 Finally, reload the server:
 

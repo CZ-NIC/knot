@@ -115,7 +115,7 @@ int zone_change_store(zone_t *zone, changeset_t *change)
 	assert(zone);
 	assert(change);
 
-	conf_val_t val = conf_zone_get(conf(), C_IXFR_FSLIMIT, zone->name);
+	conf_val_t val = conf_zone_get(conf(), C_MAX_JOURNAL_SIZE, zone->name);
 	int64_t ixfr_fslimit = conf_int(&val);
 	char *journal_file = conf_journalfile(conf(), zone->name);
 
@@ -142,7 +142,7 @@ int zone_changes_store(zone_t *zone, list_t *chgs)
 	assert(zone);
 	assert(chgs);
 
-	conf_val_t val = conf_zone_get(conf(), C_IXFR_FSLIMIT, zone->name);
+	conf_val_t val = conf_zone_get(conf(), C_MAX_JOURNAL_SIZE, zone->name);
 	int64_t ixfr_fslimit = conf_int(&val);
 	char *journal_file = conf_journalfile(conf(), zone->name);
 

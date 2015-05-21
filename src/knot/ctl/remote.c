@@ -227,7 +227,7 @@ static int remote_zone_sign(zone_t *zone, remote_cmdargs_t *a)
 	UNUSED(a);
 
 	rcu_read_lock();
-	conf_val_t val = conf_zone_get(conf(), C_DNSSEC_ENABLE, zone->name);
+	conf_val_t val = conf_zone_get(conf(), C_DNSSEC_SIGNING, zone->name);
 	bool dnssec_enable = conf_bool(&val);
 	rcu_read_unlock();
 
@@ -354,7 +354,7 @@ static int remote_zonestatus(zone_t *zone, remote_cmdargs_t *a)
 	char dnssec_buf[128] = { '\0' };
 	char *zone_name = knot_dname_to_str_alloc(zone->name);
 
-	conf_val_t val = conf_zone_get(conf(), C_DNSSEC_ENABLE, zone->name);
+	conf_val_t val = conf_zone_get(conf(), C_DNSSEC_SIGNING, zone->name);
 	bool dnssec_enable = conf_bool(&val);
 	bool is_master = zone_is_master(zone);
 

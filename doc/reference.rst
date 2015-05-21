@@ -85,7 +85,7 @@ General options related to the server.
      pidfile: STR
      workers: INT
      background-workers: INT
-     asynchronous-start: BOOL
+     async-start: BOOL
      max-conn-idle: TIME
      max-conn-handshake: TIME
      max-conn-reply: TIME
@@ -94,7 +94,7 @@ General options related to the server.
      transfers: INT
      rate-limit: INT
      rate-limit-slip: INT
-     rate-limit-size: INT
+     rate-limit-table-size: INT
      listen: ADDR[@INT] ...
 
 .. _server_identity:
@@ -176,10 +176,10 @@ loading, zone updates, etc.).
 
 Default: auto-estimated optimal value based on the number of online CPUs
 
-.. _server_asynchronous-start:
+.. _server_async-start:
 
-asynchronous-start
-------------------
+async-start
+-----------
 
 If enabled, server doesn't wait for the zones to be loaded and starts
 responding immediately with SERVFAIL answers until the zone loads.
@@ -253,16 +253,16 @@ is recalculated each second.
 
 Default: 0 (disabled)
 
-.. _server_rate-limit-size:
+.. _server_rate-limit-table-size:
 
-rate-limit-size
----------------
+rate-limit-table-size
+---------------------
 
-Size of hashtable buckets. The larger the hashtable, the lesser probability
-of a hash collision, but at the expense of additional memory costs. Each bucket
-is estimated roughly to 32 bytes. Size should be selected as a reasonably large
-prime due to the better hash function distribution properties. Hash table is
-internally chained and works well up to a fill rate of 90 %, general
+Size of the hashtable in number of buckets. The larger the hashtable, the lesser
+probability of a hash collision, but at the expense of additional memory costs.
+Each bucket is estimated roughly to 32 bytes. Size should be selected as
+a reasonably large prime due to the better hash function distribution properties.
+Hash table is internally chained and works well up to a fill rate of 90 %, general
 rule of thumb is to select a prime near 1.2 * maximum_qps.
 
 Default: 393241
@@ -518,14 +518,11 @@ configuration if a zone doesn't have a teplate specified.
      acl: acl_id ...
      semantic-checks: BOOL
      disable-any: BOOL
-     notify-timeout: TIME
-     notify-retries: INT
      zonefile-sync: TIME
      ixfr-from-differences: BOOL
-     ixfr-fslimit: SIZE
-     dnssec-enable: BOOL
+     max-journal-size: SIZE
+     dnssec-signing: BOOL
      kasp-db: STR
-     signature-lifetime: TIME
      serial-policy: increment | unixtime
      module: STR/STR ...
 
@@ -625,24 +622,6 @@ the risk of DNS reflection attack.
 
 Default: off
 
-.. _template_notify-timeout:
-
-notify-timeout
---------------
-
-The time how long will server wait for a notify response.
-
-Default: 60
-
-.. _template_notify-retries:
-
-notify-retries
---------------
-
-The number of retries the server sends a notify message.
-
-Default: 5
-
 .. _template_zonefile-sync:
 
 zonefile-sync
@@ -671,19 +650,19 @@ is a master server for the zone.
 
 Default: off
 
-.. _template_ixfr-fslimit:
+.. _template_max_journal_size:
 
-ixfr-fslimit
-------------
+max-journal-size
+----------------
 
-Maximum zone journal file.
+Maximum size of the zone journal file.
 
 Default: unlimited
 
-.. _template_dnssec-enable:
+.. _template_dnssec-signing:
 
-dnssec-enable
--------------
+dnssec-signing
+--------------
 
 If enabled, automatic DNSSEC signing for the zone is turned on.
 
@@ -691,26 +670,13 @@ Default: off
 
 .. _template_kasp_db:
 
-kasp_db
+kasp-db
 -------
 
 A KASP database path. Non absolute path is relative to
 :ref:`storage<template_storage>`.
 
 Default: :ref:`storage<template_storage>`/keys
-
-.. _template_signature-lifetime:
-
-signature-lifetime
-------------------
-
-The time how long the automatically generated DNSSEC signatures should be valid.
-Expiration will thus be set as current time (in the moment of signing)
-+ ``signature-lifetime``. The signatures are refreshed one tenth of the
-signature lifetime before the signature expiration (i.e. 3 days before the
-expiration with the default value). Minimum possible value is 10801.
-
-Default: 30 * 24 * 3600
 
 .. _template_serial-policy:
 

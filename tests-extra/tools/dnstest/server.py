@@ -93,7 +93,7 @@ class Server(object):
         self.disable_notify = None
         self.max_conn_idle = None
         self.zonefile_sync = None
-        self.ixfr_fslimit = None
+        self.journal_size = None
 
         self.inquirer = None
 
@@ -913,8 +913,8 @@ class Knot(Server):
             s.item_str("zonefile-sync", self.zonefile_sync)
         else:
             s.item_str("zonefile-sync", "1d")
-        if self.ixfr_fslimit:
-            s.item_str("ixfr-fslimit", self.ixfr_fslimit)
+        if self.journal_size:
+            s.item_str("max-journal-size", self.journal_size)
         s.item_str("notify-timeout", "5")
         s.item_str("notify-retries", "5")
         s.item_str("semantic-checks", "on")
@@ -922,7 +922,7 @@ class Knot(Server):
             s.item_str("disable-any", "on")
         if self.dnssec_enable:
             s.item_str("kasp-db", self.keydir)
-            s.item_str("dnssec-enable", "on")
+            s.item_str("dnssec-signing", "on")
         if len(self.modules) > 0:
             modules = ""
             for module in self.modules:

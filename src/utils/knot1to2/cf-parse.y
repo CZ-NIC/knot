@@ -468,28 +468,28 @@ interfaces:
  ;
 
 system:
-   SYSTEM '{'				{ f_section(scanner, R_SYS, S_SRV); }
- | system SVERSION TEXT ';'		{ f_quote(scanner, R_SYS, C_VERSION, $3.t); free($3.t); }
- | system SVERSION BOOL ';'		{ f_auto_str(scanner, R_SYS, C_VERSION, $3.i); }
- | system IDENTITY TEXT ';'		{ f_quote(scanner, R_SYS, C_IDENT, $3.t); free($3.t); }
- | system IDENTITY BOOL ';'		{ f_auto_str(scanner, R_SYS, C_IDENT, $3.i); }
- | system NSID TEXT ';'			{ f_quote(scanner, R_SYS, C_NSID,  $3.t); free($3.t); }
- | system NSID BOOL ';'			{ f_auto_str(scanner, R_SYS, C_NSID, $3.i); }
- | system MAX_UDP_PAYLOAD NUM ';'	{ f_int(scanner, R_SYS, C_MAX_UDP_PAYLOAD, $3.i); }
- | system RUNDIR TEXT ';'		{ f_quote(scanner, R_SYS, C_RUNDIR, $3.t); free($3.t); }
- | system PIDFILE TEXT ';'		{ f_quote(scanner, R_SYS, C_PIDFILE, $3.t); free($3.t); }
- | system WORKERS NUM ';'		{ f_int(scanner, R_SYS, C_WORKERS, $3.i); }
- | system BACKGROUND_WORKERS NUM ';'	{ f_int(scanner, R_SYS, C_BG_WORKERS, $3.i); }
- | system ASYNC_START BOOL ';'		{ f_bool(scanner, R_SYS, C_ASYNC_START, $3.i); }
- | system MAX_CONN_IDLE INTERVAL ';'	{ f_int(scanner, R_SYS, C_MAX_CONN_IDLE, $3.i); }
- | system MAX_CONN_HS INTERVAL ';'	{ f_int(scanner, R_SYS, C_MAX_CONN_HANDSHAKE, $3.i); }
- | system MAX_CONN_REPLY INTERVAL ';'	{ f_int(scanner, R_SYS, C_MAX_CONN_REPLY, $3.i); }
- | system MAX_TCP_CLIENTS NUM ';'	{ f_int(scanner, R_SYS, C_MAX_TCP_CLIENTS, $3.i); }
- | system RATE_LIMIT NUM ';'		{ f_int(scanner, R_SYS, C_RATE_LIMIT, $3.i); }
- | system RATE_LIMIT_SIZE SIZE ';'	{ f_int(scanner, R_SYS, C_RATE_LIMIT_SIZE, $3.l); }
- | system RATE_LIMIT_SIZE NUM ';'	{ f_int(scanner, R_SYS, C_RATE_LIMIT_SIZE, $3.i); }
- | system RATE_LIMIT_SLIP NUM ';'	{ f_int(scanner, R_SYS, C_RATE_LIMIT_SLIP, $3.i); }
- | system TRANSFERS NUM ';'		{ f_int(scanner, R_SYS, C_TRANSFERS, $3.i); }
+   SYSTEM '{'				{ f_section(scanner,  R_SYS, S_SRV); }
+ | system SVERSION TEXT ';'		{ f_quote(scanner,    R_SYS, C_VERSION,             $3.t); free($3.t); }
+ | system SVERSION BOOL ';'		{ f_auto_str(scanner, R_SYS, C_VERSION,             $3.i); }
+ | system IDENTITY TEXT ';'		{ f_quote(scanner,    R_SYS, C_IDENT,               $3.t); free($3.t); }
+ | system IDENTITY BOOL ';'		{ f_auto_str(scanner, R_SYS, C_IDENT,               $3.i); }
+ | system NSID TEXT ';'			{ f_quote(scanner,    R_SYS, C_NSID,                $3.t); free($3.t); }
+ | system NSID BOOL ';'			{ f_auto_str(scanner, R_SYS, C_NSID,                $3.i); }
+ | system MAX_UDP_PAYLOAD NUM ';'	{ f_int(scanner,      R_SYS, C_MAX_UDP_PAYLOAD,     $3.i); }
+ | system RUNDIR TEXT ';'		{ f_quote(scanner,    R_SYS, C_RUNDIR,              $3.t); free($3.t); }
+ | system PIDFILE TEXT ';'		{ f_quote(scanner,    R_SYS, C_PIDFILE,             $3.t); free($3.t); }
+ | system WORKERS NUM ';'		{ f_int(scanner,      R_SYS, C_WORKERS,             $3.i); }
+ | system BACKGROUND_WORKERS NUM ';'	{ f_int(scanner,      R_SYS, C_BG_WORKERS,          $3.i); }
+ | system ASYNC_START BOOL ';'		{ f_bool(scanner,     R_SYS, C_ASYNC_START,         $3.i); }
+ | system MAX_CONN_IDLE INTERVAL ';'	{ f_int(scanner,      R_SYS, C_MAX_CONN_IDLE,       $3.i); }
+ | system MAX_CONN_HS INTERVAL ';'	{ f_int(scanner,      R_SYS, C_MAX_CONN_HANDSHAKE,  $3.i); }
+ | system MAX_CONN_REPLY INTERVAL ';'	{ f_int(scanner,      R_SYS, C_MAX_CONN_REPLY,      $3.i); }
+ | system MAX_TCP_CLIENTS NUM ';'	{ f_int(scanner,      R_SYS, C_MAX_TCP_CLIENTS,     $3.i); }
+ | system RATE_LIMIT NUM ';'		{ f_int(scanner,      R_SYS, C_RATE_LIMIT,          $3.i); }
+ | system RATE_LIMIT_SIZE SIZE ';'	{ f_int(scanner,      R_SYS, C_RATE_LIMIT_TBL_SIZE, $3.l); }
+ | system RATE_LIMIT_SIZE NUM ';'	{ f_int(scanner,      R_SYS, C_RATE_LIMIT_TBL_SIZE, $3.i); }
+ | system RATE_LIMIT_SLIP NUM ';'	{ f_int(scanner,      R_SYS, C_RATE_LIMIT_SLIP,     $3.i); }
+ | system TRANSFERS NUM ';'		{ f_int(scanner,      R_SYS, C_TRANSFERS,           $3.i); }
  | system HOSTNAME TEXT ';'		{ /* Deprecated */ free($3.t); }
  | system STORAGE TEXT ';'		{ /* Deprecated */ free($3.t); }
  | system KEY TSIG_ALGO_NAME TEXT ';'	{ /* Deprecated */ free($3.t); free($4.t); }
@@ -652,22 +652,22 @@ zone_start:
 zone:
    zone_start '{'
  | zone zone_acl_start zone_acl_list
- | zone FILENAME TEXT ';'			{ f_quote(scanner, R_ZONE, C_FILE,           $3.t); free($3.t); }
- | zone DISABLE_ANY BOOL ';'			{ f_bool(scanner,  R_ZONE, C_DISABLE_ANY,    $3.i); }
- | zone BUILD_DIFFS BOOL ';'			{ f_bool(scanner,  R_ZONE, C_IXFR_DIFF,      $3.i); }
- | zone SEMANTIC_CHECKS BOOL ';'		{ f_bool(scanner,  R_ZONE, C_SEM_CHECKS,     $3.i); }
- | zone IXFR_FSLIMIT SIZE ';'			{ f_int(scanner,   R_ZONE, C_IXFR_FSLIMIT,   $3.l); }
- | zone IXFR_FSLIMIT NUM ';'			{ f_int(scanner,   R_ZONE, C_IXFR_FSLIMIT,   $3.i); }
- | zone NOTIFY_RETRIES NUM ';'			{ f_int(scanner,   R_ZONE, C_NOTIFY_RETRIES, $3.i); }
- | zone NOTIFY_TIMEOUT NUM ';'			{ f_int(scanner,   R_ZONE, C_NOTIFY_TIMEOUT, $3.i); }
- | zone DBSYNC_TIMEOUT NUM ';'			{ f_int(scanner,   R_ZONE, C_ZONEFILE_SYNC,  $3.i); }
- | zone DBSYNC_TIMEOUT INTERVAL ';'		{ f_int(scanner,   R_ZONE, C_ZONEFILE_SYNC,  $3.i); }
- | zone STORAGE TEXT ';'			{ f_quote(scanner, R_ZONE, C_STORAGE,        $3.t); free($3.t); }
- | zone DNSSEC_ENABLE BOOL ';'			{ f_bool(scanner,  R_ZONE, C_DNSSEC_ENABLE,  $3.i); }
- | zone DNSSEC_KEYDIR TEXT ';'			{ f_quote(scanner, R_ZONE, C_KASP_DB,        $3.t); free($3.t); }
- | zone SIGNATURE_LIFETIME NUM ';'		{ f_int(scanner,   R_ZONE, C_SIG_LIFETIME,   $3.i); }
- | zone SIGNATURE_LIFETIME INTERVAL ';'		{ f_int(scanner,   R_ZONE, C_SIG_LIFETIME,   $3.i); }
- | zone SERIAL_POLICY SERIAL_POLICY_VAL ';'	{ f_str(scanner,   R_ZONE, C_SERIAL_POLICY,  $3.t); }
+ | zone FILENAME TEXT ';'			{ f_quote(scanner, R_ZONE, C_FILE,             $3.t); free($3.t); }
+ | zone DISABLE_ANY BOOL ';'			{ f_bool(scanner,  R_ZONE, C_DISABLE_ANY,      $3.i); }
+ | zone BUILD_DIFFS BOOL ';'			{ f_bool(scanner,  R_ZONE, C_IXFR_DIFF,        $3.i); }
+ | zone SEMANTIC_CHECKS BOOL ';'		{ f_bool(scanner,  R_ZONE, C_SEM_CHECKS,       $3.i); }
+ | zone IXFR_FSLIMIT SIZE ';'			{ f_int(scanner,   R_ZONE, C_MAX_JOURNAL_SIZE, $3.l); }
+ | zone IXFR_FSLIMIT NUM ';'			{ f_int(scanner,   R_ZONE, C_MAX_JOURNAL_SIZE, $3.i); }
+ | zone DBSYNC_TIMEOUT NUM ';'			{ f_int(scanner,   R_ZONE, C_ZONEFILE_SYNC,    $3.i); }
+ | zone DBSYNC_TIMEOUT INTERVAL ';'		{ f_int(scanner,   R_ZONE, C_ZONEFILE_SYNC,    $3.i); }
+ | zone STORAGE TEXT ';'			{ f_quote(scanner, R_ZONE, C_STORAGE,          $3.t); free($3.t); }
+ | zone DNSSEC_ENABLE BOOL ';'			{ f_bool(scanner,  R_ZONE, C_DNSSEC_SIGNING,   $3.i); }
+ | zone DNSSEC_KEYDIR TEXT ';'			{ f_quote(scanner, R_ZONE, C_KASP_DB,          $3.t); free($3.t); }
+ | zone SERIAL_POLICY SERIAL_POLICY_VAL ';'	{ f_str(scanner,   R_ZONE, C_SERIAL_POLICY,    $3.t); }
+ | zone SIGNATURE_LIFETIME NUM ';'		{ /* Not used. */ }
+ | zone SIGNATURE_LIFETIME INTERVAL ';'		{ /* Not used. */ }
+ | zone NOTIFY_RETRIES NUM ';'			{ /* Not used. */ }
+ | zone NOTIFY_TIMEOUT NUM ';'			{ /* Not used. */ }
  | zone QUERY_MODULE '{' {
    	if (cf_get_extra(scanner)->run == S_FIRST) {
    		cf_warning(scanner, "query module is not yet implemented");
@@ -691,21 +691,21 @@ zones:
    	}
    }
  | zones zone '}'
- | zones DISABLE_ANY BOOL ';'			{ f_bool(scanner,  R_ZONE_TPL, C_DISABLE_ANY,    $3.i); }
- | zones BUILD_DIFFS BOOL ';'			{ f_bool(scanner,  R_ZONE_TPL, C_IXFR_DIFF,      $3.i); }
- | zones SEMANTIC_CHECKS BOOL ';'		{ f_bool(scanner,  R_ZONE_TPL, C_SEM_CHECKS,     $3.i); }
- | zones IXFR_FSLIMIT SIZE ';'			{ f_int(scanner,   R_ZONE_TPL, C_IXFR_FSLIMIT,   $3.l); }
- | zones IXFR_FSLIMIT NUM ';'			{ f_int(scanner,   R_ZONE_TPL, C_IXFR_FSLIMIT,   $3.i); }
- | zones NOTIFY_RETRIES NUM ';'			{ f_int(scanner,   R_ZONE_TPL, C_NOTIFY_RETRIES, $3.i); }
- | zones NOTIFY_TIMEOUT NUM ';'			{ f_int(scanner,   R_ZONE_TPL, C_NOTIFY_TIMEOUT, $3.i); }
- | zones DBSYNC_TIMEOUT NUM ';'			{ f_int(scanner,   R_ZONE_TPL, C_ZONEFILE_SYNC,  $3.i); }
- | zones DBSYNC_TIMEOUT INTERVAL ';'		{ f_int(scanner,   R_ZONE_TPL, C_ZONEFILE_SYNC,  $3.i); }
- | zones STORAGE TEXT ';'			{ f_quote(scanner, R_ZONE_TPL, C_STORAGE,        $3.t); free($3.t); }
- | zones DNSSEC_ENABLE BOOL ';'			{ f_bool(scanner,  R_ZONE_TPL, C_DNSSEC_ENABLE,  $3.i); }
- | zones DNSSEC_KEYDIR TEXT ';'			{ f_quote(scanner, R_ZONE_TPL, C_KASP_DB,        $3.t); free($3.t); }
- | zones SIGNATURE_LIFETIME NUM ';'		{ f_int(scanner,   R_ZONE_TPL, C_SIG_LIFETIME,   $3.i); }
- | zones SIGNATURE_LIFETIME INTERVAL ';'	{ f_int(scanner,   R_ZONE_TPL, C_SIG_LIFETIME,   $3.i); }
- | zones SERIAL_POLICY SERIAL_POLICY_VAL ';'	{ f_str(scanner,   R_ZONE_TPL, C_SERIAL_POLICY,  $3.t); }
+ | zones DISABLE_ANY BOOL ';'			{ f_bool(scanner,  R_ZONE_TPL, C_DISABLE_ANY,      $3.i); }
+ | zones BUILD_DIFFS BOOL ';'			{ f_bool(scanner,  R_ZONE_TPL, C_IXFR_DIFF,        $3.i); }
+ | zones SEMANTIC_CHECKS BOOL ';'		{ f_bool(scanner,  R_ZONE_TPL, C_SEM_CHECKS,       $3.i); }
+ | zones IXFR_FSLIMIT SIZE ';'			{ f_int(scanner,   R_ZONE_TPL, C_MAX_JOURNAL_SIZE, $3.l); }
+ | zones IXFR_FSLIMIT NUM ';'			{ f_int(scanner,   R_ZONE_TPL, C_MAX_JOURNAL_SIZE, $3.i); }
+ | zones DBSYNC_TIMEOUT NUM ';'			{ f_int(scanner,   R_ZONE_TPL, C_ZONEFILE_SYNC,    $3.i); }
+ | zones DBSYNC_TIMEOUT INTERVAL ';'		{ f_int(scanner,   R_ZONE_TPL, C_ZONEFILE_SYNC,    $3.i); }
+ | zones STORAGE TEXT ';'			{ f_quote(scanner, R_ZONE_TPL, C_STORAGE,          $3.t); free($3.t); }
+ | zones DNSSEC_ENABLE BOOL ';'			{ f_bool(scanner,  R_ZONE_TPL, C_DNSSEC_SIGNING,   $3.i); }
+ | zones DNSSEC_KEYDIR TEXT ';'			{ f_quote(scanner, R_ZONE_TPL, C_KASP_DB,          $3.t); free($3.t); }
+ | zones SERIAL_POLICY SERIAL_POLICY_VAL ';'	{ f_str(scanner,   R_ZONE_TPL, C_SERIAL_POLICY,    $3.t); }
+ | zones SIGNATURE_LIFETIME NUM ';'		{ /* Not used. */ }
+ | zones SIGNATURE_LIFETIME INTERVAL ';'	{ /* Not used. */ }
+ | zones NOTIFY_RETRIES NUM ';'			{ /* Not used. */ }
+ | zones NOTIFY_TIMEOUT NUM ';'			{ /* Not used. */ }
  | zones QUERY_MODULE '{' {
    	if (cf_get_extra(scanner)->run == S_FIRST) {
    		cf_warning(scanner, "query module is not yet implemented");

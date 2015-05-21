@@ -601,7 +601,7 @@ static int reconfigure_rate_limits(conf_t *conf, server_t *server)
 
 	/* Rate limiting. */
 	if (!server->rrl && rrl > 0) {
-		val = conf_get(conf, C_SRV, C_RATE_LIMIT_SIZE);
+		val = conf_get(conf, C_SRV, C_RATE_LIMIT_TBL_SIZE);
 		server->rrl = rrl_create(conf_int(&val));
 		if (!server->rrl) {
 			log_error("failed to initialize rate limiting table");

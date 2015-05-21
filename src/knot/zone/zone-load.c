@@ -145,7 +145,7 @@ int zone_load_post(conf_t *conf, zone_contents_t *contents, zone_t *zone,
 	}
 
 	/* Sign zone using DNSSEC (if configured). */
-	conf_val_t val = conf_zone_get(conf, C_DNSSEC_ENABLE, zone->name);
+	conf_val_t val = conf_zone_get(conf, C_DNSSEC_SIGNING, zone->name);
 	bool dnssec_enable = conf_bool(&val);
 	val = conf_zone_get(conf, C_IXFR_DIFF, zone->name);
 	bool build_diffs = conf_bool(&val);

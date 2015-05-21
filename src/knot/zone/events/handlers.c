@@ -295,7 +295,7 @@ int event_reload(zone_t *zone)
 	}
 
 	/* Schedule zone resign. */
-	conf_val_t val = conf_zone_get(conf(), C_DNSSEC_ENABLE, zone->name);
+	conf_val_t val = conf_zone_get(conf(), C_DNSSEC_SIGNING, zone->name);
 	if (conf_bool(&val)) {
 		schedule_dnssec(zone, dnssec_refresh);
 	}
@@ -325,7 +325,7 @@ int event_refresh(zone_t *zone)
 	}
 
 	/* Ignore if DNSSEC enabled. */
-	conf_val_t val = conf_zone_get(conf(), C_DNSSEC_ENABLE, zone->name);
+	conf_val_t val = conf_zone_get(conf(), C_DNSSEC_SIGNING, zone->name);
 	if (conf_bool(&val)) {
 		log_zone_notice(zone->name, "ignoring zone refresh due to "
 		                            "enabled automatic DNSSEC signing.");
@@ -368,7 +368,7 @@ int event_xfer(zone_t *zone)
 	}
 
 	/* Ignore if DNSSEC enabled. */
-	conf_val_t val = conf_zone_get(conf(), C_DNSSEC_ENABLE, zone->name);
+	conf_val_t val = conf_zone_get(conf(), C_DNSSEC_SIGNING, zone->name);
 	if (conf_bool(&val)) {
 		log_zone_notice(zone->name, "ignoring slave transfer due to "
 		                            "enabled automatic DNSSEC signing.");

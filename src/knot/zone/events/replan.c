@@ -111,7 +111,7 @@ static void duplicate_ddns_q(zone_t *zone, zone_t *old_zone)
 /*!< Replans DNSSEC event. Not whole resign needed, \todo #247 */
 static void replan_dnssec(zone_t *zone)
 {
-	conf_val_t val = conf_zone_get(conf(), C_DNSSEC_ENABLE, zone->name);
+	conf_val_t val = conf_zone_get(conf(), C_DNSSEC_SIGNING, zone->name);
 	if (conf_bool(&val)) {
 		/* Keys could have changed, force resign. */
 		zone_events_schedule(zone, ZONE_EVENT_DNSSEC, ZONE_EVENT_NOW);

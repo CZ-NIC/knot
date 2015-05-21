@@ -16,7 +16,6 @@
 
 #include <assert.h>
 
-#include "knot/conf/conf.h"
 #include "knot/dnssec/context.h"
 #include "knot/zone/contents.h"
 #include "libknot/rrtype/soa.h"
@@ -47,8 +46,7 @@ void update_policy_from_zone(dnssec_kasp_policy_t *policy,
 void set_default_policy(dnssec_kasp_policy_t *policy,
                         const zone_contents_t *zone)
 {
-	conf_val_t val = conf_zone_get(conf(), C_SIG_LIFETIME, zone->apex->owner);
-	policy->rrsig_lifetime = conf_int(&val);
+	policy->rrsig_lifetime = 30 * 24 * 3600;
 	policy->rrsig_refresh_before = policy->rrsig_lifetime / 10;
 	policy->algorithm = 0;
 	policy->propagation_delay = 0;

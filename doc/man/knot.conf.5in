@@ -116,7 +116,7 @@ server:
     pidfile: STR
     workers: INT
     background\-workers: INT
-    asynchronous\-start: BOOL
+    async\-start: BOOL
     max\-conn\-idle: TIME
     max\-conn\-handshake: TIME
     max\-conn\-reply: TIME
@@ -125,7 +125,7 @@ server:
     transfers: INT
     rate\-limit: INT
     rate\-limit\-slip: INT
-    rate\-limit\-size: INT
+    rate\-limit\-table\-size: INT
     listen: ADDR[@INT] ...
 .ft P
 .fi
@@ -178,7 +178,7 @@ A number of workers (threads) used to execute background operations (zone
 loading, zone updates, etc.).
 .sp
 Default: auto\-estimated optimal value based on the number of online CPUs
-.SS asynchronous\-start
+.SS async\-start
 .sp
 If enabled, server doesn\(aqt wait for the zones to be loaded and starts
 responding immediately with SERVFAIL answers until the zone loads.
@@ -227,13 +227,13 @@ response is rejected or enters \fI\%SLIP\fP
 is recalculated each second.
 .sp
 Default: 0 (disabled)
-.SS rate\-limit\-size
+.SS rate\-limit\-table\-size
 .sp
-Size of hashtable buckets. The larger the hashtable, the lesser probability
-of a hash collision, but at the expense of additional memory costs. Each bucket
-is estimated roughly to 32 bytes. Size should be selected as a reasonably large
-prime due to the better hash function distribution properties. Hash table is
-internally chained and works well up to a fill rate of 90 %, general
+Size of the hashtable in number of buckets. The larger the hashtable, the lesser
+probability of a hash collision, but at the expense of additional memory costs.
+Each bucket is estimated roughly to 32 bytes. Size should be selected as
+a reasonably large prime due to the better hash function distribution properties.
+Hash table is internally chained and works well up to a fill rate of 90 %, general
 rule of thumb is to select a prime near 1.2 * maximum_qps.
 .sp
 Default: 393241
@@ -433,14 +433,11 @@ template:
     acl: acl_id ...
     semantic\-checks: BOOL
     disable\-any: BOOL
-    notify\-timeout: TIME
-    notify\-retries: INT
     zonefile\-sync: TIME
     ixfr\-from\-differences: BOOL
-    ixfr\-fslimit: SIZE
-    dnssec\-enable: BOOL
+    max\-journal\-size: SIZE
+    dnssec\-signing: BOOL
     kasp\-db: STR
-    signature\-lifetime: TIME
     serial\-policy: increment | unixtime
     module: STR/STR ...
 .ft P
@@ -537,16 +534,6 @@ with an empty response and with the TC bit set. Use this option to minimize
 the risk of DNS reflection attack.
 .sp
 Default: off
-.SS notify\-timeout
-.sp
-The time how long will server wait for a notify response.
-.sp
-Default: 60
-.SS notify\-retries
-.sp
-The number of retries the server sends a notify message.
-.sp
-Default: 5
 .SS zonefile\-sync
 .sp
 The time after which the current zone in memory will be synced to zone file
@@ -567,31 +554,22 @@ zone file upon server reload. This option is only relevant if the server
 is a master server for the zone.
 .sp
 Default: off
-.SS ixfr\-fslimit
+.SS max\-journal\-size
 .sp
-Maximum zone journal file.
+Maximum size of the zone journal file.
 .sp
 Default: unlimited
-.SS dnssec\-enable
+.SS dnssec\-signing
 .sp
 If enabled, automatic DNSSEC signing for the zone is turned on.
 .sp
 Default: off
-.SS kasp_db
+.SS kasp\-db
 .sp
 A KASP database path. Non absolute path is relative to
 \fI\%storage\fP\&.
 .sp
 Default: \fI\%storage\fP/keys
-.SS signature\-lifetime
-.sp
-The time how long the automatically generated DNSSEC signatures should be valid.
-Expiration will thus be set as current time (in the moment of signing)
-+ \fBsignature\-lifetime\fP\&. The signatures are refreshed one tenth of the
-signature lifetime before the signature expiration (i.e. 3 days before the
-expiration with the default value). Minimum possible value is 10801.
-.sp
-Default: 30 * 24 * 3600
 .SS serial\-policy
 .sp
 Specifies how the zone serial is updated after a dynamic update or
