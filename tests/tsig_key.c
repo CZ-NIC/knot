@@ -164,5 +164,28 @@ int main(int argc, char *argv[])
 				       "nZXQgd2luZ2VkIQ==");
 	}
 
+	// tsig key duplication
+
+	{
+		static const knot_tsig_key_t key = {
+			.algorithm = DNSSEC_TSIG_HMAC_SHA1,
+			.name = (uint8_t *)"\x4""copy""\x2""me",
+			.secret.size = 6,
+			.secret.data = (uint8_t *)"orange"
+		};
+
+		knot_tsig_key_t copy = { 0 };
+		int r;
+
+		r = knot_tsig_key_copy(NULL, &key);
+		ok(r != KNOT_EOK, "knot_tsig_key_copy: no destination");
+		r = knot_tsig_key_copy(&copy, NULL);
+		ok(r != KNOT_EOK, "knot_tsig_key_copy: no source");
+		r = knot_tsig_key_copy(&copy, &key);
+		ok(r == KNOT_EOK && key_is_eq(&copy, &key) &&
+		   copy.secret.data != key.secret.data && copy.name != key.name,
+		   "knot_tsig_key_copy: simple copy");
+	}
+
 	return 0;
 }
