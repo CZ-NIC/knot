@@ -117,7 +117,7 @@ void help(void)
 	       " -p, --port <port>             Remote server port (only for IP).\n"
 	       " -y, --key <[hmac:]name:key>   Use key specified on the command line.\n"
 	       "                                (default algorithm is hmac-md5)\n"
-	       " -k, --keyfile <file>          Use key file (as in config section 'keys').\n"
+	       " -k, --keyfile <file>          Read key from file (same format as -y).\n"
 	       " -f, --force                   Force operation - override some checks.\n"
 	       " -v, --verbose                 Verbose mode - additional runtime information.\n"
 	       " -V, --version                 Print %s server version.\n"
@@ -303,125 +303,6 @@ static int cmd_remote(struct sockaddr_storage *addr, knot_tsig_key_t *key,
 	return rc;
 }
 
-static int tsig_parse_str(knot_tsig_key_t *key, const char *str)
-{
-	char *h = strdup(str);
-	if (!h) {
-		return KNOT_ENOMEM;
-	}
-
-	char *k = NULL, *s = NULL;
-	if ((k = (char*)strchr(h, ':'))) { /* Second part - NAME|SECRET */
-		*k++ = '\0';               /* String separator */
-		s = (char*)strchr(k, ':'); /* Thirt part - |SECRET */
-	}
-
-	/* Determine algorithm. */
-
-	int algorithm = DNSSEC_TSIG_HMAC_MD5;
-	if (s) {
-		*s++ = '\0';               /* Last part separator */
-		dnssec_tsig_algorithm_t alg = dnssec_tsig_algorithm_from_name(h);
-		if (alg != DNSSEC_TSIG_UNKNOWN) {
-			algorithm = alg;
-		} else {
-			free(h);
-			return KNOT_EINVAL;
-		}
-	} else {
-		s = k; /* Ignore first part, push down. */
-		k = h;
-	}
-
-	/* Parse key name. */
-
-	int result = knot_tsig_create_key(k, algorithm, s, key);
-	free(h);
-	return result;
-}
-
-static int tsig_parse_line(knot_tsig_key_t *k, char *l)
-{
-	const char *n, *a, *s;
-	n = a = s = NULL;
-	int fw = 1; /* 0 = reading word, 1 = between words */
-	while (*l != '\0') {
-		if (isspace((unsigned char)(*l)) || *l == '"') {
-			*l = '\0';
-			fw = 1; /* End word. */
-		} else if (fw) {
-			if      (!n) { n = l; }
-			else if (!a) { a = l; }
-			else         { s = l; }
-			fw = 0; /* Start word. */
-		}
-		l++;
-	}
-
-	/* No name parsed - assume wrong format. */
-	if (!n) {
-		return KNOT_EMALF;
-	}
-
-	/* Assume hmac-md5 if no algo specified. */
-	if (!s) {
-		s = a;
-		a = "hmac-md5";
-	}
-
-	/* Lookup algorithm. */
-	dnssec_tsig_algorithm_t alg = dnssec_tsig_algorithm_from_name(a);
-	if (alg == DNSSEC_TSIG_UNKNOWN) {
-		return KNOT_EMALF;
-	}
-
-	/* Create the key data. */
-	return knot_tsig_create_key(n, alg, s, k);
-}
-
-static int tsig_parse_file(knot_tsig_key_t *k, const char *f)
-{
-	FILE* fp = fopen(f, "r");
-	if (!fp) {
-		log_error("failed to open key-file '%s'", f);
-		return KNOT_EINVAL;
-	}
-
-	int c = 0;
-	int ret = KNOT_EOK;
-	char *line = malloc(64);
-	size_t llen = 0;
-	size_t lres = 0;
-	if (line) {
-		lres = 64;
-	}
-
-	while ((c = fgetc(fp)) != EOF) {
-		if (mreserve(&line, sizeof(char), llen + 1, 512, &lres) != 0) {
-			ret = KNOT_ENOMEM;
-			break;
-		}
-		if (c == '\n') {
-			if (k->name) {
-				log_error("only one key definition allowed "
-				          "in '%s'", f);
-				ret = KNOT_EMALF;
-				break;
-			}
-			line[llen] = '\0';
-			ret = tsig_parse_line(k, line);
-			llen = 0;
-		} else {
-			line[llen++] = (char)c;
-		}
-
-	}
-
-	free(line);
-	fclose(fp);
-	return ret;
-}
-
 int main(int argc, char **argv)
 {
 	/* Parse command line arguments */
@@ -470,14 +351,14 @@ int main(int argc, char **argv)
 			r_port = atoi(optarg);
 			break;
 		case 'y':
-			if (tsig_parse_str(&r_key, optarg) != KNOT_EOK) {
+			if (knot_tsig_key_init_str(&r_key, optarg) != KNOT_EOK) {
 				rc = 1;
 				log_error("failed to parse TSIG key '%s'", optarg);
 				goto exit;
 			}
 			break;
 		case 'k':
-			if (tsig_parse_file(&r_key, optarg) != KNOT_EOK) {
+			if (knot_tsig_key_init_file(&r_key, optarg) != KNOT_EOK) {
 				rc = 1;
 				log_error("failed to parse TSIG key file '%s'", optarg);
 				goto exit;
@@ -622,7 +503,7 @@ int main(int argc, char **argv)
 
 exit:
 	/* Finish */
-	knot_tsig_key_free(&r_key);
+	knot_tsig_key_deinit(&r_key);
 	conf_free(conf(), false);
 	log_close();
 	return rc;
