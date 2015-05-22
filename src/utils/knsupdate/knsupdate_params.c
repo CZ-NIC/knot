@@ -26,6 +26,7 @@
 #include "libknot/libknot.h"
 #include "libknot/internal/mempattern.h"
 #include "libknot/internal/mempool.h"
+#include "libknot/tsig.h"
 
 #define DEFAULT_RETRIES_NSUPDATE	3
 #define DEFAULT_TIMEOUT_NSUPDATE	12
@@ -140,7 +141,7 @@ void knsupdate_clean(knsupdate_params_t *params)
 	zs_scanner_free(params->parser);
 	knot_pkt_free(&params->query);
 	knot_pkt_free(&params->answer);
-	knot_free_key_params(&params->key_params);
+	knot_tsig_key_deinit(&params->tsig_key);
 
 	/* Clean up the structure. */
 	mp_delete(params->mm.ctx);
@@ -233,7 +234,7 @@ int knsupdate_parse(knsupdate_params_t *params, int argc, char *argv[])
 			if (ret != KNOT_EOK) return ret;
 			break;
 		case 'y':
-			ret = params_parse_tsig(optarg, &params->key_params);
+			ret = knot_tsig_key_init_str(&params->tsig_key, optarg);
 			if (ret != KNOT_EOK) return ret;
 			break;
 		case 'k':

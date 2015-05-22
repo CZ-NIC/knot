@@ -73,8 +73,8 @@ typedef struct {
 	knot_pkt_t	*answer;
 	/*< Lists of RRSets. */
 	list_t		update_list, prereq_list;
-	/*!< Key parameters. */
-	knot_key_params_t key_params;
+	/*!< TSIG key. */
+	knot_tsig_key_t tsig_key;
 	/*!< Default output settings. */
 	style_t		style;
 	/*!< Memory context. */
