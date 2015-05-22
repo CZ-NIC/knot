@@ -31,6 +31,7 @@
 #include "utils/common/netio.h"
 #include "utils/common/params.h"
 #include "libknot/libknot.h"
+#include "libknot/tsig.h"
 
 /*! \brief Holds data required between signing and signature verification. */
 typedef struct {
@@ -113,29 +114,25 @@ void free_sign_context(sign_context_t *ctx);
 /*!
  * \brief Signs outgoing DNS packet.
  *
- * \param pkt		Packet to sign.
- * \param sign_ctx	Sign context.
- * \param key_params	Key parameters.
+ * \param pkt	Packet to sign.
+ * \param key	TSIG key.
  *
  * \retval KNOT_EOK	if success.
  * \retval error code	if error.
  */
-int sign_packet(knot_pkt_t              *pkt,
-                sign_context_t          *sign_ctx,
-                const knot_key_params_t *key_params);
+int sign_packet(knot_pkt_t            *pkt,
+                const knot_tsig_key_t *key);
 
 /*!
  * \brief Verifies signature for incoming DNS packet.
  *
- * \param pkt		Packet verify sign.
- * \param sign_ctx	Sign context.
- * \param key_params	Key parameters.
+ * \param pkt	Packet verify sign.
+ * \param key	TSIG key.
  *
  * \retval KNOT_EOK	if success.
  * \retval error code	if error.
  */
-int verify_packet(const knot_pkt_t        *pkt,
-                  const sign_context_t    *sign_ctx,
-                  const knot_key_params_t *key_params);
+int verify_packet(const knot_pkt_t      *pkt,
+                  const knot_tsig_key_t *key);
 
 /*! @} */

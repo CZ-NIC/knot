@@ -685,7 +685,8 @@ void free_sign_context(sign_context_t *ctx)
 	}
 
 	if (ctx->tsig_key.name) {
-		knot_tsig_key_free(&ctx->tsig_key);
+#warning leak
+//		knot_tsig_key_free(&ctx->tsig_key);
 	}
 
 	free(ctx->digest);
@@ -693,13 +694,15 @@ void free_sign_context(sign_context_t *ctx)
 	memset(ctx, '\0', sizeof(sign_context_t));
 }
 
-int sign_packet(knot_pkt_t              *pkt,
-                sign_context_t          *sign_ctx,
-                const knot_key_params_t *key_params)
+int sign_packet(knot_pkt_t            *pkt,
+                const knot_tsig_key_t *key)
 {
+#warning temporary
+	return KNOT_ENOTSUP;
+#if 0
 	int result;
 
-	if (pkt == NULL || sign_ctx == NULL || key_params == NULL) {
+	if (pkt == NULL || sign_ctx == NULL) {
 		DBG_NULL;
 		return KNOT_EINVAL;
 	}
@@ -707,12 +710,6 @@ int sign_packet(knot_pkt_t              *pkt,
 	uint8_t *wire = pkt->wire;
 	size_t  *wire_size = &pkt->size;
 	size_t  max_size = pkt->max_size;
-
-	result = knot_tsig_key_from_params(key_params,
-					   &sign_ctx->tsig_key);
-	if (result != KNOT_EOK) {
-		return result;
-	}
 
 	knot_tsig_key_t *key = &sign_ctx->tsig_key;
 
@@ -726,13 +723,16 @@ int sign_packet(knot_pkt_t              *pkt,
 				key, 0, 0);
 
 	return result;
+#endif
 }
 
-int verify_packet(const knot_pkt_t        *pkt,
-                  const sign_context_t    *sign_ctx,
-                  const knot_key_params_t *key_params)
+int verify_packet(const knot_pkt_t      *pkt,
+                  const knot_tsig_key_t *key)
 {
-	if (pkt == NULL || sign_ctx == NULL || key_params == NULL) {
+#warning temporary
+	return KNOT_ENOTSUP;
+#if 0
+	if (pkt == NULL || sign_ctx == NULL) {
 		DBG_NULL;
 		return KNOT_EINVAL;
 	}
@@ -748,4 +748,5 @@ int verify_packet(const knot_pkt_t        *pkt,
 	                              sign_ctx->digest,
 	                              sign_ctx->digest_size,
 	                              &sign_ctx->tsig_key, 0);
+#endif
 }
