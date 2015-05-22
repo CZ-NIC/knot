@@ -25,7 +25,6 @@
 #pragma once
 
 #include "libknot/processing/layer.h"
-#include "libknot/internal/lists.h"
 
 /*! \brief Processsing overlay (list of aggregated FSMs). */
 struct knot_overlay {

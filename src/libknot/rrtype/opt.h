@@ -29,7 +29,6 @@
 #include <stdint.h>
 
 #include "libknot/rrset.h"
-#include "libknot/internal/utils.h"
 
 /* Forward declaration. */
 struct knot_packet;

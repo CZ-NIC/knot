@@ -30,8 +30,6 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#include "libknot/internal/mempattern.h"
-
 /* ---------------------------- Single RR ----------------------------------- */
 
 /*!< \brief Maximum rdata data size. */
