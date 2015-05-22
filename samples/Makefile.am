@@ -20,22 +20,19 @@ EXTRA_DIST = knot.sample.conf.in example.com.zone keymgr-completion.sh keymgr-co
 if HAVE_DAEMON
 
 install-data-local: knot.sample.conf
-	[ -d $(DESTDIR)/$(config_dir) ] || \
-	  $(INSTALL) -d $(DESTDIR)/$(config_dir)
-	[ -f $(DESTDIR)/$(config_dir)/knot.sample.conf ] || \
-	  $(INSTALL_DATA) knot.sample.conf $(srcdir)/example.com.zone $(DESTDIR)/$(config_dir)
-	[ -d $(DESTDIR)/$(sysconfdir)/bash_completion.d ] ||
-	  $(INSTALL) -d $(DESTDIR)/$(sysconfdir)/bash_completion.d
-	[ -f $(DESTDIR)/$(sysconfdir)/bash_completion.d/keymgr ] || \
-	  $(INSTALL_DATA) keymgr-completion.sh $(DESTDIR)/$(sysconfdir)/bash_completion.d/keymgr
+	if [ \! -f $(DESTDIR)/$(config_dir)/knot.sample.conf ]; then \
+	  $(INSTALL) -d $(DESTDIR)/$(config_dir); \
+	  $(INSTALL_DATA) knot.sample.conf $(srcdir)/example.com.zone $(DESTDIR)/$(config_dir); \
+	fi
+	if [ \! -f $(DESTDIR)/$(sysconfdir)/bash_completion.d/keymgr ]; then \
+	  $(INSTALL) -d $(DESTDIR)/$(sysconfdir)/bash_completion.d; \
+	  $(INSTALL_DATA) $(srcdir)/keymgr-completion.sh $(DESTDIR)/$(sysconfdir)/bash_completion.d/keymgr; \
+	fi
 
 uninstall-local:
-	[ -f $(DESTDIR)/$(config_dir)/knot.sample.conf ] && \
-	  rm -f $(DESTDIR)/$(config_dir)/knot.sample.conf
-	[ -f $(DESTDIR)/$(config_dir)/example.com.zone ] && \
-	  rm -f $(DESTDIR)/$(config_dir)/example.com.zone
-	[ -f $(DESTDIR)/$(sysconfdir)/bash_completion.d/keymgr ] && \
-	  rm -f $(DESTDIR)/$(sysconfdir)/bash_completion.d/keymgr
+	-rm -rf $(DESTDIR)/$(config_dir)/knot.sample.conf \
+	        $(DESTDIR)/$(config_dir)/example.com.zone \
+	        $(DESTDIR)/$(sysconfdir)/bash_completion.d/keymgr
 
 endif # HAVE_DAEMON
 
