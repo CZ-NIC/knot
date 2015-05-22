@@ -28,7 +28,6 @@ nobase_libknot_la_HEADERS =			\
 	libknot/consts.h			\
 	libknot/descriptor.h			\
 	libknot/dname.h				\
-	libknot/dnssec/key.h			\
 	libknot/errcode.h			\
 	libknot/libknot.h			\
 	libknot/packet/compr.h			\
@@ -92,7 +91,6 @@ libknot_la_SOURCES =				\
 	libknot/consts.c			\
 	libknot/descriptor.c			\
 	libknot/dname.c				\
-	libknot/dnssec/key.c			\
 	libknot/errcode.c			\
 	libknot/packet/compr.c			\
 	libknot/packet/pkt.c			\

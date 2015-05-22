@@ -28,7 +28,6 @@
 #include "libknot/packet/wire.h"
 #include "libknot/consts.h"
 #include "libknot/descriptor.h"
-#include "libknot/dnssec/key.h"
 #include "libknot/packet/wire.h"
 #include "libknot/rrtype/tsig.h"
 #include "libknot/tsig-op.h"

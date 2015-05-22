@@ -30,7 +30,6 @@
 #include "libknot/rrset-dump.h"
 #include "libknot/consts.h"
 #include "libknot/descriptor.h"
-#include "libknot/dnssec/key.h"
 #include "libknot/errcode.h"
 #include "libknot/internal/base64.h"
 #include "libknot/internal/base32hex.h"

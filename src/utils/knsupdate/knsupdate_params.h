@@ -31,7 +31,6 @@
 #include "utils/common/netio.h"
 #include "utils/common/params.h"
 #include "libknot/libknot.h"
-#include "libknot/dnssec/key.h"
 #include "libknot/internal/lists.h"
 #include "zscanner/scanner.h"
 
