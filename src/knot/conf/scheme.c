@@ -51,6 +51,7 @@ static const lookup_table_t acl_actions[] = {
 	{ ACL_ACTION_NOTIFY,   "notify" },
 	{ ACL_ACTION_TRANSFER, "transfer" },
 	{ ACL_ACTION_UPDATE,   "update" },
+	{ ACL_ACTION_CONTROL,  "control" },
 	{ 0, NULL }
 };
 
@@ -117,6 +118,7 @@ static const yp_item_t desc_acl[] = {
 
 static const yp_item_t desc_control[] = {
 	{ C_LISTEN,  YP_TADDR, YP_VADDR = { REMOTE_PORT, REMOTE_SOCKET } },
+	{ C_ACL,     YP_TREF,  YP_VREF = { C_ACL }, YP_FMULTI, { check_ref } },
 	{ C_COMMENT, YP_TSTR,  YP_VNONE },
 	{ NULL }
 };
@@ -172,10 +174,10 @@ static const yp_item_t desc_log[] = {
 
 const yp_item_t conf_scheme[] = {
 	{ C_SRV,  YP_TGRP, YP_VGRP = { desc_server } },
-	{ C_CTL,  YP_TGRP, YP_VGRP = { desc_control } },
 	{ C_LOG,  YP_TGRP, YP_VGRP = { desc_log }, YP_FMULTI },
 	{ C_KEY,  YP_TGRP, YP_VGRP = { desc_key }, YP_FMULTI },
 	{ C_ACL,  YP_TGRP, YP_VGRP = { desc_acl }, YP_FMULTI },
+	{ C_CTL,  YP_TGRP, YP_VGRP = { desc_control } },
 	{ C_RMT,  YP_TGRP, YP_VGRP = { desc_remote }, YP_FMULTI },
 /* MODULES */
 	{ C_MOD_SYNTH_RECORD, YP_TGRP, YP_VGRP = { scheme_mod_synth_record }, YP_FMULTI },

@@ -908,13 +908,29 @@ int remote_process(server_t *s, struct sockaddr_storage *ctl_addr, int sock,
 		char addr_str[SOCKADDR_STRLEN] = { 0 };
 		sockaddr_tostr(addr_str, sizeof(addr_str), &ss);
 
-		/* Check TSIG. */
-		if (pkt->tsig_rr != NULL) {
-			knot_tsig_key_t tsig = {
-				.name = pkt->tsig_rr->owner,
-				.algorithm = knot_tsig_rdata_alg(pkt->tsig_rr)
-			};
+		/* Prepare tsig parameters. */
+		knot_tsig_key_t tsig = { NULL };
+		if (pkt->tsig_rr) {
+			tsig.name = pkt->tsig_rr->owner;
+			tsig.algorithm = knot_tsig_rdata_alg(pkt->tsig_rr);
+		}
 
+		/* Check ACL. */
+		rcu_read_lock();
+		conf_val_t acl = conf_get(conf(), C_CTL, C_ACL);
+		bool allowed = acl_allowed(&acl, ACL_ACTION_CONTROL, &ss, &tsig);
+		rcu_read_unlock();
+
+		if (!allowed) {
+			log_warning("remote control, denied '%s', "
+			            "no matching ACL", addr_str);
+			remote_senderr(client, pkt->wire, pkt->size);
+			ret = KNOT_EACCES;
+			goto finish;
+		}
+
+		/* Check TSIG. */
+		if (tsig.name != NULL) {
 			uint16_t ts_rc = 0;
 			uint16_t ts_trc = 0;
 			uint64_t ts_tmsigned = 0;

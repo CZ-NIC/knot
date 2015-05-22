@@ -306,7 +306,7 @@ acl:
   \- id: STR
     address: ADDR[/INT] ...
     key: key_id ...
-    action: transfer | notify | update ...
+    action: transfer | notify | update | control ...
     deny: BOOL
 .ft P
 .fi
@@ -339,6 +339,8 @@ Possible values:
 \fBnotify\fP \- Allow incoming notify
 .IP \(bu 2
 \fBupdate\fP \- Allow zone updates
+.IP \(bu 2
+\fBcontrol\fP \- Allow remote control
 .UNINDENT
 .sp
 Default: empty
@@ -362,6 +364,7 @@ it is recommended to use default UNIX socket.
 .ft C
 control:
     listen: ADDR[@INT]
+    acl: acl_id ...
 .ft P
 .fi
 .UNINDENT
@@ -373,6 +376,14 @@ commands. Optional port specification (default is 5533) can be appended to the
 address using \fB@\fP separator.
 .sp
 Default: \fI\%rundir\fP/knot.sock
+.SS acl
+.sp
+An ordered list of \fI\%references\fP to ACL rules allowing the remote
+control.
+.sp
+Caution: This option has no effect with UNIX socket.
+.sp
+Default: empty
 .SH REMOTE SECTION
 .sp
 Definition of remote servers for zone transfers or notifications.

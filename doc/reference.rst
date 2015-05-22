@@ -359,7 +359,7 @@ Access control list rule definition.
    - id: STR
      address: ADDR[/INT] ...
      key: key_id ...
-     action: transfer | notify | update ...
+     action: transfer | notify | update | control ...
      deny: BOOL
 
 .. _acl_id:
@@ -401,6 +401,7 @@ Possible values:
 - ``transfer`` - Allow zone transfer
 - ``notify`` - Allow incoming notify
 - ``update`` - Allow zone updates
+- ``control`` - Allow remote control
 
 Default: empty
 
@@ -429,6 +430,7 @@ it is recommended to use default UNIX socket.
 
  control:
      listen: ADDR[@INT]
+     acl: acl_id ...
 
 .. _control_listen:
 
@@ -442,6 +444,16 @@ address using ``@`` separator.
 Default: :ref:`rundir<server_rundir>`/knot.sock
 
 .. _control_acl:
+
+acl
+---
+
+An ordered list of :ref:`references<acl_id>` to ACL rules allowing the remote
+control.
+
+Caution: This option has no effect with UNIX socket.
+
+Default: empty
 
 .. _Remote section:
 
