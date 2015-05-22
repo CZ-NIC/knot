@@ -133,10 +133,8 @@ struct query {
 	bool		nsid;
 	/*!< EDNS version (8unsigned + -1 uninitialized). */
 	int16_t		edns;
-	/*!< Key parameters. */
-	knot_key_params_t key_params;
-	/*!< Context for operations with signatures. */
-	sign_context_t	sign_ctx;
+	/*!< TSIG key. */
+	knot_tsig_key_t tsig_key;
 	/*!< EDNS client subnet. */
 	subnet_t	*subnet;
 #if USE_DNSTAP

@@ -389,9 +389,8 @@ static knot_pkt_t* create_query_packet(const query_t *query)
 	}
 
 	// Sign the packet if a key was specified.
-	if (query->key_params.name != NULL) {
-		ret = sign_packet(packet, (sign_context_t *)&query->sign_ctx,
-		                  &query->key_params);
+	if (query->tsig_key.name != NULL) {
+		ret = sign_packet(packet, &query->tsig_key);
 		if (ret != KNOT_EOK) {
 			ERR("failed to sign query packet (%s)\n",
 			    knot_strerror(ret));
@@ -475,13 +474,12 @@ static bool last_serial_check(const uint32_t serial, const knot_pkt_t *reply)
 	}
 }
 
-static int process_query_packet(const knot_pkt_t        *query,
-                                net_t                   *net,
-                                const query_t           *query_ctx,
-                                const bool              ignore_tc,
-                                const sign_context_t    *sign_ctx,
-                                const knot_key_params_t *key_params,
-                                const style_t           *style)
+static int process_query_packet(const knot_pkt_t      *query,
+                                net_t                 *net,
+                                const query_t         *query_ctx,
+                                const bool            ignore_tc,
+                                const knot_tsig_key_t *tsig_key,
+                                const style_t         *style)
 {
 	struct timeval	t_start, t_query, t_end;
 	knot_pkt_t	*reply;
@@ -591,15 +589,15 @@ static int process_query_packet(const knot_pkt_t        *query,
 		net->socktype = SOCK_STREAM;
 
 		return process_query_packet(query, net, query_ctx, true,
-		                            sign_ctx, key_params, style);
+		                            tsig_key, style);
 	}
 
 	// Check for question sections equality.
 	check_reply_question(reply, query);
 
 	// Verify signature if a key was specified.
-	if (key_params->name != NULL) {
-		ret = verify_packet(reply, sign_ctx, key_params);
+	if (tsig_key->name != NULL) {
+		ret = verify_packet(reply, tsig_key);
 		if (ret != KNOT_EOK) {
 			ERR("reply verification for %s (%s)\n",
 			    net->remote_str, knot_strerror(ret));
@@ -670,8 +668,7 @@ static void process_query(const query_t *query)
 				ret = process_query_packet(out_packet, &net,
 				                           query,
 				                           query->ignore_tc,
-				                           &query->sign_ctx,
-				                           &query->key_params,
+				                           &query->tsig_key,
 				                           &query->style);
 				// If error try next resolved address.
 				if (ret != 0) {
@@ -723,12 +720,11 @@ static void process_query(const query_t *query)
 	knot_pkt_free(&out_packet);
 }
 
-static int process_xfr_packet(const knot_pkt_t        *query,
-                              net_t                   *net,
-                              const query_t           *query_ctx,
-                              const sign_context_t    *sign_ctx,
-                              const knot_key_params_t *key_params,
-                              const style_t           *style)
+static int process_xfr_packet(const knot_pkt_t      *query,
+                              net_t                 *net,
+                              const query_t         *query_ctx,
+                              const knot_tsig_key_t *tsig_key,
+                              const style_t         *style)
 {
 	struct timeval t_start, t_query, t_end;
 	knot_pkt_t     *reply;
@@ -837,8 +833,8 @@ static int process_xfr_packet(const knot_pkt_t        *query,
 		// The first message has a special treatment.
 		if (msg_count == 0) {
 			// Verify 1. signature if a key was specified.
-			if (key_params->name != NULL) {
-				ret = verify_packet(reply, sign_ctx, key_params);
+			if (tsig_key->name != NULL) {
+				ret = verify_packet(reply, tsig_key);
 				if (ret != KNOT_EOK) {
 					ERR("reply verification for %s (%s)\n",
 					    net->remote_str, knot_strerror(ret));
@@ -932,8 +928,7 @@ static void process_xfr(const query_t *query)
 	while (net.srv != NULL) {
 		ret = process_xfr_packet(out_packet, &net,
 		                         query,
-		                         &query->sign_ctx,
-		                         &query->key_params,
+		                         &query->tsig_key,
 		                         &query->style);
 		// If error try next resolved address.
 		if (ret != 0) {

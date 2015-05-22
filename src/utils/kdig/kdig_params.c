@@ -920,9 +920,7 @@ query_t* query_create(const char *owner, const query_t *conf)
 		query->dt_reader = conf->dt_reader;
 		query->dt_writer = conf->dt_writer;
 #endif // USE_DNSTAP
-
-		if (knot_copy_key_params(&conf->key_params, &query->key_params)
-		    != KNOT_EOK) {
+		if (knot_tsig_key_copy(&query->tsig_key, &conf->tsig_key) != KNOT_EOK) {
 			query_free(query);
 			return NULL;
 		}
@@ -957,8 +955,7 @@ void query_free(query_t *query)
 	}
 
 	// Cleanup cryptographic content.
-	free_sign_context(&query->sign_ctx);
-	knot_free_key_params(&query->key_params);
+	knot_tsig_key_deinit(&query->tsig_key);
 
 #if USE_DNSTAP
 	if (query->dt_reader != NULL) {
@@ -1037,7 +1034,13 @@ static int parse_class(const char *value, query_t *query)
 
 static int parse_keyfile(const char *value, query_t *query)
 {
-	return KNOT_ENOTSUP;
+	knot_tsig_key_deinit(&query->tsig_key);
+
+	if (knot_tsig_key_init_file(&query->tsig_key, value) != KNOT_EOK) {
+		return KNOT_EINVAL;
+	}
+
+	return KNOT_EOK;
 }
 
 static int parse_local(const char *value, query_t *query)
@@ -1161,9 +1164,9 @@ static int parse_server(const char *value, kdig_params_t *params)
 
 static int parse_tsig(const char *value, query_t *query)
 {
-	knot_free_key_params(&query->key_params);
+	knot_tsig_key_deinit(&query->tsig_key);
 
-	if (params_parse_tsig(value, &query->key_params) != KNOT_EOK) {
+	if (knot_tsig_key_init_str(&query->tsig_key, value) != KNOT_EOK) {
 		return KNOT_EINVAL;
 	}
 
