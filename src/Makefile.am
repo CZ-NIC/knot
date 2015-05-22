@@ -54,6 +54,7 @@ nobase_libknot_la_HEADERS =			\
 	libknot/rrtype/soa.h			\
 	libknot/rrtype/tsig.h			\
 	libknot/tsig-op.h
+	$(libknot_internal_la_HEADERS)
 
 libknot_yparser_ladir = $(includedir)
 libknot_yparser_la_HEADERS = 			\
