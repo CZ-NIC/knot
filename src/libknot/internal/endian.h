@@ -40,13 +40,7 @@
 #elif defined(__FreeBSD__) || defined(__NetBSD__)
 #       include <sys/endian.h>
 #elif defined(__OpenBSD__)
-#       include <sys/types.h>
-#       define be16toh(x) betoh16(x)
-#       define be32toh(x) betoh32(x)
-#       define be64toh(x) betoh64(x)
-#       define le16toh(x) letoh16(x)
-#       define le32toh(x) letoh32(x)
-#       define le64toh(x) letoh64(x)
+#       include <endian.h>
 #elif defined(__APPLE__)
 #       include <libkern/OSByteOrder.h>
 #       define be16toh(x) OSSwapBigToHostInt16(x)
