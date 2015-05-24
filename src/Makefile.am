@@ -53,18 +53,10 @@ nobase_libknot_la_HEADERS =			\
 	libknot/rrtype/rrsig.h			\
 	libknot/rrtype/soa.h			\
 	libknot/rrtype/tsig.h			\
-	libknot/tsig-op.h			\
-	$(libknot_internal_la_HEADERS)
-
-libknot_yparser_ladir = $(includedir)
-libknot_yparser_la_HEADERS = 			\
-	libknot/yparser/yparser.h		\
-	libknot/yparser/ypformat.h		\
-	libknot/yparser/ypscheme.h		\
-	libknot/yparser/yptrafo.h
+	libknot/tsig-op.h
 
 libknot_internal_ladir = $(includedir)
-libknot_internal_la_HEADERS = 			\
+nobase_libknot_internal_la_HEADERS = 		\
 	libknot/internal/array-sort.h		\
 	libknot/internal/base32hex.h		\
 	libknot/internal/base64.h		\
@@ -124,7 +116,10 @@ libknot_yparser_la_SOURCES = 			\
 	libknot/yparser/ypformat.c		\
 	libknot/yparser/ypscheme.c		\
 	libknot/yparser/yptrafo.c		\
-	$(libknot_yparser_la_HEADERS)
+	libknot/yparser/yparser.h		\
+	libknot/yparser/ypformat.h		\
+	libknot/yparser/ypscheme.h		\
+	libknot/yparser/yptrafo.h
 
 libknot_internal_la_SOURCES = 			\
 	libknot/internal/base32hex.c		\
@@ -148,7 +143,7 @@ libknot_internal_la_SOURCES = 			\
 	libknot/internal/trie/hat-trie.c	\
 	libknot/internal/trie/murmurhash3.c	\
 	libknot/internal/utils.c		\
-	$(libknot_internal_la_HEADERS)
+	$(nobase_libknot_internal_la_HEADERS)
 
 libknot_internal_la_CPPFLAGS = $(AM_CPPFLAGS) $(lmdb_CFLAGS)
 libknot_internal_la_CFLAGS = $(AM_CFLAGS)
