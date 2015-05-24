@@ -16,7 +16,7 @@ EXTRA_DIST = \
 	utilities.rst		\
 	\
 	$(MANPAGES_IN)		\
-	$(MANPAGES_RST)
+	$(MANPAGES_RST)		\
 	\
 	logo.eps		\
 	logo.png
