@@ -127,7 +127,7 @@ static void *thread_ep(void *data)
 
 	// Unblock SIGALRM
 	sigset_t mask;
-	sigemptyset(&mask);
+	(void)sigemptyset(&mask);
 	sigaddset(&mask, SIGALRM);
 	pthread_sigmask(SIG_UNBLOCK, &mask, NULL);
 

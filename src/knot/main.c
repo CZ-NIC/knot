@@ -139,7 +139,7 @@ static void setup_signals(void)
 	action.sa_handler = interrupt_handle;
 
 	static sigset_t block_mask;
-	sigemptyset(&block_mask);
+	(void)sigemptyset(&block_mask);
 
 	int signals[] = { SIGALRM, SIGHUP, SIGINT, SIGPIPE, SIGTERM };
 	size_t count = sizeof(signals) / sizeof(*signals);
@@ -208,7 +208,7 @@ static void event_loop(server_t *server)
 	int remote = remote_bind(&addr);
 
 	sigset_t empty;
-	sigemptyset(&empty);
+	(void)sigemptyset(&empty);
 
 	/* Run event loop. */
 	for (;;) {
