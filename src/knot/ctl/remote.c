@@ -909,7 +909,7 @@ int remote_process(server_t *s, struct sockaddr_storage *ctl_addr, int sock,
 		sockaddr_tostr(addr_str, sizeof(addr_str), &ss);
 
 		/* Prepare tsig parameters. */
-		knot_tsig_key_t tsig = { NULL };
+		knot_tsig_key_t tsig = { 0 };
 		if (pkt->tsig_rr) {
 			tsig.name = pkt->tsig_rr->owner;
 			tsig.algorithm = knot_tsig_rdata_alg(pkt->tsig_rr);
