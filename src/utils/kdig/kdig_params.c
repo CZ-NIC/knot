@@ -920,9 +920,13 @@ query_t* query_create(const char *owner, const query_t *conf)
 		query->dt_reader = conf->dt_reader;
 		query->dt_writer = conf->dt_writer;
 #endif // USE_DNSTAP
-		if (knot_tsig_key_copy(&query->tsig_key, &conf->tsig_key) != KNOT_EOK) {
-			query_free(query);
-			return NULL;
+		if (conf->tsig_key.name) {
+			int r = knot_tsig_key_copy(&query->tsig_key, &conf->tsig_key);
+			if (r != KNOT_EOK) {
+				query_free(query);
+				return NULL;
+			}
+
 		}
 	}
 
@@ -954,7 +958,7 @@ void query_free(query_t *query)
 		srv_info_free(query->local);
 	}
 
-	// Cleanup cryptographic content.
+	// Cleanup signing key.
 	knot_tsig_key_deinit(&query->tsig_key);
 
 #if USE_DNSTAP

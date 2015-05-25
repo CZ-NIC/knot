@@ -30,6 +30,7 @@
 
 #include "utils/common/params.h"
 #include "utils/common/exec.h"
+#include "utils/common/sign.h"
 #include "libknot/libknot.h"
 #include "libknot/internal/sockaddr.h"
 
@@ -133,7 +134,7 @@ struct query {
 	bool		nsid;
 	/*!< EDNS version (8unsigned + -1 uninitialized). */
 	int16_t		edns;
-	/*!< TSIG key. */
+	/*!< Transaction signature. */
 	knot_tsig_key_t tsig_key;
 	/*!< EDNS client subnet. */
 	subnet_t	*subnet;
