@@ -408,6 +408,8 @@ libknotus_la_SOURCES =				\
 	utils/common/params.h			\
 	utils/common/resolv.c			\
 	utils/common/resolv.h			\
+	utils/common/sign.c			\
+	utils/common/sign.h			\
 	utils/common/strtonum.h			\
 	utils/common/token.c			\
 	utils/common/token.h

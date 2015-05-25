@@ -31,14 +31,6 @@
 #include "utils/common/netio.h"
 #include "utils/common/params.h"
 #include "libknot/libknot.h"
-#include "libknot/tsig.h"
-
-/*! \brief Holds data required between signing and signature verification. */
-typedef struct {
-	knot_tsig_key_t   tsig_key;
-	uint8_t           *digest;
-	size_t            digest_size;
-} sign_context_t;
 
 /*!
  * \brief Allocates empty packet and sets packet size and random id.
@@ -103,36 +95,5 @@ void print_packet(const knot_pkt_t *packet,
                   const time_t     exec_time,
                   const bool       incoming,
                   const style_t    *style);
-
-/*!
- * \brief Cleans up sign context.
- *
- * \param ctx	Sign context.
- */
-void free_sign_context(sign_context_t *ctx);
-
-/*!
- * \brief Signs outgoing DNS packet.
- *
- * \param pkt	Packet to sign.
- * \param key	TSIG key.
- *
- * \retval KNOT_EOK	if success.
- * \retval error code	if error.
- */
-int sign_packet(knot_pkt_t            *pkt,
-                const knot_tsig_key_t *key);
-
-/*!
- * \brief Verifies signature for incoming DNS packet.
- *
- * \param pkt	Packet verify sign.
- * \param key	TSIG key.
- *
- * \retval KNOT_EOK	if success.
- * \retval error code	if error.
- */
-int verify_packet(const knot_pkt_t      *pkt,
-                  const knot_tsig_key_t *key);
 
 /*! @} */
