@@ -238,7 +238,9 @@ int knsupdate_parse(knsupdate_params_t *params, int argc, char *argv[])
 			if (ret != KNOT_EOK) return ret;
 			break;
 		case 'k':
-			return KNOT_ENOTSUP;
+			ret = knot_tsig_key_init_file(&params->tsig_key, optarg);
+			if (ret != KNOT_EOK) return ret;
+			break;
 		default:
 			knsupdate_help();
 			return KNOT_ENOTSUP;

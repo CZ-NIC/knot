@@ -28,6 +28,7 @@
 #include "utils/common/msg.h"
 #include "utils/common/netio.h"
 #include "utils/common/params.h"
+#include "utils/common/sign.h"
 #include "utils/common/token.h"
 #include "libknot/libknot.h"
 #include "libknot/internal/macros.h"
@@ -780,11 +781,20 @@ int cmd_send(const char* lp, knsupdate_params_t *params)
 	}
 
 	/* Sign if key specified. */
+	sign_context_t sign_ctx = { 0 };
 	if (params->tsig_key.name) {
-		ret = sign_packet(params->query, &params->tsig_key);
+		ret = sign_context_init_tsig(&sign_ctx, &params->tsig_key);
+		if (ret != KNOT_EOK) {
+			ERR("failed to initialize signing context (%s)\n",
+			    knot_strerror(ret));
+			return ret;
+		}
+
+		ret = sign_packet(params->query, &sign_ctx);
 		if (ret != KNOT_EOK) {
 			ERR("failed to sign UPDATE message (%s)\n",
 			    knot_strerror(ret));
+			sign_context_deinit(&sign_ctx);
 			return ret;
 		}
 	}
@@ -801,6 +811,7 @@ int cmd_send(const char* lp, knsupdate_params_t *params)
 
 	/* Check Send/recv result. */
 	if (rb <= 0) {
+		sign_context_deinit(&sign_ctx);
 		return KNOT_ECONNREFUSED;
 	}
 
@@ -808,12 +819,14 @@ int cmd_send(const char* lp, knsupdate_params_t *params)
 	ret = knot_pkt_parse(params->answer, 0);
 	if (ret != KNOT_EOK) {
 		ERR("failed to parse response (%s)\n", knot_strerror(ret));
+		sign_context_deinit(&sign_ctx);
 		return ret;
 	}
 
 	/* Check signature if expected. */
 	if (params->tsig_key.name) {
-		ret = verify_packet(params->answer, &params->tsig_key);
+		ret = verify_packet(params->answer, &sign_ctx);
+		sign_context_deinit(&sign_ctx);
 		if (ret != KNOT_EOK) {
 			ERR("TSIG error with server (%s)\n", knot_strerror(ret));
 			return ret;
