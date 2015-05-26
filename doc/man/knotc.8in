@@ -50,10 +50,12 @@ Remote UNIX socket/IP address (default is \fB@run_dir@/knot.sock\fP).
 Remote server port (only for IP).
 .TP
 \fB\-y\fP, \fB\-\-key\fP [\fIalg\fP:]\fIname\fP:\fIkey\fP
-Use key specified on the command line (default algorithm is hmac\-md5).
+Use TSIG key specified on the command line (default algorithm is hmac\-md5).
 .TP
 \fB\-k\fP, \fB\-\-keyfile\fP \fIfile\fP
-Use key file.
+Use TSIG key stored in a file \fIfile\fP to authenticate the request. The
+file must contain the key in the same format, which is accepted by the
+\fB\-y\fP option.
 .TP
 \fB\-f\fP, \fB\-\-force\fP
 Force operation. Overrides some checks.

@@ -322,8 +322,6 @@ src/libknot/descriptor.c
 src/libknot/descriptor.h
 src/libknot/dname.c
 src/libknot/dname.h
-src/libknot/dnssec/key.c
-src/libknot/dnssec/key.h
 src/libknot/errcode.c
 src/libknot/errcode.h
 src/libknot/internal/array-sort.h
@@ -417,6 +415,8 @@ src/libknot/rrtype/tsig.c
 src/libknot/rrtype/tsig.h
 src/libknot/tsig-op.c
 src/libknot/tsig-op.h
+src/libknot/tsig.c
+src/libknot/tsig.h
 src/libknot/yparser/yparser.c
 src/libknot/yparser/yparser.h
 src/libknot/yparser/ypbody.c
@@ -439,6 +439,8 @@ src/utils/common/params.c
 src/utils/common/params.h
 src/utils/common/resolv.c
 src/utils/common/resolv.h
+src/utils/common/sign.c
+src/utils/common/sign.h
 src/utils/common/strtonum.h
 src/utils/common/token.c
 src/utils/common/token.h
@@ -512,6 +514,7 @@ tests/rrset.c
 tests/rrset_wire.c
 tests/server.c
 tests/test_conf.h
+tests/tsig_key.c
 tests/utils.c
 tests/wire.c
 tests/worker_pool.c

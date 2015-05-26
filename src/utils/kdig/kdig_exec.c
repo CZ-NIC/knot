@@ -488,7 +488,7 @@ static int process_query_packet(const knot_pkt_t      *query,
                                 net_t                 *net,
                                 const query_t         *query_ctx,
                                 const bool            ignore_tc,
-				const sign_context_t  *sign_ctx,
+                                const sign_context_t  *sign_ctx,
                                 const style_t         *style)
 {
 	struct timeval	t_start, t_query, t_end;
