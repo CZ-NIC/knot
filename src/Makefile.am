@@ -329,12 +329,12 @@ libknotd_la_SOURCES =				\
 
 libknotd_la_CPPFLAGS  = $(AM_CPPFLAGS) $(systemd_CFLAGS) $(liburcu_CFLAGS)
 libknotd_la_LDFLAGS = $(AM_LDFLAGS) $(systemd_LIBS) $(liburcu_LIBS)
-libknotd_la_LIBADD = libknot.la libknot-yparser.la libknot-internal.la zscanner/libzscanner.la $(liburcu_LIBS)
+libknotd_la_LIBADD = libknot.la libknot-yparser.la zscanner/libzscanner.la $(liburcu_LIBS)
 
 knotd_CPPFLAGS = $(AM_CPPFLAGS) $(liburcu_CFLAGS)
-knotd_LDADD = libknotd.la libknot.la $(liburcu_LIBS)
-knotc_LDADD = libknotd.la libknot.la
-knot1to2_LDADD = libknotd.la libknot.la
+knotd_LDADD = libknotd.la $(liburcu_LIBS)
+knotc_LDADD = libknotd.la
+knot1to2_LDADD = libknotd.la
 
 ####################################
 # Optional Knot DNS Daemon modules #
@@ -414,7 +414,7 @@ libknotus_la_SOURCES =				\
 
 libknotus_la_CPPFLAGS = $(AM_CPPFLAGS) $(libidn_CFLAGS)
 libknotus_la_LDFLAGS = $(AM_LDFLAGS) $(libidn_LIBS)
-libknotus_la_LIBADD = libknot.la libknot-internal.la
+libknotus_la_LIBADD = libknot.la
 
 # bin programs
 kdig_LDADD       = $(libidn_LIBS) libknotus.la
