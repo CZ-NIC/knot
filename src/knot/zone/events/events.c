@@ -277,8 +277,11 @@ void zone_events_schedule_at(zone_t *zone, zone_event_type_t type, time_t time)
 	zone_events_t *events = &zone->events;
 
 	pthread_mutex_lock(&events->mx);
-	event_set_time(events, type, time);
-	reschedule(events);
+	time_t current = event_get_time(events, type);
+	if (time == 0 || current == 0 || time < current) {
+		event_set_time(events, type, time);
+		reschedule(events);
+	}
 	pthread_mutex_unlock(&events->mx);
 }
 
