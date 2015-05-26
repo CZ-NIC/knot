@@ -62,6 +62,14 @@ AC_CONFIG_FILES([src/libknot.pc
 		 src/zscanner/libzscanner.pc
 		 ])
 
+# Get Bash completion scripts directory
+bash_completion_dir=""
+PKG_CHECK_MODULES([bash_completion],[bash-complretion],[
+    bash_completion_dir=$(pkg-config --variable=completionsdir bash-completion)
+    AC_SUBST([BASH_COMPLETION_DIR], $bash_completion_dir)
+  ],[bash_completion_dir=""])
+AM_CONDITIONAL([HAVE_BASH_COMPLETION], test -n "$bash_completion_dir")
+
 # Build Knot DNS daemon
 AC_ARG_ENABLE([daemon],
     AS_HELP_STRING([--disable-daemon], [Don't build Knot DNS main daemon]), [], [enable_daemon=yes])
@@ -109,14 +117,6 @@ PKG_CHECK_MODULES([gnutls], [gnutls >= 3.0 nettle])
 
 # JSON for DNSSEC status storage
 PKG_CHECK_MODULES([jansson], [jansson >= 2.3])
-
-# Get Bash completion scripts directory
-bash_completion_dir=""
-PKG_CHECK_MODULES([bash_completion],[bash-completion],[
-    bash_completion_dir=$(pkg-config --variable=completionsdir bash-completion)
-    AC_SUBST([BASH_COMPLETION_DIR], $bash_completion_dir)
-  ])
-AM_CONDITIONAL([HAVE_BASH_COMPLETION], test -n "$bash_completion_dir")
 
 # Debug modules
 AC_ARG_ENABLE([debug],
