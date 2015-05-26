@@ -104,6 +104,10 @@ void zone_events_enqueue(struct zone *zone, zone_event_type_t type);
 /*!
  * \brief Schedule new zone event to absolute time.
  *
+ * If the event is already scheduled, the new time will be set only if the
+ * new time is earlier than the currently scheduled one. An exception is
+ * a zero time, which causes event cancellation.
+ *
  * \param zone  Zone to schedule new event for.
  * \param type  Type of event.
  * \param time  Absolute time.
@@ -112,6 +116,8 @@ void zone_events_schedule_at(struct zone *zone, zone_event_type_t type, time_t t
 
 /*!
  * \brief Schedule new zone event using relative time to current time.
+ *
+ * The function internally uses \ref zone_events_schedule_at.
  *
  * \param zone  Zone to schedule new event for.
  * \param type  Type of event.
