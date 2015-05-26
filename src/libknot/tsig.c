@@ -31,6 +31,8 @@ void knot_tsig_key_deinit(knot_tsig_key_t *key)
 	}
 
 	knot_dname_free(&key->name, NULL);
+
+	memset(key->secret.data, 0, key->secret.size);
 	dnssec_binary_free(&key->secret);
 
 	memset(key, '\0', sizeof(*key));
@@ -87,6 +89,8 @@ int knot_tsig_key_init_str(knot_tsig_key_t *key, const char *params)
 		return KNOT_ENOMEM;
 	}
 
+	size_t copy_size = strlen(copy) + 1;
+
 	// format [algorithm:]name:secret
 
 	char *algorithm = NULL;
@@ -100,6 +104,7 @@ int knot_tsig_key_init_str(knot_tsig_key_t *key, const char *params)
 		*pos = '\0';
 		secret = pos + 1;
 	} else {
+		memset(copy, 0, copy_size);
 		free(copy);
 		return KNOT_EMALF;
 	}
@@ -117,6 +122,7 @@ int knot_tsig_key_init_str(knot_tsig_key_t *key, const char *params)
 
 	int result = knot_tsig_key_init(key, algorithm, name, secret);
 
+	memset(copy, 0, copy_size);
 	free(copy);
 
 	return result;
@@ -154,6 +160,7 @@ int knot_tsig_key_init_file(knot_tsig_key_t *key, const char *filename)
 
 	int result = knot_tsig_key_init_str(key, line);
 
+	memset(line, 0, line_size);
 	free(line);
 
 	return result;
