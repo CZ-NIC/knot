@@ -24,9 +24,9 @@ install-data-local: knot.sample.conf
 	  $(INSTALL) -d $(DESTDIR)/$(config_dir); \
 	  $(INSTALL_DATA) knot.sample.conf $(srcdir)/example.com.zone $(DESTDIR)/$(config_dir); \
 	fi
-	if [ \! -f $(DESTDIR)/$(sysconfdir)/bash_completion.d/keymgr ]; then \
-	  $(INSTALL) -d $(DESTDIR)/$(sysconfdir)/bash_completion.d; \
-	  $(INSTALL_DATA) $(srcdir)/keymgr-completion.sh $(DESTDIR)/$(sysconfdir)/bash_completion.d/keymgr; \
+	if [ \! -f $(BASH_COMPLETION_DIR)/keymgr ]; then \
+	  $(INSTALL) -d $(BASH_COMPLETION_DIR); \
+	  $(INSTALL_DATA) $(srcdir)/keymgr-completion.sh $(BASH_COMPLETION_DIR)/keymgr; \
 	fi
 
 uninstall-local:

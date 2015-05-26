@@ -40,6 +40,10 @@ AC_SUBST([libzscanner_VERSION_INFO],["-version-info 0:1:0"])
 release_date=$(sed -n 's/^Knot DNS .* (\(.*\))/\1/p;q;' ${srcdir}/NEWS)
 AC_SUBST([RELEASE_DATE], $release_date)
 
+# Get Bash completion scripts directory
+bash_completion_dir=$(pkg-config --variable=completionsdir bash-completion)
+AC_SUBST([BASH_COMPLETION_DIR], $bash_completion_dir)
+
 # Set compiler compatibility flags
 AC_PROG_CC_C99
 AM_PROG_CC_C_O
