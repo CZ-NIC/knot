@@ -341,6 +341,7 @@ int main(int argc, char **argv)
 		if (ret != KNOT_EOK) {
 			log_fatal("failed to initialize configuration database "
 			          "(%s)", knot_strerror(ret));
+			log_close();
 			return EXIT_FAILURE;
 		}
 
@@ -350,6 +351,7 @@ int main(int argc, char **argv)
 			log_fatal("failed to load configuration file (%s)",
 			          knot_strerror(ret));
 			conf_free(new_conf, false);
+			log_close();
 			return EXIT_FAILURE;
 		}
 
@@ -360,6 +362,7 @@ int main(int argc, char **argv)
 		if (ret != KNOT_EOK) {
 			log_fatal("failed to open configuration database '%s' "
 			          "(%s)", config_db, knot_strerror(ret));
+			log_close();
 			return EXIT_FAILURE;
 		}
 	}
@@ -369,6 +372,7 @@ int main(int argc, char **argv)
 	if (res != KNOT_EOK) {
 		log_fatal("failed to use configuration (%s)", knot_strerror(res));
 		conf_free(new_conf, false);
+		log_close();
 		return EXIT_FAILURE;
 	}
 

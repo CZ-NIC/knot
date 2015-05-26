@@ -489,16 +489,14 @@ int server_reload(server_t *server, const char *cf)
 		return KNOT_EINVAL;
 	}
 
-	int ret = KNOT_EOK;
-
 	if (cf != NULL) {
 		log_info("reloading configuration file '%s'", cf);
 		conf_t *new_conf = NULL;
-		ret = conf_clone(&new_conf);
+		int ret = conf_clone(&new_conf);
 		if (ret != KNOT_EOK) {
 			log_fatal("failed to initialize configuration (%s)",
 			          knot_strerror(ret));
-			return EXIT_FAILURE;
+			return ret;
 		}
 
 		/* Import the configuration file. */
@@ -507,7 +505,7 @@ int server_reload(server_t *server, const char *cf)
 			log_fatal("failed to load configuration file (%s)",
 			          knot_strerror(ret));
 			conf_free(new_conf, false);
-			return EXIT_FAILURE;
+			return ret;
 		}
 
 		/* Run post-open config operations. */
@@ -516,7 +514,7 @@ int server_reload(server_t *server, const char *cf)
 			log_fatal("failed to use configuration (%s)",
 			          knot_strerror(res));
 			conf_free(new_conf, false);
-			return EXIT_FAILURE;
+			return ret;
 		}
 
 		conf_update(new_conf);
@@ -530,7 +528,7 @@ int server_reload(server_t *server, const char *cf)
 
 	log_info("configuration reloaded");
 
-	return ret;
+	return KNOT_EOK;
 }
 
 void server_stop(server_t *server)

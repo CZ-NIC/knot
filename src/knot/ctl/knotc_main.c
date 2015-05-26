@@ -544,6 +544,7 @@ int main(int argc, char **argv)
 		if (ret != KNOT_EOK) {
 			log_fatal("failed to load configuration file (%s)",
 			          knot_strerror(ret));
+			conf_free(new_conf, false);
 			rc = 1;
 			goto exit;
 		}
@@ -565,7 +566,8 @@ int main(int argc, char **argv)
 	if (res != KNOT_EOK) {
 		log_fatal("failed to use configuration (%s)", knot_strerror(res));
 		conf_free(new_conf, false);
-		return EXIT_FAILURE;
+		rc = 1;
+		goto exit;
 	}
 
 	conf_update(new_conf);
@@ -625,7 +627,8 @@ exit:
 	knot_tsig_key_free(&r_key);
 	conf_free(conf(), false);
 	log_close();
-	return rc;
+
+	return rc == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
 }
 
 static int cmd_stop(cmd_args_t *args)
