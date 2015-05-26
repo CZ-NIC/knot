@@ -121,6 +121,7 @@ int conf_new(
 	out->mm = malloc(sizeof(mm_ctx_t));
 	mm_ctx_mempool(out->mm, MM_DEFAULT_BLKSIZE);
 	struct namedb_lmdb_opts lmdb_opts = NAMEDB_LMDB_OPTS_INITIALIZER;
+	lmdb_opts.mapsize = 500 * 1024 * 1024;
 	lmdb_opts.flags.env = NAMEDB_LMDB_NOTLS;
 
 	// Open database.
