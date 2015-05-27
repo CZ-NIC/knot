@@ -146,7 +146,7 @@ char *strstrip(const char *str)
 		len -= 1;
 	}
 
-	char *trimmed = malloc(len);
+	char *trimmed = malloc(len + 1);
 	if (!trimmed) {
 		return NULL;
 	}
