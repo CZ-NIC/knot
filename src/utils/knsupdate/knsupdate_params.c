@@ -234,10 +234,12 @@ int knsupdate_parse(knsupdate_params_t *params, int argc, char *argv[])
 			if (ret != KNOT_EOK) return ret;
 			break;
 		case 'y':
+			knot_tsig_key_deinit(&params->tsig_key);
 			ret = knot_tsig_key_init_str(&params->tsig_key, optarg);
 			if (ret != KNOT_EOK) return ret;
 			break;
 		case 'k':
+			knot_tsig_key_deinit(&params->tsig_key);
 			ret = knot_tsig_key_init_file(&params->tsig_key, optarg);
 			if (ret != KNOT_EOK) return ret;
 			break;

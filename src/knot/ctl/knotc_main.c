@@ -351,6 +351,7 @@ int main(int argc, char **argv)
 			r_port = atoi(optarg);
 			break;
 		case 'y':
+			knot_tsig_key_deinit(&params->r_key);
 			if (knot_tsig_key_init_str(&r_key, optarg) != KNOT_EOK) {
 				rc = 1;
 				log_error("failed to parse TSIG key '%s'", optarg);
@@ -358,6 +359,7 @@ int main(int argc, char **argv)
 			}
 			break;
 		case 'k':
+			knot_tsig_key_deinit(&params->r_key);
 			if (knot_tsig_key_init_file(&r_key, optarg) != KNOT_EOK) {
 				rc = 1;
 				log_error("failed to parse TSIG key file '%s'", optarg);
