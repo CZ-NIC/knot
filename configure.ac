@@ -65,7 +65,7 @@ AC_CONFIG_FILES([src/libknot.pc
 
 # Get Bash completion scripts directory
 bash_completion_dir=""
-PKG_CHECK_VAR([bash_completion_dir], [bash-completion],[completionsdir],[
+PKG_CHECK_VAR([bash_completion_dir], [bash-completionXXX],[completionsdir],[
   AC_SUBST([BASH_COMPLETION_DIR], [$bash_completion_dir])
   ],[:])
 AM_CONDITIONAL([HAVE_BASH_COMPLETION], [test -n "$bash_completion_dir"])
