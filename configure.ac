@@ -37,7 +37,8 @@ AC_SUBST([libdnssec_VERSION_INFO],["-version-info 0:0:0"])
 AC_SUBST([libzscanner_VERSION_INFO],["-version-info 0:1:0"])
 
 # Automatically update release date based on configure.ac date
-release_date=$(sed -n 's/^Knot DNS .* (\(.*\))/\1/p;q;' ${srcdir}/NEWS)
+AC_PROG_SED
+release_date=$($SED -n 's/^Knot DNS .* (\(.*\))/\1/p;q;' ${srcdir}/NEWS)
 AC_SUBST([RELEASE_DATE], $release_date)
 
 # Set compiler compatibility flags
@@ -67,7 +68,7 @@ AC_CONFIG_FILES([src/libknot.pc
 bash_completion_dir=""
 PKG_CHECK_VAR([bash_completion_dir], [bash-completion], [completionsdir],[
   PKG_CHECK_VAR([bash_completion_prefix], [bash-completion], [prefix], [
-    AC_SUBST([BASH_COMPLETION_DIR], ["${prefix}"/$(echo "$bash_completion_dir" | sed -e "s,^$bash_completion_prefix,,")])
+    AC_SUBST([BASH_COMPLETION_DIR], ["${prefix}"/$(echo "$bash_completion_dir" | $SED -e "s,^$bash_completion_prefix,,")])
   ])],[:])
 AM_CONDITIONAL([HAVE_BASH_COMPLETION], [test -n "$bash_completion_dir"])
 
