@@ -19,6 +19,7 @@ endian
 fdset
 hattrie
 hhash
+internal_mem
 journal
 namedb
 net_shortwrite

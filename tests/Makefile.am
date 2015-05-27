@@ -23,6 +23,7 @@ check_PROGRAMS = \
 	fdset				\
 	hattrie				\
 	hhash				\
+	internal_mem			\
 	journal				\
 	namedb				\
 	net_shortwrite			\

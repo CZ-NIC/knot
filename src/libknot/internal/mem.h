@@ -80,3 +80,10 @@ char *sprintf_alloc(const char *fmt, ...);
  * \retval NULL on error.
  */
 char *strcdup(const char *s1, const char *s2);
+
+/*!
+ * \brief Create a copy of a string skipping leading and trailing white spaces.
+ *
+ * \return Newly allocated string, NULL in case of error.
+ */
+char *strstrip(const char *str);
