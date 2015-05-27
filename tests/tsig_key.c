@@ -163,6 +163,16 @@ int main(int argc, char *argv[])
 		                       "hmac-sha512:django.two:UHJlcGFyZSB0byB"
 				       "nZXQgd2luZ2VkIQ==");
 	}
+	{
+		static const knot_tsig_key_t key = {
+			.algorithm = DNSSEC_TSIG_HMAC_SHA1,
+			.name = (uint8_t *)"\x4""test",
+			.secret.size = 1,
+			.secret.data = (uint8_t *)"\x5a"
+		};
+		test_init_file_content("leading and trailing white spaces", &key,
+		                       "\thmac-sha1:test:Wg== \n");
+	}
 
 	// tsig key duplication
 

@@ -21,6 +21,7 @@
 #include "libknot/errcode.h"
 #include "libknot/internal/getline.h"
 #include "libknot/internal/macros.h"
+#include "libknot/internal/mem.h"
 #include "libknot/tsig.h"
 
 _public_
@@ -84,7 +85,7 @@ int knot_tsig_key_init_str(knot_tsig_key_t *key, const char *params)
 		return KNOT_EINVAL;
 	}
 
-	char *copy = strdup(params);
+	char *copy = strstrip(params);
 	if (!copy) {
 		return KNOT_ENOMEM;
 	}
