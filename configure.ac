@@ -65,9 +65,10 @@ AC_CONFIG_FILES([src/libknot.pc
 
 # Get Bash completion scripts directory
 bash_completion_dir=""
-PKG_CHECK_VAR([bash_completion_dir], [bash-completion],[completionsdir],[
-  AC_SUBST([BASH_COMPLETION_DIR], [$bash_completion_dir])
-  ],[:])
+PKG_CHECK_VAR([bash_completion_dir], [bash-completion], [completionsdir],[
+  PKG_CHECK_VAR([bash_completion_prefix], [bash-completion], [prefix], [
+  AC_SUBST([BASH_COMPLETION_DIR], ["${prefix}"/$(echo "$bash_completion_dir" | sed -e "s,^$bash_completion_prefix,,")])
+  ])],[:])
 AM_CONDITIONAL([HAVE_BASH_COMPLETION], [test -n "$bash_completion_dir"])
 
 # Build Knot DNS daemon
