@@ -14,6 +14,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <ctype.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -129,6 +130,31 @@ char *strcdup(const char *s1, const char *s2)
 	memcpy(dst, s1, s1len);
 	memcpy(dst + s1len, s2, s2len + 1);
 	return dst;
+}
+
+char *strstrip(const char *str)
+{
+	// leading white-spaces
+	const char *scan = str;
+	while (isspace((int)scan[0])) {
+		scan += 1;
+	}
+
+	// trailing white-spaces
+	size_t len = strlen(scan);
+	while (len > 1 && isspace((int)scan[len - 1])) {
+		len -= 1;
+	}
+
+	char *trimmed = malloc(len + 1);
+	if (!trimmed) {
+		return NULL;
+	}
+
+	memcpy(trimmed, scan, len + 1);
+	trimmed[len] = '\0';
+
+	return trimmed;
 }
 
 #ifdef MEM_DEBUG

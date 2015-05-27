@@ -556,7 +556,7 @@ bool process_query_acl_check(const knot_dname_t *zone_name, acl_action_t action,
 {
 	knot_pkt_t *query = qdata->query;
 	const struct sockaddr_storage *query_source = qdata->param->remote;
-	knot_tsig_key_t tsig = { NULL };
+	knot_tsig_key_t tsig = { 0 };
 
 	/* Skip if already checked and valid. */
 	if (qdata->sign.tsig_key.name != NULL) {

@@ -32,13 +32,6 @@
 #include "utils/common/params.h"
 #include "libknot/libknot.h"
 
-/*! \brief Holds data required between signing and signature verification. */
-typedef struct {
-	knot_tsig_key_t   tsig_key;
-	uint8_t           *digest;
-	size_t            digest_size;
-} sign_context_t;
-
 /*!
  * \brief Allocates empty packet and sets packet size and random id.
  *
@@ -102,40 +95,5 @@ void print_packet(const knot_pkt_t *packet,
                   const time_t     exec_time,
                   const bool       incoming,
                   const style_t    *style);
-
-/*!
- * \brief Cleans up sign context.
- *
- * \param ctx	Sign context.
- */
-void free_sign_context(sign_context_t *ctx);
-
-/*!
- * \brief Signs outgoing DNS packet.
- *
- * \param pkt		Packet to sign.
- * \param sign_ctx	Sign context.
- * \param key_params	Key parameters.
- *
- * \retval KNOT_EOK	if success.
- * \retval error code	if error.
- */
-int sign_packet(knot_pkt_t              *pkt,
-                sign_context_t          *sign_ctx,
-                const knot_key_params_t *key_params);
-
-/*!
- * \brief Verifies signature for incoming DNS packet.
- *
- * \param pkt		Packet verify sign.
- * \param sign_ctx	Sign context.
- * \param key_params	Key parameters.
- *
- * \retval KNOT_EOK	if success.
- * \retval error code	if error.
- */
-int verify_packet(const knot_pkt_t        *pkt,
-                  const sign_context_t    *sign_ctx,
-                  const knot_key_params_t *key_params);
 
 /*! @} */

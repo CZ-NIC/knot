@@ -28,7 +28,6 @@
 
 #include "libknot/packet/pkt.h"
 #include "libknot/rrset.h"
-#include "libknot/dnssec/key.h"
 #include "knot/server/server.h"
 
 /*! \brief Default connection control parameters. */

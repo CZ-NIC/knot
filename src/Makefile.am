@@ -28,7 +28,6 @@ nobase_libknot_la_HEADERS =			\
 	libknot/consts.h			\
 	libknot/descriptor.h			\
 	libknot/dname.h				\
-	libknot/dnssec/key.h			\
 	libknot/errcode.h			\
 	libknot/libknot.h			\
 	libknot/packet/compr.h			\
@@ -53,7 +52,8 @@ nobase_libknot_la_HEADERS =			\
 	libknot/rrtype/rrsig.h			\
 	libknot/rrtype/soa.h			\
 	libknot/rrtype/tsig.h			\
-	libknot/tsig-op.h
+	libknot/tsig-op.h			\
+	libknot/tsig.h
 
 libknot_internal_ladir = $(includedir)
 nobase_libknot_internal_la_HEADERS = 		\
@@ -91,7 +91,6 @@ libknot_la_SOURCES =				\
 	libknot/consts.c			\
 	libknot/descriptor.c			\
 	libknot/dname.c				\
-	libknot/dnssec/key.c			\
 	libknot/errcode.c			\
 	libknot/packet/compr.c			\
 	libknot/packet/pkt.c			\
@@ -108,6 +107,7 @@ libknot_la_SOURCES =				\
 	libknot/rrtype/opt.c			\
 	libknot/rrtype/tsig.c			\
 	libknot/tsig-op.c			\
+	libknot/tsig.c				\
 	$(nobase_libknot_la_HEADERS)
 
 libknot_yparser_la_SOURCES = 			\
@@ -408,6 +408,8 @@ libknotus_la_SOURCES =				\
 	utils/common/params.h			\
 	utils/common/resolv.c			\
 	utils/common/resolv.h			\
+	utils/common/sign.c			\
+	utils/common/sign.h			\
 	utils/common/strtonum.h			\
 	utils/common/token.c			\
 	utils/common/token.h

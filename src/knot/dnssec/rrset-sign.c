@@ -25,7 +25,6 @@
 #include "dnssec/sign.h"
 #include "knot/dnssec/rrset-sign.h"
 #include "libknot/descriptor.h"
-#include "libknot/dnssec/key.h"
 #include "libknot/libknot.h"
 #include "libknot/packet/rrset-wire.h"
 #include "libknot/packet/wire.h"

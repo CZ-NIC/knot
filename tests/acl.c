@@ -122,10 +122,10 @@ static void test_acl_allowed(void)
 	knot_dname_t *key3_name = knot_dname_from_str_alloc(KEY3);
 	ok(key3_name != NULL, "create "KEY3);
 
-	knot_tsig_key_t key0 = { NULL };
-	knot_tsig_key_t key1 = { key1_name, DNSSEC_TSIG_HMAC_MD5 };
-	knot_tsig_key_t key2 = { key2_name, DNSSEC_TSIG_HMAC_MD5 };
-	knot_tsig_key_t key3 = { key3_name, DNSSEC_TSIG_HMAC_SHA256 };
+	knot_tsig_key_t key0 = { 0 };
+	knot_tsig_key_t key1 = { DNSSEC_TSIG_HMAC_MD5,    key1_name };
+	knot_tsig_key_t key2 = { DNSSEC_TSIG_HMAC_MD5,    key2_name };
+	knot_tsig_key_t key3 = { DNSSEC_TSIG_HMAC_SHA256, key3_name };
 
 	const char *conf_str =
 		"key:\n"

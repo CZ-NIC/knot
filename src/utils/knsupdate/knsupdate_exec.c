@@ -28,6 +28,7 @@
 #include "utils/common/msg.h"
 #include "utils/common/netio.h"
 #include "utils/common/params.h"
+#include "utils/common/sign.h"
 #include "utils/common/token.h"
 #include "libknot/libknot.h"
 #include "libknot/internal/macros.h"
@@ -779,15 +780,21 @@ int cmd_send(const char* lp, knsupdate_params_t *params)
 		return ret;
 	}
 
-	sign_context_t sign_ctx;
-	memset(&sign_ctx, '\0', sizeof(sign_context_t));
-
 	/* Sign if key specified. */
-	if (params->key_params.name) {
-		ret = sign_packet(params->query, &sign_ctx, &params->key_params);
+	sign_context_t sign_ctx = { 0 };
+	if (params->tsig_key.name) {
+		ret = sign_context_init_tsig(&sign_ctx, &params->tsig_key);
+		if (ret != KNOT_EOK) {
+			ERR("failed to initialize signing context (%s)\n",
+			    knot_strerror(ret));
+			return ret;
+		}
+
+		ret = sign_packet(params->query, &sign_ctx);
 		if (ret != KNOT_EOK) {
 			ERR("failed to sign UPDATE message (%s)\n",
 			    knot_strerror(ret));
+			sign_context_deinit(&sign_ctx);
 			return ret;
 		}
 	}
@@ -804,7 +811,7 @@ int cmd_send(const char* lp, knsupdate_params_t *params)
 
 	/* Check Send/recv result. */
 	if (rb <= 0) {
-		free_sign_context(&sign_ctx);
+		sign_context_deinit(&sign_ctx);
 		return KNOT_ECONNREFUSED;
 	}
 
@@ -812,14 +819,14 @@ int cmd_send(const char* lp, knsupdate_params_t *params)
 	ret = knot_pkt_parse(params->answer, 0);
 	if (ret != KNOT_EOK) {
 		ERR("failed to parse response (%s)\n", knot_strerror(ret));
-		free_sign_context(&sign_ctx);
+		sign_context_deinit(&sign_ctx);
 		return ret;
 	}
 
 	/* Check signature if expected. */
-	if (params->key_params.name) {
-		ret = verify_packet(params->answer, &sign_ctx, &params->key_params);
-		free_sign_context(&sign_ctx);
+	if (params->tsig_key.name) {
+		ret = verify_packet(params->answer, &sign_ctx);
+		sign_context_deinit(&sign_ctx);
 		if (ret != KNOT_EOK) {
 			ERR("TSIG error with server (%s)\n", knot_strerror(ret));
 			return ret;
@@ -944,10 +951,10 @@ int cmd_key(const char* lp, knsupdate_params_t *params)
 		ret = KNOT_EINVAL;
 	} else {
 		/* Override existing key. */
-		knot_free_key_params(&params->key_params);
+		knot_tsig_key_deinit(&params->tsig_key);
 
 		kstr[len] = ':'; /* Replace ' ' with ':' sep */
-		ret = params_parse_tsig(kstr, &params->key_params);
+		ret = knot_tsig_key_init_str(&params->tsig_key, kstr);
 	}
 
 	free(kstr);

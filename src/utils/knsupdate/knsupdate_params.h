@@ -30,8 +30,8 @@
 
 #include "utils/common/netio.h"
 #include "utils/common/params.h"
+#include "utils/common/sign.h"
 #include "libknot/libknot.h"
-#include "libknot/dnssec/key.h"
 #include "libknot/internal/lists.h"
 #include "zscanner/scanner.h"
 
@@ -74,8 +74,8 @@ typedef struct {
 	knot_pkt_t	*answer;
 	/*< Lists of RRSets. */
 	list_t		update_list, prereq_list;
-	/*!< Key parameters. */
-	knot_key_params_t key_params;
+	/*!< Transaction signature context. */
+	knot_tsig_key_t tsig_key;
 	/*!< Default output settings. */
 	style_t		style;
 	/*!< Memory context. */

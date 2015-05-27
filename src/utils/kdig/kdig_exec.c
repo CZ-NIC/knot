@@ -23,6 +23,7 @@
 #include "utils/common/exec.h"
 #include "utils/common/msg.h"
 #include "utils/common/netio.h"
+#include "utils/common/sign.h"
 #include "libknot/libknot.h"
 #include "libknot/internal/lists.h"
 #include "libknot/internal/print.h"
@@ -388,18 +389,6 @@ static knot_pkt_t* create_query_packet(const query_t *query)
 		}
 	}
 
-	// Sign the packet if a key was specified.
-	if (query->key_params.name != NULL) {
-		ret = sign_packet(packet, (sign_context_t *)&query->sign_ctx,
-		                  &query->key_params);
-		if (ret != KNOT_EOK) {
-			ERR("failed to sign query packet (%s)\n",
-			    knot_strerror(ret));
-			knot_pkt_free(&packet);
-			return NULL;
-		}
-	}
-
 	return packet;
 }
 
@@ -475,13 +464,32 @@ static bool last_serial_check(const uint32_t serial, const knot_pkt_t *reply)
 	}
 }
 
-static int process_query_packet(const knot_pkt_t        *query,
-                                net_t                   *net,
-                                const query_t           *query_ctx,
-                                const bool              ignore_tc,
-                                const sign_context_t    *sign_ctx,
-                                const knot_key_params_t *key_params,
-                                const style_t           *style)
+static int sign_query(knot_pkt_t *pkt, const query_t *query, sign_context_t *ctx)
+{
+	if (query->tsig_key.name == NULL) {
+		return KNOT_EOK;
+	}
+
+	int ret = sign_context_init_tsig(ctx, &query->tsig_key);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	ret = sign_packet(pkt, ctx);
+	if (ret != KNOT_EOK) {
+		sign_context_deinit(ctx);
+		return ret;
+	}
+
+	return KNOT_EOK;
+}
+
+static int process_query_packet(const knot_pkt_t      *query,
+                                net_t                 *net,
+                                const query_t         *query_ctx,
+                                const bool            ignore_tc,
+                                const sign_context_t  *sign_ctx,
+                                const style_t         *style)
 {
 	struct timeval	t_start, t_query, t_end;
 	knot_pkt_t	*reply;
@@ -591,15 +599,15 @@ static int process_query_packet(const knot_pkt_t        *query,
 		net->socktype = SOCK_STREAM;
 
 		return process_query_packet(query, net, query_ctx, true,
-		                            sign_ctx, key_params, style);
+		                            sign_ctx, style);
 	}
 
 	// Check for question sections equality.
 	check_reply_question(reply, query);
 
 	// Verify signature if a key was specified.
-	if (key_params->name != NULL) {
-		ret = verify_packet(reply, sign_ctx, key_params);
+	if (sign_ctx->digest != NULL) {
+		ret = verify_packet(reply, sign_ctx);
 		if (ret != KNOT_EOK) {
 			ERR("reply verification for %s (%s)\n",
 			    net->remote_str, knot_strerror(ret));
@@ -643,6 +651,14 @@ static void process_query(const query_t *query)
 		return;
 	}
 
+	// Sign the query.
+	sign_context_t sign_ctx = { 0 };
+	ret = sign_query(out_packet, query, &sign_ctx);
+	if (ret != KNOT_EOK) {
+		ERR("can't sign the packet (%s)\n", knot_strerror(ret));
+		return;
+	}
+
 	// Get connection parameters.
 	int iptype = get_iptype(query->ip);
 	int socktype = get_socktype(query->protocol, query->type_num);
@@ -670,8 +686,7 @@ static void process_query(const query_t *query)
 				ret = process_query_packet(out_packet, &net,
 				                           query,
 				                           query->ignore_tc,
-				                           &query->sign_ctx,
-				                           &query->key_params,
+				                           &sign_ctx,
 				                           &query->style);
 				// If error try next resolved address.
 				if (ret != 0) {
@@ -689,6 +704,7 @@ static void process_query(const query_t *query)
 			// Success.
 			if (ret == 0) {
 				net_clean(&net);
+				sign_context_deinit(&sign_ctx);
 				knot_pkt_free(&out_packet);
 				return;
 			// SERVFAIL.
@@ -697,6 +713,7 @@ static void process_query(const query_t *query)
 				     remote->name, remote->service,
 				     get_sockname(socktype));
 				net_clean(&net);
+				sign_context_deinit(&sign_ctx);
 				knot_pkt_free(&out_packet);
 				return;
 			}
@@ -720,15 +737,15 @@ static void process_query(const query_t *query)
 		}
 	}
 
+	sign_context_deinit(&sign_ctx);
 	knot_pkt_free(&out_packet);
 }
 
-static int process_xfr_packet(const knot_pkt_t        *query,
-                              net_t                   *net,
-                              const query_t           *query_ctx,
-                              const sign_context_t    *sign_ctx,
-                              const knot_key_params_t *key_params,
-                              const style_t           *style)
+static int process_xfr_packet(const knot_pkt_t      *query,
+                              net_t                 *net,
+                              const query_t         *query_ctx,
+                              const sign_context_t  *sign_ctx,
+                              const style_t         *style)
 {
 	struct timeval t_start, t_query, t_end;
 	knot_pkt_t     *reply;
@@ -837,8 +854,8 @@ static int process_xfr_packet(const knot_pkt_t        *query,
 		// The first message has a special treatment.
 		if (msg_count == 0) {
 			// Verify 1. signature if a key was specified.
-			if (key_params->name != NULL) {
-				ret = verify_packet(reply, sign_ctx, key_params);
+			if (sign_ctx->digest != NULL) {
+				ret = verify_packet(reply, sign_ctx);
 				if (ret != KNOT_EOK) {
 					ERR("reply verification for %s (%s)\n",
 					    net->remote_str, knot_strerror(ret));
@@ -908,6 +925,14 @@ static void process_xfr(const query_t *query)
 		return;
 	}
 
+	// Sign the query.
+	sign_context_t sign_ctx = { 0 };
+	ret = sign_query(out_packet, query, &sign_ctx);
+	if (ret != KNOT_EOK) {
+		ERR("can't sign the packet (%s)\n", knot_strerror(ret));
+		return;
+	}
+
 	// Get connection parameters.
 	int iptype = get_iptype(query->ip);
 	int socktype = get_socktype(query->protocol, query->type_num);
@@ -924,6 +949,7 @@ static void process_xfr(const query_t *query)
 	ret = net_init(query->local, remote, iptype, socktype,
 	               query->wait, &net);
 	if (ret != KNOT_EOK) {
+		sign_context_deinit(&sign_ctx);
 		knot_pkt_free(&out_packet);
 		return;
 	}
@@ -932,8 +958,7 @@ static void process_xfr(const query_t *query)
 	while (net.srv != NULL) {
 		ret = process_xfr_packet(out_packet, &net,
 		                         query,
-		                         &query->sign_ctx,
-		                         &query->key_params,
+		                         &sign_ctx,
 		                         &query->style);
 		// If error try next resolved address.
 		if (ret != 0) {
@@ -950,6 +975,7 @@ static void process_xfr(const query_t *query)
 	}
 
 	net_clean(&net);
+	sign_context_deinit(&sign_ctx);
 	knot_pkt_free(&out_packet);
 }
 

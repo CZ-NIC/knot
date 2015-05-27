@@ -23,6 +23,7 @@ check_PROGRAMS = \
 	fdset				\
 	hattrie				\
 	hhash				\
+	internal_mem			\
 	journal				\
 	namedb				\
 	net_shortwrite			\
@@ -39,6 +40,7 @@ check_PROGRAMS = \
 	rrset				\
 	rrset_wire			\
 	server				\
+	tsig_key			\
 	utils				\
 	wire				\
 	worker_pool			\

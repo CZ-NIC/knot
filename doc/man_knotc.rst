@@ -27,10 +27,12 @@ Parameters
   Remote server port (only for IP).
 
 **-y**, **--key** [*alg*:]\ *name*:*key*
-  Use key specified on the command line (default algorithm is hmac-md5).
+  Use TSIG key specified on the command line (default algorithm is hmac-md5).
 
 **-k**, **--keyfile** *file*
-  Use key file.
+  Use TSIG key stored in a file *file* to authenticate the request. The
+  file must contain the key in the same format, which is accepted by the
+  **-y** option.
 
 **-f**, **--force**
   Force operation. Overrides some checks.
