@@ -41,6 +41,10 @@ static void test_strstrip(void)
 	c = strstrip("");
 	is_string("", c, "strstrip: empty string");
 	free(c);
+
+	c = strstrip("   ");
+	is_string("", c, "strstrip: just whitespaces");
+	free(c);
 }
 
 int main(int argc, char *argv[])

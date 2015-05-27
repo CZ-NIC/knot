@@ -142,7 +142,7 @@ char *strstrip(const char *str)
 
 	// trailing white-spaces
 	size_t len = strlen(scan);
-	while (len > 1 && isspace((int)scan[len - 1])) {
+	while (len > 0 && isspace((int)scan[len - 1])) {
 		len -= 1;
 	}
 
@@ -151,7 +151,7 @@ char *strstrip(const char *str)
 		return NULL;
 	}
 
-	memcpy(trimmed, scan, len + 1);
+	memcpy(trimmed, scan, len);
 	trimmed[len] = '\0';
 
 	return trimmed;
