@@ -56,6 +56,7 @@ AC_PROG_LIBTOOL
 LT_INIT
 
 # Use pkg-config
+PKG_PROG_PKG_CONFIG
 m4_ifdef([PKG_INSTALLDIR], [PKG_INSTALLDIR], [AC_SUBST([pkgconfigdir], ['${libdir}/pkgconfig'])])
 AC_CONFIG_FILES([src/libknot.pc
 		 src/dnssec/libdnssec.pc
@@ -64,7 +65,9 @@ AC_CONFIG_FILES([src/libknot.pc
 
 # Get Bash completion scripts directory
 bash_completion_dir=""
-PKG_CHECK_VAR([bash_completion_dir], [bash-completion],[AC_SUBST([BASH_COMPLETION_DIR], $bash_completion_dir)],[])
+PKG_CHECK_VAR([bash_completion_dir], [bash-completion],[completionsdir],[
+  AC_SUBST([BASH_COMPLETION_DIR], [$bash_completion_dir])
+  ],[:])
 AM_CONDITIONAL([HAVE_BASH_COMPLETION], [test -n "$bash_completion_dir"])
 
 # Build Knot DNS daemon
