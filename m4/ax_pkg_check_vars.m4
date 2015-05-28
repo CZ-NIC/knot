@@ -1,5 +1,9 @@
 # ax_pkg_check_var.m4 - Macros to locate and utilise variables from pkg-config.            -*- Autoconf -*-
 
+m4_ifndef([AS_VAR_COPY],
+[m4_define([AS_VAR_COPY],
+[AS_LITERAL_IF([$1[]$2], [$1=$$2], [eval $1=\$$2])])])
+
 # PKG_CHECK_VAR(VARIABLE, MODULE, CONFIG-VARIABLE,
 # [ACTION-IF-FOUND], [ACTION-IF-NOT-FOUND])
 # -------------------------------------------
