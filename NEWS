@@ -1,3 +1,22 @@
+Knot DNS 1.6.4-dev
+==================
+
+Bugfixes:
+---------
+ - Lost NOTIFY message if received during zone transfer
+ - Compilation error with LibreSSL
+ - Disable fast zone parser when compiled in Clang (bug in Clang)
+ - kdig: Record correct dnstap SocketProtocol when retrying over TCP
+
+Features:
+---------
+ - Zone parser: Splits long TXT/SPF strings into multiple strings
+ - kdig: Add generic dump style option (+generic)
+
+Improvements:
+-------------
+ - Zone dump: Do not print class for SOA record (unified with other RR types)
+
 Knot DNS 1.6.3 (2015-04-08)
 ===========================
 
