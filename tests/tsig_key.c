@@ -195,6 +195,8 @@ int main(int argc, char *argv[])
 		ok(r == KNOT_EOK && key_is_eq(&copy, &key) &&
 		   copy.secret.data != key.secret.data && copy.name != key.name,
 		   "knot_tsig_key_copy: simple copy");
+
+		knot_tsig_key_deinit(&copy);
 	}
 
 	return 0;
