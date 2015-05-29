@@ -133,6 +133,7 @@ static const yp_item_t desc_remote[] = {
 };
 
 #define ZONE_ITEMS \
+	{ C_FILE,             YP_TSTR,  YP_VNONE }, \
 	{ C_STORAGE,          YP_TSTR,  YP_VSTR = { STORAGE_DIR } }, \
 	{ C_MASTER,           YP_TREF,  YP_VREF = { C_RMT }, YP_FMULTI, { check_ref } }, \
 	{ C_NOTIFY,           YP_TREF,  YP_VREF = { C_RMT }, YP_FMULTI, { check_ref } }, \
@@ -157,7 +158,6 @@ static const yp_item_t desc_template[] = {
 
 static const yp_item_t desc_zone[] = {
 	{ C_DOMAIN, YP_TDNAME, YP_VNONE },
-	{ C_FILE,   YP_TSTR,   YP_VNONE },
 	{ C_TPL,    YP_TREF,   YP_VREF = { C_TPL }, YP_FNONE, { check_ref } },
 	ZONE_ITEMS
 	{ NULL }

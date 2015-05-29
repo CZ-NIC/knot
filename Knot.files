@@ -488,6 +488,7 @@ tests/acl.c
 tests/base32hex.c
 tests/base64.c
 tests/changeset.c
+tests/conf.c
 tests/descriptor.c
 tests/dname.c
 tests/dthreads.c
@@ -497,6 +498,7 @@ tests/fake_server.h
 tests/fdset.c
 tests/hattrie.c
 tests/hhash.c
+tests/internal_mem.c
 tests/journal.c
 tests/namedb.c
 tests/net_shortwrite.c

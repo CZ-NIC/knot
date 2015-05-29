@@ -41,6 +41,7 @@
 #include "libknot/internal/mempool.h"
 #include "libknot/internal/namedb/namedb_lmdb.h"
 #include "libknot/internal/sockaddr.h"
+#include "libknot/internal/strlcat.h"
 #include "libknot/yparser/ypformat.h"
 #include "libknot/yparser/yptrafo.h"
 
@@ -1218,91 +1219,114 @@ void conf_data(
 	}
 }
 
-static char* dname_to_filename(
-	const knot_dname_t *name,
-	const char *suffix)
+static char* get_filename(
+	conf_t *conf,
+	const knot_dname_t *zone,
+	const char *name)
 {
-	char *str = knot_dname_to_str_alloc(name);
-	if (str == NULL) {
-		return NULL;
-	}
+	const char *end = name + strlen(name);
+	char out[1024] = "";
 
-	// Replace possible slashes with underscores.
-	for (char *ch = str; *ch != '\0'; ch++) {
-		if (*ch == '/') {
-			*ch = '_';
+	do {
+		// Search for a formatter.
+		const char *pos = strchr(name, '%');
+
+		// If no formatter, copy the rest of the name.
+		if (pos == NULL) {
+			if (strlcat(out, name, sizeof(out)) >= sizeof(out)) {
+				return NULL;
+			}
+			break;
 		}
+
+		// Copy constant block.
+		char *block = strndup(name, pos - name);
+		if (block == NULL ||
+		    strlcat(out, block, sizeof(out)) >= sizeof(out)) {
+			return NULL;
+		}
+		free(block);
+
+		// Move name pointer behind the formatter.
+		name = pos + 2;
+
+		char buff[512] = "";
+
+		const char type = *(pos + 1);
+		switch (type) {
+		case '%':
+			strlcat(buff, "%", sizeof(buff));
+			break;
+		case 's':
+			if (knot_dname_to_str(buff, zone, sizeof(buff)) == NULL) {
+				return NULL;
+			}
+
+			// Replace possible slashes with underscores.
+			for (char *ch = buff; *ch != '\0'; ch++) {
+				if (*ch == '/') {
+					*ch = '_';
+				}
+			}
+			break;
+		case '\0':
+			log_zone_warning(zone, "ignoring missing trailing "
+			                       "zonefile formatter");
+			continue;
+		default:
+			log_zone_warning(zone, "ignoring zonefile formatter '%c'",
+			                 type);
+			continue;
+		}
+
+		if (strlcat(out, buff, sizeof(out)) >= sizeof(out)) {
+			return NULL;
+		}
+	} while (name < end);
+
+	// Use storage prefix if not absolute path.
+	if (out[0] == '/') {
+		return strdup(out);
+	} else {
+		conf_val_t val = conf_zone_get(conf, C_STORAGE, zone);
+		char *storage = conf_abs_path(&val, NULL);
+		if (storage == NULL) {
+			return NULL;
+		}
+		char *abs = sprintf_alloc("%s/%s", storage, out);
+		free(storage);
+		return abs;
 	}
-
-	char *out = sprintf_alloc("%s%s", str, suffix);
-	free(str);
-
-	return out;
 }
 
 char* conf_zonefile(
 	conf_t *conf,
 	const knot_dname_t *zone)
 {
-	assert(conf != NULL && zone != NULL);
-
-	// Item 'file' is not template item (cannot use conf_zone_get)! */
-	const char *file = NULL;
-	conf_val_t file_val = { NULL };
-	file_val.code = conf_db_get(conf, &conf->read_txn, C_ZONE, C_FILE,
-	                            zone, knot_dname_size(zone), &file_val);
-	if (file_val.code == KNOT_EOK) {
-		file = conf_str(&file_val);
-		if (file != NULL && file[0] == '/') {
-			return strdup(file);
-		}
+	if (conf == NULL || zone == NULL) {
+		return NULL;
 	}
 
-	char *abs_storage = NULL;
-	conf_val_t storage_val = conf_zone_get(conf, C_STORAGE, zone);
-	if (storage_val.code == KNOT_EOK) {
-		abs_storage = conf_abs_path(&storage_val, NULL);
-		if (abs_storage == NULL) {
-			return NULL;
-		}
-	}
+	conf_val_t val = conf_zone_get(conf, C_FILE, zone);
+	const char *file = conf_str(&val);
 
-	char *out = NULL;
-
+	// Use default zonefile name pattern if not specified.
 	if (file == NULL) {
-		char *file = dname_to_filename(zone, "zone");
-		out = sprintf_alloc("%s/%s", abs_storage, file);
-		free(file);
-	} else {
-		out = sprintf_alloc("%s/%s", abs_storage, file);
+		file = "%szone";
 	}
 
-	free(abs_storage);
-
-	return out;
+	return get_filename(conf, zone, file);
 }
 
 char* conf_journalfile(
 	conf_t *conf,
 	const knot_dname_t *zone)
 {
-	assert(conf != NULL && zone != NULL);
-
-	char *abs_storage = NULL;
-	conf_val_t storage_val = conf_zone_get(conf, C_STORAGE, zone);
-	if (storage_val.code == KNOT_EOK) {
-		abs_storage = conf_abs_path(&storage_val, NULL);
-		if (abs_storage == NULL) {
-			return NULL;
-		}
+	if (conf == NULL || zone == NULL) {
+		return NULL;
 	}
 
-	char *name = dname_to_filename(zone, "diff.db");
-	char *out = sprintf_alloc("%s/%s", abs_storage, name);
-	free(name);
-	free(abs_storage);
-
-	return out;
+	return get_filename(conf, zone, "%sdb");
 }
 
 size_t conf_udp_threads(
