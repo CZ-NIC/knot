@@ -347,7 +347,9 @@ int conf_db_get(
 	// Look-up item in the scheme.
 	if (out != NULL) {
 		out->item = yp_scheme_find(key1, key0, conf->scheme);
-		assert(out->item != NULL);
+		if (out->item == NULL) {
+			return KNOT_YP_EINVAL_ITEM;
+		}
 	}
 
 	uint8_t k[CONF_MAX_KEY_LEN];
@@ -473,7 +475,9 @@ int conf_db_iter_begin(
 
 	// Look-up group id item in the scheme.
 	const yp_item_t *grp = yp_scheme_find(key0, NULL, conf->scheme);
-	assert(grp != NULL);
+	if (grp == NULL) {
+		return KNOT_YP_EINVAL_ITEM;
+	}
 	assert(grp->type == YP_TGRP);
 	iter->item = grp->var.g.id;
 

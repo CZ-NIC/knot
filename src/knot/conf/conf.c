@@ -720,6 +720,7 @@ conf_val_t conf_get(
 {
 	// Check for empty key1.
 	if (key1_name == NULL) {
+		log_error("incomplete configuration specification");
 		conf_val_t val = { NULL };
 		val.code = KNOT_EINVAL;
 		return val;
@@ -743,6 +744,7 @@ conf_val_t conf_id_get(
 		}
 		conf_db_val(id);
 	} else {
+		log_error("incomplete configuration specification");
 		conf_val_t val = { NULL };
 		val.code = KNOT_EINVAL;
 		return val;
@@ -758,6 +760,7 @@ conf_val_t conf_mod_get(
 {
 	// Check for empty input.
 	if (key1_name == NULL || mod_id == NULL) {
+		log_error("incomplete configuration specification");
 		conf_val_t val = { NULL };
 		val.code = KNOT_EINVAL;
 		return val;
@@ -774,6 +777,7 @@ conf_val_t conf_zone_get(
 	conf_val_t val = { NULL };
 
 	if (dname == NULL) {
+		log_error("incomplete configuration specification");
 		val.code = KNOT_EINVAL;
 		return val;
 	}
@@ -973,7 +977,7 @@ void conf_val_next(
 int64_t conf_int(
 	conf_val_t *val)
 {
-	assert(val != NULL);
+	assert(val != NULL && val->item != NULL);
 	assert(val->item->type == YP_TINT ||
 	       (val->item->type == YP_TREF &&
 	        val->item->var.r.ref->var.g.id->type == YP_TINT));
@@ -989,7 +993,7 @@ int64_t conf_int(
 bool conf_bool(
 	conf_val_t *val)
 {
-	assert(val != NULL);
+	assert(val != NULL && val->item != NULL);
 	assert(val->item->type == YP_TBOOL ||
 	       (val->item->type == YP_TREF &&
 	        val->item->var.r.ref->var.g.id->type == YP_TBOOL));
@@ -1005,7 +1009,7 @@ bool conf_bool(
 unsigned conf_opt(
 	conf_val_t *val)
 {
-	assert(val != NULL);
+	assert(val != NULL && val->item != NULL);
 	assert(val->item->type == YP_TOPT ||
 	       (val->item->type == YP_TREF &&
 	        val->item->var.r.ref->var.g.id->type == YP_TOPT));
@@ -1021,7 +1025,7 @@ unsigned conf_opt(
 const char* conf_str(
 	conf_val_t *val)
 {
-	assert(val != NULL);
+	assert(val != NULL && val->item != NULL);
 	assert(val->item->type == YP_TSTR ||
 	       (val->item->type == YP_TREF &&
 	        val->item->var.r.ref->var.g.id->type == YP_TSTR));
@@ -1038,11 +1042,10 @@ char* conf_abs_path(
 	conf_val_t *val,
 	const char *base_dir)
 {
-	assert(val != NULL);
-
 	const char *path = conf_str(val);
-
-	if (path[0] == '/') {
+	if (path == NULL) {
+		return NULL;
+	} else if (path[0] == '/') {
 		return strdup(path);
 	} else {
 		char *abs_path;
@@ -1060,7 +1063,7 @@ char* conf_abs_path(
 const knot_dname_t* conf_dname(
 	conf_val_t *val)
 {
-	assert(val != NULL);
+	assert(val != NULL && val->item != NULL);
 	assert(val->item->type == YP_TDNAME ||
 	       (val->item->type == YP_TREF &&
 	        val->item->var.r.ref->var.g.id->type == YP_TDNAME));
@@ -1076,21 +1079,22 @@ const knot_dname_t* conf_dname(
 conf_mod_id_t* conf_mod_id(
 	conf_val_t *val)
 {
-	assert(val != NULL);
-	assert(val->item->type == YP_TDATA);
+	assert(val != NULL && val->item != NULL);
+	assert(val->item->type == YP_TDATA ||
+	       (val->item->type == YP_TREF &&
+	        val->item->var.r.ref->var.g.id->type == YP_TDATA));
 
 	conf_mod_id_t *mod_id = NULL;
 
 	if (val->code == KNOT_EOK) {
 		conf_db_val(val);
 
-		// Make copy of mod_id because pointers are not persisent in db.
 		mod_id = malloc(sizeof(conf_mod_id_t));
 		if (mod_id == NULL) {
 			return NULL;
 		}
 
-		// Copy module name.
+		// Set module name in yp_name_t format + add zero termination.
 		size_t name_len = 1 + val->data[0];
 		mod_id->name = malloc(name_len + 1);
 		if (mod_id->name == NULL) {
@@ -1098,8 +1102,9 @@ conf_mod_id_t* conf_mod_id(
 			return NULL;
 		}
 		memcpy(mod_id->name, val->data, name_len);
+		mod_id->name[name_len] = '\0';
 
-		// Copy module identifier.
+		// Set module identifier.
 		mod_id->len = val->len - name_len;
 		mod_id->data = malloc(mod_id->len);
 		if (mod_id->data == NULL) {
@@ -1125,7 +1130,7 @@ struct sockaddr_storage conf_addr(
 	conf_val_t *val,
 	const char *sock_base_dir)
 {
-	assert(val != NULL);
+	assert(val != NULL && val->item != NULL);
 	assert(val->item->type == YP_TADDR ||
 	       (val->item->type == YP_TREF &&
 	        val->item->var.r.ref->var.g.id->type == YP_TADDR));
@@ -1175,7 +1180,7 @@ struct sockaddr_storage conf_net(
 	conf_val_t *val,
 	unsigned *prefix_length)
 {
-	assert(val != NULL && prefix_length != NULL);
+	assert(val != NULL && val->item != NULL && prefix_length != NULL);
 	assert(val->item->type == YP_TNET ||
 	       (val->item->type == YP_TREF &&
 	        val->item->var.r.ref->var.g.id->type == YP_TNET));
@@ -1186,14 +1191,14 @@ struct sockaddr_storage conf_net(
 		int prefix;
 		conf_db_val(val);
 		out = yp_addr(val->data, val->len, &prefix);
-		if (prefix < 0) {
+		if (prefix != -1) {
+			*prefix_length = prefix;
+		} else {
 			if (out.ss_family == AF_INET) {
 				*prefix_length = IPV4_PREFIXLEN;
 			} else if (out.ss_family == AF_INET6) {
 				*prefix_length = IPV6_PREFIXLEN;
 			}
-		} else {
-			*prefix_length = prefix;
 		}
 	} else {
 		*prefix_length = 0;
@@ -1205,7 +1210,7 @@ struct sockaddr_storage conf_net(
 void conf_data(
 	conf_val_t *val)
 {
-	assert(val != NULL);
+	assert(val != NULL && val->item != NULL);
 	assert(val->item->type == YP_TB64 || val->item->type == YP_TDATA ||
 	       (val->item->type == YP_TREF &&
 	        (val->item->var.r.ref->var.g.id->type == YP_TB64 ||
@@ -1274,7 +1279,7 @@ static char* get_filename(
 			                       "zonefile formatter");
 			continue;
 		default:
-			log_zone_warning(zone, "ignoring zonefile formatter '%c'",
+			log_zone_warning(zone, "ignoring zonefile formatter '%%%c'",
 			                 type);
 			continue;
 		}
@@ -1370,8 +1375,8 @@ void conf_user(
 	int *uid,
 	int *gid)
 {
-	assert(uid);
-	assert(gid);
+	assert(uid != NULL);
+	assert(gid != NULL);
 
 	int new_uid = getuid();
 	int new_gid = getgid();
@@ -1414,6 +1419,11 @@ conf_remote_t conf_remote(
 	conf_t *conf,
 	conf_val_t *id)
 {
+	assert(id != NULL && id->item != NULL);
+	assert(id->item->type == YP_TSTR ||
+	       (id->item->type == YP_TREF &&
+	        id->item->var.r.ref->var.g.id->type == YP_TSTR));
+
 	conf_remote_t out = { { AF_UNSPEC } };
 
 	conf_val_t rundir_val = conf_get(conf, C_SRV, C_RUNDIR);
