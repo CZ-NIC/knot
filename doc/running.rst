@@ -29,7 +29,7 @@ Example of server stop::
 For a complete list of actions refer to ``knotd -h`` and ``knotc -h``
 or corresponding man pages.
 
-Also, the server needs to create :ref:`server_rundir` and :ref:`template_storage`
+Also, the server needs to create :ref:`server_rundir` and :ref:`zone_storage`
 directories in order to run properly.
 
 .. _Configuration database:
@@ -57,7 +57,7 @@ Running the server as a slave is very straightforward as you usually
 bootstrap zones over AXFR and thus avoid any manual zone operations.
 In contrast to AXFR, when the incremental transfer finishes, it stores
 the differences in the journal file and doesn't update the zone file
-immediately but after :ref:`template_zonefile-sync` period elapses.
+immediately but after :ref:`zone_zonefile-sync` period elapses.
 
 .. _Running a master server:
 
@@ -94,7 +94,7 @@ action::
     $ knotc -c master.conf reload
 
 If you want to enable ixfr differences creation from changes you make to a
-zone file, enable :ref:`template_ixfr-from-differences` in the zone configuration
+zone file, enable :ref:`zone_ixfr-from-differences` in the zone configuration
 and reload your server as seen above. If *SOA*'s *serial* is not changed,
 no differences will be created.
 

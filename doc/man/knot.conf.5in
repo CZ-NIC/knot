@@ -427,9 +427,9 @@ Default: empty
 .SH TEMPLATE SECTION
 .sp
 A template is shareable zone settings which can be used for configuration of
-many zones at one place. A special default template (with \fIdefault\fP identifier)
+many zones at one place. A special default template (with the \fIdefault\fP identifier)
 can be used for general quering configuration or as an implicit default
-configuration if a zone doesn\(aqt have a teplate specified.
+configuration if a zone doesn\(aqt have another template specified.
 .INDENT 0.0
 .INDENT 3.5
 .sp
@@ -437,6 +437,26 @@ configuration if a zone doesn\(aqt have a teplate specified.
 .ft C
 template:
   \- id: STR
+    # All zone options (excluding \(aqtemplate\(aq item)
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.SS id
+.sp
+A template identifier.
+.SH ZONE SECTION
+.sp
+Definition of zones served by the server.
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+zone:
+  \- domain: DNAME
+    template: template_id
+    file: STR
     storage: STR
     master: remote_id ...
     notify: remote_id ...
@@ -454,9 +474,29 @@ template:
 .fi
 .UNINDENT
 .UNINDENT
-.SS id
+.SS domain
 .sp
-A template identifier.
+A zone name identifier.
+.SS template
+.sp
+A \fI\%reference\fP to a configuration template. If not specified
+and the \fIdefault\fP template exists, the default template is used.
+.sp
+Default: empty
+.SS file
+.sp
+A path to the zone file. Non absolute path is relative to
+\fI\%storage\fP\&. It is also possible to use the following formatters:
+.INDENT 0.0
+.IP \(bu 2
+\fI%s\fP \- means the current zone name in the textual representation (beware of special
+characters which are escaped or encoded in the \eDDD form). Each zone name is
+terminated with a dot character!
+.IP \(bu 2
+\fI%%\fP \- means the \fI%\fP character
+.UNINDENT
+.sp
+Default: \fI\%storage\fP/\fB%s\fPzone
 .SS storage
 .sp
 A data directory for storing zone files, journal files and timers database.
@@ -604,42 +644,6 @@ Default: increment
 .sp
 An ordered list of references to query modules in the form
 \fImodule_name/module_id\fP\&.
-.sp
-Default: empty
-.SH ZONE SECTION
-.sp
-Definitions of zones served by the server.
-.sp
-Zone configuration is a superset of \fI\%template configuration\fP,
-so each zone configuration can contain all template configuration options which
-may override possible template configuration.
-.INDENT 0.0
-.INDENT 3.5
-.sp
-.nf
-.ft C
-zone:
-  \- domain: DNAME
-    file: STR
-    template: template_id
-    # All template options
-.ft P
-.fi
-.UNINDENT
-.UNINDENT
-.SS domain
-.sp
-A zone name identifier.
-.SS file
-.sp
-A path to the zone file. Non absolute path is relative to
-\fI\%storage\fP\&.
-.sp
-Default: \fI\%storage\fP/\fBdomain\fP\&.zone
-.SS template
-.sp
-A \fI\%reference\fP to configuration template. If not specified
-and \fIdefault\fP template exists, then the default template is used.
 .sp
 Default: empty
 .SH LOGGING SECTION

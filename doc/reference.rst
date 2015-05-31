@@ -515,14 +515,36 @@ Template section
 ================
 
 A template is shareable zone settings which can be used for configuration of
-many zones at one place. A special default template (with *default* identifier)
+many zones at one place. A special default template (with the *default* identifier)
 can be used for general quering configuration or as an implicit default
-configuration if a zone doesn't have a teplate specified.
+configuration if a zone doesn't have another template specified.
 
 ::
 
  template:
    - id: STR
+     # All zone options (excluding 'template' item)
+
+.. _template_id:
+
+id
+--
+
+A template identifier.
+
+.. _Zone section:
+
+Zone section
+============
+
+Definition of zones served by the server.
+
+::
+
+ zone:
+   - domain: DNAME
+     template: template_id
+     file: STR
      storage: STR
      master: remote_id ...
      notify: remote_id ...
@@ -537,14 +559,39 @@ configuration if a zone doesn't have a teplate specified.
      serial-policy: increment | unixtime
      module: STR/STR ...
 
-.. _template_id:
+.. _zone_domain:
 
-id
---
+domain
+------
 
-A template identifier.
+A zone name identifier.
 
-.. _template_storage:
+.. _zone_template:
+
+template
+--------
+
+A :ref:`reference<template_id>` to a configuration template. If not specified
+and the *default* template exists, the default template is used.
+
+Default: empty
+
+.. _zone_file:
+
+file
+----
+
+A path to the zone file. Non absolute path is relative to
+:ref:`storage<zone_storage>`. It is also possible to use the following formatters: 
+
+- `%s` - means the current zone name in the textual representation (beware of special
+  characters which are escaped or encoded in the \\DDD form). Each zone name is
+  terminated with a dot character!
+- `%%` - means the `%` character
+
+Default: :ref:`storage<zone_storage>`/``%s``\ zone
+
+.. _zone_storage:
 
 storage
 -------
@@ -553,7 +600,7 @@ A data directory for storing zone files, journal files and timers database.
 
 Default: ``${localstatedir}/lib/knot`` (configured with ``--with-storage=path``)
 
-.. _template_master:
+.. _zone_master:
 
 master
 ------
@@ -562,7 +609,7 @@ An ordered list of :ref:`references<remote_id>` to zone master servers.
 
 Default: empty
 
-.. _template_notify:
+.. _zone_notify:
 
 notify
 ------
@@ -572,7 +619,7 @@ message is sent if the zone changes.
 
 Default: empty
 
-.. _template_acl:
+.. _zone_acl:
 
 acl
 ---
@@ -582,7 +629,7 @@ or disallow zone transfers, updates or incoming notifies.
 
 Default: empty
 
-.. _template_semantic-checks:
+.. _zone_semantic-checks:
 
 semantic-checks
 ---------------
@@ -622,7 +669,7 @@ Extra checks:
 
 Default: off
 
-.. _template_disable-any:
+.. _zone_disable-any:
 
 disable-any
 -----------
@@ -633,7 +680,7 @@ the risk of DNS reflection attack.
 
 Default: off
 
-.. _template_zonefile-sync:
+.. _zone_zonefile-sync:
 
 zonefile-sync
 -------------
@@ -650,7 +697,7 @@ the immediate sync to zone file is not desirable, increase the default value.
 
 Default: 0 (immediate)
 
-.. _template_ixfr-from-differences:
+.. _zone_ixfr-from-differences:
 
 ixfr-from-differences
 ---------------------
@@ -661,7 +708,7 @@ is a master server for the zone.
 
 Default: off
 
-.. _template_max_journal_size:
+.. _zone_max_journal_size:
 
 max-journal-size
 ----------------
@@ -670,7 +717,7 @@ Maximum size of the zone journal file.
 
 Default: unlimited
 
-.. _template_dnssec-signing:
+.. _zone_dnssec-signing:
 
 dnssec-signing
 --------------
@@ -679,17 +726,17 @@ If enabled, automatic DNSSEC signing for the zone is turned on.
 
 Default: off
 
-.. _template_kasp_db:
+.. _zone_kasp_db:
 
 kasp-db
 -------
 
 A KASP database path. Non absolute path is relative to
-:ref:`storage<template_storage>`.
+:ref:`storage<zone_storage>`.
 
-Default: :ref:`storage<template_storage>`/keys
+Default: :ref:`storage<zone_storage>`/keys
 
-.. _template_serial-policy:
+.. _zone_serial-policy:
 
 serial-policy
 -------------
@@ -710,59 +757,13 @@ done by hand (see RFC 1982).
 
 Default: increment
 
-.. _template_module:
+.. _zone_module:
 
 module
 ------
 
 An ordered list of references to query modules in the form
 *module_name/module_id*.
-
-Default: empty
-
-.. _Zone section:
-
-Zone section
-============
-
-Definitions of zones served by the server.
-
-Zone configuration is a superset of :ref:`template configuration<Template section>`,
-so each zone configuration can contain all template configuration options which
-may override possible template configuration.
-
-::
-
- zone:
-   - domain: DNAME
-     file: STR
-     template: template_id
-     # All template options
-
-.. _zone_domain:
-
-domain
-------
-
-A zone name identifier.
-
-.. _zone_file:
-
-file
-----
-
-A path to the zone file. Non absolute path is relative to
-:ref:`storage<template_storage>`.
-
-Default: :ref:`storage<template_storage>`/``domain``.zone
-
-.. _zone_template:
-
-template
---------
-
-A :ref:`reference<template_id>` to configuration template. If not specified
-and *default* template exists, then the default template is used.
 
 Default: empty
 

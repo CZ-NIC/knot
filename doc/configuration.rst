@@ -100,7 +100,7 @@ key can be specified::
         key: key1                 # Access based just on TSIG key
         action: transfer
 
-These rules can then be referenced from a zone :ref:`template_acl`::
+These rules can then be referenced from a zone :ref:`zone_acl`::
 
     zone:
       - domain: example.com
@@ -110,10 +110,10 @@ Slave zone
 ==========
 
 Knot DNS doesn't strictly differ between master and slave zones. The
-only requirement is to have :ref:`master<template_master>` statement set for
+only requirement is to have :ref:`master<zone_master>` statement set for
 the given zone. Also note that you need to explicitly allow incoming zone
 changed notifications via ``notify`` :ref:`acl_action` through zone's
-:ref:`template_acl` list, otherwise the update will be rejected by the server.
+:ref:`zone_acl` list, otherwise the update will be rejected by the server.
 If the zone file doesn't exist it will be bootstrapped over AXFR::
 
     remote:
@@ -132,7 +132,7 @@ If the zone file doesn't exist it will be bootstrapped over AXFR::
         master: master
         acl: master_acl
 
-Note that the :ref:`template_master` option accepts a list of multiple remotes.
+Note that the :ref:`zone_master` option accepts a list of multiple remotes.
 The first remote in the list is used as the primary master, and the rest is used
 for failover if the connection with the primary master fails.
 The list is rotated in this case, and a new primary is elected.
@@ -268,8 +268,8 @@ can operate in two modes:
    according to assigned policy and are rolled automatically in a safe manner.
    No zone operator intervention is necessary.
 
-The DNSSEC signing is controlled by the :ref:`template_dnssec-signing` and
-:ref:`template_kasp_db` configuration options. The first option states
+The DNSSEC signing is controlled by the :ref:`zone_dnssec-signing` and
+:ref:`zone_kasp_db` configuration options. The first option states
 if the signing is enabled for a particular zone, the second option points to
 a KASP database holding the signing configuration.
 
@@ -589,7 +589,7 @@ extend it or even change it altogether.
 
 Each module is configured in the corresponding module section and is
 identified for the subsequent usage. Then, the identifier is referenced
-through :ref:`template_module` option (in the form of ``module_name/module_id``)
+through :ref:`zone_module` option (in the form of ``module_name/module_id``)
 in the zone section or in the ``default`` template if it used for all queries.
 
 ``dnstap`` - dnstap-enabled query logging
