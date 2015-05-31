@@ -1370,16 +1370,14 @@ size_t conf_bg_threads(
 	return workers;
 }
 
-void conf_user(
+int conf_user(
 	conf_t *conf,
 	int *uid,
 	int *gid)
 {
-	assert(uid != NULL);
-	assert(gid != NULL);
-
-	int new_uid = getuid();
-	int new_gid = getgid();
+	if (conf == NULL || uid == NULL || gid == NULL) {
+		return KNOT_EINVAL;
+	}
 
 	conf_val_t val = conf_get(conf, C_SRV, C_USER);
 	if (val.code == KNOT_EOK) {
@@ -1391,28 +1389,38 @@ void conf_user(
 			// Process group name.
 			struct group *grp = getgrnam(sep_pos + 1);
 			if (grp != NULL) {
-				new_gid = grp->gr_gid;
+				*gid = grp->gr_gid;
 			} else {
 				log_error("invalid group name '%s'", sep_pos + 1);
+				free(user);
+				return KNOT_EINVAL;
 			}
 
 			// Cut off group part.
 			*sep_pos = '\0';
+		} else {
+			*gid = getgid();
 		}
 
 		// Process user name.
 		struct passwd *pwd = getpwnam(user);
 		if (pwd != NULL) {
-			new_uid = pwd->pw_uid;
+			*uid = pwd->pw_uid;
 		} else {
 			log_error("invalid user name '%s'", user);
+			free(user);
+			return KNOT_EINVAL;
 		}
 
 		free(user);
+		return KNOT_EOK;
+	} else if (val.code == KNOT_ENOENT) {
+		*uid = getuid();
+		*gid = getgid();
+		return KNOT_EOK;
+	} else {
+		return val.code;
 	}
-
-	*uid = new_uid;
-	*gid = new_gid;
 }
 
 conf_remote_t conf_remote(

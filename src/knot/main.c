@@ -398,9 +398,10 @@ int main(int argc, char **argv)
 
 	/* Alter privileges. */
 	int uid, gid;
-	conf_user(conf(), &uid, &gid);
-	log_update_privileges(uid, gid);
-	if (proc_update_privileges(uid, gid) != KNOT_EOK) {
+	if (conf_user(conf(), &uid, &gid) != KNOT_EOK ||
+	    log_update_privileges(uid, gid) != KNOT_EOK ||
+	    proc_update_privileges(uid, gid) != KNOT_EOK) {
+		log_fatal("failed to drop privileges");
 		server_deinit(&server);
 		conf_free(conf(), false);
 		log_close();

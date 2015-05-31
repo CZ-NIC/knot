@@ -282,7 +282,7 @@ size_t conf_bg_threads(
 	conf_t *conf
 );
 
-void conf_user(
+int conf_user(
 	conf_t *conf,
 	int *uid,
 	int *gid
