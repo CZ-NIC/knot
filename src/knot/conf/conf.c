@@ -1038,28 +1038,6 @@ const char* conf_str(
 	}
 }
 
-char* conf_abs_path(
-	conf_val_t *val,
-	const char *base_dir)
-{
-	const char *path = conf_str(val);
-	if (path == NULL) {
-		return NULL;
-	} else if (path[0] == '/') {
-		return strdup(path);
-	} else {
-		char *abs_path;
-		if (base_dir == NULL) {
-			char *cwd = realpath("./", NULL);
-			abs_path = sprintf_alloc("%s/%s", cwd, path);
-			free(cwd);
-		} else {
-			abs_path = sprintf_alloc("%s/%s", base_dir, path);
-		}
-		return abs_path;
-	}
-}
-
 const knot_dname_t* conf_dname(
 	conf_val_t *val)
 {
@@ -1076,54 +1054,21 @@ const knot_dname_t* conf_dname(
 	}
 }
 
-conf_mod_id_t* conf_mod_id(
+void conf_data(
 	conf_val_t *val)
 {
 	assert(val != NULL && val->item != NULL);
-	assert(val->item->type == YP_TDATA ||
+	assert(val->item->type == YP_TB64 || val->item->type == YP_TDATA ||
 	       (val->item->type == YP_TREF &&
-	        val->item->var.r.ref->var.g.id->type == YP_TDATA));
-
-	conf_mod_id_t *mod_id = NULL;
+	        (val->item->var.r.ref->var.g.id->type == YP_TB64 ||
+	         val->item->var.r.ref->var.g.id->type == YP_TDATA)));
 
 	if (val->code == KNOT_EOK) {
 		conf_db_val(val);
-
-		mod_id = malloc(sizeof(conf_mod_id_t));
-		if (mod_id == NULL) {
-			return NULL;
-		}
-
-		// Set module name in yp_name_t format + add zero termination.
-		size_t name_len = 1 + val->data[0];
-		mod_id->name = malloc(name_len + 1);
-		if (mod_id->name == NULL) {
-			free(mod_id);
-			return NULL;
-		}
-		memcpy(mod_id->name, val->data, name_len);
-		mod_id->name[name_len] = '\0';
-
-		// Set module identifier.
-		mod_id->len = val->len - name_len;
-		mod_id->data = malloc(mod_id->len);
-		if (mod_id->data == NULL) {
-			free(mod_id->name);
-			free(mod_id);
-			return NULL;
-		}
-		memcpy(mod_id->data, val->data + name_len, mod_id->len);
+	} else {
+		val->data = (const uint8_t *)val->item->var.d.dflt;
+		val->len = val->item->var.d.dflt_len;
 	}
-
-	return mod_id;
-}
-
-void conf_free_mod_id(
-	conf_mod_id_t *mod_id)
-{
-	free(mod_id->name);
-	free(mod_id->data);
-	free(mod_id);
 }
 
 struct sockaddr_storage conf_addr(
@@ -1207,21 +1152,76 @@ struct sockaddr_storage conf_net(
 	return out;
 }
 
-void conf_data(
+char* conf_abs_path(
+	conf_val_t *val,
+	const char *base_dir)
+{
+	const char *path = conf_str(val);
+	if (path == NULL) {
+		return NULL;
+	} else if (path[0] == '/') {
+		return strdup(path);
+	} else {
+		char *abs_path;
+		if (base_dir == NULL) {
+			char *cwd = realpath("./", NULL);
+			abs_path = sprintf_alloc("%s/%s", cwd, path);
+			free(cwd);
+		} else {
+			abs_path = sprintf_alloc("%s/%s", base_dir, path);
+		}
+		return abs_path;
+	}
+}
+
+conf_mod_id_t* conf_mod_id(
 	conf_val_t *val)
 {
 	assert(val != NULL && val->item != NULL);
-	assert(val->item->type == YP_TB64 || val->item->type == YP_TDATA ||
+	assert(val->item->type == YP_TDATA ||
 	       (val->item->type == YP_TREF &&
-	        (val->item->var.r.ref->var.g.id->type == YP_TB64 ||
-	         val->item->var.r.ref->var.g.id->type == YP_TDATA)));
+	        val->item->var.r.ref->var.g.id->type == YP_TDATA));
+
+	conf_mod_id_t *mod_id = NULL;
 
 	if (val->code == KNOT_EOK) {
 		conf_db_val(val);
-	} else {
-		val->data = (const uint8_t *)val->item->var.d.dflt;
-		val->len = val->item->var.d.dflt_len;
+
+		mod_id = malloc(sizeof(conf_mod_id_t));
+		if (mod_id == NULL) {
+			return NULL;
+		}
+
+		// Set module name in yp_name_t format + add zero termination.
+		size_t name_len = 1 + val->data[0];
+		mod_id->name = malloc(name_len + 1);
+		if (mod_id->name == NULL) {
+			free(mod_id);
+			return NULL;
+		}
+		memcpy(mod_id->name, val->data, name_len);
+		mod_id->name[name_len] = '\0';
+
+		// Set module identifier.
+		mod_id->len = val->len - name_len;
+		mod_id->data = malloc(mod_id->len);
+		if (mod_id->data == NULL) {
+			free(mod_id->name);
+			free(mod_id);
+			return NULL;
+		}
+		memcpy(mod_id->data, val->data + name_len, mod_id->len);
 	}
+
+	return mod_id;
+}
+
+void conf_free_mod_id(
+	conf_mod_id_t *mod_id)
+{
+	free(mod_id->name);
+	free(mod_id->data);
+	free(mod_id);
 }
 
 static char* get_filename(

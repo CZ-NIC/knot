@@ -229,21 +229,12 @@ const char* conf_str(
 	conf_val_t *val
 );
 
-char* conf_abs_path(
-	conf_val_t *val,
-	const char *base_dir
-);
-
 const knot_dname_t* conf_dname(
 	conf_val_t *val
 );
 
-conf_mod_id_t* conf_mod_id(
+void conf_data(
 	conf_val_t *val
-);
-
-void conf_free_mod_id(
-	conf_mod_id_t *mod_id
 );
 
 struct sockaddr_storage conf_addr(
@@ -256,8 +247,17 @@ struct sockaddr_storage conf_net(
 	unsigned *prefix_length
 );
 
-void conf_data(
+char* conf_abs_path(
+	conf_val_t *val,
+	const char *base_dir
+);
+
+conf_mod_id_t* conf_mod_id(
 	conf_val_t *val
+);
+
+void conf_free_mod_id(
+	conf_mod_id_t *mod_id
 );
 
 char* conf_zonefile(
