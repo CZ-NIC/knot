@@ -201,6 +201,25 @@ const bool zone_is_slave(const zone_t *zone)
 	return zone && !EMPTY_LIST(zone->conf->acl.xfr_in);
 }
 
+int zone_master_try(zone_t *zone, zone_master_cb callback, void *callback_data)
+{
+	if (!zone || EMPTY_LIST(zone->conf->acl.xfr_in)) {
+		return KNOT_EINVAL;
+	}
+
+	int ret = KNOT_ERROR;
+
+	conf_remote_t *master = NULL;
+	WALK_LIST(master, zone->conf->acl.xfr_in) {
+		ret = callback(zone, master->remote, callback_data);
+		if (ret == KNOT_EOK) {
+			return KNOT_EOK;
+		}
+	}
+
+	return ret;
+}
+
 int zone_flush_journal(zone_t *zone)
 {
 	/*! @note Function expects nobody will change zone contents meanwile. */

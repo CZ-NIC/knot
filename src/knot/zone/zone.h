@@ -109,6 +109,19 @@ zone_contents_t *zone_switch_contents(zone_t *zone,
 /*! \brief Check if zone has master. */
 const bool zone_is_slave(const zone_t *zone);
 
+typedef int (*zone_master_cb)(zone_t *zone, const conf_iface_t *remote, void *data);
+
+/*!
+ * \brief Perform an action with a first working master server.
+ *
+ * The function iterates over available masters. For each master, the callback
+ * function is called. If the callback function succeeds (\ref KNOT_EOK is
+ * returned), the iteration is terminated.
+ *
+ * \return Error code from the last callback.
+ */
+int zone_master_try(zone_t *zone, zone_master_cb callback, void *callback_data);
+
 /*! \brief Return zone master remote. */
 const conf_iface_t *zone_master(const zone_t *zone);
 
