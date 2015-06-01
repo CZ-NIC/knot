@@ -125,9 +125,6 @@ int zone_master_try(zone_t *zone, zone_master_cb callback, void *callback_data);
 /*! \brief Return zone master remote. */
 const conf_iface_t *zone_master(const zone_t *zone);
 
-/*! \brief Rotate list of master remotes for current zone. */
-void zone_master_rotate(const zone_t *zone);
-
 /*! \brief Synchronize zone file with journal. */
 int zone_flush_journal(zone_t *zone);
 
@@ -139,6 +136,5 @@ size_t zone_update_dequeue(zone_t *zone, list_t *updates);
 
 /*! \brief Returns true if final SOA in transfer has newer serial than zone */
 bool zone_transfer_needed(const zone_t *zone, const knot_pkt_t *pkt);
-
 
 /*! @} */

@@ -185,17 +185,6 @@ const conf_iface_t *zone_master(const zone_t *zone)
 	return master->remote;
 }
 
-void zone_master_rotate(const zone_t *zone)
-{
-
-	list_t *master_list = &zone->conf->acl.xfr_in;
-	if (list_size(master_list) < 2) {
-		return;
-	}
-
-	add_tail(master_list, HEAD(*master_list));
-}
-
 const bool zone_is_slave(const zone_t *zone)
 {
 	return zone && !EMPTY_LIST(zone->conf->acl.xfr_in);
@@ -347,4 +336,3 @@ bool zone_transfer_needed(const zone_t *zone, const knot_pkt_t *pkt)
 	return knot_serial_compare(zone_contents_serial(zone->contents),
 	                           knot_soa_serial(&soa.rrs)) < 0;
 }
-
