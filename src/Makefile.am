@@ -195,6 +195,8 @@ knot1to2_SOURCES =				\
 
 # static: server shared
 libknotd_la_SOURCES =				\
+	knot/conf/base.c			\
+	knot/conf/base.h			\
 	knot/conf/conf.c			\
 	knot/conf/conf.h			\
 	knot/conf/confdb.c			\

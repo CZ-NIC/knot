@@ -16,7 +16,7 @@
 /*!
  * \file
  *
- * Server configuration and API.
+ * Server configuration interface.
  *
  * \addtogroup config
  *
@@ -25,130 +25,60 @@
 
 #pragma once
 
-#include <stdlib.h>
 #include <sys/socket.h>
 
+#include "knot/conf/base.h"
 #include "knot/conf/scheme.h"
-#include "libknot/internal/lists.h"
-#include "libknot/internal/namedb/namedb.h"
-#include "libknot/rrtype/tsig.h"
-#include "libknot/yparser/ypscheme.h"
 
-#define CONF_XFERS		10
-#define CONF_DEFAULT_ID		((uint8_t *)"\x08""default\0")
-#define CONF_DEFAULT_FILE	(CONFIG_DIR "/knot.conf")
-//#define CONF_DEFAULT_DBDIR	(STORAGE_DIR "/confdb")
-
+/*! Configuration remote getter output. */
 typedef struct {
-	const struct namedb_api *api;
-	yp_item_t *scheme;
-	mm_ctx_t *mm;
-	namedb_t *db;
-	// Read-only transaction for config access.
-	namedb_txn_t read_txn;
-	// For automatic NSID or CH ident.
-	char *hostname;
-	// For reload if started with config file.
-	char *filename;
-	// List of active query modules.
-	list_t query_modules;
-	// Default query modules plan.
-	struct query_plan *query_plan;
-} conf_t;
-
-typedef struct {
+	/*! Target socket address. */
 	struct sockaddr_storage addr;
+	/*! Local outgoing socket address. */
 	struct sockaddr_storage via;
+	/*! TSIG key. */
 	knot_tsig_key_t key;
 } conf_remote_t;
 
+/*! Configuration getter output. */
 typedef struct {
+	/*! Item description. */
 	const yp_item_t *item;
+	/*! Whole data (can be array). */
 	const uint8_t *blob;
+	/*! Whole data length. */
 	size_t blob_len;
 	// Public items.
+	/*! Current single data. */
 	const uint8_t *data;
+	/*! Current single data length. */
 	size_t len;
-	int code; // Return code.
+	/*! Value getter return code. */
+	int code;
 } conf_val_t;
 
+/*! Configuration section iterator. */
 typedef struct {
+	/*! Item description. */
 	const yp_item_t *item;
+	/*! Namedb iterator. */
 	namedb_iter_t *iter;
+	/*! Key0 database code. */
 	uint8_t key0_code;
 	// Public items.
-	int code; // Return code.
+	/*! Iterator return code. */
+	int code;
 } conf_iter_t;
 
+/*! Configuration module getter output. */
 typedef struct {
+	/*! Module name. */
 	yp_name_t *name;
+	/*! Module id data. */
 	uint8_t *data;
+	/*! Module id data length. */
 	size_t len;
 } conf_mod_id_t;
-
-extern conf_t *s_conf;
-
-static inline conf_t* conf(void) {
-	return s_conf;
-}
-
-int conf_new(
-	conf_t **conf,
-	const yp_item_t *scheme,
-	const char *db_dir
-);
-
-int conf_clone(
-	conf_t **conf
-);
-
-int conf_post_open(
-	conf_t *conf
-);
-
-void conf_update(
-	conf_t *conf
-);
-
-void conf_free(
-	conf_t *conf,
-	bool is_clone
-);
-
-int conf_activate_modules(
-	conf_t *conf,
-	knot_dname_t *zone_name,
-	list_t *query_modules,
-	struct query_plan **query_plan
-);
-
-void conf_deactivate_modules(
-	conf_t *conf,
-	list_t *query_modules,
-	struct query_plan *query_plan
-);
-
-int conf_parse(
-	conf_t *conf,
-	namedb_txn_t *txn,
-	const char *input,
-	bool is_file,
-	size_t *incl_depth
-);
-
-int conf_import(
-	conf_t *conf,
-	const char *input,
-	bool is_file
-);
-
-int conf_export(
-	conf_t *conf,
-	const char *file_name,
-	yp_style_t style
-);
-
-/*****************/
 
 conf_val_t conf_get(
 	conf_t *conf,
@@ -292,3 +222,5 @@ conf_remote_t conf_remote(
 	conf_t *conf,
 	conf_val_t *id
 );
+
+/*! @} */

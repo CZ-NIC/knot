@@ -187,6 +187,8 @@ src/knot/common/ref.c
 src/knot/common/ref.h
 src/knot/common/time.h
 src/knot/common/trim.h
+src/knot/conf/base.c
+src/knot/conf/base.h
 src/knot/conf/conf.c
 src/knot/conf/conf.h
 src/knot/conf/confdb.c
