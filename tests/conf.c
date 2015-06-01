@@ -49,16 +49,20 @@ static void test_conf_zonefile(void)
 	// Relative path with formatters.
 	file = conf_zonefile(conf(), zone1);
 	ok(file != NULL, "Get zonefile path for "ZONE1);
-	ok(strcmp(file, "/tmp/dir/a%b/0_25.2.0.192.in-addr.arpa.suffix/") == 0,
-	          "Zonefile path compare for "ZONE1);
-	free(file);
+	if (file != NULL) {
+		ok(strcmp(file, "/tmp/dir/a%b/0_25.2.0.192.in-addr.arpa.suffix/") == 0,
+		          "Zonefile path compare for "ZONE1);
+		free(file);
+	}
 
 	// Absolute path without formatters.
 	file = conf_zonefile(conf(), zone2);
 	ok(file != NULL, "Get zonefile path for "ZONE2);
-	ok(strcmp(file, "/.") == 0,
-	          "Zonefile path compare for "ZONE2);
-	free(file);
+	if (file != NULL) {
+		ok(strcmp(file, "/.") == 0,
+		          "Zonefile path compare for "ZONE2);
+		free(file);
+	}
 
 	conf_free(conf(), false);
 	knot_dname_free(&zone1, NULL);
