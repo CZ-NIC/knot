@@ -891,6 +891,8 @@ static int process_soa_answer(knot_pkt_t *pkt, struct answer_data *data)
 	/* Our zone is outdated, schedule zone transfer. */
 	ANSWER_LOG(LOG_INFO, data, "refresh, outgoing", "master has newer serial %u -> %u",
 	           our_serial, their_serial);
+
+	zone->preferred_master = data->param->remote;
 	zone_events_schedule(zone, ZONE_EVENT_XFER, ZONE_EVENT_NOW);
 	return NS_PROC_DONE;
 }

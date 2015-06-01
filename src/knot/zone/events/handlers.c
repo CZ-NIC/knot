@@ -108,7 +108,7 @@ static int zone_query_execute(zone_t *zone, uint16_t pkt_type, const conf_iface_
 	struct process_answer_param param = { 0 };
 	param.zone = zone;
 	param.query = query;
-	param.remote = &remote->addr;
+	param.remote = remote;
 	tsig_init(&param.tsig_ctx, remote->key);
 
 	ret = tsig_sign_packet(&param.tsig_ctx, query);
@@ -376,8 +376,9 @@ int event_xfer(zone_t *zone)
 		data.pkt_type = KNOT_QUERY_IXFR;
 	}
 
-	/* Execute zone transfer and reschedule timers. */
+	/* Execute zone transfer and clear master server preference. */
 	int ret = zone_master_try(zone, try_transfer, &data);
+	zone->preferred_master = NULL;
 	if (ret != KNOT_EOK) {
 		if (is_bootstrap) {
 			zone->bootstrap_retry = bootstrap_next(zone->bootstrap_retry);
