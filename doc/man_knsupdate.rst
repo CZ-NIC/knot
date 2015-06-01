@@ -130,6 +130,8 @@ Options **-k** and **-y** cannot be used mutually.
 
 Missing features with regard to ISC nsupdate:
 
+  Authentication using GSS-TSIG or SIG(0).
+
   Options **-D**, **-g**, **-o**, **-l**, **-L**, **-R** and **-u**.
 
   Commands: **gsstsig**, **oldgsstsig** and **realm**.

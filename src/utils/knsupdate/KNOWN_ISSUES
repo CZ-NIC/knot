@@ -1,6 +1,0 @@
-Missing features:
------------------
-* GSS-TSIG (Kerberos) support
-* Resolving SOA mname if no server is set
-* Using TSIG key specified by SIG(0) RR
-* '-R randomdev' option
