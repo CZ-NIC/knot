@@ -299,12 +299,25 @@ fail:
 	return result;
 }
 
+static int try_refresh(zone_t *zone, const conf_iface_t *master, void *ctx)
+{
+	assert(zone);
+	assert(master);
+
+	int ret = zone_query_execute(zone, KNOT_QUERY_NORMAL, master);
+	if (ret != KNOT_EOK) {
+		ZONE_QUERY_LOG(LOG_WARNING, zone, master, "refresh, outgoing",
+		               "failed (%s)", knot_strerror(ret));
+	}
+
+	return ret;
+}
+
 int event_refresh(zone_t *zone)
 {
 	assert(zone);
 
-	const conf_iface_t *master = zone_master(zone);
-	if (master == NULL) {
+	if (!zone_is_slave(zone)) {
 		/* If not slave zone, ignore. */
 		return KNOT_EOK;
 	}
@@ -315,14 +328,9 @@ int event_refresh(zone_t *zone)
 		return KNOT_EOK;
 	}
 
-	int ret = zone_query_execute(zone, KNOT_QUERY_NORMAL, master);
+	int ret = zone_master_try(zone, try_refresh, NULL);
 	const knot_rdataset_t *soa = zone_soa(zone);
 	if (ret != KNOT_EOK) {
-		/* Log connection errors. */
-		ZONE_QUERY_LOG(LOG_WARNING, zone, master, "SOA query, outgoing",
-		               "failed (%s)", knot_strerror(ret));
-		/* Rotate masters if current failed. */
-		zone_master_rotate(zone);
 		/* Schedule next retry. */
 		zone_events_schedule(zone, ZONE_EVENT_REFRESH, knot_soa_retry(soa));
 		start_expire_timer(zone, soa);
@@ -334,29 +342,44 @@ int event_refresh(zone_t *zone)
 	return zone_events_write_persistent(zone);
 }
 
+struct transfer_data {
+	uint16_t pkt_type;
+};
+
+static int try_transfer(zone_t *zone, const conf_iface_t *master, void *_data)
+{
+	assert(zone);
+	assert(master);
+	assert(_data);
+
+	struct transfer_data *data = _data;
+
+	return zone_query_transfer(zone, master, data->pkt_type);
+}
+
 int event_xfer(zone_t *zone)
 {
 	assert(zone);
 
-	const conf_iface_t *master = zone_master(zone);
-	if (master == NULL) {
+	if (!zone_is_slave(zone)) {
 		/* If not slave zone, ignore. */
 		return KNOT_EOK;
 	}
 
+	struct transfer_data data = { 0 };
+
 	/* Determine transfer type. */
-	bool is_boostrap = zone_contents_is_empty(zone->contents);
-	uint16_t pkt_type = KNOT_QUERY_IXFR;
-	if (is_boostrap || zone->flags & ZONE_FORCE_AXFR) {
-		pkt_type = KNOT_QUERY_AXFR;
+	bool is_bootstrap = zone_contents_is_empty(zone->contents);
+	if (is_bootstrap || zone->flags & ZONE_FORCE_AXFR) {
+		data.pkt_type = KNOT_QUERY_AXFR;
+	} else {
+		data.pkt_type = KNOT_QUERY_IXFR;
 	}
 
 	/* Execute zone transfer and reschedule timers. */
-	int ret = zone_query_transfer(zone, master, pkt_type);
-
-	/* Handle failure during transfer. */
+	int ret = zone_master_try(zone, try_transfer, &data);
 	if (ret != KNOT_EOK) {
-		if (is_boostrap) {
+		if (is_bootstrap) {
 			zone->bootstrap_retry = bootstrap_next(zone->bootstrap_retry);
 			zone_events_schedule(zone, ZONE_EVENT_XFER, zone->bootstrap_retry);
 		} else {
@@ -386,7 +409,7 @@ int event_xfer(zone_t *zone)
 	zone->flags &= ~ZONE_FORCE_AXFR;
 
 	/* Trim extra heap. */
-	if (!is_boostrap) {
+	if (!is_bootstrap) {
 		mem_trim();
 	}
 
