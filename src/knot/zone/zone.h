@@ -71,6 +71,8 @@ typedef struct zone_t
 	time_t zonefile_mtime;
 	uint32_t zonefile_serial;
 
+	/*! \brief Preferred master for remote operation. */
+	const conf_iface_t *preferred_master;
 } zone_t;
 
 /*----------------------------------------------------------------------------*/

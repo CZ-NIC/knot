@@ -190,16 +190,55 @@ const bool zone_is_slave(const zone_t *zone)
 	return zone && !EMPTY_LIST(zone->conf->acl.xfr_in);
 }
 
+/*!
+ * \brief Get zone preferred master while checking it's existence.
+ *
+ * It is possible that the preferred master will change during the function
+ * execution. We can ignore this race. In the worst case, the preferred master
+ * won't be found and we will try all servers in default order.
+ */
+static const conf_remote_t *preferred_master(const zone_t *zone)
+{
+	if (!zone->preferred_master) {
+		return NULL;
+	}
+
+	conf_remote_t *master = NULL;
+	WALK_LIST(master, zone->conf->acl.xfr_in) {
+		if (master->remote == zone->preferred_master) {
+			return master;
+		}
+	}
+
+	return NULL;
+}
+
 int zone_master_try(zone_t *zone, zone_master_cb callback, void *callback_data)
 {
 	if (!zone || EMPTY_LIST(zone->conf->acl.xfr_in)) {
 		return KNOT_EINVAL;
 	}
 
-	int ret = KNOT_ERROR;
+	int ret = KNOT_EINVAL;
+
+	/* Try the preferred server. */
+
+	const conf_remote_t *preferred = preferred_master(zone);
+	if (preferred) {
+		ret = callback(zone, preferred->remote, callback_data);
+		if (ret == KNOT_EOK) {
+			return ret;
+		}
+	}
+
+	/* Try all the other servers. */
 
 	conf_remote_t *master = NULL;
 	WALK_LIST(master, zone->conf->acl.xfr_in) {
+		if (master == preferred) {
+			continue;
+		}
+
 		ret = callback(zone, master->remote, callback_data);
 		if (ret == KNOT_EOK) {
 			return KNOT_EOK;
