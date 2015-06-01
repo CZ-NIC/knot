@@ -106,6 +106,9 @@ int zone_change_store(zone_t *zone, changeset_t *change);
 zone_contents_t *zone_switch_contents(zone_t *zone,
 					   zone_contents_t *new_contents);
 
+/*! \brief Check if zone has master. */
+const bool zone_is_slave(const zone_t *zone);
+
 /*! \brief Return zone master remote. */
 const conf_iface_t *zone_master(const zone_t *zone);
 

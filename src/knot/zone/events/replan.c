@@ -33,12 +33,12 @@ static void replan_event(zone_t *zone, const zone_t *old_zone, zone_event_type_t
 /*!< \brief Replans events that are dependent on the SOA record. */
 static void replan_soa_events(zone_t *zone, const zone_t *old_zone)
 {
-	if (!zone_master(zone)) {
+	if (!zone_is_slave(zone)) {
 		// Events only valid for slaves.
 		return;
 	}
 
-	if (zone_master(old_zone)) {
+	if (zone_is_slave(old_zone)) {
 		// Replan SOA events.
 		replan_event(zone, old_zone, ZONE_EVENT_REFRESH);
 		replan_event(zone, old_zone, ZONE_EVENT_EXPIRE);
@@ -56,12 +56,12 @@ static void replan_soa_events(zone_t *zone, const zone_t *old_zone)
 /*!< \brief Replans transfer event. */
 static void replan_xfer(zone_t *zone, const zone_t *old_zone)
 {
-	if (!zone_master(zone)) {
+	if (!zone_is_slave(zone)) {
 		// Only valid for slaves.
 		return;
 	}
 
-	if (zone_master(old_zone)) {
+	if (zone_is_slave(old_zone)) {
 		// Replan the transfer from old zone.
 		replan_event(zone, old_zone, ZONE_EVENT_XFER);
 	} else if (zone_contents_is_empty(zone->contents)) {

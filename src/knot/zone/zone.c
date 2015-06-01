@@ -196,6 +196,11 @@ void zone_master_rotate(const zone_t *zone)
 	add_tail(master_list, HEAD(*master_list));
 }
 
+const bool zone_is_slave(const zone_t *zone)
+{
+	return zone && !EMPTY_LIST(zone->conf->acl.xfr_in);
+}
+
 int zone_flush_journal(zone_t *zone)
 {
 	/*! @note Function expects nobody will change zone contents meanwile. */

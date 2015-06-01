@@ -170,7 +170,7 @@ static int remote_rdata_apply(server_t *s, remote_cmdargs_t* a, remote_zonef_t *
 /*! \brief Zone refresh callback. */
 static int remote_zone_refresh(zone_t *zone)
 {
-	if (zone_master(zone) == NULL) {
+	if (!zone_is_slave(zone)) {
 		return KNOT_EINVAL;
 	}
 
@@ -181,7 +181,7 @@ static int remote_zone_refresh(zone_t *zone)
 /*! \brief Zone refresh callback. */
 static int remote_zone_retransfer(zone_t *zone)
 {
-	if (zone_master(zone) == NULL) {
+	if (!zone_is_slave(zone)) {
 		return KNOT_EINVAL;
 	}
 
@@ -326,7 +326,7 @@ static int remote_c_zonestatus(server_t *s, remote_cmdargs_t* a)
 		int n = snprintf(buf, sizeof(buf),
 		                 "%s\ttype=%s | serial=%u | %s %s | %s %s\n",
 		                 zone->conf->name,
-		                 zone_master(zone) ? "slave" : "master",
+		                 zone_is_slave(zone) ? "slave" : "master",
 		                 serial,
 		                 next_name,
 		                 when,
