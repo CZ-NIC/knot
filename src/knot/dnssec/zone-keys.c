@@ -341,6 +341,8 @@ const zone_key_t *get_zone_key(const zone_keyset_t *keyset, uint16_t search)
  */
 time_t knot_get_next_zone_key_event(const zone_keyset_t *keyset)
 {
+	assert(keyset);
+
 	time_t result = LONG_MAX;
 
 	for (size_t i = 0; i < keyset->count; i++) {

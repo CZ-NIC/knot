@@ -95,7 +95,9 @@ static int ctx_init_dnssec(kdnssec_ctx_t *ctx, const char *kasp_path,
 
 void kdnssec_ctx_deinit(kdnssec_ctx_t *ctx)
 {
-	assert(ctx);
+	if (ctx == NULL) {
+		return;
+	}
 
 	dnssec_keystore_deinit(ctx->keystore);
 	dnssec_kasp_policy_free(ctx->policy);
@@ -107,9 +109,9 @@ void kdnssec_ctx_deinit(kdnssec_ctx_t *ctx)
 
 int kdnssec_ctx_init(kdnssec_ctx_t *ctx_ptr, const char *kasp, const char *zone)
 {
-	assert(ctx_ptr);
-	assert(kasp);
-	assert(zone);
+	if (ctx_ptr == NULL || kasp == NULL || zone == NULL) {
+		return KNOT_EINVAL;
+	}
 
 	kdnssec_ctx_t ctx = { 0 };
 
