@@ -149,8 +149,8 @@ int main(int argc, char *argv[])
 		};
 		test_init_file_content("sha512", &key,
 		                       "hmac-sha512:django.one:V2hvJ3MgdGhhdCB"
-				       "zdHVtYmxpbmcgYXJvdW5kIGluIHRoZSBkYXJrP"
-				       "w==\n\n\n");
+		                       "zdHVtYmxpbmcgYXJvdW5kIGluIHRoZSBkYXJrP"
+		                       "w==\n\n\n");
 	}
 	{
 		static const knot_tsig_key_t key = {
@@ -161,7 +161,7 @@ int main(int argc, char *argv[])
 		};
 		test_init_file_content("sha512 without newline", &key,
 		                       "hmac-sha512:django.two:UHJlcGFyZSB0byB"
-				       "nZXQgd2luZ2VkIQ==");
+		                       "nZXQgd2luZ2VkIQ==");
 	}
 	{
 		static const knot_tsig_key_t key = {

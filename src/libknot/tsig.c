@@ -151,14 +151,6 @@ int knot_tsig_key_init_file(knot_tsig_key_t *key, const char *filename)
 		return KNOT_EMALF;
 	}
 
-	// strip trailing newline
-
-	assert(line);
-	if (read > 0 && line[read - 1] == '\n') {
-		line[read - 1] = '\0';
-		read -= 1;
-	}
-
 	int result = knot_tsig_key_init_str(key, line);
 
 	memset(line, 0, line_size);
