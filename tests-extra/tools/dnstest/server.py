@@ -33,7 +33,7 @@ def zone_arg_check(zone):
 class Zone(object):
     '''DNS zone description'''
 
-    def __init__(self, zone_file=None, ddns=False, ixfr=False):
+    def __init__(self, zone_file, ddns=False, ixfr=False):
         self.zfile = zone_file
         self.master = None
         self.slaves = set()
@@ -49,6 +49,11 @@ class Zone(object):
 
     def add_module(self, module):
         self.modules.append(module)
+
+    def disable_master(self, new_zone_file):
+        self.zfile.remove()
+        self.zfile = new_zone_file
+        self.ixfr = False
 
 class Server(object):
     '''Specification of DNS server'''
@@ -145,13 +150,15 @@ class Server(object):
     def set_slave(self, zone, master, ddns=False, ixfr=False):
         '''Set the server as a slave for the zone'''
 
-        if zone.name in self.zones:
-            raise Failed("Can't set zone='%s' as a slave" % zone.name)
-
         slave_file = zone.clone(self.dir + "/slave", exists=False)
-        z = Zone(slave_file, ddns, ixfr)
-        z.master = master
-        self.zones[zone.name] = z
+
+        if zone.name not in self.zones:
+            z = Zone(slave_file, ddns, ixfr)
+            z.master = master
+            self.zones[zone.name] = z
+        else:
+            z = self.zones[zone.name]
+            z.disable_master(slave_file)
 
     def compile(self):
         try:
