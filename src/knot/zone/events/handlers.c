@@ -286,7 +286,7 @@ int event_reload(zone_t *zone)
 	}
 
 	/* Schedule notify and refresh after load. */
-	if (!zone_is_master(zone)) {
+	if (zone_is_slave(zone)) {
 		zone_events_schedule(zone, ZONE_EVENT_REFRESH, ZONE_EVENT_NOW);
 	}
 	if (!zone_contents_is_empty(contents)) {
@@ -319,8 +319,8 @@ int event_refresh(zone_t *zone)
 {
 	assert(zone);
 
-	/* Ignore if master zone. */
-	if (zone_is_master(zone)) {
+	/* Ignore if not slave zone. */
+	if (!zone_is_slave(zone)) {
 		return KNOT_EOK;
 	}
 
@@ -362,8 +362,8 @@ int event_xfer(zone_t *zone)
 {
 	assert(zone);
 
-	/* Ignore if master zone. */
-	if (zone_is_master(zone)) {
+	/* Ignore if not slave zone. */
+	if (!zone_is_slave(zone)) {
 		return KNOT_EOK;
 	}
 

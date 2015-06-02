@@ -112,8 +112,8 @@ int zone_change_store(zone_t *zone, changeset_t *change);
 zone_contents_t *zone_switch_contents(zone_t *zone,
 					   zone_contents_t *new_contents);
 
-/*! \brief Check if the zone has some masters. */
-bool zone_is_master(const zone_t *zone);
+/*! \brief Checks if the zone is slave. */
+bool zone_is_slave(const zone_t *zone);
 
 /*! \brief Return the current zone master. */
 conf_remote_t zone_master(const zone_t *zone);

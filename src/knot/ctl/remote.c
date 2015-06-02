@@ -174,10 +174,10 @@ static int remote_zone_refresh(zone_t *zone, remote_cmdargs_t *a)
 	UNUSED(a);
 
 	rcu_read_lock();
-	bool is_master = zone_is_master(zone);
+	bool is_slave = zone_is_slave(zone);
 	rcu_read_unlock();
 
-	if (is_master) {
+	if (!is_slave) {
 		return KNOT_EINVAL;
 	}
 
@@ -200,10 +200,10 @@ static int remote_zone_retransfer(zone_t *zone, remote_cmdargs_t *a)
 	UNUSED(a);
 
 	rcu_read_lock();
-	bool is_master = zone_is_master(zone);
+	bool is_slave = zone_is_slave(zone);
 	rcu_read_unlock();
 
-	if (is_master) {
+	if (!is_slave) {
 		return KNOT_EINVAL;
 	}
 
@@ -356,12 +356,12 @@ static int remote_zonestatus(zone_t *zone, remote_cmdargs_t *a)
 
 	conf_val_t val = conf_zone_get(conf(), C_DNSSEC_SIGNING, zone->name);
 	bool dnssec_enable = conf_bool(&val);
-	bool is_master = zone_is_master(zone);
+	bool is_slave = zone_is_slave(zone);
 
 	int n = snprintf(buf, sizeof(buf),
 	                 "%s\ttype=%s | serial=%u | %s %s | %s %s\n",
 	                 zone_name,
-	                 is_master ? "master" : "slave",
+	                 is_slave ? "slave" : "master",
 	                 serial,
 	                 next_name,
 	                 when,

@@ -178,10 +178,14 @@ zone_contents_t *zone_switch_contents(zone_t *zone, zone_contents_t *new_content
 	return old_contents;
 }
 
-bool zone_is_master(const zone_t *zone)
+bool zone_is_slave(const zone_t *zone)
 {
+	if (zone == NULL) {
+		return false;
+	}
+
 	conf_val_t val = conf_zone_get(conf(), C_MASTER, zone->name);
-	return conf_val_count(&val) > 0 ? false : true;
+	return conf_val_count(&val) > 0 ? true : false;
 }
 
 conf_remote_t zone_master(const zone_t *zone)
@@ -227,7 +231,7 @@ int zone_flush_journal(zone_t *zone)
 	/* Fetch zone source (where it came from). */
 	const struct sockaddr_storage *from = NULL;
 	conf_remote_t master;
-	if (!zone_is_master(zone)) {
+	if (zone_is_slave(zone)) {
 		master = zone_master(zone);
 		from = &master.addr;
 	}

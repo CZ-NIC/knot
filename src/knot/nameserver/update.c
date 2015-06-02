@@ -445,7 +445,7 @@ static bool update_tsig_check(struct query_data *qdata, struct knot_request *req
 static void send_update_response(const zone_t *zone, struct knot_request *req)
 {
 	if (req->resp) {
-		if (zone_is_master(zone)) {
+		if (!zone_is_slave(zone)) {
 			// Sign the response with TSIG where applicable
 			struct query_data qdata;
 			init_qdata_from_request(&qdata, zone, req, NULL);
@@ -497,7 +497,7 @@ static int init_update_responses(const zone_t *zone, list_t *updates,
 
 		assert(req->query);
 		knot_pkt_init_response(req->resp, req->query);
-		if (!zone_is_master(zone)) {
+		if (zone_is_slave(zone)) {
 			// Don't check TSIG for forwards.
 			continue;
 		}
@@ -575,7 +575,7 @@ int updates_execute(zone_t *zone)
 	}
 
 	/* Process update list - forward if zone has master, or execute. */
-	if (!zone_is_master(zone)) {
+	if (zone_is_slave(zone)) {
 		log_zone_info(zone->name,
 		              "DDNS, forwarding %zu updates", update_count);
 		forward_requests(zone, &updates);

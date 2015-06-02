@@ -15,17 +15,14 @@
  */
 
 #include <assert.h>
-#include <urcu.h>
 
 #include "knot/updates/apply.h"
-
-#include "knot/zone/zone.h"
 #include "knot/updates/changesets.h"
+#include "knot/zone/zone.h"
 #include "knot/zone/zonefile.h"
+#include "libknot/libknot.h"
 #include "libknot/internal/lists.h"
 #include "libknot/internal/macros.h"
-#include "libknot/rrtype/soa.h"
-#include "libknot/rrtype/rrsig.h"
 
 /* --------------------------- Update cleanup ------------------------------- */
 
@@ -454,13 +451,9 @@ int apply_changesets(zone_t *zone, list_t *chsets, zone_contents_t **new_content
 	/*
 	 * Apply the changesets.
 	 */
-	rcu_read_lock();
-	bool is_master = zone_is_master(zone);
-	rcu_read_unlock();
-
 	changeset_t *set = NULL;
 	WALK_LIST(set, *chsets) {
-		ret = apply_single(contents_copy, set, is_master);
+		ret = apply_single(contents_copy, set, !zone_is_slave(zone));
 		if (ret != KNOT_EOK) {
 			updates_rollback(chsets);
 			update_free_zone(&contents_copy);
@@ -499,11 +492,7 @@ int apply_changeset(zone_t *zone, changeset_t *change, zone_contents_t **new_con
 		return ret;
 	}
 
-	rcu_read_lock();
-	bool is_master = zone_is_master(zone);
-	rcu_read_unlock();
-
-	ret = apply_single(contents_copy, change, is_master);
+	ret = apply_single(contents_copy, change, !zone_is_slave(zone));
 	if (ret != KNOT_EOK) {
 		update_rollback(change);
 		update_free_zone(&contents_copy);
