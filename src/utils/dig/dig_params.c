@@ -267,6 +267,7 @@ static int opt_all(const char *arg, void *query)
 	q->style.show_answer = true;
 	q->style.show_authority = true;
 	q->style.show_additional = true;
+	q->style.show_tsig = true;
 	q->style.show_footer = true;
 
 	return KNOT_EOK;
@@ -283,6 +284,7 @@ static int opt_noall(const char *arg, void *query)
 	q->style.show_answer = false;
 	q->style.show_authority = false;
 	q->style.show_additional = false;
+	q->style.show_tsig = false;
 	q->style.show_footer = false;
 
 	return KNOT_EOK;
