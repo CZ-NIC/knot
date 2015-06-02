@@ -60,6 +60,33 @@ static int notify_check_query(struct query_data *qdata)
 	return NS_PROC_DONE;
 }
 
+/*! \brief Compare two addresses ignoring the port. */
+static bool address_match(const struct sockaddr_storage *a,
+                          const struct sockaddr_storage *b)
+{
+	struct sockaddr_storage a_copy = *a;
+	struct sockaddr_storage b_copy = *b;
+
+	sockaddr_port_set(&a_copy, 0);
+	sockaddr_port_set(&b_copy, 0);
+
+	return sockaddr_cmp(&a_copy, &b_copy) == 0;
+}
+
+/*! \brief Find master server based on notification source. */
+static conf_iface_t *notify_find_master(const zone_t *zone,
+                                        const struct sockaddr_storage *source)
+{
+	conf_remote_t *master = NULL;
+	WALK_LIST(master, zone->conf->acl.xfr_in) {
+		if (address_match(&master->remote->addr, source)) {
+			return master->remote;
+		}
+	}
+
+	return NULL;
+}
+
 int notify_process_query(knot_pkt_t *pkt, struct query_data *qdata)
 {
 	if (pkt == NULL || qdata == NULL) {
@@ -99,6 +126,7 @@ int notify_process_query(knot_pkt_t *pkt, struct query_data *qdata)
 
 	/* Incoming NOTIFY expires REFRESH timer and renews EXPIRE timer. */
 	zone_t *zone = (zone_t *)qdata->zone;
+	zone->preferred_master = notify_find_master(zone, qdata->param->remote);
 	zone_events_schedule(zone, ZONE_EVENT_REFRESH, ZONE_EVENT_NOW);
 	int ret = zone_events_write_persistent(zone);
 	if (ret != KNOT_EOK) {
