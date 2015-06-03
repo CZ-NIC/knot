@@ -59,6 +59,7 @@ int knot_tsig_key_init(knot_tsig_key_t *key, const char *algorithm_name,
 	if (!dname) {
 		return KNOT_ENOMEM;
 	}
+	knot_dname_to_lower(dname);
 
 	dnssec_binary_t b64secret = { 0 };
 	b64secret.data = (uint8_t *)secret_b64;

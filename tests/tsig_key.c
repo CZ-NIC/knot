@@ -132,7 +132,7 @@ int main(int argc, char *argv[])
 			.secret.size = 8,
 			.secret.data = (uint8_t *)"applekey"
 		};
-		test_init_str("sha384", &key, "hmac-sha384:strong.key:YXBwbGVrZXk=");
+		test_init_str("sha384", &key, "hmac-sha384:strong.KEY:YXBwbGVrZXk=");
 	}
 
 	// initialization from a file
