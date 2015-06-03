@@ -185,7 +185,7 @@ const conf_iface_t *zone_master(const zone_t *zone)
 	return master->remote;
 }
 
-const bool zone_is_slave(const zone_t *zone)
+bool zone_is_slave(const zone_t *zone)
 {
 	return zone && !EMPTY_LIST(zone->conf->acl.xfr_in);
 }

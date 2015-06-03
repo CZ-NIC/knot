@@ -109,7 +109,7 @@ zone_contents_t *zone_switch_contents(zone_t *zone,
 					   zone_contents_t *new_contents);
 
 /*! \brief Check if zone has master. */
-const bool zone_is_slave(const zone_t *zone);
+bool zone_is_slave(const zone_t *zone);
 
 typedef int (*zone_master_cb)(zone_t *zone, const conf_iface_t *remote, void *data);
 
