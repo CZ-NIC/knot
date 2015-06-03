@@ -57,13 +57,13 @@ Install basic development tools:
 
 Install prerequisites:
 # yum install \
-  libtool autoconf userspace-rcu-devel gnutls-devel jansson-devel
+  libtool autoconf automake userspace-rcu-devel gnutls-devel jansson-devel
 
 Install optional packages to override embedded libraries:
 # yum install lmdb-devel
 
 Install optional packages:
-# yum install libcap-ng-devel systemd-devel
+# yum install libcap-ng-devel systemd-devel protobuf-c-devel fstrm-devel libidn-devel
 
 2) Install Knot DNS
 
