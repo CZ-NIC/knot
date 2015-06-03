@@ -335,11 +335,14 @@ static knot_pkt_t* create_query_packet(const query_t *query)
 		return NULL;
 	}
 
-	// Begin authority section
-	knot_pkt_begin(packet, KNOT_AUTHORITY);
+	// For IXFR query or NOTIFY query with SOA serial, add a proper section.
+	if (query->serial >= 0) {
+		if (query->notify) {
+			knot_pkt_begin(packet, KNOT_ANSWER);
+		} else {
+			knot_pkt_begin(packet, KNOT_AUTHORITY);
+		}
 
-	// For IXFR query add authority section.
-	if (query->type_num == KNOT_RRTYPE_IXFR) {
 		// SOA rdata in wireformat.
 		uint8_t wire[22] = { 0x0 };
 
@@ -364,7 +367,7 @@ static knot_pkt_t* create_query_packet(const query_t *query)
 		}
 
 		// Set SOA serial.
-		knot_soa_serial_set(&soa->rrs, query->xfr_serial);
+		knot_soa_serial_set(&soa->rrs, query->serial);
 
 		ret = knot_pkt_put(packet, 0, soa, KNOT_PF_FREE);
 		if (ret != KNOT_EOK) {

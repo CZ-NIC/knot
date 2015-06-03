@@ -120,8 +120,8 @@ struct query {
 	int32_t		class_num;
 	/*!< Type number (16unsigned + -1 uninitialized). */
 	int32_t		type_num;
-	/*!< SOA serial for XFR. */
-	uint32_t	xfr_serial;
+	/*!< SOA serial for IXFR and NOTIFY (32unsigned + -1 uninitialized). */
+	int64_t		serial;
 	/*!< NOTIFY query. */
 	bool		notify;
 	/*!< Header flags. */

@@ -236,7 +236,7 @@ int khost_parse(kdig_params_t *params, int argc, char *argv[])
 
 	query_t  *conf = params->config;
 	uint16_t rclass, rtype;
-	uint32_t serial;
+	int64_t  serial;
 	bool     notify;
 
 	// Long options.
@@ -307,7 +307,7 @@ int khost_parse(kdig_params_t *params, int argc, char *argv[])
 				return KNOT_EINVAL;
 			}
 			conf->type_num = rtype;
-			conf->xfr_serial = serial;
+			conf->serial = serial;
 			conf->notify = notify;
 
 			// If NOTIFY, reset default RD flag.

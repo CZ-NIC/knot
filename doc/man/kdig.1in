@@ -98,9 +98,10 @@ port is 53.
 Set query name. An explicit variant of \fIname\fP specification.
 .TP
 \fB\-t\fP \fItype\fP
-Set query type (e.g. NS, IXFR=12345, TYPE65535). An explicit variant of
-\fItype\fP specification. The default type is A. It is also possible to use
-NOTIFY parameter to send a notify message.
+Set query type (e.g. NS, IXFR=12345, TYPE65535, NOTIFY). An explicit variant of
+\fItype\fP specification. The default type is A. IXFR type requires SOA serial
+parameter. NOTIFY type without SOA serial parameter causes pure NOTIFY message
+without any SOA hint.
 .TP
 \fB\-v\fP, \fB\-\-version\fP
 Print program version.

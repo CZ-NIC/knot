@@ -75,9 +75,10 @@ Options
   Set query name. An explicit variant of *name* specification.
 
 **-t** *type*
-  Set query type (e.g. NS, IXFR=12345, TYPE65535). An explicit variant of
-  *type* specification. The default type is A. It is also possible to use
-  NOTIFY parameter to send a notify message.
+  Set query type (e.g. NS, IXFR=12345, TYPE65535, NOTIFY). An explicit variant of
+  *type* specification. The default type is A. IXFR type requires SOA serial
+  parameter. NOTIFY type without SOA serial parameter causes pure NOTIFY message
+  without any SOA hint.
 
 **-v**, **--version**
   Print program version.

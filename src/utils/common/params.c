@@ -242,10 +242,10 @@ int params_parse_class(const char *value, uint16_t *rclass)
 	}
 }
 
-int params_parse_type(const char *value, uint16_t *rtype, uint32_t *xfr_serial,
+int params_parse_type(const char *value, uint16_t *rtype, int64_t *serial,
                       bool *notify)
 {
-	if (value == NULL || rtype == NULL || xfr_serial == NULL) {
+	if (value == NULL || rtype == NULL || serial == NULL) {
 		DBG_NULL;
 		return KNOT_EINVAL;
 	}
@@ -274,24 +274,26 @@ int params_parse_type(const char *value, uint16_t *rtype, uint32_t *xfr_serial,
 		if (*rtype == KNOT_RRTYPE_IXFR) {
 			DBG("SOA serial is required for IXFR query\n");
 			return KNOT_EINVAL;
+		} else {
+			*serial = -1;
 		}
 	} else {
-		// Additional parameter is accepted for IXFR only.
-		if (*rtype == KNOT_RRTYPE_IXFR) {
+		// Additional parameter is accepted for IXFR or NOTIFY.
+		if (*rtype == KNOT_RRTYPE_IXFR || *notify) {
 			const char *param_str = value + 1 + param_pos;
 			char *end;
 
 			// Convert string to serial.
-			unsigned long long serial = strtoull(param_str, &end, 10);
+			unsigned long long num = strtoull(param_str, &end, 10);
 
 			// Check for bad serial string.
 			if (end == param_str || *end != '\0' ||
-			    serial > UINT32_MAX) {
+			    num > UINT32_MAX) {
 				DBG("bad SOA serial %s\n", param_str);
 				return KNOT_EINVAL;
 			}
 
-			*xfr_serial = serial;
+			*serial = num;
 		} else {
 			DBG("unsupported parameter in query type '%s'\n", value);
 			return KNOT_EINVAL;

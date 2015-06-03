@@ -866,13 +866,14 @@ query_t* query_create(const char *owner, const query_t *conf)
 		query->servfail_stop = true;
 		query->class_num = -1;
 		query->type_num = -1;
-		query->xfr_serial = 0;
+		query->serial = -1;
 		query->notify = false;
 		query->flags = DEFAULT_FLAGS_DIG;
 		query->style = DEFAULT_STYLE_DIG;
 		query->idn = true;
 		query->nsid = false;
 		query->edns = -1;
+		//query->tsig_key
 		query->subnet = NULL;
 #if USE_DNSTAP
 		query->dt_reader = NULL;
@@ -901,13 +902,22 @@ query_t* query_create(const char *owner, const query_t *conf)
 		query->servfail_stop = conf->servfail_stop;
 		query->class_num = conf->class_num;
 		query->type_num = conf->type_num;
-		query->xfr_serial = conf->xfr_serial;
+		query->serial = conf->serial;
 		query->notify = conf->notify;
 		query->flags = conf->flags;
 		query->style = conf->style;
 		query->idn = conf->idn;
 		query->nsid = conf->nsid;
 		query->edns = conf->edns;
+		if (conf->tsig_key.name != NULL) {
+			int ret = knot_tsig_key_copy(&query->tsig_key,
+			                             &conf->tsig_key);
+			if (ret != KNOT_EOK) {
+				query_free(query);
+				return NULL;
+			}
+
+		}
 		if (conf->subnet != NULL) {
 			query->subnet = malloc(sizeof(subnet_t));
 			if (query->subnet == NULL) {
@@ -922,16 +932,6 @@ query_t* query_create(const char *owner, const query_t *conf)
 		query->dt_reader = conf->dt_reader;
 		query->dt_writer = conf->dt_writer;
 #endif // USE_DNSTAP
-
-		if (conf->tsig_key.name) {
-			int ret = knot_tsig_key_copy(&query->tsig_key,
-			                             &conf->tsig_key);
-			if (ret != KNOT_EOK) {
-				query_free(query);
-				return NULL;
-			}
-
-		}
 	}
 
 	// Check dynamic allocation.
@@ -1184,7 +1184,7 @@ static int parse_tsig(const char *value, query_t *query)
 static int parse_type(const char *value, query_t *query)
 {
 	uint16_t rtype;
-	uint32_t serial;
+	int64_t  serial;
 	bool     notify;
 
 	if (params_parse_type(value, &rtype, &serial, &notify) != KNOT_EOK) {
@@ -1192,7 +1192,7 @@ static int parse_type(const char *value, query_t *query)
 	}
 
 	query->type_num = rtype;
-	query->xfr_serial = serial;
+	query->serial = serial;
 	query->notify = notify;
 
 	// If NOTIFY, reset default RD flag.
@@ -1328,7 +1328,7 @@ void complete_queries(list_t *queries, const query_t *conf)
 		if (q->type_num < 0) {
 			if (conf->type_num >= 0) {
 				q->type_num = conf->type_num;
-				q->xfr_serial = conf->xfr_serial;
+				q->serial = conf->serial;
 			} else {
 				q->type_num = KNOT_RRTYPE_A;
 			}
