@@ -38,14 +38,17 @@
 /*! \brief Discard zone in zone database. */
 static void discard_zone(zone_t *zone)
 {
-	/* Flush bootstrapped zones. */
-	if (zone->zonefile_mtime == 0) {
+	char *journal_file = conf_journalfile(conf(), zone->name);
 
+	/* Flush if bootstrapped or if the journal doesn't exist. */
+	if (zone->zonefile_mtime == 0 || !journal_exists(journal_file)) {
 		pthread_mutex_lock(&zone->journal_lock);
 		zone_flush_journal(zone);
 		pthread_mutex_unlock(&zone->journal_lock);
-
 	}
+
+	free(journal_file);
+
 	zone_free(&zone);
 }
 
