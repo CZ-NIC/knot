@@ -263,16 +263,9 @@ int zone_flush_journal(zone_t *zone)
 		return KNOT_EOK; /* No differences. */
 	}
 
-	/* Fetch zone source (where it came from). */
-	const struct sockaddr_storage *from = NULL;
-	const conf_iface_t *master = zone_master(zone);
-	if (master != NULL) {
-		from = &master->addr;
-	}
-
 	/* Synchronize journal. */
 	conf_zone_t *conf = zone->conf;
-	int ret = zonefile_write(conf->file, contents, from);
+	int ret = zonefile_write(conf->file, contents);
 	if (ret == KNOT_EOK) {
 		log_zone_info(zone->name, "zone file updated, serial %u -> %u",
 		              zone->zonefile_serial, serial_to);
@@ -356,7 +349,7 @@ size_t zone_update_dequeue(zone_t *zone, list_t *updates)
 	zone->ddns_queue_size = 0;
 
 	pthread_mutex_unlock(&zone->ddns_lock);
-	
+
 	return update_count;
 }
 
