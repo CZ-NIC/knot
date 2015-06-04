@@ -219,13 +219,11 @@ int zone_master_try(zone_t *zone, zone_master_cb callback, void *callback_data)
 		return KNOT_EINVAL;
 	}
 
-	int ret = KNOT_EINVAL;
-
 	/* Try the preferred server. */
 
 	const conf_remote_t *preferred = preferred_master(zone);
 	if (preferred) {
-		ret = callback(zone, preferred->remote, callback_data);
+		int ret = callback(zone, preferred->remote, callback_data);
 		if (ret == KNOT_EOK) {
 			return ret;
 		}
@@ -239,13 +237,13 @@ int zone_master_try(zone_t *zone, zone_master_cb callback, void *callback_data)
 			continue;
 		}
 
-		ret = callback(zone, master->remote, callback_data);
+		int ret = callback(zone, master->remote, callback_data);
 		if (ret == KNOT_EOK) {
 			return KNOT_EOK;
 		}
 	}
 
-	return ret;
+	return KNOT_ENOMASTER;
 }
 
 int zone_flush_journal(zone_t *zone)

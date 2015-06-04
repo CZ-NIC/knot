@@ -331,6 +331,8 @@ int event_refresh(zone_t *zone)
 	int ret = zone_master_try(zone, try_refresh, NULL);
 	const knot_rdataset_t *soa = zone_soa(zone);
 	if (ret != KNOT_EOK) {
+		log_zone_error(zone->name, "refresh, failed (%s)",
+		               knot_strerror(ret));
 		/* Schedule next retry. */
 		zone_events_schedule(zone, ZONE_EVENT_REFRESH, knot_soa_retry(soa));
 		start_expire_timer(zone, soa);
@@ -380,6 +382,8 @@ int event_xfer(zone_t *zone)
 	int ret = zone_master_try(zone, try_transfer, &data);
 	zone->preferred_master = NULL;
 	if (ret != KNOT_EOK) {
+		log_zone_error(zone->name, "transfer, failed (%s)",
+		               knot_strerror(ret));
 		if (is_bootstrap) {
 			zone->bootstrap_retry = bootstrap_next(zone->bootstrap_retry);
 			zone_events_schedule(zone, ZONE_EVENT_XFER, zone->bootstrap_retry);
@@ -430,11 +434,11 @@ int event_update(zone_t *zone)
 
 	/* Replan event if next update waiting. */
 	pthread_mutex_lock(&zone->ddns_lock);
-	
+
 	const bool empty = EMPTY_LIST(zone->ddns_queue);
-	
+
 	pthread_mutex_unlock(&zone->ddns_lock);
-	
+
 	if (!empty) {
 		zone_events_schedule(zone, ZONE_EVENT_UPDATE, ZONE_EVENT_NOW);
 	}
