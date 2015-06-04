@@ -228,18 +228,10 @@ int zone_flush_journal(zone_t *zone)
 		return KNOT_EOK; /* No differences. */
 	}
 
-	/* Fetch zone source (where it came from). */
-	const struct sockaddr_storage *from = NULL;
-	conf_remote_t master;
-	if (zone_is_slave(zone)) {
-		master = zone_master(zone);
-		from = &master.addr;
-	}
-
 	char *zonefile = conf_zonefile(conf(), zone->name);
 
 	/* Synchronize journal. */
-	int ret = zonefile_write(zonefile, contents, from);
+	int ret = zonefile_write(zonefile, contents);
 	if (ret == KNOT_EOK) {
 		log_zone_info(zone->name, "zone file updated, serial %u -> %u",
 		              zone->zonefile_serial, serial_to);
