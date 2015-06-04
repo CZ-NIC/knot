@@ -112,10 +112,6 @@ class Test(object):
 
         type(srv).count += 1
 
-        if params.valgrind_bin and \
-           (valgrind or (valgrind == None and server == "knot")):
-            srv.valgrind = [params.valgrind_bin] + params.valgrind_flags.split()
-
         srv.data_dir = self.data_dir
 
         srv.nsid = nsid
@@ -138,6 +134,12 @@ class Test(object):
         if srv.ctlkey:
             srv.ctlkeyfile = srv.dir + "/%s.ctlkey" % srv.name
             srv.ctlkey.dump(srv.ctlkeyfile)
+
+        if params.valgrind_bin and \
+           (valgrind or (valgrind == None and server == "knot")):
+            srv.valgrind = [params.valgrind_bin] + \
+                           params.valgrind_flags.split() + \
+                           ["--log-file=%s/valgrind" % srv.dir]
 
         self.servers.add(srv)
         return srv
