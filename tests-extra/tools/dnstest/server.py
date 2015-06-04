@@ -35,7 +35,7 @@ class Zone(object):
 
     def __init__(self, zone_file, ddns=False, ixfr=False):
         self.zfile = zone_file
-        self.master = None
+        self.masters = set()
         self.slaves = set()
         self.ddns = ddns
         # ixfr from differences
@@ -154,11 +154,12 @@ class Server(object):
 
         if zone.name not in self.zones:
             z = Zone(slave_file, ddns, ixfr)
-            z.master = master
             self.zones[zone.name] = z
         else:
             z = self.zones[zone.name]
             z.disable_master(slave_file)
+
+        z.masters.add(master)
 
     def compile(self):
         try:
@@ -696,13 +697,14 @@ class Bind(Server):
             keys = set() # Duplicy check.
             for zone in sorted(self.zones):
                 z = self.zones[zone]
-                if z.master and z.master.tsig.name not in keys:
-                    t = z.master.tsig
-                    s.begin("key", t.name)
-                    s.item("algorithm", t.alg)
-                    s.item_str("secret", t.key)
-                    s.end()
-                    keys.add(t.name)
+                for master in z.masters:
+                    if master.tsig.name not in keys:
+                        t = master.tsig
+                        s.begin("key", t.name)
+                        s.item("algorithm", t.alg)
+                        s.item_str("secret", t.key)
+                        s.end()
+                        keys.add(t.name)
                 for slave in z.slaves:
                     if slave.tsig and slave.tsig.name not in keys:
                         t = slave.tsig
@@ -717,24 +719,31 @@ class Bind(Server):
             s.begin("zone", z.name)
             s.item_str("file", z.zfile.path)
             s.item("check-names", "warn")
-            if z.master:
+
+            if z.masters:
                 s.item("type", "slave")
 
-                if self.tsig:
-                    if not z.master.disable_notify:
-                        s.item("allow-notify", "{ key %s; }" % z.master.tsig.name)
-                    s.item("masters", "{ %s port %i key %s; }" \
-                           % (z.master.addr, z.master.port, z.master.tsig.name))
-                else:
-                    if not z.master.disable_notify:
-                        s.item("allow-notify", "{ %s; }" % z.master.addr)
-                    s.item("masters", "{ %s port %i; }" \
-                           % (z.master.addr, z.master.port))
+                masters = ""
+                masters_notify = ""
+                for master in z.masters:
+                    if self.tsig:
+                        masters += "%s port %i key %s; " \
+                                   % (master.addr, master.port, master.tsig.name)
+                        if not master.disable_notify:
+                            masters_notify += "key %s; " % master.tsig.name
+                    else:
+                        masters += "%s port %i; " \
+                                   % (master.addr, master.port)
+                        if not master.disable_notify:
+                            masters_notify += "%s; " % master.addr
+                s.item("masters", "{ %s}" % masters)
+                if masters_notify:
+                    s.item("allow-notify", "{ %s}" % masters_notify)
             else:
                 s.item("type", "master")
                 s.item("notify", "explicit")
 
-            if z.ixfr and not z.master:
+            if z.ixfr and not z.masters:
                 s.item("ixfr-from-differences", "yes")
 
             if z.slaves:
@@ -756,7 +765,7 @@ class Bind(Server):
                 else:
                     upd = "%s; " % self.addr
 
-                if z.master:
+                if z.masters:
                     s.item("allow-update-forwarding", "{ %s}" % upd)
                 else:
                     s.item("allow-update", "{ %s}" % upd)
@@ -832,12 +841,13 @@ class Knot(Server):
             keys = set() # Duplicy check.
             for zone in sorted(self.zones):
                 z = self.zones[zone]
-                if z.master and z.master.tsig.name not in keys:
-                    t = z.master.tsig
-                    self._key(s, t)
-                    keys.add(t.name)
+                for master in z.masters:
+                    if master.tsig.name not in keys:
+                        t = master.tsig
+                        self._key(s, t)
+                        keys.add(t.name)
                 for slave in z.slaves:
-                    if slave.tsig and slave.tsig.name not in keys:
+                    if slave.tsig.name not in keys:
                         t = slave.tsig
                         self._key(s, t)
                         keys.add(t.name)
@@ -847,15 +857,16 @@ class Knot(Server):
         servers = set() # Duplicity check.
         for zone in sorted(self.zones):
             z = self.zones[zone]
-            if z.master and z.master.name not in servers:
-                if not have_remote:
-                    s.begin("remote")
-                    have_remote = True
-                s.id_item("id", z.master.name)
-                s.item_str("address", "%s@%s" % (z.master.addr, z.master.port))
-                if z.master.tsig:
-                    s.item_str("key", z.master.tsig.name)
-                servers.add(z.master.name)
+            for master in z.masters:
+                if master.name not in servers:
+                    if not have_remote:
+                        s.begin("remote")
+                        have_remote = True
+                    s.id_item("id", master.name)
+                    s.item_str("address", "%s@%s" % (master.addr, master.port))
+                    if master.tsig:
+                        s.item_str("key", master.tsig.name)
+                    servers.add(master.name)
             for slave in z.slaves:
                 if slave.name not in servers:
                     if not have_remote:
@@ -885,13 +896,14 @@ class Knot(Server):
         servers = set() # Duplicity check.
         for zone in sorted(self.zones):
             z = self.zones[zone]
-            if z.master and z.master.name not in servers:
-                s.id_item("id", "acl_%s" % z.master.name)
-                s.item_str("address", z.master.addr)
-                if z.master.tsig:
-                    s.item_str("key", z.master.tsig.name)
-                s.item("action", "notify")
-                servers.add(z.master.name)
+            for master in z.masters:
+                if master.name not in servers:
+                    s.id_item("id", "acl_%s" % master.name)
+                    s.item_str("address", master.addr)
+                    if master.tsig:
+                        s.item_str("key", master.tsig.name)
+                    s.item("action", "notify")
+                    servers.add(master.name)
             for slave in z.slaves:
                 if slave.name in servers:
                     continue
@@ -944,11 +956,17 @@ class Knot(Server):
             s.item_str("file", z.zfile.path)
 
             acl = ""
-            if z.master:
-                s.item("master", z.master.name)
-                if not z.master.disable_notify:
-                    acl = "acl_%s" % z.master.name
-
+            if z.masters:
+                masters = ""
+                for master in z.masters:
+                    if masters:
+                        masters += ", "
+                    masters += master.name
+                    if not master.disable_notify:
+                        if acl:
+                            acl += ", "
+                        acl += "acl_%s" % master.name
+                s.item("master", "[%s]" % masters)
             if z.slaves:
                 slaves = ""
                 for slave in z.slaves:
@@ -959,13 +977,12 @@ class Knot(Server):
                     slaves += slave.name
                 if slaves:
                     s.item("notify", "[%s]" % slaves)
-
             if acl:
                 acl += ", "
             acl += "acl_local, acl_test"
             s.item("acl", "[%s]" % acl)
 
-            if z.ixfr and not z.master:
+            if z.ixfr and not z.masters:
                 s.item_str("ixfr-from-differences", "on")
 
             if len(z.modules) > 0:

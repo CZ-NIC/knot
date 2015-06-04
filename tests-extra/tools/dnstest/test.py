@@ -177,7 +177,7 @@ class Test(object):
         def srv_sort(server):
             masters = 0
             for z in server.zones:
-                if server.zones[z].master: masters += 1
+                if server.zones[z].masters: masters += 1
             return masters
 
         # Sort server list by number of masters. I.e. masters are preferred.
