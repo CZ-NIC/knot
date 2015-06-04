@@ -234,3 +234,12 @@ class ZoneFile(object):
             raise Exception("Can't modify zone file '%s'" % self.path)
 
         os.remove(old_name)
+
+    def remove(self):
+        '''Remove zone file.'''
+
+        try:
+            os.remove("%s/%s" % (self.file_dir, self.file_name))
+        except:
+            pass
+

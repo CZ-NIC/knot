@@ -71,6 +71,8 @@ typedef struct zone_t
 	time_t zonefile_mtime;
 	uint32_t zonefile_serial;
 
+	/*! \brief Preferred master for remote operation. */
+	const conf_iface_t *preferred_master;
 } zone_t;
 
 /*----------------------------------------------------------------------------*/
@@ -106,11 +108,24 @@ int zone_change_store(zone_t *zone, changeset_t *change);
 zone_contents_t *zone_switch_contents(zone_t *zone,
 					   zone_contents_t *new_contents);
 
+/*! \brief Check if zone has master. */
+bool zone_is_slave(const zone_t *zone);
+
+typedef int (*zone_master_cb)(zone_t *zone, const conf_iface_t *remote, void *data);
+
+/*!
+ * \brief Perform an action with a first working master server.
+ *
+ * The function iterates over available masters. For each master, the callback
+ * function is called. If the callback function succeeds (\ref KNOT_EOK is
+ * returned), the iteration is terminated.
+ *
+ * \return Error code from the last callback.
+ */
+int zone_master_try(zone_t *zone, zone_master_cb callback, void *callback_data);
+
 /*! \brief Return zone master remote. */
 const conf_iface_t *zone_master(const zone_t *zone);
-
-/*! \brief Rotate list of master remotes for current zone. */
-void zone_master_rotate(const zone_t *zone);
 
 /*! \brief Synchronize zone file with journal. */
 int zone_flush_journal(zone_t *zone);
@@ -123,6 +138,5 @@ size_t zone_update_dequeue(zone_t *zone, list_t *updates);
 
 /*! \brief Returns true if final SOA in transfer has newer serial than zone */
 bool zone_transfer_needed(const zone_t *zone, const knot_pkt_t *pkt);
-
 
 /*! @} */

@@ -185,15 +185,65 @@ const conf_iface_t *zone_master(const zone_t *zone)
 	return master->remote;
 }
 
-void zone_master_rotate(const zone_t *zone)
+bool zone_is_slave(const zone_t *zone)
 {
+	return zone && !EMPTY_LIST(zone->conf->acl.xfr_in);
+}
 
-	list_t *master_list = &zone->conf->acl.xfr_in;
-	if (list_size(master_list) < 2) {
-		return;
+/*!
+ * \brief Get zone preferred master while checking it's existence.
+ *
+ * It is possible that the preferred master will change during the function
+ * execution. We can ignore this race. In the worst case, the preferred master
+ * won't be found and we will try all servers in default order.
+ */
+static const conf_remote_t *preferred_master(const zone_t *zone)
+{
+	if (!zone->preferred_master) {
+		return NULL;
 	}
 
-	add_tail(master_list, HEAD(*master_list));
+	conf_remote_t *master = NULL;
+	WALK_LIST(master, zone->conf->acl.xfr_in) {
+		if (master->remote == zone->preferred_master) {
+			return master;
+		}
+	}
+
+	return NULL;
+}
+
+int zone_master_try(zone_t *zone, zone_master_cb callback, void *callback_data)
+{
+	if (!zone || EMPTY_LIST(zone->conf->acl.xfr_in)) {
+		return KNOT_EINVAL;
+	}
+
+	/* Try the preferred server. */
+
+	const conf_remote_t *preferred = preferred_master(zone);
+	if (preferred) {
+		int ret = callback(zone, preferred->remote, callback_data);
+		if (ret == KNOT_EOK) {
+			return ret;
+		}
+	}
+
+	/* Try all the other servers. */
+
+	conf_remote_t *master = NULL;
+	WALK_LIST(master, zone->conf->acl.xfr_in) {
+		if (master == preferred) {
+			continue;
+		}
+
+		int ret = callback(zone, master->remote, callback_data);
+		if (ret == KNOT_EOK) {
+			return KNOT_EOK;
+		}
+	}
+
+	return KNOT_ENOMASTER;
 }
 
 int zone_flush_journal(zone_t *zone)
@@ -211,16 +261,9 @@ int zone_flush_journal(zone_t *zone)
 		return KNOT_EOK; /* No differences. */
 	}
 
-	/* Fetch zone source (where it came from). */
-	const struct sockaddr_storage *from = NULL;
-	const conf_iface_t *master = zone_master(zone);
-	if (master != NULL) {
-		from = &master->addr;
-	}
-
 	/* Synchronize journal. */
 	conf_zone_t *conf = zone->conf;
-	int ret = zonefile_write(conf->file, contents, from);
+	int ret = zonefile_write(conf->file, contents);
 	if (ret == KNOT_EOK) {
 		log_zone_info(zone->name, "zone file updated, serial %u -> %u",
 		              zone->zonefile_serial, serial_to);
@@ -304,7 +347,7 @@ size_t zone_update_dequeue(zone_t *zone, list_t *updates)
 	zone->ddns_queue_size = 0;
 
 	pthread_mutex_unlock(&zone->ddns_lock);
-	
+
 	return update_count;
 }
 
@@ -323,4 +366,3 @@ bool zone_transfer_needed(const zone_t *zone, const knot_pkt_t *pkt)
 	return knot_serial_compare(zone_contents_serial(zone->contents),
 	                           knot_soa_serial(&soa.rrs)) < 0;
 }
-

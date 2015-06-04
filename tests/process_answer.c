@@ -120,9 +120,8 @@ int main(int argc, char *argv[])
 	ok(ret == KNOT_EOK, "proc_answer: fake server initialization");
 
 	/* Prepare. */
-	struct sockaddr_storage remote;
-	memset(&remote, 0, sizeof(struct sockaddr_storage));
-	sockaddr_set(&remote, AF_INET, "127.0.0.1", 53);
+	conf_iface_t remote = { { 0 } };
+	sockaddr_set(&remote.addr, AF_INET, "127.0.0.1", 53);
 	struct process_answer_param param = {0};
 	param.remote = &remote;
 	param.zone = knot_zonedb_find(server.zone_db, ROOT_DNAME);

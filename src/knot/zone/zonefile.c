@@ -355,8 +355,7 @@ static int zones_open_free_filename(const char *old_name, char **new_name)
 	return fd;
 }
 
-int zonefile_write(const char *path, zone_contents_t *zone,
-                   const struct sockaddr_storage *from)
+int zonefile_write(const char *path, zone_contents_t *zone)
 {
 	if (!zone || !path) {
 		return KNOT_EINVAL;
@@ -379,7 +378,7 @@ int zonefile_write(const char *path, zone_contents_t *zone,
 		return KNOT_ERROR;
 	}
 
-	if (zone_dump_text(zone, from, f) != KNOT_EOK) {
+	if (zone_dump_text(zone, f) != KNOT_EOK) {
 		WARNING(zname, "failed to save zone, file '%s'", new_fname);
 		fclose(f);
 		unlink(new_fname);
