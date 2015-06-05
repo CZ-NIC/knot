@@ -534,7 +534,8 @@ int event_dnssec(zone_t *zone)
 		goto done;
 	}
 
-	if (!changeset_empty(&ch)) {
+	bool zone_changed = !changeset_empty(&ch);
+	if (zone_changed) {
 		/* Apply change. */
 		zone_contents_t *new_contents = NULL;
 		int ret = apply_changeset(zone, &ch, &new_contents);
@@ -565,10 +566,12 @@ int event_dnssec(zone_t *zone)
 	// Schedule dependent events.
 
 	schedule_dnssec(zone, refresh_at);
-	zone_events_schedule(zone, ZONE_EVENT_NOTIFY, ZONE_EVENT_NOW);
-	conf_val_t val = conf_zone_get(conf(), C_ZONEFILE_SYNC, zone->name);
-	if (conf_int(&val) == 0) {
-		zone_events_schedule(zone, ZONE_EVENT_FLUSH, ZONE_EVENT_NOW);
+	if (zone_changed) {
+		zone_events_schedule(zone, ZONE_EVENT_NOTIFY, ZONE_EVENT_NOW);
+		conf_val_t val = conf_zone_get(conf(), C_ZONEFILE_SYNC, zone->name);
+		if (conf_int(&val) == 0) {
+			zone_events_schedule(zone, ZONE_EVENT_FLUSH, ZONE_EVENT_NOW);
+		}
 	}
 
 done:
