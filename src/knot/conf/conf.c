@@ -31,6 +31,7 @@
 
 static conf_val_t raw_id_get(
 	conf_t *conf,
+	namedb_txn_t *txn,
 	const yp_name_t *key0_name,
 	const yp_name_t *key1_name,
 	const uint8_t *id,
@@ -38,8 +39,7 @@ static conf_val_t raw_id_get(
 {
 	conf_val_t val = { NULL };
 
-	val.code = conf_db_get(conf, &conf->read_txn, key0_name, key1_name,
-	                       id, id_len, &val);
+	val.code = conf_db_get(conf, txn, key0_name, key1_name, id, id_len, &val);
 	switch (val.code) {
 	default:
 		log_error("failed to read configuration '%s/%s' (%s)",
@@ -51,8 +51,9 @@ static conf_val_t raw_id_get(
 	}
 }
 
-conf_val_t conf_get(
+conf_val_t conf_get_txn(
 	conf_t *conf,
+	namedb_txn_t *txn,
 	const yp_name_t *key0_name,
 	const yp_name_t *key1_name)
 {
@@ -64,11 +65,12 @@ conf_val_t conf_get(
 		return val;
 	}
 
-	return raw_id_get(conf, key0_name, key1_name, NULL, 0);
+	return raw_id_get(conf, txn, key0_name, key1_name, NULL, 0);
 }
 
-conf_val_t conf_id_get(
+conf_val_t conf_id_get_txn(
 	conf_t *conf,
+	namedb_txn_t *txn,
 	const yp_name_t *key0_name,
 	const yp_name_t *key1_name,
 	conf_val_t *id)
@@ -88,11 +90,12 @@ conf_val_t conf_id_get(
 		return val;
 	}
 
-	return raw_id_get(conf, key0_name, key1_name, id->data, id->len);
+	return raw_id_get(conf, txn, key0_name, key1_name, id->data, id->len);
 }
 
-conf_val_t conf_mod_get(
+conf_val_t conf_mod_get_txn(
 	conf_t *conf,
+	namedb_txn_t *txn,
 	const yp_name_t *key1_name,
 	const conf_mod_id_t *mod_id)
 {
@@ -104,11 +107,12 @@ conf_val_t conf_mod_get(
 		return val;
 	}
 
-	return raw_id_get(conf, mod_id->name, key1_name, mod_id->data, mod_id->len);
+	return raw_id_get(conf, txn, mod_id->name, key1_name, mod_id->data, mod_id->len);
 }
 
-conf_val_t conf_zone_get(
+conf_val_t conf_zone_get_txn(
 	conf_t *conf,
+	namedb_txn_t *txn,
 	const yp_name_t *key1_name,
 	const knot_dname_t *dname)
 {
@@ -123,8 +127,7 @@ conf_val_t conf_zone_get(
 	int dname_size = knot_dname_size(dname);
 
 	// Try to get explicit value.
-	val.code = conf_db_get(conf, &conf->read_txn, C_ZONE, key1_name,
-	                       dname, dname_size, &val);
+	val.code = conf_db_get(conf, txn, C_ZONE, key1_name, dname, dname_size, &val);
 	switch (val.code) {
 	case KNOT_EOK:
 		return val;
@@ -137,13 +140,12 @@ conf_val_t conf_zone_get(
 	}
 
 	// Check if a template is available.
-	val.code = conf_db_get(conf, &conf->read_txn, C_ZONE, C_TPL, dname,
-	                       dname_size, &val);
+	val.code = conf_db_get(conf, txn, C_ZONE, C_TPL, dname, dname_size, &val);
 	switch (val.code) {
 	case KNOT_EOK:
 		// Use the specified template.
 		conf_db_val(&val);
-		val.code = conf_db_get(conf, &conf->read_txn, C_TPL, key1_name,
+		val.code = conf_db_get(conf, txn, C_TPL, key1_name,
 		                       val.data, val.len, &val);
 		break;
 	default:
@@ -152,9 +154,8 @@ conf_val_t conf_zone_get(
 		// FALLTHROUGH
 	case KNOT_ENOENT:
 		// Use the default template.
-		val.code = conf_db_get(conf, &conf->read_txn, C_TPL, key1_name,
-		                       CONF_DEFAULT_ID + 1, CONF_DEFAULT_ID[0],
-		                       &val);
+		val.code = conf_db_get(conf, txn, C_TPL, key1_name,
+		                       CONF_DEFAULT_ID + 1, CONF_DEFAULT_ID[0], &val);
 	}
 
 	switch (val.code) {
@@ -170,13 +171,14 @@ conf_val_t conf_zone_get(
 	return val;
 }
 
-conf_val_t conf_default_get(
+conf_val_t conf_default_get_txn(
 	conf_t *conf,
+	namedb_txn_t *txn,
 	const yp_name_t *key1_name)
 {
 	conf_val_t val = { NULL };
 
-	val.code = conf_db_get(conf, &conf->read_txn, C_TPL, key1_name,
+	val.code = conf_db_get(conf, txn, C_TPL, key1_name,
 	                       CONF_DEFAULT_ID + 1, CONF_DEFAULT_ID[0], &val);
 	switch (val.code) {
 	default:
@@ -191,14 +193,15 @@ conf_val_t conf_default_get(
 	return val;
 }
 
-size_t conf_id_count(
+size_t conf_id_count_txn(
 	conf_t *conf,
+	namedb_txn_t *txn,
 	const yp_name_t *key0_name)
 {
 	size_t count = 0;
 	conf_iter_t iter = { NULL };
 
-	int ret = conf_db_iter_begin(conf, &conf->read_txn, key0_name, &iter);
+	int ret = conf_db_iter_begin(conf, txn, key0_name, &iter);
 	switch (ret) {
 	case KNOT_EOK:
 		break;
@@ -219,13 +222,14 @@ size_t conf_id_count(
 	return count;
 }
 
-conf_iter_t conf_iter(
+conf_iter_t conf_iter_txn(
 	conf_t *conf,
+	namedb_txn_t *txn,
 	const yp_name_t *key0_name)
 {
 	conf_iter_t iter = { NULL };
 
-	iter.code = conf_db_iter_begin(conf, &conf->read_txn, key0_name, &iter);
+	iter.code = conf_db_iter_begin(conf, txn, key0_name, &iter);
 	switch (iter.code) {
 	default:
 		log_error("failed to iterate thgrough configuration '%s' (%s)",
@@ -564,9 +568,12 @@ void conf_free_mod_id(
 
 static char* get_filename(
 	conf_t *conf,
+	namedb_txn_t *txn,
 	const knot_dname_t *zone,
 	const char *name)
 {
+	assert(name);
+
 	const char *end = name + strlen(name);
 	char out[1024] = "";
 
@@ -631,7 +638,7 @@ static char* get_filename(
 	if (out[0] == '/') {
 		return strdup(out);
 	} else {
-		conf_val_t val = conf_zone_get(conf, C_STORAGE, zone);
+		conf_val_t val = conf_zone_get_txn(conf, txn, C_STORAGE, zone);
 		char *storage = conf_abs_path(&val, NULL);
 		if (storage == NULL) {
 			return NULL;
@@ -642,15 +649,16 @@ static char* get_filename(
 	}
 }
 
-char* conf_zonefile(
+char* conf_zonefile_txn(
 	conf_t *conf,
+	namedb_txn_t *txn,
 	const knot_dname_t *zone)
 {
-	if (conf == NULL || zone == NULL) {
+	if (zone == NULL) {
 		return NULL;
 	}
 
-	conf_val_t val = conf_zone_get(conf, C_FILE, zone);
+	conf_val_t val = conf_zone_get_txn(conf, txn, C_FILE, zone);
 	const char *file = conf_str(&val);
 
 	// Use default zonefile name pattern if not specified.
@@ -658,24 +666,26 @@ char* conf_zonefile(
 		file = "%szone";
 	}
 
-	return get_filename(conf, zone, file);
+	return get_filename(conf, txn, zone, file);
 }
 
-char* conf_journalfile(
+char* conf_journalfile_txn(
 	conf_t *conf,
+	namedb_txn_t *txn,
 	const knot_dname_t *zone)
 {
-	if (conf == NULL || zone == NULL) {
+	if (zone == NULL) {
 		return NULL;
 	}
 
-	return get_filename(conf, zone, "%sdb");
+	return get_filename(conf, txn, zone, "%sdb");
 }
 
-size_t conf_udp_threads(
-	conf_t *conf)
+size_t conf_udp_threads_txn(
+	conf_t *conf,
+	namedb_txn_t *txn)
 {
-	conf_val_t val = conf_get(conf, C_SRV, C_UDP_WORKERS);
+	conf_val_t val = conf_get_txn(conf, txn, C_SRV, C_UDP_WORKERS);
 	int64_t workers = conf_int(&val);
 	if (workers == YP_NIL) {
 		return dt_optimal_size();
@@ -684,22 +694,24 @@ size_t conf_udp_threads(
 	return workers;
 }
 
-size_t conf_tcp_threads(
-	conf_t *conf)
+size_t conf_tcp_threads_txn(
+	conf_t *conf,
+	namedb_txn_t *txn)
 {
-	conf_val_t val = conf_get(conf, C_SRV, C_TCP_WORKERS);
+	conf_val_t val = conf_get_txn(conf, txn, C_SRV, C_TCP_WORKERS);
 	int64_t workers = conf_int(&val);
 	if (workers == YP_NIL) {
-		return MAX(conf_udp_threads(conf) * 2, CONF_XFERS);
+		return MAX(conf_udp_threads_txn(conf, txn) * 2, CONF_XFERS);
 	}
 
 	return workers;
 }
 
-size_t conf_bg_threads(
-	conf_t *conf)
+size_t conf_bg_threads_txn(
+	conf_t *conf,
+	namedb_txn_t *txn)
 {
-	conf_val_t val = conf_get(conf, C_SRV, C_BG_WORKERS);
+	conf_val_t val = conf_get_txn(conf, txn, C_SRV, C_BG_WORKERS);
 	int64_t workers = conf_int(&val);
 	if (workers == YP_NIL) {
 		return MIN(dt_optimal_size(), CONF_XFERS);
@@ -708,16 +720,17 @@ size_t conf_bg_threads(
 	return workers;
 }
 
-int conf_user(
+int conf_user_txn(
 	conf_t *conf,
+	namedb_txn_t *txn,
 	int *uid,
 	int *gid)
 {
-	if (conf == NULL || uid == NULL || gid == NULL) {
+	if (uid == NULL || gid == NULL) {
 		return KNOT_EINVAL;
 	}
 
-	conf_val_t val = conf_get(conf, C_SRV, C_USER);
+	conf_val_t val = conf_get_txn(conf, txn, C_SRV, C_USER);
 	if (val.code == KNOT_EOK) {
 		char *user = strdup(conf_str(&val));
 
@@ -761,8 +774,9 @@ int conf_user(
 	}
 }
 
-conf_remote_t conf_remote(
+conf_remote_t conf_remote_txn(
 	conf_t *conf,
+	namedb_txn_t *txn,
 	conf_val_t *id)
 {
 	assert(id != NULL && id->item != NULL);
@@ -772,11 +786,11 @@ conf_remote_t conf_remote(
 
 	conf_remote_t out = { { AF_UNSPEC } };
 
-	conf_val_t rundir_val = conf_get(conf, C_SRV, C_RUNDIR);
+	conf_val_t rundir_val = conf_get_txn(conf, txn, C_SRV, C_RUNDIR);
 	char *rundir = conf_abs_path(&rundir_val, NULL);
 
 	// Get remote address.
-	conf_val_t val = conf_id_get(conf, C_RMT, C_ADDR, id);
+	conf_val_t val = conf_id_get_txn(conf, txn, C_RMT, C_ADDR, id);
 	if (val.code != KNOT_EOK) {
 		log_error("invalid remote in configuration");
 		free(rundir);
@@ -785,18 +799,18 @@ conf_remote_t conf_remote(
 	out.addr = conf_addr(&val, rundir);
 
 	// Get outgoing address (optional).
-	val = conf_id_get(conf, C_RMT, C_VIA, id);
+	val = conf_id_get_txn(conf, txn, C_RMT, C_VIA, id);
 	out.via = conf_addr(&val, rundir);
 
 	// Get TSIG key (optional).
-	conf_val_t key_id = conf_id_get(conf, C_RMT, C_KEY, id);
+	conf_val_t key_id = conf_id_get_txn(conf, txn, C_RMT, C_KEY, id);
 	if (key_id.code == KNOT_EOK) {
 		out.key.name = (knot_dname_t *)conf_dname(&key_id);
 
-		val = conf_id_get(conf, C_KEY, C_ALG, &key_id);
+		val = conf_id_get_txn(conf, txn, C_KEY, C_ALG, &key_id);
 		out.key.algorithm = conf_opt(&val);
 
-		val = conf_id_get(conf, C_KEY, C_SECRET, &key_id);
+		val = conf_id_get_txn(conf, txn, C_KEY, C_SECRET, &key_id);
 		conf_data(&val);
 		out.key.secret.data = (uint8_t *)val.data;
 		out.key.secret.size = val.len;
