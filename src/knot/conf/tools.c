@@ -230,7 +230,7 @@ int include_file(
 	}
 	if (ret <= 0 || ret >= max_path) {
 		free(path);
-		return ret;
+		return KNOT_ESPACE;
 	}
 	size_t path_len = ret;
 
@@ -238,7 +238,7 @@ int include_file(
 	struct stat file_stat;
 	if (stat(path, &file_stat) != 0) {
 		free(path);
-		return KNOT_EINVAL;
+		return KNOT_EFILE;
 	}
 
 	// Process regular file.
@@ -249,14 +249,14 @@ int include_file(
 		return ret;
 	} else if (!S_ISDIR(file_stat.st_mode)) {
 		free(path);
-		return KNOT_EINVAL;
+		return KNOT_EFILE;
 	}
 
 	// Process directory.
 	DIR *dir = opendir(path);
 	if (dir == NULL) {
 		free(path);
-		return KNOT_EINVAL;
+		return KNOT_EFILE;
 	}
 
 	// Prepare own dirent structure (see NOTES in man readdir_r).
@@ -269,8 +269,11 @@ int include_file(
 	}
 	memset(entry, 0, len);
 
+	ret = KNOT_EOK;
+
+	int error;
 	struct dirent *result = NULL;
-	while ((ret = readdir_r(dir, entry, &result)) == 0 && result != NULL) {
+	while ((error = readdir_r(dir, entry, &result)) == 0 && result != NULL) {
 		// Skip names with leading dot.
 		if (entry->d_name[0] == '.') {
 			continue;
@@ -280,9 +283,10 @@ int include_file(
 		ret = snprintf(path + path_len, max_path - path_len, "/%s",
 		               entry->d_name);
 		if (ret <= 0 || ret >= max_path - path_len) {
-			free(entry);
-			free(path);
-			return KNOT_EINVAL;
+			ret = KNOT_ESPACE;
+			break;
+		} else {
+			ret = KNOT_EOK;
 		}
 
 		// Ignore directories inside the current directory.
@@ -295,6 +299,10 @@ int include_file(
 		if (ret != KNOT_EOK) {
 			break;
 		}
+	}
+
+	if (error != 0) {
+		ret = knot_map_errno();
 	}
 
 	free(entry);
