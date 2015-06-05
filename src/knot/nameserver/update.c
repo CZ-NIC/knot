@@ -341,14 +341,6 @@ static int process_requests(zone_t *zone, list_t *requests)
 
 static int forward_request(zone_t *zone, struct knot_request *request)
 {
-	/* Ignore if DNSSEC enabled. */
-	conf_val_t val = conf_zone_get(conf(), C_DNSSEC_SIGNING, zone->name);
-	if (conf_bool(&val)) {
-		log_zone_notice(zone->name, "ignoring ddns forward due to "
-		                            "enabled automatic DNSSEC signing.");
-		return KNOT_EOK;
-	}
-
 	/* Create requestor instance. */
 	struct knot_requestor re;
 	knot_requestor_init(&re, NULL);

@@ -324,14 +324,6 @@ int event_refresh(zone_t *zone)
 		return KNOT_EOK;
 	}
 
-	/* Ignore if DNSSEC enabled. */
-	conf_val_t val = conf_zone_get(conf(), C_DNSSEC_SIGNING, zone->name);
-	if (conf_bool(&val)) {
-		log_zone_notice(zone->name, "ignoring zone refresh due to "
-		                            "enabled automatic DNSSEC signing.");
-		return KNOT_EOK;
-	}
-
 	if (zone_contents_is_empty(zone->contents)) {
 		/* No contents, schedule retransfer now. */
 		zone_events_schedule(zone, ZONE_EVENT_XFER, ZONE_EVENT_NOW);
@@ -367,14 +359,6 @@ int event_xfer(zone_t *zone)
 		return KNOT_EOK;
 	}
 
-	/* Ignore if DNSSEC enabled. */
-	conf_val_t val = conf_zone_get(conf(), C_DNSSEC_SIGNING, zone->name);
-	if (conf_bool(&val)) {
-		log_zone_notice(zone->name, "ignoring slave transfer due to "
-		                            "enabled automatic DNSSEC signing.");
-		return KNOT_EOK;
-	}
-
 	/* Determine transfer type. */
 	bool is_boostrap = zone_contents_is_empty(zone->contents);
 	uint16_t pkt_type = KNOT_QUERY_IXFR;
@@ -407,7 +391,7 @@ int event_xfer(zone_t *zone)
 	zone_events_schedule(zone, ZONE_EVENT_REFRESH, knot_soa_refresh(soa));
 	zone_events_schedule(zone, ZONE_EVENT_NOTIFY,  ZONE_EVENT_NOW);
 	zone_events_cancel(zone, ZONE_EVENT_EXPIRE);
-	val = conf_zone_get(conf(), C_ZONEFILE_SYNC, zone->name);
+	conf_val_t val = conf_zone_get(conf(), C_ZONEFILE_SYNC, zone->name);
 	int64_t dbsync_timeout = conf_int(&val);
 	if (dbsync_timeout == 0) {
 		zone_events_schedule(zone, ZONE_EVENT_FLUSH, ZONE_EVENT_NOW);
