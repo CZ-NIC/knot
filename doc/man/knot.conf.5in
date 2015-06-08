@@ -354,7 +354,7 @@ Default: off
 .sp
 Configuration of the server remote control.
 .sp
-Caution: The control protocol is not encrypted and is susceptible to replay
+\fICaution:\fP The control protocol is not encrypted and is susceptible to replay
 attacks in a short timeframe until message digest expires. For that reason,
 it is recommended to use default UNIX socket.
 .INDENT 0.0
@@ -381,7 +381,7 @@ Default: \fI\%rundir\fP/knot.sock
 An ordered list of \fI\%references\fP to ACL rules allowing the remote
 control.
 .sp
-Caution: This option has no effect with UNIX socket.
+\fICaution:\fP This option has no effect with UNIX socket.
 .sp
 Default: empty
 .SH REMOTE SECTION
@@ -603,6 +603,9 @@ If enabled, the server creates zone differences from changes you made to the
 zone file upon server reload. This option is only relevant if the server
 is a master server for the zone.
 .sp
+\fICaution:\fP This option has no effect with enabled
+\fI\%dnssec\-signing\fP\&.
+.sp
 Default: off
 .SS max\-journal\-size
 .sp
@@ -612,6 +615,8 @@ Default: unlimited
 .SS dnssec\-signing
 .sp
 If enabled, automatic DNSSEC signing for the zone is turned on.
+.sp
+\fICaution:\fP Cannot be enabled on a slave zone.
 .sp
 Default: off
 .SS kasp\-db
@@ -783,7 +788,7 @@ Default: empty
 .sp
 A record owner prefix.
 .sp
-Caution: \fIprefix\fP doesn’t allow dots, address parts in the synthetic names are
+\fICaution:\fP \fIprefix\fP doesn’t allow dots, address parts in the synthetic names are
 separated with a dash.
 .sp
 Default: empty

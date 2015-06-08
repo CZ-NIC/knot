@@ -190,7 +190,7 @@ const yp_item_t conf_scheme[] = {
 #endif
 /***********/
 	{ C_TPL,  YP_TGRP, YP_VGRP = { desc_template }, YP_FMULTI },
-	{ C_ZONE, YP_TGRP, YP_VGRP = { desc_zone }, YP_FMULTI },
-	{ C_INCL, YP_TSTR, YP_VNONE, YP_FNONE, { NULL, include_file } },
+	{ C_ZONE, YP_TGRP, YP_VGRP = { desc_zone }, YP_FMULTI, { check_zone } },
+	{ C_INCL, YP_TSTR, YP_VNONE, YP_FNONE, { include_file } },
 	{ NULL }
 };

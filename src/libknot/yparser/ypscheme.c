@@ -292,7 +292,7 @@ static int check_key1(
 	if (ctx->key0->var.g.id != NULL) {
 		// Check if key1 is not id item.
 		if (key1 == ctx->key0->var.g.id) {
-			return KNOT_YP_EINVAL_ITEM;
+			return KNOT_YP_EINVAL_ID;
 		}
 
 		if (ctx->id_len == 0) {
@@ -338,7 +338,7 @@ static int check_id(
 
 	// Id item must be the first one.
 	if (id != ctx->key0->var.g.id) {
-		return KNOT_YP_EINVAL_ITEM;
+		return KNOT_YP_EINVAL_ID;
 	}
 
 	// Textual id must not be empty.

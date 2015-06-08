@@ -125,6 +125,7 @@ enum knot_error {
 
 	/* Yparser errors. */
 	KNOT_YP_EINVAL_ITEM,
+	KNOT_YP_EINVAL_ID,
 	KNOT_YP_EINVAL_DATA,
 	KNOT_YP_EINVAL_INDENT,
 	KNOT_YP_ENOTSUP_DATA,

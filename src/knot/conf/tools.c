@@ -180,29 +180,62 @@ int mod_id_to_txt(
 }
 
 int check_ref(
-	conf_args_t *args)
+	conf_check_t *args)
 {
-	const yp_item_t *parent = args->key1->var.r.ref;
+	const char *err_str = "invalid reference";
+
+	const yp_item_t *parent = args->check->key1->var.r.ref;
 
 	// Try to find the id in the referenced category.
-	return conf_db_get(args->conf, args->txn, parent->name, NULL,
-	                   args->data, args->data_len, NULL);
+	int ret = conf_db_get(args->conf, args->txn, parent->name, NULL,
+	                      args->check->data, args->check->data_len, NULL);
+	if (ret != KNOT_EOK) {
+		*args->err_str = err_str;
+	}
+
+	return ret;
 }
 
 int check_modref(
-	conf_args_t *args)
+	conf_check_t *args)
 {
-	const yp_name_t *mod_name = (const yp_name_t *)args->data;
-	const uint8_t *id = args->data + 1 + args->data[0];
-	size_t id_len = args->data_len - 1 - args->data[0];
+	const char *err_str = "invalid module reference";
+
+	const yp_name_t *mod_name = (const yp_name_t *)args->check->data;
+	const uint8_t *id = args->check->data + 1 + args->check->data[0];
+	size_t id_len = args->check->data_len - 1 - args->check->data[0];
 
 	// Try to find the module with id.
-	return conf_db_get(args->conf, args->txn, mod_name, NULL, id, id_len,
-	                   NULL);
+	int ret = conf_db_get(args->conf, args->txn, mod_name, NULL, id, id_len,
+	                      NULL);
+	if (ret != KNOT_EOK) {
+		*args->err_str = err_str;
+	}
+
+	return ret;
+}
+
+int check_zone(
+	conf_check_t *args)
+{
+	const char *err_str = "slave zone with DNSSEC signing";
+
+	conf_val_t master = conf_zone_get_txn(args->conf, args->txn,
+	                                      C_MASTER, args->previous->id);
+	conf_val_t dnssec = conf_zone_get_txn(args->conf, args->txn,
+	                                      C_DNSSEC_SIGNING, args->previous->id);
+
+	// DNSSEC signing is not possible with slave zone.
+	if (conf_val_count(&master) > 0 && conf_bool(&dnssec)) {
+		*args->err_str = err_str;
+		return KNOT_EINVAL;
+	}
+
+	return KNOT_EOK;
 }
 
 int include_file(
-	conf_args_t *args)
+	conf_check_t *args)
 {
 	size_t max_path = 4096;
 	char *path = malloc(max_path);
@@ -212,12 +245,13 @@ int include_file(
 
 	// Prepare absolute include path.
 	int ret;
-	if (args->data[0] == '/') {
+	if (args->check->data[0] == '/') {
 		ret = snprintf(path, max_path, "%.*s",
-		               (int)args->data_len, args->data);
+		               (int)args->check->data_len, args->check->data);
 	} else {
-		char *full_current_name = realpath((args->file_name != NULL) ?
-		                                   args->file_name : "./", NULL);
+		const char *file_name = args->parser->file.name != NULL ?
+		                        args->parser->file.name : "./";
+		char *full_current_name = realpath(file_name, NULL);
 		if (full_current_name == NULL) {
 			free(path);
 			return KNOT_ENOMEM;
@@ -225,7 +259,7 @@ int include_file(
 
 		ret = snprintf(path, max_path, "%s/%.*s",
 		               dirname(full_current_name),
-		               (int)args->data_len, args->data);
+		               (int)args->check->data_len, args->check->data);
 		free(full_current_name);
 	}
 	if (ret <= 0 || ret >= max_path) {
@@ -244,7 +278,7 @@ int include_file(
 	// Process regular file.
 	if (S_ISREG(file_stat.st_mode)) {
 		ret = conf_parse(args->conf, args->txn, path, true,
-		                 args->incl_depth);
+		                 args->include_depth, args->previous);
 		free(path);
 		return ret;
 	} else if (!S_ISDIR(file_stat.st_mode)) {
@@ -295,7 +329,7 @@ int include_file(
 		}
 
 		ret = conf_parse(args->conf, args->txn, path, true,
-		                      args->incl_depth);
+		                 args->include_depth, args->previous);
 		if (ret != KNOT_EOK) {
 			break;
 		}

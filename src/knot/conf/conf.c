@@ -29,6 +29,15 @@
 #include "libknot/internal/strlcat.h"
 #include "libknot/yparser/yptrafo.h"
 
+/*! Configuration specific logging. */
+#define CONF_LOG(severity, msg, ...) do { \
+	log_msg(severity, "config, " msg, ##__VA_ARGS__); \
+	} while (0)
+
+#define CONF_LOG_ZONE(severity, zone, msg, ...) do { \
+	log_msg_zone(severity, zone, "config, " msg, ##__VA_ARGS__); \
+	} while (0)
+
 static conf_val_t raw_id_get(
 	conf_t *conf,
 	namedb_txn_t *txn,
@@ -42,8 +51,8 @@ static conf_val_t raw_id_get(
 	val.code = conf_db_get(conf, txn, key0_name, key1_name, id, id_len, &val);
 	switch (val.code) {
 	default:
-		log_error("failed to read configuration '%s/%s' (%s)",
-		          key0_name + 1, key1_name + 1, knot_strerror(val.code));
+		CONF_LOG(LOG_ERR, "failed to read '%s/%s' (%s)",
+		         key0_name + 1, key1_name + 1, knot_strerror(val.code));
 		// FALLTHROUGH
 	case KNOT_EOK:
 	case KNOT_ENOENT:
@@ -59,7 +68,7 @@ conf_val_t conf_get_txn(
 {
 	// Check for empty key1.
 	if (key1_name == NULL) {
-		log_error("incomplete configuration specification");
+		CONF_LOG(LOG_ERR, "missing parameters");
 		conf_val_t val = { NULL };
 		val.code = KNOT_EINVAL;
 		return val;
@@ -84,7 +93,7 @@ conf_val_t conf_id_get_txn(
 		}
 		conf_db_val(id);
 	} else {
-		log_error("incomplete configuration specification");
+		CONF_LOG(LOG_ERR, "missing parameters");
 		conf_val_t val = { NULL };
 		val.code = KNOT_EINVAL;
 		return val;
@@ -101,7 +110,7 @@ conf_val_t conf_mod_get_txn(
 {
 	// Check for empty input.
 	if (key1_name == NULL || mod_id == NULL) {
-		log_error("incomplete configuration specification");
+		CONF_LOG(LOG_ERR, "missing parameters");
 		conf_val_t val = { NULL };
 		val.code = KNOT_EINVAL;
 		return val;
@@ -119,7 +128,7 @@ conf_val_t conf_zone_get_txn(
 	conf_val_t val = { NULL };
 
 	if (dname == NULL) {
-		log_error("incomplete configuration specification");
+		CONF_LOG(LOG_ERR, "missing parameters");
 		val.code = KNOT_EINVAL;
 		return val;
 	}
@@ -132,8 +141,8 @@ conf_val_t conf_zone_get_txn(
 	case KNOT_EOK:
 		return val;
 	default:
-		log_zone_error(dname, "failed to read configuration '%s/%s' (%s)",
-		               C_ZONE + 1, key1_name + 1, knot_strerror(val.code));
+		CONF_LOG_ZONE(LOG_ERR, dname, "failed to read '%s/%s' (%s)",
+		              C_ZONE + 1, key1_name + 1, knot_strerror(val.code));
 		// FALLTHROUGH
 	case KNOT_ENOENT:
 		break;
@@ -149,8 +158,8 @@ conf_val_t conf_zone_get_txn(
 		                       val.data, val.len, &val);
 		break;
 	default:
-		log_zone_error(dname, "failed to read configuration '%s/%s' (%s)",
-		               C_ZONE + 1, C_TPL + 1, knot_strerror(val.code));
+		CONF_LOG_ZONE(LOG_ERR, dname, "failed to read '%s/%s' (%s)",
+		              C_ZONE + 1, C_TPL + 1, knot_strerror(val.code));
 		// FALLTHROUGH
 	case KNOT_ENOENT:
 		// Use the default template.
@@ -160,8 +169,8 @@ conf_val_t conf_zone_get_txn(
 
 	switch (val.code) {
 	default:
-		log_zone_error(dname, "failed to read configuration '%s/%s' (%s)",
-		               C_TPL + 1, key1_name + 1, knot_strerror(val.code));
+		CONF_LOG_ZONE(LOG_ERR, dname, "failed to read '%s/%s' (%s)",
+		              C_TPL + 1, key1_name + 1, knot_strerror(val.code));
 		// FALLTHROUGH
 	case KNOT_EOK:
 	case KNOT_ENOENT:
@@ -182,8 +191,8 @@ conf_val_t conf_default_get_txn(
 	                       CONF_DEFAULT_ID + 1, CONF_DEFAULT_ID[0], &val);
 	switch (val.code) {
 	default:
-		log_error("failed to read configuration '%s/%s' (%s)",
-		          C_TPL + 1, key1_name + 1, knot_strerror(val.code));
+		CONF_LOG(LOG_ERR, "failed to read '%s/%s' (%s)",
+		         C_TPL + 1, key1_name + 1, knot_strerror(val.code));
 		// FALLTHROUGH
 	case KNOT_EOK:
 	case KNOT_ENOENT:
@@ -206,8 +215,8 @@ size_t conf_id_count_txn(
 	case KNOT_EOK:
 		break;
 	default:
-		log_error("failed to iterate through configuration '%s' (%s)",
-		          key0_name + 1, knot_strerror(ret));
+		CONF_LOG(LOG_ERR, "failed to iterate through '%s' (%s)",
+		         key0_name + 1, knot_strerror(ret));
 		// FALLTHROUGH
 	case KNOT_ENOENT:
 		return count;
@@ -232,7 +241,7 @@ conf_iter_t conf_iter_txn(
 	iter.code = conf_db_iter_begin(conf, txn, key0_name, &iter);
 	switch (iter.code) {
 	default:
-		log_error("failed to iterate thgrough configuration '%s' (%s)",
+		CONF_LOG(LOG_ERR, "failed to iterate thgrough '%s' (%s)",
 		          key0_name + 1, knot_strerror(iter.code));
 		// FALLTHROUGH
 	case KNOT_EOK:
@@ -248,7 +257,7 @@ void conf_iter_next(
 	iter->code = conf_db_iter_next(conf, iter);
 	switch (iter->code) {
 	default:
-		log_error("failed to read next configuration item (%s)",
+		CONF_LOG(LOG_ERR, "failed to read next item (%s)",
 		          knot_strerror(iter->code));
 		// FALLTHROUGH
 	case KNOT_EOK:
@@ -267,7 +276,7 @@ conf_val_t conf_iter_id(
 	                           &val.blob_len);
 	switch (val.code) {
 	default:
-		log_error("failed to read configuration identifier (%s)",
+		CONF_LOG(LOG_ERR, "failed to read identifier (%s)",
 		          knot_strerror(val.code));
 		// FALLTHROUGH
 	case KNOT_EOK:
@@ -620,12 +629,12 @@ static char* get_filename(
 			}
 			break;
 		case '\0':
-			log_zone_warning(zone, "ignoring missing trailing "
-			                       "zonefile formatter");
+			CONF_LOG_ZONE(LOG_WARNING, zone, "ignoring missing "
+			              "trailing zonefile formatter");
 			continue;
 		default:
-			log_zone_warning(zone, "ignoring zonefile formatter '%%%c'",
-			                 type);
+			CONF_LOG_ZONE(LOG_WARNING, zone, "ignoring zonefile "
+			              "formatter '%%%c'", type);
 			continue;
 		}
 
@@ -742,7 +751,8 @@ int conf_user_txn(
 			if (grp != NULL) {
 				*gid = grp->gr_gid;
 			} else {
-				log_error("invalid group name '%s'", sep_pos + 1);
+				CONF_LOG(LOG_ERR, "invalid group name '%s'",
+				         sep_pos + 1);
 				free(user);
 				return KNOT_EINVAL;
 			}
@@ -758,7 +768,7 @@ int conf_user_txn(
 		if (pwd != NULL) {
 			*uid = pwd->pw_uid;
 		} else {
-			log_error("invalid user name '%s'", user);
+			CONF_LOG(LOG_ERR, "invalid user name '%s'", user);
 			free(user);
 			return KNOT_EINVAL;
 		}
@@ -792,7 +802,7 @@ conf_remote_t conf_remote_txn(
 	// Get remote address.
 	conf_val_t val = conf_id_get_txn(conf, txn, C_RMT, C_ADDR, id);
 	if (val.code != KNOT_EOK) {
-		log_error("invalid remote in configuration");
+		CONF_LOG(LOG_ERR, "invalid remote");
 		free(rundir);
 		return out;
 	}

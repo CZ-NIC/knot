@@ -60,6 +60,8 @@ typedef struct {
 	struct query_plan *query_plan;
 } conf_t;
 
+struct conf_previous;
+
 /*!
  * Returns the active configuration.
  */
@@ -157,13 +159,14 @@ void conf_deactivate_modules(
 /*!
  * Parses textual configuration from the string or from the file.
  *
- * This function is used for includes processing!
+ * This function is not for direct using, just for includes processing!
  *
  * \param[in] conf Configuration.
  * \param[in] txn Transaction.
  * \param[in] input Configuration string or filename.
  * \param[in] is_file Specifies if the input is string or input filename.
  * \param[in] incl_depth The current include depth counter.
+ * \param[in] prev Previous context.
  *
  * \return Error code, KNOT_EOK if success.
  */
@@ -172,7 +175,8 @@ int conf_parse(
 	namedb_txn_t *txn,
 	const char *input,
 	bool is_file,
-	size_t *incl_depth
+	size_t *incl_depth,
+	struct conf_previous *prev
 );
 
 /*!

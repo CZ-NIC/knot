@@ -121,6 +121,7 @@ static const struct error errors[] = {
 
 	/* Yparser errors. */
 	{ KNOT_YP_EINVAL_ITEM,   "invalid item" },
+	{ KNOT_YP_EINVAL_ID,     "invalid identifier" },
 	{ KNOT_YP_EINVAL_DATA,   "invalid value" },
 	{ KNOT_YP_EINVAL_INDENT, "invalid indentation" },
 	{ KNOT_YP_ENOTSUP_DATA,  "value not supported" },
@@ -131,7 +132,7 @@ static const struct error errors[] = {
 	/* Configuration errors. */
 	{ KNOT_CONF_EMPTY,     "empty configuration database" },
 	{ KNOT_CONF_EVERSION,  "invalid configuration database version" },
-	{ KNOT_CONF_EREDEFINE, "identifier already specified" },
+	{ KNOT_CONF_EREDEFINE, "duplicate identifier" },
 
 	/* Processing errors. */
 	{ KNOT_LAYER_ERROR, "processing layer error" },

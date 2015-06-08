@@ -43,12 +43,12 @@ static const lookup_table_t synthetic_types[] = {
 };
 
 static int check_origin(
-	conf_args_t *args)
+	conf_check_t *args)
 {
 	conf_val_t val = { NULL };
 
 	val.code = conf_db_get(args->conf, args->txn, C_MOD_SYNTH_RECORD,
-	                       MOD_TYPE, args->id, args->id_len, &val);
+	                       MOD_TYPE, args->check->id, args->check->id_len, &val);
 	if (val.code != KNOT_EOK) {
 		return val.code;
 	}

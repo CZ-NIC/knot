@@ -422,7 +422,7 @@ Control section
 
 Configuration of the server remote control.
 
-Caution: The control protocol is not encrypted and is susceptible to replay
+*Caution:* The control protocol is not encrypted and is susceptible to replay
 attacks in a short timeframe until message digest expires. For that reason,
 it is recommended to use default UNIX socket.
 
@@ -451,7 +451,7 @@ acl
 An ordered list of :ref:`references<acl_id>` to ACL rules allowing the remote
 control.
 
-Caution: This option has no effect with UNIX socket.
+*Caution:* This option has no effect with UNIX socket.
 
 Default: empty
 
@@ -706,6 +706,9 @@ If enabled, the server creates zone differences from changes you made to the
 zone file upon server reload. This option is only relevant if the server
 is a master server for the zone.
 
+*Caution:* This option has no effect with enabled
+:ref:`dnssec-signing<zone_dnssec-signing>`.
+
 Default: off
 
 .. _zone_max_journal_size:
@@ -723,6 +726,8 @@ dnssec-signing
 --------------
 
 If enabled, automatic DNSSEC signing for the zone is turned on.
+
+*Caution:* Cannot be enabled on a slave zone.
 
 Default: off
 
@@ -923,7 +928,7 @@ prefix
 
 A record owner prefix.
 
-Caution: *prefix* doesn’t allow dots, address parts in the synthetic names are
+*Caution:* *prefix* doesn’t allow dots, address parts in the synthetic names are
 separated with a dash.
 
 Default: empty

@@ -38,6 +38,8 @@
 #define YP_MAX_DATA_LEN		32768
 /*! Integer item nil definition. */
 #define YP_NIL			INT64_MIN
+/*! Maximal number of miscellaneous callbacks/pointers. */
+#define YP_MAX_MISC_COUNT	4
 
 /*! Helper macros for item variables definition. */
 #define YP_VNONE	.var.i = { 0 }
@@ -163,7 +165,7 @@ struct yp_item {
 	/*! Item flags. */
 	yp_flag_t flags;
 	/*! Arbitrary data/callbacks. */
-	const void *misc[3];
+	const void *misc[YP_MAX_MISC_COUNT];
 	/*! Item group subitems (name=NULL terminated array). */
 	yp_item_t *sub_items;
 };
@@ -178,14 +180,14 @@ typedef struct {
 	const yp_item_t *key1;
 	/*! Current parser event. */
 	yp_event_t event;
-	/*! Current binary id. */
-	uint8_t id[YP_MAX_ID_LEN];
 	/*! Current binary id length. */
 	size_t id_len;
-	/*! Current item data. */
-	uint8_t data[YP_MAX_DATA_LEN];
+	/*! Current binary id. */
+	uint8_t id[YP_MAX_ID_LEN];
 	/*! Current item data length. */
 	size_t data_len;
+	/*! Current item data. */
+	uint8_t data[YP_MAX_DATA_LEN];
 } yp_check_ctx_t;
 
 /*!
