@@ -72,8 +72,8 @@ def expire_tests(t, zone, master, slave):
     slave.zone_wait(zone)
 
     # Stop both servers.
-    master.stop()
     slave.stop()
+    master.stop()
 
     # Let the zone expire while servers are down.
     t.sleep(EXPIRE_SLEEP * 2)
