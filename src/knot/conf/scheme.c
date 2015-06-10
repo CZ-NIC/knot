@@ -180,7 +180,8 @@ const yp_item_t conf_scheme[] = {
 	{ C_CTL,  YP_TGRP, YP_VGRP = { desc_control } },
 	{ C_RMT,  YP_TGRP, YP_VGRP = { desc_remote }, YP_FMULTI, { check_remote } },
 /* MODULES */
-	{ C_MOD_SYNTH_RECORD, YP_TGRP, YP_VGRP = { scheme_mod_synth_record }, YP_FMULTI },
+	{ C_MOD_SYNTH_RECORD, YP_TGRP, YP_VGRP = { scheme_mod_synth_record }, YP_FMULTI,
+	                                         { check_mod_synth_record } },
 	{ C_MOD_DNSPROXY,     YP_TGRP, YP_VGRP = { scheme_mod_dnsproxy }, YP_FMULTI },
 #if HAVE_ROSEDB
 	{ C_MOD_ROSEDB,       YP_TGRP, YP_VGRP = { scheme_mod_rosedb }, YP_FMULTI },

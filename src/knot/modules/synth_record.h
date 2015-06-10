@@ -38,6 +38,7 @@
 /*! \brief Module scheme. */
 #define C_MOD_SYNTH_RECORD "\x10""mod-synth-record"
 extern const yp_item_t scheme_mod_synth_record[];
+int check_mod_synth_record(conf_check_t *args);
 
 /*! \brief Module interface. */
 int synth_record_load(struct query_plan *plan, struct query_module *self);

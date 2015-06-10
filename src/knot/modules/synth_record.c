@@ -17,8 +17,6 @@
 #include "knot/modules/synth_record.h"
 #include "knot/nameserver/process_query.h"
 #include "knot/nameserver/internet.h"
-#include "knot/conf/confdb.h"
-#include "knot/conf/tools.h"
 #include "knot/common/log.h"
 #include "libknot/descriptor.h"
 
@@ -42,35 +40,36 @@ static const lookup_table_t synthetic_types[] = {
 	{ 0, NULL }
 };
 
-static int check_origin(
-	conf_check_t *args)
-{
-	conf_val_t val = { NULL };
-
-	val.code = conf_db_get(args->conf, args->txn, C_MOD_SYNTH_RECORD,
-	                       MOD_TYPE, args->check->id, args->check->id_len, &val);
-	if (val.code != KNOT_EOK) {
-		return val.code;
-	}
-
-	// Only reverse module can have an origin specified.
-	if (conf_opt(&val) != SYNTH_REVERSE) {
-		return KNOT_EINVAL;
-	}
-
-	return KNOT_EOK;
-}
-
 const yp_item_t scheme_mod_synth_record[] = {
 	{ C_ID,       YP_TSTR,   YP_VNONE },
 	{ MOD_TYPE,   YP_TOPT,   YP_VOPT = { synthetic_types, SYNTH_NULL } },
 	{ MOD_PREFIX, YP_TSTR,   YP_VNONE },
-	{ MOD_ORIGIN, YP_TDNAME, YP_VNONE, YP_FNONE, { check_origin } },
+	{ MOD_ORIGIN, YP_TDNAME, YP_VNONE },
 	{ MOD_TTL,    YP_TINT,   YP_VINT = { 0, UINT32_MAX, 3600, YP_STIME } },
 	{ MOD_NET,    YP_TNET,   YP_VNONE },
 	{ C_COMMENT,  YP_TSTR,   YP_VNONE },
 	{ NULL }
 };
+
+int check_mod_synth_record(conf_check_t *args)
+{
+	const char *err_str = "origin with non-reverse type";
+
+	conf_val_t type = conf_rawid_get_txn(args->conf, args->txn, C_MOD_SYNTH_RECORD,
+	                                    MOD_TYPE, args->previous->id,
+	                                    args->previous->id_len);
+	conf_val_t origin = conf_rawid_get_txn(args->conf, args->txn, C_MOD_SYNTH_RECORD,
+	                                    MOD_ORIGIN, args->previous->id,
+	                                    args->previous->id_len);
+
+	// Origin is required only with reverse zone.
+	if (conf_opt(&type) != SYNTH_REVERSE && conf_dname(&origin) != NULL) {
+		*args->err_str = err_str;
+		return KNOT_EINVAL;
+	}
+
+	return KNOT_EOK;
+}
 
 /* Defines. */
 #define ARPA_ZONE_LABELS 2

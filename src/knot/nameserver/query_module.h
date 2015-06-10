@@ -44,6 +44,7 @@
 #include "libknot/internal/lists.h"
 #include "libknot/internal/mempattern.h"
 #include "knot/conf/conf.h"
+#include "knot/conf/tools.h"
 
 /* Query module processing stages. */
 enum query_stage {
