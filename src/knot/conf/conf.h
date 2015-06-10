@@ -315,13 +315,15 @@ static inline int conf_user(
 conf_remote_t conf_remote_txn(
 	conf_t *conf,
 	namedb_txn_t *txn,
-	conf_val_t *id
+	conf_val_t *id,
+	size_t index
 );
 static inline conf_remote_t conf_remote(
 	conf_t *conf,
-	conf_val_t *id)
+	conf_val_t *id,
+	size_t index)
 {
-	return conf_remote_txn(conf, &conf->read_txn, id);
+	return conf_remote_txn(conf, &conf->read_txn, id, index);
 
 }
 
