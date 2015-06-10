@@ -94,6 +94,25 @@ static inline conf_val_t conf_get(
 	return conf_get_txn(conf, &conf->read_txn, key0_name, key1_name);
 }
 
+conf_val_t conf_rawid_get_txn(
+	conf_t *conf,
+	namedb_txn_t *txn,
+	const yp_name_t *key0_name,
+	const yp_name_t *key1_name,
+	const uint8_t *id,
+	size_t id_len
+);
+static inline conf_val_t conf_rawid_get(
+	conf_t *conf,
+	const yp_name_t *key0_name,
+	const yp_name_t *key1_name,
+	const uint8_t *id,
+	size_t id_len)
+{
+	return conf_rawid_get_txn(conf, &conf->read_txn, key0_name, key1_name,
+	                          id, id_len);
+}
+
 conf_val_t conf_id_get_txn(
 	conf_t *conf,
 	namedb_txn_t *txn,

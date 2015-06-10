@@ -38,17 +38,21 @@
 	log_msg_zone(severity, zone, "config, " msg, ##__VA_ARGS__); \
 	} while (0)
 
-static conf_val_t raw_id_get(
+conf_val_t conf_get_txn(
 	conf_t *conf,
 	namedb_txn_t *txn,
 	const yp_name_t *key0_name,
-	const yp_name_t *key1_name,
-	const uint8_t *id,
-	size_t id_len)
+	const yp_name_t *key1_name)
 {
 	conf_val_t val = { NULL };
 
-	val.code = conf_db_get(conf, txn, key0_name, key1_name, id, id_len, &val);
+	if (key0_name == NULL || key1_name == NULL) {
+		val.code = KNOT_EINVAL;
+		CONF_LOG(LOG_DEBUG, "conf_get (%s)", knot_strerror(val.code));
+		return val;
+	}
+
+	val.code = conf_db_get(conf, txn, key0_name, key1_name, NULL, 0, &val);
 	switch (val.code) {
 	default:
 		CONF_LOG(LOG_ERR, "failed to read '%s/%s' (%s)",
@@ -60,21 +64,32 @@ static conf_val_t raw_id_get(
 	}
 }
 
-conf_val_t conf_get_txn(
+conf_val_t conf_rawid_get_txn(
 	conf_t *conf,
 	namedb_txn_t *txn,
 	const yp_name_t *key0_name,
-	const yp_name_t *key1_name)
+	const yp_name_t *key1_name,
+	const uint8_t *id,
+	size_t id_len)
 {
-	// Check for empty key1.
-	if (key1_name == NULL) {
-		CONF_LOG(LOG_ERR, "missing parameters");
-		conf_val_t val = { NULL };
+	conf_val_t val = { NULL };
+
+	if (key0_name == NULL || key1_name == NULL || id == NULL) {
 		val.code = KNOT_EINVAL;
+		CONF_LOG(LOG_DEBUG, "conf_rawid_get (%s)", knot_strerror(val.code));
 		return val;
 	}
 
-	return raw_id_get(conf, txn, key0_name, key1_name, NULL, 0);
+	val.code = conf_db_get(conf, txn, key0_name, key1_name, id, id_len, &val);
+	switch (val.code) {
+	default:
+		CONF_LOG(LOG_ERR, "failed to read '%s/%s' with identifier (%s)",
+		         key0_name + 1, key1_name + 1, knot_strerror(val.code));
+		// FALLTHROUGH
+	case KNOT_EOK:
+	case KNOT_ENOENT:
+		return val;
+	}
 }
 
 conf_val_t conf_id_get_txn(
@@ -84,22 +99,28 @@ conf_val_t conf_id_get_txn(
 	const yp_name_t *key1_name,
 	conf_val_t *id)
 {
-	// Check for invalid id.
-	if (id != NULL) {
-		if (id->code != KNOT_EOK) {
-			conf_val_t val = { NULL };
-			val.code = id->code;
-			return val;
-		}
-		conf_db_val(id);
-	} else {
-		CONF_LOG(LOG_ERR, "missing parameters");
-		conf_val_t val = { NULL };
+	conf_val_t val = { NULL };
+
+	if (key0_name == NULL || key1_name == NULL || id == NULL ||
+	    id->code != KNOT_EOK) {
 		val.code = KNOT_EINVAL;
+		CONF_LOG(LOG_DEBUG, "conf_id_get (%s)", knot_strerror(val.code));
 		return val;
 	}
 
-	return raw_id_get(conf, txn, key0_name, key1_name, id->data, id->len);
+	conf_db_val(id);
+
+	val.code = conf_db_get(conf, txn, key0_name, key1_name, id->data,
+	                       id->len, &val);
+	switch (val.code) {
+	default:
+		CONF_LOG(LOG_ERR, "failed to read '%s/%s' with identifier (%s)",
+		         key0_name + 1, key1_name + 1, knot_strerror(val.code));
+		// FALLTHROUGH
+	case KNOT_EOK:
+	case KNOT_ENOENT:
+		return val;
+	}
 }
 
 conf_val_t conf_mod_get_txn(
@@ -108,15 +129,25 @@ conf_val_t conf_mod_get_txn(
 	const yp_name_t *key1_name,
 	const conf_mod_id_t *mod_id)
 {
-	// Check for empty input.
+	conf_val_t val = { NULL };
+
 	if (key1_name == NULL || mod_id == NULL) {
-		CONF_LOG(LOG_ERR, "missing parameters");
-		conf_val_t val = { NULL };
 		val.code = KNOT_EINVAL;
+		CONF_LOG(LOG_DEBUG, "conf_mod_get (%s)", knot_strerror(val.code));
 		return val;
 	}
 
-	return raw_id_get(conf, txn, mod_id->name, key1_name, mod_id->data, mod_id->len);
+	val.code = conf_db_get(conf, txn, mod_id->name, key1_name, mod_id->data,
+	                       mod_id->len, &val);
+	switch (val.code) {
+	default:
+		CONF_LOG(LOG_ERR, "failed to read '%s/%s' (%s)",
+		         mod_id->name + 1, key1_name + 1, knot_strerror(val.code));
+		// FALLTHROUGH
+	case KNOT_EOK:
+	case KNOT_ENOENT:
+		return val;
+	}
 }
 
 conf_val_t conf_zone_get_txn(
@@ -127,9 +158,9 @@ conf_val_t conf_zone_get_txn(
 {
 	conf_val_t val = { NULL };
 
-	if (dname == NULL) {
-		CONF_LOG(LOG_ERR, "missing parameters");
+	if (key1_name == NULL || dname == NULL) {
 		val.code = KNOT_EINVAL;
+		CONF_LOG(LOG_DEBUG, "conf_zone_get (%s)", knot_strerror(val.code));
 		return val;
 	}
 
@@ -187,11 +218,17 @@ conf_val_t conf_default_get_txn(
 {
 	conf_val_t val = { NULL };
 
+	if (key1_name == NULL) {
+		val.code = KNOT_EINVAL;
+		CONF_LOG(LOG_DEBUG, "conf_default_get (%s)", knot_strerror(val.code));
+		return val;
+	}
+
 	val.code = conf_db_get(conf, txn, C_TPL, key1_name,
 	                       CONF_DEFAULT_ID + 1, CONF_DEFAULT_ID[0], &val);
 	switch (val.code) {
 	default:
-		CONF_LOG(LOG_ERR, "failed to read '%s/%s' (%s)",
+		CONF_LOG(LOG_ERR, "failed to read default '%s/%s' (%s)",
 		         C_TPL + 1, key1_name + 1, knot_strerror(val.code));
 		// FALLTHROUGH
 	case KNOT_EOK:

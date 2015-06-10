@@ -187,6 +187,7 @@ int check_ref(
 	const yp_item_t *parent = args->check->key1->var.r.ref;
 
 	// Try to find the id in the referenced category.
+	// Cannot use conf_raw_get as id is not stored in confdb directly!
 	int ret = conf_db_get(args->conf, args->txn, parent->name, NULL,
 	                      args->check->data, args->check->data_len, NULL);
 	if (ret != KNOT_EOK) {
@@ -206,6 +207,7 @@ int check_modref(
 	size_t id_len = args->check->data_len - 1 - args->check->data[0];
 
 	// Try to find the module with id.
+	// Cannot use conf_raw_get as id is not stored in confdb directly!
 	int ret = conf_db_get(args->conf, args->txn, mod_name, NULL, id, id_len,
 	                      NULL);
 	if (ret != KNOT_EOK) {
@@ -213,6 +215,22 @@ int check_modref(
 	}
 
 	return ret;
+}
+
+int check_remote(
+	conf_check_t *args)
+{
+	const char *err_str = "no remote address defined";
+
+	conf_val_t addr = conf_rawid_get_txn(args->conf, args->txn, C_RMT,
+	                                     C_ADDR, args->previous->id,
+	                                     args->previous->id_len);
+	if (conf_val_count(&addr) == 0) {
+		*args->err_str = err_str;
+		return KNOT_EINVAL;
+	}
+
+	return KNOT_EOK;
 }
 
 int check_zone(

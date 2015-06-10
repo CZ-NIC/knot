@@ -178,7 +178,7 @@ const yp_item_t conf_scheme[] = {
 	{ C_KEY,  YP_TGRP, YP_VGRP = { desc_key }, YP_FMULTI },
 	{ C_ACL,  YP_TGRP, YP_VGRP = { desc_acl }, YP_FMULTI },
 	{ C_CTL,  YP_TGRP, YP_VGRP = { desc_control } },
-	{ C_RMT,  YP_TGRP, YP_VGRP = { desc_remote }, YP_FMULTI },
+	{ C_RMT,  YP_TGRP, YP_VGRP = { desc_remote }, YP_FMULTI, { check_remote } },
 /* MODULES */
 	{ C_MOD_SYNTH_RECORD, YP_TGRP, YP_VGRP = { scheme_mod_synth_record }, YP_FMULTI },
 	{ C_MOD_DNSPROXY,     YP_TGRP, YP_VGRP = { scheme_mod_dnsproxy }, YP_FMULTI },
