@@ -228,7 +228,7 @@ struct sockaddr_storage conf_addr(
 
 struct sockaddr_storage conf_net(
 	conf_val_t *val,
-	unsigned *prefix_length
+	int *prefix_length
 );
 
 char* conf_abs_path(

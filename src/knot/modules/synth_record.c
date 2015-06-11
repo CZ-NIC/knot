@@ -86,7 +86,7 @@ typedef struct synth_template {
 	char *zone;
 	uint32_t ttl;
 	struct sockaddr_storage addr;
-	unsigned mask;
+	int mask;
 } synth_template_t;
 
 /*! \brief Substitute all occurences of given character. */

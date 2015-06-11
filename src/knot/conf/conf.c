@@ -474,7 +474,7 @@ struct sockaddr_storage conf_addr(
 
 struct sockaddr_storage conf_net(
 	conf_val_t *val,
-	unsigned *prefix_length)
+	int *prefix_length)
 {
 	assert(val != NULL && val->item != NULL && prefix_length != NULL);
 	assert(val->item->type == YP_TNET ||
@@ -484,18 +484,8 @@ struct sockaddr_storage conf_net(
 	struct sockaddr_storage out = { AF_UNSPEC };
 
 	if (val->code == KNOT_EOK) {
-		int prefix;
 		conf_db_val(val);
-		out = yp_addr(val->data, val->len, &prefix);
-		if (prefix != -1) {
-			*prefix_length = prefix;
-		} else {
-			if (out.ss_family == AF_INET) {
-				*prefix_length = IPV4_PREFIXLEN;
-			} else if (out.ss_family == AF_INET6) {
-				*prefix_length = IPV6_PREFIXLEN;
-			}
-		}
+		out = yp_addr(val->data, val->len, prefix_length);
 	} else {
 		*prefix_length = 0;
 	}
