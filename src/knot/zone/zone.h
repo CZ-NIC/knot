@@ -67,12 +67,14 @@ typedef struct zone
 
 	/*! \brief Zone events. */
 	zone_events_t events;     /*!< Zone events timers. */
-	uint32_t bootstrap_retry; /*!< AXFR/IN bootstrap retry. */
 	time_t zonefile_mtime;
+	uint32_t bootstrap_retry; /*!< AXFR/IN bootstrap retry. */
 	uint32_t zonefile_serial;
 
-	/*! \brief Config master list index of the current master server. */
-	size_t master_index;
+	/*! \brief Preferred master lock. */
+	pthread_mutex_t preferred_lock;
+	/*! \brief Preferred master for remote operation. */
+	struct sockaddr_storage *preferred_master;
 
 	/*! \brief Query modules. */
 	list_t query_modules;
@@ -109,17 +111,23 @@ int zone_change_store(zone_t *zone, changeset_t *change);
 /*!
  * \brief Atomically switch the content of the zone.
  */
-zone_contents_t *zone_switch_contents(zone_t *zone,
-					   zone_contents_t *new_contents);
+zone_contents_t *zone_switch_contents(zone_t *zone, zone_contents_t *new_contents);
 
 /*! \brief Checks if the zone is slave. */
 bool zone_is_slave(const zone_t *zone);
 
-/*! \brief Return the current zone master. */
-conf_remote_t zone_master(const zone_t *zone);
+typedef int (*zone_master_cb)(zone_t *zone, const conf_remote_t *remote, void *data);
 
-/*! \brief Set the next zone master as a current. */
-void zone_master_rotate(zone_t *zone);
+/*!
+ * \brief Perform an action with a first working master server.
+ *
+ * The function iterates over available masters. For each master, the callback
+ * function is called. If the callback function succeeds (\ref KNOT_EOK is
+ * returned), the iteration is terminated.
+ *
+ * \return Error code from the last callback.
+ */
+int zone_master_try(zone_t *zone, zone_master_cb callback, void *callback_data);
 
 /*! \brief Synchronize zone file with journal. */
 int zone_flush_journal(zone_t *zone);

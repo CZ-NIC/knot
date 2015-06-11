@@ -36,6 +36,7 @@
 #define C_BG_WORKERS		"\x12""background-workers"
 #define C_COMMENT		"\x07""comment"
 #define C_CTL			"\x07""control"
+#define C_DDNS_MASTER		"\x0B""ddns-master"
 #define C_DENY			"\x04""deny"
 #define C_DISABLE_ANY		"\x0B""disable-any"
 #define C_DNSSEC_SIGNING	"\x0E""dnssec-signing"

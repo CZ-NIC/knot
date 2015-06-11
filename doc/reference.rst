@@ -466,8 +466,8 @@ Definition of remote servers for zone transfers or notifications.
 
  remote:
    - id: STR
-     address: ADDR[@INT]
-     via: ADDR[@INT]
+     address: ADDR[@INT] ...
+     via: ADDR[@INT] ...
      key: key_id
 
 .. _remote_id:
@@ -482,9 +482,10 @@ A remote identifier.
 address
 -------
 
-A destination IP address of the remote server. Optional destination port
-specification (default is 53) can be appended to the address using ``@``
-separator.
+An ordered list of destination IP addresses which are used for communication
+with the remote server. The addresses are tried in sequence unless the
+operation is successful. Optional destination port (default is 53)
+can be appended to the address using ``@`` separator.
 
 Default: empty
 
@@ -493,9 +494,9 @@ Default: empty
 via
 ---
 
-A source IP address which is used to communicate with the remote server.
-Optional source port specification can be appended to the address using
-``@`` separator.
+An ordered list of source IP addresses. The first address with the same family
+as the destination address is used. Optional source port (default is random)
+can be appended to the address using ``@`` separator.
 
 Default: empty
 
@@ -547,6 +548,7 @@ Definition of zones served by the server.
      file: STR
      storage: STR
      master: remote_id ...
+     ddns-master: remote_id
      notify: remote_id ...
      acl: acl_id ...
      semantic-checks: BOOL
@@ -606,6 +608,16 @@ master
 ------
 
 An ordered list of :ref:`references<remote_id>` to zone master servers.
+
+Default: empty
+
+.. _zone_ddns-master:
+
+ddns-master
+-----------
+
+A :ref:`references<remote_id>` to zone primary master server.
+If not specified, the first :ref:`master<zone_master>` server is used.
 
 Default: empty
 
