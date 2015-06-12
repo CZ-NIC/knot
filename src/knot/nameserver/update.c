@@ -341,13 +341,6 @@ static int process_requests(zone_t *zone, list_t *requests)
 
 static int forward_request(zone_t *zone, struct knot_request *request)
 {
-	/* Create requestor instance. */
-	struct knot_requestor re;
-	knot_requestor_init(&re, NULL);
-
-	/* Fetch primary master. */
-	const conf_remote_t master = zone_master(zone);
-
 	/* Copy request and assign new ID. */
 	knot_pkt_t *query = knot_pkt_new(NULL, request->query->max_size, NULL);
 	int ret = knot_pkt_copy(query, request->query);
@@ -359,29 +352,54 @@ static int forward_request(zone_t *zone, struct knot_request *request)
 	knot_wire_set_id(query->wire, dnssec_random_uint16_t());
 	knot_tsig_append(query->wire, &query->size, query->max_size, query->tsig_rr);
 
-	/* Create a request. */
-	const struct sockaddr *dst = (const struct sockaddr *)&master.addr;
-	const struct sockaddr *src = (const struct sockaddr *)&master.via;
-	struct knot_request *req = knot_request_make(re.mm, dst, src, query, 0);
-	if (req == NULL) {
-		knot_pkt_free(&query);
-		return KNOT_ENOMEM;
+	/* Read the ddns master or the first master. */
+	conf_val_t remote = conf_zone_get(conf(), C_DDNS_MASTER, zone->name);
+	if (remote.code != KNOT_EOK) {
+		remote = conf_zone_get(conf(), C_MASTER, zone->name);
 	}
 
-	/* Prepare packet capture layer. */
-	struct capture_param param;
-	param.sink = request->resp;
-	knot_requestor_overlay(&re, LAYER_CAPTURE, &param);
+	/* Get the number of remote addresses. */
+	conf_val_t addr = conf_id_get(conf(), C_RMT, C_ADDR, &remote);
+	size_t addr_count = conf_val_count(&addr);
 
-	/* Enqueue and execute request. */
-	ret = knot_requestor_enqueue(&re, req);
-	if (ret == KNOT_EOK) {
+	/* Try all remote addresses to forward the request to. */
+	for (size_t i = 0; i < addr_count; i++) {
+		conf_remote_t master = conf_remote(conf(), &remote, i);
+
+		/* Create requestor instance. */
+		struct knot_requestor re;
+		knot_requestor_init(&re, NULL);
+
+		/* Prepare packet capture layer. */
+		struct capture_param param;
+		param.sink = request->resp;
+		knot_requestor_overlay(&re, LAYER_CAPTURE, &param);
+
+		/* Create a request. */
+		const struct sockaddr *dst = (const struct sockaddr *)&master.addr;
+		const struct sockaddr *src = (const struct sockaddr *)&master.via;
+		struct knot_request *req = knot_request_make(re.mm, dst, src, query, 0);
+		if (req == NULL) {
+			knot_pkt_free(&query);
+			return KNOT_ENOMEM;
+		}
+
+		/* Enqueue the request. */
+		ret = knot_requestor_enqueue(&re, req);
+		if (ret != KNOT_EOK) {
+			knot_requestor_clear(&re);
+			continue;
+		}
+
+		/* Execute the request. */
 		conf_val_t val = conf_get(conf(), C_SRV, C_TCP_REPLY_TIMEOUT);
 		struct timeval tv = { conf_int(&val), 0 };
 		ret = knot_requestor_exec(&re, &tv);
+		knot_requestor_clear(&re);
+		if (ret == KNOT_EOK) {
+			break;
+		}
 	}
-
-	knot_requestor_clear(&re);
 
 	/* Restore message ID and TSIG. */
 	knot_wire_set_id(request->resp->wire, knot_wire_get_id(request->query->wire));

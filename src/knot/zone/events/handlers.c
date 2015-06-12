@@ -174,7 +174,7 @@ static int zone_query_transfer(zone_t *zone, const conf_remote_t *master, uint16
 		}
 
 		/* Log connection errors. */
-		ZONE_XFER_LOG(LOG_ERR, pkt_type, "failed (%s)", knot_strerror(ret));
+		ZONE_XFER_LOG(LOG_WARNING, pkt_type, "failed (%s)", knot_strerror(ret));
 	}
 
 	return ret;
@@ -315,6 +315,20 @@ fail:
 	return result;
 }
 
+static int try_refresh(zone_t *zone, const conf_remote_t *master, void *ctx)
+{
+	assert(zone);
+	assert(master);
+
+	int ret = zone_query_execute(zone, KNOT_QUERY_NORMAL, master);
+	if (ret != KNOT_EOK) {
+		ZONE_QUERY_LOG(LOG_WARNING, zone, master, "refresh, outgoing",
+		               "failed (%s)", knot_strerror(ret));
+	}
+
+	return ret;
+}
+
 int event_refresh(zone_t *zone)
 {
 	assert(zone);
@@ -330,15 +344,11 @@ int event_refresh(zone_t *zone)
 		return KNOT_EOK;
 	}
 
-	const conf_remote_t master = zone_master(zone);
-	int ret = zone_query_execute(zone, KNOT_QUERY_NORMAL, &master);
+	int ret = zone_master_try(zone, try_refresh, NULL, "refresh");
 	const knot_rdataset_t *soa = zone_soa(zone);
 	if (ret != KNOT_EOK) {
-		/* Log connection errors. */
-		ZONE_QUERY_LOG(LOG_WARNING, zone, &master, "SOA query, outgoing",
-		               "failed (%s)", knot_strerror(ret));
-		/* Rotate masters if current failed. */
-		zone_master_rotate(zone);
+		log_zone_error(zone->name, "refresh, failed (%s)",
+		               knot_strerror(ret));
 		/* Schedule next retry. */
 		zone_events_schedule(zone, ZONE_EVENT_REFRESH, knot_soa_retry(soa));
 		start_expire_timer(zone, soa);
@@ -350,6 +360,21 @@ int event_refresh(zone_t *zone)
 	return zone_events_write_persistent(zone);
 }
 
+struct transfer_data {
+	uint16_t pkt_type;
+};
+
+static int try_xfer(zone_t *zone, const conf_remote_t *master, void *_data)
+{
+	assert(zone);
+	assert(master);
+	assert(_data);
+
+	struct transfer_data *data = _data;
+
+	return zone_query_transfer(zone, master, data->pkt_type);
+}
+
 int event_xfer(zone_t *zone)
 {
 	assert(zone);
@@ -359,20 +384,26 @@ int event_xfer(zone_t *zone)
 		return KNOT_EOK;
 	}
 
+	struct transfer_data data = { 0 };
+	const char *err_str = "";
+
 	/* Determine transfer type. */
-	bool is_boostrap = zone_contents_is_empty(zone->contents);
-	uint16_t pkt_type = KNOT_QUERY_IXFR;
-	if (is_boostrap || zone->flags & ZONE_FORCE_AXFR) {
-		pkt_type = KNOT_QUERY_AXFR;
+	bool is_bootstrap = zone_contents_is_empty(zone->contents);
+	if (is_bootstrap || zone->flags & ZONE_FORCE_AXFR) {
+		data.pkt_type = KNOT_QUERY_AXFR;
+		err_str = "AXFR, incoming";
+	} else {
+		data.pkt_type = KNOT_QUERY_IXFR;
+		err_str = "IXFR, incoming";
 	}
 
-	/* Execute zone transfer and reschedule timers. */
-	const conf_remote_t master = zone_master(zone);
-	int ret = zone_query_transfer(zone, &master, pkt_type);
-
-	/* Handle failure during transfer. */
+	/* Execute zone transfer. */
+	int ret = zone_master_try(zone, try_xfer, &data, err_str);
+	zone_clear_preferred_master(zone);
 	if (ret != KNOT_EOK) {
-		if (is_boostrap) {
+		log_zone_error(zone->name, "%s, failed (%s)", err_str,
+		               knot_strerror(ret));
+		if (is_bootstrap) {
 			zone->bootstrap_retry = bootstrap_next(zone->bootstrap_retry);
 			zone_events_schedule(zone, ZONE_EVENT_XFER, zone->bootstrap_retry);
 		} else {
@@ -404,7 +435,7 @@ int event_xfer(zone_t *zone)
 	zone->flags &= ~ZONE_FORCE_AXFR;
 
 	/* Trim extra heap. */
-	if (!is_boostrap) {
+	if (!is_bootstrap) {
 		mem_trim();
 	}
 
@@ -485,22 +516,27 @@ int event_notify(zone_t *zone)
 	}
 
 	/* Walk through configured remotes and send messages. */
-	conf_val_t val = conf_zone_get(conf(), C_NOTIFY, zone->name);
-	while (val.code == KNOT_EOK) {
-		conf_remote_t remote = conf_remote(conf(), &val);
+	conf_val_t notify = conf_zone_get(conf(), C_NOTIFY, zone->name);
+	while (notify.code == KNOT_EOK) {
+		conf_val_t addr = conf_id_get(conf(), C_RMT, C_ADDR, &notify);
+		size_t addr_count = conf_val_count(&addr);
 
-		int ret = zone_query_execute(zone, KNOT_QUERY_NOTIFY, &remote);
-		if (ret == KNOT_EOK) {
-			ZONE_QUERY_LOG(LOG_INFO, zone, &remote,
-			               "NOTIFY, outgoing", "serial %u",
-			               zone_contents_serial(zone->contents));
-		} else {
-			ZONE_QUERY_LOG(LOG_WARNING, zone, &remote,
-			               "NOTIFY, outgoing", "failed (%s)",
-			               knot_strerror(ret));
+		for (int i = 0; i < addr_count; i++) {
+			conf_remote_t slave = conf_remote(conf(), &notify, i);
+			int ret = zone_query_execute(zone, KNOT_QUERY_NOTIFY, &slave);
+			if (ret == KNOT_EOK) {
+				ZONE_QUERY_LOG(LOG_INFO, zone, &slave,
+				               "NOTIFY, outgoing", "serial %u",
+				               zone_contents_serial(zone->contents));
+				break;
+			} else {
+				ZONE_QUERY_LOG(LOG_WARNING, zone, &slave,
+				               "NOTIFY, outgoing", "failed (%s)",
+				               knot_strerror(ret));
+			}
 		}
 
-		conf_val_next(&val);
+		conf_val_next(&notify);
 	}
 
 	return KNOT_EOK;

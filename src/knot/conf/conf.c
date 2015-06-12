@@ -511,7 +511,7 @@ struct sockaddr_storage conf_addr(
 
 struct sockaddr_storage conf_net(
 	conf_val_t *val,
-	unsigned *prefix_length)
+	int *prefix_length)
 {
 	assert(val != NULL && val->item != NULL && prefix_length != NULL);
 	assert(val->item->type == YP_TNET ||
@@ -521,18 +521,8 @@ struct sockaddr_storage conf_net(
 	struct sockaddr_storage out = { AF_UNSPEC };
 
 	if (val->code == KNOT_EOK) {
-		int prefix;
 		conf_db_val(val);
-		out = yp_addr(val->data, val->len, &prefix);
-		if (prefix != -1) {
-			*prefix_length = prefix;
-		} else {
-			if (out.ss_family == AF_INET) {
-				*prefix_length = IPV4_PREFIXLEN;
-			} else if (out.ss_family == AF_INET6) {
-				*prefix_length = IPV6_PREFIXLEN;
-			}
-		}
+		out = yp_addr(val->data, val->len, prefix_length);
 	} else {
 		*prefix_length = 0;
 	}
@@ -824,7 +814,8 @@ int conf_user_txn(
 conf_remote_t conf_remote_txn(
 	conf_t *conf,
 	namedb_txn_t *txn,
-	conf_val_t *id)
+	conf_val_t *id,
+	size_t index)
 {
 	assert(id != NULL && id->item != NULL);
 	assert(id->item->type == YP_TSTR ||
@@ -836,18 +827,24 @@ conf_remote_t conf_remote_txn(
 	conf_val_t rundir_val = conf_get_txn(conf, txn, C_SRV, C_RUNDIR);
 	char *rundir = conf_abs_path(&rundir_val, NULL);
 
-	// Get remote address.
+	// Get indexed remote address.
 	conf_val_t val = conf_id_get_txn(conf, txn, C_RMT, C_ADDR, id);
-	if (val.code != KNOT_EOK) {
-		CONF_LOG(LOG_ERR, "invalid remote");
-		free(rundir);
-		return out;
+	for (size_t i = 0; val.code == KNOT_EOK && i < index; i++) {
+		conf_val_next(&val);
 	}
+	// Index overflow causes empty socket.
 	out.addr = conf_addr(&val, rundir);
 
-	// Get outgoing address (optional).
+	// Get outgoing address if family matches (optional).
 	val = conf_id_get_txn(conf, txn, C_RMT, C_VIA, id);
-	out.via = conf_addr(&val, rundir);
+	while (val.code == KNOT_EOK) {
+		struct sockaddr_storage via = conf_addr(&val, rundir);
+		if (via.ss_family == out.addr.ss_family) {
+			out.via = conf_addr(&val, rundir);
+			break;
+		}
+		conf_val_next(&val);
+	}
 
 	// Get TSIG key (optional).
 	conf_val_t key_id = conf_id_get_txn(conf, txn, C_RMT, C_KEY, id);

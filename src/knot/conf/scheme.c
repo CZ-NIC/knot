@@ -125,8 +125,8 @@ static const yp_item_t desc_control[] = {
 
 static const yp_item_t desc_remote[] = {
 	{ C_ID,      YP_TSTR,  YP_VNONE },
-	{ C_ADDR,    YP_TADDR, YP_VADDR = { 53 } },
-	{ C_VIA,     YP_TADDR, YP_VNONE },
+	{ C_ADDR,    YP_TADDR, YP_VADDR = { 53 }, YP_FMULTI },
+	{ C_VIA,     YP_TADDR, YP_VNONE, YP_FMULTI },
 	{ C_KEY,     YP_TREF,  YP_VREF = { C_KEY }, YP_FNONE, { check_ref } },
 	{ C_COMMENT, YP_TSTR,  YP_VNONE },
 	{ NULL }
@@ -136,6 +136,7 @@ static const yp_item_t desc_remote[] = {
 	{ C_FILE,             YP_TSTR,  YP_VNONE }, \
 	{ C_STORAGE,          YP_TSTR,  YP_VSTR = { STORAGE_DIR } }, \
 	{ C_MASTER,           YP_TREF,  YP_VREF = { C_RMT }, YP_FMULTI, { check_ref } }, \
+	{ C_DDNS_MASTER,      YP_TREF,  YP_VREF = { C_RMT }, YP_FNONE, { check_ref } }, \
 	{ C_NOTIFY,           YP_TREF,  YP_VREF = { C_RMT }, YP_FMULTI, { check_ref } }, \
 	{ C_ACL,              YP_TREF,  YP_VREF = { C_ACL }, YP_FMULTI, { check_ref } }, \
 	{ C_SEM_CHECKS,       YP_TBOOL, YP_VNONE }, \

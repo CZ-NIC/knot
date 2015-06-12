@@ -53,6 +53,8 @@ static void test_netblock_match(void)
 	ret = netblock_match(&ref4, NULL, 32);
 	ok(ret == false, "match: NULL second parameter");
 
+	ret = netblock_match(&ref4, &ref4, -1);
+	ok(ret == true, "match: ipv4 - identity, auto full prefix");
 	ret = netblock_match(&ref4, &ref4, 31);
 	ok(ret == true, "match: ipv4 - identity, subnet");
 	ret = netblock_match(&ref4, &ref4, 32);
@@ -60,6 +62,8 @@ static void test_netblock_match(void)
 	ret = netblock_match(&ref4, &ref4, 33);
 	ok(ret == true, "match: ipv4 - identity, prefix overflow");
 
+	ret = netblock_match(&ref6, &ref6, -1);
+	ok(ret == true, "match: ipv6 - identity, auto full prefix");
 	ret = netblock_match(&ref6, &ref6, 127);
 	ok(ret == true, "match: ipv6 - identity, subnet");
 	ret = netblock_match(&ref6, &ref6, 128);

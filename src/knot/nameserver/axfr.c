@@ -385,7 +385,7 @@ int axfr_answer_process(knot_pkt_t *pkt, struct answer_data *adata)
 	if (rcode != KNOT_RCODE_NOERROR) {
 		lookup_table_t *lut = lookup_by_id(knot_rcode_names, rcode);
 		if (lut != NULL) {
-			AXFRIN_LOG(LOG_ERR, "server responded with %s", lut->name);
+			AXFRIN_LOG(LOG_WARNING, "server responded with %s", lut->name);
 		}
 		return KNOT_STATE_FAIL;
 	}
@@ -397,7 +397,7 @@ int axfr_answer_process(knot_pkt_t *pkt, struct answer_data *adata)
 
 		int ret = axfr_answer_init(adata);
 		if (ret != KNOT_EOK) {
-			AXFRIN_LOG(LOG_ERR, "failed (%s)", knot_strerror(ret));
+			AXFRIN_LOG(LOG_WARNING, "failed (%s)", knot_strerror(ret));
 			return KNOT_STATE_FAIL;
 		}
 	} else {

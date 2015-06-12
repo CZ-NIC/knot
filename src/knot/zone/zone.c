@@ -31,6 +31,7 @@
 #include "knot/zone/zone.h"
 #include "knot/zone/zonefile.h"
 #include "knot/zone/contents.h"
+#include "knot/updates/acl.h"
 #include "knot/updates/apply.h"
 #include "libknot/processing/requestor.h"
 #include "knot/nameserver/process_query.h"
@@ -76,6 +77,9 @@ zone_t* zone_new(const knot_dname_t *name)
 	// Journal lock
 	pthread_mutex_init(&zone->journal_lock, NULL);
 
+	// Preferred master lock
+	pthread_mutex_init(&zone->preferred_lock, NULL);
+
 	// Initialize events
 	zone_events_init(zone);
 
@@ -97,6 +101,10 @@ void zone_free(zone_t **zone_ptr)
 	free_ddns_queue(zone);
 	pthread_mutex_destroy(&zone->ddns_lock);
 	pthread_mutex_destroy(&zone->journal_lock);
+
+	/* Free preferred master. */
+	pthread_mutex_destroy(&zone->preferred_lock);
+	free(zone->preferred_master);
 
 	/* Free zone contents. */
 	zone_contents_deep_free(&zone->contents);
@@ -188,29 +196,106 @@ bool zone_is_slave(const zone_t *zone)
 	return conf_val_count(&val) > 0 ? true : false;
 }
 
-conf_remote_t zone_master(const zone_t *zone)
+void zone_set_preferred_master(zone_t *zone, const struct sockaddr_storage *addr)
 {
-	conf_val_t val = conf_zone_get(conf(), C_MASTER, zone->name);
+	pthread_mutex_lock(&zone->preferred_lock);
+	free(zone->preferred_master);
+	zone->preferred_master = malloc(sizeof(struct sockaddr_storage));
+	*zone->preferred_master = *addr;
+	pthread_mutex_unlock(&zone->preferred_lock);
+}
 
-	/* Seek the current master if possible. */
-	if (zone->master_index < conf_val_count(&val)) {
-		for (size_t index = 0; index < zone->master_index; index++) {
-			conf_val_next(&val);
+void zone_clear_preferred_master(zone_t *zone)
+{
+	pthread_mutex_lock(&zone->preferred_lock);
+	free(zone->preferred_master);
+	zone->preferred_master = NULL;
+	pthread_mutex_unlock(&zone->preferred_lock);
+}
+
+/*!
+ * \brief Get preferred zone master while checking its existence.
+ */
+int static preferred_master(zone_t *zone, conf_remote_t *master)
+{
+	pthread_mutex_lock(&zone->preferred_lock);
+
+	if (zone->preferred_master == NULL) {
+		pthread_mutex_unlock(&zone->preferred_lock);
+		return KNOT_ENOENT;
+	}
+
+	conf_val_t masters = conf_zone_get(conf(), C_MASTER, zone->name);
+	while (masters.code == KNOT_EOK) {
+		conf_val_t addr = conf_id_get(conf(), C_RMT, C_ADDR, &masters);
+		size_t addr_count = conf_val_count(&addr);
+
+		for (size_t i = 0; i < addr_count; i++) {
+			conf_remote_t remote = conf_remote(conf(), &masters, i);
+			if (netblock_match(&remote.addr, zone->preferred_master, -1)) {
+				*master = remote;
+				pthread_mutex_unlock(&zone->preferred_lock);
+				return KNOT_EOK;
+			}
+		}
+
+		conf_val_next(&masters);
+	}
+
+	pthread_mutex_unlock(&zone->preferred_lock);
+
+	return KNOT_ENOENT;
+}
+
+int zone_master_try(zone_t *zone, zone_master_cb callback, void *callback_data,
+                    const char *err_str)
+{
+	if (zone == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	/* Try the preferred server. */
+
+	conf_remote_t preferred = { { AF_UNSPEC } };
+	if (preferred_master(zone, &preferred) == KNOT_EOK) {
+		int ret = callback(zone, &preferred, callback_data);
+		if (ret == KNOT_EOK) {
+			return ret;
 		}
 	}
 
-	return conf_remote(conf(), &val);
-}
+	/* Try all the other servers. */
 
-void zone_master_rotate(zone_t *zone)
-{
-	conf_val_t val = conf_zone_get(conf(), C_MASTER, zone->name);
+	bool success = false;
 
-	if (zone->master_index + 2 <= conf_val_count(&val)) {
-		zone->master_index += 1;
-	} else {
-		zone->master_index = 0;
+	conf_val_t masters = conf_zone_get(conf(), C_MASTER, zone->name);
+	while (masters.code == KNOT_EOK) {
+		conf_val_t addr = conf_id_get(conf(), C_RMT, C_ADDR, &masters);
+		size_t addr_count = conf_val_count(&addr);
+
+		for (size_t i = 0; i < addr_count; i++) {
+			conf_remote_t master = conf_remote(conf(), &masters, i);
+			if (preferred.addr.ss_family != AF_UNSPEC &&
+			    netblock_match(&master.addr, &preferred.addr, -1)) {
+				preferred.addr.ss_family = AF_UNSPEC;
+				continue;
+			}
+			int ret = callback(zone, &master, callback_data);
+			if (ret == KNOT_EOK) {
+				success = true;
+				break;
+			}
+		}
+
+		if (!success) {
+			log_zone_warning(zone->name, "%s, remote '%s' not available",
+			                 err_str, conf_str(&masters));
+		}
+
+		conf_val_next(&masters);
 	}
+
+	return success ? KNOT_EOK : KNOT_ENOMASTER;
 }
 
 int zone_flush_journal(zone_t *zone)

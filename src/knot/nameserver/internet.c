@@ -888,12 +888,14 @@ static int process_soa_answer(knot_pkt_t *pkt, struct answer_data *data)
 	if (serial_compare(our_serial, their_serial) >= 0) {
 		ANSWER_LOG(LOG_INFO, data, "refresh, outgoing", "zone is up-to-date");
 		zone_events_cancel(zone, ZONE_EVENT_EXPIRE);
+		zone_clear_preferred_master(zone);
 		return KNOT_STATE_DONE; /* Our zone is up to date. */
 	}
 
 	/* Our zone is outdated, schedule zone transfer. */
 	ANSWER_LOG(LOG_INFO, data, "refresh, outgoing", "master has newer serial %u -> %u",
 	           our_serial, their_serial);
+	zone_set_preferred_master(zone, data->param->remote);
 	zone_events_schedule(zone, ZONE_EVENT_XFER, ZONE_EVENT_NOW);
 	return KNOT_STATE_DONE;
 }

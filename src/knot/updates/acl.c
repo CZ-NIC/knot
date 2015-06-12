@@ -40,7 +40,7 @@ static const uint8_t* ipv6_addr(const struct sockaddr_storage *ss) {
 
 bool netblock_match(const struct sockaddr_storage *ss1,
                     const struct sockaddr_storage *ss2,
-                    unsigned prefix)
+                    int prefix)
 {
 	if (ss1 == NULL || ss2 == NULL) {
 		return false;
@@ -55,12 +55,20 @@ bool netblock_match(const struct sockaddr_storage *ss1,
 	case AF_INET:
 		addr1 = ipv4_addr(ss1);
 		addr2 = ipv4_addr(ss2);
-		prefix = prefix > IPV4_PREFIXLEN ? IPV4_PREFIXLEN : prefix;
+		if (prefix < 0) {
+			prefix = IPV4_PREFIXLEN;
+		} else if (prefix > IPV4_PREFIXLEN) {
+			prefix = IPV4_PREFIXLEN;
+		}
 		break;
 	case AF_INET6:
 		addr1 = ipv6_addr(ss1);
 		addr2 = ipv6_addr(ss2);
-		prefix = prefix > IPV6_PREFIXLEN ? IPV6_PREFIXLEN : prefix;
+		if (prefix < 0) {
+			prefix = IPV6_PREFIXLEN;
+		} else if (prefix > IPV6_PREFIXLEN) {
+			prefix = IPV6_PREFIXLEN;
+		}
 		break;
 	default:
 		return false;
@@ -101,7 +109,7 @@ bool acl_allowed(conf_val_t *acl, acl_action_t action,
 		/* Check if the address matches the current acl address list. */
 		val = conf_id_get(conf(), C_ACL, C_ADDR, acl);
 		while (val.code == KNOT_EOK) {
-			unsigned prefix;
+			int prefix;
 			struct sockaddr_storage ss;
 			ss = conf_net(&val, &prefix);
 			if (!netblock_match(addr, &ss, prefix)) {

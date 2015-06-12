@@ -98,6 +98,7 @@ int notify_process_query(knot_pkt_t *pkt, struct query_data *qdata)
 
 	/* Incoming NOTIFY expires REFRESH timer and renews EXPIRE timer. */
 	zone_t *zone = (zone_t *)qdata->zone;
+	zone_set_preferred_master(zone, qdata->param->remote);
 	zone_events_schedule(zone, ZONE_EVENT_REFRESH, ZONE_EVENT_NOW);
 	int ret = zone_events_write_persistent(zone);
 	if (ret != KNOT_EOK) {

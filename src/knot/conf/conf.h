@@ -247,7 +247,7 @@ struct sockaddr_storage conf_addr(
 
 struct sockaddr_storage conf_net(
 	conf_val_t *val,
-	unsigned *prefix_length
+	int *prefix_length
 );
 
 char* conf_abs_path(
@@ -334,13 +334,15 @@ static inline int conf_user(
 conf_remote_t conf_remote_txn(
 	conf_t *conf,
 	namedb_txn_t *txn,
-	conf_val_t *id
+	conf_val_t *id,
+	size_t index
 );
 static inline conf_remote_t conf_remote(
 	conf_t *conf,
-	conf_val_t *id)
+	conf_val_t *id,
+	size_t index)
 {
-	return conf_remote_txn(conf, &conf->read_txn, id);
+	return conf_remote_txn(conf, &conf->read_txn, id, index);
 
 }
 
