@@ -68,7 +68,7 @@ AC_CONFIG_FILES([src/libknot.pc
 bash_completion_dir=""
 PKG_CHECK_VAR([bash_completion_dir], [bash-completion], [completionsdir],[
   PKG_CHECK_VAR([bash_completion_prefix], [bash-completion], [prefix], [
-    AC_SUBST([BASH_COMPLETION_DIR], ["${prefix}"/$(echo "$bash_completion_dir" | $SED -e "s,^$bash_completion_prefix,,")])
+    AC_SUBST([BASH_COMPLETION_DIR], ['${prefix}'$(echo "$bash_completion_dir" | $SED -e "s,^$bash_completion_prefix,,")])
   ])],[:])
 AM_CONDITIONAL([HAVE_BASH_COMPLETION], [test -n "$bash_completion_dir"])
 
