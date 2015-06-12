@@ -395,12 +395,10 @@ static int forward_request(zone_t *zone, struct knot_request *request)
 		conf_val_t val = conf_get(conf(), C_SRV, C_TCP_REPLY_TIMEOUT);
 		struct timeval tv = { conf_int(&val), 0 };
 		ret = knot_requestor_exec(&re, &tv);
+		knot_requestor_clear(&re);
 		if (ret == KNOT_EOK) {
-			knot_requestor_clear(&re);
 			break;
 		}
-
-		knot_requestor_clear(&re);
 	}
 
 	/* Restore message ID and TSIG. */

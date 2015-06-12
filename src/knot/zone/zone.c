@@ -196,6 +196,23 @@ bool zone_is_slave(const zone_t *zone)
 	return conf_val_count(&val) > 0 ? true : false;
 }
 
+void zone_set_preferred_master(zone_t *zone, const struct sockaddr_storage *addr)
+{
+	pthread_mutex_lock(&zone->preferred_lock);
+	free(zone->preferred_master);
+	zone->preferred_master = malloc(sizeof(struct sockaddr_storage));
+	*zone->preferred_master = *addr;
+	pthread_mutex_unlock(&zone->preferred_lock);
+}
+
+void zone_clear_preferred_master(zone_t *zone)
+{
+	pthread_mutex_lock(&zone->preferred_lock);
+	free(zone->preferred_master);
+	zone->preferred_master = NULL;
+	pthread_mutex_unlock(&zone->preferred_lock);
+}
+
 /*!
  * \brief Get preferred zone master while checking its existence.
  */
@@ -205,7 +222,7 @@ int static preferred_master(zone_t *zone, conf_remote_t *master)
 
 	if (zone->preferred_master == NULL) {
 		pthread_mutex_unlock(&zone->preferred_lock);
-		return KNOT_EINVAL;
+		return KNOT_ENOENT;
 	}
 
 	conf_val_t masters = conf_zone_get(conf(), C_MASTER, zone->name);
@@ -230,7 +247,8 @@ int static preferred_master(zone_t *zone, conf_remote_t *master)
 	return KNOT_ENOENT;
 }
 
-int zone_master_try(zone_t *zone, zone_master_cb callback, void *callback_data)
+int zone_master_try(zone_t *zone, zone_master_cb callback, void *callback_data,
+                    const char *err_str)
 {
 	if (zone == NULL) {
 		return KNOT_EINVAL;
@@ -270,8 +288,8 @@ int zone_master_try(zone_t *zone, zone_master_cb callback, void *callback_data)
 		}
 
 		if (!success) {
-			log_zone_warning(zone->name, "refresh, remote '%s' "
-			                 "not available", conf_str(&masters));
+			log_zone_warning(zone->name, "%s, remote '%s' not available",
+			                 err_str, conf_str(&masters));
 		}
 
 		conf_val_next(&masters);

@@ -116,6 +116,11 @@ zone_contents_t *zone_switch_contents(zone_t *zone, zone_contents_t *new_content
 /*! \brief Checks if the zone is slave. */
 bool zone_is_slave(const zone_t *zone);
 
+/*! \brief Sets the address as a preferred master address. */
+void zone_set_preferred_master(zone_t *zone, const struct sockaddr_storage *addr);
+/*! \brief Clears the current preferred master address. */
+void zone_clear_preferred_master(zone_t *zone);
+
 typedef int (*zone_master_cb)(zone_t *zone, const conf_remote_t *remote, void *data);
 
 /*!
@@ -127,7 +132,8 @@ typedef int (*zone_master_cb)(zone_t *zone, const conf_remote_t *remote, void *d
  *
  * \return Error code from the last callback.
  */
-int zone_master_try(zone_t *zone, zone_master_cb callback, void *callback_data);
+int zone_master_try(zone_t *zone, zone_master_cb callback, void *callback_data,
+                    const char *err_str);
 
 /*! \brief Synchronize zone file with journal. */
 int zone_flush_journal(zone_t *zone);

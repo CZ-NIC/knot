@@ -344,7 +344,7 @@ int event_refresh(zone_t *zone)
 		return KNOT_EOK;
 	}
 
-	int ret = zone_master_try(zone, try_refresh, NULL);
+	int ret = zone_master_try(zone, try_refresh, NULL, "refresh");
 	const knot_rdataset_t *soa = zone_soa(zone);
 	if (ret != KNOT_EOK) {
 		log_zone_error(zone->name, "refresh, failed (%s)",
@@ -385,26 +385,23 @@ int event_xfer(zone_t *zone)
 	}
 
 	struct transfer_data data = { 0 };
+	const char *err_str = "";
 
 	/* Determine transfer type. */
 	bool is_bootstrap = zone_contents_is_empty(zone->contents);
 	if (is_bootstrap || zone->flags & ZONE_FORCE_AXFR) {
 		data.pkt_type = KNOT_QUERY_AXFR;
+		err_str = "AXFR, incoming";
 	} else {
 		data.pkt_type = KNOT_QUERY_IXFR;
+		err_str = "IXFR, incoming";
 	}
 
 	/* Execute zone transfer. */
-	int ret = zone_master_try(zone, try_xfer, &data);
-
-	/* Clear preferred master. */
-	pthread_mutex_lock(&zone->preferred_lock);
-	free(zone->preferred_master);
-	zone->preferred_master = NULL;
-	pthread_mutex_unlock(&zone->preferred_lock);
-
+	int ret = zone_master_try(zone, try_xfer, &data, err_str);
+	zone_clear_preferred_master(zone);
 	if (ret != KNOT_EOK) {
-		log_zone_error(zone->name, "transfer, failed (%s)",
+		log_zone_error(zone->name, "%s, failed (%s)", err_str,
 		               knot_strerror(ret));
 		if (is_bootstrap) {
 			zone->bootstrap_retry = bootstrap_next(zone->bootstrap_retry);
