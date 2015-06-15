@@ -67,8 +67,24 @@ AC_CONFIG_FILES([src/libknot.pc
 # Get Bash completion scripts directory
 bash_completion_dir=""
 PKG_CHECK_VAR([bash_completion_dir], [bash-completion], [completionsdir],[
-  AC_SUBST([bash_completion_dir],[$bash_completion_dir])],[:])
+  PKG_CHECK_VAR([bash_completion_prefix], [bash-completion], [prefix], [
+    # Try to remove full ${datarootdir} first
+    bash_completion_dir_tmp=$(echo "${bash_completion_dir}" | $SED -e "s,^${bash_completion_prefix}/share,,")
+    AS_IF([test "${bash_completion_dir}" = "${bash_completion_dir_tmp}"],[
+      # Remove and add only a ${prefix}
+      bash_completion_dir_tmp=$(echo "$bash_completion_dir" | $SED -e "s,^${bash_completion_prefix},,")
+      AC_SUBST([bash_completion_dir], ['${prefix}'${bash_completion_dir_tmp}])
+      ],[
+      # And append full ${datarootdir}
+      AC_SUBST([bash_completion_dir], ['${datarootdir}'${bash_completion_dir_tmp}])
+      ])
+  ])],[:])
 AM_CONDITIONAL([HAVE_BASH_COMPLETION], [test -n "$bash_completion_dir"])
+AS_IF([test -n "$bash_completion_dir"],[
+  bash_completion_output="${bash_completion_dir}"
+  ],[
+  bash_completion_output="no"
+  ])
 
 # Build Knot DNS daemon
 AC_ARG_ENABLE([daemon],
@@ -462,10 +478,10 @@ AC_MSG_RESULT([
     Jansson:  ${jansson_LIBS} ${jansson_CFLAGS}
     LMDB:     ${enable_lmdb} ${lmdb_LIBS} ${lmdb_CFLAGS}
 
-    Prefix:      ${prefix}
-    Run dir:     ${run_dir}
-    Storage dir: ${storage_dir}
-    Config dir:  ${config_dir}
+    Prefix:		${prefix}
+    Run dir:		${run_dir}
+    Storage dir:	${storage_dir}
+    Config dir: 	${config_dir}
 
     Knot DNS libraries:     yes
     Knot DNS daemon:        ${enable_daemon}
@@ -477,6 +493,7 @@ AC_MSG_RESULT([
     Systemd integration: ${enable_systemd}
     Dnstap support:      ${opt_dnstap}
     Code coverage:       ${enable_code_coverage}
+    Bash completion:     ${bash_completion_output}
 
   Continue with 'make' command
 ])
