@@ -67,8 +67,11 @@ static knot_pkt_t *zone_query(const zone_t *zone, uint16_t pkt_type, mm_ctx_t *m
 	}
 
 	knot_wire_set_id(pkt->wire, dnssec_random_uint16_t());
-	knot_wire_set_aa(pkt->wire);
 	knot_wire_set_opcode(pkt->wire, opcode);
+	if (pkt_type == KNOT_QUERY_NOTIFY) {
+		knot_wire_set_aa(pkt->wire);
+	}
+
 	knot_pkt_put_question(pkt, zone->name, KNOT_CLASS_IN, query_type);
 
 	/* Put current SOA (optional). */
