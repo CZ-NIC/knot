@@ -64,28 +64,6 @@ AC_CONFIG_FILES([src/libknot.pc
 		 src/zscanner/libzscanner.pc
 		 ])
 
-# Get Bash completion scripts directory
-bash_completion_dir=""
-PKG_CHECK_VAR([bash_completion_dir], [bash-completion], [completionsdir],[
-  PKG_CHECK_VAR([bash_completion_prefix], [bash-completion], [prefix], [
-    # Try to remove full ${datarootdir} first
-    bash_completion_dir_tmp=$(echo "${bash_completion_dir}" | $SED -e "s,^${bash_completion_prefix}/share,,")
-    AS_IF([test "${bash_completion_dir}" = "${bash_completion_dir_tmp}"],[
-      # Remove and add only a ${prefix}
-      bash_completion_dir_tmp=$(echo "$bash_completion_dir" | $SED -e "s,^${bash_completion_prefix},,")
-      AC_SUBST([bash_completion_dir], ['${prefix}'${bash_completion_dir_tmp}])
-      ],[
-      # And append full ${datarootdir}
-      AC_SUBST([bash_completion_dir], ['${datarootdir}'${bash_completion_dir_tmp}])
-      ])
-  ])],[:])
-AM_CONDITIONAL([HAVE_BASH_COMPLETION], [test -n "$bash_completion_dir"])
-AS_IF([test -n "$bash_completion_dir"],[
-  bash_completion_output="${bash_completion_dir}"
-  ],[
-  bash_completion_output="no"
-  ])
-
 # Build Knot DNS daemon
 AC_ARG_ENABLE([daemon],
     AS_HELP_STRING([--disable-daemon], [Don't build Knot DNS main daemon]), [], [enable_daemon=yes])
@@ -394,6 +372,24 @@ AS_IF([test "$with_libidn" != "no"],[
 
 ]) # Knot DNS utilities dependencies
 
+# Bash completions
+AC_ARG_WITH([bash-completions],
+  AC_HELP_STRING([--with-bash-completions=[DIR]], [Bash completions directory [default=auto]]),
+  [with_bash_completions="$withval"],
+  [with_bash_completions=auto]
+)
+AS_CASE([$with_bash_completions],
+  [auto], [PKG_CHECK_VAR([bash_completions_dir], [bash-completion], [completionsdir])],
+  [yes], [PKG_CHECK_VAR([bash_completions_dir], [bash-completion], [completionsdir], [], [AC_MSG_ERROR([bash completions not found])])],
+  [no], [bash_completions_dir=],
+  [bash_completions_dir="$with_bash_completions"]
+)
+AM_CONDITIONAL([HAVE_BASH_COMPLETIONS], [test -n "$bash_completions_dir"])
+AS_IF([test -n "$bash_completions_dir"],
+  [bash_completions_output="${bash_completions_dir}"],
+  [bash_completions_output=no]
+)
+
 AC_SEARCH_LIBS([pow], [m])
 AC_SEARCH_LIBS([pthread_create], [pthread], [], [AC_MSG_ERROR([pthreads not found])])
 AC_SEARCH_LIBS([dlopen], [dl])
@@ -493,7 +489,7 @@ AC_MSG_RESULT([
     Systemd integration: ${enable_systemd}
     Dnstap support:      ${opt_dnstap}
     Code coverage:       ${enable_code_coverage}
-    Bash completion:     ${bash_completion_output}
+    Bash completions:    ${bash_completions_output}
 
   Continue with 'make' command
 ])

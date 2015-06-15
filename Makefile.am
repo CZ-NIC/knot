@@ -5,7 +5,8 @@ singlehtml install-singlehtml:
 	$(MAKE) -C doc $@
 
 AM_DISTCHECK_CONFIGURE_FLAGS = \
-	--disable-code-coverage
+	--disable-code-coverage \
+	--without-bash-completions
 
 CODE_COVERAGE_INFO = coverage.info
 CODE_COVERAGE_HTML = coverage.html
