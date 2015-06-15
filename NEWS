@@ -8,6 +8,7 @@ Bugfixes:
  - Disable fast zone parser when compiled in Clang (workaround for Clang bug)
  - kdig: Record correct dnstap SocketProtocol when retrying over TCP
  - kdig: Hide TSIG section with +noall
+ - Do not set AA flag for AXFR/IXFR queries
 
 Features:
 ---------
@@ -17,7 +18,7 @@ Features:
 
 Improvements:
 -------------
- - Zone dump: Do not print class for SOA record (unified with other RR types)
+ - Zone dump: Do not write class for SOA record (unified with other RR types)
  - Zone dump: Do not write master server address into the zone file
 
 Knot DNS 1.6.3 (2015-04-08)
