@@ -787,9 +787,21 @@ static int process_xfr_packet(const knot_pkt_t      *query,
 
 	// Print query packet if required.
 	if (style->show_query) {
-		print_packet(query, net, query->size,
-		             time_diff(&t_start, &t_query), 0,
-		             false, style);
+		// Create copy of query packet for parsing.
+		knot_pkt_t *q = knot_pkt_new(query->wire, query->size, NULL);
+		if (q != NULL) {
+			if (knot_pkt_parse(q, 0) == KNOT_EOK) {
+				print_packet(q, net, query->size,
+				             time_diff(&t_start, &t_query), 0,
+				             false, style);
+			} else {
+				ERR("can't print query packet\n");
+			}
+			knot_pkt_free(&q);
+		} else {
+			ERR("can't print query packet\n");
+		}
+
 		printf("\n");
 	}
 
