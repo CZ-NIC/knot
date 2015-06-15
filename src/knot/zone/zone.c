@@ -198,6 +198,10 @@ bool zone_is_slave(const zone_t *zone)
 
 void zone_set_preferred_master(zone_t *zone, const struct sockaddr_storage *addr)
 {
+	if (zone == NULL || addr == NULL) {
+		return;
+	}
+
 	pthread_mutex_lock(&zone->preferred_lock);
 	free(zone->preferred_master);
 	zone->preferred_master = malloc(sizeof(struct sockaddr_storage));
@@ -207,6 +211,10 @@ void zone_set_preferred_master(zone_t *zone, const struct sockaddr_storage *addr
 
 void zone_clear_preferred_master(zone_t *zone)
 {
+	if (zone == NULL) {
+		return;
+	}
+
 	pthread_mutex_lock(&zone->preferred_lock);
 	free(zone->preferred_master);
 	zone->preferred_master = NULL;
@@ -250,7 +258,7 @@ int static preferred_master(zone_t *zone, conf_remote_t *master)
 int zone_master_try(zone_t *zone, zone_master_cb callback, void *callback_data,
                     const char *err_str)
 {
-	if (zone == NULL) {
+	if (zone == NULL || callback == NULL) {
 		return KNOT_EINVAL;
 	}
 
@@ -288,6 +296,7 @@ int zone_master_try(zone_t *zone, zone_master_cb callback, void *callback_data,
 		}
 
 		if (!success) {
+			assert(err_str);
 			log_zone_warning(zone->name, "%s, remote '%s' not available",
 			                 err_str, conf_str(&masters));
 		}
