@@ -1,11 +1,30 @@
-Knot DNS 2.0.0-beta (2015-04-23)
-================================
+Knot DNS 2.0.0-rc1 (2015-06-15)
+===============================
+
+Bugfixes:
+---------
+ - Fix lost NOTIFY message if received during zone transfer
+ - Disable fast zone parser when compiled in Clang (workaround for Clang bug)
+ - kdig: Record correct dnstap SocketProtocol when retrying over TCP
+ - kdig: Hide TSIG section with +noall
+ - Do not set AA flag for AXFR/IXFR queries
 
 Features:
 ---------
  - DNSSEC: separate library, switch to GnuTLS, new utilities
  - DNSSEC: basic KASP support (generate initial keys, ZSK rollover)
- - configuration: new text format in YAML, binary store in LMDB
+ - Configuration: New text format in YAML, binary store in LMDB
+ - Zone parser: Split long TXT/SPF strings into multiple strings
+ - kdig: Add generic dump style option (+generic)
+ - Try all master servers in multi-master environment
+ - Improved remotes and ACLs (multiple addresses, multiple keys)
+ - Basic support for zone file patterns (%s to substitute zone name)
+
+Improvements:
+-------------
+ - Zone dump: Do not write class for SOA record (unified with other RR types)
+ - Zone dump: Do not write master server address into the zone file
+ - Documentation: Manual pages are included in HTML and PDF
 
 Knot DNS 1.6.3 (2015-04-08)
 ===========================
