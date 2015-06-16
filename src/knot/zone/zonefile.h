@@ -84,8 +84,7 @@ time_t zonefile_mtime(const char *path);
 /*!
  * \brief Write zone contents to zone file.
  */
-int zonefile_write(const char *path, zone_contents_t *zone,
-                   const struct sockaddr_storage *from);
+int zonefile_write(const char *path, zone_contents_t *zone);
 
 /*!
  * \brief Close zone file loader.

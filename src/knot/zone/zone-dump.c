@@ -44,7 +44,6 @@ static int apex_node_dump_text(zone_node_t *node, dump_params_t *params)
 
 	// Dump SOA record as a first.
 	if (!params->dump_nsec) {
-		soa_style.show_class = true;
 		if (knot_rrset_txt_dump(&soa, params->buf, params->buflen,
 					&soa_style) < 0) {
 			return KNOT_ENOMEM;
@@ -129,7 +128,7 @@ static int node_dump_text(zone_node_t *node, void *data)
 	return KNOT_EOK;
 }
 
-int zone_dump_text(zone_contents_t *zone, const struct sockaddr_storage *from, FILE *file)
+int zone_dump_text(zone_contents_t *zone, FILE *file)
 {
 	if (zone == NULL || file == NULL) {
 		return KNOT_EINVAL;
@@ -223,14 +222,6 @@ int zone_dump_text(zone_contents_t *zone, const struct sockaddr_storage *from, F
 	fprintf(file, ";; Written %"PRIu64" records\n"
 	              ";; Time %s\n",
 	        params.rr_count, date);
-
-	// If a master server is configured, dump info about it.
-	if (from) {
-		char addr_str[SOCKADDR_STRLEN] = {0};
-		sockaddr_tostr(from, addr_str, sizeof(addr_str));
-
-		fprintf(file, ";; Transfered from %s\n", addr_str);
-	}
 
 	free(buf);
 

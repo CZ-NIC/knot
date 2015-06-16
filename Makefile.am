@@ -86,3 +86,4 @@ code-coverage-clean:
 endif
 
 .PHONY: check-code-coverage code-coverage-initial code-coverage-capture code-coverage-html code-coverage-summary code-coverage-clean
+.NOTPARALLEL: clean

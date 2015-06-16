@@ -55,6 +55,7 @@ static const style_t DEFAULT_STYLE_DIG = {
 		.empty_ttl = false,
 		.human_ttl = false,
 		.human_tmstamp = true,
+		.generic = false,
 		.ascii_to_idn = name_to_idn
 	},
 	.show_query = false,
@@ -266,6 +267,7 @@ static int opt_all(const char *arg, void *query)
 	q->style.show_answer = true;
 	q->style.show_authority = true;
 	q->style.show_additional = true;
+	q->style.show_tsig = true;
 	q->style.show_footer = true;
 
 	return KNOT_EOK;
@@ -282,6 +284,7 @@ static int opt_noall(const char *arg, void *query)
 	q->style.show_answer = false;
 	q->style.show_authority = false;
 	q->style.show_additional = false;
+	q->style.show_tsig = false;
 	q->style.show_footer = false;
 
 	return KNOT_EOK;
@@ -552,6 +555,15 @@ static int opt_noidn(const char *arg, void *query)
 	return KNOT_EOK;
 }
 
+static int opt_generic(const char *arg, void *query)
+{
+	query_t *q = query;
+
+	q->style.style.generic = true;
+
+	return KNOT_EOK;
+}
+
 static int opt_nsid(const char *arg, void *query)
 {
 	query_t *q = query;
@@ -805,6 +817,8 @@ static const param_t dig_opts2[] = {
 
 	/* "idn" doesn't work since it must be called before query creation. */
 	{ "noidn",        ARG_NONE,     opt_noidn },
+
+	{ "generic",      ARG_NONE,     opt_generic },
 
 	{ "client",       ARG_REQUIRED, opt_client },
 
@@ -1370,6 +1384,7 @@ static void dig_help(void)
 	       "       +[no]nsid       Request NSID.\n"
 	       "       +[no]edns=N     Use EDNS (=version).\n"
 	       "       +noidn          Disable IDN transformation.\n"
+	       "       +generic        Use generic representation format.\n"
 	       "       +client=SUBN    Set EDNS client subnet IP/prefix.\n"
 	       "       +time=T         Set wait for reply interval in seconds.\n"
 	       "       +retry=N        Set number of retries.\n"

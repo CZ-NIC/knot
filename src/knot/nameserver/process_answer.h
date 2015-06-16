@@ -36,8 +36,8 @@ const knot_process_module_t *process_answer_get_module(void);
 
 /*! \brief Answer processsing logging base. */
 #define ANSWER_LOG(severity, data, operation, msg...) \
-	NS_PROC_LOG(severity, (data)->param->remote, (data)->param->zone->name, \
-		    operation, msg);
+        NS_PROC_LOG(severity, &(data)->param->remote->addr, \
+                    (data)->param->zone->name, operation, msg)
 
 /*!
  * \brief Processing module parameters.
@@ -45,7 +45,7 @@ const knot_process_module_t *process_answer_get_module(void);
 struct process_answer_param {
 	zone_t   *zone;                        /*!< Answer bailiwick. */
 	const knot_pkt_t *query;               /*!< Query preceding the answer. */
-	const struct sockaddr_storage *remote; /*!< Answer origin. */
+	const conf_iface_t *remote;            /*!< Answer origin. */
 	tsig_ctx_t tsig_ctx;                   /*!< Signing context. */
 };
 

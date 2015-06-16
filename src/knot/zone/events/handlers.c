@@ -62,8 +62,11 @@ static knot_pkt_t *zone_query(const zone_t *zone, uint16_t pkt_type, mm_ctx_t *m
 	}
 
 	knot_wire_set_id(pkt->wire, knot_random_uint16_t());
-	knot_wire_set_aa(pkt->wire);
 	knot_wire_set_opcode(pkt->wire, opcode);
+	if (pkt_type == KNOT_QUERY_NOTIFY) {
+		knot_wire_set_aa(pkt->wire);
+	}
+
 	knot_pkt_put_question(pkt, zone->name, KNOT_CLASS_IN, query_type);
 
 	/* Put current SOA (optional). */
@@ -108,7 +111,7 @@ static int zone_query_execute(zone_t *zone, uint16_t pkt_type, const conf_iface_
 	struct process_answer_param param = { 0 };
 	param.zone = zone;
 	param.query = query;
-	param.remote = &remote->addr;
+	param.remote = remote;
 	tsig_init(&param.tsig_ctx, remote->key);
 
 	ret = tsig_sign_packet(&param.tsig_ctx, query);
@@ -272,7 +275,7 @@ int event_reload(zone_t *zone)
 	}
 
 	/* Schedule notify and refresh after load. */
-	if (zone_master(zone)) {
+	if (zone_is_slave(zone)) {
 		zone_events_schedule(zone, ZONE_EVENT_REFRESH, ZONE_EVENT_NOW);
 	}
 	if (!zone_contents_is_empty(contents)) {
@@ -299,12 +302,25 @@ fail:
 	return result;
 }
 
+static int try_refresh(zone_t *zone, const conf_iface_t *master, void *ctx)
+{
+	assert(zone);
+	assert(master);
+
+	int ret = zone_query_execute(zone, KNOT_QUERY_NORMAL, master);
+	if (ret != KNOT_EOK) {
+		ZONE_QUERY_LOG(LOG_WARNING, zone, master, "refresh, outgoing",
+		               "failed (%s)", knot_strerror(ret));
+	}
+
+	return ret;
+}
+
 int event_refresh(zone_t *zone)
 {
 	assert(zone);
 
-	const conf_iface_t *master = zone_master(zone);
-	if (master == NULL) {
+	if (!zone_is_slave(zone)) {
 		/* If not slave zone, ignore. */
 		return KNOT_EOK;
 	}
@@ -315,14 +331,11 @@ int event_refresh(zone_t *zone)
 		return KNOT_EOK;
 	}
 
-	int ret = zone_query_execute(zone, KNOT_QUERY_NORMAL, master);
+	int ret = zone_master_try(zone, try_refresh, NULL);
 	const knot_rdataset_t *soa = zone_soa(zone);
 	if (ret != KNOT_EOK) {
-		/* Log connection errors. */
-		ZONE_QUERY_LOG(LOG_WARNING, zone, master, "SOA query, outgoing",
-		               "failed (%s)", knot_strerror(ret));
-		/* Rotate masters if current failed. */
-		zone_master_rotate(zone);
+		log_zone_error(zone->name, "refresh, failed (%s)",
+		               knot_strerror(ret));
 		/* Schedule next retry. */
 		zone_events_schedule(zone, ZONE_EVENT_REFRESH, knot_soa_retry(soa));
 		start_expire_timer(zone, soa);
@@ -334,29 +347,47 @@ int event_refresh(zone_t *zone)
 	return zone_events_write_persistent(zone);
 }
 
+struct transfer_data {
+	uint16_t pkt_type;
+};
+
+static int try_transfer(zone_t *zone, const conf_iface_t *master, void *_data)
+{
+	assert(zone);
+	assert(master);
+	assert(_data);
+
+	struct transfer_data *data = _data;
+
+	return zone_query_transfer(zone, master, data->pkt_type);
+}
+
 int event_xfer(zone_t *zone)
 {
 	assert(zone);
 
-	const conf_iface_t *master = zone_master(zone);
-	if (master == NULL) {
+	if (!zone_is_slave(zone)) {
 		/* If not slave zone, ignore. */
 		return KNOT_EOK;
 	}
 
+	struct transfer_data data = { 0 };
+
 	/* Determine transfer type. */
-	bool is_boostrap = zone_contents_is_empty(zone->contents);
-	uint16_t pkt_type = KNOT_QUERY_IXFR;
-	if (is_boostrap || zone->flags & ZONE_FORCE_AXFR) {
-		pkt_type = KNOT_QUERY_AXFR;
+	bool is_bootstrap = zone_contents_is_empty(zone->contents);
+	if (is_bootstrap || zone->flags & ZONE_FORCE_AXFR) {
+		data.pkt_type = KNOT_QUERY_AXFR;
+	} else {
+		data.pkt_type = KNOT_QUERY_IXFR;
 	}
 
-	/* Execute zone transfer and reschedule timers. */
-	int ret = zone_query_transfer(zone, master, pkt_type);
-
-	/* Handle failure during transfer. */
+	/* Execute zone transfer and clear master server preference. */
+	int ret = zone_master_try(zone, try_transfer, &data);
+	zone->preferred_master = NULL;
 	if (ret != KNOT_EOK) {
-		if (is_boostrap) {
+		log_zone_error(zone->name, "transfer, failed (%s)",
+		               knot_strerror(ret));
+		if (is_bootstrap) {
 			zone->bootstrap_retry = bootstrap_next(zone->bootstrap_retry);
 			zone_events_schedule(zone, ZONE_EVENT_XFER, zone->bootstrap_retry);
 		} else {
@@ -386,7 +417,7 @@ int event_xfer(zone_t *zone)
 	zone->flags &= ~ZONE_FORCE_AXFR;
 
 	/* Trim extra heap. */
-	if (!is_boostrap) {
+	if (!is_bootstrap) {
 		mem_trim();
 	}
 
@@ -406,11 +437,11 @@ int event_update(zone_t *zone)
 
 	/* Replan event if next update waiting. */
 	pthread_mutex_lock(&zone->ddns_lock);
-	
+
 	const bool empty = EMPTY_LIST(zone->ddns_queue);
-	
+
 	pthread_mutex_unlock(&zone->ddns_lock);
-	
+
 	if (!empty) {
 		zone_events_schedule(zone, ZONE_EVENT_UPDATE, ZONE_EVENT_NOW);
 	}

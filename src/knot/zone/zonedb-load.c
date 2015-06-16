@@ -176,7 +176,7 @@ static void reuse_events(zone_t *zone, const time_t *timers)
 			// Timer unset.
 			continue;
 		}
-		if (slave_event(event) && !zone_master(zone)) {
+		if (slave_event(event) && !zone_is_slave(zone)) {
 			// Slave-only event.
 			continue;
 		}

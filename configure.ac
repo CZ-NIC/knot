@@ -1,7 +1,7 @@
 #                                               -*- Autoconf -*-
 
 AC_PREREQ([2.60])
-AC_INIT([knot], [1.6.3-rosedb], [knot-dns@labs.nic.cz])
+AC_INIT([knot], [1.6.4-rosedb], [knot-dns@labs.nic.cz])
 AM_INIT_AUTOMAKE([gnu subdir-objects dist-xz -Wall -Werror])
 AM_SILENT_RULES([yes])
 AC_CONFIG_SRCDIR([src/knot/main.c])
@@ -73,10 +73,20 @@ AS_IF([test "x$YACC_BISON" != "xbison"],
     [AC_MSG_ERROR([GNU bison needed for reentrant parsers, set the \$YACC variable before running configure])])
 AC_PROG_INSTALL
 
+AX_CC_LLVM
+
 # Set zone parser type
 AC_ARG_ENABLE([fastparser],
     AS_HELP_STRING([--disable-fastparser], [Use slower zone parser]),
     [], [enable_fastparser=yes])
+
+AS_IF([test "$enable_fastparser" = "yes"],[
+    AS_IF([test "${CC_LLVM}" = "yes"],[
+        AC_MSG_WARN([LLVM based compiler detected; disabling fastest zone parser, see https://gitlab.labs.nic.cz/labs/knot/issues/351])
+        enable_fastparser=no
+        ])
+    ])
+
 AM_CONDITIONAL([FAST_PARSER], [test "$enable_fastparser" = yes])
 
 # Systemd integration

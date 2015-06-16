@@ -454,7 +454,7 @@ int apply_changesets(zone_t *zone, list_t *chsets, zone_contents_t **new_content
 	 * Apply the changesets.
 	 */
 	changeset_t *set = NULL;
-	const bool master = (zone_master(zone) == NULL);
+	const bool master = !zone_is_slave(zone);
 	WALK_LIST(set, *chsets) {
 		ret = apply_single(contents_copy, set, master);
 		if (ret != KNOT_EOK) {
@@ -495,7 +495,7 @@ int apply_changeset(zone_t *zone, changeset_t *change, zone_contents_t **new_con
 		return ret;
 	}
 	
-	const bool master = (zone_master(zone) == NULL);
+	const bool master = !zone_is_slave(zone);
 	ret = apply_single(contents_copy, change, master);
 	if (ret != KNOT_EOK) {
 		update_rollback(change);
