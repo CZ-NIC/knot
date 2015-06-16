@@ -44,8 +44,6 @@
 #define TOK_S(x) ((x)+1)
 /*! \brief Len of the token. */
 #define TOK_L(x) ((unsigned char)(x)[0])
-/*! \brief Function prototype for line parser. */
-typedef int(*lparse_f)(char *lp, int len, void *arg);
 
 /*!
  * \brief Scan for matching token described by a match table.
@@ -75,15 +73,5 @@ int tok_find(const char *lp, const char **tbl);
  * \return ptr to next non-blank character.
  */
 const char* tok_skipspace(const char *lp);
-
-/*!
- * \brief Process file by lines.
- * \param fp File handle to be processed.
- * \param cb Callback function to be called for each line.
- * \param arg Pointer to be passed to callback function.
- * \return KNOT_EOK if success.
- * \return error returned by @cb function
- */
-int tok_process_lines(FILE *fp, lparse_f cb, void *arg);
 
 /*! @} */

@@ -31,6 +31,7 @@
 #include "utils/common/sign.h"
 #include "utils/common/token.h"
 #include "libknot/libknot.h"
+#include "libknot/internal/getline.h"
 #include "libknot/internal/macros.h"
 #include "libknot/internal/mem.h"
 #include "libknot/internal/strlcpy.h"
@@ -465,7 +466,7 @@ static int pkt_sendrecv(knsupdate_params_t *params)
 	return rb;
 }
 
-static int knsupdate_process_line(char *lp, int len, void *arg)
+static int process_line(char *lp, int len, void *arg)
 {
 	knsupdate_params_t *params = (knsupdate_params_t *)arg;
 
@@ -498,10 +499,44 @@ static int knsupdate_process_line(char *lp, int len, void *arg)
 	return ret;
 }
 
-static int knsupdate_process(knsupdate_params_t *params, FILE *fp)
+static int process_lines(knsupdate_params_t *params, FILE *fp)
 {
+	char *buf = NULL;
+	size_t buflen = 0;
+	int ret = KNOT_EOK;
+
+	/* Print first program prompt if interactive. */
+	if (fp == NULL) {
+		/* Don't mess up stdout. */
+		fprintf(stderr, "> ");
+	}
+
 	/* Process lines. */
-	return tok_process_lines(fp, knsupdate_process_line, params);
+	size_t len;
+	FILE *input = (fp != NULL) ? fp : stdin;
+	while ((len = knot_getline(&buf, &buflen, input)) != -1) {
+		int call_ret = process_line(buf, len, params);
+		if (call_ret != KNOT_EOK) {
+			/* Return the first error. */
+			if (ret == KNOT_EOK) {
+				ret = call_ret;
+			}
+
+			/* Exit if error and not interactive. */
+			if (fp != NULL) {
+				break;
+			}
+		}
+
+		/* Print program prompt if interactive. */
+		if (fp == NULL) {
+			/* Don't mess up stdout. */
+			fprintf(stderr, "> ");
+		}
+	}
+
+	free(buf);
+	return ret;
 }
 
 int knsupdate_exec(knsupdate_params_t *params)
@@ -514,7 +549,7 @@ int knsupdate_exec(knsupdate_params_t *params)
 
 	/* If no file specified, use stdin. */
 	if (EMPTY_LIST(params->qfiles)) {
-		ret = knsupdate_process(params, stdin);
+		ret = process_lines(params, NULL);
 	}
 
 	/* Read from each specified file. */
@@ -522,7 +557,7 @@ int knsupdate_exec(knsupdate_params_t *params)
 	WALK_LIST(n, params->qfiles) {
 		const char *filename = (const char*)n->d;
 		if (strcmp(filename, "-") == 0) {
-			ret = knsupdate_process(params, stdin);
+			ret = process_lines(params, NULL);
 			if (ret != KNOT_EOK) {
 				break;
 			}
@@ -536,20 +571,14 @@ int knsupdate_exec(knsupdate_params_t *params)
 			ret = KNOT_EFILE;
 			break;
 		}
-		ret = knsupdate_process(params, fp);
+		ret = process_lines(params, fp);
 		fclose(fp);
 		if (ret != KNOT_EOK) {
 			break;
 		}
 	}
 
-	if (ret != KNOT_EOK) { /* Check for serious error. */
-		return ret;
-	} else if (params->reply_error) { /* Check for update error. */
-		return KNOT_ERROR;
-	} else {
-		return KNOT_EOK;
-	}
+	return ret;
 }
 
 int cmd_update(const char* lp, knsupdate_params_t *params)
@@ -844,12 +873,12 @@ int cmd_send(const char* lp, knsupdate_params_t *params)
 		}
 
 		ERR("update failed with '%s'\n", rcode_str);
-		params->reply_error = true;
+		ret = KNOT_ERROR;
 	} else {
 		DBG("update success\n");
 	}
 
-	return KNOT_EOK;
+	return ret;
 }
 
 int cmd_zone(const char* lp, knsupdate_params_t *params)
