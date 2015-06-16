@@ -130,9 +130,7 @@ enum {
 	PQ_NXDOMAIN = 0,
 	PQ_NXRRSET,
 	PQ_YXDOMAIN,
-	PQ_YXRRSET,
-	UP_ADD,
-	UP_DEL
+	PQ_YXRRSET
 };
 
 /* RR parser flags */
