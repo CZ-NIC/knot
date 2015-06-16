@@ -20,6 +20,7 @@
 
 #define ZONE1	"0/25.2.0.192.in-addr.arpa."
 #define ZONE2	"."
+#define ZONE3	"x."
 
 static void test_conf_zonefile(void)
 {
@@ -30,6 +31,8 @@ static void test_conf_zonefile(void)
 	ok(zone1 != NULL, "create dname "ZONE1);
 	knot_dname_t *zone2 = knot_dname_from_str_alloc(ZONE2);
 	ok(zone2 != NULL, "create dname "ZONE2);
+	knot_dname_t *zone3 = knot_dname_from_str_alloc(ZONE3);
+	ok(zone3 != NULL, "create dname "ZONE3);
 
 	const char *conf_str =
 		"template:\n"
@@ -38,9 +41,10 @@ static void test_conf_zonefile(void)
 		"\n"
 		"zone:\n"
 		"  - domain: "ZONE1"\n"
-		"    file: dir/a%%b/%ssuffix/%a\n"
-		"zone:\n"
+		"    file: dir/a%%b/%s.suffix/%a\n"
 		"  - domain: "ZONE2"\n"
+		"    file: /%s\n"
+		"  - domain: "ZONE3"\n"
 		"    file: /%s\n";
 
 	ret = test_conf(conf_str, NULL);
@@ -64,9 +68,19 @@ static void test_conf_zonefile(void)
 		free(file);
 	}
 
+	// Absolute path without formatters.
+	file = conf_zonefile(conf(), zone3);
+	ok(file != NULL, "Get zonefile path for "ZONE3);
+	if (file != NULL) {
+		ok(strcmp(file, "/x") == 0,
+		          "Zonefile path compare for "ZONE3);
+		free(file);
+	}
+
 	conf_free(conf(), false);
 	knot_dname_free(&zone1, NULL);
 	knot_dname_free(&zone2, NULL);
+	knot_dname_free(&zone3, NULL);
 }
 
 int main(int argc, char *argv[])

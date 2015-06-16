@@ -584,14 +584,15 @@ file
 ----
 
 A path to the zone file. Non absolute path is relative to
-:ref:`storage<zone_storage>`. It is also possible to use the following formatters: 
+:ref:`storage<zone_storage>`. It is also possible to use the following formatters:
 
-- `%s` - means the current zone name in the textual representation (beware of special
-  characters which are escaped or encoded in the \\DDD form). Each zone name is
-  terminated with a dot character!
-- `%%` - means the `%` character
+- ``%s`` - means the current zone name in the textual representation (beware
+  of special characters which are escaped or encoded in the \\DDD form where
+  DDD is corresponding decimal ASCII code). The zone name doesn't include the
+  terminating dot, except for the root zone.
+- ``%%`` - means the ``%`` character
 
-Default: :ref:`storage<zone_storage>`/``%s``\ zone
+Default: :ref:`storage<zone_storage>`/``%s``\ .zone
 
 .. _zone_storage:
 
