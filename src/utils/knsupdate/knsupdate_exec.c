@@ -469,17 +469,9 @@ static int pkt_sendrecv(knsupdate_params_t *params)
 	return rb;
 }
 
-static int process_line(char *lp, int len, void *arg)
+static int process_line(char *lp, void *arg)
 {
 	knsupdate_params_t *params = (knsupdate_params_t *)arg;
-
-	/* Remove trailing white space chars. */
-	for (int i = len - 1; i >= 0; i--) {
-		if (isspace((unsigned char)lp[i]) == 0) {
-			break;
-		}
-		lp[i] = '\0';
-	}
 
 	/* Check for empty line or comment. */
 	if (lp[0] == '\0' || lp[0] == ';') {
@@ -515,10 +507,13 @@ static int process_lines(knsupdate_params_t *params, FILE *fp)
 	}
 
 	/* Process lines. */
-	size_t len;
 	FILE *input = (fp != NULL) ? fp : stdin;
-	while (!params->stop && (len = knot_getline(&buf, &buflen, input)) != -1) {
-		int call_ret = process_line(buf, len, params);
+	while (!params->stop && knot_getline(&buf, &buflen, input) != -1) {
+		/* Remove leading and trailing white space. */
+		char *line = strstrip(buf);
+		int call_ret = process_line(line, params);
+		memset(line, 0, strlen(line));
+		free(line);
 		if (call_ret != KNOT_EOK) {
 			/* Return the first error. */
 			if (ret == KNOT_EOK) {
