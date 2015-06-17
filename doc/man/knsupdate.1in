@@ -105,10 +105,10 @@ class is IN.
 Sets \fIvalue\fP as the default TTL (in seconds). If not used, the default value
 is 0.
 .TP
-\fBkey\fP \fIname\fP \fIkey\fP
-Specifies TSIG \fIkey\fP named \fIname\fP to authenticate the request. This command
-has the same effect as the program option \fB\-y\fP, except that the MAC
-algorithm cannot be set.
+\fBkey\fP [\fIalg\fP:]\fIname\fP \fIkey\fP
+Specifies TSIG \fIkey\fP named \fIname\fP to authenticate the request. An optional
+\fIalg\fP algorithm can be specified. This command has the same effect as
+the program option \fB\-y\fP\&.
 .TP
 [\fBprereq\fP] \fBnxdomain\fP \fIname\fP
 Adds a prerequisite for a non\-existing record owned by \fIname\fP\&.

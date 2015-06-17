@@ -82,10 +82,10 @@ Commands
   Sets *value* as the default TTL (in seconds). If not used, the default value
   is 0.
 
-**key** *name* *key*
-  Specifies TSIG *key* named *name* to authenticate the request. This command
-  has the same effect as the program option **-y**, except that the MAC
-  algorithm cannot be set.
+**key** [*alg*:]\ *name* *key*
+  Specifies TSIG *key* named *name* to authenticate the request. An optional
+  *alg* algorithm can be specified. This command has the same effect as
+  the program option **-y**.
 
 [**prereq**] **nxdomain** *name*
   Adds a prerequisite for a non-existing record owned by *name*.

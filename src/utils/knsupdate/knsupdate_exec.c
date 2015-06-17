@@ -74,7 +74,7 @@ const char* cmd_array[] = {
 	"\x3" "del",
 	"\x6" "delete",
 	"\x7" "gsstsig",
-	"\x3" "key",           /* {name} {secret} */
+	"\x3" "key",           /* {[alg:]name} {secret} */
 	"\x5" "local",         /* {address} [port] */
 	"\x8" "nxdomain",
 	"\x7" "nxrrset",
@@ -980,19 +980,24 @@ int cmd_key(const char* lp, knsupdate_params_t *params)
 	}
 
 	int ret = KNOT_EOK;
-	size_t len = strcspn(lp, SEP_CHARS);
-	if(kstr[len] == '\0') {
-		ERR("command 'key' without {secret} specified\n");
-		ret = KNOT_EINVAL;
-	} else {
-		/* Override existing key. */
-		knot_tsig_key_deinit(&params->tsig_key);
 
-		kstr[len] = ':'; /* Replace ' ' with ':' sep */
-		ret = knot_tsig_key_init_str(&params->tsig_key, kstr);
+	/* Search for the name secret separation. Allow also alg:name:key form. */
+	char *sep = strchr(kstr, ' ');
+	if (sep != NULL) {
+		/* Replace ' ' with ':'. More spaces are ignored in base64. */
+		*sep = ':';
+	}
+
+	/* Override existing key. */
+	knot_tsig_key_deinit(&params->tsig_key);
+
+	ret = knot_tsig_key_init_str(&params->tsig_key, kstr);
+	if (ret != KNOT_EOK) {
+		ERR("invalid key specification\n");
 	}
 
 	free(kstr);
+
 	return ret;
 }
 
