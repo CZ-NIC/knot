@@ -141,7 +141,7 @@ static const yp_item_t desc_remote[] = {
 	{ C_ACL,              YP_TREF,  YP_VREF = { C_ACL }, YP_FMULTI, { check_ref } }, \
 	{ C_SEM_CHECKS,       YP_TBOOL, YP_VNONE }, \
 	{ C_DISABLE_ANY,      YP_TBOOL, YP_VNONE }, \
-	{ C_ZONEFILE_SYNC,    YP_TINT,  YP_VINT = { 0, INT32_MAX, 0, YP_STIME } }, \
+	{ C_ZONEFILE_SYNC,    YP_TINT,  YP_VINT = { -1, INT32_MAX, 0, YP_STIME } }, \
 	{ C_IXFR_DIFF,        YP_TBOOL, YP_VNONE }, \
 	{ C_MAX_JOURNAL_SIZE, YP_TINT,  YP_VINT = { 0, INT64_MAX, INT64_MAX, YP_SSIZE } }, \
 	{ C_DNSSEC_SIGNING,   YP_TBOOL, YP_VNONE }, \
