@@ -123,6 +123,9 @@ Commands
 **debug**
   Enable debugging. This command has the same meaning as program option **-d**.
 
+**quit**
+  Quit the program.
+
 Notes
 -----
 
@@ -147,19 +150,20 @@ Differences with regard to ISC nsupdate:
 Examples
 --------
 
-1. Send one update of zone example.com to server 192.168.1.1. The update
+1. Send one update of the zone example.com to the server 192.168.1.1. The update
    contains two new records::
 
      $ knsupdate
-       server 192.168.1.1
-       zone example.com.
-       origin example.com.
-       ttl 3600
-       add test1.example.com. 7200 A 192.168.2.2
-       add test2 TXT "hello"
-       show
-       send
-       answer
+     > server 192.168.1.1
+     > zone example.com.
+     > origin example.com.
+     > ttl 3600
+     > add test1.example.com. 7200 A 192.168.2.2
+     > add test2 TXT "hello"
+     > show
+     > send
+     > answer
+     > quit
 
 See Also
 --------

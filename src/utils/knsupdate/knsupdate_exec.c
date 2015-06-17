@@ -51,6 +51,7 @@ int cmd_nxrrset(const char *lp, knsupdate_params_t *params);
 int cmd_oldgsstsig(const char* lp, knsupdate_params_t *params);
 int cmd_origin(const char* lp, knsupdate_params_t *params);
 int cmd_prereq(const char* lp, knsupdate_params_t *params);
+int cmd_quit(const char* lp, knsupdate_params_t *params);
 int cmd_realm(const char* lp, knsupdate_params_t *params);
 int cmd_send(const char* lp, knsupdate_params_t *params);
 int cmd_server(const char* lp, knsupdate_params_t *params);
@@ -80,6 +81,7 @@ const char* cmd_array[] = {
 	"\xa" "oldgsstsig",
 	"\x6" "origin",        /* {name} */
 	"\x6" "prereq",        /* (nx|yx)(domain|rrset) {domain-name} ... */
+	"\x4" "quit",
 	"\x5" "realm",         /* {[realm_name]} */
 	"\x4" "send",
 	"\x6" "server",        /* {servername} [port] */
@@ -107,6 +109,7 @@ cmd_handle_f cmd_handle[] = {
 	cmd_oldgsstsig,
 	cmd_origin,
 	cmd_prereq,
+	cmd_quit,
 	cmd_realm,
 	cmd_send,
 	cmd_server,
@@ -514,7 +517,7 @@ static int process_lines(knsupdate_params_t *params, FILE *fp)
 	/* Process lines. */
 	size_t len;
 	FILE *input = (fp != NULL) ? fp : stdin;
-	while ((len = knot_getline(&buf, &buflen, input)) != -1) {
+	while (!params->stop && (len = knot_getline(&buf, &buflen, input)) != -1) {
 		int call_ret = process_line(buf, len, params);
 		if (call_ret != KNOT_EOK) {
 			/* Return the first error. */
@@ -529,12 +532,13 @@ static int process_lines(knsupdate_params_t *params, FILE *fp)
 		}
 
 		/* Print program prompt if interactive. */
-		if (fp == NULL) {
+		if (fp == NULL && !params->stop) {
 			/* Don't mess up stdout. */
 			fprintf(stderr, "> ");
 		}
 	}
 
+	memset(buf, 0, buflen);
 	free(buf);
 	return ret;
 }
@@ -793,6 +797,15 @@ int cmd_prereq(const char* lp, knsupdate_params_t *params)
 	}
 
 	return ret;
+}
+
+int cmd_quit(const char* lp, knsupdate_params_t *params)
+{
+	DBG("%s: lp='%s'\n", __func__, lp);
+
+	params->stop = true;
+
+	return KNOT_EOK;
 }
 
 int cmd_send(const char* lp, knsupdate_params_t *params)
