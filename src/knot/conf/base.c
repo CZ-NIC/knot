@@ -363,7 +363,7 @@ void conf_activate_modules(
 		}
 
 		// Load the module.
-		ret = mod->load(*query_plan, mod);
+		ret = mod->load(*query_plan, mod, zone_name);
 		if (ret != KNOT_EOK) {
 			if (zone_name != NULL) {
 				log_zone_error(zone_name,
