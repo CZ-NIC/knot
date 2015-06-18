@@ -491,14 +491,15 @@ A path to the zone file. Non absolute path is relative to
 \fI\%storage\fP\&. It is also possible to use the following formatters:
 .INDENT 0.0
 .IP \(bu 2
-\fI%s\fP \- means the current zone name in the textual representation (beware of special
-characters which are escaped or encoded in the \eDDD form). Each zone name is
-terminated with a dot character!
+\fB%s\fP \- means the current zone name in the textual representation (beware
+of special characters which are escaped or encoded in the \eDDD form where
+DDD is corresponding decimal ASCII code). The zone name doesn\(aqt include the
+terminating dot, except for the root zone.
 .IP \(bu 2
-\fI%%\fP \- means the \fI%\fP character
+\fB%%\fP \- means the \fB%\fP character
 .UNINDENT
 .sp
-Default: \fI\%storage\fP/\fB%s\fPzone
+Default: \fI\%storage\fP/\fB%s\fP\&.zone
 .SS storage
 .sp
 A data directory for storing zone files, journal files and timers database.

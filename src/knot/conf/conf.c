@@ -649,11 +649,18 @@ static char* get_filename(
 			}
 
 			// Replace possible slashes with underscores.
-			for (char *ch = buff; *ch != '\0'; ch++) {
+			char *ch;
+			for (ch = buff; *ch != '\0'; ch++) {
 				if (*ch == '/') {
 					*ch = '_';
 				}
 			}
+
+			// Remove trailing dot if not root zone.
+			if (ch - buff > 1) {
+				*(--ch) = '\0';
+			}
+
 			break;
 		case '\0':
 			CONF_LOG_ZONE(LOG_WARNING, zone, "ignoring missing "
@@ -699,7 +706,7 @@ char* conf_zonefile_txn(
 
 	// Use default zonefile name pattern if not specified.
 	if (file == NULL) {
-		file = "%szone";
+		file = "%s.zone";
 	}
 
 	return get_filename(conf, txn, zone, file);
@@ -714,7 +721,7 @@ char* conf_journalfile_txn(
 		return NULL;
 	}
 
-	return get_filename(conf, txn, zone, "%sdb");
+	return get_filename(conf, txn, zone, "%s.db");
 }
 
 size_t conf_udp_threads_txn(
