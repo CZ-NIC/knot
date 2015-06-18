@@ -19,9 +19,9 @@
 
 #include "knot/common/debug.h"
 #include "knot/dnssec/nsec-chain.h"
-#include "knot/dnssec/rrset-sign.h"
 #include "knot/dnssec/zone-nsec.h"
 #include "knot/dnssec/zone-sign.h"
+#include "libknot/dnssec/rrset-sign.h"
 
 /* - NSEC chain construction ------------------------------------------------ */
 

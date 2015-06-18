@@ -23,14 +23,15 @@
 #include "dnssec/kasp.h"
 #include "dnssec/key.h"
 #include "dnssec/sign.h"
-#include "knot/dnssec/rrset-sign.h"
 #include "libknot/descriptor.h"
+#include "libknot/dnssec/rrset-sign.h"
+#include "libknot/internal/macros.h"
 #include "libknot/libknot.h"
+#include "libknot/packet/rrset-wire.h"
 #include "libknot/packet/rrset-wire.h"
 #include "libknot/packet/wire.h"
 #include "libknot/rrset.h"
 #include "libknot/rrtype/rrsig.h"
-#include "libknot/packet/rrset-wire.h"
 #include "libknot/internal/wire_ctx.h"
 
 #define RRSIG_RDATA_SIGNER_OFFSET 18
@@ -280,6 +281,7 @@ static int rrsigs_create_rdata(knot_rrset_t *rrsigs, dnssec_sign_ctx_t *ctx,
 	                            knot_rdata_ttl(covered_data), NULL);
 }
 
+_public_
 int knot_sign_rrset(knot_rrset_t *rrsigs, const knot_rrset_t *covered,
                const dnssec_key_t *key, dnssec_sign_ctx_t *sign_ctx,
                const kdnssec_ctx_t *dnssec_ctx)
@@ -298,6 +300,7 @@ int knot_sign_rrset(knot_rrset_t *rrsigs, const knot_rrset_t *covered,
 	                           sig_expire);
 }
 
+_public_
 int knot_synth_rrsig(uint16_t type, const knot_rdataset_t *rrsig_rrs,
                 knot_rdataset_t *out_sig, mm_ctx_t *mm)
 {
@@ -346,6 +349,7 @@ static bool is_expired_signature(const knot_rrset_t *rrsigs, size_t pos,
 	return expire_in <= refresh_before;
 }
 
+_public_
 int knot_check_signature(const knot_rrset_t *covered,
                     const knot_rrset_t *rrsigs, size_t pos,
                     const dnssec_key_t *key,
