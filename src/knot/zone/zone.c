@@ -315,6 +315,13 @@ int zone_flush_journal(zone_t *zone)
 		return KNOT_EINVAL;
 	}
 
+	/* Check for disabled zonefile synchronization. */
+	conf_val_t val = conf_zone_get(conf(), C_ZONEFILE_SYNC, zone->name);
+	if (conf_int(&val) < 0 && (zone->flags & ZONE_FORCE_FLUSH) == 0) {
+		return KNOT_EOK;
+	}
+	zone->flags &= ~ZONE_FORCE_FLUSH;
+
 	/* Check for difference against zonefile serial. */
 	zone_contents_t *contents = zone->contents;
 	uint32_t serial_to = zone_contents_serial(contents);

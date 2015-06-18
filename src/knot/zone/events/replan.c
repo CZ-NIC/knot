@@ -77,8 +77,8 @@ static void replan_xfer(zone_t *zone, const zone_t *old_zone)
 static void replan_flush(zone_t *zone, const zone_t *old_zone)
 {
 	conf_val_t val = conf_zone_get(conf(), C_ZONEFILE_SYNC, zone->name);
-	int64_t dbsync_timeout = conf_int(&val);
-	if (dbsync_timeout <= 0) {
+	int64_t sync_timeout = conf_int(&val);
+	if (sync_timeout <= 0) {
 		// Immediate sync scheduled after events.
 		return;
 	}
@@ -86,12 +86,12 @@ static void replan_flush(zone_t *zone, const zone_t *old_zone)
 	const time_t flush_time = zone_events_get_time(old_zone, ZONE_EVENT_FLUSH);
 	if (flush_time <= ZONE_EVENT_NOW) {
 		// Not scheduled previously.
-		zone_events_schedule(zone, ZONE_EVENT_FLUSH, dbsync_timeout);
+		zone_events_schedule(zone, ZONE_EVENT_FLUSH, sync_timeout);
 		return;
 	}
 
 	// Pick time to schedule: either reuse or schedule sooner than old event.
-	const time_t schedule_at = MIN(time(NULL) + dbsync_timeout, flush_time);
+	const time_t schedule_at = MIN(time(NULL) + sync_timeout, flush_time);
 	zone_events_schedule_at(zone, ZONE_EVENT_FLUSH, schedule_at);
 }
 

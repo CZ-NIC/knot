@@ -305,7 +305,10 @@ int event_reload(zone_t *zone)
 
 	/* Periodic execution. */
 	val = conf_zone_get(conf(), C_ZONEFILE_SYNC, zone->name);
-	zone_events_schedule(zone, ZONE_EVENT_FLUSH, conf_int(&val));
+	int64_t sync_timeout = conf_int(&val);
+	if (sync_timeout >= 0) {
+		zone_events_schedule(zone, ZONE_EVENT_FLUSH, sync_timeout);
+	}
 
 	uint32_t current_serial = zone_contents_serial(zone->contents);
 	log_zone_info(zone->name, "loaded, serial %u -> %u",
@@ -426,11 +429,12 @@ int event_xfer(zone_t *zone)
 	zone_events_schedule(zone, ZONE_EVENT_NOTIFY,  ZONE_EVENT_NOW);
 	zone_events_cancel(zone, ZONE_EVENT_EXPIRE);
 	conf_val_t val = conf_zone_get(conf(), C_ZONEFILE_SYNC, zone->name);
-	int64_t dbsync_timeout = conf_int(&val);
-	if (dbsync_timeout == 0) {
+	int64_t sync_timeout = conf_int(&val);
+	if (sync_timeout == 0) {
 		zone_events_schedule(zone, ZONE_EVENT_FLUSH, ZONE_EVENT_NOW);
-	} else if (!zone_events_is_scheduled(zone, ZONE_EVENT_FLUSH)) {
-		zone_events_schedule(zone, ZONE_EVENT_FLUSH, dbsync_timeout);
+	} else if (sync_timeout > 0 &&
+	           !zone_events_is_scheduled(zone, ZONE_EVENT_FLUSH)) {
+		zone_events_schedule(zone, ZONE_EVENT_FLUSH, sync_timeout);
 	}
 
 	/* Transfer cleanup. */
@@ -496,9 +500,9 @@ int event_flush(zone_t *zone)
 
 	/* Reschedule. */
 	conf_val_t val = conf_zone_get(conf(), C_ZONEFILE_SYNC, zone->name);
-	int64_t next_timeout = conf_int(&val);
-	if (next_timeout > 0) {
-		zone_events_schedule(zone, ZONE_EVENT_FLUSH, next_timeout);
+	int64_t sync_timeout = conf_int(&val);
+	if (sync_timeout > 0) {
+		zone_events_schedule(zone, ZONE_EVENT_FLUSH, sync_timeout);
 	}
 
 	/* Check zone contents. */

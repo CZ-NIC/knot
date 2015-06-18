@@ -217,6 +217,7 @@ static int remote_zone_flush(zone_t *zone, remote_cmdargs_t *a)
 {
 	UNUSED(a);
 
+	zone->flags |= ZONE_FORCE_FLUSH;
 	zone_events_schedule(zone, ZONE_EVENT_FLUSH, ZONE_EVENT_NOW);
 	return KNOT_EOK;
 }
