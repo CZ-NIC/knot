@@ -82,10 +82,10 @@ Commands
   Sets *value* as the default TTL (in seconds). If not used, the default value
   is 0.
 
-**key** *name* *key*
-  Specifies TSIG *key* named *name* to authenticate the request. This command
-  has the same effect as the program option **-y**, except that the MAC
-  algorithm cannot be set.
+**key** [*alg*:]\ *name* *key*
+  Specifies TSIG *key* named *name* to authenticate the request. An optional
+  *alg* algorithm can be specified. This command has the same effect as
+  the program option **-y**.
 
 [**prereq**] **nxdomain** *name*
   Adds a prerequisite for a non-existing record owned by *name*.
@@ -123,6 +123,9 @@ Commands
 **debug**
   Enable debugging. This command has the same meaning as program option **-d**.
 
+**quit**
+  Quit the program.
+
 Notes
 -----
 
@@ -147,19 +150,20 @@ Differences with regard to ISC nsupdate:
 Examples
 --------
 
-1. Send one update of zone example.com to server 192.168.1.1. The update
+1. Send one update of the zone example.com to the server 192.168.1.1. The update
    contains two new records::
 
      $ knsupdate
-       server 192.168.1.1
-       zone example.com.
-       origin example.com.
-       ttl 3600
-       add test1.example.com. 7200 A 192.168.2.2
-       add test2 TXT "hello"
-       show
-       send
-       answer
+     > server 192.168.1.1
+     > zone example.com.
+     > origin example.com.
+     > ttl 3600
+     > add test1.example.com. 7200 A 192.168.2.2
+     > add test2 TXT "hello"
+     > show
+     > send
+     > answer
+     > quit
 
 See Also
 --------

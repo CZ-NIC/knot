@@ -22,7 +22,6 @@
 #include "utils/common/token.h"
 #include "utils/common/msg.h"
 #include "libknot/libknot.h"
-#include "libknot/internal/getline.h"
 
 int tok_scan(const char* lp, const char **tbl, int *lpm)
 {
@@ -109,26 +108,4 @@ const char* tok_skipspace(const char *lp)
 	}
 
 	while (isspace((unsigned char)(*lp))) ++lp; return lp;
-}
-
-int tok_process_lines(FILE *fp, lparse_f cb, void *arg)
-{
-	if (fp == NULL || cb == NULL) {
-		DBG_NULL;
-		return KNOT_EINVAL;
-	}
-
-	int ret = KNOT_EOK;
-
-	/* Parse lines. */
-	char *buf = NULL;
-	size_t buflen = 0;
-	ssize_t rb = 0;
-	while ((rb = knot_getline(&buf, &buflen, fp)) != -1) {
-		ret = cb(buf, rb, arg);
-		if (ret != KNOT_EOK) break;
-	}
-
-	free(buf);
-	return ret;
 }

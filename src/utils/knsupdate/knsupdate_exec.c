@@ -31,6 +31,7 @@
 #include "utils/common/sign.h"
 #include "utils/common/token.h"
 #include "libknot/libknot.h"
+#include "libknot/internal/getline.h"
 #include "libknot/internal/macros.h"
 #include "libknot/internal/mem.h"
 #include "libknot/internal/strlcpy.h"
@@ -50,6 +51,7 @@ int cmd_nxrrset(const char *lp, knsupdate_params_t *params);
 int cmd_oldgsstsig(const char* lp, knsupdate_params_t *params);
 int cmd_origin(const char* lp, knsupdate_params_t *params);
 int cmd_prereq(const char* lp, knsupdate_params_t *params);
+int cmd_quit(const char* lp, knsupdate_params_t *params);
 int cmd_realm(const char* lp, knsupdate_params_t *params);
 int cmd_send(const char* lp, knsupdate_params_t *params);
 int cmd_server(const char* lp, knsupdate_params_t *params);
@@ -72,13 +74,14 @@ const char* cmd_array[] = {
 	"\x3" "del",
 	"\x6" "delete",
 	"\x7" "gsstsig",
-	"\x3" "key",           /* {name} {secret} */
+	"\x3" "key",           /* {[alg:]name} {secret} */
 	"\x5" "local",         /* {address} [port] */
 	"\x8" "nxdomain",
 	"\x7" "nxrrset",
 	"\xa" "oldgsstsig",
 	"\x6" "origin",        /* {name} */
 	"\x6" "prereq",        /* (nx|yx)(domain|rrset) {domain-name} ... */
+	"\x4" "quit",
 	"\x5" "realm",         /* {[realm_name]} */
 	"\x4" "send",
 	"\x6" "server",        /* {servername} [port] */
@@ -106,6 +109,7 @@ cmd_handle_f cmd_handle[] = {
 	cmd_oldgsstsig,
 	cmd_origin,
 	cmd_prereq,
+	cmd_quit,
 	cmd_realm,
 	cmd_send,
 	cmd_server,
@@ -130,9 +134,7 @@ enum {
 	PQ_NXDOMAIN = 0,
 	PQ_NXRRSET,
 	PQ_YXDOMAIN,
-	PQ_YXRRSET,
-	UP_ADD,
-	UP_DEL
+	PQ_YXRRSET
 };
 
 /* RR parser flags */
@@ -467,17 +469,9 @@ static int pkt_sendrecv(knsupdate_params_t *params)
 	return rb;
 }
 
-static int knsupdate_process_line(char *lp, int len, void *arg)
+static int process_line(char *lp, void *arg)
 {
 	knsupdate_params_t *params = (knsupdate_params_t *)arg;
-
-	/* Remove trailing white space chars. */
-	for (int i = len - 1; i >= 0; i--) {
-		if (isspace((unsigned char)lp[i]) == 0) {
-			break;
-		}
-		lp[i] = '\0';
-	}
 
 	/* Check for empty line or comment. */
 	if (lp[0] == '\0' || lp[0] == ';') {
@@ -500,10 +494,48 @@ static int knsupdate_process_line(char *lp, int len, void *arg)
 	return ret;
 }
 
-static int knsupdate_process(knsupdate_params_t *params, FILE *fp)
+static int process_lines(knsupdate_params_t *params, FILE *fp)
 {
+	char *buf = NULL;
+	size_t buflen = 0;
+	int ret = KNOT_EOK;
+
+	/* Print first program prompt if interactive. */
+	if (fp == NULL) {
+		/* Don't mess up stdout. */
+		fprintf(stderr, "> ");
+	}
+
 	/* Process lines. */
-	return tok_process_lines(fp, knsupdate_process_line, params);
+	FILE *input = (fp != NULL) ? fp : stdin;
+	while (!params->stop && knot_getline(&buf, &buflen, input) != -1) {
+		/* Remove leading and trailing white space. */
+		char *line = strstrip(buf);
+		int call_ret = process_line(line, params);
+		memset(line, 0, strlen(line));
+		free(line);
+		if (call_ret != KNOT_EOK) {
+			/* Return the first error. */
+			if (ret == KNOT_EOK) {
+				ret = call_ret;
+			}
+
+			/* Exit if error and not interactive. */
+			if (fp != NULL) {
+				break;
+			}
+		}
+
+		/* Print program prompt if interactive. */
+		if (fp == NULL && !params->stop) {
+			/* Don't mess up stdout. */
+			fprintf(stderr, "> ");
+		}
+	}
+
+	memset(buf, 0, buflen);
+	free(buf);
+	return ret;
 }
 
 int knsupdate_exec(knsupdate_params_t *params)
@@ -516,7 +548,7 @@ int knsupdate_exec(knsupdate_params_t *params)
 
 	/* If no file specified, use stdin. */
 	if (EMPTY_LIST(params->qfiles)) {
-		ret = knsupdate_process(params, stdin);
+		ret = process_lines(params, NULL);
 	}
 
 	/* Read from each specified file. */
@@ -524,7 +556,7 @@ int knsupdate_exec(knsupdate_params_t *params)
 	WALK_LIST(n, params->qfiles) {
 		const char *filename = (const char*)n->d;
 		if (strcmp(filename, "-") == 0) {
-			ret = knsupdate_process(params, stdin);
+			ret = process_lines(params, NULL);
 			if (ret != KNOT_EOK) {
 				break;
 			}
@@ -538,20 +570,14 @@ int knsupdate_exec(knsupdate_params_t *params)
 			ret = KNOT_EFILE;
 			break;
 		}
-		ret = knsupdate_process(params, fp);
+		ret = process_lines(params, fp);
 		fclose(fp);
 		if (ret != KNOT_EOK) {
 			break;
 		}
 	}
 
-	if (ret != KNOT_EOK) { /* Check for serious error. */
-		return ret;
-	} else if (params->reply_error) { /* Check for update error. */
-		return KNOT_ERROR;
-	} else {
-		return KNOT_EOK;
-	}
+	return ret;
 }
 
 int cmd_update(const char* lp, knsupdate_params_t *params)
@@ -768,6 +794,15 @@ int cmd_prereq(const char* lp, knsupdate_params_t *params)
 	return ret;
 }
 
+int cmd_quit(const char* lp, knsupdate_params_t *params)
+{
+	DBG("%s: lp='%s'\n", __func__, lp);
+
+	params->stop = true;
+
+	return KNOT_EOK;
+}
+
 int cmd_send(const char* lp, knsupdate_params_t *params)
 {
 	DBG("%s: lp='%s'\n", __func__, lp);
@@ -846,12 +881,12 @@ int cmd_send(const char* lp, knsupdate_params_t *params)
 		}
 
 		ERR("update failed with '%s'\n", rcode_str);
-		params->reply_error = true;
+		ret = KNOT_ERROR;
 	} else {
 		DBG("update success\n");
 	}
 
-	return KNOT_EOK;
+	return ret;
 }
 
 int cmd_zone(const char* lp, knsupdate_params_t *params)
@@ -945,19 +980,24 @@ int cmd_key(const char* lp, knsupdate_params_t *params)
 	}
 
 	int ret = KNOT_EOK;
-	size_t len = strcspn(lp, SEP_CHARS);
-	if(kstr[len] == '\0') {
-		ERR("command 'key' without {secret} specified\n");
-		ret = KNOT_EINVAL;
-	} else {
-		/* Override existing key. */
-		knot_tsig_key_deinit(&params->tsig_key);
 
-		kstr[len] = ':'; /* Replace ' ' with ':' sep */
-		ret = knot_tsig_key_init_str(&params->tsig_key, kstr);
+	/* Search for the name secret separation. Allow also alg:name:key form. */
+	char *sep = strchr(kstr, ' ');
+	if (sep != NULL) {
+		/* Replace ' ' with ':'. More spaces are ignored in base64. */
+		*sep = ':';
+	}
+
+	/* Override existing key. */
+	knot_tsig_key_deinit(&params->tsig_key);
+
+	ret = knot_tsig_key_init_str(&params->tsig_key, kstr);
+	if (ret != KNOT_EOK) {
+		ERR("invalid key specification\n");
 	}
 
 	free(kstr);
+
 	return ret;
 }
 
