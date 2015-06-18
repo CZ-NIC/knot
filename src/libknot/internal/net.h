@@ -35,7 +35,8 @@
  * \brief Network interface flags.
  */
 enum net_flags {
-	NET_BIND_NONLOCAL = (1 << 0)
+	NET_BIND_NONLOCAL = (1 << 0),
+	NET_REUSEPORT = (1 << 1)
 };
 
 /*!

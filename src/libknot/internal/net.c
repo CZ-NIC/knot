@@ -125,6 +125,13 @@ int net_bound_socket(int type, const struct sockaddr_storage *ss,
 	int flag = 1;
 	(void) setsockopt(socket, SOL_SOCKET, SO_REUSEADDR, &flag, sizeof(flag));
 
+#ifdef ENABLE_REUSEPORT
+	/* Reuse ports for UDP server sockets in order to create one socket for each thread. */
+	if (flags & NET_REUSEPORT) {
+		(void) setsockopt(socket, SOL_SOCKET, SO_REUSEPORT, &flag, sizeof(flag));
+	}
+#endif
+
 	/* Unlink UNIX socket if exists. */
 	if (ss->ss_family == AF_UNIX) {
 		unlink(addr_str);

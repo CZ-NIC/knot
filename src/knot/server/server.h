@@ -67,7 +67,9 @@ typedef enum {
  */
 typedef struct iface {
 	struct node n;
-	int fd[2];
+	int *fd_udp;
+	int fd_udp_count;
+	int fd_tcp;
 	struct sockaddr_storage addr;
 } iface_t;
 
@@ -196,6 +198,6 @@ int server_update_zones(conf_t *conf, void *data);
  * \param type I/O type (UDP/TCP).
  * \return new interface list
  */
-ref_t *server_set_ifaces(server_t *s, fdset_t *fds, int type);
+ref_t *server_set_ifaces(server_t *s, fdset_t *fds, int type, int thread_id);
 
 /*! @} */

@@ -357,7 +357,7 @@ int tcp_master(dthread_t *thread)
 			}
 
 			ref_release(ref);
-			ref = server_set_ifaces(handler->server, &tcp.set, IO_TCP);
+			ref = server_set_ifaces(handler->server, &tcp.set, IO_TCP, tcp.thread_id);
 			if (tcp.set.n == 0) {
 				break; /* Terminate on zero interfaces. */
 			}
