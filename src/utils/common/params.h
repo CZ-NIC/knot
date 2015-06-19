@@ -40,7 +40,7 @@
 #define DEFAULT_EDNS_SIZE	4096
 #define MAX_PACKET_SIZE		65535
 
-#define SEP_CHARS		"\t "
+#define SEP_CHARS		"\n\t "
 
 /*! \brief Variants of IP protocol. */
 typedef enum {
