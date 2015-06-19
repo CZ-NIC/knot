@@ -113,9 +113,11 @@ void node_free_rrsets(zone_node_t *node, mm_ctx_t *mm)
 	}
 
 	for (uint16_t i = 0; i < node->rrset_count; ++i) {
-		rr_data_clear(&node->rrs[i], NULL);
+		rr_data_clear(&node->rrs[i], mm);
 	}
 
+	mm_free(mm, node->rrs);
+	node->rrs = NULL;
 	node->rrset_count = 0;
 }
 
