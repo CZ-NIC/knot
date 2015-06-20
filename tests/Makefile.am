@@ -58,6 +58,9 @@ check_PROGRAMS = \
 	zonedb				\
 	ztree
 
+check_PROGRAMS += \
+	modules/online_sign
+
 check-compile-only: $(check_PROGRAMS)
 
 check-local: $(check_PROGRAMS)

@@ -239,10 +239,14 @@ libknotd_la_SOURCES =				\
 	knot/dnssec/zone-nsec.h			\
 	knot/dnssec/zone-sign.c			\
 	knot/dnssec/zone-sign.h			\
-	knot/modules/synth_record.c		\
-	knot/modules/synth_record.h		\
 	knot/modules/dnsproxy.c			\
 	knot/modules/dnsproxy.h			\
+	knot/modules/online_sign/module.c	\
+	knot/modules/online_sign/module.h	\
+	knot/modules/online_sign/nsec_next.c	\
+	knot/modules/online_sign/nsec_next.h	\
+	knot/modules/synth_record.c		\
+	knot/modules/synth_record.h		\
 	knot/nameserver/axfr.c			\
 	knot/nameserver/axfr.h			\
 	knot/nameserver/capture.c		\

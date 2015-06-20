@@ -5,6 +5,7 @@
 /* Compiled-in module headers. */
 #include "knot/modules/synth_record.h"
 #include "knot/modules/dnsproxy.h"
+#include "knot/modules/online_sign/module.h"
 #ifdef HAVE_ROSEDB
 #include "knot/modules/rosedb.h"
 #endif
@@ -23,6 +24,7 @@ typedef struct static_module {
 static_module_t MODULES[] = {
         { C_MOD_SYNTH_RECORD, &synth_record_load, &synth_record_unload, MOD_SCOPE_ANY },
         { C_MOD_DNSPROXY,     &dnsproxy_load,     &dnsproxy_unload,     MOD_SCOPE_ANY },
+        { C_MOD_ONLINE_SIGN,  &online_sign_load,  &online_sign_unload,  MOD_SCOPE_ZONE },
 #ifdef HAVE_ROSEDB
         { C_MOD_ROSEDB,       &rosedb_load,       &rosedb_unload,       MOD_SCOPE_ANY },
 #endif
