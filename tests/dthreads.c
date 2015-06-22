@@ -87,8 +87,9 @@ int main(int argc, char *argv[])
 	pthread_mutex_init(&_destructor_mx, NULL);
 
 	/* Test 1: Create unit */
-	dt_unit_t *unit = dt_create(2, &runnable, NULL, NULL);
-	ok(unit != NULL, "dthreads: create unit (size %d)", unit->size);
+	int size = 2;
+	dt_unit_t *unit = dt_create(size, &runnable, NULL, NULL);
+	ok(unit != NULL, "dthreads: create unit (size %d)", size);
 	if (unit == NULL) {
 		skip_block(7, "No dthreads unit");
 		goto skip_all;
