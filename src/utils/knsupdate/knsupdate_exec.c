@@ -533,8 +533,11 @@ static int process_lines(knsupdate_params_t *params, FILE *fp)
 		}
 	}
 
-	memset(buf, 0, buflen);
-	free(buf);
+	if (buf != NULL) {
+		memset(buf, 0, buflen);
+		free(buf);
+	}
+
 	return ret;
 }
 
