@@ -24,7 +24,7 @@
 #include "libknot/internal/utils.h"
 
 /* Module configuration scheme. */
-#define MOD_DBDIR		"\x06""dbdir"
+#define MOD_DBDIR		"\x05""dbdir"
 
 const yp_item_t scheme_mod_rosedb[] = {
 	{ C_ID,      YP_TSTR, YP_VNONE },
