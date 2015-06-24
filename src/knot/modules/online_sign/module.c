@@ -169,8 +169,9 @@ static int section_sign(int state, knot_pkt_t *pkt, struct query_data *qdata, vo
 	return state;
 }
 
-static int solve_nxdomain(int state, knot_pkt_t *pkt, struct query_data *qdata, void *_ctx)
+static int synth_authority(int state, knot_pkt_t *pkt, struct query_data *qdata, void *_ctx)
 {
+	log_zone_debug(qdata->zone->name, "%s state %d", __func__, state);
 
 	if (state == HIT) {
 		return state;
@@ -201,11 +202,14 @@ static int synth_answer(int state, knot_pkt_t *pkt, struct query_data *qdata, vo
 {
 	online_sign_ctx_t *ctx = _ctx;
 
-	// disallow ANY for now
+	// disallowed
+
 	if (knot_pkt_qtype(pkt) == KNOT_RRTYPE_ANY) {
 		qdata->rcode = KNOT_RCODE_REFUSED;
 		return ERROR;
 	}
+
+	// synthesized DNSSEC answers
 
 	if (knot_pkt_qtype(pkt) == KNOT_RRTYPE_DNSKEY && is_apex_query(qdata)) {
 		int r = knot_pkt_put(pkt, KNOT_COMPR_HINT_QNAME, ctx->dnskey_rrset, 0);
@@ -224,7 +228,7 @@ static int synth_answer(int state, knot_pkt_t *pkt, struct query_data *qdata, vo
 		return ERROR;
 	}
 
-	return solve_nxdomain(state, pkt, qdata, NULL);
+	return state;
 }
 
 static int get_dnssec_key(dnssec_key_t **key_ptr,
@@ -432,9 +436,11 @@ int online_sign_load(struct query_plan *plan, struct query_module *module,
 	}
 
 	query_plan_step(plan, QPLAN_ANSWER, synth_answer, ctx);
+	query_plan_step(plan, QPLAN_ANSWER, section_sign, ctx);
 
-	query_plan_step(plan, QPLAN_ANSWER,     section_sign, ctx);
-	query_plan_step(plan, QPLAN_AUTHORITY,  section_sign, ctx);
+	query_plan_step(plan, QPLAN_AUTHORITY, synth_authority, ctx);
+	query_plan_step(plan, QPLAN_AUTHORITY, section_sign, ctx);
+
 	query_plan_step(plan, QPLAN_ADDITIONAL, section_sign, ctx);
 
 	module->ctx = ctx;
