@@ -101,6 +101,16 @@ static void test_public_key(const key_parameters_t *params)
 	check_key_size(key, params);
 	check_usage(key, true, false);
 
+	// create copy
+
+	dnssec_key_t *copy = dnssec_key_dup(key);
+	ok(copy != NULL, "duplicate key");
+
+	check_key_ids(copy, params);
+	check_key_size(copy, params);
+	check_usage(copy, true, false);
+
+	dnssec_key_free(copy);
 	dnssec_key_free(key);
 }
 
@@ -139,6 +149,16 @@ static void test_private_key(const key_parameters_t *params)
 	check_key_size(key, params);
 	check_usage(key, true, true);
 
+	// create copy
+
+	dnssec_key_t *copy = dnssec_key_dup(key);
+	ok(copy != NULL, "duplicate key");
+
+	check_key_ids(copy, params);
+	check_key_size(copy, params);
+	check_usage(copy, true, false);
+
+	dnssec_key_free(copy);
 	dnssec_key_free(key);
 }
 
@@ -177,14 +197,14 @@ int main(void)
 
 	dnssec_crypto_init();
 
-	keyinfo_t keys[] = {
+	static const keyinfo_t keys[] = {
 		{ "RSA", &SAMPLE_RSA_KEY },
 		{ "DSA", &SAMPLE_DSA_KEY },
 		{ "ECDSA", &SAMPLE_ECDSA_KEY },
 		{ NULL }
 	};
 
-	for (keyinfo_t *k = keys; k->name != NULL; k += 1) {
+	for (const keyinfo_t *k = keys; k->name != NULL; k += 1) {
 		diag("%s key", k->name);
 		test_public_key(k->parameters);
 		test_private_key(k->parameters);

@@ -125,6 +125,26 @@ void dnssec_key_free(dnssec_key_t *key)
 	free(key);
 }
 
+_public_
+dnssec_key_t *dnssec_key_dup(const dnssec_key_t *key)
+{
+	if (!key) {
+		return NULL;
+	}
+
+	dnssec_key_t *dup = NULL;
+
+	if (dnssec_key_new(&dup) != DNSSEC_EOK ||
+	    dnssec_key_set_dname(dup, key->dname) != DNSSEC_EOK ||
+	    dnssec_key_set_rdata(dup, &key->rdata) != DNSSEC_EOK
+	) {
+		dnssec_key_free(dup);
+		return NULL;
+	}
+
+	return dup;
+}
+
 /* -- key identifiers ------------------------------------------------------ */
 
 /*!
