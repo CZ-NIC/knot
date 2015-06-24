@@ -253,6 +253,33 @@ static int get_online_key(dnssec_key_t **key_ptr, const knot_dname_t *zone_name,
 	return KNOT_EOK;
 }
 
+static void online_sign_ctx_free(online_sign_ctx_t *ctx)
+{
+	dnssec_key_free(ctx->key);
+	knot_rrset_free(&ctx->dnskey_rrset, NULL);
+
+	free(ctx);
+}
+
+static int online_sign_ctx_new(online_sign_ctx_t **ctx_ptr,
+                               const knot_dname_t *zone, const char *kasp_path)
+{
+	online_sign_ctx_t *ctx = calloc(1, sizeof(*ctx));
+	if (!ctx) {
+		return KNOT_ENOMEM;
+	}
+
+	int r = get_online_key(&ctx->key, zone, kasp_path);
+	if (r != KNOT_EOK) {
+		online_sign_ctx_free(ctx);
+		return r;
+	}
+
+	*ctx_ptr = ctx;
+
+	return KNOT_EOK;
+}
+
 static char *conf_kasp_path(const knot_dname_t *zone)
 {
 	conf_val_t val = { 0 };
@@ -289,17 +316,12 @@ int online_sign_load(struct query_plan *plan, struct query_module *module,
 		return KNOT_ERROR;
 	}
 
-	online_sign_ctx_t *ctx = calloc(1, sizeof(*ctx));
-	if (!ctx) {
-		free(kasp_path);
-		return KNOT_ENOMEM;
-	}
-
-	int r = get_online_key(&ctx->key, zone, kasp_path);
+	online_sign_ctx_t *ctx = NULL;
+	int r = online_sign_ctx_new(&ctx, zone, kasp_path);
 	free(kasp_path);
 	if (r != KNOT_EOK) {
-		free(ctx);
-		log_zone_error(zone, "online signing, failed to load signing key (%s)", dnssec_strerror(r));
+		log_zone_error(zone, "online signing, failed to initialize signing key (%s)",
+		               dnssec_strerror(r));
 		return KNOT_ERROR;
 	}
 
@@ -314,11 +336,8 @@ int online_sign_unload(struct query_module *module)
 {
 	assert(module);
 
-	online_sign_ctx_t *ctx = module->ctx;
-
-	dnssec_key_free(ctx->key);
-
-	free(module->ctx);
+	online_sign_ctx_free(module->ctx);
+	module->ctx = NULL;
 
 	return KNOT_EOK;
 }
