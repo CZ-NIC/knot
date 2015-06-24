@@ -24,7 +24,9 @@
 #include "knot/nameserver/process_query.h"
 #include "knot/nameserver/internet.h"
 
+#include "libknot/dnssec/rrset-sign.h"
 #include "libknot/internal/mem.h"
+
 #include "dnssec/error.h"
 #include "dnssec/kasp.h"
 #include "dnssec/sign.h"
@@ -32,6 +34,7 @@
 
 #define NSEC_RR_TTL 1200
 #define DNSKEY_RR_TTL 1200
+#define RRSIG_LIFETIME (25*60*60)
 
 const yp_item_t scheme_mod_online_sign[] = {
 	{ C_ID, YP_TSTR, YP_VNONE },
@@ -94,6 +97,76 @@ static knot_rrset_t *nxdomain_nsec(const knot_dname_t *qname,
 	}
 
 	return nsec;
+}
+
+static knot_rrset_t *rrset_sign(const knot_rrset_t *cover,
+                                online_sign_ctx_t *module_ctx,
+                                dnssec_sign_ctx_t *sign_ctx,
+                                mm_ctx_t *mm)
+{
+	knot_rrset_t *rrsig = knot_rrset_new(cover->owner, KNOT_RRTYPE_RRSIG,
+	                                     cover->rclass, mm);
+	if (!rrsig) {
+		return NULL;
+	}
+
+	// compatible context
+
+	dnssec_kasp_policy_t policy = {
+		.rrsig_lifetime = RRSIG_LIFETIME
+	};
+
+	kdnssec_ctx_t ksign_ctx = {
+		.now = time(NULL),
+		.policy = &policy
+	};
+
+	int r = knot_sign_rrset(rrsig, cover, module_ctx->key, sign_ctx, &ksign_ctx, mm);
+	if (r != KNOT_EOK) {
+		knot_rrset_free(&rrsig, mm);
+		return NULL;
+	}
+
+	return rrsig;
+}
+
+static int section_sign(int state, knot_pkt_t *pkt, struct query_data *qdata, void *_ctx)
+{
+	online_sign_ctx_t *module_ctx = _ctx;
+
+	if (!want_dnssec(qdata)) {
+		return state;
+	}
+
+	dnssec_sign_ctx_t *sign_ctx = NULL;
+	int r = dnssec_sign_new(&sign_ctx, module_ctx->key);
+	if (r != DNSSEC_EOK) {
+		return ERROR;
+	}
+
+	const knot_pktsection_t *section = knot_pkt_section(pkt, pkt->current);
+	assert(section);
+
+	uint16_t count_unsigned = section->count;
+	for (int i = 0; i < count_unsigned; i++) {
+		const knot_rrset_t *rr = knot_pkt_rr(section, i);
+		knot_rrset_t *rrsig = rrset_sign(rr, module_ctx, sign_ctx, &pkt->mm);
+		if (!rrsig) {
+			state = ERROR;
+			break;
+		}
+
+		r = knot_pkt_put(pkt, KNOT_COMPR_HINT_NONE, rrsig, KNOT_PF_FREE);
+		if (r != KNOT_EOK) {
+			knot_rrset_free(&rrsig, &pkt->mm);
+			state = ERROR;
+			break;
+		}
+	}
+
+	dnssec_sign_free(sign_ctx);
+
+	return state;
 }
 
 static int solve_nxdomain(int state, knot_pkt_t *pkt, struct query_data *qdata, void *_ctx)
@@ -362,6 +435,10 @@ int online_sign_load(struct query_plan *plan, struct query_module *module,
 	}
 
 	query_plan_step(plan, QPLAN_ANSWER, synth_answer, ctx);
+
+	query_plan_step(plan, QPLAN_ANSWER,     section_sign, ctx);
+	query_plan_step(plan, QPLAN_AUTHORITY,  section_sign, ctx);
+	query_plan_step(plan, QPLAN_ADDITIONAL, section_sign, ctx);
 
 	module->ctx = ctx;
 
