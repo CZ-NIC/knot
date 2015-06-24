@@ -31,6 +31,7 @@
 #include "dnssec/nsec.h"
 
 #define NSEC_RR_TTL 1200
+#define DNSKEY_RR_TTL 1200
 
 const yp_item_t scheme_mod_online_sign[] = {
 	{ C_ID, YP_TSTR, YP_VNONE },
@@ -128,6 +129,8 @@ static bool is_apex_query(struct query_data *qdata)
 
 static int synth_answer(int state, knot_pkt_t *pkt, struct query_data *qdata, void *_ctx)
 {
+	online_sign_ctx_t *ctx = _ctx;
+
 	// disallow ANY for now
 	if (knot_pkt_qtype(pkt) == KNOT_RRTYPE_ANY) {
 		qdata->rcode = KNOT_RCODE_REFUSED;
@@ -135,7 +138,11 @@ static int synth_answer(int state, knot_pkt_t *pkt, struct query_data *qdata, vo
 	}
 
 	if (knot_pkt_qtype(pkt) == KNOT_RRTYPE_DNSKEY && is_apex_query(qdata)) {
-		return ERROR;
+		int r = knot_pkt_put(pkt, KNOT_COMPR_HINT_QNAME, ctx->dnskey_rrset, 0);
+		if (r != DNSSEC_EOK) {
+			return ERROR;
+		}
+		return HIT;
 	}
 
 	if (knot_pkt_qtype(pkt) == KNOT_RRTYPE_NSEC) {
@@ -253,6 +260,29 @@ static int get_online_key(dnssec_key_t **key_ptr, const knot_dname_t *zone_name,
 	return KNOT_EOK;
 }
 
+static knot_rrset_t *create_dnskey_rrset(const dnssec_key_t *key,
+                                         const knot_dname_t *zone)
+{
+	knot_rrset_t *dnskey = knot_rrset_new(zone, KNOT_RRTYPE_DNSKEY,
+	                                      KNOT_CLASS_IN, NULL);
+	if (!dnskey) {
+		return NULL;
+	}
+
+	dnssec_binary_t rdata = { 0 };
+	dnssec_key_get_rdata(key, &rdata);
+	assert(rdata.size > 0 && rdata.data);
+
+	int r = knot_rrset_add_rdata(dnskey, rdata.data, rdata.size,
+	                             DNSKEY_RR_TTL, NULL);
+	if (r != DNSSEC_EOK) {
+		knot_rrset_free(&dnskey, NULL);
+		return NULL;
+	}
+
+	return dnskey;
+}
+
 static void online_sign_ctx_free(online_sign_ctx_t *ctx)
 {
 	dnssec_key_free(ctx->key);
@@ -273,6 +303,12 @@ static int online_sign_ctx_new(online_sign_ctx_t **ctx_ptr,
 	if (r != KNOT_EOK) {
 		online_sign_ctx_free(ctx);
 		return r;
+	}
+
+	ctx->dnskey_rrset = create_dnskey_rrset(ctx->key, zone);
+	if (!ctx->dnskey_rrset) {
+		online_sign_ctx_free(ctx);
+		return KNOT_ENOMEM;
 	}
 
 	*ctx_ptr = ctx;
