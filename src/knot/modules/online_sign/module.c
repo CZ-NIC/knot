@@ -171,11 +171,8 @@ static int section_sign(int state, knot_pkt_t *pkt, struct query_data *qdata, vo
 
 static int solve_nxdomain(int state, knot_pkt_t *pkt, struct query_data *qdata, void *_ctx)
 {
-	log_zone_debug(qdata->zone->name, "current state %d", state);
 
-	//! TODO: is this correct approach?
-	const knot_pktsection_t *ans = knot_pkt_section(pkt, KNOT_ANSWER);
-	if (ans->count > 0) {
+	if (state == HIT) {
 		return state;
 	}
 
