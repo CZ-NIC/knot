@@ -334,7 +334,7 @@ static int add_missing_rrsigs(const knot_rrset_t *covered,
 			to_add = create_empty_rrsigs_for(covered);
 		}
 
-		result = knot_sign_rrset(&to_add, covered, key->key, key->ctx, dnssec_ctx);
+		result = knot_sign_rrset(&to_add, covered, key->key, key->ctx, dnssec_ctx, NULL);
 		if (result != KNOT_EOK) {
 			break;
 		}
