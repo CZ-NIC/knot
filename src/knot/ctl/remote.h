@@ -89,7 +89,7 @@ int remote_recv(int sock, struct sockaddr_storage *addr, uint8_t *buf,
  * \retval KNOT_EOK on success.
  * \retval knot_error else.
  */
-int remote_parse(knot_pkt_t* pkt);
+int remote_parse(knot_pkt_t *pkt);
 
 /*!
  * \brief Execute command and prepare answer for client.
@@ -120,7 +120,7 @@ int remote_answer(int sock, server_t *s, knot_pkt_t *pkt);
  * \retval knot_error else.
  */
 int remote_process(server_t *s, struct sockaddr_storage *ctl_addr, int sock,
-                   uint8_t* buf, size_t buflen);
+                   uint8_t *buf, size_t buflen);
 
 /* Functions for creating RC packets. */
 

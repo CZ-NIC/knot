@@ -97,10 +97,10 @@ static void cmdargs_deinit(remote_cmdargs_t *args)
 }
 
 /*! \brief Callback prototype for remote commands. */
-typedef int (*remote_cmdf_t)(server_t*, remote_cmdargs_t*);
+typedef int (*remote_cmdf_t)(server_t *, remote_cmdargs_t *);
 
 /*! \brief Callback prototype for per-zone operations. */
-typedef int (remote_zonef_t)(zone_t *, remote_cmdargs_t *a);
+typedef int (remote_zonef_t)(zone_t *, remote_cmdargs_t *);
 
 /*! \brief Remote command table item. */
 typedef struct remote_cmd {
@@ -109,14 +109,14 @@ typedef struct remote_cmd {
 } remote_cmd_t;
 
 /* Forward decls. */
-static int remote_c_stop(server_t *s, remote_cmdargs_t* a);
-static int remote_c_reload(server_t *s, remote_cmdargs_t* a);
-static int remote_c_refresh(server_t *s, remote_cmdargs_t* a);
-static int remote_c_retransfer(server_t *s, remote_cmdargs_t* a);
-static int remote_c_status(server_t *s, remote_cmdargs_t* a);
-static int remote_c_zonestatus(server_t *s, remote_cmdargs_t* a);
-static int remote_c_flush(server_t *s, remote_cmdargs_t* a);
-static int remote_c_signzone(server_t *s, remote_cmdargs_t* a);
+static int remote_c_stop(server_t *s, remote_cmdargs_t *a);
+static int remote_c_reload(server_t *s, remote_cmdargs_t *a);
+static int remote_c_refresh(server_t *s, remote_cmdargs_t *a);
+static int remote_c_retransfer(server_t *s, remote_cmdargs_t *a);
+static int remote_c_status(server_t *s, remote_cmdargs_t *a);
+static int remote_c_zonestatus(server_t *s, remote_cmdargs_t *a);
+static int remote_c_flush(server_t *s, remote_cmdargs_t *a);
+static int remote_c_signzone(server_t *s, remote_cmdargs_t *a);
 
 /*! \brief Table of remote commands. */
 struct remote_cmd remote_cmd_tbl[] = {
@@ -134,7 +134,7 @@ struct remote_cmd remote_cmd_tbl[] = {
 /* Private APIs. */
 
 /*! \brief Apply callback to all zones specified by RDATA of NS RRs. */
-static int remote_rdata_apply(server_t *s, remote_cmdargs_t* a, remote_zonef_t *cb)
+static int remote_rdata_apply(server_t *s, remote_cmdargs_t *a, remote_zonef_t *cb)
 {
 	if (!s || !a || !cb) {
 		return KNOT_EINVAL;
@@ -247,7 +247,7 @@ static int remote_zone_sign(zone_t *zone, remote_cmdargs_t *a)
  * QNAME: stop
  * DATA: NULL
  */
-static int remote_c_stop(server_t *s, remote_cmdargs_t* a)
+static int remote_c_stop(server_t *s, remote_cmdargs_t *a)
 {
 	UNUSED(a);
 	UNUSED(s);
@@ -261,7 +261,7 @@ static int remote_c_stop(server_t *s, remote_cmdargs_t* a)
  * DATA: NONE for all zones
  *       NS RRs with zones in RDATA
  */
-static int remote_c_reload(server_t *s, remote_cmdargs_t* a)
+static int remote_c_reload(server_t *s, remote_cmdargs_t *a)
 {
 	int ret = KNOT_EOK;
 
@@ -286,7 +286,7 @@ static int remote_c_reload(server_t *s, remote_cmdargs_t* a)
  * QNAME: status
  * DATA: NONE
  */
-static int remote_c_status(server_t *s, remote_cmdargs_t* a)
+static int remote_c_status(server_t *s, remote_cmdargs_t *a)
 {
 	UNUSED(s);
 	UNUSED(a);
@@ -389,7 +389,7 @@ static int remote_zonestatus(zone_t *zone, remote_cmdargs_t *a)
  * DATA: NONE for all zones
  *       NS RRs with zones in RDATA
  */
-static int remote_c_zonestatus(server_t *s, remote_cmdargs_t* a)
+static int remote_c_zonestatus(server_t *s, remote_cmdargs_t *a)
 {
 	dbg_server("remote: %s\n", __func__);
 
@@ -411,7 +411,7 @@ static int remote_c_zonestatus(server_t *s, remote_cmdargs_t* a)
  * DATA: NONE for all zones
  *       NS RRs with zones in RDATA
  */
-static int remote_c_refresh(server_t *s, remote_cmdargs_t* a)
+static int remote_c_refresh(server_t *s, remote_cmdargs_t *a)
 {
 	dbg_server("remote: %s\n", __func__);
 	rcu_read_lock();
@@ -434,7 +434,7 @@ static int remote_c_refresh(server_t *s, remote_cmdargs_t* a)
  * QNAME: retransfer
  * DATA: NS RRs with zones in RDATA
  */
-static int remote_c_retransfer(server_t *s, remote_cmdargs_t* a)
+static int remote_c_retransfer(server_t *s, remote_cmdargs_t *a)
 {
 	dbg_server("remote: %s\n", __func__);
 	if (a->argc == 0) {
@@ -458,7 +458,7 @@ static int remote_c_retransfer(server_t *s, remote_cmdargs_t* a)
  * DATA: NONE for all zones
  *       NS RRs with zones in RDATA
  */
-static int remote_c_flush(server_t *s, remote_cmdargs_t* a)
+static int remote_c_flush(server_t *s, remote_cmdargs_t *a)
 {
 	dbg_server("remote: %s\n", __func__);
 
@@ -478,9 +478,8 @@ static int remote_c_flush(server_t *s, remote_cmdargs_t* a)
 
 /*!
  * \brief Remote command 'signzone' handler.
- *
  */
-static int remote_c_signzone(server_t *s, remote_cmdargs_t* a)
+static int remote_c_signzone(server_t *s, remote_cmdargs_t *a)
 {
 	dbg_server("remote: %s\n", __func__);
 
@@ -614,12 +613,12 @@ int remote_recv(int sock, struct sockaddr_storage *addr, uint8_t *buf,
 	return c;
 }
 
-int remote_parse(knot_pkt_t* pkt)
+int remote_parse(knot_pkt_t *pkt)
 {
 	return knot_pkt_parse(pkt, 0);
 }
 
-static int remote_send_chunk(int c, knot_pkt_t *query, const char* d, uint16_t len)
+static int remote_send_chunk(int c, knot_pkt_t *query, const char *d, uint16_t len)
 {
 	knot_pkt_t *resp = knot_pkt_new(NULL, KNOT_WIRE_MAX_PKTSIZE, &query->mm);
 	if (!resp) {
@@ -667,7 +666,7 @@ failed:
 	return ret;
 }
 
-static void log_command(const char *cmd, const remote_cmdargs_t* args)
+static void log_command(const char *cmd, const remote_cmdargs_t *args)
 {
 	char params[CMDARGS_BUFLEN_LOG] = { 0 };
 	size_t rest = CMDARGS_BUFLEN_LOG;
@@ -882,7 +881,7 @@ static int zones_verify_tsig_query(const knot_pkt_t *query,
 }
 
 int remote_process(server_t *s, struct sockaddr_storage *ctl_addr, int sock,
-                   uint8_t* buf, size_t buflen)
+                   uint8_t *buf, size_t buflen)
 {
 	knot_pkt_t *pkt =  knot_pkt_new(buf, buflen, NULL);
 	if (pkt == NULL) {
