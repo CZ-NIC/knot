@@ -45,6 +45,7 @@
 #include "libknot/rrtype/rrsig.h"
 #include "libknot/rrtype/soa.h"
 #include "libknot/rrtype/tsig.h"
+#include "libknot/rrtype/txt.h"
 #include "libknot/tsig-op.h"
 
 /*! @} */
