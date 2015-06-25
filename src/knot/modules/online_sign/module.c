@@ -190,7 +190,13 @@ static int synth_authority(int state, knot_pkt_t *pkt, struct query_data *qdata,
 
 	// promote NXDOMAIN to NODATA
 
-	return NODATA;
+	if (state == MISS) {
+		//! \todo Override RCODE set in solver_authority. Review.
+		qdata->rcode = KNOT_RCODE_NOERROR;
+		return NODATA;
+	}
+
+	return state;
 }
 
 static bool is_apex_query(struct query_data *qdata)
