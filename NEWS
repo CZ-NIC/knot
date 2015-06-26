@@ -1,5 +1,5 @@
-Knot DNS 2.0.0-rc1 (2015-06-15)
-===============================
+Knot DNS 2.0.0 (2015-06-26)
+===========================
 
 Bugfixes:
 ---------
@@ -19,6 +19,9 @@ Features:
  - Try all master servers in multi-master environment
  - Improved remotes and ACLs (multiple addresses, multiple keys)
  - Basic support for zone file patterns (%s to substitute zone name)
+ - Disable zone file synchronization by setting 'zonefile_sync' to '-1'
+ - knsupdate: Add input prompt in interactive mode and 'quit' command
+ - knsupdate: Allow TSIG algorithm specification in interactive prompt
 
 Improvements:
 -------------
