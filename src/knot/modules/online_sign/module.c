@@ -99,7 +99,7 @@ static knot_rrset_t *nxdomain_nsec(const knot_dname_t *qname,
 	return nsec;
 }
 
-static knot_rrset_t *rrset_sign(const knot_rrset_t *cover,
+static knot_rrset_t *sign_rrset(const knot_rrset_t *cover,
                                 online_sign_ctx_t *module_ctx,
                                 dnssec_sign_ctx_t *sign_ctx,
                                 mm_ctx_t *mm)
@@ -130,7 +130,7 @@ static knot_rrset_t *rrset_sign(const knot_rrset_t *cover,
 	return rrsig;
 }
 
-static int section_sign(int state, knot_pkt_t *pkt, struct query_data *qdata, void *_ctx)
+static int sign_section(int state, knot_pkt_t *pkt, struct query_data *qdata, void *_ctx)
 {
 	online_sign_ctx_t *module_ctx = _ctx;
 
@@ -150,7 +150,7 @@ static int section_sign(int state, knot_pkt_t *pkt, struct query_data *qdata, vo
 	uint16_t count_unsigned = section->count;
 	for (int i = 0; i < count_unsigned; i++) {
 		const knot_rrset_t *rr = knot_pkt_rr(section, i);
-		knot_rrset_t *rrsig = rrset_sign(rr, module_ctx, sign_ctx, &pkt->mm);
+		knot_rrset_t *rrsig = sign_rrset(rr, module_ctx, sign_ctx, &pkt->mm);
 		if (!rrsig) {
 			state = ERROR;
 			break;
@@ -442,12 +442,12 @@ int online_sign_load(struct query_plan *plan, struct query_module *module,
 	}
 
 	query_plan_step(plan, QPLAN_ANSWER, synth_answer, ctx);
-	query_plan_step(plan, QPLAN_ANSWER, section_sign, ctx);
+	query_plan_step(plan, QPLAN_ANSWER, sign_section, ctx);
 
 	query_plan_step(plan, QPLAN_AUTHORITY, synth_authority, ctx);
-	query_plan_step(plan, QPLAN_AUTHORITY, section_sign, ctx);
+	query_plan_step(plan, QPLAN_AUTHORITY, sign_section, ctx);
 
-	query_plan_step(plan, QPLAN_ADDITIONAL, section_sign, ctx);
+	query_plan_step(plan, QPLAN_ADDITIONAL, sign_section, ctx);
 
 	module->ctx = ctx;
 
