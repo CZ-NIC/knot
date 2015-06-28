@@ -32,7 +32,6 @@
 #include "dnssec/sign.h"
 #include "dnssec/nsec.h"
 
-#define DNSKEY_RR_TTL 1200
 #define RRSIG_LIFETIME (25*60*60)
 
 /*!
@@ -62,7 +61,6 @@ const yp_item_t scheme_mod_online_sign[] = {
 
 struct online_sign_ctx {
 	dnssec_key_t *key;
-	knot_rrset_t *dnskey_rrset;
 };
 
 typedef struct online_sign_ctx online_sign_ctx_t;
@@ -70,6 +68,18 @@ typedef struct online_sign_ctx online_sign_ctx_t;
 static bool want_dnssec(struct query_data *qdata)
 {
 	return knot_pkt_has_dnssec(qdata->query);
+}
+
+static uint32_t dnskey_ttl(const zone_t *zone)
+{
+	knot_rrset_t soa = node_rrset(zone->contents->apex, KNOT_RRTYPE_SOA);
+	return knot_rrset_ttl(&soa);
+}
+
+static uint32_t nsec_ttl(const zone_t *zone)
+{
+	knot_rrset_t soa = node_rrset(zone->contents->apex, KNOT_RRTYPE_SOA);
+	return knot_soa_minimum(&soa.rrs);
 }
 
 static dnssec_nsec_bitmap_t *synth_bitmap(const zone_node_t *node, uint16_t qtype)
@@ -103,12 +113,6 @@ static dnssec_nsec_bitmap_t *synth_bitmap(const zone_node_t *node, uint16_t qtyp
 	}
 
 	return bitmap;
-}
-
-static uint32_t nsec_ttl(const zone_t *zone)
-{
-	knot_rrset_t soa = node_rrset(zone->contents->apex, KNOT_RRTYPE_SOA);
-	return knot_soa_minimum(&soa.rrs);
 }
 
 static knot_rrset_t *synth_nsec(struct query_data *qdata, mm_ctx_t *mm)
@@ -250,6 +254,30 @@ static int synth_authority(int state, knot_pkt_t *pkt, struct query_data *qdata,
 	return state;
 }
 
+static knot_rrset_t *synth_dnskey(const zone_t *zone, const dnssec_key_t *key,
+                                  mm_ctx_t *mm)
+{
+	knot_rrset_t *dnskey = knot_rrset_new(zone->name, KNOT_RRTYPE_DNSKEY,
+	                                      KNOT_CLASS_IN, mm);
+	if (!dnskey) {
+		return 0;
+	}
+
+	dnssec_binary_t rdata = { 0 };
+	dnssec_key_get_rdata(key, &rdata);
+	assert(rdata.size > 0 && rdata.data);
+
+	uint32_t ttl = dnskey_ttl(zone);
+
+	int r = knot_rrset_add_rdata(dnskey, rdata.data, rdata.size, ttl, mm);
+	if (r != KNOT_EOK) {
+		knot_rrset_free(&dnskey, mm);
+		return NULL;
+	}
+
+	return dnskey;
+}
+
 static bool is_apex_query(struct query_data *qdata)
 {
 	return knot_dname_is_equal(qdata->name, qdata->zone->name);
@@ -269,8 +297,14 @@ static int synth_answer(int state, knot_pkt_t *pkt, struct query_data *qdata, vo
 	// synthesized DNSSEC answers
 
 	if (knot_pkt_qtype(pkt) == KNOT_RRTYPE_DNSKEY && is_apex_query(qdata)) {
-		int r = knot_pkt_put(pkt, KNOT_COMPR_HINT_QNAME, ctx->dnskey_rrset, 0);
+		knot_rrset_t *dnskey = synth_dnskey(qdata->zone, ctx->key, &pkt->mm);
+		if (!dnskey) {
+			return ERROR;
+		}
+
+		int r = knot_pkt_put(pkt, KNOT_COMPR_HINT_QNAME, dnskey, KNOT_PF_FREE);
 		if (r != DNSSEC_EOK) {
+			knot_rrset_free(&dnskey, &pkt->mm);
 			return ERROR;
 		}
 		return HIT;
@@ -391,33 +425,9 @@ static int get_online_key(dnssec_key_t **key_ptr, const knot_dname_t *zone_name,
 	return KNOT_EOK;
 }
 
-static knot_rrset_t *create_dnskey_rrset(const dnssec_key_t *key,
-                                         const knot_dname_t *zone)
-{
-	knot_rrset_t *dnskey = knot_rrset_new(zone, KNOT_RRTYPE_DNSKEY,
-	                                      KNOT_CLASS_IN, NULL);
-	if (!dnskey) {
-		return NULL;
-	}
-
-	dnssec_binary_t rdata = { 0 };
-	dnssec_key_get_rdata(key, &rdata);
-	assert(rdata.size > 0 && rdata.data);
-
-	int r = knot_rrset_add_rdata(dnskey, rdata.data, rdata.size,
-	                             DNSKEY_RR_TTL, NULL);
-	if (r != DNSSEC_EOK) {
-		knot_rrset_free(&dnskey, NULL);
-		return NULL;
-	}
-
-	return dnskey;
-}
-
 static void online_sign_ctx_free(online_sign_ctx_t *ctx)
 {
 	dnssec_key_free(ctx->key);
-	knot_rrset_free(&ctx->dnskey_rrset, NULL);
 
 	free(ctx);
 }
@@ -434,12 +444,6 @@ static int online_sign_ctx_new(online_sign_ctx_t **ctx_ptr,
 	if (r != KNOT_EOK) {
 		online_sign_ctx_free(ctx);
 		return r;
-	}
-
-	ctx->dnskey_rrset = create_dnskey_rrset(ctx->key, zone);
-	if (!ctx->dnskey_rrset) {
-		online_sign_ctx_free(ctx);
-		return KNOT_ENOMEM;
 	}
 
 	*ctx_ptr = ctx;
