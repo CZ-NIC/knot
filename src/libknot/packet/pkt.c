@@ -600,6 +600,16 @@ const knot_rrset_t *knot_pkt_rr(const knot_pktsection_t *section, uint16_t i)
 }
 
 _public_
+uint16_t knot_pkt_rr_offset(const knot_pktsection_t *section, uint16_t i)
+{
+	if (section == NULL || section->pkt == NULL) {
+		return -1;
+	}
+
+	return section->pkt->rr_info[section->pos + i].pos;
+}
+
+_public_
 int knot_pkt_parse(knot_pkt_t *pkt, unsigned flags)
 {
 	if (pkt == NULL) {
