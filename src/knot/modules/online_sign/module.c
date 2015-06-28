@@ -32,7 +32,6 @@
 #include "dnssec/sign.h"
 #include "dnssec/nsec.h"
 
-#define NSEC_RR_TTL 1200
 #define DNSKEY_RR_TTL 1200
 #define RRSIG_LIFETIME (25*60*60)
 
@@ -106,6 +105,12 @@ static dnssec_nsec_bitmap_t *synth_bitmap(const zone_node_t *node, uint16_t qtyp
 	return bitmap;
 }
 
+static uint32_t nsec_ttl(const zone_t *zone)
+{
+	knot_rrset_t soa = node_rrset(zone->contents->apex, KNOT_RRTYPE_SOA);
+	return knot_soa_minimum(&soa.rrs);
+}
+
 static knot_rrset_t *synth_nsec(struct query_data *qdata, mm_ctx_t *mm)
 {
 	knot_rrset_t *nsec = knot_rrset_new(qdata->name, KNOT_RRTYPE_NSEC, KNOT_CLASS_IN, mm);
@@ -135,7 +140,9 @@ static knot_rrset_t *synth_nsec(struct query_data *qdata, mm_ctx_t *mm)
 	knot_dname_free(&next, NULL);
 	dnssec_nsec_bitmap_free(bitmap);
 
-	if (knot_rrset_add_rdata(nsec, rdata, size, NSEC_RR_TTL, mm) != KNOT_EOK) {
+	uint32_t ttl = nsec_ttl(qdata->zone);
+
+	if (knot_rrset_add_rdata(nsec, rdata, size, ttl, mm) != KNOT_EOK) {
 		knot_rrset_free(&nsec, mm);
 		return NULL;
 	}
