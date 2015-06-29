@@ -163,7 +163,9 @@ static dnssec_nsec_bitmap_t *synth_bitmap(knot_pkt_t *pkt, const struct query_da
 		bitmap_add_section(map, answer);
 	} else {
 		bitmap_add_zone(map, qdata->node);
-		bitmap_add_forced(map, qtype);
+		if (!node_rrtype_exists(qdata->node, KNOT_RRTYPE_CNAME)) {
+			bitmap_add_forced(map, qtype);
+		}
 	}
 
 	return map;
