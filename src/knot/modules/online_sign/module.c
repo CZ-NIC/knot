@@ -83,40 +83,93 @@ static uint32_t nsec_ttl(const zone_t *zone)
 	return knot_soa_minimum(&soa.rrs);
 }
 
-static dnssec_nsec_bitmap_t *synth_bitmap(const zone_node_t *node, uint16_t qtype)
+/*!
+ * \brief Add bitmap records synthesized by online-signing.
+ */
+static void bitmap_add_synth(dnssec_nsec_bitmap_t *map, bool is_apex)
 {
-	dnssec_nsec_bitmap_t *bitmap = dnssec_nsec_bitmap_new();
-
-	// DNSSEC types
-
-	dnssec_nsec_bitmap_add(bitmap, KNOT_RRTYPE_NSEC);
-	dnssec_nsec_bitmap_add(bitmap, KNOT_RRTYPE_RRSIG);
-
-	// types from zone content
-
-	if (node) {
-		for (int i = 0; i < node->rrset_count; i++) {
-			uint16_t type = node->rrs[i].type;
-			dnssec_nsec_bitmap_add(bitmap, node->rrs[i].type);
-
-			if (type == KNOT_RRTYPE_SOA) {
-				dnssec_nsec_bitmap_add(bitmap, KNOT_RRTYPE_DNSKEY);
-			}
-		}
+	dnssec_nsec_bitmap_add(map, KNOT_RRTYPE_NSEC);
+	dnssec_nsec_bitmap_add(map, KNOT_RRTYPE_RRSIG);
+	if (is_apex) {
+		dnssec_nsec_bitmap_add(map, KNOT_RRTYPE_DNSKEY);
+		//dnssec_nsec_bitmap_add(map, KNOT_RRTYPE_CDS);
 	}
-
-	// forced types
-
-	for (const uint16_t *type = NSEC_FORCE_TYPES; *type; type += 1) {
-		if (*type != qtype) {
-			dnssec_nsec_bitmap_add(bitmap, *type);
-		}
-	}
-
-	return bitmap;
 }
 
-static knot_rrset_t *synth_nsec(struct query_data *qdata, mm_ctx_t *mm)
+/*!
+ * \brief Add bitmap records present in the zone.
+ */
+static void bitmap_add_zone(dnssec_nsec_bitmap_t *map, const zone_node_t *node)
+{
+	if (!node) {
+		return;
+	}
+
+	for (int i = 0; i < node->rrset_count; i++) {
+		uint16_t type = node->rrs[i].type;
+		dnssec_nsec_bitmap_add(map, node->rrs[i].type);
+	}
+}
+
+/*!
+ * \brief Add bitmap records which can be synthesized by other modules.
+ *
+ * \param qtype  Current QTYPE, will never be added into the map.
+ */
+static void bitmap_add_forced(dnssec_nsec_bitmap_t *map, uint16_t qtype)
+{
+	for (const uint16_t *type = NSEC_FORCE_TYPES; *type; type += 1) {
+		if (*type != qtype) {
+			dnssec_nsec_bitmap_add(map, *type);
+		}
+	}
+}
+
+/*!
+ * \brief Add bitmap records from the actual response.
+ */
+static void bitmap_add_section(dnssec_nsec_bitmap_t *map, const knot_pktsection_t *answer)
+{
+	for (int i = 0; i < answer->count; i++) {
+		const knot_rrset_t *rr = knot_pkt_rr(answer, i);
+		dnssec_nsec_bitmap_add(map, rr->type);
+	}
+}
+
+/*!
+ * \brief Synthesize NSEC type bitmap.
+ *
+ * - The bitmap will contain types synthesized by this module.
+ * - For ANY query, the bitmap will contain types from the actual response.
+ * - For non-ANY query, the bitmap will contain types from zone and forced
+ *   types which can be potentionally synthesized by other query modules.
+ */
+static dnssec_nsec_bitmap_t *synth_bitmap(knot_pkt_t *pkt, const struct query_data *qdata)
+{
+	dnssec_nsec_bitmap_t *map = dnssec_nsec_bitmap_new();
+	if (!map) {
+		return NULL;
+	}
+
+	uint16_t qtype = knot_pkt_qtype(qdata->query);
+	bool is_apex = qdata->zone
+	               && qdata->zone->contents
+	               && qdata->node == qdata->zone->contents->apex;
+
+	bitmap_add_synth(map, is_apex);
+
+	if (qtype == KNOT_RRTYPE_ANY) {
+		const knot_pktsection_t *answer = knot_pkt_section(pkt, KNOT_ANSWER);
+		bitmap_add_section(map, answer);
+	} else {
+		bitmap_add_zone(map, qdata->node);
+		bitmap_add_forced(map, qtype);
+	}
+
+	return map;
+}
+
+static knot_rrset_t *synth_nsec(knot_pkt_t *pkt, struct query_data *qdata, mm_ctx_t *mm)
 {
 	knot_rrset_t *nsec = knot_rrset_new(qdata->name, KNOT_RRTYPE_NSEC, KNOT_CLASS_IN, mm);
 	if (!nsec) {
@@ -130,7 +183,7 @@ static knot_rrset_t *synth_nsec(struct query_data *qdata, mm_ctx_t *mm)
 	}
 
 	uint16_t qtype = knot_pkt_qtype(qdata->query);
-	dnssec_nsec_bitmap_t *bitmap = synth_bitmap(qdata->node, qtype);
+	dnssec_nsec_bitmap_t *bitmap = synth_bitmap(pkt, qdata);
 	if (!bitmap) {
 		free(next);
 		knot_rrset_free(&nsec, mm);
@@ -258,7 +311,7 @@ static int synth_authority(int state, knot_pkt_t *pkt, struct query_data *qdata,
 	// synthesise NSEC
 
 	if (want_dnssec(qdata)) {
-		knot_rrset_t *nsec = synth_nsec(qdata, &pkt->mm);
+		knot_rrset_t *nsec = synth_nsec(pkt, qdata, &pkt->mm);
 		int r = knot_pkt_put(pkt, KNOT_COMPR_HINT_QNAME, nsec, KNOT_PF_FREE);
 		if (r != DNSSEC_EOK) {
 			knot_rrset_free(&nsec, &pkt->mm);
@@ -341,7 +394,7 @@ static int synth_answer(int state, knot_pkt_t *pkt, struct query_data *qdata, vo
 	}
 
 	if (qtype_match(qdata, KNOT_RRTYPE_NSEC)) {
-		knot_rrset_t *nsec = synth_nsec(qdata, &pkt->mm);
+		knot_rrset_t *nsec = synth_nsec(pkt, qdata, &pkt->mm);
 		if (!nsec) {
 			return ERROR;
 		}
