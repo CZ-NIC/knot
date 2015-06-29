@@ -1078,3 +1078,13 @@ dbdir
 A path to the directory where the database is stored.
 
 *Required*
+
+Module online-sign
+==================
+
+The module provides online DNSSEC signing.
+
+::
+
+ mod-online-sign:
+   - id: STR

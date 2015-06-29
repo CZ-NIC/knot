@@ -695,14 +695,6 @@ Result:
    1.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.1.6.b.0.0.0.0.0.0.2.6.2.ip6.arpa. 400 IN PTR
                                   dynamic-2620-0000-0b61-0000-0000-0000-0000-0001.test.
 
-Limitations
-^^^^^^^^^^^
-
-* As of now, there is no authenticated denial of nonexistence (neither
-  NSEC or NSEC3 is supported) nor DNSSEC signed records. However,
-  since the module is hooked in the query processing plan, it will be
-  possible to do online signing in the future.
-
 ``dnsproxy`` – Tiny DNS proxy
 -----------------------------
 
@@ -849,3 +841,119 @@ Here is an example on how to use the module:
   .. code-block:: console
 
    $ kdig @127.0.0.1#6667 A myrecord.com
+
+``online-sign`` - Online DNSSEC signing
+---------------------------------------
+
+The module provides online DNSSEC signing. Instead of pre-computing the zone
+signatures when the zone is loaded into the server or instead of loading an
+externally signed zone, the signatures are computed on-the-fly during
+answering.
+
+The main purpose of the module is to enable authenticated responses with
+zones which use other dynamic module (e.g., automatic reverse record
+synthesis) because these zones cannot be pre-signed. However, it can be also
+used as a simple signing solution for zones with low traffic and also as
+a protection against zone content enumeration (zone walking).
+
+In order to minimize the number of computed signatures per query, the module
+produces a bit different responses from the responses that would be sent if
+the zone was pre-signed. Still, the responses should be perfectly valid for
+a DNSSEC validating resolver.
+
+Differences from statically signed zones:
+
+* The NSEC records are constructed as Minimally Covering NSEC Records
+  (see Appendix A in :rfc:`7129`). Therefore the generated domain names cover
+  the complete domain name space in the zone's authority.
+
+* NXDOMAIN responses are promoted to NODATA responses. The module proves
+  that the query type does not exist rather than that the domain name does not
+  exist.
+
+* Domain names matching a wildcard are expanded. The module pretends and proves
+  that the domain name exists rather than proving a presence of the wild card.
+
+Records synthesized by the module:
+
+* DNSKEY record is synthesized in the zone apex and includes public key
+  material for the active signing key.
+
+* NSEC records are synthesized as needed.
+
+* RRSIG records are synthesized for authoritative content of the zone.
+
+How to use the online signing module:
+
+* First add the zone into the server's KASP database and generate a key to be
+  used for signing:
+
+  .. code-block:: console
+
+   $ cd /path/to/kasp
+   $ keymgr zone add example.com
+   $ keymgr zone key generate example.com algorithm ecdsap256sha256 size 256
+
+* Enable the module in server configuration and hook it to the zone::
+
+   mod-online-sign:
+     - id: default
+
+   zone:
+     - domain: example.com
+       module: mod-online-sign/default
+       dnssec-signing: false
+
+* Make sure the zone is not signed and also that the automatic signing is
+  disabled. All is set, you are good to go. Reload (or start) the server:
+
+  .. code-block:: console
+
+   $ knotc reload
+
+The following example stacks the online signing with reverse record synthesis
+module::
+
+ mod-online-sign:
+   - id: default
+
+ mod-synth-record:
+   - id: lan-forward
+     type: forward
+     prefix: ip-
+     ttl: 1200
+     network: 192.168.100.0/24
+
+ template:
+   - id: default
+     dnssec-signing: false
+
+ zone:
+   - domain: corp.example.net
+     module: mod-synth-record/lan-forward
+     module: mod-online-sign/default
+
+Known issues:
+
+* The delegations are not signed correctly.
+
+* Some CNAME records are not signed correctly.
+
+Limitations:
+
+* Only a Single-Type Signing scheme is supported.
+
+* Only one active signing key can be used.
+
+* Key rollover is not possible.
+
+* The NSEC records may differ for one domain name if queried for different
+  types. This is an implementation shortcoming as the dynamic modules
+  cooperate loosely. Possible synthesis of a type by other module cannot
+  be predicted. This dissimilarity should not affect response validation,
+  even with validators performing `aggressive negative caching
+  <https://datatracker.ietf.org/doc/draft-fujiwara-dnsop-nsec-aggressiveuse/>`_.
+
+* The NSEC proofs will work well with other dynamic modules only if the
+  modules synthesize only A and AAAA records. If synthesis of other type
+  is required, please, report this information to Knot DNS developers.

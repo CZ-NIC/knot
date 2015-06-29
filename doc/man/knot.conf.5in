@@ -914,6 +914,20 @@ A module identifier.
 A path to the directory where the database is stored.
 .sp
 \fIRequired\fP
+.SH MODULE ONLINE-SIGN
+.sp
+The module provides online DNSSEC signing.
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+mod\-online\-sign:
+  \- id: STR
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
 .SH AUTHOR
 CZ.NIC Labs <http://www.knot-dns.cz>
 .SH COPYRIGHT
