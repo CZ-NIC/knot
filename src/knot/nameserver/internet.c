@@ -408,6 +408,7 @@ static int name_found(knot_pkt_t *pkt, struct query_data *qdata)
 	if (node_rrtype_exists(qdata->node, KNOT_RRTYPE_CNAME)
 	    && qtype != KNOT_RRTYPE_CNAME
 	    && qtype != KNOT_RRTYPE_RRSIG
+	    && qtype != KNOT_RRTYPE_NSEC
 	    && qtype != KNOT_RRTYPE_ANY) {
 		dbg_ns("%s: solving CNAME\n", __func__);
 		return follow_cname(pkt, KNOT_RRTYPE_CNAME, qdata);
