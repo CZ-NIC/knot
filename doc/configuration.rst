@@ -611,7 +611,7 @@ a UNIX socket::
 
 .. _dnstap: http://dnstap.info/
 
-``synth_record`` - Automatic forward/reverse records
+``synth-record`` - Automatic forward/reverse records
 ----------------------------------------------------
 
 This module is able to synthesize either forward or reverse records for
