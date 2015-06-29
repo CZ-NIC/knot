@@ -310,8 +310,21 @@ static int synth_answer(int state, knot_pkt_t *pkt, struct query_data *qdata, vo
 		return HIT;
 	}
 
+	// synthesized NSEC answers
+
 	if (knot_pkt_qtype(pkt) == KNOT_RRTYPE_NSEC) {
-		return ERROR;
+		knot_rrset_t *nsec = synth_nsec(qdata, &pkt->mm);
+		if (!nsec) {
+			return ERROR;
+		}
+
+		int r = knot_pkt_put(pkt, KNOT_COMPR_HINT_QNAME, nsec, KNOT_PF_FREE);
+		if (r != DNSSEC_EOK) {
+			knot_rrset_free(&nsec, &pkt->mm);
+			return ERROR;
+		}
+
+		return HIT;
 	}
 
 	if (knot_pkt_qtype(pkt) == KNOT_RRTYPE_RRSIG) {
