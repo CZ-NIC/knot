@@ -278,6 +278,12 @@ static knot_rrset_t *synth_dnskey(const zone_t *zone, const dnssec_key_t *key,
 	return dnskey;
 }
 
+static bool qtype_match(struct query_data *qdata, uint16_t type)
+{
+	uint16_t qtype = knot_pkt_qtype(qdata->query);
+	return (qtype == KNOT_RRTYPE_ANY || qtype == type);
+}
+
 static bool is_apex_query(struct query_data *qdata)
 {
 	return knot_dname_is_equal(qdata->name, qdata->zone->name);
@@ -287,16 +293,16 @@ static int synth_answer(int state, knot_pkt_t *pkt, struct query_data *qdata, vo
 {
 	online_sign_ctx_t *ctx = _ctx;
 
-	// disallowed
+	// disallowed queries
 
-	if (knot_pkt_qtype(pkt) == KNOT_RRTYPE_ANY) {
+	if (knot_pkt_qtype(pkt) == KNOT_RRTYPE_RRSIG) {
 		qdata->rcode = KNOT_RCODE_REFUSED;
 		return ERROR;
 	}
 
 	// synthesized DNSSEC answers
 
-	if (knot_pkt_qtype(pkt) == KNOT_RRTYPE_DNSKEY && is_apex_query(qdata)) {
+	if (qtype_match(qdata, KNOT_RRTYPE_DNSKEY) && is_apex_query(qdata)) {
 		knot_rrset_t *dnskey = synth_dnskey(qdata->zone, ctx->key, &pkt->mm);
 		if (!dnskey) {
 			return ERROR;
@@ -307,12 +313,13 @@ static int synth_answer(int state, knot_pkt_t *pkt, struct query_data *qdata, vo
 			knot_rrset_free(&dnskey, &pkt->mm);
 			return ERROR;
 		}
-		return HIT;
+
+		state = HIT;
 	}
 
 	// synthesized NSEC answers
 
-	if (knot_pkt_qtype(pkt) == KNOT_RRTYPE_NSEC) {
+	if (qtype_match(qdata, KNOT_RRTYPE_NSEC)) {
 		knot_rrset_t *nsec = synth_nsec(qdata, &pkt->mm);
 		if (!nsec) {
 			return ERROR;
@@ -324,12 +331,7 @@ static int synth_answer(int state, knot_pkt_t *pkt, struct query_data *qdata, vo
 			return ERROR;
 		}
 
-		return HIT;
-	}
-
-	if (knot_pkt_qtype(pkt) == KNOT_RRTYPE_RRSIG) {
-		qdata->rcode = KNOT_RCODE_REFUSED;
-		return ERROR;
+		state = HIT;
 	}
 
 	return state;
