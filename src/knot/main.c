@@ -363,14 +363,15 @@ int main(int argc, char **argv)
 	}
 
 	/* Run post-open config operations. */
-	int res = conf_post_open(new_conf);
-	if (res != KNOT_EOK) {
-		log_fatal("failed to use configuration (%s)", knot_strerror(res));
+	int ret = conf_post_open(new_conf);
+	if (ret != KNOT_EOK) {
+		log_fatal("failed to use configuration (%s)", knot_strerror(ret));
 		conf_free(new_conf, false);
 		log_close();
 		return EXIT_FAILURE;
 	}
 
+	/* Update to the new config. */
 	conf_update(new_conf);
 
 	/* Initialize logging subsystem. */
@@ -378,9 +379,9 @@ int main(int argc, char **argv)
 
 	/* Initialize server. */
 	server_t server;
-	res = server_init(&server, conf_bg_threads(conf()));
-	if (res != KNOT_EOK) {
-		log_fatal("failed to initialize server (%s)", knot_strerror(res));
+	ret = server_init(&server, conf_bg_threads(conf()));
+	if (ret != KNOT_EOK) {
+		log_fatal("failed to initialize server (%s)", knot_strerror(ret));
 		conf_free(conf(), false);
 		log_close();
 		return EXIT_FAILURE;
@@ -441,9 +442,9 @@ int main(int argc, char **argv)
 	/* Start it up. */
 	log_info("starting server");
 	conf_val_t async_val = conf_get(conf(), C_SRV, C_ASYNC_START);
-	res = server_start(&server, conf_bool(&async_val));
-	if (res != KNOT_EOK) {
-		log_fatal("failed to start server (%s)", knot_strerror(res));
+	ret = server_start(&server, conf_bool(&async_val));
+	if (ret != KNOT_EOK) {
+		log_fatal("failed to start server (%s)", knot_strerror(ret));
 		server_wait(&server);
 		server_deinit(&server);
 		rcu_unregister_thread();

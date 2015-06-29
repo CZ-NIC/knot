@@ -445,14 +445,15 @@ int main(int argc, char **argv)
 	}
 
 	/* Run post-open config operations. */
-	int res = conf_post_open(new_conf);
-	if (res != KNOT_EOK) {
-		log_fatal("failed to use configuration (%s)", knot_strerror(res));
+	int ret = conf_post_open(new_conf);
+	if (ret != KNOT_EOK) {
+		log_fatal("failed to use configuration (%s)", knot_strerror(ret));
 		conf_free(new_conf, false);
 		rc = 1;
 		goto exit;
 	}
 
+	/* Update to the new config. */
 	conf_update(new_conf);
 
 	/* Get control address. */

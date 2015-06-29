@@ -620,24 +620,26 @@ int conf_import(
 		return KNOT_EINVAL;
 	}
 
+	int ret;
+
 	namedb_txn_t txn;
-	int ret = conf->api->txn_begin(conf->db, &txn, 0);
+	ret = conf->api->txn_begin(conf->db, &txn, 0);
 	if (ret != KNOT_EOK) {
-		return ret;
+		goto import_error;
 	}
 
 	// Drop the current DB content.
 	ret = conf->api->clear(&txn);
 	if (ret != KNOT_EOK) {
 		conf->api->txn_abort(&txn);
-		return ret;
+		goto import_error;
 	}
 
 	// Initialize new DB.
 	ret = conf_db_init(conf, &txn);
 	if (ret != KNOT_EOK) {
 		conf->api->txn_abort(&txn);
-		return ret;
+		goto import_error;
 	}
 
 	size_t depth = 0;
@@ -647,23 +649,26 @@ int conf_import(
 	ret = conf_parse(conf, &txn, input, is_file, &depth, &prev);
 	if (ret != KNOT_EOK) {
 		conf->api->txn_abort(&txn);
-		return ret;
+		goto import_error;
 	}
 
 	// Commit new configuration.
 	ret = conf->api->txn_commit(&txn);
 	if (ret != KNOT_EOK) {
-		return ret;
+		goto import_error;
 	}
 
 	// Update read-only transaction.
 	conf->api->txn_abort(&conf->read_txn);
 	ret = conf->api->txn_begin(conf->db, &conf->read_txn, NAMEDB_RDONLY);
 	if (ret != KNOT_EOK) {
-		return ret;
+		goto import_error;
 	}
 
-	return KNOT_EOK;
+	ret = KNOT_EOK;
+import_error:
+
+	return ret;
 }
 
 static int export_group(

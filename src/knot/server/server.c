@@ -504,19 +504,20 @@ int server_reload(server_t *server, const char *cf)
 		if (ret != KNOT_EOK) {
 			log_fatal("failed to load configuration file (%s)",
 			          knot_strerror(ret));
-			conf_free(new_conf, false);
+			conf_free(new_conf, true);
 			return ret;
 		}
 
 		/* Run post-open config operations. */
-		int res = conf_post_open(new_conf);
-		if (res != KNOT_EOK) {
+		ret = conf_post_open(new_conf);
+		if (ret != KNOT_EOK) {
 			log_fatal("failed to use configuration (%s)",
-			          knot_strerror(res));
-			conf_free(new_conf, false);
+			          knot_strerror(ret));
+			conf_free(new_conf, true);
 			return ret;
 		}
 
+		/* Update to the new config. */
 		conf_update(new_conf);
 	} else {
 		log_info("reloading configuration database");
