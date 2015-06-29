@@ -218,35 +218,6 @@ static int put_answer(knot_pkt_t *pkt, uint16_t type, struct query_data *qdata)
 	return ret;
 }
 
-/*! \brief Puts optional NS RRSet to the Authority section of the response. */
-static int put_authority_ns(knot_pkt_t *pkt, struct query_data *qdata)
-{
-	const zone_contents_t *zone = qdata->zone->contents;
-	dbg_ns("%s(%p, %p)\n", __func__, pkt, qdata);
-
-	/* DS/DNSKEY queries are not referrals. NS is optional.
-	 * But taking response size into consideration, DS/DNSKEY RRs
-	 * are rather large and may trigger fragmentation or even TCP
-	 * recovery. */
-	uint16_t query_type = knot_pkt_qtype(pkt);
-	if (query_type == KNOT_RRTYPE_DS     || /* Too large response */
-	    query_type == KNOT_RRTYPE_DNSKEY || /* Too large response */
-	    qdata->node == NULL /* CNAME leading to non-existent name.*/ ) {
-		dbg_ns("%s: not adding AUTHORITY NS for this response\n", __func__);
-		return KNOT_EOK;
-	}
-
-	knot_rrset_t ns_rrset = node_rrset(zone->apex, KNOT_RRTYPE_NS);
-	if (!knot_rrset_empty(&ns_rrset)) {
-		knot_rrset_t rrsigs = node_rrset(zone->apex, KNOT_RRTYPE_RRSIG);
-		return ns_put_rr(pkt, &ns_rrset, &rrsigs, KNOT_COMPR_HINT_NONE,
-		                 KNOT_PF_NOTRUNC|KNOT_PF_CHECKDUP, qdata);
-	} else {
-		dbg_ns("%s: no NS RRSets in this zone, fishy...\n", __func__);
-	}
-	return KNOT_EOK;
-}
-
 /*! \brief Puts optional SOA RRSet to the Authority section of the response. */
 static int put_authority_soa(knot_pkt_t *pkt, struct query_data *qdata,
                              const zone_contents_t *zone)
@@ -579,9 +550,9 @@ static int solve_authority(int state, knot_pkt_t *pkt, struct query_data *qdata,
 	const zone_contents_t *zone_contents = qdata->zone->contents;
 
 	switch (state) {
-	case HIT:    /* Positive response, add (optional) AUTHORITY NS. */
+	case HIT:    /* Positive response. */
 		dbg_ns("%s: answer is POSITIVE\n", __func__);
-		ret = put_authority_ns(pkt, qdata);
+		ret = KNOT_EOK;
 		break;
 	case MISS:   /* MISS, set NXDOMAIN RCODE. */
 		dbg_ns("%s: answer is NXDOMAIN\n", __func__);
