@@ -24,6 +24,7 @@
 #include "knot/nameserver/process_query.h"
 #include "knot/nameserver/internet.h"
 
+#include "libknot/dname.h"
 #include "libknot/dnssec/rrset-sign.h"
 #include "libknot/internal/mem.h"
 
@@ -154,14 +155,29 @@ static knot_rrset_t *synth_nsec(struct query_data *qdata, mm_ctx_t *mm)
 	return nsec;
 }
 
-static knot_rrset_t *sign_rrset(const knot_rrset_t *cover,
+static knot_rrset_t *sign_rrset(const knot_dname_t *owner,
+                                const knot_rrset_t *cover,
                                 online_sign_ctx_t *module_ctx,
                                 dnssec_sign_ctx_t *sign_ctx,
                                 mm_ctx_t *mm)
 {
-	knot_rrset_t *rrsig = knot_rrset_new(cover->owner, KNOT_RRTYPE_RRSIG,
-	                                     cover->rclass, mm);
+	// copy of RR set with replaced owner name
+
+	knot_rrset_t *copy = knot_rrset_new(owner, cover->type, cover->rclass, NULL);
+	if (!copy) {
+		return NULL;
+	}
+
+	if (knot_rdataset_copy(&copy->rrs, &cover->rrs, NULL) != KNOT_EOK) {
+		knot_rrset_free(&copy, NULL);
+		return NULL;
+	}
+
+	// resulting RRSIG
+
+	knot_rrset_t *rrsig = knot_rrset_new(owner, KNOT_RRTYPE_RRSIG, copy->rclass, mm);
 	if (!rrsig) {
+		knot_rrset_free(&copy, NULL);
 		return NULL;
 	}
 
@@ -176,7 +192,10 @@ static knot_rrset_t *sign_rrset(const knot_rrset_t *cover,
 		.policy = &policy
 	};
 
-	int r = knot_sign_rrset(rrsig, cover, module_ctx->key, sign_ctx, &ksign_ctx, mm);
+	int r = knot_sign_rrset(rrsig, copy, module_ctx->key, sign_ctx, &ksign_ctx, mm);
+
+	knot_rrset_free(&copy, NULL);
+
 	if (r != KNOT_EOK) {
 		knot_rrset_free(&rrsig, mm);
 		return NULL;
@@ -205,7 +224,13 @@ static int sign_section(int state, knot_pkt_t *pkt, struct query_data *qdata, vo
 	uint16_t count_unsigned = section->count;
 	for (int i = 0; i < count_unsigned; i++) {
 		const knot_rrset_t *rr = knot_pkt_rr(section, i);
-		knot_rrset_t *rrsig = sign_rrset(rr, module_ctx, sign_ctx, &pkt->mm);
+		uint16_t rr_pos = knot_pkt_rr_offset(section, i);
+
+		uint8_t owner[KNOT_DNAME_MAXLEN] = { 0 };
+		knot_dname_unpack(owner, pkt->wire + rr_pos, sizeof(owner), pkt->wire);
+		knot_dname_to_lower(owner);
+
+		knot_rrset_t *rrsig = sign_rrset(owner, rr, module_ctx, sign_ctx, &pkt->mm);
 		if (!rrsig) {
 			state = ERROR;
 			break;
@@ -226,8 +251,6 @@ static int sign_section(int state, knot_pkt_t *pkt, struct query_data *qdata, vo
 
 static int synth_authority(int state, knot_pkt_t *pkt, struct query_data *qdata, void *_ctx)
 {
-	log_zone_debug(qdata->zone->name, "%s state %d", __func__, state);
-
 	if (state == HIT) {
 		return state;
 	}
@@ -316,8 +339,6 @@ static int synth_answer(int state, knot_pkt_t *pkt, struct query_data *qdata, vo
 
 		state = HIT;
 	}
-
-	// synthesized NSEC answers
 
 	if (qtype_match(qdata, KNOT_RRTYPE_NSEC)) {
 		knot_rrset_t *nsec = synth_nsec(qdata, &pkt->mm);
