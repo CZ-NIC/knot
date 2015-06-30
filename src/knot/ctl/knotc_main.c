@@ -576,25 +576,21 @@ static int cmd_import(cmd_args_t *args)
 	}
 
 	if (!(args->flags & F_FORCE)) {
-		printf("use force option to import/replace config DB\n");
+		printf("use force option to import/replace configuration DB\n");
 		return KNOT_EINVAL;
 	}
 
 	conf_t *new_conf = NULL;
 	int ret = conf_new(&new_conf, conf_scheme, args->conf_db);
-	if (ret != KNOT_EOK) {
-		printf("failed to open configuration (%s)", args->conf_db);
-		return ret;
+	if (ret == KNOT_EOK) {
+		ret = conf_import(new_conf, args->argv[0], true);
 	}
 
-	ret = conf_import(new_conf, args->argv[0], true);
-	if (ret != KNOT_EOK) {
-		printf("failed to import configuration (%s)", args->argv[0]);
-		conf_free(new_conf, false);
-		return ret;
-	}
+	conf_free(new_conf, false);
 
-	return KNOT_EOK;
+	printf("%s\n", knot_strerror(ret));
+
+	return ret;
 }
 
 static int cmd_export(cmd_args_t *args)
@@ -604,7 +600,11 @@ static int cmd_export(cmd_args_t *args)
 		return KNOT_EINVAL;
 	}
 
-	return conf_export(conf(), args->argv[0], YP_SNONE);
+	int ret = conf_export(conf(), args->argv[0], YP_SNONE);
+
+	printf("%s\n", knot_strerror(ret));
+
+	return ret;
 }
 
 static int cmd_checkconf(cmd_args_t *args)
