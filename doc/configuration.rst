@@ -8,7 +8,7 @@ Configuration
 Simple configuration
 ====================
 
-The following configuration presents a simple configuration file
+The following example presents a simple configuration file
 which can be used as a base for your Knot DNS setup::
 
     # Example of a very simple Knot DNS configuration.
@@ -26,17 +26,17 @@ which can be used as a base for your Knot DNS setup::
       - target: syslog
         any: info
 
-Now let's go step by step through this configuration:
+Now let's walk through this configuration step by step:
 
 - The :ref:`server_listen` statement in the :ref:`server section<Server section>`
   defines where the server will listen for incoming connections.
-  We have defined the server to listen on all available IPv4 and IPv6 addresses
+  We have defined the server to listen on all available IPv4 and IPv6 addresses,
   all on port 53.
 - The :ref:`zone section<Zone section>` defines the zones that the server will
-  serve. In this case we defined one zone named *example.com* which is stored
+  serve. In this case, we defined one zone named *example.com* which is stored
   in the zone file :file:`/var/lib/knot/zones/example.com.zone`.
 - The :ref:`log section<Logging section>` defines the log facilities for
-  the server. In this example we told Knot DNS to send its log messages with
+  the server. In this example, we told Knot DNS to send its log messages with
   the severity ``info`` or more serious to the syslog.
 
 For detailed description of all configuration items see
@@ -45,8 +45,8 @@ For detailed description of all configuration items see
 Zone templates
 ==============
 
-A zone template allows single zone configuration to be shared among more zones.
-Each template option can be explicitly overridden in the zone configuration.
+A zone template allows a single zone configuration to be shared among several zones.
+Each template option can be explicitly overridden in zone-specific configurations.
 A ``default`` template identifier is reserved for the default template::
 
     template:
@@ -82,9 +82,9 @@ A ``default`` template identifier is reserved for the default template::
 Access control list (ACL)
 =========================
 
-ACL list specifies which remotes are allowed to send the server a specific
+An ACL list specifies which remotes are allowed to send the server a specific
 request. A remote can be a single IP address or a network subnet. Also a TSIG
-key can be specified::
+key can be assigned::
 
     acl:
       - id: address_rule
@@ -110,7 +110,7 @@ Slave zone
 ==========
 
 Knot DNS doesn't strictly differ between master and slave zones. The
-only requirement is to have :ref:`master<zone_master>` statement set for
+only requirement is to have a :ref:`master<zone_master>` statement set for
 the given zone. Also note that you need to explicitly allow incoming zone
 changed notifications via ``notify`` :ref:`acl_action` through zone's
 :ref:`zone_acl` list, otherwise the update will be rejected by the server.
@@ -184,7 +184,7 @@ transfers. An ACL rule consists of a single address or a network subnet::
         notify: slave1
         acl: [slave1_acl, others_acl]
 
-Optionally a TSIG key can be specified::
+Optionally, a TSIG key can be specified::
 
     key:
       - id: slave1_key
@@ -210,11 +210,11 @@ Dynamic updates
 ===============
 
 Dynamic updates for the zone are allowed via proper ACL rule with the
-``update`` action. If the zone is configured as a slave and DNS update
+``update`` action. If the zone is configured as a slave and a DNS update
 message is accepted, the server forwards the message to its primary master.
 The master's response is then forwarded back to the originator.
 
-However, if the zone is configured as master, the update is accepted and
+However, if the zone is configured as a master, the update is accepted and
 processed::
 
     acl:
@@ -264,7 +264,7 @@ can operate in two modes:
    operator.
 
 2. :ref:`Automatic key management <dnssec-automatic-key-management>`.
-   In this mode, the server also maintains singing keys. New keys are generated
+   In this mode, the server also maintains signing keys. New keys are generated
    according to assigned policy and are rolled automatically in a safe manner.
    No zone operator intervention is necessary.
 
@@ -301,7 +301,7 @@ DNSSEC KASP database
 --------------------
 
 The configuration for DNSSEC is stored in a :abbr:`KASP (Key And Signature
-Policy)` database. The database is simply a directory on the file-system
+Policy)` database. The database is simply a directory in the file-system
 containing files in the JSON format. The database contains
 
 - definitions of signing policies;
@@ -398,7 +398,7 @@ Create a zone entry for the zone *myzone.test* without a policy:
 
   $ keymgr zone add myzone.test
 
-Generate a signing keys for the zone. Let's use the Single-Type Signing scheme
+Generate signing keys for the zone. Let's use the Single-Type Signing scheme
 with two algorithms (this scheme is not supported in automatic key management).
 Run:
 
@@ -507,7 +507,7 @@ The signing process consists of the following steps:
    manually will be removed. To add an extra DNSKEY record into the set, the
    key must be imported into the KASP database (possibly deactivated).
 #. Removing expired signatures, invalid signatures, signatures expiring
-   in a short time, and signatures issued by unknown key.
+   in a short time, and signatures issued by an unknown key.
 #. Creating missing signatures. Unless the Single-Type Signing Scheme
    is used, DNSKEY records in a zone apex are signed by KSK keys and
    all other records are signed by ZSK keys.
@@ -521,7 +521,7 @@ The signing is initiated on the following occasions:
 - Received DDNS update
 - Forced zone resign issued with ``knotc signzone``
 
-On forced zone resign, all signatures in the zone are dropped and recreated.
+On a forced zone resign, all signatures in the zone are dropped and recreated.
 
 The ``knotc zonestatus`` command can be used to see when the next scheduled
 DNSSEC resign will happen.

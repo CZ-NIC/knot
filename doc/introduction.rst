@@ -8,9 +8,9 @@ Introduction
 What is Knot DNS
 ================
 
-Knot DNS is a high-performance open source DNS server. It
-implements only authoritative domain name service. Knot DNS
-is best suited for use on TLD domains but can reliably serve
+Knot DNS is a high-performance open-source DNS server. It
+implements only the authoritative domain name service. Knot DNS
+is best suited for use on TLD domains but it can reliably serve
 any other zones as well.
 
 Knot DNS benefits from its multi-threaded and mostly lock-free
@@ -24,7 +24,7 @@ DNS features:
 
 * IN class and partially CH class
 * TCP/UDP protocols
-* AXFR, IXFR - master, slave
+* AXFR, IXFR – master, slave
 * TSIG
 * EDNS0
 * DNSSEC, including NSEC3
@@ -58,6 +58,6 @@ Knot DNS users mailing list: `knot-dns-users@lists.nic.cz <mailto:knot-dns-users
 License
 =======
 
-Knot DNS is licensed under `GNU General Public License <https://www.gnu.org/copyleft/gpl.html>`_
+Knot DNS is licensed under the `GNU General Public License <https://www.gnu.org/copyleft/gpl.html>`_
 version 3 or (at your option) any later version. The full text of the license
-is available in the ``COPYING`` file distributed with the source code.
+is available in the ``COPYING`` file distributed with source code.
