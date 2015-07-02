@@ -532,11 +532,11 @@ Limitations
 -----------
 
 The current DNSSEC implementation in Knot DNS has a bunch of limitations. Most
-of the limitations will be hopefully removed in a near future.
+of the limitations will be hopefully removed in the near future.
 
 - Automatic key management:
 
-  - Only one DNSSEC algorithm can be used at a time for one zone.
+  - Only one DNSSEC algorithm can be used per zone.
   - Single-Type Signing scheme is not supported.
   - ZSK rollover always uses key pre-publish method (actually a feature).
   - KSK rollover is not implemented.
@@ -563,7 +563,7 @@ of the limitations will be hopefully removed in a near future.
 
 - Utilities:
 
-  - Legacy key import requires private key.
+  - Legacy key import requires a private key.
   - Legacy key export is not implemented.
   - DS record export is not implemented.
 
@@ -573,32 +573,32 @@ Query modules
 Knot DNS supports configurable query modules that can alter the way
 queries are processed. The concept is quite simple -- each query
 requires a finite number of steps to be resolved. We call this set of
-steps a query plan, an abstraction that groups these steps into
+steps a *query plan*, an abstraction that groups these steps into
 several stages.
 
-* Before query processing
+* Before-query processing
 * Answer, Authority, Additional records packet sections processing
-* After query processing
+* After-query processing
 
-For example, processing an Internet zone query needs to find an
+For example, processing an Internet-zone query needs to find an
 answer. Then based on the previous state, it may also append an
 authority SOA or provide additional records. Each of these actions
-represents a 'processing step'. Now if a query module is loaded for a
-zone, it is provided with an implicit query plan, and it is allowed to
-extend it or even change it altogether.
+represents a 'processing step'. Now, if a query module is loaded for a
+zone, it is provided with an implicit query plan which can be extended 
+by the module or even changed altogether.
 
 Each module is configured in the corresponding module section and is
-identified for the subsequent usage. Then, the identifier is referenced
+identified for the subsequent usage. Then the identifier is referenced
 through :ref:`zone_module` option (in the form of ``module_name/module_id``)
 in the zone section or in the ``default`` template if it used for all queries.
 
-``dnstap`` - dnstap-enabled query logging
+``dnstap`` -- dnstap-enabled query logging
 -----------------------------------------
 
-Module for query and response logging based on dnstap_ library.
-You can capture either all or zone-specific queries and responses, usually
-you want to do the former. The configuration consists only from a
-:ref:`mod-dnstap_sink` path parameter, which can either be a file or
+A module for query and response logging based on dnstap_ library.
+You can capture either all or zone-specific queries and responses; usually
+you want to do the former. The configuration conprises only a
+:ref:`mod-dnstap_sink` path parameter, which can be either a file or
 a UNIX socket::
 
     mod-dnstap:
@@ -611,16 +611,16 @@ a UNIX socket::
 
 .. _dnstap: http://dnstap.info/
 
-``synth-record`` - Automatic forward/reverse records
+``synth-record`` -- Automatic forward/reverse records
 ----------------------------------------------------
 
 This module is able to synthesize either forward or reverse records for
-given prefix and subnet.
+a given prefix and subnet.
 
 Records are synthesized only if the query can't be satisfied from the zone.
 Both IPv4 and IPv6 are supported.
 
-*Note: long names are snipped for readability.*
+*Note: Long names are snipped for readability.*
 
 Automatic forward records
 -------------------------
@@ -652,7 +652,7 @@ Result:
    dynamic-2620-0000-0b61-0100... 400 IN AAAA 2620:0:b61:100::
 
 You can also have CNAME aliases to the dynamic records, which are going to be
-further resoluted:
+further resolved:
 
 .. code-block:: console
 
@@ -703,22 +703,22 @@ Limitations
   since the module is hooked in the query processing plan, it will be
   possible to do online signing in the future.
 
-``dnsproxy`` - Tiny DNS proxy
+``dnsproxy`` -- Tiny DNS proxy
 -----------------------------
 
 The module catches all unsatisfied queries and forwards them to the
-configured server for resolution, i.e. a tiny DNS proxy. This can be useful
-for several things:
+indicated server for resolution, i.e. a tiny DNS proxy. There are several 
+uses of this feature:
 
 * A substitute public-facing server in front of the real one
 * Local zones (poor man's "views"), rest is forwarded to the public-facing server
 * etc.
 
-*Note: The module does not alter the query/response as the resolver would do,
-also the original transport protocol is kept.*
+*Note: The module does not alter the query/response as the resolver would,
+and the original transport protocol is kept as well.*
 
-The configuration is straightforward and just accepts a single IP address
-(either IPv4 or IPv6)::
+The configuration is straightforward and just a single IP address
+(either IPv4 or IPv6) is required::
 
    mod-dnsproxy:
      - id: default
@@ -731,20 +731,20 @@ The configuration is straightforward and just accepts a single IP address
    zone:
      - domain: local.zone
 
-Now when the clients query for anything in the ``local.zone``, it will be
-answered locally. Rest of the requests will be forwarded to the specified
-server (``10.0.1.1`` in this case).
+When clients query for anything in the ``local.zone``, they will be
+responded to locally. The rest of the requests will be forwarded to the 
+specified server (``10.0.1.1`` in this case).
 
-``rosedb`` - Static resource records
+``rosedb`` -- Static resource records
 ------------------------------------
 
 The module provides a mean to override responses for certain queries before
-the record is searched in the available zones. The modules comes with a tool
-``rosedb_tool`` to manipulate with the database of static records.
+the record is searched in the available zones. The module comes with the 
+``rosedb_tool`` tool used to manipulate the database of static records.
 Neither the tool nor the module are enabled by default, recompile with
-the configure flag ``--enable-rosedb`` to enable them.
+the ``--enable-rosedb`` configuration flag to enable them.
 
-For example, suppose we have a database of following records:
+For example, let's suppose we have a database of following records:
 
 .. code-block:: none
 
@@ -752,7 +752,7 @@ For example, suppose we have a database of following records:
    www.myrecord.com.  3600 IN A 127.0.0.2
    ipv6.myrecord.com. 3600 IN AAAA ::1
 
-And we query the nameserver with following:
+And we query the nameserver with the following:
 
 .. code-block:: console
 
@@ -767,12 +767,12 @@ And we query the nameserver with following:
    $ kdig IN AAAA ipv6.myrecord.com
      ... returns NOERROR, ::1
 
-*Note: An entry in the database matches anything at or below it,
-i.e. 'myrecord.com' matches 'a.a.myrecord.com' as well.
-This can be exploited to create a catch-all entries.*
+*Note: An entry in the database matches anything at the same or a lower domain 
+level, i.e. 'myrecord.com' matches 'a.a.myrecord.com' as well.
+This can be utilized to create catch-all entries.*
 
-You can also add an authority information for the entries, provided you create
-a SOA + NS records for a name, like so:
+You can also add authority information for the entries, provided you create
+SOA + NS records for a name, like so:
 
 .. code-block:: none
 
@@ -786,16 +786,16 @@ In this case, the responses will:
 
 1. Be authoritative (AA flag set)
 2. Provide an authority section (SOA + NS)
-3. NXDOMAIN if the name is found *(i.e. the 'IN AAAA myrecord.com' from
-   the example)*, but not the RR type *(this is to allow synthesis of negative
-   responses)*
+3. Be NXDOMAIN if the name is found *(i.e. the 'IN AAAA myrecord.com' from
+   the example)*, but not the RR type *(this is to allow the synthesis of 
+   negative responses)*
 
 *Note: The SOA record applies only to the 'myrecord.com.', not to any other
-record (even below it). From this point of view, all records in the database
-are unrelated and not hierarchical. The reasoning is to provide a subtree
-isolation for each entry.*
+record (not even those of its subdomains). From this point of view, all records
+in the database are unrelated and not hierarchical. The idea is to provide 
+subtree isolation for each entry.*
 
-In addition the module is able to log matching queries via remote syslog if
+In addition, the module is able to log matching queries via remote syslog if
 you specify a syslog address endpoint and an optional string code.
 
 Here is an example on how to use the module:
@@ -805,15 +805,18 @@ Here is an example on how to use the module:
   .. code-block:: console
 
    $ mkdir /tmp/static_rrdb
-   $ rosedb_tool /tmp/static_rrdb add myrecord.com. A 3600 "127.0.0.1" "-" "-" # No logging
-   $ rosedb_tool /tmp/static_rrdb add www.myrecord.com. A 3600 "127.0.0.1" "www_query" "10.0.0.1" # Syslog @ 10.0.0.1
-   $ rosedb_tool /tmp/static_rrdb add ipv6.myrecord.com. AAAA 3600 "::1" "ipv6_query" "10.0.0.1" # Syslog @ 10.0.0.1
+   $ rosedb_tool /tmp/static_rrdb add myrecord.com. A 3600 "127.0.0.1" "-" "-" 
+       # No logging
+   $ rosedb_tool /tmp/static_rrdb add www.myrecord.com. A 3600 "127.0.0.1" \
+       "www_query" "10.0.0.1" # Syslog @ 10.0.0.1
+   $ rosedb_tool /tmp/static_rrdb add ipv6.myrecord.com. AAAA 3600 "::1" \
+       "ipv6_query" "10.0.0.1" # Syslog @ 10.0.0.1
    $ rosedb_tool /tmp/static_rrdb list # Verify
    www.myrecord.com.       A RDATA=10B     www_query       10.0.0.1
    ipv6.myrecord.com.      AAAA RDATA=22B  ipv6_query      10.0.0.1
    myrecord.com.           A RDATA=10B     -               -
 
-  *Note: the database may be modified while the server is running later on.*
+  *Note: The database may be modified later on while the server is running.*
 
 * Configure the query module::
 
@@ -825,7 +828,7 @@ Here is an example on how to use the module:
      - id: default
        module: mod-rosedb/default
 
-  *Note: The module accepts just one parameter - path to the directory where
+  *Note: The module accepts just one parameter -- the path to the directory where
   the database will be stored.*
 
 * Start the server:
