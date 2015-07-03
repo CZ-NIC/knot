@@ -11,8 +11,8 @@ Synopsis
 Description
 -----------
 
-Parameters
-..........
+Options
+.......
 
 -c <FILE>, --config <FILE>
                Use textual configuration file (default is :file:`@config_dir@/knot.conf`).
