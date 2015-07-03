@@ -11,16 +11,16 @@ Synopsis
 Description
 -----------
 
-The utility generates NSEC3 hash for given domain name and parameters of NSEC3 hash.
+This utility generates a NSEC3 hash for a given domain name and parameters of NSEC3 hash.
 
 Parameters
 ..........
 
 *salt*
-  Specifies binary salt encoded as a hexadecimal string.
+  Specifies a binary salt encoded as a hexadecimal string.
 
 *algorithm*
-  Specifies hashing algorithm number. Currently the only supported algorithm is SHA-1 (number 1).
+  Specifies a hashing algorithm by number. Currently, the only supported algorithm is SHA-1 (number 1).
 
 *iterations*
   Specifies the number of additional iterations of the hashing algorithm.
@@ -44,6 +44,6 @@ Examples
 See Also
 --------
 
-:rfc:`5155` - DNS Security (DNSSEC) Hashed Authenticated Denial of Existence.
+:rfc:`5155` -- DNS Security (DNSSEC) Hashed Authenticated Denial of Existence.
 
 :manpage:`knotc(8)`, :manpage:`knotd(8)`.

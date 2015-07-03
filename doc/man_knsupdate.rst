@@ -29,7 +29,7 @@ Options
   Print help and usage.
 
 **-k** *keyfile*
-  Use TSIG key stored in a file *keyfile* to authenticate the request. The
+  Use the TSIG key stored in a file *keyfile* to authenticate the request. The
   file should contain the key in the same format, which is accepted by the
   **-y** option.
 
@@ -45,10 +45,10 @@ Options
   The default is 12. If set to zero, the timeout is infinite.
 
 **-v**, **--version**
-  Print program version.
+  Print the program version.
 
 **-y** [*alg*:]\ *name*:*key*
-  Use TSIG key with a name *name* to authenticate the request. The *alg*
+  Use the TSIG key with a name *name* to authenticate the request. The *alg*
   part specifies the algorithm (the default is hmac-md5) and *key* specifies
   the shared secret encoded in Base64.
 
@@ -56,10 +56,10 @@ Commands
 ........
 
 **server** *name* [*port*]
-  Specifies a receiving server of the dynamic update message. Parameter *name*
+  Specifies a receiving server of the dynamic update message. The *name* parameter
   can be either a host name or an IP address. If the *port* is not specified,
   the default port is used. The default port value can be controlled using
-  program option **-p**.
+  the **-p** program option.
 
 **local** *address* [*port*]
   Specifies outgoing *address* and *port*. If no local is specified, the
@@ -83,7 +83,7 @@ Commands
   is 0.
 
 **key** [*alg*:]\ *name* *key*
-  Specifies TSIG *key* named *name* to authenticate the request. An optional
+  Specifies the TSIG *key* named *name* to authenticate the request. An optional
   *alg* algorithm can be specified. This command has the same effect as
   the program option **-y**.
 
@@ -121,7 +121,7 @@ Commands
   Displays the last answer from the server.
 
 **debug**
-  Enable debugging. This command has the same meaning as program option **-d**.
+  Enable debugging. This command has the same meaning as the **-d** program option.
 
 **quit**
   Quit the program.
@@ -129,7 +129,7 @@ Commands
 Notes
 -----
 
-Options **-k** and **-y** cannot be used mutually.
+Options **-k** and **-y** can not be used simultaneously.
 
 Missing features with regard to ISC nsupdate:
 
