@@ -580,7 +580,7 @@ several stages.
 * Answer, Authority, Additional records packet sections processing
 * After-query processing
 
-For example, processing an Internet-zone query needs to find an
+For example, processing an Internet-class query needs to find an
 answer. Then based on the previous state, it may also append an
 authority SOA or provide additional records. Each of these actions
 represents a 'processing step'. Now, if a query module is loaded for a
@@ -593,7 +593,7 @@ through :ref:`zone_module` option (in the form of ``module_name/module_id``)
 in the zone section or in the ``default`` template if it used for all queries.
 
 ``dnstap`` -- dnstap-enabled query logging
------------------------------------------
+------------------------------------------
 
 A module for query and response logging based on dnstap_ library.
 You can capture either all or zone-specific queries and responses; usually
@@ -612,7 +612,7 @@ a UNIX socket::
 .. _dnstap: http://dnstap.info/
 
 ``synth-record`` -- Automatic forward/reverse records
-----------------------------------------------------
+-----------------------------------------------------
 
 This module is able to synthesize either forward or reverse records for
 a given prefix and subnet.
@@ -704,7 +704,7 @@ Limitations
   possible to do online signing in the future.
 
 ``dnsproxy`` -- Tiny DNS proxy
------------------------------
+------------------------------
 
 The module catches all unsatisfied queries and forwards them to the
 indicated server for resolution, i.e. a tiny DNS proxy. There are several 
@@ -736,7 +736,7 @@ responded to locally. The rest of the requests will be forwarded to the
 specified server (``10.0.1.1`` in this case).
 
 ``rosedb`` -- Static resource records
-------------------------------------
+-------------------------------------
 
 The module provides a mean to override responses for certain queries before
 the record is searched in the available zones. The module comes with the 

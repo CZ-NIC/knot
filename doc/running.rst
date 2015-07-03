@@ -1,9 +1,9 @@
 .. highlight:: console
 .. _Running:
 
-*******
+*********
 Operation
-*******
+*********
 
 The Knot DNS server part ``knotd`` can run either in the foreground, or in the background
 using the ``-d`` option. When run in the foreground, it doesn't create a PID file.
@@ -51,7 +51,7 @@ It is recommended to perform these actions without server running.
 .. _Running a slave server:
 
 Slave mode
-======================
+==========
 
 Running the server as a slave is very straightforward as you usually
 bootstrap zones over AXFR and thus avoid any manual zone operations.
@@ -62,7 +62,7 @@ immediately but after the :ref:`zone_zonefile-sync` period elapses.
 .. _Running a master server:
 
 Master mode
-=======================
+===========
 
 If you just want to check the zone files before starting, you
 can use the ``knotc checkzone`` action::
@@ -83,7 +83,7 @@ or higher during transfers::
 .. _Controlling running daemon:
 
 Daemon controls
-==========================
+===============
 
 Knot DNS was designed to allow server reconfiguration on-the-fly
 without interrupting its operation. Thus it is possible to change

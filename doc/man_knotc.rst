@@ -93,7 +93,7 @@ Examples
 --------
 
 Setup a key file for remote control
-..................................
+...................................
 
 1. Generate a key::
 

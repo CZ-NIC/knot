@@ -11,7 +11,7 @@ the ``warning`` message severity may help you to identify some problems.
 ..  _Submitting a bugreport:
 
 Reporting bugs
-======================
+==============
 
 If you are unable to solve the problem by yourself, you can submit a
 bugreport to the Knot DNS team. *Do NOT use the public mailing list 
