@@ -1,7 +1,7 @@
 .. highlight:: console
 
-knsupdate -- Dynamic DNS update utility
-=======================================
+knsupdate – Dynamic DNS update utility
+======================================
 
 Synopsis
 --------

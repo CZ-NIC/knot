@@ -1,7 +1,7 @@
 .. highlight:: console
 
-knsec3hash -- NSEC hash computation utility
-===========================================
+knsec3hash – NSEC hash computation utility
+==========================================
 
 Synopsis
 --------
@@ -44,6 +44,6 @@ Examples
 See Also
 --------
 
-:rfc:`5155` -- DNS Security (DNSSEC) Hashed Authenticated Denial of Existence.
+:rfc:`5155` – DNS Security (DNSSEC) Hashed Authenticated Denial of Existence.
 
 :manpage:`knotc(8)`, :manpage:`knotd(8)`.

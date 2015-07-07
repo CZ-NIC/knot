@@ -1,7 +1,7 @@
 .. highlight:: console
 
-keymgr -- DNSSEC key management utility
-=======================================
+keymgr – DNSSEC key management utility
+======================================
 
 Synopsis
 --------

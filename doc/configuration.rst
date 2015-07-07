@@ -321,7 +321,7 @@ To initialize the database, run:
   Make sure to set the KASP database permissions correctly. For manual key
   management, the database must be **readable** by the server process. For
   automatic key management, it must be **writeable**. The database also
-  contains private key material -- don't set the permissions too loose.
+  contains private key material – don't set the permissions too loose.
 
 .. _dnssec-automatic-key-management:
 
@@ -571,7 +571,7 @@ Query modules
 =============
 
 Knot DNS supports configurable query modules that can alter the way
-queries are processed. The concept is quite simple -- each query
+queries are processed. The concept is quite simple – each query
 requires a finite number of steps to be resolved. We call this set of
 steps a *query plan*, an abstraction that groups these steps into
 several stages.
@@ -592,8 +592,8 @@ identified for the subsequent usage. Then the identifier is referenced
 through :ref:`zone_module` option (in the form of ``module_name/module_id``)
 in the zone section or in the ``default`` template if it used for all queries.
 
-``dnstap`` -- dnstap-enabled query logging
-------------------------------------------
+``dnstap`` – dnstap-enabled query logging
+-----------------------------------------
 
 A module for query and response logging based on dnstap_ library.
 You can capture either all or zone-specific queries and responses; usually
@@ -611,8 +611,8 @@ a UNIX socket::
 
 .. _dnstap: http://dnstap.info/
 
-``synth-record`` -- Automatic forward/reverse records
------------------------------------------------------
+``synth-record`` – Automatic forward/reverse records
+----------------------------------------------------
 
 This module is able to synthesize either forward or reverse records for
 a given prefix and subnet.
@@ -702,8 +702,8 @@ Limitations
   since the module is hooked in the query processing plan, it will be
   possible to do online signing in the future.
 
-``dnsproxy`` -- Tiny DNS proxy
-------------------------------
+``dnsproxy`` – Tiny DNS proxy
+-----------------------------
 
 The module catches all unsatisfied queries and forwards them to the
 indicated server for resolution, i.e. a tiny DNS proxy. There are several 
@@ -734,8 +734,8 @@ When clients query for anything in the ``local.zone``, they will be
 responded to locally. The rest of the requests will be forwarded to the 
 specified server (``10.0.1.1`` in this case).
 
-``rosedb`` -- Static resource records
--------------------------------------
+``rosedb`` – Static resource records
+------------------------------------
 
 The module provides a mean to override responses for certain queries before
 the record is searched in the available zones. The module comes with the 
@@ -830,7 +830,7 @@ Here is an example on how to use the module:
      - id: default
        module: mod-rosedb/default
 
-  *Note: The module accepts just one parameter -- the path to the directory where
+  *Note: The module accepts just one parameter – the path to the directory where
   the database will be stored.*
 
 * Start the server:

@@ -1,7 +1,7 @@
 .. highlight:: console
 
-knotc -- Knot DNS control utility
-=================================
+knotc – Knot DNS control utility
+================================
 
 Synopsis
 --------

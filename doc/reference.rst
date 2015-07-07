@@ -16,20 +16,20 @@ that not all of the features are supported.
 For the description of configuration items, we have to declare a meaning of 
 the following symbols:
 
-- *INT* -- Integer
-- *STR* -- Textual string
-- *HEXSTR* -- Hexadecimal string (with ``0x`` prefix)
-- *BOOL* -- Boolean value (``on``/``off`` or ``true``/``false``)
-- *TIME* -- Number of seconds, an integer with possible time multiplier suffix
+- *INT* – Integer
+- *STR* – Textual string
+- *HEXSTR* – Hexadecimal string (with ``0x`` prefix)
+- *BOOL* – Boolean value (``on``/``off`` or ``true``/``false``)
+- *TIME* – Number of seconds, an integer with possible time multiplier suffix
   (``s`` ~ 1, ``m`` ~ 60, ``h`` ~ 3600 or ``d`` ~ 24 * 3600)
-- *SIZE* -- Number of bytes, an integer with possible size multiplier suffix
+- *SIZE* – Number of bytes, an integer with possible size multiplier suffix
   (``B`` ~ 1, ``K`` ~ 1024, ``M`` ~ 1024^2 or ``G`` ~ 1024^3)
-- *BASE64* -- Base64 encoded string
-- *ADDR* -- IPv4 or IPv6 address
-- *DNAME* -- Domain name
-- ... -- Multi-valued item, order of the values is preserved
-- [ ] -- Optional value
-- \| -- Choice
+- *BASE64* – Base64 encoded string
+- *ADDR* – IPv4 or IPv6 address
+- *DNAME* – Domain name
+- ... – Multi-valued item, order of the values is preserved
+- [ ] – Optional value
+- \| – Choice
 
 There are 8 main sections (``server``, ``key``, ``acl``, ``control``,
 ``remote``, ``template``, ``zone`` and ``log``) and module sections with the 
@@ -402,10 +402,10 @@ An ordered list of allowed actions.
 
 Possible values:
 
-- ``transfer`` -- Allow zone transfer
-- ``notify`` -- Allow incoming notify
-- ``update`` -- Allow zone updates
-- ``control`` -- Allow remote control
+- ``transfer`` – Allow zone transfer
+- ``notify`` – Allow incoming notify
+- ``update`` – Allow zone updates
+- ``control`` – Allow remote control
 
 Default: empty
 
@@ -590,11 +590,11 @@ file
 A path to the zone file. Non absolute path is relative to
 :ref:`storage<zone_storage>`. It is also possible to use the following formatters:
 
-- ``%s`` -- means the current zone name in the textual representation (beware
+- ``%s`` – means the current zone name in the textual representation (beware
   of special characters which are escaped or encoded in the \\DDD form where
   DDD is corresponding decimal ASCII code). The zone name doesn't include the
   terminating dot, except for the root zone.
-- ``%%`` -- means the ``%`` character
+- ``%%`` – means the ``%`` character
 
 Default: :ref:`storage<zone_storage>`/``%s``\ .zone
 
@@ -770,8 +770,8 @@ no change is made.
 
 Possible values:
 
-- ``increment`` -- The serial is incremented according to serial number arithmetic
-- ``unixtime`` -- The serial is set to the current unix time
+- ``increment`` – The serial is incremented according to serial number arithmetic
+- ``unixtime`` – The serial is set to the current unix time
 
 *Caution:* If your serial was in other than unix time format, be careful
 with the transition to unix time.  It may happen that the new serial will
@@ -801,17 +801,17 @@ file.
 
 There are 6 logging severity levels:
 
-- ``critical`` -- Non-recoverable error resulting in server shutdown
+- ``critical`` – Non-recoverable error resulting in server shutdown
 
-- ``error`` -- Recoverable error, action should be taken
+- ``error`` – Recoverable error, action should be taken
 
-- ``warning`` -- Warning that might require user action
+- ``warning`` – Warning that might require user action
 
-- ``notice`` -- Server notice or hint
+- ``notice`` – Server notice or hint
 
-- ``info`` -- Informational message
+- ``info`` – Informational message
 
-- ``debug`` -- Debug messages (must be turned on at compile time)
+- ``debug`` – Debug messages (must be turned on at compile time)
 
 In the case of missing log section, ``warning`` or more serious messages
 will be logged to both standard error output and syslog. The ``info`` and
@@ -834,10 +834,10 @@ A logging output.
 
 Possible values:
 
-- ``stdout`` -- Standard output
-- ``stderr`` -- Standard error output
-- ``syslog`` -- Syslog
-- *file\_name* -- File
+- ``stdout`` – Standard output
+- ``stderr`` – Standard error output
+- ``syslog`` – Syslog
+- *file\_name* – File
 
 .. _log_server:
 
@@ -934,8 +934,8 @@ The type of generated records.
 
 Possible values:
 
-- ``forward`` -- Forward records
-- ``reverse`` -- Reverse records
+- ``forward`` – Forward records
+- ``reverse`` – Reverse records
 
 Default: empty
 

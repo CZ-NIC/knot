@@ -39,31 +39,31 @@ For the description of configuration items, we have to declare a meaning of
 the following symbols:
 .INDENT 0.0
 .IP \(bu 2
-\fIINT\fP \-\- Integer
+\fIINT\fP – Integer
 .IP \(bu 2
-\fISTR\fP \-\- Textual string
+\fISTR\fP – Textual string
 .IP \(bu 2
-\fIHEXSTR\fP \-\- Hexadecimal string (with \fB0x\fP prefix)
+\fIHEXSTR\fP – Hexadecimal string (with \fB0x\fP prefix)
 .IP \(bu 2
-\fIBOOL\fP \-\- Boolean value (\fBon\fP/\fBoff\fP or \fBtrue\fP/\fBfalse\fP)
+\fIBOOL\fP – Boolean value (\fBon\fP/\fBoff\fP or \fBtrue\fP/\fBfalse\fP)
 .IP \(bu 2
-\fITIME\fP \-\- Number of seconds, an integer with possible time multiplier suffix
+\fITIME\fP – Number of seconds, an integer with possible time multiplier suffix
 (\fBs\fP ~ 1, \fBm\fP ~ 60, \fBh\fP ~ 3600 or \fBd\fP ~ 24 * 3600)
 .IP \(bu 2
-\fISIZE\fP \-\- Number of bytes, an integer with possible size multiplier suffix
+\fISIZE\fP – Number of bytes, an integer with possible size multiplier suffix
 (\fBB\fP ~ 1, \fBK\fP ~ 1024, \fBM\fP ~ 1024^2 or \fBG\fP ~ 1024^3)
 .IP \(bu 2
-\fIBASE64\fP \-\- Base64 encoded string
+\fIBASE64\fP – Base64 encoded string
 .IP \(bu 2
-\fIADDR\fP \-\- IPv4 or IPv6 address
+\fIADDR\fP – IPv4 or IPv6 address
 .IP \(bu 2
-\fIDNAME\fP \-\- Domain name
+\fIDNAME\fP – Domain name
 .IP \(bu 2
-\&... \-\- Multi\-valued item, order of the values is preserved
+\&... – Multi\-valued item, order of the values is preserved
 .IP \(bu 2
-[ ] \-\- Optional value
+[ ] – Optional value
 .IP \(bu 2
-| \-\- Choice
+| – Choice
 .UNINDENT
 .sp
 There are 8 main sections (\fBserver\fP, \fBkey\fP, \fBacl\fP, \fBcontrol\fP,
@@ -346,13 +346,13 @@ An ordered list of allowed actions.
 Possible values:
 .INDENT 0.0
 .IP \(bu 2
-\fBtransfer\fP \-\- Allow zone transfer
+\fBtransfer\fP – Allow zone transfer
 .IP \(bu 2
-\fBnotify\fP \-\- Allow incoming notify
+\fBnotify\fP – Allow incoming notify
 .IP \(bu 2
-\fBupdate\fP \-\- Allow zone updates
+\fBupdate\fP – Allow zone updates
 .IP \(bu 2
-\fBcontrol\fP \-\- Allow remote control
+\fBcontrol\fP – Allow remote control
 .UNINDENT
 .sp
 Default: empty
@@ -503,12 +503,12 @@ A path to the zone file. Non absolute path is relative to
 \fI\%storage\fP\&. It is also possible to use the following formatters:
 .INDENT 0.0
 .IP \(bu 2
-\fB%s\fP \-\- means the current zone name in the textual representation (beware
+\fB%s\fP – means the current zone name in the textual representation (beware
 of special characters which are escaped or encoded in the \eDDD form where
 DDD is corresponding decimal ASCII code). The zone name doesn\(aqt include the
 terminating dot, except for the root zone.
 .IP \(bu 2
-\fB%%\fP \-\- means the \fB%\fP character
+\fB%%\fP – means the \fB%\fP character
 .UNINDENT
 .sp
 Default: \fI\%storage\fP/\fB%s\fP\&.zone
@@ -656,9 +656,9 @@ no change is made.
 Possible values:
 .INDENT 0.0
 .IP \(bu 2
-\fBincrement\fP \-\- The serial is incremented according to serial number arithmetic
+\fBincrement\fP – The serial is incremented according to serial number arithmetic
 .IP \(bu 2
-\fBunixtime\fP \-\- The serial is set to the current unix time
+\fBunixtime\fP – The serial is set to the current unix time
 .UNINDENT
 .sp
 \fICaution:\fP If your serial was in other than unix time format, be careful
@@ -682,17 +682,17 @@ file.
 There are 6 logging severity levels:
 .INDENT 0.0
 .IP \(bu 2
-\fBcritical\fP \-\- Non\-recoverable error resulting in server shutdown
+\fBcritical\fP – Non\-recoverable error resulting in server shutdown
 .IP \(bu 2
-\fBerror\fP \-\- Recoverable error, action should be taken
+\fBerror\fP – Recoverable error, action should be taken
 .IP \(bu 2
-\fBwarning\fP \-\- Warning that might require user action
+\fBwarning\fP – Warning that might require user action
 .IP \(bu 2
-\fBnotice\fP \-\- Server notice or hint
+\fBnotice\fP – Server notice or hint
 .IP \(bu 2
-\fBinfo\fP \-\- Informational message
+\fBinfo\fP – Informational message
 .IP \(bu 2
-\fBdebug\fP \-\- Debug messages (must be turned on at compile time)
+\fBdebug\fP – Debug messages (must be turned on at compile time)
 .UNINDENT
 .sp
 In the case of missing log section, \fBwarning\fP or more serious messages
@@ -719,13 +719,13 @@ A logging output.
 Possible values:
 .INDENT 0.0
 .IP \(bu 2
-\fBstdout\fP \-\- Standard output
+\fBstdout\fP – Standard output
 .IP \(bu 2
-\fBstderr\fP \-\- Standard error output
+\fBstderr\fP – Standard error output
 .IP \(bu 2
-\fBsyslog\fP \-\- Syslog
+\fBsyslog\fP – Syslog
 .IP \(bu 2
-\fIfile_name\fP \-\- File
+\fIfile_name\fP – File
 .UNINDENT
 .SS server
 .sp
@@ -800,9 +800,9 @@ The type of generated records.
 Possible values:
 .INDENT 0.0
 .IP \(bu 2
-\fBforward\fP \-\- Forward records
+\fBforward\fP – Forward records
 .IP \(bu 2
-\fBreverse\fP \-\- Reverse records
+\fBreverse\fP – Reverse records
 .UNINDENT
 .sp
 Default: empty
