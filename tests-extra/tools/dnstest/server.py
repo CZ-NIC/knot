@@ -110,6 +110,7 @@ class Server(object):
         self.name = None
         self.fout = None
         self.ferr = None
+        self.valgrind_log = None
         self.conffile = None
 
     def _check_socket(self, proto, port):
@@ -252,7 +253,7 @@ class Server(object):
         errcount = 0
 
         try:
-            f = open(self.ferr, "r")
+            f = open(self.valgrind_log, "r")
         except:
             detail_log("No err log file")
             detail_log(SEP)

@@ -127,6 +127,7 @@ class Test(object):
         srv.dir = self.out_dir + "/" + srv.name
         srv.fout = srv.dir + "/stdout"
         srv.ferr = srv.dir + "/stderr"
+        srv.valgrind_log = srv.dir + "/valgrind"
         srv.confile = srv.dir + "/%s.conf" % srv.name
 
         prepare_dir(srv.dir)
