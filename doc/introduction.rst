@@ -24,7 +24,7 @@ DNS features:
 
 * IN class and partially CH class
 * TCP/UDP protocols
-* AXFR, IXFR – master, slave
+* AXFR, IXFR -- master, slave
 * TSIG
 * EDNS0
 * DNSSEC, including NSEC3
