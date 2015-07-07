@@ -39,18 +39,18 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .sp
 The \fBkeymgr\fP utility serves for DNSSEC keys and KASP (Key And
 Signature Policy) management in Knot DNS server. The configuration is stored
-in a so called KASP database. The database is simply a directory on the
+in a so called KASP database. The database is simply a directory in the
 file\-system containing files in the JSON format.
 .sp
-The operations are organized into commands and subcommands. The command
+The operations are organized into commands and subcommands. A command
 specifies the operation to be performed with the KASP database. It is usually
-followed by named arguments. A special command \fBhelp\fP can be used to list
-available subcommands at that position. Listing of available command arguments
+followed by named arguments. The special command \fBhelp\fP can be used to list
+available subcommands in that area. The listing of available command arguments
 is not supported yet.
 .sp
-The command and argument names are parsed in a smart way. Only a beginning
-of the name can be specified and will be recognized. The specified part must
-be unique amongst the other names.
+Command and argument names are parsed in a smart way. Only a beginning
+of a name can be entered and it will be recognized. The specified part of
+a name must be unique amongst the other names.
 .SS Global options
 .INDENT 0.0
 .TP
@@ -69,7 +69,7 @@ Operations with zones in the database. A zone holds assigned signing
 configuration and signing metadata.
 .TP
 \fBpolicy\fP ...
-Operations with KASP policies. The policy holds parameters that define the
+Operations with KASP policies. A policy holds parameters that define the
 way how a zone is signed.
 .TP
 \fBkeystore\fP ...
@@ -129,7 +129,7 @@ Size of the key in bits.
 Set the DNSKEY SEP (Secure Entry Point) flag.
 .TP
 \fBpublish\fP \fItime\fP
-The time the key is publish as a DNSKEY record.
+The time the key is published as a DNSKEY record.
 .TP
 \fBactive\fP \fItime\fP
 The time the key is started to be used for signing.
@@ -207,7 +207,7 @@ SOA Minimum TTL field.
 Max TTL in the zone.
 \fBNote\fP, Knot DNS will determine the value automatically in the future.
 .TP
-\fBdelay\fP \fIsecones\fP
+\fBdelay\fP \fIseconds\fP
 Zone signing and data propagation delay. The value is added for safety to
 timing of all rollover steps.
 .UNINDENT
@@ -225,7 +225,7 @@ List private keys in the key store.
 .SH EXAMPLES
 .INDENT 0.0
 .IP 1. 3
-Initialize new KASP database, add a policy named \fIdefault\fP with default
+Initialize a new KASP database, add a policy named \fIdefault\fP with default
 parameters, and add a zone \fIexample.com\fP\&. The zone will use the created
 policy:
 .INDENT 3.0
@@ -260,7 +260,8 @@ existing zone:
 .sp
 .nf
 .ft C
-$ keymgr policy add lab rrsig\-lifetime 300 rrsig\-refresh 150 zsk\-lifetime 600 delay 10
+$ keymgr policy add lab rrsig\-lifetime 300 rrsig\-refresh 150 zsk\-lifetime 600 \e
+  delay 10
 $ keymgr zone set example.com policy lab
 .ft P
 .fi

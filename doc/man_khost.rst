@@ -24,19 +24,19 @@ Parameters
 
 *server*
   Is a name or an address of the nameserver to send a query to.  The address
-  can be specified using [address]:port notation. If no server is specified
+  can be specified using [address]:port notation. If no server is specified, 
   the servers from :file:`/etc/resolv.conf` are used.
 
-If no arguments are provided, :program:`khost` prints short help.
+If no arguments are provided, :program:`khost` prints a short help.
 
 Options
 .......
 
 **-4**
-  Use IPv4 protocol only.
+  Use the IPv4 protocol only.
 
 **-6**
-  Use IPv6 protocol only.
+  Use the IPv6 protocol only.
 
 **-a**
   Send ANY query with verbose mode.
@@ -54,22 +54,22 @@ Options
   Stop querying the next nameserver if SERVFAIL response is received
 
 **-T**
-  Use TCP protocol.
+  Use the TCP protocol.
 
 **-v**
   Enable verbose output.
 
 **-V**, **--version**
-  Print program version.
+  Print the program version.
 
 **-w**
   Wait forever for the reply.
 
 **-c** *class*
-  Set query class (e.g. CH, CLASS4). The default class is IN.
+  Set the query class (e.g. CH, CLASS4). The default class is IN.
 
 **-t** *type*
-  Set query type (e.g. NS, IXFR=12345, TYPE65535). The default is to send 3
+  Set the query type (e.g. NS, IXFR=12345, TYPE65535). The default is to send 3
   queries (A, AAAA and MX).
 
 **-R** *retries*
@@ -97,15 +97,15 @@ Differences with regard to ISC host:
 Examples
 --------
 
-1. Get A, AAAA and MX records for example.com::
+1. Get the A, AAAA and MX records for example.com::
 
      $ khost example.com
 
-2. Get reverse record for address 192.0.2.1::
+2. Get the reverse record for address 192.0.2.1::
 
      $ khost 192.0.2.1
 
-3. Perform verbose zone transfer for zone example.com::
+3. Perform a verbose zone transfer for zone example.com::
 
      $ khost -t AXFR -v example.com
 

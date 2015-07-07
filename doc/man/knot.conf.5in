@@ -32,55 +32,67 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 ..
 .SH DESCRIPTION
 .sp
-Configuration file for Knot DNS uses simplified YAML format. Simplified means
-that not all features are supported.
+Configuration files for Knot DNS use simplified YAML format. Simplified means
+that not all of the features are supported.
 .sp
-For the configuration items description, there are some symbols with the
-folowing meaning:
+For the description of configuration items, we have to declare a meaning of
+the following symbols:
 .INDENT 0.0
 .IP \(bu 2
-\fIINT\fP \- Integer
+\fIINT\fP \-\- Integer
 .IP \(bu 2
-\fISTR\fP \- Textual string
+\fISTR\fP \-\- Textual string
 .IP \(bu 2
-\fIHEXSTR\fP \- Hexadecimal string (with \fB0x\fP prefix)
+\fIHEXSTR\fP \-\- Hexadecimal string (with \fB0x\fP prefix)
 .IP \(bu 2
-\fIBOOL\fP \- Boolean value (\fBon\fP, \fBoff\fP, \fBtrue\fP or \fBfalse\fP)
+\fIBOOL\fP \-\- Boolean value (\fBon\fP/\fBoff\fP or \fBtrue\fP/\fBfalse\fP)
 .IP \(bu 2
-\fITIME\fP \- Number of seconds, integer with possible time mutliplier suffix
+\fITIME\fP \-\- Number of seconds, an integer with possible time multiplier suffix
 (\fBs\fP ~ 1, \fBm\fP ~ 60, \fBh\fP ~ 3600 or \fBd\fP ~ 24 * 3600)
 .IP \(bu 2
-\fISIZE\fP \- Number of bytes, integer with possible size multiplier suffix
+\fISIZE\fP \-\- Number of bytes, an integer with possible size multiplier suffix
 (\fBB\fP ~ 1, \fBK\fP ~ 1024, \fBM\fP ~ 1024^2 or \fBG\fP ~ 1024^3)
 .IP \(bu 2
-\fIBASE64\fP \- Base64 encoded string
+\fIBASE64\fP \-\- Base64 encoded string
 .IP \(bu 2
-\fIADDR\fP \- IPv4 or IPv6 address
+\fIADDR\fP \-\- IPv4 or IPv6 address
 .IP \(bu 2
-\fIDNAME\fP \- Domain name
+\fIDNAME\fP \-\- Domain name
 .IP \(bu 2
-\&... \- Multi\-valued item, order of the values is preserved
+\&... \-\- Multi\-valued item, order of the values is preserved
 .IP \(bu 2
-[ ] \- Optional value
+[ ] \-\- Optional value
 .IP \(bu 2
-| \- Choice
+| \-\- Choice
 .UNINDENT
 .sp
 There are 8 main sections (\fBserver\fP, \fBkey\fP, \fBacl\fP, \fBcontrol\fP,
-\fBremote\fP, \fBtemplate\fP, \fBzone\fP and \fBlog\fP) and module sections with
-\fBmod\-\fP prefix . Most of the sections (excluding \fBserver\fP and
+\fBremote\fP, \fBtemplate\fP, \fBzone\fP and \fBlog\fP) and module sections with the
+\fBmod\-\fP prefix. The most of the sections (excluding \fBserver\fP and
 \fBcontrol\fP) are sequences of settings blocks. Each settings block
 begins with a unique identifier, which can be used as a reference from other
 sections (such identifier must be defined in advance).
 .sp
-Multi\-valued item can be specified either as a YAML sequence [val1, val2, ...]
-or as more single\-valued items each on the extra line.
+A multi\-valued item can be specified either as a YAML sequence
+e.g. \fBaddress: [10.0.0.1, 10.0.0.2]\fP
+or as more single\-valued items each on an extra line, e.g.:
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+address: 10.0.0.1
+address: 10.0.0.2
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
 .sp
 If an item value contains spaces or other special characters, it is necessary
-to double quote such value with \fB"\fP \fB"\fP\&.
+to enclose such value within double quotes \fB"\fP \fB"\fP\&.
 .SH COMMENTS
 .sp
-A comment begins with a \fB#\fP character and is ignored during the processing.
+A comment begins with a \fB#\fP character and is ignored during processing.
 Also each configuration section or sequence block allows to specify permanent
 comment using \fBcomment\fP item which is stored in the server beside the
 configuration.
@@ -133,14 +145,14 @@ server:
 .UNINDENT
 .SS identity
 .sp
-An identity of the server returned in the response for the query for TXT
+An identity of the server returned in the response to the query for TXT
 record \fBid.server.\fP or \fBhostname.bind.\fP in the CHAOS class (see RFC 4892).
 Set empty value to disable.
 .sp
 Default: FQDN hostname
 .SS version
 .sp
-A version of the server software returned in the response for the query
+A version of the server software returned in the response to the query
 for TXT record \fBversion.server.\fP or \fBversion.bind.\fP in the CHAOS
 class (see RFC 4892). Set empty value to disable.
 .sp
@@ -215,8 +227,8 @@ descriptor limit to avoid resource exhaustion.
 Default: 100
 .SS rate\-limit
 .sp
-Rate limiting is based on the token bucket scheme. Rate basically
-represents number of tokens available each second. Each response is
+Rate limiting is based on the token bucket scheme. A rate basically
+represents a number of tokens available each second. Each response is
 processed and classified (based on several discriminators, e.g.
 source netblock, qtype, name, rcode, etc.). Classified responses are
 then hashed and assigned to a bucket containing number of available
@@ -228,10 +240,10 @@ is recalculated each second.
 Default: 0 (disabled)
 .SS rate\-limit\-table\-size
 .sp
-Size of the hashtable in number of buckets. The larger the hashtable, the lesser
-probability of a hash collision, but at the expense of additional memory costs.
-Each bucket is estimated roughly to 32 bytes. Size should be selected as
-a reasonably large prime due to the better hash function distribution properties.
+Size of the hashtable in a number of buckets. The larger the hashtable, the lesser
+the probability of a hash collision, but at the expense of additional memory costs.
+Each bucket is estimated roughly to 32 bytes. The size should be selected as
+a reasonably large prime due to better hash function distribution properties.
 Hash table is internally chained and works well up to a fill rate of 90 %, general
 rule of thumb is to select a prime near 1.2 * maximum_qps.
 .sp
@@ -334,13 +346,13 @@ An ordered list of allowed actions.
 Possible values:
 .INDENT 0.0
 .IP \(bu 2
-\fBtransfer\fP \- Allow zone transfer
+\fBtransfer\fP \-\- Allow zone transfer
 .IP \(bu 2
-\fBnotify\fP \- Allow incoming notify
+\fBnotify\fP \-\- Allow incoming notify
 .IP \(bu 2
-\fBupdate\fP \- Allow zone updates
+\fBupdate\fP \-\- Allow zone updates
 .IP \(bu 2
-\fBcontrol\fP \- Allow remote control
+\fBcontrol\fP \-\- Allow remote control
 .UNINDENT
 .sp
 Default: empty
@@ -427,10 +439,10 @@ the communication with the remote server.
 Default: empty
 .SH TEMPLATE SECTION
 .sp
-A template is shareable zone settings which can be used for configuration of
-many zones at one place. A special default template (with the \fIdefault\fP identifier)
-can be used for general quering configuration or as an implicit default
-configuration if a zone doesn\(aqt have another template specified.
+A template is a shareable zone setting which can be used for configuration of
+many zones in one place. A special default template (with the \fIdefault\fP identifier)
+can be used for general querying configuration or as an implicit configuration
+if a zone doesn\(aqt have another template specified.
 .INDENT 0.0
 .INDENT 3.5
 .sp
@@ -491,12 +503,12 @@ A path to the zone file. Non absolute path is relative to
 \fI\%storage\fP\&. It is also possible to use the following formatters:
 .INDENT 0.0
 .IP \(bu 2
-\fB%s\fP \- means the current zone name in the textual representation (beware
+\fB%s\fP \-\- means the current zone name in the textual representation (beware
 of special characters which are escaped or encoded in the \eDDD form where
 DDD is corresponding decimal ASCII code). The zone name doesn\(aqt include the
 terminating dot, except for the root zone.
 .IP \(bu 2
-\fB%%\fP \- means the \fB%\fP character
+\fB%%\fP \-\- means the \fB%\fP character
 .UNINDENT
 .sp
 Default: \fI\%storage\fP/\fB%s\fP\&.zone
@@ -512,7 +524,7 @@ An ordered list of \fI\%references\fP to zone master servers.
 Default: empty
 .SS ddns\-master
 .sp
-A \fI\%references\fP to zone primary master server.
+A \fI\%reference\fP to zone primary master server.
 If not specified, the first \fI\%master\fP server is used.
 .sp
 Default: empty
@@ -567,7 +579,7 @@ Multiple NSEC records at the same node
 .IP \(bu 2
 Missing NSEC records at authoritative nodes
 .IP \(bu 2
-Extra record types under same name as NSEC3 record (this is RFC\-valid, but
+Extra record types under the same name as NSEC3 record (this is RFC\-valid, but
 Knot will not serve such a zone correctly)
 .IP \(bu 2
 NSEC3\-unsecured delegation that is not part of Opt\-out span
@@ -580,7 +592,7 @@ Signer name in RRSIG RR not the same as in DNSKEY
 .IP \(bu 2
 Signed RRSIG
 .IP \(bu 2
-Not all RRs in node are signed
+Not all RRs in the node are signed
 .IP \(bu 2
 Wrong key flags or wrong key in RRSIG record (not the same as ZSK)
 .UNINDENT
@@ -588,29 +600,29 @@ Wrong key flags or wrong key in RRSIG record (not the same as ZSK)
 Default: off
 .SS disable\-any
 .sp
-If you enabled, all authoritative ANY queries sent over UDP will be answered
+If enabled, all authoritative ANY queries sent over UDP will be answered
 with an empty response and with the TC bit set. Use this option to minimize
 the risk of DNS reflection attack.
 .sp
 Default: off
 .SS zonefile\-sync
 .sp
-The time after which the current zone in memory will be synced to zone file
+The time after which the current zone in memory will be synced with a zone file
 on the disk (see \fI\%file\fP). The server will serve the latest
-zone even after restart using zone journal, but the zone file on the disk will
+zone even after a restart using zone journal, but the zone file on the disk will
 only be synced after \fBzonefile\-sync\fP time has expired (or after manual zone
-flush) This is applicable when the zone is updated via IXFR, DDNS or automatic
+flush). This is applicable when the zone is updated via IXFR, DDNS or automatic
 DNSSEC signing. In order to disable automatic zonefile synchronization, \-1 value
 can be used.
 .sp
 \fICaution:\fP If you are serving large zones with frequent updates where
-the immediate sync to zone file is not desirable, increase the default value.
+the immediate sync with a zone file is not desirable, increase the value.
 .sp
 Default: 0 (immediate)
 .SS ixfr\-from\-differences
 .sp
 If enabled, the server creates zone differences from changes you made to the
-zone file upon server reload. This option is only relevant if the server
+zone file upon server reload. This option is relevant only if the server
 is a master server for the zone.
 .sp
 \fICaution:\fP This option has no effect with enabled
@@ -644,9 +656,9 @@ no change is made.
 Possible values:
 .INDENT 0.0
 .IP \(bu 2
-\fBincrement\fP \- The serial is incremented according to serial number arithmetic
+\fBincrement\fP \-\- The serial is incremented according to serial number arithmetic
 .IP \(bu 2
-\fBunixtime\fP \- The serial is set to the current unix time
+\fBunixtime\fP \-\- The serial is set to the current unix time
 .UNINDENT
 .sp
 \fICaution:\fP If your serial was in other than unix time format, be careful
@@ -667,23 +679,23 @@ Server can be configured to log to the standard output, standard error
 output, syslog (or systemd journal if systemd is enabled) or into an arbitrary
 file.
 .sp
-There are 6 logging severities:
+There are 6 logging severity levels:
 .INDENT 0.0
 .IP \(bu 2
-\fBcritical\fP \- Non\-recoverable error resulting in server shutdown
+\fBcritical\fP \-\- Non\-recoverable error resulting in server shutdown
 .IP \(bu 2
-\fBerror\fP \- Recoverable error, action should be taken
+\fBerror\fP \-\- Recoverable error, action should be taken
 .IP \(bu 2
-\fBwarning\fP \- Warning that might require user action
+\fBwarning\fP \-\- Warning that might require user action
 .IP \(bu 2
-\fBnotice\fP \- Server notice or hint
+\fBnotice\fP \-\- Server notice or hint
 .IP \(bu 2
-\fBinfo\fP \- Informational message
+\fBinfo\fP \-\- Informational message
 .IP \(bu 2
-\fBdebug\fP \- Debug messages (must be turned on at compile time)
+\fBdebug\fP \-\- Debug messages (must be turned on at compile time)
 .UNINDENT
 .sp
-In case of missing log section, \fBwarning\fP or more serious messages
+In the case of missing log section, \fBwarning\fP or more serious messages
 will be logged to both standard error output and syslog. The \fBinfo\fP and
 \fBnotice\fP messages will be logged to standard output.
 .INDENT 0.0
@@ -707,13 +719,13 @@ A logging output.
 Possible values:
 .INDENT 0.0
 .IP \(bu 2
-\fBstdout\fP \- Standard output
+\fBstdout\fP \-\- Standard output
 .IP \(bu 2
-\fBstderr\fP \- Standard error output
+\fBstderr\fP \-\- Standard error output
 .IP \(bu 2
-\fBsyslog\fP \- Syslog
+\fBsyslog\fP \-\- Syslog
 .IP \(bu 2
-\fIfile_name\fP \- File.
+\fIfile_name\fP \-\- File
 .UNINDENT
 .SS server
 .sp
@@ -733,7 +745,7 @@ Minimum severity level for all message types that are logged.
 Default: empty
 .SH MODULE DNSTAP
 .sp
-Module dnstap allows query and response logging.
+The module dnstap allows query and response logging.
 .sp
 For all queries logging, use this module in the \fIdefault\fP template. For
 zone\-specific logging, use this module in the proper zone configuration.
@@ -754,13 +766,13 @@ mod\-dnstap:
 A module identifier.
 .SS sink
 .sp
-A sink path, which can either be a file or a UNIX socket prefixed with
+A sink path, which can be either a file or a UNIX socket when prefixed with
 \fBunix:\fP\&.
 .sp
 Default: empty
 .SH MODULE SYNTH-RECORD
 .sp
-This module is able to synthetise either forward or reverse records for the
+This module is able to synthesize either forward or reverse records for the
 given prefix and subnet.
 .INDENT 0.0
 .INDENT 3.5
@@ -788,9 +800,9 @@ The type of generated records.
 Possible values:
 .INDENT 0.0
 .IP \(bu 2
-\fBforward\fP \- Forward records
+\fBforward\fP \-\- Forward records
 .IP \(bu 2
-\fBreverse\fP \- Reverse records
+\fBreverse\fP \-\- Reverse records
 .UNINDENT
 .sp
 Default: empty
@@ -804,7 +816,7 @@ separated with a dash.
 Default: empty
 .SS origin
 .sp
-A zone origin (only valid for \fI\%reverse type\fP).
+A zone origin (only valid for the \fI\%reverse type\fP).
 .sp
 Default: empty
 .SS ttl
@@ -819,7 +831,7 @@ A network subnet in the form of \fIaddress/prefix\fP\&.
 Default: empty
 .SH MODULE DNSPROXY
 .sp
-The module catches all unsatisfied queries and forwards them to the configured
+The module catches all unsatisfied queries and forwards them to the indicated
 server for resolution.
 .INDENT 0.0
 .INDENT 3.5
@@ -845,7 +857,7 @@ Default: empty
 .SH MODULE ROSEDB
 .sp
 The module provides a mean to override responses for certain queries before
-the record is searched in the available zones.
+the available zones are searched for the record.
 .INDENT 0.0
 .INDENT 3.5
 .sp

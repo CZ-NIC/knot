@@ -1,28 +1,28 @@
 .. highlight:: console
 .. _Running:
 
-*******
-Running
-*******
+*********
+Operation
+*********
 
-The Knot DNS server part ``knotd`` can run either in the foreground or in the background,
-with the ``-d`` option. When run in the foreground, it doesn't create a PID file.
-Other than that, there are no differences and you can control it just the same way.
+The Knot DNS server part ``knotd`` can run either in the foreground, or in the background
+using the ``-d`` option. When run in the foreground, it doesn't create a PID file.
+Other than that, there are no differences and you can control both the same way.
 
-The tool ``knotc`` is designed as a front-end for user, making it easier to control running
+The tool ``knotc`` is designed as a user front-end, making it easier to control running
 server daemon. If you want to control the daemon directly, use ``SIGINT`` to quit
 the process or ``SIGHUP`` to reload configuration.
 
 If you pass neither configuration file (``-c`` parameter) nor configuration
-database (``-C`` parameter), server will try to use the default configuration
-file stored in ``SYSCONFDIR/knot/knot.conf`` (configured with
-``--with-configdir=path``)
+database (``-C`` parameter), server will attempt to use the default configuration
+file stored in ``SYSCONFDIR/knot/knot.conf`` (the path can be reconfigured with
+``--with-configdir=path``).
 
 Example of server start as a daemon::
 
     $ knotd -d -c knot.conf
 
-Example of server stop::
+Example of server shutdown::
 
     $ knotc -c knot.conf stop
 
@@ -38,52 +38,52 @@ Configuration database
 ======================
 
 In the case of a huge configuration file, the configuration can be preloaded
-into the server`s configuration database::
+into the server's configuration database::
 
     $ knotc import input.conf
 
-Also the configuration database can be exported into the configuration file::
+Also the configuration database can be exported into a configuration file::
 
     $ knotc export output.conf
 
-It is recommended to process these operations without server running.
+It is recommended to perform these actions without server running.
 
 .. _Running a slave server:
 
-Running a slave server
-======================
+Slave mode
+==========
 
 Running the server as a slave is very straightforward as you usually
 bootstrap zones over AXFR and thus avoid any manual zone operations.
 In contrast to AXFR, when the incremental transfer finishes, it stores
 the differences in the journal file and doesn't update the zone file
-immediately but after :ref:`zone_zonefile-sync` period elapses.
+immediately but after the :ref:`zone_zonefile-sync` period elapses.
 
 .. _Running a master server:
 
-Running a master server
-=======================
+Master mode
+===========
 
-If you want to just check the zone files first before starting, you
-can use ``knotc checkzone`` action::
+If you just want to check the zone files before starting, you
+can use the ``knotc checkzone`` action::
 
     $ knotc -c master.conf checkzone example.com
 
-For an approximate estimate of server's memory consumption, you can
-use the ``knotc memstats`` action. This action prints count of
+For an approximate estimation of server's memory consumption, you can
+use the ``knotc memstats`` action. This action prints the count of
 resource records, percentage of signed records and finally estimation
-of memory consumption for each zone, unless otherwise
-specified. Please note that estimated values might differ from the
+of memory consumption for each zone, unless specified otherwise.
+Please note that the estimated values may differ from the
 actual consumption. Also, for slave servers with incoming transfers
 enabled, be aware that the actual memory consumption might be double
-or more during transfers::
+or higher during transfers::
 
     $ knotc -c master.conf memstats example.com
 
 .. _Controlling running daemon:
 
-Controlling running daemon
-==========================
+Daemon controls
+===============
 
 Knot DNS was designed to allow server reconfiguration on-the-fly
 without interrupting its operation. Thus it is possible to change

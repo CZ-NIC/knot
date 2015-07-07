@@ -42,18 +42,18 @@ Options
 .......
 
 **-4**
-  Use IPv4 protocol only.
+  Use the IPv4 protocol only.
 
 **-6**
-  Use IPv6 protocol only.
+  Use the IPv6 protocol only.
 
 **-b** *address*
   Set the source IP address of the query to *address*. The address must be a
-  valid address for local interface or :: or 0.0.0.0. Optional port
-  can be specified in the same format as *server* value.
+  valid address for local interface or :: or 0.0.0.0. An optional port
+  can be specified in the same format as the *server* value.
 
 **-c** *class*
-  Set query class (e.g. CH, CLASS4). An explicit variant of *class*
+  Set the query class (e.g. CH, CLASS4). An explicit variant of *class*
   specification. The default class is IN.
 
 **-d**
@@ -63,32 +63,32 @@ Options
   Print help and usage.
 
 **-k** *keyfile*
-  Use TSIG key stored in a file *keyfile* to authenticate the request. The
-  file must contain the key in the same format, which is accepted by the
+  Use the TSIG key stored in a file *keyfile* to authenticate the request. The
+  file must contain the key in the same format as accepted by the
   **-y** option.
 
 **-p** *port*
-  Set nameserver port number or service name to send a query to. The default
+  Set the nameserver port number or service name to send a query to. The default
   port is 53.
 
 **-q** *name*
-  Set query name. An explicit variant of *name* specification.
+  Set the query name. An explicit variant of *name* specification.
 
 **-t** *type*
-  Set query type (e.g. NS, IXFR=12345, TYPE65535, NOTIFY). An explicit variant of
-  *type* specification. The default type is A. IXFR type requires SOA serial
-  parameter. NOTIFY type without SOA serial parameter causes pure NOTIFY message
-  without any SOA hint.
+  Set the query type (e.g. NS, IXFR=12345, TYPE65535, NOTIFY). An explicit 
+  variant of *type* specification. The default type is A. IXFR type requires 
+  SOA serial parameter. NOTIFY type without SOA serial parameter causes pure 
+  NOTIFY message without any SOA hint.
 
 **-v**, **--version**
-  Print program version.
+  Print the program version.
 
 **-x** *address*
-  Send reverse (PTR) query for IPv4 or IPv6 *address*. Correct name, class
+  Send a reverse (PTR) query for IPv4 or IPv6 *address*. The correct name, class
   and type is set automatically.
 
 **-y** [*alg*:]\ *name*:*key*
-  Use TSIG key with a name *name* to authenticate the request. The *alg*
+  Use the TSIG key named *name* to authenticate the request. The *alg*
   part specifies the algorithm (the default is hmac-md5) and *key* specifies
   the shared secret encoded in Base64.
 
@@ -106,86 +106,85 @@ Options
   Show record data only.
 
 **+**\ [\ **no**\ ]\ **aaflag**
-  Set AA flag.
+  Set the AA flag.
 
 **+**\ [\ **no**\ ]\ **tcflag**
-  Set TC flag.
+  Set the TC flag.
 
 **+**\ [\ **no**\ ]\ **rdflag**
-  Set RD flag.
+  Set the RD flag.
 
 **+**\ [\ **no**\ ]\ **recurse**
   Same as **+**\ [\ **no**\ ]\ **rdflag**
 
 **+**\ [\ **no**\ ]\ **raflag**
-  Set RA flag.
+  Set the RA flag.
 
 **+**\ [\ **no**\ ]\ **zflag**
-  Set zero flag bit.
+  Set the zero flag bit.
 
 **+**\ [\ **no**\ ]\ **adflag**
-  Set AD flag.
+  Set the AD flag.
 
 **+**\ [\ **no**\ ]\ **cdflag**
-  Set CD flag.
+  Set the CD flag.
 
 **+**\ [\ **no**\ ]\ **dnssec**
-  Set DO flag.
+  Set the DO flag.
 
 **+**\ [\ **no**\ ]\ **all**
   Show all packet sections.
 
 **+**\ [\ **no**\ ]\ **qr**
-  Show query packet.
+  Show the query packet.
 
 **+**\ [\ **no**\ ]\ **header**
-  Show packet header.
+  Show the packet header.
 
 **+**\ [\ **no**\ ]\ **opt**
-  Show EDNS pseudosection.
+  Show the EDNS pseudosection.
 
 **+**\ [\ **no**\ ]\ **question**
-  Show question section.
+  Show the question section.
 
 **+**\ [\ **no**\ ]\ **answer**
-  Show answer section.
+  Show the answer section.
 
 **+**\ [\ **no**\ ]\ **authority**
-  Show authority section.
+  Show the authority section.
 
 **+**\ [\ **no**\ ]\ **additional**
-  Show additional section.
+  Show the additional section.
 
 **+**\ [\ **no**\ ]\ **tsig**
-  Show TSIG pseudosection.
+  Show the TSIG pseudosection.
 
 **+**\ [\ **no**\ ]\ **stats**
   Show trailing packet statistics.
 
 **+**\ [\ **no**\ ]\ **class**
-  Show DNS class.
+  Show the DNS class.
 
 **+**\ [\ **no**\ ]\ **ttl**
-  Show TTL value.
+  Show the TTL value.
 
 **+**\ [\ **no**\ ]\ **tcp**
-  Use TCP protocol (default is UDP for standard query and TCP for AXFR/IXFR).
+  Use the TCP protocol (default is UDP for standard query and TCP for AXFR/IXFR).
 
 **+**\ [\ **no**\ ]\ **fail**
   Stop querying next nameserver if SERVFAIL response is received.
 
 **+**\ [\ **no**\ ]\ **ignore**
-  Don't use TCP automatically if truncated reply is received.
+  Don't use TCP automatically if a truncated reply is received.
 
 **+**\ [\ **no**\ ]\ **nsid**
-
-  Request nameserver identifier (NSID).
+  Request the nameserver identifier (NSID).
 
 **+**\ [\ **no**\ ]\ **edns**\ =\ *N*
   Use EDNS version (default is 0).
 
 **+noidn**
-  Disable IDN transformation to ASCII and vice versa. IDNA2003 support depends
+  Disable the IDN transformation to ASCII and vice versa. IDNA2003 support depends
   on libidn availability during project building!
 
 **+generic**
@@ -193,23 +192,23 @@ Options
   and data.
 
 **+client**\ =\ *SUBN*
-  Set EDNS client subnet SUBN=IP/prefix.
+  Set the EDNS client subnet SUBN=IP/prefix.
 
 **+time**\ =\ *T*
-  Set wait for reply interval in seconds (default is 5 seconds). This timeout
-  applies to each query try.
+  Set the wait-for-reply interval in seconds (default is 5 seconds). This timeout
+  applies to each query attempt.
 
 **+retry**\ =\ *N*
-  Set number (>=0) of UDP retries (default is 2). This doesn't apply to
+  Set the number (>=0) of UDP retries (default is 2). This doesn't apply to
   AXFR/IXFR.
 
 **+bufsize**\ =\ *B*
-  Set EDNS buffer size in bytes (default is 512 bytes).
+  Set the EDNS buffer size in bytes (default is 512 bytes).
 
 Notes
 -----
 
-Options **-k** and **-y** cannot be used mutually.
+Options **-k** and **-y** can not be used simultaneously.
 
 Missing features with regard to ISC dig:
 

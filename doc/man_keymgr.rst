@@ -15,18 +15,18 @@ Description
 
 The :program:`keymgr` utility serves for DNSSEC keys and KASP (Key And
 Signature Policy) management in Knot DNS server. The configuration is stored
-in a so called KASP database. The database is simply a directory on the
+in a so called KASP database. The database is simply a directory in the
 file-system containing files in the JSON format.
 
-The operations are organized into commands and subcommands. The command
+The operations are organized into commands and subcommands. A command
 specifies the operation to be performed with the KASP database. It is usually
-followed by named arguments. A special command **help** can be used to list
-available subcommands at that position. Listing of available command arguments
+followed by named arguments. The special command **help** can be used to list
+available subcommands in that area. The listing of available command arguments
 is not supported yet.
 
-The command and argument names are parsed in a smart way. Only a beginning
-of the name can be specified and will be recognized. The specified part must
-be unique amongst the other names.
+Command and argument names are parsed in a smart way. Only a beginning
+of a name can be entered and it will be recognized. The specified part of 
+a name must be unique amongst the other names.
 
 Global options
 ..............
@@ -46,7 +46,7 @@ Main commands
   configuration and signing metadata.
 
 **policy** ...
-  Operations with KASP policies. The policy holds parameters that define the
+  Operations with KASP policies. A policy holds parameters that define the
   way how a zone is signed.
 
 **keystore** ...
@@ -102,7 +102,7 @@ Available *key-parameter*\ s:
     Set the DNSKEY SEP (Secure Entry Point) flag.
 
   **publish** *time*
-    The time the key is publish as a DNSKEY record.
+    The time the key is published as a DNSKEY record.
 
   **active** *time*
     The time the key is started to be used for signing.
@@ -174,7 +174,7 @@ Available *policy-parameter*\ s:
     Max TTL in the zone.
     **Note**, Knot DNS will determine the value automatically in the future.
 
-  **delay** *secones*
+  **delay** *seconds*
     Zone signing and data propagation delay. The value is added for safety to
     timing of all rollover steps.
 
@@ -190,49 +190,50 @@ file-based key store is supported. This command is subject to change.
 Examples
 --------
 
-1. Initialize new KASP database, add a policy named *default* with default
+1. Initialize a new KASP database, add a policy named *default* with default
    parameters, and add a zone *example.com*. The zone will use the created
    policy::
 
-   $ keymgr init
-   $ keymgr policy add default
-   $ keymgr zone add example.com policy default
+    $ keymgr init
+    $ keymgr policy add default
+    $ keymgr zone add example.com policy default
 
 2. List zones containing *.com* substring::
 
-   $ keymgr zone list .com
+    $ keymgr zone list .com
 
 3. Add a testing policy *lab* with rapid key rollovers. Apply the policy to an
    existing zone::
 
-   $ keymgr policy add lab rrsig-lifetime 300 rrsig-refresh 150 zsk-lifetime 600 delay 10
-   $ keymgr zone set example.com policy lab
+    $ keymgr policy add lab rrsig-lifetime 300 rrsig-refresh 150 zsk-lifetime 600 \
+      delay 10
+    $ keymgr zone set example.com policy lab
 
 4. Add an existing and already secured zone. Let the keys be managed by the
    KASP. Make sure to import all used keys. Also the used algorithm must match
    with the one configured in the policy::
 
-   $ keymgr zone add example.com policy default
-   $ keymgr zone key import example.com Kexample.com+010+12345.private
-   $ keymgr zone key import example.com Kexample.com+010+67890.private
+    $ keymgr zone add example.com policy default
+    $ keymgr zone key import example.com Kexample.com+010+12345.private
+    $ keymgr zone key import example.com Kexample.com+010+67890.private
 
 5. Disable automatic key management for a secured zone::
 
-   $ keymgr zone set example.com policy none
+    $ keymgr zone set example.com policy none
 
 6. Add a zone to be signed with manual key maintenance. Generate one ECDSA
    signing key. The Single-Type Signing scheme will be used::
 
-   $ keymgr zone add example.com policy none
-   $ keymgr zone key gen example.com algo 13 size 256
+    $ keymgr zone add example.com policy none
+    $ keymgr zone key gen example.com algo 13 size 256
 
 7. Add a zone to be signed with manual key maintenance. Generate two
    RSA-SHA-256 signing keys. The first key will be used as a KSK, the second
    one as a ZSK::
 
-   $ keymgr zone add example.com policy none
-   $ keymgr zone key generate example.com algorithm rsasha256 size 2048 ksk
-   $ keymgr zone key generate example.com algorithm rsasha256 size 1024
+    $ keymgr zone add example.com policy none
+    $ keymgr zone key generate example.com algorithm rsasha256 size 2048 ksk
+    $ keymgr zone key generate example.com algorithm rsasha256 size 1024
 
 See Also
 --------

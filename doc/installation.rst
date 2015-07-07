@@ -61,7 +61,7 @@ You can find the source code for the latest release on `www.knot-dns.cz <https:/
 Alternatively, you can fetch the whole project from the git repository
 `git://git.nic.cz/knot-dns.git <https://gitlab.labs.nic.cz/labs/knot/tree/master>`_.
 
-After obtaining the source code the compilation and installation is a
+After obtaining the source code, the compilation and installation is a
 quite straightforward process using autotools.
 
 .. _Configuring and generating Makefiles:
@@ -73,7 +73,7 @@ If compiling from the git source, you need to bootstrap the ``./configure`` file
 
     $ autoreconf -i -f
 
-In most cases you can just run configure without any options::
+In most cases, you can just run configure without any options::
 
     $ ./configure
 
@@ -99,7 +99,7 @@ You can do so by executing::
 
     $ make install
 
-When installing as a non-root user you might have to gain elevated privileges by
+When installing as a non-root user, you might have to gain elevated privileges by
 switching to root user, e.g. ``sudo make install`` or ``su -c 'make install'``.
 
 .. _OS specific installation:
@@ -113,7 +113,7 @@ repository.
 Debian Linux
 ------------
 
-Knot DNS is already available from Debian wheezy upwards. In addition
+Knot DNS is already available from Debian 7 (Wheezy) upwards. In addition
 to the official packages we also provide custom repository, which can
 be used by adding::
 
@@ -123,7 +123,7 @@ be used by adding::
 to your ``/etc/apt/sources.list`` or into separate file in
 ``/etc/apt/sources.list.d/``.
 
-As an example, for Debian jessie the Knot DNS packages can be added by
+As an example, for Debian 8 (Jessie) the Knot DNS packages can be added by
 executing following command as the root user::
 
     # cat >/etc/apt/sources.list.d/knot.list <<EOF
@@ -139,7 +139,7 @@ Ubuntu Linux
 Prepackaged version of Knot DNS can be found in Ubuntu from
 version 12.10 (Quantal Quetzal). In addition to the package included
 in the main archive, we provide Personal Package Archive (PPA) as an
-option to upgrade to the last stable version of Knot DNS or to install
+option in order to upgrade to the last stable version of Knot DNS or to install
 it on older versions of Ubuntu Linux.
 
 Adding official PPA repository for Knot DNS
@@ -169,7 +169,7 @@ the following command as the root user::
 Arch Linux
 ----------
 
-Knot DNS is available official package repository (AUR). To install the
+Knot DNS is available in the official package repository (AUR). To install the
 package, run::
 
     # pacman -S knot
@@ -177,8 +177,8 @@ package, run::
 Gentoo Linux
 ------------
 
-Knot DNS is also available in Gentoo package repository. However, you will
-probably need to unmask the package prior starting the installation::
+Knot DNS is also available in the Gentoo package repository. However, you will
+probably need to unmask the package prior to starting the installation::
 
     # emerge -a knot
 

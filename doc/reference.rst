@@ -10,46 +10,50 @@ Configuration Reference
 Description
 ===========
 
-Configuration file for Knot DNS uses simplified YAML format. Simplified means
-that not all features are supported.
+Configuration files for Knot DNS use simplified YAML format. Simplified means
+that not all of the features are supported.
 
-For the configuration items description, there are some symbols with the
-folowing meaning:
+For the description of configuration items, we have to declare a meaning of 
+the following symbols:
 
-- *INT* - Integer
-- *STR* - Textual string
-- *HEXSTR* - Hexadecimal string (with ``0x`` prefix)
-- *BOOL* - Boolean value (``on``, ``off``, ``true`` or ``false``)
-- *TIME* - Number of seconds, integer with possible time mutliplier suffix
+- *INT* -- Integer
+- *STR* -- Textual string
+- *HEXSTR* -- Hexadecimal string (with ``0x`` prefix)
+- *BOOL* -- Boolean value (``on``/``off`` or ``true``/``false``)
+- *TIME* -- Number of seconds, an integer with possible time multiplier suffix
   (``s`` ~ 1, ``m`` ~ 60, ``h`` ~ 3600 or ``d`` ~ 24 * 3600)
-- *SIZE* - Number of bytes, integer with possible size multiplier suffix
+- *SIZE* -- Number of bytes, an integer with possible size multiplier suffix
   (``B`` ~ 1, ``K`` ~ 1024, ``M`` ~ 1024^2 or ``G`` ~ 1024^3)
-- *BASE64* - Base64 encoded string
-- *ADDR* - IPv4 or IPv6 address
-- *DNAME* - Domain name
-- ... - Multi-valued item, order of the values is preserved
-- [ ] - Optional value
-- \| - Choice
+- *BASE64* -- Base64 encoded string
+- *ADDR* -- IPv4 or IPv6 address
+- *DNAME* -- Domain name
+- ... -- Multi-valued item, order of the values is preserved
+- [ ] -- Optional value
+- \| -- Choice
 
 There are 8 main sections (``server``, ``key``, ``acl``, ``control``,
-``remote``, ``template``, ``zone`` and ``log``) and module sections with
-``mod-`` prefix . Most of the sections (excluding ``server`` and
+``remote``, ``template``, ``zone`` and ``log``) and module sections with the 
+``mod-`` prefix. The most of the sections (excluding ``server`` and
 ``control``) are sequences of settings blocks. Each settings block
 begins with a unique identifier, which can be used as a reference from other
 sections (such identifier must be defined in advance).
 
-Multi-valued item can be specified either as a YAML sequence [val1, val2, ...]
-or as more single-valued items each on the extra line.
+A multi-valued item can be specified either as a YAML sequence 
+e.g. ``address: [10.0.0.1, 10.0.0.2]``
+or as more single-valued items each on an extra line, e.g.::
+    
+    address: 10.0.0.1
+    address: 10.0.0.2
 
 If an item value contains spaces or other special characters, it is necessary
-to double quote such value with ``"`` ``"``.
+to enclose such value within double quotes ``"`` ``"``.
 
 .. _Comments:
 
 Comments
 ========
 
-A comment begins with a ``#`` character and is ignored during the processing.
+A comment begins with a ``#`` character and is ignored during processing.
 Also each configuration section or sequence block allows to specify permanent
 comment using ``comment`` item which is stored in the server beside the
 configuration.
@@ -102,7 +106,7 @@ General options related to the server.
 identity
 --------
 
-An identity of the server returned in the response for the query for TXT
+An identity of the server returned in the response to the query for TXT
 record ``id.server.`` or ``hostname.bind.`` in the CHAOS class (see RFC 4892).
 Set empty value to disable.
 
@@ -113,7 +117,7 @@ Default: FQDN hostname
 version
 -------
 
-A version of the server software returned in the response for the query
+A version of the server software returned in the response to the query
 for TXT record ``version.server.`` or ``version.bind.`` in the CHAOS
 class (see RFC 4892). Set empty value to disable.
 
@@ -240,8 +244,8 @@ Default: 100
 rate-limit
 ----------
 
-Rate limiting is based on the token bucket scheme. Rate basically
-represents number of tokens available each second. Each response is
+Rate limiting is based on the token bucket scheme. A rate basically
+represents a number of tokens available each second. Each response is
 processed and classified (based on several discriminators, e.g.
 source netblock, qtype, name, rcode, etc.). Classified responses are
 then hashed and assigned to a bucket containing number of available
@@ -257,10 +261,10 @@ Default: 0 (disabled)
 rate-limit-table-size
 ---------------------
 
-Size of the hashtable in number of buckets. The larger the hashtable, the lesser
-probability of a hash collision, but at the expense of additional memory costs.
-Each bucket is estimated roughly to 32 bytes. Size should be selected as
-a reasonably large prime due to the better hash function distribution properties.
+Size of the hashtable in a number of buckets. The larger the hashtable, the lesser
+the probability of a hash collision, but at the expense of additional memory costs.
+Each bucket is estimated roughly to 32 bytes. The size should be selected as
+a reasonably large prime due to better hash function distribution properties.
 Hash table is internally chained and works well up to a fill rate of 90 %, general
 rule of thumb is to select a prime near 1.2 * maximum_qps.
 
@@ -398,10 +402,10 @@ An ordered list of allowed actions.
 
 Possible values:
 
-- ``transfer`` - Allow zone transfer
-- ``notify`` - Allow incoming notify
-- ``update`` - Allow zone updates
-- ``control`` - Allow remote control
+- ``transfer`` -- Allow zone transfer
+- ``notify`` -- Allow incoming notify
+- ``update`` -- Allow zone updates
+- ``control`` -- Allow remote control
 
 Default: empty
 
@@ -515,10 +519,10 @@ Default: empty
 Template section
 ================
 
-A template is shareable zone settings which can be used for configuration of
-many zones at one place. A special default template (with the *default* identifier)
-can be used for general quering configuration or as an implicit default
-configuration if a zone doesn't have another template specified.
+A template is a shareable zone setting which can be used for configuration of
+many zones in one place. A special default template (with the *default* identifier)
+can be used for general querying configuration or as an implicit configuration 
+if a zone doesn't have another template specified.
 
 ::
 
@@ -586,11 +590,11 @@ file
 A path to the zone file. Non absolute path is relative to
 :ref:`storage<zone_storage>`. It is also possible to use the following formatters:
 
-- ``%s`` - means the current zone name in the textual representation (beware
+- ``%s`` -- means the current zone name in the textual representation (beware
   of special characters which are escaped or encoded in the \\DDD form where
   DDD is corresponding decimal ASCII code). The zone name doesn't include the
   terminating dot, except for the root zone.
-- ``%%`` - means the ``%`` character
+- ``%%`` -- means the ``%`` character
 
 Default: :ref:`storage<zone_storage>`/``%s``\ .zone
 
@@ -617,7 +621,7 @@ Default: empty
 ddns-master
 -----------
 
-A :ref:`references<remote_id>` to zone primary master server.
+A :ref:`reference<remote_id>` to zone primary master server.
 If not specified, the first :ref:`master<zone_master>` server is used.
 
 Default: empty
@@ -670,14 +674,14 @@ Extra checks:
 - Wrong NSEC(3) type bitmap
 - Multiple NSEC records at the same node
 - Missing NSEC records at authoritative nodes
-- Extra record types under same name as NSEC3 record (this is RFC-valid, but
+- Extra record types under the same name as NSEC3 record (this is RFC-valid, but
   Knot will not serve such a zone correctly)
 - NSEC3-unsecured delegation that is not part of Opt-out span
 - Wrong original TTL value in NSEC3 records
 - Wrong RDATA TTL value in RRSIG record
 - Signer name in RRSIG RR not the same as in DNSKEY
 - Signed RRSIG
-- Not all RRs in node are signed
+- Not all RRs in the node are signed
 - Wrong key flags or wrong key in RRSIG record (not the same as ZSK)
 
 Default: off
@@ -687,7 +691,7 @@ Default: off
 disable-any
 -----------
 
-If you enabled, all authoritative ANY queries sent over UDP will be answered
+If enabled, all authoritative ANY queries sent over UDP will be answered
 with an empty response and with the TC bit set. Use this option to minimize
 the risk of DNS reflection attack.
 
@@ -698,16 +702,16 @@ Default: off
 zonefile-sync
 -------------
 
-The time after which the current zone in memory will be synced to zone file
+The time after which the current zone in memory will be synced with a zone file
 on the disk (see :ref:`file<zone_file>`). The server will serve the latest
-zone even after restart using zone journal, but the zone file on the disk will
+zone even after a restart using zone journal, but the zone file on the disk will
 only be synced after ``zonefile-sync`` time has expired (or after manual zone
-flush) This is applicable when the zone is updated via IXFR, DDNS or automatic
+flush). This is applicable when the zone is updated via IXFR, DDNS or automatic
 DNSSEC signing. In order to disable automatic zonefile synchronization, -1 value
 can be used.
 
 *Caution:* If you are serving large zones with frequent updates where
-the immediate sync to zone file is not desirable, increase the default value.
+the immediate sync with a zone file is not desirable, increase the value.
 
 Default: 0 (immediate)
 
@@ -717,7 +721,7 @@ ixfr-from-differences
 ---------------------
 
 If enabled, the server creates zone differences from changes you made to the
-zone file upon server reload. This option is only relevant if the server
+zone file upon server reload. This option is relevant only if the server
 is a master server for the zone.
 
 *Caution:* This option has no effect with enabled
@@ -766,8 +770,8 @@ no change is made.
 
 Possible values:
 
-- ``increment`` - The serial is incremented according to serial number arithmetic
-- ``unixtime`` - The serial is set to the current unix time
+- ``increment`` -- The serial is incremented according to serial number arithmetic
+- ``unixtime`` -- The serial is set to the current unix time
 
 *Caution:* If your serial was in other than unix time format, be careful
 with the transition to unix time.  It may happen that the new serial will
@@ -795,21 +799,21 @@ Server can be configured to log to the standard output, standard error
 output, syslog (or systemd journal if systemd is enabled) or into an arbitrary
 file.
 
-There are 6 logging severities:
+There are 6 logging severity levels:
 
-- ``critical`` - Non-recoverable error resulting in server shutdown
+- ``critical`` -- Non-recoverable error resulting in server shutdown
 
-- ``error`` - Recoverable error, action should be taken
+- ``error`` -- Recoverable error, action should be taken
 
-- ``warning`` - Warning that might require user action
+- ``warning`` -- Warning that might require user action
 
-- ``notice`` - Server notice or hint
+- ``notice`` -- Server notice or hint
 
-- ``info`` - Informational message
+- ``info`` -- Informational message
 
-- ``debug`` - Debug messages (must be turned on at compile time)
+- ``debug`` -- Debug messages (must be turned on at compile time)
 
-In case of missing log section, ``warning`` or more serious messages
+In the case of missing log section, ``warning`` or more serious messages
 will be logged to both standard error output and syslog. The ``info`` and
 ``notice`` messages will be logged to standard output.
 
@@ -830,10 +834,10 @@ A logging output.
 
 Possible values:
 
-- ``stdout`` - Standard output
-- ``stderr`` - Standard error output
-- ``syslog`` - Syslog
-- *file\_name* - File.
+- ``stdout`` -- Standard output
+- ``stderr`` -- Standard error output
+- ``syslog`` -- Syslog
+- *file\_name* -- File
 
 .. _log_server:
 
@@ -868,7 +872,7 @@ Default: empty
 Module dnstap
 =============
 
-Module dnstap allows query and response logging.
+The module dnstap allows query and response logging.
 
 For all queries logging, use this module in the *default* template. For
 zone-specific logging, use this module in the proper zone configuration.
@@ -891,7 +895,7 @@ A module identifier.
 sink
 ----
 
-A sink path, which can either be a file or a UNIX socket prefixed with
+A sink path, which can be either a file or a UNIX socket when prefixed with
 ``unix:``.
 
 Default: empty
@@ -901,7 +905,7 @@ Default: empty
 Module synth-record
 ===================
 
-This module is able to synthetise either forward or reverse records for the
+This module is able to synthesize either forward or reverse records for the
 given prefix and subnet.
 
 ::
@@ -930,8 +934,8 @@ The type of generated records.
 
 Possible values:
 
-- ``forward`` - Forward records
-- ``reverse`` - Reverse records
+- ``forward`` -- Forward records
+- ``reverse`` -- Reverse records
 
 Default: empty
 
@@ -952,7 +956,7 @@ Default: empty
 origin
 ------
 
-A zone origin (only valid for :ref:`reverse type<mod-synth-record_type>`).
+A zone origin (only valid for the :ref:`reverse type<mod-synth-record_type>`).
 
 Default: empty
 
@@ -979,7 +983,7 @@ Default: empty
 Module dnsproxy
 ===============
 
-The module catches all unsatisfied queries and forwards them to the configured
+The module catches all unsatisfied queries and forwards them to the indicated
 server for resolution.
 
 ::
@@ -1010,8 +1014,8 @@ Default: empty
 Module rosedb
 =============
 
-The module provides a mean to override responses for certain queries before
-the record is searched in the available zones.
+The module provides a mean to override responses for certain queries before 
+the available zones are searched for the record.
 
 ::
 

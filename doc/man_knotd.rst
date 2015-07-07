@@ -15,16 +15,16 @@ Parameters
 ..........
 
 **-c**, **--config** *file*
-  Use textual configuration file (default is :file:`@config_dir@/knot.conf`).
+  Use a textual configuration file (default is :file:`@config_dir@/knot.conf`).
 
 **-C**, **--confdb** *directory*
-  Use binary configuration database.
+  Use a binary configuration database.
 
 **-d**, **--daemonize** [*directory*]
-  Run server as a daemon. Working directory may be set (default is :file:`/`).
+  Run the server as a daemon. Working directory may be set (default is :file:`/`).
 
 **-V**, **--version**
-  Print program versiom.
+  Print the program versiom.
 
 **-h**, **--help**
   Print help and usage.

@@ -6,21 +6,22 @@ Troubleshooting
 ***************
 
 First of all, check the logs (:ref:`Logging section`). Enabling at least
-the ``warning`` message severity may help you identify some problems.
+the ``warning`` message severity may help you to identify some problems.
 
 ..  _Submitting a bugreport:
 
-Submitting a bugreport
-======================
+Reporting bugs
+==============
 
 If you are unable to solve the problem by yourself, you can submit a
-bugreport to the Knot DNS team. For security issues (e.g. crash) do
-not use the public mailing list.  Instead, write to
-`knot-dns@labs.nic.cz <mailto:knot-dns@labs.nic.cz>`_. All other bugs
-and questions may be directed to the Knot DNS users mailing list
+bugreport to the Knot DNS developers. For security or sensitive issues
+contact the developers directly on
+`knot-dns@labs.nic.cz <mailto:knot-dns@labs.nic.cz>`_.
+All other bugs and questions may be directed to the Knot DNS users public
+mailing list
 (`knot-dns-users@lists.nic.cz <mailto:knot-dns-users@lists.nic.cz>`_).
 
-The bugreport should contain at least:
+A bugreport should contain at least:
 
 * Knot DNS version and type of installation (source, package, etc.)
 * Type and version of your operating system
@@ -28,7 +29,7 @@ The bugreport should contain at least:
 * Description of the bug
 * Log output of all messages (category ``any``, severity ``info``)
 * Steps to reproduce the bug (if known)
-* Backtrace (if the bug caused a crash; see next section)
+* Backtrace (if the bug caused a crash; see the next section)
 
 If it is possible, the actual configuration file and/or zone file(s)
 will be very useful as well.
@@ -38,73 +39,45 @@ will be very useful as well.
 Generating backtrace
 ====================
 
-There are several ways to achieve that, the most common way is to
-leave core dumps and then extract a backtrace from it. This doesn't
-affect any server operation, you just need to make sure the OS is
-configured to generate them::
+There are several ways to get a backtrace. The most common way is to extract
+the backtrace from a core dump file. Core dump is a memory snapshot generated
+by the operating system when a process crashes. Generating of core dumps must
+be usually enabled::
 
     $ ulimit -c unlimited                  # Enable unlimited core dump size
+    $ knotd ...                            # Reproduce the crash
     ...
-    $ gdb $(which knotd) core.<KNOT_PID>   # Start gdb on the core dump
+    $ gdb knotd <core-dump-file>           # Start gdb on the core dump
     (gdb) thread apply all bt              # Extract backtrace from all threads
-    (gdb) q
+    (gdb) quit
 
-If the error is repeatable, you can run the binary in a ``gdb``
-debugger or attach the debugger to the running process. The backtrace
-from a running process is generally useful when debugging problems
-like stuck process and similar::
+To save the backtrace into a file, the following GDB commands can be used::
 
-    $ knotd -c knot.conf
-    $ sudo gdb --pid <KNOT_PID>
+    (gdb) set pagination off
+    (gdb) set logging file backtrace.txt
+    (gdb) set logging on
+    (gdb) thread apply all bt
+    (gdb) set logging off
+
+To generate a core dump of a running process, the `gcore` utility can be used::
+
+    $ gcore -o <output-file> $(pidof knotd)
+
+Please note that core dumps can be intercepted by some error collecting system
+service (systemd-coredump, ABRT, Apport, etc.). If you are using such a service,
+consult it's documentation on retrieving the core dump.
+
+If the error is reproducible, it is also possible to start and inspect the
+server directly in the debugger::
+
+    $ gdb --args knotd -c /etc/knot.conf
+    (gdb) run
+    ...
+
+Alternatively, the debugger can be attached to an already running server
+process. This is generally useful when troubleshooting stuck process::
+
+    $ knotd ...
+    $ gdb --pid $(pidof knotd)
     (gdb) continue
     ...
-    (gdb) thread apply all bt
-    (gdb) q
-
-..  _Debug messages:
-
-Debug messages
-==============
-
-In some cases the aforementioned information may not be enough to find
-and fix the bug. In these cases it may be useful to turn on debug
-messages.
-
-Two steps are required in order to log debug messages. First you need
-to allow the debug messages in the server. Then the logging must be
-configured to log debug messages (:ref:`Logging section`). It is recommended to
-log these messages to a file. Firstly, the debug output may be rather
-large and secondly, it is easier to use the data for debugging.
-
-..  _Enabling debug messages:
-
-Enabling debug messages
------------------------
-
-Allowing debug messages in the server is possible only when
-configuring the sources. Two ``configure`` options are required
-to do this:
-
-* The ``--enable-debug`` option specifies the server modules for which
-  you want to enable debug messages. One or more of the following
-  modules may be listed, separated by commas:
-
-  * ``server`` - Messages related to networking, threads and low-level
-    journal handling.
-  * ``zones`` - All operations with zones (loading, updating, saving,
-    timers, high-level journal management).
-  * ``ns`` - Query processing, high-level handling of all requests
-    (transfers, notifies, normal queries).
-  * ``loader`` - Zone loading and semantic checks.
-  * ``dnssec`` - DNSSEC operations.
-
-* The ``--enable-debuglevel`` option is used to specify the verbosity
-  of the debug output. Be careful with this, as the ``details``
-  verbosity may produce really large logs (in order of GBs).  There are
-  three levels of verbosity: ``brief``, ``verbose`` and ``details``.
-
-Example:
-
-::
-
-    $ ./configure --enable-debug=server,zones --enable-debuglevel=verbose
