@@ -41,7 +41,7 @@ Generating backtrace
 
 There are several ways to get a backtrace. The most common way is to extract
 the backtrace from a core dump file. Core dump is a memory snapshot generated
-by the operating system when a process crashes. Generating of core dumps must
+by the operating system when a process crashes. The generating of core dumps must
 be usually enabled::
 
     $ ulimit -c unlimited                  # Enable unlimited core dump size
@@ -63,9 +63,9 @@ To generate a core dump of a running process, the `gcore` utility can be used::
 
     $ gcore -o <output-file> $(pidof knotd)
 
-Please note that core dumps can be intercepted by some error collecting system
+Please note that core dumps can be intercepted by an error-collecting system
 service (systemd-coredump, ABRT, Apport, etc.). If you are using such a service,
-consult it's documentation on retrieving the core dump.
+consult its documentation about core dump retrieval.
 
 If the error is reproducible, it is also possible to start and inspect the
 server directly in the debugger::
@@ -74,8 +74,8 @@ server directly in the debugger::
     (gdb) run
     ...
 
-Alternatively, the debugger can be attached to an already running server
-process. This is generally useful when troubleshooting stuck process::
+Alternatively, the debugger can be attached to a running server
+process. This is generally useful when troubleshooting a stuck process::
 
     $ knotd ...
     $ gdb --pid $(pidof knotd)
