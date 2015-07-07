@@ -38,16 +38,16 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .INDENT 0.0
 .TP
 \fB\-c\fP, \fB\-\-config\fP \fIfile\fP
-Use textual configuration file (default is \fB@config_dir@/knot.conf\fP).
+Use a textual configuration file (default is \fB@config_dir@/knot.conf\fP).
 .TP
 \fB\-C\fP, \fB\-\-confdb\fP \fIdirectory\fP
-Use binary configuration database.
+Use a binary configuration database.
 .TP
 \fB\-d\fP, \fB\-\-daemonize\fP [\fIdirectory\fP]
-Run server as a daemon. Working directory may be set (default is \fB/\fP).
+Run the server as a daemon. Working directory may be set (default is \fB/\fP).
 .TP
 \fB\-V\fP, \fB\-\-version\fP
-Print program versiom.
+Print the program versiom.
 .TP
 \fB\-h\fP, \fB\-\-help\fP
 Print help and usage.
