@@ -194,45 +194,46 @@ Examples
    parameters, and add a zone *example.com*. The zone will use the created
    policy::
 
-   $ keymgr init
-   $ keymgr policy add default
-   $ keymgr zone add example.com policy default
+    $ keymgr init
+    $ keymgr policy add default
+    $ keymgr zone add example.com policy default
 
 2. List zones containing *.com* substring::
 
-   $ keymgr zone list .com
+    $ keymgr zone list .com
 
 3. Add a testing policy *lab* with rapid key rollovers. Apply the policy to an
    existing zone::
 
-   $ keymgr policy add lab rrsig-lifetime 300 rrsig-refresh 150 zsk-lifetime 600 delay 10
-   $ keymgr zone set example.com policy lab
+    $ keymgr policy add lab rrsig-lifetime 300 rrsig-refresh 150 zsk-lifetime 600 \
+      delay 10
+    $ keymgr zone set example.com policy lab
 
 4. Add an existing and already secured zone. Let the keys be managed by the
    KASP. Make sure to import all used keys. Also the used algorithm must match
    with the one configured in the policy::
 
-   $ keymgr zone add example.com policy default
-   $ keymgr zone key import example.com Kexample.com+010+12345.private
-   $ keymgr zone key import example.com Kexample.com+010+67890.private
+    $ keymgr zone add example.com policy default
+    $ keymgr zone key import example.com Kexample.com+010+12345.private
+    $ keymgr zone key import example.com Kexample.com+010+67890.private
 
 5. Disable automatic key management for a secured zone::
 
-   $ keymgr zone set example.com policy none
+    $ keymgr zone set example.com policy none
 
 6. Add a zone to be signed with manual key maintenance. Generate one ECDSA
    signing key. The Single-Type Signing scheme will be used::
 
-   $ keymgr zone add example.com policy none
-   $ keymgr zone key gen example.com algo 13 size 256
+    $ keymgr zone add example.com policy none
+    $ keymgr zone key gen example.com algo 13 size 256
 
 7. Add a zone to be signed with manual key maintenance. Generate two
    RSA-SHA-256 signing keys. The first key will be used as a KSK, the second
    one as a ZSK::
 
-   $ keymgr zone add example.com policy none
-   $ keymgr zone key generate example.com algorithm rsasha256 size 2048 ksk
-   $ keymgr zone key generate example.com algorithm rsasha256 size 1024
+    $ keymgr zone add example.com policy none
+    $ keymgr zone key generate example.com algorithm rsasha256 size 2048 ksk
+    $ keymgr zone key generate example.com algorithm rsasha256 size 1024
 
 See Also
 --------
