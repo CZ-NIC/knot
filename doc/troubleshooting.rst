@@ -14,10 +14,11 @@ Reporting bugs
 ==============
 
 If you are unable to solve the problem by yourself, you can submit a
-bugreport to the Knot DNS team. *Do NOT use the public mailing list 
-for security issues (e.g. crash), though!* Instead, write to
-`knot-dns@labs.nic.cz <mailto:knot-dns@labs.nic.cz>`_. All other bugs
-and questions may be directed to the Knot DNS users mailing list
+bugreport to the Knot DNS developers. For security or sensitive issues
+contact the developers directly on
+`knot-dns@labs.nic.cz <mailto:knot-dns@labs.nic.cz>`_.
+All other bugs and questions may be directed to the Knot DNS users public
+mailing list
 (`knot-dns-users@lists.nic.cz <mailto:knot-dns-users@lists.nic.cz>`_).
 
 A bugreport should contain at least:
@@ -38,26 +39,45 @@ will be very useful as well.
 Generating backtrace
 ====================
 
-There are several ways to achieve that. The most common way is to
-leave a core dump and then extract a backtrace from it. This doesn't
-affect any server operation, you just need to make sure the OS is
-configured to generate them::
+There are several ways to get a backtrace. The most common way is to extract
+the backtrace from a core dump file. Core dump is a memory snapshot generated
+by the operating system when a process crashes. Generating of core dumps must
+be usually enabled::
 
     $ ulimit -c unlimited                  # Enable unlimited core dump size
+    $ knotd ...                            # Reproduce the crash
     ...
-    $ gdb $(which knotd) core.<KNOT_PID>   # Start gdb on the core dump
+    $ gdb knotd <core-dump-file>           # Start gdb on the core dump
     (gdb) thread apply all bt              # Extract backtrace from all threads
-    (gdb) q
+    (gdb) quit
 
-If the error is repeatable, you can run the binary in a ``gdb``
-debugger or attach the debugger to the running process. The backtrace
-from a running process is generally useful when debugging problems
-like stuck process and similar::
+To save the backtrace into a file, the following GDB commands can be used::
 
-    $ knotd -c knot.conf
-    $ sudo gdb --pid <KNOT_PID>
+    (gdb) set pagination off
+    (gdb) set logging file backtrace.txt
+    (gdb) set logging on
+    (gdb) thread apply all bt
+    (gdb) set logging off
+
+To generate a core dump of a running process, the `gcore` utility can be used::
+
+    $ gcore -o <output-file> $(pidof knotd)
+
+Please note that core dumps can be intercepted by some error collecting system
+service (systemd-coredump, ABRT, Apport, etc.). If you are using such a service,
+consult it's documentation on retrieving the core dump.
+
+If the error is reproducible, it is also possible to start and inspect the
+server directly in the debugger::
+
+    $ gdb --args knotd -c /etc/knot.conf
+    (gdb) run
+    ...
+
+Alternatively, the debugger can be attached to an already running server
+process. This is generally useful when troubleshooting stuck process::
+
+    $ knotd ...
+    $ gdb --pid $(pidof knotd)
     (gdb) continue
     ...
-    (gdb) thread apply all bt
-    (gdb) q
-
