@@ -620,8 +620,6 @@ a given prefix and subnet.
 Records are synthesized only if the query can't be satisfied from the zone.
 Both IPv4 and IPv6 are supported.
 
-*Note: Long names are snipped for readability.*
-
 Automatic forward records
 -------------------------
 
@@ -635,35 +633,35 @@ Example::
        network: 2620:0:b61::/52
 
    zone:
-     - domain: example.
-       file: example.zone # Zone file have to exist!
+     - domain: test.
+       file: test.zone # Must exist
        module: mod-synth-record/test1
 
 Result:
 
 .. code-block:: console
 
-   $ kdig AAAA dynamic-2620-0000-0b61-0100-0000-0000-0000-0000.example.
+   $ kdig AAAA dynamic-2620-0000-0b61-0100-0000-0000-0000-0001.test.
    ...
    ;; QUESTION SECTION:
-   ;; dynamic-2620-0000-0b61-0100-0000-0000-0000-0000.example. 0	IN	AAAA
+   ;; dynamic-2620-0000-0b61-0100-0000-0000-0000-0001.test. IN AAAA
 
    ;; ANSWER SECTION:
-   dynamic-2620-0000-0b61-0100... 400 IN AAAA 2620:0:b61:100::
+   dynamic-2620-0000-0b61-0100-0000-0000-0000-0001.test. 400 IN AAAA 2620:0:b61:100::1
 
 You can also have CNAME aliases to the dynamic records, which are going to be
 further resolved:
 
 .. code-block:: console
 
-   $ kdig AAAA hostalias.example.
+   $ kdig AAAA alias.test.
    ...
    ;; QUESTION SECTION:
-   ;hostalias.example. 0	IN	AAAA
+   ;; alias.test. IN AAAA
 
    ;; ANSWER SECTION:
-   hostalias.example. 3600 IN CNAME dynamic-2620-0000-0b61-0100...
-   dynamic-2620-0000-0b61-0100... 400  IN AAAA  2620:0:b61:100::
+   alias.test. 3600 IN CNAME dynamic-2620-0000-0b61-0100-0000-0000-0000-0002.test.
+   dynamic-2620-0000-0b61-0100-0000-0000-0000-0002.test. 400 IN AAAA 2620:0:b61:100::2
 
 Automatic reverse records
 -------------------------
@@ -674,26 +672,27 @@ Example::
      - id: test2
        type: reverse
        prefix: dynamic-
-       origin: example
+       origin: test
        ttl: 400
        network: 2620:0:b61::/52
 
    zone:
      - domain: 1.6.b.0.0.0.0.0.0.2.6.2.ip6.arpa.
-       file: 1.6.b.0.0.0.0.0.0.2.6.2.ip6.arpa.zone # Zone file have to exist!
+       file: 1.6.b.0.0.0.0.0.0.2.6.2.ip6.arpa.zone # Must exist
        module: mod-synth-record/test2
 
 Result:
 
 .. code-block:: console
 
-   $ kdig PTR 1.0.0...1.6.b.0.0.0.0.0.0.2.6.2.ip6.arpa.
+   $ kdig -x 2620:0:b61::1
    ...
    ;; QUESTION SECTION:
-   ;; 1.0.0...1.6.b.0.0.0.0.0.0.2.6.2.ip6.arpa. 0	IN	PTR
+   ;; 1.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.1.6.b.0.0.0.0.0.0.2.6.2.ip6.arpa. IN PTR
 
    ;; ANSWER SECTION:
-   ... 400 IN PTR dynamic-2620-0000-0b61-0000-0000-0000-0000-0001.example.
+   1.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.1.6.b.0.0.0.0.0.0.2.6.2.ip6.arpa. 400 IN PTR
+                                  dynamic-2620-0000-0b61-0000-0000-0000-0000-0001.test.
 
 Limitations
 ^^^^^^^^^^^
@@ -805,13 +804,16 @@ Here is an example on how to use the module:
   .. code-block:: console
 
    $ mkdir /tmp/static_rrdb
+   $ # No logging
    $ rosedb_tool /tmp/static_rrdb add myrecord.com. A 3600 "127.0.0.1" "-" "-" 
-       # No logging
+   $ # Logging as 'www_query' to Syslog at 10.0.0.1
    $ rosedb_tool /tmp/static_rrdb add www.myrecord.com. A 3600 "127.0.0.1" \
-       "www_query" "10.0.0.1" # Syslog @ 10.0.0.1
+                                                    "www_query" "10.0.0.1"
+   $ # Logging as 'ipv6_query' to Syslog at 10.0.0.1
    $ rosedb_tool /tmp/static_rrdb add ipv6.myrecord.com. AAAA 3600 "::1" \
-       "ipv6_query" "10.0.0.1" # Syslog @ 10.0.0.1
-   $ rosedb_tool /tmp/static_rrdb list # Verify
+                                                 "ipv6_query" "10.0.0.1"
+   $ # Verify settings
+   $ rosedb_tool /tmp/static_rrdb list
    www.myrecord.com.       A RDATA=10B     www_query       10.0.0.1
    ipv6.myrecord.com.      AAAA RDATA=22B  ipv6_query      10.0.0.1
    myrecord.com.           A RDATA=10B     -               -
