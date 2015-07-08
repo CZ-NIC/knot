@@ -31,6 +31,7 @@
 #include "libknot/internal/sockaddr.h"
 #include "libknot/yparser/ypformat.h"
 #include "libknot/yparser/yptrafo.h"
+#include "libknot/internal/mempool.h"
 
 /*! Configuration specific logging. */
 #define CONF_LOG(severity, msg, ...) do { \
@@ -281,6 +282,7 @@ void conf_free(
 
 	if (!is_clone) {
 		conf->api->deinit(conf->db);
+		mp_delete(conf->mm->ctx);
 		free(conf->mm);
 		free(conf->filename);
 	}
