@@ -140,7 +140,7 @@ class Test(object):
            (valgrind or (valgrind == None and server == "knot")):
             srv.valgrind = [params.valgrind_bin] + \
                            params.valgrind_flags.split() + \
-                           ["--log-file=%s/valgrind" % srv.dir]
+                           ["--log-file=%s" % srv.valgrind_log]
 
         self.servers.add(srv)
         return srv
