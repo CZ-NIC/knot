@@ -182,6 +182,7 @@ int conf_new(
 	return KNOT_EOK;
 new_error:
 	yp_scheme_free(out->scheme);
+	mp_delete(out->mm->ctx);
 	free(out->mm);
 	free(out);
 
