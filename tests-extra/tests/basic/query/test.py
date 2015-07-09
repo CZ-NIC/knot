@@ -130,7 +130,13 @@ resp = knot.dig("ab.flags", "A", udp=True)
 resp.check(rcode="NOERROR")
 compare(resp.count(rtype="CNAME", section="answer"), 23, "Count of CNAME records in loop.")
 
-''' CNAME in Additional '''
+''' CNAME in MX EXCHANGE. '''
+
+# Knot puts A/AAAA for MX, SRV, and NS into Additional section of the answer.
+# However, when the domain name in RDATA is an in-zone CNAME, it doesn't try
+# to solve it. We expect that the resolver will be picking only useful
+# information from the Additional section and following a CNAME in Additional
+# is not simple.
 
 # Leading to existing name
 resp = knot.dig("cname-mx.flags", "MX", udp=True)
@@ -150,7 +156,7 @@ resp.cmp(bind)
 
 ''' DNAME answers. '''
 
-# DNAME query
+# DNAME query (NODATA)
 resp = knot.dig("dname.flags", "A", udp=True)
 resp.cmp(bind)
 
