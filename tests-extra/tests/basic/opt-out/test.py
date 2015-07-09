@@ -44,10 +44,7 @@ resp.cmp(bind)
 # B5. Wildcard No Data Error.
 resp = knot.dig("a.z.w.example.", "AAAA", dnssec=True)
 resp.check(rcode="NOERROR", flags="QR AA", eflags="DO")
-# @note Commented out because BIND9 (as of 9.9.4) does not return
-#       a closest encloser wildcard NSEC3 RR.
-#       See RFC5155 appendix B.5, page 46
-#resp.cmp(bind)
+resp.cmp(bind)
 
 # B6. DS Child Zone No Data Error.
 resp = knot.dig("example.", "DS", dnssec=True)
