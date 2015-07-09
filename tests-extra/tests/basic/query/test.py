@@ -98,7 +98,7 @@ resp = knot.dig("cname-ns.flags", "NS", udp=True)
 resp.cmp(bind, additional=True)
 
 # CNAME leading below delegation
-resp = knot.dig("a.cname-ns.flags", "A", udp=True)
+resp = knot.dig("cname-below-ns.flags", "A", udp=True)
 resp.cmp(bind, additional=True)
 
 # CNAME leading out
