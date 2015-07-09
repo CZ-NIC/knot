@@ -668,6 +668,7 @@ class Bind(Server):
         s.item("max-retry-time", "2")
         s.item("transfers-in", "30")
         s.item("transfers-out", "30")
+        s.item("minimal-responses", "true")
         s.end()
 
         s.begin("key", self.ctlkey.name)
