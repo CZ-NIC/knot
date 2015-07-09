@@ -211,7 +211,7 @@ class Response(object):
                 compare(option.data.decode('ascii'), nsid, "TXT NSID")
 
     def diff(self, resp, flags=True, answer=True, authority=True,
-             additional=True):
+             additional=False):
         '''Compares specified response sections against another response'''
 
         if flags:
@@ -233,8 +233,12 @@ class Response(object):
                              "ADDITIONAL")
 
     def cmp(self, server, flags=True, answer=True, authority=True,
-            additional=True):
-        '''Asks server for the same question an compares specified sections'''
+            additional=False):
+        '''
+        Asks server for the same question an compares specified sections
+
+        The Additional section is not compared by default.
+        '''
 
         resp = server.dig(**self.args)
         self.diff(resp, flags, answer, authority, additional)
