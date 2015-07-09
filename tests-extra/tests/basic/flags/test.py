@@ -41,7 +41,7 @@ resp.cmp(bind)
 # AA flag must be cleared
 resp = knot.dig("sub.flags", "NS", flags="AA")
 resp.check(flags="QR", noflags="AA TC RD RA AD CD")
-resp.cmp(bind)
+resp.cmp(bind, additional=True)
 
 # RA flag must be cleared
 resp = knot.dig("flags", "NS", flags="RA")
@@ -51,7 +51,7 @@ resp.cmp(bind)
 # NS record for delegated subdomain (not authoritative).
 resp = knot.dig("sub.flags", "NS")
 resp.check(flags="QR", noflags="AA TC RD RA AD CD")
-resp.cmp(bind)
+resp.cmp(bind, additional=True)
 
 # Glue record for delegated subdomain (not authoritative).
 resp = knot.dig("ns.sub.flags", "A")

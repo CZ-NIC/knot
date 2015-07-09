@@ -34,7 +34,7 @@ resp.cmp(bind)
 # B3. Referral to an Opt-Out Unsigned Zone.
 resp = knot.dig("mc.c.example.", "MX", dnssec=True)
 resp.check(rcode="NOERROR", flags="QR", noflags="AA", eflags="DO")
-resp.cmp(bind)
+resp.cmp(bind, additional=True)
 
 # B4. Wildcard Expansion.
 resp = knot.dig("a.z.w.example.", "MX", dnssec=True)

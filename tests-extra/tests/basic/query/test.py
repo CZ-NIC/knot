@@ -49,12 +49,12 @@ resp.cmp(bind)
 # Positive (REFERRAL)
 resp = knot.dig("sub.flags", "NS", udp=True)
 resp.check(rcode="NOERROR", flags="QR", noflags="AA TC AD RA")
-resp.cmp(bind)
+resp.cmp(bind, additional=True)
 
 # Positive (REFERRAL, below delegation)
 resp = knot.dig("ns.sub.flags", "A", udp=True)
 resp.check(rcode="NOERROR", flags="QR", noflags="AA TC AD RA")
-resp.cmp(bind)
+resp.cmp(bind, additional=True)
 
 ''' ANY query type. '''
 
@@ -68,7 +68,7 @@ resp.cmp(bind)
 
 # ANY to delegation point
 resp = knot.dig("sub.flags", "ANY", udp=True)
-resp.cmp(bind)
+resp.cmp(bind, additional=True)
 
 # ANY to CNAME record
 resp = knot.dig("cname.flags", "ANY", udp=True)
@@ -95,11 +95,11 @@ resp.cmp(bind)
 
 # CNAME leading to delegation
 resp = knot.dig("cname-ns.flags", "NS", udp=True)
-resp.cmp(bind)
+resp.cmp(bind, additional=True)
 
 # CNAME leading below delegation
 resp = knot.dig("a.cname-ns.flags", "A", udp=True)
-resp.cmp(bind)
+resp.cmp(bind, additional=True)
 
 # CNAME leading out
 resp = knot.dig("cname-out.flags", "A", udp=True)
@@ -246,7 +246,7 @@ resp.cmp(bind)
 
 # Wildcard chain to NS
 resp = knot.dig("a.wildcard-deleg.flags", "NS", udp=True)
-resp.cmp(bind)
+resp.cmp(bind, additional=True)
 
 # Wildcard leading out
 resp = knot.dig("a.wildcard-out.flags", "A", udp=True)
