@@ -307,6 +307,20 @@ class Response(object):
 
         return cnt
 
+    def check_count(self, expected, rtype=None, section="answer"):
+        found = self.count(rtype, section)
+        if found != expected:
+            set_err("CHECK RR COUNT")
+            check_log("ERROR: CHECK RR COUNT")
+            detail_log("!Invalid RR count type=%s section=%s" % (
+                rtype if rtype is not None else "",
+                section
+            ))
+            detail_log(SEP)
+
+    def check_empty(self, section="answer"):
+        return self.check_count(0, None, section)
+
     def msg_count(self):
         '''Returns number of response messages'''
 
