@@ -669,6 +669,8 @@ class Bind(Server):
         s.item("transfers-in", "30")
         s.item("transfers-out", "30")
         s.item("minimal-responses", "true")
+        s.item("additional-from-auth", "false")
+        s.item("additional-from-cache", "false")
         s.end()
 
         s.begin("key", self.ctlkey.name)
