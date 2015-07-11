@@ -60,17 +60,11 @@ class Response(object):
                      nordata=None):
         '''Checks given section for particular record/rdata'''
 
+        sect = getattr(self.resp, section)
         if not rtype:
             rtype = self.rtype
         elif type(rtype) is str:
             rtype = dns.rdatatype.from_text(rtype)
-
-        if section == "answer":
-            sect = self.resp.answer
-        elif section == "additional":
-            sect = self.resp.additional
-        elif section == "authority":
-            sect = self.resp.authority
 
         # Check rdata presence.
         if rdata:
