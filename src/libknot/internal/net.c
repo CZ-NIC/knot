@@ -100,7 +100,7 @@ static const struct option *nonlocal_option(int family)
 static void enable_nonlocal(int socket, int family)
 {
 	const struct option *opt = nonlocal_option(family);
-	if (!opt) {
+	if (opt == NULL || opt->name == 0) {
 		return;
 	}
 
