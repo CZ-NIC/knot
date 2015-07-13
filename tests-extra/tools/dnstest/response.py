@@ -56,6 +56,34 @@ class Response(object):
             flag_val = dns.flags.edns_from_text(flag)
             isset(not(self.resp.ednsflags & flag_val), "NO %s FLAG" % flag)
 
+    def check_rr(self, section="answer", rname=None, rtype=None):
+        """
+        Check for a presence of a RR with given name and type.
+        """
+        section_rrsets = getattr(self.resp, section)
+        if rname is not None:
+            rname = dns.name.from_text(rname)
+        if rtype is not None:
+            rtype = dns.rdatatype.from_text(rtype)
+
+        assert rname or rtype
+
+        for rrset in section_rrsets:
+            if rname is not None and rname != rrset.name:
+                continue
+            if rtype is not None and rtype != rrset.rdtype:
+                continue
+            break
+        else:
+            set_err("CHECK RR PRESENCE")
+            check_log("ERROR: CHECK RR PRESENCE")
+            detail_log("!Missing RR name=%s type=%s section=%s" % (
+                str(rname) if rname is not None else "",
+                dns.rdatatype.to_text(rtype) if rtype is not None else "",
+                section
+            ))
+            detail_log(SEP)
+
     def check_record(self, section="answer", rtype=None, ttl=None, rdata=None,
                      nordata=None):
         '''Checks given section for particular record/rdata'''
@@ -205,7 +233,7 @@ class Response(object):
                 compare(option.data.decode('ascii'), nsid, "TXT NSID")
 
     def diff(self, resp, flags=True, answer=True, authority=True,
-             additional=True):
+             additional=False):
         '''Compares specified response sections against another response'''
 
         if flags:
@@ -227,8 +255,12 @@ class Response(object):
                              "ADDITIONAL")
 
     def cmp(self, server, flags=True, answer=True, authority=True,
-            additional=True):
-        '''Asks server for the same question an compares specified sections'''
+            additional=False):
+        '''
+        Asks server for the same question an compares specified sections
+
+        The Additional section is not compared by default.
+        '''
 
         resp = server.dig(**self.args)
         self.diff(resp, flags, answer, authority, additional)
@@ -268,6 +300,20 @@ class Response(object):
                     cnt += len(rrset)
 
         return cnt
+
+    def check_count(self, expected, rtype=None, section="answer"):
+        found = self.count(rtype, section)
+        if found != expected:
+            set_err("CHECK RR COUNT")
+            check_log("ERROR: CHECK RR COUNT")
+            detail_log("!Invalid RR count type=%s section=%s" % (
+                rtype if rtype is not None else "",
+                section
+            ))
+            detail_log(SEP)
+
+    def check_empty(self, section="answer"):
+        self.check_count(0, None, section)
 
     def msg_count(self):
         '''Returns number of response messages'''

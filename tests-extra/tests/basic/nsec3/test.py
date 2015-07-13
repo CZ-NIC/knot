@@ -34,12 +34,12 @@ resp.cmp(bind)
 # B4. Referral to Signed Zone.
 resp = knot.dig("mc.a.example", "MX", dnssec=True)
 resp.check(rcode="NOERROR", flags="QR", noflags="AA", eflags="DO")
-resp.cmp(bind)
+resp.cmp(bind, additional=True)
 
 # B5. Referral to Unsigned Zone.
 resp = knot.dig("mc.b.example", "MX", dnssec=True)
 resp.check(rcode="NOERROR", flags="QR", noflags="AA", eflags="DO")
-resp.cmp(bind)
+resp.cmp(bind, additional=True)
 
 # B6. Wildcard Expansion.
 resp = knot.dig("a.z.w.example", "MX", dnssec=True)
@@ -69,12 +69,12 @@ resp.cmp(bind)
 # Wildcard Expansion below delegation point
 resp = knot.dig("a.a.example", "A", dnssec=True)
 resp.check(rcode="NOERROR", flags="QR", eflags="DO")
-resp.cmp(bind)
+resp.cmp(bind, additional=True)
 
 # Wildcard Expansion below delegation point (no data)
 resp = knot.dig("a.a.example", "AAAA", dnssec=True)
 resp.check(rcode="NOERROR", flags="QR", eflags="DO")
-resp.cmp(bind)
+resp.cmp(bind, additional=True)
 
 # Direct wildcard query (positive)
 resp = knot.dig("*.w.example", "MX", dnssec=True)
@@ -89,12 +89,12 @@ resp.cmp(bind)
 # Direct wildcard query below delegation point (positive)
 resp = knot.dig("*.a.example", "A", dnssec=True)
 resp.check(rcode="NOERROR", flags="QR", eflags="DO")
-resp.cmp(bind)
+resp.cmp(bind, additional=True)
 
 # Direct wildcard query below delegation point (no data)
 resp = knot.dig("*.a.example", "AAAA", dnssec=True)
 resp.check(rcode="NOERROR", flags="QR", eflags="DO")
-resp.cmp(bind)
+resp.cmp(bind, additional=True)
 
 # B8. DS Child Zone No Data Error.
 resp = knot.dig("example", "DS", dnssec=True)

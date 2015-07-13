@@ -1,0 +1,44 @@
+$ORIGIN test.
+$TTL 10
+
+@		SOA	a.ns admin 1 10 10 120 10
+
+; NS - autoritative
+@		NS	a.ns
+		NS	b.ns
+		NS	ns.out.
+a.ns		A	10.0.0.1
+		AAAA	fd00::a1
+b.ns		AAAA	fd00::b1
+		AAAA	fd00::b2
+
+; NS - delegation
+deleg		NS	a.ns.deleg
+		NS	ns.out.
+a.ns.deleg	A	10.0.1.1
+		AAAA	fd00::1:1
+
+; MX
+mx		MX	10 a.mail
+		MX	20 b.mail
+		MX	30 mail.out.
+a.mail		A	10.0.1.1
+b.mail		AAAA	fd00::1:1
+
+; SRV
+srv		SRV	10 0 1000 a.service
+		SRV	10 0 1000 b.service
+		SRV	10 0 1000 service.out.
+a.service	TXT	"no address"
+b.service	AAAA	fd00::2:1
+		AAAA	fd00::2:2
+		AAAA	fd00::2:3
+
+; PTR
+ptr		PTR	target
+target		A	10.0.3.1
+		AAAA	fd00::3:1
+
+; MX with CNAME
+mx-cname	MX	10 cname.mail
+cname.mail	CNAME	a.mail

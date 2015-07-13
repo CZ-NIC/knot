@@ -27,6 +27,9 @@ cname	CNAME	dns1
 ; CNAME to delegation
 cname-ns	CNAME	sub
 
+; CNAME to a name below delegation
+cname-below-ns	CNAME	below.sub
+
 ; CNAME to out
 cname-out	CNAME	another.world.
 

@@ -41,7 +41,7 @@ resp.cmp(bind)
 # AA flag must be cleared
 resp = knot.dig("sub.flags", "NS", flags="AA")
 resp.check(flags="QR", noflags="AA TC RD RA AD CD")
-resp.cmp(bind)
+resp.cmp(bind, additional=True)
 
 # RA flag must be cleared
 resp = knot.dig("flags", "NS", flags="RA")
@@ -51,7 +51,7 @@ resp.cmp(bind)
 # NS record for delegated subdomain (not authoritative).
 resp = knot.dig("sub.flags", "NS")
 resp.check(flags="QR", noflags="AA TC RD RA AD CD")
-resp.cmp(bind)
+resp.cmp(bind, additional=True)
 
 # Glue record for delegated subdomain (not authoritative).
 resp = knot.dig("ns.sub.flags", "A")
@@ -61,12 +61,12 @@ resp.cmp(bind)
 # Check maximal UDP payload which fits into a response message.
 resp = knot.dig("512resp.flags", "TXT", udp=True)
 resp.check(flags="QR AA", noflags="TC RD RA AD CD")
-resp.cmp(bind, flags=False) # Bind returns TC compared to Knot!
+resp.cmp(bind)
 
 # TC bit - UDP.
 resp = knot.dig("513resp.flags", "TXT", udp=True)
 resp.check(flags="QR AA TC", noflags="RD RA AD CD")
-resp.cmp(bind, authority=False) # Knot puts SOA compared to Bind!
+resp.cmp(bind)
 
 # No TC bit - TCP.
 resp = knot.dig("513resp.flags", "TXT", udp=False)
@@ -76,9 +76,11 @@ resp.cmp(bind)
 # Check ANY over UDP (expects TC=1)
 resp = knot.dig("flags", "ANY", udp=True)
 resp.check(flags="QR AA TC", noflags="RD RA AD CD")
+# nothing to compare
 
-# Check ANY over TCP(expects TC=0)
+# Check ANY over TCP (expects TC=0)
 resp = knot.dig("flags", "ANY", udp=False)
 resp.check(flags="QR AA", noflags="TC RD RA AD CD")
+resp.cmp(bind)
 
 t.end()

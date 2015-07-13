@@ -49,12 +49,12 @@ resp.cmp(bind)
 # Positive (REFERRAL)
 resp = knot.dig("sub.flags", "NS", udp=True)
 resp.check(rcode="NOERROR", flags="QR", noflags="AA TC AD RA")
-resp.cmp(bind)
+resp.cmp(bind, additional=True)
 
 # Positive (REFERRAL, below delegation)
 resp = knot.dig("ns.sub.flags", "A", udp=True)
 resp.check(rcode="NOERROR", flags="QR", noflags="AA TC AD RA")
-resp.cmp(bind)
+resp.cmp(bind, additional=True)
 
 ''' ANY query type. '''
 
@@ -68,7 +68,7 @@ resp.cmp(bind)
 
 # ANY to delegation point
 resp = knot.dig("sub.flags", "ANY", udp=True)
-resp.cmp(bind)
+resp.cmp(bind, additional=True)
 
 # ANY to CNAME record
 resp = knot.dig("cname.flags", "ANY", udp=True)
@@ -95,11 +95,11 @@ resp.cmp(bind)
 
 # CNAME leading to delegation
 resp = knot.dig("cname-ns.flags", "NS", udp=True)
-resp.cmp(bind)
+resp.cmp(bind, additional=True)
 
 # CNAME leading below delegation
-resp = knot.dig("a.cname-ns.flags", "A", udp=True)
-resp.cmp(bind)
+resp = knot.dig("cname-below-ns.flags", "A", udp=True)
+resp.cmp(bind, additional=True)
 
 # CNAME leading out
 resp = knot.dig("cname-out.flags", "A", udp=True)
@@ -130,7 +130,13 @@ resp = knot.dig("ab.flags", "A", udp=True)
 resp.check(rcode="NOERROR")
 compare(resp.count(rtype="CNAME", section="answer"), 23, "Count of CNAME records in loop.")
 
-''' CNAME in Additional '''
+''' CNAME in MX EXCHANGE. '''
+
+# Knot puts A/AAAA for MX, SRV, and NS into Additional section of the answer.
+# However, when the domain name in RDATA is an in-zone CNAME, it doesn't try
+# to solve it. We expect that the resolver will be picking only useful
+# information from the Additional section and following a CNAME in Additional
+# is not simple.
 
 # Leading to existing name
 resp = knot.dig("cname-mx.flags", "MX", udp=True)
@@ -150,7 +156,7 @@ resp.cmp(bind)
 
 ''' DNAME answers. '''
 
-# DNAME query
+# DNAME query (NODATA)
 resp = knot.dig("dname.flags", "A", udp=True)
 resp.cmp(bind)
 
@@ -246,7 +252,7 @@ resp.cmp(bind)
 
 # Wildcard chain to NS
 resp = knot.dig("a.wildcard-deleg.flags", "NS", udp=True)
-resp.cmp(bind)
+resp.cmp(bind, additional=True)
 
 # Wildcard leading out
 resp = knot.dig("a.wildcard-out.flags", "A", udp=True)
