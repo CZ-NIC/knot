@@ -56,33 +56,47 @@ class Response(object):
             flag_val = dns.flags.edns_from_text(flag)
             isset(not(self.resp.ednsflags & flag_val), "NO %s FLAG" % flag)
 
-    def check_rr(self, section="answer", rname=None, rtype=None):
+    def _check_rr(self, expect, section=None, rname=None, rtype=None):
         """
         Check for a presence of a RR with given name and type.
         """
-        section_rrsets = getattr(self.resp, section)
+        if section is None:
+            section = "answer"
         if rname is not None:
             rname = dns.name.from_text(rname)
         if rtype is not None:
             rtype = dns.rdatatype.from_text(rtype)
 
+        assert section in ["answer", "authority", "additional"]
         assert rname or rtype
 
+        section_rrsets = getattr(self.resp, section)
         for rrset in section_rrsets:
             if rname is not None and rname != rrset.name:
                 continue
             if rtype is not None and rtype != rrset.rdtype:
                 continue
+            found = True
             break
         else:
+            found = False
+
+        if found != expect:
             set_err("CHECK RR PRESENCE")
             check_log("ERROR: CHECK RR PRESENCE")
-            detail_log("!Missing RR name=%s type=%s section=%s" % (
+            detail_log("!%s RR name=%s type=%s section=%s" % (
+                "Missing" if expect else "Extra",
                 str(rname) if rname is not None else "",
                 dns.rdatatype.to_text(rtype) if rtype is not None else "",
                 section
             ))
             detail_log(SEP)
+
+    def check_rr(self, section=None, rname=None, rtype=None):
+        self._check_rr(True, section, rname, rtype)
+
+    def check_no_rr(self, section=None, rname=None, rtype=None):
+        self._check_rr(False, section, rname, rtype)
 
     def check_record(self, section="answer", rtype=None, ttl=None, rdata=None,
                      nordata=None):
