@@ -46,7 +46,7 @@ resp.check_rr("answer", "mx.test", "MX")
 resp.check_rr("additional", "a.mail.test", "A")
 resp.check_rr("additional", "b.mail.test", "AAAA")
 
-# SRV recordD (only AAAA in additionals)
+# SRV record (only AAAA in additionals)
 
 resp = knot.dig("srv.test", "SRV")
 resp.check(rcode="NOERROR", flags="AA")
