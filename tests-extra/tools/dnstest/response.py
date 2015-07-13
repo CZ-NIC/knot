@@ -67,6 +67,7 @@ class Response(object):
         if rtype is not None:
             rtype = dns.rdatatype.from_text(rtype)
 
+        assert section in ["answer", "authority", "additional"]
         assert rname or rtype
 
         section_rrsets = getattr(self.resp, section)
