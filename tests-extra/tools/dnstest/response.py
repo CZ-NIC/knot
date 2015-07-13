@@ -56,11 +56,12 @@ class Response(object):
             flag_val = dns.flags.edns_from_text(flag)
             isset(not(self.resp.ednsflags & flag_val), "NO %s FLAG" % flag)
 
-    def check_rr(self, section="answer", rname=None, rtype=None):
+    def check_rr(self, section=None, rname=None, rtype=None):
         """
         Check for a presence of a RR with given name and type.
         """
-        section_rrsets = getattr(self.resp, section)
+        if section is None:
+            section = "answer"
         if rname is not None:
             rname = dns.name.from_text(rname)
         if rtype is not None:
@@ -68,6 +69,7 @@ class Response(object):
 
         assert rname or rtype
 
+        section_rrsets = getattr(self.resp, section)
         for rrset in section_rrsets:
             if rname is not None and rname != rrset.name:
                 continue
