@@ -319,7 +319,7 @@ class Response(object):
             detail_log(SEP)
 
     def check_empty(self, section="answer"):
-        return self.check_count(0, None, section)
+        self.check_count(0, None, section)
 
     def msg_count(self):
         '''Returns number of response messages'''
