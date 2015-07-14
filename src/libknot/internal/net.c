@@ -58,45 +58,54 @@ int net_unbound_socket(int type, const struct sockaddr_storage *ss)
 	return socket_create(ss->ss_family, type, 0);
 }
 
+struct option {
+	int level;
+	int name;
+};
+
 /*!
  * \brief Get setsock option for binding non-local address.
  */
-static int nonlocal_option(int family)
+static const struct option *nonlocal_option(int family)
 {
-	int opt4 = 0;
-	int opt6 = 0;
+	static const struct option ipv4 = {
+		#if defined(IP_FREEBIND)
+			IPPROTO_IP, IP_FREEBIND
+		#elif defined(IP_BINDANY)
+			IPPROTO_IP, IP_BINDANY
+		#else
+			0, 0
+		#endif
+	};
 
-#if defined(IP_FREEBIND)
-	opt4 = opt6 = IP_FREEBIND;
-#else
-#  if defined(IP_BINDANY)
-	opt4 = IP_BINDANY;
-#  endif
-#  if defined(IPV6_BINDANY)
-	opt6 = IPV6_BINDANY;
-#  endif
-#endif
+	static const struct option ipv6 = {
+		#if defined(IP_FREEBIND)
+			IPPROTO_IP, IP_FREEBIND
+		#elif defined(IPV6_BINDANY)
+			IPPROTO_IPV6, IPV6_BINDANY
+		#else
+			0, 0
+		#endif
+
+	};
 
 	switch (family) {
-	case AF_INET:  return opt4;
-	case AF_INET6: return opt6;
+	case AF_INET:  return &ipv4;
+	case AF_INET6: return &ipv6;
 	default:
-		return 0;
+		return NULL;
 	}
 }
 
 static void enable_nonlocal(int socket, int family)
 {
-	int option = nonlocal_option(family);
-	if (option == 0) {
+	const struct option *opt = nonlocal_option(family);
+	if (opt == NULL || opt->name == 0) {
 		return;
 	}
 
 	int enable = 1;
-	assert(family == AF_INET || family == AF_INET6);
-	int level = family == AF_INET ? IPPROTO_IP : IPPROTO_IPV6;
-
-	(void) setsockopt(socket, level, option, &enable, sizeof(enable));
+	(void) setsockopt(socket, opt->level, opt->name, &enable, sizeof(enable));
 }
 
 int net_bound_socket(int type, const struct sockaddr_storage *ss,
