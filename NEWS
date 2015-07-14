@@ -1,3 +1,21 @@
+Knot DNS 2.1.0-dev (TBD)
+========================
+
+Bugfixes:
+---------
+ - Enable journald logging only when running under systemd
+ - Fix memory leak in configuration on server shutdown
+ - Fix CNAME following when quering for NSEC RR type
+ - Fix binding an unavailable IPv6 address on Linux (IP_FREEBIND)
+
+Features:
+---------
+ - Send minimal responses (remove NS from Authority section for NOERROR)
+
+Improvements:
+-------------
+ - Documentation fixes, updates, and improvements in formatting
+
 Knot DNS 2.0.0 (2015-06-26)
 ===========================
 
