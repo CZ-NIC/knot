@@ -1267,6 +1267,9 @@
 	    | "LP"i         %{ type_num(KNOT_RRTYPE_LP, &rdata_tail); }
 	    | "EUI48"i      %{ type_num(KNOT_RRTYPE_EUI48, &rdata_tail); }
 	    | "EUI64"i      %{ type_num(KNOT_RRTYPE_EUI64, &rdata_tail); }
+	    | "NSEC5"i      %{ type_num(KNOT_RRTYPE_NSEC5, &rdata_tail); }
+	    | "NSEC5KEY"i   %{ type_num(KNOT_RRTYPE_NSEC5KEY, &rdata_tail); }
+	    | "NSEC5PROOF"i %{ type_num(KNOT_RRTYPE_NSEC5PROOF, &rdata_tail); }
 	    | "TYPE"i      . num16 # TYPE0-TYPE65535.
 	    ) $!_type_error;
 	# END
@@ -1325,6 +1328,9 @@
 	    | "LP"i         %{ window_add_bit(KNOT_RRTYPE_LP, s); }
 	    | "EUI48"i      %{ window_add_bit(KNOT_RRTYPE_EUI48, s); }
 	    | "EUI64"i      %{ window_add_bit(KNOT_RRTYPE_EUI64, s); }
+	    | "NSEC5"i      %{ window_add_bit(KNOT_RRTYPE_NSEC5, s); }
+	    | "NSEC5KEY"i   %{ window_add_bit(KNOT_RRTYPE_NSEC5KEY, s); }
+	    | "NSEC5PROOF"i %{ window_add_bit(KNOT_RRTYPE_NSEC5PROOF, s); }
 	    | "TYPE"i      . type_bitmap # TYPE0-TYPE65535.
 	    );
 
@@ -1763,6 +1769,18 @@
 		(eui64)
 		$!_r_data_error %_ret . all_wchar;
 
+	r_data_nsec5 :=
+		(num16 . sep . num8 . sep . hash . bitmap)
+		$!_r_data_error %_ret . all_wchar;
+
+	r_data_nsec5key :=
+		(num8 . sep . base64)
+		$!_r_data_error %_ret . end_wchar;
+
+	r_data_nsec5proof :=
+		(num16 . sep . base64)
+		$!_r_data_error %_ret . end_wchar;
+
 	action _text_r_data {
 		fhold;
 		switch (s->r_type) {
@@ -1833,6 +1851,12 @@
 			fcall r_data_eui48;
 		case KNOT_RRTYPE_EUI64:
 			fcall r_data_eui64;
+		case KNOT_RRTYPE_NSEC5:
+			fcall r_data_nsec5;
+		case KNOT_RRTYPE_NSEC5KEY:
+			fcall r_data_nsec5key;
+		case KNOT_RRTYPE_NSEC5PROOF:
+			fcall r_data_nsec5proof;
 		default:
 			WARN(ZS_CANNOT_TEXT_DATA);
 			fgoto err_line;
@@ -1880,6 +1904,9 @@
 		case KNOT_RRTYPE_LP:
 		case KNOT_RRTYPE_EUI48:
 		case KNOT_RRTYPE_EUI64:
+		case KNOT_RRTYPE_NSEC5:
+		case KNOT_RRTYPE_NSEC5KEY:
+		case KNOT_RRTYPE_NSEC5PROOF:
 			fcall nonempty_hex_r_data;
 		// Next types can have empty rdata.
 		case KNOT_RRTYPE_APL:
@@ -1944,6 +1971,9 @@
 		| "LP"i         %{ s->r_type = KNOT_RRTYPE_LP; }
 		| "EUI48"i      %{ s->r_type = KNOT_RRTYPE_EUI48; }
 		| "EUI64"i      %{ s->r_type = KNOT_RRTYPE_EUI64; }
+		| "NSEC5"i      %{ s->r_type = KNOT_RRTYPE_NSEC5; }
+		| "NSEC5KEY"i   %{ s->r_type = KNOT_RRTYPE_NSEC5KEY; }
+		| "NSEC5PROOF"i %{ s->r_type = KNOT_RRTYPE_NSEC5PROOF; }
 		| "TYPE"i      . type_number
 		) $!_r_type_error;
 	# END
