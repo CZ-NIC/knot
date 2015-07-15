@@ -47,6 +47,7 @@ static const error_message_t ERROR_MESSAGES[] = {
 	{ DNSSEC_INVALID_KEY_ALGORITHM,	"invalid key algorithm" },
 	{ DNSSEC_INVALID_KEY_SIZE,	"invalid key size" },
 	{ DNSSEC_INVALID_KEY_ID,	"invalid key ID" },
+	{ DNSSEC_INVALID_KEY_NAME,	"invalid key name" },
 
 	{ DNSSEC_NO_PUBLIC_KEY,		"no public key" },
 	{ DNSSEC_NO_PRIVATE_KEY,	"no private key" },
@@ -55,8 +56,12 @@ static const error_message_t ERROR_MESSAGES[] = {
 	{ DNSSEC_SIGN_INIT_ERROR,	"signing initialization error" },
 	{ DNSSEC_SIGN_ERROR,		"signing error" },
 	{ DNSSEC_INVALID_SIGNATURE,	"invalid signature" },
+
 	{ DNSSEC_INVALID_NSEC3_ALGORITHM, "invalid NSEC3 algorithm" },
 	{ DNSSEC_NSEC3_HASHING_ERROR,	"NSEC3 hashing error" },
+
+	{ DNSSEC_INVALID_DS_ALGORITHM,	"invalid DS algorithm" },
+	{ DNSSEC_DS_HASHING_ERROR,	"DS hashing error" },
 
 	{ DNSSEC_CONFIG_MALFORMED,	"malformed config value" },
 	{ DNSSEC_CONFIG_INVALID_KEY_ID,	"invalid key ID in config" },
