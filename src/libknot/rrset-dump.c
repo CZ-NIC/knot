@@ -1649,6 +1649,52 @@ static int dump_eui(DUMP_PARAMS)
 	DUMP_END;
 }
 
+static int dump_nsec5(DUMP_PARAMS)
+{
+	if (p->style->wrap) {
+		DUMP_NUM16;  DUMP_SPACE;
+		DUMP_NUM8;   DUMP_SPACE;
+		DUMP_HASH;   DUMP_SPACE; WRAP_INIT;
+		DUMP_BITMAP;
+		WRAP_END;
+	} else {
+		DUMP_NUM16; DUMP_SPACE;
+		DUMP_NUM8;  DUMP_SPACE;
+		DUMP_HASH;  DUMP_SPACE;
+		DUMP_BITMAP;
+	}
+
+	DUMP_END;
+}
+
+static int dump_nsec5key(DUMP_PARAMS)
+{
+	if (p->style->wrap) {
+		DUMP_NUM8; DUMP_SPACE; WRAP_INIT;
+		DUMP_BASE64;
+		WRAP_END;
+	} else {
+		DUMP_NUM8; DUMP_SPACE;
+		DUMP_BASE64;
+	}
+
+	DUMP_END;
+}
+
+static int dump_nsec5proof(DUMP_PARAMS)
+{
+	if (p->style->wrap) {
+		DUMP_NUM16; DUMP_SPACE; WRAP_INIT;
+		DUMP_BASE64;
+		WRAP_END;
+	} else {
+		DUMP_NUM16; DUMP_SPACE;
+		DUMP_BASE64;
+	}
+
+	DUMP_END;
+}
+
 static int dump_tsig(DUMP_PARAMS)
 {
 	if (p->style->wrap) {
@@ -1815,6 +1861,15 @@ int knot_rrset_txt_dump_data(const knot_rrset_t      *rrset,
 			break;
 		case KNOT_RRTYPE_TSIG:
 			ret = dump_tsig(&p);
+			break;
+		case KNOT_RRTYPE_NSEC5:
+			ret = dump_nsec5(&p);
+			break;
+		case KNOT_RRTYPE_NSEC5KEY:
+			ret = dump_nsec5key(&p);
+			break;
+		case KNOT_RRTYPE_NSEC5PROOF:
+			ret = dump_nsec5proof(&p);
 			break;
 		default:
 			ret = dump_unknown(&p);
