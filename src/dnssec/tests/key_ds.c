@@ -62,6 +62,37 @@ static void test_key(const char *name, const struct key_parameters *params)
 	dnssec_key_free(key);
 }
 
+static void test_errors(const struct key_parameters *params)
+{
+	dnssec_key_t *key = NULL;
+	dnssec_binary_t ds = { 0 };
+
+	int r = dnssec_key_create_ds(key, DNSSEC_KEY_DIGEST_SHA1, &ds);
+	is_int(DNSSEC_EINVAL, r, "dnssec_key_create_ds() no key");
+	dnssec_binary_free(&ds);
+
+	dnssec_key_new(&key);
+	r = dnssec_key_create_ds(key, DNSSEC_KEY_DIGEST_SHA1, &ds);
+	is_int(DNSSEC_INVALID_KEY_NAME, r, "dnssec_key_create_ds() no key name");
+
+	dnssec_key_set_dname(key, params->name);
+	r = dnssec_key_create_ds(key, DNSSEC_KEY_DIGEST_SHA1, &ds);
+	is_int(DNSSEC_INVALID_PUBLIC_KEY, r, "dnssec_key_create_ds() no public key");
+
+	dnssec_key_set_rdata(key, &params->rdata);
+	r = dnssec_key_create_ds(key, DNSSEC_KEY_DIGEST_SHA1, NULL);
+	is_int(DNSSEC_EINVAL, r, "dnssec_key_create_ds() no RDATA buffer");
+
+	r = dnssec_key_create_ds(key, 3, &ds);
+	is_int(DNSSEC_INVALID_DS_ALGORITHM, r, "dnssec_key_create_ds() unsupported algorithm");
+
+	r = dnssec_key_create_ds(key, DNSSEC_KEY_DIGEST_SHA1, &ds);
+	is_int(DNSSEC_EOK, r, "dnssec_key_create_ds() valid parameters");
+
+	dnssec_binary_free(&ds);
+	dnssec_key_free(key);
+}
+
 int main(int argc, char *argv[])
 {
 	plan_lazy();
@@ -69,6 +100,8 @@ int main(int argc, char *argv[])
 	test_key("RSA",   &SAMPLE_RSA_KEY);
 	test_key("DSA",   &SAMPLE_DSA_KEY);
 	test_key("ECDSA", &SAMPLE_ECDSA_KEY);
+
+	test_errors(&SAMPLE_ECDSA_KEY);
 
 	return 0;
 }
