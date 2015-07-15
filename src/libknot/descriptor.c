@@ -130,7 +130,13 @@ static const rdata_descriptor_t rdata_descriptors[] = {
 	[KNOT_RRTYPE_AXFR]       = { { KNOT_RDATA_WF_REMAINDER,
 	                               KNOT_RDATA_WF_END }, "AXFR" },
 	[KNOT_RRTYPE_ANY]        = { { KNOT_RDATA_WF_REMAINDER,
-	                               KNOT_RDATA_WF_END }, "ANY" }
+	                               KNOT_RDATA_WF_END }, "ANY" },
+	[KNOT_RRTYPE_NSEC5]      = { { KNOT_RDATA_WF_REMAINDER,
+	                               KNOT_RDATA_WF_END }, "NSEC5" },
+	[KNOT_RRTYPE_NSEC5KEY]   = { { KNOT_RDATA_WF_REMAINDER,
+	                               KNOT_RDATA_WF_END }, "NSEC5KEY" },
+	[KNOT_RRTYPE_NSEC5PROOF] = { { KNOT_RDATA_WF_REMAINDER,
+	                               KNOT_RDATA_WF_END }, "NSEC5PROOF" }
 };
 
 /*!
@@ -159,7 +165,7 @@ static const rdata_descriptor_t obsolete_rdata_descriptors[] = {
 
 const rdata_descriptor_t *knot_get_rdata_descriptor(const uint16_t type)
 {
-	if (type <= KNOT_RRTYPE_ANY &&
+	if (type <= KNOT_RRTYPE_NSEC5PROOF &&
 	    rdata_descriptors[type].type_name != NULL) {
 		return &rdata_descriptors[type];
 	} else {
@@ -213,7 +219,7 @@ int knot_rrtype_from_string(const char *name, uint16_t *num)
 	unsigned long n;
 
 	// Try to find name in descriptors table.
-	for (i = 0; i <= KNOT_RRTYPE_ANY; i++) {
+	for (i = 0; i <= KNOT_RRTYPE_NSEC5PROOF; i++) {
 		if (rdata_descriptors[i].type_name != NULL &&
 		    strcasecmp(rdata_descriptors[i].type_name, name) == 0) {
 			*num = i;
@@ -310,9 +316,12 @@ int knot_rrtype_is_metatype(const uint16_t type)
 
 int knot_rrtype_is_ddns_forbidden(const uint16_t type)
 {
-	return type == KNOT_RRTYPE_RRSIG ||
-	       type == KNOT_RRTYPE_NSEC  ||
-	       type == KNOT_RRTYPE_NSEC3;
+	return type == KNOT_RRTYPE_RRSIG      ||
+	       type == KNOT_RRTYPE_NSEC       ||
+	       type == KNOT_RRTYPE_NSEC3      ||
+	       type == KNOT_RRTYPE_NSEC5      ||
+	       type == KNOT_RRTYPE_NSEC5KEY   ||
+	       type == KNOT_RRTYPE_NSEC5PROOF;
 }
 
 int knot_rrtype_additional_needed(const uint16_t type)

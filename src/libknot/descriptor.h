@@ -115,7 +115,11 @@ enum knot_rr_type {
 	KNOT_RRTYPE_IXFR       = 251, /*!< QTYPE. Incremental zone transfer. */
 	KNOT_RRTYPE_AXFR       = 252, /*!< QTYPE. Authoritative zone transfer. */
 
-	KNOT_RRTYPE_ANY        = 255  /*!< QTYPE. Any record. */
+	KNOT_RRTYPE_ANY        = 255, /*!< QTYPE. Any record. */
+
+	KNOT_RRTYPE_NSEC5      = 65280, /*!< NSEC5 next-secure record. */
+	KNOT_RRTYPE_NSEC5KEY   = 65281, /*!< Secret key for NSEC5-hash computation. */
+	KNOT_RRTYPE_NSEC5PROOF = 65282  /*!< Synthesized NSEC5 proof. */
 };
 
 /*!
