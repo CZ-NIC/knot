@@ -20,8 +20,6 @@
 #include "error.h"
 #include "key.h"
 
-#include "sample_keys.h"
-
 static void test_keyid_is_valid_run(const char *param, bool should_ok)
 {
 	ok(dnssec_keyid_is_valid(param) == should_ok,
