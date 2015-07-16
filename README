@@ -116,3 +116,5 @@ $ knotd -c myserver.conf
 For more information, refer to the user manual or:
 $ knotc -h
 $ knotd -h
+
+Join the chat at https://gitter.im/CZ-NIC/knot
