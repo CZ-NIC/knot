@@ -70,26 +70,28 @@ static void check_key(const key_parameters_t *key_data, const dnssec_binary_t *d
 {
 	int r;
 
-	// check validation on static signatures
+	// initialize key from public parameters
 
 	dnssec_key_t *key = NULL;
 	r = dnssec_key_new(&key);
 	ok(r == DNSSEC_EOK && key != NULL, "create key");
-	r = dnssec_key_set_algorithm(key, key_data->algorithm);
-	ok(r == DNSSEC_EOK, "set algorithm");
-	r = dnssec_key_load_pkcs8(key, &key_data->pem);
-	ok(r == DNSSEC_EOK, "load private key");
+	r = dnssec_key_set_rdata(key, &key_data->rdata);
+	ok(r == DNSSEC_EOK, "set RDATA");
+
+	// check validation on static signature
 
 	dnssec_sign_ctx_t *ctx = NULL;
 	r = dnssec_sign_new(&ctx, key);
 	ok(r == DNSSEC_EOK, "create signing context");
 	r = dnssec_sign_add(ctx, data);
-
-	// check existing signature
-
 	ok(r == DNSSEC_EOK, "add data to be signed");
 	r = dnssec_sign_verify(ctx, signature);
 	ok(r == DNSSEC_EOK, "signature verified");
+
+	// create new signature and self-validate
+
+	r = dnssec_key_load_pkcs8(key, &key_data->pem);
+	ok(r == DNSSEC_EOK, "load private key");
 
 	if (signature_match) {
 		r = dnssec_sign_init(ctx);
