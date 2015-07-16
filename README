@@ -101,7 +101,7 @@ E.g. use the default config file:
 $ cd /etc/knot
 $ mv knot.sample.conf knot.conf
 Modify the config:
-$ vim knot.conf
+$ editor knot.conf
 
 2) Prepare working directory
 $ mv example.com.zone /var/lib/knot/
