@@ -445,7 +445,7 @@ int dnssec_sign_verify(dnssec_sign_ctx_t *ctx, const dnssec_binary_t *signature)
 		return DNSSEC_EINVAL;
 	}
 
-	if (!dnssec_key_can_sign(ctx->key)) {
+	if (!dnssec_key_can_verify(ctx->key)) {
 		return DNSSEC_NO_PUBLIC_KEY;
 	}
 
