@@ -73,9 +73,19 @@ There are 8 main sections (\fBserver\fP, \fBkey\fP, \fBacl\fP, \fBcontrol\fP,
 begins with a unique identifier, which can be used as a reference from other
 sections (such identifier must be defined in advance).
 .sp
-A multi\-valued item can be specified either as a YAML sequence
-e.g. \fBaddress: [10.0.0.1, 10.0.0.2]\fP
-or as more single\-valued items each on an extra line, e.g.:
+A multi\-valued item can be specified either as a YAML sequence:
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+address: [10.0.0.1, 10.0.0.2]
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.sp
+or as more single\-valued items each on an extra line:
 .INDENT 0.0
 .INDENT 3.5
 .sp

@@ -13,7 +13,7 @@ Description
 Configuration files for Knot DNS use simplified YAML format. Simplified means
 that not all of the features are supported.
 
-For the description of configuration items, we have to declare a meaning of 
+For the description of configuration items, we have to declare a meaning of
 the following symbols:
 
 - *INT* – Integer
@@ -32,18 +32,20 @@ the following symbols:
 - \| – Choice
 
 There are 8 main sections (``server``, ``key``, ``acl``, ``control``,
-``remote``, ``template``, ``zone`` and ``log``) and module sections with the 
+``remote``, ``template``, ``zone`` and ``log``) and module sections with the
 ``mod-`` prefix. The most of the sections (excluding ``server`` and
 ``control``) are sequences of settings blocks. Each settings block
 begins with a unique identifier, which can be used as a reference from other
 sections (such identifier must be defined in advance).
 
-A multi-valued item can be specified either as a YAML sequence 
-e.g. ``address: [10.0.0.1, 10.0.0.2]``
-or as more single-valued items each on an extra line, e.g.::
-    
-    address: 10.0.0.1
-    address: 10.0.0.2
+A multi-valued item can be specified either as a YAML sequence::
+
+ address: [10.0.0.1, 10.0.0.2]
+
+or as more single-valued items each on an extra line::
+
+ address: 10.0.0.1
+ address: 10.0.0.2
 
 If an item value contains spaces or other special characters, it is necessary
 to enclose such value within double quotes ``"`` ``"``.
@@ -521,7 +523,7 @@ Template section
 
 A template is a shareable zone setting which can be used for configuration of
 many zones in one place. A special default template (with the *default* identifier)
-can be used for general querying configuration or as an implicit configuration 
+can be used for general querying configuration or as an implicit configuration
 if a zone doesn't have another template specified.
 
 ::
@@ -1014,7 +1016,7 @@ Default: empty
 Module rosedb
 =============
 
-The module provides a mean to override responses for certain queries before 
+The module provides a mean to override responses for certain queries before
 the available zones are searched for the record.
 
 ::
