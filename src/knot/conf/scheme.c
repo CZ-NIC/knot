@@ -133,23 +133,24 @@ static const yp_item_t desc_remote[] = {
 };
 
 #define ZONE_ITEMS \
-	{ C_FILE,             YP_TSTR,  YP_VNONE }, \
-	{ C_STORAGE,          YP_TSTR,  YP_VSTR = { STORAGE_DIR } }, \
-	{ C_MASTER,           YP_TREF,  YP_VREF = { C_RMT }, YP_FMULTI, { check_ref } }, \
-	{ C_DDNS_MASTER,      YP_TREF,  YP_VREF = { C_RMT }, YP_FNONE, { check_ref } }, \
-	{ C_NOTIFY,           YP_TREF,  YP_VREF = { C_RMT }, YP_FMULTI, { check_ref } }, \
-	{ C_ACL,              YP_TREF,  YP_VREF = { C_ACL }, YP_FMULTI, { check_ref } }, \
-	{ C_SEM_CHECKS,       YP_TBOOL, YP_VNONE }, \
-	{ C_DISABLE_ANY,      YP_TBOOL, YP_VNONE }, \
-	{ C_ZONEFILE_SYNC,    YP_TINT,  YP_VINT = { -1, INT32_MAX, 0, YP_STIME } }, \
-	{ C_IXFR_DIFF,        YP_TBOOL, YP_VNONE }, \
-	{ C_MAX_JOURNAL_SIZE, YP_TINT,  YP_VINT = { 0, INT64_MAX, INT64_MAX, YP_SSIZE } }, \
-	{ C_DNSSEC_SIGNING,   YP_TBOOL, YP_VNONE }, \
-	{ C_KASP_DB,          YP_TSTR,  YP_VSTR = { "keys" } }, \
-	{ C_SERIAL_POLICY,    YP_TOPT,  YP_VOPT = { serial_policies, SERIAL_POLICY_INCREMENT } }, \
-	{ C_MODULE,           YP_TDATA, YP_VDATA = { 0, NULL, mod_id_to_bin, mod_id_to_txt }, \
-	                                YP_FMULTI, { check_modref } }, \
-	{ C_COMMENT,          YP_TSTR,  YP_VNONE },
+	{ C_FILE,                YP_TSTR,  YP_VNONE }, \
+	{ C_STORAGE,             YP_TSTR,  YP_VSTR = { STORAGE_DIR } }, \
+	{ C_MASTER,              YP_TREF,  YP_VREF = { C_RMT }, YP_FMULTI, { check_ref } }, \
+	{ C_DDNS_MASTER,         YP_TREF,  YP_VREF = { C_RMT }, YP_FNONE, { check_ref } }, \
+	{ C_NOTIFY,              YP_TREF,  YP_VREF = { C_RMT }, YP_FMULTI, { check_ref } }, \
+	{ C_ACL,                 YP_TREF,  YP_VREF = { C_ACL }, YP_FMULTI, { check_ref } }, \
+	{ C_SEM_CHECKS,          YP_TBOOL, YP_VNONE }, \
+	{ C_DISABLE_ANY,         YP_TBOOL, YP_VNONE }, \
+	{ C_ZONEFILE_SYNC,       YP_TINT,  YP_VINT = { -1, INT32_MAX, 0, YP_STIME } }, \
+	{ C_IXFR_DIFF,           YP_TBOOL, YP_VNONE }, \
+	{ C_MAX_JOURNAL_SIZE,    YP_TINT,  YP_VINT = { 0, INT64_MAX, INT64_MAX, YP_SSIZE } }, \
+	{ C_DNSSEC_SIGNING,      YP_TBOOL, YP_VNONE }, \
+	{ C_KASP_DB,             YP_TSTR,  YP_VSTR = { "keys" } }, \
+	{ C_SERIAL_POLICY,       YP_TOPT,  YP_VOPT = { serial_policies, SERIAL_POLICY_INCREMENT } }, \
+	{ C_REQUEST_EDNS_OPTION, YP_TDATA, YP_VDATA = { 0, NULL, edns_opt_to_bin, edns_opt_to_txt } }, \
+	{ C_MODULE,              YP_TDATA, YP_VDATA = { 0, NULL, mod_id_to_bin, mod_id_to_txt }, \
+	                                   YP_FMULTI, { check_modref } }, \
+	{ C_COMMENT,             YP_TSTR,  YP_VNONE },
 
 static const yp_item_t desc_template[] = {
 	{ C_ID, YP_TSTR, YP_VNONE },

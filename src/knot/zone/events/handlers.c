@@ -89,6 +89,44 @@ static knot_pkt_t *zone_query(const zone_t *zone, uint16_t pkt_type, mm_ctx_t *m
 	return pkt;
 }
 
+/*! \brief Set EDNS section. */
+static int prepare_edns(zone_t *zone, knot_pkt_t *pkt)
+{
+	conf_val_t opt = conf_zone_get(conf(), C_REQUEST_EDNS_OPTION, zone->name);
+
+	/* Check if an extra EDNS option is configured. */
+	conf_data(&opt);
+	if (opt.data == NULL) {
+		return KNOT_EOK;
+	}
+
+	knot_rrset_t opt_rr;
+	conf_val_t udp_max = conf_get(conf(), C_SRV, C_MAX_UDP_PAYLOAD);
+	int ret = knot_edns_init(&opt_rr, conf_int(&udp_max), 0,
+	                         KNOT_EDNS_VERSION, &pkt->mm);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	ret = knot_edns_add_option(&opt_rr, wire_read_u16(opt.data),
+	                           opt.len - sizeof(uint16_t),
+	                           opt.data + sizeof(uint16_t), &pkt->mm);
+	if (ret != KNOT_EOK) {
+		knot_rrset_clear(&opt_rr, &pkt->mm);
+		return ret;
+	}
+
+	knot_pkt_begin(pkt, KNOT_ADDITIONAL);
+
+	ret = knot_pkt_put(pkt, KNOT_COMPR_HINT_NONE, &opt_rr, KNOT_PF_FREE);
+	if (ret != KNOT_EOK) {
+		knot_rrset_clear(&opt_rr, &pkt->mm);
+		return ret;
+	}
+
+	return KNOT_EOK;
+}
+
 /*!
  * \brief Create a zone event query, send it, wait for the response and process it.
  *
@@ -118,6 +156,12 @@ static int zone_query_execute(zone_t *zone, uint16_t pkt_type, const conf_remote
 	struct knot_requestor re;
 	knot_requestor_init(&re, &mm);
 	knot_requestor_overlay(&re, KNOT_STATE_ANSWER, &param);
+
+	/* Set EDNS section. */
+	ret = prepare_edns(zone, query);
+	if (ret != KNOT_EOK) {
+		goto fail;
+	}
 
 	const knot_tsig_key_t *key = remote->key.name != NULL ?
 	                             &remote->key : NULL;
