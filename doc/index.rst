@@ -10,7 +10,7 @@ Welcome to Knot DNS's documentation!
    requirements
    installation
    configuration
-   running
+   operation
    troubleshooting
    reference
    utilities

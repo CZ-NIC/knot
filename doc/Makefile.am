@@ -11,7 +11,7 @@ EXTRA_DIST = \
 	migration.rst		\
 	reference.rst		\
 	requirements.rst	\
-	running.rst		\
+	opeeration.rst		\
 	troubleshooting.rst	\
 	utilities.rst		\
 	\
