@@ -273,10 +273,7 @@ static knot_pkt_t* create_query_packet(const query_t *query)
 	// Set packet buffer size.
 	uint16_t max_size;
 	if (query->udp_size < 0) {
-		if (get_socktype(query->protocol, query->type_num)
-		    == SOCK_STREAM) {
-			max_size = MAX_PACKET_SIZE;
-		} else if (use_edns(query)) {
+		if (use_edns(query)) {
 			max_size = DEFAULT_EDNS_SIZE;
 		} else {
 			max_size = DEFAULT_UDP_SIZE;
@@ -383,7 +380,7 @@ static knot_pkt_t* create_query_packet(const query_t *query)
 	knot_pkt_begin(packet, KNOT_ADDITIONAL);
 
 	// Create EDNS section if required.
-	if (query->udp_size > 0 || use_edns(query)) {
+	if (query->udp_size >= 0 || use_edns(query)) {
 		int ret = add_query_edns(packet, query, max_size);
 		if (ret != KNOT_EOK) {
 			ERR("can't set up EDNS section\n");
