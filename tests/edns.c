@@ -63,6 +63,8 @@ enum offsets {
 	OFFSET_OPT_DATA = 4
 };
 
+static const uint16_t DO_FLAG = (uint16_t)1 << 15;
+
 static bool check_ttl(knot_rdata_t *rdata, uint8_t ext_rcode, uint8_t ver,
                       uint16_t flags, char *msg, int *done)
 {
@@ -261,9 +263,8 @@ static bool test_setters(knot_rrset_t *opt_rr, int *done)
 	knot_edns_set_do(opt_rr);
 
 	bool success = true;
-	bool check = check_header(opt_rr, E_MAX_PLD2, E_VERSION2,
-	                          KNOT_EDNS_FLAG_DO, E_RCODE2,
-	                          "OPT RR setters", done);
+	bool check = check_header(opt_rr, E_MAX_PLD2, E_VERSION2, DO_FLAG,
+	                          E_RCODE2, "OPT RR setters", done);
 	success &= check;
 
 	/* OPTION(RDATA)-related setters. */

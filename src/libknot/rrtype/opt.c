@@ -277,13 +277,6 @@ bool knot_edns_has_option(const knot_rrset_t *opt_rr, uint16_t code)
 
 /*----------------------------------------------------------------------------*/
 _public_
-bool knot_edns_has_nsid(const knot_rrset_t *opt_rr)
-{
-	return knot_edns_has_option(opt_rr, KNOT_EDNS_OPTION_NSID);
-}
-
-/*----------------------------------------------------------------------------*/
-_public_
 bool knot_edns_check_record(knot_rrset_t *opt_rr)
 {
 	if (opt_rr->rrs.rr_count != 1) {
