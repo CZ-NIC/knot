@@ -18,9 +18,11 @@ If you are unable to solve the problem by yourself, you can submit a
 bugreport to the Knot DNS developers. For security or sensitive issues
 contact the developers directly on
 `knot-dns@labs.nic.cz <mailto:knot-dns@labs.nic.cz>`_.
-All other bugs and questions may be directed to the Knot DNS users public
+All other bugs and questions may be directed to the public Knot DNS users
 mailing list
-(`knot-dns-users@lists.nic.cz <mailto:knot-dns-users@lists.nic.cz>`_).
+(`knot-dns-users@lists.nic.cz <mailto:knot-dns-users@lists.nic.cz>`_) or
+may be entered into the
+`issue tracking system <https://gitlab.labs.nic.cz/labs/knot/issues>`_.
 
 A bugreport should contain at least:
 
