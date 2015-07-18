@@ -24,18 +24,27 @@ mailing list
 may be entered into the
 `issue tracking system <https://gitlab.labs.nic.cz/labs/knot/issues>`_.
 
-A bugreport should contain at least:
+Before anything else, please try to answer the following questions:
 
-* Knot DNS version and type of installation (source, package, etc.)
-* Type and version of your operating system
-* Basic hardware information
+* Has it been working?
+* What has changed? System configuration, software updates, network
+  configuration, firewall rules modification, hardware replacement, etc.
+
+The bugreport should contain the answers for the previous questions and in
+addition at least the following information:
+
+* Knot DNS version and type of installation (distribution package, from source,
+  etc.)
+* Operating system, processor architecture, kernel version
+* Relevant basic hardware information (processor, amount of memory, available
+  network devices, etc.)
 * Description of the bug
-* Log output of all messages (category ``any``, severity ``info``)
+* Log output with the highest verbosity (category ``any``, severity ``info``)
 * Steps to reproduce the bug (if known)
-* Backtrace (if the bug caused a crash; see the next section)
+* Backtrace (if the bug caused a crash or a hang; see the next section)
 
-If it is possible, the actual configuration file and/or zone file(s)
-will be very useful as well.
+If possible, please provide a minimal configuration file and zone files which
+can be used to reproduce the bug.
 
 ..  _Generating backtrace:
 
