@@ -51,10 +51,18 @@ can be used to reproduce the bug.
 Generating backtrace
 ====================
 
-There are several ways to get a backtrace. The most common way is to extract
+Backtrace carries basic information about the state of the program and how
+the program got where it is. It helps determining the location of the bug in
+the source code.
+
+If you run Knot DNS from distribution packages, make sure the debugging
+symbols for the package are installed. The symbols are usually distributed
+in a separate package.
+
+There are several ways to get the backtrace. One possible way is to extract
 the backtrace from a core dump file. Core dump is a memory snapshot generated
-by the operating system when a process crashes. The generating of core dumps must
-be usually enabled::
+by the operating system when a process crashes. The generating of core dumps
+must be usually enabled::
 
     $ ulimit -c unlimited                  # Enable unlimited core dump size
     $ knotd ...                            # Reproduce the crash
@@ -93,3 +101,8 @@ process. This is generally useful when troubleshooting a stuck process::
     $ gdb --pid $(pidof knotd)
     (gdb) continue
     ...
+
+If you fail to get a backtrace of a running process using the previous method,
+you may try the single-purpose ``pstack`` utility::
+
+    $ pstack $(pidof knotd) > backtrace.txt
