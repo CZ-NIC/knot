@@ -77,7 +77,8 @@ To save the backtrace into a file, the following GDB commands can be used::
     (gdb) set pagination off
     (gdb) set logging file backtrace.txt
     (gdb) set logging on
-    (gdb) thread apply all bt
+    (gdb) info threads
+    (gdb) thread apply all bt full
     (gdb) set logging off
 
 To generate a core dump of a running process, the `gcore` utility can be used::
