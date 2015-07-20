@@ -39,7 +39,7 @@ addition at least the following information:
 * Relevant basic hardware information (processor, amount of memory, available
   network devices, etc.)
 * Description of the bug
-* Log output with the highest verbosity (category ``any``, severity ``info``)
+* Log output with the highest verbosity (category ``any``, severity ``debug``)
 * Steps to reproduce the bug (if known)
 * Backtrace (if the bug caused a crash or a hang; see the next section)
 
