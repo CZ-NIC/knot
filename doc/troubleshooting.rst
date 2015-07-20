@@ -68,7 +68,8 @@ must be usually enabled::
     $ knotd ...                            # Reproduce the crash
     ...
     $ gdb knotd <core-dump-file>           # Start gdb on the core dump
-    (gdb) thread apply all bt              # Extract backtrace from all threads
+    (gdb) info threads                     # Get a summary of all threads
+    (gdb) thread apply all bt full         # Extract backtrace from all threads
     (gdb) quit
 
 To save the backtrace into a file, the following GDB commands can be used::
