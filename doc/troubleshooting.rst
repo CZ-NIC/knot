@@ -35,7 +35,7 @@ addition at least the following information:
 
 * Knot DNS version and type of installation (distribution package, from source,
   etc.)
-* Operating system, processor architecture, kernel version
+* Operating system, platform, kernel version
 * Relevant basic hardware information (processor, amount of memory, available
   network devices, etc.)
 * Description of the bug
