@@ -2546,7 +2546,7 @@ yyreduce:
 #line 679 "cf-parse.y" /* yacc.c:1646  */
     {
    	if (cf_get_extra(scanner)->run == S_FIRST) {
-   		cf_warning(scanner, "query module is not yet implemented");
+   		cf_warning(scanner, "query module is not supported by knot1to2");
    	}
    }
 #line 2553 "cf-parse.tab.c" /* yacc.c:1646  */
@@ -2657,7 +2657,7 @@ yyreduce:
 #line 717 "cf-parse.y" /* yacc.c:1646  */
     {
    	if (cf_get_extra(scanner)->run == S_FIRST) {
-   		cf_warning(scanner, "query module is not yet implemented");
+   		cf_warning(scanner, "query module is not supported by knot1to2");
    	}
    }
 #line 2664 "cf-parse.tab.c" /* yacc.c:1646  */

@@ -678,7 +678,7 @@ zone:
  | zone NOTIFY_TIMEOUT NUM ';'			{ /* Not used. */ }
  | zone QUERY_MODULE '{' {
    	if (cf_get_extra(scanner)->run == S_FIRST) {
-   		cf_warning(scanner, "query module is not yet implemented");
+   		cf_warning(scanner, "query module is not supported by knot1to2");
    	}
    }
    query_module_list '}'
@@ -716,7 +716,7 @@ zones:
  | zones NOTIFY_TIMEOUT NUM ';'			{ /* Not used. */ }
  | zones QUERY_MODULE '{' {
    	if (cf_get_extra(scanner)->run == S_FIRST) {
-   		cf_warning(scanner, "query module is not yet implemented");
+   		cf_warning(scanner, "query module is not supported by knot1to2");
    	}
    }
    query_genmodule_list '}'
