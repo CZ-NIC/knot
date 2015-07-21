@@ -387,8 +387,7 @@ static int process_query_err(knot_layer_t *ctx, knot_pkt_t *pkt)
 	}
 
 	/* Put OPT RR to the additional section. */
-	int ret = answer_edns_reserve(pkt, qdata);
-	if (ret == KNOT_EOK) {
+	if (answer_edns_reserve(pkt, qdata) == KNOT_EOK) {
 		(void) answer_edns_put(pkt, qdata);
 	}
 
@@ -429,7 +428,7 @@ static int ratelimit_apply(int state, knot_pkt_t *pkt, knot_layer_t *ctx)
 	conf_val_t val = conf_get(conf(), C_SRV, C_RATE_LIMIT_SLIP);
 	if (rrl_slip_roll(conf_int(&val))) {
 		/* Answer slips. */
-		if (process_query_err(ctx, pkt) != KNOT_EOK) {
+		if (process_query_err(ctx, pkt) != KNOT_STATE_DONE) {
 			return KNOT_STATE_FAIL;
 		}
 		knot_wire_set_tc(pkt->wire);
