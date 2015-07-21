@@ -15,7 +15,6 @@
  */
 
 #include <assert.h>
-#include <sys/fcntl.h>
 
 #include "libknot/processing/requestor.h"
 #include "libknot/errcode.h"
@@ -148,6 +147,10 @@ struct knot_request *knot_request_make(mm_ctx_t *mm,
 _public_
 int knot_request_free(mm_ctx_t *mm, struct knot_request *request)
 {
+	if (request == NULL) {
+		return KNOT_EINVAL;
+	}
+
 	if (request->fd >= 0) {
 		close(request->fd);
 	}
@@ -163,6 +166,10 @@ int knot_request_free(mm_ctx_t *mm, struct knot_request *request)
 _public_
 void knot_requestor_init(struct knot_requestor *requestor, mm_ctx_t *mm)
 {
+	if (requestor == NULL) {
+		return;
+	}
+
 	memset(requestor, 0, sizeof(struct knot_requestor));
 	requestor->mm = mm;
 	init_list(&requestor->pending);
@@ -172,6 +179,10 @@ void knot_requestor_init(struct knot_requestor *requestor, mm_ctx_t *mm)
 _public_
 void knot_requestor_clear(struct knot_requestor *requestor)
 {
+	if (requestor == NULL) {
+		return;
+	}
+
 	while (knot_requestor_dequeue(requestor) == KNOT_EOK)
 		;
 
@@ -189,6 +200,10 @@ _public_
 int knot_requestor_overlay(struct knot_requestor *requestor,
                            const knot_layer_api_t *proc, void *param)
 {
+	if (requestor == NULL) {
+		return KNOT_EINVAL;
+	}
+
 	return knot_overlay_add(&requestor->overlay, proc, param);
 }
 
@@ -200,8 +215,8 @@ int knot_requestor_enqueue(struct knot_requestor *requestor,
 		return KNOT_EINVAL;
 	}
 
-	/* Set socket as uninitialized. */
-	request->fd = -1;
+	/* Socket must be uninitialized. */
+	assert(request->fd == -1);
 
 	/* Prepare response buffers. */
 	request->resp  = knot_pkt_new(NULL, KNOT_WIRE_MAX_PKTSIZE, requestor->mm);
@@ -218,6 +233,10 @@ int knot_requestor_enqueue(struct knot_requestor *requestor,
 _public_
 int knot_requestor_dequeue(struct knot_requestor *requestor)
 {
+	if (requestor == NULL) {
+		return KNOT_EINVAL;
+	}
+
 	if (knot_requestor_finished(requestor)) {
 		return KNOT_ENOENT;
 	}

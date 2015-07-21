@@ -26,9 +26,7 @@
 
 #include <stdint.h>
 
-#include "libknot/consts.h"
 #include "libknot/packet/pkt.h"
-#include "libknot/rrtype/tsig.h"
 #include "libknot/internal/lists.h"
 #include "libknot/internal/mempattern.h"
 
@@ -48,8 +46,7 @@ enum knot_layer_state {
 struct knot_layer_api;
 
 /*! \brief Packet processing context. */
-typedef struct knot_layer
-{
+typedef struct knot_layer {
 	node_t node;
 	uint16_t state;  /* Bitmap of enum knot_layer_state. */
 	mm_ctx_t *mm;    /* Processing memory context. */
@@ -71,25 +68,29 @@ typedef struct knot_layer_api {
 /*!
  * \brief Initialize packet processing context.
  *
- * \param ctx   Layer context.
+ * \param ctx Layer context.
+ * \param api Layer API.
  * \param param Parameters for given module.
- * \param api   Layer API.
- * \return (module specific state)
+ *
+ * \return Layer state.
  */
 int knot_layer_begin(knot_layer_t *ctx, const knot_layer_api_t *api, void *param);
 
 /*!
  * \brief Reset current packet processing context.
- * \param ctx   Layer context.
- * \return (module specific state)
+ *
+ * \param ctx Layer context.
+ *
+ * \return Layer state.
  */
 int knot_layer_reset(knot_layer_t *ctx);
 
 /*!
  * \brief Finish and close packet processing context.
  *
- * \param ctx   Layer context.
- * \return (module specific state)
+ * \param ctx Layer context.
+ *
+ * \return Layer state.
  */
 int knot_layer_finish(knot_layer_t *ctx);
 
@@ -99,7 +100,7 @@ int knot_layer_finish(knot_layer_t *ctx);
  * \param ctx Layer context.
  * \param pkt Data packet.
  *
- * \return (module specific state)
+ * \return Layer state.
  */
 int knot_layer_consume(knot_layer_t *ctx, knot_pkt_t *pkt);
 
@@ -109,7 +110,7 @@ int knot_layer_consume(knot_layer_t *ctx, knot_pkt_t *pkt);
  * \param ctx Layer context.
  * \param pkt Data packet.
  *
- * \return (module specific state)
+ * \return Layer state.
  */
 int knot_layer_produce(knot_layer_t *ctx, knot_pkt_t *pkt);
 
