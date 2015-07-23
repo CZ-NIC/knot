@@ -128,6 +128,9 @@ typedef struct conf_zone_t {
 	int notify_timeout;        /*!< Timeout for NOTIFY response (s). */
 	int build_diffs;           /*!< Calculate differences from changes. */
 	int serial_policy;         /*!< Serial policy when updating zone. */
+	int req_edns_code;         /*!< Request EDNS option code. */
+	char *req_edns_data;       /*!< Request EDNS option data. */
+	size_t req_edns_data_len;  /*!< Request EDNS option data length. */
 	struct {
 		list_t xfr_in;     /*!< Remotes accepted for for xfr-in.*/
 		list_t xfr_out;    /*!< Remotes accepted for xfr-out.*/
@@ -267,6 +270,9 @@ typedef struct conf_t {
 	int dnssec_enable;   /*!< DNSSEC: Online signing enabled. */
 	int sig_lifetime;    /*!< DNSSEC: Signature lifetime. */
 	int serial_policy;   /*!< Serial policy when updating zone. */
+	int req_edns_code;   /*!< Request EDNS option code. */
+	char *req_edns_data; /*!< Request EDNS option data. */
+	size_t req_edns_data_len; /*!< Request EDNS option data length. */
 	struct query_plan *query_plan;
 	list_t query_modules;
 
