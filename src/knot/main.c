@@ -232,13 +232,8 @@ static void event_loop(server_t *server)
 		}
 	}
 
-	server_stop(server);
-
 	/* Close remote control interface. */
 	remote_unbind(&addr, remote);
-
-	/* Wait for server to finish. */
-	server_wait(server);
 }
 
 static void help(void)
@@ -402,6 +397,7 @@ int main(int argc, char **argv)
 	    log_update_privileges(uid, gid) != KNOT_EOK ||
 	    proc_update_privileges(uid, gid) != KNOT_EOK) {
 		log_fatal("failed to drop privileges");
+		server_wait(&server);
 		server_deinit(&server);
 		conf_free(conf(), false);
 		log_close();
@@ -414,6 +410,7 @@ int main(int argc, char **argv)
 	if (daemonize) {
 		pidfile = pid_check_and_create();
 		if (pidfile == NULL) {
+			server_wait(&server);
 			server_deinit(&server);
 			conf_free(conf(), false);
 			log_close();
@@ -447,6 +444,7 @@ int main(int argc, char **argv)
 	res = server_start(&server, conf_bool(&async_val));
 	if (res != KNOT_EOK) {
 		log_fatal("failed to start server (%s)", knot_strerror(res));
+		server_wait(&server);
 		server_deinit(&server);
 		rcu_unregister_thread();
 		pid_cleanup(pidfile);
@@ -465,7 +463,9 @@ int main(int argc, char **argv)
 	/* Start the event loop. */
 	event_loop(&server);
 
-	/* Teardown server and configuration. */
+	/* Teardown server. */
+	server_stop(&server);
+	server_wait(&server);
 	server_deinit(&server);
 
 	/* Free configuration. */
