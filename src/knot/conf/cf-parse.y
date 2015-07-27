@@ -491,6 +491,7 @@ static void ident_auto(void *scanner, int tok, conf_t *conf, bool val)
 
 %token <tok> SYSTEM IDENTITY HOSTNAME SVERSION NSID KEY KEYS
 %token <tok> MAX_UDP_PAYLOAD
+%token <tok> REQ_EDNS_OPT
 %token <tok> TSIG_ALGO_NAME
 %token <tok> WORKERS
 %token <tok> BACKGROUND_WORKERS
@@ -952,6 +953,16 @@ zone:
 	this_zone->serial_policy = $3.i;
  }
  | zone QUERY_MODULE '{' query_module_list '}'
+ | zone REQ_EDNS_OPT NUM HEXSTR ';' {
+     SET_UINT16(this_zone->req_edns_code, $3.i, "request-edns-option");
+     this_zone->req_edns_data = $4.t;
+     this_zone->req_edns_data_len = $4.l;
+ }
+ | zone REQ_EDNS_OPT NUM TEXT ';' {
+     SET_UINT16(this_zone->req_edns_code, $3.i, "request-edns-option");
+     this_zone->req_edns_data = $4.t;
+     this_zone->req_edns_data_len = strlen(this_zone->req_edns_data);
+ }
  ;
 
 query_genmodule:
@@ -996,6 +1007,16 @@ zones:
  }
  | zones SERIAL_POLICY SERIAL_POLICY_VAL ';' {
 	new_config->serial_policy = $3.i;
+ }
+ | zones REQ_EDNS_OPT NUM HEXSTR ';' {
+	SET_UINT16(new_config->req_edns_code, $3.i, "request-edns-option");
+	new_config->req_edns_data = $4.t;
+	new_config->req_edns_data_len = $4.l;
+ }
+ | zones REQ_EDNS_OPT NUM TEXT ';' {
+	SET_UINT16(new_config->req_edns_code, $3.i, "request-edns-option");
+	new_config->req_edns_data = $4.t;
+ 	new_config->req_edns_data_len = strlen(new_config->req_edns_data);
  }
  | zones QUERY_MODULE '{' query_genmodule_list '}'
  ;

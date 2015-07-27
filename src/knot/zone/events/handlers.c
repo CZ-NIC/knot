@@ -84,6 +84,40 @@ static knot_pkt_t *zone_query(const zone_t *zone, uint16_t pkt_type, mm_ctx_t *m
 	return pkt;
 }
 
+static int prepare_edns(zone_t *zone, knot_pkt_t *pkt)
+{
+	/* Check if an extra EDNS option is configured. */
+	if (zone->conf->req_edns_data == NULL) {
+		return KNOT_EOK;
+	}
+
+	knot_rrset_t opt_rr;
+	int ret = knot_edns_init(&opt_rr, conf()->max_udp_payload, 0,
+	                         KNOT_EDNS_VERSION, &pkt->mm);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	ret = knot_edns_add_option(&opt_rr, zone->conf->req_edns_code,
+	                           zone->conf->req_edns_data_len,
+	                           (uint8_t *)zone->conf->req_edns_data,
+	                           &pkt->mm);
+	if (ret != KNOT_EOK) {
+		knot_rrset_clear(&opt_rr, &pkt->mm);
+		return ret;
+	}
+
+	knot_pkt_begin(pkt, KNOT_ADDITIONAL);
+
+	ret = knot_pkt_put(pkt, COMPR_HINT_NONE, &opt_rr, KNOT_PF_FREE);
+	if (ret != KNOT_EOK) {
+		knot_rrset_clear(&opt_rr, &pkt->mm);
+		return ret;
+	}
+
+	return KNOT_EOK;
+}
+
 /*!
  * \brief Create a zone event query, send it, wait for the response and process it.
  *
@@ -113,6 +147,11 @@ static int zone_query_execute(zone_t *zone, uint16_t pkt_type, const conf_iface_
 	param.query = query;
 	param.remote = remote;
 	tsig_init(&param.tsig_ctx, remote->key);
+
+	ret = prepare_edns(zone, query);
+	if (ret != KNOT_EOK) {
+		goto fail;
+	}
 
 	ret = tsig_sign_packet(&param.tsig_ctx, query);
 	if (ret != KNOT_EOK) {
