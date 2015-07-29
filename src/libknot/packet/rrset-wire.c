@@ -284,7 +284,12 @@ static int write_owner(const knot_rrset_t *rrset, uint8_t **dst, size_t *dst_ava
 	assert(dst && *dst);
 	assert(dst_avail);
 
-	uint16_t owner_pointer = compr_get_ptr(compr, KNOT_COMPR_HINT_OWNER);
+	/* Check for zero label owner (don't compress). */
+
+	uint16_t owner_pointer = 0;
+	if (*rrset->owner != '\0') {
+		owner_pointer = compr_get_ptr(compr, KNOT_COMPR_HINT_OWNER);
+	}
 
 	/* Check size */
 
@@ -393,7 +398,6 @@ static int compress_rdata_dname(const uint8_t **src, size_t *src_avail,
 	int written = knot_compr_put_dname(dname, *dst, dname_max(*dst_avail),
 	                                   put_compr);
 	if (written < 0) {
-		assert(written == KNOT_ESPACE);
 		return written;
 	}
 
@@ -514,9 +518,7 @@ int knot_rrset_to_wire(const knot_rrset_t *rrset, uint8_t *wire, uint16_t max_si
 		}
 	}
 
-	size_t written = write - wire;
-
-	return written;
+	return write - wire;
 }
 
 /*- RRSet from wire ---------------------------------------------------------*/
@@ -644,7 +646,7 @@ static int parse_rdata(const uint8_t *pkt_wire, size_t *pos, size_t pkt_size,
 	if (buffer_size < 0) {
 		return buffer_size;
 	}
-	
+
 	if (buffer_size > MAX_RDLENGTH) {
 		/* DNAME compression caused RDATA overflow. */
 		return KNOT_EMALF;
@@ -680,7 +682,7 @@ static int parse_rdata(const uint8_t *pkt_wire, size_t *pos, size_t pkt_size,
 		knot_rdataset_unreserve(rrs, mm);
 		return ret;
 	}
-	
+
 	/* Update position pointer. */
 	*pos += rdlength;
 

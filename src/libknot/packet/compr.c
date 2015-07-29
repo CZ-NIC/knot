@@ -55,18 +55,18 @@ _public_
 int knot_compr_put_dname(const knot_dname_t *dname, uint8_t *dst, uint16_t max,
                          knot_compr_t *compr)
 {
-	/* Write uncompressible names directly. */
 	if (dname == NULL || dst == NULL) {
 		return KNOT_EINVAL;
 	}
+
+	/* Write uncompressible names directly (zero label dname). */
 	if (compr == NULL || *dname == '\0') {
 		return knot_dname_to_wire(dst, dname, max);
 	}
 
+	/* Get number of labels (should not be a zero label dname). */
 	int name_labels = knot_dname_labels(dname, NULL);
-	if (name_labels < 0) {
-		return name_labels;
-	}
+	assert(name_labels > 0);
 
 	/* Suffix must not be longer than whole name. */
 	const knot_dname_t *suffix = compr->wire + compr->suffix.pos;

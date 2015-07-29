@@ -94,9 +94,6 @@ knot_dname_t *knot_dname_copy_part(const knot_dname_t *name, unsigned len,
  * \param maxlen Maximum wire length.
  *
  * \return number of bytes written
- *
- * \todo For most use cases this could be replaced by counting the length
- *       and simple memcpy.
  */
 int knot_dname_to_wire(uint8_t *dst, const knot_dname_t *src, size_t maxlen);
 
