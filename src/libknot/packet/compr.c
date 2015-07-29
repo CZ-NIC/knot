@@ -56,20 +56,18 @@ static bool compr_label_match(const uint8_t *n, const uint8_t *p)
 int knot_compr_put_dname(const knot_dname_t *dname, uint8_t *dst, uint16_t max,
                          knot_compr_t *compr)
 {
-	/* Write uncompressible names directly. */
-	dbg_packet("%s(%p,%p,%u,%p)\n", __func__, dname, dst, max, compr);
 	if (dname == NULL || dst == NULL) {
 		return KNOT_EINVAL;
 	}
+
+	/* Write uncompressible names directly (zero label dname). */
 	if (compr == NULL || *dname == '\0') {
-		dbg_packet("%s: uncompressible, writing full name\n", __func__);
 		return knot_dname_to_wire(dst, dname, max);
 	}
 
+	/* Get number of labels (should not be a zero label dname). */
 	int name_labels = knot_dname_labels(dname, NULL);
-	if (name_labels < 0) {
-		return name_labels;
-	}
+	assert(name_labels > 0);
 
 	/* Suffix must not be longer than whole name. */
 	const knot_dname_t *suffix = compr->wire + compr->suffix.pos;
