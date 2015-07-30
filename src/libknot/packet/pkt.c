@@ -26,6 +26,7 @@
 #include "libknot/packet/wire.h"
 #include "libknot/packet/rrset-wire.h"
 #include "libknot/internal/macros.h"
+#include "libknot/internal/wire_ctx.h"
 
 /*! \brief Packet RR array growth step. */
 #define NEXT_RR_ALIGN 16
@@ -483,27 +484,28 @@ int knot_pkt_put_question(knot_pkt_t *pkt, const knot_dname_t *qname, uint16_t q
 	assert(pkt->rrset_count == 0);
 
 	/* Copy name wireformat. */
-	uint8_t *dst = pkt->wire + KNOT_WIRE_HEADER_SIZE;
-	int qname_len = knot_dname_to_wire(dst, qname, pkt->max_size - pkt->size);
+	wire_ctx_t wire = wire_ctx_init(pkt->wire, pkt->max_size);
+	wire_ctx_set_offset(&wire, KNOT_WIRE_HEADER_SIZE);
+
+	int qname_len = knot_dname_to_wire(wire.position,
+	                                   qname, wire_ctx_available(&wire));
 	if (qname_len < 0) {
 		return qname_len;
 	}
-
-	/* Check size limits. */
-	size_t question_len = 2 * sizeof(uint16_t) + qname_len;
-	if (qname_len < 0 || pkt->size + question_len > pkt->max_size) {
-		return KNOT_ESPACE;
-	}
+	wire_ctx_skip(&wire, qname_len);
 
 	/* Copy QTYPE & QCLASS */
-	dst += qname_len;
-	wire_write_u16(dst, qtype);
-	dst += sizeof(uint16_t);
-	wire_write_u16(dst, qclass);
+	wire_ctx_write_u16(&wire, qtype);
+	wire_ctx_write_u16(&wire, qclass);
+
+	/* Check errors. */
+	if (wire.error != KNOT_EOK) {
+		return wire.error;
+	}
 
 	/* Update question count and sizes. */
 	knot_wire_set_qdcount(pkt->wire, 1);
-	pkt->size += question_len;
+	pkt->size = wire_ctx_offset(&wire);
 	pkt->qname_size = qname_len;
 
 	/* Start writing ANSWER. */

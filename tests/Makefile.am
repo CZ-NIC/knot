@@ -44,6 +44,7 @@ check_PROGRAMS = \
 	tsig_key			\
 	utils				\
 	wire				\
+	wire_ctx			\
 	worker_pool			\
 	worker_queue			\
 	yparser				\

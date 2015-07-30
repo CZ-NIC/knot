@@ -29,6 +29,7 @@
 #include "libknot/rrset.h"
 #include "libknot/internal/macros.h"
 #include "libknot/internal/utils.h"
+#include "libknot/internal/wire_ctx.h"
 
 /*! \brief TSIG field offsets. */
 typedef enum tsig_off_t {
@@ -63,49 +64,58 @@ static uint8_t* rdata_seek(const knot_rrset_t *rr, tsig_off_t id, size_t nb)
 		return NULL;
 	}
 
-	uint8_t *rd = knot_rdata_data(rr_data);
-	assert(rd);
+	wire_ctx_t wire = wire_ctx_init_rdata(rr_data);
 
 	/* TSIG RR names should be already sanitized on parse. */
-	int alg_len = knot_dname_size(rd);
-	uint16_t lim = knot_rdata_rdlen(rr_data);
-	if (lim < alg_len + 5 * sizeof(uint16_t)) {
-		return NULL;
-	}
+	int alg_len = knot_dname_size(wire.wire);
 
 	/* Not pretty, but fast. */
-	uint8_t *bp = rd;
 	switch(id) {
 	case TSIG_ALGNAME_O: break;
-	case TSIG_TSIGNED_O: rd += alg_len; break;
-	case TSIG_FUDGE_O: rd += alg_len + 3 * sizeof(uint16_t); break;
-	case TSIG_MACLEN_O: rd += alg_len + 4 * sizeof(uint16_t); break;
-	case TSIG_MAC_O: rd += alg_len + 5 * sizeof(uint16_t); break;
+	case TSIG_TSIGNED_O:
+		wire_ctx_skip(&wire, alg_len); break;
+	case TSIG_FUDGE_O:
+		wire_ctx_skip(&wire, alg_len + 3 * sizeof(uint16_t));
+		break;
+	case TSIG_MACLEN_O:
+		wire_ctx_skip(&wire, alg_len + 4 * sizeof(uint16_t));
+		break;
+	case TSIG_MAC_O:
+		wire_ctx_skip(&wire, alg_len + 5 * sizeof(uint16_t));
+		break;
 	case TSIG_ORIGID_O:
-		rd += alg_len + 4 * sizeof(uint16_t);
-		rd += wire_read_u16(rd) + sizeof(uint16_t);
+		wire_ctx_skip(&wire, alg_len + 4 * sizeof(uint16_t));
+		wire_ctx_skip(&wire, wire_ctx_read_u16(&wire));
 		break;
 
 	case TSIG_ERROR_O:
-		rd += alg_len + 4 * sizeof(uint16_t);
-		rd += wire_read_u16(rd) + 2 * sizeof(uint16_t);
+		wire_ctx_skip(&wire, alg_len + 4 * sizeof(uint16_t));
+		wire_ctx_skip(&wire, wire_ctx_read_u16(&wire));
+		wire_ctx_skip(&wire, sizeof(uint16_t));
 		break;
 	case TSIG_OLEN_O:
-		rd += alg_len + 4 * sizeof(uint16_t);
-		rd += wire_read_u16(rd) + 3 * sizeof(uint16_t);
+		wire_ctx_skip(&wire, alg_len + 4 * sizeof(uint16_t));
+		wire_ctx_skip(&wire, wire_ctx_read_u16(&wire));
+		wire_ctx_skip(&wire, 2 * sizeof(uint16_t));
 		break;
 	case TSIG_OTHER_O:
-		rd += alg_len + 4 * sizeof(uint16_t);
-		rd += wire_read_u16(rd) + 4 * sizeof(uint16_t);
+		wire_ctx_skip(&wire, alg_len + 4 * sizeof(uint16_t));
+		wire_ctx_skip(&wire, wire_ctx_read_u16(&wire));
+		wire_ctx_skip(&wire, 3 * sizeof(uint16_t));
 		break;
 	}
 
-	/* Check remaining bytes. */
-	if (rd + nb > bp + lim) {
+	if (wire.error != KNOT_EOK) {
 		return NULL;
 	}
 
-	return rd;
+	/* Check remaining bytes. */
+
+	if (wire_ctx_available(&wire) < nb){
+		return NULL;
+	}
+
+	return wire.position;
 }
 
 static int rdata_set_tsig_error(knot_rrset_t *tsig, uint16_t tsig_error)

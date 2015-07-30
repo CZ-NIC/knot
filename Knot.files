@@ -378,6 +378,7 @@ src/libknot/internal/trie/murmurhash3.c
 src/libknot/internal/trie/murmurhash3.h
 src/libknot/internal/utils.c
 src/libknot/internal/utils.h
+src/libknot/internal/wire_ctx.h
 src/libknot/libknot.h
 src/libknot/packet/compr.c
 src/libknot/packet/compr.h
@@ -522,6 +523,7 @@ tests/test_conf.h
 tests/tsig_key.c
 tests/utils.c
 tests/wire.c
+tests/wire_ctx.c
 tests/worker_pool.c
 tests/worker_queue.c
 tests/yparser.c

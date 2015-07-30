@@ -35,6 +35,7 @@
 #include "libknot/internal/base32hex.h"
 #include "libknot/internal/macros.h"
 #include "libknot/internal/utils.h"
+#include "libknot/internal/wire_ctx.h"
 
 #define TAB_WIDTH		8
 #define BLOCK_WIDTH		40
@@ -931,30 +932,24 @@ static void wire_apl_to_str(rrset_dump_params_t *p)
 static void wire_loc_to_str(rrset_dump_params_t *p)
 {
 	int    ret;
-	size_t in_len = 16;
 
-	// Check input size (1 LOC = 16 B).
-	if (in_len > p->in_max) {
+	// Read values.
+	wire_ctx_t wire = wire_ctx_init_const(p->in, p->in_max);
+	uint8_t version = wire_ctx_read_u8(&wire);
+	uint8_t size_w = wire_ctx_read_u8(&wire);
+	uint8_t hpre_w = wire_ctx_read_u8(&wire);
+	uint8_t vpre_w = wire_ctx_read_u8(&wire);
+	uint32_t lat_w = wire_ctx_read_u32(&wire);
+	uint32_t lon_w = wire_ctx_read_u32(&wire);
+	uint32_t alt_w = wire_ctx_read_u32(&wire);
+
+	// Check if all reads are correct.
+	if (wire.error != KNOT_EOK) {
 		return;
 	}
 
-	// Read values.
-	uint8_t version = *p->in;
-	p->in++;
-	uint8_t size_w = *p->in;
-	p->in++;
-	uint8_t hpre_w = *p->in;
-	p->in++;
-	uint8_t vpre_w = *p->in;
-	p->in++;
-	uint32_t lat_w = wire_read_u32(p->in);
-	p->in += 4;
-	uint32_t lon_w = wire_read_u32(p->in);
-	p->in += 4;
-	uint32_t alt_w = wire_read_u32(p->in);
-	p->in += 4;
-
-	p->in_max -= in_len;
+	p->in += wire_ctx_offset(&wire);
+	p->in_max = wire_ctx_available(&wire);
 
 	// Version check.
 	if (version != 0) {

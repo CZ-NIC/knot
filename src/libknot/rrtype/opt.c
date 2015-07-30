@@ -24,6 +24,7 @@
 #include "libknot/errcode.h"
 #include "libknot/internal/macros.h"
 #include "libknot/internal/sockaddr.h"
+#include "libknot/internal/wire_ctx.h"
 
 /*! \brief Some implementation-related constants. */
 enum knot_edns_private_consts {
@@ -107,16 +108,12 @@ _public_
 uint8_t knot_edns_get_ext_rcode(const knot_rrset_t *opt_rr)
 {
 	assert(opt_rr != NULL);
-
 	uint32_t ttl = 0;
-	uint8_t *ttl_ptr = (uint8_t *)&ttl;
+	wire_ctx_t w = wire_ctx_init((uint8_t *) &ttl, sizeof(ttl));
 	// TTL is stored in machine byte order. Convert it to wire order first.
-	wire_write_u32(ttl_ptr, knot_rrset_ttl(opt_rr));
-
-	uint8_t rcode;
-	memcpy(&rcode, ttl_ptr + EDNS_OFFSET_RCODE, sizeof(uint8_t));
-
-	return rcode;
+	wire_ctx_write_u32(&w, knot_rrset_ttl(opt_rr));
+	wire_ctx_set_offset(&w, EDNS_OFFSET_RCODE);
+	return wire_ctx_read_u8(&w);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -124,14 +121,15 @@ uint8_t knot_edns_get_ext_rcode(const knot_rrset_t *opt_rr)
 static void set_value_to_ttl(knot_rrset_t *opt_rr, size_t offset, uint8_t value)
 {
 	uint32_t ttl = 0;
-	uint8_t *ttl_ptr = (uint8_t *)&ttl;
-
+	wire_ctx_t w = wire_ctx_init((uint8_t*) &ttl, sizeof(ttl));
 	// TTL is stored in machine byte order. Convert it to wire order first.
-	wire_write_u32(ttl_ptr, knot_rrset_ttl(opt_rr));
+	wire_ctx_write_u32(&w, knot_rrset_ttl(opt_rr));
 	// Set the Extended RCODE in the converted TTL
-	memcpy(ttl_ptr + offset, &value, sizeof(uint8_t));
+	wire_ctx_set_offset(&w, offset);
+	wire_ctx_write_u8(&w, value);
 	// Convert it back to machine byte order
-	uint32_t ttl_local = wire_read_u32(ttl_ptr);
+	wire_ctx_set_offset(&w, 0);
+	uint32_t ttl_local = wire_ctx_read_u32(&w);
 	// Store the TTL to the RDATA
 	knot_rdata_set_ttl(knot_rdataset_at(&opt_rr->rrs, 0), ttl_local);
 }
@@ -149,16 +147,12 @@ _public_
 uint8_t knot_edns_get_version(const knot_rrset_t *opt_rr)
 {
 	assert(opt_rr != NULL);
-
 	uint32_t ttl = 0;
-	uint8_t *ttl_ptr = (uint8_t *)&ttl;
+	wire_ctx_t w = wire_ctx_init((uint8_t*) &ttl, sizeof(ttl));
 	// TTL is stored in machine byte order. Convert it to wire order first.
-	wire_write_u32(ttl_ptr, knot_rrset_ttl(opt_rr));
-
-	uint8_t version;
-	memcpy(&version, ttl_ptr + EDNS_OFFSET_VERSION, sizeof(uint8_t));
-
-	return version;
+	wire_ctx_write_u32(&w, knot_rrset_ttl(opt_rr));
+	wire_ctx_set_offset(&w, EDNS_OFFSET_VERSION);
+	return wire_ctx_read_u8(&w);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -174,7 +168,6 @@ _public_
 bool knot_edns_do(const knot_rrset_t *opt_rr)
 {
 	assert(opt_rr != NULL);
-
 	return knot_rrset_ttl(opt_rr) & EDNS_DO_MASK;
 }
 
@@ -202,26 +195,23 @@ void knot_edns_set_do(knot_rrset_t *opt_rr)
  */
 static uint8_t *find_option(knot_rdata_t *rdata, uint16_t opt_code)
 {
-	assert(rdata != NULL);
+	wire_ctx_t wire = wire_ctx_init_rdata(rdata);
 
-	uint8_t *data = knot_rdata_data(rdata);
-	uint16_t rdlength = knot_rdata_rdlen(rdata);
-
-	uint8_t *pos = NULL;
-
-	int i = 0;
-	while (i + KNOT_EDNS_OPTION_HDRLEN <= rdlength) {
-		uint16_t code = wire_read_u16(data + i);
-		if (opt_code == code) {
-			pos = data + i;
+	while (wire_ctx_available(&wire) > 0) {
+		uint16_t code = wire_ctx_read_u16(&wire);
+		if (wire.error != KNOT_EOK) {
 			break;
 		}
-		uint16_t opt_len = wire_read_u16(data + i
-		                                      + sizeof(uint16_t));
-		i += (KNOT_EDNS_OPTION_HDRLEN + opt_len);
+
+		if (code == opt_code) {
+			return wire.position;
+		}
+
+		uint16_t opt_len = wire_ctx_read_u16(&wire);
+		wire_ctx_skip(&wire, opt_len);
 	}
 
-	return pos;
+	return NULL;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -247,12 +237,17 @@ int knot_edns_add_option(knot_rrset_t *opt_rr, uint16_t code,
 
 	uint8_t new_data[new_data_len];
 
-	memcpy(new_data, old_data, old_data_len);
+	wire_ctx_t wire = wire_ctx_init(new_data, new_data_len);
+	wire_ctx_write(&wire, old_data, old_data_len);
 	// write length and code in wireformat (convert endian)
-	wire_write_u16(new_data + old_data_len, code);
-	wire_write_u16(new_data + old_data_len + sizeof(uint16_t), length);
+	wire_ctx_write_u16(&wire, code);
+	wire_ctx_write_u16(&wire, length);
 	// write the option data
-	memcpy(new_data + old_data_len + KNOT_EDNS_OPTION_HDRLEN, data, length);
+	wire_ctx_write(&wire, data, length);
+
+	if (wire.error != KNOT_EOK) {
+		return wire.error;
+	}
 
 	/* 2) Replace the RDATA in the RRSet. */
 	uint32_t old_ttl = knot_rdata_ttl(old_rdata);
@@ -288,21 +283,17 @@ bool knot_edns_check_record(knot_rrset_t *opt_rr)
 		return false;
 	}
 
-	uint8_t *data = knot_rdata_data(rdata);
-	uint16_t rdlength = knot_rdata_rdlen(rdata);
-	uint32_t pos = 0;
+	wire_ctx_t wire = wire_ctx_init_rdata(rdata);
 
 	/* RFC2671 4.4: {uint16_t code, uint16_t len, data} */
-	while (pos + KNOT_EDNS_OPTION_HDRLEN <= rdlength) {
-		uint16_t opt_len = wire_read_u16(data + pos
-		                                      + sizeof(uint16_t));
-		pos += KNOT_EDNS_OPTION_HDRLEN + opt_len;
+	// read data to the end or error
+	while (wire_ctx_available(&wire) > 0 && wire.error == KNOT_EOK) {
+		wire_ctx_read_u16(&wire); 			// code
+		uint16_t opt_len = wire_ctx_read_u16(&wire);	// length
+		wire_ctx_skip(&wire, opt_len);			// data
 	}
 
-	/* If not at the end of the RDATA, there are either some redundant data
-	 * (pos < rdlength) or the last OPTION is too long (pos > rdlength).
-	 */
-	return pos == rdlength;
+	return wire.error == KNOT_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -322,27 +313,26 @@ int knot_edns_client_subnet_create(const knot_addr_family_t family,
 	uint8_t addr_prefix_len = (src_mask + 7) / 8; // Ceiling operation.
 	uint8_t modulo = src_mask % 8;
 
-	uint16_t total = sizeof(uint16_t) + 2 * sizeof(uint8_t) + addr_prefix_len;
-	if (*data_len < total) {
-		return KNOT_ESPACE;
-	}
-
 	if (addr_prefix_len > addr_len) {
 		return KNOT_EINVAL;
 	}
 
-	wire_write_u16(data + EDNS_OFFSET_CLIENT_SUBNET_FAMILY, family);
-	data[EDNS_OFFSET_CLIENT_SUBNET_SRC_MASK] = src_mask;
-	data[EDNS_OFFSET_CLIENT_SUBNET_DST_MASK] = dst_mask;
-	memcpy(data + EDNS_OFFSET_CLIENT_SUBNET_ADDR, addr, addr_prefix_len);
+	wire_ctx_t wire = wire_ctx_init(data, *data_len);
+	wire_ctx_write_u16(&wire, family);
+	wire_ctx_write_u8(&wire, src_mask);
+	wire_ctx_write_u8(&wire, dst_mask);
+	wire_ctx_write(&wire, addr, addr_prefix_len);
+
+	if (wire.error != KNOT_EOK) {
+		return wire.error;
+	}
 
 	// Zeroize trailing bits in the last byte.
 	if (modulo > 0 && addr_prefix_len > 0) {
-		data[EDNS_OFFSET_CLIENT_SUBNET_ADDR + addr_prefix_len - 1] &=
-			0xFF << (8 - modulo);
+		wire.position[-1] &= 0xFF << (8 - modulo);
 	}
 
-	*data_len = total;
+	*data_len = wire_ctx_offset(&wire);
 
 	return KNOT_EOK;
 }
@@ -361,18 +351,17 @@ int knot_edns_client_subnet_parse(const uint8_t *data,
 		return KNOT_EINVAL;
 	}
 
-	int rest = data_len - sizeof(uint16_t) - 2 * sizeof(uint8_t);
-	if (rest < 0 || *addr_len < rest) {
-		return KNOT_ESPACE;
+	wire_ctx_t wire = wire_ctx_init_const(data, data_len);
+
+	*family = wire_ctx_read_u16(&wire);
+	*src_mask = wire_ctx_read_u8(&wire);
+	*dst_mask = wire_ctx_read_u8(&wire);
+	*addr_len = wire_ctx_available(&wire);
+	wire_ctx_read(&wire, addr, *addr_len);
+
+	if (wire.error != KNOT_EOK) {
+		return wire.error;
 	}
 
-	*family = wire_read_u16(data + EDNS_OFFSET_CLIENT_SUBNET_FAMILY);
-	*src_mask = data[EDNS_OFFSET_CLIENT_SUBNET_SRC_MASK];
-	*dst_mask = data[EDNS_OFFSET_CLIENT_SUBNET_DST_MASK];
-	memcpy(addr, data + EDNS_OFFSET_CLIENT_SUBNET_ADDR, rest);
-
-	*addr_len = rest;
-
 	return KNOT_EOK;
-
 }

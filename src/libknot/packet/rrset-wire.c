@@ -30,6 +30,7 @@
 #include "libknot/rrset.h"
 #include "libknot/rrtype/naptr.h"
 #include "libknot/internal/macros.h"
+#include "libknot/internal/wire_ctx.h"
 
 #define RR_HEADER_SIZE 10
 
@@ -338,34 +339,25 @@ static int write_fixed_header(const knot_rrset_t *rrset, uint16_t rrset_index,
 	assert(dst && *dst);
 	assert(dst_avail);
 
-	/* Check capacity */
-
-	size_t size = sizeof(uint16_t)  // type
-	            + sizeof(uint16_t)  // class
-	            + sizeof(uint32_t); // ttl
-
-	if (size > *dst_avail) {
-		return KNOT_ESPACE;
-	}
-
 	/* Write result */
 
 	uint32_t ttl = knot_rdata_ttl(knot_rdataset_at(&rrset->rrs, rrset_index));
-	uint8_t *write = *dst;
 
-	wire_write_u16(write, rrset->type);
-	write += sizeof(uint16_t);
-	wire_write_u16(write, rrset->rclass);
-	write += sizeof(uint16_t);
-	wire_write_u32(write, ttl);
-	write += sizeof(uint32_t);
+	wire_ctx_t write = wire_ctx_init(*dst, *dst_avail);
 
-	assert(write == *dst + size);
+	wire_ctx_write_u16(&write, rrset->type);
+	wire_ctx_write_u16(&write, rrset->rclass);
+	wire_ctx_write_u32(&write, ttl);
+
+	/* Check write */
+	if (write.error != KNOT_EOK) {
+		return write.error;
+	}
 
 	/* Update buffer */
 
-	*dst = write;
-	*dst_avail -= size;
+	*dst = write.position;
+	*dst_avail = wire_ctx_available(&write);
 
 	return KNOT_EOK;
 }
@@ -546,16 +538,22 @@ static int parse_header(const uint8_t *pkt_wire, size_t *pos, size_t pkt_size,
 		return KNOT_EMALF;
 	}
 
-	uint16_t type = wire_read_u16(pkt_wire + *pos);
-	*pos += sizeof(uint16_t);
-	uint16_t rclass = wire_read_u16(pkt_wire + *pos);
-	*pos += sizeof(uint16_t);
-	*ttl = wire_read_u32(pkt_wire + *pos);
-	*pos += sizeof(uint32_t);
-	*rdlen = wire_read_u16(pkt_wire + *pos);
-	*pos += sizeof(uint16_t);
+	wire_ctx_t wire = wire_ctx_init_const(pkt_wire, pkt_size);
+	wire_ctx_set_offset(&wire, *pos);
 
-	if (pkt_size - *pos < *rdlen) {
+	uint16_t type = wire_ctx_read_u16(&wire);
+	uint16_t rclass = wire_ctx_read_u16(&wire);
+	*ttl = wire_ctx_read_u32(&wire);
+	*rdlen = wire_ctx_read_u16(&wire);
+
+	*pos = wire_ctx_offset(&wire);
+
+	if (wire.error != KNOT_EOK) {
+		knot_dname_free(&owner, mm);
+		return wire.error;
+	}
+
+	if (wire_ctx_available(&wire) < *rdlen) {
 		knot_dname_free(&owner, mm);
 		return KNOT_EMALF;
 	}
