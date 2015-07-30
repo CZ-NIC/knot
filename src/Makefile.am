@@ -83,7 +83,8 @@ nobase_libknot_internal_la_HEADERS = 		\
 	libknot/internal/tolower.h		\
 	libknot/internal/trie/hat-trie.h	\
 	libknot/internal/trie/murmurhash3.h	\
-	libknot/internal/utils.h
+	libknot/internal/utils.h		\
+	libknot/internal/wire_ctx.h
 
 # dynamic: libknot sources
 libknot_la_SOURCES =				\
