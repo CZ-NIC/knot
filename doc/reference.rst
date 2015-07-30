@@ -564,6 +564,7 @@ Definition of zones served by the server.
      max-journal-size: SIZE
      dnssec-signing: BOOL
      kasp-db: STR
+     request-edns-option: INT:[HEXSTR]
      serial-policy: increment | unixtime
      module: STR/STR ...
 
@@ -760,6 +761,16 @@ A KASP database path. Non absolute path is relative to
 :ref:`storage<zone_storage>`.
 
 Default: :ref:`storage<zone_storage>`/keys
+
+.. _zone_request_edns_option:
+
+request-edns-option
+-------------------
+
+An arbitrary EDNS0 option which is included into a server request (AXFR, IXFR,
+SOA, or NOTIFY). The value is in the option_code:option_data format.
+
+Default: empty
 
 .. _zone_serial-policy:
 

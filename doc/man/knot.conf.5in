@@ -492,6 +492,7 @@ zone:
     max\-journal\-size: SIZE
     dnssec\-signing: BOOL
     kasp\-db: STR
+    request\-edns\-option: INT:[HEXSTR]
     serial\-policy: increment | unixtime
     module: STR/STR ...
 .ft P
@@ -657,6 +658,12 @@ A KASP database path. Non absolute path is relative to
 \fI\%storage\fP\&.
 .sp
 Default: \fI\%storage\fP/keys
+.SS request\-edns\-option
+.sp
+An arbitrary EDNS0 option which is included into a server request (AXFR, IXFR,
+SOA, or NOTIFY). The value is in the option_code:option_data format.
+.sp
+Default: empty
 .SS serial\-policy
 .sp
 Specifies how the zone serial is updated after a dynamic update or

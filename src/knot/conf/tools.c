@@ -31,6 +31,7 @@
 #include "knot/conf/confdb.h"
 #include "knot/conf/scheme.h"
 #include "libknot/errcode.h"
+#include "libknot/internal/utils.h"
 #include "libknot/yparser/yptrafo.h"
 
 static int hex_to_num(char hex) {
@@ -175,6 +176,74 @@ int mod_id_to_txt(
 		return KNOT_ESPACE;
 	}
 	*txt_len = ret;
+
+	return KNOT_EOK;
+}
+
+int edns_opt_to_bin(
+	char const *txt,
+	size_t txt_len,
+	uint8_t *bin,
+	size_t *bin_len)
+{
+	char *suffix = NULL;
+	unsigned long number = strtoul(txt, &suffix, 10);
+
+	// Check for "code:[value]" format.
+	if (suffix <= txt || *suffix != ':' || number > UINT16_MAX) {
+		return KNOT_EINVAL;
+	}
+
+	// Store the option code.
+	uint16_t code = number;
+	if (*bin_len < sizeof(code)) {
+		return KNOT_ESPACE;
+	}
+	wire_write_u16(bin, code);
+	bin += sizeof(code);
+
+	// Prepare suffix input (behind colon character).
+	size_t txt_suffix_len = txt_len - (suffix - txt) - 1;
+	size_t bin_suffix_len = *bin_len - sizeof(code);
+	suffix++;
+
+	// Convert suffix data.
+	int ret = hex_text_to_bin(suffix, txt_suffix_len, bin, &bin_suffix_len);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	// Set output data length.
+	*bin_len = sizeof(code) + bin_suffix_len;
+
+	return KNOT_EOK;
+}
+
+int edns_opt_to_txt(
+	uint8_t const *bin,
+	size_t bin_len,
+	char *txt,
+	size_t *txt_len)
+{
+	uint16_t code = wire_read_u16(bin);
+
+	// Write option code part.
+	int code_len = snprintf(txt, *txt_len, "%u:", code);
+	if (code_len <= 0 || code_len >= *txt_len) {
+		return KNOT_ESPACE;
+	}
+
+	size_t data_len = *txt_len - code_len;
+
+	// Write possible option data part.
+	int ret = hex_text_to_txt(bin + sizeof(code), bin_len - sizeof(code),
+	                          txt + code_len, &data_len);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	// Set output text length.
+	*txt_len = code_len + data_len;
 
 	return KNOT_EOK;
 }
