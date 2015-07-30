@@ -18,6 +18,7 @@
 #include "libknot/internal/namedb/namedb.h"
 #include "libknot/internal/namedb/namedb_lmdb.h"
 #include "libknot/internal/mem.h"
+#include "libknot/internal/wire_ctx.h"
 #include "knot/zone/timers.h"
 #include "knot/zone/zonedb.h"
 
@@ -70,19 +71,23 @@ static int store_timers(namedb_txn_t *txn, zone_t *zone)
 
 	// Create value
 	uint8_t packed_timer[EVENT_KEY_PAIR_SIZE * PERSISTENT_EVENT_COUNT];
-	size_t offset = 0;
+
+	wire_ctx_t w = wire_ctx_init(packed_timer, sizeof(packed_timer));
+
 	for (zone_event_type_t event = 0; event < ZONE_EVENT_COUNT; ++event) {
 		if (!event_persistent(event)) {
 			continue;
 		}
 
 		// Write event key and timer to buffer
-		packed_timer[offset] = event_id_to_key[event];
-		offset += 1;
-		wire_write_u64(packed_timer + offset,
-		                    (int64_t)zone_events_get_time(zone, event));
-		offset += sizeof(uint64_t);
+		wire_ctx_write_u8(&w, event_id_to_key[event]);
+		wire_ctx_write_u64(&w, zone_events_get_time(zone, event));
 	}
+
+	if (w.error != KNOT_EOK) {
+		return w.error;
+	}
+
 	namedb_val_t val = { .len = sizeof(packed_timer), .data = packed_timer };
 
 	// Store
