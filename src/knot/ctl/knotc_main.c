@@ -649,20 +649,23 @@ static int cmd_checkzone(cmd_args_t *args)
 		conf_val_t id = conf_iter_id(conf(), &iter);
 
 		/* Fetch zone */
-		int zone_match = fetch_zone(args->argc, args->argv, conf_dname(&id));
-		if (!zone_match && args->argc > 0) {
+		bool match = fetch_zone(args->argc, args->argv, conf_dname(&id));
+		if (!match && args->argc > 0) {
+			conf_iter_next(conf(), &iter);
 			continue;
 		}
 
 		/* Create zone loader context. */
-		zone_contents_t *loaded_zone = zone_load_contents(conf(), conf_dname(&id));
-		if (loaded_zone == NULL) {
+		zone_contents_t *contents = zone_load_contents(conf(), conf_dname(&id));
+		if (contents == NULL) {
 			rc = 1;
+			conf_iter_next(conf(), &iter);
 			continue;
 		}
+		zone_contents_deep_free(&contents);
 
 		log_zone_info(conf_dname(&id), "zone is valid");
-		zone_contents_deep_free(&loaded_zone);
+
 		conf_iter_next(conf(), &iter);
 	}
 	conf_iter_finish(conf(), &iter);
@@ -681,8 +684,9 @@ static int cmd_memstats(cmd_args_t *args)
 		conf_val_t id = conf_iter_id(conf(), &iter);
 
 		/* Fetch zone */
-		int zone_match = fetch_zone(args->argc, args->argv, conf_dname(&id));
-		if (!zone_match && args->argc > 0) {
+		bool match = fetch_zone(args->argc, args->argv, conf_dname(&id));
+		if (!match && args->argc > 0) {
+			conf_iter_next(conf(), &iter);
 			continue;
 		}
 
@@ -712,8 +716,7 @@ static int cmd_memstats(cmd_args_t *args)
 		zs_scanner_t *zs = zs_scanner_create(zone_name,
 		                                     KNOT_CLASS_IN, 3600,
 		                                     estimator_rrset_memsize_wrap,
-		                                     process_error,
-		                                     &est);
+		                                     NULL, &est);
 		free(zone_name);
 		if (zs == NULL) {
 			log_zone_error(conf_dname(&id), "failed to load zone");
