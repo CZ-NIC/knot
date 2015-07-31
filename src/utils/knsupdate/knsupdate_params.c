@@ -227,21 +227,31 @@ int knsupdate_parse(knsupdate_params_t *params, int argc, char *argv[])
 			break;
 		case 'r':
 			ret = params_parse_num(optarg, &params->retries);
-			if (ret != KNOT_EOK) return ret;
+			if (ret != KNOT_EOK) {
+				return ret;
+			}
 			break;
 		case 't':
 			ret = params_parse_wait(optarg, &params->wait);
-			if (ret != KNOT_EOK) return ret;
+			if (ret != KNOT_EOK) {
+				return ret;
+			}
 			break;
 		case 'y':
 			knot_tsig_key_deinit(&params->tsig_key);
 			ret = knot_tsig_key_init_str(&params->tsig_key, optarg);
-			if (ret != KNOT_EOK) return ret;
+			if (ret != KNOT_EOK) {
+				ERR("failed to parse key '%s'\n", optarg);
+				return ret;
+			}
 			break;
 		case 'k':
 			knot_tsig_key_deinit(&params->tsig_key);
 			ret = knot_tsig_key_init_file(&params->tsig_key, optarg);
-			if (ret != KNOT_EOK) return ret;
+			if (ret != KNOT_EOK) {
+				ERR("failed to parse keyfile '%s'\n", optarg);
+				return ret;
+			}
 			break;
 		default:
 			knsupdate_help();
