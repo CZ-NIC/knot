@@ -38,6 +38,7 @@
 /*! \brief Module scheme. */
 #define C_MOD_DNSPROXY "\x0C""mod-dnsproxy"
 extern const yp_item_t scheme_mod_dnsproxy[];
+int check_mod_dnsproxy(conf_check_t *args);
 
 /*! \brief Module interface. */
 int dnsproxy_load(struct query_plan *plan, struct query_module *self);
