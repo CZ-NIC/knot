@@ -584,7 +584,7 @@ For example, processing an Internet-class query needs to find an
 answer. Then based on the previous state, it may also append an
 authority SOA or provide additional records. Each of these actions
 represents a 'processing step'. Now, if a query module is loaded for a
-zone, it is provided with an implicit query plan which can be extended 
+zone, it is provided with an implicit query plan which can be extended
 by the module or even changed altogether.
 
 Each module is configured in the corresponding module section and is
@@ -706,7 +706,7 @@ Limitations
 -----------------------------
 
 The module catches all unsatisfied queries and forwards them to the
-indicated server for resolution, i.e. a tiny DNS proxy. There are several 
+indicated server for resolution, i.e. a tiny DNS proxy. There are several
 uses of this feature:
 
 * A substitute public-facing server in front of the real one
@@ -716,12 +716,16 @@ uses of this feature:
 *Note: The module does not alter the query/response as the resolver would,
 and the original transport protocol is kept as well.*
 
-The configuration is straightforward and just a single IP address
-(either IPv4 or IPv6) is required::
+The configuration is straightforward and just a single remote server is
+required::
+
+   remote:
+     - id: hidden
+       address: 10.0.1.1
 
    mod-dnsproxy:
      - id: default
-       remote: 10.0.1.1
+       remote: hidden
 
    template:
      - id: default
@@ -731,14 +735,14 @@ The configuration is straightforward and just a single IP address
      - domain: local.zone
 
 When clients query for anything in the ``local.zone``, they will be
-responded to locally. The rest of the requests will be forwarded to the 
+responded to locally. The rest of the requests will be forwarded to the
 specified server (``10.0.1.1`` in this case).
 
 ``rosedb`` – Static resource records
 ------------------------------------
 
 The module provides a mean to override responses for certain queries before
-the record is searched in the available zones. The module comes with the 
+the record is searched in the available zones. The module comes with the
 ``rosedb_tool`` tool used to manipulate the database of static records.
 Neither the tool nor the module are enabled by default, recompile with
 the ``--enable-rosedb`` configuration flag to enable them.
@@ -766,7 +770,7 @@ And we query the nameserver with the following:
    $ kdig IN AAAA ipv6.myrecord.com
      ... returns NOERROR, ::1
 
-*Note: An entry in the database matches anything at the same or a lower domain 
+*Note: An entry in the database matches anything at the same or a lower domain
 level, i.e. 'myrecord.com' matches 'a.a.myrecord.com' as well.
 This can be utilized to create catch-all entries.*
 
@@ -786,12 +790,12 @@ In this case, the responses will:
 1. Be authoritative (AA flag set)
 2. Provide an authority section (SOA + NS)
 3. Be NXDOMAIN if the name is found *(i.e. the 'IN AAAA myrecord.com' from
-   the example)*, but not the RR type *(this is to allow the synthesis of 
+   the example)*, but not the RR type *(this is to allow the synthesis of
    negative responses)*
 
 *Note: The SOA record applies only to the 'myrecord.com.', not to any other
 record (not even those of its subdomains). From this point of view, all records
-in the database are unrelated and not hierarchical. The idea is to provide 
+in the database are unrelated and not hierarchical. The idea is to provide
 subtree isolation for each entry.*
 
 In addition, the module is able to log matching queries via remote syslog if
@@ -805,7 +809,7 @@ Here is an example on how to use the module:
 
    $ mkdir /tmp/static_rrdb
    $ # No logging
-   $ rosedb_tool /tmp/static_rrdb add myrecord.com. A 3600 "127.0.0.1" "-" "-" 
+   $ rosedb_tool /tmp/static_rrdb add myrecord.com. A 3600 "127.0.0.1" "-" "-"
    $ # Logging as 'www_query' to Syslog at 10.0.0.1
    $ rosedb_tool /tmp/static_rrdb add www.myrecord.com. A 3600 "127.0.0.1" \
                                                     "www_query" "10.0.0.1"

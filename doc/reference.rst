@@ -1003,7 +1003,8 @@ server for resolution.
 
  mod-dnsproxy:
    - id: STR
-     remote: ADDR[@INT]
+     remote: remote_id
+     catch-nxdomain: BOOL
 
 .. _mod-dnsproxy_id:
 
@@ -1017,10 +1018,20 @@ A module identifier.
 remote
 ------
 
-An IP address of the destination server. Optional port specification
-(default is 53) can be appended to the address using ``@`` separator.
+A :ref:`reference<remote_id>` to a remote server where the queries are
+forwarded to.
 
 Default: empty
+
+.. _mod-dnsproxy_catch-nxdomain:
+
+catch-nxdomain
+--------------
+
+If enabled, all unsatisfied queries (also applies to local zone lookups)
+are forwarded.
+
+Default: off
 
 .. _Module rosedb:
 

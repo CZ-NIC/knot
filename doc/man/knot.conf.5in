@@ -857,7 +857,8 @@ server for resolution.
 .ft C
 mod\-dnsproxy:
   \- id: STR
-    remote: ADDR[@INT]
+    remote: remote_id
+    catch\-nxdomain: BOOL
 .ft P
 .fi
 .UNINDENT
@@ -867,10 +868,16 @@ mod\-dnsproxy:
 A module identifier.
 .SS remote
 .sp
-An IP address of the destination server. Optional port specification
-(default is 53) can be appended to the address using \fB@\fP separator.
+A \fI\%reference\fP to a remote server where the queries are
+forwarded to.
 .sp
 Default: empty
+.SS catch\-nxdomain
+.sp
+If enabled, all unsatisfied queries (also applies to local zone lookups)
+are forwarded.
+.sp
+Default: off
 .SH MODULE ROSEDB
 .sp
 The module provides a mean to override responses for certain queries before
