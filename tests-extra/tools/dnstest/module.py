@@ -92,3 +92,33 @@ class ModDnstap(KnotModule):
         conf.end()
 
         return conf
+
+class ModDnsproxy(KnotModule):
+    '''Dnsproxy module'''
+
+    src_name = "dnsproxy_load"
+    conf_name = "mod-dnsproxy"
+
+    def __init__(self, addr, port=53, catch_nxdomain=False):
+        super().__init__()
+        self.addr = addr
+        self.port = port
+        self.catch_nxdomain = catch_nxdomain
+
+    def get_conf(self, conf=None):
+        if not conf:
+            conf = dnstest.config.KnotConf()
+
+        conf.begin("remote")
+        conf.id_item("id", "%s_%s" % (self.conf_name, self.conf_id))
+        conf.item_str("address", "%s@%s" % (self.addr, self.port))
+        conf.end()
+
+        conf.begin(self.conf_name)
+        conf.id_item("id", self.conf_id)
+        conf.item_str("remote", "%s_%s" % (self.conf_name, self.conf_id))
+        if (self.catch_nxdomain):
+            conf.item_str("catch-nxdomain", "on")
+        conf.end()
+
+        return conf
