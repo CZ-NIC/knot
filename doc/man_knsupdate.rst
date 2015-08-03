@@ -44,7 +44,10 @@ Options
   The total timeout (for all UDP update tries) of the update request in seconds.
   The default is 12. If set to zero, the timeout is infinite.
 
-**-v**, **--version**
+**-v**
+  Use a TCP connection.
+
+**-V**, **--version**
   Print the program version.
 
 **-y** [*alg*:]\ *name*:*key*
