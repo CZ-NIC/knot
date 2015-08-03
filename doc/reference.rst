@@ -711,7 +711,7 @@ zone even after a restart using zone journal, but the zone file on the disk will
 only be synced after ``zonefile-sync`` time has expired (or after manual zone
 flush). This is applicable when the zone is updated via IXFR, DDNS or automatic
 DNSSEC signing. In order to disable automatic zonefile synchronization, -1 value
-can be used.
+can be used (manual zone flush is still possible).
 
 *Caution:* If you are serving large zones with frequent updates where
 the immediate sync with a zone file is not desirable, increase the value.
