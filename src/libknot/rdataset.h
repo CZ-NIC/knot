@@ -80,6 +80,21 @@ knot_rdata_t *knot_rdataset_at(const knot_rdataset_t *rrs, size_t pos);
  */
 size_t knot_rdataset_size(const knot_rdataset_t *rrs);
 
+/*!
+ * \brief Returns the common TTL of the RR set.
+ * \note Actually returns the TTL of the first RR.
+ * \param rrs  RR array.
+ * \return TTL.
+ */
+uint32_t knot_rdataset_ttl(const knot_rdataset_t *rrs);
+
+/*!
+ * \brief Sets TTL of all the RRs in the RR set.
+ * \param rrs  RR array.
+ * \param ttl  TTL to set.
+ */
+void knot_rdataset_set_ttl(knot_rdataset_t *rrs, uint32_t ttl);
+
 /* ----------------------- RRs RR manipulation ------------------------------ */
 
 /*!

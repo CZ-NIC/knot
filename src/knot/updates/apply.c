@@ -20,6 +20,7 @@
 #include "knot/updates/changesets.h"
 #include "knot/zone/zone.h"
 #include "knot/zone/zonefile.h"
+#include "knot/common/log.h"
 #include "libknot/libknot.h"
 #include "libknot/internal/lists.h"
 #include "libknot/internal/macros.h"
@@ -303,11 +304,8 @@ static int add_rr(const zone_contents_t *zone, zone_node_t *node,
 
 		if (ret == KNOT_ETTL) {
 			// Handle possible TTL errors.
-			log_ttl_error(zone, node, rr);
-			if (!master) {
-				// TTL errors fatal only for master.
-				return KNOT_EOK;
-			}
+			log_zone_notice(zone->apex->owner, "TTL mismatch, value updated");
+			return KNOT_EOK;
 		}
 	}
 

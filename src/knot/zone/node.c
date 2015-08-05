@@ -76,10 +76,8 @@ static bool ttl_error(struct rr_data *node_data, const knot_rrset_t *rrset)
 		return false;
 	}
 
-	const uint32_t inserted_ttl = knot_rdata_ttl(knot_rdataset_at(&rrset->rrs, 0));
-	// Get first RR from node.
-	const knot_rdata_t *node_rdata = knot_rdataset_at(&node_data->rrs, 0);
-	const uint32_t node_ttl = knot_rdata_ttl(node_rdata);
+	const uint32_t inserted_ttl = knot_rdataset_ttl(&rrset->rrs);
+	const uint32_t node_ttl = knot_rdataset_ttl(&node_data->rrs);
 	// Return error if TTLs don't match.
 	return inserted_ttl != node_ttl;
 }
@@ -179,6 +177,11 @@ int node_add_rrset(zone_node_t *node, const knot_rrset_t *rrset, mm_ctx_t *mm)
 		if (node->rrs[i].type == rrset->type) {
 			struct rr_data *node_data = &node->rrs[i];
 			const bool ttl_err = ttl_error(node_data, rrset);
+			if (ttl_err) {
+				knot_rdataset_set_ttl(&node_data->rrs,
+				                      knot_rdataset_ttl(&rrset->rrs));
+			}
+
 			int ret = knot_rdataset_merge(&node_data->rrs,
 			                              &rrset->rrs, mm);
 			if (ret != KNOT_EOK) {
