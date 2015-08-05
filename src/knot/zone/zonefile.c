@@ -131,9 +131,12 @@ int zcreator_step(zcreator_t *zc, const knot_rrset_t *rr)
 	err_handler_init(&err_handler);
 	bool sem_fatal_error = false;
 
-	ret = sem_check_node_plain(zc->z, node,
-	                           &err_handler, true,
-	                           &sem_fatal_error);
+//	ret = sem_check_node_plain(zc->z, node,
+//	                           &err_handler, true,
+//	                           &sem_fatal_error);
+
+
+
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
@@ -285,8 +288,9 @@ zone_contents_t *zonefile_load(zloader_t *loader)
 		goto fail;
 	}
 
+	int check_level = SEM_CHECK_MANDATORY;
 	if (loader->semantic_checks) {
-		int check_level = SEM_CHECK_UNSIGNED;
+		check_level = SEM_CHECK_UNSIGNED;
 		knot_rrset_t soa_rr = node_rrset(zc->z->apex, KNOT_RRTYPE_SOA);
 		assert(!knot_rrset_empty(&soa_rr)); // In this point, SOA has to exist
 		const bool have_nsec3param =
@@ -298,12 +302,23 @@ zone_contents_t *zonefile_load(zloader_t *loader)
 		} else if (zone_contents_is_signed(zc->z) && have_nsec3param) {
 			check_level = SEM_CHECK_NSEC3;
 		}
-		err_handler_t err_handler;
-		err_handler_init(&err_handler);
-		zone_do_sem_checks(zc->z, check_level,
-		                   &err_handler, first_nsec3_node,
-		                   last_nsec3_node);
-		INFO(zname, "semantic check, completed");
+	}
+	err_handler_t err_handler;
+	err_handler_init(&err_handler);
+	ret = zone_do_sem_checks(zc->z, check_level,
+	                         &err_handler, first_nsec3_node,
+	                         last_nsec3_node);
+	INFO(zname, "semantic check, completed");
+
+	err_handler_log_errors(&err_handler);
+
+	err_handler_del(&err_handler);
+
+	if (ret != KNOT_EOK) {
+		
+		ERROR(zname, "failed to load zone, file '%s' (%s)",
+		      loader->source, knot_strerror(ret));
+		goto fail;
 	}
 
 	return zc->z;

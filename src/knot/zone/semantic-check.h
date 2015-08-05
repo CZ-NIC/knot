@@ -28,6 +28,7 @@
 #include "knot/zone/contents.h"
 
 enum check_levels {
+	SEM_CHECK_MANDATORY = 0,
 	SEM_CHECK_UNSIGNED = 1,
 	SEM_CHECK_NSEC = 2,
 	SEM_CHECK_NSEC3 = 3
@@ -93,26 +94,9 @@ enum zonechecks_errors {
 	ZC_ERR_GLUE_RECORD,
 
 	ZC_ERR_GLUE_GENERAL_ERROR, /* GLUE error delimiter. */
+	/// \TODO ADD LAST DELIMITER
 };
 
-/*!
- * \brief Arguments to be used with tree traversal functions. Uses void pointers
- *        to be more versatile.
- * \todo This is not needed. Just enumerate all the variables.
- *
- */
-struct arg {
-	void *arg1; /* FILE *f / zone */
-	void *arg2; /* skip_list_t */
-	void *arg3; /* zone */
-	void *arg4; /* first node */
-	void *arg5; /* last node */
-	void *arg6; /* error handler */
-	void *arg7; /* CRC */
-	int error_code; /* Error code. */
-};
-
-typedef struct arg arg_t;
 
 /*!
  * \brief Structure representing handle options.
@@ -131,11 +115,32 @@ struct handler_options {
 struct err_handler {
 	/* Consider moving error messages here */
 	struct handler_options options; /*!< Handler options. */
-	unsigned errors[(-ZC_ERR_UNKNOWN) + 1]; /*!< Array with error messages */
+	unsigned errors[(-ZC_ERR_UNKNOWN) + 1]; /*!< Counting errors by type */
 	unsigned error_count; /*!< Total error count */
+	list_t error_list; /*!< List of all errors */
+	//mm_ctx_t mm;
 };
 
 typedef struct err_handler err_handler_t;
+
+typedef struct err_node {
+	node_t node;  /// < must be first
+	int error;
+	knot_dname_t *zone_name;
+	knot_dname_t *name;
+	char *data;
+} err_node_t;
+
+
+typedef struct semchecks_data {
+	zone_contents_t *zone;
+	err_handler_t *handler; // < include fatal error or
+	bool fatal_error;
+	zone_node_t *last_node;
+	enum check_levels level;
+} semchecks_data_t;
+
+
 
 /*!
  * \brief Inits semantic error handler. No optional events will be logged.
@@ -143,6 +148,8 @@ typedef struct err_handler err_handler_t;
  * \param handler Variable to be initialized.
  */
 void err_handler_init(err_handler_t *err_handler);
+
+void err_handler_del(err_handler_t *h);
 
 /*!
  * \brief Creates new semantic error handler.
@@ -215,5 +222,9 @@ int sem_check_node_plain(const zone_contents_t *zone,
                          err_handler_t *handler,
                          bool only_mandatory,
                          bool *fatal_error);
+
+const char *error_to_message(int error);
+
+void err_handler_log_errors(err_handler_t *handler);
 
 /*! @} */

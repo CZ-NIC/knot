@@ -117,6 +117,12 @@ static char *error_messages[(-ZC_ERR_UNKNOWN) + 1] = {
 	"GLUE, record with glue address missing",
 };
 
+
+const char *error_to_message(int error)
+{
+	return error_messages[-error];
+}
+
 void err_handler_init(err_handler_t *h)
 {
 	memset(h, 0, sizeof(err_handler_t));
@@ -189,49 +195,35 @@ static void log_error_from_node(err_handler_t *handler,
 int err_handler_handle_error(err_handler_t *handler, const zone_contents_t *zone,
 			     const zone_node_t *node, int error, const char *data)
 {
-	assert(handler && node);
-	if ((error != 0) &&
-	    (error > ZC_ERR_GLUE_GENERAL_ERROR)) {
-		return KNOT_EINVAL;
-	}
-
-	/*
-	 * A missing SOA can only occur once, so there needn't be
-	 * an option for it.
-	 */
-
-	if (error < ZC_ERR_GENERIC_GENERAL_ERROR) {
-		/* The two errors before SOA were handled */
-		log_error_from_node(handler, zone, node, error, data);
-		return KNOT_EOK;
-	} else if ((error < ZC_ERR_RRSIG_GENERAL_ERROR) &&
-		   ((handler->errors[-error] == 0) ||
-		   (handler->options.log_rrsigs))) {
-		log_error_from_node(handler, zone, node, error, data);
-	} else if ((error > ZC_ERR_RRSIG_GENERAL_ERROR) &&
-		   (error < ZC_ERR_NSEC_GENERAL_ERROR) &&
-		   ((handler->errors[-error] == 0) ||
-		    (handler->options.log_nsec))) {
-		log_error_from_node(handler, zone, node, error, data);
-	} else if ((error > ZC_ERR_NSEC_GENERAL_ERROR) &&
-		   (error < ZC_ERR_NSEC3_GENERAL_ERROR) &&
-		   ((handler->errors[-error] == 0) ||
-		    (handler->options.log_nsec3))) {
-		log_error_from_node(handler, zone, node, error, data);
-	} else if ((error > ZC_ERR_NSEC3_GENERAL_ERROR) &&
-		   (error < ZC_ERR_CNAME_GENERAL_ERROR) &&
-		   ((handler->errors[-error] == 0) ||
-		    (handler->options.log_cname))) {
-		log_error_from_node(handler, zone, node, error, data);
-	} else if ((error > ZC_ERR_CNAME_GENERAL_ERROR) &&
-		   (error < ZC_ERR_GLUE_GENERAL_ERROR) &&
-		    handler->options.log_glue) {
-		log_error_from_node(handler, zone, node, error, data);
-	}
-
+	err_node_t * log = malloc(sizeof(err_node_t));
+	log->error = error;
+	log->data = data ? strdup(data) : NULL;
+	log->name = node->owner;
+	log->zone_name = zone->apex->owner;
+	add_head(&handler->error_list, (node_t*)log);
 	handler->errors[-error]++;
-
+	handler->error_count++;
 	return KNOT_EOK;
+}
+
+void err_handler_log_errors(err_handler_t *handler)
+{
+	err_node_t *n;
+	WALK_LIST(n, handler->error_list) {
+		if (n->error > (int)ZC_ERR_GLUE_RECORD) {
+			log_zone_warning(n->zone_name, "semantic check, unknown error");
+			return;
+		}
+
+		char *name = knot_dname_to_str_alloc(n->name);
+		const char *errmsg = error_to_message(n->error);
+		log_zone_warning(n->zone_name, "semantic check, node '%s' (%s%s%s)",
+		                 name,
+		                 errmsg ? errmsg : "unknown error",
+		                 n->data ? " " : "",
+		                 n->data ? n->data : "");
+		free(name);
+	}
 }
 
 /*!
@@ -585,7 +577,7 @@ static int check_nsec3_node_in_zone(zone_contents_t *zone, zone_node_t *node,
 			 * opt-out span */
 			const zone_node_t *nsec3_previous;
 			const zone_node_t *nsec3_node;
-
+			INFO("finding... ");
 			if (zone_contents_find_nsec3_for_name(zone,
 			                                      node->owner,
 			                                      &nsec3_node,
@@ -597,7 +589,8 @@ static int check_nsec3_node_in_zone(zone_contents_t *zone, zone_node_t *node,
 
 			if (nsec3_node == NULL) {
 				/* Probably should not ever happen */
-				return KNOT_ERROR;
+				//return KNOT_ERROR;
+				// chyba aby fungovala nasledujic cast musi byt pred touto
 			}
 
 			assert(nsec3_previous);
@@ -705,6 +698,8 @@ static int sem_check_node_mandatory(const zone_contents_t *zone,
                                     const zone_node_t *node,
                                     err_handler_t *handler, bool *fatal_error)
 {
+	printf("RRsetCOUNT: %d\n", node->rrset_count);
+
 	const knot_rdataset_t *cname_rrs = node_rdataset(node, KNOT_RRTYPE_CNAME);
 	if (cname_rrs) {
 		if (node->rrset_count != 1) {
@@ -962,37 +957,91 @@ static int semantic_checks_dnssec(zone_contents_t *zone,
  * \param node Node to be searched.
  * \param data Arguments.
  */
+//static int do_checks_in_tree(zone_node_t *node, void *data)
+//{
+//	arg_t *args = (arg_t *)data;
+//
+//	zone_contents_t *zone = (zone_contents_t *)args->arg1;
+//
+//	zone_node_t **last_node = (zone_node_t **)args->arg5;
+//
+//	err_handler_t *handler = (err_handler_t *)args->arg6;
+//
+//	char do_checks = *((char *)(args->arg3));
+//
+//	if (do_checks) {
+//		sem_check_node_plain(zone, node, handler, false,
+//		                      (bool *)args->arg7);
+//	} else {
+//		assert(handler);
+//		/* All CNAME/DNAME checks are mandatory. */
+//		handler->options.log_cname = 1;
+//		sem_check_node_plain(zone, node, handler, true,
+//		                      (bool *)args->arg7);
+//		return KNOT_EOK;
+//	}
+//
+//	if (do_checks == SEM_CHECK_NSEC || do_checks == SEM_CHECK_NSEC3) {
+//		semantic_checks_dnssec(zone, node, last_node,
+//				       handler, do_checks == SEM_CHECK_NSEC3);
+//	}
+//
+//	return KNOT_EOK;
+//}
+
+
+static void cname_multiple(const zone_node_t *node, semchecks_data_t *data)
+{
+	const knot_rdataset_t *cname_rrs = node_rdataset(node, KNOT_RRTYPE_CNAME);
+	if (cname_rrs == NULL) {
+		return;
+	}
+
+	printf("%s, rrs:%u rr:%u\n", node->owner, node->rrset_count, cname_rrs->rr_count);
+
+	unsigned rrset_limit = 1;
+	/* With DNSSEC node can contain RRSIGs or NSEC */
+	if (node_rrtype_exists(node, KNOT_RRTYPE_NSEC)) {
+		rrset_limit += 1;
+	}
+	if (node_rrtype_exists(node, KNOT_RRTYPE_RRSIG))) {
+		rrset_limit += 1;
+	}
+
+	if (node->rrset_count > rrset_limit) {
+		data->fatal_error = true;
+		err_handler_handle_error(data->handler,
+		data->zone, node,
+		ZC_ERR_CNAME_EXTRA_RECORDS_DNSSEC, NULL);
+	}
+	if (cname_rrs->rr_count != 1) {
+		data->fatal_error = true;
+		err_handler_handle_error(data->handler, data->zone, node,
+		                         ZC_ERR_CNAME_MULTIPLE, NULL);
+	}
+}
+
+
+/*!
+ * \brief Function called by zone traversal function. Used to call
+ *        knot_zone_save_enclosers.
+ *
+ * \param node Node to be searched.
+ * \param data Arguments.
+ */
 static int do_checks_in_tree(zone_node_t *node, void *data)
 {
-	arg_t *args = (arg_t *)data;
+	struct semchecks_data *s_data = (semchecks_data_t *)data;
 
-	zone_contents_t *zone = (zone_contents_t *)args->arg1;
+	//! \todo Call checks from array or something
+	//! add more checks
+	cname_multiple(node, s_data);
 
-	zone_node_t **last_node = (zone_node_t **)args->arg5;
-
-	err_handler_t *handler = (err_handler_t *)args->arg6;
-
-	char do_checks = *((char *)(args->arg3));
-
-	if (do_checks) {
-		sem_check_node_plain(zone, node, handler, false,
-		                      (bool *)args->arg7);
-	} else {
-		assert(handler);
-		/* All CNAME/DNAME checks are mandatory. */
-		handler->options.log_cname = 1;
-		sem_check_node_plain(zone, node, handler, true,
-		                      (bool *)args->arg7);
-		return KNOT_EOK;
-	}
-
-	if (do_checks == SEM_CHECK_NSEC || do_checks == SEM_CHECK_NSEC3) {
-		semantic_checks_dnssec(zone, node, last_node,
-				       handler, do_checks == SEM_CHECK_NSEC3);
-	}
+	s_data->last_node = node;
 
 	return KNOT_EOK;
 }
+
 
 int zone_do_sem_checks(zone_contents_t *zone, int do_checks,
                        err_handler_t *handler, zone_node_t *first_nsec3_node,
@@ -1001,31 +1050,30 @@ int zone_do_sem_checks(zone_contents_t *zone, int do_checks,
 	if (!zone || !handler) {
 		return KNOT_EINVAL;
 	}
-	zone_node_t *last_node = NULL;
-	arg_t arguments;
-	arguments.arg1 = zone;
-	arguments.arg3 = &do_checks;
-	arguments.arg4 = NULL; // UNUSED
-	arguments.arg5 = &last_node;
-	arguments.arg6 = handler;
-	int fatal_error = 0;
-	arguments.arg7 = (void *)&fatal_error;
+
+	semchecks_data_t data;
+	data.handler = handler;
+	data.zone = zone;
+	data.level = do_checks;
+	data.last_node = NULL;
+	data.fatal_error = false;
 
 	int ret = zone_contents_tree_apply_inorder(zone,
 	                                                do_checks_in_tree,
-	                                                &arguments);
+	                                                &data);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
-	if (fatal_error) {
-		return KNOT_ERROR;
+	if (data.fatal_error) {
+		return KNOT_ESEMCHECK;
 	}
 
-	log_cyclic_errors_in_zone(handler, zone, last_node, first_nsec3_node,
-	                          last_nsec3_node, do_checks);
+//	log_cyclic_errors_in_zone(handler, zone, last_node, first_nsec3_node,
+//	                          last_nsec3_node, do_checks);
 
 	return KNOT_EOK;
 }
+
 
 void log_cyclic_errors_in_zone(err_handler_t *handler,
                                zone_contents_t *zone,
