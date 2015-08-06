@@ -15,25 +15,24 @@ slave = t.server("knot")
 slave.zonefile_sync = "5s"
 
 zone = t.zone("example.")
-zone_path = slave.dir + "/slave/" + zone[0].file_name
-
 t.link(zone, master, slave)
+
+zone_path = slave.zones[zone[0].name].zfile.path
+
 t.start()
+
 slave.stop()
-try:
-	os.remove(zone_path)
-except:
-	pass
+slave.clean()
 slave.start()
 slave.zone_wait(zone)
 
-#check that the zone file has not been flushed
+# Check that the zone file has not been flushed
 if os.path.exists(zone_path):
     check_log("Zonefile created too soon: " + str(os.stat(zone_path).st_ctime))
     set_err("SOON FLUSH")
 
 t.sleep(FLUSH_SLEEP) #point of first flush ~ 5s
-#check that the zone file has been flushed
+# Check that the zone file has been flushed
 if not os.path.exists(zone_path):
     check_log("Zonefile not created")
     set_err("NOT FLUSHED")
@@ -46,12 +45,12 @@ t.sleep(FLUSH_SLEEP) #point of second flush ~ 10s
 
 last_mtime = os.stat(zone_path).st_mtime
 
-#check that the zone file has been flushed after transfer
+# Check that the zone file has been flushed after transfer
 if prev_mtime == last_mtime:
     check_log("Did not flush after transfer")
     set_err("NO POST-TRANSFER FLUSH")
 
-#set the zonefile-sync parameter to 60s and update master - should not flush
+# Set the zonefile-sync parameter to 60s and update master - should not flush
 slave.zonefile_sync = "60s"
 slave.gen_confile()
 slave.reload()
@@ -64,17 +63,14 @@ if os.stat(zone_path).st_mtime != last_mtime:
     check_log("Flushed too soon: " + str(os.stat(zone_path).st_mtime) + " vs. " +  str(last_mtime))
     set_err("SOON POST-RELOAD FLUSH")
 
-#set the zonefile-sync parameter to 1s - should flush
+# Set the zonefile-sync parameter to 1s - should flush
 slave.zonefile_sync = "1s"
 slave.gen_confile()
 slave.reload()
-t.sleep(1)
+t.sleep(1.5)
 
 if os.stat(zone_path).st_mtime == last_mtime:
     check_log("Did not flush after config change")
     set_err("NO POST-CHANGE FLUSH")
 
-# ~ 31s
-
 t.stop()
-

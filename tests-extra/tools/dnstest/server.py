@@ -626,6 +626,30 @@ class Server(object):
         else:
             self.modules.append(module)
 
+    def clean(self, zone=True, timers=True):
+        if zone:
+            # Remove all zonefiles.
+            if zone is True:
+                for _z in sorted(self.zones):
+                    zfile = self.zones[_z].zfile.path
+                    try:
+                        os.remove(zfile)
+                    except:
+                        pass
+            # Remove specified zonefile.
+            else:
+                zfile = self.zones[zone.name].zfile.path
+                try:
+                    os.remove(zfile)
+                except:
+                    pass
+
+        if timers:
+            try:
+                shutil.rmtree(self.dir + "/timers")
+            except:
+                pass
+
 class Bind(Server):
 
     def __init__(self, *args, **kwargs):
