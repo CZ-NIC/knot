@@ -40,10 +40,20 @@ static const lookup_table_t synthetic_types[] = {
 	{ 0, NULL }
 };
 
+int check_prefix(conf_check_t *args)
+{
+	if (strchr((const char *)args->check->data, '.') != NULL) {
+		*args->err_str = "dot '.' is not allowed";
+		return KNOT_EINVAL;
+	}
+
+	return KNOT_EOK;
+}
+
 const yp_item_t scheme_mod_synth_record[] = {
 	{ C_ID,       YP_TSTR,   YP_VNONE },
 	{ MOD_TYPE,   YP_TOPT,   YP_VOPT = { synthetic_types, SYNTH_NULL } },
-	{ MOD_PREFIX, YP_TSTR,   YP_VNONE },
+	{ MOD_PREFIX, YP_TSTR,   YP_VNONE, YP_FNONE, { check_prefix } },
 	{ MOD_ORIGIN, YP_TDNAME, YP_VNONE },
 	{ MOD_TTL,    YP_TINT,   YP_VINT = { 0, UINT32_MAX, 3600, YP_STIME } },
 	{ MOD_NET,    YP_TNET,   YP_VNONE },
@@ -53,18 +63,52 @@ const yp_item_t scheme_mod_synth_record[] = {
 
 int check_mod_synth_record(conf_check_t *args)
 {
-	const char *err_str = "origin with non-reverse type";
-
+	// Check type.
 	conf_val_t type = conf_rawid_get_txn(args->conf, args->txn, C_MOD_SYNTH_RECORD,
-	                                    MOD_TYPE, args->previous->id,
-	                                    args->previous->id_len);
-	conf_val_t origin = conf_rawid_get_txn(args->conf, args->txn, C_MOD_SYNTH_RECORD,
-	                                    MOD_ORIGIN, args->previous->id,
-	                                    args->previous->id_len);
+	                                     MOD_TYPE, args->previous->id,
+	                                     args->previous->id_len);
+	if (type.code != KNOT_EOK) {
+		*args->err_str = "no synthesis type specified";
+		return KNOT_EINVAL;
+	}
 
-	// Origin is required only with reverse zone.
-	if (conf_opt(&type) != SYNTH_REVERSE && conf_dname(&origin) != NULL) {
-		*args->err_str = err_str;
+	// Check prefix.
+	conf_val_t prefix = conf_rawid_get_txn(args->conf, args->txn, C_MOD_SYNTH_RECORD,
+	                                       MOD_PREFIX, args->previous->id,
+	                                       args->previous->id_len);
+	if (prefix.code != KNOT_EOK) {
+		*args->err_str = "no owner prefix specified";
+		return KNOT_EINVAL;
+	}
+
+	// Check origin.
+	conf_val_t origin = conf_rawid_get_txn(args->conf, args->txn, C_MOD_SYNTH_RECORD,
+	                                       MOD_ORIGIN, args->previous->id,
+	                                       args->previous->id_len);
+	if (origin.code != KNOT_EOK && conf_opt(&type) == SYNTH_REVERSE) {
+		*args->err_str = "no origin specified";
+		return KNOT_EINVAL;
+	}
+	if (origin.code == KNOT_EOK && conf_opt(&type) == SYNTH_FORWARD) {
+		*args->err_str = "origin not allowed with forward type";
+		return KNOT_EINVAL;
+	}
+
+	// Check ttl.
+	conf_val_t ttl = conf_rawid_get_txn(args->conf, args->txn, C_MOD_SYNTH_RECORD,
+	                                    MOD_TTL, args->previous->id,
+	                                    args->previous->id_len);
+	if (ttl.code != KNOT_EOK) {
+		*args->err_str = "no ttl specified";
+		return KNOT_EINVAL;
+	}
+
+	// Check network prefix.
+	conf_val_t net = conf_rawid_get_txn(args->conf, args->txn, C_MOD_SYNTH_RECORD,
+	                                    MOD_NET, args->previous->id,
+	                                    args->previous->id_len);
+	if (net.code != KNOT_EOK) {
+		*args->err_str = "no network subnet specified";
 		return KNOT_EINVAL;
 	}
 
@@ -384,46 +428,15 @@ int synth_record_load(struct query_plan *plan, struct query_module *self)
 
 	/* Set type. */
 	val = conf_mod_get(self->config, MOD_TYPE, self->id);
-	if (val.code != KNOT_EOK) {
-		if (val.code == KNOT_EINVAL) {
-			MODULE_ERR("no type for '%s'", self->id->data);
-		}
-		mm_free(self->mm, tpl);
-		return val.code;
-	}
 	tpl->type = conf_opt(&val);
 
 	/* Set prefix. */
 	val = conf_mod_get(self->config, MOD_PREFIX, self->id);
-	if (val.code != KNOT_EOK) {
-		if (val.code == KNOT_EINVAL) {
-			MODULE_ERR("no prefix for '%s'", self->id->data);
-		}
-		mm_free(self->mm, tpl);
-		return val.code;
-	}
-
-	const char *prefix = conf_str(&val);
-	if (strchr(prefix, '.') != NULL) {
-		MODULE_ERR("dots '.' are not allowed in the prefix for '%s'",
-		           self->id->data);
-		mm_free(self->mm, tpl);
-		return KNOT_EMALF;
-	}
-	tpl->prefix = strdup(prefix);
+	tpl->prefix = strdup(conf_str(&val));
 
 	/* Set origin if generating reverse record. */
 	if (tpl->type == SYNTH_REVERSE) {
 		val = conf_mod_get(self->config, MOD_ORIGIN, self->id);
-		if (val.code != KNOT_EOK) {
-			if (val.code == KNOT_EINVAL) {
-				MODULE_ERR("no origin for '%s'", self->id->data);
-			}
-			free(tpl->prefix);
-			mm_free(self->mm, tpl);
-			return val.code;
-		}
-
 		tpl->zone = knot_dname_to_str_alloc(conf_dname(&val));
 		if (tpl->zone == NULL) {
 			MODULE_ERR("not enough memory");
@@ -435,28 +448,10 @@ int synth_record_load(struct query_plan *plan, struct query_module *self)
 
 	/* Set ttl. */
 	val = conf_mod_get(self->config, MOD_TTL, self->id);
-	if (val.code != KNOT_EOK) {
-		if (val.code == KNOT_EINVAL) {
-			MODULE_ERR("no ttl for '%s'", self->id->data);
-		}
-		free(tpl->zone);
-		free(tpl->prefix);
-		mm_free(self->mm, tpl);
-		return val.code;
-	}
 	tpl->ttl = conf_int(&val);
 
 	/* Set address. */
 	val = conf_mod_get(self->config, MOD_NET, self->id);
-	if (val.code != KNOT_EOK) {
-		if (val.code == KNOT_EINVAL) {
-			MODULE_ERR("no network for '%s'", self->id->data);
-		}
-		free(tpl->zone);
-		free(tpl->prefix);
-		mm_free(self->mm, tpl);
-		return val.code;
-	}
 	tpl->addr = conf_net(&val, &tpl->mask);
 
 	self->ctx = tpl;

@@ -37,6 +37,7 @@
 /*! \brief Module scheme. */
 #define C_MOD_ROSEDB "\x0A""mod-rosedb"
 extern const yp_item_t scheme_mod_rosedb[];
+int check_mod_rosedb(conf_check_t *args);
 
 /*! \brief Module interface. */
 int rosedb_load(struct query_plan *plan, struct query_module *self);

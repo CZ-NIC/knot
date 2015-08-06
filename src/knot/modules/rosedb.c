@@ -33,6 +33,19 @@ const yp_item_t scheme_mod_rosedb[] = {
 	{ NULL }
 };
 
+int check_mod_rosedb(conf_check_t *args)
+{
+	conf_val_t dir = conf_rawid_get_txn(args->conf, args->txn, C_MOD_ROSEDB,
+	                                    MOD_DBDIR, args->previous->id,
+	                                    args->previous->id_len);
+	if (dir.code != KNOT_EOK) {
+		*args->err_str = "no database directory specified";
+		return KNOT_EINVAL;
+	}
+
+	return KNOT_EOK;
+}
+
 /*! \note Below is an implementation of basic RR cache in LMDB,
  *        it shall be replaced with the namedb API later, when
  *        it supports multiple dbs + the basic "node" representation,
@@ -608,17 +621,9 @@ int rosedb_load(struct query_plan *plan, struct query_module *self)
 	}
 
 	conf_val_t val = conf_mod_get(self->config, MOD_DBDIR, self->id);
-	if (val.code != KNOT_EOK) {
-		if (val.code == KNOT_EINVAL) {
-			MODULE_ERR("no dbdir for '%s'", self->id->data);
-		}
-		return val.code;
-	}
-	const char *db_dir = conf_str(&val);
-
-	struct cache *cache = cache_open(db_dir, 0, self->mm);
+	struct cache *cache = cache_open(conf_str(&val), 0, self->mm);
 	if (cache == NULL) {
-		MODULE_ERR("failed to open db '%s'", db_dir);
+		MODULE_ERR("failed to open db '%s'", conf_str(&val));
 		return KNOT_ENOMEM;
 	}
 

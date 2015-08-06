@@ -29,6 +29,7 @@
 /*! \brief Module scheme. */
 #define C_MOD_DNSTAP "\x0A""mod-dnstap"
 extern const yp_item_t scheme_mod_dnstap[];
+int check_mod_dnstap(conf_check_t *args);
 
 /*! \brief Module interface. */
 int dnstap_load(struct query_plan *plan, struct query_module *self);

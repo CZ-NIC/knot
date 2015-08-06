@@ -187,10 +187,12 @@ const yp_item_t conf_scheme[] = {
 	{ C_MOD_DNSPROXY,     YP_TGRP, YP_VGRP = { scheme_mod_dnsproxy }, YP_FMULTI,
 	                                         { check_mod_dnsproxy } },
 #if HAVE_ROSEDB
-	{ C_MOD_ROSEDB,       YP_TGRP, YP_VGRP = { scheme_mod_rosedb }, YP_FMULTI },
+	{ C_MOD_ROSEDB,       YP_TGRP, YP_VGRP = { scheme_mod_rosedb }, YP_FMULTI,
+	                                         { check_mod_rosedb } },
 #endif
 #if USE_DNSTAP
-	{ C_MOD_DNSTAP,       YP_TGRP, YP_VGRP = { scheme_mod_dnstap }, YP_FMULTI },
+	{ C_MOD_DNSTAP,       YP_TGRP, YP_VGRP = { scheme_mod_dnstap }, YP_FMULTI,
+	                                         { check_mod_dnstap } },
 #endif
 /***********/
 	{ C_TPL,  YP_TGRP, YP_VGRP = { desc_template }, YP_FMULTI },

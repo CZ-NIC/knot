@@ -35,6 +35,19 @@ const yp_item_t scheme_mod_dnstap[] = {
 	{ NULL }
 };
 
+int check_mod_dnstap(conf_check_t *args)
+{
+	conf_val_t sink = conf_rawid_get_txn(args->conf, args->txn, C_MOD_DNSTAP,
+	                                     MOD_SINK, args->previous->id,
+	                                     args->previous->id_len);
+	if (sink.code != KNOT_EOK) {
+		*args->err_str = "no sink specified";
+		return KNOT_EINVAL;
+	}
+
+	return KNOT_EOK;
+}
+
 /* Defines. */
 #define MODULE_ERR(msg, ...) log_error("module 'dnstap', " msg, ##__VA_ARGS__)
 
@@ -185,12 +198,6 @@ int dnstap_load(struct query_plan *plan, struct query_module *self)
 	}
 
 	conf_val_t val = conf_mod_get(self->config, MOD_SINK, self->id);
-	if (val.code != KNOT_EOK) {
-		if (val.code == KNOT_EINVAL) {
-			MODULE_ERR("no sink for '%s'", self->id->data);
-		}
-		return val.code;
-	}
 	const char *sink = conf_str(&val);
 
 	/* Initialize the writer and the options. */

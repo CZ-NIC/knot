@@ -34,14 +34,11 @@ const yp_item_t scheme_mod_dnsproxy[] = {
 
 int check_mod_dnsproxy(conf_check_t *args)
 {
-	const char *err_str = "no remote server specified";
-
 	conf_val_t rmt = conf_rawid_get_txn(args->conf, args->txn, C_MOD_DNSPROXY,
 	                                    MOD_REMOTE, args->previous->id,
 	                                    args->previous->id_len);
-
 	if (rmt.code != KNOT_EOK) {
-		*args->err_str = err_str;
+		*args->err_str = "no remote server specified";
 		return KNOT_EINVAL;
 	}
 
