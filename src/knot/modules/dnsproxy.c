@@ -45,9 +45,6 @@ int check_mod_dnsproxy(conf_check_t *args)
 	return KNOT_EOK;
 }
 
-/* Defines. */
-#define MODULE_ERR(msg, ...) log_error("module 'dnsproxy', " msg, ##__VA_ARGS__)
-
 struct dnsproxy {
 	conf_remote_t remote;
 	bool catch_nxdomain;
@@ -114,7 +111,6 @@ int dnsproxy_load(struct query_plan *plan, struct query_module *self)
 
 	struct dnsproxy *proxy = mm_alloc(self->mm, sizeof(struct dnsproxy));
 	if (proxy == NULL) {
-		MODULE_ERR("not enough memory");
 		return KNOT_ENOMEM;
 	}
 	memset(proxy, 0, sizeof(struct dnsproxy));

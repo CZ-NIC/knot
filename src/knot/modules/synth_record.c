@@ -117,7 +117,6 @@ int check_mod_synth_record(conf_check_t *args)
 
 /* Defines. */
 #define ARPA_ZONE_LABELS 2
-#define MODULE_ERR(msg, ...) log_error("module 'synth_record', " msg, ##__VA_ARGS__)
 
 /*!
  * \brief Synthetic response template.
@@ -420,7 +419,6 @@ int synth_record_load(struct query_plan *plan, struct query_module *self)
 	/* Create synthesis template. */
 	struct synth_template *tpl = mm_alloc(self->mm, sizeof(struct synth_template));
 	if (tpl == NULL) {
-		MODULE_ERR("not enough memory");
 		return KNOT_ENOMEM;
 	}
 
@@ -439,7 +437,6 @@ int synth_record_load(struct query_plan *plan, struct query_module *self)
 		val = conf_mod_get(self->config, MOD_ORIGIN, self->id);
 		tpl->zone = knot_dname_to_str_alloc(conf_dname(&val));
 		if (tpl->zone == NULL) {
-			MODULE_ERR("not enough memory");
 			free(tpl->prefix);
 			mm_free(self->mm, tpl);
 			return KNOT_ENOMEM;

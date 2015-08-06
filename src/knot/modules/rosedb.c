@@ -353,7 +353,6 @@ int cache_remove(MDB_txn *txn, MDB_dbi dbi, const knot_dname_t *name)
 #define DEFAULT_PORT 514
 #define SYSLOG_BUFLEN 1024 /* RFC3164, 4.1 message size. */
 #define SYSLOG_FACILITY 3  /* System daemon. */
-#define MODULE_ERR(msg, ...) log_error("module 'rose', " msg, ##__VA_ARGS__)
 
 /*! \brief Safe stream skipping. */
 static int stream_skip(char **stream, size_t *maxlen, int nbytes)
@@ -623,7 +622,7 @@ int rosedb_load(struct query_plan *plan, struct query_module *self)
 	conf_val_t val = conf_mod_get(self->config, MOD_DBDIR, self->id);
 	struct cache *cache = cache_open(conf_str(&val), 0, self->mm);
 	if (cache == NULL) {
-		MODULE_ERR("failed to open db '%s'", conf_str(&val));
+		MODULE_ERR(C_MOD_ROSEDB, "failed to open db '%s'", conf_str(&val));
 		return KNOT_ENOMEM;
 	}
 

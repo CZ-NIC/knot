@@ -48,9 +48,6 @@ int check_mod_dnstap(conf_check_t *args)
 	return KNOT_EOK;
 }
 
-/* Defines. */
-#define MODULE_ERR(msg, ...) log_error("module 'dnstap', " msg, ##__VA_ARGS__)
-
 static int log_message(int state, const knot_pkt_t *pkt, struct query_data *qdata, void *ctx)
 {
 	if (pkt == NULL || qdata == NULL || ctx == NULL) {
@@ -233,9 +230,8 @@ int dnstap_load(struct query_plan *plan, struct query_module *self)
 	query_plan_step(plan, QPLAN_END, dnstap_message_log, self->ctx);
 
 	return KNOT_EOK;
-
 fail:
-	MODULE_ERR("failed for init sink '%s'", sink);
+	MODULE_ERR(C_MOD_DNSTAP, "failed to init sink '%s'", sink);
 	return KNOT_ENOMEM;
 }
 

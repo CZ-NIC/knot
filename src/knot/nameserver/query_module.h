@@ -46,6 +46,9 @@
 #include "knot/conf/conf.h"
 #include "knot/conf/tools.h"
 
+#define MODULE_ERR(mod, msg, ...) \
+	log_error("module '%.*s', " msg, mod[0], mod + 1, ##__VA_ARGS__)
+
 /* Query module processing stages. */
 enum query_stage {
 	QPLAN_BEGIN  = 0, /* Before query processing. */
