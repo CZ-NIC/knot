@@ -202,6 +202,21 @@ size_t knot_rdataset_size(const knot_rdataset_t *rrs)
 }
 
 _public_
+uint32_t knot_rdataset_ttl(const knot_rdataset_t *rrs)
+{
+	return knot_rdata_ttl(knot_rdataset_at(rrs, 0));
+}
+
+_public_
+void knot_rdataset_set_ttl(knot_rdataset_t *rrs, uint32_t ttl)
+{
+	for (uint16_t i = 0; i < rrs->rr_count; ++i) {
+		knot_rdata_t *rrset_rr = knot_rdataset_at(rrs, i);
+		knot_rdata_set_ttl(rrset_rr, ttl);
+	}
+}
+
+_public_
 int knot_rdataset_add(knot_rdataset_t *rrs, const knot_rdata_t *rr, mm_ctx_t *mm)
 {
 	if (rrs == NULL || rr == NULL) {

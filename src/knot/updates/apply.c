@@ -20,6 +20,7 @@
 #include "knot/updates/changesets.h"
 #include "knot/zone/zone.h"
 #include "knot/zone/zonefile.h"
+#include "knot/common/log.h"
 #include "libknot/libknot.h"
 #include "libknot/internal/lists.h"
 #include "libknot/internal/macros.h"
@@ -271,7 +272,7 @@ static int apply_remove(zone_contents_t *contents, changeset_t *chset)
 
 /*! \brief Adds a single RR into zone contents. */
 static int add_rr(const zone_contents_t *zone, zone_node_t *node,
-                  const knot_rrset_t *rr, changeset_t *chset, bool master)
+                  const knot_rrset_t *rr, changeset_t *chset)
 {
 	knot_rrset_t changed_rrset = node_rrset(node, rr->type);
 	if (!knot_rrset_empty(&changed_rrset)) {
@@ -302,12 +303,10 @@ static int add_rr(const zone_contents_t *zone, zone_node_t *node,
 		}
 
 		if (ret == KNOT_ETTL) {
-			// Handle possible TTL errors.
-			log_ttl_error(zone, node, rr);
-			if (!master) {
-				// TTL errors fatal only for master.
-				return KNOT_EOK;
-			}
+			log_zone_notice(zone->apex->owner,
+			                "rrset (type %u) TTL mismatch, updated to %u",
+			                rr->type, knot_rrset_ttl(rr));
+			return KNOT_EOK;
 		}
 	}
 
@@ -315,8 +314,7 @@ static int add_rr(const zone_contents_t *zone, zone_node_t *node,
 }
 
 /*! \brief Adds all RRs from changeset into zone contents. */
-static int apply_add(zone_contents_t *contents, changeset_t *chset,
-                     bool master)
+static int apply_add(zone_contents_t *contents, changeset_t *chset)
 {
 	changeset_iter_t itt;
 	changeset_iter_add(&itt, chset, false);
@@ -330,7 +328,7 @@ static int apply_add(zone_contents_t *contents, changeset_t *chset,
 			return KNOT_ENOMEM;
 		}
 
-		int ret = add_rr(contents, node, &rr, chset, master);
+		int ret = add_rr(contents, node, &rr, chset);
 		if (ret != KNOT_EOK) {
 			changeset_iter_clear(&itt);
 			return ret;
@@ -353,12 +351,11 @@ static int apply_replace_soa(zone_contents_t *contents, changeset_t *chset)
 
 	assert(!node_rrtype_exists(contents->apex, KNOT_RRTYPE_SOA));
 
-	return add_rr(contents, contents->apex, chset->soa_to, chset, false);
+	return add_rr(contents, contents->apex, chset->soa_to, chset);
 }
 
 /*! \brief Apply single change to zone contents structure. */
-static int apply_single(zone_contents_t *contents, changeset_t *chset,
-                           bool master)
+static int apply_single(zone_contents_t *contents, changeset_t *chset)
 {
 	/*
 	 * Applies one changeset to the zone. Checks if the changeset may be
@@ -377,7 +374,7 @@ static int apply_single(zone_contents_t *contents, changeset_t *chset,
 		return ret;
 	}
 
-	ret = apply_add(contents, chset, master);
+	ret = apply_add(contents, chset);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
@@ -453,7 +450,7 @@ int apply_changesets(zone_t *zone, list_t *chsets, zone_contents_t **new_content
 	 */
 	changeset_t *set = NULL;
 	WALK_LIST(set, *chsets) {
-		ret = apply_single(contents_copy, set, !zone_is_slave(zone));
+		ret = apply_single(contents_copy, set);
 		if (ret != KNOT_EOK) {
 			updates_rollback(chsets);
 			update_free_zone(&contents_copy);
@@ -492,7 +489,7 @@ int apply_changeset(zone_t *zone, changeset_t *change, zone_contents_t **new_con
 		return ret;
 	}
 
-	ret = apply_single(contents_copy, change, !zone_is_slave(zone));
+	ret = apply_single(contents_copy, change);
 	if (ret != KNOT_EOK) {
 		update_rollback(change);
 		update_free_zone(&contents_copy);
@@ -519,8 +516,7 @@ int apply_changesets_directly(zone_contents_t *contents, list_t *chsets)
 
 	changeset_t *set = NULL;
 	WALK_LIST(set, *chsets) {
-		const bool master = true; // Only DNSSEC changesets are applied directly.
-		int ret = apply_single(contents, set, master);
+		int ret = apply_single(contents, set);
 		if (ret != KNOT_EOK) {
 			updates_cleanup(chsets);
 			return ret;
@@ -541,8 +537,7 @@ int apply_changeset_directly(zone_contents_t *contents, changeset_t *ch)
 		return KNOT_EINVAL;
 	}
 
-	const bool master = true; // Only DNSSEC changesets are applied directly.
-	int ret = apply_single(contents, ch, master);
+	int ret = apply_single(contents, ch);
 	if (ret != KNOT_EOK) {
 		update_cleanup(ch);
 		return ret;
