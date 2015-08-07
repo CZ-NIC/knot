@@ -83,6 +83,9 @@ zone_t* zone_new(const knot_dname_t *name)
 	// Initialize events
 	zone_events_init(zone);
 
+	// Initialize query modules list.
+	init_list(&zone->query_modules);
+
 	return zone;
 }
 
@@ -109,10 +112,7 @@ void zone_free(zone_t **zone_ptr)
 	/* Free zone contents. */
 	zone_contents_deep_free(&zone->contents);
 
-	if (zone->query_plan != NULL) {
-		conf_deactivate_modules(conf(), &zone->query_modules,
-		                        zone->query_plan);
-	}
+	conf_deactivate_modules(conf(), &zone->query_modules, &zone->query_plan);
 
 	free(zone);
 	*zone_ptr = NULL;

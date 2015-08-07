@@ -133,12 +133,10 @@ void conf_free(
  * \param[in] zone_name Zone name, NULL for all zones.
  * \param[in] query_modules Destination query modules list.
  * \param[in] query_plan Destination query plan.
- *
- * \return Error code, KNOT_EOK if success.
  */
-int conf_activate_modules(
+void conf_activate_modules(
 	conf_t *conf,
-	knot_dname_t *zone_name,
+	const knot_dname_t *zone_name,
 	list_t *query_modules,
 	struct query_plan **query_plan
 );
@@ -153,7 +151,7 @@ int conf_activate_modules(
 void conf_deactivate_modules(
 	conf_t *conf,
 	list_t *query_modules,
-	struct query_plan *query_plan
+	struct query_plan **query_plan
 );
 
 /*!

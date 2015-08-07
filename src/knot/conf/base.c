@@ -177,6 +177,9 @@ int conf_new(
 		goto new_error;
 	}
 
+	// Initialize query modules list.
+	init_list(&out->query_modules);
+
 	*conf = out;
 
 	return KNOT_EOK;
@@ -223,6 +226,9 @@ int conf_clone(
 		return ret;
 	}
 
+	// Initialize query modules list.
+	init_list(&out->query_modules);
+
 	*conf = out;
 
 	return KNOT_EOK;
@@ -237,12 +243,7 @@ int conf_post_open(
 
 	conf->hostname = sockaddr_hostname();
 
-	int ret = conf_activate_modules(conf, NULL, &conf->query_modules,
-	                                &conf->query_plan);
-	if (ret != KNOT_EOK) {
-		free(conf->hostname);
-		return ret;
-	}
+	conf_activate_modules(conf, NULL, &conf->query_modules, &conf->query_plan);
 
 	return KNOT_EOK;
 }
@@ -276,10 +277,7 @@ void conf_free(
 	conf->api->txn_abort(&conf->read_txn);
 	free(conf->hostname);
 
-	if (conf->query_plan != NULL) {
-		conf_deactivate_modules(conf, &conf->query_modules,
-		                        conf->query_plan);
-	}
+	conf_deactivate_modules(conf, &conf->query_modules, &conf->query_plan);
 
 	if (!is_clone) {
 		conf->api->deinit(conf->db);
@@ -291,14 +289,17 @@ void conf_free(
 	free(conf);
 }
 
-int conf_activate_modules(
+void conf_activate_modules(
 	conf_t *conf,
-	knot_dname_t *zone_name,
+	const knot_dname_t *zone_name,
 	list_t *query_modules,
 	struct query_plan **query_plan)
 {
+	int ret = KNOT_EOK;
+
 	if (conf == NULL || query_modules == NULL || query_plan == NULL) {
-		return KNOT_EINVAL;
+		ret = KNOT_EINVAL;
+		goto activate_error;
 	}
 
 	conf_val_t val;
@@ -310,16 +311,19 @@ int conf_activate_modules(
 		val = conf_default_get(conf, C_MODULE);
 	}
 
+	// Check if a module is configured at all.
 	if (val.code == KNOT_ENOENT) {
-		return KNOT_EOK;
+		return;
 	} else if (val.code != KNOT_EOK) {
-		return val.code;
+		ret = val.code;
+		goto activate_error;
 	}
 
 	// Create query plan.
 	*query_plan = query_plan_create(conf->mm);
 	if (*query_plan == NULL) {
-		return KNOT_ENOMEM;
+		ret = KNOT_ENOMEM;
+		goto activate_error;
 	}
 
 	if (zone_name != NULL) {
@@ -334,21 +338,33 @@ int conf_activate_modules(
 	while (val.code == KNOT_EOK) {
 		conf_mod_id_t *mod_id = conf_mod_id(&val);
 		if (mod_id == NULL) {
-			return KNOT_ENOMEM;
+			ret = KNOT_ENOMEM;
+			goto activate_error;
 		}
 
 		// Open the module.
 		struct query_module *mod = query_module_open(conf, mod_id, conf->mm);
 		if (mod == NULL) {
-			conf_free_mod_id(mod_id);
-			return KNOT_ENOMEM;
+			ret = KNOT_ENOMEM;
+			goto activate_error;
 		}
 
 		// Load the module.
-		int ret = mod->load(*query_plan, mod);
+		ret = mod->load(*query_plan, mod);
 		if (ret != KNOT_EOK) {
+			if (zone_name != NULL) {
+				log_zone_error(zone_name,
+				               "failed to load module '%s/%.*s' (%s)",
+				               mod_id->name + 1, (int)mod_id->len,
+				               mod_id->data, knot_strerror(ret));
+			} else {
+				log_error("failed to load global module '%s/%.*s' (%s)",
+				          mod_id->name + 1, (int)mod_id->len,
+				          mod_id->data, knot_strerror(ret));
+			}
 			query_module_close(mod);
-			return ret;
+			conf_val_next(&val);
+			continue;
 		}
 
 		add_tail(query_modules, &mod->node);
@@ -356,17 +372,23 @@ int conf_activate_modules(
 		conf_val_next(&val);
 	}
 
-	return KNOT_EOK;
+	return;
+activate_error:
+	CONF_LOG(LOG_ERR, "failed to activate modules (%s)", knot_strerror(ret));
 }
 
 void conf_deactivate_modules(
 	conf_t *conf,
 	list_t *query_modules,
-	struct query_plan *query_plan)
+	struct query_plan **query_plan)
 {
 	if (conf == NULL || query_modules == NULL || query_plan == NULL) {
 		return;
 	}
+
+	// Free query plan.
+	query_plan_free(*query_plan);
+	*query_plan = NULL;
 
 	// Free query modules list.
 	struct query_module *mod = NULL, *next = NULL;
@@ -374,9 +396,7 @@ void conf_deactivate_modules(
 		mod->unload(mod);
 		query_module_close(mod);
 	}
-
-	// Free query plan.
-	query_plan_free(query_plan);
+	init_list(query_modules);
 }
 
 static int exec_callbacks(

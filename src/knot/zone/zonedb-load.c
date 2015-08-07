@@ -295,14 +295,8 @@ static knot_zonedb_t *create_zonedb(conf_t *conf, server_t *server)
 			continue;
 		}
 
-		int ret = conf_activate_modules(conf, zone->name, &zone->query_modules,
-		                                &zone->query_plan);
-		if (ret != KNOT_EOK) {
-			zone_free(&zone);
-			log_zone_error(id.data, "cannot activate modules");
-			conf_iter_next(conf, &iter);
-			continue;
-		}
+		conf_activate_modules(conf, zone->name, &zone->query_modules,
+		                      &zone->query_plan);
 
 		knot_zonedb_insert(db_new, zone);
 
