@@ -423,16 +423,3 @@ void zone_events_replan_ddns(struct zone *zone, const struct zone *old_zone)
 		replan_update(zone, (zone_t *)old_zone);
 	}
 }
-
-int zone_events_write_persistent(zone_t *zone)
-{
-	if (!zone) {
-		return KNOT_EINVAL;
-	}
-
-	if (zone->events.timers_db == NULL) {
-		return KNOT_EOK;
-	}
-
-	return write_zone_timers(zone->events.timers_db, zone);
-}

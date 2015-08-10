@@ -53,14 +53,14 @@ void close_timers_db(namedb_t *timer_db);
 int read_zone_timers(namedb_t *timer_db, const zone_t *zone, time_t *timers);
 
 /*!
- * \brief Writes zone timers to timers db.
+ * \brief Writes all zone timers to timers db.
  *
  * \param timer_db  Timer database.
- * \param zone      Zone to store timers for.
+ * \param zone_db   Zone database.
  *
  * \return KNOT_E*
  */
-int write_zone_timers(namedb_t *timer_db, zone_t *zone);
+int write_timer_db(namedb_t *timer_db, knot_zonedb_t *zone_db);
 
 /*!
  * \brief Removes stale zones info from timers db.
