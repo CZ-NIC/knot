@@ -10,7 +10,7 @@ noinst_PROGRAMS = \
 	packet \
 	knotd_stdio
 
-knotd_stdio_SOURCES = wrap/udp-handler.c wrap/server.c
+knotd_stdio_SOURCES = wrap/udp-handler.c wrap/server.c wrap/tcp-handler.c
 
 knotd_stdio_CPPFLAGS = $(AM_CPPFLAGS) $(liburcu_CFLAGS)
 knotd_stdio_LDADD = \
