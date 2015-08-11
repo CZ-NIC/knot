@@ -1,11 +1,27 @@
+/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
-#include "knot/server/udp-handler.c"
-#include "knot/common/debug.h"
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
 
 /*
  * Udp handler listen on stdin and send to stdout.
  * To use this handler initialize it with udp_master_init_stdin.
  */
+
+#include "knot/server/udp-handler.c"
+#include "knot/common/debug.h"
 
 struct udp_stdin {
 	struct iovec iov[NBUFS];
@@ -21,6 +37,11 @@ static void *udp_stdin_init(void)
 		rq->iov[i].iov_base = rq->buf[i];
 		rq->iov[i].iov_len = KNOT_WIRE_MAX_PKTSIZE;
 	}
+
+	struct sockaddr_in * a = (struct sockaddr_in *) &rq->addr;
+	a->sin_family=AF_INET;
+	a->sin_addr.s_addr = IN_LOOPBACKNET;
+	a->sin_port = 42;
 	return rq;
 }
 
@@ -48,7 +69,7 @@ static int udp_stdin_handle(udp_context_t *ctx, void *d)
 static int udp_stdin_send(void *d)
 {
 	struct udp_stdin *rq = (struct udp_stdin *) d;
-	fwrite(rq->iov[TX].iov_base, 1, rq->iov[TX].iov_len, stdout);
+	//fwrite(rq->iov[TX].iov_base, 1, rq->iov[TX].iov_len, stdout);
 	if (getenv("AFL_PERSISTENT")) {
 		raise(SIGSTOP);
 	} else {
@@ -68,7 +89,12 @@ void udp_master_init_stdio(server_t *server) {
 	iface_t * ifc = malloc(sizeof(iface_t));
 	ifc->fd[RX] = STDIN_FILENO;
 	ifc->fd[TX] = STDOUT_FILENO;
+
+	fprintf(stderr, "LIST SIZE %zu\n", list_size(&server->ifaces->l));
+
 	add_tail(&server->ifaces->l, (node_t *)ifc);
+
+
 
 	_udp_init = udp_stdin_init;
 	_udp_recv = udp_stdin_recv;
