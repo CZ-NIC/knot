@@ -22,8 +22,6 @@
 #include "libknot/errcode.h"
 #include "libknot/packet/pkt.h"
 
-#define log(fmt, ...) fprintf(stderr, "# " fmt "\n", ## __VA_ARGS__)
-
 int main(void)
 {
 	for(;;) {

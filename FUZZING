@@ -5,7 +5,8 @@ test harness that exercises the packet parsing logic in
 `packet.c` and more through test that replaces UDP handler with reads
 from stdin in `knotd_stdio.c`.  This compiles into a test harness that
 is designed to be used with lcamtuf's [American Fuzzy Lop (AFL)
-fuzzer](http://lcamtuf.coredump.cx/afl/).
+fuzzer](http://lcamtuf.coredump.cx/afl/).  We will use knotd_stdio in
+the following examples.
 
 ## How it works
 
@@ -24,8 +25,16 @@ note that the fuzzing shim includes an environment variable to support
 test cases minimization with `afl-cmin`:
 
 ```
-$ KNOT_AFL_STDIN=1 KNOT_AFL_CMIN=1 afl-cmin -i ~/knot-seeds -o ~/knot-seeds-cmin -m 1000000 -t 400000 -- tests-fuzz/<test>
+$ cat > knot-afl.conf << EOF
+server:
+  # Listen on all configured IPv4 interfaces.
+  listen: 0.0.0.0@5353
+EOF			
+$ afl-cmin -i ~/knot-seeds -o ~/knot-seeds-cmin -m 1000000 -t 400000 -- tests-fuzz/knotd_stdio -c knot-afl.conf
 ```
+
+You might want to configure some sample zones and have a test set of
+fuzzing data that would end up querying those zones.
 
 ### Compiling the test harness.
 
