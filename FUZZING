@@ -27,8 +27,14 @@ test cases minimization with `afl-cmin`:
 ```
 $ cat > knot-afl.conf << EOF
 server:
-  # Listen on all configured IPv4 interfaces.
-  listen: 0.0.0.0@5353
+    listen: 0.0.0.0@5353
+
+log:
+    - target: stderr
+      any: error
+
+control:
+    listen: /tmp/knot.sock
 EOF			
 $ afl-cmin -i ~/knot-seeds -o ~/knot-seeds-cmin -m 1000000 -t 400000 -- tests-fuzz/knotd_stdio -c knot-afl.conf
 ```
@@ -53,7 +59,7 @@ $ make check
 A basic AFL run can then be kicked off as follows:
 
 ```
-AFL_PERSISTENT=1 afl-fuzz -i my_seeds -o my_output_dir -t 10000 -m 100000 -- tests-fuzz/<test>
+AFL_PERSISTENT=1 afl-fuzz -i my_seeds -o my_output_dir -t 10000 -m 100000 -- tests-fuzz/knotd_stdio -c knot-afl.conf
 ```
 
 Note that AFL can be scaled up by supplying the `-M` flag and starting
