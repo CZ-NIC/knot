@@ -467,9 +467,12 @@ int main(int argc, char **argv)
 	/* Teardown server. */
 	server_stop(&server);
 	server_wait(&server);
-	server_deinit(&server);
 
-	/* Free configuration. */
+	log_info("updating zone timers database");
+	write_timer_db(server.timers_db, server.zone_db);
+
+	/* Free server and configuration. */
+	server_deinit(&server);
 	conf_free(conf(), false);
 
 	/* Unhook from RCU. */
