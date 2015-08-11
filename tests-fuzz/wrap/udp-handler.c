@@ -69,7 +69,6 @@ static int udp_stdin_handle(udp_context_t *ctx, void *d)
 static int udp_stdin_send(void *d)
 {
 	struct udp_stdin *rq = (struct udp_stdin *) d;
-	//fwrite(rq->iov[TX].iov_base, 1, rq->iov[TX].iov_len, stdout);
 	if (getenv("AFL_PERSISTENT")) {
 		raise(SIGSTOP);
 	} else {
@@ -90,11 +89,7 @@ void udp_master_init_stdio(server_t *server) {
 	ifc->fd[RX] = STDIN_FILENO;
 	ifc->fd[TX] = STDOUT_FILENO;
 
-	fprintf(stderr, "LIST SIZE %zu\n", list_size(&server->ifaces->l));
-
 	add_tail(&server->ifaces->l, (node_t *)ifc);
-
-
 
 	_udp_init = udp_stdin_init;
 	_udp_recv = udp_stdin_recv;
