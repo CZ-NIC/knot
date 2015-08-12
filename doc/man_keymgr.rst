@@ -79,6 +79,9 @@ zone commands
 **zone** **key** **show** *zone-name* *key*
   Show zone key details. The *key* can be a key tag or a key ID prefix.
 
+**zone** **key** **ds** *zone-name* *key*
+  Show DS records for a zone key. The *key* can be a key tag or a key ID prefix.
+
 **zone** **key** **generate** *zone-name* [*key-parameter*...]
   Generate a new key for a zone.
 
