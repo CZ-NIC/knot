@@ -1,7 +1,7 @@
 .. highlight:: console
 
-keymgr – DNSSEC key management utility
-======================================
+keymgr – Key management utility
+===============================
 
 Synopsis
 --------
@@ -13,10 +13,15 @@ Synopsis
 Description
 -----------
 
-The :program:`keymgr` utility serves for DNSSEC keys and KASP (Key And
-Signature Policy) management in Knot DNS server. The configuration is stored
-in a so called KASP database. The database is simply a directory in the
-file-system containing files in the JSON format.
+The :program:`keymgr` utility serves for key management in Knot DNS server.
+
+Primarily functions for DNSSEC keys and KASP (Key And Signature Policy)
+management are provided. However the utility also provides functions for
+TSIG key generation.
+
+The DNSSEC and KASP configuration is stored in a so called KASP database.
+The database is simply a directory in the file-system containing files in the
+JSON format.
 
 The operations are organized into commands and subcommands. A command
 specifies the operation to be performed with the KASP database. It is usually
@@ -52,6 +57,9 @@ Main commands
 **keystore** ...
   Operations with private key store content. The private key store holds
   private key material separately from zone metadata.
+
+**tsig** ...
+  Operations with TSIG keys.
 
 zone commands
 .............
@@ -187,6 +195,14 @@ file-based key store is supported. This command is subject to change.
 **keystore** **list**
   List private keys in the key store.
 
+tsig commands
+.............
+
+**tsig** **generate** *name* [**hmac** *algorithm*] [**size** *bits*]
+  Generate new TSIG key and print it on the standard output. The HMAC algorithm
+  defaults to *sha256*. The default key size is determined optimally based
+  on the selected algorithm.
+
 Examples
 --------
 
@@ -234,6 +250,10 @@ Examples
     $ keymgr zone add example.com policy none
     $ keymgr zone key generate example.com algorithm rsasha256 size 2048 ksk
     $ keymgr zone key generate example.com algorithm rsasha256 size 1024
+
+8. Generate a TSIG key named *operator.key*::
+
+    $ keymgr tsig generate operator.key hmac sha512
 
 See Also
 --------
