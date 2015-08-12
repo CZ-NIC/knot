@@ -29,9 +29,11 @@
 #include "cmdparse/command.h"
 #include "cmdparse/parameter.h"
 #include "cmdparse/value.h"
+#include "dname.h"
 #include "legacy/key.h"
 #include "print.h"
 #include "shared.h"
+#include "wire.h"
 
 /* -- global options ------------------------------------------------------- */
 
@@ -625,6 +627,81 @@ static int cmd_zone_key_show(int argc, char *argv[])
 	return 0;
 }
 
+/*!
+ * Print DS record in presentation format to standard output.
+ *
+ * \see RFC 4034, Section 5.1 (DS RDATA Wire Format)
+ * \see RFC 4034, Section 5.3 (The DS RR Presentation Format)
+ */
+static int print_ds(const uint8_t *dname, const dnssec_binary_t *rdata)
+{
+	wire_ctx_t ctx = wire_init_binary(rdata);
+	if (wire_available(&ctx) < 4) {
+		return DNSSEC_MALFORMED_DATA;
+	}
+
+	_cleanup_free_ char *name = dname_to_ascii(dname);
+	if (!name) {
+		return DNSSEC_ENOMEM;
+	}
+
+	dnssec_binary_t digest = { 0 };
+
+	uint16_t keytag   = wire_read_u16(&ctx);
+	uint8_t algorithm = wire_read_u8(&ctx);
+	uint8_t digest_type = wire_read_u8(&ctx);
+	wire_available_binary(&ctx, &digest);
+
+	printf("%s DS %d %d %d ", name, keytag, algorithm, digest_type);
+	for (size_t i = 0; i < digest.size; i++) {
+		printf("%02x", digest.data[i]);
+	}
+	printf("\n");
+
+	return DNSSEC_EOK;
+}
+
+static int create_and_print_ds(const dnssec_key_t *key, dnssec_key_digest_t digest)
+{
+	_cleanup_binary_ dnssec_binary_t rdata = { 0 };
+	int r = dnssec_key_create_ds(key, digest, &rdata);
+	if (r != DNSSEC_EOK) {
+		return r;
+	}
+
+	return print_ds(dnssec_key_get_dname(key), &rdata);
+}
+
+/*
+ * keymgr zone key ds <zone> <key-spec>
+ */
+static int cmd_zone_key_ds(int argc, char *argv[])
+{
+	if (argc != 2) {
+		error("Name of zone and key have to be specified");
+		return 1;
+	}
+
+	const char *zone_name = argv[0];
+	const char *key_name = argv[1];
+
+	_cleanup_kasp_ dnssec_kasp_t *kasp = get_kasp();
+	_cleanup_zone_ dnssec_kasp_zone_t *zone = get_zone(kasp, zone_name);
+	dnssec_list_t *keys = dnssec_kasp_zone_get_keys(zone);
+
+	dnssec_kasp_key_t *key = NULL;
+	int r = search_unique_key(keys, key_name, &key);
+	if (r != DNSSEC_EOK) {
+		return 1;
+	}
+
+	create_and_print_ds(key->key, DNSSEC_KEY_DIGEST_SHA1);
+	create_and_print_ds(key->key, DNSSEC_KEY_DIGEST_SHA256);
+	create_and_print_ds(key->key, DNSSEC_KEY_DIGEST_SHA384);
+
+	return 0;
+}
+
 /*
  * keymgr zone key generate <zone> algorithm <algorithm> size <size> [ksk]
  *                                 [publish <publish>] [active <active>]
@@ -878,6 +955,7 @@ static int cmd_zone_key(int argc, char *argv[])
 	static const command_t commands[] = {
 		{ "list",     cmd_zone_key_list },
 		{ "show",     cmd_zone_key_show },
+		{ "ds",       cmd_zone_key_ds },
 		{ "generate", cmd_zone_key_generate },
 		{ "set",      cmd_zone_key_set },
 		{ "import",   cmd_zone_key_import },
