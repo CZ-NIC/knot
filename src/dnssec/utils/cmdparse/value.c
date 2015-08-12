@@ -16,6 +16,7 @@
 
 #include "cmdparse/value.h"
 #include "dnssec/key.h"
+#include "dnssec/tsig.h"
 #include "print.h"
 
 #include <assert.h>
@@ -155,6 +156,46 @@ int value_algorithm(int argc, char *argv[], const parameter_t *p, void *data)
 	}
 
 	error("Invalid value for '%s'. Use number or IANA mnemonic.", p->name);
+
+	return -1;
+}
+
+int value_tsig_algorithm(int argc, char *argv[], const parameter_t *p, void *data)
+{
+	assert(p);
+	assert(data);
+
+	if (argc < 1) {
+		error_missing_option(p);
+		return -1;
+	}
+
+	dnssec_tsig_algorithm_t *algorithm = data + p->offset;
+	char *input = argv[0];
+
+	struct lookup {
+		const char *name;
+		dnssec_tsig_algorithm_t algorithm;
+	};
+
+	static const struct lookup names[] = {
+		{ "md5",    DNSSEC_TSIG_HMAC_MD5    },
+		{ "sha1",   DNSSEC_TSIG_HMAC_SHA1   },
+		{ "sha224", DNSSEC_TSIG_HMAC_SHA224 },
+		{ "sha256", DNSSEC_TSIG_HMAC_SHA256 },
+		{ "sha384", DNSSEC_TSIG_HMAC_SHA384 },
+		{ "sha512", DNSSEC_TSIG_HMAC_SHA512 },
+		{ NULL }
+	};
+
+	for (const struct lookup *m = names; m->name; m++) {
+		if (strcasecmp(input, m->name) == 0) {
+			*algorithm = m->algorithm;
+			return 1;
+		}
+	}
+
+	error("Invalid value for '%s'.", p->name);
 
 	return -1;
 }
