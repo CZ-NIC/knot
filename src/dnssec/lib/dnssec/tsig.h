@@ -137,6 +137,11 @@ dnssec_tsig_algorithm_t dnssec_tsig_algorithm_from_name(const char *name);
  */
 const char *dnssec_tsig_algorithm_to_name(dnssec_tsig_algorithm_t algorithm);
 
+/*!
+ * Get optimal size of a TSIG algorithm.
+ */
+int dnssec_tsig_optimal_key_size(dnssec_tsig_algorithm_t algorithm);
+
 struct dnssec_tsig_ctx;
 
 /*!

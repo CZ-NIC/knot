@@ -17,6 +17,7 @@
 #include <assert.h>
 #include <gnutls/gnutls.h>
 #include <gnutls/crypto.h>
+#include <limits.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
@@ -141,6 +142,17 @@ const char *dnssec_tsig_algorithm_to_name(dnssec_tsig_algorithm_t algorithm)
 {
 	const algorithm_id_t *found = lookup_algorithm(match_id, (void *)algorithm);
 	return (found ? found->name : NULL);
+}
+
+_public_
+int dnssec_tsig_optimal_key_size(dnssec_tsig_algorithm_t tsig)
+{
+	gnutls_mac_algorithm_t mac = algorithm_to_gnutls(tsig);
+	if (mac == GNUTLS_MAC_UNKNOWN) {
+		return 0;
+	}
+
+	return gnutls_mac_get_key_size(mac) * CHAR_BIT;
 }
 
 _public_
