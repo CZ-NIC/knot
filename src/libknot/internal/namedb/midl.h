@@ -11,7 +11,7 @@
 /* $OpenLDAP$ */
 /* This work is part of OpenLDAP Software <http://www.openldap.org/>.
  *
- * Copyright 2000-2014 The OpenLDAP Foundation.
+ * Copyright 2000-2015 The OpenLDAP Foundation.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -162,6 +162,7 @@ typedef MDB_ID2 *MDB_ID2L;
 	 * @return	The index of the first ID2 whose \b mid member is greater than or equal to \b id.
 	 */
 unsigned mdb_mid2l_search( MDB_ID2L ids, MDB_ID id );
+
 
 	/** Insert an ID2 into a ID2L.
 	 * @param[in,out] ids	The ID2L to insert into.
