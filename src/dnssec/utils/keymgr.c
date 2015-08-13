@@ -1085,7 +1085,7 @@ static int cmd_keystore_list(int argc, char *argv[])
 }
 
 /*
- * keymgr tsig generate <name> [hmac <algorithm>] [size <size>]
+ * keymgr tsig generate <name> [algorithm <algorithm>] [size <size>]
  */
 static int cmd_tsig_generate(int argc, char *argv[])
 {
@@ -1095,20 +1095,20 @@ static int cmd_tsig_generate(int argc, char *argv[])
 	}
 
 	struct config {
-		dnssec_tsig_algorithm_t hmac;
+		dnssec_tsig_algorithm_t algorithm;
 		unsigned size;
 	};
 
 	static const parameter_t params[] = {
 		#define o(member) offsetof(struct config, member)
-		{ "hmac", value_tsig_algorithm, .offset = o(hmac) },
-		{ "size", value_key_size,       .offset = o(size) },
+		{ "algorithm", value_tsig_algorithm, .offset = o(algorithm) },
+		{ "size",      value_key_size,       .offset = o(size) },
 		{ NULL }
 		#undef o
 	};
 
 	struct config config = {
-		.hmac = DNSSEC_TSIG_HMAC_SHA256
+		.algorithm = DNSSEC_TSIG_HMAC_SHA256
 	};
 
 	_cleanup_free_ char *name = dname_ascii_normalize_copy(argv[0]);
@@ -1124,7 +1124,7 @@ static int cmd_tsig_generate(int argc, char *argv[])
 	// round up bits to bytes
 	config.size = (config.size + CHAR_BIT - 1) / CHAR_BIT * CHAR_BIT;
 
-	int optimal_size = dnssec_tsig_optimal_key_size(config.hmac);
+	int optimal_size = dnssec_tsig_optimal_key_size(config.algorithm);
 	assert(optimal_size > 0);
 
 	if (config.size == 0) {
@@ -1133,7 +1133,7 @@ static int cmd_tsig_generate(int argc, char *argv[])
 
 	if (config.size != optimal_size) {
 		error("Notice: Optimal key size for %s is %d bits.",
-		      dnssec_tsig_algorithm_to_name(config.hmac),
+		      dnssec_tsig_algorithm_to_name(config.algorithm),
 		      optimal_size);
 	}
 
@@ -1160,7 +1160,7 @@ static int cmd_tsig_generate(int argc, char *argv[])
 	}
 
 	printf("%s:%s:%.*s\n",
-	       dnssec_tsig_algorithm_to_name(config.hmac), name,
+	       dnssec_tsig_algorithm_to_name(config.algorithm), name,
 	       (int)key_b64.size, key_b64.data);
 
 	return 0;
