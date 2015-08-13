@@ -29,9 +29,12 @@
 #include "cmdparse/command.h"
 #include "cmdparse/parameter.h"
 #include "cmdparse/value.h"
+#include "dname.h"
 #include "legacy/key.h"
 #include "print.h"
 #include "shared.h"
+#include "strtonum.h"
+#include "wire.h"
 
 /* -- global options ------------------------------------------------------- */
 
@@ -184,6 +187,139 @@ static int print_list(dnssec_list_t *list, const char *filter)
 	}
 
 	return found_match ? DNSSEC_EOK : DNSSEC_NOT_FOUND;
+}
+
+/* -- key matching --------------------------------------------------------- */
+
+/*!
+ * Key match callback function prototype.
+ */
+typedef int (*key_match_cb)(dnssec_kasp_key_t *key, void *data);
+
+/*!
+ * Convert search string to keytag value.
+ *
+ * \return Keytag or -1 if the search string is not a keytag value.
+ */
+static int search_str_to_keytag(const char *search)
+{
+	assert(search);
+
+	uint16_t keytag = 0;
+	int r = str_to_u16(search, &keytag);
+
+	return (r == DNSSEC_EOK ? keytag : -1);
+}
+
+/*!
+ * Check if key matches search string or search keytag.
+ *
+ * \param key     DNSSEC key to test.
+ * \param keytag  Key tag to match (ignored if negative).
+ * \param search  Key ID to match (prefix based match).
+ *
+ * \return DNSSEC key matches key tag or key ID.
+ */
+static bool key_match(const dnssec_key_t *key, int keytag, const char *keyid)
+{
+	assert(key);
+	assert(keyid);
+
+	// key tag
+
+	if (keytag >= 0 && dnssec_key_get_keytag(key) == keytag) {
+		return true;
+	}
+
+	// key ID
+
+	const char *id = dnssec_key_get_id(key);
+	size_t id_len = strlen(id);
+	size_t keyid_len = strlen(keyid);
+	return (keyid_len <= id_len && strncasecmp(id, keyid, keyid_len) == 0);
+}
+
+/*!
+ * Call a function for each key matching the search string.
+ *
+ * \param list    List of \ref dnssec_kasp_key_t keys.
+ * \param search  Search string, can be key tag or key ID prefix.
+ * \param match   Callback function.
+ * \param data    Custom data passed to callback function.
+ *
+ * \return Error code propagated from callback function.
+ */
+static int search_key(dnssec_list_t *list, const char *search,
+		      key_match_cb match, void *data)
+{
+	assert(list);
+	assert(search);
+	assert(match);
+
+	int keytag = search_str_to_keytag(search);
+	bool found = false;
+
+	dnssec_list_foreach(item, list) {
+		dnssec_kasp_key_t *key = dnssec_item_get(item);
+		if (key_match(key->key, keytag, search)) {
+			found = true;
+			int r = match(key, data);
+			if (r != DNSSEC_EOK) {
+				return r;
+			}
+		}
+	}
+
+	return DNSSEC_EOK;
+}
+
+/*!
+ * Callback for \ref search_key assuring the found key is unique.
+ */
+static int assure_unique(dnssec_kasp_key_t *key, void *data)
+{
+	assert(key);
+	assert(data);
+
+	dnssec_kasp_key_t **unique_ptr = data;
+	if (*unique_ptr) {
+		return DNSSEC_ERROR;
+	}
+
+	*unique_ptr = key;
+	return DNSSEC_EOK;
+}
+
+/*!
+ * Search for a unique key.
+ *
+ * \param[in]  list     List of \ref dnssec_kasp_key_t keys.
+ * \param[in]  search   Search string, can be key tag or key ID prefix.
+ * \param[out] key_ptr  Found key.
+ *
+ * \return Error code.
+ */
+static int search_unique_key(dnssec_list_t *list, const char *search,
+			     dnssec_kasp_key_t **key_ptr)
+{
+	assert(list);
+	assert(search);
+	assert(key_ptr);
+
+	dnssec_kasp_key_t *match = NULL;
+	int r = search_key(list, search, assure_unique, &match);
+	if (r == DNSSEC_ERROR) {
+		error("Multiple matching keys found.");
+		return DNSSEC_ERROR;
+	}
+
+	if (match == NULL) {
+		error("No matching key found.");
+		return DNSSEC_ERROR;
+	}
+
+	*key_ptr = match;
+	return DNSSEC_EOK;
 }
 
 /* -- actions implementation ----------------------------------------------- */
@@ -442,29 +578,6 @@ static int cmd_zone_key_list(int argc, char *argv[])
 	return 0;
 }
 
-/*!
- * Match key by keytag or key ID prefix.
- */
-static bool key_match(const dnssec_key_t *key, const char *search)
-{
-	// keytag exact match
-
-	char keytag[10] = { 0 };
-	int len = snprintf(keytag, sizeof(keytag), "%d", dnssec_key_get_keytag(key));
-	if (len > 0 && strcmp(search, keytag) == 0) {
-		return true;
-	}
-
-	// key ID prefix match
-
-	const char *keyid = dnssec_key_get_id(key);
-
-	size_t keyid_len = strlen(keyid);
-	size_t search_len = strlen(search);
-
-	return (search_len <= keyid_len && strncasecmp(search, keyid, search_len) == 0);
-}
-
 /*
  * keymgr zone key show <zone> <key-spec>
  */
@@ -490,35 +603,104 @@ static int cmd_zone_key_show(int argc, char *argv[])
 		return 1;
 	}
 
-	bool found = false;
+	dnssec_list_t *keys = dnssec_kasp_zone_get_keys(zone);
 
-	dnssec_list_t *zone_keys = dnssec_kasp_zone_get_keys(zone);
-	dnssec_list_foreach(item, zone_keys) {
-		const dnssec_kasp_key_t *key = dnssec_item_get(item);
-		if (!key_match(key->key, search)) {
-			continue;
-		}
-
-		if (found) {
-			printf("\n");
-		}
-
-		printf("id %s\n", dnssec_key_get_id(key->key));
-		printf("keytag %d\n", dnssec_key_get_keytag(key->key));
-		printf("algorithm %d\n", dnssec_key_get_algorithm(key->key));
-		printf("size %u\n", dnssec_key_get_size(key->key));
-		printf("flags %d\n", dnssec_key_get_flags(key->key));
-		printf("publish %ld\n", key->timing.publish);
-		printf("active %ld\n", key->timing.active);
-		printf("retire %ld\n", key->timing.retire);
-		printf("remove %ld\n", key->timing.remove);
-
-		found = true;
+	dnssec_kasp_key_t *key = NULL;
+	int r = search_unique_key(keys, search, &key);
+	if (r != DNSSEC_EOK) {
+		return 1;
 	}
 
-	if (!found) {
-		error("No matching key found.");
+	printf("id %s\n", dnssec_key_get_id(key->key));
+	printf("keytag %d\n", dnssec_key_get_keytag(key->key));
+	printf("algorithm %d\n", dnssec_key_get_algorithm(key->key));
+	printf("size %u\n", dnssec_key_get_size(key->key));
+	printf("flags %d\n", dnssec_key_get_flags(key->key));
+	printf("publish %ld\n", key->timing.publish);
+	printf("active %ld\n", key->timing.active);
+	printf("retire %ld\n", key->timing.retire);
+	printf("remove %ld\n", key->timing.remove);
+
+	return 0;
+}
+
+/*!
+ * Print DS record in presentation format to standard output.
+ *
+ * \see RFC 4034, Section 5.1 (DS RDATA Wire Format)
+ * \see RFC 4034, Section 5.3 (The DS RR Presentation Format)
+ */
+static int print_ds(const uint8_t *dname, const dnssec_binary_t *rdata)
+{
+	wire_ctx_t ctx = wire_init_binary(rdata);
+	if (wire_available(&ctx) < 4) {
+		return DNSSEC_MALFORMED_DATA;
+	}
+
+	_cleanup_free_ char *name = dname_to_ascii(dname);
+	if (!name) {
+		return DNSSEC_ENOMEM;
+	}
+
+	dnssec_binary_t digest = { 0 };
+
+	uint16_t keytag   = wire_read_u16(&ctx);
+	uint8_t algorithm = wire_read_u8(&ctx);
+	uint8_t digest_type = wire_read_u8(&ctx);
+	wire_available_binary(&ctx, &digest);
+
+	printf("%s DS %d %d %d ", name, keytag, algorithm, digest_type);
+	for (size_t i = 0; i < digest.size; i++) {
+		printf("%02x", digest.data[i]);
+	}
+	printf("\n");
+
+	return DNSSEC_EOK;
+}
+
+static int create_and_print_ds(const dnssec_key_t *key, dnssec_key_digest_t digest)
+{
+	_cleanup_binary_ dnssec_binary_t rdata = { 0 };
+	int r = dnssec_key_create_ds(key, digest, &rdata);
+	if (r != DNSSEC_EOK) {
+		return r;
+	}
+
+	return print_ds(dnssec_key_get_dname(key), &rdata);
+}
+
+/*
+ * keymgr zone key ds <zone> <key-spec>
+ */
+static int cmd_zone_key_ds(int argc, char *argv[])
+{
+	if (argc != 2) {
+		error("Name of zone and key have to be specified");
 		return 1;
+	}
+
+	const char *zone_name = argv[0];
+	const char *key_name = argv[1];
+
+	_cleanup_kasp_ dnssec_kasp_t *kasp = get_kasp();
+	_cleanup_zone_ dnssec_kasp_zone_t *zone = get_zone(kasp, zone_name);
+	dnssec_list_t *keys = dnssec_kasp_zone_get_keys(zone);
+
+	dnssec_kasp_key_t *key = NULL;
+	int r = search_unique_key(keys, key_name, &key);
+	if (r != DNSSEC_EOK) {
+		return 1;
+	}
+
+	static const dnssec_key_digest_t digests[] = {
+		DNSSEC_KEY_DIGEST_SHA1,
+		DNSSEC_KEY_DIGEST_SHA256,
+		DNSSEC_KEY_DIGEST_SHA384,
+		0
+	};
+
+	for (const dnssec_key_digest_t *d = digests; *d != 0; d++) {
+		create_and_print_ds(key->key, *d);
 	}
 
 	return 0;
@@ -680,22 +862,10 @@ static int cmd_zone_key_set(int argc, char *argv[])
 		return 1;
 	}
 
+	dnssec_list_t *keys = dnssec_kasp_zone_get_keys(zone);
 	dnssec_kasp_key_t *match = NULL;
-
-	dnssec_list_t *zone_keys = dnssec_kasp_zone_get_keys(zone);
-	dnssec_list_foreach(item, zone_keys) {
-		dnssec_kasp_key_t *key = dnssec_item_get(item);
-		if (key_match(key->key, search)) {
-			if (match) {
-				error("Multiple matching keys found.");
-				return 1;
-			}
-			match = key;
-		}
-	}
-
-	if (!match) {
-		error("No matching key found.");
+	int r = search_unique_key(keys, search, &match);
+	if (r != DNSSEC_EOK) {
 		return 1;
 	}
 
@@ -704,7 +874,7 @@ static int cmd_zone_key_set(int argc, char *argv[])
 	if (new_timing.retire >= 0) { match->timing.retire = new_timing.retire; }
 	if (new_timing.remove >= 0) { match->timing.remove = new_timing.remove; }
 
-	int r = dnssec_kasp_zone_save(kasp, zone);
+	r = dnssec_kasp_zone_save(kasp, zone);
 	if (r != DNSSEC_EOK) {
 		error("Failed to save updated zone (%s).", dnssec_strerror(r));
 		return 1;
@@ -789,6 +959,7 @@ static int cmd_zone_key(int argc, char *argv[])
 	static const command_t commands[] = {
 		{ "list",     cmd_zone_key_list },
 		{ "show",     cmd_zone_key_show },
+		{ "ds",       cmd_zone_key_ds },
 		{ "generate", cmd_zone_key_generate },
 		{ "set",      cmd_zone_key_set },
 		{ "import",   cmd_zone_key_import },
