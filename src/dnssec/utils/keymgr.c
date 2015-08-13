@@ -227,7 +227,7 @@ static bool key_match(const dnssec_key_t *key, int keytag, const char *keyid)
 
 	// key tag
 
-	if (keytag > 0 && dnssec_key_get_keytag(key) == keytag) {
+	if (keytag >= 0 && dnssec_key_get_keytag(key) == keytag) {
 		return true;
 	}
 
