@@ -692,9 +692,16 @@ static int cmd_zone_key_ds(int argc, char *argv[])
 		return 1;
 	}
 
-	create_and_print_ds(key->key, DNSSEC_KEY_DIGEST_SHA1);
-	create_and_print_ds(key->key, DNSSEC_KEY_DIGEST_SHA256);
-	create_and_print_ds(key->key, DNSSEC_KEY_DIGEST_SHA384);
+	static const dnssec_key_digest_t digests[] = {
+		DNSSEC_KEY_DIGEST_SHA1,
+		DNSSEC_KEY_DIGEST_SHA256,
+		DNSSEC_KEY_DIGEST_SHA384,
+		0
+	};
+
+	for (const dnssec_key_digest_t *d = digests; *d != 0; d++) {
+		create_and_print_ds(key->key, *d);
+	}
 
 	return 0;
 }
