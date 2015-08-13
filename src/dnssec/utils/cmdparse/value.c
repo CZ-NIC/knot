@@ -164,7 +164,7 @@ int value_key_size(int argc, char *argv[], const parameter_t *p, void *data)
 	assert(p);
 	assert(data);
 
-	if (argc < 0) {
+	if (argc < 1) {
 		error_missing_option(p);
 		return -1;
 	}
