@@ -33,6 +33,7 @@
 #include "legacy/key.h"
 #include "print.h"
 #include "shared.h"
+#include "strtonum.h"
 #include "wire.h"
 
 /* -- global options ------------------------------------------------------- */
@@ -204,14 +205,10 @@ static int search_str_to_keytag(const char *search)
 {
 	assert(search);
 
-	errno = 0;
-	char *end = NULL;
-	long value = strtol(search, &end, 10);
-	if (*end == '\0' && errno == 0 && 0 <= value && value <= UINT16_MAX) {
-		return value;
-	} else {
-		return -1;
-	}
+	uint16_t keytag = 0;
+	int r = str_to_u16(search, &keytag);
+
+	return (r == DNSSEC_EOK ? keytag : -1);
 }
 
 /*!
