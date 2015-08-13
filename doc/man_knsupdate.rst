@@ -148,7 +148,7 @@ Differences with regard to ISC nsupdate:
 
   Empty line doesn't send the update.
 
-  Bind-like key format (:program:`ddns-confgen` output) is not supported.
+  BIND-like key format (:program:`ddns-confgen` output) is not supported.
 
 Examples
 --------

@@ -1,7 +1,7 @@
 .. highlight:: console
 
-keymgr – DNSSEC key management utility
-======================================
+keymgr – Key management utility
+===============================
 
 Synopsis
 --------
@@ -13,10 +13,15 @@ Synopsis
 Description
 -----------
 
-The :program:`keymgr` utility serves for DNSSEC keys and KASP (Key And
-Signature Policy) management in Knot DNS server. The configuration is stored
-in a so called KASP database. The database is simply a directory in the
-file-system containing files in the JSON format.
+The :program:`keymgr` utility serves for key management in Knot DNS server.
+
+Primarily functions for DNSSEC keys and KASP (Key And Signature Policy)
+management are provided. However the utility also provides functions for
+TSIG key generation.
+
+The DNSSEC and KASP configuration is stored in a so called KASP database.
+The database is simply a directory in the file-system containing files in the
+JSON format.
 
 The operations are organized into commands and subcommands. A command
 specifies the operation to be performed with the KASP database. It is usually
@@ -25,7 +30,7 @@ available subcommands in that area. The listing of available command arguments
 is not supported yet.
 
 Command and argument names are parsed in a smart way. Only a beginning
-of a name can be entered and it will be recognized. The specified part of 
+of a name can be entered and it will be recognized. The specified part of
 a name must be unique amongst the other names.
 
 Global options
@@ -52,6 +57,9 @@ Main commands
 **keystore** ...
   Operations with private key store content. The private key store holds
   private key material separately from zone metadata.
+
+**tsig** ...
+  Operations with TSIG keys.
 
 zone commands
 .............
@@ -190,6 +198,19 @@ file-based key store is supported. This command is subject to change.
 **keystore** **list**
   List private keys in the key store.
 
+tsig commands
+.............
+
+**tsig** **generate** *name* [**algorithm** *id*] [**size** *bits*]
+  Generate new TSIG key and print it on the standard output. The algorithm
+  defaults to *hmac-sha256*. The default key size is determined optimally based
+  on the selected algorithm.
+
+  The generated key is printed out in the server configuration format to allow
+  direct inclusion into the server configuration. The first line of the output
+  contains a comment with the key in the one-line key format accepted by client
+  utilities.
+
 Examples
 --------
 
@@ -237,6 +258,10 @@ Examples
     $ keymgr zone add example.com policy none
     $ keymgr zone key generate example.com algorithm rsasha256 size 2048 ksk
     $ keymgr zone key generate example.com algorithm rsasha256 size 1024
+
+8. Generate a TSIG key named *operator.key*::
+
+    $ keymgr tsig generate operator.key algorithm hmac-sha512
 
 See Also
 --------

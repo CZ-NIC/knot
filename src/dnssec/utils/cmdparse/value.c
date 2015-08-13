@@ -16,6 +16,7 @@
 
 #include "cmdparse/value.h"
 #include "dnssec/key.h"
+#include "dnssec/tsig.h"
 #include "print.h"
 
 #include <assert.h>
@@ -157,6 +158,29 @@ int value_algorithm(int argc, char *argv[], const parameter_t *p, void *data)
 	error("Invalid value for '%s'. Use number or IANA mnemonic.", p->name);
 
 	return -1;
+}
+
+int value_tsig_algorithm(int argc, char *argv[], const parameter_t *p, void *data)
+{
+	assert(p);
+	assert(data);
+
+	if (argc < 1) {
+		error_missing_option(p);
+		return -1;
+	}
+
+	dnssec_tsig_algorithm_t *algorithm = data + p->offset;
+	char *input = argv[0];
+
+	dnssec_tsig_algorithm_t match = dnssec_tsig_algorithm_from_name(input);
+	if (match == DNSSEC_TSIG_UNKNOWN) {
+		error("Invalid value for '%s'.", p->name);
+		return -1;
+	}
+
+	*algorithm = match;
+	return 1;
 }
 
 int value_key_size(int argc, char *argv[], const parameter_t *p, void *data)

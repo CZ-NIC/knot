@@ -115,33 +115,33 @@ Export the configuration database to a file.
 .SH EXAMPLES
 .SS Setup a key file for remote control
 .INDENT 0.0
-.IP 1. 3
-Generate a key:
-.INDENT 3.0
 .INDENT 3.5
 .sp
 .nf
 .ft C
-$ dnssec\-keygen \-a hmac\-md5 \-b 256 \-n HOST knotc\-key
+$ keymgr tsig generate knotc\-key > knotc\-key.conf
 .ft P
 .fi
 .UNINDENT
 .UNINDENT
-.IP 2. 3
-Extract a secret in base64 format and create a key file:
-.INDENT 3.0
+.sp
+The generated key file contains a key in the server configuration format and
+thus can be directly included into the server configuration file.
+.sp
+Knot DNS utilities accept one\-line format which is included in the generated
+key file on the first line as a comment. It can be extracted easily:
+.INDENT 0.0
 .INDENT 3.5
 .sp
 .nf
 .ft C
-$ echo "knotc\-key hmac\-md5 <secret>" > knotc.key
+$ head \-1 knotc\-key.conf | sed \(aqs/^#\es*//\(aq > knotc.key
 .ft P
 .fi
 .UNINDENT
 .UNINDENT
-.UNINDENT
 .sp
-Make sure the key can be read/written only by the owner for security reasons.
+Make sure the key file can be read only by the owner for security reasons.
 .SS Reload server remotely
 .INDENT 0.0
 .INDENT 3.5

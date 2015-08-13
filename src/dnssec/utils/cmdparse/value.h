@@ -39,6 +39,11 @@ int value_string(int argc, char *argv[], const parameter_t *p, void *data);
 int value_algorithm(int argc, char *argv[], const parameter_t *p, void *data);
 
 /*!
+ * dnssec_tsig_algorithm_t
+ */
+int value_tsig_algorithm(int argc, char *argv[], const parameter_t *p, void *data);
+
+/*!
  * unsigned int
  */
 int value_key_size(int argc, char *argv[], const parameter_t *p, void *data);

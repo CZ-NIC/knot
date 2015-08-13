@@ -16,6 +16,7 @@
 
 #include <assert.h>
 #include <getopt.h>
+#include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -25,6 +26,7 @@
 #include <dnssec/error.h>
 #include <dnssec/kasp.h>
 #include <dnssec/keystore.h>
+#include <dnssec/tsig.h>
 
 #include "cmdparse/command.h"
 #include "cmdparse/parameter.h"
@@ -1252,10 +1254,122 @@ static int cmd_keystore_list(int argc, char *argv[])
 	return 0;
 }
 
+/*!
+ * Print TSIG key in client and server format.
+ */
+static void print_tsig(dnssec_tsig_algorithm_t mac, const char *name,
+		       const dnssec_binary_t *secret)
+{
+	assert(name);
+	assert(secret);
+
+	const char *mac_name = dnssec_tsig_algorithm_to_name(mac);
+	assert(mac_name);
+
+	// client format (as a comment)
+	printf("# %s:%s:%.*s\n", mac_name, name, (int)secret->size, secret->data);
+
+	// server format
+	printf("key:\n");
+	printf("  - id: %s\n", name);
+	printf("    algorithm: %s\n", mac_name);
+	printf("    secret: %.*s\n", (int)secret->size, secret->data);
+}
+
+/*
+ * keymgr tsig generate <name> [algorithm <algorithm>] [size <size>]
+ */
+static int cmd_tsig_generate(int argc, char *argv[])
+{
+	if (argc < 1) {
+		error("TSIG key name has to be specified.");
+		return 1;
+	}
+
+	struct config {
+		dnssec_tsig_algorithm_t algorithm;
+		unsigned size;
+	};
+
+	static const parameter_t params[] = {
+		#define o(member) offsetof(struct config, member)
+		{ "algorithm", value_tsig_algorithm, .offset = o(algorithm) },
+		{ "size",      value_key_size,       .offset = o(size) },
+		{ NULL }
+		#undef o
+	};
+
+	struct config config = {
+		.algorithm = DNSSEC_TSIG_HMAC_SHA256
+	};
+
+	_cleanup_free_ char *name = dname_ascii_normalize_copy(argv[0]);
+	if (!name) {
+		error("Invalid TSIG key name.");
+		return 1;
+	}
+
+	if (parse_parameters(params, argc - 1, argv + 1, &config) != 0) {
+		return 1;
+	}
+
+	// round up bits to bytes
+	config.size = (config.size + CHAR_BIT - 1) / CHAR_BIT * CHAR_BIT;
+
+	int optimal_size = dnssec_tsig_optimal_key_size(config.algorithm);
+	assert(optimal_size > 0);
+
+	if (config.size == 0) {
+		config.size = optimal_size;
+	}
+
+	if (config.size != optimal_size) {
+		error("Notice: Optimal key size for %s is %d bits.",
+		      dnssec_tsig_algorithm_to_name(config.algorithm),
+		      optimal_size);
+	}
+
+	assert(config.size % CHAR_BIT == 0);
+
+	_cleanup_binary_ dnssec_binary_t key = { 0 };
+	int r = dnssec_binary_alloc(&key, config.size / CHAR_BIT);
+	if (r != DNSSEC_EOK) {
+		error("Failed to allocate memory.");
+		return 1;
+	}
+
+	r = gnutls_rnd(GNUTLS_RND_KEY, key.data, key.size);
+	if (r != 0) {
+		error("Failed to generate secret the key.");
+		return 1;
+	}
+
+	_cleanup_binary_ dnssec_binary_t key_b64 = { 0 };
+	r = dnssec_binary_to_base64(&key, &key_b64);
+	if (r != DNSSEC_EOK) {
+		error("Failed to convert the key to Base64.");
+		return 1;
+	}
+
+	print_tsig(config.algorithm, name, &key_b64);
+
+	return 0;
+}
+
 static int cmd_keystore(int argc, char *argv[])
 {
 	static const command_t commands[] = {
 		{ "list",   cmd_keystore_list },
+		{ NULL }
+	};
+
+	return subcommand(commands, argc, argv);
+}
+
+static int cmd_tsig(int argc, char *argv[])
+{
+	static const command_t commands[] = {
+		{ "generate",   cmd_tsig_generate },
 		{ NULL }
 	};
 
@@ -1326,6 +1440,7 @@ int main(int argc, char *argv[])
 		{ "zone",     cmd_zone },
 		{ "policy",   cmd_policy },
 		{ "keystore", cmd_keystore },
+		{ "tsig",     cmd_tsig },
 		{ NULL }
 	};
 
