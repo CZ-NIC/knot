@@ -198,9 +198,9 @@ file-based key store is supported. This command is subject to change.
 tsig commands
 .............
 
-**tsig** **generate** *name* [**hmac** *algorithm*] [**size** *bits*]
+**tsig** **generate** *name* [**algorithm** *id*] [**size** *bits*]
   Generate new TSIG key and print it on the standard output. The HMAC algorithm
-  defaults to *sha256*. The default key size is determined optimally based
+  defaults to *hmac-sha256*. The default key size is determined optimally based
   on the selected algorithm.
 
 Examples
@@ -253,7 +253,7 @@ Examples
 
 8. Generate a TSIG key named *operator.key*::
 
-    $ keymgr tsig generate operator.key hmac sha512
+    $ keymgr tsig generate operator.key algorithm hmac-sha512
 
 See Also
 --------

@@ -233,9 +233,9 @@ List private keys in the key store.
 .SS tsig commands
 .INDENT 0.0
 .TP
-\fBtsig\fP \fBgenerate\fP \fIname\fP [\fBhmac\fP \fIalgorithm\fP] [\fBsize\fP \fIbits\fP]
+\fBtsig\fP \fBgenerate\fP \fIname\fP [\fBalgorithm\fP \fIid\fP] [\fBsize\fP \fIbits\fP]
 Generate new TSIG key and print it on the standard output. The HMAC algorithm
-defaults to \fIsha256\fP\&. The default key size is determined optimally based
+defaults to \fIhmac\-sha256\fP\&. The default key size is determined optimally based
 on the selected algorithm.
 .UNINDENT
 .SH EXAMPLES
@@ -348,7 +348,7 @@ Generate a TSIG key named \fIoperator.key\fP:
 .sp
 .nf
 .ft C
-$ keymgr tsig generate operator.key hmac sha512
+$ keymgr tsig generate operator.key algorithm hmac\-sha512
 .ft P
 .fi
 .UNINDENT
