@@ -1084,6 +1084,28 @@ static int cmd_keystore_list(int argc, char *argv[])
 	return 0;
 }
 
+/*!
+ * Print TSIG key in client and server format.
+ */
+static void print_tsig(dnssec_tsig_algorithm_t mac, const char *name,
+		       const dnssec_binary_t *secret)
+{
+	assert(name);
+	assert(secret);
+
+	const char *mac_name = dnssec_tsig_algorithm_to_name(mac);
+	assert(mac_name);
+
+	// client format (as a comment)
+	printf("# %s:%s:%.*s\n", mac_name, name, (int)secret->size, secret->data);
+
+	// server format
+	printf("key:\n");
+	printf("  - id: %s\n", name);
+	printf("    algorithm: %s\n", mac_name);
+	printf("    secret: %.*s\n", (int)secret->size, secret->data);
+}
+
 /*
  * keymgr tsig generate <name> [algorithm <algorithm>] [size <size>]
  */
@@ -1159,9 +1181,7 @@ static int cmd_tsig_generate(int argc, char *argv[])
 		return 1;
 	}
 
-	printf("%s:%s:%.*s\n",
-	       dnssec_tsig_algorithm_to_name(config.algorithm), name,
-	       (int)key_b64.size, key_b64.data);
+	print_tsig(config.algorithm, name, &key_b64);
 
 	return 0;
 }
