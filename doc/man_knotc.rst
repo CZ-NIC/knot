@@ -95,15 +95,11 @@ Examples
 Setup a key file for remote control
 ...................................
 
-1. Generate a key::
+::
 
-     $ dnssec-keygen -a hmac-md5 -b 256 -n HOST knotc-key
+  $ keymgr tsig generate knotc-key > knotc.key
 
-2. Extract a secret in base64 format and create a key file::
-
-     $ echo "knotc-key hmac-md5 <secret>" > knotc.key
-
-Make sure the key can be read/written only by the owner for security reasons.
+Make sure the key file can be read only by the owner for security reasons.
 
 Reload server remotely
 ......................
