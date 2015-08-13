@@ -234,9 +234,14 @@ List private keys in the key store.
 .INDENT 0.0
 .TP
 \fBtsig\fP \fBgenerate\fP \fIname\fP [\fBalgorithm\fP \fIid\fP] [\fBsize\fP \fIbits\fP]
-Generate new TSIG key and print it on the standard output. The HMAC algorithm
+Generate new TSIG key and print it on the standard output. The algorithm
 defaults to \fIhmac\-sha256\fP\&. The default key size is determined optimally based
 on the selected algorithm.
+.sp
+The generated key is printed out in the server configuration format to allow
+direct inclusion into the server configuration. The first line of the output
+contains a comment with the key in the one\-line key format accepted by client
+utilities.
 .UNINDENT
 .SH EXAMPLES
 .INDENT 0.0

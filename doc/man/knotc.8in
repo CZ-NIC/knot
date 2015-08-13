@@ -119,7 +119,23 @@ Export the configuration database to a file.
 .sp
 .nf
 .ft C
-$ keymgr tsig generate knotc\-key > knotc.key
+$ keymgr tsig generate knotc\-key > knotc\-key.conf
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.sp
+The generated key file contains a key in the server configuration format and
+thus can be directly included into the server configuration file.
+.sp
+Knot DNS utilities accept one\-line format which is included in the generated
+key file on the first line as a comment. It can be extracted easily:
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+$ head \-1 knotc\-key.conf | sed \(aqs/^#\es*//\(aq > knotc.key
 .ft P
 .fi
 .UNINDENT

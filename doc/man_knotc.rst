@@ -97,7 +97,15 @@ Setup a key file for remote control
 
 ::
 
-  $ keymgr tsig generate knotc-key > knotc.key
+  $ keymgr tsig generate knotc-key > knotc-key.conf
+
+The generated key file contains a key in the server configuration format and
+thus can be directly included into the server configuration file.
+
+Knot DNS utilities accept one-line format which is included in the generated
+key file on the first line as a comment. It can be extracted easily::
+
+  $ head -1 knotc-key.conf | sed 's/^#\s*//' > knotc.key
 
 Make sure the key file can be read only by the owner for security reasons.
 

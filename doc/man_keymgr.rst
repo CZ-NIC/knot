@@ -30,7 +30,7 @@ available subcommands in that area. The listing of available command arguments
 is not supported yet.
 
 Command and argument names are parsed in a smart way. Only a beginning
-of a name can be entered and it will be recognized. The specified part of 
+of a name can be entered and it will be recognized. The specified part of
 a name must be unique amongst the other names.
 
 Global options
@@ -199,9 +199,14 @@ tsig commands
 .............
 
 **tsig** **generate** *name* [**algorithm** *id*] [**size** *bits*]
-  Generate new TSIG key and print it on the standard output. The HMAC algorithm
+  Generate new TSIG key and print it on the standard output. The algorithm
   defaults to *hmac-sha256*. The default key size is determined optimally based
   on the selected algorithm.
+
+  The generated key is printed out in the server configuration format to allow
+  direct inclusion into the server configuration. The first line of the output
+  contains a comment with the key in the one-line key format accepted by client
+  utilities.
 
 Examples
 --------
