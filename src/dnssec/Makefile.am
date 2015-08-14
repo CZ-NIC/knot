@@ -38,6 +38,8 @@ libshared_la_SOURCES = \
 	shared/pem.h \
 	shared/shared.h \
 	shared/strtonum.h \
+	shared/timestamp.c \
+	shared/timestamp.h \
 	shared/wire.h
 
 libdnssec_la_CPPFLAGS = \
