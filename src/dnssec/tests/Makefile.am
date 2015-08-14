@@ -43,6 +43,7 @@ check_PROGRAMS = \
 	shared_bignum	\
 	shared_dname	\
 	shared_strtonum	\
+	shared_timestamp \
 	shared_wire	\
 	tsig
 

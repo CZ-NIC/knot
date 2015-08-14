@@ -23,9 +23,7 @@
 #include "key.h"
 #include "shared.h"
 #include "strtonum.h"
-
-// ISO 8610
-#define TIME_FORMAT "%Y-%m-%dT%H:%M:%S%z"
+#include "timestamp.h"
 
 int decode_ignore(_unused_ const json_t *value, _unused_ void *result)
 {
@@ -279,13 +277,9 @@ int decode_time(const json_t *value, void *result)
 	}
 
 	const char *time_str = json_string_value(value);
-	struct tm tm = { 0 };
-	char *end = strptime(time_str, TIME_FORMAT, &tm);
-	if (end == NULL || *end != '\0') {
+	if (!timestamp_read(time_str, time_ptr)) {
 		return DNSSEC_CONFIG_MALFORMED;
 	}
-
-	*time_ptr = timegm(&tm);
 
 	return DNSSEC_EOK;
 }
@@ -302,14 +296,8 @@ int encode_time(const void *value, json_t **result)
 		return DNSSEC_EOK;
 	}
 
-	struct tm tm = { 0 };
-	if (!gmtime_r(time_ptr, &tm)) {
-		return DNSSEC_CONFIG_MALFORMED;
-	}
-
 	char buffer[128] = { 0 };
-	int written = strftime(buffer, sizeof(buffer), TIME_FORMAT, &tm);
-	if (written == 0) {
+	if (!timestamp_write(buffer, sizeof(buffer), *time_ptr)) {
 		return DNSSEC_CONFIG_MALFORMED;
 	}
 
