@@ -23,9 +23,7 @@
 /*
  * POSIX strftime supports '%z', strptime doesn't.
  */
-#define TIME_FORMAT_BASE "%Y-%m-%dT%H:%M:%S"
-#define TIME_FORMAT_WRITE TIME_FORMAT_BASE "%z"
-#define TIME_FORMAT_READ  TIME_FORMAT_BASE
+#define TIME_FORMAT "%Y-%m-%dT%H:%M:%S"
 
 /*!
  * Read time zone offset in +hhmm or -hhmm format.
@@ -71,7 +69,7 @@ bool timestamp_write(char *buffer, size_t size, time_t timestamp)
 		return false;
 	}
 
-	return strftime(buffer, size, TIME_FORMAT_WRITE, &tm) != 0;
+	return strftime(buffer, size, TIME_FORMAT "+0000", &tm) != 0;
 }
 
 _public_
@@ -82,7 +80,7 @@ bool timestamp_read(const char *buffer, time_t *timestamp_ptr)
 	}
 
 	struct tm tm = { 0 };
-	const char *timezone = strptime(buffer, TIME_FORMAT_READ, &tm);
+	const char *timezone = strptime(buffer, TIME_FORMAT, &tm);
 	if (timezone == NULL) {
 		return false;
 	}
