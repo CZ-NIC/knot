@@ -259,12 +259,10 @@ static int search_key(dnssec_list_t *list, const char *search,
 	assert(match);
 
 	int keytag = search_str_to_keytag(search);
-	bool found = false;
 
 	dnssec_list_foreach(item, list) {
 		dnssec_kasp_key_t *key = dnssec_item_get(item);
 		if (key_match(key->key, keytag, search)) {
-			found = true;
 			int r = match(key, data);
 			if (r != DNSSEC_EOK) {
 				return r;
