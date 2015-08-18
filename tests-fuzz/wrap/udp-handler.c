@@ -55,7 +55,7 @@ static int udp_stdin_recv(int fd, void *d)
 {
 	struct udp_stdin *rq = (struct udp_stdin *) d;
 	rq->iov[RX].iov_len = fread(rq->iov[RX].iov_base,
-	                            1, rq->iov[RX].iov_len, stdin);
+	                            1, KNOT_WIRE_MAX_PKTSIZE, stdin);
 	return rq->iov[RX].iov_len;
 }
 
