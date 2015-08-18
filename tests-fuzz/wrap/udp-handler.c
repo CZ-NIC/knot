@@ -29,6 +29,15 @@ struct udp_stdin {
 	struct sockaddr_storage addr;
 };
 
+static void next(void)
+{
+	if (getenv("AFL_PERSISTENT")) {
+		raise(SIGSTOP);
+	} else {
+		exit(0);
+	}
+}
+
 static void *udp_stdin_init(void)
 {
 	struct udp_stdin *rq = malloc(sizeof(struct udp_stdin));
@@ -56,6 +65,11 @@ static int udp_stdin_recv(int fd, void *d)
 	struct udp_stdin *rq = (struct udp_stdin *) d;
 	rq->iov[RX].iov_len = fread(rq->iov[RX].iov_base,
 	                            1, KNOT_WIRE_MAX_PKTSIZE, stdin);
+
+	if (rq->iov[RX].iov_len == 0) {
+		next();
+	}
+
 	return rq->iov[RX].iov_len;
 }
 
@@ -69,11 +83,7 @@ static int udp_stdin_handle(udp_context_t *ctx, void *d)
 static int udp_stdin_send(void *d)
 {
 	struct udp_stdin *rq = (struct udp_stdin *) d;
-	if (getenv("AFL_PERSISTENT")) {
-		raise(SIGSTOP);
-	} else {
-		exit(0);
-	}
+	next();
 	return 0;
 }
 
