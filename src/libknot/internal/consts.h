@@ -34,6 +34,17 @@
 #define KNOT_DNAME_MAXLABELLEN  63 /*!< 2^6 - 1 */
 
 /*!
+ * \brief The longest textual dname representation.
+ *
+ * 3 x maximum_label + 1 x rest_label + 1 x zero_label
+ * Each dname label byte takes 4 characters (\DDD).
+ * Each label takes 1 more byte for '.' character.
+ *
+ * KNOT_DNAME_TXT_MAXLEN = 3x(1 + 63x4) + 1x(1 + 61x4) + 1x(1 + 0)
+ */
+#define KNOT_DNAME_TXT_MAXLEN 1005
+
+/*!
  * \brief Address family numbers.
  *
  * http://www.iana.org/assignments/address-family-numbers/address-family-numbers.xml
