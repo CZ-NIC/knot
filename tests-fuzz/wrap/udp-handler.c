@@ -14,11 +14,12 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-
 /*
  * Udp handler listen on stdin and send to stdout.
  * To use this handler initialize it with udp_master_init_stdin.
  */
+
+#include <stdbool.h>
 
 #include "knot/server/udp-handler.c"
 #include "knot/common/debug.h"
@@ -27,11 +28,12 @@ struct udp_stdin {
 	struct iovec iov[NBUFS];
 	uint8_t buf[NBUFS][KNOT_WIRE_MAX_PKTSIZE];
 	struct sockaddr_storage addr;
+	bool afl_persistent;
 };
 
-static void next(void)
+static inline void next(struct udp_stdin *rq)
 {
-	if (getenv("AFL_PERSISTENT")) {
+	if (rq->afl_persistent) {
 		raise(SIGSTOP);
 	} else {
 		exit(0);
@@ -47,10 +49,12 @@ static void *udp_stdin_init(void)
 		rq->iov[i].iov_len = KNOT_WIRE_MAX_PKTSIZE;
 	}
 
-	struct sockaddr_in * a = (struct sockaddr_in *) &rq->addr;
-	a->sin_family=AF_INET;
+	struct sockaddr_in *a = (struct sockaddr_in *)&rq->addr;
+	a->sin_family = AF_INET;
 	a->sin_addr.s_addr = IN_LOOPBACKNET;
 	a->sin_port = 42;
+
+	rq->afl_persistent = getenv("AFL_PERSISTENT") != NULL;
 	return rq;
 }
 
@@ -62,12 +66,12 @@ static int udp_stdin_deinit(void *d)
 
 static int udp_stdin_recv(int fd, void *d)
 {
-	struct udp_stdin *rq = (struct udp_stdin *) d;
+	struct udp_stdin *rq = (struct udp_stdin *)d;
 	rq->iov[RX].iov_len = fread(rq->iov[RX].iov_base,
 	                            1, KNOT_WIRE_MAX_PKTSIZE, stdin);
 
 	if (rq->iov[RX].iov_len == 0) {
-		next();
+		next(rq);
 	}
 
 	return rq->iov[RX].iov_len;
@@ -75,15 +79,15 @@ static int udp_stdin_recv(int fd, void *d)
 
 static int udp_stdin_handle(udp_context_t *ctx, void *d)
 {
-	struct udp_stdin *rq = (struct udp_stdin *) d;
+	struct udp_stdin *rq = (struct udp_stdin *)d;
 	udp_handle(ctx, STDIN_FILENO, &rq->addr, &rq->iov[RX], &rq->iov[TX]);
 	return 0;
 }
 
 static int udp_stdin_send(void *d)
 {
-	struct udp_stdin *rq = (struct udp_stdin *) d;
-	next();
+	struct udp_stdin *rq = (struct udp_stdin *)d;
+	next(rq);
 	return 0;
 }
 
@@ -95,7 +99,7 @@ void udp_master_init_stdio(server_t *server) {
 	log_info("AFL, UDP handler listen on stdin");
 
 	// register our dummy interface to server
-	iface_t * ifc = malloc(sizeof(iface_t));
+	iface_t *ifc = malloc(sizeof(iface_t));
 	ifc->fd[RX] = STDIN_FILENO;
 	ifc->fd[TX] = STDOUT_FILENO;
 

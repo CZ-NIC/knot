@@ -19,8 +19,7 @@
 #include <stdio.h>
 #include <signal.h>
 
-#include "libknot/errcode.h"
-#include "libknot/packet/pkt.h"
+#include "libknot/libknot.h"
 
 int main(void)
 {
