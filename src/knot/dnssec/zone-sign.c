@@ -430,12 +430,6 @@ static int resign_rrset(const knot_rrset_t *covered,
 	assert(!knot_rrset_empty(covered));
 
 	// TODO this function creates some signatures twice (for checking)
-	// maybe merge the two functions into one
-	// jvcelak: Not really, maybe for RSA. The digest is computed twice,
-	// but the verification process can differ from signature computation.
-	// TODO reuse digest for RSA then, RSA is the most used algo family,
-	// and we create all the signatures twice, that is not cool I think.
-
 	int result = remove_expired_rrsigs(covered, rrsigs, zone_keys,
 	                                   dnssec_ctx, changeset, expires_at);
 	if (result != KNOT_EOK) {
