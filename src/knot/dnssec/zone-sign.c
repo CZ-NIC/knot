@@ -204,12 +204,12 @@ static const zone_key_t *get_matching_zone_key(const knot_rrset_t *rrsigs,
  * \param expires_at  Current earliest expiration, will be updated.
  */
 static void note_earliest_expiration(const knot_rrset_t *rrsigs, size_t pos,
-                                     time_t *expires_at)
+                                     uint32_t *expires_at)
 {
 	assert(rrsigs);
 	assert(expires_at);
 
-	time_t current = knot_rrsig_sig_expiration(&rrsigs->rrs, pos);
+	uint32_t current = knot_rrsig_sig_expiration(&rrsigs->rrs, pos);
 	if (current < *expires_at) {
 		*expires_at = current;
 	}
@@ -232,7 +232,7 @@ static int remove_expired_rrsigs(const knot_rrset_t *covered,
                                  const zone_keyset_t *zone_keys,
                                  const kdnssec_ctx_t *dnssec_ctx,
                                  changeset_t *changeset,
-                                 time_t *expires_at)
+                                 uint32_t *expires_at)
 {
 	assert(changeset);
 
@@ -425,7 +425,7 @@ static int resign_rrset(const knot_rrset_t *covered,
                         const zone_keyset_t *zone_keys,
                         const kdnssec_ctx_t *dnssec_ctx,
                         changeset_t *changeset,
-                        time_t *expires_at)
+                        uint32_t *expires_at)
 {
 	assert(!knot_rrset_empty(covered));
 
@@ -492,7 +492,7 @@ static int sign_node_rrsets(const zone_node_t *node,
                             const zone_keyset_t *zone_keys,
                             const kdnssec_ctx_t *dnssec_ctx,
                             changeset_t *changeset,
-                            time_t *expires_at)
+                            uint32_t *expires_at)
 {
 	assert(node);
 	assert(dnssec_ctx);
@@ -538,7 +538,7 @@ typedef struct node_sign_args {
 	const zone_keyset_t *zone_keys;
 	const kdnssec_ctx_t *dnssec_ctx;
 	changeset_t *changeset;
-	time_t expires_at;
+	uint32_t expires_at;
 } node_sign_args_t;
 
 /*!
