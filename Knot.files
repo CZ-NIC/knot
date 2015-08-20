@@ -131,6 +131,7 @@ src/dnssec/tests/kasp_dir_file.c
 src/dnssec/tests/kasp_store.c
 src/dnssec/tests/key.c
 src/dnssec/tests/key_algorithm.c
+src/dnssec/tests/key_ds.c
 src/dnssec/tests/keyid.c
 src/dnssec/tests/keystore_pkcs8.c
 src/dnssec/tests/keystore_pkcs8_dir.c
@@ -487,6 +488,9 @@ src/zscanner/tests/tests.h
 src/zscanner/tests/zscanner-tool.c
 tests-fuzz/Makefile.am
 tests-fuzz/packet.c
+tests-fuzz/wrap/server.c
+tests-fuzz/wrap/tcp-handler.c
+tests-fuzz/wrap/udp-handler.c
 tests/Makefile.am
 tests/acl.c
 tests/base32hex.c

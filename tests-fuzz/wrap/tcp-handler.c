@@ -12,30 +12,14 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
-*/
+ */
 
-#include <assert.h>
-#include <stdint.h>
-#include <stdio.h>
-#include <signal.h>
+#define tcp_master _orig_tcp_master
+#include "knot/server/tcp-handler.c"
+#undef tcp_master
 
-#include "libknot/libknot.h"
-
-int main(void)
+int tcp_master(dthread_t *thread)
 {
-	for(;;) {
-		uint8_t buffer[UINT16_MAX + 1] = { 0 };
-		size_t len = fread(buffer, 1, sizeof(buffer), stdin);
-
-		knot_pkt_t *pkt = knot_pkt_new(buffer, len, NULL);
-		assert(pkt);
-		int r = knot_pkt_parse(pkt, 0);
-		knot_pkt_free(&pkt);
-
-		if (getenv("AFL_PERSISTENT")) {
-			raise(SIGSTOP);
-		} else {
-			return (r == KNOT_EOK ? 0 : 1);
-		}
-	}
+	log_info("AFL, tcp_master out of order");
+	return 0;
 }

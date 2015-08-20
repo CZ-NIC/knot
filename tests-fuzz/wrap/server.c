@@ -14,28 +14,19 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <assert.h>
-#include <stdint.h>
-#include <stdio.h>
-#include <signal.h>
+/*
+ * Wrap function server_reconfigure to initialize udp_master to stdin
+ */
+#define server_reconfigure _orig_server_reconfigure
+#include "knot/server/server.c"
+#undef server_reconfigure
 
-#include "libknot/libknot.h"
+extern void udp_master_init_stdio(server_t *server);
 
-int main(void)
+int server_reconfigure(conf_t *conf, void *data)
 {
-	for(;;) {
-		uint8_t buffer[UINT16_MAX + 1] = { 0 };
-		size_t len = fread(buffer, 1, sizeof(buffer), stdin);
-
-		knot_pkt_t *pkt = knot_pkt_new(buffer, len, NULL);
-		assert(pkt);
-		int r = knot_pkt_parse(pkt, 0);
-		knot_pkt_free(&pkt);
-
-		if (getenv("AFL_PERSISTENT")) {
-			raise(SIGSTOP);
-		} else {
-			return (r == KNOT_EOK ? 0 : 1);
-		}
-	}
+	log_info("AFL, Wrap server_reconfigure()");
+	int ret = _orig_server_reconfigure(conf, data);
+	udp_master_init_stdio(data);
+	return ret;
 }
