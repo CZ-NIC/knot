@@ -1143,21 +1143,21 @@ int knot_zone_sign(const zone_contents_t *zone,
 		return result;
 	}
 
-	uint32_t normal_tree_expiration = UINT32_MAX;
+	uint32_t normal_expire = UINT32_MAX;
 	result = zone_tree_sign(zone->nodes, zone_keys, dnssec_ctx, changeset,
-	                        &normal_tree_expiration);
+	                        &normal_expire);
 	if (result != KNOT_EOK) {
 		return result;
 	}
 
-	uint32_t nsec3_tree_expiration = UINT32_MAX;
+	uint32_t nsec3_expire = UINT32_MAX;
 	result = zone_tree_sign(zone->nsec3_nodes, zone_keys, dnssec_ctx,
-	                        changeset, &nsec3_tree_expiration);
+	                        changeset, &nsec3_expire);
 	if (result != KNOT_EOK) {
 		return result;
 	}
 
-	*expire_at = MIN(normal_tree_expiration, nsec3_tree_expiration);
+	*expire_at = MIN(dnskey_expire, MIN(normal_expire, nsec3_expire));
 
 	return KNOT_EOK;
 }
