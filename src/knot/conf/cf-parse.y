@@ -655,10 +655,19 @@ system:
  | system MAX_CONN_IDLE INTERVAL ';' {
 	SET_INT(new_config->max_conn_idle, $3.i, "max-conn-idle");
  }
+ | system MAX_CONN_IDLE NUM ';' {
+	SET_INT(new_config->max_conn_idle, $3.i, "max-conn-idle");
+ }
  | system MAX_CONN_HS INTERVAL ';' {
 	SET_INT(new_config->max_conn_hs, $3.i, "max-conn-handshake");
  }
+ | system MAX_CONN_HS NUM ';' {
+	SET_INT(new_config->max_conn_hs, $3.i, "max-conn-handshake");
+ }
  | system MAX_CONN_REPLY INTERVAL ';' {
+	SET_INT(new_config->max_conn_reply, $3.i, "max-conn-reply");
+ }
+ | system MAX_CONN_REPLY NUM ';' {
 	SET_INT(new_config->max_conn_reply, $3.i, "max-conn-reply");
  }
  | system MAX_TCP_CLIENTS NUM ';' {
@@ -939,6 +948,9 @@ zone:
  | zone NOTIFY_RETRIES NUM ';' {
 	SET_NUM(this_zone->notify_retries, $3.i, 1, INT_MAX, "notify-retries");
    }
+ | zone NOTIFY_TIMEOUT INTERVAL ';' {
+	SET_NUM(this_zone->notify_timeout, $3.i, 1, INT_MAX, "notify-timeout");
+   }
  | zone NOTIFY_TIMEOUT NUM ';' {
 	SET_NUM(this_zone->notify_timeout, $3.i, 1, INT_MAX, "notify-timeout");
    }
@@ -988,6 +1000,9 @@ zones:
 	SET_NUM(new_config->notify_retries, $3.i, 1, INT_MAX, "notify-retries");
    }
  | zones NOTIFY_TIMEOUT NUM ';' {
+	SET_NUM(new_config->notify_timeout, $3.i, 1, INT_MAX, "notify-timeout");
+   }
+ | zones NOTIFY_TIMEOUT INTERVAL ';' {
 	SET_NUM(new_config->notify_timeout, $3.i, 1, INT_MAX, "notify-timeout");
    }
  | zones DBSYNC_TIMEOUT NUM ';' {

@@ -785,7 +785,7 @@ The ``zones`` statement contains definition of zones served by Knot DNS.
       [ semantic-checks boolean; ]
       [ ixfr-from-differences boolean; ]
       [ disable-any boolean; ]
-      [ notify-timeout integer; ]
+      [ notify-timeout ( integer | integer(s | m | h | d); ) ]
       [ notify-retries integer; ]
       [ zonefile-sync ( integer | integer(s | m | h | d); ) ]
       [ ixfr-fslimit ( integer | integer(k | M | G) ); ]
