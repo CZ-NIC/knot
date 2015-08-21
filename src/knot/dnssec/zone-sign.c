@@ -204,12 +204,12 @@ static const zone_key_t *get_matching_zone_key(const knot_rrset_t *rrsigs,
  * \param expires_at  Current earliest expiration, will be updated.
  */
 static void note_earliest_expiration(const knot_rrset_t *rrsigs, size_t pos,
-                                     time_t *expires_at)
+                                     uint32_t *expires_at)
 {
 	assert(rrsigs);
 	assert(expires_at);
 
-	time_t current = knot_rrsig_sig_expiration(&rrsigs->rrs, pos);
+	uint32_t current = knot_rrsig_sig_expiration(&rrsigs->rrs, pos);
 	if (current < *expires_at) {
 		*expires_at = current;
 	}
@@ -232,7 +232,7 @@ static int remove_expired_rrsigs(const knot_rrset_t *covered,
                                  const zone_keyset_t *zone_keys,
                                  const kdnssec_ctx_t *dnssec_ctx,
                                  changeset_t *changeset,
-                                 time_t *expires_at)
+                                 uint32_t *expires_at)
 {
 	assert(changeset);
 
@@ -425,17 +425,11 @@ static int resign_rrset(const knot_rrset_t *covered,
                         const zone_keyset_t *zone_keys,
                         const kdnssec_ctx_t *dnssec_ctx,
                         changeset_t *changeset,
-                        time_t *expires_at)
+                        uint32_t *expires_at)
 {
 	assert(!knot_rrset_empty(covered));
 
 	// TODO this function creates some signatures twice (for checking)
-	// maybe merge the two functions into one
-	// jvcelak: Not really, maybe for RSA. The digest is computed twice,
-	// but the verification process can differ from signature computation.
-	// TODO reuse digest for RSA then, RSA is the most used algo family,
-	// and we create all the signatures twice, that is not cool I think.
-
 	int result = remove_expired_rrsigs(covered, rrsigs, zone_keys,
 	                                   dnssec_ctx, changeset, expires_at);
 	if (result != KNOT_EOK) {
@@ -492,7 +486,7 @@ static int sign_node_rrsets(const zone_node_t *node,
                             const zone_keyset_t *zone_keys,
                             const kdnssec_ctx_t *dnssec_ctx,
                             changeset_t *changeset,
-                            time_t *expires_at)
+                            uint32_t *expires_at)
 {
 	assert(node);
 	assert(dnssec_ctx);
@@ -538,7 +532,7 @@ typedef struct node_sign_args {
 	const zone_keyset_t *zone_keys;
 	const kdnssec_ctx_t *dnssec_ctx;
 	changeset_t *changeset;
-	time_t expires_at;
+	uint32_t expires_at;
 } node_sign_args_t;
 
 /*!
@@ -820,20 +814,22 @@ static int add_missing_dnskeys(const knot_rrset_t *soa,
 /*!
  * \brief Refresh DNSKEY RRSIGs in the zone by updating the changeset.
  *
- * \param dnskeys    RR set with DNSKEYs.
- * \param soa        RR set with SOA.
- * \param zone_keys  Zone keys.
- * \param policy     DNSSEC policy.
- * \param changeset  Changeset to be updated.
+ * \param dnskeys     RR set with DNSKEYs.
+ * \param soa         RR set with SOA.
+ * \param zone_keys   Zone keys.
+ * \param policy      DNSSEC policy.
+ * \param changeset   Changeset to be updated.
+ * \param expires_at  Earliest RRSIG expiration.
  *
  * \return Error code, KNOT_EOK if successful.
  */
-static int update_dnskeys_rrsigs(const knot_rrset_t *dnskeys,
-                                 const knot_rrset_t *rrsigs,
-                                 const knot_rrset_t *soa,
-                                 const zone_keyset_t *zone_keys,
-                                 const kdnssec_ctx_t *dnssec_ctx,
-                                 changeset_t *changeset)
+static int update_dnskey_rrsigs(const knot_rrset_t *dnskeys,
+                                const knot_rrset_t *rrsigs,
+                                const knot_rrset_t *soa,
+                                const zone_keyset_t *zone_keys,
+                                const kdnssec_ctx_t *dnssec_ctx,
+                                changeset_t *changeset,
+                                uint32_t *expires_at)
 {
 	assert(zone_keys);
 	assert(changeset);
@@ -858,19 +854,13 @@ static int update_dnskeys_rrsigs(const knot_rrset_t *dnskeys,
 		}
 	}
 
-	result = add_missing_rrsigs(&new_dnskeys, NULL, zone_keys, dnssec_ctx,
-	                            changeset);
-	if (result != KNOT_EOK) {
-		goto fail;
-	}
-
-	if (!knot_rrset_empty(dnskeys)) {
-		result = remove_rrset_rrsigs(dnskeys->owner, dnskeys->type,
-		                             rrsigs, changeset);
+	if (dnssec_ctx->rrsig_drop_existing) {
+		result = force_resign_rrset(&new_dnskeys, rrsigs, zone_keys, dnssec_ctx, changeset);
+	} else {
+		result = resign_rrset(&new_dnskeys, rrsigs, zone_keys, dnssec_ctx, changeset, expires_at);
 	}
 
 fail:
-
 	knot_rdataset_clear(&new_dnskeys.rrs, NULL);
 	return result;
 }
@@ -878,17 +868,19 @@ fail:
 /*!
  * \brief Update DNSKEY records in the zone by updating the changeset.
  *
- * \param zone       Zone to be updated.
- * \param zone_keys  Zone keys.
- * \param policy     DNSSEC policy.
- * \param changeset  Changeset to be updated.
+ * \param zone        Zone to be updated.
+ * \param zone_keys   Zone keys.
+ * \param policy      DNSSEC policy.
+ * \param changeset   Changeset to be updated.
+ * \param expires_at  Earliest RRSIG expiration.
  *
  * \return Error code, KNOT_EOK if successful.
  */
 static int update_dnskeys(const zone_contents_t *zone,
                           const zone_keyset_t *zone_keys,
                           const kdnssec_ctx_t *dnssec_ctx,
-                          changeset_t *changeset)
+                          changeset_t *changeset,
+                          uint32_t *expires_at)
 {
 	assert(zone);
 	assert(zone->apex);
@@ -903,7 +895,6 @@ static int update_dnskeys(const zone_contents_t *zone,
 	}
 
 	int result;
-	size_t changes_before = changeset_size(changeset);
 
 	result = remove_invalid_dnskeys(&soa, &dnskeys, zone_keys, changeset);
 	if (result != KNOT_EOK) {
@@ -914,26 +905,9 @@ static int update_dnskeys(const zone_contents_t *zone,
 	if (result != KNOT_EOK) {
 		return result;
 	}
-	knot_rrset_t dnskey_rrsig = rrset_init_from(&soa, KNOT_RRTYPE_RRSIG);
-	result = knot_synth_rrsig(KNOT_RRTYPE_DNSKEY, &rrsigs.rrs,
-	                          &dnskey_rrsig.rrs, NULL);
-	if (result != KNOT_EOK) {
-		if (result != KNOT_ENOENT) {
-			return result;
-		}
-	}
 
-	bool modified = (changeset_size(changeset) != changes_before);
-	bool signatures_exist = (!knot_rrset_empty(&dnskeys) &&
-	                        all_signatures_exist(&dnskeys, &dnskey_rrsig,
-	                                             zone_keys, dnssec_ctx));
-	knot_rdataset_clear(&dnskey_rrsig.rrs, NULL);
-	if (!modified && signatures_exist) {
-		return KNOT_EOK;
-	}
-
-	return update_dnskeys_rrsigs(&dnskeys, &rrsigs, &soa, zone_keys,
-	                             dnssec_ctx, changeset);
+	return update_dnskey_rrsigs(&dnskeys, &rrsigs, &soa, zone_keys,
+	                            dnssec_ctx, changeset, expires_at);
 }
 
 /*!
@@ -1162,26 +1136,28 @@ int knot_zone_sign(const zone_contents_t *zone,
 
 	int result;
 
-	result = update_dnskeys(zone, zone_keys, dnssec_ctx, changeset);
+	uint32_t dnskey_expire = UINT32_MAX;
+	result = update_dnskeys(zone, zone_keys, dnssec_ctx, changeset,
+	                        &dnskey_expire);
 	if (result != KNOT_EOK) {
 		return result;
 	}
 
-	uint32_t normal_tree_expiration = UINT32_MAX;
+	uint32_t normal_expire = UINT32_MAX;
 	result = zone_tree_sign(zone->nodes, zone_keys, dnssec_ctx, changeset,
-	                        &normal_tree_expiration);
+	                        &normal_expire);
 	if (result != KNOT_EOK) {
 		return result;
 	}
 
-	uint32_t nsec3_tree_expiration = UINT32_MAX;
+	uint32_t nsec3_expire = UINT32_MAX;
 	result = zone_tree_sign(zone->nsec3_nodes, zone_keys, dnssec_ctx,
-	                        changeset, &nsec3_tree_expiration);
+	                        changeset, &nsec3_expire);
 	if (result != KNOT_EOK) {
 		return result;
 	}
 
-	*expire_at = MIN(normal_tree_expiration, nsec3_tree_expiration);
+	*expire_at = MIN(dnskey_expire, MIN(normal_expire, nsec3_expire));
 
 	return KNOT_EOK;
 }
