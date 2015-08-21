@@ -87,6 +87,13 @@ nobase_libknot_internal_la_HEADERS = 		\
 	libknot/internal/utils.h		\
 	libknot/internal/wire_ctx.h
 
+libknot_yparser_ladir = $(includedir)
+nobase_libknot_yparser_la_HEADERS = 		\
+	libknot/yparser/yparser.h		\
+	libknot/yparser/ypformat.h		\
+	libknot/yparser/ypscheme.h		\
+	libknot/yparser/yptrafo.h
+
 # dynamic: libknot sources
 libknot_la_SOURCES =				\
 	libknot/binary.c			\
@@ -118,10 +125,7 @@ libknot_yparser_la_SOURCES = 			\
 	libknot/yparser/ypformat.c		\
 	libknot/yparser/ypscheme.c		\
 	libknot/yparser/yptrafo.c		\
-	libknot/yparser/yparser.h		\
-	libknot/yparser/ypformat.h		\
-	libknot/yparser/ypscheme.h		\
-	libknot/yparser/yptrafo.h
+	$(nobase_libknot_yparser_la_HEADERS)
 
 libknot_internal_la_SOURCES = 			\
 	libknot/internal/base32hex.c		\
