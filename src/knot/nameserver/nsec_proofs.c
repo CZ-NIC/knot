@@ -286,7 +286,7 @@ static int ns_put_nsec_wildcard(const zone_contents_t *zone,
 		previous = zone_contents_find_previous(zone, qname);
 		assert(previous != NULL);
 
-		while (previous->flags != NODE_FLAGS_AUTH) {
+		while (previous->flags & NODE_FLAGS_NONAUTH) {
 			previous = previous->prev;
 		}
 	}
@@ -474,7 +474,7 @@ static int ns_put_nsec_nxdomain(const knot_dname_t *qname,
 	if (previous == NULL) {
 		previous = zone_contents_find_previous(zone, qname);
 		assert(previous != NULL);
-		while (previous->flags != NODE_FLAGS_AUTH) {
+		while (previous->flags & NODE_FLAGS_NONAUTH) {
 			previous = previous->prev;
 		}
 	}
@@ -513,7 +513,7 @@ dbg_ns_exec_verb(
 	}
 
 	const zone_node_t *prev_new = zone_contents_find_previous(zone, wildcard);
-	while (prev_new->flags != NODE_FLAGS_AUTH) {
+	while (prev_new->flags & NODE_FLAGS_NONAUTH) {
 		prev_new = prev_new->prev;
 	}
 
