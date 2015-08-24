@@ -116,4 +116,9 @@ resp = knot.dig("y.w.example", "A", dnssec=True)
 resp.check(rcode="NOERROR", flags="QR AA", eflags="DO")
 resp.cmp(bind)
 
+# Wildcard NSEC with delegation boundary (Knot specific).
+resp = knot.dig("b.nsec-deleg.z.z.example", "A", dnssec=True)
+resp.check(rcode="NXDOMAIN", flags="QR AA", eflags="DO")
+resp.cmp(bind)
+
 t.end()
