@@ -107,7 +107,12 @@ AS_IF([test "$enable_fastparser" = "yes"],[
 AM_CONDITIONAL([FAST_PARSER], [test "$enable_fastparser" = "yes"])
 
 # GnuTLS crypto backend
-PKG_CHECK_MODULES([gnutls], [gnutls >= 3.0 nettle])
+PKG_CHECK_MODULES([gnutls], [gnutls >= 3.0 nettle], [
+    CFLAGS_save=$CFLAGS
+    CFLAGS="$CFLAGS $gnutls_CFLAGS"
+    AC_CHECK_HEADERS([nettle/version.h])
+    CFLAGS=$CFLAGS_save
+])
 
 # JSON for DNSSEC status storage
 PKG_CHECK_MODULES([jansson], [jansson >= 2.3])
