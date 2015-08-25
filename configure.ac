@@ -374,6 +374,24 @@ AS_IF([test "$with_libidn" != "no"],[
 
 ]) # Knot DNS utilities dependencies
 
+# Bash completions
+AC_ARG_WITH([bash-completions],
+  AC_HELP_STRING([--with-bash-completions=[DIR]], [Bash completions directory [default=auto]]),
+  [with_bash_completions="$withval"],
+  [with_bash_completions=auto]
+)
+AS_CASE([$with_bash_completions],
+  [auto], [PKG_CHECK_VAR([bash_completions_dir], [bash-completion], [completionsdir])],
+  [yes], [PKG_CHECK_VAR([bash_completions_dir], [bash-completion], [completionsdir], [], [AC_MSG_ERROR([bash completions not found])])],
+  [no], [bash_completions_dir=],
+  [bash_completions_dir="$with_bash_completions"]
+)
+AM_CONDITIONAL([HAVE_BASH_COMPLETIONS], [test -n "$bash_completions_dir"])
+AS_IF([test -n "$bash_completions_dir"],
+  [bash_completions_output="${bash_completions_dir}"],
+  [bash_completions_output=no]
+)
+
 AC_SEARCH_LIBS([pow], [m])
 AC_SEARCH_LIBS([pthread_create], [pthread], [], [AC_MSG_ERROR([pthreads not found])])
 AC_SEARCH_LIBS([dlopen], [dl])
