@@ -377,9 +377,7 @@ AS_IF([test "$with_libidn" != "no"],[
 # Bash completions
 AC_ARG_WITH([bash-completions],
   AC_HELP_STRING([--with-bash-completions=[DIR]], [Bash completions directory [default=no]]),
-  [AS_IF([test "$withval" = ""],
-    [with_bash_completions="yes"],
-    [with_bash_completions="$withval"])],
+  [with_bash_completions="$withval"],
   [with_bash_completions=no]
 )
 AS_CASE([$with_bash_completions],
