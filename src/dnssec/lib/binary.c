@@ -22,6 +22,19 @@
 #include "error.h"
 #include "shared.h"
 
+typedef
+#ifdef HAVE_NETTLE_VERSION_H
+	#include <nettle/version.h>
+	#if NETTLE_VERSION_MAJOR >= 3
+		size_t
+	#else
+		unsigned
+	#endif
+#else
+	unsigned
+#endif
+nettle_len;
+
 static size_t base64_decode_raw(const uint8_t *src, size_t src_len,
 				uint8_t *dst, size_t dst_max_size)
 {
@@ -31,13 +44,13 @@ static size_t base64_decode_raw(const uint8_t *src, size_t src_len,
 	struct base64_decode_ctx ctx;
 	base64_decode_init(&ctx);
 
-	unsigned dst_size = dst_max_size;
-	int result = base64_decode_update(&ctx, &dst_size, dst, src_len, src);
+	nettle_len dst_size = dst_max_size;
+	int result = nettle_base64_decode_update(&ctx, &dst_size, dst, src_len, src);
 	if (result != 1) {
 		return 0;
 	}
 
-	return (size_t) dst_size;
+	return dst_size;
 }
 
 /* -- public API ----------------------------------------------------------- */
