@@ -417,8 +417,9 @@ void conf_db_val(
 		}
 
 		assert(val->blob != NULL);
-		memcpy(&val->len, val->blob, sizeof(uint16_t));
-		val->len = le16toh(val->len);
+		uint16_t len;
+		memcpy(&len, val->blob, sizeof(uint16_t));
+		val->len = le16toh(len);
 		val->data = val->blob + sizeof(uint16_t);
 		val->code = KNOT_EOK;
 	} else {
@@ -452,8 +453,9 @@ void conf_db_val_next(
 
 	if (val->data + val->len < val->blob + val->blob_len) {
 		val->data += val->len;
-		memcpy(&val->len, val->data, sizeof(uint16_t));
-		val->len = le16toh(val->len);
+		uint16_t len;
+		memcpy(&len, val->data, sizeof(uint16_t));
+		val->len = le16toh(len);
 		val->data += sizeof(uint16_t);
 		val->code = KNOT_EOK;
 	} else {
