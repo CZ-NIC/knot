@@ -4,8 +4,7 @@ SUBDIRS = libtap src tests tests-fuzz samples doc
 singlehtml install-singlehtml:
 	$(MAKE) -C doc $@
 
-AM_DISTCHECK_CONFIGURE_FLAGS = \
-	--disable-code-coverage
+AM_DISTCHECK_CONFIGURE_FLAGS =
 
 CODE_COVERAGE_INFO = coverage.info
 CODE_COVERAGE_HTML = coverage.html
