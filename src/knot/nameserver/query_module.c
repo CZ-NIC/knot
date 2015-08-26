@@ -16,17 +16,18 @@ typedef struct static_module {
 	const yp_name_t *name;
 	qmodule_load_t load;
 	qmodule_unload_t unload;
+	unsigned scope;
 } static_module_t;
 
 /*! \note All modules should be dynamically loaded later on. */
 static_module_t MODULES[] = {
-        { C_MOD_SYNTH_RECORD, &synth_record_load, &synth_record_unload },
-        { C_MOD_DNSPROXY,     &dnsproxy_load,     &dnsproxy_unload },
+        { C_MOD_SYNTH_RECORD, &synth_record_load, &synth_record_unload, MOD_SCOPE_ANY },
+        { C_MOD_DNSPROXY,     &dnsproxy_load,     &dnsproxy_unload,     MOD_SCOPE_ANY },
 #ifdef HAVE_ROSEDB
-        { C_MOD_ROSEDB,       &rosedb_load,       &rosedb_unload },
+        { C_MOD_ROSEDB,       &rosedb_load,       &rosedb_unload,       MOD_SCOPE_ANY },
 #endif
 #if USE_DNSTAP
-        { C_MOD_DNSTAP,       &dnstap_load,       &dnstap_unload },
+        { C_MOD_DNSTAP,       &dnstap_load,       &dnstap_unload,       MOD_SCOPE_ANY },
 #endif
         { NULL }
 };
@@ -130,6 +131,7 @@ struct query_module *query_module_open(conf_t *config, conf_mod_id_t *mod_id,
 	module->id = mod_id;
 	module->load = found->load;
 	module->unload = found->unload;
+	module->scope = found->scope;
 
 	return module;
 }

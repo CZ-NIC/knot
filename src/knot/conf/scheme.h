@@ -55,6 +55,7 @@
 #define C_MAX_TCP_CLIENTS	"\x0F""max-tcp-clients"
 #define C_MAX_UDP_PAYLOAD	"\x0F""max-udp-payload"
 #define C_MODULE		"\x06""module"
+#define C_GLOBAL_MODULE		"\x0D""global-module"
 #define C_NOTIFY		"\x06""notify"
 #define C_NSID			"\x04""nsid"
 #define C_PIDFILE		"\x07""pidfile"

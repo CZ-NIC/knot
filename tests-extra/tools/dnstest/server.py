@@ -974,7 +974,7 @@ class Knot(Server):
                 if modules:
                     modules += ", "
                 modules += module.get_conf_ref()
-            s.item("module", "[%s]" % modules)
+            s.item("global-module", "[%s]" % modules)
         s.end()
 
         s.begin("zone")
