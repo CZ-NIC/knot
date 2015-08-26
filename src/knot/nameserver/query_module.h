@@ -49,6 +49,13 @@
 #define MODULE_ERR(mod, msg, ...) \
 	log_error("module '%.*s', " msg, mod[0], mod + 1, ##__VA_ARGS__)
 
+/* Query module instance scopes. */
+enum {
+	MOD_SCOPE_GLOBAL = 1 << 0, /* Global quering (all zones). */
+	MOD_SCOPE_ZONE   = 1 << 1, /* Specific zone quering. */
+	MOD_SCOPE_ANY    = MOD_SCOPE_GLOBAL | MOD_SCOPE_ZONE
+};
+
 /* Query module processing stages. */
 enum query_stage {
 	QPLAN_BEGIN  = 0, /* Before query processing. */
@@ -84,6 +91,7 @@ struct query_module {
 	conf_mod_id_t *id;
 	qmodule_load_t load;
 	qmodule_unload_t unload;
+	unsigned scope;
 };
 
 /*! \brief Single processing step in query processing. */

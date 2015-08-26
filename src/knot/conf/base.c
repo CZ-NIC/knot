@@ -308,7 +308,7 @@ void conf_activate_modules(
 	if (zone_name != NULL) {
 		val = conf_zone_get(conf, C_MODULE, zone_name);
 	} else {
-		val = conf_default_get(conf, C_MODULE);
+		val = conf_default_get(conf, C_GLOBAL_MODULE);
 	}
 
 	// Check if a module is configured at all.
@@ -347,6 +347,24 @@ void conf_activate_modules(
 		if (mod == NULL) {
 			ret = KNOT_ENOMEM;
 			goto activate_error;
+		}
+
+		// Check the module scope.
+		if ((zone_name == NULL && (mod->scope & MOD_SCOPE_GLOBAL) == 0) ||
+		    (zone_name != NULL && (mod->scope & MOD_SCOPE_ZONE) == 0)) {
+			if (zone_name != NULL) {
+				log_zone_warning(zone_name,
+				                 "out of scope module '%s/%.*s'",
+				                 mod_id->name + 1, (int)mod_id->len,
+				                 mod_id->data);
+			} else {
+				log_warning("out of scope module '%s/%.*s'",
+				            mod_id->name + 1, (int)mod_id->len,
+				            mod_id->data);
+			}
+			query_module_close(mod);
+			conf_val_next(&val);
+			continue;
 		}
 
 		// Load the module.
