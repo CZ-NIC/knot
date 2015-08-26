@@ -589,8 +589,9 @@ by the module or even changed altogether.
 
 Each module is configured in the corresponding module section and is
 identified for the subsequent usage. Then the identifier is referenced
-through :ref:`zone_module` option (in the form of ``module_name/module_id``)
-in the zone section or in the ``default`` template if it used for all queries.
+in the form of ``module_name/module_id`` through a zone/template :ref:`zone_module`
+option or through the *default* template :ref:`template_global-module` option
+if it is used for all queries.
 
 ``dnstap`` – dnstap-enabled query logging
 -----------------------------------------
@@ -607,7 +608,7 @@ a UNIX socket::
 
     template:
       - id: default
-        module: mod-dnstap/capture_all
+        global-module: mod-dnstap/capture_all
 
 .. _dnstap: http://dnstap.info/
 
@@ -729,7 +730,7 @@ required::
 
    template:
      - id: default
-       module: mod-dnsproxy/default
+       global-module: mod-dnsproxy/default
 
    zone:
      - domain: local.zone
@@ -832,7 +833,7 @@ Here is an example on how to use the module:
 
    template:
      - id: default
-       module: mod-rosedb/default
+       global-module: mod-rosedb/default
 
   *Note: The module accepts just one parameter – the path to the directory where
   the database will be stored.*

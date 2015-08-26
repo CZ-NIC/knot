@@ -451,7 +451,7 @@ Default: empty
 .sp
 A template is a shareable zone setting which can be used for configuration of
 many zones in one place. A special default template (with the \fIdefault\fP identifier)
-can be used for general querying configuration or as an implicit configuration
+can be used for global querying configuration or as an implicit configuration
 if a zone doesn\(aqt have another template specified.
 .INDENT 0.0
 .INDENT 3.5
@@ -460,6 +460,7 @@ if a zone doesn\(aqt have another template specified.
 .ft C
 template:
   \- id: STR
+    global\-module: STR/STR ...
     # All zone options (excluding \(aqtemplate\(aq item)
 .ft P
 .fi
@@ -468,6 +469,14 @@ template:
 .SS id
 .sp
 A template identifier.
+.SS global\-module
+.sp
+An ordered list of references to query modules in the form
+\fImodule_name/module_id\fP\&. These modules apply to all queries.
+.sp
+\fICaution:\fP This option is available only for the \fIdefault\fP template.
+.sp
+Default: empty
 .SH ZONE SECTION
 .sp
 Definition of zones served by the server.
@@ -687,7 +696,7 @@ Default: increment
 .SS module
 .sp
 An ordered list of references to query modules in the form
-\fImodule_name/module_id\fP\&.
+\fImodule_name/module_id\fP\&. These modules apply only to the current zone queries.
 .sp
 Default: empty
 .SH LOGGING SECTION

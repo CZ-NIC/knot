@@ -523,13 +523,14 @@ Template section
 
 A template is a shareable zone setting which can be used for configuration of
 many zones in one place. A special default template (with the *default* identifier)
-can be used for general querying configuration or as an implicit configuration
+can be used for global querying configuration or as an implicit configuration
 if a zone doesn't have another template specified.
 
 ::
 
  template:
    - id: STR
+     global-module: STR/STR ...
      # All zone options (excluding 'template' item)
 
 .. _template_id:
@@ -538,6 +539,18 @@ id
 --
 
 A template identifier.
+
+.. _template_global-module:
+
+global-module
+-------------
+
+An ordered list of references to query modules in the form
+*module_name/module_id*. These modules apply to all queries.
+
+*Caution:* This option is available only for the *default* template.
+
+Default: empty
 
 .. _Zone section:
 
@@ -799,7 +812,7 @@ module
 ------
 
 An ordered list of references to query modules in the form
-*module_name/module_id*.
+*module_name/module_id*. These modules apply only to the current zone queries.
 
 Default: empty
 
