@@ -139,15 +139,15 @@ int evsched_schedule(event_t *ev, uint32_t dt)
 	evsched_t *sched = ev->sched;
 	pthread_mutex_lock(&sched->heap_lock);
 
+	ev->tv = new_time;
+
 	/* Make sure it's not already enqueued. */
 	int found = 0;
 	if ((found = heap_find(&sched->heap, ev))) {
-		heap_delete(&sched->heap, found);
+		heap_replace(&sched->heap, found, ev);
+	} else {
+		heap_insert(&sched->heap, ev);
 	}
-
-	ev->tv = new_time;
-
-	heap_insert(&sched->heap, ev);
 
 	/* Unlock calendar. */
 	pthread_cond_broadcast(&sched->notify);
