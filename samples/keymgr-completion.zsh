@@ -75,6 +75,7 @@ _regex_words zone-key-commands "zone key commands" \
 	'i*mport:import keys from file:$zone_key_import_cmds' \
 	'l*ist:list keys:$zones' \
 	'sh*ow:show a key:$zones' \
+	'd*s:show DS records for a key:$zones' \
 	'se*t:set attributes of a key:$zone_key_set_cmds'
 zone_key_cmds=("$reply[@]")
 

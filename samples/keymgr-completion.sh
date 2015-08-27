@@ -156,7 +156,7 @@ _keymgr()
 								COMPREPLY=( $( compgen -W "$c" -- "$cur" ) )
 							fi
 							;;
-						show)
+						show|ds)
 							count=$((count + 1))
 							if [[ $count -ne $cword ]]; then
 								local c=$( keymgr zone key list "$sub3cmd" 2>/dev/null | cut -f 2 -d ' ' )
@@ -168,7 +168,7 @@ _keymgr()
 							;;
 						*)
 							COMPREPLY=( $( compgen -W 'generate import
-						        list set show' -- "$cur" ) )
+						        list set show ds' -- "$cur" ) )
 							;;
 					esac
 					;;
