@@ -190,6 +190,11 @@ static int remote_zone_reload(zone_t *zone, remote_cmdargs_t *a)
 {
 	UNUSED(a);
 
+	if (zone->flags & ZONE_EXPIRED) {
+		log_zone_warning(zone->name, "cannot reload expired zone");
+		return KNOT_EOK;
+	}
+
 	zone_events_schedule(zone, ZONE_EVENT_RELOAD, ZONE_EVENT_NOW);
 	return KNOT_EOK;
 }
