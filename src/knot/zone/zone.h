@@ -46,7 +46,8 @@ struct process_query_param;
 typedef enum zone_flag_t {
 	ZONE_FORCE_AXFR   = 1 << 0, /* Force AXFR as next transfer. */
 	ZONE_FORCE_RESIGN = 1 << 1, /* Force zone resign. */
-	ZONE_FORCE_FLUSH  = 1 << 2  /* Force zone flush. */
+	ZONE_FORCE_FLUSH  = 1 << 2, /* Force zone flush. */
+	ZONE_EXPIRED      = 1 << 3, /* Zone is expired. */
 } zone_flag_t;
 
 /*!
