@@ -79,9 +79,21 @@ static int store_timers(zone_t *zone, namedb_txn_t *txn)
 			continue;
 		}
 
-		// Write event key and timer to buffer
+		// Key
 		wire_ctx_write_u8(&w, event_id_to_key[event]);
-		wire_ctx_write_u64(&w, zone_events_get_time(zone, event));
+
+		// Value
+		time_t value = zone_events_get_time(zone, event);
+		if (event == ZONE_EVENT_EXPIRE && zone->flags & ZONE_EXPIRED) {
+			/*
+			 * WORKAROUND. The current timer database contains
+			 * time stamps for running timers. The expiration
+			 * in past indicates that the zone expired. We need
+			 * to preserve this status across server restarts.
+			 */
+			value = 1;
+		}
+		wire_ctx_write_u64(&w, value);
 	}
 
 	if (w.error != KNOT_EOK) {
