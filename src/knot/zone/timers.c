@@ -76,13 +76,25 @@ static int store_timers(zone_t *zone, knot_txn_t *txn)
 			continue;
 		}
 
-		// Write event key and timer to buffer
+		// Key
 		packed_timer[offset] = event_id_to_key[event];
 		offset += 1;
-		knot_wire_write_u64(packed_timer + offset,
-		                    (int64_t)zone_events_get_time(zone, event));
+
+		// Value
+		time_t value = zone_events_get_time(zone, event);
+		if (event == ZONE_EVENT_EXPIRE && zone->flags & ZONE_EXPIRED) {
+			/*
+			 * WORKAROUND. The current timer database contains
+			 * time stamps for running timers. The expiration
+			 * in past indicates that the zone expired. We need
+			 * to preserve this status across server restarts.
+			 */
+			value = 1;
+		}
+		knot_wire_write_u64(packed_timer + offset, value);
 		offset += sizeof(uint64_t);
 	}
+
 	knot_val_t val = { .len = sizeof(packed_timer), .data = packed_timer };
 
 	// Store

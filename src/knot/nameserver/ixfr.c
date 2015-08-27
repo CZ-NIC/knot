@@ -402,6 +402,7 @@ static int ixfrin_finalize(struct answer_data *adata)
 
 	/* Switch zone contents. */
 	zone_contents_t *old_contents = zone_switch_contents(ixfr->zone, new_contents);
+	ixfr->zone->flags &= ~ZONE_EXPIRED;
 	synchronize_rcu();
 	update_free_zone(&old_contents);
 

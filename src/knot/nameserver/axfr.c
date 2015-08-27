@@ -326,6 +326,7 @@ static int axfr_answer_finalize(struct answer_data *adata)
 	zone_t *zone = adata->param->zone;
 	zone_contents_t *old_contents =
 	                zone_switch_contents(zone, proc->contents);
+	zone->flags &= ~ZONE_EXPIRED;
 	synchronize_rcu();
 
 	AXFRIN_LOG(LOG_INFO, "finished, "
