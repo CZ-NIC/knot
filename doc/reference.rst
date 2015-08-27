@@ -65,9 +65,11 @@ configuration.
 Includes
 ========
 
-Another configuration file or all configuration files in a directory can be
-included at the top level in the current file. If the file or directory path
-is not absolute, then it is relative to the current file directory.
+Another configuration file or files, matching a pattern, can be included at
+the top level in the current file. If the path is not absolute, then it
+is considered to be relative to the current file. The pattern can be
+an arbitrary string meeting POSIX *glob* requirements, e.g. dir/\*.conf.
+Matching files are processed in sorted order.
 
 ::
 

@@ -38,6 +38,11 @@
 /*! Default configuration database. */
 #define CONF_DEFAULT_DBDIR	(STORAGE_DIR "/confdb")
 
+/*! Configuration specific logging. */
+#define CONF_LOG(severity, msg, ...) do { \
+	log_msg(severity, "config, " msg, ##__VA_ARGS__); \
+	} while (0)
+
 /*! Configuration context. */
 typedef struct {
 	/*! Currently used namedb api. */

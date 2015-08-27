@@ -94,7 +94,7 @@ int yp_set_input_file(
 	// Try to open the file.
 	parser->file.descriptor = open(file_name, O_RDONLY);
 	if (parser->file.descriptor == -1) {
-		return KNOT_EFILE;
+		return knot_map_errno();
 	}
 
 	// Check for regular file input.
@@ -102,7 +102,7 @@ int yp_set_input_file(
 	if (fstat(parser->file.descriptor, &file_stat) == -1 ||
 	    !S_ISREG(file_stat.st_mode)) {
 		close(parser->file.descriptor);
-		return KNOT_EFILE;
+		return knot_map_errno();
 	}
 
 	char *start = NULL;

@@ -33,11 +33,6 @@
 #include "libknot/yparser/yptrafo.h"
 #include "libknot/internal/mempool.h"
 
-/*! Configuration specific logging. */
-#define CONF_LOG(severity, msg, ...) do { \
-	log_msg(severity, "config, " msg, ##__VA_ARGS__); \
-	} while (0)
-
 #define MAX_INCLUDE_DEPTH	5
 
 // The active configuration.

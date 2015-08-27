@@ -46,13 +46,22 @@ static const err_table_t errno_to_errcode[] = {
 	{ 0, KNOT_ERROR }
 };
 
-int knot_map_errno(void)
+int knot_map_errno_code(int code)
 {
+	if (code < 0) {
+		code = errno;
+	}
+
 	const err_table_t *err = errno_to_errcode;
 
-	while (err->errno_code != 0 && err->errno_code != errno) {
+	while (err->errno_code != 0 && err->errno_code != code) {
 		err++;
 	}
 
 	return err->libknot_code;
+}
+
+int knot_map_errno(void)
+{
+	return knot_map_errno_code(-1);
 }
