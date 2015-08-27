@@ -173,8 +173,16 @@ static bool slave_event(zone_event_type_t event)
 	return event == ZONE_EVENT_EXPIRE || event == ZONE_EVENT_REFRESH;
 }
 
-static void reuse_events(zone_t *zone, const time_t *timers)
+static int reuse_events(namedb_t *timer_db, zone_t *zone)
 {
+	// Get persistent timers
+
+	time_t timers[ZONE_EVENT_COUNT] = { 0 };
+	int ret = read_zone_timers(timer_db, zone, timers);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
 	for (zone_event_type_t event = 0; event < ZONE_EVENT_COUNT; ++event) {
 		if (timers[event] == 0) {
 			// Timer unset.
@@ -185,14 +193,15 @@ static void reuse_events(zone_t *zone, const time_t *timers)
 			continue;
 		}
 
+		if (event == ZONE_EVENT_EXPIRE && event <= time(NULL)) {
+			zone->flags |= ZONE_EXPIRED;
+			continue;
+		}
+
 		zone_events_schedule_at(zone, event, timers[event]);
 	}
-}
 
-static bool zone_expired(const time_t *timers)
-{
-	const time_t now = time(NULL);
-	return now <= timers[ZONE_EVENT_EXPIRE];
+	return KNOT_EOK;
 }
 
 static zone_t *create_zone_new(conf_t * conf, const knot_dname_t *name,
@@ -203,11 +212,7 @@ static zone_t *create_zone_new(conf_t * conf, const knot_dname_t *name,
 		return NULL;
 	}
 
-	time_t timers[ZONE_EVENT_COUNT];
-	memset(timers, 0, sizeof(timers));
-
-	// Get persistent timers
-	int ret = read_zone_timers(server->timers_db, zone, timers);
+	int ret = reuse_events(server->timers_db, zone);
 	if (ret != KNOT_EOK) {
 		log_zone_error(zone->name, "cannot read zone timers (%s)",
 		               knot_strerror(ret));
@@ -215,19 +220,18 @@ static zone_t *create_zone_new(conf_t * conf, const knot_dname_t *name,
 		return NULL;
 	}
 
-	reuse_events(zone, timers);
-
-	const zone_status_t zstatus = zone_file_status(NULL, conf, name);
+	zone_status_t zstatus = zone_file_status(NULL, conf, name);
+	if (zone->flags & ZONE_EXPIRED) {
+		zstatus = ZONE_STATUS_BOOSTRAP;
+	}
 
 	switch (zstatus) {
 	case ZONE_STATUS_FOUND_NEW:
-		if (!zone_expired(timers)) {
-			/* Enqueueing makes the first zone load waitable. */
-			zone_events_enqueue(zone, ZONE_EVENT_RELOAD);
-		}
+		/* Enqueueing makes the first zone load waitable. */
+		zone_events_enqueue(zone, ZONE_EVENT_RELOAD);
 		break;
 	case ZONE_STATUS_BOOSTRAP:
-		if (timers[ZONE_EVENT_REFRESH] == 0) {
+		if (zone_events_get_time(zone, ZONE_EVENT_REFRESH) == 0) {
 			// Plan immediate refresh if not already planned.
 			zone_events_schedule(zone, ZONE_EVENT_REFRESH, ZONE_EVENT_NOW);
 		}
