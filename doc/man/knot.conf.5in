@@ -108,9 +108,10 @@ comment using \fBcomment\fP item which is stored in the server beside the
 configuration.
 .SH INCLUDES
 .sp
-Another configuration file or all configuration files in a directory can be
-included at the top level in the current file. If the file or directory path
-is not absolute, then it is relative to the current file directory.
+Another configuration file or files, matching a pattern, can be included at
+the top level in the current file. If the path is not absolute, then it
+is considered to be relative to the current file. The pattern can be
+an arbitrary string meeting POSIX \fIglob\fP requirements, e.g. dir/*.conf.
 .INDENT 0.0
 .INDENT 3.5
 .sp
