@@ -146,6 +146,15 @@ enum knot_error {
 };
 
 /*!
+ * \brief Map POSIX errno code to Knot error code.
+ *
+ * \param code Errno code to transform (set -1 to use the current errno).
+ *
+ * \return Mapped errno or KNOT_ERROR if unknown.
+ */
+int knot_map_errno_code(int code);
+
+/*!
  * \brief Get a POSIX errno mapped to Knot error code.
  *
  * \return Mapped errno or KNOT_ERROR if unknown.
