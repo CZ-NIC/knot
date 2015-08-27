@@ -25,6 +25,10 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <limits.h>
+#ifndef PATH_MAX
+  #define PATH_MAX 4096
+#endif
 
 #include "knot/conf/tools.h"
 #include "knot/conf/conf.h"
@@ -338,15 +342,14 @@ int include_file(
 	glob_t glob_buf = { 0 };
 	int ret;
 
-	const size_t max_path = 4096;
-	char *path = malloc(max_path);
+	char *path = malloc(PATH_MAX);
 	if (path == NULL) {
 		return KNOT_ENOMEM;
 	}
 
 	// Prepare absolute include path.
 	if (args->check->data[0] == '/') {
-		ret = snprintf(path, max_path, "%.*s",
+		ret = snprintf(path, PATH_MAX, "%.*s",
 		               (int)args->check->data_len, args->check->data);
 	} else {
 		const char *file_name = args->parser->file.name != NULL ?
@@ -357,12 +360,12 @@ int include_file(
 			goto include_error;
 		}
 
-		ret = snprintf(path, max_path, "%s/%.*s",
+		ret = snprintf(path, PATH_MAX, "%s/%.*s",
 		               dirname(full_current_name),
 		               (int)args->check->data_len, args->check->data);
 		free(full_current_name);
 	}
-	if (ret <= 0 || ret >= max_path) {
+	if (ret <= 0 || ret >= PATH_MAX) {
 		ret = KNOT_ESPACE;
 		goto include_error;
 	}
