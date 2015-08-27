@@ -326,6 +326,7 @@ int event_reload(zone_t *zone)
 	/* Everything went alright, switch the contents. */
 	zone->zonefile_mtime = mtime;
 	zone_contents_t *old = zone_switch_contents(zone, contents);
+	zone->flags &= ~ZONE_EXPIRED;
 	uint32_t old_serial = zone_contents_serial(old);
 	if (old != NULL) {
 		synchronize_rcu();
@@ -528,6 +529,7 @@ int event_expire(zone_t *zone)
 	/* Expire zonefile information. */
 	zone->zonefile_mtime = 0;
 	zone->zonefile_serial = 0;
+	zone->flags |= ZONE_EXPIRED;
 	zone_contents_deep_free(&expired);
 
 	log_zone_info(zone->name, "zone expired");
@@ -644,6 +646,7 @@ int event_dnssec(zone_t *zone)
 
 		/* Switch zone contents. */
 		zone_contents_t *old_contents = zone_switch_contents(zone, new_contents);
+		zone->flags &= ~ZONE_EXPIRED;
 		synchronize_rcu();
 		update_free_zone(&old_contents);
 
