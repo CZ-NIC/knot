@@ -402,8 +402,6 @@ int include_file(
 		if (ret != KNOT_EOK) {
 			goto include_error;
 		}
-
-		CONF_LOG(LOG_DEBUG, "included file '%s'", glob_buf.gl_pathv[i]);
 	}
 
 	ret = KNOT_EOK;
