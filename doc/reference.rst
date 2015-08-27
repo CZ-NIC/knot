@@ -69,6 +69,7 @@ Another configuration file or files, matching a pattern, can be included at
 the top level in the current file. If the path is not absolute, then it
 is considered to be relative to the current file. The pattern can be
 an arbitrary string meeting POSIX *glob* requirements, e.g. dir/\*.conf.
+Matching files are processed in sorted order.
 
 ::
 

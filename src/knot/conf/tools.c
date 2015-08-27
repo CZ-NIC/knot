@@ -368,7 +368,7 @@ int include_file(
 	}
 
 	// Evaluate include pattern.
-	ret = glob(path, GLOB_NOSORT, glob_error, &glob_buf);
+	ret = glob(path, 0, glob_error, &glob_buf);
 	if (ret != 0) {
 		ret = KNOT_EFILE;
 		goto include_error;
