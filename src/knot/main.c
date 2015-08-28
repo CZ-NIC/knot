@@ -178,9 +178,6 @@ static void event_loop(server_t *server)
 
 	/* Close remote control interface. */
 	remote_unbind(conf()->ctl.iface, remote);
-
-	/* Wait for server to finish. */
-	server_wait(server);
 }
 
 static void help(void)
@@ -270,6 +267,7 @@ int main(int argc, char **argv)
 	if (res != KNOT_EOK) {
 		log_fatal("failed to load configuration file '%s' (%s)",
 		          config_fn, knot_strerror(res));
+		log_close();
 		return EXIT_FAILURE;
 	}
 
@@ -299,6 +297,7 @@ int main(int argc, char **argv)
 	/* Alter privileges. */
 	log_update_privileges(config->uid, config->gid);
 	if (proc_update_privileges(config->uid, config->gid) != KNOT_EOK) {
+		server_wait(&server);
 		server_deinit(&server);
 		conf_free(conf());
 		log_close();
@@ -311,6 +310,7 @@ int main(int argc, char **argv)
 	if (daemonize) {
 		pidfile = pid_check_and_create();
 		if (pidfile == NULL) {
+			server_wait(&server);
 			server_deinit(&server);
 			conf_free(conf());
 			log_close();
@@ -351,6 +351,7 @@ int main(int argc, char **argv)
 	res = server_start(&server, config->async_start);
 	if (res != KNOT_EOK) {
 		log_fatal("failed to start server (%s)", knot_strerror(res));
+		server_wait(&server);
 		server_deinit(&server);
 		rcu_unregister_thread();
 		pid_cleanup(pidfile);
@@ -370,10 +371,15 @@ int main(int argc, char **argv)
 	config = NULL; /* @note Invalidate pointer, as it may change now. */
 	event_loop(&server);
 
-	/* Teardown server and configuration. */
-	server_deinit(&server);
+	/* Teardown server. */
+	server_stop(&server);
+	server_wait(&server);
 
-	/* Free configuration. */
+	log_info("updating zone timers database");
+	write_timer_db(server.timers_db, server.zone_db);
+
+	/* Free server and configuration. */
+	server_deinit(&server);
 	conf_free(conf());
 
 	/* Unhook from RCU. */

@@ -154,8 +154,6 @@ static zone_t *create_zone_reload(conf_zone_t *zone_conf, server_t *server,
 		zone->zonefile_serial = old_zone->zonefile_serial;
 		/* Reuse events from old zone. */
 		zone_events_update(zone, old_zone);
-		/* Write updated timers. */
-		zone_events_write_persistent(zone);
 		break;
 	default:
 		assert(0);
