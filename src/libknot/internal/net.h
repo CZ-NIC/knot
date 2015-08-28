@@ -66,12 +66,16 @@ int net_bound_socket(int type, const struct sockaddr_storage *ss,
  * \param type     Socket transport type (SOCK_STREAM, SOCK_DGRAM).
  * \param dst_addr Destination address.
  * \param src_addr Source address (can be NULL).
- * \param flags    Socket flags (O_NONBLOCK for example).
+ * \param flags    Socket flags.
+ * \param timeout  Connection establishment timeout.
+ *
+ * \note The O_NONBLOCK flag is added automatically.
  *
  * \return socket or error code
  */
 int net_connected_socket(int type, const struct sockaddr_storage *dst_addr,
-                         const struct sockaddr_storage *src_addr, unsigned flags);
+                         const struct sockaddr_storage *src_addr, unsigned flags,
+                         struct timeval *timeout);
 
 /*!
  * \brief Return true if the socket is connected.

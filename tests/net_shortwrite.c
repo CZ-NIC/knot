@@ -81,11 +81,9 @@ int main(int argc, char *argv[])
 
 	// create TCP client
 
-	int client = net_connected_socket(SOCK_STREAM, &addr, NULL, 0);
+	struct timeval tv = { 5, 0 };
+	int client = net_connected_socket(SOCK_STREAM, &addr, NULL, O_NONBLOCK, &tv);
 	ok(client >= 0, "client: connect to server");
-
-	r = fcntl(client, F_SETFL, O_NONBLOCK);
-	ok(r == 0, "client: set non-blocking mode");
 
 	int optval = 8192;
 	socklen_t optlen = sizeof(optval);

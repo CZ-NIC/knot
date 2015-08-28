@@ -95,8 +95,8 @@ General options related to the server.
      tcp-workers: INT
      background-workers: INT
      async-start: BOOL
-     tcp-idle-timeout: TIME
      tcp-handshake-timeout: TIME
+     tcp-idle-timeout: TIME
      tcp-reply-timeout: TIME
      max-tcp-clients: INT
      max-udp-payload: SIZE
@@ -203,16 +203,6 @@ responding immediately with SERVFAIL answers until the zone loads.
 
 Default: off
 
-.. _server_tcp-idle-timeout:
-
-tcp-idle-timeout
-----------------
-
-Maximum idle time between requests on a TCP connection. This also limits
-receiving of a single query, each query must be received in this time limit.
-
-Default: 20
-
 .. _server_tcp-handshake-timeout:
 
 tcp-handshake-timeout
@@ -224,12 +214,24 @@ that already made at least 1 meaningful query.
 
 Default: 5
 
+.. _server_tcp-idle-timeout:
+
+tcp-idle-timeout
+----------------
+
+Maximum idle time between requests on a TCP connection. This also limits
+receiving of a single query, each query must be received in this time limit.
+
+Default: 20
+
 .. _server_tcp-reply-timeout:
 
 tcp-reply-timeout
 -----------------
 
-Maximum time to wait for a reply to an issued SOA query.
+Maximum time to wait for an outgoing connection or for a reply to an issued
+request (SOA, NOTIFY, AXFR...). This limit also applies to knotc remote
+operation over an internet socket.
 
 Default: 10
 

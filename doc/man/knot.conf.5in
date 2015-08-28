@@ -142,8 +142,8 @@ server:
     tcp\-workers: INT
     background\-workers: INT
     async\-start: BOOL
-    tcp\-idle\-timeout: TIME
     tcp\-handshake\-timeout: TIME
+    tcp\-idle\-timeout: TIME
     tcp\-reply\-timeout: TIME
     max\-tcp\-clients: INT
     max\-udp\-payload: SIZE
@@ -213,12 +213,6 @@ If enabled, server doesn\(aqt wait for the zones to be loaded and starts
 responding immediately with SERVFAIL answers until the zone loads.
 .sp
 Default: off
-.SS tcp\-idle\-timeout
-.sp
-Maximum idle time between requests on a TCP connection. This also limits
-receiving of a single query, each query must be received in this time limit.
-.sp
-Default: 20
 .SS tcp\-handshake\-timeout
 .sp
 Maximum time between newly accepted TCP connection and the first query.
@@ -226,9 +220,17 @@ This is useful to disconnect inactive connections faster than connections
 that already made at least 1 meaningful query.
 .sp
 Default: 5
+.SS tcp\-idle\-timeout
+.sp
+Maximum idle time between requests on a TCP connection. This also limits
+receiving of a single query, each query must be received in this time limit.
+.sp
+Default: 20
 .SS tcp\-reply\-timeout
 .sp
-Maximum time to wait for a reply to an issued SOA query.
+Maximum time to wait for an outgoing connection or for a reply to an issued
+request (SOA, NOTIFY, AXFR...). This limit also applies to knotc remote
+operation over an internet socket.
 .sp
 Default: 10
 .SS max\-tcp\-clients
