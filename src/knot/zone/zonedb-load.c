@@ -193,7 +193,7 @@ static int reuse_events(namedb_t *timer_db, zone_t *zone)
 			continue;
 		}
 
-		if (event == ZONE_EVENT_EXPIRE && event <= time(NULL)) {
+		if (event == ZONE_EVENT_EXPIRE && timers[event] <= time(NULL)) {
 			zone->flags |= ZONE_EXPIRED;
 			continue;
 		}
