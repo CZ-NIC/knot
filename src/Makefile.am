@@ -468,6 +468,14 @@ libknotd_la_SOURCES +=				\
 	knot/modules/rosedb.h
 endif # HAVE_ROSEDB
 
+if HAVE_GEOIP
+libknotd_la_SOURCES +=				\
+	knot/modules/geoip.c			\
+	knot/modules/geoip.h
+libknotd_la_CPPFLAGS += $(libmaxminddb_CFLAGS)
+libknotd_la_LIBADD += $(libmaxminddb_LIBS)
+endif # HAVE_GEOIP
+
 # Create storage and run-time directories
 install-data-hook:
 	$(INSTALL) -d $(DESTDIR)/@config_dir@

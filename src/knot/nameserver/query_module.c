@@ -31,6 +31,9 @@
 #endif
 #include "knot/modules/whoami.h"
 #include "knot/modules/noudp.h"
+#if HAVE_GEOIP
+#include "knot/modules/geoip.h"
+#endif
 
 typedef struct static_module {
 	const yp_name_t *name;
@@ -52,6 +55,9 @@ static_module_t MODULES[] = {
 #endif
         { C_MOD_WHOAMI,       &whoami_load,       &whoami_unload,       MOD_SCOPE_ANY },
 	{ C_MOD_NOUDP,        &noudp_load,        &noudp_unload,        MOD_SCOPE_ANY },
+#if HAVE_GEOIP
+        { C_MOD_GEOIP,        &geoip_load,        &geoip_unload,        MOD_SCOPE_ANY },
+#endif
         { NULL }
 };
 
