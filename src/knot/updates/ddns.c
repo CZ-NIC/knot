@@ -191,7 +191,7 @@ static int process_prereq(const knot_rrset_t *rrset, uint16_t qclass,
 		return KNOT_EMALF;
 	}
 
-	if (!knot_dname_in(update->zone->apex->owner, rrset->owner)) {
+	if (!knot_dname_in(update->zone->name, rrset->owner)) {
 		*rcode = KNOT_RCODE_NOTZONE;
 		return KNOT_EOUTOFZONE;
 	}
@@ -921,19 +921,18 @@ int ddns_process_update(const zone_t *zone, const knot_pkt_t *query,
 		return KNOT_EINVAL;
 	}
 
-	changeset_t *changeset = update->change;
-
-	if (changeset->soa_from == NULL) {
+//FIXME: temporary workaround
+	if (update->change.soa_from == NULL) {
 		// Copy base SOA RR.
-		changeset->soa_from =
-			node_create_rrset(zone->contents->apex, KNOT_RRTYPE_SOA);
-		if (changeset->soa_from == NULL) {
+		update->change.soa_from =
+			node_create_rrset(update->zone->contents->apex, KNOT_RRTYPE_SOA);
+		if (update->change.soa_from == NULL) {
 			*rcode = ret_to_rcode(KNOT_ENOMEM);
 			return KNOT_ENOMEM;
 		}
 	}
 
-	int64_t sn_old = zone_contents_serial(zone->contents);
+	uint32_t sn_old = knot_soa_serial(zone_update_from(update));
 
 	// Process all RRs in the authority section.
 	int apex_ns_rem = 0;
@@ -952,22 +951,22 @@ int ddns_process_update(const zone_t *zone, const knot_pkt_t *query,
 			continue;
 		}
 
-		ret = process_rr(rr, zone->contents, changeset, &apex_ns_rem);
+		ret = process_rr(rr, update->zone->contents, &update->change, &apex_ns_rem);
 		if (ret != KNOT_EOK) {
 			*rcode = ret_to_rcode(ret);
 			return ret;
 		}
 	}
 
-	if (changeset->soa_to == NULL) {
-		// No SOA in the update, create according to current policy
-		if (changeset_empty(changeset)) {
+	if (zone_update_to(update) == NULL) {
+		// No SOA in the update, create one according to the current policy
+		if (zone_update_no_change(update)) {
 			*rcode = KNOT_RCODE_NOERROR;
 			// No change, no new SOA
 			return KNOT_EOK;
 		}
 
-		knot_rrset_t *soa_cpy = knot_rrset_copy(changeset->soa_from, NULL);
+		knot_rrset_t *soa_cpy = node_create_rrset(zone_update_get_apex(update), KNOT_RRTYPE_SOA);
 		if (soa_cpy == NULL) {
 			*rcode = ret_to_rcode(KNOT_ENOMEM);
 			return KNOT_ENOMEM;
@@ -983,7 +982,7 @@ int ddns_process_update(const zone_t *zone, const knot_pkt_t *query,
 		}
 
 		knot_soa_serial_set(&soa_cpy->rrs, new_serial);
-		changeset->soa_to = soa_cpy;
+		update->change.soa_to = soa_cpy;
 	}
 
 	*rcode = KNOT_RCODE_NOERROR;

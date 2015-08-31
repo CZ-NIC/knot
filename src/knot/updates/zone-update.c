@@ -14,9 +14,13 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <urcu.h>
+
 #include "knot/updates/zone-update.h"
 #include "libknot/internal/lists.h"
 #include "libknot/internal/mempool.h"
+#include "knot/dnssec/zone-events.h"
+#include "knot/updates/apply.h"
 
 static int add_to_node(zone_node_t *node, const zone_node_t *add_node,
                        mm_ctx_t *mm)
@@ -113,13 +117,56 @@ static zone_node_t *node_deep_copy(const zone_node_t *node, mm_ctx_t *mm)
 	return synth_node;
 }
 
+static int init_incremental(zone_update_t *update, zone_t *zone)
+{
+	int ret = changeset_init(&update->change, zone->name);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+	assert(zone->contents);
+
+//FIXME: JK's zone-api-version of zone_update has a cache, we're ignoring it for now.
+	//update->synth_nodes = zone_contents_new(zone->name);
+	//if (update->synth_nodes == NULL) {
+	//	return KNOT_ENOMEM;
+	//	zone_update_clear(update);
+	//}
+
+	return KNOT_EOK;
+}
+
+static int init_full(zone_update_t *update, zone_t *zone)
+{
+	update->new_cont = zone_contents_new(zone->name);
+	if (update->new_cont == NULL) {
+		return KNOT_ENOMEM;
+	}
+
+	return KNOT_EOK;
+}
+
 /* ------------------------------- API -------------------------------------- */
 
-void zone_update_init(zone_update_t *update, const zone_contents_t *zone, changeset_t *change)
+int zone_update_init(zone_update_t *update, zone_t *zone, zone_update_flags_t flags)
 {
+	if (update == NULL || zone == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	memset(update, 0, sizeof(*update));
 	update->zone = zone;
-	update->change = change;
+
 	mm_ctx_mempool(&update->mm, MM_DEFAULT_BLKSIZE);
+	update->flags = flags;
+
+	if (flags & UPDATE_INCREMENTAL) {
+		return init_incremental(update, zone);
+	} else if (flags & UPDATE_FULL) {
+		return init_full(update, zone);
+	} else {
+		// One of FULL or INCREMENTAL flags must be set.
+		return KNOT_EINVAL;
+	}
 }
 
 const zone_node_t *zone_update_get_node(zone_update_t *update, const knot_dname_t *dname)
@@ -129,11 +176,11 @@ const zone_node_t *zone_update_get_node(zone_update_t *update, const knot_dname_
 	}
 
 	const zone_node_t *old_node =
-		zone_contents_find_node(update->zone, dname);
+		zone_contents_find_node(update->zone->contents, dname);
 	const zone_node_t *add_node =
-		zone_contents_find_node(update->change->add, dname);
+		zone_contents_find_node(update->change.add, dname);
 	const zone_node_t *rem_node =
-		zone_contents_find_node(update->change->remove, dname);
+		zone_contents_find_node(update->change.remove, dname);
 
 	const bool have_change = !node_empty(add_node) || !node_empty(rem_node);
 	if (!have_change) {
@@ -170,10 +217,193 @@ const zone_node_t *zone_update_get_node(zone_update_t *update, const knot_dname_
 	return synth_node;
 }
 
+const zone_node_t *zone_update_get_apex(zone_update_t *update)
+{
+	return zone_update_get_node(update, update->zone->name);
+}
+
+uint32_t zone_update_current_serial(zone_update_t *update)
+{
+	const zone_node_t *apex = zone_update_get_apex(update);
+	if (apex) {
+		return knot_soa_serial(node_rdataset(apex, KNOT_RRTYPE_SOA));
+	} else {
+		return 0;
+	}
+}
+
+const knot_rdataset_t *zone_update_from(zone_update_t *update)
+{
+	const zone_node_t *apex = update->zone->contents->apex;
+	return node_rdataset(apex, KNOT_RRTYPE_SOA);
+}
+
+const knot_rdataset_t *zone_update_to(zone_update_t *update)
+{
+	assert(update);
+
+	if (update->change.soa_to == NULL) {
+		return NULL;
+	}
+
+	return &update->change.soa_to->rrs;
+}
+
 void zone_update_clear(zone_update_t *update)
 {
 	if (update) {
+		changeset_clear(&update->change);
 		mp_delete(update->mm.ctx);
 		memset(update, 0, sizeof(*update));
 	}
+}
+
+static bool apex_rr_changed(const zone_node_t *old_apex,
+                            const zone_node_t *new_apex,
+                            uint16_t type)
+{
+	knot_rrset_t old_rr = node_rrset(old_apex, type);
+	knot_rrset_t new_rr = node_rrset(new_apex, type);
+
+	return !knot_rrset_equal(&old_rr, &new_rr, KNOT_RRSET_COMPARE_WHOLE);
+}
+
+static bool dnskey_nsec3param_changed(zone_update_t *update)
+{
+	assert(update->zone->contents);
+	const zone_node_t *new_apex = zone_update_get_apex(update);
+	const zone_node_t *old_apex = update->zone->contents->apex;
+	return !changeset_empty(&update->change) &&
+	       (apex_rr_changed(new_apex, old_apex, KNOT_RRTYPE_DNSKEY) ||
+	        apex_rr_changed(new_apex, old_apex, KNOT_RRTYPE_NSEC3PARAM));
+}
+
+//FIXME: update to new api
+static int sign_update(zone_update_t *update,
+                       zone_contents_t *new_contents,
+                       changeset_t *sec_ch)
+{
+	assert(update != NULL);
+
+	/*
+	 * Check if the UPDATE changed DNSKEYs or NSEC3PARAM.
+	 * If so, we have to sign the whole zone.
+	 */
+	int ret = KNOT_EOK;
+	uint32_t refresh_at = 0;
+	const bool full_sign = changeset_empty(&update->change) ||
+	                       dnskey_nsec3param_changed(update);
+	if (full_sign) {
+		ret = knot_dnssec_zone_sign(new_contents, sec_ch,
+		                            ZONE_SIGN_KEEP_SOA_SERIAL,
+		                            &refresh_at);
+	} else {
+		// Sign the created changeset
+		ret = knot_dnssec_sign_changeset(new_contents, &update->change,
+		                                 sec_ch, &refresh_at);
+	}
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	// Apply DNSSEC changeset
+	ret = apply_changeset_directly(new_contents, sec_ch);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	// Merge changesets
+	ret = changeset_merge(&update->change, sec_ch);
+	if (ret != KNOT_EOK) {
+		update_cleanup(sec_ch);
+		return ret;
+	}
+
+	// Plan next zone resign.
+	const time_t resign_time = zone_events_get_time(update->zone, ZONE_EVENT_DNSSEC);
+	if (refresh_at < resign_time) {
+		zone_events_schedule_at(update->zone, ZONE_EVENT_DNSSEC, refresh_at);
+	}
+
+	return KNOT_EOK;
+}
+
+int zone_update_commit(zone_update_t *update)
+{
+	if (update->flags & UPDATE_INCREMENTAL) {
+		zone_contents_t *new_contents = NULL;
+		const bool change_made = !changeset_empty(&update->change);
+		if (!change_made) {
+			changeset_clear(&update->change);
+			return KNOT_EOK;
+		}
+
+		// Apply changes.
+		int ret = apply_changeset(update->zone, &update->change, &new_contents);
+		if (ret != KNOT_EOK) {
+			changeset_clear(&update->change);
+			return ret;
+		}
+
+		assert(new_contents);
+
+		conf_val_t val = conf_zone_get(conf(), C_DNSSEC_SIGNING, update->zone->name);
+		bool dnssec_enable = conf_bool(&val);
+
+		// Sign the update.
+		changeset_t sec_ch;
+		if (update->flags & UPDATE_SIGN && dnssec_enable) {
+			ret = changeset_init(&sec_ch, update->zone->name);
+			if (ret != KNOT_EOK) {
+				changeset_clear(&update->change);
+				return ret;
+			}
+			ret = sign_update(update, new_contents, &sec_ch);
+			if (ret != KNOT_EOK) {
+				update_rollback(&update->change);
+				update_free_zone(&new_contents);
+				changeset_clear(&update->change);
+				return ret;
+			}
+		}
+
+		// Write changes to journal if all went well. (DNSSEC merged)
+		ret = zone_change_store(update->zone, &update->change);
+		if (ret != KNOT_EOK) {
+			update_rollback(&update->change);
+			update_free_zone(&new_contents);
+			if (dnssec_enable) {
+				changeset_clear(&sec_ch);
+			}
+			return ret;
+		}
+
+		/* Temporarily unlock locked configuration. */
+		rcu_read_unlock();
+
+		// Switch zone contents.
+		zone_contents_t *old_contents = zone_switch_contents(update->zone, new_contents);
+		synchronize_rcu();
+
+		rcu_read_lock();
+
+		// Clear DNSSEC changes
+		if (dnssec_enable) {
+			update_cleanup(&sec_ch);
+			changeset_clear(&sec_ch);
+		}
+
+		// Clear obsolete zone contents
+		update_free_zone(&old_contents);
+
+		update_cleanup(&update->change);
+		changeset_clear(&update->change);
+	}
+
+	return KNOT_EOK;
+}
+
+bool zone_update_no_change(zone_update_t *up)
+{
+	return changeset_empty(&up->change);
 }
