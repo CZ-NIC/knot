@@ -837,7 +837,10 @@ conf_remote_t conf_remote_txn(
 	// Get indexed remote address.
 	conf_val_t val = conf_id_get_txn(conf, txn, C_RMT, C_ADDR, id);
 	for (size_t i = 0; val.code == KNOT_EOK && i < index; i++) {
-		conf_val_next(&val);
+		if (i == 0) {
+			conf_db_val(&val);
+		}
+		conf_db_val_next(&val);
 	}
 	// Index overflow causes empty socket.
 	out.addr = conf_addr(&val, rundir);
@@ -850,7 +853,7 @@ conf_remote_t conf_remote_txn(
 			out.via = conf_addr(&val, rundir);
 			break;
 		}
-		conf_val_next(&val);
+		conf_db_val_next(&val);
 	}
 
 	// Get TSIG key (optional).
