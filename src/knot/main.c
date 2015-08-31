@@ -166,7 +166,6 @@ static void event_loop(server_t *server)
 		/* Interrupts. */
 		if (sig_req_stop) {
 			sig_req_stop = 0;
-			server_stop(server);
 			break;
 		}
 		if (sig_req_reload) {
