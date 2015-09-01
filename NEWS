@@ -1,3 +1,25 @@
+Knot DNS 1.6.5 (2015-09-01)
+===========================
+
+Bugfixes:
+---------
+ - Do not reload expired zones on 'knotc reload' and server startup
+ - Fix rare race-condition in event scheduling causing delayed event execution
+ - Fix skipping of non-authoritative nodes in NSEC proofs
+ - Fix TC flag setting in RRL slipped answers
+ - Disable domain name compression for root label for better compatibility
+ - Log via journald only when running under systemd
+ - Improve lookup of libsystemd build dependencies
+ - Fix compilation warnings in endian conversion functions on OpenBSD
+
+Features:
+---------
+ - Update persistent timers only on shutdown for better performance
+ - Add 'request-edns-option' config option to add custom EDNS0 option into
+   server initiated queries
+ - Allow specification of time units in 'max-conn-idle', 'max-conn-handshake',
+   'max-conn-reply', and 'notify-timeout' config options
+
 Knot DNS 1.6.4 (2015-06-16)
 ===========================
 
