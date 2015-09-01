@@ -785,7 +785,7 @@ The ``zones`` statement contains definition of zones served by Knot DNS.
       [ semantic-checks boolean; ]
       [ ixfr-from-differences boolean; ]
       [ disable-any boolean; ]
-      [ notify-timeout integer; ]
+      [ notify-timeout ( integer | integer(s | m | h | d); ) ]
       [ notify-retries integer; ]
       [ zonefile-sync ( integer | integer(s | m | h | d); ) ]
       [ ixfr-fslimit ( integer | integer(k | M | G) ); ]
@@ -794,6 +794,7 @@ The ``zones`` statement contains definition of zones served by Knot DNS.
       [ dnssec-enable ( on | off ); ]
       [ signature-lifetime ( integer | integer(s | m | h | d); ) ]
       [ serial-policy ( increment | unixtime ); ]
+      [ request-edns-option integer ("string" | hex_string ); ]
       [ query_module { module_name "string"; [ module_name "string"; ... ] } ]
 
 .. _zones Statement Definition and Grammar:
@@ -1040,6 +1041,17 @@ transition should be done by hand (see `RFC\ 1982
 <https://tools.ietf.org/html/rfc1982>`_).
 
 Default value: ``increment``
+
+.. _request-edns-option:
+
+``request-edns-option``
+^^^^^^^^^^^^^^^^^^^^^^^
+
+An arbitrary EDNS0 option which is included into a server request (AXFR, IXFR,
+SOA, or NOTIFY). The first value is option code and the second value is option
+data in the form of a text or hexadecimal string.
+
+Default value: not set
 
 .. _zones Example:
 

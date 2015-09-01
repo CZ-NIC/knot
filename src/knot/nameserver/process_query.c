@@ -358,8 +358,7 @@ static int process_query_err(knot_pkt_t *pkt, knot_process_t *ctx)
 	}
 
 	/* Put OPT RR to the additional section. */
-	int ret = answer_edns_reserve(pkt, qdata);
-	if (ret == KNOT_EOK) {
+	if (answer_edns_reserve(pkt, qdata) == KNOT_EOK) {
 		(void) answer_edns_put(pkt, qdata);
 	}
 
@@ -396,7 +395,7 @@ static int ratelimit_apply(int state, knot_pkt_t *pkt, knot_process_t *ctx)
 	/* Now it is slip or drop. */
 	if (rrl_slip_roll(conf()->rrl_slip)) {
 		/* Answer slips. */
-		if (process_query_err(pkt, ctx) != KNOT_EOK) {
+		if (process_query_err(pkt, ctx) != NS_PROC_DONE) {
 			return NS_PROC_FAIL;
 		}
 		knot_wire_set_tc(pkt->wire);

@@ -339,6 +339,13 @@ static int conf_process(conf_t *conf)
 			zone->sig_lifetime = conf->sig_lifetime;
 		}
 
+		// Default request EDNS option.
+		if (zone->req_edns_data == NULL) {
+			zone->req_edns_code = conf->req_edns_code;
+			zone->req_edns_data = conf->req_edns_data;
+			zone->req_edns_data_len = conf->req_edns_data_len;
+		}
+
 		if (zone->serial_policy == 0) {
 			zone->serial_policy = conf->serial_policy;
 		}
@@ -810,7 +817,7 @@ int conf_open(const char* path)
 
 		/* Update hooks. */
 		conf_update_hooks(nconf);
-		
+
 		/* Free old config. */
 		conf_free(oldconf);
 	}

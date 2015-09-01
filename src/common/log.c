@@ -24,6 +24,7 @@
 #ifdef ENABLE_SYSTEMD
 #define SD_JOURNAL_SUPPRESS_LOCATION 1
 #include <systemd/sd-journal.h>
+#include <systemd/sd-daemon.h>
 #endif
 
 #include "common/log.h"
@@ -47,6 +48,10 @@ struct log_sink
 
 /*! Log sink singleton. */
 struct log_sink *s_log = NULL;
+
+#ifdef ENABLE_SYSTEMD
+int use_journal = 0;
+#endif
 
 #define facility_at(s, i) (s->facility + ((i) << LOG_SRC_BITS))
 #define facility_next(f) (f) += (1 << LOG_SRC_BITS)
@@ -174,6 +179,10 @@ int log_init()
 		return KNOT_EINVAL;
 	}
 
+#ifdef ENABLE_SYSTEMD
+	/* Should only use the journal if system was booted with systemd */
+	use_journal = sd_booted();
+#endif
 	sink_levels_set(log, LOGT_SYSLOG, LOG_ANY, emask);
 	sink_levels_set(log, LOGT_STDERR, LOG_ANY, emask);
 	sink_levels_set(log, LOGT_STDOUT, LOG_ANY, imask);
@@ -251,14 +260,17 @@ static int emit_log_msg(int level, const char *zone, size_t zone_len, const char
 	// Syslog
 	if (facility_levels(f, src) & LOG_MASK(level)) {
 #ifdef ENABLE_SYSTEMD
-		char *zone_fmt = zone ? "ZONE=%.*s" : NULL;
-		sd_journal_send("PRIORITY=%d", level,
-		                "MESSAGE=%s", msg,
-		                zone_fmt, zone_len, zone,
-		                NULL);
-#else
-		syslog(level, "%s", msg);
+		if (use_journal) {
+			char *zone_fmt = zone ? "ZONE=%.*s" : NULL;
+			sd_journal_send("PRIORITY=%d", level,
+			                "MESSAGE=%s", msg,
+			                zone_fmt, zone_len, zone,
+			                NULL);
+		} else
 #endif
+		{
+			syslog(level, "%s", msg);
+		}
 		ret = 1; // To prevent considering the message as ignored.
 	}
 

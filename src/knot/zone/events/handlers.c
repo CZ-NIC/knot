@@ -84,6 +84,40 @@ static knot_pkt_t *zone_query(const zone_t *zone, uint16_t pkt_type, mm_ctx_t *m
 	return pkt;
 }
 
+static int prepare_edns(zone_t *zone, knot_pkt_t *pkt)
+{
+	/* Check if an extra EDNS option is configured. */
+	if (zone->conf->req_edns_data == NULL) {
+		return KNOT_EOK;
+	}
+
+	knot_rrset_t opt_rr;
+	int ret = knot_edns_init(&opt_rr, conf()->max_udp_payload, 0,
+	                         KNOT_EDNS_VERSION, &pkt->mm);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	ret = knot_edns_add_option(&opt_rr, zone->conf->req_edns_code,
+	                           zone->conf->req_edns_data_len,
+	                           (uint8_t *)zone->conf->req_edns_data,
+	                           &pkt->mm);
+	if (ret != KNOT_EOK) {
+		knot_rrset_clear(&opt_rr, &pkt->mm);
+		return ret;
+	}
+
+	knot_pkt_begin(pkt, KNOT_ADDITIONAL);
+
+	ret = knot_pkt_put(pkt, COMPR_HINT_NONE, &opt_rr, KNOT_PF_FREE);
+	if (ret != KNOT_EOK) {
+		knot_rrset_clear(&opt_rr, &pkt->mm);
+		return ret;
+	}
+
+	return KNOT_EOK;
+}
+
 /*!
  * \brief Create a zone event query, send it, wait for the response and process it.
  *
@@ -113,6 +147,11 @@ static int zone_query_execute(zone_t *zone, uint16_t pkt_type, const conf_iface_
 	param.query = query;
 	param.remote = remote;
 	tsig_init(&param.tsig_ctx, remote->key);
+
+	ret = prepare_edns(zone, query);
+	if (ret != KNOT_EOK) {
+		goto fail;
+	}
 
 	ret = tsig_sign_packet(&param.tsig_ctx, query);
 	if (ret != KNOT_EOK) {
@@ -268,6 +307,7 @@ int event_reload(zone_t *zone)
 	/* Everything went alright, switch the contents. */
 	zone->zonefile_mtime = mtime;
 	zone_contents_t *old = zone_switch_contents(zone, contents);
+	zone->flags &= ~ZONE_EXPIRED;
 	uint32_t old_serial = zone_contents_serial(old);
 	if (old != NULL) {
 		synchronize_rcu();
@@ -295,7 +335,7 @@ int event_reload(zone_t *zone)
 	log_zone_info(zone->name, "loaded, serial %u -> %u",
 	              old_serial, current_serial);
 
-	return zone_events_write_persistent(zone);
+	return KNOT_EOK;
 
 fail:
 	zone_contents_deep_free(&contents);
@@ -344,7 +384,7 @@ int event_refresh(zone_t *zone)
 		zone_events_schedule(zone, ZONE_EVENT_REFRESH, knot_soa_refresh(soa));
 	}
 
-	return zone_events_write_persistent(zone);
+	return KNOT_EOK;
 }
 
 struct transfer_data {
@@ -459,6 +499,7 @@ int event_expire(zone_t *zone)
 	/* Expire zonefile information. */
 	zone->zonefile_mtime = 0;
 	zone->zonefile_serial = 0;
+	zone->flags |= ZONE_EXPIRED;
 	zone_contents_deep_free(&expired);
 
 	log_zone_info(zone->name, "zone expired");
@@ -565,6 +606,7 @@ int event_dnssec(zone_t *zone)
 
 		/* Switch zone contents. */
 		zone_contents_t *old_contents = zone_switch_contents(zone, new_contents);
+		zone->flags &= ~ZONE_EXPIRED;
 		synchronize_rcu();
 		update_free_zone(&old_contents);
 

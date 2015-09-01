@@ -36,28 +36,26 @@ static int compare_event_heap_nodes(event_t *e1, event_t *e2)
 }
 
 /*!
- * \brief Set event timer to T (now) + dt miliseconds.
+ * \brief Get time T (now) + dt miliseconds.
  */
-static void evsched_settimer(event_t *e, uint32_t dt)
+static struct timeval timeval_in(uint32_t dt)
 {
-	if (!e) {
-		return;
-	}
-
-	/* Get absolute time T. */
-	gettimeofday(&e->tv, 0);
+	struct timeval tv = { 0 };
+	gettimeofday(&tv, NULL);
 
 	/* Add number of seconds. */
-	e->tv.tv_sec += dt / 1000;
+	tv.tv_sec += dt / 1000;
 
 	/* Add the number of microseconds. */
-	e->tv.tv_usec += (dt % 1000) * 1000;
+	tv.tv_usec += (dt % 1000) * 1000;
 
 	/* Check for overflow. */
-	while (e->tv.tv_usec > 999999) {
-		e->tv.tv_sec += 1;
-		e->tv.tv_usec -= 1 * 1000 * 1000;
+	while (tv.tv_usec > 999999) {
+		tv.tv_sec += 1;
+		tv.tv_usec -= 1 * 1000 * 1000;
 	}
+
+	return tv;
 }
 
 int evsched_init(evsched_t *sched, void *ctx)
@@ -135,8 +133,7 @@ int evsched_schedule(event_t *ev, uint32_t dt)
 		return KNOT_EINVAL;
 	}
 
-	/* Update event timer. */
-	evsched_settimer(ev, dt);
+	struct timeval new_time = timeval_in(dt);
 
 	/* Lock calendar. */
 	evsched_t *sched = ev->sched;
@@ -147,6 +144,8 @@ int evsched_schedule(event_t *ev, uint32_t dt)
 	if ((found = heap_find(&sched->heap, ev))) {
 		heap_delete(&sched->heap, found);
 	}
+
+	ev->tv = new_time;
 
 	heap_insert(&sched->heap, ev);
 

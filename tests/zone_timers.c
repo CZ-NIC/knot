@@ -60,6 +60,8 @@ int main(int argc, char *argv[])
 	ret = knot_zonedb_insert(zone_db, zone_2);
 	assert(ret == KNOT_EOK);
 
+	knot_zonedb_build_index(zone_db);
+
 	knot_namedb_t *db = NULL;
 	ret = open_timers_db(dbid, &db);
 	ok(ret == KNOT_EOK && db != NULL, "zone timers: create");
@@ -76,7 +78,7 @@ int main(int argc, char *argv[])
 	zone_events_schedule_at(zone_1, ZONE_EVENT_FLUSH, FLUSH_TIME);
 
 	// Write the timers.
-	ret = write_zone_timers(db, zone_1);
+	ret = write_timer_db(db, zone_db);
 	ok(ret == KNOT_EOK, "zone timers: write");
 
 	// Read the timers.

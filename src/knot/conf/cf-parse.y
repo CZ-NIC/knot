@@ -491,6 +491,7 @@ static void ident_auto(void *scanner, int tok, conf_t *conf, bool val)
 
 %token <tok> SYSTEM IDENTITY HOSTNAME SVERSION NSID KEY KEYS
 %token <tok> MAX_UDP_PAYLOAD
+%token <tok> REQ_EDNS_OPT
 %token <tok> TSIG_ALGO_NAME
 %token <tok> WORKERS
 %token <tok> BACKGROUND_WORKERS
@@ -654,10 +655,19 @@ system:
  | system MAX_CONN_IDLE INTERVAL ';' {
 	SET_INT(new_config->max_conn_idle, $3.i, "max-conn-idle");
  }
+ | system MAX_CONN_IDLE NUM ';' {
+	SET_INT(new_config->max_conn_idle, $3.i, "max-conn-idle");
+ }
  | system MAX_CONN_HS INTERVAL ';' {
 	SET_INT(new_config->max_conn_hs, $3.i, "max-conn-handshake");
  }
+ | system MAX_CONN_HS NUM ';' {
+	SET_INT(new_config->max_conn_hs, $3.i, "max-conn-handshake");
+ }
  | system MAX_CONN_REPLY INTERVAL ';' {
+	SET_INT(new_config->max_conn_reply, $3.i, "max-conn-reply");
+ }
+ | system MAX_CONN_REPLY NUM ';' {
 	SET_INT(new_config->max_conn_reply, $3.i, "max-conn-reply");
  }
  | system MAX_TCP_CLIENTS NUM ';' {
@@ -938,6 +948,9 @@ zone:
  | zone NOTIFY_RETRIES NUM ';' {
 	SET_NUM(this_zone->notify_retries, $3.i, 1, INT_MAX, "notify-retries");
    }
+ | zone NOTIFY_TIMEOUT INTERVAL ';' {
+	SET_NUM(this_zone->notify_timeout, $3.i, 1, INT_MAX, "notify-timeout");
+   }
  | zone NOTIFY_TIMEOUT NUM ';' {
 	SET_NUM(this_zone->notify_timeout, $3.i, 1, INT_MAX, "notify-timeout");
    }
@@ -952,6 +965,16 @@ zone:
 	this_zone->serial_policy = $3.i;
  }
  | zone QUERY_MODULE '{' query_module_list '}'
+ | zone REQ_EDNS_OPT NUM HEXSTR ';' {
+     SET_UINT16(this_zone->req_edns_code, $3.i, "request-edns-option");
+     this_zone->req_edns_data = $4.t;
+     this_zone->req_edns_data_len = $4.l;
+ }
+ | zone REQ_EDNS_OPT NUM TEXT ';' {
+     SET_UINT16(this_zone->req_edns_code, $3.i, "request-edns-option");
+     this_zone->req_edns_data = $4.t;
+     this_zone->req_edns_data_len = strlen(this_zone->req_edns_data);
+ }
  ;
 
 query_genmodule:
@@ -979,6 +1002,9 @@ zones:
  | zones NOTIFY_TIMEOUT NUM ';' {
 	SET_NUM(new_config->notify_timeout, $3.i, 1, INT_MAX, "notify-timeout");
    }
+ | zones NOTIFY_TIMEOUT INTERVAL ';' {
+	SET_NUM(new_config->notify_timeout, $3.i, 1, INT_MAX, "notify-timeout");
+   }
  | zones DBSYNC_TIMEOUT NUM ';' {
 	SET_NUM(new_config->dbsync_timeout, $3.i, 0, INT_MAX, "zonefile-sync");
  }
@@ -996,6 +1022,16 @@ zones:
  }
  | zones SERIAL_POLICY SERIAL_POLICY_VAL ';' {
 	new_config->serial_policy = $3.i;
+ }
+ | zones REQ_EDNS_OPT NUM HEXSTR ';' {
+	SET_UINT16(new_config->req_edns_code, $3.i, "request-edns-option");
+	new_config->req_edns_data = $4.t;
+	new_config->req_edns_data_len = $4.l;
+ }
+ | zones REQ_EDNS_OPT NUM TEXT ';' {
+	SET_UINT16(new_config->req_edns_code, $3.i, "request-edns-option");
+	new_config->req_edns_data = $4.t;
+ 	new_config->req_edns_data_len = strlen(new_config->req_edns_data);
  }
  | zones QUERY_MODULE '{' query_genmodule_list '}'
  ;

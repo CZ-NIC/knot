@@ -202,10 +202,3 @@ void zone_events_update(struct zone_t *zone, struct zone_t *old_zone);
  * \param old_zone  Zone with old config.
  */
 void zone_events_replan_ddns(struct zone_t *zone, const struct zone_t *old_zone);
-
-/*!
- * \brief Write persistent timers to timers database.
- *
- * \return KNOT_E*
- */
-int zone_events_write_persistent(struct zone_t *zone);
