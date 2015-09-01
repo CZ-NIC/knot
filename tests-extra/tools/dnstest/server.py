@@ -96,7 +96,7 @@ class Server(object):
         self.ratelimit = None
         self.disable_any = None
         self.disable_notify = None
-        self.tcp_idle_timeout = None
+        self.tcp_reply_timeout = None
         self.zonefile_sync = None
         self.journal_size = None
 
@@ -851,8 +851,8 @@ class Knot(Server):
         self._on_str_hex(s, "nsid", self.nsid)
         s.item_str("rundir", self.dir)
         s.item_str("listen", "%s@%s" % (self.addr, self.port))
-        if (self.tcp_idle_timeout):
-            s.item_str("tcp-idle-timeout", self.tcp_idle_timeout)
+        if (self.tcp_reply_timeout):
+            s.item_str("tcp-reply-timeout", self.tcp_reply_timeout)
         if (self.ratelimit):
             s.item_str("rate-limit", self.ratelimit)
         s.end()
