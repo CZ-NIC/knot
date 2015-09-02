@@ -179,26 +179,24 @@ int conf_db_code(
 }
 
 static bool new_data(
-	const namedb_val_t *new,
+	const namedb_val_t *value,
 	const namedb_val_t *current)
 {
-	uint8_t *d = current->data;
-	size_t len = 0;
+	wire_ctx_t ctx = wire_ctx_init_const(current->data, current->len);
 
-	// Loop over the data array. Each item has 2B prefix.
-	while (len < current->len) {
-		uint16_t prefix;
-		memcpy(&prefix, d + len, sizeof(prefix));
-		prefix = le16toh(prefix);
-		len += sizeof(prefix);
+	// Loop over the data array. Each item has 2B length prefix.
+	while (wire_ctx_available(&ctx) > 0) {
+		uint16_t len = wire_ctx_read_u16(&ctx);
 
 		// Check for the same data.
-		if (prefix == new->len &&
-		    memcmp(d + len, new->data, new->len) == 0) {
+		if (len == value->len &&
+		    memcmp(ctx.position, value->data, value->len) == 0) {
 			return false;
 		}
-		len += prefix;
+		wire_ctx_skip(&ctx, len);
 	}
+
+	assert(ctx.error == KNOT_EOK && wire_ctx_available(&ctx) == 0);
 
 	return true;
 }
@@ -230,30 +228,26 @@ static int db_insert(
 		}
 
 		// Prepare buffer for all data.
-		size_t total_len = d.len + sizeof(uint16_t) + data->len;
-		if (total_len > CONF_MAX_DATA_LEN) {
+		size_t new_len = d.len + sizeof(uint16_t) + data->len;
+		if (new_len > CONF_MAX_DATA_LEN) {
 			return KNOT_ESPACE;
 		}
 
-		uint8_t *new_data = malloc(total_len);
+		uint8_t *new_data = malloc(new_len);
 		if (new_data == NULL) {
 			return KNOT_ENOMEM;
 		}
 
-		size_t new_len = 0;
+		wire_ctx_t ctx = wire_ctx_init(new_data, new_len);
 
 		// Copy current data array.
-		memcpy(new_data, d.data, d.len);
-		new_len += d.len;
-
+		wire_ctx_write(&ctx, d.data, d.len);
 		// Copy length prefix for the new data item.
-		uint16_t prefix = htole16(data->len);
-		memcpy(new_data + new_len, &prefix, sizeof(prefix));
-		new_len += sizeof(prefix);
-
+		wire_ctx_write_u16(&ctx, data->len);
 		// Copy the new data item.
-		memcpy(new_data + new_len, data->data, data->len);
-		new_len += data->len;
+		wire_ctx_write(&ctx, data->data, data->len);
+
+		assert(ctx.error == KNOT_EOK && wire_ctx_available(&ctx) == 0);
 
 		d.data = new_data;
 		d.len = new_len;
@@ -417,10 +411,12 @@ void conf_db_val(
 		}
 
 		assert(val->blob != NULL);
-		uint16_t len;
-		memcpy(&len, val->blob, sizeof(uint16_t));
-		val->len = le16toh(len);
-		val->data = val->blob + sizeof(uint16_t);
+		wire_ctx_t ctx = wire_ctx_init_const(val->blob, val->blob_len);
+		uint16_t len = wire_ctx_read_u16(&ctx);
+		assert(ctx.error == KNOT_EOK);
+
+		val->data = ctx.position;
+		val->len = len;
 		val->code = KNOT_EOK;
 	} else {
 		// Check for empty data.
@@ -452,11 +448,14 @@ void conf_db_val_next(
 	}
 
 	if (val->data + val->len < val->blob + val->blob_len) {
-		val->data += val->len;
-		uint16_t len;
-		memcpy(&len, val->data, sizeof(uint16_t));
-		val->len = le16toh(len);
-		val->data += sizeof(uint16_t);
+		wire_ctx_t ctx = wire_ctx_init_const(val->blob, val->blob_len);
+		size_t offset = val->data + val->len - val->blob;
+		wire_ctx_skip(&ctx, offset);
+		uint16_t len = wire_ctx_read_u16(&ctx);
+		assert(ctx.error == KNOT_EOK);
+
+		val->data = ctx.position;
+		val->len = len;
 		val->code = KNOT_EOK;
 	} else {
 		val->data = NULL;
