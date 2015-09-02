@@ -101,7 +101,7 @@ AS_IF([test "$enable_systemd" != "no"],[
     [auto],[PKG_CHECK_MODULES([systemd], [libsystemd], [enable_systemd=yes], [
             PKG_CHECK_MODULES([systemd], [libsystemd-daemon libsystemd-journal], [enable_systemd=yes], [enable_systemd=no])])],
     [yes],[PKG_CHECK_MODULES([systemd], [libsystemd], [], [
-    →       PKG_CHECK_MODULES([systemd], [libsystemd-daemon libsystemd-journal])])],
+            PKG_CHECK_MODULES([systemd], [libsystemd-daemon libsystemd-journal])])],
     [*],[AC_MSG_ERROR([Invalid value of --enable-systemd.])])
     ])
 
