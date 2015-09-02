@@ -1,20 +1,42 @@
-Knot DNS 2.1.0-dev (TBD)
-========================
+Knot DNS 2.0.1 (2015-09-02)
+===========================
 
 Bugfixes:
 ---------
- - Enable journald logging only when running under systemd
- - Fix memory leak in configuration on server shutdown
+ - Do not reload expired zones on 'knotc reload' and server startup
+ - Fix rare race-condition in event scheduling causing delayed event execution
+ - Fix skipping of non-authoritative nodes in NSEC proofs
+ - Fix TC flag setting in RRL slipped answers
+ - Disable domain name compression for root label
+ - Log via journald only when running under systemd
  - Fix CNAME following when quering for NSEC RR type
+ - Fix refreshing of DNSSEC signatures for zone keys
  - Fix binding an unavailable IPv6 address on Linux (IP_FREEBIND)
+ - Fix infinite loop in knotc zonestatus and memstats
+ - Fix memory leak in configuration on server shutdown
+ - Fix broken dnsproxy module
+ - Fix DNSSEC KASP timestamps parsing in strict POSIX environment
+ - fix multi value parsing on big-endian
+ - Adapt to Nettle 3 API break causing base64 decoding failures on big-endian
 
 Features:
 ---------
- - Send minimal responses (remove NS from Authority section for NOERROR)
+ - Add 'keymgr zone key ds' to show key's DS record
+ - Add 'keymgr tsig generate' to generate TSIG keys
+ - Add query module scoping to process either all queries or zone queries only
+ - Add support for file name globbing in config file includes
+ - Add 'request-edns-option' config option to add custom EDNS0 option into
+   server initiated queries
 
 Improvements:
 -------------
+ - Send minimal responses (remove NS from Authority section for NOERROR)
+ - Update persistent timers only on shutdown for better performance
+ - Allow change of RR TTL over DDNS
  - Documentation fixes, updates, and improvements in formatting
+ - Install yparser and zscanner header files
+ - Improve lookup of libsystemd build dependencies
+ - Fix compilation warnings in endian conversion functions on OpenBSD
 
 Knot DNS 2.0.0 (2015-06-26)
 ===========================
