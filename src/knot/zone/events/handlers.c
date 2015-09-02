@@ -21,6 +21,7 @@
 #include "libknot/internal/mempool.h"
 #include "libknot/internal/macros.h"
 #include "libknot/processing/requestor.h"
+#include "libknot/yparser/yptrafo.h"
 
 #include "knot/common/log.h"
 #include "knot/common/trim.h"
@@ -92,11 +93,12 @@ static knot_pkt_t *zone_query(const zone_t *zone, uint16_t pkt_type, mm_ctx_t *m
 /*! \brief Set EDNS section. */
 static int prepare_edns(zone_t *zone, knot_pkt_t *pkt)
 {
-	conf_val_t opt = conf_zone_get(conf(), C_REQUEST_EDNS_OPTION, zone->name);
+	conf_val_t val = conf_zone_get(conf(), C_REQUEST_EDNS_OPTION, zone->name);
 
 	/* Check if an extra EDNS option is configured. */
-	conf_data(&opt);
-	if (opt.data == NULL) {
+	size_t opt_len;
+	const uint8_t *opt_data = conf_data(&val, &opt_len);
+	if (opt_data == NULL) {
 		return KNOT_EOK;
 	}
 
@@ -108,9 +110,9 @@ static int prepare_edns(zone_t *zone, knot_pkt_t *pkt)
 		return ret;
 	}
 
-	ret = knot_edns_add_option(&opt_rr, wire_read_u16(opt.data),
-	                           opt.len - sizeof(uint16_t),
-	                           opt.data + sizeof(uint16_t), &pkt->mm);
+	ret = knot_edns_add_option(&opt_rr, wire_read_u64(opt_data),
+	                           yp_bin_len(opt_data + sizeof(uint64_t)),
+	                           yp_bin(opt_data + sizeof(uint64_t)), &pkt->mm);
 	if (ret != KNOT_EOK) {
 		knot_rrset_clear(&opt_rr, &pkt->mm);
 		return ret;

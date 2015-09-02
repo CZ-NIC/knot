@@ -328,7 +328,7 @@ Access control list rule definition.
 .ft C
 acl:
   \- id: STR
-    address: ADDR[/INT] ...
+    address: ADDR[/INT] | ADDR\-ADDR ...
     key: key_id ...
     action: transfer | notify | update | control ...
     deny: BOOL
@@ -341,8 +341,8 @@ acl:
 An ACL rule identifier.
 .SS address
 .sp
-An ordered list of IP addresses or network subnets. The query must match
-one of them. Empty value means that address match is not required.
+An ordered list of IP addresses, network subnets, or network ranges. The query
+must match one of them. Empty value means that address match is not required.
 .sp
 Default: empty
 .SS key
@@ -813,7 +813,7 @@ mod\-synth\-record:
     prefix: STR
     origin: DNAME
     ttl: INT
-    network: ADDR[/INT]
+    network: ADDR[/INT] | ADDR\-ADDR
 .ft P
 .fi
 .UNINDENT
@@ -854,7 +854,7 @@ Time to live of the generated records.
 Default: 3600
 .SS network
 .sp
-A network subnet in the form of \fIaddress/prefix\fP\&.
+An IP address, a network subnet, or a network range the query must match.
 .sp
 Default: empty
 .SH MODULE DNSPROXY

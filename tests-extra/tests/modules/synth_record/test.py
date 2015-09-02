@@ -28,10 +28,10 @@ for z in zone:
     knot.gen_key(z, alg="RSASHA256")
 
 # Configure 'synth_record' modules for auto forward/reverse zones
-knot.add_module(zone[FWD],  ModSynthRecord("forward", "dynamic4-", "900", "192.168.1.0/25"))
+knot.add_module(zone[FWD],  ModSynthRecord("forward", "dynamic4-", "900", "192.168.1.0-192.168.1.127"))
 knot.add_module(zone[FWD],  ModSynthRecord("forward", "dynamic6-", "900", "2620:0:b61::/52"))
 knot.add_module(zone[REV4], ModSynthRecord("reverse", "dynamic4-", "900", "192.168.1.0/25",  "forward."))
-knot.add_module(zone[REV6], ModSynthRecord("reverse", "dynamic6-", "900", "2620:0:b61::/52", "forward."))
+knot.add_module(zone[REV6], ModSynthRecord("reverse", "dynamic6-", "900", "2620:0000:0b61::-2620:0000:0b61:0fff:ffff:ffff:ffff:ffff", "forward."))
 
 t.start()
 

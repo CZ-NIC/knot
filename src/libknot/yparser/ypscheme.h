@@ -28,6 +28,7 @@
 #include <stdint.h>
 
 #include "libknot/internal/utils.h"
+#include "libknot/internal/wire_ctx.h"
 #include "libknot/yparser/yparser.h"
 
 /*! Maximal length of item name. */
@@ -41,6 +42,9 @@
 /*! Maximal number of miscellaneous callbacks/pointers. */
 #define YP_MAX_MISC_COUNT	4
 
+#define YP_TXT_BIN_PARAMS 	wire_ctx_t *in, wire_ctx_t *out, const uint8_t *stop
+#define YP_BIN_TXT_PARAMS	wire_ctx_t *in, wire_ctx_t *out
+
 /*! Helper macros for item variables definition. */
 #define YP_VNONE	.var.i = { 0 }
 #define YP_VINT		.var.i
@@ -49,6 +53,7 @@
 #define YP_VSTR		.var.s
 #define YP_VADDR	.var.a
 #define YP_VDNAME	.var.d
+#define YP_VHEX		.var.d
 #define YP_VB64		.var.d
 #define YP_VDATA	.var.d
 #define YP_VREF		.var.r
@@ -64,8 +69,8 @@ typedef enum {
 	YP_TBOOL,     /*!< Boolean. */
 	YP_TOPT,      /*!< Option from the list. */
 	YP_TSTR,      /*!< String. */
-	YP_TADDR,     /*!< Address (address[@port]). */
-	YP_TNET,      /*!< Network (address[/mask]). */
+	YP_THEX,      /*!< String or hexadecimal string if "0x" prefix. */
+	YP_TADDR,     /*!< Address (address[@port] or UNIX socket path). */
 	YP_TDNAME,    /*!< Domain name. */
 	YP_TB64,      /*!< Base64 encoded string. */
 	YP_TDATA,     /*!< Customized data. */
@@ -134,9 +139,9 @@ typedef union {
 		/*! Default data. */
 		uint8_t const *dflt;
 		/*! Text to binary transformation function. */
-		int (*to_bin)(char const *, size_t, uint8_t *, size_t *);
+		int (*to_bin)(YP_TXT_BIN_PARAMS);
 		/*! Binary to text transformatio function. */
-		int (*to_txt)(uint8_t const *, size_t, char *, size_t *);
+		int (*to_txt)(YP_BIN_TXT_PARAMS);
 	} d;
 	/*! Reference variables. */
 	struct {

@@ -27,6 +27,7 @@
 #include "libknot/libknot.h"
 #include "libknot/internal/endian.h"
 #include "libknot/internal/sockaddr.h"
+#include "libknot/yparser/yptrafo.h"
 
 static const uint8_t* ipv4_addr(const struct sockaddr_storage *ss) {
 	struct sockaddr_in *ipv4 = (struct sockaddr_in *)ss;
@@ -55,18 +56,14 @@ bool netblock_match(const struct sockaddr_storage *ss1,
 	case AF_INET:
 		addr1 = ipv4_addr(ss1);
 		addr2 = ipv4_addr(ss2);
-		if (prefix < 0) {
-			prefix = IPV4_PREFIXLEN;
-		} else if (prefix > IPV4_PREFIXLEN) {
+		if (prefix < 0 || prefix > IPV4_PREFIXLEN) {
 			prefix = IPV4_PREFIXLEN;
 		}
 		break;
 	case AF_INET6:
 		addr1 = ipv6_addr(ss1);
 		addr2 = ipv6_addr(ss2);
-		if (prefix < 0) {
-			prefix = IPV6_PREFIXLEN;
-		} else if (prefix > IPV6_PREFIXLEN) {
+		if (prefix < 0 || prefix > IPV6_PREFIXLEN) {
 			prefix = IPV6_PREFIXLEN;
 		}
 		break;
@@ -76,10 +73,8 @@ bool netblock_match(const struct sockaddr_storage *ss1,
 
 	/* Compare full bytes address block. */
 	uint8_t full_bytes = prefix / 8;
-	for (int i = 0; i < full_bytes; i++) {
-		if (addr1[i] != addr2[i]) {
-			return false;
-		}
+	if (memcmp(addr1, addr2, full_bytes) != 0) {
+		return false;
 	}
 
 	/* Compare last partial byte address block. */
@@ -90,6 +85,23 @@ bool netblock_match(const struct sockaddr_storage *ss1,
 		if (rest1 != rest2) {
 			return false;
 		}
+	}
+
+	return true;
+}
+
+bool netrange_match(const struct sockaddr_storage *ss,
+                    const struct sockaddr_storage *ss_min,
+                    const struct sockaddr_storage *ss_max)
+{
+	if (ss == NULL || ss_min == NULL || ss_max == NULL) {
+		return false;
+	}
+
+	assert(ss_min->ss_family == ss_max->ss_family);
+
+	if (sockaddr_cmp(ss, ss_min) < 0 || sockaddr_cmp(ss, ss_max) > 0) {
+		return false;
 	}
 
 	return true;
@@ -109,12 +121,20 @@ bool acl_allowed(conf_val_t *acl, acl_action_t action,
 		/* Check if the address matches the current acl address list. */
 		val = conf_id_get(conf(), C_ACL, C_ADDR, acl);
 		while (val.code == KNOT_EOK) {
+			struct sockaddr_storage ss, ss_max;
 			int prefix;
-			struct sockaddr_storage ss;
-			ss = conf_net(&val, &prefix);
-			if (!netblock_match(addr, &ss, prefix)) {
-				conf_val_next(&val);
-				continue;
+
+			ss = conf_addr_range(&val, &ss_max, &prefix);
+			if (ss_max.ss_family == AF_UNSPEC) {
+				if (!netblock_match(addr, &ss, prefix)) {
+					conf_val_next(&val);
+					continue;
+				}
+			} else {
+				if (!netrange_match(addr, &ss, &ss_max)) {
+					conf_val_next(&val);
+					continue;
+				}
 			}
 
 			break;
@@ -180,9 +200,7 @@ bool acl_allowed(conf_val_t *acl, acl_action_t action,
 		/* Fill the output with tsig secret if provided. */
 		if (tsig->name != NULL) {
 			val = conf_id_get(conf(), C_KEY, C_SECRET, &key_val);
-			conf_data(&val);
-			tsig->secret.data = (uint8_t *)val.data;
-			tsig->secret.size = val.len;
+			tsig->secret.data = (uint8_t *)conf_bin(&val, &tsig->secret.size);
 		}
 
 		return true;

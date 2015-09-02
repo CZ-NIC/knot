@@ -14,19 +14,17 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <ctype.h>
-#include <stdlib.h>
-#include <inttypes.h>
 #include <arpa/inet.h>
+#include <ctype.h>
+#include <inttypes.h>
+#include <limits.h>
+#include <stdlib.h>
 
-#include "libknot/internal/macros.h"
 #include "libknot/yparser/yptrafo.h"
+#include "libknot/internal/macros.h"
 #include "libknot/internal/base64.h"
 #include "libknot/internal/sockaddr.h"
 #include "libknot/libknot.h"
-
-#define TXT_BIN_PARAMS char const *txt, size_t txt_len, uint8_t *bin, size_t *bin_len
-#define BIN_TXT_PARAMS uint8_t const *bin, size_t bin_len, char *txt, size_t *txt_len
 
 enum {
 	UNIT_BYTE = 'B',
@@ -50,71 +48,95 @@ enum {
 	MULTI_DAY  = 24 * 3600
 };
 
-static int yp_str_to_bin(
-	TXT_BIN_PARAMS)
+static wire_ctx_t copy_in(
+	wire_ctx_t *in,
+	size_t in_len,
+	char *buf,
+	size_t buf_len)
 {
-	if (*bin_len <= txt_len) {
-		return KNOT_ESPACE;
-	}
-
-	memcpy(bin, txt, txt_len);
-	bin[txt_len] = '\0';
-	*bin_len = txt_len + 1;
-
-	return KNOT_EOK;
+	wire_ctx_t ctx = wire_ctx_init((uint8_t *)buf, buf_len);
+	wire_ctx_write(&ctx, in->position, in_len);
+	wire_ctx_skip(in, in_len);
+	// Write the terminator.
+	wire_ctx_write_u8(&ctx, '\0');
+	wire_ctx_skip(&ctx, -1);
+	return ctx;
 }
 
-static int yp_str_to_txt(
-	BIN_TXT_PARAMS)
+int yp_str_to_bin(
+	YP_TXT_BIN_PARAMS)
 {
-	if (*txt_len < bin_len) {
-		return KNOT_ESPACE;
-	}
+	YP_CHECK_PARAMS_BIN;
 
-	memcpy(txt, bin, bin_len);
-	*txt_len = bin_len - 1;
+	wire_ctx_write(out, in->position, YP_LEN);
+	wire_ctx_skip(in, YP_LEN);
+	// Write string terminator.
+	wire_ctx_write_u8(out, '\0');
 
-	return KNOT_EOK;
+	YP_CHECK_RET;
 }
 
-static int yp_bool_to_bin(
-	TXT_BIN_PARAMS)
+int yp_str_to_txt(
+	YP_BIN_TXT_PARAMS)
 {
-	if (strcasecmp(txt, "on") == 0 || strcasecmp(txt, "true") == 0) {
-		bin[0] = '\0'; // Just in case.
-		*bin_len = 1;
-		return KNOT_EOK;
-	} else if (strcasecmp(txt, "off") == 0 || strcasecmp(txt, "false") == 0) {
-		*bin_len = 0;
-		return KNOT_EOK;
-	}
+	YP_CHECK_PARAMS_TXT;
 
-	return KNOT_EINVAL;
+	size_t len = strlen((char *)in->position) + 1;
+
+	wire_ctx_write(out, in->position, len);
+	wire_ctx_skip(in, len);
+	// Set the terminator as a current position.
+	wire_ctx_skip(out, -1);
+
+	YP_CHECK_RET;
 }
 
-static int yp_bool_to_txt(
-	BIN_TXT_PARAMS)
+int yp_bool_to_bin(
+	YP_TXT_BIN_PARAMS)
 {
-	int ret;
+	YP_CHECK_PARAMS_BIN;
 
-	switch (bin_len) {
+	if (strncasecmp((char *)in->position, "on",   YP_LEN) == 0 ||
+	    strncasecmp((char *)in->position, "true", YP_LEN) == 0) {
+		wire_ctx_write_u8(out, 1);
+	} else if (strncasecmp((char *)in->position, "off",   YP_LEN) == 0 ||
+	           strncasecmp((char *)in->position, "false", YP_LEN) == 0) {
+		wire_ctx_write_u8(out, 0);
+	} else {
+		return KNOT_EINVAL;
+	}
+
+	wire_ctx_skip(in, YP_LEN);
+
+	YP_CHECK_RET;
+}
+
+int yp_bool_to_txt(
+	YP_BIN_TXT_PARAMS)
+{
+	YP_CHECK_PARAMS_TXT;
+
+	const char *value;
+
+	switch (wire_ctx_read_u8(in)) {
 	case 0:
-		ret = snprintf(txt, *txt_len, "off");
-		if (ret <= 0 || ret >= *txt_len) {
-			return KNOT_ERANGE;
-		}
-		*txt_len = ret;
-		return KNOT_EOK;
+		value = "off";
+		break;
 	case 1:
-		ret = snprintf(txt, *txt_len, "on");
-		if (ret <= 0 || ret >= *txt_len) {
-			return KNOT_ERANGE;
-		}
-		*txt_len = ret;
-		return KNOT_EOK;
+		value = "on";
+		break;
+	default:
+		return KNOT_EINVAL;
 	}
 
-	return KNOT_EINVAL;
+	int ret = snprintf((char *)out->position, wire_ctx_available(out), "%s",
+	                   value);
+	if (ret <= 0 || ret >= wire_ctx_available(out)) {
+		return KNOT_ESPACE;
+	}
+	wire_ctx_skip(out, ret);
+
+	YP_CHECK_RET;
 }
 
 static int remove_unit(
@@ -140,7 +162,7 @@ static int remove_unit(
 			multiplier = MULTI_GIGA;
 			break;
 		default:
-			return KNOT_ENOTSUP;
+			return KNOT_EINVAL;
 		}
 	} else if (style & YP_STIME) {
 		switch (unit) {
@@ -157,10 +179,10 @@ static int remove_unit(
 			multiplier = MULTI_DAY;
 			break;
 		default:
-			return KNOT_ENOTSUP;
+			return KNOT_EINVAL;
 		}
 	} else {
-		return KNOT_ENOTSUP;
+		return KNOT_EINVAL;
 	}
 
 	// Check for possible number overflow.
@@ -173,22 +195,34 @@ static int remove_unit(
 	return KNOT_EOK;
 }
 
-static int yp_int_to_bin(
-	TXT_BIN_PARAMS,
+int yp_int_to_bin(
+	YP_TXT_BIN_PARAMS,
 	int64_t min,
 	int64_t max,
-	uint8_t min_bytes,
 	yp_style_t style)
 {
-	char *end = (char *)txt;
+	YP_CHECK_PARAMS_BIN;
 
-	int64_t number = strtoll(txt, &end, 10);
-
-	// Check if the whole string is invalid.
-	if (end == txt) {
-		return KNOT_EINVAL;
+	// Copy input string to the buffer to limit strtoll overread.
+	char buf[32];
+	wire_ctx_t buf_ctx = copy_in(in, YP_LEN, buf, sizeof(buf));
+	if (buf_ctx.error != KNOT_EOK) {
+		return buf_ctx.error;
 	}
 
+	// Parse the number.
+	char *end;
+	errno = 0;
+	int64_t number = strtoll(buf, &end, 10);
+
+	// Check for number overflow.
+	if (errno == ERANGE && (number == LLONG_MAX || number == LLONG_MIN)) {
+		return KNOT_ERANGE;
+	}
+	// Check if the whole string is invalid.
+	if ((errno != 0 && number == 0) || end == buf) {
+		return KNOT_EINVAL;
+	}
 	// Check the rest of the string for a unit.
 	if (*end != '\0') {
 		// Check just for one-char rest.
@@ -196,32 +230,22 @@ static int yp_int_to_bin(
 			return KNOT_EINVAL;
 		}
 
-		// Try to apply the unit on the number.
-		if (remove_unit(&number, *end, style) != KNOT_EOK) {
-			return KNOT_EINVAL;
+		// Try to apply a unit on the number.
+		int ret = remove_unit(&number, *end, style);
+		if (ret != KNOT_EOK) {
+			return ret;
 		}
 	}
 
+	// Check for the result number overflow.
 	if (number < min || number > max) {
 		return KNOT_ERANGE;
 	}
 
-	// Convert the number to litte-endian byte order.
-	number = htole64(number);
+	// Write the result.
+	wire_ctx_write_u64(out, number);
 
-	// Store the result
-	memcpy(bin, &number, sizeof(number));
-	*bin_len = sizeof(number);
-
-	// Ignore trailing zeroes.
-	for (int i = 7; i >= min_bytes; i--) {
-		if (((uint8_t *)&number)[i] != 0) {
-			break;
-		}
-		(*bin_len)--;
-	}
-
-	return KNOT_EOK;
+	YP_CHECK_RET;
 }
 
 static void add_unit(
@@ -229,84 +253,87 @@ static void add_unit(
 	char *unit,
 	yp_style_t style)
 {
-	int64_t new_multi = 1;
+	int64_t multiplier = 1;
+	char basic_unit = '\0';
 	char new_unit = '\0';
-
-	if (*number == 0) {
-		return;
-	}
 
 	// Get the multiplier for the unit.
 	if (style & YP_SSIZE) {
+		basic_unit = UNIT_BYTE;
+
 		if (*number < MULTI_KILO) {
-			new_multi = MULTI_BYTE;
+			multiplier = MULTI_BYTE;
 			new_unit = UNIT_BYTE;
 		} else if (*number < MULTI_MEGA) {
-			new_multi = MULTI_KILO;
+			multiplier = MULTI_KILO;
 			new_unit = UNIT_KILO;
 		} else if (*number < MULTI_GIGA) {
-			new_multi = MULTI_MEGA;
+			multiplier = MULTI_MEGA;
 			new_unit = UNIT_MEGA;
 		} else {
-			new_multi = MULTI_GIGA;
+			multiplier = MULTI_GIGA;
 			new_unit = UNIT_GIGA;
 		}
 	} else if (style & YP_STIME) {
+		basic_unit = UNIT_SEC;
+
 		if (*number < MULTI_MIN) {
-			new_multi = MULTI_SEC;
+			multiplier = MULTI_SEC;
 			new_unit = UNIT_SEC;
 		} else if (*number < MULTI_HOUR) {
-			new_multi = MULTI_MIN;
+			multiplier = MULTI_MIN;
 			new_unit = UNIT_MIN;
 		} else if (*number < MULTI_DAY) {
-			new_multi = MULTI_HOUR;
+			multiplier = MULTI_HOUR;
 			new_unit = UNIT_HOUR;
 		} else {
-			new_multi = MULTI_DAY;
+			multiplier = MULTI_DAY;
 			new_unit = UNIT_DAY;
 		}
 	}
 
-	if (new_unit != '\0' && (*number % new_multi) == 0) {
-		*number /= new_multi;
+	// Check for unit application without any remainder.
+	if ((*number % multiplier) == 0) {
+		*number /= multiplier;
 		*unit = new_unit;
+	} else {
+		*unit = basic_unit;
 	}
 }
 
-static int yp_int_to_txt(
-	BIN_TXT_PARAMS,
+int yp_int_to_txt(
+	YP_BIN_TXT_PARAMS,
 	yp_style_t style)
 {
-	int64_t data = 0, number = 0;
+	YP_CHECK_PARAMS_TXT;
+
 	char unit[2] = { '\0' };
-
-	memcpy(&data, bin, bin_len);
-	number = le64toh(data);
-
+	int64_t number = wire_ctx_read_u64(in);
 	add_unit(&number, unit, style);
 
-	int ret = snprintf(txt, *txt_len, "%"PRId64"%s", number, unit);
-	if (ret <= 0 || ret >= *txt_len) {
-		return KNOT_ERANGE;
+	int ret = snprintf((char *)out->position, wire_ctx_available(out),
+	                   "%"PRId64"%s", number, unit);
+	if (ret <= 0 || ret >= wire_ctx_available(out)) {
+		return KNOT_ESPACE;
 	}
-	*txt_len = ret;
+	wire_ctx_skip(out, ret);
 
-	return KNOT_EOK;
+	YP_CHECK_RET;
 }
 
 static uint8_t sock_type_guess(
-	char const *txt,
-	size_t txt_len)
+	const uint8_t *str,
+	size_t len)
 {
 	size_t dots = 0;
 	size_t semicolons = 0;
 	size_t digits = 0;
 
 	// Analyze the string.
-	for (size_t i = 0; i < txt_len; i++) {
-		if (txt[i] == '.') dots++;
-		else if (txt[i] == ':') semicolons++;
-		else if (isdigit((int)txt[i]) != 0) digits++;
+	for (size_t i = 0; i < len; i++) {
+		if (str[i] == '.') dots++;
+		else if (str[i] == ':') semicolons++;
+		else if (isdigit((int)str[i]) != 0) digits++;
 	}
 
 	// Guess socket type.
@@ -319,234 +346,170 @@ static uint8_t sock_type_guess(
 	}
 }
 
-static int addr_to_bin(
-	TXT_BIN_PARAMS,
+int yp_addr_noport_to_bin(
+	YP_TXT_BIN_PARAMS,
 	bool allow_unix)
 {
+	YP_CHECK_PARAMS_BIN;
+
 	struct in_addr  addr4;
 	struct in6_addr addr6;
 
-	uint8_t type = sock_type_guess(txt, txt_len);
+	uint8_t type = sock_type_guess(in->position, YP_LEN);
 
-	size_t addr_len;
-	const void *addr;
+	// Copy address to the buffer to limit inet_pton overread.
+	char buf[INET6_ADDRSTRLEN];
+	if (type == 4 || type == 6) {
+		wire_ctx_t buf_ctx = copy_in(in, YP_LEN, buf, sizeof(buf));
+		if (buf_ctx.error != KNOT_EOK) {
+			return buf_ctx.error;
+		}
+	}
 
-	if (type == 4 && inet_pton(AF_INET, txt, &addr4) == 1) {
-		addr_len = sizeof(addr4.s_addr);
-		addr = &(addr4.s_addr);
-	} else if (type == 6 && inet_pton(AF_INET6, txt, &addr6) == 1) {
-		addr_len = sizeof(addr6.s6_addr);
-		addr = &(addr6.s6_addr);
-	} else if (type == 0 && allow_unix && txt_len > 0) {
-		addr_len = txt_len + 1; // + trailing zero.
-		addr = txt;
+	// Write address type.
+	wire_ctx_write_u8(out, type);
+
+	// Write address as such.
+	if (type == 4 && inet_pton(AF_INET, buf, &addr4) == 1) {
+		wire_ctx_write(out, (uint8_t *)&(addr4.s_addr),
+		               sizeof(addr4.s_addr));
+	} else if (type == 6 && inet_pton(AF_INET6, buf, &addr6) == 1) {
+		wire_ctx_write(out, (uint8_t *)&(addr6.s6_addr),
+	                       sizeof(addr6.s6_addr));
+	} else if (type == 0 && allow_unix) {
+		int ret = yp_str_to_bin(in, out, stop);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
 	} else {
 		return KNOT_EINVAL;
 	}
 
-	if (*bin_len < sizeof(type) + addr_len) {
-		return KNOT_ESPACE;
-	}
-
-	*bin = type;
-	memcpy(bin + sizeof(type), addr, addr_len);
-	*bin_len = sizeof(type) + addr_len;
-
-	return KNOT_EOK;
+	YP_CHECK_RET;
 }
 
-static int addr_to_txt(
-	BIN_TXT_PARAMS)
+int yp_addr_noport_to_txt(
+	YP_BIN_TXT_PARAMS)
 {
+	YP_CHECK_PARAMS_TXT;
+
 	struct in_addr  addr4;
 	struct in6_addr addr6;
-
-	uint8_t type = *bin;
-	bin += sizeof(type);
-	bin_len -= sizeof(type);
 
 	int ret;
-	switch (type) {
+
+	switch (wire_ctx_read_u8(in)) {
 	case 0:
-		ret = snprintf(txt, *txt_len, "%s", bin);
-		if (ret <= 0 || ret >= *txt_len) {
-			return KNOT_ESPACE;
+		ret = yp_str_to_txt(in, out);
+		if (ret != KNOT_EOK) {
+			return ret;
 		}
 		break;
 	case 4:
-		if (bin_len != sizeof(addr4.s_addr)) {
+		wire_ctx_read(in, (uint8_t *)&(addr4.s_addr), sizeof(addr4.s_addr));
+		if (inet_ntop(AF_INET, &addr4, (char *)out->position,
+		    wire_ctx_available(out)) == NULL) {
 			return KNOT_EINVAL;
 		}
-		memcpy(&(addr4.s_addr), bin, bin_len);
-		if (inet_ntop(AF_INET, &addr4, txt, *txt_len) == NULL) {
-			return KNOT_ESPACE;
-		}
+		wire_ctx_skip(out, strlen((char *)out->position));
 		break;
 	case 6:
-		if (bin_len != sizeof(addr6.s6_addr)) {
+		wire_ctx_read(in, (uint8_t *)&(addr6.s6_addr), sizeof(addr6.s6_addr));
+		if (inet_ntop(AF_INET6, &addr6, (char *)out->position,
+		    wire_ctx_available(out)) == NULL) {
 			return KNOT_EINVAL;
 		}
-		memcpy(&(addr6.s6_addr), bin, bin_len);
-		if (inet_ntop(AF_INET6, &addr6, txt, *txt_len) == NULL) {
-			return KNOT_ESPACE;
-		}
+		wire_ctx_skip(out, strlen((char *)out->position));
 		break;
 	default:
 		return KNOT_EINVAL;
 	}
 
-	*txt_len = strlen(txt);
-
-	return KNOT_EOK;
+	YP_CHECK_RET;
 }
 
-static int yp_addr_to_bin(
-	TXT_BIN_PARAMS,
-	bool net)
+int yp_addr_to_bin(
+	YP_TXT_BIN_PARAMS)
 {
-	// Check for separator.
-	char *pos = index(txt, net ? '/' : '@');
-	if (pos == NULL) {
-		int ret = addr_to_bin(txt, txt_len, bin, bin_len, !net);
-		if (ret != KNOT_EOK) {
-			return ret;
-		}
-	} else {
-		size_t txt_addr_len = pos - txt;
-		char *addr = strndup(txt, txt_addr_len);
-		if (addr == NULL) {
-			return KNOT_ENOMEM;
-		}
+	YP_CHECK_PARAMS_BIN;
 
-		// Address part.
-		size_t bin_addr_len = *bin_len;
-		int ret = addr_to_bin(addr, txt_addr_len, bin, &bin_addr_len,
-		                      false);
-		if (ret != KNOT_EOK) {
-			free(addr);
-			return ret;
-		}
-
-		// Set maximal port/prefix length.
-		uint8_t type = *bin;
-		size_t max_num;
-		if (net) {
-			if (type == 4) {
-				max_num = 32;
-			} else {
-				max_num = 128;
-			}
-		} else {
-			max_num = UINT16_MAX;
-		}
-
-		txt += txt_addr_len + sizeof(char);
-		bin += bin_addr_len;
-
-		// Port/prefix length part.
-		size_t bin_num_len = *bin_len - bin_addr_len;
-		ret = yp_int_to_bin(txt, txt_len - txt_addr_len - 1,
-		                    bin, &bin_num_len, 0, max_num,
-		                    net ? sizeof(uint8_t) : sizeof(uint16_t),
-		                    YP_SNONE);
-		if (ret != KNOT_EOK) {
-			free(addr);
-			return ret;
-		}
-
-		free(addr);
-
-		*bin_len = bin_addr_len + bin_num_len;
+	// Check for address@port separator.
+	const uint8_t *pos = (uint8_t *)strrchr((char *)in->position, '@');
+	// Ignore out-of-bounds result.
+	if (pos >= stop) {
+		pos = NULL;
 	}
 
-	return KNOT_EOK;
+	// Store address type position.
+	uint8_t *type = out->position;
+
+	// Write address (UNIX socket can't have a port).
+	int ret = yp_addr_noport_to_bin(in, out, pos, pos == NULL);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	if (pos != NULL) {
+		// Skip the separator.
+		wire_ctx_skip(in, sizeof(uint8_t));
+
+		// Write port.
+		ret = yp_int_to_bin(in, out, stop, 0, UINT16_MAX, YP_SNONE);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+	} else if (*type == 4 || *type == 6) {
+		wire_ctx_write_u64(out, (uint64_t)-1);
+	}
+
+	YP_CHECK_RET;
 }
 
-static int yp_addr_to_txt(
-	BIN_TXT_PARAMS,
-	bool net)
+int yp_addr_to_txt(
+	YP_BIN_TXT_PARAMS)
 {
-	// Set binary address length.
-	uint8_t type = *bin;
-	size_t bin_addr_len = sizeof(type);
-	switch (type) {
-	case 0:
-		bin_addr_len += bin_len - sizeof(type);
-		break;
-	case 4:
-		bin_addr_len += sizeof(((struct in_addr *)NULL)->s_addr);
-		break;
-	case 6:
-		bin_addr_len += sizeof(((struct in6_addr *)NULL)->s6_addr);
-		break;
-	default:
-		return KNOT_EINVAL;
-	}
+	YP_CHECK_PARAMS_TXT;
+
+	// Store address type position.
+	uint8_t *type = in->position;
 
 	// Write address.
-	size_t txt_addr_len = *txt_len;
-	int ret = addr_to_txt(bin, bin_addr_len, txt, &txt_addr_len);
-	if (ret != KNOT_EOK) {
-		return ret;
-	}
-	bin_len -= bin_addr_len;
-	bin += bin_addr_len;
-	txt += txt_addr_len;
-
-	if (bin_len == 0) {
-		*txt_len = txt_addr_len;
-		return KNOT_EOK;
-	}
-
-	// Write separator.
-	char *sep = net ? "/" :"@";
-	size_t txt_sep_len = *txt_len - txt_addr_len;
-	ret = yp_str_to_txt((uint8_t *)sep, 2, txt, &txt_sep_len);
-	if (ret != KNOT_EOK) {
-		return ret;
-	}
-	txt += txt_sep_len;
-
-	// Write port/prefix length.
-	size_t txt_num_len = *txt_len - txt_addr_len - txt_sep_len;
-	ret = yp_int_to_txt(bin, bin_len, txt, &txt_num_len, YP_SNONE);
+	int ret = yp_addr_noport_to_txt(in, out);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
 
-	*txt_len = txt_addr_len + txt_sep_len + txt_num_len;
+	// Write port.
+	if (*type == 4 || *type == 6) {
+		int64_t port = wire_ctx_read_u64(in);
 
-	return KNOT_EOK;
-}
+		if (port >= 0) {
+			// Write separator.
+			wire_ctx_write_u8(out, '@');
 
-static int yp_option_to_bin(
-	TXT_BIN_PARAMS,
-	const lookup_table_t *opts)
-{
-	while (opts->name != NULL) {
-		if (strcasecmp(txt, opts->name) == 0) {
-			bin[0] = opts->id;
-			*bin_len = 1;
-			return KNOT_EOK;
-		}
-		opts++;
-	}
-
-	return KNOT_EINVAL;
-}
-
-static int yp_option_to_txt(
-	BIN_TXT_PARAMS,
-	const lookup_table_t *opts)
-{
-	while (opts->name != NULL) {
-		if (bin[0] == opts->id) {
-			int ret = snprintf(txt, *txt_len, "%s", opts->name);
-			if (ret <= 0 || ret >= *txt_len) {
-				return KNOT_ERANGE;
+			// Write port.
+			wire_ctx_skip(in, -sizeof(uint64_t));
+			int ret = yp_int_to_txt(in, out, YP_SNONE);
+			if (ret != KNOT_EOK) {
+				return ret;
 			}
-			*txt_len = ret;
-			return KNOT_EOK;
+		}
+	}
+
+	YP_CHECK_RET;
+}
+
+int yp_option_to_bin(
+	YP_TXT_BIN_PARAMS,
+	const lookup_table_t *opts)
+{
+	YP_CHECK_PARAMS_BIN;
+
+	while (opts->name != NULL) {
+		if (strncasecmp((char *)in->position, opts->name, YP_LEN) == 0) {
+			wire_ctx_write_u8(out, opts->id);
+			wire_ctx_skip(in, YP_LEN);
+			YP_CHECK_RET;
 		}
 		opts++;
 	}
@@ -554,69 +517,216 @@ static int yp_option_to_txt(
 	return KNOT_EINVAL;
 }
 
-static int yp_base64_to_bin(
-	TXT_BIN_PARAMS)
+int yp_option_to_txt(
+	YP_BIN_TXT_PARAMS,
+	const lookup_table_t *opts)
 {
-	int ret = base64_decode((uint8_t *)txt, txt_len, bin, *bin_len);
-	if (ret < 0) {
-		return ret;
+	uint8_t id = wire_ctx_read_u8(in);
+
+	while (opts->name != NULL) {
+		if (id == opts->id) {
+			int ret = snprintf((char *)out->position,
+			                   wire_ctx_available(out), "%s",
+			                   opts->name);
+			if (ret <= 0 || ret >= wire_ctx_available(out)) {
+				return KNOT_ESPACE;
+			}
+			wire_ctx_skip(out, ret);
+			YP_CHECK_RET;
+		}
+		opts++;
 	}
 
-	*bin_len = ret;
-
-	return KNOT_EOK;
+	return KNOT_EINVAL;
 }
 
-static int yp_base64_to_txt(
-	BIN_TXT_PARAMS)
+int yp_dname_to_bin(
+	YP_TXT_BIN_PARAMS)
 {
-	int ret = base64_encode(bin, bin_len, (uint8_t *)txt, *txt_len);
-	if (ret < 0) {
-		return ret;
+	YP_CHECK_PARAMS_BIN;
+
+	// Copy dname string to the buffer to limit dname_from_str overread.
+	char buf[KNOT_DNAME_TXT_MAXLEN + 1];
+	wire_ctx_t buf_ctx = copy_in(in, YP_LEN, buf, sizeof(buf));
+	if (buf_ctx.error != KNOT_EOK) {
+		return buf_ctx.error;
 	}
 
-	if (ret >= *txt_len) {
-		return KNOT_ESPACE;
-	}
-	*txt_len = ret;
-	txt[*txt_len] = '\0';
-
-	return KNOT_EOK;
-}
-
-static int yp_dname_to_bin(
-	TXT_BIN_PARAMS)
-{
-	knot_dname_t *dname = knot_dname_from_str(bin, txt, *bin_len);
+	// Convert the dname.
+	knot_dname_t *dname = knot_dname_from_str(out->position, buf,
+	                                          wire_ctx_available(out));
 	if (dname == NULL) {
 		return KNOT_EINVAL;
 	}
 
-	int ret = knot_dname_wire_check(bin, bin + *bin_len, NULL);
+	// Check the result and count the length.
+	int ret = knot_dname_wire_check(out->position,
+	                                out->position + wire_ctx_available(out),
+	                                NULL);
 	if (ret <= 0) {
 		return KNOT_EINVAL;
 	}
-	*bin_len = ret;
 
-	ret = knot_dname_to_lower(bin);
-	if (ret != KNOT_EOK) {
+	// Convert the result to lower case.
+	if (knot_dname_to_lower(out->position) != KNOT_EOK) {
 		return KNOT_EINVAL;
 	}
 
-	return KNOT_EOK;
+	wire_ctx_skip(out, ret);
+
+	YP_CHECK_RET;
 }
 
-static int yp_dname_to_txt(
-	BIN_TXT_PARAMS)
+int yp_dname_to_txt(
+	YP_BIN_TXT_PARAMS)
 {
-	char *name = knot_dname_to_str(txt, bin, *txt_len);
+	YP_CHECK_PARAMS_TXT;
+
+	char *name = knot_dname_to_str((char *)out->position, in->position,
+	                               wire_ctx_available(out));
 	if (name == NULL) {
 		return KNOT_EINVAL;
 	}
 
-	*txt_len = strlen(txt);
+	wire_ctx_skip(out, strlen((char *)out->position));
 
-	return KNOT_EOK;
+	YP_CHECK_RET;
+}
+
+static int hex_to_num(char hex) {
+	if (hex >= '0' && hex <= '9') return hex - '0';
+	if (hex >= 'a' && hex <= 'f') return hex - 'a' + 10;
+	if (hex >= 'A' && hex <= 'F') return hex - 'A' + 10;
+	return -1;
+}
+
+int yp_hex_to_bin(
+	YP_TXT_BIN_PARAMS)
+{
+	YP_CHECK_PARAMS_BIN;
+
+	// Check for hex notation (leading "0x").
+	if (wire_ctx_available(in) >= 2 &&
+	    in->position[0] == '0' && in->position[1] == 'x') {
+		wire_ctx_skip(in, 2);
+
+		if (YP_LEN % 2 != 0) {
+			return KNOT_EINVAL;
+		}
+
+		// Write data length.
+		wire_ctx_write_u16(out, YP_LEN / 2);
+
+		// Decode hex string.
+		while (YP_LEN > 0) {
+			uint8_t buf[2];
+			wire_ctx_read(in, buf, sizeof(buf));
+
+			if (isxdigit((int)buf[0]) == 0 ||
+			    isxdigit((int)buf[1]) == 0) {
+				return KNOT_EINVAL;
+			}
+
+			wire_ctx_write_u8(out, 16 * hex_to_num(buf[0]) +
+			                            hex_to_num(buf[1]));
+		}
+	} else {
+		// Write data length.
+		wire_ctx_write_u16(out, YP_LEN);
+
+		// Write textual string (without terminator).
+		wire_ctx_write(out, in->position, YP_LEN);
+		wire_ctx_skip(in, YP_LEN);
+	}
+
+	YP_CHECK_RET;
+}
+
+int yp_hex_to_txt(
+	YP_BIN_TXT_PARAMS)
+{
+	YP_CHECK_PARAMS_TXT;
+
+	size_t len = wire_ctx_read_u16(in);
+
+	bool printable = true;
+
+	// Check for printable string.
+	for (size_t i = 0; i < len; i++) {
+		if (isprint(in->position[i]) == 0) {
+			printable = false;
+			break;
+		}
+	}
+
+	if (printable) {
+		wire_ctx_write(out, in->position, len);
+		wire_ctx_skip(in, len);
+	} else {
+		const char *prefix = "0x";
+		const char *hex = "0123456789ABCDEF";
+
+		// Write hex prefix.
+		wire_ctx_write(out, (uint8_t *)prefix, strlen(prefix));
+
+		// Encode data to hex.
+		for (size_t i = 0; i < len; i++) {
+			uint8_t bin = wire_ctx_read_u8(in);
+			wire_ctx_write_u8(out, hex[bin / 16]);
+			wire_ctx_write_u8(out, hex[bin % 16]);
+		}
+	}
+
+	// Write the terminator.
+	wire_ctx_write_u8(out, '\0');
+	wire_ctx_skip(out, -1);
+
+	YP_CHECK_RET;
+}
+
+int yp_base64_to_bin(
+	YP_TXT_BIN_PARAMS)
+{
+	YP_CHECK_PARAMS_BIN;
+
+	// Reserve some space for data length.
+	wire_ctx_skip(out, sizeof(uint16_t));
+
+	int ret = base64_decode(in->position, YP_LEN, out->position,
+	                        wire_ctx_available(out));
+	if (ret < 0) {
+		return ret;
+	}
+	wire_ctx_skip(in, YP_LEN);
+
+	// Write the data length.
+	wire_ctx_skip(out, -sizeof(uint16_t));
+	wire_ctx_write_u16(out, ret);
+	wire_ctx_skip(out, ret);
+
+	YP_CHECK_RET;
+}
+
+int yp_base64_to_txt(
+	YP_BIN_TXT_PARAMS)
+{
+	YP_CHECK_PARAMS_TXT;
+
+	// Read the data length.
+	uint16_t len = wire_ctx_read_u16(in);
+
+	int ret = base64_encode(in->position, len, out->position,
+	                        wire_ctx_available(out));
+	if (ret < 0) {
+		return ret;
+	}
+	wire_ctx_skip(out, ret);
+
+	// Write the terminator.
+	wire_ctx_write_u8(out, '\0');
+	wire_ctx_skip(out, -1);
+
+	YP_CHECK_RET;
 }
 
 int yp_item_to_bin(
@@ -630,72 +740,63 @@ int yp_item_to_bin(
 		return KNOT_EINVAL;
 	}
 
-	switch (item->type) {
-	case YP_TINT:
-		return yp_int_to_bin(txt, txt_len, bin, bin_len, item->var.i.min,
-		                     item->var.i.max, 0, item->var.i.unit);
-	case YP_TBOOL:
-		return yp_bool_to_bin(txt, txt_len, bin, bin_len);
-	case YP_TOPT:
-		return yp_option_to_bin(txt, txt_len, bin, bin_len,
-		                        item->var.o.opts);
-	case YP_TSTR:
-		return yp_str_to_bin(txt, txt_len, bin, bin_len);
-	case YP_TADDR:
-		return yp_addr_to_bin(txt, txt_len, bin, bin_len, false);
-	case YP_TNET:
-		return yp_addr_to_bin(txt, txt_len, bin, bin_len, true);
-	case YP_TDNAME:
-		return yp_dname_to_bin(txt, txt_len, bin, bin_len);
-	case YP_TB64:
-		return yp_base64_to_bin(txt, txt_len, bin, bin_len);
-	case YP_TDATA:
-		return item->var.d.to_bin(txt, txt_len, bin, bin_len);
-	case YP_TREF:
-		return yp_item_to_bin(item->var.r.ref->var.g.id, txt, txt_len,
-		                      bin, bin_len);
-	default:
-		*bin_len = 0;
-		return KNOT_EOK;
-	}
-}
+	wire_ctx_t in = wire_ctx_init_const((const uint8_t *)txt, txt_len);
+	wire_ctx_t out = wire_ctx_init(bin, *bin_len);
 
-static int yp_item_to_txt_unquoted(
-	const yp_item_t *item,
-	const uint8_t *bin,
-	size_t bin_len,
-	char *txt,
-	size_t *txt_len,
-	yp_style_t style)
-{
+	int ret;
+	size_t ref_len;
+
 	switch (item->type) {
 	case YP_TINT:
-		return yp_int_to_txt(bin, bin_len, txt, txt_len,
-		                     item->var.i.unit & style);
+		ret = yp_int_to_bin(&in, &out, NULL, item->var.i.min,
+		                    item->var.i.max, item->var.i.unit);
+		break;
 	case YP_TBOOL:
-		return yp_bool_to_txt(bin, bin_len, txt, txt_len);
+		ret = yp_bool_to_bin(&in, &out, NULL);
+		break;
 	case YP_TOPT:
-		return yp_option_to_txt(bin, bin_len, txt, txt_len,
-		                        item->var.o.opts);
+		ret = yp_option_to_bin(&in, &out, NULL, item->var.o.opts);
+		break;
 	case YP_TSTR:
-		return yp_str_to_txt(bin, bin_len, txt, txt_len);
+		ret = yp_str_to_bin(&in, &out, NULL);
+		break;
 	case YP_TADDR:
-		return yp_addr_to_txt(bin, bin_len, txt, txt_len, false);
-	case YP_TNET:
-		return yp_addr_to_txt(bin, bin_len, txt, txt_len, true);
+		ret = yp_addr_to_bin(&in, &out, NULL);
+		break;
 	case YP_TDNAME:
-		return yp_dname_to_txt(bin, bin_len, txt, txt_len);
+		ret = yp_dname_to_bin(&in, &out, NULL);
+		break;
+	case YP_THEX:
+		ret = yp_hex_to_bin(&in, &out, NULL);
+		break;
 	case YP_TB64:
-		return yp_base64_to_txt(bin, bin_len, txt, txt_len);
+		ret = yp_base64_to_bin(&in, &out, NULL);
+		break;
 	case YP_TDATA:
-		return item->var.d.to_txt(bin, bin_len, txt, txt_len);
+		ret = item->var.d.to_bin(&in, &out, NULL);
+		break;
 	case YP_TREF:
-		return yp_item_to_txt(item->var.r.ref->var.g.id, bin, bin_len,
-		                      txt, txt_len, style | YP_SNOQUOTE);
+		ref_len = wire_ctx_available(&out);
+		ret = yp_item_to_bin(item->var.r.ref->var.g.id,
+		                     (char *)in.position, wire_ctx_available(&in),
+		                     out.position, &ref_len);
+		wire_ctx_skip(&out, ref_len);
+		break;
 	default:
-		*txt_len = 0;
-		return KNOT_EOK;
+		ret = KNOT_EOK;
 	}
+
+	if (ret != KNOT_EOK) {
+		return ret;
+	} else if (in.error != KNOT_EOK) {
+		return in.error;
+	} else if (out.error != KNOT_EOK) {
+		return out.error;
+	}
+
+	*bin_len = wire_ctx_offset(&out);
+
+	return KNOT_EOK;
 }
 
 int yp_item_to_txt(
@@ -706,85 +807,140 @@ int yp_item_to_txt(
 	size_t *txt_len,
 	yp_style_t style)
 {
-	if (item == NULL || txt == NULL || txt_len == NULL) {
+	if (item == NULL || bin == NULL || txt == NULL || txt_len == NULL) {
 		return KNOT_EINVAL;
 	}
 
-	// Print unquoted item value.
-	if (style & YP_SNOQUOTE) {
-		return yp_item_to_txt_unquoted(item, bin, bin_len, txt, txt_len,
-		                               style);
+	wire_ctx_t in = wire_ctx_init_const(bin, bin_len);
+	wire_ctx_t out = wire_ctx_init((uint8_t *)txt, *txt_len);
+
+	// Write leading quote.
+	if (!(style & YP_SNOQUOTE)) {
+		wire_ctx_write_u8(&out, '"');
 	}
 
-	size_t out_len = 0;
+	int ret;
+	size_t ref_len;
 
-	// Print leading quote.
-	if (*txt_len < 1) {
-		return KNOT_ESPACE;
+	switch (item->type) {
+	case YP_TINT:
+		ret = yp_int_to_txt(&in, &out, item->var.i.unit & style);
+		break;
+	case YP_TBOOL:
+		ret = yp_bool_to_txt(&in, &out);
+		break;
+	case YP_TOPT:
+		ret = yp_option_to_txt(&in, &out, item->var.o.opts);
+		break;
+	case YP_TSTR:
+		ret = yp_str_to_txt(&in, &out);
+		break;
+	case YP_TADDR:
+		ret = yp_addr_to_txt(&in, &out);
+		break;
+	case YP_TDNAME:
+		ret = yp_dname_to_txt(&in, &out);
+		break;
+	case YP_THEX:
+		ret = yp_hex_to_txt(&in, &out);
+		break;
+	case YP_TB64:
+		ret = yp_base64_to_txt(&in, &out);
+		break;
+	case YP_TDATA:
+		ret = item->var.d.to_txt(&in, &out);
+		break;
+	case YP_TREF:
+		ref_len = wire_ctx_available(&out);
+		ret = yp_item_to_txt(item->var.r.ref->var.g.id,
+		                     in.position, wire_ctx_available(&in),
+		                     (char *)out.position,
+		                     &ref_len, style | YP_SNOQUOTE);
+		wire_ctx_skip(&out, ref_len);
+		break;
+	default:
+		ret = KNOT_EOK;
 	}
-	*(txt++) = '\"';
-	out_len += sizeof(char);
 
-	// Print unquoted item value.
-	size_t len = *txt_len - out_len;
-	int ret = yp_item_to_txt_unquoted(item, bin, bin_len, txt, &len, style);
+	// Write trailing quote.
+	if (!(style & YP_SNOQUOTE)) {
+		wire_ctx_write_u8(&out, '"');
+	}
+
+	// Write string terminator.
+	wire_ctx_write_u8(&out, '\0');
+	wire_ctx_skip(&out, -1);
+
 	if (ret != KNOT_EOK) {
 		return ret;
+	} else if (in.error != KNOT_EOK) {
+		return in.error;
+	} else if (out.error != KNOT_EOK) {
+		return out.error;
 	}
-	txt += len;
-	out_len += len;
 
-	// Print trailing quote.
-	if (*txt_len - out_len < 2) {
-		return KNOT_ESPACE;
-	}
-	*(txt++) = '\"';
-	out_len += sizeof(char);
-
-	// Print string terminator.
-	*txt = '\0';
-	*txt_len = out_len;
+	*txt_len = wire_ctx_offset(&out);
 
 	return KNOT_EOK;
 }
 
-struct sockaddr_storage yp_addr(
-	const uint8_t *data,
-	size_t data_len,
-	int *num)
+struct sockaddr_storage yp_addr_noport(
+	const uint8_t *data)
 {
 	struct sockaddr_storage ss = { AF_UNSPEC };
 
+	// Read address type.
 	uint8_t type = *data;
 	data += sizeof(type);
-	data_len -= sizeof(type);
 
-	// Set binary address length.
-	int family;
-	size_t bin_addr_len;
+	// Set address.
 	switch (type) {
 	case 0:
-		family = AF_UNIX;
-		bin_addr_len = data_len;
+		sockaddr_set(&ss, AF_UNIX, (char *)data, 0);
 		break;
 	case 4:
-		family = AF_INET;
-		bin_addr_len = sizeof(((struct in_addr *)NULL)->s_addr);
+		sockaddr_set_raw(&ss, AF_INET, data,
+		                 sizeof(((struct in_addr *)NULL)->s_addr));
 		break;
 	case 6:
-		family = AF_INET6;
-		bin_addr_len = sizeof(((struct in6_addr *)NULL)->s6_addr);
+		sockaddr_set_raw(&ss, AF_INET6, data,
+		                 sizeof(((struct in6_addr *)NULL)->s6_addr));
 		break;
-	default:
-		*num = -1;
-		return ss;
 	}
 
-	sockaddr_set_raw(&ss, family, data, bin_addr_len);
-	data += bin_addr_len;
-	data_len -= bin_addr_len;
+	return ss;
+}
 
-	*num = (data_len == 0) ? -1 : yp_int(data, data_len);
+struct sockaddr_storage yp_addr(
+	const uint8_t *data,
+	bool *no_port)
+{
+	struct sockaddr_storage ss = yp_addr_noport(data);
+
+	size_t addr_len;
+
+	// Get binary address length.
+	switch (ss.ss_family) {
+	case AF_INET:
+		addr_len = sizeof(((struct in_addr *)NULL)->s_addr);
+		break;
+	case AF_INET6:
+		addr_len = sizeof(((struct in6_addr *)NULL)->s6_addr);
+		break;
+	default:
+		addr_len = 0;
+		*no_port = true;
+	}
+
+	if (addr_len > 0) {
+		int64_t port = wire_read_u64(data + sizeof(uint8_t) + addr_len);
+		if (port >= 0) {
+			sockaddr_port_set(&ss, port);
+			*no_port = false;
+		} else {
+			*no_port = true;
+		}
+	}
 
 	return ss;
 }

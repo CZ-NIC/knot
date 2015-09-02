@@ -106,6 +106,90 @@ static void test_netblock_match(void)
 	ok(ret == false, "match: ipv6 - last byte, not match");
 }
 
+static void test_netrange_match(void)
+{
+	bool ret;
+	struct sockaddr_storage t = { 0 };
+	struct sockaddr_storage min = { 0 };
+	struct sockaddr_storage max = { 0 };
+
+	// IPv4 tests.
+
+	check_sockaddr_set(&min, AF_INET, "0.0.0.0", 0);
+	check_sockaddr_set(&max, AF_INET, "255.255.255.255", 0);
+
+	check_sockaddr_set(&t, AF_INET, "0.0.0.0", 0);
+	ret = netrange_match(&t, &min, &max);
+	ok(ret == true, "match: ipv4 max range - minimum");
+	check_sockaddr_set(&t, AF_INET, "255.255.255.255", 0);
+	ret = netrange_match(&t, &min, &max);
+	ok(ret == true, "match: ipv4 max range - maximum");
+
+	check_sockaddr_set(&min, AF_INET, "1.13.113.213", 0);
+	check_sockaddr_set(&max, AF_INET, "2.24.124.224", 0);
+
+	check_sockaddr_set(&t, AF_INET, "1.12.113.213", 0);
+	ret = netrange_match(&t, &min, &max);
+	ok(ret == false, "match: ipv4 middle range - negative far min");
+	check_sockaddr_set(&t, AF_INET, "1.13.113.212", 0);
+	ret = netrange_match(&t, &min, &max);
+	ok(ret == false, "match: ipv4 middle range - negative close min");
+	check_sockaddr_set(&t, AF_INET, "1.13.113.213", 0);
+	ret = netrange_match(&t, &min, &max);
+	ok(ret == true, "match: ipv4 middle range - minimum");
+	check_sockaddr_set(&t, AF_INET, "1.13.213.213", 0);
+	ret = netrange_match(&t, &min, &max);
+	ok(ret == true, "match: ipv4 middle range - middle");
+	check_sockaddr_set(&t, AF_INET, "2.24.124.224", 0);
+	ret = netrange_match(&t, &min, &max);
+	ok(ret == true, "match: ipv4 middle range - max");
+	check_sockaddr_set(&t, AF_INET, "2.24.124.225", 0);
+	ret = netrange_match(&t, &min, &max);
+	ok(ret == false, "match: ipv4 middle range - negative close max");
+	check_sockaddr_set(&t, AF_INET, "2.25.124.225", 0);
+	ret = netrange_match(&t, &min, &max);
+	ok(ret == false, "match: ipv4 middle range - negative far max");
+
+	// IPv6 tests.
+
+	check_sockaddr_set(&min, AF_INET6, "::0", 0);
+	check_sockaddr_set(&max, AF_INET6,
+	                   "FFFF:FFFF:FFFF:FFFF:FFFF:FFFF:FFFF:FFFF", 0);
+
+	check_sockaddr_set(&t, AF_INET6, "::0", 0);
+	ret = netrange_match(&t, &min, &max);
+	ok(ret == true, "match: ipv6 max range - minimum");
+	check_sockaddr_set(&t, AF_INET6,
+	                   "FFFF:FFFF:FFFF:FFFF:FFFF:FFFF:FFFF:FFFF", 0);
+	ret = netrange_match(&t, &min, &max);
+	ok(ret == true, "match: ipv6 max range - maximum");
+
+	check_sockaddr_set(&min, AF_INET6, "1:13::ABCD:200B", 0);
+	check_sockaddr_set(&max, AF_INET6, "2:A24::124:224", 0);
+
+	check_sockaddr_set(&t, AF_INET6, "1:12::BCD:2000", 0);
+	ret = netrange_match(&t, &min, &max);
+	ok(ret == false, "match: ipv6 middle range - negative far min");
+	check_sockaddr_set(&t, AF_INET6, "1:13::ABCD:200A", 0);
+	ret = netrange_match(&t, &min, &max);
+	ok(ret == false, "match: ipv6 middle range - negative close min");
+	check_sockaddr_set(&t, AF_INET6, "1:13::ABCD:200B", 0);
+	ret = netrange_match(&t, &min, &max);
+	ok(ret == true, "match: ipv6 middle range - minimum");
+	check_sockaddr_set(&t, AF_INET6, "1:13:0:12:34:0:ABCD:200B", 0);
+	ret = netrange_match(&t, &min, &max);
+	ok(ret == true, "match: ipv6 middle range - middle");
+	check_sockaddr_set(&t, AF_INET6, "2:A24::124:224", 0);
+	ret = netrange_match(&t, &min, &max);
+	ok(ret == true, "match: ipv6 middle range - max");
+	check_sockaddr_set(&t, AF_INET6, "2:A24::124:225", 0);
+	ret = netrange_match(&t, &min, &max);
+	ok(ret == false, "match: ipv6 middle range - negative close max");
+	check_sockaddr_set(&t, AF_INET6, "2:FA24::4:24", 0);
+	ret = netrange_match(&t, &min, &max);
+	ok(ret == false, "match: ipv6 middle range - negative far max");
+}
+
 #define ZONE	"example.zone"
 #define KEY1	"key1_md5"
 #define KEY2	"key2_md5"
@@ -158,10 +242,14 @@ static void test_acl_allowed(void)
 		"  - id: acl_multi_key\n"
 		"    key: [ key2_md5, key3_sha256 ]\n"
 		"    action: [ notify, update ]\n"
+		"  - id: acl_range_addr\n"
+		"    address: [ 100.0.0.0-100.0.0.5, ::0-::5 ]\n"
+		"    action: [ transfer ]\n"
 		"\n"
 		"zone:\n"
 		"  - domain: "ZONE"\n"
-		"    acl: [ acl_key_addr, acl_deny, acl_multi_addr, acl_multi_key]";
+		"    acl: [ acl_key_addr, acl_deny, acl_multi_addr, acl_multi_key]\n"
+		"    acl: [ acl_range_addr]";
 
 	ret = test_conf(conf_str, NULL);
 	ok(ret == KNOT_EOK, "Prepare configuration");
@@ -226,6 +314,18 @@ static void test_acl_allowed(void)
 	ret = acl_allowed(&acl, ACL_ACTION_UPDATE, &addr, &key3);
 	ok(ret == true, "Arbitrary address, second key, action match");
 
+	acl = conf_zone_get(conf(), C_ACL, zone_name);
+	ok(acl.code == KNOT_EOK, "Get zone ACL");
+	check_sockaddr_set(&addr, AF_INET, "100.0.0.1", 0);
+	ret = acl_allowed(&acl, ACL_ACTION_TRANSFER, &addr, &key0);
+	ok(ret == true, "IPv4 address from range, no key, action match");
+
+	acl = conf_zone_get(conf(), C_ACL, zone_name);
+	ok(acl.code == KNOT_EOK, "Get zone ACL");
+	check_sockaddr_set(&addr, AF_INET6, "::1", 0);
+	ret = acl_allowed(&acl, ACL_ACTION_TRANSFER, &addr, &key0);
+	ok(ret == true, "IPv6 address from range, no key, action match");
+
 	conf_free(conf(), false);
 	knot_dname_free(&zone_name, NULL);
 	knot_dname_free(&key1_name, NULL);
@@ -237,8 +337,13 @@ int main(int argc, char *argv[])
 {
 	plan_lazy();
 
+	diag("netblock_match");
 	test_netblock_match();
 
+	diag("netrange_match");
+	test_netrange_match();
+
+	diag("acl_allowed");
 	test_acl_allowed();
 
 	return 0;
