@@ -465,14 +465,14 @@ static int add_rr_to_chgset(const knot_rrset_t *rr,
 		return KNOT_EOK;
 	}
 
-	return changeset_add_rrset(&update->change, rr);
+	return zone_update_add(update, rr);
 }
 
 /*!< \brief Adds RR into remove section of changeset if it is deemed worthy. */
 static int rem_rr_to_chgset(const knot_rrset_t *rr,
                             zone_update_t *update)
 {
-	return changeset_rem_rrset(&update->change, rr);
+	return zone_update_remove(update, rr);
 }
 
 /*!< \brief Adds all RRs from RRSet into remove section of changeset. */
