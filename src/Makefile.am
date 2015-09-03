@@ -182,6 +182,10 @@ sbin_PROGRAMS = knotc knotd
 libexec_PROGRAMS = knot1to2
 noinst_LTLIBRARIES += libknotd.la
 
+EXTRA_DIST = 					\
+	utils/knot1to2/cf-lex.l			\
+	utils/knot1to2/cf-parse.y
+
 knotc_SOURCES =					\
 	knot/ctl/knotc_main.c
 
