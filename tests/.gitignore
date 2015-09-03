@@ -8,6 +8,7 @@ base32hex
 base64
 changeset
 conf
+conf_tools
 descriptor
 dname
 dnssec_keys

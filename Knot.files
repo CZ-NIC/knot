@@ -17,9 +17,9 @@ doc/man_knotd.rst
 doc/man_knsec3hash.rst
 doc/man_knsupdate.rst
 doc/migration.rst
+doc/operation.rst
 doc/reference.rst
 doc/requirements.rst
-doc/running.rst
 doc/troubleshooting.rst
 doc/utilities.rst
 libtap/Makefile.am
@@ -121,6 +121,8 @@ src/dnssec/shared/pem.c
 src/dnssec/shared/pem.h
 src/dnssec/shared/shared.h
 src/dnssec/shared/strtonum.h
+src/dnssec/shared/timestamp.c
+src/dnssec/shared/timestamp.h
 src/dnssec/shared/wire.h
 src/dnssec/tests/Makefile.am
 src/dnssec/tests/binary.c
@@ -145,6 +147,7 @@ src/dnssec/tests/shared_base32hex.c
 src/dnssec/tests/shared_bignum.c
 src/dnssec/tests/shared_dname.c
 src/dnssec/tests/shared_strtonum.c
+src/dnssec/tests/shared_timestamp.c
 src/dnssec/tests/shared_wire.c
 src/dnssec/tests/sign.c
 src/dnssec/tests/sign_der.c
@@ -497,6 +500,7 @@ tests/base32hex.c
 tests/base64.c
 tests/changeset.c
 tests/conf.c
+tests/conf_tools.c
 tests/descriptor.c
 tests/dname.c
 tests/dthreads.c
