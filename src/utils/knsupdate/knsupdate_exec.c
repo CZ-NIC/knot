@@ -439,6 +439,7 @@ static int pkt_sendrecv(knsupdate_params_t *params)
 	ret = net_connect(&net);
 	DBG("%s: send_msg = %d\n", __func__, net.sockfd);
 	if (ret != KNOT_EOK) {
+		net_clean(&net);
 		return -1;
 	}
 
