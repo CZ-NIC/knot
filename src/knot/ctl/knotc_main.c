@@ -247,13 +247,15 @@ static int cmd_remote(struct sockaddr_storage *addr, knot_tsig_key_t *key,
 
 	dbg_server("%s: sending query size %zu\n", __func__, pkt->size);
 
+	/* Default timeout. */
+	conf_val_t val = conf_get(conf(), C_SRV, C_TCP_REPLY_TIMEOUT);
+	const struct timeval tv_reply = { conf_int(&val), 0 };
+
 	/* Connect to remote. */
 	char addr_str[SOCKADDR_STRLEN] = { 0 };
 	sockaddr_tostr(addr_str, sizeof(addr_str), addr);
-	conf_val_t val = conf_get(conf(), C_SRV, C_TCP_REPLY_TIMEOUT);
-	struct timeval tv = { conf_int(&val), 0 };
 
-	int s = net_connected_socket(SOCK_STREAM, addr, NULL, 0, &tv);
+	int s = net_connected_socket(SOCK_STREAM, addr, NULL);
 	if (s < 0) {
 		log_error("failed to connect to remote host '%s'", addr_str);
 		knot_pkt_free(&pkt);
@@ -261,6 +263,7 @@ static int cmd_remote(struct sockaddr_storage *addr, knot_tsig_key_t *key,
 	}
 
 	/* Send and free packet. */
+	struct timeval tv = tv_reply;
 	int ret = tcp_send_msg(s, pkt->wire, pkt->size, &tv);
 	knot_pkt_free(&pkt);
 
@@ -274,6 +277,7 @@ static int cmd_remote(struct sockaddr_storage *addr, knot_tsig_key_t *key,
 	/* Wait for reply. */
 	ret = KNOT_EOK;
 	while (ret == KNOT_EOK) {
+		tv = tv_reply;
 		ret = cmd_remote_reply(s, &tv);
 		if (ret != KNOT_EOK) {
 			if (ret != KNOT_ECONN) {
