@@ -268,7 +268,7 @@ static uint32_t soa_graceful_expire(const knot_rdataset_t *soa)
 {
 	// Allow for timeouts.  Otherwise zones with very short
 	// expiry may expire before the timeout is reached.
-	conf_val_t val = conf_get(conf(), C_SRV, C_TCP_IDLE_TIMEOUT);
+	conf_val_t val = conf_get(conf(), C_SRV, C_TCP_REPLY_TIMEOUT);
 	return knot_soa_expire(soa) + 2 * conf_int(&val);
 }
 

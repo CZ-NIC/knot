@@ -148,7 +148,7 @@ static int cmd_remote_print_reply(const knot_rrset_t *rr)
 	return KNOT_EOK;
 }
 
-static int cmd_remote_reply(int c)
+static int cmd_remote_reply(int c, struct timeval *timeout)
 {
 	knot_pkt_t *pkt = knot_pkt_new(NULL, KNOT_WIRE_MAX_PKTSIZE, NULL);
 	if (!pkt) {
@@ -156,7 +156,7 @@ static int cmd_remote_reply(int c)
 	}
 
 	/* Read response packet. */
-	int n = tcp_recv_msg(c, pkt->wire, pkt->max_size, NULL);
+	int n = tcp_recv_msg(c, pkt->wire, pkt->max_size, timeout);
 	if (n <= 0) {
 		dbg_server("remote: couldn't receive response = %s\n", knot_strerror(n));
 		knot_pkt_free(&pkt);
@@ -247,29 +247,24 @@ static int cmd_remote(struct sockaddr_storage *addr, knot_tsig_key_t *key,
 
 	dbg_server("%s: sending query size %zu\n", __func__, pkt->size);
 
+	/* Default timeout. */
+	conf_val_t val = conf_get(conf(), C_SRV, C_TCP_REPLY_TIMEOUT);
+	const struct timeval tv_reply = { conf_int(&val), 0 };
+
 	/* Connect to remote. */
-	char addr_str[SOCKADDR_STRLEN] = {0};
+	char addr_str[SOCKADDR_STRLEN] = { 0 };
 	sockaddr_tostr(addr_str, sizeof(addr_str), addr);
 
-	int s = net_connected_socket(SOCK_STREAM, addr, NULL, 0);
+	int s = net_connected_socket(SOCK_STREAM, addr, NULL);
 	if (s < 0) {
 		log_error("failed to connect to remote host '%s'", addr_str);
 		knot_pkt_free(&pkt);
 		return 1;
 	}
 
-	/* Wait for availability. */
-	struct pollfd pfd = { s, POLLOUT, 0 };
-	conf_val_t val = conf_get(conf(), C_SRV, C_TCP_REPLY_TIMEOUT);
-	if (poll(&pfd, 1, conf_int(&val)) != 1) {
-		log_error("failed to connect to remote host '%s'", addr_str);
-		close(s);
-		knot_pkt_free(&pkt);
-		return 1;
-	}
-
 	/* Send and free packet. */
-	int ret = tcp_send_msg(s, pkt->wire, pkt->size, NULL);
+	struct timeval tv = tv_reply;
+	int ret = tcp_send_msg(s, pkt->wire, pkt->size, &tv);
 	knot_pkt_free(&pkt);
 
 	/* Evaluate and wait for reply. */
@@ -282,7 +277,8 @@ static int cmd_remote(struct sockaddr_storage *addr, knot_tsig_key_t *key,
 	/* Wait for reply. */
 	ret = KNOT_EOK;
 	while (ret == KNOT_EOK) {
-		ret = cmd_remote_reply(s);
+		tv = tv_reply;
+		ret = cmd_remote_reply(s, &tv);
 		if (ret != KNOT_EOK) {
 			if (ret != KNOT_ECONN) {
 				log_notice("remote command reply: %s",

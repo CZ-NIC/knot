@@ -45,7 +45,8 @@ static int request_ensure_connected(struct knot_request *request)
 	/* Connect the socket if not already connected. */
 	if (request->fd < 0) {
 		int sock_type = use_tcp(request) ? SOCK_STREAM : SOCK_DGRAM;
-		request->fd = net_connected_socket(sock_type, &request->remote, &request->origin, 0);
+		request->fd = net_connected_socket(sock_type, &request->remote,
+		                                   &request->origin);
 		if (request->fd < 0) {
 			return KNOT_ECONN;
 		}
@@ -54,8 +55,12 @@ static int request_ensure_connected(struct knot_request *request)
 	return KNOT_EOK;
 }
 
-static int request_send(struct knot_request *request, struct timeval *timeout)
+static int request_send(struct knot_request *request,
+                        const struct timeval *timeout)
 {
+	/* Each request has unique timeout. */
+	struct timeval tv = *timeout;
+
 	/* Wait for writeability or error. */
 	int ret = request_ensure_connected(request);
 	if (ret != KNOT_EOK) {
@@ -69,7 +74,7 @@ static int request_send(struct knot_request *request, struct timeval *timeout)
 
 	/* Send query. */
 	if (use_tcp(request)) {
-		ret = tcp_send_msg(request->fd, wire, wire_len, timeout);
+		ret = tcp_send_msg(request->fd, wire, wire_len, &tv);
 	} else {
 		ret = udp_send_msg(request->fd, wire, wire_len, NULL);
 	}
@@ -86,14 +91,14 @@ static int request_recv(struct knot_request *request,
 	knot_pkt_t *resp = request->resp;
 	knot_pkt_clear(resp);
 
-	/* Each request has unique timeout. */
-	struct timeval tv = { timeout->tv_sec, timeout->tv_usec };
-
 	/* Wait for readability */
 	int ret = request_ensure_connected(request);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
+
+	/* Each request has unique timeout. */
+	struct timeval tv = *timeout;
 
 	/* Receive it */
 	if (use_tcp(request)) {

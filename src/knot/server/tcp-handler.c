@@ -114,9 +114,8 @@ static int tcp_handle(tcp_context_t *tcp, int fd,
 	/* Timeout. */
 	rcu_read_lock();
 	conf_val_t val = conf_get(conf(), C_SRV, C_TCP_REPLY_TIMEOUT);
-	int64_t max_conn_reply = conf_int(&val);
+	struct timeval tmout = { conf_int(&val), 0 };
 	rcu_read_unlock();
-	struct timeval tmout = { max_conn_reply, 0 };
 
 	/* Receive data. */
 	struct timeval recv_tmout = tmout;

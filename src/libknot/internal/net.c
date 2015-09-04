@@ -154,7 +154,7 @@ int net_bound_socket(int type, const struct sockaddr_storage *ss,
 }
 
 int net_connected_socket(int type, const struct sockaddr_storage *dst_addr,
-                         const struct sockaddr_storage *src_addr, unsigned flags)
+                         const struct sockaddr_storage *src_addr)
 {
 	if (dst_addr == NULL) {
 		return KNOT_EINVAL;
@@ -164,7 +164,7 @@ int net_connected_socket(int type, const struct sockaddr_storage *dst_addr,
 
 	/* Check port. */
 	if (sockaddr_port(dst_addr) == 0) {
-		return KNOT_ECONN;
+		return KNOT_NET_EADDR;
 	}
 
 	/* Bind to specific source address - if set. */
@@ -177,16 +177,18 @@ int net_connected_socket(int type, const struct sockaddr_storage *dst_addr,
 		return socket;
 	}
 
-	/* Set socket flags. */
-	if (fcntl(socket, F_SETFL, flags) < 0)
-		;
+	/* Switch the socket to non-blocking mode. */
+	if (fcntl(socket, F_SETFL, O_NONBLOCK) < 0) {
+		close(socket);
+		return KNOT_NET_ESOCKET;
+	}
 
 	/* Connect to destination. */
 	const struct sockaddr *sa = (const struct sockaddr *)dst_addr;
 	int ret = connect(socket, sa, sockaddr_len(sa));
 	if (ret != 0 && errno != EINPROGRESS) {
 		close(socket);
-		return knot_map_errno();
+		return KNOT_NET_ECONNECT;
 	}
 
 	return socket;
