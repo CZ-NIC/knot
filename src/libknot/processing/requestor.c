@@ -40,17 +40,13 @@ static struct knot_request *request_make(mm_ctx_t *mm)
 }
 
 /*! \brief Ensure a socket is connected. */
-static int request_ensure_connected(struct knot_request *request,
-                                    const struct timeval *timeout)
+static int request_ensure_connected(struct knot_request *request)
 {
-	/* Each request has unique timeout. */
-	struct timeval tv = *timeout;
-
 	/* Connect the socket if not already connected. */
 	if (request->fd < 0) {
 		int sock_type = use_tcp(request) ? SOCK_STREAM : SOCK_DGRAM;
 		request->fd = net_connected_socket(sock_type, &request->remote,
-		                                   &request->origin, 0, &tv);
+		                                   &request->origin);
 		if (request->fd < 0) {
 			return KNOT_ECONN;
 		}
@@ -66,7 +62,7 @@ static int request_send(struct knot_request *request,
 	struct timeval tv = *timeout;
 
 	/* Wait for writeability or error. */
-	int ret = request_ensure_connected(request, &tv);
+	int ret = request_ensure_connected(request);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
@@ -95,14 +91,14 @@ static int request_recv(struct knot_request *request,
 	knot_pkt_t *resp = request->resp;
 	knot_pkt_clear(resp);
 
-	/* Each request has unique timeout. */
-	struct timeval tv = *timeout;
-
 	/* Wait for readability */
-	int ret = request_ensure_connected(request, &tv);
+	int ret = request_ensure_connected(request);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
+
+	/* Each request has unique timeout. */
+	struct timeval tv = *timeout;
 
 	/* Receive it */
 	if (use_tcp(request)) {

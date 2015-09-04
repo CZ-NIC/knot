@@ -158,9 +158,9 @@ int main(int argc, char *argv[])
 
 	/* Terminate responder. */
 	struct timeval tv = { 5, 0 };
-	int responder = net_connected_socket(SOCK_STREAM, &remote.addr, NULL, 0, &tv);
+	int responder = net_connected_socket(SOCK_STREAM, &remote.addr, NULL);
 	assert(responder > 0);
-	tcp_send_msg(responder, (const uint8_t *)"", 1, NULL);
+	tcp_send_msg(responder, (const uint8_t *)"", 1, &tv);
 	(void) pthread_join(thread, 0);
 	close(responder);
 
