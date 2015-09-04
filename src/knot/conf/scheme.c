@@ -74,8 +74,7 @@ static const lookup_table_t log_severities[] = {
 static const yp_item_t desc_server[] = {
 	{ C_IDENT,               YP_TSTR,  YP_VNONE },
 	{ C_VERSION,             YP_TSTR,  YP_VNONE },
-	{ C_NSID,                YP_TDATA, YP_VDATA = { 0, NULL, hex_text_to_bin,
-	                                                hex_text_to_txt } },
+	{ C_NSID,                YP_THEX,  YP_VNONE },
 	{ C_RUNDIR,              YP_TSTR,  YP_VSTR = { RUN_DIR } },
 	{ C_USER,                YP_TSTR,  YP_VNONE },
 	{ C_PIDFILE,             YP_TSTR,  YP_VSTR = { "knot.pid" } },
@@ -108,7 +107,8 @@ static const yp_item_t desc_key[] = {
 
 static const yp_item_t desc_acl[] = {
 	{ C_ID,      YP_TSTR,  YP_VNONE },
-	{ C_ADDR,    YP_TNET,  YP_VNONE, YP_FMULTI },
+	{ C_ADDR,    YP_TDATA, YP_VDATA = { 0, NULL, addr_range_to_bin,
+	                                    addr_range_to_txt }, YP_FMULTI },
 	{ C_KEY,     YP_TREF,  YP_VREF = { C_KEY }, YP_FMULTI, { check_ref } },
 	{ C_ACTION,  YP_TOPT,  YP_VOPT = { acl_actions, ACL_ACTION_NONE }, YP_FMULTI },
 	{ C_DENY,    YP_TBOOL, YP_VNONE },

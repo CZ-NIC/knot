@@ -36,10 +36,11 @@ static void int_test(const char *txt, int64_t num, yp_style_t s,
 	diag("integer \"%s\":", txt);
 	ret = yp_item_to_bin(&i, txt, strlen(txt), b, &b_len);
 	ok(ret == KNOT_EOK, "txt to bin");
-	ok(yp_int(b, b_len) == num, "compare");
+	ok(yp_int(b) == num, "compare");
 	ret = yp_item_to_txt(&i, b, b_len, t, &t_len, s | YP_SNOQUOTE);
 	ok(ret == KNOT_EOK, "bin to txt");
-	ok(strlen(t) == t_len, "txt length");
+	ok(strlen(t) == t_len, "txt ret length");
+	ok(strlen(txt) == t_len, "txt length");
 	ok(memcmp(txt, t, t_len) == 0, "compare");
 }
 
@@ -68,10 +69,11 @@ static void bool_test(const char *txt, bool val)
 	diag("boolean \"%s\":", txt);
 	ret = yp_item_to_bin(&i, txt, strlen(txt), b, &b_len);
 	ok(ret == KNOT_EOK, "txt to bin");
-	ok(yp_bool(b_len) == val, "compare");
+	ok(yp_bool(b) == val, "compare");
 	ret = yp_item_to_txt(&i, b, b_len, t, &t_len, YP_SNOQUOTE);
 	ok(ret == KNOT_EOK, "bin to txt");
-	ok(strlen(t) == t_len, "txt length");
+	ok(strlen(t) == t_len, "txt ret length");
+	ok(strlen(txt) == t_len, "txt length");
 	ok(memcmp(txt, t, t_len) == 0, "compare");
 }
 
@@ -103,7 +105,8 @@ static void opt_test(const char *txt, unsigned val, const lookup_table_t *opts)
 	ok(yp_opt(b) == val, "compare");
 	ret = yp_item_to_txt(&i, b, b_len, t, &t_len, YP_SNOQUOTE);
 	ok(ret == KNOT_EOK, "bin to txt");
-	ok(strlen(t) == t_len, "txt length");
+	ok(strlen(t) == t_len, "txt ret length");
+	ok(strlen(txt) == t_len, "txt length");
 	ok(memcmp(txt, t, t_len) == 0, "compare");
 }
 
@@ -135,11 +138,12 @@ static void str_test(const char *txt, const char *val)
 	ok(memcmp(yp_str(b), val, b_len) == 0, "compare");
 	ret = yp_item_to_txt(&i, b, b_len, t, &t_len, YP_SNOQUOTE);
 	ok(ret == KNOT_EOK, "bin to txt");
-	ok(strlen(t) == t_len, "txt length");
+	ok(strlen(t) == t_len, "txt ret length");
+	ok(strlen(txt) == t_len, "txt length");
 	ok(memcmp(txt, t, t_len) == 0, "compare");
 }
 
-static void addr_test(const char *txt, int port)
+static void addr_test(const char *txt, bool port)
 {
 	int ret;
 	uint8_t b[64];
@@ -151,12 +155,13 @@ static void addr_test(const char *txt, int port)
 	diag("address \"%s\":", txt);
 	ret = yp_item_to_bin(&i, txt, strlen(txt), b, &b_len);
 	ok(ret == KNOT_EOK, "txt to bin");
-	int num;
-	yp_addr(b, b_len, &num);
-	ok(num == port, "compare port");
+	bool no_port;
+	yp_addr(b, &no_port);
+	ok(no_port == port, "compare port presence");
 	ret = yp_item_to_txt(&i, b, b_len, t, &t_len, YP_SNOQUOTE);
 	ok(ret == KNOT_EOK, "bin to txt");
-	ok(strlen(t) == t_len, "txt length");
+	ok(strlen(t) == t_len, "txt ret length");
+	ok(strlen(txt) == t_len, "txt length");
 	ok(memcmp(txt, t, t_len) == 0, "compare");
 }
 
@@ -168,39 +173,6 @@ static void addr_bad_test(const char *txt, int code)
 	yp_item_t i = { NULL, YP_TADDR, YP_VNONE };
 
 	diag("address \"%s\":", txt);
-	ret = yp_item_to_bin(&i, txt, strlen(txt), b, &b_len);
-	ok(ret == code, "invalid txt to bin");
-}
-
-static void net_test(const char *txt, int mask)
-{
-	int ret;
-	uint8_t b[64];
-	size_t b_len = sizeof(b);
-	char t[64];
-	size_t t_len = sizeof(t);
-	yp_item_t i = { NULL, YP_TNET, YP_VNONE };
-
-	diag("network \"%s\":", txt);
-	ret = yp_item_to_bin(&i, txt, strlen(txt), b, &b_len);
-	ok(ret == KNOT_EOK, "txt to bin");
-	int num;
-	yp_addr(b, b_len, &num);
-	ok(num == mask, "compare mask");
-	ret = yp_item_to_txt(&i, b, b_len, t, &t_len, YP_SNOQUOTE);
-	ok(ret == KNOT_EOK, "bin to txt");
-	ok(strlen(t) == t_len, "txt length");
-	ok(memcmp(txt, t, t_len) == 0, "compare");
-}
-
-static void net_bad_test(const char *txt, int code)
-{
-	int ret;
-	uint8_t b[64];
-	size_t b_len = sizeof(b);
-	yp_item_t i = { NULL, YP_TNET, YP_VNONE };
-
-	diag("network \"%s\":", txt);
 	ret = yp_item_to_bin(&i, txt, strlen(txt), b, &b_len);
 	ok(ret == code, "invalid txt to bin");
 }
@@ -220,8 +192,45 @@ static void dname_test(const char *txt, const char *val)
 	ok(memcmp(yp_dname(b), val, b_len) == 0, "compare");
 	ret = yp_item_to_txt(&i, b, b_len, t, &t_len, YP_SNOQUOTE);
 	ok(ret == KNOT_EOK, "bin to txt");
-	ok(strlen(t) == t_len, "txt length");
+	ok(strlen(t) == t_len, "txt ret length");
+	ok(strlen(txt) == t_len, "txt length");
 	ok(memcmp(txt, t, t_len) == 0, "compare");
+}
+
+static void hex_test(const char *txt, const char *val, const char *txt_out)
+{
+	int ret;
+	uint8_t b[64];
+	size_t b_len = sizeof(b);
+	char t[64];
+	size_t t_len = sizeof(t);
+	yp_item_t i = { NULL, YP_THEX, YP_VNONE };
+
+	if (txt_out == NULL) {
+		txt_out = txt;
+	}
+
+	diag("hex \"%s\":", txt);
+	ret = yp_item_to_bin(&i, txt, strlen(txt), b, &b_len);
+	ok(ret == KNOT_EOK, "txt to bin");
+	ok(memcmp(yp_bin(b), val, yp_bin_len(b)) == 0, "compare");
+	ret = yp_item_to_txt(&i, b, b_len, t, &t_len, YP_SNOQUOTE);
+	ok(ret == KNOT_EOK, "bin to txt");
+	ok(strlen(t) == t_len, "txt ret length");
+	ok(strlen(txt_out) == t_len, "txt length");
+	ok(memcmp(txt_out, t, t_len) == 0, "compare");
+}
+
+static void hex_bad_test(const char *txt, int code)
+{
+	int ret;
+	uint8_t b[64];
+	size_t b_len = sizeof(b);
+	yp_item_t i = { NULL, YP_THEX, YP_VNONE };
+
+	diag("hex \"%s\":", txt);
+	ret = yp_item_to_bin(&i, txt, strlen(txt), b, &b_len);
+	ok(ret == code, "invalid txt to bin");
 }
 
 static void base64_test(const char *txt, const char *val)
@@ -236,10 +245,35 @@ static void base64_test(const char *txt, const char *val)
 	diag("base64 \"%s\":", txt);
 	ret = yp_item_to_bin(&i, txt, strlen(txt), b, &b_len);
 	ok(ret == KNOT_EOK, "txt to bin");
-	ok(memcmp(b, val, b_len) == 0, "compare");
+	ok(memcmp(yp_bin(b), val, yp_bin_len(b)) == 0, "compare");
 	ret = yp_item_to_txt(&i, b, b_len, t, &t_len, YP_SNOQUOTE);
 	ok(ret == KNOT_EOK, "bin to txt");
-	ok(strlen(t) == t_len, "txt length");
+	ok(strlen(t) == t_len, "txt ret length");
+	ok(strlen(txt) == t_len, "txt length");
+	ok(memcmp(txt, t, t_len) == 0, "compare");
+}
+
+static void ref_test(const char *txt, bool val)
+{
+	int ret;
+	uint8_t b[64];
+	size_t b_len = sizeof(b);
+	char t[64];
+	size_t t_len = sizeof(t);
+	yp_item_t id = { NULL, YP_TBOOL, YP_VNONE };
+	yp_item_t ref = { NULL, YP_TGRP, YP_VNONE };
+	yp_item_t i = { NULL, YP_TREF, YP_VNONE };
+	ref.var.g.id = &id;
+	i.var.r.ref = &ref;
+
+	diag("reference to boolean \"%s\":", txt);
+	ret = yp_item_to_bin(&i, txt, strlen(txt), b, &b_len);
+	ok(ret == KNOT_EOK, "txt to bin");
+	ok(yp_bool(b) == val, "compare");
+	ret = yp_item_to_txt(&i, b, b_len, t, &t_len, YP_SNOQUOTE);
+	ok(ret == KNOT_EOK, "bin to txt");
+	ok(strlen(t) == t_len, "txt ret length");
+	ok(strlen(txt) == t_len, "txt length");
 	ok(memcmp(txt, t, t_len) == 0, "compare");
 }
 
@@ -262,13 +296,17 @@ int main(int argc, char *argv[])
 	int_test("11m", 11LL * 60, YP_STIME, min, max);
 	int_test("11h", 11LL * 3600, YP_STIME, min, max);
 	int_test("11d", 11LL * 24 * 3600, YP_STIME, min, max);
+	int_test("1025B", 1025LL, YP_SSIZE, min, max);
+	int_test("61s", 61LL, YP_STIME, min, max);
 	int_bad_test("20000000001", KNOT_ERANGE, YP_SNONE, min, max);
 	int_bad_test("-20000000001", KNOT_ERANGE, YP_SNONE, min, max);
-	int_bad_test("1X", KNOT_EINVAL, YP_SNONE, min, max);
+	int_bad_test("1x", KNOT_EINVAL, YP_SNONE, min, max);
+	int_bad_test("1sx", KNOT_EINVAL, YP_STIME, min, max);
 
 	/* Boolean tests. */
 	bool_test("on", true);
 	bool_test("off", false);
+	bool_bad_test("onx", KNOT_EINVAL);
 	bool_bad_test("enable", KNOT_EINVAL);
 
 	/* Option tests. */
@@ -281,35 +319,38 @@ int main(int argc, char *argv[])
 	opt_test("one", 1, opts);
 	opt_test("ten", 10, opts);
 	opt_test("max", 255, opts);
+	opt_bad_test("onex", KNOT_EINVAL, opts);
 	opt_bad_test("word", KNOT_EINVAL, opts);
 
 	/* String tests. */
 	str_test("Test string!", "Test string!");
 
 	/* Address tests. */
-	addr_test("192.168.123.1", -1);
-	addr_test("192.168.123.1@12345", 12345);
-	addr_test("2001:db8::1", -1);
-	addr_test("::1@12345", 12345);
-	addr_test("/tmp/test.sock", -1);
+	addr_test("192.168.123.1", true);
+	addr_test("192.168.123.1@12345", false);
+	addr_test("2001:db8::1", true);
+	addr_test("::1@12345", false);
+	addr_test("/tmp/test.sock", true);
+	addr_bad_test("192.168.123.x", KNOT_EINVAL);
+	addr_bad_test("192.168.123.1@", KNOT_EINVAL);
+	addr_bad_test("192.168.123.1@1x", KNOT_EINVAL);
 	addr_bad_test("192.168.123.1@65536", KNOT_ERANGE);
-
-	/* Network tests. */
-	net_test("192.168.123.1", -1);
-	net_test("192.168.123.1/32", 32);
-	net_test("2001:db8::1", -1);
-	net_test("::1/128", 128);
-	net_bad_test("192.168.123.1/33", KNOT_ERANGE);
-	net_bad_test("::1/129", KNOT_ERANGE);
-	net_bad_test("/tmp/test.sock", KNOT_EINVAL);
 
 	/* Dname tests. */
 	dname_test("example.com.", "\x07""example""\x03""com""\x00");
 
+	/* Hex tests. */
+	hex_test("", "", NULL);
+	hex_test("0x", "", "");
+	hex_test("Hello World!", "Hello World!", NULL);
+	hex_test("0x0155FF", "\x01\x55\xFF", NULL);
+	hex_bad_test("0xA", KNOT_EINVAL);
+
 	/* Base64 tests. */
 	base64_test("Zm9vYmFy", "foobar");
 
-	/* TODO: data, ref tests. */
+	/* Ref tests. */
+	ref_test("on", true);
 
 	return 0;
 }

@@ -372,7 +372,7 @@ int64_t conf_int(
 
 	if (val->code == KNOT_EOK) {
 		conf_db_val(val);
-		return yp_int(val->data, val->len);
+		return yp_int(val->data);
 	} else {
 		return val->item->var.i.dflt;
 	}
@@ -388,7 +388,7 @@ bool conf_bool(
 
 	if (val->code == KNOT_EOK) {
 		conf_db_val(val);
-		return yp_bool(val->len);
+		return yp_bool(val->data);
 	} else {
 		return val->item->var.b.dflt;
 	}
@@ -442,20 +442,42 @@ const knot_dname_t* conf_dname(
 	}
 }
 
-void conf_data(
-	conf_val_t *val)
+const uint8_t* conf_bin(
+	conf_val_t *val,
+	size_t *len)
 {
-	assert(val != NULL && val->item != NULL);
-	assert(val->item->type == YP_TB64 || val->item->type == YP_TDATA ||
+	assert(val != NULL && val->item != NULL && len != NULL);
+	assert(val->item->type == YP_THEX || val->item->type == YP_TB64 ||
 	       (val->item->type == YP_TREF &&
-	        (val->item->var.r.ref->var.g.id->type == YP_TB64 ||
-	         val->item->var.r.ref->var.g.id->type == YP_TDATA)));
+	        (val->item->var.r.ref->var.g.id->type == YP_THEX ||
+	         val->item->var.r.ref->var.g.id->type == YP_TB64)));
 
 	if (val->code == KNOT_EOK) {
 		conf_db_val(val);
+		*len = yp_bin_len(val->data);
+		return yp_bin(val->data);
 	} else {
-		val->data = (const uint8_t *)val->item->var.d.dflt;
-		val->len = val->item->var.d.dflt_len;
+		*len = val->item->var.d.dflt_len;
+		return val->item->var.d.dflt;
+	}
+}
+
+const uint8_t* conf_data(
+	conf_val_t *val,
+	size_t *len)
+{
+	assert(val != NULL && val->item != NULL);
+	assert(val->item->type == YP_TDATA ||
+	       (val->item->type == YP_TREF &&
+	        val->item->var.r.ref->var.g.id->type == YP_TDATA));
+
+	if (val->code == KNOT_EOK) {
+		conf_db_val(val);
+		*len = val->len;
+		return val->data;
+	} else {
+		*len = val->item->var.d.dflt_len;
+		return val->item->var.d.dflt;
 	}
 }
 
@@ -471,24 +493,19 @@ struct sockaddr_storage conf_addr(
 	struct sockaddr_storage out = { AF_UNSPEC };
 
 	if (val->code == KNOT_EOK) {
-		int port;
+		bool no_port;
 		conf_db_val(val);
-		out = yp_addr(val->data, val->len, &port);
+		out = yp_addr(val->data, &no_port);
 
 		if (out.ss_family == AF_UNIX) {
 			// val->data[0] is socket type identifier!
-			if (val->data[1] == '/' || sock_base_dir == NULL) {
-				val->code = sockaddr_set(&out, AF_UNIX,
-				                         (char *)val->data + 1, 0);
-			} else {
+			if (val->data[1] != '/' && sock_base_dir != NULL) {
 				char *tmp = sprintf_alloc("%s/%s", sock_base_dir,
 				                          val->data + 1);
 				val->code = sockaddr_set(&out, AF_UNIX, tmp, 0);
 				free(tmp);
 			}
-		} else if (port != -1) {
-			sockaddr_port_set(&out, port);
-		} else {
+		} else if (no_port) {
 			sockaddr_port_set(&out, val->item->var.a.dflt_port);
 		}
 	} else {
@@ -509,22 +526,44 @@ struct sockaddr_storage conf_addr(
 	return out;
 }
 
-struct sockaddr_storage conf_net(
+struct sockaddr_storage conf_addr_range(
 	conf_val_t *val,
-	int *prefix_length)
+	struct sockaddr_storage *max_ss,
+	int *prefix_len)
 {
-	assert(val != NULL && val->item != NULL && prefix_length != NULL);
-	assert(val->item->type == YP_TNET ||
+	assert(val != NULL && val->item != NULL && max_ss != NULL &&
+	       prefix_len != NULL);
+	assert(val->item->type == YP_TDATA ||
 	       (val->item->type == YP_TREF &&
-	        val->item->var.r.ref->var.g.id->type == YP_TNET));
+	        val->item->var.r.ref->var.g.id->type == YP_TDATA));
 
 	struct sockaddr_storage out = { AF_UNSPEC };
 
 	if (val->code == KNOT_EOK) {
 		conf_db_val(val);
-		out = yp_addr(val->data, val->len, prefix_length);
+		out = yp_addr_noport(val->data);
+		// addr_type, addr, format, formatted_data (port| addr| empty).
+		const uint8_t *format = val->data + sizeof(uint8_t) +
+		                        ((out.ss_family == AF_INET) ?
+		                        IPV4_PREFIXLEN / 8 : IPV6_PREFIXLEN / 8);
+		// See addr_range_to_bin.
+		switch (*format) {
+		case 1:
+			max_ss->ss_family = AF_UNSPEC;
+			*prefix_len = yp_int(format + sizeof(uint8_t));
+			break;
+		case 2:
+			*max_ss = yp_addr_noport(format + sizeof(uint8_t));
+			*prefix_len = -1;
+			break;
+		default:
+			max_ss->ss_family = AF_UNSPEC;
+			*prefix_len = -1;
+			break;
+		}
 	} else {
-		*prefix_length = 0;
+		max_ss->ss_family = AF_UNSPEC;
+		*prefix_len = -1;
 	}
 
 	return out;
@@ -865,9 +904,7 @@ conf_remote_t conf_remote_txn(
 		out.key.algorithm = conf_opt(&val);
 
 		val = conf_id_get_txn(conf, txn, C_KEY, C_SECRET, &key_id);
-		conf_data(&val);
-		out.key.secret.data = (uint8_t *)val.data;
-		out.key.secret.size = val.len;
+		out.key.secret.data = (uint8_t *)conf_bin(&val, &out.key.secret.size);
 	}
 
 	free(rundir);

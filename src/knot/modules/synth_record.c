@@ -56,7 +56,8 @@ const yp_item_t scheme_mod_synth_record[] = {
 	{ MOD_PREFIX, YP_TSTR,   YP_VNONE, YP_FNONE, { check_prefix } },
 	{ MOD_ORIGIN, YP_TDNAME, YP_VNONE },
 	{ MOD_TTL,    YP_TINT,   YP_VINT = { 0, UINT32_MAX, 3600, YP_STIME } },
-	{ MOD_NET,    YP_TNET,   YP_VNONE },
+	{ MOD_NET,    YP_TDATA,  YP_VDATA = { 0, NULL, addr_range_to_bin,
+	                                      addr_range_to_txt }, YP_FMULTI },
 	{ C_COMMENT,  YP_TSTR,   YP_VNONE },
 	{ NULL }
 };
@@ -103,7 +104,7 @@ int check_mod_synth_record(conf_check_t *args)
 		return KNOT_EINVAL;
 	}
 
-	// Check network prefix.
+	// Check network subnet.
 	conf_val_t net = conf_rawid_get_txn(args->conf, args->txn, C_MOD_SYNTH_RECORD,
 	                                    MOD_NET, args->previous->id,
 	                                    args->previous->id_len);
@@ -128,6 +129,7 @@ typedef struct synth_template {
 	char *zone;
 	uint32_t ttl;
 	struct sockaddr_storage addr;
+	struct sockaddr_storage addr_max;
 	int mask;
 } synth_template_t;
 
@@ -354,8 +356,14 @@ static int template_match(int state, synth_template_t *tpl, knot_pkt_t *pkt, str
 	if (ret != KNOT_EOK) {
 		return state;
 	}
-	if (!netblock_match(&tpl->addr, &query_addr, tpl->mask)) {
-		return state; /* Out of our netblock, not applicable. */
+	if (tpl->addr_max.ss_family == AF_UNSPEC) {
+		if (!netblock_match(&query_addr, &tpl->addr, tpl->mask)) {
+			return state; /* Out of our netblock, not applicable. */
+		}
+	} else {
+		if (!netrange_match(&query_addr, &tpl->addr, &tpl->addr_max)) {
+			return state; /* Out of our netblock, not applicable. */
+		}
 	}
 
 	/* Check if the request is for an available query type. */
@@ -449,7 +457,7 @@ int synth_record_load(struct query_plan *plan, struct query_module *self)
 
 	/* Set address. */
 	val = conf_mod_get(self->config, MOD_NET, self->id);
-	tpl->addr = conf_net(&val, &tpl->mask);
+	tpl->addr = conf_addr_range(&val, &tpl->addr_max, &tpl->mask);
 
 	self->ctx = tpl;
 

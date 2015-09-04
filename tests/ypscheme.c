@@ -109,7 +109,7 @@ int main(int argc, char *argv[])
 		ok(ctx->event == YP_EKEY0, "event check");
 		ok(strcmp(ctx->key0->name + 1, "bool") == 0, "name check");
 		ok(ctx->key0->type == YP_TBOOL, "type check");
-		ok(yp_bool(ctx->data_len) == true, "value check");
+		ok(yp_bool(ctx->data) == true, "value check");
 	}
 	for (int i = 0; i < 2; i++) {
 		ret = yp_parse(yp);
@@ -119,7 +119,7 @@ int main(int argc, char *argv[])
 		ok(ctx->event == YP_EKEY0, "event check");
 		ok(strcmp(ctx->key0->name + 1, "bool") == 0, "name check");
 		ok(ctx->key0->type == YP_TBOOL, "type check");
-		ok(yp_bool(ctx->data_len) == false, "value check");
+		ok(yp_bool(ctx->data) == false, "value check");
 	}
 
 	/* Group test. */
@@ -141,7 +141,7 @@ int main(int argc, char *argv[])
 	ok(ctx->event == YP_EKEY1, "event check");
 	ok(strcmp(ctx->key1->name + 1, "integer") == 0, "name check");
 	ok(ctx->key1->type == YP_TINT, "type check");
-	ok(yp_int(ctx->data, ctx->data_len) == 20, "value check");
+	ok(yp_int(ctx->data) == 20, "value check");
 	ret = yp_parse(yp);
 	ok(ret == KNOT_EOK, "parse");
 	ret = yp_scheme_check_parser(ctx, yp);
@@ -186,7 +186,7 @@ int main(int argc, char *argv[])
 	ok(ctx->event == YP_EKEY1, "event check");
 	ok(strcmp(ctx->key1->name + 1, "base64") == 0, "name check");
 	ok(ctx->key1->type == YP_TB64, "type check");
-	ok(memcmp(ctx->data, "foobar", ctx->data_len) == 0, "value check");
+	ok(memcmp(yp_bin(ctx->data), "foobar", yp_bin_len(ctx->data)) == 0, "value check");
 	ret = yp_parse(yp);
 	ok(ret == KNOT_EOK, "parse");
 	ret = yp_scheme_check_parser(ctx, yp);

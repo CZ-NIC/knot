@@ -16,6 +16,7 @@ check_PROGRAMS = \
 	base64				\
 	changeset			\
 	conf				\
+	conf_tools			\
 	descriptor			\
 	dname				\
 	dthreads			\

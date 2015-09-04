@@ -51,46 +51,28 @@ typedef struct {
 
 typedef int conf_check_f(conf_check_t *);
 
-int hex_text_to_bin(
-	char const *txt,
-	size_t txt_len,
-	uint8_t *bin,
-	size_t *bin_len
-);
-
-int hex_text_to_txt(
-	uint8_t const *bin,
-	size_t bin_len,
-	char *txt,
-	size_t *txt_len
-);
-
 int mod_id_to_bin(
-	char const *txt,
-	size_t txt_len,
-	uint8_t *bin,
-	size_t *bin_len
+	YP_TXT_BIN_PARAMS
 );
 
 int mod_id_to_txt(
-	uint8_t const *bin,
-	size_t bin_len,
-	char *txt,
-	size_t *txt_len
+	YP_BIN_TXT_PARAMS
 );
 
 int edns_opt_to_bin(
-	char const *txt,
-	size_t txt_len,
-	uint8_t *bin,
-	size_t *bin_len
+	YP_TXT_BIN_PARAMS
 );
 
 int edns_opt_to_txt(
-	uint8_t const *bin,
-	size_t bin_len,
-	char *txt,
-	size_t *txt_len
+	YP_BIN_TXT_PARAMS
+);
+
+int addr_range_to_bin(
+	YP_TXT_BIN_PARAMS
+);
+
+int addr_range_to_txt(
+	YP_BIN_TXT_PARAMS
 );
 
 int check_ref(

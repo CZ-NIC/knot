@@ -18,6 +18,7 @@
 #include "knot/common/debug.h"
 #include "libknot/libknot.h"
 #include "libknot/internal/macros.h"
+#include "libknot/yparser/yptrafo.h"
 
 /*! \brief Accessor to query-specific data. */
 #define QUERY_DATA(ctx) ((struct query_data *)(ctx)->data)
@@ -240,7 +241,9 @@ static int answer_edns_init(const knot_pkt_t *query, knot_pkt_t *resp,
 	/* Append NSID if requested and available. */
 	val = conf_get(conf(), C_SRV, C_NSID);
 	if (knot_edns_has_option(query->opt_rr, KNOT_EDNS_OPTION_NSID)) {
-		conf_data(&val);
+		size_t nsid_len;
+		const uint8_t *nsid_data = conf_bin(&val, &nsid_len);
+
 		if (val.code != KNOT_EOK) {
 			ret = knot_edns_add_option(&qdata->opt_rr,
 			                           KNOT_EDNS_OPTION_NSID,
@@ -250,11 +253,10 @@ static int answer_edns_init(const knot_pkt_t *query, knot_pkt_t *resp,
 			if (ret != KNOT_EOK) {
 				return ret;
 			}
-		} else if (val.len > 0) {
+		} else if (nsid_len > 0) {
 			ret = knot_edns_add_option(&qdata->opt_rr,
 			                           KNOT_EDNS_OPTION_NSID,
-			                           val.len,
-			                           val.data,
+			                           nsid_len, nsid_data,
 			                           qdata->mm);
 			if (ret != KNOT_EOK) {
 				return ret;

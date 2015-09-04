@@ -26,7 +26,7 @@
 #pragma once
 
 #include "libknot/yparser/ypscheme.h"
-#include "libknot/internal/endian.h"
+#include "libknot/internal/utils.h"
 #include "libknot/dname.h"
 
 /*!
@@ -70,39 +70,72 @@ int yp_item_to_txt(
 );
 
 /*!
- * Converts binary value to integer value.
+ * Converts binary value to string pointer.
  *
- * \param[in] data Binary value to to transform.
- * \param[in] data_len Length of the value.
+ * \param[in] data Binary value to transform.
  *
- * \return Integer value.
+ * \return String pointer.
  */
-inline static int64_t yp_int(
-	const uint8_t *data,
-	size_t data_len)
+inline static const char* yp_str(
+	const uint8_t *data)
 {
-	int64_t num = 0;
-	memcpy(&num, data, data_len);
-	return le64toh(num);
+	return (const char *)data;
 }
 
 /*!
  * Converts binary value to boolean value.
  *
- * \param[in] data_len Length of the value.
+ * \param[in] data Binary value to transform.
  *
  * \return Boolean value.
  */
 inline static bool yp_bool(
-	size_t data_len)
+	const uint8_t *data)
 {
-	return (data_len > 0) ? true : false;
+	return (data[0] == 0) ? false : true;
 }
+
+/*!
+ * Converts binary value to integer value.
+ *
+ * \param[in] data Binary value to transform.
+ *
+ * \return Integer value.
+ */
+inline static int64_t yp_int(
+	const uint8_t *data)
+{
+	return (int64_t)wire_read_u64(data);
+}
+
+/*!
+ * Converts binary value to address value.
+ *
+ * \param[in] data Binary value to transform.
+ *
+ * \return Address value.
+ */
+struct sockaddr_storage yp_addr_noport(
+	const uint8_t *data
+);
+
+/*!
+ * Converts binary value to address value with an optional port.
+ *
+ * \param[in] data Binary value to transform.
+ * \param[out] no_port No port indicator.
+ *
+ * \return Address value.
+ */
+struct sockaddr_storage yp_addr(
+	const uint8_t *data,
+	bool *no_port
+);
 
 /*!
  * Converts binary value to option value.
  *
- * \param[in] data Binary value to to transform.
+ * \param[in] data Binary value to transform.
  *
  * \return Unsigned value.
  */
@@ -113,37 +146,9 @@ inline static unsigned yp_opt(
 }
 
 /*!
- * Converts binary value to string pointer.
- *
- * \param[in] data Binary value to to transform.
- *
- * \return String ointer.
- */
-inline static const char* yp_str(
-	const uint8_t *data)
-{
-	return (const char *)data;
-}
-
-/*!
- * Converts binary value to address value with port/mask.
- *
- * \param[in] data Binary value to to transform.
- * \param[in] data_len Length of the value.
- * \param[out] num Possible port/prefix value.
- *
- * \return Address value.
- */
-struct sockaddr_storage yp_addr(
-	const uint8_t *data,
-	size_t data_len,
-	int *num
-);
-
-/*!
  * Converts binary value to dname pointer.
  *
- * \param[in] data Binary value to to transform.
+ * \param[in] data Binary value to transform.
  *
  * \return Dname pointer.
  */
@@ -152,5 +157,147 @@ inline static const knot_dname_t* yp_dname(
 {
 	return (const knot_dname_t *)data;
 }
+
+/*!
+ * Converts binary value to data pointer.
+ *
+ * Applies to all data types with 2-byte length prefix (YP_THEX, YP_TB64).
+ *
+ * \param[in] data Binary value to transform.
+ *
+ * \return Data pointer.
+ */
+inline static const uint8_t* yp_bin(
+	const uint8_t *data)
+{
+	return data + 2;
+}
+
+/*!
+ * Gets binary value length.
+ *
+ * Applies to all data types with 2-byte length prefix (YP_THEX, YP_TB64).
+ *
+ * \param[in] data Binary value to transform.
+ *
+ * \return Data length.
+ */
+inline static const size_t yp_bin_len(
+	const uint8_t *data)
+{
+	return wire_read_u16(data);
+}
+
+/*!
+ * \brief Helper macros for conversion functions.
+ */
+
+#define YP_CHECK_CTX \
+	if (in->error != KNOT_EOK) { \
+		return in->error; \
+	} else if (out->error != KNOT_EOK) { \
+		return out->error; \
+	} \
+
+#define YP_CHECK_STOP \
+	if (stop != NULL) { \
+		assert(stop <= in->position + wire_ctx_available(in)); \
+	} else { \
+		stop = in->position + wire_ctx_available(in); \
+	}
+
+#define YP_LEN (stop - in->position)
+
+#define YP_CHECK_PARAMS_BIN \
+	YP_CHECK_CTX YP_CHECK_STOP
+
+#define YP_CHECK_PARAMS_TXT \
+	YP_CHECK_CTX
+
+#define YP_CHECK_RET \
+	YP_CHECK_CTX return KNOT_EOK;
+
+/*!
+ * \brief Conversion functions for basic types.
+ */
+
+int yp_str_to_bin(
+	YP_TXT_BIN_PARAMS
+);
+
+int yp_str_to_txt(
+	YP_BIN_TXT_PARAMS
+);
+
+int yp_bool_to_bin(
+	YP_TXT_BIN_PARAMS
+);
+
+int yp_bool_to_txt(
+	YP_BIN_TXT_PARAMS
+);
+
+int yp_int_to_bin(
+	YP_TXT_BIN_PARAMS,
+	int64_t min,
+	int64_t max,
+	yp_style_t style
+);
+
+int yp_int_to_txt(
+	YP_BIN_TXT_PARAMS,
+	yp_style_t style
+);
+
+int yp_addr_noport_to_bin(
+	YP_TXT_BIN_PARAMS,
+	bool allow_unix
+);
+
+int yp_addr_noport_to_txt(
+	YP_BIN_TXT_PARAMS
+);
+
+int yp_addr_to_bin(
+	YP_TXT_BIN_PARAMS
+);
+
+int yp_addr_to_txt(
+	YP_BIN_TXT_PARAMS
+);
+
+int yp_option_to_bin(
+	YP_TXT_BIN_PARAMS,
+	const lookup_table_t *opts
+);
+
+int yp_option_to_txt(
+	YP_BIN_TXT_PARAMS,
+	const lookup_table_t *opts
+);
+
+int yp_dname_to_bin(
+	YP_TXT_BIN_PARAMS
+);
+
+int yp_dname_to_txt(
+	YP_BIN_TXT_PARAMS
+);
+
+int yp_hex_to_bin(
+	YP_TXT_BIN_PARAMS
+);
+
+int yp_hex_to_txt(
+	YP_BIN_TXT_PARAMS
+);
+
+int yp_base64_to_bin(
+	YP_TXT_BIN_PARAMS
+);
+
+int yp_base64_to_txt(
+	YP_BIN_TXT_PARAMS
+);
 
 /*! @} */

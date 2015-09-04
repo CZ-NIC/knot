@@ -365,7 +365,7 @@ Access control list rule definition.
 
  acl:
    - id: STR
-     address: ADDR[/INT] ...
+     address: ADDR[/INT] | ADDR-ADDR ...
      key: key_id ...
      action: transfer | notify | update | control ...
      deny: BOOL
@@ -382,8 +382,8 @@ An ACL rule identifier.
 address
 -------
 
-An ordered list of IP addresses or network subnets. The query must match
-one of them. Empty value means that address match is not required.
+An ordered list of IP addresses, network subnets, or network ranges. The query
+must match one of them. Empty value means that address match is not required.
 
 Default: empty
 
@@ -944,7 +944,7 @@ given prefix and subnet.
      prefix: STR
      origin: DNAME
      ttl: INT
-     network: ADDR[/INT]
+     network: ADDR[/INT] | ADDR-ADDR
 
 .. _mod-synth-record_id:
 
@@ -1002,7 +1002,7 @@ Default: 3600
 network
 -------
 
-A network subnet in the form of *address/prefix*.
+An IP address, a network subnet, or a network range the query must match.
 
 Default: empty
 
