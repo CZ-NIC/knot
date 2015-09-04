@@ -89,6 +89,7 @@ static void server_remove_iface(iface_t *iface)
 		close(iface->fd_udp[0]);
 	}
 #endif
+	free(iface->fd_udp);
 
 	/* Free TCP handler. */
 	if (iface->fd_tcp > -1) {
