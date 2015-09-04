@@ -81,8 +81,7 @@ int main(int argc, char *argv[])
 
 	// create TCP client
 
-	struct timeval tv = { 5, 0 };
-	int client = net_connected_socket(SOCK_STREAM, &addr, NULL, O_NONBLOCK, &tv);
+	int client = net_connected_socket(SOCK_STREAM, &addr, NULL);
 	ok(client >= 0, "client: connect to server");
 
 	int optval = 8192;

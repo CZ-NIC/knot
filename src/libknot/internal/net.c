@@ -154,8 +154,7 @@ int net_bound_socket(int type, const struct sockaddr_storage *ss,
 }
 
 int net_connected_socket(int type, const struct sockaddr_storage *dst_addr,
-                         const struct sockaddr_storage *src_addr, unsigned flags,
-                         struct timeval *timeout)
+                         const struct sockaddr_storage *src_addr)
 {
 	if (dst_addr == NULL) {
 		return KNOT_EINVAL;
@@ -178,8 +177,8 @@ int net_connected_socket(int type, const struct sockaddr_storage *dst_addr,
 		return socket;
 	}
 
-	/* Set specified socket flags + non-blocking flag. */
-	if (fcntl(socket, F_SETFL, flags | O_NONBLOCK) < 0) {
+	/* Switch the socket to non-blocking mode. */
+	if (fcntl(socket, F_SETFL, O_NONBLOCK) < 0) {
 		close(socket);
 		return KNOT_NET_ESOCKET;
 	}
@@ -187,24 +186,9 @@ int net_connected_socket(int type, const struct sockaddr_storage *dst_addr,
 	/* Connect to destination. */
 	const struct sockaddr *sa = (const struct sockaddr *)dst_addr;
 	int ret = connect(socket, sa, sockaddr_len(sa));
-	if (ret != 0) {
-		if (errno != EINPROGRESS) {
-			close(socket);
-			return KNOT_NET_ECONNECT;
-		}
-
-		fd_set set;
-		FD_ZERO(&set);
-		FD_SET(socket, &set);
-
-		ret = select(socket + 1, NULL, &set, NULL, timeout);
-		if (ret == 0) {
-			close(socket);
-			return KNOT_NET_ETIMEOUT;
-		} else if (ret < 0) {
-			close(socket);
-			return KNOT_NET_ECONNECT;
-		}
+	if (ret != 0 && errno != EINPROGRESS) {
+		close(socket);
+		return KNOT_NET_ECONNECT;
 	}
 
 	return socket;
