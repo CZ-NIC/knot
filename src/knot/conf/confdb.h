@@ -33,7 +33,7 @@
 #include "libknot/yparser/ypscheme.h"
 
 /*! Current version of the configuration database structure. */
-#define CONF_DB_VERSION		1
+#define CONF_DB_VERSION		2
 /*! Minimum length of a database key ([category_id, item_id]. */
 #define CONF_MIN_KEY_LEN	(2 * sizeof(uint8_t))
 /*! Maximum length of a database key ([category_id, item_id, identifier]. */
