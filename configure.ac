@@ -214,7 +214,7 @@ AC_ARG_ENABLE([systemd],
     [enable_systemd="$enableval"], [enable_systemd=auto])
 
 AC_ARG_ENABLE([reuseport],
-    AS_HELP_STRING([--enable-reuseport=auto|yes|no], [enable modern Linux networking with SO_REUSEPORT [default=auto]]),
+    AS_HELP_STRING([--enable-reuseport=auto|yes|no], [enable Linux specific SO_REUSEPORT [default=auto]]),
     [enable_reuseport="$enableval"], [enable_reuseport=auto])
 
 AS_IF([test "$enable_daemon" = "yes"],[
@@ -243,14 +243,14 @@ AS_IF([test "$enable_reuseport" != "no"],[
                 setsockopt(0, SOL_SOCKET, SO_REUSEPORT, &val, sizeof(val));
             ], [
               enable_reuseport="yes"
-              AC_DEFINE([ENABLE_REUSEPORT], [1], [Use moder networking.])
+              AC_DEFINE([ENABLE_REUSEPORT], [1], [Use SO_REUSEPORT.])
               AC_MSG_RESULT([yes])
             ], [
               enable_reuseport="no"
               AC_MSG_RESULT([no])
             ])
 	],
-    [yes],[AC_DEFINE([ENABLE_REUSEPORT], [1], [Use modern networking.])],
+    [yes],[AC_DEFINE([ENABLE_REUSEPORT], [1], [Use SO_REUSEPORT.])],
     [*],[AC_MSG_ERROR([Invalid value of --enable-reuseport.])])
   ])
 ])
@@ -506,7 +506,6 @@ AC_MSG_RESULT([
     GnuTLS:   ${gnutls_LIBS} ${gnutls_CFLAGS}
     Jansson:  ${jansson_LIBS} ${jansson_CFLAGS}
     LMDB:     ${enable_lmdb} ${lmdb_LIBS} ${lmdb_CFLAGS}
-    SO_REUSEPORT: ${enable_reuseport}
 
     Prefix:		${prefix}
     Run dir:		${run_dir}
@@ -518,6 +517,7 @@ AC_MSG_RESULT([
     Knot DNS utils:         ${enable_utilities}
     Knot DNS documentation: ${enable_documentation}
 
+    Use SO_REUSEPORT:    ${enable_reuseport}
     Fast zone parser:    ${enable_fastparser}
     Utilities with IDN:  ${with_libidn}
     Systemd integration: ${enable_systemd}
