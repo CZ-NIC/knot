@@ -462,7 +462,7 @@ static int track_ifaces(ifacelist_t *ifaces, fd_set *set, int *maxfd, int *minfd
 	iface_t *iface = NULL;
 	WALK_LIST(iface, ifaces->l) {
 #ifdef ENABLE_REUSEPORT
-		int fd = iface->fd_udp[thrid];
+		int fd = iface->fd_udp[thrid % iface->fd_udp_count];
 #else
 		int fd = iface->fd_udp[0];
 #endif
