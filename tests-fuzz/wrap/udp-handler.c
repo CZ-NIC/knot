@@ -99,9 +99,12 @@ void udp_master_init_stdio(server_t *server) {
 	log_info("AFL, UDP handler listen on stdin");
 
 	// register our dummy interface to server
-	iface_t *ifc = malloc(sizeof(iface_t));
-	ifc->fd[RX] = STDIN_FILENO;
-	ifc->fd[TX] = STDOUT_FILENO;
+	iface_t *ifc = calloc(1, sizeof(iface_t));
+	assert(ifc);
+	ifc->fd_udp = calloc(1, sizeof(int));
+	assert(ifc->fd_udp);
+	ifc->fd_udp[0] = STDIN_FILENO;
+	ifc->fd_udp_count = 1;
 
 	add_tail(&server->ifaces->l, (node_t *)ifc);
 
