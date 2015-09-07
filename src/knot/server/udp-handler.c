@@ -449,11 +449,12 @@ static void forget_ifaces(ifacelist_t *ifaces, fd_set *set, int maxfd)
 }
 
 /*! \brief Add interface sockets to the watched fdset. */
-static int track_ifaces(ifacelist_t *ifaces, fd_set *set, int *maxfd, int *minfd, int thrid)
+static int track_ifaces(ifacelist_t *ifaces, fd_set *set,
+                        int *maxfd, int *minfd, int thrid)
 {
 	FD_ZERO(set);
-	*maxfd = -1;
-	*minfd = 0;
+	*maxfd = INT_MIN;
+	*minfd = INT_MAX;
 
 	if (ifaces == NULL) {
 		return KNOT_EINVAL;
