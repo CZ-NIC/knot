@@ -153,111 +153,81 @@ static int server_init_iface(iface_t *new_if, struct sockaddr_storage *addr, int
 	char addr_str[SOCKADDR_STRLEN] = { 0 };
 	sockaddr_tostr(addr_str, sizeof(addr_str), addr);
 
-	new_if->fd_udp = malloc(udp_thread_count * sizeof(int));
-	if (!new_if->fd_udp)
-		return KNOT_ENOMEM;
-
+	int udp_socket_count = 1;
 	int bind_flags = 0;
+
 #ifdef ENABLE_REUSEPORT
-	for (int i = 0; i < udp_thread_count; i++ ) {
-		/* Create bound UDP socket. */
-		int sock = net_bound_socket(SOCK_DGRAM, addr, bind_flags | NET_REUSEPORT);
+	udp_socket_count = udp_thread_count;
+	bind_flags |= NET_REUSEPORT;
+#endif
+
+	new_if->fd_udp = malloc(udp_socket_count * sizeof(int));
+	if (!new_if->fd_udp) {
+		return KNOT_ENOMEM;
+	}
+
+	bool warn_bind = false;
+	bool warn_bufsize = false;
+
+	/* Create bound UDP sockets. */
+	for (int i = 0; i < udp_socket_count; i++ ) {
+		int sock = net_bound_socket(SOCK_DGRAM, addr, bind_flags);
 		if (sock == KNOT_EADDRNOTAVAIL) {
 			bind_flags |= NET_BIND_NONLOCAL;
-			sock = net_bound_socket(SOCK_DGRAM, addr, bind_flags | NET_REUSEPORT);
-			if (sock >= 0) {
+			sock = net_bound_socket(SOCK_DGRAM, addr, bind_flags);
+			if (sock >= 0 && !warn_bind) {
 				log_warning("address '%s' is not available", addr_str);
+				warn_bind = true;
 			}
 		}
 
 		if (sock < 0) {
-			log_error("cannot bind address '%s' (%s)", addr_str, knot_strerror(sock));
-			for (int i = 0; i < new_if->fd_udp_count; i++ )
-				close(new_if->fd_udp[i]);
+			log_error("cannot bind address '%s' (%s)", addr_str,
+			          knot_strerror(sock));
+			server_deinit_iface(new_if);
 			return sock;
 		}
 
-		if (!enlarge_net_buffers(sock, UDP_MIN_RCVSIZE, UDP_MIN_SNDSIZE)) {
+		if (!enlarge_net_buffers(sock, UDP_MIN_RCVSIZE, UDP_MIN_SNDSIZE) &&
+		    !warn_bufsize) {
 			log_warning("failed to set network buffer sizes for UDP");
+			warn_bufsize = true;
 		}
 
 		/* Set UDP as non-blocking. */
 		fcntl(sock, F_SETFL, O_NONBLOCK);
 
-		new_if->fd_udp[new_if->fd_udp_count++] = sock;
-	}
-#else
-	/* Create bound UDP socket. */
-	int sock = net_bound_socket(SOCK_DGRAM, addr, bind_flags);
-	if (sock == KNOT_EADDRNOTAVAIL) {
-		bind_flags |= NET_BIND_NONLOCAL;
-		sock = net_bound_socket(SOCK_DGRAM, addr, bind_flags);
-		if (sock >= 0) {
-			log_warning("address '%s' is not available", addr_str);
-		}
+		new_if->fd_udp[new_if->fd_udp_count] = sock;
+		new_if->fd_udp_count += 1;
 	}
 
+	/* Create bound TCP socket. */
+	int sock = net_bound_socket(SOCK_STREAM, addr, bind_flags);
 	if (sock < 0) {
-		log_error("cannot bind address '%s' (%s)", addr_str, knot_strerror(sock));
-		for (int i = 0; i < new_if->fd_udp_count; i++ )
-			close(new_if->fd_udp[i]);
+		log_error("cannot bind address '%s' (%s)", addr_str,
+		          knot_strerror(sock));
+		server_deinit_iface(new_if);
 		return sock;
 	}
 
-	if (!enlarge_net_buffers(sock, UDP_MIN_RCVSIZE, UDP_MIN_SNDSIZE)) {
-		log_warning("failed to set network buffer sizes for UDP");
-	}
-
-	/* Set UDP as non-blocking. */
-	fcntl(sock, F_SETFL, O_NONBLOCK);
-
-	new_if->fd_udp_count = 1;
-	new_if->fd_udp[0] = sock;
-#endif
-
-	/* Create bound TCP socket. */
-	int tsock = net_bound_socket(SOCK_STREAM, addr, bind_flags);
-	if (tsock < 0) {
-#ifdef ENABLE_REUSEPORT
-		for (int i = 0; i < new_if->fd_udp_count; i++ )
-			close(new_if->fd_udp[i]);
-#else
-		close(new_if->fd_udp[0]);
-#endif
-		return tsock;
-	}
-
-	if (!enlarge_net_buffers(tsock, TCP_MIN_RCVSIZE, TCP_MIN_SNDSIZE)) {
+	if (!enlarge_net_buffers(sock, TCP_MIN_RCVSIZE, TCP_MIN_SNDSIZE)) {
 		log_warning("failed to set network buffer sizes for TCP");
 	}
 
-	new_if->fd_tcp = tsock;
+	new_if->fd_tcp = sock;
 
 	/* Listen for incoming connections. */
-	ret = listen(tsock, TCP_BACKLOG_SIZE);
+	ret = listen(sock, TCP_BACKLOG_SIZE);
 	if (ret < 0) {
-#ifdef ENABLE_REUSEPORT
-		for (int i = 0; i < new_if->fd_udp_count; i++)
-			close(new_if->fd_udp[i]);
-#else
-		close(new_if->fd_udp[0]);
-#endif
-		close(new_if->fd_tcp);
 		log_error("failed to listen on TCP interface '%s'", addr_str);
+		server_deinit_iface(new_if);
 		return KNOT_ERROR;
 	}
 
 	/* accept() must not block */
-	if (fcntl(tsock, F_SETFL, O_NONBLOCK) < 0) {
-#ifdef ENABLE_REUSEPORT
-		for (int i = 0; i < new_if->fd_udp_count; i++ )
-			close(new_if->fd_udp[i]);
-#else
-		close(new_if->fd_udp[0]);
-#endif
-		close(new_if->fd_tcp);
-		log_error("failed to listen on '%s' in non-blocking mode",
-			  addr_str);
+	if (fcntl(sock, F_SETFL, O_NONBLOCK) < 0) {
+		log_error("failed to listen on '%s' in non-blocking mode", addr_str);
+		server_deinit_iface(new_if);
 		return KNOT_ERROR;
 	}
 
