@@ -74,21 +74,15 @@ static int evsched_run(dthread_t *thread)
 	return KNOT_EOK;
 }
 
-/*! \brief Unbind and dispose given interface. */
-static void server_remove_iface(iface_t *iface)
+/*! \brief Unbind interface and clear the structure. */
+static void server_deinit_iface(iface_t *iface)
 {
 	/* Free UDP handler. */
-#ifdef ENABLE_REUSEPORT
 	for (int i = 0; i < iface->fd_udp_count; i++) {
 		if (iface->fd_udp[i] > -1) {
 			close(iface->fd_udp[i]);
 		}
 	}
-#else
-	if (iface->fd_udp[0] > -1) {
-		close(iface->fd_udp[0]);
-	}
-#endif
 	free(iface->fd_udp);
 
 	/* Free TCP handler. */
@@ -96,7 +90,17 @@ static void server_remove_iface(iface_t *iface)
 		close(iface->fd_tcp);
 	}
 
-	/* Free interface. */
+	memset(iface, 0, sizeof(*iface));
+}
+
+/*! \brief Unbind and dispose given interface. */
+static void server_remove_iface(iface_t *iface)
+{
+	if (!iface) {
+		return;
+	}
+
+	server_deinit_iface(iface);
 	free(iface);
 }
 
