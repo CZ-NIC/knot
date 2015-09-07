@@ -74,10 +74,10 @@ typedef struct iface {
 } iface_t;
 
 /* Handler types. */
-#define IO_COUNT 2
 enum {
-	IO_UDP    = 0,
-	IO_TCP    = 1
+	IO_UDP = 0,
+	IO_TCP,
+	IO_COUNT
 };
 
 typedef struct ifacelist {
