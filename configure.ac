@@ -234,17 +234,24 @@ AS_IF([test "$enable_systemd" = "yes"],[
 AS_IF([test "$enable_reuseport" != "no"],[
   AS_CASE([$enable_reuseport],
     [auto], [
-          AC_MSG_CHECKING([for socket REUSEPORT])
-          AC_TRY_COMPILE(
-            [
-              #include <sys/socket.h>
-            ], [
-                int val = 1;
-                setsockopt(0, SOL_SOCKET, SO_REUSEPORT, &val, sizeof(val));
-            ], [
-              enable_reuseport="yes"
-              AC_DEFINE([ENABLE_REUSEPORT], [1], [Use SO_REUSEPORT.])
-              AC_MSG_RESULT([yes])
+          AS_CASE(["$host_os"],
+            [*linux*],[
+              AC_MSG_CHECKING([for socket REUSEPORT])
+              AC_TRY_COMPILE(
+                [
+                  #include <sys/socket.h>
+                ], [
+                  int val = 1;
+                  setsockopt(0, SOL_SOCKET, SO_REUSEPORT, &val, sizeof(val));
+                ], [
+                    enable_reuseport="yes"
+                    AC_DEFINE([ENABLE_REUSEPORT], [1], [Use modern networking.])
+                    AC_MSG_RESULT([yes])
+                ],
+                [
+                  enable_reuseport="no"
+                  AC_MSG_RESULT([no])
+                ])
             ], [
               enable_reuseport="no"
               AC_MSG_RESULT([no])
@@ -506,6 +513,7 @@ AC_MSG_RESULT([
     GnuTLS:   ${gnutls_LIBS} ${gnutls_CFLAGS}
     Jansson:  ${jansson_LIBS} ${jansson_CFLAGS}
     LMDB:     ${enable_lmdb} ${lmdb_LIBS} ${lmdb_CFLAGS}
+    SO_REUSEPORT: ${enable_reuseport}
 
     Prefix:		${prefix}
     Run dir:		${run_dir}
