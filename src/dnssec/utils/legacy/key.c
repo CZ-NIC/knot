@@ -241,5 +241,7 @@ int legacy_key_parse(const char *filename, dnssec_key_t **key_ptr,
 	*pem_ptr = pem;
 	params_to_timing(&params, timing);
 
+	legacy_privkey_free(&params);
+
 	return DNSSEC_EOK;
 }
