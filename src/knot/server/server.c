@@ -748,14 +748,13 @@ ref_t *server_set_ifaces(server_t *s, fdset_t *fds, int type, int thread_id)
 	rcu_read_lock();
 	fdset_clear(fds);
 
-#ifdef ENABLE_REUSEPORT
-	int udp_id = thread_id % i->fd_udp_count;
-#else
-	int udp_id = 0;
-#endif
-
 	if (s->ifaces) {
 		WALK_LIST(i, s->ifaces->l) {
+#ifdef ENABLE_REUSEPORT
+			int udp_id = thread_id % i->fd_udp_count;
+#else
+			int udp_id = 0;
+#endif
 			switch(type) {
 			case IO_TCP:
 				fdset_add(fds, i->fd_tcp, POLLIN, NULL);
