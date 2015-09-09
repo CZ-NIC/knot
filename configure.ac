@@ -214,7 +214,7 @@ AC_ARG_ENABLE([systemd],
     [enable_systemd="$enableval"], [enable_systemd=auto])
 
 AC_ARG_ENABLE([reuseport],
-    AS_HELP_STRING([--enable-reuseport=auto|yes|no], [enable Linux specific SO_REUSEPORT [default=auto]]),
+    AS_HELP_STRING([--enable-reuseport=auto|yes|no], [enable Linux SO_REUSEPORT support [default=auto]]),
     [enable_reuseport="$enableval"], [enable_reuseport=auto])
 
 AS_IF([test "$enable_daemon" = "yes"],[
@@ -231,36 +231,26 @@ AS_IF([test "$enable_systemd" != "no"],[
 AS_IF([test "$enable_systemd" = "yes"],[
   AC_DEFINE([ENABLE_SYSTEMD], [1], [Use systemd integration.])])
 
-AS_IF([test "$enable_reuseport" != "no"],[
+AS_IF([test "$enable_reuseport" != no], [
   AS_CASE([$enable_reuseport],
-    [auto], [
-          AS_CASE(["$host_os"],
-            [*linux*],[
-              AC_MSG_CHECKING([for socket REUSEPORT])
-              AC_TRY_COMPILE(
-                [
-                  #include <sys/socket.h>
-                ], [
-                  int val = 1;
-                  setsockopt(0, SOL_SOCKET, SO_REUSEPORT, &val, sizeof(val));
-                ], [
-                    enable_reuseport="yes"
-                    AC_DEFINE([ENABLE_REUSEPORT], [1], [Use modern networking.])
-                    AC_MSG_RESULT([yes])
-                ],
-                [
-                  enable_reuseport="no"
-                  AC_MSG_RESULT([no])
-                ])
-            ], [
-              enable_reuseport="no"
-              AC_MSG_RESULT([no])
-            ])
-	],
-    [yes],[AC_DEFINE([ENABLE_REUSEPORT], [1], [Use SO_REUSEPORT.])],
-    [*],[AC_MSG_ERROR([Invalid value of --enable-reuseport.])])
-  ])
-])
+    [auto],[
+      AS_CASE(["$host_os"],
+        [linux*], [AC_CHECK_DECL([SO_REUSEPORT], [enable_reuseport=yes], [enable_reuseport=no], [#include <sys/socket.h>])],
+        [*], [enable_reuseport=no]
+      )],
+    [yes],[
+      AS_CASE(["$host_os"],
+        [linux*], [AC_CHECK_DECL([SO_REUSEPORT], [enable_reuseport=yes], [AC_MSG_ERROR([SO_REUSEPORT is not supported.])], [#include <sys/socket.h>])],
+        [*], [AC_MSG_ERROR(["SO_REUSEPORT is not supported on $host_os."])]
+      )],
+    [*], [AC_MSG_ERROR([Invalid value of --enable-reuseport.])]
+  )])
+
+AS_IF([test "$enable_reuseport" = yes],[
+   AC_DEFINE([ENABLE_REUSEPORT], [1], [Use SO_RESUSEPORT.])])
+
+]) dnl enable_daemon
+
 
 dnl Check for userspace-rcu library
 AC_ARG_WITH(urcu,
@@ -513,7 +503,6 @@ AC_MSG_RESULT([
     GnuTLS:   ${gnutls_LIBS} ${gnutls_CFLAGS}
     Jansson:  ${jansson_LIBS} ${jansson_CFLAGS}
     LMDB:     ${enable_lmdb} ${lmdb_LIBS} ${lmdb_CFLAGS}
-    SO_REUSEPORT: ${enable_reuseport}
 
     Prefix:		${prefix}
     Run dir:		${run_dir}
