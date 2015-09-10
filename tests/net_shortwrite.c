@@ -25,9 +25,10 @@
 #include <sys/socket.h>
 #include <netdb.h>
 
+#include "libknot/errcode.h"
 #include "libknot/internal/net.h"
 
-const struct timeval TIMEOUT = { .tv_sec = 1 };
+const struct timeval TIMEOUT = { .tv_sec = 2 };
 
 static struct sockaddr_storage localhost(void)
 {
@@ -43,8 +44,7 @@ static struct sockaddr_storage localhost(void)
 }
 
 struct data {
-	int fd;
-	struct timeval timeout;
+	int server_fd;
 	uint8_t *buffer;
 	size_t size;
 	int result;
@@ -53,7 +53,31 @@ struct data {
 static void *thr_receive(void *data)
 {
 	struct data *d = data;
-	d->result = tcp_recv_msg(d->fd, d->buffer, d->size, &d->timeout);
+
+	struct timeval timeout = { 0 };
+
+	fd_set fds;
+	FD_ZERO(&fds);
+	FD_SET(d->server_fd, &fds);
+
+	timeout = TIMEOUT;
+	int r = select(d->server_fd + 1, &fds, NULL, NULL, &timeout);
+	if (r != 1) {
+		d->result = KNOT_ETIMEOUT;
+		return NULL;
+	}
+
+	int client = accept(d->server_fd, NULL, NULL);
+	if (client < 0) {
+		d->result = KNOT_ECONN;
+		return NULL;
+	}
+
+	timeout = TIMEOUT;
+	d->result = tcp_recv_msg(client, d->buffer, d->size, &timeout);
+
+	close(client);
+
 	return NULL;
 }
 
@@ -64,6 +88,7 @@ int main(int argc, char *argv[])
 	int r;
 
 	// create TCP server
+
 	struct sockaddr_storage addr = localhost();
 	int server = net_bound_socket(SOCK_STREAM, &addr, 0);
 	ok(server >= 0, "server: bind socket");
@@ -76,9 +101,6 @@ int main(int argc, char *argv[])
 	r = getsockname(server, sa, &salen);
 	ok(r == 0, "server: get bound address");
 
-	r = fcntl(server, F_SETFL, O_NONBLOCK);
-	ok(r == 0, "server: set non-blocking mode");
-
 	// create TCP client
 
 	int client = net_connected_socket(SOCK_STREAM, &addr, NULL);
@@ -89,15 +111,11 @@ int main(int argc, char *argv[])
 	r = setsockopt(client, SOL_SOCKET, SO_SNDBUF, &optval, optlen);
 	ok(r == 0, "client: configure small send buffer");
 
-	// accept TCP connection
-
-	int accepted = accept(server, NULL, NULL);
-	ok(accepted >= 0, "server: accepted connection");
+	// accept TCP connection on the background
 
 	uint8_t recvbuf[UINT16_MAX] = { 0 };
 	struct data recv_data = {
-		.fd = accepted,
-		.timeout = TIMEOUT,
+		.server_fd = server,
 		.buffer = recvbuf,
 		.size = sizeof(recvbuf)
 	};
@@ -126,10 +144,6 @@ int main(int argc, char *argv[])
 	   "server: tcp_recv_msg() complete and valid data");
 
 	// clean up
-
-	if (accepted >= 0) {
-		close(accepted);
-	}
 
 	if (server >= 0) {
 		close(server);
