@@ -358,6 +358,10 @@ static int send_data(int fd, struct iovec iov[], int iovcnt, struct timeval *tim
 
 int tcp_send_msg(int fd, const uint8_t *msg, size_t msglen, struct timeval *timeout)
 {
+	if (msglen > UINT16_MAX) {
+		return KNOT_EINVAL;
+	}
+
 	/* Create iovec for gathered write. */
 	struct iovec iov[2];
 	uint16_t pktsize = htons(msglen);
