@@ -15,13 +15,15 @@
  */
 
 #include <tap/basic.h>
-#include <string.h>
+#include <pthread.h>
 #include <stdlib.h>
+#include <string.h>
 
+#include "knot/conf/conf.h"
 #include "libknot/internal/mempool.h"
+#include "libknot/internal/net.h"
 #include "libknot/processing/layer.h"
 #include "libknot/processing/requestor.h"
-#include "fake_server.h"
 
 /* @note Purpose of this test is not to verify process_answer functionality,
  *       but simply if the requesting/receiving works, so mirror is okay. */
@@ -41,7 +43,7 @@ static void* responder_thread(void *arg)
 {
 	int fd = *((int *)arg);
 	uint8_t buf[KNOT_WIRE_MAX_PKTSIZE];
-	while(true) {
+	while (true) {
 		int client = accept(fd, NULL, NULL);
 		if (client < 0) {
 			break;
@@ -60,15 +62,12 @@ static void* responder_thread(void *arg)
 
 /* Test implementations. */
 
-#define DISCONNECTED_TESTS 2
-#define CONNECTED_TESTS    4
-#define TESTS_COUNT DISCONNECTED_TESTS + CONNECTED_TESTS
-
 static struct knot_request *make_query(struct knot_requestor *requestor, conf_remote_t *remote)
 {
 	knot_pkt_t *pkt = knot_pkt_new(NULL, KNOT_WIRE_MAX_PKTSIZE, requestor->mm);
 	assert(pkt);
-	knot_pkt_put_question(pkt, ROOT_DNAME, KNOT_CLASS_IN, KNOT_RRTYPE_SOA);
+	static const knot_dname_t *root = (uint8_t *)"";
+	knot_pkt_put_question(pkt, root, KNOT_CLASS_IN, KNOT_RRTYPE_SOA);
 
 	const struct sockaddr *dst = (const struct sockaddr *)&remote->addr;
 	const struct sockaddr *src = (const struct sockaddr *)&remote->via;
@@ -116,7 +115,7 @@ static void test_connected(struct knot_requestor *requestor, conf_remote_t *remo
 
 int main(int argc, char *argv[])
 {
-	plan(TESTS_COUNT + 1);
+	plan_lazy();
 
 	mm_ctx_t mm;
 	mm_ctx_mempool(&mm, MM_DEFAULT_BLKSIZE);
@@ -125,11 +124,6 @@ int main(int argc, char *argv[])
 	memset(&remote, 0, sizeof(conf_remote_t));
 	sockaddr_set(&remote.addr, AF_INET, "127.0.0.1", 0);
 	sockaddr_set(&remote.via, AF_INET, "127.0.0.1", 0);
-
-	/* Create fake server environment. */
-	server_t server;
-	int ret = create_fake_server(&server, &mm);
-	ok(ret == KNOT_EOK, "requestor: initialize fake server");
 
 	/* Initialize requestor. */
 	struct knot_requestor requestor;
@@ -144,7 +138,7 @@ int main(int argc, char *argv[])
 	assert(origin_fd > 0);
 	socklen_t addr_len = sockaddr_len((struct sockaddr *)&remote.addr);
 	getsockname(origin_fd, (struct sockaddr *)&remote.addr, &addr_len);
-	ret = listen(origin_fd, 10);
+	int ret = listen(origin_fd, 10);
 	assert(ret == 0);
 
 	/* Responder thread. */
@@ -170,7 +164,6 @@ int main(int argc, char *argv[])
 
 	/* Cleanup. */
 	mp_delete((struct mempool *)mm.ctx);
-	server_deinit(&server);
 	conf_free(conf(), false);
 
 	return 0;
