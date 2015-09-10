@@ -36,7 +36,7 @@ enum {
  *  Requestor holds a FIFO of pending queries.
  */
 struct knot_requestor {
-	mm_ctx_t *mm;            /*!< Memory context. */
+	mm_ctx_t *mm;                 /*!< Memory context. */
 	list_t pending;               /*!< Pending requests (FIFO). */
 	struct knot_overlay overlay;  /*!< Response processing overlay. */
 };

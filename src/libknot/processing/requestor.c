@@ -23,18 +23,17 @@
 
 static bool use_tcp(struct knot_request *request)
 {
-	return !(request->flags & KNOT_RQ_UDP);
+	return (request->flags & KNOT_RQ_UDP) == 0;
 }
 
 static struct knot_request *request_make(mm_ctx_t *mm)
 {
-	struct knot_request *request =
-	                mm_alloc(mm, sizeof(struct knot_request));
+	struct knot_request *request = mm_alloc(mm, sizeof(*request));
 	if (request == NULL) {
 		return NULL;
 	}
 
-	memset(request, 0, sizeof(struct knot_request));
+	memset(request, 0, sizeof(*request));
 
 	return request;
 }
@@ -61,7 +60,7 @@ static int request_send(struct knot_request *request,
 	/* Each request has unique timeout. */
 	struct timeval tv = *timeout;
 
-	/* Wait for writeability or error. */
+	/* Initiate non-blocking connect if not connected. */
 	int ret = request_ensure_connected(request);
 	if (ret != KNOT_EOK) {
 		return ret;
@@ -70,7 +69,7 @@ static int request_send(struct knot_request *request,
 	/* Send query, construct if not exists. */
 	knot_pkt_t *query = request->query;
 	uint8_t *wire = query->wire;
-	uint16_t wire_len = query->size;
+	size_t wire_len = query->size;
 
 	/* Send query. */
 	if (use_tcp(request)) {
@@ -175,7 +174,7 @@ void knot_requestor_init(struct knot_requestor *requestor, mm_ctx_t *mm)
 		return;
 	}
 
-	memset(requestor, 0, sizeof(struct knot_requestor));
+	memset(requestor, 0, sizeof(*requestor));
 	requestor->mm = mm;
 	init_list(&requestor->pending);
 	knot_overlay_init(&requestor->overlay, mm);
@@ -224,7 +223,7 @@ int knot_requestor_enqueue(struct knot_requestor *requestor,
 	assert(request->fd == -1);
 
 	/* Prepare response buffers. */
-	request->resp  = knot_pkt_new(NULL, KNOT_WIRE_MAX_PKTSIZE, requestor->mm);
+	request->resp = knot_pkt_new(NULL, KNOT_WIRE_MAX_PKTSIZE, requestor->mm);
 	if (request->resp == NULL) {
 		mm_free(requestor->mm, request);
 		return KNOT_ENOMEM;
