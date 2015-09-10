@@ -108,7 +108,6 @@ typedef struct server {
 	worker_pool_t *workers;
 
 	/*! \brief Event scheduler. */
-	dt_unit_t *iosched;
 	evsched_t sched;
 
 	/*! \brief List of interfaces. */

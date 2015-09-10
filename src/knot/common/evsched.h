@@ -30,7 +30,9 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <sys/time.h>
+
 #include "libknot/internal/heap.h"
+#include "knot/server/dthreads.h"
 
 /* Forward decls. */
 struct evsched;
@@ -63,17 +65,14 @@ typedef struct event {
 
 /*!
  * \brief Event scheduler structure.
- *
- * Events are executed in their scheduled time.
  */
 typedef struct evsched {
 	volatile bool running;     /*!< True if running. */
-	volatile event_t *last_ev; /*!< Last (or current) running event. */
-	pthread_mutex_t run_lock;  /*!< Event running lock. */
 	pthread_mutex_t heap_lock; /*!< Event heap locking. */
 	pthread_cond_t notify;     /*!< Event heap notification. */
 	struct heap heap;          /*!< Event heap. */
 	void *ctx;                 /*!< Scheduler context. */
+	dt_unit_t *thread;
 } evsched_t;
 
 /*!
@@ -146,34 +145,10 @@ int evsched_schedule(event_t *ev, uint32_t dt);
  */
 int evsched_cancel(event_t *ev);
 
-/*!
- * \brief Fetch next-event.
- *
- * Scheduler may block until a next event is available.
- *
- * \warning Returned event must be marked as finished, or deadlock occurs.
- *
- * \param s Event scheduler.
- *
- * \retval Scheduled event.
- * \retval NULL on error.
- */
-event_t* evsched_begin_process(evsched_t *sched);
 
-/*!
- * \brief Mark running event as finished.
- *
- * Need to call this after each event returned by evsched_begin_process() is finished.
- *
- * \note Must not be called from outside event scheduler, only from events or
- *       event processing.
- *
- * \param s Event scheduler.
- *
- * \retval KNOT_EOK if successful.
- * \retval KNOT_EINVAL
- * \retval KNOT_ENOTRUNNING
- */
-int evsched_end_process(evsched_t *sched);
+
+void evsched_start(evsched_t *sched);
+void evsched_stop(evsched_t *sched);
+void evsched_join(evsched_t *sched);
 
 /*! @} */

@@ -21,6 +21,7 @@
 #include <assert.h>
 
 #include "libknot/libknot.h"
+#include "knot/server/dthreads.h"
 #include "knot/common/evsched.h"
 
 /*! \brief Some implementations of timercmp >= are broken, this is for compat.*/
@@ -58,16 +59,63 @@ static struct timeval timeval_in(uint32_t dt)
 	return tv;
 }
 
+/*! \brief Event scheduler loop. */
+static int evsched_run(dthread_t *thread)
+{
+	evsched_t *sched = (evsched_t*)thread->data;
+	if (sched == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	pthread_mutex_lock(&sched->heap_lock);
+	/* Run event loop. */
+	while (!dt_is_cancelled(thread)) {
+		if (EMPTY_HEAP(&sched->heap)) {
+			pthread_cond_wait(&sched->notify, &sched->heap_lock);
+			continue;
+		}
+
+		/* Get current time. */
+		struct timeval dt;
+		gettimeofday(&dt, 0);
+
+		/* Get next event. */
+		event_t *ev = *((event_t**)HHEAD(&sched->heap));
+		assert(ev != NULL);
+
+		if (timercmp_ge(&dt, &ev->tv)) {
+			heap_delmin(&sched->heap);
+			pthread_mutex_unlock(&sched->heap_lock);
+			ev->cb(ev);
+			pthread_mutex_lock(&sched->heap_lock);
+		} else {
+			/* Wait for next event or interrupt. Unlock calendar. */
+			struct timespec ts;
+			ts.tv_sec = ev->tv.tv_sec;
+			ts.tv_nsec = ev->tv.tv_usec * 1000L;
+			pthread_cond_timedwait(&sched->notify, &sched->heap_lock, &ts);
+		}
+	}
+
+	return KNOT_EOK;
+}
+
 int evsched_init(evsched_t *sched, void *ctx)
 {
 	memset(sched, 0, sizeof(evsched_t));
 	sched->ctx = ctx;
 
 	/* Initialize event calendar. */
-	pthread_mutex_init(&sched->run_lock, 0);
 	pthread_mutex_init(&sched->heap_lock, 0);
 	pthread_cond_init(&sched->notify, 0);
 	heap_init(&sched->heap, compare_event_heap_nodes, 0);
+
+	sched->thread = dt_create(1, evsched_run, NULL, sched);
+
+	if (sched->thread == NULL) {
+		evsched_deinit(sched);
+		return KNOT_ENOMEM;
+	}
 
 	return KNOT_EOK;
 }
@@ -79,7 +127,6 @@ void evsched_deinit(evsched_t *sched)
 	}
 
 	/* Deinitialize event calendar. */
-	pthread_mutex_destroy(&sched->run_lock);
 	pthread_mutex_destroy(&sched->heap_lock);
 	pthread_cond_destroy(&sched->notify);
 
@@ -91,6 +138,10 @@ void evsched_deinit(evsched_t *sched)
 	}
 
 	free(sched->heap.data);
+
+	if (sched->thread != NULL) {
+		dt_delete(&sched->thread);
+	}
 
 	/* Clear the structure. */
 	memset(sched, 0, sizeof(evsched_t));
@@ -156,131 +207,44 @@ int evsched_schedule(event_t *ev, uint32_t dt)
 	return KNOT_EOK;
 }
 
-static int evsched_try_cancel(evsched_t *sched, event_t *ev)
-{
-	int found = 0;
-
-	if (sched == NULL || ev == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	/* Make sure not running. If an event is starting, we race for this lock
-	 * and either win or lose. If we lose, we may find it in heap because
-	 * it rescheduled itself. Either way, it will be marked as last running. */
-	pthread_mutex_lock(&sched->run_lock);
-
-	/* Lock calendar. */
-	pthread_mutex_lock(&sched->heap_lock);
-
-	if ((found = heap_find(&sched->heap, ev))) {
-		heap_delete(&sched->heap, found);
-	}
-
-	/* Last running event was (probably) the one we're trying to cancel. */
-	if (sched->last_ev == ev) {
-		sched->last_ev = NULL;   /* Invalidate it. */
-		found = KNOT_EAGAIN; /* Let's try again if it didn't reschedule itself. */
-	}
-
-	/* Unlock calendar. */
-	pthread_cond_broadcast(&sched->notify);
-	pthread_mutex_unlock(&sched->heap_lock);
-
-	/* Enable running events. */
-	pthread_mutex_unlock(&sched->run_lock);
-
-	if (found > 0) {        /* Event canceled. */
-		return KNOT_EOK;
-	} else if (found < 0) { /* Error */
-		return found;
-	}
-
-	return KNOT_ENOENT;     /* Not found. */
-}
-
 int evsched_cancel(event_t *ev)
 {
 	if (ev == NULL || ev->sched == NULL) {
 		return KNOT_EINVAL;
 	}
 
-	/* Event may have already run, try again. */
-	int ret = KNOT_EAGAIN;
-	while (ret == KNOT_EAGAIN) {
-		ret = evsched_try_cancel(ev->sched, ev);
+	/* Lock calendar. */
+	pthread_mutex_lock(&ev->sched->heap_lock);
+
+	int found;
+	if ((found = heap_find(&ev->sched->heap, ev))) {
+		heap_delete(&ev->sched->heap, found);
 	}
+
+	/* Unlock calendar. */
+	pthread_cond_broadcast(&ev->sched->notify);
+	pthread_mutex_unlock(&ev->sched->heap_lock);
 
 	/* Reset event timer. */
 	memset(&ev->tv, 0, sizeof(struct timeval));
-	/* Now we're sure event is canceled or finished. */
+
 	return KNOT_EOK;
 }
 
-event_t* evsched_begin_process(evsched_t *sched)
+void evsched_start(evsched_t *sched)
 {
-	/* Check. */
-	if (!sched) {
-		return NULL;
-	}
+	dt_start(sched->thread);
+}
 
-	/* Lock calendar. */
+void evsched_stop(evsched_t *sched)
+{
 	pthread_mutex_lock(&sched->heap_lock);
-
-	while(1) {
-
-		/* Check event heap. */
-		if (!EMPTY_HEAP(&sched->heap)) {
-
-			/* Get current time. */
-			struct timeval dt;
-			gettimeofday(&dt, 0);
-
-			/* Get next event. */
-			event_t *next_ev = *((event_t**)HHEAD(&sched->heap));
-			assert(next_ev != NULL);
-
-			/* Immediately return. */
-			if (timercmp_ge(&dt, &next_ev->tv)) {
-				sched->last_ev = next_ev;
-				sched->running = true;
-				heap_delmin(&sched->heap);
-				pthread_mutex_unlock(&sched->heap_lock);
-				pthread_mutex_lock(&sched->run_lock);
-				return next_ev;
-			}
-
-			/* Wait for next event or interrupt. Unlock calendar. */
-			/* FIXME: Blocks this the possibility to add any event earlier? */
-			struct timespec ts;
-			ts.tv_sec = next_ev->tv.tv_sec;
-			ts.tv_nsec = next_ev->tv.tv_usec * 1000L;
-			pthread_cond_timedwait(&sched->notify, &sched->heap_lock, &ts);
-		} else {
-			/* Block until an event is scheduled. Unlock calendar.*/
-			pthread_cond_wait(&sched->notify, &sched->heap_lock);
-		}
-	}
-
-	/* Unlock heap, this shouldn't happen. */
+	dt_stop(sched->thread);
+	pthread_cond_broadcast(&sched->notify);
 	pthread_mutex_unlock(&sched->heap_lock);
-	return NULL;
 }
 
-int evsched_end_process(evsched_t *sched)
+void evsched_join(evsched_t *sched)
 {
-	if (!sched) {
-		return KNOT_EINVAL;
-	}
-
-	/* \note This enables event cancellation & running on next event. */
-	if(sched->running) {
-		if (pthread_mutex_unlock(&sched->run_lock) != 0) {
-			return KNOT_ERROR;
-		}
-		sched->running = false; /* Mark as not running. */
-	} else {
-		return KNOT_ENOTRUNNING;
-	}
-
-	return KNOT_EOK;
+	dt_join(sched->thread);
 }

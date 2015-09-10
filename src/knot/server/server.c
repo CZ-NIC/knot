@@ -42,38 +42,6 @@ enum {
 	TCP_MIN_SNDSIZE = sizeof(uint16_t) + UINT16_MAX
 };
 
-/*! \brief Event scheduler loop. */
-static int evsched_run(dthread_t *thread)
-{
-	evsched_t *s = (evsched_t*)thread->data;
-	if (!s) {
-		return KNOT_EINVAL;
-	}
-
-	/* Run event loop. */
-	event_t *ev = 0;
-	while((ev = evsched_begin_process(s))) {
-
-		/* Process termination event (NULL function). */
-		if (ev->cb == NULL) {
-			evsched_end_process(s);
-			evsched_event_free(ev);
-			break;
-		}
-
-		/* Process event. */
-		ev->cb(ev);
-		evsched_end_process(s);
-
-		/* Check for thread cancellation. */
-		if (dt_is_cancelled(thread)) {
-			break;
-		}
-	}
-
-	return KNOT_EOK;
-}
-
 /*! \brief Unbind interface and clear the structure. */
 static void server_deinit_iface(iface_t *iface)
 {
@@ -361,15 +329,9 @@ int server_init(server_t *server, int bg_workers)
 	if (evsched_init(&server->sched, server) != KNOT_EOK) {
 		return KNOT_ENOMEM;
 	}
-	server->iosched = dt_create(1, evsched_run, NULL, &server->sched);
-	if (server->iosched == NULL) {
-		evsched_deinit(&server->sched);
-		return KNOT_ENOMEM;
-	}
 
 	server->workers = worker_pool_create(bg_workers);
 	if (server->workers == NULL) {
-		dt_delete(&server->iosched);
 		evsched_deinit(&server->sched);
 		return KNOT_ENOMEM;
 	}
@@ -395,7 +357,6 @@ void server_deinit(server_t *server)
 
 	/* Free threads and event handlers. */
 	worker_pool_destroy(server->workers);
-	dt_delete(&server->iosched);
 
 	/* Free rate limits. */
 	rrl_destroy(server->rrl);
@@ -476,7 +437,7 @@ int server_start(server_t *s, bool async)
 	}
 
 	/* Start evsched handler. */
-	dt_start(s->iosched);
+	evsched_start(&s->sched);
 
 	/* Start I/O handlers. */
 	int ret = KNOT_EOK;
@@ -496,7 +457,7 @@ void server_wait(server_t *s)
 		return;
 	}
 
-	dt_join(s->iosched);
+	evsched_join(&s->sched);
 	worker_pool_join(s->workers);
 
 	if (s->tu_size == 0) {
@@ -561,11 +522,8 @@ void server_stop(server_t *server)
 {
 	log_info("stopping server");
 
-	/* Send termination event. */
-	event_t *term_ev = evsched_event_create(&server->sched, NULL, NULL);
-	evsched_schedule(term_ev, 0);
-	dt_stop(server->iosched);
-
+	/* Stop scheduler. */
+	evsched_stop(&server->sched);
 	/* Interrupt background workers. */
 	worker_pool_stop(server->workers);
 
