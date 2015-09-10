@@ -449,11 +449,12 @@ static void forget_ifaces(ifacelist_t *ifaces, fd_set *set, int maxfd)
 }
 
 /*! \brief Add interface sockets to the watched fdset. */
-static int track_ifaces(ifacelist_t *ifaces, fd_set *set, int *maxfd, int *minfd)
+static int track_ifaces(ifacelist_t *ifaces, fd_set *set,
+                        int *maxfd, int *minfd, int thrid)
 {
 	FD_ZERO(set);
-	*maxfd = -1;
-	*minfd = 0;
+	*maxfd = INT_MIN;
+	*minfd = INT_MAX;
 
 	if (ifaces == NULL) {
 		return KNOT_EINVAL;
@@ -461,7 +462,11 @@ static int track_ifaces(ifacelist_t *ifaces, fd_set *set, int *maxfd, int *minfd
 
 	iface_t *iface = NULL;
 	WALK_LIST(iface, ifaces->l) {
-		int fd = iface->fd[IO_UDP];
+#ifdef ENABLE_REUSEPORT
+		int fd = iface->fd_udp[thrid % iface->fd_udp_count];
+#else
+		int fd = iface->fd_udp[0];
+#endif
 		*maxfd = MAX(fd, *maxfd);
 		*minfd = MIN(fd, *minfd);
 		FD_SET(fd, set);
@@ -524,7 +529,7 @@ int udp_master(dthread_t *thread)
 			rcu_read_lock();
 			forget_ifaces(ref, &fds, maxfd);
 			ref = handler->server->ifaces;
-			track_ifaces(ref, &fds, &maxfd, &minfd);
+			track_ifaces(ref, &fds, &maxfd, &minfd, udp.thread_id);
 			rcu_read_unlock();
 		}
 

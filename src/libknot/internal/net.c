@@ -141,6 +141,16 @@ int net_bound_socket(int type, const struct sockaddr_storage *ss,
 		enable_nonlocal(socket, ss->ss_family);
 	}
 
+	/* Allow to bind the same address by multiple threads. */
+	if (flags & NET_BIND_MULTIPLE) {
+#ifdef ENABLE_REUSEPORT
+		(void) setsockopt(socket, SOL_SOCKET, SO_REUSEPORT, &flag, sizeof(flag));
+#else
+		close(socket);
+		return KNOT_ENOTSUP;
+#endif
+	}
+
 	/* Bind to specified address. */
 	const struct sockaddr *sa = (const struct sockaddr *)ss;
 	int ret = bind(socket, sa, sockaddr_len(sa));

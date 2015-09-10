@@ -174,6 +174,38 @@ AC_ARG_ENABLE([recvmmsg],
       [AC_DEFINE(HAVE_RECVMMSG, 1, [Define if struct mmsghdr and recvmmsg() exists.])])
     ])
 
+AC_ARG_ENABLE([reuseport],
+    AS_HELP_STRING([--enable-reuseport=auto|yes|no], [enable Linux SO_REUSEPORT support [default=auto]]),
+    [enable_reuseport="$enableval"], [enable_reuseport=auto])
+
+AC_DEFUN([CHECK_REUSEPORT], [
+  AC_CHECK_DECL(
+    [SO_REUSEPORT],
+    [$1],
+    [$2],
+    [
+    #include <sys/socket.h>
+    ]
+  )])
+
+AS_IF([test "$enable_reuseport" != no], [
+  AS_CASE([$enable_reuseport],
+    [auto],[
+      AS_CASE([$host_os],
+        [linux*], [CHECK_REUSEPORT([enable_reuseport=yes], [enable_reuseport=no])],
+        [*], [enable_reuseport=no]
+      )],
+    [yes],[
+      AS_CASE([$host_os],
+        [linux*], [CHECK_REUSEPORT([enable_reuseport=yes], [AC_MSG_ERROR([SO_REUSEPORT support not detected.])])],
+        [*], [AC_MSG_ERROR(["SO_REUSEPORT not supported on $host_os."])]
+      )],
+    [*], [AC_MSG_ERROR([Invalid value of --enable-reuseport.])]
+  )])
+
+AS_IF([test "$enable_reuseport" = yes],[
+   AC_DEFINE([ENABLE_REUSEPORT], [1], [Use SO_REUSEPORT.])])
+
 # Check for link time optimizations support and predictive commoning
 AC_ARG_ENABLE([lto],
     AS_HELP_STRING([--enable-lto=yes|no], [enable link-time optimizations, enable if not broken for some extra speed [default=no]]),
@@ -226,7 +258,9 @@ AS_IF([test "$enable_systemd" != "no"],[
 
 AS_IF([test "$enable_systemd" = "yes"],[
   AC_DEFINE([ENABLE_SYSTEMD], [1], [Use systemd integration.])])
-])
+
+]) dnl enable_daemon
+
 
 dnl Check for userspace-rcu library
 AC_ARG_WITH(urcu,
@@ -490,6 +524,7 @@ AC_MSG_RESULT([
     Knot DNS utils:         ${enable_utilities}
     Knot DNS documentation: ${enable_documentation}
 
+    Use SO_REUSEPORT:    ${enable_reuseport}
     Fast zone parser:    ${enable_fastparser}
     Utilities with IDN:  ${with_libidn}
     Systemd integration: ${enable_systemd}

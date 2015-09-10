@@ -35,7 +35,8 @@
  * \brief Network interface flags.
  */
 enum net_flags {
-	NET_BIND_NONLOCAL = (1 << 0)
+	NET_BIND_NONLOCAL = (1 << 0), //!< Allow to bind unavailable address.
+	NET_BIND_MULTIPLE = (1 << 1), //!< Allow to bind address multiple times.
 };
 
 /*!
