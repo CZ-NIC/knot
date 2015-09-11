@@ -27,7 +27,6 @@
 #include <string.h>
 #include <assert.h>
 #include <errno.h>
-#include <limits.h>
 #include <sys/param.h>
 #include <urcu.h>
 #ifdef HAVE_SYS_UIO_H /* 'struct iovec' for OpenBSD */
@@ -449,16 +448,14 @@ static void forget_ifaces(ifacelist_t *ifaces, fd_set *set, int maxfd)
 }
 
 /*! \brief Add interface sockets to the watched fdset. */
-static int track_ifaces(ifacelist_t *ifaces, fd_set *set,
-                        int *maxfd, int *minfd, int thrid)
+static void track_ifaces(ifacelist_t *ifaces, fd_set *set,
+                         int *maxfd, int *minfd, int thrid)
 {
-	FD_ZERO(set);
-	*maxfd = INT_MIN;
-	*minfd = INT_MAX;
+	assert(ifaces && set && maxfd && minfd);
 
-	if (ifaces == NULL) {
-		return KNOT_EINVAL;
-	}
+	FD_ZERO(set);
+	*maxfd = 0;
+	*minfd = FD_SETSIZE - 1;
 
 	iface_t *iface = NULL;
 	WALK_LIST(iface, ifaces->l) {
@@ -471,8 +468,6 @@ static int track_ifaces(ifacelist_t *ifaces, fd_set *set,
 		*minfd = MIN(fd, *minfd);
 		FD_SET(fd, set);
 	}
-
-	return KNOT_EOK;
 }
 
 int udp_master(dthread_t *thread)
