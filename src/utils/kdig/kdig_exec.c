@@ -709,9 +709,6 @@ static void process_query(const query_t *query)
 				return;
 			// SERVFAIL.
 			} else if (ret == 1 && query->servfail_stop == true) {
-				WARN("failed to query server %s@%s(%s)\n",
-				     remote->name, remote->service,
-				     get_sockname(socktype));
 				net_clean(&net);
 				sign_context_deinit(&sign_ctx);
 				knot_pkt_free(&out_packet);
