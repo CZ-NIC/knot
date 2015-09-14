@@ -228,6 +228,25 @@ static int select_write(int fd, struct timeval *timeout)
 	return select(fd + 1, NULL, &set, NULL, timeout);
 }
 
+/*!
+ * \brief Check if we should wait for I/O readiness.
+ *
+ * \param error  'errno' set by the failed send() or recv().
+ */
+static bool io_should_wait(int error)
+{
+	switch (error) {
+	case EAGAIN:       // connection in progress (Linux) or data not ready
+#if EAGAIN != EWOULDBLOCK
+	case EWOULDBLOCK:
+#endif
+	case ENOTCONN:     // connection in progress (BSD)
+		return true;
+	default:
+		return false;
+	}
+}
+
 /* \brief Receive a block of data from TCP socket with wait. */
 static int recv_data(int fd, uint8_t *buf, int len, bool oneshot, struct timeval *timeout)
 {
@@ -251,14 +270,17 @@ static int recv_data(int fd, uint8_t *buf, int len, bool oneshot, struct timeval
 				continue;
 			}
 		}
+
 		/* Check for disconnected socket. */
 		if (ret == 0) {
 			return KNOT_ECONNREFUSED;
 		}
 
-		/* Check for no data available. */
-		if (errno == EAGAIN || errno == EINTR) {
-			/* Continue only if timeout didn't expire. */
+		/* Handle error. */
+		assert(ret == -1);
+		if (errno == EINTR) {
+			continue;
+		} else if (io_should_wait(errno)) {
 			ret = select_read(fd, timeout);
 			if (ret > 0) {
 				continue;
@@ -335,22 +357,20 @@ static int send_data(int fd, struct iovec iov[], int iovcnt, struct timeval *tim
 			continue;
 		}
 
-		/* Error. */
-		if (sent == -1) {
-			if (errno == EAGAIN || errno == EINTR) {
-				int ret = select_write(fd, timeout);
-				if (ret > 0) {
-					continue;
-				} else if (ret == 0) {
-					return KNOT_ETIMEOUT;
-				}
+		/* Handle error. */
+		assert(sent == -1);
+		if (errno == EINTR) {
+			continue;
+		} else if (io_should_wait(errno)) {
+			int ret = select_write(fd, timeout);
+			if (ret > 0) {
+				continue;
+			} else if (ret == 0) {
+				return KNOT_ETIMEOUT;
 			}
-
+		} else {
 			return KNOT_ECONN;
 		}
-
-		/* Unreachable. */
-		assert(0);
 	}
 
 	return total;
