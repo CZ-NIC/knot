@@ -171,9 +171,6 @@ Options
 **+**\ [\ **no**\ ]\ **tcp**
   Use the TCP protocol (default is UDP for standard query and TCP for AXFR/IXFR).
 
-**+**\ [\ **no**\ ]\ **fail**
-  Stop querying next nameserver if SERVFAIL response is received.
-
 **+**\ [\ **no**\ ]\ **ignore**
   Don't use TCP automatically if a truncated reply is received.
 
@@ -218,6 +215,7 @@ Missing features with regard to ISC dig:
   **+ndots**\ =\ *D*,
   **+domain**\ =\ *somename*,
   **+trusted-key**\ =\ *####*,
+  **+**\ [\ **no**\ ]\ **fail**,
   **+**\ [\ **no**\ ]\ **vc**,
   **+**\ [\ **no**\ ]\ **search**,
   **+**\ [\ **no**\ ]\ **showsearch**,

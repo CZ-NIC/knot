@@ -194,9 +194,6 @@ Show the TTL value.
 \fB+\fP[\fBno\fP]\fBtcp\fP
 Use the TCP protocol (default is UDP for standard query and TCP for AXFR/IXFR).
 .TP
-\fB+\fP[\fBno\fP]\fBfail\fP
-Stop querying next nameserver if SERVFAIL response is received.
-.TP
 \fB+\fP[\fBno\fP]\fBignore\fP
 Don\(aqt use TCP automatically if a truncated reply is received.
 .TP
@@ -241,6 +238,7 @@ Options \fB\-f\fP and \fB\-m\fP and query options:
 \fB+ndots\fP=\fID\fP,
 \fB+domain\fP=\fIsomename\fP,
 \fB+trusted\-key\fP=\fI####\fP,
+\fB+\fP[\fBno\fP]\fBfail\fP,
 \fB+\fP[\fBno\fP]\fBvc\fP,
 \fB+\fP[\fBno\fP]\fBsearch\fP,
 \fB+\fP[\fBno\fP]\fBshowsearch\fP,

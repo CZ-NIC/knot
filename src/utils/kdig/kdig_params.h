@@ -114,8 +114,6 @@ struct query {
 	int32_t		wait;
 	/*!< Ignore truncated response. */
 	bool		ignore_tc;
-	/*!< Stop querying if servfail. */
-	bool		servfail_stop;
 	/*!< Class number (16unsigned + -1 uninitialized). */
 	int32_t		class_num;
 	/*!< Type number (16unsigned + -1 uninitialized). */
