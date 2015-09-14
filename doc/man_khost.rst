@@ -50,9 +50,6 @@ Options
 **-r**
   Disable recursion.
 
-**-s**
-  Stop querying the next nameserver if SERVFAIL response is received
-
 **-T**
   Use the TCP protocol.
 
@@ -84,7 +81,7 @@ Notes
 
 Missing features with regard to ISC dig:
 
-  Options **-C**, **-i**, **-l**, **-m** and **-N**.
+  Options **-C**, **-i**, **-l**, **-m**, **-N** and **-s**.
 
 Differences with regard to ISC host:
 

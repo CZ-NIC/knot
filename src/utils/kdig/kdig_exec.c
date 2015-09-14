@@ -624,11 +624,6 @@ static int process_query_packet(const knot_pkt_t      *query,
 	knot_pkt_free(&reply);
 	net_close(net);
 
-	// Check for SERVFAIL.
-	if (knot_wire_get_rcode(in) == KNOT_RCODE_SERVFAIL) {
-		return 1;
-	}
-
 	return 0;
 }
 
@@ -703,12 +698,6 @@ static void process_query(const query_t *query)
 
 			// Success.
 			if (ret == 0) {
-				net_clean(&net);
-				sign_context_deinit(&sign_ctx);
-				knot_pkt_free(&out_packet);
-				return;
-			// SERVFAIL.
-			} else if (ret == 1 && query->servfail_stop == true) {
 				net_clean(&net);
 				sign_context_deinit(&sign_ctx);
 				knot_pkt_free(&out_packet);

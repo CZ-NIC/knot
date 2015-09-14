@@ -508,24 +508,6 @@ static int opt_notcp(const char *arg, void *query)
 	return KNOT_EOK;
 }
 
-static int opt_fail(const char *arg, void *query)
-{
-	query_t *q = query;
-
-	q->servfail_stop = true;
-
-	return KNOT_EOK;
-}
-
-static int opt_nofail(const char *arg, void *query)
-{
-	query_t *q = query;
-
-	q->servfail_stop = false;
-
-	return KNOT_EOK;
-}
-
 static int opt_ignore(const char *arg, void *query)
 {
 	query_t *q = query;
@@ -802,9 +784,6 @@ static const param_t kdig_opts2[] = {
 	{ "tcp",          ARG_NONE,     opt_tcp },
 	{ "notcp",        ARG_NONE,     opt_notcp },
 
-	{ "fail",         ARG_NONE,     opt_fail },
-	{ "nofail",       ARG_NONE,     opt_nofail },
-
 	{ "ignore",       ARG_NONE,     opt_ignore },
 	{ "noignore",     ARG_NONE,     opt_noignore },
 
@@ -863,7 +842,6 @@ query_t* query_create(const char *owner, const query_t *conf)
 		query->retries = DEFAULT_RETRIES_DIG;
 		query->wait = DEFAULT_TIMEOUT_DIG;
 		query->ignore_tc = false;
-		query->servfail_stop = true;
 		query->class_num = -1;
 		query->type_num = -1;
 		query->serial = -1;
@@ -899,7 +877,6 @@ query_t* query_create(const char *owner, const query_t *conf)
 		query->retries = conf->retries;
 		query->wait = conf->wait;
 		query->ignore_tc = conf->ignore_tc;
-		query->servfail_stop = conf->servfail_stop;
 		query->class_num = conf->class_num;
 		query->type_num = conf->type_num;
 		query->serial = conf->serial;
@@ -1381,7 +1358,6 @@ static void kdig_help(void)
 	       "       +[no]class      Show DNS class.\n"
 	       "       +[no]ttl        Show TTL value.\n"
 	       "       +[no]tcp        Use TCP protocol.\n"
-	       "       +[no]fail       Stop if SERVFAIL.\n"
 	       "       +[no]ignore     Don't use TCP automatically if truncated.\n"
 	       "       +[no]nsid       Request NSID.\n"
 	       "       +[no]edns=N     Use EDNS (=version).\n"

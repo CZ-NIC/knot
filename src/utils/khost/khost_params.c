@@ -69,7 +69,6 @@ static int khost_init(kdig_params_t *params)
 	params->config->port = strdup(DEFAULT_DNS_PORT);
 	params->config->retries = DEFAULT_RETRIES_HOST;
 	params->config->wait = DEFAULT_TIMEOUT_HOST;
-	params->config->servfail_stop = false;
 	params->config->class_num = KNOT_CLASS_IN;
 	params->config->style = DEFAULT_STYLE_HOST;
 	params->config->idn = true;
@@ -202,7 +201,6 @@ static void khost_help(void)
 	       "       -d             Allow debug messages.\n"
 	       "       -h, --help     Print help.\n"
 	       "       -r             Disable recursion.\n"
-	       "       -s             Stop if SERVFAIL.\n"
 	       "       -T             Use TCP procotol.\n"
 	       "       -v             Verbose output.\n"
 	       "       -V, --version  Print program version.\n"
@@ -272,9 +270,6 @@ int khost_parse(kdig_params_t *params, int argc, char *argv[])
 			return KNOT_EOK;
 		case 'r':
 			conf->flags.rd_flag = false;
-			break;
-		case 's':
-			conf->servfail_stop = true;
 			break;
 		case 'T':
 			conf->protocol = PROTO_TCP;
