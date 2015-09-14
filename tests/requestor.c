@@ -33,6 +33,8 @@ static int finish(knot_layer_t *ctx) { return KNOT_STATE_NOOP; }
 static int in(knot_layer_t *ctx, knot_pkt_t *pkt) { return KNOT_STATE_DONE; }
 static int out(knot_layer_t *ctx, knot_pkt_t *pkt) { return KNOT_STATE_CONSUME; }
 
+static const struct timeval TIMEOUT = { 2, 0 };
+
 /*! \brief Dummy answer processing module. */
 const knot_layer_api_t dummy_module = {
         &begin, &reset, &finish,
@@ -81,7 +83,7 @@ static void test_disconnected(struct knot_requestor *requestor, conf_remote_t *r
 	is_int(KNOT_EOK, ret, "requestor: disconnected/enqueue");
 
 	/* Wait for completion. */
-	struct timeval tv = { 5, 0 };
+	struct timeval tv = TIMEOUT;
 	ret = knot_requestor_exec(requestor, &tv);
 	is_int(KNOT_ECONN, ret, "requestor: disconnected/wait");
 }
@@ -93,7 +95,7 @@ static void test_connected(struct knot_requestor *requestor, conf_remote_t *remo
 	is_int(KNOT_EOK, ret, "requestor: connected/enqueue");
 
 	/* Wait for completion. */
-	struct timeval tv = { 5, 0 };
+	struct timeval tv = TIMEOUT;
 	ret = knot_requestor_exec(requestor, &tv);
 	is_int(KNOT_EOK, ret, "requestor: connected/wait");
 
@@ -107,7 +109,7 @@ static void test_connected(struct knot_requestor *requestor, conf_remote_t *remo
 	/* Wait for multiple queries. */
 	ret = KNOT_EOK;
 	for (unsigned i = 0; i < 10; ++i) {
-		struct timeval tv = { 5, 0 };
+		struct timeval tv = TIMEOUT;
 		ret |= knot_requestor_exec(requestor, &tv);
 	}
 	is_int(KNOT_EOK, ret, "requestor: multiple wait");
@@ -151,7 +153,7 @@ int main(int argc, char *argv[])
 	/*! \todo #243 TSIG secured requests test should be implemented. */
 
 	/* Terminate responder. */
-	struct timeval tv = { 5, 0 };
+	struct timeval tv = TIMEOUT;
 	int responder = net_connected_socket(SOCK_STREAM, &remote.addr, NULL);
 	assert(responder > 0);
 	tcp_send_msg(responder, (const uint8_t *)"", 1, &tv);
