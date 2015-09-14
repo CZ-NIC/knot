@@ -149,6 +149,14 @@ char *dname_to_ascii(const uint8_t *dname)
 }
 
 /*!
+ * Check if the ASCII domain name is a root label.
+ */
+static bool ascii_is_root(const char *name)
+{
+	return name[0] == '.' && name[1] == '\0';
+}
+
+/*!
  * Compute real length of a domain name in ASCII.
  */
 static size_t ascii_length(const char *name)
@@ -172,6 +180,10 @@ uint8_t *dname_from_ascii(const char *_name)
 {
 	if (!_name) {
 		return NULL;
+	}
+
+	if (ascii_is_root(_name)) {
+		return (uint8_t *)strdup("");
 	}
 
 	// real length without rightmost empty labels

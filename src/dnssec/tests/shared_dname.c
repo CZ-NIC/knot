@@ -80,6 +80,14 @@ static void test_ascii(void)
 	ok(dname_binary_equal(converted, expect), "dname_from_ascii()");
 	free(converted);
 	}
+
+	{
+	const char *name = ".";
+	const uint8_t *expect = (uint8_t *)"";
+	uint8_t *converted = dname_from_ascii(name);
+	ok(dname_binary_equal(converted, expect), "dname_from_ascii() root");
+	free(converted);
+	}
 }
 
 static void test_equal(void)
