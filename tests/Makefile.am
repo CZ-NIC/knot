@@ -28,6 +28,7 @@ check_PROGRAMS = \
 	internal_mem			\
 	journal				\
 	namedb				\
+	net				\
 	net_shortwrite			\
 	node				\
 	overlay				\
