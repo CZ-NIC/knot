@@ -37,6 +37,11 @@
 #include "libknot/internal/net.h"
 #include "libknot/internal/errcode.h"
 
+// MSG_NOSIGNAL not available on OS X
+#ifndef MSG_NOSIGNAL
+  #define MSG_NOSIGNAL 0
+#endif
+
 static int socket_create(int family, int type, int proto)
 {
 	/* Create socket. */
@@ -252,11 +257,7 @@ static int recv_data(int fd, uint8_t *buf, int len, bool oneshot, struct timeval
 {
 	int ret = 0;
 	int rcvd = 0;
-	int flags = MSG_DONTWAIT;
-
-#ifdef MSG_NOSIGNAL
-	flags |= MSG_NOSIGNAL;
-#endif
+	int flags = MSG_DONTWAIT | MSG_NOSIGNAL;
 
 	while (rcvd < len) {
 		/* Receive data. */
@@ -298,7 +299,7 @@ static int recv_data(int fd, uint8_t *buf, int len, bool oneshot, struct timeval
 int udp_send_msg(int fd, const uint8_t *msg, size_t msglen, const struct sockaddr *addr)
 {
 	socklen_t addr_len = sockaddr_len(addr);
-	int ret = sendto(fd, msg, msglen, 0, addr, addr_len);
+	int ret = sendto(fd, msg, msglen, MSG_NOSIGNAL, addr, addr_len);
 	if (ret != msglen) {
 		return KNOT_ECONN;
 	}
