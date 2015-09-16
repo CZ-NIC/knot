@@ -387,7 +387,6 @@ AS_CASE([$timer_mapsize],
 AC_DEFINE_UNQUOTED([TIMER_MAPSIZE], [$timer_mapsize], [Timer DB mapsize.])
 
 AS_IF([test "$enable_daemon" = "yes"],[
-
 dnl Check for rosedb module
 AC_ARG_ENABLE([rosedb],
     AS_HELP_STRING([--enable-rosedb], [Enable static RR query module.]),
@@ -395,17 +394,39 @@ AC_ARG_ENABLE([rosedb],
 
 AS_IF([test "$enable_rosedb" = yes], [AC_DEFINE([HAVE_ROSEDB], [1], [Define to 1 to enable static RR query module.])])
 AM_CONDITIONAL([HAVE_ROSEDB], [test "$enable_rosedb" = yes])
+])
 
 # GeoIP module
 AC_ARG_ENABLE([geoip],
     AS_HELP_STRING([--enable-geoip=auto|yes|no], [enable GeoIP module [default=auto]]),
     [enable_geoip="$enableval"], [enable_geoip=auto])
 
-AS_IF([test "$enable_geoip" != "no"],[
-  AS_CASE([$enable_geoip],
-    [auto],[PKG_CHECK_MODULES([libmaxminddb], [libmaxminddb], [enable_geoip=yes], [enable_geoip=no])],
-    [yes], [PKG_CHECK_MODULES([libmaxminddb], [libmaxminddb])],
-    [*],[AC_MSG_ERROR([Invalid value of --enable-geoip.])])
+AS_IF([test "$enable_daemon" = "no"],[enable_geoip=no])
+AS_CASE([$enable_geoip],
+  [no],[],
+  [auto],[PKG_CHECK_MODULES([libmaxminddb], [libmaxminddb], [enable_geoip=yes], [enable_geoip=no])],
+  [yes], [PKG_CHECK_MODULES([libmaxminddb], [libmaxminddb])],
+  [*],[
+    save_CFLAGS="$CFLAGS"
+    save_LIBS="$LIBS"
+    AS_IF([test "$enable_geoip" != ""],[
+      LIBS="$LIBS -L$enable_geoip"
+      CFLAGS="$CFLAGS -I$enable_geoip/include"
+      ])
+    AC_SEARCH_LIBS([MMDB_open], [maxminddb], [
+      AS_IF([test "$enable_geoip" != ""], [
+        libmaxminddb_CFLAGS="-I$enable_geoip/include"
+	libmaxminddb_LIBS="-L$enable_geoip -lmaxminddb"
+	],[
+	libmaxminddb_CFLAGS=""
+	libmaxminddb_LIBS="$ac_cv_search_MMDB_open"
+        ])
+      ],[AC_MSG_ERROR("not found in `$enable_geoip'")])
+    CFLAGS="$save_CFLAGS"
+    LIBS="$save_LIBS"
+    AC_SUBST([libmaxminddb_CFLAGS])
+    AC_SUBST([libmaxminddb_LIBS])
+    enable_geoip=yes
     ])
 
 AS_IF([test "$enable_geoip" = yes], [AC_DEFINE([HAVE_GEOIP], [1], [Define to 1 to enable GeoIP module.])])
