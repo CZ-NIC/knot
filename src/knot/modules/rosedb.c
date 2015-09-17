@@ -21,6 +21,7 @@
 #include "knot/modules/rosedb.h"
 #include "knot/nameserver/process_query.h"
 #include "libknot/libknot.h"
+#include "libknot/internal/net.h"
 #include "libknot/internal/utils.h"
 
 /* Module configuration scheme. */
@@ -484,7 +485,7 @@ static int rosedb_send_log(int sock, struct sockaddr *dst_addr, knot_pkt_t *pkt,
 	}
 
 	/* Send log message line. */
-	sendto(sock, buf, sizeof(buf) - maxlen, 0, dst_addr, sockaddr_len(dst_addr));
+	net_dgram_send(sock, (uint8_t *)buf, sizeof(buf) - maxlen, dst_addr);
 
 	return ret;
 }
