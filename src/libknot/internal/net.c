@@ -245,11 +245,14 @@ bool net_is_connected(int sock)
 	return (getpeername(sock, (struct sockaddr *)&ss, &len) == 0);
 }
 
+/* -- I/O interface handling partial  -------------------------------------- */
+
 static int select_read(int fd, struct timeval *timeout)
 {
 	fd_set set;
 	FD_ZERO(&set);
 	FD_SET(fd, &set);
+
 	return select(fd + 1, &set, NULL, NULL, timeout);
 }
 
@@ -281,7 +284,12 @@ static bool io_should_wait(int error)
 	}
 }
 
-/* \brief Receive a block of data from TCP socket with wait. */
+/*!
+ * \brief Receive a message from a socket with waiting.
+ *
+ * \param oneshot  If set, doesn't wait until the buffer is full.
+ *
+ */
 static int recv_data(int fd, uint8_t *buf, int len, bool oneshot, struct timeval *timeout)
 {
 	int ret = 0;
@@ -342,22 +350,22 @@ int udp_recv_msg(int fd, uint8_t *buf, size_t len, struct timeval *timeout)
 }
 
 /*!
- * \brief Shift processed data out of iovec structure.
+ * \brief Shift processed data out of message IO vectors.
  */
-static void iovec_shift(struct iovec **iov_ptr, int *iovcnt_ptr, size_t done)
+static void msg_iov_shift(struct msghdr *msg, size_t done)
 {
-	struct iovec *iov = *iov_ptr;
-	int iovcnt = *iovcnt_ptr;
+	struct iovec *iov = msg->msg_iov;
+	int iovlen = msg->msg_iovlen;
 
-	for (int i = 0; i < iovcnt && done > 0; i++) {
+	for (int i = 0; i < iovlen && done > 0; i++) {
 		if (iov[i].iov_len > done) {
 			iov[i].iov_base += done;
 			iov[i].iov_len -= done;
 			done = 0;
 		} else {
 			done -= iov[i].iov_len;
-			*iov_ptr += 1;
-			*iovcnt_ptr -= 1;
+			msg->msg_iov += 1;
+			msg->msg_iovlen -= 1;
 		}
 	}
 
@@ -365,17 +373,17 @@ static void iovec_shift(struct iovec **iov_ptr, int *iovcnt_ptr, size_t done)
 }
 
 /*!
- * \brief Send out TCP data with timeout in case the output buffer is full.
+ * \brief Send a message on a socket with timeout.
  */
-static int send_data(int fd, struct iovec iov[], int iovcnt, struct timeval *timeout)
+static int send_data(int sock, struct msghdr *msg, struct timeval *timeout)
 {
 	size_t total = 0;
-	for (int i = 0; i < iovcnt; i++) {
-		total += iov[i].iov_len;
+	for (int i = 0; i < msg->msg_iovlen; i++) {
+		total += msg->msg_iov[i].iov_len;
 	}
 
 	for (size_t avail = total; avail > 0; /* nop */) {
-		ssize_t sent = writev(fd, iov, iovcnt);
+		ssize_t sent = sendmsg(sock, msg, MSG_NOSIGNAL);
 		if (sent == avail) {
 			break;
 		}
@@ -383,7 +391,7 @@ static int send_data(int fd, struct iovec iov[], int iovcnt, struct timeval *tim
 		/* Short write. */
 		if (sent > 0) {
 			avail -= sent;
-			iovec_shift(&iov, &iovcnt, sent);
+			msg_iov_shift(msg, sent);
 			continue;
 		}
 
@@ -392,7 +400,7 @@ static int send_data(int fd, struct iovec iov[], int iovcnt, struct timeval *tim
 		if (errno == EINTR) {
 			continue;
 		} else if (io_should_wait(errno)) {
-			int ret = select_write(fd, timeout);
+			int ret = select_write(sock, timeout);
 			if (ret > 0) {
 				continue;
 			} else if (ret == 0) {
@@ -406,32 +414,37 @@ static int send_data(int fd, struct iovec iov[], int iovcnt, struct timeval *tim
 	return total;
 }
 
-int tcp_send_msg(int fd, const uint8_t *msg, size_t msglen, struct timeval *timeout)
+
+/* -- DNS specific I/O ----------------------------------------------------- */
+
+int net_dns_tcp_send(int fd, const uint8_t *buffer, size_t size, struct timeval *timeout)
 {
-	if (msglen > UINT16_MAX) {
+	if (fd < 0 || buffer == NULL || size > UINT16_MAX) {
 		return KNOT_EINVAL;
 	}
 
-	/* Create iovec for gathered write. */
 	struct iovec iov[2];
-	uint16_t pktsize = htons(msglen);
+	uint16_t pktsize = htons(size);
 	iov[0].iov_base = &pktsize;
 	iov[0].iov_len = sizeof(uint16_t);
-	iov[1].iov_base = (void *)msg;
-	iov[1].iov_len = msglen;
+	iov[1].iov_base = (void *)buffer;
+	iov[1].iov_len = size;
 
-	/* Send. */
-	ssize_t ret = send_data(fd, iov, 2, timeout);
+	struct msghdr msg = { 0 };
+	msg.msg_iov = iov;
+	msg.msg_iovlen = 2;
+
+	ssize_t ret = send_data(fd, &msg, timeout);
 	if (ret < 0) {
 		return ret;
 	}
 
-	return msglen; /* Do not count the size prefix. */
+	return size; /* Do not count the size prefix. */
 }
 
-int tcp_recv_msg(int fd, uint8_t *buf, size_t len, struct timeval *timeout)
+int net_dns_tcp_recv(int fd, uint8_t *buffer, size_t size, struct timeval *timeout)
 {
-	if (buf == NULL || fd < 0) {
+	if (fd < 0 || buffer == NULL) {
 		return KNOT_EINVAL;
 	}
 
@@ -445,10 +458,10 @@ int tcp_recv_msg(int fd, uint8_t *buf, size_t len, struct timeval *timeout)
 	pktsize = ntohs(pktsize);
 
 	// Check packet size
-	if (len < pktsize) {
+	if (size < pktsize) {
 		return KNOT_ENOMEM;
 	}
 
 	/* Receive payload. */
-	return recv_data(fd, buf, pktsize, false, timeout);
+	return recv_data(fd, buffer, pktsize, false, timeout);
 }

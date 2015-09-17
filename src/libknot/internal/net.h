@@ -1,4 +1,4 @@
-/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2011-2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -12,19 +12,7 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
- */
-/*!
- * \file net.h
- *
- * \author Marek Vavrusa <marek.vavusa@nic.cz>
- *
- * \brief Generic sockets APIs.
- *
- * This file provides higher-level API for creating connections and listeners.
- *
- * \addtogroup network
- * @{
- */
+*/
 
 #pragma once
 
@@ -119,30 +107,27 @@ int udp_send_msg(int fd, const uint8_t *msg, size_t msglen, const struct sockadd
 int udp_recv_msg(int fd, uint8_t *buf, size_t len, struct timeval *timeout);
 
 /*!
- * \brief Send a TCP message.
+ * \brief Send a DNS message on a TCP socket.
  *
- * \param fd Associated socket.
- * \param msg Buffer for a query wireformat.
- * \param msglen Buffer maximum size.
- * \param timeout Message send timeout.
+ * The outgoing message is prefixed with a two-byte value carrying the DNS
+ * message size according to the specification. These two bytes are not
+ * reflected in the return value.
  *
- * \retval Number of sent data on success.
- * \retval KNOT_ERROR on error.
+ * \see net_send
  */
-int tcp_send_msg(int fd, const uint8_t *msg, size_t msglen, struct timeval *timeout);
+int net_dns_tcp_send(int sock, const uint8_t *buffer, size_t size, struct timeval *timeout);
 
 /*!
- * \brief Receive a TCP message.
+ * \brief Receive a DNS message from a TCP socket.
  *
- * \param fd Associated socket.
- * \param buf Buffer for incoming bytestream.
- * \param len Buffer maximum size.
- * \param timeout Message receive timeout.
+ * The first two bytes of the incoming message are interpreted as a DNS message
+ * size according to the specification. These two bytes are not included in
+ * the returned size. Only a complete DNS message is retreived.
  *
- * \retval Number of read bytes on success.
- * \retval KNOT_ERROR on error.
- * \retval KNOT_ENOMEM on potential buffer overflow.
+ * \see net_recv
  */
-int tcp_recv_msg(int fd, uint8_t *buf, size_t len, struct timeval *timeout);
+int net_dns_tcp_recv(int sock, uint8_t *buffer, size_t size, struct timeval *timeout);
 
-/*! @} */
+// Added for compatibility:
+#define tcp_send_msg net_dns_tcp_send
+#define tcp_recv_msg net_dns_tcp_recv
