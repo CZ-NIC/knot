@@ -14,26 +14,14 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <stdlib.h>
-#include <stdbool.h>
-#include <unistd.h>
-#include <fcntl.h>
-#include <string.h>
-#include <errno.h>
-#include <stdio.h>
-#include <netdb.h>
-#include <time.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <sys/uio.h>
-#ifdef HAVE_NETINET_IN_SYSTM_H
-#include <netinet/in_systm.h>
-#endif
-#include <netinet/in.h>
-#include <sys/stat.h>
 #include <assert.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <netinet/in.h>
+#include <stdbool.h>
+#include <sys/socket.h>
+#include <unistd.h>
 
-#include "libknot/internal/macros.h"
 #include "libknot/internal/net.h"
 #include "libknot/internal/errcode.h"
 
