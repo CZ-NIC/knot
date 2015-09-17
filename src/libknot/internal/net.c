@@ -333,22 +333,6 @@ static int recv_data(int fd, uint8_t *buf, int len, bool oneshot, struct timeval
 	return rcvd;
 }
 
-int udp_send_msg(int fd, const uint8_t *msg, size_t msglen, const struct sockaddr *addr)
-{
-	socklen_t addr_len = sockaddr_len(addr);
-	int ret = sendto(fd, msg, msglen, MSG_NOSIGNAL, addr, addr_len);
-	if (ret != msglen) {
-		return KNOT_ECONN;
-	}
-
-	return ret;
-}
-
-int udp_recv_msg(int fd, uint8_t *buf, size_t len, struct timeval *timeout)
-{
-	return recv_data(fd, buf, len, true, timeout);
-}
-
 /*!
  * \brief Shift processed data out of message IO vectors.
  */
@@ -450,6 +434,26 @@ int net_recv(int sock, uint8_t *buffer, size_t size, struct timeval *timeout)
 	}
 
 	return recv_data(sock, buffer, size, true, timeout);
+}
+
+int net_dgram_send(int sock, const uint8_t *buffer, size_t size, const struct sockaddr *addr)
+{
+	return net_send(sock, buffer, size, addr, NULL);
+}
+
+int net_dgram_recv(int sock, uint8_t *buffer, size_t size, struct timeval *timeout)
+{
+	return net_recv(sock, buffer, size, timeout);
+}
+
+int net_stream_send(int sock, const uint8_t *buffer, size_t size, struct timeval *timeout)
+{
+	return net_send(sock, buffer, size, NULL, timeout);
+}
+
+int net_stream_recv(int sock, uint8_t *buffer, size_t size, struct timeval *timeout)
+{
+	return net_recv(sock, buffer, size, timeout);
 }
 
 /* -- DNS specific I/O ----------------------------------------------------- */

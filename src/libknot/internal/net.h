@@ -110,18 +110,32 @@ int net_send(int sock, const uint8_t *buffer, size_t size,
 int net_recv(int sock, uint8_t *buffer, size_t size, struct timeval *timeout);
 
 /*!
- * \brief Receive a UDP message from connected socket.
+ * \brief Send a message on a SOCK_DGRAM socket.
  *
- * \param fd Associated socket.
- * \param buf Buffer for incoming bytestream.
- * \param len Buffer maximum size.
- * \param timeout Message receive timeout.
- *
- * \retval Number of read bytes on success.
- * \retval KNOT_ERROR on error.
- * \retval KNOT_ENOMEM on potential buffer overflow.
+ * \see net_send
  */
-int udp_recv_msg(int fd, uint8_t *buf, size_t len, struct timeval *timeout);
+int net_dgram_send(int sock, const uint8_t *buffer, size_t size, const struct sockaddr *addr);
+
+/*!
+ * \brief Receive a message from a SOCK_DGRAM socket.
+ *
+ * \see net_recv
+ */
+int net_dgram_recv(int sock, uint8_t *buffer, size_t size, struct timeval *timeout);
+
+/*!
+ * \brief Send a message on a SOCK_STREAM socket.
+ *
+ * \see net_send
+ */
+int net_stream_send(int sock, const uint8_t *buffer, size_t size, struct timeval *timeout);
+
+/*!
+ * \brief Receive a message from a SOCK_STREAM socket.
+ *
+ * \see net_recv
+ */
+int net_stream_recv(int sock, uint8_t *buffer, size_t size, struct timeval *timeout);
 
 /*!
  * \brief Send a DNS message on a TCP socket.
@@ -146,5 +160,7 @@ int net_dns_tcp_send(int sock, const uint8_t *buffer, size_t size, struct timeva
 int net_dns_tcp_recv(int sock, uint8_t *buffer, size_t size, struct timeval *timeout);
 
 // Added for compatibility:
+#define udp_send_msg net_dgram_send
+#define udp_recv_msg net_dgram_recv
 #define tcp_send_msg net_dns_tcp_send
 #define tcp_recv_msg net_dns_tcp_recv
