@@ -414,6 +414,43 @@ static int send_data(int sock, struct msghdr *msg, struct timeval *timeout)
 	return total;
 }
 
+/* -- generic stream and datagram I/O -------------------------------------- */
+
+int net_send(int sock, const uint8_t *buffer, size_t size,
+             const struct sockaddr *addr, struct timeval *timeout)
+{
+	if (sock < 0 || buffer == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	struct iovec iov = { 0 };
+	iov.iov_base = (void*)buffer;
+	iov.iov_len = size;
+
+	struct msghdr msg = { 0 };
+	msg.msg_name = (void *)addr;
+	msg.msg_namelen = sockaddr_len(addr);
+	msg.msg_iov = &iov;
+	msg.msg_iovlen = 1;
+
+	int ret = send_data(sock, &msg, timeout);
+	if (ret < 0) {
+		return ret;
+	} else if (ret != size) {
+		return KNOT_ECONN;
+	}
+
+	return ret;
+}
+
+int net_recv(int sock, uint8_t *buffer, size_t size, struct timeval *timeout)
+{
+	if (sock < 0 || buffer == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	return recv_data(sock, buffer, size, true, timeout);
+}
 
 /* -- DNS specific I/O ----------------------------------------------------- */
 

@@ -80,17 +80,34 @@ int net_connected_socket(int type, const struct sockaddr_storage *dst_addr,
 bool net_is_connected(int sock);
 
 /*!
- * \brief Send a UDP message over connected socket.
+ * \brief Send a message on a socket.
  *
- * \param fd Associated socket.
- * \param msg Buffer for a query wireformat.
- * \param msglen Buffer maximum size.
- * \param addr Destination address (or NULL if connected).
+ * The socket can be SOCK_STREAM or SOCK_DGRAM.
  *
- * \retval Number of sent data on success.
- * \retval KNOT_ERROR on error.
+ * The implementation handles partial-writes automatically.
+ *
+ * \param[in]      sock     Socket.
+ * \param[in]      buffer   Message buffer.
+ * \param[in]      size     Size of the message.
+ * \param[in]      addr     Remote address (ignored for SOCK_STREAM).
+ * \param[in,out]  timeout  Read timeout (ignored for SOCK_DGRAM).
+ *
+ * \return Number of bytes sent or negative error code.
  */
-int udp_send_msg(int fd, const uint8_t *msg, size_t msglen, const struct sockaddr *addr);
+int net_send(int sock, const uint8_t *buffer, size_t size,
+             const struct sockaddr *addr, struct timeval *timeout);
+
+/*!
+ * \brief Receive a message from a socket.
+ *
+ * \param[in]      sock     Socket.
+ * \param[out]     buffer   Receiving buffer.
+ * \param[in]      size     Capacity of the receiving buffer.
+ * \param[in,out]  timeout  Read timeout.
+ *
+ * \return Number of bytes read or negative error code.
+ */
+int net_recv(int sock, uint8_t *buffer, size_t size, struct timeval *timeout);
 
 /*!
  * \brief Receive a UDP message from connected socket.
