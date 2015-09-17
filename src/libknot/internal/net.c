@@ -203,38 +203,32 @@ int net_connected_socket(int type, const struct sockaddr_storage *dst_addr,
 		return KNOT_EINVAL;
 	}
 
-	int socket = -1;
-
 	/* Check port. */
 	if (sockaddr_port(dst_addr) == 0) {
 		return KNOT_NET_EADDR;
 	}
 
 	/* Bind to specific source address - if set. */
-	if (sockaddr_len((const struct sockaddr *)src_addr) > 0) {
-		socket = net_bound_socket(type, src_addr, 0);
+	int sock = -1;
+	if (src_addr) {
+		sock = net_bound_socket(type, src_addr, 0);
 	} else {
-		socket = net_unbound_socket(type, dst_addr);
+		sock = net_unbound_socket(type, dst_addr);
 	}
-	if (socket < 0) {
-		return socket;
-	}
-
-	/* Switch the socket to non-blocking mode. */
-	if (fcntl(socket, F_SETFL, O_NONBLOCK) < 0) {
-		close(socket);
-		return KNOT_NET_ESOCKET;
+	if (sock < 0) {
+		return sock;
 	}
 
 	/* Connect to destination. */
 	const struct sockaddr *sa = (const struct sockaddr *)dst_addr;
-	int ret = connect(socket, sa, sockaddr_len(sa));
+	int ret = connect(sock, sa, sockaddr_len(sa));
 	if (ret != 0 && errno != EINPROGRESS) {
-		close(socket);
-		return KNOT_NET_ECONNECT;
+		ret = knot_map_errno();
+		close(sock);
+		return ret;
 	}
 
-	return socket;
+	return sock;
 }
 
 int net_is_connected(int fd)
