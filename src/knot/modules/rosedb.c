@@ -549,7 +549,7 @@ static int rosedb_synth(knot_pkt_t *pkt, const knot_dname_t *key, struct iter *i
 	/* Send message to syslog. */
 	struct sockaddr_storage syslog_addr;
 	if (sockaddr_set(&syslog_addr, AF_INET, entry.syslog_ip, DEFAULT_PORT) == KNOT_EOK) {
-		int sock = net_unbound_socket(AF_INET, &syslog_addr);
+		int sock = net_unbound_socket(SOCK_DGRAM, &syslog_addr);
 		if (sock > 0) {
 			rosedb_send_log(sock, (struct sockaddr *)&syslog_addr, pkt,
 			                entry.threat_code, qdata);
