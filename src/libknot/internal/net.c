@@ -231,11 +231,11 @@ int net_connected_socket(int type, const struct sockaddr_storage *dst_addr,
 	return sock;
 }
 
-int net_is_connected(int fd)
+bool net_is_connected(int sock)
 {
 	struct sockaddr_storage ss;
 	socklen_t len = sizeof(ss);
-	return getpeername(fd, (struct sockaddr *)&ss, &len) == 0;
+	return (getpeername(sock, (struct sockaddr *)&ss, &len) == 0);
 }
 
 static int select_read(int fd, struct timeval *timeout)

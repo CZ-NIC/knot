@@ -28,7 +28,8 @@
 
 #pragma once
 
-/* POSIX only. */
+#include <stdbool.h>
+
 #include "libknot/internal/sockaddr.h"
 
 /*!
@@ -78,13 +79,13 @@ int net_connected_socket(int type, const struct sockaddr_storage *dst_addr,
 /*!
  * \brief Return true if the socket is connected.
  *
- * @note This could be used to identify connected TCP from UDP sockets.
+ * \note This could be used to identify connected TCP from UDP sockets.
  *
- * \param fd Socket.
+ * \param sock  Socket.
  *
  * \return true if connected
  */
-int net_is_connected(int fd);
+bool net_is_connected(int sock);
 
 /*!
  * \brief Send a UDP message over connected socket.
