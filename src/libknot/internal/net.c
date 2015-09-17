@@ -42,15 +42,31 @@
   #define MSG_NOSIGNAL 0
 #endif
 
+/*!
+ * \brief Create a non-blocking socket.
+ *
+ * Prefer SOCK_NONBLOCK if available to save one fcntl() syscall.
+ *
+ */
 static int socket_create(int family, int type, int proto)
 {
-	/* Create socket. */
-	int ret = socket(family, type, proto);
-	if (ret < 0) {
+#ifdef SOCK_NONBLOCK
+	type |= SOCK_NONBLOCK;
+#endif
+	int sock = socket(family, type, proto);
+	if (sock < 0) {
 		return knot_map_errno();
 	}
 
-	return ret;
+#ifndef SOCK_NONBLOCK
+	if (fcntl(sock, F_SETFL, O_NONBLOCK) != 0) {
+		int ret = knot_map_errno();
+		close(sock);
+		return ret;
+	}
+#endif
+
+	return sock;
 }
 
 int net_unbound_socket(int type, const struct sockaddr_storage *ss)
