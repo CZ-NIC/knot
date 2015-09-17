@@ -37,9 +37,14 @@
 #include "libknot/internal/net.h"
 #include "libknot/internal/errcode.h"
 
-// MSG_NOSIGNAL not available on OS X
-#ifndef MSG_NOSIGNAL
-  #define MSG_NOSIGNAL 0
+/*
+ * OS X doesn't support MSG_NOSIGNAL. Use SO_NOSIGPIPE socket option instead.
+ */
+#if defined(__APPLE__) && !defined(MSG_NOSIGNAL)
+#  define MSG_NOSIGNAL 0
+#  define osx_block_sigpipe(sock) sockopt_enable(sock, SOL_SOCKET, SO_NOSIGPIPE)
+#else
+#  define osx_block_sigpipe(sock) /* no-op */
 #endif
 
 /*!
@@ -74,6 +79,8 @@ static int socket_create(int family, int type, int proto)
 		return ret;
 	}
 #endif
+
+	osx_block_sigpipe(sock);
 
 	return sock;
 }
