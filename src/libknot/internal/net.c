@@ -43,6 +43,15 @@
 #endif
 
 /*!
+ * \brief Enable socket option.
+ */
+static bool sockopt_enable(int sock, int level, int optname)
+{
+	const int enable = 1;
+	return (setsockopt(sock, level, optname, &enable, sizeof(enable)) == 0);
+}
+
+/*!
  * \brief Create a non-blocking socket.
  *
  * Prefer SOCK_NONBLOCK if available to save one fcntl() syscall.
@@ -118,70 +127,73 @@ static const struct option *nonlocal_option(int family)
 	}
 }
 
-static void enable_nonlocal(int socket, int family)
+static bool enable_nonlocal(int socket, int family)
 {
 	const struct option *opt = nonlocal_option(family);
 	if (opt == NULL || opt->name == 0) {
-		return;
+		return false;
 	}
 
-	int enable = 1;
-	(void) setsockopt(socket, opt->level, opt->name, &enable, sizeof(enable));
+	return sockopt_enable(socket, opt->level, opt->name);
 }
 
-int net_bound_socket(int type, const struct sockaddr_storage *ss,
-                     enum net_flags flags)
+static void unlink_unix_socket(const struct sockaddr_storage *addr)
+{
+	char path[SOCKADDR_STRLEN] = {0};
+	sockaddr_tostr(path, sizeof(path), addr);
+	unlink(path);
+}
+
+int net_bound_socket(int type, const struct sockaddr_storage *ss, enum net_flags flags)
 {
 	/* Create socket. */
-	int socket = net_unbound_socket(type, ss);
-	if (socket < 0) {
-		return socket;
+	int sock = net_unbound_socket(type, ss);
+	if (sock < 0) {
+		return sock;
 	}
 
-	/* Convert to string address format. */
-	char addr_str[SOCKADDR_STRLEN] = {0};
-	sockaddr_tostr(addr_str, sizeof(addr_str), ss);
+	/* Unlink UNIX sock if exists. */
+	if (ss->ss_family == AF_UNIX) {
+		unlink_unix_socket(ss);
+	}
 
 	/* Reuse old address if taken. */
-	int flag = 1;
-	(void) setsockopt(socket, SOL_SOCKET, SO_REUSEADDR, &flag, sizeof(flag));
+	sockopt_enable(sock, SOL_SOCKET, SO_REUSEADDR);
 
-	/* Unlink UNIX socket if exists. */
-	if (ss->ss_family == AF_UNIX) {
-		unlink(addr_str);
-	}
-
-	/* Make the socket IPv6 only to allow 'any' for IPv4 and IPv6 at the same time. */
+	/* Don't bind IPv4 for IPv6 any address. */
 	if (ss->ss_family == AF_INET6) {
-		(void) setsockopt(socket, IPPROTO_IPV6, IPV6_V6ONLY,
-		                  &flag, sizeof(flag));
+		sockopt_enable(sock, IPPROTO_IPV6, IPV6_V6ONLY);
 	}
 
 	/* Allow bind to non-local address. */
 	if (flags & NET_BIND_NONLOCAL) {
-		enable_nonlocal(socket, ss->ss_family);
+		enable_nonlocal(sock, ss->ss_family);
 	}
 
 	/* Allow to bind the same address by multiple threads. */
 	if (flags & NET_BIND_MULTIPLE) {
 #ifdef ENABLE_REUSEPORT
-		(void) setsockopt(socket, SOL_SOCKET, SO_REUSEPORT, &flag, sizeof(flag));
+		if (!sockopt_enable(sock, SOL_SOCKET, SO_REUSEPORT)) {
+			int ret = knot_map_errno();
+			close(sock);
+			return ret;
+		}
 #else
-		close(socket);
+		close(sock);
 		return KNOT_ENOTSUP;
 #endif
 	}
 
 	/* Bind to specified address. */
 	const struct sockaddr *sa = (const struct sockaddr *)ss;
-	int ret = bind(socket, sa, sockaddr_len(sa));
+	int ret = bind(sock, sa, sockaddr_len(sa));
 	if (ret < 0) {
 		ret = knot_map_errno();
-		close(socket);
+		close(sock);
 		return ret;
 	}
 
-	return socket;
+	return sock;
 }
 
 int net_connected_socket(int type, const struct sockaddr_storage *dst_addr,
