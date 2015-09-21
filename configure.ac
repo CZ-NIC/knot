@@ -345,6 +345,8 @@ have_lmdb=no
 AS_IF([test "$with_lmdb" != "no"],[
     save_CPPFLAGS=$CPPFLAGS
     save_LIBS=$LIBS
+
+    # Look for lmdb in given path and common locations
     for try_lmdb in "$with_lmdb" "" "/usr/local"; do
 
       AS_IF([test -d "$try_lmdb"], [
@@ -363,25 +365,26 @@ AS_IF([test "$with_lmdb" != "no"],[
               AC_MSG_ERROR([lmdb headers not found in `$try_lmdb', is your installation complete?])])
           AC_COMPUTE_INT(lmdb_VERSION_FULL, MDB_VERSION_FULL, [#include <lmdb.h>],
 	      AC_MSG_ERROR([Unable to determine lmdb version from MDB_VERSION_FULL]))
-	  AC_MSG_CHECKING([whether lmdb version is at least $lmdb_MIN_VERSION_STRING in $try_lmdb])
-	  AS_IF([test "$lmdb_VERSION_FULL" -ge "$lmdb_MIN_VERSION_FULL"],[
-	    lmdb_LIBS="$lmdb_LIBS -llmdb"
-	    AC_MSG_RESULT([yes])
-	    have_lmdb=yes
-            break 
-	    ])
-	  AC_MSG_RESULT([no])
+	  AS_IF([test "$lmdb_VERSION_FULL" -lt "$lmdb_MIN_VERSION_FULL"],[
+	      AC_MSG_ERROR([lmdb version $lmdb_MIN_VERSION_STRING or higher required or compile with embedded lmdb (--with-lmdb=no)])])
+          lmdb_LIBS="$lmdb_LIBS -llmdb"
+          have_lmdb=yes
+          break 
           ])
-      have_lmdb=no
+
       unset lmdb_CFLAGS
       unset lmdb_LIBS
       # do not cache result of AC_SEARCH_LIBS test
       unset ac_cv_search_mdb_env_open
-      CPPFLAGS="$save_CPPFLAGS"
-      LIBS="$save_LIBS"
     done
+
     CPPFLAGS="$save_CPPFLAGS"
     LIBS="$save_LIBS"
+
+    # fail the configure if we haven't found lmdb library in the system
+    AS_IF([test "$have_lmdb" = "no"],[
+        AC_MSG_ERROR([shared lmdb library not found])
+	])
     ])
 
 AS_IF([test "$have_lmdb" != "no"],[
