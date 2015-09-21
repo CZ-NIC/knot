@@ -337,7 +337,7 @@ AC_ARG_WITH([lmdb],
     AC_HELP_STRING([--with-lmdb=[DIR]], [Link with external LMDB (>= $lmdb_MIN_VERSION_STRING)]),[
     with_lmdb=$withval
     ],[
-    with_lmdb=yes
+    with_lmdb=auto
     ])
 
 have_lmdb=no
@@ -365,10 +365,11 @@ AS_IF([test "$with_lmdb" != "no"],[
               AC_MSG_ERROR([lmdb headers not found in `$try_lmdb', is your installation complete?])])
           AC_COMPUTE_INT(lmdb_VERSION_FULL, MDB_VERSION_FULL, [#include <lmdb.h>],
 	      AC_MSG_ERROR([Unable to determine lmdb version from MDB_VERSION_FULL]))
-	  AS_IF([test "$lmdb_VERSION_FULL" -lt "$lmdb_MIN_VERSION_FULL"],[
-	      AC_MSG_ERROR([lmdb version $lmdb_MIN_VERSION_STRING or higher required or compile with embedded lmdb (--with-lmdb=no)])])
-          lmdb_LIBS="$lmdb_LIBS -llmdb"
-          have_lmdb=yes
+	  AS_IF([test "$lmdb_VERSION_FULL" -ge "$lmdb_MIN_VERSION_FULL"],[
+              lmdb_LIBS="$lmdb_LIBS -llmdb"
+              have_lmdb=yes],[
+	      AC_MSG_WARN([lmdb version 0.9.15 and higher not found, using embedded version])
+	      ])
           break 
           ])
 
@@ -382,7 +383,7 @@ AS_IF([test "$with_lmdb" != "no"],[
     LIBS="$save_LIBS"
 
     # fail the configure if we haven't found lmdb library in the system
-    AS_IF([test "$have_lmdb" = "no"],[
+    AS_IF([test "$with_lmdb" != "auto" -a "$have_lmdb" = "no"],[
         AC_MSG_ERROR([shared lmdb library not found])
 	])
     ])
