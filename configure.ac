@@ -328,8 +328,13 @@ dt_DNSTAP([
 AM_CONDITIONAL([HAVE_DNSTAP], test "$opt_dnstap" != "no")
 
 dnl Check for LMDB
+lmdb_MIN_VERSION_MAJOR=0
+lmdb_MIN_VERSION_MINOR=9
+lmdb_MIN_VERSION_PATCH=15
+lmdb_MIN_VERSION_STRING="$lmdb_MIN_VERSION_MAJOR.$lmdb_MIN_VERSION_MINOR.$lmdb_MIN_VERSION_PATCH"
+lmdb_MIN_VERSION_FULL="$((($lmdb_MIN_VERSION_MAJOR << 24) | ($lmdb_MIN_VERSION_MINOR << 16) | $lmdb_MIN_VERSION_PATCH))"
 AC_ARG_WITH([lmdb],
-    AC_HELP_STRING([--with-lmdb=[DIR]], [Link with external LMDB]),[
+    AC_HELP_STRING([--with-lmdb=[DIR]], [Link with external LMDB (>= $lmdb_MIN_VERSION_STRING)]),[
     with_lmdb=$withval
     ],[
     with_lmdb=yes
@@ -350,21 +355,28 @@ AS_IF([test "$with_lmdb" != "no"],[
         lmdb_LIBS=""
 	])
 
-      CPPFLAGS="$CPPFLAGS $lmdb_CFLAGS"
-      LIBS="$LIBS $lmdb_LIBS"
+      CPPFLAGS="$save_CPPFLAGS $lmdb_CFLAGS"
+      LIBS="$save_LIBS $lmdb_LIBS"
 
       AC_SEARCH_LIBS([mdb_env_open], [lmdb], [
           AC_CHECK_HEADERS([lmdb.h], [], [
-              AC_ERROR([lmdb headers not found in `$try_lmdb', is your installation complete?])])
-	  lmdb_LIBS="$lmdb_LIBS -llmdb"
-          have_lmdb=yes
-          break
-          ],[
-	  have_lmdb=no
-	  # do not cache result of AC_SEARCH_LIBS test
-	  unset ac_cv_search_mdb_env_open
-	  ])
-
+              AC_MSG_ERROR([lmdb headers not found in `$try_lmdb', is your installation complete?])])
+          AC_COMPUTE_INT(lmdb_VERSION_FULL, MDB_VERSION_FULL, [#include <lmdb.h>],
+	      AC_MSG_ERROR([Unable to determine lmdb version from MDB_VERSION_FULL]))
+	  AC_MSG_CHECKING([whether lmdb version is at least $lmdb_MIN_VERSION_STRING in $try_lmdb])
+	  AS_IF([test "$lmdb_VERSION_FULL" -ge "$lmdb_MIN_VERSION_FULL"],[
+	    lmdb_LIBS="$lmdb_LIBS -llmdb"
+	    AC_MSG_RESULT([yes])
+	    have_lmdb=yes
+            break 
+	    ])
+	  AC_MSG_RESULT([no])
+          ])
+      have_lmdb=no
+      unset lmdb_CFLAGS
+      unset lmdb_LIBS
+      # do not cache result of AC_SEARCH_LIBS test
+      unset ac_cv_search_mdb_env_open
       CPPFLAGS="$save_CPPFLAGS"
       LIBS="$save_LIBS"
     done
@@ -376,7 +388,9 @@ AS_IF([test "$have_lmdb" != "no"],[
     AC_SUBST([lmdb_CFLAGS])
     AC_SUBST([lmdb_LIBS])
     enable_lmdb=shared
-    ],[enable_lmdb=embedded])
+    ],[
+    enable_lmdb=embedded
+    ])
 AM_CONDITIONAL([HAVE_LMDB], test "$have_lmdb" != "no")
 
 AS_IF([test "$enable_daemon" = "yes"],[
