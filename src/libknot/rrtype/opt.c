@@ -18,6 +18,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+#include <netinet/in.h>
 #include <sys/socket.h>
 
 #include "libknot/attribute.h"
@@ -506,71 +507,233 @@ bool knot_edns_check_record(knot_rrset_t *opt_rr)
 	return wire.error == KNOT_EOK;
 }
 
-_public_
-int knot_edns_client_subnet_create(const knot_addr_family_t family,
-                                   const uint8_t *addr,
-                                   const uint16_t addr_len,
-                                   uint8_t src_mask,
-                                   uint8_t dst_mask,
-                                   uint8_t *data,
-                                   uint16_t *data_len)
+/*----------------------------------------------------------------------------*/
+
+/*!
+ * \brief EDNS Client Subnet family data.
+ */
+struct ecs_family {
+	int platform;   //!< Platform family identifier.
+	uint16_t iana;  //!< IANA family identifier.
+	size_t offset;  //!< Socket address offset.
+	size_t size;    //!< Socket address size.
+};
+
+typedef struct ecs_family ecs_family_t;
+
+#define ECS_INIT(platform, iana, type, member) \
+	{ platform, iana, offsetof(type, member), sizeof(((type *)0)->member) }
+
+/*!
+ * \brief Supported EDNS Client Subnet families.
+ *
+ * http://www.iana.org/assignments/address-family-numbers/address-family-numbers.xml
+ */
+static const ecs_family_t ECS_FAMILIES[] = {
+	ECS_INIT(AF_INET,  1, struct sockaddr_in,  sin_addr),
+	ECS_INIT(AF_INET6, 2, struct sockaddr_in6, sin6_addr),
+	{ 0 }
+};
+
+/*!
+ * \brief Lookup ECS family by platform identifier.
+ */
+static const ecs_family_t *ecs_family_by_platform(int family)
 {
-	if (addr == NULL || data == NULL || data_len == NULL) {
+	for (const ecs_family_t *f = ECS_FAMILIES; f->size > 0; f++) {
+		if (f->platform == family) {
+			return f;
+		}
+	}
+
+	return NULL;
+}
+
+/*!
+ * \brief Lookup ECS family by IANA identifier.
+ */
+static const ecs_family_t *ecs_family_by_iana(uint16_t family)
+{
+	for (const ecs_family_t *f = ECS_FAMILIES; f->size > 0; f++) {
+		if (f->iana == family) {
+			return f;
+		}
+	}
+
+	return NULL;
+}
+
+/*!
+ * \brief Get ECS address prefix size in bytes.
+ */
+static size_t ecs_prefix_size(uint8_t prefix)
+{
+	return (prefix + 7) / 8;
+}
+
+static uint8_t ecs_prefix_lsb_mask(uint8_t prefix)
+{
+	int modulo = prefix % 8;
+	if (modulo == 0) {
+		return 0xff;
+	} else {
+		return 0xff << (8 - modulo);
+	}
+}
+
+/*!
+ * \brief Write raw network address prefix and clear the rest of the buffer.
+ */
+static void ecs_write_address(wire_ctx_t *dst, wire_ctx_t *src, int8_t prefix)
+{
+	size_t count = ecs_prefix_size(prefix);
+	uint8_t lsb_mask = ecs_prefix_lsb_mask(prefix);
+
+	if (count > 0) {
+		wire_ctx_copy(dst, src, count);
+		if (dst->error != KNOT_EOK) {
+			return;
+		}
+		dst->position[-1] &= lsb_mask;
+	}
+
+	size_t blank = wire_ctx_available(dst);
+	wire_ctx_memset(dst, 0, blank);
+}
+
+/*!
+ * \brief Check if ECS parameters are valid.
+ */
+static bool ecs_is_valid(const knot_edns_client_subnet_t *ecs)
+{
+	if (ecs == NULL) {
+		return false;
+	}
+
+	const ecs_family_t *f = ecs_family_by_iana(ecs->family);
+
+	return f != NULL &&                          // known family
+	       (ecs->source_len <= f->size * 8) &&   // valid source length
+	       (ecs->scope_len <= ecs->source_len);  // valid scope length
+}
+
+_public_
+size_t knot_edns_client_subnet_size(const knot_edns_client_subnet_t *ecs)
+{
+	if (!ecs_is_valid(ecs)) {
+		return 0;
+	}
+
+	return sizeof(ecs->family) +
+	       sizeof(ecs->source_len) +
+	       sizeof(ecs->scope_len) +
+	       ecs_prefix_size(ecs->source_len);
+}
+
+_public_
+int knot_edns_client_subnet_write(uint8_t *option, size_t option_len,
+                                  const knot_edns_client_subnet_t *ecs)
+{
+	if (option == NULL || ecs == NULL) {
 		return KNOT_EINVAL;
 	}
 
-	uint8_t addr_prefix_len = (src_mask + 7) / 8; // Ceiling operation.
-	uint8_t modulo = src_mask % 8;
-
-	if (addr_prefix_len > addr_len) {
+	if (!ecs_is_valid(ecs)) {
 		return KNOT_EINVAL;
 	}
 
-	wire_ctx_t wire = wire_ctx_init(data, *data_len);
-	wire_ctx_write_u16(&wire, family);
-	wire_ctx_write_u8(&wire, src_mask);
-	wire_ctx_write_u8(&wire, dst_mask);
-	wire_ctx_write(&wire, addr, addr_prefix_len);
+	wire_ctx_t wire = wire_ctx_init(option, option_len);
+	wire_ctx_t addr = wire_ctx_init_const(ecs->address, sizeof(ecs->address));
+
+	wire_ctx_write_u16(&wire, ecs->family);
+	wire_ctx_write_u8(&wire, ecs->source_len);
+	wire_ctx_write_u8(&wire, ecs->scope_len);
+	ecs_write_address(&wire, &addr, ecs->source_len);
 
 	if (wire.error != KNOT_EOK) {
 		return wire.error;
 	}
-
-	// Zeroize trailing bits in the last byte.
-	if (modulo > 0 && addr_prefix_len > 0) {
-		wire.position[-1] &= 0xFF << (8 - modulo);
-	}
-
-	*data_len = wire_ctx_offset(&wire);
 
 	return KNOT_EOK;
 }
 
 _public_
-int knot_edns_client_subnet_parse(const uint8_t *data,
-                                  const uint16_t data_len,
-                                  knot_addr_family_t *family,
-                                  uint8_t *addr,
-                                  uint16_t *addr_len,
-                                  uint8_t *src_mask,
-                                  uint8_t *dst_mask)
+int knot_edns_client_subnet_parse(knot_edns_client_subnet_t *ecs,
+                                  const uint8_t *option, size_t option_len)
 {
-	if (data == NULL || family == NULL || addr == NULL ||
-	    addr_len == NULL || src_mask == NULL || dst_mask == NULL) {
+	if (ecs == NULL || option == NULL) {
 		return KNOT_EINVAL;
 	}
 
-	wire_ctx_t wire = wire_ctx_init_const(data, data_len);
+	knot_edns_client_subnet_t result = { 0 };
 
-	*family = wire_ctx_read_u16(&wire);
-	*src_mask = wire_ctx_read_u8(&wire);
-	*dst_mask = wire_ctx_read_u8(&wire);
-	*addr_len = wire_ctx_available(&wire);
-	wire_ctx_read(&wire, addr, *addr_len);
+	wire_ctx_t wire = wire_ctx_init_const(option, option_len);
+	wire_ctx_t addr = wire_ctx_init(result.address, sizeof(result.address));
 
-	if (wire.error != KNOT_EOK) {
-		return wire.error;
+	result.family     = wire_ctx_read_u16(&wire);
+	result.source_len = wire_ctx_read_u8(&wire);
+	result.scope_len  = wire_ctx_read_u8(&wire);
+	ecs_write_address(&addr, &wire, result.source_len);
+
+	if (addr.error != KNOT_EOK || wire.error != KNOT_EOK) {
+		return KNOT_EMALF;
 	}
 
+	if (!ecs_is_valid(&result)) {
+		return KNOT_EMALF;
+	}
+
+	*ecs = result;
 	return KNOT_EOK;
+}
+
+_public_
+int knot_edns_client_subnet_set_addr(knot_edns_client_subnet_t *ecs,
+                                     const struct sockaddr_storage *addr)
+{
+	if (ecs == NULL || addr == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	const ecs_family_t *f = ecs_family_by_platform(addr->ss_family);
+	if (f == NULL) {
+		return KNOT_ENOTSUP;
+	}
+
+	ecs->family = f->iana;
+	ecs->source_len = f->size * 8;
+	ecs->scope_len = 0;
+
+	wire_ctx_t dst = wire_ctx_init(ecs->address, sizeof(ecs->address));
+	wire_ctx_t src = wire_ctx_init_const((void *)addr + f->offset, f->size);
+	ecs_write_address(&dst, &src, ecs->source_len);
+
+	assert(dst.error == KNOT_EOK);
+
+	return KNOT_EOK;
+}
+
+_public_
+int knot_edns_client_subnet_get_addr(struct sockaddr_storage *addr,
+                                     const knot_edns_client_subnet_t *ecs)
+{
+	if (addr == NULL || ecs == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	const ecs_family_t *f = ecs_family_by_iana(ecs->family);
+	if (f == NULL) {
+		return KNOT_ENOTSUP;
+	}
+
+	wire_ctx_t dst = wire_ctx_init((void *)addr + f->offset, f->size);
+	wire_ctx_t src = wire_ctx_init_const(ecs->address, sizeof(ecs->address));
+	ecs_write_address(&dst, &src, ecs->source_len);
+	if (dst.error != KNOT_EOK) {
+		return KNOT_EINVAL;
+	}
+
+	addr->ss_family = f->platform;
+
+	return (dst.error == KNOT_EOK ? KNOT_EOK : KNOT_EINVAL);
 }
