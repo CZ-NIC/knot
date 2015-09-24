@@ -413,3 +413,27 @@ static inline void wire_ctx_clear(wire_ctx_t *ctx, size_t size)
 	memset(ctx->position, 0, size);
 	ctx->position += size;
 }
+
+static inline void wire_ctx_copy(wire_ctx_t *dst, wire_ctx_t *src, size_t count)
+{
+	assert(dst);
+	assert(src);
+
+	if (dst->error != KNOT_EOK || src->error != KNOT_EOK) {
+		return;
+	}
+
+	if (count == 0) {
+		return;
+	}
+
+	bool can_write = wire_ctx_can_write(dst, count);
+	bool can_read = wire_ctx_can_read(src, count);
+	if (!can_write || !can_read) {
+		return;
+	}
+
+	memcpy(dst->position, src->position, count);
+	dst->position += count;
+	src->position += count;
+}
