@@ -437,3 +437,23 @@ static inline void wire_ctx_copy(wire_ctx_t *dst, wire_ctx_t *src, size_t count)
 	dst->position += count;
 	src->position += count;
 }
+
+static inline void wire_ctx_memset(wire_ctx_t *dst, int value, size_t count)
+{
+	assert(dst);
+
+	if (dst->error != KNOT_EOK) {
+		return;
+	}
+
+	if (count == 0) {
+		return;
+	}
+
+	if (!wire_ctx_can_write(dst, count)) {
+		return;
+	}
+
+	memset(dst->position, value, count);
+	dst->position += count;
+}
