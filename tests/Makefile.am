@@ -34,6 +34,7 @@ check_PROGRAMS += \
 	libknot/test_descriptor		\
 	libknot/test_dname		\
 	libknot/test_edns		\
+	libknot/test_edns_ecs		\
 	libknot/test_lookup		\
 	libknot/test_pkt		\
 	libknot/test_rdata		\
