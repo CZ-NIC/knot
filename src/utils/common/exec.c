@@ -181,36 +181,21 @@ static void print_footer(const size_t total_len,
 
 static void print_edns_client_subnet(const uint8_t *data, const uint16_t len)
 {
-	struct in_addr addr4;
-	struct in6_addr addr6;
-	knot_addr_family_t family;
-	uint8_t src_mask, dst_mask;
-	uint8_t addr[IPV6_PREFIXLEN / 8] = { 0 };
-	uint16_t addr_len = sizeof(addr);
-	char addr_str[SOCKADDR_STRLEN] = { '\0' };
-
-	int ret = knot_edns_client_subnet_parse(data, len, &family, addr,
-	                                        &addr_len, &src_mask, &dst_mask);
+	knot_edns_client_subnet_t ecs = { 0 };
+	int ret = knot_edns_client_subnet_parse(&ecs, data, len);
 	if (ret != KNOT_EOK) {
 		printf("\n");
 		return;
 	}
 
-	switch (family) {
-	case KNOT_ADDR_FAMILY_IPV4:
-		memcpy(&(addr4.s_addr), addr, IPV4_PREFIXLEN / 8);
-		inet_ntop(AF_INET, &addr4, addr_str, sizeof(addr_str));
-		break;
-	case KNOT_ADDR_FAMILY_IPV6:
-		memcpy(&(addr6.s6_addr), addr, IPV6_PREFIXLEN / 8);
-		inet_ntop(AF_INET6, &addr6, addr_str, sizeof(addr_str));
-		break;
-	default:
-		printf("unsupported address family\n");
-		return;
-	}
+	struct sockaddr_storage addr = { 0 };
+	ret = knot_edns_client_subnet_get_addr(&addr, &ecs);
+	assert(ret == KNOT_EOK);
 
-	printf("%s/%u/%u\n", addr_str, src_mask, dst_mask);
+	char addr_str[SOCKADDR_STRLEN] = { 0 };
+	sockaddr_tostr(addr_str, sizeof(addr_str), (struct sockaddr *)&addr);
+
+	printf("%s/%u/%u\n", addr_str, ecs.source_len, ecs.scope_len);
 }
 
 static void print_section_opt(const knot_rrset_t *rr, const uint8_t rcode)

@@ -69,18 +69,6 @@ typedef struct {
 	bool	do_flag;
 } flags_t;
 
-/*! \brief Network subnet information. */
-typedef struct {
-	/*! Protocol family. */
-	knot_addr_family_t	family;
-	/*! Address in wire format. */
-	uint8_t			addr[IPV6_PREFIXLEN / 8];
-	/*! Length of address in wire format. */
-	uint16_t		addr_len;
-	/*! Network mask length. */
-	uint8_t			netmask;
-} subnet_t;
-
 /*! \brief Basic parameters for DNS query. */
 typedef struct query query_t; // Forward declaration due to configuration.
 struct query {
@@ -131,7 +119,7 @@ struct query {
 	/*!< Transaction signature. */
 	knot_tsig_key_t tsig_key;
 	/*!< EDNS client subnet. */
-	subnet_t	*subnet;
+	knot_edns_client_subnet_t *subnet;
 	/*!< EDNS0 padding (16unsigned + -1 uninitialized). */
 	int32_t		padding;
 	/*!< Query alignment with EDNS0 padding (0 ~ uninitialized). */
