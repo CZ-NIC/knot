@@ -759,7 +759,7 @@ static int opt_noalignment(const char *arg, void *query)
 	return KNOT_EOK;
 }
 
-static int opt_client(const char *arg, void *query)
+static int opt_client(const char * const arg, void *query)
 {
 	query_t *q = query;
 
@@ -805,11 +805,12 @@ static int opt_client(const char *arg, void *query)
 	}
 
 	// Parse network mask.
-	if (arg + addr_len < arg_end) {
-		char *end;
-		arg += addr_len + 1;
-		unsigned long num = strtoul(arg, &end, 10);
-		if (end == arg || *end != '\0' || num > subnet->source_len) {
+	const char *mask = arg;
+	if (mask + addr_len < arg_end) {
+		char *end = NULL;
+		mask += addr_len + 1;
+		unsigned long num = strtoul(mask, &end, 10);
+		if (end == mask || *end != '\0' || num > subnet->source_len) {
 			free(subnet);
 			ERR("invalid network mask +client=%s\n", arg);
 			return KNOT_EINVAL;
