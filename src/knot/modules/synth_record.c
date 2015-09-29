@@ -53,7 +53,7 @@ int check_prefix(conf_check_t *args)
 const yp_item_t scheme_mod_synth_record[] = {
 	{ C_ID,       YP_TSTR,   YP_VNONE },
 	{ MOD_TYPE,   YP_TOPT,   YP_VOPT = { synthetic_types, SYNTH_NULL } },
-	{ MOD_PREFIX, YP_TSTR,   YP_VNONE, YP_FNONE, { check_prefix } },
+	{ MOD_PREFIX, YP_TSTR,   YP_VSTR = { "" }, YP_FNONE, { check_prefix } },
 	{ MOD_ORIGIN, YP_TDNAME, YP_VNONE },
 	{ MOD_TTL,    YP_TINT,   YP_VINT = { 0, UINT32_MAX, 3600, YP_STIME } },
 	{ MOD_NET,    YP_TDATA,  YP_VDATA = { 0, NULL, addr_range_to_bin,
@@ -73,15 +73,6 @@ int check_mod_synth_record(conf_check_t *args)
 		return KNOT_EINVAL;
 	}
 
-	// Check prefix.
-	conf_val_t prefix = conf_rawid_get_txn(args->conf, args->txn, C_MOD_SYNTH_RECORD,
-	                                       MOD_PREFIX, args->previous->id,
-	                                       args->previous->id_len);
-	if (prefix.code != KNOT_EOK) {
-		*args->err_str = "no owner prefix specified";
-		return KNOT_EINVAL;
-	}
-
 	// Check origin.
 	conf_val_t origin = conf_rawid_get_txn(args->conf, args->txn, C_MOD_SYNTH_RECORD,
 	                                       MOD_ORIGIN, args->previous->id,
@@ -92,15 +83,6 @@ int check_mod_synth_record(conf_check_t *args)
 	}
 	if (origin.code == KNOT_EOK && conf_opt(&type) == SYNTH_FORWARD) {
 		*args->err_str = "origin not allowed with forward type";
-		return KNOT_EINVAL;
-	}
-
-	// Check ttl.
-	conf_val_t ttl = conf_rawid_get_txn(args->conf, args->txn, C_MOD_SYNTH_RECORD,
-	                                    MOD_TTL, args->previous->id,
-	                                    args->previous->id_len);
-	if (ttl.code != KNOT_EOK) {
-		*args->err_str = "no ttl specified";
 		return KNOT_EINVAL;
 	}
 
