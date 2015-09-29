@@ -282,6 +282,39 @@ static int answer_edns_init(const knot_pkt_t *query, knot_pkt_t *resp,
 		}
 	}
 
+	/* EDNS Client Subnet. */
+	uint8_t *ecs_opt = knot_edns_get_option(query->opt_rr, KNOT_EDNS_OPTION_CLIENT_SUBNET);
+	if (ecs_opt != NULL) {
+		uint8_t *ecs_data = knot_edns_opt_get_data(ecs_opt);
+		uint16_t ecs_size = knot_edns_opt_get_length(ecs_opt);
+
+		/* Parse query ECS. */
+		knot_edns_client_subnet_t ecs = { 0 };
+		ret = knot_edns_client_subnet_parse(&ecs, ecs_data, ecs_size);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+
+		/* Response valid for all queries. */
+		ecs.scope_len = 0;
+
+		/* Write sanitized ECS. */
+		uint8_t *option = NULL;
+		uint16_t option_size = knot_edns_client_subnet_size(&ecs);
+		ret = knot_edns_reserve_option(&qdata->opt_rr,
+		                               KNOT_EDNS_OPTION_CLIENT_SUBNET,
+		                               option_size, &option, qdata->mm);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+
+		assert(option);
+		ret = knot_edns_client_subnet_write(option, option_size, &ecs);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+	}
+
 	return answer_edns_reserve(resp, qdata);
 }
 
