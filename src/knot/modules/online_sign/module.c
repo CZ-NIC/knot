@@ -17,7 +17,6 @@
 #include <assert.h>
 
 #include "knot/common/log.h"
-#include "knot/conf/base.h"
 
 #include "knot/modules/online_sign/module.h"
 #include "knot/modules/online_sign/nsec_next.h"
