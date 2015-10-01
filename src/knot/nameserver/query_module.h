@@ -49,6 +49,9 @@
 #define MODULE_ERR(mod, msg, ...) \
 	log_error("module '%.*s', " msg, mod[0], mod + 1, ##__VA_ARGS__)
 
+#define MODULE_ZONE_ERR(mod, zone, msg, ...) \
+	log_zone_error(zone, "module '%.*s', " msg, mod[0], mod + 1, ##__VA_ARGS__)
+
 /* Query module instance scopes. */
 enum {
 	MOD_SCOPE_GLOBAL = 1 << 0, /* Global quering (all zones). */

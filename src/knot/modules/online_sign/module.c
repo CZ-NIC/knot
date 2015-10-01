@@ -32,8 +32,8 @@
 #include "dnssec/sign.h"
 #include "dnssec/nsec.h"
 
-#define LOG_PREFIX "online signing, "
-#define module_zone_error(zone, msg...) log_zone_error(zone, LOG_PREFIX msg)
+#define module_zone_error(zone, msg...) \
+	MODULE_ZONE_ERR(C_MOD_ONLINE_SIGN, zone, msg)
 
 #define RRSIG_LIFETIME (25*60*60)
 
