@@ -161,84 +161,84 @@ An identity of the server returned in the response to the query for TXT
 record \fBid.server.\fP or \fBhostname.bind.\fP in the CHAOS class (see RFC 4892).
 Set empty value to disable.
 .sp
-Default: FQDN hostname
+\fIDefault:\fP FQDN hostname
 .SS version
 .sp
 A version of the server software returned in the response to the query
 for TXT record \fBversion.server.\fP or \fBversion.bind.\fP in the CHAOS
 class (see RFC 4892). Set empty value to disable.
 .sp
-Default: server version
+\fIDefault:\fP server version
 .SS nsid
 .sp
 A DNS name server identifier (see RFC 5001). Set empty value to disable.
 .sp
-Default: FQDN hostname
+\fIDefault:\fP FQDN hostname
 .SS rundir
 .sp
 A path for storing run\-time data (PID file, unix sockets, etc.).
 .sp
-Default: \fB${localstatedir}/run/knot\fP (configured with \fB\-\-with\-rundir=path\fP)
+\fIDefault:\fP \fB${localstatedir}/run/knot\fP (configured with \fB\-\-with\-rundir=path\fP)
 .SS user
 .sp
 A system user with an optional system group (\fIuser\fP:\fIgroup\fP) under which the
 server is run after starting and binding to interfaces. Linux capabilities
 are employed if supported.
 .sp
-Default: root:root
+\fIDefault:\fP root:root
 .SS pidfile
 .sp
 A PID file location.
 .sp
-Default: \fI\%rundir\fP/knot.pid
+\fIDefault:\fP \fI\%rundir\fP/knot.pid
 .SS udp\-workers
 .sp
 A number of quering UDP workers (threads).
 .sp
-Default: auto\-estimated optimal value based on the number of online CPUs
+\fIDefault:\fP auto\-estimated optimal value based on the number of online CPUs
 .SS tcp\-workers
 .sp
 A number of quering TCP workers (threads).
 .sp
-Default: auto\-estimated optimal value based on the number of online CPUs
+\fIDefault:\fP auto\-estimated optimal value based on the number of online CPUs
 .SS background\-workers
 .sp
 A number of workers (threads) used to execute background operations (zone
 loading, zone updates, etc.).
 .sp
-Default: auto\-estimated optimal value based on the number of online CPUs
+\fIDefault:\fP auto\-estimated optimal value based on the number of online CPUs
 .SS async\-start
 .sp
 If enabled, server doesn\(aqt wait for the zones to be loaded and starts
 responding immediately with SERVFAIL answers until the zone loads.
 .sp
-Default: off
+\fIDefault:\fP off
 .SS tcp\-handshake\-timeout
 .sp
 Maximum time between newly accepted TCP connection and the first query.
 This is useful to disconnect inactive connections faster than connections
 that already made at least 1 meaningful query.
 .sp
-Default: 5
+\fIDefault:\fP 5
 .SS tcp\-idle\-timeout
 .sp
 Maximum idle time between requests on a TCP connection. This also limits
 receiving of a single query, each query must be received in this time limit.
 .sp
-Default: 20
+\fIDefault:\fP 20
 .SS tcp\-reply\-timeout
 .sp
 Maximum time to wait for an outgoing connection or for a reply to an issued
 request (SOA, NOTIFY, AXFR...). This limit also applies to knotc remote
 operation over an internet socket.
 .sp
-Default: 10
+\fIDefault:\fP 10
 .SS max\-tcp\-clients
 .sp
 A maximum number of TCP clients connected in parallel, set this below the file
 descriptor limit to avoid resource exhaustion.
 .sp
-Default: 100
+\fIDefault:\fP 100
 .SS rate\-limit
 .sp
 Rate limiting is based on the token bucket scheme. A rate basically
@@ -251,7 +251,7 @@ response is rejected or enters \fI\%SLIP\fP
 (server responds with a truncated response). Number of available tokens
 is recalculated each second.
 .sp
-Default: 0 (disabled)
+\fIDefault:\fP 0 (disabled)
 .SS rate\-limit\-table\-size
 .sp
 Size of the hashtable in a number of buckets. The larger the hashtable, the lesser
@@ -261,7 +261,7 @@ a reasonably large prime due to better hash function distribution properties.
 Hash table is internally chained and works well up to a fill rate of 90 %, general
 rule of thumb is to select a prime near 1.2 * maximum_qps.
 .sp
-Default: 393241
+\fIDefault:\fP 393241
 .SS rate\-limit\-slip
 .sp
 As attacks using DNS/UDP are usually based on a forged source address,
@@ -277,12 +277,12 @@ requestors, and introduces excessive timeouts during resolution.
 On the other hand, slipping truncated answer gives the legitimate
 requestors a chance to reconnect over TCP.
 .sp
-Default: 1
+\fIDefault:\fP 1
 .SS max\-udp\-payload
 .sp
 Maximum EDNS0 UDP payload size.
 .sp
-Default: 4096
+\fIDefault:\fP 4096
 .SS listen
 .sp
 One or more IP addresses where the server listens for incoming queries.
@@ -290,7 +290,7 @@ Optional port specification (default is 53) can be appended to each address
 using \fB@\fP separator. Use \fB0.0.0.0\fP for all configured IPv4 addresses or
 \fB::\fP for all configured IPv6 addresses.
 .sp
-Default: empty
+\fIDefault:\fP not set
 .SH KEY SECTION
 .sp
 Shared TSIG keys used to authenticate communication with the server.
@@ -314,12 +314,12 @@ A key name identifier.
 .sp
 A key algorithm.
 .sp
-Default: empty
+\fIDefault:\fP not set
 .SS secret
 .sp
 Shared key secret.
 .sp
-Default: empty
+\fIDefault:\fP not set
 .SH ACL SECTION
 .sp
 Access control list rule definition.
@@ -346,13 +346,13 @@ An ACL rule identifier.
 An ordered list of IP addresses, network subnets, or network ranges. The query
 must match one of them. Empty value means that address match is not required.
 .sp
-Default: empty
+\fIDefault:\fP not set
 .SS key
 .sp
 An ordered list of \fI\%reference\fPs to TSIG keys. The query must
 match one of them. Empty value means that TSIG key is not required.
 .sp
-Default: empty
+\fIDefault:\fP not set
 .SS action
 .sp
 An ordered list of allowed actions.
@@ -369,13 +369,13 @@ Possible values:
 \fBcontrol\fP – Allow remote control
 .UNINDENT
 .sp
-Default: empty
+\fIDefault:\fP not set
 .SS deny
 .sp
 Deny if \fI\%address\fP, \fI\%key\fP and
 \fI\%action\fP match.
 .sp
-Default: off
+\fIDefault:\fP off
 .SH CONTROL SECTION
 .sp
 Configuration of the server remote control.
@@ -401,7 +401,7 @@ A UNIX socket path or IP address where the server listens for remote control
 commands. Optional port specification (default is 5533) can be appended to the
 address using \fB@\fP separator.
 .sp
-Default: \fI\%rundir\fP/knot.sock
+\fIDefault:\fP \fI\%rundir\fP/knot.sock
 .SS acl
 .sp
 An ordered list of \fI\%references\fP to ACL rules allowing the remote
@@ -409,7 +409,7 @@ control.
 .sp
 \fICaution:\fP This option has no effect with UNIX socket.
 .sp
-Default: empty
+\fIDefault:\fP not set
 .SH REMOTE SECTION
 .sp
 Definition of remote servers for zone transfers or notifications.
@@ -437,20 +437,20 @@ with the remote server. The addresses are tried in sequence unless the
 operation is successful. Optional destination port (default is 53)
 can be appended to the address using \fB@\fP separator.
 .sp
-Default: empty
+\fIDefault:\fP not set
 .SS via
 .sp
 An ordered list of source IP addresses. The first address with the same family
 as the destination address is used. Optional source port (default is random)
 can be appended to the address using \fB@\fP separator.
 .sp
-Default: empty
+\fIDefault:\fP not set
 .SS key
 .sp
 A \fI\%reference\fP to the TSIG key which ise used to autenticate
 the communication with the remote server.
 .sp
-Default: empty
+\fIDefault:\fP not set
 .SH TEMPLATE SECTION
 .sp
 A template is a shareable zone setting which can be used for configuration of
@@ -480,7 +480,7 @@ An ordered list of references to query modules in the form
 .sp
 \fICaution:\fP This option is available only for the \fIdefault\fP template.
 .sp
-Default: empty
+\fIDefault:\fP not set
 .SH ZONE SECTION
 .sp
 Definition of zones served by the server.
@@ -517,10 +517,9 @@ zone:
 A zone name identifier.
 .SS template
 .sp
-A \fI\%reference\fP to a configuration template. If not specified
-and the \fIdefault\fP template exists, the default template is used.
+A \fI\%reference\fP to a configuration template.
 .sp
-Default: empty
+\fIDefault:\fP not set or \fIdefault\fP (if the template exists)
 .SS file
 .sp
 A path to the zone file. Non absolute path is relative to
@@ -535,35 +534,35 @@ terminating dot, except for the root zone.
 \fB%%\fP – means the \fB%\fP character
 .UNINDENT
 .sp
-Default: \fI\%storage\fP/\fB%s\fP\&.zone
+\fIDefault:\fP \fI\%storage\fP/\fB%s\fP\&.zone
 .SS storage
 .sp
 A data directory for storing zone files, journal files and timers database.
 .sp
-Default: \fB${localstatedir}/lib/knot\fP (configured with \fB\-\-with\-storage=path\fP)
+\fIDefault:\fP \fB${localstatedir}/lib/knot\fP (configured with \fB\-\-with\-storage=path\fP)
 .SS master
 .sp
 An ordered list of \fI\%references\fP to zone master servers.
 .sp
-Default: empty
+\fIDefault:\fP not set
 .SS ddns\-master
 .sp
 A \fI\%reference\fP to zone primary master server.
 If not specified, the first \fI\%master\fP server is used.
 .sp
-Default: empty
+\fIDefault:\fP not set
 .SS notify
 .sp
 An ordered list of \fI\%references\fP to remotes to which notify
 message is sent if the zone changes.
 .sp
-Default: empty
+\fIDefault:\fP not set
 .SS acl
 .sp
 An ordered list of \fI\%references\fP to ACL rules which can allow
 or disallow zone transfers, updates or incoming notifies.
 .sp
-Default: empty
+\fIDefault:\fP not set
 .SS semantic\-checks
 .sp
 If enabled, extra zone file semantic checks are turned on.
@@ -621,14 +620,14 @@ Not all RRs in the node are signed
 Wrong key flags or wrong key in RRSIG record (not the same as ZSK)
 .UNINDENT
 .sp
-Default: off
+\fIDefault:\fP off
 .SS disable\-any
 .sp
 If enabled, all authoritative ANY queries sent over UDP will be answered
 with an empty response and with the TC bit set. Use this option to minimize
 the risk of DNS reflection attack.
 .sp
-Default: off
+\fIDefault:\fP off
 .SS zonefile\-sync
 .sp
 The time after which the current zone in memory will be synced with a zone file
@@ -642,7 +641,7 @@ can be used (manual zone flush is still possible).
 \fICaution:\fP If you are serving large zones with frequent updates where
 the immediate sync with a zone file is not desirable, increase the value.
 .sp
-Default: 0 (immediate)
+\fIDefault:\fP 0 (immediate)
 .SS ixfr\-from\-differences
 .sp
 If enabled, the server creates zone differences from changes you made to the
@@ -652,31 +651,31 @@ is a master server for the zone.
 \fICaution:\fP This option has no effect with enabled
 \fI\%dnssec\-signing\fP\&.
 .sp
-Default: off
+\fIDefault:\fP off
 .SS max\-journal\-size
 .sp
 Maximum size of the zone journal file.
 .sp
-Default: unlimited
+\fIDefault:\fP 2^64
 .SS dnssec\-signing
 .sp
 If enabled, automatic DNSSEC signing for the zone is turned on.
 .sp
 \fICaution:\fP Cannot be enabled on a slave zone.
 .sp
-Default: off
+\fIDefault:\fP off
 .SS kasp\-db
 .sp
 A KASP database path. Non absolute path is relative to
 \fI\%storage\fP\&.
 .sp
-Default: \fI\%storage\fP/keys
+\fIDefault:\fP \fI\%storage\fP/keys
 .SS request\-edns\-option
 .sp
 An arbitrary EDNS0 option which is included into a server request (AXFR, IXFR,
 SOA, or NOTIFY). The value is in the option_code:option_data format.
 .sp
-Default: empty
+\fIDefault:\fP not set
 .SS serial\-policy
 .sp
 Specifies how the zone serial is updated after a dynamic update or
@@ -696,13 +695,13 @@ with the transition to unix time.  It may happen that the new serial will
 be \(aqlower\(aq than the old one. If this is the case, the transition should be
 done by hand (see RFC 1982).
 .sp
-Default: increment
+\fIDefault:\fP increment
 .SS module
 .sp
 An ordered list of references to query modules in the form
 \fImodule_name/module_id\fP\&. These modules apply only to the current zone queries.
 .sp
-Default: empty
+\fIDefault:\fP not set
 .SH LOGGING SECTION
 .sp
 Server can be configured to log to the standard output, standard error
@@ -762,17 +761,17 @@ Possible values:
 Minimum severity level for messages related to general operation of the server
 that are logged.
 .sp
-Default: empty
+\fIDefault:\fP not set
 .SS zone
 .sp
 Minimum severity level for messages related to zones that are logged.
 .sp
-Default: empty
+\fIDefault:\fP not set
 .SS any
 .sp
 Minimum severity level for all message types that are logged.
 .sp
-Default: empty
+\fIDefault:\fP not set
 .SH MODULE DNSTAP
 .sp
 The module dnstap allows query and response logging.
@@ -799,7 +798,7 @@ A module identifier.
 A sink path, which can be either a file or a UNIX socket when prefixed with
 \fBunix:\fP\&.
 .sp
-Default: empty
+\fIRequired\fP
 .SH MODULE SYNTH-RECORD
 .sp
 This module is able to synthesize either forward or reverse records for the
@@ -835,7 +834,7 @@ Possible values:
 \fBreverse\fP – Reverse records
 .UNINDENT
 .sp
-Default: empty
+\fIRequired\fP
 .SS prefix
 .sp
 A record owner prefix.
@@ -843,22 +842,22 @@ A record owner prefix.
 \fICaution:\fP \fIprefix\fP doesn’t allow dots, address parts in the synthetic names are
 separated with a dash.
 .sp
-Default: empty
+\fIDefault:\fP empty
 .SS origin
 .sp
 A zone origin (only valid for the \fI\%reverse type\fP).
 .sp
-Default: empty
+\fIRequired\fP
 .SS ttl
 .sp
 Time to live of the generated records.
 .sp
-Default: 3600
+\fIDefault:\fP 3600
 .SS network
 .sp
 An IP address, a network subnet, or a network range the query must match.
 .sp
-Default: empty
+\fIRequired\fP
 .SH MODULE DNSPROXY
 .sp
 The module catches all unsatisfied queries and forwards them to the indicated
@@ -884,13 +883,13 @@ A module identifier.
 A \fI\%reference\fP to a remote server where the queries are
 forwarded to.
 .sp
-Default: empty
+\fIRequired\fP
 .SS catch\-nxdomain
 .sp
 If enabled, all unsatisfied queries (also applies to local zone lookups)
 are forwarded.
 .sp
-Default: off
+\fIDefault:\fP off
 .SH MODULE ROSEDB
 .sp
 The module provides a mean to override responses for certain queries before
@@ -914,7 +913,7 @@ A module identifier.
 .sp
 A path to the directory where the database is stored.
 .sp
-Default: empty
+\fIRequired\fP
 .SH AUTHOR
 CZ.NIC Labs <http://www.knot-dns.cz>
 .SH COPYRIGHT

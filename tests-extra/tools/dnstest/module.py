@@ -63,8 +63,10 @@ class ModSynthRecord(KnotModule):
         conf.begin(self.conf_name)
         conf.id_item("id", self.conf_id)
         conf.item_str("type", self.mtype)
-        conf.item_str("prefix", self.prefix)
-        conf.item_str("ttl", self.ttl)
+        if (self.prefix):
+            conf.item_str("prefix", self.prefix)
+        if (self.ttl):
+            conf.item_str("ttl", self.ttl)
         conf.item_str("network", self.network)
         if (self.origin):
             conf.item_str("origin", self.origin)
