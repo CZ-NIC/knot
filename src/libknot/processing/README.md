@@ -101,6 +101,7 @@ static int dnstrack_fail(knot_layer_t *ctx, knot_pkt_t *pkt)
 	knot_dname_to_str(qname, knot_pkt_qname(pkt), sizeof(qname));
 	printf("=> answer to '%s', rcode: %d\n",
 	       qname, knot_wire_get_rcode(pkt->wire));	
+	return ctx->state;
 }
 
 /*! Module implementation. */

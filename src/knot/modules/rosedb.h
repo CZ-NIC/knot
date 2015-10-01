@@ -40,7 +40,8 @@ extern const yp_item_t scheme_mod_rosedb[];
 int check_mod_rosedb(conf_check_t *args);
 
 /*! \brief Module interface. */
-int rosedb_load(struct query_plan *plan, struct query_module *self);
+int rosedb_load(struct query_plan *plan, struct query_module *self,
+                const knot_dname_t *zone);
 int rosedb_unload(struct query_module *self);
 
 /*! @} */

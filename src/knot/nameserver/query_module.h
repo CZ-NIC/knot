@@ -49,6 +49,9 @@
 #define MODULE_ERR(mod, msg, ...) \
 	log_error("module '%.*s', " msg, mod[0], mod + 1, ##__VA_ARGS__)
 
+#define MODULE_ZONE_ERR(mod, zone, msg, ...) \
+	log_zone_error(zone, "module '%.*s', " msg, mod[0], mod + 1, ##__VA_ARGS__)
+
 /* Query module instance scopes. */
 enum {
 	MOD_SCOPE_GLOBAL = 1 << 0, /* Global quering (all zones). */
@@ -74,7 +77,7 @@ struct query_module;
 struct query_plan;
 
 /* Module callback required API. */
-typedef int (*qmodule_load_t)(struct query_plan *plan, struct query_module *self);
+typedef int (*qmodule_load_t)(struct query_plan *plan, struct query_module *self, const knot_dname_t *zone);
 typedef int (*qmodule_unload_t)(struct query_module *self);
 typedef int (*qmodule_process_t)(int state, knot_pkt_t *pkt, struct query_data *qdata, void *ctx);
 

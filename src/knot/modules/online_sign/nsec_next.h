@@ -1,12 +1,4 @@
-/*!
- * \file modules/dnstap.h
- *
- * \author Marek Vavrusa <marek.vavrusa@nic.cz>
- *
- * \addtogroup query_processing
- * @{
- */
-/*  Copyright (C) 2014 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -20,20 +12,18 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
- */
+*/
 
 #pragma once
 
-#include "knot/nameserver/query_module.h"
+#include "libknot/dname.h"
 
-/*! \brief Module scheme. */
-#define C_MOD_DNSTAP "\x0A""mod-dnstap"
-extern const yp_item_t scheme_mod_dnstap[];
-int check_mod_dnstap(conf_check_t *args);
-
-/*! \brief Module interface. */
-int dnstap_load(struct query_plan *plan, struct query_module *self,
-                const knot_dname_t *zone);
-int dnstap_unload(struct query_module *self);
-
-/*! @} */
+/*!
+ * \brief Get the very next possible name in NSEC chain.
+ *
+ * \param dname  Current dname in the NSEC chain.
+ * \param apex   Zone apex name, used when we reach the end of the chain.
+ *
+ * \return Successor of dname in the NSEC chain.
+ */
+knot_dname_t *online_nsec_next(const knot_dname_t *dname, const knot_dname_t *apex);

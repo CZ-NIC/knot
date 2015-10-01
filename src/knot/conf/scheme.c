@@ -30,6 +30,7 @@
 
 #include "knot/modules/synth_record.h"
 #include "knot/modules/dnsproxy.h"
+#include "knot/modules/online_sign/module.h"
 #ifdef HAVE_ROSEDB
 #include "knot/modules/rosedb.h"
 #endif
@@ -196,6 +197,7 @@ const yp_item_t conf_scheme[] = {
 	{ C_MOD_DNSTAP,       YP_TGRP, YP_VGRP = { scheme_mod_dnstap }, YP_FMULTI,
 	                                         { check_mod_dnstap } },
 #endif
+	{ C_MOD_ONLINE_SIGN,  YP_TGRP, YP_VGRP = { scheme_mod_online_sign }, YP_FMULTI },
 /***********/
 	{ C_TPL,  YP_TGRP, YP_VGRP = { desc_template }, YP_FMULTI },
 	{ C_ZONE, YP_TGRP, YP_VGRP = { desc_zone }, YP_FMULTI, { check_zone } },

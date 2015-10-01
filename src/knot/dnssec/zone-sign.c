@@ -25,12 +25,12 @@
 #include "dnssec/keytag.h"
 #include "dnssec/sign.h"
 #include "knot/dnssec/context.h"
-#include "knot/dnssec/rrset-sign.h"
 #include "knot/dnssec/zone-keys.h"
 #include "knot/dnssec/zone-sign.h"
 #include "knot/updates/changesets.h"
 #include "libknot/descriptor.h"
 #include "libknot/dname.h"
+#include "libknot/dnssec/rrset-sign.h"
 #include "libknot/libknot.h"
 #include "libknot/internal/macros.h"
 #include "libknot/rrset.h"
@@ -334,7 +334,7 @@ static int add_missing_rrsigs(const knot_rrset_t *covered,
 			to_add = create_empty_rrsigs_for(covered);
 		}
 
-		result = knot_sign_rrset(&to_add, covered, key->key, key->ctx, dnssec_ctx);
+		result = knot_sign_rrset(&to_add, covered, key->key, key->ctx, dnssec_ctx, NULL);
 		if (result != KNOT_EOK) {
 			break;
 		}

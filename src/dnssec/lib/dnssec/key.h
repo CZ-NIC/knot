@@ -126,6 +126,13 @@ void dnssec_key_clear(dnssec_key_t *key);
 void dnssec_key_free(dnssec_key_t *key);
 
 /*!
+ * Create a copy of a DNSSEC key.
+ *
+ * Only a public part of the key is copied.
+ */
+dnssec_key_t *dnssec_key_dup(const dnssec_key_t *key);
+
+/*!
  * Get the key tag of the DNSSEC key.
  */
 uint16_t dnssec_key_get_keytag(const dnssec_key_t *key);

@@ -245,6 +245,10 @@ const knot_pktsection_t *knot_pkt_section(const knot_pkt_t *pkt,
 
 /*! \brief Get RRSet from the packet section. */
 const knot_rrset_t *knot_pkt_rr(const knot_pktsection_t *section, uint16_t i);
+
+/*! \brief Get RRSet offset in the packet wire. */
+uint16_t knot_pkt_rr_offset(const knot_pktsection_t *section, uint16_t i);
+
 /*
  * Packet parsing API.
  */

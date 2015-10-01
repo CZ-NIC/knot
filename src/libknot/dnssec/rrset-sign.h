@@ -43,6 +43,7 @@
  * \param key         Signing key.
  * \param sign_ctx    Signing context.
  * \param dnssec_ctx  DNSSEC context.
+ * \param mm          Memory context.
  *
  * \return Error code, KNOT_EOK if successful.
  */
@@ -50,7 +51,8 @@ int knot_sign_rrset(knot_rrset_t *rrsigs,
                     const knot_rrset_t *covered,
                     const dnssec_key_t *key,
                     dnssec_sign_ctx_t *sign_ctx,
-                    const kdnssec_ctx_t *dnssec_ctx);
+                    const kdnssec_ctx_t *dnssec_ctx,
+                    mm_ctx_t *mm);
 
 /*!
  * \brief Creates new RRS using \a rrsig_rrs as a source. Only those RRs that

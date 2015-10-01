@@ -613,7 +613,8 @@ static int rosedb_query(int state, knot_pkt_t *pkt, struct query_data *qdata, vo
 	return KNOT_STATE_DONE;
 }
 
-int rosedb_load(struct query_plan *plan, struct query_module *self)
+int rosedb_load(struct query_plan *plan, struct query_module *self,
+                const knot_dname_t *zone)
 {
 	if (plan == NULL || self == NULL) {
 		return KNOT_EINVAL;
