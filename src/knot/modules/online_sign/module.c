@@ -106,7 +106,6 @@ static void bitmap_add_zone(dnssec_nsec_bitmap_t *map, const zone_node_t *node)
 	}
 
 	for (int i = 0; i < node->rrset_count; i++) {
-		uint16_t type = node->rrs[i].type;
 		dnssec_nsec_bitmap_add(map, node->rrs[i].type);
 	}
 }
@@ -184,7 +183,6 @@ static knot_rrset_t *synth_nsec(knot_pkt_t *pkt, struct query_data *qdata, mm_ct
 		return NULL;
 	}
 
-	uint16_t qtype = knot_pkt_qtype(qdata->query);
 	dnssec_nsec_bitmap_t *bitmap = synth_bitmap(pkt, qdata);
 	if (!bitmap) {
 		free(next);
