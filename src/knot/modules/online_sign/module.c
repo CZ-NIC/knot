@@ -33,6 +33,9 @@
 #include "dnssec/sign.h"
 #include "dnssec/nsec.h"
 
+#define LOG_PREFIX "online signing, "
+#define module_zone_error(zone, msg...) log_zone_error(zone, LOG_PREFIX msg)
+
 #define RRSIG_LIFETIME (25*60*60)
 
 /*!
@@ -562,13 +565,13 @@ int online_sign_load(struct query_plan *plan, struct query_module *module,
 
 	conf_val_t val = conf_zone_get(conf(), C_DNSSEC_SIGNING, zone);
 	if (conf_bool(&val)) {
-		log_zone_error(zone, "online signing, incompatible with automatic signing");
+		module_zone_error(zone, "incompatible with automatic signing");
 		return KNOT_ENOTSUP;
 	}
 
 	char *kasp_path = conf_kasp_path(zone);
 	if (!kasp_path) {
-		log_zone_error(zone, "online signing, KASP database is not configured");
+		module_zone_error(zone, "KASP database is not configured");
 		return KNOT_ERROR;
 	}
 
@@ -576,8 +579,8 @@ int online_sign_load(struct query_plan *plan, struct query_module *module,
 	int r = online_sign_ctx_new(&ctx, zone, kasp_path);
 	free(kasp_path);
 	if (r != KNOT_EOK) {
-		log_zone_error(zone, "online signing, failed to initialize signing key (%s)",
-		               dnssec_strerror(r));
+		module_zone_error(zone, "failed to initialize signing key (%s)",
+		                  dnssec_strerror(r));
 		return KNOT_ERROR;
 	}
 
