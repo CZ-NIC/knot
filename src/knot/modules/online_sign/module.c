@@ -38,6 +38,21 @@
 
 #define RRSIG_LIFETIME (25*60*60)
 
+/*
+ * TODO:
+ *
+ * - Fix delegation signing:
+ *   + The NSEC proof can decsend into the child zone.
+ *   + Out-of-zone glue records can be signed.
+ *
+ * - Fix CNAME handling:
+ *   + Owner name of synthesized records can be incorrect.
+ *   + Combination with wildcards results in invalid signatures.
+ *
+ * - Add support for CDS/CDSKEY synthesis.
+ *
+ */
+
 /*!
  * \brief RR types to force in synthesised NSEC maps.
  *
