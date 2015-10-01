@@ -872,7 +872,7 @@ Differences from statically signed zones:
   exist.
 
 * Domain names matching a wildcard are expanded. The module pretends and proves
-  that the domain name exists rather than proving a presence of the wild card.
+  that the domain name exists rather than proving a presence of the wildcard.
 
 Records synthesized by the module:
 

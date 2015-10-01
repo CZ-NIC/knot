@@ -928,6 +928,9 @@ mod\-online\-sign:
 .fi
 .UNINDENT
 .UNINDENT
+.SS id
+.sp
+A module identifier.
 .SH AUTHOR
 CZ.NIC Labs <http://www.knot-dns.cz>
 .SH COPYRIGHT

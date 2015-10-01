@@ -1079,6 +1079,8 @@ A path to the directory where the database is stored.
 
 *Required*
 
+.. _mod-online-sign:
+
 Module online-sign
 ==================
 
@@ -1088,3 +1090,10 @@ The module provides online DNSSEC signing.
 
  mod-online-sign:
    - id: STR
+
+.. _mod-online-sign_id:
+
+id
+--
+
+A module identifier.
