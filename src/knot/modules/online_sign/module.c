@@ -558,11 +558,7 @@ int online_sign_load(struct query_plan *plan, struct query_module *module,
 {
 	assert(plan);
 	assert(module);
-
-	if (!zone) {
-		log_error("online signing, global module instance is not supported");
-		return KNOT_ENOTSUP;
-	}
+	assert(zone);
 
 	conf_val_t val = conf_zone_get(conf(), C_DNSSEC_SIGNING, zone);
 	if (conf_bool(&val)) {
