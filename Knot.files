@@ -216,8 +216,6 @@ src/knot/dnssec/nsec3-chain.c
 src/knot/dnssec/nsec3-chain.h
 src/knot/dnssec/policy.c
 src/knot/dnssec/policy.h
-src/knot/dnssec/rrset-sign.c
-src/knot/dnssec/rrset-sign.h
 src/knot/dnssec/zone-events.c
 src/knot/dnssec/zone-events.h
 src/knot/dnssec/zone-keys.c
@@ -231,6 +229,10 @@ src/knot/modules/dnsproxy.c
 src/knot/modules/dnsproxy.h
 src/knot/modules/dnstap.c
 src/knot/modules/dnstap.h
+src/knot/modules/online_sign/module.c
+src/knot/modules/online_sign/module.h
+src/knot/modules/online_sign/nsec_next.c
+src/knot/modules/online_sign/nsec_next.h
 src/knot/modules/rosedb.c
 src/knot/modules/rosedb.h
 src/knot/modules/rosedb_tool.c
@@ -328,6 +330,8 @@ src/libknot/descriptor.c
 src/libknot/descriptor.h
 src/libknot/dname.c
 src/libknot/dname.h
+src/libknot/dnssec/rrset-sign.c
+src/libknot/dnssec/rrset-sign.h
 src/libknot/errcode.c
 src/libknot/errcode.h
 src/libknot/internal/array-sort.h
@@ -512,6 +516,7 @@ tests/hattrie.c
 tests/hhash.c
 tests/internal_mem.c
 tests/journal.c
+tests/modules/online_sign.c
 tests/namedb.c
 tests/net_shortwrite.c
 tests/node.c
