@@ -389,7 +389,7 @@ static int send_data(int sock, struct msghdr *msg, struct timeval *timeout)
 /* -- generic stream and datagram I/O -------------------------------------- */
 
 int net_send(int sock, const uint8_t *buffer, size_t size,
-             const struct sockaddr *addr, struct timeval *timeout)
+             const struct sockaddr_storage *addr, struct timeval *timeout)
 {
 	if (sock < 0 || buffer == NULL) {
 		return KNOT_EINVAL;
@@ -401,7 +401,7 @@ int net_send(int sock, const uint8_t *buffer, size_t size,
 
 	struct msghdr msg = { 0 };
 	msg.msg_name = (void *)addr;
-	msg.msg_namelen = sockaddr_len(addr);
+	msg.msg_namelen = sockaddr_len((struct sockaddr *)addr);
 	msg.msg_iov = &iov;
 	msg.msg_iovlen = 1;
 
@@ -424,7 +424,8 @@ int net_recv(int sock, uint8_t *buffer, size_t size, struct timeval *timeout)
 	return recv_data(sock, buffer, size, true, timeout);
 }
 
-int net_dgram_send(int sock, const uint8_t *buffer, size_t size, const struct sockaddr *addr)
+int net_dgram_send(int sock, const uint8_t *buffer, size_t size,
+                   const struct sockaddr_storage *addr)
 {
 	return net_send(sock, buffer, size, addr, NULL);
 }

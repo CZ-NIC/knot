@@ -90,12 +90,12 @@ bool net_is_connected(int sock);
  * \param[in]      buffer   Message buffer.
  * \param[in]      size     Size of the message.
  * \param[in]      addr     Remote address (ignored for SOCK_STREAM).
- * \param[in,out]  timeout  Read timeout (ignored for SOCK_DGRAM).
+ * \param[in,out]  timeout  Write timeout (ignored for SOCK_DGRAM).
  *
  * \return Number of bytes sent or negative error code.
  */
 int net_send(int sock, const uint8_t *buffer, size_t size,
-             const struct sockaddr *addr, struct timeval *timeout);
+             const struct sockaddr_storage *addr, struct timeval *timeout);
 
 /*!
  * \brief Receive a message from a socket.
@@ -114,7 +114,8 @@ int net_recv(int sock, uint8_t *buffer, size_t size, struct timeval *timeout);
  *
  * \see net_send
  */
-int net_dgram_send(int sock, const uint8_t *buffer, size_t size, const struct sockaddr *addr);
+int net_dgram_send(int sock, const uint8_t *buffer, size_t size,
+                   const struct sockaddr_storage *addr);
 
 /*!
  * \brief Receive a message from a SOCK_DGRAM socket.
