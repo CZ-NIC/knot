@@ -103,11 +103,13 @@ int net_send(int sock, const uint8_t *buffer, size_t size,
  * \param[in]      sock     Socket.
  * \param[out]     buffer   Receiving buffer.
  * \param[in]      size     Capacity of the receiving buffer.
+ * \param[out]     addr     Remote address (can be NULL).
  * \param[in,out]  timeout  Read timeout.
  *
  * \return Number of bytes read or negative error code.
  */
-int net_recv(int sock, uint8_t *buffer, size_t size, struct timeval *timeout);
+int net_recv(int sock, uint8_t *buffer, size_t size,
+             struct sockaddr_storage *addr, struct timeval *timeout);
 
 /*!
  * \brief Send a message on a SOCK_DGRAM socket.
