@@ -260,16 +260,19 @@ static int select_write(int fd, struct timeval *timeout)
  */
 static bool io_should_wait(int error)
 {
-	switch (error) {
-	case EAGAIN:       // connection in progress (Linux) or data not ready
-#if EAGAIN != EWOULDBLOCK
-	case EWOULDBLOCK:
-#endif
-	case ENOTCONN:     // connection in progress (BSD)
+	/* non-blocking operation */
+	if (error == EAGAIN || error == EWOULDBLOCK) {
 		return true;
-	default:
-		return false;
 	}
+
+#ifndef __linux__
+	/* FreeBSD: connection in progress */
+	if (error == ENOTCONN) {
+		return true;
+	}
+#endif
+
+	return false;
 }
 
 /*!
@@ -518,7 +521,7 @@ int net_dns_tcp_recv(int fd, uint8_t *buffer, size_t size, struct timeval *timeo
 
 	pktsize = ntohs(pktsize);
 
-	// Check packet size
+	/* Check packet size */
 	if (size < pktsize) {
 		return KNOT_ENOMEM;
 	}
