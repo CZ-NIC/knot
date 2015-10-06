@@ -107,9 +107,10 @@ static const struct error errors[] = {
 	{ KNOT_BASE32HEX_ECHAR, "invalid base32hex character" },
 
 	/* TSIG errors. */
-	{ KNOT_TSIG_EBADSIG,  "failed to verify TSIG MAC" },
-	{ KNOT_TSIG_EBADKEY,  "TSIG key not recognized or invalid" },
-	{ KNOT_TSIG_EBADTIME, "TSIG signing time out of range" },
+	{ KNOT_TSIG_EBADSIG,   "failed to verify TSIG" },
+	{ KNOT_TSIG_EBADKEY,   "TSIG key not recognized or invalid" },
+	{ KNOT_TSIG_EBADTIME,  "TSIG out of time window" },
+	{ KNOT_TSIG_EBADTRUNC, "TSIG bad truncation" },
 
 	/* Key parsing errors. */
 	{ KNOT_KEY_EPUBLIC_KEY_OPEN,    "cannot open public key file" },

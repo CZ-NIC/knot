@@ -867,7 +867,9 @@ int cmd_send(const char* lp, knsupdate_params_t *params)
 		ret = verify_packet(params->answer, &sign_ctx);
 		sign_context_deinit(&sign_ctx);
 		if (ret != KNOT_EOK) {
-			ERR("TSIG error with server (%s)\n", knot_strerror(ret));
+			print_packet(params->answer, NULL, 0, -1, 0, true,
+			             &params->style);
+			ERR("reply verification (%s)\n", knot_strerror(ret));
 			return ret;
 		}
 	}
@@ -884,6 +886,7 @@ int cmd_send(const char* lp, knsupdate_params_t *params)
 			rcode_str = rcode->name;
 		}
 
+		print_packet(params->answer, NULL, 0, -1, 0, true, &params->style);
 		ERR("update failed with '%s'\n", rcode_str);
 		ret = KNOT_ERROR;
 	} else {

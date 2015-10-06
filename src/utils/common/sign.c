@@ -84,7 +84,23 @@ int verify_packet(const knot_pkt_t *pkt, const sign_context_t *sign_ctx)
 		return KNOT_ENOTSIG;
 	}
 
-	return knot_tsig_client_check(pkt->tsig_rr, wire, *wire_size,
-	                              sign_ctx->digest, sign_ctx->digest_size,
-	                              sign_ctx->tsig_key, 0);
+	int ret = knot_tsig_client_check(pkt->tsig_rr, wire, *wire_size,
+	                                 sign_ctx->digest, sign_ctx->digest_size,
+	                                 sign_ctx->tsig_key, 0);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	switch (knot_tsig_rdata_error(pkt->tsig_rr)) {
+	case KNOT_TSIG_ERR_BADSIG:
+		return KNOT_TSIG_EBADSIG;
+	case KNOT_TSIG_ERR_BADKEY:
+		return KNOT_TSIG_EBADKEY;
+	case KNOT_TSIG_ERR_BADTIME:
+		return KNOT_TSIG_EBADTIME;
+	case KNOT_TSIG_ERR_BADTRUNC:
+		return KNOT_TSIG_EBADTRUNC;
+	default:
+		return KNOT_EOK;
+	}
 }
