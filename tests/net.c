@@ -91,7 +91,7 @@ static bool socktype_is_stream(int type)
 struct server_ctx;
 typedef struct server_ctx server_ctx_t;
 
-typedef void (*server_cb)(int sock, server_ctx_t *server);
+typedef void (*server_cb)(int sock, void *data);
 
 /*!
  * \brief Server context.
@@ -101,6 +101,7 @@ struct server_ctx {
 	int type;
 	bool terminate;
 	server_cb handler;
+	void *handler_data;
 
 	pthread_t thr;
 	pthread_mutex_t mx;
@@ -132,7 +133,7 @@ static void server_handle(server_ctx_t *ctx)
 	pthread_mutex_lock(&ctx->mx);
 	server_cb handler = ctx->handler;
 	pthread_mutex_unlock(&ctx->mx);
-	handler(remote, ctx);
+	handler(remote, ctx->handler_data);
 
 	if (socktype_is_stream(ctx->type)) {
 		close(remote);
@@ -174,13 +175,15 @@ static void *server_main(void *_ctx)
 	return NULL;
 }
 
-static bool server_start(server_ctx_t *ctx, int sock, int type, server_cb handler)
+static bool server_start(server_ctx_t *ctx, int sock, int type,
+                         server_cb handler, void *handler_data)
 {
 	memset(ctx, 0, sizeof(*ctx));
 
 	ctx->sock = sock;
 	ctx->type = type;
 	ctx->handler = handler;
+	ctx->handler_data = handler_data;
 
 	ctx->terminate = false;
 
@@ -198,17 +201,11 @@ static void server_stop(server_ctx_t *ctx)
 	pthread_join(ctx->thr, NULL);
 }
 
-static void server_set_handler(server_ctx_t *ctx, server_cb handler)
-{
-	pthread_mutex_lock(&ctx->mx);
-	ctx->handler = handler;
-	pthread_mutex_unlock(&ctx->mx);
-}
-
 /* -- tests ---------------------------------------------------------------- */
 
-static void handler_echo(int sock, server_ctx_t *server)
+static void handler_echo(int sock, void *_server)
 {
+	server_ctx_t *server = _server;
 	uint8_t buffer[16] = { 0 };
 
 	struct sockaddr_storage remote = { 0 };
@@ -247,7 +244,7 @@ static void test_connected(int type)
 	// initialize server
 
 	server_ctx_t server_ctx = { 0 };
-	r = server_start(&server_ctx, server, type, handler_echo);
+	r = server_start(&server_ctx, server, type, handler_echo, &server_ctx);
 	ok(r, "%s: server, start", name);
 
 	// connected socket, send and receive
@@ -290,7 +287,7 @@ static void test_connected(int type)
 	close(server);
 }
 
-static void handler_noop(int sock, server_ctx_t *server)
+static void handler_noop(int sock, void *data)
 {
 }
 
@@ -310,7 +307,7 @@ static void test_unconnected(void)
 	ok(server >= 0, "UDP, create server socket");
 
 	server_ctx_t server_ctx = { 0 };
-	r = server_start(&server_ctx, server, SOCK_DGRAM, handler_noop);
+	r = server_start(&server_ctx, server, SOCK_DGRAM, handler_noop, NULL);
 	ok(r, "UDP, start server");
 
 	// UDP
@@ -431,10 +428,116 @@ static void test_refused(void)
 	close(client);
 }
 
-static void handler_expect_hello(int sock, bool *terminate)
+struct dns_handler_ctx {
+	const uint8_t *expected;
+	int len;
+	bool raw;
+	bool success;
+};
+
+static void handler_dns(int sock, void *_ctx)
 {
-	const uint8_t expect[] = { 0x00, 0x05, 'h', 'e', 'l', 'l', 'o'  };
-	const size_t expect_len = sizeof(expect);
+	struct dns_handler_ctx *ctx = _ctx;
+
+	struct timeval tv = TIMEOUT;
+	uint8_t in[16] = { 0 };
+	int in_len = 0;
+
+	if (ctx->raw) {
+		in_len = net_stream_recv(sock, in, sizeof(in), &tv);
+	} else {
+		in_len = net_dns_tcp_recv(sock, in, sizeof(in), &tv);
+	}
+
+	ctx->success = in_len == ctx->len &&
+	               (ctx->len < 0 || memcmp(in, ctx->expected, in_len) == 0);
+}
+
+static void dns_send_hello(int sock)
+{
+	struct timeval tv = TIMEOUT;
+	net_dns_tcp_send(sock, (uint8_t *)"wimbgunts", 9, &tv);
+}
+
+static void dns_send_fragmented(int sock)
+{
+	struct fragment { const uint8_t *data; size_t len; };
+
+	const struct fragment fragments[] = {
+		{ (uint8_t *)"\x00",     1 },
+		{ (uint8_t *)"\x08""qu", 3 },
+		{ (uint8_t *)"oopisk",   6 },
+		{ NULL }
+	};
+
+	for (const struct fragment *f = fragments; f->len > 0; f++) {
+		struct timeval tv = TIMEOUT_SHORT;
+		net_stream_send(sock, f->data, f->len, &tv);
+	}
+}
+
+static void dns_send_incomplete(int sock)
+{
+	struct timeval tv = TIMEOUT;
+	net_stream_send(sock, (uint8_t *)"\x00\x08""korm", 6, &tv);
+}
+
+static void dns_send_trailing(int sock)
+{
+	struct timeval tv = TIMEOUT;
+	net_stream_send(sock, (uint8_t *)"\x00\x05""bloitxx", 9, &tv);
+}
+
+static void test_dns_tcp(void)
+{
+	struct testcase {
+		const char *name;
+		const uint8_t *expected;
+		size_t expected_len;
+		bool expected_raw;
+		void (*send_callback)(int sock);
+	};
+
+	const struct testcase testcases[] = {
+		{ "single DNS",       (uint8_t *)"wimbgunts", 9, false, dns_send_hello },
+		{ "single RAW",       (uint8_t *)"\x00\x09""wimbgunts", 11, true, dns_send_hello },
+		{ "fragmented",       (uint8_t *)"quoopisk", 8, false, dns_send_fragmented },
+		{ "incomplete",       NULL, KNOT_ECONN, false, dns_send_incomplete },
+		{ "trailing garbage", (uint8_t *)"bloit", 5, false, dns_send_trailing },
+		{ NULL }
+	};
+
+	for (const struct testcase *t = testcases; t->name != NULL; t++) {
+		struct dns_handler_ctx handler_ctx = {
+			.expected = t->expected,
+			.len      = t->expected_len,
+			.raw      = t->expected_raw,
+			.success  = false
+		};
+
+		struct sockaddr_storage addr = addr_local();
+		int server = net_bound_socket(SOCK_STREAM, &addr, 0);
+		ok(server >= 0, "%s, server, create socket", t->name);
+
+		int r = listen(server, LISTEN_BACKLOG);
+		ok(r == 0, "%s, server, start listening", t->name);
+
+		server_ctx_t server_ctx = { 0 };
+		r = server_start(&server_ctx, server, SOCK_STREAM, handler_dns, &handler_ctx);
+		ok(r, "%s, server, start handler", t->name);
+
+		addr = addr_from_socket(server);
+		int client = net_connected_socket(SOCK_STREAM, &addr, NULL);
+		ok(client >= 0, "%s, client, create connected socket", t->name);
+
+		t->send_callback(client);
+
+		close(client);
+		server_stop(&server_ctx);
+		close(server);
+
+		ok(handler_ctx.success, "%s, expected result", t->name);
+	}
 }
 
 static bool socket_is_blocking(int sock)
@@ -523,6 +626,9 @@ int main(int argc, char *argv[])
 
 	diag("refused connections");
 	test_refused();
+
+	diag("DNS messages over TCP");
+	test_dns_tcp();
 
 	diag("flag NET_BIND_MULTIPLE");
 	test_bind_multiple();
