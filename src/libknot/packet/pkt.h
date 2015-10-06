@@ -102,6 +102,12 @@ typedef struct knot_pkt {
 	knot_rrset_t *opt_rr;   /*!< OPT RR included in the packet. */
 	knot_rrset_t *tsig_rr;  /*!< TSIG RR stored in the packet. */
 
+	/* TSIG RR position in the wire (if parsed from wire). */
+	struct {
+		uint8_t *pos;
+		size_t len;
+	} tsig_wire;
+
 	/* Packet sections. */
 	knot_section_t current;
 	knot_pktsection_t sections[KNOT_PKT_SECTIONS];

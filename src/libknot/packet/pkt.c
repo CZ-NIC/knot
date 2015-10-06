@@ -68,6 +68,10 @@ static void pkt_free_data(knot_pkt_t *pkt)
 	/* Reset special types. */
 	pkt->opt_rr = NULL;
 	pkt->tsig_rr = NULL;
+
+	/* Reset TSIG wire reference. */
+	pkt->tsig_wire.pos = NULL;
+	pkt->tsig_wire.len = 0;
 }
 
 /*! \brief Allocate new wireformat of given length. */
@@ -244,6 +248,28 @@ knot_pkt_t *knot_pkt_new(void *wire, uint16_t len, mm_ctx_t *mm)
 	return pkt_new_mm(wire, len, mm);
 }
 
+static int append_tsig(knot_pkt_t *dst, const knot_pkt_t *src)
+{
+	/* Check if a wire TSIG is available. */
+	if (src->tsig_wire.pos != NULL) {
+		if (dst->max_size < src->size + src->tsig_wire.len) {
+			return KNOT_ESPACE;
+		}
+		memcpy(dst->wire + dst->size, src->tsig_wire.pos,
+		       src->tsig_wire.len);
+		dst->size += src->tsig_wire.len;
+
+		/* Increment arcount. */
+		knot_wire_set_arcount(dst->wire,
+		                      knot_wire_get_arcount(dst->wire) + 1);
+	} else {
+		return knot_tsig_append(dst->wire, &dst->size, dst->max_size,
+		                        src->tsig_rr);
+	}
+
+	return KNOT_EOK;
+}
+
 _public_
 int knot_pkt_copy(knot_pkt_t *dst, const knot_pkt_t *src)
 {
@@ -254,20 +280,18 @@ int knot_pkt_copy(knot_pkt_t *dst, const knot_pkt_t *src)
 	if (dst->max_size < src->size) {
 		return KNOT_ESPACE;
 	}
-
+	memcpy(dst->wire, src->wire, src->size);
 	dst->size = src->size;
-	memcpy(dst->wire, src->wire, dst->size);
 
-	/* Copy TSIG RR back to wire. */
+	/* Append TSIG record. */
 	if (src->tsig_rr) {
-		int ret = knot_tsig_append(dst->wire, &dst->size, dst->max_size,
-		                           src->tsig_rr);
+		int ret = append_tsig(dst, src);
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
 	}
 
-	/* Invalidate arrays . */
+	/* Invalidate arrays. */
 	dst->rr = NULL;
 	dst->rr_info = NULL;
 	dst->rrset_count = 0;
@@ -701,6 +725,8 @@ static int check_rr_constraints(knot_pkt_t *pkt, knot_rrset_t *rr, size_t rr_siz
 		if (!(flags & KNOT_PF_KEEPWIRE)) {
 			pkt->parsed -= rr_size;
 			pkt->size -= rr_size;
+			pkt->tsig_wire.pos = pkt->wire + pkt->parsed;
+			pkt->tsig_wire.len = rr_size;
 			knot_wire_set_id(pkt->wire, knot_tsig_rdata_orig_id(rr));
 			knot_wire_set_arcount(pkt->wire, knot_wire_get_arcount(pkt->wire) - 1);
 		}
