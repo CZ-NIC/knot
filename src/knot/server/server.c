@@ -194,9 +194,6 @@ static int server_init_iface(iface_t *new_if, struct sockaddr_storage *addr, int
 			warn_bufsize = true;
 		}
 
-		/* Set UDP as non-blocking. */
-		fcntl(sock, F_SETFL, O_NONBLOCK);
-
 		new_if->fd_udp[new_if->fd_udp_count] = sock;
 		new_if->fd_udp_count += 1;
 	}
@@ -220,13 +217,6 @@ static int server_init_iface(iface_t *new_if, struct sockaddr_storage *addr, int
 	ret = listen(sock, TCP_BACKLOG_SIZE);
 	if (ret < 0) {
 		log_error("failed to listen on TCP interface '%s'", addr_str);
-		server_deinit_iface(new_if);
-		return KNOT_ERROR;
-	}
-
-	/* accept() must not block */
-	if (fcntl(sock, F_SETFL, O_NONBLOCK) < 0) {
-		log_error("failed to listen on '%s' in non-blocking mode", addr_str);
 		server_deinit_iface(new_if);
 		return KNOT_ERROR;
 	}
