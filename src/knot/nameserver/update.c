@@ -470,7 +470,7 @@ static void send_update_response(const zone_t *zone, struct knot_request *req)
 			             &timeout);
 		} else {
 			udp_send_msg(req->fd, req->resp->wire, req->resp->size,
-			             (struct sockaddr *)&req->remote);
+			             &req->remote);
 		}
 	}
 }

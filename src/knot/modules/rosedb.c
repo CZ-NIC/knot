@@ -452,7 +452,7 @@ static int rosedb_log_message(char *stream, size_t *maxlen, knot_pkt_t *pkt,
 	return KNOT_EOK;
 }
 
-static int rosedb_send_log(int sock, struct sockaddr *dst_addr, knot_pkt_t *pkt,
+static int rosedb_send_log(int sock, struct sockaddr_storage *dst_addr, knot_pkt_t *pkt,
                            const char *threat_code, struct query_data *qdata)
 {
 	char buf[SYSLOG_BUFLEN];
@@ -552,7 +552,7 @@ static int rosedb_synth(knot_pkt_t *pkt, const knot_dname_t *key, struct iter *i
 	if (sockaddr_set(&syslog_addr, AF_INET, entry.syslog_ip, DEFAULT_PORT) == KNOT_EOK) {
 		int sock = net_unbound_socket(SOCK_DGRAM, &syslog_addr);
 		if (sock > 0) {
-			rosedb_send_log(sock, (struct sockaddr *)&syslog_addr, pkt,
+			rosedb_send_log(sock, &syslog_addr, pkt,
 			                entry.threat_code, qdata);
 			close(sock);
 		}
