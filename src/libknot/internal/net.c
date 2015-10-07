@@ -20,6 +20,7 @@
 #include <netinet/in.h>
 #include <stdbool.h>
 #include <sys/socket.h>
+#include <sys/uio.h>
 #include <unistd.h>
 
 #include "libknot/internal/net.h"
