@@ -175,16 +175,10 @@ static int tcp_handle(tcp_context_t *tcp, int fd,
 int tcp_accept(int fd)
 {
 	/* Accept incoming connection. */
-	int incoming = accept(fd, 0, 0);
+	int incoming = net_accept(fd, NULL);
 
 	/* Evaluate connection. */
-	if (incoming < 0) {
-		int en = errno;
-		if (en != EINTR && en != EAGAIN) {
-			return KNOT_EBUSY;
-		}
-		return KNOT_ERROR;
-	} else {
+	if (incoming >= 0) {
 		dbg_net("tcp: accepted connection fd=%d\n", incoming);
 		/* Set recv() timeout. */
 #ifdef SO_RCVTIMEO
