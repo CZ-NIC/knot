@@ -528,7 +528,9 @@ int net_dns_tcp_recv(int fd, uint8_t *buffer, size_t size, struct timeval *timeo
 	}
 
 	/* Receive payload. */
+	msg.msg_iov = &iov;
+	msg.msg_iovlen = 1;
 	iov.iov_base = buffer;
-	iov.iov_len = size;
+	iov.iov_len = pktsize;
 	return recv_data(fd, &msg, false, timeout);
 }
