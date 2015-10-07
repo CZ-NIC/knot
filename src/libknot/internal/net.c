@@ -234,6 +234,30 @@ bool net_is_connected(int sock)
 	return (getpeername(sock, (struct sockaddr *)&ss, &len) == 0);
 }
 
+int net_accept(int sock, struct sockaddr_storage *addr)
+{
+	struct sockaddr *sa = (struct sockaddr *)addr;
+	socklen_t sa_len = sizeof(*addr);
+
+	int remote = -1;
+
+#if defined(HAVE_ACCEPT4) && defined(SOCK_NONBLOCK)
+	remote = accept4(sock, sa, &sa_len, SOCK_NONBLOCK);
+	if (remote < 0) {
+		return knot_map_errno();
+	}
+#else
+	remote = accept(sock, sa, &sa_len);
+	if (fcntl(remote, F_SETFL, O_NONBLOCK) != 0) {
+		int error = knot_map_errno();
+		close(remote);
+		return error;
+	}
+#endif
+
+	return remote;
+}
+
 /* -- I/O interface handling partial  -------------------------------------- */
 
 static int select_read(int fd, struct timeval *timeout)

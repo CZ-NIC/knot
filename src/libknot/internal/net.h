@@ -80,6 +80,18 @@ int net_connected_socket(int type, const struct sockaddr_storage *dst_addr,
 bool net_is_connected(int sock);
 
 /*!
+ * \brief Accept a connection on a listening socket.
+ *
+ * \brief The socket is set to non-blocking mode.
+ *
+ * \param sock  Socket
+ * \param addr  Remote address (can be NULL).
+ *
+ * \return socket or error code
+ */
+int net_accept(int sock, struct sockaddr_storage *addr);
+
+/*!
  * \brief Send a message on a socket.
  *
  * The socket can be SOCK_STREAM or SOCK_DGRAM.

@@ -573,6 +573,64 @@ static void test_nonblocking_mode(int type)
 	close(server);
 }
 
+static void test_nonblocking_accept(void)
+{
+	int r;
+
+	// create server
+
+	struct sockaddr_storage addr_server = addr_local();
+
+	int server = net_bound_socket(SOCK_STREAM, &addr_server, 0);
+	ok(server >= 0, "server, create socket");
+
+	r = listen(server, LISTEN_BACKLOG);
+	ok(r == 0, "server, start listening");
+
+	addr_server = addr_from_socket(server);
+
+	// create client
+
+	int client = net_connected_socket(SOCK_STREAM, &addr_server, NULL);
+	ok(client >= 0, "client, create connected socket");
+
+	struct sockaddr_storage addr_client = addr_from_socket(client);
+
+	// accept connection
+
+	r = select_read(server);
+	ok(r == 1, "server, pending connection");
+
+	struct sockaddr_storage addr_accepted = { 0 };
+	int accepted = net_accept(server, &addr_accepted);
+	ok(accepted >= 0, "server, accept connection");
+
+	ok(!socket_is_blocking(accepted), "accepted, nonblocking mode");
+
+	ok(sockaddr_cmp(&addr_client, &addr_accepted) == 0, "accepted, correct address");
+
+	close(client);
+
+	// client reconnect
+
+	close(client);
+	client = net_connected_socket(SOCK_STREAM, &addr_server, NULL);
+	ok(client >= 0, "client, reconnect");
+
+	r = select_read(server);
+	ok(r == 1, "server, pending connection");
+
+	accepted = net_accept(server, NULL);
+	ok(accepted >= 0, "server, accept connection");
+
+	ok(!socket_is_blocking(accepted), "accepted, nonblocking mode");
+
+	// cleanup
+
+	close(client);
+	close(server);
+}
+
 static void test_bind_multiple(void)
 {
 	const struct sockaddr_storage addr = addr_local();
@@ -616,6 +674,7 @@ int main(int argc, char *argv[])
 	diag("nonblocking mode");
 	test_nonblocking_mode(SOCK_DGRAM);
 	test_nonblocking_mode(SOCK_STREAM);
+	test_nonblocking_accept();
 
 	diag("connected sockets");
 	test_connected(SOCK_DGRAM);
