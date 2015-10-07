@@ -18,6 +18,7 @@
 #include <pthread.h>
 #include <stdlib.h>
 #include <string.h>
+#include <fcntl.h>
 
 #include "knot/conf/conf.h"
 #include "libknot/internal/mempool.h"
@@ -41,9 +42,17 @@ const knot_layer_api_t dummy_module = {
         &in, &out, NULL
 };
 
+static void set_blocking_mode(int sock)
+{
+	int flags = fcntl(sock, F_GETFL);
+	flags &= ~O_NONBLOCK;
+	fcntl(sock, F_SETFL, flags);
+}
+
 static void* responder_thread(void *arg)
 {
 	int fd = *((int *)arg);
+	set_blocking_mode(fd);
 	uint8_t buf[KNOT_WIRE_MAX_PKTSIZE];
 	while (true) {
 		int client = accept(fd, NULL, NULL);
