@@ -342,7 +342,7 @@ static int recv_data(int fd, struct msghdr *msg, bool oneshot, struct timeval *t
 
 		/* Check for disconnected socket. */
 		if (ret == 0) {
-			return KNOT_ECONNREFUSED;
+			return KNOT_ECONN;
 		}
 
 		/* Handle error. */
