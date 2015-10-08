@@ -260,32 +260,32 @@ int net_accept(int sock, struct sockaddr_storage *addr)
 
 /* -- I/O interface handling partial  -------------------------------------- */
 
-static int select_read(int fd, struct timeval *timeout)
+/*!
+ * \brief Perform \a select() on one socket.
+ *
+ * \param read   Wait for input readiness.
+ * \param write  Wait for output readiness.
+ */
+static int select_one(int fd, bool read, bool write, struct timeval *timeout)
 {
 	fd_set set;
 	FD_ZERO(&set);
 	FD_SET(fd, &set);
 
-	return select(fd + 1, &set, NULL, NULL, timeout);
-}
+	fd_set *rfds = read ? &set : NULL;
+	fd_set *wfds = write ? &set : NULL;
 
-static int select_write(int fd, struct timeval *timeout)
-{
-	fd_set set;
-	FD_ZERO(&set);
-	FD_SET(fd, &set);
-
-	return select(fd + 1, NULL, &set, NULL, timeout);
+	return select(fd + 1, rfds, wfds, NULL, timeout);
 }
 
 /*!
  * \brief Check if we should wait for I/O readiness.
  *
- * \param error  'errno' set by the failed send() or recv().
+ * \param error  \a errno set by the failed I/O operation.
  */
 static bool io_should_wait(int error)
 {
-	/* non-blocking operation */
+	/* socket data not ready */
 	if (error == EAGAIN || error == EWOULDBLOCK) {
 		return true;
 	}
@@ -298,6 +298,28 @@ static bool io_should_wait(int error)
 #endif
 
 	return false;
+}
+
+/*!
+ * \brief I/O operation callbacks.
+ */
+struct io {
+	ssize_t (*process)(int sockfd, struct msghdr *msg);
+	int (*wait)(int sockfd, struct timeval *timeout);
+};
+
+/*!
+ * \brief Get total size of I/O vector in a message.
+ */
+static size_t msg_iov_len(const struct msghdr *msg)
+{
+	size_t total = 0;
+
+	for (int i = 0; i < msg->msg_iovlen; i++) {
+		total += msg->msg_iov[i].iov_len;
+	}
+
+	return total;
 }
 
 /*!
@@ -324,107 +346,86 @@ static void msg_iov_shift(struct msghdr *msg, size_t done)
 }
 
 /*!
- * \brief Get total size of I/O vector in a message.
- */
-static size_t msg_iov_len(const struct msghdr *msg)
-{
-	size_t total = 0;
-
-	for (int i = 0; i < msg->msg_iovlen; i++) {
-		total += msg->msg_iov[i].iov_len;
-	}
-
-	return total;
-}
-
-/*!
- * \brief Receive a message from a socket with waiting.
+ * \brief Perform an I/O operation with a socket with waiting.
  *
- * \param oneshot  If set, doesn't wait until the buffer is full.
+ * \param oneshot  If set, doesn't wait until the buffer is fully processed.
  *
  */
-static int recv_data(int fd, struct msghdr *msg, bool oneshot, struct timeval *timeout)
+static int io_exec(const struct io *io, int fd, struct msghdr *msg,
+                   bool oneshot, struct timeval *timeout)
 {
-	int flags = MSG_DONTWAIT | MSG_NOSIGNAL;
-
-	size_t rcvd = 0;
+	size_t done = 0;
 	size_t total = msg_iov_len(msg);
 
-	while (rcvd < total) {
-		/* Receive data. */
-		ssize_t ret = recvmsg(fd, msg, flags);
+	for (;;) {
+		/* Perform I/O. */
+		ssize_t ret = io->process(fd, msg);
+		if (ret == -1 && errno == EINTR) {
+			continue;
+		}
 		if (ret > 0) {
-			rcvd += ret;
-			if (oneshot) {
+			done += ret;
+			if (oneshot || done == total) {
 				break;
-			} else {
-				msg_iov_shift(msg, ret);
+			}
+			msg_iov_shift(msg, ret);
+		}
+
+		/* Wait for data readiness. */
+		if (ret > 0 || (ret == -1 && io_should_wait(errno))) {
+			ret = io->wait(fd, timeout);
+			if (ret == 1) {
 				continue;
+			} else if (ret == 0) {
+				return KNOT_ETIMEOUT;
 			}
 		}
 
-		/* Handle error. */
-		if (ret == -1) {
-			if (errno == EINTR) {
-				continue;
-			}
-
-			if (io_should_wait(errno)) {
-				ret = select_read(fd, timeout);
-				if (ret == 0) {
-					return KNOT_ETIMEOUT;
-				} else if (ret == 1) {
-					continue;
-				}
-			}
-
-		}
-
-		/* Disconnected socket. */
+		/* Disconnected or error. */
 		return KNOT_ECONN;
 	}
 
-	return rcvd;
+	return done;
 }
 
-/*!
- * \brief Send a message on a socket with timeout.
- */
+static ssize_t recv_process(int fd, struct msghdr *msg)
+{
+	return recvmsg(fd, msg, MSG_DONTWAIT | MSG_NOSIGNAL);
+}
+
+static int recv_wait(int fd, struct timeval *timeout)
+{
+	return select_one(fd, true, false, timeout);
+}
+
+static int recv_data(int sock, struct msghdr *msg, bool oneshot, struct timeval *timeout)
+{
+	static const struct io RECV_IO = {
+		.process = recv_process,
+		.wait = recv_wait
+	};
+
+	return io_exec(&RECV_IO, sock, msg, oneshot, timeout);
+}
+
+static ssize_t send_process(int fd, struct msghdr *msg)
+{
+	return sendmsg(fd, msg, MSG_NOSIGNAL);
+}
+
+static int send_wait(int fd, struct timeval *timeout)
+{
+	return select_one(fd, false, true, timeout);
+}
+
 static int send_data(int sock, struct msghdr *msg, struct timeval *timeout)
 {
-	size_t total = msg_iov_len(msg);
+	static const struct io SEND_IO = {
+		.process = send_process,
+		.wait = send_wait
+	};
 
-	for (size_t avail = total; avail > 0; /* nop */) {
-		ssize_t sent = sendmsg(sock, msg, MSG_NOSIGNAL);
-		if (sent == avail) {
-			break;
-		}
-
-		/* Short write. */
-		if (sent > 0) {
-			avail -= sent;
-			msg_iov_shift(msg, sent);
-			continue;
-		}
-
-		/* Handle error. */
-		assert(sent == -1);
-		if (errno == EINTR) {
-			continue;
-		} else if (io_should_wait(errno)) {
-			int ret = select_write(sock, timeout);
-			if (ret == 0) {
-				return KNOT_ETIMEOUT;
-			} else if (ret == 1) {
-				continue;
-			}
-		}
-
-		/* Disconnected socket. */
-		return KNOT_ECONN;
-	}
-
-	return total;
+	return io_exec(&SEND_IO, sock, msg, false, timeout);
 }
 
 /* -- generic stream and datagram I/O -------------------------------------- */
