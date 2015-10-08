@@ -69,9 +69,7 @@ int net_connected_socket(int type, const struct sockaddr_storage *dst_addr,
                          const struct sockaddr_storage *src_addr);
 
 /*!
- * \brief Return true if the socket is connected.
- *
- * \note This could be used to identify connected TCP from UDP sockets.
+ * \brief Return true if the socket is fully connected
  *
  * \param sock  Socket.
  *
