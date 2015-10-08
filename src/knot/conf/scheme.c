@@ -48,7 +48,7 @@ static const lookup_table_t key_algs[] = {
 	{ 0, NULL }
 };
 
-static const lookup_table_t acl_actions[] = {
+const lookup_table_t acl_actions[] = {
 	{ ACL_ACTION_NOTIFY,   "notify" },
 	{ ACL_ACTION_TRANSFER, "transfer" },
 	{ ACL_ACTION_UPDATE,   "update" },

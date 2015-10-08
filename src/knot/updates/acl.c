@@ -177,18 +177,20 @@ bool acl_allowed(conf_val_t *acl, acl_action_t action,
 		}
 
 		/* Check if the action is allowed. */
-		val = conf_id_get(conf(), C_ACL, C_ACTION, acl);
-		while (val.code == KNOT_EOK) {
-			if (conf_opt(&val) != action) {
-				conf_val_next(&val);
-				continue;
-			}
+		if (action != ACL_ACTION_NONE) {
+			val = conf_id_get(conf(), C_ACL, C_ACTION, acl);
+			while (val.code == KNOT_EOK) {
+				if (conf_opt(&val) != action) {
+					conf_val_next(&val);
+					continue;
+				}
 
-			break;
-		}
-		/* Check for action match. */
-		if (val.code != KNOT_EOK) {
-			goto next_acl;
+				break;
+			}
+			/* Check for action match. */
+			if (val.code != KNOT_EOK) {
+				goto next_acl;
+			}
 		}
 
 		/* Check if denied. */
