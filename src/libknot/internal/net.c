@@ -355,34 +355,33 @@ static int recv_data(int fd, struct msghdr *msg, bool oneshot, struct timeval *t
 		ssize_t ret = recvmsg(fd, msg, flags);
 		if (ret > 0) {
 			rcvd += ret;
-			/* One-shot recv() */
 			if (oneshot) {
-				return ret;
+				break;
 			} else {
 				msg_iov_shift(msg, ret);
 				continue;
 			}
 		}
 
-		/* Check for disconnected socket. */
-		if (ret == 0) {
-			return KNOT_ECONN;
+		/* Handle error. */
+		if (ret == -1) {
+			if (errno == EINTR) {
+				continue;
+			}
+
+			if (io_should_wait(errno)) {
+				ret = select_read(fd, timeout);
+				if (ret == 0) {
+					return KNOT_ETIMEOUT;
+				} else if (ret == 1) {
+					continue;
+				}
+			}
+
 		}
 
-		/* Handle error. */
-		assert(ret == -1);
-		if (errno == EINTR) {
-			continue;
-		} else if (io_should_wait(errno)) {
-			ret = select_read(fd, timeout);
-			if (ret > 0) {
-				continue;
-			} else {
-				return KNOT_ETIMEOUT;
-			}
-		} else {
-			return KNOT_ECONN;
-		}
+		/* Disconnected socket. */
+		return KNOT_ECONN;
 	}
 
 	return rcvd;
@@ -414,14 +413,15 @@ static int send_data(int sock, struct msghdr *msg, struct timeval *timeout)
 			continue;
 		} else if (io_should_wait(errno)) {
 			int ret = select_write(sock, timeout);
-			if (ret > 0) {
-				continue;
-			} else if (ret == 0) {
+			if (ret == 0) {
 				return KNOT_ETIMEOUT;
+			} else if (ret == 1) {
+				continue;
 			}
-		} else {
-			return KNOT_ECONN;
 		}
+
+		/* Disconnected socket. */
+		return KNOT_ECONN;
 	}
 
 	return total;
