@@ -73,7 +73,7 @@ static int dnsproxy_fwd(int state, knot_pkt_t *pkt, struct query_data *qdata, vo
 		return KNOT_STATE_FAIL;
 	}
 
-	bool is_tcp = net_is_connected(qdata->param->socket);
+	bool is_tcp = net_is_stream(qdata->param->socket);
 	struct knot_request *req;
 	const struct sockaddr *dst = (const struct sockaddr *)&proxy->remote.addr;
 	const struct sockaddr *src = (const struct sockaddr *)&proxy->remote.via;

@@ -433,7 +433,7 @@ static int rosedb_log_message(char *stream, size_t *maxlen, knot_pkt_t *pkt,
 
 	/* Field 17 Connection type. */
 	STREAM_WRITE(stream, maxlen, snprintf, "%s\t",
-	             net_is_connected(qdata->param->socket) ? "TCP" : "UDP");
+	             net_is_stream(qdata->param->socket) ? "TCP" : "UDP");
 
 	/* Field 18 Query type. */
 	char type_str[16] = { '\0' };
