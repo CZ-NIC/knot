@@ -256,9 +256,6 @@ static void test_connected(int type)
 	sock = net_connected_socket(type, &server_addr, NULL);
 	ok(sock >= 0, "%s: client, create connected socket", name);
 
-	r = net_is_connected(sock);
-	ok(r, "%s: client, is connected", name);
-
 	const uint8_t out[] = "test message";
 	const size_t out_len = sizeof(out);
 	if (socktype_is_stream(type)) {
@@ -268,6 +265,9 @@ static void test_connected(int type)
 		r = net_dgram_send(sock, out, out_len, NULL);
 	}
 	ok(r == out_len, "%s: client, send message", name);
+
+	r = net_is_connected(sock);
+	ok(r, "%s: client, is connected", name);
 
 	uint8_t in[128] = { 0 };
 	tv = TIMEOUT;
