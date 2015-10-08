@@ -1173,7 +1173,7 @@ static void wire_eui_to_str(rrset_dump_params_t *p)
 	p->ret = 0;
 }
 
-static void wire_rcode_to_str(rrset_dump_params_t *p)
+static void wire_tsig_rcode_to_str(rrset_dump_params_t *p)
 {
 	uint16_t data;
 	size_t   in_len = sizeof(data);
@@ -1188,7 +1188,9 @@ static void wire_rcode_to_str(rrset_dump_params_t *p)
 	data = wire_read_u16(p->in);
 
 	// Find RCODE name.
-	lookup_table_t *rcode = lookup_by_id(knot_rcode_names, data);
+	lookup_table_t *rcode = lookup_by_id((data >= knot_tsig_err_names->id) ?
+	                                     knot_tsig_err_names : knot_rcode_names,
+	                                     data);
 	if (rcode != NULL) {
 		rcode_str = rcode->name;
 	}
@@ -1365,7 +1367,7 @@ static void dnskey_info(const uint8_t *rdata,
 #define DUMP_GATEWAY	wire_gateway_to_str(p); CHECK_RET(p);
 #define DUMP_L64	wire_l64_to_str(p); CHECK_RET(p);
 #define DUMP_EUI	wire_eui_to_str(p); CHECK_RET(p);
-#define DUMP_RCODE	wire_rcode_to_str(p); CHECK_RET(p);
+#define DUMP_TSIG_RCODE	wire_tsig_rcode_to_str(p); CHECK_RET(p);
 #define DUMP_UNKNOWN	wire_unknown_to_str(p); CHECK_RET(p);
 
 static int dump_a(DUMP_PARAMS)
@@ -1708,7 +1710,7 @@ static int dump_tsig(DUMP_PARAMS)
 		DUMP_NUM16; DUMP_SPACE; WRAP_INIT;
 		DUMP_TSIG_DGST; DUMP_SPACE; WRAP_LINE;
 		DUMP_NUM16; DUMP_SPACE;
-		DUMP_RCODE; DUMP_SPACE;
+		DUMP_TSIG_RCODE; DUMP_SPACE;
 		DUMP_TSIG_DATA;
 		WRAP_END;
 	} else {
@@ -1717,7 +1719,7 @@ static int dump_tsig(DUMP_PARAMS)
 		DUMP_NUM16; DUMP_SPACE;
 		DUMP_TSIG_DGST; DUMP_SPACE;
 		DUMP_NUM16; DUMP_SPACE;
-		DUMP_RCODE; DUMP_SPACE;
+		DUMP_TSIG_RCODE; DUMP_SPACE;
 		DUMP_TSIG_DATA;
 	}
 
