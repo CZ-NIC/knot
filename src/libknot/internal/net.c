@@ -234,6 +234,19 @@ bool net_is_connected(int sock)
 	return (getpeername(sock, (struct sockaddr *)&ss, &len) == 0);
 }
 
+int net_socktype(int sock)
+{
+	int type = AF_UNSPEC;
+	socklen_t size = sizeof(type);
+	getsockopt(sock, SOL_SOCKET, SO_TYPE, &type, &size);
+	return type;
+}
+
+bool net_is_stream(int sock)
+{
+	return net_socktype(sock) == SOCK_STREAM;
+}
+
 int net_accept(int sock, struct sockaddr_storage *addr)
 {
 	struct sockaddr *sa = (struct sockaddr *)addr;

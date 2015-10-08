@@ -658,6 +658,37 @@ static void test_nonblocking_accept(void)
 	close(server);
 }
 
+static void test_socket_types(void)
+{
+	struct sockaddr_storage addr = addr_local();
+
+	struct testcase {
+		const char *name;
+		int type;
+		bool is_stream;
+	};
+
+	const struct testcase testcases[] = {
+		{ "UDP", SOCK_DGRAM, false },
+		{ "TCP", SOCK_STREAM, true },
+		{ NULL }
+	};
+
+	for (const struct testcase *t = testcases; t->name != NULL; t++) {
+		int sock = net_unbound_socket(t->type, &addr);
+		ok(sock >= 0, "%s, create socket", t->name);
+
+		is_int(t->type, net_socktype(sock), "%s, socket type", t->name);
+
+		ok(net_is_stream(sock) == t->is_stream, "%s, is stream", t->name);
+
+		close(sock);
+	}
+
+	is_int(AF_UNSPEC, net_socktype(-1), "invalid, socket type");
+	ok(!net_is_stream(-1), "invalid, is stream");
+}
+
 static void test_bind_multiple(void)
 {
 	const struct sockaddr_storage addr = addr_local();
@@ -702,6 +733,9 @@ int main(int argc, char *argv[])
 	test_nonblocking_mode(SOCK_DGRAM);
 	test_nonblocking_mode(SOCK_STREAM);
 	test_nonblocking_accept();
+
+	diag("socket types");
+	test_socket_types();
 
 	diag("connected sockets");
 	test_connected(SOCK_DGRAM);

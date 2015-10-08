@@ -80,6 +80,18 @@ int net_connected_socket(int type, const struct sockaddr_storage *dst_addr,
 bool net_is_connected(int sock);
 
 /*!
+ * \brief Get socket type (e.g. \a SOCK_STREAM).
+ *
+ * \param sock  Socket.
+ */
+int net_socktype(int sock);
+
+/*!
+ * \brief Check if socket is a SOCK_STREAM socket.
+ */
+bool net_is_stream(int sock);
+
+/*!
  * \brief Accept a connection on a listening socket.
  *
  * \brief The socket is set to non-blocking mode.
