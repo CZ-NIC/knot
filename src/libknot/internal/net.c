@@ -373,7 +373,9 @@ static int io_exec(const struct io *io, int fd, struct msghdr *msg,
 
 		/* Wait for data readiness. */
 		if (ret > 0 || (ret == -1 && io_should_wait(errno))) {
-			ret = io->wait(fd, timeout);
+			do {
+				ret = io->wait(fd, timeout);
+			} while (ret == -1 && errno == EINTR);
 			if (ret == 1) {
 				continue;
 			} else if (ret == 0) {
