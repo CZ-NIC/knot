@@ -435,6 +435,30 @@ struct dns_handler_ctx {
 	bool success;
 };
 
+static void _sync(int remote, int send)
+{
+	uint8_t buf[1] = { 0 };
+	struct timeval tv = TIMEOUT;
+	int r;
+	if (send) {
+		r = net_stream_send(remote, buf, sizeof(buf), &tv);
+	} else {
+		r = net_stream_recv(remote, buf, sizeof(buf), &tv);
+
+	}
+	assert(r == sizeof(buf));
+}
+
+static void sync_signal(int remote)
+{
+	_sync(remote, true);
+}
+
+static void sync_wait(int remote)
+{
+	_sync(remote, false);
+}
+
 static void handler_dns(int sock, void *_ctx)
 {
 	struct dns_handler_ctx *ctx = _ctx;
@@ -442,6 +466,8 @@ static void handler_dns(int sock, void *_ctx)
 	struct timeval tv = TIMEOUT;
 	uint8_t in[16] = { 0 };
 	int in_len = 0;
+
+	sync_signal(sock);
 
 	if (ctx->raw) {
 		in_len = net_stream_recv(sock, in, sizeof(in), &tv);
@@ -530,6 +556,7 @@ static void test_dns_tcp(void)
 		int client = net_connected_socket(SOCK_STREAM, &addr, NULL);
 		ok(client >= 0, "%s, client, create connected socket", t->name);
 
+		sync_wait(client);
 		t->send_callback(client);
 
 		close(client);
