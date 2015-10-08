@@ -619,7 +619,7 @@ int yp_hex_to_bin(
 
 		// Decode hex string.
 		while (YP_LEN > 0) {
-			uint8_t buf[2];
+			uint8_t buf[2] = { 0 };
 			wire_ctx_read(in, buf, sizeof(buf));
 
 			if (isxdigit((int)buf[0]) == 0 ||
