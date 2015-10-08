@@ -368,6 +368,8 @@ AS_IF([test "$with_lmdb" != "no"],[
 	  AS_IF([test "$lmdb_VERSION_FULL" -ge "$lmdb_MIN_VERSION_FULL"],[
               lmdb_LIBS="$lmdb_LIBS -llmdb"
               have_lmdb=yes],[
+	      unset lmdb_CFLAGS
+	      unset lmdb_LIBS
 	      AC_MSG_WARN([lmdb version 0.9.15 and higher not found, using embedded version])
 	      ])
           break 
