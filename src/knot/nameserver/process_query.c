@@ -573,7 +573,21 @@ bool process_query_acl_check(const knot_dname_t *zone_name, acl_action_t action,
 	/* Check if authenticated. */
 	conf_val_t acl = conf_zone_get(conf(), C_ACL, zone_name);
 	if (!acl_allowed(&acl, action, query_source, &tsig)) {
-		dbg_ns("%s: no ACL match => NOTAUTH\n", __func__);
+		char addr_str[SOCKADDR_STRLEN] = { 0 };
+		sockaddr_tostr(addr_str, sizeof(addr_str), query_source);
+		lookup_table_t *act = lookup_by_id((lookup_table_t *)acl_actions,
+		                                   action);
+		char *key_name = knot_dname_to_str_alloc(tsig.name);
+
+		log_zone_debug(zone_name,
+		               "ACL, denied, action '%s', remote '%s', key %s%s%s",
+		               (act != NULL) ? act->name : "query",
+		               addr_str,
+		               (key_name != NULL) ? "'" : "",
+		               (key_name != NULL) ? key_name : "none",
+		               (key_name != NULL) ? "'" : "");
+		free(key_name);
+
 		qdata->rcode = KNOT_RCODE_NOTAUTH;
 		qdata->rcode_tsig = KNOT_TSIG_ERR_BADKEY;
 		return false;

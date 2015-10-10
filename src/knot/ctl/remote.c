@@ -927,7 +927,7 @@ int remote_process(server_t *s, struct sockaddr_storage *ctl_addr, int sock,
 		rcu_read_unlock();
 
 		if (!allowed) {
-			log_warning("remote control, denied '%s', "
+			log_warning("remote control, ACL, denied, remote '%s', "
 			            "no matching ACL", addr_str);
 			remote_senderr(client, pkt->wire, pkt->size);
 			ret = KNOT_EACCES;
@@ -943,8 +943,9 @@ int remote_process(server_t *s, struct sockaddr_storage *ctl_addr, int sock,
 			ret = zones_verify_tsig_query(pkt, &tsig, &ts_rc,
 			                              &ts_trc, &ts_tmsigned);
 			if (ret != KNOT_EOK) {
-				log_warning("remote control, denied '%s', "
-				            "key verification failed", addr_str);
+				log_warning("remote control, ACL, denied, "
+				            "remote '%s', key verification (%s)",
+				            addr_str, knot_strerror(ret));
 				remote_senderr(client, pkt->wire, pkt->size);
 				ret = KNOT_EACCES;
 				goto finish;

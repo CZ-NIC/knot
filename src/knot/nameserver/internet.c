@@ -804,7 +804,7 @@ int internet_query(knot_pkt_t *response, struct query_data *qdata)
 	/* No applicable ACL, refuse transaction security. */
 	if (knot_pkt_has_tsig(qdata->query)) {
 		/* We have been challenged... */
-		NS_NEED_AUTH(qdata, qdata->zone->name, ACL_ACTION_TRANSFER);
+		NS_NEED_AUTH(qdata, qdata->zone->name, ACL_ACTION_NONE);
 
 		/* Reserve space for TSIG. */
 		knot_pkt_reserve(response, knot_tsig_wire_maxsize(&qdata->sign.tsig_key));

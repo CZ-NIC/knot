@@ -257,6 +257,12 @@ static void test_acl_allowed(void)
 	acl = conf_zone_get(conf(), C_ACL, zone_name);
 	ok(acl.code == KNOT_EOK, "Get zone ACL");
 	check_sockaddr_set(&addr, AF_INET6, "2001::1", 0);
+	ret = acl_allowed(&acl, ACL_ACTION_NONE, &addr, &key1);
+	ok(ret == true, "Address, key, empty action");
+
+	acl = conf_zone_get(conf(), C_ACL, zone_name);
+	ok(acl.code == KNOT_EOK, "Get zone ACL");
+	check_sockaddr_set(&addr, AF_INET6, "2001::1", 0);
 	ret = acl_allowed(&acl, ACL_ACTION_TRANSFER, &addr, &key1);
 	ok(ret == true, "Address, key, action match");
 
