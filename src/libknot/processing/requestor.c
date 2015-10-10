@@ -73,9 +73,9 @@ static int request_send(struct knot_request *request,
 
 	/* Send query. */
 	if (use_tcp(request)) {
-		ret = tcp_send_msg(request->fd, wire, wire_len, &tv);
+		ret = net_dns_tcp_send(request->fd, wire, wire_len, &tv);
 	} else {
-		ret = udp_send_msg(request->fd, wire, wire_len, NULL);
+		ret = net_dgram_send(request->fd, wire, wire_len, NULL);
 	}
 	if (ret != wire_len) {
 		return KNOT_ECONN;
@@ -101,9 +101,9 @@ static int request_recv(struct knot_request *request,
 
 	/* Receive it */
 	if (use_tcp(request)) {
-		ret = tcp_recv_msg(request->fd, resp->wire, resp->max_size, &tv);
+		ret = net_dns_tcp_recv(request->fd, resp->wire, resp->max_size, &tv);
 	} else {
-		ret = udp_recv_msg(request->fd, resp->wire, resp->max_size, &tv);
+		ret = net_dgram_recv(request->fd, resp->wire, resp->max_size, &tv);
 	}
 	if (ret <= 0) {
 		resp->size = 0;

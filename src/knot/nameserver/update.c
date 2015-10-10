@@ -466,11 +466,11 @@ static void send_update_response(const zone_t *zone, struct knot_request *req)
 		if (net_is_stream(req->fd)) {
 			conf_val_t val = conf_get(conf(), C_SRV, C_TCP_REPLY_TIMEOUT);
 			struct timeval timeout = { conf_int(&val), 0 };
-			tcp_send_msg(req->fd, req->resp->wire, req->resp->size,
-			             &timeout);
+			net_dns_tcp_send(req->fd, req->resp->wire, req->resp->size,
+			                 &timeout);
 		} else {
-			udp_send_msg(req->fd, req->resp->wire, req->resp->size,
-			             &req->remote);
+			net_dgram_send(req->fd, req->resp->wire, req->resp->size,
+			               &req->remote);
 		}
 	}
 }

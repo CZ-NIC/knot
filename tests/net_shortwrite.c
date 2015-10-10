@@ -74,7 +74,7 @@ static void *thr_receive(void *data)
 	}
 
 	timeout = TIMEOUT;
-	d->result = tcp_recv_msg(client, d->buffer, d->size, &timeout);
+	d->result = net_dns_tcp_recv(client, d->buffer, d->size, &timeout);
 
 	close(client);
 
@@ -131,8 +131,8 @@ int main(int argc, char *argv[])
 		sndbuf[i] = i;
 	}
 	struct timeval timeout = TIMEOUT;
-	r = tcp_send_msg(client, sndbuf, sizeof(sndbuf), &timeout);
-	ok(r == sizeof(sndbuf), "client: tcp_send_msg() with short-write");
+	r = net_dns_tcp_send(client, sndbuf, sizeof(sndbuf), &timeout);
+	ok(r == sizeof(sndbuf), "client: net_dns_tcp_send() with short-write");
 
 	// receive message
 
@@ -141,7 +141,7 @@ int main(int argc, char *argv[])
 
 	ok(recv_data.result == sizeof(recvbuf) &&
 	   memcmp(sndbuf, recvbuf, sizeof(recvbuf)) == 0,
-	   "server: tcp_recv_msg() complete and valid data");
+	   "server: net_dns_tcp_recv() complete and valid data");
 
 	// clean up
 

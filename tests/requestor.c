@@ -59,13 +59,13 @@ static void* responder_thread(void *arg)
 		if (client < 0) {
 			break;
 		}
-		int len = tcp_recv_msg(client, buf, sizeof(buf), NULL);
+		int len = net_dns_tcp_recv(client, buf, sizeof(buf), NULL);
 		if (len < KNOT_WIRE_HEADER_SIZE) {
 			close(client);
 			break;
 		}
 		knot_wire_set_qr(buf);
-		tcp_send_msg(client, buf, len, NULL);
+		net_dns_tcp_send(client, buf, len, NULL);
 		close(client);
 	}
 	return NULL;
@@ -165,7 +165,7 @@ int main(int argc, char *argv[])
 	struct timeval tv = TIMEOUT;
 	int responder = net_connected_socket(SOCK_STREAM, &remote.addr, NULL);
 	assert(responder > 0);
-	tcp_send_msg(responder, (const uint8_t *)"", 1, &tv);
+	net_dns_tcp_send(responder, (const uint8_t *)"", 1, &tv);
 	(void) pthread_join(thread, 0);
 	close(responder);
 

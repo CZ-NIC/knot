@@ -183,9 +183,3 @@ int net_dns_tcp_send(int sock, const uint8_t *buffer, size_t size, struct timeva
  * \see net_recv
  */
 int net_dns_tcp_recv(int sock, uint8_t *buffer, size_t size, struct timeval *timeout);
-
-// Added for compatibility:
-#define udp_send_msg net_dgram_send
-#define udp_recv_msg net_dgram_recv
-#define tcp_send_msg net_dns_tcp_send
-#define tcp_recv_msg net_dns_tcp_recv
