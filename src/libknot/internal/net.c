@@ -135,7 +135,7 @@ static bool enable_nonlocal(int socket, int family)
 
 static void unlink_unix_socket(const struct sockaddr_storage *addr)
 {
-	char path[SOCKADDR_STRLEN] = {0};
+	char path[SOCKADDR_STRLEN] = { 0 };
 	sockaddr_tostr(path, sizeof(path), addr);
 	unlink(path);
 }
