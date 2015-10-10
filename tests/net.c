@@ -340,16 +340,18 @@ static void test_unconnected(void)
 #ifdef __linux__
 	const int expected = KNOT_ECONN;
 	const char *expected_msg = "failure";
+	const struct timeval expected_tv = TIMEOUT;
 #else
 	const int expected = KNOT_ETIMEOUT;
 	const char *expected_msg = "timeout";
+	const struct timeval expected_tv = TIMEOUT_SHORT;
 #endif
 
-	tv = TIMEOUT_SHORT;
+	tv = expected_tv;
 	r = net_stream_send(sock, buffer, buffer_len, &tv);
 	ok(r == expected, "TCP, send %s on unconnected socket", expected_msg);
 
-	tv = TIMEOUT_SHORT;
+	tv = expected_tv;
 	r = net_stream_recv(sock, buffer, sizeof(buffer), &tv);
 	ok(r == expected, "TCP, receive %s on unconnected socket", expected_msg);
 
@@ -421,7 +423,7 @@ static void test_refused(void)
 	r = close(server);
 	ok(r == 0, "server, close socket");
 
-	tv = TIMEOUT_SHORT;
+	tv = TIMEOUT;
 	r = net_stream_send(client, (uint8_t *)"", 1, &tv);
 	ok(r == KNOT_ECONN, "client, refused on write");
 
@@ -497,7 +499,7 @@ static void dns_send_fragmented(int sock)
 	};
 
 	for (const struct fragment *f = fragments; f->len > 0; f++) {
-		struct timeval tv = TIMEOUT_SHORT;
+		struct timeval tv = TIMEOUT;
 		net_stream_send(sock, f->data, f->len, &tv);
 	}
 }
