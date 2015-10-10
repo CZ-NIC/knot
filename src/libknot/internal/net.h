@@ -116,8 +116,8 @@ int net_accept(int sock, struct sockaddr_storage *addr);
  *
  * \return Number of bytes sent or negative error code.
  */
-int net_send(int sock, const uint8_t *buffer, size_t size,
-             const struct sockaddr_storage *addr, struct timeval *timeout);
+ssize_t net_send(int sock, const uint8_t *buffer, size_t size,
+                 const struct sockaddr_storage *addr, struct timeval *timeout);
 
 /*!
  * \brief Receive a message from a socket.
@@ -130,37 +130,40 @@ int net_send(int sock, const uint8_t *buffer, size_t size,
  *
  * \return Number of bytes read or negative error code.
  */
-int net_recv(int sock, uint8_t *buffer, size_t size,
-             struct sockaddr_storage *addr, struct timeval *timeout);
+ssize_t net_recv(int sock, uint8_t *buffer, size_t size,
+                 struct sockaddr_storage *addr, struct timeval *timeout);
 
 /*!
  * \brief Send a message on a SOCK_DGRAM socket.
  *
  * \see net_send
  */
-int net_dgram_send(int sock, const uint8_t *buffer, size_t size,
-                   const struct sockaddr_storage *addr);
+ssize_t net_dgram_send(int sock, const uint8_t *buffer, size_t size,
+                       const struct sockaddr_storage *addr);
 
 /*!
  * \brief Receive a message from a SOCK_DGRAM socket.
  *
  * \see net_recv
  */
-int net_dgram_recv(int sock, uint8_t *buffer, size_t size, struct timeval *timeout);
+ssize_t net_dgram_recv(int sock, uint8_t *buffer, size_t size,
+                       struct timeval *timeout);
 
 /*!
  * \brief Send a message on a SOCK_STREAM socket.
  *
  * \see net_send
  */
-int net_stream_send(int sock, const uint8_t *buffer, size_t size, struct timeval *timeout);
+ssize_t net_stream_send(int sock, const uint8_t *buffer, size_t size,
+                        struct timeval *timeout);
 
 /*!
  * \brief Receive a message from a SOCK_STREAM socket.
  *
  * \see net_recv
  */
-int net_stream_recv(int sock, uint8_t *buffer, size_t size, struct timeval *timeout);
+ssize_t net_stream_recv(int sock, uint8_t *buffer, size_t size,
+                        struct timeval *timeout);
 
 /*!
  * \brief Send a DNS message on a TCP socket.
@@ -171,7 +174,8 @@ int net_stream_recv(int sock, uint8_t *buffer, size_t size, struct timeval *time
  *
  * \see net_send
  */
-int net_dns_tcp_send(int sock, const uint8_t *buffer, size_t size, struct timeval *timeout);
+ssize_t net_dns_tcp_send(int sock, const uint8_t *buffer, size_t size,
+                         struct timeval *timeout);
 
 /*!
  * \brief Receive a DNS message from a TCP socket.
@@ -182,4 +186,5 @@ int net_dns_tcp_send(int sock, const uint8_t *buffer, size_t size, struct timeva
  *
  * \see net_recv
  */
-int net_dns_tcp_recv(int sock, uint8_t *buffer, size_t size, struct timeval *timeout);
+ssize_t net_dns_tcp_recv(int sock, uint8_t *buffer, size_t size,
+                         struct timeval *timeout);
