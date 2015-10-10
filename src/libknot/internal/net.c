@@ -564,7 +564,7 @@ ssize_t net_dns_tcp_recv(int sock, uint8_t *buffer, size_t size, struct timeval 
 
 	/* Check packet size */
 	if (size < pktsize) {
-		return KNOT_ENOMEM;
+		return KNOT_ESPACE;
 	}
 
 	/* Receive payload. */
