@@ -69,7 +69,7 @@ int net_connected_socket(int type, const struct sockaddr_storage *dst_addr,
                          const struct sockaddr_storage *src_addr);
 
 /*!
- * \brief Return true if the socket is fully connected
+ * \brief Return true if the socket is fully connected.
  *
  * \param sock  Socket.
  *
@@ -182,7 +182,7 @@ ssize_t net_dns_tcp_send(int sock, const uint8_t *buffer, size_t size,
  *
  * The first two bytes of the incoming message are interpreted as a DNS message
  * size according to the specification. These two bytes are not included in
- * the returned size. Only a complete DNS message is retreived.
+ * the returned size. Only a complete DNS message is retrieved.
  *
  * \see net_recv
  */
