@@ -515,9 +515,9 @@ int net_stream_recv(int sock, uint8_t *buffer, size_t size, struct timeval *time
 
 /* -- DNS specific I/O ----------------------------------------------------- */
 
-int net_dns_tcp_send(int fd, const uint8_t *buffer, size_t size, struct timeval *timeout)
+int net_dns_tcp_send(int sock, const uint8_t *buffer, size_t size, struct timeval *timeout)
 {
-	if (fd < 0 || buffer == NULL || size > UINT16_MAX) {
+	if (sock < 0 || buffer == NULL || size > UINT16_MAX) {
 		return KNOT_EINVAL;
 	}
 
@@ -532,7 +532,7 @@ int net_dns_tcp_send(int fd, const uint8_t *buffer, size_t size, struct timeval 
 	msg.msg_iov = iov;
 	msg.msg_iovlen = 2;
 
-	ssize_t ret = send_data(fd, &msg, timeout);
+	ssize_t ret = send_data(sock, &msg, timeout);
 	if (ret < 0) {
 		return ret;
 	}
@@ -540,9 +540,9 @@ int net_dns_tcp_send(int fd, const uint8_t *buffer, size_t size, struct timeval 
 	return size; /* Do not count the size prefix. */
 }
 
-int net_dns_tcp_recv(int fd, uint8_t *buffer, size_t size, struct timeval *timeout)
+int net_dns_tcp_recv(int sock, uint8_t *buffer, size_t size, struct timeval *timeout)
 {
-	if (fd < 0 || buffer == NULL) {
+	if (sock < 0 || buffer == NULL) {
 		return KNOT_EINVAL;
 	}
 
@@ -555,7 +555,7 @@ int net_dns_tcp_recv(int fd, uint8_t *buffer, size_t size, struct timeval *timeo
 	uint16_t pktsize = 0;
 	iov.iov_base = &pktsize;
 	iov.iov_len = sizeof(pktsize);
-	int ret = recv_data(fd, &msg, false, timeout);
+	int ret = recv_data(sock, &msg, false, timeout);
 	if (ret != sizeof(pktsize)) {
 		return ret;
 	}
@@ -572,5 +572,5 @@ int net_dns_tcp_recv(int fd, uint8_t *buffer, size_t size, struct timeval *timeo
 	msg.msg_iovlen = 1;
 	iov.iov_base = buffer;
 	iov.iov_len = pktsize;
-	return recv_data(fd, &msg, false, timeout);
+	return recv_data(sock, &msg, false, timeout);
 }
