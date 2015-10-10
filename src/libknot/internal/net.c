@@ -480,12 +480,12 @@ ssize_t net_recv(int sock, uint8_t *buffer, size_t size,
 	}
 
 	struct iovec iov = { 0 };
-	iov.iov_base = (void*)buffer;
+	iov.iov_base = buffer;
 	iov.iov_len = size;
 
 	struct msghdr msg = { 0 };
 	msg.msg_name = (void *)addr;
-	msg.msg_namelen = sizeof(*addr);
+	msg.msg_namelen = addr ? sizeof(*addr) : 0;
 	msg.msg_iov = &iov;
 	msg.msg_iovlen = 1;
 
