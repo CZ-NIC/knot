@@ -453,7 +453,7 @@ ssize_t net_send(int sock, const uint8_t *buffer, size_t size,
 	}
 
 	struct iovec iov = { 0 };
-	iov.iov_base = (void*)buffer;
+	iov.iov_base = (void *)buffer;
 	iov.iov_len = size;
 
 	struct msghdr msg = { 0 };
