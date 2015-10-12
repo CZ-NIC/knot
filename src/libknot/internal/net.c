@@ -33,16 +33,20 @@
 #  define MSG_NOSIGNAL 0
 #  define osx_block_sigpipe(sock) sockopt_enable(sock, SOL_SOCKET, SO_NOSIGPIPE)
 #else
-#  define osx_block_sigpipe(sock) /* no-op */
+#  define osx_block_sigpipe(sock) KNOT_EOK
 #endif
 
 /*!
  * \brief Enable socket option.
  */
-static bool sockopt_enable(int sock, int level, int optname)
+static int sockopt_enable(int sock, int level, int optname)
 {
 	const int enable = 1;
-	return (setsockopt(sock, level, optname, &enable, sizeof(enable)) == 0);
+	if (setsockopt(sock, level, optname, &enable, sizeof(enable)) != 0) {
+		return knot_map_errno();
+	}
+
+	return KNOT_EOK;
 }
 
 /*!
@@ -69,7 +73,10 @@ static int socket_create(int family, int type, int proto)
 	}
 #endif
 
-	osx_block_sigpipe(sock);
+	int ret = osx_block_sigpipe(sock);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
 
 	return sock;
 }
@@ -123,14 +130,23 @@ static const struct option *nonlocal_option(int family)
 	}
 }
 
-static bool enable_nonlocal(int socket, int family)
+static int enable_nonlocal(int sock, int family)
 {
 	const struct option *opt = nonlocal_option(family);
 	if (opt == NULL || opt->name == 0) {
-		return false;
+		return KNOT_ENOTSUP;
 	}
 
-	return sockopt_enable(socket, opt->level, opt->name);
+	return sockopt_enable(sock, opt->level, opt->name);
+}
+
+static int enable_reuseport(int sock)
+{
+#ifdef ENABLE_REUSEPORT
+	return sockopt_enable(sock, SOL_SOCKET, SO_REUSEPORT);
+#else
+	return KNOT_ENOTSUP;
+#endif
 }
 
 static void unlink_unix_socket(const struct sockaddr_storage *addr)
@@ -154,35 +170,42 @@ int net_bound_socket(int type, const struct sockaddr_storage *ss, enum net_flags
 	}
 
 	/* Reuse old address if taken. */
-	sockopt_enable(sock, SOL_SOCKET, SO_REUSEADDR);
+	int ret = sockopt_enable(sock, SOL_SOCKET, SO_REUSEADDR);
+	if (ret != KNOT_EOK) {
+		close(sock);
+		return ret;
+	}
 
 	/* Don't bind IPv4 for IPv6 any address. */
 	if (ss->ss_family == AF_INET6) {
-		sockopt_enable(sock, IPPROTO_IPV6, IPV6_V6ONLY);
+		ret = sockopt_enable(sock, IPPROTO_IPV6, IPV6_V6ONLY);
+		if (ret != KNOT_EOK) {
+			close(sock);
+			return ret;
+		}
 	}
 
 	/* Allow bind to non-local address. */
 	if (flags & NET_BIND_NONLOCAL) {
-		enable_nonlocal(sock, ss->ss_family);
+		ret = enable_nonlocal(sock, ss->ss_family);
+		if (ret != KNOT_EOK) {
+			close(sock);
+			return ret;
+		}
 	}
 
 	/* Allow to bind the same address by multiple threads. */
 	if (flags & NET_BIND_MULTIPLE) {
-#ifdef ENABLE_REUSEPORT
-		if (!sockopt_enable(sock, SOL_SOCKET, SO_REUSEPORT)) {
-			int ret = knot_map_errno();
+		ret = enable_reuseport(sock);
+		if (ret != KNOT_EOK) {
 			close(sock);
 			return ret;
 		}
-#else
-		close(sock);
-		return KNOT_ENOTSUP;
-#endif
 	}
 
 	/* Bind to specified address. */
 	const struct sockaddr *sa = (const struct sockaddr *)ss;
-	int ret = bind(sock, sa, sockaddr_len(sa));
+	ret = bind(sock, sa, sockaddr_len(sa));
 	if (ret < 0) {
 		ret = knot_map_errno();
 		close(sock);
