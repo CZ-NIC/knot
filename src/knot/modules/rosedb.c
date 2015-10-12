@@ -21,6 +21,7 @@
 #include "knot/modules/rosedb.h"
 #include "knot/nameserver/process_query.h"
 #include "libknot/libknot.h"
+#include "libknot/internal/net.h"
 #include "libknot/internal/utils.h"
 
 /* Module configuration scheme. */
@@ -432,7 +433,7 @@ static int rosedb_log_message(char *stream, size_t *maxlen, knot_pkt_t *pkt,
 
 	/* Field 17 Connection type. */
 	STREAM_WRITE(stream, maxlen, snprintf, "%s\t",
-	             net_is_connected(qdata->param->socket) ? "TCP" : "UDP");
+	             net_is_stream(qdata->param->socket) ? "TCP" : "UDP");
 
 	/* Field 18 Query type. */
 	char type_str[16] = { '\0' };
@@ -451,7 +452,7 @@ static int rosedb_log_message(char *stream, size_t *maxlen, knot_pkt_t *pkt,
 	return KNOT_EOK;
 }
 
-static int rosedb_send_log(int sock, struct sockaddr *dst_addr, knot_pkt_t *pkt,
+static int rosedb_send_log(int sock, struct sockaddr_storage *dst_addr, knot_pkt_t *pkt,
                            const char *threat_code, struct query_data *qdata)
 {
 	char buf[SYSLOG_BUFLEN];
@@ -484,7 +485,7 @@ static int rosedb_send_log(int sock, struct sockaddr *dst_addr, knot_pkt_t *pkt,
 	}
 
 	/* Send log message line. */
-	sendto(sock, buf, sizeof(buf) - maxlen, 0, dst_addr, sockaddr_len(dst_addr));
+	net_dgram_send(sock, (uint8_t *)buf, sizeof(buf) - maxlen, dst_addr);
 
 	return ret;
 }
@@ -551,7 +552,7 @@ static int rosedb_synth(knot_pkt_t *pkt, const knot_dname_t *key, struct iter *i
 	if (sockaddr_set(&syslog_addr, AF_INET, entry.syslog_ip, DEFAULT_PORT) == KNOT_EOK) {
 		int sock = net_unbound_socket(SOCK_DGRAM, &syslog_addr);
 		if (sock > 0) {
-			rosedb_send_log(sock, (struct sockaddr *)&syslog_addr, pkt,
+			rosedb_send_log(sock, &syslog_addr, pkt,
 			                entry.threat_code, qdata);
 			close(sock);
 		}

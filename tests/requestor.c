@@ -15,13 +15,16 @@
  */
 
 #include <tap/basic.h>
-#include <string.h>
+#include <pthread.h>
 #include <stdlib.h>
+#include <string.h>
+#include <fcntl.h>
 
+#include "knot/conf/conf.h"
 #include "libknot/internal/mempool.h"
+#include "libknot/internal/net.h"
 #include "libknot/processing/layer.h"
 #include "libknot/processing/requestor.h"
-#include "fake_server.h"
 
 /* @note Purpose of this test is not to verify process_answer functionality,
  *       but simply if the requesting/receiving works, so mirror is okay. */
@@ -31,28 +34,38 @@ static int finish(knot_layer_t *ctx) { return KNOT_STATE_NOOP; }
 static int in(knot_layer_t *ctx, knot_pkt_t *pkt) { return KNOT_STATE_DONE; }
 static int out(knot_layer_t *ctx, knot_pkt_t *pkt) { return KNOT_STATE_CONSUME; }
 
+static const struct timeval TIMEOUT = { 2, 0 };
+
 /*! \brief Dummy answer processing module. */
 const knot_layer_api_t dummy_module = {
         &begin, &reset, &finish,
         &in, &out, NULL
 };
 
+static void set_blocking_mode(int sock)
+{
+	int flags = fcntl(sock, F_GETFL);
+	flags &= ~O_NONBLOCK;
+	fcntl(sock, F_SETFL, flags);
+}
+
 static void* responder_thread(void *arg)
 {
 	int fd = *((int *)arg);
+	set_blocking_mode(fd);
 	uint8_t buf[KNOT_WIRE_MAX_PKTSIZE];
-	while(true) {
+	while (true) {
 		int client = accept(fd, NULL, NULL);
 		if (client < 0) {
 			break;
 		}
-		int len = tcp_recv_msg(client, buf, sizeof(buf), NULL);
+		int len = net_dns_tcp_recv(client, buf, sizeof(buf), NULL);
 		if (len < KNOT_WIRE_HEADER_SIZE) {
 			close(client);
 			break;
 		}
 		knot_wire_set_qr(buf);
-		tcp_send_msg(client, buf, len, NULL);
+		net_dns_tcp_send(client, buf, len, NULL);
 		close(client);
 	}
 	return NULL;
@@ -60,15 +73,12 @@ static void* responder_thread(void *arg)
 
 /* Test implementations. */
 
-#define DISCONNECTED_TESTS 2
-#define CONNECTED_TESTS    4
-#define TESTS_COUNT DISCONNECTED_TESTS + CONNECTED_TESTS
-
 static struct knot_request *make_query(struct knot_requestor *requestor, conf_remote_t *remote)
 {
 	knot_pkt_t *pkt = knot_pkt_new(NULL, KNOT_WIRE_MAX_PKTSIZE, requestor->mm);
 	assert(pkt);
-	knot_pkt_put_question(pkt, ROOT_DNAME, KNOT_CLASS_IN, KNOT_RRTYPE_SOA);
+	static const knot_dname_t *root = (uint8_t *)"";
+	knot_pkt_put_question(pkt, root, KNOT_CLASS_IN, KNOT_RRTYPE_SOA);
 
 	const struct sockaddr *dst = (const struct sockaddr *)&remote->addr;
 	const struct sockaddr *src = (const struct sockaddr *)&remote->via;
@@ -82,7 +92,7 @@ static void test_disconnected(struct knot_requestor *requestor, conf_remote_t *r
 	is_int(KNOT_EOK, ret, "requestor: disconnected/enqueue");
 
 	/* Wait for completion. */
-	struct timeval tv = { 5, 0 };
+	struct timeval tv = TIMEOUT;
 	ret = knot_requestor_exec(requestor, &tv);
 	is_int(KNOT_ECONN, ret, "requestor: disconnected/wait");
 }
@@ -94,7 +104,7 @@ static void test_connected(struct knot_requestor *requestor, conf_remote_t *remo
 	is_int(KNOT_EOK, ret, "requestor: connected/enqueue");
 
 	/* Wait for completion. */
-	struct timeval tv = { 5, 0 };
+	struct timeval tv = TIMEOUT;
 	ret = knot_requestor_exec(requestor, &tv);
 	is_int(KNOT_EOK, ret, "requestor: connected/wait");
 
@@ -108,7 +118,7 @@ static void test_connected(struct knot_requestor *requestor, conf_remote_t *remo
 	/* Wait for multiple queries. */
 	ret = KNOT_EOK;
 	for (unsigned i = 0; i < 10; ++i) {
-		struct timeval tv = { 5, 0 };
+		struct timeval tv = TIMEOUT;
 		ret |= knot_requestor_exec(requestor, &tv);
 	}
 	is_int(KNOT_EOK, ret, "requestor: multiple wait");
@@ -116,7 +126,7 @@ static void test_connected(struct knot_requestor *requestor, conf_remote_t *remo
 
 int main(int argc, char *argv[])
 {
-	plan(TESTS_COUNT + 1);
+	plan_lazy();
 
 	mm_ctx_t mm;
 	mm_ctx_mempool(&mm, MM_DEFAULT_BLKSIZE);
@@ -125,11 +135,6 @@ int main(int argc, char *argv[])
 	memset(&remote, 0, sizeof(conf_remote_t));
 	sockaddr_set(&remote.addr, AF_INET, "127.0.0.1", 0);
 	sockaddr_set(&remote.via, AF_INET, "127.0.0.1", 0);
-
-	/* Create fake server environment. */
-	server_t server;
-	int ret = create_fake_server(&server, &mm);
-	ok(ret == KNOT_EOK, "requestor: initialize fake server");
 
 	/* Initialize requestor. */
 	struct knot_requestor requestor;
@@ -144,7 +149,7 @@ int main(int argc, char *argv[])
 	assert(origin_fd > 0);
 	socklen_t addr_len = sockaddr_len((struct sockaddr *)&remote.addr);
 	getsockname(origin_fd, (struct sockaddr *)&remote.addr, &addr_len);
-	ret = listen(origin_fd, 10);
+	int ret = listen(origin_fd, 10);
 	assert(ret == 0);
 
 	/* Responder thread. */
@@ -157,10 +162,10 @@ int main(int argc, char *argv[])
 	/*! \todo #243 TSIG secured requests test should be implemented. */
 
 	/* Terminate responder. */
-	struct timeval tv = { 5, 0 };
+	struct timeval tv = TIMEOUT;
 	int responder = net_connected_socket(SOCK_STREAM, &remote.addr, NULL);
 	assert(responder > 0);
-	tcp_send_msg(responder, (const uint8_t *)"", 1, &tv);
+	net_dns_tcp_send(responder, (const uint8_t *)"", 1, &tv);
 	(void) pthread_join(thread, 0);
 	close(responder);
 
@@ -170,7 +175,6 @@ int main(int argc, char *argv[])
 
 	/* Cleanup. */
 	mp_delete((struct mempool *)mm.ctx);
-	server_deinit(&server);
 	conf_free(conf(), false);
 
 	return 0;

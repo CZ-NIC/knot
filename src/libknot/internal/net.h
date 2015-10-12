@@ -1,4 +1,4 @@
-/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2011-2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -12,23 +12,12 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
- */
-/*!
- * \file net.h
- *
- * \author Marek Vavrusa <marek.vavusa@nic.cz>
- *
- * \brief Generic sockets APIs.
- *
- * This file provides higher-level API for creating connections and listeners.
- *
- * \addtogroup network
- * @{
- */
+*/
 
 #pragma once
 
-/* POSIX only. */
+#include <stdbool.h>
+
 #include "libknot/internal/sockaddr.h"
 
 /*!
@@ -42,6 +31,8 @@ enum net_flags {
 /*!
  * \brief Create unbound socket of given family and type.
  *
+ * \note The socket is set to non-blocking mode.
+ *
  * \param type  Socket transport type (SOCK_STREAM, SOCK_DGRAM).
  * \param ss    Socket address storage.
  *
@@ -52,9 +43,11 @@ int net_unbound_socket(int type, const struct sockaddr_storage *ss);
 /*!
  * \brief Create socket bound to given address.
  *
+ * The socket is set to non-blocking mode.
+ *
  * \param type   Socket transport type (SOCK_STREAM, SOCK_DGRAM).
  * \param ss     Socket address storage.
- * \param flags  Allow binding to non-local address with NET_BIND_NONLOCAL.
+ * \param flags  Socket binding options.
  *
  * \return socket or error code
  */
@@ -64,11 +57,11 @@ int net_bound_socket(int type, const struct sockaddr_storage *ss,
 /*!
  * \brief Create socket connected (asynchronously) to destination address.
  *
- * \param type     Socket transport type (SOCK_STREAM, SOCK_DGRAM).
- * \param dst_addr Destination address.
- * \param src_addr Source address (can be NULL).
+ * \note The socket is set to non-blocking mode.
  *
- * \note The socket will have O_NONBLOCK flag set.
+ * \param type      Socket transport type (SOCK_STREAM, SOCK_DGRAM).
+ * \param dst_addr  Destination address.
+ * \param src_addr  Source address (can be NULL).
  *
  * \return socket or error code
  */
@@ -76,68 +69,122 @@ int net_connected_socket(int type, const struct sockaddr_storage *dst_addr,
                          const struct sockaddr_storage *src_addr);
 
 /*!
- * \brief Return true if the socket is connected.
+ * \brief Return true if the socket is fully connected.
  *
- * @note This could be used to identify connected TCP from UDP sockets.
- *
- * \param fd Socket.
+ * \param sock  Socket.
  *
  * \return true if connected
  */
-int net_is_connected(int fd);
+bool net_is_connected(int sock);
 
 /*!
- * \brief Send a UDP message over connected socket.
+ * \brief Get socket type (e.g. \a SOCK_STREAM).
  *
- * \param fd Associated socket.
- * \param msg Buffer for a query wireformat.
- * \param msglen Buffer maximum size.
- * \param addr Destination address (or NULL if connected).
- *
- * \retval Number of sent data on success.
- * \retval KNOT_ERROR on error.
+ * \param sock  Socket.
  */
-int udp_send_msg(int fd, const uint8_t *msg, size_t msglen, const struct sockaddr *addr);
+int net_socktype(int sock);
 
 /*!
- * \brief Receive a UDP message from connected socket.
- *
- * \param fd Associated socket.
- * \param buf Buffer for incoming bytestream.
- * \param len Buffer maximum size.
- * \param timeout Message receive timeout.
- *
- * \retval Number of read bytes on success.
- * \retval KNOT_ERROR on error.
- * \retval KNOT_ENOMEM on potential buffer overflow.
+ * \brief Check if socket is a SOCK_STREAM socket.
  */
-int udp_recv_msg(int fd, uint8_t *buf, size_t len, struct timeval *timeout);
+bool net_is_stream(int sock);
 
 /*!
- * \brief Send a TCP message.
+ * \brief Accept a connection on a listening socket.
  *
- * \param fd Associated socket.
- * \param msg Buffer for a query wireformat.
- * \param msglen Buffer maximum size.
- * \param timeout Message send timeout.
+ * \brief The socket is set to non-blocking mode.
  *
- * \retval Number of sent data on success.
- * \retval KNOT_ERROR on error.
+ * \param sock  Socket
+ * \param addr  Remote address (can be NULL).
+ *
+ * \return socket or error code
  */
-int tcp_send_msg(int fd, const uint8_t *msg, size_t msglen, struct timeval *timeout);
+int net_accept(int sock, struct sockaddr_storage *addr);
 
 /*!
- * \brief Receive a TCP message.
+ * \brief Send a message on a socket.
  *
- * \param fd Associated socket.
- * \param buf Buffer for incoming bytestream.
- * \param len Buffer maximum size.
- * \param timeout Message receive timeout.
+ * The socket can be SOCK_STREAM or SOCK_DGRAM.
  *
- * \retval Number of read bytes on success.
- * \retval KNOT_ERROR on error.
- * \retval KNOT_ENOMEM on potential buffer overflow.
+ * The implementation handles partial-writes automatically.
+ *
+ * \param[in]      sock     Socket.
+ * \param[in]      buffer   Message buffer.
+ * \param[in]      size     Size of the message.
+ * \param[in]      addr     Remote address (ignored for SOCK_STREAM).
+ * \param[in,out]  timeout  Write timeout (ignored for SOCK_DGRAM).
+ *
+ * \return Number of bytes sent or negative error code.
  */
-int tcp_recv_msg(int fd, uint8_t *buf, size_t len, struct timeval *timeout);
+ssize_t net_send(int sock, const uint8_t *buffer, size_t size,
+                 const struct sockaddr_storage *addr, struct timeval *timeout);
 
-/*! @} */
+/*!
+ * \brief Receive a message from a socket.
+ *
+ * \param[in]      sock     Socket.
+ * \param[out]     buffer   Receiving buffer.
+ * \param[in]      size     Capacity of the receiving buffer.
+ * \param[out]     addr     Remote address (can be NULL).
+ * \param[in,out]  timeout  Read timeout.
+ *
+ * \return Number of bytes read or negative error code.
+ */
+ssize_t net_recv(int sock, uint8_t *buffer, size_t size,
+                 struct sockaddr_storage *addr, struct timeval *timeout);
+
+/*!
+ * \brief Send a message on a SOCK_DGRAM socket.
+ *
+ * \see net_send
+ */
+ssize_t net_dgram_send(int sock, const uint8_t *buffer, size_t size,
+                       const struct sockaddr_storage *addr);
+
+/*!
+ * \brief Receive a message from a SOCK_DGRAM socket.
+ *
+ * \see net_recv
+ */
+ssize_t net_dgram_recv(int sock, uint8_t *buffer, size_t size,
+                       struct timeval *timeout);
+
+/*!
+ * \brief Send a message on a SOCK_STREAM socket.
+ *
+ * \see net_send
+ */
+ssize_t net_stream_send(int sock, const uint8_t *buffer, size_t size,
+                        struct timeval *timeout);
+
+/*!
+ * \brief Receive a message from a SOCK_STREAM socket.
+ *
+ * \see net_recv
+ */
+ssize_t net_stream_recv(int sock, uint8_t *buffer, size_t size,
+                        struct timeval *timeout);
+
+/*!
+ * \brief Send a DNS message on a TCP socket.
+ *
+ * The outgoing message is prefixed with a two-byte value carrying the DNS
+ * message size according to the specification. These two bytes are not
+ * reflected in the return value.
+ *
+ * \see net_send
+ */
+ssize_t net_dns_tcp_send(int sock, const uint8_t *buffer, size_t size,
+                         struct timeval *timeout);
+
+/*!
+ * \brief Receive a DNS message from a TCP socket.
+ *
+ * The first two bytes of the incoming message are interpreted as a DNS message
+ * size according to the specification. These two bytes are not included in
+ * the returned size. Only a complete DNS message is retrieved.
+ *
+ * \see net_recv
+ */
+ssize_t net_dns_tcp_recv(int sock, uint8_t *buffer, size_t size,
+                         struct timeval *timeout);

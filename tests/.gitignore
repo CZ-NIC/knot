@@ -25,6 +25,7 @@ internal_mem
 journal
 modules/online_sign
 namedb
+net
 net_shortwrite
 node
 overlay

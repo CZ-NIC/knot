@@ -156,7 +156,7 @@ static int cmd_remote_reply(int c, struct timeval *timeout)
 	}
 
 	/* Read response packet. */
-	int n = tcp_recv_msg(c, pkt->wire, pkt->max_size, timeout);
+	int n = net_dns_tcp_recv(c, pkt->wire, pkt->max_size, timeout);
 	if (n <= 0) {
 		dbg_server("remote: couldn't receive response = %s\n", knot_strerror(n));
 		knot_pkt_free(&pkt);
@@ -264,7 +264,7 @@ static int cmd_remote(struct sockaddr_storage *addr, knot_tsig_key_t *key,
 
 	/* Send and free packet. */
 	struct timeval tv = tv_reply;
-	int ret = tcp_send_msg(s, pkt->wire, pkt->size, &tv);
+	int ret = net_dns_tcp_send(s, pkt->wire, pkt->size, &tv);
 	knot_pkt_free(&pkt);
 
 	/* Evaluate and wait for reply. */

@@ -14,38 +14,71 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <stdlib.h>
-#include <stdbool.h>
-#include <unistd.h>
-#include <fcntl.h>
-#include <string.h>
+#include <assert.h>
 #include <errno.h>
-#include <stdio.h>
-#include <netdb.h>
-#include <time.h>
-#include <sys/types.h>
+#include <fcntl.h>
+#include <netinet/in.h>
+#include <stdbool.h>
 #include <sys/socket.h>
 #include <sys/uio.h>
-#ifdef HAVE_NETINET_IN_SYSTM_H
-#include <netinet/in_systm.h>
-#endif
-#include <netinet/in.h>
-#include <sys/stat.h>
-#include <assert.h>
+#include <unistd.h>
 
-#include "libknot/internal/macros.h"
 #include "libknot/internal/net.h"
 #include "libknot/internal/errcode.h"
 
-static int socket_create(int family, int type, int proto)
+/*
+ * OS X doesn't support MSG_NOSIGNAL. Use SO_NOSIGPIPE socket option instead.
+ */
+#if defined(__APPLE__) && !defined(MSG_NOSIGNAL)
+#  define MSG_NOSIGNAL 0
+#  define osx_block_sigpipe(sock) sockopt_enable(sock, SOL_SOCKET, SO_NOSIGPIPE)
+#else
+#  define osx_block_sigpipe(sock) KNOT_EOK
+#endif
+
+/*!
+ * \brief Enable socket option.
+ */
+static int sockopt_enable(int sock, int level, int optname)
 {
-	/* Create socket. */
-	int ret = socket(family, type, proto);
-	if (ret < 0) {
+	const int enable = 1;
+	if (setsockopt(sock, level, optname, &enable, sizeof(enable)) != 0) {
 		return knot_map_errno();
 	}
 
-	return ret;
+	return KNOT_EOK;
+}
+
+/*!
+ * \brief Create a non-blocking socket.
+ *
+ * Prefer SOCK_NONBLOCK if available to save one fcntl() syscall.
+ *
+ */
+static int socket_create(int family, int type, int proto)
+{
+#ifdef SOCK_NONBLOCK
+	type |= SOCK_NONBLOCK;
+#endif
+	int sock = socket(family, type, proto);
+	if (sock < 0) {
+		return knot_map_errno();
+	}
+
+#ifndef SOCK_NONBLOCK
+	if (fcntl(sock, F_SETFL, O_NONBLOCK) != 0) {
+		int ret = knot_map_errno();
+		close(sock);
+		return ret;
+	}
+#endif
+
+	int ret = osx_block_sigpipe(sock);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	return sock;
 }
 
 int net_unbound_socket(int type, const struct sockaddr_storage *ss)
@@ -97,70 +130,89 @@ static const struct option *nonlocal_option(int family)
 	}
 }
 
-static void enable_nonlocal(int socket, int family)
+static int enable_nonlocal(int sock, int family)
 {
 	const struct option *opt = nonlocal_option(family);
 	if (opt == NULL || opt->name == 0) {
-		return;
+		return KNOT_ENOTSUP;
 	}
 
-	int enable = 1;
-	(void) setsockopt(socket, opt->level, opt->name, &enable, sizeof(enable));
+	return sockopt_enable(sock, opt->level, opt->name);
 }
 
-int net_bound_socket(int type, const struct sockaddr_storage *ss,
-                     enum net_flags flags)
+static int enable_reuseport(int sock)
+{
+#ifdef ENABLE_REUSEPORT
+	return sockopt_enable(sock, SOL_SOCKET, SO_REUSEPORT);
+#else
+	return KNOT_ENOTSUP;
+#endif
+}
+
+static void unlink_unix_socket(const struct sockaddr_storage *addr)
+{
+	char path[SOCKADDR_STRLEN] = { 0 };
+	sockaddr_tostr(path, sizeof(path), addr);
+	unlink(path);
+}
+
+int net_bound_socket(int type, const struct sockaddr_storage *ss, enum net_flags flags)
 {
 	/* Create socket. */
-	int socket = net_unbound_socket(type, ss);
-	if (socket < 0) {
-		return socket;
+	int sock = net_unbound_socket(type, ss);
+	if (sock < 0) {
+		return sock;
 	}
 
-	/* Convert to string address format. */
-	char addr_str[SOCKADDR_STRLEN] = {0};
-	sockaddr_tostr(addr_str, sizeof(addr_str), ss);
+	/* Unlink UNIX sock if exists. */
+	if (ss->ss_family == AF_UNIX) {
+		unlink_unix_socket(ss);
+	}
 
 	/* Reuse old address if taken. */
-	int flag = 1;
-	(void) setsockopt(socket, SOL_SOCKET, SO_REUSEADDR, &flag, sizeof(flag));
-
-	/* Unlink UNIX socket if exists. */
-	if (ss->ss_family == AF_UNIX) {
-		unlink(addr_str);
+	int ret = sockopt_enable(sock, SOL_SOCKET, SO_REUSEADDR);
+	if (ret != KNOT_EOK) {
+		close(sock);
+		return ret;
 	}
 
-	/* Make the socket IPv6 only to allow 'any' for IPv4 and IPv6 at the same time. */
+	/* Don't bind IPv4 for IPv6 any address. */
 	if (ss->ss_family == AF_INET6) {
-		(void) setsockopt(socket, IPPROTO_IPV6, IPV6_V6ONLY,
-		                  &flag, sizeof(flag));
+		ret = sockopt_enable(sock, IPPROTO_IPV6, IPV6_V6ONLY);
+		if (ret != KNOT_EOK) {
+			close(sock);
+			return ret;
+		}
 	}
 
 	/* Allow bind to non-local address. */
 	if (flags & NET_BIND_NONLOCAL) {
-		enable_nonlocal(socket, ss->ss_family);
+		ret = enable_nonlocal(sock, ss->ss_family);
+		if (ret != KNOT_EOK) {
+			close(sock);
+			return ret;
+		}
 	}
 
 	/* Allow to bind the same address by multiple threads. */
 	if (flags & NET_BIND_MULTIPLE) {
-#ifdef ENABLE_REUSEPORT
-		(void) setsockopt(socket, SOL_SOCKET, SO_REUSEPORT, &flag, sizeof(flag));
-#else
-		close(socket);
-		return KNOT_ENOTSUP;
-#endif
+		ret = enable_reuseport(sock);
+		if (ret != KNOT_EOK) {
+			close(sock);
+			return ret;
+		}
 	}
 
 	/* Bind to specified address. */
 	const struct sockaddr *sa = (const struct sockaddr *)ss;
-	int ret = bind(socket, sa, sockaddr_len(sa));
+	ret = bind(sock, sa, sockaddr_len(sa));
 	if (ret < 0) {
 		ret = knot_map_errno();
-		close(socket);
+		close(sock);
 		return ret;
 	}
 
-	return socket;
+	return sock;
 }
 
 int net_connected_socket(int type, const struct sockaddr_storage *dst_addr,
@@ -170,142 +222,159 @@ int net_connected_socket(int type, const struct sockaddr_storage *dst_addr,
 		return KNOT_EINVAL;
 	}
 
-	int socket = -1;
-
 	/* Check port. */
 	if (sockaddr_port(dst_addr) == 0) {
 		return KNOT_NET_EADDR;
 	}
 
 	/* Bind to specific source address - if set. */
-	if (sockaddr_len((const struct sockaddr *)src_addr) > 0) {
-		socket = net_bound_socket(type, src_addr, 0);
+	int sock = -1;
+	if (src_addr) {
+		sock = net_bound_socket(type, src_addr, 0);
 	} else {
-		socket = net_unbound_socket(type, dst_addr);
+		sock = net_unbound_socket(type, dst_addr);
 	}
-	if (socket < 0) {
-		return socket;
-	}
-
-	/* Switch the socket to non-blocking mode. */
-	if (fcntl(socket, F_SETFL, O_NONBLOCK) < 0) {
-		close(socket);
-		return KNOT_NET_ESOCKET;
+	if (sock < 0) {
+		return sock;
 	}
 
 	/* Connect to destination. */
 	const struct sockaddr *sa = (const struct sockaddr *)dst_addr;
-	int ret = connect(socket, sa, sockaddr_len(sa));
+	int ret = connect(sock, sa, sockaddr_len(sa));
 	if (ret != 0 && errno != EINPROGRESS) {
-		close(socket);
-		return KNOT_NET_ECONNECT;
+		ret = knot_map_errno();
+		close(sock);
+		return ret;
 	}
 
-	return socket;
+	return sock;
 }
 
-int net_is_connected(int fd)
+bool net_is_connected(int sock)
 {
 	struct sockaddr_storage ss;
 	socklen_t len = sizeof(ss);
-	return getpeername(fd, (struct sockaddr *)&ss, &len) == 0;
+	return (getpeername(sock, (struct sockaddr *)&ss, &len) == 0);
 }
 
-static int select_read(int fd, struct timeval *timeout)
+int net_socktype(int sock)
 {
-	fd_set set;
-	FD_ZERO(&set);
-	FD_SET(fd, &set);
-	return select(fd + 1, &set, NULL, NULL, timeout);
+	int type = AF_UNSPEC;
+	socklen_t size = sizeof(type);
+	getsockopt(sock, SOL_SOCKET, SO_TYPE, &type, &size);
+	return type;
 }
 
-static int select_write(int fd, struct timeval *timeout)
+bool net_is_stream(int sock)
 {
-	fd_set set;
-	FD_ZERO(&set);
-	FD_SET(fd, &set);
-
-	return select(fd + 1, NULL, &set, NULL, timeout);
+	return net_socktype(sock) == SOCK_STREAM;
 }
 
-/* \brief Receive a block of data from TCP socket with wait. */
-static int recv_data(int fd, uint8_t *buf, int len, bool oneshot, struct timeval *timeout)
+int net_accept(int sock, struct sockaddr_storage *addr)
 {
-	int ret = 0;
-	int rcvd = 0;
-	int flags = MSG_DONTWAIT;
+	struct sockaddr *sa = (struct sockaddr *)addr;
+	socklen_t sa_len = sizeof(*addr);
 
-#ifdef MSG_NOSIGNAL
-	flags |= MSG_NOSIGNAL;
+	int remote = -1;
+
+#if defined(HAVE_ACCEPT4) && defined(SOCK_NONBLOCK)
+	remote = accept4(sock, sa, &sa_len, SOCK_NONBLOCK);
+	if (remote < 0) {
+		return knot_map_errno();
+	}
+#else
+	remote = accept(sock, sa, &sa_len);
+	if (fcntl(remote, F_SETFL, O_NONBLOCK) != 0) {
+		int error = knot_map_errno();
+		close(remote);
+		return error;
+	}
 #endif
 
-	while (rcvd < len) {
-		/* Receive data. */
-		ret = recv(fd, buf + rcvd, len - rcvd, flags);
-		if (ret > 0) {
-			rcvd += ret;
-			/* One-shot recv() */
-			if (oneshot) {
-				return ret;
-			} else {
-				continue;
-			}
-		}
-		/* Check for disconnected socket. */
-		if (ret == 0) {
-			return KNOT_ECONNREFUSED;
-		}
-
-		/* Check for no data available. */
-		if (errno == EAGAIN || errno == EINTR) {
-			/* Continue only if timeout didn't expire. */
-			ret = select_read(fd, timeout);
-			if (ret > 0) {
-				continue;
-			} else {
-				return KNOT_ETIMEOUT;
-			}
-		} else {
-			return KNOT_ECONN;
-		}
-	}
-
-	return rcvd;
+	return remote;
 }
 
-int udp_send_msg(int fd, const uint8_t *msg, size_t msglen, const struct sockaddr *addr)
-{
-	socklen_t addr_len = sockaddr_len(addr);
-	int ret = sendto(fd, msg, msglen, 0, addr, addr_len);
-	if (ret != msglen) {
-		return KNOT_ECONN;
-	}
+/* -- I/O interface handling partial  -------------------------------------- */
 
-	return ret;
-}
-
-int udp_recv_msg(int fd, uint8_t *buf, size_t len, struct timeval *timeout)
+/*!
+ * \brief Perform \a select() on one socket.
+ *
+ * \param read   Wait for input readiness.
+ * \param write  Wait for output readiness.
+ */
+static int select_one(int fd, bool read, bool write, struct timeval *timeout)
 {
-	return recv_data(fd, buf, len, true, timeout);
+	fd_set set;
+	FD_ZERO(&set);
+	FD_SET(fd, &set);
+
+	fd_set *rfds = read ? &set : NULL;
+	fd_set *wfds = write ? &set : NULL;
+
+	return select(fd + 1, rfds, wfds, NULL, timeout);
 }
 
 /*!
- * \brief Shift processed data out of iovec structure.
+ * \brief Check if we should wait for I/O readiness.
+ *
+ * \param error  \a errno set by the failed I/O operation.
  */
-static void iovec_shift(struct iovec **iov_ptr, int *iovcnt_ptr, size_t done)
+static bool io_should_wait(int error)
 {
-	struct iovec *iov = *iov_ptr;
-	int iovcnt = *iovcnt_ptr;
+	/* socket data not ready */
+	if (error == EAGAIN || error == EWOULDBLOCK) {
+		return true;
+	}
 
-	for (int i = 0; i < iovcnt && done > 0; i++) {
+#ifndef __linux__
+	/* FreeBSD: connection in progress */
+	if (error == ENOTCONN) {
+		return true;
+	}
+#endif
+
+	return false;
+}
+
+/*!
+ * \brief I/O operation callbacks.
+ */
+struct io {
+	ssize_t (*process)(int sockfd, struct msghdr *msg);
+	int (*wait)(int sockfd, struct timeval *timeout);
+};
+
+/*!
+ * \brief Get total size of I/O vector in a message.
+ */
+static size_t msg_iov_len(const struct msghdr *msg)
+{
+	size_t total = 0;
+
+	for (int i = 0; i < msg->msg_iovlen; i++) {
+		total += msg->msg_iov[i].iov_len;
+	}
+
+	return total;
+}
+
+/*!
+ * \brief Shift processed data out of message IO vectors.
+ */
+static void msg_iov_shift(struct msghdr *msg, size_t done)
+{
+	struct iovec *iov = msg->msg_iov;
+	int iovlen = msg->msg_iovlen;
+
+	for (int i = 0; i < iovlen && done > 0; i++) {
 		if (iov[i].iov_len > done) {
 			iov[i].iov_base += done;
 			iov[i].iov_len -= done;
 			done = 0;
 		} else {
 			done -= iov[i].iov_len;
-			*iov_ptr += 1;
-			*iovcnt_ptr -= 1;
+			msg->msg_iov += 1;
+			msg->msg_iovlen -= 1;
 		}
 	}
 
@@ -313,88 +382,218 @@ static void iovec_shift(struct iovec **iov_ptr, int *iovcnt_ptr, size_t done)
 }
 
 /*!
- * \brief Send out TCP data with timeout in case the output buffer is full.
+ * \brief Perform an I/O operation with a socket with waiting.
+ *
+ * \param oneshot  If set, doesn't wait until the buffer is fully processed.
+ *
  */
-static int send_data(int fd, struct iovec iov[], int iovcnt, struct timeval *timeout)
+static ssize_t io_exec(const struct io *io, int fd, struct msghdr *msg,
+                       bool oneshot, struct timeval *timeout)
 {
-	size_t total = 0;
-	for (int i = 0; i < iovcnt; i++) {
-		total += iov[i].iov_len;
-	}
+	size_t done = 0;
+	size_t total = msg_iov_len(msg);
 
-	for (size_t avail = total; avail > 0; /* nop */) {
-		ssize_t sent = writev(fd, iov, iovcnt);
-		if (sent == avail) {
-			break;
-		}
-
-		/* Short write. */
-		if (sent > 0) {
-			avail -= sent;
-			iovec_shift(&iov, &iovcnt, sent);
+	for (;;) {
+		/* Perform I/O. */
+		ssize_t ret = io->process(fd, msg);
+		if (ret == -1 && errno == EINTR) {
 			continue;
 		}
-
-		/* Error. */
-		if (sent == -1) {
-			if (errno == EAGAIN || errno == EINTR) {
-				int ret = select_write(fd, timeout);
-				if (ret > 0) {
-					continue;
-				} else if (ret == 0) {
-					return KNOT_ETIMEOUT;
-				}
+		if (ret > 0) {
+			done += ret;
+			if (oneshot || done == total) {
+				break;
 			}
-
-			return KNOT_ECONN;
+			msg_iov_shift(msg, ret);
 		}
 
-		/* Unreachable. */
-		assert(0);
+		/* Wait for data readiness. */
+		if (ret > 0 || (ret == -1 && io_should_wait(errno))) {
+			do {
+				ret = io->wait(fd, timeout);
+			} while (ret == -1 && errno == EINTR);
+			if (ret == 1) {
+				continue;
+			} else if (ret == 0) {
+				return KNOT_ETIMEOUT;
+			}
+		}
+
+		/* Disconnected or error. */
+		return KNOT_ECONN;
 	}
 
-	return total;
+	return done;
 }
 
-int tcp_send_msg(int fd, const uint8_t *msg, size_t msglen, struct timeval *timeout)
+static ssize_t recv_process(int fd, struct msghdr *msg)
 {
-	/* Create iovec for gathered write. */
+	return recvmsg(fd, msg, MSG_DONTWAIT | MSG_NOSIGNAL);
+}
+
+static int recv_wait(int fd, struct timeval *timeout)
+{
+	return select_one(fd, true, false, timeout);
+}
+
+static ssize_t recv_data(int sock, struct msghdr *msg, bool oneshot, struct timeval *timeout)
+{
+	static const struct io RECV_IO = {
+		.process = recv_process,
+		.wait = recv_wait
+	};
+
+	return io_exec(&RECV_IO, sock, msg, oneshot, timeout);
+}
+
+static ssize_t send_process(int fd, struct msghdr *msg)
+{
+	return sendmsg(fd, msg, MSG_NOSIGNAL);
+}
+
+static int send_wait(int fd, struct timeval *timeout)
+{
+	return select_one(fd, false, true, timeout);
+}
+
+static ssize_t send_data(int sock, struct msghdr *msg, struct timeval *timeout)
+{
+	static const struct io SEND_IO = {
+		.process = send_process,
+		.wait = send_wait
+	};
+
+	return io_exec(&SEND_IO, sock, msg, false, timeout);
+}
+
+/* -- generic stream and datagram I/O -------------------------------------- */
+
+ssize_t net_send(int sock, const uint8_t *buffer, size_t size,
+                 const struct sockaddr_storage *addr, struct timeval *timeout)
+{
+	if (sock < 0 || buffer == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	struct iovec iov = { 0 };
+	iov.iov_base = (void *)buffer;
+	iov.iov_len = size;
+
+	struct msghdr msg = { 0 };
+	msg.msg_name = (void *)addr;
+	msg.msg_namelen = sockaddr_len((struct sockaddr *)addr);
+	msg.msg_iov = &iov;
+	msg.msg_iovlen = 1;
+
+	int ret = send_data(sock, &msg, timeout);
+	if (ret < 0) {
+		return ret;
+	} else if (ret != size) {
+		return KNOT_ECONN;
+	}
+
+	return ret;
+}
+
+ssize_t net_recv(int sock, uint8_t *buffer, size_t size,
+                 struct sockaddr_storage *addr, struct timeval *timeout)
+{
+	if (sock < 0 || buffer == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	struct iovec iov = { 0 };
+	iov.iov_base = buffer;
+	iov.iov_len = size;
+
+	struct msghdr msg = { 0 };
+	msg.msg_name = (void *)addr;
+	msg.msg_namelen = addr ? sizeof(*addr) : 0;
+	msg.msg_iov = &iov;
+	msg.msg_iovlen = 1;
+
+	return recv_data(sock, &msg, true, timeout);
+}
+
+ssize_t net_dgram_send(int sock, const uint8_t *buffer, size_t size,
+                       const struct sockaddr_storage *addr)
+{
+	return net_send(sock, buffer, size, addr, NULL);
+}
+
+ssize_t net_dgram_recv(int sock, uint8_t *buffer, size_t size, struct timeval *timeout)
+{
+	return net_recv(sock, buffer, size, NULL, timeout);
+}
+
+ssize_t net_stream_send(int sock, const uint8_t *buffer, size_t size, struct timeval *timeout)
+{
+	return net_send(sock, buffer, size, NULL, timeout);
+}
+
+ssize_t net_stream_recv(int sock, uint8_t *buffer, size_t size, struct timeval *timeout)
+{
+	return net_recv(sock, buffer, size, NULL, timeout);
+}
+
+/* -- DNS specific I/O ----------------------------------------------------- */
+
+ssize_t net_dns_tcp_send(int sock, const uint8_t *buffer, size_t size, struct timeval *timeout)
+{
+	if (sock < 0 || buffer == NULL || size > UINT16_MAX) {
+		return KNOT_EINVAL;
+	}
+
 	struct iovec iov[2];
-	uint16_t pktsize = htons(msglen);
+	uint16_t pktsize = htons(size);
 	iov[0].iov_base = &pktsize;
 	iov[0].iov_len = sizeof(uint16_t);
-	iov[1].iov_base = (void *)msg;
-	iov[1].iov_len = msglen;
+	iov[1].iov_base = (void *)buffer;
+	iov[1].iov_len = size;
 
-	/* Send. */
-	ssize_t ret = send_data(fd, iov, 2, timeout);
+	struct msghdr msg = { 0 };
+	msg.msg_iov = iov;
+	msg.msg_iovlen = 2;
+
+	ssize_t ret = send_data(sock, &msg, timeout);
 	if (ret < 0) {
 		return ret;
 	}
 
-	return msglen; /* Do not count the size prefix. */
+	return size; /* Do not count the size prefix. */
 }
 
-int tcp_recv_msg(int fd, uint8_t *buf, size_t len, struct timeval *timeout)
+ssize_t net_dns_tcp_recv(int sock, uint8_t *buffer, size_t size, struct timeval *timeout)
 {
-	if (buf == NULL || fd < 0) {
+	if (sock < 0 || buffer == NULL) {
 		return KNOT_EINVAL;
 	}
 
+	struct iovec iov = { 0 };
+	struct msghdr msg = { 0 };
+	msg.msg_iov = &iov;
+	msg.msg_iovlen = 1;
+
 	/* Receive size. */
-	unsigned short pktsize = 0;
-	int ret = recv_data(fd, (uint8_t *)&pktsize, sizeof(pktsize), false, timeout);
+	uint16_t pktsize = 0;
+	iov.iov_base = &pktsize;
+	iov.iov_len = sizeof(pktsize);
+	int ret = recv_data(sock, &msg, false, timeout);
 	if (ret != sizeof(pktsize)) {
 		return ret;
 	}
 
 	pktsize = ntohs(pktsize);
 
-	// Check packet size
-	if (len < pktsize) {
-		return KNOT_ENOMEM;
+	/* Check packet size */
+	if (size < pktsize) {
+		return KNOT_ESPACE;
 	}
 
 	/* Receive payload. */
-	return recv_data(fd, buf, pktsize, false, timeout);
+	msg.msg_iov = &iov;
+	msg.msg_iovlen = 1;
+	iov.iov_base = buffer;
+	iov.iov_len = pktsize;
+	return recv_data(sock, &msg, false, timeout);
 }

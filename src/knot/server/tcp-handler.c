@@ -119,7 +119,7 @@ static int tcp_handle(tcp_context_t *tcp, int fd,
 
 	/* Receive data. */
 	struct timeval recv_tmout = tmout;
-	int ret = tcp_recv_msg(fd, rx->iov_base, rx->iov_len, &recv_tmout);
+	int ret = net_dns_tcp_recv(fd, rx->iov_base, rx->iov_len, &recv_tmout);
 	if (ret <= 0) {
 		dbg_net("tcp: client on fd=%d disconnected\n", fd);
 		if (ret == KNOT_EAGAIN) {
@@ -154,7 +154,7 @@ static int tcp_handle(tcp_context_t *tcp, int fd,
 		/* Send, if response generation passed and wasn't ignored. */
 		if (ans->size > 0 && !(state & (KNOT_STATE_FAIL|KNOT_STATE_NOOP))) {
 			struct timeval send_tmout = tmout;
-			if (tcp_send_msg(fd, ans->wire, ans->size, &send_tmout) != ans->size) {
+			if (net_dns_tcp_send(fd, ans->wire, ans->size, &send_tmout) != ans->size) {
 				ret = KNOT_ECONNREFUSED;
 				break;
 			}
@@ -175,16 +175,10 @@ static int tcp_handle(tcp_context_t *tcp, int fd,
 int tcp_accept(int fd)
 {
 	/* Accept incoming connection. */
-	int incoming = accept(fd, 0, 0);
+	int incoming = net_accept(fd, NULL);
 
 	/* Evaluate connection. */
-	if (incoming < 0) {
-		int en = errno;
-		if (en != EINTR && en != EAGAIN) {
-			return KNOT_EBUSY;
-		}
-		return KNOT_ERROR;
-	} else {
+	if (incoming >= 0) {
 		dbg_net("tcp: accepted connection fd=%d\n", incoming);
 		/* Set recv() timeout. */
 #ifdef SO_RCVTIMEO
