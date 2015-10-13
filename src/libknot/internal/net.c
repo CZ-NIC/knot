@@ -229,7 +229,7 @@ int net_connected_socket(int type, const struct sockaddr_storage *dst_addr,
 
 	/* Bind to specific source address - if set. */
 	int sock = -1;
-	if (src_addr) {
+	if (src_addr && src_addr->ss_family != AF_UNSPEC) {
 		sock = net_bound_socket(type, src_addr, 0);
 	} else {
 		sock = net_unbound_socket(type, dst_addr);

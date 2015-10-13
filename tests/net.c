@@ -224,16 +224,53 @@ static void handler_echo(int sock, void *_server)
 	net_send(sock, buffer, in, addr, &tv);
 }
 
+static void test_connected_one(const struct sockaddr_storage *server_addr,
+                               const struct sockaddr_storage *source_addr,
+                               int type, const char *name, const char *addr_name)
+{
+	int r;
+	struct timeval tv;
+
+	int client = net_connected_socket(type, server_addr, NULL);
+	ok(client >= 0, "%s, %s: client, create connected socket", name, addr_name);
+
+	const uint8_t out[] = "test message";
+	const size_t out_len = sizeof(out);
+	if (socktype_is_stream(type)) {
+		tv = TIMEOUT;
+		r = net_stream_send(client, out, out_len, &tv);
+	} else {
+		r = net_dgram_send(client, out, out_len, NULL);
+	}
+	ok(r == out_len, "%s, %s: client, send message", name, addr_name);
+
+	r = net_is_connected(client);
+	ok(r, "%s, %s: client, is connected", name, addr_name);
+
+	uint8_t in[128] = { 0 };
+	tv = TIMEOUT;
+	if (socktype_is_stream(type)) {
+		r = net_stream_recv(client, in, sizeof(in), &tv);
+	} else {
+		r = net_dgram_recv(client, in, sizeof(in), &tv);
+	}
+	ok(r == out_len && memcmp(out, in, out_len) == 0,
+	   "%s, %s: client, receive message", name, addr_name);
+
+	close(client);
+}
+
 static void test_connected(int type)
 {
 	const char *name = socktype_name(type);
-	const struct sockaddr_storage local = addr_local();
+	const struct sockaddr_storage empty_addr = { 0 };
+	const struct sockaddr_storage local_addr = addr_local();
 
 	int r;
 
-	// setup server socket
+	// setup server
 
-	int server = net_bound_socket(type, &local, 0);
+	int server = net_bound_socket(type, &local_addr, 0);
 	ok(server >= 0, "%s: server, create bound socket", name);
 
 	if (socktype_is_stream(type)) {
@@ -241,45 +278,17 @@ static void test_connected(int type)
 		ok(r == 0, "%s: server, start listening", name);
 	}
 
-	// initialize server
-
 	server_ctx_t server_ctx = { 0 };
 	r = server_start(&server_ctx, server, type, handler_echo, &server_ctx);
 	ok(r, "%s: server, start", name);
 
+	const struct sockaddr_storage server_addr = addr_from_socket(server);
+
 	// connected socket, send and receive
 
-	int sock;
-	struct timeval tv;
-
-	const struct sockaddr_storage server_addr = addr_from_socket(server);
-	sock = net_connected_socket(type, &server_addr, NULL);
-	ok(sock >= 0, "%s: client, create connected socket", name);
-
-	const uint8_t out[] = "test message";
-	const size_t out_len = sizeof(out);
-	if (socktype_is_stream(type)) {
-		tv = TIMEOUT;
-		r = net_stream_send(sock, out, out_len, &tv);
-	} else {
-		r = net_dgram_send(sock, out, out_len, NULL);
-	}
-	ok(r == out_len, "%s: client, send message", name);
-
-	r = net_is_connected(sock);
-	ok(r, "%s: client, is connected", name);
-
-	uint8_t in[128] = { 0 };
-	tv = TIMEOUT;
-	if (socktype_is_stream(type)) {
-		r = net_stream_recv(sock, in, sizeof(in), &tv);
-	} else {
-		r = net_dgram_recv(sock, in, sizeof(in), &tv);
-	}
-	ok(r == out_len && memcmp(out, in, out_len) == 0,
-	   "%s: client, receive message", name);
-
-	close(sock);
+	test_connected_one(&server_addr, NULL, type, name, "NULL source");
+	test_connected_one(&server_addr, &empty_addr, type, name, "zero source");
+	test_connected_one(&server_addr, &local_addr, type, name, "valid source");
 
 	// cleanup
 
@@ -642,15 +651,17 @@ static void test_nonblocking_accept(void)
 
 	// client reconnect
 
+	const struct sockaddr_storage empty_addr = { 0 };
+
 	close(client);
-	client = net_connected_socket(SOCK_STREAM, &addr_server, NULL);
-	ok(client >= 0, "client, reconnect");
+	client = net_connected_socket(SOCK_STREAM, &addr_server, &empty_addr);
+	ok(client >= 0, "client, reconnect (empty source address)");
 
 	r = select_read(server);
 	ok(r == 1, "server, pending connection");
 
 	accepted = net_accept(server, NULL);
-	ok(accepted >= 0, "server, accept connection");
+	ok(accepted >= 0, "server, accept connection (no remote address)");
 
 	ok(!socket_is_blocking(accepted), "accepted, nonblocking mode");
 
