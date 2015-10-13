@@ -651,11 +651,9 @@ static void test_nonblocking_accept(void)
 
 	// client reconnect
 
-	const struct sockaddr_storage empty_addr = { 0 };
-
 	close(client);
-	client = net_connected_socket(SOCK_STREAM, &addr_server, &empty_addr);
-	ok(client >= 0, "client, reconnect (empty source address)");
+	client = net_connected_socket(SOCK_STREAM, &addr_server, NULL);
+	ok(client >= 0, "client, reconnect");
 
 	r = select_read(server);
 	ok(r == 1, "server, pending connection");
