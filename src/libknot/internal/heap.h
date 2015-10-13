@@ -48,5 +48,7 @@ void heap_delmin(struct heap *);
 int heap_insert(struct heap *, void *);
 int heap_find(struct heap *, void *);
 void heap_delete(struct heap *, int);
+void heap_replace(struct heap *h, int pos, void *e);
+
 
 /*! @} */
