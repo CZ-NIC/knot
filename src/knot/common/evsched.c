@@ -67,8 +67,8 @@ static int evsched_run(dthread_t *thread)
 		return KNOT_EINVAL;
 	}
 
-	pthread_mutex_lock(&sched->heap_lock);
 	/* Run event loop. */
+	pthread_mutex_lock(&sched->heap_lock);
 	while (!dt_is_cancelled(thread)) {
 		if (EMPTY_HEAP(&sched->heap)) {
 			pthread_cond_wait(&sched->notify, &sched->heap_lock);
@@ -96,6 +96,7 @@ static int evsched_run(dthread_t *thread)
 			pthread_cond_timedwait(&sched->notify, &sched->heap_lock, &ts);
 		}
 	}
+	pthread_mutex_unlock(&sched->heap_lock);
 
 	return KNOT_EOK;
 }
