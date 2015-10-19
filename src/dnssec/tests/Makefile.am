@@ -30,6 +30,7 @@ check_PROGRAMS = \
 	key_algorithm	\
 	key_ds		\
 	keyid		\
+	keystore_pkcs11 \
 	keystore_pkcs8	\
 	keystore_pkcs8_dir \
 	keytag		\
