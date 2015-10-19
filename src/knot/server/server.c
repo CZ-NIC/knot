@@ -134,6 +134,12 @@ static int server_init_iface(iface_t *new_if, struct sockaddr_storage *addr, int
 		return KNOT_ENOMEM;
 	}
 
+	/* Initialize the sockets to ensure safe early deinitialization. */
+	for (int i = 0; i < udp_socket_count; i++) {
+		new_if->fd_udp[new_if->fd_udp_count] = -1;
+	};
+	new_if->fd_tcp = -1;
+
 	bool warn_bind = false;
 	bool warn_bufsize = false;
 
