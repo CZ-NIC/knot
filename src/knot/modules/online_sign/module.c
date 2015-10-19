@@ -204,6 +204,7 @@ static knot_rrset_t *synth_nsec(knot_pkt_t *pkt, struct query_data *qdata, mm_ct
 	if (!bitmap) {
 		free(next);
 		knot_rrset_free(&nsec, mm);
+		return NULL;
 	}
 
 	size_t size = knot_dname_size(next) + dnssec_nsec_bitmap_size(bitmap);
