@@ -46,9 +46,7 @@ static struct sockaddr_storage addr_local(void)
 }
 
 /*!
- * \brief Get unreachable address.
- *
- * The address is taken from TEST-NET-1 so it won't be hopefully used.
+ * \brief Get unreachable (and non-routable) address.
  */
 static struct sockaddr_storage addr_unreachable(void)
 {
