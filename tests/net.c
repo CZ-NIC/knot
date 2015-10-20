@@ -53,7 +53,7 @@ static struct sockaddr_storage addr_local(void)
 static struct sockaddr_storage addr_unreachable(void)
 {
 	struct sockaddr_storage addr = { 0 };
-	sockaddr_set(&addr, AF_INET, "192.0.2.42", 4);
+	sockaddr_set(&addr, AF_INET, "10.0.0.0", 42);
 
 	return addr;
 }
