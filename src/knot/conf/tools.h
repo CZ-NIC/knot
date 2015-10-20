@@ -87,6 +87,10 @@ int check_remote(
 	conf_check_t *args
 );
 
+int check_template(
+	conf_check_t *args
+);
+
 int check_zone(
 	conf_check_t *args
 );

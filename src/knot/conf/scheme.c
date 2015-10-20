@@ -199,7 +199,7 @@ const yp_item_t conf_scheme[] = {
 #endif
 	{ C_MOD_ONLINE_SIGN,  YP_TGRP, YP_VGRP = { scheme_mod_online_sign }, YP_FMULTI },
 /***********/
-	{ C_TPL,  YP_TGRP, YP_VGRP = { desc_template }, YP_FMULTI },
+	{ C_TPL,  YP_TGRP, YP_VGRP = { desc_template }, YP_FMULTI, { check_template } },
 	{ C_ZONE, YP_TGRP, YP_VGRP = { desc_zone }, YP_FMULTI, { check_zone } },
 	{ C_INCL, YP_TSTR, YP_VNONE, YP_FNONE, { include_file } },
 	{ NULL }

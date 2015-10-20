@@ -321,6 +321,28 @@ int check_remote(
 	return KNOT_EOK;
 }
 
+int check_template(
+	conf_check_t *args)
+{
+	const char *err_str = "global module is only allowed with the default template";
+
+	if (args->previous->id_len == CONF_DEFAULT_ID[0] &&
+	    memcmp(args->previous->id, CONF_DEFAULT_ID + 1, args->previous->id_len) == 0) {
+		return KNOT_EOK;
+	}
+
+	conf_val_t g_module = conf_rawid_get_txn(args->conf, args->txn, C_TPL,
+	                                         C_GLOBAL_MODULE, args->previous->id,
+	                                         args->previous->id_len);
+
+	if (g_module.code == KNOT_EOK) {
+		*args->err_str = err_str;
+		return KNOT_EINVAL;
+	}
+
+	return KNOT_EOK;
+}
+
 int check_zone(
 	conf_check_t *args)
 {
