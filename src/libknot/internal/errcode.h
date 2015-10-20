@@ -126,6 +126,7 @@ enum knot_error {
 	KNOT_DNSSEC_ENOKEY,
 
 	/* Yparser errors. */
+	KNOT_YP_ECHAR_TAB,
 	KNOT_YP_EINVAL_ITEM,
 	KNOT_YP_EINVAL_ID,
 	KNOT_YP_EINVAL_DATA,

@@ -122,6 +122,7 @@ static const struct error errors[] = {
 	{ KNOT_DNSSEC_EMISSINGKEYTYPE, "missing active KSK or ZSK" },
 
 	/* Yparser errors. */
+	{ KNOT_YP_ECHAR_TAB,     "tabulator character is not allowed" },
 	{ KNOT_YP_EINVAL_ITEM,   "invalid item" },
 	{ KNOT_YP_EINVAL_ID,     "invalid identifier" },
 	{ KNOT_YP_EINVAL_DATA,   "invalid value" },

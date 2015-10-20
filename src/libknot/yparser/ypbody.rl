@@ -146,7 +146,12 @@
 
 	# Main processing loop.
 	action _error {
-		return KNOT_EPARSEFAIL;
+		switch (fc) {
+		case '\t':
+			return KNOT_YP_ECHAR_TAB;
+		default:
+			return KNOT_EPARSEFAIL;
+		}
 	}
 
 	main := (blank | item)* $!_error;

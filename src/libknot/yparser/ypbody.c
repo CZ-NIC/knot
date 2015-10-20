@@ -361,7 +361,12 @@ _match:
 	break;
 	case 14:
 	{
-		return KNOT_EPARSEFAIL;
+		switch ((*p)) {
+		case '\t':
+			return KNOT_YP_ECHAR_TAB;
+		default:
+			return KNOT_EPARSEFAIL;
+		}
 	}
 	break;
 		}
@@ -394,7 +399,12 @@ _again:
 	break;
 	case 14:
 	{
-		return KNOT_EPARSEFAIL;
+		switch ((*p)) {
+		case '\t':
+			return KNOT_YP_ECHAR_TAB;
+		default:
+			return KNOT_EPARSEFAIL;
+		}
 	}
 	break;
 		}
