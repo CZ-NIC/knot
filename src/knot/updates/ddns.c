@@ -900,17 +900,6 @@ int ddns_process_update(const zone_t *zone, const knot_pkt_t *query,
 		return KNOT_EINVAL;
 	}
 
-//FIXME: temporary workaround
-	if (update->change.soa_from == NULL) {
-		// Copy base SOA RR.
-		update->change.soa_from =
-			node_create_rrset(update->zone->contents->apex, KNOT_RRTYPE_SOA);
-		if (update->change.soa_from == NULL) {
-			*rcode = ret_to_rcode(KNOT_ENOMEM);
-			return KNOT_ENOMEM;
-		}
-	}
-
 	uint32_t sn_old = knot_soa_serial(zone_update_from(update));
 
 	// Process all RRs in the authority section.
@@ -934,33 +923,6 @@ int ddns_process_update(const zone_t *zone, const knot_pkt_t *query,
 			*rcode = ret_to_rcode(ret);
 			return ret;
 		}
-	}
-
-	if (zone_update_to(update) == NULL) {
-		// No SOA in the update, create one according to the current policy
-		if (zone_update_no_change(update)) {
-			*rcode = KNOT_RCODE_NOERROR;
-			// No change, no new SOA
-			return KNOT_EOK;
-		}
-
-		knot_rrset_t *soa_cpy = node_create_rrset(zone_update_get_apex(update), KNOT_RRTYPE_SOA);
-		if (soa_cpy == NULL) {
-			*rcode = ret_to_rcode(KNOT_ENOMEM);
-			return KNOT_ENOMEM;
-		}
-
-		conf_val_t val = conf_zone_get(conf(), C_SERIAL_POLICY, zone->name);
-		uint32_t old_serial = knot_soa_serial(&soa_cpy->rrs);
-		uint32_t new_serial = serial_next(old_serial, conf_opt(&val));
-		if (serial_compare(old_serial, new_serial) >= 0) {
-			log_zone_warning(zone->name, "updated serial is lower "
-			                 "than current, serial %u -> %u",
-			                  old_serial, new_serial);
-		}
-
-		knot_soa_serial_set(&soa_cpy->rrs, new_serial);
-		update->change.soa_to = soa_cpy;
 	}
 
 	*rcode = KNOT_RCODE_NOERROR;

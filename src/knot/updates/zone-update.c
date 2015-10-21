@@ -14,13 +14,17 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <urcu.h>
-
 #include "knot/updates/zone-update.h"
-#include "libknot/internal/lists.h"
-#include "libknot/internal/mempool.h"
+
+#include "knot/common/log.h"
 #include "knot/dnssec/zone-events.h"
 #include "knot/updates/apply.h"
+#include "knot/zone/serial.h"
+
+#include "libknot/internal/lists.h"
+#include "libknot/internal/mempool.h"
+
+#include <urcu.h>
 
 static int add_to_node(zone_node_t *node, const zone_node_t *add_node,
                        mm_ctx_t *mm)
@@ -125,12 +129,12 @@ static int init_incremental(zone_update_t *update, zone_t *zone)
 	}
 	assert(zone->contents);
 
-//FIXME: JK's zone-api-version of zone_update has a cache, we're ignoring it for now.
-	//update->synth_nodes = zone_contents_new(zone->name);
-	//if (update->synth_nodes == NULL) {
-	//	return KNOT_ENOMEM;
-	//	zone_update_clear(update);
-	//}
+	// Copy base SOA RR.
+	update->change.soa_from =
+		node_create_rrset(update->zone->contents->apex, KNOT_RRTYPE_SOA);
+	if (update->change.soa_from == NULL) {
+		return KNOT_ENOMEM;
+	}
 
 	return KNOT_EOK;
 }
@@ -260,9 +264,7 @@ void zone_update_clear(zone_update_t *update)
 
 int zone_update_add(zone_update_t *update, const knot_rrset_t *rrset)
 {
-	if (update->flags & UPDATE_WRITING_ITER) {
-		return changeset_add_rrset(&update->iteration_changes, rrset);
-	} else if (update->flags & UPDATE_INCREMENTAL) {
+	if (update->flags & UPDATE_INCREMENTAL) {
 		return changeset_add_rrset(&update->change, rrset);
 	} else if (update->flags & UPDATE_FULL) {
 		zone_node_t *n = NULL;
@@ -274,9 +276,7 @@ int zone_update_add(zone_update_t *update, const knot_rrset_t *rrset)
 
 int zone_update_remove(zone_update_t *update, const knot_rrset_t *rrset)
 {
-	if (update->flags & UPDATE_WRITING_ITER) {
-		return changeset_rem_rrset(&update->iteration_changes, rrset);
-	} else if (update->flags & UPDATE_INCREMENTAL) {
+	if (update->flags & UPDATE_INCREMENTAL) {
 		return changeset_rem_rrset(&update->change, rrset);
 	} else {
 		// Removing from zone during creation does not make sense, ignore.
@@ -309,7 +309,6 @@ static bool dnskey_nsec3param_changed(zone_update_t *update)
 	        apex_rr_changed(new_apex, old_apex, KNOT_RRTYPE_NSEC3PARAM));
 }
 
-//FIXME: update to new api
 static int sign_update(zone_update_t *update,
                        zone_contents_t *new_contents,
                        changeset_t *sec_ch)
@@ -359,18 +358,50 @@ static int sign_update(zone_update_t *update,
 	return KNOT_EOK;
 }
 
+static int set_new_soa(zone_update_t *update)
+{
+	knot_rrset_t *soa_cpy = node_create_rrset(zone_update_get_apex(update), KNOT_RRTYPE_SOA);
+	if (soa_cpy == NULL) {
+		return KNOT_ENOMEM;
+	}
+
+	conf_val_t val = conf_zone_get(conf(), C_SERIAL_POLICY, update->zone->name);
+	uint32_t old_serial = knot_soa_serial(&soa_cpy->rrs);
+	uint32_t new_serial = serial_next(old_serial, conf_opt(&val));
+	if (serial_compare(old_serial, new_serial) >= 0) {
+		log_zone_warning(update->zone->name, "updated serial is lower "
+		                 "than current, serial %u -> %u",
+		                  old_serial, new_serial);
+	}
+
+	knot_soa_serial_set(&soa_cpy->rrs, new_serial);
+	update->change.soa_to = soa_cpy;
+
+	return KNOT_EOK;
+}
+
 int zone_update_commit(zone_update_t *update)
 {
+	int ret = KNOT_EOK;
+	zone_contents_t *new_contents = NULL;
+
 	if (update->flags & UPDATE_INCREMENTAL) {
-		zone_contents_t *new_contents = NULL;
 		const bool change_made = !changeset_empty(&update->change);
 		if (!change_made) {
 			changeset_clear(&update->change);
 			return KNOT_EOK;
 		}
 
+		if (zone_update_to(update) == NULL) {
+			// No SOA in the update, create one according to the current policy
+			ret = set_new_soa(update);
+			if (ret != KNOT_EOK) {
+				return ret;
+			}
+		}
+
 		// Apply changes.
-		int ret = apply_changeset(update->zone, &update->change, &new_contents);
+		ret = apply_changeset(update->zone, &update->change, &new_contents);
 		if (ret != KNOT_EOK) {
 			changeset_clear(&update->change);
 			return ret;
@@ -379,11 +410,11 @@ int zone_update_commit(zone_update_t *update)
 		assert(new_contents);
 
 		conf_val_t val = conf_zone_get(conf(), C_DNSSEC_SIGNING, update->zone->name);
-		bool dnssec_enable = conf_bool(&val);
+		bool dnssec_enable = update->flags & UPDATE_SIGN && conf_bool(&val);
 
 		// Sign the update.
 		changeset_t sec_ch;
-		if (update->flags & UPDATE_SIGN && dnssec_enable) {
+		if (dnssec_enable) {
 			ret = changeset_init(&sec_ch, update->zone->name);
 			if (ret != KNOT_EOK) {
 				changeset_clear(&update->change);

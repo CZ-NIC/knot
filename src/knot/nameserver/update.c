@@ -139,7 +139,7 @@ static int process_normal(zone_t *zone, list_t *requests)
 
 	// Init zone update structure
 	zone_update_t up;
-	int ret = zone_update_init(&up, zone, UPDATE_INCREMENTAL | UPDATE_SIGN | UPDATE_REPLACE_CNAMES);
+	int ret = zone_update_init(&up, zone, UPDATE_INCREMENTAL | UPDATE_SIGN);
 	if (ret != KNOT_EOK) {
 		set_rcodes(requests, KNOT_RCODE_SERVFAIL);
 		return ret;
