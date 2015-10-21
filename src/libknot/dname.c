@@ -503,7 +503,8 @@ int knot_dname_size(const knot_dname_t *name)
 _public_
 int knot_dname_realsize(const knot_dname_t *name, const uint8_t *pkt)
 {
-	return knot_dname_prefixlen(name, KNOT_DNAME_MAXLABELS, pkt);
+	/* Add zero label size for FQDN. */
+	return knot_dname_prefixlen(name, KNOT_DNAME_MAXLABELS, pkt) + 1;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -599,7 +600,7 @@ int knot_dname_matched_labels(const knot_dname_t *d1, const knot_dname_t *d2)
 /*----------------------------------------------------------------------------*/
 _public_
 knot_dname_t *knot_dname_replace_suffix(const knot_dname_t *name, unsigned labels,
-					const knot_dname_t *suffix)
+                                        const knot_dname_t *suffix)
 {
 	if (name == NULL)
 		return NULL;
@@ -609,8 +610,7 @@ knot_dname_t *knot_dname_replace_suffix(const knot_dname_t *name, unsigned label
 	assert(dname_lbs >= labels);
 	unsigned prefix_lbs = dname_lbs - labels;
 
-	/* Trim 1 octet from prefix, as it is measured as FQDN. */
-	int prefix_len = knot_dname_prefixlen(name, prefix_lbs, NULL) - 1;
+	int prefix_len = knot_dname_prefixlen(name, prefix_lbs, NULL);
 	int suffix_len = knot_dname_size(suffix);
 	if (prefix_len < 0 || suffix_len < 0)
 		return NULL;
@@ -729,14 +729,14 @@ int knot_dname_prefixlen(const uint8_t *name, unsigned nlabels, const uint8_t *p
 	if (name == NULL)
 		return KNOT_EINVAL;
 
-	/* Zero labels means 1 octet \x00 */
+	/* Zero labels means no prefix. */
 	if (nlabels == 0)
-		return 1;
+		return 0;
 
 	/* Seek first real label occurence. */
 	name = knot_wire_seek_label(name, pkt);
 
-	int len = 1; /* Terminal label */
+	int len = 0;
 	while (*name != '\0') {
 		len += *name + 1;
 		name = knot_wire_next_label(name, pkt);

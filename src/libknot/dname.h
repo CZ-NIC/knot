@@ -84,7 +84,7 @@ knot_dname_t *knot_dname_copy(const knot_dname_t *name, mm_ctx_t *mm);
  * \return New domain name which is an partial copy of \a dname.
  */
 knot_dname_t *knot_dname_copy_part(const knot_dname_t *name, unsigned len,
-				   mm_ctx_t *mm);
+                                   mm_ctx_t *mm);
 
 /*!
  * \brief Copy name to wire as is, no compression pointer expansion will be done.
