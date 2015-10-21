@@ -641,6 +641,151 @@ void conf_free_mod_id(
 	free(mod_id);
 }
 
+static int get_index(
+	const char **start,
+	const char *end,
+	uint8_t *index1,
+	uint8_t *index2)
+{
+	const char *pos = *start;
+	uint8_t i1, i2;
+
+	// At least [n] must fit into.
+	if (end - pos < 3 || pos[0] != '[') {
+		return KNOT_EINVAL;
+	}
+
+	// Check for the variant [n] or [m-n].
+	switch (pos[2]) {
+	case ']':
+		i1 = pos[1] - '0';
+		i2 = i1;
+		if (i1 > 9) {
+			return KNOT_EINVAL;
+		}
+		*start += 3;
+		break;
+	case '-':
+		if (index2 == NULL || end - pos < 5 || pos[4] != ']') {
+			return KNOT_EINVAL;
+		}
+		i1 = pos[1] - '0';
+		i2 = pos[3] - '0';
+		if (i1 > 9 || i2 > 9 || i1 > i2) {
+			return KNOT_EINVAL;
+		}
+		*start += 5;
+		break;
+	default:
+		return KNOT_EINVAL;
+	}
+
+	*index1 = i1;
+	if (index2 != NULL) {
+		*index2 = i2;
+	}
+
+	return KNOT_EOK;
+}
+
+static int str_char(
+	const knot_dname_t *zone,
+	char *buff,
+	size_t buff_len,
+	uint8_t index1,
+	uint8_t index2)
+{
+	if (knot_dname_to_str(buff, zone, buff_len) == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	// Remove the trailing dot if not root zone.
+	size_t zone_len = strlen(buff);
+	if (zone_len > 1) {
+		buff[zone_len--] = '\0';
+	}
+
+	// Get the block length.
+	size_t len = index2 - index1 + 1;
+
+	// Check for out of scope block.
+	if (index1 > zone_len) {
+		buff[0] = '\0';
+		return KNOT_EOK;
+	}
+	// Check for partial block.
+	if (index1 + len > zone_len) {
+		len = zone_len - index1;
+	}
+
+	// Copy the block.
+	memmove(buff, buff + index1, len);
+	buff[len] = '\0';
+
+	// Replace possible slashes with underscores.
+	char *ch;
+	for (ch = buff; *ch != '\0'; ch++) {
+		if (*ch == '/') {
+			*ch = '_';
+		}
+	}
+
+	return KNOT_EOK;
+}
+
+static int str_zone(
+	const knot_dname_t *zone,
+	char *buff,
+	size_t buff_len)
+{
+	if (knot_dname_to_str(buff, zone, buff_len) == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	// Replace possible slashes with underscores.
+	char *ch;
+	for (ch = buff; *ch != '\0'; ch++) {
+		if (*ch == '/') {
+			*ch = '_';
+		}
+	}
+
+	// Remove trailing dot if not root zone.
+	if (ch - buff > 1) {
+		*(--ch) = '\0';
+	}
+
+	return KNOT_EOK;
+}
+
+static int str_label(
+	const knot_dname_t *zone,
+	char *buff,
+	size_t buff_len,
+	uint8_t index)
+{
+	int labels = knot_dname_labels(zone, NULL);
+
+	// Check for root label.
+	if (labels == 0 && index == 0) {
+		return str_zone(zone, buff, buff_len);
+	} else if (labels < 1 || labels < index + 1) {
+		buff[0] = '\0';
+		return KNOT_EOK;
+	}
+
+	knot_dname_t label[1 + KNOT_DNAME_MAXLABELLEN + 1];
+
+	// Create a dname from the single label.
+	int prefix = (index == labels - 1) ?
+	             0 : knot_dname_prefixlen(zone, labels - index - 1, NULL);
+	uint8_t label_len = *(zone + prefix);
+	memcpy(label, zone + prefix, 1 + label_len);
+	label[1 + label_len] = '\0';
+
+	return str_zone(label, buff, buff_len);
+}
+
 static char* get_filename(
 	conf_t *conf,
 	namedb_txn_t *txn,
@@ -659,6 +804,7 @@ static char* get_filename(
 		// If no formatter, copy the rest of the name.
 		if (pos == NULL) {
 			if (strlcat(out, name, sizeof(out)) >= sizeof(out)) {
+				CONF_LOG_ZONE(LOG_WARNING, zone, "too long zonefile name");
 				return NULL;
 			}
 			break;
@@ -668,6 +814,7 @@ static char* get_filename(
 		char *block = strndup(name, pos - name);
 		if (block == NULL ||
 		    strlcat(out, block, sizeof(out)) >= sizeof(out)) {
+			CONF_LOG_ZONE(LOG_WARNING, zone, "too long zonefile name");
 			return NULL;
 		}
 		free(block);
@@ -676,30 +823,35 @@ static char* get_filename(
 		name = pos + 2;
 
 		char buff[512] = "";
+		uint8_t idx1, idx2;
 
 		const char type = *(pos + 1);
 		switch (type) {
 		case '%':
 			strlcat(buff, "%", sizeof(buff));
 			break;
-		case 's':
-			if (knot_dname_to_str(buff, zone, sizeof(buff)) == NULL) {
+		case 'c':
+			if (get_index(&name, end, &idx1, &idx2) != KNOT_EOK ||
+			    str_char(zone, buff, sizeof(buff), idx1, idx2) != KNOT_EOK) {
+				CONF_LOG_ZONE(LOG_WARNING, zone, "failed to process "
+				              "zonefile formatter '%%%c'", type);
 				return NULL;
 			}
-
-			// Replace possible slashes with underscores.
-			char *ch;
-			for (ch = buff; *ch != '\0'; ch++) {
-				if (*ch == '/') {
-					*ch = '_';
-				}
+			break;
+		case 'l':
+			if (get_index(&name, end, &idx1, NULL) != KNOT_EOK ||
+			    str_label(zone, buff, sizeof(buff), idx1) != KNOT_EOK) {
+				CONF_LOG_ZONE(LOG_WARNING, zone, "failed to process "
+				              "zonefile formatter '%%%c'", type);
+				return NULL;
 			}
-
-			// Remove trailing dot if not root zone.
-			if (ch - buff > 1) {
-				*(--ch) = '\0';
+			break;
+		case 's':
+			if (str_zone(zone, buff, sizeof(buff)) != KNOT_EOK) {
+				CONF_LOG_ZONE(LOG_WARNING, zone, "failed to process "
+				              "zonefile formatter '%%%c'", type);
+				return NULL;
 			}
-
 			break;
 		case '\0':
 			CONF_LOG_ZONE(LOG_WARNING, zone, "ignoring missing "
@@ -712,6 +864,7 @@ static char* get_filename(
 		}
 
 		if (strlcat(out, buff, sizeof(out)) >= sizeof(out)) {
+			CONF_LOG_ZONE(LOG_WARNING, zone, "too long zonefile name");
 			return NULL;
 		}
 	} while (name < end);

@@ -609,6 +609,14 @@ file
 A path to the zone file. Non absolute path is relative to
 :ref:`storage<zone_storage>`. It is also possible to use the following formatters:
 
+- ``%c[``\ *N*\ ``]`` or ``%c[``\ *N*\ ``-``\ *M*\ ``]`` – means the *N*\ th
+  character or a sequence of characters beginning from the *N*\ th and ending
+  with the *M*\ th character of the textual zone name (see ``%s``). The
+  indexes are counted from 0 from the left. If the character is not available,
+  the formatter has no effect.
+- ``%l[``\ *N*\ ``]`` – means the *N*\ th label of the textual zone name
+  (see ``%s``). The index is counted from 0 from the right (0 ~ TLD).
+  If the label is not available, the formatter has no effect.
 - ``%s`` – means the current zone name in the textual representation (beware
   of special characters which are escaped or encoded in the \\DDD form where
   DDD is corresponding decimal ASCII code). The zone name doesn't include the

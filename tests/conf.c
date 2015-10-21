@@ -16,11 +16,81 @@
 
 #include <tap/basic.h>
 
+#include "knot/conf/conf.c"
 #include "test_conf.h"
 
 #define ZONE1	"0/25.2.0.192.in-addr.arpa."
 #define ZONE2	"."
 #define ZONE3	"x."
+#define ZONE4	"abc.ab.a."
+
+static void check_name(const char *zone, const char *name, const char *ref)
+{
+	knot_dname_t *z = knot_dname_from_str_alloc(zone);
+
+	char *file = get_filename(NULL, NULL, z, name);
+	ok(file != NULL, "Get zonefile path for %s", zone);
+	if (file != NULL) {
+		ok(strcmp(file, ref) == 0, "Zonefile path compare %s", name);
+		free(file);
+	}
+
+	knot_dname_free(&z, NULL);
+}
+
+static void check_name_err(const char *zone, const char *name)
+{
+	knot_dname_t *z = knot_dname_from_str_alloc(zone);
+
+	ok(get_filename(NULL, NULL, z, name) == NULL, "Invalid name %s", name);
+
+	knot_dname_free(&z, NULL);
+}
+
+static void test_get_filename(void)
+{
+	// Char formatter.
+	char *zone = "abc.def.gh";
+	check_name(zone, "/%c[0]", "/a");
+	check_name(zone, "/%c[9]", "/h");
+	check_name(zone, "/%c[3]", "/.");
+	check_name(zone, "/%c[0-1]", "/ab");
+	check_name(zone, "/%c[1-1]", "/b");
+	check_name(zone, "/%c[1-3]", "/bc.");
+	check_name(zone, "/%c[1-4]", "/bc.d");
+	check_name_err(zone, "/%c");
+	check_name_err(zone, "/%cx");
+	check_name_err(zone, "/%c[a]");
+	check_name_err(zone, "/%c[:]");
+	check_name_err(zone, "/%c[/]");
+	check_name_err(zone, "/%c[12]");
+	check_name_err(zone, "/%c[");
+	check_name_err(zone, "/%c[1");
+	check_name_err(zone, "/%c[1-");
+	check_name_err(zone, "/%c[1-2");
+	check_name_err(zone, "/%c[1-b]");
+	check_name_err(zone, "/%c[9-0]");
+
+	zone = "abcd";
+	check_name(zone, "/%c[2-9]", "/cd");
+
+	zone = ".";
+	check_name(zone, "/%c[0]", "/.");
+	check_name(zone, "/%c[1]", "/");
+
+	// Label formatter.
+	zone = "abc.def.gh";
+	check_name(zone, "/%l[0]", "/gh");
+	check_name(zone, "/%l[1]", "/def");
+	check_name(zone, "/%l[2]", "/abc");
+	check_name(zone, "/%l[3]", "/");
+	check_name(zone, "/%l[0]-%l[1]-%l[2]", "/gh-def-abc");
+	check_name_err(zone, "/%l[0-1]");
+
+	zone = ".";
+	check_name(zone, "/%l[0]", "/.");
+	check_name(zone, "/%l[1]", "/");
+}
 
 static void test_conf_zonefile(void)
 {
@@ -33,6 +103,8 @@ static void test_conf_zonefile(void)
 	ok(zone2 != NULL, "create dname "ZONE2);
 	knot_dname_t *zone3 = knot_dname_from_str_alloc(ZONE3);
 	ok(zone3 != NULL, "create dname "ZONE3);
+	knot_dname_t *zone4 = knot_dname_from_str_alloc(ZONE4);
+	ok(zone4 != NULL, "create dname "ZONE4);
 
 	const char *conf_str =
 		"template:\n"
@@ -45,7 +117,8 @@ static void test_conf_zonefile(void)
 		"  - domain: "ZONE2"\n"
 		"    file: /%s\n"
 		"  - domain: "ZONE3"\n"
-		"    file: /%s\n";
+		"    file: /%s\n"
+		"  - domain: "ZONE4"\n";
 
 	ret = test_conf(conf_str, NULL);
 	ok(ret == KNOT_EOK, "Prepare configuration");
@@ -59,7 +132,7 @@ static void test_conf_zonefile(void)
 		free(file);
 	}
 
-	// Absolute path without formatters.
+	// Absolute path without formatters - root zone.
 	file = conf_zonefile(conf(), zone2);
 	ok(file != NULL, "Get zonefile path for "ZONE2);
 	if (file != NULL) {
@@ -77,16 +150,30 @@ static void test_conf_zonefile(void)
 		free(file);
 	}
 
+	// Default zonefile path.
+	file = conf_zonefile(conf(), zone4);
+	ok(file != NULL, "Get zonefile path for "ZONE4);
+	if (file != NULL) {
+		ok(strcmp(file, "/tmp/"ZONE4"zone") == 0,
+		          "Zonefile path compare for "ZONE4);
+		free(file);
+	}
+
 	conf_free(conf(), false);
 	knot_dname_free(&zone1, NULL);
 	knot_dname_free(&zone2, NULL);
 	knot_dname_free(&zone3, NULL);
+	knot_dname_free(&zone4, NULL);
 }
 
 int main(int argc, char *argv[])
 {
 	plan_lazy();
 
+	diag("get_filename");
+	test_get_filename();
+
+	diag("conf_zonefile");
 	test_conf_zonefile();
 
 	return 0;
