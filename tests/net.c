@@ -28,6 +28,9 @@
 #include "libknot/internal/net.h"
 #include "libknot/internal/sockaddr.h"
 
+#undef ENABLE_NET_UNREACHABLE_TEST
+//#define ENABLE_NET_UNREACHABLE_TEST
+
 const struct timeval TIMEOUT = { 5, 0 };
 const struct timeval TIMEOUT_SHORT = { 0, 500000 };
 
@@ -45,16 +48,20 @@ static struct sockaddr_storage addr_local(void)
 	return addr;
 }
 
+#ifdef ENABLE_NET_UNREACHABLE_TEST
 /*!
- * \brief Get unreachable (and non-routable) address.
+ * \brief Get unreachable IPv6 address.
+ *
+ * Allocated from 100::/64 (Discard-Only Address Block).
  */
 static struct sockaddr_storage addr_unreachable(void)
 {
 	struct sockaddr_storage addr = { 0 };
-	sockaddr_set(&addr, AF_INET, "10.0.0.0", 42);
+	sockaddr_set(&addr, AF_INET6, "100::b1ac:h01e", 42);
 
 	return addr;
 }
+#endif
 
 /*!
  * \brief Get address of a socket.
@@ -381,6 +388,7 @@ static void test_refused(void)
 
 	// unreachable remote
 
+#ifdef ENABLE_NET_UNREACHABLE_TEST
 	addr = addr_unreachable();
 
 	client = net_connected_socket(SOCK_STREAM, &addr, NULL);
@@ -398,6 +406,9 @@ static void test_refused(void)
 	r = net_stream_recv(client, buffer, sizeof(buffer), &tv);
 	ok(r == KNOT_ETIMEOUT, "client, timeout on read");
 	close(client);
+#else
+	skip("unreachable tests disabled");
+#endif
 
 	// listening, not accepting
 
