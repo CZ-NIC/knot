@@ -21,7 +21,6 @@
 #include <errno.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <fcntl.h>
 #include <time.h>
 #include <unistd.h>
 #include <inttypes.h>
@@ -29,20 +28,18 @@
 #include "libknot/libknot.h"
 #include "libknot/internal/macros.h"
 #include "libknot/internal/mem.h"
+#include "knot/common/log.h"
+#include "knot/dnssec/zone-nsec.h"
 #include "knot/zone/semantic-check.h"
 #include "knot/zone/contents.h"
-#include "knot/dnssec/zone-nsec.h"
-#include "knot/common/debug.h"
 #include "knot/zone/zonefile.h"
-#include "libknot/rdata.h"
 #include "knot/zone/zone-dump.h"
-#include "libknot/rrtype/naptr.h"
 
 #define ERROR(zone, fmt, ...) log_zone_error(zone, "zone loader, " fmt, ##__VA_ARGS__)
 #define WARNING(zone, fmt, ...) log_zone_warning(zone, "zone loader, " fmt, ##__VA_ARGS__)
 #define INFO(zone, fmt, ...) log_zone_info(zone, "zone loader, " fmt, ##__VA_ARGS__)
 
-void process_error(zs_scanner_t *s)
+static void process_error(zs_scanner_t *s)
 {
 	zcreator_t *zc = s->data;
 	const knot_dname_t *zname = zc->z->apex->owner;
@@ -57,6 +54,26 @@ static int add_rdata_to_rr(knot_rrset_t *rrset, const zs_scanner_t *scanner)
 {
 	return knot_rrset_add_rdata(rrset, scanner->r_data, scanner->r_data_length,
 	                         scanner->r_ttl, NULL);
+}
+
+static void log_ttl_error(const zone_contents_t *zone, const zone_node_t *node,
+                          const knot_rrset_t *rr)
+{
+	err_handler_t err_handler;
+	err_handler_init(&err_handler);
+	// Prepare additional info string.
+	char info_str[64] = { '\0' };
+	char type_str[16] = { '\0' };
+	knot_rrtype_to_string(rr->type, type_str, sizeof(type_str));
+	int ret = snprintf(info_str, sizeof(info_str), "record type %s",
+	                   type_str);
+	if (ret <= 0 || ret >= sizeof(info_str)) {
+		*info_str = '\0';
+	}
+
+	/*!< \todo REPLACE WITH FATAL ERROR for master. */
+	err_handler_handle_error(&err_handler, zone, node,
+	                         ZC_ERR_TTL_MISMATCH, info_str);
 }
 
 static bool handle_err(zcreator_t *zc, const zone_node_t *node,
@@ -81,26 +98,6 @@ static bool handle_err(zcreator_t *zc, const zone_node_t *node,
 		free(rrname);
 		return false;
 	}
-}
-
-void log_ttl_error(const zone_contents_t *zone, const zone_node_t *node,
-		   const knot_rrset_t *rr)
-{
-	err_handler_t err_handler;
-	err_handler_init(&err_handler);
-	// Prepare additional info string.
-	char info_str[64] = { '\0' };
-	char type_str[16] = { '\0' };
-	knot_rrtype_to_string(rr->type, type_str, sizeof(type_str));
-	int ret = snprintf(info_str, sizeof(info_str), "record type %s",
-	                   type_str);
-	if (ret <= 0 || ret >= sizeof(info_str)) {
-		*info_str = '\0';
-	}
-
-	/*!< \todo REPLACE WITH FATAL ERROR for master. */
-	err_handler_handle_error(&err_handler, zone, node,
-	                         ZC_ERR_TTL_MISMATCH, info_str);
 }
 
 int zcreator_step(zcreator_t *zc, const knot_rrset_t *rr)
@@ -239,9 +236,7 @@ int zonefile_open(zloader_t *loader, const char *source,
 
 zone_contents_t *zonefile_load(zloader_t *loader)
 {
-	dbg_zload("zload: load: Loading zone, loader: %p.\n", loader);
 	if (!loader) {
-		dbg_zload("zload: load: NULL loader!\n");
 		return NULL;
 	}
 
