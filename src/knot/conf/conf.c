@@ -688,6 +688,24 @@ static int get_index(
 	return KNOT_EOK;
 }
 
+static void replace_slashes(
+	char *name,
+	bool remove_dot)
+{
+	// Replace possible slashes with underscores.
+	char *ch;
+	for (ch = name; *ch != '\0'; ch++) {
+		if (*ch == '/') {
+			*ch = '_';
+		}
+	}
+
+	// Remove trailing dot if not root zone.
+	if (remove_dot && ch - name > 1) {
+		*(--ch) = '\0';
+	}
+}
+
 static int str_char(
 	const knot_dname_t *zone,
 	char *buff,
@@ -709,12 +727,12 @@ static int str_char(
 	size_t len = index2 - index1 + 1;
 
 	// Check for out of scope block.
-	if (index1 > zone_len) {
+	if (index1 >= zone_len) {
 		buff[0] = '\0';
 		return KNOT_EOK;
 	}
 	// Check for partial block.
-	if (index1 + len > zone_len) {
+	if (index2 >= zone_len) {
 		len = zone_len - index1;
 	}
 
@@ -723,12 +741,7 @@ static int str_char(
 	buff[len] = '\0';
 
 	// Replace possible slashes with underscores.
-	char *ch;
-	for (ch = buff; *ch != '\0'; ch++) {
-		if (*ch == '/') {
-			*ch = '_';
-		}
-	}
+	replace_slashes(buff, false);
 
 	return KNOT_EOK;
 }
@@ -743,17 +756,7 @@ static int str_zone(
 	}
 
 	// Replace possible slashes with underscores.
-	char *ch;
-	for (ch = buff; *ch != '\0'; ch++) {
-		if (*ch == '/') {
-			*ch = '_';
-		}
-	}
-
-	// Remove trailing dot if not root zone.
-	if (ch - buff > 1) {
-		*(--ch) = '\0';
-	}
+	replace_slashes(buff, true);
 
 	return KNOT_EOK;
 }
@@ -762,23 +765,28 @@ static int str_label(
 	const knot_dname_t *zone,
 	char *buff,
 	size_t buff_len,
-	uint8_t index)
+	uint8_t right_index)
 {
 	int labels = knot_dname_labels(zone, NULL);
 
-	// Check for root label.
-	if (labels == 0 && index == 0) {
+	// Check for root label of the root zone.
+	if (labels == 0 && right_index == 0) {
 		return str_zone(zone, buff, buff_len);
-	} else if (labels < 1 || labels < index + 1) {
+	// Check for labels error or for an exceeded index.
+	} else if (labels < 1 || labels <= right_index) {
 		buff[0] = '\0';
 		return KNOT_EOK;
 	}
 
+	// ~ Label length + label + root label.
 	knot_dname_t label[1 + KNOT_DNAME_MAXLABELLEN + 1];
 
+	// Compute the index from the left.
+	assert(labels > right_index);
+	uint8_t index = labels - right_index - 1;
+
 	// Create a dname from the single label.
-	int prefix = (index == labels - 1) ?
-	             0 : knot_dname_prefixlen(zone, labels - index - 1, NULL);
+	int prefix = (index > 0) ? knot_dname_prefixlen(zone, index, NULL) : 0;
 	uint8_t label_len = *(zone + prefix);
 	memcpy(label, zone + prefix, 1 + label_len);
 	label[1 + label_len] = '\0';
@@ -824,6 +832,7 @@ static char* get_filename(
 
 		char buff[512] = "";
 		uint8_t idx1, idx2;
+		bool failed = false;
 
 		const char type = *(pos + 1);
 		switch (type) {
@@ -833,24 +842,18 @@ static char* get_filename(
 		case 'c':
 			if (get_index(&name, end, &idx1, &idx2) != KNOT_EOK ||
 			    str_char(zone, buff, sizeof(buff), idx1, idx2) != KNOT_EOK) {
-				CONF_LOG_ZONE(LOG_WARNING, zone, "failed to process "
-				              "zonefile formatter '%%%c'", type);
-				return NULL;
+				failed = true;
 			}
 			break;
 		case 'l':
 			if (get_index(&name, end, &idx1, NULL) != KNOT_EOK ||
 			    str_label(zone, buff, sizeof(buff), idx1) != KNOT_EOK) {
-				CONF_LOG_ZONE(LOG_WARNING, zone, "failed to process "
-				              "zonefile formatter '%%%c'", type);
-				return NULL;
+				failed = true;
 			}
 			break;
 		case 's':
 			if (str_zone(zone, buff, sizeof(buff)) != KNOT_EOK) {
-				CONF_LOG_ZONE(LOG_WARNING, zone, "failed to process "
-				              "zonefile formatter '%%%c'", type);
-				return NULL;
+				failed = true;
 			}
 			break;
 		case '\0':
@@ -861,6 +864,12 @@ static char* get_filename(
 			CONF_LOG_ZONE(LOG_WARNING, zone, "ignoring zonefile "
 			              "formatter '%%%c'", type);
 			continue;
+		}
+
+		if (failed) {
+			CONF_LOG_ZONE(LOG_WARNING, zone, "failed to process "
+			              "zonefile formatter '%%%c'", type);
+			return NULL;
 		}
 
 		if (strlcat(out, buff, sizeof(out)) >= sizeof(out)) {

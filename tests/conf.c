@@ -73,6 +73,8 @@ static void test_get_filename(void)
 
 	zone = "abcd";
 	check_name(zone, "/%c[2-9]", "/cd");
+	check_name(zone, "/%c[3]", "/d");
+	check_name(zone, "/%c[4]", "/");
 
 	zone = ".";
 	check_name(zone, "/%c[0]", "/.");
