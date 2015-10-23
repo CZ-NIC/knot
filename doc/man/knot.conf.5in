@@ -526,6 +526,16 @@ A path to the zone file. Non absolute path is relative to
 \fI\%storage\fP\&. It is also possible to use the following formatters:
 .INDENT 0.0
 .IP \(bu 2
+\fB%c[\fP\fIN\fP\fB]\fP or \fB%c[\fP\fIN\fP\fB\-\fP\fIM\fP\fB]\fP – means the \fIN\fPth
+character or a sequence of characters beginning from the \fIN\fPth and ending
+with the \fIM\fPth character of the textual zone name (see \fB%s\fP). The
+indexes are counted from 0 from the left. If the character is not available,
+the formatter has no effect.
+.IP \(bu 2
+\fB%l[\fP\fIN\fP\fB]\fP – means the \fIN\fPth label of the textual zone name
+(see \fB%s\fP). The index is counted from 0 from the right (0 ~ TLD).
+If the label is not available, the formatter has no effect.
+.IP \(bu 2
 \fB%s\fP – means the current zone name in the textual representation (beware
 of special characters which are escaped or encoded in the \eDDD form where
 DDD is corresponding decimal ASCII code). The zone name doesn\(aqt include the

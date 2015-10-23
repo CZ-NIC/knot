@@ -21,29 +21,25 @@
 #include <errno.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <fcntl.h>
 #include <time.h>
 #include <unistd.h>
 #include <inttypes.h>
 
 #include "libknot/libknot.h"
-#include "libknot/internal/strlcat.h"
-#include "libknot/internal/strlcpy.h"
 #include "libknot/internal/macros.h"
+#include "libknot/internal/mem.h"
+#include "knot/common/log.h"
+#include "knot/dnssec/zone-nsec.h"
 #include "knot/zone/semantic-check.h"
 #include "knot/zone/contents.h"
-#include "knot/dnssec/zone-nsec.h"
-#include "knot/common/debug.h"
 #include "knot/zone/zonefile.h"
-#include "libknot/rdata.h"
 #include "knot/zone/zone-dump.h"
-#include "libknot/rrtype/naptr.h"
 
 #define ERROR(zone, fmt, ...) log_zone_error(zone, "zone loader, " fmt, ##__VA_ARGS__)
 #define WARNING(zone, fmt, ...) log_zone_warning(zone, "zone loader, " fmt, ##__VA_ARGS__)
 #define INFO(zone, fmt, ...) log_zone_info(zone, "zone loader, " fmt, ##__VA_ARGS__)
 
-void process_error(zs_scanner_t *s)
+static void process_error(zs_scanner_t *s)
 {
 	zcreator_t *zc = s->data;
 	const knot_dname_t *zname = zc->z->apex->owner;
@@ -58,6 +54,26 @@ static int add_rdata_to_rr(knot_rrset_t *rrset, const zs_scanner_t *scanner)
 {
 	return knot_rrset_add_rdata(rrset, scanner->r_data, scanner->r_data_length,
 	                         scanner->r_ttl, NULL);
+}
+
+static void log_ttl_error(const zone_contents_t *zone, const zone_node_t *node,
+                          const knot_rrset_t *rr)
+{
+	err_handler_t err_handler;
+	err_handler_init(&err_handler);
+	// Prepare additional info string.
+	char info_str[64] = { '\0' };
+	char type_str[16] = { '\0' };
+	knot_rrtype_to_string(rr->type, type_str, sizeof(type_str));
+	int ret = snprintf(info_str, sizeof(info_str), "record type %s",
+	                   type_str);
+	if (ret <= 0 || ret >= sizeof(info_str)) {
+		*info_str = '\0';
+	}
+
+	/*!< \todo REPLACE WITH FATAL ERROR for master. */
+	err_handler_handle_error(&err_handler, zone, node,
+	                         ZC_ERR_TTL_MISMATCH, info_str);
 }
 
 static bool handle_err(zcreator_t *zc, const zone_node_t *node,
@@ -82,26 +98,6 @@ static bool handle_err(zcreator_t *zc, const zone_node_t *node,
 		free(rrname);
 		return false;
 	}
-}
-
-void log_ttl_error(const zone_contents_t *zone, const zone_node_t *node,
-		   const knot_rrset_t *rr)
-{
-	err_handler_t err_handler;
-	err_handler_init(&err_handler);
-	// Prepare additional info string.
-	char info_str[64] = { '\0' };
-	char type_str[16] = { '\0' };
-	knot_rrtype_to_string(rr->type, type_str, sizeof(type_str));
-	int ret = snprintf(info_str, sizeof(info_str), "record type %s",
-	                   type_str);
-	if (ret <= 0 || ret >= sizeof(info_str)) {
-		*info_str = '\0';
-	}
-
-	/*!< \todo REPLACE WITH FATAL ERROR for master. */
-	err_handler_handle_error(&err_handler, zone, node,
-	                         ZC_ERR_TTL_MISMATCH, info_str);
 }
 
 int zcreator_step(zcreator_t *zc, const knot_rrset_t *rr)
@@ -240,9 +236,7 @@ int zonefile_open(zloader_t *loader, const char *source,
 
 zone_contents_t *zonefile_load(zloader_t *loader)
 {
-	dbg_zload("zload: load: Loading zone, loader: %p.\n", loader);
 	if (!loader) {
-		dbg_zload("zload: load: NULL loader!\n");
 		return NULL;
 	}
 
@@ -324,28 +318,47 @@ time_t zonefile_mtime(const char *path)
 	return zonefile_st.st_mtime;
 }
 
-/*! \brief Moved from zones.c, no doc. @mvavrusa */
-static int zones_open_free_filename(const char *old_name, char **new_name)
+/*! \brief Open a temporary zonefile. */
+static int open_tmp_filename(const char *old_name, char **new_name)
 {
-	/* find zone name not present on the disk */
-	char *suffix = ".XXXXXX";
-	size_t name_size = strlen(old_name);
-	size_t max_size = name_size + strlen(suffix) + 1;
-	*new_name = malloc(max_size);
+	*new_name = sprintf_alloc("%s.XXXXXX", old_name);
 	if (*new_name == NULL) {
 		return -1;
 	}
-	strlcpy(*new_name, old_name, max_size);
-	strlcat(*new_name, suffix, max_size);
-	mode_t old_mode = umask(077);
+
 	int fd = mkstemp(*new_name);
-	UNUSED(umask(old_mode));
-	if (fd < 0) {
+	if (fd < 0 || fchmod(fd, S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP) != 0) {
 		free(*new_name);
 		*new_name = NULL;
 	}
 
 	return fd;
+}
+
+/*! \brief Prepare a directory for the file. */
+static int make_path(const char *path, mode_t mode)
+{
+	if (path == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	char *dir = strdup(path);
+	if (dir == NULL) {
+		return KNOT_ENOMEM;
+	}
+
+	for (char *p = strchr(dir + 1, '/'); p != NULL; p = strchr(p + 1, '/')) {
+		*p = '\0';
+		if (mkdir(dir, mode) == -1 && errno != EEXIST) {
+			free(dir);
+			return knot_map_errno();
+		}
+		*p = '/';
+	}
+
+	free(dir);
+
+	return KNOT_EOK;
 }
 
 int zonefile_write(const char *path, zone_contents_t *zone)
@@ -354,47 +367,49 @@ int zonefile_write(const char *path, zone_contents_t *zone)
 		return KNOT_EINVAL;
 	}
 
+	int ret = make_path(path, S_IRUSR|S_IWUSR|S_IXUSR|S_IRGRP|S_IWGRP|S_IXGRP);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
 	char *new_fname = NULL;
-	int fd = zones_open_free_filename(path, &new_fname);
+	int fd = open_tmp_filename(path, &new_fname);
 	if (fd < 0) {
 		return KNOT_EWRITABLE;
 	}
 
-	const knot_dname_t *zname = zone->apex->owner;
-
 	FILE *f = fdopen(fd, "w");
 	if (f == NULL) {
-		WARNING(zname, "failed to open zone, file '%s' (%s)",
-		        new_fname, knot_strerror(-errno));
+		ret = knot_map_errno();
+		close(fd);
 		unlink(new_fname);
 		free(new_fname);
-		return KNOT_ERROR;
+		return ret;
 	}
 
-	if (zone_dump_text(zone, f) != KNOT_EOK) {
-		WARNING(zname, "failed to save zone, file '%s'", new_fname);
+	ret = zone_dump_text(zone, f);
+	if (ret != KNOT_EOK) {
 		fclose(f);
+		close(fd);
 		unlink(new_fname);
 		free(new_fname);
-		return KNOT_ERROR;
+		return ret;
 	}
 
-	/* Set zone file rights to 0640. */
-	fchmod(fd, S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP);
+	fclose(f);
+	close(fd);
 
 	/* Swap temporary zonefile and new zonefile. */
-	fclose(f);
-
-	int ret = rename(new_fname, path);
-	if (ret < 0 && ret != EEXIST) {
-		WARNING(zname, "failed to swap zone files, old '%s', new '%s'",
-		        path, new_fname);
+	ret = rename(new_fname, path);
+	if (ret != 0) {
+		ret = knot_map_errno();
 		unlink(new_fname);
 		free(new_fname);
-		return KNOT_ERROR;
+		return ret;
 	}
 
 	free(new_fname);
+
 	return KNOT_EOK;
 }
 
