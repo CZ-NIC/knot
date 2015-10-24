@@ -105,7 +105,7 @@ static int journal_create_file(const char *fn, uint16_t max_nodes)
 	                    .l_start = 0, .l_len = 0, .l_pid = getpid() };
 
 	/* Create journal file. */
-	int fd = open(fn, O_RDWR|O_CREAT|O_TRUNC, S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP);
+	int fd = open(fn, O_RDWR|O_CREAT|O_TRUNC, S_IRUSR|S_IWUSR|S_IRGRP);
 	if (fd < 0) {
 		dbg_journal("journal: failed to create file '%s'\n", fn);
 		return knot_map_errno();

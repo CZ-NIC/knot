@@ -100,7 +100,7 @@ int pid_write(const char* fn)
 
 	/* Create file. */
 	int ret = KNOT_EOK;
-	int fd = open(fn, O_RDWR|O_CREAT, 0644);
+	int fd = open(fn, O_RDWR|O_CREAT, S_IRUSR|S_IWUSR|S_IRGRP);
 	if (fd >= 0) {
 		if (write(fd, buf, len) != len)
 			ret = KNOT_ERROR;
