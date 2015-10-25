@@ -259,10 +259,14 @@ bool net_is_connected(int sock)
 
 int net_socktype(int sock)
 {
-	int type = AF_UNSPEC;
+	int type;
 	socklen_t size = sizeof(type);
-	getsockopt(sock, SOL_SOCKET, SO_TYPE, &type, &size);
-	return type;
+
+	if (getsockopt(sock, SOL_SOCKET, SO_TYPE, &type, &size) == 0) {
+		return type;
+	} else {
+		return AF_UNSPEC;
+	}
 }
 
 bool net_is_stream(int sock)
