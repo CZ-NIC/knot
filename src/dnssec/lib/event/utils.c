@@ -58,8 +58,9 @@ int generate_key(dnssec_event_ctx_t *ctx, bool ksk, dnssec_kasp_key_t **key_ptr)
 	}
 
 	dnssec_key_set_flags(dnskey, dnskey_flags(ksk));
+	dnssec_key_set_algorithm(dnskey, algorithm);
 
-	r = dnssec_key_import_keystore(dnskey, ctx->keystore, id, algorithm);
+	r = dnssec_key_import_keystore(dnskey, ctx->keystore, id);
 	if (r != DNSSEC_EOK) {
 		dnssec_key_free(dnskey);
 		return r;

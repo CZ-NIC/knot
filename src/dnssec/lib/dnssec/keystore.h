@@ -285,24 +285,17 @@ int dnssec_keystore_import(dnssec_keystore_t *store, const dnssec_binary_t *pem,
 int dnssec_keystore_remove_key(dnssec_keystore_t *store, const char *id);
 
 /*!
- * Import public and private key from the key store into a DNSSEC key.
+ * Import public and/or private key from the key store into a DNSSEC key.
  *
- * \param key        DNSSEC key to be initialized.
- * \param keystore   Private key store.
- * \param id         ID of the key.
- * \param algorithm  Algorithm of the key.
+ * The key algorithm has to be set before calling this function.
+ *
+ * \param key       DNSSEC key to be initialized.
+ * \param keystore  Private key store.
+ * \param id        ID of the key.
  *
  * \return Error code, DNSSEC_EOK if successful.
  */
 int dnssec_key_import_keystore(dnssec_key_t *key, dnssec_keystore_t *keystore,
-			       const char *id, dnssec_key_algorithm_t algorithm);
-
-/*!
- * Import private key from the key store into a DNSSEC key.
- *
- * \param key       DNSSEC key, the public key must be already loaded.
- * \param keystore  Private key store.
- */
-int dnssec_key_import_private_keystore(dnssec_key_t *key, dnssec_keystore_t *keystore);
+			       const char *id);
 
 /*! @} */
