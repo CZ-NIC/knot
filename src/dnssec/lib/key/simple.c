@@ -46,11 +46,6 @@ int dnssec_key_load_pkcs8(dnssec_key_t *key, const dnssec_binary_t *pem)
 		return r;
 	}
 
-	if (key->public_key && !dnssec_keyid_equal(key->id, id)) {
-		gnutls_privkey_deinit(privkey);
-		return DNSSEC_INVALID_KEY_ID;
-	}
-
 	r = key_set_private_key(key, privkey);
 	if (r != DNSSEC_EOK) {
 		gnutls_privkey_deinit(privkey);

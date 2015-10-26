@@ -53,9 +53,8 @@
  *     return result;
  * }
  *
- * // print key ID and key tag.
- * printf("key %s (%s)\n", dnssec_key_get_id(key),
- *                         dnssec_key_get_keytag(key));
+ * // print key tag
+ * printf("key %s\n", dnssec_key_get_keytag(key));
  *
  * // make sure what we can do with the key
  * assert(dnssec_key_can_verify(key) == true);
@@ -77,7 +76,6 @@
 #include <stdint.h>
 
 #include <dnssec/binary.h>
-#include <dnssec/keyid.h>
 
 /*!
  * DNSKEY algorithm numbers.
@@ -136,11 +134,6 @@ dnssec_key_t *dnssec_key_dup(const dnssec_key_t *key);
  * Get the key tag of the DNSSEC key.
  */
 uint16_t dnssec_key_get_keytag(const dnssec_key_t *key);
-
-/*!
- * Get the key ID of the DNSSEC key.
- */
-const char *dnssec_key_get_id(const dnssec_key_t *key);
 
 /*!
  * Get the domain name of the DNSSEC key.
