@@ -28,6 +28,12 @@ int main(int argc, char *argv[])
 
 	dnssec_keystore_t *store = NULL;
 	int r = dnssec_keystore_init_pkcs11(&store);
+	if (r == DNSSEC_NOT_IMPLEMENTED_ERROR) {
+		skip_all("not supported");
+		dnssec_crypto_cleanup();
+		return 0;
+	}
+
 	ok(r == DNSSEC_EOK && store, "dnssec_keystore_init_pkcs11");
 
 	r = dnssec_keystore_open(store, "pkcs11:token=dns-keys;pin-value=1234 /usr/lib64/pkcs11/libsofthsm2.so");
