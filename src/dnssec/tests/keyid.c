@@ -15,10 +15,11 @@
 */
 
 #include <tap/basic.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "error.h"
-#include "key.h"
+#include "keyid.h"
 
 static void test_keyid_is_valid_run(const char *param, bool should_ok)
 {

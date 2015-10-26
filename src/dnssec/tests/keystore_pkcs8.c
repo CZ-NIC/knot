@@ -22,6 +22,7 @@
 #include "crypto.h"
 #include "error.h"
 #include "key.h"
+#include "keyid.h"
 #include "keystore.h"
 
 /* -- mock key store ------------------------------------------------------- */
