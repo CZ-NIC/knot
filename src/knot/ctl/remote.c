@@ -38,7 +38,6 @@
 #define KNOT_CTL_REALM_EXT ("." KNOT_CTL_REALM)
 #define CMDARGS_ALLOC_BLOCK KNOT_WIRE_MAX_PKTSIZE
 #define CMDARGS_BUFLEN_LOG 256
-#define KNOT_CTL_SOCKET_UMASK 0007
 
 /*! \brief Remote command structure. */
 typedef struct remote_cmdargs {
@@ -533,7 +532,6 @@ int remote_bind(struct sockaddr_storage *addr)
 	log_info("remote control, binding to '%s'", addr_str);
 
 	/* Create new socket. */
-	mode_t old_umask = umask(KNOT_CTL_SOCKET_UMASK);
 	int sock = net_bound_socket(SOCK_STREAM, addr, 0);
 	if (sock == KNOT_EADDRNOTAVAIL) {
 		sock = net_bound_socket(SOCK_STREAM, addr, NET_BIND_NONLOCAL);
@@ -542,7 +540,6 @@ int remote_bind(struct sockaddr_storage *addr)
 			            addr_str);
 		}
 	}
-	umask(old_umask);
 
 	if (sock < 0) {
 		log_error("remote control, failed to bind to '%s' (%s)",

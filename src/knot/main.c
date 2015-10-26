@@ -302,6 +302,9 @@ int main(int argc, char **argv)
 		return EXIT_FAILURE;
 	}
 
+	/* Set file creation mask to remove all permissions for others. */
+	umask(S_IROTH|S_IWOTH|S_IXOTH);
+
 	/* Now check if we want to daemonize. */
 	if (daemonize) {
 		if (make_daemon(1, 0) != 0) {
@@ -309,9 +312,6 @@ int main(int argc, char **argv)
 			return EXIT_FAILURE;
 		}
 	}
-
-	/* Clear file creation mask. */
-	umask(0);
 
 	/* Setup base signal handling. */
 	setup_signals();
