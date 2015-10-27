@@ -43,6 +43,29 @@ int dnssec_kasp_create(dnssec_kasp_t **kasp_ptr,
 	return DNSSEC_EOK;
 }
 
+/*!
+ * Validate KASP zone content.
+ */
+static bool zone_valid(const dnssec_kasp_zone_t *zone)
+{
+	if (!zone) {
+		return false;
+	}
+
+	if (!zone->name || !zone->dname) {
+		return false;
+	}
+
+	dnssec_list_foreach(it, zone->keys) {
+		dnssec_kasp_key_t *key = dnssec_item_get(it);
+		if (!key->id || !key->key) {
+			return false;
+		}
+	}
+
+	return true;
+}
+
 /* -- public API ----------------------------------------------------------- */
 
 _public_
@@ -115,7 +138,7 @@ int dnssec_kasp_zone_load(dnssec_kasp_t *kasp, const char *zone_name,
 _public_
 int dnssec_kasp_zone_save(dnssec_kasp_t *kasp, dnssec_kasp_zone_t *zone)
 {
-	if (!kasp || !zone) {
+	if (!kasp || !zone || !zone_valid(zone)) {
 		return DNSSEC_EINVAL;
 	}
 
