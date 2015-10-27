@@ -22,7 +22,6 @@
 #include "libknot/internal/getline.h"
 #include "libknot/internal/macros.h"
 
-#ifdef this_test_is_temporarily_disabled
 static const char *zone_str =
 "test. 3600 IN SOA a.ns.test. hostmaster.nic.cz. 1406641065 900 300 604800 900 \n"
 "test. IN TXT \"test\"\n";
@@ -33,28 +32,30 @@ static const char *add_str =
 static const char *del_str =
 "test. IN TXT \"test\"\n";
 
+bool to_zone;
+knot_rrset_t rrset;
+
 static void process_rr(zs_scanner_t *scanner)
 {
 	// get zone to insert into
-	zone_contents_t *zone = scanner->data;
+	zone_contents_t *zc = scanner->data;
 
 	// create data
-	knot_rrset_t *rr = knot_rrset_new(scanner->r_owner,
-	                                  scanner->r_type,
-	                                  scanner->r_class, NULL);
-	assert(rr);
+	knot_rrset_init(&rrset, scanner->r_owner, scanner->r_type, scanner->r_class);
 
-	int ret = knot_rrset_add_rdata(rr, scanner->r_data,
+	int ret = knot_rrset_add_rdata(&rrset, scanner->r_data,
 	                               scanner->r_data_length,
 	                               scanner->r_ttl, NULL);
 	assert(ret == KNOT_EOK);
 
-	// add to zone
-	zone_node_t *n = NULL;
-	ret = zone_contents_add_rr(zone, rr, &n);
-	knot_rrset_free(&rr, NULL);
-	UNUSED(n);
-	assert(ret == KNOT_EOK);
+	if (to_zone) {
+		// Add initial node to zone
+		zone_node_t *n = NULL;
+		ret = zone_contents_add_rr(zc, &rrset, &n);
+		UNUSED(n);
+		knot_rdataset_clear(&rrset.rrs, NULL);
+		assert(ret == KNOT_EOK);
+	}
 }
 
 int main(int argc, char *argv[])
@@ -62,64 +63,65 @@ int main(int argc, char *argv[])
 
 	plan_lazy();
 
+	int ret = KNOT_EOK;
+	to_zone = true;
+
 	knot_dname_t *apex = knot_dname_from_str_alloc("test");
 	assert(apex);
-	zone_contents_t *zone = zone_contents_new(apex);
-	knot_dname_free(&apex, NULL);
-	assert(zone);
-	zone_t z = { .contents = zone, .name = apex };
+	zone_contents_t *zc = zone_contents_new(apex);
+	assert(zc);
+	zone_t zone = { .contents = zc, .name = apex };
 
-	int ret = KNOT_EOK;
-
-	zone_update_t update;
-	zone_update_init(&update, &z, UPDATE_INCREMENTAL);
-	ok(update.zone == &z && changeset_empty(&update.change) && update.mm.alloc,
-	   "zone update: init");
-
-	// Fill zone
-	zs_scanner_t *sc = zs_scanner_create("test.", KNOT_CLASS_IN, 3600, process_rr,
-	                                     NULL, zone);
+	// Parse initial node
+	zs_scanner_t *sc = zs_scanner_create("test.", KNOT_CLASS_IN, 3600,
+	                                     process_rr, NULL, zc);
 	assert(sc);
 	ret = zs_scanner_parse(sc, zone_str, zone_str + strlen(zone_str), true);
 	assert(ret == 0);
 
-	// Check that old node is returned without changes
-	ok(zone->apex == zone_update_get_node(&update, zone->apex->owner),
-	   "zone update: no change");
+	// Initial node added, now just parse the RRs
+	to_zone = false;
 
-	// Add RRs to add section
-	sc->data = update.change.add;
+	zone_update_t update;
+	zone_update_init(&update, &zone, UPDATE_INCREMENTAL);
+	ok(update.zone == &zone && changeset_empty(&update.change) && update.mm.alloc,
+	   "incremental zone update: init");
+
+	// Check that old node is returned without changes
+	ok(zc->apex == zone_update_get_node(&update, zc->apex->owner) &&
+	   zone_update_no_change(&update),
+	   "incremental zone update: no change");
+
+	// Parse RR for addition and add it
 	ret = zs_scanner_parse(sc, add_str, add_str + strlen(add_str), true);
 	assert(ret == 0);
+	ret = zone_update_add(&update, &rrset);
+	knot_rdataset_clear(&rrset.rrs, NULL);
+	ok(ret == KNOT_EOK, "incremental zone update: addition");
 
 	// Check that apex TXT has two RRs now
-	const zone_node_t *synth_node = zone_update_get_node(&update, zone->apex->owner);
+	const zone_node_t *synth_node = zone_update_get_node(&update, zc->apex->owner);
 	ok(synth_node && node_rdataset(synth_node, KNOT_RRTYPE_TXT)->rr_count == 2,
-	   "zone update: add change");
+	   "incremental zone update: add change");
 
-	// Add RRs to remove section
-	sc->data = update.change.remove;
+	// Parse RR for removal and remove it
 	ret = zs_scanner_parse(sc, del_str, del_str + strlen(del_str), true);
 	assert(ret == 0);
+	ret = zone_update_remove(&update, &rrset);
+	knot_rdataset_clear(&rrset.rrs, NULL);
+	ok(ret == KNOT_EOK, "incremental zone update: removal");
 
 	// Check that apex TXT has one RR again
-	synth_node = zone_update_get_node(&update, zone->apex->owner);
+	synth_node = zone_update_get_node(&update, zc->apex->owner);
 	ok(synth_node && node_rdataset(synth_node, KNOT_RRTYPE_TXT)->rr_count == 1,
-	   "zone update: del change");
+	   "incremental zone update: del change");
 
 	zone_update_clear(&update);
-	ok(update.zone == NULL && changeset_empty(&update.change), "zone update: cleanup");
+	ok(update.zone == NULL && changeset_empty(&update.change), "incremental zone update: cleanup");
 
 	zs_scanner_free(sc);
-	zone_contents_deep_free(&zone);
+	zone_contents_deep_free(&zc);
+	knot_dname_free(&apex, NULL);
 
-	return 0;
-}
-#endif
-
-int main(int argc, char *argv[])
-{
-	plan(1);
-	ok(1, "test disabled");
 	return 0;
 }

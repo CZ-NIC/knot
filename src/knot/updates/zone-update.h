@@ -63,7 +63,7 @@ int zone_update_init(zone_update_t *update, zone_t *zone, zone_update_flags_t fl
  * \brief Returns node that would be in the zone after updating it.
  *
  * \note Returned node is either zone original or synthesized, do *not* free
- *       or modify.
+ *       or modify. Returned node is allocated on local mempool.
  *
  * \param update  Zone update.
  * \param dname   Dname to search for.
