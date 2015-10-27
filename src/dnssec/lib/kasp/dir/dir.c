@@ -31,7 +31,7 @@
 #include "path.h"
 #include "shared.h"
 
-#define KASP_DIR_INIT_MODE (S_IRWXU | S_IRGRP|S_IXGRP)
+#define KASP_DIR_INIT_MODE (S_IRWXU|S_IRGRP|S_IXGRP)
 
 #define ENTITY_ZONE   "zone"
 #define ENTITY_POLICY "policy"

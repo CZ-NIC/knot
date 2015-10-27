@@ -222,6 +222,7 @@ typedef struct dnssec_kasp_key_timing {
  * Zone key.
  */
 typedef struct dnssec_kasp_key {
+	char *id;				/*!< Keystore unique key ID. */
 	dnssec_key_t *key;			/*!< Instance of the key. */
 	dnssec_kasp_key_timing_t timing;	/*!< Key timing information. */
 } dnssec_kasp_key_t;

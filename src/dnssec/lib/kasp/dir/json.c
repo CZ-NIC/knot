@@ -21,6 +21,7 @@
 #include "error.h"
 #include "kasp/dir/json.h"
 #include "key.h"
+#include "keyid.h"
 #include "shared.h"
 #include "strtonum.h"
 #include "timestamp.h"
