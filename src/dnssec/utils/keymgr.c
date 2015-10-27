@@ -138,7 +138,8 @@ static dnssec_kasp_policy_t *get_policy(dnssec_kasp_t *kasp, const char *name)
 	return policy;
 }
 
-static bool zone_add_dnskey(dnssec_kasp_zone_t *zone, dnssec_key_t *dnskey,
+static bool zone_add_dnskey(dnssec_kasp_zone_t *zone, const char *id,
+			    dnssec_key_t *dnskey,
 			    const dnssec_kasp_key_timing_t *timing)
 {
 	dnssec_kasp_key_t *key = calloc(1, sizeof(*key));
@@ -147,10 +148,9 @@ static bool zone_add_dnskey(dnssec_kasp_zone_t *zone, dnssec_key_t *dnskey,
 		return false;
 	}
 
+	key->id = strdup(id);
 	key->key = dnskey;
-	if (timing) {
-		key->timing = *timing;
-	}
+	key->timing = *timing;
 
 	dnssec_list_t *keys = dnssec_kasp_zone_get_keys(zone);
 	dnssec_list_append(keys, key);
@@ -158,9 +158,9 @@ static bool zone_add_dnskey(dnssec_kasp_zone_t *zone, dnssec_key_t *dnskey,
 	return true;
 }
 
-static void print_key(const dnssec_key_t *key)
+static void print_key(const char *id, const dnssec_key_t *key)
 {
-	printf("id %s keytag %d\n", dnssec_key_get_id(key), dnssec_key_get_keytag(key));
+	printf("id %s keytag %d\n", id, dnssec_key_get_keytag(key));
 }
 
 /* -- generic list operations ---------------------------------------------- */
@@ -216,29 +216,28 @@ static int search_str_to_keytag(const char *search)
 /*!
  * Check if key matches search string or search keytag.
  *
- * \param key     DNSSEC key to test.
+ * \param key     KASP key to test.
  * \param keytag  Key tag to match (ignored if negative).
  * \param search  Key ID to match (prefix based match).
  *
  * \return DNSSEC key matches key tag or key ID.
  */
-static bool key_match(const dnssec_key_t *key, int keytag, const char *keyid)
+static bool key_match(const dnssec_kasp_key_t *key, int keytag, const char *keyid)
 {
 	assert(key);
 	assert(keyid);
 
 	// key tag
 
-	if (keytag >= 0 && dnssec_key_get_keytag(key) == keytag) {
+	if (keytag >= 0 && dnssec_key_get_keytag(key->key) == keytag) {
 		return true;
 	}
 
 	// key ID
 
-	const char *id = dnssec_key_get_id(key);
-	size_t id_len = strlen(id);
+	size_t id_len = strlen(key->id);
 	size_t keyid_len = strlen(keyid);
-	return (keyid_len <= id_len && strncasecmp(id, keyid, keyid_len) == 0);
+	return (keyid_len <= id_len && strncasecmp(key->id, keyid, keyid_len) == 0);
 }
 
 /*!
@@ -262,7 +261,7 @@ static int search_key(dnssec_list_t *list, const char *search,
 
 	dnssec_list_foreach(item, list) {
 		dnssec_kasp_key_t *key = dnssec_item_get(item);
-		if (key_match(key->key, keytag, search)) {
+		if (key_match(key, keytag, search)) {
 			int r = match(key, data);
 			if (r != DNSSEC_EOK) {
 				return r;
@@ -572,7 +571,7 @@ static int cmd_zone_key_list(int argc, char *argv[])
 	dnssec_list_t *zone_keys = dnssec_kasp_zone_get_keys(zone);
 	dnssec_list_foreach(item, zone_keys) {
 		const dnssec_kasp_key_t *key = dnssec_item_get(item);
-		print_key(key->key);
+		print_key(key->id, key->key);
 	}
 
 	return 0;
@@ -611,7 +610,7 @@ static int cmd_zone_key_show(int argc, char *argv[])
 		return 1;
 	}
 
-	printf("id %s\n", dnssec_key_get_id(key->key));
+	printf("id %s\n", key->id);
 	printf("keytag %d\n", dnssec_key_get_keytag(key->key));
 	printf("algorithm %d\n", dnssec_key_get_algorithm(key->key));
 	printf("size %u\n", dnssec_key_get_size(key->key));
@@ -788,22 +787,24 @@ static int cmd_zone_key_generate(int argc, char *argv[])
 		return 1;
 	}
 
+	uint16_t flags = config.is_ksk ? 257 : 256;
+
 	dnssec_key_t *dnskey = NULL;
 	dnssec_key_new(&dnskey);
-	r = dnssec_key_import_keystore(dnskey, store, keyid, config.algorithm);
+	dnssec_key_set_algorithm(dnskey, config.algorithm);
+	dnssec_key_set_flags(dnskey, flags);
+
+	r = dnssec_key_import_keystore(dnskey, store, keyid);
 	if (r != DNSSEC_EOK) {
 		dnssec_key_free(dnskey);
 		error("Failed to create a DNSKEY record (%s).", dnssec_strerror(r));
 		return 1;
 	}
 
-	uint16_t flags = config.is_ksk ? 257 : 256;
-	dnssec_key_set_flags(dnskey, flags);
-
 	// add DNSKEY into zone keys
 
 	config.timing.created = time(NULL);
-	if (!zone_add_dnskey(zone, dnskey, &config.timing)) {
+	if (!zone_add_dnskey(zone, keyid, dnskey, &config.timing)) {
 		free(dnskey);
 		return 1;
 	}
@@ -815,7 +816,7 @@ static int cmd_zone_key_generate(int argc, char *argv[])
 		return 1;
 	}
 
-	print_key(dnskey);
+	print_key(keyid, dnskey);
 
 	return 0;
 }
@@ -935,7 +936,7 @@ static int cmd_zone_key_import(int argc, char *argv[])
 	}
 
 	timing.created = time(NULL);
-	if (!zone_add_dnskey(zone, key, &timing)) {
+	if (!zone_add_dnskey(zone, keyid, key, &timing)) {
 		dnssec_keystore_remove_key(store, keyid);
 		dnssec_key_free(key);
 		return 1;
@@ -949,7 +950,7 @@ static int cmd_zone_key_import(int argc, char *argv[])
 		return 1;
 	}
 
-	print_key(key);
+	print_key(keyid, key);
 
 	return 0;
 }
