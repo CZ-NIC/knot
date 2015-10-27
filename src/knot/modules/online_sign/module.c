@@ -429,7 +429,7 @@ static int synth_answer(int state, knot_pkt_t *pkt, struct query_data *qdata, vo
 	return state;
 }
 
-static int get_dnssec_key(dnssec_key_t **key_ptr,
+static int get_dnssec_key(dnssec_key_t **key_ptr, char **id_ptr,
                           const knot_dname_t *zone_name,
                           const char *kasp_path)
 {
@@ -476,20 +476,26 @@ static int get_dnssec_key(dnssec_key_t **key_ptr,
 
 	dnssec_kasp_key_t *kasp_key = dnssec_item_get(item);
 	assert(kasp_key);
+
+	char *id = strdup(kasp_key->id);
 	dnssec_key_t *key = dnssec_key_dup(kasp_key->key);
 
 	dnssec_kasp_zone_free(zone);
 	dnssec_kasp_deinit(kasp);
 
-	if (!key) {
+	if (!key || !id) {
+		dnssec_key_free(key);
+		free(id);
 		return KNOT_ENOMEM;
 	}
 
 	*key_ptr = key;
+	*id_ptr = id;
+
 	return KNOT_EOK;
 }
 
-static int load_private_key(dnssec_key_t *key, const char *kasp_path)
+static int load_private_key(dnssec_key_t *key, const char *id, const char *kasp_path)
 {
 	char *keystore_path = sprintf_alloc("%s/keys", kasp_path);
 	if (!keystore_path) {
@@ -505,7 +511,7 @@ static int load_private_key(dnssec_key_t *key, const char *kasp_path)
 		return r;
 	}
 
-	r = dnssec_key_import_private_keystore(key, store);
+	r = dnssec_key_import_keystore(key, store, id);
 	dnssec_keystore_deinit(store);
 
 	return r;
@@ -515,13 +521,15 @@ static int get_online_key(dnssec_key_t **key_ptr, const knot_dname_t *zone_name,
                           const char *kasp_path)
 {
 	dnssec_key_t *key = NULL;
+	char *id = NULL;
 
-	int r = get_dnssec_key(&key, zone_name, kasp_path);
+	int r = get_dnssec_key(&key, &id, zone_name, kasp_path);
 	if (r != KNOT_EOK) {
 		return r;
 	}
 
-	r = load_private_key(key, kasp_path);
+	r = load_private_key(key, id, kasp_path);
+	free(id);
 	if (r != DNSSEC_EOK) {
 		dnssec_key_free(key);
 		return r;
