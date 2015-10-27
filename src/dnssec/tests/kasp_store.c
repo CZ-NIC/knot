@@ -51,7 +51,9 @@ static int mock_zone_load(void *ctx, dnssec_kasp_zone_t *zone)
 {
 	mock_zone_load_ok = ctx == MOCK_CTX && zone &&
 			    streq(zone->name, "some.zone") &&
-			    streq((char *)zone->dname, "\x04some\x04zone\x00");
+			    streq((char *)zone->dname, "\x04some\x04zone\x00") &&
+			    zone->policy == NULL &&
+			    dnssec_list_is_empty(zone->keys);
 	if (zone) {
 		zone->policy = strdup("bleedingedge");
 	}
