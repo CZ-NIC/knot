@@ -124,7 +124,7 @@ static int convert(const char *file_out, const char *file_in)
 
 static int reformat(const char *file_out, const char *file_in, const char *path)
 {
-	char *cmd = sprintf_alloc("%s%sknotc -c %s export %s",
+	char *cmd = sprintf_alloc("%s%sknotc -c %s conf-export %s",
 	                          path == NULL ? "" : path,
 	                          path == NULL ? "" : "/",
 	                          file_in, file_out);
