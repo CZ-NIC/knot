@@ -45,3 +45,8 @@ struct namedb_lmdb_opts {
 }
 
 const namedb_api_t *namedb_lmdb_api(void);
+
+/* LMDB specific operations. */
+int namedb_lmdb_txn_begin(namedb_t *db, namedb_txn_t *txn, namedb_txn_t *parent,
+                          unsigned flags);
+int namedb_lmdb_iter_del(namedb_iter_t *iter);
