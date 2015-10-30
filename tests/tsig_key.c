@@ -75,7 +75,7 @@ static void test_init_file_content(const char *msg,
 		return;
 	}
 
-	write(fd, content, strlen(content));
+	ok(write(fd, content, strlen(content)) != -1, "file write");
 	close(fd);
 
 	test_init_file(msg, expected, filename);
