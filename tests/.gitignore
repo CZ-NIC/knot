@@ -9,6 +9,8 @@ base64
 changeset
 conf
 conf_tools
+confdb
+confio
 descriptor
 dname
 dnssec_keys
