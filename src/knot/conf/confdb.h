@@ -29,7 +29,7 @@
 #include <stdint.h>
 
 #include "knot/conf/conf.h"
-#include "libknot/internal/namedb/namedb.h"
+#include "libknot/internal/namedb/namedb_lmdb.h"
 #include "libknot/yparser/ypscheme.h"
 
 /*! Current version of the configuration database structure. */
@@ -41,15 +41,6 @@
 /*! Maximum size of database data. */
 #define CONF_MAX_DATA_LEN	65536
 
-enum knot_conf_code {
-	CONF_CODE_KEY0_ROOT    =   0,
-	CONF_CODE_KEY1_ITEMS   =   0,
-	CONF_CODE_KEY1_ID      =   1,
-	CONF_CODE_KEY1_FIRST   =   2,
-	CONF_CODE_KEY1_LAST    = 200,
-	CONF_CODE_KEY1_VERSION = 255
-};
-
 int conf_db_init(
 	conf_t *conf,
 	namedb_txn_t *txn
@@ -58,7 +49,24 @@ int conf_db_init(
 int conf_db_set(
 	conf_t *conf,
 	namedb_txn_t *txn,
-	yp_check_ctx_t *in
+	const yp_name_t *key0,
+	const yp_name_t *key1,
+	const uint8_t *id,
+	size_t id_len,
+	const uint8_t *data,
+	size_t data_len
+);
+
+int conf_db_unset(
+	conf_t *conf,
+	namedb_txn_t *txn,
+	const yp_name_t *key0,
+	const yp_name_t *key1,
+	const uint8_t *id,
+	size_t id_len,
+	const uint8_t *data,
+	size_t data_len,
+	bool delete_key1
 );
 
 int conf_db_get(
@@ -68,15 +76,7 @@ int conf_db_get(
 	const yp_name_t *key1,
 	const uint8_t *id,
 	size_t id_len,
-	conf_val_t *out
-);
-
-void conf_db_val(
-	conf_val_t *val
-);
-
-void conf_db_val_next(
-	conf_val_t *val
+	conf_val_t *data
 );
 
 int conf_db_iter_begin(
@@ -94,8 +94,13 @@ int conf_db_iter_next(
 int conf_db_iter_id(
 	conf_t *conf,
 	conf_iter_t *iter,
-	uint8_t **data,
+	const uint8_t **data,
 	size_t *data_len
+);
+
+int conf_db_iter_del(
+	conf_t *conf,
+	conf_iter_t *iter
 );
 
 void conf_db_iter_finish(
@@ -103,16 +108,8 @@ void conf_db_iter_finish(
 	conf_iter_t *iter
 );
 
-int conf_db_code(
-	conf_t *conf,
-	namedb_txn_t *txn,
-	uint8_t section_code,
-	const yp_name_t *name,
-	bool read_only,
-	uint8_t *db_code
-);
-
 int conf_db_raw_dump(
 	conf_t *conf,
+	namedb_txn_t *txn,
 	const char *file_name
 );

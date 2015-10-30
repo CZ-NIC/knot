@@ -27,16 +27,17 @@
 
 #include "libknot/libknot.h"
 #include "libknot/internal/lists.h"
-#include "libknot/internal/namedb/namedb.h"
+#include "libknot/internal/namedb/namedb_lmdb.h"
 #include "libknot/yparser/ypscheme.h"
 
-#define CONF_XFERS		10
 /*! Default template identifier. */
 #define CONF_DEFAULT_ID		((uint8_t *)"\x08""default\0")
 /*! Default configuration file. */
 #define CONF_DEFAULT_FILE	(CONFIG_DIR "/knot.conf")
 /*! Default configuration database. */
 #define CONF_DEFAULT_DBDIR	(STORAGE_DIR "/confdb")
+/*! Maximum depth of nested transactions. */
+#define CONF_MAX_TXN_DEPTH	5
 
 /*! Configuration specific logging. */
 #define CONF_LOG(severity, msg, ...) do { \
@@ -53,19 +54,27 @@ typedef struct {
 	mm_ctx_t *mm;
 	/*! Configuration database. */
 	namedb_t *db;
+
 	/*! Read-only transaction for config access. */
 	namedb_txn_t read_txn;
+
+	struct {
+		/*! The current writing transaction. */
+		namedb_txn_t *txn;
+		/*! Stack of nested writing transactions. */
+		namedb_txn_t txn_stack[CONF_MAX_TXN_DEPTH];
+	} io;
+
 	/*! Prearranged hostname string (for automatic NSID or CH ident value). */
 	char *hostname;
 	/*! Current config file (for reload if started with config file). */
 	char *filename;
+
 	/*! List of active query modules. */
 	list_t query_modules;
 	/*! Default query modules plan. */
 	struct query_plan *query_plan;
 } conf_t;
-
-struct conf_previous;
 
 /*!
  * Returns the active configuration.
@@ -168,8 +177,7 @@ void conf_deactivate_modules(
  * \param[in] txn Transaction.
  * \param[in] input Configuration string or filename.
  * \param[in] is_file Specifies if the input is string or input filename.
- * \param[in] incl_depth The current include depth counter.
- * \param[in] prev Previous context.
+ * \param[in] data Internal data.
  *
  * \return Error code, KNOT_EOK if success.
  */
@@ -178,8 +186,7 @@ int conf_parse(
 	namedb_txn_t *txn,
 	const char *input,
 	bool is_file,
-	size_t *incl_depth,
-	struct conf_previous *prev
+	void *data
 );
 
 /*!

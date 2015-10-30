@@ -30,6 +30,8 @@
 #include "knot/conf/base.h"
 #include "knot/conf/scheme.h"
 
+#define CONF_XFERS	10
+
 /*! Configuration remote getter output. */
 typedef struct {
 	/*! Target socket address. */
@@ -311,6 +313,26 @@ void conf_iter_finish(
 );
 
 /*!
+ * Prepares the value for the direct access.
+ *
+ * The following access is through val->len and val->data.
+ *
+ * \param[in] val Item value.
+ */
+void conf_val(
+	conf_val_t *val
+);
+
+/*!
+ * Moves to the next item value.
+ *
+ * \param[in] val Item value.
+ */
+void conf_val_next(
+	conf_val_t *val
+);
+
+/*!
  * Gets the number of values if multivalued item.
  *
  * \param[in] val Item value.
@@ -322,12 +344,16 @@ size_t conf_val_count(
 );
 
 /*!
- * Moves to the next item value.
+ * Checks if two item values are equal.
  *
- * \param[in] val Item value.
+ * \param[in] val1 First item value.
+ * \param[in] val2 Second item value.
+ *
+ * \return true if equal, false if not.
  */
-void conf_val_next(
-	conf_val_t *val
+bool conf_val_equal(
+	conf_val_t *val1,
+	conf_val_t *val2
 );
 
 /*!

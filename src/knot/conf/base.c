@@ -27,13 +27,10 @@
 #include "knot/nameserver/query_module.h"
 #include "knot/nameserver/internet.h"
 #include "libknot/internal/mem.h"
-#include "libknot/internal/namedb/namedb_lmdb.h"
 #include "libknot/internal/sockaddr.h"
 #include "libknot/yparser/ypformat.h"
 #include "libknot/yparser/yptrafo.h"
 #include "libknot/internal/mempool.h"
-
-#define MAX_INCLUDE_DEPTH	5
 
 // The active configuration.
 conf_t *s_conf;
@@ -52,7 +49,7 @@ static void rm_dir(const char *path)
 
 	// Prepare own dirent structure (see NOTES in man readdir_r).
 	size_t len = offsetof(struct dirent, d_name) +
-		     fpathconf(dirfd(dir), _PC_NAME_MAX) + 1;
+	             fpathconf(dirfd(dir), _PC_NAME_MAX) + 1;
 
 	struct dirent *entry = malloc(len);
 	if (entry == NULL) {
@@ -120,7 +117,6 @@ int conf_new(
 
 	// Open database.
 	if (db_dir == NULL) {
-		// A temporary solution until proper trie support is available.
 		char tpl[] = "/tmp/knot-confdb.XXXXXX";
 		lmdb_opts.path = mkdtemp(tpl);
 		if (lmdb_opts.path == NULL) {
@@ -272,6 +268,10 @@ void conf_free(
 	conf->api->txn_abort(&conf->read_txn);
 	free(conf->hostname);
 
+	if (conf->io.txn != NULL) {
+		conf->api->txn_abort(conf->io.txn_stack);
+	}
+
 	conf_deactivate_modules(conf, &conf->query_modules, &conf->query_plan);
 
 	if (!is_clone) {
@@ -412,139 +412,140 @@ void conf_deactivate_modules(
 	init_list(query_modules);
 }
 
-static int exec_callbacks(
-	const yp_item_t *item,
-	conf_check_t *args)
-{
-	for (size_t i = 0; i < YP_MAX_MISC_COUNT; i++) {
-		conf_check_f *fcn = (conf_check_f *)item->misc[i];
-		if (fcn == NULL) {
-			break;
-		}
-		int ret;
-		if ((ret = fcn(args)) != KNOT_EOK) {
-			return ret;
-		}
-	}
-
-	return KNOT_EOK;
-}
-
-static int previous_block_calls(
-	conf_t *conf,
-	namedb_txn_t *txn,
-	conf_previous_t *prev,
-	const char **err_str)
-{
-	if (prev->id_len > 0) {
-		assert(prev->key0 != NULL);
-
-		conf_check_t args = {
-			.conf = conf,
-			.txn = txn,
-			.previous = prev,
-			.err_str = err_str
-		};
-
-		// Execute previous block callbacks.
-		int ret = exec_callbacks(prev->key0, &args);
-		if (ret != KNOT_EOK) {
-			return ret;
-		}
-	}
-
-	return KNOT_EOK;
-}
-
-static int item_calls(
-	conf_t *conf,
-	namedb_txn_t *txn,
-	yp_parser_t *parser,
-	yp_check_ctx_t *ctx,
-	conf_previous_t *prev,
-	size_t *incl_depth,
-	const char **err_str)
-{
-	conf_check_t args = {
-		.conf = conf,
-		.txn = txn,
-		.parser = parser,
-		.check = ctx,
-		.include_depth = incl_depth,
-		.previous = prev,
-		.err_str = err_str
-	};
-
-	const yp_item_t *item;
-
-	// Prepare previous context.
-	switch (ctx->event) {
-	case YP_EKEY0:
-		// Reset previous context id.
-		prev->id_len = 0;
-		// Set previous context key0 if group item.
-		if (ctx->key0->type == YP_TGRP) {
-			prev->key0 = ctx->key0;
-			return KNOT_EOK;
-		}
-		item = ctx->key0;
-		break;
-	case YP_EID:
-		memcpy(prev->id, ctx->id, ctx->id_len);
-		prev->id_len = ctx->id_len;
-		prev->file = parser->file.name;
-		prev->line = parser->line_count;
-		item = ctx->key1;
-		break;
-	default:
-		assert(ctx->event == YP_EKEY1);
-		item = ctx->key1;
-		break;
-	}
-
-	// Execute item callbacks.
-	return exec_callbacks(item, &args);
-}
-
-#define CONF_LOG_LINE(input, is_file, line, msg, ...) do { \
+#define CONF_LOG_LINE(file, line, msg, ...) do { \
 	CONF_LOG(LOG_ERR, "%s%s%sline %zu, " msg, \
-	         (is_file ? "file '" : ""), (is_file ? input : ""), \
-	         (is_file ? "', " : ""), line, ##__VA_ARGS__); \
+	         (file != NULL ? "file '" : ""), (file != NULL ? file : ""), \
+	         (file != NULL ? "', " : ""), line, ##__VA_ARGS__); \
 	} while (0)
 
-static void log_current_err(
-	const char *input,
-	bool is_file,
+static void log_parser_err(
 	yp_parser_t *parser,
-	int ret,
-	const char *err_str)
+	int ret)
 {
-	CONF_LOG_LINE(input, is_file, parser->line_count,
-	             "item '%.*s', value '%.*s' (%s)",
-	             (int)parser->key_len, parser->key,
-	             (int)parser->data_len, parser->data,
-	             (err_str != NULL ? err_str : knot_strerror(ret)));
+	CONF_LOG_LINE(parser->file.name, parser->line_count,
+	              "item '%.*s', value '%.*s' (%s)",
+	              (int)parser->key_len, parser->key,
+	              (int)parser->data_len, parser->data,
+	              knot_strerror(ret));
+}
+
+static void log_call_err(
+	yp_parser_t *parser,
+	conf_check_t *args,
+	int ret)
+{
+	CONF_LOG_LINE(args->file_name, args->line,
+	              "item '%s', value '%.*s' (%s)", args->item->name + 1,
+	              (int)parser->data_len, parser->data,
+	              args->err_str != NULL ? args->err_str : knot_strerror(ret));
 }
 
 static void log_prev_err(
-	const char *input,
-	bool is_file,
-	struct conf_previous *prev,
-	int ret,
-	const char *err_str)
+	conf_check_t *args,
+	int ret)
 {
-	char buff[512];
+	char buff[512] = { 0 };
 	size_t len = sizeof(buff);
 
-	// Get textual previous identifier.
-	if (yp_item_to_txt(prev->key0->var.g.id, prev->id, prev->id_len,
-	                   buff, &len, YP_SNOQUOTE) != KNOT_EOK) {
-		buff[0] = '\0';
+	// Get the previous textual identifier.
+	if ((args->item->flags & YP_FMULTI) != 0) {
+		if (yp_item_to_txt(args->item->var.g.id, args->id, args->id_len,
+		                   buff, &len, YP_SNOQUOTE) != KNOT_EOK) {
+			buff[0] = '\0';
+		}
 	}
 
-	CONF_LOG_LINE(input, is_file, prev->line, "%s '%s' (%s)",
-	              prev->key0->name + 1, buff,
-	              (err_str != NULL ? err_str : knot_strerror(ret)));
+	CONF_LOG_LINE(args->file_name, args->line,
+	              "%s '%s' (%s)", args->item->name + 1, buff,
+	              args->err_str != NULL ? args->err_str : knot_strerror(ret));
+}
+
+static int parser_calls(
+	conf_t *conf,
+	namedb_txn_t *txn,
+	yp_parser_t *parser,
+	yp_check_ctx_t *ctx)
+{
+	static const yp_item_t *prev_item = NULL;
+	static size_t prev_id_len = 0;
+	static uint8_t prev_id[YP_MAX_ID_LEN] = { 0 };
+	static const char *prev_file_name = NULL;
+	static size_t prev_line = 0;
+
+	// Zero ctx means the final previous processing.
+	yp_node_t *node = (ctx != NULL) ? &ctx->nodes[ctx->current] : NULL;
+	bool is_id = false;
+
+	// Preprocess key0 item.
+	if (node == NULL || node->parent == NULL) {
+		// Execute previous block callbacks.
+		if (prev_item != NULL) {
+			conf_check_t args = {
+				.conf = conf,
+				.txn = txn,
+				.item = prev_item,
+				.id = prev_id,
+				.id_len = prev_id_len,
+				.file_name = prev_file_name,
+				.line = prev_line
+			};
+
+			int ret = conf_exec_callbacks(prev_item, &args);
+			if (ret != KNOT_EOK) {
+				log_prev_err(&args, ret);
+				return ret;
+			}
+
+			prev_item = NULL;
+		}
+
+		// Stop if final processing.
+		if (node == NULL) {
+			return KNOT_EOK;
+		}
+
+		// Store block context.
+		if (node->item->type == YP_TGRP) {
+			// Ignore alone group without identifier.
+			if ((node->item->flags & YP_FMULTI) != 0 &&
+			    node->id_len == 0) {
+				return KNOT_EOK;
+			}
+
+			prev_item = node->item;
+			memcpy(prev_id, node->id, node->id_len);
+			prev_id_len = node->id_len;
+			prev_file_name = parser->file.name;
+			prev_line = parser->line_count;
+
+			// Defer group callbacks to the beginning of the next block.
+			if ((node->item->flags & YP_FMULTI) == 0) {
+				return KNOT_EOK;
+			}
+
+			is_id = true;
+		}
+	}
+
+	conf_check_t args = {
+		.conf = conf,
+		.txn = txn,
+		.item = is_id ? node->item->var.g.id : node->item,
+		.id = node->id,
+		.id_len = node->id_len,
+		.data = node->data,
+		.data_len = node->data_len,
+		.file_name = parser->file.name,
+		.line = parser->line_count
+	};
+
+	int ret = conf_exec_callbacks(is_id ? node->item->var.g.id : node->item,
+	                              &args);
+	if (ret != KNOT_EOK) {
+		log_call_err(parser, &args, ret);
+	}
+
+	return ret;
 }
 
 int conf_parse(
@@ -552,18 +553,10 @@ int conf_parse(
 	namedb_txn_t *txn,
 	const char *input,
 	bool is_file,
-	size_t *incl_depth,
-	struct conf_previous *prev)
+	void *data)
 {
-	if (conf == NULL || txn == NULL || input == NULL ||
-	    incl_depth == NULL || prev == NULL) {
+	if (conf == NULL || txn == NULL || input == NULL || data == NULL) {
 		return KNOT_EINVAL;
-	}
-
-	// Check for include loop.
-	if ((*incl_depth)++ > MAX_INCLUDE_DEPTH) {
-		CONF_LOG(LOG_ERR, "include loop detected");
-		return KNOT_EPARSEFAIL;
 	}
 
 	yp_parser_t *parser = malloc(sizeof(yp_parser_t));
@@ -594,50 +587,50 @@ int conf_parse(
 	}
 
 	int check_ret = KNOT_EOK;
-	const char *err_str = NULL;
 
 	// Parse the configuration.
 	while ((ret = yp_parse(parser)) == KNOT_EOK) {
 		check_ret = yp_scheme_check_parser(ctx, parser);
 		if (check_ret != KNOT_EOK) {
-			log_current_err(input, is_file, parser, check_ret, NULL);
+			log_parser_err(parser, check_ret);
 			break;
 		}
-		check_ret = conf_db_set(conf, txn, ctx);
+
+		yp_node_t *node = &ctx->nodes[ctx->current];
+		yp_node_t *parent = node->parent;
+
+		if (parent == NULL) {
+			check_ret = conf_db_set(conf, txn, node->item->name,
+			                        NULL, node->id, node->id_len,
+			                        node->data, node->data_len);
+		} else {
+			check_ret = conf_db_set(conf, txn, parent->item->name,
+			                        node->item->name, parent->id,
+			                        parent->id_len, node->data,
+			                        node->data_len);
+		}
 		if (check_ret != KNOT_EOK) {
-			log_current_err(input, is_file, parser, check_ret, NULL);
+			log_parser_err(parser, check_ret);
 			break;
 		}
-		if (ctx->event != YP_EKEY1) {
-			check_ret = previous_block_calls(conf, txn, prev, &err_str);
-			if (check_ret != KNOT_EOK) {
-				log_prev_err(input, is_file, prev, check_ret, err_str);
-				break;
-			}
-		}
-		check_ret = item_calls(conf, txn, parser, ctx, prev, incl_depth,
-		                       &err_str);
+
+		check_ret = parser_calls(conf, txn, parser, ctx);
 		if (check_ret != KNOT_EOK) {
-			log_current_err(input, is_file, parser, check_ret, err_str);
 			break;
 		}
 	}
 
 	if (ret == KNOT_EOF) {
 		// Call the last block callbacks.
-		ret = previous_block_calls(conf, txn, prev, &err_str);
-		if (ret != KNOT_EOK) {
-			log_prev_err(input, is_file, prev, ret, err_str);
-		}
+		ret = parser_calls(conf, txn, NULL, NULL);
 	} else if (ret != KNOT_EOK) {
-		log_current_err(input, is_file, parser, ret, NULL);
+		log_parser_err(parser, ret);
 	} else {
 		ret = check_ret;
 	}
 
 	yp_scheme_check_deinit(ctx);
 parse_error:
-	(*incl_depth)--;
 	yp_deinit(parser);
 	free(parser);
 
@@ -675,11 +668,10 @@ int conf_import(
 		goto import_error;
 	}
 
-	size_t depth = 0;
-	conf_previous_t prev = { NULL };
+	conf_check_t args = { NULL };
 
 	// Parse and import given file.
-	ret = conf_parse(conf, &txn, input, is_file, &depth, &prev);
+	ret = conf_parse(conf, &txn, input, is_file, &args);
 	if (ret != KNOT_EOK) {
 		conf->api->txn_abort(&txn);
 		goto import_error;
@@ -704,31 +696,78 @@ import_error:
 	return ret;
 }
 
-static int export_group(
-	conf_t *conf,
+static int export_group_name(
 	FILE *fp,
-	yp_item_t *group,
-	uint8_t *id,
-	size_t id_len,
+	const yp_item_t *group,
 	char *out,
 	size_t out_len,
 	yp_style_t style)
 {
-	yp_item_t *item;
-	for (item = group->sub_items; item->name != NULL; item++) {
+	int ret = yp_format_key0(group, NULL, 0, out, out_len, style, true, true);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	fprintf(fp, "%s", out);
+
+	return KNOT_EOK;
+}
+
+static int export_group(
+	conf_t *conf,
+	FILE *fp,
+	const yp_item_t *group,
+	const uint8_t *id,
+	size_t id_len,
+	char *out,
+	size_t out_len,
+	yp_style_t style,
+	bool *exported)
+{
+	// Export the multi-group name.
+	if ((group->flags & YP_FMULTI) != 0 && !(*exported)) {
+		int ret = export_group_name(fp, group, out, out_len, style);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+		*exported = true;
+	}
+
+	// Iterate through all possible group items.
+	for (yp_item_t *item = group->sub_items; item->name != NULL; item++) {
+		// Export the identifier.
+		if (group->var.g.id == item && (group->flags & YP_FMULTI) != 0) {
+			int ret = yp_format_id(group->var.g.id, id, id_len, out,
+			                       out_len, style);
+			if (ret != KNOT_EOK) {
+				return ret;
+			}
+			fprintf(fp, "%s", out);
+			continue;
+		}
+
 		conf_val_t bin;
-		bin.code = conf_db_get(conf, &conf->read_txn, group->name,
-		                       item->name, id, id_len, &bin);
+		conf_db_get(conf, &conf->read_txn, group->name, item->name,
+		            id, id_len, &bin);
 		if (bin.code == KNOT_ENOENT) {
 			continue;
 		} else if (bin.code != KNOT_EOK) {
 			return bin.code;
 		}
 
+		// Export the single-group name if an item is set.
+		if ((group->flags & YP_FMULTI) == 0 && !(*exported)) {
+			int ret = export_group_name(fp, group, out, out_len, style);
+			if (ret != KNOT_EOK) {
+				return ret;
+			}
+			*exported = true;
+		}
+
 		// Format single/multiple-valued item.
 		size_t values = conf_val_count(&bin);
 		for (size_t i = 1; i <= values; i++) {
-			conf_db_val(&bin);
+			conf_val(&bin);
 			int ret = yp_format_key1(item, bin.data, bin.len, out,
 			                         out_len, style, i == 1,
 			                         i == values);
@@ -743,7 +782,9 @@ static int export_group(
 		}
 	}
 
-	fprintf(fp, "\n");
+	if (*exported) {
+		fprintf(fp, "\n");
+	}
 
 	return KNOT_EOK;
 }
@@ -770,38 +811,23 @@ int conf_export(
 		return KNOT_EFILE;
 	}
 
+	fprintf(fp, "# Configuration export (Knot DNS %s)\n\n", PACKAGE_VERSION);
+
 	int ret;
 
-	// Iterate over the current scheme.
-	yp_item_t *item;
-	for (item = conf->scheme; item->name != NULL; item++) {
+	// Iterate over the scheme.
+	for (yp_item_t *item = conf->scheme; item->name != NULL; item++) {
+		bool exported = false;
+
 		// Skip non-group items (include).
 		if (item->type != YP_TGRP) {
 			continue;
 		}
 
-		// Check if the item is ever stored in DB.
-		uint8_t item_code;
-		ret = conf_db_code(conf, &conf->read_txn, CONF_CODE_KEY0_ROOT,
-		                   item->name, true, &item_code);
-		if (ret == KNOT_ENOENT) {
-			continue;
-		} else if (ret != KNOT_EOK) {
-			goto export_error;
-		}
-
-		// Export group name.
-		ret = yp_format_key0(item, NULL, 0, buff, buff_len, style,
-		                     true, true);
-		if (ret != KNOT_EOK) {
-			goto export_error;
-		}
-		fprintf(fp, "%s", buff);
-
 		// Export simple group without identifiers.
-		if (item->var.g.id == NULL) {
+		if ((item->flags & YP_FMULTI) == 0) {
 			ret = export_group(conf, fp, item, NULL, 0, buff,
-			                   buff_len, style);
+			                   buff_len, style, &exported);
 			if (ret != KNOT_EOK) {
 				goto export_error;
 			}
@@ -811,14 +837,18 @@ int conf_export(
 
 		// Iterate over all identifiers.
 		conf_iter_t iter;
-		ret = conf_db_iter_begin(conf, &conf->read_txn, item->name,
-		                         &iter);
-		if (ret != KNOT_EOK) {
+		ret = conf_db_iter_begin(conf, &conf->read_txn, item->name, &iter);
+		switch (ret) {
+		case KNOT_EOK:
+			break;
+		case KNOT_ENOENT:
+			continue;
+		default:
 			goto export_error;
 		}
 
 		while (ret == KNOT_EOK) {
-			uint8_t *id;
+			const uint8_t *id;
 			size_t id_len;
 			ret = conf_db_iter_id(conf, &iter, &id, &id_len);
 			if (ret != KNOT_EOK) {
@@ -826,18 +856,9 @@ int conf_export(
 				goto export_error;
 			}
 
-			// Export identifier.
-			ret = yp_format_id(item->var.g.id, id, id_len, buff,
-			                   buff_len, style);
-			if (ret != KNOT_EOK) {
-				conf_db_iter_finish(conf, &iter);
-				goto export_error;
-			}
-			fprintf(fp, "%s", buff);
-
-			// Export other items.
+			// Export group with identifiers.
 			ret = export_group(conf, fp, item, id, id_len, buff,
-			                   buff_len, style);
+			                   buff_len, style, &exported);
 			if (ret != KNOT_EOK) {
 				conf_db_iter_finish(conf, &iter);
 				goto export_error;
@@ -845,8 +866,9 @@ int conf_export(
 
 			ret = conf_db_iter_next(conf, &iter);
 		}
-
-		conf_db_iter_finish(conf, &iter);
+		if (ret != KNOT_EOF) {
+			goto export_error;
+		}
 	}
 
 	ret = KNOT_EOK;

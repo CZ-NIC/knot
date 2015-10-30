@@ -640,14 +640,13 @@ static int cmd_checkzone(cmd_args_t *args)
 	int rc = 0;
 
 	/* Generate databases for all zones */
-	conf_iter_t iter = conf_iter(conf(), C_ZONE);
-	while (iter.code == KNOT_EOK) {
+	for (conf_iter_t iter = conf_iter(conf(), C_ZONE); iter.code == KNOT_EOK;
+	     conf_iter_next(conf(), &iter)) {
 		conf_val_t id = conf_iter_id(conf(), &iter);
 
 		/* Fetch zone */
 		bool match = fetch_zone(args->argc, args->argv, conf_dname(&id));
 		if (!match && args->argc > 0) {
-			conf_iter_next(conf(), &iter);
 			continue;
 		}
 
@@ -655,16 +654,12 @@ static int cmd_checkzone(cmd_args_t *args)
 		zone_contents_t *contents = zone_load_contents(conf(), conf_dname(&id));
 		if (contents == NULL) {
 			rc = 1;
-			conf_iter_next(conf(), &iter);
 			continue;
 		}
 		zone_contents_deep_free(&contents);
 
 		log_zone_info(conf_dname(&id), "zone is valid");
-
-		conf_iter_next(conf(), &iter);
 	}
-	conf_iter_finish(conf(), &iter);
 
 	return rc;
 }
@@ -675,14 +670,13 @@ static int cmd_memstats(cmd_args_t *args)
 	double total_size = 0;
 
 	/* Generate databases for all zones */
-	conf_iter_t iter = conf_iter(conf(), C_ZONE);
-	while (iter.code == KNOT_EOK) {
+	for (conf_iter_t iter = conf_iter(conf(), C_ZONE); iter.code == KNOT_EOK;
+	     conf_iter_next(conf(), &iter)) {
 		conf_val_t id = conf_iter_id(conf(), &iter);
 
 		/* Fetch zone */
 		bool match = fetch_zone(args->argc, args->argv, conf_dname(&id));
 		if (!match && args->argc > 0) {
-			conf_iter_next(conf(), &iter);
 			continue;
 		}
 
@@ -699,6 +693,7 @@ static int cmd_memstats(cmd_args_t *args)
 		                    .record_count = 0 };
 		if (est.node_table == NULL) {
 			log_error("not enough memory");
+			conf_iter_finish(conf(), &iter);
 			break;
 		}
 
@@ -707,6 +702,7 @@ static int cmd_memstats(cmd_args_t *args)
 		if (zone_name == NULL) {
 			log_error("not enough memory");
 			hattrie_free(est.node_table);
+			conf_iter_finish(conf(), &iter);
 			break;
 		}
 		zs_scanner_t *zs = zs_scanner_create(zone_name,
@@ -717,7 +713,6 @@ static int cmd_memstats(cmd_args_t *args)
 		if (zs == NULL) {
 			log_zone_error(conf_dname(&id), "failed to load zone");
 			hattrie_free(est.node_table);
-			conf_iter_next(conf(), &iter);
 			continue;
 		}
 
@@ -730,7 +725,6 @@ static int cmd_memstats(cmd_args_t *args)
 			hattrie_apply_rev(est.node_table, estimator_free_trie_node, NULL);
 			hattrie_free(est.node_table);
 			zs_scanner_free(zs);
-			conf_iter_next(conf(), &iter);
 			continue;
 		}
 
@@ -752,9 +746,7 @@ static int cmd_memstats(cmd_args_t *args)
 		              est.record_count, (size_t)zone_size);
 		zs_scanner_free(zs);
 		total_size += zone_size;
-		conf_iter_next(conf(), &iter);
 	}
-	conf_iter_finish(conf(), &iter);
 
 	if (args->argc == 0) { // for all zones
 		log_info("estimated memory consumption for all zones is %zu MB",

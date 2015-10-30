@@ -293,14 +293,13 @@ static knot_zonedb_t *create_zonedb(conf_t *conf, server_t *server)
 		return NULL;
 	}
 
-	conf_iter_t iter = conf_iter(conf, C_ZONE);
-	while (iter.code == KNOT_EOK) {
+	for (conf_iter_t iter = conf_iter(conf, C_ZONE); iter.code == KNOT_EOK;
+	     conf_iter_next(conf, &iter)) {
 		conf_val_t id = conf_iter_id(conf, &iter);
 		zone_t *old_zone = knot_zonedb_find(db_old, conf_dname(&id));
 		zone_t *zone = create_zone(conf, conf_dname(&id), server, old_zone);
 		if (!zone) {
 			log_zone_error(id.data, "zone cannot be created");
-			conf_iter_next(conf, &iter);
 			continue;
 		}
 
@@ -308,10 +307,7 @@ static knot_zonedb_t *create_zonedb(conf_t *conf, server_t *server)
 		                      &zone->query_plan);
 
 		knot_zonedb_insert(db_new, zone);
-
-		conf_iter_next(conf, &iter);
 	}
-	conf_iter_finish(conf, &iter);
 
 	return db_new;
 }
