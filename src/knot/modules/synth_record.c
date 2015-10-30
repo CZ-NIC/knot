@@ -42,8 +42,8 @@ static const lookup_table_t synthetic_types[] = {
 
 int check_prefix(conf_check_t *args)
 {
-	if (strchr((const char *)args->check->data, '.') != NULL) {
-		*args->err_str = "dot '.' is not allowed";
+	if (strchr((const char *)args->data, '.') != NULL) {
+		args->err_str = "dot '.' is not allowed";
 		return KNOT_EINVAL;
 	}
 
@@ -66,32 +66,29 @@ int check_mod_synth_record(conf_check_t *args)
 {
 	// Check type.
 	conf_val_t type = conf_rawid_get_txn(args->conf, args->txn, C_MOD_SYNTH_RECORD,
-	                                     MOD_TYPE, args->previous->id,
-	                                     args->previous->id_len);
+	                                     MOD_TYPE, args->id, args->id_len);
 	if (type.code != KNOT_EOK) {
-		*args->err_str = "no synthesis type specified";
+		args->err_str = "no synthesis type specified";
 		return KNOT_EINVAL;
 	}
 
 	// Check origin.
 	conf_val_t origin = conf_rawid_get_txn(args->conf, args->txn, C_MOD_SYNTH_RECORD,
-	                                       MOD_ORIGIN, args->previous->id,
-	                                       args->previous->id_len);
+	                                       MOD_ORIGIN, args->id, args->id_len);
 	if (origin.code != KNOT_EOK && conf_opt(&type) == SYNTH_REVERSE) {
-		*args->err_str = "no origin specified";
+		args->err_str = "no origin specified";
 		return KNOT_EINVAL;
 	}
 	if (origin.code == KNOT_EOK && conf_opt(&type) == SYNTH_FORWARD) {
-		*args->err_str = "origin not allowed with forward type";
+		args->err_str = "origin not allowed with forward type";
 		return KNOT_EINVAL;
 	}
 
 	// Check network subnet.
 	conf_val_t net = conf_rawid_get_txn(args->conf, args->txn, C_MOD_SYNTH_RECORD,
-	                                    MOD_NET, args->previous->id,
-	                                    args->previous->id_len);
+	                                    MOD_NET, args->id, args->id_len);
 	if (net.code != KNOT_EOK) {
-		*args->err_str = "no network subnet specified";
+		args->err_str = "no network subnet specified";
 		return KNOT_EINVAL;
 	}
 

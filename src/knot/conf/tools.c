@@ -38,6 +38,31 @@
 #include "libknot/internal/utils.h"
 #include "libknot/yparser/yptrafo.h"
 
+#define MAX_INCLUDE_DEPTH	5
+
+int conf_exec_callbacks(
+	const yp_item_t *item,
+	conf_check_t *args)
+{
+	if (item == NULL || args == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	for (size_t i = 0; i < YP_MAX_MISC_COUNT; i++) {
+		int (*fcn)(conf_check_t *) = item->misc[i];
+		if (fcn == NULL) {
+			break;
+		}
+
+		int ret = fcn(args);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+	}
+
+	return KNOT_EOK;
+}
+
 int mod_id_to_bin(
 	YP_TXT_BIN_PARAMS)
 {
@@ -272,14 +297,14 @@ int check_ref(
 {
 	const char *err_str = "invalid reference";
 
-	const yp_item_t *parent = args->check->key1->var.r.ref;
+	const yp_item_t *ref = args->item->var.r.ref;
 
-	// Try to find the id in the referenced category.
+	// Try to find a referenced block with the id.
 	// Cannot use conf_raw_get as id is not stored in confdb directly!
-	int ret = conf_db_get(args->conf, args->txn, parent->name, NULL,
-	                      args->check->data, args->check->data_len, NULL);
+	int ret = conf_db_get(args->conf, args->txn, ref->name, NULL,
+	                      args->data, args->data_len, NULL);
 	if (ret != KNOT_EOK) {
-		*args->err_str = err_str;
+		args->err_str = err_str;
 	}
 
 	return ret;
@@ -290,16 +315,16 @@ int check_modref(
 {
 	const char *err_str = "invalid module reference";
 
-	const yp_name_t *mod_name = (const yp_name_t *)args->check->data;
-	const uint8_t *id = args->check->data + 1 + args->check->data[0];
-	size_t id_len = args->check->data_len - 1 - args->check->data[0];
+	const yp_name_t *mod_name = (const yp_name_t *)args->data;
+	const uint8_t *id = args->data + 1 + args->data[0];
+	size_t id_len = args->data_len - 1 - args->data[0];
 
-	// Try to find the module with id.
+	// Try to find a module with the id.
 	// Cannot use conf_raw_get as id is not stored in confdb directly!
 	int ret = conf_db_get(args->conf, args->txn, mod_name, NULL, id, id_len,
 	                      NULL);
 	if (ret != KNOT_EOK) {
-		*args->err_str = err_str;
+		args->err_str = err_str;
 	}
 
 	return ret;
@@ -311,10 +336,9 @@ int check_remote(
 	const char *err_str = "no remote address defined";
 
 	conf_val_t addr = conf_rawid_get_txn(args->conf, args->txn, C_RMT,
-	                                     C_ADDR, args->previous->id,
-	                                     args->previous->id_len);
+	                                     C_ADDR, args->id, args->id_len);
 	if (conf_val_count(&addr) == 0) {
-		*args->err_str = err_str;
+		args->err_str = err_str;
 		return KNOT_EINVAL;
 	}
 
@@ -326,17 +350,17 @@ int check_template(
 {
 	const char *err_str = "global module is only allowed with the default template";
 
-	if (args->previous->id_len == CONF_DEFAULT_ID[0] &&
-	    memcmp(args->previous->id, CONF_DEFAULT_ID + 1, args->previous->id_len) == 0) {
+	if (args->id_len == CONF_DEFAULT_ID[0] &&
+	    memcmp(args->id, CONF_DEFAULT_ID + 1, args->id_len) == 0) {
 		return KNOT_EOK;
 	}
 
 	conf_val_t g_module = conf_rawid_get_txn(args->conf, args->txn, C_TPL,
-	                                         C_GLOBAL_MODULE, args->previous->id,
-	                                         args->previous->id_len);
+	                                         C_GLOBAL_MODULE, args->id,
+	                                         args->id_len);
 
 	if (g_module.code == KNOT_EOK) {
-		*args->err_str = err_str;
+		args->err_str = err_str;
 		return KNOT_EINVAL;
 	}
 
@@ -349,13 +373,13 @@ int check_zone(
 	const char *err_str = "slave zone with DNSSEC signing";
 
 	conf_val_t master = conf_zone_get_txn(args->conf, args->txn,
-	                                      C_MASTER, args->previous->id);
+	                                      C_MASTER, args->id);
 	conf_val_t dnssec = conf_zone_get_txn(args->conf, args->txn,
-	                                      C_DNSSEC_SIGNING, args->previous->id);
+	                                      C_DNSSEC_SIGNING, args->id);
 
 	// DNSSEC signing is not possible with slave zone.
 	if (conf_val_count(&master) > 0 && conf_bool(&dnssec)) {
-		*args->err_str = err_str;
+		args->err_str = err_str;
 		return KNOT_EINVAL;
 	}
 
@@ -375,6 +399,8 @@ static int glob_error(
 int include_file(
 	conf_check_t *args)
 {
+	// This function should not be called in more threads.
+	static int depth = 0;
 	glob_t glob_buf = { 0 };
 	int ret;
 
@@ -383,13 +409,20 @@ int include_file(
 		return KNOT_ENOMEM;
 	}
 
+	// Check for include loop.
+	if (depth++ > MAX_INCLUDE_DEPTH) {
+		CONF_LOG(LOG_ERR, "include loop detected");
+		ret = KNOT_EPARSEFAIL;
+		goto include_error;
+	}
+
 	// Prepare absolute include path.
-	if (args->check->data[0] == '/') {
+	if (args->data[0] == '/') {
 		ret = snprintf(path, PATH_MAX, "%.*s",
-		               (int)args->check->data_len, args->check->data);
+		               (int)args->data_len, args->data);
 	} else {
-		const char *file_name = args->parser->file.name != NULL ?
-		                        args->parser->file.name : "./";
+		const char *file_name = args->file_name != NULL ?
+		                        args->file_name : "./";
 		char *full_current_name = realpath(file_name, NULL);
 		if (full_current_name == NULL) {
 			ret = KNOT_ENOMEM;
@@ -398,7 +431,7 @@ int include_file(
 
 		ret = snprintf(path, PATH_MAX, "%s/%.*s",
 		               dirname(full_current_name),
-		               (int)args->check->data_len, args->check->data);
+		               (int)args->data_len, args->data);
 		free(full_current_name);
 	}
 	if (ret <= 0 || ret >= PATH_MAX) {
@@ -434,7 +467,7 @@ int include_file(
 
 		// Include regular file.
 		ret = conf_parse(args->conf, args->txn, glob_buf.gl_pathv[i],
-		                 true, args->include_depth, args->previous);
+		                 true, args);
 		if (ret != KNOT_EOK) {
 			goto include_error;
 		}
@@ -444,6 +477,7 @@ int include_file(
 include_error:
 	globfree(&glob_buf);
 	free(path);
+	depth--;
 
 	return ret;
 }

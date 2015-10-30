@@ -31,25 +31,23 @@
 #include "knot/conf/conf.h"
 #include "libknot/yparser/ypscheme.h"
 
-typedef struct conf_previous {
-	const yp_item_t *key0;
-	size_t id_len;
-	uint8_t id[YP_MAX_ID_LEN];
-	const char *file;
-	size_t line;
-} conf_previous_t;
-
 typedef struct {
 	conf_t *conf;
 	namedb_txn_t *txn;
-	const yp_parser_t *parser;
-	const yp_check_ctx_t *check;
-	size_t *include_depth;
-	conf_previous_t *previous;
-	const char **err_str;
+	const yp_item_t *item;
+	const uint8_t *id;
+	size_t id_len;
+	const uint8_t *data;
+	size_t data_len;
+	const char *file_name;
+	size_t line;
+	const char *err_str;
 } conf_check_t;
 
-typedef int conf_check_f(conf_check_t *);
+int conf_exec_callbacks(
+	const yp_item_t *item,
+	conf_check_t *args
+);
 
 int mod_id_to_bin(
 	YP_TXT_BIN_PARAMS

@@ -38,10 +38,9 @@ const yp_item_t scheme_mod_dnstap[] = {
 int check_mod_dnstap(conf_check_t *args)
 {
 	conf_val_t sink = conf_rawid_get_txn(args->conf, args->txn, C_MOD_DNSTAP,
-	                                     MOD_SINK, args->previous->id,
-	                                     args->previous->id_len);
+	                                     MOD_SINK, args->id, args->id_len);
 	if (sink.code != KNOT_EOK) {
-		*args->err_str = "no sink specified";
+		args->err_str = "no sink specified";
 		return KNOT_EINVAL;
 	}
 
