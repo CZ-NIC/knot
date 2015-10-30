@@ -197,6 +197,8 @@ src/knot/conf/conf.c
 src/knot/conf/conf.h
 src/knot/conf/confdb.c
 src/knot/conf/confdb.h
+src/knot/conf/confio.c
+src/knot/conf/confio.h
 src/knot/conf/scheme.c
 src/knot/conf/scheme.h
 src/knot/conf/tools.c

@@ -213,6 +213,8 @@ libknotd_la_SOURCES =				\
 	knot/conf/conf.h			\
 	knot/conf/confdb.c			\
 	knot/conf/confdb.h			\
+	knot/conf/confio.c			\
+	knot/conf/confio.h			\
 	knot/conf/scheme.c			\
 	knot/conf/scheme.h			\
 	knot/conf/tools.c			\

@@ -482,7 +482,14 @@ int server_reload(server_t *server, const char *cf)
 	}
 
 	if (cf != NULL) {
+		// Check for no edit mode.
+		if (conf()->io.txn != NULL) {
+			log_warning("reload aborted due to active config DB transaction");
+			return KNOT_CONF_ETXN;
+		}
+
 		log_info("reloading configuration file '%s'", cf);
+
 		conf_t *new_conf = NULL;
 		int ret = conf_clone(&new_conf);
 		if (ret != KNOT_EOK) {
