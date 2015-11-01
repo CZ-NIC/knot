@@ -94,8 +94,6 @@ AC_ARG_ENABLE([systemd],
     AS_HELP_STRING([--enable-systemd=auto|yes|no], [enable systemd integration [default=auto]]),
     [enable_systemd="$enableval"], [enable_systemd=auto])
 
-AS_IF([test "$enable_daemon" = "yes"],[
-
 AS_IF([test "$enable_systemd" != "no"],[
   AS_CASE([$enable_systemd],
     [auto],[PKG_CHECK_MODULES([systemd], [libsystemd], [enable_systemd=yes], [
@@ -107,7 +105,6 @@ AS_IF([test "$enable_systemd" != "no"],[
 
 AS_IF([test "$enable_systemd" = "yes"],[
   AC_DEFINE([ENABLE_SYSTEMD], [1], [Use systemd integration.])])
-])
 
 # Debug modules
 AC_ARG_ENABLE([debug],
