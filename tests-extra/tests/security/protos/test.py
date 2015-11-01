@@ -18,7 +18,7 @@ if not protos_java_bin:
 if not protos_query_bin:
     raise Skip("'%s' PROTOS binary not found" % protos_bin[0])
 
-t = Test(ip=4, tsig=False) # PROTOS works on IPv4, no TSIG
+t = Test(address=4, tsig=False) # PROTOS works on IPv4, no TSIG
 master = t.server("dummy")
 slave = t.server("knot")
 zone = t.zone("protos.invalid.", exists=False)

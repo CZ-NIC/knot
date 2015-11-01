@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import ipaddress
 import os
 import random
 import shutil
@@ -26,7 +27,7 @@ class Test(object):
     # Number of unsuccessful starts of servers. Recursion protection.
     start_tries = 0
 
-    def __init__(self, ip=None, tsig=None, stress=True):
+    def __init__(self, address=None, tsig=None, stress=True):
         if not os.path.exists(params.out_dir):
             raise Exception("Output directory doesn't exist")
 
@@ -34,9 +35,12 @@ class Test(object):
         self.data_dir = params.test_dir + "/data/"
         self.zones_dir = self.out_dir + "/zones/"
 
-        self.ip = ip if ip else random.choice([4, 6])
-        if self.ip not in [4, 6]:
-            raise Failed("Invalid IP version")
+        if address == 4 or address == 6:
+            self.addr = Test.LOCAL_ADDR[address]
+        elif address:
+            self.addr = address
+        else:
+            self.addr = Test.LOCAL_ADDR[random.choice([4, 6])]
 
         self.tsig = None
         if tsig != None:
@@ -62,15 +66,15 @@ class Test(object):
         if not port:
             return False
 
-        proto = socket.AF_INET if self.ip == 4 else socket.AF_INET6
+        family = socket.AF_INET
+        if ipaddress.ip_address(self.addr).version == 6:
+            family = socket.AF_INET6
 
         try:
-            s = socket.socket(proto, socket.SOCK_DGRAM)
-            s.bind((Test.LOCAL_ADDR[self.ip], port))
-            s.close()
-            s = socket.socket(proto, socket.SOCK_STREAM)
-            s.bind((Test.LOCAL_ADDR[self.ip], port))
-            s.close()
+            for stype in [socket.SOCK_DGRAM, socket.SOCK_STREAM]:
+                s = socket.socket(family, stype)
+                s.bind((self.addr, port))
+                s.close()
         except:
             return False
 
@@ -98,7 +102,8 @@ class Test(object):
         return addrinfo[0][3] if addrinfo else hostname
 
     def server(self, server, nsid=None, ident=None, version=None, \
-               valgrind=None):
+               valgrind=None, address=None, port=None, ctlport=None, \
+               external=False, tsig=None):
         if server == "knot":
             srv = dnstest.server.Knot()
         elif server == "bind":
@@ -118,9 +123,31 @@ class Test(object):
         srv.ident = ident
         srv.version = version
 
-        srv.ip = self.ip
-        srv.addr = Test.LOCAL_ADDR[self.ip]
-        srv.tsig = dnstest.keys.Tsig() if self.tsig else None
+        if address:
+            if ipaddress.ip_address(address).version != \
+               ipaddress.ip_address(self.addr).version:
+                raise Failed("IP version missmatch '%s'" % server)
+            srv.addr = address
+        else:
+            srv.addr = self.addr
+
+        if port:
+            srv.port = int(port)
+            srv.fixed_port = True
+            if not ctlport and server == "bind":
+                raise Failed("Missing remote control port '%s'" % server)
+
+        if ctlport:
+            srv.ctlport = int(ctlport)
+
+        if external:
+            srv.external = True
+
+        if self.tsig and not tsig:
+            srv.tsig = dnstest.keys.Tsig()
+        else:
+            srv.tsig = tsig
+
         srv.tsig_test = self.tsig
 
         srv.name = "%s%s" % (server, srv.count)
@@ -161,6 +188,9 @@ class Test(object):
     def generate_conf(self):
         # Next two loops can't be merged!
         for server in self.servers:
+            if server.fixed_port:
+                continue
+
             server.port = self._gen_port()
             server.ctlport = self._gen_port()
 
@@ -185,6 +215,9 @@ class Test(object):
 
         # Sort server list by number of masters. I.e. masters are preferred.
         for server in sorted(self.servers, key=srv_sort):
+            if server.external:
+                continue
+
             server.start(clean=True)
 
             if not server.running():
@@ -200,6 +233,9 @@ class Test(object):
         '''Stop all servers'''
 
         for server in self.servers:
+            if server.external:
+                continue
+
             if kill:
                 server.kill()
             else:

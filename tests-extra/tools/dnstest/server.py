@@ -2,6 +2,7 @@
 
 import glob
 import inspect
+import ipaddress
 import psutil
 import re
 import random
@@ -82,10 +83,11 @@ class Server(object):
         self.ident = None
         self.version = None
 
-        self.ip = None
         self.addr = None
         self.port = None
+        self.fixed_port = False
         self.ctlport = None
+        self.external = False
         self.ctlkey = None
         self.ctlkeyfile = None
         self.tsig = None
@@ -114,10 +116,10 @@ class Server(object):
         self.conffile = None
 
     def _check_socket(self, proto, port):
-        if self.ip == 4:
-            iface = "%i%s@%s:%i" % (self.ip, proto, self.addr, port)
+        if ipaddress.ip_address(self.addr).version == 4:
+            iface = "4%s@%s:%i" % (proto, self.addr, port)
         else:
-            iface = "%i%s@[%s]:%i" % (self.ip, proto, self.addr, port)
+            iface = "6%s@[%s]:%i" % (proto, self.addr, port)
 
         for i in range(5):
             proc = Popen(["lsof", "-t", "-i", iface],
@@ -499,7 +501,7 @@ class Server(object):
 
     def create_sock(self, socket_type):
         family = socket.AF_INET
-        if self.ip == 6:
+        if ipaddress.ip_address(self.addr).version == 6:
             family = socket.AF_INET6
         return socket.socket(family, socket_type)
 
@@ -680,7 +682,7 @@ class Bind(Server):
         s.item_str("managed-keys-directory", self.dir)
         s.item_str("session-keyfile", self.dir + "/session.key")
         s.item_str("pid-file", "bind.pid")
-        if self.ip == 4:
+        if ipaddress.ip_address(self.addr).version == 4:
             s.item("listen-on port", "%i { %s; }" % (self.port, self.addr))
             s.item("listen-on-v6", "{ }")
         else:
@@ -705,7 +707,7 @@ class Bind(Server):
 
         s.begin("controls")
         s.item("inet %s port %i allow { %s; } keys { %s; }"
-               % (self.addr, self.ctlport, self.addr, self.ctlkey.name))
+               % (self.addr, self.ctlport, params.test.addr, self.ctlkey.name))
         s.end()
 
         if self.tsig:
@@ -791,7 +793,7 @@ class Bind(Server):
                 if self.tsig:
                     upd = "key %s; " % self.tsig_test.name
                 else:
-                    upd = "%s; " % self.addr
+                    upd = "%s; " % params.test.addr
 
                 if z.masters:
                     s.item("allow-update-forwarding", "{ %s}" % upd)
@@ -802,7 +804,7 @@ class Bind(Server):
                 s.item("allow-transfer", "{ key %s; key %s; }" %
                        (self.tsig.name, self.tsig_test.name))
             else:
-                s.item("allow-transfer", "{ %s; }" % self.addr)
+                s.item("allow-transfer", "{ any; }")
             s.end()
 
         self.start_params = ["-c", self.confile, "-g"]
@@ -910,13 +912,13 @@ class Knot(Server):
 
         s.begin("acl")
         s.id_item("id", "acl_local")
-        s.item_str("address", self.addr)
+        s.item_str("address", params.test.addr)
         if self.tsig:
             s.item_str("key", self.tsig.name)
         s.item("action", "[transfer, notify, update]")
 
         s.id_item("id", "acl_test")
-        s.item_str("address", self.addr)
+        s.item_str("address", params.test.addr)
         if self.tsig_test:
             s.item_str("key", self.tsig_test.name)
         s.item("action", "[transfer, notify, update]")
