@@ -112,8 +112,12 @@ PKG_CHECK_MODULES([gnutls], [gnutls >= 3.0 nettle], [
     CFLAGS="$CFLAGS $gnutls_CFLAGS"
     AC_CHECK_HEADERS([nettle/version.h])
     CFLAGS=$CFLAGS_save
+
+    LDFLAGS_save=$LDFLAGS
+    LDFLAGS="$LDFLAGS $gnutls_LIBS"
+    AC_CHECK_FUNCS([gnutls_pkcs11_privkey_generate3])
+    LDFLAGS=$LDFLAGS_save
 ])
-AC_CHECK_FUNCS([gnutls_pkcs11_privkey_generate3])
 
 # JSON for DNSSEC status storage
 PKG_CHECK_MODULES([jansson], [jansson >= 2.3])
