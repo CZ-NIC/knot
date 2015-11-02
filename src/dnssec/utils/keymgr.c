@@ -616,10 +616,10 @@ static int cmd_zone_key_show(int argc, char *argv[])
 	printf("algorithm %d\n", dnssec_key_get_algorithm(key->key));
 	printf("size %u\n", dnssec_key_get_size(key->key));
 	printf("flags %d\n", dnssec_key_get_flags(key->key));
-	printf("publish %ld\n", key->timing.publish);
-	printf("active %ld\n", key->timing.active);
-	printf("retire %ld\n", key->timing.retire);
-	printf("remove %ld\n", key->timing.remove);
+	printf("publish %ju\n", key->timing.publish);
+	printf("active %ju\n", key->timing.active);
+	printf("retire %ju\n", key->timing.retire);
+	printf("remove %ju\n", key->timing.remove);
 
 	return 0;
 }
