@@ -228,9 +228,29 @@ static int pkcs11_remove_key(void *_ctx, const char *id)
 	return DNSSEC_EOK;
 }
 
-static int pkcs11_get_private(void *ctx, const char *id, gnutls_privkey_t *key_ptr)
+static int pkcs11_get_private(void *_ctx, const char *id, gnutls_privkey_t *key_ptr)
 {
-	return DNSSEC_NOT_IMPLEMENTED_ERROR;
+	pkcs11_ctx_t *ctx = _ctx;
+	_cleanup_free_ char *url = key_url(ctx->url, id);
+	if (!url) {
+		return DNSSEC_EINVAL;
+	}
+
+	gnutls_privkey_t key = NULL;
+	int r = gnutls_privkey_init(&key);
+	if (r != GNUTLS_E_SUCCESS) {
+		return DNSSEC_ENOMEM;
+	}
+
+	r = gnutls_privkey_import_pkcs11_url(key, url);
+	if (r != GNUTLS_E_SUCCESS) {
+		gnutls_privkey_deinit(key);
+		return DNSSEC_INVALID_PRIVATE_KEY;
+	}
+
+	*key_ptr = key;
+
+	return DNSSEC_EOK;
 }
 
 /* -- public API ----------------------------------------------------------- */
