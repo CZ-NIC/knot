@@ -211,9 +211,21 @@ static int pkcs11_import_key(void *ctx, const dnssec_binary_t *pem, char **id_pt
 	return DNSSEC_NOT_IMPLEMENTED_ERROR;
 }
 
-static int pkcs11_remove_key(void *ctx, const char *id)
+static int pkcs11_remove_key(void *_ctx, const char *id)
 {
-	return DNSSEC_NOT_IMPLEMENTED_ERROR;
+	pkcs11_ctx_t *ctx = _ctx;
+
+	_cleanup_free_ char *url = key_url(ctx->url, id);
+	if (!url) {
+		return DNSSEC_EINVAL;
+	}
+
+	int r = gnutls_pkcs11_delete_url(url, GNUTLS_PKCS11_OBJ_FLAG_LOGIN);
+	if (r != GNUTLS_E_SUCCESS) {
+		return DNSSEC_ERROR; // TODO
+	}
+
+	return DNSSEC_EOK;
 }
 
 static int pkcs11_get_private(void *ctx, const char *id, gnutls_privkey_t *key_ptr)

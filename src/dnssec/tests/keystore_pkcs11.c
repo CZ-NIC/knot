@@ -43,8 +43,8 @@ int main(int argc, char *argv[])
 	r = dnssec_keystore_generate_key(store, DNSSEC_KEY_ALGORITHM_RSA_SHA256, 2048, &id);
 	ok(r == DNSSEC_EOK && id, "generate_key");
 
-	diag("key id %s", id);
-	free(id);
+	r = dnssec_keystore_remove_key(store, id);
+	ok(r == DNSSEC_EOK, "dnssec_keystore_remove_key");
 
 	dnssec_keystore_deinit(store);
 
