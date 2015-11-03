@@ -19,6 +19,7 @@
 
 #include "error.h"
 #include "hex.h"
+#include "keyid.h"
 #include "keystore.h"
 #include "keystore/internal.h"
 #include "shared.h"
@@ -37,6 +38,45 @@ struct pkcs11_ctx {
 };
 
 typedef struct pkcs11_ctx pkcs11_ctx_t;
+
+static char *key_url(const char *token_uri, const char *key_id)
+{
+	assert(token_uri);
+	assert(key_id);
+
+	if (!dnssec_keyid_is_valid(key_id)) {
+		return NULL;
+	}
+
+	size_t token_len = strlen(token_uri);
+	size_t id_len = strlen(key_id);
+
+	// url: <token-url>;id=%aa%bb%cc..
+
+	size_t len = token_len + 4 + (id_len / 2 * 3);
+	char *url = malloc(len + 1);
+	if (!url) {
+		return NULL;
+	}
+
+	size_t prefix = snprintf(url, len, "%s;id=", token_uri);
+	if (prefix != token_len + 4) {
+		free(url);
+		return NULL;
+	}
+
+	assert(id_len % 2 == 0);
+	char *pos = url + prefix;
+	for (int i = 0; i < id_len; i += 2, pos += 3) {
+		pos[0] = '%';
+		pos[1] = key_id[i];
+		pos[2] = key_id[i+1];
+	}
+	assert(url + len == pos);
+	url[len] = '\0';
+
+	return url;
+}
 
 /* -- internal API --------------------------------------------------------- */
 
