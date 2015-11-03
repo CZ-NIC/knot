@@ -18,7 +18,7 @@
 #include <pthread.h>
 
 #include "error.h"
-#include "hex_gnutls.h"
+#include "hex.h"
 #include "keystore.h"
 #include "keystore/internal.h"
 #include "shared.h"
@@ -141,38 +141,28 @@ static int pkcs11_generate_key(void *_ctx, gnutls_pk_algorithm_t algorithm,
 {
 	pkcs11_ctx_t *ctx = _ctx;
 
-	// generate the key in the token
+	uint8_t buf[20] = { 0 };
+	gnutls_rnd(GNUTLS_RND_RANDOM, buf, sizeof(buf));
+	dnssec_binary_t cka_id = { .data = buf, .size = sizeof(buf) };
 
 	int flags = GNUTLS_PKCS11_OBJ_FLAG_MARK_PRIVATE |
 		    GNUTLS_PKCS11_OBJ_FLAG_MARK_SENSITIVE |
 		    GNUTLS_PKCS11_OBJ_FLAG_LOGIN;
 
-	gnutls_datum_t ckaid = { .data = (uint8_t *)"\x42", .size = 1 };
-	_cleanup_datum_ gnutls_datum_t der = { 0 };
-	int r = gnutls_pkcs11_privkey_generate3(ctx->url, algorithm, bits, NULL, &ckaid, GNUTLS_X509_FMT_DER, &der, 0, flags);
+	gnutls_datum_t gt_cka_id = binary_to_datum(&cka_id);
+	int r = gnutls_pkcs11_privkey_generate3(ctx->url, algorithm, bits, NULL, &gt_cka_id, 0, NULL, 0, flags);
 	if (r != GNUTLS_E_SUCCESS) {
 		return DNSSEC_KEY_GENERATE_ERROR;
 	}
 
-	// get the key ID
-
-	_cleanup_pubkey_ gnutls_pubkey_t pubkey = NULL;
-	r = gnutls_pubkey_init(&pubkey);
-	if (r != GNUTLS_E_SUCCESS) {
-		return DNSSEC_ENOMEM;
-	}
-
-	r = gnutls_pubkey_import(pubkey, &der, GNUTLS_X509_FMT_DER);
-	if (r != GNUTLS_E_SUCCESS) {
-		return DNSSEC_ENOMEM;
-	}
-
-	char *id = gnutls_pubkey_hex_key_id(pubkey);
-	if (!id) {
+	char *id = NULL;
+	r = bin_to_hex(&cka_id, &id);
+	if (r != DNSSEC_EOK) {
 		return DNSSEC_ENOMEM;
 	}
 
 	*id_ptr = id;
+
 	return DNSSEC_EOK;
 }
 
