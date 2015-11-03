@@ -116,30 +116,30 @@ static int pkcs11_init(void *ctx, const char *config)
 }
 
 /**
- * Parse configuration string. Accepted format: "<pkcs11-uri>[ <module-path>]"
+ * Parse configuration string. Accepted format: "<pkcs11-url>[ <module-path>]"
  */
 static int parse_config(const char *config, char **uri_ptr, char **module_ptr)
 {
 	const char *space = strchr(config, ' ');
 
-	char *uri = NULL;
+	char *url = NULL;
 	char *module = NULL;
 
 	if (space != NULL) {
-		uri = strndup(config, space - config);
+		url = strndup(config, space - config);
 		module = strdup(space + 1);
 	} else {
-		uri = strdup(config);
+		url = strdup(config);
 		module = NULL;
 	}
 
-	if (!uri || (space && !module)) {
-		free(uri);
+	if (!url || (space && !module)) {
+		free(url);
 		free(module);
 		return DNSSEC_ENOMEM;
 	}
 
-	*uri_ptr = uri;
+	*uri_ptr = url;
 	*module_ptr = module;
 
 	return DNSSEC_EOK;
