@@ -168,7 +168,7 @@ static int pkcs11_open(void *_ctx, const char *config)
 
 static int pkcs11_close(void *ctx)
 {
-	return DNSSEC_NOT_IMPLEMENTED_ERROR;
+	return DNSSEC_EOK;
 }
 
 static int pkcs11_list_keys(void *ctx, dnssec_list_t **list)
