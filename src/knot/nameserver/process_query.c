@@ -221,8 +221,8 @@ static int answer_edns_init(const knot_pkt_t *query, knot_pkt_t *resp,
 	}
 
 	/* Initialize OPT record. */
-	conf_val_t val = conf_get(conf(), C_SRV, C_MAX_UDP_PAYLOAD);
-	int ret = knot_edns_init(&qdata->opt_rr, conf_int(&val), 0,
+	conf_val_t *max_payload = &conf()->cache.srv_max_udp_payload;
+	int ret = knot_edns_init(&qdata->opt_rr, conf_int(max_payload), 0,
 	                     KNOT_EDNS_VERSION, qdata->mm);
 	if (ret != KNOT_EOK) {
 		return ret;
@@ -239,12 +239,12 @@ static int answer_edns_init(const knot_pkt_t *query, knot_pkt_t *resp,
 	}
 
 	/* Append NSID if requested and available. */
-	val = conf_get(conf(), C_SRV, C_NSID);
 	if (knot_edns_has_option(query->opt_rr, KNOT_EDNS_OPTION_NSID)) {
+		conf_val_t *nsid = &conf()->cache.srv_nsid;
 		size_t nsid_len;
-		const uint8_t *nsid_data = conf_bin(&val, &nsid_len);
+		const uint8_t *nsid_data = conf_bin(nsid, &nsid_len);
 
-		if (val.code != KNOT_EOK) {
+		if (nsid->code != KNOT_EOK) {
 			ret = knot_edns_add_option(&qdata->opt_rr,
 			                           KNOT_EDNS_OPTION_NSID,
 			                           strlen(conf()->hostname),
@@ -336,9 +336,9 @@ static int prepare_answer(const knot_pkt_t *query, knot_pkt_t *resp, knot_layer_
 	if (has_limit) {
 		resp->max_size = KNOT_WIRE_MIN_PKTSIZE;
 		if (knot_pkt_has_edns(query)) {
-			conf_val_t val = conf_get(conf(), C_SRV, C_MAX_UDP_PAYLOAD);
+			conf_val_t *max_payload = &conf()->cache.srv_max_udp_payload;
 			uint16_t client = knot_edns_get_payload(query->opt_rr);
-			uint16_t server = conf_int(&val);
+			uint16_t server = conf_int(max_payload);
 			uint16_t transfer = MIN(client, server);
 			resp->max_size = MAX(resp->max_size, transfer);
 		}

@@ -64,8 +64,8 @@ int zone_load_check(conf_t *conf, zone_contents_t *contents)
 
 	/* Check minimum EDNS0 payload if signed. (RFC4035/sec. 3) */
 	if (zone_contents_is_signed(contents)) {
-		conf_val_t val = conf_get(conf, C_SRV, C_MAX_UDP_PAYLOAD);
-		if (conf_int(&val) < KNOT_EDNS_MIN_DNSSEC_PAYLOAD) {
+		conf_val_t *max_payload = &conf->cache.srv_max_udp_payload;
+		if (conf_int(max_payload) < KNOT_EDNS_MIN_DNSSEC_PAYLOAD) {
 			log_zone_error(zone_name, "EDNS payload size is "
 			               "lower than %u bytes for DNSSEC zone",
 			               KNOT_EDNS_MIN_DNSSEC_PAYLOAD);

@@ -103,8 +103,8 @@ static int prepare_edns(zone_t *zone, knot_pkt_t *pkt)
 	}
 
 	knot_rrset_t opt_rr;
-	conf_val_t udp_max = conf_get(conf(), C_SRV, C_MAX_UDP_PAYLOAD);
-	int ret = knot_edns_init(&opt_rr, conf_int(&udp_max), 0,
+	conf_val_t *max_payload = &conf()->cache.srv_max_udp_payload;
+	int ret = knot_edns_init(&opt_rr, conf_int(max_payload), 0,
 	                         KNOT_EDNS_VERSION, &pkt->mm);
 	if (ret != KNOT_EOK) {
 		return ret;

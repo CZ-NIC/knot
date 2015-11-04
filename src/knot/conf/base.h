@@ -44,6 +44,23 @@
 	log_msg(severity, "config, " msg, ##__VA_ARGS__); \
 	} while (0)
 
+/*! Configuration getter output. */
+typedef struct {
+	/*! Item description. */
+	const yp_item_t *item;
+	/*! Whole data (can be array). */
+	const uint8_t *blob;
+	/*! Whole data length. */
+	size_t blob_len;
+	// Public items.
+	/*! Current single data. */
+	const uint8_t *data;
+	/*! Current single data length. */
+	size_t len;
+	/*! Value getter return code. */
+	int code;
+} conf_val_t;
+
 /*! Configuration context. */
 typedef struct {
 	/*! Currently used namedb api. */
@@ -69,6 +86,12 @@ typedef struct {
 	char *hostname;
 	/*! Current config file (for reload if started with config file). */
 	char *filename;
+
+	/*! Cached critical confdb items. */
+	struct {
+		conf_val_t srv_nsid;
+		conf_val_t srv_max_udp_payload;
+	} cache;
 
 	/*! List of active query modules. */
 	list_t query_modules;
