@@ -43,6 +43,16 @@ int main(int argc, char *argv[])
 	r = dnssec_keystore_generate_key(store, DNSSEC_KEY_ALGORITHM_RSA_SHA256, 2048, &id);
 	ok(r == DNSSEC_EOK && id, "generate_key");
 
+	dnssec_list_t *keys = NULL;
+	r = dnssec_keystore_list_keys(store, &keys);
+	ok(r == DNSSEC_EOK && keys != NULL, "dnssec_keystore_list_keys");
+	dnssec_list_foreach(item, keys) {
+		char *id = dnssec_item_get(item);
+		diag("key %s", id);
+	}
+
+	dnssec_list_free_full(keys, NULL, NULL);
+
 	r = dnssec_keystore_remove_key(store, id);
 	ok(r == DNSSEC_EOK, "dnssec_keystore_remove_key");
 

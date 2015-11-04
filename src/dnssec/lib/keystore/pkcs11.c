@@ -171,9 +171,61 @@ static int pkcs11_close(void *ctx)
 	return DNSSEC_EOK;
 }
 
-static int pkcs11_list_keys(void *ctx, dnssec_list_t **list)
+static char *get_object_id(gnutls_pkcs11_obj_t object)
 {
-	return DNSSEC_NOT_IMPLEMENTED_ERROR;
+	assert(object);
+
+	uint8_t buffer[DNSSEC_KEYID_BINARY_SIZE] = { 0 };
+	size_t size = sizeof(buffer);
+
+	int r = gnutls_pkcs11_obj_get_info(object, GNUTLS_PKCS11_OBJ_ID, buffer, &size);
+	if (r != GNUTLS_E_SUCCESS || size != sizeof(buffer)) {
+		return NULL;
+	}
+
+	const dnssec_binary_t bin = { .data = buffer, .size = sizeof(buffer) };
+	char *id = NULL;
+	if (bin_to_hex(&bin, &id) != DNSSEC_EOK) {
+		return NULL;
+	}
+
+	assert(strlen(id) == DNSSEC_KEYID_SIZE);
+
+	return id;
+}
+
+static int pkcs11_list_keys(void *_ctx, dnssec_list_t **list)
+{
+	pkcs11_ctx_t *ctx = _ctx;
+
+	dnssec_list_t *ids = dnssec_list_new();
+	if (!ids) {
+		return DNSSEC_ENOMEM;
+	}
+
+	gnutls_pkcs11_obj_t *objects = NULL;
+	unsigned count = 0;
+
+	int flags = GNUTLS_PKCS11_OBJ_FLAG_PRIVKEY |
+		    GNUTLS_PKCS11_OBJ_FLAG_LOGIN;
+
+	int r = gnutls_pkcs11_obj_list_import_url4(&objects, &count, ctx->url, flags);
+	if (r != GNUTLS_E_SUCCESS) {
+		dnssec_list_free(ids);
+		return DNSSEC_ERROR; // TODO
+	}
+
+	for (unsigned i = 0; i < count; i++) {
+		gnutls_pkcs11_obj_t object = objects[i];
+		char *id = get_object_id(object);
+		dnssec_list_append(ids, id);
+		gnutls_pkcs11_obj_deinit(object);
+	}
+
+	gnutls_free(objects);
+
+	*list = ids;
+	return DNSSEC_EOK;
 }
 
 static int pkcs11_generate_key(void *_ctx, gnutls_pk_algorithm_t algorithm,
