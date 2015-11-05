@@ -29,6 +29,40 @@
 #include "libknot/errcode.h"
 #include "libknot/yparser/yptrafo.h"
 
+/*
+ * A simple configuration:
+ *
+ * server.identity: "knot"
+ * server.version: "version"
+ * template[tpl1].storage: "directory1"
+ * template[tpl2].storage: "directory2"
+ * template[tpl2].master: [ "master1", "master2" ]
+ *
+ * And the corresponding configuration DB content:
+ *
+ * # DB structure version.
+ * [00][FF]:         [02]
+ * # Sections codes.
+ * [00][00]server:   [02]
+ * [00][00]template: [03]
+ * # Server section items codes.
+ * [02][00]identity: [02]
+ * [02][00]version:  [03]
+ * # Server items values.
+ * [02][02]:         knot\0
+ * [02][03]:         version\0
+ * # Template section items codes.
+ * [03][00]master:   [03]
+ * [03][00]storage:  [02]
+ * # Template identificators.
+ * [03][01]tpl1\0
+ * [03][01]tpl2\0
+ * # Template items values.
+ * [03][02]tpl1\0:   directory1\0
+ * [03][02]tpl2\0:   directory2\0
+ * [03][03]tpl2\0:   [00][08]master1\0 [00][08]master2\0
+ */
+
 typedef enum {
 	KEY0_ROOT    =   0,
 	KEY1_ITEMS   =   0,

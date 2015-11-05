@@ -84,9 +84,9 @@ conf_t* conf(void);
 /*!
  * Creates new or opens old configuration database.
  *
- * \param[out] conf Configuration.
- * \param[in] scheme Configuration scheme.
- * \param[in] db_dir Database path or NULL.
+ * \param[out] conf   Configuration.
+ * \param[in] scheme  Configuration scheme.
+ * \param[in] db_dir  Database path or NULL.
  *
  * \return Error code, KNOT_EOK if success.
  */
@@ -101,7 +101,7 @@ int conf_new(
  *
  * Shared objects: api, mm, db, filename.
  *
- * \param[out] conf Configuration.
+ * \param[out] conf  Configuration.
  *
  * \return Error code, KNOT_EOK if success.
  */
@@ -112,7 +112,7 @@ int conf_clone(
 /*!
  * Processes some additional operations and checks after configuration loading.
  *
- * \param[in] conf Configuration.
+ * \param[in] conf  Configuration.
  *
  * \return Error code, KNOT_EOK if success.
  */
@@ -123,7 +123,7 @@ int conf_post_open(
 /*!
  * Replaces the active configuration with the specified one.
  *
- * \param[in] conf New configuration.
+ * \param[in] conf  New configuration.
  */
 void conf_update(
 	conf_t *conf
@@ -132,8 +132,8 @@ void conf_update(
 /*!
  * Removes the specified configuration.
  *
- * \param[in] conf Configuration.
- * \param[in] is_clone Specifies if the configuration is a clone.
+ * \param[in] conf      Configuration.
+ * \param[in] is_clone  Specifies if the configuration is a clone.
  */
 void conf_free(
 	conf_t *conf,
@@ -143,10 +143,10 @@ void conf_free(
 /*!
  * Activates configured query modules for the specified zone or for all zones.
  *
- * \param[in] conf Configuration.
- * \param[in] zone_name Zone name, NULL for all zones.
- * \param[in] query_modules Destination query modules list.
- * \param[in] query_plan Destination query plan.
+ * \param[in] conf           Configuration.
+ * \param[in] zone_name      Zone name, NULL for all zones.
+ * \param[in] query_modules  Destination query modules list.
+ * \param[in] query_plan     Destination query plan.
  */
 void conf_activate_modules(
 	conf_t *conf,
@@ -158,9 +158,9 @@ void conf_activate_modules(
 /*!
  * Deactivates query modules list.
  *
- * \param[in] conf Configuration.
- * \param[in] query_modules Destination query modules list.
- * \param[in] query_plan Destination query plan.
+ * \param[in] conf           Configuration.
+ * \param[in] query_modules  Destination query modules list.
+ * \param[in] query_plan     Destination query plan.
  */
 void conf_deactivate_modules(
 	conf_t *conf,
@@ -173,11 +173,11 @@ void conf_deactivate_modules(
  *
  * This function is not for direct using, just for includes processing!
  *
- * \param[in] conf Configuration.
- * \param[in] txn Transaction.
- * \param[in] input Configuration string or filename.
- * \param[in] is_file Specifies if the input is string or input filename.
- * \param[in] data Internal data.
+ * \param[in] conf     Configuration.
+ * \param[in] txn      Transaction.
+ * \param[in] input    Configuration string or filename.
+ * \param[in] is_file  Specifies if the input is string or input filename.
+ * \param[in] data     Internal data.
  *
  * \return Error code, KNOT_EOK if success.
  */
@@ -192,9 +192,9 @@ int conf_parse(
 /*!
  * Imports textual configuration.
  *
- * \param[in] conf Configuration.
- * \param[in] input Configuration string or input filename.
- * \param[in] is_file Specifies if the input is string or filename.
+ * \param[in] conf     Configuration.
+ * \param[in] input    Configuration string or input filename.
+ * \param[in] is_file  Specifies if the input is string or filename.
  *
  * \return Error code, KNOT_EOK if success.
  */
@@ -207,9 +207,9 @@ int conf_import(
 /*!
  * Exports configuration to textual file.
  *
- * \param[in] conf Configuration.
- * \param[in] input Output filename.
- * \param[in] style Formatting style.
+ * \param[in] conf   Configuration.
+ * \param[in] input  Output filename.
+ * \param[in] style  Formatting style.
  *
  * \return Error code, KNOT_EOK if success.
  */

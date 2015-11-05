@@ -41,11 +41,37 @@
 /*! Maximum size of database data. */
 #define CONF_MAX_DATA_LEN	65536
 
+/*!
+ * Opens and checks old or initializes new configuration DB.
+ *
+ * \param[in] conf  Configuration.
+ * \param[in] txn   Configuration DB transaction.
+ *
+ * \return Error code, KNOT_EOK if success.
+ */
 int conf_db_init(
 	conf_t *conf,
 	namedb_txn_t *txn
 );
 
+/*!
+ * Sets the item with data in the configuration DB.
+ *
+ * Singlevalued data is rewritten, multivalued data is appended.
+ *
+ * \note Setting of key0 without key1 has no effect.
+ *
+ * \param[in] conf      Configuration.
+ * \param[in] txn       Configuration DB transaction.
+ * \param[in] key0      Section name.
+ * \param[in] key1      Item name.
+ * \param[in] id        Section identifier.
+ * \param[in] id_len    Length of the section identifier.
+ * \param[in] data      Item data.
+ * \param[in] data_len  Length of the item data.
+ *
+ * \return Error code, KNOT_EOK if success.
+ */
 int conf_db_set(
 	conf_t *conf,
 	namedb_txn_t *txn,
@@ -57,6 +83,23 @@ int conf_db_set(
 	size_t data_len
 );
 
+/*!
+ * Unsets the item data in the configuration DB.
+ *
+ * If no data is provided, the whole item is remove.
+ *
+ * \param[in] conf         Configuration.
+ * \param[in] txn          Configuration DB transaction.
+ * \param[in] key0         Section name.
+ * \param[in] key1         Item name.
+ * \param[in] id           Section identifier.
+ * \param[in] id_len       Length of the section identifier.
+ * \param[in] data         Item data.
+ * \param[in] data_len     Length of the item data.
+ * \param[in] delete_key1  Set to unregister the item from the DB.
+ *
+ * \return Error code, KNOT_EOK if success.
+ */
 int conf_db_unset(
 	conf_t *conf,
 	namedb_txn_t *txn,
@@ -69,6 +112,19 @@ int conf_db_unset(
 	bool delete_key1
 );
 
+/*!
+ * Gets the item data from the configuration DB.
+ *
+ * \param[in] conf    Configuration.
+ * \param[in] txn     Configuration DB transaction.
+ * \param[in] key0    Section name.
+ * \param[in] key1    Item name.
+ * \param[in] id      Section identifier.
+ * \param[in] id_len  Length of the section identifier.
+ * \param[out] data   Item data.
+ *
+ * \return Error code, KNOT_EOK if success.
+ */
 int conf_db_get(
 	conf_t *conf,
 	namedb_txn_t *txn,
@@ -79,6 +135,16 @@ int conf_db_get(
 	conf_val_t *data
 );
 
+/*!
+ * Gets a configuration DB section iterator.
+ *
+ * \param[in] conf   Configuration.
+ * \param[in] txn    Configuration DB transaction.
+ * \param[in] key0   Section name.
+ * \param[out] iter  Section iterator.
+ *
+ * \return Error code, KNOT_EOK if success.
+ */
 int conf_db_iter_begin(
 	conf_t *conf,
 	namedb_txn_t *txn,
@@ -86,11 +152,29 @@ int conf_db_iter_begin(
 	conf_iter_t *iter
 );
 
+/*!
+ * Moves the section iterator to the next identifier.
+ *
+ * \param[in] conf      Configuration.
+ * \param[in,out] iter  Section iterator.
+ *
+ * \return Error code, KNOT_EOK if success.
+ */
 int conf_db_iter_next(
 	conf_t *conf,
 	conf_iter_t *iter
 );
 
+/*!
+ * Gets the current section iterator value (identifier).
+ *
+ * \param[in] conf       Configuration.
+ * \param[in] iter       Section iterator.
+ * \param[out] data      Identifier.
+ * \param[out] data_len  Length of the identifier.
+ *
+ * \return Error code, KNOT_EOK if success.
+ */
 int conf_db_iter_id(
 	conf_t *conf,
 	conf_iter_t *iter,
@@ -98,18 +182,45 @@ int conf_db_iter_id(
 	size_t *data_len
 );
 
+/*!
+ * Deletes the current section iterator value (identifier).
+ *
+ * \param[in] conf      Configuration.
+ * \param[in,out] iter  Section iterator.
+ *
+ * \return Error code, KNOT_EOK if success.
+ */
 int conf_db_iter_del(
 	conf_t *conf,
 	conf_iter_t *iter
 );
 
+/*!
+ * Deletes the section iterator.
+ *
+ * \param[in] conf      Configuration.
+ * \param[in,out] iter  Section iterator.
+ */
 void conf_db_iter_finish(
 	conf_t *conf,
 	conf_iter_t *iter
 );
 
+/*!
+ * Dumps the configuration DB in the textual form.
+ *
+ * \note This function is intended for debugging.
+ *
+ * \param[in] conf       Configuration.
+ * \param[in] txn        Configuration DB transaction.
+ * \param[in] file_name  File name to dump to (NULL to dump to stdout).
+ *
+ * \return Error code, KNOT_EOK if success.
+ */
 int conf_db_raw_dump(
 	conf_t *conf,
 	namedb_txn_t *txn,
 	const char *file_name
 );
+
+/*! @} */

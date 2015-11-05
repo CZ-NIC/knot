@@ -83,12 +83,12 @@ typedef struct {
 } conf_mod_id_t;
 
 /*!
- * Gets a configuration item value of a section without identifiers.
+ * Gets the configuration item value of the section without identifiers.
  *
- * \param[in] conf Configuration.
- * \param[in] txn Confuration DB transaction.
- * \param[in] key0_name Section name.
- * \param[in] key1_name Item name.
+ * \param[in] conf       Configuration.
+ * \param[in] txn        Configuration DB transaction.
+ * \param[in] key0_name  Section name.
+ * \param[in] key1_name  Item name.
  *
  * \return Item value.
  */
@@ -107,14 +107,14 @@ static inline conf_val_t conf_get(
 }
 
 /*!
- * Gets a configuration item value of a section with identifiers (raw version).
+ * Gets the configuration item value of the section with identifiers (raw version).
  *
- * \param[in] conf Configuration.
- * \param[in] txn Confuration DB transaction.
- * \param[in] key0_name Section name.
- * \param[in] key1_name Item name.
- * \param[in] id Section identifier (raw value).
- * \param[in] id_len Length of the section identifier.
+ * \param[in] conf        Configuration.
+ * \param[in] txn         Configuration DB transaction.
+ * \param[in] key0_name   Section name.
+ * \param[in] key1_name   Item name.
+ * \param[in] id Section  identifier (raw value).
+ * \param[in] id_len      Length of the section identifier.
  *
  * \return Item value.
  */
@@ -138,13 +138,13 @@ static inline conf_val_t conf_rawid_get(
 }
 
 /*!
- * Gets a configuration item value of a section with identifiers.
+ * Gets the configuration item value of the section with identifiers.
  *
- * \param[in] conf Configuration.
- * \param[in] txn Confuration DB transaction.
- * \param[in] key0_name Section name.
- * \param[in] key1_name Item name.
- * \param[in] id Section identifier (output of a config getter).
+ * \param[in] conf        Configuration.
+ * \param[in] txn         Configuration DB transaction.
+ * \param[in] key0_name   Section name.
+ * \param[in] key1_name   Item name.
+ * \param[in] id Section  identifier (output of a config getter).
  *
  * \return Item value.
  */
@@ -165,12 +165,12 @@ static inline conf_val_t conf_id_get(
 }
 
 /*!
- * Gets a configuration item value of a module section.
+ * Gets the configuration item value of the module section.
  *
- * \param[in] conf Configuration.
- * \param[in] txn Confuration DB transaction.
- * \param[in] key1_name Item name.
- * \param[in] mod_id Module identifier.
+ * \param[in] conf       Configuration.
+ * \param[in] txn        Configuration DB transaction.
+ * \param[in] key1_name  Item name.
+ * \param[in] mod_id     Module identifier.
  *
  * \return Item value.
  */
@@ -189,14 +189,14 @@ static inline conf_val_t conf_mod_get(
 }
 
 /*!
- * Gets a configuration item value of a zone section.
+ * Gets the configuration item value of the zone section.
  *
  * \note A possibly associated template is taken into account.
  *
- * \param[in] conf Configuration.
- * \param[in] txn Confuration DB transaction.
- * \param[in] key1_name Item name.
- * \param[in] dname Zone name.
+ * \param[in] conf        Configuration.
+ * \param[in] txn         Configuration DB transaction.
+ * \param[in] key1_name   Item name.
+ * \param[in] dname Zone  name.
  *
  * \return Item value.
  */
@@ -215,11 +215,11 @@ static inline conf_val_t conf_zone_get(
 }
 
 /*!
- * Gets a configuration item value of the default template.
+ * Gets the configuration item value of the default template.
  *
- * \param[in] conf Configuration.
- * \param[in] txn Confuration DB transaction.
- * \param[in] key1_name Item name.
+ * \param[in] conf       Configuration.
+ * \param[in] txn        Configuration DB transaction.
+ * \param[in] key1_name  Item name.
  *
  * \return Item value.
  */
@@ -238,9 +238,9 @@ static inline conf_val_t conf_default_get(
 /*!
  * Gets the number of section identifiers.
  *
- * \param[in] conf Configuration.
- * \param[in] txn Confuration DB transaction.
- * \param[in] key0_name Section name.
+ * \param[in] conf       Configuration.
+ * \param[in] txn        Configuration DB transaction.
+ * \param[in] key0_name  Section name.
  *
  * \return Number of identifiers.
  */
@@ -259,9 +259,9 @@ static inline size_t conf_id_count(
 /*!
  * Gets a configuration section iterator.
  *
- * \param[in] conf Configuration.
- * \param[in] txn Confuration DB transaction.
- * \param[in] key0_name Section name.
+ * \param[in] conf       Configuration.
+ * \param[in] txn        Configuration DB transaction.
+ * \param[in] key0_name  Section name.
  *
  * \return Section iterator.
  */
@@ -280,8 +280,8 @@ static inline conf_iter_t conf_iter(
 /*!
  * Moves the configuration section iterator to the next identifier.
  *
- * \param[in] conf Configuration.
- * \param[in] iter Configuration iterator.
+ * \param[in] conf  Configuration.
+ * \param[in] iter  Configuration iterator.
  */
 void conf_iter_next(
 	conf_t *conf,
@@ -291,8 +291,8 @@ void conf_iter_next(
 /*!
  * Gets the current iterator value (identifier).
  *
- * \param[in] conf Configuration.
- * \param[in] iter Configuration iterator.
+ * \param[in] conf  Configuration.
+ * \param[in] iter  Configuration iterator.
  *
  * \return Section identifier.
  */
@@ -302,10 +302,10 @@ conf_val_t conf_iter_id(
 );
 
 /*!
- * Deletes a section iterator.
+ * Deletes the section iterator.
  *
- * \param[in] conf Configuration.
- * \param[in] iter Configuration iterator.
+ * \param[in] conf  Configuration.
+ * \param[in] iter  Configuration iterator.
  */
 void conf_iter_finish(
 	conf_t *conf,
@@ -317,7 +317,7 @@ void conf_iter_finish(
  *
  * The following access is through val->len and val->data.
  *
- * \param[in] val Item value.
+ * \param[in] val  Item value.
  */
 void conf_val(
 	conf_val_t *val
@@ -326,7 +326,7 @@ void conf_val(
 /*!
  * Moves to the next item value.
  *
- * \param[in] val Item value.
+ * \param[in] val  Item value.
  */
 void conf_val_next(
 	conf_val_t *val
@@ -335,7 +335,7 @@ void conf_val_next(
 /*!
  * Gets the number of values if multivalued item.
  *
- * \param[in] val Item value.
+ * \param[in] val  Item value.
  *
  * \return Number of values.
  */
@@ -346,8 +346,8 @@ size_t conf_val_count(
 /*!
  * Checks if two item values are equal.
  *
- * \param[in] val1 First item value.
- * \param[in] val2 Second item value.
+ * \param[in] val1  First item value.
+ * \param[in] val2  Second item value.
  *
  * \return true if equal, false if not.
  */
@@ -359,7 +359,7 @@ bool conf_val_equal(
 /*!
  * Gets the numeric value of the item.
  *
- * \param[in] val Item value.
+ * \param[in] val  Item value.
  *
  * \return Integer.
  */
@@ -370,7 +370,7 @@ int64_t conf_int(
 /*!
  * Gets the boolean value of the item.
  *
- * \param[in] val Item value.
+ * \param[in] val  Item value.
  *
  * \return Boolean.
  */
@@ -381,7 +381,7 @@ bool conf_bool(
 /*!
  * Gets the option value of the item.
  *
- * \param[in] val Item value.
+ * \param[in] val  Item value.
  *
  * \return Option id.
  */
@@ -392,7 +392,7 @@ unsigned conf_opt(
 /*!
  * Gets the string value of the item.
  *
- * \param[in] val Item value.
+ * \param[in] val  Item value.
  *
  * \return String pointer.
  */
@@ -403,7 +403,7 @@ const char* conf_str(
 /*!
  * Gets the dname value of the item.
  *
- * \param[in] val Item value.
+ * \param[in] val  Item value.
  *
  * \return Dname pointer.
  */
@@ -414,8 +414,8 @@ const knot_dname_t* conf_dname(
 /*!
  * Gets the length-prefixed data value of the item.
  *
- * \param[in] val Item value.
- * \param[out] len Output length.
+ * \param[in] val   Item value.
+ * \param[out] len  Output length.
  *
  * \return Data pointer.
  */
@@ -427,8 +427,8 @@ const uint8_t* conf_bin(
 /*!
  * Gets the generic data value of the item.
  *
- * \param[in] val Item value.
- * \param[out] len Output length.
+ * \param[in] val   Item value.
+ * \param[out] len  Output length.
  *
  * \return Data pointer.
  */
@@ -440,8 +440,8 @@ const uint8_t* conf_data(
 /*!
  * Gets the socket address value of the item.
  *
- * \param[in] val Item value.
- * \param[in] sock_base_dir Path prefix for a relative UNIX socket location.
+ * \param[in] val            Item value.
+ * \param[in] sock_base_dir  Path prefix for a relative UNIX socket location.
  *
  * \return Socket address.
  */
@@ -453,9 +453,9 @@ struct sockaddr_storage conf_addr(
 /*!
  * Gets the socket address range value of the item.
  *
- * \param[in] val Item value.
- * \param[out] max_ss Upper address bound or AF_UNSPEC family if not specified.
- * \param[out] prefix_len Network subnet prefix length or -1 if not specified.
+ * \param[in] val            Item value.
+ * \param[out] max_ss Upper  address bound or AF_UNSPEC family if not specified.
+ * \param[out] prefix_len    Network subnet prefix length or -1 if not specified.
  *
  * \return Socket address.
  */
@@ -470,8 +470,8 @@ struct sockaddr_storage conf_addr_range(
  *
  * \note The result must be explicitly deallocated.
  *
- * \param[in] val Item value.
- * \param[in] sock_base_dir Path prefix for a relative string.
+ * \param[in] val            Item value.
+ * \param[in] sock_base_dir  Path prefix for a relative string.
  *
  * \return Absolute path string pointer.
  */
@@ -483,7 +483,7 @@ char* conf_abs_path(
 /*!
  * Gets the module identifier value of the item.
  *
- * \param[in] val Item value.
+ * \param[in] val  Item value.
  *
  * \return Module identifier.
  */
@@ -492,9 +492,9 @@ conf_mod_id_t* conf_mod_id(
 );
 
 /*!
- * Destroys a module identifier.
+ * Destroys the module identifier.
  *
- * \param[in] mod_id Module identifier.
+ * \param[in] mod_id  Module identifier.
  */
 void conf_free_mod_id(
 	conf_mod_id_t *mod_id
@@ -505,9 +505,9 @@ void conf_free_mod_id(
  *
  * \note The result must be explicitly deallocated.
  *
- * \param[in] conf Configuration.
- * \param[in] txn Confuration DB transaction.
- * \param[in] zone Zone name.
+ * \param[in] conf  Configuration.
+ * \param[in] txn   Configuration DB transaction.
+ * \param[in] zone  Zone name.
  *
  * \return Absolute zonef ile path string pointer.
  */
@@ -528,9 +528,9 @@ static inline char* conf_zonefile(
  *
  * \note The result must be explicitly deallocated.
  *
- * \param[in] conf Configuration.
- * \param[in] txn Confuration DB transaction.
- * \param[in] zone Zone name.
+ * \param[in] conf  Configuration.
+ * \param[in] txn   Configuration DB transaction.
+ * \param[in] zone  Zone name.
  *
  * \return Absolute journal file path string pointer.
  */
@@ -549,8 +549,8 @@ static inline char* conf_journalfile(
 /*!
  * Gets the configured number of UDP threads.
  *
- * \param[in] conf Configuration.
- * \param[in] txn Confuration DB transaction.
+ * \param[in] conf  Configuration.
+ * \param[in] txn   Configuration DB transaction.
  *
  * \return Number of threads.
  */
@@ -567,8 +567,8 @@ static inline size_t conf_udp_threads(
 /*!
  * Gets the configured number of TCP threads.
  *
- * \param[in] conf Configuration.
- * \param[in] txn Confuration DB transaction.
+ * \param[in] conf  Configuration.
+ * \param[in] txn   Configuration DB transaction.
  *
  * \return Number of threads.
  */
@@ -585,8 +585,8 @@ static inline size_t conf_tcp_threads(
 /*!
  * Gets the configured number of worker threads.
  *
- * \param[in] conf Configuration.
- * \param[in] txn Confuration DB transaction.
+ * \param[in] conf  Configuration.
+ * \param[in] txn   Configuration DB transaction.
  *
  * \return Number of threads.
  */
@@ -603,10 +603,10 @@ static inline size_t conf_bg_threads(
 /*!
  * Gets the configured user and group identifiers.
  *
- * \param[in] conf Configuration.
- * \param[in] txn Confuration DB transaction.
- * \param[out] uid User identifier.
- * \param[out] gid Group identifier.
+ * \param[in] conf  Configuration.
+ * \param[in] txn   Configuration DB transaction.
+ * \param[out] uid  User identifier.
+ * \param[out] gid  Group identifier.
  *
  * \return Knot error code.
  */
@@ -627,10 +627,10 @@ static inline int conf_user(
 /*!
  * Gets the remote parameters for the given identifier.
  *
- * \param[in] conf Configuration.
- * \param[in] txn Confuration DB transaction.
- * \param[in] id Remote identifier.
- * \param[in] index Remote index.
+ * \param[in] conf   Configuration.
+ * \param[in] txn    Configuration DB transaction.
+ * \param[in] id     Remote identifier.
+ * \param[in] index  Remote index.
  *
  * \return Remote parameters.
  */

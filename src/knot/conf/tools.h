@@ -96,3 +96,5 @@ int check_zone(
 int include_file(
 	conf_check_t *args
 );
+
+/*! @} */

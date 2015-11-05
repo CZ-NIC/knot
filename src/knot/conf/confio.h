@@ -77,7 +77,7 @@ struct conf_io {
 /*!
  * Starts new writing transaction.
  *
- * \param[in] child Nested transaction indicator.
+ * \param[in] child  Nested transaction indicator.
  *
  * \return Error code, KNOT_EOK if success.
  */
@@ -88,7 +88,7 @@ int conf_io_begin(
 /*!
  * Commits the current writing transaction.
  *
- * \param[in] child Nested transaction indicator.
+ * \param[in] child  Nested transaction indicator.
  *
  * \return Error code, KNOT_EOK if success.
  */
@@ -99,7 +99,7 @@ int conf_io_commit(
 /*!
  * Aborts the current writing transaction.
  *
- * \param[in] child Nested transaction indicator.
+ * \param[in] child  Nested transaction indicator.
  *
  * \return Error code, KNOT_EOK if success.
  */
@@ -110,8 +110,8 @@ int conf_io_abort(
 /*!
  * Gets the configuration group item subsection list.
  *
- * \param[in] key0 Section name (NULL to get section list).
- * \param[out] io Operation output.
+ * \param[in] key0  Section name (NULL to get section list).
+ * \param[out] io   Operation output.
  *
  * \return Error code, KNOT_EOK if success.
  */
@@ -124,10 +124,10 @@ int conf_io_desc(
  * Gets the configuration difference between the current configuration and
  * the active transaction.
  *
- * \param[in] key0 Section name (NULL to diff all sections).
- * \param[in] key1 Item name (NULL to diff all section items).
- * \param[in] id Section identifier name (NULL to consider all section identifiers).
- * \param[out] io Operation output.
+ * \param[in] key0  Section name (NULL to diff all sections).
+ * \param[in] key1  Item name (NULL to diff all section items).
+ * \param[in] id    Section identifier name (NULL to consider all section identifiers).
+ * \param[out] io   Operation output.
  *
  * \return Error code, KNOT_EOK if success.
  */
@@ -141,11 +141,11 @@ int conf_io_diff(
 /*!
  * Gets the configuration item(s) value(s).
  *
- * \param[in] key0 Section name (NULL to get all sections).
- * \param[in] key1 Item name (NULL to get all section items).
- * \param[in] id Section identifier name (NULL to consider all section identifiers).
+ * \param[in] key0        Section name (NULL to get all sections).
+ * \param[in] key1        Item name (NULL to get all section items).
+ * \param[in] id          Section identifier name (NULL to consider all section identifiers).
  * \param[in] get_current The current configuration or the active transaction switch.
- * \param[out] io Operation output.
+ * \param[out] io         Operation output.
  *
  * \return Error code, KNOT_EOK if success.
  */
@@ -160,11 +160,11 @@ int conf_io_get(
 /*!
  * Sets the configuration item(s) value.
  *
- * \param[in] key0 Section name.
- * \param[in] key1 Item name (NULL to add identifier only).
- * \param[in] id Section identifier name (NULL to consider all section identifiers).
- * \param[in] data Item data to set/add.
- * \param[out] io Operation output (callback error output).
+ * \param[in] key0  Section name.
+ * \param[in] key1  Item name (NULL to add identifier only).
+ * \param[in] id    Section identifier name (NULL to consider all section identifiers).
+ * \param[in] data  Item data to set/add.
+ * \param[out] io   Operation output (callback error output).
  *
  * \return Error code, KNOT_EOK if success.
  */
@@ -179,10 +179,10 @@ int conf_io_set(
 /*!
  * Unsets the configuration item(s) value(s).
  *
- * \param[in] key0 Section name (NULL to unset all sections).
- * \param[in] key1 Item name (NULL to unset the whole section).
- * \param[in] id Section identifier name (NULL to consider all section identifiers).
- * \param[in] data Item data (NULL to unset all data).
+ * \param[in] key0  Section name (NULL to unset all sections).
+ * \param[in] key1  Item name (NULL to unset the whole section).
+ * \param[in] id    Section identifier name (NULL to consider all section identifiers).
+ * \param[in] data  Item data (NULL to unset all data).
  *
  * \return Error code, KNOT_EOK if success.
  */
@@ -196,7 +196,7 @@ int conf_io_unset(
 /*!
  * Checks the configuration database semantics in the current writing transaction.
  *
- * \param[out] io Operation output.
+ * \param[out] io  Operation output.
  *
  * \return Error code, KNOT_EOK if success.
  */
@@ -209,7 +209,7 @@ int conf_io_check(
  *
  * \note The result must be deallocated.
  *
- * \param[out] io Operation output.
+ * \param[out] io  Operation output.
  *
  * \return String or NULL.
  */
@@ -222,7 +222,7 @@ char *conf_io_txt_key(
  *
  * \note The result must be deallocated.
  *
- * \param[out] io Operation output.
+ * \param[out] io  Operation output.
  *
  * \return String or NULL.
  */
