@@ -18,7 +18,7 @@
 
 #if defined(__linux__)
 #       include <endian.h>
-#  ifndef HAVE_BE64TOH
+#  ifndef be64toh
 #       include <arpa/inet.h>
 #       include <byteswap.h>
 #    if BYTE_ORDER == LITTLE_ENDIAN
