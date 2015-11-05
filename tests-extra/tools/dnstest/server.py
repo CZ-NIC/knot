@@ -316,6 +316,9 @@ class Server(object):
             detail_log(SEP)
 
     def stop(self, check=True):
+        if params.test.stress and self.inquirer:
+            self.inquirer.stop()
+
         if self.proc:
             try:
                 self.proc.terminate()
@@ -330,10 +333,10 @@ class Server(object):
         if check:
             self._valgrind_check()
 
-        if self.inquirer:
+    def kill(self):
+        if params.test.stress and self.inquirer:
             self.inquirer.stop()
 
-    def kill(self):
         if self.proc:
             # Store PID before kill.
             pid = self.proc.pid
@@ -346,9 +349,6 @@ class Server(object):
                     os.remove(f)
                 except:
                     pass
-
-        if self.inquirer:
-            self.inquirer.stop()
 
     def gen_confile(self):
         f = open(self.confile, mode="w")

@@ -11,9 +11,11 @@ class Inquirer:
 
     def __init__(self):
         self.proc = None
+        self.active = False
 
     def start(self, *args):
         self.proc = multiprocessing.Process(target=self._query, args=args)
+        self.active = True
         self.proc.start()
 
     # queries=list(list(name, type),...)
@@ -32,7 +34,7 @@ class Inquirer:
                 query.want_dnssec()
                 _queries.append(query)
 
-        while True:
+        while self.active:
             try:
                 for q in _queries:
                     if _udp:
@@ -47,5 +49,7 @@ class Inquirer:
             time.sleep(sleep)
 
     def stop(self):
+        self.active = False
         if self.proc:
             self.proc.terminate()
+            self.proc = None
