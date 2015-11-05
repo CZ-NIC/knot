@@ -174,7 +174,7 @@ int main(int argc, char *argv[])
 		        knot_strerror(b32_length));
 		goto fail;
 	}
-
+    printf("Digest size: %zu,  Base32 size: %d\n\n", digest_size,b32_length);
 	exit_code = 0;
 
 	printf("%.*s (salt=%s, hash=%d, iterations=%d)\n", b32_length,

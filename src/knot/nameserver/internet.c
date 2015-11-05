@@ -739,7 +739,7 @@ int ns_put_rr(knot_pkt_t *pkt, const knot_rrset_t *rr,
 
 	const bool inserted = (prev_count != pkt->rrset_count);
 	if (inserted &&
-	    !knot_rrset_empty(rrsigs) && rr->type != KNOT_RRTYPE_RRSIG) {
+	    !knot_rrset_empty(rrsigs) && rr->type != KNOT_RRTYPE_RRSIG && rr->type != KNOT_RRTYPE_NSEC5PROOF) {
 		// Get rrinfo of just inserted RR.
 		knot_rrinfo_t *rrinfo = &pkt->rr_info[pkt->rrset_count - 1];
 		ret = put_rrsig(rr->owner, rr->type, rrsigs, rrinfo, qdata);

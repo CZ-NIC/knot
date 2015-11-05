@@ -21,23 +21,26 @@
 #include <limits.h>
 
 #include "common/base32hex.h"
+#include "common/base64.h"
 #include "common/debug.h"
 #include "libknot/descriptor.h"
 #include "common-knot/hhash.h"
 #include "libknot/dnssec/bitmap.h"
+#include "libknot/dnssec/nsec5hash.h"
 #include "libknot/util/utils.h"
 #include "libknot/packet/wire.h"
 #include "libknot/rrtype/soa.h"
 #include "libknot/rrtype/nsec3.h"
 #include "knot/dnssec/nsec-chain.h"
 #include "knot/dnssec/nsec3-chain.h"
+#include "knot/dnssec/nsec5-chain.h"
 #include "knot/dnssec/zone-nsec.h"
 #include "knot/dnssec/zone-sign.h"
 #include "knot/zone/contents.h"
 #include "knot/zone/zone-diff.h"
 
 /*!
- * \brief Deletes NSEC3 chain if NSEC should be used.
+ * \brief Deletes NSEC3 chain if NSEC should be used. (used for NSEC5 too)
  *
  * \param zone       Zone to fix.
  * \param changeset  Changeset to be used.
@@ -77,8 +80,27 @@ bool knot_is_nsec3_enabled(const zone_contents_t *zone)
 	if (!zone) {
 		return false;
 	}
+    //printf("============================EDW TESTARW GIA NSEC3=======================\n");
+    bool is = zone->nsec3_params.algorithm != 0;
+    //if (is) printf("============KAI EINAI NSEC3\n");
+    //else printf("============KAI DEN EINAI NSEC3\n");
 
-	return zone->nsec3_params.algorithm != 0;
+    return is;
+}
+
+/*!
+ * \brief Check if NSEC5 is enabled for given zone.
+ */
+bool knot_is_nsec5_enabled(const zone_contents_t *zone)
+{
+    if (!zone) {
+        return false;
+    }
+    //printf("============================EDW TESTARW GIA NSEC5=======================\n");
+    bool is = zone->nsec5_key.nsec5_key.algorithm != 0;
+    //if (is) printf("============KAI EINAI NSEC5\n");
+    //else printf("============KAI DEN EINAI NSEC5\n");
+    return is;
 }
 
 /*!
@@ -109,7 +131,7 @@ static bool get_zone_soa_min_ttl(const zone_contents_t *zone,
 
 /*!
  * \brief Finds a node with the same owner as the given NSEC3 RRSet and marks it
- *        as 'removed'.
+ *        as 'removed'. (for NSEC5 too)
  *
  * \param data NSEC3 tree to search for the node in. (type zone_tree_t *).
  * \param rrset RRSet whose owner will be sought in the zone tree. non-NSEC3
@@ -146,7 +168,7 @@ static int mark_nsec3(knot_rrset_t *rrset, zone_tree_t *nsec3s)
  * \brief Marks all NSEC3 nodes in zone from which RRSets are to be removed.
  *
  * For each NSEC3 RRSet in the changeset finds its node and marks it with the
- * 'removed' flag.
+ * 'removed' flag. (for NSEC5 too)
  */
 static int mark_removed_nsec3(changeset_t *out_ch,
                               const zone_contents_t *zone)
@@ -204,25 +226,132 @@ knot_dname_t *knot_create_nsec3_owner(const knot_dname_t *owner,
 		return NULL;
 	}
 
-	knot_dname_t *result = knot_nsec3_hash_to_dname(hash, hash_size, zone_apex);
+	knot_dname_t *result = knot_nsec3_hash_to_dname(hash, hash_size, zone_apex,false);
 	free(hash);
 
 	return result;
 }
 
 /*!
+ * \brief Create NSEC5 owner name from regular owner name.
+ *
+ * \param owner      Node owner name.
+ * \param zone_apex  Zone apex name.
+ * \param key        Zone key containing NSEC5 key and context.
+ *
+ * \return NSEC5 owner name, NULL in case of error.
+ */
+knot_dname_t *knot_create_nsec5_owner(const knot_dname_t *owner,
+                                      const knot_dname_t *zone_apex,
+                                      const knot_zone_key_t *key)
+{
+    if (owner == NULL || zone_apex == NULL || key == NULL) {
+        printf("FAIL STO PRWTO CHECK\n");
+        return NULL;
+    }
+    //printf("vgika apo to prwto check\n");
+    uint8_t *hash = NULL;
+    size_t hash_size = 0;
+    //printf("metraw size\n");
+    int owner_size = knot_dname_size(owner);
+    //printf("metrisa size\n");
+
+    if (owner_size < 0) {
+        //printf("GYRNAW NULL!\n");
+        return NULL;
+    }
+    //knot_nsec5_hash_new(key->nsec5_ctx);
+    //printf("paw na kanw add\n");
+    knot_nsec5_hash_add(key->nsec5_ctx, owner);
+    //printf("ekana add\n");
+
+    if (knot_nsec5_hash(key->nsec5_ctx, &hash, &hash_size)
+       != KNOT_EOK) {
+        printf("kati pige strava sto hash computation\n");
+       return NULL;
+    }
+    
+    knot_dname_t *result = knot_nsec3_hash_to_dname(hash, hash_size, zone_apex,true); //using same function as nsec3
+    free(hash);
+    
+    return result;
+}
+
+knot_dname_t *knot_create_nsec5_owner_full(const knot_dname_t *owner,
+                                      const knot_dname_t *zone_apex,
+                                      const knot_zone_key_t *key,
+                                           uint8_t ** nsec5proof,
+                                           size_t *nsec5proof_size)
+{
+    if (owner == NULL || zone_apex == NULL || key == NULL) {
+        printf("FAIL STO PRWTO CHECK\n");
+        return NULL;
+    }
+    //printf("vgika apo to prwto check\n");
+    uint8_t *hash = NULL;
+    size_t hash_size = 0;
+    //printf("metraw size\n");
+    int owner_size = knot_dname_size(owner);
+    //printf("metrisa size\n");
+    
+    if (owner_size < 0) {
+        //printf("GYRNAW NULL!\n");
+        return NULL;
+    }
+    //knot_nsec5_hash_new(key->nsec5_ctx);
+    //printf("paw na kanw add\n");
+    knot_nsec5_hash_add(key->nsec5_ctx, owner);
+    //printf("ekana add\n");
+    
+    if (knot_nsec5_hash_full(key->nsec5_ctx, &hash, &hash_size, nsec5proof,nsec5proof_size)
+        != KNOT_EOK) {
+        printf("kati pige strava sto hash computation\n");
+        return NULL;
+    }
+    
+    /*
+    uint8_t *b32_digest = NULL;
+    printf("************zone_nsec.c*************\n");
+    int32_t b32_length = base64_encode_alloc(*nsec5proof, *nsec5proof_size, &b32_digest);
+    printf("NSEC5PROOF:\n%.*s \n", b32_length,
+           b32_digest);
+    printf("*********************************\n");
+    */
+    knot_dname_t *result = knot_nsec3_hash_to_dname(hash, hash_size, zone_apex,true); //using same function as nsec3
+    free(hash);
+    
+    return result;
+}
+
+/*!
  * \brief Create NSEC3 owner name from hash and zone apex.
  */
 knot_dname_t *knot_nsec3_hash_to_dname(const uint8_t *hash, size_t hash_size,
-                                       const knot_dname_t *zone_apex)
+                                       const knot_dname_t *zone_apex, bool no_padding)
 {
 	assert(zone_apex);
 
 	// encode raw hash to first label
 
+    
 	uint8_t label[KNOT_DNAME_MAXLEN];
 	int32_t label_size;
-	label_size = base32hex_encode(hash, hash_size, label, sizeof(label));
+    if (no_padding) {
+        label_size = base32hex_encode_no_padding(hash, hash_size, label, sizeof(label)); //_no_padding
+    }
+    else {
+        label_size = base32hex_encode(hash, hash_size, label, sizeof(label));
+    }
+    //uint8_t *mylabel;
+    //int32_t mylabel_size;
+    //mylabel_size = base32hex_encode_alloc(hash, hash_size, &mylabel);
+
+    //printf("TO KNOT_DNAME_MAX_LENGTH: %d\n", KNOT_DNAME_MAXLEN);
+    //printf("TO LABEL SIZE: %d\n", label_size);
+    //printf("TO MYLABEL SIZE: %d\n", label_size);
+    //printf("TO HASH SIZE: %zu\n", hash_size);
+    
+    //free(mylabel);
 	if (label_size <= 0) {
 		return NULL;
 	}
@@ -254,7 +383,7 @@ knot_dname_t *knot_nsec3_hash_to_dname(const uint8_t *hash, size_t hash_size,
 }
 
 /*!
- * \brief Create NSEC or NSEC3 chain in the zone.
+ * \brief Create NSEC or NSEC3 or NSEC5 chain in the zone.
  */
 int knot_zone_create_nsec_chain(const zone_contents_t *zone,
                                 changeset_t *changeset,
@@ -272,26 +401,42 @@ int knot_zone_create_nsec_chain(const zone_contents_t *zone,
 
 	int result;
 	bool nsec3_enabled = knot_is_nsec3_enabled(zone);
-
+    bool nsec5_enabled = knot_is_nsec5_enabled(zone); //false FOR NOW
+    
 	if (nsec3_enabled) {
 		result = knot_nsec3_create_chain(zone, nsec_ttl, changeset);
-	} else {
+    }
+    else if (nsec5_enabled) {
+        //knot_zone_key_t *nsec5_zone_key = knot_get_nsec5_key(zone_keys);
+        //printf("TO KLEIDI POU DIAVASA APO TA KEYS (KAI OXI APO ZONE) einai: %d\n", nsec5_zone_key->nsec5_key.keytag);
+        //printf("TO KLEIDI POU DIAVASA APO ZONE einai: %d\n", zone->nsec5_key.nsec5_key.keytag);
+        //result = knot_nsec3_create_chain(zone, nsec_ttl, changeset);
+        //result = knot_nsec_create_chain(zone, nsec_ttl, changeset);
+
+        result = knot_nsec5_create_chain(zone, nsec_ttl, changeset, &zone->nsec5_key);//nsec5_zone_key);
+    }
+    else {
 		result = knot_nsec_create_chain(zone, nsec_ttl, changeset);
 	}
 
-	if (result == KNOT_EOK && !nsec3_enabled) {
-		result = delete_nsec3_chain(zone, changeset);
+	if (result == KNOT_EOK && !nsec3_enabled && !nsec5_enabled) {
+		result = delete_nsec3_chain(zone, changeset); //keep in mind, nsec3chain is used both for nsec3 and nsec5....
 	}
-
+    
+    //printf("================== MARKING REMOVED NSEC3 ===============\n");
+    
 	if (result == KNOT_EOK) {
 		// Mark removed NSEC3 nodes, so that they are not signed later
-		result = mark_removed_nsec3(changeset, zone);
+		result = mark_removed_nsec3(changeset, zone); //same as above; nsec5 too
 	}
 
 	if (result != KNOT_EOK) {
 		return result;
 	}
+    //printf("================== SIGNING NSEC CHANGESET ===============\n");
 
 	// Sign newly created records right away
 	return knot_zone_sign_nsecs_in_changeset(zone_keys, policy, changeset);
+    //printf("================== OUT OF ZONE NSEC -> create_nsec_chain ===============\n");
+
 }

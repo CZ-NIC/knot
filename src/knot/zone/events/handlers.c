@@ -22,8 +22,10 @@
 #include "knot/server/tcp-handler.h"
 #include "knot/updates/changesets.h"
 #include "knot/dnssec/zone-events.h"
+#include "knot/dnssec/zone-nsec.h"
 #include "knot/zone/timers.h"
 #include "knot/zone/zone-load.h"
+#include "knot/zone/zone-dump.h"
 #include "knot/zone/zonefile.h"
 #include "knot/zone/events/events.h"
 #include "knot/zone/events/handlers.h"
@@ -233,46 +235,109 @@ int event_reload(zone_t *zone)
 	time_t mtime = zonefile_mtime(zone->conf->file);
 	uint32_t dnssec_refresh = time(NULL);
 	conf_zone_t *zone_config = zone->conf;
+    log_zone_info(zone->name, "Inside event_reload");
 	zone_contents_t *contents = zone_load_contents(zone_config);
 	if (!contents) {
 		return KNOT_ERROR;
 	}
+    //zonefile_write("/Users/dpapadopoulos/Desktop/FIRST_AFTER_LOAD_CONTENTS",contents);
+
+    //printf("PRIN TO LOAD_JOURNAL TO KEYTAG TO KANOURGIO EINAI: %d\n", contents->nsec5_key.nsec5_key.keytag);
+    //printf("PRIN TO LOAD_JOURNAL TO private_key TO KAINOURGIO EINAI=%d\n",
+        //   contents->nsec5_key.nsec5_key.data);
 
 	/* Store zonefile serial and apply changes from the journal. */
 	zone->zonefile_serial = zone_contents_serial(contents);
-	int result = zone_load_journal(zone, contents);
+    int result = zone_load_journal(zone, contents);
 	if (result != KNOT_EOK) {
 		goto fail;
 	}
 
+    //printf("META TO LOAD_JOURNAL TO KEYTAG TO KANOURGIO EINAI: %d\n", contents->nsec5_key.nsec5_key.keytag);
+    //printf("META TO LOAD_JOURNAL TO private_key TO KAINOURGIO EINAI=%d\n",
+       //    contents->nsec5_key.nsec5_key.data);
+    
+    //printf("META TO LOAD_JOURNAL TO KEYTAG TO PALIO EINAI: %d\n", zone->contents->nsec5_key.nsec5_key.keytag);
+    //printf("META TO LOAD_JOURNAL TO private_key TO PALIO EINAI=%d\n",
+       //    zone->contents->nsec5_key.nsec5_key.data);
+    
+   // zonefile_write("/Users/dpapadopoulos/Desktop/AFTER_LOAD_JOURNAL",contents);
+
+    
+    /*printf("=================================================================\n");
+    printf("=================================================================\n");
+    printf("============================OOOOOOOOO============================\n");
+    printf("=================================================================\n");
+    printf("=================================================================\n\n");
+    */
+     //zonefile_write("/Users/dpapadopoulos/Desktop/klopdegan1",contents);
+    /*
+    printf("\n=================================================================\n");
+    printf("=================================================================\n");
+    printf("============================OOOOOOOOO============================\n");
+    printf("=================================================================\n");
+    printf("=================================================================\n");
+    */
 	/* Post load actions - calculate delta, sign with DNSSEC... */
 	/*! \todo issue #242 dnssec signing should occur in the special event */
+    
+    log_zone_info(zone->name, "Loaded contents. Moving on to signing.");
+    
 	result = zone_load_post(contents, zone, &dnssec_refresh);
 	if (result != KNOT_EOK) {
 		if (result == KNOT_ESPACE) {
 			log_zone_error(zone->name, "journal size is too small "
 			               "to fit the changes");
 		} else {
-			log_zone_error(zone->name, "failed to store changes into "
+                log_zone_error(zone->name, "failed to store changes into "
 			               "journal (%s)", knot_strerror(result));
 		}
 		goto fail;
 	}
+    //zonefile_write("/Users/dpapadopoulos/Desktop/AFTER_LOAD_POST",contents);
 
+    
 	/* Check zone contents consistency. */
 	result = zone_load_check(contents, zone_config);
 	if (result != KNOT_EOK) {
+        printf("handlers.c zone_load_check says ------> inconsistent zone contents\n");
 		goto fail;
 	}
 
+    log_zone_info(zone->name, "Done with signing. Switching zone contents.");
+
+    
 	/* Everything went alright, switch the contents. */
 	zone->zonefile_mtime = mtime;
+    //printf("handlers.c switching contents\n ");
+
+    /*printf("=================================================================\n");
+    printf("=================================================================\n");
+    printf("============================OOOOOOOOO============================\n");
+    printf("=================================================================\n");
+    printf("=================================================================\n\n");
+    */
+     //zonefile_write("/Users/dpapadopoulos/Desktop/klopdegan3",zone->contents);
+    /*printf("\n=================================================================\n");
+    printf("=================================================================\n");
+    printf("============================OOOOOOOOO============================\n");
+    printf("=================================================================\n");
+    printf("=================================================================\n");
+     */
+     
 	zone_contents_t *old = zone_switch_contents(zone, contents);
 	uint32_t old_serial = zone_contents_serial(old);
 	if (old != NULL) {
 		synchronize_rcu();
 		zone_contents_deep_free(&old);
-	}
+    }
+    
+    log_zone_info(zone->name, "Done with reload. Scedhuling next events.");
+
+    //printf("META TO RELOAD TO KEYTAG EINAI: %d\n", zone->contents->nsec5_key.nsec5_key.keytag);
+    //printf("META TO RELOAD TO private_key EINAI=%d\n",
+                     // zone->contents->nsec5_key.nsec5_key.data);
+
 
 	/* Schedule notify and refresh after load. */
 	if (zone_is_slave(zone)) {
@@ -295,7 +360,15 @@ int event_reload(zone_t *zone)
 	log_zone_info(zone->name, "loaded, serial %u -> %u",
 	              old_serial, current_serial);
 
-	return zone_events_write_persistent(zone);
+    log_zone_info(zone->name, "Done with event_reload");
+
+	int ress = zone_events_write_persistent(zone);
+    
+    //printf("META TO RELOAD TO KEYTAG EINAI: %d\n", zone->contents->nsec5_key.nsec5_key.keytag);
+    //printf("META TO RELOAD TO private_key EINAI=%d\n",
+      //     zone->contents->nsec5_key.nsec5_key.data);
+
+    return ress;
 
 fail:
 	zone_contents_deep_free(&contents);
@@ -524,6 +597,8 @@ int event_dnssec(zone_t *zone)
 	if (ret != KNOT_EOK) {
 		goto done;
 	}
+    //printf("PRIN TO ZONESIGN (STO handlers.c) TO KEYTAG EINAI: %d\n", zone->contents->nsec5_key.nsec5_key.keytag);
+    //printf("PRIN TO ZONESIGN (STO handlers.c) TO private_key EINAI: %d\n", zone->contents->nsec5_key.nsec5_key.data);
 
 	uint32_t refresh_at = time(NULL);
 	if (zone->flags & ZONE_FORCE_RESIGN) {
@@ -543,9 +618,22 @@ int event_dnssec(zone_t *zone)
 		goto done;
 	}
 
+    //printf("META TO ZONESIGN (STO handlers.c) TO KEYTAG EINAI: %d\n", zone->contents->nsec5_key.nsec5_key.keytag);
+    //printf("META TO ZONESIGN (STO handlers.c) TO private_key EINAI: %d\n", zone->contents->nsec5_key.nsec5_key.data);
+
+    
 	if (!changeset_empty(&ch)) {
 		/* Apply change. */
 		zone_contents_t *new_contents = NULL;
+        //zone->nsec5_key = knot_get_nsec5_key(zone_keys);
+        //printf("paw na kanw load to nsec5\n");
+        //if(knot_is_nsec5_enabled(zone->contents)) {
+            //const conf_zone_t *conf = zone->conf;
+            //TODO: INSTEAD OF READING FROM FILE, DEEP COPY FROM OLD CONTENTS
+            //new_contents->nsec5_key = *knot_load_nsec5_key(conf->dnssec_keydir,
+          //                                         zone->contents->apex->owner);
+        //}
+        //printf("VGIKA APO TO IF LOOP\n");
 		int ret = apply_changeset(zone, &ch, &new_contents);
 		if (ret != KNOT_EOK) {
 			log_zone_error(zone->name, "DNSSEC, failed to sign zone (%s)",
@@ -553,6 +641,14 @@ int event_dnssec(zone_t *zone)
 			goto done;
 		}
 
+        //printf("META TO APPLY (STO handlers.c) TO KEYTAG tou zone EINAI: %d\n", zone->contents->nsec5_key.nsec5_key.keytag);
+        //printf("META TO APPLY (STO handlers.c) TO private_key tou zone EINAI: private_key=%d\n",
+            //              zone->contents->nsec5_key.nsec5_key.data);
+        
+        //printf("META TO APPLY (STO handlers.c) TO KEYTAG tou zone EINAI: %d\n", new_contents->nsec5_key.nsec5_key.keytag);
+        //printf("META TO APPLY (STO handlers.c) TO private_key tou zone EINAI: private_key=%d\n",
+          //                new_contents->nsec5_key.nsec5_key.data);
+    
 		/* Write change to journal. */
 		ret = zone_change_store(zone, &ch);
 		if (ret != KNOT_EOK) {
@@ -567,6 +663,12 @@ int event_dnssec(zone_t *zone)
 		zone_contents_t *old_contents = zone_switch_contents(zone, new_contents);
 		synchronize_rcu();
 		update_free_zone(&old_contents);
+        
+        //printf("VGIKA APO TO SWITCH\n");
+        //printf("META TO SWITCH (STO handlers.c) TO KEYTAG tou zone EINAI: %d\n", zone->contents->nsec5_key.nsec5_key.keytag);
+        //printf("META TO SWITCH (STO handlers.c) TO private_key tou zone EINAI: private_key=%d\n",
+          //                zone->contents->nsec5_key.nsec5_key.data);
+        
 
 		update_cleanup(&ch);
 	}

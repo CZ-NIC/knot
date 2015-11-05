@@ -71,6 +71,7 @@ static int sign_update(zone_t *zone, const zone_contents_t *old_contents,
 	/*
 	 * Check if the UPDATE changed DNSKEYs or NSEC3PARAM.
 	 * If so, we have to sign the whole zone.
+     * TODO: Extend the check to look into NSEC5KEYs too.
 	 */
 	int ret = KNOT_EOK;
 	uint32_t refresh_at = 0;

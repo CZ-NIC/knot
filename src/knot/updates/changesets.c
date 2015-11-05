@@ -28,6 +28,7 @@
 static int add_rr_to_zone(zone_contents_t *z, const knot_rrset_t *rrset)
 {
 	zone_node_t *n = NULL;
+    //printf("APO TO CHANGESET KALESA GIA add_rr_to_zone\n");
 	int ret = zone_contents_add_rr(z, rrset, &n);
 	UNUSED(n);
 	return ret;

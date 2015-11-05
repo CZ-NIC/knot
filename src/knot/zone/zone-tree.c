@@ -78,20 +78,56 @@ int zone_tree_get(zone_tree_t *tree, const knot_dname_t *owner,
                          zone_node_t **found)
 {
 	if (owner == NULL) {
+    //    printf("zone_tree_get: no owner **************************\n");
 		return KNOT_EINVAL;
 	}
 
 	if (zone_tree_is_empty(tree)) {
+    //    printf("zone_tree_get: no tree **************************\n");
 		return KNOT_ENONODE;
 	}
-
+    //int siss = knot_dname_size(owner);
+    
 	uint8_t lf[KNOT_DNAME_MAXLEN];
 	knot_dname_lf(lf, owner, NULL);
-
+    /*printf("===========================================\n");
+    printf("-------------OWNER in ASCII----------\n");
+    for (int i =0; i < siss; i++)
+    {
+        printf("\\%d",owner[i]);
+    }
+    printf("\n");
+    printf("------------OWNER-----------\n");
+    
+    for (int i =0; i < siss; i++)
+    {
+        printf("%c",owner[i]);
+    }
+    printf("\n");
+    
+    
+    printf("===========================================\n");
+    printf("-------------LF in ASCII----------\n");
+    for (int i =0; i < KNOT_DNAME_MAXLEN; i++)
+    {
+        printf("\\%d",lf[i]);
+    }
+    printf("\n");
+    printf("-------------LF----------\n");
+    
+    for (int i =0; i < KNOT_DNAME_MAXLEN; i++)
+    {
+        printf("%c",lf[i]);
+    }
+    printf("\n");
+    printf("===========================================\n");
+     */
 	value_t *val = hattrie_tryget(tree, (char*)lf+1, *lf);
 	if (val == NULL) {
 		*found = NULL;
+        //printf("Found NULL\n");
 	} else {
+        //printf("Found Something\n");
 		*found = (zone_node_t*)(*val);
 	}
 
@@ -293,6 +329,7 @@ int zone_tree_apply(zone_tree_t *tree,
 	}
 
 	if (zone_tree_is_empty(tree)) {
+        //printf("mesa sto zone tree apply to dentro adiase......\n");
 		return KNOT_EOK;
 	}
 

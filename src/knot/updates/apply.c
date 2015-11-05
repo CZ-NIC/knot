@@ -188,11 +188,18 @@ static bool rrset_is_nsec3rel(const knot_rrset_t *rr)
 		return false;
 	}
 
-	/* Is NSEC3 or non-empty RRSIG covering NSEC3. */
-	return ((rr->type == KNOT_RRTYPE_NSEC3)
+    /* Is NSEC3 or non-empty RRSIG covering NSEC3.
+     Used to specify thether a node should inserted/accessed
+     from nsec_nodes or nsec3_nodes trie. Since we use the latter
+     for nsec5 nodes, the checks are enhanced accordingly.
+     */
+    return (((rr->type == KNOT_RRTYPE_NSEC3)
 	        || (rr->type == KNOT_RRTYPE_RRSIG
 	            && knot_rrsig_type_covered(&rr->rrs, 0)
-	            == KNOT_RRTYPE_NSEC3));
+                == KNOT_RRTYPE_NSEC3)) || ((rr->type == KNOT_RRTYPE_NSEC5)
+                                           || (rr->type == KNOT_RRTYPE_RRSIG
+                                               && knot_rrsig_type_covered(&rr->rrs, 0)
+                                               == KNOT_RRTYPE_NSEC5)));
 }
 
 /*! \brief Removes single RR from zone contents. */
@@ -373,17 +380,18 @@ static int apply_single(zone_contents_t *contents, changeset_t *chset,
 	if (soa == NULL || knot_soa_serial(soa) != knot_soa_serial(&chset->soa_from->rrs)) {
 		return KNOT_EINVAL;
 	}
-
 	int ret = apply_remove(contents, chset);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
-
+    //zonefile_write("/Users/dpapadopoulos/Desktop/sto_apply_single_meta_to_remove",contents);
 	ret = apply_add(contents, chset, master);
 	if (ret != KNOT_EOK) {
+    //zonefile_write("/Users/dpapadopoulos/Desktop/sto_apply_single_meta_to_add_NOT_ok",contents);
 		return ret;
 	}
-
+//zonefile_write("/Users/dpapadopoulos/Desktop/sto_apply_single_meta_to_add_all_ok",contents);
+    
 	return apply_replace_soa(contents, chset);
 }
 
@@ -411,6 +419,9 @@ static int prepare_zone_copy(zone_contents_t *old_contents,
 		return ret;
 	}
 
+    //printf("META TO shallow_copy sto prepare_zone_copy(STO apply.c) TO KEYTAG tou old_contents EINAI: %d\n", contents_copy->nsec5_key.nsec5_key.keytag);
+    //printf("META TO shallow_copy sto prepare_zone_copy (STO apply.c) TO private_key tou old_contents EINAI: private_key=%d\n",
+          // contents_copy->nsec5_key.nsec5_key.data);
 	*new_contents = contents_copy;
 
 	return KNOT_EOK;
@@ -421,12 +432,15 @@ static int finalize_updated_zone(zone_contents_t *contents_copy,
                                  bool set_nsec3_names)
 {
 	if (contents_copy == NULL) {
+        printf("fail sto prwto check sto finalize\n");
 		return KNOT_EINVAL;
 	}
 
 	if (set_nsec3_names) {
+        //printf("mpika gia adjust KAI sto nsec3\n");
 		return zone_contents_adjust_full(contents_copy, NULL, NULL);
 	} else {
+        //printf("mpika gia adjust MONO sto kanoniko\n");
 		return zone_contents_adjust_pointers(contents_copy);
 	}
 }
@@ -489,12 +503,20 @@ int apply_changeset(zone_t *zone, changeset_t *change, zone_contents_t **new_con
 		return KNOT_EINVAL;
 	}
 
+    //printf("META TO assignment (STO apply.c) TO KEYTAG tou old_contents EINAI: %d\n", old_contents->nsec5_key.nsec5_key.keytag);
+    //printf("META TO assignments (STO apply.c) TO private_key tou old_contents EINAI: private_key=%d\n",
+           //old_contents->nsec5_key.nsec5_key.data);
+    
 	zone_contents_t *contents_copy = NULL;
 	int ret = prepare_zone_copy(old_contents, &contents_copy);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
 	
+    //printf("META TO prepare_zone_copy (STO apply.c) TO KEYTAG tou copy EINAI: %d\n", contents_copy->nsec5_key.nsec5_key.keytag);
+    //printf("META TO prepare_zone_copy (STO apply.c) TO private_key tou copy EINAI: private_key=%d\n",
+       //    contents_copy->nsec5_key.nsec5_key.data);
+    
 	const bool master = !zone_is_slave(zone);
 	ret = apply_single(contents_copy, change, master);
 	if (ret != KNOT_EOK) {
@@ -520,7 +542,6 @@ int apply_changesets_directly(zone_contents_t *contents, list_t *chsets)
 	if (contents == NULL || chsets == NULL) {
 		return KNOT_EINVAL;
 	}
-
 	changeset_t *set = NULL;
 	WALK_LIST(set, *chsets) {
 		const bool master = true; // Only DNSSEC changesets are applied directly.
@@ -529,6 +550,7 @@ int apply_changesets_directly(zone_contents_t *contents, list_t *chsets)
 			updates_cleanup(chsets);
 			return ret;
 		}
+
 	}
 
 	int ret = finalize_updated_zone(contents, true);
@@ -541,19 +563,30 @@ int apply_changesets_directly(zone_contents_t *contents, list_t *chsets)
 
 int apply_changeset_directly(zone_contents_t *contents, changeset_t *ch)
 {
+    //printf("EIMAI MESA STIS ALLAGES PRIN TO PRWTO CHECK\n");
+
 	if (contents == NULL || ch == NULL) {
+        printf("KATI EINAI ADEIO MAGKES\n");
+
 		return KNOT_EINVAL;
 	}
-	
+    //printf("EIMAI MESA STIS ALLAGES META TO PRWTO CHECK\n");
+    //zonefile_write("/Users/dpapadopoulos/Desktop/sto_apply_prin_to_apply_single",contents);
 	const bool master = true; // Only DNSSEC changesets are applied directly.
 	int ret = apply_single(contents, ch, master);
 	if (ret != KNOT_EOK) {
+        printf("to apply single ekane fail\n");
 		update_cleanup(ch);
 		return ret;
 	}
-	
+    
+    //zonefile_write("/Users/dpapadopoulos/Desktop/sto_apply_meta_to_apply_single",contents);
+
+    
+    //printf("to apply single egine\n");
 	ret = finalize_updated_zone(contents, true);
 	if (ret != KNOT_EOK) {
+        printf("to finalize  ekane fail\n");
 		update_cleanup(ch);
 		return ret;
 	}

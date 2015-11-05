@@ -1300,7 +1300,9 @@ static void dnskey_info(const uint8_t *rdata,
 #define DUMP_BASE64	wire_data_encode_to_str(p, &base64_encode, \
 				&base64_encode_alloc); CHECK_RET(p);
 #define DUMP_HASH	wire_len_data_encode_to_str(p, &base32hex_encode, \
-				1, false, ""); CHECK_RET(p);
+                1, false, ""); CHECK_RET(p);
+#define DUMP_HASH_NO_PADDING	wire_len_data_encode_to_str(p, &base32hex_encode_no_padding, \
+1, false, ""); CHECK_RET(p);
 #define DUMP_SALT	wire_len_data_encode_to_str(p, &hex_encode, \
 				1, false, "-"); CHECK_RET(p);
 #define DUMP_TSIG_DGST	wire_len_data_encode_to_str(p, &base64_encode, \
@@ -1654,13 +1656,13 @@ static int dump_nsec5(DUMP_PARAMS)
 	if (p->style->wrap) {
 		DUMP_NUM16;  DUMP_SPACE;
 		DUMP_NUM8;   DUMP_SPACE;
-		DUMP_HASH;   DUMP_SPACE; WRAP_INIT;
+		DUMP_HASH_NO_PADDING;   DUMP_SPACE; WRAP_INIT;
 		DUMP_BITMAP;
 		WRAP_END;
 	} else {
 		DUMP_NUM16; DUMP_SPACE;
 		DUMP_NUM8;  DUMP_SPACE;
-		DUMP_HASH;  DUMP_SPACE;
+		DUMP_HASH_NO_PADDING;  DUMP_SPACE;
 		DUMP_BITMAP;
 	}
 

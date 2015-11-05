@@ -352,11 +352,14 @@ static int knot_zone_diff_add_new_nodes(zone_node_t **node_ptr, void *data)
 	assert(node_owner);
 
 	zone_node_t *new_node = NULL;
-	zone_tree_get(param->nodes, node_owner, &new_node);
+    //printf("zone_diff_add_new_nodes: prin to get\n");
+    zone_tree_get(param->nodes, node_owner, &new_node);
+    //printf("zone_diff_add_new_nodes: meta to get\n");
 
 	int ret = KNOT_EOK;
 
 	if (!new_node) {
+        //printf("Den ypirxe o komvos, valton sto changeset. Trexw to knot_zone_diff_add_node\n");
 		assert(node);
 		ret = knot_zone_diff_add_node(node, param->changeset);
 		if (ret != KNOT_EOK) {
@@ -381,14 +384,22 @@ static int knot_zone_diff_load_trees(zone_tree_t *nodes1,
 
 	// Traverse one tree, compare every node, each RRSet with its rdata.
 	param.nodes = nodes2;
+    //printf("PRIN TO prwto zone tree apply, TO WEIGHT TOU NSEC5 NODES: %d\n", zone_tree_weight(nodes2));
+    //printf("PRIN TO prwto zone tree apply, TO WEIGHT TOU zone->nsec3nodes NODES: %d\n", zone_tree_weight(nodes1));
+
 	int result = zone_tree_apply(nodes1, knot_zone_diff_node, &param);
 	if (result != KNOT_EOK) {
+        printf("kati pige strava mesa sto prwto zone tree apply\n");
 		return result;
 	}
+    //printf("META TO prwto zone tree apply, TO WEIGHT TOU NSEC5 NODES: %d\n", zone_tree_weight(nodes2));
+    //printf("META TO prwto zone tree apply, TO WEIGHT TOU zone->nsec3nodes NODES: %d\n", zone_tree_weight(nodes1));
 
+    //printf ("zone-diff: Ekana prwto zone tree apply\n");
 	// Some nodes may have been added. Add missing nodes to changeset.
 	param.nodes = nodes1;
 	result = zone_tree_apply(nodes2, knot_zone_diff_add_new_nodes, &param);
+    //printf ("zone-diff: Ekana deytero zone tree apply\n");
 
 	return result;
 }
@@ -441,6 +452,7 @@ int zone_contents_create_diff(const zone_contents_t *z1,
 int zone_tree_add_diff(zone_tree_t *t1, zone_tree_t *t2, changeset_t *changeset)
 {
 	if (!changeset) {
+        printf("zone_tree_add_diff: no changesest\n");
 		return KNOT_EINVAL;
 	}
 

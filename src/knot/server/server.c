@@ -654,8 +654,9 @@ int server_update_zones(const conf_t *conf, void *data)
 
 	/* Reload zone database and free old zones. */
 	reopen_timers_database(conf, server);
-	int ret = zonedb_reload(conf, server);
-
+    //printf("print to zonedb_reload\n");
+    int ret = zonedb_reload(conf, server);
+    //printf("meta to zonedb_reload\n");
 	/* Trim extra heap. */
 	mem_trim();
 

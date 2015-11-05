@@ -43,6 +43,7 @@ static void discard_zone(zone_t *zone)
 	if (zone->zonefile_mtime == 0) {
 
 		pthread_mutex_lock(&zone->journal_lock);
+        printf("APODW TO KALESA3\n");
 		zone_flush_journal(zone);
 		pthread_mutex_unlock(&zone->journal_lock);
 

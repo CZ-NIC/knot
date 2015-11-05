@@ -44,6 +44,10 @@ static int apex_node_dump_text(zone_node_t *node, dump_params_t *params)
 
 	// Dump SOA record as a first.
 	if (!params->dump_nsec) {
+        //char dst[10000];
+        //knot_rrset_txt_dump(&soa, dst, 10000,
+        //                    &KNOT_DUMP_STYLE_DEFAULT);
+        //printf("%s\n", dst);
 		if (knot_rrset_txt_dump(&soa, params->buf, params->buflen,
 					&soa_style) < 0) {
 			return KNOT_ENOMEM;
@@ -67,6 +71,11 @@ static int apex_node_dump_text(zone_node_t *node, dump_params_t *params)
 			break;
 		}
 
+        //char dst[10000];
+        //knot_rrset_txt_dump(&rrset, dst, 10000,
+        //                    &KNOT_DUMP_STYLE_DEFAULT);
+        //printf("%s\n", dst);
+        
 		if (knot_rrset_txt_dump(&rrset, params->buf, params->buflen,
 		                        params->style) < 0) {
 			return KNOT_ENOMEM;
@@ -109,13 +118,26 @@ static int node_dump_text(zone_node_t *node, void *data)
 				break;
 			}
 			continue;
+        case KNOT_RRTYPE_NSEC5:
+            if (params->dump_nsec) {
+                break;
+            }
+            continue;
 		default:
 			if (params->dump_nsec || params->dump_rrsig) {
 				continue;
 			}
 			break;
 		}
-
+        ////////////////////////////////
+        //char dst[10000];
+        //knot_rrset_txt_dump(&rrset, dst, 10000,
+                            //&KNOT_DUMP_STYLE_DEFAULT);
+        //printf("%s\n", dst);
+                            
+        ////////////////////////////////
+        
+        
 		if (knot_rrset_txt_dump(&rrset, params->buf, params->buflen,
 		                        params->style) < 0) {
 			return KNOT_ENOMEM;
@@ -163,6 +185,7 @@ int zone_dump_text(zone_contents_t *zone, FILE *file)
 		return ret;
 	}
 
+    //printf("standart zone records done\n");
 	// Dump DNSSEC signatures if secured.
 	if (zone_contents_is_signed(zone)) {
 		fprintf(file, ";; DNSSEC signatures\n");
@@ -177,9 +200,19 @@ int zone_dump_text(zone_contents_t *zone, FILE *file)
 		}
 	}
 
-	// Dump NSEC3 chain if available.
-	if (knot_is_nsec3_enabled(zone)) {
-		fprintf(file, ";; DNSSEC NSEC3 chain\n");
+    //printf("dnssec signature records done\n");
+    bool nsec3 = knot_is_nsec3_enabled(zone);
+    bool nsec5 = knot_is_nsec5_enabled(zone);
+
+	// Dump NSEC3/NSEC5 chain if available.
+	if ( nsec3|| nsec5) {
+        //keep boths checks separate for easier error detection from journal
+        if (nsec3) {
+            fprintf(file, ";; DNSSEC NSEC3 chain\n");
+        }
+        if (nsec5) {
+            fprintf(file, ";; DNSSEC NSEC5 chain\n");
+        }
 
 		params.dump_rrsig = false;
 		params.dump_nsec = true;
@@ -189,8 +222,13 @@ int zone_dump_text(zone_contents_t *zone, FILE *file)
 			return ret;
 		}
 
-		fprintf(file, ";; DNSSEC NSEC3 signatures\n");
-
+        if (nsec3) {
+            fprintf(file, ";; DNSSEC NSEC3 signatures\n");
+        }
+        if (nsec5) {
+            fprintf(file, ";; DNSSEC NSEC5 signatures\n");
+        }
+        
 		params.dump_rrsig = true;
 		params.dump_nsec = false;
 		ret = zone_contents_nsec3_apply_inorder(zone, node_dump_text,
@@ -211,6 +249,8 @@ int zone_dump_text(zone_contents_t *zone, FILE *file)
 		}
 	}
 
+    //printf("nsec chain records done\n");
+    
 	// Create formated date-time string.
 	time_t now = time(NULL);
 	struct tm tm;

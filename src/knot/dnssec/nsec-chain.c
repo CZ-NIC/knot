@@ -287,9 +287,9 @@ int knot_nsec_create_chain(const zone_contents_t *zone, uint32_t ttl,
 	assert(zone);
 	assert(zone->nodes);
 	assert(changeset);
-
+    printf("EDW PETHAINEI\n");
 	nsec_chain_iterate_data_t data = { ttl, changeset, zone };
-
+    //printf("TA CONTENTS EXOUN NSECK5KEY ME TAG: %d\n", zone->nsec5_key->nsec5_key.keytag);
 	return knot_nsec_chain_iterate_create(zone->nodes,
 	                                      connect_nsec_nodes, &data);
 }

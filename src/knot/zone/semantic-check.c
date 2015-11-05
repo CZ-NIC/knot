@@ -595,7 +595,7 @@ static int check_nsec3_node_in_zone(zone_contents_t *zone, zone_node_t *node,
 			if (zone_contents_find_nsec3_for_name(zone,
 			                                      node->owner,
 			                                      &nsec3_node,
-			                                      &nsec3_previous) != 0) {
+			                                      &nsec3_previous, NULL, NULL, false) != 0) {
 				err_handler_handle_error(handler, zone, node,
 				                         ZC_ERR_NSEC3_NOT_FOUND, NULL);
 				return KNOT_EOK;
@@ -651,9 +651,11 @@ static int check_nsec3_node_in_zone(zone_contents_t *zone, zone_node_t *node,
 	uint8_t next_dname_size = 0;
 	knot_nsec3_next_hashed(nsec3_rrs, 0, &next_dname_str,
 	                           &next_dname_size);
+    bool no_padding = false; //NSEC3
+    if(knot_is_nsec5_enabled(zone)) no_padding = true; //NSEC5
 	knot_dname_t *next_dname = knot_nsec3_hash_to_dname(next_dname_str,
 	                                                    next_dname_size,
-	                                                    apex->owner);
+	                                                    apex->owner,no_padding);
 	if (next_dname == NULL) {
 		return KNOT_ERROR;
 	}
@@ -1062,9 +1064,11 @@ void log_cyclic_errors_in_zone(err_handler_t *handler,
 		uint8_t next_dname_size = 0;
 		knot_nsec3_next_hashed(nsec3_rrs, 0, &next_dname_str,
 		                           &next_dname_size);
+        bool no_padding = false; //NSEC3
+        if(knot_is_nsec5_enabled(zone)) no_padding = true; //NSEC5
 		knot_dname_t *next_dname = knot_nsec3_hash_to_dname(next_dname_str,
 		                                                    next_dname_size,
-		                                                    apex->owner);
+		                                                    apex->owner, no_padding);
 		if (next_dname == NULL) {
 			log_zone_warning(zone->apex->owner, "semantic check, "
 			                 "failed to create new dname");

@@ -146,7 +146,8 @@ static int get_key_info_from_public_key(const char *filename,
 	fclose(keyfile);
 
 	if (scanner->r_type != KNOT_RRTYPE_DNSKEY &&
-	    scanner->r_type != KNOT_RRTYPE_KEY) {
+	    scanner->r_type != KNOT_RRTYPE_KEY &&
+        scanner->r_type != KNOT_RRTYPE_NSEC5KEY) {
 		zs_scanner_free(scanner);
 		return KNOT_KEY_EPUBLIC_KEY_INVALID;
 	}
@@ -385,6 +386,14 @@ int knot_load_key_params(const char *filename, knot_key_params_t *key_params)
 		return KNOT_KEY_EPRIVATE_KEY_OPEN;
 	}
 
+    //dipapadop: Hack -> test whether NSEC5 key from filename
+    if (strstr(filename,"nsec5")==NULL) {
+        key_params->nsec5 = 0;
+    }
+    else {
+        key_params->nsec5 = 1;
+    }
+    
 	key_params->name = name;
 	key_params->rdata = rdata;
 	key_params->keytag = knot_keytag(rdata.data, rdata.size);
@@ -429,6 +438,7 @@ int knot_copy_key_params(const knot_key_params_t *src, knot_key_params_t *dst)
 
 	dst->algorithm = src->algorithm;
 	dst->keytag = src->keytag;
+    dst->nsec5 = src->nsec5;
 
 	ret += knot_binary_dup(&src->secret, &dst->secret);
 
@@ -505,12 +515,15 @@ knot_key_type_t knot_get_key_type(const knot_key_params_t *key_params)
 	if (key_params->secret.size > 0) {
 		return KNOT_KEY_TSIG;
 	}
-
+    //dipapado: NSEC5 looks like a DNSKEY for us
 	if (key_params->modulus.size > 0 ||
 	    key_params->prime.size > 0 ||
 	    key_params->private_key.size > 0
 	) {
-		return KNOT_KEY_DNSSEC;
+        if (key_params->nsec5 >0)
+        { return KNOT_KEY_NSEC5; }
+        else
+        { return KNOT_KEY_DNSSEC; }
 	}
 
 	//! \todo TKEY key recognition

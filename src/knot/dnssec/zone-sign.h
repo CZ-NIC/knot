@@ -48,7 +48,7 @@ typedef struct signed_info {
 /*!
  * \brief Update zone signatures and store performed changes in changeset.
  *
- * Updates RRSIGs, NSEC(3)s, and DNSKEYs.
+ * Updates RRSIGs, NSEC(3/5)s, and DNSKEYs.
  *
  * \param zone        Zone to be signed.
  * \param zone_keys   Zone keys.
@@ -110,7 +110,7 @@ int knot_zone_sign_changeset(const zone_contents_t *zone,
                              const knot_dnssec_policy_t *policy);
 
 /*!
- * \brief Sign NSEC/NSEC3 nodes in changeset and update the changeset.
+ * \brief Sign NSEC/NSEC3/NSEC5 nodes in changeset and update the changeset.
  *
  * \param zone_keys  Zone keys.
  * \param policy     DNSSEC policy.

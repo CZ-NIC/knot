@@ -55,7 +55,7 @@ static zone_status_t zone_file_status(const zone_t *old_zone,
 	assert(conf);
 
 	time_t mtime = zonefile_mtime(conf->file);
-
+    //printf("FILE: %s\n", conf->file);
 	if (mtime < 0) {
 		// Zone file does not exist.
 		if (old_zone) {
@@ -229,13 +229,15 @@ static zone_t *create_zone_new(conf_zone_t *zone_conf, server_t *server)
 		}
 		break;
 	case ZONE_STATUS_NOT_FOUND:
+        printf("ZONE_STATUS_NOT_FOUND\n");
 		break;
 	default:
 		assert(0);
 	}
-
+    //printf("edw paizei to matsakoni\n");
 	log_zone_load_info(zone, zone_conf->name, zstatus);
-	
+    //printf("edw paizei to matsakoni\n");
+
 	return zone;
 }
 
@@ -255,8 +257,10 @@ static zone_t *create_zone(conf_zone_t *zone_conf, server_t *server,
 	assert(server);
 
 	if (old_zone) {
+        //printf("mpika create_zone_reload\n");
 		return create_zone_reload(zone_conf, server, old_zone);
 	} else {
+        //printf("mpika create_zone_new\n");
 		return create_zone_new(zone_conf, server);
 	}
 }
@@ -292,7 +296,9 @@ static knot_zonedb_t *create_zonedb(const conf_t *conf, server_t *server)
 		zone_t *old_zone = knot_zonedb_find(db_old, apex);
 		knot_dname_free(&apex, NULL);
 
+        //printf("print to create_zone\n");
 		zone_t *zone = create_zone(zone_config, server, old_zone);
+        //printf("meta to create_zone\n");
 		if (!zone) {
 			log_zone_str_error(zone_config->name,
 					   "zone cannot be created");
@@ -354,11 +360,13 @@ int zonedb_reload(const conf_t *conf, struct server_t *server)
 	}
 
 	/* Insert all required zones to the new zone DB. */
+    //printf("print to create_zonedb\n");
 	knot_zonedb_t *db_new = create_zonedb(conf, server);
 	if (db_new == NULL) {
 		log_error("failed to create new zone database");
 		return KNOT_ENOMEM;
 	}
+    //printf("meta to create_zonedb\n");
 
 	/* Rebuild zone database search stack. */
 	knot_zonedb_build_index(db_new);

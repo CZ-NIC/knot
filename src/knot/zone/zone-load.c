@@ -23,6 +23,8 @@
 #include "knot/dnssec/zone-events.h"
 #include "knot/updates/apply.h"
 #include "libknot/rdata.h"
+#include "knot/dnssec/zone-nsec.h"
+
 
 zone_contents_t *zone_load_contents(conf_zone_t *zone_config)
 {
@@ -45,7 +47,6 @@ zone_contents_t *zone_load_contents(conf_zone_t *zone_config)
 	if (zone_contents == NULL) {
 		return NULL;
 	}
-
 	return zone_contents;
 }
 
@@ -70,6 +71,9 @@ int zone_load_check(zone_contents_t *contents, conf_zone_t *zone_config)
 	}
 
 	/* Check NSEC3PARAM state if present. */
+    //printf("MESA sto zone_load_check TO KEYTAG EINAI: %d\n", contents->nsec5_key.nsec5_key.keytag);
+    //printf("PARAMETERS LOADED FROM ZONE LOAD\n");
+
 	int result = zone_contents_load_nsec3param(contents);
 	if (result != KNOT_EOK) {
 		log_zone_error(zone_name, "NSEC3 signed zone has invalid or no "
@@ -77,6 +81,7 @@ int zone_load_check(zone_contents_t *contents, conf_zone_t *zone_config)
 		return result;
 	}
 
+    // TODO: ADD a check for the presence and validity of NSEC5KEY
 	return KNOT_EOK;
 }
 
@@ -85,6 +90,7 @@ int zone_load_check(zone_contents_t *contents, conf_zone_t *zone_config)
  */
 int zone_load_journal(zone_t *zone, zone_contents_t *contents)
 {
+    //printf("MPIKA STO LOAD_JOURNAL\n");
 	/* Check if journal is used and zone is not empty. */
 	if (!journal_exists(zone->conf->ixfr_db) ||
 	    zone_contents_is_empty(contents)) {
@@ -137,32 +143,72 @@ int zone_load_post(zone_contents_t *contents, zone_t *zone, uint32_t *dnssec_ref
 		return ret;
 	}
 
+    //printf("PRIN TO ZONESIGN (STO zone-load.c -> zone_load_post) TO KEYTAG EINAI: %d\n", contents->nsec5_key.nsec5_key.keytag);
+
 	/* Sign zone using DNSSEC (if configured). */
 	if (conf->dnssec_enable) {
 		assert(conf->build_diffs);
 		ret = knot_dnssec_zone_sign(contents, conf, &change, KNOT_SOA_SERIAL_UPDATE,
 		                            dnssec_refresh);
+        //printf("VGIKA APO TO knot_dnssec_zone_sign\n");
 		if (ret != KNOT_EOK) {
+            printf("alla to ret den itan KNOT_EOK\n");
 			changeset_clear(&change);
 			return ret;
 		}
+        //printf("AAAAAAAAAAAAABAAAAAAAAAABABABBAABBAJSBIBSIBKJSBCKBKCBDKJBVJKDBVKJBJKVBFKJVBFJ\n");
+        //printf("AAAAAAAAAAAAABAAAAAAAAAABABABBAABBAJSBIBSIBKJSBCKBKCBDKJBVJKDBVKJBJKVBFKJVBFJ\n");
 
+        //printf("============================8------------->=================\n");
+        //zonefile_write("/Users/dpapadopoulos/Desktop/stozone_load_poat_meta_to_sign_print_to_apply",contents);
+        //printf("============================8------------->=================\n");
+        //printf("AAAAAAAAAAAAABAAAAAAAAAABABABBAABBAJSBIBSIBKJSBCKBKCBDKJBVJKDBVKJBJKVBFKJVBFJ\n");
+        //printf("AAAAAAAAAAAAABAAAAAAAAAABABABBAABBAJSBIBSIBKJSBCKBKCBDKJBVJKDBVKJBJKVBFKJVBFJ\n");
+    
+        //zonefile_write("/Users/dpapadopoulos/Desktop/stozone_load_poat_to_changeset_meta_to_sign",change.add);
+        
 		/* Apply DNSSEC changes. */
 		if (!changeset_empty(&change)) {
+            //printf("zone_load_post MPAINW NA KANW ALLAGES me apply changes directly\n");
 			ret = apply_changeset_directly(contents, &change);
+            //printf("zone_load_post vgika apo allages me apply changes directly\n");
+            //printf("PRIN TO CLEANUP\n");
 			update_cleanup(&change);
 			if (ret != KNOT_EOK) {
+                printf("APO TIS ALLAGES VGIKA ME oxi KNOT_EOK\n");
 				changeset_clear(&change);
+                //printf("VGIKA APO TO CHANGEET_CLEAR\n");
 				return ret;
 			}
 		} else {
 			changeset_clear(&change);
 		}
+        //The following is necessary in case the zone was loaded from journal
+        //and the changeset is empty. The apointer adjustment during load_journal
+        //does not have the nsec5key as it is not yet loaded. Signing is not performed
+        //as the zone is still valid, therefore the nsec3 pointers are never adjusted.
+        //This situation occurs if one replaces the signed file with the unsigned version
+        //of the same zone yet maintains the old journal.
+        if (knot_is_nsec5_enabled(contents) && !contents->apex->nsec3_node) {
+            ret = zone_contents_adjust_full(contents, NULL, NULL);
+            if (ret != KNOT_EOK) {
+                printf("THE NEW ADJUSTMENT FAILED\n");
+                changeset_clear(&change);
+                return ret;
+            }
+        }
 	}
 
+    //zonefile_write("/Users/dpapadopoulos/Desktop/stozone_load_poat_meta_to_apply",contents);
+    
+    //printf("+++++++++++++++++++++++++++++++++++++++++META TO ZONESIGN (STO zone-load.c -> load_post) TO KEYTAG EINAI: %d+++++++++++++++++++++\n\n\n ", contents->nsec5_key.nsec5_key.keytag);
+
+    
 	/* Calculate IXFR from differences (if configured). */
 	const bool contents_changed = zone->contents && (contents != zone->contents);
+    //printf("zone->cotnents: %d contents != zone->contents: %d", zone->contents, (contents != zone->contents));
 	if (contents_changed && conf->build_diffs) {
+        //printf("=============CONFIGURED FOR IXFR================================\n");
 		/* Replace changes from zone signing, the resulting diff will cover
 		 * those changes as well. */
 		changeset_clear(&change);
@@ -190,6 +236,7 @@ int zone_load_post(zone_contents_t *contents, zone_t *zone, uint32_t *dnssec_ref
 
 	/* Write changes (DNSSEC, diff, or both) to journal if all went well. */
 	if (!changeset_empty(&change)) {
+        //printf("********++++++++++=============||||||||------mpainw na grapsw ti zwni\n");
 		ret = zone_change_store(zone, &change);
 	}
 

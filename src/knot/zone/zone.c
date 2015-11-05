@@ -124,6 +124,7 @@ int zone_change_store(zone_t *zone, changeset_t *change)
 		log_zone_notice(zone->name, "journal is full, flushing");
 
 		/* Transaction rolled back, journal released, we may flush. */
+        printf("APODW TO KALESA1\n");
 		ret = zone_flush_journal(zone);
 		if (ret == KNOT_EOK) {
 			ret = journal_store_changeset(change, conf->ixfr_db, conf->ixfr_fslimit);
@@ -148,6 +149,8 @@ int zone_changes_store(zone_t *zone, list_t *chgs)
 		log_zone_notice(zone->name, "journal is full, flushing");
 
 		/* Transaction rolled back, journal released, we may flush. */
+        printf("APODW TO KALESA2\n");
+
 		ret = zone_flush_journal(zone);
 		if (ret == KNOT_EOK) {
 			ret = journal_store_changesets(chgs, conf->ixfr_db, conf->ixfr_fslimit);
@@ -251,6 +254,7 @@ int zone_flush_journal(zone_t *zone)
 	/*! @note Function expects nobody will change zone contents meanwile. */
 
 	if (zone == NULL || zone_contents_is_empty(zone->contents)) {
+        printf("TESTING FLUSH -> CONTENTS ARE EMTPY\n");
 		return KNOT_EINVAL;
 	}
 

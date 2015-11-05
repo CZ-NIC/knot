@@ -42,6 +42,8 @@
 #include "libknot/rrtype/dnskey.h"
 #include "libknot/rrtype/nsec3.h"
 #include "libknot/rrtype/nsec3param.h"
+#include "libknot/rrtype/nsec5.h"
+#include "libknot/rrtype/nsec5key.h"
 #include "libknot/rrtype/nsec.h"
 #include "libknot/rrtype/rrsig.h"
 #include "libknot/rrtype/soa.h"

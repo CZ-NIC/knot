@@ -339,6 +339,7 @@ int main(int argc, char **argv)
 	/* Populate zone database and add reconfiguration hook. */
 	log_info("loading zones");
 	server_update_zones(config, &server);
+    //printf("prin to hook!!\n");
 	conf_add_hook(config, CONF_ALL, server_update_zones, &server);
 
 	/* Check number of loaded zones. */

@@ -19,6 +19,7 @@
 
 #include <stdlib.h>			// malloc
 #include <stdint.h>			// uint8_t
+#include <stdio.h>
 
 /*! \brief Maximal length of binary input to Base32hex encoding. */
 #define MAX_BIN_DATA_LEN	((INT32_MAX / 8) * 5)
@@ -440,3 +441,197 @@ int32_t base32hex_decode_alloc(const uint8_t  *in,
 
 	return ret;
 }
+
+int32_t base32hex_encode_no_padding(const uint8_t  *in,
+                                    const uint32_t in_len,
+                                    uint8_t        *out,
+                                    const uint32_t out_len)
+{
+    uint8_t		rest_len = in_len % 5;
+    const uint8_t	*data = in;
+    const uint8_t	*stop = in + in_len - rest_len;
+    uint8_t		*text = out;
+    uint8_t		num;
+    
+    // Checking inputs.
+    if (in == NULL || out == NULL) {
+        return KNOT_EINVAL;
+    }
+    if (in_len > MAX_BIN_DATA_LEN || out_len < ((in_len + 4) / 5) * 8) {
+        return KNOT_ERANGE;
+    }
+    
+    // Encoding loop takes 5 bytes and creates 8 characters.
+    while (data < stop) {
+        // Computing 1. Base32hex character.
+        num = *data >> 3;
+        *text++ = base32hex_enc[num];
+        
+        // Computing 2. Base32hex character.
+        num = (*data++ & 0x07) << 2;
+        num += *data >> 6;
+        *text++ = base32hex_enc[num];
+        
+        // Computing 3. Base32hex character.
+        num = (*data & 0x3E) >> 1;
+        *text++ = base32hex_enc[num];
+        
+        // Computing 4. Base32hex character.
+        num = (*data++ & 0x01) << 4;
+        num += *data >> 4;
+        *text++ = base32hex_enc[num];
+        
+        // Computing 5. Base32hex character.
+        num = (*data++ & 0x0F) << 1;
+        num += *data >> 7;
+        *text++ = base32hex_enc[num];
+        
+        // Computing 6. Base32hex character.
+        num = (*data & 0x7C) >> 2;
+        *text++ = base32hex_enc[num];
+        
+        // Computing 7. Base32hex character.
+        num = (*data++ & 0x03) << 3;
+        num += *data >> 5;
+        *text++ = base32hex_enc[num];
+        
+        // Computing 8. Base32hex character.
+        num = *data++ & 0x1F;
+        *text++ = base32hex_enc[num];
+    }
+    
+    // Input data has 2-byte last block => 4-char padding.
+
+    // Computing 1. Base32hex character.
+    num = *data >> 3;
+    *text++ = base32hex_enc[num];
+    
+    // Computing 2. Base32hex character.
+    num = (*data++ & 0x07) << 2;
+    num += *data >> 6;
+    *text++ = base32hex_enc[num];
+    
+    // Computing 3. Base32hex character.
+    num = (*data & 0x3E) >> 1;
+    *text++ = base32hex_enc[num];
+    
+    // Computing 4. Base32hex character.
+    num = (*data++ & 0x01) << 4;
+    *text++ = base32hex_enc[num];
+    
+    // 4 padding characters.
+    //*text++ = base32hex_pad;
+    //*text++ = base32hex_pad;
+    //*text++ = base32hex_pad;
+    //*text++ = base32hex_pad;
+    
+    return (text - out);
+}
+
+int32_t base32hex_decode_no_padding(const uint8_t  *in,
+                         const uint32_t in_len,
+                         uint8_t        *out,
+                         const uint32_t out_len)
+{
+    const uint8_t	*data = in;
+    const uint8_t	*stop = in + in_len - 4;
+    uint8_t		*bin = out;
+    uint8_t		pad_len = 0;
+    uint8_t		c1, c2, c3, c4, c5, c6, c7, c8;
+    
+    // Checking inputs.
+    if (in == NULL || out == NULL) {
+        return KNOT_EINVAL;
+    }
+    /*if (in_len > INT32_MAX || out_len < ((in_len + 7) / 8) * 5) {
+        printf("NOT RANGE\n");
+        return KNOT_ERANGE;
+    }
+    if ((in_len % 8) != 0) {
+        printf("NOT DIVISIBLE\n");
+        return KNOT_BASE32HEX_ESIZE;
+    }
+    */
+    // Decoding loop takes 8 characters and creates 5 bytes.
+    while (data < stop) {
+        // Filling and transforming 8 Base32hex chars.
+        c1 = base32hex_dec[*data++];
+        c2 = base32hex_dec[*data++];
+        c3 = base32hex_dec[*data++];
+        c4 = base32hex_dec[*data++];
+        c5 = base32hex_dec[*data++];
+        c6 = base32hex_dec[*data++];
+        c7 = base32hex_dec[*data++];
+        c8 = base32hex_dec[*data++];
+        
+        // Check 8. char if is bad or padding.
+        if (c8 >= PD) {
+            if (c8 == PD && pad_len == 0) {
+                pad_len = 1;
+            } else {
+                return KNOT_BASE32HEX_ECHAR;
+            }
+        }
+        
+        // Check 7. char if is bad or padding (if so, 6. must be too).
+        if (c7 >= PD) {
+            if (c7 == PD && c6 == PD && pad_len == 1) {
+                pad_len = 3;
+            } else {
+                return KNOT_BASE32HEX_ECHAR;
+            }
+        }
+        
+        // Check 6. char if is bad or padding.
+        if (c6 >= PD) {
+            if (!(c6 == PD && pad_len == 3)) {
+                return KNOT_BASE32HEX_ECHAR;
+            }
+        }
+        
+        // Check 5. char if is bad or padding.
+        if (c5 >= PD) {
+            if (c5 == PD && pad_len == 3) {
+                pad_len = 4;
+            } else {
+                return KNOT_BASE32HEX_ECHAR;
+            }
+        }
+        
+        // Check 4. char if is bad or padding (if so, 3. must be too).
+        if (c4 >= PD) {
+            if (c4 == PD && c3 == PD && pad_len == 4) {
+                pad_len = 6;
+            } else {
+                return KNOT_BASE32HEX_ECHAR;
+            }
+        }
+        
+        // Check 3. char if is bad or padding.
+        if (c3 >= PD) {
+            if (!(c3 == PD && pad_len == 6)) {
+                return KNOT_BASE32HEX_ECHAR;
+            }
+        }
+        
+        // 1. and 2. chars must not be padding.
+        if (c2 >= PD || c1 >= PD) {
+            return KNOT_BASE32HEX_ECHAR;
+        }
+    
+        *bin++ = (c1 << 3) + (c2 >> 2);
+        *bin++ = (c2 << 6) + (c3 << 1) + (c4 >> 4);
+        *bin++ = (c4 << 4) + (c5 >> 1);
+        *bin++ = (c5 << 7) + (c6 << 2) + (c7 >> 3);
+        *bin++ = (c7 << 5) + c8;
+    }
+    c1 = base32hex_dec[*data++];
+    c2 = base32hex_dec[*data++];
+    c3 = base32hex_dec[*data++];
+    c4 = base32hex_dec[*data++];
+    *bin++ = (c1 << 3) + (c2 >> 2);
+    *bin++ = (c2 << 6) + (c3 << 1) + (c4 >> 4);
+    return (bin - out);
+}
+
+

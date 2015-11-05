@@ -796,10 +796,14 @@ int knot_dname_lf(uint8_t *dst, const knot_dname_t *src, const uint8_t *pkt)
 	/*! \todo This could be made as offsets to pkt? */
 	const uint8_t* lstack[KNOT_DNAME_MAXLABELS];
 	const uint8_t **sp = lstack;
+    //int counter =0;
 	while(*l != 0) { /* build label stack */
+        //printf("%d ",counter);
+        //counter++;
 		*sp++ = l;
 		l = knot_wire_next_label(l, pkt);
 	}
+    //printf("\n");
 	while(sp != lstack) {          /* consume stack */
 		l = *--sp; /* fetch rightmost label */
 		memcpy(dst, l+1, *l);  /* write label */

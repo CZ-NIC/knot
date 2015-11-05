@@ -17,6 +17,8 @@
 #include "libknot/descriptor.h"
 #include "common/debug.h"
 
+#include <sys/resource.h>
+
 /*! \brief Accessor to query-specific data. */
 #define QUERY_DATA(ctx) ((struct query_data *)(ctx)->data)
 
@@ -111,10 +113,24 @@ static int process_query_in(knot_pkt_t *pkt, knot_process_t *ctx)
  */
 static int query_internet(knot_pkt_t *pkt, knot_process_t *ctx)
 {
+    int who = RUSAGE_SELF;
+    struct rusage usage;
+    int ret;
+    ret = getrusage(who, &usage);
+    
+    //printf ("CPU time: %ld.%06ld sec user, %ld.%06ld sec system\n",
+    //        usage.ru_utime.tv_sec, usage.ru_utime.tv_usec,
+    //        usage.ru_stime.tv_sec, usage.ru_stime.tv_usec);
+    printf ("RAM-PRE: %ld bytes\n", usage.ru_maxrss );
+
+    struct timeval tval_before, tval_after, tval_result;
+    gettimeofday(&tval_before, NULL);
 	struct query_data *data = QUERY_DATA(ctx);
+    
 	int next_state = NS_PROC_FAIL;
 	dbg_ns("%s(%p, %p, pkt_type=%u)\n", __func__, pkt, ctx, data->packet_type);
 
+    
 	switch(data->packet_type) {
 	case KNOT_QUERY_NORMAL:
 		next_state = internet_query(pkt, data);
@@ -137,7 +153,21 @@ static int query_internet(knot_pkt_t *pkt, knot_process_t *ctx)
 		next_state = NS_PROC_FAIL;
 		break;
 	}
+    gettimeofday(&tval_after, NULL);
 
+    timersub(&tval_after, &tval_before, &tval_result);
+    
+    printf("Time elapsed: %ld.%06ld\n", (long int)tval_result.tv_sec, (long int)tval_result.tv_usec);
+    int after_who = RUSAGE_SELF;
+    struct rusage after_usage;
+    int after_ret;
+    after_ret = getrusage(after_who, &after_usage);
+    
+    //printf ("CPU time: %ld.%06ld sec user, %ld.%06ld sec system\n",
+    //        after_usage.ru_utime.tv_sec, after_usage.ru_utime.tv_usec,
+    //        after_usage.ru_stime.tv_sec, after_usage.ru_stime.tv_usec);
+    printf ("RAM-POST: %ld bytes\n", after_usage.ru_maxrss);
+    
 	return next_state;
 }
 

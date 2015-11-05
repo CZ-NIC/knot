@@ -178,7 +178,10 @@ typedef enum {
 
 	KNOT_DNSSEC_ALG_ECC_GOST           = 12,
 	KNOT_DNSSEC_ALG_ECDSAP256SHA256    = 13,
-	KNOT_DNSSEC_ALG_ECDSAP384SHA384    = 14
+	KNOT_DNSSEC_ALG_ECDSAP384SHA384    = 14,
+    // dipapadop Number 15? Also SHA1 or SHA2?
+    KNOT_DNSSEC_ALG_NSEC5_RSASHA256       = 15
+    
 } knot_dnssec_algorithm_t;
 
 /*!
@@ -187,6 +190,14 @@ typedef enum {
 typedef enum {
 	KNOT_NSEC3_ALGORITHM_SHA1 = 1
 } knot_nsec3_hash_algorithm_t;
+
+/*!
+ * dipapadop: SHA1 or SHA2?
+ * \brief NSEC5 hash algorithm numbers.
+ */
+typedef enum {
+    KNOT_NSEC5_ALGORITHM_FDH_SHA256_SHA256 = 1
+} knot_nsec5_hash_algorithm_t;
 
 /*!
  * \brief DNS operation code names.

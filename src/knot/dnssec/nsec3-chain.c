@@ -91,6 +91,7 @@ static bool node_should_be_signed_nsec3(const zone_node_t *n)
 	for (int i = 0; i < n->rrset_count; i++) {
 		knot_rrset_t rrset = node_rrset_at(n, i);
 		if (rrset.type == KNOT_RRTYPE_NSEC ||
+            rrset.type == KNOT_RRTYPE_NSEC3 ||
 		    rrset.type == KNOT_RRTYPE_RRSIG) {
 			continue;
 		}
@@ -332,7 +333,7 @@ static zone_node_t *create_nsec3_node_for_node(zone_node_t *node,
 	if (!nsec3_owner) {
 		return NULL;
 	}
-
+    
 	bitmap_t rr_types = { 0 };
 	bitmap_add_node_rrsets(&rr_types, node);
 	if (node->rrset_count > 0 && node_should_be_signed_nsec3(node)) {
@@ -384,15 +385,19 @@ static int connect_nsec3_nodes(zone_node_t *a, zone_node_t *b,
 
 	assert(raw_length == knot_nsec3_hash_length(algorithm));
 
+    printf("b->owner: %s\n", (knot_dname_to_str_alloc(b->owner)));
+
 	uint8_t *b32_hash = (uint8_t *)knot_dname_to_str_alloc(b->owner);
 	size_t b32_length = knot_nsec3_hash_b32_length(algorithm);
 	if (!b32_hash) {
+        printf("EDW EGINE3\n");
+
 		return KNOT_ENOMEM;
 	}
 
 	int32_t written = base32hex_decode(b32_hash, b32_length,
 	                                   raw_hash, raw_length);
-
+    
 	free(b32_hash);
 
 	if (written != raw_length) {
@@ -451,6 +456,8 @@ static int create_nsec3_nodes(const zone_contents_t *zone, uint32_t ttl,
 		nsec3_node = create_nsec3_node_for_node(node, zone->apex,
 		                                        params, ttl);
 		if (!nsec3_node) {
+            printf("EDW EGINE2\n");
+
 			result = KNOT_ENOMEM;
 			break;
 		}
@@ -591,6 +598,7 @@ int knot_nsec3_create_chain(const zone_contents_t *zone, uint32_t ttl,
 
 	zone_tree_t *nsec3_nodes = zone_tree_create();
 	if (!nsec3_nodes) {
+        printf("EDW EGINE1\n");
 		return KNOT_ENOMEM;
 	}
 

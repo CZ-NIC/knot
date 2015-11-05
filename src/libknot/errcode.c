@@ -55,6 +55,7 @@ const error_table_t error_messages[] = {
 	{ KNOT_ECRYPTO,      "error in crypto library" },
 	{ KNOT_ENSEC3PAR,    "missing or wrong NSEC3PARAM record" },
 	{ KNOT_ENSEC3CHAIN,  "missing or wrong NSEC3 chain in the zone" },
+    { KNOT_ENSEC5CHAIN,  "missing or wrong NSEC5 chain in the zone" },
 	{ KNOT_EOUTOFZONE,   "name does not belong to the zone" },
 	{ KNOT_EHASH,        "error in hash table" },
 	{ KNOT_EZONEINVAL,   "invalid zone file" },
@@ -117,12 +118,30 @@ const error_table_t error_messages[] = {
 	{ KNOT_DNSSEC_ENOKEY,                     "no keys for signing" },
 	{ KNOT_DNSSEC_ENOKEYDIR,                  "keydir does not exist" },
 	{ KNOT_DNSSEC_EMISSINGKEYTYPE,            "missing active KSK or ZSK" },
+    
+    /* Key signing/verification errors for NSEC5. */
+    { KNOT_NSEC5_ENOTSUP,                    "NSEC5: algorithm is not supported" },
+    { KNOT_NSEC5_EINVALID_KEY,               "NSEC5: the signing key is invalid" },
+    { KNOT_NSEC5_EASSIGN_KEY,                "NSEC5: cannot assign the key" },
+    { KNOT_NSEC5_ECREATE_DIGEST_CONTEXT,     "NSEC5: cannot create digest context" },
+    { KNOT_NSEC5_EUNEXPECTED_SIGNATURE_SIZE, "NSEC5: unexpected signature size" },
+    { KNOT_NSEC5_EDECODE_RAW_SIGNATURE,      "NSEC5: cannot decode the raw signature" },
+    { KNOT_NSEC5_EINVALID_SIGNATURE,         "NSEC5: signature is invalid" },
+    { KNOT_NSEC5_ESIGN,                      "NSEC5: cannot create the signature" },
+    { KNOT_NSEC5_ENOKEY,                     "NSEC5: no keys for signing" },
+    { KNOT_NSEC5_ENOKEYDIR,                  "NSEC5: keydir does not exist" },
+    { KNOT_NSEC5_EMISSINGKEYTYPE,            "NSEC5: missing active KSK or ZSK" },
 
 	/* NSEC3 errors. */
 	{ KNOT_NSEC3_ECOMPUTE_HASH, "cannot compute NSEC3 hash" },
+    
+    /* NSEC5 errors. */
+    { KNOT_NSEC5_ECOMPUTE_HASH, "cannot compute NSEC5 hash" },
 
 	/* Dynamic backend errors. */
 	{ KNOT_DATABASE_ERROR, "unspecified database error" },
+    
+    { KNOT_ZONE_KEY_ADD_ERROR, "cannot add key to zone: zone_sign.c" },
 
 	{ KNOT_ERROR, NULL } /* Terminator */
 };

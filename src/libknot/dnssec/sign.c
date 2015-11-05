@@ -485,7 +485,7 @@ static int dsa_sign_verify(const knot_dnssec_sign_context_t *context,
 #ifdef KNOT_ENABLE_ECDSA
 
 /*!
- * \brief Decode ECDSA public key from RDATA and set it into EC key.
+ * \brief Decode ECDSA pulic key from RDATA and set it into EC key.
  * \note DNSKEY format for ECDSA is described in RFC 6605 section 4.
  */
 static int ecdsa_set_public_key(const knot_binary_t *rdata, EC_KEY *ec_key)

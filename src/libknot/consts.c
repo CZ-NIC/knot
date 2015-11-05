@@ -100,6 +100,8 @@ knot_lookup_table_t knot_dnssec_alg_names[] = {
 	{ KNOT_DNSSEC_ALG_ECC_GOST,           "ECC_GOST" },
 	{ KNOT_DNSSEC_ALG_ECDSAP256SHA256,    "ECDSAP256SHA256" },
 	{ KNOT_DNSSEC_ALG_ECDSAP384SHA384,    "ECDSAP384SHA384" },
+    //dipapadop: NSEC5
+    { KNOT_DNSSEC_ALG_NSEC5_RSASHA256,    "NSEC5_RSASHA256" },
 	{ 0, NULL }
 };
 
@@ -137,6 +139,10 @@ bool knot_dnssec_algorithm_is_zonesign(uint8_t algorithm, bool nsec3_enabled)
 	case KNOT_DNSSEC_ALG_DSA_NSEC3_SHA1:
 	case KNOT_DNSSEC_ALG_RSASHA1_NSEC3_SHA1:
 		return true; // allow even with NSEC
+            
+    // dipapado: NSEC5 only
+    case KNOT_DNSSEC_ALG_NSEC5_RSASHA256:
+        return true;
 
 	// both NSEC and NSEC3
 	case KNOT_DNSSEC_ALG_RSASHA256:

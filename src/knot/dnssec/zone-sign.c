@@ -31,6 +31,9 @@
 #include "libknot/dnssec/policy.h"
 #include "libknot/dnssec/rrset-sign.h"
 #include "libknot/dnssec/sign.h"
+#include "libknot/dnssec/nsec5hash.h"
+#include "libknot/rrtype/nsec5.h"
+#include "libknot/rrset-dump.h"
 #include "libknot/rrtype/rdname.h"
 #include "libknot/rrtype/rrsig.h"
 #include "libknot/rrtype/soa.h"
@@ -39,6 +42,8 @@
 #include "knot/updates/changesets.h"
 #include "knot/zone/node.h"
 #include "knot/zone/contents.h"
+#include "knot/dnssec/zone-nsec.h"
+
 
 /*- private API - common functions -------------------------------------------*/
 
@@ -109,9 +114,13 @@ static bool use_key(const knot_zone_key_t *key, const knot_rrset_t *covered)
 	if (!key->is_active) {
 		return false;
 	}
-
-	bool is_zone_key = covered->type == KNOT_RRTYPE_DNSKEY &&
-	                   knot_dname_is_equal(key->dnssec_key.name, covered->owner);
+    //dipapado
+    if (key->is_nsec5) {
+        return false;
+    }
+    
+	bool is_zone_key = ((covered->type == KNOT_RRTYPE_DNSKEY || covered->type == KNOT_RRTYPE_NSEC5KEY) &&
+                    knot_dname_is_equal(key->dnssec_key.name, covered->owner));
 
 	return (key->is_ksk && is_zone_key) || (key->is_zsk && !is_zone_key);
 }
@@ -316,6 +325,13 @@ static int add_missing_rrsigs(const knot_rrset_t *covered,
 
 		result = knot_sign_rrset(&to_add, covered, &key->dnssec_key,
 		                         key->context, policy);
+        
+        //if (covered->type == KNOT_RRTYPE_NSEC5KEY) {
+            //char dst[1000];
+            //knot_rrset_txt_dump(&to_add,dst,1000,&KNOT_DUMP_STYLE_DEFAULT);
+            //printf("nsec5key_rrsig = %s\n",dst);
+        //}
+
 		if (result != KNOT_EOK) {
 			break;
 		}
@@ -598,55 +614,68 @@ typedef struct {
 } changeset_signing_data_t;
 
 
-/*- private API - DNSKEY handling --------------------------------------------*/
+/*- private API - DNSKEY/NSEC5KEY handling --------------------------------------------*/
 
 /*!
- * \brief Check if DNSKEY RDATA match with DNSSEC key.
+ * \brief Check if DNSKEY/NSEC5KEY RDATA match with DNSSEC/NSEC5 key.
  *
  * \param zone_key    Zone key.
- * \param rdata       DNSKEY RDATA.
- * \param rdata_size  DNSKEY RDATA size.
+ * \param rdata       DNSKEY/NSEC5KEY RDATA.
+ * \param rdata_size  DNSKEY/NSEC5KEY RDATA size.
  *
- * \return DNSKEY RDATA match with DNSSEC key.
+ * \return DNSKEY/NSEC5KEY RDATA match with DNSSEC/NSEC5 key.
  */
-static bool dnskey_rdata_match(const knot_zone_key_t *key,
+static bool key_rdata_match(const knot_zone_key_t *key,
                                const uint8_t *rdata, size_t rdata_size)
 {
 	assert(key);
 	assert(rdata);
 
-	const knot_dnssec_key_t *dnssec_key = &key->dnssec_key;
-
-	return dnssec_key->dnskey_rdata.size == rdata_size &&
+    if (!(key->is_nsec5))
+    {
+        //printf("TO EIDA GIA ");//
+        const knot_dnssec_key_t *dnssec_key = &key->dnssec_key;
+    
+        return dnssec_key->dnskey_rdata.size == rdata_size &&
 	       memcmp(dnssec_key->dnskey_rdata.data, rdata, rdata_size) == 0;
+    }
+    else
+    {
+        const knot_nsec5_key_t *nsec5_key = &key->nsec5_key;
+        
+        return nsec5_key->nsec5key_rdata.size == rdata_size &&
+	       memcmp(nsec5_key->nsec5key_rdata.data, rdata, rdata_size) == 0;
+    }
+    return false;
 }
 
 /*!
- * \brief Check if DNSKEY (key struct given) exists in zone.
+ * \brief Check if DNSKEY/NSEC5KEY (key struct given) exists in zone.
  *
- * \param dnskeys  DNSKEYS RR set in zone apex.
+ * \param keys  DNSKEYS/NSEC5KEYS RR set in zone apex.
  * \param key      Key to be searched for.
  *
- * \return DNSKEY exists in the zone.
+ * \return DNSKEY/NSEC5KEY exists in the zone.
  */
-static bool dnskey_exists_in_zone(const knot_rrset_t *dnskeys,
+static bool key_exists_in_zone(const knot_rrset_t *keys,
                                   const knot_zone_key_t *key)
 {
-	assert(!knot_rrset_empty(dnskeys));
+	assert(!knot_rrset_empty(keys));
 	assert(key);
 
-	uint16_t dnskeys_rdata_count = dnskeys->rrs.rr_count;
-	for (uint16_t i = 0; i < dnskeys_rdata_count; i++) {
-		const knot_rdata_t *rr_data = knot_rdataset_at(&dnskeys->rrs, i);
+	uint16_t keys_rdata_count = keys->rrs.rr_count;
+	for (uint16_t i = 0; i < keys_rdata_count; i++) {
+		const knot_rdata_t *rr_data = knot_rdataset_at(&keys->rrs, i);
 		uint8_t *rdata = knot_rdata_data(rr_data);
 		uint16_t rdata_size = knot_rdata_rdlen(rr_data);
-		if (dnskey_rdata_match(key, rdata, rdata_size)) {
+		if (key_rdata_match(key, rdata, rdata_size)) {
 			return true;
 		}
 	}
 
 	return false;
 }
+
 
 static int rrset_add_zone_key(knot_rrset_t *rrset,
                               const knot_zone_key_t *zone_key,
@@ -655,10 +684,22 @@ static int rrset_add_zone_key(knot_rrset_t *rrset,
 	assert(rrset);
 	assert(zone_key);
 
-	const knot_binary_t *key_rdata = &zone_key->dnssec_key.dnskey_rdata;
-
-	return knot_rrset_add_rdata(rrset, key_rdata->data, key_rdata->size, ttl,
-	                            NULL);
+    if (!(zone_key->is_nsec5)) {
+        //printf("DNSKEY\n");
+        const knot_binary_t *key_rdata = &zone_key->dnssec_key.dnskey_rdata;
+        return knot_rrset_add_rdata(rrset, key_rdata->data, key_rdata->size, ttl,
+                                    NULL);
+    }
+    else {
+       // printf("NSEC5KEY\n");
+        const knot_binary_t *key_rdata = &zone_key->nsec5_key.nsec5key_rdata;
+        
+        return knot_rrset_add_rdata(rrset, key_rdata->data, key_rdata->size, ttl,
+                                    NULL);
+    }
+    printf("<=============SERIOUS ERROR==rrset_add_zone_key==========>\n");
+    //something_went_wrong if we reached here
+    return KNOT_ZONE_KEY_ADD_ERROR;
 }
 
 /*!
@@ -668,7 +709,7 @@ static int rrset_add_zone_key(knot_rrset_t *rrset,
  * but different RDATA.
  *
  * \param soa        RR set with SOA (to get TTL value from).
- * \param dnskeys    RR set with DNSKEYs.
+ * \param keys    RR set with DNSKEYs.
  * \param zone_keys  Zone keys.
  * \param changeset  Changeset to be updated.
  *
@@ -707,13 +748,14 @@ static int remove_invalid_dnskeys(const knot_rrset_t *soa,
 		uint16_t rdata_size = knot_rdata_rdlen(dnskeys_data);
 		uint16_t keytag = knot_keytag(rdata, rdata_size);
 		const knot_zone_key_t *key = knot_get_zone_key(zone_keys, keytag);
+        //printf("IS %u PUBLIC : %d. IS RDATA MATCH %d\n", key->dnssec_key.keytag, key->is_public,key_rdata_match(key, rdata, rdata_size));
 		if (key == NULL) {
 			dbg_dnssec_detail("keeping unknown DNSKEY with tag "
 			                  "%d\n", keytag);
 			continue;
 		}
 
-		if (dnskey_rdata_match(key, rdata, rdata_size) && key->is_public) {
+		if (key_rdata_match(key, rdata, rdata_size) && key->is_public) {
 			dbg_dnssec_detail("keeping known DNSKEY with tag "
 			                  "%d\n", keytag);
 			continue;
@@ -739,8 +781,73 @@ done:
 	return result;
 }
 
+static int remove_invalid_nsec5keys(const knot_rrset_t *soa,
+                                  const knot_rrset_t *nsec5keys,
+                                  const knot_zone_keys_t *zone_keys,
+                                    changeset_t *changeset)
+{
+        assert(soa->type == KNOT_RRTYPE_SOA);
+        assert(changeset);
+        
+        if (knot_rrset_empty(nsec5keys)) {
+            return KNOT_EOK;
+        }
+        assert(nsec5keys->type == KNOT_RRTYPE_NSEC5KEY);
+        
+        knot_rrset_t to_remove;
+        knot_rrset_init(&to_remove, nsec5keys->owner, nsec5keys->type,
+                        nsec5keys->rclass);
+        int result = KNOT_EOK;
+        
+        const knot_rdata_t *nsec5keys_data = knot_rdataset_at(&nsec5keys->rrs, 0);
+        const knot_rdata_t *soa_data = knot_rdataset_at(&soa->rrs, 0);
+        if (knot_rdata_ttl(nsec5keys_data) != knot_rdata_ttl(soa_data)) {
+            dbg_dnssec_detail("removing NSEC5KEYs (SOA TTL differs)\n");
+            result = knot_rdataset_copy(&to_remove.rrs, &nsec5keys->rrs, NULL);
+            goto done;
+        }
+        
+        uint16_t nsec5keys_rdata_count = nsec5keys->rrs.rr_count;
+        for (uint16_t i = 0; i < nsec5keys_rdata_count; i++) {
+            nsec5keys_data = knot_rdataset_at(&nsec5keys->rrs, i);
+            uint8_t *rdata = knot_rdata_data(nsec5keys_data);
+            uint16_t rdata_size = knot_rdata_rdlen(nsec5keys_data);
+            uint16_t keytag = knot_keytag(rdata, rdata_size);
+            const knot_zone_key_t *key = knot_get_zone_key(zone_keys, keytag);
+            if (key == NULL) {
+                dbg_dnssec_detail("keeping unknown NSEC5KEY with tag "
+                                  "%d\n", keytag);
+                continue;
+            }
+            
+            if (key_rdata_match(key, rdata, rdata_size) && key->is_public) {
+                dbg_dnssec_detail("keeping known NSEC5KEY with tag "
+                                  "%d\n", keytag);
+                continue;
+            }
+            
+            dbg_dnssec_detail("removing NSEC5KEY with tag %d\n", keytag);
+            
+            knot_rdata_t *to_rem = knot_rdataset_at(&nsec5keys->rrs, i);
+            result = knot_rdataset_add(&to_remove.rrs, to_rem, NULL);
+            if (result != KNOT_EOK) {
+                break;
+            }
+        }
+        
+    done:
+        
+        if (!knot_rrset_empty(&to_remove) && result == KNOT_EOK) {
+            result = changeset_rem_rrset(changeset, &to_remove);
+        }
+        
+        knot_rdataset_clear(&to_remove.rrs, NULL);
+        
+        return result;
+}
+
 /*!
- * \brief Create DNSKEY RR set from SOA RR set.
+ * \brief Create DNSKEY RR set from SOA RR set. NO NSEC5 KEYS!
  *
  * \param soa  RR set with zone SOA.
  *
@@ -752,6 +859,14 @@ static knot_rrset_t create_dnskey_rrset_from_soa(const knot_rrset_t *soa)
 	knot_rrset_t rrset;
 	knot_rrset_init(&rrset, soa->owner, KNOT_RRTYPE_DNSKEY, soa->rclass);
 	return rrset;
+}
+
+static knot_rrset_t create_nsec5key_rrset_from_soa(const knot_rrset_t *soa)
+{
+    assert(soa);
+    knot_rrset_t rrset;
+    knot_rrset_init(&rrset, soa->owner, KNOT_RRTYPE_NSEC5KEY, soa->rclass);
+    return rrset;
 }
 
 /*!
@@ -786,17 +901,25 @@ static int add_missing_dnskeys(const knot_rrset_t *soa,
 	node_t *node = NULL;
 	WALK_LIST(node, zone_keys->list) {
 		const knot_zone_key_t *key = (knot_zone_key_t *)node;
-		if (!add_all && dnskey_exists_in_zone(dnskeys, key)) {
+        //printf("Key %d is %d",key->dnssec_key.keytag,key->is_nsec5);
+
+		if (!add_all && key_exists_in_zone(dnskeys, key)) {
 			continue;
 		}
 
 		if (!key->is_public) {
 			continue;
 		}
+        if (key->is_nsec5) {
+            continue;
+        }
+        dbg_dnssec_detail("adding DNSKEY with tag %d and algorithm %d\n",
+		                  key->dnssec_key.keytag,key->dnssec_key.algorithm);
 
-		dbg_dnssec_detail("adding DNSKEY with tag %d\n",
-		                  key->dnssec_key.keytag);
-
+        //else {
+        //    dbg_dnssec_detail("adding DNSKEY with tag %d\n",
+        //                      key->nsec5_key.keytag);
+        //}
 		if (knot_rrset_empty(&to_add)) {
 			to_add = create_dnskey_rrset_from_soa(soa);
 		}
@@ -806,7 +929,9 @@ static int add_missing_dnskeys(const knot_rrset_t *soa,
 			break;
 		}
 	}
-
+    //char dst[1000];
+    //knot_rrset_txt_dump(&to_add,dst,1000,&KNOT_DUMP_STYLE_DEFAULT);
+    //printf("DNSKEY = %s\n",dst);
 	if (!knot_rrset_empty(&to_add) && result == KNOT_EOK) {
 		result = changeset_add_rrset(changeset, &to_add);
 	}
@@ -815,6 +940,64 @@ static int add_missing_dnskeys(const knot_rrset_t *soa,
 
 	return result;
 }
+
+static int add_missing_nsec5keys(const knot_rrset_t *soa,
+                               const knot_rrset_t *nsec5keys,
+                               const knot_zone_keys_t *zone_keys,
+                               changeset_t *changeset)
+{
+    assert(soa);
+    assert(soa->type == KNOT_RRTYPE_SOA);
+    assert(knot_rrset_empty(nsec5keys) || nsec5keys->type == KNOT_RRTYPE_NSEC5KEY);
+    assert(zone_keys);
+    assert(changeset);
+    
+    knot_rrset_t to_add;
+    knot_rrset_init_empty(&to_add);
+    int result = KNOT_EOK;
+    const knot_rdata_t *nsec5keys_data = knot_rdataset_at(&nsec5keys->rrs, 0);
+    const knot_rdata_t *soa_data = knot_rdataset_at(&soa->rrs, 0);
+    bool add_all = (knot_rrset_empty(nsec5keys) ||
+                    knot_rdata_ttl(nsec5keys_data) != knot_rdata_ttl(soa_data));
+    
+    node_t *node = NULL;
+    WALK_LIST(node, zone_keys->list) {
+        const knot_zone_key_t *key = (knot_zone_key_t *)node;
+        if (!add_all && key_exists_in_zone(nsec5keys, key)) {
+            continue;
+        }
+        
+        if (!key->is_public) {
+            continue;
+        }
+        if (!key->is_nsec5) {
+            continue;
+        }
+        dbg_dnssec_detail("adding NSEC5KEY with tag %d and algorithm %d\n",
+                          key->nsec5_key.keytag, key->nsec5_key.algorithm);
+        
+        if (knot_rrset_empty(&to_add)) {
+            to_add = create_nsec5key_rrset_from_soa(soa);
+        }
+        
+        result = rrset_add_zone_key(&to_add, key, knot_rdata_ttl(soa_data));
+        if (result != KNOT_EOK) {
+            break;
+        }
+    }
+    //char dst[1000];
+    //knot_rrset_txt_dump(&to_add,dst,1000,&KNOT_DUMP_STYLE_DEFAULT);
+    //printf("NSEC5KEY = %s\n",dst);
+    
+    if (!knot_rrset_empty(&to_add) && result == KNOT_EOK) {
+        result = changeset_add_rrset(changeset, &to_add);
+    }
+    
+    knot_rdataset_clear(&to_add.rrs, NULL);
+    
+    return result;
+}
+
 
 /*!
  * \brief Refresh DNSKEY RRSIGs in the zone by updating the changeset.
@@ -842,6 +1025,9 @@ static int update_dnskeys_rrsigs(const knot_rrset_t *dnskeys,
 	// We know how the DNSKEYs in zone should look like after applying
 	// the changeset. RRSIGs can be then built easily.
 
+    //char dst[1000];
+    //knot_rrset_txt_dump(dnskeys,dst,1000,&KNOT_DUMP_STYLE_DEFAULT);
+    //printf("dnskey_rrsig = %s\n",dst);
 	knot_rrset_t new_dnskeys = create_dnskey_rrset_from_soa(soa);
 
 	// add unknown keys from zone
@@ -854,6 +1040,7 @@ static int update_dnskeys_rrsigs(const knot_rrset_t *dnskeys,
 		if (knot_get_zone_key(zone_keys, keytag) != NULL) {
 			continue;
 		}
+        //printf("VRIKA UNKNOWN APO ZONI\n");
 
 		knot_rdata_t *to_add = knot_rdataset_at(&dnskeys->rrs, i);
 		result = knot_rdataset_add(&new_dnskeys.rrs, to_add, NULL);
@@ -866,7 +1053,7 @@ static int update_dnskeys_rrsigs(const knot_rrset_t *dnskeys,
 	node_t *node = NULL;
 	WALK_LIST(node, zone_keys->list) {
 		const knot_zone_key_t *key = (knot_zone_key_t *)node;
-		if (!key->is_public) {
+		if (!key->is_public || key->is_nsec5) {
 			continue;
 		}
 
@@ -877,14 +1064,17 @@ static int update_dnskeys_rrsigs(const knot_rrset_t *dnskeys,
 			goto fail;
 		}
 	}
-
+    //knot_rrset_txt_dump(&new_dnskeys,dst,1000,&KNOT_DUMP_STYLE_DEFAULT);
+    //printf("newnsec5keys = %s\n",dst);
 	result = add_missing_rrsigs(&new_dnskeys, NULL, zone_keys, policy,
 	                            changeset);
 	if (result != KNOT_EOK) {
+        //printf("DEN HTAN KNOT_EOK!!!\n");
 		goto fail;
 	}
 
 	if (!knot_rrset_empty(dnskeys)) {
+        //printf("DEN ITAN EMPTY TA DNSKEYS\n");
 		result = remove_rrset_rrsigs(dnskeys->owner, dnskeys->type,
 		                             rrsigs, changeset);
 	}
@@ -895,8 +1085,80 @@ fail:
 	return result;
 }
 
+static int update_nsec5keys_rrsigs(const knot_rrset_t *nsec5keys,
+                                 const knot_rrset_t *rrsigs,
+                                 const knot_rrset_t *soa,
+                                 const knot_zone_keys_t *zone_keys,
+                                 const knot_dnssec_policy_t *policy,
+                                 changeset_t *changeset)
+{
+    assert(zone_keys);
+    assert(changeset);
+    
+    int result;
+    
+    // We know how the NSEC5KEYs in zone should look like after applying
+    // the changeset. RRSIGs can be then built easily.
+    knot_rrset_t new_nsec5keys = create_nsec5key_rrset_from_soa(soa);
+    
+    // add unknown keys from zone
+    uint16_t nsec5keys_rdata_count = nsec5keys->rrs.rr_count;
+
+    for (uint16_t i = 0; i < nsec5keys_rdata_count; i++) {
+        const knot_rdata_t *rr_data = knot_rdataset_at(&nsec5keys->rrs, i);
+        uint8_t *rdata = knot_rdata_data(rr_data);
+        uint16_t rdata_size = knot_rdata_rdlen(rr_data);
+        uint16_t keytag = knot_keytag(rdata, rdata_size);
+        if (knot_get_zone_key(zone_keys, keytag) != NULL) {
+            continue;
+        }
+        //printf("VRIKA UNKNOWN APO ZONI\n");
+        knot_rdata_t *to_add = knot_rdataset_at(&nsec5keys->rrs, i);
+        result = knot_rdataset_add(&new_nsec5keys.rrs, to_add, NULL);
+        if (result != KNOT_EOK) {
+            goto fail;
+        }
+    }
+    
+    // add known keys from key database
+    node_t *node = NULL;
+    WALK_LIST(node, zone_keys->list) {
+        const knot_zone_key_t *key = (knot_zone_key_t *)node;
+        if (!key->is_public || !key->is_nsec5) {
+            continue;
+        }
+
+        const knot_rdata_t *soa_data = knot_rdataset_at(&soa->rrs, 0);
+        result = rrset_add_zone_key(&new_nsec5keys, key,
+                                    knot_rdata_ttl(soa_data));
+        if (result != KNOT_EOK) {
+            goto fail;
+        }
+    }
+    
+    result = add_missing_rrsigs(&new_nsec5keys, NULL, zone_keys, policy,
+                                changeset);
+    if (result != KNOT_EOK) {
+        goto fail;
+    }
+    //char dst[1000];
+    //knot_rrset_txt_dump(&new_nsec5keys,dst,1000,&KNOT_DUMP_STYLE_DEFAULT);
+    //printf("newnsec5keys = %s\n",dst);
+    if (!knot_rrset_empty(nsec5keys)) {
+        //printf("DEN ITAN EMPTY TA NSEC5KEYS\n");
+        result = remove_rrset_rrsigs(nsec5keys->owner, nsec5keys->type,
+                                     rrsigs, changeset);
+    }
+    
+fail:
+    
+    knot_rdataset_clear(&new_nsec5keys.rrs, NULL);
+    return result;
+}
+
+
 /*!
- * \brief Update DNSKEY records in the zone by updating the changeset.
+ * \brief Update DNSKEY/NSEC5KEY records in the zone by updating the changeset.
  *
  * \param zone       Zone to be updated.
  * \param zone_keys  Zone keys.
@@ -905,7 +1167,7 @@ fail:
  *
  * \return Error code, KNOT_EOK if successful.
  */
-static int update_dnskeys(const zone_contents_t *zone,
+static int update_keys(const zone_contents_t *zone,
                           const knot_zone_keys_t *zone_keys,
                           const knot_dnssec_policy_t *policy,
                           changeset_t *changeset)
@@ -916,11 +1178,16 @@ static int update_dnskeys(const zone_contents_t *zone,
 
 	const zone_node_t *apex = zone->apex;
 	knot_rrset_t dnskeys = node_rrset(apex, KNOT_RRTYPE_DNSKEY);
+    knot_rrset_t nsec5keys = node_rrset(apex, KNOT_RRTYPE_NSEC5KEY);
 	knot_rrset_t soa = node_rrset(apex, KNOT_RRTYPE_SOA);
 	knot_rrset_t rrsigs = node_rrset(apex, KNOT_RRTYPE_RRSIG);
 	if (knot_rrset_empty(&soa)) {
 		return KNOT_EINVAL;
 	}
+    
+    dbg_dnssec_verb("Number of DNSKEYS already in zone: %hu\n",dnskeys.rrs.rr_count);
+    dbg_dnssec_verb("Number of NSEC5KEYS already in zone: %hu\n",nsec5keys.rrs.rr_count);
+    //printf("ARE NSEC5KEYS EMPTY: %d\n",knot_rrset_empty(&(nsec5keys)));
 
 	int result;
 	size_t changes_before = changeset_size(changeset);
@@ -934,26 +1201,90 @@ static int update_dnskeys(const zone_contents_t *zone,
 	if (result != KNOT_EOK) {
 		return result;
 	}
+    
+    
+    //printf("Vrika NSEC5KEYS\n");
+    result = remove_invalid_nsec5keys(&soa, &nsec5keys, zone_keys, changeset);
+    if (result != KNOT_EOK) {
+        return result;
+    }
+    
+    result = add_missing_nsec5keys(&soa, &nsec5keys, zone_keys, changeset);
+    if (result != KNOT_EOK) {
+        return result;
+    }
+    
 	knot_rrset_t dnskey_rrsig;
 	knot_rrset_init(&dnskey_rrsig, apex->owner, KNOT_RRTYPE_RRSIG,
 	                KNOT_CLASS_IN);
 	result = knot_synth_rrsig(KNOT_RRTYPE_DNSKEY, &rrsigs.rrs,
 	                          &dnskey_rrsig.rrs, NULL);
 	if (result != KNOT_EOK) {
+        //printf("DNSKEYS: DEN EINAI KNOT_EOK\n");
 		if (result != KNOT_ENOENT) {
 			return result;
 		}
 	}
+    /*char dst[1000];
+    knot_rrset_txt_dump(&dnskey_rrsig,dst,1000,&KNOT_DUMP_STYLE_DEFAULT);
+    printf("dnskey_rrsig = %s\n",dst);
+    */
+    knot_rrset_t nsec5key_rrsig;
+    //if (!knot_rrset_empty(&nsec5keys)) {
+    //    printf("Vrika NSEC5KEYSII\n");
 
+    knot_rrset_init(&nsec5key_rrsig, apex->owner, KNOT_RRTYPE_RRSIG,
+                        KNOT_CLASS_IN);
+    result = knot_synth_rrsig(KNOT_RRTYPE_NSEC5KEY, &rrsigs.rrs,
+                                &nsec5key_rrsig.rrs, NULL);
+    if (result != KNOT_EOK) {
+        //printf("NSEC5KEYS: DEN EINAI KNOT_EOK\n");
+        if (result != KNOT_ENOENT) {
+            return result;
+        }
+    }
+    //}
+    /*
+    knot_rrset_txt_dump(&nsec5key_rrsig,dst,1000,&KNOT_DUMP_STYLE_DEFAULT);
+    printf("nsec5key_rrsig = %s\n",dst);
+    */
+    
+    //printf("NUMBER OF DNSKEYS: %hu\n",dnskeys.rrs.rr_count);
+    //printf("NUMBER OF NSEC5KEYS: %hu\n",nsec5keys.rrs.rr_count);
+    //printf("ARE NSEC5KEYS EMPTY: %d\n",knot_rrset_empty(&(nsec5keys)));
+    
 	bool modified = (changeset_size(changeset) != changes_before);
-	bool signatures_exist = (!knot_rrset_empty(&dnskeys) &&
+    
+	bool dnskey_signatures_exist = (!knot_rrset_empty(&dnskeys) &&
 	                        all_signatures_exist(&dnskeys, &dnskey_rrsig,
 	                                             zone_keys, policy));
+    bool nsec5key_signatures_exist = true;
+    //if (!knot_rrset_empty(&nsec5keys)) {
+        //printf("Vrika NSEC5KEYSIII\n");
+
+        nsec5key_signatures_exist = (!knot_rrset_empty(&nsec5keys) &&
+                                     all_signatures_exist(&nsec5keys, &nsec5key_rrsig,
+                                                          zone_keys, policy));
+    //}
 	knot_rdataset_clear(&dnskey_rrsig.rrs, NULL);
-	if (!modified && signatures_exist) {
+    knot_rdataset_clear(&nsec5key_rrsig.rrs, NULL);
+    
+	if ((!modified) && dnskey_signatures_exist && nsec5key_signatures_exist) {
 		return KNOT_EOK;
 	}
 
+    //if (!knot_rrset_empty(&nsec5keys)) {
+    //    printf("Vrika NSEC5KEYSIV\n");
+    if (!knot_rrset_empty(&nsec5keys)) {
+        dbg_dnssec_detail("Creating new signatures for NSEC5KEYs\n");
+        result = update_nsec5keys_rrsigs(&nsec5keys, &rrsigs, &soa, zone_keys, policy, changeset);
+        if (result != KNOT_EOK) {
+            if (result != KNOT_ENOENT) {
+                return result;
+            }
+        }
+    }
+    //}
 	dbg_dnssec_detail("Creating new signatures for DNSKEYs\n");
 	return update_dnskeys_rrsigs(&dnskeys, &rrsigs, &soa, zone_keys, policy, changeset);
 }
@@ -1187,9 +1518,9 @@ int knot_zone_sign(const zone_contents_t *zone,
 
 	int result;
 
-	result = update_dnskeys(zone, zone_keys, policy, changeset);
+	result = update_keys(zone, zone_keys, policy, changeset);
 	if (result != KNOT_EOK) {
-		dbg_dnssec_detail("update_dnskeys() failed\n");
+		dbg_dnssec_detail("update_keys() failed\n");
 		return result;
 	}
 
@@ -1384,7 +1715,8 @@ int knot_zone_sign_nsecs_in_changeset(const knot_zone_keys_t *zone_keys,
 	knot_rrset_t rr = changeset_iter_next(&itt);
 	while (!knot_rrset_empty(&rr)) {
 		if (rr.type == KNOT_RRTYPE_NSEC ||
-		    rr.type == KNOT_RRTYPE_NSEC3) {
+		    rr.type == KNOT_RRTYPE_NSEC3 ||
+            rr.type == KNOT_RRTYPE_NSEC5 ) {
 			int ret =  add_missing_rrsigs(&rr, NULL, zone_keys,
 			                              policy, changeset);
 			if (ret != KNOT_EOK) {
@@ -1427,24 +1759,29 @@ int knot_zone_sign_rr_should_be_signed(const zone_node_t *node,
 		if (rrset->type == KNOT_RRTYPE_SOA) {
 			return KNOT_EOK;
 		}
-
 		if (rrset->type == KNOT_RRTYPE_DNSKEY) {
 			return KNOT_EOK;
 		}
+        if (rrset->type == KNOT_RRTYPE_NSEC5KEY) {
+            return KNOT_EOK;
+        }
+
 	}
 
 	// At delegation points we only want to sign NSECs and DSs
 	if ((node->flags & NODE_FLAGS_DELEG)) {
-		if (!(rrset->type == KNOT_RRTYPE_NSEC ||
+        //printf("Delegation point: %s\n", knot_dname_to_str_alloc(node->owner));
+		if (!(rrset->type == KNOT_RRTYPE_NSEC || //rrset->type == KNOT_RRTYPE_NSEC3 || rrset->type == KNOT_RRTYPE_NSEC5 ||
 		    rrset->type == KNOT_RRTYPE_DS)) {
 			return KNOT_EOK;
 		}
+        //printf("Type: %s\n", rrset->type);
 	}
 
 	// These RRs have their signatures stored in changeset already
 	if (node->flags & NODE_FLAGS_REMOVED_NSEC
 	    && ((rrset->type == KNOT_RRTYPE_NSEC)
-	         || (rrset->type == KNOT_RRTYPE_NSEC3))) {
+	         || (rrset->type == KNOT_RRTYPE_NSEC3) || (rrset->type == KNOT_RRTYPE_NSEC5))) {
 		return KNOT_EOK;
 	}
 

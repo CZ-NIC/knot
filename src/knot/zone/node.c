@@ -125,14 +125,18 @@ void node_free(zone_node_t **node, mm_ctx_t *mm)
 	if (node == NULL || *node == NULL) {
 		return;
 	}
-
+    //printf("PROSPATHW NA KANW FREE RRS\n");
 	if ((*node)->rrs != NULL) {
 		mm_free(mm, (*node)->rrs);
 	}
+    //printf("PROSPATHW NA KANW FREE DNAME\n");
+    //printf("owner: %s\n", (knot_dname_to_str_alloc((*node)->owner)));
 
 	knot_dname_free(&(*node)->owner, mm);
-
+    //printf("PROSPATHW NA KANW FREE MM\n");
 	mm_free(mm, *node);
+    //printf("EKANA FREE ALL\n");
+
 	*node = NULL;
 }
 

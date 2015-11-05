@@ -109,4 +109,21 @@ int32_t base32hex_decode_alloc(const uint8_t  *in,
                                const uint32_t in_len,
                                uint8_t        **out);
 
+/*!
+ * \brief For use with NSEC5. 
+ *
+ * \see base32hex_encode
+ */
+int32_t base32hex_encode_no_padding(const uint8_t  *in,
+                         const uint32_t in_len,
+                         uint8_t        *out,
+                         const uint32_t out_len);
+
+int32_t base32hex_decode_no_padding(const uint8_t  *in,
+                         const uint32_t in_len,
+                         uint8_t        *out,
+                         const uint32_t out_len);
+
+
+
 /*! @} */

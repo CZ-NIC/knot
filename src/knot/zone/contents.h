@@ -30,6 +30,7 @@
 #include "libknot/rrtype/nsec3param.h"
 #include "knot/zone/node.h"
 #include "knot/zone/zone-tree.h"
+#include "knot/dnssec/zone-keys.h"
 
 struct zone_t;
 
@@ -47,6 +48,7 @@ typedef struct zone_contents_t {
 	zone_tree_t *nsec3_nodes;
 
 	knot_nsec3_params_t nsec3_params;
+    knot_zone_key_t nsec5_key;
 } zone_contents_t;
 
 /*!
@@ -149,7 +151,10 @@ const zone_node_t *zone_contents_find_nsec3_node(const zone_contents_t *contents
 int zone_contents_find_nsec3_for_name(const zone_contents_t *contents,
                                       const knot_dname_t *name,
                                       const zone_node_t **nsec3_node,
-                                      const zone_node_t **nsec3_previous);
+                                      const zone_node_t **nsec3_previous,
+                                      uint8_t **nsec5proof,
+                                      size_t *nsecproof_size,
+                                      bool ret_proof);
 
 const zone_node_t *zone_contents_find_wildcard_child(const zone_contents_t *contents,
                                                      const zone_node_t *parent);
@@ -203,6 +208,8 @@ int zone_contents_load_nsec3param(zone_contents_t *contents);
  * \see zone_contents_load_nsec3param()
  */
 const knot_nsec3_params_t *zone_contents_nsec3params(const zone_contents_t *contents);
+const knot_zone_key_t *zone_contents_nsec5key(const zone_contents_t *zone);
+
 
 /*!
  * \brief Applies the given function to each regular node in the zone.

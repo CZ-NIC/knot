@@ -116,6 +116,7 @@ int zcreator_step(zcreator_t *zc, const knot_rrset_t *rr)
 	}
 
 	zone_node_t *node = NULL;
+    //printf("APO TO ZONEFILE KALESA GIA ADD_RR\n");
 	int ret = zone_contents_add_rr(zc->z, rr, &node);
 	if (ret != KNOT_EOK) {
 		if (!handle_err(zc, node, rr, ret, zc->master)) {
@@ -257,26 +258,34 @@ zone_contents_t *zonefile_load(zloader_t *loader)
 	const knot_dname_t *zname = zc->z->apex->owner;
 
 	assert(zc);
+    //printf ("print to parse file\n");
 	int ret = zs_scanner_parse_file(loader->scanner, loader->source);
 	if (ret != 0 && loader->scanner->error_counter == 0) {
+        printf("first error\n");
 		ERROR(zname, "failed to load zone, file '%s' (%s)",
 		      loader->source, zs_strerror(loader->scanner->error_code));
 		goto fail;
 	}
 
 	if (zc->ret != KNOT_EOK) {
+        printf("second error\n");
+
 		ERROR(zname, "failed to load zone, file '%s' (%s)",
 		      loader->source, knot_strerror(zc->ret));
 		goto fail;
 	}
 
 	if (loader->scanner->error_counter > 0) {
+        printf("third error\n");
+
 		ERROR(zname, "failed to load zone, file '%s', %"PRIu64" errors",
 		      loader->source, loader->scanner->error_counter);
 		goto fail;
 	}
 
 	if (!node_rrtype_exists(loader->creator->z->apex, KNOT_RRTYPE_SOA)) {
+        printf("fourth error\n");
+
 		ERROR(zname, "no SOA record, file '%s'", loader->source);
 		goto fail;
 	}
@@ -284,8 +293,11 @@ zone_contents_t *zonefile_load(zloader_t *loader)
 	zone_node_t *first_nsec3_node = NULL;
 	zone_node_t *last_nsec3_node = NULL;
 
+    dbg_zload("zload: adjusting pointers\n");
 	int kret = zone_contents_adjust_full(zc->z,
 	                                     &first_nsec3_node, &last_nsec3_node);
+    dbg_zload("zload: pointers adjusted\n");
+    
 	if (kret != KNOT_EOK) {
 		ERROR(zname, "failed to finalize zone contents (%s)",
 		      knot_strerror(kret));
@@ -334,6 +346,7 @@ time_t zonefile_mtime(const char *path)
 /*! \brief Moved from zones.c, no doc. @mvavrusa */
 static int zones_open_free_filename(const char *old_name, char **new_name)
 {
+    //printf("old file name: %s\n", old_name);
 	/* find zone name not present on the disk */
 	char *suffix = ".XXXXXX";
 	size_t name_size = strlen(old_name);
@@ -358,17 +371,24 @@ static int zones_open_free_filename(const char *old_name, char **new_name)
 int zonefile_write(const char *path, zone_contents_t *zone)
 {
 	if (!zone || !path) {
+        printf("out in the first check\n");
 		return KNOT_EINVAL;
 	}
-
+    //printf( "path: %s\n", path);
 	char *new_fname = NULL;
+    //printf("TRYING TO OPEN FREE FILENAME\n");
 	int fd = zones_open_free_filename(path, &new_fname);
+    //printf("OPENED FREE FILENAME\n");
+
 	if (fd < 0) {
+        printf("not writable\n");
+
 		return KNOT_EWRITABLE;
 	}
 
 	const knot_dname_t *zname = zone->apex->owner;
 
+    //printf("TRYING TO FDOPEN\n");
 	FILE *f = fdopen(fd, "w");
 	if (f == NULL) {
 		WARNING(zname, "failed to open zone, file '%s' (%s)",
@@ -377,7 +397,8 @@ int zonefile_write(const char *path, zone_contents_t *zone)
 		free(new_fname);
 		return KNOT_ERROR;
 	}
-
+    //printf("to zone name --> %s", knot_dname_to_str_alloc(zname));
+    //printf("TWRA THA GRAPSW TI ZWNI sto file %s\n", new_fname);
 	if (zone_dump_text(zone, f) != KNOT_EOK) {
 		WARNING(zname, "failed to save zone, file '%s'", new_fname);
 		fclose(f);
@@ -385,6 +406,7 @@ int zonefile_write(const char *path, zone_contents_t *zone)
 		free(new_fname);
 		return KNOT_ERROR;
 	}
+    //printf("VGIKA APO zone_dump_text..\n");
 
 	/* Set zone file rights to 0640. */
 	fchmod(fd, S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP);

@@ -75,13 +75,18 @@ typedef struct {
 	//time_t time_revoke;
 	time_t time_inactive;
 	time_t time_delete;
+    
+    //dipapado: hack to indicate nsec5 from filename
+    int nsec5;
 } knot_key_params_t;
 
 typedef enum {
 	KNOT_KEY_UNKNOWN = 0,
 	KNOT_KEY_DNSSEC, //!< DNSSEC key. Described in RFC 2535 and RFC 4034.
 	KNOT_KEY_TSIG,   //!< Transaction Signature. Described in RFC 2845.
-	KNOT_KEY_TKEY    //!< Transaction Key. Described in RFC 2930.
+	KNOT_KEY_TKEY,    //!< Transaction Key. Described in RFC 2930.
+    //dipapadop: NSEC5 key
+    KNOT_KEY_NSEC5
 } knot_key_type_t;
 
 /*----------------------------------------------------------------------------*/

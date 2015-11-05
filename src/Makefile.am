@@ -2,7 +2,7 @@ ACLOCAL_AMFLAGS = -I $(top_srcdir)/m4
 SUBDIRS = zscanner dnstap .
 
 sbin_PROGRAMS = knotc knotd
-bin_PROGRAMS = kdig khost knsupdate knsec3hash
+bin_PROGRAMS = kdig khost knsupdate knsec3hash knsec5hash
 lib_LTLIBRARIES = libknot.la
 noinst_LTLIBRARIES = libknotd.la libknots.la libknotus.la libknotcs.la
 
@@ -59,6 +59,9 @@ knsupdate_SOURCES =				\
 
 knsec3hash_SOURCES =				\
 	utils/nsec3hash/nsec3hash_main.c
+
+knsec5hash_SOURCES =                            \
+        utils/nsec5hash/knsec5hash.c
 
 # static: shared (not in libknot)
 libknots_la_SOURCES =				\
@@ -154,6 +157,8 @@ libknot_la_SOURCES =				\
 	libknot/dnssec/key.c			\
 	libknot/dnssec/key.h			\
 	libknot/dnssec/bitmap.h			\
+	libknot/dnssec/nsec5hash.c		\
+	libknot/dnssec/nsec5hash.h		\
 	libknot/dnssec/policy.c			\
 	libknot/dnssec/policy.h			\
 	libknot/dnssec/random.h			\
@@ -183,6 +188,7 @@ libknot_la_SOURCES =				\
 	libknot/rrtype/nsec.h			\
 	libknot/rrtype/nsec3.c			\
 	libknot/rrtype/nsec3.h			\
+	libknot/rrtype/nsec5.h			\
 	libknot/rrtype/nsec3param.c		\
 	libknot/rrtype/nsec3param.h		\
 	libknot/rrtype/opt.c			\
@@ -228,6 +234,8 @@ libknotd_la_SOURCES =				\
 	knot/dnssec/nsec-chain.h		\
 	knot/dnssec/nsec3-chain.c		\
 	knot/dnssec/nsec3-chain.h		\
+	knot/dnssec/nsec5-chain.c		\
+	knot/dnssec/nsec5-chain.h		\
 	knot/dnssec/zone-events.c		\
 	knot/dnssec/zone-events.h		\
 	knot/dnssec/zone-keys.c			\
@@ -348,6 +356,7 @@ kdig_LDADD       = $(BIN_LIBS) $(libidn_LIBS)
 khost_LDADD      = $(BIN_LIBS) $(libidn_LIBS)
 knsupdate_LDADD  = $(BIN_LIBS) zscanner/libzscanner.la
 knsec3hash_LDADD = $(BIN_LIBS)
+knsec5hash_LDADD = $(BIN_LIBS)
 
 if HAVE_DNSTAP
 libknotd_la_SOURCES +=				\
