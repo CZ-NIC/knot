@@ -27,7 +27,7 @@
 
 inline static int str_to_intmax(const char *src, intmax_t *dest)
 {
-	if (!isdigit(*src) && *src != '-' && *src != '+') {
+	if (!isdigit((int)*src) && *src != '-' && *src != '+') {
 		return DNSSEC_MALFORMED_DATA;
 	}
 
@@ -49,7 +49,7 @@ inline static int str_to_intmax(const char *src, intmax_t *dest)
 
 inline static int str_to_uintmax(const char *src, uintmax_t *dest)
 {
-	if (!isdigit(*src) && *src != '-' && *src != '+') {
+	if (!isdigit((int)*src) && *src != '-' && *src != '+') {
 		return DNSSEC_MALFORMED_DATA;
 	}
 
