@@ -16,6 +16,8 @@
 
 #include <tap/basic.h>
 
+#include <stdlib.h>
+
 #include "libknot/internal/mem.h"
 
 static void test_strstrip(void)

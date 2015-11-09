@@ -52,7 +52,8 @@ static int find_in_list(list_t *node_list, uint16_t type)
 		}
 	}
 
-	type_list_item_t *new_entry = xmalloc(sizeof(type_list_item_t));
+	type_list_item_t *new_entry = malloc(sizeof(type_list_item_t));
+	assert(new_entry != NULL);
 	new_entry->type = type;
 
 	add_head(node_list, (node_t *)new_entry);
@@ -77,7 +78,8 @@ static int insert_dname_into_table(hattrie_t *table, const knot_dname_t *d,
 	value_t *val = hattrie_tryget(table, (char *)d, d_size);
 	if (val == NULL) {
 		// Create new dummy node to use for this dname
-		*dummy_node = xmalloc(sizeof(list_t));
+		*dummy_node = malloc(sizeof(list_t));
+		assert(dummy_node != NULL);
 		init_list(*dummy_node);
 		*hattrie_get(table, (char *)d, d_size) = *dummy_node;
 		return 0;
@@ -125,7 +127,7 @@ void *estimator_malloc(void *ctx, size_t len)
 {
 	size_t *count = (size_t *)ctx;
 	*count += add_overhead(len);
-	return xmalloc(len);
+	return malloc(len);
 }
 
 void estimator_free(void *p)

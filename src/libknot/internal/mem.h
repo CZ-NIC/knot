@@ -17,8 +17,6 @@
 #pragma once
 
 #include <stdint.h>
-#include <stdlib.h>
-#include <string.h>
 
 /*!
  * \brief Create a copy of a binary buffer.
@@ -26,39 +24,6 @@
  * Like \c strdup, but for binary data.
  */
 uint8_t *knot_memdup(const uint8_t *data, size_t data_size);
-
-/*! \brief Allocate memory or die. */
-void* xmalloc(size_t l);
-
-/*! \brief Reallocate memory or die. */
-void *xrealloc(void *p, size_t l);
-
-/*!
- * \brief Reserve new or trim excessive memory.
- *
- * \param p Double-pointer to memory region.
- * \param tlen Memory unit (f.e. sizeof(int) for int* array)
- * \param min Minimum number of items required.
- * \param allow Maximum extra items to keep (for trimming).
- * \param reserved Pointer to number of already reserved items.
- *
- * \note Example usage:
- * char *buf = NULL; size_t len = 0;
- * if (mreserve(&buf, sizeof(char), 6, 0, &len) == 0) {
- *   memcpy(buf, "hello", strlen("hello");
- *   if (mreserve(&buf, sizeof(char), 20, 0, &len) == 0) {
- *     strncat(buf, "!", 1);
- *     mreserve(&buf, sizeof(char), strlen("hello!")+1, 0, &len);
- *   }
- * }
- * free(buf);
- *
- * \retval 0 on success.
- * \retval -1 on error.
- *
- * \note Memory region will be left untouched if function fails.
- */
-int mreserve(char **p, size_t tlen, size_t min, size_t allow, size_t *reserved);
 
 /*!
  * \brief Format string and take care of allocating memory.
