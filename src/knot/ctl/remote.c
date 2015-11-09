@@ -19,7 +19,6 @@
 #include <urcu.h>
 
 #include "dnssec/random.h"
-#include "knot/common/debug.h"
 #include "knot/common/fdset.h"
 #include "knot/common/log.h"
 #include "knot/conf/conf.h"
@@ -296,12 +295,10 @@ static int remote_c_reload(server_t *s, remote_cmdargs_t *a)
 
 	if (a->argc == 0) {
 		/* Reload all. */
-		dbg_server_verb("remote: refreshing all zones\n");
 		ret = server_reload(s, conf()->filename);
 	} else {
 		rcu_read_lock();
 		/* Reload specific zones. */
-		dbg_server_verb("remote: refreshing particular zones");
 		ret = remote_rdata_apply(s, a, &remote_zone_reload);
 		rcu_read_unlock();
 	}
@@ -319,7 +316,6 @@ static int remote_c_status(server_t *s, remote_cmdargs_t *a)
 {
 	UNUSED(s);
 	UNUSED(a);
-	dbg_server("remote: %s\n", __func__);
 	return KNOT_EOK;
 }
 
@@ -412,8 +408,6 @@ static int remote_zonestatus(zone_t *zone, remote_cmdargs_t *a)
  */
 static int remote_c_zonestatus(server_t *s, remote_cmdargs_t *a)
 {
-	dbg_server("remote: %s\n", __func__);
-
 	rcu_read_lock();
 	if (a->argc == 0) {
 		knot_zonedb_foreach(s->zone_db, remote_zonestatus, a);
@@ -434,11 +428,9 @@ static int remote_c_zonestatus(server_t *s, remote_cmdargs_t *a)
  */
 static int remote_c_refresh(server_t *s, remote_cmdargs_t *a)
 {
-	dbg_server("remote: %s\n", __func__);
 	rcu_read_lock();
 	if (a->argc == 0) {
 		/* Refresh all. */
-		dbg_server_verb("remote: refreshing all zones\n");
 		knot_zonedb_foreach(s->zone_db, remote_zone_refresh, NULL);
 	} else {
 		/* Refresh specific zones. */
@@ -457,7 +449,6 @@ static int remote_c_refresh(server_t *s, remote_cmdargs_t *a)
  */
 static int remote_c_retransfer(server_t *s, remote_cmdargs_t *a)
 {
-	dbg_server("remote: %s\n", __func__);
 	if (a->argc == 0) {
 		/* Retransfer all. */
 		return KNOT_CTL_ARG_REQ;
@@ -481,12 +472,9 @@ static int remote_c_retransfer(server_t *s, remote_cmdargs_t *a)
  */
 static int remote_c_flush(server_t *s, remote_cmdargs_t *a)
 {
-	dbg_server("remote: %s\n", __func__);
-
 	rcu_read_lock();
 	if (a->argc == 0) {
 		/* Flush all. */
-		dbg_server_verb("remote: flushing all zones\n");
 		knot_zonedb_foreach(s->zone_db, remote_zone_flush, NULL);
 	} else {
 		/* Flush specific zones. */
@@ -502,8 +490,6 @@ static int remote_c_flush(server_t *s, remote_cmdargs_t *a)
  */
 static int remote_c_signzone(server_t *s, remote_cmdargs_t *a)
 {
-	dbg_server("remote: %s\n", __func__);
-
 	if (a->argc == 0) {
 		/* Resign all. */
 		return KNOT_CTL_ARG_REQ;
@@ -567,7 +553,6 @@ static int remote_c_conf_begin(server_t *s, remote_cmdargs_t *a)
 {
 	UNUSED(s);
 	UNUSED(a);
-	dbg_server("remote: %s\n", __func__);
 
 	return conf_io_begin(false);
 }
@@ -578,7 +563,6 @@ static int remote_c_conf_begin(server_t *s, remote_cmdargs_t *a)
 static int remote_c_conf_commit(server_t *s, remote_cmdargs_t *a)
 {
 	UNUSED(a);
-	dbg_server("remote: %s\n", __func__);
 
 	conf_io_t io = {
 		.fcn = format_item,
@@ -608,7 +592,6 @@ static int remote_c_conf_abort(server_t *s, remote_cmdargs_t *a)
 {
 	UNUSED(s);
 	UNUSED(a);
-	dbg_server("remote: %s\n", __func__);
 
 	return conf_io_abort(false);
 }
@@ -685,7 +668,6 @@ static int parse_conf_key(char *key, char **key0, char **id, char **key1)
 static int remote_c_conf_desc(server_t *s, remote_cmdargs_t *a)
 {
 	UNUSED(s);
-	dbg_server("remote: %s\n", __func__);
 
 	if (a->argc > 1) {
 		return KNOT_EINVAL;
@@ -724,7 +706,6 @@ static int remote_c_conf_desc(server_t *s, remote_cmdargs_t *a)
 static int remote_c_conf_diff(server_t *s, remote_cmdargs_t *a)
 {
 	UNUSED(s);
-	dbg_server("remote: %s\n", __func__);
 
 	if (a->argc > 1) {
 		return KNOT_EINVAL;
@@ -756,7 +737,6 @@ static int remote_c_conf_diff(server_t *s, remote_cmdargs_t *a)
 static int conf_read(server_t *s, remote_cmdargs_t *a, bool get_current)
 {
 	UNUSED(s);
-	dbg_server("remote: %s\n", __func__);
 
 	if (a->argc > 1) {
 		return KNOT_EINVAL;
@@ -807,7 +787,6 @@ static int remote_c_conf_get(server_t *s, remote_cmdargs_t *a)
 static int remote_c_conf_set(server_t *s, remote_cmdargs_t *a)
 {
 	UNUSED(s);
-	dbg_server("remote: %s\n", __func__);
 
 	if (a->argc < 1 || a->argc > 255) {
 		return KNOT_EINVAL;
@@ -865,7 +844,6 @@ static int remote_c_conf_set(server_t *s, remote_cmdargs_t *a)
 static int remote_c_conf_unset(server_t *s, remote_cmdargs_t *a)
 {
 	UNUSED(s);
-	dbg_server("remote: %s\n", __func__);
 
 	if (a->argc > 255) {
 		return KNOT_EINVAL;
@@ -1005,13 +983,11 @@ int remote_recv(int sock, struct sockaddr_storage *addr, uint8_t *buf,
 {
 	int c = tcp_accept(sock);
 	if (c < 0) {
-		dbg_server("remote: failed to accept incoming connection\n");
 		return c;
 	}
 
 	socklen_t addrlen = sizeof(*addr);
 	if (getpeername(c, (struct sockaddr *)addr, &addrlen) != 0) {
-		dbg_server("remote: failed to get remote address\n");
 		close(c);
 		return KNOT_ECONNREFUSED;
 	}
@@ -1020,7 +996,6 @@ int remote_recv(int sock, struct sockaddr_storage *addr, uint8_t *buf,
 	int n = net_dns_tcp_recv(c, buf, *buflen, NULL);
 	*buflen = n;
 	if (n <= 0) {
-		dbg_server("remote: failed to receive data\n");
 		close(c);
 		return KNOT_ECONNREFUSED;
 	}
@@ -1125,13 +1100,11 @@ int remote_answer(int sock, server_t *s, knot_pkt_t *pkt)
 	 */
 	const knot_dname_t *qname = knot_pkt_qname(pkt);
 	if (knot_pkt_qclass(pkt) != KNOT_CLASS_CH) {
-		dbg_server("remote: qclass != CH\n");
 		return KNOT_EMALF;
 	}
 
 	knot_dname_t *realm = knot_dname_from_str_alloc(KNOT_CTL_REALM);
 	if (!knot_dname_is_sub(qname, realm) != 0) {
-		dbg_server("remote: qname != *%s\n", KNOT_CTL_REALM_EXT);
 		knot_dname_free(&realm, NULL);
 		return KNOT_EMALF;
 	}
@@ -1313,7 +1286,6 @@ int remote_process(server_t *s, struct sockaddr_storage *ctl_addr, int sock,
 	/* Accept incoming connection and read packet. */
 	int client = remote_recv(sock, &ss, pkt->wire, &buflen);
 	if (client < 0) {
-		dbg_server("remote: failed to receive query = %d\n", client);
 		knot_pkt_free(&pkt);
 		return client;
 	} else {

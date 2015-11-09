@@ -22,10 +22,11 @@
 #include "knot/nameserver/process_query.h"
 #include "knot/nameserver/process_answer.h"
 #include "knot/updates/apply.h"
-#include "knot/common/debug.h"
+#include "knot/common/log.h"
 #include "knot/zone/serial.h"
 #include "libknot/libknot.h"
 #include "libknot/descriptor.h"
+#include "libknot/internal/print.h"
 #include "libknot/internal/utils.h"
 #include "libknot/rrtype/soa.h"
 
@@ -111,7 +112,6 @@ static int ixfr_process_changeset(knot_pkt_t *pkt, const void *item,
 	/* Put former SOA. */
 	if (ixfr->state == IXFR_SOA_DEL) {
 		IXFR_SAFE_PUT(pkt, chgset->soa_from);
-		dbg_ns("%s: put 'REMOVE' SOA\n", __func__);
 		ixfr->state = IXFR_DEL;
 	}
 
@@ -134,7 +134,6 @@ static int ixfr_process_changeset(knot_pkt_t *pkt, const void *item,
 	/* Put next SOA. */
 	if (ixfr->state == IXFR_SOA_ADD) {
 		IXFR_SAFE_PUT(pkt, chgset->soa_to);
-		dbg_ns("%s: put 'IXFR_ADD' SOA\n", __func__);
 		ixfr->state = IXFR_ADD;
 	}
 
@@ -253,7 +252,6 @@ static int ixfr_answer_init(struct query_data *qdata)
 	init_list(&chgsets);
 	int ret = ixfr_load_chsets(&chgsets, (zone_t *)qdata->zone, their_soa);
 	if (ret != KNOT_EOK) {
-		dbg_ns("%s: failed to load changesets => %d\n", __func__, ret);
 		return ret;
 	}
 
@@ -299,7 +297,6 @@ static int ixfr_answer_init(struct query_data *qdata)
 /*! \brief Sends response to SOA query. */
 static int ixfr_answer_soa(knot_pkt_t *pkt, struct query_data *qdata)
 {
-	dbg_ns("%s: answering IXFR/SOA\n", __func__);
 	if (pkt == NULL || qdata == NULL) {
 		return KNOT_STATE_FAIL;
 	}

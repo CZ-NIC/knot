@@ -117,41 +117,6 @@ PKG_CHECK_MODULES([gnutls], [gnutls >= 3.0 nettle], [
 # JSON for DNSSEC status storage
 PKG_CHECK_MODULES([jansson], [jansson >= 2.3])
 
-# Debug modules
-AC_ARG_ENABLE([debug],
-    AS_HELP_STRING([--enable-debug=server,zones,ns,loader,dnssec],
-    [compile selected debug modules [default=none]]),
-    [
-    echo ${enableval}|tr "," "\n"|while read val; do
-        case "${val}" in
-            server) AC_DEFINE([KNOTD_SERVER_DEBUG], [1], [Server debug.]) ;;
-            zones) AC_DEFINE([KNOT_ZONES_DEBUG], [1], [Zones debug.]) ;;
-            ns) AC_DEFINE([KNOT_NS_DEBUG], [1], [Nameserver debug.]) ;;
-            loader) AC_DEFINE([KNOT_LOADER_DEBUG], [1], [Zone loading debug.]) ;;
-            dnssec) AC_DEFINE([KNOT_DNSSEC_DEBUG], [1], [DNSSEC debug.]) ;;
-        esac
-    done
-    ], [])
-
-# Debug level
-AC_ARG_ENABLE([debuglevel],
-    AS_HELP_STRING([--enable-debuglevel=brief|verbose|details], [enable given debug level [default=disabled]]),
-    # Not all shells support fall-through with ;& so I have to duplicate
-    [case "x${enableval}" in
-      xdetails)
-        AC_DEFINE([DEBUG_ENABLE_DETAILS], [1], [Enable details debugging messages.])
-        AC_DEFINE([DEBUG_ENABLE_VERBOSE], [1], [Enable verbose debugging messages.])
-        AC_DEFINE([DEBUG_ENABLE_BRIEF], [1], [Enable brief debugging messages.])
-        ;;
-      xverbose)
-        AC_DEFINE([DEBUG_ENABLE_VERBOSE], [1], [Enable verbose debugging messages.])
-        AC_DEFINE([DEBUG_ENABLE_BRIEF], [1], [Enable brief debugging messages.])
-        ;;
-      xbrief)
-        AC_DEFINE([DEBUG_ENABLE_BRIEF], [1], [Enable brief debugging messages.])
-        ;;
-    esac], [])
-
 # recvmmsg() (valgrind doesn't support it, so disable for debugging)
 # The check for struct mmsghdr is required when libc doesn't have an API but the function links
 AC_ARG_ENABLE([recvmmsg],
