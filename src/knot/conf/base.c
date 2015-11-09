@@ -234,6 +234,9 @@ int conf_post_open(
 
 	conf->hostname = sockaddr_hostname();
 
+	conf->cache.srv_nsid = conf_get(conf, C_SRV, C_NSID);
+	conf->cache.srv_max_udp_payload = conf_get(conf, C_SRV, C_MAX_UDP_PAYLOAD);
+
 	conf_activate_modules(conf, NULL, &conf->query_modules, &conf->query_plan);
 
 	return KNOT_EOK;

@@ -42,23 +42,6 @@ typedef struct {
 	knot_tsig_key_t key;
 } conf_remote_t;
 
-/*! Configuration getter output. */
-typedef struct {
-	/*! Item description. */
-	const yp_item_t *item;
-	/*! Whole data (can be array). */
-	const uint8_t *blob;
-	/*! Whole data length. */
-	size_t blob_len;
-	// Public items.
-	/*! Current single data. */
-	const uint8_t *data;
-	/*! Current single data length. */
-	size_t len;
-	/*! Value getter return code. */
-	int code;
-} conf_val_t;
-
 /*! Configuration section iterator. */
 typedef struct {
 	/*! Item description. */
