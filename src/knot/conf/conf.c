@@ -52,7 +52,7 @@ conf_val_t conf_get_txn(
 		return val;
 	}
 
-	val.code = conf_db_get(conf, txn, key0_name, key1_name, NULL, 0, &val);
+	conf_db_get(conf, txn, key0_name, key1_name, NULL, 0, &val);
 	switch (val.code) {
 	default:
 		CONF_LOG(LOG_ERR, "failed to read '%s/%s' (%s)",
@@ -80,7 +80,7 @@ conf_val_t conf_rawid_get_txn(
 		return val;
 	}
 
-	val.code = conf_db_get(conf, txn, key0_name, key1_name, id, id_len, &val);
+	conf_db_get(conf, txn, key0_name, key1_name, id, id_len, &val);
 	switch (val.code) {
 	default:
 		CONF_LOG(LOG_ERR, "failed to read '%s/%s' with identifier (%s)",
@@ -108,10 +108,9 @@ conf_val_t conf_id_get_txn(
 		return val;
 	}
 
-	conf_db_val(id);
+	conf_val(id);
 
-	val.code = conf_db_get(conf, txn, key0_name, key1_name, id->data,
-	                       id->len, &val);
+	conf_db_get(conf, txn, key0_name, key1_name, id->data, id->len, &val);
 	switch (val.code) {
 	default:
 		CONF_LOG(LOG_ERR, "failed to read '%s/%s' with identifier (%s)",
@@ -137,8 +136,8 @@ conf_val_t conf_mod_get_txn(
 		return val;
 	}
 
-	val.code = conf_db_get(conf, txn, mod_id->name, key1_name, mod_id->data,
-	                       mod_id->len, &val);
+	conf_db_get(conf, txn, mod_id->name, key1_name, mod_id->data, mod_id->len,
+	            &val);
 	switch (val.code) {
 	default:
 		CONF_LOG(LOG_ERR, "failed to read '%s/%s' (%s)",
@@ -167,7 +166,7 @@ conf_val_t conf_zone_get_txn(
 	int dname_size = knot_dname_size(dname);
 
 	// Try to get explicit value.
-	val.code = conf_db_get(conf, txn, C_ZONE, key1_name, dname, dname_size, &val);
+	conf_db_get(conf, txn, C_ZONE, key1_name, dname, dname_size, &val);
 	switch (val.code) {
 	case KNOT_EOK:
 		return val;
@@ -180,13 +179,12 @@ conf_val_t conf_zone_get_txn(
 	}
 
 	// Check if a template is available.
-	val.code = conf_db_get(conf, txn, C_ZONE, C_TPL, dname, dname_size, &val);
+	conf_db_get(conf, txn, C_ZONE, C_TPL, dname, dname_size, &val);
 	switch (val.code) {
 	case KNOT_EOK:
 		// Use the specified template.
-		conf_db_val(&val);
-		val.code = conf_db_get(conf, txn, C_TPL, key1_name,
-		                       val.data, val.len, &val);
+		conf_val(&val);
+		conf_db_get(conf, txn, C_TPL, key1_name, val.data, val.len, &val);
 		break;
 	default:
 		CONF_LOG_ZONE(LOG_ERR, dname, "failed to read '%s/%s' (%s)",
@@ -194,8 +192,8 @@ conf_val_t conf_zone_get_txn(
 		// FALLTHROUGH
 	case KNOT_ENOENT:
 		// Use the default template.
-		val.code = conf_db_get(conf, txn, C_TPL, key1_name,
-		                       CONF_DEFAULT_ID + 1, CONF_DEFAULT_ID[0], &val);
+		conf_db_get(conf, txn, C_TPL, key1_name, CONF_DEFAULT_ID + 1,
+		            CONF_DEFAULT_ID[0], &val);
 	}
 
 	switch (val.code) {
@@ -224,8 +222,8 @@ conf_val_t conf_default_get_txn(
 		return val;
 	}
 
-	val.code = conf_db_get(conf, txn, C_TPL, key1_name,
-	                       CONF_DEFAULT_ID + 1, CONF_DEFAULT_ID[0], &val);
+	conf_db_get(conf, txn, C_TPL, key1_name, CONF_DEFAULT_ID + 1,
+	            CONF_DEFAULT_ID[0], &val);
 	switch (val.code) {
 	default:
 		CONF_LOG(LOG_ERR, "failed to read default '%s/%s' (%s)",
@@ -245,25 +243,11 @@ size_t conf_id_count_txn(
 	const yp_name_t *key0_name)
 {
 	size_t count = 0;
-	conf_iter_t iter = { NULL };
 
-	int ret = conf_db_iter_begin(conf, txn, key0_name, &iter);
-	switch (ret) {
-	case KNOT_EOK:
-		break;
-	default:
-		CONF_LOG(LOG_ERR, "failed to iterate through '%s' (%s)",
-		         key0_name + 1, knot_strerror(ret));
-		// FALLTHROUGH
-	case KNOT_ENOENT:
-		return count;
-	}
-
-	while (ret == KNOT_EOK) {
+	for (conf_iter_t iter = conf_iter_txn(conf, txn, key0_name);
+	     iter.code == KNOT_EOK; conf_iter_next(conf, &iter)) {
 		count++;
-		ret = conf_db_iter_next(conf, &iter);
 	}
-	conf_db_iter_finish(conf, &iter);
 
 	return count;
 }
@@ -275,7 +259,7 @@ conf_iter_t conf_iter_txn(
 {
 	conf_iter_t iter = { NULL };
 
-	iter.code = conf_db_iter_begin(conf, txn, key0_name, &iter);
+	conf_db_iter_begin(conf, txn, key0_name, &iter);
 	switch (iter.code) {
 	default:
 		CONF_LOG(LOG_ERR, "failed to iterate thgrough '%s' (%s)",
@@ -291,7 +275,7 @@ void conf_iter_next(
 	conf_t *conf,
 	conf_iter_t *iter)
 {
-	iter->code = conf_db_iter_next(conf, iter);
+	conf_db_iter_next(conf, iter);
 	switch (iter->code) {
 	default:
 		CONF_LOG(LOG_ERR, "failed to read next item (%s)",
@@ -309,8 +293,7 @@ conf_val_t conf_iter_id(
 {
 	conf_val_t val = { NULL };
 
-	val.code = conf_db_iter_id(conf, iter, (uint8_t **)&val.blob,
-	                           &val.blob_len);
+	val.code = conf_db_iter_id(conf, iter, &val.blob, &val.blob_len);
 	switch (val.code) {
 	default:
 		CONF_LOG(LOG_ERR, "failed to read identifier (%s)",
@@ -341,25 +324,97 @@ size_t conf_val_count(
 	}
 
 	size_t count = 0;
-	conf_db_val(val);
+	conf_val(val);
 	while (val->code == KNOT_EOK) {
 		count++;
-		conf_db_val_next(val);
+		conf_val_next(val);
 	}
 	if (val->code != KNOT_EOF) {
 		return 0;
 	}
 
 	// Reset to the initial state.
-	conf_db_val(val);
+	conf_val(val);
 
 	return count;
+}
+
+void conf_val(
+	conf_val_t *val)
+{
+	assert(val != NULL);
+	assert(val->code == KNOT_EOK || val->code == KNOT_EOF);
+
+	if (val->item->flags & YP_FMULTI) {
+		// Check if already called.
+		if (val->data != NULL) {
+			return;
+		}
+
+		assert(val->blob != NULL);
+		wire_ctx_t ctx = wire_ctx_init_const(val->blob, val->blob_len);
+		uint16_t len = wire_ctx_read_u16(&ctx);
+		assert(ctx.error == KNOT_EOK);
+
+		val->data = ctx.position;
+		val->len = len;
+		val->code = KNOT_EOK;
+	} else {
+		// Check for empty data.
+		if (val->blob_len == 0) {
+			val->data = NULL;
+			val->len = 0;
+			val->code = KNOT_EOK;
+			return;
+		} else {
+			assert(val->blob != NULL);
+			val->data = val->blob;
+			val->len = val->blob_len;
+			val->code = KNOT_EOK;
+		}
+	}
 }
 
 void conf_val_next(
 	conf_val_t *val)
 {
-	conf_db_val_next(val);
+	assert(val != NULL);
+	assert(val->code == KNOT_EOK);
+	assert(val->item->flags & YP_FMULTI);
+
+	// Check for the 'zero' call.
+	if (val->data == NULL) {
+		conf_val(val);
+		return;
+	}
+
+	if (val->data + val->len < val->blob + val->blob_len) {
+		wire_ctx_t ctx = wire_ctx_init_const(val->blob, val->blob_len);
+		size_t offset = val->data + val->len - val->blob;
+		wire_ctx_skip(&ctx, offset);
+		uint16_t len = wire_ctx_read_u16(&ctx);
+		assert(ctx.error == KNOT_EOK);
+
+		val->data = ctx.position;
+		val->len = len;
+		val->code = KNOT_EOK;
+	} else {
+		val->data = NULL;
+		val->len = 0;
+		val->code = KNOT_EOF;
+	}
+}
+
+bool conf_val_equal(
+	conf_val_t *val1,
+	conf_val_t *val2)
+{
+	if (val1->blob_len == val2->blob_len &&
+	    memcmp(val1->blob, val2->blob, val1->blob_len) == 0) {
+		return true;
+	}
+
+	return false;
 }
 
 int64_t conf_int(
@@ -371,7 +426,7 @@ int64_t conf_int(
 	        val->item->var.r.ref->var.g.id->type == YP_TINT));
 
 	if (val->code == KNOT_EOK) {
-		conf_db_val(val);
+		conf_val(val);
 		return yp_int(val->data);
 	} else {
 		return val->item->var.i.dflt;
@@ -387,7 +442,7 @@ bool conf_bool(
 	        val->item->var.r.ref->var.g.id->type == YP_TBOOL));
 
 	if (val->code == KNOT_EOK) {
-		conf_db_val(val);
+		conf_val(val);
 		return yp_bool(val->data);
 	} else {
 		return val->item->var.b.dflt;
@@ -403,7 +458,7 @@ unsigned conf_opt(
 	        val->item->var.r.ref->var.g.id->type == YP_TOPT));
 
 	if (val->code == KNOT_EOK) {
-		conf_db_val(val);
+		conf_val(val);
 		return yp_opt(val->data);
 	} else {
 		return val->item->var.o.dflt;
@@ -419,7 +474,7 @@ const char* conf_str(
 	        val->item->var.r.ref->var.g.id->type == YP_TSTR));
 
 	if (val->code == KNOT_EOK) {
-		conf_db_val(val);
+		conf_val(val);
 		return yp_str(val->data);
 	} else {
 		return val->item->var.s.dflt;
@@ -435,7 +490,7 @@ const knot_dname_t* conf_dname(
 	        val->item->var.r.ref->var.g.id->type == YP_TDNAME));
 
 	if (val->code == KNOT_EOK) {
-		conf_db_val(val);
+		conf_val(val);
 		return yp_dname(val->data);
 	} else {
 		return (const knot_dname_t *)val->item->var.d.dflt;
@@ -453,7 +508,7 @@ const uint8_t* conf_bin(
 	         val->item->var.r.ref->var.g.id->type == YP_TB64)));
 
 	if (val->code == KNOT_EOK) {
-		conf_db_val(val);
+		conf_val(val);
 		*len = yp_bin_len(val->data);
 		return yp_bin(val->data);
 	} else {
@@ -472,7 +527,7 @@ const uint8_t* conf_data(
 	        val->item->var.r.ref->var.g.id->type == YP_TDATA));
 
 	if (val->code == KNOT_EOK) {
-		conf_db_val(val);
+		conf_val(val);
 		*len = val->len;
 		return val->data;
 	} else {
@@ -494,7 +549,7 @@ struct sockaddr_storage conf_addr(
 
 	if (val->code == KNOT_EOK) {
 		bool no_port;
-		conf_db_val(val);
+		conf_val(val);
 		out = yp_addr(val->data, &no_port);
 
 		if (out.ss_family == AF_UNIX) {
@@ -540,7 +595,7 @@ struct sockaddr_storage conf_addr_range(
 	struct sockaddr_storage out = { AF_UNSPEC };
 
 	if (val->code == KNOT_EOK) {
-		conf_db_val(val);
+		conf_val(val);
 		out = yp_addr_noport(val->data);
 		// addr_type, addr, format, formatted_data (port| addr| empty).
 		const uint8_t *format = val->data + sizeof(uint8_t) +
@@ -602,7 +657,7 @@ conf_mod_id_t* conf_mod_id(
 	conf_mod_id_t *mod_id = NULL;
 
 	if (val->code == KNOT_EOK) {
-		conf_db_val(val);
+		conf_val(val);
 
 		mod_id = malloc(sizeof(conf_mod_id_t));
 		if (mod_id == NULL) {
@@ -1039,9 +1094,9 @@ conf_remote_t conf_remote_txn(
 	conf_val_t val = conf_id_get_txn(conf, txn, C_RMT, C_ADDR, id);
 	for (size_t i = 0; val.code == KNOT_EOK && i < index; i++) {
 		if (i == 0) {
-			conf_db_val(&val);
+			conf_val(&val);
 		}
-		conf_db_val_next(&val);
+		conf_val_next(&val);
 	}
 	// Index overflow causes empty socket.
 	out.addr = conf_addr(&val, rundir);
@@ -1054,7 +1109,7 @@ conf_remote_t conf_remote_txn(
 			out.via = conf_addr(&val, rundir);
 			break;
 		}
-		conf_db_val_next(&val);
+		conf_val_next(&val);
 	}
 
 	// Get TSIG key (optional).

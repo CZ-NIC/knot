@@ -197,6 +197,8 @@ src/knot/conf/conf.c
 src/knot/conf/conf.h
 src/knot/conf/confdb.c
 src/knot/conf/confdb.h
+src/knot/conf/confio.c
+src/knot/conf/confio.h
 src/knot/conf/scheme.c
 src/knot/conf/scheme.h
 src/knot/conf/tools.c
@@ -505,6 +507,8 @@ tests/base64.c
 tests/changeset.c
 tests/conf.c
 tests/conf_tools.c
+tests/confdb.c
+tests/confio.c
 tests/descriptor.c
 tests/dname.c
 tests/dthreads.c
@@ -518,6 +522,7 @@ tests/internal_mem.c
 tests/journal.c
 tests/modules/online_sign.c
 tests/namedb.c
+tests/net.c
 tests/net_shortwrite.c
 tests/node.c
 tests/overlay.c

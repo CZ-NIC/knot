@@ -17,6 +17,8 @@ check_PROGRAMS = \
 	changeset			\
 	conf				\
 	conf_tools			\
+	confdb				\
+	confio				\
 	descriptor			\
 	dname				\
 	dthreads			\
@@ -72,6 +74,8 @@ check-local: $(check_PROGRAMS)
 
 acl_SOURCES = acl.c test_conf.h
 conf_SOURCES = conf.c test_conf.h
+confdb_SOURCES = confdb.c test_conf.h
+confio_SOURCES = confio.c test_conf.h
 process_query_SOURCES = process_query.c fake_server.h test_conf.h
 process_answer_SOURCES = process_answer.c fake_server.h test_conf.h
 CLEANFILES = runtests.log

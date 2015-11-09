@@ -85,6 +85,9 @@ static int set_grp_item(
 			break;
 		}
 
+		// Set the parent item.
+		dst->sub_items[i].parent = dst;
+
 		if (ret != KNOT_EOK) {
 			free(dst->sub_items);
 			dst->sub_items = NULL;
@@ -241,127 +244,97 @@ yp_check_ctx_t* yp_scheme_check_init(
 	return ctx;
 }
 
-static int check_key0(
+static void reset_ctx(
+	yp_check_ctx_t *ctx,
+	size_t index)
+{
+	assert(index < YP_MAX_NODE_DEPTH);
+
+	yp_node_t *node = &ctx->nodes[index];
+
+	node->parent = (index > 0) ? &ctx->nodes[index - 1] : NULL;
+	node->item = NULL;
+	node->id_len = 0;
+	node->data_len = 0;
+
+	ctx->current = index;
+}
+
+static int check_item(
 	const char *key,
 	size_t key_len,
 	const char *data,
 	size_t data_len,
-	yp_check_ctx_t *ctx)
+	yp_check_ctx_t *ctx,
+	bool allow_key1_without_id)
 {
-	const yp_item_t *key0 = find_item(key, key_len, ctx->scheme);
-	if (key0 == NULL) {
+	yp_node_t *node = &ctx->nodes[ctx->current];
+	yp_node_t *parent = node->parent;
+	bool is_id = false;
+
+	if (parent != NULL) {
+		// Check if valid group parent.
+		if (parent->item->type != YP_TGRP) {
+			return KNOT_YP_EINVAL_ITEM;
+		}
+
+		// Check if valid subitem.
+		node->item = find_item(key, key_len, parent->item->sub_items);
+	} else {
+		node->item = find_item(key, key_len, ctx->scheme);
+	}
+	if (node->item == NULL) {
 		return KNOT_YP_EINVAL_ITEM;
+	}
+
+	// Check if the parent requires id specification.
+	if (parent != NULL && parent->item->var.g.id != NULL) {
+		// Check if id.
+		if (node->item == parent->item->var.g.id) {
+			is_id = true;
+			// Move current to the parent.
+			--(ctx->current);
+		// Check for missing id.
+		} else if (parent->id_len == 0 && !allow_key1_without_id) {
+			return KNOT_YP_ENOID;
+		}
+	}
+
+	// Return if no data provided.
+	if (data == NULL) {
+		return KNOT_EOK;
 	}
 
 	// Group cannot have data.
-	if (key0->type == YP_TGRP && data_len != 0) {
+	if (data_len != 0 && node->item->type == YP_TGRP) {
 		return KNOT_YP_ENOTSUP_DATA;
 	}
 
-	ctx->key0 = key0;
-	ctx->key1 = NULL;
-	ctx->id_len = 0;
-	ctx->data_len = sizeof(((yp_check_ctx_t *)NULL)->data);
-
-	return yp_item_to_bin(key0, data, data_len, ctx->data, &ctx->data_len);
-}
-
-static int check_key1(
-	const char *key,
-	size_t key_len,
-	const char *data,
-	size_t data_len,
-	yp_check_ctx_t *ctx)
-{
-	// Sub-item must have a parent item.
-	if (ctx->key0 == NULL || ctx->key0->type != YP_TGRP) {
-		return KNOT_YP_EINVAL_ITEM;
-	}
-
-	const yp_item_t *key1 = find_item(key, key_len, ctx->key0->sub_items);
-	if (key1 == NULL) {
-		return KNOT_YP_EINVAL_ITEM;
-	}
-
-	// Sub-item must not be a group.
-	if (key1->type == YP_TGRP) {
-		return KNOT_YP_EINVAL_ITEM;
-	}
-
-	// Check if the group requires id specification.
-	if (ctx->key0->var.g.id != NULL) {
-		// Check if key1 is not id item.
-		if (key1 == ctx->key0->var.g.id) {
-			return KNOT_YP_EINVAL_ID;
+	// Convert item data to binary format.
+	const yp_item_t *item = (node->item->type != YP_TREF) ?
+	                        node->item : node->item->var.r.ref->var.g.id;
+	if (is_id) {
+		// Textual id must not be empty.
+		if (data_len == 0) {
+			return KNOT_YP_ENODATA;
 		}
 
-		if (ctx->id_len == 0) {
-			return KNOT_YP_ENOID;
+		parent->id_len = sizeof(((yp_node_t *)NULL)->id);
+		int ret = yp_item_to_bin(item, data, data_len, parent->id,
+		                         &parent->id_len);
+
+		// Binary id must not be empty.
+		if (ret == KNOT_EOK && parent->id_len == 0) {
+			return KNOT_YP_EINVAL_DATA;
 		}
-	// Check for id if not supported.
-	} else if (ctx->id_len > 0) {
-		return KNOT_YP_ENOTSUP_ID;
-	}
 
-	ctx->key1 = key1;
-	ctx->data_len = sizeof(((yp_check_ctx_t *)NULL)->data);
-
-	return yp_item_to_bin(key1, data, data_len, ctx->data, &ctx->data_len);
-}
-
-static int check_id(
-	const char *key,
-	size_t key_len,
-	const char *data,
-	size_t data_len,
-	yp_check_ctx_t *ctx)
-{
-	// Id must have a parent item.
-	if (ctx->key0 == NULL) {
-		return KNOT_YP_EINVAL_ITEM;
-	}
-
-	// Only group item can have id.
-	if (ctx->key0->type != YP_TGRP) {
-		return KNOT_YP_ENOTSUP_ID;
-	}
-
-	// Check group item without id support.
-	if (ctx->key0->var.g.id == NULL) {
-	       return KNOT_YP_ENOTSUP_ID;
-	}
-
-	const yp_item_t *id = find_item(key, key_len, ctx->key0->sub_items);
-	if (id == NULL) {
-		return KNOT_YP_EINVAL_ITEM;
-	}
-
-	// Id item must be the first one.
-	if (id != ctx->key0->var.g.id) {
-		return KNOT_YP_EINVAL_ID;
-	}
-
-	// Textual id must not be empty.
-	if (data_len == 0) {
-		return KNOT_YP_ENODATA;
-	}
-
-	ctx->key1 = ctx->key0->var.g.id;
-	ctx->data_len = 0;
-	ctx->id_len = sizeof(((yp_check_ctx_t *)NULL)->data);
-
-	int ret = yp_item_to_bin(ctx->key0->var.g.id, data, data_len, ctx->id,
-	                         &ctx->id_len);
-	if (ret != KNOT_EOK) {
+		return ret;
+	} else {
+		node->data_len = sizeof(((yp_node_t *)NULL)->data);
+		int ret = yp_item_to_bin(item, data, data_len, node->data,
+		                         &node->data_len);
 		return ret;
 	}
-
-	// Binary id must not be empty.
-	if (ctx->id_len == 0) {
-		return KNOT_YP_EINVAL_DATA;
-	}
-
-	return KNOT_EOK;
 }
 
 int yp_scheme_check_parser(
@@ -376,25 +349,119 @@ int yp_scheme_check_parser(
 
 	switch (parser->event) {
 	case YP_EKEY0:
-		ret = check_key0(parser->key, parser->key_len,
-		                 parser->data, parser->data_len, ctx);
+		reset_ctx(ctx, 0);
+		ret = check_item(parser->key, parser->key_len, parser->data,
+		                 parser->data_len, ctx, false);
 		break;
 	case YP_EKEY1:
-		ret = check_key1(parser->key, parser->key_len,
-		                 parser->data, parser->data_len, ctx);
+		reset_ctx(ctx, 1);
+		ret = check_item(parser->key, parser->key_len, parser->data,
+		                 parser->data_len, ctx, false);
+		if (ret != KNOT_EOK) {
+			break;
+		}
+
+		// Check for KEY1 event with id item.
+		if (ctx->current != 1) {
+			return KNOT_YP_ENOTSUP_ID;
+		}
+
 		break;
 	case YP_EID:
-		ret = check_id(parser->key, parser->key_len,
-		               parser->data, parser->data_len, ctx);
+		reset_ctx(ctx, 1);
+		ret = check_item(parser->key, parser->key_len, parser->data,
+		                 parser->data_len, ctx, false);
+		if (ret != KNOT_EOK) {
+			break;
+		}
+
+		// Check for ID event with nonid item.
+		if (ctx->current != 0) {
+			return KNOT_YP_EINVAL_ID;
+		}
+
 		break;
 	default:
 		ret = KNOT_EPARSEFAIL;
 		break;
 	}
 
-	ctx->event = parser->event;
-
 	return ret;
+}
+
+int yp_scheme_check_str(
+	yp_check_ctx_t *ctx,
+	const char *key0,
+	const char *key1,
+	const char *id,
+	const char *data)
+{
+	if (ctx == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	size_t key0_len = (key0 != NULL) ? strlen(key0) : 0;
+	size_t key1_len = (key1 != NULL) ? strlen(key1) : 0;
+	size_t id_len   = (id   != NULL) ? strlen(id)   : 0;
+	size_t data_len = (data != NULL) ? strlen(data) : 0;
+
+	// Key0 must always be non-empty.
+	if (key0_len == 0) {
+		return KNOT_YP_EINVAL_ITEM;
+	}
+
+	// Process key0.
+	reset_ctx(ctx, 0);
+	if (key1_len == 0) {
+		int ret = check_item(key0, key0_len, data, data_len, ctx, false);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+	} else {
+		int ret = check_item(key0, key0_len, NULL, 0, ctx, false);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+	}
+
+	// Process id.
+	if (id_len != 0) {
+		if (ctx->nodes[0].item->type != YP_TGRP ||
+		    ctx->nodes[0].item->var.g.id == NULL) {
+			return KNOT_YP_ENOTSUP_ID;
+		}
+		const yp_name_t *name = ctx->nodes[0].item->var.g.id->name;
+
+		reset_ctx(ctx, 1);
+		int ret = check_item(name + 1, name[0], id, id_len, ctx, true);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+
+		// Check for non-id item (should not happen).
+		assert(ctx->current == 0);
+
+		// Check for group id with data.
+		if (key1_len == 0 && data != NULL) {
+			return KNOT_YP_ENOTSUP_DATA;
+		}
+	}
+
+	// Process key1.
+	if (key1_len != 0) {
+		reset_ctx(ctx, 1);
+		int ret = check_item(key1, key1_len, data, data_len, ctx, true);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+
+		// Check for id in key1 with extra data.
+		if (ctx->current != 1 && id_len != 0 && data != NULL) {
+			return KNOT_YP_ENOTSUP_DATA;
+		}
+	}
+
+	return KNOT_EOK;
 }
 
 void yp_scheme_check_deinit(

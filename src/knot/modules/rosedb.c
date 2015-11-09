@@ -37,10 +37,9 @@ const yp_item_t scheme_mod_rosedb[] = {
 int check_mod_rosedb(conf_check_t *args)
 {
 	conf_val_t dir = conf_rawid_get_txn(args->conf, args->txn, C_MOD_ROSEDB,
-	                                    MOD_DBDIR, args->previous->id,
-	                                    args->previous->id_len);
+	                                    MOD_DBDIR, args->id, args->id_len);
 	if (dir.code != KNOT_EOK) {
-		*args->err_str = "no database directory specified";
+		args->err_str = "no database directory specified";
 		return KNOT_EINVAL;
 	}
 

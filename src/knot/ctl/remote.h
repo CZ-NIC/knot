@@ -151,38 +151,59 @@ knot_pkt_t* remote_query(const char *query, const knot_tsig_key_t *key);
 int remote_query_sign(uint8_t *wire, size_t *size, size_t maxlen,
                       const knot_tsig_key_t *key);
 
-/*! \todo #1291 RR building should be a part of DNS library. */
-
 /*!
- * \brief Create a RR of a given name and type.
+ * \brief Initialize a rrset with the given name and type.
  *
- * \param k RR set name.
- * \param t RR set type.
+ * \param rr Output rrset.
+ * \param owner RRset owner.
+ * \param type RRset type.
  *
- * \return created RR set or NULL.
+ * \return KNOT_E*.
  */
-int remote_build_rr(knot_rrset_t *rr, const char *k, uint16_t t);
+int remote_build_rr(knot_rrset_t *rr, const char *owner, uint16_t type);
 
 /*!
  * \brief Create a TXT rdata.
- * \param v Text as a string.
- * \param v_len Text length.
- * \return Created rdata or NULL.
+ *
+ * \param rr Output rrset.
+ * \param str Text string.
+ * \param str_len Text string length.
+ * \param index Rdata index (ensures correct argument position).
+ *
+ * \return KNOT_E*.
  */
-int remote_create_txt(knot_rrset_t *rr, const char *v, size_t v_len);
+int remote_create_txt(knot_rrset_t *rr, const char *str, size_t str_len,
+                      uint16_t index);
 
 /*!
- * \brief Create a CNAME rdata.
- * \param d Domain name as a string.
- * \return Created rdata or NULL.
+ * \brief Create a NS rdata.
+ *
+ * \param rr Output rrset.
+ * \param name Domain name as a string.
+ *
+ * \return KNOT_E*
  */
-int remote_create_ns(knot_rrset_t *rr, const char *d);
+int remote_create_ns(knot_rrset_t *rr, const char *name);
 
 /*!
  * \brief Print TXT rdata to stdout.
- * \param rd TXT rdata.
- * \return KNOT_EOK
+ *
+ * \param rrset TXT rrset.
+ * \param pos Rdata position in the rrset.
+ *
+ * \return KNOT_E*
  */
-int remote_print_txt(const knot_rrset_t *rrset, uint16_t i);
+int remote_print_txt(const knot_rrset_t *rrset, uint16_t pos);
+
+/*!
+ * \brief Extracts TXT rdata into buffer.
+ *
+ * \param rrset TXT rrset.
+ * \param pos Rdata position in the rrset.
+ * \param out_len Output rdata blob length (optional).
+ *
+ * \return Rdata blob or NULL.
+ */
+uint8_t *remote_get_txt(const knot_rrset_t *rr, uint16_t pos, size_t *out_len);
 
 /*! @} */

@@ -40,13 +40,104 @@ Configuration database
 In the case of a huge configuration file, the configuration can be preloaded
 into the server's configuration database::
 
-    $ knotc import input.conf
+    $ knotc -C db_path conf-import input.conf
 
 Also the configuration database can be exported into a configuration file::
 
-    $ knotc export output.conf
+    $ knotc -C db_path conf-export output.conf
 
-It is recommended to perform these actions without server running.
+*Caution:* The import and export commands access the configuration database
+directly, without any interaction with the server. So it is strictly
+recommended to perform these operations when the server is not running.
+
+.. _Dynamic configuration:
+
+Dynamic configuration
+=====================
+
+The configuration database can be accessed using the server remote control
+during the running server. To get the full power of the dynamic configuration,
+the server must be started with a specified configuration database location::
+
+    $ knotd -C db_path
+
+*Note:* The database can be :ref:`imported<Configuration database>` in advance.
+
+Otherwise all the changes to the configuration are temporary (until the server
+stop).
+
+Most of the commands get item name and value parameters. An item is in the form
+of ``section[identifier].item``. If the item is multivalued, more values
+can be specified with a space separation.
+
+To get the list of configuration sections or to get the list of section items::
+
+    $ knotc conf-desc
+    $ knotc conf-desc server
+
+To get the whole configuration or to get the whole configuration section or
+to get all section identifiers or to get a specific configuration item::
+
+    $ knotc conf-read
+    $ knotc conf-read remote
+    $ knotc conf-read zone.domain
+    $ knotc conf-read zone[example.com].master
+
+*Caution:* The following operations don't work on OpenBSD!
+
+Modifying operations require an active configuration database transaction.
+Just one transaction can be active at a time. Such a transaction then can
+be aborted or commited. A semantic check is executed automatically before
+every commit::
+
+    $ knotc conf-begin
+    $ knotc conf-abort
+    $ knotc conf-commit
+
+To set a configuration item value or to add more values or to add a new
+section identifier or to add a value to all identified sections::
+
+    $ knotc conf-set server.identity "Knot DNS"
+    $ knotc conf-set server.listen 0.0.0.0@53 ::@53
+    $ knotc conf-set zone[example.com]
+    $ knotc conf-set zone.slave slave2
+
+*Note:* Also the include operation can be performed (the file location is
+relative to the server binary!)::
+
+    $ knotc conf-set include /tmp/new_zones.conf
+
+To unset the whole configuration or to unset the whole configuration section
+or to unset an identified section or to unset an item or to unset a specific
+item value::
+
+    $ knotc conf-unset
+    $ knotc conf-unset zone
+    $ knotc conf-unset zone[example.com]
+    $ knotc conf-unset zone[example.com].master
+    $ knotc conf-unset zone[example.com].master remote2 remote5
+
+To get the change between the current configuration and the active transaction
+for the whole configuration or for a specific section or for a specific
+identified section or for a specific item::
+
+    $ knotc conf-diff
+    $ knotc conf-diff zone
+    $ knotc conf-diff zone[example.com]
+    $ knotc conf-diff zone[example.com].master
+
+An example of possible configuration initialization::
+
+    $ knotc conf-begin
+    $ knotc conf-set server.listen 0.0.0.0@53 ::@53
+    $ knotc conf-set remote[master_server]
+    $ knotc conf-set remote[master_server].address 192.168.1.1
+    $ knotc conf-set template[default]
+    $ knotc conf-set template[default].storage /var/lib/knot/zones/
+    $ knotc conf-set template[default].master master_server
+    $ knotc conf-set zone[example.com]
+    $ knotc conf-diff
+    $ knotc conf-commit
 
 .. _Running a slave server:
 

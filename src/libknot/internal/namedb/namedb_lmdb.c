@@ -55,6 +55,10 @@ static int lmdb_error_to_knot(int error)
 		return KNOT_EOK;
 	}
 
+	if (error == MDB_NOTFOUND) {
+		return KNOT_ENOENT;
+	}
+
 	if (error == MDB_MAP_FULL || error == MDB_TXN_FULL || error == ENOSPC) {
 		return KNOT_ESPACE;
 	}
@@ -236,7 +240,8 @@ static void deinit(namedb_t *db)
 	}
 }
 
-static int txn_begin(namedb_t *db, namedb_txn_t *txn, unsigned flags)
+int namedb_lmdb_txn_begin(namedb_t *db, namedb_txn_t *txn, namedb_txn_t *parent,
+                          unsigned flags)
 {
 	txn->db = db;
 	txn->txn = NULL;
@@ -246,13 +251,20 @@ static int txn_begin(namedb_t *db, namedb_txn_t *txn, unsigned flags)
 		txn_flags |= MDB_RDONLY;
 	}
 
+	MDB_txn *parent_txn = (parent != NULL) ? (MDB_txn *)parent->txn : NULL;
+
 	struct lmdb_env *env = db;
-	int ret = mdb_txn_begin(env->env, NULL, txn_flags, (MDB_txn **)&txn->txn);
+	int ret = mdb_txn_begin(env->env, parent_txn, txn_flags, (MDB_txn **)&txn->txn);
 	if (ret != MDB_SUCCESS) {
 		return lmdb_error_to_knot(ret);
 	}
 
 	return KNOT_EOK;
+}
+
+static int txn_begin(namedb_t *db, namedb_txn_t *txn, unsigned flags)
+{
+	return namedb_lmdb_txn_begin(db, txn, NULL, flags);
 }
 
 static int txn_commit(namedb_txn_t *txn)
@@ -326,7 +338,8 @@ static namedb_iter_t *iter_set(namedb_iter_t *iter, namedb_val_t *key, unsigned 
 			return iter_set(iter, NULL, NAMEDB_LAST);
 		}
 		/* If the searched key != matched, get previous. */
-		if ((key->len != db_key.mv_size) || (memcmp(key->data, db_key.mv_data, key->len) != 0)) {
+		if ((key->len != db_key.mv_size) ||
+		    (memcmp(key->data, db_key.mv_data, key->len) != 0)) {
 			return iter_set(iter, NULL, NAMEDB_PREV);
 		}
 	}
@@ -358,6 +371,18 @@ static namedb_iter_t *iter_begin(namedb_txn_t *txn, unsigned flags)
 static namedb_iter_t *iter_next(namedb_iter_t *iter)
 {
 	return iter_set(iter, NULL, NAMEDB_NEXT);
+}
+
+int namedb_lmdb_iter_del(namedb_iter_t *iter)
+{
+	MDB_cursor *cursor = iter;
+
+	int ret = mdb_cursor_del(cursor, 0);
+	if (ret != MDB_SUCCESS) {
+		return lmdb_error_to_knot(ret);
+	}
+
+	return KNOT_EOK;
 }
 
 static int iter_key(namedb_iter_t *iter, namedb_val_t *key)

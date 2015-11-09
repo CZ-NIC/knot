@@ -195,6 +195,49 @@ static void namedb_test_set(unsigned nkeys, char **keys, void *opts,
 	}
 	api->txn_abort(&txn);
 
+	/* Deleting during iteration. */
+	const uint8_t DEL_MAX_CNT = 3;
+	api->txn_begin(db, &txn, 0);
+	api->clear(&txn);
+	for (uint8_t i = 0; i < DEL_MAX_CNT; ++i) {
+		key.data = &i;
+		key.len = sizeof(i);
+		val.data = NULL;
+		val.len = 0;
+
+		ret = api->insert(&txn, &key, &val, 0);
+		is_int(KNOT_EOK, ret, "%s: add key '%u'", api->name, i);
+	}
+	it = api->iter_begin(&txn, NAMEDB_NOOP);
+	if (it != NULL) { /* If supported. */
+		is_int(DEL_MAX_CNT, api->count(&txn), "%s: key count before", api->name);
+		it = api->iter_seek(it, NULL, NAMEDB_FIRST);
+		uint8_t pos = 0;
+		while (it != NULL) {
+			ret = api->iter_key(it, &key);
+			is_int(KNOT_EOK, ret, "%s: iter key before del", api->name);
+			is_int(pos, ((uint8_t *)(key.data))[0], "%s: iter compare key '%u'",
+			       api->name, pos);
+
+			ret = namedb_lmdb_iter_del(it);
+			is_int(KNOT_EOK, ret, "%s: iter del", api->name);
+
+			it = api->iter_next(it);
+
+			ret = api->iter_key(it, &key);
+			if (++pos < DEL_MAX_CNT) {
+				is_int(KNOT_EOK, ret, "%s: iter key after del", api->name);
+				is_int(pos, ((uint8_t *)key.data)[0], "%s: iter compare key '%u",
+				       api->name, pos);
+			} else {
+				is_int(KNOT_EINVAL, ret, "%s: iter key after del", api->name);
+			}
+		}
+		api->iter_finish(it);
+		is_int(0, api->count(&txn), "%s: key count after", api->name);
+	}
+	api->txn_abort(&txn);
+
 	/* Clear database and recheck. */
 	ret =  api->txn_begin(db, &txn, 0);
 	ret += api->clear(&txn);

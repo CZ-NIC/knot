@@ -73,6 +73,8 @@ Print help and usage.
 .sp
 If the optional \fIzone\fP argument is not specified, the command is applied to all
 zones.
+Configuration \fIitem\fP is in the \fIsection\fP[\fB[\fP\fIid\fP\fB]\fP][\fB\&.\fP\fIitem\fP]
+format.
 .INDENT 0.0
 .TP
 \fBstop\fP
@@ -105,12 +107,49 @@ Estimate memory consumption for zones.
 \fBsignzone\fP \fIzone\fP\&...
 Re\-sign the zone (drop all existing signatures and create new ones).
 .TP
-\fBimport\fP \fIfile\fP
-Import a configuration database from file. This is a potentially dangerous
-operation, thus the \fB\-f\fP flag is required.
+\fBconf\-import\fP \fIfilename\fP
+Offline import of the configuration DB from a file. This is a
+potentially dangerous operation so the \fB\-f\fP flag is required. Also the
+destination configuration DB must be specified via \fB\-C\fP\&. Ensure the server
+is not running!
 .TP
-\fBexport\fP \fIfile\fP
-Export the configuration database to a file.
+\fBconf\-export\fP \fIfilename\fP
+Export the configuration DB to a file. If no source configuration DB is
+specified, the temporary DB, corresponding to textual configuration file, is
+used.
+.TP
+\fBconf\-desc\fP [\fIsection\fP]
+Get the configuration section items list. If no section is specified,
+the list of sections is returned.
+.TP
+\fBconf\-read\fP [\fIitem\fP]
+Read from the current configuration DB.
+.TP
+\fBconf\-begin\fP
+Begin a writing configuration DB transaction. Only one transaction can be
+opened at a time.
+.TP
+\fBconf\-commit\fP
+Commit the current writing configuration DB transaction.
+.TP
+\fBconf\-abort\fP
+Abort the current writing configuration DB transaction.
+.TP
+\fBconf\-diff\fP [\fIitem\fP]
+Get the difference between the active writing transaction and the current
+configuration DB. Requires active writing configuration DB transaction.
+.TP
+\fBconf\-get\fP [\fIitem\fP]
+Read from the active writing configuration DB transaction.
+Requires active writing configuration DB transaction.
+.TP
+\fBconf\-set\fP \fIitem\fP [\fIdata\fP\&...]
+Write to the active writing configuration DB transaction.
+Requires active writing configuration DB transaction.
+.TP
+\fBconf\-unset\fP [\fIitem\fP] [\fIdata\fP\&...]
+Delete from the active writing configuration DB transaction.
+Requires active writing configuration DB transaction.
 .UNINDENT
 .SH EXAMPLES
 .SS Setup a key file for remote control
@@ -160,6 +199,53 @@ $ knotc \-s 127.0.0.1 \-k knotc.key reload
 .nf
 .ft C
 $ knotc \-c knot.conf flush
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.SS Get the current server configuration
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+$ knotc conf\-read server
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.SS Get the list of the current zones
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+$ knotc conf\-read zone.domain
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.SS Get the master remotes for the example.com zone
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+$ knotc conf\-read zone[example.com].master
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.SS Add example.eu zone with a zonefile location
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+$ knotc conf\-begin
+$ knotc conf\-set zone[example.eu]
+$ knotc conf\-set zone[example.eu].file "/var/zones/example.eu.zone"
+$ knotc conf\-commit
 .ft P
 .fi
 .UNINDENT

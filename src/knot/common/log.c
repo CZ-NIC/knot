@@ -476,16 +476,13 @@ int log_reconfigure(conf_t *conf, void *data)
 
 	// Find maximum log facility id
 	unsigned files = 0;
-	conf_iter_t iter = conf_iter(conf, C_LOG);
-	while (iter.code == KNOT_EOK) {
+	for (conf_iter_t iter = conf_iter(conf, C_LOG); iter.code == KNOT_EOK;
+	     conf_iter_next(conf, &iter)) {
 		conf_val_t id = conf_iter_id(conf, &iter);
 		if (get_logtype(conf_str(&id)) == LOGT_FILE) {
 			++files;
 		}
-
-		conf_iter_next(conf, &iter);
 	}
-	conf_iter_finish(conf, &iter);
 
 	// Initialize logsystem
 	struct log_sink *log = sink_setup(files);
@@ -494,8 +491,8 @@ int log_reconfigure(conf_t *conf, void *data)
 	}
 
 	// Setup logs
-	iter = conf_iter(conf, C_LOG);
-	while (iter.code == KNOT_EOK) {
+	for (conf_iter_t iter = conf_iter(conf, C_LOG); iter.code == KNOT_EOK;
+	     conf_iter_next(conf, &iter)) {
 		conf_val_t id = conf_iter_id(conf, &iter);
 		const char *logname = conf_str(&id);
 
@@ -506,7 +503,6 @@ int log_reconfigure(conf_t *conf, void *data)
 			if (facility < 0) {
 				log_error("failed to open log, file '%s'",
 				          logname);
-				conf_iter_next(conf, &iter);
 				continue;
 			}
 		}
@@ -528,10 +524,7 @@ int log_reconfigure(conf_t *conf, void *data)
 		level_val = conf_id_get(conf, C_LOG, C_ANY, &id);
 		level = conf_opt(&level_val);
 		sink_levels_add(log, facility, LOG_ANY, level);
-
-		conf_iter_next(conf, &iter);
 	}
-	conf_iter_finish(conf, &iter);
 
 	sink_publish(log);
 

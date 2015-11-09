@@ -92,3 +92,5 @@ enum {
 extern const lookup_table_t acl_actions[];
 
 extern const yp_item_t conf_scheme[];
+
+/*! @} */

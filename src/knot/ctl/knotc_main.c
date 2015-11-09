@@ -39,15 +39,16 @@
 
 /*! \brief Controller flags. */
 enum knotc_flag_t {
-	F_NULL    = 0,
-	F_FORCE   = 1 << 0,
-	F_VERBOSE = 1 << 1
+	F_NULL     = 0,
+	F_FORCE    = 1 << 0,
+	F_VERBOSE  = 1 << 1,
+	F_NOCONFDB = 1 << 2
 };
 
 /*! \brief Check if flag is present. */
-static inline unsigned has_flag(unsigned flags, enum knotc_flag_t f)
+static bool has_flag(unsigned flags, enum knotc_flag_t f)
 {
-	return flags & f;
+	return (flags & f) != 0;
 }
 
 /*! \brief Callback arguments. */
@@ -82,26 +83,44 @@ static int cmd_checkconf(cmd_args_t *args);
 static int cmd_checkzone(cmd_args_t *args);
 static int cmd_memstats(cmd_args_t *args);
 static int cmd_signzone(cmd_args_t *args);
-static int cmd_import(cmd_args_t *args);
-static int cmd_export(cmd_args_t *args);
+static int cmd_conf_import(cmd_args_t *args);
+static int cmd_conf_export(cmd_args_t *args);
+static int cmd_conf_desc(cmd_args_t *args);
+static int cmd_conf_read(cmd_args_t *args);
+static int cmd_conf_begin(cmd_args_t *args);
+static int cmd_conf_commit(cmd_args_t *args);
+static int cmd_conf_abort(cmd_args_t *args);
+static int cmd_conf_diff(cmd_args_t *args);
+static int cmd_conf_get(cmd_args_t *args);
+static int cmd_conf_set(cmd_args_t *args);
+static int cmd_conf_unset(cmd_args_t *args);
 
 /*! \brief Table of remote commands. */
 knot_cmd_t knot_cmd_tbl[] = {
-	{&cmd_stop,       "stop",       "",            "Stop server."},
-	{&cmd_reload,     "reload",     "[<zone>...]", "Reload particular zones or reload whole\n"
-	                "                                configuration and changed zones."},
-	{&cmd_refresh,    "refresh",    "[<zone>...]", "Refresh slave zones. Flag '-f' forces retransfer\n"
-	                "                                (zone(s) must be specified)."},
-	{&cmd_flush,      "flush",      "[<zone>...]", "Flush journal and update zone files."},
-	{&cmd_status,     "status",     "",            "Check if server is running."},
-	{&cmd_zonestatus, "zonestatus", "[<zone>...]", "Show status of configured zones."},
-	{&cmd_checkconf,  "checkconf",  "",            "Check current server configuration."},
-	{&cmd_checkzone,  "checkzone",  "[<zone>...]", "Check zones."},
-	{&cmd_memstats,   "memstats",   "[<zone>...]", "Estimate memory use for zones."},
-	{&cmd_signzone,   "signzone",   "<zone>...",   "Sign zones with available DNSSEC keys."},
-	{&cmd_import,     "import",     "<filename>",  "Import configuration database."},
-	{&cmd_export,     "export",     "<filename>",  "Export configuration database."},
-	{NULL, NULL, NULL, NULL}
+	{ &cmd_stop,        "stop",        "",                     "Stop server." },
+	{ &cmd_reload,      "reload",      "[<zone>...]",          "Reload particular zones or reload whole\n"
+	                         "                                   configuration and changed zones." },
+	{ &cmd_refresh,     "refresh",     "[<zone>...]",          "Refresh slave zones. Flag '-f' forces retransfer\n"
+	                         "                                   (zone(s) must be specified)." },
+	{ &cmd_flush,       "flush",       "[<zone>...]",          "Flush journal and update zone files." },
+	{ &cmd_status,      "status",      "",                     "Check if server is running." },
+	{ &cmd_zonestatus,  "zonestatus",  "[<zone>...]",          "Show status of configured zones." },
+	{ &cmd_checkconf,   "checkconf",   "",                     "Check current server configuration." },
+	{ &cmd_checkzone,   "checkzone",   "[<zone>...]",          "Check zones." },
+	{ &cmd_memstats,    "memstats",    "[<zone>...]",          "Estimate memory use for zones." },
+	{ &cmd_signzone,    "signzone",    "<zone>...",            "Sign zones with available DNSSEC keys." },
+	{ &cmd_conf_import, "conf-import", "<filename>",           "Offline config DB import from file." },
+	{ &cmd_conf_export, "conf-export", "<filename>",           "Export config DB to file." },
+	{ &cmd_conf_desc,   "conf-desc",   "[<item>]",             "Get config DB item list." },
+	{ &cmd_conf_read,   "conf-read",   "[<item>]",             "Read item(s) from active config DB." },
+	{ &cmd_conf_begin,  "conf-begin",  "",                     "Begin config DB transaction." },
+	{ &cmd_conf_commit, "conf-commit", "",                     "Commit config DB transaction." },
+	{ &cmd_conf_abort,  "conf-abort",  "",                     "Rollback config DB transaction." },
+	{ &cmd_conf_diff,   "conf-diff",   "[<item>]",             "Get config DB transaction difference." },
+	{ &cmd_conf_get,    "conf-get",    "[<item>]",             "Get item(s) from config DB transaction." },
+	{ &cmd_conf_set,    "conf-set",    "<item> [<data>...]",   "Set item(s) in config DB transaction." },
+	{ &cmd_conf_unset,  "conf-unset",  "[<item>] [<data>...]", "Unset item(s) in config DB transaction." },
+	{ NULL }
 };
 
 /*! \brief Print help. */
@@ -109,32 +128,32 @@ void help(void)
 {
 	printf("Usage: %sc [parameters] <action> [action_args]\n", PACKAGE_NAME);
 	printf("\nParameters:\n"
-	       " -c, --config <file>           Select configuration file.\n"
-	       "                                (default %s)\n"
-	       " -C, --confdb <dir>            Select configuration database directory.\n"
-	       " -s, --server <server>         Remote UNIX socket/IP address.\n"
-	       "                                (default %s)\n"
-	       " -p, --port <port>             Remote server port (only for IP).\n"
-	       " -y, --key <[hmac:]name:key>   Use key specified on the command line.\n"
-	       "                                (default algorithm is hmac-md5)\n"
-	       " -k, --keyfile <file>          Read key from file (same format as -y).\n"
-	       " -f, --force                   Force operation - override some checks.\n"
-	       " -v, --verbose                 Verbose mode - additional runtime information.\n"
-	       " -V, --version                 Print %s server version.\n"
-	       " -h, --help                    Print help and usage.\n",
+	       " -c, --config <file>              Select configuration file.\n"
+	       "                                   (default %s)\n"
+	       " -C, --confdb <dir>               Select configuration database directory.\n"
+	       " -s, --server <server>            Remote UNIX socket/IP address.\n"
+	       "                                   (default %s)\n"
+	       " -p, --port <port>                Remote server port (only for IP).\n"
+	       " -y, --key <[hmac:]name:key>      Use key specified on the command line.\n"
+	       "                                   (default algorithm is hmac-md5)\n"
+	       " -k, --keyfile <file>             Read key from file (same format as -y).\n"
+	       " -f, --force                      Force operation - override some checks.\n"
+	       " -v, --verbose                    Verbose mode - additional runtime information.\n"
+	       " -V, --version                    Print %s server version.\n"
+	       " -h, --help                       Print help and usage.\n",
 	       CONF_DEFAULT_FILE, RUN_DIR "/knot.sock", PACKAGE_NAME);
 	printf("\nActions:\n");
 	knot_cmd_t *c = knot_cmd_tbl;
 	while (c->name != NULL) {
-		printf(" %-10s %-18s %s\n", c->name, c->params, c->desc);
+		printf(" %-11s %-20s %s\n", c->name, c->params, c->desc);
 		++c;
 	}
+	printf("\nThe item argument must be in the section[identifier].item format.\n");
 	printf("\nIf optional <zone> parameter is not specified, command is applied to all zones.\n\n");
 }
 
 static int cmd_remote_print_reply(const knot_rrset_t *rr)
 {
-	/* Process first RRSet in data section. */
 	if (rr->type != KNOT_RRTYPE_TXT) {
 		return KNOT_EMALF;
 	}
@@ -215,14 +234,14 @@ static int cmd_remote(struct sockaddr_storage *addr, knot_tsig_key_t *key,
 			knot_pkt_free(&pkt);
 			return 1;
 		}
-		for (int i = 0; i < argc; ++i) {
+		for (uint16_t i = 0; i < argc; ++i) {
 			switch(rrt) {
 			case KNOT_RRTYPE_NS:
 				remote_create_ns(&rr, argv[i]);
 				break;
 			case KNOT_RRTYPE_TXT:
 			default:
-				remote_create_txt(&rr, argv[i], strlen(argv[i]));
+				remote_create_txt(&rr, argv[i], strlen(argv[i]), i);
 				break;
 			}
 		}
@@ -391,6 +410,12 @@ int main(int argc, char **argv)
 		goto exit;
 	}
 
+	/* Check for existing config DB destination. */
+	struct stat st;
+	if (config_db != NULL && stat(config_db, &st) != 0) {
+		flags |= F_NOCONFDB;
+	}
+
 	/* Find requested command. */
 	knot_cmd_t *cmd = knot_cmd_tbl;
 	while (cmd->name) {
@@ -530,7 +555,8 @@ static int cmd_reload(cmd_args_t *args)
 
 static int cmd_refresh(cmd_args_t *args)
 {
-	const char *action = (args->flags & F_FORCE) ? "retransfer" : "refresh";
+	const char *action = has_flag(args->flags, F_FORCE) ?
+	                     "retransfer" : "refresh";
 
 	return cmd_remote(args->addr, args->key, action, KNOT_RRTYPE_NS,
 	                  args->argc, args->argv);
@@ -565,16 +591,22 @@ static int cmd_signzone(cmd_args_t *args)
 	                  args->argc, args->argv);
 }
 
-static int cmd_import(cmd_args_t *args)
+static int cmd_conf_import(cmd_args_t *args)
 {
 	if (args->argc != 1) {
 		printf("command takes one argument\n");
 		return KNOT_EINVAL;
 	}
 
-	if (!(args->flags & F_FORCE)) {
-		printf("use force option to import/replace configuration DB\n");
+	if (args->conf_db == NULL) {
+		printf("no destination config DB specified\n");
 		return KNOT_EINVAL;
+	}
+
+	if (!has_flag(args->flags, F_NOCONFDB) && !has_flag(args->flags, F_FORCE)) {
+		printf("use force option to overwrite the existing destination "
+		       "and ensure the server is not running!\n");
+		return KNOT_EDENIED;
 	}
 
 	conf_t *new_conf = NULL;
@@ -590,7 +622,7 @@ static int cmd_import(cmd_args_t *args)
 	return ret;
 }
 
-static int cmd_export(cmd_args_t *args)
+static int cmd_conf_export(cmd_args_t *args)
 {
 	if (args->argc != 1) {
 		printf("command takes one argument\n");
@@ -602,6 +634,105 @@ static int cmd_export(cmd_args_t *args)
 	printf("%s\n", knot_strerror(ret));
 
 	return ret;
+}
+
+static int cmd_conf_desc(cmd_args_t *args)
+{
+	if (args->argc > 1) {
+		printf("command takes no or one argument\n");
+		return KNOT_EINVAL;
+	}
+
+	return cmd_remote(args->addr, args->key, "conf-desc", KNOT_RRTYPE_TXT,
+	                  args->argc, args->argv);
+}
+
+static int cmd_conf_read(cmd_args_t *args)
+{
+	if (args->argc > 1) {
+		printf("command takes no or one argument\n");
+		return KNOT_EINVAL;
+	}
+
+	return cmd_remote(args->addr, args->key, "conf-read", KNOT_RRTYPE_TXT,
+	                  args->argc, args->argv);
+}
+
+static int cmd_conf_begin(cmd_args_t *args)
+{
+	if (args->argc > 0) {
+		printf("command does not take arguments\n");
+		return KNOT_EINVAL;
+	}
+
+	return cmd_remote(args->addr, args->key, "conf-begin", KNOT_RRTYPE_TXT,
+	                  0, NULL);
+}
+
+static int cmd_conf_commit(cmd_args_t *args)
+{
+	if (args->argc > 0) {
+		printf("command does not take arguments\n");
+		return KNOT_EINVAL;
+	}
+
+	return cmd_remote(args->addr, args->key, "conf-commit", KNOT_RRTYPE_TXT,
+	                  0, NULL);
+}
+
+static int cmd_conf_abort(cmd_args_t *args)
+{
+	if (args->argc > 0) {
+		printf("command does not take arguments\n");
+		return KNOT_EINVAL;
+	}
+
+	return cmd_remote(args->addr, args->key, "conf-abort", KNOT_RRTYPE_TXT,
+	                  0, NULL);
+}
+
+static int cmd_conf_diff(cmd_args_t *args)
+{
+	if (args->argc > 1) {
+		printf("command takes no or one argument\n");
+		return KNOT_EINVAL;
+	}
+
+	return cmd_remote(args->addr, args->key, "conf-diff", KNOT_RRTYPE_TXT,
+	                  args->argc, args->argv);
+}
+
+static int cmd_conf_get(cmd_args_t *args)
+{
+	if (args->argc > 1) {
+		printf("command takes no or one argument\n");
+		return KNOT_EINVAL;
+	}
+
+	return cmd_remote(args->addr, args->key, "conf-get", KNOT_RRTYPE_TXT,
+	                  args->argc, args->argv);
+}
+
+static int cmd_conf_set(cmd_args_t *args)
+{
+	if (args->argc < 1 || args->argc > 255) {
+		printf("command takes one or up to 255 arguments\n");
+		return KNOT_EINVAL;
+	}
+
+	return cmd_remote(args->addr, args->key, "conf-set", KNOT_RRTYPE_TXT,
+	                  args->argc, args->argv);
+}
+
+static int cmd_conf_unset(cmd_args_t *args)
+{
+	if (args->argc > 255) {
+		printf("command doesn't take more than 255 arguments\n");
+		return KNOT_EINVAL;
+	}
+
+	return cmd_remote(args->addr, args->key, "conf-unset", KNOT_RRTYPE_TXT,
+	                  args->argc, args->argv);
 }
 
 static int cmd_checkconf(cmd_args_t *args)
@@ -640,14 +771,13 @@ static int cmd_checkzone(cmd_args_t *args)
 	int rc = 0;
 
 	/* Generate databases for all zones */
-	conf_iter_t iter = conf_iter(conf(), C_ZONE);
-	while (iter.code == KNOT_EOK) {
+	for (conf_iter_t iter = conf_iter(conf(), C_ZONE); iter.code == KNOT_EOK;
+	     conf_iter_next(conf(), &iter)) {
 		conf_val_t id = conf_iter_id(conf(), &iter);
 
 		/* Fetch zone */
 		bool match = fetch_zone(args->argc, args->argv, conf_dname(&id));
 		if (!match && args->argc > 0) {
-			conf_iter_next(conf(), &iter);
 			continue;
 		}
 
@@ -655,16 +785,12 @@ static int cmd_checkzone(cmd_args_t *args)
 		zone_contents_t *contents = zone_load_contents(conf(), conf_dname(&id));
 		if (contents == NULL) {
 			rc = 1;
-			conf_iter_next(conf(), &iter);
 			continue;
 		}
 		zone_contents_deep_free(&contents);
 
 		log_zone_info(conf_dname(&id), "zone is valid");
-
-		conf_iter_next(conf(), &iter);
 	}
-	conf_iter_finish(conf(), &iter);
 
 	return rc;
 }
@@ -675,14 +801,13 @@ static int cmd_memstats(cmd_args_t *args)
 	double total_size = 0;
 
 	/* Generate databases for all zones */
-	conf_iter_t iter = conf_iter(conf(), C_ZONE);
-	while (iter.code == KNOT_EOK) {
+	for (conf_iter_t iter = conf_iter(conf(), C_ZONE); iter.code == KNOT_EOK;
+	     conf_iter_next(conf(), &iter)) {
 		conf_val_t id = conf_iter_id(conf(), &iter);
 
 		/* Fetch zone */
 		bool match = fetch_zone(args->argc, args->argv, conf_dname(&id));
 		if (!match && args->argc > 0) {
-			conf_iter_next(conf(), &iter);
 			continue;
 		}
 
@@ -699,6 +824,7 @@ static int cmd_memstats(cmd_args_t *args)
 		                    .record_count = 0 };
 		if (est.node_table == NULL) {
 			log_error("not enough memory");
+			conf_iter_finish(conf(), &iter);
 			break;
 		}
 
@@ -707,6 +833,7 @@ static int cmd_memstats(cmd_args_t *args)
 		if (zone_name == NULL) {
 			log_error("not enough memory");
 			hattrie_free(est.node_table);
+			conf_iter_finish(conf(), &iter);
 			break;
 		}
 		zs_scanner_t *zs = zs_scanner_create(zone_name,
@@ -717,7 +844,6 @@ static int cmd_memstats(cmd_args_t *args)
 		if (zs == NULL) {
 			log_zone_error(conf_dname(&id), "failed to load zone");
 			hattrie_free(est.node_table);
-			conf_iter_next(conf(), &iter);
 			continue;
 		}
 
@@ -730,7 +856,6 @@ static int cmd_memstats(cmd_args_t *args)
 			hattrie_apply_rev(est.node_table, estimator_free_trie_node, NULL);
 			hattrie_free(est.node_table);
 			zs_scanner_free(zs);
-			conf_iter_next(conf(), &iter);
 			continue;
 		}
 
@@ -752,9 +877,7 @@ static int cmd_memstats(cmd_args_t *args)
 		              est.record_count, (size_t)zone_size);
 		zs_scanner_free(zs);
 		total_size += zone_size;
-		conf_iter_next(conf(), &iter);
 	}
-	conf_iter_finish(conf(), &iter);
 
 	if (args->argc == 0) { // for all zones
 		log_info("estimated memory consumption for all zones is %zu MB",
