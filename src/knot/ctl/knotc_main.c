@@ -87,8 +87,6 @@ static int cmd_conf_import(cmd_args_t *args);
 static int cmd_conf_export(cmd_args_t *args);
 static int cmd_conf_desc(cmd_args_t *args);
 static int cmd_conf_read(cmd_args_t *args);
-static int cmd_conf_write(cmd_args_t *args);
-static int cmd_conf_delete(cmd_args_t *args);
 static int cmd_conf_begin(cmd_args_t *args);
 static int cmd_conf_commit(cmd_args_t *args);
 static int cmd_conf_abort(cmd_args_t *args);
@@ -115,8 +113,6 @@ knot_cmd_t knot_cmd_tbl[] = {
 	{ &cmd_conf_export, "conf-export", "<filename>",           "Export config DB to file." },
 	{ &cmd_conf_desc,   "conf-desc",   "[<item>]",             "Get config DB item list." },
 	{ &cmd_conf_read,   "conf-read",   "[<item>]",             "Read item(s) from active config DB." },
-	{ &cmd_conf_write,  "conf-write",  "<item> [<data>...]",   "Write item(s) into active config DB." },
-	{ &cmd_conf_delete, "conf-delete", "[<item>] [<data>...]", "Delete item(s) from active config DB." },
 	{ &cmd_conf_begin,  "conf-begin",  "",                     "Begin config DB transaction." },
 	{ &cmd_conf_commit, "conf-commit", "",                     "Commit config DB transaction." },
 	{ &cmd_conf_abort,  "conf-abort",  "",                     "Rollback config DB transaction." },
@@ -659,33 +655,6 @@ static int cmd_conf_read(cmd_args_t *args)
 	}
 
 	return cmd_remote(args->addr, args->key, "conf-read", KNOT_RRTYPE_TXT,
-	                  args->argc, args->argv);
-}
-
-static int cmd_conf_write(cmd_args_t *args)
-{
-	if (args->argc < 1 || args->argc > 255) {
-		printf("command takes one or up to 255 arguments\n");
-		return KNOT_EINVAL;
-	}
-
-	return cmd_remote(args->addr, args->key, "conf-write", KNOT_RRTYPE_TXT,
-	                  args->argc, args->argv);
-}
-
-static int cmd_conf_delete(cmd_args_t *args)
-{
-	if (args->argc > 255) {
-		printf("command doesn't take more than 255 arguments\n");
-		return KNOT_EINVAL;
-	}
-
-	if (args->argc < 1 && !has_flag(args->flags, F_FORCE)) {
-		printf("use force option to delete the whole configuration!\n");
-		return KNOT_EDENIED;
-	}
-
-	return cmd_remote(args->addr, args->key, "conf-delete", KNOT_RRTYPE_TXT,
 	                  args->argc, args->argv);
 }
 

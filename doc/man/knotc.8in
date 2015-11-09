@@ -125,14 +125,6 @@ the list of sections is returned.
 \fBconf\-read\fP [\fIitem\fP]
 Read from the current configuration DB.
 .TP
-\fBconf\-write\fP \fIitem\fP [\fIdata\fP\&...]
-Write to the current configuration DB. A writing transaction is started
-and finished automatically.
-.TP
-\fBconf\-delete\fP [\fIitem\fP] [\fIdata\fP\&...]
-Delete from the current configuration DB. A writing transaction is started
-and finished automatically.
-.TP
 \fBconf\-begin\fP
 Begin a writing configuration DB transaction. Only one transaction can be
 opened at a time.

@@ -59,7 +59,7 @@ The configuration database can be accessed using the server remote control
 during the running server. To get the full power of the dynamic configuration,
 the server must be started with a specified configuration database location::
 
-    $ knotd -C /var/lib/knot/confdb
+    $ knotd -C db_path
 
 *Note:* The database can be :ref:`imported<Configuration database>` in advance.
 
@@ -126,24 +126,18 @@ identified section or for a specific item::
     $ knotc conf-diff zone[example.com]
     $ knotc conf-diff zone[example.com].master
 
-For simple and infrequent modifications, there are "lazy" variants of
-``conf-set`` and ``conf-unset`` operations (``conf-write`` and ``conf-delete``
-respectively) which activate and commit/abort the change automatically.
-
 An example of possible configuration initialization::
 
-    $ knotc conf-write server.listen 0.0.0.0@53 ::@53
-
     $ knotc conf-begin
+    $ knotc conf-set server.listen 0.0.0.0@53 ::@53
     $ knotc conf-set remote[master_server]
     $ knotc conf-set remote[master_server].address 192.168.1.1
     $ knotc conf-set template[default]
     $ knotc conf-set template[default].storage /var/lib/knot/zones/
     $ knotc conf-set template[default].master master_server
+    $ knotc conf-set zone[example.com]
     $ knotc conf-diff
     $ knotc conf-commit
-
-    $ knotc conf-write zone[example.com]
 
 .. _Running a slave server:
 

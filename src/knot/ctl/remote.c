@@ -129,8 +129,6 @@ static int remote_c_conf_abort(server_t *s, remote_cmdargs_t *a);
 static int remote_c_conf_desc(server_t *s, remote_cmdargs_t *a);
 static int remote_c_conf_diff(server_t *s, remote_cmdargs_t *a);
 static int remote_c_conf_read(server_t *s, remote_cmdargs_t *a);
-static int remote_c_conf_write(server_t *s, remote_cmdargs_t *a);
-static int remote_c_conf_delete(server_t *s, remote_cmdargs_t *a);
 static int remote_c_conf_get(server_t *s, remote_cmdargs_t *a);
 static int remote_c_conf_set(server_t *s, remote_cmdargs_t *a);
 static int remote_c_conf_unset(server_t *s, remote_cmdargs_t *a);
@@ -151,8 +149,6 @@ struct remote_cmd remote_cmd_tbl[] = {
 	{ "conf-desc",   &remote_c_conf_desc },
 	{ "conf-diff",   &remote_c_conf_diff },
 	{ "conf-read",   &remote_c_conf_read },
-	{ "conf-write",  &remote_c_conf_write },
-	{ "conf-delete", &remote_c_conf_delete },
 	{ "conf-get",    &remote_c_conf_get },
 	{ "conf-set",    &remote_c_conf_set },
 	{ "conf-unset",  &remote_c_conf_unset },
@@ -795,52 +791,6 @@ static int conf_read(server_t *s, remote_cmdargs_t *a, bool get_current)
 static int remote_c_conf_read(server_t *s, remote_cmdargs_t *a)
 {
 	return conf_read(s, a, true);
-}
-
-/*!
- * \brief Remote command 'conf-write' handler.
- */
-static int remote_c_conf_write(server_t *s, remote_cmdargs_t *a)
-{
-	UNUSED(s);
-	dbg_server("remote: %s\n", __func__);
-
-	int ret = remote_c_conf_begin(s, a);
-	if (ret != KNOT_EOK) {
-		return ret;
-	}
-
-	// Set item(s) value.
-	ret = remote_c_conf_set(s, a);
-	if (ret != KNOT_EOK) {
-		remote_c_conf_abort(s, a);
-		return ret;
-	}
-
-	return remote_c_conf_commit(s, a);
-}
-
-/*!
- * \brief Remote command 'conf-delete' handler.
- */
-static int remote_c_conf_delete(server_t *s, remote_cmdargs_t *a)
-{
-	UNUSED(s);
-	dbg_server("remote: %s\n", __func__);
-
-	int ret = remote_c_conf_begin(s, a);
-	if (ret != KNOT_EOK) {
-		return ret;
-	}
-
-	// Delete item(s) value.
-	ret = remote_c_conf_unset(s, a);
-	if (ret != KNOT_EOK) {
-		remote_c_conf_abort(s, a);
-		return ret;
-	}
-
-	return remote_c_conf_commit(s, a);
 }
 
 /*!

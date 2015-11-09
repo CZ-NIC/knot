@@ -102,14 +102,6 @@ format.
 **conf-read** [*item*]
   Read from the current configuration DB.
 
-**conf-write** *item* [*data*...]
-  Write to the current configuration DB. A writing transaction is started
-  and finished automatically.
-
-**conf-delete** [*item*] [*data*...]
-  Delete from the current configuration DB. A writing transaction is started
-  and finished automatically.
-
 **conf-begin**
   Begin a writing configuration DB transaction. Only one transaction can be
   opened at a time.
