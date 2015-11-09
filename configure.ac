@@ -115,7 +115,7 @@ PKG_CHECK_MODULES([gnutls], [gnutls >= 3.0 nettle], [
 
     LDFLAGS_save=$LDFLAGS
     LDFLAGS="$LDFLAGS $gnutls_LIBS"
-    AC_CHECK_FUNCS([gnutls_pkcs11_privkey_generate3])
+    AC_CHECK_FUNCS([gnutls_pkcs11_privkey_generate3], [enable_pkcs11=yes], [enable_pkcs11=no])
     LDFLAGS=$LDFLAGS_save
 ])
 
@@ -538,6 +538,7 @@ AC_MSG_RESULT([
     Dnstap support:      ${opt_dnstap}
     Code coverage:       ${enable_code_coverage}
     Bash completions:    ${bash_completions_output}
+    PKCS 11 support:     ${enable_pkcs11}
 
   Continue with 'make' command
 ])
