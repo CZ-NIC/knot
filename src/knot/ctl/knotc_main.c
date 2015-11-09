@@ -29,7 +29,7 @@
 #include "libknot/internal/mem.h"
 #include "libknot/internal/macros.h"
 #include "libknot/libknot.h"
-#include "knot/common/debug.h"
+#include "knot/common/log.h"
 #include "knot/ctl/estimator.h"
 #include "knot/ctl/remote.h"
 #include "knot/conf/conf.h"
@@ -177,7 +177,6 @@ static int cmd_remote_reply(int c, struct timeval *timeout)
 	/* Read response packet. */
 	int n = net_dns_tcp_recv(c, pkt->wire, pkt->max_size, timeout);
 	if (n <= 0) {
-		dbg_server("remote: couldn't receive response = %s\n", knot_strerror(n));
 		knot_pkt_free(&pkt);
 		return KNOT_ECONN;
 	} else {
@@ -263,8 +262,6 @@ static int cmd_remote(struct sockaddr_storage *addr, knot_tsig_key_t *key,
 			return 1;
 		}
 	}
-
-	dbg_server("%s: sending query size %zu\n", __func__, pkt->size);
 
 	/* Default timeout. */
 	conf_val_t val = conf_get(conf(), C_SRV, C_TCP_REPLY_TIMEOUT);

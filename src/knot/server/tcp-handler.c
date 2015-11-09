@@ -34,8 +34,8 @@
 
 #include "dnssec/random.h"
 #include "knot/server/tcp-handler.h"
-#include "knot/common/debug.h"
 #include "knot/common/fdset.h"
+#include "knot/common/log.h"
 #include "knot/common/time.h"
 #include "knot/nameserver/process_query.h"
 #include "libknot/internal/mempool.h"
@@ -121,7 +121,6 @@ static int tcp_handle(tcp_context_t *tcp, int fd,
 	struct timeval recv_tmout = tmout;
 	int ret = net_dns_tcp_recv(fd, rx->iov_base, rx->iov_len, &recv_tmout);
 	if (ret <= 0) {
-		dbg_net("tcp: client on fd=%d disconnected\n", fd);
 		if (ret == KNOT_EAGAIN) {
 			char addr_str[SOCKADDR_STRLEN] = {0};
 			sockaddr_tostr(addr_str, sizeof(addr_str), &ss);
@@ -179,8 +178,6 @@ int tcp_accept(int fd)
 
 	/* Evaluate connection. */
 	if (incoming >= 0) {
-		dbg_net("tcp: accepted connection fd=%d\n", incoming);
-		/* Set recv() timeout. */
 #ifdef SO_RCVTIMEO
 		struct timeval tv;
 		rcu_read_lock();

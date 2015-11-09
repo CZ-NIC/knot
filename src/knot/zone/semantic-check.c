@@ -23,7 +23,7 @@
 
 #include "dnssec/keytag.h"
 #include "knot/zone/semantic-check.h"
-#include "knot/common/debug.h"
+#include "knot/common/log.h"
 #include "knot/dnssec/zone-nsec.h"
 #include "libknot/libknot.h"
 #include "libknot/dnssec/rrset-sign.h"
@@ -460,8 +460,6 @@ static int check_rrsig_in_rrset(err_handler_t *handler,
 		int ret = check_rrsig_rdata(handler, zone, node, &rrsigs, i,
 		                            rrset, dnskey_rrset);
 		if (ret != KNOT_EOK) {
-			dbg_semcheck("failed to check RRSIG properly (%s)",
-			             knot_strerror(ret));
 			break;
 		}
 	}
@@ -948,8 +946,6 @@ static int semantic_checks_dnssec(zone_contents_t *zone,
 			int ret = check_nsec3_node_in_zone(zone, node,
 			                                   handler);
 			if (ret != KNOT_EOK) {
-				dbg_semcheck("semantic check, NSEC3 node (%s)",
-				              knot_strerror(ret));
 				return ret;
 			}
 		}

@@ -22,7 +22,7 @@
 #include <stdbool.h>
 
 #include "knot/server/udp-handler.c"
-#include "knot/common/debug.h"
+#include "knot/common/log.h"
 
 struct udp_stdin {
 	struct iovec iov[NBUFS];

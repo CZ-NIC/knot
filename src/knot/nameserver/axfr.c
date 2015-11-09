@@ -22,10 +22,11 @@
 #include "knot/nameserver/process_answer.h"
 #include "knot/updates/apply.h"
 #include "knot/zone/zonefile.h"
-#include "knot/common/debug.h"
+#include "knot/common/log.h"
 #include "libknot/libknot.h"
 #include "libknot/descriptor.h"
 #include "libknot/internal/lists.h"
+#include "libknot/internal/print.h"
 
 /* AXFR context. @note aliasing the generic xfr_proc */
 struct axfr_proc {

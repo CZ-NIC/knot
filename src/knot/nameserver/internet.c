@@ -14,11 +14,11 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "knot/common/debug.h"
 #include "libknot/libknot.h"
 #include "libknot/descriptor.h"
 #include "libknot/rrtype/rdname.h"
 #include "libknot/rrtype/soa.h"
+#include "knot/common/log.h"
 #include "knot/nameserver/internet.h"
 #include "knot/nameserver/nsec_proofs.h"
 #include "knot/nameserver/process_query.h"
@@ -68,8 +68,6 @@ static int dname_cname_synth(const knot_rrset_t *dname_rr,
 	if (cname_rrset == NULL) {
 		return KNOT_EINVAL;
 	}
-	dbg_ns("%s(%p, %p)\n", __func__, dname_rr, qname);
-
 	knot_dname_t *owner_copy = knot_dname_copy(qname, mm);
 	if (owner_copy == NULL) {
 		return KNOT_ENOMEM;
@@ -193,7 +191,6 @@ static int put_answer(knot_pkt_t *pkt, uint16_t type, struct query_data *qdata)
 		/* If ANY not allowed, set TC bit. */
 		if ((qdata->param->proc_flags & NS_QUERY_LIMIT_ANY) &&
 		    conf_bool(&val)) {
-			dbg_ns("%s: ANY/UDP disabled for this zone TC=1\n", __func__);
 			knot_wire_set_tc(pkt->wire);
 			return KNOT_ESPACE;
 		}
@@ -222,7 +219,6 @@ static int put_answer(knot_pkt_t *pkt, uint16_t type, struct query_data *qdata)
 static int put_authority_soa(knot_pkt_t *pkt, struct query_data *qdata,
                              const zone_contents_t *zone)
 {
-	dbg_ns("%s(%p, %p)\n", __func__, pkt, zone);
 	knot_rrset_t soa_rrset = node_rrset(zone->apex, KNOT_RRTYPE_SOA);
 	knot_rrset_t rrsigs = node_rrset(zone->apex, KNOT_RRTYPE_RRSIG);
 
@@ -317,8 +313,6 @@ static int put_additional(knot_pkt_t *pkt, const knot_rrset_t *rr,
 
 static int follow_cname(knot_pkt_t *pkt, uint16_t rrtype, struct query_data *qdata)
 {
-	dbg_ns("%s(%p, %p)\n", __func__, pkt, qdata);
-
 	const zone_node_t *cname_node = qdata->node;
 	knot_rrset_t cname_rr = node_rrset(qdata->node, rrtype);
 	knot_rrset_t rrsigs = node_rrset(qdata->node, KNOT_RRTYPE_RRSIG);
@@ -340,8 +334,6 @@ static int follow_cname(knot_pkt_t *pkt, uint16_t rrtype, struct query_data *qda
 
 	/* Check if RR count increased. */
 	if (pkt->rrset_count <= rr_count_before) {
-		dbg_ns("%s: RR %p already inserted => CNAME loop\n",
-		       __func__, &cname_rr);
 		qdata->node = NULL; /* Act is if the name leads to nowhere. */
 		return HIT;
 	}
@@ -372,10 +364,7 @@ static int follow_cname(knot_pkt_t *pkt, uint16_t rrtype, struct query_data *qda
 	if (knot_dname_is_wildcard(cname_node->owner)) {
 
 		/* Check if is not in wildcard nodes (loop). */
-		dbg_ns("%s: CNAME node %p is wildcard\n", __func__, cname_node);
 		if (wildcard_has_visited(qdata, cname_node)) {
-			dbg_ns("%s: node %p already visited => CNAME loop\n",
-			       __func__, cname_node);
 			qdata->node = NULL; /* Act is if the name leads to nowhere. */
 			return HIT;
 		}
@@ -389,28 +378,18 @@ static int follow_cname(knot_pkt_t *pkt, uint16_t rrtype, struct query_data *qda
 	/* Now follow the next CNAME TARGET. */
 	qdata->name = knot_cname_name(&cname_rr.rrs);
 
-#ifdef KNOT_NS_DEBUG
-	char *cname_str = knot_dname_to_str_alloc(cname_node->owner);
-	char *target_str = knot_dname_to_str_alloc(qdata->name);
-	dbg_ns("%s: FOLLOW '%s' -> '%s'\n", __func__, cname_str, target_str);
-	free(cname_str);
-	free(target_str);
-#endif /* KNOT_NS_DEBUG */
-
 	return FOLLOW;
 }
 
 static int name_found(knot_pkt_t *pkt, struct query_data *qdata)
 {
 	uint16_t qtype = knot_pkt_qtype(pkt);
-	dbg_ns("%s(%p, %p)\n", __func__, pkt, qdata);
 
 	if (node_rrtype_exists(qdata->node, KNOT_RRTYPE_CNAME)
 	    && qtype != KNOT_RRTYPE_CNAME
 	    && qtype != KNOT_RRTYPE_RRSIG
 	    && qtype != KNOT_RRTYPE_NSEC
 	    && qtype != KNOT_RRTYPE_ANY) {
-		dbg_ns("%s: solving CNAME\n", __func__);
 		return follow_cname(pkt, KNOT_RRTYPE_CNAME, qdata);
 	}
 
@@ -418,15 +397,12 @@ static int name_found(knot_pkt_t *pkt, struct query_data *qdata)
 	 * triggers referral response. */
 	if (qtype != KNOT_RRTYPE_DS &&
 	    ((qdata->node->flags & NODE_FLAGS_DELEG) || qdata->node->flags & NODE_FLAGS_NONAUTH)) {
-		dbg_ns("%s: solving REFERRAL\n", __func__);
 		return DELEG;
 	}
 
 	uint16_t old_rrcount = pkt->rrset_count;
 	int ret = put_answer(pkt, qtype, qdata);
 	if (ret != KNOT_EOK) {
-		dbg_ns("%s: failed answer from node %p (%s)\n",
-		       __func__, qdata->node, knot_strerror(ret));
 		if (ret == KNOT_ESPACE) {
 			return TRUNC;
 		} else {
@@ -444,12 +420,8 @@ static int name_found(knot_pkt_t *pkt, struct query_data *qdata)
 
 static int name_not_found(knot_pkt_t *pkt, struct query_data *qdata)
 {
-	dbg_ns("%s(%p, %p)\n", __func__, pkt, qdata);
-
 	/* Name is covered by wildcard. */
 	if (qdata->encloser->flags & NODE_FLAGS_WILDCARD_CHILD) {
-		dbg_ns("%s: name %p covered by wildcard\n", __func__, qdata->name);
-
 		/* Find wildcard child in the zone. */
 		const zone_node_t *wildcard_node =
 		                zone_contents_find_wildcard_child(
@@ -475,25 +447,21 @@ static int name_not_found(knot_pkt_t *pkt, struct query_data *qdata)
 	/* Name is under DNAME, use it for substitution. */
 	knot_rrset_t dname_rrset = node_rrset(qdata->encloser, KNOT_RRTYPE_DNAME);
 	if (!knot_rrset_empty(&dname_rrset)) {
-		dbg_ns("%s: solving DNAME for name %p\n", __func__, qdata->name);
 		qdata->node = qdata->encloser; /* Follow encloser as new node. */
 		return follow_cname(pkt, KNOT_RRTYPE_DNAME, qdata);
 	}
 
 	/* Name is below delegation. */
 	if ((qdata->encloser->flags & NODE_FLAGS_DELEG)) {
-		dbg_ns("%s: name below delegation point %p\n", __func__, qdata->name);
 		qdata->node = qdata->encloser;
 		return DELEG;
 	}
 
-	dbg_ns("%s: name not found in zone %p\n", __func__, qdata->name);
 	return MISS;
 }
 
 static int solve_name(int state, knot_pkt_t *pkt, struct query_data *qdata)
 {
-	dbg_ns("%s(%d, %p, %p)\n", __func__, state, pkt, qdata);
 	int ret = zone_contents_find_dname(qdata->zone->contents, qdata->name,
 	                                        &qdata->node, &qdata->encloser,
 	                                        &qdata->previous);
@@ -552,16 +520,13 @@ static int solve_authority(int state, knot_pkt_t *pkt, struct query_data *qdata,
 
 	switch (state) {
 	case HIT:    /* Positive response. */
-		dbg_ns("%s: answer is POSITIVE\n", __func__);
 		ret = KNOT_EOK;
 		break;
 	case MISS:   /* MISS, set NXDOMAIN RCODE. */
-		dbg_ns("%s: answer is NXDOMAIN\n", __func__);
 		qdata->rcode = KNOT_RCODE_NXDOMAIN;
 		ret = put_authority_soa(pkt, qdata, zone_contents);
 		break;
 	case NODATA: /* NODATA append AUTHORITY SOA. */
-		dbg_ns("%s: answer is NODATA\n", __func__);
 		ret = put_authority_soa(pkt, qdata, zone_contents);
 		break;
 	case DELEG:  /* Referral response. */
@@ -673,7 +638,6 @@ int ns_put_rr(knot_pkt_t *pkt, const knot_rrset_t *rr,
               uint32_t flags, struct query_data *qdata)
 {
 	if (rr->rrs.rr_count < 1) {
-		dbg_ns("%s: refusing to put empty RR of type %u\n", __func__, rr->type);
 		return KNOT_EMALF;
 	}
 
@@ -737,19 +701,16 @@ static int default_answer(knot_pkt_t *response, struct query_data *qdata)
 	int state = BEGIN;
 
 	/* Resolve ANSWER. */
-	dbg_ns("%s: writing %p ANSWER\n", __func__, response);
 	knot_pkt_begin(response, KNOT_ANSWER);
 	SOLVE_STEP(solve_answer, state, NULL);
 	SOLVE_STEP(solve_answer_dnssec, state, NULL);
 
 	/* Resolve AUTHORITY. */
-	dbg_ns("%s: writing %p AUTHORITY\n", __func__, response);
 	knot_pkt_begin(response, KNOT_AUTHORITY);
 	SOLVE_STEP(solve_authority, state, NULL);
 	SOLVE_STEP(solve_authority_dnssec, state, NULL);
 
 	/* Resolve ADDITIONAL. */
-	dbg_ns("%s: writing %p ADDITIONAL\n", __func__, response);
 	knot_pkt_begin(response, KNOT_ADDITIONAL);
 	SOLVE_STEP(solve_additional, state, NULL);
 	SOLVE_STEP(solve_additional_dnssec, state, NULL);
@@ -771,7 +732,6 @@ static int planned_answer(struct query_plan *plan, knot_pkt_t *response, struct 
 
 	/* Begin processing. */
 	for (int section = KNOT_ANSWER; section <= KNOT_ADDITIONAL; ++section) {
-		dbg_ns("%s: writing section %u\n", __func__, section);
 		knot_pkt_begin(response, section);
 		WALK_LIST(step, plan->stage[QPLAN_STAGE + section]) {
 			SOLVE_STEP(step->process, state, step->ctx);
@@ -793,7 +753,6 @@ static int planned_answer(struct query_plan *plan, knot_pkt_t *response, struct 
 
 int internet_query(knot_pkt_t *response, struct query_data *qdata)
 {
-	dbg_ns("%s(%p, %p)\n", __func__, response, qdata);
 	if (response == NULL || qdata == NULL) {
 		return KNOT_STATE_FAIL;
 	}

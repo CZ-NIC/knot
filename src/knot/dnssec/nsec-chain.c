@@ -17,7 +17,6 @@
 #include <assert.h>
 #include <stdint.h>
 
-#include "knot/common/debug.h"
 #include "knot/dnssec/nsec-chain.h"
 #include "knot/dnssec/zone-nsec.h"
 #include "knot/dnssec/zone-sign.h"
@@ -112,7 +111,6 @@ static int connect_nsec_nodes(zone_node_t *a, zone_node_t *b,
 	knot_rrset_t new_nsec;
 	ret = create_nsec_rrset(&new_nsec, a, b, data->ttl);
 	if (ret != KNOT_EOK) {
-		dbg_dnssec_detail("Failed to create new NSEC.\n");
 		return ret;
 	}
 
@@ -133,12 +131,10 @@ static int connect_nsec_nodes(zone_node_t *a, zone_node_t *b,
 
 		if (equal) {
 			// current NSEC is valid, do nothing
-			dbg_dnssec_detail("NSECs equal.\n");
 			knot_rdataset_clear(&new_nsec.rrs, NULL);
 			return KNOT_EOK;
 		}
 
-		dbg_dnssec_detail("NSECs not equal, replacing.\n");
 		// Mark the node so that we do not sign this NSEC
 		a->flags |= NODE_FLAGS_REMOVED_NSEC;
 		ret = knot_nsec_changeset_remove(a, data->changeset);
@@ -148,7 +144,6 @@ static int connect_nsec_nodes(zone_node_t *a, zone_node_t *b,
 		}
 	}
 
-	dbg_dnssec_detail("Adding new NSEC to changeset.\n");
 	// Add new NSEC to the changeset (no matter if old was removed)
 	ret = changeset_add_rrset(data->changeset, &new_nsec);
 	knot_rdataset_clear(&new_nsec.rrs, NULL);

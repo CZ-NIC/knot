@@ -15,7 +15,7 @@
 #include "knot/server/rrl.h"
 #include "knot/updates/acl.h"
 #include "knot/conf/conf.h"
-#include "knot/common/debug.h"
+#include "knot/common/log.h"
 #include "libknot/libknot.h"
 #include "libknot/internal/macros.h"
 #include "libknot/yparser/yptrafo.h"
@@ -112,7 +112,6 @@ static int query_internet(knot_pkt_t *pkt, knot_layer_t *ctx)
 {
 	struct query_data *data = QUERY_DATA(ctx);
 	int next_state = KNOT_STATE_FAIL;
-	dbg_ns("%s(%p, %p, pkt_type=%u)\n", __func__, pkt, ctx, data->packet_type);
 
 	switch(data->packet_type) {
 	case KNOT_QUERY_NORMAL:
@@ -145,7 +144,6 @@ static int query_internet(knot_pkt_t *pkt, knot_layer_t *ctx)
  */
 static int query_chaos(knot_pkt_t *pkt, knot_layer_t *ctx)
 {
-	dbg_ns("%s(%p, %p)\n", __func__, pkt, ctx);
 	struct query_data *data = QUERY_DATA(ctx);
 
 	/* Nothing except normal queries is supported. */
@@ -156,7 +154,6 @@ static int query_chaos(knot_pkt_t *pkt, knot_layer_t *ctx)
 
 	data->rcode = knot_chaos_answer(pkt);
 	if (data->rcode != KNOT_RCODE_NOERROR) {
-		dbg_ns("%s: failed with RCODE=%d\n", __func__, data->rcode);
 		return KNOT_STATE_FAIL;
 	}
 
@@ -301,14 +298,12 @@ static int prepare_answer(const knot_pkt_t *query, knot_pkt_t *resp, knot_layer_
 	/* Initialize response. */
 	int ret = knot_pkt_init_response(resp, query);
 	if (ret != KNOT_EOK) {
-		dbg_ns("%s: can't init response pkt (%d)\n", __func__, ret);
 		return ret;
 	}
 
 	/* Query MUST carry a question. */
 	const knot_dname_t *qname = knot_pkt_qname(query);
 	if (qname == NULL) {
-		dbg_ns("%s: query missing QNAME, FORMERR\n", __func__);
 		qdata->rcode = KNOT_RCODE_FORMERR;
 		return KNOT_EMALF;
 	}
@@ -319,7 +314,6 @@ static int prepare_answer(const knot_pkt_t *query, knot_pkt_t *resp, knot_layer_
 	memcpy(qdata->orig_qname, qname, query->qname_size);
 	ret = process_query_qname_case_lower((knot_pkt_t *)query);
 	if (ret != KNOT_EOK) {
-		dbg_ns("%s: can't convert QNAME to lowercase (%d)\n", __func__, ret);
 		return ret;
 	}
 	/* Find zone for QNAME. */
@@ -373,8 +367,6 @@ static int process_query_err(knot_layer_t *ctx, knot_pkt_t *pkt)
 {
 	assert(pkt && ctx);
 	struct query_data *qdata = QUERY_DATA(ctx);
-	dbg_ns("%s: making error response, rcode = %d (TSIG rcode = %d)\n",
-	       __func__, qdata->rcode, qdata->rcode_tsig);
 
 	/* Initialize response from query packet. */
 	knot_pkt_t *query = qdata->query;
@@ -455,7 +447,6 @@ static int process_query_out(knot_layer_t *ctx, knot_pkt_t *pkt)
 	knot_pkt_t *query = qdata->query;
 	int next_state = KNOT_STATE_PRODUCE;
 	if (query->parsed < query->size) {
-		dbg_ns("%s: incompletely parsed query, FORMERR\n", __func__);
 		knot_pkt_clear(pkt);
 		qdata->rcode = KNOT_RCODE_FORMERR;
 		next_state = KNOT_STATE_FAIL;
@@ -620,8 +611,6 @@ int process_query_verify(struct query_data *qdata)
 	                                 query->size, &ctx->tsig_key);
 	process_query_qname_case_lower(query);
 
-	dbg_ns("%s: QUERY TSIG check result = %s\n", __func__, knot_strerror(ret));
-
 	/* Evaluate TSIG check results. */
 	switch(ret) {
 	case KNOT_EOK:
@@ -666,7 +655,6 @@ int process_query_sign_response(knot_pkt_t *pkt, struct query_data *qdata)
 	if (ctx->tsig_key.name != NULL && knot_tsig_can_sign(qdata->rcode_tsig)) {
 
 		/* Sign query response. */
-		dbg_ns("%s: signing response using key %p\n", __func__, &ctx->tsig_key);
 		size_t new_digest_len = dnssec_tsig_algorithm_size(ctx->tsig_key.algorithm);
 		if (ctx->pkt_count == 0) {
 			ret = knot_tsig_sign(pkt->wire, &pkt->size, pkt->max_size,
@@ -689,7 +677,6 @@ int process_query_sign_response(knot_pkt_t *pkt, struct query_data *qdata)
 	} else {
 		/* Copy TSIG from query and set RCODE. */
 		if (query->tsig_rr && qdata->rcode_tsig != KNOT_RCODE_NOERROR) {
-			dbg_ns("%s: appending original TSIG\n", __func__);
 			ret = knot_tsig_add(pkt->wire, &pkt->size, pkt->max_size,
 			                    qdata->rcode_tsig, query->tsig_rr);
 			if (ret != KNOT_EOK) {
@@ -702,7 +689,6 @@ int process_query_sign_response(knot_pkt_t *pkt, struct query_data *qdata)
 
 	/* Server failure in signing. */
 fail:
-	dbg_ns("%s: signing failed (%s)\n", __func__, knot_strerror(ret));
 	qdata->rcode = KNOT_RCODE_SERVFAIL;
 	qdata->rcode_tsig = KNOT_RCODE_NOERROR; /* Don't sign again. */
 	return ret;

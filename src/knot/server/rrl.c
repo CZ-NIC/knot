@@ -21,7 +21,7 @@
 #include <assert.h>
 
 #include "dnssec/random.h"
-#include "knot/common/debug.h"
+#include "knot/common/log.h"
 #include "knot/server/rrl.h"
 #include "knot/zone/zone.h"
 #include "libknot/libknot.h"
@@ -151,7 +151,6 @@ static int rrl_clsname(char *dst, size_t maxlen, uint8_t cls,
 	case CLS_ERROR:    /* Could be a non-existent zone or garbage. */
 	case CLS_NXDOMAIN: /* Queries to non-existent names in zone. */
 	case CLS_WILDCARD: /* Queries to names covered by a wildcard. */
-		dbg_rrl_verb("%s: using zone/fallback name\n", __func__);
 		break;
 	default:
 		/* Use QNAME */
@@ -235,7 +234,6 @@ static int find_free(rrl_table_t *t, unsigned i, uint32_t now)
 	}
 
 	/* this happens if table is full... force vacate current elm */
-	dbg_rrl("%s: out of free buckets, freeing bucket %u\n", __func__, i);
 	return i;
 }
 
@@ -280,7 +278,6 @@ static inline unsigned reduce_dist(rrl_table_t *t, unsigned id, unsigned d, unsi
 	assert(rd == 0); /* this happens with p=1/fact(HOP_LEN) */
 	*f = id;
 	d = 0; /* force vacate initial element */
-	dbg_rrl("%s: no potential relocation, freeing bucket %u\n", __func__, id);
 	return d;
 }
 
@@ -312,7 +309,7 @@ rrl_table_t *rrl_create(size_t size)
 	memset(t, 0, sizeof(rrl_table_t));
 	t->size = size;
 	rrl_reseed(t);
-	dbg_rrl("%s: created table size '%zu'\n", __func__, t->size);
+
 	return t;
 }
 
@@ -358,11 +355,9 @@ int rrl_setlocks(rrl_table_t *rrl, unsigned granularity)
 		}
 		free(rrl->lk);
 		rrl->lk_count = 0;
-		dbg_rrl("%s: failed to init locks\n", __func__);
 		return KNOT_ERROR;
 	}
 
-	dbg_rrl("%s: set granularity to '%u'\n", __func__, granularity);
 	return KNOT_EOK;
 }
 
@@ -408,7 +403,6 @@ rrl_item_t* rrl_hash(rrl_table_t *t, const struct sockaddr_storage *a, rrl_req_t
 	t->arr[id].hop |= (1 << d);
 	rrl_item_t* b = t->arr + f;
 	assert(f == (id+d) % t->size);
-	dbg_rrl("%s: classified pkt as %4x '%u+%u' bucket=%p \n", __func__, f, id, d, b);
 
 	/* Inspect bucket state. */
 	unsigned hop = b->hop;
@@ -418,13 +412,11 @@ rrl_item_t* rrl_hash(rrl_table_t *t, const struct sockaddr_storage *a, rrl_req_t
 	}
 	/* Check for collisions. */
 	if (!bucket_match(b, &match)) {
-		dbg_rrl("%s: collision in bucket '%4x'\n", __func__, id);
 		if (!(b->flags & RRL_BF_SSTART)) {
 			memcpy(b, &match, sizeof(rrl_item_t));
 			b->hop = hop;
 			b->ntok = t->rate + t->rate / RRL_SSTART;
 			b->flags |= RRL_BF_SSTART;
-			dbg_rrl("%s: bucket '%4x' slow-start\n", __func__, id);
 		}
 	}
 
@@ -442,7 +434,6 @@ int rrl_query(rrl_table_t *rrl, const struct sockaddr_storage *a, rrl_req_t *req
 	uint32_t now = time(NULL);
 	rrl_item_t *b = rrl_hash(rrl, a, req, zone, now, &lock);
 	if (!b) {
-		dbg_rrl("%s: failed to compute bucket from packet\n", __func__);
 		if (lock > -1) rrl_unlock(rrl, lock);
 		return KNOT_ERROR;
 	}
@@ -454,8 +445,6 @@ int rrl_query(rrl_table_t *rrl, const struct sockaddr_storage *a, rrl_req_t *req
 	}
 	/* Visit bucket. */
 	b->time = now;
-	dbg_rrl("%s: bucket=0x%x tokens=%hu flags=%x dt=%u\n",
-	        __func__, (unsigned)(b - rrl->arr), b->ntok, b->flags, dt);
 	if (dt > 0) { /* Window moved. */
 
 		/* Check state change. */
@@ -468,8 +457,6 @@ int rrl_query(rrl_table_t *rrl, const struct sockaddr_storage *a, rrl_req_t *req
 		uint32_t dn = rrl->rate * dt;
 		if (b->flags & RRL_BF_SSTART) { /* Bucket in slow-start. */
 			b->flags &= ~RRL_BF_SSTART;
-			dbg_rrl("%s: bucket '0x%x' slow-start finished\n",
-			        __func__, (unsigned)(b - rrl->arr));
 		}
 		b->ntok += dn;
 		if (b->ntok > RRL_CAPACITY * rrl->rate) {
@@ -507,7 +494,6 @@ bool rrl_slip_roll(int n_slip)
 int rrl_destroy(rrl_table_t *rrl)
 {
 	if (rrl) {
-		dbg_rrl("%s: freeing table %p\n", __func__, rrl);
 		if (rrl->lk_count > 0) pthread_mutex_destroy(&rrl->ll);
 		for (size_t i = 0; i < rrl->lk_count; ++i) {
 			pthread_mutex_destroy(rrl->lk + i);
@@ -531,7 +517,6 @@ int rrl_reseed(rrl_table_t *rrl)
 
 	memset(rrl->arr, 0, rrl->size * sizeof(rrl_item_t));
 	rrl->seed = dnssec_random_uint32_t();
-	dbg_rrl("%s: reseed to '%u'\n", __func__, rrl->seed);
 
 	if (rrl->lk_count > 0) {
 		for (unsigned i = 0; i < rrl->lk_count; ++i) {
@@ -546,7 +531,6 @@ int rrl_reseed(rrl_table_t *rrl)
 int rrl_lock(rrl_table_t *t, int lk_id)
 {
 	assert(lk_id > -1);
-	dbg_rrl_verb("%s: locking id '%d'\n", __func__, lk_id);
 	if (pthread_mutex_lock(t->lk + lk_id) != 0) {
 		return KNOT_ERROR;
 	}
@@ -556,7 +540,6 @@ int rrl_lock(rrl_table_t *t, int lk_id)
 int rrl_unlock(rrl_table_t *t, int lk_id)
 {
 	assert(lk_id > -1);
-	dbg_rrl_verb("%s: unlocking id '%d'\n", __func__, lk_id);
 	if (pthread_mutex_unlock(t->lk + lk_id)!= 0) {
 		return KNOT_ERROR;
 	}

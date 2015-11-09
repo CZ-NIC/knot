@@ -24,7 +24,7 @@
 #include <assert.h>
 
 #include "libknot/errcode.h"
-#include "knot/common/debug.h"
+#include "knot/common/log.h"
 #include "knot/common/trim.h"
 #include "knot/server/server.h"
 #include "knot/server/udp-handler.h"
@@ -323,12 +323,11 @@ static int reconfigure_sockets(conf_t *conf, server_t *s)
 
 int server_init(server_t *server, int bg_workers)
 {
-	/* Clear the structure. */
-	dbg_server("%s(%p)\n", __func__, server);
 	if (server == NULL) {
 		return KNOT_EINVAL;
 	}
 
+	/* Clear the structure. */
 	memset(server, 0, sizeof(server_t));
 
 	/* Initialize event scheduler. */
@@ -347,7 +346,6 @@ int server_init(server_t *server, int bg_workers)
 
 void server_deinit(server_t *server)
 {
-	dbg_server("%s(%p)\n", __func__, server);
 	if (server == NULL) {
 		return;
 	}
@@ -429,7 +427,6 @@ static void server_free_handler(iohandler_t *h)
 
 int server_start(server_t *s, bool async)
 {
-	dbg_server("%s(%p, %d)\n", __func__, s, async);
 	if (s == 0) {
 		return KNOT_EINVAL;
 	}
@@ -625,7 +622,6 @@ static int reconfigure_rate_limits(conf_t *conf, server_t *server)
 int server_reconfigure(conf_t *conf, void *data)
 {
 	server_t *server = (server_t *)data;
-	dbg_server("%s(%p, %p)\n", __func__, conf, server);
 	if (server == NULL) {
 		return KNOT_EINVAL;
 	}

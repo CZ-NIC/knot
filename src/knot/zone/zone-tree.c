@@ -20,7 +20,6 @@
 
 #include "knot/zone/zone-tree.h"
 #include "knot/zone/node.h"
-#include "knot/common/debug.h"
 #include "libknot/internal/trie/hat-trie.h"
 #include "libknot/internal/macros.h"
 
@@ -169,24 +168,6 @@ int zone_tree_get_less_or_equal(zone_tree_t *tree,
 	    ((*previous)->rrset_count == 0 || (*previous)->flags & NODE_FLAGS_NONAUTH)) {
 		*previous = (*previous)->prev;
 	}
-
-dbg_zone_exec_detail(
-		char *name = knot_dname_to_str_alloc(owner);
-		char *name_f = (*found != NULL)
-			? knot_dname_to_str_alloc((*found)->owner)
-			: "none";
-
-		dbg_zone_detail("Searched for owner %s in zone tree.\n",
-				name);
-		dbg_zone_detail("Exact match: %d\n", exact_match);
-		dbg_zone_detail("Found node: %p: %s.\n", *found, name_f);
-		dbg_zone_detail("Previous node: %p.\n", *previous);
-
-		free(name);
-		if (*found != NULL) {
-			free(name_f);
-		}
-);
 
 	return exact_match;
 }
