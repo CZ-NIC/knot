@@ -24,13 +24,7 @@
 #include "keystore/internal.h"
 #include "shared.h"
 
-#ifdef HAVE_GNUTLS_PKCS11_PRIVKEY_GENERATE3
-#  define PKCS11_ENABLED
-#else
-#  undef PKCS11_ENABLED
-#endif
-
-#ifdef PKCS11_ENABLED
+#ifdef ENABLE_PKCS11
 
 struct pkcs11_ctx {
 	char *url;
@@ -328,7 +322,7 @@ int dnssec_keystore_init_pkcs11(dnssec_keystore_t **store_ptr)
 	return keystore_create(store_ptr, &IMPLEMENTATION, NULL);
 }
 
-#else // !PKCS11_ENABLED
+#else // !ENABLE_PKCS11
 
 _public_
 int dnssec_keystore_init_pkcs11(dnssec_keystore_t **store_ptr)
