@@ -85,11 +85,12 @@ mp_init(struct mempool *pool, unsigned chunk_size)
 static void *
 mp_new_big_chunk(unsigned size)
 {
-  struct mempool_chunk *chunk;
-  chunk = malloc(size + MP_CHUNK_TAIL) + size;
-  if (chunk) {
-    chunk->size = size;
+  uint8_t *data = malloc(size + MP_CHUNK_TAIL);
+  if (!data) {
+    return NULL;
   }
+  struct mempool_chunk *chunk = (struct mempool_chunk *)(data + size);
+  chunk->size = size;
   return chunk;
 }
 
@@ -103,8 +104,11 @@ static void *
 mp_new_chunk(unsigned size)
 {
 #ifdef CONFIG_UCW_POOL_IS_MMAP
-  struct mempool_chunk *chunk;
-  chunk = page_alloc(size + MP_CHUNK_TAIL) + size;
+  uint8_t *data = page_alloc(size + MP_CHUNK_TAIL);
+  if (!data) {
+    return NULL;
+  }
+  struct mempool_chunk *chunk = (struct mempool_chunk *)(data + size);
   chunk->size = size;
   return chunk;
 #else
