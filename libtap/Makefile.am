@@ -1,5 +1,6 @@
 libtap_la_SOURCES = \
 	tap/basic.c tap/basic.h \
+	tap/files.c tap/files.h \
 	tap/float.c tap/float.h \
 	tap/macros.h
 
