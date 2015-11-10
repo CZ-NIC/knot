@@ -351,7 +351,7 @@ libknotd_la_LIBADD = libknot.la libknot-yparser.la zscanner/libzscanner.la $(lib
 knotd_CPPFLAGS = $(AM_CPPFLAGS) $(liburcu_CFLAGS)
 knotd_LDADD = libknotd.la $(liburcu_LIBS)
 knotc_LDADD = libknotd.la
-knot1to2_LDADD = libknotd.la
+knot1to2_LDADD = libknot-internal.la
 
 ####################################
 # Optional Knot DNS Daemon modules #
