@@ -572,13 +572,13 @@ static int remote_c_conf_commit(server_t *s, remote_cmdargs_t *a)
 	// First check the database.
 	int ret = conf_io_check(&io);
 	if (ret != KNOT_EOK) {
-		conf_io_abort(false);
+		(void)conf_io_abort(false);
 		return ret;
 	}
 
 	ret = conf_io_commit(false);
 	if (ret != KNOT_EOK) {
-		conf_io_abort(false);
+		(void)conf_io_abort(false);
 		return ret;
 	}
 
@@ -680,10 +680,12 @@ static int remote_c_conf_desc(server_t *s, remote_cmdargs_t *a)
 	char *key0, *key1, *id;
 	int ret = parse_conf_key(key, &key0, &id, &key1);
 	if (ret != KNOT_EOK) {
+		free(key);
 		return ret;
 	}
 
 	if (key1 != NULL || id != NULL) {
+		free(key);
 		return KNOT_EINVAL;
 	}
 
@@ -718,6 +720,7 @@ static int remote_c_conf_diff(server_t *s, remote_cmdargs_t *a)
 	char *key0, *key1, *id;
 	int ret = parse_conf_key(key, &key0, &id, &key1);
 	if (ret != KNOT_EOK) {
+		free(key);
 		return ret;
 	}
 
@@ -749,6 +752,7 @@ static int conf_read(server_t *s, remote_cmdargs_t *a, bool get_current)
 	char *key0, *key1, *id;
 	int ret = parse_conf_key(key, &key0, &id, &key1);
 	if (ret != KNOT_EOK) {
+		free(key);
 		return ret;
 	}
 
@@ -798,6 +802,7 @@ static int remote_c_conf_set(server_t *s, remote_cmdargs_t *a)
 	char *key0, *key1, *id;
 	int ret = parse_conf_key(key, &key0, &id, &key1);
 	if (ret != KNOT_EOK) {
+		free(key);
 		return ret;
 	}
 
@@ -809,6 +814,7 @@ static int remote_c_conf_set(server_t *s, remote_cmdargs_t *a)
 	// Start child transaction.
 	ret = conf_io_begin(true);
 	if (ret != KNOT_EOK) {
+		free(key);
 		return ret;
 	}
 
@@ -833,7 +839,7 @@ static int remote_c_conf_set(server_t *s, remote_cmdargs_t *a)
 	if (ret == KNOT_EOK) {
 		return conf_io_commit(true);
 	} else {
-		conf_io_abort(true);
+		(void)conf_io_abort(true);
 		return ret;
 	}
 }
@@ -856,12 +862,14 @@ static int remote_c_conf_unset(server_t *s, remote_cmdargs_t *a)
 	char *key0, *key1, *id;
 	int ret = parse_conf_key(key, &key0, &id, &key1);
 	if (ret != KNOT_EOK) {
+		free(key);
 		return ret;
 	}
 
 	// Start child transaction.
 	ret = conf_io_begin(true);
 	if (ret != KNOT_EOK) {
+		free(key);
 		return ret;
 	}
 
@@ -886,7 +894,7 @@ static int remote_c_conf_unset(server_t *s, remote_cmdargs_t *a)
 	if (ret == KNOT_EOK) {
 		return conf_io_commit(true);
 	} else {
-		conf_io_abort(true);
+		(void)conf_io_abort(true);
 		return ret;
 	}
 }

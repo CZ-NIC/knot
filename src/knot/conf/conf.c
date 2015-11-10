@@ -259,7 +259,7 @@ conf_iter_t conf_iter_txn(
 {
 	conf_iter_t iter = { NULL };
 
-	conf_db_iter_begin(conf, txn, key0_name, &iter);
+	(void)conf_db_iter_begin(conf, txn, key0_name, &iter);
 	switch (iter.code) {
 	default:
 		CONF_LOG(LOG_ERR, "failed to iterate thgrough '%s' (%s)",
@@ -275,7 +275,7 @@ void conf_iter_next(
 	conf_t *conf,
 	conf_iter_t *iter)
 {
-	conf_db_iter_next(conf, iter);
+	(void)conf_db_iter_next(conf, iter);
 	switch (iter->code) {
 	default:
 		CONF_LOG(LOG_ERR, "failed to read next item (%s)",

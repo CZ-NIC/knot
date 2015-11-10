@@ -759,7 +759,10 @@ int conf_db_iter_begin(
 	}
 
 iter_begin_error:
-	*iter = out;
+	// Set the output.
+	if (iter != NULL) {
+		*iter = out;
+	}
 
 	return out.code;
 }

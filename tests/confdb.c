@@ -430,7 +430,6 @@ static void test_conf_db_iter(conf_t *conf, namedb_txn_t *txn)
 	}
 	ok(ret == KNOT_EOF, "Finished iteration");
 	ok(count == total, "Check iteration count");
-	conf_db_iter_finish(conf, &iter);
 
 	// Check empty section.
 	ret = conf_db_iter_begin(conf, txn, C_RMT, &iter);

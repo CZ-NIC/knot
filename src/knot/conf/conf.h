@@ -287,6 +287,9 @@ conf_val_t conf_iter_id(
 /*!
  * Deletes the section iterator.
  *
+ * This function should be called when the iterating is early interrupted,
+ * otherwise this is done automaticaly at KNOT_EOF.
+ *
  * \param[in] conf  Configuration.
  * \param[in] iter  Configuration iterator.
  */
