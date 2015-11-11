@@ -257,9 +257,6 @@ void zone_contents_free(zone_contents_t **contents);
 
 void zone_contents_deep_free(zone_contents_t **contents);
 
-/*! \brief Return zone SOA rdataset. */
-const knot_rdataset_t *zone_contents_soa(const zone_contents_t *zone);
-
 /*!
  * \brief Fetch zone serial.
  *
