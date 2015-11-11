@@ -18,21 +18,10 @@
 
 #include "knot/zone/contents.h"
 #include "knot/common/log.h"
-#include "libknot/internal/macros.h"
-#include "libknot/libknot.h"
-#include "libknot/rrset.h"
-#include "libknot/internal/base32hex.h"
-#include "libknot/descriptor.h"
-#include "libknot/internal/trie/hat-trie.h"
 #include "knot/dnssec/zone-nsec.h"
-#include "knot/dnssec/zone-sign.h"
-#include "knot/zone/zone-tree.h"
-#include "libknot/packet/wire.h"
-#include "libknot/consts.h"
-#include "libknot/rrtype/rrsig.h"
-#include "libknot/rrtype/nsec3.h"
-#include "libknot/rrtype/soa.h"
-#include "libknot/rrtype/rdname.h"
+#include "libknot/libknot.h"
+#include "libknot/internal/trie/hat-trie.h"
+#include "libknot/internal/macros.h"
 
 /*----------------------------------------------------------------------------*/
 /* Non-API functions                                                          */

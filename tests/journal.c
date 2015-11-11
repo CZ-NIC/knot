@@ -24,7 +24,7 @@
 
 #include "libknot/libknot.h"
 #include "knot/server/journal.h"
-#include "knot/zone/zone-diff.h"
+#include "knot/zone/zone.h"
 
 #define RAND_RR_LABEL 16
 #define RAND_RR_PAYLOAD 64
