@@ -774,7 +774,6 @@ int zone_contents_find_nsec3_for_name(const zone_contents_t *zone,
 
 	const zone_node_t *found = NULL, *prev = NULL;
 
-	// create dummy node to use for lookup
 	int exact_match = zone_tree_find_less_or_equal(zone->nsec3_nodes, nsec3_name,
 	                                               &found, &prev);
 	assert(exact_match >= 0);
@@ -787,7 +786,7 @@ int zone_contents_find_nsec3_for_name(const zone_contents_t *zone,
 		// either the returned node is the root of the tree, or it is
 		// the leftmost node in the tree; in both cases node was found
 		// set the previous node of the found node
-		assert(exact_match);
+		assert(exact_match > 0);
 		assert(*nsec3_node != NULL);
 		*nsec3_previous = (*nsec3_node)->prev;
 	} else {
@@ -801,18 +800,13 @@ int zone_contents_find_nsec3_for_name(const zone_contents_t *zone,
 	const knot_rdataset_t *nsec3_rrs = node_rdataset(*nsec3_previous, KNOT_RRTYPE_NSEC3);
 	const zone_node_t *original_prev = *nsec3_previous;
 
-	int match = 0;
+	ret = exact_match ? ZONE_NAME_FOUND : ZONE_NAME_NOT_FOUND;
 
-	while (nsec3_rrs && !match) {
-		for (uint16_t i = 0; i < nsec3_rrs->rr_count && !match; i++) {
+	while (nsec3_rrs) {
+		for (uint16_t i = 0; i < nsec3_rrs->rr_count; i++) {
 			if (nsec3_params_match(nsec3_rrs, &zone->nsec3_params, i)) {
-				/* Matching NSEC3PARAM match at position nr.: i. */
-				match = 1;
+				return ret;
 			}
-		}
-
-		if (match) {
-			break;
 		}
 
 		/* This RRSET was not a match, try the one from previous node. */
@@ -825,7 +819,7 @@ int zone_contents_find_nsec3_for_name(const zone_contents_t *zone,
 		}
 	}
 
-	return exact_match ? ZONE_NAME_FOUND : ZONE_NAME_NOT_FOUND;
+	return ret;
 }
 
 const zone_node_t *zone_contents_find_wildcard_child(const zone_contents_t *contents,
@@ -1083,18 +1077,13 @@ void zone_contents_deep_free(zone_contents_t **contents)
 	zone_contents_free(contents);
 }
 
-static const knot_rdataset_t *get_soa(const zone_contents_t *zone)
-{
-	if (zone == NULL) {
-		return NULL;
-	}
-
-	return node_rdataset(zone->apex, KNOT_RRTYPE_SOA);
-}
-
 uint32_t zone_contents_serial(const zone_contents_t *zone)
 {
-	const knot_rdataset_t *soa = get_soa(zone);
+	if (zone == NULL) {
+		return 0;
+	}
+
+	const knot_rdataset_t *soa = node_rdataset(zone->apex, KNOT_RRTYPE_SOA);
 	if (soa == NULL) {
 		return 0;
 	}
@@ -1118,22 +1107,12 @@ zone_node_t *zone_contents_get_node_for_rr(zone_contents_t *zone, const knot_rrs
 		return NULL;
 	}
 
-	zone_node_t *node;
 	const bool nsec3 = rrset_is_nsec3rel(rrset);
-	if (!nsec3) {
-		node = get_node(zone, rrset->owner);
-	} else {
-		node = get_nsec3_node(zone, rrset->owner);
-	}
-
+	zone_node_t *node = nsec3 ? get_nsec3_node(zone, rrset->owner) :
+	                            get_node(zone, rrset->owner);
 	if (node == NULL) {
-		int ret = KNOT_EOK;
 		node = node_new(rrset->owner, NULL);
-		if (!nsec3) {
-			ret = add_node(zone, node, 1);
-		} else {
-			ret = add_nsec3_node(zone, node);
-		}
+		int ret = nsec3 ? add_nsec3_node(zone, node) : add_node(zone, node, 1);
 		if (ret != KNOT_EOK) {
 			node_free(&node, NULL);
 			return NULL;
@@ -1152,5 +1131,6 @@ zone_node_t *zone_contents_find_node_for_rr(zone_contents_t *zone, const knot_rr
 	}
 
 	const bool nsec3 = rrset_is_nsec3rel(rrset);
-	return nsec3 ? get_nsec3_node(zone, rrset->owner) : get_node(zone, rrset->owner);
+	return nsec3 ? get_nsec3_node(zone, rrset->owner) :
+	               get_node(zone, rrset->owner);
 }
