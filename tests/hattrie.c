@@ -28,7 +28,7 @@
 static const char *alphabet = "abcdefghijklmn0123456789";
 static char *str_key_rand(size_t len)
 {
-	char *s = xmalloc(len);
+	char *s = malloc(len);
 	memset(s, 0, len);
 	for (unsigned i = 0; i < len - 1; ++i) {
 		s[i] = alphabet[rand() % strlen(alphabet)];
@@ -101,12 +101,12 @@ static bool str_key_find_leq(hattrie_t *trie, char **keys, size_t i, size_t size
 
 int main(int argc, char *argv[])
 {
-	plan(8);
+	plan_lazy();
 
 	/* Random keys. */
 	srand(time(NULL));
 	unsigned key_count = 100000;
-	char **keys = xmalloc(sizeof(char*) * key_count);
+	char **keys = malloc(sizeof(char*) * key_count);
 	for (unsigned i = 0; i < key_count; ++i) {
 		keys[i] = str_key_rand(KEY_MAXLEN);
 	}

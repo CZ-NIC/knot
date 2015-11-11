@@ -19,9 +19,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/resource.h>
 
-#include "libknot/internal/macros.h"
 #include "libknot/internal/mem.h"
 
 uint8_t *knot_memdup(const uint8_t *data, size_t data_size)
@@ -32,46 +30,6 @@ uint8_t *knot_memdup(const uint8_t *data, size_t data_size)
 	}
 
 	return memcpy(result, data, data_size);
-}
-
-void* xmalloc(size_t l)
-{
-	void *p = malloc(l);
-	if (p == NULL) {
-		abort();
-	}
-	return p;
-}
-
-void *xrealloc(void *p, size_t l)
-{
-	p = realloc(p, l);
-	if (p == NULL) {
-		abort();
-	}
-	return p;
-}
-
-int mreserve(char **p, size_t tlen, size_t min, size_t allow, size_t *reserved)
-{
-	/* Trim excessive memory if possible. */
-	size_t maxlen = min + allow;
-	if (maxlen < min) {
-		return -2; /* size_t overflow */
-	}
-
-	/* Meet target size but trim excessive amounts. */
-	if (*reserved < min || *reserved > maxlen) {
-		void *trimmed = realloc(*p, maxlen * tlen);
-		if (trimmed != NULL) {
-			*p = trimmed;
-			*reserved = maxlen;
-		} else {
-			return -1;
-		}
-	}
-
-	return 0;
 }
 
 char *sprintf_alloc(const char *fmt, ...)
@@ -155,38 +113,4 @@ char *strstrip(const char *str)
 	trimmed[len] = '\0';
 
 	return trimmed;
-}
-
-#ifdef MEM_DEBUG
-/*
- * ((destructor)) attribute executes this function after main().
- * \see http://gcc.gnu.org/onlinedocs/gcc/Function-Attributes.html
- */
-void __attribute__ ((destructor)) usage_dump()
-#else
-void usage_dump()
-#endif
-{
-	/* Get resource usage. */
-	struct rusage usage;
-	if (getrusage(RUSAGE_SELF, &usage) < 0) {
-		memset(&usage, 0, sizeof(struct rusage));
-	}
-
-	fprintf(stderr, "\nMemory statistics:");
-	fprintf(stderr, "\n==================\n");
-
-	fprintf(stderr, "User time: %.03lf ms\nSystem time: %.03lf ms\n",
-	        usage.ru_utime.tv_sec * (double) 1000.0
-	        + usage.ru_utime.tv_usec / (double)1000.0,
-	        usage.ru_stime.tv_sec * (double) 1000.0
-	        + usage.ru_stime.tv_usec / (double)1000.0);
-	fprintf(stderr, "Major page faults: %lu (required I/O)\nMinor page faults: %lu\n",
-	        usage.ru_majflt, usage.ru_minflt);
-	fprintf(stderr, "Number of swaps: %lu\n",
-	        usage.ru_nswap);
-	fprintf(stderr, "Voluntary context switches: %lu\nInvoluntary context switches: %lu\n",
-	        usage.ru_nvcsw,
-	        usage.ru_nivcsw);
-	fprintf(stderr, "==================\n");
 }
