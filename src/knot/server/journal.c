@@ -27,6 +27,7 @@
 #include "knot/common/log.h"
 #include "knot/server/journal.h"
 #include "knot/server/serialization.h"
+#include "knot/zone/zone.h"
 #include "libknot/libknot.h"
 #include "libknot/rrtype/soa.h"
 

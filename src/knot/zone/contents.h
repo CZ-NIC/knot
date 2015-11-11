@@ -14,31 +14,25 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 /*!
- * \file contents.h
+ * \file
  *
- * \author Lubos Slovak <lubos.slovak@nic.cz>
+ * Zone contents structure and API for manipulating it.
  *
- * \brief Zone contents structure and API for manipulating it.
+ * \addtogroup knot
  *
- * \addtogroup libknot
  * @{
  */
 
 #pragma once
 
-#include "libknot/internal/lists.h"
 #include "libknot/rrtype/nsec3param.h"
 #include "knot/zone/node.h"
 #include "knot/zone/zone-tree.h"
 
-struct zone;
-
 enum zone_contents_find_dname_result {
-	ZONE_NAME_FOUND = 1,
-	ZONE_NAME_NOT_FOUND = 0
+	ZONE_NAME_NOT_FOUND = 0,
+	ZONE_NAME_FOUND     = 1
 };
-
-/*----------------------------------------------------------------------------*/
 
 typedef struct zone_contents {
 	zone_node_t *apex;       /*!< Apex node of the zone (holding SOA) */
@@ -54,15 +48,9 @@ typedef struct zone_contents {
  */
 typedef int (*zone_contents_apply_cb_t)(zone_node_t *node, void *data);
 
-/*----------------------------------------------------------------------------*/
-
 zone_contents_t *zone_contents_new(const knot_dname_t *apex_name);
 
 int zone_contents_add_rr(zone_contents_t *z, const knot_rrset_t *rr, zone_node_t **n);
-
-int zone_contents_remove_node(zone_contents_t *contents, const knot_dname_t *owner);
-
-int zone_contents_remove_nsec3_node(zone_contents_t *contents, const knot_dname_t *owner);
 
 /*!
  * \brief Tries to find a node with the specified name in the zone.
@@ -79,7 +67,7 @@ const zone_node_t *zone_contents_find_node(const zone_contents_t *contents,
                                            const knot_dname_t *name);
 
 /*!
- * \brief Tries to find domain name in the given zone using AVL tree.
+ * \brief Tries to find a node by owner in the zone contents.
  *
  * \param[in] zone Zone to search for the name.
  * \param[in] name Domain name to search for.
@@ -260,9 +248,6 @@ int zone_contents_shallow_copy(const zone_contents_t *from, zone_contents_t **to
 void zone_contents_free(zone_contents_t **contents);
 
 void zone_contents_deep_free(zone_contents_t **contents);
-
-/*! \brief Return zone SOA rdataset. */
-const knot_rdataset_t *zone_contents_soa(const zone_contents_t *zone);
 
 /*!
  * \brief Fetch zone serial.

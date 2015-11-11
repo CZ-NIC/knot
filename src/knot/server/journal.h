@@ -45,7 +45,8 @@
 #include <pthread.h>
 #include <stdbool.h>
 #include "knot/updates/changesets.h"
-#include "knot/zone/zone.h"
+
+struct zone;
 
 /*!
  * \brief Journal entry flags.
