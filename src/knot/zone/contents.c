@@ -713,44 +713,6 @@ int zone_contents_add_rr(zone_contents_t *z, const knot_rrset_t *rr,
 
 /*----------------------------------------------------------------------------*/
 
-int zone_contents_remove_node(zone_contents_t *contents, const knot_dname_t *owner)
-{
-	if (contents == NULL || owner == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	zone_node_t *removed_node = NULL;
-	int ret = zone_tree_remove(contents->nodes, owner, &removed_node);
-	if (ret != KNOT_EOK) {
-		return KNOT_ENONODE;
-	}
-	assert(removed_node);
-
-	return KNOT_EOK;
-}
-
-/*----------------------------------------------------------------------------*/
-
-int zone_contents_remove_nsec3_node(zone_contents_t *contents, const knot_dname_t *owner)
-{
-	if (contents == NULL || owner == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	// remove the node from the zone tree
-	zone_node_t *removed_node = NULL;
-	int ret = zone_tree_remove(contents->nsec3_nodes, owner,
-	                                &removed_node);
-	if (ret != KNOT_EOK) {
-		return KNOT_ENONODE;
-	}
-	assert(removed_node);
-
-	return KNOT_EOK;
-}
-
-/*----------------------------------------------------------------------------*/
-
 const zone_node_t *zone_contents_find_node(const zone_contents_t *zone,
                                            const knot_dname_t *name)
 {

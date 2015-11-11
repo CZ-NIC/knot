@@ -60,10 +60,6 @@ zone_contents_t *zone_contents_new(const knot_dname_t *apex_name);
 
 int zone_contents_add_rr(zone_contents_t *z, const knot_rrset_t *rr, zone_node_t **n);
 
-int zone_contents_remove_node(zone_contents_t *contents, const knot_dname_t *owner);
-
-int zone_contents_remove_nsec3_node(zone_contents_t *contents, const knot_dname_t *owner);
-
 /*!
  * \brief Tries to find a node with the specified name in the zone.
  *
