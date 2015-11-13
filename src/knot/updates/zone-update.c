@@ -168,7 +168,6 @@ int zone_update_init(zone_update_t *update, zone_t *zone, zone_update_flags_t fl
 	} else if (flags & UPDATE_FULL) {
 		return init_full(update, zone);
 	} else {
-		// One of FULL or INCREMENTAL flags must be set.
 		return KNOT_EINVAL;
 	}
 }
@@ -279,12 +278,6 @@ int zone_update_remove(zone_update_t *update, const knot_rrset_t *rrset)
 	if (update->flags & UPDATE_INCREMENTAL) {
 		return changeset_rem_rrset(&update->change, rrset);
 	} else {
-		// Removing from zone during creation does not make sense, ignore.
-		/* The comment right above does not make sense when the following line
-		 * was uncommented. Anyway, right now we don't have a nice and clean way
-		 * to remove an RR. FIXME
-		 */
-		//return zone_contents_remove_rr(update->new_cont, rrset);
 		return KNOT_ENOTSUP;
 	}
 }
@@ -299,7 +292,7 @@ static bool apex_rr_changed(const zone_node_t *old_apex,
 	return !knot_rrset_equal(&old_rr, &new_rr, KNOT_RRSET_COMPARE_WHOLE);
 }
 
-static bool dnskey_nsec3param_changed(zone_update_t *update)
+static bool apex_dnssec_changed(zone_update_t *update)
 {
 	assert(update->zone->contents);
 	const zone_node_t *new_apex = zone_update_get_apex(update);
@@ -322,7 +315,7 @@ static int sign_update(zone_update_t *update,
 	int ret = KNOT_EOK;
 	uint32_t refresh_at = 0;
 	const bool full_sign = changeset_empty(&update->change) ||
-	                       dnskey_nsec3param_changed(update);
+	                       apex_dnssec_changed(update);
 	if (full_sign) {
 		ret = knot_dnssec_zone_sign(new_contents, sec_ch,
 		                            ZONE_SIGN_KEEP_SOA_SERIAL,
@@ -380,89 +373,94 @@ static int set_new_soa(zone_update_t *update)
 	return KNOT_EOK;
 }
 
-int zone_update_commit(zone_update_t *update)
+static int commit_incremental(zone_update_t *update)
 {
+	if (changeset_empty(&update->change)) {
+		changeset_clear(&update->change);
+		return KNOT_EOK;
+	}
+
 	int ret = KNOT_EOK;
+	if (zone_update_to(update) == NULL) {
+		// No SOA in the update, create one according to the current policy
+		ret = set_new_soa(update);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+	}
+
+	// Apply changes.
 	zone_contents_t *new_contents = NULL;
+	ret = apply_changeset(update->zone, &update->change, &new_contents);
+	if (ret != KNOT_EOK) {
+		changeset_clear(&update->change);
+		return ret;
+	}
 
-	if (update->flags & UPDATE_INCREMENTAL) {
-		const bool change_made = !changeset_empty(&update->change);
-		if (!change_made) {
-			changeset_clear(&update->change);
-			return KNOT_EOK;
-		}
+	assert(new_contents);
 
-		if (zone_update_to(update) == NULL) {
-			// No SOA in the update, create one according to the current policy
-			ret = set_new_soa(update);
-			if (ret != KNOT_EOK) {
-				return ret;
-			}
-		}
+	conf_val_t val = conf_zone_get(conf(), C_DNSSEC_SIGNING, update->zone->name);
+	bool dnssec_enable = update->flags & UPDATE_SIGN && conf_bool(&val);
 
-		// Apply changes.
-		ret = apply_changeset(update->zone, &update->change, &new_contents);
+	// Sign the update.
+	changeset_t sec_ch;
+	if (dnssec_enable) {
+		ret = changeset_init(&sec_ch, update->zone->name);
 		if (ret != KNOT_EOK) {
 			changeset_clear(&update->change);
 			return ret;
 		}
-
-		assert(new_contents);
-
-		conf_val_t val = conf_zone_get(conf(), C_DNSSEC_SIGNING, update->zone->name);
-		bool dnssec_enable = update->flags & UPDATE_SIGN && conf_bool(&val);
-
-		// Sign the update.
-		changeset_t sec_ch;
-		if (dnssec_enable) {
-			ret = changeset_init(&sec_ch, update->zone->name);
-			if (ret != KNOT_EOK) {
-				changeset_clear(&update->change);
-				return ret;
-			}
-			ret = sign_update(update, new_contents, &sec_ch);
-			if (ret != KNOT_EOK) {
-				update_rollback(&update->change);
-				update_free_zone(&new_contents);
-				changeset_clear(&update->change);
-				return ret;
-			}
-		}
-
-		// Write changes to journal if all went well. (DNSSEC merged)
-		ret = zone_change_store(update->zone, &update->change);
+		ret = sign_update(update, new_contents, &sec_ch);
 		if (ret != KNOT_EOK) {
 			update_rollback(&update->change);
 			update_free_zone(&new_contents);
-			if (dnssec_enable) {
-				changeset_clear(&sec_ch);
-			}
+			changeset_clear(&update->change);
 			return ret;
 		}
-
-		/* Temporarily unlock locked configuration. */
-		rcu_read_unlock();
-
-		// Switch zone contents.
-		zone_contents_t *old_contents = zone_switch_contents(update->zone, new_contents);
-		synchronize_rcu();
-
-		rcu_read_lock();
-
-		// Clear DNSSEC changes
-		if (dnssec_enable) {
-			update_cleanup(&sec_ch);
-			changeset_clear(&sec_ch);
-		}
-
-		// Clear obsolete zone contents
-		update_free_zone(&old_contents);
-
-		update_cleanup(&update->change);
-		changeset_clear(&update->change);
 	}
 
+	// Write changes to journal if all went well. (DNSSEC merged)
+	ret = zone_change_store(update->zone, &update->change);
+	if (ret != KNOT_EOK) {
+		update_rollback(&update->change);
+		update_free_zone(&new_contents);
+		if (dnssec_enable) {
+			changeset_clear(&sec_ch);
+		}
+		return ret;
+	}
+
+	/* Temporarily unlock locked configuration. */
+	rcu_read_unlock();
+
+	// Switch zone contents.
+	zone_contents_t *old_contents = zone_switch_contents(update->zone, new_contents);
+	synchronize_rcu();
+
+	rcu_read_lock();
+
+	// Clear DNSSEC changes
+	if (dnssec_enable) {
+		update_cleanup(&sec_ch);
+		changeset_clear(&sec_ch);
+	}
+
+	// Clear obsolete zone contents
+	update_free_zone(&old_contents);
+
+	update_cleanup(&update->change);
+	changeset_clear(&update->change);
+	
 	return KNOT_EOK;
+}
+
+int zone_update_commit(zone_update_t *update)
+{
+	if (update->flags & UPDATE_INCREMENTAL) {
+		return commit_incremental(update);
+	}
+
+	return KNOT_ENOTSUP;
 }
 
 bool zone_update_no_change(zone_update_t *up)
