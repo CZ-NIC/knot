@@ -456,6 +456,25 @@ static int insert(namedb_txn_t *txn, namedb_val_t *key, namedb_val_t *val, unsig
 		mdb_flags |= MDB_RESERVE;
 	}
 
+	/* Reserve some pages for clearing */
+	MDB_stat stat;
+	MDB_stat stat_free;
+	MDB_envinfo info;
+	if (mdb_stat(txn->txn, env->dbi, &stat) != MDB_SUCCESS ||
+	    mdb_stat(txn->txn, 0, &stat_free) != MDB_SUCCESS ||
+	    mdb_env_info(env->env, &info) != MDB_SUCCESS) {
+		return KNOT_ERROR;
+	}
+	/* Count head room pages */
+	size_t max_pages = (info.me_mapsize / stat.ms_psize) - info.me_last_pgno - 2;
+	/* Add free leaf pages, allow worst-case headroom for branch pages */
+	max_pages += stat_free.ms_leaf_pages - stat.ms_branch_pages;
+	/* The freelist must be able to hold db tree pages */
+	size_t used_pages = stat.ms_branch_pages + stat.ms_overflow_pages;
+	if (used_pages + 1 >= max_pages) {
+		return KNOT_ESPACE;
+	}
+
 	int ret = mdb_put(txn->txn, env->dbi, &db_key, &data, mdb_flags);
 	if (ret != MDB_SUCCESS) {
 		return lmdb_error_to_knot(ret);
