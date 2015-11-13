@@ -28,7 +28,6 @@
 
 #include "libknot/packet/pkt.h"
 #include "libknot/processing/layer.h"
-#include "knot/zone/contents.h"
 
 /* Query data (from query processing). */
 struct query_data;
