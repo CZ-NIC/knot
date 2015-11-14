@@ -1,4 +1,4 @@
-/*  Copyright (C) 2014 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -12,21 +12,37 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
- */
+*/
 
-#pragma once
-
+#include <stddef.h>
 #include <stdint.h>
 
-/*!
- * \brief Counts the size of the NAPTR RDATA before the Replacement domain name.
- *
- * See RFC 2915.
- *
- * \param naptr  Wire format of NAPTR record.
- * \param maxp   Limit of the wire format.
- *
- * \retval KNOT_EMALF if the record is malformed.
- * \retval Size of the RDATA before the Replacement domain name.
- */
-int knot_naptr_header_size(const uint8_t *naptr, const uint8_t *maxp);
+#include "libknot/errcode.h"
+#include "libknot/rrtype/naptr.h"
+
+int knot_naptr_header_size(const uint8_t *naptr, const uint8_t *maxp)
+{
+	if (!naptr || !maxp || naptr >= maxp) {
+		return KNOT_EINVAL;
+	}
+
+	size_t size = 0;
+
+	/* Fixed fields size (order, preference) */
+	size += 2 * sizeof(uint16_t);
+
+	/* Variable fields size (flags, services, regexp) */
+	for (int i = 0; i < 3; i++) {
+		const uint8_t *len_ptr = naptr + size;
+		if (len_ptr >= maxp) {
+			return KNOT_EMALF;
+		}
+		size += 1 + *len_ptr;
+	}
+
+	if (naptr + size >= maxp) {
+		return KNOT_EMALF;
+	}
+
+	return size;
+}

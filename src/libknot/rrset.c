@@ -25,6 +25,7 @@
 #include "libknot/mempattern.h"
 #include "libknot/descriptor.h"
 #include "libknot/dname.h"
+#include "libknot/errcode.h"
 #include "libknot/rrtype/naptr.h"
 
 knot_rrset_t *knot_rrset_new(const knot_dname_t *owner, uint16_t type,

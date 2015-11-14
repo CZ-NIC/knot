@@ -178,6 +178,7 @@ libknot_la_SOURCES =				\
 	libknot/processing/process.c		\
 	libknot/processing/process.h		\
 	libknot/rrtype/dnskey.h			\
+	libknot/rrtype/naptr.c			\
 	libknot/rrtype/naptr.h			\
 	libknot/rrtype/nsec.h			\
 	libknot/rrtype/nsec.h			\
