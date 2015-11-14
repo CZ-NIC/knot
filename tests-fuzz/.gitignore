@@ -3,3 +3,4 @@
 
 /knotd_stdio
 /packet
+/packet_libfuzzer

@@ -455,6 +455,17 @@ AX_CODE_COVERAGE
 AX_SANITIZER
 AS_IF([test -n "$sanitize_CFLAGS"], [CFLAGS="$CFLAGS $sanitize_CFLAGS"])
 
+# LibFuzzer
+AC_ARG_WITH([libfuzzer],
+  AC_HELP_STRING([--with-libfuzzer=path], [Path to LibFuzzer static library]),
+  [libfuzzer_LIBS="$withval"], [libfuzzer_LIBS=no]
+)
+AS_IF([test "$libfuzzer_LIBS" != no -a "$sanitize_coverage_enabled" != yes], [
+  AC_MSG_ERROR([Sanitizer coverage required for LibFuzzer.])
+])
+AM_CONDITIONAL([HAVE_LIBFUZZER], [test "$libfuzzer_LIBS" != "no"])
+AC_SUBST([libfuzzer_LIBS])
+
 AS_IF([test "$enable_documentation" = "yes"],[
 
 AC_PATH_PROGS([SPHINXBUILD], [sphinx-build sphinx-build-3], [false])
@@ -503,6 +514,7 @@ AC_MSG_RESULT([
     LMDB:     ${enable_lmdb} ${lmdb_LIBS} ${lmdb_CFLAGS}
 
     Sanitizer: ${sanitize_CFLAGS}
+    LibFuzzer: ${libfuzzer_LIBS}
 
     Prefix:		${prefix}
     Run dir:		${run_dir}

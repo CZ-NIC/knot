@@ -10,6 +10,11 @@ check_PROGRAMS = \
 	knotd_stdio \
 	packet
 
+if HAVE_LIBFUZZER
+check_PROGRAMS += packet_libfuzzer
+packet_libfuzzer_LDADD = $(LDADD) $(libfuzzer_LIBS) -lstdc++
+endif
+
 knotd_stdio_SOURCES = wrap/server.c wrap/tcp-handler.c wrap/udp-handler.c
 knotd_stdio_CPPFLAGS = $(AM_CPPFLAGS) $(liburcu_CFLAGS)
 knotd_stdio_LDADD = \
