@@ -22,6 +22,7 @@
 #include "libknot/consts.h"
 #include "libknot/descriptor.h"
 #include "libknot/dname.h"
+#include "libknot/errcode.h"
 #include "libknot/rrtype/naptr.h"
 #include "libknot/internal/mempattern.h"
 #include "libknot/internal/macros.h"
