@@ -181,7 +181,7 @@ int knot_dname_to_wire(uint8_t *dst, const knot_dname_t *src, size_t maxlen)
 
 /*----------------------------------------------------------------------------*/
 _public_
-int knot_dname_unpack(uint8_t* dst, const knot_dname_t *src,
+int knot_dname_unpack(uint8_t *dst, const knot_dname_t *src,
                       size_t maxlen, const uint8_t *pkt)
 {
 	if (dst == NULL || src == NULL)

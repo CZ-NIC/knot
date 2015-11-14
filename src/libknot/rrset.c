@@ -18,14 +18,14 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#include "libknot/rrset.h"
 #include "libknot/consts.h"
 #include "libknot/descriptor.h"
 #include "libknot/dname.h"
 #include "libknot/errcode.h"
-#include "libknot/rrtype/naptr.h"
-#include "libknot/internal/mempattern.h"
 #include "libknot/internal/macros.h"
+#include "libknot/internal/mempattern.h"
+#include "libknot/rrset.h"
+#include "libknot/rrtype/naptr.h"
 
 _public_
 knot_rrset_t *knot_rrset_new(const knot_dname_t *owner, uint16_t type,
