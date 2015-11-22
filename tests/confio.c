@@ -55,6 +55,8 @@ static int format_item(conf_io_t *io)
 		return KNOT_ESPACE;
 	}
 
+	free(item);
+
 	return KNOT_EOK;
 }
 
@@ -98,18 +100,20 @@ static void test_conf_io_abort()
 	ok(conf_io_begin(false) == KNOT_EOK, "begin parent txn");
 
 	for (int i = 1; i < CONF_MAX_TXN_DEPTH; i++) {
-		char idx = '0' + i;
+		char idx[2] = "0";
+		idx[0] += i;
 		ok(conf_io_begin(true) == KNOT_EOK, "begin child txn");
-		ok(conf_io_set("server", "version", NULL, &idx, &io) ==
+		ok(conf_io_set("server", "version", NULL, idx, &io) ==
 		   KNOT_EOK, "set single value");
 	}
 
 	for (int i = CONF_MAX_TXN_DEPTH - 1; i > 0; i--) {
-		char idx = '0' + i;
+		char idx[2] = "0";
+		idx[0] += i;
 		conf_val_t val = conf_get_txn(conf(), conf()->io.txn, C_SERVER, C_VERSION);
 		ok(val.code == KNOT_EOK, "check entry");
 		const char *data = conf_str(&val);
-		ok(*data == idx, "compare txn data");
+		ok(*data == idx[0], "compare txn data");
 		ok(conf_io_abort(true) == KNOT_EOK, "abort child txn");
 	}
 
@@ -145,9 +149,10 @@ static void test_conf_io_commit()
 	ok(conf_io_begin(false) == KNOT_EOK, "begin parent txn");
 
 	for (int i = 1; i < CONF_MAX_TXN_DEPTH; i++) {
-		char idx = '0' + i;
+		char idx[2] = "0";
+		idx[0] += i;
 		ok(conf_io_begin(true) == KNOT_EOK, "begin child txn");
-		ok(conf_io_set("server", "version", NULL, &idx, &io) ==
+		ok(conf_io_set("server", "version", NULL, idx, &io) ==
 		   KNOT_EOK, "set single value");
 	}
 
