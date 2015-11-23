@@ -452,6 +452,9 @@ gl_VISIBILITY()
 # Add code coverage macro
 AX_CODE_COVERAGE
 
+AX_SANITIZER
+AS_IF([test -n "$sanitize_CFLAGS"], [CFLAGS="$CFLAGS $sanitize_CFLAGS"])
+
 AS_IF([test "$enable_documentation" = "yes"],[
 
 AC_PATH_PROGS([SPHINXBUILD], [sphinx-build sphinx-build-3], [false])
@@ -498,6 +501,8 @@ AC_MSG_RESULT([
     GnuTLS:   ${gnutls_LIBS} ${gnutls_CFLAGS}
     Jansson:  ${jansson_LIBS} ${jansson_CFLAGS}
     LMDB:     ${enable_lmdb} ${lmdb_LIBS} ${lmdb_CFLAGS}
+
+    Sanitizer: ${sanitize_CFLAGS}
 
     Prefix:		${prefix}
     Run dir:		${run_dir}
