@@ -1,5 +1,22 @@
+/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
 #include <string.h>
 #include <stdlib.h>
+#include <getopt.h>
 
 #include "knot/modules/rosedb.c"
 #include "zscanner/scanner.h"
@@ -30,15 +47,14 @@ static struct tool_action TOOL_ACTION[TOOL_ACTION_COUNT] = {
 { "list",   rosedb_list,   0, "" }
 };
 
-static int help(void)
+static void help(FILE *stream)
 {
-	printf("Usage: rosedb_tool <dbdir> <action> [params]\n");
-	printf("Actions:\n");
+	fprintf(stream, "Usage: rosedb_tool <dbdir> <action> [params]\n");
+	fprintf(stream, "Actions:\n");
 	for (unsigned i = 0; i < TOOL_ACTION_COUNT; ++i) {
 		struct tool_action *ta = &TOOL_ACTION[i];
-		printf("\t%s %s\n", ta->name, ta->info);
+		fprintf(stream, "\t%s %s\n", ta->name, ta->info);
 	}
-	return EXIT_FAILURE;
 }
 
 /* Global instance of RR scanner. */
@@ -49,8 +65,31 @@ static zs_scanner_t *g_scanner = NULL;
 
 int main(int argc, char *argv[])
 {
+	static const struct option options[] = {
+		{ "version", no_argument, 0, 'V' },
+		{ "help",    no_argument, 0, 'h' },
+		{ NULL }
+	};
+
+	int opt = 0;
+	int index = 0;
+	while ((opt = getopt_long(argc, argv, "Vh", options, &index)) != -1) {
+		switch (opt) {
+		case 'V':
+			printf("rosedb_tool (Knot DNS), version %s\n", PACKAGE_VERSION);
+			return EXIT_SUCCESS;
+		case 'h':
+			help(stdout);
+			return EXIT_SUCCESS;
+		default:
+			help(stderr);
+			return EXIT_FAILURE;
+		}
+	}
+
 	if (argc < 3) {
-		return help();
+		help(stderr);
+		return EXIT_FAILURE;
 	}
 
 	/* Get mandatory parameters. */
@@ -111,7 +150,8 @@ int main(int argc, char *argv[])
 	zs_scanner_free(g_scanner);
 
 	if (!found) {
-		return help();
+		help(stderr);
+		return EXIT_FAILURE;
 	}
 
 	return ret;
@@ -283,7 +323,8 @@ static int rosedb_import_line(struct cache *cache, MDB_txn *txn, char *line, con
 		struct tool_action *ta = &TOOL_ACTION[i];
 		if (strcmp(ta->name, argv[0]) == 0) {
 			if (argc < ta->min_args) {
-				return help();
+				help(stderr);
+				return EXIT_FAILURE;
 			}
 			found = true;
 			ret = ta->func(cache, txn, argc - 1, argv + 1);
