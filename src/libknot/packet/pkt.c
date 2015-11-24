@@ -741,7 +741,7 @@ static int check_rr_constraints(knot_pkt_t *pkt, knot_rrset_t *rr, size_t rr_siz
 	return KNOT_EOK;
 }
 
-#undef CHECK_AR_RECORD
+#undef CHECK_AR_CONSTRAINTS
 
 _public_
 int knot_pkt_parse_rr(knot_pkt_t *pkt, unsigned flags)
