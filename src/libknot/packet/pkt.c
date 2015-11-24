@@ -821,6 +821,11 @@ int knot_pkt_parse_payload(knot_pkt_t *pkt, unsigned flags)
 	size_t rr_count = knot_wire_get_ancount(pkt->wire) +
 	                  knot_wire_get_nscount(pkt->wire) +
 	                  knot_wire_get_arcount(pkt->wire);
+
+	if (rr_count > pkt->size / KNOT_WIRE_RR_MIN_SIZE) {
+		return KNOT_EMALF;
+	}
+
 	int ret = pkt_rr_array_alloc(pkt, rr_count);
 	if (ret != KNOT_EOK) {
 		return ret;
