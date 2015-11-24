@@ -1,3 +1,15 @@
+Knot DNS 1.6.6 (2015-11-24)
+===========================
+
+Bugfixes:
+---------
+ - Fix daemon startup systemd notification
+ - Out-of-bound read in packet parser for malformed NAPTR records (LibFuzzer)
+
+Features:
+---------
+ - Add rosedb module
+
 Knot DNS 1.6.5 (2015-09-01)
 ===========================
 
