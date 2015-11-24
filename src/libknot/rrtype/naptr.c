@@ -25,7 +25,7 @@
 _public_
 int knot_naptr_header_size(const uint8_t *naptr, const uint8_t *maxp)
 {
-	if (!naptr || !maxp || naptr > maxp) {
+	if (!naptr || !maxp || naptr >= maxp) {
 		return KNOT_EINVAL;
 	}
 
