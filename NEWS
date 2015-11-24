@@ -1,6 +1,13 @@
 Knot DNS 2.1.0-dev (TBD)
 ========================
 
+Knot DNS 2.0.2 (2015-11-24)
+===========================
+
+Bugfixes:
+---------
+ - Out-of-bound read in packet parser for malformed NAPTR records (LibFuzzer)
+
 Knot DNS 2.0.1 (2015-09-02)
 ===========================
 
