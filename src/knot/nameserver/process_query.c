@@ -418,7 +418,7 @@ static int process_query_out(knot_pkt_t *pkt, knot_process_t *ctx)
 
 	/* Check parse state. */
 	knot_pkt_t *query = qdata->query;
-	int next_state = NS_PROC_DONE;
+	int next_state = NS_PROC_FULL;
 	if (query->parsed < query->size) {
 		dbg_ns("%s: incompletely parsed query, FORMERR\n", __func__);
 		knot_pkt_clear(pkt);
@@ -445,18 +445,20 @@ static int process_query_out(knot_pkt_t *pkt, knot_process_t *ctx)
 	}
 
 	/* Answer based on qclass. */
-	switch (knot_pkt_qclass(pkt)) {
-	case KNOT_CLASS_CH:
-		next_state = query_chaos(pkt, ctx);
-		break;
-	case KNOT_CLASS_ANY:
-	case KNOT_CLASS_IN:
-		next_state = query_internet(pkt, ctx);
-		break;
-	default:
-		qdata->rcode = KNOT_RCODE_REFUSED;
-		next_state = NS_PROC_FAIL;
-		break;
+	if (next_state != NS_PROC_DONE) {
+		switch (knot_pkt_qclass(pkt)) {
+		case KNOT_CLASS_CH:
+			next_state = query_chaos(pkt, ctx);
+			break;
+		case KNOT_CLASS_ANY:
+		case KNOT_CLASS_IN:
+			next_state = query_internet(pkt, ctx);
+			break;
+		default:
+			qdata->rcode = KNOT_RCODE_REFUSED;
+			next_state = NS_PROC_FAIL;
+			break;
+		}
 	}
 
 	/*

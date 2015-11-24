@@ -106,6 +106,14 @@ AS_IF([test "$enable_systemd" != "no"],[
 AS_IF([test "$enable_systemd" = "yes"],[
   AC_DEFINE([ENABLE_SYSTEMD], [1], [Use systemd integration.])])
 
+dnl Check for rosedb module
+AC_ARG_ENABLE([rosedb],
+    AS_HELP_STRING([--enable-rosedb], [Enable static RR query module.]),
+    [], [enable_rosedb=no])
+
+AS_IF([test "$enable_rosedb" = yes], [AC_DEFINE([HAVE_ROSEDB], [1], [Define to 1 to enable static RR query module.])])
+AM_CONDITIONAL([HAVE_ROSEDB], [test "$enable_rosedb" = yes])
+
 # Debug modules
 AC_ARG_ENABLE([debug],
     AS_HELP_STRING([--enable-debug=server,zones,xfr,packet,rr,ns,loader,dnssec],
@@ -420,6 +428,7 @@ AC_MSG_RESULT([
     Fast zone parser:      ${enable_fastparser}
     Utilities with IDN:    ${with_libidn}
     Systemd integration:   ${enable_systemd}
+    Rosedb module:         ${enable_rosedb}
     Dnstap support:        ${opt_dnstap}
     Code coverage:         ${enable_code_coverage}
     LMDB support:          ${enable_lmdb}

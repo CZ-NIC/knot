@@ -2,7 +2,8 @@ ACLOCAL_AMFLAGS = -I m4
 SUBDIRS = libtap src tests samples doc man patches
 
 AM_DISTCHECK_CONFIGURE_FLAGS = \
-	--disable-code-coverage
+	--disable-code-coverage \
+	--enable-rosedb
 
 CODE_COVERAGE_INFO = coverage.info
 CODE_COVERAGE_HTML = coverage.html

@@ -1,0 +1,48 @@
+#
+# This is a sample of a minimal configuration file for Knot DNS when used with RoseDB.
+
+system {
+  # Identity of the server (see RFC 4892).
+  identity on;
+
+  # Version of the server (see RFC 4892)
+  version on;
+
+  # User for running server
+  # May also specify user.group (e.g. knot.knot)
+  user knot.knot;
+}
+
+interfaces {
+  all_ipv4 {
+    address 0.0.0.0;
+    port 53;
+  }
+  all_ipv6 {
+    address [::];
+    port 53;
+  }
+}
+
+control {
+  # Default: knot.sock (relative to rundir)
+  listen-on "knot.sock";
+}
+
+zones {
+  query_module {
+    rosedb "/etc/knot/rosedb";
+  }
+}
+
+log {
+  syslog {
+    # Log info and more serious events to syslog
+    any info;
+  }
+
+  # Log warnings, errors and criticals to stderr
+  stderr {
+    any warning;
+  }
+}

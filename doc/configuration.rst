@@ -469,3 +469,86 @@ Limitations
   NSEC or NSEC3 is supported) nor DNSSEC signed records.  However,
   since the module is hooked in the query processing plan, it will be
   possible to do online signing in the future.
+
+``rosedb`` - Static resource records
+------------------------------------
+
+The module provides a mean to override responses for certain queries before the record is searched in
+the available zones. The modules comes with a tool ``rosedb_tool`` to manipulate with the database
+of static records. Neither the tool nor the module are enabled by default, recompile with the configure flag ``--enable-rosedb``
+to enable them.
+
+For example, suppose we have a database of following records::
+
+        myrecord.com.      3600 IN A 127.0.0.1
+        www.myrecord.com.  3600 IN A 127.0.0.2
+        ipv6.myrecord.com. 3600 IN AAAA ::1
+
+And we query the nameserver with following::
+
+        $ kdig IN A myrecord.com
+          ... returns NOERROR, 127.0.0.1
+        $ kdig IN A www.myrecord.com
+          ... returns NOERROR, 127.0.0.2
+        $ kdig IN A stuff.myrecord.com
+          ... returns NOERROR, 127.0.0.1
+        $ kdig IN AAAA myrecord.com
+          ... returns NOERROR, NODATA
+        $ kdig IN AAAA ipv6.myrecord.com
+          ... returns NOERROR, ::1
+
+*Note: An entry in the database matches anything at or below it, i.e. 'myrecord.com' matches 'a.a.myrecord.com' as well.
+This can be exploited to create a catch-all entries.*
+
+You can also add an authority information for the entries, provided you create a SOA + NS records for a name, like so::
+
+        myrecord.com.     3600 IN SOA master host 1 3600 60 3600 3600
+        myrecord.com.     3600 IN NS ns1.myrecord.com.
+        myrecord.com.     3600 IN NS ns2.myrecord.com.
+        ns1.myrecord.com. 3600 IN A 127.0.0.1
+        ns2.myrecord.com. 3600 IN A 127.0.0.2
+
+In this case, the responses will:
+
+1. Be authoritative (AA flag set)
+2. Provide an authority section (SOA + NS)
+3. NXDOMAIN if the name is found *(i.e. the 'IN AAAA myrecord.com' from the example)*, but not the RR type *(this is to allow synthesis of negative responses)*
+
+*Note: The SOA record applies only to the 'myrecord.com.', not to any other record (even below it). From this point of view,
+all records in the database are unrelated and not hierarchical. The reasoning is to provide a subtree isolation for each entry.*
+
+In addition the module is able to log matching queries via remote syslog if you specify a syslog address endpoint and an
+optional string code.
+
+Here is an example on how to use the module:
+
+* Create the entries in the database::
+
+        $ mkdir /tmp/static_rrdb
+        $ rosedb_tool /tmp/static_rrdb add myrecord.com. A 3600 "127.0.0.1" "-" "-" # No logging
+        $ rosedb_tool /tmp/static_rrdb add www.myrecord.com. A 3600 "127.0.0.1" "www_query" "10.0.0.1" # Syslog @ 10.0.0.1
+        $ rosedb_tool /tmp/static_rrdb add ipv6.myrecord.com. AAAA 3600 "::1" "ipv6_query" "10.0.0.1" # Syslog @ 10.0.0.1
+        $ rosedb_tool /tmp/static_rrdb list # Verify
+        www.myrecord.com.       A RDATA=10B     www_query       10.0.0.1
+        ipv6.myrecord.com.      AAAA RDATA=22B  ipv6_query      10.0.0.1
+        myrecord.com.           A RDATA=10B     -               -
+
+ *Note: the database may be modified while the server is running later on.*
+
+* Configure the query module and start the server::
+
+        $ vim knot.conf
+        knot.conf:
+        zones {
+                query_module {
+                        rosedb "/tmp/static_rrdb";
+                }
+        }
+
+        $ knotd -c knot.conf
+
+  *Note: The module accepts just one parameter - path to the directory where the database will be stored.*
+
+* Verify the running instance::
+
+        $ kdig @127.0.0.1#6667 A myrecord.com
