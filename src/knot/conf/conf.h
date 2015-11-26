@@ -266,6 +266,7 @@ typedef struct conf_t {
 	size_t ixfr_fslimit; /*!< File size limit for IXFR journal. */
 	int build_diffs;     /*!< Calculate differences from changes. */
 	char *storage;       /*!< Storage dir. */
+	char *timer_db;      /*!< Path to timer database. */
 	char *dnssec_keydir; /*!< DNSSEC: Path to key directory. */
 	int dnssec_enable;   /*!< DNSSEC: Online signing enabled. */
 	int sig_lifetime;    /*!< DNSSEC: Signature lifetime. */

@@ -631,7 +631,7 @@ static void reopen_timers_database(const conf_t *conf, server_t *server)
 	close_timers_db(server->timers_db);
 	server->timers_db = NULL;
 
-	int ret = open_timers_db(conf->storage, &server->timers_db);
+	int ret = open_timers_db(conf->timer_db, &server->timers_db);
 	if (ret != KNOT_EOK && ret != KNOT_ENOTSUP) {
 		log_warning("cannot open persistent timers DB (%s)",
 		            knot_strerror(ret));

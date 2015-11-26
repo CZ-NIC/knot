@@ -99,6 +99,7 @@ nsid            { lval.t = yytext; return NSID; }
 request-edns-option { lval.t = yytext; return REQ_EDNS_OPT; }
 max-udp-payload { lval.t = yytext; return MAX_UDP_PAYLOAD; }
 storage         { lval.t = yytext; return STORAGE; }
+timer-db        { lval.t = yytext; return TIMER_DB; }
 key             { lval.t = yytext; return KEY; }
 keys            { lval.t = yytext; return KEYS; }
 remotes         { lval.t = yytext; return REMOTES; }
