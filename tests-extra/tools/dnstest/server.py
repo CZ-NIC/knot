@@ -845,6 +845,7 @@ class Knot(Server):
         self.daemon_bin = params.knot_bin
         self.control_bin = params.knot_ctl
         self.inquirer = dnstest.inquirer.Inquirer()
+        self.timer_db = None
 
     @property
     def keydir(self):
@@ -951,6 +952,8 @@ class Knot(Server):
 
         s.begin("zones")
         s.item_str("storage", self.dir)
+        if self.timer_db:
+            s.item_str("timer-db", self.timer_db)
         if self.zonefile_sync:
             s.item("zonefile-sync", self.zonefile_sync)
         else:
