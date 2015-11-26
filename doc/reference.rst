@@ -769,6 +769,7 @@ The ``zones`` statement contains definition of zones served by Knot DNS.
 
     zones {
       [ zone_options ]
+      [ timer-db "string"; ]
       zone_id {
         file "string";
         [ xfr-in remote_id [, remote_id, ... ]; ]
@@ -882,8 +883,7 @@ Statement ``query_module`` takes a list of ``module_name
 ^^^^^^^^^^^
 
 Data directory for zones.  It is used to store zone files and journal
-files. If compiled with LMDB support, a database storing persistent zone
-event timers for slave zones will be created in the ``timers`` subdirectory.
+files.
 
 Value of ``storage`` set in ``zone`` section is relative to
 ``storage`` in ``zones`` section.
@@ -1052,6 +1052,16 @@ SOA, or NOTIFY). The first value is option code and the second value is option
 data in the form of a text or hexadecimal string.
 
 Default value: not set
+
+.. _timer-db:
+
+``timer-db``
+^^^^^^^^^^^^
+
+Specifies a path of the persisten timer database. The path can be specified
+as a relative path to the storage directory (:ref:`storage`).
+
+Default value: ``"timers"``
 
 .. _zones Example:
 

@@ -110,7 +110,7 @@ See :ref:`keys`::
 If Knot DNS is compiled with the LMDB library, the server will be able to
 preserve slave zone timers across full server restarts. The zone expire,
 refresh, and flush timers are stored in a file-backed database in the
-:ref:`storage` directory in the ``timers`` subdirectory.
+directory configured with the :ref:`timer-db` option.
 
 Master configuration
 ====================
