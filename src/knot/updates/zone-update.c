@@ -303,8 +303,7 @@ static bool apex_dnssec_changed(zone_update_t *update)
 }
 
 static int sign_update(zone_update_t *update,
-                       zone_contents_t *new_contents,
-                       changeset_t *sec_ch)
+                       zone_contents_t *new_contents)
 {
 	assert(update != NULL);
 
@@ -314,31 +313,40 @@ static int sign_update(zone_update_t *update,
 	 */
 	int ret = KNOT_EOK;
 	uint32_t refresh_at = 0;
+	changeset_t sec_ch;
+	ret = changeset_init(&sec_ch, update->zone->name);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
 	const bool full_sign = changeset_empty(&update->change) ||
 	                       apex_dnssec_changed(update);
 	if (full_sign) {
-		ret = knot_dnssec_zone_sign(new_contents, sec_ch,
+		ret = knot_dnssec_zone_sign(new_contents, &sec_ch,
 		                            ZONE_SIGN_KEEP_SOA_SERIAL,
 		                            &refresh_at);
 	} else {
 		// Sign the created changeset
 		ret = knot_dnssec_sign_changeset(new_contents, &update->change,
-		                                 sec_ch, &refresh_at);
+		                                 &sec_ch, &refresh_at);
 	}
 	if (ret != KNOT_EOK) {
+		changeset_clear(&sec_ch);
 		return ret;
 	}
 
 	// Apply DNSSEC changeset
-	ret = apply_changeset_directly(new_contents, sec_ch);
+	ret = apply_changeset_directly(new_contents, &sec_ch);
 	if (ret != KNOT_EOK) {
+		changeset_clear(&sec_ch);
 		return ret;
 	}
 
 	// Merge changesets
-	ret = changeset_merge(&update->change, sec_ch);
+	ret = changeset_merge(&update->change, &sec_ch);
 	if (ret != KNOT_EOK) {
-		update_cleanup(sec_ch);
+		update_rollback(&sec_ch);
+		changeset_clear(&sec_ch);
 		return ret;
 	}
 
@@ -348,11 +356,19 @@ static int sign_update(zone_update_t *update,
 		zone_events_schedule_at(update->zone, ZONE_EVENT_DNSSEC, refresh_at);
 	}
 
+	/*
+	 * We are not calling update_cleanup, as the rollback data are merged
+	 * into the main changeset and will get cleaned up with that.
+	 */
+	changeset_clear(&sec_ch);
+
 	return KNOT_EOK;
 }
 
 static int set_new_soa(zone_update_t *update)
 {
+	assert(update);
+
 	knot_rrset_t *soa_cpy = node_create_rrset(zone_update_get_apex(update), KNOT_RRTYPE_SOA);
 	if (soa_cpy == NULL) {
 		return KNOT_ENOMEM;
@@ -375,6 +391,8 @@ static int set_new_soa(zone_update_t *update)
 
 static int commit_incremental(zone_update_t *update)
 {
+	assert(update);
+
 	if (changeset_empty(&update->change)) {
 		changeset_clear(&update->change);
 		return KNOT_EOK;
@@ -403,14 +421,8 @@ static int commit_incremental(zone_update_t *update)
 	bool dnssec_enable = update->flags & UPDATE_SIGN && conf_bool(&val);
 
 	// Sign the update.
-	changeset_t sec_ch;
 	if (dnssec_enable) {
-		ret = changeset_init(&sec_ch, update->zone->name);
-		if (ret != KNOT_EOK) {
-			changeset_clear(&update->change);
-			return ret;
-		}
-		ret = sign_update(update, new_contents, &sec_ch);
+		ret = sign_update(update, new_contents);
 		if (ret != KNOT_EOK) {
 			update_rollback(&update->change);
 			update_free_zone(&new_contents);
@@ -424,9 +436,6 @@ static int commit_incremental(zone_update_t *update)
 	if (ret != KNOT_EOK) {
 		update_rollback(&update->change);
 		update_free_zone(&new_contents);
-		if (dnssec_enable) {
-			changeset_clear(&sec_ch);
-		}
 		return ret;
 	}
 
@@ -439,18 +448,12 @@ static int commit_incremental(zone_update_t *update)
 
 	rcu_read_lock();
 
-	// Clear DNSSEC changes
-	if (dnssec_enable) {
-		update_cleanup(&sec_ch);
-		changeset_clear(&sec_ch);
-	}
-
 	// Clear obsolete zone contents
 	update_free_zone(&old_contents);
 
 	update_cleanup(&update->change);
 	changeset_clear(&update->change);
-	
+
 	return KNOT_EOK;
 }
 
