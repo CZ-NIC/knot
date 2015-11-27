@@ -137,9 +137,9 @@ static int read_timers(knot_txn_t *txn, const zone_t *zone, time_t *timers)
 
 /* -------- API ------------------------------------------------------------- */
 
-int open_timers_db(const char *storage, knot_namedb_t **db_ptr)
+int open_timers_db(const char *path, knot_namedb_t **db_ptr)
 {
-	if (!storage || !db_ptr) {
+	if (!path || !db_ptr) {
 		return KNOT_EINVAL;
 	}
 
@@ -148,14 +148,7 @@ int open_timers_db(const char *storage, knot_namedb_t **db_ptr)
 		return KNOT_ENOTSUP;
 	}
 
-	char *path = sprintf_alloc("%s/timers", storage);
-	if (!path) {
-		return KNOT_ENOMEM;
-	}
-
 	int ret = api->init(path, db_ptr, NULL);
-
-	free(path);
 
 	return ret;
 }

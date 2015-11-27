@@ -124,20 +124,17 @@ int main(int argc, char *argv[])
 	close_timers_db(db);
 
 	// Cleanup temporary DB.
-	char *timers_dir = sprintf_alloc("%s/timers", dbid);
-	DIR *dir = opendir(timers_dir);
+	DIR *dir = opendir(dbid);
 	struct dirent *dp;
 	while ((dp = readdir(dir)) != NULL) {
 		if (dp->d_name[0] == '.') {
 			continue;
 		}
-		char *file = sprintf_alloc("%s/%s", timers_dir, dp->d_name);
+		char *file = sprintf_alloc("%s/%s", dbid, dp->d_name);
 		remove(file);
 		free(file);
 	}
 	closedir(dir);
-	remove(timers_dir);
-	free(timers_dir);
 	remove(dbid);
 
 	return EXIT_SUCCESS;

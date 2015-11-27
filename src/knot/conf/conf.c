@@ -265,6 +265,12 @@ static int conf_process(conf_t *conf)
 		conf->storage = strdup(STORAGE_DIR);
 	}
 	conf->storage = strcpath(conf->storage);
+
+	if (conf->timer_db == NULL) {
+		conf->timer_db = strdup("timers");
+	}
+	conf->timer_db = conf_abs_path(conf->storage, conf->timer_db);
+
 	if (conf->dnssec_keydir) {
 		conf->dnssec_keydir = conf_abs_path(conf->storage,
 		                                    conf->dnssec_keydir);
@@ -736,6 +742,10 @@ void conf_truncate(conf_t *conf, int unload_hooks)
 	if (conf->dnssec_keydir) {
 		free(conf->dnssec_keydir);
 		conf->dnssec_keydir = NULL;
+	}
+	if (conf->timer_db) {
+		free(conf->timer_db);
+		conf->timer_db = NULL;
 	}
 
 	/* Free remote control list. */
