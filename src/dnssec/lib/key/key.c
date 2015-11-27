@@ -436,27 +436,22 @@ int dnssec_key_set_rdata(dnssec_key_t *key, const dnssec_binary_t *rdata)
 		return DNSSEC_KEY_ALREADY_PRESENT;
 	}
 
-	dnssec_binary_t new_rdata = key->rdata;
-	int result = dnssec_binary_resize(&new_rdata, rdata->size);
-	if (result != DNSSEC_EOK) {
-		return result;
-	}
-
 	gnutls_pubkey_t new_pubkey = NULL;
-	result = dnskey_rdata_to_crypto_key(rdata, &new_pubkey);
+	int result = dnskey_rdata_to_crypto_key(rdata, &new_pubkey);
 	if (result != DNSSEC_EOK) {
 		return result;
 	}
 
-	memmove(new_rdata.data, rdata->data, rdata->size);
+	result = dnssec_binary_resize(&key->rdata, rdata->size);
+	if (result != DNSSEC_EOK) {
+		gnutls_pubkey_deinit(new_pubkey);
+		return result;
+	}
 
 	// commit result
-
-	key->rdata = new_rdata;
+	memmove(key->rdata.data, rdata->data, rdata->size);
 	key->public_key = new_pubkey;
-
 	key_update_identifiers(key);
-
 	return DNSSEC_EOK;
 }
 
