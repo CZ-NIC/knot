@@ -1058,7 +1058,7 @@ Default value: not set
 ``timer-db``
 ^^^^^^^^^^^^
 
-Specifies a path of the persisten timer database. The path can be specified
+Specifies a path of the persistent timer database. The path can be specified
 as a relative path to the storage directory (:ref:`storage`).
 
 Default value: ``"timers"``
