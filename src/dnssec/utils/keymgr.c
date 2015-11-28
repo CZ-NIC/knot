@@ -1376,7 +1376,9 @@ static int cmd_tsig(int argc, char *argv[])
 
 static void print_help(void)
 {
-	printf("TBD.\n");
+	if (execlp("man", "man", "keymgr", NULL) == -1) {
+		fprintf(stderr, "Failed to open manual page.\n");
+	}
 }
 
 static void print_version(void)
