@@ -121,7 +121,7 @@ If the zone file doesn't exist it will be bootstrapped over AXFR::
         address: 192.168.1.1@53
 
     acl:
-      - id: master_acl
+      - id: notify_from_master
         address: 192.168.1.1
         action: notify
 
@@ -130,7 +130,7 @@ If the zone file doesn't exist it will be bootstrapped over AXFR::
         storage: /var/lib/knot/zones/
         # file: example.com.zone   # Default value
         master: master
-        acl: master_acl
+        acl: notify_from_master
 
 Note that the :ref:`zone_master` option accepts a list of multiple remotes.
 The first remote in the list is used as the primary master, and the rest is used
@@ -138,9 +138,9 @@ for failover if the connection with the primary master fails.
 The list is rotated in this case, and a new primary is elected.
 The preference list is reset on the configuration reload.
 
-To use TSIG for transfer authentication, configure a TSIG key and assign the
-key to the remote. If the notifications are used, the same key should be
-configured in a proper ACL rule::
+To use TSIG for transfers and notification messages authentication, configure
+a TSIG key and assign the key both to the remote and the ACL rule. Notice that
+the :ref:`remote` and ref:`acl` definitions are independent::
 
     key:
       - id: slave1_key
@@ -153,7 +153,7 @@ configured in a proper ACL rule::
         key: slave1_key
 
     acl:
-      - id: master_acl
+      - id: notify_from_master
         address: 192.168.1.1
         key: slave1_key
         action: notify

@@ -361,7 +361,9 @@ Shared key secret.
 ACL section
 ===========
 
-Access control list rule definition.
+Access control list rule definitions. The ACLs are used to match incoming
+connections to allow or deny requested operation (zone transfer request, DDNS
+update, etc.).
 
 ::
 
@@ -470,7 +472,8 @@ control.
 Remote section
 ==============
 
-Definition of remote servers for zone transfers or notifications.
+Definitions of remote servers for outgoing connections (source of a zone
+transfer, target for a notification, etc.).
 
 ::
 
