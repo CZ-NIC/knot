@@ -158,19 +158,19 @@ Available *policy-parameter*\ s:
     **Note**, the value is temporarily overridden by the SOA TTL.
 
   **ksk-size** *bits*
-    Set size of the KSK in bits.
+    Size of the KSK.
 
   **zsk-size** *bits*
-    Set size of the ZSK in bits.
+    Size of the ZSK.
 
   **zsk-lifetime** *seconds*
-    Interval after which the ZSK rollover will be initiated.
+    Period between ZSK publication and the next rollover initiation.
 
   **rrsig-lifetime** *seconds*
-    Lifetime of issued RRSIGs.
+    Validity period of issued signatures.
 
   **rrsig-refresh** *seconds*
-    How long before RRSIG expiration it will be refreshed.
+    Period before signature expiration when the signature will be refreshed.
 
   **nsec3** *enable*
     Specifies if NSEC3 will be used instead of NSEC.

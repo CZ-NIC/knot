@@ -191,19 +191,19 @@ TTL value for DNSKEY records.
 \fBNote\fP, the value is temporarily overridden by the SOA TTL.
 .TP
 \fBksk\-size\fP \fIbits\fP
-Set size of the KSK in bits.
+Size of the KSK.
 .TP
 \fBzsk\-size\fP \fIbits\fP
-Set size of the ZSK in bits.
+Size of the ZSK.
 .TP
 \fBzsk\-lifetime\fP \fIseconds\fP
-Interval after which the ZSK rollover will be initiated.
+Period between ZSK publication and the next rollover initiation.
 .TP
 \fBrrsig\-lifetime\fP \fIseconds\fP
-Lifetime of issued RRSIGs.
+Validity period of issued signatures.
 .TP
 \fBrrsig\-refresh\fP \fIseconds\fP
-How long before RRSIG expiration it will be refreshed.
+Period before signature expiration when the signature will be refreshed.
 .TP
 \fBnsec3\fP \fIenable\fP
 Specifies if NSEC3 will be used instead of NSEC.

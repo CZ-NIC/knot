@@ -464,11 +464,11 @@ DNSKEY TTL
   has no default value.
 
 ZSK lifetime
-  Interval after which the ZSK rollover will be initiated. The default value
-  is 30 days.
+  Period between ZSK publication and the next rollover initiation. The default
+  value is 30 days.
 
 RRSIG lifetime
-  Lifetime of newly issued signatures. The default value is 14 days.
+  Validity period of newly issued signatures. The default value is 14 days.
 
 RRSIG refresh
   Specifies how long before a signature expiration the signature will be
