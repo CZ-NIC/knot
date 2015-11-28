@@ -133,10 +133,10 @@ If the zone file doesn't exist it will be bootstrapped over AXFR::
         acl: notify_from_master
 
 Note that the :ref:`zone_master` option accepts a list of multiple remotes.
-The first remote in the list is used as the primary master, and the rest is used
-for failover if the connection with the primary master fails.
-The list is rotated in this case, and a new primary is elected.
-The preference list is reset on the configuration reload.
+The remotes should be listed according to their preference. The first remote
+has the highest preference, the other remotes are used for failover. When the
+server receives a zone update notification from a listed remote, that remote
+will be the most preferred one for the subsequent transfer.
 
 To use TSIG for transfers and notification messages authentication, configure
 a TSIG key and assign the key both to the remote and the ACL rule. Notice that
