@@ -19,6 +19,9 @@
 /*
  * see sanitizer/asan_interface.h in compiler-rt (LLVM)
  */
+#ifndef __has_feature
+  #define __has_feature(feature) 0
+#endif
 #if __has_feature(address_sanitizer) || defined(__SANITIZE_ADDRESS__)
   void __asan_poison_memory_region(void const volatile *addr, size_t size);
   void __asan_unpoison_memory_region(void const volatile *addr, size_t size);
