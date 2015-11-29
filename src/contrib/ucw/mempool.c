@@ -259,19 +259,33 @@ mp_alloc_internal(struct mempool *pool, unsigned size)
 void *
 mp_alloc(struct mempool *pool, unsigned size)
 {
-  return mp_alloc_fast(pool, size);
+  unsigned avail = pool->state.free[0] & ~(CPU_STRUCT_ALIGN - 1);
+  if (size <= avail)
+    {
+      pool->state.free[0] = avail - size;
+      return (uint8_t*)pool->state.last[0] - avail;
+    }
+  else
+    return mp_alloc_internal(pool, size);
 }
 
 void *
 mp_alloc_noalign(struct mempool *pool, unsigned size)
 {
-  return mp_alloc_fast_noalign(pool, size);
+  if (size <= pool->state.free[0])
+    {
+      void *ptr = (uint8_t*)pool->state.last[0] - pool->state.free[0];
+      pool->state.free[0] -= size;
+      return ptr;
+    }
+  else
+    return mp_alloc_internal(pool, size);
 }
 
 void *
 mp_alloc_zero(struct mempool *pool, unsigned size)
 {
-  void *ptr = mp_alloc_fast(pool, size);
+  void *ptr = mp_alloc(pool, size);
   bzero(ptr, size);
   return ptr;
 }

@@ -134,36 +134,6 @@ void *mp_alloc_noalign(struct mempool *pool, unsigned size);
  **/
 void *mp_alloc_zero(struct mempool *pool, unsigned size);
 
-/**
- * Inlined version of @mp_alloc().
- **/
-static inline void *mp_alloc_fast(struct mempool *pool, unsigned size)
-{
-  unsigned avail = pool->state.free[0] & ~(CPU_STRUCT_ALIGN - 1);
-  if (size <= avail)
-    {
-      pool->state.free[0] = avail - size;
-      return (uint8_t*)pool->state.last[0] - avail;
-    }
-  else
-    return mp_alloc_internal(pool, size);
-}
-
-/**
- * Inlined version of @mp_alloc_noalign().
- **/
-static inline void *mp_alloc_fast_noalign(struct mempool *pool, unsigned size)
-{
-  if (size <= pool->state.free[0])
-    {
-      void *ptr = (uint8_t*)pool->state.last[0] - pool->state.free[0];
-      pool->state.free[0] -= size;
-      return ptr;
-    }
-  else
-    return mp_alloc_internal(pool, size);
-}
-
 /***
  * [[gbuf]]
  * Growing buffers
