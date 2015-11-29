@@ -14,6 +14,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <assert.h>
+#include "contrib/asan.h"
 #include "contrib/macros.h"
 #include "contrib/ucw/mempool.h"
 
@@ -85,6 +86,7 @@ mp_new_big_chunk(unsigned size)
   if (!data) {
     return NULL;
   }
+  ASAN_POISON_MEMORY_REGION(data, size);
   struct mempool_chunk *chunk = (struct mempool_chunk *)(data + size);
   chunk->size = size;
   return chunk;
@@ -93,7 +95,9 @@ mp_new_big_chunk(unsigned size)
 static void
 mp_free_big_chunk(struct mempool_chunk *chunk)
 {
-  free((void *)chunk - chunk->size);
+  void *ptr = (void*)chunk - chunk->size;
+  ASAN_UNPOISON_MEMORY_REGION(ptr, chunk->size);
+  free(ptr);
 }
 
 static void *
@@ -104,6 +108,7 @@ mp_new_chunk(unsigned size)
   if (!data) {
     return NULL;
   }
+  ASAN_POISON_MEMORY_REGION(data, size);
   struct mempool_chunk *chunk = (struct mempool_chunk *)(data + size);
   chunk->size = size;
   return chunk;
@@ -116,7 +121,9 @@ static void
 mp_free_chunk(struct mempool_chunk *chunk)
 {
 #ifdef CONFIG_UCW_POOL_IS_MMAP
-  page_free((void *)chunk - chunk->size, chunk->size + MP_CHUNK_TAIL);
+  uint8_t *data = (void *)chunk - chunk->size;
+  ASAN_UNPOISON_MEMORY_REGION(data, chunk->size);
+  page_free(data, chunk->size + MP_CHUNK_TAIL);
 #else
   mp_free_big_chunk(chunk);
 #endif
@@ -128,6 +135,7 @@ mp_new(unsigned chunk_size)
   chunk_size = mp_align_size(MAX(sizeof(struct mempool), chunk_size));
   struct mempool_chunk *chunk = mp_new_chunk(chunk_size);
   struct mempool *pool = (void *)chunk - chunk_size;
+  ASAN_UNPOISON_MEMORY_REGION(pool, sizeof(*pool));
   DBG("Creating mempool %p with %u bytes long chunks", pool, chunk_size);
   chunk->next = NULL;
   *pool = (struct mempool) {
@@ -269,6 +277,7 @@ mp_alloc(struct mempool *pool, unsigned size)
   else
     ptr = mp_alloc_internal(pool, size);
 
+  ASAN_UNPOISON_MEMORY_REGION(ptr, size);
   return ptr;
 }
 
@@ -284,6 +293,7 @@ mp_alloc_noalign(struct mempool *pool, unsigned size)
   else
     ptr = mp_alloc_internal(pool, size);
 
+  ASAN_UNPOISON_MEMORY_REGION(ptr, size);
   return ptr;
 }
 
