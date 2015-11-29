@@ -23,6 +23,7 @@ AM_LDFLAGS = $(CODE_COVERAGE_LDFLAGS)
 
 # static: libcontrib sources
 libcontrib_la_SOURCES = 			\
+	contrib/asan.h				\
 	contrib/base32hex.c			\
 	contrib/base32hex.h			\
 	contrib/base64.c			\
