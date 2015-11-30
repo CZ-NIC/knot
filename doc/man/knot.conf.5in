@@ -322,7 +322,9 @@ Shared key secret.
 \fIDefault:\fP not set
 .SH ACL SECTION
 .sp
-Access control list rule definition.
+Access control list rule definitions. The ACLs are used to match incoming
+connections to allow or deny requested operation (zone transfer request, DDNS
+update, etc.).
 .INDENT 0.0
 .INDENT 3.5
 .sp
@@ -412,7 +414,8 @@ control.
 \fIDefault:\fP not set
 .SH REMOTE SECTION
 .sp
-Definition of remote servers for zone transfers or notifications.
+Definitions of remote servers for outgoing connections (source of a zone
+transfer, target for a notification, etc.).
 .INDENT 0.0
 .INDENT 3.5
 .sp
