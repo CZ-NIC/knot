@@ -140,7 +140,8 @@ will be the most preferred one for the subsequent transfer.
 
 To use TSIG for transfers and notification messages authentication, configure
 a TSIG key and assign the key both to the remote and the ACL rule. Notice that
-the :ref:`remote` and ref:`acl` definitions are independent::
+the :ref:`remote <Remote section>` and :ref:`ACL <ACL section>` definitions are
+independent::
 
     key:
       - id: slave1_key
