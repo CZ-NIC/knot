@@ -24,8 +24,6 @@
 #include "libknot/internal/lists.h"
 #include "libknot/internal/mempool.h"
 
-#include <urcu.h>
-
 static int add_to_node(zone_node_t *node, const zone_node_t *add_node,
                        mm_ctx_t *mm)
 {
@@ -389,7 +387,7 @@ static int set_new_soa(zone_update_t *update)
 	return KNOT_EOK;
 }
 
-static int commit_incremental(zone_update_t *update)
+static int commit_incremental(zone_update_t *update, zone_contents_t **contents_out)
 {
 	assert(update);
 
@@ -439,28 +437,18 @@ static int commit_incremental(zone_update_t *update)
 		return ret;
 	}
 
-	/* Temporarily unlock locked configuration. */
-	rcu_read_unlock();
-
-	// Switch zone contents.
-	zone_contents_t *old_contents = zone_switch_contents(update->zone, new_contents);
-	synchronize_rcu();
-
-	rcu_read_lock();
-
-	// Clear obsolete zone contents
-	update_free_zone(&old_contents);
-
 	update_cleanup(&update->change);
 	changeset_clear(&update->change);
+
+	*contents_out = new_contents;
 
 	return KNOT_EOK;
 }
 
-int zone_update_commit(zone_update_t *update)
+int zone_update_commit(zone_update_t *update, zone_contents_t **contents_out)
 {
 	if (update->flags & UPDATE_INCREMENTAL) {
-		return commit_incremental(update);
+		return commit_incremental(update, contents_out);
 	}
 
 	return KNOT_ENOTSUP;

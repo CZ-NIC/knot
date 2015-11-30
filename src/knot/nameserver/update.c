@@ -154,7 +154,8 @@ static int process_normal(zone_t *zone, list_t *requests)
 	}
 
 	// Apply changes.
-	ret = zone_update_commit(&up);
+	zone_contents_t *new_contents = NULL;
+	ret = zone_update_commit(&up, &new_contents);
 	zone_update_clear(&up);
 	if (ret != KNOT_EOK) {
 		if (ret == KNOT_ETTL) {
@@ -163,6 +164,22 @@ static int process_normal(zone_t *zone, list_t *requests)
 			set_rcodes(requests, KNOT_RCODE_SERVFAIL);
 		}
 		return ret;
+	}
+
+	/* If there is anything to change */
+	if (new_contents) {
+		/* Temporarily unlock locked configuration. */
+		rcu_read_unlock();
+
+		/* Switch zone contents. */
+		zone_contents_t *old_contents = zone_switch_contents(zone, new_contents);
+
+		/* Sync RCU. */
+		synchronize_rcu();
+		rcu_read_lock();
+
+		/* Clear obsolete zone contents. */
+		update_free_zone(&old_contents);
 	}
 
 	/* Sync zonefile immediately if configured. */
