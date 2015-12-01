@@ -393,7 +393,8 @@ static int ratelimit_apply(int state, knot_pkt_t *pkt, knot_process_t *ctx)
 	}
 
 	/* Now it is slip or drop. */
-	if (rrl_slip_roll(conf()->rrl_slip)) {
+	int slip = conf()->rrl_slip;
+	if (slip > 0 && rrl_slip_roll(slip)) {
 		/* Answer slips. */
 		if (process_query_err(pkt, ctx) != NS_PROC_DONE) {
 			return NS_PROC_FAIL;

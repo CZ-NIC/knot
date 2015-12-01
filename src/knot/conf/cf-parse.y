@@ -684,7 +684,7 @@ system:
 	SET_SIZE(new_config->rrl_size, $3.i, "rate-limit-size");
  }
  | system RATE_LIMIT_SLIP NUM ';' {
-	SET_NUM(new_config->rrl_slip, $3.i, 1, RRL_SLIP_MAX, "rate-limit-slip");
+	SET_NUM(new_config->rrl_slip, $3.i, 0, RRL_SLIP_MAX, "rate-limit-slip");
  }
  | system TRANSFERS NUM ';' {
 	SET_INT(new_config->xfers, $3.i, "transfers");
