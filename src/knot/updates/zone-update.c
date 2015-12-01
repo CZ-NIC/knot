@@ -253,6 +253,7 @@ const knot_rdataset_t *zone_update_to(zone_update_t *update)
 void zone_update_clear(zone_update_t *update)
 {
 	if (update) {
+		update_cleanup(&update->change);
 		changeset_clear(&update->change);
 		mp_delete(update->mm.ctx);
 		memset(update, 0, sizeof(*update));
@@ -436,9 +437,6 @@ static int commit_incremental(zone_update_t *update, zone_contents_t **contents_
 		update_free_zone(&new_contents);
 		return ret;
 	}
-
-	update_cleanup(&update->change);
-	changeset_clear(&update->change);
 
 	*contents_out = new_contents;
 

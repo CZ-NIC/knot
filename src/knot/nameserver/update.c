@@ -157,7 +157,6 @@ static int process_normal(zone_t *zone, list_t *requests)
 	// Apply changes.
 	zone_contents_t *new_contents = NULL;
 	ret = zone_update_commit(&up, &new_contents);
-	zone_update_clear(&up);
 	if (ret != KNOT_EOK) {
 		if (ret == KNOT_ETTL) {
 			set_rcodes(requests, KNOT_RCODE_REFUSED);
@@ -182,6 +181,8 @@ static int process_normal(zone_t *zone, list_t *requests)
 		/* Clear obsolete zone contents. */
 		update_free_zone(&old_contents);
 	}
+
+	zone_update_clear(&up);
 
 	/* Sync zonefile immediately if configured. */
 	conf_val_t val = conf_zone_get(conf(), C_ZONEFILE_SYNC, zone->name);
