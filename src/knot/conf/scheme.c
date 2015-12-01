@@ -91,7 +91,7 @@ static const yp_item_t desc_server[] = {
 	                                               KNOT_EDNS_MAX_UDP_PAYLOAD,
 	                                               4096, YP_SSIZE } },
 	{ C_RATE_LIMIT,          YP_TINT,  YP_VINT = { 0, INT32_MAX, 0 } },
-	{ C_RATE_LIMIT_SLIP,     YP_TINT,  YP_VINT = { 1, RRL_SLIP_MAX, 1 } },
+	{ C_RATE_LIMIT_SLIP,     YP_TINT,  YP_VINT = { 0, RRL_SLIP_MAX, 1 } },
 	{ C_RATE_LIMIT_TBL_SIZE, YP_TINT,  YP_VINT = { 1, INT32_MAX, 393241 } },
 	{ C_LISTEN,              YP_TADDR, YP_VADDR = { 53 }, YP_FMULTI },
 	{ C_COMMENT,             YP_TSTR,  YP_VNONE },
