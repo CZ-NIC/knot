@@ -209,36 +209,30 @@ from changes made to the master zone file.  See :ref:`Controlling
 running daemon` for more information. For more about ``zones``
 statement see :ref:`zones`.
 
-Using Response Rate Limiting
-============================
+Response Rate Limiting
+======================
 
-Response rate limiting (RRL) is a method to combat recent DNS
-reflection amplification attacks.  These attacked rely on the fact
-that source address of a UDP query could be forged, and without a
-worldwide deployment of BCP38, such a forgery could not be detected.
-Attacker could then exploit DNS server responding to every query,
-potentially flooding the victim with a large unsolicited DNS
-responses.
+Response rate limiting (RRL) is a method to combat DNS reflection amplification
+attacks. These attacks rely on the fact that source address of a UDP query
+can be forged, and without a worldwide deployment of `BCP38
+<https://tools.ietf.org/html/bcp38>`_, such a forgery cannot be prevented.
+An attacker can use a DNS server (or multiple servers) as an amplification
+source and can flood a victim with a large number of unsolicited DNS responses.
 
-As of Knot DNS version 1.2.0, RRL is compiled in, but disabled by
-default.  You can enable it with the :ref:`rate-limit` option in the
-:ref:`system` section.  Setting to a value greater than ``0`` means
-that every flow is allowed N responses per second, (i.e. ``rate-limit
-50;`` means ``50`` responses per second).  It is also possible to
-configure SLIP interval, which causes every Nth ``blocked`` response to be
-slipped as a truncated response. Note that some error responses cannot
-be truncated.  For more information, refer to the :ref:`rate-limit-slip`.
-It is advisable to not set slip interval to a value larger than 2,
-as too large slip value means more denial of service for legitimate
-requestors, and introduces excessive timeouts during resolution.
-On the other hand, slipping truncated answer gives the legitimate
-requestors a chance to reconnect over TCP.
+The RRL lowers the amplification factor of these attacks by sending some of
+the responses as truncated or by dropping them altogether.
 
-Example configuration::
+You can enable RRL by setting the :ref:`rate-limit` option in the
+:ref:`system <system>` section. The option controls how many responses
+per second are permitted for each flow. Responses exceeding this rate are
+limited. The option :ref:`rate-limit-slip` then configures how many
+limited responses are sent as truncated (slip) instead of being dropped.
+
+::
 
     system {
-    	rate-limit 200;    # Each flow is allowed to 200 resp. per second
-    	rate-limit-slip 1; # Every response is slipped (default)
+    	rate-limit 200;    # Allow 200 resp/s for each flow
+    	rate-limit-slip 2; # Every other response slips
     }
 
 Automatic DNSSEC signing

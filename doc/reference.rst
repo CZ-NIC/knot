@@ -288,16 +288,16 @@ Default value: ``10``
 rate-limit
 ^^^^^^^^^^
 
-Rate limiting is based on a token bucket scheme, rate basically
-represents number of tokens available each second.  Each response is
-processed and classified (based on a several discriminators, f.e.
-source netblock, qtype, name, rcode, etc.).  Classified responses are
+Rate limiting is based on the token bucket scheme. A rate basically
+represents a number of tokens available each second. Each response is
+processed and classified (based on several discriminators, e.g.
+source netblock, query type, zone name, rcode, etc.). Classified responses are
 then hashed and assigned to a bucket containing number of available
-tokens, timestamp and metadata.  When available tokens are exhausted,
-response is rejected or enters SLIP (server responds with a truncated
-response).  Number of available tokens is recalculated each second.
+tokens, timestamp and metadata. When available tokens are exhausted,
+response is dropped or sent as truncated (see :ref:`rate-limit-slip`).
+Number of available tokens is recalculated each second.
 
-Default value: ``0 (disabled)``
+Default value: ``0`` (disabled)
 
 ::
 
@@ -310,13 +310,12 @@ Default value: ``0 (disabled)``
 rate-limit-size
 ^^^^^^^^^^^^^^^
 
-Option controls the size of a hashtable of buckets.  The larger the
-hashtable, the lesser probability of a hash collision, but at the
-expense of additional memory costs.  Each bucket is estimated roughly
-to 32B.  Size should be selected as a reasonably large prime due to
-the better hash function distribution properties.  Hash table is
-internally chained and works well up to a fill rate of 90%, general
-rule of thumb is to select a prime near ``1.2 * maximum_qps``.
+Size of the hash table in a number of buckets. The larger the hash table, the lesser
+the probability of a hash collision, but at the expense of additional memory costs.
+Each bucket is estimated roughly to 32 bytes. The size should be selected as
+a reasonably large prime due to better hash function distribution properties.
+Hash table is internally chained and works well up to a fill rate of 90 %, general
+rule of thumb is to select a prime near 1.2 * maximum_qps.
 
 Default value: ``393241``
 
@@ -330,13 +329,28 @@ Default value: ``393241``
 
 rate-limit-slip
 ^^^^^^^^^^^^^^^
-
 As attacks using DNS/UDP are usually based on a forged source address,
-an attacker could deny services to the victim netblock if all
-responses would be completely blocked.  The idea behind SLIP mechanism
-is to send each Nth response as truncated, thus allowing client to
-reconnect via TCP for at least some degree of service.  It is worth
-noting, that some responses can't be truncated (f.e.  SERVFAIL).
+an attacker could deny services to the victim's netblock if all
+responses would be completely blocked. The idea behind SLIP mechanism
+is to send each N\ :sup:`th` response as truncated, thus allowing client to
+reconnect via TCP for at least some degree of service. It is worth
+noting, that some responses can't be truncated (e.g. SERVFAIL).
+
+- Setting the value to **1** will cause that all rate-limited responses will
+  be sent as truncated. The amplification factor of the attack will be reduced,
+  but the outbound data bandwidth won't be lower than the incoming bandwidth.
+  Also the outbound packet rate will be the same as without RRL.
+
+- Setting the value to **2** will cause that half of the rate-limited responses
+  will be dropped, the other half will be sent as truncated. With this
+  configuration, both outbound bandwidth and packet rate will be lower than the
+  inbound. On the other hand, the dropped responses enlarge the time window
+  for possible cache poisoning attack on the resolver.
+
+- Setting the value to anything larger than 2 is not advisable. Too large slip
+  value means more denial of service for legitimate requestors and introduces
+  excessive timeouts during resolution. On the contrary, a truncated answer
+  gives the legitimate requestor a chance to reconnect over TCP.
 
 Default value: ``1``
 
