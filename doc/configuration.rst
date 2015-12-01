@@ -231,24 +231,25 @@ processed::
 Response rate limiting
 ======================
 
-Response rate limiting (RRL) is a method to combat recent DNS
-reflection amplification attacks. These attacks rely on the fact
-that source address of a UDP query could be forged, and without a
-worldwide deployment of BCP38, such a forgery could not be detected.
-Attacker could then exploit DNS server responding to every query,
-potentially flooding the victim with a large unsolicited DNS
-responses.
+Response rate limiting (RRL) is a method to combat DNS reflection amplification
+attacks. These attacks rely on the fact that source address of a UDP query
+can be forged, and without a worldwide deployment of `BCP38
+<https://tools.ietf.org/html/bcp38>`_, such a forgery cannot be prevented.
+An attacker can use a DNS server (or multiple servers) as an amplification
+source and can flood a victim with a large number of unsolicited DNS responses.
 
-You can enable RRL with the :ref:`server_rate-limit` option in the
-:ref:`server section<Server section>`. Setting to a value greater than ``0``
-means that every flow is allowed N responses per second, (i.e. ``rate-limit
-50;`` means ``50`` responses per second). It is also possible to
-configure :ref:`server_rate-limit-slip` interval, which causes every N\ :sup:`th`
-blocked response to be slipped as a truncated response::
+The RRL lowers the amplification factor of these attacks by sending some of
+the responses as truncated or by dropping them altogether.
+
+You can enable RRL by setting the :ref:`server_rate-limit` option in the
+:ref:`server section<Server section>`. The option controls how many responses
+per second are permitted for each flow. Responses exceeding this rate are
+limited. The option :ref:`server_rate-limit-slip` then configures how many
+limited responses are sent as truncated (slip) instead of being dropped.::
 
     server:
-        rate-limit: 200     # Each flow is allowed to 200 resp. per second
-        rate-limit-slip: 1  # Every response is slipped
+        rate-limit: 200     # Allow 200 resp/s for each flow
+        rate-limit-slip: 2  # Every other response slips
 
 .. _dnssec:
 
