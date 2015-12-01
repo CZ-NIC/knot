@@ -1,5 +1,5 @@
 /*
- *	Universal Heap Macros
+ *	Binary heap
  *
  *	(c) 2012 Ondrej Filip <feela@network.cz>
  *
@@ -8,7 +8,6 @@
  */
 
 /***
- * [[intro]]
  * Introduction
  * ------------
  *
@@ -31,17 +30,11 @@
  * - `heap[i] >= heap[i / 2]` for each `i` in `[2, num]`
  *
  * The first element `heap[1]` is always lower or equal to all other elements.
- *
- * [[macros]]
- * Macros
- * ------
  ***/
 
-
-#include "libknot/internal/macros.h"
-#include "libknot/internal/heap.h"
 #include <string.h>
 #include <stdlib.h>
+#include "contrib/ucw/heap.h"
 
 static inline void heap_swap(heap_val_t *e1, heap_val_t *e2)
 {

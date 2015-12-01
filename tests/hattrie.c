@@ -19,7 +19,14 @@
 #include <tap/basic.h>
 
 #include "libknot/internal/trie/hat-trie.h"
+#include "libknot/internal/macros.h"
 #include "libknot/internal/mem.h"
+
+/* UCW array sorting defines. */
+#define ASORT_PREFIX(X) str_key_##X
+#define ASORT_KEY_TYPE char*
+#define ASORT_LT(x, y) (strcmp((x), (y)) < 0)
+#include "contrib/ucw/array-sort.h"
 
 /* Constants. */
 #define KEY_MAXLEN 64
@@ -92,12 +99,6 @@ static bool str_key_find_leq(hattrie_t *trie, char **keys, size_t i, size_t size
 	return true;
 
 }
-
-/* UCW array sorting defines. */
-#define ASORT_PREFIX(X) str_key_##X
-#define ASORT_KEY_TYPE char*
-#define ASORT_LT(x, y) (strcmp((x), (y)) < 0)
-#include "libknot/internal/array-sort.h"
 
 int main(int argc, char *argv[])
 {

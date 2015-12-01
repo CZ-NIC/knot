@@ -19,10 +19,10 @@
 #include <stdlib.h>
 
 #include "libknot/internal/mempattern.h"
-#include "libknot/internal/mempool.h"
 #include "libknot/libknot.h"
 #include "knot/nameserver/query_module.h"
 #include "libknot/packet/pkt.h"
+#include "contrib/ucw/mempool.h"
 
 /* Universal processing stage. */
 int state_visit(int state, knot_pkt_t *pkt, struct query_data *qdata, void *ctx)

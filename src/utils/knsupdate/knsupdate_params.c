@@ -25,8 +25,8 @@
 #include "utils/common/netio.h"
 #include "libknot/libknot.h"
 #include "libknot/internal/mempattern.h"
-#include "libknot/internal/mempool.h"
 #include "libknot/tsig.h"
+#include "contrib/ucw/mempool.h"
 
 #define DEFAULT_RETRIES_NSUPDATE	3
 #define DEFAULT_TIMEOUT_NSUPDATE	12

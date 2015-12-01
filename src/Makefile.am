@@ -4,6 +4,7 @@ SUBDIRS = zscanner dnssec dnstap .
 lib_LTLIBRARIES =				\
 	libknot.la
 noinst_LTLIBRARIES = 				\
+	libcontrib.la				\
 	libknot-internal.la			\
 	libknot-yparser.la
 
@@ -20,6 +21,13 @@ AM_LDFLAGS = $(CODE_COVERAGE_LDFLAGS)
 ######################
 # Knot DNS Libraries #
 ######################
+
+libcontrib_ladir = $(includedir)
+nobase_libcontrib_la_HEADERS =			\
+	contrib/ucw/array-sort.h		\
+	contrib/ucw/binsearch.h			\
+	contrib/ucw/heap.h			\
+	contrib/ucw/mempool.h
 
 # dynamic: libknot headers
 libknot_ladir = $(includedir)
@@ -59,21 +67,17 @@ nobase_libknot_la_HEADERS =			\
 
 libknot_internal_ladir = $(includedir)
 nobase_libknot_internal_la_HEADERS = 		\
-	libknot/internal/array-sort.h		\
 	libknot/internal/base32hex.h		\
 	libknot/internal/base64.h		\
-	libknot/internal/binsearch.h		\
 	libknot/internal/consts.h		\
 	libknot/internal/endian.h		\
 	libknot/internal/errcode.h		\
 	libknot/internal/getline.h		\
-	libknot/internal/heap.h			\
 	libknot/internal/hhash.h		\
 	libknot/internal/lists.h		\
 	libknot/internal/macros.h		\
 	libknot/internal/mem.h			\
 	libknot/internal/mempattern.h		\
-	libknot/internal/mempool.h		\
 	libknot/internal/namedb/namedb.h	\
 	libknot/internal/namedb/namedb_lmdb.h	\
 	libknot/internal/namedb/namedb_trie.h	\
@@ -96,6 +100,11 @@ nobase_libknot_yparser_la_HEADERS = 		\
 	libknot/yparser/yptrafo.h
 
 # dynamic: libknot sources
+libcontrib_la_SOURCES = 			\
+	contrib/ucw/heap.c			\
+	contrib/ucw/mempool.c			\
+	$(nobase_libcontrib_la_HEADERS)
+
 libknot_la_SOURCES =				\
 	libknot/binary.c			\
 	libknot/consts.c			\
@@ -135,12 +144,10 @@ libknot_internal_la_SOURCES = 			\
 	libknot/internal/base64.c		\
 	libknot/internal/errcode.c		\
 	libknot/internal/getline.c		\
-	libknot/internal/heap.c			\
 	libknot/internal/hhash.c		\
 	libknot/internal/lists.c		\
 	libknot/internal/mem.c			\
 	libknot/internal/mempattern.c		\
-	libknot/internal/mempool.c		\
 	libknot/internal/namedb/namedb_lmdb.c	\
 	libknot/internal/namedb/namedb_trie.c	\
 	libknot/internal/net.c			\
@@ -154,13 +161,16 @@ libknot_internal_la_SOURCES = 			\
 	libknot/internal/utils.c		\
 	$(nobase_libknot_internal_la_HEADERS)
 
+libcontrib_la_CPPFLAGS = $(AM_CPPFLAGS)
+libcontrib_la_CFLAGS = $(AM_CFLAGS)
+
 libknot_internal_la_CPPFLAGS = $(AM_CPPFLAGS) $(lmdb_CFLAGS)
 libknot_internal_la_CFLAGS = $(AM_CFLAGS)
 
 libknot_la_CPPFLAGS = $(AM_CPPFLAGS) $(CFLAG_VISIBILITY) $(lmdb_CFLAGS)
 libknot_la_CFLAGS = $(AM_CFLAGS)
 libknot_la_LDFLAGS = $(AM_LDFLAGS) $(libknot_VERSION_INFO) $(lmdb_LIBS)
-libknot_la_LIBADD  = dnssec/libdnssec.la libknot-internal.la
+libknot_la_LIBADD = dnssec/libdnssec.la libcontrib.la libknot-internal.la
 
 # pkg-config
 pkgconfig_DATA = libknot.pc
@@ -352,7 +362,7 @@ libknotd_la_LIBADD = libknot.la libknot-yparser.la zscanner/libzscanner.la $(lib
 knotd_CPPFLAGS = $(AM_CPPFLAGS) $(liburcu_CFLAGS)
 knotd_LDADD = libknotd.la $(liburcu_LIBS)
 knotc_LDADD = libknotd.la
-knot1to2_LDADD = libknot-internal.la
+knot1to2_LDADD = libknot-internal.la libcontrib.la
 
 ####################################
 # Optional Knot DNS Daemon modules #
@@ -434,7 +444,7 @@ libknotus_la_SOURCES =				\
 
 libknotus_la_CPPFLAGS = $(AM_CPPFLAGS) $(libidn_CFLAGS)
 libknotus_la_LDFLAGS = $(AM_LDFLAGS) $(libidn_LIBS)
-libknotus_la_LIBADD = libknot.la
+libknotus_la_LIBADD = libcontrib.la libknot.la
 
 # bin programs
 kdig_LDADD       = $(libidn_LIBS) libknotus.la

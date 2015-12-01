@@ -18,11 +18,11 @@
 #include <string.h>
 #include <stdlib.h>
 
-#include "libknot/internal/mempool.h"
 #include "libknot/descriptor.h"
 #include "libknot/packet/wire.h"
 #include "knot/nameserver/process_query.h"
 #include "fake_server.h"
+#include "contrib/ucw/mempool.h"
 
 /* Basic response check (4 TAP tests). */
 static void answer_sanity_check(const uint8_t *query,

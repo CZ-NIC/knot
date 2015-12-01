@@ -10,12 +10,12 @@
 
 #undef LOCAL_DEBUG
 
-#include "libknot/internal/mempool.h"
-
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <assert.h>
+#include "libknot/internal/macros.h"
+#include "contrib/ucw/mempool.h"
 
 /** \todo This shouldn't be precalculated, but computed on load. */
 #define CPU_PAGE_SIZE 4096
@@ -24,10 +24,6 @@
 #define ALIGN_TO(s, a) (((s)+a-1)&~(a-1))
 #define MP_CHUNK_TAIL ALIGN_TO(sizeof(struct mempool_chunk), CPU_STRUCT_ALIGN)
 #define MP_SIZE_MAX (~0U - MP_CHUNK_TAIL - CPU_PAGE_SIZE)
-#ifndef MAX
-#define MAX(a, b) \
-	({ __typeof__ (a) _a = (a); __typeof__ (b) _b = (b); _a > _b ? _a : _b; })
-#endif
 #define DBG(s, ...)
 
 /** \note Imported MMAP backend from bigalloc.c */

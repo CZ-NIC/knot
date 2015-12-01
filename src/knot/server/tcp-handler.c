@@ -38,11 +38,11 @@
 #include "knot/common/log.h"
 #include "knot/common/time.h"
 #include "knot/nameserver/process_query.h"
-#include "libknot/internal/mempool.h"
 #include "libknot/internal/macros.h"
 #include "libknot/internal/net.h"
 #include "libknot/internal/sockaddr.h"
 #include "libknot/processing/overlay.h"
+#include "contrib/ucw/mempool.h"
 
 /*! \brief TCP context data. */
 typedef struct tcp_context {

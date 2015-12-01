@@ -18,11 +18,11 @@
 #include <string.h>
 #include <stdlib.h>
 
-#include "libknot/internal/mempool.h"
 #include "libknot/descriptor.h"
 #include "libknot/packet/wire.h"
 #include "knot/nameserver/process_answer.h"
 #include "fake_server.h"
+#include "contrib/ucw/mempool.h"
 
 /* @note Test helpers. */
 #define TEST_RESET() \

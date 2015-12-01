@@ -30,7 +30,7 @@
 #include "libknot/internal/sockaddr.h"
 #include "libknot/yparser/ypformat.h"
 #include "libknot/yparser/yptrafo.h"
-#include "libknot/internal/mempool.h"
+#include "contrib/ucw/mempool.h"
 
 // The active configuration.
 conf_t *s_conf;

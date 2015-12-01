@@ -4,7 +4,6 @@
 
 #include "libknot/internal/macros.h"
 #include "libknot/internal/hhash.h"
-#include "libknot/internal/binsearch.h"
 #include "libknot/internal/trie/murmurhash3.h"
 #include "libknot/internal/errcode.h"
 
@@ -14,7 +13,8 @@ static int universal_cmp(uint32_t k1, uint32_t k2, hhash_t *tbl);
 #define ASORT_KEY_TYPE uint32_t
 #define ASORT_LT(x, y) (universal_cmp((x), (y), tbl) < 0)
 #define ASORT_EXTRA_ARGS , hhash_t *tbl
-#include "libknot/internal/array-sort.h"
+#include "contrib/ucw/array-sort.h"
+#include "contrib/ucw/binsearch.h"
 
 /* Hopscotch internal defines. */
 #define HOP_NEXT(x) __builtin_ctz((x))

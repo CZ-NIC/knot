@@ -21,10 +21,10 @@
 #include <fcntl.h>
 
 #include "knot/conf/conf.h"
-#include "libknot/internal/mempool.h"
 #include "libknot/internal/net.h"
 #include "libknot/processing/layer.h"
 #include "libknot/processing/requestor.h"
+#include "contrib/ucw/mempool.h"
 
 /* @note Purpose of this test is not to verify process_answer functionality,
  *       but simply if the requesting/receiving works, so mirror is okay. */

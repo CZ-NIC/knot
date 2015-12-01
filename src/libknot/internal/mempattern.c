@@ -18,7 +18,7 @@
 
 #include "libknot/internal/macros.h"
 #include "libknot/internal/mempattern.h"
-#include "libknot/internal/mempool.h"
+#include "contrib/ucw/mempool.h"
 
 static void mm_nofree(void *p)
 {

@@ -13,17 +13,6 @@
  *  You should have received a copy of the GNU General Public License
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-/*!
- * \file heap.h
- *
- * \author Ondrej Filip <ondrej.filip@nic.cz>
- *
- * \brief Universal heap support
- *
- *
- * \addtogroup common_lib
- * @{
- */
 
 #pragma once
 
@@ -36,12 +25,12 @@ struct heap {
    heap_val_t *data;
 };		/* Array follows */
 
-#define INITIAL_HEAP_SIZE 512 /* initial heap size */
-#define HEAP_INCREASE_STEP 2  /* multiplier for each inflation, keep conservative */
-#define HEAP_DECREASE_THRESHOLD 2 /* threshold for deflation, keep conservative */
-#define HELEMENT(h,num) ((h)->data + (num))
-#define HHEAD(h) HELEMENT((h),1)
-#define EMPTY_HEAP(h) ((h)->num == 0)			/* h->num == 0 */
+#define INITIAL_HEAP_SIZE	512 /* initial heap size */
+#define HEAP_INCREASE_STEP	2 /* multiplier for each inflation, keep conservative */
+#define HEAP_DECREASE_THRESHOLD	2 /* threshold for deflation, keep conservative */
+#define HELEMENT(h,num) 	((h)->data + (num))
+#define HHEAD(h) 		HELEMENT((h), 1)
+#define EMPTY_HEAP(h) 		((h)->num == 0) /* h->num == 0 */
 
 int heap_init(struct heap *, int (*cmp)(), int);
 void heap_delmin(struct heap *);
@@ -49,6 +38,3 @@ int heap_insert(struct heap *, void *);
 int heap_find(struct heap *, void *);
 void heap_delete(struct heap *, int);
 void heap_replace(struct heap *h, int pos, void *e);
-
-
-/*! @} */

@@ -7,6 +7,10 @@
  *	of the GNU Lesser General Public License.
  */
 
+#pragma once
+
+#include "libknot/internal/macros.h"
+
 /*
  *  This is not a normal header file, it's a generator of sorting
  *  routines.  Each time you include it with parameters set in the
@@ -27,24 +31,18 @@
  *  ASORT_KEY_TYPE  [*]	data type of a single array entry key
  *  ASORT_ELT(i)	returns the key of i-th element; if this macro is not
  *			defined, the function gets a pointer to an array to be sorted
- *  ASORT_LT(x,y)	x < y for ASORT_TYPE (default: "x<y")
+ *  ASORT_LT(x,y)	x < y for ASORT_KEY_TYPE (default: "x<y")
  *  ASORT_SWAP(i,j)	swap i-th and j-th element (default: assume _ELT
  *			is an l-value and swap just the keys)
  *  ASORT_THRESHOLD	threshold for switching between quicksort and insertsort
  *  ASORT_EXTRA_ARGS	extra arguments for the sort function (they are always
  *			visible in all the macros supplied above), starts with comma
  *
- *  After including this file, a function ASORT_PREFIX(sort)(uns array_size)
- *  or ASORT_PREFIX(sort)(ASORT_KEY_TYPE *array, uns array_size) [if ASORT_ELT
+ *  After including this file, a function ASORT_PREFIX(sort)(unsigned array_size)
+ *  or ASORT_PREFIX(sort)(ASORT_KEY_TYPE *array, unsigned array_size) [if ASORT_ELT
  *  is not defined] is declared and all parameter macros are automatically
  *  undef'd.
  */
-
-#pragma once
-
-#include "libknot/internal/macros.h"
-
-typedef unsigned uns;
 
 #ifndef ASORT_LT
 #define ASORT_LT(x,y) ((x) < (y))
@@ -75,11 +73,11 @@ typedef unsigned uns;
  * sorted. If the macro is provided, this parameter is omitted. In that case,
  * you can sort global variables or pass your structure by @ASORT_EXTRA_ARGS.
  **/
-static void ASORT_PREFIX(sort)(ASORT_ARRAY_ARG uns array_size ASORT_EXTRA_ARGS)
+static void ASORT_PREFIX(sort)(ASORT_ARRAY_ARG unsigned array_size ASORT_EXTRA_ARGS)
 {
-  struct stk { int l, r; } stack[8*sizeof(uns)];
+  struct stk { int l, r; } stack[8*sizeof(unsigned)];
   int l, r, left, right, m;
-  uns sp = 0;
+  unsigned sp = 0;
   ASORT_KEY_TYPE pivot;
 
   if (array_size <= 1)

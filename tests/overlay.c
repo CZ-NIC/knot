@@ -18,8 +18,8 @@
 #include <string.h>
 #include <stdlib.h>
 
-#include "libknot/internal/mempool.h"
 #include "libknot/processing/overlay.h"
+#include "contrib/ucw/mempool.h"
 
 /* @note Purpose of this test is to verify, that FSM chaining works. */
 

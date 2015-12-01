@@ -18,10 +18,10 @@
 
 #include "dnssec/random.h"
 #include "libknot/libknot.h"
-#include "libknot/internal/mempool.h"
 #include "libknot/internal/macros.h"
 #include "libknot/processing/requestor.h"
 #include "libknot/yparser/yptrafo.h"
+#include "contrib/ucw/mempool.h"
 
 #include "knot/common/log.h"
 #include "knot/common/trim.h"
