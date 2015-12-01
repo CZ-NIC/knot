@@ -245,7 +245,9 @@ You can enable RRL by setting the :ref:`server_rate-limit` option in the
 :ref:`server section<Server section>`. The option controls how many responses
 per second are permitted for each flow. Responses exceeding this rate are
 limited. The option :ref:`server_rate-limit-slip` then configures how many
-limited responses are sent as truncated (slip) instead of being dropped.::
+limited responses are sent as truncated (slip) instead of being dropped.
+
+::
 
     server:
         rate-limit: 200     # Allow 200 resp/s for each flow
