@@ -156,6 +156,7 @@ static const yp_item_t desc_remote[] = {
 static const yp_item_t desc_template[] = {
 	{ C_ID, YP_TSTR, YP_VNONE },
 	ZONE_ITEMS
+	{ C_TIMER_DB,            YP_TSTR,  YP_VSTR = { "timers" } }, \
 	{ C_GLOBAL_MODULE,       YP_TDATA, YP_VDATA = { 0, NULL, mod_id_to_bin, mod_id_to_txt }, \
 	                                   YP_FMULTI, { check_modref } }, \
 	{ NULL }
