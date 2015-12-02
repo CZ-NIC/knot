@@ -20,9 +20,9 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "libknot/internal/mem.h"
+#include "contrib/string.h"
 
-uint8_t *knot_memdup(const uint8_t *data, size_t data_size)
+uint8_t *memdup(const uint8_t *data, size_t data_size)
 {
 	uint8_t *result = (uint8_t *)malloc(data_size);
 	if (!result) {

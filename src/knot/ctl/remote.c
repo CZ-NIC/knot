@@ -31,9 +31,9 @@
 #include "knot/zone/timers.h"
 #include "libknot/libknot.h"
 #include "libknot/internal/macros.h"
-#include "libknot/internal/mem.h"
 #include "libknot/internal/net.h"
 #include "libknot/yparser/yptrafo.h"
+#include "contrib/string.h"
 #include "contrib/openbsd/strlcpy.h"
 
 #define KNOT_CTL_REALM "knot."

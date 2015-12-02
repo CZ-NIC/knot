@@ -24,9 +24,9 @@
 #include "knot/server/dthreads.h"
 #include "libknot/libknot.h"
 #include "libknot/internal/macros.h"
-#include "libknot/internal/mem.h"
 #include "libknot/internal/sockaddr.h"
 #include "libknot/yparser/yptrafo.h"
+#include "contrib/string.h"
 #include "contrib/openbsd/strlcat.h"
 
 /*! Configuration specific logging. */

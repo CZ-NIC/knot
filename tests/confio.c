@@ -20,7 +20,7 @@
 #include "knot/conf/confio.h"
 #include "knot/conf/tools.h"
 #include "knot/ctl/remote.h"
-#include "libknot/internal/mem.h"
+#include "contrib/string.h"
 #include "contrib/openbsd/strlcat.h"
 
 #define SKIP_OPENBSD	skip("Nested transactions are not supported on OpenBSD");

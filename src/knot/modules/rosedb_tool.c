@@ -22,7 +22,7 @@
 #include "knot/modules/rosedb.c"
 #include "zscanner/scanner.h"
 #include "libknot/libknot.h"
-#include "libknot/internal/mem.h"
+#include "contrib/string.h"
 
 static int rosedb_add(struct cache *cache, MDB_txn *txn, int argc, char *argv[]);
 static int rosedb_del(struct cache *cache, MDB_txn *txn, int argc, char *argv[]);

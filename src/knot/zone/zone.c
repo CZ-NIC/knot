@@ -38,7 +38,7 @@
 #include "libknot/libknot.h"
 #include "libknot/dname.h"
 #include "libknot/internal/utils.h"
-#include "libknot/internal/mem.h"
+#include "contrib/string.h"
 #include "libknot/rrtype/soa.h"
 
 #define JOURNAL_SUFFIX	".diff.db"

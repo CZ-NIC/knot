@@ -20,8 +20,8 @@
 #include "libknot/binary.h"
 #include "libknot/errcode.h"
 #include "libknot/internal/base64.h"
-#include "libknot/internal/mem.h"
 #include "libknot/internal/macros.h"
+#include "contrib/string.h"
 
 _public_
 int knot_binary_from_base64(const char *base64, knot_binary_t *to)
@@ -51,7 +51,7 @@ int knot_binary_from_string(const uint8_t *data, size_t size, knot_binary_t *to)
 		return KNOT_EINVAL;
 	}
 
-	uint8_t *copy = knot_memdup(data, size);
+	uint8_t *copy = memdup(data, size);
 	if (!copy) {
 		return KNOT_ENOMEM;
 	}

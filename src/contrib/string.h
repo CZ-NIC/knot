@@ -13,6 +13,14 @@
  *  You should have received a copy of the GNU General Public License
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
+/*!
+ * \file
+ *
+ * \brief String manipulations.
+ *
+ * \addtogroup contrib
+ * @{
+ */
 
 #pragma once
 
@@ -23,7 +31,7 @@
  *
  * Like \c strdup, but for binary data.
  */
-uint8_t *knot_memdup(const uint8_t *data, size_t data_size);
+uint8_t *memdup(const uint8_t *data, size_t data_size);
 
 /*!
  * \brief Format string and take care of allocating memory.
@@ -52,3 +60,5 @@ char *strcdup(const char *s1, const char *s2);
  * \return Newly allocated string, NULL in case of error.
  */
 char *strstrip(const char *str);
+
+/*! @} */

@@ -17,12 +17,12 @@
 #include <assert.h>
 
 #include "knot/ctl/estimator.h"
+#include "knot/zone/node.h"
 #include "libknot/dname.h"
 #include "libknot/internal/lists.h"
-#include "libknot/internal/mem.h"
 #include "libknot/internal/macros.h"
-#include "knot/zone/node.h"
 #include "libknot/descriptor.h"
+#include "contrib/string.h"
 
 // Addition constants used for tweaking, mostly malloc overhead
 enum estim_consts {

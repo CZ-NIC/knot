@@ -25,7 +25,7 @@
 
 #include "libknot/dname.h"
 #include "libknot/dnssec/rrset-sign.h"
-#include "libknot/internal/mem.h"
+#include "contrib/string.h"
 
 #include "dnssec/error.h"
 #include "dnssec/kasp.h"

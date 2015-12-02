@@ -17,7 +17,7 @@
 #include "libknot/rrtype/nsec3param.h"
 #include "libknot/errcode.h"
 #include "libknot/internal/macros.h"
-#include "libknot/internal/mem.h"
+#include "contrib/string.h"
 
 _public_
 int knot_nsec3param_from_wire(knot_nsec3_params_t *params,
@@ -35,8 +35,7 @@ int knot_nsec3param_from_wire(knot_nsec3_params_t *params,
 	result.salt_length = knot_nsec3param_salt_length(rrs, 0);
 
 	if (result.salt_length > 0) {
-		result.salt = knot_memdup(knot_nsec3param_salt(rrs, 0),
-		                          result.salt_length);
+		result.salt = memdup(knot_nsec3param_salt(rrs, 0), result.salt_length);
 		if (!result.salt) {
 			return KNOT_ENOMEM;
 		}

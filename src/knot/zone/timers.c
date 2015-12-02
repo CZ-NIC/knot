@@ -17,7 +17,7 @@
 #include "libknot/dname.h"
 #include "libknot/internal/namedb/namedb.h"
 #include "libknot/internal/namedb/namedb_lmdb.h"
-#include "libknot/internal/mem.h"
+#include "contrib/string.h"
 #include "libknot/internal/wire_ctx.h"
 #include "knot/zone/timers.h"
 #include "knot/zone/zonedb.h"

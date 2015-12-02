@@ -18,10 +18,10 @@
 #include <string.h>
 
 #include "contrib/getline.h"
+#include "contrib/string.h"
 #include "dnssec/error.h"
 #include "libknot/errcode.h"
 #include "libknot/internal/macros.h"
-#include "libknot/internal/mem.h"
 #include "libknot/tsig.h"
 
 _public_

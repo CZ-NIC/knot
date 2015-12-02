@@ -33,7 +33,7 @@
 #include "utils/common/token.h"
 #include "libknot/libknot.h"
 #include "libknot/internal/macros.h"
-#include "libknot/internal/mem.h"
+#include "contrib/string.h"
 #include "contrib/openbsd/strlcpy.h"
 
 /* Declarations of cmd parse functions. */

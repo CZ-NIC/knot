@@ -20,7 +20,7 @@
 #include "dnssec/error.h"
 #include "dnssec/event.h"
 #include "libknot/internal/macros.h"
-#include "libknot/internal/mem.h"
+#include "contrib/string.h"
 #include "libknot/libknot.h"
 #include "knot/conf/conf.h"
 #include "knot/common/log.h"

@@ -26,7 +26,7 @@
 #endif
 
 #include "dnssec/crypto.h"
-#include "libknot/internal/mem.h"
+#include "contrib/string.h"
 #include "libknot/internal/macros.h"
 #include "libknot/libknot.h"
 #include "knot/common/log.h"

@@ -20,7 +20,7 @@
 
 #include "libknot/internal/trie/hat-trie.h"
 #include "libknot/internal/macros.h"
-#include "libknot/internal/mem.h"
+#include "contrib/string.h"
 
 /* UCW array sorting defines. */
 #define ASORT_PREFIX(X) str_key_##X

@@ -23,7 +23,7 @@
 #include <assert.h>
 #include <tap/basic.h>
 
-#include "libknot/internal/mem.h"
+#include "contrib/string.h"
 #include "libknot/internal/namedb/namedb_lmdb.h"
 #include "libknot/internal/namedb/namedb_trie.h"
 #include "libknot/libknot.h"
