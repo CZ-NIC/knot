@@ -22,6 +22,7 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
+#include "contrib/getline.h"
 #include "dnssec/random.h"
 #include "utils/knsupdate/knsupdate_exec.h"
 #include "utils/common/exec.h"
@@ -31,7 +32,6 @@
 #include "utils/common/sign.h"
 #include "utils/common/token.h"
 #include "libknot/libknot.h"
-#include "libknot/internal/getline.h"
 #include "libknot/internal/macros.h"
 #include "libknot/internal/mem.h"
 #include "contrib/openbsd/strlcpy.h"

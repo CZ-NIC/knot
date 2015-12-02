@@ -14,14 +14,11 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 /*!
- * \file getline.h
- *
- * \author Daniel Salzman <daniel.salzman@nic.cz>
- * \author Jan Vcelak <jan.vcelak@nic.cz>
+ * \file
  *
  * \brief Multiplatform getline wrapper.
  *
- * \addtogroup common_lib
+ * \addtogroup contrib
  * @{
  */
 

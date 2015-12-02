@@ -17,9 +17,9 @@
 #include <assert.h>
 #include <string.h>
 
+#include "contrib/getline.h"
 #include "dnssec/error.h"
 #include "libknot/errcode.h"
-#include "libknot/internal/getline.h"
 #include "libknot/internal/macros.h"
 #include "libknot/internal/mem.h"
 #include "libknot/tsig.h"

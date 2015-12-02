@@ -19,8 +19,7 @@
 #define _WITH_GETLINE
 #endif
 
-#include "libknot/internal/macros.h"
-#include "libknot/internal/getline.h"
+#include "contrib/getline.h"
 
 #include <stdio.h>		// getline or fgetln
 #include <stdlib.h>		// free

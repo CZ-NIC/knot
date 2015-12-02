@@ -24,6 +24,7 @@ AM_LDFLAGS = $(CODE_COVERAGE_LDFLAGS)
 
 libcontrib_ladir = $(includedir)
 nobase_libcontrib_la_HEADERS =			\
+	contrib/getline.h			\
 	contrib/openbsd/strlcat.h		\
 	contrib/openbsd/strlcpy.h		\
 	contrib/ucw/array-sort.h		\
@@ -74,7 +75,6 @@ nobase_libknot_internal_la_HEADERS = 		\
 	libknot/internal/consts.h		\
 	libknot/internal/endian.h		\
 	libknot/internal/errcode.h		\
-	libknot/internal/getline.h		\
 	libknot/internal/hhash.h		\
 	libknot/internal/lists.h		\
 	libknot/internal/macros.h		\
@@ -101,6 +101,7 @@ nobase_libknot_yparser_la_HEADERS = 		\
 
 # dynamic: libknot sources
 libcontrib_la_SOURCES = 			\
+	contrib/getline.c			\
 	contrib/openbsd/strlcat.c		\
 	contrib/openbsd/strlcpy.c		\
 	contrib/ucw/heap.c			\
@@ -145,7 +146,6 @@ libknot_internal_la_SOURCES = 			\
 	libknot/internal/base32hex.c		\
 	libknot/internal/base64.c		\
 	libknot/internal/errcode.c		\
-	libknot/internal/getline.c		\
 	libknot/internal/hhash.c		\
 	libknot/internal/lists.c		\
 	libknot/internal/mem.c			\

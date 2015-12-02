@@ -17,9 +17,9 @@
 #include <assert.h>
 #include <tap/basic.h>
 
+#include "contrib/getline.h"
 #include "knot/updates/zone-update.h"
 #include "zscanner/scanner.h"
-#include "libknot/internal/getline.h"
 #include "libknot/internal/macros.h"
 
 static const char *zone_str =

@@ -18,11 +18,11 @@
 #include <stdlib.h>
 #include <getopt.h>
 
+#include "contrib/getline.h"
 #include "knot/modules/rosedb.c"
 #include "zscanner/scanner.h"
 #include "libknot/libknot.h"
 #include "libknot/internal/mem.h"
-#include "libknot/internal/getline.h"
 
 static int rosedb_add(struct cache *cache, MDB_txn *txn, int argc, char *argv[]);
 static int rosedb_del(struct cache *cache, MDB_txn *txn, int argc, char *argv[]);
