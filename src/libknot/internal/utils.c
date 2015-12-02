@@ -19,8 +19,8 @@
 #include <fcntl.h>
 #include <unistd.h>
 
+#include "contrib/endian.h"
 #include "libknot/internal/utils.h"
-#include "libknot/internal/endian.h"
 #include "libknot/internal/macros.h"
 
 /*----------------------------------------------------------------------------*/

@@ -24,6 +24,7 @@ AM_LDFLAGS = $(CODE_COVERAGE_LDFLAGS)
 
 libcontrib_ladir = $(includedir)
 nobase_libcontrib_la_HEADERS =			\
+	contrib/endian.h			\
 	contrib/getline.h			\
 	contrib/openbsd/strlcat.h		\
 	contrib/openbsd/strlcpy.h		\
@@ -73,7 +74,6 @@ nobase_libknot_internal_la_HEADERS = 		\
 	libknot/internal/base32hex.h		\
 	libknot/internal/base64.h		\
 	libknot/internal/consts.h		\
-	libknot/internal/endian.h		\
 	libknot/internal/errcode.h		\
 	libknot/internal/hhash.h		\
 	libknot/internal/lists.h		\

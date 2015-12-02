@@ -13,6 +13,14 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
+/*!
+ * \file
+ *
+ * \brief Endian dependent integer operations.
+ *
+ * \addtogroup contrib
+ * @{
+ */
 
 #pragma once
 
@@ -56,3 +64,5 @@
 #       define htole32(x) OSSwapHostToLittleInt32(x)
 #       define htole64(x) OSSwapHostToLittleInt64(x)
 #endif
+
+/*! @} */

@@ -23,7 +23,7 @@
 #include <string.h>
 #include <sys/types.h>
 
-#include "libknot/internal/endian.h"
+#include "contrib/endian.h"
 #include "libknot/internal/errcode.h"
 #include "libknot/rdata.h"
 

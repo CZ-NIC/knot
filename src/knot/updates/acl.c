@@ -22,10 +22,10 @@
 #include <limits.h>
 #include <stdbool.h>
 
+#include "contrib/endian.h"
 #include "knot/updates/acl.h"
 #include "knot/conf/conf.h"
 #include "libknot/libknot.h"
-#include "libknot/internal/endian.h"
 #include "libknot/internal/sockaddr.h"
 #include "libknot/yparser/yptrafo.h"
 
