@@ -160,8 +160,13 @@ static int pkcs11_open(void *_ctx, const char *config)
 	return DNSSEC_EOK;
 }
 
-static int pkcs11_close(void *ctx)
+static int pkcs11_close(void *_ctx)
 {
+	pkcs11_ctx_t *ctx = _ctx;
+
+	free(ctx->url);
+	clear_struct(ctx);
+
 	return DNSSEC_EOK;
 }
 
