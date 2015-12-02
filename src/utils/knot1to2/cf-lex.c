@@ -860,7 +860,7 @@ static yyconst flex_int32_t yy_rule_can_match_eol[92] =
 #include "utils/knot1to2/includes.h"
 #include "utils/knot1to2/extra.h"
 #include "utils/knot1to2/cf-parse.tab.h"
-#include "libknot/internal/strlcpy.h"
+#include "contrib/openbsd/strlcpy.h"
 
 /* Imported symbols. */
 #define lval (yylval->tok)

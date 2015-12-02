@@ -31,6 +31,10 @@ libtap/tap/float.h
 libtap/tap/macros.h
 samples/Makefile.am
 src/Makefile.am
+src/contrib/openbsd/strlcat.c
+src/contrib/openbsd/strlcat.h
+src/contrib/openbsd/strlcpy.c
+src/contrib/openbsd/strlcpy.h
 src/contrib/ucw/array-sort.h
 src/contrib/ucw/binsearch.h
 src/contrib/ucw/heap.c
@@ -375,10 +379,6 @@ src/libknot/internal/print.c
 src/libknot/internal/print.h
 src/libknot/internal/sockaddr.c
 src/libknot/internal/sockaddr.h
-src/libknot/internal/strlcat.c
-src/libknot/internal/strlcat.h
-src/libknot/internal/strlcpy.c
-src/libknot/internal/strlcpy.h
 src/libknot/internal/tolower.c
 src/libknot/internal/tolower.h
 src/libknot/internal/trie/hat-trie.c

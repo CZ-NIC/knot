@@ -34,7 +34,7 @@
 #include "libknot/internal/getline.h"
 #include "libknot/internal/macros.h"
 #include "libknot/internal/mem.h"
-#include "libknot/internal/strlcpy.h"
+#include "contrib/openbsd/strlcpy.h"
 
 /* Declarations of cmd parse functions. */
 typedef int (*cmd_handle_f)(const char *lp, knsupdate_params_t *params);

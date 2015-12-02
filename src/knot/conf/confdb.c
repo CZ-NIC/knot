@@ -28,6 +28,7 @@
 #include "knot/conf/confdb.h"
 #include "libknot/errcode.h"
 #include "libknot/yparser/yptrafo.h"
+#include "contrib/openbsd/strlcpy.h"
 
 /*
  * A simple configuration:

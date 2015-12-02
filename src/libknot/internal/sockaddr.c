@@ -22,8 +22,8 @@
 #include "libknot/internal/utils.h"
 #include "libknot/internal/sockaddr.h"
 #include "libknot/internal/errcode.h"
-#include "libknot/internal/strlcpy.h"
 #include "libknot/internal/consts.h"
+#include "contrib/openbsd/strlcpy.h"
 
 int sockaddr_len(const struct sockaddr *ss)
 {

@@ -26,8 +26,8 @@
 #include "libknot/internal/mem.h"
 #include "libknot/internal/namedb/namedb_lmdb.h"
 #include "libknot/internal/namedb/namedb_trie.h"
-#include "libknot/internal/strlcpy.h"
 #include "libknot/libknot.h"
+#include "contrib/openbsd/strlcpy.h"
 #include "contrib/ucw/mempool.h"
 
 /* UCW array sorting defines. */

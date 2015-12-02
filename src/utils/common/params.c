@@ -30,7 +30,7 @@
 #include "utils/common/token.h"
 #include "libknot/libknot.h"
 #include "libknot/internal/mempattern.h"
-#include "libknot/internal/strlcpy.h"
+#include "contrib/openbsd/strlcpy.h"
 
 #define IPV4_REVERSE_DOMAIN	"in-addr.arpa."
 #define IPV6_REVERSE_DOMAIN	"ip6.arpa."

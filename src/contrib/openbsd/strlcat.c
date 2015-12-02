@@ -17,8 +17,7 @@
 #include <sys/types.h>
 #include <string.h>
 
-#include "libknot/internal/macros.h"
-#include "libknot/internal/strlcat.h"
+#include "contrib/openbsd/strlcat.h"
 
 size_t
 knot_strlcat(char *dst, const char *src, size_t siz)

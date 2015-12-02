@@ -33,8 +33,8 @@
 #include "libknot/internal/macros.h"
 #include "libknot/internal/mem.h"
 #include "libknot/internal/net.h"
-#include "libknot/internal/strlcpy.h"
 #include "libknot/yparser/yptrafo.h"
+#include "contrib/openbsd/strlcpy.h"
 
 #define KNOT_CTL_REALM "knot."
 #define KNOT_CTL_REALM_EXT ("." KNOT_CTL_REALM)

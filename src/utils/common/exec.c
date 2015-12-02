@@ -27,8 +27,8 @@
 #include "libknot/internal/lists.h"
 #include "libknot/internal/print.h"
 #include "libknot/internal/sockaddr.h"
-#include "libknot/internal/strlcat.h"
 #include "libknot/internal/wire_ctx.h"
+#include "contrib/openbsd/strlcat.h"
 
 static lookup_table_t rtypes[] = {
 	{ KNOT_RRTYPE_A,      "has IPv4 address" },

@@ -24,6 +24,8 @@ AM_LDFLAGS = $(CODE_COVERAGE_LDFLAGS)
 
 libcontrib_ladir = $(includedir)
 nobase_libcontrib_la_HEADERS =			\
+	contrib/openbsd/strlcat.h		\
+	contrib/openbsd/strlcpy.h		\
 	contrib/ucw/array-sort.h		\
 	contrib/ucw/binsearch.h			\
 	contrib/ucw/heap.h			\
@@ -84,8 +86,6 @@ nobase_libknot_internal_la_HEADERS = 		\
 	libknot/internal/net.h			\
 	libknot/internal/print.h		\
 	libknot/internal/sockaddr.h		\
-	libknot/internal/strlcat.h		\
-	libknot/internal/strlcpy.h		\
 	libknot/internal/tolower.h		\
 	libknot/internal/trie/hat-trie.h	\
 	libknot/internal/trie/murmurhash3.h	\
@@ -101,6 +101,8 @@ nobase_libknot_yparser_la_HEADERS = 		\
 
 # dynamic: libknot sources
 libcontrib_la_SOURCES = 			\
+	contrib/openbsd/strlcat.c		\
+	contrib/openbsd/strlcpy.c		\
 	contrib/ucw/heap.c			\
 	contrib/ucw/mempool.c			\
 	$(nobase_libcontrib_la_HEADERS)
@@ -153,8 +155,6 @@ libknot_internal_la_SOURCES = 			\
 	libknot/internal/net.c			\
 	libknot/internal/print.c		\
 	libknot/internal/sockaddr.c		\
-	libknot/internal/strlcat.c		\
-	libknot/internal/strlcpy.c		\
 	libknot/internal/tolower.c		\
 	libknot/internal/trie/hat-trie.c	\
 	libknot/internal/trie/murmurhash3.c	\

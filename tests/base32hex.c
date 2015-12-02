@@ -21,7 +21,7 @@
 
 #include "libknot/libknot.h"
 #include "libknot/internal/base32hex.h"
-#include "libknot/internal/strlcpy.h"
+#include "contrib/openbsd/strlcpy.h"
 
 #define BUF_LEN			256
 #define MAX_BIN_DATA_LEN	((INT32_MAX / 8) * 5)

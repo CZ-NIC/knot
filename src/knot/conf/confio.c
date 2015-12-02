@@ -22,7 +22,7 @@
 #include "knot/conf/tools.h"
 #include "libknot/yparser/yptrafo.h"
 #include "libknot/internal/mem.h"
-#include "libknot/internal/strlcat.h"
+#include "contrib/openbsd/strlcat.h"
 
 #define FCN(io)	(io->fcn != NULL) ? io->fcn(io) : KNOT_EOK
 
