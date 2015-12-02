@@ -271,6 +271,12 @@ reconnect via TCP for at least some degree of service. It is worth
 noting, that some responses can\(aqt be truncated (e.g. SERVFAIL).
 .INDENT 0.0
 .IP \(bu 2
+Setting the value to \fB0\fP will cause that all rate\-limited responses will
+be dropped. The outbound bandwidth and packet rate will be strictly capped
+by the \fI\%rate\-limit\fP option. All legitimate requestors affected
+by the limit will face denial of service and will observe excessive timeouts.
+Therefore this setting is not recommended.
+.IP \(bu 2
 Setting the value to \fB1\fP will cause that all rate\-limited responses will
 be sent as truncated. The amplification factor of the attack will be reduced,
 but the outbound data bandwidth won\(aqt be lower than the incoming bandwidth.
@@ -282,10 +288,10 @@ configuration, both outbound bandwidth and packet rate will be lower than the
 inbound. On the other hand, the dropped responses enlarge the time window
 for possible cache poisoning attack on the resolver.
 .IP \(bu 2
-Setting the value to anything larger than 2 is not advisable. Too large slip
-value means more denial of service for legitimate requestors and introduces
-excessive timeouts during resolution. On the contrary, a truncated answer
-gives the legitimate requestor a chance to reconnect over TCP.
+Setting the value to anything \fBlarger than 2\fP will keep on decreasing
+the outgoing rate\-limited bandwidth, packet rate, and chances to notify
+legitimate requestors to reconnect using TCP. These attributes are inversely
+proportional to the configured value. Setting the value high is not advisable.
 .UNINDENT
 .sp
 \fIDefault:\fP 1
