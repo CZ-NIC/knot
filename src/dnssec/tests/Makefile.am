@@ -48,6 +48,8 @@ check_PROGRAMS = \
 	shared_wire	\
 	tsig
 
+keystore_pkcs11_CPPFLAGS = $(AM_CPPFLAGS) -DLIBDIR='"$(libdir)"'
+
 check-compile-only: $(check_PROGRAMS)
 
 check-local: $(check_PROGRAMS)
