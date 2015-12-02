@@ -552,6 +552,7 @@ if a zone doesn't have another template specified.
 
  template:
    - id: STR
+     timer-db: STR
      global-module: STR/STR ...
      # All zone options (excluding 'template' item)
 
@@ -562,6 +563,18 @@ id
 
 A template identifier.
 
+.. _template_timer-db:
+
+timer-db
+--------
+
+Specifies a path of the persistent timer database. The path can be specified
+as a relative path to the *default* template :ref:`storage<zone_storage>`.
+
+*Caution:* This option is only available in the *default* template.
+
+*Default:* :ref:`storage<zone_storage>`/timers
+
 .. _template_global-module:
 
 global-module
@@ -570,7 +583,7 @@ global-module
 An ordered list of references to query modules in the form
 *module_name/module_id*. These modules apply to all queries.
 
-*Caution:* This option is available only for the *default* template.
+*Caution:* This option is only available in the *default* template.
 
 *Default:* not set
 
