@@ -28,7 +28,6 @@
 
 struct pkcs11_ctx {
 	char *url;
-	char *pin;
 };
 
 typedef struct pkcs11_ctx pkcs11_ctx_t;
