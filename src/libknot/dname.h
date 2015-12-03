@@ -1,13 +1,3 @@
-/*!
- * \file dname.h
- *
- * \author Lubos Slovak <lubos.slovak@nic.cz>
- *
- * \brief Domain name structure and API for manipulating it.
- *
- * \addtogroup libknot
- * @{
- */
 /*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
@@ -23,6 +13,14 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
+/*!
+ * \file
+ *
+ * \brief Domain name structure and API for manipulating it.
+ *
+ * \addtogroup libknot
+ * @{
+ */
 
 #pragma once
 
@@ -31,7 +29,6 @@
 #include <stdio.h>
 #include <stdbool.h>
 
-#include "libknot/consts.h"
 #include "libknot/internal/mempattern.h"
 
 /*! \brief Type representing a domain name in wire format. */

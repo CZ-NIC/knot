@@ -29,6 +29,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "libknot/consts.h"
 #include "libknot/dname.h"
 #include "libknot/rrset.h"
 #include "libknot/rrtype/opt.h"

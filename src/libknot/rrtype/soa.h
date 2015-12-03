@@ -18,6 +18,7 @@
 
 #include "libknot/rdataset.h"
 #include "libknot/dname.h"
+#include "libknot/internal/utils.h"
 
 static inline
 const knot_dname_t *knot_soa_primary_ns(const knot_rdataset_t *rrs)

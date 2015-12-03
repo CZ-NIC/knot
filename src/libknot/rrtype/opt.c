@@ -19,6 +19,7 @@
 #include <assert.h>
 #include <string.h>
 
+#include "libknot/consts.h"
 #include "libknot/rrtype/opt.h"
 #include "libknot/descriptor.h"
 #include "libknot/internal/macros.h"

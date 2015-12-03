@@ -20,6 +20,7 @@
 
 #include "knot/zone/zone-tree.h"
 #include "knot/zone/node.h"
+#include "libknot/consts.h"
 #include "libknot/internal/trie/hat-trie.h"
 #include "libknot/internal/macros.h"
 
