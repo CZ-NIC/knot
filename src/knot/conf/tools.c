@@ -37,6 +37,7 @@
 #include "libknot/errcode.h"
 #include "libknot/internal/utils.h"
 #include "libknot/yparser/yptrafo.h"
+#include "contrib/wire_ctx.h"
 
 #define MAX_INCLUDE_DEPTH	5
 

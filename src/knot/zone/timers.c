@@ -17,10 +17,10 @@
 #include "libknot/dname.h"
 #include "libknot/internal/namedb/namedb.h"
 #include "libknot/internal/namedb/namedb_lmdb.h"
-#include "contrib/string.h"
-#include "libknot/internal/wire_ctx.h"
 #include "knot/zone/timers.h"
 #include "knot/zone/zonedb.h"
+#include "contrib/string.h"
+#include "contrib/wire_ctx.h"
 
 /* ---- Knot-internal event code to db key lookup tables ------------------ - */
 

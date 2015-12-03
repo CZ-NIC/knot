@@ -30,7 +30,7 @@
 #include "libknot/rrset.h"
 #include "libknot/rrtype/naptr.h"
 #include "libknot/internal/macros.h"
-#include "libknot/internal/wire_ctx.h"
+#include "contrib/wire_ctx.h"
 
 #define RR_HEADER_SIZE 10
 

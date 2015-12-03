@@ -33,9 +33,9 @@
 #include "libknot/errcode.h"
 #include "libknot/internal/macros.h"
 #include "libknot/internal/utils.h"
-#include "libknot/internal/wire_ctx.h"
 #include "contrib/base32hex.h"
 #include "contrib/base64.h"
+#include "contrib/wire_ctx.h"
 
 #define TAB_WIDTH		8
 #define BLOCK_WIDTH		40

@@ -29,6 +29,7 @@
 #include "libknot/errcode.h"
 #include "libknot/yparser/yptrafo.h"
 #include "contrib/openbsd/strlcpy.h"
+#include "contrib/wire_ctx.h"
 
 /*
  * A simple configuration:

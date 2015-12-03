@@ -25,6 +25,7 @@
 #include "libknot/internal/sockaddr.h"
 #include "libknot/libknot.h"
 #include "contrib/base64.h"
+#include "contrib/wire_ctx.h"
 
 enum {
 	UNIT_BYTE = 'B',

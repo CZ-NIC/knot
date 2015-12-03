@@ -31,6 +31,7 @@ nobase_libcontrib_la_HEADERS =			\
 	contrib/print.h				\
 	contrib/string.h			\
 	contrib/tolower.h			\
+	contrib/wire_ctx.h			\
 	contrib/openbsd/strlcat.h		\
 	contrib/openbsd/strlcpy.h		\
 	contrib/ucw/array-sort.h		\
@@ -89,8 +90,7 @@ nobase_libknot_internal_la_HEADERS = 		\
 	libknot/internal/sockaddr.h		\
 	libknot/internal/trie/hat-trie.h	\
 	libknot/internal/trie/murmurhash3.h	\
-	libknot/internal/utils.h		\
-	libknot/internal/wire_ctx.h
+	libknot/internal/utils.h
 
 libknot_yparser_ladir = $(includedir)
 nobase_libknot_yparser_la_HEADERS = 		\

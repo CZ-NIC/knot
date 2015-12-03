@@ -26,9 +26,9 @@
 #include "libknot/libknot.h"
 #include "libknot/internal/lists.h"
 #include "libknot/internal/sockaddr.h"
-#include "libknot/internal/wire_ctx.h"
 #include "contrib/print.h"
 #include "contrib/openbsd/strlcat.h"
+#include "contrib/wire_ctx.h"
 
 static lookup_table_t rtypes[] = {
 	{ KNOT_RRTYPE_A,      "has IPv4 address" },
@@ -235,7 +235,9 @@ static void print_section_opt(const knot_rrset_t *rr, const uint8_t rcode)
 	       knot_edns_get_payload(rr),
 	       ext_rcode_str);
 
-	wire_ctx_t wire = wire_ctx_init_rdata(knot_rdataset_at(&rr->rrs, 0));
+	knot_rdata_t *rdata = knot_rdataset_at(&rr->rrs, 0);
+	wire_ctx_t wire = wire_ctx_init_const(knot_rdata_data(rdata),
+	                                      knot_rdata_rdlen(rdata));
 
 	while (wire_ctx_available(&wire) >= KNOT_EDNS_OPTION_HDRLEN) {
 		uint16_t opt_code = wire_ctx_read_u16(&wire);

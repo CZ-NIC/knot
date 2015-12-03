@@ -53,6 +53,7 @@ src/contrib/ucw/heap.c
 src/contrib/ucw/heap.h
 src/contrib/ucw/mempool.c
 src/contrib/ucw/mempool.h
+src/contrib/wire_ctx.h
 src/dnssec/Makefile.am
 src/dnssec/contrib/gnutls_error.c
 src/dnssec/lib/binary.c
@@ -386,7 +387,6 @@ src/libknot/internal/trie/murmurhash3.c
 src/libknot/internal/trie/murmurhash3.h
 src/libknot/internal/utils.c
 src/libknot/internal/utils.h
-src/libknot/internal/wire_ctx.h
 src/libknot/libknot.h
 src/libknot/packet/compr.c
 src/libknot/packet/compr.h

@@ -29,7 +29,7 @@
 #include "libknot/rrset.h"
 #include "libknot/internal/macros.h"
 #include "libknot/internal/utils.h"
-#include "libknot/internal/wire_ctx.h"
+#include "contrib/wire_ctx.h"
 
 /*! \brief TSIG field offsets. */
 typedef enum tsig_off_t {
@@ -64,7 +64,8 @@ static uint8_t* rdata_seek(const knot_rrset_t *rr, tsig_off_t id, size_t nb)
 		return NULL;
 	}
 
-	wire_ctx_t wire = wire_ctx_init_rdata(rr_data);
+	wire_ctx_t wire = wire_ctx_init_const(knot_rdata_data(rr_data),
+	                                      knot_rdata_rdlen(rr_data));
 
 	/* TSIG RR names should be already sanitized on parse. */
 	int alg_len = knot_dname_size(wire.wire);

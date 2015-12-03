@@ -28,7 +28,6 @@
 #include <stdint.h>
 
 #include "libknot/internal/utils.h"
-#include "libknot/internal/wire_ctx.h"
 #include "libknot/yparser/yparser.h"
 
 /*! Maximal length of item name. */
@@ -44,8 +43,10 @@
 /*! Maximal node stack depth. */
 #define YP_MAX_NODE_DEPTH	2
 
-#define YP_TXT_BIN_PARAMS 	wire_ctx_t *in, wire_ctx_t *out, const uint8_t *stop
-#define YP_BIN_TXT_PARAMS	wire_ctx_t *in, wire_ctx_t *out
+struct wire_ctx;
+
+#define YP_TXT_BIN_PARAMS 	struct wire_ctx *in, struct wire_ctx *out, const uint8_t *stop
+#define YP_BIN_TXT_PARAMS	struct wire_ctx *in, struct wire_ctx *out
 
 /*! Helper macros for item variables definition. */
 #define YP_VNONE	.var.i = { 0 }

@@ -21,10 +21,9 @@
 
 #include "libknot/rrtype/opt.h"
 #include "libknot/descriptor.h"
-#include "libknot/errcode.h"
 #include "libknot/internal/macros.h"
 #include "libknot/internal/sockaddr.h"
-#include "libknot/internal/wire_ctx.h"
+#include "contrib/wire_ctx.h"
 
 /*! \brief Some implementation-related constants. */
 enum knot_edns_private_consts {
@@ -195,7 +194,8 @@ void knot_edns_set_do(knot_rrset_t *opt_rr)
  */
 static uint8_t *find_option(knot_rdata_t *rdata, uint16_t opt_code)
 {
-	wire_ctx_t wire = wire_ctx_init_rdata(rdata);
+	wire_ctx_t wire = wire_ctx_init_const(knot_rdata_data(rdata),
+	                                      knot_rdata_rdlen(rdata));
 
 	while (wire_ctx_available(&wire) > 0) {
 		uint16_t code = wire_ctx_read_u16(&wire);
@@ -283,7 +283,8 @@ bool knot_edns_check_record(knot_rrset_t *opt_rr)
 		return false;
 	}
 
-	wire_ctx_t wire = wire_ctx_init_rdata(rdata);
+	wire_ctx_t wire = wire_ctx_init_const(knot_rdata_data(rdata),
+	                                      knot_rdata_rdlen(rdata));
 
 	/* RFC2671 4.4: {uint16_t code, uint16_t len, data} */
 	// read data to the end or error

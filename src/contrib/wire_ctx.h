@@ -25,12 +25,11 @@
 
 #include "contrib/endian.h"
 #include "libknot/internal/errcode.h"
-#include "libknot/rdata.h"
 
 /*!
  * \brief Struct to keep the wire context.
  */
-typedef struct {
+typedef struct wire_ctx {
 	size_t size;
 	uint8_t *wire;
 	uint8_t *position;
@@ -70,16 +69,6 @@ static inline wire_ctx_t wire_ctx_init_const(const uint8_t *data, size_t size)
 	result.readonly = true;
 
 	return result;
-}
-
-/*!
- * \brief Initialize read only wire context with rdata.
- */
-static inline wire_ctx_t wire_ctx_init_rdata(const knot_rdata_t *rdata)
-{
-	assert(rdata);
-
-	return wire_ctx_init_const(knot_rdata_data(rdata), knot_rdata_rdlen(rdata));
 }
 
 /*!

@@ -27,6 +27,7 @@
 #include "libknot/internal/sockaddr.h"
 #include "libknot/yparser/yptrafo.h"
 #include "contrib/string.h"
+#include "contrib/wire_ctx.h"
 #include "contrib/openbsd/strlcat.h"
 
 /*! Configuration specific logging. */
