@@ -131,7 +131,7 @@ static int pkcs8_import_key(void *_ctx, const dnssec_binary_t *pem, char **id_pt
 	// retrieve key ID
 
 	char *id = NULL;
-	int r = pem_get_id(pem, &id);
+	int r = pem_keyid(pem, &id);
 	if (r != DNSSEC_EOK) {
 		return r;
 	}
@@ -174,17 +174,9 @@ static int pkcs8_get_private(void *_ctx, const char *id, gnutls_privkey_t *key_p
 	// construct the key
 
 	gnutls_privkey_t key = NULL;
-	_cleanup_free_ char *key_id = NULL;
-	r = pem_to_privkey(&pem, &key, &key_id);
+	r = pem_privkey(&pem, &key);
 	if (r != DNSSEC_EOK) {
 		return r;
-	}
-
-	// check the result
-
-	if (!dnssec_keyid_equal(key_id, id)) {
-		gnutls_privkey_deinit(key);
-		return DNSSEC_KEY_IMPORT_ERROR;
 	}
 
 	*key_ptr = key;

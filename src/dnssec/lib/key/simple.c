@@ -40,8 +40,7 @@ int dnssec_key_load_pkcs8(dnssec_key_t *key, const dnssec_binary_t *pem)
 	}
 
 	gnutls_privkey_t privkey = NULL;
-	_cleanup_free_ char *id = NULL;
-	int r = pem_to_privkey(pem, &privkey, &id);
+	int r = pem_privkey(pem, &privkey);
 	if (r != DNSSEC_EOK) {
 		return r;
 	}
