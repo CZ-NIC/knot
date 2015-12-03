@@ -27,6 +27,7 @@
 #include "libknot/descriptor.h"
 #include "libknot/internal/lists.h"
 #include "contrib/print.h"
+#include "contrib/sockaddr.h"
 
 /* AXFR context. @note aliasing the generic xfr_proc */
 struct axfr_proc {

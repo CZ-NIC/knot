@@ -17,8 +17,9 @@
 #pragma once
 
 #include <stdbool.h>
-
-#include "libknot/internal/sockaddr.h"
+#include <stdint.h>
+#include <sys/socket.h>
+#include <sys/time.h>
 
 /*!
  * \brief Network interface flags.

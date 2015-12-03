@@ -25,8 +25,8 @@
 #include "utils/common/params.h"
 #include "libknot/libknot.h"
 #include "libknot/internal/lists.h"
-#include "libknot/internal/sockaddr.h"
 #include "contrib/print.h"
+#include "contrib/sockaddr.h"
 #include "contrib/openbsd/strlcat.h"
 #include "contrib/wire_ctx.h"
 

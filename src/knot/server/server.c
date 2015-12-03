@@ -33,6 +33,8 @@
 #include "knot/worker/pool.h"
 #include "knot/zone/timers.h"
 #include "knot/zone/zonedb-load.h"
+#include "contrib/net.h"
+#include "contrib/sockaddr.h"
 
 /*! \brief Minimal send/receive buffer sizes. */
 enum {

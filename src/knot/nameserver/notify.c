@@ -36,6 +36,7 @@
 #include "knot/nameserver/tsig_ctx.h"
 #include "knot/nameserver/process_answer.h"
 #include "libknot/rrtype/soa.h"
+#include "contrib/sockaddr.h"
 
 /*----------------------------------------------------------------------------*/
 /* API functions                                                              */

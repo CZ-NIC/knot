@@ -14,13 +14,11 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 /*!
- * \file sockaddr.h
- *
- * \author Marek Vavrusa <marek.vavrusa@nic.cz>
+ * \file
  *
  * \brief Socket address abstraction layer.
  *
- * \addtogroup common_lib
+ * \addtogroup contrib
  * @{
  */
 

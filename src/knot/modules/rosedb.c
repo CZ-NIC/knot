@@ -21,8 +21,8 @@
 #include "knot/modules/rosedb.h"
 #include "knot/nameserver/process_query.h"
 #include "libknot/libknot.h"
-#include "libknot/internal/net.h"
 #include "libknot/internal/utils.h"
+#include "contrib/net.h"
 
 /* Module configuration scheme. */
 #define MOD_DBDIR		"\x05""dbdir"

@@ -18,12 +18,12 @@
 #include <stdlib.h>
 #include <assert.h>
 #include <string.h>
+#include <sys/socket.h>
 
 #include "libknot/consts.h"
 #include "libknot/rrtype/opt.h"
 #include "libknot/descriptor.h"
 #include "libknot/internal/macros.h"
-#include "libknot/internal/sockaddr.h"
 #include "contrib/wire_ctx.h"
 
 /*! \brief Some implementation-related constants. */

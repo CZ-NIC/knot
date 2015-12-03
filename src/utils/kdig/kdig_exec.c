@@ -26,7 +26,7 @@
 #include "utils/common/sign.h"
 #include "libknot/libknot.h"
 #include "libknot/internal/lists.h"
-#include "libknot/internal/sockaddr.h"
+#include "contrib/sockaddr.h"
 #include "contrib/print.h"
 
 #if USE_DNSTAP

@@ -26,7 +26,8 @@
 #include <netdb.h>
 
 #include "libknot/errcode.h"
-#include "libknot/internal/net.h"
+#include "contrib/net.h"
+#include "contrib/sockaddr.h"
 
 const struct timeval TIMEOUT = { .tv_sec = 2 };
 

@@ -19,6 +19,7 @@
 #include "libknot/libknot.h"
 #include "libknot/internal/macros.h"
 #include "libknot/yparser/yptrafo.h"
+#include "contrib/sockaddr.h"
 
 /*! \brief Accessor to query-specific data. */
 #define QUERY_DATA(ctx) ((struct query_data *)(ctx)->data)

@@ -23,8 +23,9 @@
 #include <sys/uio.h>
 #include <unistd.h>
 
-#include "libknot/internal/net.h"
 #include "libknot/internal/errcode.h"
+#include "contrib/net.h"
+#include "contrib/sockaddr.h"
 
 /*
  * OS X doesn't support MSG_NOSIGNAL. Use SO_NOSIGPIPE socket option instead.

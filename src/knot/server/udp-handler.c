@@ -37,11 +37,11 @@
 
 #include "knot/server/udp-handler.h"
 #include "knot/server/server.h"
-#include "libknot/internal/sockaddr.h"
 #include "libknot/internal/mempattern.h"
 #include "libknot/internal/macros.h"
 #include "libknot/libknot.h"
 #include "libknot/processing/overlay.h"
+#include "contrib/sockaddr.h"
 #include "contrib/ucw/mempool.h"
 
 /* Buffer identifiers. */

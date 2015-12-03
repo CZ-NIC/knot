@@ -32,7 +32,7 @@
 #include "utils/common/exec.h"
 #include "utils/common/sign.h"
 #include "libknot/libknot.h"
-#include "libknot/internal/sockaddr.h"
+#include "contrib/sockaddr.h"
 
 #if USE_DNSTAP
 # include "dnstap/reader.h"

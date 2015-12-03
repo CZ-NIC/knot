@@ -36,7 +36,9 @@
 #include "knot/server/udp-handler.h"
 #include "knot/nameserver/capture.h"
 #include "libknot/processing/requestor.h"
+#include "contrib/net.h"
 #include "contrib/print.h"
+#include "contrib/sockaddr.h"
 
 /* UPDATE-specific logging (internal, expects 'qdata' variable set). */
 #define UPDATE_LOG(severity, msg, ...) \

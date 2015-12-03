@@ -21,6 +21,7 @@
 #include "knot/nameserver/notify.h"
 #include "knot/nameserver/ixfr.h"
 #include "knot/nameserver/axfr.h"
+#include "contrib/sockaddr.h"
 
 /*! \brief Accessor to query-specific data. */
 #define ANSWER_DATA(ctx) ((struct answer_data *)(ctx)->data)

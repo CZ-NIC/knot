@@ -27,6 +27,7 @@
 #include "knot/zone/serial.h"
 #include "knot/zone/zonedb.h"
 #include "libknot/dnssec/rrset-sign.h"
+#include "contrib/sockaddr.h"
 
 /*! \brief Check if given node was already visited. */
 static int wildcard_has_visited(struct query_data *qdata, const zone_node_t *node)

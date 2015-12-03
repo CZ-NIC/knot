@@ -29,6 +29,7 @@
 #include "libknot/internal/utils.h"
 #include "libknot/rrtype/soa.h"
 #include "contrib/print.h"
+#include "contrib/sockaddr.h"
 
 /* ------------------------ IXFR-out processing ----------------------------- */
 

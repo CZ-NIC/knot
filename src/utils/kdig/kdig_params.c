@@ -28,7 +28,7 @@
 #include "libknot/descriptor.h"
 #include "libknot/libknot.h"
 #include "libknot/internal/lists.h"
-#include "libknot/internal/sockaddr.h"
+#include "contrib/sockaddr.h"
 
 #define DEFAULT_RETRIES_DIG	2
 #define DEFAULT_TIMEOUT_DIG	5

@@ -26,7 +26,6 @@
 #endif
 
 #include "dnssec/crypto.h"
-#include "contrib/string.h"
 #include "libknot/internal/macros.h"
 #include "libknot/libknot.h"
 #include "knot/common/log.h"
@@ -36,6 +35,9 @@
 #include "knot/server/tcp-handler.h"
 #include "knot/zone/zonefile.h"
 #include "knot/zone/zone-load.h"
+#include "contrib/net.h"
+#include "contrib/sockaddr.h"
+#include "contrib/string.h"
 
 /*! \brief Controller flags. */
 enum knotc_flag_t {

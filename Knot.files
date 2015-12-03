@@ -38,12 +38,16 @@ src/contrib/base64.h
 src/contrib/endian.h
 src/contrib/getline.c
 src/contrib/getline.h
+src/contrib/net.c
+src/contrib/net.h
 src/contrib/openbsd/strlcat.c
 src/contrib/openbsd/strlcat.h
 src/contrib/openbsd/strlcpy.c
 src/contrib/openbsd/strlcpy.h
 src/contrib/print.c
 src/contrib/print.h
+src/contrib/sockaddr.c
+src/contrib/sockaddr.h
 src/contrib/string.c
 src/contrib/string.h
 src/contrib/tolower.h
@@ -377,10 +381,6 @@ src/libknot/internal/namedb/namedb_lmdb.c
 src/libknot/internal/namedb/namedb_lmdb.h
 src/libknot/internal/namedb/namedb_trie.c
 src/libknot/internal/namedb/namedb_trie.h
-src/libknot/internal/net.c
-src/libknot/internal/net.h
-src/libknot/internal/sockaddr.c
-src/libknot/internal/sockaddr.h
 src/libknot/internal/trie/hat-trie.c
 src/libknot/internal/trie/hat-trie.h
 src/libknot/internal/trie/murmurhash3.c

@@ -19,6 +19,7 @@
 #include "knot/modules/dnsproxy.h"
 #include "knot/nameserver/capture.h"
 #include "knot/nameserver/process_query.h"
+#include "contrib/net.h"
 
 /* Module configuration scheme. */
 #define MOD_REMOTE		"\x06""remote"

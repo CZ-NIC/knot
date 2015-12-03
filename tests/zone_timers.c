@@ -17,6 +17,7 @@
 #include <dirent.h>
 #include <stdlib.h>
 #include <time.h>
+#include <unistd.h>
 #include <tap/basic.h>
 
 #include "libknot/internal/namedb/namedb.h"

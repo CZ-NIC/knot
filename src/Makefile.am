@@ -28,7 +28,9 @@ nobase_libcontrib_la_HEADERS =			\
 	contrib/base64.h			\
 	contrib/endian.h			\
 	contrib/getline.h			\
+	contrib/net.h				\
 	contrib/print.h				\
+	contrib/sockaddr.h			\
 	contrib/string.h			\
 	contrib/tolower.h			\
 	contrib/wire_ctx.h			\
@@ -86,8 +88,6 @@ nobase_libknot_internal_la_HEADERS = 		\
 	libknot/internal/namedb/namedb.h	\
 	libknot/internal/namedb/namedb_lmdb.h	\
 	libknot/internal/namedb/namedb_trie.h	\
-	libknot/internal/net.h			\
-	libknot/internal/sockaddr.h		\
 	libknot/internal/trie/hat-trie.h	\
 	libknot/internal/trie/murmurhash3.h	\
 	libknot/internal/utils.h
@@ -104,7 +104,9 @@ libcontrib_la_SOURCES = 			\
 	contrib/base32hex.c			\
 	contrib/base64.c			\
 	contrib/getline.c			\
+	contrib/net.c				\
 	contrib/print.c				\
+	contrib/sockaddr.c			\
 	contrib/string.c			\
 	contrib/openbsd/strlcat.c		\
 	contrib/openbsd/strlcpy.c		\
@@ -153,8 +155,6 @@ libknot_internal_la_SOURCES = 			\
 	libknot/internal/mempattern.c		\
 	libknot/internal/namedb/namedb_lmdb.c	\
 	libknot/internal/namedb/namedb_trie.c	\
-	libknot/internal/net.c			\
-	libknot/internal/sockaddr.c		\
 	libknot/internal/trie/hat-trie.c	\
 	libknot/internal/trie/murmurhash3.c	\
 	libknot/internal/utils.c		\

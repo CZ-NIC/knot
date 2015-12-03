@@ -25,8 +25,8 @@
 #include <unistd.h>
 
 #include "libknot/errcode.h"
-#include "libknot/internal/net.h"
-#include "libknot/internal/sockaddr.h"
+#include "contrib/net.h"
+#include "contrib/sockaddr.h"
 
 #undef ENABLE_NET_UNREACHABLE_TEST
 //#define ENABLE_NET_UNREACHABLE_TEST

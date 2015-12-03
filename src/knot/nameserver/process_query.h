@@ -29,6 +29,7 @@
 #include "libknot/processing/layer.h"
 #include "knot/server/server.h"
 #include "knot/updates/acl.h"
+#include "contrib/sockaddr.h"
 
 /* Query processing module implementation. */
 const knot_layer_api_t *process_query_layer(void);

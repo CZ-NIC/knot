@@ -19,7 +19,8 @@
 #include "libknot/processing/requestor.h"
 #include "libknot/errcode.h"
 #include "libknot/internal/macros.h"
-#include "libknot/internal/net.h"
+#include "contrib/net.h"
+#include "contrib/sockaddr.h"
 
 static bool use_tcp(struct knot_request *request)
 {

@@ -26,6 +26,8 @@
 
 #pragma once
 
+#include <sys/socket.h>
+
 #include "knot/nameserver/process_query.h"
 #include "knot/nameserver/tsig_ctx.h"
 

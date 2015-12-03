@@ -14,15 +14,14 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <netdb.h>
 
 #include "libknot/consts.h"
-#include "libknot/internal/macros.h"
-#include "libknot/internal/utils.h"
-#include "libknot/internal/sockaddr.h"
 #include "libknot/internal/errcode.h"
+#include "contrib/sockaddr.h"
 #include "contrib/openbsd/strlcpy.h"
 
 int sockaddr_len(const struct sockaddr *ss)

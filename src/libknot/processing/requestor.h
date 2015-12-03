@@ -16,12 +16,12 @@
 
 #pragma once
 
+#include <sys/socket.h>
 #include <sys/time.h>
 
 #include "libknot/processing/overlay.h"
 #include "libknot/rrtype/tsig.h"
 #include "libknot/internal/lists.h"
-#include "libknot/internal/sockaddr.h"
 #include "libknot/internal/mempattern.h"
 
 struct knot_request;

@@ -20,7 +20,7 @@
 #include "libknot/libknot.h"
 #include "libknot/rrtype/opt.h"
 #include "libknot/descriptor.h"
-#include "libknot/internal/sockaddr.h"
+#include "contrib/sockaddr.h"
 
 static const uint16_t E_MAX_PLD = 10000;
 static const uint16_t E_MAX_PLD2 = 20000;

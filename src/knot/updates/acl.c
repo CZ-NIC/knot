@@ -14,20 +14,15 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <string.h>
-#include <stdlib.h>
 #include <assert.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <limits.h>
 #include <stdbool.h>
 
-#include "contrib/endian.h"
 #include "knot/updates/acl.h"
 #include "knot/conf/conf.h"
 #include "libknot/libknot.h"
-#include "libknot/internal/sockaddr.h"
 #include "libknot/yparser/yptrafo.h"
+#include "contrib/endian.h"
+#include "contrib/sockaddr.h"
 
 static const uint8_t* ipv4_addr(const struct sockaddr_storage *ss) {
 	struct sockaddr_in *ipv4 = (struct sockaddr_in *)ss;
