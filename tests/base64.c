@@ -20,7 +20,7 @@
 #include <tap/basic.h>
 
 #include "libknot/libknot.h"
-#include "libknot/internal/base64.h"
+#include "contrib/base64.h"
 #include "contrib/openbsd/strlcpy.h"
 
 #define BUF_LEN			256

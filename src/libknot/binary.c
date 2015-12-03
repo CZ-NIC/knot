@@ -19,8 +19,8 @@
 
 #include "libknot/binary.h"
 #include "libknot/errcode.h"
-#include "libknot/internal/base64.h"
 #include "libknot/internal/macros.h"
+#include "contrib/base64.h"
 #include "contrib/string.h"
 
 _public_

@@ -14,22 +14,20 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 /*!
- * \file base32hex.h
- *
- * \author Daniel Salzman <daniel.salzman@nic.cz>
+ * \file
  *
  * \brief Base32hex implementation (RFC 4648).
  *
  * \note Input Base32hex string can contain a-v characters. These characters
  *       are considered as A-V equivalent.
  *
- * \addtogroup common_lib
+ * \addtogroup contrib
  * @{
  */
 
 #pragma once
 
-#include <stdint.h>			// uint8_t
+#include <stdint.h>
 
 /*!
  * \brief Encodes binary data using Base32hex.
@@ -43,7 +41,7 @@
  * \param out_len	Size of output buffer.
  *
  * \retval >=0		length of output string.
- * \retval errcode	if error.
+ * \retval KNOT_E*	if error.
  */
 int32_t base32hex_encode(const uint8_t  *in,
                          const uint32_t in_len,
@@ -63,7 +61,7 @@ int32_t base32hex_encode(const uint8_t  *in,
  * \param out		Output data buffer.
  *
  * \retval >=0		length of output string.
- * \retval errcode	if error.
+ * \retval KNOT_E*	if error.
  */
 int32_t base32hex_encode_alloc(const uint8_t  *in,
                                const uint32_t in_len,
@@ -82,7 +80,7 @@ int32_t base32hex_encode_alloc(const uint8_t  *in,
  * \param out_len	Size of output buffer.
  *
  * \retval >=0		length of output data.
- * \retval errcode	if error.
+ * \retval KNOT_E*	if error.
  */
 int32_t base32hex_decode(const uint8_t  *in,
                          const uint32_t in_len,
@@ -103,7 +101,7 @@ int32_t base32hex_decode(const uint8_t  *in,
  * \param out		Output data buffer.
  *
  * \retval >=0		length of output data.
- * \retval errcode	if error.
+ * \retval KNOT_E*	if error.
  */
 int32_t base32hex_decode_alloc(const uint8_t  *in,
                                const uint32_t in_len,

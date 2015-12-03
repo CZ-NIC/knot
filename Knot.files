@@ -31,6 +31,10 @@ libtap/tap/float.h
 libtap/tap/macros.h
 samples/Makefile.am
 src/Makefile.am
+src/contrib/base32hex.c
+src/contrib/base32hex.h
+src/contrib/base64.c
+src/contrib/base64.h
 src/contrib/endian.h
 src/contrib/getline.c
 src/contrib/getline.h
@@ -353,10 +357,6 @@ src/libknot/dnssec/rrset-sign.c
 src/libknot/dnssec/rrset-sign.h
 src/libknot/errcode.c
 src/libknot/errcode.h
-src/libknot/internal/base32hex.c
-src/libknot/internal/base32hex.h
-src/libknot/internal/base64.c
-src/libknot/internal/base64.h
 src/libknot/internal/consts.h
 src/libknot/internal/errcode.c
 src/libknot/internal/errcode.h

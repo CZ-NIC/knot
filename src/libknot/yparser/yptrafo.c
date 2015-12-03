@@ -22,9 +22,9 @@
 
 #include "libknot/yparser/yptrafo.h"
 #include "libknot/internal/macros.h"
-#include "libknot/internal/base64.h"
 #include "libknot/internal/sockaddr.h"
 #include "libknot/libknot.h"
+#include "contrib/base64.h"
 
 enum {
 	UNIT_BYTE = 'B',

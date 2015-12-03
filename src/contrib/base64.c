@@ -14,8 +14,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "libknot/internal/macros.h"
-#include "libknot/internal/base64.h"
+#include "contrib/base64.h"
 #include "libknot/internal/errcode.h"
 
 #include <stdlib.h>

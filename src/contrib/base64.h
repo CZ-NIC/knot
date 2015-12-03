@@ -14,19 +14,17 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 /*!
- * \file base64.h
- *
- * \author Daniel Salzman <daniel.salzman@nic.cz>
+ * \file
  *
  * \brief Base64 implementation (RFC 4648).
  *
- * \addtogroup common_lib
+ * \addtogroup contrib
  * @{
  */
 
 #pragma once
 
-#include <stdint.h>			// uint8_t
+#include <stdint.h>
 
 /*!
  * \brief Encodes binary data using Base64.
@@ -40,7 +38,7 @@
  * \param out_len	Size of output buffer.
  *
  * \retval >=0		length of output string.
- * \retval errcode	if error.
+ * \retval KNOT_E*	if error.
  */
 int32_t base64_encode(const uint8_t  *in,
                       const uint32_t in_len,
@@ -60,7 +58,7 @@ int32_t base64_encode(const uint8_t  *in,
  * \param out		Output data buffer.
  *
  * \retval >=0		length of output string.
- * \retval errcode	if error.
+ * \retval KNOT_E*	if error.
  */
 int32_t base64_encode_alloc(const uint8_t  *in,
                             const uint32_t in_len,
@@ -79,7 +77,7 @@ int32_t base64_encode_alloc(const uint8_t  *in,
  * \param out_len	Size of output buffer.
  *
  * \retval >=0		length of output data.
- * \retval errcode	if error.
+ * \retval KNOT_E*	if error.
  */
 int32_t base64_decode(const uint8_t  *in,
                       const uint32_t in_len,
@@ -100,7 +98,7 @@ int32_t base64_decode(const uint8_t  *in,
  * \param out		Output data buffer.
  *
  * \retval >=0		length of output data.
- * \retval errcode	if error.
+ * \retval KNOT_E*	if error.
  */
 int32_t base64_decode_alloc(const uint8_t  *in,
                             const uint32_t in_len,

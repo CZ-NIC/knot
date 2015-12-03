@@ -24,6 +24,8 @@ AM_LDFLAGS = $(CODE_COVERAGE_LDFLAGS)
 
 libcontrib_ladir = $(includedir)
 nobase_libcontrib_la_HEADERS =			\
+	contrib/base32hex.h			\
+	contrib/base64.h			\
 	contrib/endian.h			\
 	contrib/getline.h			\
 	contrib/print.h				\
@@ -74,8 +76,6 @@ nobase_libknot_la_HEADERS =			\
 
 libknot_internal_ladir = $(includedir)
 nobase_libknot_internal_la_HEADERS = 		\
-	libknot/internal/base32hex.h		\
-	libknot/internal/base64.h		\
 	libknot/internal/consts.h		\
 	libknot/internal/errcode.h		\
 	libknot/internal/hhash.h		\
@@ -101,6 +101,8 @@ nobase_libknot_yparser_la_HEADERS = 		\
 
 # dynamic: libknot sources
 libcontrib_la_SOURCES = 			\
+	contrib/base32hex.c			\
+	contrib/base64.c			\
 	contrib/getline.c			\
 	contrib/print.c				\
 	contrib/string.c			\
@@ -145,8 +147,6 @@ libknot_yparser_la_SOURCES = 			\
 	$(nobase_libknot_yparser_la_HEADERS)
 
 libknot_internal_la_SOURCES = 			\
-	libknot/internal/base32hex.c		\
-	libknot/internal/base64.c		\
 	libknot/internal/errcode.c		\
 	libknot/internal/hhash.c		\
 	libknot/internal/lists.c		\
