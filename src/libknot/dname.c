@@ -21,8 +21,8 @@
 #include <string.h>
 #include <inttypes.h>
 
-#include "libknot/dname.h"
 #include "libknot/consts.h"
+#include "libknot/dname.h"
 #include "libknot/errcode.h"
 #include "libknot/packet/wire.h"
 #include "libknot/internal/macros.h"

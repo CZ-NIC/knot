@@ -22,6 +22,7 @@
 
 #include "libknot/consts.h"
 #include "libknot/rdataset.h"
+#include "libknot/internal/utils.h"
 
 /*!
  * \brief Structure representing the NSEC3PARAM resource record.

@@ -43,6 +43,7 @@ nobase_libcontrib_la_HEADERS =			\
 libknot_ladir = $(includedir)
 nobase_libknot_la_HEADERS =			\
 	libknot/binary.h			\
+	libknot/codes.h				\
 	libknot/consts.h			\
 	libknot/descriptor.h			\
 	libknot/dname.h				\
@@ -77,7 +78,6 @@ nobase_libknot_la_HEADERS =			\
 
 libknot_internal_ladir = $(includedir)
 nobase_libknot_internal_la_HEADERS = 		\
-	libknot/internal/consts.h		\
 	libknot/internal/errcode.h		\
 	libknot/internal/hhash.h		\
 	libknot/internal/lists.h		\
@@ -114,7 +114,7 @@ libcontrib_la_SOURCES = 			\
 
 libknot_la_SOURCES =				\
 	libknot/binary.c			\
-	libknot/consts.c			\
+	libknot/codes.c				\
 	libknot/descriptor.c			\
 	libknot/dname.c				\
 	libknot/dnssec/rrset-sign.c		\

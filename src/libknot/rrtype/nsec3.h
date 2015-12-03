@@ -31,7 +31,7 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "libknot/consts.h"
+#include "libknot/codes.h"
 #include "libknot/rdataset.h"
 #include "libknot/rrtype/nsec3param.h"
 

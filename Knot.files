@@ -348,7 +348,8 @@ src/knot/zone/zonefile.c
 src/knot/zone/zonefile.h
 src/libknot/binary.c
 src/libknot/binary.h
-src/libknot/consts.c
+src/libknot/codes.c
+src/libknot/codes.h
 src/libknot/consts.h
 src/libknot/descriptor.c
 src/libknot/descriptor.h
@@ -358,7 +359,6 @@ src/libknot/dnssec/rrset-sign.c
 src/libknot/dnssec/rrset-sign.h
 src/libknot/errcode.c
 src/libknot/errcode.h
-src/libknot/internal/consts.h
 src/libknot/internal/errcode.c
 src/libknot/internal/errcode.h
 src/libknot/internal/hhash.c

@@ -28,7 +28,7 @@
 #include "dnssec/binary.h"
 #include "dnssec/keytag.h"
 #include "libknot/rrset-dump.h"
-#include "libknot/consts.h"
+#include "libknot/codes.h"
 #include "libknot/descriptor.h"
 #include "libknot/errcode.h"
 #include "libknot/internal/macros.h"

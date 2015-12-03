@@ -14,7 +14,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "libknot/consts.h"
+#include "libknot/codes.h"
 #include "libknot/internal/macros.h"
 
 _public_
