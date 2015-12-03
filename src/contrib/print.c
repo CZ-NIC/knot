@@ -16,13 +16,13 @@
 
 #include <stdio.h>
 #include <ctype.h>
-#include "libknot/internal/macros.h"
-#include "libknot/internal/print.h"
+
+#include "contrib/print.h"
 
 typedef int (*printf_t)(const char *fmt, ...);
 
 static void array_printf(const uint8_t *data, const unsigned length,
-                  printf_t print_handler, const char type)
+                         printf_t print_handler, const char type)
 {
 	for (unsigned i = 0; i < length; i++) {
 		uint8_t ch = data[i];
@@ -64,5 +64,4 @@ float time_diff(struct timeval *begin, struct timeval *end)
 {
 	return (end->tv_sec - begin->tv_sec) * 1000 +
 	       (end->tv_usec - begin->tv_usec) / 1000.0;
-
 }

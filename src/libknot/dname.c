@@ -27,8 +27,8 @@
 #include "libknot/packet/wire.h"
 #include "libknot/internal/macros.h"
 #include "libknot/internal/mempattern.h"
-#include "libknot/internal/tolower.h"
 #include "libknot/internal/utils.h"
+#include "contrib/tolower.h"
 
 /*----------------------------------------------------------------------------*/
 

@@ -26,7 +26,7 @@
 #include "libknot/libknot.h"
 #include "libknot/descriptor.h"
 #include "libknot/internal/lists.h"
-#include "libknot/internal/print.h"
+#include "contrib/print.h"
 
 /* AXFR context. @note aliasing the generic xfr_proc */
 struct axfr_proc {

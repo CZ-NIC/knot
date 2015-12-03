@@ -26,7 +26,9 @@ libcontrib_ladir = $(includedir)
 nobase_libcontrib_la_HEADERS =			\
 	contrib/endian.h			\
 	contrib/getline.h			\
+	contrib/print.h				\
 	contrib/string.h			\
+	contrib/tolower.h			\
 	contrib/openbsd/strlcat.h		\
 	contrib/openbsd/strlcpy.h		\
 	contrib/ucw/array-sort.h		\
@@ -84,9 +86,7 @@ nobase_libknot_internal_la_HEADERS = 		\
 	libknot/internal/namedb/namedb_lmdb.h	\
 	libknot/internal/namedb/namedb_trie.h	\
 	libknot/internal/net.h			\
-	libknot/internal/print.h		\
 	libknot/internal/sockaddr.h		\
-	libknot/internal/tolower.h		\
 	libknot/internal/trie/hat-trie.h	\
 	libknot/internal/trie/murmurhash3.h	\
 	libknot/internal/utils.h		\
@@ -102,6 +102,7 @@ nobase_libknot_yparser_la_HEADERS = 		\
 # dynamic: libknot sources
 libcontrib_la_SOURCES = 			\
 	contrib/getline.c			\
+	contrib/print.c				\
 	contrib/string.c			\
 	contrib/openbsd/strlcat.c		\
 	contrib/openbsd/strlcpy.c		\
@@ -153,9 +154,7 @@ libknot_internal_la_SOURCES = 			\
 	libknot/internal/namedb/namedb_lmdb.c	\
 	libknot/internal/namedb/namedb_trie.c	\
 	libknot/internal/net.c			\
-	libknot/internal/print.c		\
 	libknot/internal/sockaddr.c		\
-	libknot/internal/tolower.c		\
 	libknot/internal/trie/hat-trie.c	\
 	libknot/internal/trie/murmurhash3.c	\
 	libknot/internal/utils.c		\

@@ -19,7 +19,7 @@
 #include "libknot/rrtype/nsec3.h"
 #include "libknot/errcode.h"
 #include "libknot/internal/macros.h"
-#include "libknot/internal/tolower.h"
+#include "contrib/tolower.h"
 
 _public_
 void knot_nsec3_bitmap(const knot_rdataset_t *rrs, size_t pos,

@@ -24,7 +24,6 @@
 #include "knot/dnssec/zone-sign.h"
 #include "knot/common/log.h"
 #include "libknot/internal/macros.h"
-#include "libknot/internal/print.h"
 #include "knot/dnssec/zone-events.h"
 #include "knot/updates/ddns.h"
 #include "knot/updates/zone-update.h"
@@ -37,6 +36,7 @@
 #include "knot/server/udp-handler.h"
 #include "knot/nameserver/capture.h"
 #include "libknot/processing/requestor.h"
+#include "contrib/print.h"
 
 /* UPDATE-specific logging (internal, expects 'qdata' variable set). */
 #define UPDATE_LOG(severity, msg, ...) \

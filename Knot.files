@@ -38,6 +38,11 @@ src/contrib/openbsd/strlcat.c
 src/contrib/openbsd/strlcat.h
 src/contrib/openbsd/strlcpy.c
 src/contrib/openbsd/strlcpy.h
+src/contrib/print.c
+src/contrib/print.h
+src/contrib/string.c
+src/contrib/string.h
+src/contrib/tolower.h
 src/contrib/ucw/array-sort.h
 src/contrib/ucw/binsearch.h
 src/contrib/ucw/heap.c
@@ -360,8 +365,6 @@ src/libknot/internal/hhash.h
 src/libknot/internal/lists.c
 src/libknot/internal/lists.h
 src/libknot/internal/macros.h
-src/libknot/internal/mem.c
-src/libknot/internal/mem.h
 src/libknot/internal/mempattern.c
 src/libknot/internal/mempattern.h
 src/libknot/internal/namedb/lmdb.h
@@ -375,12 +378,8 @@ src/libknot/internal/namedb/namedb_trie.c
 src/libknot/internal/namedb/namedb_trie.h
 src/libknot/internal/net.c
 src/libknot/internal/net.h
-src/libknot/internal/print.c
-src/libknot/internal/print.h
 src/libknot/internal/sockaddr.c
 src/libknot/internal/sockaddr.h
-src/libknot/internal/tolower.c
-src/libknot/internal/tolower.h
 src/libknot/internal/trie/hat-trie.c
 src/libknot/internal/trie/hat-trie.h
 src/libknot/internal/trie/murmurhash3.c

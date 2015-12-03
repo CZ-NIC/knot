@@ -25,9 +25,9 @@
 #include "utils/common/params.h"
 #include "libknot/libknot.h"
 #include "libknot/internal/lists.h"
-#include "libknot/internal/print.h"
 #include "libknot/internal/sockaddr.h"
 #include "libknot/internal/wire_ctx.h"
+#include "contrib/print.h"
 #include "contrib/openbsd/strlcat.h"
 
 static lookup_table_t rtypes[] = {

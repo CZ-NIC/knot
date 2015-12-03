@@ -26,9 +26,9 @@
 #include "knot/zone/serial.h"
 #include "libknot/libknot.h"
 #include "libknot/descriptor.h"
-#include "libknot/internal/print.h"
 #include "libknot/internal/utils.h"
 #include "libknot/rrtype/soa.h"
+#include "contrib/print.h"
 
 /* ------------------------ IXFR-out processing ----------------------------- */
 

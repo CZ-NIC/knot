@@ -14,16 +14,11 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 /*!
- * \file print.h
- *
- * \author Marek Vavrusa <marek.vavrusa@nic.cz>
+ * \file
  *
  * \brief Custom printing functions.
  *
- * Downloaded hex_print, bit_print from http://www.digitalpeer.com/id/print
- * Updated with generic printf handler.
- *
- * \addtogroup common_lib
+ * \addtogroup contrib
  * @{
  */
 
@@ -59,7 +54,7 @@ void short_hex_print(const uint8_t *data, unsigned length);
 void txt_print(const uint8_t *data, unsigned length);
 
 /*!
- * \brief Get time diff in miliseconds.
+ * \brief Get time difference in miliseconds.
  *
  * \param begin
  * \param end
