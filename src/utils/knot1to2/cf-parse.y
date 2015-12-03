@@ -408,6 +408,7 @@ static void grp_add(void *scanner, const char *value)
 %token <tok> RATE_LIMIT_SLIP
 %token <tok> TRANSFERS
 %token <TOK> STORAGE
+%token <TOK> TIMER_DB
 %token <tok> DNSSEC_ENABLE
 %token <tok> DNSSEC_KEYDIR
 %token <tok> SIGNATURE_LIFETIME
@@ -707,6 +708,7 @@ zones:
  | zones DBSYNC_TIMEOUT NUM ';'			{ f_int(scanner,   R_ZONE_TPL, C_ZONEFILE_SYNC,    $3.i); }
  | zones DBSYNC_TIMEOUT INTERVAL ';'		{ f_int(scanner,   R_ZONE_TPL, C_ZONEFILE_SYNC,    $3.i); }
  | zones STORAGE TEXT ';'			{ f_quote(scanner, R_ZONE_TPL, C_STORAGE,          $3.t); free($3.t); }
+ | zones TIMER_DB TEXT ';'			{ f_quote(scanner, R_ZONE_TPL, C_TIMER_DB,         $3.t); free($3.t); }
  | zones DNSSEC_ENABLE BOOL ';'			{ f_bool(scanner,  R_ZONE_TPL, C_DNSSEC_SIGNING,   $3.i); }
  | zones DNSSEC_KEYDIR TEXT ';'			{ f_quote(scanner, R_ZONE_TPL, C_KASP_DB,          $3.t); free($3.t); }
  | zones SERIAL_POLICY SERIAL_POLICY_VAL ';'	{ f_str(scanner,   R_ZONE_TPL, C_SERIAL_POLICY,    $3.t); }

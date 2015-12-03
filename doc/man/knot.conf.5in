@@ -484,6 +484,7 @@ if a zone doesn\(aqt have another template specified.
 .ft C
 template:
   \- id: STR
+    timer\-db: STR
     global\-module: STR/STR ...
     # All zone options (excluding \(aqtemplate\(aq item)
 .ft P
@@ -493,12 +494,20 @@ template:
 .SS id
 .sp
 A template identifier.
+.SS timer\-db
+.sp
+Specifies a path of the persistent timer database. The path can be specified
+as a relative path to the \fIdefault\fP template \fI\%storage\fP\&.
+.sp
+\fICaution:\fP This option is only available in the \fIdefault\fP template.
+.sp
+\fIDefault:\fP \fI\%storage\fP/timers
 .SS global\-module
 .sp
 An ordered list of references to query modules in the form
 \fImodule_name/module_id\fP\&. These modules apply to all queries.
 .sp
-\fICaution:\fP This option is available only for the \fIdefault\fP template.
+\fICaution:\fP This option is only available in the \fIdefault\fP template.
 .sp
 \fIDefault:\fP not set
 .SH ZONE SECTION

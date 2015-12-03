@@ -143,28 +143,21 @@ static int read_timers(namedb_txn_t *txn, const zone_t *zone, time_t *timers)
 
 /* -------- API ------------------------------------------------------------- */
 
-int open_timers_db(const char *storage, namedb_t **db_ptr)
+int open_timers_db(const char *path, namedb_t **timer_db)
 {
-	if (storage == NULL || db_ptr == NULL) {
+	if (path == NULL || timer_db == NULL) {
 		return KNOT_EINVAL;
 	}
 
-	struct namedb_lmdb_opts opts = NAMEDB_LMDB_OPTS_INITIALIZER;
 	const namedb_api_t *db_api = namedb_lmdb_api();
 	if (db_api == NULL) {
 		return KNOT_ENOTSUP;
 	}
 
-	opts.path = sprintf_alloc("%s/timers", storage);
-	if (opts.path == NULL) {
-		return KNOT_ENOMEM;
-	}
+	struct namedb_lmdb_opts opts = NAMEDB_LMDB_OPTS_INITIALIZER;
+	opts.path = path;
 
-	int ret = db_api->init(db_ptr, NULL, &opts);
-
-	free((char *)opts.path);
-
-	return ret;
+	return db_api->init(timer_db, NULL, &opts);
 }
 
 void close_timers_db(namedb_t *timer_db)
