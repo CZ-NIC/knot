@@ -23,7 +23,7 @@
 #include <sys/uio.h>
 #include <unistd.h>
 
-#include "libknot/internal/errcode.h"
+#include "libknot/errcode.h"
 #include "contrib/net.h"
 #include "contrib/sockaddr.h"
 

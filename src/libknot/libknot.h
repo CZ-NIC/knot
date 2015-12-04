@@ -29,7 +29,7 @@
 #include "libknot/consts.h"
 #include "libknot/descriptor.h"
 #include "libknot/dname.h"
-#include "libknot/errcode.h"
+#include "libknot/error.h"
 #include "libknot/packet/compr.h"
 #include "libknot/packet/pkt.h"
 #include "libknot/packet/wire.h"

@@ -51,6 +51,7 @@ nobase_libknot_la_HEADERS =			\
 	libknot/dname.h				\
 	libknot/dnssec/rrset-sign.h		\
 	libknot/errcode.h			\
+	libknot/error.h				\
 	libknot/libknot.h			\
 	libknot/packet/compr.h			\
 	libknot/packet/pkt.h			\
@@ -80,7 +81,6 @@ nobase_libknot_la_HEADERS =			\
 
 libknot_internal_ladir = $(includedir)
 nobase_libknot_internal_la_HEADERS = 		\
-	libknot/internal/errcode.h		\
 	libknot/internal/hhash.h		\
 	libknot/internal/lists.h		\
 	libknot/internal/macros.h		\
@@ -120,7 +120,7 @@ libknot_la_SOURCES =				\
 	libknot/descriptor.c			\
 	libknot/dname.c				\
 	libknot/dnssec/rrset-sign.c		\
-	libknot/errcode.c			\
+	libknot/error.c				\
 	libknot/packet/compr.c			\
 	libknot/packet/pkt.c			\
 	libknot/packet/rrset-wire.c		\
@@ -149,7 +149,6 @@ libknot_yparser_la_SOURCES = 			\
 	$(nobase_libknot_yparser_la_HEADERS)
 
 libknot_internal_la_SOURCES = 			\
-	libknot/internal/errcode.c		\
 	libknot/internal/hhash.c		\
 	libknot/internal/lists.c		\
 	libknot/internal/mempattern.c		\

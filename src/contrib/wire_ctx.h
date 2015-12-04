@@ -24,7 +24,7 @@
 #include <sys/types.h>
 
 #include "contrib/endian.h"
-#include "libknot/internal/errcode.h"
+#include "libknot/errcode.h"
 
 /*!
  * \brief Struct to keep the wire context.

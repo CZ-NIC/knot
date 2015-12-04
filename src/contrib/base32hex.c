@@ -15,7 +15,7 @@
  */
 
 #include "contrib/base32hex.h"
-#include "libknot/internal/errcode.h"
+#include "libknot/errcode.h"
 
 #include <stdlib.h>
 #include <stdint.h>

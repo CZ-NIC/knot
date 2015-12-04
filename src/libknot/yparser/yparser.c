@@ -23,7 +23,7 @@
 
 #include "libknot/internal/macros.h"
 #include "libknot/yparser/yparser.h"
-#include "libknot/libknot.h"
+#include "libknot/errcode.h"
 
 extern int _yp_start_state;
 extern int _yp_parse(yp_parser_t *parser);

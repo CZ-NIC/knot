@@ -25,7 +25,7 @@ extern "C" {
 #include <stdbool.h>
 #include "libknot/internal/mempattern.h"
 #include "libknot/internal/hhash.h"
-#include "libknot/internal/errcode.h"
+#include "libknot/errcode.h"
 
 /* Hat-trie defines. */
 #define TRIE_ZEROBUCKETS  0    /* Do not use hash buckets (pure trie). */

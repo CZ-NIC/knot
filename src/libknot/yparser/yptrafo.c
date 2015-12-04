@@ -22,7 +22,8 @@
 
 #include "libknot/yparser/yptrafo.h"
 #include "libknot/internal/macros.h"
-#include "libknot/libknot.h"
+#include "libknot/consts.h"
+#include "libknot/dname.h"
 #include "contrib/base64.h"
 #include "contrib/sockaddr.h"
 #include "contrib/wire_ctx.h"

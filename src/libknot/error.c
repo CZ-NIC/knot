@@ -19,7 +19,7 @@
 #include <lmdb.h>
 #endif
 
-#include "libknot/errcode.h"
+#include "libknot/error.h"
 #include "libknot/internal/macros.h"
 #include "dnssec/error.h"
 

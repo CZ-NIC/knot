@@ -17,7 +17,7 @@
 #include <assert.h>
 
 #include "libknot/internal/macros.h"
-#include "libknot/internal/errcode.h"
+#include "libknot/errcode.h"
 #include "libknot/internal/namedb/namedb_trie.h"
 #include "libknot/internal/trie/hat-trie.h"
 #include "libknot/internal/mempattern.h"

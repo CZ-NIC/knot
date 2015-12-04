@@ -15,7 +15,7 @@
  */
 
 #include "contrib/base64.h"
-#include "libknot/internal/errcode.h"
+#include "libknot/errcode.h"
 
 #include <stdlib.h>
 #include <stdint.h>

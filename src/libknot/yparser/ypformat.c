@@ -16,7 +16,7 @@
 
 #include "libknot/internal/macros.h"
 #include "libknot/yparser/yptrafo.h"
-#include "libknot/libknot.h"
+#include "libknot/errcode.h"
 
 static int format_item(
 	const yp_item_t *item,

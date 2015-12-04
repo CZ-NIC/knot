@@ -18,7 +18,7 @@
 #include <netinet/in.h>
 #include <stdio.h>
 
-#include "libknot/internal/errcode.h"
+#include "libknot/errcode.h"
 #include "contrib/wire_ctx.h"
 
 #define OK(wire) { \

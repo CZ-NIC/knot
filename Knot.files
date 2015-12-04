@@ -361,10 +361,9 @@ src/libknot/dname.c
 src/libknot/dname.h
 src/libknot/dnssec/rrset-sign.c
 src/libknot/dnssec/rrset-sign.h
-src/libknot/errcode.c
 src/libknot/errcode.h
-src/libknot/internal/errcode.c
-src/libknot/internal/errcode.h
+src/libknot/error.c
+src/libknot/error.h
 src/libknot/internal/hhash.c
 src/libknot/internal/hhash.h
 src/libknot/internal/lists.c

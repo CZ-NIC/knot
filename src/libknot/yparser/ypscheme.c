@@ -14,12 +14,13 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <assert.h>
 #include <stdlib.h>
 
 #include "libknot/internal/macros.h"
 #include "libknot/yparser/ypscheme.h"
 #include "libknot/yparser/yptrafo.h"
-#include "libknot/libknot.h"
+#include "libknot/errcode.h"
 
 /*! Initializes the referenced item. */
 static int set_ref_item(

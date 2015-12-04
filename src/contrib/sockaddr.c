@@ -20,7 +20,7 @@
 #include <netdb.h>
 
 #include "libknot/consts.h"
-#include "libknot/internal/errcode.h"
+#include "libknot/errcode.h"
 #include "contrib/sockaddr.h"
 #include "contrib/openbsd/strlcpy.h"
 

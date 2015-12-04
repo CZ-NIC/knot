@@ -17,7 +17,7 @@
 #include <string.h>
 
 #include "libknot/yparser/yparser.h"
-#include "libknot/libknot.h"
+#include "libknot/errcode.h"
 
 %%{
 	machine yparser;
