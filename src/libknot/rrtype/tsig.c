@@ -28,7 +28,7 @@
 #include "libknot/errcode.h"
 #include "libknot/rrset.h"
 #include "libknot/internal/macros.h"
-#include "libknot/internal/utils.h"
+#include "contrib/wire.h"
 #include "contrib/wire_ctx.h"
 
 /*! \brief TSIG field offsets. */

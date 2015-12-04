@@ -25,6 +25,7 @@
 #include "utils/common/params.h"
 #include "libknot/libknot.h"
 #include "libknot/internal/lists.h"
+#include "contrib/lookup.h"
 #include "contrib/print.h"
 #include "contrib/sockaddr.h"
 #include "contrib/openbsd/strlcat.h"
@@ -51,11 +52,11 @@ static lookup_table_t rtypes[] = {
 static void print_header(const knot_pkt_t *packet, const style_t *style,
                          const uint16_t ext_rcode)
 {
-	char    flags[64] = "";
+	char flags[64] = "";
 	uint8_t opcode_id;
 	const char *rcode_str = "Unknown";
 	const char *opcode_str = "Unknown";
-	lookup_table_t *rcode, *opcode;
+	const lookup_table_t *rcode, *opcode;
 
 	// Get RCODE from Header and check for Extended RCODE from OPT RR.
 	rcode = lookup_by_id(knot_rcode_names, ext_rcode);
@@ -136,7 +137,7 @@ static void print_footer(const size_t total_len,
                          const bool   incoming)
 {
 	struct tm tm;
-	char      date[64];
+	char date[64];
 
 	// Get current timestamp.
 	if (exec_time == 0) {
@@ -184,10 +185,10 @@ static void print_edns_client_subnet(const uint8_t *data, const uint16_t len)
 	struct in_addr addr4;
 	struct in6_addr addr6;
 	knot_addr_family_t family;
-	uint8_t  src_mask, dst_mask;
-	uint8_t  addr[IPV6_PREFIXLEN / 8] = { 0 };
+	uint8_t src_mask, dst_mask;
+	uint8_t addr[IPV6_PREFIXLEN / 8] = { 0 };
 	uint16_t addr_len = sizeof(addr);
-	char     addr_str[SOCKADDR_STRLEN] = { '\0' };
+	char addr_str[SOCKADDR_STRLEN] = { '\0' };
 
 	int ret = knot_edns_client_subnet_parse(data, len, &family, addr,
 	                                        &addr_len, &src_mask, &dst_mask);
@@ -215,10 +216,10 @@ static void print_edns_client_subnet(const uint8_t *data, const uint16_t len)
 
 static void print_section_opt(const knot_rrset_t *rr, const uint8_t rcode)
 {
-	uint8_t        ercode = knot_edns_get_ext_rcode(rr);
-	uint16_t       ext_rcode_id = knot_edns_whole_rcode(ercode, rcode);
-	const char     *ext_rcode_str = "Unused";
-	lookup_table_t *ext_rcode;
+	uint8_t ercode = knot_edns_get_ext_rcode(rr);
+	uint16_t ext_rcode_id = knot_edns_whole_rcode(ercode, rcode);
+	const char *ext_rcode_str = "Unused";
+	const lookup_table_t *ext_rcode;
 
 	if (ercode > 0) {
 		ext_rcode = lookup_by_id(knot_rcode_names, ext_rcode_id);
@@ -281,7 +282,7 @@ static void print_section_question(const knot_dname_t *owner,
                                    const style_t      *style)
 {
 	size_t buflen = 8192;
-	char   *buf = calloc(buflen, 1);
+	char *buf = calloc(buflen, 1);
 
 	// Don't print zero TTL.
 	knot_dump_style_t qstyle = style->style;
@@ -305,7 +306,7 @@ static void print_section_full(const knot_rrset_t *rrsets,
                                const bool         no_tsig)
 {
 	size_t buflen = 8192;
-	char   *buf = calloc(buflen, 1);
+	char *buf = calloc(buflen, 1);
 
 	for (size_t i = 0; i < count; i++) {
 		// Ignore OPT records.
@@ -345,7 +346,7 @@ static void print_section_dig(const knot_rrset_t *rrsets,
                               const style_t      *style)
 {
 	size_t buflen = 8192;
-	char   *buf = calloc(buflen, 1);
+	char *buf = calloc(buflen, 1);
 
 	for (size_t i = 0; i < count; i++) {
 		const knot_rrset_t *rrset = &rrsets[i];
@@ -379,13 +380,13 @@ static void print_section_host(const knot_rrset_t *rrsets,
                                const style_t      *style)
 {
 	size_t buflen = 8192;
-	char   *buf = calloc(buflen, 1);
+	char *buf = calloc(buflen, 1);
 
 	for (size_t i = 0; i < count; i++) {
 		const knot_rrset_t *rrset = &rrsets[i];
-		lookup_table_t     *descr;
-		char               type[32] = "NULL";
-		char               *owner;
+		const lookup_table_t *descr;
+		char type[32] = "NULL";
+		char *owner;
 
 		owner = knot_dname_to_str_alloc(rrset->owner);
 		if (style->style.ascii_to_idn != NULL) {
@@ -440,8 +441,7 @@ static void print_error_host(const uint16_t   code,
 	const char *rcode_str = "Unknown";
 	char type[32] = "Unknown";
 	char *owner;
-
-	lookup_table_t *rcode;
+	const lookup_table_t *rcode;
 
 	owner = knot_dname_to_str_alloc(knot_pkt_qname(packet));
 	if (style->style.ascii_to_idn != NULL) {

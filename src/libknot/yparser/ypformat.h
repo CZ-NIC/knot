@@ -16,10 +16,9 @@
 /*!
  * \file
  *
- * Tools for Yparser format creation.
+ * \brief Tools for Yparser format creation.
  *
  * \addtogroup yparser
- *
  * @{
  */
 

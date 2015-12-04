@@ -20,6 +20,7 @@
 #include "knot/zone/timers.h"
 #include "knot/zone/zonedb.h"
 #include "contrib/string.h"
+#include "contrib/wire.h"
 #include "contrib/wire_ctx.h"
 
 /* ---- Knot-internal event code to db key lookup tables ------------------ - */

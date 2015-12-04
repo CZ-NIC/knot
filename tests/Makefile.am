@@ -29,6 +29,7 @@ check_PROGRAMS = \
 	hhash				\
 	internal_mem			\
 	journal				\
+	lookup				\
 	namedb				\
 	net				\
 	net_shortwrite			\
@@ -46,7 +47,6 @@ check_PROGRAMS = \
 	rrset_wire			\
 	server				\
 	tsig_key			\
-	utils				\
 	wire				\
 	wire_ctx			\
 	worker_pool			\

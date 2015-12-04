@@ -22,6 +22,7 @@
 
 #include "libknot/yparser/yptrafo.h"
 #include "libknot/libknot.h"
+#include "contrib/lookup.h"
 
 static void int_test(const char *txt, int64_t num, yp_style_t s,
                      int64_t min, int64_t max)

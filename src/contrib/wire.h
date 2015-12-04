@@ -1,13 +1,3 @@
-/*!
- * \file utils.h
- *
- * \author Lubos Slovak <lubos.slovak@nic.cz>
- *
- * \brief Various utilities.
- *
- * \addtogroup libknot
- * @{
- */
 /*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
@@ -23,48 +13,21 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
+/*!
+ * \file
+ *
+ * \brief Wire integer operations.
+ *
+ * \addtogroup contrib
+ * @{
+ */
 
 #pragma once
 
-#include <string.h>
 #include <stdint.h>
-#include <stdio.h>
+#include <string.h>
 
-/*!
- * \brief A general purpose lookup table.
- */
-struct lookup_table {
-	int id;
-	const char *name;
-};
-
-typedef struct lookup_table lookup_table_t;
-
-/*!
- * \brief Looks up the given name in the lookup table.
- *
- * \param table Lookup table.
- * \param name Name to look up.
- *
- * \return Item in the lookup table with the given name or NULL if no such is
- *         present.
- */
-lookup_table_t *lookup_by_name(lookup_table_t *table, const char *name);
-
-/*!
- * \brief Looks up the given id in the lookup table.
- *
- * \param table Lookup table.
- * \param id ID to look up.
- *
- * \return Item in the lookup table with the given id or NULL if no such is
- *         present.
- */
-lookup_table_t *lookup_by_id(lookup_table_t *table, int id);
-
-/*
- * Writing / reading arbitrary data to / from wireformat.
- */
+#include "contrib/endian.h"
 
 /*!
  * \brief Reads 2 bytes from the wireformat data.
@@ -73,7 +36,10 @@ lookup_table_t *lookup_by_id(lookup_table_t *table, int id);
  *
  * \return The 2 bytes read, in host byte order.
  */
-uint16_t wire_read_u16(const uint8_t *pos);
+inline static uint16_t wire_read_u16(const uint8_t *pos)
+{
+	return be16toh(*(uint16_t *)pos);
+}
 
 /*!
  * \brief Reads 4 bytes from the wireformat data.
@@ -82,7 +48,10 @@ uint16_t wire_read_u16(const uint8_t *pos);
  *
  * \return The 4 bytes read, in host byte order.
  */
-uint32_t wire_read_u32(const uint8_t *pos);
+inline static uint32_t wire_read_u32(const uint8_t *pos)
+{
+	return be32toh(*(uint32_t *)pos);
+}
 
 /*!
  * \brief Reads 6 bytes from the wireformat data.
@@ -91,7 +60,12 @@ uint32_t wire_read_u32(const uint8_t *pos);
  *
  * \return The 6 bytes read, in host byte order.
  */
-uint64_t wire_read_u48(const uint8_t *pos);
+inline static uint64_t wire_read_u48(const uint8_t *pos)
+{
+	uint64_t input = 0;
+	memcpy((uint8_t *)&input + 1, pos, 6);
+	return be64toh(input) >> 8;
+}
 
 /*!
  * \brief Read 8 bytes from the wireformat data.
@@ -100,7 +74,10 @@ uint64_t wire_read_u48(const uint8_t *pos);
  *
  * \return The 8 bytes read, in host byte order.
  */
-uint64_t wire_read_u64(const uint8_t *pos);
+inline static uint64_t wire_read_u64(const uint8_t *pos)
+{
+	return be64toh(*(uint64_t *)pos);
+}
 
 /*!
  * \brief Writes 2 bytes in wireformat.
@@ -110,7 +87,10 @@ uint64_t wire_read_u64(const uint8_t *pos);
  * \param pos Position where to put the 2 bytes.
  * \param data Data to put.
  */
-void wire_write_u16(uint8_t *pos, uint16_t data);
+inline static void wire_write_u16(uint8_t *pos, uint16_t data)
+{
+	*(uint16_t *)pos = htobe16(data);
+}
 
 /*!
  * \brief Writes 4 bytes in wireformat.
@@ -120,7 +100,10 @@ void wire_write_u16(uint8_t *pos, uint16_t data);
  * \param pos Position where to put the 4 bytes.
  * \param data Data to put.
  */
-void wire_write_u32(uint8_t *pos, uint32_t data);
+inline static void wire_write_u32(uint8_t *pos, uint32_t data)
+{
+	*(uint32_t *)pos = htobe32(data);
+}
 
 /*!
  * \brief Writes 6 bytes in wireformat.
@@ -130,7 +113,11 @@ void wire_write_u32(uint8_t *pos, uint32_t data);
  * \param pos Position where to put the 4 bytes.
  * \param data Data to put.
  */
-void wire_write_u48(uint8_t *pos, uint64_t data);
+inline static void wire_write_u48(uint8_t *pos, uint64_t data)
+{
+	uint64_t swapped = htobe64(data << 8);
+	memcpy(pos, (uint8_t *)&swapped + 1, 6);
+}
 
 /*!
  * \brief Writes 8 bytes in wireformat.
@@ -140,6 +127,9 @@ void wire_write_u48(uint8_t *pos, uint64_t data);
  * \param pos Position where to put the 8 bytes.
  * \param data Data to put.
  */
-void wire_write_u64(uint8_t *pos, uint64_t data);
+inline static void wire_write_u64(uint8_t *pos, uint64_t data)
+{
+	*(uint64_t *)pos = htobe64(data);
+}
 
 /*! @} */

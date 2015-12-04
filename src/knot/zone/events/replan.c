@@ -14,11 +14,12 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "libknot/rrtype/soa.h"
+#include <assert.h>
 
 #include "knot/zone/events/replan.h"
 #include "knot/zone/events/handlers.h"
 #include "knot/zone/zone.h"
+#include "libknot/rrtype/soa.h"
 #include "libknot/internal/macros.h"
 
 /* -- Zone event replanning functions --------------------------------------- */

@@ -14,7 +14,8 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "libknot/internal/macros.h"
+#include <stdio.h>
+
 #include "libknot/yparser/yptrafo.h"
 #include "libknot/errcode.h"
 

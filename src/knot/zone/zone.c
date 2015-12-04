@@ -37,7 +37,6 @@
 #include "knot/nameserver/process_query.h"
 #include "libknot/libknot.h"
 #include "libknot/dname.h"
-#include "libknot/internal/utils.h"
 #include "contrib/string.h"
 #include "libknot/rrtype/soa.h"
 

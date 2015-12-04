@@ -22,6 +22,7 @@
 #include "libknot/processing/requestor.h"
 #include "libknot/yparser/yptrafo.h"
 #include "contrib/ucw/mempool.h"
+#include "contrib/wire.h"
 
 #include "knot/common/log.h"
 #include "knot/common/trim.h"

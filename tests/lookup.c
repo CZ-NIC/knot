@@ -16,14 +16,14 @@
 
 #include <tap/basic.h>
 
-#include "libknot/internal/utils.h"
+#include "contrib/lookup.h"
 
-lookup_table_t test_table[] = {
-	{0, "test item 0"},
-	{10, ""},
-	{2, "test item 2"},
-	{-1, "test item -1"},
-	{ 0, NULL }
+const lookup_table_t test_table[] = {
+	{  0, "test item 0" },
+	{ 10, "" },
+	{  2, "test item 2" },
+	{ -1, "test item -1" },
+	{  0, NULL }
 };
 
 int main(int argc, char *argv[])
@@ -31,7 +31,7 @@ int main(int argc, char *argv[])
 	plan(9);
 
 	/* Lookup by ID. */
-	lookup_table_t *found = lookup_by_id(test_table, 3);
+	const lookup_table_t *found = lookup_by_id(test_table, 3);
 	ok(found == NULL, "lookup table: find by id - non-existent ID");
 
 	found = lookup_by_id(test_table, 2);

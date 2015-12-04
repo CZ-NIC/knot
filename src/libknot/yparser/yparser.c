@@ -21,7 +21,6 @@
 #include <sys/mman.h>
 #include <unistd.h>
 
-#include "libknot/internal/macros.h"
 #include "libknot/yparser/yparser.h"
 #include "libknot/errcode.h"
 

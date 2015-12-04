@@ -18,6 +18,14 @@
 #include "libknot/errcode.h"
 #include "libknot/internal/macros.h"
 #include "contrib/string.h"
+#include "contrib/wire.h"
+
+_public_
+uint16_t knot_nsec3param_iterations(const knot_rdataset_t *rrs, size_t pos)
+{
+	KNOT_RDATASET_CHECK(rrs, pos, return 0);
+	return wire_read_u16(knot_rdata_offset(rrs, pos, 2));
+}
 
 _public_
 int knot_nsec3param_from_wire(knot_nsec3_params_t *params,

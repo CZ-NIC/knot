@@ -33,6 +33,7 @@
 #include "libknot/tsig-op.h"
 #include "libknot/packet/rrset-wire.h"
 #include "libknot/internal/macros.h"
+#include "contrib/wire.h"
 
 const int KNOT_TSIG_MAX_DIGEST_SIZE = 64;    // size of HMAC-SHA512 digest
 const uint16_t KNOT_TSIG_FUDGE_DEFAULT = 300;  // default Fudge value

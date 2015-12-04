@@ -25,6 +25,7 @@ hattrie
 hhash
 internal_mem
 journal
+lookup
 modules/online_sign
 namedb
 net
@@ -43,7 +44,6 @@ rrset
 rrset_wire
 server
 tsig_key
-utils
 wire
 wire_ctx
 worker_pool

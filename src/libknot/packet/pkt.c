@@ -26,6 +26,7 @@
 #include "libknot/packet/wire.h"
 #include "libknot/packet/rrset-wire.h"
 #include "libknot/internal/macros.h"
+#include "contrib/wire.h"
 #include "contrib/wire_ctx.h"
 
 /*! \brief Packet RR array growth step. */

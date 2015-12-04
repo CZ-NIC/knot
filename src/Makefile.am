@@ -28,11 +28,13 @@ nobase_libcontrib_la_HEADERS =			\
 	contrib/base64.h			\
 	contrib/endian.h			\
 	contrib/getline.h			\
+	contrib/lookup.h			\
 	contrib/net.h				\
 	contrib/print.h				\
 	contrib/sockaddr.h			\
 	contrib/string.h			\
 	contrib/tolower.h			\
+	contrib/wire.h				\
 	contrib/wire_ctx.h			\
 	contrib/openbsd/strlcat.h		\
 	contrib/openbsd/strlcpy.h		\
@@ -89,8 +91,7 @@ nobase_libknot_internal_la_HEADERS = 		\
 	libknot/internal/namedb/namedb_lmdb.h	\
 	libknot/internal/namedb/namedb_trie.h	\
 	libknot/internal/trie/hat-trie.h	\
-	libknot/internal/trie/murmurhash3.h	\
-	libknot/internal/utils.h
+	libknot/internal/trie/murmurhash3.h
 
 libknot_yparser_ladir = $(includedir)
 nobase_libknot_yparser_la_HEADERS = 		\
@@ -124,6 +125,7 @@ libknot_la_SOURCES =				\
 	libknot/packet/compr.c			\
 	libknot/packet/pkt.c			\
 	libknot/packet/rrset-wire.c		\
+	libknot/packet/wire.c			\
 	libknot/processing/layer.c		\
 	libknot/processing/overlay.c		\
 	libknot/processing/requestor.c		\
@@ -131,10 +133,13 @@ libknot_la_SOURCES =				\
 	libknot/rdataset.c			\
 	libknot/rrset-dump.c			\
 	libknot/rrset.c				\
+	libknot/rrtype/dnskey.c			\
 	libknot/rrtype/naptr.c			\
 	libknot/rrtype/nsec3.c			\
 	libknot/rrtype/nsec3param.c		\
 	libknot/rrtype/opt.c			\
+	libknot/rrtype/rrsig.c			\
+	libknot/rrtype/soa.c			\
 	libknot/rrtype/tsig.c			\
 	libknot/tsig-op.c			\
 	libknot/tsig.c				\
@@ -156,7 +161,6 @@ libknot_internal_la_SOURCES = 			\
 	libknot/internal/namedb/namedb_trie.c	\
 	libknot/internal/trie/hat-trie.c	\
 	libknot/internal/trie/murmurhash3.c	\
-	libknot/internal/utils.c		\
 	$(nobase_libknot_internal_la_HEADERS)
 
 libcontrib_la_CPPFLAGS = $(AM_CPPFLAGS)

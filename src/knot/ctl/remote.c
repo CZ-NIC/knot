@@ -35,6 +35,7 @@
 #include "contrib/sockaddr.h"
 #include "contrib/string.h"
 #include "contrib/openbsd/strlcpy.h"
+#include "contrib/wire.h"
 
 #define KNOT_CTL_REALM "knot."
 #define KNOT_CTL_REALM_EXT ("." KNOT_CTL_REALM)
