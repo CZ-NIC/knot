@@ -21,9 +21,9 @@
 
 #include "binary.h"
 #include "error.h"
-#include "hex_gnutls.h"
 #include "key.h"
 #include "keyid.h"
+#include "keyid/internal.h"
 #include "pem.h"
 #include "shared.h"
 
@@ -125,14 +125,15 @@ int pem_generate(gnutls_pk_algorithm_t algorithm, unsigned bits,
 
 	// export key ID
 
-	char *id = gnutls_x509_privkey_hex_key_id(key);
-	if (!id) {
+	char *id = NULL;
+	r = keyid_x509_hex(key, &id);
+	if (r != DNSSEC_EOK) {
 		dnssec_binary_free(&pem);
-		return DNSSEC_ENOMEM;
+		return r;
 	}
 
-	*pem_ptr = pem;
 	*id_ptr = id;
+	*pem_ptr = pem;
 
 	return DNSSEC_EOK;
 }
@@ -182,10 +183,10 @@ int pem_from_x509(gnutls_x509_privkey_t key, dnssec_binary_t *pem_ptr)
 /*!
  * Get key ID of a private key in PEM format.
  */
-int pem_keyid(const dnssec_binary_t *pem, char **id_ptr)
+int pem_keyid(const dnssec_binary_t *pem, char **keyid)
 {
 	assert(pem && pem->size > 0 && pem->data);
-	assert(id_ptr);
+	assert(keyid);
 
 	_cleanup_x509_privkey_ gnutls_x509_privkey_t key = NULL;
 	int r = pem_x509(pem, &key);
@@ -193,12 +194,5 @@ int pem_keyid(const dnssec_binary_t *pem, char **id_ptr)
 		return r;
 	}
 
-	char *id = gnutls_x509_privkey_hex_key_id(key);
-	if (!id) {
-		return DNSSEC_ENOMEM;
-	}
-
-	*id_ptr = id;
-
-	return DNSSEC_EOK;
+	return keyid_x509_hex(key, keyid);
 }
