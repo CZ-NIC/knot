@@ -20,8 +20,10 @@
 #include "error.h"
 #include "hex.h"
 #include "keyid.h"
+#include "keyid/internal.h"
 #include "keystore.h"
 #include "keystore/internal.h"
+#include "pem.h"
 #include "shared.h"
 
 #ifdef ENABLE_PKCS11
@@ -258,9 +260,80 @@ static int pkcs11_generate_key(void *_ctx, gnutls_pk_algorithm_t algorithm,
 	return DNSSEC_EOK;
 }
 
-static int pkcs11_import_key(void *ctx, const dnssec_binary_t *pem, char **id_ptr)
+static int import_pem(const dnssec_binary_t *pem,
+		      gnutls_x509_privkey_t *key_ptr,
+		      gnutls_pubkey_t *pubkey_ptr)
 {
-	return DNSSEC_NOT_IMPLEMENTED_ERROR;
+	gnutls_x509_privkey_t x509_key = NULL;
+	gnutls_privkey_t key = NULL;
+	gnutls_pubkey_t pubkey = NULL;
+
+	int r = pem_x509(pem, &x509_key);
+	if (r != DNSSEC_EOK) {
+		goto fail;
+	}
+
+	if (gnutls_privkey_init(&key) != GNUTLS_E_SUCCESS ||
+	    gnutls_pubkey_init(&pubkey) != GNUTLS_E_SUCCESS
+	) {
+		r = DNSSEC_ENOMEM;
+		goto fail;
+	}
+
+	if (gnutls_privkey_import_x509(key, x509_key, 0) != GNUTLS_E_SUCCESS ||
+	    gnutls_pubkey_import_privkey(pubkey, key, 0, 0) != GNUTLS_E_SUCCESS
+	) {
+		r = DNSSEC_KEY_IMPORT_ERROR;
+		goto fail;
+	}
+
+fail:
+	gnutls_privkey_deinit(key);
+
+	if (r == DNSSEC_EOK) {
+		*key_ptr = x509_key;
+		*pubkey_ptr = pubkey;
+	} else {
+		gnutls_x509_privkey_deinit(x509_key);
+		gnutls_pubkey_deinit(pubkey);
+	}
+
+	return r;
+}
+
+static int pkcs11_import_key(void *_ctx, const dnssec_binary_t *pem, char **id_ptr)
+{
+	pkcs11_ctx_t *ctx = _ctx;
+
+	_cleanup_x509_privkey_ gnutls_x509_privkey_t key = NULL;
+	_cleanup_pubkey_ gnutls_pubkey_t pubkey = NULL;
+
+	int r = import_pem(pem, &key, &pubkey);
+	if (r != DNSSEC_EOK) {
+		return r;
+	}
+
+	_cleanup_binary_ dnssec_binary_t id = { 0 };
+	r = keyid_x509(key, &id);
+	if (r != DNSSEC_EOK) {
+		return r;
+	}
+
+	int flags = TOKEN_ADD_FLAGS | GNUTLS_PKCS11_OBJ_FLAG_LOGIN;
+	gnutls_datum_t gid = binary_to_datum(&id);
+
+	r = gnutls_pkcs11_copy_x509_privkey2(ctx->url, key, NULL, &gid, 0, flags);
+	if (r != GNUTLS_E_SUCCESS) {
+		return DNSSEC_KEY_IMPORT_ERROR;
+	}
+
+	r = gnutls_pkcs11_copy_pubkey(ctx->url, pubkey, NULL, &gid, 0, flags);
+	if (r != GNUTLS_E_SUCCESS) {
+		// note, we result with dangling private key in the token
+		return DNSSEC_KEY_IMPORT_ERROR;
+	}
+
+	return bin_to_hex(&id, id_ptr);
 }
 
 static int pkcs11_remove_key(void *_ctx, const char *id)
