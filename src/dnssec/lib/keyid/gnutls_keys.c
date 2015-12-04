@@ -35,7 +35,9 @@ static int keyid_bin(gnutls_x509_privkey_t key, gnutls_pubkey_t pubkey, dnssec_b
 	assert(key || pubkey);
 	assert(id);
 
-	int flags = GNUTLS_KEYID_USE_SHA1;
+	// Flags can be used to enable SHA-2 since GnuTLS 3.4.7.
+
+	int flags = 0;
 	uint8_t *buffer = alloca(DNSSEC_KEYID_BINARY_SIZE);
 	size_t size = DNSSEC_KEYID_SIZE;
 
