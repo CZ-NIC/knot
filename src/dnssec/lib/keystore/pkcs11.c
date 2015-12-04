@@ -372,7 +372,7 @@ static int pkcs11_get_private(void *_ctx, const char *id, gnutls_privkey_t *key_
 	r = gnutls_privkey_import_pkcs11_url(key, url);
 	if (r != GNUTLS_E_SUCCESS) {
 		gnutls_privkey_deinit(key);
-		return DNSSEC_INVALID_PRIVATE_KEY;
+		return DNSSEC_NOT_FOUND;
 	}
 
 	*key_ptr = key;
