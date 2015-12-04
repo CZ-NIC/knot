@@ -35,7 +35,7 @@
 #define ENV_SOFTHSM_UTIL "KNOT_SOFTHSM2_UTIL"
 
 #define SOFTHSM_DSO      "libsofthsm2.so"
-#define SOFTHSM_CONF     "libsofthsm2.conf"
+#define SOFTHSM_CONF     "softhsm2.conf"
 #define SOFTHSM_CONF_ENV "SOFTHSM2_CONF"
 #define SOFTHSM_UTIL     "softhsm2-util"
 
