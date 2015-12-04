@@ -14,16 +14,16 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <netinet/in.h>                 // sockaddr_in
+#include <netinet/in.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
-#include <string.h>                     // memset
+#include <string.h>
 
-#include "libknot/libknot.h"
+#include "libknot/errcode.h"
 
-#include "dnstap/convert.h"
-#include "dnstap/message.h"
+#include "contrib/dnstap/convert.h"
+#include "contrib/dnstap/message.h"
 
 static void set_address(const struct sockaddr *sockaddr,
                         ProtobufCBinaryData   *addr,

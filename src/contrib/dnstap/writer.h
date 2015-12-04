@@ -14,11 +14,11 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 /*!
- * \file writer.h
+ * \file
  *
  * \author Robert Edmonds <edmonds@fsi.io>
  *
- * \brief dnstap file writer.
+ * \brief Dnstap file writer.
  *
  * \addtogroup dnstap
  * @{

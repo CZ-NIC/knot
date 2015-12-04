@@ -19,8 +19,8 @@
 #include <netinet/in.h>
 #include <netinet/ip.h>
 
-#include "dnstap/convert.h"
-#include "dnstap/dnstap.pb-c.h"
+#include "contrib/dnstap/convert.h"
+#include "contrib/dnstap/dnstap.pb-c.h"
 
 /*!
  * \brief Translation between real and Dnstap value.

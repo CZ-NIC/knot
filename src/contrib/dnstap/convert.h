@@ -14,9 +14,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 /*!
- * \file convert.h
- *
- * \author Jan Vcelak <jan.vcelak@nic.cz>
+ * \file
  *
  * \brief Dnstap identifiers conversions.
  *
@@ -28,7 +26,7 @@
 
 #include <stdbool.h>
 
-#include "dnstap/dnstap.pb-c.h"
+#include "contrib/dnstap/dnstap.pb-c.h"
 
 /*!
  * \brief Get Dnstap socket family from the real one.

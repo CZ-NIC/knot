@@ -14,11 +14,13 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 /*!
- * \file dnstap.h
+ * \file
  *
  * \author Robert Edmonds <edmonds@fsi.io>
  *
  * \brief Public interface for dnstap.
+ *
+ * \addtogroup dnstap
  * @{
  */
 
@@ -27,7 +29,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "dnstap/dnstap.pb-c.h"
+#include "contrib/dnstap/dnstap.pb-c.h"
 
 /*! \brief Frame Streams "Content Type" value for dnstap. */
 #define DNSTAP_CONTENT_TYPE     "protobuf:dnstap.Dnstap"

@@ -1,5 +1,5 @@
 ACLOCAL_AMFLAGS = -I $(top_srcdir)/m4
-SUBDIRS = zscanner dnssec dnstap .
+SUBDIRS = zscanner dnssec contrib/dnstap .
 
 lib_LTLIBRARIES =				\
 	libknot.la
@@ -371,7 +371,7 @@ libknotd_la_SOURCES +=				\
 	knot/modules/dnstap.c			\
 	knot/modules/dnstap.h
 libknotd_la_CPPFLAGS += $(DNSTAP_CFLAGS)
-libknotd_la_LIBADD += $(DNSTAP_LIBS) dnstap/libdnstap.la
+libknotd_la_LIBADD += $(DNSTAP_LIBS) contrib/dnstap/libdnstap.la
 endif # HAVE_DNSTAP
 
 if HAVE_ROSEDB
@@ -454,8 +454,8 @@ knsupdate_LDADD  = zscanner/libzscanner.la libknotus.la
 #######################################
 
 if HAVE_DNSTAP
-kdig_LDADD         += $(DNSTAP_LIBS) dnstap/libdnstap.la
-khost_LDADD        += $(DNSTAP_LIBS) dnstap/libdnstap.la
+kdig_LDADD         += $(DNSTAP_LIBS) contrib/dnstap/libdnstap.la
+khost_LDADD        += $(DNSTAP_LIBS) contrib/dnstap/libdnstap.la
 endif # HAVE_DNSTAP
 
 if HAVE_ROSEDB

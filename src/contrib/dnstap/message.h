@@ -14,11 +14,11 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 /*!
- * \file message.h
+ * \file
  *
  * \author Robert Edmonds <edmonds@fsi.io>
  *
- * \brief dnstap message interface.
+ * \brief Dnstap message interface.
  *
  * \addtogroup dnstap
  * @{
@@ -26,11 +26,11 @@
 
 #pragma once
 
-#include <sys/socket.h>                 // struct sockaddr
-#include <sys/time.h>                   // struct timeval
-#include <stddef.h>                     // size_t
+#include <sys/socket.h>
+#include <sys/time.h>
+#include <stddef.h>
 
-#include "dnstap/dnstap.pb-c.h"
+#include "contrib/dnstap/dnstap.pb-c.h"
 
 /*!
  * \brief Fill a Dnstap__Message structure with the given parameters.

@@ -14,15 +14,15 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <stdint.h>                     // uint8_t, uint32_t
-#include <stdio.h>                      // fopen, fwrite
-#include <stdlib.h>                     // calloc, free
-#include <string.h>                     // strdup
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
-#include "libknot/libknot.h"
+#include "libknot/errcode.h"
 
-#include "dnstap/dnstap.h"
-#include "dnstap/writer.h"
+#include "contrib/dnstap/dnstap.h"
+#include "contrib/dnstap/writer.h"
 
 dt_writer_t* dt_writer_create(const char *file_path, const char *version)
 {

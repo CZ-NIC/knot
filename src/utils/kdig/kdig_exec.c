@@ -30,9 +30,9 @@
 #include "contrib/print.h"
 
 #if USE_DNSTAP
-# include "dnstap/convert.h"
-# include "dnstap/message.h"
-# include "dnstap/writer.h"
+# include "contrib/dnstap/convert.h"
+# include "contrib/dnstap/message.h"
+# include "contrib/dnstap/writer.h"
 
 static int write_dnstap(dt_writer_t          *writer,
                         const bool           is_response,

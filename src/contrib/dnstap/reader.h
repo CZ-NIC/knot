@@ -14,9 +14,9 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 /*!
- * \file reader.h
+ * \file
  *
- * \brief dnstap file reader.
+ * \brief Dnstap file reader.
  *
  * \addtogroup dnstap
  * @{
@@ -27,7 +27,7 @@
 #include <fstrm.h>
 #include <protobuf-c/protobuf-c.h>
 
-#include "dnstap.pb-c.h"
+#include "contrib/dnstap/dnstap.pb-c.h"
 
 /*! \brief Structure for dnstap file reader. */
 typedef struct {

@@ -35,8 +35,8 @@
 #include "contrib/sockaddr.h"
 
 #if USE_DNSTAP
-# include "dnstap/reader.h"
-# include "dnstap/writer.h"
+# include "contrib/dnstap/reader.h"
+# include "contrib/dnstap/writer.h"
 #endif // USE_DNSTAP
 
 #define KDIG_VERSION "kdig, version " PACKAGE_VERSION "\n"
