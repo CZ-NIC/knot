@@ -257,7 +257,7 @@ int main(int argc, char *argv[])
 	// key manipulation
 
 	r = dnssec_keystore_init(store, config);
-	ok(r == DNSSEC_NOT_IMPLEMENTED_ERROR, "dnssec_keystore_init(), not implmeneted");
+	ok(r == DNSSEC_NOT_IMPLEMENTED_ERROR, "dnssec_keystore_init(), not implemented");
 
 	r = dnssec_keystore_open(store, config);
 	ok(r == DNSSEC_EOK, "dnssec_keystore_open()");
