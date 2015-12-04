@@ -113,7 +113,7 @@ libdnssec_la_SOURCES = \
 	lib/key/privkey.c \
 	lib/key/privkey.h \
 	lib/key/simple.c \
-	lib/keyid.c \
+	lib/keyid/keyid.c \
 	lib/keystore/internal.h \
 	lib/keystore/keystore.c \
 	lib/keystore/pkcs11.c \
