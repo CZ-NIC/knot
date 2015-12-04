@@ -32,6 +32,11 @@ struct pkcs11_ctx {
 
 typedef struct pkcs11_ctx pkcs11_ctx_t;
 
+/*!
+ * Flags used when generating/import key into the token.
+ */
+static const int TOKEN_ADD_FLAGS = GNUTLS_PKCS11_OBJ_FLAG_MARK_PRIVATE;
+
 static char *key_url(const char *token_uri, const char *key_id)
 {
 	assert(token_uri);
@@ -235,10 +240,7 @@ static int pkcs11_generate_key(void *_ctx, gnutls_pk_algorithm_t algorithm,
 	gnutls_rnd(GNUTLS_RND_RANDOM, buf, sizeof(buf));
 	dnssec_binary_t cka_id = { .data = buf, .size = sizeof(buf) };
 
-	int flags = GNUTLS_PKCS11_OBJ_FLAG_MARK_PRIVATE |
-		    GNUTLS_PKCS11_OBJ_FLAG_MARK_SENSITIVE |
-		    GNUTLS_PKCS11_OBJ_FLAG_LOGIN;
-
+	int flags = TOKEN_ADD_FLAGS | GNUTLS_PKCS11_OBJ_FLAG_LOGIN;
 	gnutls_datum_t gt_cka_id = binary_to_datum(&cka_id);
 	int r = gnutls_pkcs11_privkey_generate3(ctx->url, algorithm, bits, NULL, &gt_cka_id, 0, NULL, 0, flags);
 	if (r != GNUTLS_E_SUCCESS) {
