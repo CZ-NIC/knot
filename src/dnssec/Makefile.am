@@ -30,8 +30,6 @@ libshared_la_SOURCES = \
 	shared/fs.h \
 	shared/hex.c \
 	shared/hex.h \
-	shared/hex_gnutls.c \
-	shared/hex_gnutls.h \
 	shared/path.c \
 	shared/path.h \
 	shared/pem.c \
@@ -113,7 +111,9 @@ libdnssec_la_SOURCES = \
 	lib/key/privkey.c \
 	lib/key/privkey.h \
 	lib/key/simple.c \
+	lib/keyid/internal.h \
 	lib/keyid/keyid.c \
+	lib/keyid/gnutls_keys.c \
 	lib/keystore/internal.h \
 	lib/keystore/keystore.c \
 	lib/keystore/pkcs11.c \

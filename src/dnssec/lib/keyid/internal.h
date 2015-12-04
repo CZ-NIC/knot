@@ -1,4 +1,4 @@
-/*  Copyright (C) 2014 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -16,14 +16,13 @@
 
 #pragma once
 
-#include <gnutls/abstract.h>
+#include <gnutls/gnutls.h>
+#include "binary.h"
 
-/*!
- * Get ID from GnuTLS public key and convert it into library format.
- */
-char *gnutls_pubkey_hex_key_id(gnutls_pubkey_t key);
+int keyid_x509(gnutls_x509_privkey_t key, dnssec_binary_t *id);
 
-/*!
- * Get ID from GnuTLS X.509 private key and convert it into library format.
- */
-char *gnutls_x509_privkey_hex_key_id(gnutls_x509_privkey_t key);
+int keyid_x509_hex(gnutls_x509_privkey_t key, char **id);
+
+int keyid_pubkey(gnutls_pubkey_t pubkey, dnssec_binary_t *id);
+
+int keyid_pubkey_hex(gnutls_pubkey_t pubkey, char **id);
