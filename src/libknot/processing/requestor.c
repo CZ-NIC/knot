@@ -18,9 +18,12 @@
 
 #include "libknot/processing/requestor.h"
 #include "libknot/errcode.h"
+#include "libknot/internal/lists.h"
 #include "libknot/internal/macros.h"
 #include "contrib/net.h"
 #include "contrib/sockaddr.h"
+
+#define PENDING	((list_t *)requestor->pending)
 
 static bool use_tcp(struct knot_request *request)
 {
@@ -150,10 +153,10 @@ struct knot_request *knot_request_make(mm_ctx_t *mm,
 }
 
 _public_
-int knot_request_free(mm_ctx_t *mm, struct knot_request *request)
+void knot_request_free(struct knot_request *request, mm_ctx_t *mm)
 {
 	if (request == NULL) {
-		return KNOT_EINVAL;
+		return;
 	}
 
 	if (request->fd >= 0) {
@@ -162,23 +165,34 @@ int knot_request_free(mm_ctx_t *mm, struct knot_request *request)
 	knot_pkt_free(&request->query);
 	knot_pkt_free(&request->resp);
 
-	rem_node(&request->node);
 	mm_free(mm, request);
-
-	return KNOT_EOK;
 }
 
 _public_
-void knot_requestor_init(struct knot_requestor *requestor, mm_ctx_t *mm)
+int knot_requestor_init(struct knot_requestor *requestor, mm_ctx_t *mm)
 {
 	if (requestor == NULL) {
-		return;
+		return KNOT_EINVAL;
 	}
 
 	memset(requestor, 0, sizeof(*requestor));
+
+	list_t *pending = mm_alloc(mm, sizeof(list_t));
+	if (pending == NULL) {
+		return KNOT_ENOMEM;
+	}
+	init_list(pending);
+
+	int ret = knot_overlay_init(&requestor->overlay, mm);
+	if (ret != KNOT_EOK) {
+		mm_free(mm, pending);
+		return ret;
+	}
+
 	requestor->mm = mm;
-	init_list(&requestor->pending);
-	knot_overlay_init(&requestor->overlay, mm);
+	requestor->pending = pending;
+
+	return KNOT_EOK;
 }
 
 _public_
@@ -193,12 +207,13 @@ void knot_requestor_clear(struct knot_requestor *requestor)
 
 	knot_overlay_finish(&requestor->overlay);
 	knot_overlay_deinit(&requestor->overlay);
+	mm_free(requestor->mm, PENDING);
 }
 
 _public_
 bool knot_requestor_finished(struct knot_requestor *requestor)
 {
-	return requestor == NULL || EMPTY_LIST(requestor->pending);
+	return requestor == NULL || EMPTY_LIST(*PENDING);
 }
 
 _public_
@@ -230,7 +245,7 @@ int knot_requestor_enqueue(struct knot_requestor *requestor,
 		return KNOT_ENOMEM;
 	}
 
-	add_tail(&requestor->pending, &request->node);
+	ptrlist_add(PENDING, request, requestor->mm);
 
 	return KNOT_EOK;
 }
@@ -246,8 +261,12 @@ int knot_requestor_dequeue(struct knot_requestor *requestor)
 		return KNOT_ENOENT;
 	}
 
-	struct knot_request *last = HEAD(requestor->pending);
-	return knot_request_free(requestor->mm, last);
+	ptrnode_t *node = HEAD(*PENDING);
+	struct knot_request *last = node->d;
+	knot_request_free(last, requestor->mm);
+	ptrlist_rem(node, requestor->mm);
+
+	return KNOT_EOK;
 }
 
 static int request_io(struct knot_requestor *req, struct knot_request *last,
@@ -320,7 +339,9 @@ int knot_requestor_exec(struct knot_requestor *requestor,
 	}
 
 	/* Execute next request. */
-	int ret = exec_request(requestor, HEAD(requestor->pending), timeout);
+	ptrnode_t *node = HEAD(*PENDING);
+	struct knot_request *last = node->d;
+	int ret = exec_request(requestor, last, timeout);
 
 	/* Remove it from processing. */
 	knot_requestor_dequeue(requestor);

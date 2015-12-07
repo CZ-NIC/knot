@@ -65,20 +65,28 @@ static int dnsproxy_fwd(int state, knot_pkt_t *pkt, struct query_data *qdata, vo
 
 	/* Create a forwarding request. */
 	struct knot_requestor re;
-	knot_requestor_init(&re, qdata->mm);
-	struct capture_param param;
-	param.sink = pkt;
-	int ret = knot_requestor_overlay(&re, LAYER_CAPTURE, &param);
+	int ret = knot_requestor_init(&re, qdata->mm);
 	if (ret != KNOT_EOK) {
-		return KNOT_STATE_FAIL;
+		return state; /* Ignore, not enough memory. */
+	}
+
+	struct capture_param param = {
+		.sink = pkt
+	};
+
+	ret = knot_requestor_overlay(&re, LAYER_CAPTURE, &param);
+	if (ret != KNOT_EOK) {
+		knot_requestor_clear(&re);
+		return state; /* Ignore, not enough memory. */
 	}
 
 	bool is_tcp = net_is_stream(qdata->param->socket);
-	struct knot_request *req;
 	const struct sockaddr *dst = (const struct sockaddr *)&proxy->remote.addr;
 	const struct sockaddr *src = (const struct sockaddr *)&proxy->remote.via;
-	req = knot_request_make(re.mm, dst, src, qdata->query, is_tcp ? 0 : KNOT_RQ_UDP);
+	struct knot_request *req = knot_request_make(re.mm, dst, src, qdata->query,
+	                                             is_tcp ? 0 : KNOT_RQ_UDP);
 	if (req == NULL) {
+		knot_requestor_clear(&re);
 		return state; /* Ignore, not enough memory. */
 	}
 
@@ -89,7 +97,7 @@ static int dnsproxy_fwd(int state, knot_pkt_t *pkt, struct query_data *qdata, vo
 		struct timeval tv = { conf_int(&val), 0 };
 		ret = knot_requestor_exec(&re, &tv);
 	} else {
-		knot_request_free(re.mm, req);
+		knot_request_free(req, re.mm);
 	}
 
 	knot_requestor_clear(&re);

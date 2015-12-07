@@ -44,14 +44,11 @@
 
 static void free_ddns_queue(zone_t *z)
 {
-	struct knot_request *n = NULL;
-	node_t *nxt = NULL;
-	WALK_LIST_DELSAFE(n, nxt, z->ddns_queue) {
-		close(n->fd);
-		knot_pkt_free(&n->query);
-		rem_node((node_t *)n);
-		free(n);
+	ptrnode_t *node = NULL, *nxt = NULL;
+	WALK_LIST_DELSAFE(node, nxt, z->ddns_queue) {
+		knot_request_free(node->d, NULL);
 	}
+	ptrlist_free(&z->ddns_queue, NULL);
 }
 
 zone_t* zone_new(const knot_dname_t *name)
@@ -393,7 +390,7 @@ int zone_update_enqueue(zone_t *zone, knot_pkt_t *pkt, struct process_query_para
 	pthread_mutex_lock(&zone->ddns_lock);
 
 	/* Enqueue created request. */
-	add_tail(&zone->ddns_queue, (node_t *)req);
+	ptrlist_add(&zone->ddns_queue, req, NULL);
 	++zone->ddns_queue_size;
 
 	pthread_mutex_unlock(&zone->ddns_lock);

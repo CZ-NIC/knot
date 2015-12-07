@@ -184,7 +184,7 @@ size_t list_size(const list_t *l)
  * @val: added pointer
  * @mm: memory context
  */
-ptrnode_t *ptrlist_add(list_t *to, const void *val, mm_ctx_t *mm)
+ptrnode_t *ptrlist_add(list_t *to, void *val, mm_ctx_t *mm)
 {
 	ptrnode_t *node = mm_alloc(mm , sizeof(ptrnode_t));
 	if (node == NULL) {
@@ -211,17 +211,12 @@ void ptrlist_free(list_t *list, mm_ctx_t *mm)
 }
 
 /**
- * ptrlist_contains - check if list contains pointer
- * @list: target list
- * @val: searched pointer
+ * ptrlist_rem - remove pointer node
+ * @val: pointer to remove
+ * @mm: memory context
  */
-bool ptrlist_contains(list_t *list, const void *val)
+void ptrlist_rem(ptrnode_t *node, mm_ctx_t *mm)
 {
-	ptrnode_t *n = NULL;
-	WALK_LIST(n, *list) {
-		if (n->d == val) {
-			return true;
-		}
-	}
-	return false;
+	rem_node(&node->n);
+	mm_free(mm, node);
 }

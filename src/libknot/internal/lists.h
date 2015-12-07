@@ -89,12 +89,12 @@ size_t list_size(const list_t *);
  */
 typedef struct ptrnode {
 	node_t n;
-	const void *d;
+	void *d;
 } ptrnode_t;
 
-ptrnode_t *ptrlist_add(list_t *, const void *, mm_ctx_t *);
+ptrnode_t *ptrlist_add(list_t *, void *, mm_ctx_t *);
 void ptrlist_free(list_t *, mm_ctx_t *);
-bool ptrlist_contains(list_t *, const void *);
+void ptrlist_rem(ptrnode_t *node, mm_ctx_t *mm);
 
 /*! \todo This is broken atm.
 #ifndef _BIRD_LISTS_C_

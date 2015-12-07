@@ -132,14 +132,21 @@ static int tcp_handle(tcp_context_t *tcp, int fd,
 		rx->iov_len = ret;
 	}
 
-	/* Create packets. */
 	mm_ctx_t *mm = tcp->overlay.mm;
-	knot_pkt_t *ans = knot_pkt_new(tx->iov_base, tx->iov_len, mm);
-	knot_pkt_t *query = knot_pkt_new(rx->iov_base, rx->iov_len, mm);
 
 	/* Initialize processing overlay. */
-	knot_overlay_init(&tcp->overlay, mm);
-	knot_overlay_add(&tcp->overlay, NS_PROC_QUERY, &param);
+	ret = knot_overlay_init(&tcp->overlay, mm);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+	ret = knot_overlay_add(&tcp->overlay, NS_PROC_QUERY, &param);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	/* Create packets. */
+	knot_pkt_t *ans = knot_pkt_new(tx->iov_base, tx->iov_len, mm);
+	knot_pkt_t *query = knot_pkt_new(rx->iov_base, rx->iov_len, mm);
 
 	/* Input packet. */
 	(void) knot_pkt_parse(query, 0);

@@ -27,7 +27,6 @@
 #include <stdint.h>
 
 #include "libknot/packet/pkt.h"
-#include "libknot/internal/lists.h"
 #include "libknot/internal/mempattern.h"
 
 /*! Layer processing states.
@@ -47,9 +46,8 @@ struct knot_layer_api;
 
 /*! \brief Packet processing context. */
 typedef struct knot_layer {
-	node_t node;
-	uint16_t state;  /* Bitmap of enum knot_layer_state. */
 	mm_ctx_t *mm;    /* Processing memory context. */
+	uint16_t state;  /* Bitmap of enum knot_layer_state. */
 	void *data;      /* Module specific. */
 	const struct knot_layer_api *api;
 } knot_layer_t;

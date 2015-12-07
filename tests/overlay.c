@@ -18,6 +18,7 @@
 #include <string.h>
 #include <stdlib.h>
 
+#include "libknot/errcode.h"
 #include "libknot/processing/overlay.h"
 #include "contrib/ucw/mempool.h"
 
@@ -63,11 +64,9 @@ const knot_layer_api_t fsm2_module = {
 
 /* Test implementations. */
 
-#define TESTS_COUNT 4
-
 int main(int argc, char *argv[])
 {
-	plan(TESTS_COUNT);
+	plan_lazy();
 
 	mm_ctx_t mm;
 	mm_ctx_mempool(&mm, MM_DEFAULT_BLKSIZE);
@@ -77,7 +76,8 @@ int main(int argc, char *argv[])
 
 	/* Initialize overlay. */
 	struct knot_overlay overlay;
-	knot_overlay_init(&overlay, &mm);
+	int ret = knot_overlay_init(&overlay, &mm);
+	ok(ret == KNOT_EOK, "overlay: init");
 
 	/* Add FSMs. */
 	knot_overlay_add(&overlay, &fsm1_module, NULL);

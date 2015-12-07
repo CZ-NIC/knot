@@ -18,7 +18,6 @@
 
 #include "dnssec/random.h"
 #include "libknot/libknot.h"
-#include "libknot/internal/macros.h"
 #include "libknot/processing/requestor.h"
 #include "libknot/yparser/yptrafo.h"
 #include "contrib/ucw/mempool.h"
@@ -130,6 +129,47 @@ static int prepare_edns(zone_t *zone, knot_pkt_t *pkt)
 	return KNOT_EOK;
 }
 
+/*! \brief Process query using requestor. */
+static int zone_query_request(knot_pkt_t *query, const conf_remote_t *remote,
+                              struct process_answer_param *param, mm_ctx_t *mm)
+{
+	/* Create requestor instance. */
+	struct knot_requestor re;
+	int ret = knot_requestor_init(&re, mm);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+	ret = knot_requestor_overlay(&re, KNOT_STATE_ANSWER, param);
+	if (ret != KNOT_EOK) {
+		knot_requestor_clear(&re);
+		return ret;
+	}
+
+	/* Create a request. */
+	const struct sockaddr *dst = (const struct sockaddr *)&remote->addr;
+	const struct sockaddr *src = (const struct sockaddr *)&remote->via;
+	struct knot_request *req = knot_request_make(re.mm, dst, src, query, 0);
+	if (req == NULL) {
+		knot_requestor_clear(&re);
+		return KNOT_ENOMEM;
+	}
+
+	/* Send the queries and process responses. */
+	ret = knot_requestor_enqueue(&re, req);
+	if (ret == KNOT_EOK) {
+		conf_val_t val = conf_get(conf(), C_SRV, C_TCP_REPLY_TIMEOUT);
+		struct timeval tv = { conf_int(&val), 0 };
+		ret = knot_requestor_exec(&re, &tv);
+	} else {
+		knot_request_free(req, re.mm);
+	}
+
+	/* Cleanup. */
+	knot_requestor_clear(&re);
+
+	return ret;
+}
+
 /*!
  * \brief Create a zone event query, send it, wait for the response and process it.
  *
@@ -139,32 +179,30 @@ static int prepare_edns(zone_t *zone, knot_pkt_t *pkt)
 static int zone_query_execute(zone_t *zone, uint16_t pkt_type, const conf_remote_t *remote)
 {
 	/* Create a memory pool for this task. */
-	int ret = KNOT_EOK;
 	mm_ctx_t mm;
 	mm_ctx_mempool(&mm, MM_DEFAULT_BLKSIZE);
 
 	/* Create a query message. */
 	knot_pkt_t *query = zone_query(zone, pkt_type, &mm);
 	if (query == NULL) {
+		mp_delete(mm.ctx);
 		return KNOT_ENOMEM;
 	}
 
-	/* Answer processing parameters. */
-	struct process_answer_param param = { 0 };
-	param.zone = zone;
-	param.query = query;
-	param.remote = &remote->addr;
-
-	/* Create requestor instance. */
-	struct knot_requestor re;
-	knot_requestor_init(&re, &mm);
-	knot_requestor_overlay(&re, KNOT_STATE_ANSWER, &param);
-
 	/* Set EDNS section. */
-	ret = prepare_edns(zone, query);
+	int ret = prepare_edns(zone, query);
 	if (ret != KNOT_EOK) {
-		goto fail;
+		knot_pkt_free(&query);
+		mp_delete(mm.ctx);
+		return ret;
 	}
+
+	/* Answer processing parameters. */
+	struct process_answer_param param = {
+		.zone = zone,
+		.query = query,
+		.remote = &remote->addr
+	};
 
 	const knot_tsig_key_t *key = remote->key.name != NULL ?
 	                             &remote->key : NULL;
@@ -172,30 +210,18 @@ static int zone_query_execute(zone_t *zone, uint16_t pkt_type, const conf_remote
 
 	ret = tsig_sign_packet(&param.tsig_ctx, query);
 	if (ret != KNOT_EOK) {
-		goto fail;
+		tsig_cleanup(&param.tsig_ctx);
+		knot_pkt_free(&query);
+		mp_delete(mm.ctx);
+		return ret;
 	}
 
-	/* Create a request. */
-	const struct sockaddr *dst = (const struct sockaddr *)&remote->addr;
-	const struct sockaddr *src = (const struct sockaddr *)&remote->via;
-	struct knot_request *req = knot_request_make(re.mm, dst, src, query, 0);
-	if (req == NULL) {
-		ret = KNOT_ENOMEM;
-		goto fail;
-	}
+	/* Process the query. */
+	ret = zone_query_request(query, remote, &param, &mm);
 
-	/* Send the queries and process responses. */
-	ret = knot_requestor_enqueue(&re, req);
-	if (ret == KNOT_EOK) {
-		conf_val_t val = conf_get(conf(), C_SRV, C_TCP_REPLY_TIMEOUT);
-		struct timeval tv = { conf_int(&val), 0 };
-		ret = knot_requestor_exec(&re, &tv);
-	}
-
-fail:
 	/* Cleanup. */
 	tsig_cleanup(&param.tsig_ctx);
-	knot_requestor_clear(&re);
+	knot_pkt_free(&query);
 	mp_delete(mm.ctx);
 
 	return ret;
@@ -502,8 +528,7 @@ int event_update(zone_t *zone)
 	assert(zone);
 
 	/* Process update list - forward if zone has master, or execute. */
-	int ret = updates_execute(zone);
-	UNUSED(ret); /* Don't care about the Knot code, RCODEs are set. */
+	updates_execute(zone);
 
 	/* Trim extra heap. */
 	mem_trim();

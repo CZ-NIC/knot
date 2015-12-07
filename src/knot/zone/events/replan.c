@@ -99,14 +99,14 @@ static void replan_flush(zone_t *zone, const zone_t *old_zone)
 /*!< \brief Creates new DDNS q in the new zone - q contains references from the old zone. */
 static void duplicate_ddns_q(zone_t *zone, zone_t *old_zone)
 {
-	struct knot_request *d, *nxt;
-	WALK_LIST_DELSAFE(d, nxt, old_zone->ddns_queue) {
-		add_tail(&zone->ddns_queue, (node_t *)d);
+	ptrnode_t *node = NULL;
+	WALK_LIST(node, old_zone->ddns_queue) {
+		ptrlist_add(&zone->ddns_queue, node->d, NULL);
 	}
 	zone->ddns_queue_size = old_zone->ddns_queue_size;
 
 	// Reset the list, new zone will free the data.
-	init_list(&old_zone->ddns_queue);
+	ptrlist_free(&old_zone->ddns_queue, NULL);
 }
 
 /*!< Replans DNSSEC event. Not whole resign needed, \todo #247 */

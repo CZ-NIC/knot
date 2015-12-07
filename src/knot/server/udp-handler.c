@@ -122,14 +122,15 @@ void udp_handle(udp_context_t *udp, int fd, struct sockaddr_storage *ss,
 		param.proc_flags |= NS_QUERY_LIMIT_RATE;
 	}
 
-	/* Create packets. */
 	mm_ctx_t *mm = udp->overlay.mm;
-	knot_pkt_t *query = knot_pkt_new(rx->iov_base, rx->iov_len, mm);
-	knot_pkt_t *ans = knot_pkt_new(tx->iov_base, tx->iov_len, mm);
 
 	/* Create query processing context. */
 	knot_overlay_init(&udp->overlay, mm);
 	knot_overlay_add(&udp->overlay, NS_PROC_QUERY, &param);
+
+	/* Create packets. */
+	knot_pkt_t *query = knot_pkt_new(rx->iov_base, rx->iov_len, mm);
+	knot_pkt_t *ans = knot_pkt_new(tx->iov_base, tx->iov_len, mm);
 
 	/* Input packet. */
 	(void) knot_pkt_parse(query, 0);
