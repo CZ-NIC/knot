@@ -49,6 +49,10 @@ src/contrib/dnstap/writer.h
 src/contrib/endian.h
 src/contrib/getline.c
 src/contrib/getline.h
+src/contrib/lmdb/lmdb.h
+src/contrib/lmdb/mdb.c
+src/contrib/lmdb/midl.c
+src/contrib/lmdb/midl.h
 src/contrib/lookup.h
 src/contrib/net.c
 src/contrib/net.h
@@ -373,10 +377,6 @@ src/libknot/internal/lists.h
 src/libknot/internal/macros.h
 src/libknot/internal/mempattern.c
 src/libknot/internal/mempattern.h
-src/libknot/internal/namedb/lmdb.h
-src/libknot/internal/namedb/mdb.c
-src/libknot/internal/namedb/midl.c
-src/libknot/internal/namedb/midl.h
 src/libknot/internal/namedb/namedb.h
 src/libknot/internal/namedb/namedb_lmdb.c
 src/libknot/internal/namedb/namedb_lmdb.h

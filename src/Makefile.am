@@ -179,12 +179,12 @@ pkgconfig_DATA = libknot.pc
 
 if !HAVE_LMDB
 libknot_internal_la_SOURCES +=			\
-	libknot/internal/namedb/mdb.c		\
-	libknot/internal/namedb/midl.c		\
-	libknot/internal/namedb/lmdb.h		\
-	libknot/internal/namedb/midl.h
+	contrib/lmdb/lmdb.h			\
+	contrib/lmdb/mdb.c			\
+	contrib/lmdb/midl.c			\
+	contrib/lmdb/midl.h
 libknot_internal_la_CPPFLAGS +=			\
-	-I$(srcdir)/libknot/internal/namedb/
+	-I$(srcdir)/contrib/lmdb/
 endif
 
 ###################
