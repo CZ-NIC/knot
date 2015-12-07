@@ -91,6 +91,10 @@ typedef struct {
 	struct {
 		conf_val_t srv_nsid;
 		conf_val_t srv_max_udp_payload;
+		conf_val_t srv_max_tcp_clients;
+		conf_val_t srv_tcp_hshake_timeout;
+		conf_val_t srv_tcp_idle_timeout;
+		conf_val_t srv_tcp_reply_timeout;
 	} cache;
 
 	/*! List of active query modules. */

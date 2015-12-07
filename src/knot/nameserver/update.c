@@ -282,8 +282,8 @@ static int forward_request(zone_t *zone, struct knot_request *request)
 		}
 
 		/* Execute the request. */
-		conf_val_t val = conf_get(conf(), C_SRV, C_TCP_REPLY_TIMEOUT);
-		struct timeval tv = { conf_int(&val), 0 };
+		conf_val_t *val = &conf()->cache.srv_tcp_reply_timeout;
+		struct timeval tv = { conf_int(val), 0 };
 		ret = knot_requestor_exec(&re, &tv);
 		knot_requestor_clear(&re);
 		if (ret == KNOT_EOK) {
@@ -354,8 +354,8 @@ static void send_update_response(const zone_t *zone, struct knot_request *req)
 		}
 
 		if (net_is_stream(req->fd)) {
-			conf_val_t val = conf_get(conf(), C_SRV, C_TCP_REPLY_TIMEOUT);
-			struct timeval timeout = { conf_int(&val), 0 };
+			conf_val_t *val = &conf()->cache.srv_tcp_reply_timeout;
+			struct timeval timeout = { conf_int(val), 0 };
 			net_dns_tcp_send(req->fd, req->resp->wire, req->resp->size,
 			                 &timeout);
 		} else {

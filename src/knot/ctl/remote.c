@@ -909,8 +909,8 @@ static int remote_c_conf_unset(server_t *s, remote_cmdargs_t *a)
 static int remote_senderr(int c, uint8_t *qbuf, size_t buflen)
 {
 	rcu_read_lock();
-	conf_val_t val = conf_get(conf(), C_SRV, C_TCP_REPLY_TIMEOUT);
-	struct timeval timeout = { conf_int(&val), 0 };
+	conf_val_t *val = &conf()->cache.srv_tcp_reply_timeout;
+	struct timeval timeout = { conf_int(val), 0 };
 	rcu_read_unlock();
 
 	knot_wire_set_qr(qbuf);
@@ -1051,8 +1051,8 @@ static int remote_send_chunk(int c, knot_pkt_t *query, const char *d, uint16_t l
 	}
 
 	rcu_read_lock();
-	conf_val_t val = conf_get(conf(), C_SRV, C_TCP_REPLY_TIMEOUT);
-	struct timeval timeout = { conf_int(&val), 0 };
+	conf_val_t *val = &conf()->cache.srv_tcp_reply_timeout;
+	struct timeval timeout = { conf_int(val), 0 };
 	rcu_read_unlock();
 
 	ret = net_dns_tcp_send(c, resp->wire, resp->size, &timeout);

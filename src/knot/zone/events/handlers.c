@@ -186,8 +186,8 @@ static int zone_query_execute(zone_t *zone, uint16_t pkt_type, const conf_remote
 	/* Send the queries and process responses. */
 	ret = knot_requestor_enqueue(&re, req);
 	if (ret == KNOT_EOK) {
-		conf_val_t val = conf_get(conf(), C_SRV, C_TCP_REPLY_TIMEOUT);
-		struct timeval tv = { conf_int(&val), 0 };
+		conf_val_t *val = &conf()->cache.srv_tcp_reply_timeout;
+		struct timeval tv = { conf_int(val), 0 };
 		ret = knot_requestor_exec(&re, &tv);
 	}
 
@@ -268,8 +268,8 @@ static uint32_t soa_graceful_expire(const knot_rdataset_t *soa)
 {
 	// Allow for timeouts.  Otherwise zones with very short
 	// expiry may expire before the timeout is reached.
-	conf_val_t val = conf_get(conf(), C_SRV, C_TCP_REPLY_TIMEOUT);
-	return knot_soa_expire(soa) + 2 * conf_int(&val);
+	conf_val_t *val = &conf()->cache.srv_tcp_reply_timeout;
+	return knot_soa_expire(soa) + 2 * conf_int(val);
 }
 
 /*! \brief Schedule expire event, unless it is already scheduled. */
