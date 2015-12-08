@@ -23,6 +23,7 @@
 #include "error.h"
 #include "fs.h"
 #include "kasp/dir/file.h"
+#include "kasp/dir/keystore.h"
 #include "kasp/dir/policy.h"
 #include "kasp/dir/zone.h"
 #include "kasp/internal.h"
@@ -226,27 +227,27 @@ static int kasp_dir_policy_save(void *ctx, dnssec_kasp_policy_t *policy)
 
 static int kasp_dir_keystore_remove(void *ctx, const char *name)
 {
-	return DNSSEC_NOT_IMPLEMENTED_ERROR;
+	return entity_remove(ENTITY_KEYSTORE, ctx, name);
 }
 
 static int kasp_dir_keystore_exists(void *ctx, const char *name)
 {
-	return DNSSEC_NOT_IMPLEMENTED_ERROR;
+	return entity_exists(ENTITY_KEYSTORE, ctx, name);
 }
 
 static int kasp_dir_keystore_list(void *ctx, dnssec_list_t *names)
 {
-	return DNSSEC_NOT_IMPLEMENTED_ERROR;
+	return entity_list(ENTITY_KEYSTORE, ctx, names);
 }
 
 static int kasp_dir_keystore_load(void *ctx, dnssec_kasp_keystore_t *keystore)
 {
-	return DNSSEC_NOT_IMPLEMENTED_ERROR;
+	return entity_io(ENTITY_KEYSTORE, ctx, keystore, load_keystore_config);
 }
 
 static int kasp_dir_keystore_save(void *ctx, dnssec_kasp_keystore_t *keystore)
 {
-	return DNSSEC_NOT_IMPLEMENTED_ERROR;
+	return entity_io(ENTITY_KEYSTORE, ctx, keystore, save_keystore_config);
 }
 
 #define ENTITY_CALLBACKS(name) \
@@ -256,19 +257,19 @@ static int kasp_dir_keystore_save(void *ctx, dnssec_kasp_keystore_t *keystore)
   .name##_list   = kasp_dir_##name##_list,   \
   .name##_exists = kasp_dir_##name##_exists
 
-static const dnssec_kasp_store_functions_t KASP_DIR_FUNCTIONS = {
-	.init  = kasp_dir_init,
-	.open  = kasp_dir_open,
-	.close = kasp_dir_close,
-	ENTITY_CALLBACKS(zone),
-	ENTITY_CALLBACKS(policy),
-	ENTITY_CALLBACKS(keystore),
-};
-
 /* -- public API ----------------------------------------------------------- */
 
 _public_
 int dnssec_kasp_init_dir(dnssec_kasp_t **kasp_ptr)
 {
-	return dnssec_kasp_create(kasp_ptr, &KASP_DIR_FUNCTIONS);
+	static const dnssec_kasp_store_functions_t implementation = {
+		.init  = kasp_dir_init,
+		.open  = kasp_dir_open,
+		.close = kasp_dir_close,
+		ENTITY_CALLBACKS(zone),
+		ENTITY_CALLBACKS(policy),
+		ENTITY_CALLBACKS(keystore),
+	};
+
+	return dnssec_kasp_create(kasp_ptr, &implementation);
 }

@@ -14,4 +14,15 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include "error.h"
 #include "kasp/dir/keystore.h"
+
+int load_keystore_config(dnssec_kasp_keystore_t *keystore, const char *filename)
+{
+	return DNSSEC_NOT_IMPLEMENTED_ERROR;
+}
+
+int save_keystore_config(dnssec_kasp_keystore_t *keystore, const char *filename)
+{
+	return DNSSEC_NOT_IMPLEMENTED_ERROR;
+}

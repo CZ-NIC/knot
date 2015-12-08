@@ -15,3 +15,9 @@
 */
 
 #pragma once
+
+#include "kasp.h"
+
+int load_keystore_config(dnssec_kasp_keystore_t *keystore, const char *filename);
+
+int save_keystore_config(dnssec_kasp_keystore_t *keystore, const char *filename);
