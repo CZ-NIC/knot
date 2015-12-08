@@ -44,5 +44,8 @@ void dnssec_kasp_keystore_free(dnssec_kasp_keystore_t *keystore)
 	}
 
 	free(keystore->name);
+	free(keystore->backend);
+	free(keystore->config);
+
 	free(keystore);
 }
