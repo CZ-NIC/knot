@@ -23,8 +23,8 @@
 #include "error.h"
 #include "fs.h"
 #include "kasp/dir/file.h"
-#include "kasp/dir/zone.h"
 #include "kasp/dir/policy.h"
+#include "kasp/dir/zone.h"
 #include "kasp/internal.h"
 #include "kasp/zone.h"
 #include "key.h"
@@ -33,9 +33,6 @@
 #include "shared.h"
 
 #define KASP_DIR_INIT_MODE (S_IRWXU|S_IRGRP|S_IXGRP)
-
-#define ENTITY_ZONE   "zone"
-#define ENTITY_POLICY "policy"
 
 typedef struct kasp_dir_ctx {
 	char *path;
@@ -51,6 +48,81 @@ static int file_exists(const char *path)
 		return dnssec_errno_to_error(errno);
 	}
 }
+
+/* -- generic entity encoding ---------------------------------------------- */
+
+static int entity_remove(const char *entity, void *_ctx, const char *name)
+{
+	assert(entity);
+	assert(_ctx);
+	assert(name);
+
+	kasp_dir_ctx_t *ctx = _ctx;
+
+	_cleanup_free_ char *config = file_from_entity(ctx->path, entity, name);
+	if (!config) {
+		return DNSSEC_ENOMEM;
+	}
+
+	if (unlink(config) != 0) {
+		return dnssec_errno_to_error(errno);
+	}
+
+	return DNSSEC_EOK;
+}
+
+static int entity_exists(const char *entity, void *_ctx, const char *name)
+{
+	assert(entity);
+	assert(_ctx);
+	assert(name);
+
+	kasp_dir_ctx_t *ctx = _ctx;
+
+	_cleanup_free_ char *config = file_from_entity(ctx->path, entity, name);
+	if (!config) {
+		return DNSSEC_ENOMEM;
+	}
+
+	return file_exists(config);
+}
+
+static int entity_list(const char *entity, void *_ctx, dnssec_list_t *names)
+{
+	assert(entity);
+	assert(_ctx);
+	assert(names);
+
+	kasp_dir_ctx_t *ctx = _ctx;
+
+	_cleanup_closedir_ DIR *dir = opendir(ctx->path);
+	if (!dir) {
+		return DNSSEC_NOT_FOUND;
+	}
+
+	int error;
+	struct dirent entry, *result;
+	while (error = readdir_r(dir, &entry, &result), error == 0 && result) {
+		char *zone = file_to_entity(entity, entry.d_name);
+		if (zone) {
+			dnssec_list_append(names, zone);
+		}
+	}
+
+	if (error != 0) {
+		return dnssec_errno_to_error(error);
+	}
+
+	return DNSSEC_EOK;
+}
+
+#define entity_io(entity, ctx, object, callback) \
+({ \
+	const char *path = ((kasp_dir_ctx_t *)ctx)->path; \
+	const char *name = object->name; \
+	_cleanup_free_ char *config = file_from_entity(entity, path, name); \
+	config ? callback(object, config) : DNSSEC_ENOMEM; \
+})
 
 /* -- internal API --------------------------------------------------------- */
 
@@ -94,242 +166,103 @@ static void kasp_dir_close(void *_ctx)
 	free(ctx);
 }
 
-static char *zone_file(const char *dir, const char *name)
+/* -- entities ------------------------------------------------------------- */
+
+#define ENTITY_ZONE     "zone"
+
+static int kasp_dir_zone_remove(void *ctx, const char *name)
 {
-	return file_from_entity(dir, ENTITY_ZONE, name);
+	return entity_remove(ENTITY_ZONE, ctx, name);
 }
 
-static int kasp_dir_zone_load(void *_ctx, dnssec_kasp_zone_t *zone)
+static int kasp_dir_zone_exists(void *ctx, const char *name)
 {
-	assert(_ctx);
-	assert(zone);
-
-	kasp_dir_ctx_t *ctx = _ctx;
-
-	_cleanup_free_ char *config = zone_file(ctx->path, zone->name);
-	if (!config) {
-		return DNSSEC_ENOMEM;
-	}
-
-	return load_zone_config(zone, config);
+	return entity_exists(ENTITY_ZONE, ctx, name);
 }
 
-static int kasp_dir_zone_save(void *_ctx, dnssec_kasp_zone_t *zone)
+static int kasp_dir_zone_list(void *ctx, dnssec_list_t *names)
 {
-	assert(_ctx);
-	assert(zone);
-
-	kasp_dir_ctx_t *ctx = _ctx;
-
-	_cleanup_free_ char *config = zone_file(ctx->path, zone->name);
-	if (!config) {
-		return DNSSEC_ENOMEM;
-	}
-
-	return save_zone_config(zone, config);
+	return entity_list(ENTITY_ZONE, ctx, names);
 }
 
-static int kasp_dir_zone_remove(void *_ctx, const char *name)
+static int kasp_dir_zone_load(void *ctx, dnssec_kasp_zone_t *zone)
 {
-	assert(_ctx);
-	assert(name);
-
-	kasp_dir_ctx_t *ctx = _ctx;
-
-	_cleanup_free_ char *config = zone_file(ctx->path, name);
-	if (!config) {
-		return DNSSEC_ENOMEM;
-	}
-
-	if (unlink(config) != 0) {
-		return dnssec_errno_to_error(errno);
-	}
-
-	return DNSSEC_EOK;
+	return entity_io(ENTITY_ZONE, ctx, zone, load_zone_config);
 }
 
-static int kasp_dir_zone_list(void *_ctx, dnssec_list_t *names)
+static int kasp_dir_zone_save(void *ctx, dnssec_kasp_zone_t *zone)
 {
-	assert(_ctx);
-	assert(names);
-
-	kasp_dir_ctx_t *ctx = _ctx;
-
-	_cleanup_closedir_ DIR *dir = opendir(ctx->path);
-	if (!dir) {
-		return DNSSEC_NOT_FOUND;
-	}
-
-	int error;
-	struct dirent entry, *result;
-	while (error = readdir_r(dir, &entry, &result), error == 0 && result) {
-		char *zone = file_to_entity(ENTITY_ZONE, entry.d_name);
-		if (zone) {
-			dnssec_list_append(names, zone);
-		}
-	}
-
-	if (error != 0) {
-		return dnssec_errno_to_error(error);
-	}
-
-	return DNSSEC_EOK;
+	return entity_io(ENTITY_ZONE, ctx, zone, save_zone_config);
 }
 
-static int kasp_dir_zone_exists(void *_ctx, const char *name)
+#define ENTITY_POLICY   "policy"
+
+static int kasp_dir_policy_remove(void *ctx, const char *name)
 {
-	assert(_ctx);
-	assert(name);
-
-	kasp_dir_ctx_t *ctx = _ctx;
-	_cleanup_free_ char *config = zone_file(ctx->path, name);
-	if (!config) {
-		return DNSSEC_ENOMEM;
-	}
-
-	return file_exists(config);
+	return entity_remove(ENTITY_POLICY, ctx, name);
 }
 
-static char *policy_file(const char *dir, const char *name)
+static int kasp_dir_policy_exists(void *ctx, const char *name)
 {
-	return file_from_entity(dir, ENTITY_POLICY, name);
+	return entity_exists(ENTITY_POLICY, ctx, name);
 }
 
-static int kasp_dir_policy_load(void *_ctx, dnssec_kasp_policy_t *policy)
+static int kasp_dir_policy_list(void *ctx, dnssec_list_t *names)
 {
-	assert(_ctx);
-	assert(policy);
-
-	kasp_dir_ctx_t *ctx = _ctx;
-
-	_cleanup_free_ char *config = policy_file(ctx->path, policy->name);
-	if (!config) {
-		return DNSSEC_ENOMEM;
-	}
-
-	return load_policy_config(policy, config);
+	return entity_list(ENTITY_POLICY, ctx, names);
 }
 
-static int kasp_dir_policy_save(void *_ctx, dnssec_kasp_policy_t *policy)
+static int kasp_dir_policy_load(void *ctx, dnssec_kasp_policy_t *policy)
 {
-	assert(_ctx);
-	assert(policy);
-
-	kasp_dir_ctx_t *ctx = _ctx;
-
-	_cleanup_free_ char *config = policy_file(ctx->path, policy->name);
-	if (!config) {
-		return DNSSEC_ENOMEM;
-	}
-
-	return save_policy_config(policy, config);
+	return entity_io(ENTITY_POLICY, ctx, policy, load_policy_config);
 }
 
-static int kasp_dir_policy_remove(void *_ctx, const char *name)
+static int kasp_dir_policy_save(void *ctx, dnssec_kasp_policy_t *policy)
 {
-	assert(_ctx);
-	assert(name);
-
-	kasp_dir_ctx_t *ctx = _ctx;
-
-	_cleanup_free_ char *config = policy_file(ctx->path, name);
-	if (!config) {
-		return DNSSEC_ENOMEM;
-	}
-
-	if (unlink(config) != 0) {
-		return dnssec_errno_to_error(errno);
-	}
-
-	return DNSSEC_EOK;
+	return entity_io(ENTITY_POLICY, ctx, policy, save_policy_config);
 }
 
-static int kasp_dir_policy_list(void *_ctx, dnssec_list_t *names)
-{
-	assert(_ctx);
-	assert(names);
+#define ENTITY_KEYSTORE "keystore"
 
-	kasp_dir_ctx_t *ctx = _ctx;
-
-	_cleanup_closedir_ DIR *dir = opendir(ctx->path);
-	if (!dir) {
-		return DNSSEC_NOT_FOUND;
-	}
-
-	int error;
-	struct dirent entry, *result;
-	while (error = readdir_r(dir, &entry, &result), error == 0 && result) {
-		char *zone = file_to_entity(ENTITY_POLICY, entry.d_name);
-		if (zone) {
-			dnssec_list_append(names, zone);
-		}
-	}
-
-	if (error != 0) {
-		return dnssec_errno_to_error(error);
-	}
-
-	return DNSSEC_EOK;
-}
-
-static int kasp_dir_policy_exists(void *_ctx, const char *name)
-{
-	assert(_ctx);
-	assert(name);
-
-	kasp_dir_ctx_t *ctx = _ctx;
-	_cleanup_free_ char *config = policy_file(ctx->path, name);
-	if (!config) {
-		return DNSSEC_ENOMEM;
-	}
-
-	return file_exists(config);
-}
-
-static int kasp_dir_keystore_load(void *_ctx, dnssec_kasp_keystore_t *keystore)
+static int kasp_dir_keystore_remove(void *ctx, const char *name)
 {
 	return DNSSEC_NOT_IMPLEMENTED_ERROR;
 }
 
-static int kasp_dir_keystore_save(void *_ctx, dnssec_kasp_keystore_t *keystore)
+static int kasp_dir_keystore_exists(void *ctx, const char *name)
 {
 	return DNSSEC_NOT_IMPLEMENTED_ERROR;
 }
 
-static int kasp_dir_keystore_remove(void *_ctx, const char *name)
+static int kasp_dir_keystore_list(void *ctx, dnssec_list_t *names)
 {
 	return DNSSEC_NOT_IMPLEMENTED_ERROR;
 }
 
-static int kasp_dir_keystore_list(void *_ctx, dnssec_list_t *list)
+static int kasp_dir_keystore_load(void *ctx, dnssec_kasp_keystore_t *keystore)
 {
 	return DNSSEC_NOT_IMPLEMENTED_ERROR;
 }
 
-static int kasp_dir_keystore_exists(void *_ctx, const char *name)
+static int kasp_dir_keystore_save(void *ctx, dnssec_kasp_keystore_t *keystore)
 {
 	return DNSSEC_NOT_IMPLEMENTED_ERROR;
 }
+
+#define ENTITY_CALLBACKS(name) \
+  .name##_load   = kasp_dir_##name##_load,   \
+  .name##_save   = kasp_dir_##name##_save,   \
+  .name##_remove = kasp_dir_##name##_remove, \
+  .name##_list   = kasp_dir_##name##_list,   \
+  .name##_exists = kasp_dir_##name##_exists
 
 static const dnssec_kasp_store_functions_t KASP_DIR_FUNCTIONS = {
-	.init            = kasp_dir_init,
-	.open            = kasp_dir_open,
-	.close           = kasp_dir_close,
-	.zone_load       = kasp_dir_zone_load,
-	.zone_save       = kasp_dir_zone_save,
-	.zone_remove     = kasp_dir_zone_remove,
-	.zone_list       = kasp_dir_zone_list,
-	.zone_exists     = kasp_dir_zone_exists,
-	.policy_load     = kasp_dir_policy_load,
-	.policy_save     = kasp_dir_policy_save,
-	.policy_remove   = kasp_dir_policy_remove,
-	.policy_list     = kasp_dir_policy_list,
-	.policy_exists   = kasp_dir_policy_exists,
-	.keystore_load   = kasp_dir_keystore_load,
-	.keystore_save   = kasp_dir_keystore_save,
-	.keystore_remove = kasp_dir_keystore_remove,
-	.keystore_list   = kasp_dir_keystore_list,
-	.keystore_exists = kasp_dir_keystore_exists,
+	.init  = kasp_dir_init,
+	.open  = kasp_dir_open,
+	.close = kasp_dir_close,
+	ENTITY_CALLBACKS(zone),
+	ENTITY_CALLBACKS(policy),
+	ENTITY_CALLBACKS(keystore),
 };
 
 /* -- public API ----------------------------------------------------------- */
