@@ -74,9 +74,9 @@ libdnssec_la_SOURCES = \
 	lib/binary.c \
 	lib/crypto.c \
 	lib/error.c \
+	lib/event/action.h \
 	lib/event/action/initial_key.c \
 	lib/event/action/zsk_rollover.c \
-	lib/event/action.h \
 	lib/event/event.c \
 	lib/event/keystate.c \
 	lib/event/keystate.h \
@@ -89,14 +89,17 @@ libdnssec_la_SOURCES = \
 	lib/kasp/dir/file.h \
 	lib/kasp/dir/json.c \
 	lib/kasp/dir/json.h \
-	lib/kasp/dir/zone.c \
-	lib/kasp/dir/zone.h \
+	lib/kasp/dir/keystore.c \
+	lib/kasp/dir/keystore.h \
 	lib/kasp/dir/policy.c \
 	lib/kasp/dir/policy.h \
+	lib/kasp/dir/zone.c \
+	lib/kasp/dir/zone.h \
 	lib/kasp/internal.h \
 	lib/kasp/kasp.c \
-	lib/kasp/zone.c \
+	lib/kasp/keystore.c \
 	lib/kasp/policy.c \
+	lib/kasp/zone.c \
 	lib/kasp/zone.h \
 	lib/key/algorithm.c \
 	lib/key/algorithm.h \
@@ -111,9 +114,9 @@ libdnssec_la_SOURCES = \
 	lib/key/privkey.c \
 	lib/key/privkey.h \
 	lib/key/simple.c \
+	lib/keyid/gnutls_keys.c \
 	lib/keyid/internal.h \
 	lib/keyid/keyid.c \
-	lib/keyid/gnutls_keys.c \
 	lib/keystore/internal.h \
 	lib/keystore/keystore.c \
 	lib/keystore/pkcs11.c \

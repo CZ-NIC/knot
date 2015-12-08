@@ -26,6 +26,7 @@
 #include "kasp/dir/zone.h"
 #include "kasp/dir/policy.h"
 #include "kasp/internal.h"
+#include "kasp/zone.h"
 #include "key.h"
 #include "list.h"
 #include "path.h"

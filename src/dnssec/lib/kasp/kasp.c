@@ -19,6 +19,7 @@
 #include "error.h"
 #include "kasp.h"
 #include "kasp/internal.h"
+#include "kasp/zone.h"
 #include "shared.h"
 #include "dname.h"
 
@@ -267,4 +268,81 @@ int dnssec_kasp_policy_exists(dnssec_kasp_t *kasp, const char *policy_name)
 	}
 
 	return kasp->functions->policy_exists(kasp->ctx, policy_name);
+}
+
+_public_
+int dnssec_kasp_keystore_load(dnssec_kasp_t *kasp, const char *name,
+			     dnssec_kasp_keystore_t **keystore_ptr)
+{
+	if (!kasp || !name || !keystore_ptr) {
+		return DNSSEC_EINVAL;
+	}
+
+	dnssec_kasp_keystore_t *keystore = dnssec_kasp_keystore_new(name);
+	if (!keystore) {
+		return DNSSEC_ENOMEM;
+	}
+
+	int r = kasp->functions->keystore_load(kasp->ctx, keystore);
+	if (r != DNSSEC_EOK) {
+		dnssec_kasp_keystore_free(keystore);
+		return r;
+	}
+
+	*keystore_ptr = keystore;
+
+	return DNSSEC_EOK;
+}
+
+_public_
+int dnssec_kasp_keystore_save(dnssec_kasp_t *kasp, dnssec_kasp_keystore_t *keystore)
+{
+	if (!kasp || !keystore) {
+		return DNSSEC_EINVAL;
+	}
+
+	return kasp->functions->keystore_save(kasp->ctx, keystore);
+}
+
+_public_
+int dnssec_kasp_keystore_remove(dnssec_kasp_t *kasp, const char *name)
+{
+	if (!kasp || !name) {
+		return DNSSEC_EINVAL;
+	}
+
+	return kasp->functions->keystore_remove(kasp->ctx, name);
+}
+
+_public_
+int dnssec_kasp_keystore_list(dnssec_kasp_t *kasp, dnssec_list_t **list_ptr)
+{
+	if (!kasp || !list_ptr) {
+		return DNSSEC_EINVAL;
+	}
+
+	dnssec_list_t *list = dnssec_list_new();
+	if (!list) {
+		return DNSSEC_ENOMEM;
+	}
+
+	int r = kasp->functions->keystore_list(kasp->ctx, list);
+	if (r != DNSSEC_EOK) {
+		dnssec_list_free_full(list, NULL, NULL);
+		return r;
+	}
+
+	*list_ptr = list;
+
+	return DNSSEC_EOK;
+}
+
+_public_
+int dnssec_kasp_keystore_exists(dnssec_kasp_t *kasp, const char *keystore_name)
+{
+	if (!kasp || !keystore_name) {
+		return DNSSEC_EINVAL;
+	}
+
+	return kasp->functions->keystore_exists(kasp->ctx, keystore_name);
 }

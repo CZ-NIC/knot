@@ -21,6 +21,7 @@
 #include "dnssec/error.h"
 #include "dnssec/kasp.h"
 #include "kasp/internal.h"
+#include "kasp/zone.h"
 
 bool streq(const char *a, const char *b)
 {

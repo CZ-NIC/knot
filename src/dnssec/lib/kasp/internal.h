@@ -16,8 +16,8 @@
 
 #pragma once
 
-#include "zone.h"
 #include "list.h"
+#include "kasp.h"
 
 /*!
  * KASP store API implementation.
@@ -39,6 +39,12 @@ typedef struct dnssec_kasp_store_functions {
 	int (*policy_remove)(void *ctx, const char *name);
 	int (*policy_list)(void *ctx, dnssec_list_t *policy_names);
 	int (*policy_exists)(void *ctx, const char *name);
+	// keystore serialization/deserialization
+	int (*keystore_load)(void *ctx, dnssec_kasp_keystore_t *keystore);
+	int (*keystore_save)(void *ctx, dnssec_kasp_keystore_t *keystore);
+	int (*keystore_remove)(void *ctx, const char *name);
+	int (*keystore_list)(void *ctx, dnssec_list_t *names);
+	int (*keystore_exists)(void *ctx, const char *name);
 } dnssec_kasp_store_functions_t;
 
 /*!

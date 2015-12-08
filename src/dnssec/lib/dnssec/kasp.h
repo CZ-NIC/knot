@@ -367,4 +367,19 @@ int dnssec_kasp_policy_list(dnssec_kasp_t *kasp, dnssec_list_t **list);
  */
 int dnssec_kasp_policy_exists(dnssec_kasp_t *kasp, const char *policy_name);
 
+typedef struct dnssec_kasp_keystore {
+	char *name;
+	char *backend;
+	char *config;
+} dnssec_kasp_keystore_t;
+
+dnssec_kasp_keystore_t *dnssec_kasp_keystore_new(const char *name);
+void dnssec_kasp_keystore_free(dnssec_kasp_keystore_t *keystore);
+
+int dnssec_kasp_keystore_load(dnssec_kasp_t *kasp, const char *name, dnssec_kasp_keystore_t **keystore);
+int dnssec_kasp_keystore_save(dnssec_kasp_t *kasp, dnssec_kasp_keystore_t *keystore);
+int dnssec_kasp_keystore_remove(dnssec_kasp_t *kasp, const char *name);
+int dnssec_kasp_keystore_list(dnssec_kasp_t *kasp, dnssec_list_t **names);
+int dnssec_kasp_keystore_exists(dnssec_kasp_t *kasp, const char *name);
+
 /*! @} */
