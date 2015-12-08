@@ -286,20 +286,50 @@ static int kasp_dir_policy_exists(void *_ctx, const char *name)
 	return file_exists(config);
 }
 
+static int kasp_dir_keystore_load(void *_ctx, dnssec_kasp_keystore_t *keystore)
+{
+	return DNSSEC_NOT_IMPLEMENTED_ERROR;
+}
+
+static int kasp_dir_keystore_save(void *_ctx, dnssec_kasp_keystore_t *keystore)
+{
+	return DNSSEC_NOT_IMPLEMENTED_ERROR;
+}
+
+static int kasp_dir_keystore_remove(void *_ctx, const char *name)
+{
+	return DNSSEC_NOT_IMPLEMENTED_ERROR;
+}
+
+static int kasp_dir_keystore_list(void *_ctx, dnssec_list_t *list)
+{
+	return DNSSEC_NOT_IMPLEMENTED_ERROR;
+}
+
+static int kasp_dir_keystore_exists(void *_ctx, const char *name)
+{
+	return DNSSEC_NOT_IMPLEMENTED_ERROR;
+}
+
 static const dnssec_kasp_store_functions_t KASP_DIR_FUNCTIONS = {
-	.init          = kasp_dir_init,
-	.open          = kasp_dir_open,
-	.close         = kasp_dir_close,
-	.zone_load     = kasp_dir_zone_load,
-	.zone_save     = kasp_dir_zone_save,
-	.zone_remove   = kasp_dir_zone_remove,
-	.zone_list     = kasp_dir_zone_list,
-	.zone_exists   = kasp_dir_zone_exists,
-	.policy_load   = kasp_dir_policy_load,
-	.policy_save   = kasp_dir_policy_save,
-	.policy_remove = kasp_dir_policy_remove,
-	.policy_list   = kasp_dir_policy_list,
-	.policy_exists = kasp_dir_policy_exists,
+	.init            = kasp_dir_init,
+	.open            = kasp_dir_open,
+	.close           = kasp_dir_close,
+	.zone_load       = kasp_dir_zone_load,
+	.zone_save       = kasp_dir_zone_save,
+	.zone_remove     = kasp_dir_zone_remove,
+	.zone_list       = kasp_dir_zone_list,
+	.zone_exists     = kasp_dir_zone_exists,
+	.policy_load     = kasp_dir_policy_load,
+	.policy_save     = kasp_dir_policy_save,
+	.policy_remove   = kasp_dir_policy_remove,
+	.policy_list     = kasp_dir_policy_list,
+	.policy_exists   = kasp_dir_policy_exists,
+	.keystore_load   = kasp_dir_keystore_load,
+	.keystore_save   = kasp_dir_keystore_save,
+	.keystore_remove = kasp_dir_keystore_remove,
+	.keystore_list   = kasp_dir_keystore_list,
+	.keystore_exists = kasp_dir_keystore_exists,
 };
 
 /* -- public API ----------------------------------------------------------- */
