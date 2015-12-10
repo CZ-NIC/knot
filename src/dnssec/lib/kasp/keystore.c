@@ -16,8 +16,26 @@
 
 #include <stdlib.h>
 
-#include "shared.h"
 #include "kasp.h"
+#include "kasp/internal.h"
+#include "shared.h"
+
+/* -- internal API --------------------------------------------------------- */
+
+void kasp_keystore_cleanup(dnssec_kasp_keystore_t *keystore)
+{
+	if (!keystore) {
+		return;
+	}
+
+	free(keystore->name);
+	free(keystore->backend);
+	free(keystore->config);
+
+	clear_struct(keystore);
+}
+
+/* -- public API ----------------------------------------------------------- */
 
 _public_
 dnssec_kasp_keystore_t *dnssec_kasp_keystore_new(const char *name)
@@ -43,9 +61,7 @@ void dnssec_kasp_keystore_free(dnssec_kasp_keystore_t *keystore)
 		return;
 	}
 
-	free(keystore->name);
-	free(keystore->backend);
-	free(keystore->config);
+	kasp_keystore_cleanup(keystore);
 
 	free(keystore);
 }
