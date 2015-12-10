@@ -121,7 +121,7 @@ static int entity_list(const char *entity, void *_ctx, dnssec_list_t *names)
 ({ \
 	const char *path = ((kasp_dir_ctx_t *)ctx)->path; \
 	const char *name = object->name; \
-	_cleanup_free_ char *config = file_from_entity(entity, path, name); \
+	_cleanup_free_ char *config = file_from_entity(path, entity, name); \
 	config ? callback(object, config) : DNSSEC_ENOMEM; \
 })
 
