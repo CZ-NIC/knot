@@ -337,9 +337,9 @@ int decode_string(const json_t *value, void *result)
 
 int encode_string(const void *value, json_t **result)
 {
-	const char *str = value;
+	const char **str_ptr = (const char **)value;
 
-	json_t *json = str ? json_string(str) : json_null();
+	json_t *json = *str_ptr ? json_string(*str_ptr) : json_null();
 	if (!json) {
 		return DNSSEC_ENOMEM;
 	}
