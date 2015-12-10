@@ -18,10 +18,10 @@
 #include <assert.h>
 #include <tap/basic.h>
 
-#include "libknot/internal/hhash.h"
-#include "libknot/internal/mempattern.h"
 #include "libknot/libknot.h"
+#include "contrib/hhash.h"
 #include "contrib/macros.h"
+#include "contrib/mempattern.h"
 #include "contrib/ucw/mempool.h"
 
 /* Test defines. */
@@ -30,7 +30,7 @@
 
 /* Random key string generator for tests. */
 static const char *alphabet = "0123abcdABCDwxyzWXYZ.-_";
-char *test_randstr_mm(struct mm_ctx *mm)
+char *test_randstr_mm(knot_mm_t *mm)
 {
 	unsigned len = (5 + rand() % 251) + 1;
 	char *s = mm_alloc(mm, len * sizeof(char));
@@ -68,9 +68,9 @@ int main(int argc, char *argv[])
 
 	/* Create memory pool context. */
 	struct mempool *pool = mp_new(64 * 1024);
-	mm_ctx_t mm;
+	knot_mm_t mm;
 	mm.ctx = pool;
-	mm.alloc = (mm_alloc_t)mp_alloc;
+	mm.alloc = (knot_mm_alloc_t)mp_alloc;
 	mm.free = NULL;
 
 	/* Create hashtable */

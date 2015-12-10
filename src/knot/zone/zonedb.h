@@ -33,7 +33,7 @@
 #include "knot/zone/zone.h"
 #include "knot/zone/contents.h"
 #include "libknot/dname.h"
-#include "libknot/internal/hhash.h"
+#include "contrib/hhash.h"
 
 /*
  * Zone DB represents a list of managed zones.
@@ -47,7 +47,7 @@
 typedef struct {
 	uint16_t maxlabels;
 	hhash_t *hash;
-	mm_ctx_t mm;
+	knot_mm_t mm;
 } knot_zonedb_t;
 
 /*

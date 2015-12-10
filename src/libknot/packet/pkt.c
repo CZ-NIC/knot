@@ -26,6 +26,7 @@
 #include "libknot/tsig-op.h"
 #include "libknot/packet/wire.h"
 #include "libknot/packet/rrset-wire.h"
+#include "contrib/mempattern.h"
 #include "contrib/wire.h"
 #include "contrib/wire_ctx.h"
 
@@ -170,14 +171,14 @@ static int pkt_rr_array_alloc(knot_pkt_t *pkt, uint16_t count)
 }
 
 /*! \brief Clear the packet and switch wireformat pointers (possibly allocate new). */
-static int pkt_init(knot_pkt_t *pkt, void *wire, uint16_t len, mm_ctx_t *mm)
+static int pkt_init(knot_pkt_t *pkt, void *wire, uint16_t len, knot_mm_t *mm)
 {
 	assert(pkt);
 
 	memset(pkt, 0, sizeof(knot_pkt_t));
 
 	/* No data to free, set memory context. */
-	memcpy(&pkt->mm, mm, sizeof(mm_ctx_t));
+	memcpy(&pkt->mm, mm, sizeof(knot_mm_t));
 
 	/* Initialize wire. */
 	int ret = KNOT_EOK;
@@ -219,7 +220,7 @@ static void pkt_clear_payload(knot_pkt_t *pkt)
 }
 
 /*! \brief Allocate new packet using memory context. */
-static knot_pkt_t *pkt_new_mm(void *wire, uint16_t len, mm_ctx_t *mm)
+static knot_pkt_t *pkt_new_mm(void *wire, uint16_t len, knot_mm_t *mm)
 {
 	assert(mm);
 
@@ -237,10 +238,10 @@ static knot_pkt_t *pkt_new_mm(void *wire, uint16_t len, mm_ctx_t *mm)
 }
 
 _public_
-knot_pkt_t *knot_pkt_new(void *wire, uint16_t len, mm_ctx_t *mm)
+knot_pkt_t *knot_pkt_new(void *wire, uint16_t len, knot_mm_t *mm)
 {
 	/* Default memory allocator if NULL. */
-	mm_ctx_t _mm;
+	knot_mm_t _mm;
 	if (mm == NULL) {
 		mm_ctx_init(&_mm);
 		mm = &_mm;

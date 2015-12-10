@@ -18,10 +18,10 @@
 
 #include "libknot/errcode.h"
 #include "libknot/internal/namedb/namedb_trie.h"
-#include "libknot/internal/trie/hat-trie.h"
-#include "libknot/internal/mempattern.h"
+#include "contrib/hat-trie/hat-trie.h"
+#include "contrib/mempattern.h"
 
-static int init(namedb_t **db, mm_ctx_t *mm, void *arg)
+static int init(namedb_t **db, knot_mm_t *mm, void *arg)
 {
 	if (db == NULL || arg == NULL) {
 		return KNOT_EINVAL;

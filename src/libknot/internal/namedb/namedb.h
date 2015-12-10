@@ -16,7 +16,7 @@
 
 #pragma once
 
-#include "libknot/internal/mempattern.h"
+#include "libknot/mm_ctx.h"
 
 enum {
 	/* Database flags */
@@ -53,7 +53,7 @@ typedef struct namedb_api {
 
 	/* Context operations */
 
-	int (*init)(namedb_t **db, mm_ctx_t *mm, void *opts);
+	int (*init)(namedb_t **db, knot_mm_t *mm, void *opts);
 	void (*deinit)(namedb_t *db);
 
 	/* Transactions */

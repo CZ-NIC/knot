@@ -158,7 +158,7 @@ int main(int argc, char *argv[])
 }
 
 static int parse_rdata(struct entry *entry, const char *owner, const char *rrtype, const char *rdata,
-		       int ttl, mm_ctx_t *mm)
+		       int ttl, knot_mm_t *mm)
 {
 	knot_rdataset_init(&entry->data.rrs);
 	int ret = knot_rrtype_from_string(rrtype, &entry->data.type);

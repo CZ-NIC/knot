@@ -29,6 +29,7 @@
 #include "libknot/libknot.h"
 #include "libknot/yparser/ypformat.h"
 #include "libknot/yparser/yptrafo.h"
+#include "contrib/mempattern.h"
 #include "contrib/sockaddr.h"
 #include "contrib/string.h"
 #include "contrib/ucw/mempool.h"
@@ -110,7 +111,7 @@ int conf_new(
 	}
 
 	// Prepare namedb api.
-	out->mm = malloc(sizeof(mm_ctx_t));
+	out->mm = malloc(sizeof(knot_mm_t));
 	mm_ctx_mempool(out->mm, MM_DEFAULT_BLKSIZE);
 	struct namedb_lmdb_opts lmdb_opts = NAMEDB_LMDB_OPTS_INITIALIZER;
 	lmdb_opts.mapsize = 500 * 1024 * 1024;

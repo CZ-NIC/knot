@@ -112,7 +112,7 @@ int main(int argc, char *argv[])
 	plan(3 + TEST_COUNT);
 
 	/* Create processing context. */
-	mm_ctx_t mm;
+	knot_mm_t mm;
 	mm_ctx_mempool(&mm, MM_DEFAULT_BLKSIZE);
 
 	knot_layer_t proc;

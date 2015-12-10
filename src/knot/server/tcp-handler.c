@@ -132,7 +132,7 @@ static int tcp_handle(tcp_context_t *tcp, int fd,
 		rx->iov_len = ret;
 	}
 
-	mm_ctx_t *mm = tcp->overlay.mm;
+	knot_mm_t *mm = tcp->overlay.mm;
 
 	/* Initialize processing overlay. */
 	ret = knot_overlay_init(&tcp->overlay, mm);
@@ -316,7 +316,7 @@ int tcp_master(dthread_t *thread)
 	memset(&tcp, 0, sizeof(tcp_context_t));
 
 	/* Create big enough memory cushion. */
-	mm_ctx_t mm;
+	knot_mm_t mm;
 	mm_ctx_mempool(&mm, 16 * MM_DEFAULT_BLKSIZE);
 
 	/* Create TCP answering context. */

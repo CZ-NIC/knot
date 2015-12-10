@@ -21,7 +21,7 @@
 
 #include "libknot/processing/overlay.h"
 #include "libknot/rrtype/tsig.h"
-#include "libknot/internal/mempattern.h"
+#include "libknot/mm_ctx.h"
 
 struct knot_request;
 
@@ -35,7 +35,7 @@ enum {
  *  Requestor holds a FIFO of pending queries.
  */
 struct knot_requestor {
-	mm_ctx_t *mm;                 /*!< Memory context. */
+	knot_mm_t *mm;                /*!< Memory context. */
 	void *pending;                /*!< Pending requests (FIFO). */
 	struct knot_overlay overlay;  /*!< Response processing overlay. */
 };
@@ -61,7 +61,7 @@ struct knot_request {
  *
  * \return Prepared request or NULL in case of error.
  */
-struct knot_request *knot_request_make(mm_ctx_t *mm,
+struct knot_request *knot_request_make(knot_mm_t *mm,
                                        const struct sockaddr *dst,
                                        const struct sockaddr *src,
                                        knot_pkt_t *query,
@@ -73,7 +73,7 @@ struct knot_request *knot_request_make(mm_ctx_t *mm,
  * \param request Freed request.
  * \param mm      Memory context.
  */
-void knot_request_free(struct knot_request *request, mm_ctx_t *mm);
+void knot_request_free(struct knot_request *request, knot_mm_t *mm);
 
 /*!
  * \brief Initialize requestor structure.
@@ -83,7 +83,7 @@ void knot_request_free(struct knot_request *request, mm_ctx_t *mm);
  *
  * \return KNOT_EOK or error
  */
-int knot_requestor_init(struct knot_requestor *requestor, mm_ctx_t *mm);
+int knot_requestor_init(struct knot_requestor *requestor, knot_mm_t *mm);
 
 /*!
  * \brief Clear the requestor structure and close pending queries.

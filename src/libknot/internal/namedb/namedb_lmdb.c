@@ -23,6 +23,7 @@
 
 #include "libknot/internal/namedb/namedb_lmdb.h"
 #include "libknot/errcode.h"
+#include "contrib/mempattern.h"
 
 #include <lmdb.h>
 
@@ -37,7 +38,7 @@ struct lmdb_env
 	bool shared;
 	MDB_dbi dbi;
 	MDB_env *env;
-	mm_ctx_t *pool;
+	knot_mm_t *pool;
 };
 
 /*!
@@ -188,7 +189,7 @@ static int dbase_open(struct lmdb_env *env, struct namedb_lmdb_opts *opts)
 	return KNOT_EOK;
 }
 
-static int init(namedb_t **db_ptr, mm_ctx_t *mm, void *arg)
+static int init(namedb_t **db_ptr, knot_mm_t *mm, void *arg)
 {
 	if (db_ptr == NULL || arg == NULL) {
 		return KNOT_EINVAL;

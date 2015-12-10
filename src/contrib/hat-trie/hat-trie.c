@@ -8,8 +8,10 @@
 #include <stdint.h>
 #include <assert.h>
 #include <string.h>
-#include "libknot/internal/trie/hat-trie.h"
-#include "libknot/internal/hhash.h"
+#include "contrib/hhash.h"
+#include "contrib/hat-trie/hat-trie.h"
+#include "contrib/mempattern.h"
+#include "libknot/errcode.h"
 
 /* number of child nodes for used alphabet */
 #define NODE_CHILDS (TRIE_MAXCHAR+1)
@@ -52,7 +54,7 @@ struct hattrie_t_
     node_ptr root; // root node
     size_t m;      // number of stored keys
     unsigned bsize; // bucket size
-    mm_ctx_t mm;
+    knot_mm_t mm;
 };
 
 /* Create an empty trie node. */
@@ -277,7 +279,7 @@ static void hattrie_initroot(hattrie_t *T)
 }
 
 /* Free hat-trie nodes recursively. */
-static void hattrie_free_node(node_ptr node, mm_free_t free_cb)
+static void hattrie_free_node(node_ptr node, knot_mm_free_t free_cb)
 {
     if (*node.flag & NODE_TYPE_TRIE) {
         size_t i;
@@ -315,7 +317,7 @@ static void hattrie_deinit(hattrie_t * T)
 
 hattrie_t* hattrie_create()
 {
-    mm_ctx_t mm;
+    knot_mm_t mm;
     mm_ctx_init(&mm);
     return hattrie_create_n(TRIE_BUCKET_SIZE, &mm);
 }
@@ -371,10 +373,10 @@ size_t hattrie_weight (const hattrie_t *T)
     return T->m;
 }
 
-hattrie_t* hattrie_create_n(unsigned bucket_size, const mm_ctx_t *mm)
+hattrie_t* hattrie_create_n(unsigned bucket_size, const knot_mm_t *mm)
 {
-    hattrie_t* T = mm_alloc((mm_ctx_t *)mm, sizeof(hattrie_t));
-    memcpy(&T->mm, mm, sizeof(mm_ctx_t));
+    hattrie_t* T = mm_alloc((knot_mm_t *)mm, sizeof(hattrie_t));
+    memcpy(&T->mm, mm, sizeof(knot_mm_t));
     hattrie_init(T, bucket_size);
     return T;
 }

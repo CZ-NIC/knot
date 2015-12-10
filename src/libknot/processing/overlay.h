@@ -28,7 +28,7 @@
 
 /*! \brief Processsing overlay (list of aggregated FSMs). */
 struct knot_overlay {
-	mm_ctx_t *mm;
+	knot_mm_t *mm;
 	int state;
 	void *layers;
 };
@@ -41,7 +41,7 @@ struct knot_overlay {
  *
  * \return KNOT_EOK or an error.
  */
-int knot_overlay_init(struct knot_overlay *overlay, mm_ctx_t *mm);
+int knot_overlay_init(struct knot_overlay *overlay, knot_mm_t *mm);
 
 /*!
  * \brief Clear structure nad free list of layers.

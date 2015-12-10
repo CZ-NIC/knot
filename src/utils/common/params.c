@@ -29,7 +29,7 @@
 #include "utils/common/resolv.h"
 #include "utils/common/token.h"
 #include "libknot/libknot.h"
-#include "libknot/internal/mempattern.h"
+#include "contrib/mempattern.h"
 #include "contrib/openbsd/strlcpy.h"
 
 #define IPV4_REVERSE_DOMAIN	"in-addr.arpa."

@@ -14,46 +14,32 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 /*!
- * \file mempattern.h
- *
- * \author Marek Vavrusa <marek.vavrusa@nic.cz>
+ * \file
  *
  * \brief Memory allocation related functions.
  *
- * \addtogroup alloc
+ * \addtogroup contrib
  * @{
  */
 
 #pragma once
 
-#include <stddef.h>
+#include "libknot/mm_ctx.h"
 
 /* Default memory block size. */
 #define MM_DEFAULT_BLKSIZE 4096
 
-/* Memory allocation function prototypes. */
-typedef void* (*mm_alloc_t)(void* ctx, size_t len);
-typedef void (*mm_free_t)(void *p);
-typedef void (*mm_flush_t)(void *p);
-
-/*! \brief Memory allocation context. */
-typedef struct mm_ctx {
-	void *ctx; /* \note Must be first */
-	mm_alloc_t alloc;
-	mm_free_t free;
-} mm_ctx_t;
-
 /*! \brief Allocs using 'mm' if any, uses system malloc() otherwise. */
-void *mm_alloc(mm_ctx_t *mm, size_t size);
+void *mm_alloc(knot_mm_t *mm, size_t size);
 /*! \brief Reallocs using 'mm' if any, uses system realloc() otherwise. */
-void *mm_realloc(mm_ctx_t *mm, void *what, size_t size, size_t prev_size);
+void *mm_realloc(knot_mm_t *mm, void *what, size_t size, size_t prev_size);
 /*! \brief Free using 'mm' if any, uses system free() otherwise. */
-void mm_free(mm_ctx_t *mm, void *what);
+void mm_free(knot_mm_t *mm, void *what);
 
 /*! \brief Initialize default memory allocation context. */
-void mm_ctx_init(mm_ctx_t *mm);
+void mm_ctx_init(knot_mm_t *mm);
 
 /*! \brief Memory pool context. */
-void mm_ctx_mempool(mm_ctx_t *mm, size_t chunk_size);
+void mm_ctx_mempool(knot_mm_t *mm, size_t chunk_size);
 
 /*! @} */

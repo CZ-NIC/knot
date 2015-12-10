@@ -25,7 +25,7 @@
 #include "contrib/ucw/mempool.h"
 
 static int add_to_node(zone_node_t *node, const zone_node_t *add_node,
-                       mm_ctx_t *mm)
+                       knot_mm_t *mm)
 {
 	for (uint16_t i = 0; i < add_node->rrset_count; ++i) {
 		knot_rrset_t rr = node_rrset_at(add_node, i);
@@ -41,7 +41,7 @@ static int add_to_node(zone_node_t *node, const zone_node_t *add_node,
 }
 
 static int rem_from_node(zone_node_t *node, const zone_node_t *rem_node,
-                         mm_ctx_t *mm)
+                         knot_mm_t *mm)
 {
 	for (uint16_t i = 0; i < rem_node->rrset_count; ++i) {
 		// Remove each found RR from 'node'.
@@ -62,7 +62,7 @@ static int rem_from_node(zone_node_t *node, const zone_node_t *rem_node,
 }
 
 static int apply_changes_to_node(zone_node_t *synth_node, const zone_node_t *add_node,
-                                 const zone_node_t *rem_node, mm_ctx_t *mm)
+                                 const zone_node_t *rem_node, knot_mm_t *mm)
 {
 	// Add changes to node
 	if (!node_empty(add_node)) {
@@ -84,7 +84,7 @@ static int apply_changes_to_node(zone_node_t *synth_node, const zone_node_t *add
 }
 
 static int deep_copy_node_data(zone_node_t *node_copy, const zone_node_t *node,
-                               mm_ctx_t *mm)
+                               knot_mm_t *mm)
 {
 	// Clear space for RRs
 	node_copy->rrs = NULL;
@@ -101,7 +101,7 @@ static int deep_copy_node_data(zone_node_t *node_copy, const zone_node_t *node,
 	return KNOT_EOK;
 }
 
-static zone_node_t *node_deep_copy(const zone_node_t *node, mm_ctx_t *mm)
+static zone_node_t *node_deep_copy(const zone_node_t *node, knot_mm_t *mm)
 {
 	// Shallow copy old node
 	zone_node_t *synth_node = node_shallow_copy(node, mm);

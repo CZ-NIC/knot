@@ -19,8 +19,10 @@
 #include <stdarg.h>
 
 #include "knot/updates/changesets.h"
+#include "libknot/errcode.h"
 #include "libknot/rrset.h"
 #include "contrib/macros.h"
+#include "contrib/mempattern.h"
 
 /* -------------------- Changeset iterator helpers -------------------------- */
 

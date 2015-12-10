@@ -134,7 +134,7 @@ static int axfr_query_init(struct query_data *qdata)
 	}
 
 	/* Create transfer processing context. */
-	mm_ctx_t *mm = qdata->mm;
+	knot_mm_t *mm = qdata->mm;
 
 	zone_contents_t *zone = qdata->zone->contents;
 	struct axfr_proc *axfr = mm_alloc(mm, sizeof(struct axfr_proc));
@@ -171,7 +171,7 @@ int xfr_process_list(knot_pkt_t *pkt, xfr_put_cb process_item,
 	}
 
 	int ret = KNOT_EOK;
-	mm_ctx_t *mm = qdata->mm;
+	knot_mm_t *mm = qdata->mm;
 	struct xfr_proc *xfer = qdata->ext;
 
 	zone_contents_t *zone = qdata->zone->contents;

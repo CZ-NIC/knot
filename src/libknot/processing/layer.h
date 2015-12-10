@@ -27,7 +27,7 @@
 #include <stdint.h>
 
 #include "libknot/packet/pkt.h"
-#include "libknot/internal/mempattern.h"
+#include "libknot/mm_ctx.h"
 
 /*! Layer processing states.
  *  Each state represents the state machine transition,
@@ -46,7 +46,7 @@ struct knot_layer_api;
 
 /*! \brief Packet processing context. */
 typedef struct knot_layer {
-	mm_ctx_t *mm;    /* Processing memory context. */
+	knot_mm_t *mm;   /* Processing memory context. */
 	uint16_t state;  /* Bitmap of enum knot_layer_state. */
 	void *data;      /* Module specific. */
 	const struct knot_layer_api *api;

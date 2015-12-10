@@ -25,8 +25,8 @@
 #include "utils/common/msg.h"
 #include "utils/common/netio.h"
 #include "libknot/libknot.h"
-#include "libknot/internal/mempattern.h"
 #include "libknot/tsig.h"
+#include "contrib/mempattern.h"
 #include "contrib/ucw/mempool.h"
 
 #define DEFAULT_RETRIES_NSUPDATE	3
@@ -150,7 +150,7 @@ void knsupdate_clean(knsupdate_params_t *params)
 }
 
 /*! \brief Free RRSet list. */
-static void rr_list_free(list_t *list, mm_ctx_t *mm)
+static void rr_list_free(list_t *list, knot_mm_t *mm)
 {
 	assert(list != NULL);
 	assert(mm != NULL);

@@ -26,7 +26,7 @@
 #include "libknot/dname.h"
 #include "libknot/errcode.h"
 #include "libknot/packet/wire.h"
-#include "libknot/internal/mempattern.h"
+#include "contrib/mempattern.h"
 #include "contrib/tolower.h"
 
 /*----------------------------------------------------------------------------*/
@@ -101,7 +101,7 @@ int knot_dname_wire_check(const uint8_t *name, const uint8_t *endp,
 /*----------------------------------------------------------------------------*/
 _public_
 knot_dname_t *knot_dname_parse(const uint8_t *pkt, size_t *pos, size_t maxpos,
-                               mm_ctx_t *mm)
+                               knot_mm_t *mm)
 {
 	if (pkt == NULL || pos == NULL)
 		return NULL;
@@ -136,7 +136,7 @@ knot_dname_t *knot_dname_parse(const uint8_t *pkt, size_t *pos, size_t maxpos,
 
 /*----------------------------------------------------------------------------*/
 _public_
-knot_dname_t *knot_dname_copy(const knot_dname_t *name, mm_ctx_t *mm)
+knot_dname_t *knot_dname_copy(const knot_dname_t *name, knot_mm_t *mm)
 {
 	if (name == NULL)
 		return NULL;
@@ -147,7 +147,7 @@ knot_dname_t *knot_dname_copy(const knot_dname_t *name, mm_ctx_t *mm)
 /*----------------------------------------------------------------------------*/
 _public_
 knot_dname_t *knot_dname_copy_part(const knot_dname_t *name, unsigned len,
-                                   mm_ctx_t *mm)
+                                   knot_mm_t *mm)
 {
 	if (name == NULL || len == 0)
 		return NULL;
@@ -641,7 +641,7 @@ knot_dname_t *knot_dname_replace_suffix(const knot_dname_t *name, unsigned label
 
 /*----------------------------------------------------------------------------*/
 _public_
-void knot_dname_free(knot_dname_t **name, mm_ctx_t *mm)
+void knot_dname_free(knot_dname_t **name, knot_mm_t *mm)
 {
 	if (name == NULL || *name == NULL)
 		return;

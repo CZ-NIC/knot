@@ -15,6 +15,7 @@
 */
 
 #include "knot/worker/queue.h"
+#include "contrib/mempattern.h"
 
 void worker_queue_init(worker_queue_t *queue)
 {

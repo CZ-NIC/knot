@@ -1,10 +1,27 @@
+/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
 #include <string.h>
 #include <assert.h>
 #include <stdbool.h>
 
+#include "contrib/hhash.h"
 #include "contrib/macros.h"
+#include "contrib/mempattern.h"
 #include "contrib/murmurhash3/murmurhash3.h"
-#include "libknot/internal/hhash.h"
 #include "libknot/errcode.h"
 
 /* UCW array sorting defines. */
@@ -128,14 +145,14 @@ static int hhelem_free(hhash_t* tbl, uint32_t id, unsigned dist, value_t *val)
 	}
 
 	/* Erase data from target element. */
-	if (tbl->mm.free) {
-		tbl->mm.free(elm->d);
+	if (tbl->mm->free) {
+		tbl->mm->free(elm->d);
 		elm->d = NULL;
 	}
 
 	/* Invalidate index. */
-	if (tbl->mm.free) {
-		tbl->mm.free(tbl->index);
+	if (tbl->mm->free) {
+		tbl->mm->free(tbl->index);
 		tbl->index = NULL;
 	}
 
@@ -193,37 +210,47 @@ static unsigned find_match(hhash_t *tbl, uint32_t idx, const char* key, uint16_t
 static void hhash_free_buckets(hhash_t *tbl)
 {
 	assert(tbl != NULL);
-	if (tbl->mm.free) {
+	if (tbl->mm->free) {
 		/* Free buckets. */
 		for (unsigned i = 0; i < tbl->size; ++i) {
-			tbl->mm.free(tbl->item[i].d);
+			tbl->mm->free(tbl->item[i].d);
 		}
 
 		/* Free order index. */
-		tbl->mm.free(tbl->index);
+		tbl->mm->free(tbl->index);
 	}
 }
 
 hhash_t *hhash_create(uint32_t size)
 {
-	mm_ctx_t mm;
+
+	knot_mm_t mm;
 	mm_ctx_init(&mm);
 	return hhash_create_mm(size, &mm);
 }
 
-hhash_t *hhash_create_mm(uint32_t size, const mm_ctx_t *mm)
+hhash_t *hhash_create_mm(uint32_t size, const knot_mm_t *mm)
 {
 	if (size == 0) {
 		return NULL;
 	}
 
 	const size_t total_len = sizeof(hhash_t) + size * sizeof(hhelem_t);
-	hhash_t *tbl = mm_alloc((mm_ctx_t *)mm, total_len);
-	if (tbl) {
-		memset(tbl, 0, total_len);
-		tbl->size = size;
-		memcpy(&tbl->mm, mm, sizeof(mm_ctx_t));
+	hhash_t *tbl = mm_alloc((knot_mm_t *)mm, total_len);
+	if (tbl == NULL) {
+		return NULL;
 	}
+	memset(tbl, 0, total_len);
+
+	knot_mm_t *mm_copy = mm_alloc((knot_mm_t *)mm, sizeof(knot_mm_t));
+	if (mm_copy == NULL) {
+		mm_free((knot_mm_t *)mm, tbl);
+		return NULL;
+	}
+	memcpy(mm_copy, mm, sizeof(knot_mm_t));
+
+	tbl->size = size;
+	tbl->mm = mm_copy;
 
 	return tbl;
 }
@@ -253,8 +280,10 @@ void hhash_free(hhash_t *tbl)
 	hhash_free_buckets(tbl);
 
 	/* Free table. */
-	if (tbl->mm.free) {
-		tbl->mm.free(tbl);
+	knot_mm_free_t mm_free = tbl->mm->free;
+	if (mm_free) {
+		mm_free(tbl->mm);
+		mm_free(tbl);
 	}
 }
 
@@ -313,7 +342,7 @@ value_t *hhash_map(hhash_t* tbl, const char* key, uint16_t len, uint16_t mode)
 	}
 
 	/* Insert to given position. */
-	char *new_key = tbl->mm.alloc(tbl->mm.ctx, HHKEY_LEN + len);
+	char *new_key = tbl->mm->alloc(tbl->mm->ctx, HHKEY_LEN + len);
 	if (new_key != NULL) {
 		memset(KEY_VAL(new_key), 0,    sizeof(value_t));
 		memcpy(KEY_LEN(new_key), &len, sizeof(uint16_t));
@@ -331,7 +360,7 @@ value_t *hhash_map(hhash_t* tbl, const char* key, uint16_t len, uint16_t mode)
 
 	/* Free old index. */
 	if (tbl->index) {
-		if (tbl->mm.free) {
+		if (tbl->mm->free) {
 			free(tbl->index);
 		}
 		tbl->index = NULL;
@@ -382,8 +411,8 @@ void hhash_build_index(hhash_t* tbl)
 
 	/* Free old index. */
 	if (tbl->index) {
-		if (tbl->mm.free) {
-			tbl->mm.free(tbl->index);
+		if (tbl->mm->free) {
+			tbl->mm->free(tbl->index);
 		}
 		tbl->index = NULL;
 	}
@@ -393,7 +422,7 @@ void hhash_build_index(hhash_t* tbl)
 	if (total == 0) {
 		return;
 	}
-	tbl->index = tbl->mm.alloc(tbl->mm.ctx, total * sizeof(uint32_t));
+	tbl->index = tbl->mm->alloc(tbl->mm->ctx, total * sizeof(uint32_t));
 
 	uint32_t i = 0, indexed = 0;
 	while (indexed < total) {

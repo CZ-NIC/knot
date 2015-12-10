@@ -79,7 +79,7 @@ int main(int argc, char *argv[])
 {
 	plan(8*6 + 4); /* exec_query = 6 TAP tests */
 
-	mm_ctx_t mm;
+	knot_mm_t mm;
 	mm_ctx_mempool(&mm, MM_DEFAULT_BLKSIZE);
 
 	/* Create processing context. */

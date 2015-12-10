@@ -21,7 +21,8 @@
 #include "knot/zone/zone-tree.h"
 #include "knot/zone/node.h"
 #include "libknot/consts.h"
-#include "libknot/internal/trie/hat-trie.h"
+#include "libknot/errcode.h"
+#include "contrib/hat-trie/hat-trie.h"
 #include "contrib/macros.h"
 
 /*----------------------------------------------------------------------------*/

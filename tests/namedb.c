@@ -27,6 +27,7 @@
 #include "libknot/internal/namedb/namedb_lmdb.h"
 #include "libknot/internal/namedb/namedb_trie.h"
 #include "libknot/libknot.h"
+#include "contrib/mempattern.h"
 #include "contrib/openbsd/strlcpy.h"
 #include "contrib/ucw/mempool.h"
 
@@ -42,7 +43,7 @@
 
 /*! \brief Generate random key. */
 static const char *alphabet = "abcdefghijklmn0123456789";
-static char *str_key_rand(size_t len, mm_ctx_t *pool)
+static char *str_key_rand(size_t len, knot_mm_t *pool)
 {
 	char *s = mm_alloc(pool, len);
 	memset(s, 0, len);
@@ -53,7 +54,7 @@ static char *str_key_rand(size_t len, mm_ctx_t *pool)
 }
 
 static void namedb_test_set(unsigned nkeys, char **keys, void *opts,
-                            const namedb_api_t *api, mm_ctx_t *pool)
+                            const namedb_api_t *api, knot_mm_t *pool)
 {
 	if (api == NULL) {
 		skip("API not compiled in");
@@ -257,7 +258,7 @@ int main(int argc, char *argv[])
 {
 	plan_lazy();
 
-	mm_ctx_t pool;
+	knot_mm_t pool;
 	mm_ctx_mempool(&pool, MM_DEFAULT_BLKSIZE);
 
 	/* Temporary DB identifier. */

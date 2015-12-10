@@ -83,7 +83,7 @@ void list_dup(list_t *dst, list_t *src, size_t itemsz);
 size_t list_size(const list_t *);
 
 #include <stdbool.h>
-#include "libknot/internal/mempattern.h"
+#include "libknot/mm_ctx.h"
 /*!
  * \brief Generic pointer list implementation.
  */
@@ -92,9 +92,9 @@ typedef struct ptrnode {
 	void *d;
 } ptrnode_t;
 
-ptrnode_t *ptrlist_add(list_t *, void *, mm_ctx_t *);
-void ptrlist_free(list_t *, mm_ctx_t *);
-void ptrlist_rem(ptrnode_t *node, mm_ctx_t *mm);
+ptrnode_t *ptrlist_add(list_t *, void *, knot_mm_t *);
+void ptrlist_free(list_t *, knot_mm_t *);
+void ptrlist_rem(ptrnode_t *node, knot_mm_t *mm);
 
 /*! \todo This is broken atm.
 #ifndef _BIRD_LISTS_C_

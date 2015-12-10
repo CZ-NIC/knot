@@ -79,7 +79,7 @@ typedef struct {
 	/*!< Default output settings. */
 	style_t		style;
 	/*!< Memory context. */
-	mm_ctx_t	mm;
+	knot_mm_t	mm;
 } knsupdate_params_t;
 
 int knsupdate_parse(knsupdate_params_t *params, int argc, char *argv[]);

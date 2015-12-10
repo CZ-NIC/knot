@@ -68,7 +68,7 @@ typedef struct {
 	/*! Configuration scheme. */
 	yp_item_t *scheme;
 	/*! Memory context. */
-	mm_ctx_t *mm;
+	knot_mm_t *mm;
 	/*! Configuration database. */
 	namedb_t *db;
 

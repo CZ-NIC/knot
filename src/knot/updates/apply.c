@@ -33,7 +33,7 @@
  *          Freed data:
  *           - actual data inside knot_rrs_t. (the rest is part of the node)
  */
-static void rrs_list_clear(list_t *l, mm_ctx_t *mm)
+static void rrs_list_clear(list_t *l, knot_mm_t *mm)
 {
 	ptrnode_t *n;
 	node_t *nxt;

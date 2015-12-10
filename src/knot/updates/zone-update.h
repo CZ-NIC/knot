@@ -29,8 +29,7 @@
 #include "knot/updates/changesets.h"
 #include "knot/zone/contents.h"
 #include "knot/zone/zone.h"
-
-#include "libknot/internal/mempattern.h"
+#include "libknot/mm_ctx.h"
 
 /*! \brief Structure for zone contents updating / querying. */
 typedef struct {
@@ -38,7 +37,7 @@ typedef struct {
 	zone_contents_t *new_cont;   /*!< New zone contents for full updates. */
 	changeset_t change;          /*!< Changes we want to apply. */
 	uint8_t flags;               /*!< Zone update flags. */
-	mm_ctx_t mm;                 /*!< Memory context used for intermediate nodes. */
+	knot_mm_t mm;                /*!< Memory context used for intermediate nodes. */
 } zone_update_t;
 
 typedef enum {

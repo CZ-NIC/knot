@@ -20,6 +20,7 @@
 #include "libknot/processing/requestor.h"
 #include "libknot/errcode.h"
 #include "libknot/internal/lists.h"
+#include "contrib/mempattern.h"
 #include "contrib/net.h"
 #include "contrib/sockaddr.h"
 
@@ -30,7 +31,7 @@ static bool use_tcp(struct knot_request *request)
 	return (request->flags & KNOT_RQ_UDP) == 0;
 }
 
-static struct knot_request *request_make(mm_ctx_t *mm)
+static struct knot_request *request_make(knot_mm_t *mm)
 {
 	struct knot_request *request = mm_alloc(mm, sizeof(*request));
 	if (request == NULL) {
@@ -122,7 +123,7 @@ static int request_recv(struct knot_request *request,
 }
 
 _public_
-struct knot_request *knot_request_make(mm_ctx_t *mm,
+struct knot_request *knot_request_make(knot_mm_t *mm,
                                        const struct sockaddr *dst,
                                        const struct sockaddr *src,
                                        knot_pkt_t *query,
@@ -153,7 +154,7 @@ struct knot_request *knot_request_make(mm_ctx_t *mm,
 }
 
 _public_
-void knot_request_free(struct knot_request *request, mm_ctx_t *mm)
+void knot_request_free(struct knot_request *request, knot_mm_t *mm)
 {
 	if (request == NULL) {
 		return;
@@ -169,7 +170,7 @@ void knot_request_free(struct knot_request *request, mm_ctx_t *mm)
 }
 
 _public_
-int knot_requestor_init(struct knot_requestor *requestor, mm_ctx_t *mm)
+int knot_requestor_init(struct knot_requestor *requestor, knot_mm_t *mm)
 {
 	if (requestor == NULL) {
 		return KNOT_EINVAL;

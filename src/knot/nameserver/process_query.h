@@ -94,7 +94,7 @@ struct query_data {
 
 	/* Everything below should be kept on reset. */
 	struct process_query_param *param; /*!< Module parameters. */
-	mm_ctx_t *mm;                      /*!< Memory context. */
+	knot_mm_t *mm;                     /*!< Memory context. */
 };
 
 /*! \brief Visited wildcard node list. */

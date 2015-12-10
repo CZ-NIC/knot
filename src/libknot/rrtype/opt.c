@@ -49,7 +49,7 @@ enum knot_edns_private_consts {
 /*----------------------------------------------------------------------------*/
 _public_
 int knot_edns_init(knot_rrset_t *opt_rr, uint16_t max_pld,
-                  uint8_t ext_rcode, uint8_t ver, mm_ctx_t *mm)
+                  uint8_t ext_rcode, uint8_t ver, knot_mm_t *mm)
 {
 	if (opt_rr == NULL) {
 		return KNOT_EINVAL;
@@ -218,7 +218,7 @@ static uint8_t *find_option(knot_rdata_t *rdata, uint16_t opt_code)
 /*----------------------------------------------------------------------------*/
 _public_
 int knot_edns_add_option(knot_rrset_t *opt_rr, uint16_t code,
-                         uint16_t length, const uint8_t *data, mm_ctx_t *mm)
+                         uint16_t length, const uint8_t *data, knot_mm_t *mm)
 {
 	if (opt_rr == NULL || (length != 0 && data == NULL)) {
 		return KNOT_EINVAL;

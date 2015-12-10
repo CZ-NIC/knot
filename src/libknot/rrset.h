@@ -31,8 +31,8 @@
 #include <stdbool.h>
 
 #include "libknot/dname.h"
+#include "libknot/mm_ctx.h"
 #include "libknot/rdataset.h"
-#include "libknot/internal/mempattern.h"
 
 /*!
  * \brief Structure for representing RRSet.
@@ -71,7 +71,7 @@ typedef enum {
  * \return New RRSet structure or NULL if an error occured.
  */
 knot_rrset_t *knot_rrset_new(const knot_dname_t *owner, uint16_t type,
-                             uint16_t rclass, mm_ctx_t *mm);
+                             uint16_t rclass, knot_mm_t *mm);
 
 /*!
  * \brief Initializes RRSet structure with given data.
@@ -100,7 +100,7 @@ void knot_rrset_init_empty(knot_rrset_t *rrset);
  * \retval Pointer to new RRSet if all went OK.
  * \retval NULL on error.
  */
-knot_rrset_t *knot_rrset_copy(const knot_rrset_t *src, mm_ctx_t *mm);
+knot_rrset_t *knot_rrset_copy(const knot_rrset_t *src, knot_mm_t *mm);
 
 /* ---------------------------- Cleanup ------------------------------------- */
 
@@ -112,7 +112,7 @@ knot_rrset_t *knot_rrset_copy(const knot_rrset_t *src, mm_ctx_t *mm);
  * \param rrset  RRset to be destroyed.
  * \param mm     Memory context.
  */
-void knot_rrset_free(knot_rrset_t **rrset, mm_ctx_t *mm);
+void knot_rrset_free(knot_rrset_t **rrset, knot_mm_t *mm);
 
 /*!
  * \brief Frees structures inside RRSet, but not the RRSet itself.
@@ -120,7 +120,7 @@ void knot_rrset_free(knot_rrset_t **rrset, mm_ctx_t *mm);
  * \param rrset  RRSet to be cleared.
  * \param mm     Memory context used for allocations.
  */
-void knot_rrset_clear(knot_rrset_t *rrset, mm_ctx_t *mm);
+void knot_rrset_clear(knot_rrset_t *rrset, knot_mm_t *mm);
 
 /* ---------- RR addition. (legacy, functionality in knot_rdataset_t) ------- */
 
@@ -137,7 +137,7 @@ void knot_rrset_clear(knot_rrset_t *rrset, mm_ctx_t *mm);
  */
 int knot_rrset_add_rdata(knot_rrset_t *rrset, const uint8_t *rdata,
                          const uint16_t size, const uint32_t ttl,
-                         mm_ctx_t *mm);
+                         knot_mm_t *mm);
 
 /* ------------------ Equality / emptines bool checks ----------------------- */
 

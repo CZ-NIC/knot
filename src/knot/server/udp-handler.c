@@ -37,10 +37,10 @@
 
 #include "knot/server/udp-handler.h"
 #include "knot/server/server.h"
-#include "libknot/internal/mempattern.h"
 #include "libknot/libknot.h"
 #include "libknot/processing/overlay.h"
 #include "contrib/macros.h"
+#include "contrib/mempattern.h"
 #include "contrib/sockaddr.h"
 #include "contrib/ucw/mempool.h"
 
@@ -122,7 +122,7 @@ void udp_handle(udp_context_t *udp, int fd, struct sockaddr_storage *ss,
 		param.proc_flags |= NS_QUERY_LIMIT_RATE;
 	}
 
-	mm_ctx_t *mm = udp->overlay.mm;
+	knot_mm_t *mm = udp->overlay.mm;
 
 	/* Create query processing context. */
 	knot_overlay_init(&udp->overlay, mm);
@@ -309,16 +309,16 @@ struct udp_recvmmsg {
 	struct iovec *iov[NBUFS];
 	struct mmsghdr *msgs[NBUFS];
 	unsigned rcvd;
-	mm_ctx_t mm;
+	knot_mm_t mm;
 };
 
 static void *udp_recvmmsg_init(void)
 {
-	mm_ctx_t mm;
+	knot_mm_t mm;
 	mm_ctx_mempool(&mm, sizeof(struct udp_recvmmsg));
 
 	struct udp_recvmmsg *rq = mm.alloc(mm.ctx, sizeof(struct udp_recvmmsg));
-	memcpy(&rq->mm, &mm, sizeof(mm_ctx_t));
+	memcpy(&rq->mm, &mm, sizeof(knot_mm_t));
 
 	/* Initialize addresses. */
 	rq->addrs = mm.alloc(mm.ctx, sizeof(struct sockaddr_storage) * RECVMMSG_BATCHLEN);
@@ -500,7 +500,7 @@ int udp_master(dthread_t *thread)
 	udp.thread_id = handler->thread_id[thr_id];
 
 	/* Create big enough memory cushion. */
-	mm_ctx_t mm;
+	knot_mm_t mm;
 	mm_ctx_mempool(&mm, 16 * MM_DEFAULT_BLKSIZE);
 	udp.overlay.mm = &mm;
 

@@ -22,6 +22,7 @@
 #include "libknot/attribute.h"
 #include "libknot/rdataset.h"
 #include "libknot/errcode.h"
+#include "contrib/mempattern.h"
 
 static knot_rdata_t *rr_seek(knot_rdata_t *d, size_t pos)
 {
@@ -52,7 +53,7 @@ static int find_rr_pos(const knot_rdataset_t *search_in,
 }
 
 static int add_rr_at(knot_rdataset_t *rrs, const knot_rdata_t *rr, size_t pos,
-                     mm_ctx_t *mm)
+                     knot_mm_t *mm)
 {
 	if (rrs == NULL || pos > rrs->rr_count) {
 		return KNOT_EINVAL;
@@ -98,7 +99,7 @@ static int add_rr_at(knot_rdataset_t *rrs, const knot_rdata_t *rr, size_t pos,
 	return KNOT_EOK;
 }
 
-static int remove_rr_at(knot_rdataset_t *rrs, size_t pos, mm_ctx_t *mm)
+static int remove_rr_at(knot_rdataset_t *rrs, size_t pos, knot_mm_t *mm)
 {
 	if (rrs == NULL || pos >= rrs->rr_count) {
 		return KNOT_EINVAL;
@@ -148,7 +149,7 @@ void knot_rdataset_init(knot_rdataset_t *rrs)
 }
 
 _public_
-void knot_rdataset_clear(knot_rdataset_t *rrs, mm_ctx_t *mm)
+void knot_rdataset_clear(knot_rdataset_t *rrs, knot_mm_t *mm)
 {
 	if (rrs) {
 		mm_free(mm, rrs->data);
@@ -157,7 +158,7 @@ void knot_rdataset_clear(knot_rdataset_t *rrs, mm_ctx_t *mm)
 }
 
 _public_
-int knot_rdataset_copy(knot_rdataset_t *dst, const knot_rdataset_t *src, mm_ctx_t *mm)
+int knot_rdataset_copy(knot_rdataset_t *dst, const knot_rdataset_t *src, knot_mm_t *mm)
 {
 	if (dst == NULL || src == NULL) {
 		return KNOT_EINVAL;
@@ -217,7 +218,7 @@ void knot_rdataset_set_ttl(knot_rdataset_t *rrs, uint32_t ttl)
 }
 
 _public_
-int knot_rdataset_add(knot_rdataset_t *rrs, const knot_rdata_t *rr, mm_ctx_t *mm)
+int knot_rdataset_add(knot_rdataset_t *rrs, const knot_rdata_t *rr, knot_mm_t *mm)
 {
 	if (rrs == NULL || rr == NULL) {
 		return KNOT_EINVAL;
@@ -240,7 +241,7 @@ int knot_rdataset_add(knot_rdataset_t *rrs, const knot_rdata_t *rr, mm_ctx_t *mm
 }
 
 _public_
-int knot_rdataset_reserve(knot_rdataset_t *rrs, size_t size, mm_ctx_t *mm)
+int knot_rdataset_reserve(knot_rdataset_t *rrs, size_t size, knot_mm_t *mm)
 {
 	if (rrs == NULL || size > MAX_RDLENGTH) {
 		return KNOT_EINVAL;
@@ -266,7 +267,7 @@ int knot_rdataset_reserve(knot_rdataset_t *rrs, size_t size, mm_ctx_t *mm)
 }
 
 _public_
-int knot_rdataset_unreserve(knot_rdataset_t *rrs, mm_ctx_t *mm)
+int knot_rdataset_unreserve(knot_rdataset_t *rrs, knot_mm_t *mm)
 {
 	return remove_rr_at(rrs, rrs->rr_count - 1, mm);
 }
@@ -314,7 +315,7 @@ bool knot_rdataset_member(const knot_rdataset_t *rrs, const knot_rdata_t *rr,
 }
 
 _public_
-int knot_rdataset_merge(knot_rdataset_t *rrs1, const knot_rdataset_t *rrs2, mm_ctx_t *mm)
+int knot_rdataset_merge(knot_rdataset_t *rrs1, const knot_rdataset_t *rrs2, knot_mm_t *mm)
 {
 	if (rrs1 == NULL || rrs2 == NULL) {
 		return KNOT_EINVAL;
@@ -333,7 +334,7 @@ int knot_rdataset_merge(knot_rdataset_t *rrs1, const knot_rdataset_t *rrs2, mm_c
 
 _public_
 int knot_rdataset_intersect(const knot_rdataset_t *a, const knot_rdataset_t *b,
-                       knot_rdataset_t *out, mm_ctx_t *mm)
+                       knot_rdataset_t *out, knot_mm_t *mm)
 {
 	if (a == NULL || b == NULL || out == NULL) {
 		return KNOT_EINVAL;
@@ -358,7 +359,7 @@ int knot_rdataset_intersect(const knot_rdataset_t *a, const knot_rdataset_t *b,
 
 _public_
 int knot_rdataset_subtract(knot_rdataset_t *from, const knot_rdataset_t *what,
-			   mm_ctx_t *mm)
+			   knot_mm_t *mm)
 {
 	if (from == NULL || what == NULL || from->data == what->data) {
 		return KNOT_EINVAL;
@@ -379,7 +380,7 @@ int knot_rdataset_subtract(knot_rdataset_t *from, const knot_rdataset_t *what,
 }
 
 _public_
-int knot_rdataset_sort_at(knot_rdataset_t *rrs, size_t pos, mm_ctx_t *mm)
+int knot_rdataset_sort_at(knot_rdataset_t *rrs, size_t pos, knot_mm_t *mm)
 {
 	if (rrs == NULL || rrs->rr_count == 0) {
 		return KNOT_EINVAL;

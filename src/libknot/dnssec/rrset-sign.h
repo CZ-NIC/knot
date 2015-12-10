@@ -52,7 +52,7 @@ int knot_sign_rrset(knot_rrset_t *rrsigs,
                     const dnssec_key_t *key,
                     dnssec_sign_ctx_t *sign_ctx,
                     const kdnssec_ctx_t *dnssec_ctx,
-                    mm_ctx_t *mm);
+                    knot_mm_t *mm);
 
 /*!
  * \brief Creates new RRS using \a rrsig_rrs as a source. Only those RRs that
@@ -68,7 +68,7 @@ int knot_sign_rrset(knot_rrset_t *rrsigs,
  * \retval Error code other than EINVAL on error.
  */
 int knot_synth_rrsig(uint16_t type, const knot_rdataset_t *rrsig_rrs,
-                     knot_rdataset_t *out_sig, mm_ctx_t *mm);
+                     knot_rdataset_t *out_sig, knot_mm_t *mm);
 
 /*!
  * \brief Check if RRSIG signature is valid.

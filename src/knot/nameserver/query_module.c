@@ -16,6 +16,7 @@
 
 #include "knot/nameserver/query_module.h"
 #include "libknot/libknot.h"
+#include "contrib/mempattern.h"
 #include "contrib/openbsd/strlcpy.h"
 
 /* Compiled-in module headers. */
@@ -50,7 +51,7 @@ static_module_t MODULES[] = {
         { NULL }
 };
 
-struct query_plan *query_plan_create(mm_ctx_t *mm)
+struct query_plan *query_plan_create(knot_mm_t *mm)
 {
 	struct query_plan *plan = mm_alloc(mm, sizeof(struct query_plan));
 	if (plan == NULL) {
@@ -81,7 +82,7 @@ void query_plan_free(struct query_plan *plan)
 	mm_free(plan->mm, plan);
 }
 
-static struct query_step *make_step(mm_ctx_t *mm, qmodule_process_t process,
+static struct query_step *make_step(knot_mm_t *mm, qmodule_process_t process,
                                     void *ctx)
 {
 	struct query_step *step = mm_alloc(mm, sizeof(struct query_step));
@@ -125,7 +126,7 @@ static static_module_t *find_module(const yp_name_t *name)
 }
 
 struct query_module *query_module_open(conf_t *config, conf_mod_id_t *mod_id,
-                                       mm_ctx_t *mm)
+                                       knot_mm_t *mm)
 {
 	if (config == NULL || mod_id == NULL) {
 		return NULL;

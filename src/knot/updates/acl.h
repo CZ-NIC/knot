@@ -27,7 +27,7 @@
 #include <sys/socket.h>
 
 #include "libknot/internal/lists.h"
-#include "libknot/internal/mempattern.h"
+#include "contrib/mempattern.h"
 #include "libknot/rrtype/tsig.h"
 #include "knot/conf/conf.h"
 

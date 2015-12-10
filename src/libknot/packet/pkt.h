@@ -31,11 +31,11 @@
 
 #include "libknot/consts.h"
 #include "libknot/dname.h"
+#include "libknot/mm_ctx.h"
 #include "libknot/rrset.h"
 #include "libknot/rrtype/opt.h"
 #include "libknot/packet/wire.h"
 #include "libknot/packet/compr.h"
-#include "libknot/internal/mempattern.h"
 
 /* Number of packet sections (ANSWER, AUTHORITY, ADDITIONAL). */
 #define KNOT_PKT_SECTIONS 3
@@ -118,7 +118,7 @@ typedef struct knot_pkt {
 	knot_rrinfo_t *rr_info;
 	knot_rrset_t *rr;
 
-	mm_ctx_t mm; /*!< Memory allocation context. */
+	knot_mm_t mm; /*!< Memory allocation context. */
 } knot_pkt_t;
 
 /*!
@@ -132,7 +132,7 @@ typedef struct knot_pkt {
  * \param mm Memory context (NULL for default).
  * \return New packet or NULL.
  */
-knot_pkt_t *knot_pkt_new(void *wire, uint16_t len, mm_ctx_t *mm);
+knot_pkt_t *knot_pkt_new(void *wire, uint16_t len, knot_mm_t *mm);
 
 /*!
  * \brief Copy packet.

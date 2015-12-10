@@ -18,6 +18,7 @@
 
 #include "knot/ctl/estimator.h"
 #include "knot/zone/node.h"
+#include "libknot/errcode.h"
 #include "libknot/dname.h"
 #include "libknot/internal/lists.h"
 #include "libknot/descriptor.h"

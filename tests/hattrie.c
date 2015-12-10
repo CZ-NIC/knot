@@ -18,7 +18,7 @@
 #include <time.h>
 #include <tap/basic.h>
 
-#include "libknot/internal/trie/hat-trie.h"
+#include "contrib/hat-trie/hat-trie.h"
 #include "contrib/macros.h"
 #include "contrib/string.h"
 

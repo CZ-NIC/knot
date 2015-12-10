@@ -51,7 +51,7 @@
 	NS_PROC_LOG(severity, &(remote)->addr, zone->name, operation, msg, ##__VA_ARGS__)
 
 /*! \brief Create zone query packet. */
-static knot_pkt_t *zone_query(const zone_t *zone, uint16_t pkt_type, mm_ctx_t *mm)
+static knot_pkt_t *zone_query(const zone_t *zone, uint16_t pkt_type, knot_mm_t *mm)
 {
 	/* Determine query type and opcode. */
 	uint16_t query_type = KNOT_RRTYPE_SOA;
@@ -131,7 +131,7 @@ static int prepare_edns(zone_t *zone, knot_pkt_t *pkt)
 
 /*! \brief Process query using requestor. */
 static int zone_query_request(knot_pkt_t *query, const conf_remote_t *remote,
-                              struct process_answer_param *param, mm_ctx_t *mm)
+                              struct process_answer_param *param, knot_mm_t *mm)
 {
 	/* Create requestor instance. */
 	struct knot_requestor re;
@@ -179,7 +179,7 @@ static int zone_query_request(knot_pkt_t *query, const conf_remote_t *remote,
 static int zone_query_execute(zone_t *zone, uint16_t pkt_type, const conf_remote_t *remote)
 {
 	/* Create a memory pool for this task. */
-	mm_ctx_t mm;
+	knot_mm_t mm;
 	mm_ctx_mempool(&mm, MM_DEFAULT_BLKSIZE);
 
 	/* Create a query message. */

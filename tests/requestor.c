@@ -24,6 +24,7 @@
 #include "knot/conf/conf.h"
 #include "libknot/processing/layer.h"
 #include "libknot/processing/requestor.h"
+#include "contrib/mempattern.h"
 #include "contrib/net.h"
 #include "contrib/sockaddr.h"
 #include "contrib/ucw/mempool.h"
@@ -130,7 +131,7 @@ int main(int argc, char *argv[])
 {
 	plan_lazy();
 
-	mm_ctx_t mm;
+	knot_mm_t mm;
 	mm_ctx_mempool(&mm, MM_DEFAULT_BLKSIZE);
 
 	conf_remote_t remote;

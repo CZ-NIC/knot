@@ -18,6 +18,7 @@
 #include "libknot/processing/overlay.h"
 #include "libknot/errcode.h"
 #include "libknot/internal/lists.h"
+#include "contrib/mempattern.h"
 
 #define LAYERS	((list_t *)overlay->layers)
 
@@ -33,7 +34,7 @@
 	return overlay->state = state;
 
 _public_
-int knot_overlay_init(struct knot_overlay *overlay, mm_ctx_t *mm)
+int knot_overlay_init(struct knot_overlay *overlay, knot_mm_t *mm)
 {
 	list_t *layers = mm_alloc(mm, sizeof(list_t));
 	if (layers == NULL) {

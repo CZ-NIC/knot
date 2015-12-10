@@ -14,13 +14,11 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 /*!
- * \file hhash.h
- *
- * \author Marek Vavrusa <marek.vavrusa@nic.cz>
+ * \file
  *
  * \brief Hopscotch hashing scheme based hash table.
  *
- * \addtogroup common_lib
+ * \addtogroup contrib
  * @{
  */
 
@@ -29,7 +27,8 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <stdbool.h>
-#include "libknot/internal/mempattern.h"
+
+struct knot_mm;
 
 /*! \brief Bitvector type. */
 typedef unsigned hhbitvec_t;
@@ -59,13 +58,13 @@ typedef struct hhash {
 	uint8_t c1;
 
 	/* Metadata */
-	uint32_t size;    /*!< Number of buckets */
-	uint32_t weight;  /*!< Table weight (number of inserted). */
+	uint32_t size;      /*!< Number of buckets */
+	uint32_t weight;    /*!< Table weight (number of inserted). */
 
 	/* Table data storage. */
-	mm_ctx_t mm;      /*!< Memory manager. */
-	uint32_t *index;  /*!< Order index (optional). */
-	hhelem_t item[];  /*!< Table items. */
+	struct knot_mm *mm; /*!< Memory manager. */
+	uint32_t *index;    /*!< Order index (optional). */
+	hhelem_t item[];    /*!< Table items. */
 } hhash_t;
 
 /*!
@@ -78,7 +77,7 @@ typedef struct hhash {
 hhash_t *hhash_create(uint32_t size);
 
 /*! \brief Create hopscotch hash table (custom memory manager). */
-hhash_t *hhash_create_mm(uint32_t size, const mm_ctx_t *mm);
+hhash_t *hhash_create_mm(uint32_t size, const struct knot_mm *mm);
 
 /*!
  * \brief Clear hash table.

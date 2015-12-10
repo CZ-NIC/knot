@@ -28,8 +28,10 @@ nobase_libcontrib_la_HEADERS =			\
 	contrib/base64.h			\
 	contrib/endian.h			\
 	contrib/getline.h			\
+	contrib/hhash.h				\
 	contrib/lookup.h			\
 	contrib/macros.h			\
+	contrib/mempattern.h			\
 	contrib/net.h				\
 	contrib/print.h				\
 	contrib/sockaddr.h			\
@@ -37,6 +39,7 @@ nobase_libcontrib_la_HEADERS =			\
 	contrib/tolower.h			\
 	contrib/wire.h				\
 	contrib/wire_ctx.h			\
+	contrib/hat-trie/hat-trie.h		\
 	contrib/murmurhash3/murmurhash3.h	\
 	contrib/openbsd/strlcat.h		\
 	contrib/openbsd/strlcpy.h		\
@@ -58,6 +61,7 @@ nobase_libknot_la_HEADERS =			\
 	libknot/errcode.h			\
 	libknot/error.h				\
 	libknot/libknot.h			\
+	libknot/mm_ctx.h			\
 	libknot/packet/compr.h			\
 	libknot/packet/pkt.h			\
 	libknot/packet/rrset-wire.h		\
@@ -86,13 +90,10 @@ nobase_libknot_la_HEADERS =			\
 
 libknot_internal_ladir = $(includedir)
 nobase_libknot_internal_la_HEADERS = 		\
-	libknot/internal/hhash.h		\
 	libknot/internal/lists.h		\
-	libknot/internal/mempattern.h		\
 	libknot/internal/namedb/namedb.h	\
 	libknot/internal/namedb/namedb_lmdb.h	\
-	libknot/internal/namedb/namedb_trie.h	\
-	libknot/internal/trie/hat-trie.h
+	libknot/internal/namedb/namedb_trie.h
 
 libknot_yparser_ladir = $(includedir)
 nobase_libknot_yparser_la_HEADERS = 		\
@@ -106,10 +107,13 @@ libcontrib_la_SOURCES = 			\
 	contrib/base32hex.c			\
 	contrib/base64.c			\
 	contrib/getline.c			\
+	contrib/hhash.c				\
+	contrib/mempattern.c			\
 	contrib/net.c				\
 	contrib/print.c				\
 	contrib/sockaddr.c			\
 	contrib/string.c			\
+	contrib/hat-trie/hat-trie.c		\
 	contrib/murmurhash3/murmurhash3.c	\
 	contrib/openbsd/strlcat.c		\
 	contrib/openbsd/strlcpy.c		\
@@ -156,12 +160,9 @@ libknot_yparser_la_SOURCES = 			\
 	$(nobase_libknot_yparser_la_HEADERS)
 
 libknot_internal_la_SOURCES = 			\
-	libknot/internal/hhash.c		\
 	libknot/internal/lists.c		\
-	libknot/internal/mempattern.c		\
 	libknot/internal/namedb/namedb_lmdb.c	\
 	libknot/internal/namedb/namedb_trie.c	\
-	libknot/internal/trie/hat-trie.c	\
 	$(nobase_libknot_internal_la_HEADERS)
 
 libcontrib_la_CPPFLAGS = $(AM_CPPFLAGS)

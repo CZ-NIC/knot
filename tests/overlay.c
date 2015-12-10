@@ -20,6 +20,7 @@
 
 #include "libknot/errcode.h"
 #include "libknot/processing/overlay.h"
+#include "contrib/mempattern.h"
 #include "contrib/ucw/mempool.h"
 
 /* @note Purpose of this test is to verify, that FSM chaining works. */
@@ -68,7 +69,7 @@ int main(int argc, char *argv[])
 {
 	plan_lazy();
 
-	mm_ctx_t mm;
+	knot_mm_t mm;
 	mm_ctx_mempool(&mm, MM_DEFAULT_BLKSIZE);
 
 	knot_pkt_t *buf = knot_pkt_new(NULL, 512, &mm);

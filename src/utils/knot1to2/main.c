@@ -22,8 +22,8 @@
 
 #include "utils/knot1to2/extra.h"
 #include "utils/knot1to2/scheme.h"
+#include "contrib/hat-trie/hat-trie.h"
 #include "contrib/string.h"
-#include "libknot/internal/trie/hat-trie.h"
 
 #define KNOT1TO2_VERSION "knot1to2, version " PACKAGE_VERSION "\n"
 

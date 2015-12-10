@@ -58,7 +58,7 @@ struct cache
 {
 	MDB_dbi dbi;
 	MDB_env *env;
-	mm_ctx_t *pool;
+	knot_mm_t *pool;
 };
 
 struct rdentry {
@@ -239,7 +239,7 @@ static int remove_entry(MDB_cursor *cur)
 
 /*                       database api                                   */
 
-struct cache *cache_open(const char *handle, unsigned flags, mm_ctx_t *mm)
+struct cache *cache_open(const char *handle, unsigned flags, knot_mm_t *mm)
 {
 	struct cache *cache = mm_alloc(mm, sizeof(struct cache));
 	if (cache == NULL) {
