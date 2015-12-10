@@ -167,9 +167,18 @@ static void kasp_dir_close(void *_ctx)
 	free(ctx);
 }
 
+static const char *kasp_dir_base_path(void *_ctx)
+{
+	assert(_ctx);
+
+	kasp_dir_ctx_t *ctx = _ctx;
+	return ctx->path;
+}
+
+
 /* -- entities ------------------------------------------------------------- */
 
-#define ENTITY_ZONE     "zone"
+#define ENTITY_ZONE "zone"
 
 static int kasp_dir_zone_remove(void *ctx, const char *name)
 {
@@ -196,7 +205,7 @@ static int kasp_dir_zone_save(void *ctx, dnssec_kasp_zone_t *zone)
 	return entity_io(ENTITY_ZONE, ctx, zone, save_zone_config);
 }
 
-#define ENTITY_POLICY   "policy"
+#define ENTITY_POLICY "policy"
 
 static int kasp_dir_policy_remove(void *ctx, const char *name)
 {
@@ -263,9 +272,10 @@ _public_
 int dnssec_kasp_init_dir(dnssec_kasp_t **kasp_ptr)
 {
 	static const dnssec_kasp_store_functions_t implementation = {
-		.init  = kasp_dir_init,
-		.open  = kasp_dir_open,
-		.close = kasp_dir_close,
+		.init      = kasp_dir_init,
+		.open      = kasp_dir_open,
+		.close     = kasp_dir_close,
+		.base_path = kasp_dir_base_path,
 		ENTITY_CALLBACKS(zone),
 		ENTITY_CALLBACKS(policy),
 		ENTITY_CALLBACKS(keystore),

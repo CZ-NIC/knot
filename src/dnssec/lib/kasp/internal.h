@@ -27,6 +27,8 @@ typedef struct dnssec_kasp_store_functions {
 	// internal context initialization
 	int (*open)(void **ctx_ptr, const char *config);
 	void (*close)(void *ctx);
+	// internal information
+	const char *(*base_path)(void *ctx);
 	// zone serialization/deserialization
 	int (*zone_load)(void *ctx, dnssec_kasp_zone_t *zone);
 	int (*zone_save)(void *ctx, dnssec_kasp_zone_t *zone);
