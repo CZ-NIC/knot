@@ -37,6 +37,7 @@ nobase_libcontrib_la_HEADERS =			\
 	contrib/tolower.h			\
 	contrib/wire.h				\
 	contrib/wire_ctx.h			\
+	contrib/murmurhash3/murmurhash3.h	\
 	contrib/openbsd/strlcat.h		\
 	contrib/openbsd/strlcpy.h		\
 	contrib/ucw/array-sort.h		\
@@ -91,8 +92,7 @@ nobase_libknot_internal_la_HEADERS = 		\
 	libknot/internal/namedb/namedb.h	\
 	libknot/internal/namedb/namedb_lmdb.h	\
 	libknot/internal/namedb/namedb_trie.h	\
-	libknot/internal/trie/hat-trie.h	\
-	libknot/internal/trie/murmurhash3.h
+	libknot/internal/trie/hat-trie.h
 
 libknot_yparser_ladir = $(includedir)
 nobase_libknot_yparser_la_HEADERS = 		\
@@ -110,6 +110,7 @@ libcontrib_la_SOURCES = 			\
 	contrib/print.c				\
 	contrib/sockaddr.c			\
 	contrib/string.c			\
+	contrib/murmurhash3/murmurhash3.c	\
 	contrib/openbsd/strlcat.c		\
 	contrib/openbsd/strlcpy.c		\
 	contrib/ucw/heap.c			\
@@ -161,7 +162,6 @@ libknot_internal_la_SOURCES = 			\
 	libknot/internal/namedb/namedb_lmdb.c	\
 	libknot/internal/namedb/namedb_trie.c	\
 	libknot/internal/trie/hat-trie.c	\
-	libknot/internal/trie/murmurhash3.c	\
 	$(nobase_libknot_internal_la_HEADERS)
 
 libcontrib_la_CPPFLAGS = $(AM_CPPFLAGS)

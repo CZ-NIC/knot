@@ -55,6 +55,8 @@ src/contrib/lmdb/midl.c
 src/contrib/lmdb/midl.h
 src/contrib/lookup.h
 src/contrib/macros.h
+src/contrib/murmurhash3/murmurhash3.c
+src/contrib/murmurhash3/murmurhash3.h
 src/contrib/net.c
 src/contrib/net.h
 src/contrib/openbsd/strlcat.c
@@ -385,8 +387,6 @@ src/libknot/internal/namedb/namedb_trie.c
 src/libknot/internal/namedb/namedb_trie.h
 src/libknot/internal/trie/hat-trie.c
 src/libknot/internal/trie/hat-trie.h
-src/libknot/internal/trie/murmurhash3.c
-src/libknot/internal/trie/murmurhash3.h
 src/libknot/libknot.h
 src/libknot/packet/compr.c
 src/libknot/packet/compr.h

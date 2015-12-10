@@ -22,7 +22,7 @@
 #include "knot/server/rrl.h"
 #include "knot/zone/zone.h"
 #include "libknot/libknot.h"
-#include "libknot/internal/trie/murmurhash3.h"
+#include "contrib/murmurhash3/murmurhash3.h"
 #include "contrib/sockaddr.h"
 
 /* Hopscotch defines. */

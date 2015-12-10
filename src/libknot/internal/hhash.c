@@ -3,8 +3,8 @@
 #include <stdbool.h>
 
 #include "contrib/macros.h"
+#include "contrib/murmurhash3/murmurhash3.h"
 #include "libknot/internal/hhash.h"
-#include "libknot/internal/trie/murmurhash3.h"
 #include "libknot/errcode.h"
 
 /* UCW array sorting defines. */
