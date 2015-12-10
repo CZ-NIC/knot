@@ -98,6 +98,7 @@ libdnssec_la_SOURCES = \
 	lib/kasp/internal.h \
 	lib/kasp/kasp.c \
 	lib/kasp/keystore.c \
+	lib/kasp/keystore_open.c \
 	lib/kasp/policy.c \
 	lib/kasp/zone.c \
 	lib/kasp/zone.h \

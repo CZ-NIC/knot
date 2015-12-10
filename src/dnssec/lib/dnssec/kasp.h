@@ -382,4 +382,11 @@ int dnssec_kasp_keystore_remove(dnssec_kasp_t *kasp, const char *name);
 int dnssec_kasp_keystore_list(dnssec_kasp_t *kasp, dnssec_list_t **names);
 int dnssec_kasp_keystore_exists(dnssec_kasp_t *kasp, const char *name);
 
+#include <dnssec/keystore.h>
+
+/*!
+ * Open DNSSEC keystore configured in KASP.
+ */
+int dnssec_kasp_keystore_open(dnssec_kasp_t *kasp, const char *name, dnssec_keystore_t **keystore);
+
 /*! @} */
