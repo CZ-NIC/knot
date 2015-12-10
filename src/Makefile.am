@@ -5,7 +5,6 @@ lib_LTLIBRARIES =				\
 	libknot.la
 noinst_LTLIBRARIES = 				\
 	libcontrib.la				\
-	libknot-internal.la			\
 	libknot-yparser.la
 
 AM_CPPFLAGS = \
@@ -22,6 +21,7 @@ AM_LDFLAGS = $(CODE_COVERAGE_LDFLAGS)
 # Knot DNS Libraries #
 ######################
 
+# static: libcontrib headers
 libcontrib_ladir = $(includedir)
 nobase_libcontrib_la_HEADERS =			\
 	contrib/base32hex.h			\
@@ -63,6 +63,9 @@ nobase_libknot_la_HEADERS =			\
 	libknot/error.h				\
 	libknot/libknot.h			\
 	libknot/mm_ctx.h			\
+	libknot/db/db.h				\
+	libknot/db/db_lmdb.h			\
+	libknot/db/db_trie.h			\
 	libknot/packet/compr.h			\
 	libknot/packet/pkt.h			\
 	libknot/packet/rrset-wire.h		\
@@ -89,12 +92,7 @@ nobase_libknot_la_HEADERS =			\
 	libknot/tsig-op.h			\
 	libknot/tsig.h
 
-libknot_internal_ladir = $(includedir)
-nobase_libknot_internal_la_HEADERS = 		\
-	libknot/internal/namedb/namedb.h	\
-	libknot/internal/namedb/namedb_lmdb.h	\
-	libknot/internal/namedb/namedb_trie.h
-
+# static: libknot-yparser headers
 libknot_yparser_ladir = $(includedir)
 nobase_libknot_yparser_la_HEADERS = 		\
 	libknot/yparser/yparser.h		\
@@ -102,7 +100,7 @@ nobase_libknot_yparser_la_HEADERS = 		\
 	libknot/yparser/ypscheme.h		\
 	libknot/yparser/yptrafo.h
 
-# dynamic: libknot sources
+# static: libcontrib sources
 libcontrib_la_SOURCES = 			\
 	contrib/base32hex.c			\
 	contrib/base64.c			\
@@ -122,6 +120,7 @@ libcontrib_la_SOURCES = 			\
 	contrib/ucw/mempool.c			\
 	$(nobase_libcontrib_la_HEADERS)
 
+# dynamic: libknot sources
 libknot_la_SOURCES =				\
 	libknot/binary.c			\
 	libknot/codes.c				\
@@ -129,6 +128,8 @@ libknot_la_SOURCES =				\
 	libknot/dname.c				\
 	libknot/dnssec/rrset-sign.c		\
 	libknot/error.c				\
+	libknot/db/db_lmdb.c			\
+	libknot/db/db_trie.c			\
 	libknot/packet/compr.c			\
 	libknot/packet/pkt.c			\
 	libknot/packet/rrset-wire.c		\
@@ -152,6 +153,7 @@ libknot_la_SOURCES =				\
 	libknot/tsig.c				\
 	$(nobase_libknot_la_HEADERS)
 
+# static: libknot-yparser sources
 libknot_yparser_la_SOURCES = 			\
 	libknot/yparser/yparser.c		\
 	libknot/yparser/ypbody.c		\
@@ -160,32 +162,21 @@ libknot_yparser_la_SOURCES = 			\
 	libknot/yparser/yptrafo.c		\
 	$(nobase_libknot_yparser_la_HEADERS)
 
-libknot_internal_la_SOURCES = 			\
-	libknot/internal/namedb/namedb_lmdb.c	\
-	libknot/internal/namedb/namedb_trie.c	\
-	$(nobase_libknot_internal_la_HEADERS)
-
-libcontrib_la_CPPFLAGS = $(AM_CPPFLAGS)
-libcontrib_la_CFLAGS = $(AM_CFLAGS)
-
-libknot_internal_la_CPPFLAGS = $(AM_CPPFLAGS) $(lmdb_CFLAGS)
-libknot_internal_la_CFLAGS = $(AM_CFLAGS)
-
 libknot_la_CPPFLAGS = $(AM_CPPFLAGS) $(CFLAG_VISIBILITY) $(lmdb_CFLAGS)
 libknot_la_CFLAGS = $(AM_CFLAGS)
 libknot_la_LDFLAGS = $(AM_LDFLAGS) $(libknot_VERSION_INFO) $(lmdb_LIBS)
-libknot_la_LIBADD = dnssec/libdnssec.la libcontrib.la libknot-internal.la
+libknot_la_LIBADD = dnssec/libdnssec.la libcontrib.la
 
 # pkg-config
 pkgconfig_DATA = libknot.pc
 
 if !HAVE_LMDB
-libknot_internal_la_SOURCES +=			\
+libknot_la_SOURCES +=				\
 	contrib/lmdb/lmdb.h			\
 	contrib/lmdb/mdb.c			\
 	contrib/lmdb/midl.c			\
 	contrib/lmdb/midl.h
-libknot_internal_la_CPPFLAGS +=			\
+libknot_la_CPPFLAGS +=				\
 	-I$(srcdir)/contrib/lmdb/
 endif
 
@@ -366,7 +357,7 @@ libknotd_la_LIBADD = libknot.la libknot-yparser.la zscanner/libzscanner.la $(lib
 knotd_CPPFLAGS = $(AM_CPPFLAGS) $(liburcu_CFLAGS)
 knotd_LDADD = libknotd.la $(liburcu_LIBS)
 knotc_LDADD = libknotd.la
-knot1to2_LDADD = libknot-internal.la libcontrib.la
+knot1to2_LDADD = libcontrib.la
 
 ####################################
 # Optional Knot DNS Daemon modules #

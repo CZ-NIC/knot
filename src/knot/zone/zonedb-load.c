@@ -173,7 +173,7 @@ static bool slave_event(zone_event_type_t event)
 	return event == ZONE_EVENT_EXPIRE || event == ZONE_EVENT_REFRESH;
 }
 
-static int reuse_events(namedb_t *timer_db, zone_t *zone)
+static int reuse_events(knot_db_t *timer_db, zone_t *zone)
 {
 	// Get persistent timers
 

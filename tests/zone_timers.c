@@ -21,8 +21,6 @@
 #include <unistd.h>
 #include <tap/basic.h>
 
-#include "libknot/internal/namedb/namedb.h"
-#include "libknot/internal/namedb/namedb_lmdb.h"
 #include "contrib/string.h"
 #include "libknot/libknot.h"
 #include "knot/zone/timers.h"
@@ -38,7 +36,7 @@ int main(int argc, char *argv[])
 {
 	plan_lazy();
 
-	if (namedb_lmdb_api() == NULL) {
+	if (knot_db_lmdb_api() == NULL) {
 		skip("LMDB API not compiled");
 		return EXIT_SUCCESS;
 	}
@@ -67,7 +65,7 @@ int main(int argc, char *argv[])
 
 	knot_zonedb_build_index(zone_db);
 
-	namedb_t *db = NULL;
+	knot_db_t *db = NULL;
 	ret = open_timers_db(dbid, &db);
 	ok(ret == KNOT_EOK && db != NULL, "zone timers: create");
 

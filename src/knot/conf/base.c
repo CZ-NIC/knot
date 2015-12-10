@@ -113,9 +113,9 @@ int conf_new(
 	// Prepare namedb api.
 	out->mm = malloc(sizeof(knot_mm_t));
 	mm_ctx_mempool(out->mm, MM_DEFAULT_BLKSIZE);
-	struct namedb_lmdb_opts lmdb_opts = NAMEDB_LMDB_OPTS_INITIALIZER;
+	struct knot_db_lmdb_opts lmdb_opts = KNOT_DB_LMDB_OPTS_INITIALIZER;
 	lmdb_opts.mapsize = 500 * 1024 * 1024;
-	lmdb_opts.flags.env = NAMEDB_LMDB_NOTLS;
+	lmdb_opts.flags.env = KNOT_DB_LMDB_NOTLS;
 
 	// Open database.
 	if (db_dir == NULL) {
@@ -126,14 +126,14 @@ int conf_new(
 			ret = KNOT_ENOMEM;
 			goto new_error;
 		}
-		out->api = namedb_lmdb_api();
+		out->api = knot_db_lmdb_api();
 		ret = out->api->init(&out->db, out->mm, &lmdb_opts);
 
 		// Remove opened database to ensure it is temporary.
 		rm_dir(tpl);
 	} else {
 		lmdb_opts.path = db_dir;
-		out->api = namedb_lmdb_api();
+		out->api = knot_db_lmdb_api();
 		ret = out->api->init(&out->db, out->mm, &lmdb_opts);
 	}
 
@@ -143,7 +143,7 @@ int conf_new(
 	}
 
 	// Initialize/check database.
-	namedb_txn_t txn;
+	knot_db_txn_t txn;
 	ret = out->api->txn_begin(out->db, &txn, 0);
 	if (ret != KNOT_EOK) {
 		out->api->deinit(out->db);
@@ -164,7 +164,7 @@ int conf_new(
 	}
 
 	// Open common read-only transaction.
-	ret = out->api->txn_begin(out->db, &out->read_txn, NAMEDB_RDONLY);
+	ret = out->api->txn_begin(out->db, &out->read_txn, KNOT_DB_RDONLY);
 	if (ret != KNOT_EOK) {
 		out->api->deinit(out->db);
 		goto new_error;
@@ -212,7 +212,7 @@ int conf_clone(
 	out->filename = s_conf->filename;
 
 	// Open common read-only transaction.
-	ret = out->api->txn_begin(out->db, &out->read_txn, NAMEDB_RDONLY);
+	ret = out->api->txn_begin(out->db, &out->read_txn, KNOT_DB_RDONLY);
 	if (ret != KNOT_EOK) {
 		yp_scheme_free(out->scheme);
 		free(out);
@@ -467,7 +467,7 @@ static void log_prev_err(
 
 static int parser_calls(
 	conf_t *conf,
-	namedb_txn_t *txn,
+	knot_db_txn_t *txn,
 	yp_parser_t *parser,
 	yp_check_ctx_t *ctx)
 {
@@ -555,7 +555,7 @@ static int parser_calls(
 
 int conf_parse(
 	conf_t *conf,
-	namedb_txn_t *txn,
+	knot_db_txn_t *txn,
 	const char *input,
 	bool is_file,
 	void *data)
@@ -653,7 +653,7 @@ int conf_import(
 
 	int ret;
 
-	namedb_txn_t txn;
+	knot_db_txn_t txn;
 	ret = conf->api->txn_begin(conf->db, &txn, 0);
 	if (ret != KNOT_EOK) {
 		goto import_error;
@@ -690,7 +690,7 @@ int conf_import(
 
 	// Update read-only transaction.
 	conf->api->txn_abort(&conf->read_txn);
-	ret = conf->api->txn_begin(conf->db, &conf->read_txn, NAMEDB_RDONLY);
+	ret = conf->api->txn_begin(conf->db, &conf->read_txn, KNOT_DB_RDONLY);
 	if (ret != KNOT_EOK) {
 		goto import_error;
 	}

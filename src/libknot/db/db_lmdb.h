@@ -16,16 +16,16 @@
 
 #pragma once
 
-#include "libknot/internal/namedb/namedb.h"
+#include "libknot/db/db.h"
 
 /* Defines. */
-#define NAMEDB_LMDB_MAPSIZE    (100 * 1024 * 1024)
+#define KNOT_DB_LMDB_MAPSIZE    (100 * 1024 * 1024)
 
 /* LMDB specific flags. */
-extern const unsigned NAMEDB_LMDB_NOTLS;
+extern const unsigned KNOT_DB_LMDB_NOTLS;
 
 /* Native options. */
-struct namedb_lmdb_opts {
+struct knot_db_lmdb_opts {
 	const char *path;     /*!< Database environment path. */
 	const char *dbname;   /*!< Database name (or NULL). */
 	size_t mapsize;       /*!< Environment map size. */
@@ -37,16 +37,16 @@ struct namedb_lmdb_opts {
 };
 
 /* Default options. */
-#define NAMEDB_LMDB_OPTS_INITIALIZER { \
+#define KNOT_DB_LMDB_OPTS_INITIALIZER { \
 	NULL, NULL, \
-	NAMEDB_LMDB_MAPSIZE, \
+	KNOT_DB_LMDB_MAPSIZE, \
 	0, \
 	{ 0, 0 } \
 }
 
-const namedb_api_t *namedb_lmdb_api(void);
+const knot_db_api_t *knot_db_lmdb_api(void);
 
 /* LMDB specific operations. */
-int namedb_lmdb_txn_begin(namedb_t *db, namedb_txn_t *txn, namedb_txn_t *parent,
-                          unsigned flags);
-int namedb_lmdb_iter_del(namedb_iter_t *iter);
+int knot_db_lmdb_txn_begin(knot_db_t *db, knot_db_txn_t *txn, knot_db_txn_t *parent,
+                           unsigned flags);
+int knot_db_lmdb_iter_del(knot_db_iter_t *iter);

@@ -26,7 +26,6 @@
 #pragma once
 
 #include "libknot/libknot.h"
-#include "libknot/internal/namedb/namedb_lmdb.h"
 #include "libknot/yparser/ypscheme.h"
 #include "contrib/ucw/lists.h"
 
@@ -64,22 +63,22 @@ typedef struct {
 /*! Configuration context. */
 typedef struct {
 	/*! Currently used namedb api. */
-	const struct namedb_api *api;
+	const struct knot_db_api *api;
 	/*! Configuration scheme. */
 	yp_item_t *scheme;
 	/*! Memory context. */
 	knot_mm_t *mm;
 	/*! Configuration database. */
-	namedb_t *db;
+	knot_db_t *db;
 
 	/*! Read-only transaction for config access. */
-	namedb_txn_t read_txn;
+	knot_db_txn_t read_txn;
 
 	struct {
 		/*! The current writing transaction. */
-		namedb_txn_t *txn;
+		knot_db_txn_t *txn;
 		/*! Stack of nested writing transactions. */
-		namedb_txn_t txn_stack[CONF_MAX_TXN_DEPTH];
+		knot_db_txn_t txn_stack[CONF_MAX_TXN_DEPTH];
 	} io;
 
 	/*! Prearranged hostname string (for automatic NSID or CH ident value). */
@@ -206,7 +205,7 @@ void conf_deactivate_modules(
  */
 int conf_parse(
 	conf_t *conf,
-	namedb_txn_t *txn,
+	knot_db_txn_t *txn,
 	const char *input,
 	bool is_file,
 	void *data

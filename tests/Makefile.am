@@ -19,6 +19,7 @@ check_PROGRAMS = \
 	conf_tools			\
 	confdb				\
 	confio				\
+	db				\
 	descriptor			\
 	dname				\
 	dthreads			\
@@ -30,7 +31,6 @@ check_PROGRAMS = \
 	internal_mem			\
 	journal				\
 	lookup				\
-	namedb				\
 	net				\
 	net_shortwrite			\
 	node				\

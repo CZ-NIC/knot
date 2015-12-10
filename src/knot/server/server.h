@@ -31,9 +31,9 @@
 
 #include "sys/socket.h"
 
+#include "libknot/libknot.h"
 #include "knot/common/evsched.h"
 #include "knot/common/fdset.h"
-#include "libknot/internal/namedb/namedb.h"
 #include "knot/server/dthreads.h"
 #include "knot/server/rrl.h"
 #include "knot/worker/pool.h"
@@ -99,7 +99,7 @@ typedef struct server {
 
 	/*! \brief Zone database. */
 	knot_zonedb_t *zone_db;
-	namedb_t *timers_db;
+	knot_db_t *timers_db;
 
 	/*! \brief I/O handlers. */
 	unsigned tu_size;

@@ -16,19 +16,19 @@
 
 #pragma once
 
-#include "libknot/internal/namedb/namedb.h"
+#include "libknot/db/db.h"
 
 /* Defines */
-#define NAMEDB_TRIE_BUCKET_SIZE  253 /* 1 page per bucket, see hat-trie.h */
+#define KNOT_DB_TRIE_BUCKET_SIZE  253 /* 1 page per bucket, see hat-trie.h */
 
 /* Native options. */
-struct namedb_trie_opts {
+struct knot_db_trie_opts {
 	unsigned bucket_size; /*!< Trie bucket size. */
 };
 
 /* Default options. */
-#define NAMEDB_TRIE_OPTS_INITIALIZER { \
-	NAMEDB_TRIE_BUCKET_SIZE \
+#define KNOT_DB_TRIE_OPTS_INITIALIZER { \
+	KNOT_DB_TRIE_BUCKET_SIZE \
 }
 
-const namedb_api_t *namedb_trie_api(void);
+const knot_db_api_t *knot_db_trie_api(void);

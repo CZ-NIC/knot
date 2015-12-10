@@ -33,7 +33,7 @@
 
 typedef struct {
 	conf_t *conf;
-	namedb_txn_t *txn;
+	knot_db_txn_t *txn;
 	const yp_item_t *item;
 	const uint8_t *id;
 	size_t id_len;

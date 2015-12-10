@@ -24,8 +24,6 @@
 #include <tap/basic.h>
 
 #include "contrib/string.h"
-#include "libknot/internal/namedb/namedb_lmdb.h"
-#include "libknot/internal/namedb/namedb_trie.h"
 #include "libknot/libknot.h"
 #include "contrib/mempattern.h"
 #include "contrib/openbsd/strlcpy.h"
@@ -53,8 +51,8 @@ static char *str_key_rand(size_t len, knot_mm_t *pool)
 	return s;
 }
 
-static void namedb_test_set(unsigned nkeys, char **keys, void *opts,
-                            const namedb_api_t *api, knot_mm_t *pool)
+static void knot_db_test_set(unsigned nkeys, char **keys, void *opts,
+                            const knot_db_api_t *api, knot_mm_t *pool)
 {
 	if (api == NULL) {
 		skip("API not compiled in");
@@ -62,17 +60,17 @@ static void namedb_test_set(unsigned nkeys, char **keys, void *opts,
 	}
 
 	/* Create database */
-	namedb_t *db = NULL;
+	knot_db_t *db = NULL;
 	int ret = api->init(&db, pool, opts);
 	ok(ret == KNOT_EOK && db != NULL, "%s: create", api->name);
 
 	/* Start WR transaction. */
-	namedb_txn_t txn;
+	knot_db_txn_t txn;
 	ret = api->txn_begin(db, &txn, 0);
 	ok(ret == KNOT_EOK, "%s: txn_begin(WR)", api->name);
 
 	/* Insert keys */
-	namedb_val_t key, val;
+	knot_db_val_t key, val;
 	bool passed = true;
 	for (unsigned i = 0; i < nkeys; ++i) {
 		KEY_SET(key, keys[i]);
@@ -92,7 +90,7 @@ static void namedb_test_set(unsigned nkeys, char **keys, void *opts,
 	ok(ret == KNOT_EOK, "%s: txn_commit(WR)", api->name);
 
 	/* Start RD transaction. */
-	ret = api->txn_begin(db, &txn, NAMEDB_RDONLY);
+	ret = api->txn_begin(db, &txn, KNOT_DB_RDONLY);
 	ok(ret == KNOT_EOK, "%s: txn_begin(RD)", api->name);
 
 	/* Lookup all keys */
@@ -121,7 +119,7 @@ static void namedb_test_set(unsigned nkeys, char **keys, void *opts,
 
 	/* Unsorted iteration */
 	int iterated = 0;
-	namedb_iter_t *it = api->iter_begin(&txn, 0);
+	knot_db_iter_t *it = api->iter_begin(&txn, 0);
 	while (it != NULL) {
 		++iterated;
 		it = api->iter_next(it);
@@ -136,7 +134,7 @@ static void namedb_test_set(unsigned nkeys, char **keys, void *opts,
 	char key_buf[KEY_MAXLEN] = {'\0'};
 	iterated = 0;
 	memset(&key, 0, sizeof(key));
-	it = api->iter_begin(&txn, NAMEDB_SORTED);
+	it = api->iter_begin(&txn, KNOT_DB_SORTED);
 	while (it != NULL) {
 		api->iter_key(it, &key);
 		if (iterated > 0) { /* Only if previous exists. */
@@ -160,35 +158,35 @@ static void namedb_test_set(unsigned nkeys, char **keys, void *opts,
 	api->iter_finish(it);
 
 	/* Interactive iteration. */
-	it = api->iter_begin(&txn, NAMEDB_NOOP);
+	it = api->iter_begin(&txn, KNOT_DB_NOOP);
 	if (it != NULL) { /* If supported. */
 		ret = 0;
 		/* Check if first and last keys are reachable */
-		it = api->iter_seek(it, NULL, NAMEDB_FIRST);
+		it = api->iter_seek(it, NULL, KNOT_DB_FIRST);
 		ret += api->iter_key(it, &key);
 		is_string(first_key, key.data, "%s: iter_set(FIRST)", api->name);
 		/* Check left/right iteration. */
-		it = api->iter_seek(it, &key, NAMEDB_NEXT);
+		it = api->iter_seek(it, &key, KNOT_DB_NEXT);
 		ret += api->iter_key(it, &key);
 		is_string(second_key, key.data, "%s: iter_set(NEXT)", api->name);
-		it = api->iter_seek(it, &key, NAMEDB_PREV);
+		it = api->iter_seek(it, &key, KNOT_DB_PREV);
 		ret += api->iter_key(it, &key);
 		is_string(first_key, key.data, "%s: iter_set(PREV)", api->name);
-		it = api->iter_seek(it, &key, NAMEDB_LAST);
+		it = api->iter_seek(it, &key, KNOT_DB_LAST);
 		ret += api->iter_key(it, &key);
 		is_string(last_key, key.data, "%s: iter_set(LAST)", api->name);
 		/* Check if prev(last_key + 1) is the last_key */
 		strlcpy(key_buf, last_key, sizeof(key_buf));
 		key_buf[0] += 1;
 		KEY_SET(key, key_buf);
-		it = api->iter_seek(it, &key, NAMEDB_LEQ);
+		it = api->iter_seek(it, &key, KNOT_DB_LEQ);
 		ret += api->iter_key(it, &key);
 		is_string(last_key, key.data, "%s: iter_set(LEQ)", api->name);
 		/* Check if next(first_key - 1) is the first_key */
 		strlcpy(key_buf, first_key, sizeof(key_buf));
 		key_buf[0] -= 1;
 		KEY_SET(key, key_buf);
-		it = api->iter_seek(it, &key, NAMEDB_GEQ);
+		it = api->iter_seek(it, &key, KNOT_DB_GEQ);
 		ret += api->iter_key(it, &key);
 		is_string(first_key, key.data, "%s: iter_set(GEQ)", api->name);
 		api->iter_finish(it);
@@ -209,10 +207,10 @@ static void namedb_test_set(unsigned nkeys, char **keys, void *opts,
 		ret = api->insert(&txn, &key, &val, 0);
 		is_int(KNOT_EOK, ret, "%s: add key '%u'", api->name, i);
 	}
-	it = api->iter_begin(&txn, NAMEDB_NOOP);
+	it = api->iter_begin(&txn, KNOT_DB_NOOP);
 	if (it != NULL) { /* If supported. */
 		is_int(DEL_MAX_CNT, api->count(&txn), "%s: key count before", api->name);
-		it = api->iter_seek(it, NULL, NAMEDB_FIRST);
+		it = api->iter_seek(it, NULL, KNOT_DB_FIRST);
 		uint8_t pos = 0;
 		while (it != NULL) {
 			ret = api->iter_key(it, &key);
@@ -220,7 +218,7 @@ static void namedb_test_set(unsigned nkeys, char **keys, void *opts,
 			is_int(pos, ((uint8_t *)(key.data))[0], "%s: iter compare key '%u'",
 			       api->name, pos);
 
-			ret = namedb_lmdb_iter_del(it);
+			ret = knot_db_lmdb_iter_del(it);
 			is_int(KNOT_EOK, ret, "%s: iter del", api->name);
 
 			it = api->iter_next(it);
@@ -246,7 +244,7 @@ static void namedb_test_set(unsigned nkeys, char **keys, void *opts,
 	is_int(0, ret, "%s: clear()", api->name);
 
 	/* Check if the database is empty. */
-	api->txn_begin(db, &txn, NAMEDB_RDONLY);
+	api->txn_begin(db, &txn, KNOT_DB_RDONLY);
 	db_size = api->count(&txn);
 	is_int(0, db_size, "%s: count after clear = %d", api->name, db_size);
 	api->txn_abort(&txn);
@@ -276,11 +274,11 @@ int main(int argc, char *argv[])
 	str_key_sort(keys, nkeys);
 
 	/* Execute test set for all backends. */
-	struct namedb_lmdb_opts lmdb_opts = NAMEDB_LMDB_OPTS_INITIALIZER;
+	struct knot_db_lmdb_opts lmdb_opts = KNOT_DB_LMDB_OPTS_INITIALIZER;
 	lmdb_opts.path = dbid;
-	struct namedb_trie_opts trie_opts = NAMEDB_TRIE_OPTS_INITIALIZER;
-	namedb_test_set(nkeys, keys, &lmdb_opts, namedb_lmdb_api(), &pool);
-	namedb_test_set(nkeys, keys, &trie_opts, namedb_trie_api(), &pool);
+	struct knot_db_trie_opts trie_opts = KNOT_DB_TRIE_OPTS_INITIALIZER;
+	knot_db_test_set(nkeys, keys, &lmdb_opts, knot_db_lmdb_api(), &pool);
+	knot_db_test_set(nkeys, keys, &trie_opts, knot_db_trie_api(), &pool);
 
 	/* Cleanup. */
 	mp_delete(pool.ctx);

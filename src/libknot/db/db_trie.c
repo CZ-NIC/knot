@@ -16,18 +16,19 @@
 
 #include <assert.h>
 
+#include "libknot/attribute.h"
 #include "libknot/errcode.h"
-#include "libknot/internal/namedb/namedb_trie.h"
+#include "libknot/db/db_trie.h"
 #include "contrib/hat-trie/hat-trie.h"
 #include "contrib/mempattern.h"
 
-static int init(namedb_t **db, knot_mm_t *mm, void *arg)
+static int init(knot_db_t **db, knot_mm_t *mm, void *arg)
 {
 	if (db == NULL || arg == NULL) {
 		return KNOT_EINVAL;
 	}
 
-	struct namedb_trie_opts *opts = arg;
+	struct knot_db_trie_opts *opts = arg;
 	hattrie_t *trie = hattrie_create_n(opts->bucket_size, mm);
 	if (!trie) {
 		return KNOT_ENOMEM;
@@ -38,22 +39,22 @@ static int init(namedb_t **db, knot_mm_t *mm, void *arg)
 	return KNOT_EOK;
 }
 
-static void deinit(namedb_t *db)
+static void deinit(knot_db_t *db)
 {
 	hattrie_free((hattrie_t *)db);
 }
 
-static int txn_begin(namedb_t *db, namedb_txn_t *txn, unsigned flags)
+static int txn_begin(knot_db_t *db, knot_db_txn_t *txn, unsigned flags)
 {
 	txn->txn = (void *)(size_t)flags;
 	txn->db  = db;
 	return KNOT_EOK; /* N/A */
 }
 
-static int txn_commit(namedb_txn_t *txn)
+static int txn_commit(knot_db_txn_t *txn)
 {
 	/* Rebuild order index only for WR transactions. */
-	if ((size_t)txn->txn & NAMEDB_RDONLY) {
+	if ((size_t)txn->txn & KNOT_DB_RDONLY) {
 		return KNOT_EOK;
 	}
 
@@ -61,23 +62,23 @@ static int txn_commit(namedb_txn_t *txn)
 	return KNOT_EOK;
 }
 
-static void txn_abort(namedb_txn_t *txn)
+static void txn_abort(knot_db_txn_t *txn)
 {
 }
 
-static int count(namedb_txn_t *txn)
+static int count(knot_db_txn_t *txn)
 {
 	return hattrie_weight((hattrie_t *)txn->db);
 }
 
-static int clear(namedb_txn_t *txn)
+static int clear(knot_db_txn_t *txn)
 {
 	hattrie_clear((hattrie_t *)txn->db);
 
 	return KNOT_EOK;
 }
 
-static int find(namedb_txn_t *txn, namedb_val_t *key, namedb_val_t *val, unsigned flags)
+static int find(knot_db_txn_t *txn, knot_db_val_t *key, knot_db_val_t *val, unsigned flags)
 {
 	value_t *ret = hattrie_tryget((hattrie_t *)txn->db, key->data, key->len);
 	if (ret == NULL) {
@@ -89,7 +90,7 @@ static int find(namedb_txn_t *txn, namedb_val_t *key, namedb_val_t *val, unsigne
 	return KNOT_EOK;
 }
 
-static int insert(namedb_txn_t *txn, namedb_val_t *key, namedb_val_t *val, unsigned flags)
+static int insert(knot_db_txn_t *txn, knot_db_val_t *key, knot_db_val_t *val, unsigned flags)
 {
 	/* No flags supported. */
 	if (flags != 0) {
@@ -105,15 +106,15 @@ static int insert(namedb_txn_t *txn, namedb_val_t *key, namedb_val_t *val, unsig
 	return KNOT_EOK;
 }
 
-static int del(namedb_txn_t *txn, namedb_val_t *key)
+static int del(knot_db_txn_t *txn, knot_db_val_t *key)
 {
 	return hattrie_del((hattrie_t *)txn->db, key->data, key->len);
 }
 
-static namedb_iter_t *iter_begin(namedb_txn_t *txn, unsigned flags)
+static knot_db_iter_t *iter_begin(knot_db_txn_t *txn, unsigned flags)
 {
-	bool is_sorted = (flags & NAMEDB_SORTED);
-	flags &= ~NAMEDB_SORTED;
+	bool is_sorted = (flags & KNOT_DB_SORTED);
+	flags &= ~KNOT_DB_SORTED;
 
 	/* No operations other than begin are supported right now. */
 	if (flags != 0) {
@@ -123,13 +124,13 @@ static namedb_iter_t *iter_begin(namedb_txn_t *txn, unsigned flags)
 	return hattrie_iter_begin((hattrie_t *)txn->db, is_sorted);
 }
 
-static namedb_iter_t *iter_seek(namedb_iter_t *iter, namedb_val_t *key, unsigned flags)
+static knot_db_iter_t *iter_seek(knot_db_iter_t *iter, knot_db_val_t *key, unsigned flags)
 {
 	assert(0);
 	return NULL; /* ENOTSUP */
 }
 
-static namedb_iter_t *iter_next(namedb_iter_t *iter)
+static knot_db_iter_t *iter_next(knot_db_iter_t *iter)
 {
 	hattrie_iter_next((hattrie_iter_t *)iter);
 	if (hattrie_iter_finished((hattrie_iter_t *)iter)) {
@@ -140,7 +141,7 @@ static namedb_iter_t *iter_next(namedb_iter_t *iter)
 	return iter;
 }
 
-static int iter_key(namedb_iter_t *iter, namedb_val_t *val)
+static int iter_key(knot_db_iter_t *iter, knot_db_val_t *val)
 {
 	val->data = (void *)hattrie_iter_key((hattrie_iter_t *)iter, &val->len);
 	if (val->data == NULL) {
@@ -150,7 +151,7 @@ static int iter_key(namedb_iter_t *iter, namedb_val_t *val)
 	return KNOT_EOK;
 }
 
-static int iter_val(namedb_iter_t *iter, namedb_val_t *val)
+static int iter_val(knot_db_iter_t *iter, knot_db_val_t *val)
 {
 	value_t *ret = hattrie_iter_val((hattrie_iter_t *)iter);
 	if (ret == NULL) {
@@ -162,14 +163,15 @@ static int iter_val(namedb_iter_t *iter, namedb_val_t *val)
 	return KNOT_EOK;
 }
 
-static void iter_finish(namedb_iter_t *iter)
+static void iter_finish(knot_db_iter_t *iter)
 {
 	hattrie_iter_free((hattrie_iter_t *)iter);
 }
 
-const namedb_api_t *namedb_trie_api(void)
+_public_
+const knot_db_api_t *knot_db_trie_api(void)
 {
-	static const namedb_api_t api = {
+	static const knot_db_api_t api = {
 		"hattrie",
 		init, deinit,
 		txn_begin, txn_commit, txn_abort,

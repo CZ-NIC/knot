@@ -373,6 +373,11 @@ src/libknot/binary.h
 src/libknot/codes.c
 src/libknot/codes.h
 src/libknot/consts.h
+src/libknot/db/db.h
+src/libknot/db/db_lmdb.c
+src/libknot/db/db_lmdb.h
+src/libknot/db/db_trie.c
+src/libknot/db/db_trie.h
 src/libknot/descriptor.c
 src/libknot/descriptor.h
 src/libknot/dname.c
@@ -382,11 +387,6 @@ src/libknot/dnssec/rrset-sign.h
 src/libknot/errcode.h
 src/libknot/error.c
 src/libknot/error.h
-src/libknot/internal/namedb/namedb.h
-src/libknot/internal/namedb/namedb_lmdb.c
-src/libknot/internal/namedb/namedb_lmdb.h
-src/libknot/internal/namedb/namedb_trie.c
-src/libknot/internal/namedb/namedb_trie.h
 src/libknot/libknot.h
 src/libknot/mm_ctx.h
 src/libknot/packet/compr.c

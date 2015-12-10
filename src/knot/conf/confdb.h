@@ -29,7 +29,7 @@
 #include <stdint.h>
 
 #include "knot/conf/conf.h"
-#include "libknot/internal/namedb/namedb_lmdb.h"
+#include "libknot/libknot.h"
 #include "libknot/yparser/ypscheme.h"
 
 /*! Current version of the configuration database structure. */
@@ -51,7 +51,7 @@
  */
 int conf_db_init(
 	conf_t *conf,
-	namedb_txn_t *txn
+	knot_db_txn_t *txn
 );
 
 /*!
@@ -74,7 +74,7 @@ int conf_db_init(
  */
 int conf_db_set(
 	conf_t *conf,
-	namedb_txn_t *txn,
+	knot_db_txn_t *txn,
 	const yp_name_t *key0,
 	const yp_name_t *key1,
 	const uint8_t *id,
@@ -102,7 +102,7 @@ int conf_db_set(
  */
 int conf_db_unset(
 	conf_t *conf,
-	namedb_txn_t *txn,
+	knot_db_txn_t *txn,
 	const yp_name_t *key0,
 	const yp_name_t *key1,
 	const uint8_t *id,
@@ -127,7 +127,7 @@ int conf_db_unset(
  */
 int conf_db_get(
 	conf_t *conf,
-	namedb_txn_t *txn,
+	knot_db_txn_t *txn,
 	const yp_name_t *key0,
 	const yp_name_t *key1,
 	const uint8_t *id,
@@ -147,7 +147,7 @@ int conf_db_get(
  */
 int conf_db_iter_begin(
 	conf_t *conf,
-	namedb_txn_t *txn,
+	knot_db_txn_t *txn,
 	const yp_name_t *key0,
 	conf_iter_t *iter
 );
@@ -219,7 +219,7 @@ void conf_db_iter_finish(
  */
 int conf_db_raw_dump(
 	conf_t *conf,
-	namedb_txn_t *txn,
+	knot_db_txn_t *txn,
 	const char *file_name
 );
 

@@ -88,11 +88,11 @@ typedef enum {
 
 static int db_check_version(
 	conf_t *conf,
-	namedb_txn_t *txn)
+	knot_db_txn_t *txn)
 {
 	uint8_t k[2] = { KEY0_ROOT, KEY1_VERSION };
-	namedb_val_t key = { k, sizeof(k) };
-	namedb_val_t data;
+	knot_db_val_t key = { k, sizeof(k) };
+	knot_db_val_t data;
 
 	// Get conf-DB version.
 	int ret = conf->api->find(txn, &key, &data, 0);
@@ -110,7 +110,7 @@ static int db_check_version(
 
 static int db_check(
 	conf_t *conf,
-	namedb_txn_t *txn)
+	knot_db_txn_t *txn)
 {
 	int ret = conf->api->count(txn);
 	if (ret == 0) { // Empty DB.
@@ -124,19 +124,19 @@ static int db_check(
 
 int conf_db_init(
 	conf_t *conf,
-	namedb_txn_t *txn)
+	knot_db_txn_t *txn)
 {
 	if (conf == NULL || txn == NULL) {
 		return KNOT_EINVAL;
 	}
 
 	uint8_t k[2] = { KEY0_ROOT, KEY1_VERSION };
-	namedb_val_t key = { k, sizeof(k) };
+	knot_db_val_t key = { k, sizeof(k) };
 
 	int ret = conf->api->count(txn);
 	if (ret == 0) { // Initialize empty DB with DB version.
 		uint8_t d[1] = { CONF_DB_VERSION };
-		namedb_val_t data = { d, sizeof(d) };
+		knot_db_val_t data = { d, sizeof(d) };
 		return conf->api->insert(txn, &key, &data, 0);
 	} else if (ret > 0) { // Check existing DB.
 		return db_check(conf, txn);
@@ -147,7 +147,7 @@ int conf_db_init(
 
 static int db_code(
 	conf_t *conf,
-	namedb_txn_t *txn,
+	knot_db_txn_t *txn,
 	uint8_t section_code,
 	const yp_name_t *name,
 	db_action_t action,
@@ -157,7 +157,7 @@ static int db_code(
 		return KNOT_EINVAL;
 	}
 
-	namedb_val_t key;
+	knot_db_val_t key;
 	uint8_t k[CONF_MIN_KEY_LEN + YP_MAX_ITEM_NAME_LEN];
 	k[KEY0_POS] = section_code;
 	k[KEY1_POS] = KEY1_ITEMS;
@@ -166,7 +166,7 @@ static int db_code(
 	key.len = CONF_MIN_KEY_LEN + name[0];
 
 	// Check if the item is already registered.
-	namedb_val_t data;
+	knot_db_val_t data;
 	int ret = conf->api->find(txn, &key, &data, 0);
 	switch (ret) {
 	case KNOT_EOK:
@@ -192,10 +192,10 @@ static int db_code(
 	bool codes[KEY1_LAST + 1] = { false };
 
 	// Find all used item codes.
-	namedb_iter_t *it = conf->api->iter_begin(txn, NAMEDB_NOOP);
-	it = conf->api->iter_seek(it, &key, NAMEDB_GEQ);
+	knot_db_iter_t *it = conf->api->iter_begin(txn, KNOT_DB_NOOP);
+	it = conf->api->iter_seek(it, &key, KNOT_DB_GEQ);
 	while (it != NULL) {
-		namedb_val_t iter_key;
+		knot_db_val_t iter_key;
 		ret = conf->api->iter_key(it, &iter_key);
 		if (ret != KNOT_EOK) {
 			conf->api->iter_finish(it);
@@ -209,7 +209,7 @@ static int db_code(
 			break;
 		}
 
-		namedb_val_t iter_val;
+		knot_db_val_t iter_val;
 		ret = conf->api->iter_val(it, &iter_val);
 		if (ret != KNOT_EOK) {
 			conf->api->iter_finish(it);
@@ -252,8 +252,8 @@ static int db_code(
 }
 
 static uint8_t *find_data(
-	const namedb_val_t *value,
-	const namedb_val_t *current)
+	const knot_db_val_t *value,
+	const knot_db_val_t *current)
 {
 	wire_ctx_t ctx = wire_ctx_init_const(current->data, current->len);
 
@@ -279,9 +279,9 @@ static uint8_t *find_data(
 
 static int db_set(
 	conf_t *conf,
-	namedb_txn_t *txn,
-	namedb_val_t *key,
-	namedb_val_t *data,
+	knot_db_txn_t *txn,
+	knot_db_val_t *key,
+	knot_db_val_t *data,
 	bool multi)
 {
 	if (!multi) {
@@ -293,7 +293,7 @@ static int db_set(
 		return conf->api->insert(txn, key, data, 0);
 	}
 
-	namedb_val_t d;
+	knot_db_val_t d;
 
 	if (data->len > UINT16_MAX) {
 		return KNOT_ERANGE;
@@ -346,7 +346,7 @@ static int db_set(
 
 int conf_db_set(
 	conf_t *conf,
-	namedb_txn_t *txn,
+	knot_db_txn_t *txn,
 	const yp_name_t *key0,
 	const yp_name_t *key1,
 	const uint8_t *id,
@@ -379,7 +379,7 @@ int conf_db_set(
 	}
 
 	uint8_t k[CONF_MAX_KEY_LEN] = { 0 };
-	namedb_val_t key = { k, CONF_MIN_KEY_LEN };
+	knot_db_val_t key = { k, CONF_MIN_KEY_LEN };
 
 	// Set key0 code.
 	int ret = db_code(conf, txn, KEY0_ROOT, key0, DB_SET, &k[KEY0_POS]);
@@ -396,7 +396,7 @@ int conf_db_set(
 		key.len += id_len;
 
 		k[KEY1_POS] = KEY1_ID;
-		namedb_val_t val = { NULL };
+		knot_db_val_t val = { NULL };
 
 		// Insert id.
 		if (key1 == NULL) {
@@ -425,7 +425,7 @@ int conf_db_set(
 			return ret;
 		}
 
-		namedb_val_t val = { (uint8_t *)data, data_len };
+		knot_db_val_t val = { (uint8_t *)data, data_len };
 		ret = db_set(conf, txn, &key, &val, item->flags & YP_FMULTI);
 		if (ret != KNOT_EOK) {
 			return ret;
@@ -437,9 +437,9 @@ int conf_db_set(
 
 static int db_unset(
 	conf_t *conf,
-	namedb_txn_t *txn,
-	namedb_val_t *key,
-	namedb_val_t *data,
+	knot_db_txn_t *txn,
+	knot_db_val_t *key,
+	knot_db_val_t *data,
 	bool multi)
 {
 	// No item data can be zero length.
@@ -447,7 +447,7 @@ static int db_unset(
 		return conf->api->del(txn, key);
 	}
 
-	namedb_val_t d;
+	knot_db_val_t d;
 
 	int ret = conf->api->find(txn, key, &d, 0);
 	if (ret != KNOT_EOK) {
@@ -513,7 +513,7 @@ static int db_unset(
 
 int conf_db_unset(
 	conf_t *conf,
-	namedb_txn_t *txn,
+	knot_db_txn_t *txn,
 	const yp_name_t *key0,
 	const yp_name_t *key1,
 	const uint8_t *id,
@@ -547,7 +547,7 @@ int conf_db_unset(
 	}
 
 	uint8_t k[CONF_MAX_KEY_LEN] = { 0 };
-	namedb_val_t key = { k, CONF_MIN_KEY_LEN };
+	knot_db_val_t key = { k, CONF_MIN_KEY_LEN };
 
 	// Set the key0 code.
 	int ret = db_code(conf, txn, KEY0_ROOT, key0, DB_GET, &k[KEY0_POS]);
@@ -564,7 +564,7 @@ int conf_db_unset(
 		key.len += id_len;
 
 		k[KEY1_POS] = KEY1_ID;
-		namedb_val_t val = { NULL };
+		knot_db_val_t val = { NULL };
 
 		// Delete the id.
 		if (key1 == NULL) {
@@ -593,7 +593,7 @@ int conf_db_unset(
 			}
 		// Delete the item data.
 		} else {
-			namedb_val_t val = { (uint8_t *)data, data_len };
+			knot_db_val_t val = { (uint8_t *)data, data_len };
 			ret = db_unset(conf, txn, &key, &val, item->flags & YP_FMULTI);
 			if (ret != KNOT_EOK) {
 				return ret;
@@ -606,7 +606,7 @@ int conf_db_unset(
 
 int conf_db_get(
 	conf_t *conf,
-	namedb_txn_t *txn,
+	knot_db_txn_t *txn,
 	const yp_name_t *key0,
 	const yp_name_t *key1,
 	const uint8_t *id,
@@ -643,8 +643,8 @@ int conf_db_get(
 	}
 
 	uint8_t k[CONF_MAX_KEY_LEN] = { 0 };
-	namedb_val_t key = { k, CONF_MIN_KEY_LEN };
-	namedb_val_t val = { NULL };
+	knot_db_val_t key = { k, CONF_MIN_KEY_LEN };
+	knot_db_val_t val = { NULL };
 
 	// Set the key0 code.
 	out.code = db_code(conf, txn, KEY0_ROOT, key0, DB_GET, &k[KEY0_POS]);
@@ -698,7 +698,7 @@ static int check_iter(
 	conf_t *conf,
 	conf_iter_t *iter)
 {
-	namedb_val_t key;
+	knot_db_val_t key;
 
 	// Get the current key.
 	int ret = conf->api->iter_key(iter->iter, &key);
@@ -717,7 +717,7 @@ static int check_iter(
 
 int conf_db_iter_begin(
 	conf_t *conf,
-	namedb_txn_t *txn,
+	knot_db_txn_t *txn,
 	const yp_name_t *key0,
 	conf_iter_t *iter)
 {
@@ -748,11 +748,11 @@ int conf_db_iter_begin(
 
 	// Prepare key prefix.
 	uint8_t k[2] = { out.key0_code, KEY1_ID };
-	namedb_val_t key = { k, sizeof(k) };
+	knot_db_val_t key = { k, sizeof(k) };
 
 	// Get the data.
-	out.iter = conf->api->iter_begin(txn, NAMEDB_NOOP);
-	out.iter = conf->api->iter_seek(out.iter, &key, NAMEDB_GEQ);
+	out.iter = conf->api->iter_begin(txn, KNOT_DB_NOOP);
+	out.iter = conf->api->iter_seek(out.iter, &key, KNOT_DB_GEQ);
 
 	// Check for no section id.
 	out.code = check_iter(conf, &out);
@@ -811,7 +811,7 @@ int conf_db_iter_id(
 		return KNOT_EINVAL;
 	}
 
-	namedb_val_t key;
+	knot_db_val_t key;
 	int ret = conf->api->iter_key(iter->iter, &key);
 	if (ret != KNOT_EOK) {
 		return ret;
@@ -831,7 +831,7 @@ int conf_db_iter_del(
 		return KNOT_EINVAL;
 	}
 
-	return namedb_lmdb_iter_del(iter->iter);
+	return knot_db_lmdb_iter_del(iter->iter);
 }
 
 void conf_db_iter_finish(
@@ -850,7 +850,7 @@ void conf_db_iter_finish(
 
 int conf_db_raw_dump(
 	conf_t *conf,
-	namedb_txn_t *txn,
+	knot_db_txn_t *txn,
 	const char *file_name)
 {
 	if (conf == NULL) {
@@ -872,15 +872,15 @@ int conf_db_raw_dump(
 
 	int ret = KNOT_EOK;
 
-	namedb_iter_t *it = conf->api->iter_begin(txn, NAMEDB_FIRST);
+	knot_db_iter_t *it = conf->api->iter_begin(txn, KNOT_DB_FIRST);
 	while (it != NULL) {
-		namedb_val_t key;
+		knot_db_val_t key;
 		ret = conf->api->iter_key(it, &key);
 		if (ret != KNOT_EOK) {
 			break;
 		}
 
-		namedb_val_t data;
+		knot_db_val_t data;
 		ret = conf->api->iter_val(it, &data);
 		if (ret != KNOT_EOK) {
 			break;

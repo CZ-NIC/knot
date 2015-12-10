@@ -69,14 +69,14 @@ int conf_io_begin(
 		return KNOT_CONF_ENOTXN;
 	}
 
-	namedb_txn_t *parent = conf()->io.txn;
-	namedb_txn_t *txn = (parent == NULL) ? conf()->io.txn_stack : parent + 1;
+	knot_db_txn_t *parent = conf()->io.txn;
+	knot_db_txn_t *txn = (parent == NULL) ? conf()->io.txn_stack : parent + 1;
 	if (txn >= conf()->io.txn_stack + CONF_MAX_TXN_DEPTH) {
 		return KNOT_CONF_EMANYTXN;
 	}
 
 	// Start the writing transaction.
-	int ret = namedb_lmdb_txn_begin(conf()->db, txn, parent, 0);
+	int ret = knot_db_lmdb_txn_begin(conf()->db, txn, parent, 0);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
@@ -96,7 +96,7 @@ int conf_io_commit(
 		return KNOT_CONF_ENOTXN;
 	}
 
-	namedb_txn_t *txn = child ? conf()->io.txn : conf()->io.txn_stack;
+	knot_db_txn_t *txn = child ? conf()->io.txn : conf()->io.txn_stack;
 
 	// Commit the writing transaction.
 	int ret = conf()->api->txn_commit(txn);
@@ -120,7 +120,7 @@ int conf_io_commit(
 	// Update read-only transaction.
 	new_conf->api->txn_abort(&new_conf->read_txn);
 	ret = new_conf->api->txn_begin(new_conf->db, &new_conf->read_txn,
-	                               NAMEDB_RDONLY);
+	                               KNOT_DB_RDONLY);
 	if (ret != KNOT_EOK) {
 		conf_free(new_conf, true);
 		return ret;
@@ -149,7 +149,7 @@ int conf_io_abort(
 		return KNOT_CONF_ENOTXN;
 	}
 
-	namedb_txn_t *txn = child ? conf()->io.txn : conf()->io.txn_stack;
+	knot_db_txn_t *txn = child ? conf()->io.txn : conf()->io.txn_stack;
 
 	// Abort the writing transaction.
 	conf()->api->txn_abort(txn);
@@ -534,7 +534,7 @@ diff_error:
 }
 
 static int get_section(
-	namedb_txn_t *txn,
+	knot_db_txn_t *txn,
 	conf_io_t *io)
 {
 	conf_val_t data;
@@ -697,7 +697,7 @@ int conf_io_get(
 		             NULL);
 	}
 
-	namedb_txn_t *txn = get_current ? &conf()->read_txn : conf()->io.txn;
+	knot_db_txn_t *txn = get_current ? &conf()->read_txn : conf()->io.txn;
 
 	// Check for a non-group item.
 	if (io->key0->type != YP_TGRP) {
