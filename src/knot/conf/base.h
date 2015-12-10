@@ -26,9 +26,9 @@
 #pragma once
 
 #include "libknot/libknot.h"
-#include "libknot/internal/lists.h"
 #include "libknot/internal/namedb/namedb_lmdb.h"
 #include "libknot/yparser/ypscheme.h"
+#include "contrib/ucw/lists.h"
 
 /*! Default template identifier. */
 #define CONF_DEFAULT_ID		((uint8_t *)"\x08""default\0")

@@ -22,8 +22,8 @@
 #include "knot/zone/zonefile.h"
 #include "knot/common/log.h"
 #include "libknot/libknot.h"
-#include "libknot/internal/lists.h"
 #include "contrib/macros.h"
+#include "contrib/ucw/lists.h"
 
 /* --------------------------- Update cleanup ------------------------------- */
 

@@ -31,7 +31,6 @@
 #include <sys/socket.h>
 
 #include "utils/common/params.h"
-#include "libknot/internal/lists.h"
 
 /*! \brief Structure containing server information. */
 typedef struct {

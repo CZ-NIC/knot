@@ -41,10 +41,10 @@
 #pragma once
 
 #include "libknot/libknot.h"
-#include "libknot/internal/lists.h"
 #include "libknot/mm_ctx.h"
 #include "knot/conf/conf.h"
 #include "knot/conf/tools.h"
+#include "contrib/ucw/lists.h"
 
 #define MODULE_ERR(mod, msg, ...) \
 	log_error("module '%.*s', " msg, mod[0], mod + 1, ##__VA_ARGS__)

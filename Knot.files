@@ -80,6 +80,8 @@ src/contrib/ucw/array-sort.h
 src/contrib/ucw/binsearch.h
 src/contrib/ucw/heap.c
 src/contrib/ucw/heap.h
+src/contrib/ucw/lists.c
+src/contrib/ucw/lists.h
 src/contrib/ucw/mempool.c
 src/contrib/ucw/mempool.h
 src/contrib/wire.h
@@ -380,8 +382,6 @@ src/libknot/dnssec/rrset-sign.h
 src/libknot/errcode.h
 src/libknot/error.c
 src/libknot/error.h
-src/libknot/internal/lists.c
-src/libknot/internal/lists.h
 src/libknot/internal/namedb/namedb.h
 src/libknot/internal/namedb/namedb_lmdb.c
 src/libknot/internal/namedb/namedb_lmdb.h

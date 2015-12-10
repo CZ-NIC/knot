@@ -31,7 +31,7 @@
 #include <stdbool.h>
 
 #include "libknot/libknot.h"
-#include "libknot/internal/lists.h"
+#include "contrib/ucw/lists.h"
 
 #define DEFAULT_IPV4_NAME	"127.0.0.1"
 #define DEFAULT_IPV6_NAME	"::1"

@@ -32,8 +32,8 @@
 #include "utils/common/params.h"
 #include "utils/common/sign.h"
 #include "libknot/libknot.h"
-#include "libknot/internal/lists.h"
 #include "zscanner/scanner.h"
+#include "contrib/ucw/lists.h"
 
 #define KNSUPDATE_VERSION "knsupdate, version " PACKAGE_VERSION "\n"
 

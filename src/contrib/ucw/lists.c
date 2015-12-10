@@ -24,11 +24,9 @@
  * similar to that used in the &fib structure.
  */
 
-#define _BIRD_LISTS_C_
-
 #include <stdlib.h>
 #include <string.h>
-#include "libknot/internal/lists.h"
+#include "contrib/ucw/lists.h"
 #include "contrib/mempattern.h"
 
 /**
@@ -38,7 +36,7 @@
  *
  * add_tail() takes a node @n and appends it at the end of the list @l.
  */
-LIST_INLINE void
+void
 add_tail(list_t *l, node_t *n)
 {
   node_t *z = l->tail;
@@ -56,7 +54,7 @@ add_tail(list_t *l, node_t *n)
  *
  * add_head() takes a node @n and prepends it at the start of the list @l.
  */
-LIST_INLINE void
+void
 add_head(list_t *l, node_t *n)
 {
   node_t *z = l->head;
@@ -75,7 +73,7 @@ add_head(list_t *l, node_t *n)
  * Inserts a node @n to a linked list after an already inserted
  * node @after.
  */
-LIST_INLINE void
+void
 insert_node(node_t *n, node_t *after)
 {
   node_t *z = after->next;
@@ -92,7 +90,7 @@ insert_node(node_t *n, node_t *after)
  *
  * Removes a node @n from the list it's linked in.
  */
-LIST_INLINE void
+void
 rem_node(node_t *n)
 {
   node_t *z = n->prev;
@@ -111,7 +109,7 @@ rem_node(node_t *n)
  * init_list() takes a &list structure and initializes its
  * fields, so that it represents an empty list.
  */
-LIST_INLINE void
+void
 init_list(list_t *l)
 {
   l->head = (node_t *) &l->null;
@@ -127,7 +125,7 @@ init_list(list_t *l)
  * This function appends all elements of the list @l to
  * the list @to in constant time.
  */
-LIST_INLINE void
+void
 add_tail_list(list_t *to, list_t *l)
 {
   node_t *p = to->tail;

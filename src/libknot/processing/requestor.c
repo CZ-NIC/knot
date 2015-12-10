@@ -19,10 +19,10 @@
 #include "libknot/attribute.h"
 #include "libknot/processing/requestor.h"
 #include "libknot/errcode.h"
-#include "libknot/internal/lists.h"
 #include "contrib/mempattern.h"
 #include "contrib/net.h"
 #include "contrib/sockaddr.h"
+#include "contrib/ucw/lists.h"
 
 #define PENDING	((list_t *)requestor->pending)
 

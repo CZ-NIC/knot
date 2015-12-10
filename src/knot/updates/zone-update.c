@@ -20,8 +20,7 @@
 #include "knot/dnssec/zone-events.h"
 #include "knot/updates/apply.h"
 #include "knot/zone/serial.h"
-
-#include "libknot/internal/lists.h"
+#include "contrib/ucw/lists.h"
 #include "contrib/ucw/mempool.h"
 
 static int add_to_node(zone_node_t *node, const zone_node_t *add_node,

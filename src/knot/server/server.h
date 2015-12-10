@@ -32,13 +32,13 @@
 #include "sys/socket.h"
 
 #include "knot/common/evsched.h"
-#include "libknot/internal/lists.h"
 #include "knot/common/fdset.h"
 #include "libknot/internal/namedb/namedb.h"
 #include "knot/server/dthreads.h"
 #include "knot/server/rrl.h"
 #include "knot/worker/pool.h"
 #include "knot/zone/zonedb.h"
+#include "contrib/ucw/lists.h"
 
 /* Forwad declarations. */
 struct iface;

@@ -27,8 +27,8 @@
 #include "utils/common/resolv.h"
 #include "libknot/descriptor.h"
 #include "libknot/libknot.h"
-#include "libknot/internal/lists.h"
 #include "contrib/sockaddr.h"
+#include "contrib/ucw/lists.h"
 
 #define DEFAULT_RETRIES_DIG	2
 #define DEFAULT_TIMEOUT_DIG	5

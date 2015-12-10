@@ -17,8 +17,8 @@
 #include "libknot/attribute.h"
 #include "libknot/processing/overlay.h"
 #include "libknot/errcode.h"
-#include "libknot/internal/lists.h"
 #include "contrib/mempattern.h"
+#include "contrib/ucw/lists.h"
 
 #define LAYERS	((list_t *)overlay->layers)
 

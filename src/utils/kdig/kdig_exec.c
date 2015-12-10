@@ -25,9 +25,9 @@
 #include "utils/common/netio.h"
 #include "utils/common/sign.h"
 #include "libknot/libknot.h"
-#include "libknot/internal/lists.h"
 #include "contrib/sockaddr.h"
 #include "contrib/print.h"
+#include "contrib/ucw/lists.h"
 
 #if USE_DNSTAP
 # include "contrib/dnstap/convert.h"

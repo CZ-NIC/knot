@@ -24,11 +24,11 @@
 #include "utils/common/netio.h"
 #include "utils/common/params.h"
 #include "libknot/libknot.h"
-#include "libknot/internal/lists.h"
 #include "contrib/lookup.h"
 #include "contrib/print.h"
 #include "contrib/sockaddr.h"
 #include "contrib/openbsd/strlcat.h"
+#include "contrib/ucw/lists.h"
 #include "contrib/wire_ctx.h"
 
 static lookup_table_t rtypes[] = {

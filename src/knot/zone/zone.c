@@ -21,9 +21,7 @@
 #include <urcu.h>
 
 #include "dnssec/random.h"
-#include "libknot/descriptor.h"
 #include "knot/common/evsched.h"
-#include "libknot/internal/lists.h"
 #include "knot/common/log.h"
 #include "knot/common/trim.h"
 #include "knot/zone/node.h"
@@ -33,12 +31,11 @@
 #include "knot/zone/contents.h"
 #include "knot/updates/acl.h"
 #include "knot/updates/apply.h"
-#include "libknot/processing/requestor.h"
 #include "knot/nameserver/process_query.h"
 #include "libknot/libknot.h"
-#include "libknot/dname.h"
+#include "libknot/processing/requestor.h"
 #include "contrib/string.h"
-#include "libknot/rrtype/soa.h"
+#include "contrib/ucw/lists.h"
 
 #define JOURNAL_SUFFIX	".diff.db"
 

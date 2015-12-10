@@ -46,6 +46,7 @@ nobase_libcontrib_la_HEADERS =			\
 	contrib/ucw/array-sort.h		\
 	contrib/ucw/binsearch.h			\
 	contrib/ucw/heap.h			\
+	contrib/ucw/lists.h			\
 	contrib/ucw/mempool.h
 
 # dynamic: libknot headers
@@ -90,7 +91,6 @@ nobase_libknot_la_HEADERS =			\
 
 libknot_internal_ladir = $(includedir)
 nobase_libknot_internal_la_HEADERS = 		\
-	libknot/internal/lists.h		\
 	libknot/internal/namedb/namedb.h	\
 	libknot/internal/namedb/namedb_lmdb.h	\
 	libknot/internal/namedb/namedb_trie.h
@@ -118,6 +118,7 @@ libcontrib_la_SOURCES = 			\
 	contrib/openbsd/strlcat.c		\
 	contrib/openbsd/strlcpy.c		\
 	contrib/ucw/heap.c			\
+	contrib/ucw/lists.c			\
 	contrib/ucw/mempool.c			\
 	$(nobase_libcontrib_la_HEADERS)
 
@@ -160,7 +161,6 @@ libknot_yparser_la_SOURCES = 			\
 	$(nobase_libknot_yparser_la_HEADERS)
 
 libknot_internal_la_SOURCES = 			\
-	libknot/internal/lists.c		\
 	libknot/internal/namedb/namedb_lmdb.c	\
 	libknot/internal/namedb/namedb_trie.c	\
 	$(nobase_libknot_internal_la_HEADERS)
