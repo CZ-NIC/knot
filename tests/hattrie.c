@@ -19,7 +19,7 @@
 #include <tap/basic.h>
 
 #include "libknot/internal/trie/hat-trie.h"
-#include "libknot/internal/macros.h"
+#include "contrib/macros.h"
 #include "contrib/string.h"
 
 /* UCW array sorting defines. */

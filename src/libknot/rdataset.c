@@ -19,9 +19,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "libknot/attribute.h"
 #include "libknot/rdataset.h"
 #include "libknot/errcode.h"
-#include "libknot/internal/macros.h"
 
 static knot_rdata_t *rr_seek(knot_rdata_t *d, size_t pos)
 {

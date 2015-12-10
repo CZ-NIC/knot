@@ -9,7 +9,7 @@
 
 #pragma once
 
-#include "libknot/internal/macros.h"
+#include "contrib/macros.h"
 
 /*
  *  This is not a normal header file, it's a generator of sorting

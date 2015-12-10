@@ -20,7 +20,7 @@
 #include "knot/zone/events/handlers.h"
 #include "knot/zone/zone.h"
 #include "libknot/rrtype/soa.h"
-#include "libknot/internal/macros.h"
+#include "contrib/macros.h"
 
 /* -- Zone event replanning functions --------------------------------------- */
 

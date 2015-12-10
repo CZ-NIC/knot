@@ -32,7 +32,7 @@
 #include "knot/common/log.h"
 #include "libknot/libknot.h"
 #include "libknot/internal/lists.h"
-#include "libknot/internal/macros.h"
+#include "contrib/macros.h"
 #include "contrib/openbsd/strlcpy.h"
 
 /* Single log message buffer length (one line). */

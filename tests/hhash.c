@@ -20,8 +20,8 @@
 
 #include "libknot/internal/hhash.h"
 #include "libknot/internal/mempattern.h"
-#include "libknot/internal/macros.h"
 #include "libknot/libknot.h"
+#include "contrib/macros.h"
 #include "contrib/ucw/mempool.h"
 
 /* Test defines. */

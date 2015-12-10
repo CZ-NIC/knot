@@ -14,7 +14,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <assert.h>
-#include "libknot/internal/macros.h"
+#include "contrib/macros.h"
 #include "contrib/ucw/mempool.h"
 
 /** \todo This shouldn't be precalculated, but computed on load. */

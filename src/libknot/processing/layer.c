@@ -16,8 +16,8 @@
 
 #include <assert.h>
 
+#include "libknot/attribute.h"
 #include "libknot/processing/layer.h"
-#include "libknot/internal/macros.h"
 
 /*! \brief Helper for conditional layer call. */
 #define LAYER_CALL(layer, func, ...) \

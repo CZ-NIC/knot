@@ -32,7 +32,7 @@
 #include "utils/common/sign.h"
 #include "utils/common/token.h"
 #include "libknot/libknot.h"
-#include "libknot/internal/macros.h"
+#include "contrib/macros.h"
 #include "contrib/lookup.h"
 #include "contrib/string.h"
 #include "contrib/openbsd/strlcpy.h"

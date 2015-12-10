@@ -18,6 +18,7 @@
 #include <stdlib.h>
 #include <stdbool.h>
 
+#include "libknot/attribute.h"
 #include "libknot/packet/pkt.h"
 #include "libknot/descriptor.h"
 #include "libknot/errcode.h"
@@ -25,7 +26,6 @@
 #include "libknot/tsig-op.h"
 #include "libknot/packet/wire.h"
 #include "libknot/packet/rrset-wire.h"
-#include "libknot/internal/macros.h"
 #include "contrib/wire.h"
 #include "contrib/wire_ctx.h"
 

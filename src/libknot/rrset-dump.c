@@ -27,12 +27,12 @@
 
 #include "dnssec/binary.h"
 #include "dnssec/keytag.h"
+#include "libknot/attribute.h"
 #include "libknot/rrset-dump.h"
 #include "libknot/codes.h"
 #include "libknot/consts.h"
 #include "libknot/descriptor.h"
 #include "libknot/errcode.h"
-#include "libknot/internal/macros.h"
 #include "contrib/base32hex.h"
 #include "contrib/base64.h"
 #include "contrib/lookup.h"

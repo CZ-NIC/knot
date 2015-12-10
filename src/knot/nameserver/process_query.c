@@ -17,8 +17,8 @@
 #include "knot/conf/conf.h"
 #include "knot/common/log.h"
 #include "libknot/libknot.h"
-#include "libknot/internal/macros.h"
 #include "libknot/yparser/yptrafo.h"
+#include "contrib/macros.h"
 #include "contrib/sockaddr.h"
 
 /*! \brief Accessor to query-specific data. */

@@ -21,7 +21,6 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-#include "libknot/internal/macros.h"
 #include "libknot/internal/namedb/namedb_lmdb.h"
 #include "libknot/errcode.h"
 

@@ -20,8 +20,8 @@
 #include "knot/zone/node.h"
 #include "libknot/dname.h"
 #include "libknot/internal/lists.h"
-#include "libknot/internal/macros.h"
 #include "libknot/descriptor.h"
+#include "contrib/macros.h"
 #include "contrib/string.h"
 
 // Addition constants used for tweaking, mostly malloc overhead

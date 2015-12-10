@@ -29,6 +29,7 @@ nobase_libcontrib_la_HEADERS =			\
 	contrib/endian.h			\
 	contrib/getline.h			\
 	contrib/lookup.h			\
+	contrib/macros.h			\
 	contrib/net.h				\
 	contrib/print.h				\
 	contrib/sockaddr.h			\
@@ -46,6 +47,7 @@ nobase_libcontrib_la_HEADERS =			\
 # dynamic: libknot headers
 libknot_ladir = $(includedir)
 nobase_libknot_la_HEADERS =			\
+	libknot/attribute.h			\
 	libknot/binary.h			\
 	libknot/codes.h				\
 	libknot/consts.h			\
@@ -85,7 +87,6 @@ libknot_internal_ladir = $(includedir)
 nobase_libknot_internal_la_HEADERS = 		\
 	libknot/internal/hhash.h		\
 	libknot/internal/lists.h		\
-	libknot/internal/macros.h		\
 	libknot/internal/mempattern.h		\
 	libknot/internal/namedb/namedb.h	\
 	libknot/internal/namedb/namedb_lmdb.h	\

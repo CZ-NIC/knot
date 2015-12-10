@@ -17,7 +17,6 @@
 #include <assert.h>
 
 #include "dnssec/nsec.h"
-#include "libknot/internal/macros.h"
 #include "knot/dnssec/nsec3-chain.h"
 #include "libknot/dname.h"
 #include "libknot/packet/wire.h"
@@ -28,6 +27,7 @@
 #include "knot/dnssec/zone-sign.h"
 #include "knot/dnssec/zone-nsec.h"
 #include "contrib/base32hex.h"
+#include "contrib/macros.h"
 #include "contrib/wire_ctx.h"
 
 /* - NSEC3 node comparison -------------------------------------------------- */

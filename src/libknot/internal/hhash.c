@@ -2,7 +2,7 @@
 #include <assert.h>
 #include <stdbool.h>
 
-#include "libknot/internal/macros.h"
+#include "contrib/macros.h"
 #include "libknot/internal/hhash.h"
 #include "libknot/internal/trie/murmurhash3.h"
 #include "libknot/errcode.h"

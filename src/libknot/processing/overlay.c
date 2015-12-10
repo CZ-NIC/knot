@@ -14,10 +14,10 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "libknot/attribute.h"
 #include "libknot/processing/overlay.h"
 #include "libknot/errcode.h"
 #include "libknot/internal/lists.h"
-#include "libknot/internal/macros.h"
 
 #define LAYERS	((list_t *)overlay->layers)
 

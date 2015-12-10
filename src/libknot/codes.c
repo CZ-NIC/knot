@@ -14,10 +14,10 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include "libknot/attribute.h"
 #include "libknot/codes.h"
 #include "libknot/consts.h"
 #include "contrib/lookup.h"
-#include "libknot/internal/macros.h"
 
 const lookup_table_t opcode_names[] = {
 	{ KNOT_OPCODE_QUERY,  "QUERY" },

@@ -27,7 +27,7 @@
 #include "libknot/packet/wire.h"
 #include "knot/zone/node.h"
 #include "libknot/internal/mempattern.h"
-#include "libknot/internal/macros.h"
+#include "contrib/macros.h"
 #include "contrib/ucw/mempool.h"
 
 /*----------------------------------------------------------------------------*/

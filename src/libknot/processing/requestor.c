@@ -16,10 +16,10 @@
 
 #include <assert.h>
 
+#include "libknot/attribute.h"
 #include "libknot/processing/requestor.h"
 #include "libknot/errcode.h"
 #include "libknot/internal/lists.h"
-#include "libknot/internal/macros.h"
 #include "contrib/net.h"
 #include "contrib/sockaddr.h"
 

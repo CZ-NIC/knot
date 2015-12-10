@@ -14,8 +14,8 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "libknot/attribute.h"
 #include "libknot/rrtype/rrsig.h"
-#include "libknot/internal/macros.h"
 #include "contrib/wire.h"
 
 _public_

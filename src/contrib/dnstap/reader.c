@@ -20,8 +20,8 @@
 #include <string.h>
 
 #include "libknot/errcode.h"
-#include "libknot/internal/macros.h"
 
+#include "contrib/macros.h"
 #include "contrib/dnstap/dnstap.h"
 #include "contrib/dnstap/reader.h"
 

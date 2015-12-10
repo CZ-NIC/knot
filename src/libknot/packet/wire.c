@@ -16,7 +16,7 @@
 
 #include <assert.h>
 
-#include "libknot/internal/macros.h"
+#include "libknot/attribute.h"
 #include "libknot/packet/wire.h"
 #include "contrib/wire.h"
 

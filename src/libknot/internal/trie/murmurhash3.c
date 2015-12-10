@@ -1,7 +1,6 @@
 /* This is MurmurHash3. The original C++ code was placed in the public domain
  * by its author, Austin Appleby. */
 
-#include "libknot/internal/macros.h"
 #include "libknot/internal/trie/murmurhash3.h"
 
 static inline uint32_t fmix(uint32_t h)

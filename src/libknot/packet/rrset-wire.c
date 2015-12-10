@@ -21,6 +21,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "libknot/attribute.h"
 #include "libknot/packet/rrset-wire.h"
 #include "libknot/consts.h"
 #include "libknot/descriptor.h"
@@ -29,7 +30,7 @@
 #include "libknot/packet/wire.h"
 #include "libknot/rrset.h"
 #include "libknot/rrtype/naptr.h"
-#include "libknot/internal/macros.h"
+#include "contrib/macros.h"
 #include "contrib/wire.h"
 #include "contrib/wire_ctx.h"
 

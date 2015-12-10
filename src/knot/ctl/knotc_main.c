@@ -26,7 +26,6 @@
 #endif
 
 #include "dnssec/crypto.h"
-#include "libknot/internal/macros.h"
 #include "libknot/libknot.h"
 #include "knot/common/log.h"
 #include "knot/ctl/estimator.h"
@@ -35,6 +34,7 @@
 #include "knot/server/tcp-handler.h"
 #include "knot/zone/zonefile.h"
 #include "knot/zone/zone-load.h"
+#include "contrib/macros.h"
 #include "contrib/net.h"
 #include "contrib/sockaddr.h"
 #include "contrib/string.h"

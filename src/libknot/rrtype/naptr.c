@@ -17,7 +17,7 @@
 #include <assert.h>
 #include <stdint.h>
 
-#include "libknot/internal/macros.h"
+#include "libknot/attribute.h"
 #include "libknot/rrtype/naptr.h"
 #include "contrib/wire_ctx.h"
 

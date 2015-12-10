@@ -16,8 +16,8 @@
 
 #include <assert.h>
 
+#include "libknot/attribute.h"
 #include "libknot/rrtype/nsec3.h"
-#include "libknot/internal/macros.h"
 #include "contrib/wire.h"
 
 _public_

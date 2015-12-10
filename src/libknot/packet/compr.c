@@ -16,10 +16,10 @@
 
 #include <assert.h>
 
+#include "libknot/attribute.h"
 #include "libknot/packet/compr.h"
 #include "libknot/errcode.h"
 #include "libknot/packet/pkt.h"
-#include "libknot/internal/macros.h"
 #include "contrib/tolower.h"
 
 /*! \brief Case insensitive label compare for compression. */

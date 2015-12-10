@@ -22,12 +22,12 @@
 #include <time.h>
 
 #include "dnssec/tsig.h"
+#include "libknot/attribute.h"
 #include "libknot/rrtype/tsig.h"
 #include "libknot/consts.h"
 #include "libknot/dname.h"
 #include "libknot/errcode.h"
 #include "libknot/rrset.h"
-#include "libknot/internal/macros.h"
 #include "contrib/wire.h"
 #include "contrib/wire_ctx.h"
 

@@ -54,6 +54,7 @@ src/contrib/lmdb/mdb.c
 src/contrib/lmdb/midl.c
 src/contrib/lmdb/midl.h
 src/contrib/lookup.h
+src/contrib/macros.h
 src/contrib/net.c
 src/contrib/net.h
 src/contrib/openbsd/strlcat.c
@@ -356,6 +357,7 @@ src/knot/zone/zonedb.c
 src/knot/zone/zonedb.h
 src/knot/zone/zonefile.c
 src/knot/zone/zonefile.h
+src/libknot/attribute.h
 src/libknot/binary.c
 src/libknot/binary.h
 src/libknot/codes.c
@@ -374,7 +376,6 @@ src/libknot/internal/hhash.c
 src/libknot/internal/hhash.h
 src/libknot/internal/lists.c
 src/libknot/internal/lists.h
-src/libknot/internal/macros.h
 src/libknot/internal/mempattern.c
 src/libknot/internal/mempattern.h
 src/libknot/internal/namedb/namedb.h
