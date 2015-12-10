@@ -312,6 +312,43 @@ int encode_time(const void *value, json_t **result)
 	return DNSSEC_EOK;
 }
 
+int decode_string(const json_t *value, void *result)
+{
+	char **str_ptr = result;
+
+	if (json_is_null(value)) {
+		*str_ptr = NULL;
+		return DNSSEC_EOK;
+	}
+
+	if (!json_is_string(value)) {
+		return DNSSEC_MALFORMED_DATA;
+	}
+
+	char *copy = strdup(json_string_value(value));
+	if (!copy) {
+		return DNSSEC_ENOMEM;
+	}
+
+	*str_ptr = copy;
+
+	return DNSSEC_EOK;
+}
+
+int encode_string(const void *value, json_t **result)
+{
+	const char *str = value;
+
+	json_t *json = str ? json_string(str) : json_null();
+	if (!json) {
+		return DNSSEC_ENOMEM;
+	}
+
+	*result = json;
+
+	return DNSSEC_EOK;
+}
+
 /*!
  * Encode object according to attributes description.
  */
