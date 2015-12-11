@@ -1,0 +1,4 @@
+$ORIGIN	.
+$TTL	1
+
+.	NS	@	; No newline

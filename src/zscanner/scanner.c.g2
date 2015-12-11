@@ -36,26 +36,12 @@
 #include "zscanner/functions.h"
 #include "libknot/descriptor.h"
 
-/*! \brief Mmap block size in bytes. This value is then adjusted to the
- *         multiple of memory pages which fit in.
- */
-#define BLOCK_SIZE		30000000
-
-/*! \brief Last artificial block which ensures final newline character. */
-#define NEWLINE_BLOCK		"\n"
-
 /*! \brief Shorthand for setting warning data. */
-#define WARN(code) { s->error_code = code; }
+#define WARN(err_code) { s->error.code = err_code; }
 /*! \brief Shorthand for setting error data. */
-#define ERR(code) { s->error_code = code; s->stop = true; }
-
-/*!
- * \brief Empty function which is called if no callback function is specified.
- */
-static inline void noop(zs_scanner_t *s)
-{
-	(void)s;
-}
+#define ERR(err_code) { WARN(err_code); s->error.fatal = true; }
+/*! \brief Shorthand for error reset. */
+#define NOERR { WARN(ZS_OK); s->error.fatal = false; }
 
 /*!
  * \brief Writes record type number to r_data.
@@ -93,85 +79,244 @@ static inline void window_add_bit(const uint16_t type, zs_scanner_t *s) {
 
 // Include scanner file (in Ragel).
 
-static const int zone_scanner_start = 1077;
-static const int zone_scanner_error = 0;
 
 
 
 
 
 __attribute__((visibility("default")))
-zs_scanner_t* zs_scanner_create(const char     *origin,
-                                const uint16_t rclass,
-                                const uint32_t ttl,
-                                void (*process_record)(zs_scanner_t *),
-                                void (*process_error)(zs_scanner_t *),
-                                void *data)
+int zs_init(
+	zs_scanner_t *s,
+	const char *origin,
+	const uint16_t rclass,
+	const uint32_t ttl)
 {
-	char settings[1024];
-
-	if (origin == NULL) {
-		return NULL;
-	}
-
-	zs_scanner_t *s = calloc(1, sizeof(zs_scanner_t));
 	if (s == NULL) {
-		return NULL;
+		return -1;
 	}
+
+	memset(s, 0, sizeof(*s));
 
 	// Nonzero initial scanner state.
-	s->cs = zone_scanner_start;
+	s->cs = 1077;
 
-	// Disable processing during parsing of settings.
-	s->process_record = &noop;
-	s->process_error = &noop;
+	// Reset the file descriptor.
+	s->file.descriptor = -1;
 
-	// Create ORIGIN directive and parse it using scanner to set up origin.
-	const char *format;
+	// Use the root zone as origin if not specified.
+	if (origin == NULL || strlen(origin) == 0) {
+		origin = ".";
+	}
 	size_t origin_len = strlen(origin);
-	if (origin_len > 0 && origin[origin_len - 1] != '.') {
+
+	// Prepare a zone settings header.
+	const char *format;
+	if (origin[origin_len - 1] != '.') {
 		format = "$ORIGIN %s.\n";
 	} else {
 		format = "$ORIGIN %s\n";
 	}
+
+	char settings[1024];
 	int ret = snprintf(settings, sizeof(settings), format, origin);
-	if (ret <= 0 || (size_t)ret >= sizeof(settings) ||
-	    zs_scanner_parse(s, settings, settings + ret, true) != 0) {
-		zs_scanner_free(s);
-		return NULL;
+	if (ret <= 0 || ret >= sizeof(settings)) {
+		ERR(ZS_ENOMEM);
+		return -1;
+	}
+
+	// Parse the settings to set up the scanner origin.
+	if (zs_set_input_string(s, settings, ret) != 0 ||
+	    zs_parse_all(s) != 0) {
+		return -1;
 	}
 
 	// Set scanner defaults.
+	s->path = strdup(".");
+	if (s->path == NULL) {
+		ERR(ZS_ENOMEM);
+		return -1;
+	}
 	s->default_class = rclass;
 	s->default_ttl = ttl;
-	s->process_record = process_record ? process_record : &noop;
-	s->process_error = process_error ? process_error : &noop;
-	s->data = data;
-	s->path = strdup(".");
 	s->line_counter = 1;
 
-	return s;
+	s->state = ZS_STATE_EOF;
+	s->process.automatic = false;
+
+	return 0;
+}
+
+static void file_deinit(
+	zs_scanner_t *s)
+{
+	if (s->file.descriptor == -1) {
+		return;
+	}
+
+	// Clean-up the opened file.
+	munmap((void *)s->input.start, s->input.end - s->input.start);
+	close(s->file.descriptor);
+	free(s->file.name);
+	s->file.descriptor = -1;
 }
 
 __attribute__((visibility("default")))
-void zs_scanner_free(zs_scanner_t *s)
+void zs_deinit(
+	zs_scanner_t *s)
 {
-	if (s != NULL) {
-		free(s->path);
-		free(s);
+	if (s == NULL) {
+		return;
 	}
+
+	file_deinit(s);
+	free(s->path);
 }
 
-static void parse_block(zs_scanner_t *s,
-                        const char   *start,
-                        const char   *end,
-                        const bool   is_eof)
+__attribute__((visibility("default")))
+int zs_set_input_string(
+	zs_scanner_t *s,
+	const char *input,
+	size_t size)
 {
-	// Necessary scanner variables.
-	const char *p = start;
-	const char *pe = end;
-	char       *eof = NULL;
-	int        stack[RAGEL_STACK_SIZE];
+	if (s == NULL) {
+		return -1;
+	}
+
+	if (input == NULL) {
+		ERR(ZS_EINVAL);
+		return -1;
+	}
+
+	// Deinit possibly opened file.
+	file_deinit(s);
+
+	// Set the scanner input limits.
+	s->input.start   = input;
+	s->input.current = input;
+	s->input.end     = input + size;
+	s->input.eof     = false;
+
+	return 0;
+}
+
+__attribute__((visibility("default")))
+int zs_set_input_file(
+	zs_scanner_t *s,
+	const char *file_name)
+{
+	if (s == NULL) {
+		return -1;
+	}
+
+	if (file_name == NULL) {
+		ERR(ZS_EINVAL);
+		return -1;
+	}
+
+	// Deinit possibly opened file.
+	file_deinit(s);
+
+	// Try to open the file.
+	s->file.descriptor = open(file_name, O_RDONLY);
+	if (s->file.descriptor == -1) {
+		ERR(ZS_FILE_OPEN);
+		return -1;
+	}
+
+	// Check for regular file input.
+	struct stat file_stat;
+	if (fstat(s->file.descriptor, &file_stat) == -1 ||
+	    !S_ISREG(file_stat.st_mode)) {
+		ERR(ZS_FILE_INVALID);
+		goto file_error;
+	}
+
+	char *start = NULL;
+
+	// Check for empty file (cannot mmap).
+	if (file_stat.st_size > 0) {
+		// Map the file to the memory.
+		start = mmap(0, file_stat.st_size, PROT_READ, MAP_SHARED,
+		             s->file.descriptor, 0);
+		if (start == MAP_FAILED) {
+			ERR(ZS_FILE_MMAP);
+			goto file_error;
+		}
+
+		// Try to set the mapped memory advise to sequential.
+		(void)madvise(start, file_stat.st_size, MADV_SEQUENTIAL);
+
+		s->input.eof = false;
+	} else {
+		s->input.eof = true;
+	}
+
+	// Get absolute path of the zone file.
+	char *full_name = realpath(file_name, NULL);
+	if (full_name != NULL) {
+		free(s->path);
+		s->path = strdup(dirname(full_name));
+		free(full_name);
+		if (s->path == NULL) {
+			ERR(ZS_ENOMEM);
+			goto file_error;
+		}
+	} else {
+		ERR(ZS_FILE_PATH);
+		goto file_error;
+	}
+
+	s->file.name = strdup(file_name);
+	if (s->file.name == NULL) {
+		ERR(ZS_ENOMEM);
+		goto file_error;
+	}
+
+	// Set the scanner input limits.
+	s->input.start   = start;
+	s->input.current = start;
+	s->input.end     = start + file_stat.st_size;
+
+	return 0;
+file_error:
+	close(s->file.descriptor);
+	s->file.descriptor = -1;
+	free(s->file.name);
+
+	return -1;
+}
+
+__attribute__((visibility("default")))
+int zs_set_processing(
+	zs_scanner_t *s,
+	void (*process_record)(zs_scanner_t *),
+	void (*process_error)(zs_scanner_t *),
+	void *data)
+{
+	if (s == NULL) {
+		return -1;
+	}
+
+	s->process.record = process_record;
+	s->process.error = process_error;
+	s->process.data = data;
+
+	return 0;
+}
+
+static void parse(
+	zs_scanner_t *s)
+{
+	// Restore scanner input limits (Ragel internals).
+	const char *p = s->input.current;
+	const char *pe = s->input.end;
+	const char *eof = s->input.eof ? pe : NULL;
+
+	// Restore state variables (Ragel internals).
+	int cs  = s->cs;
+	int top = s->top;
+	int stack[RAGEL_STACK_SIZE];
+	memcpy(stack, s->stack, sizeof(stack));
 
 	// Auxiliary variables which are used in scanner body.
 	struct in_addr  addr4;
@@ -186,17 +331,10 @@ static void parse_block(zs_scanner_t *s,
 	// Initialization of the last r_data byte.
 	uint8_t *rdata_stop = s->r_data + MAX_RDATA_LENGTH - 1;
 
-	// Restoring scanner states.
-	int cs  = s->cs;
-	int top = s->top;
-	memcpy(stack, s->stack, sizeof(stack));
+	// External processing interrupt indicator.
+	bool escape = false;
 
-	// End of file check.
-	if (is_eof) {
-		eof = (char *)pe;
-	}
-
-	// Writing scanner body (in C).
+	// Write scanner body (in C).
 
 	{
 	short _widec;
@@ -1389,11 +1527,21 @@ tr81:
 		}
 		s->r_data_length = rdata_tail - s->r_data;
 
-		s->process_record(s);
+		s->state = ZS_STATE_DATA;
 
-		// Stop scanner if required.
-		if (s->stop == true) {
-			return;
+		// Execute the record callback.
+		if (s->process.automatic) {
+			if (s->process.record != NULL) {
+				s->process.record(s);
+
+				// Stop the scanner if required.
+				if (s->state == ZS_STATE_STOP) {
+					{p++; cs = 1077; goto _out;}
+				}
+			}
+		} else {
+			// Return if external processing.
+			p--; {p++; cs = 1077; goto _out;}
 		}
 	}
 	{
@@ -1401,13 +1549,18 @@ tr81:
 	}
 	goto st1077;
 tr3259:
+	cs = 1077;
 	{
-		s->stop = false;
+		NOERR;
+		if (escape) {
+			escape = false;
+			cs = 1077; {p++; goto _out;}
+		}
 	}
 	{
 		s->line_counter++;
 	}
-	goto st1077;
+	goto _again;
 st1077:
 	if ( ++p == pe )
 		goto _test_eof1077;
@@ -2397,8 +2550,13 @@ tr3264:
 	}
 	goto st1;
 tr3254:
+	cs = 1;
 	{
-		s->stop = false;
+		NOERR;
+		if (escape) {
+			escape = false;
+			cs = 1077; {p++; goto _out;}
+		}
 	}
 	{
 		if (s->r_owner_length == 0) {
@@ -2406,10 +2564,15 @@ tr3254:
 			p--; {goto st253;}
 		}
 	}
-	goto st1;
+	goto _again;
 tr3256:
+	cs = 1;
 	{
-		s->stop = false;
+		NOERR;
+		if (escape) {
+			escape = false;
+			cs = 1077; {p++; goto _out;}
+		}
 	}
 	{
 		if (s->r_owner_length == 0) {
@@ -2424,10 +2587,15 @@ tr3256:
 		}
 		s->multiline = true;
 	}
-	goto st1;
+	goto _again;
 tr3257:
+	cs = 1;
 	{
-		s->stop = false;
+		NOERR;
+		if (escape) {
+			escape = false;
+			cs = 1077; {p++; goto _out;}
+		}
 	}
 	{
 		if (s->r_owner_length == 0) {
@@ -2442,7 +2610,7 @@ tr3257:
 		}
 		s->multiline = false;
 	}
-	goto st1;
+	goto _again;
 st1:
 	if ( ++p == pe )
 		goto _test_eof1;
@@ -12167,11 +12335,21 @@ tr93:
 		}
 		s->r_data_length = rdata_tail - s->r_data;
 
-		s->process_record(s);
+		s->state = ZS_STATE_DATA;
 
-		// Stop scanner if required.
-		if (s->stop == true) {
-			return;
+		// Execute the record callback.
+		if (s->process.automatic) {
+			if (s->process.record != NULL) {
+				s->process.record(s);
+
+				// Stop the scanner if required.
+				if (s->state == ZS_STATE_STOP) {
+					{p++; cs = 1078; goto _out;}
+				}
+			}
+		} else {
+			// Return if external processing.
+			p--; {p++; cs = 1078; goto _out;}
 		}
 	}
 	goto st1078;
@@ -12190,11 +12368,21 @@ tr680:
 		}
 		s->r_data_length = rdata_tail - s->r_data;
 
-		s->process_record(s);
+		s->state = ZS_STATE_DATA;
 
-		// Stop scanner if required.
-		if (s->stop == true) {
-			return;
+		// Execute the record callback.
+		if (s->process.automatic) {
+			if (s->process.record != NULL) {
+				s->process.record(s);
+
+				// Stop the scanner if required.
+				if (s->state == ZS_STATE_STOP) {
+					{p++; cs = 1078; goto _out;}
+				}
+			}
+		} else {
+			// Return if external processing.
+			p--; {p++; cs = 1078; goto _out;}
 		}
 	}
 	goto st1078;
@@ -18693,11 +18881,21 @@ tr129:
 		}
 		s->r_data_length = rdata_tail - s->r_data;
 
-		s->process_record(s);
+		s->state = ZS_STATE_DATA;
 
-		// Stop scanner if required.
-		if (s->stop == true) {
-			return;
+		// Execute the record callback.
+		if (s->process.automatic) {
+			if (s->process.record != NULL) {
+				s->process.record(s);
+
+				// Stop the scanner if required.
+				if (s->state == ZS_STATE_STOP) {
+					{p++; cs = 1079; goto _out;}
+				}
+			}
+		} else {
+			// Return if external processing.
+			p--; {p++; cs = 1079; goto _out;}
 		}
 	}
 	goto st1079;
@@ -18720,11 +18918,21 @@ tr123:
 		}
 		s->r_data_length = rdata_tail - s->r_data;
 
-		s->process_record(s);
+		s->state = ZS_STATE_DATA;
 
-		// Stop scanner if required.
-		if (s->stop == true) {
-			return;
+		// Execute the record callback.
+		if (s->process.automatic) {
+			if (s->process.record != NULL) {
+				s->process.record(s);
+
+				// Stop the scanner if required.
+				if (s->state == ZS_STATE_STOP) {
+					{p++; cs = 1079; goto _out;}
+				}
+			}
+		} else {
+			// Return if external processing.
+			p--; {p++; cs = 1079; goto _out;}
 		}
 	}
 	goto st1079;
@@ -19385,10 +19593,15 @@ case 143:
 		goto st143;
 	goto tr35;
 tr3260:
+	cs = 144;
 	{
-		s->stop = false;
+		NOERR;
+		if (escape) {
+			escape = false;
+			cs = 1077; {p++; goto _out;}
+		}
 	}
-	goto st144;
+	goto _again;
 st144:
 	if ( ++p == pe )
 		goto _test_eof144;
@@ -19412,11 +19625,21 @@ tr729:
 		}
 		s->r_data_length = rdata_tail - s->r_data;
 
-		s->process_record(s);
+		s->state = ZS_STATE_DATA;
 
-		// Stop scanner if required.
-		if (s->stop == true) {
-			return;
+		// Execute the record callback.
+		if (s->process.automatic) {
+			if (s->process.record != NULL) {
+				s->process.record(s);
+
+				// Stop the scanner if required.
+				if (s->state == ZS_STATE_STOP) {
+					{p++; cs = 1080; goto _out;}
+				}
+			}
+		} else {
+			// Return if external processing.
+			p--; {p++; cs = 1080; goto _out;}
 		}
 	}
 	goto st1080;
@@ -19442,11 +19665,21 @@ tr724:
 		}
 		s->r_data_length = rdata_tail - s->r_data;
 
-		s->process_record(s);
+		s->state = ZS_STATE_DATA;
 
-		// Stop scanner if required.
-		if (s->stop == true) {
-			return;
+		// Execute the record callback.
+		if (s->process.automatic) {
+			if (s->process.record != NULL) {
+				s->process.record(s);
+
+				// Stop the scanner if required.
+				if (s->state == ZS_STATE_STOP) {
+					{p++; cs = 1080; goto _out;}
+				}
+			}
+		} else {
+			// Return if external processing.
+			p--; {p++; cs = 1080; goto _out;}
 		}
 	}
 	goto st1080;
@@ -19532,10 +19765,15 @@ case 1080:
 		goto tr3238;
 	goto tr3237;
 tr3255:
+	cs = 145;
 	{
-		s->stop = false;
+		NOERR;
+		if (escape) {
+			escape = false;
+			cs = 1077; {p++; goto _out;}
+		}
 	}
-	goto st145;
+	goto _again;
 st145:
 	if ( ++p == pe )
 		goto _test_eof145;
@@ -19551,7 +19789,7 @@ case 145:
 	goto tr614;
 tr615:
 	{
-		s->stop = true;
+		ERR(ZS_OK);
 	}
 	goto st146;
 st146:
@@ -19678,15 +19916,20 @@ tr3204:
 	{ p--; {stack[top++] = 153; goto st255;} }
 	goto st153;
 tr3258:
+	cs = 153;
 	{
-		s->stop = false;
+		NOERR;
+		if (escape) {
+			escape = false;
+			cs = 1077; {p++; goto _out;}
+		}
 	}
 	{
 		s->dname = s->r_owner;
 		s->r_owner_length = 0;
 	}
 	{ p--; {stack[top++] = 153; goto st255;} }
-	goto st153;
+	goto _again;
 st153:
 	if ( ++p == pe )
 		goto _test_eof153;
@@ -19875,11 +20118,21 @@ tr693:
 		}
 		s->r_data_length = rdata_tail - s->r_data;
 
-		s->process_record(s);
+		s->state = ZS_STATE_DATA;
 
-		// Stop scanner if required.
-		if (s->stop == true) {
-			return;
+		// Execute the record callback.
+		if (s->process.automatic) {
+			if (s->process.record != NULL) {
+				s->process.record(s);
+
+				// Stop the scanner if required.
+				if (s->state == ZS_STATE_STOP) {
+					{p++; cs = 1082; goto _out;}
+				}
+			}
+		} else {
+			// Return if external processing.
+			p--; {p++; cs = 1082; goto _out;}
 		}
 	}
 	goto st1082;
@@ -19897,11 +20150,21 @@ tr718:
 		}
 		s->r_data_length = rdata_tail - s->r_data;
 
-		s->process_record(s);
+		s->state = ZS_STATE_DATA;
 
-		// Stop scanner if required.
-		if (s->stop == true) {
-			return;
+		// Execute the record callback.
+		if (s->process.automatic) {
+			if (s->process.record != NULL) {
+				s->process.record(s);
+
+				// Stop the scanner if required.
+				if (s->state == ZS_STATE_STOP) {
+					{p++; cs = 1082; goto _out;}
+				}
+			}
+		} else {
+			// Return if external processing.
+			p--; {p++; cs = 1082; goto _out;}
 		}
 	}
 	goto st1082;
@@ -19928,8 +20191,13 @@ tr3265:
 	}
 	goto st1082;
 tr3261:
+	cs = 1082;
 	{
-		s->stop = false;
+		NOERR;
+		if (escape) {
+			escape = false;
+			cs = 1077; {p++; goto _out;}
+		}
 	}
 	{
 		if (s->r_owner_length == 0) {
@@ -19940,7 +20208,7 @@ tr3261:
 	{
 		s->line_counter++;
 	}
-	goto st1082;
+	goto _again;
 tr3269:
 	{
 		if (rdata_tail - s->r_data > UINT16_MAX) {
@@ -19949,11 +20217,21 @@ tr3269:
 		}
 		s->r_data_length = rdata_tail - s->r_data;
 
-		s->process_record(s);
+		s->state = ZS_STATE_DATA;
 
-		// Stop scanner if required.
-		if (s->stop == true) {
-			return;
+		// Execute the record callback.
+		if (s->process.automatic) {
+			if (s->process.record != NULL) {
+				s->process.record(s);
+
+				// Stop the scanner if required.
+				if (s->state == ZS_STATE_STOP) {
+					{p++; cs = 1082; goto _out;}
+				}
+			}
+		} else {
+			// Return if external processing.
+			p--; {p++; cs = 1082; goto _out;}
 		}
 	}
 	{
@@ -19977,11 +20255,21 @@ tr3292:
 		}
 		s->r_data_length = rdata_tail - s->r_data;
 
-		s->process_record(s);
+		s->state = ZS_STATE_DATA;
 
-		// Stop scanner if required.
-		if (s->stop == true) {
-			return;
+		// Execute the record callback.
+		if (s->process.automatic) {
+			if (s->process.record != NULL) {
+				s->process.record(s);
+
+				// Stop the scanner if required.
+				if (s->state == ZS_STATE_STOP) {
+					{p++; cs = 1082; goto _out;}
+				}
+			}
+		} else {
+			// Return if external processing.
+			p--; {p++; cs = 1082; goto _out;}
 		}
 	}
 	{
@@ -21090,11 +21378,21 @@ tr90:
 		}
 		s->r_data_length = rdata_tail - s->r_data;
 
-		s->process_record(s);
+		s->state = ZS_STATE_DATA;
 
-		// Stop scanner if required.
-		if (s->stop == true) {
-			return;
+		// Execute the record callback.
+		if (s->process.automatic) {
+			if (s->process.record != NULL) {
+				s->process.record(s);
+
+				// Stop the scanner if required.
+				if (s->state == ZS_STATE_STOP) {
+					{p++; cs = 1083; goto _out;}
+				}
+			}
+		} else {
+			// Return if external processing.
+			p--; {p++; cs = 1083; goto _out;}
 		}
 	}
 	{
@@ -21268,11 +21566,21 @@ tr682:
 		}
 		s->r_data_length = rdata_tail - s->r_data;
 
-		s->process_record(s);
+		s->state = ZS_STATE_DATA;
 
-		// Stop scanner if required.
-		if (s->stop == true) {
-			return;
+		// Execute the record callback.
+		if (s->process.automatic) {
+			if (s->process.record != NULL) {
+				s->process.record(s);
+
+				// Stop the scanner if required.
+				if (s->state == ZS_STATE_STOP) {
+					{p++; cs = 1083; goto _out;}
+				}
+			}
+		} else {
+			// Return if external processing.
+			p--; {p++; cs = 1083; goto _out;}
 		}
 	}
 	{
@@ -21841,11 +22149,21 @@ tr684:
 		}
 		s->r_data_length = rdata_tail - s->r_data;
 
-		s->process_record(s);
+		s->state = ZS_STATE_DATA;
 
-		// Stop scanner if required.
-		if (s->stop == true) {
-			return;
+		// Execute the record callback.
+		if (s->process.automatic) {
+			if (s->process.record != NULL) {
+				s->process.record(s);
+
+				// Stop the scanner if required.
+				if (s->state == ZS_STATE_STOP) {
+					{p++; cs = 1084; goto _out;}
+				}
+			}
+		} else {
+			// Return if external processing.
+			p--; {p++; cs = 1084; goto _out;}
 		}
 	}
 	goto st1084;
@@ -21935,11 +22253,21 @@ tr689:
 		}
 		s->r_data_length = rdata_tail - s->r_data;
 
-		s->process_record(s);
+		s->state = ZS_STATE_DATA;
 
-		// Stop scanner if required.
-		if (s->stop == true) {
-			return;
+		// Execute the record callback.
+		if (s->process.automatic) {
+			if (s->process.record != NULL) {
+				s->process.record(s);
+
+				// Stop the scanner if required.
+				if (s->state == ZS_STATE_STOP) {
+					{p++; cs = 1084; goto _out;}
+				}
+			}
+		} else {
+			// Return if external processing.
+			p--; {p++; cs = 1084; goto _out;}
 		}
 	}
 	goto st1084;
@@ -23862,11 +24190,21 @@ tr703:
 		}
 		s->r_data_length = rdata_tail - s->r_data;
 
-		s->process_record(s);
+		s->state = ZS_STATE_DATA;
 
-		// Stop scanner if required.
-		if (s->stop == true) {
-			return;
+		// Execute the record callback.
+		if (s->process.automatic) {
+			if (s->process.record != NULL) {
+				s->process.record(s);
+
+				// Stop the scanner if required.
+				if (s->state == ZS_STATE_STOP) {
+					{p++; cs = 1085; goto _out;}
+				}
+			}
+		} else {
+			// Return if external processing.
+			p--; {p++; cs = 1085; goto _out;}
 		}
 	}
 	goto st1085;
@@ -23888,11 +24226,21 @@ tr735:
 		}
 		s->r_data_length = rdata_tail - s->r_data;
 
-		s->process_record(s);
+		s->state = ZS_STATE_DATA;
 
-		// Stop scanner if required.
-		if (s->stop == true) {
-			return;
+		// Execute the record callback.
+		if (s->process.automatic) {
+			if (s->process.record != NULL) {
+				s->process.record(s);
+
+				// Stop the scanner if required.
+				if (s->state == ZS_STATE_STOP) {
+					{p++; cs = 1085; goto _out;}
+				}
+			}
+		} else {
+			// Return if external processing.
+			p--; {p++; cs = 1085; goto _out;}
 		}
 	}
 	goto st1085;
@@ -24113,7 +24461,7 @@ case 186:
 	goto tr704;
 tr616:
 	{
-		s->stop = true;
+		ERR(ZS_OK);
 	}
 	goto st187;
 st187:
@@ -24177,7 +24525,7 @@ case 192:
 	goto tr614;
 tr617:
 	{
-		s->stop = true;
+		ERR(ZS_OK);
 	}
 	goto st193;
 st193:
@@ -25062,11 +25410,21 @@ tr742:
 		}
 		s->r_data_length = rdata_tail - s->r_data;
 
-		s->process_record(s);
+		s->state = ZS_STATE_DATA;
 
-		// Stop scanner if required.
-		if (s->stop == true) {
-			return;
+		// Execute the record callback.
+		if (s->process.automatic) {
+			if (s->process.record != NULL) {
+				s->process.record(s);
+
+				// Stop the scanner if required.
+				if (s->state == ZS_STATE_STOP) {
+					{p++; cs = 1086; goto _out;}
+				}
+			}
+		} else {
+			// Return if external processing.
+			p--; {p++; cs = 1086; goto _out;}
 		}
 	}
 	goto st1086;
@@ -25163,11 +25521,21 @@ tr737:
 		}
 		s->r_data_length = rdata_tail - s->r_data;
 
-		s->process_record(s);
+		s->state = ZS_STATE_DATA;
 
-		// Stop scanner if required.
-		if (s->stop == true) {
-			return;
+		// Execute the record callback.
+		if (s->process.automatic) {
+			if (s->process.record != NULL) {
+				s->process.record(s);
+
+				// Stop the scanner if required.
+				if (s->state == ZS_STATE_STOP) {
+					{p++; cs = 1086; goto _out;}
+				}
+			}
+		} else {
+			// Return if external processing.
+			p--; {p++; cs = 1086; goto _out;}
 		}
 	}
 	goto st1086;
@@ -29633,8 +30001,13 @@ tr3206:
 	}
 	goto st249;
 tr3262:
+	cs = 249;
 	{
-		s->stop = false;
+		NOERR;
+		if (escape) {
+			escape = false;
+			cs = 1077; {p++; goto _out;}
+		}
 	}
 	{
 		if (s->r_owner_length == 0) {
@@ -29642,7 +30015,7 @@ tr3262:
 			p--; {goto st253;}
 		}
 	}
-	goto st249;
+	goto _again;
 st249:
 	if ( ++p == pe )
 		goto _test_eof249;
@@ -29836,64 +30209,108 @@ case 254:
 		goto tr801;
 	goto tr800;
 tr799:
+	cs = 1087;
 	{
 		s->buffer_length = 0;
 	}
 	{
-		// Ending string in buffer.
+		// Terminate the error context string.
 		s->buffer[s->buffer_length++] = 0;
 
 		// Error counter incrementation.
-		s->error_counter++;
+		s->error.counter++;
 
-		// Initialization of fcall stack.
+		// Initialize the fcall stack.
 		top = 0;
 
-		// Process error message.
-		s->process_error(s);
-
-		// Reset.
-		s->error_code = ZS_OK;
+		// Reset the multiline context.
 		s->multiline = false;
 
-		// In case of serious error, stop scanner.
-		if (s->stop == true) {
-			return;
+		s->state = ZS_STATE_ERROR;
+
+		// Execute the error callback.
+		if (s->process.automatic) {
+			if (s->process.error != NULL) {
+				s->process.error(s);
+
+				// Stop the scanner if required.
+				if (s->state == ZS_STATE_STOP) {
+					{p++; goto _out;}
+				}
+			}
+
+			// Stop the scanner if fatal.
+			if (s->error.fatal) {
+				s->state = ZS_STATE_STOP;
+				{p++; goto _out;}
+			}
+		} else {
+			// Return if external processing.
+			escape = true;
 		}
 	}
 	{
 		s->line_counter++;
 	}
-	{ {goto st1077;} }
-	goto st1087;
+	{
+		if (escape) {
+			escape = false;
+			cs = 1077; {p++; goto _out;}
+		} else {
+			{goto st1077;}
+		}
+	}
+	goto _again;
 tr801:
+	cs = 1087;
 	{
-		// Ending string in buffer.
+		// Terminate the error context string.
 		s->buffer[s->buffer_length++] = 0;
 
 		// Error counter incrementation.
-		s->error_counter++;
+		s->error.counter++;
 
-		// Initialization of fcall stack.
+		// Initialize the fcall stack.
 		top = 0;
 
-		// Process error message.
-		s->process_error(s);
-
-		// Reset.
-		s->error_code = ZS_OK;
+		// Reset the multiline context.
 		s->multiline = false;
 
-		// In case of serious error, stop scanner.
-		if (s->stop == true) {
-			return;
+		s->state = ZS_STATE_ERROR;
+
+		// Execute the error callback.
+		if (s->process.automatic) {
+			if (s->process.error != NULL) {
+				s->process.error(s);
+
+				// Stop the scanner if required.
+				if (s->state == ZS_STATE_STOP) {
+					{p++; goto _out;}
+				}
+			}
+
+			// Stop the scanner if fatal.
+			if (s->error.fatal) {
+				s->state = ZS_STATE_STOP;
+				{p++; goto _out;}
+			}
+		} else {
+			// Return if external processing.
+			escape = true;
 		}
 	}
 	{
 		s->line_counter++;
 	}
-	{ {goto st1077;} }
-	goto st1087;
+	{
+		if (escape) {
+			escape = false;
+			cs = 1077; {p++; goto _out;}
+		} else {
+			{goto st1077;}
+		}
+	}
+	goto _again;
 st1087:
 	if ( ++p == pe )
 		goto _test_eof1087;
@@ -31976,16 +32393,15 @@ tr931:
 	goto st300;
 tr922:
 	{
-		*rdata_tail = 0; // Ending filename string.
-		strncpy((char*)(s->include_filename), (char*)(s->r_data),
-		        sizeof(s->include_filename));
-
-		// Check for correct string copy.
-		if (strlen(s->include_filename) !=
-		    (size_t)(rdata_tail - s->r_data)) {
+		size_t len = rdata_tail - s->r_data;
+		if (len >= sizeof(s->include_filename)) {
 			ERR(ZS_BAD_INCLUDE_FILENAME);
 			p--; {goto st253;}
 		}
+
+		// Store zero terminated include filename.
+		memcpy(s->include_filename, s->r_data, len);
+		s->include_filename[len] = '\0';
 
 		// For detection whether origin is not present.
 		s->dname = NULL;
@@ -31993,16 +32409,15 @@ tr922:
 	goto st300;
 tr923:
 	{
-		*rdata_tail = 0; // Ending filename string.
-		strncpy((char*)(s->include_filename), (char*)(s->r_data),
-		        sizeof(s->include_filename));
-
-		// Check for correct string copy.
-		if (strlen(s->include_filename) !=
-		    (size_t)(rdata_tail - s->r_data)) {
+		size_t len = rdata_tail - s->r_data;
+		if (len >= sizeof(s->include_filename)) {
 			ERR(ZS_BAD_INCLUDE_FILENAME);
 			p--; {goto st253;}
 		}
+
+		// Store zero terminated include filename.
+		memcpy(s->include_filename, s->r_data, len);
+		s->include_filename[len] = '\0';
 
 		// For detection whether origin is not present.
 		s->dname = NULL;
@@ -32017,16 +32432,15 @@ tr923:
 	goto st300;
 tr924:
 	{
-		*rdata_tail = 0; // Ending filename string.
-		strncpy((char*)(s->include_filename), (char*)(s->r_data),
-		        sizeof(s->include_filename));
-
-		// Check for correct string copy.
-		if (strlen(s->include_filename) !=
-		    (size_t)(rdata_tail - s->r_data)) {
+		size_t len = rdata_tail - s->r_data;
+		if (len >= sizeof(s->include_filename)) {
 			ERR(ZS_BAD_INCLUDE_FILENAME);
 			p--; {goto st253;}
 		}
+
+		// Store zero terminated include filename.
+		memcpy(s->include_filename, s->r_data, len);
+		s->include_filename[len] = '\0';
 
 		// For detection whether origin is not present.
 		s->dname = NULL;
@@ -32319,68 +32733,73 @@ case 303:
 	goto tr83;
 tr925:
 	{
-		*rdata_tail = 0; // Ending filename string.
-		strncpy((char*)(s->include_filename), (char*)(s->r_data),
-		        sizeof(s->include_filename));
-
-		// Check for correct string copy.
-		if (strlen(s->include_filename) !=
-		    (size_t)(rdata_tail - s->r_data)) {
+		size_t len = rdata_tail - s->r_data;
+		if (len >= sizeof(s->include_filename)) {
 			ERR(ZS_BAD_INCLUDE_FILENAME);
 			p--; {goto st253;}
 		}
+
+		// Store zero terminated include filename.
+		memcpy(s->include_filename, s->r_data, len);
+		s->include_filename[len] = '\0';
 
 		// For detection whether origin is not present.
 		s->dname = NULL;
 	}
 	{
-		char text_origin[4 * MAX_DNAME_LENGTH]; // Each char as \DDD.
+		// Extend relative file path.
+		if (s->include_filename[0] != '/') {
+			ret = snprintf((char *)(s->buffer), sizeof(s->buffer),
+			               "%s/%s", s->path, s->include_filename);
+			if (ret <= 0 || ret > sizeof(s->buffer)) {
+				ERR(ZS_BAD_INCLUDE_FILENAME);
+				p--; {goto st253;}
+			}
+			memcpy(s->include_filename, s->buffer, ret);
+		}
 
-		// Origin conversion from wire to text form.
+		// Origin conversion from wire to text form in \DDD notation.
 		if (s->dname == NULL) { // Use current origin.
 			wire_dname_to_str(s->zone_origin,
 			                  s->zone_origin_length,
-			                  text_origin);
+			                  (char *)s->buffer);
 		} else { // Use specified origin.
 			wire_dname_to_str(s->r_data,
 			                  s->r_data_length,
-			                  text_origin);
+			                  (char *)s->buffer);
 		}
 
-		// Relative file path.
-		if (s->include_filename[0] != '/') {
-			snprintf((char*)(s->buffer), sizeof(s->buffer),
-			         "%s/%s", s->path, s->include_filename);
+		// Let the caller to solve the include.
+		if (!s->process.automatic) {
+			s->state = ZS_STATE_INCLUDE;
+			escape = true;
 		} else {
-			strncpy((char*)(s->buffer), (char*)(s->include_filename),
-			        sizeof(s->buffer));
-		}
 
 		// Create new scanner for included zone file.
-		zs_scanner_t *ss = zs_scanner_create(text_origin,
-		                                     s->default_class,
-		                                     s->default_ttl,
-		                                     s->process_record,
-		                                     s->process_error,
-		                                     s->data);
-		if (ss != NULL) {
-			// Parse included zone file.
-			ret = zs_scanner_parse_file(ss, (char*)(s->buffer));
-			if (ret != 0) {
-				// File internal errors are handled by error callback.
-				if (ss->error_counter > 0) {
-					ERR(ZS_UNPROCESSED_INCLUDE);
-				// General include file error.
-				} else {
-					ERR(ss->error_code);
-				}
-				zs_scanner_free(ss);
-				p--; {goto st253;}
-			}
-			zs_scanner_free(ss);
-		} else {
+		zs_scanner_t *ss = malloc(sizeof(zs_scanner_t));
+		if (ss == NULL) {
 			ERR(ZS_UNPROCESSED_INCLUDE);
 			p--; {goto st253;}
+		}
+
+		// Parse included zone file.
+		if (zs_init(ss, (char *)s->buffer, s->default_class, s->default_ttl) != 0 ||
+		    zs_set_input_file(ss, (char *)(s->include_filename)) != 0 ||
+		    zs_set_processing(ss, s->process.record, s->process.error, s->process.data) != 0 ||
+		    zs_parse_all(ss) != 0) {
+			// File internal errors are handled by error callback.
+			if (ss->error.counter > 0) {
+				ERR(ZS_UNPROCESSED_INCLUDE);
+			// General include file error.
+			} else {
+				ERR(ss->error.code);
+			}
+			zs_deinit(ss);
+			free(ss);
+			p--; {goto st253;}
+		}
+		zs_deinit(ss);
+		free(ss);
 		}
 	}
 	{
@@ -32392,53 +32811,59 @@ tr925:
 	goto st1093;
 tr935:
 	{
-		char text_origin[4 * MAX_DNAME_LENGTH]; // Each char as \DDD.
+		// Extend relative file path.
+		if (s->include_filename[0] != '/') {
+			ret = snprintf((char *)(s->buffer), sizeof(s->buffer),
+			               "%s/%s", s->path, s->include_filename);
+			if (ret <= 0 || ret > sizeof(s->buffer)) {
+				ERR(ZS_BAD_INCLUDE_FILENAME);
+				p--; {goto st253;}
+			}
+			memcpy(s->include_filename, s->buffer, ret);
+		}
 
-		// Origin conversion from wire to text form.
+		// Origin conversion from wire to text form in \DDD notation.
 		if (s->dname == NULL) { // Use current origin.
 			wire_dname_to_str(s->zone_origin,
 			                  s->zone_origin_length,
-			                  text_origin);
+			                  (char *)s->buffer);
 		} else { // Use specified origin.
 			wire_dname_to_str(s->r_data,
 			                  s->r_data_length,
-			                  text_origin);
+			                  (char *)s->buffer);
 		}
 
-		// Relative file path.
-		if (s->include_filename[0] != '/') {
-			snprintf((char*)(s->buffer), sizeof(s->buffer),
-			         "%s/%s", s->path, s->include_filename);
+		// Let the caller to solve the include.
+		if (!s->process.automatic) {
+			s->state = ZS_STATE_INCLUDE;
+			escape = true;
 		} else {
-			strncpy((char*)(s->buffer), (char*)(s->include_filename),
-			        sizeof(s->buffer));
-		}
 
 		// Create new scanner for included zone file.
-		zs_scanner_t *ss = zs_scanner_create(text_origin,
-		                                     s->default_class,
-		                                     s->default_ttl,
-		                                     s->process_record,
-		                                     s->process_error,
-		                                     s->data);
-		if (ss != NULL) {
-			// Parse included zone file.
-			ret = zs_scanner_parse_file(ss, (char*)(s->buffer));
-			if (ret != 0) {
-				// File internal errors are handled by error callback.
-				if (ss->error_counter > 0) {
-					ERR(ZS_UNPROCESSED_INCLUDE);
-				// General include file error.
-				} else {
-					ERR(ss->error_code);
-				}
-				zs_scanner_free(ss);
-				p--; {goto st253;}
-			}
-			zs_scanner_free(ss);
-		} else {
+		zs_scanner_t *ss = malloc(sizeof(zs_scanner_t));
+		if (ss == NULL) {
 			ERR(ZS_UNPROCESSED_INCLUDE);
 			p--; {goto st253;}
+		}
+
+		// Parse included zone file.
+		if (zs_init(ss, (char *)s->buffer, s->default_class, s->default_ttl) != 0 ||
+		    zs_set_input_file(ss, (char *)(s->include_filename)) != 0 ||
+		    zs_set_processing(ss, s->process.record, s->process.error, s->process.data) != 0 ||
+		    zs_parse_all(ss) != 0) {
+			// File internal errors are handled by error callback.
+			if (ss->error.counter > 0) {
+				ERR(ZS_UNPROCESSED_INCLUDE);
+			// General include file error.
+			} else {
+				ERR(ss->error.code);
+			}
+			zs_deinit(ss);
+			free(ss);
+			p--; {goto st253;}
+		}
+		zs_deinit(ss);
+		free(ss);
 		}
 	}
 	{
@@ -32457,53 +32882,59 @@ tr947:
 		s->r_data_length = s->dname_tmp_length;
 	}
 	{
-		char text_origin[4 * MAX_DNAME_LENGTH]; // Each char as \DDD.
+		// Extend relative file path.
+		if (s->include_filename[0] != '/') {
+			ret = snprintf((char *)(s->buffer), sizeof(s->buffer),
+			               "%s/%s", s->path, s->include_filename);
+			if (ret <= 0 || ret > sizeof(s->buffer)) {
+				ERR(ZS_BAD_INCLUDE_FILENAME);
+				p--; {goto st253;}
+			}
+			memcpy(s->include_filename, s->buffer, ret);
+		}
 
-		// Origin conversion from wire to text form.
+		// Origin conversion from wire to text form in \DDD notation.
 		if (s->dname == NULL) { // Use current origin.
 			wire_dname_to_str(s->zone_origin,
 			                  s->zone_origin_length,
-			                  text_origin);
+			                  (char *)s->buffer);
 		} else { // Use specified origin.
 			wire_dname_to_str(s->r_data,
 			                  s->r_data_length,
-			                  text_origin);
+			                  (char *)s->buffer);
 		}
 
-		// Relative file path.
-		if (s->include_filename[0] != '/') {
-			snprintf((char*)(s->buffer), sizeof(s->buffer),
-			         "%s/%s", s->path, s->include_filename);
+		// Let the caller to solve the include.
+		if (!s->process.automatic) {
+			s->state = ZS_STATE_INCLUDE;
+			escape = true;
 		} else {
-			strncpy((char*)(s->buffer), (char*)(s->include_filename),
-			        sizeof(s->buffer));
-		}
 
 		// Create new scanner for included zone file.
-		zs_scanner_t *ss = zs_scanner_create(text_origin,
-		                                     s->default_class,
-		                                     s->default_ttl,
-		                                     s->process_record,
-		                                     s->process_error,
-		                                     s->data);
-		if (ss != NULL) {
-			// Parse included zone file.
-			ret = zs_scanner_parse_file(ss, (char*)(s->buffer));
-			if (ret != 0) {
-				// File internal errors are handled by error callback.
-				if (ss->error_counter > 0) {
-					ERR(ZS_UNPROCESSED_INCLUDE);
-				// General include file error.
-				} else {
-					ERR(ss->error_code);
-				}
-				zs_scanner_free(ss);
-				p--; {goto st253;}
-			}
-			zs_scanner_free(ss);
-		} else {
+		zs_scanner_t *ss = malloc(sizeof(zs_scanner_t));
+		if (ss == NULL) {
 			ERR(ZS_UNPROCESSED_INCLUDE);
 			p--; {goto st253;}
+		}
+
+		// Parse included zone file.
+		if (zs_init(ss, (char *)s->buffer, s->default_class, s->default_ttl) != 0 ||
+		    zs_set_input_file(ss, (char *)(s->include_filename)) != 0 ||
+		    zs_set_processing(ss, s->process.record, s->process.error, s->process.data) != 0 ||
+		    zs_parse_all(ss) != 0) {
+			// File internal errors are handled by error callback.
+			if (ss->error.counter > 0) {
+				ERR(ZS_UNPROCESSED_INCLUDE);
+			// General include file error.
+			} else {
+				ERR(ss->error.code);
+			}
+			zs_deinit(ss);
+			free(ss);
+			p--; {goto st253;}
+		}
+		zs_deinit(ss);
+		free(ss);
 		}
 	}
 	{
@@ -32520,16 +32951,15 @@ case 1093:
 	goto st0;
 tr926:
 	{
-		*rdata_tail = 0; // Ending filename string.
-		strncpy((char*)(s->include_filename), (char*)(s->r_data),
-		        sizeof(s->include_filename));
-
-		// Check for correct string copy.
-		if (strlen(s->include_filename) !=
-		    (size_t)(rdata_tail - s->r_data)) {
+		size_t len = rdata_tail - s->r_data;
+		if (len >= sizeof(s->include_filename)) {
 			ERR(ZS_BAD_INCLUDE_FILENAME);
 			p--; {goto st253;}
 		}
+
+		// Store zero terminated include filename.
+		memcpy(s->include_filename, s->r_data, len);
+		s->include_filename[len] = '\0';
 
 		// For detection whether origin is not present.
 		s->dname = NULL;
@@ -32680,16 +33110,15 @@ case 309:
 	goto tr928;
 tr927:
 	{
-		*rdata_tail = 0; // Ending filename string.
-		strncpy((char*)(s->include_filename), (char*)(s->r_data),
-		        sizeof(s->include_filename));
-
-		// Check for correct string copy.
-		if (strlen(s->include_filename) !=
-		    (size_t)(rdata_tail - s->r_data)) {
+		size_t len = rdata_tail - s->r_data;
+		if (len >= sizeof(s->include_filename)) {
 			ERR(ZS_BAD_INCLUDE_FILENAME);
 			p--; {goto st253;}
 		}
+
+		// Store zero terminated include filename.
+		memcpy(s->include_filename, s->r_data, len);
+		s->include_filename[len] = '\0';
 
 		// For detection whether origin is not present.
 		s->dname = NULL;
@@ -32732,53 +33161,59 @@ tr959:
 		s->line_counter++;
 	}
 	{
-		char text_origin[4 * MAX_DNAME_LENGTH]; // Each char as \DDD.
+		// Extend relative file path.
+		if (s->include_filename[0] != '/') {
+			ret = snprintf((char *)(s->buffer), sizeof(s->buffer),
+			               "%s/%s", s->path, s->include_filename);
+			if (ret <= 0 || ret > sizeof(s->buffer)) {
+				ERR(ZS_BAD_INCLUDE_FILENAME);
+				p--; {goto st253;}
+			}
+			memcpy(s->include_filename, s->buffer, ret);
+		}
 
-		// Origin conversion from wire to text form.
+		// Origin conversion from wire to text form in \DDD notation.
 		if (s->dname == NULL) { // Use current origin.
 			wire_dname_to_str(s->zone_origin,
 			                  s->zone_origin_length,
-			                  text_origin);
+			                  (char *)s->buffer);
 		} else { // Use specified origin.
 			wire_dname_to_str(s->r_data,
 			                  s->r_data_length,
-			                  text_origin);
+			                  (char *)s->buffer);
 		}
 
-		// Relative file path.
-		if (s->include_filename[0] != '/') {
-			snprintf((char*)(s->buffer), sizeof(s->buffer),
-			         "%s/%s", s->path, s->include_filename);
+		// Let the caller to solve the include.
+		if (!s->process.automatic) {
+			s->state = ZS_STATE_INCLUDE;
+			escape = true;
 		} else {
-			strncpy((char*)(s->buffer), (char*)(s->include_filename),
-			        sizeof(s->buffer));
-		}
 
 		// Create new scanner for included zone file.
-		zs_scanner_t *ss = zs_scanner_create(text_origin,
-		                                     s->default_class,
-		                                     s->default_ttl,
-		                                     s->process_record,
-		                                     s->process_error,
-		                                     s->data);
-		if (ss != NULL) {
-			// Parse included zone file.
-			ret = zs_scanner_parse_file(ss, (char*)(s->buffer));
-			if (ret != 0) {
-				// File internal errors are handled by error callback.
-				if (ss->error_counter > 0) {
-					ERR(ZS_UNPROCESSED_INCLUDE);
-				// General include file error.
-				} else {
-					ERR(ss->error_code);
-				}
-				zs_scanner_free(ss);
-				p--; {goto st253;}
-			}
-			zs_scanner_free(ss);
-		} else {
+		zs_scanner_t *ss = malloc(sizeof(zs_scanner_t));
+		if (ss == NULL) {
 			ERR(ZS_UNPROCESSED_INCLUDE);
 			p--; {goto st253;}
+		}
+
+		// Parse included zone file.
+		if (zs_init(ss, (char *)s->buffer, s->default_class, s->default_ttl) != 0 ||
+		    zs_set_input_file(ss, (char *)(s->include_filename)) != 0 ||
+		    zs_set_processing(ss, s->process.record, s->process.error, s->process.data) != 0 ||
+		    zs_parse_all(ss) != 0) {
+			// File internal errors are handled by error callback.
+			if (ss->error.counter > 0) {
+				ERR(ZS_UNPROCESSED_INCLUDE);
+			// General include file error.
+			} else {
+				ERR(ss->error.code);
+			}
+			zs_deinit(ss);
+			free(ss);
+			p--; {goto st253;}
+		}
+		zs_deinit(ss);
+		free(ss);
 		}
 	}
 	{
@@ -73224,7 +73659,11 @@ case 1161:
 	break;
 	case 1081:
 	{
-		s->stop = false;
+		NOERR;
+		if (escape) {
+			escape = false;
+			cs = 1077; {p++; cs = 0; goto _out;}
+		}
 	}
 	break;
 	case 145:
@@ -74944,10 +75383,10 @@ case 1161:
 	}
 
 
-	// Check if scanner state machine is in uncovered state.
-	if (cs == zone_scanner_error) {
+	// Check if the scanner state machine is in an uncovered state.
+	if (cs == 0) {
 		ERR(ZS_UNCOVERED_STATE);
-		s->error_counter++;
+		s->error.counter++;
 
 		// Fill error context data.
 		for (s->buffer_length = 0;
@@ -74965,17 +75404,29 @@ case 1161:
 		// Ending string in buffer.
 		s->buffer[s->buffer_length++] = 0;
 
-		// Processing error.
-		s->process_error(s);
+		s->state = ZS_STATE_ERROR;
+
+		// Execute the error callback.
+		if (s->process.automatic && s->process.error != NULL) {
+			s->process.error(s);
+		}
 
 		return;
 	}
 
 	// Check unclosed multiline record.
-	if (is_eof && s->multiline) {
+	if (s->input.eof && s->multiline) {
 		ERR(ZS_UNCLOSED_MULTILINE);
-		s->error_counter++;
-		s->process_error(s);
+		s->error.counter++;
+
+		s->state = ZS_STATE_ERROR;
+
+		// Execute the error callback.
+		if (s->process.automatic && s->process.error != NULL) {
+			s->process.error(s);
+		}
+
+		return;
 	}
 
 	// Storing scanner states.
@@ -74983,159 +75434,70 @@ case 1161:
 	s->top = top;
 	memcpy(s->stack, stack, sizeof(stack));
 
+	// Store the current parser position.
+	s->input.current = p;
+
 	// Storing r_data pointer.
 	s->r_data_tail = rdata_tail - s->r_data;
 }
 
 __attribute__((visibility("default")))
-int zs_scanner_parse(zs_scanner_t *s,
-                     const char   *start,
-                     const char   *end,
-                     const bool   final_block)
+int zs_parse_record(
+	zs_scanner_t *s)
 {
-	if (s == NULL || start == NULL || end == NULL) {
+	if (s == NULL) {
 		return -1;
 	}
 
-	// Parse input block.
-	parse_block(s, start, end, false);
-
-	// Parse trailing artificial block (newline char) if not stop.
-	if (final_block && !s->stop) {
-		parse_block(s, NEWLINE_BLOCK, NEWLINE_BLOCK + 1, true);
-	}
-
-	// Check if any errors has occured.
-	if (s->error_counter > 0) {
+	// Stop parsing if stop or after the final parsing.
+	if (s->state == ZS_STATE_STOP || s->input.eof) {
 		return -1;
 	}
 
-	return 0;
+	// Check for the end of the input.
+	if (s->input.current != s->input.end) {
+		// Parse the next item.
+		parse(s);
+		return 0;
+	} else if (s->state != ZS_STATE_EOF) {
+		// Indicate end of the input.
+		s->state = ZS_STATE_EOF;
+		return 0;
+	} else {
+		// Parse the final block.
+		if (zs_set_input_string(s, "\n", 1) != 0) {
+			return -1;
+		}
+		s->input.eof = true;
+		parse(s);
+		return 0;
+	}
 }
 
 __attribute__((visibility("default")))
-int zs_scanner_parse_file(zs_scanner_t *s,
-                          const char   *file_name)
+int zs_parse_all(
+	zs_scanner_t *s)
 {
-	long		page_size;
-	uint64_t	n_blocks;
-	uint64_t	block_id;
-	uint64_t	default_block_size;
-	struct stat	file_stat;
-
-	if (s == NULL || file_name == NULL) {
+	if (s == NULL) {
 		return -1;
 	}
 
-	// Getting OS page size.
-	page_size = sysconf(_SC_PAGESIZE);
-	if (page_size <= 0) {
-		ERR(ZS_SYSTEM);
-		return -1;
-	}
+	s->process.automatic = true;
 
-	// Copying file name.
-	s->file.name = strdup(file_name);
+	// Parse input block.
+	parse(s);
 
-	// Opening the zone file.
-	s->file.descriptor = open(file_name, O_RDONLY);
-	if (s->file.descriptor == -1) {
-		ERR(ZS_FILE_OPEN);
-		free(s->file.name);
-		return -1;
-	}
-
-	// Get absolute path of the zone file.
-	char *full_name = realpath(file_name, NULL);
-	if (full_name != NULL) {
-		free(s->path);
-		s->path = strdup(dirname(full_name));
-		free(full_name);
-	} else {
-		ERR(ZS_FILE_PATH);
-		close(s->file.descriptor);
-		free(s->file.name);
-		return -1;
-	}
-
-	// Getting file information.
-	if (fstat(s->file.descriptor, &file_stat) == -1) {
-		ERR(ZS_FILE_FSTAT);
-		close(s->file.descriptor);
-		free(s->file.name);
-		return -1;
-	}
-
-	// Check for directory.
-	if (S_ISDIR(file_stat.st_mode)) {
-		ERR(ZS_FILE_DIR);
-		close(s->file.descriptor);
-		free(s->file.name);
-		return -1;
-	}
-
-	// Check for empty file.
-	if (file_stat.st_size == 0) {
-		close(s->file.descriptor);
-		free(s->file.name);
-		return 0;
-	}
-
-	// Block size adjustment to multiple of page size.
-	default_block_size = (BLOCK_SIZE / page_size) * page_size;
-
-	// Number of blocks which cover the whole file (ceiling operation).
-	n_blocks = 1 + ((file_stat.st_size - 1) / default_block_size);
-
-	// Loop over zone file blocks.
-	for (block_id = 0; block_id < n_blocks; block_id++) {
-		// Current block start to scan.
-		uint64_t scanner_start = block_id * default_block_size;
-		// Current block size to scan.
-		uint64_t block_size = default_block_size;
-		// Last data block mark.
-		bool final_block = false;
-		// Mmapped data.
-		char *data;
-
-		// The last block is probably shorter.
-		if (block_id == (n_blocks - 1)) {
-			block_size = file_stat.st_size - scanner_start;
-			final_block = true;
-		}
-
-		// Zone file block mapping.
-		data = mmap(0, block_size, PROT_READ, MAP_SHARED,
-		            s->file.descriptor, scanner_start);
-		if (data == MAP_FAILED) {
-			ERR(ZS_FILE_MMAP);
-			close(s->file.descriptor);
-			free(s->file.name);
+	// Parse trailing newline-char block if not stop.
+	if (s->state != ZS_STATE_STOP) {
+		if (zs_set_input_string(s, "\n", 1) != 0) {
 			return -1;
 		}
-
-		// Scan zone file block.
-		(void)zs_scanner_parse(s, data, data + block_size, final_block);
-
-		// Zone file block unmapping.
-		if (munmap(data, block_size) == -1) {
-			ERR(ZS_FILE_MMAP);
-			close(s->file.descriptor);
-			free(s->file.name);
-			return -1;
-		}
-
-		// Stop parsing if required.
-		if (s->stop) {
-			break;
-		}
+		s->input.eof = true;
+		parse(s);
 	}
 
-	close(s->file.descriptor);
-	free(s->file.name);
-
-	// Check for scanner return.
-	if (s->error_counter > 0) {
+	// Check if any errors has occured.
+	if (s->error.counter > 0) {
 		return -1;
 	}
 
