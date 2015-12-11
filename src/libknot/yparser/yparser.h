@@ -26,6 +26,7 @@
 #pragma once
 
 #include <stdbool.h>
+#include <stddef.h>
 
 /*! Maximal length of textual key value. */
 #define YP_MAX_TXT_KEY_LEN	128
@@ -55,7 +56,7 @@ typedef struct {
 	struct {
 		/*! Start of the block. */
 		const char *start;
-		/*! Current parser postion. */
+		/*! Current parser position. */
 		const char *current;
 		/*! End of the block. */
 		const char *end;
@@ -134,7 +135,7 @@ int yp_set_input_file(
 /*!
  * Parses one item from the input.
  *
- * If the item have more values, this function returns for each value. The item
+ * If the item has more values, this function returns for each value. The item
  * can also have no value.
  *
  * \param[in] parser Parser context.
