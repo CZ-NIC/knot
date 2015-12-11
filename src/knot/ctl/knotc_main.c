@@ -266,8 +266,8 @@ static int cmd_remote(struct sockaddr_storage *addr, knot_tsig_key_t *key,
 	}
 
 	/* Default timeout. */
-	conf_val_t val = conf_get(conf(), C_SRV, C_TCP_REPLY_TIMEOUT);
-	const struct timeval tv_reply = { conf_int(&val), 0 };
+	conf_val_t *val = &conf()->cache.srv_tcp_reply_timeout;
+	const struct timeval tv_reply = { conf_int(val), 0 };
 
 	/* Connect to remote. */
 	char addr_str[SOCKADDR_STRLEN] = { 0 };

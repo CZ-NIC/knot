@@ -238,6 +238,10 @@ int conf_post_open(
 
 	conf->cache.srv_nsid = conf_get(conf, C_SRV, C_NSID);
 	conf->cache.srv_max_udp_payload = conf_get(conf, C_SRV, C_MAX_UDP_PAYLOAD);
+	conf->cache.srv_max_tcp_clients = conf_get(conf, C_SRV, C_MAX_TCP_CLIENTS);
+	conf->cache.srv_tcp_hshake_timeout = conf_get(conf, C_SRV, C_TCP_HSHAKE_TIMEOUT);
+	conf->cache.srv_tcp_idle_timeout = conf_get(conf, C_SRV, C_TCP_IDLE_TIMEOUT);
+	conf->cache.srv_tcp_reply_timeout = conf_get(conf, C_SRV, C_TCP_REPLY_TIMEOUT);
 
 	conf_activate_modules(conf, NULL, &conf->query_modules, &conf->query_plan);
 

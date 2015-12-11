@@ -514,6 +514,7 @@ tests/conf.c
 tests/conf_tools.c
 tests/confdb.c
 tests/confio.c
+tests/db.c
 tests/descriptor.c
 tests/dname.c
 tests/dthreads.c
@@ -527,7 +528,6 @@ tests/internal_mem.c
 tests/journal.c
 tests/lookup.c
 tests/modules/online_sign.c
-tests/namedb.c
 tests/net.c
 tests/net_shortwrite.c
 tests/node.c

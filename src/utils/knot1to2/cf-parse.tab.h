@@ -92,25 +92,26 @@ extern int cf_debug;
     RATE_LIMIT_SLIP = 302,
     TRANSFERS = 303,
     STORAGE = 304,
-    DNSSEC_ENABLE = 305,
-    DNSSEC_KEYDIR = 306,
-    SIGNATURE_LIFETIME = 307,
-    SERIAL_POLICY = 308,
-    SERIAL_POLICY_VAL = 309,
-    QUERY_MODULE = 310,
-    INTERFACES = 311,
-    ADDRESS = 312,
-    PORT = 313,
-    IPA = 314,
-    IPA6 = 315,
-    VIA = 316,
-    CONTROL = 317,
-    ALLOW = 318,
-    LISTEN_ON = 319,
-    LOG = 320,
-    LOG_DEST = 321,
-    LOG_SRC = 322,
-    LOG_LEVEL = 323
+    TIMER_DB = 305,
+    DNSSEC_ENABLE = 306,
+    DNSSEC_KEYDIR = 307,
+    SIGNATURE_LIFETIME = 308,
+    SERIAL_POLICY = 309,
+    SERIAL_POLICY_VAL = 310,
+    QUERY_MODULE = 311,
+    INTERFACES = 312,
+    ADDRESS = 313,
+    PORT = 314,
+    IPA = 315,
+    IPA6 = 316,
+    VIA = 317,
+    CONTROL = 318,
+    ALLOW = 319,
+    LISTEN_ON = 320,
+    LOG = 321,
+    LOG_DEST = 322,
+    LOG_SRC = 323,
+    LOG_LEVEL = 324
   };
 #endif
 
@@ -127,7 +128,7 @@ union YYSTYPE
 		size_t l;
 	} tok;
 
-#line 131 "cf-parse.tab.h" /* yacc.c:1909  */
+#line 132 "cf-parse.tab.h" /* yacc.c:1909  */
 };
 # define YYSTYPE_IS_TRIVIAL 1
 # define YYSTYPE_IS_DECLARED 1

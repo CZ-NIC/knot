@@ -421,7 +421,8 @@ static int ratelimit_apply(int state, knot_pkt_t *pkt, knot_layer_t *ctx)
 
 	/* Now it is slip or drop. */
 	conf_val_t val = conf_get(conf(), C_SRV, C_RATE_LIMIT_SLIP);
-	if (rrl_slip_roll(conf_int(&val))) {
+	int slip = conf_int(&val);
+	if (slip > 0 && rrl_slip_roll(slip)) {
 		/* Answer slips. */
 		if (process_query_err(ctx, pkt) != KNOT_STATE_DONE) {
 			return KNOT_STATE_FAIL;

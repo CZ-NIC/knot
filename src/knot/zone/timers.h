@@ -21,14 +21,14 @@
 #include "knot/zone/zonedb.h"
 
 /*!
- * \brief Opens zone timers db. No-op without LMDB support.
+ * \brief Opens zone timers db.
  *
- * \param[in]  storage   Path to storage directory.
+ * \param[in]  path      Path to a directory with the database.
  * \param[out] timer_db  Created database.
  *
  * \return KNOT_E*
  */
-int open_timers_db(const char *storage, knot_db_t **timer_db);
+int open_timers_db(const char *path, knot_db_t **timer_db);
 
 /*!
  * \brief Closes zone timers db.

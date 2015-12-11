@@ -287,6 +287,12 @@ is to send each N\ :sup:`th` response as truncated, thus allowing client to
 reconnect via TCP for at least some degree of service. It is worth
 noting, that some responses can't be truncated (e.g. SERVFAIL).
 
+- Setting the value to **0** will cause that all rate-limited responses will
+  be dropped. The outbound bandwidth and packet rate will be strictly capped
+  by the :ref:`server_rate-limit` option. All legitimate requestors affected
+  by the limit will face denial of service and will observe excessive timeouts.
+  Therefore this setting is not recommended.
+
 - Setting the value to **1** will cause that all rate-limited responses will
   be sent as truncated. The amplification factor of the attack will be reduced,
   but the outbound data bandwidth won't be lower than the incoming bandwidth.
@@ -298,10 +304,10 @@ noting, that some responses can't be truncated (e.g. SERVFAIL).
   inbound. On the other hand, the dropped responses enlarge the time window
   for possible cache poisoning attack on the resolver.
 
-- Setting the value to anything larger than 2 is not advisable. Too large slip
-  value means more denial of service for legitimate requestors and introduces
-  excessive timeouts during resolution. On the contrary, a truncated answer
-  gives the legitimate requestor a chance to reconnect over TCP.
+- Setting the value to anything **larger than 2** will keep on decreasing
+  the outgoing rate-limited bandwidth, packet rate, and chances to notify
+  legitimate requestors to reconnect using TCP. These attributes are inversely
+  proportional to the configured value. Setting the value high is not advisable.
 
 *Default:* 1
 
@@ -546,6 +552,7 @@ if a zone doesn't have another template specified.
 
  template:
    - id: STR
+     timer-db: STR
      global-module: STR/STR ...
      # All zone options (excluding 'template' item)
 
@@ -556,6 +563,18 @@ id
 
 A template identifier.
 
+.. _template_timer-db:
+
+timer-db
+--------
+
+Specifies a path of the persistent timer database. The path can be specified
+as a relative path to the *default* template :ref:`storage<zone_storage>`.
+
+*Caution:* This option is only available in the *default* template.
+
+*Default:* :ref:`storage<zone_storage>`/timers
+
 .. _template_global-module:
 
 global-module
@@ -564,7 +583,7 @@ global-module
 An ordered list of references to query modules in the form
 *module_name/module_id*. These modules apply to all queries.
 
-*Caution:* This option is available only for the *default* template.
+*Caution:* This option is only available in the *default* template.
 
 *Default:* not set
 

@@ -26,6 +26,7 @@
 
 #include <stdint.h>
 #include <stdlib.h>
+#include "libknot/attribute.h"
 
 /*! \brief Offset of DNS header fields in wireformat. */
 enum knot_wire_offsets {
@@ -897,9 +898,10 @@ uint16_t knot_wire_get_pointer(const uint8_t *pos);
 
 static inline int knot_wire_is_pointer(const uint8_t *pos)
 {
-	return ((pos[0] & KNOT_WIRE_PTR) == KNOT_WIRE_PTR);
+	return pos && ((pos[0] & KNOT_WIRE_PTR) == KNOT_WIRE_PTR);
 }
 
+_pure_ _mustcheck_
 static inline const uint8_t *knot_wire_seek_label(const uint8_t *lp, const uint8_t *wire)
 {
 	while (knot_wire_is_pointer(lp)) {
@@ -910,8 +912,11 @@ static inline const uint8_t *knot_wire_seek_label(const uint8_t *lp, const uint8
 	return lp;
 }
 
+_pure_ _mustcheck_
 static inline const uint8_t *knot_wire_next_label(const uint8_t *lp, const uint8_t *wire)
 {
+	if (!lp || !lp[0]) /* No label after final label. */
+		return NULL;
 	return knot_wire_seek_label(lp + (lp[0] + sizeof(uint8_t)), wire);
 }
 

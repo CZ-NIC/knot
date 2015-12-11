@@ -25,7 +25,6 @@
 #include <sys/syscall.h>
 #include <string.h>
 #include <assert.h>
-#include <errno.h>
 #include <sys/param.h>
 #include <urcu.h>
 #ifdef HAVE_SYS_UIO_H /* 'struct iovec' for OpenBSD */
@@ -104,8 +103,8 @@ static inline void udp_pps_begin() {}
 static inline void udp_pps_sample(unsigned n, unsigned thr_id) {}
 #endif
 
-void udp_handle(udp_context_t *udp, int fd, struct sockaddr_storage *ss,
-                struct iovec *rx, struct iovec *tx)
+static void udp_handle(udp_context_t *udp, int fd, struct sockaddr_storage *ss,
+                       struct iovec *rx, struct iovec *tx)
 {
 	/* Create query processing parameter. */
 	struct process_query_param param = {0};
@@ -267,7 +266,7 @@ static int (*_send_mmsg)(int, struct sockaddr *, struct mmsghdr *, size_t) = 0;
  *
  * Basic, sendmsg() based implementation.
  */
-int udp_sendmsg(int sock, struct sockaddr *addrs, struct mmsghdr *msgs, size_t count)
+static int udp_sendmsg(int sock, struct sockaddr *addrs, struct mmsghdr *msgs, size_t count)
 {
 	int sent = 0;
 	for (unsigned i = 0; i < count; ++i) {
@@ -294,7 +293,7 @@ static inline int sendmmsg(int fd, struct mmsghdr *mmsg, unsigned vlen,
  *
  * sendmmsg() implementation.
  */
-int udp_sendmmsg(int sock, struct sockaddr *_, struct mmsghdr *msgs, size_t count)
+static int udp_sendmmsg(int sock, struct sockaddr *_, struct mmsghdr *msgs, size_t count)
 {
 	UNUSED(_);
 	return sendmmsg(sock, msgs, count, 0);

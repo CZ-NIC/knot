@@ -113,8 +113,8 @@ static int tcp_handle(tcp_context_t *tcp, int fd,
 
 	/* Timeout. */
 	rcu_read_lock();
-	conf_val_t val = conf_get(conf(), C_SRV, C_TCP_REPLY_TIMEOUT);
-	struct timeval tmout = { conf_int(&val), 0 };
+	conf_val_t *val = &conf()->cache.srv_tcp_reply_timeout;
+	struct timeval tmout = { conf_int(val), 0 };
 	rcu_read_unlock();
 
 	/* Receive data. */
@@ -188,8 +188,8 @@ int tcp_accept(int fd)
 #ifdef SO_RCVTIMEO
 		struct timeval tv;
 		rcu_read_lock();
-		conf_val_t val = conf_get(conf(), C_SRV, C_TCP_IDLE_TIMEOUT);
-		tv.tv_sec = conf_int(&val);
+		conf_val_t *val = &conf()->cache.srv_tcp_idle_timeout;
+		tv.tv_sec = conf_int(val);
 		rcu_read_unlock();
 		tv.tv_usec = 0;
 		if (setsockopt(incoming, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) < 0) {
@@ -217,8 +217,8 @@ static int tcp_event_accept(tcp_context_t *tcp, unsigned i)
 
 		/* Update watchdog timer. */
 		rcu_read_lock();
-		conf_val_t val = conf_get(conf(), C_SRV, C_TCP_HSHAKE_TIMEOUT);
-		fdset_set_watchdog(&tcp->set, next_id, conf_int(&val));
+		conf_val_t *val = &conf()->cache.srv_tcp_hshake_timeout;
+		fdset_set_watchdog(&tcp->set, next_id, conf_int(val));
 		rcu_read_unlock();
 
 		return KNOT_EOK;
@@ -238,8 +238,8 @@ static int tcp_event_serve(tcp_context_t *tcp, unsigned i)
 	if (ret == KNOT_EOK) {
 		/* Update socket activity timer. */
 		rcu_read_lock();
-		conf_val_t val = conf_get(conf(), C_SRV, C_TCP_IDLE_TIMEOUT);
-		fdset_set_watchdog(&tcp->set, i, conf_int(&val));
+		conf_val_t *val = &conf()->cache.srv_tcp_idle_timeout;
+		fdset_set_watchdog(&tcp->set, i, conf_int(val));
 		rcu_read_unlock();
 	}
 
@@ -258,8 +258,8 @@ static int tcp_wait_for_events(tcp_context_t *tcp)
 	if (!is_throttled) {
 		/* Configuration limit, infer maximal pool size. */
 		rcu_read_lock();
-		conf_val_t val = conf_get(conf(), C_SRV, C_MAX_TCP_CLIENTS);
-		unsigned max_per_set = MAX(conf_int(&val) / conf_tcp_threads(conf()), 1);
+		conf_val_t *val = &conf()->cache.srv_max_tcp_clients;
+		unsigned max_per_set = MAX(conf_int(val) / conf_tcp_threads(conf()), 1);
 		rcu_read_unlock();
 		/* Subtract master sockets check limits. */
 		is_throttled = (set->n - tcp->client_threshold) >= max_per_set;

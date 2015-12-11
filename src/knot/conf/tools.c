@@ -295,8 +295,6 @@ int addr_range_to_txt(
 int check_ref(
 	conf_check_t *args)
 {
-	const char *err_str = "invalid reference";
-
 	const yp_item_t *ref = args->item->var.r.ref;
 
 	// Try to find a referenced block with the id.
@@ -304,7 +302,8 @@ int check_ref(
 	int ret = conf_db_get(args->conf, args->txn, ref->name, NULL,
 	                      args->data, args->data_len, NULL);
 	if (ret != KNOT_EOK) {
-		args->err_str = err_str;
+		args->err_str = "invalid reference";
+
 	}
 
 	return ret;
@@ -313,8 +312,6 @@ int check_ref(
 int check_modref(
 	conf_check_t *args)
 {
-	const char *err_str = "invalid module reference";
-
 	const yp_name_t *mod_name = (const yp_name_t *)args->data;
 	const uint8_t *id = args->data + 1 + args->data[0];
 	size_t id_len = args->data_len - 1 - args->data[0];
@@ -324,7 +321,8 @@ int check_modref(
 	int ret = conf_db_get(args->conf, args->txn, mod_name, NULL, id, id_len,
 	                      NULL);
 	if (ret != KNOT_EOK) {
-		args->err_str = err_str;
+		args->err_str = "invalid module reference";
+
 	}
 
 	return ret;
@@ -333,12 +331,10 @@ int check_modref(
 int check_remote(
 	conf_check_t *args)
 {
-	const char *err_str = "no remote address defined";
-
 	conf_val_t addr = conf_rawid_get_txn(args->conf, args->txn, C_RMT,
 	                                     C_ADDR, args->id, args->id_len);
 	if (conf_val_count(&addr) == 0) {
-		args->err_str = err_str;
+		args->err_str = "no remote address defined";
 		return KNOT_EINVAL;
 	}
 
@@ -348,19 +344,28 @@ int check_remote(
 int check_template(
 	conf_check_t *args)
 {
-	const char *err_str = "global module is only allowed with the default template";
-
+	// Ignore the default template.
 	if (args->id_len == CONF_DEFAULT_ID[0] &&
 	    memcmp(args->id, CONF_DEFAULT_ID + 1, args->id_len) == 0) {
 		return KNOT_EOK;
 	}
 
+	// Check global-module.
 	conf_val_t g_module = conf_rawid_get_txn(args->conf, args->txn, C_TPL,
 	                                         C_GLOBAL_MODULE, args->id,
 	                                         args->id_len);
 
 	if (g_module.code == KNOT_EOK) {
-		args->err_str = err_str;
+		args->err_str = "global module in non-default template";
+		return KNOT_EINVAL;
+	}
+
+	// Check timer-db.
+	conf_val_t timer_db = conf_rawid_get_txn(args->conf, args->txn, C_TPL,
+	                                         C_TIMER_DB, args->id, args->id_len);
+
+	if (timer_db.code == KNOT_EOK) {
+		args->err_str = "timer database location in non-default template";
 		return KNOT_EINVAL;
 	}
 
@@ -370,8 +375,6 @@ int check_template(
 int check_zone(
 	conf_check_t *args)
 {
-	const char *err_str = "slave zone with DNSSEC signing";
-
 	conf_val_t master = conf_zone_get_txn(args->conf, args->txn,
 	                                      C_MASTER, args->id);
 	conf_val_t dnssec = conf_zone_get_txn(args->conf, args->txn,
@@ -379,7 +382,7 @@ int check_zone(
 
 	// DNSSEC signing is not possible with slave zone.
 	if (conf_val_count(&master) > 0 && conf_bool(&dnssec)) {
-		args->err_str = err_str;
+		args->err_str = "slave zone with DNSSEC signing";
 		return KNOT_EINVAL;
 	}
 
