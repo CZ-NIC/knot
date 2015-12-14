@@ -27,21 +27,6 @@
 #include "knot/dnssec/context.h"
 
 /*!
- * \brief Get keystore path from KASP path.
- */
-static char *get_keystore_path(const char *kasp_path)
-{
-	char *keystore_path = NULL;
-	int written = asprintf(&keystore_path, "%s/keys", kasp_path);
-	if (written == -1) {
-		return NULL;
-	}
-
-	return keystore_path;
-}
-
-
-/*!
  * \brief Create new policy with default parameters, disable key management.
  */
 static int create_manual_policy(dnssec_kasp_policy_t **policy_ptr)
@@ -60,6 +45,16 @@ static int create_manual_policy(dnssec_kasp_policy_t **policy_ptr)
 	return KNOT_EOK;
 }
 
+static int get_policy(kdnssec_ctx_t *ctx)
+{
+	const char *policy_name = dnssec_kasp_zone_get_policy(ctx->zone);
+	if (policy_name == NULL) {
+		return create_manual_policy(&ctx->policy);
+	}
+
+	return dnssec_kasp_policy_load(ctx->kasp, policy_name, &ctx->policy);
+}
+
 /*!
  * \brief Initialize DNSSEC parameters of the DNSSEC context.
  *
@@ -72,41 +67,24 @@ static int ctx_init_dnssec(kdnssec_ctx_t *ctx, const char *kasp_path,
 	assert(kasp_path);
 	assert(zone_name);
 
-	// KASP
-
 	dnssec_kasp_init_dir(&ctx->kasp);
 	int r = dnssec_kasp_open(ctx->kasp, kasp_path);
 	if (r != DNSSEC_EOK) {
 		return r;
 	}
 
-	// KASP zone
-
 	r = dnssec_kasp_zone_load(ctx->kasp, zone_name, &ctx->zone);
 	if (r != DNSSEC_EOK) {
 		return r;
 	}
 
-	// keystore
-
-	char *keystore_path = get_keystore_path(kasp_path);
-	dnssec_keystore_init_pkcs8_dir(&ctx->keystore);
-	r = dnssec_keystore_open(ctx->keystore, keystore_path);
-	free(keystore_path);
+	r = get_policy(ctx);
 	if (r != DNSSEC_EOK) {
 		return r;
 	}
 
-	// policy
-
-	const char *policy_name = dnssec_kasp_zone_get_policy(ctx->zone);
-	if (policy_name == NULL) {
-		r = create_manual_policy(&ctx->policy);
-	} else {
-		r = dnssec_kasp_policy_load(ctx->kasp, policy_name, &ctx->policy);
-	}
-
-	return r;
+	const char *keystore = ctx->policy->keystore;
+	return dnssec_kasp_keystore_open(ctx->kasp, keystore, &ctx->keystore);
 }
 
 void kdnssec_ctx_deinit(kdnssec_ctx_t *ctx)
