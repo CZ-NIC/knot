@@ -14,11 +14,62 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <assert.h>
 #include <stdlib.h>
 
 #include "shared.h"
 #include "error.h"
 #include "kasp.h"
+
+#define HOURS(x) (x * 60 * 60)
+#define DAYS(x) (x * HOURS(24))
+
+static void clear_policy(dnssec_kasp_policy_t *policy)
+{
+	assert(policy);
+
+	char *name = policy->name;
+	clear_struct(policy);
+	policy->name = name;
+}
+
+struct key_size {
+	dnssec_key_algorithm_t algorithm;
+	uint16_t zsk;
+	uint16_t ksk;
+};
+
+static const struct key_size DEFAULT_KEY_SIZES[] = {
+	// DSA: maximum supported by DNSSEC
+	{ DNSSEC_KEY_ALGORITHM_DSA_SHA1,          1024, 1024 },
+	{ DNSSEC_KEY_ALGORITHM_DSA_SHA1_NSEC3,    1024, 1024 },
+	{ DNSSEC_KEY_ALGORITHM_RSA_SHA1_NSEC3,    1024, 1024 },
+	// RSA: small keys for short-lived keys (security/size compromise)
+	{ DNSSEC_KEY_ALGORITHM_RSA_SHA1,          1024, 2048 },
+	{ DNSSEC_KEY_ALGORITHM_RSA_SHA256,        1024, 2048 },
+	{ DNSSEC_KEY_ALGORITHM_RSA_SHA512,        1024, 2048 },
+	// ECDSA: fixed key size
+	{ DNSSEC_KEY_ALGORITHM_ECDSA_P256_SHA256, 256,  256 },
+	{ DNSSEC_KEY_ALGORITHM_ECDSA_P384_SHA384, 384,  384 },
+	{ 0 }
+};
+
+static void default_key_size(dnssec_key_algorithm_t algorithm,
+			     uint16_t *zsk_size, uint16_t *ksk_size)
+{
+	for (const struct key_size *ks = DEFAULT_KEY_SIZES; ks->algorithm; ks++) {
+		if (algorithm == ks->algorithm) {
+			*zsk_size = ks->zsk;
+			*ksk_size = ks->ksk;
+			return;
+		}
+	}
+
+	*zsk_size = 0;
+	*ksk_size = 0;
+}
+
+/* -- public API ----------------------------------------------------------- */
 
 _public_
 dnssec_kasp_policy_t *dnssec_kasp_policy_new(const char *name)
@@ -44,21 +95,20 @@ void dnssec_kasp_policy_defaults(dnssec_kasp_policy_t *policy)
 		return;
 	}
 
-	// TODO: not all fields are filled
-	// TODO: key sizes not algorithm aware
 	// TODO: determine defaults for NSEC
 
-	policy->dnskey_ttl = 1200;
+	clear_policy(policy);
 
 	policy->algorithm = DNSSEC_KEY_ALGORITHM_RSA_SHA256;
-	policy->ksk_size = 2048;
-	policy->zsk_size = 1024;
-	policy->zsk_lifetime = 30 * 24 * 60 * 60;
+	default_key_size(policy->algorithm, &policy->zsk_size, &policy->ksk_size);
+	policy->dnskey_ttl = 1200;
 
-	policy->rrsig_lifetime = 14 * 24 * 60 * 60;
-	policy->rrsig_refresh_before = 7 * 24 * 60 * 60;
+	policy->zsk_lifetime = DAYS(30);
 
-	policy->propagation_delay = 60 * 60;
+	policy->rrsig_lifetime = DAYS(14);
+	policy->rrsig_refresh_before = DAYS(7);
+
+	policy->propagation_delay = HOURS(1);
 
 	policy->nsec3_enabled = false;
 }
