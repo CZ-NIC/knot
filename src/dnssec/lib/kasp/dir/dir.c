@@ -131,8 +131,6 @@ static int kasp_dir_init(const char *config)
 {
 	assert(config);
 
-	// TODO: maybe check if the directory is empty?
-
 	return fs_mkdir(config, KASP_DIR_INIT_MODE, true);
 }
 
