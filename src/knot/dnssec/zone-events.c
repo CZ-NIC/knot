@@ -154,7 +154,7 @@ static uint32_t schedule_next(kdnssec_ctx_t *kctx, const zone_keyset_t *keyset,
 	// result
 
 	uint32_t next = MIN(zone_refresh, dnskey_update);
-	if (event.type != ZONE_EVENT_NOW) {
+	if (event.type != DNSSEC_EVENT_NONE) {
 		next = MIN(next, event.time);
 	}
 
