@@ -44,11 +44,15 @@ const char *dnssec_event_name(dnssec_event_type_t event)
 _public_
 int dnssec_event_get_next(dnssec_event_ctx_t *ctx, dnssec_event_t *event)
 {
-	if (!ctx || !event) {
+	if (!ctx || !event || !ctx->policy) {
 		return DNSSEC_EINVAL;
 	}
 
 	dnssec_event_t first = { 0 };
+
+	if (ctx->policy->manual) {
+		goto done;
+	}
 
 	const event_action_functions_t * const *action;
 	for (action = EVENT_ACTION_HANDLERS; *action; action++) {
@@ -70,6 +74,7 @@ int dnssec_event_get_next(dnssec_event_ctx_t *ctx, dnssec_event_t *event)
 		}
 	}
 
+done:
 	*event = first;
 
 	return DNSSEC_EOK;
