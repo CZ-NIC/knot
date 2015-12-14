@@ -66,6 +66,7 @@ static const error_message_t ERROR_MESSAGES[] = {
 	{ DNSSEC_CONFIG_MALFORMED,	"malformed config value" },
 	{ DNSSEC_CONFIG_INVALID_KEY_ID,	"invalid key ID in config" },
 
+	{ DNSSEC_KEYSTORE_INVALID_BACKEND, "invalid KASP keystore backend" },
 	{ DNSSEC_PKCS11_FAILED_TO_LOAD, "failed to load PKCS #11 module" },
 
 	{ 0 }

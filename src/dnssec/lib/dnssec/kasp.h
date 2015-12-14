@@ -386,6 +386,9 @@ int dnssec_kasp_keystore_exists(dnssec_kasp_t *kasp, const char *name);
 
 #include <dnssec/keystore.h>
 
+#define DNSSEC_KASP_KEYSTORE_PKCS8  "pkcs8"
+#define DNSSEC_KASP_KEYSTORE_PKCS11 "pkcs11"
+
 /*!
  * Open DNSSEC keystore configured in KASP.
  */

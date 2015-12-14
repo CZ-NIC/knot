@@ -107,11 +107,6 @@ static int pkcs11_open(dnssec_kasp_t *kasp, const char *config,
 	return DNSSEC_EOK;
 }
 
-static int fallback_open(dnssec_kasp_t *kasp, dnssec_keystore_t **keystore_ptr)
-{
-	return pkcs8_open(kasp, "keys", keystore_ptr);
-}
-
 /* -- public API ----------------------------------------------------------- */
 
 _public_
@@ -128,12 +123,12 @@ int dnssec_kasp_keystore_open(dnssec_kasp_t *kasp, const char *name,
 		return r;
 	}
 
-	if (strcmp(info->backend, "pkcs8") == 0) {
+	if (strcmp(info->backend, DNSSEC_KASP_KEYSTORE_PKCS8) == 0) {
 		r = pkcs8_open(kasp, info->config, keystore_ptr);
-	} else if (strcmp(info->backend, "pkcs11") == 0) {
+	} else if (strcmp(info->backend, DNSSEC_KASP_KEYSTORE_PKCS11) == 0) {
 		r = pkcs11_open(kasp, info->config, keystore_ptr);
 	} else {
-		r = DNSSEC_EINVAL;
+		r = DNSSEC_KEYSTORE_INVALID_BACKEND;
 	}
 
 	dnssec_kasp_keystore_free(info);
