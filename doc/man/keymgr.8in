@@ -221,6 +221,16 @@ Max TTL in the zone.
 \fBdelay\fP \fIseconds\fP
 Zone signing and data propagation delay. The value is added for safety to
 timing of all rollover steps.
+.TP
+\fBmanual\fP \fIenable\fP
+Enable manual key management. If enabled, the KASP policies will be inactive.
+.TP
+
+.nf
+**
+.fi
+keystore \fIname\fP
+Name of a default key store, where the keys are generated.
 .UNINDENT
 .UNINDENT
 .UNINDENT

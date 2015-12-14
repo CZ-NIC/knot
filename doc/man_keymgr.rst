@@ -189,6 +189,12 @@ Available *policy-parameter*\ s:
     Zone signing and data propagation delay. The value is added for safety to
     timing of all rollover steps.
 
+  **manual** *enable*
+    Enable manual key management. If enabled, the KASP policies will be inactive.
+
+  **keystore *name*
+    Name of a default key store, where the keys are generated.
+
 keystore commands
 .................
 

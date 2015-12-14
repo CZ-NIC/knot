@@ -121,5 +121,6 @@ void dnssec_kasp_policy_free(dnssec_kasp_policy_t *policy)
 	}
 
 	free(policy->name);
+	free(policy->keystore);
 	free(policy);
 }

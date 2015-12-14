@@ -280,6 +280,7 @@ int dnssec_kasp_zone_set_policy(dnssec_kasp_zone_t *zone, const char *name);
 typedef struct dnssec_kasp_policy {
 	char *name;
 	bool manual;
+	char *keystore;
 	// DNSKEY
 	dnssec_key_algorithm_t algorithm;
 	uint16_t ksk_size;
