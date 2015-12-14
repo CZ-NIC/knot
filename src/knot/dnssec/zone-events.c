@@ -33,11 +33,6 @@
 #include "knot/zone/serial.h"
 #include "knot/zone/zone.h"
 
-static bool has_policy(const kdnssec_ctx_t *ctx)
-{
-	return ctx && ctx->policy && ctx->policy->name;
-}
-
 static int sign_init(const zone_contents_t *zone, int flags, kdnssec_ctx_t *ctx)
 {
 	assert(zone);
@@ -66,12 +61,7 @@ static int sign_init(const zone_contents_t *zone, int flags, kdnssec_ctx_t *ctx)
 
 	// update policy based on the zone content
 
-	if (has_policy(ctx)) {
-		update_policy_from_zone(ctx->policy, zone);
-	} else {
-		set_default_policy(ctx->policy, zone);
-	}
-
+	update_policy_from_zone(ctx->policy, zone);
 	ctx->policy->nsec3_enabled = knot_is_nsec3_enabled(zone); // TODO: temporary
 
 	// RRSIG handling
@@ -107,10 +97,6 @@ static dnssec_event_ctx_t kctx2ctx(const kdnssec_ctx_t *kctx)
 static int sign_process_events(const knot_dname_t *zone_name,
                                const kdnssec_ctx_t *kctx)
 {
-	if (!has_policy(kctx)) {
-		return KNOT_EOK;
-	}
-
 	dnssec_event_t event = { 0 };
 	dnssec_event_ctx_t ctx = kctx2ctx(kctx);
 
@@ -162,10 +148,8 @@ static uint32_t schedule_next(kdnssec_ctx_t *kctx, const zone_keyset_t *keyset,
 	// zone events
 
 	dnssec_event_t event = { 0 };
-	if (has_policy(kctx)) {
-		dnssec_event_ctx_t ctx = kctx2ctx(kctx);
-		dnssec_event_get_next(&ctx, &event);
-	}
+	dnssec_event_ctx_t ctx = kctx2ctx(kctx);
+	dnssec_event_get_next(&ctx, &event);
 
 	// result
 

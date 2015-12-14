@@ -40,6 +40,26 @@ static char *get_keystore_path(const char *kasp_path)
 	return keystore_path;
 }
 
+
+/*!
+ * \brief Create new policy with default parameters, disable key management.
+ */
+static int create_manual_policy(dnssec_kasp_policy_t **policy_ptr)
+{
+	assert(policy_ptr);
+
+	dnssec_kasp_policy_t *policy = dnssec_kasp_policy_new(NULL);
+	if (!policy) {
+		return KNOT_ENOMEM;
+	}
+
+	dnssec_kasp_policy_defaults(policy);
+	policy->manual = true;
+
+	*policy_ptr = policy;
+	return KNOT_EOK;
+}
+
 /*!
  * \brief Initialize DNSSEC parameters of the DNSSEC context.
  *
@@ -81,16 +101,12 @@ static int ctx_init_dnssec(kdnssec_ctx_t *ctx, const char *kasp_path,
 
 	const char *policy_name = dnssec_kasp_zone_get_policy(ctx->zone);
 	if (policy_name == NULL) {
-		ctx->policy = dnssec_kasp_policy_new(NULL);
-		return KNOT_EOK;
+		r = create_manual_policy(&ctx->policy);
+	} else {
+		r = dnssec_kasp_policy_load(ctx->kasp, policy_name, &ctx->policy);
 	}
 
-	r = dnssec_kasp_policy_load(ctx->kasp, policy_name, &ctx->policy);
-	if (r != DNSSEC_EOK) {
-		return r;
-	}
-
-	return KNOT_EOK;
+	return r;
 }
 
 void kdnssec_ctx_deinit(kdnssec_ctx_t *ctx)
