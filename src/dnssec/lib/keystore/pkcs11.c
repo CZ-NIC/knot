@@ -116,24 +116,19 @@ static int pkcs11_init(void *ctx, const char *config)
 }
 
 /**
- * Parse configuration string. Accepted format: "<pkcs11-url>[ <module-path>]"
+ * Parse configuration string. Accepted format: "<pkcs11-url> <module-path>"
  */
 static int parse_config(const char *config, char **uri_ptr, char **module_ptr)
 {
 	const char *space = strchr(config, ' ');
-
-	char *url = NULL;
-	char *module = NULL;
-
-	if (space != NULL) {
-		url = strndup(config, space - config);
-		module = strdup(space + 1);
-	} else {
-		url = strdup(config);
-		module = NULL;
+	if (!space) {
+		return DNSSEC_KEYSTORE_INVALID_CONFIG;
 	}
 
-	if (!url || (space && !module)) {
+	char *url = strndup(config, space - config);
+	char *module = strdup(space + 1);
+
+	if (!url || !module) {
 		free(url);
 		free(module);
 		return DNSSEC_ENOMEM;
@@ -155,12 +150,10 @@ static int pkcs11_open(void *_ctx, const char *config)
 		return r;
 	}
 
-	if (module) {
-		r = gnutls_pkcs11_add_provider(module, NULL);
-		free(module);
-		if (r != GNUTLS_E_SUCCESS) {
-			return DNSSEC_PKCS11_FAILED_TO_LOAD;
-		}
+	r = gnutls_pkcs11_add_provider(module, NULL);
+	free(module);
+	if (r != GNUTLS_E_SUCCESS) {
+		return DNSSEC_KEYSTORE_FAILED_TO_LOAD_P11_MODULE;
 	}
 
 	return DNSSEC_EOK;
