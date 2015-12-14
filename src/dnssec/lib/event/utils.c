@@ -37,7 +37,7 @@ int generate_key(dnssec_event_ctx_t *ctx, bool ksk, dnssec_kasp_key_t **key_ptr)
 
 	// generate key in the keystore
 
-	_cleanup_free_ char *id = NULL;
+	char *id = NULL;
 	int r = dnssec_keystore_generate_key(ctx->keystore, algorithm, size, &id);
 	if (r != DNSSEC_EOK) {
 		return r;
@@ -48,12 +48,14 @@ int generate_key(dnssec_event_ctx_t *ctx, bool ksk, dnssec_kasp_key_t **key_ptr)
 	dnssec_key_t *dnskey = NULL;
 	r = dnssec_key_new(&dnskey);
 	if (r != DNSSEC_EOK) {
+		free(id);
 		return r;
 	}
 
 	r = dnssec_key_set_dname(dnskey, ctx->zone->dname);
 	if (r != DNSSEC_EOK) {
 		dnssec_key_free(dnskey);
+		free(id);
 		return r;
 	}
 
@@ -63,15 +65,18 @@ int generate_key(dnssec_event_ctx_t *ctx, bool ksk, dnssec_kasp_key_t **key_ptr)
 	r = dnssec_key_import_keystore(dnskey, ctx->keystore, id);
 	if (r != DNSSEC_EOK) {
 		dnssec_key_free(dnskey);
+		free(id);
 		return r;
 	}
 
 	dnssec_kasp_key_t *key = calloc(1, sizeof(*key));
 	if (!key) {
 		dnssec_key_free(dnskey);
+		free(id);
 		return DNSSEC_ENOMEM;
 	}
 
+	key->id = id;
 	key->key = dnskey;
 	key->timing.created = ctx->now;
 
