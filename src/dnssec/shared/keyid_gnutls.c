@@ -23,7 +23,7 @@
 #include "binary.h"
 #include "error.h"
 #include "keyid.h"
-#include "keyid/internal.h"
+#include "keyid_gnutls.h"
 #include "shared.h"
 #include "hex.h"
 

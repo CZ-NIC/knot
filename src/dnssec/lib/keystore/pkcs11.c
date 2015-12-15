@@ -20,7 +20,7 @@
 #include "error.h"
 #include "hex.h"
 #include "keyid.h"
-#include "keyid/internal.h"
+#include "keyid_gnutls.h"
 #include "keystore.h"
 #include "keystore/internal.h"
 #include "pem.h"

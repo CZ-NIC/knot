@@ -23,7 +23,7 @@
 #include "error.h"
 #include "key.h"
 #include "keyid.h"
-#include "keyid/internal.h"
+#include "keyid_gnutls.h"
 #include "pem.h"
 #include "shared.h"
 
