@@ -21,35 +21,62 @@ AM_LDFLAGS = $(CODE_COVERAGE_LDFLAGS)
 # Knot DNS Libraries #
 ######################
 
-# static: libcontrib headers
-libcontrib_ladir = $(includedir)
-nobase_libcontrib_la_HEADERS =			\
+# static: libcontrib sources
+libcontrib_la_SOURCES = 			\
+	contrib/base32hex.c			\
 	contrib/base32hex.h			\
+	contrib/base64.c			\
 	contrib/base64.h			\
 	contrib/endian.h			\
+	contrib/getline.c			\
 	contrib/getline.h			\
+	contrib/hhash.c				\
 	contrib/hhash.h				\
 	contrib/lookup.h			\
 	contrib/macros.h			\
+	contrib/mempattern.c			\
 	contrib/mempattern.h			\
+	contrib/net.c				\
 	contrib/net.h				\
+	contrib/print.c				\
 	contrib/print.h				\
+	contrib/sockaddr.c			\
 	contrib/sockaddr.h			\
+	contrib/string.c			\
 	contrib/string.h			\
 	contrib/tolower.h			\
 	contrib/wire.h				\
 	contrib/wire_ctx.h			\
+	contrib/hat-trie/hat-trie.c		\
 	contrib/hat-trie/hat-trie.h		\
+	contrib/murmurhash3/murmurhash3.c	\
 	contrib/murmurhash3/murmurhash3.h	\
+	contrib/openbsd/strlcat.c		\
 	contrib/openbsd/strlcat.h		\
+	contrib/openbsd/strlcpy.c		\
 	contrib/openbsd/strlcpy.h		\
 	contrib/ucw/array-sort.h		\
 	contrib/ucw/binsearch.h			\
+	contrib/ucw/heap.c			\
 	contrib/ucw/heap.h			\
+	contrib/ucw/lists.c			\
 	contrib/ucw/lists.h			\
+	contrib/ucw/mempool.c			\
 	contrib/ucw/mempool.h
 
-# dynamic: libknot headers
+# static: libknot-yparser sources
+libknot_yparser_la_SOURCES = 			\
+	libknot/yparser/yparser.c		\
+	libknot/yparser/yparser.h		\
+	libknot/yparser/ypbody.c		\
+	libknot/yparser/ypformat.c		\
+	libknot/yparser/ypformat.h		\
+	libknot/yparser/ypscheme.c		\
+	libknot/yparser/ypscheme.h		\
+	libknot/yparser/yptrafo.c		\
+	libknot/yparser/yptrafo.h
+
+# libknot headers
 libknot_ladir = $(includedir)
 nobase_libknot_la_HEADERS =			\
 	libknot/attribute.h			\
@@ -92,34 +119,6 @@ nobase_libknot_la_HEADERS =			\
 	libknot/tsig-op.h			\
 	libknot/tsig.h
 
-# static: libknot-yparser headers
-libknot_yparser_ladir = $(includedir)
-nobase_libknot_yparser_la_HEADERS = 		\
-	libknot/yparser/yparser.h		\
-	libknot/yparser/ypformat.h		\
-	libknot/yparser/ypscheme.h		\
-	libknot/yparser/yptrafo.h
-
-# static: libcontrib sources
-libcontrib_la_SOURCES = 			\
-	contrib/base32hex.c			\
-	contrib/base64.c			\
-	contrib/getline.c			\
-	contrib/hhash.c				\
-	contrib/mempattern.c			\
-	contrib/net.c				\
-	contrib/print.c				\
-	contrib/sockaddr.c			\
-	contrib/string.c			\
-	contrib/hat-trie/hat-trie.c		\
-	contrib/murmurhash3/murmurhash3.c	\
-	contrib/openbsd/strlcat.c		\
-	contrib/openbsd/strlcpy.c		\
-	contrib/ucw/heap.c			\
-	contrib/ucw/lists.c			\
-	contrib/ucw/mempool.c			\
-	$(nobase_libcontrib_la_HEADERS)
-
 # dynamic: libknot sources
 libknot_la_SOURCES =				\
 	libknot/binary.c			\
@@ -152,15 +151,6 @@ libknot_la_SOURCES =				\
 	libknot/tsig-op.c			\
 	libknot/tsig.c				\
 	$(nobase_libknot_la_HEADERS)
-
-# static: libknot-yparser sources
-libknot_yparser_la_SOURCES = 			\
-	libknot/yparser/yparser.c		\
-	libknot/yparser/ypbody.c		\
-	libknot/yparser/ypformat.c		\
-	libknot/yparser/ypscheme.c		\
-	libknot/yparser/yptrafo.c		\
-	$(nobase_libknot_yparser_la_HEADERS)
 
 libknot_la_CPPFLAGS = $(AM_CPPFLAGS) $(CFLAG_VISIBILITY) $(lmdb_CFLAGS)
 libknot_la_CFLAGS = $(AM_CFLAGS)
