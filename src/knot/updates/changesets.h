@@ -28,7 +28,7 @@
 
 #include "libknot/rrset.h"
 #include "knot/zone/contents.h"
-#include "libknot/internal/lists.h"
+#include "contrib/ucw/lists.h"
 
 /*! \brief One zone change, from 'soa_from' to 'soa_to'. */
 typedef struct {

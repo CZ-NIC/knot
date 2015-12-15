@@ -22,6 +22,7 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
+#include "contrib/getline.h"
 #include "dnssec/random.h"
 #include "utils/knsupdate/knsupdate_exec.h"
 #include "utils/common/exec.h"
@@ -31,10 +32,10 @@
 #include "utils/common/sign.h"
 #include "utils/common/token.h"
 #include "libknot/libknot.h"
-#include "libknot/internal/getline.h"
-#include "libknot/internal/macros.h"
-#include "libknot/internal/mem.h"
-#include "libknot/internal/strlcpy.h"
+#include "contrib/macros.h"
+#include "contrib/lookup.h"
+#include "contrib/string.h"
+#include "contrib/openbsd/strlcpy.h"
 
 /* Declarations of cmd parse functions. */
 typedef int (*cmd_handle_f)(const char *lp, knsupdate_params_t *params);
@@ -336,7 +337,7 @@ static srv_info_t *parse_host(const char *lp, const char* default_port)
 }
 
 /* Append parsed RRSet to list. */
-static int rr_list_append(zs_scanner_t *s, list_t *target_list, mm_ctx_t *mm)
+static int rr_list_append(zs_scanner_t *s, list_t *target_list, knot_mm_t *mm)
 {
 	knot_rrset_t *rr = knot_rrset_new(s->r_owner, s->r_type, s->r_class,
 	                                  NULL);
@@ -881,7 +882,7 @@ int cmd_send(const char* lp, knsupdate_params_t *params)
 	uint8_t rc = knot_wire_get_rcode(params->answer->wire);
 	if (rc != KNOT_RCODE_NOERROR) {
 		const char *rcode_str = "Unknown";
-		lookup_table_t *rcode = lookup_by_id(knot_rcode_names, rc);
+		const lookup_table_t *rcode = lookup_by_id(knot_rcode_names, rc);
 		if (rcode != NULL) {
 			rcode_str = rcode->name;
 		}

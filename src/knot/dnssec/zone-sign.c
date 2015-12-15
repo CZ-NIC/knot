@@ -32,10 +32,10 @@
 #include "libknot/dname.h"
 #include "libknot/dnssec/rrset-sign.h"
 #include "libknot/libknot.h"
-#include "libknot/internal/macros.h"
 #include "libknot/rrset.h"
 #include "libknot/rrtype/rrsig.h"
 #include "libknot/rrtype/soa.h"
+#include "contrib/macros.h"
 
 typedef struct type_node {
 	node_t n;

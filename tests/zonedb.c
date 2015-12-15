@@ -16,10 +16,10 @@
 
 #include <tap/basic.h>
 
-#include "libknot/internal/strlcat.h"
-#include "libknot/internal/strlcpy.h"
 #include "knot/zone/zone.h"
 #include "knot/zone/zonedb.h"
+#include "contrib/openbsd/strlcat.h"
+#include "contrib/openbsd/strlcpy.h"
 
 #define ZONE_COUNT 10
 static const char *zone_list[ZONE_COUNT] = {

@@ -16,7 +16,7 @@
 
 #pragma once
 
-#include "libknot/internal/lists.h"
+#include "contrib/ucw/lists.h"
 
 struct task;
 typedef void (*task_cb)(struct task *);
@@ -33,7 +33,7 @@ typedef struct task {
  * \brief Worker queue.
  */
 typedef struct worker_queue {
-	mm_ctx_t mm_ctx;
+	knot_mm_t mm_ctx;
 	list_t list;
 } worker_queue_t;
 

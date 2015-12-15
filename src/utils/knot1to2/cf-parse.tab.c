@@ -80,8 +80,8 @@
 #include "utils/knot1to2/scheme.h"
 #include "utils/knot1to2/extra.h"
 #include "utils/knot1to2/cf-parse.tab.h"
-#include "libknot/internal/strlcat.h"
-#include "libknot/internal/strlcpy.h"
+#include "contrib/openbsd/strlcat.h"
+#include "contrib/openbsd/strlcpy.h"
 
 #define DEFAULT_PORT		53
 #define DEFAULT_CTL_PORT	5533

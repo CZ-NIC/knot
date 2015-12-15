@@ -24,7 +24,7 @@
 #include "knot/server/rrl.h"
 #include "knot/zone/zone.h"
 #include "libknot/descriptor.h"
-#include "libknot/internal/sockaddr.h"
+#include "contrib/sockaddr.h"
 
 /* Enable time-dependent tests. */
 //#define ENABLE_TIMED_TESTS

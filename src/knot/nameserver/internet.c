@@ -27,6 +27,7 @@
 #include "knot/zone/serial.h"
 #include "knot/zone/zonedb.h"
 #include "libknot/dnssec/rrset-sign.h"
+#include "contrib/sockaddr.h"
 
 /*! \brief Check if given node was already visited. */
 static int wildcard_has_visited(struct query_data *qdata, const zone_node_t *node)
@@ -51,7 +52,7 @@ static int wildcard_visit(struct query_data *qdata, const zone_node_t *node, con
 		return KNOT_EOK;
 	}
 
-	mm_ctx_t *mm = qdata->mm;
+	knot_mm_t *mm = qdata->mm;
 	struct wildcard_hit *item = mm_alloc(mm, sizeof(struct wildcard_hit));
 	item->node = node;
 	item->sname = sname;
@@ -63,7 +64,7 @@ static int wildcard_visit(struct query_data *qdata, const zone_node_t *node, con
 static int dname_cname_synth(const knot_rrset_t *dname_rr,
                              const knot_dname_t *qname,
                              knot_rrset_t *cname_rrset,
-                             mm_ctx_t *mm)
+                             knot_mm_t *mm)
 {
 	if (cname_rrset == NULL) {
 		return KNOT_EINVAL;

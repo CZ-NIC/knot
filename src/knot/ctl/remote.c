@@ -15,7 +15,6 @@
  */
 
 #include <assert.h>
-#include <sys/stat.h>
 #include <urcu.h>
 
 #include "dnssec/random.h"
@@ -30,11 +29,13 @@
 #include "knot/server/tcp-handler.h"
 #include "knot/zone/timers.h"
 #include "libknot/libknot.h"
-#include "libknot/internal/macros.h"
-#include "libknot/internal/mem.h"
-#include "libknot/internal/net.h"
-#include "libknot/internal/strlcpy.h"
 #include "libknot/yparser/yptrafo.h"
+#include "contrib/macros.h"
+#include "contrib/net.h"
+#include "contrib/sockaddr.h"
+#include "contrib/string.h"
+#include "contrib/openbsd/strlcpy.h"
+#include "contrib/wire.h"
 
 #define KNOT_CTL_REALM "knot."
 #define KNOT_CTL_REALM_EXT ("." KNOT_CTL_REALM)

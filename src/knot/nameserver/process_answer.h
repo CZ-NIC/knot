@@ -26,6 +26,8 @@
 
 #pragma once
 
+#include <sys/socket.h>
+
 #include "knot/nameserver/process_query.h"
 #include "knot/nameserver/tsig_ctx.h"
 
@@ -60,7 +62,7 @@ struct answer_data {
 	/* Everything below should be kept on reset. */
 	int response_type; /*!< Type of incoming response. */
 	struct process_answer_param *param; /*!< Module parameters. */
-	mm_ctx_t *mm;                      /*!< Memory context. */
+	knot_mm_t *mm;                      /*!< Memory context. */
 };
 
 /*! @} */

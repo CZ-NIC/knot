@@ -25,7 +25,7 @@
 
 #include "libknot/dname.h"
 #include "libknot/dnssec/rrset-sign.h"
-#include "libknot/internal/mem.h"
+#include "contrib/string.h"
 
 #include "dnssec/error.h"
 #include "dnssec/kasp.h"
@@ -187,7 +187,7 @@ static dnssec_nsec_bitmap_t *synth_bitmap(knot_pkt_t *pkt, const struct query_da
 	return map;
 }
 
-static knot_rrset_t *synth_nsec(knot_pkt_t *pkt, struct query_data *qdata, mm_ctx_t *mm)
+static knot_rrset_t *synth_nsec(knot_pkt_t *pkt, struct query_data *qdata, knot_mm_t *mm)
 {
 	knot_rrset_t *nsec = knot_rrset_new(qdata->name, KNOT_RRTYPE_NSEC, KNOT_CLASS_IN, mm);
 	if (!nsec) {
@@ -230,7 +230,7 @@ static knot_rrset_t *sign_rrset(const knot_dname_t *owner,
                                 const knot_rrset_t *cover,
                                 online_sign_ctx_t *module_ctx,
                                 dnssec_sign_ctx_t *sign_ctx,
-                                mm_ctx_t *mm)
+                                knot_mm_t *mm)
 {
 	// copy of RR set with replaced owner name
 
@@ -349,7 +349,7 @@ static int synth_authority(int state, knot_pkt_t *pkt, struct query_data *qdata,
 }
 
 static knot_rrset_t *synth_dnskey(const zone_t *zone, const dnssec_key_t *key,
-                                  mm_ctx_t *mm)
+                                  knot_mm_t *mm)
 {
 	knot_rrset_t *dnskey = knot_rrset_new(zone->name, KNOT_RRTYPE_DNSKEY,
 	                                      KNOT_CLASS_IN, mm);

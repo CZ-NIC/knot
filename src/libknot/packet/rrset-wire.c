@@ -21,6 +21,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "libknot/attribute.h"
 #include "libknot/packet/rrset-wire.h"
 #include "libknot/consts.h"
 #include "libknot/descriptor.h"
@@ -29,8 +30,9 @@
 #include "libknot/packet/wire.h"
 #include "libknot/rrset.h"
 #include "libknot/rrtype/naptr.h"
-#include "libknot/internal/macros.h"
-#include "libknot/internal/wire_ctx.h"
+#include "contrib/macros.h"
+#include "contrib/wire.h"
+#include "contrib/wire_ctx.h"
 
 #define RR_HEADER_SIZE 10
 
@@ -519,7 +521,7 @@ int knot_rrset_to_wire(const knot_rrset_t *rrset, uint8_t *wire, uint16_t max_si
  * \brief Parse header of one RR from packet wireformat.
  */
 static int parse_header(const uint8_t *pkt_wire, size_t *pos, size_t pkt_size,
-                        mm_ctx_t *mm, knot_rrset_t *rrset, uint32_t *ttl,
+                        knot_mm_t *mm, knot_rrset_t *rrset, uint32_t *ttl,
                         uint16_t *rdlen)
 {
 	assert(pkt_wire);
@@ -611,7 +613,7 @@ static bool allow_zero_rdata(const knot_rrset_t *rr,
  * \brief Parse RDATA part of one RR from packet wireformat.
  */
 static int parse_rdata(const uint8_t *pkt_wire, size_t *pos, size_t pkt_size,
-                       mm_ctx_t *mm, uint32_t ttl, uint16_t rdlength,
+                       knot_mm_t *mm, uint32_t ttl, uint16_t rdlength,
                        knot_rrset_t *rrset)
 {
 	assert(pkt_wire);
@@ -689,7 +691,7 @@ static int parse_rdata(const uint8_t *pkt_wire, size_t *pos, size_t pkt_size,
 
 _public_
 int knot_rrset_rr_from_wire(const uint8_t *pkt_wire, size_t *pos,
-                            size_t pkt_size, mm_ctx_t *mm,
+                            size_t pkt_size, knot_mm_t *mm,
                             knot_rrset_t *rrset)
 {
 	if (!pkt_wire || !pos || !rrset || *pos > pkt_size) {

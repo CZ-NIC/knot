@@ -27,15 +27,17 @@
 
 #include "dnssec/binary.h"
 #include "dnssec/keytag.h"
+#include "libknot/attribute.h"
 #include "libknot/rrset-dump.h"
+#include "libknot/codes.h"
 #include "libknot/consts.h"
 #include "libknot/descriptor.h"
 #include "libknot/errcode.h"
-#include "libknot/internal/base64.h"
-#include "libknot/internal/base32hex.h"
-#include "libknot/internal/macros.h"
-#include "libknot/internal/utils.h"
-#include "libknot/internal/wire_ctx.h"
+#include "contrib/base32hex.h"
+#include "contrib/base64.h"
+#include "contrib/lookup.h"
+#include "contrib/wire.h"
+#include "contrib/wire_ctx.h"
 
 #define TAB_WIDTH		8
 #define BLOCK_WIDTH		40
@@ -1188,9 +1190,10 @@ static void wire_tsig_rcode_to_str(rrset_dump_params_t *p)
 	data = wire_read_u16(p->in);
 
 	// Find RCODE name.
-	lookup_table_t *rcode = lookup_by_id((data >= knot_tsig_err_names->id) ?
-	                                     knot_tsig_err_names : knot_rcode_names,
-	                                     data);
+	const lookup_table_t *rcode = NULL;
+	rcode = lookup_by_id((data >= knot_tsig_err_names->id) ?
+	                     knot_tsig_err_names : knot_rcode_names,
+	                     data);
 	if (rcode != NULL) {
 		rcode_str = rcode->name;
 	}
@@ -1310,7 +1313,7 @@ static void dnskey_info(const uint8_t *rdata,
 	                                    .size = rdata_len };
 	dnssec_keytag(&rdata_bin, &key_tag);
 
-	lookup_table_t *alg = NULL;
+	const lookup_table_t *alg = NULL;
 	alg = lookup_by_id(knot_dnssec_alg_names, alg_id);
 
 	int ret = snprintf(out, out_len, "%s, %s (%zub), id = %u",

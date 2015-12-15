@@ -27,9 +27,8 @@
 #include "libknot/packet/pkt.h"
 #include "libknot/consts.h"
 #include "libknot/rrtype/soa.h"
-#include "libknot/internal/mempattern.h"
 #include "libknot/descriptor.h"
-#include "libknot/internal/lists.h"
+#include "contrib/ucw/lists.h"
 
 /* ----------------------------- prereq check ------------------------------- */
 

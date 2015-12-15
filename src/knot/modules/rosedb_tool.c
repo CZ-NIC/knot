@@ -18,11 +18,11 @@
 #include <stdlib.h>
 #include <getopt.h>
 
+#include "contrib/getline.h"
 #include "knot/modules/rosedb.c"
 #include "zscanner/scanner.h"
 #include "libknot/libknot.h"
-#include "libknot/internal/mem.h"
-#include "libknot/internal/getline.h"
+#include "contrib/string.h"
 
 static int rosedb_add(struct cache *cache, MDB_txn *txn, int argc, char *argv[]);
 static int rosedb_del(struct cache *cache, MDB_txn *txn, int argc, char *argv[]);
@@ -158,7 +158,7 @@ int main(int argc, char *argv[])
 }
 
 static int parse_rdata(struct entry *entry, const char *owner, const char *rrtype, const char *rdata,
-		       int ttl, mm_ctx_t *mm)
+		       int ttl, knot_mm_t *mm)
 {
 	knot_rdataset_init(&entry->data.rrs);
 	int ret = knot_rrtype_from_string(rrtype, &entry->data.type);

@@ -26,8 +26,6 @@
 #endif
 
 #include "dnssec/crypto.h"
-#include "libknot/internal/mem.h"
-#include "libknot/internal/macros.h"
 #include "libknot/libknot.h"
 #include "knot/common/log.h"
 #include "knot/ctl/estimator.h"
@@ -36,6 +34,10 @@
 #include "knot/server/tcp-handler.h"
 #include "knot/zone/zonefile.h"
 #include "knot/zone/zone-load.h"
+#include "contrib/macros.h"
+#include "contrib/net.h"
+#include "contrib/sockaddr.h"
+#include "contrib/string.h"
 
 /*! \brief Controller flags. */
 enum knotc_flag_t {
@@ -810,9 +812,9 @@ static int cmd_memstats(cmd_args_t *args)
 
 		/* Init malloc wrapper for trie size estimation. */
 		size_t malloc_size = 0;
-		mm_ctx_t mem_ctx = { .ctx = &malloc_size,
-		                     .alloc = estimator_malloc,
-		                     .free = estimator_free };
+		knot_mm_t mem_ctx = { .ctx = &malloc_size,
+		                      .alloc = estimator_malloc,
+		                      .free = estimator_free };
 
 		/* Init memory estimation context. */
 		zone_estim_t est = {.node_table = hattrie_create_n(TRIE_BUCKET_SIZE, &mem_ctx),

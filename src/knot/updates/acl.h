@@ -24,9 +24,10 @@
 
 #pragma once
 
-#include "libknot/internal/lists.h"
-#include "libknot/internal/sockaddr.h"
-#include "libknot/internal/mempattern.h"
+#include <sys/socket.h>
+
+#include "contrib/mempattern.h"
+#include "contrib/ucw/lists.h"
 #include "libknot/rrtype/tsig.h"
 #include "knot/conf/conf.h"
 

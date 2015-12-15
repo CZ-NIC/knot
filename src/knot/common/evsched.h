@@ -31,8 +31,8 @@
 #include <stdint.h>
 #include <sys/time.h>
 
-#include "libknot/internal/heap.h"
 #include "knot/server/dthreads.h"
+#include "contrib/ucw/heap.h"
 
 /* Forward decls. */
 struct evsched;

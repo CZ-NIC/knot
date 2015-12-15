@@ -21,7 +21,7 @@
 #include "utils/common/msg.h"
 #include "utils/common/params.h"
 #include "libknot/libknot.h"
-#include "libknot/internal/lists.h"
+#include "contrib/ucw/lists.h"
 
 #define RESOLV_FILE	"/etc/resolv.conf"
 

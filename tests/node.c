@@ -19,6 +19,7 @@
 
 #include "knot/zone/node.h"
 #include "libknot/libknot.h"
+#include "contrib/wire.h"
 
 static knot_rrset_t *create_dummy_rrset(const knot_dname_t *owner,
                                         uint16_t type)

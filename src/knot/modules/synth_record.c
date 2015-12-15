@@ -19,6 +19,8 @@
 #include "knot/nameserver/internet.h"
 #include "knot/common/log.h"
 #include "libknot/descriptor.h"
+#include "contrib/net.h"
+#include "contrib/sockaddr.h"
 
 /* Module configuration scheme. */
 #define MOD_NET		"\x07""network"

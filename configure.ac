@@ -492,7 +492,7 @@ AC_CONFIG_FILES([Makefile
 		 src/Makefile
 		 tests/Makefile
 		 tests-fuzz/Makefile
-		 src/dnstap/Makefile
+		 src/contrib/dnstap/Makefile
 		 src/zscanner/Makefile
 		 src/dnssec/Makefile
 		 src/dnssec/tests/Makefile

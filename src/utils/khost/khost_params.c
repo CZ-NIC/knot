@@ -26,7 +26,7 @@
 #include "utils/common/params.h"
 #include "utils/common/resolv.h"
 #include "libknot/libknot.h"
-#include "libknot/internal/lists.h"
+#include "contrib/ucw/lists.h"
 
 #define DEFAULT_RETRIES_HOST	1
 #define DEFAULT_TIMEOUT_HOST	2

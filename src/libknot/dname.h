@@ -1,13 +1,3 @@
-/*!
- * \file dname.h
- *
- * \author Lubos Slovak <lubos.slovak@nic.cz>
- *
- * \brief Domain name structure and API for manipulating it.
- *
- * \addtogroup libknot
- * @{
- */
 /*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
@@ -23,6 +13,14 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
+/*!
+ * \file
+ *
+ * \brief Domain name structure and API for manipulating it.
+ *
+ * \addtogroup libknot
+ * @{
+ */
 
 #pragma once
 
@@ -31,9 +29,8 @@
 #include <stdio.h>
 #include <stdbool.h>
 
-#include "libknot/consts.h"
-#include "libknot/internal/macros.h"
-#include "libknot/internal/mempattern.h"
+#include "libknot/attribute.h"
+#include "libknot/mm_ctx.h"
 
 /*! \brief Type representing a domain name in wire format. */
 typedef uint8_t knot_dname_t;
@@ -67,7 +64,7 @@ int knot_dname_wire_check(const uint8_t *name, const uint8_t *endp,
  */
 _mustcheck_
 knot_dname_t *knot_dname_parse(const uint8_t *pkt, size_t *pos, size_t maxpos,
-                               mm_ctx_t *mm);
+                               knot_mm_t *mm);
 
 /*!
  * \brief Duplicates the given domain name.
@@ -77,7 +74,7 @@ knot_dname_t *knot_dname_parse(const uint8_t *pkt, size_t *pos, size_t maxpos,
  * \return New domain name which is an exact copy of \a dname.
  */
 _mustcheck_
-knot_dname_t *knot_dname_copy(const knot_dname_t *name, mm_ctx_t *mm);
+knot_dname_t *knot_dname_copy(const knot_dname_t *name, knot_mm_t *mm);
 
 /*!
  * \brief Duplicates part of the given domain name.
@@ -89,7 +86,7 @@ knot_dname_t *knot_dname_copy(const knot_dname_t *name, mm_ctx_t *mm);
  */
 _mustcheck_
 knot_dname_t *knot_dname_copy_part(const knot_dname_t *name, unsigned len,
-                                   mm_ctx_t *mm);
+                                   knot_mm_t *mm);
 
 /*!
  * \brief Copy name to wire as is, no compression pointer expansion will be done.
@@ -281,7 +278,7 @@ knot_dname_t *knot_dname_replace_suffix(const knot_dname_t *name, unsigned label
  *
  * \param name Domain name to be destroyed.
  */
-void knot_dname_free(knot_dname_t **name, mm_ctx_t *mm);
+void knot_dname_free(knot_dname_t **name, knot_mm_t *mm);
 
 /*!
  * \brief Compares two domain names (case sensitive).

@@ -22,7 +22,6 @@
 
 #include "dnssec/error.h"
 #include "dnssec/nsec.h"
-#include "libknot/internal/base32hex.h"
 #include "libknot/descriptor.h"
 #include "libknot/packet/wire.h"
 #include "libknot/rrtype/nsec3.h"
@@ -33,6 +32,7 @@
 #include "knot/dnssec/zone-sign.h"
 #include "knot/zone/contents.h"
 #include "knot/zone/zone-diff.h"
+#include "contrib/base32hex.h"
 
 /*!
  * \brief Deletes NSEC3 chain if NSEC should be used.

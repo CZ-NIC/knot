@@ -28,7 +28,7 @@
 
 #include <stdint.h>
 #include <pthread.h>
-#include "libknot/internal/sockaddr.h"
+#include <sys/socket.h>
 #include "libknot/packet/pkt.h"
 
 /* Defaults */

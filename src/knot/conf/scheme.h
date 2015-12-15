@@ -26,6 +26,7 @@
 #pragma once
 
 #include "libknot/yparser/ypscheme.h"
+#include "contrib/lookup.h"
 
 #define C_ACL			"\x03""acl"
 #define C_ACTION		"\x06""action"

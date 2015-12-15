@@ -23,17 +23,17 @@
 #include "libknot/rdataset.h"
 #include "libknot/rrtype/rrsig.h"
 #include "libknot/descriptor.h"
-#include "libknot/internal/mempattern.h"
+#include "contrib/mempattern.h"
 
 /*! \brief Clears allocated data in RRSet entry. */
-static void rr_data_clear(struct rr_data *data, mm_ctx_t *mm)
+static void rr_data_clear(struct rr_data *data, knot_mm_t *mm)
 {
 	knot_rdataset_clear(&data->rrs, mm);
 	free(data->additional);
 }
 
 /*! \brief Clears allocated data in RRSet entry. */
-static int rr_data_from(const knot_rrset_t *rrset, struct rr_data *data, mm_ctx_t *mm)
+static int rr_data_from(const knot_rrset_t *rrset, struct rr_data *data, knot_mm_t *mm)
 {
 	int ret = knot_rdataset_copy(&data->rrs, &rrset->rrs, mm);
 	if (ret != KNOT_EOK) {
@@ -47,7 +47,7 @@ static int rr_data_from(const knot_rrset_t *rrset, struct rr_data *data, mm_ctx_
 
 /*! \brief Adds RRSet to node directly. */
 static int add_rrset_no_merge(zone_node_t *node, const knot_rrset_t *rrset,
-                              mm_ctx_t *mm)
+                              knot_mm_t *mm)
 {
 	if (node == NULL) {
 		return KNOT_EINVAL;
@@ -82,7 +82,7 @@ static bool ttl_error(struct rr_data *node_data, const knot_rrset_t *rrset)
 	return inserted_ttl != node_ttl;
 }
 
-zone_node_t *node_new(const knot_dname_t *owner, mm_ctx_t *mm)
+zone_node_t *node_new(const knot_dname_t *owner, knot_mm_t *mm)
 {
 	zone_node_t *ret = mm_alloc(mm, sizeof(zone_node_t));
 	if (ret == NULL) {
@@ -104,7 +104,7 @@ zone_node_t *node_new(const knot_dname_t *owner, mm_ctx_t *mm)
 	return ret;
 }
 
-void node_free_rrsets(zone_node_t *node, mm_ctx_t *mm)
+void node_free_rrsets(zone_node_t *node, knot_mm_t *mm)
 {
 	if (node == NULL) {
 		return;
@@ -119,7 +119,7 @@ void node_free_rrsets(zone_node_t *node, mm_ctx_t *mm)
 	node->rrset_count = 0;
 }
 
-void node_free(zone_node_t **node, mm_ctx_t *mm)
+void node_free(zone_node_t **node, knot_mm_t *mm)
 {
 	if (node == NULL || *node == NULL) {
 		return;
@@ -135,7 +135,7 @@ void node_free(zone_node_t **node, mm_ctx_t *mm)
 	*node = NULL;
 }
 
-zone_node_t *node_shallow_copy(const zone_node_t *src, mm_ctx_t *mm)
+zone_node_t *node_shallow_copy(const zone_node_t *src, knot_mm_t *mm)
 {
 	if (src == NULL) {
 		return NULL;
@@ -167,7 +167,7 @@ zone_node_t *node_shallow_copy(const zone_node_t *src, mm_ctx_t *mm)
 	return dst;
 }
 
-int node_add_rrset(zone_node_t *node, const knot_rrset_t *rrset, mm_ctx_t *mm)
+int node_add_rrset(zone_node_t *node, const knot_rrset_t *rrset, knot_mm_t *mm)
 {
 	if (node == NULL || rrset == NULL) {
 		return KNOT_EINVAL;

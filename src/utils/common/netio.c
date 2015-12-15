@@ -29,7 +29,7 @@
 #include "utils/common/netio.h"
 #include "utils/common/msg.h"
 #include "libknot/libknot.h"
-#include "libknot/internal/sockaddr.h"
+#include "contrib/sockaddr.h"
 
 srv_info_t* srv_info_create(const char *name, const char *service)
 {

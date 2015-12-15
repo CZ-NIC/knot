@@ -19,7 +19,7 @@
 #include "test_conf.h"
 #include "knot/conf/confdb.c"
 
-static void check_db_content(conf_t *conf, namedb_txn_t *txn, int count)
+static void check_db_content(conf_t *conf, knot_db_txn_t *txn, int count)
 {
 	ok(db_check_version(conf, txn) == KNOT_EOK, "Version check");
 	if (count >= 0) {
@@ -29,7 +29,7 @@ static void check_db_content(conf_t *conf, namedb_txn_t *txn, int count)
 
 static void check_code(
 	conf_t *conf,
-	namedb_txn_t *txn,
+	knot_db_txn_t *txn,
 	uint8_t section_code,
 	const yp_name_t *name,
 	db_action_t action,
@@ -46,8 +46,8 @@ static void check_code(
 
 	uint8_t k[64] = { section_code, 0 };
 	memcpy(k + 2, name + 1, name[0]);
-	namedb_val_t key = { .data = k, .len = 2 + name[0] };
-	namedb_val_t val;
+	knot_db_val_t key = { .data = k, .len = 2 + name[0] };
+	knot_db_val_t val;
 
 	ret = conf->api->find(txn, &key, &val, 0);
 	switch (action) {
@@ -64,7 +64,7 @@ static void check_code(
 	}
 }
 
-static void test_db_code(conf_t *conf, namedb_txn_t *txn)
+static void test_db_code(conf_t *conf, knot_db_txn_t *txn)
 {
 	// Add codes.
 	check_code(conf, txn, 0, C_SERVER, DB_SET, KNOT_EOK, KEY1_FIRST);
@@ -107,7 +107,7 @@ static void test_db_code(conf_t *conf, namedb_txn_t *txn)
 
 static void check_set(
 	conf_t *conf,
-	namedb_txn_t *txn,
+	knot_db_txn_t *txn,
 	const yp_name_t *key0,
 	const yp_name_t *key1,
 	const uint8_t *id,
@@ -139,8 +139,8 @@ static void check_set(
 	if (id != NULL) {
 		memcpy(k + 2, id, id_len);
 	}
-	namedb_val_t key = { .data = k, .len = 2 + id_len };
-	namedb_val_t val;
+	knot_db_val_t key = { .data = k, .len = 2 + id_len };
+	knot_db_val_t val;
 
 	ok(conf->api->find(txn, &key, &val, 0) == KNOT_EOK, "Get inserted data");
 	ok(val.len == exp_data_len, "Compare data length");
@@ -149,7 +149,7 @@ static void check_set(
 	check_db_content(conf, txn, -1);
 }
 
-static void test_conf_db_set(conf_t *conf, namedb_txn_t *txn)
+static void test_conf_db_set(conf_t *conf, knot_db_txn_t *txn)
 {
 	// Set section without item - noop.
 	check_set(conf, txn, C_INCL, NULL, NULL, 0, KNOT_EOK, NULL, 0, NULL, 0);
@@ -205,7 +205,7 @@ static void test_conf_db_set(conf_t *conf, namedb_txn_t *txn)
 
 static void check_get(
 	conf_t *conf,
-	namedb_txn_t *txn,
+	knot_db_txn_t *txn,
 	const yp_name_t *key0,
 	const yp_name_t *key1,
 	const uint8_t *id,
@@ -228,7 +228,7 @@ static void check_get(
 	check_db_content(conf, txn, -1);
 }
 
-static void test_conf_db_get(conf_t *conf, namedb_txn_t *txn)
+static void test_conf_db_get(conf_t *conf, knot_db_txn_t *txn)
 {
 	// Get singlevalued item.
 	check_get(conf, txn, C_SERVER, C_RUNDIR, NULL, 0, KNOT_EOK,
@@ -268,7 +268,7 @@ static void test_conf_db_get(conf_t *conf, namedb_txn_t *txn)
 
 static void check_unset(
 	conf_t *conf,
-	namedb_txn_t *txn,
+	knot_db_txn_t *txn,
 	const yp_name_t *key0,
 	const yp_name_t *key1,
 	const uint8_t *id,
@@ -300,8 +300,8 @@ static void check_unset(
 	if (id != NULL) {
 		memcpy(k + 2, id, id_len);
 	}
-	namedb_val_t key = { .data = k, .len = 2 + id_len };
-	namedb_val_t val;
+	knot_db_val_t key = { .data = k, .len = 2 + id_len };
+	knot_db_val_t val;
 
 	ret = conf->api->find(txn, &key, &val, 0);
 	if (exp_data != NULL) {
@@ -317,7 +317,7 @@ static void check_unset(
 
 static void check_unset_key(
 	conf_t *conf,
-	namedb_txn_t *txn,
+	knot_db_txn_t *txn,
 	const yp_name_t *key0,
 	const yp_name_t *key1,
 	const uint8_t *id,
@@ -344,7 +344,7 @@ static void check_unset_key(
 	check_db_content(conf, txn, -1);
 }
 
-static void test_conf_db_unset(conf_t *conf, namedb_txn_t *txn)
+static void test_conf_db_unset(conf_t *conf, knot_db_txn_t *txn)
 {
 	// ERR unset section without item.
 	check_unset(conf, txn, C_INCL, NULL, NULL, 0, KNOT_ENOENT,
@@ -397,7 +397,7 @@ static void test_conf_db_unset(conf_t *conf, namedb_txn_t *txn)
 	            NULL, 0, NULL, 0);
 }
 
-static void test_conf_db_iter(conf_t *conf, namedb_txn_t *txn)
+static void test_conf_db_iter(conf_t *conf, knot_db_txn_t *txn)
 {
 	const size_t total = 4;
 	char names[][10] = { "alfa", "beta", "delta", "epsilon" };
@@ -452,7 +452,7 @@ int main(int argc, char *argv[])
 	ok(test_conf("", NULL) == KNOT_EOK, "Prepare configuration");
 	check_db_content(conf(), &conf()->read_txn, 0);
 
-	namedb_txn_t txn;
+	knot_db_txn_t txn;
 	ok(conf()->api->txn_begin(conf()->db, &txn, 0) == KNOT_EOK, "Begin transaction");
 
 	diag("db_code");

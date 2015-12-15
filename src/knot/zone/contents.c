@@ -20,8 +20,8 @@
 #include "knot/common/log.h"
 #include "knot/dnssec/zone-nsec.h"
 #include "libknot/libknot.h"
-#include "libknot/internal/trie/hat-trie.h"
-#include "libknot/internal/macros.h"
+#include "contrib/hat-trie/hat-trie.h"
+#include "contrib/macros.h"
 
 typedef struct {
 	zone_contents_apply_cb_t func;

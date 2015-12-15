@@ -22,6 +22,7 @@
 #include "libknot/yparser/ypscheme.h"
 #include "libknot/yparser/yptrafo.h"
 #include "libknot/libknot.h"
+#include "contrib/lookup.h"
 
 #define C_ID		"\x02""id"
 #define C_INT		"\x07""integer"

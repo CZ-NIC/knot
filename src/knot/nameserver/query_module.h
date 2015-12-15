@@ -41,10 +41,10 @@
 #pragma once
 
 #include "libknot/libknot.h"
-#include "libknot/internal/lists.h"
-#include "libknot/internal/mempattern.h"
+#include "libknot/mm_ctx.h"
 #include "knot/conf/conf.h"
 #include "knot/conf/tools.h"
+#include "contrib/ucw/lists.h"
 
 #define MODULE_ERR(mod, msg, ...) \
 	log_error("module '%.*s', " msg, mod[0], mod + 1, ##__VA_ARGS__)
@@ -88,7 +88,7 @@ typedef int (*qmodule_process_t)(int state, knot_pkt_t *pkt, struct query_data *
  */
 struct query_module {
 	node_t node;
-	mm_ctx_t *mm;
+	knot_mm_t *mm;
 	void *ctx;
 	conf_t *config;
 	conf_mod_id_t *id;
@@ -109,12 +109,12 @@ struct query_step {
  *  assembly phase, for example 'before processing', 'answer section' and so on.
  */
 struct query_plan {
-	mm_ctx_t *mm;
+	knot_mm_t *mm;
 	list_t stage[QUERY_PLAN_STAGES];
 };
 
 /*! \brief Create an empty query plan. */
-struct query_plan *query_plan_create(mm_ctx_t *mm);
+struct query_plan *query_plan_create(knot_mm_t *mm);
 
 /*! \brief Free query plan and all planned steps. */
 void query_plan_free(struct query_plan *plan);
@@ -125,7 +125,7 @@ int query_plan_step(struct query_plan *plan, int stage, qmodule_process_t proces
 
 /*! \brief Open query module identified by name. */
 struct query_module *query_module_open(conf_t *config, conf_mod_id_t *mod_id,
-                                       mm_ctx_t *mm);
+                                       knot_mm_t *mm);
 
 /*! \brief Close query module. */
 void query_module_close(struct query_module *module);

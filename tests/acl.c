@@ -20,8 +20,8 @@
 
 #include "test_conf.h"
 #include "libknot/libknot.h"
-#include "libknot/internal/sockaddr.h"
 #include "knot/updates/acl.h"
+#include "contrib/sockaddr.h"
 
 static void check_sockaddr_set(struct sockaddr_storage *ss, int family,
                                const char *straddr, int port)

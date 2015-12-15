@@ -29,6 +29,7 @@
 #include "libknot/processing/layer.h"
 #include "knot/server/server.h"
 #include "knot/updates/acl.h"
+#include "contrib/sockaddr.h"
 
 /* Query processing module implementation. */
 const knot_layer_api_t *process_query_layer(void);
@@ -93,7 +94,7 @@ struct query_data {
 
 	/* Everything below should be kept on reset. */
 	struct process_query_param *param; /*!< Module parameters. */
-	mm_ctx_t *mm;                      /*!< Memory context. */
+	knot_mm_t *mm;                     /*!< Memory context. */
 };
 
 /*! \brief Visited wildcard node list. */

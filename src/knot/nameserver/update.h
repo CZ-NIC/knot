@@ -44,11 +44,11 @@ int update_query_process(knot_pkt_t *pkt, struct query_data *qdata);
  * \brief Processes serialized packet with DDNS. Function expects that the
  *        query is already authenticated and TSIG signature is verified.
  *
+ * \note RCODEs are set.
+ *
  * \param pkt    Prepared response packet.
  * \param qdata  Minimal query data context.
- *
- * \return KNOT_E*
  */
-int updates_execute(zone_t *zone);
+void updates_execute(zone_t *zone);
 
 /*! @} */

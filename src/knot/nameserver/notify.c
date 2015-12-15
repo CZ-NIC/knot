@@ -36,6 +36,7 @@
 #include "knot/nameserver/tsig_ctx.h"
 #include "knot/nameserver/process_answer.h"
 #include "libknot/rrtype/soa.h"
+#include "contrib/sockaddr.h"
 
 /*----------------------------------------------------------------------------*/
 /* API functions                                                              */
@@ -118,7 +119,7 @@ int notify_process_answer(knot_pkt_t *pkt, struct answer_data *adata)
 	/* Check RCODE. */
 	uint8_t rcode = knot_wire_get_rcode(pkt->wire);
 	if (rcode != KNOT_RCODE_NOERROR) {
-		lookup_table_t *lut = lookup_by_id(knot_rcode_names, rcode);
+		const lookup_table_t *lut = lookup_by_id(knot_rcode_names, rcode);
 		if (lut != NULL) {
 			NOTIFY_RLOG(LOG_WARNING, "server responded with %s", lut->name);
 		}

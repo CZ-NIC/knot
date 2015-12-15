@@ -18,8 +18,8 @@
 #include <stdlib.h>
 #include <strings.h>
 
+#include "libknot/attribute.h"
 #include "libknot/descriptor.h"
-#include "libknot/internal/macros.h"
 
 /*!
  * \brief Table with DNS classes.

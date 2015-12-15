@@ -26,8 +26,8 @@
 #include <inttypes.h>
 
 #include "libknot/libknot.h"
-#include "libknot/internal/macros.h"
-#include "libknot/internal/mem.h"
+#include "contrib/macros.h"
+#include "contrib/string.h"
 #include "knot/common/log.h"
 #include "knot/dnssec/zone-nsec.h"
 #include "knot/zone/semantic-check.h"

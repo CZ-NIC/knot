@@ -38,11 +38,11 @@
 #include "knot/common/log.h"
 #include "knot/common/time.h"
 #include "knot/nameserver/process_query.h"
-#include "libknot/internal/mempool.h"
-#include "libknot/internal/macros.h"
-#include "libknot/internal/net.h"
-#include "libknot/internal/sockaddr.h"
 #include "libknot/processing/overlay.h"
+#include "contrib/macros.h"
+#include "contrib/net.h"
+#include "contrib/sockaddr.h"
+#include "contrib/ucw/mempool.h"
 
 /*! \brief TCP context data. */
 typedef struct tcp_context {
@@ -132,14 +132,21 @@ static int tcp_handle(tcp_context_t *tcp, int fd,
 		rx->iov_len = ret;
 	}
 
-	/* Create packets. */
-	mm_ctx_t *mm = tcp->overlay.mm;
-	knot_pkt_t *ans = knot_pkt_new(tx->iov_base, tx->iov_len, mm);
-	knot_pkt_t *query = knot_pkt_new(rx->iov_base, rx->iov_len, mm);
+	knot_mm_t *mm = tcp->overlay.mm;
 
 	/* Initialize processing overlay. */
-	knot_overlay_init(&tcp->overlay, mm);
-	knot_overlay_add(&tcp->overlay, NS_PROC_QUERY, &param);
+	ret = knot_overlay_init(&tcp->overlay, mm);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+	ret = knot_overlay_add(&tcp->overlay, NS_PROC_QUERY, &param);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	/* Create packets. */
+	knot_pkt_t *ans = knot_pkt_new(tx->iov_base, tx->iov_len, mm);
+	knot_pkt_t *query = knot_pkt_new(rx->iov_base, rx->iov_len, mm);
 
 	/* Input packet. */
 	(void) knot_pkt_parse(query, 0);
@@ -309,7 +316,7 @@ int tcp_master(dthread_t *thread)
 	memset(&tcp, 0, sizeof(tcp_context_t));
 
 	/* Create big enough memory cushion. */
-	mm_ctx_t mm;
+	knot_mm_t mm;
 	mm_ctx_mempool(&mm, 16 * MM_DEFAULT_BLKSIZE);
 
 	/* Create TCP answering context. */

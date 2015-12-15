@@ -17,6 +17,7 @@
 #include <stdlib.h>
 #include <tap/basic.h>
 
+#include "libknot/consts.h"
 #include "libknot/dname.h"
 
 /* Test dname_parse_from_wire */

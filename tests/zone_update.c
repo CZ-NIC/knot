@@ -17,10 +17,10 @@
 #include <assert.h>
 #include <tap/basic.h>
 
+#include "contrib/macros.h"
+#include "contrib/getline.h"
 #include "knot/updates/zone-update.h"
 #include "zscanner/scanner.h"
-#include "libknot/internal/getline.h"
-#include "libknot/internal/macros.h"
 
 static const char *zone_str =
 "test. 3600 IN SOA a.ns.test. hostmaster.nic.cz. 1406641065 900 300 604800 900 \n"

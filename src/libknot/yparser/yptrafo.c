@@ -21,10 +21,13 @@
 #include <stdlib.h>
 
 #include "libknot/yparser/yptrafo.h"
-#include "libknot/internal/macros.h"
-#include "libknot/internal/base64.h"
-#include "libknot/internal/sockaddr.h"
-#include "libknot/libknot.h"
+#include "libknot/consts.h"
+#include "libknot/dname.h"
+#include "contrib/base64.h"
+#include "contrib/lookup.h"
+#include "contrib/sockaddr.h"
+#include "contrib/wire.h"
+#include "contrib/wire_ctx.h"
 
 enum {
 	UNIT_BYTE = 'B',
@@ -911,6 +914,12 @@ struct sockaddr_storage yp_addr_noport(
 	return ss;
 }
 
+int64_t yp_int(
+	const uint8_t *data)
+{
+	return (int64_t)wire_read_u64(data);
+}
+
 struct sockaddr_storage yp_addr(
 	const uint8_t *data,
 	bool *no_port)
@@ -943,4 +952,10 @@ struct sockaddr_storage yp_addr(
 	}
 
 	return ss;
+}
+
+const size_t yp_bin_len(
+	const uint8_t *data)
+{
+	return wire_read_u16(data);
 }

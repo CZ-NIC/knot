@@ -18,6 +18,7 @@
 #include <assert.h>
 #include <tap/basic.h>
 
+#include "libknot/errcode.h"
 #include "knot/updates/changesets.h"
 
 int main(int argc, char *argv[])

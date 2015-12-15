@@ -16,10 +16,9 @@
 /*!
  * \file
  *
- * Simple parser (Yparser) of a YAML-inspired data format.
+ * \brief Simple parser (Yparser) of a YAML-inspired data format.
  *
  * \addtogroup yparser
- *
  * @{
  */
 

@@ -14,6 +14,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <assert.h>
 #include <tap/basic.h>
 #include <pthread.h>
 #include <stdlib.h>
@@ -21,10 +22,12 @@
 #include <fcntl.h>
 
 #include "knot/conf/conf.h"
-#include "libknot/internal/mempool.h"
-#include "libknot/internal/net.h"
 #include "libknot/processing/layer.h"
 #include "libknot/processing/requestor.h"
+#include "contrib/mempattern.h"
+#include "contrib/net.h"
+#include "contrib/sockaddr.h"
+#include "contrib/ucw/mempool.h"
 
 /* @note Purpose of this test is not to verify process_answer functionality,
  *       but simply if the requesting/receiving works, so mirror is okay. */
@@ -128,7 +131,7 @@ int main(int argc, char *argv[])
 {
 	plan_lazy();
 
-	mm_ctx_t mm;
+	knot_mm_t mm;
 	mm_ctx_mempool(&mm, MM_DEFAULT_BLKSIZE);
 
 	conf_remote_t remote;
