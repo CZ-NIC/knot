@@ -140,6 +140,7 @@ libknot_la_SOURCES =				\
 	libknot/rdataset.c			\
 	libknot/rrset-dump.c			\
 	libknot/rrset.c				\
+	libknot/rrtype/aaaa.c			\
 	libknot/rrtype/dnskey.c			\
 	libknot/rrtype/naptr.c			\
 	libknot/rrtype/nsec3.c			\
