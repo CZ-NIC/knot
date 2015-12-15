@@ -20,13 +20,13 @@
 #include "contrib/mempattern.h"
 #include "contrib/ucw/lists.h"
 
-#define LAYERS	((list_t *)overlay->layers)
+#define LAYERS(overlay)	((list_t *)overlay->layers)
 
 /*! \note Macro for state-chaining layers. */
 #define ITERATE_LAYERS(overlay, func, ...) \
 	int state = overlay->state; \
 	ptrnode_t *node = NULL; \
-	WALK_LIST(node, *LAYERS) { \
+	WALK_LIST(node, *LAYERS(overlay)) { \
 		knot_layer_t *layer = node->d; \
 		layer->state = state; /* Pass-through state. */ \
 		state = (func)(layer, ##__VA_ARGS__); \
@@ -53,11 +53,11 @@ _public_
 void knot_overlay_deinit(struct knot_overlay *overlay)
 {
 	ptrnode_t *node = NULL;
-	WALK_LIST(node, *LAYERS) {
+	WALK_LIST(node, *LAYERS(overlay)) {
 		mm_free(overlay->mm, node->d);
 	}
 
-	ptrlist_free(LAYERS, overlay->mm);
+	ptrlist_free(LAYERS(overlay), overlay->mm);
 	mm_free(overlay->mm, overlay->layers);
 }
 
@@ -74,7 +74,7 @@ int knot_overlay_add(struct knot_overlay *overlay, const knot_layer_api_t *modul
 	layer->state = overlay->state;
 	layer->mm = overlay->mm;
 
-	ptrlist_add(LAYERS, layer, overlay->mm);
+	ptrlist_add(LAYERS(overlay), layer, overlay->mm);
 	overlay->state = knot_layer_begin(layer, module, module_param);
 
 	return KNOT_EOK;

@@ -24,7 +24,7 @@
 #include "contrib/sockaddr.h"
 #include "contrib/ucw/lists.h"
 
-#define PENDING	((list_t *)requestor->pending)
+#define PENDING(requestor)	((list_t *)requestor->pending)
 
 static bool use_tcp(struct knot_request *request)
 {
@@ -208,13 +208,13 @@ void knot_requestor_clear(struct knot_requestor *requestor)
 
 	knot_overlay_finish(&requestor->overlay);
 	knot_overlay_deinit(&requestor->overlay);
-	mm_free(requestor->mm, PENDING);
+	mm_free(requestor->mm, PENDING(requestor));
 }
 
 _public_
 bool knot_requestor_finished(struct knot_requestor *requestor)
 {
-	return requestor == NULL || EMPTY_LIST(*PENDING);
+	return requestor == NULL || EMPTY_LIST(*PENDING(requestor));
 }
 
 _public_
@@ -246,7 +246,7 @@ int knot_requestor_enqueue(struct knot_requestor *requestor,
 		return KNOT_ENOMEM;
 	}
 
-	ptrlist_add(PENDING, request, requestor->mm);
+	ptrlist_add(PENDING(requestor), request, requestor->mm);
 
 	return KNOT_EOK;
 }
@@ -262,7 +262,7 @@ int knot_requestor_dequeue(struct knot_requestor *requestor)
 		return KNOT_ENOENT;
 	}
 
-	ptrnode_t *node = HEAD(*PENDING);
+	ptrnode_t *node = HEAD(*PENDING(requestor));
 	struct knot_request *last = node->d;
 	knot_request_free(last, requestor->mm);
 	ptrlist_rem(node, requestor->mm);
@@ -340,7 +340,7 @@ int knot_requestor_exec(struct knot_requestor *requestor,
 	}
 
 	/* Execute next request. */
-	ptrnode_t *node = HEAD(*PENDING);
+	ptrnode_t *node = HEAD(*PENDING(requestor));
 	struct knot_request *last = node->d;
 	int ret = exec_request(requestor, last, timeout);
 
