@@ -192,10 +192,11 @@ Available *policy-parameter*\ s:
     timing of all rollover steps.
 
   **manual** *enable*
-    Enable manual key management. If enabled, the KASP policies will be inactive.
+    Enable manual key management. If enabled, no keys will be generated or
+    rolled automatically.
 
-  **keystore *name*
-    Name of a default key store, where the keys are generated.
+  **keystore** *name*
+    Name of the key store to be used for private key material.
 
 keystore commands
 .................
