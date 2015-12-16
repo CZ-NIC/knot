@@ -28,7 +28,7 @@ const lookup_table_t opcode_names[] = {
 	{ 0, NULL }
 };
 _public_
-const lookup_table_t *knot_opcode_names = opcode_names;
+const void *knot_opcode_names = opcode_names;
 
 const lookup_table_t rcode_names[] = {
 	{ KNOT_RCODE_NOERROR,  "NOERROR" },
@@ -46,7 +46,7 @@ const lookup_table_t rcode_names[] = {
 	{ 0, NULL }
 };
 _public_
-const lookup_table_t *knot_rcode_names = rcode_names;
+const void *knot_rcode_names = rcode_names;
 
 const lookup_table_t tsig_err_names[] = {
 	{ KNOT_TSIG_ERR_BADSIG,   "BADSIG" },
@@ -56,7 +56,7 @@ const lookup_table_t tsig_err_names[] = {
 	{ 0, NULL }
 };
 _public_
-const lookup_table_t *knot_tsig_err_names = tsig_err_names;
+const void *knot_tsig_err_names = tsig_err_names;
 
 const lookup_table_t tkey_err_names[] = {
 	{ KNOT_TKEY_ERR_BADMODE,  "BADMODE" },
@@ -65,7 +65,7 @@ const lookup_table_t tkey_err_names[] = {
 	{ 0, NULL }
 };
 _public_
-const lookup_table_t *knot_tkey_err_names = tkey_err_names;
+const void *knot_tkey_err_names = tkey_err_names;
 
 const lookup_table_t dnssec_alg_names[] = {
 	{ KNOT_DNSSEC_ALG_RSAMD5,             "RSAMD5" },
@@ -82,4 +82,4 @@ const lookup_table_t dnssec_alg_names[] = {
 	{ 0, NULL }
 };
 _public_
-const lookup_table_t *knot_dnssec_alg_names = dnssec_alg_names;
+const void *knot_dnssec_alg_names = dnssec_alg_names;

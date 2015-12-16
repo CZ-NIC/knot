@@ -24,31 +24,29 @@
 
 #pragma once
 
-struct lookup_table;
-
 /*!
  * \brief DNS operation code names.
  */
-extern const struct lookup_table *knot_opcode_names;
+extern const void *knot_opcode_names;
 
 /*!
  * \brief DNS reply code names.
  */
-extern const struct lookup_table *knot_rcode_names;
+extern const void *knot_rcode_names;
 
 /*!
  * \brief TSIG error names.
  */
-extern const struct lookup_table *knot_tsig_err_names;
+extern const void *knot_tsig_err_names;
 
 /*!
  * \brief TKEY error names.
  */
-extern const struct lookup_table *knot_tkey_err_names;
+extern const void *knot_tkey_err_names;
 
 /*!
  * \brief DNSSEC algorithm names.
  */
-extern const struct lookup_table *knot_dnssec_alg_names;
+extern const void *knot_dnssec_alg_names;
 
 /*! @} */
