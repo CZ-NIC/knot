@@ -55,8 +55,9 @@ Main commands
   way how a zone is signed.
 
 **keystore** ...
-  Operations with private key store content. The private key store holds
-  private key material separately from zone metadata.
+  Operations with key stores configured for the KASP database. A private key
+  store holds private key material for zone signing separately from the zone
+  metadata.
 
 **tsig** ...
   Operations with TSIG keys.
@@ -198,11 +199,36 @@ Available *policy-parameter*\ s:
 keystore commands
 .................
 
-The key store functionality is limited at the moment. Only one instance of
-file-based key store is supported. This command is subject to change.
-
 **keystore** **list**
-  List private keys in the key store.
+  List names of configured key stores.
+
+**keystore** **show** *name*
+  Show configuration of a key store named *name* and list key IDs of private
+  key material present in that key store.
+
+**keystore** **add** *name* [**backend** *backend*] [**config** *config*]
+  Configure new key store. The *name* is a unique key store identifier. The
+  *backend* and backend-specific configuration string *config* determine where
+  the private key material will be physically stored.
+
+Supported key store backends:
+
+  **pkcs8** (default)
+    The backend stores private key material in unencrypted X.509 PEM files
+    in a directory specified as the backend configuration string. The path
+    can be specified relatively to the KASP database location.
+
+  **pkcs11**
+    The backend stores private key material in a cryptographic token accessible
+    via the PKCS #11 interface. The configuration string consists of a token
+    PKCS #11 URL and PKCS #11 module path separated by the space character.
+
+    The format of the PKCS #11 URL is described in :rfc:`7512`. If the token
+    is protected by a PIN, make sure to include *pin-value* or *pin-source*
+    attribute in the URL.
+
+    The PKCS #11 module path can be an absolute path or just a module name. In
+    the later case, the module is looked up in the default modules location.
 
 tsig commands
 .............
@@ -268,6 +294,15 @@ Examples
 8. Generate a TSIG key named *operator.key*::
 
     $ keymgr tsig generate operator.key algorithm hmac-sha512
+
+9. Add a new key store named *hsm* and backed by the SoftHSM PKCS #11 module,
+   then add a new policy named *secure* with default parameters using this key
+   store, and finally add the zone *example.com* which will use this policy::
+
+    $ keymgr keystore add hsm backend pkcs11 \
+        config "pkcs11:token=knot;pin-value=1234 libsofthsm2.so"
+    $ keymgr policy add secure keystore hsm
+    $ keymgr zone add example.com policy secure
 
 See Also
 --------
