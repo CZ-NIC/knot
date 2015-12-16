@@ -262,8 +262,8 @@ Examples
 3. Add a testing policy *lab* with rapid key rollovers. Apply the policy to an
    existing zone::
 
-    $ keymgr policy add lab rrsig-lifetime 300 rrsig-refresh 150 zsk-lifetime 600 \
-      delay 10
+    $ keymgr policy add lab rrsig-lifetime 300 rrsig-refresh 150 \
+        zsk-lifetime 600 delay 10
     $ keymgr zone set example.com policy lab
 
 4. Add an existing and already secured zone. Let the keys be managed by the
