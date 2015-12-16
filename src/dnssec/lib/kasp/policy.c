@@ -99,7 +99,7 @@ void dnssec_kasp_policy_defaults(dnssec_kasp_policy_t *policy)
 
 	clear_policy(policy);
 
-	policy->algorithm = DNSSEC_KEY_ALGORITHM_RSA_SHA256;
+	policy->algorithm = DNSSEC_KEY_ALGORITHM_ECDSA_P256_SHA256;
 	default_key_size(policy->algorithm, &policy->zsk_size, &policy->ksk_size);
 	policy->dnskey_ttl = 1200;
 
