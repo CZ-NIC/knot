@@ -463,14 +463,14 @@ of the following parameters:
 
 Signing algorithm
   An algorithm of signing keys and issued signatures. The default value is
-  *RSA-SHA-256*.
+  *ECDSA-P256-SHA256*.
 
 :abbr:`KSK (Key Signing Key)` size
-  Desired length of the newly generated ZSK keys. The default value is 2048
-  bits.
+  Desired length of the newly generated ZSK keys. The default value is 256
+  bits (the only feasible value for the default signing algorithm).
 
 :abbr:`ZSK (Zone Signing Key)` size
-  Desired length of the newly generated ZSK keys. The default value is 1024
+  Desired length of the newly generated ZSK keys. The default value is 256
   bits.
 
 DNSKEY TTL
