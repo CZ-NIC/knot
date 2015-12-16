@@ -44,7 +44,8 @@ Main commands
 .............
 
 **init**
-  Initialize new KASP database.
+  Initialize new KASP database. This also creates a default policy and default
+  key store (both named *default*).
 
 **zone** ...
   Operations with zones in the database. A zone holds assigned signing
@@ -246,9 +247,8 @@ tsig commands
 Examples
 --------
 
-1. Initialize a new KASP database, add a policy named *default* with default
-   parameters, and add a zone *example.com*. The zone will use the created
-   policy::
+1. Initialize a new KASP database and add a zone *example.com* with the
+   *default* policy assigned::
 
     $ keymgr init
     $ keymgr policy add default
