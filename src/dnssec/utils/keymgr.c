@@ -55,6 +55,11 @@ static void cleanup_kasp(dnssec_kasp_t **kasp_ptr)
 	dnssec_kasp_deinit(*kasp_ptr);
 }
 
+static void cleanup_kasp_keystore(dnssec_kasp_keystore_t **keystore_ptr)
+{
+	dnssec_kasp_keystore_free(*keystore_ptr);
+}
+
 static void cleanup_keystore(dnssec_keystore_t **keystore_ptr)
 {
 	dnssec_keystore_deinit(*keystore_ptr);
@@ -76,6 +81,7 @@ static void cleanup_list(dnssec_list_t **list_ptr)
 }
 
 #define _cleanup_kasp_ _cleanup_(cleanup_kasp)
+#define _cleanup_kasp_keystore_ _cleanup_(cleanup_kasp_keystore)
 #define _cleanup_keystore_ _cleanup_(cleanup_keystore)
 #define _cleanup_zone_ _cleanup_(cleanup_kasp_zone)
 #define _cleanup_policy_ _cleanup_(cleanup_kasp_policy)
@@ -1314,10 +1320,23 @@ static int cmd_keystore_show(int argc, char *argv[])
 		return 1;
 	}
 
+	const char *name = argv[0];
+
 	_cleanup_kasp_ dnssec_kasp_t *kasp = get_kasp();
 	if (!kasp) {
 		return 1;
 	}
+
+	_cleanup_kasp_keystore_ dnssec_kasp_keystore_t *kasp_store = NULL;
+	int r = dnssec_kasp_keystore_load(kasp, name, &kasp_store);
+	if (r != DNSSEC_EOK) {
+		error("Failed to load keystore configuration.");
+		return 1;
+	}
+
+	printf("name:    %s\n", kasp_store->name);
+	printf("backend: %s\n", kasp_store->backend);
+	printf("config:  %s\n", kasp_store->config);
 
 	_cleanup_keystore_ dnssec_keystore_t *store = get_keystore(kasp, argv[0]);
 	if (!store) {
@@ -1326,6 +1345,7 @@ static int cmd_keystore_show(int argc, char *argv[])
 
 	dnssec_list_t *keys = NULL;
 	dnssec_keystore_list_keys(store, &keys);
+	printf("keys:    %zu\n", dnssec_list_size(keys));
 	dnssec_list_foreach(item, keys) {
 		const char *key_id = dnssec_item_get(item);
 		printf("- %s\n", key_id);
