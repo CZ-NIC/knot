@@ -508,6 +508,14 @@ Propagation delay
   enough to cover propagation of data from the master server to all slaves.
   The default value is 1 hour.
 
+Key store name
+  A name of a key store holding private key material for zones which use the
+  policy. The default value is *default*.
+
+Manual key management
+  An option to disable key management for all zones which use the policy. The
+  option is disabled by default.
+
 .. _dnssec-signing:
 
 Zone signing
