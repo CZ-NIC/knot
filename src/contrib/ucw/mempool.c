@@ -14,6 +14,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <assert.h>
+#include "contrib/asan.h"
 #include "contrib/macros.h"
 #include "contrib/ucw/mempool.h"
 
@@ -85,6 +86,7 @@ mp_new_big_chunk(unsigned size)
   if (!data) {
     return NULL;
   }
+  ASAN_POISON_MEMORY_REGION(data, size);
   struct mempool_chunk *chunk = (struct mempool_chunk *)(data + size);
   chunk->size = size;
   return chunk;
@@ -93,7 +95,9 @@ mp_new_big_chunk(unsigned size)
 static void
 mp_free_big_chunk(struct mempool_chunk *chunk)
 {
-  free((void *)chunk - chunk->size);
+  void *ptr = (void*)chunk - chunk->size;
+  ASAN_UNPOISON_MEMORY_REGION(ptr, chunk->size);
+  free(ptr);
 }
 
 static void *
@@ -104,6 +108,7 @@ mp_new_chunk(unsigned size)
   if (!data) {
     return NULL;
   }
+  ASAN_POISON_MEMORY_REGION(data, size);
   struct mempool_chunk *chunk = (struct mempool_chunk *)(data + size);
   chunk->size = size;
   return chunk;
@@ -116,7 +121,9 @@ static void
 mp_free_chunk(struct mempool_chunk *chunk)
 {
 #ifdef CONFIG_UCW_POOL_IS_MMAP
-  page_free((void *)chunk - chunk->size, chunk->size + MP_CHUNK_TAIL);
+  uint8_t *data = (void *)chunk - chunk->size;
+  ASAN_UNPOISON_MEMORY_REGION(data, chunk->size);
+  page_free(data, chunk->size + MP_CHUNK_TAIL);
 #else
   mp_free_big_chunk(chunk);
 #endif
@@ -128,6 +135,7 @@ mp_new(unsigned chunk_size)
   chunk_size = mp_align_size(MAX(sizeof(struct mempool), chunk_size));
   struct mempool_chunk *chunk = mp_new_chunk(chunk_size);
   struct mempool *pool = (void *)chunk - chunk_size;
+  ASAN_UNPOISON_MEMORY_REGION(pool, sizeof(*pool));
   DBG("Creating mempool %p with %u bytes long chunks", pool, chunk_size);
   chunk->next = NULL;
   *pool = (struct mempool) {
@@ -217,7 +225,7 @@ mp_total_size(struct mempool *pool)
   return stats.total_size;
 }
 
-void *
+static void *
 mp_alloc_internal(struct mempool *pool, unsigned size)
 {
   struct mempool_chunk *chunk;
@@ -259,105 +267,40 @@ mp_alloc_internal(struct mempool *pool, unsigned size)
 void *
 mp_alloc(struct mempool *pool, unsigned size)
 {
-  return mp_alloc_fast(pool, size);
+  unsigned avail = pool->state.free[0] & ~(CPU_STRUCT_ALIGN - 1);
+  void *ptr = NULL;
+  if (size <= avail)
+    {
+      pool->state.free[0] = avail - size;
+      ptr = (uint8_t*)pool->state.last[0] - avail;
+    }
+  else
+    ptr = mp_alloc_internal(pool, size);
+
+  ASAN_UNPOISON_MEMORY_REGION(ptr, size);
+  return ptr;
 }
 
 void *
 mp_alloc_noalign(struct mempool *pool, unsigned size)
 {
-  return mp_alloc_fast_noalign(pool, size);
+  void *ptr = NULL;
+  if (size <= pool->state.free[0])
+    {
+      ptr = (uint8_t*)pool->state.last[0] - pool->state.free[0];
+      pool->state.free[0] -= size;
+    }
+  else
+    ptr = mp_alloc_internal(pool, size);
+
+  ASAN_UNPOISON_MEMORY_REGION(ptr, size);
+  return ptr;
 }
 
 void *
 mp_alloc_zero(struct mempool *pool, unsigned size)
 {
-  void *ptr = mp_alloc_fast(pool, size);
+  void *ptr = mp_alloc(pool, size);
   bzero(ptr, size);
   return ptr;
-}
-
-void *
-mp_start_internal(struct mempool *pool, unsigned size)
-{
-  void *ptr = mp_alloc_internal(pool, size);
-  pool->state.free[pool->idx] += size;
-  return ptr;
-}
-
-void *
-mp_start(struct mempool *pool, unsigned size)
-{
-  return mp_start_fast(pool, size);
-}
-
-void *
-mp_start_noalign(struct mempool *pool, unsigned size)
-{
-  return mp_start_fast_noalign(pool, size);
-}
-
-void *
-mp_grow_internal(struct mempool *pool, unsigned size)
-{
-  if (size > MP_SIZE_MAX) {
-    fprintf(stderr, "Cannot allocate %u bytes of memory", size);
-    assert(0);
-  }
-  unsigned avail = mp_avail(pool);
-  void *ptr = mp_ptr(pool);
-  if (pool->idx)
-    {
-      unsigned amortized = (avail <= MP_SIZE_MAX / 2) ? avail * 2 : MP_SIZE_MAX;
-      amortized = MAX(amortized, size);
-      amortized = ALIGN_TO(amortized, CPU_STRUCT_ALIGN);
-      struct mempool_chunk *chunk = pool->state.last[1], *next = chunk->next;
-      ptr = realloc(ptr, amortized + MP_CHUNK_TAIL);
-      if (!ptr) {
-        return NULL;
-      }
-      chunk = ptr + amortized;
-      chunk->next = next;
-      chunk->size = amortized;
-      pool->state.last[1] = chunk;
-      pool->state.free[1] = amortized;
-      pool->last_big = ptr;
-      return ptr;
-    }
-  else
-    {
-      void *p = mp_start_internal(pool, size);
-      memcpy(p, ptr, avail);
-      return p;
-    }
-}
-
-unsigned
-mp_open(struct mempool *pool, void *ptr)
-{
-  return mp_open_fast(pool, ptr);
-}
-
-void *
-mp_realloc(struct mempool *pool, void *ptr, unsigned size)
-{
-  return mp_realloc_fast(pool, ptr, size);
-}
-
-void *
-mp_realloc_zero(struct mempool *pool, void *ptr, unsigned size)
-{
-  unsigned old_size = mp_open_fast(pool, ptr);
-  ptr = mp_grow(pool, size);
-  if (size > old_size)
-    bzero(ptr + old_size, size - old_size);
-  mp_end(pool, ptr + size);
-  return ptr;
-}
-
-void *
-mp_spread_internal(struct mempool *pool, void *p, unsigned size)
-{
-  void *old = mp_ptr(pool);
-  void *new = mp_grow_internal(pool, p-old+size);
-  return p-old+new;
 }
