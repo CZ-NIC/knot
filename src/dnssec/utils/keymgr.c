@@ -38,6 +38,9 @@
 #include "strtonum.h"
 #include "wire.h"
 
+#define DEFAULT_POLICY "default"
+#define DEFAULT_KEYSTORE "default"
+
 /* -- global options ------------------------------------------------------- */
 
 struct options {
@@ -130,8 +133,16 @@ static dnssec_kasp_policy_t *get_policy(dnssec_kasp_t *kasp, const char *name)
 
 static dnssec_keystore_t *get_keystore(dnssec_kasp_t *kasp, const char *name)
 {
+	_cleanup_kasp_keystore_ dnssec_kasp_keystore_t *config = NULL;
+	int r = dnssec_kasp_keystore_load(kasp, name, &config);
+	if (r != DNSSEC_EOK) {
+		error("Cannot load key store '%s' configuration. (%s)",
+		      name, dnssec_strerror(r));
+		return NULL;
+	}
+
 	dnssec_keystore_t *store = NULL;
-	int r = dnssec_kasp_keystore_open(kasp, name, &store);
+	r = dnssec_kasp_keystore_open(kasp, config->backend, config->config, &store);
 	if (r != DNSSEC_EOK) {
 		error("Cannot open private key store '%s' (%s).", name, dnssec_strerror(r));
 		return NULL;
@@ -325,6 +336,90 @@ static int search_unique_key(dnssec_list_t *list, const char *search,
 
 /* -- actions implementation ----------------------------------------------- */
 
+static bool init_kasp(dnssec_kasp_t **kasp_ptr)
+{
+	dnssec_kasp_t *kasp = NULL;
+	dnssec_kasp_init_dir(&kasp);
+
+	int r = dnssec_kasp_init(kasp, global.kasp_dir);
+	if (r != DNSSEC_EOK) {
+		error("Cannot initialize KASP directory (%s).", dnssec_strerror(r));
+		free(kasp);
+		return false;
+	}
+
+	r = dnssec_kasp_open(kasp, global.kasp_dir);
+	if (r != DNSSEC_EOK) {
+		error("Cannot open KASP directory (%s).", dnssec_strerror(r));
+		free(kasp);
+		return false;
+	}
+
+	*kasp_ptr = kasp;
+	return true;
+}
+
+static bool init_default_keystore(dnssec_kasp_t *kasp)
+{
+	int r = dnssec_kasp_keystore_exists(kasp, DEFAULT_KEYSTORE);
+	if (r == DNSSEC_EOK) {
+		return true;
+	} else if (r != DNSSEC_NOT_FOUND) {
+		error("Failed to check if the default key store exists (%s).",
+		      dnssec_strerror(r));
+		return false;
+	}
+
+	dnssec_kasp_keystore_t config = {
+		.name = DEFAULT_KEYSTORE,
+		.backend = DNSSEC_KASP_KEYSTORE_PKCS8,
+		.config = "keys",
+	};
+
+	_cleanup_keystore_ dnssec_keystore_t *keystore = NULL;
+	r = dnssec_kasp_keystore_init(kasp, config.backend, config.config, &keystore);
+	if (r != DNSSEC_EOK) {
+		error("Failed to initialize the default key store (%s).",
+		      dnssec_strerror(r));
+		return false;
+	}
+
+	r = dnssec_kasp_keystore_save(kasp, &config);
+	if (r != DNSSEC_EOK) {
+		error("Failed to save the default key store configuration (%s).",
+		      dnssec_strerror(r));
+		return false;
+	}
+
+	return true;
+}
+
+static bool init_default_policy(dnssec_kasp_t *kasp)
+{
+	int r = dnssec_kasp_policy_exists(kasp, DEFAULT_POLICY);
+	if (r == DNSSEC_EOK) {
+		return true;
+	} else if (r != DNSSEC_NOT_FOUND) {
+		error("Failed to check if the default policy exists (%s).",
+		      dnssec_strerror(r));
+		return false;
+	}
+
+	dnssec_kasp_policy_t policy = { 0 };
+	dnssec_kasp_policy_defaults(&policy);
+	policy.name = DEFAULT_POLICY;
+	policy.keystore = DEFAULT_KEYSTORE;
+
+	r = dnssec_kasp_policy_save(kasp, &policy);
+	if (r != DNSSEC_EOK) {
+		error("Failed to save the default policy configuration (%s).",
+		      dnssec_strerror(r));
+		return false;
+	}
+
+	return true;
+}
+
 /*
  * keymgr init
  */
@@ -335,69 +430,12 @@ static int cmd_init(int argc, char *argv[])
 		return 1;
 	}
 
-	// KASP
-
 	_cleanup_kasp_ dnssec_kasp_t *kasp = NULL;
-	dnssec_kasp_init_dir(&kasp);
-
-	int r = dnssec_kasp_init(kasp, global.kasp_dir);
-	if (r != DNSSEC_EOK) {
-		error("Cannot initialize KASP directory (%s).", dnssec_strerror(r));
+	if (!init_kasp(&kasp)) {
 		return 1;
 	}
 
-	r = dnssec_kasp_open(kasp, global.kasp_dir);
-	if (r != DNSSEC_EOK) {
-		error("Cannot open KASP directory (%s(.", dnssec_strerror(r));
-		return 1;
-	}
-
-	// default keystore
-
-	dnssec_kasp_keystore_t keystore = {
-		.name = "default",
-		.backend = DNSSEC_KASP_KEYSTORE_PKCS8,
-		.config = "keys",
-	};
-
-	if (dnssec_kasp_keystore_exists(kasp, keystore.name) == DNSSEC_NOT_FOUND) {
-		_cleanup_keystore_ dnssec_keystore_t *store = NULL;
-		r = dnssec_keystore_init_pkcs8_dir(&store);
-		if (r != DNSSEC_EOK) {
-			error("Cannot get default keystore (%s).", dnssec_strerror(r));
-			return 1;
-		}
-
-		r = dnssec_keystore_init(store, keystore.config);
-		if (r != DNSSEC_EOK) {
-			error("Cannot initialize default keystore (%s).", dnssec_strerror(r));
-			return 1;
-		}
-
-		r = dnssec_kasp_keystore_save(kasp, &keystore);
-		if (r != DNSSEC_EOK) {
-			error("Cannot save default keystore (%s).", dnssec_strerror(r));
-			return 1;
-		}
-	}
-
-	// default policy
-
-	dnssec_kasp_policy_t policy = { 0 };
-	dnssec_kasp_policy_defaults(&policy);
-
-	policy.name = "default";
-	policy.keystore = "default";
-
-	if (dnssec_kasp_policy_exists(kasp, policy.name) == DNSSEC_NOT_FOUND) {
-		r = dnssec_kasp_policy_save(kasp, &policy);
-		if (r != DNSSEC_EOK) {
-			error("Cannot save default policy (%s).", dnssec_strerror(r));
-			return 1;
-		}
-	}
-
-	return 0;
+	return (init_default_keystore(kasp) && init_default_policy(kasp)) ? 0 : 1;
 }
 
 /*
@@ -411,10 +449,10 @@ static int cmd_zone_add(int argc, char *argv[])
 	}
 
 	char *zone_name = argv[0];
-	char *policy = NULL;
+	char *policy = DEFAULT_POLICY;
 
 	static const parameter_t params[] = {
-		{ "policy", value_policy },
+		{ "policy", value_string },
 		{ NULL }
 	};
 
@@ -1045,7 +1083,7 @@ static int cmd_zone_set(int argc, char *argv[])
 	const char *policy = dnssec_kasp_zone_get_policy(zone);
 
 	static const parameter_t params[] = {
-		{ "policy", value_policy },
+		{ "policy", value_string },
 		{ NULL }
 	};
 
@@ -1193,9 +1231,12 @@ static int cmd_policy_add(int argc, char *argv[])
 	}
 
 	dnssec_kasp_policy_defaults(policy);
+	policy->keystore = strdup(DEFAULT_KEYSTORE);
+
 	if (parse_parameters(POLICY_PARAMS, argc -1, argv + 1, policy) != 0) {
 		return 1;
 	}
+
 
 	_cleanup_kasp_ dnssec_kasp_t *kasp = get_kasp();
 	if (!kasp) {
