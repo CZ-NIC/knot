@@ -202,8 +202,6 @@ int dnssec_keystore_init_pkcs8_custom(dnssec_keystore_t **store,
 /*!
  * Crate new PKCS #11 private key store context.
  *
- * \todo Not implemented.
- *
  * \param[out]  store   Opened key store.
  *
  * \return Error code, DNSSEC_EOK if successful.
