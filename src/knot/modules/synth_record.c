@@ -36,7 +36,7 @@ enum synth_template_type {
 	SYNTH_REVERSE = 2
 };
 
-static const lookup_table_t synthetic_types[] = {
+static const knot_lookup_t synthetic_types[] = {
 	{ SYNTH_FORWARD, "forward" },
 	{ SYNTH_REVERSE, "reverse" },
 	{ 0, NULL }

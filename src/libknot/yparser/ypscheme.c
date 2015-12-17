@@ -16,11 +16,11 @@
 
 #include <assert.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "libknot/yparser/ypscheme.h"
 #include "libknot/yparser/yptrafo.h"
 #include "libknot/errcode.h"
-#include "contrib/lookup.h"
 
 /*! Initializes the referenced item. */
 static int set_ref_item(

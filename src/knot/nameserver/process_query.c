@@ -568,8 +568,8 @@ bool process_query_acl_check(const knot_dname_t *zone_name, acl_action_t action,
 	if (!acl_allowed(&acl, action, query_source, &tsig)) {
 		char addr_str[SOCKADDR_STRLEN] = { 0 };
 		sockaddr_tostr(addr_str, sizeof(addr_str), query_source);
-		const lookup_table_t *act = lookup_by_id((lookup_table_t *)acl_actions,
-		                                         action);
+		const knot_lookup_t *act = knot_lookup_by_id((knot_lookup_t *)acl_actions,
+		                                             action);
 		char *key_name = knot_dname_to_str_alloc(tsig.name);
 
 		log_zone_debug(zone_name,

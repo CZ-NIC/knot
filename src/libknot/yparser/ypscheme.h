@@ -30,7 +30,7 @@
 #include "libknot/yparser/yparser.h"
 
 struct wire_ctx;
-struct lookup_table;
+struct knot_lookup;
 
 /*! Maximal length of item name. */
 #define YP_MAX_ITEM_NAME_LEN	64
@@ -119,7 +119,7 @@ typedef union {
 	/*! Option variables. */
 	struct {
 		/*! List of options (maximal value is 255). */
-		struct lookup_table const *opts;
+		struct knot_lookup const *opts;
 		/*! Default value. */
 		unsigned dflt;
 	} o;

@@ -31,6 +31,7 @@ libtap/tap/float.h
 libtap/tap/macros.h
 samples/Makefile.am
 src/Makefile.am
+src/contrib/asan.h
 src/contrib/base32hex.c
 src/contrib/base32hex.h
 src/contrib/base64.c
@@ -57,7 +58,6 @@ src/contrib/lmdb/lmdb.h
 src/contrib/lmdb/mdb.c
 src/contrib/lmdb/midl.c
 src/contrib/lmdb/midl.h
-src/contrib/lookup.h
 src/contrib/macros.h
 src/contrib/mempattern.c
 src/contrib/mempattern.h
@@ -388,6 +388,7 @@ src/libknot/errcode.h
 src/libknot/error.c
 src/libknot/error.h
 src/libknot/libknot.h
+src/libknot/lookup.h
 src/libknot/mm_ctx.h
 src/libknot/packet/compr.c
 src/libknot/packet/compr.h
@@ -411,6 +412,7 @@ src/libknot/rrset-dump.c
 src/libknot/rrset-dump.h
 src/libknot/rrset.c
 src/libknot/rrset.h
+src/libknot/rrtype/aaaa.c
 src/libknot/rrtype/aaaa.h
 src/libknot/rrtype/dnskey.c
 src/libknot/rrtype/dnskey.h

@@ -33,7 +33,6 @@ libcontrib_la_SOURCES = 			\
 	contrib/getline.h			\
 	contrib/hhash.c				\
 	contrib/hhash.h				\
-	contrib/lookup.h			\
 	contrib/macros.h			\
 	contrib/mempattern.c			\
 	contrib/mempattern.h			\
@@ -90,6 +89,7 @@ nobase_libknot_la_HEADERS =			\
 	libknot/errcode.h			\
 	libknot/error.h				\
 	libknot/libknot.h			\
+	libknot/lookup.h			\
 	libknot/mm_ctx.h			\
 	libknot/db/db.h				\
 	libknot/db/db_lmdb.h			\

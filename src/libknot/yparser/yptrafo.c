@@ -23,8 +23,8 @@
 #include "libknot/yparser/yptrafo.h"
 #include "libknot/consts.h"
 #include "libknot/dname.h"
+#include "libknot/lookup.h"
 #include "contrib/base64.h"
-#include "contrib/lookup.h"
 #include "contrib/sockaddr.h"
 #include "contrib/wire.h"
 #include "contrib/wire_ctx.h"
@@ -504,7 +504,7 @@ int yp_addr_to_txt(
 
 int yp_option_to_bin(
 	YP_TXT_BIN_PARAMS,
-	const lookup_table_t *opts)
+	const knot_lookup_t *opts)
 {
 	YP_CHECK_PARAMS_BIN;
 
@@ -522,7 +522,7 @@ int yp_option_to_bin(
 
 int yp_option_to_txt(
 	YP_BIN_TXT_PARAMS,
-	const lookup_table_t *opts)
+	const knot_lookup_t *opts)
 {
 	uint8_t id = wire_ctx_read_u8(in);
 

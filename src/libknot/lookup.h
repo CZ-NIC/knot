@@ -18,7 +18,7 @@
  *
  * \brief A general purpose lookup table.
  *
- * \addtogroup contrib
+ * \addtogroup libknot
  * @{
  */
 
@@ -29,10 +29,10 @@
 /*!
  * \brief A general purpose lookup table.
  */
-typedef struct lookup_table {
+typedef struct knot_lookup {
 	int id;
 	const char *name;
-} lookup_table_t;
+} knot_lookup_t;
 
 /*!
  * \brief Looks up the given name in the lookup table.
@@ -43,7 +43,7 @@ typedef struct lookup_table {
  * \return Item in the lookup table with the given name or NULL if no such is
  *         present.
  */
-inline static const lookup_table_t *lookup_by_name(const lookup_table_t *table, const char *name)
+inline static const knot_lookup_t *knot_lookup_by_name(const knot_lookup_t *table, const char *name)
 {
 	if (table == NULL || name == NULL) {
 		return NULL;
@@ -68,7 +68,7 @@ inline static const lookup_table_t *lookup_by_name(const lookup_table_t *table, 
  * \return Item in the lookup table with the given id or NULL if no such is
  *         present.
  */
-inline static const lookup_table_t *lookup_by_id(const lookup_table_t *table, int id)
+inline static const knot_lookup_t *knot_lookup_by_id(const knot_lookup_t *table, int id)
 {
 	if (table == NULL) {
 		return NULL;

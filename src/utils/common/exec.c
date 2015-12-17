@@ -24,14 +24,13 @@
 #include "utils/common/netio.h"
 #include "utils/common/params.h"
 #include "libknot/libknot.h"
-#include "contrib/lookup.h"
 #include "contrib/print.h"
 #include "contrib/sockaddr.h"
 #include "contrib/openbsd/strlcat.h"
 #include "contrib/ucw/lists.h"
 #include "contrib/wire_ctx.h"
 
-static lookup_table_t rtypes[] = {
+static knot_lookup_t rtypes[] = {
 	{ KNOT_RRTYPE_A,      "has IPv4 address" },
 	{ KNOT_RRTYPE_NS,     "nameserver is" },
 	{ KNOT_RRTYPE_CNAME,  "is an alias for" },
@@ -56,17 +55,17 @@ static void print_header(const knot_pkt_t *packet, const style_t *style,
 	uint8_t opcode_id;
 	const char *rcode_str = "Unknown";
 	const char *opcode_str = "Unknown";
-	const lookup_table_t *rcode, *opcode;
+	const knot_lookup_t *rcode, *opcode;
 
 	// Get RCODE from Header and check for Extended RCODE from OPT RR.
-	rcode = lookup_by_id(knot_rcode_names, ext_rcode);
+	rcode = knot_lookup_by_id(knot_rcode_names, ext_rcode);
 	if (rcode != NULL) {
 		rcode_str = rcode->name;
 	}
 
 	// Get OPCODE.
 	opcode_id = knot_wire_get_opcode(packet->wire);
-	opcode = lookup_by_id(knot_opcode_names, opcode_id);
+	opcode = knot_lookup_by_id(knot_opcode_names, opcode_id);
 	if (opcode != NULL) {
 		opcode_str = opcode->name;
 	}
@@ -219,10 +218,10 @@ static void print_section_opt(const knot_rrset_t *rr, const uint8_t rcode)
 	uint8_t ercode = knot_edns_get_ext_rcode(rr);
 	uint16_t ext_rcode_id = knot_edns_whole_rcode(ercode, rcode);
 	const char *ext_rcode_str = "Unused";
-	const lookup_table_t *ext_rcode;
+	const knot_lookup_t *ext_rcode;
 
 	if (ercode > 0) {
-		ext_rcode = lookup_by_id(knot_rcode_names, ext_rcode_id);
+		ext_rcode = knot_lookup_by_id(knot_rcode_names, ext_rcode_id);
 		if (ext_rcode != NULL) {
 			ext_rcode_str = ext_rcode->name;
 		} else {
@@ -384,7 +383,7 @@ static void print_section_host(const knot_rrset_t *rrsets,
 
 	for (size_t i = 0; i < count; i++) {
 		const knot_rrset_t *rrset = &rrsets[i];
-		const lookup_table_t *descr;
+		const knot_lookup_t *descr;
 		char type[32] = "NULL";
 		char *owner;
 
@@ -392,7 +391,7 @@ static void print_section_host(const knot_rrset_t *rrsets,
 		if (style->style.ascii_to_idn != NULL) {
 			style->style.ascii_to_idn(&owner);
 		}
-		descr = lookup_by_id(rtypes, rrset->type);
+		descr = knot_lookup_by_id(rtypes, rrset->type);
 
 		uint16_t rrset_rdata_count = rrset->rrs.rr_count;
 		for (uint16_t j = 0; j < rrset_rdata_count; j++) {
@@ -441,14 +440,14 @@ static void print_error_host(const uint16_t   code,
 	const char *rcode_str = "Unknown";
 	char type[32] = "Unknown";
 	char *owner;
-	const lookup_table_t *rcode;
+	const knot_lookup_t *rcode;
 
 	owner = knot_dname_to_str_alloc(knot_pkt_qname(packet));
 	if (style->style.ascii_to_idn != NULL) {
 		style->style.ascii_to_idn(&owner);
 	}
 
-	rcode = lookup_by_id(knot_rcode_names, code);
+	rcode = knot_lookup_by_id(knot_rcode_names, code);
 	if (rcode != NULL) {
 		rcode_str = rcode->name;
 	}

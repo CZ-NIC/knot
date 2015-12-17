@@ -17,9 +17,9 @@
 #include "libknot/attribute.h"
 #include "libknot/codes.h"
 #include "libknot/consts.h"
-#include "contrib/lookup.h"
 
-const lookup_table_t opcode_names[] = {
+_public_
+const knot_lookup_t knot_opcode_names[] = {
 	{ KNOT_OPCODE_QUERY,  "QUERY" },
 	{ KNOT_OPCODE_IQUERY, "IQUERY" },
 	{ KNOT_OPCODE_STATUS, "STATUS" },
@@ -27,10 +27,9 @@ const lookup_table_t opcode_names[] = {
 	{ KNOT_OPCODE_UPDATE, "UPDATE" },
 	{ 0, NULL }
 };
-_public_
-const void *knot_opcode_names = opcode_names;
 
-const lookup_table_t rcode_names[] = {
+_public_
+const knot_lookup_t knot_rcode_names[] = {
 	{ KNOT_RCODE_NOERROR,  "NOERROR" },
 	{ KNOT_RCODE_FORMERR,  "FORMERR" },
 	{ KNOT_RCODE_SERVFAIL, "SERVFAIL" },
@@ -45,29 +44,26 @@ const lookup_table_t rcode_names[] = {
 	{ KNOT_RCODE_BADVERS,  "BADVERS" },
 	{ 0, NULL }
 };
-_public_
-const void *knot_rcode_names = rcode_names;
 
-const lookup_table_t tsig_err_names[] = {
+_public_
+const knot_lookup_t knot_tsig_err_names[] = {
 	{ KNOT_TSIG_ERR_BADSIG,   "BADSIG" },
 	{ KNOT_TSIG_ERR_BADKEY,   "BADKEY" },
 	{ KNOT_TSIG_ERR_BADTIME,  "BADTIME" },
 	{ KNOT_TSIG_ERR_BADTRUNC, "BADTRUNC" },
 	{ 0, NULL }
 };
-_public_
-const void *knot_tsig_err_names = tsig_err_names;
 
-const lookup_table_t tkey_err_names[] = {
+_public_
+const knot_lookup_t knot_tkey_err_names[] = {
 	{ KNOT_TKEY_ERR_BADMODE,  "BADMODE" },
 	{ KNOT_TKEY_ERR_BADNAME,  "BADNAME" },
 	{ KNOT_TKEY_ERR_BADALG,   "BADALG" },
 	{ 0, NULL }
 };
-_public_
-const void *knot_tkey_err_names = tkey_err_names;
 
-const lookup_table_t dnssec_alg_names[] = {
+_public_
+const knot_lookup_t knot_dnssec_alg_names[] = {
 	{ KNOT_DNSSEC_ALG_RSAMD5,             "RSAMD5" },
 	{ KNOT_DNSSEC_ALG_DH,                 "DH" },
 	{ KNOT_DNSSEC_ALG_DSA,                "DSA" },
@@ -81,5 +77,3 @@ const lookup_table_t dnssec_alg_names[] = {
 	{ KNOT_DNSSEC_ALG_ECDSAP384SHA384,    "ECDSAP384SHA384" },
 	{ 0, NULL }
 };
-_public_
-const void *knot_dnssec_alg_names = dnssec_alg_names;

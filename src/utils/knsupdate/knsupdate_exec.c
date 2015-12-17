@@ -33,7 +33,6 @@
 #include "utils/common/token.h"
 #include "libknot/libknot.h"
 #include "contrib/macros.h"
-#include "contrib/lookup.h"
 #include "contrib/string.h"
 #include "contrib/openbsd/strlcpy.h"
 
@@ -882,7 +881,7 @@ int cmd_send(const char* lp, knsupdate_params_t *params)
 	uint8_t rc = knot_wire_get_rcode(params->answer->wire);
 	if (rc != KNOT_RCODE_NOERROR) {
 		const char *rcode_str = "Unknown";
-		const lookup_table_t *rcode = lookup_by_id(knot_rcode_names, rc);
+		const knot_lookup_t *rcode = knot_lookup_by_id(knot_rcode_names, rc);
 		if (rcode != NULL) {
 			rcode_str = rcode->name;
 		}

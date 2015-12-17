@@ -26,7 +26,7 @@
 
 #include "libknot/yparser/ypscheme.h"
 
-struct lookup_table;
+struct knot_lookup;
 
 /*!
  * Transforms textual item value to binary form.
@@ -263,12 +263,12 @@ int yp_addr_to_txt(
 
 int yp_option_to_bin(
 	YP_TXT_BIN_PARAMS,
-	const struct lookup_table *opts
+	const struct knot_lookup *opts
 );
 
 int yp_option_to_txt(
 	YP_BIN_TXT_PARAMS,
-	const struct lookup_table *opts
+	const struct knot_lookup *opts
 );
 
 int yp_dname_to_bin(

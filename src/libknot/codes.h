@@ -24,29 +24,31 @@
 
 #pragma once
 
+#include "libknot/lookup.h"
+
 /*!
  * \brief DNS operation code names.
  */
-extern const void *knot_opcode_names;
+extern const knot_lookup_t knot_opcode_names[];
 
 /*!
  * \brief DNS reply code names.
  */
-extern const void *knot_rcode_names;
+extern const knot_lookup_t knot_rcode_names[];
 
 /*!
  * \brief TSIG error names.
  */
-extern const void *knot_tsig_err_names;
+extern const knot_lookup_t knot_tsig_err_names[];
 
 /*!
  * \brief TKEY error names.
  */
-extern const void *knot_tkey_err_names;
+extern const knot_lookup_t knot_tkey_err_names[];
 
 /*!
  * \brief DNSSEC algorithm names.
  */
-extern const void *knot_dnssec_alg_names;
+extern const knot_lookup_t knot_dnssec_alg_names[];
 
 /*! @} */

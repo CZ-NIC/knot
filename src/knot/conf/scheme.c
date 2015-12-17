@@ -38,7 +38,7 @@
 #include "knot/modules/dnstap.h"
 #endif
 
-static const lookup_table_t key_algs[] = {
+static const knot_lookup_t key_algs[] = {
 	{ DNSSEC_TSIG_HMAC_MD5,    "hmac-md5" },
 	{ DNSSEC_TSIG_HMAC_SHA1,   "hmac-sha1" },
 	{ DNSSEC_TSIG_HMAC_SHA224, "hmac-sha224" },
@@ -48,7 +48,7 @@ static const lookup_table_t key_algs[] = {
 	{ 0, NULL }
 };
 
-const lookup_table_t acl_actions[] = {
+const knot_lookup_t acl_actions[] = {
 	{ ACL_ACTION_NOTIFY,   "notify" },
 	{ ACL_ACTION_TRANSFER, "transfer" },
 	{ ACL_ACTION_UPDATE,   "update" },
@@ -56,13 +56,13 @@ const lookup_table_t acl_actions[] = {
 	{ 0, NULL }
 };
 
-static const lookup_table_t serial_policies[] = {
+static const knot_lookup_t serial_policies[] = {
 	{ SERIAL_POLICY_INCREMENT, "increment" },
 	{ SERIAL_POLICY_UNIXTIME,  "unixtime" },
 	{ 0, NULL }
 };
 
-static const lookup_table_t log_severities[] = {
+static const knot_lookup_t log_severities[] = {
 	{ LOG_UPTO(LOG_CRIT),    "critical" },
 	{ LOG_UPTO(LOG_ERR),     "error" },
 	{ LOG_UPTO(LOG_WARNING), "warning" },

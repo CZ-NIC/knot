@@ -22,7 +22,6 @@
 
 #include "libknot/yparser/yptrafo.h"
 #include "libknot/libknot.h"
-#include "contrib/lookup.h"
 
 static void int_test(const char *txt, int64_t num, yp_style_t s,
                      int64_t min, int64_t max)
@@ -90,7 +89,7 @@ static void bool_bad_test(const char *txt, int code)
 	ok(ret == code, "invalid txt to bin");
 }
 
-static void opt_test(const char *txt, unsigned val, const lookup_table_t *opts)
+static void opt_test(const char *txt, unsigned val, const knot_lookup_t *opts)
 {
 	int ret;
 	uint8_t b[64];
@@ -111,7 +110,7 @@ static void opt_test(const char *txt, unsigned val, const lookup_table_t *opts)
 	ok(memcmp(txt, t, t_len) == 0, "compare");
 }
 
-static void opt_bad_test(const char *txt, int code, const lookup_table_t *opts)
+static void opt_bad_test(const char *txt, int code, const knot_lookup_t *opts)
 {
 	int ret;
 	uint8_t b[64];
@@ -311,7 +310,7 @@ int main(int argc, char *argv[])
 	bool_bad_test("enable", KNOT_EINVAL);
 
 	/* Option tests. */
-	static const lookup_table_t opts[] = {
+	static const knot_lookup_t opts[] = {
 		{ 1,   "one" },
 		{ 10,  "ten" },
 		{ 255, "max" },
