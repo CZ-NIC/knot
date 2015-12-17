@@ -1,10 +1,19 @@
 #                                               -*- Autoconf -*-
 
 AC_PREREQ([2.60])
-AC_INIT([knot], [2.1.0-dev], [knot-dns@labs.nic.cz])
+AC_CONFIG_SRCDIR([src/knot/main.c])
+
+# We extract version numbers from src/libknot/libknot.h
+define([gv],[perl ./getver.pl ]$1 ./src/libknot/libknot.h)
+m4_define([libknot_MAJOR],esyscmd(gv(MAJOR)))dnl
+m4_define([libknot_MINOR],esyscmd(gv(MINOR)))dnl
+m4_define([libknot_REVISION],esyscmd(gv(RELEASE)))dnl
+m4_define([libknot_EXTRA],esyscmd(gv(EXTRA)))dnl
+m4_define([libknot_PKG_VERSION],[libknot_MAJOR.libknot_MINOR.libknot_REVISION]libknot_EXTRA)]dnl
+
+AC_INIT([knot], libknot_PKG_VERSION, [knot-dns@labs.nic.cz])
 AM_INIT_AUTOMAKE([gnits subdir-objects no-dist-gzip dist-xz -Wall -Werror])
 AM_SILENT_RULES([yes])
-AC_CONFIG_SRCDIR([src/knot/main.c])
 AC_CONFIG_HEADERS([src/config.h])
 AC_CONFIG_MACRO_DIR([m4])
 AC_USE_SYSTEM_EXTENSIONS([_GNU_SOURCE])
