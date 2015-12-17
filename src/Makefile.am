@@ -107,6 +107,7 @@ nobase_libknot_la_HEADERS =			\
 	libknot/rrset.h				\
 	libknot/rrtype/aaaa.h			\
 	libknot/rrtype/dnskey.h			\
+	libknot/rrtype/ds.h			\
 	libknot/rrtype/naptr.h			\
 	libknot/rrtype/nsec.h			\
 	libknot/rrtype/nsec3.h			\
@@ -143,6 +144,7 @@ libknot_la_SOURCES =				\
 	libknot/rrset.c				\
 	libknot/rrtype/aaaa.c			\
 	libknot/rrtype/dnskey.c			\
+	libknot/rrtype/ds.c			\
 	libknot/rrtype/naptr.c			\
 	libknot/rrtype/nsec3.c			\
 	libknot/rrtype/nsec3param.c		\
