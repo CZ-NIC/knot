@@ -24,13 +24,20 @@
 #define HOURS(x) (x * 60 * 60)
 #define DAYS(x) (x * HOURS(24))
 
+/*!
+ * Clear policy parameters, but keep references.
+ */
 static void clear_policy(dnssec_kasp_policy_t *policy)
 {
 	assert(policy);
 
 	char *name = policy->name;
+	char *keystore = policy->keystore;
+
 	clear_struct(policy);
+
 	policy->name = name;
+	policy->keystore = keystore;
 }
 
 struct key_size {
