@@ -384,14 +384,18 @@ int dnssec_kasp_keystore_remove(dnssec_kasp_t *kasp, const char *name);
 int dnssec_kasp_keystore_list(dnssec_kasp_t *kasp, dnssec_list_t **names);
 int dnssec_kasp_keystore_exists(dnssec_kasp_t *kasp, const char *name);
 
-#include <dnssec/keystore.h>
+/*
+ * TODO: workaround, PKCS 8 dir keystore needs to know KASP base path
+ */
 
 #define DNSSEC_KASP_KEYSTORE_PKCS8  "pkcs8"
 #define DNSSEC_KASP_KEYSTORE_PKCS11 "pkcs11"
 
-/*!
- * Open DNSSEC keystore configured in KASP.
- */
-int dnssec_kasp_keystore_open(dnssec_kasp_t *kasp, const char *name, dnssec_keystore_t **keystore);
+typedef struct dnssec_keystore dnssec_keystore_t;
+
+int dnssec_kasp_keystore_init(dnssec_kasp_t *kasp, const char *backend,
+			      const char *config, dnssec_keystore_t **store);
+int dnssec_kasp_keystore_open(dnssec_kasp_t *kasp, const char *backend,
+			      const char *config, dnssec_keystore_t **store);
 
 /*! @} */

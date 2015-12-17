@@ -23,11 +23,11 @@
 #include "shared.h"
 
 /*!
- * Construct path to the PKCS8 key store.
+ * Fix path to the PKCS8 key store.
  *
  * If the key store path is relative, use KASP base path as the base.
  */
-static int pkcs8_path(dnssec_kasp_t *kasp, const char *config, char **path_ptr)
+static int fix_path(dnssec_kasp_t *kasp, const char *config, char **path_ptr)
 {
 	assert(kasp);
 	assert(config);
@@ -56,82 +56,84 @@ static int pkcs8_path(dnssec_kasp_t *kasp, const char *config, char **path_ptr)
 	return DNSSEC_EOK;
 }
 
-/*!
- * Open PKCS8 key store.
- */
-static int pkcs8_open(dnssec_kasp_t *kasp, const char *config,
-		      dnssec_keystore_t **keystore_ptr)
+struct backend {
+	//! Backend name
+	const char *name;
+	//! Keystore initialization function
+	int (*init)(dnssec_keystore_t **kasp);
+	//! Callback to patch configuration string
+	int (*patch_config)(dnssec_kasp_t *, const char *, char **);
+};
+
+static const struct backend BACKENDS[] = {
+	{ DNSSEC_KASP_KEYSTORE_PKCS8,  dnssec_keystore_init_pkcs8_dir, fix_path },
+	{ DNSSEC_KASP_KEYSTORE_PKCS11, dnssec_keystore_init_pkcs11,    NULL },
+	{ 0 }
+};
+
+static const struct backend *get_backend(const char *name)
 {
-	dnssec_keystore_t *store = NULL;
-	int r = dnssec_keystore_init_pkcs8_dir(&store);
-	if (r != DNSSEC_EOK) {
-		return r;
+	for (const struct backend *b = BACKENDS; b->name; b++) {
+		if (strcmp(b->name, name) == 0) {
+			return b;
+		}
 	}
 
-	_cleanup_free_ char *path = NULL;
-	r = pkcs8_path(kasp, config, &path);
-	if (r != DNSSEC_EOK) {
-		dnssec_keystore_deinit(store);
-		return r;
-	}
-
-	r = dnssec_keystore_open(store, path);
-	if (r != DNSSEC_EOK) {
-		dnssec_keystore_deinit(store);
-		return r;
-	}
-
-	*keystore_ptr = store;
-	return DNSSEC_EOK;
+	return NULL;
 }
 
 /*!
- * Open PKCS11 key store.
+ * Lookup correct backend, fix config, and perform keystore init/open callback.
  */
-static int pkcs11_open(dnssec_kasp_t *kasp, const char *config,
-		       dnssec_keystore_t **keystore_ptr)
+static int backend_exec(dnssec_kasp_t *kasp, const char *name, const char *config,
+			int (*callback)(dnssec_keystore_t *, const char *),
+			dnssec_keystore_t **keystore_ptr)
 {
-	dnssec_keystore_t *store = NULL;
-	int r = dnssec_keystore_init_pkcs11(&store);
+	if (!kasp || !name || !callback || !keystore_ptr) {
+		return DNSSEC_EINVAL;
+	}
+
+	const struct backend *backend = get_backend(name);
+	if (!backend) {
+		return DNSSEC_KEYSTORE_INVALID_BACKEND;
+	}
+
+	_cleanup_free_ char *patched_config = NULL;
+	if (backend->patch_config) {
+		int r = backend->patch_config(kasp, config, &patched_config);
+		if (r != DNSSEC_EOK) {
+			return r;
+		}
+	}
+
+	dnssec_keystore_t *keystore = NULL;
+	int r = backend->init(&keystore);
 	if (r != DNSSEC_EOK) {
 		return r;
 	}
 
-	r = dnssec_keystore_open(store, config);
+	r = callback(keystore, patched_config ? patched_config : config);
 	if (r != DNSSEC_EOK) {
-		dnssec_keystore_deinit(store);
-		return r;
+		dnssec_keystore_deinit(keystore);
 	}
 
-	*keystore_ptr = store;
+	*keystore_ptr = keystore;
 	return DNSSEC_EOK;
 }
 
 /* -- public API ----------------------------------------------------------- */
 
 _public_
-int dnssec_kasp_keystore_open(dnssec_kasp_t *kasp, const char *name,
-			      dnssec_keystore_t **keystore_ptr)
+int dnssec_kasp_keystore_init(dnssec_kasp_t *kasp, const char *backend,
+			      const char *config, dnssec_keystore_t **store)
 {
-	if (!kasp || !name || !keystore_ptr) {
-		return DNSSEC_EINVAL;
-	}
+	return backend_exec(kasp, backend, config, dnssec_keystore_init, store);
 
-	dnssec_kasp_keystore_t *info = NULL;
-	int r = dnssec_kasp_keystore_load(kasp, name, &info);
-	if (r != DNSSEC_EOK) {
-		return r;
-	}
+}
 
-	if (strcmp(info->backend, DNSSEC_KASP_KEYSTORE_PKCS8) == 0) {
-		r = pkcs8_open(kasp, info->config, keystore_ptr);
-	} else if (strcmp(info->backend, DNSSEC_KASP_KEYSTORE_PKCS11) == 0) {
-		r = pkcs11_open(kasp, info->config, keystore_ptr);
-	} else {
-		r = DNSSEC_KEYSTORE_INVALID_BACKEND;
-	}
-
-	dnssec_kasp_keystore_free(info);
-
-	return r;
+_public_
+int dnssec_kasp_keystore_open(dnssec_kasp_t *kasp, const char *backend,
+			      const char *config, dnssec_keystore_t **store)
+{
+	return backend_exec(kasp, backend, config, dnssec_keystore_open, store);
 }
