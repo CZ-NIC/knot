@@ -26,16 +26,7 @@
 
 #pragma once
 
-/* Version information.  This gets parsed by build scripts as well as
- * gcc so each #define line in this group must also be splittable on
- * whitespace, take the form LIBKNOT_*_VERSION and contain the magical
- * trailing comment. */
-#define LIBKNOT_MAJOR_VERSION    2           /*versiong3d31a91*/
-#define LIBKNOT_MINOR_VERSION    1           /*versiong3d31a91*/
-#define LIBKNOT_RELEASE_VERSION  0           /*versiong3d31a91*/
-#define LIBKNOT_EXTRA_VERSION    "-dev"      /*versiong3d31a91*/
-/* End parsable section. */
-
+#include "libknot/version.h"
 #include "libknot/binary.h"
 #include "libknot/codes.h"
 #include "libknot/consts.h"

@@ -4,7 +4,7 @@ AC_PREREQ([2.60])
 AC_CONFIG_SRCDIR([src/knot/main.c])
 
 # We extract version numbers from src/libknot/libknot.h
-define([gv],[perl ./getver.pl ]$1 ./src/libknot/libknot.h)
+define([gv],[./getver.sh ]$1)
 m4_define([libknot_MAJOR],esyscmd(gv(MAJOR)))dnl
 m4_define([libknot_MINOR],esyscmd(gv(MINOR)))dnl
 m4_define([libknot_REVISION],esyscmd(gv(RELEASE)))dnl
