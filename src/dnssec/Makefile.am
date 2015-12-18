@@ -70,7 +70,8 @@ include_dnssec_HEADERS = \
 	lib/dnssec/nsec.h \
 	lib/dnssec/random.h \
 	lib/dnssec/sign.h \
-	lib/dnssec/tsig.h
+	lib/dnssec/tsig.h \
+	lib/dnssec/version.h
 
 libdnssec_la_SOURCES = \
 	lib/binary.c \

@@ -8,7 +8,8 @@ lib_LTLIBRARIES = libzscanner.la
 zscanner_ladir = $(includedir)/zscanner
 nobase_zscanner_la_HEADERS =		\
 	error.h				\
-	scanner.h
+	scanner.h			\
+	version.h
 
 # pkg-config
 pkgconfig_DATA = libzscanner.pc

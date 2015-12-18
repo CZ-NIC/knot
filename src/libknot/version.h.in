@@ -1,11 +1,10 @@
 /*!
- * \file libknot.h
+ * \file version.h
  *
  * \author Ondřej Surý <ondrej.sury@nic.cz>
  *
  * \brief Convenience header with version number
  *
- * \addtogroup libknot
  * @{
  */
 /*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
@@ -30,10 +29,10 @@
  * gcc so each #define line in this group must also be splittable on
  * whitespace, take the form LIBKNOT_*_VERSION and contain the magical
  * trailing comment. */
-#define LIBKNOT_VERSION_MAJOR    2
-#define LIBKNOT_VERSION_MINOR    1
-#define LIBKNOT_VERSION_PATCH    0
-#define LIBKNOT_VERSION_EXTRA    "-dev"
+#define LIBKNOT_VERSION_MAJOR    @KNOT_VERSION_MAJOR@
+#define LIBKNOT_VERSION_MINOR    @KNOT_VERSION_MINOR@
+#define LIBKNOT_VERSION_PATCH    @KNOT_VERSION_PATCH@
+#define LIBKNOT_VERSION_EXTRA    "@KNOT_VERSION_EXTRA"
 
 #define LIBKNOT_VERSION_HEX  ((LIBKNOT_VERSION_MAJOR << 16) | \
 			      (LIBKNOT_VERSION_MINOR <<  8) | \
