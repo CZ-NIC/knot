@@ -115,6 +115,7 @@ static int backend_exec(dnssec_kasp_t *kasp, const char *name, const char *confi
 	r = callback(keystore, patched_config ? patched_config : config);
 	if (r != DNSSEC_EOK) {
 		dnssec_keystore_deinit(keystore);
+		return r;
 	}
 
 	*keystore_ptr = keystore;
