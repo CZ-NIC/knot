@@ -27,16 +27,16 @@
 
 /* Version information.  This gets parsed by build scripts as well as
  * gcc so each #define line in this group must also be splittable on
- * whitespace, take the form LIBKNOT_*_VERSION and contain the magical
- * trailing comment. */
-#define LIBKNOT_VERSION_MAJOR    @KNOT_VERSION_MAJOR@
-#define LIBKNOT_VERSION_MINOR    @KNOT_VERSION_MINOR@
-#define LIBKNOT_VERSION_PATCH    @KNOT_VERSION_PATCH@
-#define LIBKNOT_VERSION_EXTRA    "@KNOT_VERSION_EXTRA"
+ * whitespace, take the form LIBZSCANNER_VERSION_*.
+ */
+#define LIBZSCANNER_VERSION_MAJOR    @KNOT_VERSION_MAJOR@
+#define LIBZSCANNER_VERSION_MINOR    @KNOT_VERSION_MINOR@
+#define LIBZSCANNER_VERSION_PATCH    @KNOT_VERSION_PATCH@
+#define LIBZSCANNER_VERSION_EXTRA    "@KNOT_VERSION_EXTRA"
 
-#define LIBKNOT_VERSION_HEX  ((LIBKNOT_VERSION_MAJOR << 16) | \
-			      (LIBKNOT_VERSION_MINOR <<  8) | \
-			      (LIBKNOT_VERSION_PATCH))
+#define LIBZSCANNER_VERSION_HEX  ((LIBZSCANNER_VERSION_MAJOR << 16) | \
+				  (LIBZSCANNER_VERSION_MINOR <<  8) | \
+				  (LIBZSCANNER_VERSION_PATCH))
 /* End parsable section. */
 
 /*! @} */

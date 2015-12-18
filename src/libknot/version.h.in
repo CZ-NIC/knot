@@ -27,8 +27,8 @@
 
 /* Version information.  This gets parsed by build scripts as well as
  * gcc so each #define line in this group must also be splittable on
- * whitespace, take the form LIBKNOT_*_VERSION and contain the magical
- * trailing comment. */
+ * whitespace, take the form LIBKNOT_VERSION_*.
+ */
 #define LIBKNOT_VERSION_MAJOR    @KNOT_VERSION_MAJOR@
 #define LIBKNOT_VERSION_MINOR    @KNOT_VERSION_MINOR@
 #define LIBKNOT_VERSION_PATCH    @KNOT_VERSION_PATCH@
