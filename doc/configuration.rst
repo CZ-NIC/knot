@@ -865,7 +865,7 @@ Here is an example on how to use the module:
 
    $ kdig @127.0.0.1#6667 A myrecord.com
 
-``online-sign`` - Online DNSSEC signing
+``online-sign`` — Online DNSSEC signing
 ---------------------------------------
 
 The module provides online DNSSEC signing. Instead of pre-computing the zone
