@@ -66,9 +66,8 @@ Main commands
 zone commands
 .............
 
-**zone** **add** *zone-name* [**policy** *policy-name*\|\ **none**]
-  Add a zone into the database. The policy defaults to **none**, meaning that
-  no automatic key management is to be performed.
+**zone** **add** *zone-name* [**policy** *policy-name*]
+  Add a zone into the database. The policy defaults to 'default'.
 
 **zone** **list** [*pattern*]
   List zones in the database matching the *pattern* as a substring.
@@ -77,7 +76,7 @@ zone commands
   Remove a zone from the database. If some keys are currently active, the
   **force** argument must be specified.
 
-**zone** **set** *zone-name* [**policy** *policy-name*\|\ **none**]
+**zone** **set** *zone-name* [**policy** *policy-name*]
   Change zone configuration. At the moment, only a policy can be changed.
 
 **zone** **show** *zone-name*
@@ -274,21 +273,25 @@ Examples
     $ keymgr zone key import example.com Kexample.com+010+12345.private
     $ keymgr zone key import example.com Kexample.com+010+67890.private
 
-5. Disable automatic key management for a secured zone::
+5. Disable automatic key management for a secured zone. For this purpose,
+   create a policy named 'manual' with otherwise default signing parameters::
 
-    $ keymgr zone set example.com policy none
+    $ keymgr policy add manual manual true
+    $ keymgr zone set example.com policy manual
 
 6. Add a zone to be signed with manual key maintenance. Generate one ECDSA
    signing key. The Single-Type Signing scheme will be used::
 
-    $ keymgr zone add example.com policy none
+    $ keymgr policy add manual manual true
+    $ keymgr zone add example.com policy manual
     $ keymgr zone key gen example.com algo 13 size 256
 
 7. Add a zone to be signed with manual key maintenance. Generate two
    RSA-SHA-256 signing keys. The first key will be used as a KSK, the second
    one as a ZSK::
 
-    $ keymgr zone add example.com policy none
+    $ keymgr policy add manual manual true
+    $ keymgr zone add example.com policy manual
     $ keymgr zone key generate example.com algorithm rsasha256 size 2048 ksk
     $ keymgr zone key generate example.com algorithm rsasha256 size 1024
 

@@ -89,9 +89,8 @@ Operations with TSIG keys.
 .SS zone commands
 .INDENT 0.0
 .TP
-\fBzone\fP \fBadd\fP \fIzone\-name\fP [\fBpolicy\fP \fIpolicy\-name\fP|\fBnone\fP]
-Add a zone into the database. The policy defaults to \fBnone\fP, meaning that
-no automatic key management is to be performed.
+\fBzone\fP \fBadd\fP \fIzone\-name\fP [\fBpolicy\fP \fIpolicy\-name\fP]
+Add a zone into the database. The policy defaults to \(aqdefault\(aq.
 .TP
 \fBzone\fP \fBlist\fP [\fIpattern\fP]
 List zones in the database matching the \fIpattern\fP as a substring.
@@ -100,7 +99,7 @@ List zones in the database matching the \fIpattern\fP as a substring.
 Remove a zone from the database. If some keys are currently active, the
 \fBforce\fP argument must be specified.
 .TP
-\fBzone\fP \fBset\fP \fIzone\-name\fP [\fBpolicy\fP \fIpolicy\-name\fP|\fBnone\fP]
+\fBzone\fP \fBset\fP \fIzone\-name\fP [\fBpolicy\fP \fIpolicy\-name\fP]
 Change zone configuration. At the moment, only a policy can be changed.
 .TP
 \fBzone\fP \fBshow\fP \fIzone\-name\fP
@@ -347,13 +346,15 @@ $ keymgr zone key import example.com Kexample.com+010+67890.private
 .UNINDENT
 .UNINDENT
 .IP 5. 3
-Disable automatic key management for a secured zone:
+Disable automatic key management for a secured zone. For this purpose,
+create a policy named \(aqmanual\(aq with otherwise default signing parameters:
 .INDENT 3.0
 .INDENT 3.5
 .sp
 .nf
 .ft C
-$ keymgr zone set example.com policy none
+$ keymgr policy add manual manual true
+$ keymgr zone set example.com policy manual
 .ft P
 .fi
 .UNINDENT
@@ -366,7 +367,8 @@ signing key. The Single\-Type Signing scheme will be used:
 .sp
 .nf
 .ft C
-$ keymgr zone add example.com policy none
+$ keymgr policy add manual manual true
+$ keymgr zone add example.com policy manual
 $ keymgr zone key gen example.com algo 13 size 256
 .ft P
 .fi
@@ -381,7 +383,8 @@ one as a ZSK:
 .sp
 .nf
 .ft C
-$ keymgr zone add example.com policy none
+$ keymgr policy add manual manual true
+$ keymgr zone add example.com policy manual
 $ keymgr zone key generate example.com algorithm rsasha256 size 2048 ksk
 $ keymgr zone key generate example.com algorithm rsasha256 size 1024
 .ft P
