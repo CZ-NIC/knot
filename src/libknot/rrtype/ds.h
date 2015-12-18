@@ -20,7 +20,7 @@
 #include "libknot/rdataset.h"
 
 _pure_
-uint16_t knot_ds_keytag(const knot_rdataset_t *rrs, size_t pos);
+uint16_t knot_ds_key_tag(const knot_rdataset_t *rrs, size_t pos);
 
 _pure_
 uint8_t knot_ds_alg(const knot_rdataset_t *rrs, size_t pos);

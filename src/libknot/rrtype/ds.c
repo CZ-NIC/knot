@@ -18,7 +18,7 @@
 #include "contrib/wire.h"
 
 _public_
-uint16_t knot_ds_keytag(const knot_rdataset_t *rrs, size_t pos)
+uint16_t knot_ds_key_tag(const knot_rdataset_t *rrs, size_t pos)
 {
 	KNOT_RDATASET_CHECK(rrs, pos, return 0);
 	return wire_read_u16(knot_rdata_offset(rrs, pos, 0));
