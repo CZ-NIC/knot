@@ -30,10 +30,14 @@
  * gcc so each #define line in this group must also be splittable on
  * whitespace, take the form LIBKNOT_*_VERSION and contain the magical
  * trailing comment. */
-#define LIBKNOT_MAJOR_VERSION    2           /*versiong3d31a91*/
-#define LIBKNOT_MINOR_VERSION    1           /*versiong3d31a91*/
-#define LIBKNOT_RELEASE_VERSION  0           /*versiong3d31a91*/
-#define LIBKNOT_EXTRA_VERSION    "-dev"      /*versiong3d31a91*/
+#define LIBKNOT_VERSION_MAJOR    2
+#define LIBKNOT_VERSION_MINOR    1
+#define LIBKNOT_VERSION_PATCH    0
+#define LIBKNOT_VERSION_EXTRA    "-dev"
+
+#define LIBKNOT_VERSION_HEX  ((LIBKNOT_VERSION_MAJOR << 16) | \
+			      (LIBKNOT_VERSION_MINOR <<  8) | \
+			      (LIBKNOT_VERSION_PATCH))
 /* End parsable section. */
 
 /*! @} */

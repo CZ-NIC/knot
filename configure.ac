@@ -7,9 +7,9 @@ AC_CONFIG_SRCDIR([src/knot/main.c])
 define([gv],[./getver.sh ]$1)
 m4_define([libknot_MAJOR],esyscmd(gv(MAJOR)))dnl
 m4_define([libknot_MINOR],esyscmd(gv(MINOR)))dnl
-m4_define([libknot_REVISION],esyscmd(gv(RELEASE)))dnl
+m4_define([libknot_PATCH],esyscmd(gv(PATCH)))dnl
 m4_define([libknot_EXTRA],esyscmd(gv(EXTRA)))dnl
-m4_define([libknot_PKG_VERSION],[libknot_MAJOR.libknot_MINOR.libknot_REVISION]libknot_EXTRA)]dnl
+m4_define([libknot_PKG_VERSION],[libknot_MAJOR.libknot_MINOR.libknot_PATCH]libknot_EXTRA)]dnl
 
 AC_INIT([knot], libknot_PKG_VERSION, [knot-dns@labs.nic.cz])
 AM_INIT_AUTOMAKE([gnits subdir-objects no-dist-gzip dist-xz -Wall -Werror])
