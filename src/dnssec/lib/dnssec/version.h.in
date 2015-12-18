@@ -16,16 +16,11 @@
 
 #pragma once
 
-/* Version information.  This gets parsed by build scripts as well as
- * gcc so each #define line in this group must also be splittable on
- * whitespace, take the form LIBDNSSEC_VERSION_*.
- */
-#define LIBDNSSEC_VERSION_MAJOR @KNOT_VERSION_MAJOR@
-#define LIBDNSSEC_VERSION_MINOR @KNOT_VERSION_MINOR@
-#define LIBDNSSEC_VERSION_PATCH @KNOT_VERSION_PATCH@
-#define LIBDNSSEC_VERSION_EXTRA "@KNOT_VERSION_EXTRA@"
+#define DNSSEC_VERSION_MAJOR @KNOT_VERSION_MAJOR@
+#define DNSSEC_VERSION_MINOR @KNOT_VERSION_MINOR@
+#define DNSSEC_VERSION_PATCH @KNOT_VERSION_PATCH@
+#define DNSSEC_VERSION_EXTRA "@KNOT_VERSION_EXTRA@"
 
-#define LIBDNSSEC_VERSION_HEX ((LIBDNSSEC_VERSION_MAJOR << 16) | \
-                               (LIBDNSSEC_VERSION_MINOR <<  8) | \
-                               (LIBDNSSEC_VERSION_PATCH))
-/* End parsable section. */
+#define DNSSEC_VERSION_HEX ((DNSSEC_VERSION_MAJOR << 16) | \
+                            (DNSSEC_VERSION_MINOR <<  8) | \
+                            (DNSSEC_VERSION_PATCH))
