@@ -47,11 +47,10 @@ typedef struct zcreator {
  */
 typedef struct zloader {
 	char *source;                /*!< Zone source file. */
-	char *origin;                /*!< Zone's origin string. */
 	bool semantic_checks;        /*!< Do semantic checks. */
 	err_handler_t *err_handler;  /*!< Semantic checks error handler. */
-	zs_scanner_t *scanner;       /*!< Zone scanner. */
 	zcreator_t *creator;         /*!< Loader context. */
+	zs_scanner_t scanner;        /*!< Zone scanner. */
 } zloader_t;
 
 /*!

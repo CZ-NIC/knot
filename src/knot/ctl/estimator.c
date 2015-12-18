@@ -170,7 +170,7 @@ size_t estimator_trie_htable_memsize(hattrie_t *table)
 
 void estimator_rrset_memsize_wrap(zs_scanner_t *scanner)
 {
-	rrset_memsize(scanner->data, scanner);
+	rrset_memsize(scanner->process.data, scanner);
 }
 
 int estimator_free_trie_node(value_t *val, void *data)

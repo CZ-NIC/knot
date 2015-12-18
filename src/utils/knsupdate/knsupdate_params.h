@@ -67,7 +67,7 @@ typedef struct {
 	/*!< Current zone. */
 	char		*zone;
 	/*!< RR parser. */
-	zs_scanner_t	*parser;
+	zs_scanner_t	parser;
 	/*!< Current packet. */
 	knot_pkt_t	*query;
 	/*!< Current response. */

@@ -794,6 +794,12 @@ static int cmd_checkzone(cmd_args_t *args)
 
 static int cmd_memstats(cmd_args_t *args)
 {
+	zs_scanner_t *zs = malloc(sizeof(zs_scanner_t));
+	if (zs == NULL) {
+		log_error("not enough memory");
+		return 1;
+	}
+
 	/* Zone checking */
 	double total_size = 0;
 
@@ -833,28 +839,29 @@ static int cmd_memstats(cmd_args_t *args)
 			conf_iter_finish(conf(), &iter);
 			break;
 		}
-		zs_scanner_t *zs = zs_scanner_create(zone_name,
-		                                     KNOT_CLASS_IN, 3600,
-		                                     estimator_rrset_memsize_wrap,
-		                                     NULL, &est);
-		free(zone_name);
-		if (zs == NULL) {
+		if (zs_init(zs, zone_name, KNOT_CLASS_IN, 3600) != 0 ||
+		    zs_set_processing(zs, estimator_rrset_memsize_wrap, NULL, &est) != 0) {
 			log_zone_error(conf_dname(&id), "failed to load zone");
+			zs_deinit(zs);
+			free(zone_name);
 			hattrie_free(est.node_table);
 			continue;
 		}
+		free(zone_name);
 
 		/* Do a parser run, but do not actually create the zone. */
 		char *zonefile = conf_zonefile(conf(), conf_dname(&id));
-		int ret = zs_scanner_parse_file(zs, zonefile);
-		free(zonefile);
-		if (ret != 0) {
+		if (zs_set_input_file(zs, zonefile) != 0 ||
+		    zs_parse_all(zs) != 0) {
 			log_zone_error(conf_dname(&id), "failed to parse zone");
 			hattrie_apply_rev(est.node_table, estimator_free_trie_node, NULL);
 			hattrie_free(est.node_table);
-			zs_scanner_free(zs);
+			free(zonefile);
+			zs_deinit(zs);
 			continue;
 		}
+		free(zonefile);
+		zs_deinit(zs);
 
 		/* Only size of ahtables inside trie's nodes is missing. */
 		assert(est.htable_size == 0);
@@ -872,9 +879,10 @@ static int cmd_memstats(cmd_args_t *args)
 
 		log_zone_info(conf_dname(&id), "%zu RRs, used memory estimation is %zu MB",
 		              est.record_count, (size_t)zone_size);
-		zs_scanner_free(zs);
 		total_size += zone_size;
 	}
+
+	free(zs);
 
 	if (args->argc == 0) { // for all zones
 		log_info("estimated memory consumption for all zones is %zu MB",
