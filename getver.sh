@@ -1,2 +1,2 @@
-#!/bin/bash
-echo -n $(awk '/^#define LIBKNOT_VERSION_'$1'/ { print $3 }' src/libknot/version.h | sed -e 's/"//g')
+#!/bin/sh
+awk '/^#define LIBKNOT_VERSION_'$1'/ { printf "%s", $3 }' src/libknot/version.h | sed -e 's/"//g'
