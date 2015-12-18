@@ -416,6 +416,8 @@ src/libknot/rrtype/aaaa.c
 src/libknot/rrtype/aaaa.h
 src/libknot/rrtype/dnskey.c
 src/libknot/rrtype/dnskey.h
+src/libknot/rrtype/ds.c
+src/libknot/rrtype/ds.h
 src/libknot/rrtype/naptr.c
 src/libknot/rrtype/naptr.h
 src/libknot/rrtype/nsec.h
