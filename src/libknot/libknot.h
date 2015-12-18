@@ -52,6 +52,7 @@
 #include "libknot/processing/requestor.h"
 #include "libknot/rrtype/aaaa.h"
 #include "libknot/rrtype/dnskey.h"
+#include "libknot/rrtype/ds.h"
 #include "libknot/rrtype/naptr.h"
 #include "libknot/rrtype/nsec.h"
 #include "libknot/rrtype/nsec3.h"
