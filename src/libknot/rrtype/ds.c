@@ -32,7 +32,7 @@ uint8_t knot_ds_alg(const knot_rdataset_t *rrs, size_t pos)
 }
 
 _public_
-uint8_t knot_ds_dtype(const knot_rdataset_t *rrs, size_t pos)
+uint8_t knot_ds_digest_type(const knot_rdataset_t *rrs, size_t pos)
 {
 	KNOT_RDATASET_CHECK(rrs, pos, return 0);
 	return *knot_rdata_offset(rrs, pos, 3);

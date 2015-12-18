@@ -26,7 +26,7 @@ _pure_
 uint8_t knot_ds_alg(const knot_rdataset_t *rrs, size_t pos);
 
 _pure_
-uint8_t knot_ds_dtype(const knot_rdataset_t *rrs, size_t pos);
+uint8_t knot_ds_digest_type(const knot_rdataset_t *rrs, size_t pos);
 
 void knot_ds_digest(const knot_rdataset_t *rrs, size_t pos,
                     uint8_t **digest, uint16_t *digest_size);
