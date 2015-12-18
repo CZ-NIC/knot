@@ -1,14 +1,30 @@
 #                                               -*- Autoconf -*-
 
 AC_PREREQ([2.60])
-AC_INIT([knot], [2.1.0-dev], [knot-dns@labs.nic.cz])
+AC_CONFIG_SRCDIR([src/knot/main.c])
+
+m4_define([knot_VERSION_MAJOR],2)
+m4_define([knot_VERSION_MINOR],1)
+m4_define([knot_VERSION_PATCH],0)
+m4_define([knot_VERSION_EXTRA],-dev)
+m4_define([knot_PKG_VERSION],[knot_VERSION_MAJOR.knot_VERSION_MINOR.knot_VERSION_PATCH]knot_VERSION_EXTRA)]
+
+AC_SUBST([KNOT_VERSION_MAJOR], knot_VERSION_MAJOR)
+AC_SUBST([KNOT_VERSION_MINOR], knot_VERSION_MINOR)
+AC_SUBST([KNOT_VERSION_PATCH], knot_VERSION_PATCH)
+AC_SUBST([KNOT_VERSION_EXTRA], knot_VERSION_EXTRA)
+
+AC_INIT([knot], knot_PKG_VERSION, [knot-dns@labs.nic.cz])
 AM_INIT_AUTOMAKE([gnits subdir-objects no-dist-gzip dist-xz -Wall -Werror])
 AM_SILENT_RULES([yes])
-AC_CONFIG_SRCDIR([src/knot/main.c])
 AC_CONFIG_HEADERS([src/config.h])
 AC_CONFIG_MACRO_DIR([m4])
 AC_USE_SYSTEM_EXTENSIONS([_GNU_SOURCE])
 AC_CANONICAL_HOST
+
+AC_CONFIG_FILES([src/libknot/version.h
+		 src/zscanner/version.h
+		 src/dnssec/lib/dnssec/version.h])
 
 # Here are a set of rules to help you update your library version
 # information:

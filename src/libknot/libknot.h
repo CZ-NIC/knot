@@ -24,6 +24,7 @@
 
 #pragma once
 
+#include "libknot/version.h"
 #include "libknot/binary.h"
 #include "libknot/codes.h"
 #include "libknot/consts.h"

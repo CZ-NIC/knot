@@ -119,7 +119,8 @@ nobase_libknot_la_HEADERS =			\
 	libknot/rrtype/tsig.h			\
 	libknot/rrtype/txt.h			\
 	libknot/tsig-op.h			\
-	libknot/tsig.h
+	libknot/tsig.h				\
+	libknot/version.h
 
 # dynamic: libknot sources
 libknot_la_SOURCES =				\
