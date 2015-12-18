@@ -39,13 +39,14 @@ typedef struct pkcs11_ctx pkcs11_ctx_t;
  */
 static const int TOKEN_ADD_FLAGS = GNUTLS_PKCS11_OBJ_FLAG_MARK_PRIVATE;
 
-static char *key_url(const char *token_uri, const char *key_id)
+static int key_url(const char *token_uri, const char *key_id, char **url_ptr)
 {
 	assert(token_uri);
 	assert(key_id);
+	assert(url_ptr);
 
 	if (!dnssec_keyid_is_valid(key_id)) {
-		return NULL;
+		return DNSSEC_INVALID_KEY_ID;
 	}
 
 	size_t token_len = strlen(token_uri);
@@ -56,13 +57,13 @@ static char *key_url(const char *token_uri, const char *key_id)
 	size_t len = token_len + 4 + (id_len / 2 * 3);
 	char *url = malloc(len + 1);
 	if (!url) {
-		return NULL;
+		return DNSSEC_ENOMEM;
 	}
 
 	size_t prefix = snprintf(url, len, "%s;id=", token_uri);
 	if (prefix != token_len + 4) {
 		free(url);
-		return NULL;
+		return DNSSEC_ENOMEM;
 	}
 
 	assert(id_len % 2 == 0);
@@ -75,7 +76,8 @@ static char *key_url(const char *token_uri, const char *key_id)
 	assert(url + len == pos);
 	url[len] = '\0';
 
-	return url;
+	*url_ptr = url;
+	return DNSSEC_EOK;
 }
 
 /* -- internal API --------------------------------------------------------- */
@@ -333,12 +335,13 @@ static int pkcs11_remove_key(void *_ctx, const char *id)
 {
 	pkcs11_ctx_t *ctx = _ctx;
 
-	_cleanup_free_ char *url = key_url(ctx->url, id);
-	if (!url) {
-		return DNSSEC_EINVAL;
+	_cleanup_free_ char *url = NULL;
+	int r = key_url(ctx->url, id, &url);
+	if (r != DNSSEC_EOK) {
+		return r;
 	}
 
-	int r = gnutls_pkcs11_delete_url(url, GNUTLS_PKCS11_OBJ_FLAG_LOGIN);
+	r = gnutls_pkcs11_delete_url(url, GNUTLS_PKCS11_OBJ_FLAG_LOGIN);
 	if (r < 0) {
 		return DNSSEC_ERROR;
 	} else if (r == 0) {
@@ -351,13 +354,15 @@ static int pkcs11_remove_key(void *_ctx, const char *id)
 static int pkcs11_get_private(void *_ctx, const char *id, gnutls_privkey_t *key_ptr)
 {
 	pkcs11_ctx_t *ctx = _ctx;
-	_cleanup_free_ char *url = key_url(ctx->url, id);
-	if (!url) {
-		return DNSSEC_EINVAL;
+
+	_cleanup_free_ char *url = NULL;
+	int r = key_url(ctx->url, id, &url);
+	if (r != DNSSEC_EOK) {
+		return r;
 	}
 
 	gnutls_privkey_t key = NULL;
-	int r = gnutls_privkey_init(&key);
+	r = gnutls_privkey_init(&key);
 	if (r != GNUTLS_E_SUCCESS) {
 		return DNSSEC_ENOMEM;
 	}
