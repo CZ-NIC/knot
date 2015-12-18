@@ -77,31 +77,53 @@
 		}
 	}
 	action _err_line_exit {
-		// Ending string in buffer.
+		// Terminate the error context string.
 		s->buffer[s->buffer_length++] = 0;
 
 		// Error counter incrementation.
-		s->error_counter++;
+		s->error.counter++;
 
-		// Initialization of fcall stack.
+		// Initialize the fcall stack.
 		top = 0;
 
-		// Process error message.
-		s->process_error(s);
-
-		// Reset.
-		s->error_code = ZS_OK;
+		// Reset the multiline context.
 		s->multiline = false;
 
-		// In case of serious error, stop scanner.
-		if (s->stop == true) {
-			return;
+		s->state = ZS_STATE_ERROR;
+
+		// Execute the error callback.
+		if (s->process.automatic) {
+			if (s->process.error != NULL) {
+				s->process.error(s);
+
+				// Stop the scanner if required.
+				if (s->state == ZS_STATE_STOP) {
+					fbreak;
+				}
+			}
+
+			// Stop the scanner if fatal.
+			if (s->error.fatal) {
+				s->state = ZS_STATE_STOP;
+				fbreak;
+			}
+		} else {
+			// Return if external processing.
+			escape = true;
+		}
+	}
+	action _err_line_exit_final {
+		if (escape) {
+			escape = false;
+			fnext main; fbreak;
+		} else {
+			fgoto main;
 		}
 	}
 
 	# Fill rest of the line to buffer and skip to main loop.
 	err_line := (^newline $_err_line)* >_err_line_init
-	            %_err_line_exit . newline @{ fgoto main; };
+	            %_err_line_exit . newline @_err_line_exit_final;
 	# END
 
 	# BEGIN - Domain name labels processing
@@ -656,16 +678,15 @@
 		rdata_tail = s->r_data;
 	}
 	action _incl_filename_exit {
-		*rdata_tail = 0; // Ending filename string.
-		strncpy((char*)(s->include_filename), (char*)(s->r_data),
-		        sizeof(s->include_filename));
-
-		// Check for correct string copy.
-		if (strlen(s->include_filename) !=
-		    (size_t)(rdata_tail - s->r_data)) {
+		size_t len = rdata_tail - s->r_data;
+		if (len >= sizeof(s->include_filename)) {
 			ERR(ZS_BAD_INCLUDE_FILENAME);
 			fhold; fgoto err_line;
 		}
+
+		// Store zero terminated include filename.
+		memcpy(s->include_filename, s->r_data, len);
+		s->include_filename[len] = '\0';
 
 		// For detection whether origin is not present.
 		s->dname = NULL;
@@ -687,53 +708,59 @@
 	}
 
 	action _include_exit {
-		char text_origin[4 * MAX_DNAME_LENGTH]; // Each char as \DDD.
+		// Extend relative file path.
+		if (s->include_filename[0] != '/') {
+			ret = snprintf((char *)(s->buffer), sizeof(s->buffer),
+			               "%s/%s", s->path, s->include_filename);
+			if (ret <= 0 || ret > sizeof(s->buffer)) {
+				ERR(ZS_BAD_INCLUDE_FILENAME);
+				fhold; fgoto err_line;
+			}
+			memcpy(s->include_filename, s->buffer, ret);
+		}
 
-		// Origin conversion from wire to text form.
+		// Origin conversion from wire to text form in \DDD notation.
 		if (s->dname == NULL) { // Use current origin.
 			wire_dname_to_str(s->zone_origin,
 			                  s->zone_origin_length,
-			                  text_origin);
+			                  (char *)s->buffer);
 		} else { // Use specified origin.
 			wire_dname_to_str(s->r_data,
 			                  s->r_data_length,
-			                  text_origin);
+			                  (char *)s->buffer);
 		}
 
-		// Relative file path.
-		if (s->include_filename[0] != '/') {
-			snprintf((char*)(s->buffer), sizeof(s->buffer),
-			         "%s/%s", s->path, s->include_filename);
+		// Let the caller to solve the include.
+		if (!s->process.automatic) {
+			s->state = ZS_STATE_INCLUDE;
+			escape = true;
 		} else {
-			strncpy((char*)(s->buffer), (char*)(s->include_filename),
-			        sizeof(s->buffer));
-		}
 
 		// Create new scanner for included zone file.
-		zs_scanner_t *ss = zs_scanner_create(text_origin,
-		                                     s->default_class,
-		                                     s->default_ttl,
-		                                     s->process_record,
-		                                     s->process_error,
-		                                     s->data);
-		if (ss != NULL) {
-			// Parse included zone file.
-			ret = zs_scanner_parse_file(ss, (char*)(s->buffer));
-			if (ret != 0) {
-				// File internal errors are handled by error callback.
-				if (ss->error_counter > 0) {
-					ERR(ZS_UNPROCESSED_INCLUDE);
-				// General include file error.
-				} else {
-					ERR(ss->error_code);
-				}
-				zs_scanner_free(ss);
-				fhold; fgoto err_line;
-			}
-			zs_scanner_free(ss);
-		} else {
+		zs_scanner_t *ss = malloc(sizeof(zs_scanner_t));
+		if (ss == NULL) {
 			ERR(ZS_UNPROCESSED_INCLUDE);
 			fhold; fgoto err_line;
+		}
+
+		// Parse included zone file.
+		if (zs_init(ss, (char *)s->buffer, s->default_class, s->default_ttl) != 0 ||
+		    zs_set_input_file(ss, (char *)(s->include_filename)) != 0 ||
+		    zs_set_processing(ss, s->process.record, s->process.error, s->process.data) != 0 ||
+		    zs_parse_all(ss) != 0) {
+			// File internal errors are handled by error callback.
+			if (ss->error.counter > 0) {
+				ERR(ZS_UNPROCESSED_INCLUDE);
+			// General include file error.
+			} else {
+				ERR(ss->error.code);
+			}
+			zs_deinit(ss);
+			free(ss);
+			fhold; fgoto err_line;
+		}
+		zs_deinit(ss);
+		free(ss);
 		}
 	}
 
@@ -751,11 +778,15 @@
 	# Each error/warning in directive should stop processing.
 	# Some internal errors cause warning only. This causes stop processing.
 	action _directive_init {
-		s->stop = true;
+		ERR(ZS_OK);
 	}
 	# Remove stop processing flag.
 	action _directive_exit {
-		s->stop = false;
+		NOERR;
+		if (escape) {
+			escape = false;
+			fnext main; fbreak;
+		}
 	}
 	action _directive_error {
 		ERR(ZS_BAD_DIRECTIVE);
@@ -1966,11 +1997,21 @@
 		}
 		s->r_data_length = rdata_tail - s->r_data;
 
-		s->process_record(s);
+		s->state = ZS_STATE_DATA;
 
-		// Stop scanner if required.
-		if (s->stop == true) {
-			return;
+		// Execute the record callback.
+		if (s->process.automatic) {
+			if (s->process.record != NULL) {
+				s->process.record(s);
+
+				// Stop the scanner if required.
+				if (s->state == ZS_STATE_STOP) {
+					fbreak;
+				}
+			}
+		} else {
+			// Return if external processing.
+			fhold; fbreak;
 		}
 	}
 
@@ -1988,7 +2029,15 @@
 	# Blank spaces with comments.
 	blank = rest . newline;
 
+	action _main_init {
+		if (escape) {
+			escape = false;
+			fbreak;
+		}
+	}
+
 	# Main processing loop.
+#	main := (record %_main_init | directive %_main_init | blank %_main_init)*;
 	main := (record | directive | blank)*;
 	# END
 }%%

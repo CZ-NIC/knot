@@ -57,7 +57,7 @@ static const style_t DEFAULT_STYLE_NSUPDATE = {
 };
 
 static void parse_err(zs_scanner_t *s) {
-	ERR("failed to parse RR: %s\n", zs_strerror(s->error_code));
+	ERR("failed to parse RR: %s\n", zs_strerror(s->error.code));
 }
 
 static int parser_set_default(zs_scanner_t *s, const char *fmt, ...)
@@ -74,7 +74,8 @@ static int parser_set_default(zs_scanner_t *s, const char *fmt, ...)
 	}
 
 	/* Buffer must contain newline */
-	if (zs_scanner_parse(s, buf, buf + n, true) < 0) {
+	if (zs_set_input_string(s, buf, n) != 0 ||
+	    zs_parse_all(s) != 0) {
 		return KNOT_EPARSEFAIL;
 	}
 
@@ -109,10 +110,11 @@ static int knsupdate_init(knsupdate_params_t *params)
 	params->zone = strdup(".");
 
 	/* Initialize RR parser. */
-	params->parser = zs_scanner_create(".", params->class_num, 0,
-	                                   NULL, parse_err, NULL);
-	if (!params->parser)
+	if (zs_init(&params->parser, ".", params->class_num, 0) != 0 ||
+	    zs_set_processing(&params->parser, NULL, parse_err, NULL) != 0) {
+		zs_deinit(&params->parser);
 		return KNOT_ENOMEM;
+	}
 
 	/* Default style. */
 	params->style = DEFAULT_STYLE_NSUPDATE;
@@ -139,7 +141,7 @@ void knsupdate_clean(knsupdate_params_t *params)
 	srv_info_free(params->server);
 	srv_info_free(params->srcif);
 	free(params->zone);
-	zs_scanner_free(params->parser);
+	zs_deinit(&params->parser);
 	knot_pkt_free(&params->query);
 	knot_pkt_free(&params->answer);
 	knot_tsig_key_deinit(&params->tsig_key);
@@ -283,7 +285,7 @@ int knsupdate_parse(knsupdate_params_t *params, int argc, char *argv[])
 
 int knsupdate_set_ttl(knsupdate_params_t *params, const uint32_t ttl)
 {
-	int ret = parser_set_default(params->parser, "$TTL %u\n", ttl);
+	int ret = parser_set_default(&params->parser, "$TTL %u\n", ttl);
 	if (ret == KNOT_EOK) {
 		params->ttl = ttl;
 	} else {
@@ -296,7 +298,7 @@ int knsupdate_set_origin(knsupdate_params_t *params, const char *origin)
 {
 	char *fqdn = get_fqd_name(origin);
 
-	int ret = parser_set_default(params->parser, "$ORIGIN %s\n", fqdn);
+	int ret = parser_set_default(&params->parser, "$ORIGIN %s\n", fqdn);
 
 	free(fqdn);
 

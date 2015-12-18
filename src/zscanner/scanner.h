@@ -27,6 +27,7 @@
 #pragma once
 
 #include <stdbool.h>
+#include <stddef.h>
 #include <stdint.h>
 
 #include "zscanner/error.h"
@@ -83,6 +84,15 @@ typedef struct {
 	int8_t   lat_sign, long_sign, alt_sign;
 } loc_t;
 
+/*! \brief Scanner states describing the result. */
+typedef enum {
+	ZS_STATE_DATA,     /*!< A record parsed. */
+	ZS_STATE_ERROR,    /*!< An error occured. */
+	ZS_STATE_INCLUDE,  /*!< An include directive parsed. */
+	ZS_STATE_EOF,      /*!< The end of the current input reached. */
+	ZS_STATE_STOP      /*!< Finished parsing. */
+} zs_state_t;
+
 /*!
  * \brief Context structure for zone scanner.
  *
@@ -128,7 +138,9 @@ struct scanner {
 	/*! Auxiliary buffer for data storing. */
 	uint8_t  buffer[MAX_RDATA_LENGTH];
 	/*! Auxiliary buffer for current included file name. */
-	char     include_filename[MAX_RDATA_LENGTH + 1];
+	char     include_filename[MAX_RDATA_LENGTH];
+	/*! Absolute path for relative includes. */
+	char     *path;
 
 	/*! Auxiliary array of bitmap window blocks. */
 	window_t windows[BITMAP_WINDOWS];
@@ -166,33 +178,52 @@ struct scanner {
 	/*! Value of the current default ttl (TTL directive sets this). */
 	uint32_t default_ttl;
 
-	/*! Callback function for correct zone record. */
-	void (*process_record)(zs_scanner_t *);
-	/*! Callback function for wrong situations. */
-	void (*process_error)(zs_scanner_t *);
-	/*! Arbitrary data useful inside callback functions. */
-	void *data;
+	/*! The current processing state. */
+	zs_state_t state;
 
-	/*! Absolute path for relative includes. */
-	char     *path;
-	/*! Zone data line counter. */
-	uint64_t line_counter;
-	/*! Last occured error/warning code. */
-	int      error_code;
-	/*! Errors/warnings counter. */
-	uint64_t error_counter;
-	/*!
-	 * Indicates serious warning which is considered as an error and
-	 * forces zone processing to stop.
-	 */
-	bool     stop;
+	/*! Processing callbacks and auxiliary data. */
+	struct {
+		/*! Automatic zone processing using record/error callbacks. */
+		bool automatic;
+		/*! Callback function for correct zone record. */
+		void (*record)(zs_scanner_t *);
+		/*! Callback function for wrong situations. */
+		void (*error)(zs_scanner_t *);
+		/*! Arbitrary data useful inside callback functions. */
+		void *data;
+	} process;
 
+	/*! Input parameters. */
+	struct {
+		/*! Start of the block. */
+		const char *start;
+		/*! Current parser position. */
+		const char *current;
+		/*! End of the block. */
+		const char *end;
+		/*! Indication for the final block parsing. */
+		bool eof;
+	} input;
+
+	/*! File input parameters. */
 	struct {
 		/*! Zone file name. */
 		char *name;
 		/*!< File descriptor. */
 		int  descriptor;
 	} file;
+
+	struct {
+		/*! Last occured error/warning code. */
+		int code;
+		/*! Error/warning counter. */
+		uint64_t counter;
+		/*! Indicates serious error - parsing cannot continue. */
+		bool fatal;
+	} error;
+
+	/*! Zone data line counter. */
+	uint64_t line_counter;
 
 	/*! Length of the current record owner. */
 	uint32_t r_owner_length;
@@ -227,70 +258,119 @@ struct scanner {
 };
 
 /*!
- * \brief Creates zone scanner structure.
+ * \brief Initializes the scanner context.
  *
- * \param origin		Initial zone origin.
- * \param rclass		Zone class value.
- * \param ttl			Initial ttl value.
- * \param process_record	Processing callback function.
- * \param process_error 	Error callback function.
- * \param data			Arbitrary data useful in callback functions.
+ * \note Error code is stored in the scanner context.
  *
- * \retval scanner		if success.
- * \retval NULL			if error.
+ * \param scanner  Scanner context.
+ * \param origin   Initial zone origin.
+ * \param rclass   Zone class value.
+ * \param ttl      Initial ttl value.
+ *
+ * \retval  0  if success.
+ * \retval -1  if error.
  */
-zs_scanner_t* zs_scanner_create(const char     *origin,
-                                const uint16_t rclass,
-                                const uint32_t ttl,
-                                void (*process_record)(zs_scanner_t *),
-                                void (*process_error)(zs_scanner_t *),
-                                void *data);
+int zs_init(
+	zs_scanner_t *scanner,
+	const char *origin,
+	const uint16_t rclass,
+	const uint32_t ttl
+);
 
 /*!
- * \brief Destroys zone scanner structure.
+ * \brief Deinitializes the scanner context.
  *
- * \param scanner	Zone scanner structure.
+ * \param scanner  Scanner context.
  */
-void zs_scanner_free(zs_scanner_t *scanner);
+void zs_deinit(
+	zs_scanner_t *scanner
+);
 
 /*!
- * \brief Parser memory block with zone data.
+ * \brief Sets the scanner to parse a zone data string.
  *
- * For each correctly recognized record data process_record callback function
- * is called. If any syntax error occures, then process_error callback
- * function is called.
+ * \note Error code is stored in the scanner context.
  *
- * \note Zone scanner error code and other information are stored in
- *       the scanner structure.
+ * \param scanner  Scanner context.
+ * \param input    Input zone data string to parse.
+ * \param size     Size of the input string.
  *
- * \param scanner	Zone scanner.
- * \param start		First byte of the zone data to parse.
- * \param end		Last byte of the zone data to parse.
- * \param final_block	Indicates if the current block is final i.e. no
- * 			other blocks will be processed.
- *
- * \retval  0		if success.
- * \retval -1		if error.
+ * \retval  0  if success.
+ * \retval -1  if error.
  */
-int zs_scanner_parse(zs_scanner_t *scanner,
-                     const char   *start,
-                     const char   *end,
-                     const bool   final_block);
+int zs_set_input_string(
+	zs_scanner_t *scanner,
+	const char *input,
+	size_t size
+);
 
 /*!
- * \brief Parses specified zone file.
+ * \brief Sets the scanner to parse a zone file..
  *
- * \note Zone scanner error code and other information are stored in
- *       the scanner structure. If error and error_count == 0, there is
- *       a more general problem with loading and this error is not processed
- *       with process_error!
+ * \note Error code is stored in the scanner context.
  *
- * \param scanner	Zone scanner.
- * \param file_name	Name of file to process.
+ * \param scanner    Scanner context.
+ * \param file_name  Name of the file to parse.
  *
- * \retval  0		if success.
- * \retval -1		if error.
+ * \retval  0  if success.
+ * \retval -1  if error.
  */
-int zs_scanner_parse_file(zs_scanner_t *scanner,
-                          const char   *file_name);
+int zs_set_input_file(
+	zs_scanner_t *scanner,
+	const char *file_name
+);
+
+/*!
+ * \brief Sets the scanner processing callbacks for automatic processing.
+ *
+ * \note Error code is stored in the scanner context.
+ *
+ * \param scanner         Scanner context.
+ * \param process_record  Processing callback function.
+ * \param process_error   Error callback function.
+ * \param data            Arbitrary data useful in callback functions.
+ *
+ * \retval  0  if success.
+ * \retval -1  if error.
+ */
+int zs_set_processing(
+	zs_scanner_t *s,
+	void (*process_record)(zs_scanner_t *),
+	void (*process_error)(zs_scanner_t *),
+	void *data
+);
+
+/*!
+ * \brief Parses one record from the input.
+ *
+ * The following processing should be based on the scanner->state.
+ *
+ * \note Error code and other information are stored in the scanner context.
+ *
+ * \param scanner  Scanner context.
+ *
+ * \retval  0  if success.
+ * \retval -1  if error.
+ */
+int zs_parse_record(
+	zs_scanner_t *scanner
+);
+
+/*!
+ * \brief Launches automatic parsing of the whole input.
+ *
+ * For each correctly recognized record, the record callback is executed.
+ * If any syntax error occures, the error callback is executed.
+ *
+ * \note Error code and other information are stored in the scanner context.
+ *
+ * \param scanner  Scanner context.
+ *
+ * \retval  0  if success.
+ * \retval -1  if error.
+ */
+int zs_parse_all(
+	zs_scanner_t *scanner
+);
+
 /*! @} */

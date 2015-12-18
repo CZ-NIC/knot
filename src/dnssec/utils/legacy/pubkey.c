@@ -33,22 +33,23 @@
  *
  * \todo Currently, the function waits for the first DNSKEY record, and skips
  * the others. We should be more strict and report other records as errors.
- * However, there is currently no API to stop the scanner.
  */
 static void parse_record(zs_scanner_t *scanner)
 {
 	assert(scanner);
-	assert(scanner->data);
+	assert(scanner->process.data);
 
-	dnssec_key_t *key = scanner->data;
+	dnssec_key_t *key = scanner->process.data;
 
 	if (dnssec_key_get_dname(key) != NULL) {
-		// skip till the the parser finishes
+		// should report error
+		scanner->state = ZS_STATE_STOP;
 		return;
 	}
 
 	if (scanner->r_type != RTYPE_DNSKEY) {
 		// should report error
+		scanner->state = ZS_STATE_STOP;
 		return;
 	}
 
@@ -73,16 +74,25 @@ int legacy_pubkey_parse(const char *filename, dnssec_key_t **key_ptr)
 
 	uint16_t cls = CLASS_IN;
 	uint32_t ttl = 0;
-	zs_scanner_t *scanner = zs_scanner_create(".", cls, ttl,
-						  parse_record, NULL, key);
-	if (!scanner) {
+	zs_scanner_t *scanner = malloc(sizeof(zs_scanner_t));
+	if (scanner == NULL) {
+		dnssec_key_free(key);
+		return DNSSEC_ENOMEM;
+	}
+
+	if (zs_init(scanner, ".", cls, ttl) != 0 ||
+	    zs_set_input_file(scanner, filename) != 0 ||
+	    zs_set_processing(scanner, parse_record, NULL, key) != 0 ||
+	    zs_parse_all(scanner) != 0) {
+		zs_deinit(scanner);
+		free(scanner);
 		dnssec_key_free(key);
 		return DNSSEC_NOT_FOUND;
 	}
+	zs_deinit(scanner);
+	free(scanner);
 
-	result = zs_scanner_parse_file(scanner, filename);
-	zs_scanner_free(scanner);
-	if (result != 0 || dnssec_key_get_dname(key) == NULL) {
+	if (dnssec_key_get_dname(key) == NULL) {
 		dnssec_key_free(key);
 		return DNSSEC_INVALID_PUBLIC_KEY;
 	}
