@@ -891,7 +891,7 @@ static int cmd_zone_key_generate(int argc, char *argv[])
 
 	config.timing.created = time(NULL);
 	if (!zone_add_dnskey(zone, keyid, dnskey, &config.timing)) {
-		free(dnskey);
+		dnssec_key_free(dnskey);
 		return 1;
 	}
 

@@ -56,6 +56,7 @@ static void free_kasp_key(void *data, void *ctx _unused_)
 	dnssec_kasp_key_t *kasp_key = data;
 
 	dnssec_key_free(kasp_key->key);
+	free(kasp_key->id);
 	free(kasp_key);
 }
 
