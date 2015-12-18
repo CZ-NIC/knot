@@ -16,21 +16,29 @@
 
 #pragma once
 
-#include <gnutls/abstract.h>
+#include <gnutls/gnutls.h>
 
 #include "binary.h"
 
 /*!
- * Create GnuTLS private key from unencrypted PEM data.
+ * Create GnuTLS X.509 private key from unencrypted PEM data.
  *
- * \param[in]  data  PEM binary data.
- * \param[out] key   Resulting private key.
- * \param[out] id    Key ID.
+ * \param[in]  pem  PEM binary data.
+ * \param[out] key  Resulting private key.
  *
  * \return Error code, DNSSEC_EOK if successful.
  */
-int pem_to_privkey(const dnssec_binary_t *data, gnutls_privkey_t *key,
-		   char **id);
+int pem_x509(const dnssec_binary_t *pem, gnutls_x509_privkey_t *key);
+
+/*!
+ * Create GnuTLS private key from unencrypted PEM data.
+ *
+ * \param[in]  pem  PEM binary data.
+ * \param[out] key  Resulting private key.
+ *
+ * \return Error code, DNSSEC_EOK if successful.
+ */
+int pem_privkey(const dnssec_binary_t *pem, gnutls_privkey_t *key);
 
 /*!
  * Generate a private key and export it in the PEM format.
@@ -53,7 +61,7 @@ int pem_generate(gnutls_pk_algorithm_t algorithm, unsigned bits,
  *
  * \return Error code, DNSSEC_EOK if successful.
  */
-int pem_gnutls_x509_export(gnutls_x509_privkey_t key, dnssec_binary_t *pem);
+int pem_from_x509(gnutls_x509_privkey_t key, dnssec_binary_t *pem);
 
 /*!
  * Get key ID of a private key in PEM format.
@@ -63,4 +71,4 @@ int pem_gnutls_x509_export(gnutls_x509_privkey_t key, dnssec_binary_t *pem);
  *
  * \return Error code, DNSSEC_EOK if successful.
  */
-int pem_get_id(const dnssec_binary_t *pem, char **id);
+int pem_keyid(const dnssec_binary_t *pem, char **id);

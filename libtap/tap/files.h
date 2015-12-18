@@ -1,4 +1,4 @@
-/*  Copyright (C) 2014 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -16,14 +16,18 @@
 
 #pragma once
 
-#include <gnutls/abstract.h>
+#include <stdbool.h>
 
 /*!
- * Get ID from GnuTLS public key and convert it into library format.
+ * \brief Create temporary directory.
+ *
+ * If TMPDIR environment variable is set, the directory is created within
+ * that directory. If the variable is not set, the directory is created
+ * within /tmp.
  */
-char *gnutls_pubkey_hex_key_id(gnutls_pubkey_t key);
+char *test_mkdtemp(void);
 
 /*!
- * Get ID from GnuTLS X.509 private key and convert it into library format.
+ * \brief Delete file or directory (recursive).
  */
-char *gnutls_x509_privkey_hex_key_id(gnutls_x509_privkey_t key);
+bool test_rm_rf(const char *path);

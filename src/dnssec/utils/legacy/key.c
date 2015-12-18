@@ -49,7 +49,7 @@ static int rsa_params_to_pem(const legacy_privkey_t *params, dnssec_binary_t *pe
 		return DNSSEC_KEY_IMPORT_ERROR;
 	}
 
-	return pem_gnutls_x509_export(key, pem);
+	return pem_from_x509(key, pem);
 }
 
 static int dsa_params_to_pem(const legacy_privkey_t *params, dnssec_binary_t *pem)
@@ -71,7 +71,7 @@ static int dsa_params_to_pem(const legacy_privkey_t *params, dnssec_binary_t *pe
 		return DNSSEC_KEY_IMPORT_ERROR;
 	}
 
-	return pem_gnutls_x509_export(key, pem);
+	return pem_from_x509(key, pem);
 }
 
 /*!
@@ -124,7 +124,7 @@ static int ecdsa_params_to_pem(dnssec_key_t *dnskey, const legacy_privkey_t *par
 
 	gnutls_x509_privkey_fix(key);
 
-	return pem_gnutls_x509_export(key, pem);
+	return pem_from_x509(key, pem);
 }
 
 static int params_to_pem(dnssec_key_t *key, legacy_privkey_t *params, dnssec_binary_t *pem)

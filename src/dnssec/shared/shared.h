@@ -23,8 +23,9 @@
 #include <string.h>
 #include <unistd.h>
 
-#include <gnutls/gnutls.h>
+#include <gnutls/abstract.h>
 #include <gnutls/crypto.h>
+#include <gnutls/gnutls.h>
 #include <gnutls/x509.h>
 
 #include "binary.h"
@@ -85,6 +86,13 @@ static inline void free_x509_privkey_ptr(gnutls_x509_privkey_t *ptr)
 	}
 }
 
+static inline void free_pubkey_ptr(gnutls_pubkey_t *ptr)
+{
+	if (*ptr) {
+		gnutls_pubkey_deinit(*ptr);
+	}
+}
+
 static inline void free_gnutls_hash_ptr(gnutls_hash_hd_t *ptr)
 {
 	if (*ptr) {
@@ -99,6 +107,7 @@ static inline void free_gnutls_hash_ptr(gnutls_hash_hd_t *ptr)
 #define _cleanup_binary_ _cleanup_(dnssec_binary_free)
 #define _cleanup_datum_ _cleanup_(free_gnutls_datum_ptr)
 #define _cleanup_x509_privkey_ _cleanup_(free_x509_privkey_ptr)
+#define _cleanup_pubkey_ _cleanup_(free_pubkey_ptr)
 #define _cleanup_hash_ _cleanup_(free_gnutls_hash_ptr)
 
 /* -- assertions ----------------------------------------------------------- */

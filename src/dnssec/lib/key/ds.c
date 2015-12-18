@@ -98,7 +98,7 @@ int dnssec_key_create_ds(const dnssec_key_t *key,
 	}
 
 	wire_ctx_t wire = wire_init_binary(&rdata);
-	wire_write_u16(&wire, key->keytag);
+	wire_write_u16(&wire, dnssec_key_get_keytag(key));
 	wire_write_u8(&wire, dnssec_key_get_algorithm(key));
 	wire_write_u8(&wire, ds_algorithm);
 	wire_write_digest(&wire, digest, digest_size);

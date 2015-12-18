@@ -389,25 +389,3 @@ int value_time(int argc, char *argv[], const parameter_t *p, void *data)
 
 	return 1;
 }
-
-int value_policy(int argc, char *argv[], const parameter_t *p, void *data)
-{
-	assert(p);
-	assert(data);
-
-	if (argc < 1) {
-		error_missing_option(p);
-		return -1;
-	}
-
-	char **policy = data + p->offset;
-	char *input = argv[0];
-
-	if (strcmp(input, "none") == 0) {
-		*policy = NULL;
-	} else {
-		*policy = input;
-	}
-
-	return 1;
-}

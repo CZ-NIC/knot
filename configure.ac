@@ -128,6 +128,14 @@ PKG_CHECK_MODULES([gnutls], [gnutls >= 3.0 nettle], [
     CFLAGS="$CFLAGS $gnutls_CFLAGS"
     AC_CHECK_HEADERS([nettle/version.h])
     CFLAGS=$CFLAGS_save
+
+    LDFLAGS_save=$LDFLAGS
+    LDFLAGS="$LDFLAGS $gnutls_LIBS"
+    AC_CHECK_FUNC([gnutls_pkcs11_privkey_generate3], [enable_pkcs11=yes], [enable_pkcs11=no])
+    AS_IF([test "$enable_pkcs11" = yes],
+        [AC_DEFINE([ENABLE_PKCS11], [1], [PKCS 11 support available])])
+
+    LDFLAGS=$LDFLAGS_save
 ])
 
 # JSON for DNSSEC status storage
@@ -549,6 +557,7 @@ AC_MSG_RESULT([
     Dnstap support:      ${opt_dnstap}
     Code coverage:       ${enable_code_coverage}
     Bash completions:    ${bash_completions_output}
+    PKCS 11 support:     ${enable_pkcs11}
 
   Continue with 'make' command
 ])

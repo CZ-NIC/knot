@@ -16,11 +16,9 @@
 
 #include <assert.h>
 #include <ctype.h>
-#include <gnutls/abstract.h>
 #include <string.h>
 
 #include "error.h"
-#include "hex.h"
 #include "keyid.h"
 #include "shared.h"
 
@@ -76,6 +74,7 @@ char *dnssec_keyid_copy(const char *id)
 	return copy;
 }
 
+_public_
 bool dnssec_keyid_equal(const char *one, const char *two)
 {
 	if (!one || !two) {

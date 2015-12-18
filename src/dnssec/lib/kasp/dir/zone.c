@@ -136,19 +136,6 @@ static int create_dnskey(const uint8_t *dname, key_params_t *params,
 		return result;
 	}
 
-	// validate key ID
-
-	const char *key_id = dnssec_key_get_id(key);
-	if (!key_id) {
-		dnssec_key_free(key);
-		return DNSSEC_INVALID_PUBLIC_KEY;
-	}
-
-	if (!dnssec_keyid_equal(params->id, key_id)) {
-		dnssec_key_free(key);
-		return DNSSEC_INVALID_KEY_ID;
-	}
-
 	*key_ptr = key;
 
 	return DNSSEC_EOK;
@@ -157,7 +144,8 @@ static int create_dnskey(const uint8_t *dname, key_params_t *params,
 /*!
  * Add DNSKEY into a keyset.
  */
-static int keyset_add_dnskey(dnssec_list_t *keyset, dnssec_key_t *dnskey,
+static int keyset_add_dnskey(dnssec_list_t *keyset, const char *id,
+			     dnssec_key_t *dnskey,
 			     const dnssec_kasp_key_timing_t *timing)
 {
 	dnssec_kasp_key_t *kasp_key = malloc(sizeof(*kasp_key));
@@ -165,7 +153,14 @@ static int keyset_add_dnskey(dnssec_list_t *keyset, dnssec_key_t *dnskey,
 		return DNSSEC_ENOMEM;
 	}
 
+	char *id_copy = strdup(id);
+	if (!id_copy) {
+		free(kasp_key);
+		return DNSSEC_ENOMEM;
+	}
+
 	clear_struct(kasp_key);
+	kasp_key->id = id_copy;
 	kasp_key->key = dnskey;
 	kasp_key->timing = *timing;
 
@@ -209,7 +204,7 @@ static int load_zone_keys(const uint8_t *zone, dnssec_list_t **list_ptr, json_t 
 			break;
 		}
 
-		result = keyset_add_dnskey(new_keys, dnskey, &params.timing);
+		result = keyset_add_dnskey(new_keys, params.id, dnskey, &params.timing);
 		if (result != DNSSEC_EOK) {
 			dnssec_key_free(dnskey);
 			break;
@@ -233,7 +228,7 @@ static void key_to_params(dnssec_kasp_key_t *key, key_params_t *params)
 	assert(key);
 	assert(params);
 
-	params->id = (char *)dnssec_key_get_id(key->key);
+	params->id = key->id;
 	params->keytag = dnssec_key_get_keytag(key->key);
 	dnssec_key_get_pubkey(key->key, &params->public_key);
 	params->algorithm = dnssec_key_get_algorithm(key->key);

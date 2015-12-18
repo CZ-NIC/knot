@@ -21,6 +21,7 @@
 #include "error.h"
 #include "kasp/dir/json.h"
 #include "key.h"
+#include "keyid.h"
 #include "shared.h"
 #include "strtonum.h"
 #include "timestamp.h"
@@ -307,6 +308,43 @@ int encode_time(const void *value, json_t **result)
 	}
 
 	*result = encoded;
+
+	return DNSSEC_EOK;
+}
+
+int decode_string(const json_t *value, void *result)
+{
+	char **str_ptr = result;
+
+	if (json_is_null(value)) {
+		*str_ptr = NULL;
+		return DNSSEC_EOK;
+	}
+
+	if (!json_is_string(value)) {
+		return DNSSEC_MALFORMED_DATA;
+	}
+
+	char *copy = strdup(json_string_value(value));
+	if (!copy) {
+		return DNSSEC_ENOMEM;
+	}
+
+	*str_ptr = copy;
+
+	return DNSSEC_EOK;
+}
+
+int encode_string(const void *value, json_t **result)
+{
+	const char **str_ptr = (const char **)value;
+
+	json_t *json = *str_ptr ? json_string(*str_ptr) : json_null();
+	if (!json) {
+		return DNSSEC_ENOMEM;
+	}
+
+	*result = json;
 
 	return DNSSEC_EOK;
 }

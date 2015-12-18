@@ -36,6 +36,7 @@
  * \brief Zone key context used during signing.
  */
 struct zone_key {
+	const char *id;
 	dnssec_key_t *key;
 	dnssec_sign_ctx_t *ctx;
 

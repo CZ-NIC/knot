@@ -33,13 +33,10 @@
 	ok(value == set_val, #name " get"); \
 }
 
-static void check_key_ids(dnssec_key_t *key, const key_parameters_t *params)
+static void check_key_tag(dnssec_key_t *key, const key_parameters_t *params)
 {
 	uint16_t keytag = dnssec_key_get_keytag(key);
 	ok(keytag == params->keytag, "get keytag");
-
-	const char *key_id = dnssec_key_get_id(key);
-	is_string(params->key_id, key_id, "get key ID");
 }
 
 static void check_key_size(dnssec_key_t *key, const key_parameters_t *params)
@@ -89,7 +86,7 @@ static void test_public_key(const key_parameters_t *params)
 	ok(r == DNSSEC_EOK && dnssec_binary_cmp(&rdata, &params->rdata) == 0,
 	   "get RDATA");
 
-	check_key_ids(key, params);
+	check_key_tag(key, params);
 
 	// create from RDATA
 
@@ -97,7 +94,7 @@ static void test_public_key(const key_parameters_t *params)
 	r = dnssec_key_set_rdata(key, &params->rdata);
 	ok(r == DNSSEC_EOK, "set RDATA");
 
-	check_key_ids(key, params);
+	check_key_tag(key, params);
 	check_key_size(key, params);
 	check_usage(key, true, false);
 
@@ -106,7 +103,7 @@ static void test_public_key(const key_parameters_t *params)
 	dnssec_key_t *copy = dnssec_key_dup(key);
 	ok(copy != NULL, "duplicate key");
 
-	check_key_ids(copy, params);
+	check_key_tag(copy, params);
 	check_key_size(copy, params);
 	check_usage(copy, true, false);
 
@@ -145,7 +142,7 @@ static void test_private_key(const key_parameters_t *params)
 	ok(r == DNSSEC_EOK && dnssec_binary_cmp(&rdata, &params->rdata) == 0,
 	   "get RDATA");
 
-	check_key_ids(key, params);
+	check_key_tag(key, params);
 	check_key_size(key, params);
 	check_usage(key, true, true);
 
@@ -154,7 +151,7 @@ static void test_private_key(const key_parameters_t *params)
 	dnssec_key_t *copy = dnssec_key_dup(key);
 	ok(copy != NULL, "duplicate key");
 
-	check_key_ids(copy, params);
+	check_key_tag(copy, params);
 	check_key_size(copy, params);
 	check_usage(copy, true, false);
 

@@ -42,17 +42,3 @@ void update_policy_from_zone(dnssec_kasp_policy_t *policy,
 	policy->dnskey_ttl = zone_soa_ttl(zone);
 	policy->zone_maximal_ttl = 0; // TODO
 }
-
-void set_default_policy(dnssec_kasp_policy_t *policy,
-                        const zone_contents_t *zone)
-{
-	assert(policy);
-	assert(zone);
-
-	policy->rrsig_lifetime = 30 * 24 * 3600;
-	policy->rrsig_refresh_before = policy->rrsig_lifetime / 10;
-	policy->algorithm = 0;
-	policy->propagation_delay = 0;
-
-	update_policy_from_zone(policy, zone);
-}

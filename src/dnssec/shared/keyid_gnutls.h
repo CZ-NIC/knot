@@ -1,4 +1,4 @@
-/*  Copyright (C) 2014 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -16,28 +16,13 @@
 
 #pragma once
 
-#include <gnutls/abstract.h>
-#include <stdint.h>
+#include <gnutls/gnutls.h>
+#include "binary.h"
 
-#include "key.h"
-#include "dname.h"
+int keyid_x509(gnutls_x509_privkey_t key, dnssec_binary_t *id);
 
-/*!
- * DNSSEC key.
- */
-struct dnssec_key {
-	uint8_t *dname;
-	dnssec_binary_t rdata;
+int keyid_x509_hex(gnutls_x509_privkey_t key, char **id);
 
-	gnutls_pubkey_t public_key;
-	gnutls_privkey_t private_key;
-	unsigned bits;
-};
+int keyid_pubkey(gnutls_pubkey_t pubkey, dnssec_binary_t *id);
 
-static const uint16_t DNSKEY_FLAGS_KSK = 257;
-static const uint16_t DNSKEY_FLAGS_ZSK = 256;
-
-static inline uint16_t dnskey_flags(bool is_ksk)
-{
-	return is_ksk ? DNSKEY_FLAGS_KSK : DNSKEY_FLAGS_ZSK;
-}
+int keyid_pubkey_hex(gnutls_pubkey_t pubkey, char **id);

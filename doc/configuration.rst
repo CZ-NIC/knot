@@ -304,13 +304,13 @@ default template, but the signing is explicitly disabled for zone
 DNSSEC KASP database
 --------------------
 
-The configuration for DNSSEC is stored in a :abbr:`KASP (Key And Signature
+The configuration for DNSSEC is stored in the :abbr:`KASP (Key And Signature
 Policy)` database. The database is simply a directory in the file-system
 containing files in the JSON format. The database contains
 
 - definitions of signing policies;
-- zones configuration; and
-- private key material.
+- private key stores configuration; and
+- zones configuration and signing metadata.
 
 The :doc:`keymgr <man_keymgr>` utility serves for the database maintenance.
 To initialize the database, run:
@@ -321,10 +321,15 @@ To initialize the database, run:
   $ cd /var/lib/knot/kasp
   $ keymgr init
 
+The *init* command initializes the database, defines a default signing policy
+named *default* with default signing parameters, and defines a default key
+store named *default* with file-backed key store within the KASP database
+directory.
+
 .. ATTENTION::
   Make sure to set the KASP database permissions correctly. For manual key
-  management, the database must be **readable** by the server process. For
-  automatic key management, it must be **writeable**. The database also
+  management, the database must be *readable* by the server process. For
+  automatic key management, it must be *writeable*. The database also
   contains private key material – don't set the permissions too loose.
 
 .. _dnssec-automatic-key-management:
@@ -336,12 +341,12 @@ For automatic key management, a signing policy has to be defined in the
 first place. This policy specifies how a zone is signed (i.e. signing
 algorithm, key size, signature lifetime, key lifetime, etc.).
 
-To create a new policy named *default_rsa* using *RSA-SHA-256* algorithm for
+To create a new policy named *rsa* using *RSA-SHA-256* algorithm for
 signing keys, 1024-bit long ZSK, and 2048-bit long KSK, run:
 
 .. code-block:: console
 
-  $ keymgr policy add default_rsa algorithm RSASHA256 zsk-size 1024 ksk-size 2048
+  $ keymgr policy add rsa algorithm RSASHA256 zsk-size 1024 ksk-size 2048
 
 The unspecified policy parameters are set to defaults. The complete definition
 of the policy will be printed after executing the command.
@@ -351,13 +356,13 @@ created policy:
 
 .. code-block:: console
 
-  $ keymgr zone add myzone.test policy default_rsa
+  $ keymgr zone add myzone.test policy rsa
 
 Make sure everything is set correctly:
 
 .. code-block:: console
 
-  $ keymgr policy show default_rsa
+  $ keymgr policy show rsa
   $ keymgr zone show myzone.test
 
 Add the zone into the server configuration and enable DNSSEC for that zone.
@@ -394,17 +399,23 @@ Manual key management
 ---------------------
 
 For automatic DNSSEC signing with manual key management, a signing policy
-need not be defined.
+with manual key management flag has to be set.
 
-Create a zone entry for the zone *myzone.test* without a policy:
+Define a signing policy named *man* with disabled automatic key management:
 
 .. code-block:: console
 
-  $ keymgr zone add myzone.test
+  $ keymgr policy add man manual true
+
+Create a zone entry for the zone *myzone.test* with the created policy:
+
+.. code-block:: console
+
+  $ keymgr zone add myzone.test policy man
 
 Generate signing keys for the zone. Let's use the Single-Type Signing scheme
-with two algorithms (this scheme is not supported in automatic key management).
-Run:
+with two algorithms, which is a scheme currently not supported by the automatic
+key management. Run:
 
 .. code-block:: console
 
@@ -452,14 +463,14 @@ of the following parameters:
 
 Signing algorithm
   An algorithm of signing keys and issued signatures. The default value is
-  *RSA-SHA-256*.
+  *ECDSA-P256-SHA256*.
 
 :abbr:`KSK (Key Signing Key)` size
-  Desired length of the newly generated ZSK keys. The default value is 2048
-  bits.
+  Desired length of the newly generated ZSK keys. The default value is 256
+  bits (the only feasible value for the default signing algorithm).
 
 :abbr:`ZSK (Zone Signing Key)` size
-  Desired length of the newly generated ZSK keys. The default value is 1024
+  Desired length of the newly generated ZSK keys. The default value is 256
   bits.
 
 DNSKEY TTL
@@ -496,6 +507,14 @@ Propagation delay
   An extra delay added for each key rollover step. This value should be high
   enough to cover propagation of data from the master server to all slaves.
   The default value is 1 hour.
+
+Key store name
+  A name of a key store holding private key material for zones which use the
+  policy. The default value is *default*.
+
+Manual key management
+  An option to disable key management for all zones which use the policy. The
+  option is disabled by default.
 
 .. _dnssec-signing:
 
