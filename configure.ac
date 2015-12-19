@@ -1,7 +1,6 @@
 #                                               -*- Autoconf -*-
 
 AC_PREREQ([2.60])
-AC_CONFIG_SRCDIR([src/knot/main.c])
 
 m4_define([knot_VERSION_MAJOR],2)dnl
 m4_define([knot_VERSION_MINOR],1)dnl
@@ -12,6 +11,7 @@ m4_define([knot_PKG_VERSION],[knot_VERSION_MAJOR.knot_VERSION_MINOR.knot_VERSION
 AC_INIT([knot], knot_PKG_VERSION, [knot-dns@labs.nic.cz])
 AM_INIT_AUTOMAKE([gnits subdir-objects no-dist-gzip dist-xz -Wall -Werror])
 AM_SILENT_RULES([yes])
+AC_CONFIG_SRCDIR([src/knot/main.c])
 AC_CONFIG_HEADERS([src/config.h])
 AC_CONFIG_MACRO_DIR([m4])
 AC_USE_SYSTEM_EXTENSIONS([_GNU_SOURCE])
