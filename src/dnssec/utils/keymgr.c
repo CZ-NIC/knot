@@ -20,7 +20,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 
 #include <dnssec/crypto.h>
 #include <dnssec/error.h>
@@ -1564,9 +1563,7 @@ static int cmd_tsig(int argc, char *argv[])
 
 static void print_help(void)
 {
-	if (execlp("man", "man", "keymgr", NULL) == -1) {
-		fprintf(stderr, "Failed to open manual page.\n");
-	}
+	printf("Please, see keymgr(8) manual page.\n");
 }
 
 static void print_version(void)
