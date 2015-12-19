@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include <gnutls/abstract.h>
 #include <gnutls/gnutls.h>
 #include "binary.h"
 
