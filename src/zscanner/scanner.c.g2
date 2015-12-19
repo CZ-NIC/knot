@@ -140,7 +140,7 @@ int zs_init(
 	s->default_ttl = ttl;
 	s->line_counter = 1;
 
-	s->state = ZS_STATE_EOF;
+	s->state = ZS_STATE_NONE;
 	s->process.automatic = false;
 
 	return 0;
@@ -245,10 +245,6 @@ int zs_set_input_file(
 
 		// Try to set the mapped memory advise to sequential.
 		(void)madvise(start, file_stat.st_size, MADV_SEQUENTIAL);
-
-		s->input.eof = false;
-	} else {
-		s->input.eof = true;
 	}
 
 	// Get absolute path of the zone file.
@@ -276,6 +272,7 @@ int zs_set_input_file(
 	s->input.start   = start;
 	s->input.current = start;
 	s->input.end     = start + file_stat.st_size;
+	s->input.eof     = false;
 
 	return 0;
 file_error:
@@ -75456,21 +75453,31 @@ int zs_parse_record(
 
 	// Check for the end of the input.
 	if (s->input.current != s->input.end) {
+		s->state = ZS_STATE_NONE;
 		// Parse the next item.
 		parse(s);
 		return 0;
-	} else if (s->state != ZS_STATE_EOF) {
+	}
+
+	switch (s->state) {
+	case ZS_STATE_NONE:
 		// Indicate end of the input.
 		s->state = ZS_STATE_EOF;
 		return 0;
-	} else {
+	case ZS_STATE_EOF:
 		// Parse the final block.
 		if (zs_set_input_string(s, "\n", 1) != 0) {
 			return -1;
 		}
 		s->input.eof = true;
+
 		parse(s);
+		if (s->state == ZS_STATE_EOF) {
+			return -1;
+		}
 		return 0;
+	default:
+		return -1;;
 	}
 }
 

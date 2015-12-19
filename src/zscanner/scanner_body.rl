@@ -2029,15 +2029,7 @@
 	# Blank spaces with comments.
 	blank = rest . newline;
 
-	action _main_init {
-		if (escape) {
-			escape = false;
-			fbreak;
-		}
-	}
-
 	# Main processing loop.
-#	main := (record %_main_init | directive %_main_init | blank %_main_init)*;
 	main := (record | directive | blank)*;
 	# END
 }%%

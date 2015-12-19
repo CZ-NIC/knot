@@ -98,7 +98,8 @@ int state_parsing(
 			if (zs_init(ss, (char *)s->buffer, s->default_class, s->default_ttl) != 0 ||
 			    zs_set_input_file(ss, (char *)(s->include_filename)) != 0 ||
 			    zs_set_processing(ss, s->process.record, s->process.error, s->process.data) != 0 ||
-			    state_parsing(ss) != 0) {
+			    state_parsing(ss) != 0 ||
+			    ss->error.counter > 0) {
 				if (ss->error.counter > 0) {
 					s->error.code = ZS_UNPROCESSED_INCLUDE;
 				} else {
@@ -117,6 +118,8 @@ int state_parsing(
 			}
 			zs_deinit(ss);
 			free(ss);
+			break;
+		case ZS_STATE_NONE:
 			break;
 		case ZS_STATE_EOF:
 			// Set the next input string block.

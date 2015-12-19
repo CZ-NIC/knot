@@ -86,6 +86,7 @@ typedef struct {
 
 /*! \brief Scanner states describing the result. */
 typedef enum {
+	ZS_STATE_NONE,     /*!< Initial state. */
 	ZS_STATE_DATA,     /*!< A record parsed. */
 	ZS_STATE_ERROR,    /*!< An error occured. */
 	ZS_STATE_INCLUDE,  /*!< An include directive parsed. */
