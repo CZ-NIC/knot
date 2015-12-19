@@ -391,11 +391,11 @@ int dnssec_kasp_keystore_exists(dnssec_kasp_t *kasp, const char *name);
 #define DNSSEC_KASP_KEYSTORE_PKCS8  "pkcs8"
 #define DNSSEC_KASP_KEYSTORE_PKCS11 "pkcs11"
 
-typedef struct dnssec_keystore dnssec_keystore_t;
+struct dnssec_keystore;
 
 int dnssec_kasp_keystore_init(dnssec_kasp_t *kasp, const char *backend,
-			      const char *config, dnssec_keystore_t **store);
+			      const char *config, struct dnssec_keystore **store);
 int dnssec_kasp_keystore_open(dnssec_kasp_t *kasp, const char *backend,
-			      const char *config, dnssec_keystore_t **store);
+			      const char *config, struct dnssec_keystore **store);
 
 /*! @} */
