@@ -23,6 +23,7 @@
 
 /* LMDB specific flags. */
 extern const unsigned KNOT_DB_LMDB_NOTLS;
+extern const unsigned KNOT_DB_LMDB_RDONLY;
 
 /* Native options. */
 struct knot_db_lmdb_opts {

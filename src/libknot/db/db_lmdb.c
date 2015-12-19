@@ -32,8 +32,8 @@
 #define LMDB_DIR_MODE   0770
 #define LMDB_FILE_MODE  0660
 
-_public_
-const unsigned KNOT_DB_LMDB_NOTLS = MDB_NOTLS;
+_public_ const unsigned KNOT_DB_LMDB_NOTLS = MDB_NOTLS;
+_public_ const unsigned KNOT_DB_LMDB_RDONLY = MDB_RDONLY;
 
 struct lmdb_env
 {
@@ -167,9 +167,14 @@ static int dbase_open_env(struct lmdb_env *env, struct knot_db_lmdb_opts *opts)
 
 static int dbase_open(struct lmdb_env *env, struct knot_db_lmdb_opts *opts)
 {
+	unsigned flags = 0;
+	if (opts->flags.env & KNOT_DB_LMDB_RDONLY) {
+		flags = MDB_RDONLY;
+	}
+
 	/* Open the database. */
 	MDB_txn *txn = NULL;
-	int ret = mdb_txn_begin(env->env, NULL, 0, &txn);
+	int ret = mdb_txn_begin(env->env, NULL, flags, &txn);
 	if (ret != MDB_SUCCESS) {
 		mdb_env_close(env->env);
 		return lmdb_error_to_knot(ret);
