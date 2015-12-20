@@ -1,5 +1,30 @@
-Knot DNS 2.1.0-dev (TBD)
-========================
+Knot DNS 2.1.0-rc1 (2015-12-20)
+===============================
+
+Features:
+---------
+ - Per-thread UDP socket binding using SO_REUSEPORT on Linux
+ - Support for dynamic configuration database
+ - DNSSEC: Support for cryptographic tokens via PKCS #11 interface
+ - DNSSEC: Experimental support for online signing
+
+Improvements:
+-------------
+ - Support for zone file name patterns
+ - Configurable location of zone timer database
+ - Non-blocking network operations and better timeout handling
+ - Caching of Critical configuration values for better performance
+ - Logging of ACL failures
+ - RRL: Add rate-limit-slip zero support to drop all responses
+ - RRL: Document behavior for different rate-limit-slip options
+ - kdig: Warning instead of error on TSIG validation failure
+ - kdig: Option to control behavior on SERVFAIL (+[no]fail)
+ - Cleanup of support libraries interfaces (libknot, libzscanner, libdnssec)
+
+Bugfixes:
+---------
+ - synth-record module: Fix application of default configuration options
+ - TSIG: Allow compressed TSIG name when forwarding DDNS updates
 
 Knot DNS 2.0.2 (2015-11-24)
 ===========================
