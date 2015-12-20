@@ -49,7 +49,11 @@ static int keyid_bin(gnutls_x509_privkey_t key, gnutls_pubkey_t pubkey, dnssec_b
 	}
 
 	assert(size == DNSSEC_KEYID_BINARY_SIZE);
-	dnssec_binary_resize(id, size);
+	r = dnssec_binary_resize(id, size);
+	if (r != DNSSEC_EOK) {
+		return r;
+	}
+
 	memcpy(id->data, buffer, size);
 
 	return DNSSEC_EOK;
