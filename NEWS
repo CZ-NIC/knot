@@ -18,7 +18,6 @@ Improvements:
  - RRL: Add rate-limit-slip zero support to drop all responses
  - RRL: Document behavior for different rate-limit-slip options
  - kdig: Warning instead of error on TSIG validation failure
- - kdig: Option to control behavior on SERVFAIL (+[no]fail)
  - Cleanup of support libraries interfaces (libknot, libzscanner, libdnssec)
 
 Bugfixes:
