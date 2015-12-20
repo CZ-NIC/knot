@@ -108,20 +108,6 @@ static int db_check_version(
 	return KNOT_EOK;
 }
 
-static int db_check(
-	conf_t *conf,
-	knot_db_txn_t *txn)
-{
-	int ret = conf->api->count(txn);
-	if (ret == 0) { // Empty DB.
-		return KNOT_CONF_EMPTY;
-	} else if (ret > 0) { // Check existing DB.
-		return db_check_version(conf, txn);
-	} else { // DB error.
-		return ret;
-	}
-}
-
 int conf_db_init(
 	conf_t *conf,
 	knot_db_txn_t *txn)
@@ -139,7 +125,21 @@ int conf_db_init(
 		knot_db_val_t data = { d, sizeof(d) };
 		return conf->api->insert(txn, &key, &data, 0);
 	} else if (ret > 0) { // Check existing DB.
-		return db_check(conf, txn);
+		return conf_db_check(conf, txn);
+	} else { // DB error.
+		return ret;
+	}
+}
+
+int conf_db_check(
+	conf_t *conf,
+	knot_db_txn_t *txn)
+{
+	int ret = conf->api->count(txn);
+	if (ret == 0) { // Empty DB.
+		return KNOT_CONF_EMPTY;
+	} else if (ret > 0) { // Check existing DB.
+		return db_check_version(conf, txn);
 	} else { // DB error.
 		return ret;
 	}

@@ -332,7 +332,7 @@ int main(int argc, char **argv)
 	/* Open configuration. */
 	conf_t *new_conf = NULL;
 	if (config_db == NULL) {
-		int ret = conf_new(&new_conf, conf_scheme, NULL);
+		int ret = conf_new(&new_conf, conf_scheme, NULL, false);
 		if (ret != KNOT_EOK) {
 			log_fatal("failed to initialize configuration database "
 			          "(%s)", knot_strerror(ret));
@@ -353,7 +353,7 @@ int main(int argc, char **argv)
 		new_conf->filename = strdup(config_fn);
 	} else {
 		/* Open configuration database. */
-		int ret = conf_new(&new_conf, conf_scheme, config_db);
+		int ret = conf_new(&new_conf, conf_scheme, config_db, false);
 		if (ret != KNOT_EOK) {
 			log_fatal("failed to open configuration database '%s' "
 			          "(%s)", config_db, knot_strerror(ret));

@@ -69,6 +69,7 @@ typedef int (*knot_cmdf_t)(cmd_args_t *args);
 /*! \brief Command table item. */
 typedef struct knot_cmd {
 	knot_cmdf_t cb;
+	bool ronly_conf;
 	const char *name;
 	const char *params;
 	const char *desc;
@@ -99,29 +100,29 @@ static int cmd_conf_unset(cmd_args_t *args);
 
 /*! \brief Table of remote commands. */
 knot_cmd_t knot_cmd_tbl[] = {
-	{ &cmd_stop,        "stop",        "",                     "Stop server." },
-	{ &cmd_reload,      "reload",      "[<zone>...]",          "Reload particular zones or reload whole\n"
-	                         "                                   configuration and changed zones." },
-	{ &cmd_refresh,     "refresh",     "[<zone>...]",          "Refresh slave zones. Flag '-f' forces retransfer\n"
-	                         "                                   (zone(s) must be specified)." },
-	{ &cmd_flush,       "flush",       "[<zone>...]",          "Flush journal and update zone files." },
-	{ &cmd_status,      "status",      "",                     "Check if server is running." },
-	{ &cmd_zonestatus,  "zonestatus",  "[<zone>...]",          "Show status of configured zones." },
-	{ &cmd_checkconf,   "checkconf",   "",                     "Check current server configuration." },
-	{ &cmd_checkzone,   "checkzone",   "[<zone>...]",          "Check zones." },
-	{ &cmd_memstats,    "memstats",    "[<zone>...]",          "Estimate memory use for zones." },
-	{ &cmd_signzone,    "signzone",    "<zone>...",            "Sign zones with available DNSSEC keys." },
-	{ &cmd_conf_import, "conf-import", "<filename>",           "Offline config DB import from file." },
-	{ &cmd_conf_export, "conf-export", "<filename>",           "Export config DB to file." },
-	{ &cmd_conf_desc,   "conf-desc",   "[<item>]",             "Get config DB item list." },
-	{ &cmd_conf_read,   "conf-read",   "[<item>]",             "Read item(s) from active config DB." },
-	{ &cmd_conf_begin,  "conf-begin",  "",                     "Begin config DB transaction." },
-	{ &cmd_conf_commit, "conf-commit", "",                     "Commit config DB transaction." },
-	{ &cmd_conf_abort,  "conf-abort",  "",                     "Rollback config DB transaction." },
-	{ &cmd_conf_diff,   "conf-diff",   "[<item>]",             "Get config DB transaction difference." },
-	{ &cmd_conf_get,    "conf-get",    "[<item>]",             "Get item(s) from config DB transaction." },
-	{ &cmd_conf_set,    "conf-set",    "<item> [<data>...]",   "Set item(s) in config DB transaction." },
-	{ &cmd_conf_unset,  "conf-unset",  "[<item>] [<data>...]", "Unset item(s) in config DB transaction." },
+	{ &cmd_stop,        true,  "stop",        "",                     "Stop server." },
+	{ &cmd_reload,      true,  "reload",      "[<zone>...]",          "Reload particular zones or reload whole\n"
+	                                "                                   configuration and changed zones." },
+	{ &cmd_refresh,     true,  "refresh",     "[<zone>...]",          "Refresh slave zones. Flag '-f' forces retransfer\n"
+	                                "                                   (zone(s) must be specified)." },
+	{ &cmd_flush,       true,  "flush",       "[<zone>...]",          "Flush journal and update zone files." },
+	{ &cmd_status,      true,  "status",      "",                     "Check if server is running." },
+	{ &cmd_zonestatus,  true,  "zonestatus",  "[<zone>...]",          "Show status of configured zones." },
+	{ &cmd_checkconf,   true,  "checkconf",   "",                     "Check current server configuration." },
+	{ &cmd_checkzone,   true,  "checkzone",   "[<zone>...]",          "Check zones." },
+	{ &cmd_memstats,    true,  "memstats",    "[<zone>...]",          "Estimate memory use for zones." },
+	{ &cmd_signzone,    true,  "signzone",    "<zone>...",            "Sign zones with available DNSSEC keys." },
+	{ &cmd_conf_import, false, "conf-import", "<filename>",           "Offline config DB import from file." },
+	{ &cmd_conf_export, true,  "conf-export", "<filename>",           "Export config DB to file." },
+	{ &cmd_conf_desc,   true,  "conf-desc",   "[<item>]",             "Get config DB item list." },
+	{ &cmd_conf_read,   true,  "conf-read",   "[<item>]",             "Read item(s) from active config DB." },
+	{ &cmd_conf_begin,  true,  "conf-begin",  "",                     "Begin config DB transaction." },
+	{ &cmd_conf_commit, true,  "conf-commit", "",                     "Commit config DB transaction." },
+	{ &cmd_conf_abort,  true,  "conf-abort",  "",                     "Rollback config DB transaction." },
+	{ &cmd_conf_diff,   true,  "conf-diff",   "[<item>]",             "Get config DB transaction difference." },
+	{ &cmd_conf_get,    true,  "conf-get",    "[<item>]",             "Get item(s) from config DB transaction." },
+	{ &cmd_conf_set,    true,  "conf-set",    "<item> [<data>...]",   "Set item(s) in config DB transaction." },
+	{ &cmd_conf_unset,  true,  "conf-unset",  "[<item>] [<data>...]", "Unset item(s) in config DB transaction." },
 	{ NULL }
 };
 
@@ -434,7 +435,7 @@ int main(int argc, char **argv)
 	/* Open configuration. */
 	conf_t *new_conf = NULL;
 	if (config_db == NULL) {
-		int ret = conf_new(&new_conf, conf_scheme, NULL);
+		int ret = conf_new(&new_conf, conf_scheme, NULL, false);
 		if (ret != KNOT_EOK) {
 			log_fatal("failed to initialize configuration database "
 			          "(%s)", knot_strerror(ret));
@@ -455,7 +456,8 @@ int main(int argc, char **argv)
 		new_conf->filename = strdup(config_fn);
 	} else {
 		/* Open configuration database. */
-		int ret = conf_new(&new_conf, conf_scheme, config_db);
+		bool ronly = cmd->ronly_conf;
+		int ret = conf_new(&new_conf, conf_scheme, config_db, ronly);
 		if (ret != KNOT_EOK) {
 			log_fatal("failed to open configuration database '%s' "
 			          "(%s)", config_db, knot_strerror(ret));
@@ -609,7 +611,7 @@ static int cmd_conf_import(cmd_args_t *args)
 	}
 
 	conf_t *new_conf = NULL;
-	int ret = conf_new(&new_conf, conf_scheme, args->conf_db);
+	int ret = conf_new(&new_conf, conf_scheme, args->conf_db, false);
 	if (ret == KNOT_EOK) {
 		ret = conf_import(new_conf, args->argv[0], true);
 	}

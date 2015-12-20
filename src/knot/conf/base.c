@@ -91,7 +91,8 @@ static void rm_dir(const char *path)
 int conf_new(
 	conf_t **conf,
 	const yp_item_t *scheme,
-	const char *db_dir)
+	const char *db_dir,
+	bool read_only)
 {
 	if (conf == NULL) {
 		return KNOT_EINVAL;
@@ -116,6 +117,11 @@ int conf_new(
 	struct knot_db_lmdb_opts lmdb_opts = KNOT_DB_LMDB_OPTS_INITIALIZER;
 	lmdb_opts.mapsize = 500 * 1024 * 1024;
 	lmdb_opts.flags.env = KNOT_DB_LMDB_NOTLS;
+
+	// Set read-only mode.
+	if (read_only) {
+		lmdb_opts.flags.env |= KNOT_DB_LMDB_RDONLY;
+	}
 
 	// Open database.
 	if (db_dir == NULL) {
@@ -142,15 +148,16 @@ int conf_new(
 		goto new_error;
 	}
 
-	// Initialize/check database.
+	// Initialize and check the database.
 	knot_db_txn_t txn;
-	ret = out->api->txn_begin(out->db, &txn, 0);
+	unsigned flags = read_only ? KNOT_DB_RDONLY : 0;
+	ret = out->api->txn_begin(out->db, &txn, flags);
 	if (ret != KNOT_EOK) {
 		out->api->deinit(out->db);
 		goto new_error;
 	}
 
-	ret = conf_db_init(out, &txn);
+	ret = read_only ? conf_db_check(out, &txn) : conf_db_init(out, &txn);
 	if (ret != KNOT_EOK) {
 		out->api->txn_abort(&txn);
 		out->api->deinit(out->db);

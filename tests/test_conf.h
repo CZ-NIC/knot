@@ -28,7 +28,7 @@ static inline int test_conf(const char *conf_str, const yp_item_t *scheme)
 	}
 
 	conf_t *conf;
-	int ret = conf_new(&conf, scheme, NULL);
+	int ret = conf_new(&conf, scheme, NULL, false);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}

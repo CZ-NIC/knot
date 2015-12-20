@@ -110,16 +110,18 @@ conf_t* conf(void);
 /*!
  * Creates new or opens old configuration database.
  *
- * \param[out] conf   Configuration.
- * \param[in] scheme  Configuration scheme.
- * \param[in] db_dir  Database path or NULL.
+ * \param[out] conf      Configuration.
+ * \param[in] scheme     Configuration scheme.
+ * \param[in] db_dir     Database path or NULL.
+ * \param[in] read_only  Set to read-only access.
  *
  * \return Error code, KNOT_EOK if success.
  */
 int conf_new(
 	conf_t **conf,
 	const yp_item_t *scheme,
-	const char *db_dir
+	const char *db_dir,
+	bool read_only
 );
 
 /*!

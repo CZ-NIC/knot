@@ -42,7 +42,7 @@
 #define CONF_MAX_DATA_LEN	65536
 
 /*!
- * Opens and checks old or initializes new configuration DB.
+ * Opens and checks or initializes the configuration DB.
  *
  * \param[in] conf  Configuration.
  * \param[in] txn   Configuration DB transaction.
@@ -50,6 +50,19 @@
  * \return Error code, KNOT_EOK if success.
  */
 int conf_db_init(
+	conf_t *conf,
+	knot_db_txn_t *txn
+);
+
+/*!
+ * Checks the configuration DB.
+ *
+ * \param[in] conf  Configuration.
+ * \param[in] txn   Configuration DB transaction.
+ *
+ * \return Error code, KNOT_EOK if success.
+ */
+int conf_db_check(
 	conf_t *conf,
 	knot_db_txn_t *txn
 );
