@@ -341,42 +341,27 @@ static void parse(
 	%% write exec;
 
 	// Check if the scanner state machine is in an uncovered state.
+	bool extra_error = false;
 	if (cs == %%{ write error; }%%) {
 		ERR(ZS_UNCOVERED_STATE);
-		s->error.counter++;
-
-		// Fill error context data.
-		for (s->buffer_length = 0;
-		     ((p + s->buffer_length) < pe) &&
-		     (s->buffer_length < sizeof(s->buffer) - 1);
-		     s->buffer_length++)
-		{
-			// Only rest of the current line.
-			if (*(p + s->buffer_length) == '\n') {
-				break;
-			}
-			s->buffer[s->buffer_length] = *(p + s->buffer_length);
-		}
-
-		// Ending string in buffer.
-		s->buffer[s->buffer_length++] = 0;
-
-		s->state = ZS_STATE_ERROR;
-
-		// Execute the error callback.
-		if (s->process.automatic && s->process.error != NULL) {
-			s->process.error(s);
-		}
-
-		return;
+		extra_error = true;
+	// Check for an unclosed multiline record.
+	} else if (s->input.eof && s->multiline) {
+		ERR(ZS_UNCLOSED_MULTILINE);
+		extra_error = true;
 	}
 
-	// Check unclosed multiline record.
-	if (s->input.eof && s->multiline) {
-		ERR(ZS_UNCLOSED_MULTILINE);
+	// Treat the extra error.
+	if (extra_error) {
 		s->error.counter++;
-
 		s->state = ZS_STATE_ERROR;
+
+		// Copy the error context just for the part of the current line.
+		s->buffer_length = 0;
+		while (p < pe && *p != '\n' && s->buffer_length < 50) {
+			s->buffer[s->buffer_length++] = *p++;
+		}
+		s->buffer[s->buffer_length++] = 0;
 
 		// Execute the error callback.
 		if (s->process.automatic && s->process.error != NULL) {

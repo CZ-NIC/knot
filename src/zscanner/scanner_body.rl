@@ -735,32 +735,33 @@
 			s->state = ZS_STATE_INCLUDE;
 			escape = true;
 		} else {
-
-		// Create new scanner for included zone file.
-		zs_scanner_t *ss = malloc(sizeof(zs_scanner_t));
-		if (ss == NULL) {
-			ERR(ZS_UNPROCESSED_INCLUDE);
-			fhold; fgoto err_line;
-		}
-
-		// Parse included zone file.
-		if (zs_init(ss, (char *)s->buffer, s->default_class, s->default_ttl) != 0 ||
-		    zs_set_input_file(ss, (char *)(s->include_filename)) != 0 ||
-		    zs_set_processing(ss, s->process.record, s->process.error, s->process.data) != 0 ||
-		    zs_parse_all(ss) != 0) {
-			// File internal errors are handled by error callback.
-			if (ss->error.counter > 0) {
+			// Create new scanner for included zone file.
+			zs_scanner_t *ss = malloc(sizeof(zs_scanner_t));
+			if (ss == NULL) {
 				ERR(ZS_UNPROCESSED_INCLUDE);
-			// General include file error.
-			} else {
-				ERR(ss->error.code);
+				fhold; fgoto err_line;
+			}
+
+			// Parse included zone file.
+			if (zs_init(ss, (char *)s->buffer, s->default_class,
+			            s->default_ttl) != 0 ||
+			    zs_set_input_file(ss, (char *)(s->include_filename)) != 0 ||
+			    zs_set_processing(ss, s->process.record, s->process.error,
+			                      s->process.data) != 0 ||
+			    zs_parse_all(ss) != 0) {
+				// File internal errors are handled by error callback.
+				if (ss->error.counter > 0) {
+					ERR(ZS_UNPROCESSED_INCLUDE);
+				// General include file error.
+				} else {
+					ERR(ss->error.code);
+				}
+				zs_deinit(ss);
+				free(ss);
+				fhold; fgoto err_line;
 			}
 			zs_deinit(ss);
 			free(ss);
-			fhold; fgoto err_line;
-		}
-		zs_deinit(ss);
-		free(ss);
 		}
 	}
 
