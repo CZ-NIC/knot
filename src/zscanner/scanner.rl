@@ -147,18 +147,28 @@ int zs_init(
 	return 0;
 }
 
-static void file_deinit(
+static void input_deinit(
 	zs_scanner_t *s)
 {
-	if (s->file.descriptor == -1) {
-		return;
+	// Deinit the file input.
+	if (s->file.descriptor != -1) {
+		// Unmap the file content.
+		if (s->input.start != NULL) {
+			munmap((void *)s->input.start,
+			       s->input.end - s->input.start);
+		}
+
+		// Close the opened file.
+		close(s->file.descriptor);
+		s->file.descriptor = -1;
+		free(s->file.name);
 	}
 
-	// Clean-up the opened file.
-	munmap((void *)s->input.start, s->input.end - s->input.start);
-	close(s->file.descriptor);
-	free(s->file.name);
-	s->file.descriptor = -1;
+	// Unset the input limits.
+	s->input.start   = NULL;
+	s->input.current = NULL;
+	s->input.end     = NULL;
+	s->input.eof     = false;
 }
 
 __attribute__((visibility("default")))
@@ -169,7 +179,7 @@ void zs_deinit(
 		return;
 	}
 
-	file_deinit(s);
+	input_deinit(s);
 	free(s->path);
 }
 
@@ -189,13 +199,12 @@ int zs_set_input_string(
 	}
 
 	// Deinit possibly opened file.
-	file_deinit(s);
+	input_deinit(s);
 
 	// Set the scanner input limits.
 	s->input.start   = input;
 	s->input.current = input;
 	s->input.end     = input + size;
-	s->input.eof     = false;
 
 	return 0;
 }
@@ -215,7 +224,7 @@ int zs_set_input_file(
 	}
 
 	// Deinit possibly opened file.
-	file_deinit(s);
+	input_deinit(s);
 
 	// Try to open the file.
 	s->file.descriptor = open(file_name, O_RDONLY);
@@ -229,23 +238,28 @@ int zs_set_input_file(
 	if (fstat(s->file.descriptor, &file_stat) == -1 ||
 	    !S_ISREG(file_stat.st_mode)) {
 		ERR(ZS_FILE_INVALID);
-		goto file_error;
+		input_deinit(s);
+		return -1;
 	}
-
-	char *start = NULL;
 
 	// Check for empty file (cannot mmap).
 	if (file_stat.st_size > 0) {
 		// Map the file to the memory.
-		start = mmap(0, file_stat.st_size, PROT_READ, MAP_SHARED,
-		             s->file.descriptor, 0);
+		char *start = mmap(0, file_stat.st_size, PROT_READ, MAP_SHARED,
+		                   s->file.descriptor, 0);
 		if (start == MAP_FAILED) {
 			ERR(ZS_FILE_MMAP);
-			goto file_error;
+			input_deinit(s);
+			return -1;
 		}
 
 		// Try to set the mapped memory advise to sequential.
 		(void)madvise(start, file_stat.st_size, MADV_SEQUENTIAL);
+
+		// Set the scanner input limits.
+		s->input.start   = start;
+		s->input.current = start;
+		s->input.end     = start + file_stat.st_size;
 	}
 
 	// Get absolute path of the zone file.
@@ -256,32 +270,23 @@ int zs_set_input_file(
 		free(full_name);
 		if (s->path == NULL) {
 			ERR(ZS_ENOMEM);
-			goto file_error;
+			input_deinit(s);
+			return -1;
 		}
 	} else {
 		ERR(ZS_FILE_PATH);
-		goto file_error;
+		input_deinit(s);
+		return -1;
 	}
 
 	s->file.name = strdup(file_name);
 	if (s->file.name == NULL) {
 		ERR(ZS_ENOMEM);
-		goto file_error;
+		input_deinit(s);
+		return -1;
 	}
 
-	// Set the scanner input limits.
-	s->input.start   = start;
-	s->input.current = start;
-	s->input.end     = start + file_stat.st_size;
-	s->input.eof     = false;
-
 	return 0;
-file_error:
-	close(s->file.descriptor);
-	s->file.descriptor = -1;
-	free(s->file.name);
-
-	return -1;
 }
 
 __attribute__((visibility("default")))
