@@ -1555,7 +1555,6 @@ tr3259:
 	{
 		NOERR;
 		if (escape) {
-			escape = false;
 			cs = 1077; {p++; goto _out;}
 		}
 	}
@@ -2556,7 +2555,6 @@ tr3254:
 	{
 		NOERR;
 		if (escape) {
-			escape = false;
 			cs = 1077; {p++; goto _out;}
 		}
 	}
@@ -2572,7 +2570,6 @@ tr3256:
 	{
 		NOERR;
 		if (escape) {
-			escape = false;
 			cs = 1077; {p++; goto _out;}
 		}
 	}
@@ -2595,7 +2592,6 @@ tr3257:
 	{
 		NOERR;
 		if (escape) {
-			escape = false;
 			cs = 1077; {p++; goto _out;}
 		}
 	}
@@ -19599,7 +19595,6 @@ tr3260:
 	{
 		NOERR;
 		if (escape) {
-			escape = false;
 			cs = 1077; {p++; goto _out;}
 		}
 	}
@@ -19771,7 +19766,6 @@ tr3255:
 	{
 		NOERR;
 		if (escape) {
-			escape = false;
 			cs = 1077; {p++; goto _out;}
 		}
 	}
@@ -19922,7 +19916,6 @@ tr3258:
 	{
 		NOERR;
 		if (escape) {
-			escape = false;
 			cs = 1077; {p++; goto _out;}
 		}
 	}
@@ -20197,7 +20190,6 @@ tr3261:
 	{
 		NOERR;
 		if (escape) {
-			escape = false;
 			cs = 1077; {p++; goto _out;}
 		}
 	}
@@ -30007,7 +29999,6 @@ tr3262:
 	{
 		NOERR;
 		if (escape) {
-			escape = false;
 			cs = 1077; {p++; goto _out;}
 		}
 	}
@@ -30256,7 +30247,6 @@ tr799:
 	}
 	{
 		if (escape) {
-			escape = false;
 			cs = 1077; {p++; goto _out;}
 		} else {
 			{goto st1077;}
@@ -30306,7 +30296,6 @@ tr801:
 	}
 	{
 		if (escape) {
-			escape = false;
 			cs = 1077; {p++; goto _out;}
 		} else {
 			{goto st1077;}
@@ -73667,7 +73656,6 @@ case 1161:
 	{
 		NOERR;
 		if (escape) {
-			escape = false;
 			cs = 1077; {p++; cs = 0; goto _out;}
 		}
 	}

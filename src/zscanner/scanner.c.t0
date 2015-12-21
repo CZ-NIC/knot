@@ -5497,7 +5497,6 @@ _match:
 	case 8:
 	{
 		if (escape) {
-			escape = false;
 			cs = 1077; {p++; goto _out; }
 		} else {
 			{cs = 1077; goto _again;}
@@ -6153,7 +6152,6 @@ _match:
 	{
 		NOERR;
 		if (escape) {
-			escape = false;
 			cs = 1077; {p++; goto _out; }
 		}
 	}
@@ -7570,7 +7568,6 @@ _again:
 	{
 		NOERR;
 		if (escape) {
-			escape = false;
 			cs = 1077; {p++; goto _out; }
 		}
 	}

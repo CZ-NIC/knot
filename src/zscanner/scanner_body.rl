@@ -114,7 +114,6 @@
 	}
 	action _err_line_exit_final {
 		if (escape) {
-			escape = false;
 			fnext main; fbreak;
 		} else {
 			fgoto main;
@@ -785,7 +784,6 @@
 	action _directive_exit {
 		NOERR;
 		if (escape) {
-			escape = false;
 			fnext main; fbreak;
 		}
 	}
