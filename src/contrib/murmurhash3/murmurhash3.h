@@ -1,3 +1,8 @@
+/*
+ * This is MurmurHash3. The original C++ code was placed in the public domain
+ * by its author, Austin Appleby.
+ */
+
 #pragma once
 
 #include <stdlib.h>
