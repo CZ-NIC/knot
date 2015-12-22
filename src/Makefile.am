@@ -21,6 +21,17 @@ AM_LDFLAGS = $(CODE_COVERAGE_LDFLAGS)
 # Knot DNS Libraries #
 ######################
 
+EXTRA_DIST =					\
+	contrib/licenses/0BSD			\
+	contrib/licenses/LGPL-2.0		\
+	contrib/licenses/MIT			\
+	contrib/licenses/OLDAP-2.8		\
+	contrib/hat-trie/LICENSE		\
+	contrib/lmdb/LICENSE			\
+	contrib/murmurhash3/LICENSE		\
+	contrib/openbsd/LICENSE			\
+	contrib/ucw/LICENSE
+
 # static: libcontrib sources
 libcontrib_la_SOURCES = 			\
 	contrib/asan.h				\
@@ -185,7 +196,7 @@ sbin_PROGRAMS = knotc knotd
 libexec_PROGRAMS = knot1to2
 noinst_LTLIBRARIES += libknotd.la
 
-EXTRA_DIST = 					\
+EXTRA_DIST += 					\
 	utils/knot1to2/cf-lex.l			\
 	utils/knot1to2/cf-parse.y
 

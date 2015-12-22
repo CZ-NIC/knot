@@ -1,5 +1,7 @@
-/* This is MurmurHash3. The original C++ code was placed in the public domain
- * by its author, Austin Appleby. */
+/*
+ * This is MurmurHash3. The original C++ code was placed in the public domain
+ * by its author, Austin Appleby.
+ */
 
 #include "contrib/murmurhash3/murmurhash3.h"
 
