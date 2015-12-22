@@ -773,11 +773,10 @@ static int str_char(
 		return KNOT_EINVAL;
 	}
 
-	// Remove the trailing dot if not root zone.
+	// Remove the trailing dot.
 	size_t zone_len = strlen(buff);
-	if (zone_len > 1) {
-		buff[zone_len--] = '\0';
-	}
+	assert(zone_len > 0);
+	buff[zone_len--] = '\0';
 
 	// Get the block length.
 	size_t len = index2 - index1 + 1;

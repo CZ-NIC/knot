@@ -77,7 +77,7 @@ static void test_get_filename(void)
 	check_name(zone, "/%c[4]", "/");
 
 	zone = ".";
-	check_name(zone, "/%c[0]", "/.");
+	check_name(zone, "/%c[0]", "/");
 	check_name(zone, "/%c[1]", "/");
 
 	// Label formatter.
