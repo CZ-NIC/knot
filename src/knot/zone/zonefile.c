@@ -223,7 +223,14 @@ int zonefile_open(zloader_t *loader, const char *source,
 		zs_deinit(&loader->scanner);
 		free(origin_str);
 		free(zc);
-		return KNOT_ERROR;
+
+		switch (loader->scanner.error.code) {
+		case ZS_FILE_OPEN:
+		case ZS_FILE_INVALID:
+			return KNOT_EFILE;
+		default:
+			return KNOT_EOK;
+		}
 	}
 	free(origin_str);
 

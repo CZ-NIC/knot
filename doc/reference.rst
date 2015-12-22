@@ -651,7 +651,7 @@ A path to the zone file. Non absolute path is relative to
 - ``%s`` – means the current zone name in the textual representation (beware
   of special characters which are escaped or encoded in the \\DDD form where
   DDD is corresponding decimal ASCII code). The zone name doesn't include the
-  terminating dot, except for the root zone.
+  terminating dot (the result for the root zone is the empty string!).
 - ``%%`` – means the ``%`` character
 
 *Default:* :ref:`storage<zone_storage>`/``%s``\ .zone

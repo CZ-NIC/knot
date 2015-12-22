@@ -783,8 +783,9 @@ static int cmd_checkzone(cmd_args_t *args)
 		}
 
 		/* Create zone loader context. */
-		zone_contents_t *contents = zone_load_contents(conf(), conf_dname(&id));
-		if (contents == NULL) {
+		zone_contents_t *contents;
+		int ret = zone_load_contents(conf(), conf_dname(&id), &contents);
+		if (ret != KNOT_EOK) {
 			rc = 1;
 			continue;
 		}

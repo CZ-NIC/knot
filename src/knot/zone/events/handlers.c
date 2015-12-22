@@ -311,7 +311,7 @@ static void start_expire_timer(zone_t *zone, const knot_rdataset_t *soa)
 
 /* -- zone events handling callbacks --------------------------------------- */
 
-int event_reload(zone_t *zone)
+int event_load(zone_t *zone)
 {
 	assert(zone);
 
@@ -320,35 +320,37 @@ int event_reload(zone_t *zone)
 	time_t mtime = zonefile_mtime(filename);
 	free(filename);
 	uint32_t dnssec_refresh = time(NULL);
-	zone_contents_t *contents = zone_load_contents(conf(), zone->name);
-	if (!contents) {
-		return KNOT_ERROR;
+
+	zone_contents_t *contents;
+	int ret = zone_load_contents(conf(), zone->name, &contents);
+	if (ret != KNOT_EOK) {
+		return ret;
 	}
 
 	/* Store zonefile serial and apply changes from the journal. */
 	zone->zonefile_serial = zone_contents_serial(contents);
-	int result = zone_load_journal(conf(), zone, contents);
-	if (result != KNOT_EOK) {
+	ret = zone_load_journal(conf(), zone, contents);
+	if (ret != KNOT_EOK) {
 		goto fail;
 	}
 
 	/* Post load actions - calculate delta, sign with DNSSEC... */
 	/*! \todo issue #242 dnssec signing should occur in the special event */
-	result = zone_load_post(conf(), contents, zone, &dnssec_refresh);
-	if (result != KNOT_EOK) {
-		if (result == KNOT_ESPACE) {
+	ret = zone_load_post(conf(), contents, zone, &dnssec_refresh);
+	if (ret != KNOT_EOK) {
+		if (ret == KNOT_ESPACE) {
 			log_zone_error(zone->name, "journal size is too small "
 			               "to fit the changes");
 		} else {
 			log_zone_error(zone->name, "failed to store changes into "
-			               "journal (%s)", knot_strerror(result));
+			               "journal (%s)", knot_strerror(ret));
 		}
 		goto fail;
 	}
 
 	/* Check zone contents consistency. */
-	result = zone_load_check(conf(), contents);
-	if (result != KNOT_EOK) {
+	ret = zone_load_check(conf(), contents);
+	if (ret != KNOT_EOK) {
 		goto fail;
 	}
 
@@ -392,7 +394,7 @@ int event_reload(zone_t *zone)
 
 fail:
 	zone_contents_deep_free(&contents);
-	return result;
+	return ret;
 }
 
 static int try_refresh(zone_t *zone, const conf_remote_t *master, void *ctx)

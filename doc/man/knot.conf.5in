@@ -568,7 +568,7 @@ If the label is not available, the formatter has no effect.
 \fB%s\fP – means the current zone name in the textual representation (beware
 of special characters which are escaped or encoded in the \eDDD form where
 DDD is corresponding decimal ASCII code). The zone name doesn\(aqt include the
-terminating dot, except for the root zone.
+terminating dot (the result for the root zone is the empty string!).
 .IP \(bu 2
 \fB%%\fP – means the \fB%\fP character
 .UNINDENT

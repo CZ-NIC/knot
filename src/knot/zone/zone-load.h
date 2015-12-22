@@ -26,9 +26,11 @@
  *
  * \param conf
  * \param zone_name
- * \return new zone contents or NULL
+ * \param contents
+ * \return KNOT_EOK or an error
  */
-zone_contents_t *zone_load_contents(conf_t *conf, const knot_dname_t *zone_name);
+int zone_load_contents(conf_t *conf, const knot_dname_t *zone_name,
+                       zone_contents_t **contents);
 
 /*!
  * \brief Check loaded zone contents validity.
