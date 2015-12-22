@@ -18,8 +18,8 @@
 
 #include "knot/zone/events/events.h"
 
-/*! \brief Reloads the potentially changed zone. */
-int event_reload(zone_t *zone);
+/*! \brief Loads or reloads potentially changed zone. */
+int event_load(zone_t *zone);
 /*! \brief Sends a SOA query to master. */
 int event_refresh(zone_t *zone);
 /*! \brief Initiates transfer with master. */

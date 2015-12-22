@@ -219,7 +219,7 @@ static int remote_zone_reload(zone_t *zone, remote_cmdargs_t *a)
 		return KNOT_EOK;
 	}
 
-	zone_events_schedule(zone, ZONE_EVENT_RELOAD, ZONE_EVENT_NOW);
+	zone_events_schedule(zone, ZONE_EVENT_LOAD, ZONE_EVENT_NOW);
 	return KNOT_EOK;
 }
 

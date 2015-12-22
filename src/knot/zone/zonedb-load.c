@@ -151,7 +151,7 @@ static zone_t *create_zone_reload(conf_t *conf, const knot_dname_t *name,
 	switch (zstatus) {
 	case ZONE_STATUS_FOUND_UPDATED:
 		/* Enqueueing makes the first zone load waitable. */
-		zone_events_enqueue(zone, ZONE_EVENT_RELOAD);
+		zone_events_enqueue(zone, ZONE_EVENT_LOAD);
 		/* Replan DDNS processing if there are pending updates. */
 		zone_events_replan_ddns(zone, old_zone);
 		break;
@@ -229,7 +229,7 @@ static zone_t *create_zone_new(conf_t * conf, const knot_dname_t *name,
 	switch (zstatus) {
 	case ZONE_STATUS_FOUND_NEW:
 		/* Enqueueing makes the first zone load waitable. */
-		zone_events_enqueue(zone, ZONE_EVENT_RELOAD);
+		zone_events_enqueue(zone, ZONE_EVENT_LOAD);
 		break;
 	case ZONE_STATUS_BOOSTRAP:
 		if (zone_events_get_time(zone, ZONE_EVENT_REFRESH) == 0) {

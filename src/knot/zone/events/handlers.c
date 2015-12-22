@@ -311,7 +311,7 @@ static void start_expire_timer(zone_t *zone, const knot_rdataset_t *soa)
 
 /* -- zone events handling callbacks --------------------------------------- */
 
-int event_reload(zone_t *zone)
+int event_load(zone_t *zone)
 {
 	assert(zone);
 
