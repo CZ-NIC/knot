@@ -181,8 +181,8 @@ static const yp_item_t desc_log[] = {
 const yp_item_t conf_scheme[] = {
 	{ C_SRV,  YP_TGRP, YP_VGRP = { desc_server } },
 	{ C_LOG,  YP_TGRP, YP_VGRP = { desc_log }, YP_FMULTI },
-	{ C_KEY,  YP_TGRP, YP_VGRP = { desc_key }, YP_FMULTI },
-	{ C_ACL,  YP_TGRP, YP_VGRP = { desc_acl }, YP_FMULTI },
+	{ C_KEY,  YP_TGRP, YP_VGRP = { desc_key }, YP_FMULTI, { check_key } },
+	{ C_ACL,  YP_TGRP, YP_VGRP = { desc_acl }, YP_FMULTI, { check_acl } },
 	{ C_CTL,  YP_TGRP, YP_VGRP = { desc_control } },
 	{ C_RMT,  YP_TGRP, YP_VGRP = { desc_remote }, YP_FMULTI, { check_remote } },
 /* MODULES */

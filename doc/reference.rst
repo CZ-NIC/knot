@@ -421,7 +421,8 @@ match one of them. Empty value means that TSIG key is not required.
 action
 ------
 
-An ordered list of allowed actions.
+An ordered list of allowed actions. Empty action list is only allowed if
+:ref:`deny<acl_deny>` is set.
 
 Possible values:
 

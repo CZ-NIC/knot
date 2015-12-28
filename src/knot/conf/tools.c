@@ -328,6 +328,50 @@ int check_modref(
 	return ret;
 }
 
+int check_key(
+	conf_check_t *args)
+{
+	conf_val_t alg = conf_rawid_get_txn(args->conf, args->txn, C_KEY,
+	                                    C_ALG, args->id, args->id_len);
+	if (conf_val_count(&alg) == 0) {
+		args->err_str = "no key algorithm defined";
+		return KNOT_EINVAL;
+	}
+
+	conf_val_t secret = conf_rawid_get_txn(args->conf, args->txn, C_KEY,
+	                                       C_SECRET, args->id, args->id_len);
+	if (conf_val_count(&secret) == 0) {
+		args->err_str = "no key secret defined";
+		return KNOT_EINVAL;
+	}
+
+	return KNOT_EOK;
+}
+
+int check_acl(
+	conf_check_t *args)
+{
+	conf_val_t addr = conf_rawid_get_txn(args->conf, args->txn, C_ACL,
+	                                     C_ADDR, args->id, args->id_len);
+	conf_val_t key = conf_rawid_get_txn(args->conf, args->txn, C_ACL,
+	                                    C_KEY, args->id, args->id_len);
+	if (conf_val_count(&addr) == 0 && conf_val_count(&key) == 0) {
+		args->err_str = "both ACL address and ACL key not defined";
+		return KNOT_EINVAL;
+	}
+
+	conf_val_t action = conf_rawid_get_txn(args->conf, args->txn, C_ACL,
+	                                       C_ACTION, args->id, args->id_len);
+	conf_val_t deny = conf_rawid_get_txn(args->conf, args->txn, C_ACL,
+	                                     C_DENY, args->id, args->id_len);
+	if (conf_val_count(&action) == 0 && conf_val_count(&deny) == 0) {
+		args->err_str = "no ACL action defined";
+		return KNOT_EINVAL;
+	}
+
+	return KNOT_EOK;
+}
+
 int check_remote(
 	conf_check_t *args)
 {

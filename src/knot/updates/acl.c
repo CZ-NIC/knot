@@ -182,8 +182,12 @@ bool acl_allowed(conf_val_t *acl, acl_action_t action,
 
 				break;
 			}
-			/* Check for action match. */
-			if (val.code != KNOT_EOK) {
+			switch (val.code) {
+			case KNOT_EOK: /* Check for action match. */
+				break;
+			case KNOT_ENOENT: /* Empty action list allowed with deny only. */
+				return false;
+			default: /* No match. */
 				goto next_acl;
 			}
 		}

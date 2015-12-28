@@ -236,6 +236,9 @@ static void test_acl_allowed(void)
 		"    address: [ 240.0.0.2 ]\n"
 		"    action: [ notify ]\n"
 		"    deny: on\n"
+		"  - id: acl_no_action_deny\n"
+		"    address: [ 240.0.0.3 ]\n"
+		"    deny: on\n"
 		"  - id: acl_multi_addr\n"
 		"    address: [ 192.168.1.1, 240.0.0.0/24 ]\n"
 		"    action: [ notify, update ]\n"
@@ -248,8 +251,9 @@ static void test_acl_allowed(void)
 		"\n"
 		"zone:\n"
 		"  - domain: "ZONE"\n"
-		"    acl: [ acl_key_addr, acl_deny, acl_multi_addr, acl_multi_key]\n"
-		"    acl: [ acl_range_addr]";
+		"    acl: [ acl_key_addr, acl_deny, acl_no_action_deny ]\n"
+		"    acl: [ acl_multi_addr, acl_multi_key ]\n"
+		"    acl: [ acl_range_addr ]";
 
 	ret = test_conf(conf_str, NULL);
 	ok(ret == KNOT_EOK, "Prepare configuration");
@@ -313,6 +317,12 @@ static void test_acl_allowed(void)
 	check_sockaddr_set(&addr, AF_INET, "240.0.0.2", 0);
 	ret = acl_allowed(&acl, ACL_ACTION_UPDATE, &addr, &key0);
 	ok(ret == true, "Denied address match, no key, action not match");
+
+	acl = conf_zone_get(conf(), C_ACL, zone_name);
+	ok(acl.code == KNOT_EOK, "Get zone ACL");
+	check_sockaddr_set(&addr, AF_INET, "240.0.0.3", 0);
+	ret = acl_allowed(&acl, ACL_ACTION_UPDATE, &addr, &key0);
+	ok(ret == false, "Denied address match, no key, no action");
 
 	acl = conf_zone_get(conf(), C_ACL, zone_name);
 	ok(acl.code == KNOT_EOK, "Get zone ACL");

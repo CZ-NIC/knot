@@ -81,6 +81,14 @@ int check_modref(
 	conf_check_t *args
 );
 
+int check_key(
+	conf_check_t *args
+);
+
+int check_acl(
+	conf_check_t *args
+);
+
 int check_remote(
 	conf_check_t *args
 );
