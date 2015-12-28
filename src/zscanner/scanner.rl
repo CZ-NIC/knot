@@ -162,6 +162,7 @@ static void input_deinit(
 		close(s->file.descriptor);
 		s->file.descriptor = -1;
 		free(s->file.name);
+		s->file.name = NULL;
 	}
 
 	// Unset the input limits.

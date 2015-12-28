@@ -26,6 +26,8 @@ libtap/Makefile.am
 libtap/runtests.c
 libtap/tap/basic.c
 libtap/tap/basic.h
+libtap/tap/files.c
+libtap/tap/files.h
 libtap/tap/float.c
 libtap/tap/float.h
 libtap/tap/macros.h
@@ -121,12 +123,16 @@ src/dnssec/lib/kasp/dir/file.c
 src/dnssec/lib/kasp/dir/file.h
 src/dnssec/lib/kasp/dir/json.c
 src/dnssec/lib/kasp/dir/json.h
+src/dnssec/lib/kasp/dir/keystore.c
+src/dnssec/lib/kasp/dir/keystore.h
 src/dnssec/lib/kasp/dir/policy.c
 src/dnssec/lib/kasp/dir/policy.h
 src/dnssec/lib/kasp/dir/zone.c
 src/dnssec/lib/kasp/dir/zone.h
 src/dnssec/lib/kasp/internal.h
 src/dnssec/lib/kasp/kasp.c
+src/dnssec/lib/kasp/keystore.c
+src/dnssec/lib/kasp/keystore_open.c
 src/dnssec/lib/kasp/policy.c
 src/dnssec/lib/kasp/zone.c
 src/dnssec/lib/kasp/zone.h
@@ -168,8 +174,8 @@ src/dnssec/shared/fs.c
 src/dnssec/shared/fs.h
 src/dnssec/shared/hex.c
 src/dnssec/shared/hex.h
-src/dnssec/shared/hex_gnutls.c
-src/dnssec/shared/hex_gnutls.h
+src/dnssec/shared/keyid_gnutls.c
+src/dnssec/shared/keyid_gnutls.h
 src/dnssec/shared/path.c
 src/dnssec/shared/path.h
 src/dnssec/shared/pem.c
@@ -190,6 +196,7 @@ src/dnssec/tests/key.c
 src/dnssec/tests/key_algorithm.c
 src/dnssec/tests/key_ds.c
 src/dnssec/tests/keyid.c
+src/dnssec/tests/keystore_pkcs11.c
 src/dnssec/tests/keystore_pkcs8.c
 src/dnssec/tests/keystore_pkcs8_dir.c
 src/dnssec/tests/keytag.c
