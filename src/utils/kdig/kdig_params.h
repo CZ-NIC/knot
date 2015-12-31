@@ -39,8 +39,6 @@
 # include "contrib/dnstap/writer.h"
 #endif // USE_DNSTAP
 
-#define KDIG_VERSION "kdig, version " PACKAGE_VERSION "\n"
-
 /*! \brief Operation mode of kdig. */
 typedef enum {
 	/*!< Standard 1-message query/reply. */

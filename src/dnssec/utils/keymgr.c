@@ -37,6 +37,8 @@
 #include "strtonum.h"
 #include "wire.h"
 
+#define PROGRAM_NAME "keymgr"
+
 #define DEFAULT_POLICY "default"
 #define DEFAULT_KEYSTORE "default"
 
@@ -1563,12 +1565,12 @@ static int cmd_tsig(int argc, char *argv[])
 
 static void print_help(void)
 {
-	printf("Please, see keymgr(8) manual page.\n");
+	printf("Please, see %s(8) manual page.\n", PROGRAM_NAME);
 }
 
 static void print_version(void)
 {
-	printf("keymgr, version %s\n", PACKAGE_VERSION);
+	printf("%s (Knot DNS), version %s\n", PROGRAM_NAME, PACKAGE_VERSION);
 }
 
 int main(int argc, char *argv[])

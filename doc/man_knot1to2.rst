@@ -32,11 +32,11 @@ Options
 **-p**, **--path** *directory*
   Path to :program:`knotc` utility.
 
-**-V**, **--version**
-  Print program version.
-
 **-h**, **--help**
-  Print help and usage.
+  Print the program help.
+
+**-V**, **--version**
+  Print the program version.
 
 See Also
 --------

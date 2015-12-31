@@ -29,6 +29,8 @@
 #include "contrib/mempattern.h"
 #include "contrib/ucw/mempool.h"
 
+#define PROGRAM_NAME "knsupdate"
+
 #define DEFAULT_RETRIES_NSUPDATE	3
 #define DEFAULT_TIMEOUT_NSUPDATE	12
 
@@ -174,34 +176,33 @@ void knsupdate_reset(knsupdate_params_t *params)
 	rr_list_free(&params->prereq_list, &params->mm);
 }
 
-static void knsupdate_help(void)
+static void print_help(void)
 {
-	printf("Usage: knsupdate [-d] [-v] [-k keyfile | -y [hmac:]name:key]\n"
-	       "                 [-p port] [-t timeout] [-r retries] [filename]\n");
+	printf("Usage: %s [-d] [-v] [-k keyfile | -y [hmac:]name:key]\n"
+	       "                 [-p port] [-t timeout] [-r retries] [filename]\n",
+	       PROGRAM_NAME);
 }
 
 int knsupdate_parse(knsupdate_params_t *params, int argc, char *argv[])
 {
-	int opt = 0, li = 0;
-	int ret = KNOT_EOK;
-
 	if (params == NULL || argv == NULL) {
 		return KNOT_EINVAL;
 	}
 
-	ret = knsupdate_init(params);
+	int ret = knsupdate_init(params);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
 
 	// Long options.
 	struct option opts[] = {
-		{ "version", no_argument, 0, 'V' },
-		{ "help",    no_argument, 0, 'h' },
-		{ 0,         0,           0, 0 }
+		{ "help",    no_argument, NULL, 'h' },
+		{ "version", no_argument, NULL, 'V' },
+		{ NULL }
 	};
 
 	/* Command line options processing. */
+	int opt = 0, li = 0;
 	while ((opt = getopt_long(argc, argv, "dhDvVp:t:r:y:k:", opts, &li))
 	       != -1) {
 		switch (opt) {
@@ -210,14 +211,14 @@ int knsupdate_parse(knsupdate_params_t *params, int argc, char *argv[])
 			msg_enable_debug(1);
 			break;
 		case 'h':
-			knsupdate_help();
+			print_help();
 			params->stop = true;
 			return KNOT_EOK;
 		case 'v':
 			params->protocol = PROTO_TCP;
 			break;
 		case 'V':
-			printf(KNSUPDATE_VERSION);
+			print_version(PROGRAM_NAME);
 			params->stop = true;
 			return KNOT_EOK;
 		case 'p':
@@ -257,7 +258,7 @@ int knsupdate_parse(knsupdate_params_t *params, int argc, char *argv[])
 			}
 			break;
 		default:
-			knsupdate_help();
+			print_help();
 			return KNOT_ENOTSUP;
 		}
 	}

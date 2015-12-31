@@ -26,7 +26,7 @@ Options
   Enable debug messages.
 
 **-h**, **--help**
-  Print help and usage.
+  Print the program help.
 
 **-k** *keyfile*
   Use the TSIG key stored in a file *keyfile* to authenticate the request. The

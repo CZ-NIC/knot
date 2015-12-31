@@ -116,6 +116,11 @@ typedef struct {
 	param_handle_f handler;
 } param_t;
 
+inline static void print_version(const char *program_name)
+{
+	printf("%s (Knot DNS), version %s\n", program_name, PACKAGE_VERSION);
+}
+
 /*!
  * \brief Transforms localized IDN string to ASCII punycode.
  *

@@ -35,11 +35,6 @@
 #include "zscanner/scanner.h"
 #include "contrib/ucw/lists.h"
 
-#define KNSUPDATE_VERSION "knsupdate, version " PACKAGE_VERSION "\n"
-
-/*! Parser init string. */
-#define PARSER_INIT_STR "$ORIGIN %s\n$TTL %u\n"
-
 /*! \brief knsupdate-specific params data. */
 typedef struct {
 	/*!< Stop processing - just print help, version,... */

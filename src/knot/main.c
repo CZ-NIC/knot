@@ -41,6 +41,8 @@
 #include "knot/server/tcp-handler.h"
 #include "knot/zone/timers.h"
 
+#define PROGRAM_NAME "knotd"
+
 /* Signal flags. */
 static volatile bool sig_req_stop = false;
 static volatile bool sig_req_reload = false;
@@ -236,41 +238,46 @@ static void event_loop(server_t *server)
 	remote_unbind(&addr, remote);
 }
 
-static void help(void)
+static void print_help(void)
 {
-	printf("Usage: %sd [parameters]\n",
-	       PACKAGE_NAME);
-	printf("\nParameters:\n"
-	       " -c, --config <file>     Select configuration file.\n"
+	printf("Usage: %s [parameters]\n"
+	       "\n"
+	       "Parameters:\n"
+	       " -c, --config <file>     Use a textual configuration file.\n"
 	       "                           (default %s)\n"
-	       " -C, --confdb <dir>      Select configuration database directory.\n"
-	       " -d, --daemonize=[dir]   Run server as a daemon.\n"
-	       " -V, --version           Print version of the server.\n"
-	       " -h, --help              Print help and usage.\n",
-	       CONF_DEFAULT_FILE);
+	       " -C, --confdb <dir>      Use a binary configuration database directory.\n"
+	       " -d, --daemonize=[dir]   Run the server as a daemon (with new root directory).\n"
+	       " -h, --help              Print the program help.\n"
+	       " -V, --version           Print the program version.\n",
+	       PROGRAM_NAME, CONF_DEFAULT_FILE);
+}
+
+static void print_version(void)
+{
+	printf("%s (Knot DNS), version %s\n", PROGRAM_NAME, PACKAGE_VERSION);
 }
 
 int main(int argc, char **argv)
 {
-	/* Parse command line arguments. */
-	int c = 0, li = 0;
-	int daemonize = 0;
+	bool daemonize = false;
 	const char *config_fn = CONF_DEFAULT_FILE;
 	const char *config_db = NULL;
 	const char *daemon_root = "/";
 
 	/* Long options. */
 	struct option opts[] = {
-		{"config",    required_argument, 0, 'c' },
-		{"confdb",    required_argument, 0, 'C' },
-		{"daemonize", optional_argument, 0, 'd'},
-		{"version",   no_argument,       0, 'V'},
-		{"help",      no_argument,       0, 'h'},
-		{0, 0, 0, 0}
+		{ "config",    required_argument, 0, 'c' },
+		{ "confdb",    required_argument, 0, 'C' },
+		{ "daemonize", optional_argument, 0, 'd' },
+		{ "help",      no_argument,       0, 'h' },
+		{ "version",   no_argument,       0, 'V' },
+		{ NULL }
 	};
 
-	while ((c = getopt_long(argc, argv, "c:C:dVh", opts, &li)) != -1) {
-		switch (c) {
+	/* Parse command line arguments. */
+	int opt = 0, li = 0;
+	while ((opt = getopt_long(argc, argv, "c:C:dhV", opts, &li)) != -1) {
+		switch (opt) {
 		case 'c':
 			config_fn = optarg;
 			break;
@@ -278,27 +285,26 @@ int main(int argc, char **argv)
 			config_db = optarg;
 			break;
 		case 'd':
-			daemonize = 1;
+			daemonize = true;
 			if (optarg) {
 				daemon_root = optarg;
 			}
 			break;
-		case 'V':
-			printf("%s, version %s\n", "Knot DNS", PACKAGE_VERSION);
-			return EXIT_SUCCESS;
 		case 'h':
-		case '?':
-			help();
+			print_help();
+			return EXIT_SUCCESS;
+		case 'V':
+			print_version();
 			return EXIT_SUCCESS;
 		default:
-			help();
+			print_help();
 			return EXIT_FAILURE;
 		}
 	}
 
 	/* Check for non-option parameters. */
 	if (argc - optind > 0) {
-		help();
+		print_help();
 		return EXIT_FAILURE;
 	}
 

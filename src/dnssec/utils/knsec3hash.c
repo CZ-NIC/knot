@@ -32,14 +32,20 @@
 #define PROGRAM_NAME "knsec3hash"
 
 /*!
- * \brief Print program usage (and example).
+ * \brief Print program help (and example).
  */
-static void usage(FILE *stream)
+static void print_help(void)
 {
-	fprintf(stream, "usage:   " PROGRAM_NAME " "
-	                "<salt> <algorithm> <iterations> <domain-name>\n");
-	fprintf(stream, "example: " PROGRAM_NAME " "
-	                "c01dcafe 1 10 knot-dns.cz\n");
+	printf("Usage:   " PROGRAM_NAME " <salt> <algorithm> <iterations> <domain-name>\n");
+	printf("Example: " PROGRAM_NAME " c01dcafe 1 10 knot-dns.cz\n");
+}
+
+/*!
+ * \brief Print program version.
+ */
+static void print_version(void)
+{
+	printf("%s (Knot DNS), version %s\n", PROGRAM_NAME, PACKAGE_VERSION);
 }
 
 /*!
@@ -102,8 +108,8 @@ static bool parse_nsec3_params(dnssec_nsec3_params_t *params, const char *salt_s
 int main(int argc, char *argv[])
 {
 	struct option options[] = {
-		{ "version", no_argument, 0, 'V' },
-		{ "help",    no_argument, 0, 'h' },
+		{ "help",    no_argument, NULL, 'h' },
+		{ "version", no_argument, NULL, 'V' },
 		{ NULL }
 	};
 
@@ -111,21 +117,21 @@ int main(int argc, char *argv[])
 	int li = 0;
 	while ((opt = getopt_long(argc, argv, "hV", options, &li)) != -1) {
 		switch(opt) {
-		case 'V':
-			printf("%s, version %s\n", PROGRAM_NAME, PACKAGE_VERSION);
-			return 0;
 		case 'h':
-			usage(stdout);
+			print_help();
+			return 0;
+		case 'V':
+			print_version();
 			return 0;
 		default:
-			usage(stderr);
+			print_help();
 			return 1;
 		}
 	}
 
 	// knsec3hash <salt> <algorithm> <iterations> <domain>
 	if (argc != 5) {
-		usage(stderr);
+		print_help();
 		return 1;
 	}
 
