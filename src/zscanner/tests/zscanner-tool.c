@@ -134,22 +134,21 @@ int state_parsing(
 
 int main(int argc, char *argv[])
 {
-	// Parsed command line arguments.
-	int c = 0, li = 0, ret;
 	int mode = DEFAULT_MODE, state = 0, test = 0;
 
 	// Command line long options.
 	struct option opts[] = {
-		{ "mode",	required_argument,	0,	'm' },
-		{ "state",	no_argument,		0,	's' },
-		{ "test",	no_argument,		0,	't' },
-		{ "help",	no_argument,		0,	'h' },
-		{ 0, 		0, 			0,	0 }
+		{ "mode",  required_argument, NULL, 'm' },
+		{ "state", no_argument,       NULL, 's' },
+		{ "test",  no_argument,       NULL, 't' },
+		{ "help",  no_argument,       NULL, 'h' },
+		{ NULL }
 	};
 
-	// Command line options processing.
-	while ((c = getopt_long(argc, argv, "m:sth", opts, &li)) != -1) {
-		switch (c) {
+	// Parsed command line arguments.
+	int opt = 0, li = 0;
+	while ((opt = getopt_long(argc, argv, "m:sth", opts, &li)) != -1) {
+		switch (opt) {
 		case 'm':
 			mode = atoi(optarg);
 			break;
@@ -200,6 +199,7 @@ int main(int argc, char *argv[])
 	}
 
 	// Set the processing mode.
+	int ret;
 	switch (mode) {
 	case 0:
 		ret = 0;

@@ -327,8 +327,8 @@ int zs_set_input_file(
  * \note Error code is stored in the scanner context.
  *
  * \param scanner         Scanner context.
- * \param process_record  Processing callback function.
- * \param process_error   Error callback function.
+ * \param process_record  Processing callback function (may be NULL).
+ * \param process_error   Error callback function (may be NULL).
  * \param data            Arbitrary data useful in callback functions.
  *
  * \retval  0  if success.

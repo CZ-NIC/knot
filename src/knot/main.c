@@ -266,11 +266,11 @@ int main(int argc, char **argv)
 
 	/* Long options. */
 	struct option opts[] = {
-		{ "config",    required_argument, 0, 'c' },
-		{ "confdb",    required_argument, 0, 'C' },
-		{ "daemonize", optional_argument, 0, 'd' },
-		{ "help",      no_argument,       0, 'h' },
-		{ "version",   no_argument,       0, 'V' },
+		{ "config",    required_argument, NULL, 'c' },
+		{ "confdb",    required_argument, NULL, 'C' },
+		{ "daemonize", optional_argument, NULL, 'd' },
+		{ "help",      no_argument,       NULL, 'h' },
+		{ "version",   no_argument,       NULL, 'V' },
 		{ NULL }
 	};
 
