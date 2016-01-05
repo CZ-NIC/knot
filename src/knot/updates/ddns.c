@@ -632,6 +632,11 @@ static int process_rem_rr(const knot_rrset_t *rr,
                           const zone_node_t *node,
                           zone_update_t *update)
 {
+	if (node == NULL) {
+		// Removing from node that does not exist
+		return KNOT_EOK;
+	}
+
 	const bool apex_ns = node_rrtype_exists(node, KNOT_RRTYPE_SOA) &&
 	                     rr->type == KNOT_RRTYPE_NS;
 	if (apex_ns) {
@@ -645,13 +650,6 @@ static int process_rem_rr(const knot_rrset_t *rr,
 			// Cannot remove last apex NS RR.
 			return KNOT_EOK;
 		}
-	}
-
-	// Remove possible previously added RR
-	remove_rr_from_changeset(update->change.add, rr);
-	if (node == NULL) {
-		// Removing from node that did not exists before update
-		return KNOT_EOK;
 	}
 
 	knot_rrset_t to_modify = node_rrset(node, rr->type);
@@ -674,7 +672,7 @@ static int process_rem_rr(const knot_rrset_t *rr,
 		return KNOT_EOK;
 	}
 	assert(intersection.rrs.rr_count == 1);
-	ret = rem_rr_to_chgset(&intersection, update);
+	ret = zone_update_remove(update, &intersection);
 	knot_rdataset_clear(&intersection.rrs, NULL);
 	return ret;
 }
@@ -696,7 +694,7 @@ static int process_rem_rrset(const knot_rrset_t *rrset,
 	}
 
 	// Remove all previously added RRs with this owner and type from chgset
-	remove_header_from_changeset(update->change.add, rrset);
+	//remove_header_from_changeset(update->change.add, rrset);
 
 	if (node == NULL) {
 		// no such node in zone, ignore
@@ -710,6 +708,8 @@ static int process_rem_rrset(const knot_rrset_t *rrset,
 
 	knot_rrset_t to_remove = node_rrset(node, rrset->type);
 	return rem_rrset_to_chgset(&to_remove, update);
+//#warning why doesn't this work?
+	//return zone_update_remove(update, &to_remove);
 }
 
 /*!< \brief Removes node from zone. */
@@ -717,7 +717,7 @@ static int process_rem_node(const knot_rrset_t *rr,
                             const zone_node_t *node, zone_update_t *update)
 {
 	// Remove all previously added records with given owner from changeset
-	remove_owner_from_changeset(update->change.add, rr->owner);
+	//remove_owner_from_changeset(update->change.add, rr->owner);
 
 	if (node == NULL) {
 		return KNOT_EOK;

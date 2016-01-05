@@ -53,9 +53,9 @@ int main(int argc, char *argv[])
 	ok(changeset_size(ch) == 1, "changeset: size add");
 	ret = changeset_rem_rrset(ch, apex_txt_rr);
 	ok(ret == KNOT_EOK, "changeset: rem RRSet");
-	ok(changeset_size(ch) == 2, "changeset: size remove");
-
-	ok(!changeset_empty(ch), "changeset: not empty");
+	ok(changeset_size(ch) == 0, "changeset: size remove");
+	ok(changeset_empty(ch), "changeset: empty");
+	changeset_add_rrset(ch, apex_txt_rr);
 
 	// Add another RR to node.
 	knot_rrset_t *apex_spf_rr = knot_rrset_new(d, KNOT_RRTYPE_SPF, KNOT_CLASS_IN, NULL);
@@ -92,6 +92,9 @@ int main(int argc, char *argv[])
 	changeset_iter_clear(&it);
 	ok(knot_rrset_empty(&iter), "changeset: traversal: skip non-terminals");
 
+	changeset_rem_rrset(ch, apex_txt_rr);
+	changeset_rem_rrset(ch, apex_txt_rr);
+
 	// Test remove traversal.
 	ret = changeset_iter_rem(&it, ch, false);
 	ok(ret == KNOT_EOK, "changeset: create iter rem");
@@ -110,7 +113,7 @@ int main(int argc, char *argv[])
 		iter = changeset_iter_next(&it);
 	}
 	changeset_iter_clear(&it);
-	ok(size == 4, "changeset: iter all");
+	ok(size == 3, "changeset: iter all");
 
 	// Create new changeset.
 	knot_dname_free(&d, NULL);
@@ -136,7 +139,7 @@ int main(int argc, char *argv[])
 
 	// Test merge.
 	ret = changeset_merge(ch, ch2);
-	ok(ret == KNOT_EOK && changeset_size(ch) == 6, "changeset: merge");
+	ok(ret == KNOT_EOK && changeset_size(ch) == 5, "changeset: merge");
 
 	// Test cleanup.
 	changeset_clear(ch);

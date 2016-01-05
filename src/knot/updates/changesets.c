@@ -25,8 +25,19 @@
 /* -------------------- Changeset iterator helpers -------------------------- */
 
 /*! \brief Adds RRSet to given zone. */
-static int add_rr_to_zone(zone_contents_t *z, const knot_rrset_t *rrset)
+static int add_rr_to_zone(zone_contents_t *z, knot_rrset_t **soa, const knot_rrset_t *rrset)
 {
+	if (rrset->type == KNOT_RRTYPE_SOA) {
+		if (*soa == NULL) {
+			*soa = knot_rrset_copy(rrset, NULL);
+			if (*soa == NULL) {
+				return KNOT_ENOMEM;
+			}
+		}
+		// Do not add SOAs into actual contents.
+		return KNOT_EOK;
+	}
+
 	zone_node_t *n = NULL;
 	int ret = zone_contents_add_rr(z, rrset, &n);
 	UNUSED(n);
@@ -124,6 +135,57 @@ static knot_rrset_t get_next_rr(changeset_iter_t *ch_it, hattrie_iter_t *t_it) /
 	return node_rrset_at(ch_it->node, ch_it->node_pos++);
 }
 
+static bool intersection_exists(const knot_rrset_t *node_rr, const knot_rrset_t *inc_rr)
+{
+	knot_rdataset_t intersection;
+	knot_rdataset_init(&intersection);
+	int ret = knot_rdataset_intersect(&node_rr->rrs, &inc_rr->rrs, &intersection, NULL);
+	if (ret != KNOT_EOK) {
+		return false;
+	}
+	const uint16_t rr_count = intersection.rr_count;
+	knot_rdataset_clear(&intersection, NULL);
+
+	return rr_count > 0;
+}
+
+static bool need_to_insert(zone_contents_t *counterpart, const knot_rrset_t *rr)
+{
+	zone_node_t *node = zone_contents_find_node_for_rr(counterpart, rr);
+	if (node == NULL) {
+		return true;
+	}
+
+	if (!node_rrtype_exists(node, rr->type)) {
+		return true;
+	}
+
+	knot_rrset_t node_rr = node_rrset(node, rr->type);
+	if (!intersection_exists(&node_rr, rr)) {
+		return true;
+	}
+
+	// Subtract the data from node's RRSet.
+	int ret = knot_rdataset_subtract(&node->rrs->rrs, &rr->rrs, NULL);
+	if (ret != KNOT_EOK) {
+		return true;
+	}
+
+	if (knot_rrset_empty(&node_rr)) {
+		// Remove empty type.
+		node_remove_rdataset(node, rr->type);
+	}
+
+	if (node->rrset_count == 0) {
+		// Remove empty node.
+		zone_tree_t *t = zone_contents_rrset_is_nsec3rel(rr) ? counterpart->nsec3_nodes :
+		                                                   counterpart->nodes;
+		zone_contents_delete_empty_node(counterpart, t, node);
+	}
+
+	return false;
+}
+
 /* ------------------------------- API -------------------------------------- */
 
 int changeset_init(changeset_t *ch, const knot_dname_t *apex)
@@ -211,12 +273,20 @@ size_t changeset_size(const changeset_t *ch)
 
 int changeset_add_rrset(changeset_t *ch, const knot_rrset_t *rrset)
 {
-	return add_rr_to_zone(ch->add, rrset);
+	/* Check if there's any removal and remove that, then add this
+	 * addition anyway. Required to change TTLs. */
+	need_to_insert(ch->remove, rrset);
+
+	return add_rr_to_zone(ch->add, &ch->soa_to, rrset);
 }
 
 int changeset_rem_rrset(changeset_t *ch, const knot_rrset_t *rrset)
 {
-	return add_rr_to_zone(ch->remove, rrset);
+	if (need_to_insert(ch->add, rrset)) {
+		return add_rr_to_zone(ch->remove, &ch->soa_from, rrset);
+	} else {
+		return KNOT_EOK;
+	}
 }
 
 int changeset_merge(changeset_t *ch1, const changeset_t *ch2)

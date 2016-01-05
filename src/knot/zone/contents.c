@@ -643,7 +643,7 @@ static int recreate_nsec3_tree(const zone_contents_t *z, zone_contents_t *out)
 	return KNOT_EOK;
 }
 
-static bool rrset_is_nsec3rel(const knot_rrset_t *rr)
+bool zone_contents_rrset_is_nsec3rel(const knot_rrset_t *rr)
 {
 	if (rr == NULL) {
 		return false;
@@ -662,7 +662,7 @@ int zone_contents_add_rr(zone_contents_t *z, const knot_rrset_t *rr,
 		return KNOT_EINVAL;
 	}
 
-	return insert_rr(z, rr, n, rrset_is_nsec3rel(rr));
+	return insert_rr(z, rr, n, zone_contents_rrset_is_nsec3rel(rr));
 }
 
 const zone_node_t *zone_contents_find_node(const zone_contents_t *zone,
@@ -734,7 +734,7 @@ static zone_node_t *get_previous(const zone_contents_t *zone,
 
 	int exact_match = find_in_tree(zone->nodes, name, &found, &prev);
 	assert(exact_match >= 0);
-	assert(prev != NULL);
+	//assert(prev != NULL);
 
 	return prev;
 }
@@ -1107,7 +1107,7 @@ zone_node_t *zone_contents_get_node_for_rr(zone_contents_t *zone, const knot_rrs
 		return NULL;
 	}
 
-	const bool nsec3 = rrset_is_nsec3rel(rrset);
+	const bool nsec3 = zone_contents_rrset_is_nsec3rel(rrset);
 	zone_node_t *node = nsec3 ? get_nsec3_node(zone, rrset->owner) :
 	                            get_node(zone, rrset->owner);
 	if (node == NULL) {
@@ -1130,7 +1130,72 @@ zone_node_t *zone_contents_find_node_for_rr(zone_contents_t *zone, const knot_rr
 		return NULL;
 	}
 
-	const bool nsec3 = rrset_is_nsec3rel(rrset);
+	const bool nsec3 = zone_contents_rrset_is_nsec3rel(rrset);
 	return nsec3 ? get_nsec3_node(zone, rrset->owner) :
 	               get_node(zone, rrset->owner);
 }
+
+zone_node_t *zone_contents_greatest_child(const zone_contents_t *zone, const knot_dname_t *parent)
+{
+	if (knot_dname_size(parent) + 2 > KNOT_DNAME_MAXLEN) {
+		// Not enough space for children.
+		return NULL;
+	}
+
+	knot_dname_t dn[KNOT_DNAME_MAXLEN] = { 0x01, 0xff };
+	knot_dname_to_wire(dn + 2, parent, KNOT_DNAME_MAXLEN);
+	zone_node_t *child = get_node(zone, dn);
+	if (child) {
+		return child;
+	}
+
+	child = get_previous(zone, dn);
+	if (!child) {
+		return NULL;
+	}
+	//assert(child);
+	const int parent_labels = knot_dname_labels(parent, NULL);
+	const int child_labels = knot_dname_labels(child->owner, NULL);
+	if (child_labels <= parent_labels) {
+		return NULL;
+	}
+
+	if (knot_dname_matched_labels(parent, child->owner) != parent_labels) {
+		return NULL;
+	}
+
+	return child;
+}
+
+static bool contents_has_children(const zone_contents_t *zone, const knot_dname_t *owner)
+{
+	return zone_contents_greatest_child(zone, owner) != NULL;
+}
+
+void zone_contents_delete_empty_node(zone_contents_t *zone, zone_tree_t *tree, zone_node_t *node)
+{
+	assert(zone);
+	assert(tree);
+	assert(node);
+	if (node->rrset_count == 0 && !contents_has_children(zone, node->owner)) {
+		const knot_dname_t *parent_dname = knot_wire_next_label(node->owner, NULL);
+		zone_node_t *parent_node = NULL;
+		if (tree == zone->nsec3_nodes) {
+			// Only one level in NSEC3 tree
+			parent_node = (node == zone->apex) ? NULL : zone->apex;
+		} else {
+			parent_node = zone_contents_find_node(zone, parent_dname);
+		}
+		if (parent_node && parent_node != zone->apex) {
+			// Recurse using the parent node, do not delete possibly empty parent.
+			zone_contents_delete_empty_node(zone, tree, parent_node);
+		}
+
+		// Delete node
+		zone_node_t *removed_node = NULL;
+		zone_tree_remove(tree, node->owner, &removed_node);
+		UNUSED(removed_node);
+		node_free(&node, NULL);
+	}
+}
+

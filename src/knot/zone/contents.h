@@ -50,6 +50,10 @@ typedef int (*zone_contents_apply_cb_t)(zone_node_t *node, void *data);
 
 zone_contents_t *zone_contents_new(const knot_dname_t *apex_name);
 
+
+bool zone_contents_rrset_is_nsec3rel(const knot_rrset_t *rr);
+
+
 int zone_contents_add_rr(zone_contents_t *z, const knot_rrset_t *rr, zone_node_t **n);
 
 /*!
@@ -272,4 +276,5 @@ zone_node_t *zone_contents_get_node_for_rr(zone_contents_t *zone, const knot_rrs
 
 zone_node_t *zone_contents_find_node_for_rr(zone_contents_t *zone, const knot_rrset_t *rrset);
 
+void zone_contents_delete_empty_node(zone_contents_t *zone, zone_tree_t *tree, zone_node_t *node);
 /*! @} */
