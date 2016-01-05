@@ -312,7 +312,7 @@ zone_contents_t *zonefile_load(zloader_t *loader)
 
 	err_handler_log_errors(&err_handler);
 
-	err_handler_del(&err_handler);
+	//err_handler_del(&err_handler);
 
 	if (ret != KNOT_EOK) {
 		

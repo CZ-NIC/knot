@@ -577,7 +577,6 @@ static int check_nsec3_node_in_zone(zone_contents_t *zone, zone_node_t *node,
 			 * opt-out span */
 			const zone_node_t *nsec3_previous;
 			const zone_node_t *nsec3_node;
-			INFO("finding... ");
 			if (zone_contents_find_nsec3_for_name(zone,
 			                                      node->owner,
 			                                      &nsec3_node,
@@ -1004,7 +1003,7 @@ static void cname_multiple(const zone_node_t *node, semchecks_data_t *data)
 	if (node_rrtype_exists(node, KNOT_RRTYPE_NSEC)) {
 		rrset_limit += 1;
 	}
-	if (node_rrtype_exists(node, KNOT_RRTYPE_RRSIG))) {
+	if (node_rrtype_exists(node, KNOT_RRTYPE_RRSIG)) {
 		rrset_limit += 1;
 	}
 

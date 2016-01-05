@@ -26,6 +26,7 @@
 
 #include "knot/zone/node.h"
 #include "knot/zone/contents.h"
+#include "contrib/ucw/lists.h"
 
 enum check_levels {
 	SEM_CHECK_MANDATORY = 0,
