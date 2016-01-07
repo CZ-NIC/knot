@@ -40,9 +40,9 @@ fi
 
 tmp=$(mktemp)
 
-awk -f "$script" "$zonefile" > "$tmp"
+gawk -f "$script" "$zonefile" > "$tmp"
 
-update_result=$(diff -wu "$zonefile" "$tmp" | awk '
+update_result=$(diff -wu "$zonefile" "$tmp" | gawk '
 	BEGIN { add = 0; remove = 0 }
 	NR <= 2 { next } # diff header
 	$1 ~ /^+/ { add += 1 }
