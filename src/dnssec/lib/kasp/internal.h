@@ -31,19 +31,19 @@ typedef struct dnssec_kasp_store_functions {
 	const char *(*base_path)(void *ctx);
 	// zone serialization/deserialization
 	int (*zone_load)(void *ctx, dnssec_kasp_zone_t *zone);
-	int (*zone_save)(void *ctx, dnssec_kasp_zone_t *zone);
+	int (*zone_save)(void *ctx, const dnssec_kasp_zone_t *zone);
 	int (*zone_remove)(void *ctx, const char *zone_name);
 	int (*zone_list)(void *ctx, dnssec_list_t *zone_names);
 	int (*zone_exists)(void *ctx, const char *zone_name);
 	// policy serialization/deserialization
 	int (*policy_load)(void *ctx, dnssec_kasp_policy_t *policy);
-	int (*policy_save)(void *ctx, dnssec_kasp_policy_t *policy);
+	int (*policy_save)(void *ctx, const dnssec_kasp_policy_t *policy);
 	int (*policy_remove)(void *ctx, const char *name);
 	int (*policy_list)(void *ctx, dnssec_list_t *policy_names);
 	int (*policy_exists)(void *ctx, const char *name);
 	// keystore serialization/deserialization
 	int (*keystore_load)(void *ctx, dnssec_kasp_keystore_t *keystore);
-	int (*keystore_save)(void *ctx, dnssec_kasp_keystore_t *keystore);
+	int (*keystore_save)(void *ctx, const dnssec_kasp_keystore_t *keystore);
 	int (*keystore_remove)(void *ctx, const char *name);
 	int (*keystore_list)(void *ctx, dnssec_list_t *names);
 	int (*keystore_exists)(void *ctx, const char *name);

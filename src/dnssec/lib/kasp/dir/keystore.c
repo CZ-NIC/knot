@@ -29,7 +29,7 @@ static const encode_attr_t ATTRIBUTES[] = {
 	{ NULL }
 };
 
-static bool keystore_valid(dnssec_kasp_keystore_t *keystore)
+static bool keystore_valid(const dnssec_kasp_keystore_t *keystore)
 {
 	assert(keystore);
 	return keystore->backend && keystore->config;
@@ -54,7 +54,7 @@ static int import_keystore(dnssec_kasp_keystore_t *keystore, const json_t *json)
 	return DNSSEC_EOK;
 }
 
-static int export_keystore(dnssec_kasp_keystore_t *keystore, json_t **json)
+static int export_keystore(const dnssec_kasp_keystore_t *keystore, json_t **json)
 {
 	assert(keystore);
 	assert(json);
@@ -87,7 +87,7 @@ int load_keystore_config(dnssec_kasp_keystore_t *keystore, const char *filename)
 	return import_keystore(keystore, json);
 }
 
-int save_keystore_config(dnssec_kasp_keystore_t *keystore, const char *filename)
+int save_keystore_config(const dnssec_kasp_keystore_t *keystore, const char *filename)
 {
 	assert(keystore);
 	assert(filename);

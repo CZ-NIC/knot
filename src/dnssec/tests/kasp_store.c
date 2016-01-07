@@ -63,7 +63,7 @@ static int mock_zone_load(void *ctx, dnssec_kasp_zone_t *zone)
 }
 
 static bool mock_zone_save_ok = false;
-static int mock_zone_save(void *ctx, dnssec_kasp_zone_t *zone)
+static int mock_zone_save(void *ctx, const dnssec_kasp_zone_t *zone)
 {
 	mock_zone_save_ok = ctx == MOCK_CTX && zone &&
 			    streq(zone->policy, "cuttingedge");
@@ -110,7 +110,7 @@ static int mock_policy_load(void *ctx, dnssec_kasp_policy_t *policy)
 }
 
 static bool mock_policy_save_ok = false;
-static int mock_policy_save(void *ctx, dnssec_kasp_policy_t *policy)
+static int mock_policy_save(void *ctx, const dnssec_kasp_policy_t *policy)
 {
 	mock_policy_save_ok = ctx == MOCK_CTX && policy &&
 			      streq(policy->name, "happy") &&
@@ -159,7 +159,7 @@ static int mock_keystore_load(void *ctx, dnssec_kasp_keystore_t *keystore)
 }
 
 static bool mock_keystore_save_ok = false;
-static int mock_keystore_save(void *ctx, dnssec_kasp_keystore_t *keystore)
+static int mock_keystore_save(void *ctx, const dnssec_kasp_keystore_t *keystore)
 {
 	mock_keystore_save_ok = ctx == MOCK_CTX && keystore &&
 			      streq(keystore->name, "foobar") &&

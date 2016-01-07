@@ -198,7 +198,7 @@ static int kasp_dir_zone_load(void *ctx, dnssec_kasp_zone_t *zone)
 	return entity_io(ENTITY_ZONE, ctx, zone, load_zone_config);
 }
 
-static int kasp_dir_zone_save(void *ctx, dnssec_kasp_zone_t *zone)
+static int kasp_dir_zone_save(void *ctx, const dnssec_kasp_zone_t *zone)
 {
 	return entity_io(ENTITY_ZONE, ctx, zone, save_zone_config);
 }
@@ -225,7 +225,7 @@ static int kasp_dir_policy_load(void *ctx, dnssec_kasp_policy_t *policy)
 	return entity_io(ENTITY_POLICY, ctx, policy, load_policy_config);
 }
 
-static int kasp_dir_policy_save(void *ctx, dnssec_kasp_policy_t *policy)
+static int kasp_dir_policy_save(void *ctx, const dnssec_kasp_policy_t *policy)
 {
 	return entity_io(ENTITY_POLICY, ctx, policy, save_policy_config);
 }
@@ -252,7 +252,7 @@ static int kasp_dir_keystore_load(void *ctx, dnssec_kasp_keystore_t *keystore)
 	return entity_io(ENTITY_KEYSTORE, ctx, keystore, load_keystore_config);
 }
 
-static int kasp_dir_keystore_save(void *ctx, dnssec_kasp_keystore_t *keystore)
+static int kasp_dir_keystore_save(void *ctx, const dnssec_kasp_keystore_t *keystore)
 {
 	return entity_io(ENTITY_KEYSTORE, ctx, keystore, save_keystore_config);
 }

@@ -177,7 +177,7 @@ int dnssec_kasp_zone_load(dnssec_kasp_t *kasp, const char *name,
  * \param kasp  KASP instance.
  * \param zone  Zone to be saved.
  */
-int dnssec_kasp_zone_save(dnssec_kasp_t *kasp, dnssec_kasp_zone_t *zone);
+int dnssec_kasp_zone_save(dnssec_kasp_t *kasp, const dnssec_kasp_zone_t *zone);
 
 /*!
  * Remove zone from KASP.
@@ -339,7 +339,7 @@ int dnssec_kasp_policy_load(dnssec_kasp_t *kasp, const char *name,
  * \param kasp    KASP instance.
  * \param policy  Policy to be saved.
  */
-int dnssec_kasp_policy_save(dnssec_kasp_t *kasp, dnssec_kasp_policy_t *policy);
+int dnssec_kasp_policy_save(dnssec_kasp_t *kasp, const dnssec_kasp_policy_t *policy);
 
 /*!
  * Remove a policy from the KASP.
@@ -379,7 +379,7 @@ dnssec_kasp_keystore_t *dnssec_kasp_keystore_new(const char *name);
 void dnssec_kasp_keystore_free(dnssec_kasp_keystore_t *keystore);
 
 int dnssec_kasp_keystore_load(dnssec_kasp_t *kasp, const char *name, dnssec_kasp_keystore_t **keystore);
-int dnssec_kasp_keystore_save(dnssec_kasp_t *kasp, dnssec_kasp_keystore_t *keystore);
+int dnssec_kasp_keystore_save(dnssec_kasp_t *kasp, const dnssec_kasp_keystore_t *keystore);
 int dnssec_kasp_keystore_remove(dnssec_kasp_t *kasp, const char *name);
 int dnssec_kasp_keystore_list(dnssec_kasp_t *kasp, dnssec_list_t **names);
 int dnssec_kasp_keystore_exists(dnssec_kasp_t *kasp, const char *name);

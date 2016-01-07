@@ -239,7 +239,7 @@ static void key_to_params(dnssec_kasp_key_t *key, key_params_t *params)
 /*!
  * Convert KASP keys to JSON array.
  */
-static int export_zone_keys(dnssec_kasp_zone_t *zone, json_t **keys_ptr)
+static int export_zone_keys(const dnssec_kasp_zone_t *zone, json_t **keys_ptr)
 {
 	json_t *keys = json_array();
 	if (!keys) {
@@ -270,7 +270,7 @@ static int export_zone_keys(dnssec_kasp_zone_t *zone, json_t **keys_ptr)
 	return DNSSEC_EOK;
 }
 
-static int export_zone_config(dnssec_kasp_zone_t *zone, json_t **config_ptr)
+static int export_zone_config(const dnssec_kasp_zone_t *zone, json_t **config_ptr)
 {
 	assert(zone);
 	assert(config_ptr);
@@ -357,7 +357,7 @@ int load_zone_config(dnssec_kasp_zone_t *zone, const char *filename)
 /*!
  * Save zone configuration.
  */
-int save_zone_config(dnssec_kasp_zone_t *zone, const char *filename)
+int save_zone_config(const dnssec_kasp_zone_t *zone, const char *filename)
 {
 	assert(zone);
 	assert(filename);
