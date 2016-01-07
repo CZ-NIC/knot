@@ -42,6 +42,8 @@
 #define DEFAULT_POLICY "default"
 #define DEFAULT_KEYSTORE "default"
 
+#define MANUAL_POLICY "default_manual"
+
 /* -- global options ------------------------------------------------------- */
 
 struct options {
@@ -360,15 +362,11 @@ static bool init_kasp(dnssec_kasp_t **kasp_ptr)
 	return true;
 }
 
-static bool init_default_keystore(dnssec_kasp_t *kasp)
+static int create_default_keystore(dnssec_kasp_t *kasp)
 {
 	int r = dnssec_kasp_keystore_exists(kasp, DEFAULT_KEYSTORE);
-	if (r == DNSSEC_EOK) {
-		return true;
-	} else if (r != DNSSEC_NOT_FOUND) {
-		error("Failed to check if the default key store exists (%s).",
-		      dnssec_strerror(r));
-		return false;
+	if (r == DNSSEC_EOK || r != DNSSEC_NOT_FOUND) {
+		return r;
 	}
 
 	dnssec_kasp_keystore_t config = {
@@ -380,42 +378,153 @@ static bool init_default_keystore(dnssec_kasp_t *kasp)
 	_cleanup_keystore_ dnssec_keystore_t *keystore = NULL;
 	r = dnssec_kasp_keystore_init(kasp, config.backend, config.config, &keystore);
 	if (r != DNSSEC_EOK) {
-		error("Failed to initialize the default key store (%s).",
-		      dnssec_strerror(r));
-		return false;
+		return r;
 	}
 
 	r = dnssec_kasp_keystore_save(kasp, &config);
 	if (r != DNSSEC_EOK) {
-		error("Failed to save the default key store configuration (%s).",
-		      dnssec_strerror(r));
+		return r;
+	}
+
+	return DNSSEC_EOK;
+}
+
+static int create_policy(dnssec_kasp_t *kasp, const dnssec_kasp_policy_t *policy)
+{
+	int r = dnssec_kasp_policy_exists(kasp, policy->name);
+	if (r == DNSSEC_EOK || r != DNSSEC_NOT_FOUND) {
+		return r;
+	}
+
+	return dnssec_kasp_policy_save(kasp, policy);
+}
+
+static int create_default_policy(dnssec_kasp_t *kasp)
+{
+	dnssec_kasp_policy_t config = { 0 };
+	dnssec_kasp_policy_defaults(&config);
+	config.name = DEFAULT_POLICY;
+	config.keystore = DEFAULT_KEYSTORE;
+
+	return create_policy(kasp, &config);
+}
+
+static int create_manual_policy(dnssec_kasp_t *kasp)
+{
+	dnssec_kasp_policy_t config = { 0 };
+	dnssec_kasp_policy_defaults(&config);
+	config.name = MANUAL_POLICY;
+	config.keystore = DEFAULT_KEYSTORE;
+	config.manual = true;
+
+	return create_policy(kasp, &config);
+}
+
+static int create_manual_policy_lazy(dnssec_kasp_t *kasp, bool *created)
+{
+	if (*created) {
+		return DNSSEC_EOK;
+	}
+
+	*created = true;
+	return create_manual_policy(kasp);
+}
+
+/*!
+ * Walk through existing policies, (a) add reference to default key store
+ * if missing, and (b) add default policy if missing.
+ */
+static bool update_policies(dnssec_kasp_t *kasp)
+{
+	_cleanup_list_ dnssec_list_t *policies = NULL;
+	int r = dnssec_kasp_policy_list(kasp, &policies);
+	if (r != DNSSEC_EOK) {
+		error("Failed to get list of existing policies (%s).", dnssec_strerror(r));
 		return false;
+	}
+
+	bool has_default = false;
+
+	dnssec_list_foreach(i, policies) {
+		const char *name = dnssec_item_get(i);
+		if (strcmp(name, DEFAULT_POLICY) == 0) {
+			has_default = true;
+		}
+
+		_cleanup_policy_ dnssec_kasp_policy_t *policy = NULL;
+		r = dnssec_kasp_policy_load(kasp, name, &policy);
+		if (r != DNSSEC_EOK) {
+			error("Failed to load policy '%s' (%s).", name, dnssec_strerror(r));
+			return false;
+		}
+
+		if (policy->keystore == NULL) {
+			policy->keystore = strdup(DEFAULT_KEYSTORE);
+		}
+
+		r = dnssec_kasp_policy_save(kasp, policy);
+		if (r != DNSSEC_EOK) {
+			error("Failed to update policy '%s' (%s).", name, dnssec_strerror(r));
+			return false;
+		}
+	}
+
+	if (!has_default) {
+		r = create_default_policy(kasp);
+		if (r != DNSSEC_EOK) {
+			error("Failed to add default policy (%s).", dnssec_strerror(r));
+			return false;
+		}
 	}
 
 	return true;
 }
 
-static bool init_default_policy(dnssec_kasp_t *kasp)
+/*!
+ * Walk through existing zones and adds a default zone with manual signing
+ * enabled, if there is a zone with unassigned policy.
+ */
+static bool update_zones(dnssec_kasp_t *kasp)
 {
-	int r = dnssec_kasp_policy_exists(kasp, DEFAULT_POLICY);
-	if (r == DNSSEC_EOK) {
-		return true;
-	} else if (r != DNSSEC_NOT_FOUND) {
-		error("Failed to check if the default policy exists (%s).",
-		      dnssec_strerror(r));
+	_cleanup_list_ dnssec_list_t *zones = NULL;
+	int r = dnssec_kasp_zone_list(kasp, &zones);
+	if (r != DNSSEC_EOK) {
+		error("Failed to get list of existing zones (%s).", dnssec_strerror(r));
 		return false;
 	}
 
-	dnssec_kasp_policy_t policy = { 0 };
-	dnssec_kasp_policy_defaults(&policy);
-	policy.name = DEFAULT_POLICY;
-	policy.keystore = DEFAULT_KEYSTORE;
+	bool manual_ready = false;
 
-	r = dnssec_kasp_policy_save(kasp, &policy);
-	if (r != DNSSEC_EOK) {
-		error("Failed to save the default policy configuration (%s).",
-		      dnssec_strerror(r));
-		return false;
+	dnssec_list_foreach(i, zones) {
+		const char *name = dnssec_item_get(i);
+
+		_cleanup_zone_ dnssec_kasp_zone_t *zone = NULL;
+		int r = dnssec_kasp_zone_load(kasp, name, &zone);
+		if (r != DNSSEC_EOK) {
+			error("Failed to load zone '%s' (%s).", name, dnssec_strerror(r));
+			return false;
+		}
+
+		if (dnssec_kasp_zone_get_policy(zone) == NULL) {
+			r = create_manual_policy_lazy(kasp, &manual_ready);
+			if (r != DNSSEC_EOK) {
+				error("Failed to create policy for manual signing (%s)", MANUAL_POLICY);
+				return false;
+			}
+
+			r = dnssec_kasp_zone_set_policy(zone, MANUAL_POLICY);
+			if (r != DNSSEC_EOK) {
+				error("Failed to assign policy '%s' to zone '%s' (%s).",
+				name, MANUAL_POLICY, dnssec_strerror(r));
+				return false;
+			}
+		}
+
+		r = dnssec_kasp_zone_save(kasp, zone);
+		if (r != DNSSEC_EOK) {
+			error("Failed to save zone '%s' (%s).", name, dnssec_strerror(r));
+			return false;
+		}
 	}
 
 	return true;
@@ -436,7 +545,21 @@ static int cmd_init(int argc, char *argv[])
 		return 1;
 	}
 
-	return (init_default_keystore(kasp) && init_default_policy(kasp)) ? 0 : 1;
+	int r = create_default_keystore(kasp);
+	if (r != DNSSEC_EOK) {
+		error("Failed to initialize default key store (%s).", dnssec_strerror(r));
+		return 1;
+	}
+
+	if (!update_policies(kasp)) {
+		return 1;
+	}
+
+	if (!update_zones(kasp)) {
+		return 1;
+	}
+
+	return 0;
 }
 
 /*
