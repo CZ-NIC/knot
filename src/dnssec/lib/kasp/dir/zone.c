@@ -304,7 +304,7 @@ static int parse_zone_config(dnssec_kasp_zone_t *zone, json_t *config)
 
 	char *policy = NULL;
 	json_t *json_policy = json_object_get(config, "policy");
-	if (json_policy && !json_is_null(json_policy)) {
+	if (json_policy	&& json_is_string(json_policy)) {
 		policy = strdup(json_string_value(json_policy));
 		if (!policy) {
 			return DNSSEC_ENOMEM;
