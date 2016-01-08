@@ -20,4 +20,4 @@
 
 int load_policy_config(dnssec_kasp_policy_t *policy, const char *filename);
 
-int save_policy_config(dnssec_kasp_policy_t *policy, const char *filename);
+int save_policy_config(const dnssec_kasp_policy_t *policy, const char *filename);

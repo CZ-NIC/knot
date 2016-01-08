@@ -44,8 +44,12 @@ Main commands
 .............
 
 **init**
-  Initialize new KASP database. This also creates a default policy and default
-  key store (both named *default*).
+  Initialize new KASP database or upgrade existing one. The command is
+  idempotent and therefore it is safe to be run multiple times.
+
+  The command creates a default policy and default key store (both named
+  *default*). In case of upgrade, existing objects are checked and any missing
+  attributes are filled in.
 
 **zone** ...
   Operations with zones in the database. A zone holds assigned signing

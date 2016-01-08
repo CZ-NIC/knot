@@ -60,7 +60,7 @@ int load_policy_config(dnssec_kasp_policy_t *policy, const char *filename)
 	return decode_object(POLICY_ATTRS, config, policy);
 }
 
-int save_policy_config(dnssec_kasp_policy_t *policy, const char *filename)
+int save_policy_config(const dnssec_kasp_policy_t *policy, const char *filename)
 {
 	assert(policy);
 	assert(filename);
