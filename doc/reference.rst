@@ -386,7 +386,7 @@ update, etc.).
    - id: STR
      address: ADDR[/INT] | ADDR-ADDR ...
      key: key_id ...
-     action: transfer | notify | update | control ...
+     action: notify | transfer | update ...
      deny: BOOL
 
 .. _acl_id:
@@ -429,7 +429,6 @@ Possible values:
 - ``transfer`` – Allow zone transfer
 - ``notify`` – Allow incoming notify
 - ``update`` – Allow zone updates
-- ``control`` – Allow remote control
 
 *Default:* not set
 
@@ -448,40 +447,21 @@ Deny if :ref:`address<acl_address>`, :ref:`key<acl_key>` and
 Control section
 ===============
 
-Configuration of the server remote control.
-
-*Caution:* The control protocol is not encrypted and is susceptible to replay
-attacks in a short timeframe until message digest expires. For that reason,
-it is recommended to use default UNIX socket.
+Configuration of the server control interface.
 
 ::
 
  control:
-     listen: ADDR[@INT]
-     acl: acl_id ...
+     listen: STR
 
 .. _control_listen:
 
 listen
 ------
 
-A UNIX socket path or IP address where the server listens for remote control
-commands. Optional port specification (default is 5533) can be appended to the
-address using ``@`` separator.
+A UNIX socket path where the server listens for remote control commands.
 
 *Default:* :ref:`rundir<server_rundir>`/knot.sock
-
-.. _control_acl:
-
-acl
----
-
-An ordered list of :ref:`references<acl_id>` to ACL rules allowing the remote
-control.
-
-*Caution:* This option has no effect with UNIX socket.
-
-*Default:* not set
 
 .. _Remote section:
 
