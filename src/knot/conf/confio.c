@@ -158,7 +158,7 @@ int conf_io_abort(
 	return KNOT_EOK;
 }
 
-static int desc_section(
+static int list_section(
 	const yp_item_t *items,
 	const yp_item_t **item,
 	conf_io_t *io)
@@ -173,7 +173,7 @@ static int desc_section(
 	return KNOT_EOK;
 }
 
-int conf_io_desc(
+int conf_io_list(
 	const char *key0,
 	conf_io_t *io)
 {
@@ -187,7 +187,7 @@ int conf_io_desc(
 	if (key0 == NULL) {
 		io_reset_val(io, NULL, NULL, NULL, 0, false, NULL);
 
-		return desc_section(conf()->scheme, &io->key0, io);
+		return list_section(conf()->scheme, &io->key0, io);
 	}
 
 	yp_check_ctx_t *ctx = yp_scheme_check_init(conf()->scheme);
@@ -198,7 +198,7 @@ int conf_io_desc(
 	// Check the input.
 	int ret = yp_scheme_check_str(ctx, key0, NULL, NULL, NULL);
 	if (ret != KNOT_EOK) {
-		goto desc_error;
+		goto list_error;
 	}
 
 	yp_node_t *node = &ctx->nodes[ctx->current];
@@ -206,13 +206,13 @@ int conf_io_desc(
 	// Check for non-group item.
 	if (node->item->type != YP_TGRP) {
 		ret = KNOT_ENOTSUP;
-		goto desc_error;
+		goto list_error;
 	}
 
 	io_reset_val(io, node->item, NULL, NULL, 0, false, NULL);
 
-	ret = desc_section(node->item->sub_items, &io->key1, io);
-desc_error:
+	ret = list_section(node->item->sub_items, &io->key1, io);
+list_error:
 	yp_scheme_check_deinit(ctx);
 
 	return ret;

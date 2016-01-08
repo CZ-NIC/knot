@@ -498,6 +498,7 @@ const cmd_desc_old_t cmd_table_old[] = {
 	{ "flush",      CMD_ZONE_FLUSH },
 	{ "signzone",   CMD_ZONE_SIGN },
 	{ "checkconf",  CMD_CONF_CHECK },
+	{ "conf-desc",  CMD_CONF_LIST },
 	{ NULL }
 };
 

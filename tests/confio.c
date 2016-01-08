@@ -726,7 +726,7 @@ static void test_conf_io_diff()
 	ok(conf_io_abort(false) == KNOT_EOK, "abort txn");
 }
 
-static void test_conf_io_desc()
+static void test_conf_io_list()
 {
 	const char *ref;
 	char out[OUT_LEN];
@@ -737,17 +737,17 @@ static void test_conf_io_desc()
 	};
 
 	// ERR.
-	ok(conf_io_desc("", &io) ==
-	   KNOT_YP_EINVAL_ITEM, "desc empty key0");
-	ok(conf_io_desc("uknown", &io) ==
-	   KNOT_YP_EINVAL_ITEM, "desc unknown key0");
-	ok(conf_io_desc("include", &io) ==
-	   KNOT_ENOTSUP, "desc non-group item");
+	ok(conf_io_list("", &io) ==
+	   KNOT_YP_EINVAL_ITEM, "list empty key0");
+	ok(conf_io_list("uknown", &io) ==
+	   KNOT_YP_EINVAL_ITEM, "list unknown key0");
+	ok(conf_io_list("include", &io) ==
+	   KNOT_ENOTSUP, "list non-group item");
 
 	// Desc schema.
 	*out = '\0';
-	ok(conf_io_desc(NULL, &io) ==
-	   KNOT_EOK, "desc schema");
+	ok(conf_io_list(NULL, &io) ==
+	   KNOT_EOK, "list schema");
 	ref = "server\n"
 	      "remote\n"
 	      "template\n"
@@ -757,8 +757,8 @@ static void test_conf_io_desc()
 
 	// Desc group.
 	*out = '\0';
-	ok(conf_io_desc("server", &io) ==
-	   KNOT_EOK, "desc group");
+	ok(conf_io_list("server", &io) ==
+	   KNOT_EOK, "list group");
 	ref = "server.version\n"
 	      "server.rate-limit\n"
 	      "server.listen";
@@ -835,8 +835,8 @@ int main(int argc, char *argv[])
 	diag("conf_io_diff");
 	test_conf_io_diff();
 
-	diag("conf_io_desc");
-	test_conf_io_desc();
+	diag("conf_io_list");
+	test_conf_io_list();
 
 	conf_free(conf());
 
