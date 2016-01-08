@@ -203,8 +203,12 @@ EXTRA_DIST += 					\
 	utils/knot1to2/cf-parse.y
 
 knotc_SOURCES =					\
+	utils/knotc/commands.c			\
+	utils/knotc/commands.h			\
 	utils/knotc/estimator.c			\
 	utils/knotc/estimator.h			\
+	utils/knotc/remote.c			\
+	utils/knotc/remote.h			\
 	utils/knotc/main.c
 
 knotd_SOURCES =					\

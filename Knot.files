@@ -489,9 +489,13 @@ src/utils/knot1to2/includes.c
 src/utils/knot1to2/includes.h
 src/utils/knot1to2/main.c
 src/utils/knot1to2/scheme.h
+src/utils/knotc/commands.c
+src/utils/knotc/commands.h
 src/utils/knotc/estimator.c
 src/utils/knotc/estimator.h
 src/utils/knotc/main.c
+src/utils/knotc/remote.c
+src/utils/knotc/remote.h
 src/utils/knsupdate/knsupdate_exec.c
 src/utils/knsupdate/knsupdate_exec.h
 src/utils/knsupdate/knsupdate_main.c
