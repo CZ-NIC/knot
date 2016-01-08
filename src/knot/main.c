@@ -108,14 +108,6 @@ static int make_daemon(int nochdir, int noclose)
 	return 0;
 }
 
-/*! \brief PID file cleanup handler. */
-static void pid_cleanup(char *pidfile)
-{
-	if (pidfile && pid_remove(pidfile) < 0) {
-		log_warning("failed to remove PID file");
-	}
-}
-
 /*! \brief SIGINT signal handler. */
 static void interrupt_handle(int signum)
 {
@@ -414,9 +406,8 @@ int main(int argc, char **argv)
 
 	/* Check and create PID file. */
 	long pid = (long)getpid();
-	char *pidfile = NULL;
 	if (daemonize) {
-		pidfile = pid_check_and_create();
+		char *pidfile = pid_check_and_create();
 		if (pidfile == NULL) {
 			server_wait(&server);
 			server_deinit(&server);
@@ -426,6 +417,7 @@ int main(int argc, char **argv)
 		}
 
 		log_info("PID stored in '%s'", pidfile);
+		free(pidfile);
 		if (chdir(daemon_root) != 0) {
 			log_warning("failed to change working directory to %s",
 			            daemon_root);
@@ -455,7 +447,7 @@ int main(int argc, char **argv)
 		server_wait(&server);
 		server_deinit(&server);
 		rcu_unregister_thread();
-		pid_cleanup(pidfile);
+		pid_cleanup();
 		log_close();
 		conf_free(conf(), false);
 		return EXIT_FAILURE;
@@ -478,15 +470,15 @@ int main(int argc, char **argv)
 	log_info("updating zone timers database");
 	write_timer_db(server.timers_db, server.zone_db);
 
+	/* Cleanup PID file. */
+	pid_cleanup();
+
 	/* Free server and configuration. */
 	server_deinit(&server);
 	conf_free(conf(), false);
 
 	/* Unhook from RCU. */
 	rcu_unregister_thread();
-
-	/* Cleanup PID file. */
-	pid_cleanup(pidfile);
 
 	log_info("shutting down");
 	log_close();
