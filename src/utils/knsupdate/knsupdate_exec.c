@@ -184,7 +184,7 @@ static int parse_partial_rr(zs_scanner_t *s, const char *lp, unsigned flags)
 	/* Make dname FQDN if it isn't. */
 	bool fqdn = true;
 	if (owner_str[len - 1] != '.') {
-		owner_str[len++] = '.';
+		owner_str[len] = '.';
 		fqdn = false;
 	}
 
