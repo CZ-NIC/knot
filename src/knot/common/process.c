@@ -28,9 +28,9 @@
 #include <pwd.h>
 #include <urcu.h>
 
-#include "knot/ctl/process.h"
-#include "knot/conf/conf.h"
 #include "knot/common/log.h"
+#include "knot/common/pid.h"
+#include "knot/conf/conf.h"
 #include "libknot/libknot.h"
 
 char* pid_filename()

@@ -237,6 +237,8 @@ src/knot/common/fdset.c
 src/knot/common/fdset.h
 src/knot/common/log.c
 src/knot/common/log.h
+src/knot/common/process.c
+src/knot/common/process.h
 src/knot/common/ref.c
 src/knot/common/ref.h
 src/knot/common/time.h
@@ -253,11 +255,6 @@ src/knot/conf/scheme.c
 src/knot/conf/scheme.h
 src/knot/conf/tools.c
 src/knot/conf/tools.h
-src/knot/ctl/estimator.c
-src/knot/ctl/estimator.h
-src/knot/ctl/knotc_main.c
-src/knot/ctl/process.c
-src/knot/ctl/process.h
 src/knot/ctl/remote.c
 src/knot/ctl/remote.h
 src/knot/dnssec/context.c
@@ -492,6 +489,9 @@ src/utils/knot1to2/includes.c
 src/utils/knot1to2/includes.h
 src/utils/knot1to2/main.c
 src/utils/knot1to2/scheme.h
+src/utils/knotc/estimator.c
+src/utils/knotc/estimator.h
+src/utils/knotc/main.c
 src/utils/knsupdate/knsupdate_exec.c
 src/utils/knsupdate/knsupdate_exec.h
 src/utils/knsupdate/knsupdate_main.c

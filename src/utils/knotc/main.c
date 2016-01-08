@@ -28,7 +28,6 @@
 #include "dnssec/crypto.h"
 #include "libknot/libknot.h"
 #include "knot/common/log.h"
-#include "knot/ctl/estimator.h"
 #include "knot/ctl/remote.h"
 #include "knot/conf/conf.h"
 #include "knot/server/tcp-handler.h"
@@ -38,6 +37,7 @@
 #include "contrib/net.h"
 #include "contrib/sockaddr.h"
 #include "contrib/string.h"
+#include "utils/knotc/estimator.h"
 
 /*! \brief Controller flags. */
 enum knotc_flag_t {
