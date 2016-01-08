@@ -481,7 +481,7 @@ static bool update_policies(dnssec_kasp_t *kasp)
 }
 
 /*!
- * Walk through existing zones and adds a default zone with manual signing
+ * Walk through existing zones and adds a default policy with manual signing
  * enabled, if there is a zone with unassigned policy.
  */
 static bool update_zones(dnssec_kasp_t *kasp)
@@ -515,7 +515,7 @@ static bool update_zones(dnssec_kasp_t *kasp)
 			r = dnssec_kasp_zone_set_policy(zone, MANUAL_POLICY);
 			if (r != DNSSEC_EOK) {
 				error("Failed to assign policy '%s' to zone '%s' (%s).",
-				name, MANUAL_POLICY, dnssec_strerror(r));
+				      name, MANUAL_POLICY, dnssec_strerror(r));
 				return false;
 			}
 		}
