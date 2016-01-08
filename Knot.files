@@ -77,7 +77,9 @@ src/contrib/sockaddr.c
 src/contrib/sockaddr.h
 src/contrib/string.c
 src/contrib/string.h
+src/contrib/time.h
 src/contrib/tolower.h
+src/contrib/trim.h
 src/contrib/ucw/array-sort.h
 src/contrib/ucw/binsearch.h
 src/contrib/ucw/heap.c
@@ -241,8 +243,6 @@ src/knot/common/process.c
 src/knot/common/process.h
 src/knot/common/ref.c
 src/knot/common/ref.h
-src/knot/common/time.h
-src/knot/common/trim.h
 src/knot/conf/base.c
 src/knot/conf/base.h
 src/knot/conf/conf.c
@@ -255,6 +255,8 @@ src/knot/conf/scheme.c
 src/knot/conf/scheme.h
 src/knot/conf/tools.c
 src/knot/conf/tools.h
+src/knot/ctl/commands.c
+src/knot/ctl/commands.h
 src/knot/ctl/remote.c
 src/knot/ctl/remote.h
 src/knot/dnssec/context.c

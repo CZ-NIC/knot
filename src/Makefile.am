@@ -239,6 +239,8 @@ libknotd_la_SOURCES =				\
 	knot/conf/scheme.h			\
 	knot/conf/tools.c			\
 	knot/conf/tools.h			\
+	knot/ctl/commands.c			\
+	knot/ctl/commands.h			\
 	knot/ctl/remote.c			\
 	knot/ctl/remote.h			\
 	knot/dnssec/context.c			\

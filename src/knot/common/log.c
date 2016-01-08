@@ -45,8 +45,9 @@ struct log_sink
 {
 	uint8_t *facility;     /* Log sinks. */
 	size_t facility_count; /* Sink count. */
-	FILE** file;           /* Open files. */
+	FILE **file;           /* Open files. */
 	ssize_t file_count;    /* Nr of open files. */
+	logflag_t flags;       /* Formatting flags. */
 };
 
 /*! Log sink singleton. */
@@ -208,6 +209,11 @@ bool log_isopen()
 	return s_log != NULL;
 }
 
+void log_flag_set(logflag_t flag)
+{
+	s_log->flags |= flag;
+}
+
 /*! \brief Open file as a logging facility. */
 static int log_open_file(struct log_sink *log, const char* filename)
 {
@@ -278,13 +284,15 @@ static int emit_log_msg(int level, const char *zone, size_t zone_len, const char
 	level = LOG_MASK(level);
 
 	/* Prefix date and time. */
-	char tstr[LOG_BUFLEN] = {0};
-	struct tm lt;
-	struct timeval tv;
-	gettimeofday(&tv, NULL);
-	time_t sec = tv.tv_sec;
-	if (localtime_r(&sec, &lt) != NULL) {
-		strftime(tstr, sizeof(tstr), KNOT_LOG_TIME_FORMAT " ", &lt);
+	char tstr[LOG_BUFLEN] = { 0 };
+	if (!log_isopen() || !(s_log->flags & LOG_FNO_TIMESTAMP)) {
+		struct tm lt;
+		struct timeval tv;
+		gettimeofday(&tv, NULL);
+		time_t sec = tv.tv_sec;
+		if (localtime_r(&sec, &lt) != NULL) {
+			strftime(tstr, sizeof(tstr), KNOT_LOG_TIME_FORMAT " ", &lt);
+		}
 	}
 
 	// Log streams
@@ -364,10 +372,12 @@ static int log_msg_text(int level, const char *zone, const char *fmt, va_list ar
 	size_t capacity = sizeof(sbuf) - 1;
 
 	/* Prefix error level. */
-	const char *prefix = level_prefix(level);
-	ret = log_msg_add(&write, &capacity, "%s: ", prefix);
-	if (ret != KNOT_EOK) {
-		return ret;
+	if (level != LOG_INFO || !log_isopen() || !(s_log->flags & LOG_FNO_INFO)) {
+		const char *prefix = level_prefix(level);
+		ret = log_msg_add(&write, &capacity, "%s: ", prefix);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
 	}
 
 	/* Prefix zone name. */

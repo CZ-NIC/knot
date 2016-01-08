@@ -88,9 +88,9 @@ static const struct error errors[] = {
 	{ KNOT_EFILE,        "file error" },
 
 	/* Control states. */
-	{ KNOT_CTL_STOP,     "stopping server" },
-	{ KNOT_CTL_ACCEPTED, "command accepted" },
-	{ KNOT_CTL_ARG_REQ,  "argument required" },
+	{ KNOT_CTL_ESTOP,     "stopping server" },
+	{ KNOT_CTL_EACCEPTED, "command accepted" },
+	{ KNOT_CTL_EARG_REQ,  "argument required" },
 
 	/* Network errors. */
 	{ KNOT_NET_EADDR,    "bad address or host name" },

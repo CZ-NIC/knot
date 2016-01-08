@@ -212,7 +212,7 @@ static void event_loop(server_t *server)
 		/* Events. */
 		if (ret > 0) {
 			ret = remote_process(server, sock, buf, buflen);
-			if (ret == KNOT_CTL_STOP) {
+			if (ret == KNOT_CTL_ESTOP) {
 				break;
 			}
 		}
