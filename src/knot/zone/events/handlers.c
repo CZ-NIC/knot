@@ -20,11 +20,11 @@
 #include "libknot/libknot.h"
 #include "libknot/processing/requestor.h"
 #include "libknot/yparser/yptrafo.h"
+#include "contrib/trim.h"
 #include "contrib/ucw/mempool.h"
 #include "contrib/wire.h"
 
 #include "knot/common/log.h"
-#include "knot/common/trim.h"
 #include "knot/server/udp-handler.h"
 #include "knot/server/tcp-handler.h"
 #include "knot/updates/changesets.h"

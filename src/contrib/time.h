@@ -1,4 +1,4 @@
-/*  Copyright (C) 2014 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -12,21 +12,28 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
-*/
+ */
+/*!
+ * \file
+ *
+ * \brief Universal time getter.
+ *
+ * \addtogroup contrib
+ * @{
+ */
 
 #pragma once
 
-#ifdef HAVE_MALLOC_TRIM
-#include <malloc.h>
+#ifdef HAVE_CLOCK_GETTIME
+#include <time.h>
+#define time_now(x) clock_gettime(CLOCK_MONOTONIC, (x))
+typedef struct timespec timev_t;
+#elif HAVE_GETTIMEOFDAY
+#include <sys/time.h>
+#define time_now(x) gettimeofday((x), NULL)
+typedef struct timeval timev_t;
+#else
+#error Neither clock_gettime() nor gettimeofday() found. At least one is required.
 #endif
 
-/*!
- * \brief Trim excess heap memory.
- */
-static inline void mem_trim(void)
-{
-#ifdef HAVE_MALLOC_TRIM
-	malloc_trim(0);
-#endif
-
-}
+/*! @} */

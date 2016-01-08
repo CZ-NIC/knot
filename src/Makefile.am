@@ -55,7 +55,9 @@ libcontrib_la_SOURCES = 			\
 	contrib/sockaddr.h			\
 	contrib/string.c			\
 	contrib/string.h			\
+	contrib/time.h				\
 	contrib/tolower.h			\
+	contrib/trim.h				\
 	contrib/wire.h				\
 	contrib/wire_ctx.h			\
 	contrib/hat-trie/hat-trie.c		\
@@ -293,8 +295,6 @@ libknotd_la_SOURCES =				\
 	knot/common/log.h			\
 	knot/common/ref.c			\
 	knot/common/ref.h			\
-	knot/common/time.h			\
-	knot/common/trim.h			\
 	knot/server/dthreads.c			\
 	knot/server/dthreads.h			\
 	knot/server/journal.c			\
