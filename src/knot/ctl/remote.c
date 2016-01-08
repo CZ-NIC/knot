@@ -900,56 +900,32 @@ static int remote_c_conf_unset(server_t *s, remote_cmdargs_t *a)
 	}
 }
 
-/*!
- * \brief Prepare and send error response.
- * \param c Client fd.
- * \param buf Query buffer.
- * \param buflen Query size.
- * \return number of bytes sent
- */
-static int remote_senderr(int c, uint8_t *qbuf, size_t buflen)
+int remote_bind(const char *path)
 {
-	rcu_read_lock();
-	conf_val_t *val = &conf()->cache.srv_tcp_reply_timeout;
-	struct timeval timeout = { conf_int(val), 0 };
-	rcu_read_unlock();
-
-	knot_wire_set_qr(qbuf);
-	knot_wire_set_rcode(qbuf, KNOT_RCODE_REFUSED);
-	return net_dns_tcp_send(c, qbuf, buflen, &timeout);
-}
-
-/* Public APIs. */
-
-int remote_bind(struct sockaddr_storage *addr)
-{
-	if (addr == NULL) {
+	if (path == NULL) {
 		return KNOT_EINVAL;
 	}
 
-	char addr_str[SOCKADDR_STRLEN] = { 0 };
-	sockaddr_tostr(addr_str, sizeof(addr_str), addr);
-	log_info("remote control, binding to '%s'", addr_str);
+	log_info("remote control, binding to '%s'", path);
 
-	/* Create new socket. */
-	int sock = net_bound_socket(SOCK_STREAM, addr, 0);
-	if (sock == KNOT_EADDRNOTAVAIL) {
-		sock = net_bound_socket(SOCK_STREAM, addr, NET_BIND_NONLOCAL);
-		if (sock >= 0) {
-			log_warning("remote control, address '%s' is not available",
-			            addr_str);
-		}
+	/* Prepare socket address. */
+	struct sockaddr_storage addr;
+	int ret = sockaddr_set(&addr, AF_UNIX, path, 0);
+	if (ret != KNOT_EOK) {
+		return ret;
 	}
 
+	/* Create new socket. */
+	int sock = net_bound_socket(SOCK_STREAM, &addr, 0);
 	if (sock < 0) {
 		log_error("remote control, failed to bind to '%s' (%s)",
-		          addr_str, knot_strerror(sock));
+		          path, knot_strerror(sock));
 		return sock;
 	}
 
 	/* Start listening. */
 	if (listen(sock, TCP_BACKLOG_SIZE) != 0) {
-		log_error("remote control, failed to listen on '%s'", addr_str);
+		log_error("remote control, failed to listen on '%s'", path);
 		close(sock);
 		return knot_map_errno();
 	}
@@ -957,20 +933,24 @@ int remote_bind(struct sockaddr_storage *addr)
 	return sock;
 }
 
-int remote_unbind(struct sockaddr_storage *addr, int sock)
+void remote_unbind(int sock)
 {
-	if (addr == NULL || sock < 0) {
-		return KNOT_EINVAL;
+	if (sock < 0) {
+		return;
 	}
 
-	/* Remove control socket file.  */
-	if (addr->ss_family == AF_UNIX) {
+	/* Remove the control socket file.  */
+	struct sockaddr_storage addr;
+	socklen_t addr_len = sizeof(addr);
+	if (getsockname(sock, (struct sockaddr *)&addr, &addr_len) == 0) {
 		char addr_str[SOCKADDR_STRLEN] = { 0 };
-		sockaddr_tostr(addr_str, sizeof(addr_str), addr);
-		unlink(addr_str);
+		if (sockaddr_tostr(addr_str, sizeof(addr_str), &addr) > 0) {
+			(void)unlink(addr_str);
+		}
 	}
 
-	return close(sock);
+	/* Close the socket.  */
+	(void)close(sock);
 }
 
 int remote_poll(int sock, const sigset_t *sigmask)
@@ -987,18 +967,11 @@ int remote_poll(int sock, const sigset_t *sigmask)
 	return pselect(sock + 1, &rfds, NULL, NULL, NULL, sigmask);
 }
 
-int remote_recv(int sock, struct sockaddr_storage *addr, uint8_t *buf,
-                size_t *buflen)
+int remote_recv(int sock, uint8_t *buf, size_t *buflen)
 {
 	int c = tcp_accept(sock);
 	if (c < 0) {
 		return c;
-	}
-
-	socklen_t addrlen = sizeof(*addr);
-	if (getpeername(c, (struct sockaddr *)addr, &addrlen) != 0) {
-		close(c);
-		return KNOT_ECONNREFUSED;
 	}
 
 	/* Receive data. */
@@ -1176,124 +1149,15 @@ int remote_answer(int sock, server_t *s, knot_pkt_t *pkt)
 	return ret;
 }
 
-static int zones_verify_tsig_query(const knot_pkt_t *query,
-                                   const knot_tsig_key_t *key,
-                                   uint16_t *rcode, uint16_t *tsig_rcode,
-                                   uint64_t *tsig_prev_time_signed)
-{
-	assert(query != NULL);
-	assert(key != NULL);
-	assert(rcode != NULL);
-	assert(tsig_rcode != NULL);
-
-	if (query->tsig_rr == NULL) {
-		log_info("TSIG, key required, query REFUSED");
-		*rcode = KNOT_RCODE_REFUSED;
-		return KNOT_TSIG_EBADKEY;
-	}
-
-	/*
-	 * 1) Check if we support the requested algorithm.
-	 */
-	dnssec_tsig_algorithm_t alg = knot_tsig_rdata_alg(query->tsig_rr);
-	if (alg == DNSSEC_TSIG_UNKNOWN) {
-		log_info("TSIG, unsupported algorithm, query NOTAUTH");
-		/*! \todo [TSIG] It is unclear from RFC if I
-		 *               should treat is as a bad key
-		 *               or some other error.
-		 */
-		*rcode = KNOT_RCODE_NOTAUTH;
-		*tsig_rcode = KNOT_TSIG_ERR_BADKEY;
-		return KNOT_TSIG_EBADKEY;
-	}
-
-	const knot_dname_t *kname = query->tsig_rr->owner;
-	assert(kname != NULL);
-
-	/*
-	 * 2) Find the particular key used by the TSIG.
-	 *    Check not only name, but also the algorithm.
-	 */
-	if (!(key && kname && knot_dname_cmp(key->name, kname) == 0 &&
-	      key->algorithm == alg)) {
-		*rcode = KNOT_RCODE_NOTAUTH;
-		*tsig_rcode = KNOT_TSIG_ERR_BADKEY;
-		return KNOT_TSIG_EBADKEY;
-	}
-
-	/*
-	 * 3) Validate the query with TSIG.
-	 */
-	/* Prepare variables for TSIG */
-	/*! \todo These need to be saved to the response somehow. */
-	//size_t tsig_size = tsig_wire_maxsize(key);
-	size_t digest_max_size = dnssec_tsig_algorithm_size(alg);
-	//size_t digest_size = 0;
-	//uint64_t tsig_prev_time_signed = 0;
-	//uint8_t *digest = (uint8_t *)malloc(digest_max_size);
-	//memset(digest, 0 , digest_max_size);
-
-	//const uint8_t* mac = tsig_rdata_mac(tsig_rr);
-	size_t mac_len = knot_tsig_rdata_mac_length(query->tsig_rr);
-
-	int ret = KNOT_EOK;
-
-	if (mac_len > digest_max_size) {
-		*rcode = KNOT_RCODE_FORMERR;
-		log_info("TSIG, MAC length %zu exceeds maximum size %zu",
-		         mac_len, digest_max_size);
-		return KNOT_EMALF;
-	} else {
-		//memcpy(digest, mac, mac_len);
-		//digest_size = mac_len;
-
-		/* Check query TSIG. */
-		ret = knot_tsig_server_check(query->tsig_rr,
-		                             query->wire,
-		                             query->size, key);
-		switch(ret) {
-		case KNOT_EOK:
-			*rcode = KNOT_RCODE_NOERROR;
-			break;
-		case KNOT_TSIG_EBADKEY:
-			*tsig_rcode = KNOT_TSIG_ERR_BADKEY;
-			*rcode = KNOT_RCODE_NOTAUTH;
-			break;
-		case KNOT_TSIG_EBADSIG:
-			*tsig_rcode = KNOT_TSIG_ERR_BADSIG;
-			*rcode = KNOT_RCODE_NOTAUTH;
-			break;
-		case KNOT_TSIG_EBADTIME:
-			*tsig_rcode = KNOT_TSIG_ERR_BADTIME;
-			// store the time signed from the query
-			*tsig_prev_time_signed = knot_tsig_rdata_time_signed(query->tsig_rr);
-			*rcode = KNOT_RCODE_NOTAUTH;
-			break;
-		case KNOT_EMALF:
-			*rcode = KNOT_RCODE_FORMERR;
-			break;
-		default:
-			*rcode = KNOT_RCODE_SERVFAIL;
-		}
-	}
-
-	return ret;
-}
-
-int remote_process(server_t *s, struct sockaddr_storage *ctl_addr, int sock,
-                   uint8_t *buf, size_t buflen)
+int remote_process(server_t *server, int sock, uint8_t *buf, size_t buflen)
 {
 	knot_pkt_t *pkt =  knot_pkt_new(buf, buflen, NULL);
 	if (pkt == NULL) {
 		return KNOT_ENOMEM;
 	}
 
-	/* Initialize remote party address. */
-	struct sockaddr_storage ss;
-	memset(&ss, 0, sizeof(struct sockaddr_storage));
-
 	/* Accept incoming connection and read packet. */
-	int client = remote_recv(sock, &ss, pkt->wire, &buflen);
+	int client = remote_recv(sock, pkt->wire, &buflen);
 	if (client < 0) {
 		knot_pkt_free(&pkt);
 		return client;
@@ -1303,62 +1167,16 @@ int remote_process(server_t *s, struct sockaddr_storage *ctl_addr, int sock,
 
 	/* Parse packet and answer if OK. */
 	int ret = remote_parse(pkt);
-	if (ret == KNOT_EOK && ctl_addr->ss_family != AF_UNIX) {
-		char addr_str[SOCKADDR_STRLEN] = { 0 };
-		sockaddr_tostr(addr_str, sizeof(addr_str), &ss);
-
-		/* Prepare tsig parameters. */
-		knot_tsig_key_t tsig = { 0 };
-		if (pkt->tsig_rr) {
-			tsig.name = pkt->tsig_rr->owner;
-			tsig.algorithm = knot_tsig_rdata_alg(pkt->tsig_rr);
-		}
-
-		/* Check ACL. */
-		rcu_read_lock();
-		conf_val_t acl = conf_get(conf(), C_CTL, C_ACL);
-		bool allowed = acl_allowed(&acl, ACL_ACTION_CONTROL, &ss, &tsig);
-		rcu_read_unlock();
-
-		if (!allowed) {
-			log_warning("remote control, ACL, denied, remote '%s', "
-			            "no matching ACL", addr_str);
-			remote_senderr(client, pkt->wire, pkt->size);
-			ret = KNOT_EACCES;
-			goto finish;
-		}
-
-		/* Check TSIG. */
-		if (tsig.name != NULL) {
-			uint16_t ts_rc = 0;
-			uint16_t ts_trc = 0;
-			uint64_t ts_tmsigned = 0;
-
-			ret = zones_verify_tsig_query(pkt, &tsig, &ts_rc,
-			                              &ts_trc, &ts_tmsigned);
-			if (ret != KNOT_EOK) {
-				log_warning("remote control, ACL, denied, "
-				            "remote '%s', key verification (%s)",
-				            addr_str, knot_strerror(ret));
-				remote_senderr(client, pkt->wire, pkt->size);
-				ret = KNOT_EACCES;
-				goto finish;
-			}
-		}
-	}
-
-	/* Answer packet. */
 	if (ret == KNOT_EOK) {
-		ret = remote_answer(client, s, pkt);
+		ret = remote_answer(client, server, pkt);
 	}
 
-finish:
 	knot_pkt_free(&pkt);
 	close(client);
 	return ret;
 }
 
-knot_pkt_t* remote_query(const char *query, const knot_tsig_key_t *key)
+knot_pkt_t* remote_query(const char *query)
 {
 	if (!query) {
 		return NULL;
@@ -1370,7 +1188,6 @@ knot_pkt_t* remote_query(const char *query, const knot_tsig_key_t *key)
 	}
 
 	knot_wire_set_id(pkt->wire, dnssec_random_uint16_t());
-	knot_pkt_reserve(pkt, knot_tsig_wire_maxsize(key));
 
 	/* Question section. */
 	char *qname = strcdup(query, KNOT_CTL_REALM_EXT);
@@ -1390,26 +1207,6 @@ knot_pkt_t* remote_query(const char *query, const knot_tsig_key_t *key)
 
 	knot_dname_free(&dname, NULL);
 	return pkt;
-}
-
-int remote_query_sign(uint8_t *wire, size_t *size, size_t maxlen,
-                      const knot_tsig_key_t *key)
-{
-	if (!wire || !size || !key) {
-		return KNOT_EINVAL;
-	}
-
-	size_t dlen = dnssec_tsig_algorithm_size(key->algorithm);
-	uint8_t *digest = malloc(dlen);
-	if (!digest) {
-		return KNOT_ENOMEM;
-	}
-
-	int ret = knot_tsig_sign(wire, size, maxlen, NULL, 0, digest, &dlen,
-	                         key, 0, 0);
-	free(digest);
-
-	return ret;
 }
 
 int remote_build_rr(knot_rrset_t *rr, const char *owner, uint16_t type)

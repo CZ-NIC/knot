@@ -56,7 +56,6 @@ static bool has_flag(unsigned flags, enum knotc_flag_t f)
 /*! \brief Callback arguments. */
 typedef struct cmd_args {
 	struct sockaddr_storage *addr;
-	knot_tsig_key_t *key;
 	int argc;
 	char **argv;
 	unsigned flags;
@@ -134,12 +133,8 @@ void help(void)
 	       " -c, --config <file>              Select configuration file.\n"
 	       "                                   (default %s)\n"
 	       " -C, --confdb <dir>               Select configuration database directory.\n"
-	       " -s, --server <server>            Remote UNIX socket/IP address.\n"
+	       " -s, --socket <path>              Remote control UNIX socket.\n"
 	       "                                   (default %s)\n"
-	       " -p, --port <port>                Remote server port (only for IP).\n"
-	       " -y, --key <[hmac:]name:key>      Use key specified on the command line.\n"
-	       "                                   (default algorithm is hmac-md5)\n"
-	       " -k, --keyfile <file>             Read key from file (same format as -y).\n"
 	       " -f, --force                      Force operation - override some checks.\n"
 	       " -v, --verbose                    Verbose mode - additional runtime information.\n"
 	       " -V, --version                    Print %s server version.\n"
@@ -214,13 +209,13 @@ static int cmd_remote_reply(int c, struct timeval *timeout)
 	return ret;
 }
 
-static int cmd_remote(struct sockaddr_storage *addr, knot_tsig_key_t *key,
-                      const char *cmd, uint16_t rrt, int argc, char *argv[])
+static int cmd_remote(struct sockaddr_storage *addr, const char *cmd,
+                      uint16_t rrt, int argc, char *argv[])
 {
 	int rc = 0;
 
 	/* Make query. */
-	knot_pkt_t *pkt = remote_query(cmd, key);
+	knot_pkt_t *pkt = remote_query(cmd);
 	if (!pkt) {
 		log_warning("failed to prepare query for '%s'", cmd);
 		return 1;
@@ -251,16 +246,6 @@ static int cmd_remote(struct sockaddr_storage *addr, knot_tsig_key_t *key,
 		if (res != KNOT_EOK) {
 			log_error("failed to create the query");
 			knot_rrset_clear(&rr, NULL);
-			knot_pkt_free(&pkt);
-			return 1;
-		}
-	}
-
-	if (key) {
-		int res = remote_query_sign(pkt->wire, &pkt->size, pkt->max_size,
-		                            key);
-		if (res != KNOT_EOK) {
-			log_error("failed to sign the packet");
 			knot_pkt_free(&pkt);
 			return 1;
 		}
@@ -325,12 +310,7 @@ int main(int argc, char **argv)
 	unsigned flags = F_NULL;
 	const char *config_fn = CONF_DEFAULT_FILE;
 	const char *config_db = NULL;
-
-	/* Remote server descriptor. */
-	const char *r_addr = NULL;
-	int r_port = -1;
-	knot_tsig_key_t r_key;
-	memset(&r_key, 0, sizeof(knot_tsig_key_t));
+	char *socket = NULL;
 
 	/* Initialize. */
 	log_init();
@@ -338,20 +318,17 @@ int main(int argc, char **argv)
 
 	/* Long options. */
 	struct option opts[] = {
-		{"config",  required_argument, 0, 'c' },
-		{"confdb",  required_argument, 0, 'C' },
-		{"server",  required_argument, 0, 's' },
-		{"port",    required_argument, 0, 'p' },
-		{"key",     required_argument, 0, 'y' },
-		{"keyfile", required_argument, 0, 'k' },
-		{"force",   no_argument,       0, 'f' },
-		{"verbose", no_argument,       0, 'v' },
-		{"help",    no_argument,       0, 'h' },
-		{"version", no_argument,       0, 'V' },
-		{0, 0, 0, 0}
+		{ "config",  required_argument, 0, 'c' },
+		{ "confdb",  required_argument, 0, 'C' },
+		{ "socket",  required_argument, 0, 's' },
+		{ "force",   no_argument,       0, 'f' },
+		{ "verbose", no_argument,       0, 'v' },
+		{ "help",    no_argument,       0, 'h' },
+		{ "version", no_argument,       0, 'V' },
+		{ NULL }
 	};
 
-	while ((c = getopt_long(argc, argv, "s:p:y:k:fc:C:vVh", opts, &li)) != -1) {
+	while ((c = getopt_long(argc, argv, "s:fc:C:vVh", opts, &li)) != -1) {
 		switch (c) {
 		case 'c':
 			config_fn = optarg;
@@ -360,26 +337,7 @@ int main(int argc, char **argv)
 			config_db = optarg;
 			break;
 		case 's':
-			r_addr = optarg;
-			break;
-		case 'p':
-			r_port = atoi(optarg);
-			break;
-		case 'y':
-			knot_tsig_key_deinit(&r_key);
-			if (knot_tsig_key_init_str(&r_key, optarg) != KNOT_EOK) {
-				rc = 1;
-				log_error("failed to parse TSIG key '%s'", optarg);
-				goto exit;
-			}
-			break;
-		case 'k':
-			knot_tsig_key_deinit(&r_key);
-			if (knot_tsig_key_init_file(&r_key, optarg) != KNOT_EOK) {
-				rc = 1;
-				log_error("failed to parse TSIG key file '%s'", optarg);
-				goto exit;
-			}
+			socket = strdup(optarg);
 			break;
 		case 'f':
 			flags |= F_FORCE;
@@ -456,8 +414,7 @@ int main(int argc, char **argv)
 		new_conf->filename = strdup(config_fn);
 	} else {
 		/* Open configuration database. */
-		bool ronly = cmd->ronly_conf;
-		int ret = conf_new(&new_conf, conf_scheme, config_db, ronly);
+		int ret = conf_new(&new_conf, conf_scheme, config_db, cmd->ronly_conf);
 		if (ret != KNOT_EOK) {
 			log_fatal("failed to open configuration database '%s' "
 			          "(%s)", config_db, knot_strerror(ret));
@@ -478,34 +435,13 @@ int main(int argc, char **argv)
 	/* Update to the new config. */
 	conf_update(new_conf);
 
-	/* Get control address. */
-	conf_val_t listen_val = conf_get(conf(), C_CTL, C_LISTEN);
-	conf_val_t rundir_val = conf_get(conf(), C_SRV, C_RUNDIR);
-	char *rundir = conf_abs_path(&rundir_val, NULL);
-	struct sockaddr_storage addr = conf_addr(&listen_val, rundir);
-	free(rundir);
-
-	/* Override from command line. */
-	if (r_addr) {
-		/* Check for v6 address. */
-		int family = AF_INET;
-		if (strchr(r_addr, ':')) {
-			family = AF_INET6;
-		}
-
-		/* Is a valid UNIX socket or at least contains slash ? */
-		struct stat st;
-		bool has_slash = strchr(r_addr, '/') != NULL;
-		bool is_file = stat(r_addr, &st) == 0;
-		if (has_slash || (is_file && S_ISSOCK(st.st_mode))) {
-			family = AF_UNIX;
-		}
-
-		sockaddr_set(&addr, family, r_addr, sockaddr_port(&addr));
-	}
-
-	if (r_port > 0) {
-		sockaddr_port_set(&addr, r_port);
+	/* Get control socket path. */
+	if (socket == NULL) {
+		conf_val_t listen_val = conf_get(conf(), C_CTL, C_LISTEN);
+		conf_val_t rundir_val = conf_get(conf(), C_SRV, C_RUNDIR);
+		char *rundir = conf_abs_path(&rundir_val, NULL);
+		socket = conf_abs_path(&listen_val, rundir);
+		free(rundir);
 	}
 
 	/* Verbose mode. */
@@ -515,8 +451,7 @@ int main(int argc, char **argv)
 	}
 
 	cmd_args_t args = {
-		&addr,
-		r_key.name != NULL ? &r_key : NULL,
+		socket,
 		argc - optind - 1,
 		argv + optind + 1,
 		flags,
@@ -530,9 +465,9 @@ int main(int argc, char **argv)
 
 exit:
 	/* Finish */
-	knot_tsig_key_deinit(&r_key);
 	conf_free(conf(), false);
 	log_close();
+	free(socket);
 
 	return rc == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
 }
@@ -544,13 +479,12 @@ static int cmd_stop(cmd_args_t *args)
 		return KNOT_EINVAL;
 	}
 
-	return cmd_remote(args->addr, args->key, "stop", KNOT_RRTYPE_TXT,
-	                  0, NULL);
+	return cmd_remote(args->addr, "stop", KNOT_RRTYPE_TXT, 0, NULL);
 }
 
 static int cmd_reload(cmd_args_t *args)
 {
-	return cmd_remote(args->addr, args->key, "reload", KNOT_RRTYPE_NS,
+	return cmd_remote(args->addr, "reload", KNOT_RRTYPE_NS,
 	                  args->argc, args->argv);
 }
 
@@ -559,13 +493,13 @@ static int cmd_refresh(cmd_args_t *args)
 	const char *action = has_flag(args->flags, F_FORCE) ?
 	                     "retransfer" : "refresh";
 
-	return cmd_remote(args->addr, args->key, action, KNOT_RRTYPE_NS,
+	return cmd_remote(args->addr, action, KNOT_RRTYPE_NS,
 	                  args->argc, args->argv);
 }
 
 static int cmd_flush(cmd_args_t *args)
 {
-	return cmd_remote(args->addr, args->key, "flush", KNOT_RRTYPE_NS,
+	return cmd_remote(args->addr, "flush", KNOT_RRTYPE_NS,
 	                  args->argc, args->argv);
 }
 
@@ -576,19 +510,18 @@ static int cmd_status(cmd_args_t *args)
 		return KNOT_EINVAL;
 	}
 
-	return cmd_remote(args->addr, args->key, "status", KNOT_RRTYPE_TXT,
-	                  0, NULL);
+	return cmd_remote(args->addr, "status", KNOT_RRTYPE_TXT, 0, NULL);
 }
 
 static int cmd_zonestatus(cmd_args_t *args)
 {
-	return cmd_remote(args->addr, args->key, "zonestatus", KNOT_RRTYPE_NS,
+	return cmd_remote(args->addr, "zonestatus", KNOT_RRTYPE_NS,
 	                  args->argc, args->argv);
 }
 
 static int cmd_signzone(cmd_args_t *args)
 {
-	return cmd_remote(args->addr, args->key, "signzone", KNOT_RRTYPE_NS,
+	return cmd_remote(args->addr, "signzone", KNOT_RRTYPE_NS,
 	                  args->argc, args->argv);
 }
 
@@ -644,7 +577,7 @@ static int cmd_conf_desc(cmd_args_t *args)
 		return KNOT_EINVAL;
 	}
 
-	return cmd_remote(args->addr, args->key, "conf-desc", KNOT_RRTYPE_TXT,
+	return cmd_remote(args->addr, "conf-desc", KNOT_RRTYPE_TXT,
 	                  args->argc, args->argv);
 }
 
@@ -655,7 +588,7 @@ static int cmd_conf_read(cmd_args_t *args)
 		return KNOT_EINVAL;
 	}
 
-	return cmd_remote(args->addr, args->key, "conf-read", KNOT_RRTYPE_TXT,
+	return cmd_remote(args->addr, "conf-read", KNOT_RRTYPE_TXT,
 	                  args->argc, args->argv);
 }
 
@@ -666,8 +599,7 @@ static int cmd_conf_begin(cmd_args_t *args)
 		return KNOT_EINVAL;
 	}
 
-	return cmd_remote(args->addr, args->key, "conf-begin", KNOT_RRTYPE_TXT,
-	                  0, NULL);
+	return cmd_remote(args->addr, "conf-begin", KNOT_RRTYPE_TXT, 0, NULL);
 }
 
 static int cmd_conf_commit(cmd_args_t *args)
@@ -677,8 +609,7 @@ static int cmd_conf_commit(cmd_args_t *args)
 		return KNOT_EINVAL;
 	}
 
-	return cmd_remote(args->addr, args->key, "conf-commit", KNOT_RRTYPE_TXT,
-	                  0, NULL);
+	return cmd_remote(args->addr, "conf-commit", KNOT_RRTYPE_TXT, 0, NULL);
 }
 
 static int cmd_conf_abort(cmd_args_t *args)
@@ -688,8 +619,7 @@ static int cmd_conf_abort(cmd_args_t *args)
 		return KNOT_EINVAL;
 	}
 
-	return cmd_remote(args->addr, args->key, "conf-abort", KNOT_RRTYPE_TXT,
-	                  0, NULL);
+	return cmd_remote(args->addr, "conf-abort", KNOT_RRTYPE_TXT, 0, NULL);
 }
 
 static int cmd_conf_diff(cmd_args_t *args)
@@ -699,7 +629,7 @@ static int cmd_conf_diff(cmd_args_t *args)
 		return KNOT_EINVAL;
 	}
 
-	return cmd_remote(args->addr, args->key, "conf-diff", KNOT_RRTYPE_TXT,
+	return cmd_remote(args->addr, "conf-diff", KNOT_RRTYPE_TXT,
 	                  args->argc, args->argv);
 }
 
@@ -710,7 +640,7 @@ static int cmd_conf_get(cmd_args_t *args)
 		return KNOT_EINVAL;
 	}
 
-	return cmd_remote(args->addr, args->key, "conf-get", KNOT_RRTYPE_TXT,
+	return cmd_remote(args->addr, "conf-get", KNOT_RRTYPE_TXT,
 	                  args->argc, args->argv);
 }
 
@@ -721,7 +651,7 @@ static int cmd_conf_set(cmd_args_t *args)
 		return KNOT_EINVAL;
 	}
 
-	return cmd_remote(args->addr, args->key, "conf-set", KNOT_RRTYPE_TXT,
+	return cmd_remote(args->addr, "conf-set", KNOT_RRTYPE_TXT,
 	                  args->argc, args->argv);
 }
 
@@ -732,7 +662,7 @@ static int cmd_conf_unset(cmd_args_t *args)
 		return KNOT_EINVAL;
 	}
 
-	return cmd_remote(args->addr, args->key, "conf-unset", KNOT_RRTYPE_TXT,
+	return cmd_remote(args->addr, "conf-unset", KNOT_RRTYPE_TXT,
 	                  args->argc, args->argv);
 }
 

@@ -203,22 +203,23 @@ static void event_loop(server_t *server)
 	conf_val_t listen_val = conf_get(conf(), C_CTL, C_LISTEN);
 	conf_val_t rundir_val = conf_get(conf(), C_SRV, C_RUNDIR);
 	char *rundir = conf_abs_path(&rundir_val, NULL);
-	struct sockaddr_storage addr = conf_addr(&listen_val, rundir);
+	char *listen = conf_abs_path(&listen_val, rundir);
 	free(rundir);
 
-	/* Bind to control interface (error logging is inside the function. */
-	int remote = remote_bind(&addr);
+	/* Bind to control socket (error logging is inside the function. */
+	int sock = remote_bind(listen);
+	free(listen);
 
 	sigset_t empty;
 	(void)sigemptyset(&empty);
 
 	/* Run event loop. */
 	for (;;) {
-		int ret = remote_poll(remote, &empty);
+		int ret = remote_poll(sock, &empty);
 
 		/* Events. */
 		if (ret > 0) {
-			ret = remote_process(server, &addr, remote, buf, buflen);
+			ret = remote_process(server, sock, buf, buflen);
 			if (ret == KNOT_CTL_STOP) {
 				break;
 			}
@@ -234,8 +235,8 @@ static void event_loop(server_t *server)
 		}
 	}
 
-	/* Close remote control interface. */
-	remote_unbind(&addr, remote);
+	/* Close control socket. */
+	remote_unbind(sock);
 }
 
 static void print_help(void)
