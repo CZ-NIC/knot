@@ -239,10 +239,11 @@ static void print_help(void)
 	       " -c, --config <file>     Use a textual configuration file.\n"
 	       "                           (default %s)\n"
 	       " -C, --confdb <dir>      Use a binary configuration database directory.\n"
+	       "                           (default %s)\n"
 	       " -d, --daemonize=[dir]   Run the server as a daemon (with new root directory).\n"
 	       " -h, --help              Print the program help.\n"
 	       " -V, --version           Print the program version.\n",
-	       PROGRAM_NAME, CONF_DEFAULT_FILE);
+	       PROGRAM_NAME, CONF_DEFAULT_FILE, CONF_DEFAULT_DBDIR);
 }
 
 static void print_version(void)
@@ -250,11 +251,71 @@ static void print_version(void)
 	printf("%s (Knot DNS), version %s\n", PROGRAM_NAME, PACKAGE_VERSION);
 }
 
+static int set_config(const char *confdb, const char *config)
+{
+	if (config != NULL && confdb != NULL) {
+		log_fatal("ambiguous configuration source");
+		return KNOT_EINVAL;
+	}
+
+	/* Choose the optimal config source. */
+	struct stat st;
+	bool import = false;
+	if (confdb != NULL) {
+		import = false;
+	} else if (config != NULL){
+		import = true;
+	} else if (stat(CONF_DEFAULT_DBDIR, &st) == 0) {
+		import = false;
+		confdb = CONF_DEFAULT_DBDIR;
+	} else {
+		import = true;
+		config = CONF_DEFAULT_FILE;
+	}
+
+	const char *src = import ? config : confdb;
+	log_debug("%s '%s'", import ? "config" : "confdb",
+	          (src != NULL) ? src : "empty");
+
+	/* Open confdb. */
+	conf_t *new_conf = NULL;
+	int ret = conf_new(&new_conf, conf_scheme, confdb, CONF_FNONE);
+	if (ret != KNOT_EOK) {
+		log_fatal("failed to open configuration database '%s' (%s)",
+		          (confdb != NULL) ? confdb : "", knot_strerror(ret));
+		return ret;
+	}
+
+	/* Import the config file. */
+	if (import) {
+		ret = conf_import(new_conf, config, true);
+		if (ret != KNOT_EOK) {
+			log_fatal("failed to load configuration file '%s' (%s)",
+			          config, knot_strerror(ret));
+			conf_free(new_conf);
+			return ret;
+		}
+	}
+
+	/* Run post-open config operations. */
+	ret = conf_post_open(new_conf);
+	if (ret != KNOT_EOK) {
+		log_fatal("failed to use configuration (%s)", knot_strerror(ret));
+		conf_free(new_conf);
+		return ret;
+	}
+
+	/* Update to the new config. */
+	conf_update(new_conf);
+
+	return KNOT_EOK;
+}
+
 int main(int argc, char **argv)
 {
 	bool daemonize = false;
-	const char *config_fn = CONF_DEFAULT_FILE;
-	const char *config_db = NULL;
+	const char *config = NULL;
+	const char *confdb = NULL;
 	const char *daemon_root = "/";
 
 	/* Long options. */
@@ -272,10 +333,10 @@ int main(int argc, char **argv)
 	while ((opt = getopt_long(argc, argv, "c:C:dhV", opts, &li)) != -1) {
 		switch (opt) {
 		case 'c':
-			config_fn = optarg;
+			config = optarg;
 			break;
 		case 'C':
-			config_db = optarg;
+			confdb = optarg;
 			break;
 		case 'd':
 			daemonize = true;
@@ -325,55 +386,17 @@ int main(int argc, char **argv)
 	/* POSIX 1003.1e capabilities. */
 	setup_capabilities();
 
-	/* Default logging to std out/err. */
+	/* Initialize logging subsystem. */
 	log_init();
 
-	/* Open configuration. */
-	conf_t *new_conf = NULL;
-	if (config_db == NULL) {
-		int ret = conf_new(&new_conf, conf_scheme, NULL, false);
-		if (ret != KNOT_EOK) {
-			log_fatal("failed to initialize configuration database "
-			          "(%s)", knot_strerror(ret));
-			log_close();
-			return EXIT_FAILURE;
-		}
-
-		/* Import the configuration file. */
-		ret = conf_import(new_conf, config_fn, true);
-		if (ret != KNOT_EOK) {
-			log_fatal("failed to load configuration file (%s)",
-			          knot_strerror(ret));
-			conf_free(new_conf, false);
-			log_close();
-			return EXIT_FAILURE;
-		}
-
-		new_conf->filename = strdup(config_fn);
-	} else {
-		/* Open configuration database. */
-		int ret = conf_new(&new_conf, conf_scheme, config_db, false);
-		if (ret != KNOT_EOK) {
-			log_fatal("failed to open configuration database '%s' "
-			          "(%s)", config_db, knot_strerror(ret));
-			log_close();
-			return EXIT_FAILURE;
-		}
-	}
-
-	/* Run post-open config operations. */
-	int ret = conf_post_open(new_conf);
+	/* Set up the configuration */
+	int ret = set_config(confdb, config);
 	if (ret != KNOT_EOK) {
-		log_fatal("failed to use configuration (%s)", knot_strerror(ret));
-		conf_free(new_conf, false);
 		log_close();
 		return EXIT_FAILURE;
 	}
 
-	/* Update to the new config. */
-	conf_update(new_conf);
-
-	/* Initialize logging subsystem. */
+	/* Reconfigure logging. */
 	log_reconfigure(conf(), NULL);
 
 	/* Initialize server. */
@@ -381,7 +404,7 @@ int main(int argc, char **argv)
 	ret = server_init(&server, conf_bg_threads(conf()));
 	if (ret != KNOT_EOK) {
 		log_fatal("failed to initialize server (%s)", knot_strerror(ret));
-		conf_free(conf(), false);
+		conf_free(conf());
 		log_close();
 		return EXIT_FAILURE;
 	}
@@ -399,7 +422,7 @@ int main(int argc, char **argv)
 		log_fatal("failed to drop privileges");
 		server_wait(&server);
 		server_deinit(&server);
-		conf_free(conf(), false);
+		conf_free(conf());
 		log_close();
 		return EXIT_FAILURE;
 	}
@@ -411,7 +434,7 @@ int main(int argc, char **argv)
 		if (pidfile == NULL) {
 			server_wait(&server);
 			server_deinit(&server);
-			conf_free(conf(), false);
+			conf_free(conf());
 			log_close();
 			return EXIT_FAILURE;
 		}
@@ -449,7 +472,7 @@ int main(int argc, char **argv)
 		rcu_unregister_thread();
 		pid_cleanup();
 		log_close();
-		conf_free(conf(), false);
+		conf_free(conf());
 		return EXIT_FAILURE;
 	}
 
@@ -475,7 +498,7 @@ int main(int argc, char **argv)
 
 	/* Free server and configuration. */
 	server_deinit(&server);
-	conf_free(conf(), false);
+	conf_free(conf());
 
 	/* Unhook from RCU. */
 	rcu_unregister_thread();

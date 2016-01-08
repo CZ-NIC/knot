@@ -502,7 +502,7 @@ int server_reload(server_t *server, const char *cf)
 		if (ret != KNOT_EOK) {
 			log_fatal("failed to load configuration file (%s)",
 			          knot_strerror(ret));
-			conf_free(new_conf, true);
+			conf_free(new_conf);
 			return ret;
 		}
 
@@ -511,7 +511,7 @@ int server_reload(server_t *server, const char *cf)
 		if (ret != KNOT_EOK) {
 			log_fatal("failed to use configuration (%s)",
 			          knot_strerror(ret));
-			conf_free(new_conf, true);
+			conf_free(new_conf);
 			return ret;
 		}
 

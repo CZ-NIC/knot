@@ -480,7 +480,7 @@ int main(int argc, char *argv[])
 
 	conf()->api->txn_abort(&txn);
 
-	conf_free(conf(), false);
+	conf_free(conf());
 
 	return 0;
 }

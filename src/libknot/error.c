@@ -133,12 +133,12 @@ static const struct error errors[] = {
 	{ KNOT_YP_ENOID,         "missing identifier" },
 
 	/* Configuration errors. */
-	{ KNOT_CONF_EMPTY,        "empty configuration database" },
-	{ KNOT_CONF_EVERSION,     "invalid configuration database version" },
-	{ KNOT_CONF_EREDEFINE,    "duplicate identifier" },
-	{ KNOT_CONF_ETXN,         "failed to open another config DB transaction" },
-	{ KNOT_CONF_ENOTXN,       "no active config DB transaction" },
-	{ KNOT_CONF_EMANYTXN,     "too many nested config DB transactions" },
+	{ KNOT_CONF_ENOTINIT,  "config DB not initialized" },
+	{ KNOT_CONF_EVERSION,  "invalid config DB version" },
+	{ KNOT_CONF_EREDEFINE, "duplicate identifier" },
+	{ KNOT_CONF_ETXN,      "failed to open another config DB transaction" },
+	{ KNOT_CONF_ENOTXN,    "no active config DB transaction" },
+	{ KNOT_CONF_EMANYTXN,  "too many nested config DB transactions" },
 
 	/* Processing errors. */
 	{ KNOT_LAYER_ERROR, "processing layer error" },

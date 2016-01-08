@@ -42,25 +42,27 @@
 #define CONF_MAX_DATA_LEN	65536
 
 /*!
- * Opens and checks or initializes the configuration DB.
+ * Initializes the configuration DB if empty.
  *
- * \param[in] conf  Configuration.
- * \param[in] txn   Configuration DB transaction.
+ * \param[in] conf   Configuration.
+ * \param[in] txn    Configuration DB transaction.
+ * \param[in] purge  Purge the DB indicator.
  *
  * \return Error code, KNOT_EOK if success.
  */
 int conf_db_init(
 	conf_t *conf,
-	knot_db_txn_t *txn
+	knot_db_txn_t *txn,
+	bool purge
 );
 
 /*!
- * Checks the configuration DB.
+ * Checks the configuration DB and returns the number of items.
  *
  * \param[in] conf  Configuration.
  * \param[in] txn   Configuration DB transaction.
  *
- * \return Error code, KNOT_EOK if success.
+ * \return Error code, KNOT_EOK if ok and empty, > 0 number of records.
  */
 int conf_db_check(
 	conf_t *conf,

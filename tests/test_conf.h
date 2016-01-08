@@ -28,20 +28,20 @@ static inline int test_conf(const char *conf_str, const yp_item_t *scheme)
 	}
 
 	conf_t *conf;
-	int ret = conf_new(&conf, scheme, NULL, false);
+	int ret = conf_new(&conf, scheme, NULL, CONF_FNONE);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
 
 	ret = conf_import(conf, conf_str, false);
 	if (ret != KNOT_EOK) {
-		conf_free(conf, false);
+		conf_free(conf);
 		return ret;
 	}
 
 	ret = conf_post_open(conf);
 	if (ret != KNOT_EOK) {
-		conf_free(conf, false);
+		conf_free(conf);
 		return ret;
 	}
 

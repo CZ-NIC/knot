@@ -122,14 +122,14 @@ int conf_io_commit(
 	ret = new_conf->api->txn_begin(new_conf->db, &new_conf->read_txn,
 	                               KNOT_DB_RDONLY);
 	if (ret != KNOT_EOK) {
-		conf_free(new_conf, true);
+		conf_free(new_conf);
 		return ret;
 	}
 
 	// Run post-open config operations.
 	ret = conf_post_open(new_conf);
 	if (ret != KNOT_EOK) {
-		conf_free(new_conf, true);
+		conf_free(new_conf);
 		return ret;
 	}
 

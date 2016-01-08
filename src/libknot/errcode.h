@@ -134,7 +134,7 @@ enum knot_error {
 	KNOT_YP_ENOID,
 
 	/* Configuration errors. */
-	KNOT_CONF_EMPTY,
+	KNOT_CONF_ENOTINIT,
 	KNOT_CONF_EVERSION,
 	KNOT_CONF_EREDEFINE,
 	KNOT_CONF_ETXN,

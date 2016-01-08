@@ -62,6 +62,8 @@ typedef struct {
 
 /*! Configuration context. */
 typedef struct {
+	/*! Cloned configuration indicator. */
+	bool is_clone;
 	/*! Currently used namedb api. */
 	const struct knot_db_api *api;
 	/*! Configuration scheme. */
@@ -81,10 +83,11 @@ typedef struct {
 		knot_db_txn_t txn_stack[CONF_MAX_TXN_DEPTH];
 	} io;
 
-	/*! Prearranged hostname string (for automatic NSID or CH ident value). */
-	char *hostname;
 	/*! Current config file (for reload if started with config file). */
 	char *filename;
+
+	/*! Prearranged hostname string (for automatic NSID or CH ident value). */
+	char *hostname;
 
 	/*! Cached critical confdb items. */
 	struct {
@@ -103,6 +106,15 @@ typedef struct {
 } conf_t;
 
 /*!
+ * Configuration access flags.
+ */
+typedef enum {
+	CONF_FNONE     = 0,      /*!< Empty flag. */
+	CONF_FREADONLY = 1 << 0, /*!< Read only access. */
+	CONF_FNOCHECK  = 1 << 1  /*!< Disabled confdb check. */
+} conf_flag_t;
+
+/*!
  * Returns the active configuration.
  */
 conf_t* conf(void);
@@ -110,10 +122,10 @@ conf_t* conf(void);
 /*!
  * Creates new or opens old configuration database.
  *
- * \param[out] conf      Configuration.
- * \param[in] scheme     Configuration scheme.
- * \param[in] db_dir     Database path or NULL.
- * \param[in] read_only  Set to read-only access.
+ * \param[out] conf   Configuration.
+ * \param[in] scheme  Configuration scheme.
+ * \param[in] db_dir  Database path or NULL.
+ * \param[in] flags   Access flags.
  *
  * \return Error code, KNOT_EOK if success.
  */
@@ -121,7 +133,7 @@ int conf_new(
 	conf_t **conf,
 	const yp_item_t *scheme,
 	const char *db_dir,
-	bool read_only
+	conf_flag_t flags
 );
 
 /*!
@@ -160,12 +172,10 @@ void conf_update(
 /*!
  * Removes the specified configuration.
  *
- * \param[in] conf      Configuration.
- * \param[in] is_clone  Specifies if the configuration is a clone.
+ * \param[in] conf  Configuration.
  */
 void conf_free(
-	conf_t *conf,
-	bool is_clone
+	conf_t *conf
 );
 
 /*!

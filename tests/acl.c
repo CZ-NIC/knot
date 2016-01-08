@@ -342,7 +342,7 @@ static void test_acl_allowed(void)
 	ret = acl_allowed(&acl, ACL_ACTION_TRANSFER, &addr, &key0);
 	ok(ret == true, "IPv6 address from range, no key, action match");
 
-	conf_free(conf(), false);
+	conf_free(conf());
 	knot_dname_free(&zone_name, NULL);
 	knot_dname_free(&key1_name, NULL);
 	knot_dname_free(&key2_name, NULL);

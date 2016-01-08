@@ -838,7 +838,7 @@ int main(int argc, char *argv[])
 	diag("conf_io_desc");
 	test_conf_io_desc();
 
-	conf_free(conf(), false);
+	conf_free(conf());
 
 	return 0;
 }
