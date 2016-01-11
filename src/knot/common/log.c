@@ -45,8 +45,9 @@ struct log_sink
 {
 	uint8_t *facility;     /* Log sinks. */
 	size_t facility_count; /* Sink count. */
-	FILE** file;           /* Open files. */
+	FILE **file;           /* Open files. */
 	ssize_t file_count;    /* Nr of open files. */
+	logflag_t flags;       /* Formatting flags. */
 };
 
 /*! Log sink singleton. */
@@ -208,6 +209,11 @@ bool log_isopen()
 	return s_log != NULL;
 }
 
+void log_flag_set(logflag_t flag)
+{
+	s_log->flags |= flag;
+}
+
 /*! \brief Open file as a logging facility. */
 static int log_open_file(struct log_sink *log, const char* filename)
 {
@@ -246,10 +252,8 @@ int log_levels_add(int facility, logsrc_t src, uint8_t levels)
 
 static int emit_log_msg(int level, const char *zone, size_t zone_len, const char *msg)
 {
-	rcu_read_lock();
 	struct log_sink *log = s_log;
 	if(!log_isopen()) {
-		rcu_read_unlock();
 		return KNOT_ERROR;
 	}
 
@@ -278,13 +282,15 @@ static int emit_log_msg(int level, const char *zone, size_t zone_len, const char
 	level = LOG_MASK(level);
 
 	/* Prefix date and time. */
-	char tstr[LOG_BUFLEN] = {0};
-	struct tm lt;
-	struct timeval tv;
-	gettimeofday(&tv, NULL);
-	time_t sec = tv.tv_sec;
-	if (localtime_r(&sec, &lt) != NULL) {
-		strftime(tstr, sizeof(tstr), KNOT_LOG_TIME_FORMAT " ", &lt);
+	char tstr[LOG_BUFLEN] = { 0 };
+	if (!(s_log->flags & LOG_FNO_TIMESTAMP)) {
+		struct tm lt;
+		struct timeval tv;
+		gettimeofday(&tv, NULL);
+		time_t sec = tv.tv_sec;
+		if (localtime_r(&sec, &lt) != NULL) {
+			strftime(tstr, sizeof(tstr), KNOT_LOG_TIME_FORMAT " ", &lt);
+		}
 	}
 
 	// Log streams
@@ -309,8 +315,6 @@ static int emit_log_msg(int level, const char *zone, size_t zone_len, const char
 			}
 		}
 	}
-
-	rcu_read_unlock();
 
 	if (ret < 0) {
 		return KNOT_EINVAL;
@@ -363,11 +367,16 @@ static int log_msg_text(int level, const char *zone, const char *fmt, va_list ar
 	char *write = sbuf;
 	size_t capacity = sizeof(sbuf) - 1;
 
+	rcu_read_lock();
+
 	/* Prefix error level. */
-	const char *prefix = level_prefix(level);
-	ret = log_msg_add(&write, &capacity, "%s: ", prefix);
-	if (ret != KNOT_EOK) {
-		return ret;
+	if (level != LOG_INFO || !log_isopen() || !(s_log->flags & LOG_FNO_INFO)) {
+		const char *prefix = level_prefix(level);
+		ret = log_msg_add(&write, &capacity, "%s: ", prefix);
+		if (ret != KNOT_EOK) {
+			rcu_read_unlock();
+			return ret;
+		}
 	}
 
 	/* Prefix zone name. */
@@ -381,6 +390,7 @@ static int log_msg_text(int level, const char *zone, const char *fmt, va_list ar
 
 		ret = log_msg_add(&write, &capacity, "[%.*s] ", zone_len, zone);
 		if (ret != KNOT_EOK) {
+			rcu_read_unlock();
 			return ret;
 		}
 	}
@@ -392,6 +402,8 @@ static int log_msg_text(int level, const char *zone, const char *fmt, va_list ar
 	if (ret >= 0) {
 		ret = emit_log_msg(level, zone, zone_len, sbuf);
 	}
+
+	rcu_read_unlock();
 
 	return ret;
 }

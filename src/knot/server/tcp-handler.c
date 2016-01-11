@@ -36,12 +36,12 @@
 #include "knot/server/tcp-handler.h"
 #include "knot/common/fdset.h"
 #include "knot/common/log.h"
-#include "knot/common/time.h"
 #include "knot/nameserver/process_query.h"
 #include "libknot/processing/overlay.h"
 #include "contrib/macros.h"
 #include "contrib/net.h"
 #include "contrib/sockaddr.h"
+#include "contrib/time.h"
 #include "contrib/ucw/mempool.h"
 
 /*! \brief TCP context data. */

@@ -36,8 +36,7 @@ typedef enum {
 	ACL_ACTION_NONE     = 0,
 	ACL_ACTION_NOTIFY   = 1,
 	ACL_ACTION_TRANSFER = 2,
-	ACL_ACTION_UPDATE   = 3,
-	ACL_ACTION_CONTROL  = 4
+	ACL_ACTION_UPDATE   = 3
 } acl_action_t;
 
 /*!

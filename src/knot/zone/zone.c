@@ -23,7 +23,6 @@
 #include "dnssec/random.h"
 #include "knot/common/evsched.h"
 #include "knot/common/log.h"
-#include "knot/common/trim.h"
 #include "knot/zone/node.h"
 #include "knot/zone/serial.h"
 #include "knot/zone/zone.h"
@@ -35,6 +34,7 @@
 #include "libknot/libknot.h"
 #include "libknot/processing/requestor.h"
 #include "contrib/string.h"
+#include "contrib/trim.h"
 #include "contrib/ucw/lists.h"
 
 #define JOURNAL_SUFFIX	".diff.db"

@@ -110,7 +110,8 @@ static int db_check_version(
 
 int conf_db_init(
 	conf_t *conf,
-	knot_db_txn_t *txn)
+	knot_db_txn_t *txn,
+	bool purge)
 {
 	if (conf == NULL || txn == NULL) {
 		return KNOT_EINVAL;
@@ -124,8 +125,16 @@ int conf_db_init(
 		uint8_t d[1] = { CONF_DB_VERSION };
 		knot_db_val_t data = { d, sizeof(d) };
 		return conf->api->insert(txn, &key, &data, 0);
-	} else if (ret > 0) { // Check existing DB.
-		return conf_db_check(conf, txn);
+	} else if (ret > 0) { // Non-empty DB.
+		if (purge) {
+			// Purge the DB.
+			ret = conf->api->clear(txn);
+			if (ret != KNOT_EOK) {
+				return ret;
+			}
+			return conf_db_init(conf, txn, false);
+		}
+		return KNOT_EOK;
 	} else { // DB error.
 		return ret;
 	}
@@ -136,10 +145,19 @@ int conf_db_check(
 	knot_db_txn_t *txn)
 {
 	int ret = conf->api->count(txn);
-	if (ret == 0) { // Empty DB.
-		return KNOT_CONF_EMPTY;
-	} else if (ret > 0) { // Check existing DB.
-		return db_check_version(conf, txn);
+	if (ret == 0) { // Not initialized DB.
+		return KNOT_CONF_ENOTINIT;
+	} else if (ret > 0) { // Check the DB.
+		int count = ret;
+
+		ret = db_check_version(conf, txn);
+		if (ret != KNOT_EOK) {
+			return ret;
+		} else if (count == 1) {
+			return KNOT_EOK; // Empty but initialized DB.
+		} else {
+			return count - 1; // Non-empty DB.
+		}
 	} else { // DB error.
 		return ret;
 	}

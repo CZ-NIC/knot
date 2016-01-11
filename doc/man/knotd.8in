@@ -41,7 +41,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 Use a textual configuration file (default is \fB@config_dir@/knot.conf\fP).
 .TP
 \fB\-C\fP, \fB\-\-confdb\fP \fIdirectory\fP
-Use a binary configuration database directory.
+Use a binary configuration database directory (default is \fB@storage_dir@/confdb\fP).
+The default configuration database, if exists, has a preference to the default
+configuration file.
 .TP
 \fB\-d\fP, \fB\-\-daemonize\fP [\fIdirectory\fP]
 Run the server as a daemon. New root directory may be specified

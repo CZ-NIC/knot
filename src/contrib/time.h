@@ -12,40 +12,28 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
-*/
+ */
+/*!
+ * \file
+ *
+ * \brief Universal time getter.
+ *
+ * \addtogroup contrib
+ * @{
+ */
 
 #pragma once
 
-#include "knot/conf/conf.h"
-#include "libknot/errcode.h"
+#ifdef HAVE_CLOCK_GETTIME
+#include <time.h>
+#define time_now(x) clock_gettime(CLOCK_MONOTONIC, (x))
+typedef struct timespec timev_t;
+#elif HAVE_GETTIMEOFDAY
+#include <sys/time.h>
+#define time_now(x) gettimeofday((x), NULL)
+typedef struct timeval timev_t;
+#else
+#error Neither clock_gettime() nor gettimeofday() found. At least one is required.
+#endif
 
-/* Prepare server configuration. */
-static inline int test_conf(const char *conf_str, const yp_item_t *scheme)
-{
-	// Use default scheme if not specified.
-	if (scheme == NULL) {
-		scheme = conf_scheme;
-	}
-
-	conf_t *conf;
-	int ret = conf_new(&conf, scheme, NULL, CONF_FNONE);
-	if (ret != KNOT_EOK) {
-		return ret;
-	}
-
-	ret = conf_import(conf, conf_str, false);
-	if (ret != KNOT_EOK) {
-		conf_free(conf);
-		return ret;
-	}
-
-	ret = conf_post_open(conf);
-	if (ret != KNOT_EOK) {
-		conf_free(conf);
-		return ret;
-	}
-
-	conf_update(conf);
-
-	return KNOT_EOK;
-}
+/*! @} */

@@ -1,4 +1,4 @@
-/*  Copyright (C) 2014 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -16,17 +16,5 @@
 
 #pragma once
 
-#ifdef HAVE_MALLOC_TRIM
-#include <malloc.h>
-#endif
-
-/*!
- * \brief Trim excess heap memory.
- */
-static inline void mem_trim(void)
-{
-#ifdef HAVE_MALLOC_TRIM
-	malloc_trim(0);
-#endif
-
-}
+int cmd_remote(const char *socket, const char *cmd, uint16_t rrt,
+               int argc, char *argv[]);

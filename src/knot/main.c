@@ -33,10 +33,10 @@
 
 #include "dnssec/crypto.h"
 #include "libknot/libknot.h"
-#include "knot/ctl/process.h"
 #include "knot/ctl/remote.h"
 #include "knot/conf/conf.h"
 #include "knot/common/log.h"
+#include "knot/common/process.h"
 #include "knot/server/server.h"
 #include "knot/server/tcp-handler.h"
 #include "knot/zone/timers.h"
@@ -106,14 +106,6 @@ static int make_daemon(int nochdir, int noclose)
 	}
 
 	return 0;
-}
-
-/*! \brief PID file cleanup handler. */
-static void pid_cleanup(char *pidfile)
-{
-	if (pidfile && pid_remove(pidfile) < 0) {
-		log_warning("failed to remove PID file");
-	}
 }
 
 /*! \brief SIGINT signal handler. */
@@ -203,23 +195,24 @@ static void event_loop(server_t *server)
 	conf_val_t listen_val = conf_get(conf(), C_CTL, C_LISTEN);
 	conf_val_t rundir_val = conf_get(conf(), C_SRV, C_RUNDIR);
 	char *rundir = conf_abs_path(&rundir_val, NULL);
-	struct sockaddr_storage addr = conf_addr(&listen_val, rundir);
+	char *listen = conf_abs_path(&listen_val, rundir);
 	free(rundir);
 
-	/* Bind to control interface (error logging is inside the function. */
-	int remote = remote_bind(&addr);
+	/* Bind to control socket (error logging is inside the function. */
+	int sock = remote_bind(listen);
+	free(listen);
 
 	sigset_t empty;
 	(void)sigemptyset(&empty);
 
 	/* Run event loop. */
 	for (;;) {
-		int ret = remote_poll(remote, &empty);
+		int ret = remote_poll(sock, &empty);
 
 		/* Events. */
 		if (ret > 0) {
-			ret = remote_process(server, &addr, remote, buf, buflen);
-			if (ret == KNOT_CTL_STOP) {
+			ret = remote_process(server, sock, buf, buflen);
+			if (ret == KNOT_CTL_ESTOP) {
 				break;
 			}
 		}
@@ -234,8 +227,8 @@ static void event_loop(server_t *server)
 		}
 	}
 
-	/* Close remote control interface. */
-	remote_unbind(&addr, remote);
+	/* Close control socket. */
+	remote_unbind(sock);
 }
 
 static void print_help(void)
@@ -246,10 +239,11 @@ static void print_help(void)
 	       " -c, --config <file>     Use a textual configuration file.\n"
 	       "                           (default %s)\n"
 	       " -C, --confdb <dir>      Use a binary configuration database directory.\n"
+	       "                           (default %s)\n"
 	       " -d, --daemonize=[dir]   Run the server as a daemon (with new root directory).\n"
 	       " -h, --help              Print the program help.\n"
 	       " -V, --version           Print the program version.\n",
-	       PROGRAM_NAME, CONF_DEFAULT_FILE);
+	       PROGRAM_NAME, CONF_DEFAULT_FILE, CONF_DEFAULT_DBDIR);
 }
 
 static void print_version(void)
@@ -257,11 +251,71 @@ static void print_version(void)
 	printf("%s (Knot DNS), version %s\n", PROGRAM_NAME, PACKAGE_VERSION);
 }
 
+static int set_config(const char *confdb, const char *config)
+{
+	if (config != NULL && confdb != NULL) {
+		log_fatal("ambiguous configuration source");
+		return KNOT_EINVAL;
+	}
+
+	/* Choose the optimal config source. */
+	struct stat st;
+	bool import = false;
+	if (confdb != NULL) {
+		import = false;
+	} else if (config != NULL){
+		import = true;
+	} else if (stat(CONF_DEFAULT_DBDIR, &st) == 0) {
+		import = false;
+		confdb = CONF_DEFAULT_DBDIR;
+	} else {
+		import = true;
+		config = CONF_DEFAULT_FILE;
+	}
+
+	const char *src = import ? config : confdb;
+	log_debug("%s '%s'", import ? "config" : "confdb",
+	          (src != NULL) ? src : "empty");
+
+	/* Open confdb. */
+	conf_t *new_conf = NULL;
+	int ret = conf_new(&new_conf, conf_scheme, confdb, CONF_FNONE);
+	if (ret != KNOT_EOK) {
+		log_fatal("failed to open configuration database '%s' (%s)",
+		          (confdb != NULL) ? confdb : "", knot_strerror(ret));
+		return ret;
+	}
+
+	/* Import the config file. */
+	if (import) {
+		ret = conf_import(new_conf, config, true);
+		if (ret != KNOT_EOK) {
+			log_fatal("failed to load configuration file '%s' (%s)",
+			          config, knot_strerror(ret));
+			conf_free(new_conf);
+			return ret;
+		}
+	}
+
+	/* Run post-open config operations. */
+	ret = conf_post_open(new_conf);
+	if (ret != KNOT_EOK) {
+		log_fatal("failed to use configuration (%s)", knot_strerror(ret));
+		conf_free(new_conf);
+		return ret;
+	}
+
+	/* Update to the new config. */
+	conf_update(new_conf);
+
+	return KNOT_EOK;
+}
+
 int main(int argc, char **argv)
 {
 	bool daemonize = false;
-	const char *config_fn = CONF_DEFAULT_FILE;
-	const char *config_db = NULL;
+	const char *config = NULL;
+	const char *confdb = NULL;
 	const char *daemon_root = "/";
 
 	/* Long options. */
@@ -279,10 +333,10 @@ int main(int argc, char **argv)
 	while ((opt = getopt_long(argc, argv, "c:C:dhV", opts, &li)) != -1) {
 		switch (opt) {
 		case 'c':
-			config_fn = optarg;
+			config = optarg;
 			break;
 		case 'C':
-			config_db = optarg;
+			confdb = optarg;
 			break;
 		case 'd':
 			daemonize = true;
@@ -332,55 +386,17 @@ int main(int argc, char **argv)
 	/* POSIX 1003.1e capabilities. */
 	setup_capabilities();
 
-	/* Default logging to std out/err. */
+	/* Initialize logging subsystem. */
 	log_init();
 
-	/* Open configuration. */
-	conf_t *new_conf = NULL;
-	if (config_db == NULL) {
-		int ret = conf_new(&new_conf, conf_scheme, NULL, false);
-		if (ret != KNOT_EOK) {
-			log_fatal("failed to initialize configuration database "
-			          "(%s)", knot_strerror(ret));
-			log_close();
-			return EXIT_FAILURE;
-		}
-
-		/* Import the configuration file. */
-		ret = conf_import(new_conf, config_fn, true);
-		if (ret != KNOT_EOK) {
-			log_fatal("failed to load configuration file (%s)",
-			          knot_strerror(ret));
-			conf_free(new_conf, false);
-			log_close();
-			return EXIT_FAILURE;
-		}
-
-		new_conf->filename = strdup(config_fn);
-	} else {
-		/* Open configuration database. */
-		int ret = conf_new(&new_conf, conf_scheme, config_db, false);
-		if (ret != KNOT_EOK) {
-			log_fatal("failed to open configuration database '%s' "
-			          "(%s)", config_db, knot_strerror(ret));
-			log_close();
-			return EXIT_FAILURE;
-		}
-	}
-
-	/* Run post-open config operations. */
-	int ret = conf_post_open(new_conf);
+	/* Set up the configuration */
+	int ret = set_config(confdb, config);
 	if (ret != KNOT_EOK) {
-		log_fatal("failed to use configuration (%s)", knot_strerror(ret));
-		conf_free(new_conf, false);
 		log_close();
 		return EXIT_FAILURE;
 	}
 
-	/* Update to the new config. */
-	conf_update(new_conf);
-
-	/* Initialize logging subsystem. */
+	/* Reconfigure logging. */
 	log_reconfigure(conf(), NULL);
 
 	/* Initialize server. */
@@ -388,7 +404,7 @@ int main(int argc, char **argv)
 	ret = server_init(&server, conf_bg_threads(conf()));
 	if (ret != KNOT_EOK) {
 		log_fatal("failed to initialize server (%s)", knot_strerror(ret));
-		conf_free(conf(), false);
+		conf_free(conf());
 		log_close();
 		return EXIT_FAILURE;
 	}
@@ -406,25 +422,25 @@ int main(int argc, char **argv)
 		log_fatal("failed to drop privileges");
 		server_wait(&server);
 		server_deinit(&server);
-		conf_free(conf(), false);
+		conf_free(conf());
 		log_close();
 		return EXIT_FAILURE;
 	}
 
 	/* Check and create PID file. */
 	long pid = (long)getpid();
-	char *pidfile = NULL;
 	if (daemonize) {
-		pidfile = pid_check_and_create();
+		char *pidfile = pid_check_and_create();
 		if (pidfile == NULL) {
 			server_wait(&server);
 			server_deinit(&server);
-			conf_free(conf(), false);
+			conf_free(conf());
 			log_close();
 			return EXIT_FAILURE;
 		}
 
 		log_info("PID stored in '%s'", pidfile);
+		free(pidfile);
 		if (chdir(daemon_root) != 0) {
 			log_warning("failed to change working directory to %s",
 			            daemon_root);
@@ -454,9 +470,9 @@ int main(int argc, char **argv)
 		server_wait(&server);
 		server_deinit(&server);
 		rcu_unregister_thread();
-		pid_cleanup(pidfile);
+		pid_cleanup();
 		log_close();
-		conf_free(conf(), false);
+		conf_free(conf());
 		return EXIT_FAILURE;
 	}
 
@@ -477,15 +493,15 @@ int main(int argc, char **argv)
 	log_info("updating zone timers database");
 	write_timer_db(server.timers_db, server.zone_db);
 
+	/* Cleanup PID file. */
+	pid_cleanup();
+
 	/* Free server and configuration. */
 	server_deinit(&server);
-	conf_free(conf(), false);
+	conf_free(conf());
 
 	/* Unhook from RCU. */
 	rcu_unregister_thread();
-
-	/* Cleanup PID file. */
-	pid_cleanup(pidfile);
 
 	log_info("shutting down");
 	log_close();

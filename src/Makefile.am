@@ -55,7 +55,9 @@ libcontrib_la_SOURCES = 			\
 	contrib/sockaddr.h			\
 	contrib/string.c			\
 	contrib/string.h			\
+	contrib/time.h				\
 	contrib/tolower.h			\
+	contrib/trim.h				\
 	contrib/wire.h				\
 	contrib/wire_ctx.h			\
 	contrib/hat-trie/hat-trie.c		\
@@ -201,7 +203,13 @@ EXTRA_DIST += 					\
 	utils/knot1to2/cf-parse.y
 
 knotc_SOURCES =					\
-	knot/ctl/knotc_main.c
+	utils/knotc/commands.c			\
+	utils/knotc/commands.h			\
+	utils/knotc/estimator.c			\
+	utils/knotc/estimator.h			\
+	utils/knotc/remote.c			\
+	utils/knotc/remote.h			\
+	utils/knotc/main.c
 
 knotd_SOURCES =					\
 	knot/main.c
@@ -231,10 +239,8 @@ libknotd_la_SOURCES =				\
 	knot/conf/scheme.h			\
 	knot/conf/tools.c			\
 	knot/conf/tools.h			\
-	knot/ctl/estimator.c			\
-	knot/ctl/estimator.h			\
-	knot/ctl/process.c			\
-	knot/ctl/process.h			\
+	knot/ctl/commands.c			\
+	knot/ctl/commands.h			\
 	knot/ctl/remote.c			\
 	knot/ctl/remote.h			\
 	knot/dnssec/context.c			\
@@ -291,10 +297,10 @@ libknotd_la_SOURCES =				\
 	knot/common/fdset.h			\
 	knot/common/log.c			\
 	knot/common/log.h			\
+	knot/common/process.c			\
+	knot/common/process.h			\
 	knot/common/ref.c			\
 	knot/common/ref.h			\
-	knot/common/time.h			\
-	knot/common/trim.h			\
 	knot/server/dthreads.c			\
 	knot/server/dthreads.h			\
 	knot/server/journal.c			\

@@ -25,7 +25,6 @@
 
 #include "libknot/errcode.h"
 #include "knot/common/log.h"
-#include "knot/common/trim.h"
 #include "knot/server/server.h"
 #include "knot/server/udp-handler.h"
 #include "knot/server/tcp-handler.h"
@@ -35,6 +34,7 @@
 #include "knot/zone/zonedb-load.h"
 #include "contrib/net.h"
 #include "contrib/sockaddr.h"
+#include "contrib/trim.h"
 
 /*! \brief Minimal send/receive buffer sizes. */
 enum {
@@ -502,7 +502,7 @@ int server_reload(server_t *server, const char *cf)
 		if (ret != KNOT_EOK) {
 			log_fatal("failed to load configuration file (%s)",
 			          knot_strerror(ret));
-			conf_free(new_conf, true);
+			conf_free(new_conf);
 			return ret;
 		}
 
@@ -511,7 +511,7 @@ int server_reload(server_t *server, const char *cf)
 		if (ret != KNOT_EOK) {
 			log_fatal("failed to use configuration (%s)",
 			          knot_strerror(ret));
-			conf_free(new_conf, true);
+			conf_free(new_conf);
 			return ret;
 		}
 

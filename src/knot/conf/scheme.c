@@ -22,7 +22,6 @@
 #include "knot/conf/scheme.h"
 #include "knot/conf/tools.h"
 #include "knot/common/log.h"
-#include "knot/ctl/remote.h"
 #include "knot/server/rrl.h"
 #include "knot/updates/acl.h"
 #include "libknot/rrtype/opt.h"
@@ -52,7 +51,6 @@ const knot_lookup_t acl_actions[] = {
 	{ ACL_ACTION_NOTIFY,   "notify" },
 	{ ACL_ACTION_TRANSFER, "transfer" },
 	{ ACL_ACTION_UPDATE,   "update" },
-	{ ACL_ACTION_CONTROL,  "control" },
 	{ 0, NULL }
 };
 
@@ -98,6 +96,21 @@ static const yp_item_t desc_server[] = {
 	{ NULL }
 };
 
+static const yp_item_t desc_control[] = {
+	{ C_LISTEN,  YP_TSTR, YP_VSTR = { "knot.sock" } },
+	{ C_COMMENT, YP_TSTR, YP_VNONE },
+	{ NULL }
+};
+
+static const yp_item_t desc_log[] = {
+	{ C_TARGET,  YP_TSTR, YP_VNONE },
+	{ C_SERVER,  YP_TOPT, YP_VOPT = { log_severities, 0 } },
+	{ C_ZONE,    YP_TOPT, YP_VOPT = { log_severities, 0 } },
+	{ C_ANY,     YP_TOPT, YP_VOPT = { log_severities, 0 } },
+	{ C_COMMENT, YP_TSTR, YP_VNONE },
+	{ NULL }
+};
+
 static const yp_item_t desc_key[] = {
 	{ C_ID,      YP_TDNAME, YP_VNONE },
 	{ C_ALG,     YP_TOPT,   YP_VOPT = { key_algs, DNSSEC_TSIG_UNKNOWN } },
@@ -113,13 +126,6 @@ static const yp_item_t desc_acl[] = {
 	{ C_KEY,     YP_TREF,  YP_VREF = { C_KEY }, YP_FMULTI, { check_ref } },
 	{ C_ACTION,  YP_TOPT,  YP_VOPT = { acl_actions, ACL_ACTION_NONE }, YP_FMULTI },
 	{ C_DENY,    YP_TBOOL, YP_VNONE },
-	{ C_COMMENT, YP_TSTR,  YP_VNONE },
-	{ NULL }
-};
-
-static const yp_item_t desc_control[] = {
-	{ C_LISTEN,  YP_TADDR, YP_VADDR = { REMOTE_PORT, REMOTE_SOCKET } },
-	{ C_ACL,     YP_TREF,  YP_VREF = { C_ACL }, YP_FMULTI, { check_ref } },
 	{ C_COMMENT, YP_TSTR,  YP_VNONE },
 	{ NULL }
 };
@@ -169,21 +175,12 @@ static const yp_item_t desc_zone[] = {
 	{ NULL }
 };
 
-static const yp_item_t desc_log[] = {
-	{ C_TARGET,  YP_TSTR, YP_VNONE },
-	{ C_SERVER,  YP_TOPT, YP_VOPT = { log_severities, 0 } },
-	{ C_ZONE,    YP_TOPT, YP_VOPT = { log_severities, 0 } },
-	{ C_ANY,     YP_TOPT, YP_VOPT = { log_severities, 0 } },
-	{ C_COMMENT, YP_TSTR, YP_VNONE },
-	{ NULL }
-};
-
 const yp_item_t conf_scheme[] = {
 	{ C_SRV,  YP_TGRP, YP_VGRP = { desc_server } },
+	{ C_CTL,  YP_TGRP, YP_VGRP = { desc_control } },
 	{ C_LOG,  YP_TGRP, YP_VGRP = { desc_log }, YP_FMULTI },
 	{ C_KEY,  YP_TGRP, YP_VGRP = { desc_key }, YP_FMULTI, { check_key } },
 	{ C_ACL,  YP_TGRP, YP_VGRP = { desc_acl }, YP_FMULTI, { check_acl } },
-	{ C_CTL,  YP_TGRP, YP_VGRP = { desc_control } },
 	{ C_RMT,  YP_TGRP, YP_VGRP = { desc_remote }, YP_FMULTI, { check_remote } },
 /* MODULES */
 	{ C_MOD_SYNTH_RECORD, YP_TGRP, YP_VGRP = { scheme_mod_synth_record }, YP_FMULTI,

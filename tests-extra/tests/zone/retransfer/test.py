@@ -25,10 +25,10 @@ serial_slave = slave.zone_wait(zone)
 assert serial_master <= serial_slave
 
 # Force refresh
-slave.ctl("-f refresh example.com.")
+slave.ctl("zone-retransfer example.com.")
 t.sleep(2)
 
 serial_slave = slave.zone_wait(zone)
-compare(serial_slave, serial_master, "Forced refresh")
+compare(serial_slave, serial_master, "Serial after retransfer")
 
 t.end()

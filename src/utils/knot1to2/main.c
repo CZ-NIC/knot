@@ -70,7 +70,7 @@ static int convert(const char *file_out, const char *file_in)
 		"# the conversion cannot be perfect. It is important to do a review\n"
 		"# of this file (see the documentation).\n"
 		"# It is also possible to reformat the file via knotc, like:\n"
-		"#   knotc -c ./this_file.conf export ./reformatted_file.conf\n"
+		"#   knotc -c ./this_file.conf conf-export ./reformatted_file.conf\n"
 	       );
 
 	share_t share = {
@@ -80,13 +80,12 @@ static int convert(const char *file_out, const char *file_in)
 		.remotes = hattrie_create(),
 		.acl_xfer = hattrie_create(),
 		.acl_notify = hattrie_create(),
-		.acl_update = hattrie_create(),
-		.acl_control = hattrie_create(),
+		.acl_update = hattrie_create()
 	};
 
 	// Parse the input file multiple times to get some context.
 	int ret = 0;
-	for (int i = R_SYS; i <= R_LOG; i++) {
+	for (int i = R_SYS; i <= R_ZONE; i++) {
 		ret = run_parser(file_in, i, &share);
 		if (ret != 0) {
 			break;
@@ -116,7 +115,6 @@ static int convert(const char *file_out, const char *file_in)
 	hattrie_free(share.acl_xfer);
 	hattrie_free(share.acl_notify);
 	hattrie_free(share.acl_update);
-	hattrie_free(share.acl_control);
 
 	fclose(out);
 

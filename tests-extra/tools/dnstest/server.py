@@ -226,10 +226,6 @@ class Server(object):
         self.ctl("reload")
         time.sleep(Server.START_WAIT)
 
-    def flush(self):
-        self.ctl("flush")
-        time.sleep(Server.START_WAIT)
-
     def running(self):
         proc = psutil.Process(self.proc.pid)
         status = proc.status
@@ -668,6 +664,10 @@ class Bind(Server):
         ctltcp = super()._check_socket("tcp", self.ctlport)
         return (tcp and udp and ctltcp)
 
+    def flush(self):
+        self.ctl("flush")
+        time.sleep(Server.START_WAIT)
+
     def _str(self, conf, name, value):
         if value and value != True:
             conf.item_str(name, value)
@@ -831,6 +831,10 @@ class Knot(Server):
         tcp = super()._check_socket("tcp", self.port)
         udp = super()._check_socket("udp", self.port)
         return (tcp and udp)
+
+    def flush(self):
+        self.ctl("zone-flush")
+        time.sleep(Server.START_WAIT)
 
     def _on_str_hex(self, conf, name, value):
         if value == True:

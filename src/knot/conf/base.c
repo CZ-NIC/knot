@@ -88,11 +88,47 @@ static void rm_dir(const char *path)
 	}
 }
 
+static int init_and_check(
+	conf_t *conf,
+	conf_flag_t flags)
+{
+	if (conf == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	knot_db_txn_t txn;
+	unsigned txn_flags = (flags & CONF_FREADONLY) ? KNOT_DB_RDONLY : 0;
+	int ret = conf->api->txn_begin(conf->db, &txn, txn_flags);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	// Initialize the database.
+	if (!(flags & CONF_FREADONLY)) {
+		ret = conf_db_init(conf, &txn, false);
+		if (ret != KNOT_EOK) {
+			conf->api->txn_abort(&txn);
+			return ret;
+		}
+	}
+
+	// Check the database.
+	if (!(flags & CONF_FNOCHECK)) {
+		ret = conf_db_check(conf, &txn);
+		if (ret < KNOT_EOK) {
+			conf->api->txn_abort(&txn);
+			return ret;
+		}
+	}
+
+	return conf->api->txn_commit(&txn);
+}
+
 int conf_new(
 	conf_t **conf,
 	const yp_item_t *scheme,
 	const char *db_dir,
-	bool read_only)
+	conf_flag_t flags)
 {
 	if (conf == NULL) {
 		return KNOT_EINVAL;
@@ -111,20 +147,18 @@ int conf_new(
 		return ret;
 	}
 
-	// Prepare namedb api.
+	// Initialize a config mempool.
 	out->mm = malloc(sizeof(knot_mm_t));
 	mm_ctx_mempool(out->mm, MM_DEFAULT_BLKSIZE);
+
+	// Set the DB api.
+	out->api = knot_db_lmdb_api();
 	struct knot_db_lmdb_opts lmdb_opts = KNOT_DB_LMDB_OPTS_INITIALIZER;
 	lmdb_opts.mapsize = 500 * 1024 * 1024;
 	lmdb_opts.flags.env = KNOT_DB_LMDB_NOTLS;
 
-	// Set read-only mode.
-	if (read_only) {
-		lmdb_opts.flags.env |= KNOT_DB_LMDB_RDONLY;
-	}
-
-	// Open database.
 	if (db_dir == NULL) {
+		// Prepare a temporary database.
 		char tpl[] = "/tmp/knot-confdb.XXXXXX";
 		lmdb_opts.path = mkdtemp(tpl);
 		if (lmdb_opts.path == NULL) {
@@ -132,39 +166,29 @@ int conf_new(
 			ret = KNOT_ENOMEM;
 			goto new_error;
 		}
-		out->api = knot_db_lmdb_api();
-		ret = out->api->init(&out->db, out->mm, &lmdb_opts);
-
-		// Remove opened database to ensure it is temporary.
-		rm_dir(tpl);
 	} else {
+		// Set the specified database.
 		lmdb_opts.path = db_dir;
-		out->api = knot_db_lmdb_api();
-		ret = out->api->init(&out->db, out->mm, &lmdb_opts);
+
+		// Set the read-only mode.
+		if (flags & CONF_FREADONLY) {
+			lmdb_opts.flags.env |= KNOT_DB_LMDB_RDONLY;
+		}
 	}
 
-	// Check database opening.
+	// Open the database.
+	ret = out->api->init(&out->db, out->mm, &lmdb_opts);
 	if (ret != KNOT_EOK) {
 		goto new_error;
+	}
+
+	// Remove opened database to ensure it is temporary.
+	if (db_dir == NULL) {
+		rm_dir(lmdb_opts.path);
 	}
 
 	// Initialize and check the database.
-	knot_db_txn_t txn;
-	unsigned flags = read_only ? KNOT_DB_RDONLY : 0;
-	ret = out->api->txn_begin(out->db, &txn, flags);
-	if (ret != KNOT_EOK) {
-		out->api->deinit(out->db);
-		goto new_error;
-	}
-
-	ret = read_only ? conf_db_check(out, &txn) : conf_db_init(out, &txn);
-	if (ret != KNOT_EOK) {
-		out->api->txn_abort(&txn);
-		out->api->deinit(out->db);
-		goto new_error;
-	}
-
-	ret = out->api->txn_commit(&txn);
+	ret = init_and_check(out, flags);
 	if (ret != KNOT_EOK) {
 		out->api->deinit(out->db);
 		goto new_error;
@@ -216,7 +240,6 @@ int conf_clone(
 	out->api = s_conf->api;
 	out->mm = s_conf->mm;
 	out->db = s_conf->db;
-	out->filename = s_conf->filename;
 
 	// Open common read-only transaction.
 	ret = out->api->txn_begin(out->db, &out->read_txn, KNOT_DB_RDONLY);
@@ -226,8 +249,15 @@ int conf_clone(
 		return ret;
 	}
 
+	// Copy the filename.
+	if (s_conf->filename != NULL) {
+		out->filename = strdup(s_conf->filename);
+	}
+
 	// Initialize query modules list.
 	init_list(&out->query_modules);
+
+	out->is_clone = true;
 
 	*conf = out;
 
@@ -262,19 +292,21 @@ void conf_update(
 		return;
 	}
 
+	conf->is_clone = false;
+
 	conf_t **current_conf = &s_conf;
 	conf_t *old_conf = rcu_xchg_pointer(current_conf, conf);
 
 	synchronize_rcu();
 
 	if (old_conf) {
-		conf_free(old_conf, true);
+		old_conf->is_clone = true;
+		conf_free(old_conf);
 	}
 }
 
 void conf_free(
-	conf_t *conf,
-	bool is_clone)
+	conf_t *conf)
 {
 	if (conf == NULL) {
 		return;
@@ -282,6 +314,7 @@ void conf_free(
 
 	yp_scheme_free(conf->scheme);
 	conf->api->txn_abort(&conf->read_txn);
+	free(conf->filename);
 	free(conf->hostname);
 
 	if (conf->io.txn != NULL) {
@@ -290,11 +323,10 @@ void conf_free(
 
 	conf_deactivate_modules(conf, &conf->query_modules, &conf->query_plan);
 
-	if (!is_clone) {
+	if (!conf->is_clone) {
 		conf->api->deinit(conf->db);
 		mp_delete(conf->mm->ctx);
 		free(conf->mm);
-		free(conf->filename);
 	}
 
 	free(conf);
@@ -670,15 +702,8 @@ int conf_import(
 		goto import_error;
 	}
 
-	// Drop the current DB content.
-	ret = conf->api->clear(&txn);
-	if (ret != KNOT_EOK) {
-		conf->api->txn_abort(&txn);
-		goto import_error;
-	}
-
-	// Initialize new DB.
-	ret = conf_db_init(conf, &txn);
+	// Initialize the DB.
+	ret = conf_db_init(conf, &txn, true);
 	if (ret != KNOT_EOK) {
 		conf->api->txn_abort(&txn);
 		goto import_error;
@@ -704,6 +729,13 @@ int conf_import(
 	ret = conf->api->txn_begin(conf->db, &conf->read_txn, KNOT_DB_RDONLY);
 	if (ret != KNOT_EOK) {
 		goto import_error;
+	}
+
+	// Reset the filename.
+	free(conf->filename);
+	conf->filename = NULL;
+	if (is_file) {
+		conf->filename = strdup(input);
 	}
 
 	ret = KNOT_EOK;

@@ -161,7 +161,7 @@ static void test_conf_zonefile(void)
 		free(file);
 	}
 
-	conf_free(conf(), false);
+	conf_free(conf());
 	knot_dname_free(&zone1, NULL);
 	knot_dname_free(&zone2, NULL);
 	knot_dname_free(&zone3, NULL);

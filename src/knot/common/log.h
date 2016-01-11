@@ -60,6 +60,12 @@ typedef enum {
 	LOG_ANY    = 7  /*!< Any module. */
 } logsrc_t;
 
+/*! \brief Logging format flags. */
+typedef enum {
+	LOG_FNO_TIMESTAMP = 1 << 0, /*!< Don't print timestamp prefix. */
+	LOG_FNO_INFO      = 1 << 1  /*!< Don't print info level prefix. */
+} logflag_t;
+
 /*! \brief Format for timestamps in log files. */
 #define KNOT_LOG_TIME_FORMAT "%Y-%m-%dT%H:%M:%S"
 
@@ -82,6 +88,11 @@ void log_close();
  * \brief Return true if log is open.
  */
 bool log_isopen();
+
+/*!
+ * \brief Set logging format flag.
+ */
+void log_flag_set(logflag_t flag);
 
 /*!
  * \brief Return log levels for a given facility.
