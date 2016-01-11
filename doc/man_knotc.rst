@@ -123,7 +123,7 @@ Empty *zone* parameter means all zones.
 
 Type *item* parameter in the form of *section*\ [**[**\ *id*\ **]**\ ][**.**\ *name*].
 
-(*) indicates a local operation which requires a configuration available.
+(*) indicates a local operation which requires a configuration.
 
 Examples
 --------

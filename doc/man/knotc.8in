@@ -143,7 +143,7 @@ Empty \fIzone\fP parameter means all zones.
 .sp
 Type \fIitem\fP parameter in the form of \fIsection\fP[\fB[\fP\fIid\fP\fB]\fP][\fB\&.\fP\fIname\fP].
 .sp
-(*) indicates a local operation which requires a configuration available.
+(*) indicates a local operation which requires a configuration.
 .SH EXAMPLES
 .SS Reload the whole server configuration
 .INDENT 0.0
