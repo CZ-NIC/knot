@@ -252,10 +252,8 @@ int log_levels_add(int facility, logsrc_t src, uint8_t levels)
 
 static int emit_log_msg(int level, const char *zone, size_t zone_len, const char *msg)
 {
-	rcu_read_lock();
 	struct log_sink *log = s_log;
 	if(!log_isopen()) {
-		rcu_read_unlock();
 		return KNOT_ERROR;
 	}
 
@@ -285,7 +283,7 @@ static int emit_log_msg(int level, const char *zone, size_t zone_len, const char
 
 	/* Prefix date and time. */
 	char tstr[LOG_BUFLEN] = { 0 };
-	if (!log_isopen() || !(s_log->flags & LOG_FNO_TIMESTAMP)) {
+	if (!(s_log->flags & LOG_FNO_TIMESTAMP)) {
 		struct tm lt;
 		struct timeval tv;
 		gettimeofday(&tv, NULL);
@@ -317,8 +315,6 @@ static int emit_log_msg(int level, const char *zone, size_t zone_len, const char
 			}
 		}
 	}
-
-	rcu_read_unlock();
 
 	if (ret < 0) {
 		return KNOT_EINVAL;
@@ -371,11 +367,14 @@ static int log_msg_text(int level, const char *zone, const char *fmt, va_list ar
 	char *write = sbuf;
 	size_t capacity = sizeof(sbuf) - 1;
 
+	rcu_read_lock();
+
 	/* Prefix error level. */
 	if (level != LOG_INFO || !log_isopen() || !(s_log->flags & LOG_FNO_INFO)) {
 		const char *prefix = level_prefix(level);
 		ret = log_msg_add(&write, &capacity, "%s: ", prefix);
 		if (ret != KNOT_EOK) {
+			rcu_read_unlock();
 			return ret;
 		}
 	}
@@ -391,6 +390,7 @@ static int log_msg_text(int level, const char *zone, const char *fmt, va_list ar
 
 		ret = log_msg_add(&write, &capacity, "[%.*s] ", zone_len, zone);
 		if (ret != KNOT_EOK) {
+			rcu_read_unlock();
 			return ret;
 		}
 	}
@@ -402,6 +402,8 @@ static int log_msg_text(int level, const char *zone, const char *fmt, va_list ar
 	if (ret >= 0) {
 		ret = emit_log_msg(level, zone, zone_len, sbuf);
 	}
+
+	rcu_read_unlock();
 
 	return ret;
 }
