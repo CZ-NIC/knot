@@ -15,9 +15,9 @@ the process or ``SIGHUP`` to reload the configuration.
 
 If you pass neither configuration file (``-c`` parameter) nor configuration
 database (``-C`` parameter), the server will first attempt to use the default
-configuration database stored in ``LOCALSTATEDIR/lib/knot/confdb`` or the
-default configuration file stored in ``SYSCONFDIR/knot/knot.conf``. Both the
-default paths  can be reconfigured with ``--with-storage=path`` or
+configuration database stored in ``/var/lib/knot/confdb`` or the
+default configuration file stored in ``/etc/knot/knot.conf``. Both the
+default paths can be reconfigured with ``--with-storage=path`` or
 ``--with-configdir=path`` respectively.
 
 Example of server start as a daemon::
@@ -71,7 +71,7 @@ configuration will be temporary (until the server stop).
 
 Most of the commands get an item name and value parameters. The item name is
 in the form of ``section[identifier].name``. If the item is multivalued,
-more values can be specified with a space separation.
+more values can be specified as individual (command line) arguments.
 
 To get the list of configuration sections or to get the list of section items::
 
@@ -106,7 +106,7 @@ section identifier or to add a value to all identified sections::
     $ knotc conf-set zone.slave slave2
 
 *Note:* Also the include operation can be performed. A non-absolute file
-location is relative to the server binary path (not to the control binary path)!::
+location is relative to the server binary path, not to the control binary path!::
 
     $ knotc conf-set include /tmp/new_zones.conf
 

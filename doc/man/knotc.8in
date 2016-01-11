@@ -93,33 +93,37 @@ Trigger a zone retransfer (if slave).
 \fBzone\-flush\fP [\fIzone\fP\&...]
 Trigger a zone journal flush into the zone file.
 .TP
-\fBzone\-sing\fP [\fIzone\fP\&...]
+\fBzone\-sign\fP [\fIzone\fP\&...]
 Trigger a zone resign (if enabled).
+.TP
+\fBconf\-init\fP
+Initialize the configuration database. (*)
 .TP
 \fBconf\-check\fP
 Check the server configuration. (*)
 .TP
 \fBconf\-import\fP \fIfilename\fP
-Import a config file into the confdb. Ensure the server is not accessing
-the confdb! (*)
+Import a configuration file into the configuration database. Ensure the
+server is not using the configuration database! (*)
 .TP
 \fBconf\-export\fP \fIfilename\fP
-Export the confdb into a config file. (*)
+Export the configuration database into a config file. (*)
 .TP
 \fBconf\-list\fP [\fIitem\fP]
-List the confdb sections or section items.
+List the configuration database sections or section items.
 .TP
 \fBconf\-read\fP [\fIitem\fP]
-Read the item from the active confdb.
+Read the item from the active configuration database.
 .TP
 \fBconf\-begin\fP
-Begin a writing confdb transaction. Only one transaction can be opened at a time.
+Begin a writing configuration database transaction. Only one transaction
+can be opened at a time.
 .TP
 \fBconf\-commit\fP
-Commit the confdb transaction.
+Commit the configuration database transaction.
 .TP
 \fBconf\-abort\fP
-Rollback the confdb transaction.
+Rollback the configuration database transaction.
 .TP
 \fBconf\-diff\fP [\fIitem\fP]
 Get the item difference in the transaction.
@@ -139,7 +143,7 @@ Empty \fIzone\fP parameter means all zones.
 .sp
 Type \fIitem\fP parameter in the form of \fIsection\fP[\fB[\fP\fIid\fP\fB]\fP][\fB\&.\fP\fIname\fP].
 .sp
-(*) indicates a local operation requiring a configuration specified.
+(*) indicates a local operation which requires a configuration available.
 .SH EXAMPLES
 .SS Reload the whole server configuration
 .INDENT 0.0
@@ -152,13 +156,13 @@ $ knotc reload
 .fi
 .UNINDENT
 .UNINDENT
-.SS Flush the example.com and example.eu zones
+.SS Flush the example.com and example.org zones
 .INDENT 0.0
 .INDENT 3.5
 .sp
 .nf
 .ft C
-$ knotc zone\-flush example.com example.eu
+$ knotc zone\-flush example.com example.org
 .ft P
 .fi
 .UNINDENT
@@ -196,15 +200,15 @@ $ knotc conf\-read zone[example.com].master
 .fi
 .UNINDENT
 .UNINDENT
-.SS Add example.eu zone with a zonefile location
+.SS Add example.org zone with a zonefile location
 .INDENT 0.0
 .INDENT 3.5
 .sp
 .nf
 .ft C
 $ knotc conf\-begin
-$ knotc conf\-set zone[example.eu]
-$ knotc conf\-set zone[example.eu].file "/var/zones/example.eu.zone"
+$ knotc conf\-set zone[example.org]
+$ knotc conf\-set zone[example.org].file "/var/zones/example.org.zone"
 $ knotc conf\-commit
 .ft P
 .fi

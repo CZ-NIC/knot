@@ -54,7 +54,7 @@ static void print_help(void)
 	       "Note:\n"
 	       " Empty <zone> parameter means all zones.\n"
 	       " Type <item> parameter in the form of <section>[<identifier>].<name>.\n"
-	       " (*) indicates a local operation requiring a configuration specified.\n");
+	       " (*) indicates a local operation which requires a configuration available.\n");
 }
 
 static int set_config(const cmd_desc_t *desc, const char *confdb,

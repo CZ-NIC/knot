@@ -71,37 +71,38 @@ Actions
 **zone-flush** [*zone*...]
   Trigger a zone journal flush into the zone file.
 
-**zone-sing** [*zone*...]
+**zone-sign** [*zone*...]
   Trigger a zone resign (if enabled).
 
 
 **conf-init**
-  Initialize the confdb. (*)
+  Initialize the configuration database. (*)
 
 **conf-check**
   Check the server configuration. (*)
 
 **conf-import** *filename*
-  Import a config file into the confdb. Ensure the server is not accessing
-  the confdb! (*)
+  Import a configuration file into the configuration database. Ensure the
+  server is not using the configuration database! (*)
 
 **conf-export** *filename*
-  Export the confdb into a config file. (*)
+  Export the configuration database into a config file. (*)
 
 **conf-list** [*item*]
-  List the confdb sections or section items.
+  List the configuration database sections or section items.
 
 **conf-read** [*item*]
-  Read the item from the active confdb.
+  Read the item from the active configuration database.
 
 **conf-begin**
-  Begin a writing confdb transaction. Only one transaction can be opened at a time.
+  Begin a writing configuration database transaction. Only one transaction
+  can be opened at a time.
 
 **conf-commit**
-  Commit the confdb transaction.
+  Commit the configuration database transaction.
 
 **conf-abort**
-  Rollback the confdb transaction.
+  Rollback the configuration database transaction.
 
 **conf-diff** [*item*]
   Get the item difference in the transaction.
@@ -122,7 +123,7 @@ Empty *zone* parameter means all zones.
 
 Type *item* parameter in the form of *section*\ [**[**\ *id*\ **]**\ ][**.**\ *name*].
 
-(*) indicates a local operation requiring a configuration specified.
+(*) indicates a local operation which requires a configuration available.
 
 Examples
 --------
@@ -134,12 +135,12 @@ Reload the whole server configuration
 
   $ knotc reload
 
-Flush the example.com and example.eu zones
-..........................................
+Flush the example.com and example.org zones
+...........................................
 
 ::
 
-  $ knotc zone-flush example.com example.eu
+  $ knotc zone-flush example.com example.org
 
 Get the current server configuration
 ....................................
@@ -162,14 +163,14 @@ Get the master remotes for the example.com zone
 
   $ knotc conf-read zone[example.com].master
 
-Add example.eu zone with a zonefile location
-............................................
+Add example.org zone with a zonefile location
+.............................................
 
 ::
 
   $ knotc conf-begin
-  $ knotc conf-set zone[example.eu]
-  $ knotc conf-set zone[example.eu].file "/var/zones/example.eu.zone"
+  $ knotc conf-set zone[example.org]
+  $ knotc conf-set zone[example.org].file "/var/zones/example.org.zone"
   $ knotc conf-commit
 
 See Also
