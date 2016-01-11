@@ -121,12 +121,7 @@ static int init_and_check(
 		}
 	}
 
-	ret = conf->api->txn_commit(&txn);
-	if (ret != KNOT_EOK) {
-		return ret;
-	}
-
-	return KNOT_EOK;
+	return conf->api->txn_commit(&txn);
 }
 
 int conf_new(
