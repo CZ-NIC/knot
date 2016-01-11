@@ -259,7 +259,7 @@ AS_IF([test "$enable_daemon" = "yes"],[
 
 AS_IF([test "$with_urcu" != "no"], [
   PKG_CHECK_MODULES([liburcu], liburcu, [
-    liburcu_PKGCONFIG="liburcu >= 0.4.0"
+    liburcu_PKGCONFIG=",liburcu >= 0.4.0"
     AC_SUBST([liburcu_PKGCONFIG])
     with_urcu=yes
   ],[

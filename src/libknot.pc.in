@@ -7,7 +7,7 @@ Name: libknot
 Description: Knot DNS library
 URL: https://www.knot-dns.cz
 Version: @PACKAGE_VERSION@
-Requires.private: libdnssec = @PACKAGE_VERSION@, @liburcu_PKGCONFIG@
+Requires.private: libdnssec = @PACKAGE_VERSION@ @liburcu_PKGCONFIG@
 Libs: -L${libdir} -lknot
 Libs.private: -ldnssec @lmdb_LIBS@
 Cflags: -I${includedir} @lmdb_CFLAGS@
