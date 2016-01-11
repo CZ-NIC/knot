@@ -51,23 +51,24 @@ static pid_t pid_read(const char *filename)
 		return 0;
 	}
 
+	size_t len = 0;
+	char buf[64] = { 0 };
+
 	FILE *fp = fopen(filename, "r");
 	if (fp == NULL) {
 		return 0;
 	}
 
-	char buf[64];
-	int readb = 0;
-	while (fread(buf + readb, 1, 1, fp) > 0) {
-		if (++readb >= sizeof(buf) - 1) {
-			break;
-		}
+	/* Read the content of the file. */
+	int c;
+	while (len < (sizeof(buf) - 1) && (c = fgetc(fp)) != EOF) {
+		buf[len++] = (char)c;
 	}
-	buf[readb] = '\0';
+
 	fclose(fp);
 
-	/* Check read result. */
-	if (readb < 1) {
+	/* Check for empty file. */
+	if (len < 1) {
 		return 0;
 	}
 
