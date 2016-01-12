@@ -91,7 +91,7 @@ static char *error_messages[(-ZC_ERR_UNKNOWN) + 1] = {
 	"NSEC3, node contains extra record, unsupported",
 
 	[-ZC_ERR_CNAME_EXTRA_RECORDS] =
-	"CNAME, node contains other records",
+	"CNAME, node contains other records", // tohle se jaksi nepouziva, bud zrusit nebo zaqcit pozuvivat
 	[-ZC_ERR_DNAME_CHILDREN] =
 	"DNAME, node has children",
 	[-ZC_ERR_CNAME_EXTRA_RECORDS_DNSSEC] =
@@ -132,15 +132,21 @@ void err_handler_init(err_handler_t *h)
 	h->options.log_rrsigs = 0;
 	h->options.log_nsec = 0;
 	h->options.log_nsec3 = 0;
+
+	init_list(&h->error_list);
 }
 
-err_handler_t *err_handler_new()
+err_handler_t *err_handler_new(knot_mm_t *mm)
 {
-	err_handler_t *handler= malloc(sizeof(err_handler_t));
+	err_handler_t *handler = mm->alloc(mm, sizeof(err_handler_t));
 	if (handler == NULL) {
 		return NULL;
 	}
-	err_handler_init(handler);
+	memset(handler, 0, sizeof(err_handler_t));
+	memset(handler->errors, 0, sizeof(unsigned) * (-ZC_ERR_UNKNOWN + 1));
+
+	init_list(&handler->error_list);
+	handler->mm = mm;
 
 	handler->options.log_cname = 1;
 	handler->options.log_glue = 1;
@@ -149,6 +155,17 @@ err_handler_t *err_handler_new()
 	handler->options.log_nsec3 = 1;
 
 	return handler;
+}
+
+void err_handler_free(err_handler_t *h)
+{
+	err_node_t *node, *next;
+	WALK_LIST_DELSAFE(node, next, h->error_list) {
+		h->mm->free(node->data);
+		h->mm->free(node);
+	}
+
+	h->mm->free(h);
 }
 
 /*!
@@ -195,9 +212,15 @@ static void log_error_from_node(err_handler_t *handler,
 int err_handler_handle_error(err_handler_t *handler, const zone_contents_t *zone,
 			     const zone_node_t *node, int error, const char *data)
 {
-	err_node_t * log = malloc(sizeof(err_node_t));
+	err_node_t * log = handler->mm->alloc(handler->mm, sizeof(err_node_t));
 	log->error = error;
-	log->data = data ? strdup(data) : NULL;
+	if (data != NULL) {
+		log->data = handler->mm->alloc(handler->mm, strlen(data) + 1);
+		strcpy(log->data, data);
+	} else {
+		log->data = NULL;
+	}
+
 	log->name = node->owner;
 	log->zone_name = zone->apex->owner;
 	add_head(&handler->error_list, (node_t*)log);
@@ -693,59 +716,6 @@ static int check_nsec3_node_in_zone(zone_contents_t *zone, zone_node_t *node,
 	return KNOT_EOK;
 }
 
-static int sem_check_node_mandatory(const zone_contents_t *zone,
-                                    const zone_node_t *node,
-                                    err_handler_t *handler, bool *fatal_error)
-{
-	printf("RRsetCOUNT: %d\n", node->rrset_count);
-
-	const knot_rdataset_t *cname_rrs = node_rdataset(node, KNOT_RRTYPE_CNAME);
-	if (cname_rrs) {
-		if (node->rrset_count != 1) {
-			/* With DNSSEC node can contain RRSIGs or NSEC */
-			if (!(node_rrtype_exists(node, KNOT_RRTYPE_NSEC) ||
-			      node_rrtype_exists(node, KNOT_RRTYPE_RRSIG)) ||
-			    node->rrset_count > 3) {
-				*fatal_error = true;
-				err_handler_handle_error(handler, zone, node,
-				ZC_ERR_CNAME_EXTRA_RECORDS_DNSSEC, NULL);
-			}
-		}
-
-		if (cname_rrs->rr_count != 1) {
-			*fatal_error = true;
-			err_handler_handle_error(handler, zone, node,
-			                         ZC_ERR_CNAME_MULTIPLE, NULL);
-		}
-	}
-
-	const knot_rdataset_t *dname_rrs = node_rdataset(node, KNOT_RRTYPE_DNAME);
-	if (dname_rrs) {
-		if (cname_rrs) {
-			*fatal_error = true;
-			err_handler_handle_error(handler, zone, node,
-			                         ZC_ERR_CNAME_EXTRA_RECORDS,
-			                         NULL);
-		}
-
-		if (node->children != 0) {
-			*fatal_error = true;
-			err_handler_handle_error(handler, zone, node,
-			                         ZC_ERR_DNAME_CHILDREN,
-			                         "error triggered by parent node");
-		}
-	}
-
-	if (node->parent && node_rrtype_exists(node->parent, KNOT_RRTYPE_DNAME)) {
-		*fatal_error = true;
-		err_handler_handle_error(handler, zone, node,
-		                         ZC_ERR_DNAME_CHILDREN,
-		                         "error triggered by child node");
-	}
-
-	return KNOT_EOK;
-}
-
 static int sem_check_node_optional(const zone_contents_t *zone,
                                    const zone_node_t *node,
                                    err_handler_t *handler)
@@ -801,39 +771,6 @@ static int sem_check_node_optional(const zone_contents_t *zone,
 	return KNOT_EOK;
 }
 
-/*!
- * \brief Run semantic checks for node without DNSSEC-related types.
- *
- * \param zone Current zone.
- * \param node Node to be checked.
- * \param handler Error handler.
- * \param only_mandatory Mandatory/optional test switch
- * \param fatal_error Set to true if error is blocking zone from being loaded
- *
- * \retval KNOT_EOK if no error was found.
- *
- * \return Appropriate error code if error was found.
- */
-int sem_check_node_plain(const zone_contents_t *zone,
-                         const zone_node_t *node,
-                         err_handler_t *handler,
-                         bool only_mandatory,
-                         bool *fatal_error)
-{
-	assert(handler);
-	*fatal_error = false;
-	if (only_mandatory) {
-		/* Check CNAME and DNAME, else no-op. */
-		return sem_check_node_mandatory(zone, node, handler,
-		                                fatal_error);
-	} else {
-		/*
-		 * This is an extra run, so we do not need to check mandatory
-		 * things, since they've already been checked during parsing.
-		 */
-		return sem_check_node_optional(zone, node, handler);
-	}
-}
 
 /*!
  * \brief Run semantic checks for node with DNSSEC-related types.
@@ -949,54 +886,14 @@ static int semantic_checks_dnssec(zone_contents_t *zone,
 	return KNOT_EOK;
 }
 
-/*!
- * \brief Function called by zone traversal function. Used to call
- *        knot_zone_save_enclosers.
- *
- * \param node Node to be searched.
- * \param data Arguments.
- */
-//static int do_checks_in_tree(zone_node_t *node, void *data)
-//{
-//	arg_t *args = (arg_t *)data;
-//
-//	zone_contents_t *zone = (zone_contents_t *)args->arg1;
-//
-//	zone_node_t **last_node = (zone_node_t **)args->arg5;
-//
-//	err_handler_t *handler = (err_handler_t *)args->arg6;
-//
-//	char do_checks = *((char *)(args->arg3));
-//
-//	if (do_checks) {
-//		sem_check_node_plain(zone, node, handler, false,
-//		                      (bool *)args->arg7);
-//	} else {
-//		assert(handler);
-//		/* All CNAME/DNAME checks are mandatory. */
-//		handler->options.log_cname = 1;
-//		sem_check_node_plain(zone, node, handler, true,
-//		                      (bool *)args->arg7);
-//		return KNOT_EOK;
-//	}
-//
-//	if (do_checks == SEM_CHECK_NSEC || do_checks == SEM_CHECK_NSEC3) {
-//		semantic_checks_dnssec(zone, node, last_node,
-//				       handler, do_checks == SEM_CHECK_NSEC3);
-//	}
-//
-//	return KNOT_EOK;
-//}
-
-
-static void cname_multiple(const zone_node_t *node, semchecks_data_t *data)
+static void check_cname_multiple(const zone_node_t *node, semchecks_data_t *data)
 {
-	const knot_rdataset_t *cname_rrs = node_rdataset(node, KNOT_RRTYPE_CNAME);
+	const  knot_rdataset_t *cname_rrs = node_rdataset(node, KNOT_RRTYPE_CNAME);
 	if (cname_rrs == NULL) {
 		return;
 	}
 
-	printf("%s, rrs:%u rr:%u\n", node->owner, node->rrset_count, cname_rrs->rr_count);
+/// \TODO	printf("%s, rrs:%u rr:%u\n", node->owner, node->rrset_count, cname_rrs->rr_count);
 
 	unsigned rrset_limit = 1;
 	/* With DNSSEC node can contain RRSIGs or NSEC */
@@ -1011,12 +908,35 @@ static void cname_multiple(const zone_node_t *node, semchecks_data_t *data)
 		data->fatal_error = true;
 		err_handler_handle_error(data->handler,
 		data->zone, node,
-		ZC_ERR_CNAME_EXTRA_RECORDS_DNSSEC, NULL);
+		rrset_limit > 1 ?
+		ZC_ERR_CNAME_EXTRA_RECORDS_DNSSEC :
+		ZC_ERR_CNAME_EXTRA_RECORDS, NULL);
 	}
 	if (cname_rrs->rr_count != 1) {
 		data->fatal_error = true;
 		err_handler_handle_error(data->handler, data->zone, node,
 		                         ZC_ERR_CNAME_MULTIPLE, NULL);
+	}
+}
+
+
+static void check_dname(const zone_node_t *node, semchecks_data_t *data)
+{
+	const knot_rdataset_t *dname_rrs = node_rdataset(node, KNOT_RRTYPE_DNAME);
+
+	if (dname_rrs != NULL && node->children != 0) {
+		data->fatal_error = true;
+		err_handler_handle_error(data->handler, data->zone, node,
+		                         ZC_ERR_DNAME_CHILDREN,
+		                         "error triggered by parent node");
+	}
+
+
+	if (node->parent != NULL && node_rrtype_exists(node->parent, KNOT_RRTYPE_DNAME)) {
+		data->fatal_error = true;
+		err_handler_handle_error(data->handler, data->zone, node,
+		                         ZC_ERR_DNAME_CHILDREN,
+		                         "error triggered by child node");
 	}
 }
 
@@ -1034,7 +954,8 @@ static int do_checks_in_tree(zone_node_t *node, void *data)
 
 	//! \todo Call checks from array or something
 	//! add more checks
-	cname_multiple(node, s_data);
+	check_cname_multiple(node, s_data);
+	check_dname(node, s_data);
 
 	s_data->last_node = node;
 

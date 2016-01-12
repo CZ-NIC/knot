@@ -27,6 +27,7 @@
 #include "knot/zone/node.h"
 #include "knot/zone/contents.h"
 #include "contrib/ucw/lists.h"
+#include "libknot/mm_ctx.h"
 
 enum check_levels {
 	SEM_CHECK_MANDATORY = 0,
@@ -119,13 +120,13 @@ struct err_handler {
 	unsigned errors[(-ZC_ERR_UNKNOWN) + 1]; /*!< Counting errors by type */
 	unsigned error_count; /*!< Total error count */
 	list_t error_list; /*!< List of all errors */
-	//mm_ctx_t mm;
+	knot_mm_t *mm;
 };
 
 typedef struct err_handler err_handler_t;
 
 typedef struct err_node {
-	node_t node;  /// < must be first
+	node_t node;  ///< must be first
 	int error;
 	knot_dname_t *zone_name;
 	knot_dname_t *name;
@@ -135,7 +136,7 @@ typedef struct err_node {
 
 typedef struct semchecks_data {
 	zone_contents_t *zone;
-	err_handler_t *handler; // < include fatal error or
+	err_handler_t *handler;
 	bool fatal_error;
 	zone_node_t *last_node;
 	enum check_levels level;
@@ -150,14 +151,14 @@ typedef struct semchecks_data {
  */
 void err_handler_init(err_handler_t *err_handler);
 
-void err_handler_del(err_handler_t *h);
+void err_handler_free(err_handler_t *h);
 
 /*!
  * \brief Creates new semantic error handler.
  *
  * \return err_handler_t * Created error handler.
  */
-err_handler_t *err_handler_new(void);
+err_handler_t *err_handler_new(knot_mm_t *mm);
 
 /*!
  * \brief Called when error has been encountered in node. Will either log error

@@ -126,10 +126,10 @@ int zcreator_step(zcreator_t *zc, const knot_rrset_t *rr)
 	}
 	assert(node);
 
-	// Do node semantic checks
-	err_handler_t err_handler;
-	err_handler_init(&err_handler);
-	bool sem_fatal_error = false;
+//	// Do node semantic checks
+//	err_handler_t err_handler;
+//	err_handler_init(&err_handler);
+//	bool sem_fatal_error = false;
 
 //	ret = sem_check_node_plain(zc->z, node,
 //	                           &err_handler, true,
@@ -141,7 +141,8 @@ int zcreator_step(zcreator_t *zc, const knot_rrset_t *rr)
 		return ret;
 	}
 
-	return sem_fatal_error ? KNOT_ESEMCHECK : KNOT_EOK;
+	return KNOT_EOK;
+//	return sem_fatal_error ? KNOT_ESEMCHECK : KNOT_EOK;
 }
 
 /*! \brief Creates RR from parser input, passes it to handling function. */
@@ -303,16 +304,19 @@ zone_contents_t *zonefile_load(zloader_t *loader)
 			check_level = SEM_CHECK_NSEC3;
 		}
 	}
-	err_handler_t err_handler;
-	err_handler_init(&err_handler);
+
+	knot_mm_t mm;
+	mm_ctx_init(&mm);
+	err_handler_t *err_handler = err_handler_new(&mm);
+
 	ret = zone_do_sem_checks(zc->z, check_level,
-	                         &err_handler, first_nsec3_node,
+	                         err_handler, first_nsec3_node,
 	                         last_nsec3_node);
 	INFO(zname, "semantic check, completed");
 
-	err_handler_log_errors(&err_handler);
+	err_handler_log_errors(err_handler);
 
-	//err_handler_del(&err_handler);
+	err_handler_free(err_handler);
 
 	if (ret != KNOT_EOK) {
 		
