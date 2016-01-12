@@ -113,7 +113,7 @@ You can specify which remotes to allow for outgoing XFR and NOTIFY ``zones``::
 
     remotes {
       slave { address 127.0.0.1@53; }
-      any { address 0.0.0.0/0; }
+      all { address 0.0.0.0/0; }
       subnet1 { address 192.168.1.0/8; }
       subnet2 { address 192.168.2.0/8; }
     }
@@ -132,12 +132,12 @@ You can also secure outgoing XFRs with TSIG::
       key0 hmac-md5 "Wg=="; # keyname algorithm secret
     }
     remotes {
-      any { address 0.0.0.0/0; key key0; }
+      all { address 0.0.0.0/0; key key0; }
     }
     zones {
       example.com {
         file "/var/zones/example.com";
-        xfr-out any; # uses 'any' remote secured with TSIG key 'key0'
+        xfr-out all; # uses 'all' remote secured with TSIG key 'key0'
       }
     }
 
