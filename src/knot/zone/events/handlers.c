@@ -395,8 +395,10 @@ int event_load(zone_t *zone)
 fail:
 	zone_contents_deep_free(&contents);
 
-	/* Try to bootsrap the zone if local error. */
-	zone_events_schedule(zone, ZONE_EVENT_XFER, ZONE_EVENT_NOW);
+	/* Try to bootstrap the zone if local error. */
+	if (zone_is_slave(zone) && !zone_events_is_scheduled(zone, ZONE_EVENT_XFER)) {
+		zone_events_schedule(zone, ZONE_EVENT_XFER, ZONE_EVENT_NOW);
+	}
 
 	return ret;
 }
