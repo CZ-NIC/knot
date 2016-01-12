@@ -321,10 +321,10 @@ int event_load(zone_t *zone)
 	free(filename);
 	uint32_t dnssec_refresh = time(NULL);
 
-	zone_contents_t *contents;
+	zone_contents_t *contents = NULL;
 	int ret = zone_load_contents(conf(), zone->name, &contents);
 	if (ret != KNOT_EOK) {
-		return ret;
+		goto fail;
 	}
 
 	/* Store zonefile serial and apply changes from the journal. */
@@ -394,6 +394,10 @@ int event_load(zone_t *zone)
 
 fail:
 	zone_contents_deep_free(&contents);
+
+	/* Try to bootsrap the zone if local error. */
+	zone_events_schedule(zone, ZONE_EVENT_XFER, ZONE_EVENT_NOW);
+
 	return ret;
 }
 
