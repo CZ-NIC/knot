@@ -195,7 +195,7 @@ $ knotc conf\-read zone.domain
 .sp
 .nf
 .ft C
-$ knotc conf\-read zone[example.com].master
+$ knotc conf\-read \(aqzone[example.com].master\(aq
 .ft P
 .fi
 .UNINDENT
@@ -207,8 +207,8 @@ $ knotc conf\-read zone[example.com].master
 .nf
 .ft C
 $ knotc conf\-begin
-$ knotc conf\-set zone[example.org]
-$ knotc conf\-set zone[example.org].file "/var/zones/example.org.zone"
+$ knotc conf\-set \(aqzone[example.org]\(aq
+$ knotc conf\-set \(aqzone[example.org].file\(aq \(aq/var/zones/example.org.zone\(aq
 $ knotc conf\-commit
 .ft P
 .fi

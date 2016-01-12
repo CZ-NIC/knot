@@ -71,20 +71,22 @@ configuration will be temporary (until the server stop).
 
 Most of the commands get an item name and value parameters. The item name is
 in the form of ``section[identifier].name``. If the item is multivalued,
-more values can be specified as individual (command line) arguments.
+more values can be specified as individual (command line) arguments. Beware of
+the possibility of pathname expansion by the shell. For this reason, slashed
+square brackets or quoted parameters is advisable.
 
 To get the list of configuration sections or to get the list of section items::
 
     $ knotc conf-list
-    $ knotc conf-list server
+    $ knotc conf-list 'server'
 
 To get the whole configuration or to get the whole configuration section or
 to get all section identifiers or to get a specific configuration item::
 
     $ knotc conf-read
-    $ knotc conf-read remote
-    $ knotc conf-read zone.domain
-    $ knotc conf-read zone[example.com].master
+    $ knotc conf-read 'remote'
+    $ knotc conf-read 'zone.domain'
+    $ knotc conf-read 'zone[example.com].master'
 
 *Caution:* The following operations don't work on OpenBSD!
 
@@ -100,45 +102,45 @@ every commit::
 To set a configuration item value or to add more values or to add a new
 section identifier or to add a value to all identified sections::
 
-    $ knotc conf-set server.identity "Knot DNS"
-    $ knotc conf-set server.listen 0.0.0.0@53 ::@53
-    $ knotc conf-set zone[example.com]
-    $ knotc conf-set zone.slave slave2
+    $ knotc conf-set 'server.identity' 'Knot DNS'
+    $ knotc conf-set 'server.listen' '0.0.0.0@53' '::@53'
+    $ knotc conf-set 'zone[example.com]'
+    $ knotc conf-set 'zone.slave' 'slave2'
 
 *Note:* Also the include operation can be performed. A non-absolute file
 location is relative to the server binary path, not to the control binary path!::
 
-    $ knotc conf-set include /tmp/new_zones.conf
+    $ knotc conf-set 'include' '/tmp/new_zones.conf'
 
 To unset the whole configuration or to unset the whole configuration section
 or to unset an identified section or to unset an item or to unset a specific
 item value::
 
     $ knotc conf-unset
-    $ knotc conf-unset zone
-    $ knotc conf-unset zone[example.com]
-    $ knotc conf-unset zone[example.com].master
-    $ knotc conf-unset zone[example.com].master remote2 remote5
+    $ knotc conf-unset 'zone'
+    $ knotc conf-unset 'zone[example.com]'
+    $ knotc conf-unset 'zone[example.com].master'
+    $ knotc conf-unset 'zone[example.com].master' 'remote2' 'remote5'
 
 To get the change between the current configuration and the active transaction
 for the whole configuration or for a specific section or for a specific
 identified section or for a specific item::
 
     $ knotc conf-diff
-    $ knotc conf-diff zone
-    $ knotc conf-diff zone[example.com]
-    $ knotc conf-diff zone[example.com].master
+    $ knotc conf-diff 'zone'
+    $ knotc conf-diff 'zone[example.com]'
+    $ knotc conf-diff 'zone[example.com].master'
 
 An example of possible configuration initialization::
 
     $ knotc conf-begin
-    $ knotc conf-set server.listen 0.0.0.0@53 ::@53
-    $ knotc conf-set remote[master_server]
-    $ knotc conf-set remote[master_server].address 192.168.1.1
-    $ knotc conf-set template[default]
-    $ knotc conf-set template[default].storage /var/lib/knot/zones/
-    $ knotc conf-set template[default].master master_server
-    $ knotc conf-set zone[example.com]
+    $ knotc conf-set 'server.listen' '0.0.0.0@53' '::@53'
+    $ knotc conf-set 'remote[master_server]'
+    $ knotc conf-set 'remote[master_server].address' '192.168.1.1'
+    $ knotc conf-set 'template[default]'
+    $ knotc conf-set 'template[default].storage' '/var/lib/knot/zones/'
+    $ knotc conf-set 'template[default].master' 'master_server'
+    $ knotc conf-set 'zone[example.com]'
     $ knotc conf-diff
     $ knotc conf-commit
 

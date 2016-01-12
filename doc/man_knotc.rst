@@ -161,7 +161,7 @@ Get the master remotes for the example.com zone
 
 ::
 
-  $ knotc conf-read zone[example.com].master
+  $ knotc conf-read 'zone[example.com].master'
 
 Add example.org zone with a zonefile location
 .............................................
@@ -169,8 +169,8 @@ Add example.org zone with a zonefile location
 ::
 
   $ knotc conf-begin
-  $ knotc conf-set zone[example.org]
-  $ knotc conf-set zone[example.org].file "/var/zones/example.org.zone"
+  $ knotc conf-set 'zone[example.org]'
+  $ knotc conf-set 'zone[example.org].file' '/var/zones/example.org.zone'
   $ knotc conf-commit
 
 See Also
