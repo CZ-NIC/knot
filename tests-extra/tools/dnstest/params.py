@@ -41,6 +41,8 @@ valgrind_flags = get_param("KNOT_TEST_VALGRIND_FLAGS",
 gdb_bin = get_binary("KNOT_TEST_GDB", "gdb")
 # KNOT_TEST_VGDB - vgdb binary.
 vgdb_bin = get_binary("KNOT_TEST_VGDB", "vgdb")
+# KNOT_TEST_LIBTOOL - libtool script.
+libtool_bin = get_binary("KNOT_TEST_LIBTOOL", "../libtool")
 # KNOT_TEST_KNOT - Knot binary.
 knot_bin = get_binary("KNOT_TEST_KNOT", "../src/knotd")
 # KNOT_TEST_KNOTC - Knot control binary.
