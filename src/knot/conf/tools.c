@@ -351,15 +351,6 @@ int check_key(
 int check_acl(
 	conf_check_t *args)
 {
-	conf_val_t addr = conf_rawid_get_txn(args->conf, args->txn, C_ACL,
-	                                     C_ADDR, args->id, args->id_len);
-	conf_val_t key = conf_rawid_get_txn(args->conf, args->txn, C_ACL,
-	                                    C_KEY, args->id, args->id_len);
-	if (conf_val_count(&addr) == 0 && conf_val_count(&key) == 0) {
-		args->err_str = "both ACL address and ACL key not defined";
-		return KNOT_EINVAL;
-	}
-
 	conf_val_t action = conf_rawid_get_txn(args->conf, args->txn, C_ACL,
 	                                       C_ACTION, args->id, args->id_len);
 	conf_val_t deny = conf_rawid_get_txn(args->conf, args->txn, C_ACL,
