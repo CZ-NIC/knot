@@ -137,9 +137,9 @@ static int zone_status(zone_t *zone, remote_cmdargs_t *a)
 	char when[128] = { '\0' };
 	zone_event_type_t next_type = ZONE_EVENT_INVALID;
 	const char *next_name = "";
+	time_t next_time = zone_events_get_next(zone, &next_type);
 	if (next_type != ZONE_EVENT_INVALID) {
 		next_name = zone_events_get_name(next_type);
-		time_t next_time = zone_events_get_next(zone, &next_type);
 		next_time = next_time - time(NULL);
 		if (next_time < 0) {
 			memcpy(when, "pending", strlen("pending"));
