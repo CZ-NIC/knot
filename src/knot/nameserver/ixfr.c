@@ -404,16 +404,18 @@ static int ixfrin_finalize(struct answer_data *adata)
 	zone_contents_t *old_contents = zone_switch_contents(ixfr->zone, new_contents);
 	ixfr->zone->flags &= ~ZONE_EXPIRED;
 	synchronize_rcu();
-	update_free_zone(&old_contents);
-
-	updates_cleanup(&ixfr->changesets);
 
 	struct timeval now = {0};
 	gettimeofday(&now, NULL);
-	IXFRIN_LOG(LOG_INFO,
-	           "finished, %.02f seconds, %u messages, %u bytes",
+	IXFRIN_LOG(LOG_INFO, "finished, "
+	           "serial %u -> %u, %.02f seconds, %u messages, %u bytes",
+	           zone_contents_serial(old_contents),
+	           zone_contents_serial(new_contents),
 	           time_diff(&ixfr->proc.tstamp, &now) / 1000.0,
 	           ixfr->proc.npkts, ixfr->proc.nbytes);
+
+	update_free_zone(&old_contents);
+	updates_cleanup(&ixfr->changesets);
 
 	return KNOT_EOK;
 }
