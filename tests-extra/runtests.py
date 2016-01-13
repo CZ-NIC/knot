@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import argparse, importlib, logging, os, re, sys, tempfile, time, traceback
+import argparse, datetime, importlib, logging, os, re, sys, tempfile, time, traceback
 current_dir = os.path.dirname(os.path.realpath(__file__))
 sys.path.append(current_dir + "/tools")
 import dnstest.params as params
@@ -121,6 +121,8 @@ def main(args):
     log.info("KNOT TESTING SUITE %s" % today)
     log.info("Working directory %s" % outs_dir)
 
+    ref_time = datetime.datetime.now().replace(microsecond=0)
+
     case_cnt = 0
     fail_cnt = 0
     skip_cnt = 0
@@ -234,10 +236,12 @@ def main(args):
 
             params.case_log.close()
 
+    time_diff = datetime.datetime.now().replace(microsecond=0) - ref_time
+    msg_time = "TOTAL TIME: %s, " % time_diff
     msg_cases = "TEST CASES: %i" % case_cnt
     msg_skips = ", SKIPPED: %i" % skip_cnt if skip_cnt > 0 else ""
     msg_res = ", FAILED: %i" % fail_cnt if fail_cnt > 0 else ", SUCCESS"
-    log.info(msg_cases + msg_skips + msg_res)
+    log.info(msg_time + msg_cases + msg_skips + msg_res)
 
     if fail_cnt:
         log_failed(outs_dir, "Total %i/%i" % (fail_cnt, case_cnt), indent=False)
