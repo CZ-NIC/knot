@@ -149,6 +149,11 @@ int conf_new(
 
 	// Initialize a config mempool.
 	out->mm = malloc(sizeof(knot_mm_t));
+	if (out->mm == NULL) {
+		yp_scheme_free(out->scheme);
+		free(out);
+		return KNOT_ENOMEM;
+	}
 	mm_ctx_mempool(out->mm, MM_DEFAULT_BLKSIZE);
 
 	// Set the DB api.
@@ -157,6 +162,7 @@ int conf_new(
 	lmdb_opts.mapsize = 500 * 1024 * 1024;
 	lmdb_opts.flags.env = KNOT_DB_LMDB_NOTLS;
 
+	// Open the database.
 	if (db_dir == NULL) {
 		// Prepare a temporary database.
 		char tpl[] = "/tmp/knot-confdb.XXXXXX";
@@ -166,6 +172,11 @@ int conf_new(
 			ret = KNOT_ENOMEM;
 			goto new_error;
 		}
+
+		ret = out->api->init(&out->db, out->mm, &lmdb_opts);
+
+		// Remove the database to ensure it is temporary.
+		rm_dir(lmdb_opts.path);
 	} else {
 		// Set the specified database.
 		lmdb_opts.path = db_dir;
@@ -174,17 +185,11 @@ int conf_new(
 		if (flags & CONF_FREADONLY) {
 			lmdb_opts.flags.env |= KNOT_DB_LMDB_RDONLY;
 		}
-	}
 
-	// Open the database.
-	ret = out->api->init(&out->db, out->mm, &lmdb_opts);
+		ret = out->api->init(&out->db, out->mm, &lmdb_opts);
+	}
 	if (ret != KNOT_EOK) {
 		goto new_error;
-	}
-
-	// Remove opened database to ensure it is temporary.
-	if (db_dir == NULL) {
-		rm_dir(lmdb_opts.path);
 	}
 
 	// Initialize and check the database.
@@ -208,9 +213,9 @@ int conf_new(
 
 	return KNOT_EOK;
 new_error:
-	yp_scheme_free(out->scheme);
 	mp_delete(out->mm->ctx);
 	free(out->mm);
+	yp_scheme_free(out->scheme);
 	free(out);
 
 	return ret;
