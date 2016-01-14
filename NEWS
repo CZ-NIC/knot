@@ -1,5 +1,5 @@
-Knot DNS 2.1.0-rc1 (2015-12-20)
-===============================
+Knot DNS 2.1.0 (2016-01-14)
+===========================
 
 Features:
 ---------
@@ -19,11 +19,14 @@ Improvements:
  - RRL: Document behavior for different rate-limit-slip options
  - kdig: Warning instead of error on TSIG validation failure
  - Cleanup of support libraries interfaces (libknot, libzscanner, libdnssec)
+ - Remove possibly insecure server control over a network socket
+ - Remove implementation limit for the number of network interfaces
 
 Bugfixes:
 ---------
  - synth-record module: Fix application of default configuration options
  - TSIG: Allow compressed TSIG name when forwarding DDNS updates
+ - Schedule zone bootstrap after slave zone fails to load from disk
 
 Knot DNS 2.0.2 (2015-11-24)
 ===========================
