@@ -5,14 +5,6 @@
 #
 
 SOURCES = [
-    # documentation
-    "README", "KNOWN_ISSUES", 
-    "Doxyfile*", "Doxy.file.h", "doc/*.rst",
-
-    # build-system
-    "*.ac", "*.am",
-
-    # sources
     "src/*.c", "src/*.h", "src/*.rl", "src/*.l",
     "src/*.y", "tests/*.c", "tests/*.h",
     "tests-fuzz/*.c", "tests-fuzz/*.h",
