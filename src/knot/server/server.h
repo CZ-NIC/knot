@@ -180,7 +180,7 @@ void server_stop(server_t *server);
  * \retval KNOT_EINVAL on invalid parameters.
  * \retval KNOT_ERROR unspecified error.
  */
-int server_reconfigure(conf_t *conf, void *data);
+int server_reconfigure(conf_t *conf, server_t *data);
 
 /*!
  * \brief Reconfigure zone database.

@@ -621,9 +621,8 @@ static int reconfigure_rate_limits(conf_t *conf, server_t *server)
 	return KNOT_EOK;
 }
 
-int server_reconfigure(conf_t *conf, void *data)
+int server_reconfigure(conf_t *conf, server_t *server)
 {
-	server_t *server = (server_t *)data;
 	if (server == NULL) {
 		return KNOT_EINVAL;
 	}
