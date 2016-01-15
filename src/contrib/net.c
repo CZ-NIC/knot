@@ -18,6 +18,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <netinet/in.h>
+#include <poll.h>
 #include <stdbool.h>
 #include <sys/socket.h>
 #include <sys/uio.h>
@@ -302,21 +303,18 @@ int net_accept(int sock, struct sockaddr_storage *addr)
 /* -- I/O interface handling partial  -------------------------------------- */
 
 /*!
- * \brief Perform \a select() on one socket.
- *
- * \param read   Wait for input readiness.
- * \param write  Wait for output readiness.
+ * \brief Perform \a poll() on one socket.
  */
-static int select_one(int fd, bool read, bool write, struct timeval *timeout)
+static int poll_one(int fd, int events, const struct timeval *tv_timeout)
 {
-	fd_set set;
-	FD_ZERO(&set);
-	FD_SET(fd, &set);
+	struct pollfd pfd = {
+		.fd = fd,
+		.events = events
+	};
 
-	fd_set *rfds = read ? &set : NULL;
-	fd_set *wfds = write ? &set : NULL;
+	int timeout = tv_timeout ? (tv_timeout->tv_sec * 1000) : -1;
 
-	return select(fd + 1, rfds, wfds, NULL, timeout);
+	return poll(&pfd, 1, timeout);
 }
 
 /*!
@@ -438,7 +436,7 @@ static ssize_t recv_process(int fd, struct msghdr *msg)
 
 static int recv_wait(int fd, struct timeval *timeout)
 {
-	return select_one(fd, true, false, timeout);
+	return poll_one(fd, POLLIN, timeout);
 }
 
 static ssize_t recv_data(int sock, struct msghdr *msg, bool oneshot, struct timeval *timeout)
@@ -458,7 +456,7 @@ static ssize_t send_process(int fd, struct msghdr *msg)
 
 static int send_wait(int fd, struct timeval *timeout)
 {
-	return select_one(fd, false, true, timeout);
+	return poll_one(fd, POLLOUT, timeout);
 }
 
 static ssize_t send_data(int sock, struct msghdr *msg, struct timeval *timeout)
