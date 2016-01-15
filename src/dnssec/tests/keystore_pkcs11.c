@@ -112,10 +112,8 @@ static char *token_path = NULL;
  */
 static void token_cleanup(void)
 {
-	if (token_path) {
-		test_rm_rf(token_path);
-		free(token_path);
-	}
+	test_rm_rf(token_path);
+	free(token_path);
 }
 
 /*!

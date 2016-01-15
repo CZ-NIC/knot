@@ -89,6 +89,10 @@ static bool rm_dir_contents(int dir_fd)
 
 bool test_rm_rf(const char *path)
 {
+	if (!path) {
+		return false;
+	}
+
 	int fd = open(path, O_NOFOLLOW);
 	if (fd < 0) {
 		return false;

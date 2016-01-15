@@ -15,11 +15,11 @@
  */
 
 #include <assert.h>
-#include <dirent.h>
 #include <stdlib.h>
 #include <time.h>
 #include <unistd.h>
 #include <tap/basic.h>
+#include <tap/files.h>
 
 #include "contrib/string.h"
 #include "libknot/libknot.h"
@@ -41,9 +41,8 @@ int main(int argc, char *argv[])
 		return EXIT_SUCCESS;
 	}
 
-	// Temporary DB identifier.
-	char dbid_buf[] = "/tmp/timerdb.XXXXXX";
-	const char *dbid = mkdtemp(dbid_buf);
+	char *dbid = test_mkdtemp();
+	ok(dbid != NULL, "make temporary directory");
 
 	// Mockup zones.
 	knot_dname_t *zone_name;
@@ -123,20 +122,8 @@ int main(int argc, char *argv[])
 	zone_free(&zone_1);
 	zone_free(&zone_2);
 	close_timers_db(db);
-
-	// Cleanup temporary DB.
-	DIR *dir = opendir(dbid);
-	struct dirent *dp;
-	while ((dp = readdir(dir)) != NULL) {
-		if (dp->d_name[0] == '.') {
-			continue;
-		}
-		char *file = sprintf_alloc("%s/%s", dbid, dp->d_name);
-		remove(file);
-		free(file);
-	}
-	closedir(dir);
-	remove(dbid);
+	test_rm_rf(dbid);
+	free(dbid);
 
 	return EXIT_SUCCESS;
 }

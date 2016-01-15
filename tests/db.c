@@ -14,14 +14,13 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <dirent.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
-#include <assert.h>
 #include <tap/basic.h>
+#include <tap/files.h>
 
 #include "contrib/string.h"
 #include "libknot/libknot.h"
@@ -259,9 +258,8 @@ int main(int argc, char *argv[])
 	knot_mm_t pool;
 	mm_ctx_mempool(&pool, MM_DEFAULT_BLKSIZE);
 
-	/* Temporary DB identifier. */
-	char dbid_buf[] = "/tmp/namedb.XXXXXX";
-	char *dbid = mkdtemp(dbid_buf);
+	char *dbid = test_mkdtemp();
+	ok(dbid != NULL, "make temporary directory");
 
 	/* Random keys. */
 	unsigned nkeys = 10000;
@@ -282,20 +280,8 @@ int main(int argc, char *argv[])
 
 	/* Cleanup. */
 	mp_delete(pool.ctx);
-
-	/* Cleanup temporary DB. */
-	DIR *dir = opendir(dbid);
-	struct dirent *dp;
-	while ((dp = readdir(dir)) != NULL) {
-		if (dp->d_name[0] == '.') {
-			continue;
-		}
-		char *file = sprintf_alloc("%s/%s", dbid, dp->d_name);
-		remove(file);
-		free(file);
-	}
-	closedir(dir);
-	remove(dbid);
+	test_rm_rf(dbid);
+	free(dbid);
 
 	return 0;
 }
