@@ -186,21 +186,27 @@ static void setup_capabilities(void)
 }
 
 /*! \brief Event loop listening for signals and remote commands. */
-static void event_loop(server_t *server)
+static void event_loop(server_t *server, char *socket)
 {
 	uint8_t buf[KNOT_WIRE_MAX_PKTSIZE];
 	size_t buflen = sizeof(buf);
 
-	/* Read control socket configuration. */
-	conf_val_t listen_val = conf_get(conf(), C_CTL, C_LISTEN);
-	conf_val_t rundir_val = conf_get(conf(), C_SRV, C_RUNDIR);
-	char *rundir = conf_abs_path(&rundir_val, NULL);
-	char *listen = conf_abs_path(&listen_val, rundir);
-	free(rundir);
+	/* Get control socket configuration. */
+	char *listen = socket;
+	if (socket == NULL) {
+		conf_val_t listen_val = conf_get(conf(), C_CTL, C_LISTEN);
+		conf_val_t rundir_val = conf_get(conf(), C_SRV, C_RUNDIR);
+		char *rundir = conf_abs_path(&rundir_val, NULL);
+		listen = conf_abs_path(&listen_val, rundir);
+		free(rundir);
+	}
 
 	/* Bind to control socket (error logging is inside the function. */
 	int sock = remote_bind(listen);
-	free(listen);
+
+	if (socket == NULL) {
+		free(listen);
+	}
 
 	sigset_t empty;
 	(void)sigemptyset(&empty);
@@ -240,10 +246,12 @@ static void print_help(void)
 	       "                           (default %s)\n"
 	       " -C, --confdb <dir>      Use a binary configuration database directory.\n"
 	       "                           (default %s)\n"
+	       " -s, --socket <path>     Use a remote control UNIX socket path.\n"
+	       "                           (default %s)\n"
 	       " -d, --daemonize=[dir]   Run the server as a daemon (with new root directory).\n"
 	       " -h, --help              Print the program help.\n"
 	       " -V, --version           Print the program version.\n",
-	       PROGRAM_NAME, CONF_DEFAULT_FILE, CONF_DEFAULT_DBDIR);
+	       PROGRAM_NAME, CONF_DEFAULT_FILE, CONF_DEFAULT_DBDIR, RUN_DIR "/knot.sock");
 }
 
 static void print_version(void)
@@ -317,11 +325,13 @@ int main(int argc, char **argv)
 	const char *config = NULL;
 	const char *confdb = NULL;
 	const char *daemon_root = "/";
+	char *socket = NULL;
 
 	/* Long options. */
 	struct option opts[] = {
 		{ "config",    required_argument, NULL, 'c' },
 		{ "confdb",    required_argument, NULL, 'C' },
+		{ "socket",    required_argument, NULL, 's' },
 		{ "daemonize", optional_argument, NULL, 'd' },
 		{ "help",      no_argument,       NULL, 'h' },
 		{ "version",   no_argument,       NULL, 'V' },
@@ -330,13 +340,16 @@ int main(int argc, char **argv)
 
 	/* Parse command line arguments. */
 	int opt = 0, li = 0;
-	while ((opt = getopt_long(argc, argv, "c:C:dhV", opts, &li)) != -1) {
+	while ((opt = getopt_long(argc, argv, "c:C:s:dhV", opts, &li)) != -1) {
 		switch (opt) {
 		case 'c':
 			config = optarg;
 			break;
 		case 'C':
 			confdb = optarg;
+			break;
+		case 's':
+			socket = optarg;
 			break;
 		case 'd':
 			daemonize = true;
@@ -484,7 +497,7 @@ int main(int argc, char **argv)
 	}
 
 	/* Start the event loop. */
-	event_loop(&server);
+	event_loop(&server, socket);
 
 	/* Teardown server. */
 	server_stop(&server);

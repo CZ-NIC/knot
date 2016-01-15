@@ -22,6 +22,9 @@ Parameters
   The default configuration database, if exists, has a preference to the default
   configuration file.
 
+**-s**, **--socket** *path*
+  Use a remote control UNIX socket path (default is :file:`@run_dir@/knot.sock`).
+
 **-d**, **--daemonize** [*directory*]
   Run the server as a daemon. New root directory may be specified
   (default is :file:`/`).

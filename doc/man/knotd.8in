@@ -45,6 +45,9 @@ Use a binary configuration database directory (default is \fB@storage_dir@/confd
 The default configuration database, if exists, has a preference to the default
 configuration file.
 .TP
+\fB\-s\fP, \fB\-\-socket\fP \fIpath\fP
+Use a remote control UNIX socket path (default is \fB@run_dir@/knot.sock\fP).
+.TP
 \fB\-d\fP, \fB\-\-daemonize\fP [\fIdirectory\fP]
 Run the server as a daemon. New root directory may be specified
 (default is \fB/\fP).
