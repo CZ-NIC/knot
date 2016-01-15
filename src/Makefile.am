@@ -212,7 +212,7 @@ knotc_SOURCES =					\
 	utils/knotc/main.c
 
 knotd_SOURCES =					\
-	knot/main.c
+	utils/knotd/main.c
 
 knot1to2_SOURCES =				\
 	utils/knot1to2/cf-lex.c			\
