@@ -244,7 +244,6 @@ src/knot/dnssec/zone-nsec.c
 src/knot/dnssec/zone-nsec.h
 src/knot/dnssec/zone-sign.c
 src/knot/dnssec/zone-sign.h
-src/knot/main.c
 src/knot/modules/dnsproxy.c
 src/knot/modules/dnsproxy.h
 src/knot/modules/dnstap.c
@@ -467,6 +466,7 @@ src/utils/knotc/estimator.h
 src/utils/knotc/main.c
 src/utils/knotc/remote.c
 src/utils/knotc/remote.h
+src/utils/knotd/main.c
 src/utils/knsupdate/knsupdate_exec.c
 src/utils/knsupdate/knsupdate_exec.h
 src/utils/knsupdate/knsupdate_main.c
