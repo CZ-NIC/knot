@@ -1,4 +1,4 @@
-/*  Copyright (C) 2014 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -16,8 +16,6 @@
 
 #include "libknot/libknot.h"
 #include "knot/zone/timers.h"
-#include "knot/zone/zonedb.h"
-#include "contrib/string.h"
 #include "contrib/wire.h"
 #include "contrib/wire_ctx.h"
 

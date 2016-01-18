@@ -20,22 +20,17 @@
 #include <sys/stat.h>
 #include <urcu.h>
 
-#include "dnssec/random.h"
-#include "knot/common/evsched.h"
 #include "knot/common/log.h"
-#include "knot/zone/node.h"
 #include "knot/zone/serial.h"
 #include "knot/zone/zone.h"
 #include "knot/zone/zonefile.h"
 #include "knot/zone/contents.h"
-#include "knot/updates/acl.h"
-#include "knot/updates/apply.h"
 #include "knot/nameserver/process_query.h"
 #include "libknot/libknot.h"
-#include "libknot/processing/requestor.h"
-#include "contrib/string.h"
 #include "contrib/trim.h"
+#include "contrib/mempattern.h"
 #include "contrib/ucw/lists.h"
+#include "contrib/ucw/mempool.h"
 
 #define JOURNAL_SUFFIX	".diff.db"
 

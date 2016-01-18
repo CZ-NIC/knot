@@ -23,6 +23,7 @@
 #include "knot/common/log.h"
 #include "libknot/libknot.h"
 #include "contrib/macros.h"
+#include "contrib/mempattern.h"
 #include "contrib/ucw/lists.h"
 
 /* --------------------------- Update cleanup ------------------------------- */

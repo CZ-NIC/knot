@@ -18,7 +18,6 @@
 
 #include "knot/zone/events/replan.h"
 #include "knot/zone/events/handlers.h"
-#include "knot/zone/zone.h"
 #include "libknot/rrtype/soa.h"
 #include "contrib/macros.h"
 

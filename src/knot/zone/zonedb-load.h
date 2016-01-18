@@ -1,4 +1,4 @@
-/*  Copyright (C) 2013 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -17,9 +17,7 @@
 #pragma once
 
 #include "knot/conf/conf.h"
-#include "knot/zone/zonedb.h"
-
-struct server;
+#include "knot/server/server.h"
 
 /*!
  * \brief Update zone database according to configuration.
@@ -31,4 +29,4 @@ struct server;
  * \retval KNOT_EINVAL
  * \retval KNOT_ERROR
  */
-int zonedb_reload(conf_t *conf, struct server *server);
+int zonedb_reload(conf_t *conf, server_t *server);

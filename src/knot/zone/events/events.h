@@ -1,4 +1,4 @@
-/*  Copyright (C) 2014 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -18,17 +18,16 @@
 
 #include <pthread.h>
 #include <stdbool.h>
+#include <sys/time.h>
 
-#include "libknot/libknot.h"
 #include "knot/common/evsched.h"
 #include "knot/worker/pool.h"
+#include "libknot/db/db.h"
 
 /* Timer special values. */
 #define ZONE_EVENT_NOW 0
 
 struct zone;
-
-struct server;
 
 typedef enum zone_event_type {
 	ZONE_EVENT_INVALID = -1,

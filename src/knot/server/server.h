@@ -35,6 +35,7 @@
 #include "knot/common/evsched.h"
 #include "knot/common/fdset.h"
 #include "knot/server/dthreads.h"
+#include "knot/common/ref.h"
 #include "knot/server/rrl.h"
 #include "knot/worker/pool.h"
 #include "knot/zone/zonedb.h"

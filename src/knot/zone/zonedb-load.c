@@ -1,4 +1,4 @@
-/*  Copyright (C) 2013 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -15,17 +15,14 @@
 */
 
 #include <assert.h>
-#include <sys/stat.h>
 #include <urcu.h>
 
 #include "knot/zone/zonedb-load.h"
 #include "knot/zone/zone-load.h"
-#include "knot/conf/conf.h"
 #include "knot/zone/zone.h"
 #include "knot/zone/zonefile.h"
 #include "knot/zone/zonedb.h"
 #include "knot/zone/timers.h"
-#include "knot/server/server.h"
 #include "knot/common/log.h"
 #include "libknot/libknot.h"
 
@@ -351,7 +348,7 @@ static int remove_old_zonedb(const knot_zonedb_t *db_new, knot_zonedb_t *db_old)
 /*!
  * \brief Update zone database according to configuration.
  */
-int zonedb_reload(conf_t *conf, struct server *server)
+int zonedb_reload(conf_t *conf, server_t *server)
 {
 	/* Check parameters */
 	if (conf == NULL || server == NULL) {

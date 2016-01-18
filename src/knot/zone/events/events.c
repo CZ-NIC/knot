@@ -1,4 +1,4 @@
-/*  Copyright (C) 2014 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -18,15 +18,11 @@
 #include <time.h>
 
 #include "libknot/libknot.h"
-#include "knot/common/evsched.h"
 #include "knot/common/log.h"
-#include "knot/server/server.h"
-#include "knot/worker/pool.h"
-#include "knot/zone/zone.h"
 #include "knot/zone/events/events.h"
 #include "knot/zone/events/handlers.h"
 #include "knot/zone/events/replan.h"
-#include "knot/zone/timers.h"
+#include "knot/zone/zone.h"
 
 /* ------------------------- internal timers -------------------------------- */
 

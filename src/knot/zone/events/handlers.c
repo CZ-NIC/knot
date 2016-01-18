@@ -1,4 +1,4 @@
-/*  Copyright (C) 2014 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -18,7 +18,6 @@
 
 #include "dnssec/random.h"
 #include "libknot/libknot.h"
-#include "libknot/processing/requestor.h"
 #include "libknot/yparser/yptrafo.h"
 #include "contrib/trim.h"
 #include "contrib/ucw/mempool.h"
@@ -29,7 +28,6 @@
 #include "knot/server/tcp-handler.h"
 #include "knot/updates/changesets.h"
 #include "knot/dnssec/zone-events.h"
-#include "knot/zone/timers.h"
 #include "knot/zone/zone-load.h"
 #include "knot/zone/zonefile.h"
 #include "knot/zone/events/events.h"

@@ -16,7 +16,6 @@
 
 #pragma once
 
-#include "knot/zone/events/events.h"
 #include "knot/zone/zone.h"
 
 /*! \brief Replans zone's events using old zone. */

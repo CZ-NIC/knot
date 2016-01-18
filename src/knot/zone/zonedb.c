@@ -17,15 +17,8 @@
 #include <stdlib.h>
 #include <assert.h>
 
-#include <urcu.h>
-
 #include "knot/zone/zonedb.h"
-#include "knot/server/server.h"
-#include "knot/zone/zone.h"
-#include "knot/zone/zonedb.h"
-#include "libknot/dname.h"
 #include "libknot/packet/wire.h"
-#include "knot/zone/node.h"
 #include "contrib/macros.h"
 #include "contrib/mempattern.h"
 #include "contrib/ucw/mempool.h"

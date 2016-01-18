@@ -1,4 +1,4 @@
-/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -16,25 +16,16 @@
 
 #include <assert.h>
 #include <stdlib.h>
-#include <stdio.h>
 
 #include "knot/zone/zone-tree.h"
-#include "knot/zone/node.h"
 #include "libknot/consts.h"
 #include "libknot/errcode.h"
-#include "contrib/hat-trie/hat-trie.h"
 #include "contrib/macros.h"
-
-/*----------------------------------------------------------------------------*/
-/* API functions                                                              */
-/*----------------------------------------------------------------------------*/
 
 zone_tree_t* zone_tree_create()
 {
 	return hattrie_create();
 }
-
-/*----------------------------------------------------------------------------*/
 
 size_t zone_tree_weight(const zone_tree_t* tree)
 {
@@ -45,8 +36,6 @@ int zone_tree_is_empty(const zone_tree_t *tree)
 {
 	return zone_tree_weight(tree) == 0;
 }
-
-/*----------------------------------------------------------------------------*/
 
 int zone_tree_insert(zone_tree_t *tree, zone_node_t *node)
 {
@@ -62,8 +51,6 @@ int zone_tree_insert(zone_tree_t *tree, zone_node_t *node)
 	return KNOT_EOK;
 }
 
-/*----------------------------------------------------------------------------*/
-
 int zone_tree_find(zone_tree_t *tree, const knot_dname_t *owner,
                           const zone_node_t **found)
 {
@@ -73,8 +60,6 @@ int zone_tree_find(zone_tree_t *tree, const knot_dname_t *owner,
 
 	return zone_tree_get(tree, owner, (zone_node_t **)found);
 }
-
-/*----------------------------------------------------------------------------*/
 
 int zone_tree_get(zone_tree_t *tree, const knot_dname_t *owner,
                          zone_node_t **found)
@@ -100,8 +85,6 @@ int zone_tree_get(zone_tree_t *tree, const knot_dname_t *owner,
 	return KNOT_EOK;
 }
 
-/*----------------------------------------------------------------------------*/
-
 int zone_tree_find_less_or_equal(zone_tree_t *tree,
                                  const knot_dname_t *owner,
                                  const zone_node_t **found,
@@ -119,8 +102,6 @@ int zone_tree_find_less_or_equal(zone_tree_t *tree,
 
 	return ret;
 }
-
-/*----------------------------------------------------------------------------*/
 
 int zone_tree_get_less_or_equal(zone_tree_t *tree,
                                 const knot_dname_t *owner,
@@ -174,8 +155,6 @@ int zone_tree_get_less_or_equal(zone_tree_t *tree,
 	return exact_match;
 }
 
-/*----------------------------------------------------------------------------*/
-
 zone_node_t *zone_tree_get_next(zone_tree_t *tree,
                                 const knot_dname_t *owner)
 {
@@ -208,8 +187,6 @@ zone_node_t *zone_tree_get_next(zone_tree_t *tree,
 	}
 }
 
-/*----------------------------------------------------------------------------*/
-
 int zone_tree_remove(zone_tree_t *tree,
                      const knot_dname_t *owner,
                      zone_node_t **removed)
@@ -235,8 +212,6 @@ int zone_tree_remove(zone_tree_t *tree,
 	hattrie_del(tree, (char*)lf+1, *lf);
 	return KNOT_EOK;
 }
-
-/*----------------------------------------------------------------------------*/
 
 int zone_tree_apply_inorder(zone_tree_t *tree,
                             zone_tree_apply_cb_t function,
@@ -265,8 +240,6 @@ int zone_tree_apply_inorder(zone_tree_t *tree,
 	return result;
 }
 
-/*----------------------------------------------------------------------------*/
-
 int zone_tree_apply(zone_tree_t *tree,
                     zone_tree_apply_cb_t function,
                     void *data)
@@ -282,8 +255,6 @@ int zone_tree_apply(zone_tree_t *tree,
 	return hattrie_apply_rev(tree, (int (*)(value_t*,void*))function, data);
 }
 
-/*----------------------------------------------------------------------------*/
-
 void zone_tree_free(zone_tree_t **tree)
 {
 	if (tree == NULL || *tree == NULL) {
@@ -292,8 +263,6 @@ void zone_tree_free(zone_tree_t **tree)
 	hattrie_free(*tree);
 	*tree = NULL;
 }
-
-/*----------------------------------------------------------------------------*/
 
 static int zone_tree_free_node(zone_node_t **node, void *data)
 {

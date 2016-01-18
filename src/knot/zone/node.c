@@ -1,4 +1,4 @@
-/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -14,15 +14,9 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <stdlib.h>
-#include <stdio.h>
-
 #include "knot/zone/node.h"
 #include "libknot/libknot.h"
-#include "libknot/rrset.h"
-#include "libknot/rdataset.h"
 #include "libknot/rrtype/rrsig.h"
-#include "libknot/descriptor.h"
 #include "contrib/mempattern.h"
 
 /*! \brief Clears allocated data in RRSet entry. */

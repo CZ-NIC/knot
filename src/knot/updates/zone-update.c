@@ -20,6 +20,7 @@
 #include "knot/dnssec/zone-events.h"
 #include "knot/updates/apply.h"
 #include "knot/zone/serial.h"
+#include "contrib/mempattern.h"
 #include "contrib/ucw/lists.h"
 #include "contrib/ucw/mempool.h"
 

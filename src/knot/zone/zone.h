@@ -1,4 +1,4 @@
-/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -14,11 +14,11 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 /*!
- * \file zone.h
+ * \file
  *
  * \brief Zone structure and API for manipulating it.
  *
- * \addtogroup libknot
+ * \addtogroup zone
  * @{
  */
 
@@ -28,11 +28,8 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#include "knot/common/evsched.h"
-#include "knot/common/ref.h"
 #include "knot/conf/conf.h"
 #include "knot/server/journal.h"
-#include "knot/updates/acl.h"
 #include "knot/zone/events/events.h"
 #include "knot/zone/contents.h"
 #include "libknot/dname.h"
