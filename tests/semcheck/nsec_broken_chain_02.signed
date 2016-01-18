@@ -1,0 +1,126 @@
+; File written on Tue Jan 12 14:20:36 2016
+; dnssec_signzone version 9.10.3-P2-RedHat-9.10.3-7.P2.fc22
+example.com.		3600	IN SOA	dns1.example.com. hostmaster.example.com. (
+					2010111218 ; serial
+					21600      ; refresh (6 hours)
+					3600       ; retry (1 hour)
+					604800     ; expire (1 week)
+					86400      ; minimum (1 day)
+					)
+			3600	RRSIG	SOA 7 2 3600 (
+					20160211132036 20160112122036 37670 example.com.
+					RBHGDvxlRfnbDDqV2ajVP+5N9vlXjTugArty
+					sp9grO7bKypezHbX3T7hiPGvfD4Ua1GJs+NL
+					TBd8IZ+cw3cDFoZ4B6mwk/qMc44jdWsG5shG
+					grTNkXsi6w9gmYnGOftV0QfjDY9KmgseIbEM
+					ZlzRzqFmVIynFeJBY+1gYFbsOZ8= )
+			3600	NS	dns1.example.com.
+			3600	RRSIG	NS 7 2 3600 (
+					20160211132036 20160112122036 37670 example.com.
+					uFDwGqfrNW13XfPYqg4K8+lIBsG4gsIVqXvp
+					pwXp8A1HBw//I6wdVc/rvLBCkIgi2Qe10edA
+					L6ldpunW4Bsz8VdVaCpcTDgIefeloV2Wgbzu
+					q9IX26oAZ2Nhh3Lty3mfRyi4PIqys+GBzT4G
+					MdHldmlagwrxSR9RRhlHLo/oaGs= )
+			3600	MX	10 mail.example.com.
+			3600	RRSIG	MX 7 2 3600 (
+					20160211132036 20160112122036 37670 example.com.
+					dAD/RHEmfIUoFNAzgbE6LIvEZXyOJhaTP9uC
+					xnHXivEuTwHMGzYSmau/EdtQXvy25AboMiXu
+					NfuWIUONk0qfF1W77BSIvtWeGUS2c0czXX7i
+					jnsrfWSDLVz83TtFnEsADPojevpjEG+n/vGr
+					GD3cPH0/I2v4znJobHMHT9OqrBc= )
+			86400	NSEC	dns1.example.com. NS SOA MX RRSIG NSEC DNSKEY
+			86400	RRSIG	NSEC 7 2 86400 (
+					20160211132036 20160112122036 37670 example.com.
+					1fSztqR8Il3rh9CPQ92/f5W7u6yjh+KPaM1e
+					VV/V/sZyDu0DS/0ZUtGA/1Q1QKsId8/vuqh6
+					B9TiGFYx94D1oRDsLFD6VSOYBYjjxMUvhKRU
+					fFyGfU0leBQFyAkMe+FzP56E1en4x6MiOHxA
+					LTBCyQCwSINC0SkHgyfpipYjnRs= )
+			3600	DNSKEY	257 3 7 (
+					AwEAAeCLNEKG1vWXGzGZ5NT5jdMR19+teke2
+					bXtQNP/HzhS0H0zlwSvpBU6bk0D+q6oi7nO5
+					z7C0OdZc2nb9W8PjUzGpV0yjaroYRkopO8OG
+					kh2lycduq8/0bGrafJilMYcqZEdoPGt7WkW2
+					AWijNj/rdEIutg2kqQPCc4Fni+126Q/Z+tY6
+					ad7nfMXpEy6AKVo/OwrBuqfojb7TjPCTQQqZ
+					3hrHfLkQAMf08lgm6BEdUT1xNtgADxLNFAKC
+					yElluK6XpJiVg7NJ8V17mKmrVXr95LtuopBk
+					2310Jwi19y5icMM/VT17hbjVnfRtUpgum/pm
+					CzqRM39F3/ED0Dn4hJgl1Cc=
+					) ; KSK; alg = NSEC3RSASHA1; key id = 46380
+			3600	DNSKEY	256 3 7 (
+					AwEAAd5qzyjkOmOH0n3AgRUdVJsGFDDjZa3t
+					US3th/Bg1M03sapJagVyp4rjtRBZQCJQquSc
+					p5UrZTlbVUoaHTE6KaECPU2Ng6kE68Yasxzo
+					/QPWqJ6wqX2qStRAZCUIorxRyEdOiZhvm4oT
+					nc7BWjt5Kz/6Ew7c2Q4fylFet0nldwmJ
+					) ; ZSK; alg = NSEC3RSASHA1; key id = 37670
+			3600	RRSIG	DNSKEY 7 2 3600 (
+					20160211132036 20160112122036 37670 example.com.
+					ZoFPB/8y1z0NjFOWNRU+C+T231/pQZDts4TC
+					saYd2He5qQt4iK3EE6xT5XPCOomH8oY3Fc7l
+					oXy/k6FzX5OZ1oBUqG1nFGDJp4zBNnbuKdiR
+					Fn0DiOCEzkmaZiRAsT0FMBvjWkqBE8P+Q5W9
+					pudJr34MgmusoaI65YjSUgEi4oA= )
+			3600	RRSIG	DNSKEY 7 2 3600 (
+					20160211132036 20160112122036 46380 example.com.
+					n4yoALnbDddFkrrrt706BYChEM9vnyP2E5RD
+					KOTm4qZjzF/hJ1Hcv1yAcor26uff+3VpK5Ou
+					aDVWyiCMrbxImwu5HC2CyeKSBtmgX/qML2cL
+					7x3pMvFa7SOqQSIFitkCZ/CzaKMZVei78G4j
+					9jEKz5ksPcogTZcrnmEv2fYNuRKZOf9acb2o
+					gmLh6kLC8iUhy9LQVFKLZ9llArmW+6LhJSkc
+					GKWu91bIkSCLmjT0FU/JtR4tmROxIHI+s4D8
+					iiXTo+qYT4g9UT7oxyFFl2TTrRRW5UWnQIXO
+					Kwyvj4c80Ck1/ASbJ94n1WP2wA75WLFXEnve
+					LiNZfU3GdXt3Aff3Sg== )
+mail.example.com.	3600	IN AAAA	2001:db8::3
+			3600	RRSIG	AAAA 7 3 3600 (
+					20160211132036 20160112122036 37670 example.com.
+					1C/bHsiDPUWKS6n8tMNTn2gdOZEURRGiwpSB
+					QFvYvB30lJV1uu8xD2KbC+HQoxYJ9ZXg4DiM
+					lZAmFKH0Y2db36YshaSE94Imf89UkUhZb5pD
+					ZCS4nkFXW/JbEczvi4vfsgX1y9LXPFVs5i74
+					yHW/yTAoX7tHyGl6Y4uuOVny3M8= )
+			86400	NSEC	mail.example.com. CNAME RRSIG NSEC
+			86400	RRSIG	NSEC 7 3 86400 (
+					20160211132036 20160112122036 37670 example.com.
+					b4bqzfQjNhhDFO/3RejH6BPDxWb2uMA7ISvv
+					CXYwK7i+zZO2fCQlWzs+KnEn4SBSWktXzTsj
+					3+eMDcdSxWfyhTKs+qrHMYOLxg6n4nqeGpSh
+					f7I0o5tMUinYhzMZmawk3B3S2ozwWr36BW4A
+					YTCY6su5g7VJyWHUsWR/bud/p6A= )
+dns1.example.com.	3600	IN A	192.0.2.1
+			3600	RRSIG	A 7 3 3600 (
+					20160211132036 20160112122036 37670 example.com.
+					2HlU2M8//nWlQS0lCaYPZbNYwHYIDjB9uv41
+					ri2EqA8GOm5A5ZUu+MIRkCWWtXYTb60W28Ps
+					26e1xiT1hs373LID4xzkydlr2plz1xctEQh1
+					ZA10Vd2Mg4boiWeH7AWnLa2NLgzPgEdb0Uan
+					BwwYoMpZEJwYd6DCUozYaBGQ82I= )
+			86400	NSEC	email.example.com. A RRSIG NSEC
+			86400	RRSIG	NSEC 7 3 86400 (
+					20160211132036 20160112122036 37670 example.com.
+					fjTC5CmD80FFizMP4+540KahJoRG+mpIdiOH
+					ir50myY7XRZu7qH4Tx6hhnl8VSIWSCc/KcMy
+					Vbo8IsosKL97BqW4e4En4tHp/CihZKnpDJ/L
+					Jm1gyN4tWdvOzqzxopu/fgjQM11NaWvb9SSf
+					w81w73BQWc90c78vpxjQ6Sh+aOI= )
+email.example.com.	3600	IN CNAME mail.example.com.
+			3600	RRSIG	CNAME 7 3 3600 (
+					20160211132036 20160112122036 37670 example.com.
+					od/WThiICZkSq6PYp+XVOa+rRe7zyaqKByid
+					jO8xRRLcHXirhGQzlfd4EKnva59L+VbHehnq
+					jCkqQZhwOkzrMFGxQ8GH6/qnTkfl3Ea1f2DY
+					ljdRJMXyMkwbNLaheHT2wHi58+pn5/i0OMLT
+					wfuDqEcwQL9cnk0IjXAS/rVRYpk= )
+			86400	NSEC	mail.example.com. CNAME RRSIG NSEC
+			86400	RRSIG	NSEC 7 3 86400 (
+					20160211132036 20160112122036 37670 example.com.
+					b4bqzfQjNhhDFO/3RejH6BPDxWb2uMA7ISvv
+					CXYwK7i+zZO2fCQlWzs+KnEn4SBSWktXzTsj
+					3+eMDcdSxWfyhTKs+qrHMYOLxg6n4nqeGpSh
+					f7I0o5tMUinYhzMZmawk3B3S2ozwWr36BW4A
+					YTCY6su5g7VJyWHUsWR/bud/p6A= )
