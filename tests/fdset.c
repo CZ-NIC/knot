@@ -68,7 +68,7 @@ void* thr_action(void *arg)
 
 	/* Sleep for 100ms. */
 	struct timespec ts = { .tv_nsec = 1e8 };
-	clock_nanosleep(CLOCK_REALTIME, 0, &ts, NULL);
+	nanosleep(&ts, NULL);
 
 	/* Write pattern. */
 	char pattern = WRITE_PATTERN;
