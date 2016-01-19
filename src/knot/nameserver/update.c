@@ -277,8 +277,8 @@ static int remote_forward(struct knot_request *request, conf_remote_t *remote)
 	ret = knot_requestor_enqueue(&re, req);
 	if (ret == KNOT_EOK) {
 		conf_val_t *val = &conf()->cache.srv_tcp_reply_timeout;
-		struct timeval tv = { conf_int(val), 0 };
-		ret = knot_requestor_exec(&re, &tv);
+		const int timeout = conf_int(val) * 1000;
+		ret = knot_requestor_exec(&re, timeout);
 	} else {
 		knot_request_free(req, re.mm);
 	}
@@ -379,9 +379,9 @@ static void send_update_response(const zone_t *zone, struct knot_request *req)
 
 		if (net_is_stream(req->fd)) {
 			conf_val_t *val = &conf()->cache.srv_tcp_reply_timeout;
-			struct timeval timeout = { conf_int(val), 0 };
+			int timeout = conf_int(val) * 1000;
 			net_dns_tcp_send(req->fd, req->resp->wire, req->resp->size,
-			                 &timeout);
+			                 timeout);
 		} else {
 			net_dgram_send(req->fd, req->resp->wire, req->resp->size,
 			               &req->remote);

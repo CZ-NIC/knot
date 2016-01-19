@@ -94,8 +94,8 @@ static int dnsproxy_fwd(int state, knot_pkt_t *pkt, struct query_data *qdata, vo
 	ret = knot_requestor_enqueue(&re, req);
 	if (ret == KNOT_EOK) {
 		conf_val_t *val = &conf()->cache.srv_tcp_reply_timeout;
-		struct timeval tv = { conf_int(val), 0 };
-		ret = knot_requestor_exec(&re, &tv);
+		int timeout = conf_int(val) * 1000;
+		ret = knot_requestor_exec(&re, timeout);
 	} else {
 		knot_request_free(req, re.mm);
 	}
