@@ -1,15 +1,4 @@
-/*!
- * \file nsec_proofs.h
- *
- * \author Lubos Slovak <lubos.slovak@nic.cz>
- * \author Marek Vavrusa <marek.vavrusa@nic.cz>
- *
- * \brief NSEC/NSEC3 proofs for various states.
- *
- * \addtogroup query_processing
- * @{
- */
-/*  Copyright (C) 2013 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -24,13 +13,19 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
+/*!
+ * \file
+ *
+ * \brief NSEC/NSEC3 proofs for various states.
+ *
+ * \addtogroup query_processing
+ * @{
+ */
 
 #pragma once
 
 #include "libknot/packet/pkt.h"
-
-/* Query data (from query processing). */
-struct query_data;
+#include "knot/nameserver/process_query.h"
 
 /*! \brief Prove wildcards visited during answer resolution. */
 int nsec_prove_wildcards(knot_pkt_t *pkt, struct query_data *qdata);

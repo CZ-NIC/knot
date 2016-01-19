@@ -1,4 +1,4 @@
-/*  Copyright (C) 2014 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -16,17 +16,13 @@
 
 #include <urcu.h>
 
+#include "knot/common/log.h"
 #include "knot/nameserver/ixfr.h"
 #include "knot/nameserver/axfr.h"
 #include "knot/nameserver/internet.h"
-#include "knot/nameserver/process_query.h"
-#include "knot/nameserver/process_answer.h"
 #include "knot/updates/apply.h"
-#include "knot/common/log.h"
 #include "knot/zone/serial.h"
 #include "libknot/libknot.h"
-#include "libknot/descriptor.h"
-#include "libknot/rrtype/soa.h"
 #include "contrib/print.h"
 #include "contrib/sockaddr.h"
 
@@ -613,7 +609,7 @@ static int process_ixfrin_packet(knot_pkt_t *pkt, struct answer_data *adata)
 
 /* --------------------------------- API ------------------------------------ */
 
-int ixfr_query(knot_pkt_t *pkt, struct query_data *qdata)
+int ixfr_process_query(knot_pkt_t *pkt, struct query_data *qdata)
 {
 	if (pkt == NULL || qdata == NULL) {
 		return KNOT_STATE_FAIL;
@@ -645,7 +641,7 @@ int ixfr_query(knot_pkt_t *pkt, struct query_data *qdata)
 		case KNOT_ENOENT:
 			IXFROUT_LOG(LOG_INFO, "incomplete history, fallback to AXFR");
 			qdata->packet_type = KNOT_QUERY_AXFR; /* Solve as AXFR. */
-			return axfr_query_process(pkt, qdata);
+			return axfr_process_query(pkt, qdata);
 		default:            /* Server errors. */
 			IXFROUT_LOG(LOG_ERR, "failed to start (%s)", knot_strerror(ret));
 			return KNOT_STATE_FAIL;
@@ -714,7 +710,7 @@ int ixfr_process_answer(knot_pkt_t *pkt, struct answer_data *adata)
 		if (ixfr_is_axfr(pkt)) {
 			IXFRIN_LOG(LOG_NOTICE, "receiving AXFR-style IXFR");
 			adata->response_type = KNOT_RESPONSE_AXFR;
-			return axfr_answer_process(pkt, adata);
+			return axfr_process_answer(pkt, adata);
 		}
 
 		/* Initialize processing with first packet. */

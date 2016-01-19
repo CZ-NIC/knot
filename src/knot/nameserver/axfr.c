@@ -1,4 +1,4 @@
-/*  Copyright (C) 2014 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -16,18 +16,13 @@
 
 #include <urcu.h>
 
+#include "knot/common/log.h"
 #include "knot/nameserver/axfr.h"
 #include "knot/nameserver/internet.h"
-#include "knot/nameserver/process_query.h"
-#include "knot/nameserver/process_answer.h"
-#include "knot/updates/apply.h"
 #include "knot/zone/zonefile.h"
-#include "knot/common/log.h"
 #include "libknot/libknot.h"
-#include "libknot/descriptor.h"
 #include "contrib/print.h"
 #include "contrib/sockaddr.h"
-#include "contrib/ucw/lists.h"
 
 /* AXFR context. @note aliasing the generic xfr_proc */
 struct axfr_proc {
@@ -214,7 +209,7 @@ int xfr_process_list(knot_pkt_t *pkt, xfr_put_cb process_item,
 #define AXFROUT_LOG(severity, msg, ...) \
 	QUERY_LOG(severity, qdata, "AXFR, outgoing", msg, ##__VA_ARGS__)
 
-int axfr_query_process(knot_pkt_t *pkt, struct query_data *qdata)
+int axfr_process_query(knot_pkt_t *pkt, struct query_data *qdata)
 {
 	if (pkt == NULL || qdata == NULL) {
 		return KNOT_STATE_FAIL;
@@ -377,7 +372,7 @@ static int axfr_answer_packet(knot_pkt_t *pkt, struct xfr_proc *proc)
 	return KNOT_STATE_CONSUME;
 }
 
-int axfr_answer_process(knot_pkt_t *pkt, struct answer_data *adata)
+int axfr_process_answer(knot_pkt_t *pkt, struct answer_data *adata)
 {
 	if (pkt == NULL || adata == NULL) {
 		return KNOT_STATE_FAIL;

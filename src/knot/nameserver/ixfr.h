@@ -1,15 +1,4 @@
-/*!
- * \file ixfr.h
- *
- * \author Marek Vavrusa <marek.vavrusa@nic.cz> - IXFR/OUT
- * \author Jan Kadlec <marek.vavrusa@nic.cz> - IXFR/IN
- *
- * \brief IXFR processing.
- *
- * \addtogroup query_processing
- * @{
- */
-/*  Copyright (C) 2013 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -24,13 +13,20 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
+/*!
+ * \file
+ *
+ * \brief IXFR processing.
+ *
+ * \addtogroup query_processing
+ * @{
+ */
 
 #pragma once
 
 #include "libknot/packet/pkt.h"
-
-struct query_data;
-struct answer_data;
+#include "knot/nameserver/process_answer.h"
+#include "knot/nameserver/process_query.h"
 
 /*!
  * \brief IXFR query processing module.
@@ -39,7 +35,7 @@ struct answer_data;
  * \retval FAIL if it encountered an error.
  * \retval DONE if finished.
  */
-int ixfr_query(knot_pkt_t *pkt, struct query_data *qdata);
+int ixfr_process_query(knot_pkt_t *pkt, struct query_data *qdata);
 
 /*!
  * \brief IXFR response processing module.

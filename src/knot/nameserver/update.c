@@ -1,4 +1,4 @@
-/*  Copyright (C) 2014 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -14,31 +14,21 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <sys/socket.h>
 #include <urcu.h>
 
 #include "dnssec/random.h"
+#include "knot/common/log.h"
 #include "knot/nameserver/update.h"
+#include "knot/nameserver/capture.h"
 #include "knot/nameserver/internet.h"
 #include "knot/nameserver/process_query.h"
-#include "knot/updates/apply.h"
-#include "knot/dnssec/zone-sign.h"
-#include "knot/common/log.h"
-#include "knot/dnssec/zone-events.h"
 #include "knot/updates/ddns.h"
-#include "knot/updates/zone-update.h"
-#include "libknot/libknot.h"
-#include "libknot/descriptor.h"
-#include "libknot/tsig-op.h"
-#include "knot/zone/zone.h"
+#include "knot/updates/apply.h"
 #include "knot/zone/events/events.h"
-#include "knot/server/tcp-handler.h"
-#include "knot/server/udp-handler.h"
-#include "knot/nameserver/capture.h"
-#include "libknot/processing/requestor.h"
-#include "contrib/macros.h"
+#include "libknot/libknot.h"
 #include "contrib/net.h"
 #include "contrib/print.h"
-#include "contrib/sockaddr.h"
 
 /* UPDATE-specific logging (internal, expects 'qdata' variable set). */
 #define UPDATE_LOG(severity, msg, ...) \
@@ -446,7 +436,7 @@ static int init_update_responses(const zone_t *zone, list_t *updates,
 	return KNOT_EOK;
 }
 
-int update_query_process(knot_pkt_t *pkt, struct query_data *qdata)
+int update_process_query(knot_pkt_t *pkt, struct query_data *qdata)
 {
 	/* RFC1996 require SOA question. */
 	NS_NEED_QTYPE(qdata, KNOT_RRTYPE_SOA, KNOT_RCODE_FORMERR);

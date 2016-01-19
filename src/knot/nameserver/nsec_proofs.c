@@ -1,4 +1,4 @@
-/*  Copyright (C) 2014 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -18,7 +18,6 @@
 
 #include "libknot/libknot.h"
 #include "knot/nameserver/nsec_proofs.h"
-#include "knot/nameserver/process_query.h"
 #include "knot/nameserver/internet.h"
 #include "knot/dnssec/zone-nsec.h"
 

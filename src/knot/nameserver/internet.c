@@ -752,7 +752,7 @@ static int planned_answer(struct query_plan *plan, knot_pkt_t *response, struct 
 
 #undef SOLVE_STEP
 
-int internet_query(knot_pkt_t *response, struct query_data *qdata)
+int internet_process_query(knot_pkt_t *response, struct query_data *qdata)
 {
 	if (response == NULL || qdata == NULL) {
 		return KNOT_STATE_FAIL;
