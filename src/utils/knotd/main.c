@@ -15,6 +15,7 @@
  */
 
 #include <dirent.h>
+#include <poll.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -108,8 +109,23 @@ static int make_daemon(int nochdir, int noclose)
 	return 0;
 }
 
-/*! \brief SIGINT signal handler. */
-static void interrupt_handle(int signum)
+struct signal {
+	int signum;
+	bool handle;
+};
+
+/*! \brief Signals used by the server. */
+static const struct signal SIGNALS[] = {
+	{ SIGHUP,  true  },  /* Reload server. */
+	{ SIGINT,  true  },  /* Terminate server .*/
+	{ SIGTERM, true  },
+	{ SIGALRM, false },  /* Internal thread synchronization. */
+	{ SIGPIPE, false },  /* Ignored. Some I/O errors. */
+	{ 0 }
+};
+
+/*! \brief Server signal handler. */
+static void handle_signal(int signum)
 {
 	switch (signum) {
 	case SIGHUP:
@@ -128,23 +144,18 @@ static void interrupt_handle(int signum)
 /*! \brief Setup signal handlers and blocking mask. */
 static void setup_signals(void)
 {
+	/* Block all signals. */
+	static sigset_t empty;
+	sigemptyset(&empty);
+	pthread_sigmask(SIG_SETMASK, &empty, NULL);
+
+	/* Setup handlers. */
 	struct sigaction action;
 	memset(&action, 0, sizeof(struct sigaction));
-	action.sa_handler = interrupt_handle;
-
-	static sigset_t block_mask;
-	(void)sigemptyset(&block_mask);
-
-	int signals[] = { SIGALRM, SIGHUP, SIGINT, SIGPIPE, SIGTERM };
-	size_t count = sizeof(signals) / sizeof(*signals);
-
-	for (int i = 0; i < count; i++) {
-		int signal = signals[i];
-		sigaction(signal, &action, NULL);
-		sigaddset(&block_mask, signal);
+	action.sa_handler = handle_signal;
+	for (const struct signal *s = SIGNALS; s->signum > 0; s++) {
+		sigaction(s->signum, &action, NULL);
 	}
-
-	pthread_sigmask(SIG_BLOCK, &block_mask, NULL);
 }
 
 /*! \brief POSIX 1003.1e capabilities. */
