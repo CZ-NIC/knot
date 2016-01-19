@@ -18,11 +18,11 @@
 
 #include <assert.h>
 #include <fcntl.h>
+#include <poll.h>
 #include <pthread.h>
 #include <signal.h>
 #include <stdbool.h>
 #include <string.h>
-#include <unistd.h>
 
 #include "libknot/errcode.h"
 #include "contrib/net.h"
@@ -31,8 +31,8 @@
 #undef ENABLE_NET_UNREACHABLE_TEST
 //#define ENABLE_NET_UNREACHABLE_TEST
 
-const struct timeval TIMEOUT = { 5, 0 };
-const struct timeval TIMEOUT_SHORT = { 0, 500000 };
+const int TIMEOUT = 5000;
+const int TIMEOUT_SHORT = 500;
 
 /*!
  * \brief Get loopback socket address with unset port.
@@ -112,14 +112,10 @@ struct server_ctx {
 	pthread_mutex_t mx;
 };
 
-static int select_read(int sock)
+static int poll_read(int sock)
 {
-	fd_set fds;
-	FD_ZERO(&fds);
-	FD_SET(sock, &fds);
-	struct timeval tv = TIMEOUT;
-
-	return select(sock + 1, &fds, NULL, NULL, &tv);
+	struct pollfd pfd = { .fd = sock, .events = POLLIN };
+	return poll(&pfd, 1, TIMEOUT);
 }
 
 static void server_handle(server_ctx_t *ctx)
@@ -162,7 +158,7 @@ static void *server_main(void *_ctx)
 			break;
 		}
 
-		int r = select_read(ctx->sock);
+		int r = poll_read(ctx->sock);
 		if (r == -1) {
 			if (errno == EINTR) {
 				continue;
@@ -219,14 +215,12 @@ static void handler_echo(int sock, void *_server)
 		addr = &remote;
 	}
 
-	struct timeval tv = TIMEOUT;
-	int in = net_recv(sock, buffer, sizeof(buffer), addr, &tv);
+	int in = net_recv(sock, buffer, sizeof(buffer), addr, TIMEOUT);
 	if (in <= 0) {
 		return;
 	}
 
-	tv = TIMEOUT;
-	net_send(sock, buffer, in, addr, &tv);
+	net_send(sock, buffer, in, addr, TIMEOUT);
 }
 
 static void test_connected_one(const struct sockaddr_storage *server_addr,
@@ -234,7 +228,6 @@ static void test_connected_one(const struct sockaddr_storage *server_addr,
                                int type, const char *name, const char *addr_name)
 {
 	int r;
-	struct timeval tv;
 
 	int client = net_connected_socket(type, server_addr, NULL);
 	ok(client >= 0, "%s, %s: client, create connected socket", name, addr_name);
@@ -242,8 +235,7 @@ static void test_connected_one(const struct sockaddr_storage *server_addr,
 	const uint8_t out[] = "test message";
 	const size_t out_len = sizeof(out);
 	if (socktype_is_stream(type)) {
-		tv = TIMEOUT;
-		r = net_stream_send(client, out, out_len, &tv);
+		r = net_stream_send(client, out, out_len, TIMEOUT);
 	} else {
 		r = net_dgram_send(client, out, out_len, NULL);
 	}
@@ -253,11 +245,10 @@ static void test_connected_one(const struct sockaddr_storage *server_addr,
 	ok(r, "%s, %s: client, is connected", name, addr_name);
 
 	uint8_t in[128] = { 0 };
-	tv = TIMEOUT;
 	if (socktype_is_stream(type)) {
-		r = net_stream_recv(client, in, sizeof(in), &tv);
+		r = net_stream_recv(client, in, sizeof(in), TIMEOUT);
 	} else {
-		r = net_dgram_recv(client, in, sizeof(in), &tv);
+		r = net_dgram_recv(client, in, sizeof(in), TIMEOUT);
 	}
 	ok(r == out_len && memcmp(out, in, out_len) == 0,
 	   "%s, %s: client, receive message", name, addr_name);
@@ -310,7 +301,6 @@ static void test_unconnected(void)
 	int r = 0;
 	int sock = -1;
 	const struct sockaddr_storage local = addr_local();
-	struct timeval tv = { 0 };
 
 	uint8_t buffer[] = { 'k', 'n', 'o', 't' };
 	ssize_t buffer_len = sizeof(buffer);
@@ -334,8 +324,7 @@ static void test_unconnected(void)
 	r = net_dgram_send(sock, buffer, buffer_len, NULL);
 	ok(r == KNOT_ECONN, "UDP, send failure on unconnected socket");
 
-	tv = TIMEOUT_SHORT;
-	r = net_dgram_recv(sock, buffer, buffer_len, &tv);
+	r = net_dgram_recv(sock, buffer, buffer_len, TIMEOUT_SHORT);
 	ok(r == KNOT_ETIMEOUT, "UDP, receive timeout on unconnected socket");
 
 	struct sockaddr_storage server_addr = addr_from_socket(server);
@@ -354,19 +343,17 @@ static void test_unconnected(void)
 #ifdef __linux__
 	const int expected = KNOT_ECONN;
 	const char *expected_msg = "failure";
-	const struct timeval expected_tv = TIMEOUT;
+	const int expected_timeout = TIMEOUT;
 #else
 	const int expected = KNOT_ETIMEOUT;
 	const char *expected_msg = "timeout";
-	const struct timeval expected_tv = TIMEOUT_SHORT;
+	const int expected_timeout = TIMEOUT_SHORT;
 #endif
 
-	tv = expected_tv;
-	r = net_stream_send(sock, buffer, buffer_len, &tv);
+	r = net_stream_send(sock, buffer, buffer_len, expected_timeout);
 	ok(r == expected, "TCP, send %s on unconnected socket", expected_msg);
 
-	tv = expected_tv;
-	r = net_stream_recv(sock, buffer, sizeof(buffer), &tv);
+	r = net_stream_recv(sock, buffer, sizeof(buffer), expected_timeout);
 	ok(r == expected, "TCP, receive %s on unconnected socket", expected_msg);
 
 	close(sock);
@@ -382,7 +369,6 @@ static void test_refused(void)
 	int r = -1;
 
 	struct sockaddr_storage addr = { 0 };
-	struct timeval tv = { 0 };
 	uint8_t buffer[1] = { 0 };
 	int server, client;
 
@@ -423,12 +409,10 @@ static void test_refused(void)
 	client = net_connected_socket(SOCK_STREAM, &addr, NULL);
 	ok(client >= 0, "client, connect");
 
-	tv = TIMEOUT;
-	r = net_stream_send(client, (uint8_t *)"", 1, &tv);
+	r = net_stream_send(client, (uint8_t *)"", 1, TIMEOUT);
 	ok(r == 1, "client, successful write");
 
-	tv = TIMEOUT_SHORT;
-	r = net_stream_recv(client, buffer, sizeof(buffer), &tv);
+	r = net_stream_recv(client, buffer, sizeof(buffer), TIMEOUT_SHORT);
 	ok(r == KNOT_ETIMEOUT, "client, timeout on read");
 
 	close(client);
@@ -441,8 +425,7 @@ static void test_refused(void)
 	r = close(server);
 	ok(r == 0, "server, close socket");
 
-	tv = TIMEOUT;
-	r = net_stream_send(client, (uint8_t *)"", 1, &tv);
+	r = net_stream_send(client, (uint8_t *)"", 1, TIMEOUT);
 	ok(r == KNOT_ECONN, "client, refused on write");
 
 	close(client);
@@ -458,12 +441,11 @@ struct dns_handler_ctx {
 static void _sync(int remote, int send)
 {
 	uint8_t buf[1] = { 0 };
-	struct timeval tv = TIMEOUT;
 	int r;
 	if (send) {
-		r = net_stream_send(remote, buf, sizeof(buf), &tv);
+		r = net_stream_send(remote, buf, sizeof(buf), TIMEOUT);
 	} else {
-		r = net_stream_recv(remote, buf, sizeof(buf), &tv);
+		r = net_stream_recv(remote, buf, sizeof(buf), TIMEOUT);
 
 	}
 	assert(r == sizeof(buf));
@@ -483,16 +465,15 @@ static void handler_dns(int sock, void *_ctx)
 {
 	struct dns_handler_ctx *ctx = _ctx;
 
-	struct timeval tv = TIMEOUT;
 	uint8_t in[16] = { 0 };
 	int in_len = 0;
 
 	sync_signal(sock);
 
 	if (ctx->raw) {
-		in_len = net_stream_recv(sock, in, sizeof(in), &tv);
+		in_len = net_stream_recv(sock, in, sizeof(in), TIMEOUT);
 	} else {
-		in_len = net_dns_tcp_recv(sock, in, sizeof(in), &tv);
+		in_len = net_dns_tcp_recv(sock, in, sizeof(in), TIMEOUT);
 	}
 
 	ctx->success = in_len == ctx->len &&
@@ -501,8 +482,7 @@ static void handler_dns(int sock, void *_ctx)
 
 static void dns_send_hello(int sock)
 {
-	struct timeval tv = TIMEOUT;
-	net_dns_tcp_send(sock, (uint8_t *)"wimbgunts", 9, &tv);
+	net_dns_tcp_send(sock, (uint8_t *)"wimbgunts", 9, TIMEOUT);
 }
 
 static void dns_send_fragmented(int sock)
@@ -517,21 +497,18 @@ static void dns_send_fragmented(int sock)
 	};
 
 	for (const struct fragment *f = fragments; f->len > 0; f++) {
-		struct timeval tv = TIMEOUT;
-		net_stream_send(sock, f->data, f->len, &tv);
+		net_stream_send(sock, f->data, f->len, TIMEOUT);
 	}
 }
 
 static void dns_send_incomplete(int sock)
 {
-	struct timeval tv = TIMEOUT;
-	net_stream_send(sock, (uint8_t *)"\x00\x08""korm", 6, &tv);
+	net_stream_send(sock, (uint8_t *)"\x00\x08""korm", 6, TIMEOUT);
 }
 
 static void dns_send_trailing(int sock)
 {
-	struct timeval tv = TIMEOUT;
-	net_stream_send(sock, (uint8_t *)"\x00\x05""bloitxx", 9, &tv);
+	net_stream_send(sock, (uint8_t *)"\x00\x05""bloitxx", 9, TIMEOUT);
 }
 
 static void test_dns_tcp(void)
@@ -645,7 +622,7 @@ static void test_nonblocking_accept(void)
 
 	// accept connection
 
-	r = select_read(server);
+	r = poll_read(server);
 	ok(r == 1, "server, pending connection");
 
 	struct sockaddr_storage addr_accepted = { 0 };
@@ -664,7 +641,7 @@ static void test_nonblocking_accept(void)
 	client = net_connected_socket(SOCK_STREAM, &addr_server, NULL);
 	ok(client >= 0, "client, reconnect");
 
-	r = select_read(server);
+	r = poll_read(server);
 	ok(r == 1, "server, pending connection");
 
 	accepted = net_accept(server, NULL);
