@@ -145,9 +145,9 @@ static void handle_signal(int signum)
 static void setup_signals(void)
 {
 	/* Block all signals. */
-	static sigset_t empty;
-	sigemptyset(&empty);
-	pthread_sigmask(SIG_SETMASK, &empty, NULL);
+	static sigset_t all;
+	sigfillset(&all);
+	pthread_sigmask(SIG_SETMASK, &all, NULL);
 
 	/* Setup handlers. */
 	struct sigaction action;
@@ -156,6 +156,21 @@ static void setup_signals(void)
 	for (const struct signal *s = SIGNALS; s->signum > 0; s++) {
 		sigaction(s->signum, &action, NULL);
 	}
+}
+
+/*! \brief Unblock server control signals. */
+static void enable_signals(void)
+{
+	sigset_t mask;
+	sigemptyset(&mask);
+
+	for (const struct signal *s = SIGNALS; s->signum > 0; s++) {
+		if (s->handle) {
+			sigaddset(&mask, s->signum);
+		}
+	}
+
+	pthread_sigmask(SIG_UNBLOCK, &mask, NULL);
 }
 
 /*! \brief POSIX 1003.1e capabilities. */
@@ -219,21 +234,10 @@ static void event_loop(server_t *server, char *socket)
 		free(listen);
 	}
 
-	sigset_t empty;
-	(void)sigemptyset(&empty);
+	enable_signals();
 
 	/* Run event loop. */
 	for (;;) {
-		int ret = remote_poll(sock, &empty);
-
-		/* Events. */
-		if (ret > 0) {
-			ret = remote_process(server, sock, buf, buflen);
-			if (ret == KNOT_CTL_ESTOP) {
-				break;
-			}
-		}
-
 		/* Interrupts. */
 		if (sig_req_stop) {
 			break;
@@ -241,6 +245,18 @@ static void event_loop(server_t *server, char *socket)
 		if (sig_req_reload) {
 			sig_req_reload = false;
 			server_reload(server, conf()->filename);
+		}
+
+		/* Control interface. */
+		struct pollfd pfd = { .fd = sock, .events = POLLIN };
+		int ret= poll(&pfd, 1, -1);
+		if (ret == -1 && errno == EINTR) {
+			continue;
+		} else if (ret > 0) {
+			ret = remote_process(server, sock, buf, buflen);
+			if (ret == KNOT_CTL_ESTOP) {
+				break;
+			}
 		}
 	}
 
