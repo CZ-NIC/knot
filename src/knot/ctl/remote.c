@@ -113,20 +113,6 @@ void remote_unbind(int sock)
 	(void)close(sock);
 }
 
-int remote_poll(int sock, const sigset_t *sigmask)
-{
-	/* Wait for events. */
-	fd_set rfds;
-	FD_ZERO(&rfds);
-	if (sock > -1) {
-		FD_SET(sock, &rfds);
-	} else {
-		sock = -1; /* Make sure n == r + 1 == 0 */
-	}
-
-	return pselect(sock + 1, &rfds, NULL, NULL, NULL, sigmask);
-}
-
 int remote_recv(int sock, uint8_t *buf, size_t *buflen)
 {
 	int c = tcp_accept(sock);
