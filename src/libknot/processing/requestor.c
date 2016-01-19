@@ -59,12 +59,8 @@ static int request_ensure_connected(struct knot_request *request)
 	return KNOT_EOK;
 }
 
-static int request_send(struct knot_request *request,
-                        const struct timeval *timeout)
+static int request_send(struct knot_request *request, int timeout_ms)
 {
-	/* Each request has unique timeout. */
-	struct timeval tv = *timeout;
-
 	/* Initiate non-blocking connect if not connected. */
 	int ret = request_ensure_connected(request);
 	if (ret != KNOT_EOK) {
@@ -78,7 +74,7 @@ static int request_send(struct knot_request *request,
 
 	/* Send query. */
 	if (use_tcp(request)) {
-		ret = net_dns_tcp_send(request->fd, wire, wire_len, &tv);
+		ret = net_dns_tcp_send(request->fd, wire, wire_len, timeout_ms);
 	} else {
 		ret = net_dgram_send(request->fd, wire, wire_len, NULL);
 	}
@@ -89,8 +85,7 @@ static int request_send(struct knot_request *request,
 	return KNOT_EOK;
 }
 
-static int request_recv(struct knot_request *request,
-                        const struct timeval *timeout)
+static int request_recv(struct knot_request *request, int timeout_ms)
 {
 	knot_pkt_t *resp = request->resp;
 	knot_pkt_clear(resp);
@@ -101,14 +96,11 @@ static int request_recv(struct knot_request *request,
 		return ret;
 	}
 
-	/* Each request has unique timeout. */
-	struct timeval tv = *timeout;
-
 	/* Receive it */
 	if (use_tcp(request)) {
-		ret = net_dns_tcp_recv(request->fd, resp->wire, resp->max_size, &tv);
+		ret = net_dns_tcp_recv(request->fd, resp->wire, resp->max_size, timeout_ms);
 	} else {
-		ret = net_dgram_recv(request->fd, resp->wire, resp->max_size, &tv);
+		ret = net_dgram_recv(request->fd, resp->wire, resp->max_size, timeout_ms);
 	}
 	if (ret <= 0) {
 		resp->size = 0;
@@ -271,7 +263,7 @@ int knot_requestor_dequeue(struct knot_requestor *requestor)
 }
 
 static int request_io(struct knot_requestor *req, struct knot_request *last,
-                      struct timeval *timeout)
+                      int timeout_ms)
 {
 	int ret = KNOT_EOK;
 	knot_pkt_t *query = last->query;
@@ -284,7 +276,7 @@ static int request_io(struct knot_requestor *req, struct knot_request *last,
 		knot_overlay_produce(&req->overlay, query);
 
 		if (req->overlay.state == KNOT_STATE_CONSUME) {
-			ret = request_send(last, timeout);
+			ret = request_send(last, timeout_ms);
 			if (ret != KNOT_EOK) {
 				return ret;
 			}
@@ -294,7 +286,7 @@ static int request_io(struct knot_requestor *req, struct knot_request *last,
 	/* Data to be read. */
 	if (req->overlay.state == KNOT_STATE_CONSUME) {
 		/* Read answer and process it. */
-		ret = request_recv(last, timeout);
+		ret = request_recv(last, timeout_ms);
 		if (ret < 0) {
 			return ret;
 		}
@@ -307,13 +299,13 @@ static int request_io(struct knot_requestor *req, struct knot_request *last,
 }
 
 static int exec_request(struct knot_requestor *req, struct knot_request *last,
-                        struct timeval *timeout)
+                        int timeout_ms)
 {
 	int ret = KNOT_EOK;
 
 	/* Do I/O until the processing is satisifed or fails. */
 	while (req->overlay.state & (KNOT_STATE_PRODUCE|KNOT_STATE_CONSUME)) {
-		ret = request_io(req, last, timeout);
+		ret = request_io(req, last, timeout_ms);
 		if (ret != KNOT_EOK) {
 			knot_overlay_reset(&req->overlay);
 			return ret;
@@ -332,8 +324,7 @@ static int exec_request(struct knot_requestor *req, struct knot_request *last,
 }
 
 _public_
-int knot_requestor_exec(struct knot_requestor *requestor,
-                        struct timeval *timeout)
+int knot_requestor_exec(struct knot_requestor *requestor, int timeout_ms)
 {
 	if (knot_requestor_finished(requestor)) {
 		return KNOT_ENOENT;
@@ -342,7 +333,7 @@ int knot_requestor_exec(struct knot_requestor *requestor,
 	/* Execute next request. */
 	ptrnode_t *node = HEAD(*PENDING(requestor));
 	struct knot_request *last = node->d;
-	int ret = exec_request(requestor, last, timeout);
+	int ret = exec_request(requestor, last, timeout_ms);
 
 	/* Remove it from processing. */
 	knot_requestor_dequeue(requestor);

@@ -135,10 +135,9 @@ int knot_requestor_dequeue(struct knot_requestor *requestor);
 /*!
  * \brief Execute next pending query (FIFO).
  *
- * \param requestor Requestor instance.
- * \param timeout   Processing timeout.
+ * \param requestor  Requestor instance.
+ * \param timeout_ms Timeout of each operation in miliseconds (-1 for infinity).
  *
  * \return KNOT_EOK or error
  */
-int knot_requestor_exec(struct knot_requestor *requestor,
-                        struct timeval *timeout);
+int knot_requestor_exec(struct knot_requestor *requestor, int timeout_ms);
