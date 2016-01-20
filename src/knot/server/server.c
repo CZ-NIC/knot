@@ -285,9 +285,9 @@ static int reconfigure_sockets(conf_t *conf, server_t *s)
 
 	/* Wait for readers that are reconfiguring right now. */
 	/*! \note This subsystem will be reworked in #239 */
-	for (unsigned i = IO_UDP; i <= IO_TCP; ++i) {
-		dt_unit_t *tu = s->handlers[i].handler.unit;
-		iohandler_t *ioh = &s->handlers[i].handler;
+	for (unsigned proto = IO_UDP; proto <= IO_TCP; ++proto) {
+		dt_unit_t *tu = s->handlers[proto].handler.unit;
+		iohandler_t *ioh = &s->handlers[proto].handler;
 		for (unsigned i = 0; i < tu->size; ++i) {
 			while (ioh->thread_state[i] & ServerReload) {
 				sleep(1);
@@ -300,12 +300,12 @@ static int reconfigure_sockets(conf_t *conf, server_t *s)
 
 	/* Update TCP+UDP ifacelist (reload all threads). */
 	unsigned thread_count = 0;
-	for (unsigned i = IO_UDP; i <= IO_TCP; ++i) {
-		dt_unit_t *tu = s->handlers[i].handler.unit;
+	for (unsigned proto = IO_UDP; proto <= IO_TCP; ++proto) {
+		dt_unit_t *tu = s->handlers[proto].handler.unit;
 		for (unsigned i = 0; i < tu->size; ++i) {
 			ref_retain((ref_t *)newlist);
-			s->handlers[i].handler.thread_state[i] |= ServerReload;
-			s->handlers[i].handler.thread_id[i] = thread_count++;
+			s->handlers[proto].handler.thread_state[i] |= ServerReload;
+			s->handlers[proto].handler.thread_id[i] = thread_count++;
 			if (s->state & ServerRunning) {
 				dt_activate(tu->threads[i]);
 				dt_signalize(tu->threads[i], SIGALRM);
@@ -441,9 +441,9 @@ int server_start(server_t *server, bool async)
 
 	/* Start I/O handlers. */
 	server->state |= ServerRunning;
-	for (int i = IO_UDP; i <= IO_TCP; ++i) {
-		if (server->handlers[i].size > 0) {
-			int ret = dt_start(server->handlers[i].handler.unit);
+	for (int proto = IO_UDP; proto <= IO_TCP; ++proto) {
+		if (server->handlers[proto].size > 0) {
+			int ret = dt_start(server->handlers[proto].handler.unit);
 			if (ret != KNOT_EOK) {
 				return ret;
 			}
@@ -462,9 +462,9 @@ void server_wait(server_t *server)
 	evsched_join(&server->sched);
 	worker_pool_join(server->workers);
 
-	for (int i = IO_UDP; i <= IO_TCP; ++i) {
-		if (server->handlers[i].size > 0) {
-			server_free_handler(&server->handlers[i].handler);
+	for (int proto = IO_UDP; proto <= IO_TCP; ++proto) {
+		if (server->handlers[proto].size > 0) {
+			server_free_handler(&server->handlers[proto].handler);
 		}
 	}
 }
