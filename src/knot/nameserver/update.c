@@ -277,7 +277,7 @@ static int remote_forward(struct knot_request *request, conf_remote_t *remote)
 	ret = knot_requestor_enqueue(&re, req);
 	if (ret == KNOT_EOK) {
 		conf_val_t *val = &conf()->cache.srv_tcp_reply_timeout;
-		const int timeout = conf_int(val) * 1000;
+		int timeout = conf_int(val) * 1000;
 		ret = knot_requestor_exec(&re, timeout);
 	} else {
 		knot_request_free(req, re.mm);

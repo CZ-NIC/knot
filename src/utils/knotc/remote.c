@@ -132,7 +132,7 @@ int cmd_remote(const char *socket, const char *cmd, uint16_t rrt,
 
 	/* Default timeout. */
 	conf_val_t *val = &conf()->cache.srv_tcp_reply_timeout;
-	const int timeout = conf_int(val) * 1000;
+	int timeout = conf_int(val) * 1000;
 
 	/* Prepare socket address. */
 	struct sockaddr_storage addr;

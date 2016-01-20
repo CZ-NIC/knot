@@ -172,7 +172,7 @@ static int remote_send_chunk(int c, knot_pkt_t *query, const char *d, uint16_t l
 
 	rcu_read_lock();
 	conf_val_t *val = &conf()->cache.srv_tcp_reply_timeout;
-	const int timeout = conf_int(val) * 1000;
+	int timeout = conf_int(val) * 1000;
 	rcu_read_unlock();
 
 	ret = net_dns_tcp_send(c, resp->wire, resp->size, timeout);
