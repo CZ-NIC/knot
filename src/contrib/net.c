@@ -18,6 +18,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <netinet/in.h>
+#include <poll.h>
 #include <stdbool.h>
 #include <sys/socket.h>
 #include <sys/uio.h>
@@ -302,21 +303,16 @@ int net_accept(int sock, struct sockaddr_storage *addr)
 /* -- I/O interface handling partial  -------------------------------------- */
 
 /*!
- * \brief Perform \a select() on one socket.
- *
- * \param read   Wait for input readiness.
- * \param write  Wait for output readiness.
+ * \brief Perform \a poll() on one socket.
  */
-static int select_one(int fd, bool read, bool write, struct timeval *timeout)
+static int poll_one(int fd, int events, int timeout_ms)
 {
-	fd_set set;
-	FD_ZERO(&set);
-	FD_SET(fd, &set);
+	struct pollfd pfd = {
+		.fd = fd,
+		.events = events
+	};
 
-	fd_set *rfds = read ? &set : NULL;
-	fd_set *wfds = write ? &set : NULL;
-
-	return select(fd + 1, rfds, wfds, NULL, timeout);
+	return poll(&pfd, 1, timeout_ms);
 }
 
 /*!
@@ -346,7 +342,7 @@ static bool io_should_wait(int error)
  */
 struct io {
 	ssize_t (*process)(int sockfd, struct msghdr *msg);
-	int (*wait)(int sockfd, struct timeval *timeout);
+	int (*wait)(int sockfd, int timeout_ms);
 };
 
 /*!
@@ -393,7 +389,7 @@ static void msg_iov_shift(struct msghdr *msg, size_t done)
  *
  */
 static ssize_t io_exec(const struct io *io, int fd, struct msghdr *msg,
-                       bool oneshot, struct timeval *timeout)
+                       bool oneshot, int timeout_ms)
 {
 	size_t done = 0;
 	size_t total = msg_iov_len(msg);
@@ -415,7 +411,7 @@ static ssize_t io_exec(const struct io *io, int fd, struct msghdr *msg,
 		/* Wait for data readiness. */
 		if (ret > 0 || (ret == -1 && io_should_wait(errno))) {
 			do {
-				ret = io->wait(fd, timeout);
+				ret = io->wait(fd, timeout_ms);
 			} while (ret == -1 && errno == EINTR);
 			if (ret == 1) {
 				continue;
@@ -436,19 +432,19 @@ static ssize_t recv_process(int fd, struct msghdr *msg)
 	return recvmsg(fd, msg, MSG_DONTWAIT | MSG_NOSIGNAL);
 }
 
-static int recv_wait(int fd, struct timeval *timeout)
+static int recv_wait(int fd, int timeout_ms)
 {
-	return select_one(fd, true, false, timeout);
+	return poll_one(fd, POLLIN, timeout_ms);
 }
 
-static ssize_t recv_data(int sock, struct msghdr *msg, bool oneshot, struct timeval *timeout)
+static ssize_t recv_data(int sock, struct msghdr *msg, bool oneshot, int timeout_ms)
 {
 	static const struct io RECV_IO = {
 		.process = recv_process,
 		.wait = recv_wait
 	};
 
-	return io_exec(&RECV_IO, sock, msg, oneshot, timeout);
+	return io_exec(&RECV_IO, sock, msg, oneshot, timeout_ms);
 }
 
 static ssize_t send_process(int fd, struct msghdr *msg)
@@ -456,25 +452,25 @@ static ssize_t send_process(int fd, struct msghdr *msg)
 	return sendmsg(fd, msg, MSG_NOSIGNAL);
 }
 
-static int send_wait(int fd, struct timeval *timeout)
+static int send_wait(int fd, int timeout_ms)
 {
-	return select_one(fd, false, true, timeout);
+	return poll_one(fd, POLLOUT, timeout_ms);
 }
 
-static ssize_t send_data(int sock, struct msghdr *msg, struct timeval *timeout)
+static ssize_t send_data(int sock, struct msghdr *msg, int timeout_ms)
 {
 	static const struct io SEND_IO = {
 		.process = send_process,
 		.wait = send_wait
 	};
 
-	return io_exec(&SEND_IO, sock, msg, false, timeout);
+	return io_exec(&SEND_IO, sock, msg, false, timeout_ms);
 }
 
 /* -- generic stream and datagram I/O -------------------------------------- */
 
 ssize_t net_send(int sock, const uint8_t *buffer, size_t size,
-                 const struct sockaddr_storage *addr, struct timeval *timeout)
+                 const struct sockaddr_storage *addr, int timeout_ms)
 {
 	if (sock < 0 || buffer == NULL) {
 		return KNOT_EINVAL;
@@ -490,7 +486,7 @@ ssize_t net_send(int sock, const uint8_t *buffer, size_t size,
 	msg.msg_iov = &iov;
 	msg.msg_iovlen = 1;
 
-	int ret = send_data(sock, &msg, timeout);
+	int ret = send_data(sock, &msg, timeout_ms);
 	if (ret < 0) {
 		return ret;
 	} else if (ret != size) {
@@ -501,7 +497,7 @@ ssize_t net_send(int sock, const uint8_t *buffer, size_t size,
 }
 
 ssize_t net_recv(int sock, uint8_t *buffer, size_t size,
-                 struct sockaddr_storage *addr, struct timeval *timeout)
+                 struct sockaddr_storage *addr, int timeout_ms)
 {
 	if (sock < 0 || buffer == NULL) {
 		return KNOT_EINVAL;
@@ -517,33 +513,33 @@ ssize_t net_recv(int sock, uint8_t *buffer, size_t size,
 	msg.msg_iov = &iov;
 	msg.msg_iovlen = 1;
 
-	return recv_data(sock, &msg, true, timeout);
+	return recv_data(sock, &msg, true, timeout_ms);
 }
 
 ssize_t net_dgram_send(int sock, const uint8_t *buffer, size_t size,
                        const struct sockaddr_storage *addr)
 {
-	return net_send(sock, buffer, size, addr, NULL);
+	return net_send(sock, buffer, size, addr, 0);
 }
 
-ssize_t net_dgram_recv(int sock, uint8_t *buffer, size_t size, struct timeval *timeout)
+ssize_t net_dgram_recv(int sock, uint8_t *buffer, size_t size, int timeout_ms)
 {
-	return net_recv(sock, buffer, size, NULL, timeout);
+	return net_recv(sock, buffer, size, NULL, timeout_ms);
 }
 
-ssize_t net_stream_send(int sock, const uint8_t *buffer, size_t size, struct timeval *timeout)
+ssize_t net_stream_send(int sock, const uint8_t *buffer, size_t size, int timeout_ms)
 {
-	return net_send(sock, buffer, size, NULL, timeout);
+	return net_send(sock, buffer, size, NULL, timeout_ms);
 }
 
-ssize_t net_stream_recv(int sock, uint8_t *buffer, size_t size, struct timeval *timeout)
+ssize_t net_stream_recv(int sock, uint8_t *buffer, size_t size, int timeout_ms)
 {
-	return net_recv(sock, buffer, size, NULL, timeout);
+	return net_recv(sock, buffer, size, NULL, timeout_ms);
 }
 
 /* -- DNS specific I/O ----------------------------------------------------- */
 
-ssize_t net_dns_tcp_send(int sock, const uint8_t *buffer, size_t size, struct timeval *timeout)
+ssize_t net_dns_tcp_send(int sock, const uint8_t *buffer, size_t size, int timeout_ms)
 {
 	if (sock < 0 || buffer == NULL || size > UINT16_MAX) {
 		return KNOT_EINVAL;
@@ -560,7 +556,7 @@ ssize_t net_dns_tcp_send(int sock, const uint8_t *buffer, size_t size, struct ti
 	msg.msg_iov = iov;
 	msg.msg_iovlen = 2;
 
-	ssize_t ret = send_data(sock, &msg, timeout);
+	ssize_t ret = send_data(sock, &msg, timeout_ms);
 	if (ret < 0) {
 		return ret;
 	}
@@ -568,7 +564,7 @@ ssize_t net_dns_tcp_send(int sock, const uint8_t *buffer, size_t size, struct ti
 	return size; /* Do not count the size prefix. */
 }
 
-ssize_t net_dns_tcp_recv(int sock, uint8_t *buffer, size_t size, struct timeval *timeout)
+ssize_t net_dns_tcp_recv(int sock, uint8_t *buffer, size_t size, int timeout_ms)
 {
 	if (sock < 0 || buffer == NULL) {
 		return KNOT_EINVAL;
@@ -583,7 +579,7 @@ ssize_t net_dns_tcp_recv(int sock, uint8_t *buffer, size_t size, struct timeval 
 	uint16_t pktsize = 0;
 	iov.iov_base = &pktsize;
 	iov.iov_len = sizeof(pktsize);
-	int ret = recv_data(sock, &msg, false, timeout);
+	int ret = recv_data(sock, &msg, false, timeout_ms);
 	if (ret != sizeof(pktsize)) {
 		return ret;
 	}
@@ -600,5 +596,5 @@ ssize_t net_dns_tcp_recv(int sock, uint8_t *buffer, size_t size, struct timeval 
 	msg.msg_iovlen = 1;
 	iov.iov_base = buffer;
 	iov.iov_len = pktsize;
-	return recv_data(sock, &msg, false, timeout);
+	return recv_data(sock, &msg, false, timeout_ms);
 }

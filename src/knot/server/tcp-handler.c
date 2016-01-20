@@ -115,12 +115,11 @@ static int tcp_handle(tcp_context_t *tcp, int fd,
 	/* Timeout. */
 	rcu_read_lock();
 	conf_val_t *val = &conf()->cache.srv_tcp_reply_timeout;
-	struct timeval tmout = { conf_int(val), 0 };
+	int timeout = conf_int(val) * 1000;
 	rcu_read_unlock();
 
 	/* Receive data. */
-	struct timeval recv_tmout = tmout;
-	int ret = net_dns_tcp_recv(fd, rx->iov_base, rx->iov_len, &recv_tmout);
+	int ret = net_dns_tcp_recv(fd, rx->iov_base, rx->iov_len, timeout);
 	if (ret <= 0) {
 		if (ret == KNOT_EAGAIN) {
 			char addr_str[SOCKADDR_STRLEN] = {0};
@@ -160,8 +159,7 @@ static int tcp_handle(tcp_context_t *tcp, int fd,
 
 		/* Send, if response generation passed and wasn't ignored. */
 		if (ans->size > 0 && !(state & (KNOT_STATE_FAIL|KNOT_STATE_NOOP))) {
-			struct timeval send_tmout = tmout;
-			if (net_dns_tcp_send(fd, ans->wire, ans->size, &send_tmout) != ans->size) {
+			if (net_dns_tcp_send(fd, ans->wire, ans->size, timeout) != ans->size) {
 				ret = KNOT_ECONNREFUSED;
 				break;
 			}

@@ -447,7 +447,7 @@ AC_SEARCH_LIBS([capng_apply], [cap-ng])
 
 # Checks for header files.
 AC_HEADER_RESOLV
-AC_CHECK_HEADERS_ONCE([cap-ng.h netinet/in_systm.h pthread_np.h signal.h sys/select.h sys/time.h sys/wait.h sys/uio.h])
+AC_CHECK_HEADERS_ONCE([cap-ng.h netinet/in_systm.h pthread_np.h signal.h sys/time.h sys/wait.h sys/uio.h])
 
 # Checks for typedefs, structures, and compiler characteristics.
 AC_C_INLINE
@@ -456,7 +456,7 @@ AC_TYPE_SIZE_T
 AC_TYPE_SSIZE_T
 
 # Checks for library functions.
-AC_CHECK_FUNCS([clock_gettime gettimeofday fgetln getline madvise malloc_trim poll posix_memalign pthread_setaffinity_np regcomp select setgroups strlcat strlcpy initgroups accept4])
+AC_CHECK_FUNCS([clock_gettime gettimeofday fgetln getline madvise malloc_trim poll posix_memalign pthread_setaffinity_np regcomp setgroups strlcat strlcpy initgroups accept4])
 
 # Check for be64toh function
 AC_LINK_IFELSE([AC_LANG_PROGRAM([[#include <endian.h>]], [[return be64toh(0);]])],

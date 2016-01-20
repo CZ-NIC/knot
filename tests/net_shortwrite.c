@@ -20,6 +20,7 @@
 #include <stdint.h>
 #include <string.h>
 #include <pthread.h>
+#include <poll.h>
 
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -29,7 +30,7 @@
 #include "contrib/net.h"
 #include "contrib/sockaddr.h"
 
-const struct timeval TIMEOUT = { .tv_sec = 2 };
+const int TIMEOUT = 2000;
 
 static struct sockaddr_storage localhost(void)
 {
@@ -55,14 +56,8 @@ static void *thr_receive(void *data)
 {
 	struct data *d = data;
 
-	struct timeval timeout = { 0 };
-
-	fd_set fds;
-	FD_ZERO(&fds);
-	FD_SET(d->server_fd, &fds);
-
-	timeout = TIMEOUT;
-	int r = select(d->server_fd + 1, &fds, NULL, NULL, &timeout);
+	struct pollfd pfd = { .fd = d->server_fd, .events = POLLIN };
+	int r = poll(&pfd, 1, TIMEOUT);
 	if (r != 1) {
 		d->result = KNOT_ETIMEOUT;
 		return NULL;
@@ -74,8 +69,7 @@ static void *thr_receive(void *data)
 		return NULL;
 	}
 
-	timeout = TIMEOUT;
-	d->result = net_dns_tcp_recv(client, d->buffer, d->size, &timeout);
+	d->result = net_dns_tcp_recv(client, d->buffer, d->size, TIMEOUT);
 
 	close(client);
 
@@ -131,8 +125,7 @@ int main(int argc, char *argv[])
 	for (size_t i = 0; i < sizeof(sndbuf); i++) {
 		sndbuf[i] = i;
 	}
-	struct timeval timeout = TIMEOUT;
-	r = net_dns_tcp_send(client, sndbuf, sizeof(sndbuf), &timeout);
+	r = net_dns_tcp_send(client, sndbuf, sizeof(sndbuf), TIMEOUT);
 	ok(r == sizeof(sndbuf), "client: net_dns_tcp_send() with short-write");
 
 	// receive message

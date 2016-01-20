@@ -44,7 +44,7 @@ static int cmd_remote_print_reply(const knot_rrset_t *rr)
 	return KNOT_EOK;
 }
 
-static int cmd_remote_reply(int c, struct timeval *timeout)
+static int cmd_remote_reply(int c, int timeout_ms)
 {
 	knot_pkt_t *pkt = knot_pkt_new(NULL, KNOT_WIRE_MAX_PKTSIZE, NULL);
 	if (!pkt) {
@@ -52,7 +52,7 @@ static int cmd_remote_reply(int c, struct timeval *timeout)
 	}
 
 	/* Read response packet. */
-	int n = net_dns_tcp_recv(c, pkt->wire, pkt->max_size, timeout);
+	int n = net_dns_tcp_recv(c, pkt->wire, pkt->max_size, timeout_ms);
 	if (n <= 0) {
 		knot_pkt_free(&pkt);
 		return KNOT_ECONN;
@@ -132,7 +132,7 @@ int cmd_remote(const char *socket, const char *cmd, uint16_t rrt,
 
 	/* Default timeout. */
 	conf_val_t *val = &conf()->cache.srv_tcp_reply_timeout;
-	const struct timeval tv_reply = { conf_int(val), 0 };
+	int timeout = conf_int(val) * 1000;
 
 	/* Prepare socket address. */
 	struct sockaddr_storage addr;
@@ -154,8 +154,7 @@ int cmd_remote(const char *socket, const char *cmd, uint16_t rrt,
 	}
 
 	/* Send and free packet. */
-	struct timeval tv = tv_reply;
-	ret = net_dns_tcp_send(s, pkt->wire, pkt->size, &tv);
+	ret = net_dns_tcp_send(s, pkt->wire, pkt->size, timeout);
 	knot_pkt_free(&pkt);
 
 	/* Evaluate and wait for reply. */
@@ -169,8 +168,7 @@ int cmd_remote(const char *socket, const char *cmd, uint16_t rrt,
 	/* Wait for reply. */
 	ret = KNOT_EOK;
 	while (ret == KNOT_EOK) {
-		tv = tv_reply;
-		ret = cmd_remote_reply(s, &tv);
+		ret = cmd_remote_reply(s, timeout);
 		if (ret != KNOT_EOK) {
 			if (ret != KNOT_ECONN) {
 				log_error("remote command reply: %s",

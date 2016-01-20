@@ -19,7 +19,6 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <sys/socket.h>
-#include <sys/time.h>
 
 /*!
  * \brief Network interface flags.
@@ -109,30 +108,31 @@ int net_accept(int sock, struct sockaddr_storage *addr);
  *
  * The implementation handles partial-writes automatically.
  *
- * \param[in]      sock     Socket.
- * \param[in]      buffer   Message buffer.
- * \param[in]      size     Size of the message.
- * \param[in]      addr     Remote address (ignored for SOCK_STREAM).
- * \param[in,out]  timeout  Write timeout (ignored for SOCK_DGRAM).
+ * \param[in] sock        Socket.
+ * \param[in] buffer      Message buffer.
+ * \param[in] size        Size of the message.
+ * \param[in] addr        Remote address (ignored for SOCK_STREAM).
+ * \param[in] timeout_ms  Write timeout in miliseconds (-1 for infinity,
+ *                        not valid for SOCK_DGRAM).
  *
  * \return Number of bytes sent or negative error code.
  */
 ssize_t net_send(int sock, const uint8_t *buffer, size_t size,
-                 const struct sockaddr_storage *addr, struct timeval *timeout);
+                 const struct sockaddr_storage *addr, int timeout_ms);
 
 /*!
  * \brief Receive a message from a socket.
  *
- * \param[in]      sock     Socket.
- * \param[out]     buffer   Receiving buffer.
- * \param[in]      size     Capacity of the receiving buffer.
- * \param[out]     addr     Remote address (can be NULL).
- * \param[in,out]  timeout  Read timeout.
+ * \param[in]  sock        Socket.
+ * \param[out] buffer      Receiving buffer.
+ * \param[in]  size        Capacity of the receiving buffer.
+ * \param[out] addr        Remote address (can be NULL).
+ * \param[in]  timeout_ms  Read timeout in miliseconds (-1 for infinity).
  *
  * \return Number of bytes read or negative error code.
  */
 ssize_t net_recv(int sock, uint8_t *buffer, size_t size,
-                 struct sockaddr_storage *addr, struct timeval *timeout);
+                 struct sockaddr_storage *addr, int timeout_ms);
 
 /*!
  * \brief Send a message on a SOCK_DGRAM socket.
@@ -147,24 +147,21 @@ ssize_t net_dgram_send(int sock, const uint8_t *buffer, size_t size,
  *
  * \see net_recv
  */
-ssize_t net_dgram_recv(int sock, uint8_t *buffer, size_t size,
-                       struct timeval *timeout);
+ssize_t net_dgram_recv(int sock, uint8_t *buffer, size_t size, int timeout_ms);
 
 /*!
  * \brief Send a message on a SOCK_STREAM socket.
  *
  * \see net_send
  */
-ssize_t net_stream_send(int sock, const uint8_t *buffer, size_t size,
-                        struct timeval *timeout);
+ssize_t net_stream_send(int sock, const uint8_t *buffer, size_t size, int timeout_ms);
 
 /*!
  * \brief Receive a message from a SOCK_STREAM socket.
  *
  * \see net_recv
  */
-ssize_t net_stream_recv(int sock, uint8_t *buffer, size_t size,
-                        struct timeval *timeout);
+ssize_t net_stream_recv(int sock, uint8_t *buffer, size_t size, int timeout_ms);
 
 /*!
  * \brief Send a DNS message on a TCP socket.
@@ -175,8 +172,7 @@ ssize_t net_stream_recv(int sock, uint8_t *buffer, size_t size,
  *
  * \see net_send
  */
-ssize_t net_dns_tcp_send(int sock, const uint8_t *buffer, size_t size,
-                         struct timeval *timeout);
+ssize_t net_dns_tcp_send(int sock, const uint8_t *buffer, size_t size, int timeout_ms);
 
 /*!
  * \brief Receive a DNS message from a TCP socket.
@@ -187,5 +183,4 @@ ssize_t net_dns_tcp_send(int sock, const uint8_t *buffer, size_t size,
  *
  * \see net_recv
  */
-ssize_t net_dns_tcp_recv(int sock, uint8_t *buffer, size_t size,
-                         struct timeval *timeout);
+ssize_t net_dns_tcp_recv(int sock, uint8_t *buffer, size_t size, int timeout_ms);

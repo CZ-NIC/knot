@@ -113,20 +113,6 @@ void remote_unbind(int sock)
 	(void)close(sock);
 }
 
-int remote_poll(int sock, const sigset_t *sigmask)
-{
-	/* Wait for events. */
-	fd_set rfds;
-	FD_ZERO(&rfds);
-	if (sock > -1) {
-		FD_SET(sock, &rfds);
-	} else {
-		sock = -1; /* Make sure n == r + 1 == 0 */
-	}
-
-	return pselect(sock + 1, &rfds, NULL, NULL, NULL, sigmask);
-}
-
 int remote_recv(int sock, uint8_t *buf, size_t *buflen)
 {
 	int c = tcp_accept(sock);
@@ -135,7 +121,7 @@ int remote_recv(int sock, uint8_t *buf, size_t *buflen)
 	}
 
 	/* Receive data. */
-	int n = net_dns_tcp_recv(c, buf, *buflen, NULL);
+	int n = net_dns_tcp_recv(c, buf, *buflen, -1);
 	*buflen = n;
 	if (n <= 0) {
 		close(c);
@@ -186,10 +172,10 @@ static int remote_send_chunk(int c, knot_pkt_t *query, const char *d, uint16_t l
 
 	rcu_read_lock();
 	conf_val_t *val = &conf()->cache.srv_tcp_reply_timeout;
-	struct timeval timeout = { conf_int(val), 0 };
+	int timeout = conf_int(val) * 1000;
 	rcu_read_unlock();
 
-	ret = net_dns_tcp_send(c, resp->wire, resp->size, &timeout);
+	ret = net_dns_tcp_send(c, resp->wire, resp->size, timeout);
 
 failed:
 

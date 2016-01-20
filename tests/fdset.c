@@ -21,6 +21,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <tap/basic.h>
+#include <time.h>
 
 #include "knot/common/fdset.h"
 
@@ -66,10 +67,8 @@ void* thr_action(void *arg)
 	int *fd = (int *)arg;
 
 	/* Sleep for 100ms. */
-	struct timeval tv;
-	tv.tv_sec = 0;
-	tv.tv_usec = 100 * 1000; // 100ms
-	select(0, 0, 0, 0, &tv);
+	struct timespec ts = { .tv_nsec = 1e8 };
+	nanosleep(&ts, NULL);
 
 	/* Write pattern. */
 	char pattern = WRITE_PATTERN;
