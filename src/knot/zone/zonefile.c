@@ -124,25 +124,7 @@ int zcreator_step(zcreator_t *zc, const knot_rrset_t *rr)
 			return KNOT_EOK;
 		}
 	}
-	assert(node);
-
-//	// Do node semantic checks
-//	err_handler_t err_handler;
-//	err_handler_init(&err_handler);
-//	bool sem_fatal_error = false;
-
-//	ret = sem_check_node_plain(zc->z, node,
-//	                           &err_handler, true,
-//	                           &sem_fatal_error);
-
-
-
-	if (ret != KNOT_EOK) {
-		return ret;
-	}
-
 	return KNOT_EOK;
-//	return sem_fatal_error ? KNOT_ESEMCHECK : KNOT_EOK;
 }
 
 /*! \brief Creates RR from parser input, passes it to handling function. */
@@ -195,6 +177,8 @@ int zonefile_open(zloader_t *loader, const char *source,
 	}
 
 	memset(loader, 0, sizeof(zloader_t));
+	err_handler_init(&loader->err_handler);
+
 
 	/* Check zone file. */
 	if (access(source, F_OK | R_OK) != 0) {
@@ -289,37 +273,12 @@ zone_contents_t *zonefile_load(zloader_t *loader)
 		goto fail;
 	}
 
-	int check_level = SEM_CHECK_MANDATORY;
-	if (loader->semantic_checks) {
-		check_level = SEM_CHECK_UNSIGNED;
-		knot_rrset_t soa_rr = node_rrset(zc->z->apex, KNOT_RRTYPE_SOA);
-		assert(!knot_rrset_empty(&soa_rr)); // In this point, SOA has to exist
-		const bool have_nsec3param =
-			node_rrtype_exists(zc->z->apex, KNOT_RRTYPE_NSEC3PARAM);
-		if (zone_contents_is_signed(zc->z) && !have_nsec3param) {
-
-			/* Set check level to DNSSEC. */
-			check_level = SEM_CHECK_NSEC;
-		} else if (zone_contents_is_signed(zc->z) && have_nsec3param) {
-			check_level = SEM_CHECK_NSEC3;
-		}
-	}
-
-	knot_mm_t mm;
-	mm_ctx_init(&mm);
-	err_handler_t *err_handler = err_handler_new(&mm);
-
-	ret = zone_do_sem_checks(zc->z, check_level,
-	                         err_handler, first_nsec3_node,
+	ret = zone_do_sem_checks(zc->z, loader->semantic_checks,
+	                         &loader->err_handler, first_nsec3_node,
 	                         last_nsec3_node);
 	INFO(zname, "semantic check, completed");
 
-	err_handler_log_errors(err_handler);
-
-	err_handler_free(err_handler);
-
 	if (ret != KNOT_EOK) {
-		
 		ERROR(zname, "failed to load zone, file '%s' (%s)",
 		      loader->source, knot_strerror(ret));
 		goto fail;
@@ -447,6 +406,7 @@ void zonefile_close(zloader_t *loader)
 	zs_deinit(&loader->scanner);
 	free(loader->source);
 	free(loader->creator);
+	err_handler_deinit(&loader->err_handler);
 }
 
 #undef ERROR

@@ -1,7 +1,8 @@
 #!/bin/sh
 
-#KNOTD=../src/knotd
-#KNOTD=/home/vkriz/nic/knot/src/knotd
+# TODO
+# test suite sometimes fails.
+# rewrite after make tool for zone check
 
 KNOTD=@top_builddir@/src/knotd
 KNOTC=@top_builddir@/src/knotc
@@ -10,7 +11,7 @@ DATA=@top_srcdir@/tests/semcheck
 
 . @top_srcdir@/libtap/tap/libtap.sh
 
-function check_run()
+check_run()
 {
 	while [ ! `$KNOTC -c "$DATA/knot.conf" status 2> /dev/null` ]
 	do 
@@ -19,7 +20,7 @@ function check_run()
 }
 
 #param zonefile fatal_error semcheck_err_msg
-function test_zone()
+test_zone()
 {
 	rm -f log
 	$KNOTD -c "$DATA/knot.conf" &
@@ -34,7 +35,9 @@ function test_zone()
 	ok "$1 - check warning presence" test $? == 0
 	grep "warning: .* semantic check, .* (${3}.*" log > /dev/null
 	ok "$1 - check message" test $? == 0
-	rm log
+	
+	#rm log
+	mv log "log-$1"
 }
 
 
@@ -42,18 +45,18 @@ plan_lazy
 
 test_zone "cname_extra_01.zone" 1 "CNAME, node contains other records)"
 test_zone "cname_extra_02.signed" 1 "CNAME, node contains other records than RRSIG and NSEC/NSEC3"
-test_zone "cnamemultiple.zone" 1 "CNAME, multiple records"
-test_zone "dname_children.zone" 1 "DNAME, node has children error triggered by child node"
+test_zone "cname_multiple.zone" 1 "CNAME, multiple records"
+test_zone "dname_children_01.zone" 1 "DNAME, node has children error triggered by child node"
 test_zone "dname_children_02.zone" 1 "DNAME, node has children error triggered by parent node"
 
-
-
 test_zone "missing_ns.zone" 0 "NS record missing in zone apex"
-#if false; then
 test_zone "missing_glue_01.zone" 0 "GLUE, node with glue record missing"
+test_zone "missing_glue_02.zone" 0 "GLUE, node with glue record missing"
+test_zone "missing_glue_03.zone" 0 "GLUE, node with glue record missing"
 test_zone "different_signer_name.signed" 0 "RRSIG, signer name is different than in DNSKEY"
 test_zone "no_rrsig.signed" 0 "RRSIG, no RRSIG"
-test_zone "nsec_broken_chain_01.signed" 0 "NSEC, chain is not cyclic"
+test_zone "nsec_broken_chain_01.signed" 0 "NSEC, chain is not coherent"
+test_zone "nsec_broken_chain_02.signed" 0 "NSEC, chain is not cyclic"
 test_zone "nsec_missing.signed" 0 "NSEC, missing record"
 test_zone "nsec_multiple.signed" 0 "NSEC, multiple records"
 test_zone "nsec_wrong_bitmap.signed" 0 "NSEC, wrong bitmap"
@@ -61,5 +64,5 @@ test_zone "nsec3_wrong_bitmap.signed" 0 "NSEC3, wrong bitmap"
 test_zone "rrsig_signed.signed" 0 "RRSIG, signed RRSIG"
 test_zone "rrsig_ttl.signed" 0 "RRSIG, TTL is wrong"
 test_zone "wrong_dnskey.signed" 0 "RRSIG, missing DNSKEY for RRSIG"
-#fi
+test_zone "nsec3_chain.signed" 0 "NSEC3, chain is not coherent"
 

@@ -29,11 +29,12 @@
 #include "contrib/ucw/lists.h"
 #include "libknot/mm_ctx.h"
 
+
 enum check_levels {
-	SEM_CHECK_MANDATORY = 0,
-	SEM_CHECK_UNSIGNED = 1,
-	SEM_CHECK_NSEC = 2,
-	SEM_CHECK_NSEC3 = 3
+	SEM_CHECK_MANDATORY = 1,
+	SEM_CHECK_OPTIONAL = 2,
+	SEM_CHECK_NSEC = 4,
+	SEM_CHECK_NSEC3 = 8
 };
 
 /*!
@@ -99,24 +100,11 @@ enum zonechecks_errors {
 	/// \TODO ADD LAST DELIMITER
 };
 
-
-/*!
- * \brief Structure representing handle options.
- */
-struct handler_options {
-	char log_cname; /*!< Log all CNAME related semantic errors. */
-	char log_glue; /*!< Log all glue related semantic errors. */
-	char log_rrsigs; /*!< Log all RRSIG related semantic errors. */
-	char log_nsec; /*!< Log all NSEC related semantic errors. */
-	char log_nsec3; /*!< Log all NSEC3 related semantic errors. */
-};
-
 /*!
  * \brief Structure for handling semantic errors.
  */
 struct err_handler {
 	/* Consider moving error messages here */
-	struct handler_options options; /*!< Handler options. */
 	unsigned errors[(-ZC_ERR_UNKNOWN) + 1]; /*!< Counting errors by type */
 	unsigned error_count; /*!< Total error count */
 	list_t error_list; /*!< List of all errors */
@@ -128,8 +116,8 @@ typedef struct err_handler err_handler_t;
 typedef struct err_node {
 	node_t node;  ///< must be first
 	int error;
-	knot_dname_t *zone_name;
-	knot_dname_t *name;
+	char *zone_name;
+	char *name;
 	char *data;
 } err_node_t;
 
@@ -138,7 +126,7 @@ typedef struct semchecks_data {
 	zone_contents_t *zone;
 	err_handler_t *handler;
 	bool fatal_error;
-	zone_node_t *last_node;
+	const zone_node_t *next_nsec;
 	enum check_levels level;
 } semchecks_data_t;
 
@@ -151,14 +139,7 @@ typedef struct semchecks_data {
  */
 void err_handler_init(err_handler_t *err_handler);
 
-void err_handler_free(err_handler_t *h);
-
-/*!
- * \brief Creates new semantic error handler.
- *
- * \return err_handler_t * Created error handler.
- */
-err_handler_t *err_handler_new(knot_mm_t *mm);
+void err_handler_deinit(err_handler_t *h);
 
 /*!
  * \brief Called when error has been encountered in node. Will either log error
@@ -204,7 +185,7 @@ void log_cyclic_errors_in_zone(err_handler_t *handler,
  * \param handler Semantic error handler.
  * \param last_node Last checked node, that is a part of NSEC(3) chain.
  */
-int zone_do_sem_checks(zone_contents_t *zone, int check_level,
+int zone_do_sem_checks(zone_contents_t *zone, bool optional,
                        err_handler_t *handler, zone_node_t *first_nsec3_node,
                        zone_node_t *last_nsec3_node);
 

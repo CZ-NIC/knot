@@ -45,10 +45,14 @@ int zone_load_contents(conf_t *conf, const knot_dname_t *zone_name,
 	zl.creator->master = !zone_load_can_bootstrap(conf, zone_name);
 
 	*contents = zonefile_load(&zl);
+
+	err_handler_log_errors(&zl.err_handler);
+
 	zonefile_close(&zl);
 	if (*contents == NULL) {
 		return KNOT_ERROR;
 	}
+
 
 	return KNOT_EOK;
 }
