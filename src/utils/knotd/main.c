@@ -250,10 +250,8 @@ static void event_loop(server_t *server, char *socket)
 
 		/* Control interface. */
 		struct pollfd pfd = { .fd = sock, .events = POLLIN };
-		int ret= poll(&pfd, 1, -1);
-		if (ret == -1 && errno == EINTR) {
-			continue;
-		} else if (ret > 0) {
+		int ret = poll(&pfd, 1, -1);
+		if (ret > 0) {
 			ret = remote_process(server, sock, buf, buflen);
 			if (ret == KNOT_CTL_ESTOP) {
 				break;
