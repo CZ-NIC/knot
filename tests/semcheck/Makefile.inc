@@ -1,7 +1,7 @@
 check_SCRIPTS = \
 	semantic_check
 
-CLEANFILES = $(check_SCRIPTS)
+CLEANFILES += $(check_SCRIPTS)
 
 edit = sed \
 	-e 's|@top_srcdir[@]|$(abs_top_srcdir)|g' \

@@ -72,6 +72,7 @@ utils_test_lookup_LDADD = \
 	$(top_builddir)/src/libknotus.la \
 	$(libedit_LIBS)
 
+CLEANFILES = runtests.log
 
 include $(srcdir)/semcheck/Makefile.inc
 
@@ -89,4 +90,3 @@ confdb_SOURCES = confdb.c test_conf.h
 confio_SOURCES = confio.c test_conf.h
 process_query_SOURCES = process_query.c fake_server.h test_conf.h
 process_answer_SOURCES = process_answer.c fake_server.h test_conf.h
-CLEANFILES += runtests.log

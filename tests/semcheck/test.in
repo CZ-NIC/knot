@@ -37,8 +37,7 @@ test_zone()
 	grep "warning: .* semantic check, .* (${3}.*" log > /dev/null
 	ok "$1 - check message" test $? == 0
 	
-	#rm log
-	mv log "log-$1"
+	rm log
 }
 
 
