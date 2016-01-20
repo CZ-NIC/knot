@@ -19,6 +19,7 @@
 #include "dnssec/random.h"
 #include "libknot/libknot.h"
 #include "libknot/yparser/yptrafo.h"
+#include "contrib/mempattern.h"
 #include "contrib/trim.h"
 #include "contrib/ucw/mempool.h"
 #include "contrib/wire.h"

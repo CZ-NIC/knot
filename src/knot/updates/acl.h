@@ -1,4 +1,4 @@
-/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -24,11 +24,10 @@
 
 #pragma once
 
+#include <stdbool.h>
 #include <sys/socket.h>
 
-#include "contrib/mempattern.h"
-#include "contrib/ucw/lists.h"
-#include "libknot/rrtype/tsig.h"
+#include "libknot/tsig.h"
 #include "knot/conf/conf.h"
 
 /*! \brief ACL actions. */

@@ -21,6 +21,7 @@
 #include "knot/nameserver/internet.h"
 #include "knot/zone/zonefile.h"
 #include "libknot/libknot.h"
+#include "contrib/mempattern.h"
 #include "contrib/print.h"
 #include "contrib/sockaddr.h"
 

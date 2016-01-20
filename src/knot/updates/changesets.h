@@ -1,14 +1,4 @@
-/*!
- * \file changesets.h
- *
- * \author Jan Kadlec <jan.kadlec@nic.cz>
- *
- * \brief Structure for representing zone change and its API.
- *
- * \addtogroup server
- * @{
- */
-/*  Copyright (C) 2013 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -22,6 +12,14 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+/*!
+ * \file
+ *
+ * \brief Structure for representing zone change and its API.
+ *
+ * \addtogroup ddns
+ * @{
  */
 
 #pragma once

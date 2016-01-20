@@ -19,6 +19,7 @@
 #include "knot/nameserver/internet.h"
 #include "knot/common/log.h"
 #include "libknot/descriptor.h"
+#include "contrib/mempattern.h"
 #include "contrib/net.h"
 #include "contrib/sockaddr.h"
 

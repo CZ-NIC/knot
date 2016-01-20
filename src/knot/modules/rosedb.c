@@ -21,6 +21,7 @@
 #include "knot/modules/rosedb.h"
 #include "knot/nameserver/process_query.h"
 #include "libknot/libknot.h"
+#include "contrib/mempattern.h"
 #include "contrib/net.h"
 #include "contrib/wire.h"
 

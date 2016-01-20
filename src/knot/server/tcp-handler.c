@@ -39,6 +39,7 @@
 #include "knot/nameserver/process_query.h"
 #include "libknot/processing/overlay.h"
 #include "contrib/macros.h"
+#include "contrib/mempattern.h"
 #include "contrib/net.h"
 #include "contrib/sockaddr.h"
 #include "contrib/time.h"

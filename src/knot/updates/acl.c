@@ -1,4 +1,4 @@
-/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -15,13 +15,8 @@
  */
 
 #include <assert.h>
-#include <stdbool.h>
 
 #include "knot/updates/acl.h"
-#include "knot/conf/conf.h"
-#include "libknot/libknot.h"
-#include "libknot/yparser/yptrafo.h"
-#include "contrib/endian.h"
 #include "contrib/sockaddr.h"
 
 static const uint8_t* ipv4_addr(const struct sockaddr_storage *ss) {

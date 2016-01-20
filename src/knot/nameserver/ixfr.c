@@ -23,6 +23,7 @@
 #include "knot/updates/apply.h"
 #include "knot/zone/serial.h"
 #include "libknot/libknot.h"
+#include "contrib/mempattern.h"
 #include "contrib/print.h"
 #include "contrib/sockaddr.h"
 

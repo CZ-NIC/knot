@@ -28,10 +28,9 @@
 #include "knot/nameserver/update.h"
 #include "knot/nameserver/nsec_proofs.h"
 #include "knot/nameserver/notify.h"
-#include "knot/server/rrl.h"
 #include "libknot/libknot.h"
-#include "libknot/yparser/yptrafo.h"
 #include "contrib/macros.h"
+#include "contrib/mempattern.h"
 
 /*! \brief Accessor to query-specific data. */
 #define QUERY_DATA(ctx) ((struct query_data *)(ctx)->data)

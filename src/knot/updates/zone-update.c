@@ -1,4 +1,4 @@
-/*  Copyright (C) 2014 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -14,11 +14,10 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "knot/updates/zone-update.h"
-
 #include "knot/common/log.h"
 #include "knot/dnssec/zone-events.h"
 #include "knot/updates/apply.h"
+#include "knot/updates/zone-update.h"
 #include "knot/zone/serial.h"
 #include "contrib/mempattern.h"
 #include "contrib/ucw/lists.h"
