@@ -13,7 +13,7 @@ DATA=@top_srcdir@/tests/semcheck
 
 check_run()
 {
-	while [ ! `$KNOTC -c "$DATA/knot.conf" status 2> /dev/null` ]
+	while ! ($KNOTC -c "$DATA/knot.conf" status > /dev/null 2> /dev/null )
 	do 
 		:
 	done
@@ -25,6 +25,7 @@ test_zone()
 	rm -f log
 	$KNOTD -c "$DATA/knot.conf" &
 	check_run
+	
 	$KNOTC -c "$DATA/knot.conf" conf-begin > /dev/null
 	$KNOTC -c "$DATA/knot.conf" conf-set 'zone[example.com].file' "$DATA/$1" > /dev/null
 	$KNOTC -c "$DATA/knot.conf" conf-commit > /dev/null

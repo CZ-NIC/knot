@@ -920,16 +920,16 @@ static int do_checks_in_tree(zone_node_t *node, void *data)
 	check_cname_multiple(node, s_data);
 	check_dname(node, s_data);
 
-	if (s_data->optional) {
+	if (s_data->level & SEM_CHECK_OPTIONAL) {
 		check_delegation(node, s_data);
 	}
 
-	if (s_data->nsec) {
+	if (s_data->level & SEM_CHECK_NSEC) {
 		check_rrsig(node, s_data);
 		check_nsec(node, s_data);
 	}
 
-	if(s_data->nsec3) {
+	if(s_data->level & SEM_CHECK_NSEC3) {
 		check_rrsig(node, s_data);
 		check_nsec3(node, s_data);
 	}
@@ -950,14 +950,11 @@ int zone_do_sem_checks(zone_contents_t *zone, bool optional,
 	data.zone = zone;
 	data.next_nsec = NULL;
 	data.fatal_error = false;
-	data.optional = optional;
-
 	data.level = SEM_CHECK_MANDATORY;
-
 	if (optional) {
 		data.level |= SEM_CHECK_OPTIONAL;
 		if (zone_contents_is_signed(zone)) {
-			if (node_rrtype_exists(zone->apex,KNOT_RRTYPE_NSEC3PARAM)) {
+			if (node_rrtype_exists(zone->apex, KNOT_RRTYPE_NSEC3PARAM)) {
 				data.level |= SEM_CHECK_NSEC3;
 			} else {
 				data.level |= SEM_CHECK_NSEC;
@@ -965,15 +962,8 @@ int zone_do_sem_checks(zone_contents_t *zone, bool optional,
 		}
 	}
 
-	const bool have_nsec3param = node_rrtype_exists(zone->apex,
-	                                                KNOT_RRTYPE_NSEC3PARAM);
-
-	data.nsec = zone_contents_is_signed(zone) && !have_nsec3param;
-	data.nsec3 = zone_contents_is_signed(zone) && have_nsec3param;
-
-	int ret = zone_contents_tree_apply_inorder(zone,
-	                                                do_checks_in_tree,
-	                                                &data);
+	int ret = zone_contents_tree_apply_inorder(zone, do_checks_in_tree,
+	                                           &data);
 
 	if (ret != KNOT_EOK) {
 		return ret;
@@ -982,10 +972,10 @@ int zone_do_sem_checks(zone_contents_t *zone, bool optional,
 		return KNOT_ESEMCHECK;
 	}
 	// check cyclic chain after every node was checked
-	if (data.nsec) {
+	if (data.level & SEM_CHECK_NSEC) {
 		check_nsec_cyclic(&data);
 	}
-	if (data.nsec3) {
+	if (data.level & SEM_CHECK_NSEC3) {
 		check_nsec3_cyclic(&data, first_nsec3_node, last_nsec3_node);
 	}
 
