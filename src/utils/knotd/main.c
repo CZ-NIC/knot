@@ -153,9 +153,7 @@ static void setup_signals(void)
 	pthread_sigmask(SIG_SETMASK, &all, NULL);
 
 	/* Setup handlers. */
-	struct sigaction action;
-	memset(&action, 0, sizeof(struct sigaction));
-	action.sa_handler = handle_signal;
+	struct sigaction action = { .sa_handler = handle_signal };
 	for (const struct signal *s = SIGNALS; s->signum > 0; s++) {
 		sigaction(s->signum, &action, NULL);
 	}
