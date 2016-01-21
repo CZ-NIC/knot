@@ -172,7 +172,7 @@ int log_init()
 	/* Setup initial state. */
 	int ret = KNOT_EOK;
 	int emask = LOG_MASK(LOG_CRIT) | LOG_MASK(LOG_ERR) | LOG_MASK(LOG_WARNING);
-	int imask = LOG_MASK(LOG_NOTICE) | LOG_MASK(LOG_INFO) | LOG_MASK(LOG_DEBUG);
+	int imask = LOG_MASK(LOG_NOTICE) | LOG_MASK(LOG_INFO);
 
 	/* Publish base log sink. */
 	struct log_sink *log = sink_setup(0);
