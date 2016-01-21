@@ -29,6 +29,9 @@ Parameters
   Run the server as a daemon. New root directory may be specified
   (default is :file:`/`).
 
+**-v**, **--verbose**
+  Enable debug output.
+
 **-h**, **--help**
   Print the program help.
 

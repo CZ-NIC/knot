@@ -52,6 +52,9 @@ Use a remote control UNIX socket path (default is \fB@run_dir@/knot.sock\fP).
 Run the server as a daemon. New root directory may be specified
 (default is \fB/\fP).
 .TP
+\fB\-v\fP, \fB\-\-verbose\fP
+Enable debug output.
+.TP
 \fB\-h\fP, \fB\-\-help\fP
 Print the program help.
 .TP
