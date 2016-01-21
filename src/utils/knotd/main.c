@@ -275,6 +275,7 @@ static void print_help(void)
 	       " -s, --socket <path>     Use a remote control UNIX socket path.\n"
 	       "                           (default %s)\n"
 	       " -d, --daemonize=[dir]   Run the server as a daemon (with new root directory).\n"
+	       " -v, --verbose           Enable debug output.\n"
 	       " -h, --help              Print the program help.\n"
 	       " -V, --version           Print the program version.\n",
 	       PROGRAM_NAME, CONF_DEFAULT_FILE, CONF_DEFAULT_DBDIR, RUN_DIR "/knot.sock");
@@ -352,6 +353,7 @@ int main(int argc, char **argv)
 	const char *confdb = NULL;
 	const char *daemon_root = "/";
 	char *socket = NULL;
+	bool verbose = false;
 
 	/* Long options. */
 	struct option opts[] = {
@@ -359,6 +361,7 @@ int main(int argc, char **argv)
 		{ "confdb",    required_argument, NULL, 'C' },
 		{ "socket",    required_argument, NULL, 's' },
 		{ "daemonize", optional_argument, NULL, 'd' },
+		{ "verbose",   no_argument,       NULL, 'v' },
 		{ "help",      no_argument,       NULL, 'h' },
 		{ "version",   no_argument,       NULL, 'V' },
 		{ NULL }
@@ -366,7 +369,7 @@ int main(int argc, char **argv)
 
 	/* Parse command line arguments. */
 	int opt = 0, li = 0;
-	while ((opt = getopt_long(argc, argv, "c:C:s:dhV", opts, &li)) != -1) {
+	while ((opt = getopt_long(argc, argv, "c:C:s:dvhV", opts, &li)) != -1) {
 		switch (opt) {
 		case 'c':
 			config = optarg;
@@ -382,6 +385,9 @@ int main(int argc, char **argv)
 			if (optarg) {
 				daemon_root = optarg;
 			}
+			break;
+		case 'v':
+			verbose = true;
 			break;
 		case 'h':
 			print_help();
@@ -427,6 +433,9 @@ int main(int argc, char **argv)
 
 	/* Initialize logging subsystem. */
 	log_init();
+	if (verbose) {
+		log_levels_add(LOGT_STDOUT, LOG_ANY, LOG_MASK(LOG_DEBUG));
+	}
 
 	/* Set up the configuration */
 	int ret = set_config(confdb, config);
