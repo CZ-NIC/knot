@@ -450,11 +450,12 @@ static int ratelimit_apply(int state, knot_pkt_t *pkt, knot_layer_t *ctx)
 static int process_query_out(knot_layer_t *ctx, knot_pkt_t *pkt)
 {
 	assert(pkt && ctx);
+
+	rcu_read_lock();
+
 	struct query_data *qdata = QUERY_DATA(ctx);
 	struct query_plan *plan = conf()->query_plan;
 	struct query_step *step = NULL;
-
-	rcu_read_lock();
 
 	/* Check parse state. */
 	knot_pkt_t *query = qdata->query;
@@ -553,6 +554,7 @@ finish:
 	}
 
 	rcu_read_unlock();
+
 	return next_state;
 }
 
