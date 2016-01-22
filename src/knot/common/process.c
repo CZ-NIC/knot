@@ -25,7 +25,6 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
-#include <urcu.h>
 
 #include "knot/common/log.h"
 #include "knot/common/process.h"
@@ -34,13 +33,11 @@
 
 static char* pid_filename()
 {
-	rcu_read_lock();
 	conf_val_t val = conf_get(conf(), C_SRV, C_RUNDIR);
 	char *rundir = conf_abs_path(&val, NULL);
 	val = conf_get(conf(), C_SRV, C_PIDFILE);
 	char *pidfile = conf_abs_path(&val, rundir);
 	free(rundir);
-	rcu_read_unlock();
 
 	return pidfile;
 }
