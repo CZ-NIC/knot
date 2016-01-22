@@ -120,6 +120,17 @@ typedef enum {
 conf_t* conf(void);
 
 /*!
+ * Refreshes common read-only transaction.
+ *
+ * \param[out] conf  Configuration.
+ *
+ * \return Error code, KNOT_EOK if success.
+ */
+int conf_refresh(
+	conf_t *conf
+);
+
+/*!
  * Creates new or opens old configuration database.
  *
  * \param[out] conf   Configuration.

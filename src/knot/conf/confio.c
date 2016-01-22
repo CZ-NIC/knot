@@ -15,7 +15,6 @@
 */
 
 #include <assert.h>
-#include <pthread.h>
 
 #include "knot/conf/confdb.h"
 #include "knot/conf/confio.h"
@@ -100,43 +99,10 @@ int conf_io_commit(
 
 	// Commit the writing transaction.
 	int ret = conf()->api->txn_commit(txn);
+
 	conf()->io.txn = child ? txn - 1 : NULL;
-	if (ret != KNOT_EOK) {
-		return ret;
-	}
 
-	// Don't reload the configuration if child transaction.
-	if (child) {
-		return KNOT_EOK;
-	}
-
-	// Clone new configuration.
-	conf_t *new_conf = NULL;
-	ret = conf_clone(&new_conf);
-	if (ret != KNOT_EOK) {
-		return ret;
-	}
-
-	// Update read-only transaction.
-	new_conf->api->txn_abort(&new_conf->read_txn);
-	ret = new_conf->api->txn_begin(new_conf->db, &new_conf->read_txn,
-	                               KNOT_DB_RDONLY);
-	if (ret != KNOT_EOK) {
-		conf_free(new_conf);
-		return ret;
-	}
-
-	// Run post-open config operations.
-	ret = conf_post_open(new_conf);
-	if (ret != KNOT_EOK) {
-		conf_free(new_conf);
-		return ret;
-	}
-
-	// Update to the new config.
-	conf_update(new_conf);
-
-	return KNOT_EOK;
+	return ret;
 }
 
 int conf_io_abort(

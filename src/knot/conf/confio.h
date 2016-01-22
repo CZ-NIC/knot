@@ -88,6 +88,9 @@ int conf_io_begin(
 /*!
  * Commits the current writing transaction.
  *
+ * \note Remember to call conf_refresh to publish the changes into the common
+ *       configuration.
+ *
  * \param[in] child  Nested transaction indicator.
  *
  * \return Error code, KNOT_EOK if success.

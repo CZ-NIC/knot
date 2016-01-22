@@ -124,6 +124,19 @@ static int init_and_check(
 	return conf->api->txn_commit(&txn);
 }
 
+int conf_refresh(
+	conf_t *conf)
+{
+	if (conf == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	// Close previously opened transaction.
+	conf->api->txn_abort(&conf->read_txn);
+
+	return conf->api->txn_begin(conf->db, &conf->read_txn, KNOT_DB_RDONLY);
+}
+
 int conf_new(
 	conf_t **conf,
 	const yp_item_t *scheme,
@@ -200,7 +213,7 @@ int conf_new(
 	}
 
 	// Open common read-only transaction.
-	ret = out->api->txn_begin(out->db, &out->read_txn, KNOT_DB_RDONLY);
+	ret = conf_refresh(out);
 	if (ret != KNOT_EOK) {
 		out->api->deinit(out->db);
 		goto new_error;
@@ -247,7 +260,7 @@ int conf_clone(
 	out->db = s_conf->db;
 
 	// Open common read-only transaction.
-	ret = out->api->txn_begin(out->db, &out->read_txn, KNOT_DB_RDONLY);
+	ret = conf_refresh(out);
 	if (ret != KNOT_EOK) {
 		yp_scheme_free(out->scheme);
 		free(out);
@@ -730,8 +743,7 @@ int conf_import(
 	}
 
 	// Update read-only transaction.
-	conf->api->txn_abort(&conf->read_txn);
-	ret = conf->api->txn_begin(conf->db, &conf->read_txn, KNOT_DB_RDONLY);
+	ret = conf_refresh(conf);
 	if (ret != KNOT_EOK) {
 		goto import_error;
 	}
