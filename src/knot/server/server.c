@@ -475,46 +475,46 @@ int server_reload(server_t *server, const char *cf)
 		return KNOT_EINVAL;
 	}
 
+	// Check for no edit mode.
+	if (cf != NULL && conf()->io.txn != NULL) {
+		log_warning("reload aborted due to active config DB transaction");
+		return KNOT_CONF_ETXN;
+	}
+
+	conf_t *new_conf = NULL;
+	int ret = conf_clone(&new_conf);
+	if (ret != KNOT_EOK) {
+		log_error("failed to initialize configuration (%s)",
+		          knot_strerror(ret));
+		return ret;
+	}
+
 	if (cf != NULL) {
-		// Check for no edit mode.
-		if (conf()->io.txn != NULL) {
-			log_warning("reload aborted due to active config DB transaction");
-			return KNOT_CONF_ETXN;
-		}
-
 		log_info("reloading configuration file '%s'", cf);
-
-		conf_t *new_conf = NULL;
-		int ret = conf_clone(&new_conf);
-		if (ret != KNOT_EOK) {
-			log_fatal("failed to initialize configuration (%s)",
-			          knot_strerror(ret));
-			return ret;
-		}
 
 		/* Import the configuration file. */
 		ret = conf_import(new_conf, cf, true);
 		if (ret != KNOT_EOK) {
-			log_fatal("failed to load configuration file (%s)",
+			log_error("failed to load configuration file (%s)",
 			          knot_strerror(ret));
 			conf_free(new_conf);
 			return ret;
 		}
-
-		/* Run post-open config operations. */
-		ret = conf_post_open(new_conf);
-		if (ret != KNOT_EOK) {
-			log_fatal("failed to use configuration (%s)",
-			          knot_strerror(ret));
-			conf_free(new_conf);
-			return ret;
-		}
-
-		/* Update to the new config. */
-		conf_update(new_conf);
 	} else {
 		log_info("reloading configuration database");
 	}
+
+	/* Run post-open config operations. */
+	ret = conf_post_open(new_conf);
+	if (ret != KNOT_EOK) {
+		log_error("failed to use configuration (%s)",
+		          knot_strerror(ret));
+		conf_free(new_conf);
+		return ret;
+	}
+
+	/* Update to the new config. */
+	conf_update(new_conf);
 
 	log_reconfigure(conf(), NULL);
 	server_reconfigure(conf(), server);
