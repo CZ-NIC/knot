@@ -23,8 +23,8 @@ AC_SUBST([KNOT_VERSION_PATCH], knot_VERSION_PATCH)
 AC_SUBST([KNOT_VERSION_EXTRA], knot_VERSION_EXTRA)
 
 AC_CONFIG_FILES([src/libknot/version.h
-		 src/zscanner/version.h
-		 src/dnssec/lib/dnssec/version.h])
+                 src/zscanner/version.h
+                 src/dnssec/lib/dnssec/version.h])
 
 # Here are a set of rules to help you update your library version
 # information:
@@ -76,9 +76,9 @@ LT_INIT
 PKG_PROG_PKG_CONFIG
 m4_ifdef([PKG_INSTALLDIR], [PKG_INSTALLDIR], [AC_SUBST([pkgconfigdir], ['${libdir}/pkgconfig'])])
 AC_CONFIG_FILES([src/libknot.pc
-		 src/dnssec/libdnssec.pc
-		 src/zscanner/libzscanner.pc
-		 ])
+                 src/dnssec/libdnssec.pc
+                 src/zscanner/libzscanner.pc
+                 ])
 
 # Build Knot DNS daemon
 AC_ARG_ENABLE([daemon],
@@ -108,9 +108,9 @@ AC_ARG_ENABLE([fastparser],
     # Set zone parser type - fastest on release build, slowest on dev build
     AS_IF([test -d ".git" -o "$PATCH_VERSION" = "dev"],[
         enable_fastparser=no
-    	],[
-    	enable_fastparser=yes
-    	])
+        ],[
+        enable_fastparser=yes
+        ])
     ])
 
 AS_IF([test "$enable_fastparser" = "yes"],[
@@ -147,7 +147,7 @@ AC_ARG_ENABLE([recvmmsg],
     AS_HELP_STRING([--enable-recvmmsg=yes|no], [enable recvmmsg() network API under Linux (kernel support required) (set to 'no' if you have trouble running server under valgrind) [default=yes]]),
     [case "${enableval}" in
       yes)
-	  AC_CHECK_FUNCS([sendmmsg])
+          AC_CHECK_FUNCS([sendmmsg])
           AC_LINK_IFELSE([AC_LANG_PROGRAM([[#include <sys/socket.h>]], [[struct mmsghdr v; recvmmsg(0,0,0,0,0);]])],
           [AC_DEFINE(HAVE_RECVMMSG, 1, [Define if struct mmsghdr and recvmmsg() exists.])])
           ;;
@@ -241,7 +241,7 @@ AS_IF([test "$enable_systemd" != "no"],[
     [auto],[PKG_CHECK_MODULES([systemd], [libsystemd], [enable_systemd=yes], [
             PKG_CHECK_MODULES([systemd], [libsystemd-daemon libsystemd-journal], [enable_systemd=yes], [enable_systemd=no])])],
     [yes],[PKG_CHECK_MODULES([systemd], [libsystemd], [], [
-    	    PKG_CHECK_MODULES([systemd], [libsystemd-daemon libsystemd-journal])])],
+            PKG_CHECK_MODULES([systemd], [libsystemd-daemon libsystemd-journal])])],
     [*],[AC_MSG_ERROR([Invalid value of --enable-systemd.])])
     ])
 
@@ -280,16 +280,16 @@ AS_IF([test "$with_urcu" != "no"], [
 
       AC_SEARCH_LIBS([rcu_set_pointer_sym], [urcu], [
         with_urcu=yes
-	liburcu_LIBS="$liburcu_LIBS -lurcu"
-	AC_SUBST([liburcu_CFLAGS])
-	AC_SUBST([liburcu_LIBS])
-	break
+        liburcu_LIBS="$liburcu_LIBS -lurcu"
+        AC_SUBST([liburcu_CFLAGS])
+        AC_SUBST([liburcu_LIBS])
+        break
       ],[
         CPPFLAGS="$save_CPPFLAGS"
         LIBS="$save_LIBS"
         with_urcu=no
-	# do not cache result of AC_SEARCH_LIBS test
-	unset ac_cv_search_rcu_set_pointer_sym
+        # do not cache result of AC_SEARCH_LIBS test
+        unset ac_cv_search_rcu_set_pointer_sym
       ])
     done
     CPPFLAGS="$save_CPPFLAGS"
@@ -344,7 +344,7 @@ AS_IF([test "$with_lmdb" != "no"],[
         ],[
         lmdb_CFLAGS=""
         lmdb_LIBS=""
-	])
+        ])
 
       CPPFLAGS="$save_CPPFLAGS $lmdb_CFLAGS"
       LIBS="$save_LIBS $lmdb_LIBS"
@@ -353,15 +353,15 @@ AS_IF([test "$with_lmdb" != "no"],[
           AC_CHECK_HEADERS([lmdb.h], [], [
               AC_MSG_ERROR([lmdb headers not found in `$try_lmdb', is your installation complete?])])
           AC_COMPUTE_INT(lmdb_VERSION_FULL, MDB_VERSION_FULL, [#include <lmdb.h>],
-	      AC_MSG_ERROR([Unable to determine lmdb version from MDB_VERSION_FULL]))
-	  AS_IF([test "$lmdb_VERSION_FULL" -ge "$lmdb_MIN_VERSION_FULL"],[
+              AC_MSG_ERROR([Unable to determine lmdb version from MDB_VERSION_FULL]))
+          AS_IF([test "$lmdb_VERSION_FULL" -ge "$lmdb_MIN_VERSION_FULL"],[
               lmdb_LIBS="$lmdb_LIBS -llmdb"
               have_lmdb=yes],[
-	      unset lmdb_CFLAGS
-	      unset lmdb_LIBS
-	      AC_MSG_WARN([lmdb version 0.9.15 and higher not found, using embedded version])
-	      ])
-          break 
+              unset lmdb_CFLAGS
+              unset lmdb_LIBS
+              AC_MSG_WARN([lmdb version 0.9.15 and higher not found, using embedded version])
+              ])
+          break
           ])
 
       unset lmdb_CFLAGS
@@ -376,7 +376,7 @@ AS_IF([test "$with_lmdb" != "no"],[
     # fail the configure if we haven't found lmdb library in the system
     AS_IF([test "$with_lmdb" != "auto" -a "$have_lmdb" = "no"],[
         AC_MSG_ERROR([shared lmdb library not found])
-	])
+        ])
     ])
 
 AS_IF([test "$have_lmdb" != "no"],[
@@ -418,7 +418,7 @@ AS_IF([test "$with_libidn" != "no"],[
         ],[
         with_libidn=no
         AC_MSG_WARN([libidn not found])
-	])])
+        ])])
 
 ]) # Knot DNS utilities dependencies
 
@@ -448,12 +448,6 @@ AC_SEARCH_LIBS([capng_apply], [cap-ng])
 # Checks for header files.
 AC_HEADER_RESOLV
 AC_CHECK_HEADERS_ONCE([cap-ng.h netinet/in_systm.h pthread_np.h signal.h sys/time.h sys/wait.h sys/uio.h])
-
-# Checks for typedefs, structures, and compiler characteristics.
-AC_C_INLINE
-AC_TYPE_PID_T
-AC_TYPE_SIZE_T
-AC_TYPE_SSIZE_T
 
 # Checks for library functions.
 AC_CHECK_FUNCS([clock_gettime gettimeofday fgetln getline madvise malloc_trim poll posix_memalign pthread_setaffinity_np regcomp setgroups strlcat strlcpy initgroups accept4])
@@ -510,18 +504,18 @@ AM_CONDITIONAL([HAVE_PDFLATEX], test "$PDFLATEX" != "false")
 AM_CONDITIONAL([HAVE_MAKEINFO], test "$MAKEINFO" != "false")
 
 AC_CONFIG_FILES([Makefile
-		 doc/Makefile
-		 samples/Makefile
-		 libtap/Makefile
-		 src/Makefile
-		 tests/Makefile
-		 tests-fuzz/Makefile
-		 src/contrib/dnstap/Makefile
-		 src/zscanner/Makefile
-		 src/dnssec/Makefile
-		 src/dnssec/tests/Makefile
-		 src/dnssec/utils/Makefile
-		 ])
+                 doc/Makefile
+                 libtap/Makefile
+                 tests/Makefile
+                 tests-fuzz/Makefile
+                 samples/Makefile
+                 src/Makefile
+                 src/contrib/dnstap/Makefile
+                 src/dnssec/Makefile
+                 src/dnssec/tests/Makefile
+                 src/dnssec/utils/Makefile
+                 src/zscanner/Makefile
+                 ])
 
 AC_OUTPUT
 
@@ -540,10 +534,10 @@ AC_MSG_RESULT([
     Sanitizer: ${sanitize_CFLAGS}
     LibFuzzer: ${libfuzzer_LIBS}
 
-    Prefix:		${prefix}
-    Run dir:		${run_dir}
-    Storage dir:	${storage_dir}
-    Config dir: 	${config_dir}
+    Prefix:      ${prefix}
+    Run dir:     ${run_dir}
+    Storage dir: ${storage_dir}
+    Config dir:  ${config_dir}
 
     Knot DNS libraries:     yes
     Knot DNS daemon:        ${enable_daemon}
