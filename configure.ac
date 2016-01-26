@@ -389,16 +389,28 @@ AS_IF([test "$have_lmdb" != "no"],[
 AM_CONDITIONAL([HAVE_LMDB], test "$have_lmdb" != "no")
 
 # LMDB mapping sizes
-conf_mapsize=500
+conf_mapsize_default=500
 AC_ARG_WITH([conf_mapsize],
-        AC_HELP_STRING([--with-conf-mapsize=NUM], [Configuration DB mapsize in MiB [default=500]]),
-        [conf_mapsize=$withval])
+    AC_HELP_STRING([--with-conf-mapsize=NUM], [Configuration DB mapsize in MiB [default=$conf_mapsize_default]]),
+    [conf_mapsize=$withval],[conf_mapsize=$conf_mapsize_default])
+
+AS_CASE([$conf_mapsize],
+    [yes],[conf_mapsize=$conf_mapsize_default],
+    [no], [AC_MSG_ERROR([conf_mapsize must be a number])],
+    [*],  [AS_IF([test $conf_mapsize != $(( $conf_mapsize + 0 ))],
+                 [AC_ERROR([conf_mapsize must be an integer number])])])
 AC_DEFINE_UNQUOTED([CONF_MAPSIZE], [$conf_mapsize], [Configuration DB mapsize.])
 
-timer_mapsize=100
+timer_mapsize_default=100
 AC_ARG_WITH([timer_mapsize],
-        AC_HELP_STRING([--with-timer-mapsize=NUM], [Timer DB mapsize in MiB [default=100]]),
-        [timer_mapsize=$withval])
+        AC_HELP_STRING([--with-timer-mapsize=NUM], [Timer DB mapsize in MiB [default=$timer_mapsize_default]]),
+        [timer_mapsize=$withval],[timer_mapsize=$timer_mapsize_default])
+
+AS_CASE([$timer_mapsize],
+    [yes],[timer_mapsize=$timer_mapsize_default],
+    [no], [AC_MSG_ERROR([timer_mapsize must be a number])],
+    [*],  [AS_IF([test $timer_mapsize != $(( $timer_mapsize + 0 ))],
+                 [AC_ERROR([timer_mapsize must be an integer number])])])
 AC_DEFINE_UNQUOTED([TIMER_MAPSIZE], [$timer_mapsize], [Timer DB mapsize.])
 
 AS_IF([test "$enable_daemon" = "yes"],[
@@ -551,6 +563,9 @@ AC_MSG_RESULT([
     Run dir:     ${run_dir}
     Storage dir: ${storage_dir}
     Config dir:  ${config_dir}
+
+    Configuration DB mapsize: ${conf_mapsize} MiB
+    Timers DB mapsize:        ${timer_mapsize} MiB
 
     Knot DNS libraries:     yes
     Knot DNS daemon:        ${enable_daemon}
