@@ -119,14 +119,6 @@ static int set_config(const cmd_desc_t *desc, const char *confdb,
 		}
 	}
 
-	/* Finalize the config (needed for conf check and cached items). */
-	ret = conf_post_open(new_conf);
-	if (ret != KNOT_EOK) {
-		log_error("failed to use configuration (%s)", knot_strerror(ret));
-		conf_free(new_conf);
-		return ret;
-	}
-
 	/* Update to the new config. */
 	conf_update(new_conf);
 

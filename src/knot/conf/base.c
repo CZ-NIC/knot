@@ -137,6 +137,19 @@ int conf_refresh(
 	return conf->api->txn_begin(conf->db, &conf->read_txn, KNOT_DB_RDONLY);
 }
 
+static void init_values(
+	conf_t *conf)
+{
+	conf->hostname = sockaddr_hostname();
+
+	conf->cache.srv_nsid = conf_get(conf, C_SRV, C_NSID);
+	conf->cache.srv_max_udp_payload = conf_get(conf, C_SRV, C_MAX_UDP_PAYLOAD);
+	conf->cache.srv_max_tcp_clients = conf_get(conf, C_SRV, C_MAX_TCP_CLIENTS);
+	conf->cache.srv_tcp_hshake_timeout = conf_get(conf, C_SRV, C_TCP_HSHAKE_TIMEOUT);
+	conf->cache.srv_tcp_idle_timeout = conf_get(conf, C_SRV, C_TCP_IDLE_TIMEOUT);
+	conf->cache.srv_tcp_reply_timeout = conf_get(conf, C_SRV, C_TCP_REPLY_TIMEOUT);
+}
+
 int conf_new(
 	conf_t **conf,
 	const yp_item_t *scheme,
@@ -222,6 +235,9 @@ int conf_new(
 	// Initialize query modules list.
 	init_list(&out->query_modules);
 
+	// Initialize cached values.
+	init_values(out);
+
 	*conf = out;
 
 	return KNOT_EOK;
@@ -275,30 +291,12 @@ int conf_clone(
 	// Initialize query modules list.
 	init_list(&out->query_modules);
 
+	// Initialize cached values.
+	init_values(out);
+
 	out->is_clone = true;
 
 	*conf = out;
-
-	return KNOT_EOK;
-}
-
-int conf_post_open(
-	conf_t *conf)
-{
-	if (conf == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	conf->hostname = sockaddr_hostname();
-
-	conf->cache.srv_nsid = conf_get(conf, C_SRV, C_NSID);
-	conf->cache.srv_max_udp_payload = conf_get(conf, C_SRV, C_MAX_UDP_PAYLOAD);
-	conf->cache.srv_max_tcp_clients = conf_get(conf, C_SRV, C_MAX_TCP_CLIENTS);
-	conf->cache.srv_tcp_hshake_timeout = conf_get(conf, C_SRV, C_TCP_HSHAKE_TIMEOUT);
-	conf->cache.srv_tcp_idle_timeout = conf_get(conf, C_SRV, C_TCP_IDLE_TIMEOUT);
-	conf->cache.srv_tcp_reply_timeout = conf_get(conf, C_SRV, C_TCP_REPLY_TIMEOUT);
-
-	conf_activate_modules(conf, NULL, &conf->query_modules, &conf->query_plan);
 
 	return KNOT_EOK;
 }

@@ -161,17 +161,6 @@ int conf_clone(
 );
 
 /*!
- * Processes some additional operations and checks after configuration loading.
- *
- * \param[in] conf  Configuration.
- *
- * \return Error code, KNOT_EOK if success.
- */
-int conf_post_open(
-	conf_t *conf
-);
-
-/*!
  * Replaces the active configuration with the specified one.
  *
  * \param[in] conf  New configuration.

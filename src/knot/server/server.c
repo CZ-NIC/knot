@@ -504,14 +504,9 @@ int server_reload(server_t *server, const char *cf)
 		log_info("reloading configuration database");
 	}
 
-	/* Run post-open config operations. */
-	ret = conf_post_open(new_conf);
-	if (ret != KNOT_EOK) {
-		log_error("failed to use configuration (%s)",
-		          knot_strerror(ret));
-		conf_free(new_conf);
-		return ret;
-	}
+	/* Activate global query modules. */
+	conf_activate_modules(new_conf, NULL, &new_conf->query_modules,
+	                      &new_conf->query_plan);
 
 	/* Update to the new config. */
 	conf_update(new_conf);
