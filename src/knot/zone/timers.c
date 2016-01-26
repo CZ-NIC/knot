@@ -152,6 +152,7 @@ int open_timers_db(const char *path, knot_db_t **timer_db)
 	}
 
 	struct knot_db_lmdb_opts opts = KNOT_DB_LMDB_OPTS_INITIALIZER;
+	opts.mapsize = TIMER_MAPSIZE * 1024 * 1024;
 	opts.path = path;
 
 	return db_api->init(timer_db, NULL, &opts);

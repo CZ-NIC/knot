@@ -388,6 +388,19 @@ AS_IF([test "$have_lmdb" != "no"],[
     ])
 AM_CONDITIONAL([HAVE_LMDB], test "$have_lmdb" != "no")
 
+# LMDB mapping sizes
+conf_mapsize=500
+AC_ARG_WITH([conf_mapsize],
+        AC_HELP_STRING([--with-conf-mapsize=NUM], [Configuration DB mapsize in MiB [default=500]]),
+        [conf_mapsize=$withval])
+AC_DEFINE_UNQUOTED([CONF_MAPSIZE], [$conf_mapsize], [Configuration DB mapsize.])
+
+timer_mapsize=100
+AC_ARG_WITH([timer_mapsize],
+        AC_HELP_STRING([--with-timer-mapsize=NUM], [Timer DB mapsize in MiB [default=100]]),
+        [timer_mapsize=$withval])
+AC_DEFINE_UNQUOTED([TIMER_MAPSIZE], [$timer_mapsize], [Timer DB mapsize.])
+
 AS_IF([test "$enable_daemon" = "yes"],[
 
 dnl Check for rosedb module

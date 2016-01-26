@@ -185,7 +185,7 @@ int conf_new(
 	// Set the DB api.
 	out->api = knot_db_lmdb_api();
 	struct knot_db_lmdb_opts lmdb_opts = KNOT_DB_LMDB_OPTS_INITIALIZER;
-	lmdb_opts.mapsize = 500 * 1024 * 1024;
+	lmdb_opts.mapsize = CONF_MAPSIZE * 1024 * 1024;
 	lmdb_opts.flags.env = KNOT_DB_LMDB_NOTLS;
 
 	// Open the database.
