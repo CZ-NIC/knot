@@ -140,6 +140,7 @@ int conf_refresh(
 static void init_values(
 	conf_t *conf)
 {
+	free(conf->hostname);
 	conf->hostname = sockaddr_hostname();
 
 	conf->cache.srv_nsid = conf_get(conf, C_SRV, C_NSID);
@@ -744,6 +745,9 @@ int conf_import(
 	if (ret != KNOT_EOK) {
 		goto import_error;
 	}
+
+	// Update cached values.
+	init_values(conf);
 
 	// Reset the filename.
 	free(conf->filename);
