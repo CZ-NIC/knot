@@ -339,7 +339,7 @@ void conf_free(
 		conf->api->txn_abort(conf->io.txn_stack);
 	}
 
-	conf_deactivate_modules(conf, &conf->query_modules, &conf->query_plan);
+	conf_deactivate_modules(&conf->query_modules, &conf->query_plan);
 
 	if (!conf->is_clone) {
 		conf->api->deinit(conf->db);
@@ -457,11 +457,10 @@ activate_error:
 }
 
 void conf_deactivate_modules(
-	conf_t *conf,
 	list_t *query_modules,
 	struct query_plan **query_plan)
 {
-	if (conf == NULL || query_modules == NULL || query_plan == NULL) {
+	if (query_modules == NULL || query_plan == NULL) {
 		return;
 	}
 

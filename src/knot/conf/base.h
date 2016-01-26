@@ -207,12 +207,10 @@ void conf_activate_modules(
 /*!
  * Deactivates query modules list.
  *
- * \param[in] conf           Configuration.
  * \param[in] query_modules  Destination query modules list.
  * \param[in] query_plan     Destination query plan.
  */
 void conf_deactivate_modules(
-	conf_t *conf,
 	list_t *query_modules,
 	struct query_plan **query_plan
 );
