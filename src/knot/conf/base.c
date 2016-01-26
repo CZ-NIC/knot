@@ -195,7 +195,8 @@ int conf_new(
 		char tpl[] = "/tmp/knot-confdb.XXXXXX";
 		lmdb_opts.path = mkdtemp(tpl);
 		if (lmdb_opts.path == NULL) {
-			CONF_LOG(LOG_ERR, "failed to create temporary directory");
+			CONF_LOG(LOG_ERR, "failed to create temporary directory (%s)",
+			         knot_strerror(knot_map_errno()));
 			ret = KNOT_ENOMEM;
 			goto new_error;
 		}
@@ -874,7 +875,7 @@ int conf_export(
 	FILE *fp = fopen(file_name, "w");
 	if (fp == NULL) {
 		free(buff);
-		return KNOT_EFILE;
+		return knot_map_errno();
 	}
 
 	fprintf(fp, "# Configuration export (Knot DNS %s)\n\n", PACKAGE_VERSION);
