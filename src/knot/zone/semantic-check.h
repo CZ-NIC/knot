@@ -14,13 +14,11 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 /*!
- * \file semantic-check.h
- *
- * \author Jan Kadlec <jan.kadlec@nic.cz>
+ * \file
  *
  * \brief DNS zone semantic checks.
  *
- * \addtogroup zoneparser
+ * \addtogroup zone
  * @{
  */
 

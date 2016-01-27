@@ -80,8 +80,6 @@ typedef struct zone
 	struct query_plan *query_plan;
 } zone_t;
 
-/*----------------------------------------------------------------------------*/
-
 /*!
  * \brief Creates new zone with emtpy zone content.
  *
@@ -94,7 +92,7 @@ zone_t* zone_new(const knot_dname_t *name);
 /*!
  * \brief Deallocates the zone structure.
  *
- * \note The function also deallocates all bound structures (config, contents, etc.).
+ * \note The function also deallocates all bound structures (contents, etc.).
  *
  * \param zone Zone to be freed.
  */
@@ -105,22 +103,24 @@ void zone_free(zone_t **zone_ptr);
  * \ref #223 New zone API
  * \todo get rid of this
  */
-int zone_changes_store(zone_t *zone, list_t *chgs);
-int zone_change_store(zone_t *zone, changeset_t *change);
+int zone_changes_store(conf_t *conf, zone_t *zone, list_t *chgs);
+int zone_change_store(conf_t *conf, zone_t *zone, changeset_t *change);
 /*!
  * \brief Atomically switch the content of the zone.
  */
 zone_contents_t *zone_switch_contents(zone_t *zone, zone_contents_t *new_contents);
 
 /*! \brief Checks if the zone is slave. */
-bool zone_is_slave(const zone_t *zone);
+bool zone_is_slave(conf_t *conf, const zone_t *zone);
 
 /*! \brief Sets the address as a preferred master address. */
 void zone_set_preferred_master(zone_t *zone, const struct sockaddr_storage *addr);
+
 /*! \brief Clears the current preferred master address. */
 void zone_clear_preferred_master(zone_t *zone);
 
-typedef int (*zone_master_cb)(zone_t *zone, const conf_remote_t *remote, void *data);
+typedef int (*zone_master_cb)(conf_t *conf, zone_t *zone, const conf_remote_t *remote,
+                              void *data);
 
 /*!
  * \brief Perform an action with a first working master server.
@@ -131,11 +131,11 @@ typedef int (*zone_master_cb)(zone_t *zone, const conf_remote_t *remote, void *d
  *
  * \return Error code from the last callback.
  */
-int zone_master_try(zone_t *zone, zone_master_cb callback, void *callback_data,
-                    const char *err_str);
+int zone_master_try(conf_t *conf, zone_t *zone, zone_master_cb callback,
+                    void *callback_data, const char *err_str);
 
 /*! \brief Synchronize zone file with journal. */
-int zone_flush_journal(zone_t *zone);
+int zone_flush_journal(conf_t *conf, zone_t *zone);
 
 /*! \brief Enqueue UPDATE request for processing. */
 int zone_update_enqueue(zone_t *zone, knot_pkt_t *pkt, struct process_query_param *param);

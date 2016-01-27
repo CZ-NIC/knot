@@ -43,8 +43,6 @@
 #define BOOTSTRAP_RETRY (30) /*!< Interval between AXFR bootstrap retries. */
 #define BOOTSTRAP_MAXTIME (24*60*60) /*!< Maximum AXFR retry cap of 24 hours. */
 
-/* ------------------------- zone query requesting -------------------------- */
-
 /*! \brief Zone event logging. */
 #define ZONE_QUERY_LOG(severity, zone, remote, operation, msg, ...) \
 	NS_PROC_LOG(severity, &(remote)->addr, zone->name, operation, msg, ##__VA_ARGS__)
@@ -90,9 +88,9 @@ static knot_pkt_t *zone_query(const zone_t *zone, uint16_t pkt_type, knot_mm_t *
 }
 
 /*! \brief Set EDNS section. */
-static int prepare_edns(zone_t *zone, knot_pkt_t *pkt)
+static int prepare_edns(conf_t *conf, zone_t *zone, knot_pkt_t *pkt)
 {
-	conf_val_t val = conf_zone_get(conf(), C_REQUEST_EDNS_OPTION, zone->name);
+	conf_val_t val = conf_zone_get(conf, C_REQUEST_EDNS_OPTION, zone->name);
 
 	/* Check if an extra EDNS option is configured. */
 	size_t opt_len;
@@ -102,7 +100,7 @@ static int prepare_edns(zone_t *zone, knot_pkt_t *pkt)
 	}
 
 	knot_rrset_t opt_rr;
-	conf_val_t *max_payload = &conf()->cache.srv_max_udp_payload;
+	conf_val_t *max_payload = &conf->cache.srv_max_udp_payload;
 	int ret = knot_edns_init(&opt_rr, conf_int(max_payload), 0,
 	                         KNOT_EDNS_VERSION, &pkt->mm);
 	if (ret != KNOT_EOK) {
@@ -156,7 +154,7 @@ static int zone_query_request(knot_pkt_t *query, const conf_remote_t *remote,
 	/* Send the queries and process responses. */
 	ret = knot_requestor_enqueue(&re, req);
 	if (ret == KNOT_EOK) {
-		conf_val_t *val = &conf()->cache.srv_tcp_reply_timeout;
+		conf_val_t *val = &param->conf->cache.srv_tcp_reply_timeout;
 		int timeout = conf_int(val) * 1000;
 		ret = knot_requestor_exec(&re, timeout);
 	} else {
@@ -175,7 +173,8 @@ static int zone_query_request(knot_pkt_t *query, const conf_remote_t *remote,
  * \note Everything in this function is executed synchronously, returns when
  *       the query processing is either complete or an error occurs.
  */
-static int zone_query_execute(zone_t *zone, uint16_t pkt_type, const conf_remote_t *remote)
+static int zone_query_execute(conf_t *conf, zone_t *zone, uint16_t pkt_type,
+                              const conf_remote_t *remote)
 {
 	/* Create a memory pool for this task. */
 	knot_mm_t mm;
@@ -189,7 +188,7 @@ static int zone_query_execute(zone_t *zone, uint16_t pkt_type, const conf_remote
 	}
 
 	/* Set EDNS section. */
-	int ret = prepare_edns(zone, query);
+	int ret = prepare_edns(conf, zone, query);
 	if (ret != KNOT_EOK) {
 		knot_pkt_free(&query);
 		mp_delete(mm.ctx);
@@ -199,6 +198,7 @@ static int zone_query_execute(zone_t *zone, uint16_t pkt_type, const conf_remote
 	/* Answer processing parameters. */
 	struct process_answer_param param = {
 		.zone = zone,
+		.conf = conf,
 		.query = query,
 		.remote = &remote->addr
 	};
@@ -235,17 +235,18 @@ static int zone_query_execute(zone_t *zone, uint16_t pkt_type, const conf_remote
 	}
 
 /*! \brief Execute zone transfer request. */
-static int zone_query_transfer(zone_t *zone, const conf_remote_t *master, uint16_t pkt_type)
+static int zone_query_transfer(conf_t *conf, zone_t *zone, const conf_remote_t *master,
+                               uint16_t pkt_type)
 {
 	assert(zone);
 	assert(master);
 
-	int ret = zone_query_execute(zone, pkt_type, master);
+	int ret = zone_query_execute(conf, zone, pkt_type, master);
 	if (ret != KNOT_EOK) {
 		/* IXFR failed, revert to AXFR. */
 		if (pkt_type == KNOT_QUERY_IXFR) {
 			ZONE_XFER_LOG(LOG_NOTICE, pkt_type, "fallback to AXFR");
-			return zone_query_transfer(zone, master, KNOT_QUERY_AXFR);
+			return zone_query_transfer(conf, zone, master, KNOT_QUERY_AXFR);
 		}
 
 		/* Log connection errors. */
@@ -290,52 +291,50 @@ static const knot_rdataset_t *zone_soa(zone_t *zone)
 }
 
 /*! \brief Fetch SOA expire timer and add a timeout grace period. */
-static uint32_t soa_graceful_expire(const knot_rdataset_t *soa)
+static uint32_t soa_graceful_expire(conf_t *conf, const knot_rdataset_t *soa)
 {
 	// Allow for timeouts.  Otherwise zones with very short
 	// expiry may expire before the timeout is reached.
-	conf_val_t *val = &conf()->cache.srv_tcp_reply_timeout;
+	conf_val_t *val = &conf->cache.srv_tcp_reply_timeout;
 	return knot_soa_expire(soa) + 2 * conf_int(val);
 }
 
 /*! \brief Schedule expire event, unless it is already scheduled. */
-static void start_expire_timer(zone_t *zone, const knot_rdataset_t *soa)
+static void start_expire_timer(conf_t *conf, zone_t *zone, const knot_rdataset_t *soa)
 {
 	if (zone_events_is_scheduled(zone, ZONE_EVENT_EXPIRE)) {
 		return;
 	}
 
-	zone_events_schedule(zone, ZONE_EVENT_EXPIRE, soa_graceful_expire(soa));
+	zone_events_schedule(zone, ZONE_EVENT_EXPIRE, soa_graceful_expire(conf, soa));
 }
 
-/* -- zone events handling callbacks --------------------------------------- */
-
-int event_load(zone_t *zone)
+int event_load(conf_t *conf, zone_t *zone)
 {
 	assert(zone);
 
 	/* Take zone file mtime and load it. */
-	char *filename = conf_zonefile(conf(), zone->name);
+	char *filename = conf_zonefile(conf, zone->name);
 	time_t mtime = zonefile_mtime(filename);
 	free(filename);
 	uint32_t dnssec_refresh = time(NULL);
 
 	zone_contents_t *contents = NULL;
-	int ret = zone_load_contents(conf(), zone->name, &contents);
+	int ret = zone_load_contents(conf, zone->name, &contents);
 	if (ret != KNOT_EOK) {
 		goto fail;
 	}
 
 	/* Store zonefile serial and apply changes from the journal. */
 	zone->zonefile_serial = zone_contents_serial(contents);
-	ret = zone_load_journal(conf(), zone, contents);
+	ret = zone_load_journal(conf, zone, contents);
 	if (ret != KNOT_EOK) {
 		goto fail;
 	}
 
 	/* Post load actions - calculate delta, sign with DNSSEC... */
 	/*! \todo issue #242 dnssec signing should occur in the special event */
-	ret = zone_load_post(conf(), contents, zone, &dnssec_refresh);
+	ret = zone_load_post(conf, zone, contents, &dnssec_refresh);
 	if (ret != KNOT_EOK) {
 		if (ret == KNOT_ESPACE) {
 			log_zone_error(zone->name, "journal size is too small "
@@ -348,7 +347,7 @@ int event_load(zone_t *zone)
 	}
 
 	/* Check zone contents consistency. */
-	ret = zone_load_check(conf(), contents);
+	ret = zone_load_check(conf, contents);
 	if (ret != KNOT_EOK) {
 		goto fail;
 	}
@@ -364,7 +363,7 @@ int event_load(zone_t *zone)
 	}
 
 	/* Schedule notify and refresh after load. */
-	if (zone_is_slave(zone)) {
+	if (zone_is_slave(conf, zone)) {
 		zone_events_schedule(zone, ZONE_EVENT_REFRESH, ZONE_EVENT_NOW);
 	}
 	if (!zone_contents_is_empty(contents)) {
@@ -373,13 +372,13 @@ int event_load(zone_t *zone)
 	}
 
 	/* Schedule zone resign. */
-	conf_val_t val = conf_zone_get(conf(), C_DNSSEC_SIGNING, zone->name);
+	conf_val_t val = conf_zone_get(conf, C_DNSSEC_SIGNING, zone->name);
 	if (conf_bool(&val)) {
 		schedule_dnssec(zone, dnssec_refresh);
 	}
 
 	/* Periodic execution. */
-	val = conf_zone_get(conf(), C_ZONEFILE_SYNC, zone->name);
+	val = conf_zone_get(conf, C_ZONEFILE_SYNC, zone->name);
 	int64_t sync_timeout = conf_int(&val);
 	if (sync_timeout >= 0) {
 		zone_events_schedule(zone, ZONE_EVENT_FLUSH, sync_timeout);
@@ -395,19 +394,19 @@ fail:
 	zone_contents_deep_free(&contents);
 
 	/* Try to bootstrap the zone if local error. */
-	if (zone_is_slave(zone) && !zone_events_is_scheduled(zone, ZONE_EVENT_XFER)) {
+	if (zone_is_slave(conf, zone) && !zone_events_is_scheduled(zone, ZONE_EVENT_XFER)) {
 		zone_events_schedule(zone, ZONE_EVENT_XFER, ZONE_EVENT_NOW);
 	}
 
 	return ret;
 }
 
-static int try_refresh(zone_t *zone, const conf_remote_t *master, void *ctx)
+static int try_refresh(conf_t *conf, zone_t *zone, const conf_remote_t *master, void *ctx)
 {
 	assert(zone);
 	assert(master);
 
-	int ret = zone_query_execute(zone, KNOT_QUERY_NORMAL, master);
+	int ret = zone_query_execute(conf, zone, KNOT_QUERY_NORMAL, master);
 	if (ret != KNOT_EOK) {
 		ZONE_QUERY_LOG(LOG_WARNING, zone, master, "refresh, outgoing",
 		               "failed (%s)", knot_strerror(ret));
@@ -416,12 +415,12 @@ static int try_refresh(zone_t *zone, const conf_remote_t *master, void *ctx)
 	return ret;
 }
 
-int event_refresh(zone_t *zone)
+int event_refresh(conf_t *conf, zone_t *zone)
 {
 	assert(zone);
 
 	/* Ignore if not slave zone. */
-	if (!zone_is_slave(zone)) {
+	if (!zone_is_slave(conf, zone)) {
 		return KNOT_EOK;
 	}
 
@@ -431,14 +430,14 @@ int event_refresh(zone_t *zone)
 		return KNOT_EOK;
 	}
 
-	int ret = zone_master_try(zone, try_refresh, NULL, "refresh");
+	int ret = zone_master_try(conf, zone, try_refresh, NULL, "refresh");
 	const knot_rdataset_t *soa = zone_soa(zone);
 	if (ret != KNOT_EOK) {
 		log_zone_error(zone->name, "refresh, failed (%s)",
 		               knot_strerror(ret));
 		/* Schedule next retry. */
 		zone_events_schedule(zone, ZONE_EVENT_REFRESH, knot_soa_retry(soa));
-		start_expire_timer(zone, soa);
+		start_expire_timer(conf, zone, soa);
 	} else {
 		/* SOA query answered, reschedule refresh timer. */
 		zone_events_schedule(zone, ZONE_EVENT_REFRESH, knot_soa_refresh(soa));
@@ -451,7 +450,7 @@ struct transfer_data {
 	uint16_t pkt_type;
 };
 
-static int try_xfer(zone_t *zone, const conf_remote_t *master, void *_data)
+static int try_xfer(conf_t *conf, zone_t *zone, const conf_remote_t *master, void *_data)
 {
 	assert(zone);
 	assert(master);
@@ -459,15 +458,15 @@ static int try_xfer(zone_t *zone, const conf_remote_t *master, void *_data)
 
 	struct transfer_data *data = _data;
 
-	return zone_query_transfer(zone, master, data->pkt_type);
+	return zone_query_transfer(conf, zone, master, data->pkt_type);
 }
 
-int event_xfer(zone_t *zone)
+int event_xfer(conf_t *conf, zone_t *zone)
 {
 	assert(zone);
 
 	/* Ignore if not slave zone. */
-	if (!zone_is_slave(zone)) {
+	if (!zone_is_slave(conf, zone)) {
 		return KNOT_EOK;
 	}
 
@@ -485,7 +484,7 @@ int event_xfer(zone_t *zone)
 	}
 
 	/* Execute zone transfer. */
-	int ret = zone_master_try(zone, try_xfer, &data, err_str);
+	int ret = zone_master_try(conf, zone, try_xfer, &data, err_str);
 	zone_clear_preferred_master(zone);
 	if (ret != KNOT_EOK) {
 		log_zone_error(zone->name, "%s, failed (%s)", err_str,
@@ -496,7 +495,7 @@ int event_xfer(zone_t *zone)
 		} else {
 			const knot_rdataset_t *soa = zone_soa(zone);
 			zone_events_schedule(zone, ZONE_EVENT_XFER, knot_soa_retry(soa));
-			start_expire_timer(zone, soa);
+			start_expire_timer(conf, zone, soa);
 		}
 
 		return KNOT_EOK;
@@ -509,7 +508,7 @@ int event_xfer(zone_t *zone)
 	zone_events_schedule(zone, ZONE_EVENT_REFRESH, knot_soa_refresh(soa));
 	zone_events_schedule(zone, ZONE_EVENT_NOTIFY,  ZONE_EVENT_NOW);
 	zone_events_cancel(zone, ZONE_EVENT_EXPIRE);
-	conf_val_t val = conf_zone_get(conf(), C_ZONEFILE_SYNC, zone->name);
+	conf_val_t val = conf_zone_get(conf, C_ZONEFILE_SYNC, zone->name);
 	int64_t sync_timeout = conf_int(&val);
 	if (sync_timeout == 0) {
 		zone_events_schedule(zone, ZONE_EVENT_FLUSH, ZONE_EVENT_NOW);
@@ -530,12 +529,12 @@ int event_xfer(zone_t *zone)
 	return KNOT_EOK;
 }
 
-int event_update(zone_t *zone)
+int event_update(conf_t *conf, zone_t *zone)
 {
 	assert(zone);
 
 	/* Process update list - forward if zone has master, or execute. */
-	updates_execute(zone);
+	updates_execute(conf, zone);
 
 	/* Trim extra heap. */
 	mem_trim();
@@ -554,7 +553,7 @@ int event_update(zone_t *zone)
 	return KNOT_EOK;
 }
 
-int event_expire(zone_t *zone)
+int event_expire(conf_t *conf, zone_t *zone)
 {
 	assert(zone);
 
@@ -575,12 +574,12 @@ int event_expire(zone_t *zone)
 	return KNOT_EOK;
 }
 
-int event_flush(zone_t *zone)
+int event_flush(conf_t *conf, zone_t *zone)
 {
 	assert(zone);
 
 	/* Reschedule. */
-	conf_val_t val = conf_zone_get(conf(), C_ZONEFILE_SYNC, zone->name);
+	conf_val_t val = conf_zone_get(conf, C_ZONEFILE_SYNC, zone->name);
 	int64_t sync_timeout = conf_int(&val);
 	if (sync_timeout > 0) {
 		zone_events_schedule(zone, ZONE_EVENT_FLUSH, sync_timeout);
@@ -591,10 +590,10 @@ int event_flush(zone_t *zone)
 		return KNOT_EOK;
 	}
 
-	return zone_flush_journal(zone);
+	return zone_flush_journal(conf, zone);
 }
 
-int event_notify(zone_t *zone)
+int event_notify(conf_t *conf, zone_t *zone)
 {
 	assert(zone);
 
@@ -604,14 +603,14 @@ int event_notify(zone_t *zone)
 	}
 
 	/* Walk through configured remotes and send messages. */
-	conf_val_t notify = conf_zone_get(conf(), C_NOTIFY, zone->name);
+	conf_val_t notify = conf_zone_get(conf, C_NOTIFY, zone->name);
 	while (notify.code == KNOT_EOK) {
-		conf_val_t addr = conf_id_get(conf(), C_RMT, C_ADDR, &notify);
+		conf_val_t addr = conf_id_get(conf, C_RMT, C_ADDR, &notify);
 		size_t addr_count = conf_val_count(&addr);
 
 		for (int i = 0; i < addr_count; i++) {
-			conf_remote_t slave = conf_remote(conf(), &notify, i);
-			int ret = zone_query_execute(zone, KNOT_QUERY_NOTIFY, &slave);
+			conf_remote_t slave = conf_remote(conf, &notify, i);
+			int ret = zone_query_execute(conf, zone, KNOT_QUERY_NOTIFY, &slave);
 			if (ret == KNOT_EOK) {
 				ZONE_QUERY_LOG(LOG_INFO, zone, &slave,
 				               "NOTIFY, outgoing", "serial %u",
@@ -630,7 +629,7 @@ int event_notify(zone_t *zone)
 	return KNOT_EOK;
 }
 
-int event_dnssec(zone_t *zone)
+int event_dnssec(conf_t *conf, zone_t *zone)
 {
 	assert(zone);
 
@@ -670,7 +669,7 @@ int event_dnssec(zone_t *zone)
 		}
 
 		/* Write change to journal. */
-		ret = zone_change_store(zone, &ch);
+		ret = zone_change_store(conf, zone, &ch);
 		if (ret != KNOT_EOK) {
 			log_zone_error(zone->name, "DNSSEC, failed to sign zone (%s)",
 				       knot_strerror(ret));
@@ -693,7 +692,7 @@ int event_dnssec(zone_t *zone)
 	schedule_dnssec(zone, refresh_at);
 	if (zone_changed) {
 		zone_events_schedule(zone, ZONE_EVENT_NOTIFY, ZONE_EVENT_NOW);
-		conf_val_t val = conf_zone_get(conf(), C_ZONEFILE_SYNC, zone->name);
+		conf_val_t val = conf_zone_get(conf, C_ZONEFILE_SYNC, zone->name);
 		if (conf_int(&val) == 0) {
 			zone_events_schedule(zone, ZONE_EVENT_FLUSH, ZONE_EVENT_NOW);
 		}

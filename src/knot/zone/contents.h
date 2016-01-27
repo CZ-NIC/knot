@@ -18,8 +18,7 @@
  *
  * Zone contents structure and API for manipulating it.
  *
- * \addtogroup knot
- *
+ * \addtogroup zone
  * @{
  */
 

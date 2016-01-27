@@ -40,12 +40,12 @@ typedef enum {
 /*!
  * \brief Check zone file status.
  *
- * \param old_zone  Previous instance of the zone (can be NULL).
  * \param conf      Zone configuration.
+ * \param old_zone  Previous instance of the zone (can be NULL).
  *
  * \return Zone status.
  */
-static zone_status_t zone_file_status(const zone_t *old_zone, conf_t *conf,
+static zone_status_t zone_file_status(conf_t *conf, const zone_t *old_zone,
                                       const knot_dname_t *name)
 {
 	assert(conf);
@@ -134,11 +134,11 @@ static zone_t *create_zone_reload(conf_t *conf, const knot_dname_t *name,
 	zone->contents = old_zone->contents;
 
 	zone_status_t zstatus;
-	if (zone_is_slave(zone) && old_zone->flags & ZONE_EXPIRED) {
+	if (zone_is_slave(conf, zone) && old_zone->flags & ZONE_EXPIRED) {
 		zone->flags |= ZONE_EXPIRED;
 		zstatus = ZONE_STATUS_FOUND_CURRENT;
 	} else {
-		zstatus = zone_file_status(old_zone, conf, name);
+		zstatus = zone_file_status(conf, old_zone, name);
 	}
 
 	switch (zstatus) {
@@ -152,7 +152,7 @@ static zone_t *create_zone_reload(conf_t *conf, const knot_dname_t *name,
 		zone->zonefile_mtime = old_zone->zonefile_mtime;
 		zone->zonefile_serial = old_zone->zonefile_serial;
 		/* Reuse events from old zone. */
-		zone_events_update(zone, old_zone);
+		zone_events_update(conf, zone, old_zone);
 		break;
 	default:
 		assert(0);
@@ -166,7 +166,7 @@ static bool slave_event(zone_event_type_t event)
 	return event == ZONE_EVENT_EXPIRE || event == ZONE_EVENT_REFRESH;
 }
 
-static int reuse_events(knot_db_t *timer_db, zone_t *zone)
+static int reuse_events(conf_t *conf, knot_db_t *timer_db, zone_t *zone)
 {
 	// Get persistent timers
 
@@ -181,7 +181,7 @@ static int reuse_events(knot_db_t *timer_db, zone_t *zone)
 			// Timer unset.
 			continue;
 		}
-		if (slave_event(event) && !zone_is_slave(zone)) {
+		if (slave_event(event) && !zone_is_slave(conf, zone)) {
 			// Slave-only event.
 			continue;
 		}
@@ -197,7 +197,7 @@ static int reuse_events(knot_db_t *timer_db, zone_t *zone)
 	return KNOT_EOK;
 }
 
-static zone_t *create_zone_new(conf_t * conf, const knot_dname_t *name,
+static zone_t *create_zone_new(conf_t *conf, const knot_dname_t *name,
                                server_t *server)
 {
 	zone_t *zone = create_zone_from(name, server);
@@ -205,7 +205,7 @@ static zone_t *create_zone_new(conf_t * conf, const knot_dname_t *name,
 		return NULL;
 	}
 
-	int ret = reuse_events(server->timers_db, zone);
+	int ret = reuse_events(conf, server->timers_db, zone);
 	if (ret != KNOT_EOK) {
 		log_zone_error(zone->name, "cannot read zone timers (%s)",
 		               knot_strerror(ret));
@@ -213,9 +213,9 @@ static zone_t *create_zone_new(conf_t * conf, const knot_dname_t *name,
 		return NULL;
 	}
 
-	zone_status_t zstatus = zone_file_status(NULL, conf, name);
+	zone_status_t zstatus = zone_file_status(conf, NULL, name);
 	if (zone->flags & ZONE_EXPIRED) {
-		assert(zone_is_slave(zone));
+		assert(zone_is_slave(conf, zone));
 		zstatus = ZONE_STATUS_BOOSTRAP;
 	}
 

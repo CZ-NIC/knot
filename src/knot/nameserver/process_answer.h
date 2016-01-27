@@ -26,6 +26,7 @@
 
 #include <sys/socket.h>
 
+#include "knot/conf/conf.h"
 #include "knot/nameserver/process_query.h"
 #include "knot/nameserver/tsig_ctx.h"
 
@@ -42,7 +43,8 @@ const knot_layer_api_t *process_answer_layer(void);
  * \brief Processing module parameters.
  */
 struct process_answer_param {
-	zone_t   *zone;                        /*!< Answer bailiwick. */
+	zone_t *zone;                          /*!< Answer bailiwick. */
+	conf_t *conf;                          /*!< Configuration. */
 	const knot_pkt_t *query;               /*!< Query preceding the answer. */
 	const struct sockaddr_storage *remote; /*!< Answer origin. */
 	tsig_ctx_t tsig_ctx;                   /*!< Signing context. */

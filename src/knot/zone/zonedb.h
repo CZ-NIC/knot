@@ -68,8 +68,6 @@ typedef hhash_iter_t knot_zonedb_iter_t;
 	} \
 }
 
-/*----------------------------------------------------------------------------*/
-
 /*!
  * \brief Allocates and initializes the zone database structure.
  *

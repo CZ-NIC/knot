@@ -363,7 +363,7 @@ static int sign_update(zone_update_t *update,
 	return KNOT_EOK;
 }
 
-static int set_new_soa(zone_update_t *update)
+static int set_new_soa(zone_update_t *update, unsigned serial_policy)
 {
 	assert(update);
 
@@ -372,9 +372,8 @@ static int set_new_soa(zone_update_t *update)
 		return KNOT_ENOMEM;
 	}
 
-	conf_val_t val = conf_zone_get(conf(), C_SERIAL_POLICY, update->zone->name);
 	uint32_t old_serial = knot_soa_serial(&soa_cpy->rrs);
-	uint32_t new_serial = serial_next(old_serial, conf_opt(&val));
+	uint32_t new_serial = serial_next(old_serial, serial_policy);
 	if (serial_compare(old_serial, new_serial) >= 0) {
 		log_zone_warning(update->zone->name, "updated serial is lower "
 		                 "than current, serial %u -> %u",
@@ -387,7 +386,7 @@ static int set_new_soa(zone_update_t *update)
 	return KNOT_EOK;
 }
 
-static int commit_incremental(zone_update_t *update, zone_contents_t **contents_out)
+static int commit_incremental(conf_t *conf, zone_update_t *update, zone_contents_t **contents_out)
 {
 	assert(update);
 
@@ -399,7 +398,8 @@ static int commit_incremental(zone_update_t *update, zone_contents_t **contents_
 	int ret = KNOT_EOK;
 	if (zone_update_to(update) == NULL) {
 		// No SOA in the update, create one according to the current policy
-		ret = set_new_soa(update);
+		conf_val_t val = conf_zone_get(conf, C_SERIAL_POLICY, update->zone->name);
+		ret = set_new_soa(update, conf_opt(&val));
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
@@ -415,7 +415,7 @@ static int commit_incremental(zone_update_t *update, zone_contents_t **contents_
 
 	assert(new_contents);
 
-	conf_val_t val = conf_zone_get(conf(), C_DNSSEC_SIGNING, update->zone->name);
+	conf_val_t val = conf_zone_get(conf, C_DNSSEC_SIGNING, update->zone->name);
 	bool dnssec_enable = update->flags & UPDATE_SIGN && conf_bool(&val);
 
 	// Sign the update.
@@ -430,7 +430,7 @@ static int commit_incremental(zone_update_t *update, zone_contents_t **contents_
 	}
 
 	// Write changes to journal if all went well. (DNSSEC merged)
-	ret = zone_change_store(update->zone, &update->change);
+	ret = zone_change_store(conf, update->zone, &update->change);
 	if (ret != KNOT_EOK) {
 		update_rollback(&update->change);
 		update_free_zone(&new_contents);
@@ -442,10 +442,10 @@ static int commit_incremental(zone_update_t *update, zone_contents_t **contents_
 	return KNOT_EOK;
 }
 
-int zone_update_commit(zone_update_t *update, zone_contents_t **contents_out)
+int zone_update_commit(conf_t *conf, zone_update_t *update, zone_contents_t **contents_out)
 {
 	if (update->flags & UPDATE_INCREMENTAL) {
-		return commit_incremental(update, contents_out);
+		return commit_incremental(conf, update, contents_out);
 	}
 
 	return KNOT_ENOTSUP;
