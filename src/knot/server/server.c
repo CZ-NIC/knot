@@ -604,10 +604,10 @@ static int reconfigure_rate_limits(conf_t *conf, server_t *server)
 	return KNOT_EOK;
 }
 
-int server_reconfigure(conf_t *conf, server_t *server)
+void server_reconfigure(conf_t *conf, server_t *server)
 {
-	if (server == NULL) {
-		return KNOT_EINVAL;
+	if (conf == NULL || server == NULL) {
+		return;
 	}
 
 	/* First reconfiguration. */
@@ -616,25 +616,23 @@ int server_reconfigure(conf_t *conf, server_t *server)
 	}
 
 	/* Reconfigure rate limits. */
-	int ret = KNOT_EOK;
+	int ret;
 	if ((ret = reconfigure_rate_limits(conf, server)) < 0) {
-		log_error("failed to reconfigure rate limits");
-		return ret;
+		log_error("failed to reconfigure rate limits (%s)",
+		          knot_strerror(ret));
 	}
 
 	/* Reconfigure server threads. */
 	if ((ret = reconfigure_threads(conf, server)) < 0) {
-		log_error("failed to reconfigure server threads");
-		return ret;
+		log_error("failed to reconfigure server threads (%s)",
+		          knot_strerror(ret));
 	}
 
 	/* Update bound sockets. */
 	if ((ret = reconfigure_sockets(conf, server)) < 0) {
-		log_error("failed to reconfigure server sockets");
-		return ret;
+		log_error("failed to reconfigure server sockets (%s)",
+		          knot_strerror(ret));
 	}
-
-	return ret;
 }
 
 static void reopen_timers_database(conf_t *conf, server_t *server)
@@ -656,8 +654,12 @@ static void reopen_timers_database(conf_t *conf, server_t *server)
 	}
 }
 
-int server_update_zones(conf_t *conf, server_t *server)
+void server_update_zones(conf_t *conf, server_t *server)
 {
+	if (conf == NULL || server == NULL) {
+		return;
+	}
+
 	/* Prevent emitting of new zone events. */
 	if (server->zone_db) {
 		knot_zonedb_foreach(server->zone_db, zone_events_freeze);
@@ -670,7 +672,7 @@ int server_update_zones(conf_t *conf, server_t *server)
 
 	/* Reload zone database and free old zones. */
 	reopen_timers_database(conf, server);
-	int ret = zonedb_reload(conf, server);
+	zonedb_reload(conf, server);
 
 	/* Trim extra heap. */
 	mem_trim();
@@ -680,8 +682,6 @@ int server_update_zones(conf_t *conf, server_t *server)
 	if (server->zone_db) {
 		knot_zonedb_foreach(server->zone_db, zone_events_start);
 	}
-
-	return ret;
 }
 
 ref_t *server_set_ifaces(server_t *server, fdset_t *fds, int index, int thread_id)

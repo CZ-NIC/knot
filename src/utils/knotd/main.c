@@ -456,7 +456,6 @@ int main(int argc, char **argv)
 	/* Reconfigure server interfaces.
 	 * @note This MUST be done before we drop privileges. */
 	server_reconfigure(conf(), &server);
-	log_info("configured %zu zones", conf_id_count(conf(), C_ZONE));
 
 	/* Alter privileges. */
 	int uid, gid;
@@ -497,7 +496,7 @@ int main(int argc, char **argv)
 	rcu_register_thread();
 
 	/* Populate zone database. */
-	log_info("loading zones");
+	log_info("loading %zu zones", conf_id_count(conf(), C_ZONE));
 	server_update_zones(conf(), &server);
 
 	/* Check number of loaded zones. */

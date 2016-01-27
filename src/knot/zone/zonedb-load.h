@@ -24,9 +24,5 @@
  *
  * \param[in] conf Configuration.
  * \param[in] server Server instance.
- *
- * \retval KNOT_EOK
- * \retval KNOT_EINVAL
- * \retval KNOT_ERROR
  */
-int zonedb_reload(conf_t *conf, server_t *server);
+void zonedb_reload(conf_t *conf, server_t *server);

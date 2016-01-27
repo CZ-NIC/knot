@@ -26,8 +26,6 @@
 #include "knot/common/log.h"
 #include "libknot/libknot.h"
 
-/*- zone file status --------------------------------------------------------*/
-
 /*!
  * \brief Zone file status.
  */
@@ -77,8 +75,6 @@ static zone_status_t zone_file_status(const zone_t *old_zone, conf_t *conf,
 		}
 	}
 }
-
-/*- zone loading/updating ---------------------------------------------------*/
 
 /*!
  * \brief Log message about loaded zone (name and status).
@@ -318,10 +314,10 @@ static knot_zonedb_t *create_zonedb(conf_t *conf, server_t *server)
  * \param db_new New zone database.
  * \param db_old Old zone database.
   */
-static int remove_old_zonedb(const knot_zonedb_t *db_new, knot_zonedb_t *db_old)
+static void remove_old_zonedb(const knot_zonedb_t *db_new, knot_zonedb_t *db_old)
 {
 	if (db_old == NULL) {
-		return KNOT_EOK;
+		return;
 	}
 
 	knot_zonedb_iter_t it;
@@ -339,27 +335,20 @@ static int remove_old_zonedb(const knot_zonedb_t *db_new, knot_zonedb_t *db_old)
 	}
 
 	knot_zonedb_deep_free(&db_old);
-
-	return KNOT_EOK;
 }
 
-/*- public API functions ----------------------------------------------------*/
-
-/*!
- * \brief Update zone database according to configuration.
- */
-int zonedb_reload(conf_t *conf, server_t *server)
+void zonedb_reload(conf_t *conf, server_t *server)
 {
 	/* Check parameters */
 	if (conf == NULL || server == NULL) {
-		return KNOT_EINVAL;
+		return;
 	}
 
 	/* Insert all required zones to the new zone DB. */
 	knot_zonedb_t *db_new = create_zonedb(conf, server);
 	if (db_new == NULL) {
 		log_error("failed to create new zone database");
-		return KNOT_ENOMEM;
+		return;
 	}
 
 	/* Rebuild zone database search stack. */
@@ -380,5 +369,5 @@ int zonedb_reload(conf_t *conf, server_t *server)
 	 * No new thread can access these zones in the old DB, as the
 	 * databases are already switched.
 	 */
-	return remove_old_zonedb(db_new, db_old);
+	remove_old_zonedb(db_new, db_old);
 }

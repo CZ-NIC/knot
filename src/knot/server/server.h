@@ -172,22 +172,15 @@ void server_stop(server_t *server);
  * \brief Server reconfiguration routine.
  *
  * Routine for dynamic server reconfiguration.
- *
- * \retval KNOT_EOK on success.
- * \retval KNOT_ENOTRUNNING if the server is not running.
- * \retval KNOT_EINVAL on invalid parameters.
- * \retval KNOT_ERROR unspecified error.
  */
-int server_reconfigure(conf_t *conf, server_t *data);
+void server_reconfigure(conf_t *conf, server_t *data);
 
 /*!
  * \brief Reconfigure zone database.
  *
- * Routine for dynamic server reconfiguration.
- *
- * \return KNOT_EOK on success or KNOT_ error
+ * Routine for dynamic server zones reconfiguration.
  */
-int server_update_zones(conf_t *conf, server_t *server);
+void server_update_zones(conf_t *conf, server_t *server);
 
 /*!
  * \brief Update fdsets from current interfaces list.
