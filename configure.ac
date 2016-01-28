@@ -124,18 +124,18 @@ AM_CONDITIONAL([FAST_PARSER], [test "$enable_fastparser" = "yes"])
 
 # GnuTLS crypto backend
 PKG_CHECK_MODULES([gnutls], [gnutls >= 3.0 nettle], [
-    CFLAGS_save=$CFLAGS
+    save_CFLAGS=$CFLAGS
     CFLAGS="$CFLAGS $gnutls_CFLAGS"
     AC_CHECK_HEADERS([nettle/version.h])
-    CFLAGS=$CFLAGS_save
+    CFLAGS=$save_CFLAGS
 
-    LDFLAGS_save=$LDFLAGS
-    LDFLAGS="$LDFLAGS $gnutls_LIBS"
+    save_LIBS=$LIBS
+    LIBS="$LIBS $gnutls_LIBS"
     AC_CHECK_FUNC([gnutls_pkcs11_privkey_generate3], [enable_pkcs11=yes], [enable_pkcs11=no])
     AS_IF([test "$enable_pkcs11" = yes],
         [AC_DEFINE([ENABLE_PKCS11], [1], [PKCS 11 support available])])
 
-    LDFLAGS=$LDFLAGS_save
+    LIBS=$save_LIBS
 ])
 
 # JSON for DNSSEC status storage
