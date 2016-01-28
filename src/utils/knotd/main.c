@@ -441,7 +441,7 @@ int main(int argc, char **argv)
 	}
 
 	/* Reconfigure logging. */
-	log_reconfigure(conf(), NULL);
+	log_reconfigure(conf());
 
 	/* Initialize server. */
 	server_t server;

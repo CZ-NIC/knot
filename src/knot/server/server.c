@@ -511,7 +511,7 @@ int server_reload(server_t *server, const char *cf)
 	/* Update to the new config. */
 	conf_update(new_conf);
 
-	log_reconfigure(conf(), NULL);
+	log_reconfigure(conf());
 	server_reconfigure(conf(), server);
 	server_update_zones(conf(), server);
 

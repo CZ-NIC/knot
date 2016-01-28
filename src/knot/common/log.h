@@ -199,11 +199,7 @@ int log_update_privileges(int uid, int gid);
  * \brief Setup logging facilities from config.
  *
  * \see syslog.h
- *
- * \retval KNOT_EOK on success.
- * \retval KNOT_EINVAL on invalid parameters.
- * \retval KNOT_ENOMEM out of memory error.
  */
-int log_reconfigure(conf_t *conf, void *data);
+void log_reconfigure(conf_t *conf);
 
 /*! @} */
