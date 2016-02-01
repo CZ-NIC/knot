@@ -814,15 +814,15 @@ static int cmd_zone_key_show(int argc, char *argv[])
 		return 1;
 	}
 
-	printf("id %s\n", key->id);
-	printf("keytag %d\n", dnssec_key_get_keytag(key->key));
+	printf("id %s\n",        key->id);
+	printf("keytag %d\n",    dnssec_key_get_keytag(key->key));
 	printf("algorithm %d\n", dnssec_key_get_algorithm(key->key));
-	printf("size %u\n", dnssec_key_get_size(key->key));
-	printf("flags %d\n", dnssec_key_get_flags(key->key));
-	printf("publish %ju\n", key->timing.publish);
-	printf("active %ju\n", key->timing.active);
-	printf("retire %ju\n", key->timing.retire);
-	printf("remove %ju\n", key->timing.remove);
+	printf("size %u\n",      dnssec_key_get_size(key->key));
+	printf("flags %d\n",     dnssec_key_get_flags(key->key));
+	printf("publish %lld\n", (long long)key->timing.publish);
+	printf("active %lld\n",  (long long)key->timing.active);
+	printf("retire %lld\n",  (long long)key->timing.retire);
+	printf("remove %lld\n",  (long long)key->timing.remove);
 
 	return 0;
 }
