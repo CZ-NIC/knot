@@ -19,8 +19,6 @@
 #include "contrib/wire.h"
 #include "contrib/wire_ctx.h"
 
-/* ---- Knot-internal event code to db key lookup tables ------------------ - */
-
 #define PERSISTENT_EVENT_COUNT 3
 
 enum {
@@ -137,8 +135,6 @@ static int read_timers(knot_db_txn_t *txn, const zone_t *zone, time_t *timers)
 
 	return KNOT_EOK;
 }
-
-/* -------- API ------------------------------------------------------------- */
 
 int open_timers_db(const char *path, knot_db_t **timer_db)
 {

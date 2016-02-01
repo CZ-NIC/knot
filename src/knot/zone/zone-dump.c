@@ -16,11 +16,9 @@
 
 #include <inttypes.h>
 
-#include "knot/zone/zone-dump.h"
-#include "libknot/descriptor.h"
-#include "knot/conf/conf.h"
-#include "libknot/libknot.h"
 #include "knot/dnssec/zone-nsec.h"
+#include "knot/zone/zone-dump.h"
+#include "libknot/libknot.h"
 
 /*! \brief Size of auxiliary buffer. */
 #define DUMP_BUF_LEN (70 * 1024)
@@ -45,7 +43,7 @@ static int apex_node_dump_text(zone_node_t *node, dump_params_t *params)
 	// Dump SOA record as a first.
 	if (!params->dump_nsec) {
 		if (knot_rrset_txt_dump(&soa, params->buf, params->buflen,
-					&soa_style) < 0) {
+		                        &soa_style) < 0) {
 			return KNOT_ENOMEM;
 		}
 		params->rr_count += soa.rrs.rr_count;

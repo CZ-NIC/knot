@@ -23,10 +23,6 @@
 #include "contrib/mempattern.h"
 #include "contrib/ucw/mempool.h"
 
-/*----------------------------------------------------------------------------*/
-/* Non-API functions                                                          */
-/*----------------------------------------------------------------------------*/
-
 /*! \brief Discard zone in zone database. */
 static void discard_zone(zone_t *zone)
 {
@@ -35,7 +31,7 @@ static void discard_zone(zone_t *zone)
 	/* Flush if bootstrapped or if the journal doesn't exist. */
 	if (zone->zonefile_mtime == 0 || !journal_exists(journal_file)) {
 		pthread_mutex_lock(&zone->journal_lock);
-		zone_flush_journal(zone);
+		zone_flush_journal(conf(), zone);
 		pthread_mutex_unlock(&zone->journal_lock);
 	}
 
@@ -43,10 +39,6 @@ static void discard_zone(zone_t *zone)
 
 	zone_free(&zone);
 }
-
-/*----------------------------------------------------------------------------*/
-/* API functions                                                              */
-/*----------------------------------------------------------------------------*/
 
 knot_zonedb_t *knot_zonedb_new(uint32_t size)
 {
@@ -69,8 +61,6 @@ knot_zonedb_t *knot_zonedb_new(uint32_t size)
 	return db;
 }
 
-/*----------------------------------------------------------------------------*/
-
 int knot_zonedb_insert(knot_zonedb_t *db, zone_t *zone)
 {
 	if (db == NULL || zone == NULL) {
@@ -85,8 +75,6 @@ int knot_zonedb_insert(knot_zonedb_t *db, zone_t *zone)
 	return hhash_insert(db->hash, (const char*)zone->name, name_size, zone);
 }
 
-/*----------------------------------------------------------------------------*/
-
 int knot_zonedb_del(knot_zonedb_t *db, const knot_dname_t *zone_name)
 {
 	if (db == NULL || zone_name == NULL) {
@@ -99,8 +87,6 @@ int knot_zonedb_del(knot_zonedb_t *db, const knot_dname_t *zone_name)
 	int name_size = knot_dname_size(zone_name);
 	return hhash_del(db->hash, (const char*)zone_name, name_size);
 }
-
-/*----------------------------------------------------------------------------*/
 
 int knot_zonedb_build_index(knot_zonedb_t *db)
 {
@@ -124,8 +110,6 @@ int knot_zonedb_build_index(knot_zonedb_t *db)
 	return KNOT_EOK;
 }
 
-/*----------------------------------------------------------------------------*/
-
 static value_t *find_name(knot_zonedb_t *db, const knot_dname_t *dname, uint16_t size)
 {
 	assert(db);
@@ -133,8 +117,6 @@ static value_t *find_name(knot_zonedb_t *db, const knot_dname_t *dname, uint16_t
 
 	return hhash_find(db->hash, (const char*)dname, size);
 }
-
-/*----------------------------------------------------------------------------*/
 
 zone_t *knot_zonedb_find(knot_zonedb_t *db, const knot_dname_t *zone_name)
 {
@@ -150,8 +132,6 @@ zone_t *knot_zonedb_find(knot_zonedb_t *db, const knot_dname_t *zone_name)
 
 	return *ret;
 }
-
-/*----------------------------------------------------------------------------*/
 
 zone_t *knot_zonedb_find_suffix(knot_zonedb_t *db, const knot_dname_t *dname)
 {
@@ -184,8 +164,6 @@ zone_t *knot_zonedb_find_suffix(knot_zonedb_t *db, const knot_dname_t *dname)
 	return NULL;
 }
 
-/*----------------------------------------------------------------------------*/
-
 size_t knot_zonedb_size(const knot_zonedb_t *db)
 {
 	if (db == NULL) {
@@ -194,8 +172,6 @@ size_t knot_zonedb_size(const knot_zonedb_t *db)
 
 	return db->hash->weight;
 }
-
-/*----------------------------------------------------------------------------*/
 
 void knot_zonedb_free(knot_zonedb_t **db)
 {
@@ -206,8 +182,6 @@ void knot_zonedb_free(knot_zonedb_t **db)
 	mp_delete((*db)->mm.ctx);
 	*db = NULL;
 }
-
-/*----------------------------------------------------------------------------*/
 
 void knot_zonedb_deep_free(knot_zonedb_t **db)
 {

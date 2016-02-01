@@ -77,8 +77,6 @@ enum node_flags {
 	NODE_FLAGS_WILDCARD_CHILD =  1 << 4
 };
 
-/* ------------------------- Node create/free --------------------------------*/
-
 /*!
  * \brief Creates and initializes new node structure.
  *
@@ -119,8 +117,6 @@ void node_free(zone_node_t **node, knot_mm_t *mm);
  */
 zone_node_t *node_shallow_copy(const zone_node_t *src, knot_mm_t *mm);
 
-/* ----------------------- Data addition/removal -----------------------------*/
-
 /*!
  * \brief Adds an RRSet to the node. All data are copied. Owner and class are
  *        not used at all.
@@ -139,8 +135,6 @@ int node_add_rrset(zone_node_t *node, const knot_rrset_t *rrset, knot_mm_t *mm);
  * \param type  RR type to delete.
  */
 void node_remove_rdataset(zone_node_t *node, uint16_t type);
-
-/* ---------------------------- Data getters ---------------------------------*/
 
 /*!
  * \brief Returns the RRSet of the given type from the node. RRSet is allocated.
@@ -163,8 +157,6 @@ knot_rrset_t *node_create_rrset(const zone_node_t *node, uint16_t type);
  */
 knot_rdataset_t *node_rdataset(const zone_node_t *node, uint16_t type);
 
-/* ---------------------------- Parent setter ------------------------------- */
-
 /*!
  * \brief Sets the parent of the node. Also adjusts children count of parent.
  *
@@ -172,8 +164,6 @@ knot_rdataset_t *node_rdataset(const zone_node_t *node, uint16_t type);
  * \param parent Parent to set to the node.
  */
 void node_set_parent(zone_node_t *node, zone_node_t *parent);
-
-/* ----------------------------- Bool checks -------------------------------- */
 
 /*!
  * \brief Checks whether node contains any RRSIG for given type.
@@ -204,8 +194,6 @@ bool node_rrtype_exists(const zone_node_t *node, uint16_t type);
  * \return True/False.
  */
 bool node_empty(const zone_node_t *node);
-
-/* -------------------- Inline RRSet initializations ------------------------ */
 
 /*!
  * \brief Returns RRSet structure initialized with data from node.

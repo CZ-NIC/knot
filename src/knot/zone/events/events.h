@@ -20,6 +20,7 @@
 #include <stdbool.h>
 #include <sys/time.h>
 
+#include "knot/conf/conf.h"
 #include "knot/common/evsched.h"
 #include "knot/worker/pool.h"
 #include "libknot/db/db.h"
@@ -189,10 +190,11 @@ time_t zone_events_get_next(const struct zone *zone, zone_event_type_t *type);
 /*!
  * \brief Replans zone events after config change. Will reuse events where applicable.
  *
+ * \param conf      Configuration.
  * \param zone      Zone with new config.
  * \param old_zone  Zone with old config.
  */
-void zone_events_update(struct zone *zone, struct zone *old_zone);
+void zone_events_update(conf_t *conf, struct zone *zone, struct zone *old_zone);
 
 /*!
  * \brief Replans DDNS processing event if DDNS queue is not empty.
@@ -200,4 +202,4 @@ void zone_events_update(struct zone *zone, struct zone *old_zone);
  * \param zone      Zone with new config.
  * \param old_zone  Zone with old config.
  */
-void zone_events_replan_ddns(struct zone *zone, const struct zone *old_zone);
+void zone_events_replan_ddns(struct zone *zone, struct zone *old_zone);

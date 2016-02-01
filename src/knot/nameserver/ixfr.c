@@ -386,7 +386,7 @@ static int ixfrin_finalize(struct answer_data *adata)
 	}
 
 	/* Write changes to journal. */
-	ret = zone_changes_store(ixfr->zone, &ixfr->changesets);
+	ret = zone_changes_store(adata->param->conf, ixfr->zone, &ixfr->changesets);
 	if (ret != KNOT_EOK) {
 		IXFRIN_LOG(LOG_WARNING, "failed to write changes to journal (%s)",
 		           knot_strerror(ret));

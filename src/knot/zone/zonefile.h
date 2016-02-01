@@ -14,13 +14,9 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 /*!
- * \file zone-load.h
+ * \file
  *
- * \author Marek Vavrusa <marek.vavrusa@nic.cz>
- * \author Jan Kadlec <jan.kadlec@nic.cz>
- *
- * \brief Zone loading
- *
+ * \addtogroup zone
  * @{
  */
 
@@ -37,9 +33,8 @@
  */
 typedef struct zcreator {
 	zone_contents_t *z;  /*!< Created zone. */
-	bool master;              /*!< Master flag. True if server is a primary
-	                               master for the zone. */
-	int ret;                  /*!< Return value. */
+	bool master;         /*!< True if server is a primary master for the zone. */
+	int ret;             /*!< Return value. */
 } zcreator_t;
 
 /*!

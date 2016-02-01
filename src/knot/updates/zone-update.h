@@ -24,6 +24,7 @@
 
 #pragma once
 
+#include "knot/conf/conf.h"
 #include "knot/updates/changesets.h"
 #include "knot/zone/contents.h"
 #include "knot/zone/zone.h"
@@ -137,12 +138,13 @@ int zone_update_remove(zone_update_t *update, const knot_rrset_t *rrset);
 /*!
  * \brief Commits all changes to the zone, signs it, saves changes to journal.
  *
+ * \param conf          Configuration.
  * \param update        Zone update.
  * \param contents_out  Where to store the resulting zone contents pointer.
  *
  * \return KNOT_E*
  */
-int zone_update_commit(zone_update_t *update, zone_contents_t **contents_out);
+int zone_update_commit(conf_t *conf, zone_update_t *update, zone_contents_t **contents_out);
 
 /*!
  * \brief Returns bool whether there are any changes at all.
