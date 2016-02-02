@@ -268,7 +268,8 @@ static int ns_put_nsec_wildcard(const zone_contents_t *zone,
 	if (!knot_rrset_empty(&rrset)) {
 		knot_rrset_t rrsigs = node_rrset(previous, KNOT_RRTYPE_RRSIG);
 		// NSEC proving that there is no node with the searched name
-		ret = ns_put_rr(resp, &rrset, &rrsigs, KNOT_COMPR_HINT_NONE, 0, qdata);
+		ret = ns_put_rr(resp, &rrset, &rrsigs, KNOT_COMPR_HINT_NONE,
+		                KNOT_PF_CHECKDUP, qdata);
 	}
 
 	return ret;
