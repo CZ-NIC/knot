@@ -242,6 +242,26 @@ static int pkcs8_dir_read(void *_handle, const char *id, dnssec_binary_t *pem)
 	return DNSSEC_EOK;
 }
 
+static bool key_is_duplicate(int open_error, pkcs8_dir_handle_t *handle,
+			     const char *id, const dnssec_binary_t *pem)
+{
+	assert(handle);
+	assert(id);
+	assert(pem);
+
+	if (open_error != dnssec_errno_to_error(EEXIST)) {
+		return false;
+	}
+
+	_cleanup_binary_ dnssec_binary_t old = { 0 };
+	int r = pkcs8_dir_read(handle, id, &old);
+	if (r != DNSSEC_EOK) {
+		return false;
+	}
+
+	return dnssec_binary_cmp(&old, pem) == 0;
+}
+
 static int pkcs8_dir_write(void *_handle, const char *id, const dnssec_binary_t *pem)
 {
 	if (!_handle || !id || !pem) {
@@ -259,6 +279,9 @@ static int pkcs8_dir_write(void *_handle, const char *id, const dnssec_binary_t 
 	_cleanup_close_ int file = 0;
 	int result = key_open_write(handle->dir_name, id, &file);
 	if (result != DNSSEC_EOK) {
+		if (key_is_duplicate(result, handle, id, pem)) {
+			return DNSSEC_EOK;
+		}
 		return result;
 	}
 
