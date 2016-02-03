@@ -14,6 +14,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#define __APPLE_USE_RFC_3542
 #include <stdlib.h>
 #include <assert.h>
 #include <urcu.h>
@@ -95,6 +96,15 @@ static bool enlarge_net_buffers(int sock, int min_recvsize, int min_sndsize)
 	       setsockopt_min(sock, SO_SNDBUF, min_sndsize);
 }
 
+#if defined(IP_PKTINFO)
+	/* Linux */
+	#define KNOT_PKTINFO IP_PKTINFO
+#elif defined(IP_RECVDSTADDR)
+	/* BSD */
+	#define KNOT_PKTINFO IP_RECVDSTADDR
+#endif
+
+
 /*!
  * \brief Initialize new interface from config value.
  *
@@ -162,6 +172,17 @@ static int server_init_iface(iface_t *new_if, struct sockaddr_storage *addr, int
 		    !warn_bufsize) {
 			log_warning("failed to set network buffer sizes for UDP");
 			warn_bufsize = true;
+		}
+
+		const int on = 1;
+		if (addr->ss_family == AF_INET &&
+		    setsockopt(sock, IPPROTO_IP, KNOT_PKTINFO, &on, sizeof(on)) < 0) {
+			log_warning("failed to set KNOT_PKTINFO");
+		}
+
+		if (addr->ss_family == AF_INET6 &&
+		    setsockopt(sock, IPPROTO_IPV6, IPV6_RECVPKTINFO, &on, sizeof(on)) < 0) {
+			log_warning("failed to set IPV6_RECVPKTINFO");
 		}
 
 		new_if->fd_udp[new_if->fd_udp_count] = sock;
