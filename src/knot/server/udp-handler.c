@@ -182,10 +182,8 @@ static void udp_pktinfo_handle(struct msghdr *rx, struct msghdr *tx)
 
 	#if defined(__APPLE__)
 	/*
-	 * Workaround for Mac OS X:
-	 * If ipi_ifindex is set to non-zero, this will be use as source
-	 * interface without use of ip_spec_dst address. If ipi_ifindex is set
-	 * to zero, ip_spec_dst address will be use as source address.
+	 * Workaround for OS X: If ipi_ifindex is non-zero, the source address
+	 * will be ignored. We need to use correct one.
 	 */
 	struct cmsghdr *cmsg = CMSG_FIRSTHDR(tx);
 	if (cmsg->cmsg_type == IP_PKTINFO) {
