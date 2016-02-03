@@ -1,13 +1,3 @@
-/*!
- * \file pkt.h
- *
- * \author Marek Vavrusa <marek.vavrusa@nic.cz>
- *
- * \brief Structure for holding DNS packet data and metadata.
- *
- * \addtogroup libknot
- * @{
- */
 /*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
@@ -22,6 +12,14 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+/*!
+ * \file
+ *
+ * \brief Structure for holding DNS packet data and metadata.
+ *
+ * \addtogroup libknot
+ * @{
  */
 
 #pragma once

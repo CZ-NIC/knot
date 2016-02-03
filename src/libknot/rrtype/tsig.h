@@ -1,13 +1,3 @@
-/*!
- * \file tsig.h
- *
- * \author Jan Kadlec <jan.kadlec@nic.cz>
- *
- * \brief TSIG manipulation.
- *
- * \addtogroup libknot
- * @{
- */
 /*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
@@ -22,6 +12,14 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+/*!
+ * \file
+ *
+ * \brief TSIG manipulation.
+ *
+ * \addtogroup libknot
+ * @{
  */
 
 #pragma once

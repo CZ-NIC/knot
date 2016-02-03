@@ -1,13 +1,3 @@
-/*!
- * \file opt.h
- *
- * \author Lubos Slovak <lubos.slovak@nic.cz>
- *
- * \brief Functions for manipulating the EDNS OPT pseudo-RR.
- *
- * \addtogroup libknot
- * @{
- */
 /*  Copyright (C) 2014 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
@@ -22,6 +12,14 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+/*!
+ * \file
+ *
+ * \brief Functions for manipulating the EDNS OPT pseudo-RR.
+ *
+ * \addtogroup libknot
+ * @{
  */
 
 #pragma once

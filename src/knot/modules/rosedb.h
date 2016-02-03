@@ -1,19 +1,3 @@
-/*!
- * \file rosedb.h
- *
- * \author Marek Vavrusa <marek.vavrusa@nic.cz>
- *
- * \brief Static resource records
- *
- * Accepted configurations:
- *  * "<path_to_database>"
- *
- * The module provides a mean to override responses for certain queries before
- * the record is searched in the available zones.
- *
- * \addtogroup query_processing
- * @{
- */
 /*  Copyright (C) 2014 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
@@ -28,6 +12,20 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+/*!
+ * \file
+ *
+ * \brief Static resource records
+ *
+ * Accepted configurations:
+ *  * "<path_to_database>"
+ *
+ * The module provides a mean to override responses for certain queries before
+ * the record is searched in the available zones.
+ *
+ * \addtogroup query_processing
+ * @{
  */
 
 #pragma once
