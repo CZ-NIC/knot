@@ -150,7 +150,7 @@ A path for storing run-time data (PID file, unix sockets, etc.).
 user
 ----
 
-A system user with an optional system group (*user*:*group*) under which the
+A system user with an optional system group (``user:group``) under which the
 server is run after starting and binding to interfaces. Linux capabilities
 are employed if supported.
 
