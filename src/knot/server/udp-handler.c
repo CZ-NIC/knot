@@ -174,18 +174,22 @@ static int (*_udp_send)(void *) = 0;
 
 /* sizeof(struct in6_pktinfo) is always bigger
  * than in_pktinfo or in_addr (BSD) */
-#define PKTINFO_LEN CMSG_SPACE(sizeof(struct in6_pktinfo))
+#define CMSG_PKTINFO_LEN CMSG_SPACE(sizeof(struct in6_pktinfo))
 
 static void udp_pktinfo_handle(struct msghdr *rx, struct msghdr *tx)
 {
 	tx->msg_controllen = rx->msg_controllen;
-	rx->msg_controllen = PKTINFO_LEN;
 
 	#if defined(__APPLE__)
-	/* Workaround for Mac OS X */
-	struct cmsghdr * cmsg = CMSG_FIRSTHDR(rx);
+	/*
+	 * Workaround for Mac OS X:
+	 * If ipi_ifindex is set to non-zero, this will be use as source
+	 * interface without use of ip_spec_dst address. If ipi_ifindex is set
+	 * to zero, ip_spec_dst address will be use as source address.
+	 */
+	struct cmsghdr *cmsg = CMSG_FIRSTHDR(tx);
 	if (cmsg->cmsg_type == IP_PKTINFO) {
-		struct in_pktinfo *info = (struct in_pktinfo *) CMSG_DATA(cmsg);
+		struct in_pktinfo *info = (struct in_pktinfo *)CMSG_DATA(cmsg);
 		info->ipi_spec_dst = info->ipi_addr;
 		info->ipi_ifindex = 0;
 	}
@@ -210,12 +214,12 @@ static void *udp_recvfrom_init(void)
 	}
 	memset(rq, 0, sizeof(struct udp_recvfrom));
 
-	rq->cmsg = malloc(PKTINFO_LEN);
+	rq->cmsg = malloc(CMSG_PKTINFO_LEN);
 	if (rq->cmsg == NULL) {
 		free(rq);
 		return NULL;
 	}
-	memset(rq->cmsg, 0, PKTINFO_LEN);
+	memset(rq->cmsg, 0, CMSG_PKTINFO_LEN);
 
 	for (unsigned i = 0; i < NBUFS; ++i) {
 		rq->iov[i].iov_base = rq->buf + i;
@@ -225,7 +229,7 @@ static void *udp_recvfrom_init(void)
 		rq->msg[i].msg_iov = &rq->iov[i];
 		rq->msg[i].msg_iovlen = 1;
 		rq->msg[i].msg_control = rq->cmsg;
-		rq->msg[i].msg_controllen = PKTINFO_LEN;
+		rq->msg[i].msg_controllen = CMSG_PKTINFO_LEN;
 	}
 	return rq;
 }
@@ -244,6 +248,7 @@ static int udp_recvfrom_recv(int fd, void *d)
 	struct udp_recvfrom *rq = (struct udp_recvfrom *)d;
 	rq->iov[RX].iov_len = KNOT_WIRE_MAX_PKTSIZE;
 	rq->msg[RX].msg_namelen = sizeof(struct sockaddr_storage);
+	rq->msg[RX].msg_controllen = CMSG_PKTINFO_LEN;
 
 	int ret = recvmsg(fd, &rq->msg[RX], MSG_DONTWAIT);
 	if (ret > 0) {
@@ -356,7 +361,7 @@ static void *udp_recvmmsg_init(void)
 	memset(rq->addrs, 0, sizeof(struct sockaddr_storage) * RECVMMSG_BATCHLEN);
 
 	for (unsigned i = 0; i < RECVMMSG_BATCHLEN; ++i) {
-		rq->cmsg[i] = mm.alloc(mm.ctx, PKTINFO_LEN * RECVMMSG_BATCHLEN);
+		rq->cmsg[i] = mm.alloc(mm.ctx, CMSG_PKTINFO_LEN);
 	}
 
 	/* Initialize buffers. */
@@ -373,7 +378,7 @@ static void *udp_recvmmsg_init(void)
 			rq->msgs[i][k].msg_hdr.msg_name = rq->addrs + k;
 			rq->msgs[i][k].msg_hdr.msg_namelen = sizeof(struct sockaddr_storage);
 			rq->msgs[i][k].msg_hdr.msg_control = rq->cmsg[k];
-			rq->msgs[i][k].msg_hdr.msg_controllen = PKTINFO_LEN;
+			rq->msgs[i][k].msg_hdr.msg_controllen = CMSG_PKTINFO_LEN;
 		}
 	}
 
@@ -393,6 +398,11 @@ static int udp_recvmmsg_deinit(void *d)
 static int udp_recvmmsg_recv(int fd, void *d)
 {
 	struct udp_recvmmsg *rq = (struct udp_recvmmsg *)d;
+
+	for (unsigned i = 0; i < RECVMMSG_BATCHLEN; ++i) {
+		rq->msgs[RX][i].msg_hdr.msg_controllen = CMSG_PKTINFO_LEN;
+	}
+
 	int n = recvmmsg(fd, rq->msgs[RX], RECVMMSG_BATCHLEN, MSG_DONTWAIT, NULL);
 	if (n > 0) {
 		rq->fd = fd;
