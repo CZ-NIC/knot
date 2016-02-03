@@ -176,6 +176,22 @@ static int (*_udp_send)(void *) = 0;
  * than in_pktinfo or in_addr (BSD) */
 #define PKTINFO_LEN CMSG_SPACE(sizeof(struct in6_pktinfo))
 
+static void udp_pktinfo_handle(struct msghdr *rx, struct msghdr *tx)
+{
+	tx->msg_controllen = rx->msg_controllen;
+	rx->msg_controllen = PKTINFO_LEN;
+
+	#if defined(__APPLE__)
+	/* Workaround for Mac OS X */
+	struct cmsghdr * cmsg = CMSG_FIRSTHDR(rx);
+	if (cmsg->cmsg_type == IP_PKTINFO) {
+		struct in_pktinfo *info = (struct in_pktinfo *) CMSG_DATA(cmsg);
+		info->ipi_spec_dst = info->ipi_addr;
+		info->ipi_ifindex = 0;
+	}
+	#endif
+}
+
 /* UDP recvfrom() request struct. */
 struct udp_recvfrom {
 	int fd;
@@ -247,8 +263,7 @@ static int udp_recvfrom_handle(udp_context_t *ctx, void *d)
 	rq->msg[TX].msg_namelen = rq->msg[RX].msg_namelen;
 	rq->iov[TX].iov_len = KNOT_WIRE_MAX_PKTSIZE;
 
-	rq->msg[TX].msg_controllen = rq->msg[RX].msg_controllen;
-	rq->msg[RX].msg_controllen = PKTINFO_LEN;
+	udp_pktinfo_handle(&rq->msg[RX], &rq->msg[TX]);
 
 	/* Process received pkt. */
 	udp_handle(ctx, rq->fd, &rq->addr, &rq->iov[RX], &rq->iov[TX]);
@@ -396,8 +411,7 @@ static int udp_recvmmsg_handle(udp_context_t *ctx, void *d)
 		struct iovec *tx = rq->msgs[TX][i].msg_hdr.msg_iov;
 		rx->iov_len = rq->msgs[RX][i].msg_len; /* Received bytes. */
 
-		rq->msgs[TX][i].msg_hdr.msg_controllen = rq->msgs[RX][i].msg_hdr.msg_controllen;
-		rq->msgs[RX][i].msg_hdr.msg_controllen = PKTINFO_LEN;
+		udp_pktinfo_handle(&rq->msgs[RX][i].msg_hdr,&rq->msgs[TX][i].msg_hdr);
 
 		udp_handle(ctx, rq->fd, rq->addrs + i, rx, tx);
 		rq->msgs[TX][i].msg_len = tx->iov_len;
