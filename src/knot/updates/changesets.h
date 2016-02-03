@@ -96,7 +96,7 @@ size_t changeset_size(const changeset_t *ch);
  *
  * \return KNOT_E*
  */
-int changeset_add_rrset(changeset_t *ch, const knot_rrset_t *rrset);
+int changeset_add_rrset(changeset_t *ch, const knot_rrset_t *rrset, bool check_redundancy);
 
 /*!
  * \brief Add RRSet to 'remove' part of changeset.
@@ -106,7 +106,7 @@ int changeset_add_rrset(changeset_t *ch, const knot_rrset_t *rrset);
  *
  * \return KNOT_E*
  */
-int changeset_rem_rrset(changeset_t *ch, const knot_rrset_t *rrset);
+int changeset_rem_rrset(changeset_t *ch, const knot_rrset_t *rrset, bool check_redundancy);
 
 /*!
  * \brief Merges two changesets together. Legacy, to be removed with new zone API.

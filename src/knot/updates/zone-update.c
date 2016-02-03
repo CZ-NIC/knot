@@ -263,7 +263,7 @@ void zone_update_clear(zone_update_t *update)
 int zone_update_add(zone_update_t *update, const knot_rrset_t *rrset)
 {
 	if (update->flags & UPDATE_INCREMENTAL) {
-		return changeset_add_rrset(&update->change, rrset);
+		return changeset_add_rrset(&update->change, rrset, true);
 	} else if (update->flags & UPDATE_FULL) {
 		zone_node_t *n = NULL;
 		return zone_contents_add_rr(update->new_cont, rrset, &n);
@@ -275,7 +275,7 @@ int zone_update_add(zone_update_t *update, const knot_rrset_t *rrset)
 int zone_update_remove(zone_update_t *update, const knot_rrset_t *rrset)
 {
 	if (update->flags & UPDATE_INCREMENTAL) {
-		return changeset_rem_rrset(&update->change, rrset);
+		return changeset_rem_rrset(&update->change, rrset, true);
 	} else {
 		return KNOT_ENOTSUP;
 	}

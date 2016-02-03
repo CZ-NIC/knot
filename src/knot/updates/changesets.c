@@ -271,18 +271,20 @@ size_t changeset_size(const changeset_t *ch)
 	return size;
 }
 
-int changeset_add_rrset(changeset_t *ch, const knot_rrset_t *rrset)
+int changeset_add_rrset(changeset_t *ch, const knot_rrset_t *rrset, bool check_redundancy)
 {
 	/* Check if there's any removal and remove that, then add this
 	 * addition anyway. Required to change TTLs. */
-	need_to_insert(ch->remove, rrset);
+	if(check_redundancy) {
+		need_to_insert(ch->remove, rrset);
+	}
 
 	return add_rr_to_zone(ch->add, &ch->soa_to, rrset);
 }
 
-int changeset_rem_rrset(changeset_t *ch, const knot_rrset_t *rrset)
+int changeset_rem_rrset(changeset_t *ch, const knot_rrset_t *rrset, bool check_redundancy)
 {
-	if (need_to_insert(ch->add, rrset)) {
+	if ((check_redundancy && need_to_insert(ch->add, rrset)) || !check_redundancy) {
 		return add_rr_to_zone(ch->remove, &ch->soa_from, rrset);
 	} else {
 		return KNOT_EOK;
@@ -296,7 +298,7 @@ int changeset_merge(changeset_t *ch1, const changeset_t *ch2)
 
 	knot_rrset_t rrset = changeset_iter_next(&itt);
 	while (!knot_rrset_empty(&rrset)) {
-		int ret = changeset_add_rrset(ch1, &rrset);
+		int ret = changeset_add_rrset(ch1, &rrset, true);
 		if (ret != KNOT_EOK) {
 			changeset_iter_clear(&itt);
 			return ret;
@@ -309,7 +311,7 @@ int changeset_merge(changeset_t *ch1, const changeset_t *ch2)
 
 	rrset = changeset_iter_next(&itt);
 	while (!knot_rrset_empty(&rrset)) {
-		int ret = changeset_rem_rrset(ch1, &rrset);
+		int ret = changeset_rem_rrset(ch1, &rrset, true);
 		if (ret != KNOT_EOK) {
 			changeset_iter_clear(&itt);
 			return ret;

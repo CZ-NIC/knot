@@ -742,10 +742,10 @@ static int changesets_unpack(changeset_t *chs)
 		} else {
 			/* Remove RRSets. */
 			if (in_remove_section) {
-				ret = changeset_rem_rrset(chs, &rrset);
+				ret = changeset_rem_rrset(chs, &rrset, false);
 			} else {
 				/* Add RRSets. */
-				ret = changeset_add_rrset(chs, &rrset);
+				ret = changeset_add_rrset(chs, &rrset, false);
 			}
 		}
 		knot_rrset_clear(&rrset, NULL);

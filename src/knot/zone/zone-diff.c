@@ -92,7 +92,7 @@ static int knot_zone_diff_add_node(const zone_node_t *node,
 	/* Add all rrsets from node. */
 	for (unsigned i = 0; i < node->rrset_count; i++) {
 		knot_rrset_t rrset = node_rrset_at(node, i);
-		int ret = changeset_add_rrset(changeset, &rrset);
+		int ret = changeset_add_rrset(changeset, &rrset, false);
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
@@ -107,7 +107,7 @@ static int knot_zone_diff_remove_node(changeset_t *changeset,
 	/* Remove all the RRSets of the node. */
 	for (unsigned i = 0; i < node->rrset_count; i++) {
 		knot_rrset_t rrset = node_rrset_at(node, i);
-		int ret = changeset_rem_rrset(changeset, &rrset);
+		int ret = changeset_rem_rrset(changeset, &rrset, false);
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
@@ -194,7 +194,7 @@ static int knot_zone_diff_rdata(const knot_rrset_t *rrset1,
 	}
 
 	if (!knot_rrset_empty(&to_remove)) {
-		int ret = changeset_rem_rrset(changeset, &to_remove);
+		int ret = changeset_rem_rrset(changeset, &to_remove, false);
 		knot_rdataset_clear(&to_remove.rrs, NULL);
 		if (ret != KNOT_EOK) {
 			knot_rdataset_clear(&to_add.rrs, NULL);
@@ -203,7 +203,7 @@ static int knot_zone_diff_rdata(const knot_rrset_t *rrset1,
 	}
 
 	if (!knot_rrset_empty(&to_add)) {
-		int ret = changeset_add_rrset(changeset, &to_add);
+		int ret = changeset_add_rrset(changeset, &to_add, false);
 		knot_rdataset_clear(&to_add.rrs, NULL);
 		return ret;
 	}
@@ -273,7 +273,7 @@ static int knot_zone_diff_node(zone_node_t **node_ptr, void *data)
 		if (knot_rrset_empty(&rrset_from_second_node)) {
 			/* RRSet has been removed. Make a copy and remove. */
 			int ret = changeset_rem_rrset(
-				param->changeset, &rrset);
+				param->changeset, &rrset, false);
 			if (ret != KNOT_EOK) {
 				return ret;
 			}
@@ -301,7 +301,7 @@ static int knot_zone_diff_node(zone_node_t **node_ptr, void *data)
 		if (knot_rrset_empty(&rrset_from_first_node)) {
 			/* RRSet has been added. Make a copy and add. */
 			int ret = changeset_add_rrset(
-				param->changeset, &rrset);
+				param->changeset, &rrset, false);
 			if (ret != KNOT_EOK) {
 				return ret;
 			}
