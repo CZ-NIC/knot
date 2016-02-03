@@ -397,10 +397,6 @@ static int udp_recvmmsg_recv(int fd, void *d)
 {
 	struct udp_recvmmsg *rq = (struct udp_recvmmsg *)d;
 
-	for (unsigned i = 0; i < RECVMMSG_BATCHLEN; ++i) {
-		rq->msgs[RX][i].msg_hdr.msg_controllen = CMSG_PKTINFO_LEN;
-	}
-
 	int n = recvmmsg(fd, rq->msgs[RX], RECVMMSG_BATCHLEN, MSG_DONTWAIT, NULL);
 	if (n > 0) {
 		rq->fd = fd;
@@ -447,6 +443,7 @@ static int udp_recvmmsg_send(void *d)
 		memset(rq->addrs + i, 0, sizeof(struct sockaddr_storage));
 		rq->msgs[RX][i].msg_hdr.msg_namelen = sizeof(struct sockaddr_storage);
 		rq->msgs[TX][i].msg_hdr.msg_namelen = sizeof(struct sockaddr_storage);
+		rq->msgs[RX][i].msg_hdr.msg_controllen = CMSG_PKTINFO_LEN;
 	}
 	return rc;
 }
