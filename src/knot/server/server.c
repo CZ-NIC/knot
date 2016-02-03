@@ -97,13 +97,34 @@ static bool enlarge_net_buffers(int sock, int min_recvsize, int min_sndsize)
 	       setsockopt_min(sock, SO_SNDBUF, min_sndsize);
 }
 
+/*!
+ * \brief Enable source packet information retrieval.
+ */
+static bool enable_pktinfo(int sock, int family)
+{
+	int level = 0;
+	int option = 0;
+
+	switch (family) {
+	case AF_INET:
+		level = IPPROTO_IP;
 #if defined(IP_PKTINFO)
-	/* Linux */
-	#define KNOT_PKTINFO IP_PKTINFO
+		option = IP_PKTINFO; /* Linux */
 #elif defined(IP_RECVDSTADDR)
-	/* BSD */
-	#define KNOT_PKTINFO IP_RECVDSTADDR
+		option = IP_RECVDSTADDR; /* BSD */
 #endif
+		break;
+	case AF_INET6:
+		level = IPPROTO_IPV6;
+		option = IPV6_RECVPKTINFO;
+		break;
+	default:
+		return false;
+	}
+
+	const int on = 1;
+	return setsockopt(sock, level, option, &on, sizeof(on)) == 0;
+}
 
 /*!
  * \brief Initialize new interface from config value.
@@ -174,15 +195,8 @@ static int server_init_iface(iface_t *new_if, struct sockaddr_storage *addr, int
 			warn_bufsize = true;
 		}
 
-		const int on = 1;
-		if (addr->ss_family == AF_INET &&
-		    setsockopt(sock, IPPROTO_IP, KNOT_PKTINFO, &on, sizeof(on)) < 0) {
-			log_warning("failed to set KNOT_PKTINFO");
-		}
-
-		if (addr->ss_family == AF_INET6 &&
-		    setsockopt(sock, IPPROTO_IPV6, IPV6_RECVPKTINFO, &on, sizeof(on)) < 0) {
-			log_warning("failed to set IPV6_RECVPKTINFO");
+		if (!enable_pktinfo(sock, addr->ss_family)) {
+			log_warning("failed to enable received packet information retrieval");
 		}
 
 		new_if->fd_udp[new_if->fd_udp_count] = sock;
