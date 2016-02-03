@@ -15,6 +15,7 @@
  */
 
 #define __APPLE_USE_RFC_3542
+
 #include <stdlib.h>
 #include <assert.h>
 #include <urcu.h>
@@ -103,7 +104,6 @@ static bool enlarge_net_buffers(int sock, int min_recvsize, int min_sndsize)
 	/* BSD */
 	#define KNOT_PKTINFO IP_RECVDSTADDR
 #endif
-
 
 /*!
  * \brief Initialize new interface from config value.
