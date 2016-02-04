@@ -26,6 +26,7 @@
 #include "libknot/internal/mempattern.h"
 #include "libknot/rrset.h"
 #include "libknot/rrtype/naptr.h"
+#include "libknot/rrtype/rrsig.h"
 
 _public_
 knot_rrset_t *knot_rrset_new(const knot_dname_t *owner, uint16_t type,
@@ -166,6 +167,19 @@ _public_
 uint32_t knot_rrset_ttl(const knot_rrset_t *rrset)
 {
 	return knot_rdata_ttl(knot_rdataset_at(&(rrset->rrs), 0));
+}
+
+_public_
+bool knot_rrset_is_nsec3rel(const knot_rrset_t *rr)
+{
+	if (rr == NULL) {
+		return false;
+	}
+
+	/* Is NSEC3 or non-empty RRSIG covering NSEC3. */
+	return ((rr->type == KNOT_RRTYPE_NSEC3) ||
+	        (rr->type == KNOT_RRTYPE_RRSIG
+	         && knot_rrsig_type_covered(&rr->rrs, 0) == KNOT_RRTYPE_NSEC3));
 }
 
 _public_

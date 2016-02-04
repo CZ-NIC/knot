@@ -178,8 +178,8 @@ static bool need_to_insert(zone_contents_t *counterpart, const knot_rrset_t *rr)
 
 	if (node->rrset_count == 0) {
 		// Remove empty node.
-		zone_tree_t *t = zone_contents_rrset_is_nsec3rel(rr) ? counterpart->nsec3_nodes :
-		                                                   counterpart->nodes;
+		zone_tree_t *t = knot_rrset_is_nsec3rel(rr) ?
+		                     counterpart->nsec3_nodes : counterpart->nodes;
 		zone_contents_delete_empty_node(counterpart, t, node);
 	}
 

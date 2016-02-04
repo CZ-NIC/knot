@@ -176,6 +176,12 @@ bool knot_rrset_empty(const knot_rrset_t *rrset);
 uint32_t knot_rrset_ttl(const knot_rrset_t *rrset);
 
 /*!
+ * \brief Return whether the RR type is NSEC3 related (NSEC3 or RRSIG).
+ */
+bool knot_rrset_is_nsec3rel(const knot_rrset_t *rr);
+
+
+/*!
  * \brief Convert one RR into canonical format.
  *
  * Owner is always converted to lowercase. RDATA domain names are converted only
