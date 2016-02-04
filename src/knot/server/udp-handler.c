@@ -15,7 +15,6 @@
  */
 
 #include <dlfcn.h>
-#include <time.h>
 #include <unistd.h>
 #include <errno.h>
 #include <sys/types.h>
@@ -36,8 +35,8 @@
 
 #include "knot/server/udp-handler.h"
 #include "knot/server/server.h"
+#include "knot/nameserver/process_query.h"
 #include "libknot/libknot.h"
-#include "libknot/processing/overlay.h"
 #include "contrib/macros.h"
 #include "contrib/mempattern.h"
 #include "contrib/sockaddr.h"
@@ -56,52 +55,6 @@ typedef struct udp_context {
 	server_t *server;            /*!< Name server structure. */
 	unsigned thread_id;          /*!< Thread identifier. */
 } udp_context_t;
-
-/* FD_COPY macro compat. */
-#ifndef FD_COPY
-#define FD_COPY(src, dest) memcpy((dest), (src), sizeof(fd_set))
-#endif
-
-/* Mirror mode (no answering). */
-/* #define MIRROR_MODE 1 */
-
-/* PPS measurement. */
-/* #define MEASURE_PPS 1 */
-
-/* Next-gen packet processing API. */
-#define PACKET_NG
-#ifdef PACKET_NG
-#include "knot/nameserver/process_query.h"
-#endif
-
-/* PPS measurement */
-#ifdef MEASURE_PPS
-
-/* Not thread-safe, used only for RX thread. */
-static struct timeval __pps_t0, __pps_t1;
-volatile static unsigned __pps_rx = 0;
-static inline void udp_pps_begin()
-{
-	gettimeofday(&__pps_t0, NULL);
-}
-
-static inline void udp_pps_sample(unsigned n, unsigned thr_id)
-{
-	__pps_rx += n;
-	if (thr_id == 0) {
-		gettimeofday(&__pps_t1, NULL);
-		if (time_diff(&__pps_t0, &__pps_t1) >= 1000.0) {
-			unsigned pps = __pps_rx;
-			memcpy(&__pps_t0, &__pps_t1, sizeof(struct timeval));
-			__pps_rx = 0;
-			log_server_info("RX rate %u packets/second", pps);
-		}
-	}
-}
-#else
-static inline void udp_pps_begin() {}
-static inline void udp_pps_sample(unsigned n, unsigned thr_id) {}
-#endif
 
 static void udp_handle(udp_context_t *udp, int fd, struct sockaddr_storage *ss,
                        struct iovec *rx, struct iovec *tx)
@@ -562,8 +515,6 @@ int udp_master(dthread_t *thread)
 	struct pollfd *fds = NULL;
 	nfds_t nfds = 0;
 
-	udp_pps_begin();
-
 	/* Loop until all data is read. */
 	for (;;) {
 
@@ -606,7 +557,6 @@ int udp_master(dthread_t *thread)
 				/* Flush allocated memory. */
 				mp_flush(mm.ctx);
 				_udp_send(rq);
-				udp_pps_sample(rcvd, thr_id);
 			}
 		}
 	}
