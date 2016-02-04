@@ -178,7 +178,7 @@ typedef union {
 	uint8_t buf[CMSG_SPACE(sizeof(struct in6_pktinfo))];
 } cmsg_pktinfo_t;
 
-static void udp_pktinfo_handle(struct msghdr *rx, struct msghdr *tx)
+static void udp_pktinfo_handle(const struct msghdr *rx, struct msghdr *tx)
 {
 	tx->msg_controllen = rx->msg_controllen;
 
