@@ -1,6 +1,15 @@
 Knot DNS 2.2.0-dev (TBD)
 ========================
 
+Knot DNS 2.1.1-test (2016-02-04)
+===========================
+
+Bugfixes:
+---------
+ - Fix server crash with high number of file descriptor for control interface
+ - KASP keystore: Allow import of duplicate private key
+ - UDP: Pick correct source address when configured to listen on all interfaces
+
 Knot DNS 2.1.0 (2016-01-14)
 ===========================
 
