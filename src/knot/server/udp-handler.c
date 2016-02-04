@@ -331,7 +331,7 @@ static int udp_sendmmsg(int sock, struct sockaddr *_, struct mmsghdr *msgs, size
 /* UDP recvmmsg() request struct. */
 struct udp_recvmmsg {
 	int fd;
-	struct sockaddr_storage *addrs;
+	struct sockaddr_storage addrs[RECVMMSG_BATCHLEN];
 	char *iobuf[NBUFS];
 	struct iovec *iov[NBUFS];
 	struct mmsghdr *msgs[NBUFS];
@@ -348,10 +348,6 @@ static void *udp_recvmmsg_init(void)
 	struct udp_recvmmsg *rq = mm.alloc(mm.ctx, sizeof(struct udp_recvmmsg));
 	memset(rq, 0, sizeof(*rq));
 	memcpy(&rq->mm, &mm, sizeof(knot_mm_t));
-
-	/* Initialize addresses. */
-	rq->addrs = mm.alloc(mm.ctx, sizeof(struct sockaddr_storage) * RECVMMSG_BATCHLEN);
-	memset(rq->addrs, 0, sizeof(struct sockaddr_storage) * RECVMMSG_BATCHLEN);
 
 	/* Initialize buffers. */
 	for (unsigned i = 0; i < NBUFS; ++i) {
