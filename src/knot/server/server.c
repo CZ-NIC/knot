@@ -14,6 +14,8 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#define __APPLE_USE_RFC_3542
+
 #include <stdlib.h>
 #include <assert.h>
 #include <urcu.h>
@@ -96,6 +98,37 @@ static bool enlarge_net_buffers(int sock, int min_recvsize, int min_sndsize)
 }
 
 /*!
+ * \brief Enable source packet information retrieval.
+ */
+static bool enable_pktinfo(int sock, int family)
+{
+	int level = 0;
+	int option = 0;
+
+	switch (family) {
+	case AF_INET:
+		level = IPPROTO_IP;
+#if defined(IP_PKTINFO)
+		option = IP_PKTINFO; /* Linux */
+#elif defined(IP_RECVDSTADDR)
+		option = IP_RECVDSTADDR; /* BSD */
+#else
+		return false;
+#endif
+		break;
+	case AF_INET6:
+		level = IPPROTO_IPV6;
+		option = IPV6_RECVPKTINFO;
+		break;
+	default:
+		return false;
+	}
+
+	const int on = 1;
+	return setsockopt(sock, level, option, &on, sizeof(on)) == 0;
+}
+
+/*!
  * \brief Initialize new interface from config value.
  *
  * Both TCP and UDP sockets will be created for the interface.
@@ -162,6 +195,10 @@ static int server_init_iface(iface_t *new_if, struct sockaddr_storage *addr, int
 		    !warn_bufsize) {
 			log_warning("failed to set network buffer sizes for UDP");
 			warn_bufsize = true;
+		}
+
+		if (!enable_pktinfo(sock, addr->ss_family)) {
+			log_warning("failed to enable received packet information retrieval");
 		}
 
 		new_if->fd_udp[new_if->fd_udp_count] = sock;
