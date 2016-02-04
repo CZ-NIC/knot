@@ -112,6 +112,8 @@ static bool enable_pktinfo(int sock, int family)
 		option = IP_PKTINFO; /* Linux */
 #elif defined(IP_RECVDSTADDR)
 		option = IP_RECVDSTADDR; /* BSD */
+#else
+		return false;
 #endif
 		break;
 	case AF_INET6:
