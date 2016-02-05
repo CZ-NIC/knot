@@ -15,16 +15,18 @@
 */
 
 #include <assert.h>
-#include <nettle/base64.h>
 #include <string.h>
+#include <nettle/base64.h>
+#ifdef HAVE_NETTLE_VERSION_H
+#include <nettle/version.h>
+#endif
 
 #include "binary.h"
 #include "error.h"
 #include "shared.h"
 
 typedef
-#ifdef HAVE_NETTLE_VERSION_H
-	#include <nettle/version.h>
+#ifdef NETTLE_VERSION_MAJOR
 	#if NETTLE_VERSION_MAJOR >= 3
 		size_t
 	#else
