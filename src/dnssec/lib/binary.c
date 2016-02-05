@@ -25,7 +25,7 @@
 #include "error.h"
 #include "shared.h"
 
-#if defined (NETTLE_VERSION_MAJOR) && NETTLE_VERSION_MAJOR >= 3
+#if NETTLE_VERSION_MAJOR >= 3
 typedef size_t nettle_len;
 #else
 typedef unsigned nettle_len;
