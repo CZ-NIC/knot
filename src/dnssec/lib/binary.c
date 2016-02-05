@@ -25,17 +25,11 @@
 #include "error.h"
 #include "shared.h"
 
-typedef
-#ifdef NETTLE_VERSION_MAJOR
-	#if NETTLE_VERSION_MAJOR >= 3
-		size_t
-	#else
-		unsigned
-	#endif
+#if defined (NETTLE_VERSION_MAJOR) && NETTLE_VERSION_MAJOR >= 3
+typedef size_t nettle_len;
 #else
-	unsigned
+typedef unsigned nettle_len;
 #endif
-nettle_len;
 
 static size_t base64_decode_raw(const uint8_t *src, size_t src_len,
 				uint8_t *dst, size_t dst_max_size)
