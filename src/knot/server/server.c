@@ -100,13 +100,16 @@ static bool enlarge_net_buffers(int sock, int min_recvsize, int min_sndsize)
 /*!
  * \brief Enable source packet information retrieval.
  */
-static bool enable_pktinfo(int sock, int family)
+static bool enable_pktinfo(int sock, struct sockaddr_storage *addr)
 {
 	int level = 0;
 	int option = 0;
 
-	switch (family) {
+	switch (addr->ss_family) {
 	case AF_INET:
+		if (((struct sockaddr_in *)addr)->sin_addr.s_addr != INADDR_ANY) {
+			return true;	
+		}
 		level = IPPROTO_IP;
 #if defined(IP_PKTINFO)
 		option = IP_PKTINFO; /* Linux */
@@ -197,7 +200,7 @@ static int server_init_iface(iface_t *new_if, struct sockaddr_storage *addr, int
 			warn_bufsize = true;
 		}
 
-		if (!enable_pktinfo(sock, addr->ss_family)) {
+		if (!enable_pktinfo(sock, addr)) {
 			log_warning("failed to enable received packet information retrieval");
 		}
 
