@@ -245,7 +245,7 @@ static void event_loop(server_t *server, char *socket)
 		}
 		if (sig_req_reload) {
 			sig_req_reload = false;
-			server_reload(server, conf()->filename);
+			server_reload(server, conf()->filename, true);
 		}
 
 		/* Control interface. */

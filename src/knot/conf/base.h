@@ -109,9 +109,10 @@ typedef struct {
  * Configuration access flags.
  */
 typedef enum {
-	CONF_FNONE     = 0,      /*!< Empty flag. */
-	CONF_FREADONLY = 1 << 0, /*!< Read only access. */
-	CONF_FNOCHECK  = 1 << 1  /*!< Disabled confdb check. */
+	CONF_FNONE        = 0,      /*!< Empty flag. */
+	CONF_FREADONLY    = 1 << 0, /*!< Read only access. */
+	CONF_FNOCHECK     = 1 << 1, /*!< Disabled confdb check. */
+	CONF_FNOHOSTNAME  = 1 << 2, /*!< Don't set the hostname. */
 } conf_flag_t;
 
 /*!
@@ -122,11 +123,20 @@ conf_t* conf(void);
 /*!
  * Refreshes common read-only transaction.
  *
- * \param[out] conf  Configuration.
+ * \param[in] conf  Configuration.
  *
  * \return Error code, KNOT_EOK if success.
  */
-int conf_refresh(
+int conf_refresh_txn(
+	conf_t *conf
+);
+
+/*!
+ * Refreshes cached hostname.
+ *
+ * \param[in] conf  Configuration.
+ */
+void conf_refresh_hostname(
 	conf_t *conf
 );
 

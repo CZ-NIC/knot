@@ -506,7 +506,7 @@ void server_wait(server_t *server)
 	}
 }
 
-int server_reload(server_t *server, const char *cf)
+int server_reload(server_t *server, const char *cf, bool refresh_hostname)
 {
 	if (server == NULL) {
 		return KNOT_EINVAL;
@@ -544,6 +544,11 @@ int server_reload(server_t *server, const char *cf)
 	/* Activate global query modules. */
 	conf_activate_modules(new_conf, NULL, &new_conf->query_modules,
 	                      &new_conf->query_plan);
+
+	/* Refresh hostname. */
+	if (refresh_hostname) {
+		conf_refresh_hostname(new_conf);
+	}
 
 	/* Update to the new config. */
 	conf_update(new_conf);
