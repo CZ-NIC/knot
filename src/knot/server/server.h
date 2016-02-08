@@ -155,11 +155,12 @@ void server_wait(server_t *server);
 /*!
  * \brief Reload server configuration.
  *
- * \param server Server instance.
- * \param cf Config file path.
+ * \param server            Server instance.
+ * \param cf                Config file path.
+ * \param refresh_hostname  Refresh hostname indicator.
  * \return
  */
-int server_reload(server_t *server, const char *cf);
+int server_reload(server_t *server, const char *cf, bool refresh_hostname);
 
 /*!
  * \brief Requests server to stop.

@@ -137,12 +137,20 @@ int conf_refresh(
 	return conf->api->txn_begin(conf->db, &conf->read_txn, KNOT_DB_RDONLY);
 }
 
-static void init_values(
+void conf_refresh_hostname(
 	conf_t *conf)
 {
+	if (conf == NULL) {
+		return;
+	}
+
 	free(conf->hostname);
 	conf->hostname = sockaddr_hostname();
+}
 
+static void init_cache(
+	conf_t *conf)
+{
 	conf->cache.srv_nsid = conf_get(conf, C_SRV, C_NSID);
 	conf->cache.srv_max_udp_payload = conf_get(conf, C_SRV, C_MAX_UDP_PAYLOAD);
 	conf->cache.srv_max_tcp_clients = conf_get(conf, C_SRV, C_MAX_TCP_CLIENTS);
@@ -237,8 +245,13 @@ int conf_new(
 	// Initialize query modules list.
 	init_list(&out->query_modules);
 
+	// Cache the current hostname.
+	if (!(flags & CONF_FNOHOSTNAME)) {
+		out->hostname = sockaddr_hostname();
+	}
+
 	// Initialize cached values.
-	init_values(out);
+	init_cache(out);
 
 	*conf = out;
 
@@ -293,8 +306,13 @@ int conf_clone(
 	// Initialize query modules list.
 	init_list(&out->query_modules);
 
+	// Reuse the hostname.
+	if (s_conf->hostname != NULL) {
+		out->hostname = strdup(s_conf->hostname);
+	}
+
 	// Initialize cached values.
-	init_values(out);
+	init_cache(out);
 
 	out->is_clone = true;
 
@@ -748,7 +766,7 @@ int conf_import(
 	}
 
 	// Update cached values.
-	init_values(conf);
+	init_cache(conf);
 
 	// Reset the filename.
 	free(conf->filename);

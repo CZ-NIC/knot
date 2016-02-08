@@ -269,7 +269,7 @@ static int ctl_reload(server_t *s, remote_cmdargs_t *a)
 	UNUSED(s);
 	UNUSED(a);
 
-	return server_reload(s, conf()->filename);
+	return server_reload(s, conf()->filename, true);
 }
 
 static int ctl_zone_status(server_t *s, remote_cmdargs_t *a)
@@ -375,7 +375,7 @@ static int ctl_conf_commit(server_t *s, remote_cmdargs_t *a)
 		return ret;
 	}
 
-	return server_reload(s, NULL);
+	return server_reload(s, NULL, false);
 }
 
 static int ctl_conf_abort(server_t *s, remote_cmdargs_t *a)

@@ -94,7 +94,7 @@ static int set_config(const cmd_desc_t *desc, const char *confdb,
 	          (src != NULL) ? src : "empty");
 
 	/* Prepare config flags. */
-	conf_flag_t conf_flags = CONF_FNONE;
+	conf_flag_t conf_flags = CONF_FNOHOSTNAME;
 	if (confdb != NULL && !(desc->flags & CMD_CONF_FWRITE)) {
 		conf_flags |= CONF_FREADONLY;
 	}
