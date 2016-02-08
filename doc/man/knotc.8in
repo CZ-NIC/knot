@@ -70,31 +70,32 @@ Check if the server is running.
 Stop the server if running.
 .TP
 \fBreload\fP
-Reload the server configuration.
+Reload the server configuration and modified zonefiles.
 .TP
 \fBzone\-check\fP [\fIzone\fP\&...]
-Check the zone. (*)
+Check the zone if is loadable. Semantic checks are executed if configured. (*)
 .TP
 \fBzone\-memstats\fP [\fIzone\fP\&...]
 Estimate memory use for the zone. (*)
 .TP
 \fBzone\-status\fP [\fIzone\fP\&...]
-Show the status of the zone. (*)
+Show the zone status. (*)
 .TP
 \fBzone\-reload\fP [\fIzone\fP\&...]
-Trigger a zone reload.
+Trigger a forced zone reload (no mtime check). In addition, a slave zone
+refresh is scheduled after the reload.
 .TP
 \fBzone\-refresh\fP [\fIzone\fP\&...]
-Trigger a zone refresh (if slave).
+Trigger a slave zone refresh asking master for the serial.
 .TP
 \fBzone\-retransfer\fP [\fIzone\fP\&...]
-Trigger a zone retransfer (if slave).
+Trigger a forced slave zone retransfer (no serial check).
 .TP
 \fBzone\-flush\fP [\fIzone\fP\&...]
 Trigger a zone journal flush into the zone file.
 .TP
 \fBzone\-sign\fP [\fIzone\fP\&...]
-Trigger a zone resign (if enabled).
+Trigger a zone sign if enabled automatic signing.
 .TP
 \fBconf\-init\fP
 Initialize the configuration database. (*)

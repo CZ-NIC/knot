@@ -47,32 +47,33 @@ Actions
   Stop the server if running.
 
 **reload**
-  Reload the server configuration.
+  Reload the server configuration and modified zonefiles.
 
 
 **zone-check** [*zone*...]
-  Check the zone. (*)
+  Check the zone if is loadable. Semantic checks are executed if configured. (*)
 
 **zone-memstats** [*zone*...]
   Estimate memory use for the zone. (*)
 
 **zone-status** [*zone*...]
-  Show the status of the zone. (*)
+  Show the zone status. (*)
 
 **zone-reload** [*zone*...]
-  Trigger a zone reload.
+  Trigger a forced zone reload (no mtime check). In addition, a slave zone
+  refresh is scheduled after the reload.
 
 **zone-refresh** [*zone*...]
-  Trigger a zone refresh (if slave).
+  Trigger a slave zone refresh asking master for the serial.
 
 **zone-retransfer** [*zone*...]
-  Trigger a zone retransfer (if slave).
+  Trigger a forced slave zone retransfer (no serial check).
 
 **zone-flush** [*zone*...]
   Trigger a zone journal flush into the zone file.
 
 **zone-sign** [*zone*...]
-  Trigger a zone resign (if enabled).
+  Trigger a zone sign if enabled automatic signing.
 
 
 **conf-init**
