@@ -279,28 +279,6 @@ static void remove_rr_from_changeset(zone_contents_t *z, const knot_rrset_t *rr)
 	}
 }
 
-/*!< \brief Removes RR from list, owner and type check. */
-static void remove_header_from_changeset(zone_contents_t *z, const knot_rrset_t *rr)
-{
-	zone_node_t *n = zone_contents_find_node_for_rr(z, rr);
-	if (n == NULL) {
-		return;
-	}
-
-	knot_rdataset_t *rrs = node_rdataset(n, rr->type);
-	if (rrs) {
-		knot_rdataset_clear(rrs, NULL);
-		node_remove_rdataset(n, rr->type);
-	}
-}
-
-/*!< \brief Removes RR from list, owner check. */
-static void remove_owner_from_changeset(zone_contents_t *z, const knot_dname_t *owner)
-{
-	zone_node_t *n = (zone_node_t *)zone_contents_find_node(z, owner);
-	node_free_rrsets(n, NULL);
-}
-
 /* --------------------- true/false helper functions ------------------------ */
 
 static inline bool is_addition(const knot_rrset_t *rr)

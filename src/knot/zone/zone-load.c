@@ -121,12 +121,15 @@ int zone_load_journal(conf_t *conf, zone_t *zone, zone_contents_t *contents)
 	}
 
 	/* Apply changesets. */
-	ret = apply_changesets_directly(contents, &chgs);
+	apply_ctx_t a_ctx;
+	apply_init_ctx(&a_ctx);
+
+	ret = apply_changesets_directly(&a_ctx, contents, &chgs);
 	log_zone_info(zone->name, "changes from journal applied %u -> %u (%s)",
 	              serial, zone_contents_serial(contents),
 	              knot_strerror(ret));
 
-	updates_cleanup(&chgs);
+	update_cleanup(&a_ctx);
 	changesets_free(&chgs);
 	return ret;
 }
@@ -158,8 +161,11 @@ int zone_load_post(conf_t *conf, zone_contents_t *contents, zone_t *zone,
 
 		/* Apply DNSSEC changes. */
 		if (!changeset_empty(&change)) {
-			ret = apply_changeset_directly(contents, &change);
-			update_cleanup(&change);
+			apply_ctx_t a_ctx;
+			apply_init_ctx(&a_ctx);
+
+			ret = apply_changeset_directly(&a_ctx, contents, &change);
+			update_cleanup(&a_ctx);
 			if (ret != KNOT_EOK) {
 				changeset_clear(&change);
 				return ret;

@@ -203,10 +203,6 @@ int changeset_init(changeset_t *ch, const knot_dname_t *apex)
 		return KNOT_ENOMEM;
 	}
 
-	// Init change lists
-	init_list(&ch->new_data);
-	init_list(&ch->old_data);
-
 	return KNOT_EOK;
 }
 
@@ -329,14 +325,6 @@ int changeset_merge(changeset_t *ch1, const changeset_t *ch2)
 	knot_rrset_free(&ch1->soa_to, NULL);
 	ch1->soa_to = soa_copy;
 
-	ptrnode_t *n;
-	WALK_LIST(n, ch2->old_data) {
-		ptrlist_add(&ch1->old_data, (void *)n->d, NULL);
-	};
-	WALK_LIST(n, ch2->new_data) {
-		ptrlist_add(&ch1->new_data, (void *)n->d, NULL);
-	};
-
 	return KNOT_EOK;
 }
 
@@ -376,14 +364,6 @@ void changeset_clear(changeset_t *ch)
 
 	knot_rrset_free(&ch->soa_from, NULL);
 	knot_rrset_free(&ch->soa_to, NULL);
-
-	node_t *n, *nxt;
-	WALK_LIST_DELSAFE(n, nxt, ch->old_data) {
-		mm_free(NULL, n);
-	};
-	WALK_LIST_DELSAFE(n, nxt, ch->new_data) {
-		mm_free(NULL, n);
-	};
 
 	// Delete binary data
 	free(ch->data);

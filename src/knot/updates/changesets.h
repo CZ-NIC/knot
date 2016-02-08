@@ -37,8 +37,6 @@ typedef struct {
 	knot_rrset_t *soa_to;     /*!< Destination SOA. */
 	zone_contents_t *add;     /*!< Change additions. */
 	zone_contents_t *remove;  /*!< Change removals. */
-	list_t old_data;          /*!< Old data, to be freed after successful update. */
-	list_t new_data;          /*!< New data, to be freed after failed update. */
 	size_t size;              /*!< Size of serialized changeset. */
 	uint8_t *data;            /*!< Serialized changeset. */
 } changeset_t;

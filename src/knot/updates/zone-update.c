@@ -18,7 +18,6 @@
 
 #include "knot/common/log.h"
 #include "knot/dnssec/zone-events.h"
-#include "knot/updates/apply.h"
 #include "knot/zone/serial.h"
 
 #include "libknot/internal/lists.h"
@@ -121,11 +120,14 @@ static zone_node_t *node_deep_copy(const zone_node_t *node, mm_ctx_t *mm)
 
 static int init_incremental(zone_update_t *update, zone_t *zone)
 {
+	assert(zone->contents);
+
 	int ret = changeset_init(&update->change, zone->name);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
-	assert(zone->contents);
+
+	apply_init_ctx(&update->a_ctx);
 
 	// Copy base SOA RR.
 	update->change.soa_from =
@@ -253,7 +255,7 @@ const knot_rdataset_t *zone_update_to(zone_update_t *update)
 void zone_update_clear(zone_update_t *update)
 {
 	if (update) {
-		update_cleanup(&update->change);
+		update_cleanup(&update->a_ctx);
 		changeset_clear(&update->change);
 		mp_delete(update->mm.ctx);
 		memset(update, 0, sizeof(*update));
@@ -335,7 +337,7 @@ static int sign_update(zone_update_t *update,
 	}
 
 	// Apply DNSSEC changeset
-	ret = apply_changeset_directly(new_contents, &sec_ch);
+	ret = apply_changeset_directly(&update->a_ctx, new_contents, &sec_ch);
 	if (ret != KNOT_EOK) {
 		changeset_clear(&sec_ch);
 		return ret;
@@ -344,7 +346,7 @@ static int sign_update(zone_update_t *update,
 	// Merge changesets
 	ret = changeset_merge(&update->change, &sec_ch);
 	if (ret != KNOT_EOK) {
-		update_rollback(&sec_ch);
+		update_rollback(&update->a_ctx);
 		changeset_clear(&sec_ch);
 		return ret;
 	}
@@ -408,7 +410,7 @@ static int commit_incremental(zone_update_t *update, zone_contents_t **contents_
 
 	// Apply changes.
 	zone_contents_t *new_contents = NULL;
-	ret = apply_changeset(update->zone, &update->change, &new_contents);
+	ret = apply_changeset(&update->a_ctx, update->zone, &update->change, &new_contents);
 	if (ret != KNOT_EOK) {
 		changeset_clear(&update->change);
 		return ret;
@@ -423,7 +425,7 @@ static int commit_incremental(zone_update_t *update, zone_contents_t **contents_
 	if (dnssec_enable) {
 		ret = sign_update(update, new_contents);
 		if (ret != KNOT_EOK) {
-			update_rollback(&update->change);
+			update_rollback(&update->a_ctx);
 			update_free_zone(&new_contents);
 			changeset_clear(&update->change);
 			return ret;
@@ -433,7 +435,7 @@ static int commit_incremental(zone_update_t *update, zone_contents_t **contents_
 	// Write changes to journal if all went well. (DNSSEC merged)
 	ret = zone_change_store(update->zone, &update->change);
 	if (ret != KNOT_EOK) {
-		update_rollback(&update->change);
+		update_rollback(&update->a_ctx);
 		update_free_zone(&new_contents);
 		return ret;
 	}
