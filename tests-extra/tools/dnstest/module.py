@@ -22,20 +22,29 @@ class KnotModule(object):
         type(self).count += 1
 
     @classmethod
-    def check(self):
+    def _check_cmd(cls):
+        if params.libtool_bin:
+            prefix = [params.libtool_bin, "exec"]
+        else:
+            prefix = []
+
+        return prefix + ["objdump", "-t", params.knot_bin]
+
+    @classmethod
+    def check(cls):
         '''Checks the server binary for the module code'''
 
         try:
-            proc = Popen(["objdump", "-t", params.knot_bin],
-                         stdout=PIPE, stderr=PIPE, universal_newlines=True)
+            proc = Popen(cls._check_cmd(), stdout=PIPE, stderr=PIPE,
+                         universal_newlines=True)
             (out, err) = proc.communicate()
 
-            if re.search(self.src_name, out):
+            if re.search(cls.src_name, out):
                 return
 
             raise Skip()
         except:
-            raise Skip("Module '%s' not detected" % self.conf_name)
+            raise Skip("Module '%s' not detected" % cls.conf_name)
 
     def get_conf_ref(self):
         return "%s/%s" % (self.conf_name, self.conf_id)

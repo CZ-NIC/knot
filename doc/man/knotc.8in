@@ -38,167 +38,131 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .INDENT 0.0
 .TP
 \fB\-c\fP, \fB\-\-config\fP \fIfile\fP
-Use a textual configuration file (default is \fB@conf_dir@/knot.conf\fP).
+Use a textual configuration file (default is \fB@config_dir@/knot.conf\fP).
 .TP
 \fB\-C\fP, \fB\-\-confdb\fP \fIdirectory\fP
-Use a binary configuration database.
+Use a binary configuration database directory (default is \fB@storage_dir@/confdb\fP).
+The default configuration database, if exists, has a preference to the default
+configuration file.
 .TP
-\fB\-s\fP, \fB\-\-server\fP \fIserver\fP
-Remote UNIX socket/IP address (default is \fB@run_dir@/knot.sock\fP).
-.TP
-\fB\-p\fP, \fB\-\-port\fP \fIport\fP
-Remote server port (only for IP).
-.TP
-\fB\-y\fP, \fB\-\-key\fP [\fIalg\fP:]\fIname\fP:\fIkey\fP
-Use the TSIG key specified on the command line (default algorithm is hmac\-md5).
-.TP
-\fB\-k\fP, \fB\-\-keyfile\fP \fIfile\fP
-Use the TSIG key stored in a file \fIfile\fP to authenticate the request. The
-file must contain the key in the same format, which is accepted by the
-\fB\-y\fP option.
+\fB\-s\fP, \fB\-\-socket\fP \fIpath\fP
+Use a remote control UNIX socket path (default is \fB@run_dir@/knot.sock\fP).
 .TP
 \fB\-f\fP, \fB\-\-force\fP
-Force operation. Overrides some checks.
+Forced operation. Overrides some checks.
 .TP
 \fB\-v\fP, \fB\-\-verbose\fP
-Verbose mode. Print additional runtime information.
+Enable debug output.
+.TP
+\fB\-h\fP, \fB\-\-help\fP
+Print the program help.
 .TP
 \fB\-V\fP, \fB\-\-version\fP
 Print the program version.
-.TP
-\fB\-h\fP, \fB\-\-help\fP
-Print help and usage.
 .UNINDENT
 .SS Actions
-.sp
-If the optional \fIzone\fP argument is not specified, the command is applied to all
-zones.
-Configuration \fIitem\fP is in the \fIsection\fP[\fB[\fP\fIid\fP\fB]\fP][\fB\&.\fP\fIitem\fP]
-format.
 .INDENT 0.0
-.TP
-\fBstop\fP
-Stop server (no\-op if not running).
-.TP
-\fBreload\fP [\fIzone\fP\&...]
-Reload particular zones or reload the whole configuration and changed zones.
-.TP
-\fBflush\fP [\fIzone\fP\&...]
-Flush journal and update zone files.
 .TP
 \fBstatus\fP
-Check if server is running.
+Check if the server is running.
 .TP
-\fBzonestatus\fP [\fIzone\fP\&...]
-Show the status of listed zones.
+\fBstop\fP
+Stop the server if running.
 .TP
-\fBrefresh\fP [\fIzone\fP\&...]
-Refresh slave zones. The \fB\-f\fP flag forces re\-transfer (zones must be specified).
+\fBreload\fP
+Reload the server configuration.
 .TP
-\fBcheckconf\fP
-Check the current configuration.
+\fBzone\-check\fP [\fIzone\fP\&...]
+Check the zone. (*)
 .TP
-\fBcheckzone\fP [\fIzone\fP\&...]
-Check zones.
+\fBzone\-memstats\fP [\fIzone\fP\&...]
+Estimate memory use for the zone. (*)
 .TP
-\fBmemstats\fP [\fIzone\fP\&...]
-Estimate memory consumption for zones.
+\fBzone\-status\fP [\fIzone\fP\&...]
+Show the status of the zone. (*)
 .TP
-\fBsignzone\fP \fIzone\fP\&...
-Re\-sign the zone (drop all existing signatures and create new ones).
+\fBzone\-reload\fP [\fIzone\fP\&...]
+Trigger a zone reload.
+.TP
+\fBzone\-refresh\fP [\fIzone\fP\&...]
+Trigger a zone refresh (if slave).
+.TP
+\fBzone\-retransfer\fP [\fIzone\fP\&...]
+Trigger a zone retransfer (if slave).
+.TP
+\fBzone\-flush\fP [\fIzone\fP\&...]
+Trigger a zone journal flush into the zone file.
+.TP
+\fBzone\-sign\fP [\fIzone\fP\&...]
+Trigger a zone resign (if enabled).
+.TP
+\fBconf\-init\fP
+Initialize the configuration database. (*)
+.TP
+\fBconf\-check\fP
+Check the server configuration. (*)
 .TP
 \fBconf\-import\fP \fIfilename\fP
-Offline import of the configuration DB from a file. This is a
-potentially dangerous operation so the \fB\-f\fP flag is required. Also the
-destination configuration DB must be specified via \fB\-C\fP\&. Ensure the server
-is not running!
+Import a configuration file into the configuration database. Ensure the
+server is not using the configuration database! (*)
 .TP
 \fBconf\-export\fP \fIfilename\fP
-Export the configuration DB to a file. If no source configuration DB is
-specified, the temporary DB, corresponding to textual configuration file, is
-used.
+Export the configuration database into a config file. (*)
 .TP
-\fBconf\-desc\fP [\fIsection\fP]
-Get the configuration section items list. If no section is specified,
-the list of sections is returned.
+\fBconf\-list\fP [\fIitem\fP]
+List the configuration database sections or section items.
 .TP
 \fBconf\-read\fP [\fIitem\fP]
-Read from the current configuration DB.
+Read the item from the active configuration database.
 .TP
 \fBconf\-begin\fP
-Begin a writing configuration DB transaction. Only one transaction can be
-opened at a time.
+Begin a writing configuration database transaction. Only one transaction
+can be opened at a time.
 .TP
 \fBconf\-commit\fP
-Commit the current writing configuration DB transaction.
+Commit the configuration database transaction.
 .TP
 \fBconf\-abort\fP
-Abort the current writing configuration DB transaction.
+Rollback the configuration database transaction.
 .TP
 \fBconf\-diff\fP [\fIitem\fP]
-Get the difference between the active writing transaction and the current
-configuration DB. Requires active writing configuration DB transaction.
+Get the item difference in the transaction.
 .TP
 \fBconf\-get\fP [\fIitem\fP]
-Read from the active writing configuration DB transaction.
-Requires active writing configuration DB transaction.
+Get the item data from the transaction.
 .TP
 \fBconf\-set\fP \fIitem\fP [\fIdata\fP\&...]
-Write to the active writing configuration DB transaction.
-Requires active writing configuration DB transaction.
+Set the item data in the transaction.
 .TP
 \fBconf\-unset\fP [\fIitem\fP] [\fIdata\fP\&...]
-Delete from the active writing configuration DB transaction.
-Requires active writing configuration DB transaction.
+Unset the item data in the transaction.
 .UNINDENT
+.SH NOTE
+.sp
+Empty \fIzone\fP parameter means all zones.
+.sp
+Type \fIitem\fP parameter in the form of \fIsection\fP[\fB[\fP\fIid\fP\fB]\fP][\fB\&.\fP\fIname\fP].
+.sp
+(*) indicates a local operation which requires a configuration.
 .SH EXAMPLES
-.SS Setup a key file for remote control
+.SS Reload the whole server configuration
 .INDENT 0.0
 .INDENT 3.5
 .sp
 .nf
 .ft C
-$ keymgr tsig generate knotc\-key > knotc\-key.conf
+$ knotc reload
 .ft P
 .fi
 .UNINDENT
 .UNINDENT
-.sp
-The generated key file contains a key in the server configuration format and
-thus can be directly included into the server configuration file.
-.sp
-Knot DNS utilities accept one\-line format which is included in the generated
-key file on the first line as a comment. It can be extracted easily:
+.SS Flush the example.com and example.org zones
 .INDENT 0.0
 .INDENT 3.5
 .sp
 .nf
 .ft C
-$ head \-1 knotc\-key.conf | sed \(aqs/^#\es*//\(aq > knotc.key
-.ft P
-.fi
-.UNINDENT
-.UNINDENT
-.sp
-Make sure the key file can be read only by the owner for security reasons.
-.SS Reload server remotely
-.INDENT 0.0
-.INDENT 3.5
-.sp
-.nf
-.ft C
-$ knotc \-s 127.0.0.1 \-k knotc.key reload
-.ft P
-.fi
-.UNINDENT
-.UNINDENT
-.SS Flush all zones locally
-.INDENT 0.0
-.INDENT 3.5
-.sp
-.nf
-.ft C
-$ knotc \-c knot.conf flush
+$ knotc zone\-flush example.com example.org
 .ft P
 .fi
 .UNINDENT
@@ -231,20 +195,20 @@ $ knotc conf\-read zone.domain
 .sp
 .nf
 .ft C
-$ knotc conf\-read zone[example.com].master
+$ knotc conf\-read \(aqzone[example.com].master\(aq
 .ft P
 .fi
 .UNINDENT
 .UNINDENT
-.SS Add example.eu zone with a zonefile location
+.SS Add example.org zone with a zonefile location
 .INDENT 0.0
 .INDENT 3.5
 .sp
 .nf
 .ft C
 $ knotc conf\-begin
-$ knotc conf\-set zone[example.eu]
-$ knotc conf\-set zone[example.eu].file "/var/zones/example.eu.zone"
+$ knotc conf\-set \(aqzone[example.org]\(aq
+$ knotc conf\-set \(aqzone[example.org].file\(aq \(aq/var/zones/example.org.zone\(aq
 $ knotc conf\-commit
 .ft P
 .fi

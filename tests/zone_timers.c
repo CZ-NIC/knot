@@ -14,14 +14,14 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <dirent.h>
+#include <assert.h>
 #include <stdlib.h>
 #include <time.h>
+#include <unistd.h>
 #include <tap/basic.h>
+#include <tap/files.h>
 
-#include "libknot/internal/namedb/namedb.h"
-#include "libknot/internal/namedb/namedb_lmdb.h"
-#include "libknot/internal/mem.h"
+#include "contrib/string.h"
 #include "libknot/libknot.h"
 #include "knot/zone/timers.h"
 #include "knot/zone/zone.h"
@@ -36,14 +36,13 @@ int main(int argc, char *argv[])
 {
 	plan_lazy();
 
-	if (namedb_lmdb_api() == NULL) {
+	if (knot_db_lmdb_api() == NULL) {
 		skip("LMDB API not compiled");
 		return EXIT_SUCCESS;
 	}
 
-	// Temporary DB identifier.
-	char dbid_buf[] = "/tmp/timerdb.XXXXXX";
-	const char *dbid = mkdtemp(dbid_buf);
+	char *dbid = test_mkdtemp();
+	ok(dbid != NULL, "make temporary directory");
 
 	// Mockup zones.
 	knot_dname_t *zone_name;
@@ -65,7 +64,7 @@ int main(int argc, char *argv[])
 
 	knot_zonedb_build_index(zone_db);
 
-	namedb_t *db = NULL;
+	knot_db_t *db = NULL;
 	ret = open_timers_db(dbid, &db);
 	ok(ret == KNOT_EOK && db != NULL, "zone timers: create");
 
@@ -123,20 +122,8 @@ int main(int argc, char *argv[])
 	zone_free(&zone_1);
 	zone_free(&zone_2);
 	close_timers_db(db);
-
-	// Cleanup temporary DB.
-	DIR *dir = opendir(dbid);
-	struct dirent *dp;
-	while ((dp = readdir(dir)) != NULL) {
-		if (dp->d_name[0] == '.') {
-			continue;
-		}
-		char *file = sprintf_alloc("%s/%s", dbid, dp->d_name);
-		remove(file);
-		free(file);
-	}
-	closedir(dir);
-	remove(dbid);
+	test_rm_rf(dbid);
+	free(dbid);
 
 	return EXIT_SUCCESS;
 }

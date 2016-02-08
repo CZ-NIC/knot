@@ -156,38 +156,11 @@ int dnssec_keystore_remove_key(dnssec_keystore_t *store, const char *key_id)
 	return store->functions->remove_key(store->ctx, key_id);
 }
 
-static bool valid_params(dnssec_key_t *key, const char *id,
-			 dnssec_key_algorithm_t algorithm)
-{
-	assert(key);
-
-	// no public key, parameters must be present
-
-	if (key->public_key == NULL) {
-		return (id != NULL && algorithm != 0);
-	}
-
-	// public key present, parameters must match or be NULL
-
-	if (algorithm != 0) {
-		uint8_t current = dnssec_key_get_algorithm(key);
-		if (algorithm != current) {
-			return false;
-		}
-	}
-
-	if (id != NULL && !dnssec_keyid_equal(key->id, id)) {
-		return false;
-	}
-
-	return true;
-}
-
 _public_
 int dnssec_key_import_keystore(dnssec_key_t *key, dnssec_keystore_t *store,
-			       const char *id, dnssec_key_algorithm_t algorithm)
+			       const char *id)
 {
-	if (!key || !store || !valid_params(key, id, algorithm)) {
+	if (!key || !store || !id || dnssec_key_get_algorithm(key) == 0) {
 		return DNSSEC_EINVAL;
 	}
 
@@ -195,22 +168,10 @@ int dnssec_key_import_keystore(dnssec_key_t *key, dnssec_keystore_t *store,
 		return DNSSEC_KEY_ALREADY_PRESENT;
 	}
 
-	if (id == NULL) {
-		assert(key->public_key);
-		id = key->id;
-	}
-
-	// retrieve and set the private key
-
 	gnutls_privkey_t privkey = NULL;
 	int r = store->functions->get_private(store->ctx, id, &privkey);
 	if (r != DNSSEC_EOK) {
 		return r;
-	}
-
-	if (dnssec_key_get_algorithm(key) == 0) {
-		assert(algorithm != 0);
-		dnssec_key_set_algorithm(key, algorithm);
 	}
 
 	r = key_set_private_key(key, privkey);
@@ -220,10 +181,4 @@ int dnssec_key_import_keystore(dnssec_key_t *key, dnssec_keystore_t *store,
 	}
 
 	return DNSSEC_EOK;
-}
-
-_public_
-int dnssec_key_import_private_keystore(dnssec_key_t *key, dnssec_keystore_t *store)
-{
-	return dnssec_key_import_keystore(key, store, NULL, 0);
 }

@@ -21,15 +21,21 @@
 
 #include "binary.h"
 #include "error.h"
-#include "hex_gnutls.h"
 #include "key.h"
 #include "keyid.h"
+#include "keyid_gnutls.h"
 #include "pem.h"
 #include "shared.h"
 
-static int pem_to_x509(const dnssec_binary_t *data, gnutls_x509_privkey_t *key_ptr)
+/* -- internal API --------------------------------------------------------- */
+
+/*!
+ * Create GnuTLS X.509 private key from unencrypted PEM data.
+ */
+int pem_x509(const dnssec_binary_t *data, gnutls_x509_privkey_t *key_ptr)
 {
 	assert(data);
+	assert(key_ptr);
 
 	gnutls_datum_t pem = binary_to_datum(data);
 
@@ -40,7 +46,9 @@ static int pem_to_x509(const dnssec_binary_t *data, gnutls_x509_privkey_t *key_p
 	}
 
 	int format = GNUTLS_X509_FMT_PEM;
-	r = gnutls_x509_privkey_import_pkcs8(key, &pem, format, NULL, 0);
+	char *password = NULL;
+	int flags = GNUTLS_PKCS_PLAIN;
+	r = gnutls_x509_privkey_import_pkcs8(key, &pem, format, password, flags);
 	if (r != GNUTLS_E_SUCCESS) {
 		gnutls_x509_privkey_deinit(key);
 		return DNSSEC_PKCS8_IMPORT_ERROR;
@@ -51,21 +59,16 @@ static int pem_to_x509(const dnssec_binary_t *data, gnutls_x509_privkey_t *key_p
 	return DNSSEC_EOK;
 }
 
-/* -- internal API --------------------------------------------------------- */
-
 /*!
  * Create GnuTLS private key from unencrypted PEM data.
  */
-int pem_to_privkey(const dnssec_binary_t *data, gnutls_privkey_t *key, char **id_ptr)
+int pem_privkey(const dnssec_binary_t *data, gnutls_privkey_t *key)
 {
 	assert(data);
 	assert(key);
-	assert(id_ptr);
-
-	// create abstract private key
 
 	gnutls_x509_privkey_t key_x509 = NULL;
-	int r = pem_to_x509(data, &key_x509);
+	int r = pem_x509(data, &key_x509);
 	if (r != DNSSEC_EOK) {
 		return r;
 	}
@@ -85,16 +88,7 @@ int pem_to_privkey(const dnssec_binary_t *data, gnutls_privkey_t *key, char **id
 		return DNSSEC_ENOMEM;
 	}
 
-	// extract keytag
-
-	char *id = gnutls_x509_privkey_hex_key_id(key_x509);
-	if (id == NULL) {
-		gnutls_privkey_deinit(key_abs);
-		return DNSSEC_ENOMEM;
-	}
-
 	*key = key_abs;
-	*id_ptr = id;
 
 	return DNSSEC_EOK;
 }
@@ -124,21 +118,22 @@ int pem_generate(gnutls_pk_algorithm_t algorithm, unsigned bits,
 	// convert to PEM and export the ID
 
 	dnssec_binary_t pem = { 0 };
-	r = pem_gnutls_x509_export(key, &pem);
+	r = pem_from_x509(key, &pem);
 	if (r != DNSSEC_EOK) {
 		return r;
 	}
 
 	// export key ID
 
-	char *id = gnutls_x509_privkey_hex_key_id(key);
-	if (!id) {
+	char *id = NULL;
+	r = keyid_x509_hex(key, &id);
+	if (r != DNSSEC_EOK) {
 		dnssec_binary_free(&pem);
-		return DNSSEC_ENOMEM;
+		return r;
 	}
 
-	*pem_ptr = pem;
 	*id_ptr = id;
+	*pem_ptr = pem;
 
 	return DNSSEC_EOK;
 }
@@ -149,7 +144,7 @@ static int try_export_pem(gnutls_x509_privkey_t key, dnssec_binary_t *pem)
 
 	gnutls_x509_crt_fmt_t format = GNUTLS_X509_FMT_PEM;
 	char *password = NULL;
-	int flags = 0;
+	int flags = GNUTLS_PKCS_PLAIN;
 
 	return gnutls_x509_privkey_export_pkcs8(key, format, password, flags,
 						pem->data, &pem->size);
@@ -158,7 +153,7 @@ static int try_export_pem(gnutls_x509_privkey_t key, dnssec_binary_t *pem)
 /*!
  * Export GnuTLS X.509 private key to PEM binary.
  */
-int pem_gnutls_x509_export(gnutls_x509_privkey_t key, dnssec_binary_t *pem_ptr)
+int pem_from_x509(gnutls_x509_privkey_t key, dnssec_binary_t *pem_ptr)
 {
 	assert(key);
 	assert(pem_ptr);
@@ -188,23 +183,16 @@ int pem_gnutls_x509_export(gnutls_x509_privkey_t key, dnssec_binary_t *pem_ptr)
 /*!
  * Get key ID of a private key in PEM format.
  */
-int pem_get_id(const dnssec_binary_t *pem, char **id_ptr)
+int pem_keyid(const dnssec_binary_t *pem, char **keyid)
 {
 	assert(pem && pem->size > 0 && pem->data);
-	assert(id_ptr);
+	assert(keyid);
 
 	_cleanup_x509_privkey_ gnutls_x509_privkey_t key = NULL;
-	int r = pem_to_x509(pem, &key);
+	int r = pem_x509(pem, &key);
 	if (r != DNSSEC_EOK) {
 		return r;
 	}
 
-	char *id = gnutls_x509_privkey_hex_key_id(key);
-	if (!id) {
-		return DNSSEC_ENOMEM;
-	}
-
-	*id_ptr = id;
-
-	return DNSSEC_EOK;
+	return keyid_x509_hex(key, keyid);
 }

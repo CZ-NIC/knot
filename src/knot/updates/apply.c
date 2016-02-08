@@ -1,4 +1,4 @@
-/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -16,14 +16,11 @@
 
 #include <assert.h>
 
-#include "knot/updates/apply.h"
-#include "knot/updates/changesets.h"
-#include "knot/zone/zone.h"
-#include "knot/zone/zonefile.h"
 #include "knot/common/log.h"
+#include "knot/updates/apply.h"
 #include "libknot/libknot.h"
-#include "libknot/internal/lists.h"
-#include "libknot/internal/macros.h"
+#include "contrib/macros.h"
+#include "contrib/mempattern.h"
 
 /* --------------------------- Update cleanup ------------------------------- */
 
@@ -33,7 +30,7 @@
  *          Freed data:
  *           - actual data inside knot_rrs_t. (the rest is part of the node)
  */
-static void rrs_list_clear(list_t *l, mm_ctx_t *mm)
+static void rrs_list_clear(list_t *l, knot_mm_t *mm)
 {
 	ptrnode_t *n;
 	node_t *nxt;

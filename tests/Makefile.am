@@ -19,6 +19,7 @@ check_PROGRAMS = \
 	conf_tools			\
 	confdb				\
 	confio				\
+	db				\
 	descriptor			\
 	dname				\
 	dthreads			\
@@ -29,7 +30,7 @@ check_PROGRAMS = \
 	hhash				\
 	internal_mem			\
 	journal				\
-	namedb				\
+	lookup				\
 	net				\
 	net_shortwrite			\
 	node				\
@@ -46,7 +47,6 @@ check_PROGRAMS = \
 	rrset_wire			\
 	server				\
 	tsig_key			\
-	utils				\
 	wire				\
 	wire_ctx			\
 	worker_pool			\

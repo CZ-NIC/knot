@@ -31,7 +31,7 @@
 #include <stdbool.h>
 
 #include "libknot/libknot.h"
-#include "libknot/internal/lists.h"
+#include "contrib/ucw/lists.h"
 
 #define DEFAULT_IPV4_NAME	"127.0.0.1"
 #define DEFAULT_IPV6_NAME	"::1"
@@ -115,6 +115,11 @@ typedef struct {
 	arg_t          arg;
 	param_handle_f handler;
 } param_t;
+
+inline static void print_version(const char *program_name)
+{
+	printf("%s (Knot DNS), version %s\n", program_name, PACKAGE_VERSION);
+}
 
 /*!
  * \brief Transforms localized IDN string to ASCII punycode.

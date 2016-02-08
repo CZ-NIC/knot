@@ -181,7 +181,7 @@ A path for storing run\-time data (PID file, unix sockets, etc.).
 \fIDefault:\fP \fB${localstatedir}/run/knot\fP (configured with \fB\-\-with\-rundir=path\fP)
 .SS user
 .sp
-A system user with an optional system group (\fIuser\fP:\fIgroup\fP) under which the
+A system user with an optional system group (\fBuser:group\fP) under which the
 server is run after starting and binding to interfaces. Linux capabilities
 are employed if supported.
 .sp
@@ -351,7 +351,7 @@ acl:
   \- id: STR
     address: ADDR[/INT] | ADDR\-ADDR ...
     key: key_id ...
-    action: transfer | notify | update | control ...
+    action: notify | transfer | update ...
     deny: BOOL
 .ft P
 .fi
@@ -374,7 +374,8 @@ match one of them. Empty value means that TSIG key is not required.
 \fIDefault:\fP not set
 .SS action
 .sp
-An ordered list of allowed actions.
+An ordered list of allowed actions. Empty action list is only allowed if
+\fI\%deny\fP is set.
 .sp
 Possible values:
 .INDENT 0.0
@@ -384,8 +385,6 @@ Possible values:
 \fBnotify\fP – Allow incoming notify
 .IP \(bu 2
 \fBupdate\fP – Allow zone updates
-.IP \(bu 2
-\fBcontrol\fP – Allow remote control
 .UNINDENT
 .sp
 \fIDefault:\fP not set
@@ -397,38 +396,23 @@ Deny if \fI\%address\fP, \fI\%key\fP and
 \fIDefault:\fP off
 .SH CONTROL SECTION
 .sp
-Configuration of the server remote control.
-.sp
-\fICaution:\fP The control protocol is not encrypted and is susceptible to replay
-attacks in a short timeframe until message digest expires. For that reason,
-it is recommended to use default UNIX socket.
+Configuration of the server control interface.
 .INDENT 0.0
 .INDENT 3.5
 .sp
 .nf
 .ft C
 control:
-    listen: ADDR[@INT]
-    acl: acl_id ...
+    listen: STR
 .ft P
 .fi
 .UNINDENT
 .UNINDENT
 .SS listen
 .sp
-A UNIX socket path or IP address where the server listens for remote control
-commands. Optional port specification (default is 5533) can be appended to the
-address using \fB@\fP separator.
+A UNIX socket path where the server listens for remote control commands.
 .sp
 \fIDefault:\fP \fI\%rundir\fP/knot.sock
-.SS acl
-.sp
-An ordered list of \fI\%references\fP to ACL rules allowing the remote
-control.
-.sp
-\fICaution:\fP This option has no effect with UNIX socket.
-.sp
-\fIDefault:\fP not set
 .SH REMOTE SECTION
 .sp
 Definitions of remote servers for outgoing connections (source of a zone
@@ -568,7 +552,7 @@ If the label is not available, the formatter has no effect.
 \fB%s\fP – means the current zone name in the textual representation (beware
 of special characters which are escaped or encoded in the \eDDD form where
 DDD is corresponding decimal ASCII code). The zone name doesn\(aqt include the
-terminating dot, except for the root zone.
+terminating dot (the result for the root zone is the empty string!).
 .IP \(bu 2
 \fB%%\fP – means the \fB%\fP character
 .UNINDENT

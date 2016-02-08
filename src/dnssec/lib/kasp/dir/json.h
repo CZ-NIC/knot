@@ -62,6 +62,9 @@ int encode_bool(const void *value, json_t **result);
 int decode_time(const json_t *value, void *result);
 int encode_time(const void *value, json_t **result);
 
+int decode_string(const json_t *value, void *result);
+int encode_string(const void *value, json_t **result);
+
 /*!
  * Object attribute serialization parameters.
  */

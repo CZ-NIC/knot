@@ -1,4 +1,4 @@
-/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -14,13 +14,14 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <stdlib.h>
 #include <assert.h>
+#include <stdlib.h>
 #include <stdarg.h>
 
 #include "knot/updates/changesets.h"
-#include "libknot/rrset.h"
-#include "libknot/internal/macros.h"
+#include "libknot/libknot.h"
+#include "contrib/macros.h"
+#include "contrib/mempattern.h"
 
 /* -------------------- Changeset iterator helpers -------------------------- */
 

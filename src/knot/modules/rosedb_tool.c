@@ -18,11 +18,11 @@
 #include <stdlib.h>
 #include <getopt.h>
 
+#include "contrib/getline.h"
 #include "knot/modules/rosedb.c"
 #include "zscanner/scanner.h"
 #include "libknot/libknot.h"
-#include "libknot/internal/mem.h"
-#include "libknot/internal/getline.h"
+#include "contrib/string.h"
 
 static int rosedb_add(struct cache *cache, MDB_txn *txn, int argc, char *argv[]);
 static int rosedb_del(struct cache *cache, MDB_txn *txn, int argc, char *argv[]);
@@ -59,7 +59,7 @@ static void help(FILE *stream)
 
 /* Global instance of RR scanner. */
 static void parse_err(zs_scanner_t *s) {
-	fprintf(stderr, "failed to parse RDATA: %s\n", zs_strerror(s->error_code));
+	fprintf(stderr, "failed to parse RDATA: %s\n", zs_strerror(s->error.code));
 }
 static zs_scanner_t *g_scanner = NULL;
 
@@ -99,8 +99,15 @@ int main(int argc, char *argv[])
 	argv += 3;
 	argc -= 3;
 
-	g_scanner = zs_scanner_create(".", KNOT_CLASS_IN, 0, NULL, parse_err, NULL);
+	g_scanner = malloc(sizeof(zs_scanner_t));
 	if (g_scanner == NULL) {
+		return EXIT_FAILURE;
+	}
+
+	if (zs_init(g_scanner, ".", KNOT_CLASS_IN, 0) != 0 ||
+	    zs_set_processing(g_scanner, NULL, parse_err, NULL) != 0) {
+		zs_deinit(g_scanner);
+		free(g_scanner);
 		return EXIT_FAILURE;
 	}
 
@@ -108,7 +115,8 @@ int main(int argc, char *argv[])
 	struct cache *cache = cache_open(dbdir, 0, NULL);
 	if (cache == NULL) {
 		fprintf(stderr, "failed to open db '%s'\n", dbdir);
-		zs_scanner_free(g_scanner);
+		zs_deinit(g_scanner);
+		free(g_scanner);
 		return EXIT_FAILURE;
 	}
 
@@ -147,7 +155,8 @@ int main(int argc, char *argv[])
 	}
 
 	cache_close(cache);
-	zs_scanner_free(g_scanner);
+	zs_deinit(g_scanner);
+	free(g_scanner);
 
 	if (!found) {
 		help(stderr);
@@ -158,7 +167,7 @@ int main(int argc, char *argv[])
 }
 
 static int parse_rdata(struct entry *entry, const char *owner, const char *rrtype, const char *rdata,
-		       int ttl, mm_ctx_t *mm)
+		       int ttl, knot_mm_t *mm)
 {
 	knot_rdataset_init(&entry->data.rrs);
 	int ret = knot_rrtype_from_string(rrtype, &entry->data.type);
@@ -168,17 +177,17 @@ static int parse_rdata(struct entry *entry, const char *owner, const char *rrtyp
 
 	/* Synthetize RR line */
 	char *rr_line = sprintf_alloc("%s %u IN %s %s\n", owner, ttl, rrtype, rdata);
-	ret = zs_scanner_parse(g_scanner, rr_line, rr_line + strlen(rr_line), true);
+	if (zs_set_input_string(g_scanner, rr_line, strlen(rr_line)) != 0 ||
+	    zs_parse_all(g_scanner) != 0) {
+		free(rr_line);
+		return KNOT_EPARSEFAIL;
+	}
 	free(rr_line);
 
 	/* Write parsed RDATA. */
-	if (ret == KNOT_EOK) {
-		knot_rdata_t rr[knot_rdata_array_size(g_scanner->r_data_length)];
-		knot_rdata_init(rr, g_scanner->r_data_length, g_scanner->r_data, ttl);
-		ret = knot_rdataset_add(&entry->data.rrs, rr, mm);
-	}
-
-	return ret;
+	knot_rdata_t rr[knot_rdata_array_size(g_scanner->r_data_length)];
+	knot_rdata_init(rr, g_scanner->r_data_length, g_scanner->r_data, ttl);
+	return knot_rdataset_add(&entry->data.rrs, rr, mm);
 }
 
 static int rosedb_add(struct cache *cache, MDB_txn *txn, int argc, char *argv[])

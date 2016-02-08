@@ -1,6 +1,23 @@
+/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
 #include "knot/nameserver/query_module.h"
 #include "libknot/libknot.h"
-#include "libknot/internal/strlcpy.h"
+#include "contrib/mempattern.h"
+#include "contrib/openbsd/strlcpy.h"
 
 /* Compiled-in module headers. */
 #include "knot/modules/synth_record.h"
@@ -34,7 +51,7 @@ static_module_t MODULES[] = {
         { NULL }
 };
 
-struct query_plan *query_plan_create(mm_ctx_t *mm)
+struct query_plan *query_plan_create(knot_mm_t *mm)
 {
 	struct query_plan *plan = mm_alloc(mm, sizeof(struct query_plan));
 	if (plan == NULL) {
@@ -65,7 +82,7 @@ void query_plan_free(struct query_plan *plan)
 	mm_free(plan->mm, plan);
 }
 
-static struct query_step *make_step(mm_ctx_t *mm, qmodule_process_t process,
+static struct query_step *make_step(knot_mm_t *mm, qmodule_process_t process,
                                     void *ctx)
 {
 	struct query_step *step = mm_alloc(mm, sizeof(struct query_step));
@@ -109,7 +126,7 @@ static static_module_t *find_module(const yp_name_t *name)
 }
 
 struct query_module *query_module_open(conf_t *config, conf_mod_id_t *mod_id,
-                                       mm_ctx_t *mm)
+                                       knot_mm_t *mm)
 {
 	if (config == NULL || mod_id == NULL) {
 		return NULL;

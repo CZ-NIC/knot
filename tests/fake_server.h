@@ -1,8 +1,24 @@
+/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
 #pragma once
 
 #include "test_conf.h"
 #include "knot/server/server.h"
-#include "libknot/internal/mempattern.h"
+#include "contrib/mempattern.h"
 
 /* Some domain names. */
 #define ROOT_DNAME ((const uint8_t *)"")
@@ -10,7 +26,7 @@
 #define IDSERVER_DNAME ((const uint8_t *)"\2""id""\6""server")
 
 /* Create fake root zone. */
-static inline void create_root_zone(server_t *server, mm_ctx_t *mm)
+static inline void create_root_zone(server_t *server, knot_mm_t *mm)
 {
 	/* SOA RDATA. */
 	#define SOA_RDLEN 30
@@ -45,7 +61,7 @@ static inline void create_root_zone(server_t *server, mm_ctx_t *mm)
 }
 
 /* Create fake server. */
-static inline int create_fake_server(server_t *server, mm_ctx_t *mm)
+static inline int create_fake_server(server_t *server, knot_mm_t *mm)
 {
 	/* Create name server. */
 	int ret = server_init(server, 1);

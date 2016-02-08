@@ -1,14 +1,4 @@
-/*!
- * \file axfr.h
- *
- * \author Marek Vavrusa <marek.vavrusa@nic.cz>
- *
- * \brief AXFR processing.
- *
- * \addtogroup query_processing
- * @{
- */
-/*  Copyright (C) 2014 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -23,14 +13,22 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
+/*!
+ * \file
+ *
+ * \brief AXFR processing.
+ *
+ * \addtogroup query_processing
+ * @{
+ */
 
 #pragma once
 
 #include "libknot/packet/pkt.h"
-#include "knot/zone/zonedb.h"
-
-struct query_data;
-struct answer_data;
+#include "knot/nameserver/process_answer.h"
+#include "knot/nameserver/process_query.h"
+#include "knot/zone/contents.h"
+#include "contrib/ucw/lists.h"
 
 /*! \brief Generic transfer processing state. */
 struct xfr_proc {
@@ -56,13 +54,13 @@ int xfr_process_list(knot_pkt_t *pkt, xfr_put_cb put, struct query_data *qdata);
  *
  * \return KNOT_STATE_* processing states
  */
-int axfr_query_process(knot_pkt_t *pkt, struct query_data *qdata);
+int axfr_process_query(knot_pkt_t *pkt, struct query_data *qdata);
 
 /*!
  * \brief Processes an AXFR response message.
  *
  * \return KNOT_STATE_* processing states
  */
-int axfr_answer_process(knot_pkt_t *pkt, struct answer_data *adata);
+int axfr_process_answer(knot_pkt_t *pkt, struct answer_data *adata);
 
 /*! @} */

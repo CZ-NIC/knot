@@ -15,6 +15,7 @@ TIME_FUTURE="+40y"
 pushd "$keydir"
 
 "$KEYMGR" init
+"$KEYMGR" policy set default manual true
 
 #
 # valid scenarios
@@ -99,6 +100,6 @@ keymgr zone key generate stss_ksk algorithm 8 size 2048 publish "$TIME_PAST" act
 "$KEYMGR" zone key generate rsa_no_zsk algorithm 8 size 2048 publish "$TIME_FUTURE" active "$TIME_FUTURE" ksk
 "$KEYMGR" zone key generate rsa_no_zsk algorithm 8 size 1024 publish "$TIME_PAST" active "$TIME_PAST"
 
-tar czf "$dir/keys.tgz" keys zone_*.json
+tar czf "$dir/keys.tgz" keys {policy,keystore,zone}_*.json
 popd
 rm -rf "$keydir"

@@ -40,16 +40,16 @@ static void print_wire_dname(const uint8_t *dname, uint32_t dname_length)
 
 void debug_process_error(zs_scanner_t *s)
 {
-	if (s->stop == true) {
+	if (s->error.fatal) {
 		printf("LINE(%03"PRIu64") ERROR(%s) FILE(%s) NEAR(%s)\n",
 		       s->line_counter,
-		       zs_strerror(s->error_code),
+		       zs_strerror(s->error.code),
 		       s->file.name,
 		       s->buffer);
 	} else {
 		printf("LINE(%03"PRIu64") WARNING(%s) FILE(%s) NEAR(%s)\n",
 		       s->line_counter,
-		       zs_strerror(s->error_code),
+		       zs_strerror(s->error.code),
 		       s->file.name,
 		       s->buffer);
 	}
@@ -85,10 +85,10 @@ void debug_process_record(zs_scanner_t *s)
 
 void test_process_error(zs_scanner_t *s)
 {
-	if (s->stop == true) {
-		printf("ERROR=%s\n%s", zs_errorname(s->error_code), separator);
+	if (s->error.fatal) {
+		printf("ERROR=%s\n%s", zs_errorname(s->error.code), separator);
 	} else {
-		printf("WARNG=%s\n%s", zs_errorname(s->error_code), separator);
+		printf("WARNG=%s\n%s", zs_errorname(s->error.code), separator);
 	}
 	fflush(stdout);
 }

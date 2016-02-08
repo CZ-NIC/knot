@@ -1,5 +1,6 @@
 # autotools generated
 /Makefile
 /Makefile.in
+/lib/dnssec/version.h
 # documentation
 /doc/api

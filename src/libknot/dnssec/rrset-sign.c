@@ -23,16 +23,15 @@
 #include "dnssec/kasp.h"
 #include "dnssec/key.h"
 #include "dnssec/sign.h"
+#include "libknot/attribute.h"
 #include "libknot/descriptor.h"
 #include "libknot/dnssec/rrset-sign.h"
-#include "libknot/internal/macros.h"
 #include "libknot/libknot.h"
-#include "libknot/packet/rrset-wire.h"
 #include "libknot/packet/rrset-wire.h"
 #include "libknot/packet/wire.h"
 #include "libknot/rrset.h"
 #include "libknot/rrtype/rrsig.h"
-#include "libknot/internal/wire_ctx.h"
+#include "contrib/wire_ctx.h"
 
 #define RRSIG_RDATA_SIGNER_OFFSET 18
 
@@ -231,7 +230,7 @@ static int rrsigs_create_rdata(knot_rrset_t *rrsigs, dnssec_sign_ctx_t *ctx,
                                const knot_rrset_t *covered,
                                const dnssec_key_t *key,
                                uint32_t sig_incepted, uint32_t sig_expires,
-                               mm_ctx_t *mm)
+                               knot_mm_t *mm)
 {
 	assert(rrsigs);
 	assert(rrsigs->type == KNOT_RRTYPE_RRSIG);
@@ -285,7 +284,7 @@ static int rrsigs_create_rdata(knot_rrset_t *rrsigs, dnssec_sign_ctx_t *ctx,
 _public_
 int knot_sign_rrset(knot_rrset_t *rrsigs, const knot_rrset_t *covered,
                     const dnssec_key_t *key, dnssec_sign_ctx_t *sign_ctx,
-                    const kdnssec_ctx_t *dnssec_ctx, mm_ctx_t *mm)
+                    const kdnssec_ctx_t *dnssec_ctx, knot_mm_t *mm)
 {
 	if (knot_rrset_empty(covered) || !key || !sign_ctx || !dnssec_ctx ||
 	    rrsigs->type != KNOT_RRTYPE_RRSIG ||
@@ -303,7 +302,7 @@ int knot_sign_rrset(knot_rrset_t *rrsigs, const knot_rrset_t *covered,
 
 _public_
 int knot_synth_rrsig(uint16_t type, const knot_rdataset_t *rrsig_rrs,
-                knot_rdataset_t *out_sig, mm_ctx_t *mm)
+                knot_rdataset_t *out_sig, knot_mm_t *mm)
 {
 	if (rrsig_rrs == NULL) {
 		return KNOT_ENOENT;

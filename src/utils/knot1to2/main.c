@@ -20,12 +20,13 @@
 #include <stdlib.h>
 #include <unistd.h>
 
+#include "utils/common/params.h"
 #include "utils/knot1to2/extra.h"
 #include "utils/knot1to2/scheme.h"
-#include "libknot/internal/mem.h"
-#include "libknot/internal/trie/hat-trie.h"
+#include "contrib/hat-trie/hat-trie.h"
+#include "contrib/string.h"
 
-#define KNOT1TO2_VERSION "knot1to2, version " PACKAGE_VERSION "\n"
+#define PROGRAM_NAME "knot1to2"
 
 static int run_parser(const char *file_in, int run, share_t *share)
 {
@@ -69,7 +70,7 @@ static int convert(const char *file_out, const char *file_in)
 		"# the conversion cannot be perfect. It is important to do a review\n"
 		"# of this file (see the documentation).\n"
 		"# It is also possible to reformat the file via knotc, like:\n"
-		"#   knotc -c ./this_file.conf export ./reformatted_file.conf\n"
+		"#   knotc -c ./this_file.conf conf-export ./reformatted_file.conf\n"
 	       );
 
 	share_t share = {
@@ -79,13 +80,12 @@ static int convert(const char *file_out, const char *file_in)
 		.remotes = hattrie_create(),
 		.acl_xfer = hattrie_create(),
 		.acl_notify = hattrie_create(),
-		.acl_update = hattrie_create(),
-		.acl_control = hattrie_create(),
+		.acl_update = hattrie_create()
 	};
 
 	// Parse the input file multiple times to get some context.
 	int ret = 0;
-	for (int i = R_SYS; i <= R_LOG; i++) {
+	for (int i = R_SYS; i <= R_ZONE; i++) {
 		ret = run_parser(file_in, i, &share);
 		if (ret != 0) {
 			break;
@@ -115,7 +115,6 @@ static int convert(const char *file_out, const char *file_in)
 	hattrie_free(share.acl_xfer);
 	hattrie_free(share.acl_notify);
 	hattrie_free(share.acl_update);
-	hattrie_free(share.acl_control);
 
 	fclose(out);
 
@@ -142,23 +141,24 @@ static int reformat(const char *file_out, const char *file_in, const char *path)
 	return 0;
 }
 
-void help(void)
+static void print_help(void)
 {
-	printf("Usage: knot1to2 [options] -i <file> -o <file>\n");
-	printf("\n"
+	printf("Usage: %s [options] -i <file> -o <file>\n"
+	       "\n"
 	       " -i, --in <file>      Input config file (Knot version 1.x).\n"
 	       " -o, --out <file>     Output config file (Knot version 2.x).\n"
-	       "\nOptions:\n"
+	       "\n"
+	       "Options:\n"
 	       " -p, --path <dir>     Path to knotc utility.\n"
 	       " -r, --raw            Raw output, do not reformat via knotc.\n"
 	       "\n"
-	       " -v, --version        Print package version.\n"
-	       " -h, --help           Print help and usage.\n");
+	       " -h, --help           Print the program help.\n"
+	       " -V, --version        Print the program version.\n",
+	       PROGRAM_NAME);
 }
 
 int main(int argc, char **argv)
 {
-	int c = 0, li = 0;
 	const char *file_in = NULL;
 	const char *file_out = NULL;
 	const char *path = NULL;
@@ -169,14 +169,15 @@ int main(int argc, char **argv)
 		{ "out",     required_argument, NULL, 'o' },
 		{ "path",    required_argument, NULL, 'p' },
 		{ "raw",     no_argument,       NULL, 'r' },
-		{ "version", no_argument,       NULL, 'v' },
 		{ "help",    no_argument,       NULL, 'h' },
+		{ "version", no_argument,       NULL, 'V' },
 		{ NULL }
 	};
 
 	// Parse parameters.
-	while ((c = getopt_long(argc, argv, "i:o:p:rvh", opts, &li)) != -1) {
-		switch (c)
+	int opt = 0, li = 0;
+	while ((opt = getopt_long(argc, argv, "i:o:p:rhV", opts, &li)) != -1) {
+		switch (opt)
 		{
 		case 'i':
 			file_in = optarg;
@@ -190,21 +191,21 @@ int main(int argc, char **argv)
 		case 'r':
 			raw = true;
 			break;
-		case 'v':
-			printf(KNOT1TO2_VERSION);
-			return EXIT_SUCCESS;
 		case 'h':
-			help();
+			print_help();
+			return EXIT_SUCCESS;
+		case 'V':
+			print_version(PROGRAM_NAME);
 			return EXIT_SUCCESS;
 		default:
-			help();
+			print_help();
 			return EXIT_FAILURE;
 		}
 	}
 
 	// Check for missing or invalid parameters.
 	if (argc - optind > 0 || file_in == NULL || file_out == NULL) {
-		help();
+		print_help();
 		return EXIT_FAILURE;
 	}
 

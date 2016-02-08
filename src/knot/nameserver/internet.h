@@ -1,14 +1,4 @@
-/*!
- * \file internet.h
- *
- * \author Marek Vavrusa <marek.vavrusa@nic.cz>
- *
- * \brief IN zone lookup.
- *
- * \addtogroup query_processing
- * @{
- */
-/*  Copyright (C) 2013 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -22,6 +12,14 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+/*!
+ * \file
+ *
+ * \brief IN zone lookup.
+ *
+ * \addtogroup query_processing
+ * @{
  */
 
 #pragma once
@@ -53,7 +51,7 @@ enum {
  * \retval FAIL if it encountered an error.
  * \retval DONE if finished.
  */
-int internet_query(knot_pkt_t *resp, struct query_data *qdata);
+int internet_process_query(knot_pkt_t *resp, struct query_data *qdata);
 
 /*!
  * \brief Initialize query plan for IN class zone.

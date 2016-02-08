@@ -22,7 +22,6 @@
 #include "knot/zone/zone-diff.h"
 #include "knot/zone/serial.h"
 #include "libknot/descriptor.h"
-#include "libknot/internal/utils.h"
 #include "libknot/rrtype/soa.h"
 
 struct zone_diff_param {

@@ -1,4 +1,4 @@
-/*  Copyright (C) 2014 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -16,7 +16,7 @@
 
 #pragma once
 
-#include "libknot/internal/namedb/namedb.h"
+#include "libknot/db/db.h"
 #include "knot/zone/zone.h"
 #include "knot/zone/zonedb.h"
 
@@ -28,14 +28,14 @@
  *
  * \return KNOT_E*
  */
-int open_timers_db(const char *path, namedb_t **timer_db);
+int open_timers_db(const char *path, knot_db_t **timer_db);
 
 /*!
  * \brief Closes zone timers db.
  *
  * \param timer_db  Timer database.
  */
-void close_timers_db(namedb_t *timer_db);
+void close_timers_db(knot_db_t *timer_db);
 
 /*!
  * \brief Reads zone timers from timers db.
@@ -50,7 +50,7 @@ void close_timers_db(namedb_t *timer_db);
  *
  * \return KNOT_E*
  */
-int read_zone_timers(namedb_t *timer_db, const zone_t *zone, time_t *timers);
+int read_zone_timers(knot_db_t *timer_db, const zone_t *zone, time_t *timers);
 
 /*!
  * \brief Writes all zone timers to timers db.
@@ -60,7 +60,7 @@ int read_zone_timers(namedb_t *timer_db, const zone_t *zone, time_t *timers);
  *
  * \return KNOT_E*
  */
-int write_timer_db(namedb_t *timer_db, knot_zonedb_t *zone_db);
+int write_timer_db(knot_db_t *timer_db, knot_zonedb_t *zone_db);
 
 /*!
  * \brief Removes stale zones info from timers db.
@@ -69,4 +69,4 @@ int write_timer_db(namedb_t *timer_db, knot_zonedb_t *zone_db);
  * \param zone_db   Current zone database.
  * \return KNOT_EOK or an error
  */
-int sweep_timer_db(namedb_t *timer_db, knot_zonedb_t *zone_db);
+int sweep_timer_db(knot_db_t *timer_db, knot_zonedb_t *zone_db);

@@ -150,7 +150,7 @@ A path for storing run-time data (PID file, unix sockets, etc.).
 user
 ----
 
-A system user with an optional system group (*user*:*group*) under which the
+A system user with an optional system group (``user:group``) under which the
 server is run after starting and binding to interfaces. Linux capabilities
 are employed if supported.
 
@@ -386,7 +386,7 @@ update, etc.).
    - id: STR
      address: ADDR[/INT] | ADDR-ADDR ...
      key: key_id ...
-     action: transfer | notify | update | control ...
+     action: notify | transfer | update ...
      deny: BOOL
 
 .. _acl_id:
@@ -421,14 +421,14 @@ match one of them. Empty value means that TSIG key is not required.
 action
 ------
 
-An ordered list of allowed actions.
+An ordered list of allowed actions. Empty action list is only allowed if
+:ref:`deny<acl_deny>` is set.
 
 Possible values:
 
 - ``transfer`` – Allow zone transfer
 - ``notify`` – Allow incoming notify
 - ``update`` – Allow zone updates
-- ``control`` – Allow remote control
 
 *Default:* not set
 
@@ -447,40 +447,21 @@ Deny if :ref:`address<acl_address>`, :ref:`key<acl_key>` and
 Control section
 ===============
 
-Configuration of the server remote control.
-
-*Caution:* The control protocol is not encrypted and is susceptible to replay
-attacks in a short timeframe until message digest expires. For that reason,
-it is recommended to use default UNIX socket.
+Configuration of the server control interface.
 
 ::
 
  control:
-     listen: ADDR[@INT]
-     acl: acl_id ...
+     listen: STR
 
 .. _control_listen:
 
 listen
 ------
 
-A UNIX socket path or IP address where the server listens for remote control
-commands. Optional port specification (default is 5533) can be appended to the
-address using ``@`` separator.
+A UNIX socket path where the server listens for remote control commands.
 
 *Default:* :ref:`rundir<server_rundir>`/knot.sock
-
-.. _control_acl:
-
-acl
----
-
-An ordered list of :ref:`references<acl_id>` to ACL rules allowing the remote
-control.
-
-*Caution:* This option has no effect with UNIX socket.
-
-*Default:* not set
 
 .. _Remote section:
 
@@ -651,7 +632,7 @@ A path to the zone file. Non absolute path is relative to
 - ``%s`` – means the current zone name in the textual representation (beware
   of special characters which are escaped or encoded in the \\DDD form where
   DDD is corresponding decimal ASCII code). The zone name doesn't include the
-  terminating dot, except for the root zone.
+  terminating dot (the result for the root zone is the empty string!).
 - ``%%`` – means the ``%`` character
 
 *Default:* :ref:`storage<zone_storage>`/``%s``\ .zone

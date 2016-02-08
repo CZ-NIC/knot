@@ -124,6 +124,11 @@ class Key(object):
         if exit_code != 0:
             raise Failed("Failed to initialize the KASP.")
 
+        # disable automatic signing
+        (exit_code, _, _) = self._keymgr("policy", "set", "default", "manual", "true");
+        if exit_code != 0:
+            raise Failed("Failed to disable automatic signing in KASP.")
+
         # check if zone exists in KASP
         (exit_code, _, _) = self._keymgr("zone", "show", self.zone_name)
         if exit_code == 0:

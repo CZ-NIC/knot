@@ -1,16 +1,4 @@
-/*!
- * \file zone-tree.h
- *
- * \author Lubos Slovak <lubos.slovak@nic.cz>
- *
- * \brief Zone tree structure and API for manipulating it.
- *
- * Implemented as AVL tree.
- *
- * \addtogroup libknot
- * @{
- */
-/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -25,13 +13,19 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
+/*!
+ * \file
+ *
+ * \brief Zone trie structure and API for manipulating it.
+ *
+ * \addtogroup zone
+ * @{
+ */
 
 #pragma once
 
-#include "libknot/internal/trie/hat-trie.h"
+#include "contrib/hat-trie/hat-trie.h"
 #include "knot/zone/node.h"
-
-/*----------------------------------------------------------------------------*/
 
 typedef hattrie_t zone_tree_t;
 
@@ -40,7 +34,6 @@ typedef hattrie_t zone_tree_t;
  */
 typedef int (*zone_tree_apply_cb_t)(zone_node_t **node, void *data);
 
-/*----------------------------------------------------------------------------*/
 /*!
  * \brief Creates the zone tree.
  *
@@ -221,7 +214,5 @@ void zone_tree_free(zone_tree_t **tree);
  *                    as well. Set to 0 otherwise.
  */
 void zone_tree_deep_free(zone_tree_t **tree);
-
-/*----------------------------------------------------------------------------*/
 
 /*! @} */

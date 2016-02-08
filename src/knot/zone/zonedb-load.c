@@ -1,4 +1,4 @@
-/*  Copyright (C) 2013 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -15,21 +15,16 @@
 */
 
 #include <assert.h>
-#include <sys/stat.h>
 #include <urcu.h>
 
 #include "knot/zone/zonedb-load.h"
 #include "knot/zone/zone-load.h"
-#include "knot/conf/conf.h"
 #include "knot/zone/zone.h"
 #include "knot/zone/zonefile.h"
 #include "knot/zone/zonedb.h"
 #include "knot/zone/timers.h"
-#include "knot/server/server.h"
 #include "knot/common/log.h"
 #include "libknot/libknot.h"
-
-/*- zone file status --------------------------------------------------------*/
 
 /*!
  * \brief Zone file status.
@@ -45,12 +40,12 @@ typedef enum {
 /*!
  * \brief Check zone file status.
  *
- * \param old_zone  Previous instance of the zone (can be NULL).
  * \param conf      Zone configuration.
+ * \param old_zone  Previous instance of the zone (can be NULL).
  *
  * \return Zone status.
  */
-static zone_status_t zone_file_status(const zone_t *old_zone, conf_t *conf,
+static zone_status_t zone_file_status(conf_t *conf, const zone_t *old_zone,
                                       const knot_dname_t *name)
 {
 	assert(conf);
@@ -80,8 +75,6 @@ static zone_status_t zone_file_status(const zone_t *old_zone, conf_t *conf,
 		}
 	}
 }
-
-/*- zone loading/updating ---------------------------------------------------*/
 
 /*!
  * \brief Log message about loaded zone (name and status).
@@ -141,17 +134,17 @@ static zone_t *create_zone_reload(conf_t *conf, const knot_dname_t *name,
 	zone->contents = old_zone->contents;
 
 	zone_status_t zstatus;
-	if (zone_is_slave(zone) && old_zone->flags & ZONE_EXPIRED) {
+	if (zone_is_slave(conf, zone) && old_zone->flags & ZONE_EXPIRED) {
 		zone->flags |= ZONE_EXPIRED;
 		zstatus = ZONE_STATUS_FOUND_CURRENT;
 	} else {
-		zstatus = zone_file_status(old_zone, conf, name);
+		zstatus = zone_file_status(conf, old_zone, name);
 	}
 
 	switch (zstatus) {
 	case ZONE_STATUS_FOUND_UPDATED:
 		/* Enqueueing makes the first zone load waitable. */
-		zone_events_enqueue(zone, ZONE_EVENT_RELOAD);
+		zone_events_enqueue(zone, ZONE_EVENT_LOAD);
 		/* Replan DDNS processing if there are pending updates. */
 		zone_events_replan_ddns(zone, old_zone);
 		break;
@@ -159,7 +152,7 @@ static zone_t *create_zone_reload(conf_t *conf, const knot_dname_t *name,
 		zone->zonefile_mtime = old_zone->zonefile_mtime;
 		zone->zonefile_serial = old_zone->zonefile_serial;
 		/* Reuse events from old zone. */
-		zone_events_update(zone, old_zone);
+		zone_events_update(conf, zone, old_zone);
 		break;
 	default:
 		assert(0);
@@ -173,7 +166,7 @@ static bool slave_event(zone_event_type_t event)
 	return event == ZONE_EVENT_EXPIRE || event == ZONE_EVENT_REFRESH;
 }
 
-static int reuse_events(namedb_t *timer_db, zone_t *zone)
+static int reuse_events(conf_t *conf, knot_db_t *timer_db, zone_t *zone)
 {
 	// Get persistent timers
 
@@ -188,7 +181,7 @@ static int reuse_events(namedb_t *timer_db, zone_t *zone)
 			// Timer unset.
 			continue;
 		}
-		if (slave_event(event) && !zone_is_slave(zone)) {
+		if (slave_event(event) && !zone_is_slave(conf, zone)) {
 			// Slave-only event.
 			continue;
 		}
@@ -204,7 +197,7 @@ static int reuse_events(namedb_t *timer_db, zone_t *zone)
 	return KNOT_EOK;
 }
 
-static zone_t *create_zone_new(conf_t * conf, const knot_dname_t *name,
+static zone_t *create_zone_new(conf_t *conf, const knot_dname_t *name,
                                server_t *server)
 {
 	zone_t *zone = create_zone_from(name, server);
@@ -212,7 +205,7 @@ static zone_t *create_zone_new(conf_t * conf, const knot_dname_t *name,
 		return NULL;
 	}
 
-	int ret = reuse_events(server->timers_db, zone);
+	int ret = reuse_events(conf, server->timers_db, zone);
 	if (ret != KNOT_EOK) {
 		log_zone_error(zone->name, "cannot read zone timers (%s)",
 		               knot_strerror(ret));
@@ -220,16 +213,16 @@ static zone_t *create_zone_new(conf_t * conf, const knot_dname_t *name,
 		return NULL;
 	}
 
-	zone_status_t zstatus = zone_file_status(NULL, conf, name);
+	zone_status_t zstatus = zone_file_status(conf, NULL, name);
 	if (zone->flags & ZONE_EXPIRED) {
-		assert(zone_is_slave(zone));
+		assert(zone_is_slave(conf, zone));
 		zstatus = ZONE_STATUS_BOOSTRAP;
 	}
 
 	switch (zstatus) {
 	case ZONE_STATUS_FOUND_NEW:
 		/* Enqueueing makes the first zone load waitable. */
-		zone_events_enqueue(zone, ZONE_EVENT_RELOAD);
+		zone_events_enqueue(zone, ZONE_EVENT_LOAD);
 		break;
 	case ZONE_STATUS_BOOSTRAP:
 		if (zone_events_get_time(zone, ZONE_EVENT_REFRESH) == 0) {
@@ -321,10 +314,10 @@ static knot_zonedb_t *create_zonedb(conf_t *conf, server_t *server)
  * \param db_new New zone database.
  * \param db_old Old zone database.
   */
-static int remove_old_zonedb(const knot_zonedb_t *db_new, knot_zonedb_t *db_old)
+static void remove_old_zonedb(const knot_zonedb_t *db_new, knot_zonedb_t *db_old)
 {
 	if (db_old == NULL) {
-		return KNOT_EOK;
+		return;
 	}
 
 	knot_zonedb_iter_t it;
@@ -342,27 +335,20 @@ static int remove_old_zonedb(const knot_zonedb_t *db_new, knot_zonedb_t *db_old)
 	}
 
 	knot_zonedb_deep_free(&db_old);
-
-	return KNOT_EOK;
 }
 
-/*- public API functions ----------------------------------------------------*/
-
-/*!
- * \brief Update zone database according to configuration.
- */
-int zonedb_reload(conf_t *conf, struct server *server)
+void zonedb_reload(conf_t *conf, server_t *server)
 {
 	/* Check parameters */
 	if (conf == NULL || server == NULL) {
-		return KNOT_EINVAL;
+		return;
 	}
 
 	/* Insert all required zones to the new zone DB. */
 	knot_zonedb_t *db_new = create_zonedb(conf, server);
 	if (db_new == NULL) {
 		log_error("failed to create new zone database");
-		return KNOT_ENOMEM;
+		return;
 	}
 
 	/* Rebuild zone database search stack. */
@@ -383,5 +369,5 @@ int zonedb_reload(conf_t *conf, struct server *server)
 	 * No new thread can access these zones in the old DB, as the
 	 * databases are already switched.
 	 */
-	return remove_old_zonedb(db_new, db_old);
+	remove_old_zonedb(db_new, db_old);
 }

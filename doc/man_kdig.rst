@@ -60,7 +60,7 @@ Options
   Enable debug messages.
 
 **-h**, **--help**
-  Print help and usage.
+  Print the program help.
 
 **-k** *keyfile*
   Use the TSIG key stored in a file *keyfile* to authenticate the request. The
@@ -80,7 +80,7 @@ Options
   SOA serial parameter. NOTIFY type without SOA serial parameter causes pure 
   NOTIFY message without any SOA hint.
 
-**-v**, **--version**
+**-V**, **--version**
   Print the program version.
 
 **-x** *address*

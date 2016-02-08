@@ -26,11 +26,13 @@
 #include "knot/common/log.h"
 #include "knot/nameserver/query_module.h"
 #include "knot/nameserver/internet.h"
-#include "libknot/internal/mem.h"
-#include "libknot/internal/sockaddr.h"
+#include "libknot/libknot.h"
 #include "libknot/yparser/ypformat.h"
 #include "libknot/yparser/yptrafo.h"
-#include "libknot/internal/mempool.h"
+#include "contrib/mempattern.h"
+#include "contrib/sockaddr.h"
+#include "contrib/string.h"
+#include "contrib/ucw/mempool.h"
 
 // The active configuration.
 conf_t *s_conf;
@@ -86,10 +88,74 @@ static void rm_dir(const char *path)
 	}
 }
 
+static int init_and_check(
+	conf_t *conf,
+	conf_flag_t flags)
+{
+	if (conf == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	knot_db_txn_t txn;
+	unsigned txn_flags = (flags & CONF_FREADONLY) ? KNOT_DB_RDONLY : 0;
+	int ret = conf->api->txn_begin(conf->db, &txn, txn_flags);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	// Initialize the database.
+	if (!(flags & CONF_FREADONLY)) {
+		ret = conf_db_init(conf, &txn, false);
+		if (ret != KNOT_EOK) {
+			conf->api->txn_abort(&txn);
+			return ret;
+		}
+	}
+
+	// Check the database.
+	if (!(flags & CONF_FNOCHECK)) {
+		ret = conf_db_check(conf, &txn);
+		if (ret < KNOT_EOK) {
+			conf->api->txn_abort(&txn);
+			return ret;
+		}
+	}
+
+	return conf->api->txn_commit(&txn);
+}
+
+int conf_refresh(
+	conf_t *conf)
+{
+	if (conf == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	// Close previously opened transaction.
+	conf->api->txn_abort(&conf->read_txn);
+
+	return conf->api->txn_begin(conf->db, &conf->read_txn, KNOT_DB_RDONLY);
+}
+
+static void init_values(
+	conf_t *conf)
+{
+	free(conf->hostname);
+	conf->hostname = sockaddr_hostname();
+
+	conf->cache.srv_nsid = conf_get(conf, C_SRV, C_NSID);
+	conf->cache.srv_max_udp_payload = conf_get(conf, C_SRV, C_MAX_UDP_PAYLOAD);
+	conf->cache.srv_max_tcp_clients = conf_get(conf, C_SRV, C_MAX_TCP_CLIENTS);
+	conf->cache.srv_tcp_hshake_timeout = conf_get(conf, C_SRV, C_TCP_HSHAKE_TIMEOUT);
+	conf->cache.srv_tcp_idle_timeout = conf_get(conf, C_SRV, C_TCP_IDLE_TIMEOUT);
+	conf->cache.srv_tcp_reply_timeout = conf_get(conf, C_SRV, C_TCP_REPLY_TIMEOUT);
+}
+
 int conf_new(
 	conf_t **conf,
 	const yp_item_t *scheme,
-	const char *db_dir)
+	const char *db_dir,
+	conf_flag_t flags)
 {
 	if (conf == NULL) {
 		return KNOT_EINVAL;
@@ -108,61 +174,61 @@ int conf_new(
 		return ret;
 	}
 
-	// Prepare namedb api.
-	out->mm = malloc(sizeof(mm_ctx_t));
+	// Initialize a config mempool.
+	out->mm = malloc(sizeof(knot_mm_t));
+	if (out->mm == NULL) {
+		yp_scheme_free(out->scheme);
+		free(out);
+		return KNOT_ENOMEM;
+	}
 	mm_ctx_mempool(out->mm, MM_DEFAULT_BLKSIZE);
-	struct namedb_lmdb_opts lmdb_opts = NAMEDB_LMDB_OPTS_INITIALIZER;
-	lmdb_opts.mapsize = 500 * 1024 * 1024;
-	lmdb_opts.flags.env = NAMEDB_LMDB_NOTLS;
 
-	// Open database.
+	// Set the DB api.
+	out->api = knot_db_lmdb_api();
+	struct knot_db_lmdb_opts lmdb_opts = KNOT_DB_LMDB_OPTS_INITIALIZER;
+	lmdb_opts.mapsize = (size_t)CONF_MAPSIZE * 1024 * 1024;
+	lmdb_opts.flags.env = KNOT_DB_LMDB_NOTLS;
+
+	// Open the database.
 	if (db_dir == NULL) {
+		// Prepare a temporary database.
 		char tpl[] = "/tmp/knot-confdb.XXXXXX";
 		lmdb_opts.path = mkdtemp(tpl);
 		if (lmdb_opts.path == NULL) {
-			CONF_LOG(LOG_ERR, "failed to create temporary directory");
+			CONF_LOG(LOG_ERR, "failed to create temporary directory (%s)",
+			         knot_strerror(knot_map_errno()));
 			ret = KNOT_ENOMEM;
 			goto new_error;
 		}
-		out->api = namedb_lmdb_api();
+
 		ret = out->api->init(&out->db, out->mm, &lmdb_opts);
 
-		// Remove opened database to ensure it is temporary.
-		rm_dir(tpl);
+		// Remove the database to ensure it is temporary.
+		rm_dir(lmdb_opts.path);
 	} else {
+		// Set the specified database.
 		lmdb_opts.path = db_dir;
-		out->api = namedb_lmdb_api();
+
+		// Set the read-only mode.
+		if (flags & CONF_FREADONLY) {
+			lmdb_opts.flags.env |= KNOT_DB_LMDB_RDONLY;
+		}
+
 		ret = out->api->init(&out->db, out->mm, &lmdb_opts);
 	}
-
-	// Check database opening.
 	if (ret != KNOT_EOK) {
 		goto new_error;
 	}
 
-	// Initialize/check database.
-	namedb_txn_t txn;
-	ret = out->api->txn_begin(out->db, &txn, 0);
-	if (ret != KNOT_EOK) {
-		out->api->deinit(out->db);
-		goto new_error;
-	}
-
-	ret = conf_db_init(out, &txn);
-	if (ret != KNOT_EOK) {
-		out->api->txn_abort(&txn);
-		out->api->deinit(out->db);
-		goto new_error;
-	}
-
-	ret = out->api->txn_commit(&txn);
+	// Initialize and check the database.
+	ret = init_and_check(out, flags);
 	if (ret != KNOT_EOK) {
 		out->api->deinit(out->db);
 		goto new_error;
 	}
 
 	// Open common read-only transaction.
-	ret = out->api->txn_begin(out->db, &out->read_txn, NAMEDB_RDONLY);
+	ret = conf_refresh(out);
 	if (ret != KNOT_EOK) {
 		out->api->deinit(out->db);
 		goto new_error;
@@ -171,13 +237,16 @@ int conf_new(
 	// Initialize query modules list.
 	init_list(&out->query_modules);
 
+	// Initialize cached values.
+	init_values(out);
+
 	*conf = out;
 
 	return KNOT_EOK;
 new_error:
-	yp_scheme_free(out->scheme);
 	mp_delete(out->mm->ctx);
 	free(out->mm);
+	yp_scheme_free(out->scheme);
 	free(out);
 
 	return ret;
@@ -207,37 +276,29 @@ int conf_clone(
 	out->api = s_conf->api;
 	out->mm = s_conf->mm;
 	out->db = s_conf->db;
-	out->filename = s_conf->filename;
 
 	// Open common read-only transaction.
-	ret = out->api->txn_begin(out->db, &out->read_txn, NAMEDB_RDONLY);
+	ret = conf_refresh(out);
 	if (ret != KNOT_EOK) {
 		yp_scheme_free(out->scheme);
 		free(out);
 		return ret;
 	}
 
+	// Copy the filename.
+	if (s_conf->filename != NULL) {
+		out->filename = strdup(s_conf->filename);
+	}
+
 	// Initialize query modules list.
 	init_list(&out->query_modules);
 
+	// Initialize cached values.
+	init_values(out);
+
+	out->is_clone = true;
+
 	*conf = out;
-
-	return KNOT_EOK;
-}
-
-int conf_post_open(
-	conf_t *conf)
-{
-	if (conf == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	conf->hostname = sockaddr_hostname();
-
-	conf->cache.srv_nsid = conf_get(conf, C_SRV, C_NSID);
-	conf->cache.srv_max_udp_payload = conf_get(conf, C_SRV, C_MAX_UDP_PAYLOAD);
-
-	conf_activate_modules(conf, NULL, &conf->query_modules, &conf->query_plan);
 
 	return KNOT_EOK;
 }
@@ -249,19 +310,21 @@ void conf_update(
 		return;
 	}
 
+	conf->is_clone = false;
+
 	conf_t **current_conf = &s_conf;
 	conf_t *old_conf = rcu_xchg_pointer(current_conf, conf);
 
 	synchronize_rcu();
 
 	if (old_conf) {
-		conf_free(old_conf, true);
+		old_conf->is_clone = true;
+		conf_free(old_conf);
 	}
 }
 
 void conf_free(
-	conf_t *conf,
-	bool is_clone)
+	conf_t *conf)
 {
 	if (conf == NULL) {
 		return;
@@ -269,19 +332,19 @@ void conf_free(
 
 	yp_scheme_free(conf->scheme);
 	conf->api->txn_abort(&conf->read_txn);
+	free(conf->filename);
 	free(conf->hostname);
 
 	if (conf->io.txn != NULL) {
 		conf->api->txn_abort(conf->io.txn_stack);
 	}
 
-	conf_deactivate_modules(conf, &conf->query_modules, &conf->query_plan);
+	conf_deactivate_modules(&conf->query_modules, &conf->query_plan);
 
-	if (!is_clone) {
+	if (!conf->is_clone) {
 		conf->api->deinit(conf->db);
 		mp_delete(conf->mm->ctx);
 		free(conf->mm);
-		free(conf->filename);
 	}
 
 	free(conf);
@@ -394,11 +457,10 @@ activate_error:
 }
 
 void conf_deactivate_modules(
-	conf_t *conf,
 	list_t *query_modules,
 	struct query_plan **query_plan)
 {
-	if (conf == NULL || query_modules == NULL || query_plan == NULL) {
+	if (query_modules == NULL || query_plan == NULL) {
 		return;
 	}
 
@@ -465,7 +527,7 @@ static void log_prev_err(
 
 static int parser_calls(
 	conf_t *conf,
-	namedb_txn_t *txn,
+	knot_db_txn_t *txn,
 	yp_parser_t *parser,
 	yp_check_ctx_t *ctx)
 {
@@ -553,7 +615,7 @@ static int parser_calls(
 
 int conf_parse(
 	conf_t *conf,
-	namedb_txn_t *txn,
+	knot_db_txn_t *txn,
 	const char *input,
 	bool is_file,
 	void *data)
@@ -651,21 +713,14 @@ int conf_import(
 
 	int ret;
 
-	namedb_txn_t txn;
+	knot_db_txn_t txn;
 	ret = conf->api->txn_begin(conf->db, &txn, 0);
 	if (ret != KNOT_EOK) {
 		goto import_error;
 	}
 
-	// Drop the current DB content.
-	ret = conf->api->clear(&txn);
-	if (ret != KNOT_EOK) {
-		conf->api->txn_abort(&txn);
-		goto import_error;
-	}
-
-	// Initialize new DB.
-	ret = conf_db_init(conf, &txn);
+	// Initialize the DB.
+	ret = conf_db_init(conf, &txn, true);
 	if (ret != KNOT_EOK) {
 		conf->api->txn_abort(&txn);
 		goto import_error;
@@ -687,10 +742,19 @@ int conf_import(
 	}
 
 	// Update read-only transaction.
-	conf->api->txn_abort(&conf->read_txn);
-	ret = conf->api->txn_begin(conf->db, &conf->read_txn, NAMEDB_RDONLY);
+	ret = conf_refresh(conf);
 	if (ret != KNOT_EOK) {
 		goto import_error;
+	}
+
+	// Update cached values.
+	init_values(conf);
+
+	// Reset the filename.
+	free(conf->filename);
+	conf->filename = NULL;
+	if (is_file) {
+		conf->filename = strdup(input);
 	}
 
 	ret = KNOT_EOK;
@@ -811,7 +875,7 @@ int conf_export(
 	FILE *fp = fopen(file_name, "w");
 	if (fp == NULL) {
 		free(buff);
-		return KNOT_EFILE;
+		return knot_map_errno();
 	}
 
 	fprintf(fp, "# Configuration export (Knot DNS %s)\n\n", PACKAGE_VERSION);

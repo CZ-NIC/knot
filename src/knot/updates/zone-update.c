@@ -1,4 +1,4 @@
-/*  Copyright (C) 2014 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -14,17 +14,16 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "knot/updates/zone-update.h"
-
 #include "knot/common/log.h"
 #include "knot/dnssec/zone-events.h"
+#include "knot/updates/zone-update.h"
 #include "knot/zone/serial.h"
-
-#include "libknot/internal/lists.h"
-#include "libknot/internal/mempool.h"
+#include "contrib/mempattern.h"
+#include "contrib/ucw/lists.h"
+#include "contrib/ucw/mempool.h"
 
 static int add_to_node(zone_node_t *node, const zone_node_t *add_node,
-                       mm_ctx_t *mm)
+                       knot_mm_t *mm)
 {
 	for (uint16_t i = 0; i < add_node->rrset_count; ++i) {
 		knot_rrset_t rr = node_rrset_at(add_node, i);
@@ -40,7 +39,7 @@ static int add_to_node(zone_node_t *node, const zone_node_t *add_node,
 }
 
 static int rem_from_node(zone_node_t *node, const zone_node_t *rem_node,
-                         mm_ctx_t *mm)
+                         knot_mm_t *mm)
 {
 	for (uint16_t i = 0; i < rem_node->rrset_count; ++i) {
 		// Remove each found RR from 'node'.
@@ -61,7 +60,7 @@ static int rem_from_node(zone_node_t *node, const zone_node_t *rem_node,
 }
 
 static int apply_changes_to_node(zone_node_t *synth_node, const zone_node_t *add_node,
-                                 const zone_node_t *rem_node, mm_ctx_t *mm)
+                                 const zone_node_t *rem_node, knot_mm_t *mm)
 {
 	// Add changes to node
 	if (!node_empty(add_node)) {
@@ -83,7 +82,7 @@ static int apply_changes_to_node(zone_node_t *synth_node, const zone_node_t *add
 }
 
 static int deep_copy_node_data(zone_node_t *node_copy, const zone_node_t *node,
-                               mm_ctx_t *mm)
+                               knot_mm_t *mm)
 {
 	// Clear space for RRs
 	node_copy->rrs = NULL;
@@ -100,7 +99,7 @@ static int deep_copy_node_data(zone_node_t *node_copy, const zone_node_t *node,
 	return KNOT_EOK;
 }
 
-static zone_node_t *node_deep_copy(const zone_node_t *node, mm_ctx_t *mm)
+static zone_node_t *node_deep_copy(const zone_node_t *node, knot_mm_t *mm)
 {
 	// Shallow copy old node
 	zone_node_t *synth_node = node_shallow_copy(node, mm);
@@ -366,7 +365,7 @@ static int sign_update(zone_update_t *update,
 	return KNOT_EOK;
 }
 
-static int set_new_soa(zone_update_t *update)
+static int set_new_soa(zone_update_t *update, unsigned serial_policy)
 {
 	assert(update);
 
@@ -375,9 +374,8 @@ static int set_new_soa(zone_update_t *update)
 		return KNOT_ENOMEM;
 	}
 
-	conf_val_t val = conf_zone_get(conf(), C_SERIAL_POLICY, update->zone->name);
 	uint32_t old_serial = knot_soa_serial(&soa_cpy->rrs);
-	uint32_t new_serial = serial_next(old_serial, conf_opt(&val));
+	uint32_t new_serial = serial_next(old_serial, serial_policy);
 	if (serial_compare(old_serial, new_serial) >= 0) {
 		log_zone_warning(update->zone->name, "updated serial is lower "
 		                 "than current, serial %u -> %u",
@@ -390,7 +388,7 @@ static int set_new_soa(zone_update_t *update)
 	return KNOT_EOK;
 }
 
-static int commit_incremental(zone_update_t *update, zone_contents_t **contents_out)
+static int commit_incremental(conf_t *conf, zone_update_t *update, zone_contents_t **contents_out)
 {
 	assert(update);
 
@@ -402,7 +400,8 @@ static int commit_incremental(zone_update_t *update, zone_contents_t **contents_
 	int ret = KNOT_EOK;
 	if (zone_update_to(update) == NULL) {
 		// No SOA in the update, create one according to the current policy
-		ret = set_new_soa(update);
+		conf_val_t val = conf_zone_get(conf, C_SERIAL_POLICY, update->zone->name);
+		ret = set_new_soa(update, conf_opt(&val));
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
@@ -418,7 +417,7 @@ static int commit_incremental(zone_update_t *update, zone_contents_t **contents_
 
 	assert(new_contents);
 
-	conf_val_t val = conf_zone_get(conf(), C_DNSSEC_SIGNING, update->zone->name);
+	conf_val_t val = conf_zone_get(conf, C_DNSSEC_SIGNING, update->zone->name);
 	bool dnssec_enable = update->flags & UPDATE_SIGN && conf_bool(&val);
 
 	// Sign the update.
@@ -433,7 +432,7 @@ static int commit_incremental(zone_update_t *update, zone_contents_t **contents_
 	}
 
 	// Write changes to journal if all went well. (DNSSEC merged)
-	ret = zone_change_store(update->zone, &update->change);
+	ret = zone_change_store(conf, update->zone, &update->change);
 	if (ret != KNOT_EOK) {
 		update_rollback(&update->a_ctx);
 		update_free_zone(&new_contents);
@@ -445,10 +444,10 @@ static int commit_incremental(zone_update_t *update, zone_contents_t **contents_
 	return KNOT_EOK;
 }
 
-int zone_update_commit(zone_update_t *update, zone_contents_t **contents_out)
+int zone_update_commit(conf_t *conf, zone_update_t *update, zone_contents_t **contents_out)
 {
 	if (update->flags & UPDATE_INCREMENTAL) {
-		return commit_incremental(update, contents_out);
+		return commit_incremental(conf, update, contents_out);
 	}
 
 	return KNOT_ENOTSUP;

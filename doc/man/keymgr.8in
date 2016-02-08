@@ -67,7 +67,12 @@ directory.
 .INDENT 0.0
 .TP
 \fBinit\fP
-Initialize new KASP database.
+Initialize new KASP database or upgrade existing one. The command is
+idempotent and therefore it is safe to be run multiple times.
+.sp
+The command creates a default policy and default key store (both named
+\fIdefault\fP). In case of upgrade, existing objects are checked and any missing
+attributes are filled in.
 .TP
 \fBzone\fP ...
 Operations with zones in the database. A zone holds assigned signing
@@ -78,8 +83,9 @@ Operations with KASP policies. A policy holds parameters that define the
 way how a zone is signed.
 .TP
 \fBkeystore\fP ...
-Operations with private key store content. The private key store holds
-private key material separately from zone metadata.
+Operations with key stores configured for the KASP database. A private key
+store holds private key material for zone signing separately from the zone
+metadata.
 .TP
 \fBtsig\fP ...
 Operations with TSIG keys.
@@ -87,9 +93,8 @@ Operations with TSIG keys.
 .SS zone commands
 .INDENT 0.0
 .TP
-\fBzone\fP \fBadd\fP \fIzone\-name\fP [\fBpolicy\fP \fIpolicy\-name\fP|\fBnone\fP]
-Add a zone into the database. The policy defaults to \fBnone\fP, meaning that
-no automatic key management is to be performed.
+\fBzone\fP \fBadd\fP \fIzone\-name\fP [\fBpolicy\fP \fIpolicy\-name\fP]
+Add a zone into the database. The policy defaults to \(aqdefault\(aq.
 .TP
 \fBzone\fP \fBlist\fP [\fIpattern\fP]
 List zones in the database matching the \fIpattern\fP as a substring.
@@ -98,7 +103,7 @@ List zones in the database matching the \fIpattern\fP as a substring.
 Remove a zone from the database. If some keys are currently active, the
 \fBforce\fP argument must be specified.
 .TP
-\fBzone\fP \fBset\fP \fIzone\-name\fP [\fBpolicy\fP \fIpolicy\-name\fP|\fBnone\fP]
+\fBzone\fP \fBset\fP \fIzone\-name\fP [\fBpolicy\fP \fIpolicy\-name\fP]
 Change zone configuration. At the moment, only a policy can be changed.
 .TP
 \fBzone\fP \fBshow\fP \fIzone\-name\fP
@@ -221,17 +226,55 @@ Max TTL in the zone.
 \fBdelay\fP \fIseconds\fP
 Zone signing and data propagation delay. The value is added for safety to
 timing of all rollover steps.
+.TP
+\fBmanual\fP \fIenable\fP
+Enable manual key management. If enabled, no keys will be generated or
+rolled automatically.
+.TP
+\fBkeystore\fP \fIname\fP
+Name of the key store to be used for private key material.
 .UNINDENT
 .UNINDENT
 .UNINDENT
 .SS keystore commands
-.sp
-The key store functionality is limited at the moment. Only one instance of
-file\-based key store is supported. This command is subject to change.
 .INDENT 0.0
 .TP
 \fBkeystore\fP \fBlist\fP
-List private keys in the key store.
+List names of configured key stores.
+.TP
+\fBkeystore\fP \fBshow\fP \fIname\fP
+Show configuration of a key store named \fIname\fP and list key IDs of private
+key material present in that key store.
+.TP
+\fBkeystore\fP \fBadd\fP \fIname\fP [\fBbackend\fP \fIbackend\fP] [\fBconfig\fP \fIconfig\fP]
+Configure new key store. The \fIname\fP is a unique key store identifier. The
+\fIbackend\fP and backend\-specific configuration string \fIconfig\fP determine where
+the private key material will be physically stored.
+.UNINDENT
+.sp
+Supported key store backends:
+.INDENT 0.0
+.INDENT 3.5
+.INDENT 0.0
+.TP
+\fBpkcs8\fP (default)
+The backend stores private key material in unencrypted X.509 PEM files
+in a directory specified as the backend configuration string. The path
+can be specified relatively to the KASP database location.
+.TP
+\fBpkcs11\fP
+The backend stores private key material in a cryptographic token accessible
+via the PKCS #11 interface. The configuration string consists of a token
+PKCS #11 URL and PKCS #11 module path separated by the space character.
+.sp
+The format of the PKCS #11 URL is described in \fI\%RFC 7512\fP\&. If the token
+is protected by a PIN, make sure to include \fIpin\-value\fP or \fIpin\-source\fP
+attribute in the URL.
+.sp
+The PKCS #11 module path can be an absolute path or just a module name. In
+the later case, the module is looked up in the default modules location.
+.UNINDENT
+.UNINDENT
 .UNINDENT
 .SS tsig commands
 .INDENT 0.0
@@ -249,9 +292,8 @@ utilities.
 .SH EXAMPLES
 .INDENT 0.0
 .IP 1. 3
-Initialize a new KASP database, add a policy named \fIdefault\fP with default
-parameters, and add a zone \fIexample.com\fP\&. The zone will use the created
-policy:
+Initialize a new KASP database and add a zone \fIexample.com\fP with the
+\fIdefault\fP policy assigned:
 .INDENT 3.0
 .INDENT 3.5
 .sp
@@ -284,8 +326,8 @@ existing zone:
 .sp
 .nf
 .ft C
-$ keymgr policy add lab rrsig\-lifetime 300 rrsig\-refresh 150 zsk\-lifetime 600 \e
-  delay 10
+$ keymgr policy add lab rrsig\-lifetime 300 rrsig\-refresh 150 \e
+    zsk\-lifetime 600 delay 10
 $ keymgr zone set example.com policy lab
 .ft P
 .fi
@@ -308,13 +350,15 @@ $ keymgr zone key import example.com Kexample.com+010+67890.private
 .UNINDENT
 .UNINDENT
 .IP 5. 3
-Disable automatic key management for a secured zone:
+Disable automatic key management for a secured zone. For this purpose,
+create a policy named \(aqmanual\(aq with otherwise default signing parameters:
 .INDENT 3.0
 .INDENT 3.5
 .sp
 .nf
 .ft C
-$ keymgr zone set example.com policy none
+$ keymgr policy add manual manual true
+$ keymgr zone set example.com policy manual
 .ft P
 .fi
 .UNINDENT
@@ -327,7 +371,8 @@ signing key. The Single\-Type Signing scheme will be used:
 .sp
 .nf
 .ft C
-$ keymgr zone add example.com policy none
+$ keymgr policy add manual manual true
+$ keymgr zone add example.com policy manual
 $ keymgr zone key gen example.com algo 13 size 256
 .ft P
 .fi
@@ -342,7 +387,8 @@ one as a ZSK:
 .sp
 .nf
 .ft C
-$ keymgr zone add example.com policy none
+$ keymgr policy add manual manual true
+$ keymgr zone add example.com policy manual
 $ keymgr zone key generate example.com algorithm rsasha256 size 2048 ksk
 $ keymgr zone key generate example.com algorithm rsasha256 size 1024
 .ft P
@@ -357,6 +403,23 @@ Generate a TSIG key named \fIoperator.key\fP:
 .nf
 .ft C
 $ keymgr tsig generate operator.key algorithm hmac\-sha512
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.IP 9. 3
+Add a new key store named \fIhsm\fP and backed by the SoftHSM PKCS #11 module,
+then add a new policy named \fIsecure\fP with default parameters using this key
+store, and finally add the zone \fIexample.com\fP which will use this policy:
+.INDENT 3.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+$ keymgr keystore add hsm backend pkcs11 \e
+    config "pkcs11:token=knot;pin\-value=1234 libsofthsm2.so"
+$ keymgr policy add secure keystore hsm
+$ keymgr zone add example.com policy secure
 .ft P
 .fi
 .UNINDENT

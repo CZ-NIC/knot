@@ -14,18 +14,16 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <time.h>
-#include <unistd.h>
-#include <sys/types.h>
-#include <sys/socket.h>
 #include <assert.h>
+#include <time.h>
 
 #include "dnssec/random.h"
 #include "knot/common/log.h"
 #include "knot/server/rrl.h"
 #include "knot/zone/zone.h"
 #include "libknot/libknot.h"
-#include "libknot/internal/trie/murmurhash3.h"
+#include "contrib/murmurhash3/murmurhash3.h"
+#include "contrib/sockaddr.h"
 
 /* Hopscotch defines. */
 #define HOP_LEN (sizeof(unsigned)*8)

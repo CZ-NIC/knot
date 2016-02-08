@@ -30,6 +30,7 @@ check_PROGRAMS = \
 	key_algorithm	\
 	key_ds		\
 	keyid		\
+	keystore_pkcs11 \
 	keystore_pkcs8	\
 	keystore_pkcs8_dir \
 	keytag		\
@@ -46,6 +47,8 @@ check_PROGRAMS = \
 	shared_timestamp \
 	shared_wire	\
 	tsig
+
+keystore_pkcs11_CPPFLAGS = $(AM_CPPFLAGS) -DLIBDIR='"$(libdir)"'
 
 check-compile-only: $(check_PROGRAMS)
 

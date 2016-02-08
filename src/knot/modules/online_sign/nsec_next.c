@@ -19,6 +19,7 @@
 #include <stdlib.h>
 
 #include "knot/modules/online_sign/nsec_next.h"
+#include "libknot/consts.h"
 #include "libknot/dname.h"
 #include "libknot/errcode.h"
 

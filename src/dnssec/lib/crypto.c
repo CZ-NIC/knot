@@ -23,7 +23,9 @@
 _public_
 void dnssec_crypto_init(void)
 {
-	//gnutls_pkcs11_init(GNUTLS_PKCS11_FLAG_MANUAL, NULL);
+#ifdef ENABLE_PKCS11
+	gnutls_pkcs11_init(GNUTLS_PKCS11_FLAG_MANUAL, NULL);
+#endif
 	gnutls_global_init();
 }
 
@@ -31,11 +33,15 @@ _public_
 void dnssec_crypto_cleanup(void)
 {
 	gnutls_global_deinit();
-	//gnutls_pkcs11_deinit();
+#ifdef ENABLE_PKCS11
+	gnutls_pkcs11_deinit();
+#endif
 }
 
 _public_
 void dnssec_crypto_reinit(void)
 {
-	//gnutls_pkcs11_reinit();
+#ifdef ENABLE_PKCS11
+	gnutls_pkcs11_reinit();
+#endif
 }

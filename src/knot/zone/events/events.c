@@ -1,4 +1,4 @@
-/*  Copyright (C) 2014 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -16,26 +16,18 @@
 
 #include <assert.h>
 #include <time.h>
+#include <urcu.h>
 
-#include "knot/common/evsched.h"
-#include "knot/common/log.h"
 #include "libknot/libknot.h"
-#include "libknot/internal/namedb/namedb.h"
-#include "knot/server/server.h"
-#include "knot/worker/pool.h"
-#include "knot/zone/zone.h"
+#include "knot/common/log.h"
 #include "knot/zone/events/events.h"
 #include "knot/zone/events/handlers.h"
 #include "knot/zone/events/replan.h"
-#include "knot/zone/timers.h"
-
-/* ------------------------- internal timers -------------------------------- */
+#include "knot/zone/zone.h"
 
 #define ZONE_EVENT_IMMEDIATE 1 /* Fast-track to worker queue. */
 
-/* -- internal API ---------------------------------------------------------- */
-
-typedef int (*zone_event_cb)(zone_t *zone);
+typedef int (*zone_event_cb)(conf_t *conf, zone_t *zone);
 
 typedef struct event_info {
 	zone_event_type_t type;
@@ -44,15 +36,15 @@ typedef struct event_info {
 } event_info_t;
 
 static const event_info_t EVENT_INFO[] = {
-        { ZONE_EVENT_RELOAD,  event_reload,  "reload" },
-        { ZONE_EVENT_REFRESH, event_refresh, "refresh" },
-        { ZONE_EVENT_XFER,    event_xfer,    "transfer" },
-        { ZONE_EVENT_UPDATE,  event_update,  "update" },
-        { ZONE_EVENT_EXPIRE,  event_expire,  "expiration" },
-        { ZONE_EVENT_FLUSH,   event_flush,   "journal flush" },
-        { ZONE_EVENT_NOTIFY,  event_notify,  "notify" },
-        { ZONE_EVENT_DNSSEC,  event_dnssec,  "DNSSEC resign" },
-        { 0 }
+	{ ZONE_EVENT_LOAD,    event_load,    "load" },
+	{ ZONE_EVENT_REFRESH, event_refresh, "refresh" },
+	{ ZONE_EVENT_XFER,    event_xfer,    "transfer" },
+	{ ZONE_EVENT_UPDATE,  event_update,  "update" },
+	{ ZONE_EVENT_EXPIRE,  event_expire,  "expiration" },
+	{ ZONE_EVENT_FLUSH,   event_flush,   "journal flush" },
+	{ ZONE_EVENT_NOTIFY,  event_notify,  "notify" },
+	{ ZONE_EVENT_DNSSEC,  event_dnssec,  "DNSSEC resign" },
+	{ 0 }
 };
 
 static const event_info_t *get_event_info(zone_event_type_t type)
@@ -157,8 +149,6 @@ static void reschedule(zone_events_t *events)
 	evsched_schedule(events->event, diff * 1000);
 }
 
-/* -- callbacks control ----------------------------------------------------- */
-
 /*!
  * \brief Zone event wrapper, expected to be called from a worker thread.
  *
@@ -186,10 +176,21 @@ static void event_wrap(task_t *task)
 	pthread_mutex_unlock(&events->mx);
 
 	const event_info_t *info = get_event_info(type);
-	int result = info->callback(zone);
-	if (result != KNOT_EOK) {
-		log_zone_error(zone->name, "zone %s failed (%s)", info->name,
-		               knot_strerror(result));
+
+	/* Create a configuration copy just for this event. */
+	conf_t *conf;
+	rcu_read_lock();
+	int ret = conf_clone(&conf);
+	rcu_read_unlock();
+	if (ret == KNOT_EOK) {
+		/* Execute the event callback. */
+		ret = info->callback(conf, zone);
+		conf_free(conf);
+	}
+
+	if (ret != KNOT_EOK) {
+		log_zone_error(zone->name, "zone event '%s' failed (%s)",
+		               info->name, knot_strerror(ret));
 	}
 
 	pthread_mutex_lock(&events->mx);
@@ -218,8 +219,6 @@ static int event_dispatch(event_t *event)
 	return KNOT_EOK;
 }
 
-/* -- public API ------------------------------------------------------------ */
-
 int zone_events_init(zone_t *zone)
 {
 	if (!zone) {
@@ -237,7 +236,7 @@ int zone_events_init(zone_t *zone)
 }
 
 int zone_events_setup(struct zone *zone, worker_pool_t *workers,
-                      evsched_t *scheduler, namedb_t *timers_db)
+                      evsched_t *scheduler, knot_db_t *timers_db)
 {
 	if (!zone || !workers || !scheduler) {
 		return KNOT_EINVAL;
@@ -412,14 +411,14 @@ time_t zone_events_get_next(const struct zone *zone, zone_event_type_t *type)
 	return next_time;
 }
 
-void zone_events_update(zone_t *zone, zone_t *old_zone)
+void zone_events_update(conf_t *conf, zone_t *zone, zone_t *old_zone)
 {
-	replan_events(zone, old_zone);
+	replan_events(conf, zone, old_zone);
 }
 
-void zone_events_replan_ddns(struct zone *zone, const struct zone *old_zone)
+void zone_events_replan_ddns(zone_t *zone, zone_t *old_zone)
 {
 	if (old_zone) {
-		replan_update(zone, (zone_t *)old_zone);
+		replan_update(zone, old_zone);
 	}
 }

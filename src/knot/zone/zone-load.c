@@ -18,16 +18,17 @@
 #include "knot/server/journal.h"
 #include "knot/zone/zone-diff.h"
 #include "knot/zone/zone-load.h"
-#include "knot/zone/contents.h"
 #include "knot/zone/zonefile.h"
 #include "knot/dnssec/zone-events.h"
 #include "knot/updates/apply.h"
 #include "libknot/libknot.h"
 
-zone_contents_t *zone_load_contents(conf_t *conf, const knot_dname_t *zone_name)
+int zone_load_contents(conf_t *conf, const knot_dname_t *zone_name,
+                       zone_contents_t **contents)
 {
-	assert(conf);
-	assert(zone_name);
+	if (conf == NULL || zone_name == NULL || contents == NULL) {
+		return KNOT_EINVAL;
+	}
 
 	zloader_t zl;
 	char *zonefile = conf_zonefile(conf, zone_name);
@@ -35,7 +36,7 @@ zone_contents_t *zone_load_contents(conf_t *conf, const knot_dname_t *zone_name)
 	int ret = zonefile_open(&zl, zonefile, zone_name, conf_bool(&val));
 	free(zonefile);
 	if (ret != KNOT_EOK) {
-		return NULL;
+		return ret;
 	}
 
 	/* Set the zone type (master/slave). If zone has no master set, we
@@ -43,18 +44,21 @@ zone_contents_t *zone_load_contents(conf_t *conf, const knot_dname_t *zone_name)
 	 */
 	zl.creator->master = !zone_load_can_bootstrap(conf, zone_name);
 
-	zone_contents_t *zone_contents = zonefile_load(&zl);
+	*contents = zonefile_load(&zl);
 	zonefile_close(&zl);
-	if (zone_contents == NULL) {
-		return NULL;
+	if (*contents == NULL) {
+		return KNOT_ERROR;
 	}
 
-	return zone_contents;
+	return KNOT_EOK;
 }
 
-/*! \brief Check zone configuration constraints. */
 int zone_load_check(conf_t *conf, zone_contents_t *contents)
 {
+	if (conf == NULL) {
+		return KNOT_EINVAL;
+	}
+
 	/* Bootstrapped zone, no checks apply. */
 	if (contents == NULL) {
 		return KNOT_EOK;
@@ -84,11 +88,12 @@ int zone_load_check(conf_t *conf, zone_contents_t *contents)
 	return KNOT_EOK;
 }
 
-/*!
- * \brief Apply changesets to zone from journal.
- */
 int zone_load_journal(conf_t *conf, zone_t *zone, zone_contents_t *contents)
 {
+	if (conf == NULL || zone == NULL || contents == NULL) {
+		return KNOT_EINVAL;
+	}
+
 	/* Check if journal is used and zone is not empty. */
 	char *journal_name = conf_journalfile(conf, zone->name);
 	if (!journal_exists(journal_name) ||
@@ -134,10 +139,10 @@ int zone_load_journal(conf_t *conf, zone_t *zone, zone_contents_t *contents)
 	return ret;
 }
 
-int zone_load_post(conf_t *conf, zone_contents_t *contents, zone_t *zone,
+int zone_load_post(conf_t *conf, zone_t *zone, zone_contents_t *contents,
                    uint32_t *dnssec_refresh)
 {
-	if (zone == NULL) {
+	if (conf == NULL || zone == NULL || contents == NULL) {
 		return KNOT_EINVAL;
 	}
 
@@ -205,7 +210,7 @@ int zone_load_post(conf_t *conf, zone_contents_t *contents, zone_t *zone,
 
 	/* Write changes (DNSSEC, diff, or both) to journal if all went well. */
 	if (!changeset_empty(&change)) {
-		ret = zone_change_store(zone, &change);
+		ret = zone_change_store(conf, zone, &change);
 	}
 
 	changeset_clear(&change);
@@ -214,6 +219,10 @@ int zone_load_post(conf_t *conf, zone_contents_t *contents, zone_t *zone,
 
 bool zone_load_can_bootstrap(conf_t *conf, const knot_dname_t *zone_name)
 {
+	if (conf == NULL || zone_name == NULL) {
+		return false;
+	}
+
 	conf_val_t val = conf_zone_get(conf, C_MASTER, zone_name);
 	size_t count = conf_val_count(&val);
 

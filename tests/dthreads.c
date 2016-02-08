@@ -16,7 +16,6 @@
 
 #include <pthread.h>
 #include <sched.h>
-#include <sys/select.h>
 #include <signal.h>
 #include <stdlib.h>
 #include <tap/basic.h>

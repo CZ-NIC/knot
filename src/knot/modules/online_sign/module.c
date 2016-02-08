@@ -25,7 +25,7 @@
 
 #include "libknot/dname.h"
 #include "libknot/dnssec/rrset-sign.h"
-#include "libknot/internal/mem.h"
+#include "contrib/string.h"
 
 #include "dnssec/error.h"
 #include "dnssec/kasp.h"
@@ -187,7 +187,7 @@ static dnssec_nsec_bitmap_t *synth_bitmap(knot_pkt_t *pkt, const struct query_da
 	return map;
 }
 
-static knot_rrset_t *synth_nsec(knot_pkt_t *pkt, struct query_data *qdata, mm_ctx_t *mm)
+static knot_rrset_t *synth_nsec(knot_pkt_t *pkt, struct query_data *qdata, knot_mm_t *mm)
 {
 	knot_rrset_t *nsec = knot_rrset_new(qdata->name, KNOT_RRTYPE_NSEC, KNOT_CLASS_IN, mm);
 	if (!nsec) {
@@ -230,7 +230,7 @@ static knot_rrset_t *sign_rrset(const knot_dname_t *owner,
                                 const knot_rrset_t *cover,
                                 online_sign_ctx_t *module_ctx,
                                 dnssec_sign_ctx_t *sign_ctx,
-                                mm_ctx_t *mm)
+                                knot_mm_t *mm)
 {
 	// copy of RR set with replaced owner name
 
@@ -349,7 +349,7 @@ static int synth_authority(int state, knot_pkt_t *pkt, struct query_data *qdata,
 }
 
 static knot_rrset_t *synth_dnskey(const zone_t *zone, const dnssec_key_t *key,
-                                  mm_ctx_t *mm)
+                                  knot_mm_t *mm)
 {
 	knot_rrset_t *dnskey = knot_rrset_new(zone->name, KNOT_RRTYPE_DNSKEY,
 	                                      KNOT_CLASS_IN, mm);
@@ -429,38 +429,58 @@ static int synth_answer(int state, knot_pkt_t *pkt, struct query_data *qdata, vo
 	return state;
 }
 
-static int get_dnssec_key(dnssec_key_t **key_ptr,
-                          const knot_dname_t *zone_name,
+static int get_online_key(dnssec_key_t **key_ptr, const knot_dname_t *zone_name,
                           const char *kasp_path)
 {
+	dnssec_kasp_t *kasp = NULL;
+	dnssec_kasp_zone_t *zone = NULL;
+	dnssec_kasp_policy_t *policy = NULL;
+	dnssec_kasp_keystore_t *kasp_keystore = NULL;
+	dnssec_keystore_t *keystore = NULL;
+
 	// KASP database
 
-	dnssec_kasp_t *kasp = NULL;
 	int r = dnssec_kasp_init_dir(&kasp);
 	if (r != DNSSEC_EOK) {
-		return r;
+		goto fail;
 	}
 
 	r = dnssec_kasp_open(kasp, kasp_path);
 	if (r != DNSSEC_EOK) {
-		dnssec_kasp_deinit(kasp);
-		return r;
+		goto fail;
 	}
 
 	// KASP zone
 
 	char *zone_str = knot_dname_to_str_alloc(zone_name);
 	if (!zone_str) {
-		dnssec_kasp_deinit(kasp);
-		return KNOT_ENOMEM;
+		r = KNOT_ENOMEM;
+		goto fail;
 	}
 
-	dnssec_kasp_zone_t *zone = NULL;
 	r = dnssec_kasp_zone_load(kasp, zone_str, &zone);
 	free(zone_str);
 	if (r != DNSSEC_EOK) {
-		dnssec_kasp_deinit(kasp);
-		return r;
+		goto fail;
+	}
+
+	// KASP keystore
+
+	const char *policy_id = dnssec_kasp_zone_get_policy(zone);
+	r = dnssec_kasp_policy_load(kasp, policy_id, &policy);
+	if (r != DNSSEC_EOK) {
+		goto fail;
+	}
+
+	r = dnssec_kasp_keystore_load(kasp, policy->keystore, &kasp_keystore);
+	if (r != DNSSEC_EOK) {
+		goto fail;
+	}
+
+	r = dnssec_kasp_keystore_open(kasp, kasp_keystore->backend,
+	                              kasp_keystore->config, &keystore);
+	if (r != DNSSEC_EOK) {
+		goto fail;
 	}
 
 	// DNSSEC key
@@ -469,67 +489,35 @@ static int get_dnssec_key(dnssec_key_t **key_ptr,
 	assert(list);
 	dnssec_item_t *item = dnssec_list_nth(list, 0);
 	if (!item) {
-		dnssec_kasp_zone_free(zone);
-		dnssec_kasp_deinit(kasp);
-		return DNSSEC_NOT_FOUND;
+		r = DNSSEC_NOT_FOUND;
+		goto fail;
 	}
 
 	dnssec_kasp_key_t *kasp_key = dnssec_item_get(item);
 	assert(kasp_key);
-	dnssec_key_t *key = dnssec_key_dup(kasp_key->key);
 
+	dnssec_key_t *key = dnssec_key_dup(kasp_key->key);
+	if (!key) {
+		r = KNOT_ENOMEM;
+		goto fail;
+	}
+
+	r = dnssec_key_import_keystore(key, keystore, kasp_key->id);
+	if (r != DNSSEC_EOK) {
+		dnssec_key_free(key);
+		goto fail;
+	}
+
+	*key_ptr = key;
+
+fail:
+	dnssec_keystore_deinit(keystore);
+	dnssec_kasp_keystore_free(kasp_keystore);
+	dnssec_kasp_policy_free(policy);
 	dnssec_kasp_zone_free(zone);
 	dnssec_kasp_deinit(kasp);
 
-	if (!key) {
-		return KNOT_ENOMEM;
-	}
-
-	*key_ptr = key;
-	return KNOT_EOK;
-}
-
-static int load_private_key(dnssec_key_t *key, const char *kasp_path)
-{
-	char *keystore_path = sprintf_alloc("%s/keys", kasp_path);
-	if (!keystore_path) {
-		return KNOT_ENOMEM;
-	}
-
-	dnssec_keystore_t *store = NULL;
-	dnssec_keystore_init_pkcs8_dir(&store);
-	int r = dnssec_keystore_open(store, keystore_path);
-	free(keystore_path);
-	if (r != DNSSEC_EOK) {
-		dnssec_keystore_deinit(store);
-		return r;
-	}
-
-	r = dnssec_key_import_private_keystore(key, store);
-	dnssec_keystore_deinit(store);
-
 	return r;
-}
-
-static int get_online_key(dnssec_key_t **key_ptr, const knot_dname_t *zone_name,
-                          const char *kasp_path)
-{
-	dnssec_key_t *key = NULL;
-
-	int r = get_dnssec_key(&key, zone_name, kasp_path);
-	if (r != KNOT_EOK) {
-		return r;
-	}
-
-	r = load_private_key(key, kasp_path);
-	if (r != DNSSEC_EOK) {
-		dnssec_key_free(key);
-		return r;
-	}
-
-	*key_ptr = key;
-
-	return KNOT_EOK;
 }
 
 static void online_sign_ctx_free(online_sign_ctx_t *ctx)

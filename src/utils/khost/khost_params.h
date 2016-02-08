@@ -28,8 +28,6 @@
 
 #include "utils/kdig/kdig_params.h"
 
-#define KHOST_VERSION "khost, version " PACKAGE_VERSION "\n"
-
 int khost_parse(kdig_params_t *params, int argc, char *argv[]);
 void khost_clean(kdig_params_t *params);
 

@@ -16,14 +16,10 @@
 
 #pragma once
 
+#include "libknot/dname.h"
 #include "libknot/rdataset.h"
 
-static inline
-uint16_t knot_rrsig_type_covered(const knot_rdataset_t *rrs, size_t pos)
-{
-	KNOT_RDATASET_CHECK(rrs, pos, return 0);
-	return wire_read_u16(knot_rdata_offset(rrs, pos, 0));
-}
+uint16_t knot_rrsig_type_covered(const knot_rdataset_t *rrs, size_t pos);
 
 static inline
 uint8_t knot_rrsig_algorithm(const knot_rdataset_t *rrs, size_t pos)
@@ -39,33 +35,13 @@ uint8_t knot_rrsig_labels(const knot_rdataset_t *rrs, size_t pos)
 	return *knot_rdata_offset(rrs, pos, 3);
 }
 
-static inline
-uint32_t knot_rrsig_original_ttl(const knot_rdataset_t *rrs, size_t pos)
-{
-	KNOT_RDATASET_CHECK(rrs, pos, return 0);
-	return wire_read_u32(knot_rdata_offset(rrs, pos, 4));
-}
+uint32_t knot_rrsig_original_ttl(const knot_rdataset_t *rrs, size_t pos);
 
-static inline
-uint32_t knot_rrsig_sig_expiration(const knot_rdataset_t *rrs, size_t pos)
-{
-	KNOT_RDATASET_CHECK(rrs, pos, return 0);
-	return wire_read_u32(knot_rdata_offset(rrs, pos, 8));
-}
+uint32_t knot_rrsig_sig_expiration(const knot_rdataset_t *rrs, size_t pos);
 
-static inline
-uint32_t knot_rrsig_sig_inception(const knot_rdataset_t *rrs, size_t pos)
-{
-	KNOT_RDATASET_CHECK(rrs, pos, return 0);
-	return wire_read_u32(knot_rdata_offset(rrs, pos, 12));
-}
+uint32_t knot_rrsig_sig_inception(const knot_rdataset_t *rrs, size_t pos);
 
-static inline
-uint16_t knot_rrsig_key_tag(const knot_rdataset_t *rrs, size_t pos)
-{
-	KNOT_RDATASET_CHECK(rrs, pos, return 0);
-	return wire_read_u16(knot_rdata_offset(rrs, pos, 16));
-}
+uint16_t knot_rrsig_key_tag(const knot_rdataset_t *rrs, size_t pos);
 
 static inline
 const knot_dname_t *knot_rrsig_signer_name(const knot_rdataset_t *rrs,

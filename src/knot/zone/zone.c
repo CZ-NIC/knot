@@ -1,4 +1,4 @@
-/* Copyright (C) 2014 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2014 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -15,44 +15,31 @@
  */
 
 #include <stdlib.h>
-#include <assert.h>
 #include <string.h>
 #include <sys/stat.h>
 #include <urcu.h>
 
-#include "dnssec/random.h"
-#include "libknot/descriptor.h"
-#include "knot/common/evsched.h"
-#include "libknot/internal/lists.h"
 #include "knot/common/log.h"
-#include "knot/common/trim.h"
-#include "knot/zone/node.h"
 #include "knot/zone/serial.h"
 #include "knot/zone/zone.h"
 #include "knot/zone/zonefile.h"
 #include "knot/zone/contents.h"
-#include "knot/updates/acl.h"
-#include "knot/updates/apply.h"
-#include "libknot/processing/requestor.h"
 #include "knot/nameserver/process_query.h"
 #include "libknot/libknot.h"
-#include "libknot/dname.h"
-#include "libknot/internal/utils.h"
-#include "libknot/internal/mem.h"
-#include "libknot/rrtype/soa.h"
+#include "contrib/trim.h"
+#include "contrib/mempattern.h"
+#include "contrib/ucw/lists.h"
+#include "contrib/ucw/mempool.h"
 
 #define JOURNAL_SUFFIX	".diff.db"
 
 static void free_ddns_queue(zone_t *z)
 {
-	struct knot_request *n = NULL;
-	node_t *nxt = NULL;
-	WALK_LIST_DELSAFE(n, nxt, z->ddns_queue) {
-		close(n->fd);
-		knot_pkt_free(&n->query);
-		rem_node((node_t *)n);
-		free(n);
+	ptrnode_t *node = NULL, *nxt = NULL;
+	WALK_LIST_DELSAFE(node, nxt, z->ddns_queue) {
+		knot_request_free(node->d, NULL);
 	}
+	ptrlist_free(&z->ddns_queue, NULL);
 }
 
 zone_t* zone_new(const knot_dname_t *name)
@@ -112,20 +99,21 @@ void zone_free(zone_t **zone_ptr)
 	/* Free zone contents. */
 	zone_contents_deep_free(&zone->contents);
 
-	conf_deactivate_modules(conf(), &zone->query_modules, &zone->query_plan);
+	conf_deactivate_modules(&zone->query_modules, &zone->query_plan);
 
 	free(zone);
 	*zone_ptr = NULL;
 }
 
-int zone_change_store(zone_t *zone, changeset_t *change)
+int zone_change_store(conf_t *conf, zone_t *zone, changeset_t *change)
 {
-	assert(zone);
-	assert(change);
+	if (conf == NULL || zone == NULL || change == NULL) {
+		return KNOT_EINVAL;
+	}
 
-	conf_val_t val = conf_zone_get(conf(), C_MAX_JOURNAL_SIZE, zone->name);
+	conf_val_t val = conf_zone_get(conf, C_MAX_JOURNAL_SIZE, zone->name);
 	int64_t ixfr_fslimit = conf_int(&val);
-	char *journal_file = conf_journalfile(conf(), zone->name);
+	char *journal_file = conf_journalfile(conf, zone->name);
 
 	pthread_mutex_lock(&zone->journal_lock);
 	int ret = journal_store_changeset(change, journal_file, ixfr_fslimit);
@@ -133,7 +121,7 @@ int zone_change_store(zone_t *zone, changeset_t *change)
 		log_zone_notice(zone->name, "journal is full, flushing");
 
 		/* Transaction rolled back, journal released, we may flush. */
-		ret = zone_flush_journal(zone);
+		ret = zone_flush_journal(conf, zone);
 		if (ret == KNOT_EOK) {
 			ret = journal_store_changeset(change, journal_file, ixfr_fslimit);
 		}
@@ -145,14 +133,15 @@ int zone_change_store(zone_t *zone, changeset_t *change)
 	return ret;
 }
 
-int zone_changes_store(zone_t *zone, list_t *chgs)
+int zone_changes_store(conf_t *conf, zone_t *zone, list_t *chgs)
 {
-	assert(zone);
-	assert(chgs);
+	if (conf == NULL || zone == NULL || chgs == NULL) {
+		return KNOT_EINVAL;
+	}
 
-	conf_val_t val = conf_zone_get(conf(), C_MAX_JOURNAL_SIZE, zone->name);
+	conf_val_t val = conf_zone_get(conf, C_MAX_JOURNAL_SIZE, zone->name);
 	int64_t ixfr_fslimit = conf_int(&val);
-	char *journal_file = conf_journalfile(conf(), zone->name);
+	char *journal_file = conf_journalfile(conf, zone->name);
 
 	pthread_mutex_lock(&zone->journal_lock);
 	int ret = journal_store_changesets(chgs, journal_file, ixfr_fslimit);
@@ -160,7 +149,7 @@ int zone_changes_store(zone_t *zone, list_t *chgs)
 		log_zone_notice(zone->name, "journal is full, flushing");
 
 		/* Transaction rolled back, journal released, we may flush. */
-		ret = zone_flush_journal(zone);
+		ret = zone_flush_journal(conf, zone);
 		if (ret == KNOT_EOK) {
 			ret = journal_store_changesets(chgs, journal_file, ixfr_fslimit);
 		}
@@ -186,13 +175,13 @@ zone_contents_t *zone_switch_contents(zone_t *zone, zone_contents_t *new_content
 	return old_contents;
 }
 
-bool zone_is_slave(const zone_t *zone)
+bool zone_is_slave(conf_t *conf, const zone_t *zone)
 {
-	if (zone == NULL) {
+	if (conf == NULL || zone == NULL) {
 		return false;
 	}
 
-	conf_val_t val = conf_zone_get(conf(), C_MASTER, zone->name);
+	conf_val_t val = conf_zone_get(conf, C_MASTER, zone->name);
 	return conf_val_count(&val) > 0 ? true : false;
 }
 
@@ -224,7 +213,7 @@ void zone_clear_preferred_master(zone_t *zone)
 /*!
  * \brief Get preferred zone master while checking its existence.
  */
-int static preferred_master(zone_t *zone, conf_remote_t *master)
+int static preferred_master(conf_t *conf, zone_t *zone, conf_remote_t *master)
 {
 	pthread_mutex_lock(&zone->preferred_lock);
 
@@ -233,13 +222,13 @@ int static preferred_master(zone_t *zone, conf_remote_t *master)
 		return KNOT_ENOENT;
 	}
 
-	conf_val_t masters = conf_zone_get(conf(), C_MASTER, zone->name);
+	conf_val_t masters = conf_zone_get(conf, C_MASTER, zone->name);
 	while (masters.code == KNOT_EOK) {
-		conf_val_t addr = conf_id_get(conf(), C_RMT, C_ADDR, &masters);
+		conf_val_t addr = conf_id_get(conf, C_RMT, C_ADDR, &masters);
 		size_t addr_count = conf_val_count(&addr);
 
 		for (size_t i = 0; i < addr_count; i++) {
-			conf_remote_t remote = conf_remote(conf(), &masters, i);
+			conf_remote_t remote = conf_remote(conf, &masters, i);
 			if (netblock_match(&remote.addr, zone->preferred_master, -1)) {
 				*master = remote;
 				pthread_mutex_unlock(&zone->preferred_lock);
@@ -255,18 +244,18 @@ int static preferred_master(zone_t *zone, conf_remote_t *master)
 	return KNOT_ENOENT;
 }
 
-int zone_master_try(zone_t *zone, zone_master_cb callback, void *callback_data,
-                    const char *err_str)
+int zone_master_try(conf_t *conf, zone_t *zone, zone_master_cb callback,
+                    void *callback_data, const char *err_str)
 {
-	if (zone == NULL || callback == NULL) {
+	if (conf == NULL || zone == NULL || callback == NULL || err_str == NULL) {
 		return KNOT_EINVAL;
 	}
 
 	/* Try the preferred server. */
 
 	conf_remote_t preferred = { { AF_UNSPEC } };
-	if (preferred_master(zone, &preferred) == KNOT_EOK) {
-		int ret = callback(zone, &preferred, callback_data);
+	if (preferred_master(conf, zone, &preferred) == KNOT_EOK) {
+		int ret = callback(conf, zone, &preferred, callback_data);
 		if (ret == KNOT_EOK) {
 			return ret;
 		}
@@ -276,19 +265,19 @@ int zone_master_try(zone_t *zone, zone_master_cb callback, void *callback_data,
 
 	bool success = false;
 
-	conf_val_t masters = conf_zone_get(conf(), C_MASTER, zone->name);
+	conf_val_t masters = conf_zone_get(conf, C_MASTER, zone->name);
 	while (masters.code == KNOT_EOK) {
-		conf_val_t addr = conf_id_get(conf(), C_RMT, C_ADDR, &masters);
+		conf_val_t addr = conf_id_get(conf, C_RMT, C_ADDR, &masters);
 		size_t addr_count = conf_val_count(&addr);
 
 		for (size_t i = 0; i < addr_count; i++) {
-			conf_remote_t master = conf_remote(conf(), &masters, i);
+			conf_remote_t master = conf_remote(conf, &masters, i);
 			if (preferred.addr.ss_family != AF_UNSPEC &&
 			    netblock_match(&master.addr, &preferred.addr, -1)) {
 				preferred.addr.ss_family = AF_UNSPEC;
 				continue;
 			}
-			int ret = callback(zone, &master, callback_data);
+			int ret = callback(conf, zone, &master, callback_data);
 			if (ret == KNOT_EOK) {
 				success = true;
 				break;
@@ -296,7 +285,6 @@ int zone_master_try(zone_t *zone, zone_master_cb callback, void *callback_data,
 		}
 
 		if (!success) {
-			assert(err_str);
 			log_zone_warning(zone->name, "%s, remote '%s' not available",
 			                 err_str, conf_str(&masters));
 		}
@@ -307,16 +295,14 @@ int zone_master_try(zone_t *zone, zone_master_cb callback, void *callback_data,
 	return success ? KNOT_EOK : KNOT_ENOMASTER;
 }
 
-int zone_flush_journal(zone_t *zone)
+int zone_flush_journal(conf_t *conf, zone_t *zone)
 {
-	/*! @note Function expects nobody will change zone contents meanwile. */
-
-	if (zone == NULL || zone_contents_is_empty(zone->contents)) {
+	if (conf == NULL || zone == NULL || zone_contents_is_empty(zone->contents)) {
 		return KNOT_EINVAL;
 	}
 
 	/* Check for disabled zonefile synchronization. */
-	conf_val_t val = conf_zone_get(conf(), C_ZONEFILE_SYNC, zone->name);
+	conf_val_t val = conf_zone_get(conf, C_ZONEFILE_SYNC, zone->name);
 	if (conf_int(&val) < 0 && (zone->flags & ZONE_FORCE_FLUSH) == 0) {
 		return KNOT_EOK;
 	}
@@ -329,7 +315,7 @@ int zone_flush_journal(zone_t *zone)
 		return KNOT_EOK; /* No differences. */
 	}
 
-	char *zonefile = conf_zonefile(conf(), zone->name);
+	char *zonefile = conf_zonefile(conf, zone->name);
 
 	/* Synchronize journal. */
 	int ret = zonefile_write(zonefile, contents);
@@ -354,7 +340,7 @@ int zone_flush_journal(zone_t *zone)
 
 	free(zonefile);
 
-	char *journal_file = conf_journalfile(conf(), zone->name);
+	char *journal_file = conf_journalfile(conf, zone->name);
 
 	/* Update zone file serial and journal. */
 	zone->zonefile_mtime = st.st_mtime;
@@ -371,6 +357,9 @@ int zone_flush_journal(zone_t *zone)
 
 int zone_update_enqueue(zone_t *zone, knot_pkt_t *pkt, struct process_query_param *param)
 {
+	if (zone == NULL || pkt == NULL || param == NULL) {
+		return KNOT_EINVAL;
+	}
 
 	/* Create serialized request. */
 	struct knot_request *req = malloc(sizeof(struct knot_request));
@@ -394,7 +383,7 @@ int zone_update_enqueue(zone_t *zone, knot_pkt_t *pkt, struct process_query_para
 	pthread_mutex_lock(&zone->ddns_lock);
 
 	/* Enqueue created request. */
-	add_tail(&zone->ddns_queue, (node_t *)req);
+	ptrlist_add(&zone->ddns_queue, req, NULL);
 	++zone->ddns_queue_size;
 
 	pthread_mutex_unlock(&zone->ddns_lock);
@@ -407,7 +396,7 @@ int zone_update_enqueue(zone_t *zone, knot_pkt_t *pkt, struct process_query_para
 
 size_t zone_update_dequeue(zone_t *zone, list_t *updates)
 {
-	if (zone == NULL) {
+	if (zone == NULL || updates == NULL) {
 		return 0;
 	}
 
@@ -430,6 +419,10 @@ size_t zone_update_dequeue(zone_t *zone, list_t *updates)
 
 bool zone_transfer_needed(const zone_t *zone, const knot_pkt_t *pkt)
 {
+	if (zone == NULL || pkt == NULL) {
+		return false;
+	}
+
 	if (zone_contents_is_empty(zone->contents)) {
 		return true;
 	}

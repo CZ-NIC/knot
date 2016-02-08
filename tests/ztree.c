@@ -16,6 +16,7 @@
 
 #include <tap/basic.h>
 
+#include "libknot/errcode.h"
 #include "knot/zone/zone-tree.h"
 
 #define NCOUNT 4

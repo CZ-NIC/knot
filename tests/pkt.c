@@ -17,11 +17,12 @@
 #include <tap/basic.h>
 
 #include "libknot/libknot.h"
-#include "libknot/internal/mempool.h"
 #include "libknot/descriptor.h"
 #include "libknot/libknot.h"
 #include "libknot/packet/pkt.h"
 #include "libknot/rrtype/tsig.h"
+#include "contrib/mempattern.h"
+#include "contrib/ucw/mempool.h"
 
 #define TTL 7200
 #define NAMECOUNT 3
@@ -70,7 +71,7 @@ int main(int argc, char *argv[])
 
 	/* Create memory pool context. */
 	int ret = 0;
-	mm_ctx_t mm;
+	knot_mm_t mm;
 	mm_ctx_mempool(&mm, MM_DEFAULT_BLKSIZE);
 
 	/* Create names and data. */

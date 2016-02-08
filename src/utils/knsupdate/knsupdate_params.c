@@ -14,6 +14,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <assert.h>
 #include <getopt.h>
 #include <stdarg.h>
 #include <stdio.h>
@@ -24,9 +25,11 @@
 #include "utils/common/msg.h"
 #include "utils/common/netio.h"
 #include "libknot/libknot.h"
-#include "libknot/internal/mempattern.h"
-#include "libknot/internal/mempool.h"
 #include "libknot/tsig.h"
+#include "contrib/mempattern.h"
+#include "contrib/ucw/mempool.h"
+
+#define PROGRAM_NAME "knsupdate"
 
 #define DEFAULT_RETRIES_NSUPDATE	3
 #define DEFAULT_TIMEOUT_NSUPDATE	12
@@ -56,7 +59,7 @@ static const style_t DEFAULT_STYLE_NSUPDATE = {
 };
 
 static void parse_err(zs_scanner_t *s) {
-	ERR("failed to parse RR: %s\n", zs_strerror(s->error_code));
+	ERR("failed to parse RR: %s\n", zs_strerror(s->error.code));
 }
 
 static int parser_set_default(zs_scanner_t *s, const char *fmt, ...)
@@ -73,7 +76,8 @@ static int parser_set_default(zs_scanner_t *s, const char *fmt, ...)
 	}
 
 	/* Buffer must contain newline */
-	if (zs_scanner_parse(s, buf, buf + n, true) < 0) {
+	if (zs_set_input_string(s, buf, n) != 0 ||
+	    zs_parse_all(s) != 0) {
 		return KNOT_EPARSEFAIL;
 	}
 
@@ -108,10 +112,11 @@ static int knsupdate_init(knsupdate_params_t *params)
 	params->zone = strdup(".");
 
 	/* Initialize RR parser. */
-	params->parser = zs_scanner_create(".", params->class_num, 0,
-	                                   NULL, parse_err, NULL);
-	if (!params->parser)
+	if (zs_init(&params->parser, ".", params->class_num, 0) != 0 ||
+	    zs_set_processing(&params->parser, NULL, parse_err, NULL) != 0) {
+		zs_deinit(&params->parser);
 		return KNOT_ENOMEM;
+	}
 
 	/* Default style. */
 	params->style = DEFAULT_STYLE_NSUPDATE;
@@ -138,7 +143,7 @@ void knsupdate_clean(knsupdate_params_t *params)
 	srv_info_free(params->server);
 	srv_info_free(params->srcif);
 	free(params->zone);
-	zs_scanner_free(params->parser);
+	zs_deinit(&params->parser);
 	knot_pkt_free(&params->query);
 	knot_pkt_free(&params->answer);
 	knot_tsig_key_deinit(&params->tsig_key);
@@ -149,7 +154,7 @@ void knsupdate_clean(knsupdate_params_t *params)
 }
 
 /*! \brief Free RRSet list. */
-static void rr_list_free(list_t *list, mm_ctx_t *mm)
+static void rr_list_free(list_t *list, knot_mm_t *mm)
 {
 	assert(list != NULL);
 	assert(mm != NULL);
@@ -171,34 +176,33 @@ void knsupdate_reset(knsupdate_params_t *params)
 	rr_list_free(&params->prereq_list, &params->mm);
 }
 
-static void knsupdate_help(void)
+static void print_help(void)
 {
-	printf("Usage: knsupdate [-d] [-v] [-k keyfile | -y [hmac:]name:key]\n"
-	       "                 [-p port] [-t timeout] [-r retries] [filename]\n");
+	printf("Usage: %s [-d] [-v] [-k keyfile | -y [hmac:]name:key]\n"
+	       "                 [-p port] [-t timeout] [-r retries] [filename]\n",
+	       PROGRAM_NAME);
 }
 
 int knsupdate_parse(knsupdate_params_t *params, int argc, char *argv[])
 {
-	int opt = 0, li = 0;
-	int ret = KNOT_EOK;
-
 	if (params == NULL || argv == NULL) {
 		return KNOT_EINVAL;
 	}
 
-	ret = knsupdate_init(params);
+	int ret = knsupdate_init(params);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
 
 	// Long options.
 	struct option opts[] = {
-		{ "version", no_argument, 0, 'V' },
-		{ "help",    no_argument, 0, 'h' },
-		{ 0,         0,           0, 0 }
+		{ "help",    no_argument, NULL, 'h' },
+		{ "version", no_argument, NULL, 'V' },
+		{ NULL }
 	};
 
 	/* Command line options processing. */
+	int opt = 0, li = 0;
 	while ((opt = getopt_long(argc, argv, "dhDvVp:t:r:y:k:", opts, &li))
 	       != -1) {
 		switch (opt) {
@@ -207,14 +211,14 @@ int knsupdate_parse(knsupdate_params_t *params, int argc, char *argv[])
 			msg_enable_debug(1);
 			break;
 		case 'h':
-			knsupdate_help();
+			print_help();
 			params->stop = true;
 			return KNOT_EOK;
 		case 'v':
 			params->protocol = PROTO_TCP;
 			break;
 		case 'V':
-			printf(KNSUPDATE_VERSION);
+			print_version(PROGRAM_NAME);
 			params->stop = true;
 			return KNOT_EOK;
 		case 'p':
@@ -254,7 +258,7 @@ int knsupdate_parse(knsupdate_params_t *params, int argc, char *argv[])
 			}
 			break;
 		default:
-			knsupdate_help();
+			print_help();
 			return KNOT_ENOTSUP;
 		}
 	}
@@ -282,7 +286,7 @@ int knsupdate_parse(knsupdate_params_t *params, int argc, char *argv[])
 
 int knsupdate_set_ttl(knsupdate_params_t *params, const uint32_t ttl)
 {
-	int ret = parser_set_default(params->parser, "$TTL %u\n", ttl);
+	int ret = parser_set_default(&params->parser, "$TTL %u\n", ttl);
 	if (ret == KNOT_EOK) {
 		params->ttl = ttl;
 	} else {
@@ -295,7 +299,7 @@ int knsupdate_set_origin(knsupdate_params_t *params, const char *origin)
 {
 	char *fqdn = get_fqd_name(origin);
 
-	int ret = parser_set_default(params->parser, "$ORIGIN %s\n", fqdn);
+	int ret = parser_set_default(&params->parser, "$ORIGIN %s\n", fqdn);
 
 	free(fqdn);
 

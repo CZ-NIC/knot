@@ -32,13 +32,8 @@
 #include "utils/common/params.h"
 #include "utils/common/sign.h"
 #include "libknot/libknot.h"
-#include "libknot/internal/lists.h"
 #include "zscanner/scanner.h"
-
-#define KNSUPDATE_VERSION "knsupdate, version " PACKAGE_VERSION "\n"
-
-/*! Parser init string. */
-#define PARSER_INIT_STR "$ORIGIN %s\n$TTL %u\n"
+#include "contrib/ucw/lists.h"
 
 /*! \brief knsupdate-specific params data. */
 typedef struct {
@@ -67,7 +62,7 @@ typedef struct {
 	/*!< Current zone. */
 	char		*zone;
 	/*!< RR parser. */
-	zs_scanner_t	*parser;
+	zs_scanner_t	parser;
 	/*!< Current packet. */
 	knot_pkt_t	*query;
 	/*!< Current response. */
@@ -79,7 +74,7 @@ typedef struct {
 	/*!< Default output settings. */
 	style_t		style;
 	/*!< Memory context. */
-	mm_ctx_t	mm;
+	knot_mm_t	mm;
 } knsupdate_params_t;
 
 int knsupdate_parse(knsupdate_params_t *params, int argc, char *argv[]);

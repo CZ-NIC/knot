@@ -17,8 +17,6 @@
 #pragma once
 
 #include "knot/conf/conf.h"
-#include "knot/server/journal.h"
-#include "knot/zone/contents.h"
 #include "knot/zone/zone.h"
 
 /*!
@@ -26,9 +24,11 @@
  *
  * \param conf
  * \param zone_name
- * \return new zone contents or NULL
+ * \param contents
+ * \return KNOT_EOK or an error
  */
-zone_contents_t *zone_load_contents(conf_t *conf, const knot_dname_t *zone_name);
+int zone_load_contents(conf_t *conf, const knot_dname_t *zone_name,
+                       zone_contents_t **contents);
 
 /*!
  * \brief Check loaded zone contents validity.
@@ -53,12 +53,12 @@ int zone_load_journal(conf_t *conf, zone_t *zone, zone_contents_t *contents);
  * \brief Zone loading post-actions (zone resign, calculation of delta)
  *
  * \param conf
- * \param contents
  * \param zone
+ * \param contents
  * \param dnssec_refresh
  * \return KNOT_EOK or an error
  */
-int zone_load_post(conf_t *conf, zone_contents_t *contents, zone_t *zone,
+int zone_load_post(conf_t *conf, zone_t *zone, zone_contents_t *contents,
                    uint32_t *dnssec_refresh);
 
 /*!

@@ -16,11 +16,8 @@
 
 #pragma once
 
-#include <stdbool.h>
 #include <stdint.h>
-#include <string.h>
 
-#include "libknot/consts.h"
 #include "libknot/rdataset.h"
 
 /*!
@@ -50,12 +47,7 @@ uint8_t knot_nsec3param_flags(const knot_rdataset_t *rrs, size_t pos)
 	return *knot_rdata_offset(rrs, pos, 1);
 }
 
-static inline
-uint16_t knot_nsec3param_iterations(const knot_rdataset_t *rrs, size_t pos)
-{
-	KNOT_RDATASET_CHECK(rrs, pos, return 0);
-	return wire_read_u16(knot_rdata_offset(rrs, pos, 2));
-}
+uint16_t knot_nsec3param_iterations(const knot_rdataset_t *rrs, size_t pos);
 
 static inline
 uint8_t knot_nsec3param_salt_length(const knot_rdataset_t *rrs, size_t pos)

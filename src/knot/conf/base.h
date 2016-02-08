@@ -26,9 +26,8 @@
 #pragma once
 
 #include "libknot/libknot.h"
-#include "libknot/internal/lists.h"
-#include "libknot/internal/namedb/namedb_lmdb.h"
 #include "libknot/yparser/ypscheme.h"
+#include "contrib/ucw/lists.h"
 
 /*! Default template identifier. */
 #define CONF_DEFAULT_ID		((uint8_t *)"\x08""default\0")
@@ -63,34 +62,41 @@ typedef struct {
 
 /*! Configuration context. */
 typedef struct {
+	/*! Cloned configuration indicator. */
+	bool is_clone;
 	/*! Currently used namedb api. */
-	const struct namedb_api *api;
+	const struct knot_db_api *api;
 	/*! Configuration scheme. */
 	yp_item_t *scheme;
 	/*! Memory context. */
-	mm_ctx_t *mm;
+	knot_mm_t *mm;
 	/*! Configuration database. */
-	namedb_t *db;
+	knot_db_t *db;
 
 	/*! Read-only transaction for config access. */
-	namedb_txn_t read_txn;
+	knot_db_txn_t read_txn;
 
 	struct {
 		/*! The current writing transaction. */
-		namedb_txn_t *txn;
+		knot_db_txn_t *txn;
 		/*! Stack of nested writing transactions. */
-		namedb_txn_t txn_stack[CONF_MAX_TXN_DEPTH];
+		knot_db_txn_t txn_stack[CONF_MAX_TXN_DEPTH];
 	} io;
+
+	/*! Current config file (for reload if started with config file). */
+	char *filename;
 
 	/*! Prearranged hostname string (for automatic NSID or CH ident value). */
 	char *hostname;
-	/*! Current config file (for reload if started with config file). */
-	char *filename;
 
 	/*! Cached critical confdb items. */
 	struct {
 		conf_val_t srv_nsid;
 		conf_val_t srv_max_udp_payload;
+		conf_val_t srv_max_tcp_clients;
+		conf_val_t srv_tcp_hshake_timeout;
+		conf_val_t srv_tcp_idle_timeout;
+		conf_val_t srv_tcp_reply_timeout;
 	} cache;
 
 	/*! List of active query modules. */
@@ -100,9 +106,29 @@ typedef struct {
 } conf_t;
 
 /*!
+ * Configuration access flags.
+ */
+typedef enum {
+	CONF_FNONE     = 0,      /*!< Empty flag. */
+	CONF_FREADONLY = 1 << 0, /*!< Read only access. */
+	CONF_FNOCHECK  = 1 << 1  /*!< Disabled confdb check. */
+} conf_flag_t;
+
+/*!
  * Returns the active configuration.
  */
 conf_t* conf(void);
+
+/*!
+ * Refreshes common read-only transaction.
+ *
+ * \param[out] conf  Configuration.
+ *
+ * \return Error code, KNOT_EOK if success.
+ */
+int conf_refresh(
+	conf_t *conf
+);
 
 /*!
  * Creates new or opens old configuration database.
@@ -110,13 +136,15 @@ conf_t* conf(void);
  * \param[out] conf   Configuration.
  * \param[in] scheme  Configuration scheme.
  * \param[in] db_dir  Database path or NULL.
+ * \param[in] flags   Access flags.
  *
  * \return Error code, KNOT_EOK if success.
  */
 int conf_new(
 	conf_t **conf,
 	const yp_item_t *scheme,
-	const char *db_dir
+	const char *db_dir,
+	conf_flag_t flags
 );
 
 /*!
@@ -133,17 +161,6 @@ int conf_clone(
 );
 
 /*!
- * Processes some additional operations and checks after configuration loading.
- *
- * \param[in] conf  Configuration.
- *
- * \return Error code, KNOT_EOK if success.
- */
-int conf_post_open(
-	conf_t *conf
-);
-
-/*!
  * Replaces the active configuration with the specified one.
  *
  * \param[in] conf  New configuration.
@@ -155,12 +172,10 @@ void conf_update(
 /*!
  * Removes the specified configuration.
  *
- * \param[in] conf      Configuration.
- * \param[in] is_clone  Specifies if the configuration is a clone.
+ * \param[in] conf  Configuration.
  */
 void conf_free(
-	conf_t *conf,
-	bool is_clone
+	conf_t *conf
 );
 
 /*!
@@ -181,12 +196,10 @@ void conf_activate_modules(
 /*!
  * Deactivates query modules list.
  *
- * \param[in] conf           Configuration.
  * \param[in] query_modules  Destination query modules list.
  * \param[in] query_plan     Destination query plan.
  */
 void conf_deactivate_modules(
-	conf_t *conf,
 	list_t *query_modules,
 	struct query_plan **query_plan
 );
@@ -206,7 +219,7 @@ void conf_deactivate_modules(
  */
 int conf_parse(
 	conf_t *conf,
-	namedb_txn_t *txn,
+	knot_db_txn_t *txn,
 	const char *input,
 	bool is_file,
 	void *data

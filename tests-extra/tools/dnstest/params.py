@@ -34,13 +34,15 @@ debug = False
 # KNOT_TEST_VALGRIND - valgrind binary if defined.
 valgrind_bin = get_binary("KNOT_TEST_VALGRIND", "valgrind")
 # KNOT_TEST_VALGRIND_FLAGS - valgrind flags.
+# Server settings: "--leak-check=full --track-origins=yes --vgdb=yes --verbose"
 valgrind_flags = get_param("KNOT_TEST_VALGRIND_FLAGS",
-                           "--leak-check=full --track-origins=yes --vgdb=yes " +
-                           "--verbose")
+                           "--leak-check=full --vgdb=yes --verbose")
 # KNOT_TEST_GDB - gdb binary.
 gdb_bin = get_binary("KNOT_TEST_GDB", "gdb")
 # KNOT_TEST_VGDB - vgdb binary.
 vgdb_bin = get_binary("KNOT_TEST_VGDB", "vgdb")
+# KNOT_TEST_LIBTOOL - libtool script.
+libtool_bin = get_binary("KNOT_TEST_LIBTOOL", "../libtool")
 # KNOT_TEST_KNOT - Knot binary.
 knot_bin = get_binary("KNOT_TEST_KNOT", "../src/knotd")
 # KNOT_TEST_KNOTC - Knot control binary.

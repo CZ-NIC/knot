@@ -1,16 +1,4 @@
-/*!
- * \file node.h
- *
- * \author Lubos Slovak <lubos.slovak@nic.cz>
- * \author Jan Kadlec <jan.kadlec@nic.cz>
- *
- * \brief Structure representing one node in domain name tree and API for
- *        manipulating it.
- *
- * \addtogroup libknot
- * @{
- */
-/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -24,6 +12,15 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+/*!
+ * \file
+ *
+ * \brief Structure representing one node in domain name tree and API for
+ *        manipulating it.
+ *
+ * \addtogroup zone
+ * @{
  */
 
 #pragma once
@@ -80,8 +77,6 @@ enum node_flags {
 	NODE_FLAGS_WILDCARD_CHILD =  1 << 4
 };
 
-/* ------------------------- Node create/free --------------------------------*/
-
 /*!
  * \brief Creates and initializes new node structure.
  *
@@ -90,7 +85,7 @@ enum node_flags {
  *
  * \return Newly created node or NULL if an error occured.
  */
-zone_node_t *node_new(const knot_dname_t *owner, mm_ctx_t *mm);
+zone_node_t *node_new(const knot_dname_t *owner, knot_mm_t *mm);
 
 /*!
  * \brief Destroys allocated data within the node
@@ -99,7 +94,7 @@ zone_node_t *node_new(const knot_dname_t *owner, mm_ctx_t *mm);
  * \param node  Node that contains data to be destroyed.
  * \param mm    Memory context to use.
  */
-void node_free_rrsets(zone_node_t *node, mm_ctx_t *mm);
+void node_free_rrsets(zone_node_t *node, knot_mm_t *mm);
 
 /*!
  * \brief Destroys the node structure.
@@ -110,7 +105,7 @@ void node_free_rrsets(zone_node_t *node, mm_ctx_t *mm);
  * \param node  Node to be destroyed.
  * \param mm    Memory context to use.
  */
-void node_free(zone_node_t **node, mm_ctx_t *mm);
+void node_free(zone_node_t **node, knot_mm_t *mm);
 
 /*!
  * \brief Creates a shallow copy of node structure, RR data are shared.
@@ -120,9 +115,7 @@ void node_free(zone_node_t **node, mm_ctx_t *mm);
  *
  * \return Copied node if success, NULL otherwise.
  */
-zone_node_t *node_shallow_copy(const zone_node_t *src, mm_ctx_t *mm);
-
-/* ----------------------- Data addition/removal -----------------------------*/
+zone_node_t *node_shallow_copy(const zone_node_t *src, knot_mm_t *mm);
 
 /*!
  * \brief Adds an RRSet to the node. All data are copied. Owner and class are
@@ -133,7 +126,7 @@ zone_node_t *node_shallow_copy(const zone_node_t *src, mm_ctx_t *mm);
  *
  * \return KNOT_E*
  */
-int node_add_rrset(zone_node_t *node, const knot_rrset_t *rrset, mm_ctx_t *mm);
+int node_add_rrset(zone_node_t *node, const knot_rrset_t *rrset, knot_mm_t *mm);
 
 /*!
  * \brief Removes data for given RR type from node.
@@ -142,8 +135,6 @@ int node_add_rrset(zone_node_t *node, const knot_rrset_t *rrset, mm_ctx_t *mm);
  * \param type  RR type to delete.
  */
 void node_remove_rdataset(zone_node_t *node, uint16_t type);
-
-/* ---------------------------- Data getters ---------------------------------*/
 
 /*!
  * \brief Returns the RRSet of the given type from the node. RRSet is allocated.
@@ -166,8 +157,6 @@ knot_rrset_t *node_create_rrset(const zone_node_t *node, uint16_t type);
  */
 knot_rdataset_t *node_rdataset(const zone_node_t *node, uint16_t type);
 
-/* ---------------------------- Parent setter ------------------------------- */
-
 /*!
  * \brief Sets the parent of the node. Also adjusts children count of parent.
  *
@@ -175,8 +164,6 @@ knot_rdataset_t *node_rdataset(const zone_node_t *node, uint16_t type);
  * \param parent Parent to set to the node.
  */
 void node_set_parent(zone_node_t *node, zone_node_t *parent);
-
-/* ----------------------------- Bool checks -------------------------------- */
 
 /*!
  * \brief Checks whether node contains any RRSIG for given type.
@@ -207,8 +194,6 @@ bool node_rrtype_exists(const zone_node_t *node, uint16_t type);
  * \return True/False.
  */
 bool node_empty(const zone_node_t *node);
-
-/* -------------------- Inline RRSet initializations ------------------------ */
 
 /*!
  * \brief Returns RRSet structure initialized with data from node.

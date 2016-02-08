@@ -1,4 +1,4 @@
-/*  Copyright (C) 2014 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -17,11 +17,9 @@
 #pragma once
 
 #include <stdint.h>
-#include <stdlib.h>
 
 #include "libknot/packet/pkt.h"
-#include "libknot/rrtype/tsig.h"
-#include "libknot/tsig-op.h"
+#include "libknot/tsig.h"
 
 #define TSIG_MAX_DIGEST_SIZE 64
 

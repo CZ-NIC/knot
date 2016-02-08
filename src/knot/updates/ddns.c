@@ -1,4 +1,4 @@
-/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -15,21 +15,14 @@
  */
 
 #include <assert.h>
-#include <stdlib.h>
-#include <inttypes.h>
-#include <urcu.h>
 
 #include "knot/common/log.h"
 #include "knot/updates/ddns.h"
 #include "knot/updates/changesets.h"
 #include "knot/updates/zone-update.h"
 #include "knot/zone/serial.h"
-#include "libknot/packet/pkt.h"
-#include "libknot/consts.h"
-#include "libknot/rrtype/soa.h"
-#include "libknot/internal/mempattern.h"
-#include "libknot/descriptor.h"
-#include "libknot/internal/lists.h"
+#include "libknot/libknot.h"
+#include "contrib/ucw/lists.h"
 
 /* ----------------------------- prereq check ------------------------------- */
 

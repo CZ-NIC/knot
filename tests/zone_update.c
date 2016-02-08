@@ -17,10 +17,10 @@
 #include <assert.h>
 #include <tap/basic.h>
 
+#include "contrib/macros.h"
+#include "contrib/getline.h"
 #include "knot/updates/zone-update.h"
 #include "zscanner/scanner.h"
-#include "libknot/internal/getline.h"
-#include "libknot/internal/macros.h"
 
 static const char *zone_str =
 "test. 3600 IN SOA a.ns.test. hostmaster.nic.cz. 1406641065 900 300 604800 900 \n"
@@ -38,7 +38,7 @@ knot_rrset_t rrset;
 static void process_rr(zs_scanner_t *scanner)
 {
 	// get zone to insert into
-	zone_contents_t *zc = scanner->data;
+	zone_contents_t *zc = scanner->process.data;
 
 	// create data
 	knot_rrset_init(&rrset, scanner->r_owner, scanner->r_type, scanner->r_class);
@@ -73,11 +73,16 @@ int main(int argc, char *argv[])
 	zone_t zone = { .contents = zc, .name = apex };
 
 	// Parse initial node
-	zs_scanner_t *sc = zs_scanner_create("test.", KNOT_CLASS_IN, 3600,
-	                                     process_rr, NULL, zc);
-	assert(sc);
-	ret = zs_scanner_parse(sc, zone_str, zone_str + strlen(zone_str), true);
-	assert(ret == 0);
+	zs_scanner_t sc;
+	if (zs_init(&sc, "test.", KNOT_CLASS_IN, 3600) != 0 ||
+	    zs_set_processing(&sc, process_rr, NULL, zc) != 0) {
+		assert(0);
+	}
+
+	if (zs_set_input_string(&sc, zone_str, strlen(zone_str)) != 0 ||
+	    zs_parse_all(&sc) != 0) {
+		assert(0);
+	}
 
 	// Initial node added, now just parse the RRs
 	to_zone = false;
@@ -93,8 +98,10 @@ int main(int argc, char *argv[])
 	   "incremental zone update: no change");
 
 	// Parse RR for addition and add it
-	ret = zs_scanner_parse(sc, add_str, add_str + strlen(add_str), true);
-	assert(ret == 0);
+	if (zs_set_input_string(&sc, add_str, strlen(add_str)) != 0 ||
+	    zs_parse_all(&sc) != 0) {
+		assert(0);
+	}
 	ret = zone_update_add(&update, &rrset);
 	knot_rdataset_clear(&rrset.rrs, NULL);
 	ok(ret == KNOT_EOK, "incremental zone update: addition");
@@ -105,8 +112,10 @@ int main(int argc, char *argv[])
 	   "incremental zone update: add change");
 
 	// Parse RR for removal and remove it
-	ret = zs_scanner_parse(sc, del_str, del_str + strlen(del_str), true);
-	assert(ret == 0);
+	if (zs_set_input_string(&sc, del_str, strlen(del_str)) != 0 ||
+	    zs_parse_all(&sc) != 0) {
+		assert(0);
+	}
 	ret = zone_update_remove(&update, &rrset);
 	knot_rdataset_clear(&rrset.rrs, NULL);
 	ok(ret == KNOT_EOK, "incremental zone update: removal");
@@ -119,7 +128,7 @@ int main(int argc, char *argv[])
 	zone_update_clear(&update);
 	ok(update.zone == NULL && changeset_empty(&update.change), "incremental zone update: cleanup");
 
-	zs_scanner_free(sc);
+	zs_deinit(&sc);
 	zone_contents_deep_free(&zc);
 	knot_dname_free(&apex, NULL);
 

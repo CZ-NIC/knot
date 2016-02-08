@@ -1,15 +1,4 @@
-/*!
- * \file ddns.h
- *
- * \author Lubos Slovak <lubos.slovak@nic.cz>
- * \author Jan Kadlec <jan.kadlec@nic.cz>
- *
- * \brief Dynamic updates processing.
- *
- * \addtogroup ddns
- * @{
- */
-/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -24,14 +13,20 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
+/*!
+ * \file
+ *
+ * \brief Dynamic updates processing.
+ *
+ * \addtogroup ddns
+ * @{
+ */
 
 #pragma once
 
-#include "knot/updates/changesets.h"
 #include "knot/updates/zone-update.h"
 #include "knot/zone/zone.h"
 #include "libknot/packet/pkt.h"
-#include "libknot/dname.h"
 
 /*!
  * \brief Checks update prerequisite section.

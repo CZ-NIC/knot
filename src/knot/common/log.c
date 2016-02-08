@@ -31,9 +31,9 @@
 
 #include "knot/common/log.h"
 #include "libknot/libknot.h"
-#include "libknot/internal/lists.h"
-#include "libknot/internal/macros.h"
-#include "libknot/internal/strlcpy.h"
+#include "contrib/macros.h"
+#include "contrib/openbsd/strlcpy.h"
+#include "contrib/ucw/lists.h"
 
 /* Single log message buffer length (one line). */
 #define LOG_BUFLEN 512
@@ -45,8 +45,9 @@ struct log_sink
 {
 	uint8_t *facility;     /* Log sinks. */
 	size_t facility_count; /* Sink count. */
-	FILE** file;           /* Open files. */
+	FILE **file;           /* Open files. */
 	ssize_t file_count;    /* Nr of open files. */
+	logflag_t flags;       /* Formatting flags. */
 };
 
 /*! Log sink singleton. */
@@ -171,7 +172,7 @@ int log_init()
 	/* Setup initial state. */
 	int ret = KNOT_EOK;
 	int emask = LOG_MASK(LOG_CRIT) | LOG_MASK(LOG_ERR) | LOG_MASK(LOG_WARNING);
-	int imask = LOG_MASK(LOG_NOTICE) | LOG_MASK(LOG_INFO) | LOG_MASK(LOG_DEBUG);
+	int imask = LOG_MASK(LOG_NOTICE) | LOG_MASK(LOG_INFO);
 
 	/* Publish base log sink. */
 	struct log_sink *log = sink_setup(0);
@@ -206,6 +207,11 @@ void log_close()
 bool log_isopen()
 {
 	return s_log != NULL;
+}
+
+void log_flag_set(logflag_t flag)
+{
+	s_log->flags |= flag;
 }
 
 /*! \brief Open file as a logging facility. */
@@ -246,10 +252,8 @@ int log_levels_add(int facility, logsrc_t src, uint8_t levels)
 
 static int emit_log_msg(int level, const char *zone, size_t zone_len, const char *msg)
 {
-	rcu_read_lock();
 	struct log_sink *log = s_log;
 	if(!log_isopen()) {
-		rcu_read_unlock();
 		return KNOT_ERROR;
 	}
 
@@ -278,13 +282,15 @@ static int emit_log_msg(int level, const char *zone, size_t zone_len, const char
 	level = LOG_MASK(level);
 
 	/* Prefix date and time. */
-	char tstr[LOG_BUFLEN] = {0};
-	struct tm lt;
-	struct timeval tv;
-	gettimeofday(&tv, NULL);
-	time_t sec = tv.tv_sec;
-	if (localtime_r(&sec, &lt) != NULL) {
-		strftime(tstr, sizeof(tstr), KNOT_LOG_TIME_FORMAT " ", &lt);
+	char tstr[LOG_BUFLEN] = { 0 };
+	if (!(s_log->flags & LOG_FNO_TIMESTAMP)) {
+		struct tm lt;
+		struct timeval tv;
+		gettimeofday(&tv, NULL);
+		time_t sec = tv.tv_sec;
+		if (localtime_r(&sec, &lt) != NULL) {
+			strftime(tstr, sizeof(tstr), KNOT_LOG_TIME_FORMAT " ", &lt);
+		}
 	}
 
 	// Log streams
@@ -309,8 +315,6 @@ static int emit_log_msg(int level, const char *zone, size_t zone_len, const char
 			}
 		}
 	}
-
-	rcu_read_unlock();
 
 	if (ret < 0) {
 		return KNOT_EINVAL;
@@ -363,11 +367,16 @@ static int log_msg_text(int level, const char *zone, const char *fmt, va_list ar
 	char *write = sbuf;
 	size_t capacity = sizeof(sbuf) - 1;
 
+	rcu_read_lock();
+
 	/* Prefix error level. */
-	const char *prefix = level_prefix(level);
-	ret = log_msg_add(&write, &capacity, "%s: ", prefix);
-	if (ret != KNOT_EOK) {
-		return ret;
+	if (level != LOG_INFO || !log_isopen() || !(s_log->flags & LOG_FNO_INFO)) {
+		const char *prefix = level_prefix(level);
+		ret = log_msg_add(&write, &capacity, "%s: ", prefix);
+		if (ret != KNOT_EOK) {
+			rcu_read_unlock();
+			return ret;
+		}
 	}
 
 	/* Prefix zone name. */
@@ -381,6 +390,7 @@ static int log_msg_text(int level, const char *zone, const char *fmt, va_list ar
 
 		ret = log_msg_add(&write, &capacity, "[%.*s] ", zone_len, zone);
 		if (ret != KNOT_EOK) {
+			rcu_read_unlock();
 			return ret;
 		}
 	}
@@ -392,6 +402,8 @@ static int log_msg_text(int level, const char *zone, const char *fmt, va_list ar
 	if (ret >= 0) {
 		ret = emit_log_msg(level, zone, zone_len, sbuf);
 	}
+
+	rcu_read_unlock();
 
 	return ret;
 }
@@ -462,16 +474,13 @@ static logtype_t get_logtype(const char *logname)
 	}
 }
 
-int log_reconfigure(conf_t *conf, void *data)
+void log_reconfigure(conf_t *conf)
 {
-	// Data not used
-	UNUSED(data);
-
 	// Use defaults if no 'log' section is configured.
 	if (conf_id_count(conf, C_LOG) == 0) {
 		log_close();
 		log_init();
-		return KNOT_EOK;
+		return;
 	}
 
 	// Find maximum log facility id
@@ -487,7 +496,7 @@ int log_reconfigure(conf_t *conf, void *data)
 	// Initialize logsystem
 	struct log_sink *log = sink_setup(files);
 	if (log == NULL) {
-		return KNOT_ENOMEM;
+		return;
 	}
 
 	// Setup logs
@@ -527,6 +536,4 @@ int log_reconfigure(conf_t *conf, void *data)
 	}
 
 	sink_publish(log);
-
-	return KNOT_EOK;
 }

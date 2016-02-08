@@ -16,18 +16,17 @@
 /*!
  * \file
  *
- * Value transformations for Yparser.
+ * \brief Value transformations for Yparser.
  *
  * \addtogroup yparser
- *
  * @{
  */
 
 #pragma once
 
 #include "libknot/yparser/ypscheme.h"
-#include "libknot/internal/utils.h"
-#include "libknot/dname.h"
+
+struct knot_lookup;
 
 /*!
  * Transforms textual item value to binary form.
@@ -102,11 +101,9 @@ inline static bool yp_bool(
  *
  * \return Integer value.
  */
-inline static int64_t yp_int(
-	const uint8_t *data)
-{
-	return (int64_t)wire_read_u64(data);
-}
+int64_t yp_int(
+	const uint8_t *data
+);
 
 /*!
  * Converts binary value to address value.
@@ -152,10 +149,10 @@ inline static unsigned yp_opt(
  *
  * \return Dname pointer.
  */
-inline static const knot_dname_t* yp_dname(
+inline static const uint8_t* yp_dname(
 	const uint8_t *data)
 {
-	return (const knot_dname_t *)data;
+	return data;
 }
 
 /*!
@@ -182,11 +179,9 @@ inline static const uint8_t* yp_bin(
  *
  * \return Data length.
  */
-inline static const size_t yp_bin_len(
-	const uint8_t *data)
-{
-	return wire_read_u16(data);
-}
+const size_t yp_bin_len(
+	const uint8_t *data
+);
 
 /*!
  * \brief Helper macros for conversion functions.
@@ -268,12 +263,12 @@ int yp_addr_to_txt(
 
 int yp_option_to_bin(
 	YP_TXT_BIN_PARAMS,
-	const lookup_table_t *opts
+	const struct knot_lookup *opts
 );
 
 int yp_option_to_txt(
 	YP_BIN_TXT_PARAMS,
-	const lookup_table_t *opts
+	const struct knot_lookup *opts
 );
 
 int yp_dname_to_bin(

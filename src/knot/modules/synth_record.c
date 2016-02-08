@@ -19,6 +19,9 @@
 #include "knot/nameserver/internet.h"
 #include "knot/common/log.h"
 #include "libknot/descriptor.h"
+#include "contrib/mempattern.h"
+#include "contrib/net.h"
+#include "contrib/sockaddr.h"
 
 /* Module configuration scheme. */
 #define MOD_NET		"\x07""network"
@@ -34,7 +37,7 @@ enum synth_template_type {
 	SYNTH_REVERSE = 2
 };
 
-static const lookup_table_t synthetic_types[] = {
+static const knot_lookup_t synthetic_types[] = {
 	{ SYNTH_FORWARD, "forward" },
 	{ SYNTH_REVERSE, "reverse" },
 	{ 0, NULL }

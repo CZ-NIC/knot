@@ -20,7 +20,7 @@
 
 #include "utils/knot1to2/includes.h"
 #include "utils/knot1to2/scheme.h"
-#include "libknot/internal/trie/hat-trie.h"
+#include "contrib/hat-trie/hat-trie.h"
 
 typedef struct {
 	FILE *out;

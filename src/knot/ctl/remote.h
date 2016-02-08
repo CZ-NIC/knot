@@ -26,60 +26,39 @@
 
 #pragma once
 
-#include "libknot/packet/pkt.h"
-#include "libknot/rrset.h"
+#include "libknot/libknot.h"
 #include "knot/server/server.h"
-
-/*! \brief Default connection control parameters. */
-#define REMOTE_PORT	5533
-#define REMOTE_SOCKET	"knot.sock"
 
 /*!
  * \brief Bind RC interface.
  *
- * \param addr Interface descriptor (address, port).
+ * \param path  Control UNIX socket path.
  *
  * \retval socket if passed.
  * \retval knot_error else.
  */
-int remote_bind(struct sockaddr_storage *addr);
+int remote_bind(const char *path);
 
 /*!
  * \brief Unbind from RC interface and close socket.
  *
  * \note Breaks all pending connections.
  *
- * \param addr Interface descriptor (address, port).
- * \param socket Interface socket
- *
- * \retval KNOT_EOK on success.
- * \retval knot_error else.
+ * \param socket  Interface socket.
  */
-int remote_unbind(struct sockaddr_storage *addr, int sock);
-
-/*!
- * \brief Poll new events on RC socket.
- *
- * \param sock     RC interface socket.
- * \param sigmask  Signal mask to use during blocking waiting.
- *
- * \return number of polled events or -1 on error.
- */
-int remote_poll(int sock, const sigset_t *sigmask);
+void remote_unbind(int sock);
 
 /*!
  * \brief Start a RC connection with remote.
  *
  * \param r RC interface socket.
- * \param a Destination for remote party address (or NULL if not interested).
  * \param buf Buffer for RC command.
  * \param buflen Maximum buffer size.
  *
  * \return client TCP socket if success.
  * \return KNOT_ECONNREFUSED if fails to receive command.
  */
-int remote_recv(int sock, struct sockaddr_storage *addr, uint8_t *buf,
-                size_t *buflen);
+int remote_recv(int sock, uint8_t *buf, size_t *buflen);
 
 /*!
  * \brief Parse a RC command.
@@ -110,8 +89,7 @@ int remote_answer(int sock, server_t *s, knot_pkt_t *pkt);
  *
  * \note This should be used as a high-level API for workers.
  *
- * \param s Server instance.
- * \param ctl_addr Control interface address.
+ * \param server Server instance.
  * \param sock RC interface socket.
  * \param buf Buffer for commands/responses.
  * \param buflen Maximum buffer size.
@@ -119,37 +97,19 @@ int remote_answer(int sock, server_t *s, knot_pkt_t *pkt);
  * \retval KNOT_EOK on success.
  * \retval knot_error else.
  */
-int remote_process(server_t *s, struct sockaddr_storage *ctl_addr, int sock,
-                   uint8_t *buf, size_t buflen);
+int remote_process(server_t *server, int sock, uint8_t *buf, size_t buflen);
 
 /* Functions for creating RC packets. */
 
 /*!
- * \brief Build a RC command packet, TSIG key is optional.
- *
- * \note This doesn't sign packet, see remote_query_sign().
+ * \brief Build a RC command packet.
  *
  * \param query Command name, f.e. 'reload'.
- * \param key TSIG key for space reservation (or NULL).
  *
  * \retval KNOT_EOK on success.
  * \retval knot_error else.
  */
-knot_pkt_t* remote_query(const char *query, const knot_tsig_key_t *key);
-
-/*!
- * \brief Sign a RC command packet using TSIG key.
- *
- * \param wire RC packet in wire format.
- * \param size RC packet size.
- * \param maxlen Maximum buffer size.
- * \param key TSIG key.
- *
- * \retval KNOT_EOK on success.
- * \retval knot_error else.
- */
-int remote_query_sign(uint8_t *wire, size_t *size, size_t maxlen,
-                      const knot_tsig_key_t *key);
+knot_pkt_t* remote_query(const char *query);
 
 /*!
  * \brief Initialize a rrset with the given name and type.

@@ -57,19 +57,21 @@
 /m4/lt~obsolete.m4
 /src/dnssec/libdnssec.pc
 /src/libknot.pc
+/src/libknot/version.h
 
 # dnstap
-/src/dnstap/Makefile
-/src/dnstap/Makefile.in
-/src/dnstap/dnstap.pb-c.c
-/src/dnstap/dnstap.pb-c.h
+/src/contrib/dnstap/Makefile
+/src/contrib/dnstap/Makefile.in
+/src/contrib/dnstap/dnstap.pb-c.c
+/src/contrib/dnstap/dnstap.pb-c.h
 
 # zscanner
+/src/zscanner/libzscanner.pc
 /src/zscanner/scanner.c
 /src/zscanner/tests/tmp/
 /src/zscanner/tests/unittests
 /src/zscanner/tests/zscanner-tool
-/src/zscanner/libzscanner.pc
+/src/zscanner/version.h
 
 # Binaries
 /src/knotc

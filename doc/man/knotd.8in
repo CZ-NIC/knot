@@ -41,16 +41,25 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 Use a textual configuration file (default is \fB@config_dir@/knot.conf\fP).
 .TP
 \fB\-C\fP, \fB\-\-confdb\fP \fIdirectory\fP
-Use a binary configuration database.
+Use a binary configuration database directory (default is \fB@storage_dir@/confdb\fP).
+The default configuration database, if exists, has a preference to the default
+configuration file.
+.TP
+\fB\-s\fP, \fB\-\-socket\fP \fIpath\fP
+Use a remote control UNIX socket path (default is \fB@run_dir@/knot.sock\fP).
 .TP
 \fB\-d\fP, \fB\-\-daemonize\fP [\fIdirectory\fP]
-Run the server as a daemon. Working directory may be set (default is \fB/\fP).
+Run the server as a daemon. New root directory may be specified
+(default is \fB/\fP).
 .TP
-\fB\-V\fP, \fB\-\-version\fP
-Print the program versiom.
+\fB\-v\fP, \fB\-\-verbose\fP
+Enable debug output.
 .TP
 \fB\-h\fP, \fB\-\-help\fP
-Print help and usage.
+Print the program help.
+.TP
+\fB\-V\fP, \fB\-\-version\fP
+Print the program version.
 .UNINDENT
 .SH SEE ALSO
 .sp

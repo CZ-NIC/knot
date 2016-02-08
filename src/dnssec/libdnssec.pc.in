@@ -9,5 +9,4 @@ URL: https://www.knot-dns.cz
 Version: @PACKAGE_VERSION@
 Requires.private: gnutls >= 3.0, jansson
 Libs: -L${libdir} -ldnssec
-Libs.private: -lm
 Cflags: -I${includedir}

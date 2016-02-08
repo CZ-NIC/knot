@@ -11,6 +11,7 @@ conf
 conf_tools
 confdb
 confio
+db
 descriptor
 dname
 dnssec_keys
@@ -25,8 +26,8 @@ hattrie
 hhash
 internal_mem
 journal
+lookup
 modules/online_sign
-namedb
 net
 net_shortwrite
 node
@@ -43,7 +44,6 @@ rrset
 rrset_wire
 server
 tsig_key
-utils
 wire
 wire_ctx
 worker_pool

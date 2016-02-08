@@ -1,4 +1,4 @@
-/*  Copyright (C) 2014 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -14,9 +14,10 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <assert.h>
+
 #include "libknot/libknot.h"
 #include "knot/nameserver/nsec_proofs.h"
-#include "knot/nameserver/process_query.h"
 #include "knot/nameserver/internet.h"
 #include "knot/dnssec/zone-nsec.h"
 
@@ -267,7 +268,8 @@ static int ns_put_nsec_wildcard(const zone_contents_t *zone,
 	if (!knot_rrset_empty(&rrset)) {
 		knot_rrset_t rrsigs = node_rrset(previous, KNOT_RRTYPE_RRSIG);
 		// NSEC proving that there is no node with the searched name
-		ret = ns_put_rr(resp, &rrset, &rrsigs, KNOT_COMPR_HINT_NONE, 0, qdata);
+		ret = ns_put_rr(resp, &rrset, &rrsigs, KNOT_COMPR_HINT_NONE,
+		                KNOT_PF_CHECKDUP, qdata);
 	}
 
 	return ret;

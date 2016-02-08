@@ -20,7 +20,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 
 #include <dnssec/crypto.h>
 #include <dnssec/error.h>
@@ -38,11 +37,17 @@
 #include "strtonum.h"
 #include "wire.h"
 
+#define PROGRAM_NAME "keymgr"
+
+#define DEFAULT_POLICY "default"
+#define DEFAULT_KEYSTORE "default"
+
+#define MANUAL_POLICY "default_manual"
+
 /* -- global options ------------------------------------------------------- */
 
 struct options {
 	char *kasp_dir;
-	char *keystore_dir;
 };
 
 typedef struct options options_t;
@@ -54,6 +59,11 @@ static options_t global = { 0 };
 static void cleanup_kasp(dnssec_kasp_t **kasp_ptr)
 {
 	dnssec_kasp_deinit(*kasp_ptr);
+}
+
+static void cleanup_kasp_keystore(dnssec_kasp_keystore_t **keystore_ptr)
+{
+	dnssec_kasp_keystore_free(*keystore_ptr);
 }
 
 static void cleanup_keystore(dnssec_keystore_t **keystore_ptr)
@@ -77,6 +87,7 @@ static void cleanup_list(dnssec_list_t **list_ptr)
 }
 
 #define _cleanup_kasp_ _cleanup_(cleanup_kasp)
+#define _cleanup_kasp_keystore_ _cleanup_(cleanup_kasp_keystore)
 #define _cleanup_keystore_ _cleanup_(cleanup_keystore)
 #define _cleanup_zone_ _cleanup_(cleanup_kasp_zone)
 #define _cleanup_policy_ _cleanup_(cleanup_kasp_policy)
@@ -97,21 +108,6 @@ static dnssec_kasp_t *get_kasp(void)
 	}
 
 	return kasp;
-}
-
-static dnssec_keystore_t *get_keystore(void)
-{
-	dnssec_keystore_t *store = NULL;
-
-	dnssec_keystore_init_pkcs8_dir(&store);
-	int r = dnssec_keystore_open(store, global.keystore_dir);
-	if (r != DNSSEC_EOK) {
-		error("Cannot open private key store (%s).", dnssec_strerror(r));
-		dnssec_keystore_deinit(store);
-		return NULL;
-	}
-
-	return store;
 }
 
 static dnssec_kasp_zone_t *get_zone(dnssec_kasp_t *kasp, const char *name)
@@ -138,7 +134,28 @@ static dnssec_kasp_policy_t *get_policy(dnssec_kasp_t *kasp, const char *name)
 	return policy;
 }
 
-static bool zone_add_dnskey(dnssec_kasp_zone_t *zone, dnssec_key_t *dnskey,
+static dnssec_keystore_t *get_keystore(dnssec_kasp_t *kasp, const char *name)
+{
+	_cleanup_kasp_keystore_ dnssec_kasp_keystore_t *config = NULL;
+	int r = dnssec_kasp_keystore_load(kasp, name, &config);
+	if (r != DNSSEC_EOK) {
+		error("Cannot load key store '%s' configuration. (%s)",
+		      name, dnssec_strerror(r));
+		return NULL;
+	}
+
+	dnssec_keystore_t *store = NULL;
+	r = dnssec_kasp_keystore_open(kasp, config->backend, config->config, &store);
+	if (r != DNSSEC_EOK) {
+		error("Cannot open private key store '%s' (%s).", name, dnssec_strerror(r));
+		return NULL;
+	}
+
+	return store;
+}
+
+static bool zone_add_dnskey(dnssec_kasp_zone_t *zone, const char *id,
+			    dnssec_key_t *dnskey,
 			    const dnssec_kasp_key_timing_t *timing)
 {
 	dnssec_kasp_key_t *key = calloc(1, sizeof(*key));
@@ -147,10 +164,9 @@ static bool zone_add_dnskey(dnssec_kasp_zone_t *zone, dnssec_key_t *dnskey,
 		return false;
 	}
 
+	key->id = strdup(id);
 	key->key = dnskey;
-	if (timing) {
-		key->timing = *timing;
-	}
+	key->timing = *timing;
 
 	dnssec_list_t *keys = dnssec_kasp_zone_get_keys(zone);
 	dnssec_list_append(keys, key);
@@ -158,9 +174,9 @@ static bool zone_add_dnskey(dnssec_kasp_zone_t *zone, dnssec_key_t *dnskey,
 	return true;
 }
 
-static void print_key(const dnssec_key_t *key)
+static void print_key(const char *id, const dnssec_key_t *key)
 {
-	printf("id %s keytag %d\n", dnssec_key_get_id(key), dnssec_key_get_keytag(key));
+	printf("id %s keytag %d\n", id, dnssec_key_get_keytag(key));
 }
 
 /* -- generic list operations ---------------------------------------------- */
@@ -216,29 +232,28 @@ static int search_str_to_keytag(const char *search)
 /*!
  * Check if key matches search string or search keytag.
  *
- * \param key     DNSSEC key to test.
+ * \param key     KASP key to test.
  * \param keytag  Key tag to match (ignored if negative).
  * \param search  Key ID to match (prefix based match).
  *
  * \return DNSSEC key matches key tag or key ID.
  */
-static bool key_match(const dnssec_key_t *key, int keytag, const char *keyid)
+static bool key_match(const dnssec_kasp_key_t *key, int keytag, const char *keyid)
 {
 	assert(key);
 	assert(keyid);
 
 	// key tag
 
-	if (keytag >= 0 && dnssec_key_get_keytag(key) == keytag) {
+	if (keytag >= 0 && dnssec_key_get_keytag(key->key) == keytag) {
 		return true;
 	}
 
 	// key ID
 
-	const char *id = dnssec_key_get_id(key);
-	size_t id_len = strlen(id);
+	size_t id_len = strlen(key->id);
 	size_t keyid_len = strlen(keyid);
-	return (keyid_len <= id_len && strncasecmp(id, keyid, keyid_len) == 0);
+	return (keyid_len <= id_len && strncasecmp(key->id, keyid, keyid_len) == 0);
 }
 
 /*!
@@ -262,7 +277,7 @@ static int search_key(dnssec_list_t *list, const char *search,
 
 	dnssec_list_foreach(item, list) {
 		dnssec_kasp_key_t *key = dnssec_item_get(item);
-		if (key_match(key->key, keytag, search)) {
+		if (key_match(key, keytag, search)) {
 			int r = match(key, data);
 			if (r != DNSSEC_EOK) {
 				return r;
@@ -324,6 +339,197 @@ static int search_unique_key(dnssec_list_t *list, const char *search,
 
 /* -- actions implementation ----------------------------------------------- */
 
+static bool init_kasp(dnssec_kasp_t **kasp_ptr)
+{
+	dnssec_kasp_t *kasp = NULL;
+	dnssec_kasp_init_dir(&kasp);
+
+	int r = dnssec_kasp_init(kasp, global.kasp_dir);
+	if (r != DNSSEC_EOK) {
+		error("Cannot initialize KASP directory (%s).", dnssec_strerror(r));
+		free(kasp);
+		return false;
+	}
+
+	r = dnssec_kasp_open(kasp, global.kasp_dir);
+	if (r != DNSSEC_EOK) {
+		error("Cannot open KASP directory (%s).", dnssec_strerror(r));
+		free(kasp);
+		return false;
+	}
+
+	*kasp_ptr = kasp;
+	return true;
+}
+
+static int create_default_keystore(dnssec_kasp_t *kasp)
+{
+	int r = dnssec_kasp_keystore_exists(kasp, DEFAULT_KEYSTORE);
+	if (r == DNSSEC_EOK || r != DNSSEC_NOT_FOUND) {
+		return r;
+	}
+
+	dnssec_kasp_keystore_t config = {
+		.name = DEFAULT_KEYSTORE,
+		.backend = DNSSEC_KASP_KEYSTORE_PKCS8,
+		.config = "keys",
+	};
+
+	_cleanup_keystore_ dnssec_keystore_t *keystore = NULL;
+	r = dnssec_kasp_keystore_init(kasp, config.backend, config.config, &keystore);
+	if (r != DNSSEC_EOK) {
+		return r;
+	}
+
+	r = dnssec_kasp_keystore_save(kasp, &config);
+	if (r != DNSSEC_EOK) {
+		return r;
+	}
+
+	return DNSSEC_EOK;
+}
+
+static int create_policy(dnssec_kasp_t *kasp, const dnssec_kasp_policy_t *policy)
+{
+	int r = dnssec_kasp_policy_exists(kasp, policy->name);
+	if (r == DNSSEC_EOK || r != DNSSEC_NOT_FOUND) {
+		return r;
+	}
+
+	return dnssec_kasp_policy_save(kasp, policy);
+}
+
+static int create_default_policy(dnssec_kasp_t *kasp)
+{
+	dnssec_kasp_policy_t config = { 0 };
+	dnssec_kasp_policy_defaults(&config);
+	config.name = DEFAULT_POLICY;
+	config.keystore = DEFAULT_KEYSTORE;
+
+	return create_policy(kasp, &config);
+}
+
+static int create_manual_policy(dnssec_kasp_t *kasp)
+{
+	dnssec_kasp_policy_t config = { 0 };
+	dnssec_kasp_policy_defaults(&config);
+	config.name = MANUAL_POLICY;
+	config.keystore = DEFAULT_KEYSTORE;
+	config.manual = true;
+
+	return create_policy(kasp, &config);
+}
+
+static int create_manual_policy_lazy(dnssec_kasp_t *kasp, bool *created)
+{
+	if (*created) {
+		return DNSSEC_EOK;
+	}
+
+	*created = true;
+	return create_manual_policy(kasp);
+}
+
+/*!
+ * Walk through existing policies, (a) add reference to default key store
+ * if missing, and (b) add default policy if missing.
+ */
+static bool update_policies(dnssec_kasp_t *kasp)
+{
+	_cleanup_list_ dnssec_list_t *policies = NULL;
+	int r = dnssec_kasp_policy_list(kasp, &policies);
+	if (r != DNSSEC_EOK) {
+		error("Failed to get list of existing policies (%s).", dnssec_strerror(r));
+		return false;
+	}
+
+	bool has_default = false;
+
+	dnssec_list_foreach(i, policies) {
+		const char *name = dnssec_item_get(i);
+		if (strcmp(name, DEFAULT_POLICY) == 0) {
+			has_default = true;
+		}
+
+		_cleanup_policy_ dnssec_kasp_policy_t *policy = NULL;
+		r = dnssec_kasp_policy_load(kasp, name, &policy);
+		if (r != DNSSEC_EOK) {
+			error("Failed to load policy '%s' (%s).", name, dnssec_strerror(r));
+			return false;
+		}
+
+		if (policy->keystore == NULL) {
+			policy->keystore = strdup(DEFAULT_KEYSTORE);
+		}
+
+		r = dnssec_kasp_policy_save(kasp, policy);
+		if (r != DNSSEC_EOK) {
+			error("Failed to update policy '%s' (%s).", name, dnssec_strerror(r));
+			return false;
+		}
+	}
+
+	if (!has_default) {
+		r = create_default_policy(kasp);
+		if (r != DNSSEC_EOK) {
+			error("Failed to add default policy (%s).", dnssec_strerror(r));
+			return false;
+		}
+	}
+
+	return true;
+}
+
+/*!
+ * Walk through existing zones and adds a default policy with manual signing
+ * enabled, if there is a zone with unassigned policy.
+ */
+static bool update_zones(dnssec_kasp_t *kasp)
+{
+	_cleanup_list_ dnssec_list_t *zones = NULL;
+	int r = dnssec_kasp_zone_list(kasp, &zones);
+	if (r != DNSSEC_EOK) {
+		error("Failed to get list of existing zones (%s).", dnssec_strerror(r));
+		return false;
+	}
+
+	bool manual_ready = false;
+
+	dnssec_list_foreach(i, zones) {
+		const char *name = dnssec_item_get(i);
+
+		_cleanup_zone_ dnssec_kasp_zone_t *zone = NULL;
+		int r = dnssec_kasp_zone_load(kasp, name, &zone);
+		if (r != DNSSEC_EOK) {
+			error("Failed to load zone '%s' (%s).", name, dnssec_strerror(r));
+			return false;
+		}
+
+		if (dnssec_kasp_zone_get_policy(zone) == NULL) {
+			r = create_manual_policy_lazy(kasp, &manual_ready);
+			if (r != DNSSEC_EOK) {
+				error("Failed to create policy for manual signing (%s)", MANUAL_POLICY);
+				return false;
+			}
+
+			r = dnssec_kasp_zone_set_policy(zone, MANUAL_POLICY);
+			if (r != DNSSEC_EOK) {
+				error("Failed to assign policy '%s' to zone '%s' (%s).",
+				      name, MANUAL_POLICY, dnssec_strerror(r));
+				return false;
+			}
+		}
+
+		r = dnssec_kasp_zone_save(kasp, zone);
+		if (r != DNSSEC_EOK) {
+			error("Failed to save zone '%s' (%s).", name, dnssec_strerror(r));
+			return false;
+		}
+	}
+
+	return true;
+}
+
 /*
  * keymgr init
  */
@@ -334,25 +540,22 @@ static int cmd_init(int argc, char *argv[])
 		return 1;
 	}
 
-	// KASP
-
 	_cleanup_kasp_ dnssec_kasp_t *kasp = NULL;
-	dnssec_kasp_init_dir(&kasp);
-
-	int r = dnssec_kasp_init(kasp, global.kasp_dir);
-	if (r != DNSSEC_EOK) {
-		error("Cannot initialize KASP directory (%s).", dnssec_strerror(r));
+	if (!init_kasp(&kasp)) {
 		return 1;
 	}
 
-	// keystore
-
-	_cleanup_keystore_ dnssec_keystore_t *store = NULL;
-	dnssec_keystore_init_pkcs8_dir(&store);
-
-	r = dnssec_keystore_init(store, global.keystore_dir);
+	int r = create_default_keystore(kasp);
 	if (r != DNSSEC_EOK) {
-		error("Cannot initialize default keystore (%s).", dnssec_strerror(r));
+		error("Failed to initialize default key store (%s).", dnssec_strerror(r));
+		return 1;
+	}
+
+	if (!update_policies(kasp)) {
+		return 1;
+	}
+
+	if (!update_zones(kasp)) {
 		return 1;
 	}
 
@@ -370,10 +573,10 @@ static int cmd_zone_add(int argc, char *argv[])
 	}
 
 	char *zone_name = argv[0];
-	char *policy = NULL;
+	char *policy = DEFAULT_POLICY;
 
 	static const parameter_t params[] = {
-		{ "policy", value_policy },
+		{ "policy", value_string },
 		{ NULL }
 	};
 
@@ -572,7 +775,7 @@ static int cmd_zone_key_list(int argc, char *argv[])
 	dnssec_list_t *zone_keys = dnssec_kasp_zone_get_keys(zone);
 	dnssec_list_foreach(item, zone_keys) {
 		const dnssec_kasp_key_t *key = dnssec_item_get(item);
-		print_key(key->key);
+		print_key(key->id, key->key);
 	}
 
 	return 0;
@@ -611,15 +814,15 @@ static int cmd_zone_key_show(int argc, char *argv[])
 		return 1;
 	}
 
-	printf("id %s\n", dnssec_key_get_id(key->key));
-	printf("keytag %d\n", dnssec_key_get_keytag(key->key));
+	printf("id %s\n",        key->id);
+	printf("keytag %d\n",    dnssec_key_get_keytag(key->key));
 	printf("algorithm %d\n", dnssec_key_get_algorithm(key->key));
-	printf("size %u\n", dnssec_key_get_size(key->key));
-	printf("flags %d\n", dnssec_key_get_flags(key->key));
-	printf("publish %ju\n", key->timing.publish);
-	printf("active %ju\n", key->timing.active);
-	printf("retire %ju\n", key->timing.retire);
-	printf("remove %ju\n", key->timing.remove);
+	printf("size %u\n",      dnssec_key_get_size(key->key));
+	printf("flags %d\n",     dnssec_key_get_flags(key->key));
+	printf("publish %lld\n", (long long)key->timing.publish);
+	printf("active %lld\n",  (long long)key->timing.active);
+	printf("retire %lld\n",  (long long)key->timing.retire);
+	printf("remove %lld\n",  (long long)key->timing.remove);
 
 	return 0;
 }
@@ -774,7 +977,13 @@ static int cmd_zone_key_generate(int argc, char *argv[])
 		return 1;
 	}
 
-	_cleanup_keystore_ dnssec_keystore_t *store = get_keystore();
+	_cleanup_policy_ dnssec_kasp_policy_t *policy = NULL;
+	policy = get_policy(kasp, dnssec_kasp_zone_get_policy(zone));
+	if (!policy) {
+		return 1;
+	}
+
+	_cleanup_keystore_ dnssec_keystore_t *store = get_keystore(kasp, policy->keystore);
 	if (!store) {
 		return 1;
 	}
@@ -788,23 +997,25 @@ static int cmd_zone_key_generate(int argc, char *argv[])
 		return 1;
 	}
 
+	uint16_t flags = config.is_ksk ? 257 : 256;
+
 	dnssec_key_t *dnskey = NULL;
 	dnssec_key_new(&dnskey);
-	r = dnssec_key_import_keystore(dnskey, store, keyid, config.algorithm);
+	dnssec_key_set_algorithm(dnskey, config.algorithm);
+	dnssec_key_set_flags(dnskey, flags);
+
+	r = dnssec_key_import_keystore(dnskey, store, keyid);
 	if (r != DNSSEC_EOK) {
 		dnssec_key_free(dnskey);
 		error("Failed to create a DNSKEY record (%s).", dnssec_strerror(r));
 		return 1;
 	}
 
-	uint16_t flags = config.is_ksk ? 257 : 256;
-	dnssec_key_set_flags(dnskey, flags);
-
 	// add DNSKEY into zone keys
 
 	config.timing.created = time(NULL);
-	if (!zone_add_dnskey(zone, dnskey, &config.timing)) {
-		free(dnskey);
+	if (!zone_add_dnskey(zone, keyid, dnskey, &config.timing)) {
+		dnssec_key_free(dnskey);
 		return 1;
 	}
 
@@ -815,7 +1026,7 @@ static int cmd_zone_key_generate(int argc, char *argv[])
 		return 1;
 	}
 
-	print_key(dnskey);
+	print_key(keyid, dnskey);
 
 	return 0;
 }
@@ -906,6 +1117,17 @@ static int cmd_zone_key_import(int argc, char *argv[])
 		return 1;
 	}
 
+	_cleanup_policy_ dnssec_kasp_policy_t *policy = NULL;
+	policy = get_policy(kasp, dnssec_kasp_zone_get_policy(zone));
+	if (!policy) {
+		return 1;
+	}
+
+	_cleanup_keystore_ dnssec_keystore_t *store = get_keystore(kasp, policy->keystore);
+	if (!store) {
+		return 1;
+	}
+
 	// parse the key
 
 	dnssec_key_t *key = NULL;
@@ -920,12 +1142,6 @@ static int cmd_zone_key_import(int argc, char *argv[])
 
 	// store private key
 
-	_cleanup_keystore_ dnssec_keystore_t *store = get_keystore();
-	if (!store) {
-		dnssec_key_free(key);
-		return 1;
-	}
-
 	_cleanup_free_ char *keyid = NULL;
 	r = dnssec_keystore_import(store, &pem, &keyid);
 	if (r != DNSSEC_EOK) {
@@ -935,7 +1151,7 @@ static int cmd_zone_key_import(int argc, char *argv[])
 	}
 
 	timing.created = time(NULL);
-	if (!zone_add_dnskey(zone, key, &timing)) {
+	if (!zone_add_dnskey(zone, keyid, key, &timing)) {
 		dnssec_keystore_remove_key(store, keyid);
 		dnssec_key_free(key);
 		return 1;
@@ -949,7 +1165,7 @@ static int cmd_zone_key_import(int argc, char *argv[])
 		return 1;
 	}
 
-	print_key(key);
+	print_key(keyid, key);
 
 	return 0;
 }
@@ -991,7 +1207,7 @@ static int cmd_zone_set(int argc, char *argv[])
 	const char *policy = dnssec_kasp_zone_get_policy(zone);
 
 	static const parameter_t params[] = {
-		{ "policy", value_policy },
+		{ "policy", value_string },
 		{ NULL }
 	};
 
@@ -1065,6 +1281,8 @@ static int cmd_policy_list(int argc, char *argv[])
 
 static void print_policy(const dnssec_kasp_policy_t *policy)
 {
+	printf("manual control:   %s\n", policy->manual ? "true" : "false");
+	printf("keystore:         %s\n", policy->keystore ? policy->keystore : "(not set)");
 	printf("algorithm:        %d\n", policy->algorithm);
 	printf("DNSKEY TTL:       %u\n", policy->dnskey_ttl);
 	printf("KSK key size:     %u\n", policy->ksk_size);
@@ -1105,6 +1323,8 @@ static int cmd_policy_show(int argc, char *argv[])
 static const parameter_t POLICY_PARAMS[] = {
 	#define o(member) offsetof(dnssec_kasp_policy_t, member)
 	{ "algorithm",      value_algorithm, .offset = o(algorithm) },
+	{ "manual",         value_bool,      .offset = o(manual) },
+	{ "keystore",       value_string,    .offset = o(keystore) },
 	{ "dnskey-ttl",     value_uint32,    .offset = o(dnskey_ttl) },
 	{ "ksk-size",       value_key_size,  .offset = o(ksk_size) },
 	{ "zsk-size",       value_key_size,  .offset = o(zsk_size) },
@@ -1135,9 +1355,12 @@ static int cmd_policy_add(int argc, char *argv[])
 	}
 
 	dnssec_kasp_policy_defaults(policy);
+	policy->keystore = strdup(DEFAULT_KEYSTORE);
+
 	if (parse_parameters(POLICY_PARAMS, argc -1, argv + 1, policy) != 0) {
 		return 1;
 	}
+
 
 	_cleanup_kasp_ dnssec_kasp_t *kasp = get_kasp();
 	if (!kasp) {
@@ -1236,18 +1459,105 @@ static int cmd_policy(int argc, char *argv[])
 
 static int cmd_keystore_list(int argc, char *argv[])
 {
-	_cleanup_keystore_ dnssec_keystore_t *store = get_keystore();
+	_cleanup_kasp_ dnssec_kasp_t *kasp = get_kasp();
+	if (!kasp) {
+		return 1;
+	}
+
+	dnssec_list_t *names = NULL;
+	dnssec_kasp_keystore_list(kasp, &names);
+	dnssec_list_foreach(item, names) {
+		const char *name = dnssec_item_get(item);
+		printf("%s\n", name);
+	}
+	dnssec_list_free_full(names, NULL, NULL);
+
+	return 0;
+}
+
+/*
+ * keymgr keystore show <name>
+ */
+static int cmd_keystore_show(int argc, char *argv[])
+{
+	if (argc != 1) {
+		error("Keystore name has to be specified.");
+		return 1;
+	}
+
+	const char *name = argv[0];
+
+	_cleanup_kasp_ dnssec_kasp_t *kasp = get_kasp();
+	if (!kasp) {
+		return 1;
+	}
+
+	_cleanup_kasp_keystore_ dnssec_kasp_keystore_t *kasp_store = NULL;
+	int r = dnssec_kasp_keystore_load(kasp, name, &kasp_store);
+	if (r != DNSSEC_EOK) {
+		error("Failed to load keystore configuration.");
+		return 1;
+	}
+
+	printf("name:    %s\n", kasp_store->name);
+	printf("backend: %s\n", kasp_store->backend);
+	printf("config:  %s\n", kasp_store->config);
+
+	_cleanup_keystore_ dnssec_keystore_t *store = get_keystore(kasp, argv[0]);
 	if (!store) {
 		return 1;
 	}
 
 	dnssec_list_t *keys = NULL;
 	dnssec_keystore_list_keys(store, &keys);
+	printf("keys:    %zu\n", dnssec_list_size(keys));
 	dnssec_list_foreach(item, keys) {
 		const char *key_id = dnssec_item_get(item);
-		printf("%s\n", key_id);
+		printf("- %s\n", key_id);
 	}
 	dnssec_list_free_full(keys, NULL, NULL);
+
+	return 0;
+}
+
+/*
+ * keymgr keystore add <name> [backend <files>] [config <config>]
+ */
+static int cmd_keystore_add(int argc, char *argv[])
+{
+	if (argc < 1) {
+		error("Keystore name has to be specified.");
+		return 1;
+	}
+
+	dnssec_kasp_keystore_t config = {
+		.name = argv[0],
+		.backend = DNSSEC_KASP_KEYSTORE_PKCS8,
+		.config = NULL,
+	};
+
+	static const parameter_t params[] = {
+		#define off(member) offsetof(dnssec_kasp_keystore_t, member)
+		{ "backend", value_string, .offset = off(backend) },
+		{ "config",  value_string, .offset = off(config) },
+		{ NULL },
+		#undef off
+	};
+
+	if (parse_parameters(params, argc - 1, argv + 1, &config) != 0) {
+		return 1;
+	}
+
+	_cleanup_kasp_ dnssec_kasp_t *kasp = get_kasp();
+	if (!kasp) {
+		return 1;
+	}
+
+	int r = dnssec_kasp_keystore_save(kasp, &config);
+	if (r != DNSSEC_EOK) {
+		error("Failed to save keystore (%s).", dnssec_strerror(r));
+		return 1;
+	}
 
 	return 0;
 }
@@ -1358,6 +1668,8 @@ static int cmd_keystore(int argc, char *argv[])
 {
 	static const command_t commands[] = {
 		{ "list",   cmd_keystore_list },
+		{ "show",   cmd_keystore_show },
+		{ "add",    cmd_keystore_add },
 		{ NULL }
 	};
 
@@ -1376,14 +1688,12 @@ static int cmd_tsig(int argc, char *argv[])
 
 static void print_help(void)
 {
-	if (execlp("man", "man", "keymgr", NULL) == -1) {
-		fprintf(stderr, "Failed to open manual page.\n");
-	}
+	printf("Please, see %s(8) manual page.\n", PROGRAM_NAME);
 }
 
 static void print_version(void)
 {
-	printf("keymgr, version %s\n", PACKAGE_VERSION);
+	printf("%s (Knot DNS), version %s\n", PROGRAM_NAME, PACKAGE_VERSION);
 }
 
 int main(int argc, char *argv[])
@@ -1427,12 +1737,6 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	if (asprintf(&global.keystore_dir, "%s/keys", global.kasp_dir) == -1) {
-		error("failed to allocate memory");
-		global.keystore_dir = NULL;
-		goto failed;
-	}
-
 	// subcommands
 
 	static const command_t commands[] = {
@@ -1452,7 +1756,6 @@ failed:
 	dnssec_crypto_cleanup();
 
 	free(global.kasp_dir);
-	free(global.keystore_dir);
 
 	return exit_code;
 }

@@ -1,20 +1,3 @@
-/*!
- * \file dnsproxy.h
- *
- * \author Marek Vavrusa <marek.vavrusa@nic.cz>
- *
- * \brief DNS proxy module
- *
- * Accepted configurations:
- *  * "<address>"
- *
- * Module forwards all unsatisfied queries to the specified server in
- * order to solve them, and then sends the response back, i.e. a tiny
- * DNS proxy.
- *
- * \addtogroup query_processing
- * @{
- */
 /*  Copyright (C) 2014 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
@@ -29,6 +12,21 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+/*!
+ * \file
+ *
+ * \brief DNS proxy module
+ *
+ * Accepted configurations:
+ *  * "<address>"
+ *
+ * Module forwards all unsatisfied queries to the specified server in
+ * order to solve them, and then sends the response back, i.e. a tiny
+ * DNS proxy.
+ *
+ * \addtogroup query_processing
+ * @{
  */
 
 #pragma once

@@ -21,9 +21,8 @@
 #include <sys/mman.h>
 #include <unistd.h>
 
-#include "libknot/internal/macros.h"
 #include "libknot/yparser/yparser.h"
-#include "libknot/libknot.h"
+#include "libknot/errcode.h"
 
 extern int _yp_start_state;
 extern int _yp_parse(yp_parser_t *parser);
@@ -99,10 +98,12 @@ int yp_set_input_file(
 
 	// Check for regular file input.
 	struct stat file_stat;
-	if (fstat(parser->file.descriptor, &file_stat) == -1 ||
-	    !S_ISREG(file_stat.st_mode)) {
+	if (fstat(parser->file.descriptor, &file_stat) == -1) {
 		close(parser->file.descriptor);
 		return knot_map_errno();
+	} else if (!S_ISREG(file_stat.st_mode)) {
+		close(parser->file.descriptor);
+		return KNOT_EFILE;
 	}
 
 	char *start = NULL;

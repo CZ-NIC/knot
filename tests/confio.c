@@ -20,8 +20,8 @@
 #include "knot/conf/confio.h"
 #include "knot/conf/tools.h"
 #include "knot/ctl/remote.h"
-#include "libknot/internal/strlcat.h"
-#include "libknot/internal/mem.h"
+#include "contrib/string.h"
+#include "contrib/openbsd/strlcat.h"
 
 #define SKIP_OPENBSD	skip("Nested transactions are not supported on OpenBSD");
 #define OUT_LEN		1024
@@ -97,40 +97,49 @@ static void test_conf_io_abort()
 #else
 	conf_io_t io = { NULL };
 
+	// Test child persistence after subchild abort.
+
 	ok(conf_io_begin(false) == KNOT_EOK, "begin parent txn");
+	char idx[2] = { '0' };
+	ok(conf_io_set("server", "version", NULL, idx, &io) ==
+	   KNOT_EOK, "set single value '%s'", idx);
 
 	for (int i = 1; i < CONF_MAX_TXN_DEPTH; i++) {
-		char idx[2] = "0";
-		idx[0] += i;
-		ok(conf_io_begin(true) == KNOT_EOK, "begin child txn");
+		char idx[2] = { '0' + i };
+		ok(conf_io_begin(true) == KNOT_EOK, "begin child txn %s", idx);
 		ok(conf_io_set("server", "version", NULL, idx, &io) ==
-		   KNOT_EOK, "set single value");
+		   KNOT_EOK, "set single value '%s'", idx);
 	}
 
 	for (int i = CONF_MAX_TXN_DEPTH - 1; i > 0; i--) {
-		char idx[2] = "0";
-		idx[0] += i;
+		char idx[2] = { '0' + i };
+		ok(conf_io_abort(true) == KNOT_EOK, "abort child txn %s", idx);
 		conf_val_t val = conf_get_txn(conf(), conf()->io.txn, C_SERVER, C_VERSION);
 		ok(val.code == KNOT_EOK, "check entry");
 		const char *data = conf_str(&val);
-		ok(*data == idx[0], "compare txn data");
-		ok(conf_io_abort(true) == KNOT_EOK, "abort child txn");
+		ok(*data == (idx[0] - 1), "compare txn data '%s'", data);
 	}
 
-	conf_val_t val = conf_get_txn(conf(), conf()->io.txn, C_SERVER, C_VERSION);
-	ok(val.code == KNOT_ENOENT, "check entry");
+	ok(conf_io_abort(false) == KNOT_EOK, "abort parent txn");
+	ok(conf()->io.txn == NULL, "check txn depth");
 
+	// Test child abort with commited subchild.
+	ok(conf_io_begin(false) == KNOT_EOK, "begin new parent txn");
 	ok(conf_io_begin(true) == KNOT_EOK, "begin child txn");
 	ok(conf_io_begin(true) == KNOT_EOK, "begin subchild txn");
 	ok(conf_io_set("server", "version", NULL, "text", &io) ==
 	   KNOT_EOK, "set single value");
 	ok(conf_io_commit(true) == KNOT_EOK, "commit subchild txn");
-	val = conf_get_txn(conf(), conf()->io.txn, C_SERVER, C_VERSION);
+	conf_val_t val = conf_get_txn(conf(), conf()->io.txn, C_SERVER, C_VERSION);
 	ok(val.code == KNOT_EOK, "check entry");
-
+	const char *data = conf_str(&val);
+	ok(strcmp(data, "text") == 0, "compare subchild txn data '%s'", data);
+	ok(conf_io_abort(true) == KNOT_EOK, "abort child txn");
+	val = conf_get_txn(conf(), conf()->io.txn, C_SERVER, C_VERSION);
+	ok(val.code == KNOT_ENOENT, "check entry");
 	ok(conf_io_abort(false) == KNOT_EOK, "abort parent txn");
-	ok(conf()->io.txn == NULL, "check txn depth");
 
+	// Test unchanged read_txn.
 	val = conf_get_txn(conf(), &conf()->read_txn, C_SERVER, C_VERSION);
 	ok(val.code == KNOT_ENOENT, "check entry");
 #endif
@@ -146,35 +155,44 @@ static void test_conf_io_commit()
 #else
 	conf_io_t io = { NULL };
 
+	// Test subchild persistence after commit.
+
 	ok(conf_io_begin(false) == KNOT_EOK, "begin parent txn");
+	char idx[2] = { '0' };
+	ok(conf_io_set("server", "version", NULL, idx, &io) ==
+	   KNOT_EOK, "set single value '%s'", idx);
 
 	for (int i = 1; i < CONF_MAX_TXN_DEPTH; i++) {
-		char idx[2] = "0";
-		idx[0] += i;
-		ok(conf_io_begin(true) == KNOT_EOK, "begin child txn");
+		char idx[2] = { '0' + i };
+		ok(conf_io_begin(true) == KNOT_EOK, "begin child txn %s", idx);
 		ok(conf_io_set("server", "version", NULL, idx, &io) ==
-		   KNOT_EOK, "set single value");
+		   KNOT_EOK, "set single value '%s'", idx);
 	}
 
 	for (int i = CONF_MAX_TXN_DEPTH - 1; i > 0; i--) {
-		ok(conf_io_commit(true) == KNOT_EOK, "commit child txn");
+		char idx[2] = { '0' + i };
+		ok(conf_io_commit(true) == KNOT_EOK, "commit child txn %s", idx);
+		conf_val_t val = conf_get_txn(conf(), conf()->io.txn, C_SERVER, C_VERSION);
+		ok(val.code == KNOT_EOK, "check entry");
+		const char *data = conf_str(&val);
+		ok(*data == ('0' + CONF_MAX_TXN_DEPTH - 1), "compare txn data '%s'", data);
 	}
 
+	ok(conf_io_commit(false) == KNOT_EOK, "commit parent txn");
+	ok(conf()->io.txn == NULL, "check txn depth");
+
+	// Test child persistence after parent commit.
+	ok(conf_io_begin(false) == KNOT_EOK, "begin new parent txn");
 	conf_val_t val = conf_get_txn(conf(), conf()->io.txn, C_SERVER, C_VERSION);
 	ok(val.code == KNOT_EOK, "check entry");
-
-	ok(conf_io_commit(false) == KNOT_EOK, "commit parent txn");
-	val = conf_get_txn(conf(), &conf()->read_txn, C_SERVER, C_VERSION);
-	ok(val.code == KNOT_EOK, "check entry");
-	char idx = '0' + CONF_MAX_TXN_DEPTH - 1;
+	idx[0] = '0' + CONF_MAX_TXN_DEPTH - 1;
 	const char *data = conf_str(&val);
-	ok(*data == idx, "check entry value");
+	ok(strcmp(data, idx) == 0, "compare final data '%s'", data);
+	ok(conf_io_abort(false) == KNOT_EOK, "abort new parent txn");
 
-	// Reset the database.
-	ok(conf_io_begin(false) == KNOT_EOK, "begin parent txn");
-	ok(conf_io_unset("server", "version", NULL, NULL) ==
-	   KNOT_EOK, "unset single value");
-	ok(conf_io_commit(false) == KNOT_EOK, "commit parent txn");
+	// Test unchanged read_txn.
+	val = conf_get_txn(conf(), &conf()->read_txn, C_SERVER, C_VERSION);
+	ok(val.code == KNOT_ENOENT, "check entry");
 #endif
 }
 
@@ -316,6 +334,9 @@ static void test_conf_io_set()
 	knot_dname_free(&zone3, NULL);
 
 	ok(conf_io_commit(false) == KNOT_EOK, "commit txn");
+
+	// Update read-only transaction.
+	ok(conf_refresh(conf()) == KNOT_EOK, "update read-only txn");
 }
 
 static void test_conf_io_unset()
@@ -726,7 +747,7 @@ static void test_conf_io_diff()
 	ok(conf_io_abort(false) == KNOT_EOK, "abort txn");
 }
 
-static void test_conf_io_desc()
+static void test_conf_io_list()
 {
 	const char *ref;
 	char out[OUT_LEN];
@@ -737,17 +758,17 @@ static void test_conf_io_desc()
 	};
 
 	// ERR.
-	ok(conf_io_desc("", &io) ==
-	   KNOT_YP_EINVAL_ITEM, "desc empty key0");
-	ok(conf_io_desc("uknown", &io) ==
-	   KNOT_YP_EINVAL_ITEM, "desc unknown key0");
-	ok(conf_io_desc("include", &io) ==
-	   KNOT_ENOTSUP, "desc non-group item");
+	ok(conf_io_list("", &io) ==
+	   KNOT_YP_EINVAL_ITEM, "list empty key0");
+	ok(conf_io_list("uknown", &io) ==
+	   KNOT_YP_EINVAL_ITEM, "list unknown key0");
+	ok(conf_io_list("include", &io) ==
+	   KNOT_ENOTSUP, "list non-group item");
 
 	// Desc schema.
 	*out = '\0';
-	ok(conf_io_desc(NULL, &io) ==
-	   KNOT_EOK, "desc schema");
+	ok(conf_io_list(NULL, &io) ==
+	   KNOT_EOK, "list schema");
 	ref = "server\n"
 	      "remote\n"
 	      "template\n"
@@ -757,8 +778,8 @@ static void test_conf_io_desc()
 
 	// Desc group.
 	*out = '\0';
-	ok(conf_io_desc("server", &io) ==
-	   KNOT_EOK, "desc group");
+	ok(conf_io_list("server", &io) ==
+	   KNOT_EOK, "list group");
 	ref = "server.version\n"
 	      "server.rate-limit\n"
 	      "server.listen";
@@ -835,10 +856,10 @@ int main(int argc, char *argv[])
 	diag("conf_io_diff");
 	test_conf_io_diff();
 
-	diag("conf_io_desc");
-	test_conf_io_desc();
+	diag("conf_io_list");
+	test_conf_io_list();
 
-	conf_free(conf(), false);
+	conf_free(conf());
 
 	return 0;
 }

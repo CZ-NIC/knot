@@ -1,7 +1,20 @@
+/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
 /*!
- * \file query_module.h
- *
- * \author Marek Vavrusa <marek.vavrusa@nic.cz>
+ * \file
  *
  * \brief Query module interface
  *
@@ -22,29 +35,13 @@
  * \addtogroup query_processing
  * @{
  */
-/*  Copyright (C) 2014 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
-
-    This program is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
-
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-
-    You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
- */
 
 #pragma once
 
 #include "libknot/libknot.h"
-#include "libknot/internal/lists.h"
-#include "libknot/internal/mempattern.h"
 #include "knot/conf/conf.h"
 #include "knot/conf/tools.h"
+#include "contrib/ucw/lists.h"
 
 #define MODULE_ERR(mod, msg, ...) \
 	log_error("module '%.*s', " msg, mod[0], mod + 1, ##__VA_ARGS__)
@@ -88,7 +85,7 @@ typedef int (*qmodule_process_t)(int state, knot_pkt_t *pkt, struct query_data *
  */
 struct query_module {
 	node_t node;
-	mm_ctx_t *mm;
+	knot_mm_t *mm;
 	void *ctx;
 	conf_t *config;
 	conf_mod_id_t *id;
@@ -109,12 +106,12 @@ struct query_step {
  *  assembly phase, for example 'before processing', 'answer section' and so on.
  */
 struct query_plan {
-	mm_ctx_t *mm;
+	knot_mm_t *mm;
 	list_t stage[QUERY_PLAN_STAGES];
 };
 
 /*! \brief Create an empty query plan. */
-struct query_plan *query_plan_create(mm_ctx_t *mm);
+struct query_plan *query_plan_create(knot_mm_t *mm);
 
 /*! \brief Free query plan and all planned steps. */
 void query_plan_free(struct query_plan *plan);
@@ -125,7 +122,7 @@ int query_plan_step(struct query_plan *plan, int stage, qmodule_process_t proces
 
 /*! \brief Open query module identified by name. */
 struct query_module *query_module_open(conf_t *config, conf_mod_id_t *mod_id,
-                                       mm_ctx_t *mm);
+                                       knot_mm_t *mm);
 
 /*! \brief Close query module. */
 void query_module_close(struct query_module *module);

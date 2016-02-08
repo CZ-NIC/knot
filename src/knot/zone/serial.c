@@ -14,11 +14,11 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "knot/zone/serial.h"
-#include "knot/conf/conf.h"
-
 #include <assert.h>
 #include <time.h>
+
+#include "knot/conf/conf.h"
+#include "knot/zone/serial.h"
 
 static int32_t serial_difference(uint32_t s1, uint32_t s2)
 {

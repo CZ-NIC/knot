@@ -1,4 +1,4 @@
-/*  Copyright (C) 2014 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -14,9 +14,9 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <assert.h>
+
 #include "knot/nameserver/capture.h"
-#include "knot/server/tcp-handler.h"
-#include "knot/server/udp-handler.h"
 
 /* State-less packet capture, only incoming data is accepted. */
 static int reset(knot_layer_t *ctx)  { return KNOT_STATE_PRODUCE; }

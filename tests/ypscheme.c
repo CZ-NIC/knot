@@ -50,7 +50,7 @@ static const yp_item_t multi_group[] = {
 	{ NULL }
 };
 
-static const lookup_table_t opts[] = {
+static const knot_lookup_t opts[] = {
 	{ 1,   "one" },
 	{ 10,  "ten" },
 	{ 0, NULL }

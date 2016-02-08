@@ -22,6 +22,7 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
+#include "contrib/getline.h"
 #include "dnssec/random.h"
 #include "utils/knsupdate/knsupdate_exec.h"
 #include "utils/common/exec.h"
@@ -31,10 +32,9 @@
 #include "utils/common/sign.h"
 #include "utils/common/token.h"
 #include "libknot/libknot.h"
-#include "libknot/internal/getline.h"
-#include "libknot/internal/macros.h"
-#include "libknot/internal/mem.h"
-#include "libknot/internal/strlcpy.h"
+#include "contrib/macros.h"
+#include "contrib/string.h"
+#include "contrib/openbsd/strlcpy.h"
 
 /* Declarations of cmd parse functions. */
 typedef int (*cmd_handle_f)(const char *lp, knsupdate_params_t *params);
@@ -157,8 +157,9 @@ static bool dname_isvalid(const char *lp)
 /* This is probably redundant, but should be a bit faster so let's keep it. */
 static int parse_full_rr(zs_scanner_t *s, const char* lp)
 {
-	if (zs_scanner_parse(s, lp, lp + strlen(lp), true) < 0) {
-		ERR("invalid record (%s)\n", zs_strerror(s->error_code));
+	if (zs_set_input_string(s, lp, strlen(lp)) != 0 ||
+	    zs_parse_all(s) != 0) {
+		ERR("invalid record (%s)\n", zs_strerror(s->error.code));
 		return KNOT_EPARSEFAIL;
 	}
 
@@ -183,7 +184,7 @@ static int parse_partial_rr(zs_scanner_t *s, const char *lp, unsigned flags)
 	/* Make dname FQDN if it isn't. */
 	bool fqdn = true;
 	if (owner_str[len - 1] != '.') {
-		owner_str[len++] = '.';
+		owner_str[len] = '.';
 		fqdn = false;
 	}
 
@@ -294,8 +295,9 @@ static int parse_partial_rr(zs_scanner_t *s, const char *lp, unsigned flags)
 	if (rr == NULL) {
 		return KNOT_ENOMEM;
 	}
-	if (zs_scanner_parse(s, rr, rr + strlen(rr), true) < 0) {
-		ERR("invalid rdata (%s)\n", zs_strerror(s->error_code));
+	if (zs_set_input_string(s, rr, strlen(rr)) != 0 ||
+	    zs_parse_all(s) != 0) {
+		ERR("invalid rdata (%s)\n", zs_strerror(s->error.code));
 		return KNOT_EPARSEFAIL;
 	}
 	free(rr);
@@ -336,7 +338,7 @@ static srv_info_t *parse_host(const char *lp, const char* default_port)
 }
 
 /* Append parsed RRSet to list. */
-static int rr_list_append(zs_scanner_t *s, list_t *target_list, mm_ctx_t *mm)
+static int rr_list_append(zs_scanner_t *s, list_t *target_list, knot_mm_t *mm)
 {
 	knot_rrset_t *rr = knot_rrset_new(s->r_owner, s->r_type, s->r_class,
 	                                  NULL);
@@ -607,18 +609,18 @@ int cmd_add(const char* lp, knsupdate_params_t *params)
 {
 	DBG("%s: lp='%s'\n", __func__, lp);
 
-	if (parse_full_rr(params->parser, lp) != KNOT_EOK) {
+	if (parse_full_rr(&params->parser, lp) != KNOT_EOK) {
 		return KNOT_EPARSEFAIL;
 	}
 
-	return rr_list_append(params->parser, &params->update_list, &params->mm);
+	return rr_list_append(&params->parser, &params->update_list, &params->mm);
 }
 
 int cmd_del(const char* lp, knsupdate_params_t *params)
 {
 	DBG("%s: lp='%s'\n", __func__, lp);
 
-	zs_scanner_t *rrp = params->parser;
+	zs_scanner_t *rrp = &params->parser;
 	int ret = parse_partial_rr(rrp, lp, PARSE_NODEFAULT);
 	if (ret != KNOT_EOK) {
 		return ret;
@@ -654,7 +656,7 @@ int cmd_class(const char* lp, knsupdate_params_t *params)
 	}
 
 	params->class_num = cls;
-	params->parser->default_class = params->class_num;
+	params->parser.default_class = params->class_num;
 
 	return KNOT_EOK;
 }
@@ -687,7 +689,7 @@ int cmd_nxdomain(const char *lp, knsupdate_params_t *params)
 {
 	DBG("%s: lp='%s'\n", __func__, lp);
 
-	zs_scanner_t *s = params->parser;
+	zs_scanner_t *s = &params->parser;
 	int ret = parse_partial_rr(s, lp, PARSE_NODEFAULT | PARSE_NAMEONLY);
 	if (ret != KNOT_EOK) {
 		return ret;
@@ -703,7 +705,7 @@ int cmd_yxdomain(const char *lp, knsupdate_params_t *params)
 {
 	DBG("%s: lp='%s'\n", __func__, lp);
 
-	zs_scanner_t *s = params->parser;
+	zs_scanner_t *s = &params->parser;
 	int ret = parse_partial_rr(s, lp, PARSE_NODEFAULT | PARSE_NAMEONLY);
 	if (ret != KNOT_EOK) {
 		return ret;
@@ -719,7 +721,7 @@ int cmd_nxrrset(const char *lp, knsupdate_params_t *params)
 {
 	DBG("%s: lp='%s'\n", __func__, lp);
 
-	zs_scanner_t *s = params->parser;
+	zs_scanner_t *s = &params->parser;
 	int ret = parse_partial_rr(s, lp, PARSE_NOTTL);
 	if (ret != KNOT_EOK) {
 		return ret;
@@ -741,7 +743,7 @@ int cmd_yxrrset(const char *lp, knsupdate_params_t *params)
 {
 	DBG("%s: lp='%s'\n", __func__, lp);
 
-	zs_scanner_t *s = params->parser;
+	zs_scanner_t *s = &params->parser;
 	int ret = parse_partial_rr(s, lp, PARSE_NOTTL);
 	if (ret != KNOT_EOK) {
 		return ret;
@@ -881,7 +883,7 @@ int cmd_send(const char* lp, knsupdate_params_t *params)
 	uint8_t rc = knot_wire_get_rcode(params->answer->wire);
 	if (rc != KNOT_RCODE_NOERROR) {
 		const char *rcode_str = "Unknown";
-		lookup_table_t *rcode = lookup_by_id(knot_rcode_names, rc);
+		const knot_lookup_t *rcode = knot_lookup_by_id(knot_rcode_names, rc);
 		if (rcode != NULL) {
 			rcode_str = rcode->name;
 		}

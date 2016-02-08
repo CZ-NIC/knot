@@ -1,4 +1,4 @@
-/*  Copyright (C) 2014 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -16,11 +16,11 @@
 
 #include "libknot/libknot.h"
 #include "knot/common/log.h"
-#include "knot/nameserver/process_answer.h"
-#include "knot/nameserver/internet.h"
-#include "knot/nameserver/notify.h"
-#include "knot/nameserver/ixfr.h"
 #include "knot/nameserver/axfr.h"
+#include "knot/nameserver/internet.h"
+#include "knot/nameserver/ixfr.h"
+#include "knot/nameserver/notify.h"
+#include "contrib/mempattern.h"
 
 /*! \brief Accessor to query-specific data. */
 #define ANSWER_DATA(ctx) ((struct answer_data *)(ctx)->data)
@@ -131,7 +131,7 @@ static int process_answer(knot_layer_t *ctx, knot_pkt_t *pkt)
 		next_state = internet_process_answer(pkt, data);
 		break;
 	case KNOT_RESPONSE_AXFR:
-		next_state = axfr_answer_process(pkt, data);
+		next_state = axfr_process_answer(pkt, data);
 		break;
 	case KNOT_RESPONSE_IXFR:
 		next_state = ixfr_process_answer(pkt, data);

@@ -47,7 +47,7 @@ typedef struct {
 	/*! Item description. */
 	const yp_item_t *item;
 	/*! Namedb iterator. */
-	namedb_iter_t *iter;
+	knot_db_iter_t *iter;
 	/*! Key0 database code. */
 	uint8_t key0_code;
 	// Public items.
@@ -77,7 +77,7 @@ typedef struct {
  */
 conf_val_t conf_get_txn(
 	conf_t *conf,
-	namedb_txn_t *txn,
+	knot_db_txn_t *txn,
 	const yp_name_t *key0_name,
 	const yp_name_t *key1_name
 );
@@ -103,7 +103,7 @@ static inline conf_val_t conf_get(
  */
 conf_val_t conf_rawid_get_txn(
 	conf_t *conf,
-	namedb_txn_t *txn,
+	knot_db_txn_t *txn,
 	const yp_name_t *key0_name,
 	const yp_name_t *key1_name,
 	const uint8_t *id,
@@ -133,7 +133,7 @@ static inline conf_val_t conf_rawid_get(
  */
 conf_val_t conf_id_get_txn(
 	conf_t *conf,
-	namedb_txn_t *txn,
+	knot_db_txn_t *txn,
 	const yp_name_t *key0_name,
 	const yp_name_t *key1_name,
 	conf_val_t *id
@@ -159,7 +159,7 @@ static inline conf_val_t conf_id_get(
  */
 conf_val_t conf_mod_get_txn(
 	conf_t *conf,
-	namedb_txn_t *txn,
+	knot_db_txn_t *txn,
 	const yp_name_t *key1_name,
 	const conf_mod_id_t *mod_id
 );
@@ -185,7 +185,7 @@ static inline conf_val_t conf_mod_get(
  */
 conf_val_t conf_zone_get_txn(
 	conf_t *conf,
-	namedb_txn_t *txn,
+	knot_db_txn_t *txn,
 	const yp_name_t *key1_name,
 	const knot_dname_t *dname
 );
@@ -208,7 +208,7 @@ static inline conf_val_t conf_zone_get(
  */
 conf_val_t conf_default_get_txn(
 	conf_t *conf,
-	namedb_txn_t *txn,
+	knot_db_txn_t *txn,
 	const yp_name_t *key1_name
 );
 static inline conf_val_t conf_default_get(
@@ -229,7 +229,7 @@ static inline conf_val_t conf_default_get(
  */
 size_t conf_id_count_txn(
 	conf_t *conf,
-	namedb_txn_t *txn,
+	knot_db_txn_t *txn,
 	const yp_name_t *key0_name
 );
 static inline size_t conf_id_count(
@@ -250,7 +250,7 @@ static inline size_t conf_id_count(
  */
 conf_iter_t conf_iter_txn(
 	conf_t *conf,
-	namedb_txn_t *txn,
+	knot_db_txn_t *txn,
 	const yp_name_t *key0_name
 );
 static inline conf_iter_t conf_iter(
@@ -499,7 +499,7 @@ void conf_free_mod_id(
  */
 char* conf_zonefile_txn(
 	conf_t *conf,
-	namedb_txn_t *txn,
+	knot_db_txn_t *txn,
 	const knot_dname_t *zone
 );
 static inline char* conf_zonefile(
@@ -522,7 +522,7 @@ static inline char* conf_zonefile(
  */
 char* conf_journalfile_txn(
 	conf_t *conf,
-	namedb_txn_t *txn,
+	knot_db_txn_t *txn,
 	const knot_dname_t *zone
 );
 static inline char* conf_journalfile(
@@ -542,7 +542,7 @@ static inline char* conf_journalfile(
  */
 size_t conf_udp_threads_txn(
 	conf_t *conf,
-	namedb_txn_t *txn
+	knot_db_txn_t *txn
 );
 static inline size_t conf_udp_threads(
 	conf_t *conf)
@@ -560,7 +560,7 @@ static inline size_t conf_udp_threads(
  */
 size_t conf_tcp_threads_txn(
 	conf_t *conf,
-	namedb_txn_t *txn
+	knot_db_txn_t *txn
 );
 static inline size_t conf_tcp_threads(
 	conf_t *conf)
@@ -578,7 +578,7 @@ static inline size_t conf_tcp_threads(
  */
 size_t conf_bg_threads_txn(
 	conf_t *conf,
-	namedb_txn_t *txn
+	knot_db_txn_t *txn
 );
 static inline size_t conf_bg_threads(
 	conf_t *conf)
@@ -598,7 +598,7 @@ static inline size_t conf_bg_threads(
  */
 int conf_user_txn(
 	conf_t *conf,
-	namedb_txn_t *txn,
+	knot_db_txn_t *txn,
 	int *uid,
 	int *gid
 );
@@ -622,7 +622,7 @@ static inline int conf_user(
  */
 conf_remote_t conf_remote_txn(
 	conf_t *conf,
-	namedb_txn_t *txn,
+	knot_db_txn_t *txn,
 	conf_val_t *id,
 	size_t index
 );

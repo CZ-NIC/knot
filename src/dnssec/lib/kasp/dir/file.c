@@ -31,6 +31,10 @@ static const char *SUFFIX = ".json";
  */
 char *file_from_entity(const char *dir, const char *type, const char *name)
 {
+	assert(dir);
+	assert(type);
+	assert(name);
+
 	// escape entity name
 
 	_cleanup_free_ char *escaped = NULL;

@@ -45,7 +45,7 @@ Options
   Enable debug messages.
 
 **-h**, **--help**
-  Print help and usage.
+  Print the program help.
 
 **-r**
   Disable recursion.

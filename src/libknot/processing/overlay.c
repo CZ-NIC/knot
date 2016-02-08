@@ -14,35 +14,51 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "libknot/attribute.h"
 #include "libknot/processing/overlay.h"
 #include "libknot/errcode.h"
-#include "libknot/internal/macros.h"
+#include "contrib/mempattern.h"
+#include "contrib/ucw/lists.h"
+
+#define LAYERS(overlay)	((list_t *)overlay->layers)
 
 /*! \note Macro for state-chaining layers. */
 #define ITERATE_LAYERS(overlay, func, ...) \
 	int state = overlay->state; \
-	struct knot_layer *layer = NULL; \
-	WALK_LIST(layer, (overlay)->layers) { \
+	ptrnode_t *node = NULL; \
+	WALK_LIST(node, *LAYERS(overlay)) { \
+		knot_layer_t *layer = node->d; \
 		layer->state = state; /* Pass-through state. */ \
 		state = (func)(layer, ##__VA_ARGS__); \
 	} \
 	return overlay->state = state;
 
 _public_
-void knot_overlay_init(struct knot_overlay *overlay, mm_ctx_t *mm)
+int knot_overlay_init(struct knot_overlay *overlay, knot_mm_t *mm)
 {
-	init_list(&overlay->layers);
+	list_t *layers = mm_alloc(mm, sizeof(list_t));
+	if (layers == NULL) {
+		return KNOT_ENOMEM;
+	}
+	init_list(layers);
+
 	overlay->mm = mm;
 	overlay->state = KNOT_STATE_NOOP;
+	overlay->layers = layers;
+
+	return KNOT_EOK;
 }
 
 _public_
 void knot_overlay_deinit(struct knot_overlay *overlay)
 {
-	struct knot_layer *layer = NULL, *next = NULL;
-	WALK_LIST_DELSAFE(layer, next, overlay->layers) {
-		mm_free(overlay->mm, layer);
+	ptrnode_t *node = NULL;
+	WALK_LIST(node, *LAYERS(overlay)) {
+		mm_free(overlay->mm, node->d);
 	}
+
+	ptrlist_free(LAYERS(overlay), overlay->mm);
+	mm_free(overlay->mm, overlay->layers);
 }
 
 _public_
@@ -53,12 +69,12 @@ int knot_overlay_add(struct knot_overlay *overlay, const knot_layer_api_t *modul
 	if (layer == NULL) {
 		return KNOT_ENOMEM;
 	}
-
 	memset(layer, 0, sizeof(struct knot_layer));
-	layer->mm = overlay->mm;
-	layer->state = overlay->state;
-	add_tail(&overlay->layers, (node_t *)layer);
 
+	layer->state = overlay->state;
+	layer->mm = overlay->mm;
+
+	ptrlist_add(LAYERS(overlay), layer, overlay->mm);
 	overlay->state = knot_layer_begin(layer, module, module_param);
 
 	return KNOT_EOK;

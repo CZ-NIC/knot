@@ -14,6 +14,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <assert.h>
 #include <tap/basic.h>
 #include <pthread.h>
 #include <stdlib.h>
@@ -21,10 +22,12 @@
 #include <fcntl.h>
 
 #include "knot/conf/conf.h"
-#include "libknot/internal/mempool.h"
-#include "libknot/internal/net.h"
 #include "libknot/processing/layer.h"
 #include "libknot/processing/requestor.h"
+#include "contrib/mempattern.h"
+#include "contrib/net.h"
+#include "contrib/sockaddr.h"
+#include "contrib/ucw/mempool.h"
 
 /* @note Purpose of this test is not to verify process_answer functionality,
  *       but simply if the requesting/receiving works, so mirror is okay. */
@@ -34,7 +37,7 @@ static int finish(knot_layer_t *ctx) { return KNOT_STATE_NOOP; }
 static int in(knot_layer_t *ctx, knot_pkt_t *pkt) { return KNOT_STATE_DONE; }
 static int out(knot_layer_t *ctx, knot_pkt_t *pkt) { return KNOT_STATE_CONSUME; }
 
-static const struct timeval TIMEOUT = { 2, 0 };
+static const int TIMEOUT = 2000;
 
 /*! \brief Dummy answer processing module. */
 const knot_layer_api_t dummy_module = {
@@ -59,13 +62,13 @@ static void* responder_thread(void *arg)
 		if (client < 0) {
 			break;
 		}
-		int len = net_dns_tcp_recv(client, buf, sizeof(buf), NULL);
+		int len = net_dns_tcp_recv(client, buf, sizeof(buf), -1);
 		if (len < KNOT_WIRE_HEADER_SIZE) {
 			close(client);
 			break;
 		}
 		knot_wire_set_qr(buf);
-		net_dns_tcp_send(client, buf, len, NULL);
+		net_dns_tcp_send(client, buf, len, -1);
 		close(client);
 	}
 	return NULL;
@@ -92,8 +95,7 @@ static void test_disconnected(struct knot_requestor *requestor, conf_remote_t *r
 	is_int(KNOT_EOK, ret, "requestor: disconnected/enqueue");
 
 	/* Wait for completion. */
-	struct timeval tv = TIMEOUT;
-	ret = knot_requestor_exec(requestor, &tv);
+	ret = knot_requestor_exec(requestor, TIMEOUT);
 	is_int(KNOT_ECONN, ret, "requestor: disconnected/wait");
 }
 
@@ -104,8 +106,7 @@ static void test_connected(struct knot_requestor *requestor, conf_remote_t *remo
 	is_int(KNOT_EOK, ret, "requestor: connected/enqueue");
 
 	/* Wait for completion. */
-	struct timeval tv = TIMEOUT;
-	ret = knot_requestor_exec(requestor, &tv);
+	ret = knot_requestor_exec(requestor, TIMEOUT);
 	is_int(KNOT_EOK, ret, "requestor: connected/wait");
 
 	/* Enqueue multiple queries. */
@@ -118,8 +119,7 @@ static void test_connected(struct knot_requestor *requestor, conf_remote_t *remo
 	/* Wait for multiple queries. */
 	ret = KNOT_EOK;
 	for (unsigned i = 0; i < 10; ++i) {
-		struct timeval tv = TIMEOUT;
-		ret |= knot_requestor_exec(requestor, &tv);
+		ret |= knot_requestor_exec(requestor, TIMEOUT);
 	}
 	is_int(KNOT_EOK, ret, "requestor: multiple wait");
 }
@@ -128,7 +128,7 @@ int main(int argc, char *argv[])
 {
 	plan_lazy();
 
-	mm_ctx_t mm;
+	knot_mm_t mm;
 	mm_ctx_mempool(&mm, MM_DEFAULT_BLKSIZE);
 
 	conf_remote_t remote;
@@ -162,10 +162,9 @@ int main(int argc, char *argv[])
 	/*! \todo #243 TSIG secured requests test should be implemented. */
 
 	/* Terminate responder. */
-	struct timeval tv = TIMEOUT;
 	int responder = net_connected_socket(SOCK_STREAM, &remote.addr, NULL);
 	assert(responder > 0);
-	net_dns_tcp_send(responder, (const uint8_t *)"", 1, &tv);
+	net_dns_tcp_send(responder, (const uint8_t *)"", 1, TIMEOUT);
 	(void) pthread_join(thread, 0);
 	close(responder);
 
@@ -175,7 +174,7 @@ int main(int argc, char *argv[])
 
 	/* Cleanup. */
 	mp_delete((struct mempool *)mm.ctx);
-	conf_free(conf(), false);
+	conf_free(conf());
 
 	return 0;
 }

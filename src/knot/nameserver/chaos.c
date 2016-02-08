@@ -1,4 +1,4 @@
-/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -18,9 +18,7 @@
 
 #include "knot/nameserver/chaos.h"
 #include "knot/conf/conf.h"
-#include "libknot/descriptor.h"
-#include "libknot/errcode.h"
-#include "libknot/packet/pkt.h"
+#include "libknot/libknot.h"
 
 /*!
  * \brief Get a string result for a given TXT query.
@@ -66,7 +64,7 @@ static const char *get_txt_response_string(const knot_dname_t *qname)
  * \return KNOT_EOK
  */
 static int create_txt_rrset(knot_rrset_t *rrset, const knot_dname_t *owner,
-                            const char *response, mm_ctx_t *mm)
+                            const char *response, knot_mm_t *mm)
 {
 	/* Truncate response to one TXT label. */
 	size_t response_len = strlen(response);

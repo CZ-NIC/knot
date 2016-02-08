@@ -1,7 +1,24 @@
-#include <stdio.h>
+/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
 #include <urcu.h>
 
 #include "dnssec/tsig.h"
+#include "knot/common/log.h"
+#include "knot/conf/conf.h"
 #include "knot/nameserver/process_query.h"
 #include "knot/nameserver/query_module.h"
 #include "knot/nameserver/chaos.h"
@@ -11,14 +28,9 @@
 #include "knot/nameserver/update.h"
 #include "knot/nameserver/nsec_proofs.h"
 #include "knot/nameserver/notify.h"
-#include "knot/server/server.h"
-#include "knot/server/rrl.h"
-#include "knot/updates/acl.h"
-#include "knot/conf/conf.h"
-#include "knot/common/log.h"
 #include "libknot/libknot.h"
-#include "libknot/internal/macros.h"
-#include "libknot/yparser/yptrafo.h"
+#include "contrib/macros.h"
+#include "contrib/mempattern.h"
 
 /*! \brief Accessor to query-specific data. */
 #define QUERY_DATA(ctx) ((struct query_data *)(ctx)->data)
@@ -115,19 +127,19 @@ static int query_internet(knot_pkt_t *pkt, knot_layer_t *ctx)
 
 	switch(data->packet_type) {
 	case KNOT_QUERY_NORMAL:
-		next_state = internet_query(pkt, data);
+		next_state = internet_process_query(pkt, data);
 		break;
 	case KNOT_QUERY_NOTIFY:
 		next_state = notify_process_query(pkt, data);
 		break;
 	case KNOT_QUERY_AXFR:
-		next_state = axfr_query_process(pkt, data);
+		next_state = axfr_process_query(pkt, data);
 		break;
 	case KNOT_QUERY_IXFR:
-		next_state = ixfr_query(pkt, data);
+		next_state = ixfr_process_query(pkt, data);
 		break;
 	case KNOT_QUERY_UPDATE:
-		next_state = update_query_process(pkt, data);
+		next_state = update_process_query(pkt, data);
 		break;
 	default:
 		/* Nothing else is supported. */
@@ -438,11 +450,12 @@ static int ratelimit_apply(int state, knot_pkt_t *pkt, knot_layer_t *ctx)
 static int process_query_out(knot_layer_t *ctx, knot_pkt_t *pkt)
 {
 	assert(pkt && ctx);
+
+	rcu_read_lock();
+
 	struct query_data *qdata = QUERY_DATA(ctx);
 	struct query_plan *plan = conf()->query_plan;
 	struct query_step *step = NULL;
-
-	rcu_read_lock();
 
 	/* Check parse state. */
 	knot_pkt_t *query = qdata->query;
@@ -541,6 +554,7 @@ finish:
 	}
 
 	rcu_read_unlock();
+
 	return next_state;
 }
 
@@ -567,8 +581,8 @@ bool process_query_acl_check(const knot_dname_t *zone_name, acl_action_t action,
 	if (!acl_allowed(&acl, action, query_source, &tsig)) {
 		char addr_str[SOCKADDR_STRLEN] = { 0 };
 		sockaddr_tostr(addr_str, sizeof(addr_str), query_source);
-		lookup_table_t *act = lookup_by_id((lookup_table_t *)acl_actions,
-		                                   action);
+		const knot_lookup_t *act = knot_lookup_by_id((knot_lookup_t *)acl_actions,
+		                                             action);
 		char *key_name = knot_dname_to_str_alloc(tsig.name);
 
 		log_zone_debug(zone_name,

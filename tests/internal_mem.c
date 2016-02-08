@@ -18,7 +18,7 @@
 
 #include <stdlib.h>
 
-#include "libknot/internal/mem.h"
+#include "contrib/string.h"
 
 static void test_strstrip(void)
 {

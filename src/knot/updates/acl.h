@@ -1,4 +1,4 @@
-/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -24,10 +24,10 @@
 
 #pragma once
 
-#include "libknot/internal/lists.h"
-#include "libknot/internal/sockaddr.h"
-#include "libknot/internal/mempattern.h"
-#include "libknot/rrtype/tsig.h"
+#include <stdbool.h>
+#include <sys/socket.h>
+
+#include "libknot/tsig.h"
 #include "knot/conf/conf.h"
 
 /*! \brief ACL actions. */
@@ -35,8 +35,7 @@ typedef enum {
 	ACL_ACTION_NONE     = 0,
 	ACL_ACTION_NOTIFY   = 1,
 	ACL_ACTION_TRANSFER = 2,
-	ACL_ACTION_UPDATE   = 3,
-	ACL_ACTION_CONTROL  = 4
+	ACL_ACTION_UPDATE   = 3
 } acl_action_t;
 
 /*!

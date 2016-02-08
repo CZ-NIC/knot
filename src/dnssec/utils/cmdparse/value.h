@@ -57,8 +57,3 @@ int value_uint32(int argc, char *argv[], const parameter_t *p, void *data);
  * time_t
  */
 int value_time(int argc, char *argv[], const parameter_t *p, void *data);
-
-/*!
- * policy name as (char *, NULL if unset)
- */
-int value_policy(int argc, char *argv[], const parameter_t *p, void *data);

@@ -1,13 +1,3 @@
-/*!
- * \file opt.h
- *
- * \author Lubos Slovak <lubos.slovak@nic.cz>
- *
- * \brief Functions for manipulating the EDNS OPT pseudo-RR.
- *
- * \addtogroup libknot
- * @{
- */
 /*  Copyright (C) 2014 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
@@ -22,6 +12,14 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+/*!
+ * \file
+ *
+ * \brief Functions for manipulating the EDNS OPT pseudo-RR.
+ *
+ * \addtogroup libknot
+ * @{
  */
 
 #pragma once
@@ -74,7 +72,7 @@ enum knot_edns_const {
  * \return KNOT_EOK or an error
  */
 int knot_edns_init(knot_rrset_t *opt_rr, uint16_t max_pld,
-                  uint8_t ext_rcode, uint8_t ver, mm_ctx_t *mm);
+                  uint8_t ext_rcode, uint8_t ver, knot_mm_t *mm);
 
 /*!
  * \brief Returns size of the OPT RR in wire format.
@@ -231,7 +229,7 @@ void knot_edns_set_do(knot_rrset_t *opt_rr);
  * \retval KNOT_ENOMEM
  */
 int knot_edns_add_option(knot_rrset_t *opt_rr, uint16_t code,
-                         uint16_t length, const uint8_t *data, mm_ctx_t *mm);
+                         uint16_t length, const uint8_t *data, knot_mm_t *mm);
 
 /*!
  * \brief Checks if the OPT RR contains Option with the specified code.

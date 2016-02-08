@@ -88,6 +88,9 @@ int conf_io_begin(
 /*!
  * Commits the current writing transaction.
  *
+ * \note Remember to call conf_refresh to publish the changes into the common
+ *       configuration.
+ *
  * \param[in] child  Nested transaction indicator.
  *
  * \return Error code, KNOT_EOK if success.
@@ -108,14 +111,14 @@ int conf_io_abort(
 );
 
 /*!
- * Gets the configuration group item subsection list.
+ * Gets the configuration sections list or section items list.
  *
  * \param[in] key0  Section name (NULL to get section list).
  * \param[out] io   Operation output.
  *
  * \return Error code, KNOT_EOK if success.
  */
-int conf_io_desc(
+int conf_io_list(
 	const char *key0,
 	conf_io_t *io
 );

@@ -13,8 +13,7 @@ ragel -T0 -s -o $OUT_T0 $IN
 
 # Remove redundant comments and unused constants (clang warnings).
 sed -i '/#line/d' $OUT_T0
-sed -i '/static\ const\ int\ zone_scanner_en_/d' $OUT_T0
-sed -i '/zone_scanner_first_final/d' $OUT_T0
+sed -i '/static\ const\ int\ zone_scanner_/d' $OUT_T0
 
 # Remove trailing white spaces.
 sed -i 's/\s*$//g' $OUT_T0
@@ -24,8 +23,7 @@ ragel -G2 -s -o $OUT_G2 $IN
 
 # Remove redundant comments and unused constants (clang warnings).
 sed -i '/#line/d' $OUT_G2
-sed -i '/static\ const\ int\ zone_scanner_en_/d' $OUT_G2
-sed -i '/zone_scanner_first_final/d' $OUT_G2
+sed -i '/static\ const\ int\ zone_scanner_/d' $OUT_G2
 
 # Remove trailing white spaces.
 sed -i 's/\s*$//g' $OUT_G2

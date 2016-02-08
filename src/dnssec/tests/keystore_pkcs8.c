@@ -22,6 +22,7 @@
 #include "crypto.h"
 #include "error.h"
 #include "key.h"
+#include "keyid.h"
 #include "keystore.h"
 
 /* -- mock key store ------------------------------------------------------- */
@@ -169,8 +170,8 @@ int main(void)
 
 	dnssec_key_t *key = NULL;
 	dnssec_key_new(&key);
-
-	r = dnssec_key_import_keystore(key, store, gen_id, DNSSEC_KEY_ALGORITHM_RSA_SHA512);
+	dnssec_key_set_algorithm(key, DNSSEC_KEY_ALGORITHM_RSA_SHA256);
+	r = dnssec_key_import_keystore(key, store, gen_id);
 	ok(r == DNSSEC_EOK, "dnssec_key_import_keystore()");
 	ok(test_read_ok, "test_read() called");
 	is_string(gen_id, test_read_id, "test_read() correct key ID");

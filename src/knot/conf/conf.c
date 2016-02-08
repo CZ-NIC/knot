@@ -23,11 +23,12 @@
 #include "knot/common/log.h"
 #include "knot/server/dthreads.h"
 #include "libknot/libknot.h"
-#include "libknot/internal/macros.h"
-#include "libknot/internal/mem.h"
-#include "libknot/internal/sockaddr.h"
-#include "libknot/internal/strlcat.h"
 #include "libknot/yparser/yptrafo.h"
+#include "contrib/macros.h"
+#include "contrib/sockaddr.h"
+#include "contrib/string.h"
+#include "contrib/wire_ctx.h"
+#include "contrib/openbsd/strlcat.h"
 
 /*! Configuration specific logging. */
 #define CONF_LOG(severity, msg, ...) do { \
@@ -40,7 +41,7 @@
 
 conf_val_t conf_get_txn(
 	conf_t *conf,
-	namedb_txn_t *txn,
+	knot_db_txn_t *txn,
 	const yp_name_t *key0_name,
 	const yp_name_t *key1_name)
 {
@@ -66,7 +67,7 @@ conf_val_t conf_get_txn(
 
 conf_val_t conf_rawid_get_txn(
 	conf_t *conf,
-	namedb_txn_t *txn,
+	knot_db_txn_t *txn,
 	const yp_name_t *key0_name,
 	const yp_name_t *key1_name,
 	const uint8_t *id,
@@ -94,7 +95,7 @@ conf_val_t conf_rawid_get_txn(
 
 conf_val_t conf_id_get_txn(
 	conf_t *conf,
-	namedb_txn_t *txn,
+	knot_db_txn_t *txn,
 	const yp_name_t *key0_name,
 	const yp_name_t *key1_name,
 	conf_val_t *id)
@@ -124,7 +125,7 @@ conf_val_t conf_id_get_txn(
 
 conf_val_t conf_mod_get_txn(
 	conf_t *conf,
-	namedb_txn_t *txn,
+	knot_db_txn_t *txn,
 	const yp_name_t *key1_name,
 	const conf_mod_id_t *mod_id)
 {
@@ -151,7 +152,7 @@ conf_val_t conf_mod_get_txn(
 
 conf_val_t conf_zone_get_txn(
 	conf_t *conf,
-	namedb_txn_t *txn,
+	knot_db_txn_t *txn,
 	const yp_name_t *key1_name,
 	const knot_dname_t *dname)
 {
@@ -211,7 +212,7 @@ conf_val_t conf_zone_get_txn(
 
 conf_val_t conf_default_get_txn(
 	conf_t *conf,
-	namedb_txn_t *txn,
+	knot_db_txn_t *txn,
 	const yp_name_t *key1_name)
 {
 	conf_val_t val = { NULL };
@@ -239,7 +240,7 @@ conf_val_t conf_default_get_txn(
 
 size_t conf_id_count_txn(
 	conf_t *conf,
-	namedb_txn_t *txn,
+	knot_db_txn_t *txn,
 	const yp_name_t *key0_name)
 {
 	size_t count = 0;
@@ -254,7 +255,7 @@ size_t conf_id_count_txn(
 
 conf_iter_t conf_iter_txn(
 	conf_t *conf,
-	namedb_txn_t *txn,
+	knot_db_txn_t *txn,
 	const yp_name_t *key0_name)
 {
 	conf_iter_t iter = { NULL };
@@ -772,11 +773,10 @@ static int str_char(
 		return KNOT_EINVAL;
 	}
 
-	// Remove the trailing dot if not root zone.
+	// Remove the trailing dot.
 	size_t zone_len = strlen(buff);
-	if (zone_len > 1) {
-		buff[zone_len--] = '\0';
-	}
+	assert(zone_len > 0);
+	buff[zone_len--] = '\0';
 
 	// Get the block length.
 	size_t len = index2 - index1 + 1;
@@ -851,7 +851,7 @@ static int str_label(
 
 static char* get_filename(
 	conf_t *conf,
-	namedb_txn_t *txn,
+	knot_db_txn_t *txn,
 	const knot_dname_t *zone,
 	const char *name)
 {
@@ -950,7 +950,7 @@ static char* get_filename(
 
 char* conf_zonefile_txn(
 	conf_t *conf,
-	namedb_txn_t *txn,
+	knot_db_txn_t *txn,
 	const knot_dname_t *zone)
 {
 	if (zone == NULL) {
@@ -970,7 +970,7 @@ char* conf_zonefile_txn(
 
 char* conf_journalfile_txn(
 	conf_t *conf,
-	namedb_txn_t *txn,
+	knot_db_txn_t *txn,
 	const knot_dname_t *zone)
 {
 	if (zone == NULL) {
@@ -982,7 +982,7 @@ char* conf_journalfile_txn(
 
 size_t conf_udp_threads_txn(
 	conf_t *conf,
-	namedb_txn_t *txn)
+	knot_db_txn_t *txn)
 {
 	conf_val_t val = conf_get_txn(conf, txn, C_SRV, C_UDP_WORKERS);
 	int64_t workers = conf_int(&val);
@@ -995,7 +995,7 @@ size_t conf_udp_threads_txn(
 
 size_t conf_tcp_threads_txn(
 	conf_t *conf,
-	namedb_txn_t *txn)
+	knot_db_txn_t *txn)
 {
 	conf_val_t val = conf_get_txn(conf, txn, C_SRV, C_TCP_WORKERS);
 	int64_t workers = conf_int(&val);
@@ -1008,7 +1008,7 @@ size_t conf_tcp_threads_txn(
 
 size_t conf_bg_threads_txn(
 	conf_t *conf,
-	namedb_txn_t *txn)
+	knot_db_txn_t *txn)
 {
 	conf_val_t val = conf_get_txn(conf, txn, C_SRV, C_BG_WORKERS);
 	int64_t workers = conf_int(&val);
@@ -1021,7 +1021,7 @@ size_t conf_bg_threads_txn(
 
 int conf_user_txn(
 	conf_t *conf,
-	namedb_txn_t *txn,
+	knot_db_txn_t *txn,
 	int *uid,
 	int *gid)
 {
@@ -1076,7 +1076,7 @@ int conf_user_txn(
 
 conf_remote_t conf_remote_txn(
 	conf_t *conf,
-	namedb_txn_t *txn,
+	knot_db_txn_t *txn,
 	conf_val_t *id,
 	size_t index)
 {

@@ -23,10 +23,9 @@
 
 extern void udp_master_init_stdio(server_t *server);
 
-int server_reconfigure(conf_t *conf, void *data)
+void server_reconfigure(conf_t *conf, server_t *server)
 {
 	log_info("AFL, Wrap server_reconfigure()");
-	int ret = _orig_server_reconfigure(conf, data);
-	udp_master_init_stdio(data);
-	return ret;
+	_orig_server_reconfigure(conf, server);
+	udp_master_init_stdio(server);
 }

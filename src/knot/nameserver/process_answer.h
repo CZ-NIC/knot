@@ -1,14 +1,4 @@
-/*!
- * \file process_answer.h
- *
- * \author Marek Vavrusa <marek.vavrusa@nic.cz>
- *
- * \brief Answer processor.
- *
- * \addtogroup answer_processing
- * @{
- */
-/*  Copyright (C) 2014 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -23,9 +13,20 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
+/*!
+ * \file
+ *
+ * \brief Answer processor.
+ *
+ * \addtogroup answer_processing
+ * @{
+ */
 
 #pragma once
 
+#include <sys/socket.h>
+
+#include "knot/conf/conf.h"
 #include "knot/nameserver/process_query.h"
 #include "knot/nameserver/tsig_ctx.h"
 
@@ -42,7 +43,8 @@ const knot_layer_api_t *process_answer_layer(void);
  * \brief Processing module parameters.
  */
 struct process_answer_param {
-	zone_t   *zone;                        /*!< Answer bailiwick. */
+	zone_t *zone;                          /*!< Answer bailiwick. */
+	conf_t *conf;                          /*!< Configuration. */
 	const knot_pkt_t *query;               /*!< Query preceding the answer. */
 	const struct sockaddr_storage *remote; /*!< Answer origin. */
 	tsig_ctx_t tsig_ctx;                   /*!< Signing context. */
@@ -60,7 +62,7 @@ struct answer_data {
 	/* Everything below should be kept on reset. */
 	int response_type; /*!< Type of incoming response. */
 	struct process_answer_param *param; /*!< Module parameters. */
-	mm_ctx_t *mm;                      /*!< Memory context. */
+	knot_mm_t *mm;                      /*!< Memory context. */
 };
 
 /*! @} */

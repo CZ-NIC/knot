@@ -93,6 +93,9 @@ int main(void)
 	r = func->write(handle, TEST_PEM_B.id, &TEST_PEM_B.data);
 	ok(r == DNSSEC_EOK, "write B");
 
+	r = func->write(handle, TEST_PEM_A.id, &TEST_PEM_A.data);
+	ok(r == DNSSEC_EOK, "write A (duplicate)");
+
 	// content listing
 
 	dnssec_list_t *list = NULL;

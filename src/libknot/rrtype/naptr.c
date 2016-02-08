@@ -17,10 +17,9 @@
 #include <assert.h>
 #include <stdint.h>
 
-#include "libknot/errcode.h"
-#include "libknot/internal/macros.h"
-#include "libknot/internal/wire_ctx.h"
+#include "libknot/attribute.h"
 #include "libknot/rrtype/naptr.h"
+#include "contrib/wire_ctx.h"
 
 _public_
 int knot_naptr_header_size(const uint8_t *naptr, const uint8_t *maxp)

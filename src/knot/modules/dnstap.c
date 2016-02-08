@@ -19,10 +19,10 @@
 #include "knot/common/log.h"
 #include "knot/modules/dnstap.h"
 #include "knot/nameserver/process_query.h"
-#include "dnstap/dnstap.pb-c.h"
-#include "dnstap/writer.h"
-#include "dnstap/message.h"
-#include "dnstap/dnstap.h"
+#include "contrib/dnstap/dnstap.pb-c.h"
+#include "contrib/dnstap/writer.h"
+#include "contrib/dnstap/message.h"
+#include "contrib/dnstap/dnstap.h"
 #include "libknot/libknot.h"
 
 /* Module configuration scheme. */

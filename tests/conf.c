@@ -23,6 +23,7 @@
 #define ZONE2	"."
 #define ZONE3	"x."
 #define ZONE4	"abc.ab.a."
+#define ZONEX	"unknown."
 
 static void check_name(const char *zone, const char *name, const char *ref)
 {
@@ -77,7 +78,7 @@ static void test_get_filename(void)
 	check_name(zone, "/%c[4]", "/");
 
 	zone = ".";
-	check_name(zone, "/%c[0]", "/.");
+	check_name(zone, "/%c[0]", "/");
 	check_name(zone, "/%c[1]", "/");
 
 	// Label formatter.
@@ -107,6 +108,8 @@ static void test_conf_zonefile(void)
 	ok(zone3 != NULL, "create dname "ZONE3);
 	knot_dname_t *zone4 = knot_dname_from_str_alloc(ZONE4);
 	ok(zone4 != NULL, "create dname "ZONE4);
+	knot_dname_t *zonex = knot_dname_from_str_alloc(ZONEX);
+	ok(zonex != NULL, "create dname "ZONEX);
 
 	const char *conf_str =
 		"template:\n"
@@ -161,11 +164,21 @@ static void test_conf_zonefile(void)
 		free(file);
 	}
 
-	conf_free(conf(), false);
+	// Unknown zone zonefile path.
+	file = conf_zonefile(conf(), zonex);
+	ok(file != NULL, "Get zonefile path for "ZONEX);
+	if (file != NULL) {
+		ok(strcmp(file, "/tmp/"ZONEX"zone") == 0,
+		          "Zonefile path compare for "ZONEX);
+		free(file);
+	}
+
+	conf_free(conf());
 	knot_dname_free(&zone1, NULL);
 	knot_dname_free(&zone2, NULL);
 	knot_dname_free(&zone3, NULL);
 	knot_dname_free(&zone4, NULL);
+	knot_dname_free(&zonex, NULL);
 }
 
 int main(int argc, char *argv[])

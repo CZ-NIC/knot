@@ -27,25 +27,19 @@ static inline int test_conf(const char *conf_str, const yp_item_t *scheme)
 		scheme = conf_scheme;
 	}
 
-	conf_t *conf;
-	int ret = conf_new(&conf, scheme, NULL);
+	conf_t *new_conf = NULL;
+	int ret = conf_new(&new_conf, scheme, NULL, CONF_FNONE);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
 
-	ret = conf_import(conf, conf_str, false);
+	ret = conf_import(new_conf, conf_str, false);
 	if (ret != KNOT_EOK) {
-		conf_free(conf, false);
+		conf_free(new_conf);
 		return ret;
 	}
 
-	ret = conf_post_open(conf);
-	if (ret != KNOT_EOK) {
-		conf_free(conf, false);
-		return ret;
-	}
-
-	conf_update(conf);
+	conf_update(new_conf);
 
 	return KNOT_EOK;
 }

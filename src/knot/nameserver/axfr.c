@@ -1,4 +1,4 @@
-/*  Copyright (C) 2014 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -16,17 +16,14 @@
 
 #include <urcu.h>
 
+#include "knot/common/log.h"
 #include "knot/nameserver/axfr.h"
 #include "knot/nameserver/internet.h"
-#include "knot/nameserver/process_query.h"
-#include "knot/nameserver/process_answer.h"
-#include "knot/updates/apply.h"
 #include "knot/zone/zonefile.h"
-#include "knot/common/log.h"
 #include "libknot/libknot.h"
-#include "libknot/descriptor.h"
-#include "libknot/internal/lists.h"
-#include "libknot/internal/print.h"
+#include "contrib/mempattern.h"
+#include "contrib/print.h"
+#include "contrib/sockaddr.h"
 
 /* AXFR context. @note aliasing the generic xfr_proc */
 struct axfr_proc {
@@ -133,7 +130,7 @@ static int axfr_query_init(struct query_data *qdata)
 	}
 
 	/* Create transfer processing context. */
-	mm_ctx_t *mm = qdata->mm;
+	knot_mm_t *mm = qdata->mm;
 
 	zone_contents_t *zone = qdata->zone->contents;
 	struct axfr_proc *axfr = mm_alloc(mm, sizeof(struct axfr_proc));
@@ -170,7 +167,7 @@ int xfr_process_list(knot_pkt_t *pkt, xfr_put_cb process_item,
 	}
 
 	int ret = KNOT_EOK;
-	mm_ctx_t *mm = qdata->mm;
+	knot_mm_t *mm = qdata->mm;
 	struct xfr_proc *xfer = qdata->ext;
 
 	zone_contents_t *zone = qdata->zone->contents;
@@ -213,7 +210,7 @@ int xfr_process_list(knot_pkt_t *pkt, xfr_put_cb process_item,
 #define AXFROUT_LOG(severity, msg, ...) \
 	QUERY_LOG(severity, qdata, "AXFR, outgoing", msg, ##__VA_ARGS__)
 
-int axfr_query_process(knot_pkt_t *pkt, struct query_data *qdata)
+int axfr_process_query(knot_pkt_t *pkt, struct query_data *qdata)
 {
 	if (pkt == NULL || qdata == NULL) {
 		return KNOT_STATE_FAIL;
@@ -376,7 +373,7 @@ static int axfr_answer_packet(knot_pkt_t *pkt, struct xfr_proc *proc)
 	return KNOT_STATE_CONSUME;
 }
 
-int axfr_answer_process(knot_pkt_t *pkt, struct answer_data *adata)
+int axfr_process_answer(knot_pkt_t *pkt, struct answer_data *adata)
 {
 	if (pkt == NULL || adata == NULL) {
 		return KNOT_STATE_FAIL;
@@ -385,7 +382,7 @@ int axfr_answer_process(knot_pkt_t *pkt, struct answer_data *adata)
 	/* Check RCODE. */
 	uint8_t rcode = knot_wire_get_rcode(pkt->wire);
 	if (rcode != KNOT_RCODE_NOERROR) {
-		lookup_table_t *lut = lookup_by_id(knot_rcode_names, rcode);
+		const knot_lookup_t *lut = knot_lookup_by_id(knot_rcode_names, rcode);
 		if (lut != NULL) {
 			AXFRIN_LOG(LOG_WARNING, "server responded with %s", lut->name);
 		}

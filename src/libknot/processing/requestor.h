@@ -16,13 +16,12 @@
 
 #pragma once
 
+#include <sys/socket.h>
 #include <sys/time.h>
 
 #include "libknot/processing/overlay.h"
 #include "libknot/rrtype/tsig.h"
-#include "libknot/internal/lists.h"
-#include "libknot/internal/sockaddr.h"
-#include "libknot/internal/mempattern.h"
+#include "libknot/mm_ctx.h"
 
 struct knot_request;
 
@@ -36,14 +35,13 @@ enum {
  *  Requestor holds a FIFO of pending queries.
  */
 struct knot_requestor {
-	mm_ctx_t *mm;                 /*!< Memory context. */
-	list_t pending;               /*!< Pending requests (FIFO). */
+	knot_mm_t *mm;                /*!< Memory context. */
+	void *pending;                /*!< Pending requests (FIFO). */
 	struct knot_overlay overlay;  /*!< Response processing overlay. */
 };
 
 /*! \brief Request data (socket, payload, response, TSIG and endpoints). */
 struct knot_request {
-	node_t node;
 	int fd;
 	unsigned flags;
 	struct sockaddr_storage remote, origin;
@@ -63,7 +61,7 @@ struct knot_request {
  *
  * \return Prepared request or NULL in case of error.
  */
-struct knot_request *knot_request_make(mm_ctx_t *mm,
+struct knot_request *knot_request_make(knot_mm_t *mm,
                                        const struct sockaddr *dst,
                                        const struct sockaddr *src,
                                        knot_pkt_t *query,
@@ -72,20 +70,20 @@ struct knot_request *knot_request_make(mm_ctx_t *mm,
 /*!
  * \brief Free request and associated data.
  *
- * \param mm      Memory context.
  * \param request Freed request.
- *
- * \return Prepared request or NULL in case of error.
+ * \param mm      Memory context.
  */
-int knot_request_free(mm_ctx_t *mm, struct knot_request *request);
+void knot_request_free(struct knot_request *request, knot_mm_t *mm);
 
 /*!
  * \brief Initialize requestor structure.
  *
  * \param requestor Requestor instance.
  * \param mm        Memory context.
+ *
+ * \return KNOT_EOK or error
  */
-void knot_requestor_init(struct knot_requestor *requestor, mm_ctx_t *mm);
+int knot_requestor_init(struct knot_requestor *requestor, knot_mm_t *mm);
 
 /*!
  * \brief Clear the requestor structure and close pending queries.
@@ -137,10 +135,9 @@ int knot_requestor_dequeue(struct knot_requestor *requestor);
 /*!
  * \brief Execute next pending query (FIFO).
  *
- * \param requestor Requestor instance.
- * \param timeout   Processing timeout.
+ * \param requestor  Requestor instance.
+ * \param timeout_ms Timeout of each operation in miliseconds (-1 for infinity).
  *
  * \return KNOT_EOK or error
  */
-int knot_requestor_exec(struct knot_requestor *requestor,
-                        struct timeval *timeout);
+int knot_requestor_exec(struct knot_requestor *requestor, int timeout_ms);

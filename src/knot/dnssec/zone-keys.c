@@ -44,6 +44,7 @@ static int set_key(dnssec_kasp_key_t *kasp_key, time_t now, zone_key_t *zone_key
 		return r;
 	}
 
+	zone_key->id = kasp_key->id;
 	zone_key->key = kasp_key->key;
 	zone_key->ctx = ctx;
 
@@ -215,8 +216,8 @@ static int load_private_keys(dnssec_keystore_t *keystore, zone_keyset_t *keyset)
 			continue;
 		}
 
-		dnssec_key_t *key = keyset->keys[i].key;
-		int r = dnssec_key_import_private_keystore(key, keystore);
+		zone_key_t *key = &keyset->keys[i];
+		int r = dnssec_key_import_keystore(key->key, keystore, key->id);
 		if (r != DNSSEC_EOK && r != DNSSEC_KEY_ALREADY_PRESENT) {
 			return r;
 		}

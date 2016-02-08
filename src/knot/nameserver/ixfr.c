@@ -1,4 +1,4 @@
-/*  Copyright (C) 2014 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -16,19 +16,16 @@
 
 #include <urcu.h>
 
+#include "knot/common/log.h"
 #include "knot/nameserver/ixfr.h"
 #include "knot/nameserver/axfr.h"
 #include "knot/nameserver/internet.h"
-#include "knot/nameserver/process_query.h"
-#include "knot/nameserver/process_answer.h"
 #include "knot/updates/apply.h"
-#include "knot/common/log.h"
 #include "knot/zone/serial.h"
 #include "libknot/libknot.h"
-#include "libknot/descriptor.h"
-#include "libknot/internal/print.h"
-#include "libknot/internal/utils.h"
-#include "libknot/rrtype/soa.h"
+#include "contrib/mempattern.h"
+#include "contrib/print.h"
+#include "contrib/sockaddr.h"
 
 /* ------------------------ IXFR-out processing ----------------------------- */
 
@@ -52,7 +49,7 @@ struct ixfr_proc {
 	list_t changesets;             /* Processed changesets. */
 	size_t change_count;           /* Count of changesets received. */
 	zone_t *zone;                  /* Modified zone - for journal access. */
-	mm_ctx_t *mm;                  /* Memory context for RR allocations. */
+	knot_mm_t *mm;                 /* Memory context for RR allocations. */
 	struct query_data *qdata;
 	const knot_rrset_t *soa_from;
 	const knot_rrset_t *soa_to;
@@ -221,7 +218,7 @@ static int ixfr_query_check(struct query_data *qdata)
 static void ixfr_answer_cleanup(struct query_data *qdata)
 {
 	struct ixfr_proc *ixfr = (struct ixfr_proc *)qdata->ext;
-	mm_ctx_t *mm = qdata->mm;
+	knot_mm_t *mm = qdata->mm;
 
 	ptrlist_free(&ixfr->proc.nodes, mm);
 	changeset_iter_clear(&ixfr->cur);
@@ -256,7 +253,7 @@ static int ixfr_answer_init(struct query_data *qdata)
 	}
 
 	/* Initialize transfer processing. */
-	mm_ctx_t *mm = qdata->mm;
+	knot_mm_t *mm = qdata->mm;
 	struct ixfr_proc *xfer = mm_alloc(mm, sizeof(struct ixfr_proc));
 	if (xfer == NULL) {
 		changesets_free(&chgsets);
@@ -392,7 +389,7 @@ static int ixfrin_finalize(struct answer_data *adata)
 	}
 
 	/* Write changes to journal. */
-	ret = zone_changes_store(ixfr->zone, &ixfr->changesets);
+	ret = zone_changes_store(adata->param->conf, ixfr->zone, &ixfr->changesets);
 	if (ret != KNOT_EOK) {
 		IXFRIN_LOG(LOG_WARNING, "failed to write changes to journal (%s)",
 		           knot_strerror(ret));
@@ -405,16 +402,18 @@ static int ixfrin_finalize(struct answer_data *adata)
 	zone_contents_t *old_contents = zone_switch_contents(ixfr->zone, new_contents);
 	ixfr->zone->flags &= ~ZONE_EXPIRED;
 	synchronize_rcu();
-	update_free_zone(&old_contents);
-
-	update_cleanup(&a_ctx);
 
 	struct timeval now = {0};
 	gettimeofday(&now, NULL);
-	IXFRIN_LOG(LOG_INFO,
-	           "finished, %.02f seconds, %u messages, %u bytes",
+	IXFRIN_LOG(LOG_INFO, "finished, "
+	           "serial %u -> %u, %.02f seconds, %u messages, %u bytes",
+	           zone_contents_serial(old_contents),
+	           zone_contents_serial(new_contents),
 	           time_diff(&ixfr->proc.tstamp, &now) / 1000.0,
 	           ixfr->proc.npkts, ixfr->proc.nbytes);
+
+	update_free_zone(&old_contents);
+	update_cleanup(&a_ctx);
 
 	return KNOT_EOK;
 }
@@ -464,7 +463,7 @@ static int solve_soa_del(const knot_rrset_t *rr, struct ixfr_proc *proc)
 }
 
 /*! \brief Stores ending SOA into changeset. */
-static int solve_soa_add(const knot_rrset_t *rr, changeset_t *change, mm_ctx_t *mm)
+static int solve_soa_add(const knot_rrset_t *rr, changeset_t *change, knot_mm_t *mm)
 {
 	assert(rr->type == KNOT_RRTYPE_SOA);
 	change->soa_to = knot_rrset_copy(rr, NULL);
@@ -476,13 +475,13 @@ static int solve_soa_add(const knot_rrset_t *rr, changeset_t *change, mm_ctx_t *
 }
 
 /*! \brief Adds single RR into remove section of changeset. */
-static int solve_del(const knot_rrset_t *rr, changeset_t *change, mm_ctx_t *mm)
+static int solve_del(const knot_rrset_t *rr, changeset_t *change, knot_mm_t *mm)
 {
 	return changeset_rem_rrset(change, rr, false);
 }
 
 /*! \brief Adds single RR into add section of changeset. */
-static int solve_add(const knot_rrset_t *rr, changeset_t *change, mm_ctx_t *mm)
+static int solve_add(const knot_rrset_t *rr, changeset_t *change, knot_mm_t *mm)
 {
 	return changeset_add_rrset(change, rr, false);
 }
@@ -614,7 +613,7 @@ static int process_ixfrin_packet(knot_pkt_t *pkt, struct answer_data *adata)
 
 /* --------------------------------- API ------------------------------------ */
 
-int ixfr_query(knot_pkt_t *pkt, struct query_data *qdata)
+int ixfr_process_query(knot_pkt_t *pkt, struct query_data *qdata)
 {
 	if (pkt == NULL || qdata == NULL) {
 		return KNOT_STATE_FAIL;
@@ -646,7 +645,7 @@ int ixfr_query(knot_pkt_t *pkt, struct query_data *qdata)
 		case KNOT_ENOENT:
 			IXFROUT_LOG(LOG_INFO, "incomplete history, fallback to AXFR");
 			qdata->packet_type = KNOT_QUERY_AXFR; /* Solve as AXFR. */
-			return axfr_query_process(pkt, qdata);
+			return axfr_process_query(pkt, qdata);
 		default:            /* Server errors. */
 			IXFROUT_LOG(LOG_ERR, "failed to start (%s)", knot_strerror(ret));
 			return KNOT_STATE_FAIL;
@@ -698,7 +697,7 @@ int ixfr_process_answer(knot_pkt_t *pkt, struct answer_data *adata)
 	/* Check RCODE. */
 	uint8_t rcode = knot_wire_get_rcode(pkt->wire);
 	if (rcode != KNOT_RCODE_NOERROR) {
-		lookup_table_t *lut = lookup_by_id(knot_rcode_names, rcode);
+		const knot_lookup_t *lut = knot_lookup_by_id(knot_rcode_names, rcode);
 		if (lut != NULL) {
 			IXFRIN_LOG(LOG_WARNING, "server responded with %s", lut->name);
 		}
@@ -715,7 +714,7 @@ int ixfr_process_answer(knot_pkt_t *pkt, struct answer_data *adata)
 		if (ixfr_is_axfr(pkt)) {
 			IXFRIN_LOG(LOG_NOTICE, "receiving AXFR-style IXFR");
 			adata->response_type = KNOT_RESPONSE_AXFR;
-			return axfr_answer_process(pkt, adata);
+			return axfr_process_answer(pkt, adata);
 		}
 
 		/* Initialize processing with first packet. */

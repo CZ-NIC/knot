@@ -20,4 +20,4 @@
 
 int load_zone_config(dnssec_kasp_zone_t *zone, const char *filename);
 
-int save_zone_config(dnssec_kasp_zone_t *zone, const char *filename);
+int save_zone_config(const dnssec_kasp_zone_t *zone, const char *filename);

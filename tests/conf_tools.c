@@ -22,6 +22,7 @@
 #include "libknot/yparser/yptrafo.h"
 #include "knot/conf/tools.h"
 #include "libknot/libknot.h"
+#include "contrib/wire.h"
 
 static void mod_id_test(const char *txt, const char *val)
 {

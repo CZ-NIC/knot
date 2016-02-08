@@ -24,6 +24,8 @@
 
 static const encode_attr_t POLICY_ATTRS[] = {
 	#define attr(name) #name, offsetof(dnssec_kasp_policy_t, name)
+	{ attr(keystore),             encode_string, decode_string },
+	{ attr(manual),               encode_bool,   decode_bool   },
 	{ attr(algorithm),            encode_uint8,  decode_uint8  },
 	{ attr(ksk_size),             encode_uint16, decode_uint16 },
 	{ attr(zsk_size),             encode_uint16, decode_uint16 },
@@ -58,7 +60,7 @@ int load_policy_config(dnssec_kasp_policy_t *policy, const char *filename)
 	return decode_object(POLICY_ATTRS, config, policy);
 }
 
-int save_policy_config(dnssec_kasp_policy_t *policy, const char *filename)
+int save_policy_config(const dnssec_kasp_policy_t *policy, const char *filename)
 {
 	assert(policy);
 	assert(filename);

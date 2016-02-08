@@ -1,4 +1,4 @@
-/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -16,30 +16,12 @@
 
 #include <assert.h>
 
-#include "knot/nameserver/notify.h"
-
-#include "libknot/dname.h"
-#include "libknot/descriptor.h"
-#include "libknot/packet/pkt.h"
-#include "libknot/rrset.h"
-#include "libknot/consts.h"
-#include "knot/zone/zonedb.h"
-#include "knot/zone/timers.h"
-#include "libknot/packet/wire.h"
-#include "knot/updates/acl.h"
-#include "knot/common/evsched.h"
 #include "knot/common/log.h"
-#include "knot/server/server.h"
+#include "knot/nameserver/notify.h"
 #include "knot/nameserver/internet.h"
-#include "knot/nameserver/process_query.h"
-#include "dnssec/random.h"
 #include "knot/nameserver/tsig_ctx.h"
-#include "knot/nameserver/process_answer.h"
-#include "libknot/rrtype/soa.h"
-
-/*----------------------------------------------------------------------------*/
-/* API functions                                                              */
-/*----------------------------------------------------------------------------*/
+#include "dnssec/random.h"
+#include "libknot/libknot.h"
 
 /* NOTIFY-specific logging (internal, expects 'qdata' variable set). */
 #define NOTIFY_QLOG(severity, msg, ...) \
@@ -118,7 +100,7 @@ int notify_process_answer(knot_pkt_t *pkt, struct answer_data *adata)
 	/* Check RCODE. */
 	uint8_t rcode = knot_wire_get_rcode(pkt->wire);
 	if (rcode != KNOT_RCODE_NOERROR) {
-		lookup_table_t *lut = lookup_by_id(knot_rcode_names, rcode);
+		const knot_lookup_t *lut = knot_lookup_by_id(knot_rcode_names, rcode);
 		if (lut != NULL) {
 			NOTIFY_RLOG(LOG_WARNING, "server responded with %s", lut->name);
 		}

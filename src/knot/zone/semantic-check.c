@@ -27,8 +27,9 @@
 #include "knot/dnssec/zone-nsec.h"
 #include "libknot/libknot.h"
 #include "libknot/dnssec/rrset-sign.h"
-#include "libknot/internal/base32hex.h"
-#include "libknot/internal/mempattern.h"
+#include "contrib/base32hex.h"
+#include "contrib/mempattern.h"
+#include "contrib/wire.h"
 
 static char *error_messages[(-ZC_ERR_UNKNOWN) + 1] = {
 	[-ZC_ERR_MISSING_SOA] =

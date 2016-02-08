@@ -26,18 +26,20 @@
 #include "libknot/libknot.h"
 #include "knot/dnssec/context.h"
 
-/*!
- * \brief Get keystore path from KASP path.
- */
-static char *get_keystore_path(const char *kasp_path)
+static int get_keystore(dnssec_kasp_t *kasp, const char *name,
+                        dnssec_keystore_t **keystore)
 {
-	char *keystore_path = NULL;
-	int written = asprintf(&keystore_path, "%s/keys", kasp_path);
-	if (written == -1) {
-		return NULL;
+	dnssec_kasp_keystore_t *info = NULL;
+	int r = dnssec_kasp_keystore_load(kasp, name, &info);
+	if (r != DNSSEC_EOK) {
+		return r;
 	}
 
-	return keystore_path;
+	r = dnssec_kasp_keystore_open(kasp, info->backend, info->config, keystore);
+
+	dnssec_kasp_keystore_free(info);
+
+	return r;
 }
 
 /*!
@@ -52,45 +54,24 @@ static int ctx_init_dnssec(kdnssec_ctx_t *ctx, const char *kasp_path,
 	assert(kasp_path);
 	assert(zone_name);
 
-	// KASP
-
 	dnssec_kasp_init_dir(&ctx->kasp);
 	int r = dnssec_kasp_open(ctx->kasp, kasp_path);
 	if (r != DNSSEC_EOK) {
 		return r;
 	}
 
-	// KASP zone
-
 	r = dnssec_kasp_zone_load(ctx->kasp, zone_name, &ctx->zone);
 	if (r != DNSSEC_EOK) {
 		return r;
 	}
 
-	// keystore
-
-	char *keystore_path = get_keystore_path(kasp_path);
-	dnssec_keystore_init_pkcs8_dir(&ctx->keystore);
-	r = dnssec_keystore_open(ctx->keystore, keystore_path);
-	free(keystore_path);
-	if (r != DNSSEC_EOK) {
-		return r;
-	}
-
-	// policy
-
 	const char *policy_name = dnssec_kasp_zone_get_policy(ctx->zone);
-	if (policy_name == NULL) {
-		ctx->policy = dnssec_kasp_policy_new(NULL);
-		return KNOT_EOK;
-	}
-
 	r = dnssec_kasp_policy_load(ctx->kasp, policy_name, &ctx->policy);
 	if (r != DNSSEC_EOK) {
 		return r;
 	}
 
-	return KNOT_EOK;
+	return get_keystore(ctx->kasp, ctx->policy->keystore, &ctx->keystore);
 }
 
 void kdnssec_ctx_deinit(kdnssec_ctx_t *ctx)

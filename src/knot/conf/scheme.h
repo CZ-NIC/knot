@@ -25,6 +25,7 @@
 
 #pragma once
 
+#include "libknot/lookup.h"
 #include "libknot/yparser/ypscheme.h"
 
 #define C_ACL			"\x03""acl"
@@ -90,7 +91,7 @@ enum {
 	SERIAL_POLICY_UNIXTIME  = 2
 };
 
-extern const lookup_table_t acl_actions[];
+extern const knot_lookup_t acl_actions[];
 
 extern const yp_item_t conf_scheme[];
 

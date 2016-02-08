@@ -15,14 +15,13 @@
 */
 
 #include <assert.h>
-#include <pthread.h>
 
 #include "knot/conf/confdb.h"
 #include "knot/conf/confio.h"
 #include "knot/conf/tools.h"
 #include "libknot/yparser/yptrafo.h"
-#include "libknot/internal/mem.h"
-#include "libknot/internal/strlcat.h"
+#include "contrib/string.h"
+#include "contrib/openbsd/strlcat.h"
 
 #define FCN(io)	(io->fcn != NULL) ? io->fcn(io) : KNOT_EOK
 
@@ -69,14 +68,14 @@ int conf_io_begin(
 		return KNOT_CONF_ENOTXN;
 	}
 
-	namedb_txn_t *parent = conf()->io.txn;
-	namedb_txn_t *txn = (parent == NULL) ? conf()->io.txn_stack : parent + 1;
+	knot_db_txn_t *parent = conf()->io.txn;
+	knot_db_txn_t *txn = (parent == NULL) ? conf()->io.txn_stack : parent + 1;
 	if (txn >= conf()->io.txn_stack + CONF_MAX_TXN_DEPTH) {
 		return KNOT_CONF_EMANYTXN;
 	}
 
 	// Start the writing transaction.
-	int ret = namedb_lmdb_txn_begin(conf()->db, txn, parent, 0);
+	int ret = knot_db_lmdb_txn_begin(conf()->db, txn, parent, 0);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
@@ -96,47 +95,14 @@ int conf_io_commit(
 		return KNOT_CONF_ENOTXN;
 	}
 
-	namedb_txn_t *txn = child ? conf()->io.txn : conf()->io.txn_stack;
+	knot_db_txn_t *txn = child ? conf()->io.txn : conf()->io.txn_stack;
 
 	// Commit the writing transaction.
 	int ret = conf()->api->txn_commit(txn);
+
 	conf()->io.txn = child ? txn - 1 : NULL;
-	if (ret != KNOT_EOK) {
-		return ret;
-	}
 
-	// Don't reload the configuration if child transaction.
-	if (child) {
-		return KNOT_EOK;
-	}
-
-	// Clone new configuration.
-	conf_t *new_conf = NULL;
-	ret = conf_clone(&new_conf);
-	if (ret != KNOT_EOK) {
-		return ret;
-	}
-
-	// Update read-only transaction.
-	new_conf->api->txn_abort(&new_conf->read_txn);
-	ret = new_conf->api->txn_begin(new_conf->db, &new_conf->read_txn,
-	                               NAMEDB_RDONLY);
-	if (ret != KNOT_EOK) {
-		conf_free(new_conf, true);
-		return ret;
-	}
-
-	// Run post-open config operations.
-	ret = conf_post_open(new_conf);
-	if (ret != KNOT_EOK) {
-		conf_free(new_conf, true);
-		return ret;
-	}
-
-	// Update to the new config.
-	conf_update(new_conf);
-
-	return KNOT_EOK;
+	return ret;
 }
 
 int conf_io_abort(
@@ -149,7 +115,7 @@ int conf_io_abort(
 		return KNOT_CONF_ENOTXN;
 	}
 
-	namedb_txn_t *txn = child ? conf()->io.txn : conf()->io.txn_stack;
+	knot_db_txn_t *txn = child ? conf()->io.txn : conf()->io.txn_stack;
 
 	// Abort the writing transaction.
 	conf()->api->txn_abort(txn);
@@ -158,7 +124,7 @@ int conf_io_abort(
 	return KNOT_EOK;
 }
 
-static int desc_section(
+static int list_section(
 	const yp_item_t *items,
 	const yp_item_t **item,
 	conf_io_t *io)
@@ -173,7 +139,7 @@ static int desc_section(
 	return KNOT_EOK;
 }
 
-int conf_io_desc(
+int conf_io_list(
 	const char *key0,
 	conf_io_t *io)
 {
@@ -187,7 +153,7 @@ int conf_io_desc(
 	if (key0 == NULL) {
 		io_reset_val(io, NULL, NULL, NULL, 0, false, NULL);
 
-		return desc_section(conf()->scheme, &io->key0, io);
+		return list_section(conf()->scheme, &io->key0, io);
 	}
 
 	yp_check_ctx_t *ctx = yp_scheme_check_init(conf()->scheme);
@@ -198,7 +164,7 @@ int conf_io_desc(
 	// Check the input.
 	int ret = yp_scheme_check_str(ctx, key0, NULL, NULL, NULL);
 	if (ret != KNOT_EOK) {
-		goto desc_error;
+		goto list_error;
 	}
 
 	yp_node_t *node = &ctx->nodes[ctx->current];
@@ -206,13 +172,13 @@ int conf_io_desc(
 	// Check for non-group item.
 	if (node->item->type != YP_TGRP) {
 		ret = KNOT_ENOTSUP;
-		goto desc_error;
+		goto list_error;
 	}
 
 	io_reset_val(io, node->item, NULL, NULL, 0, false, NULL);
 
-	ret = desc_section(node->item->sub_items, &io->key1, io);
-desc_error:
+	ret = list_section(node->item->sub_items, &io->key1, io);
+list_error:
 	yp_scheme_check_deinit(ctx);
 
 	return ret;
@@ -534,7 +500,7 @@ diff_error:
 }
 
 static int get_section(
-	namedb_txn_t *txn,
+	knot_db_txn_t *txn,
 	conf_io_t *io)
 {
 	conf_val_t data;
@@ -697,7 +663,7 @@ int conf_io_get(
 		             NULL);
 	}
 
-	namedb_txn_t *txn = get_current ? &conf()->read_txn : conf()->io.txn;
+	knot_db_txn_t *txn = get_current ? &conf()->read_txn : conf()->io.txn;
 
 	// Check for a non-group item.
 	if (io->key0->type != YP_TGRP) {

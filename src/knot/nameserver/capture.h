@@ -1,14 +1,4 @@
-/*!
- * \file capture.h
- *
- * \author Marek Vavrusa <marek.vavrusa@nic.cz>
- *
- * \brief Simple packet capture processor.
- *
- * \addtogroup answer_processing
- * @{
- */
-/*  Copyright (C) 2014 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -22,6 +12,14 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+/*!
+ * \file
+ *
+ * \brief Simple packet capture processor.
+ *
+ * \addtogroup answer_processing
+ * @{
  */
 
 #pragma once
@@ -38,7 +36,7 @@ const knot_layer_api_t *capture_get_module(void);
  * \brief Processing module parameters.
  */
 struct capture_param {
-	knot_pkt_t *sink;        /*!< Container for captured response. */
+	knot_pkt_t *sink; /*!< Container for captured response. */
 };
 
 /*! @} */

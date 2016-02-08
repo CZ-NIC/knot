@@ -1,4 +1,4 @@
-/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -14,20 +14,10 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <string.h>
-#include <stdlib.h>
 #include <assert.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <limits.h>
-#include <stdbool.h>
 
 #include "knot/updates/acl.h"
-#include "knot/conf/conf.h"
-#include "libknot/libknot.h"
-#include "libknot/internal/endian.h"
-#include "libknot/internal/sockaddr.h"
-#include "libknot/yparser/yptrafo.h"
+#include "contrib/sockaddr.h"
 
 static const uint8_t* ipv4_addr(const struct sockaddr_storage *ss) {
 	struct sockaddr_in *ipv4 = (struct sockaddr_in *)ss;
@@ -187,8 +177,12 @@ bool acl_allowed(conf_val_t *acl, acl_action_t action,
 
 				break;
 			}
-			/* Check for action match. */
-			if (val.code != KNOT_EOK) {
+			switch (val.code) {
+			case KNOT_EOK: /* Check for action match. */
+				break;
+			case KNOT_ENOENT: /* Empty action list allowed with deny only. */
+				return false;
+			default: /* No match. */
 				goto next_acl;
 			}
 		}

@@ -15,7 +15,6 @@
  */
 
 #include <dlfcn.h>
-#include <time.h>
 #include <unistd.h>
 #include <errno.h>
 #include <sys/types.h>
@@ -25,7 +24,6 @@
 #include <sys/syscall.h>
 #include <string.h>
 #include <assert.h>
-#include <errno.h>
 #include <sys/param.h>
 #include <urcu.h>
 #ifdef HAVE_SYS_UIO_H /* 'struct iovec' for OpenBSD */
@@ -37,12 +35,12 @@
 
 #include "knot/server/udp-handler.h"
 #include "knot/server/server.h"
-#include "libknot/internal/sockaddr.h"
-#include "libknot/internal/mempattern.h"
-#include "libknot/internal/mempool.h"
-#include "libknot/internal/macros.h"
+#include "knot/nameserver/process_query.h"
 #include "libknot/libknot.h"
-#include "libknot/processing/overlay.h"
+#include "contrib/macros.h"
+#include "contrib/mempattern.h"
+#include "contrib/sockaddr.h"
+#include "contrib/ucw/mempool.h"
 
 /* Buffer identifiers. */
 enum {
@@ -58,54 +56,8 @@ typedef struct udp_context {
 	unsigned thread_id;          /*!< Thread identifier. */
 } udp_context_t;
 
-/* FD_COPY macro compat. */
-#ifndef FD_COPY
-#define FD_COPY(src, dest) memcpy((dest), (src), sizeof(fd_set))
-#endif
-
-/* Mirror mode (no answering). */
-/* #define MIRROR_MODE 1 */
-
-/* PPS measurement. */
-/* #define MEASURE_PPS 1 */
-
-/* Next-gen packet processing API. */
-#define PACKET_NG
-#ifdef PACKET_NG
-#include "knot/nameserver/process_query.h"
-#endif
-
-/* PPS measurement */
-#ifdef MEASURE_PPS
-
-/* Not thread-safe, used only for RX thread. */
-static struct timeval __pps_t0, __pps_t1;
-volatile static unsigned __pps_rx = 0;
-static inline void udp_pps_begin()
-{
-	gettimeofday(&__pps_t0, NULL);
-}
-
-static inline void udp_pps_sample(unsigned n, unsigned thr_id)
-{
-	__pps_rx += n;
-	if (thr_id == 0) {
-		gettimeofday(&__pps_t1, NULL);
-		if (time_diff(&__pps_t0, &__pps_t1) >= 1000.0) {
-			unsigned pps = __pps_rx;
-			memcpy(&__pps_t0, &__pps_t1, sizeof(struct timeval));
-			__pps_rx = 0;
-			log_server_info("RX rate %u packets/second", pps);
-		}
-	}
-}
-#else
-static inline void udp_pps_begin() {}
-static inline void udp_pps_sample(unsigned n, unsigned thr_id) {}
-#endif
-
-void udp_handle(udp_context_t *udp, int fd, struct sockaddr_storage *ss,
-                struct iovec *rx, struct iovec *tx)
+static void udp_handle(udp_context_t *udp, int fd, struct sockaddr_storage *ss,
+                       struct iovec *rx, struct iovec *tx)
 {
 	/* Create query processing parameter. */
 	struct process_query_param param = {0};
@@ -122,14 +74,15 @@ void udp_handle(udp_context_t *udp, int fd, struct sockaddr_storage *ss,
 		param.proc_flags |= NS_QUERY_LIMIT_RATE;
 	}
 
-	/* Create packets. */
-	mm_ctx_t *mm = udp->overlay.mm;
-	knot_pkt_t *query = knot_pkt_new(rx->iov_base, rx->iov_len, mm);
-	knot_pkt_t *ans = knot_pkt_new(tx->iov_base, tx->iov_len, mm);
+	knot_mm_t *mm = udp->overlay.mm;
 
 	/* Create query processing context. */
 	knot_overlay_init(&udp->overlay, mm);
 	knot_overlay_add(&udp->overlay, NS_PROC_QUERY, &param);
+
+	/* Create packets. */
+	knot_pkt_t *query = knot_pkt_new(rx->iov_base, rx->iov_len, mm);
+	knot_pkt_t *ans = knot_pkt_new(tx->iov_base, tx->iov_len, mm);
 
 	/* Input packet. */
 	(void) knot_pkt_parse(query, 0);
@@ -172,6 +125,30 @@ static int (*_udp_recv)(int, void *) = 0;
 static int (*_udp_handle)(udp_context_t *, void *) = 0;
 static int (*_udp_send)(void *) = 0;
 
+/*! \brief Control message to fit IP_PKTINFO or IPv6_RECVPKTINFO. */
+typedef union {
+	struct cmsghdr cmsg;
+	uint8_t buf[CMSG_SPACE(sizeof(struct in6_pktinfo))];
+} cmsg_pktinfo_t;
+
+static void udp_pktinfo_handle(const struct msghdr *rx, struct msghdr *tx)
+{
+	tx->msg_controllen = rx->msg_controllen;
+
+	#if defined(__APPLE__)
+	/*
+	 * Workaround for OS X: If ipi_ifindex is non-zero, the source address
+	 * will be ignored. We need to use correct one.
+	 */
+	struct cmsghdr *cmsg = CMSG_FIRSTHDR(tx);
+	if (cmsg->cmsg_type == IP_PKTINFO) {
+		struct in_pktinfo *info = (struct in_pktinfo *)CMSG_DATA(cmsg);
+		info->ipi_spec_dst = info->ipi_addr;
+		info->ipi_ifindex = 0;
+	}
+	#endif
+}
+
 /* UDP recvfrom() request struct. */
 struct udp_recvfrom {
 	int fd;
@@ -179,6 +156,7 @@ struct udp_recvfrom {
 	struct msghdr msg[NBUFS];
 	struct iovec iov[NBUFS];
 	uint8_t buf[NBUFS][KNOT_WIRE_MAX_PKTSIZE];
+	cmsg_pktinfo_t pktinfo;
 };
 
 static void *udp_recvfrom_init(void)
@@ -187,8 +165,8 @@ static void *udp_recvfrom_init(void)
 	if (rq == NULL) {
 		return NULL;
 	}
-
 	memset(rq, 0, sizeof(struct udp_recvfrom));
+
 	for (unsigned i = 0; i < NBUFS; ++i) {
 		rq->iov[i].iov_base = rq->buf + i;
 		rq->iov[i].iov_len = KNOT_WIRE_MAX_PKTSIZE;
@@ -196,8 +174,8 @@ static void *udp_recvfrom_init(void)
 		rq->msg[i].msg_namelen = sizeof(rq->addr);
 		rq->msg[i].msg_iov = &rq->iov[i];
 		rq->msg[i].msg_iovlen = 1;
-		rq->msg[i].msg_control = NULL;
-		rq->msg[i].msg_controllen = 0;
+		rq->msg[i].msg_control = &rq->pktinfo.cmsg;
+		rq->msg[i].msg_controllen = sizeof(rq->pktinfo);
 	}
 	return rq;
 }
@@ -215,6 +193,7 @@ static int udp_recvfrom_recv(int fd, void *d)
 	struct udp_recvfrom *rq = (struct udp_recvfrom *)d;
 	rq->iov[RX].iov_len = KNOT_WIRE_MAX_PKTSIZE;
 	rq->msg[RX].msg_namelen = sizeof(struct sockaddr_storage);
+	rq->msg[RX].msg_controllen = sizeof(rq->pktinfo);
 
 	int ret = recvmsg(fd, &rq->msg[RX], MSG_DONTWAIT);
 	if (ret > 0) {
@@ -233,6 +212,8 @@ static int udp_recvfrom_handle(udp_context_t *ctx, void *d)
 	/* Prepare TX address. */
 	rq->msg[TX].msg_namelen = rq->msg[RX].msg_namelen;
 	rq->iov[TX].iov_len = KNOT_WIRE_MAX_PKTSIZE;
+
+	udp_pktinfo_handle(&rq->msg[RX], &rq->msg[TX]);
 
 	/* Process received pkt. */
 	udp_handle(ctx, rq->fd, &rq->addr, &rq->iov[RX], &rq->iov[TX]);
@@ -266,7 +247,7 @@ static int (*_send_mmsg)(int, struct sockaddr *, struct mmsghdr *, size_t) = 0;
  *
  * Basic, sendmsg() based implementation.
  */
-int udp_sendmsg(int sock, struct sockaddr *addrs, struct mmsghdr *msgs, size_t count)
+static int udp_sendmsg(int sock, struct sockaddr *addrs, struct mmsghdr *msgs, size_t count)
 {
 	int sent = 0;
 	for (unsigned i = 0; i < count; ++i) {
@@ -293,7 +274,7 @@ static inline int sendmmsg(int fd, struct mmsghdr *mmsg, unsigned vlen,
  *
  * sendmmsg() implementation.
  */
-int udp_sendmmsg(int sock, struct sockaddr *_, struct mmsghdr *msgs, size_t count)
+static int udp_sendmmsg(int sock, struct sockaddr *_, struct mmsghdr *msgs, size_t count)
 {
 	UNUSED(_);
 	return sendmmsg(sock, msgs, count, 0);
@@ -303,25 +284,23 @@ int udp_sendmmsg(int sock, struct sockaddr *_, struct mmsghdr *msgs, size_t coun
 /* UDP recvmmsg() request struct. */
 struct udp_recvmmsg {
 	int fd;
-	struct sockaddr_storage *addrs;
+	struct sockaddr_storage addrs[RECVMMSG_BATCHLEN];
 	char *iobuf[NBUFS];
 	struct iovec *iov[NBUFS];
 	struct mmsghdr *msgs[NBUFS];
 	unsigned rcvd;
-	mm_ctx_t mm;
+	knot_mm_t mm;
+	cmsg_pktinfo_t pktinfo[RECVMMSG_BATCHLEN];
 };
 
 static void *udp_recvmmsg_init(void)
 {
-	mm_ctx_t mm;
+	knot_mm_t mm;
 	mm_ctx_mempool(&mm, sizeof(struct udp_recvmmsg));
 
 	struct udp_recvmmsg *rq = mm.alloc(mm.ctx, sizeof(struct udp_recvmmsg));
-	memcpy(&rq->mm, &mm, sizeof(mm_ctx_t));
-
-	/* Initialize addresses. */
-	rq->addrs = mm.alloc(mm.ctx, sizeof(struct sockaddr_storage) * RECVMMSG_BATCHLEN);
-	memset(rq->addrs, 0, sizeof(struct sockaddr_storage) * RECVMMSG_BATCHLEN);
+	memset(rq, 0, sizeof(*rq));
+	memcpy(&rq->mm, &mm, sizeof(knot_mm_t));
 
 	/* Initialize buffers. */
 	for (unsigned i = 0; i < NBUFS; ++i) {
@@ -336,6 +315,8 @@ static void *udp_recvmmsg_init(void)
 			rq->msgs[i][k].msg_hdr.msg_iovlen = 1;
 			rq->msgs[i][k].msg_hdr.msg_name = rq->addrs + k;
 			rq->msgs[i][k].msg_hdr.msg_namelen = sizeof(struct sockaddr_storage);
+			rq->msgs[i][k].msg_hdr.msg_control = &rq->pktinfo[k].cmsg;
+			rq->msgs[i][k].msg_hdr.msg_controllen = sizeof(cmsg_pktinfo_t);
 		}
 	}
 
@@ -355,6 +336,7 @@ static int udp_recvmmsg_deinit(void *d)
 static int udp_recvmmsg_recv(int fd, void *d)
 {
 	struct udp_recvmmsg *rq = (struct udp_recvmmsg *)d;
+
 	int n = recvmmsg(fd, rq->msgs[RX], RECVMMSG_BATCHLEN, MSG_DONTWAIT, NULL);
 	if (n > 0) {
 		rq->fd = fd;
@@ -372,6 +354,8 @@ static int udp_recvmmsg_handle(udp_context_t *ctx, void *d)
 		struct iovec *rx = rq->msgs[RX][i].msg_hdr.msg_iov;
 		struct iovec *tx = rq->msgs[TX][i].msg_hdr.msg_iov;
 		rx->iov_len = rq->msgs[RX][i].msg_len; /* Received bytes. */
+
+		udp_pktinfo_handle(&rq->msgs[RX][i].msg_hdr,&rq->msgs[TX][i].msg_hdr);
 
 		udp_handle(ctx, rq->fd, rq->addrs + i, rx, tx);
 		rq->msgs[TX][i].msg_len = tx->iov_len;
@@ -399,6 +383,7 @@ static int udp_recvmmsg_send(void *d)
 		memset(rq->addrs + i, 0, sizeof(struct sockaddr_storage));
 		rq->msgs[RX][i].msg_hdr.msg_namelen = sizeof(struct sockaddr_storage);
 		rq->msgs[TX][i].msg_hdr.msg_namelen = sizeof(struct sockaddr_storage);
+		rq->msgs[RX][i].msg_hdr.msg_controllen = sizeof(cmsg_pktinfo_t);
 	}
 	return rc;
 }
@@ -439,34 +424,57 @@ void __attribute__ ((constructor)) udp_master_init()
 #endif /* HAVE_RECVMMSG */
 }
 
-/*! \brief Release the reference on the interface list and clear watched fdset. */
-static void forget_ifaces(ifacelist_t *ifaces, fd_set *set, int maxfd)
+/*! \brief Get interface UDP descriptor for a given thread. */
+static int iface_udp_fd(const iface_t *iface, int thread_id)
 {
-	ref_release((ref_t *)ifaces);
-	FD_ZERO(set);
+#ifdef ENABLE_REUSEPORT
+		return iface->fd_udp[thread_id % iface->fd_udp_count];
+#else
+		return iface->fd_udp[0];
+#endif
 }
 
-/*! \brief Add interface sockets to the watched fdset. */
-static void track_ifaces(ifacelist_t *ifaces, fd_set *set,
-                         int *maxfd, int *minfd, int thrid)
+/*! \brief Release the interface list reference and free watched descriptor set. */
+static void forget_ifaces(ifacelist_t *ifaces, struct pollfd **fds_ptr)
 {
-	assert(ifaces && set && maxfd && minfd);
+	ref_release((ref_t *)ifaces);
+	free(*fds_ptr);
+	*fds_ptr = NULL;
+}
 
-	FD_ZERO(set);
-	*maxfd = 0;
-	*minfd = FD_SETSIZE - 1;
+/*!
+ * \brief Make a set of watched descriptors based on the interface list.
+ *
+ * \param[in]   ifaces  New interface list.
+ * \param[in]   thrid   Thread ID.
+ * \param[out]  fds_ptr Allocated set of descriptors.
+ *
+ * \return Number of watched descriptors, zero on error.
+ */
+static nfds_t track_ifaces(const ifacelist_t *ifaces, int thrid,
+                           struct pollfd **fds_ptr)
+{
+	assert(ifaces && fds_ptr);
+
+	nfds_t nfds = list_size(&ifaces->l);
+	struct pollfd *fds = malloc(nfds * sizeof(*fds));
+	if (!fds) {
+		*fds_ptr = NULL;
+		return 0;
+	}
 
 	iface_t *iface = NULL;
+	int i = 0;
 	WALK_LIST(iface, ifaces->l) {
-#ifdef ENABLE_REUSEPORT
-		int fd = iface->fd_udp[thrid % iface->fd_udp_count];
-#else
-		int fd = iface->fd_udp[0];
-#endif
-		*maxfd = MAX(fd, *maxfd);
-		*minfd = MIN(fd, *minfd);
-		FD_SET(fd, set);
+		fds[i].fd = iface_udp_fd(iface, thrid);
+		fds[i].events = POLLIN;
+		fds[i].revents = 0;
+		i += 1;
 	}
+	assert(i == nfds);
+
+	*fds_ptr = fds;
+	return nfds;
 }
 
 int udp_master(dthread_t *thread)
@@ -499,18 +507,13 @@ int udp_master(dthread_t *thread)
 	udp.thread_id = handler->thread_id[thr_id];
 
 	/* Create big enough memory cushion. */
-	mm_ctx_t mm;
+	knot_mm_t mm;
 	mm_ctx_mempool(&mm, 16 * MM_DEFAULT_BLKSIZE);
 	udp.overlay.mm = &mm;
 
-	/* Chose select as epoll/kqueue has larger overhead for a
-	 * single or handful of sockets. */
-	fd_set fds;
-	FD_ZERO(&fds);
-	int minfd = 0, maxfd = 0;
-	int rcvd = 0;
-
-	udp_pps_begin();
+	/* Event source. */
+	struct pollfd *fds = NULL;
+	nfds_t nfds = 0;
 
 	/* Loop until all data is read. */
 	for (;;) {
@@ -521,10 +524,13 @@ int udp_master(dthread_t *thread)
 			udp.thread_id = handler->thread_id[thr_id];
 
 			rcu_read_lock();
-			forget_ifaces(ref, &fds, maxfd);
+			forget_ifaces(ref, &fds);
 			ref = handler->server->ifaces;
-			track_ifaces(ref, &fds, &maxfd, &minfd, udp.thread_id);
+			nfds = track_ifaces(ref, udp.thread_id, &fds);
 			rcu_read_unlock();
+			if (nfds == 0) {
+				break;
+			}
 		}
 
 		/* Cancellation point. */
@@ -533,29 +539,30 @@ int udp_master(dthread_t *thread)
 		}
 
 		/* Wait for events. */
-		fd_set rfds;
-		FD_COPY(&fds, &rfds);
-		int nfds = select(maxfd + 1, &rfds, NULL, NULL, NULL);
-		if (nfds <= 0) {
+		int events = poll(fds, nfds, -1);
+		if (events <= 0) {
 			if (errno == EINTR) continue;
 			break;
 		}
-		/* Bound sockets will be usually closely coupled. */
-		for (unsigned fd = minfd; fd <= maxfd; ++fd) {
-			if (FD_ISSET(fd, &rfds)) {
-				if ((rcvd = _udp_recv(fd, rq)) > 0) {
-					_udp_handle(&udp, rq);
-					/* Flush allocated memory. */
-					mp_flush(mm.ctx);
-					_udp_send(rq);
-					udp_pps_sample(rcvd, thr_id);
-				}
+
+		/* Process the events. */
+		for (nfds_t i = 0; i < nfds && events > 0; i++) {
+			if (fds[i].revents == 0) {
+				continue;
+			}
+			events -= 1;
+			int rcvd = 0;
+			if ((rcvd = _udp_recv(fds[i].fd, rq)) > 0) {
+				_udp_handle(&udp, rq);
+				/* Flush allocated memory. */
+				mp_flush(mm.ctx);
+				_udp_send(rq);
 			}
 		}
 	}
 
 	_udp_deinit(rq);
-	forget_ifaces(ref, &fds, maxfd);
+	forget_ifaces(ref, &fds);
 	mp_delete(mm.ctx);
 	return KNOT_EOK;
 }

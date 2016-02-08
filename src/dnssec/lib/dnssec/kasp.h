@@ -177,7 +177,7 @@ int dnssec_kasp_zone_load(dnssec_kasp_t *kasp, const char *name,
  * \param kasp  KASP instance.
  * \param zone  Zone to be saved.
  */
-int dnssec_kasp_zone_save(dnssec_kasp_t *kasp, dnssec_kasp_zone_t *zone);
+int dnssec_kasp_zone_save(dnssec_kasp_t *kasp, const dnssec_kasp_zone_t *zone);
 
 /*!
  * Remove zone from KASP.
@@ -222,6 +222,7 @@ typedef struct dnssec_kasp_key_timing {
  * Zone key.
  */
 typedef struct dnssec_kasp_key {
+	char *id;				/*!< Keystore unique key ID. */
 	dnssec_key_t *key;			/*!< Instance of the key. */
 	dnssec_kasp_key_timing_t timing;	/*!< Key timing information. */
 } dnssec_kasp_key_t;
@@ -278,6 +279,8 @@ int dnssec_kasp_zone_set_policy(dnssec_kasp_zone_t *zone, const char *name);
  */
 typedef struct dnssec_kasp_policy {
 	char *name;
+	bool manual;
+	char *keystore;
 	// DNSKEY
 	dnssec_key_algorithm_t algorithm;
 	uint16_t ksk_size;
@@ -336,7 +339,7 @@ int dnssec_kasp_policy_load(dnssec_kasp_t *kasp, const char *name,
  * \param kasp    KASP instance.
  * \param policy  Policy to be saved.
  */
-int dnssec_kasp_policy_save(dnssec_kasp_t *kasp, dnssec_kasp_policy_t *policy);
+int dnssec_kasp_policy_save(dnssec_kasp_t *kasp, const dnssec_kasp_policy_t *policy);
 
 /*!
  * Remove a policy from the KASP.
@@ -365,5 +368,34 @@ int dnssec_kasp_policy_list(dnssec_kasp_t *kasp, dnssec_list_t **list);
  * \retval DNSSEC_NOT_FOUND  Policy doesn't exist.
  */
 int dnssec_kasp_policy_exists(dnssec_kasp_t *kasp, const char *policy_name);
+
+typedef struct dnssec_kasp_keystore {
+	char *name;
+	char *backend;
+	char *config;
+} dnssec_kasp_keystore_t;
+
+dnssec_kasp_keystore_t *dnssec_kasp_keystore_new(const char *name);
+void dnssec_kasp_keystore_free(dnssec_kasp_keystore_t *keystore);
+
+int dnssec_kasp_keystore_load(dnssec_kasp_t *kasp, const char *name, dnssec_kasp_keystore_t **keystore);
+int dnssec_kasp_keystore_save(dnssec_kasp_t *kasp, const dnssec_kasp_keystore_t *keystore);
+int dnssec_kasp_keystore_remove(dnssec_kasp_t *kasp, const char *name);
+int dnssec_kasp_keystore_list(dnssec_kasp_t *kasp, dnssec_list_t **names);
+int dnssec_kasp_keystore_exists(dnssec_kasp_t *kasp, const char *name);
+
+/*
+ * TODO: workaround, PKCS 8 dir keystore needs to know KASP base path
+ */
+
+#define DNSSEC_KASP_KEYSTORE_PKCS8  "pkcs8"
+#define DNSSEC_KASP_KEYSTORE_PKCS11 "pkcs11"
+
+struct dnssec_keystore;
+
+int dnssec_kasp_keystore_init(dnssec_kasp_t *kasp, const char *backend,
+			      const char *config, struct dnssec_keystore **store);
+int dnssec_kasp_keystore_open(dnssec_kasp_t *kasp, const char *backend,
+			      const char *config, struct dnssec_keystore **store);
 
 /*! @} */

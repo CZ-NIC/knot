@@ -41,51 +41,14 @@ size_t knot_soa_names_len(const knot_rdataset_t *rrs)
 	       + knot_dname_size(knot_soa_mailbox(rrs));
 }
 
-static inline
-uint32_t knot_soa_serial(const knot_rdataset_t *rrs)
-{
-	KNOT_RDATASET_CHECK(rrs, 0, return 0);
-	return wire_read_u32(knot_rdata_offset(rrs, 0,
-	                                       knot_soa_names_len(rrs)));
-}
+uint32_t knot_soa_serial(const knot_rdataset_t *rrs);
 
-static inline
-void knot_soa_serial_set(knot_rdataset_t *rrs, uint32_t serial)
-{
-	KNOT_RDATASET_CHECK(rrs, 0, return);
-	// the number is in network byte order, transform it
-	wire_write_u32(knot_rdata_offset(rrs, 0, knot_soa_names_len(rrs)),
-	               serial);
-}
+void knot_soa_serial_set(knot_rdataset_t *rrs, uint32_t serial);
 
-static inline
-uint32_t knot_soa_refresh(const knot_rdataset_t *rrs)
-{
-	KNOT_RDATASET_CHECK(rrs, 0, return 0);
-	return wire_read_u32(knot_rdata_offset(rrs, 0,
-	                                       knot_soa_names_len(rrs) + 4));
-}
+uint32_t knot_soa_refresh(const knot_rdataset_t *rrs);
 
-static inline
-uint32_t knot_soa_retry(const knot_rdataset_t *rrs)
-{
-	KNOT_RDATASET_CHECK(rrs, 0, return 0);
-	return wire_read_u32(knot_rdata_offset(rrs, 0,
-	                                       knot_soa_names_len(rrs) + 8));
-}
+uint32_t knot_soa_retry(const knot_rdataset_t *rrs);
 
-static inline
-uint32_t knot_soa_expire(const knot_rdataset_t *rrs)
-{
-	KNOT_RDATASET_CHECK(rrs, 0, return 0);
-	return wire_read_u32(knot_rdata_offset(rrs, 0,
-	                                       knot_soa_names_len(rrs) + 12));
-}
+uint32_t knot_soa_expire(const knot_rdataset_t *rrs);
 
-static inline
-uint32_t knot_soa_minimum(const knot_rdataset_t *rrs)
-{
-	KNOT_RDATASET_CHECK(rrs, 0, return 0);
-	return wire_read_u32(knot_rdata_offset(rrs, 0,
-	                                       knot_soa_names_len(rrs) + 16));
-}
+uint32_t knot_soa_minimum(const knot_rdataset_t *rrs);

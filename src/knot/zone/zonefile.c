@@ -26,8 +26,8 @@
 #include <inttypes.h>
 
 #include "libknot/libknot.h"
-#include "libknot/internal/macros.h"
-#include "libknot/internal/mem.h"
+#include "contrib/macros.h"
+#include "contrib/string.h"
 #include "knot/common/log.h"
 #include "knot/dnssec/zone-nsec.h"
 #include "knot/zone/semantic-check.h"
@@ -41,19 +41,19 @@
 
 static void process_error(zs_scanner_t *s)
 {
-	zcreator_t *zc = s->data;
+	zcreator_t *zc = s->process.data;
 	const knot_dname_t *zname = zc->z->apex->owner;
 
 	ERROR(zname, "%s in zone, file '%s', line %"PRIu64" (%s)",
-	      s->stop ? "fatal error" : "error",
+	      s->error.fatal ? "fatal error" : "error",
 	      s->file.name, s->line_counter,
-	      zs_strerror(s->error_code));
+	      zs_strerror(s->error.code));
 }
 
 static int add_rdata_to_rr(knot_rrset_t *rrset, const zs_scanner_t *scanner)
 {
 	return knot_rrset_add_rdata(rrset, scanner->r_data, scanner->r_data_length,
-	                         scanner->r_ttl, NULL);
+	                            scanner->r_ttl, NULL);
 }
 
 static void log_ttl_error(const zone_contents_t *zone, const zone_node_t *node,
@@ -142,11 +142,11 @@ int zcreator_step(zcreator_t *zc, const knot_rrset_t *rr)
 }
 
 /*! \brief Creates RR from parser input, passes it to handling function. */
-static void scanner_process(zs_scanner_t *scanner)
+static void process_data(zs_scanner_t *scanner)
 {
-	zcreator_t *zc = scanner->data;
+	zcreator_t *zc = scanner->process.data;
 	if (zc->ret != KNOT_EOK) {
-		scanner->stop = true;
+		scanner->state = ZS_STATE_STOP;
 		return;
 	}
 
@@ -190,6 +190,8 @@ int zonefile_open(zloader_t *loader, const char *source,
 		return KNOT_EINVAL;
 	}
 
+	memset(loader, 0, sizeof(zloader_t));
+
 	/* Check zone file. */
 	if (access(source, F_OK | R_OK) != 0) {
 		return KNOT_EACCES;
@@ -215,19 +217,24 @@ int zonefile_open(zloader_t *loader, const char *source,
 		return KNOT_ENOMEM;
 	}
 
-	/* Create file loader. */
-	memset(loader, 0, sizeof(zloader_t));
-	loader->scanner = zs_scanner_create(origin_str, KNOT_CLASS_IN, 3600,
-	                                    scanner_process, process_error,
-	                                    zc);
-	if (loader->scanner == NULL) {
+	if (zs_init(&loader->scanner, origin_str, KNOT_CLASS_IN, 3600) != 0 ||
+	    zs_set_input_file(&loader->scanner, source) != 0 ||
+	    zs_set_processing(&loader->scanner, process_data, process_error, zc) != 0) {
+		zs_deinit(&loader->scanner);
 		free(origin_str);
 		free(zc);
-		return KNOT_ERROR;
+
+		switch (loader->scanner.error.code) {
+		case ZS_FILE_OPEN:
+		case ZS_FILE_INVALID:
+			return KNOT_EFILE;
+		default:
+			return KNOT_EOK;
+		}
 	}
+	free(origin_str);
 
 	loader->source = strdup(source);
-	loader->origin = origin_str;
 	loader->creator = zc;
 	loader->semantic_checks = semantic_checks;
 
@@ -244,10 +251,10 @@ zone_contents_t *zonefile_load(zloader_t *loader)
 	const knot_dname_t *zname = zc->z->apex->owner;
 
 	assert(zc);
-	int ret = zs_scanner_parse_file(loader->scanner, loader->source);
-	if (ret != 0 && loader->scanner->error_counter == 0) {
+	int ret = zs_parse_all(&loader->scanner);
+	if (ret != 0 && loader->scanner.error.counter == 0) {
 		ERROR(zname, "failed to load zone, file '%s' (%s)",
-		      loader->source, zs_strerror(loader->scanner->error_code));
+		      loader->source, zs_strerror(loader->scanner.error.code));
 		goto fail;
 	}
 
@@ -257,9 +264,9 @@ zone_contents_t *zonefile_load(zloader_t *loader)
 		goto fail;
 	}
 
-	if (loader->scanner->error_counter > 0) {
+	if (loader->scanner.error.counter > 0) {
 		ERROR(zname, "failed to load zone, file '%s', %"PRIu64" errors",
-		      loader->source, loader->scanner->error_counter);
+		      loader->source, loader->scanner.error.counter);
 		goto fail;
 	}
 
@@ -271,11 +278,10 @@ zone_contents_t *zonefile_load(zloader_t *loader)
 	zone_node_t *first_nsec3_node = NULL;
 	zone_node_t *last_nsec3_node = NULL;
 
-	int kret = zone_contents_adjust_full(zc->z,
-	                                     &first_nsec3_node, &last_nsec3_node);
-	if (kret != KNOT_EOK) {
+	ret = zone_contents_adjust_full(zc->z, &first_nsec3_node, &last_nsec3_node);
+	if (ret != KNOT_EOK) {
 		ERROR(zname, "failed to finalize zone contents (%s)",
-		      knot_strerror(kret));
+		      knot_strerror(ret));
 		goto fail;
 	}
 
@@ -419,10 +425,8 @@ void zonefile_close(zloader_t *loader)
 		return;
 	}
 
-	zs_scanner_free(loader->scanner);
-
+	zs_deinit(&loader->scanner);
 	free(loader->source);
-	free(loader->origin);
 	free(loader->creator);
 }
 

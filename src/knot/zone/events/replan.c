@@ -14,12 +14,12 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "libknot/rrtype/soa.h"
+#include <assert.h>
 
 #include "knot/zone/events/replan.h"
 #include "knot/zone/events/handlers.h"
-#include "knot/zone/zone.h"
-#include "libknot/internal/macros.h"
+#include "libknot/rrtype/soa.h"
+#include "contrib/macros.h"
 
 /* -- Zone event replanning functions --------------------------------------- */
 
@@ -33,14 +33,14 @@ static void replan_event(zone_t *zone, const zone_t *old_zone, zone_event_type_t
 }
 
 /*!< \brief Replans events that are dependent on the SOA record. */
-static void replan_soa_events(zone_t *zone, const zone_t *old_zone)
+static void replan_soa_events(conf_t *conf, zone_t *zone, const zone_t *old_zone)
 {
-	if (!zone_is_slave(zone)) {
+	if (!zone_is_slave(conf, zone)) {
 		// Events only valid for slaves.
 		return;
 	}
 
-	if (zone_is_slave(old_zone)) {
+	if (zone_is_slave(conf, old_zone)) {
 		// Replan SOA events.
 		replan_event(zone, old_zone, ZONE_EVENT_REFRESH);
 		replan_event(zone, old_zone, ZONE_EVENT_EXPIRE);
@@ -56,14 +56,14 @@ static void replan_soa_events(zone_t *zone, const zone_t *old_zone)
 }
 
 /*!< \brief Replans transfer event. */
-static void replan_xfer(zone_t *zone, const zone_t *old_zone)
+static void replan_xfer(conf_t *conf, zone_t *zone, const zone_t *old_zone)
 {
-	if (!zone_is_slave(zone)) {
+	if (!zone_is_slave(conf, zone)) {
 		// Only valid for slaves.
 		return;
 	}
 
-	if (zone_is_slave(old_zone)) {
+	if (zone_is_slave(conf, old_zone)) {
 		// Replan the transfer from old zone.
 		replan_event(zone, old_zone, ZONE_EVENT_XFER);
 	} else if (zone_contents_is_empty(zone->contents)) {
@@ -74,9 +74,9 @@ static void replan_xfer(zone_t *zone, const zone_t *old_zone)
 }
 
 /*!< \brief Replans flush event. */
-static void replan_flush(zone_t *zone, const zone_t *old_zone)
+static void replan_flush(conf_t *conf, zone_t *zone, const zone_t *old_zone)
 {
-	conf_val_t val = conf_zone_get(conf(), C_ZONEFILE_SYNC, zone->name);
+	conf_val_t val = conf_zone_get(conf, C_ZONEFILE_SYNC, zone->name);
 	int64_t sync_timeout = conf_int(&val);
 	if (sync_timeout <= 0) {
 		// Immediate sync scheduled after events.
@@ -98,20 +98,20 @@ static void replan_flush(zone_t *zone, const zone_t *old_zone)
 /*!< \brief Creates new DDNS q in the new zone - q contains references from the old zone. */
 static void duplicate_ddns_q(zone_t *zone, zone_t *old_zone)
 {
-	struct knot_request *d, *nxt;
-	WALK_LIST_DELSAFE(d, nxt, old_zone->ddns_queue) {
-		add_tail(&zone->ddns_queue, (node_t *)d);
+	ptrnode_t *node = NULL;
+	WALK_LIST(node, old_zone->ddns_queue) {
+		ptrlist_add(&zone->ddns_queue, node->d, NULL);
 	}
 	zone->ddns_queue_size = old_zone->ddns_queue_size;
 
 	// Reset the list, new zone will free the data.
-	init_list(&old_zone->ddns_queue);
+	ptrlist_free(&old_zone->ddns_queue, NULL);
 }
 
 /*!< Replans DNSSEC event. Not whole resign needed, \todo #247 */
-static void replan_dnssec(zone_t *zone)
+static void replan_dnssec(conf_t *conf, zone_t *zone)
 {
-	conf_val_t val = conf_zone_get(conf(), C_DNSSEC_SIGNING, zone->name);
+	conf_val_t val = conf_zone_get(conf, C_DNSSEC_SIGNING, zone->name);
 	if (conf_bool(&val)) {
 		/* Keys could have changed, force resign. */
 		zone_events_schedule(zone, ZONE_EVENT_DNSSEC, ZONE_EVENT_NOW);
@@ -131,12 +131,12 @@ void replan_update(zone_t *zone, zone_t *old_zone)
 	}
 }
 
-void replan_events(zone_t *zone, zone_t *old_zone)
+void replan_events(conf_t *conf, zone_t *zone, zone_t *old_zone)
 {
-	replan_soa_events(zone, old_zone);
-	replan_xfer(zone, old_zone);
-	replan_flush(zone, old_zone);
+	replan_soa_events(conf, zone, old_zone);
+	replan_xfer(conf, zone, old_zone);
+	replan_flush(conf, zone, old_zone);
 	replan_event(zone, old_zone, ZONE_EVENT_NOTIFY);
 	replan_update(zone, old_zone);
-	replan_dnssec(zone);
+	replan_dnssec(conf, zone);
 }

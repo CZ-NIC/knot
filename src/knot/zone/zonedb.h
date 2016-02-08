@@ -1,16 +1,3 @@
-/*!
- * \file zonedb.h
- *
- * \author Lubos Slovak <lubos.slovak@nic.cz>
- *
- * \brief Zone database structure and API for manipulating it.
- *
- * Zone database groups several zones and provides functions for finding
- * suitable zone for a domain name, for searching in a particular zone, etc.
- *
- * \addtogroup libknot
- * @{
- */
 /*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
@@ -26,14 +13,23 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
+/*!
+ * \file
+ *
+ * \brief Zone database structure and API for manipulating it.
+ *
+ * Zone database groups several zones and provides functions for finding
+ * suitable zone for a domain name, for searching in a particular zone, etc.
+ *
+ * \addtogroup zone
+ * @{
+ */
 
 #pragma once
 
-#include "knot/zone/node.h"
 #include "knot/zone/zone.h"
-#include "knot/zone/contents.h"
 #include "libknot/dname.h"
-#include "libknot/internal/hhash.h"
+#include "contrib/hhash.h"
 
 /*
  * Zone DB represents a list of managed zones.
@@ -47,7 +43,7 @@
 typedef struct {
 	uint16_t maxlabels;
 	hhash_t *hash;
-	mm_ctx_t mm;
+	knot_mm_t mm;
 } knot_zonedb_t;
 
 /*
@@ -71,8 +67,6 @@ typedef hhash_iter_t knot_zonedb_iter_t;
 		knot_zonedb_iter_next(&it); \
 	} \
 }
-
-/*----------------------------------------------------------------------------*/
 
 /*!
  * \brief Allocates and initializes the zone database structure.

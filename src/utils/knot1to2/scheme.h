@@ -19,34 +19,34 @@
 typedef enum {
 	S_FIRST = 0,
 	S_SRV = S_FIRST,
+	S_CTL,
+	S_LOG,
 	S_KEY,
 	S_RMT,
 	S_ACL,
-	S_CTL,
 	S_DNSTAP,
 	S_SYNTH,
 	S_DNSPROXY,
 	S_ROSEDB,
 	S_TPL,
 	S_ZONE,
-	S_LOG,
-	S_LAST = S_LOG
+	S_LAST = S_ZONE
 } section_t;
 
 typedef enum {
 	R_SYS,      // -> SERVER
 	R_IF,       // -> SERVER
+	R_CTL,      // -> CONTROL
+	R_LOG,      // -> LOG
 	R_KEY,      // -> KEY
 	R_RMT,      // -> REMOTE
 	R_RMT_ACL,  // -> ACL
-	R_CTL,      // -> CONTROL
 	R_ZONEM1,   // -> MOD_DNSTAP
 	R_ZONEM2,   // -> MOD_SYNTRECORD
 	R_ZONEM3,   // -> MOD_DNSPROXY
 	R_ZONEM4,   // -> MOD_ROSEDB
 	R_ZONE_TPL, // -> TEMPLATE default
 	R_ZONE,     // -> ZONE
-	R_LOG,      // -> LOG
 } run_t;
 
 #define C_ACL			"\x03""acl"
@@ -113,17 +113,17 @@ inline static const char* section_name(section_t id)
 {
 	switch (id) {
 	case S_SRV:		return C_SRV;
+	case S_CTL:		return C_CTL;
+	case S_LOG:		return C_LOG;
 	case S_KEY:		return C_KEY;
 	case S_ACL:		return C_ACL;
 	case S_RMT:		return C_RMT;
-	case S_CTL:		return C_CTL;
 	case S_DNSTAP:		return C_MOD_DNSTAP;
 	case S_SYNTH:		return C_MOD_SYNTH_RECORD;
 	case S_DNSPROXY:	return C_MOD_DNSPROXY;
 	case S_ROSEDB:		return C_MOD_ROSEDB;
 	case S_TPL:		return C_TPL;
 	case S_ZONE:		return C_ZONE;
-	case S_LOG:		return C_LOG;
 	default:		return NULL;
 	}
 }

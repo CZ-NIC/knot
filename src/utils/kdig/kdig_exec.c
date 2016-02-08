@@ -25,14 +25,14 @@
 #include "utils/common/netio.h"
 #include "utils/common/sign.h"
 #include "libknot/libknot.h"
-#include "libknot/internal/lists.h"
-#include "libknot/internal/print.h"
-#include "libknot/internal/sockaddr.h"
+#include "contrib/sockaddr.h"
+#include "contrib/print.h"
+#include "contrib/ucw/lists.h"
 
 #if USE_DNSTAP
-# include "dnstap/convert.h"
-# include "dnstap/message.h"
-# include "dnstap/writer.h"
+# include "contrib/dnstap/convert.h"
+# include "contrib/dnstap/message.h"
+# include "contrib/dnstap/writer.h"
 
 static int write_dnstap(dt_writer_t          *writer,
                         const bool           is_response,

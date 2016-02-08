@@ -1,4 +1,4 @@
-/*  Copyright (C) 2014 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -18,22 +18,22 @@
 
 #include <pthread.h>
 #include <stdbool.h>
+#include <sys/time.h>
 
+#include "knot/conf/conf.h"
 #include "knot/common/evsched.h"
-#include "libknot/internal/namedb/namedb.h"
 #include "knot/worker/pool.h"
+#include "libknot/db/db.h"
 
 /* Timer special values. */
 #define ZONE_EVENT_NOW 0
 
 struct zone;
 
-struct server;
-
 typedef enum zone_event_type {
 	ZONE_EVENT_INVALID = -1,
 	// supported event types
-	ZONE_EVENT_RELOAD = 0,
+	ZONE_EVENT_LOAD = 0,
 	ZONE_EVENT_REFRESH,
 	ZONE_EVENT_XFER,
 	ZONE_EVENT_UPDATE,
@@ -52,7 +52,7 @@ typedef struct zone_events {
 
 	event_t *event;			//!< Scheduler event.
 	worker_pool_t *pool;		//!< Server worker pool.
-	namedb_t *timers_db;		//!< Persistent zone timers database.
+	knot_db_t *timers_db;		//!< Persistent zone timers database.
 
 	task_t task;			//!< Event execution context.
 	time_t time[ZONE_EVENT_COUNT];	//!< Event execution times.
@@ -81,7 +81,7 @@ int zone_events_init(struct zone *zone);
  * \return KNOT_E*
  */
 int zone_events_setup(struct zone *zone, worker_pool_t *workers,
-                      evsched_t *scheduler, namedb_t *timers_db);
+                      evsched_t *scheduler, knot_db_t *timers_db);
 
 /*!
  * \brief Deinitialize zone events.
@@ -190,10 +190,11 @@ time_t zone_events_get_next(const struct zone *zone, zone_event_type_t *type);
 /*!
  * \brief Replans zone events after config change. Will reuse events where applicable.
  *
+ * \param conf      Configuration.
  * \param zone      Zone with new config.
  * \param old_zone  Zone with old config.
  */
-void zone_events_update(struct zone *zone, struct zone *old_zone);
+void zone_events_update(conf_t *conf, struct zone *zone, struct zone *old_zone);
 
 /*!
  * \brief Replans DDNS processing event if DDNS queue is not empty.
@@ -201,4 +202,4 @@ void zone_events_update(struct zone *zone, struct zone *old_zone);
  * \param zone      Zone with new config.
  * \param old_zone  Zone with old config.
  */
-void zone_events_replan_ddns(struct zone *zone, const struct zone *old_zone);
+void zone_events_replan_ddns(struct zone *zone, struct zone *old_zone);

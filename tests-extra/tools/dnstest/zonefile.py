@@ -90,6 +90,7 @@ class ZoneFile(object):
 
     def _kasp_import_keys(self, keydir, bind_keydir, zone_name):
         Keymgr.run(keydir, "init")
+        Keymgr.run(keydir, "policy", "set", "default", "manual", "true")
 
         # add zone if not exists
         exitcode, _, _ = Keymgr.run(keydir, "zone", "show", zone_name)

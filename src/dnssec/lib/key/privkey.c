@@ -132,8 +132,6 @@ int key_set_private_key(dnssec_key_t *key, gnutls_privkey_t privkey)
 		if (r != DNSSEC_EOK) {
 			return r;
 		}
-
-		key_update_identifiers(key);
 	}
 
 	key->private_key = privkey;

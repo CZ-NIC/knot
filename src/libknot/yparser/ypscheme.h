@@ -16,20 +16,21 @@
 /*!
  * \file
  *
- * Scheme layer for Yparser.
+ * \brief Scheme layer for Yparser.
  *
  * \addtogroup yparser
- *
  * @{
  */
 
 #pragma once
 
 #include <stdint.h>
+#include <stddef.h>
 
-#include "libknot/internal/utils.h"
-#include "libknot/internal/wire_ctx.h"
 #include "libknot/yparser/yparser.h"
+
+struct wire_ctx;
+struct knot_lookup;
 
 /*! Maximal length of item name. */
 #define YP_MAX_ITEM_NAME_LEN	64
@@ -44,8 +45,8 @@
 /*! Maximal node stack depth. */
 #define YP_MAX_NODE_DEPTH	2
 
-#define YP_TXT_BIN_PARAMS 	wire_ctx_t *in, wire_ctx_t *out, const uint8_t *stop
-#define YP_BIN_TXT_PARAMS	wire_ctx_t *in, wire_ctx_t *out
+#define YP_TXT_BIN_PARAMS 	struct wire_ctx *in, struct wire_ctx *out, const uint8_t *stop
+#define YP_BIN_TXT_PARAMS	struct wire_ctx *in, struct wire_ctx *out
 
 /*! Helper macros for item variables definition. */
 #define YP_VNONE	.var.i = { 0 }
@@ -118,7 +119,7 @@ typedef union {
 	/*! Option variables. */
 	struct {
 		/*! List of options (maximal value is 255). */
-		lookup_table_t const *opts;
+		struct knot_lookup const *opts;
 		/*! Default value. */
 		unsigned dflt;
 	} o;
