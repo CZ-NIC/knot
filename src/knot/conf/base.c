@@ -124,7 +124,7 @@ static int init_and_check(
 	return conf->api->txn_commit(&txn);
 }
 
-int conf_refresh(
+int conf_refresh_txn(
 	conf_t *conf)
 {
 	if (conf == NULL) {
@@ -236,7 +236,7 @@ int conf_new(
 	}
 
 	// Open common read-only transaction.
-	ret = conf_refresh(out);
+	ret = conf_refresh_txn(out);
 	if (ret != KNOT_EOK) {
 		out->api->deinit(out->db);
 		goto new_error;
@@ -291,7 +291,7 @@ int conf_clone(
 	out->db = s_conf->db;
 
 	// Open common read-only transaction.
-	ret = conf_refresh(out);
+	ret = conf_refresh_txn(out);
 	if (ret != KNOT_EOK) {
 		yp_scheme_free(out->scheme);
 		free(out);
@@ -760,7 +760,7 @@ int conf_import(
 	}
 
 	// Update read-only transaction.
-	ret = conf_refresh(conf);
+	ret = conf_refresh_txn(conf);
 	if (ret != KNOT_EOK) {
 		goto import_error;
 	}

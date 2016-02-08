@@ -123,11 +123,11 @@ conf_t* conf(void);
 /*!
  * Refreshes common read-only transaction.
  *
- * \param[out] conf  Configuration.
+ * \param[in] conf  Configuration.
  *
  * \return Error code, KNOT_EOK if success.
  */
-int conf_refresh(
+int conf_refresh_txn(
 	conf_t *conf
 );
 

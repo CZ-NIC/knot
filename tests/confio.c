@@ -336,7 +336,7 @@ static void test_conf_io_set()
 	ok(conf_io_commit(false) == KNOT_EOK, "commit txn");
 
 	// Update read-only transaction.
-	ok(conf_refresh(conf()) == KNOT_EOK, "update read-only txn");
+	ok(conf_refresh_txn(conf()) == KNOT_EOK, "update read-only txn");
 }
 
 static void test_conf_io_unset()
