@@ -108,7 +108,7 @@ static bool enable_pktinfo(int sock, struct sockaddr_storage *addr)
 	switch (addr->ss_family) {
 	case AF_INET:
 		if (((struct sockaddr_in *)addr)->sin_addr.s_addr != INADDR_ANY) {
-			return true;	
+			return true;
 		}
 		level = IPPROTO_IP;
 #if defined(IP_PKTINFO)

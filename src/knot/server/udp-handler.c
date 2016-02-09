@@ -140,7 +140,7 @@ static void udp_pktinfo_handle(const struct msghdr *rx, struct msghdr *tx)
 		// BSD has problem with zero length and not-null pointer
 		tx->msg_control = NULL;
 	}
-	
+
 	#if defined(__APPLE__)
 	/*
 	 * Workaround for OS X: If ipi_ifindex is non-zero, the source address
