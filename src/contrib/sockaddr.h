@@ -29,8 +29,9 @@
 #define __POSIX_VISIBLE = 200112
 #endif
 
-#include <sys/types.h>
+#include <stdbool.h>
 #include <sys/socket.h>
+#include <sys/types.h>
 #include <sys/un.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
@@ -131,5 +132,10 @@ void sockaddr_port_set(struct sockaddr_storage *ss, uint16_t port);
  * \return hostname string or NULL
  */
 char *sockaddr_hostname(void);
+
+/*!
+ * \brief Check if address is ANY address.
+ */
+bool sockaddr_is_any(const struct sockaddr_storage *ss);
 
 /*! @} */

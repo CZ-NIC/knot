@@ -240,3 +240,22 @@ char *sockaddr_hostname(void)
 	freeaddrinfo(info);
 	return hname;
 }
+
+bool sockaddr_is_any(const struct sockaddr_storage *ss)
+{
+	if (ss == NULL) {
+		return false;
+	}
+
+	if (ss->ss_family == AF_INET) {
+		const struct sockaddr_in *sa = (struct sockaddr_in *)ss;
+		return sa->sin_addr.s_addr == INADDR_ANY;
+	}
+
+	if (ss->ss_family == AF_INET6) {
+		const struct sockaddr_in6 *sa6 = (struct sockaddr_in6 *)ss;
+		return memcmp(&sa6->sin6_addr, &in6addr_any, sizeof(sa6->sin6_addr)) == 0;
+	}
+
+	return false;
+}

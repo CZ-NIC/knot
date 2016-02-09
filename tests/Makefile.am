@@ -46,6 +46,7 @@ check_PROGRAMS = \
 	rrset				\
 	rrset_wire			\
 	server				\
+	sockaddr			\
 	tsig_key			\
 	wire				\
 	wire_ctx			\
