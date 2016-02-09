@@ -70,10 +70,11 @@ Check if the server is running.
 Stop the server if running.
 .TP
 \fBreload\fP
-Reload the server configuration and modified zonefiles.
+Reload the server configuration and modified zone files.
 .TP
 \fBzone\-check\fP [\fIzone\fP\&...]
-Check the zone if is loadable. Semantic checks are executed if configured. (*)
+Test if the server can load the zone. Semantic checks are executed if enabled
+in the configuration. (*)
 .TP
 \fBzone\-memstats\fP [\fIzone\fP\&...]
 Estimate memory use for the zone. (*)
@@ -82,20 +83,24 @@ Estimate memory use for the zone. (*)
 Show the zone status. (*)
 .TP
 \fBzone\-reload\fP [\fIzone\fP\&...]
-Trigger a forced zone reload (no mtime check). In addition, a slave zone
-refresh is scheduled after the reload.
+Trigger zone reload from a disk without checking it\(aqs modification time. For
+slave zone, the refresh from a master server is scheduled; for master zone,
+the notification of slave servers is scheduled.
 .TP
 \fBzone\-refresh\fP [\fIzone\fP\&...]
-Trigger a slave zone refresh asking master for the serial.
+Trigger check for the zone serial on the zone\(aqs master. If the master has a
+newer zone, a transfer is scheduled. This command is valid for slave zones.
 .TP
 \fBzone\-retransfer\fP [\fIzone\fP\&...]
-Trigger a forced slave zone retransfer (no serial check).
+Trigger zone transfer from the zone\(aqs master. The server doesn\(aqt check the
+serial of the master\(aqs zone. This command is valid for slave zones.
 .TP
 \fBzone\-flush\fP [\fIzone\fP\&...]
 Trigger a zone journal flush into the zone file.
 .TP
 \fBzone\-sign\fP [\fIzone\fP\&...]
-Trigger a zone sign if enabled automatic signing.
+Trigger DNSSEC re\-sign of the zone. Existing signature will be dropped. This
+command is valid for zones with automatic DNSSEC signing.
 .TP
 \fBconf\-init\fP
 Initialize the configuration database. (*)

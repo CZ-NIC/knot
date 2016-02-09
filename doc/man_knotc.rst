@@ -47,11 +47,12 @@ Actions
   Stop the server if running.
 
 **reload**
-  Reload the server configuration and modified zonefiles.
+  Reload the server configuration and modified zone files.
 
 
 **zone-check** [*zone*...]
-  Check the zone if is loadable. Semantic checks are executed if configured. (*)
+  Test if the server can load the zone. Semantic checks are executed if enabled
+  in the configuration. (*)
 
 **zone-memstats** [*zone*...]
   Estimate memory use for the zone. (*)
@@ -60,20 +61,24 @@ Actions
   Show the zone status. (*)
 
 **zone-reload** [*zone*...]
-  Trigger a forced zone reload (no mtime check). In addition, a slave zone
-  refresh is scheduled after the reload.
+  Trigger a zone reload from a disk without checking its modification time. For
+  slave zone, the refresh from a master server is scheduled; for master zone,
+  the notification of slave servers is scheduled.
 
 **zone-refresh** [*zone*...]
-  Trigger a slave zone refresh asking master for the serial.
+  Trigger a check for the zone serial on the zone's master. If the master has a
+  newer zone, a transfer is scheduled. This command is valid for slave zones.
 
 **zone-retransfer** [*zone*...]
-  Trigger a forced slave zone retransfer (no serial check).
+  Trigger a zone transfer from the zone's master. The server doesn't check the
+  serial of the master's zone. This command is valid for slave zones.
 
 **zone-flush** [*zone*...]
   Trigger a zone journal flush into the zone file.
 
 **zone-sign** [*zone*...]
-  Trigger a zone sign if enabled automatic signing.
+  Trigger a DNSSEC re-sign of the zone. Existing signatures will be dropped.
+  This command is valid for zones with automatic DNSSEC signing.
 
 
 **conf-init**
