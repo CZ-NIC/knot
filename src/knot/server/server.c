@@ -197,7 +197,7 @@ static int server_init_iface(iface_t *new_if, struct sockaddr_storage *addr, int
 			warn_bufsize = true;
 		}
 
-		if (!enable_pktinfo(sock, addr->ss_family)) {
+		if (sockaddr_is_any(addr) && !enable_pktinfo(sock, addr->ss_family)) {
 			log_warning("failed to enable received packet information retrieval");
 		}
 

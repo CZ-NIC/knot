@@ -526,6 +526,7 @@ tests/rrl.c
 tests/rrset.c
 tests/rrset_wire.c
 tests/server.c
+tests/sockaddr.c
 tests/test_conf.h
 tests/tsig_key.c
 tests/wire.c
