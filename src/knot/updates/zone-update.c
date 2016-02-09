@@ -22,6 +22,8 @@
 #include "contrib/ucw/lists.h"
 #include "contrib/ucw/mempool.h"
 
+#include <urcu.h>
+
 static int add_to_node(zone_node_t *node, const zone_node_t *add_node,
                        knot_mm_t *mm)
 {
@@ -254,8 +256,11 @@ const knot_rdataset_t *zone_update_to(zone_update_t *update)
 void zone_update_clear(zone_update_t *update)
 {
 	if (update) {
-		update_cleanup(&update->a_ctx);
-		changeset_clear(&update->change);
+		if (update->flags & UPDATE_INCREMENTAL) {
+			/* Revert any changes on error, do nothing on success. */
+			update_rollback(&update->a_ctx);
+			changeset_clear(&update->change);
+		}
 		mp_delete(update->mm.ctx);
 		memset(update, 0, sizeof(*update));
 	}
@@ -444,13 +449,39 @@ static int commit_incremental(conf_t *conf, zone_update_t *update, zone_contents
 	return KNOT_EOK;
 }
 
-int zone_update_commit(conf_t *conf, zone_update_t *update, zone_contents_t **contents_out)
+int zone_update_commit(conf_t *conf, zone_update_t *update)
 {
-	if (update->flags & UPDATE_INCREMENTAL) {
-		return commit_incremental(conf, update, contents_out);
+	if (!conf || !update) {
+		return KNOT_EINVAL;
 	}
 
-	return KNOT_ENOTSUP;
+	int ret = KNOT_EOK;
+	zone_contents_t *new_contents = NULL;
+	if (update->flags & UPDATE_INCREMENTAL) {
+		ret = commit_incremental(conf, update, &new_contents);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+	} else {
+		return KNOT_ENOTSUP;
+	}
+
+	/* If there is anything to change */
+	if (new_contents) {
+		/* Switch zone contents. */
+		zone_contents_t *old_contents = zone_switch_contents(update->zone, new_contents);
+
+		/* Sync RCU. */
+		synchronize_rcu();
+
+		if (update->flags & UPDATE_INCREMENTAL) {
+			update_cleanup(&update->a_ctx);
+			update_free_zone(&old_contents);
+			changeset_clear(&update->change);
+		}
+	}
+
+	return KNOT_EOK;
 }
 
 bool zone_update_no_change(zone_update_t *up)
