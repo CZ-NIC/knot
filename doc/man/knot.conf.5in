@@ -181,7 +181,7 @@ A path for storing run\-time data (PID file, unix sockets, etc.).
 \fIDefault:\fP \fB${localstatedir}/run/knot\fP (configured with \fB\-\-with\-rundir=path\fP)
 .SS user
 .sp
-A system user with an optional system group (\fIuser\fP:\fIgroup\fP) under which the
+A system user with an optional system group (\fBuser:group\fP) under which the
 server is run after starting and binding to interfaces. Linux capabilities
 are employed if supported.
 .sp
