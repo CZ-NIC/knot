@@ -83,24 +83,24 @@ Estimate memory use for the zone. (*)
 Show the zone status. (*)
 .TP
 \fBzone\-reload\fP [\fIzone\fP\&...]
-Trigger zone reload from a disk without checking it\(aqs modification time. For
+Trigger a zone reload from a disk without checking its modification time. For
 slave zone, the refresh from a master server is scheduled; for master zone,
 the notification of slave servers is scheduled.
 .TP
 \fBzone\-refresh\fP [\fIzone\fP\&...]
-Trigger check for the zone serial on the zone\(aqs master. If the master has a
+Trigger a check for the zone serial on the zone\(aqs master. If the master has a
 newer zone, a transfer is scheduled. This command is valid for slave zones.
 .TP
 \fBzone\-retransfer\fP [\fIzone\fP\&...]
-Trigger zone transfer from the zone\(aqs master. The server doesn\(aqt check the
+Trigger a zone transfer from the zone\(aqs master. The server doesn\(aqt check the
 serial of the master\(aqs zone. This command is valid for slave zones.
 .TP
 \fBzone\-flush\fP [\fIzone\fP\&...]
 Trigger a zone journal flush into the zone file.
 .TP
 \fBzone\-sign\fP [\fIzone\fP\&...]
-Trigger DNSSEC re\-sign of the zone. Existing signature will be dropped. This
-command is valid for zones with automatic DNSSEC signing.
+Trigger a DNSSEC re\-sign of the zone. Existing signatures will be dropped.
+This command is valid for zones with automatic DNSSEC signing.
 .TP
 \fBconf\-init\fP
 Initialize the configuration database. (*)
