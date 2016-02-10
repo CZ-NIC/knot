@@ -1,5 +1,18 @@
-Knot DNS 2.2.0-dev (TBD)
-========================
+Knot DNS 2.1.1 (2016-02-10)
+===========================
+
+Bugfixes:
+---------
+ - DNSSEC: Allow import of duplicate private key into the KASP
+ - DNSSEC: Avoid duplicate NSEC for Wildcard No Data answer
+ - Fix server crash when an incomming transfer is in progress and reload is issued
+ - Fix socket polling when configured with many interfaces and threads
+ - Fix compilation against Nettle 3.2
+
+Improvements:
+-------------
+ - Select correct source address for UDP messages recieved on ANY address
+ - Extend documentation of knotc commands
 
 Knot DNS 2.1.0 (2016-01-14)
 ===========================
