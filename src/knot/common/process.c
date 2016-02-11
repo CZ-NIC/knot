@@ -57,14 +57,8 @@ static pid_t pid_read(const char *filename)
 	}
 
 	/* Read the content of the file. */
-	int c;
-	while (len < (sizeof(buf) - 1) && (c = fgetc(fp)) != EOF) {
-		buf[len++] = (char)c;
-	}
-
+	len = fread(buf, 1, sizeof(buf) - 1, fp);
 	fclose(fp);
-
-	/* Check for empty file. */
 	if (len < 1) {
 		return 0;
 	}
