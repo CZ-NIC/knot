@@ -664,9 +664,6 @@ static int process_rem_rrset(const knot_rrset_t *rrset,
 		return KNOT_EOK;
 	}
 
-	// Remove all previously added RRs with this owner and type from chgset
-	//remove_header_from_changeset(update->change.add, rrset);
-
 	if (node == NULL) {
 		// no such node in zone, ignore
 		return KNOT_EOK;
@@ -679,17 +676,12 @@ static int process_rem_rrset(const knot_rrset_t *rrset,
 
 	knot_rrset_t to_remove = node_rrset(node, rrset->type);
 	return rem_rrset_to_chgset(&to_remove, update);
-//#warning why doesn't this work?
-	//return zone_update_remove(update, &to_remove);
 }
 
 /*!< \brief Removes node from zone. */
 static int process_rem_node(const knot_rrset_t *rr,
                             const zone_node_t *node, zone_update_t *update)
 {
-	// Remove all previously added records with given owner from changeset
-	//remove_owner_from_changeset(update->change.add, rr->owner);
-
 	if (node == NULL) {
 		return KNOT_EOK;
 	}
