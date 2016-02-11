@@ -174,37 +174,111 @@ static bool zone_add_dnskey(dnssec_kasp_zone_t *zone, const char *id,
 	return true;
 }
 
-static void print_key(const char *id, const dnssec_key_t *key)
-{
-	printf("id %s keytag %d\n", id, dnssec_key_get_keytag(key));
-}
-
-/* -- generic list operations ---------------------------------------------- */
+/* -- list item matching anr printing -------------------------------------- */
 
 /*!
- * Print filtered items from a string list.
- *
- * \param list    List of strings.
- * \param filter  Filter for case-insensitive substring match. Can be NULL.
- *
- * \retval DNSSEC_EOK        At least one item was printed.
- * \retval DNSSEC_NOT_FOUND  No item matched the filter.
+ * Check if a string item contains a substring (case insensitive).
  */
-static int print_list(dnssec_list_t *list, const char *filter)
+static bool item_match_substring(const void *_item, const char *filter)
+{
+	assert(_item);
+	const char *item = _item;
+
+	return strcasestr(item, filter) != NULL;
+}
+
+/*!
+ * Check if a string contains a prefix (case insensitive).
+ */
+static bool str_prefix_match(const char *str, const char *prefix)
+{
+	size_t str_len = strlen(str);
+	size_t prefix_len = strlen(prefix);
+
+	return prefix_len <= str_len &&
+	       strncasecmp(str, prefix, prefix_len) == 0;
+}
+
+/*!
+ * Check if a string content is matching a key tag.
+ */
+static bool keytag_match(uint16_t keytag, const char *filter)
+{
+	uint16_t converted = 0;
+
+	return str_to_u16(filter, &converted) == DNSSEC_EOK &&
+	       keytag == converted;
+}
+
+/*!
+ * Check if a \dnssec_kasp_key_t item matches a filter.
+ *
+ * The filter can be a key ID prefix or match the key tag.
+ */
+static bool item_match_key(const void *_item, const char *filter)
+{
+	assert(_item);
+	const dnssec_kasp_key_t *item = _item;
+
+	return str_prefix_match(item->id, filter) ||
+	       keytag_match(dnssec_key_get_keytag(item->key), filter);
+}
+
+/*!
+ * Print key item.
+ */
+static void item_print_key(const void *item)
+{
+	assert(item);
+	const dnssec_kasp_key_t *key = item;
+
+	printf("- %s %5d\n", key->id, dnssec_key_get_keytag(key->key));
+}
+
+/*!
+ * Print key string.
+ */
+static void item_print_string(const void *item)
+{
+	assert(item);
+	const char *str = item;
+	printf("- %s\n", str);
+}
+
+static bool empty_filter(const char *filter)
+{
+	return (filter == NULL || filter[0] == '\0');
+}
+
+typedef bool (*list_match_cb)(const void *item, const char *filter);
+typedef void (*list_print_cb)(const void *item);
+
+/*!
+ * Iterate over a list and print each matching item.
+ *
+ * \param list    List to walk through.
+ * \param filter  Filter value passed to match callback (can be NULL).
+ * \param match   Item match callback (can be NULL in case filter is NULL).
+ * \param print   Item print callback.
+ *
+ * \return Number of printed items.
+ */
+static int print_list(dnssec_list_t *list, const char *filter,
+		      list_match_cb match, list_print_cb print)
 {
 	assert(list);
 
-	bool found_match = NULL;
+	int found = 0;
 
 	dnssec_list_foreach(item, list) {
-		const char *value = dnssec_item_get(item);
-		if (filter == NULL || strcasestr(value, filter) != NULL) {
-			found_match = true;
-			printf("%s\n", value);
+		const void *value = dnssec_item_get(item);
+		if (empty_filter(filter) || match(value, filter)) {
+			found += 1;
+			print(value);
 		}
 	}
 
-	return found_match ? DNSSEC_EOK : DNSSEC_NOT_FOUND;
+	return found;
 }
 
 /* -- key matching --------------------------------------------------------- */
@@ -648,13 +722,12 @@ static int cmd_zone_list(int argc, char *argv[])
 		return 1;
 	}
 
-	r = print_list(zones, match);
-	if (r == DNSSEC_NOT_FOUND) {
+	int found = print_list(zones, match, item_match_substring, item_print_string);
+	if (found == 0) {
 		error("No matching zone found.");
 		return 1;
 	}
 
-	assert(r == DNSSEC_EOK);
 	return 0;
 }
 
@@ -758,7 +831,8 @@ static int cmd_zone_key_list(int argc, char *argv[])
 		return 1;
 	}
 
-	char *zone_name = argv[0];
+	const char *zone_name = argv[0];
+	const char *filter = NULL;
 
 	// list the keys
 
@@ -773,9 +847,10 @@ static int cmd_zone_key_list(int argc, char *argv[])
 	}
 
 	dnssec_list_t *zone_keys = dnssec_kasp_zone_get_keys(zone);
-	dnssec_list_foreach(item, zone_keys) {
-		const dnssec_kasp_key_t *key = dnssec_item_get(item);
-		print_key(key->id, key->key);
+	int count = print_list(zone_keys, filter, item_match_key, item_print_key);
+	if (count == 0) {
+		error("No matching zone key found.");
+		return 1;
 	}
 
 	return 0;
@@ -1026,7 +1101,7 @@ static int cmd_zone_key_generate(int argc, char *argv[])
 		return 1;
 	}
 
-	print_key(keyid, dnskey);
+	printf("%s\n", keyid);
 
 	return 0;
 }
@@ -1165,7 +1240,7 @@ static int cmd_zone_key_import(int argc, char *argv[])
 		return 1;
 	}
 
-	print_key(keyid, key);
+	printf("%s\n", keyid);
 
 	return 0;
 }
@@ -1269,13 +1344,12 @@ static int cmd_policy_list(int argc, char *argv[])
 		return 1;
 	}
 
-	r = print_list(policies, match);
-	if (r == DNSSEC_NOT_FOUND) {
+	int found = print_list(policies, match, item_match_substring, item_print_string);
+	if (found == 0) {
 		error("No matching policy found.");
 		return 1;
 	}
 
-	assert(r == DNSSEC_EOK);
 	return 0;
 }
 
@@ -1360,7 +1434,6 @@ static int cmd_policy_add(int argc, char *argv[])
 	if (parse_parameters(POLICY_PARAMS, argc -1, argv + 1, policy) != 0) {
 		return 1;
 	}
-
 
 	_cleanup_kasp_ dnssec_kasp_t *kasp = get_kasp();
 	if (!kasp) {
