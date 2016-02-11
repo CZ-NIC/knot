@@ -822,17 +822,17 @@ static int cmd_zone_remove(int argc, char *argv[])
 }
 
 /*
- * keymgr zone key list <zone>
+ * keymgr zone key list <zone> [<filter>]
  */
 static int cmd_zone_key_list(int argc, char *argv[])
 {
-	if (argc != 1) {
+	if (argc < 1 || argc > 2) {
 		error("Name of one zone has to be specified.");
 		return 1;
 	}
 
 	const char *zone_name = argv[0];
-	const char *filter = NULL;
+	const char *filter = (argc == 2 ? argv[1] : NULL);
 
 	// list the keys
 

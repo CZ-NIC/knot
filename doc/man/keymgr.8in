@@ -109,7 +109,7 @@ Change zone configuration. At the moment, only a policy can be changed.
 \fBzone\fP \fBshow\fP \fIzone\-name\fP
 Show zone details.
 .TP
-\fBzone\fP \fBkey\fP \fBlist\fP \fIzone\-name\fP
+\fBzone\fP \fBkey\fP \fBlist\fP \fIzone\-name\fP [\fBfilter\fP]
 List key IDs and tags of zone keys.
 .TP
 \fBzone\fP \fBkey\fP \fBshow\fP \fIzone\-name\fP \fIkey\fP

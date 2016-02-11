@@ -86,7 +86,7 @@ zone commands
 **zone** **show** *zone-name*
   Show zone details.
 
-**zone** **key** **list** *zone-name*
+**zone** **key** **list** *zone-name* [**filter**]
   List key IDs and tags of zone keys.
 
 **zone** **key** **show** *zone-name* *key*
