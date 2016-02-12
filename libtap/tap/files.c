@@ -1,4 +1,4 @@
-/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -27,7 +27,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-char *test_mkdtemp(void)
+static char *make_temp(bool is_directory)
 {
 	char *tmpdir = getenv("TMPDIR");
 	if (!tmpdir) {
@@ -40,11 +40,30 @@ char *test_mkdtemp(void)
 		return NULL;
 	}
 
-	if (mkdtemp(tmp) == NULL) {
-		return NULL;
+	if (is_directory) {
+		char *ret = mkdtemp(tmp);
+		if (ret == NULL) {
+			return NULL;
+		}
+	} else {
+		int ret = mkstemp(tmp);
+		if (ret == -1) {
+			return NULL;
+		}
+		close(ret);
 	}
 
 	return strdup(tmp);
+}
+
+char *test_mktemp(void)
+{
+	return make_temp(false);
+}
+
+char *test_mkdtemp(void)
+{
+	return make_temp(true);
 }
 
 static bool special_name(const char *name)

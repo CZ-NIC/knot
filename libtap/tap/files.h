@@ -1,4 +1,4 @@
-/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -19,7 +19,16 @@
 #include <stdbool.h>
 
 /*!
- * \brief Create temporary directory.
+ * \brief Create a temporary file.
+ *
+ * If TMPDIR environment variable is set, the file is created within
+ * that directory. If the variable is not set, the file is created
+ * within /tmp.
+ */
+char *test_mktemp(void);
+
+/*!
+ * \brief Create a temporary directory.
  *
  * If TMPDIR environment variable is set, the directory is created within
  * that directory. If the variable is not set, the directory is created
