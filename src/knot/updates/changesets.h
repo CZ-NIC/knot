@@ -87,8 +87,9 @@ size_t changeset_size(const changeset_t *ch);
 /*!
  * \brief Add RRSet to 'add' part of changeset.
  *
- * \param ch     Changeset to add RRSet into.
- * \param rrset  RRSet to be added.
+ * \param ch                Changeset to add RRSet into.
+ * \param rrset             RRSet to be added.
+ * \param check_redundancy  Check the added RR for redundancy already in the changeset.
  *
  * \return KNOT_E*
  */
@@ -97,8 +98,9 @@ int changeset_add_rrset(changeset_t *ch, const knot_rrset_t *rrset, bool check_r
 /*!
  * \brief Add RRSet to 'remove' part of changeset.
  *
- * \param ch     Changeset to add RRSet into.
- * \param rrset  RRSet to be added.
+ * \param ch                Changeset to add RRSet into.
+ * \param rrset             RRSet to be added.
+ * \param check_redundancy  Check the added RR for redundancy already in the changeset.
  *
  * \return KNOT_E*
  */

@@ -427,6 +427,8 @@ static int finalize_updated_zone(zone_contents_t *contents_copy,
 
 void apply_init_ctx(apply_ctx_t *ctx)
 {
+	assert(ctx);
+
 	init_list(&ctx->old_data);
 	init_list(&ctx->new_data);
 }

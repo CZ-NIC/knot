@@ -26,7 +26,7 @@
 /* -------------------- Changeset iterator helpers -------------------------- */
 
 /*! \brief Adds RRSet to given zone. */
-static int add_rr_to_zone(zone_contents_t *z, knot_rrset_t **soa, const knot_rrset_t *rrset)
+static int add_rr_to_contents(zone_contents_t *z, knot_rrset_t **soa, const knot_rrset_t *rrset)
 {
 	if (rrset->type == KNOT_RRTYPE_SOA) {
 		if (*soa == NULL) {
@@ -35,7 +35,7 @@ static int add_rr_to_zone(zone_contents_t *z, knot_rrset_t **soa, const knot_rrs
 				return KNOT_ENOMEM;
 			}
 		}
-		// Do not add SOAs into actual contents.
+		/* Do not add SOAs into actual contents. */
 		return KNOT_EOK;
 	}
 
@@ -272,17 +272,17 @@ int changeset_add_rrset(changeset_t *ch, const knot_rrset_t *rrset, bool check_r
 {
 	/* Check if there's any removal and remove that, then add this
 	 * addition anyway. Required to change TTLs. */
-	if(check_redundancy) {
+	if (check_redundancy) {
 		need_to_insert(ch->remove, rrset);
 	}
 
-	return add_rr_to_zone(ch->add, &ch->soa_to, rrset);
+	return add_rr_to_contents(ch->add, &ch->soa_to, rrset);
 }
 
 int changeset_rem_rrset(changeset_t *ch, const knot_rrset_t *rrset, bool check_redundancy)
 {
-	if ((check_redundancy && need_to_insert(ch->add, rrset)) || !check_redundancy) {
-		return add_rr_to_zone(ch->remove, &ch->soa_from, rrset);
+	if (!check_redundancy || need_to_insert(ch->add, rrset)) {
+		return add_rr_to_contents(ch->remove, &ch->soa_from, rrset);
 	} else {
 		return KNOT_EOK;
 	}
