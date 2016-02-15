@@ -465,12 +465,16 @@ knsupdate_LDADD  = zscanner/libzscanner.la libknotus.la
 if HAVE_DNSTAP
 kdig_LDADD         += $(DNSTAP_LIBS) contrib/dnstap/libdnstap.la
 khost_LDADD        += $(DNSTAP_LIBS) contrib/dnstap/libdnstap.la
+kdig_CFLAGS = $(AM_CFLAGS) $(DNSTAP_CFLAGS)
+khost_CFLAGS = $(AM_CFLAGS) $(DNSTAP_CFLAGS)
 endif # HAVE_DNSTAP
 
 if HAVE_ROSEDB
 bin_PROGRAMS += rosedb_tool
 rosedb_tool_SOURCES = knot/modules/rosedb_tool.c
 rosedb_tool_LDADD = libknotd.la
+rosedb_tool_CFLAGS = $(AM_CFLAGS) $(lmdb_CFLAGS) $(DNSTAP_CFLAGS)
+rosedb_tool_LDFLAGS = $(AM_LDFLAGS) $(lmdb_LIBS)
 endif # HAVE_ROSEDB
 
 endif # HAVE_UTILS
