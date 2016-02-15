@@ -3,6 +3,8 @@ AM_CPPFLAGS = \
 	-I$(top_srcdir)/src \
 	-I$(top_srcdir)/src/dnssec/lib
 
+AM_CFLAGS = $(CODE_COVERAGE_CFLAGS)
+
 LDADD = \
 	$(top_builddir)/src/libknot.la
 
