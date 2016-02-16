@@ -17,13 +17,11 @@ import dnstest.params as params
 import dnstest.utils
 
 TESTS_DIR = "tests"
-COMMON_DATA_DIR = "data"
-LAST_WORKING_DIR = params.outs_dir + "/knottest-last"
 
 def save_traceback(outdir):
-    file = open(params.out_dir + "/traceback.log", mode="a")
-    traceback.print_exc(file=file)
-    file.close()
+    path = os.path.join(params.out_dir, "traceback.log")
+    with open(path, mode="a") as f:
+        traceback.print_exc(file=f)
 
 def create_log(logger, filename="", level=logging.NOTSET):
     if filename:
@@ -59,7 +57,7 @@ def parse_args(cmd_args):
     args = parser.parse_args(cmd_args)
 
     params.debug = True if args.debug else False
-    params.common_data_dir = current_dir + '/' + COMMON_DATA_DIR
+    params.common_data_dir = os.path.join(current_dir, "data")
 
     # Process tests/cases arguments.
     excluded = dict()
@@ -88,13 +86,14 @@ def parse_args(cmd_args):
 
     # List all tests if nothing was specified.
     if not included:
-        for i in sorted(os.listdir("./" + TESTS_DIR)):
+        tests_path = os.path.join(current_dir, TESTS_DIR)
+        for i in sorted(os.listdir(tests_path)):
             included[i] = list()
 
     return included, excluded
 
 def log_failed(log_dir, msg, indent=True):
-    fname = log_dir + "/failed.log"
+    fname = os.path.join(log_dir, "failed.log")
     first = False if os.path.isfile(fname) else True
 
     file = open(fname, mode="a")
@@ -112,10 +111,11 @@ def main(args):
                                 dir=params.outs_dir)
 
     # Try to create symlink to the latest result.
+    last_link = os.path.join(params.outs_dir, "knottest-last")
     try:
-        if os.path.exists(LAST_WORKING_DIR):
-            os.remove(LAST_WORKING_DIR)
-        os.symlink(outs_dir, LAST_WORKING_DIR)
+        if os.path.exists(last_link):
+            os.remove(last_link)
+        os.symlink(outs_dir, last_link)
     except:
         pass
 
@@ -126,7 +126,7 @@ def main(args):
     log = logging.getLogger()
     log.setLevel(logging.NOTSET)
     create_log(log)
-    create_log(log, outs_dir + "/summary.log", logging.NOTSET)
+    create_log(log, os.path.join(outs_dir, "summary.log"), logging.NOTSET)
 
     log.info("KNOT TESTING SUITE %s" % today)
     log.info("Working directory %s" % outs_dir)
@@ -142,7 +142,7 @@ def main(args):
             continue
 
         # Check test directory.
-        test_dir = "%s/%s/%s" % (current_dir, TESTS_DIR, test)
+        test_dir = os.path.join(current_dir, TESTS_DIR, test)
         if not os.path.isdir(test_dir):
             log.error("Test \'%s\':\tIGNORED (invalid folder)" % test)
             continue
@@ -165,20 +165,22 @@ def main(args):
             case_str_fail = ("%s/%s" % (test, case)).ljust(28)
             case_cnt += 1
 
-            case_dir = test_dir + "/" + case
-            test_file = case_dir + "/test.py"
+            case_dir = os.path.join(test_dir, case)
+            test_file = os.path.join(case_dir, "test.py")
             if not os.path.isfile(test_file):
                 log.error(case_str_err + "MISSING")
                 skip_cnt += 1
                 continue
 
             try:
-                out_dir = outs_dir + "/" + test + "/" + case
+                out_dir = os.path.join(outs_dir, test, case)
+                log_file = os.path.join(out_dir, "case.log")
+
                 os.makedirs(out_dir, exist_ok=True)
-                params.module = TESTS_DIR + "." + test + "." + case
+                params.module = "%s.%s.%s" % (TESTS_DIR, test, case)
                 params.test_dir = case_dir
                 params.out_dir = out_dir
-                params.case_log = open(out_dir + "/case.log", mode="a")
+                params.case_log = open(log_file, mode="a")
                 params.test = None
                 params.err = False
                 params.err_msg = ""
