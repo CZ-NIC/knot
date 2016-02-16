@@ -1,8 +1,18 @@
 #!/usr/bin/env python3
 
-import argparse, datetime, importlib, logging, os, re, sys, tempfile, time, traceback
+import argparse
+import datetime
+import importlib
+import logging
+import os
+import re
+import sys
+import tempfile
+import time
+import traceback
+
 current_dir = os.path.dirname(os.path.realpath(__file__))
-sys.path.append(current_dir + "/tools")
+sys.path.append(os.path.join(current_dir, "tools"))
 import dnstest.params as params
 import dnstest.utils
 
