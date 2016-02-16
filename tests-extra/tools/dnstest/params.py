@@ -6,6 +6,13 @@ This module allows interchanging of running parameters between modules.
 
 import os, shutil
 
+module_path = os.path.dirname(os.path.realpath(__file__))
+repo_path = os.path.realpath(os.path.join(module_path, "..", "..", ".."))
+
+def repo_binary(name):
+    """Get absolute path to a binary in Knot DNS sources."""
+    return os.path.join(repo_path, name)
+
 def get_binary(env_name, default):
     env = os.environ.get(env_name)
     # Disable.
@@ -42,13 +49,13 @@ gdb_bin = get_binary("KNOT_TEST_GDB", "gdb")
 # KNOT_TEST_VGDB - vgdb binary.
 vgdb_bin = get_binary("KNOT_TEST_VGDB", "vgdb")
 # KNOT_TEST_LIBTOOL - libtool script.
-libtool_bin = get_binary("KNOT_TEST_LIBTOOL", "../libtool")
+libtool_bin = get_binary("KNOT_TEST_LIBTOOL", repo_binary("libtool"))
 # KNOT_TEST_KNOT - Knot binary.
-knot_bin = get_binary("KNOT_TEST_KNOT", "../src/knotd")
+knot_bin = get_binary("KNOT_TEST_KNOT", repo_binary("src/knotd"))
 # KNOT_TEST_KNOTC - Knot control binary.
-knot_ctl = get_binary("KNOT_TEST_KNOTC", "../src/knotc")
+knot_ctl = get_binary("KNOT_TEST_KNOTC", repo_binary("src/knotc"))
 # KNOT_TEST_KEYMGR - Knot key management binary.
-keymgr_bin = get_binary("KNOT_TEST_KEYMGR", "../src/dnssec/utils/keymgr")
+keymgr_bin = get_binary("KNOT_TEST_KEYMGR", repo_binary("src/dnssec/utils/keymgr"))
 # KNOT_TEST_BIND - Bind binary.
 bind_bin = get_binary("KNOT_TEST_BIND", "named")
 # KNOT_TEST_BINDC - Bind control binary.
