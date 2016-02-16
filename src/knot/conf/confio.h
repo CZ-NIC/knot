@@ -1,4 +1,4 @@
-/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -103,10 +103,8 @@ int conf_io_commit(
  * Aborts the current writing transaction.
  *
  * \param[in] child  Nested transaction indicator.
- *
- * \return Error code, KNOT_EOK if success.
  */
-int conf_io_abort(
+void conf_io_abort(
 	bool child
 );
 

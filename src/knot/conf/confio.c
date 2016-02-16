@@ -1,4 +1,4 @@
-/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -105,14 +105,14 @@ int conf_io_commit(
 	return ret;
 }
 
-int conf_io_abort(
+void conf_io_abort(
 	bool child)
 {
 	assert(conf() != NULL);
 
 	if (conf()->io.txn == NULL ||
 	    (child && conf()->io.txn == conf()->io.txn_stack)) {
-		return KNOT_CONF_ENOTXN;
+		return;
 	}
 
 	knot_db_txn_t *txn = child ? conf()->io.txn : conf()->io.txn_stack;
@@ -120,8 +120,6 @@ int conf_io_abort(
 	// Abort the writing transaction.
 	conf()->api->txn_abort(txn);
 	conf()->io.txn = child ? txn - 1 : NULL;
-
-	return KNOT_EOK;
 }
 
 static int list_section(

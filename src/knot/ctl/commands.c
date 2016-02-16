@@ -365,13 +365,13 @@ static int ctl_conf_commit(server_t *s, remote_cmdargs_t *a)
 	// First check the database.
 	int ret = conf_io_check(&io);
 	if (ret != KNOT_EOK) {
-		(void)conf_io_abort(false);
+		conf_io_abort(false);
 		return ret;
 	}
 
 	ret = conf_io_commit(false);
 	if (ret != KNOT_EOK) {
-		(void)conf_io_abort(false);
+		conf_io_abort(false);
 		return ret;
 	}
 
@@ -383,7 +383,9 @@ static int ctl_conf_abort(server_t *s, remote_cmdargs_t *a)
 	UNUSED(s);
 	UNUSED(a);
 
-	return conf_io_abort(false);
+	conf_io_abort(false);
+
+	return KNOT_EOK;
 }
 
 static int parse_conf_key(char *key, char **key0, char **id, char **key1)
@@ -611,7 +613,7 @@ static int ctl_conf_set(server_t *s, remote_cmdargs_t *a)
 	if (ret == KNOT_EOK) {
 		return conf_io_commit(true);
 	} else {
-		(void)conf_io_abort(true);
+		conf_io_abort(true);
 		return ret;
 	}
 }
@@ -663,7 +665,7 @@ static int ctl_conf_unset(server_t *s, remote_cmdargs_t *a)
 	if (ret == KNOT_EOK) {
 		return conf_io_commit(true);
 	} else {
-		(void)conf_io_abort(true);
+		conf_io_abort(true);
 		return ret;
 	}
 }
