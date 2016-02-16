@@ -654,7 +654,7 @@ static zone_node_t *get_previous(const zone_contents_t *zone,
 
 	int exact_match = find_in_tree(zone->nodes, name, &found, &prev);
 	assert(exact_match >= 0);
-	//assert(prev != NULL);
+	assert(prev != NULL);
 
 	return prev;
 }
@@ -674,10 +674,7 @@ static zone_node_t *zone_contents_get_greatest_child(const zone_contents_t *zone
 	}
 
 	child = get_previous(zone, dn);
-	if (!child) {
-		return NULL;
-	}
-	//assert(child);
+	assert(child);
 	const int parent_labels = knot_dname_labels(parent, NULL);
 	const int child_labels = knot_dname_labels(child->owner, NULL);
 	if (child_labels <= parent_labels) {
@@ -719,7 +716,7 @@ zone_node_t *zone_contents_get_node_for_rr(zone_contents_t *zone, const knot_rrs
 	                            get_node(zone, rrset->owner);
 	if (node == NULL) {
 		node = node_new(rrset->owner, NULL);
-		int ret = nsec3 ? add_nsec3_node(zone, node) : add_node(zone, node, 1);
+		int ret = nsec3 ? add_nsec3_node(zone, node) : add_node(zone, node, true);
 		if (ret != KNOT_EOK) {
 			node_free(&node, NULL);
 			return NULL;

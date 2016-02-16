@@ -177,7 +177,6 @@ uint32_t knot_rrset_ttl(const knot_rrset_t *rrset);
  */
 bool knot_rrset_is_nsec3rel(const knot_rrset_t *rr);
 
-
 /*!
  * \brief Convert one RR into canonical format.
  *
