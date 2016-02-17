@@ -169,7 +169,7 @@ static bool need_to_insert(zone_contents_t *counterpart, const knot_rrset_t *rr)
 	}
 
 	// Subtract the data from node's RRSet.
-	int ret = knot_rdataset_subtract(&node_rr.rrs, &rr->rrs, NULL);
+	int ret = knot_rdataset_subtract(&node->rrs->rrs, &rr->rrs, NULL);
 	if (ret != KNOT_EOK) {
 		return true;
 	}
