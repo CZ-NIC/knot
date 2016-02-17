@@ -22,6 +22,7 @@ import dnstest.module
 import dnstest.response
 import dnstest.update
 import distutils.dir_util
+import dnstest.logwatch
 
 def zone_arg_check(zone):
     # Convert one item list to single object.
@@ -72,8 +73,9 @@ class Zone(object):
 class Server(object):
     '''Specification of DNS server'''
 
-    START_WAIT = 2
-    START_WAIT_VALGRIND = 5
+    START_MESSAGE = None
+    START_TIMEOUT = 5
+
     STOP_TIMEOUT = 30
     COMPILE_TIMEOUT = 60
     DIG_TIMEOUT = 5
@@ -128,7 +130,8 @@ class Server(object):
         self.fout = None
         self.ferr = None
         self.valgrind_log = None
-        self.confile = None
+        self.conffile = None
+        self.logwatch = None
 
     def _check_socket(self, proto, port):
         if ipaddress.ip_address(self.addr).version == 4:
@@ -190,20 +193,30 @@ class Server(object):
     def start(self, clean=False):
         mode = "w" if clean else "a"
 
+        assert self.daemon_bin != None
+        assert self.START_MESSAGE
+
         try:
             if self.compile_cmd:
                 self.ctl(self.compile_cmd)
 
-            if self.daemon_bin != None:
-                self.proc = Popen(self.valgrind + [self.daemon_bin] + \
-                                  self.start_params,
-                                  stdout=open(self.fout, mode=mode),
-                                  stderr=open(self.ferr, mode=mode))
+            fout = open(self.fout, mode)
+            ferr = open(self.ferr, mode)
 
-            if self.valgrind:
-                time.sleep(Server.START_WAIT_VALGRIND)
-            else:
-                time.sleep(Server.START_WAIT)
+            self.logwatch = dnstest.logwatch.LogWatch(ferr)
+            self.logwatch.start()
+
+            start_event = self.logwatch.register(self.START_MESSAGE)
+
+            self.proc = Popen(self.valgrind + [self.daemon_bin] + \
+                                self.start_params,
+                                stdout=fout,
+                                stderr=self.logwatch.fd)
+            os.close(self.logwatch.fd)
+
+            if not self.logwatch.wait(start_event, self.START_TIMEOUT):
+                raise Failed("Timeout when starting server='%s'" % self.name)
+
         except OSError:
             raise Failed("Can't start server='%s'" % self.name)
 
@@ -343,6 +356,10 @@ class Server(object):
                 check_log("WARNING: KILLING %s" % self.name)
                 detail_log(SEP)
                 self.kill()
+        if self.logwatch:
+            self.logwatch.stop()
+            self.logwatch = None
+
         if check:
             self._valgrind_check()
 
@@ -675,6 +692,8 @@ class Server(object):
 
 class Bind(Server):
 
+    START_MESSAGE = re.compile(r'[^ ]+ [^ ]+ running$')
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         if not params.bind_bin:
@@ -691,7 +710,7 @@ class Bind(Server):
 
     def flush(self):
         self.ctl("flush")
-        time.sleep(Server.START_WAIT)
+        time.sleep(Server.START_TIMEOUT)
 
     def _str(self, conf, name, value):
         if value and value != True:
@@ -840,6 +859,8 @@ class Bind(Server):
 
 class Knot(Server):
 
+    START_MESSAGE = "info: server started in the foreground"
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         if not params.knot_bin:
@@ -859,7 +880,7 @@ class Knot(Server):
 
     def flush(self):
         self.ctl("zone-flush")
-        time.sleep(Server.START_WAIT)
+        time.sleep(Server.START_TIMEOUT)
 
     def _on_str_hex(self, conf, name, value):
         if value == True:
