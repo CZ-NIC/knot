@@ -8,11 +8,7 @@ AM_CPPFLAGS = \
 	-I$(srcdir)/../lib/dnssec \
 	-I$(srcdir)/../lib \
 	-I$(top_srcdir)/src \
-	$(gnutls_CFLAGS) \
-	$(CODE_COVERAGE_CFLAGS)
-
-AM_LDFLAGS = \
-	$(CODE_COVERAGE_LDFLAGS)
+	$(gnutls_CFLAGS)
 
 libutils_la_LIBADD = \
 	$(builddir)/../libdnssec.la \

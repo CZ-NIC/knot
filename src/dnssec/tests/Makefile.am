@@ -4,11 +4,9 @@ AM_CPPFLAGS = \
 	-I$(srcdir)/../shared \
 	-I$(srcdir)/../lib \
 	-I$(srcdir)/../lib/dnssec \
-	$(CODE_COVERAGE_CFLAGS) \
 	$(gnutls_CFLAGS)
 
 AM_LDFLAGS = \
-	$(CODE_COVERAGE_LDFLAGS) \
 	-static
 
 LDADD = \

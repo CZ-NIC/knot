@@ -20,11 +20,9 @@ SUFFIXES = .proto .pb-c.c .pb-c.h
 noinst_LTLIBRARIES = libdnstap.la
 
 libdnstap_la_CFLAGS =			\
-	$(CODE_COVERAGE_CFLAGS)		\
 	$(DNSTAP_CFLAGS)
 
 libdnstap_la_LDFLAGS =			\
-	$(CODE_COVERAGE_LDFLAGS)	\
 	$(DNSTAP_LIBS)
 
 libdnstap_la_SOURCES =			\

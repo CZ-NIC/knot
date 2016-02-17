@@ -1,16 +1,12 @@
 LDADD = \
 	$(top_builddir)/src/zscanner/libzscanner.la
 
-
-
 tests_zscanner_tool_SOURCES = \
 	tests/zscanner-tool.c	\
 	tests/tests.h		\
 	tests/tests.c		\
 	tests/processing.h	\
 	tests/processing.c
-
-tests_zscanner_tool_CFLAGS = $(CODE_COVERAGE_CFLAGS)
 
 check_PROGRAMS = \
 	tests/zscanner-tool

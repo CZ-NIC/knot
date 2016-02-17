@@ -42,9 +42,7 @@ nodist_libzscanner_la_SOURCES =		\
 	scanner.c
 
 libzscanner_la_CPPFLAGS = $(AM_CPPFLAGS) $(CFLAG_VISIBILITY)
-libzscanner_la_CFLAGS = $(CODE_COVERAGE_CFLAGS)
 libzscanner_la_LDFLAGS =		\
-	$(CODE_COVERAGE_LDFLAGS)	\
 	$(libzscanner_VERSION_INFO)
 
 include $(srcdir)/tests/Makefile.inc

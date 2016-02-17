@@ -39,10 +39,7 @@ AC_DEFUN([AX_CODE_COVERAGE], [
 		changequote([,])
 	
 		dnl Add the coverage flags (clang, gcc)
-		CODE_COVERAGE_CFLAGS="--coverage"
-		CODE_COVERAGE_LDFLAGS="--coverage"
-		
-		AC_SUBST([CODE_COVERAGE_CFLAGS])
-		AC_SUBST([CODE_COVERAGE_LDFLAGS])
+		CFLAGS="$CFLAGS --coverage"
+		LDFLAGS="$LDFLAGS --coverage"
 	])
 ]) # AC_CODE_COVERAGE
