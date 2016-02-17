@@ -948,7 +948,7 @@ int zone_do_sem_checks(zone_contents_t *zone, bool optional,
 	semchecks_data_t data;
 	data.handler = handler;
 	data.zone = zone;
-	data.next_nsec = NULL;
+	data.next_nsec = zone->apex;
 	data.fatal_error = false;
 	data.level = SEM_CHECK_MANDATORY;
 	if (optional) {

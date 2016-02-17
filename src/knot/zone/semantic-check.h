@@ -110,7 +110,6 @@ struct err_handler {
 	unsigned errors[(-ZC_ERR_UNKNOWN) + 1]; /*!< Counting errors by type */
 	unsigned error_count; /*!< Total error count */
 	list_t error_list; /*!< List of all errors */
-	knot_mm_t *mm;
 };
 
 typedef struct err_handler err_handler_t;
@@ -132,8 +131,6 @@ typedef struct semchecks_data {
 	enum check_levels level;
 } semchecks_data_t;
 
-
-
 /*!
  * \brief Inits semantic error handler. No optional events will be logged.
  *
@@ -141,6 +138,11 @@ typedef struct semchecks_data {
  */
 void err_handler_init(err_handler_t *err_handler);
 
+/*!
+ * \brief Free all allocated memory and deinit error handler.
+ *
+ * \param handler Handler to be freed
+ */
 void err_handler_deinit(err_handler_t *h);
 
 /*!
@@ -163,22 +165,6 @@ int err_handler_handle_error(err_handler_t *handler,
                              int error, const char *data);
 
 /*!
- * \brief Checks if last node in NSEC/NSEC3 chain points to first node in the
- *        chain and prints possible errors.
- *
- * \param handler Semantic error handler.
- * \param zone Current zone.
- * \param last_node Last node in NSEC/NSEC3 chain.
- * \param do_checks Level of semantic checks.
- */
-void log_cyclic_errors_in_zone(err_handler_t *handler,
-                               zone_contents_t *zone,
-                               zone_node_t *last_node,
-                               const zone_node_t *first_nsec3_node,
-                               const zone_node_t *last_nsec3_node,
-                               char do_checks);
-
-/*!
  * \brief Helper function - wraps its arguments into arg_t structure and
  *        calls function that does the actual work.
  *
@@ -192,24 +178,10 @@ int zone_do_sem_checks(zone_contents_t *zone, bool optional,
                        zone_node_t *last_nsec3_node);
 
 /*!
- * \brief Does a non-DNSSEC semantic node check. Logs errors via error handler.
+ * \brief Log all found errors using standard knot log.
  *
- * \param zone            Zone containing the node.
- * \param node            Node to be tested.
- * \param handler         Error handler.
- * \param only_mandatory  Mandatory/optional switch.
- * \param fatal_error     Fatal error out param.
- *
- * \return KNOT_E*
+ * \param handler Error handler
  */
-int sem_check_node_plain(const zone_contents_t *zone,
-                         const zone_node_t *node,
-                         err_handler_t *handler,
-                         bool only_mandatory,
-                         bool *fatal_error);
-
-const char *error_to_message(int error);
-
 void err_handler_log_errors(err_handler_t *handler);
 
 /*! @} */
