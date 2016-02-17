@@ -29,12 +29,14 @@
 static int add_rr_to_contents(zone_contents_t *z, knot_rrset_t **soa, const knot_rrset_t *rrset)
 {
 	if (rrset->type == KNOT_RRTYPE_SOA) {
-		if (*soa == NULL) {
-			*soa = knot_rrset_copy(rrset, NULL);
-			if (*soa == NULL) {
-				return KNOT_ENOMEM;
-			}
+		if (*soa != NULL) {
+			knot_rrset_free(soa, NULL);
 		}
+		*soa = knot_rrset_copy(rrset, NULL);
+		if (*soa == NULL) {
+			return KNOT_ENOMEM;
+		}
+
 		/* Do not add SOAs into actual contents. */
 		return KNOT_EOK;
 	}
@@ -167,7 +169,7 @@ static bool need_to_insert(zone_contents_t *counterpart, const knot_rrset_t *rr)
 	}
 
 	// Subtract the data from node's RRSet.
-	int ret = knot_rdataset_subtract(&node->rrs->rrs, &rr->rrs, NULL);
+	int ret = knot_rdataset_subtract(&node_rr.rrs, &rr->rrs, NULL);
 	if (ret != KNOT_EOK) {
 		return true;
 	}
@@ -281,11 +283,13 @@ int changeset_add_rrset(changeset_t *ch, const knot_rrset_t *rrset, bool check_r
 
 int changeset_rem_rrset(changeset_t *ch, const knot_rrset_t *rrset, bool check_redundancy)
 {
-	if (!check_redundancy || need_to_insert(ch->add, rrset)) {
-		return add_rr_to_contents(ch->remove, &ch->soa_from, rrset);
-	} else {
-		return KNOT_EOK;
+	/* Check if there's any addition and remove that, then add this
+	 * removal anyway. */
+	if (check_redundancy) {
+		need_to_insert(ch->add, rrset);
 	}
+
+	return add_rr_to_contents(ch->remove, &ch->soa_from, rrset);
 }
 
 int changeset_merge(changeset_t *ch1, const changeset_t *ch2)
