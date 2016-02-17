@@ -183,7 +183,7 @@ class Server(object):
         try:
             p = Popen([self.control_bin] + self.compile_params,
                       stdout=self.fout, stderr=self.ferr)
-            p.communicate(timeout=Server.COMPILE_TIMEOUT)
+            p.communicate(timeout=self.COMPILE_TIMEOUT)
         except:
             raise Failed("Can't compile server='%s'" %self.name)
 
