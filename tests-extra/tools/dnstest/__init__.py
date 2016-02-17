@@ -2,6 +2,7 @@ __all__ = [
     "config",
     "inquirer",
     "keys",
+    "logwatch",
     "module",
     "params",
     "response",
