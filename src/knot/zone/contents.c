@@ -659,38 +659,10 @@ static zone_node_t *get_previous(const zone_contents_t *zone,
 	return prev;
 }
 
-static zone_node_t *zone_contents_get_greatest_child(const zone_contents_t *zone, const knot_dname_t *parent)
-{
-	if (knot_dname_size(parent) + 2 > KNOT_DNAME_MAXLEN) {
-		// Not enough space for children.
-		return NULL;
-	}
-
-	knot_dname_t dn[KNOT_DNAME_MAXLEN] = { 0x01, 0xff };
-	knot_dname_to_wire(dn + 2, parent, KNOT_DNAME_MAXLEN);
-	zone_node_t *child = get_node(zone, dn);
-	if (child) {
-		return child;
-	}
-
-	child = get_previous(zone, dn);
-	assert(child);
-	const int parent_labels = knot_dname_labels(parent, NULL);
-	const int child_labels = knot_dname_labels(child->owner, NULL);
-	if (child_labels <= parent_labels) {
-		return NULL;
-	}
-
-	if (knot_dname_matched_labels(parent, child->owner) != parent_labels) {
-		return NULL;
-	}
-
-	return child;
-}
-
 static bool contents_has_children(const zone_contents_t *zone, const knot_dname_t *owner)
 {
-	return zone_contents_get_greatest_child(zone, owner) != NULL;
+	zone_node_t *parent = get_node(zone, owner);
+	return parent->children > 0;
 }
 
 // Public API
@@ -735,15 +707,7 @@ int zone_contents_delete_empty_node(zone_contents_t *contents, zone_tree_t *tree
 	}
 
 	if (node->rrset_count == 0 && !contents_has_children(contents, node->owner)) {
-		const knot_dname_t *parent_dname = knot_wire_next_label(node->owner, NULL);
-		zone_node_t *parent_node = NULL;
-		if (tree == contents->nsec3_nodes) {
-			// Only one level in NSEC3 tree
-			parent_node = (node == contents->apex) ? NULL : contents->apex;
-		} else {
-			parent_node = (zone_node_t *) zone_contents_find_node(contents, parent_dname);
-		}
-
+		zone_node_t *parent_node = node->parent;
 		if (parent_node && parent_node != contents->apex) {
 			// Recurse using the parent node, do not delete possibly empty parent.
 			int ret = zone_contents_delete_empty_node(contents, tree, parent_node);
