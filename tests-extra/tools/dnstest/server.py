@@ -76,6 +76,9 @@ class Server(object):
     START_MESSAGE = None
     START_TIMEOUT = 5
 
+    RELOAD_MESSAGE = None
+    RELOAD_TIMEOUT = 5
+
     STOP_TIMEOUT = 30
     COMPILE_TIMEOUT = 60
     DIG_TIMEOUT = 5
@@ -251,8 +254,11 @@ class Server(object):
                          (cmd, self.name, e.returncode))
 
     def reload(self):
+        assert self.RELOAD_MESSAGE
+        event = self.logwatch.register(self.RELOAD_MESSAGE)
         self.ctl("reload")
-        time.sleep(Server.START_WAIT)
+        if not self.logwatch.wait(event, self.RELOAD_TIMEOUT):
+            raise Failed("Server didn't reload in time (%s)" % self.name)
 
     def running(self):
         proc = psutil.Process(self.proc.pid)
@@ -860,6 +866,7 @@ class Bind(Server):
 class Knot(Server):
 
     START_MESSAGE = "info: server started in the foreground"
+    RELOAD_MESSAGE = "info: configuration reloaded"
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
