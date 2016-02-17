@@ -224,7 +224,7 @@ libknotus_la_LIBADD = libcontrib.la libknot.la
 
 if HAVE_DAEMON
 
-sbin_PROGRAMS = knotc knotd
+sbin_PROGRAMS = knotc knotd kzonecheck
 libexec_PROGRAMS = knot1to2
 noinst_LTLIBRARIES += libknotd.la libknotus.la
 
@@ -405,6 +405,11 @@ knotd_LDADD = libknotd.la $(liburcu_LIBS)
 knotc_CPPFLAGS = $(AM_CPPFLAGS) $(libedit_CFLAGS)
 knotc_LDADD = libknotd.la libknotus.la $(libedit_LIBS)
 knot1to2_LDADD = libcontrib.la
+
+kzonecheck_SOURCES = \
+	utils/kzonecheck/main.c
+
+kzonecheck_LDADD = libknotd.la
 
 ####################################
 # Optional Knot DNS Daemon modules #

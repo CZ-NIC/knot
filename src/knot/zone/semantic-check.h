@@ -97,8 +97,10 @@ enum zonechecks_errors {
 	ZC_ERR_GLUE_RECORD,
 
 	ZC_ERR_GLUE_GENERAL_ERROR, /* GLUE error delimiter. */
-	/// \TODO ADD LAST DELIMITER
+	ZC_ERR_LAST = ZC_ERR_GLUE_GENERAL_ERROR,
 };
+
+extern const char *zonechecks_error_messages[];
 
 /*!
  * \brief Structure for handling semantic errors.

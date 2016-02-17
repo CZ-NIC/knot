@@ -31,7 +31,7 @@
 #include "contrib/mempattern.h"
 #include "contrib/wire.h"
 
-static char *error_messages[(-ZC_ERR_UNKNOWN) + 1] = {
+const char *zonechecks_error_messages[(-ZC_ERR_UNKNOWN) + 1] = {
 	[-ZC_ERR_MISSING_SOA] =
 	"SOA record missing in zone",
 	[-ZC_ERR_MISSING_NS_DEL_POINT] =
@@ -167,7 +167,7 @@ void err_handler_log_errors(err_handler_t *handler)
 			return;
 		}
 
-		const char *errmsg = error_messages[-n->error];
+		const char *errmsg = zonechecks_error_messages[-n->error];
 		log_zone_str_warning(n->zone_name,
 		                     "semantic check, node '%s' (%s%s%s)",
 		                     n->name ? n->name : "",

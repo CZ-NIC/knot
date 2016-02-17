@@ -82,6 +82,7 @@
 /src/knsupdate
 /src/knsec3hash
 /src/rosedb_tool
+/src/kzonecheck
 
 # Plugin binaries
 /src/rosedb_tool
