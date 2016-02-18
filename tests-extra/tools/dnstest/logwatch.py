@@ -1,6 +1,9 @@
 import os
 import threading
 
+class LogWatchException(Exception):
+    pass
+
 class LogWatch:
     """
     Watching textual log files for events.
@@ -31,6 +34,7 @@ class LogWatch:
 
         # events watching
         self._watch = dict()
+        self._running = False
         self._thread = None
         self._sync = threading.Condition()
 
@@ -60,11 +64,22 @@ class LogWatch:
         if self._fd_pass:
             print(line, file=self._fd_pass)
 
+    def _process_start(self):
+        with self._sync:
+            self._running = True
+
+    def _process_end(self):
+        with self._sync:
+            self._running = False
+            self._sync.notify_all()
+
     def _process(self):
+        self._process_start()
         with os.fdopen(self._fd_read) as f:
             for line in (l.rstrip('\n') for l in f):
                 self._check_watches(line)
                 self._pass_through(line)
+        self._process_end()
 
     def register(self, message):
         """Register new message to watch for.
@@ -77,11 +92,19 @@ class LogWatch:
             self._watch.setdefault(message, 0)
             return (message, self._watch[message])
 
+    def _check_wait(self, event):
+        message, counter = event
+        if self._watch[message] > counter:
+            return True
+        elif not self._running:
+            raise LogWatchException("Descriptor closed while waiting for the event.")
+        else:
+            return False
+
     def wait(self, event, timeout):
         """Wait for a watched event. Return if the event happened."""
-        message, counter = event
         with self._sync:
-            hit = lambda: self._watch[message] > counter
+            hit = lambda: self._check_wait(event)
             return self._sync.wait_for(hit, timeout)
 
     def start(self):
