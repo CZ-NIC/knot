@@ -17,6 +17,7 @@
 #include <tap/basic.h>
 #include <tap/files.h>
 
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -53,6 +54,9 @@
 #    define LIBDIR "/usr/lib64"
 #  endif
 #endif
+
+#define MSG_SOFTWARE "soft -"
+#define MSG_PKCS11   "p11  -"
 
 /*!
  * Get SoftHSM DSO path.
@@ -97,7 +101,7 @@ static char *libsofthsm_util(void)
 		return strdup(env);
 	}
 
-	// fallback, will relay on PATH
+	// fallback, will rely on PATH
 
 	return strdup(SOFTHSM_UTIL);
 }
@@ -119,7 +123,7 @@ static void token_cleanup(void)
 /*!
  * Initialize token using the support tool.
  */
-static bool init_exec(const char *util)
+static bool token_init_exec(const char *util)
 {
 	pid_t child = fork();
 	if (child == -1) {
@@ -209,10 +213,141 @@ static bool token_init(void)
 		return false;
 	}
 
-	bool inited = init_exec(util);
+	bool inited = token_init_exec(util);
 	free(util);
 
 	return inited;
+}
+
+static void create_dnskeys(dnssec_keystore_t *keystore,
+			   dnssec_key_algorithm_t algorithm, const char *id,
+			   dnssec_key_t **p11_key_ptr, dnssec_key_t **soft_key_ptr)
+{
+	int r;
+
+	// construct PKCS #11 privkey-pubkey key pair
+
+	dnssec_key_t *p11_key = NULL;
+	r = dnssec_key_new(&p11_key);
+	ok(r == DNSSEC_EOK && p11_key != NULL, MSG_PKCS11 " dnssec_key_new()");
+
+	r = dnssec_key_set_algorithm(p11_key, algorithm);
+	ok(r == DNSSEC_EOK, MSG_PKCS11 " dnssec_set_key_algorithm()");
+
+	r = dnssec_key_import_keystore(p11_key, keystore, id);
+	ok(r == DNSSEC_EOK, MSG_PKCS11 " dnssec_key_import_keystore()");
+
+	// construct software public key
+
+	dnssec_key_t *soft_key = NULL;
+	r = dnssec_key_new(&soft_key);
+	ok(r == DNSSEC_EOK && soft_key != NULL, MSG_SOFTWARE " dnssec_key_new()");
+
+	dnssec_binary_t rdata = { 0 };
+	dnssec_key_get_rdata(p11_key, &rdata);
+	r = dnssec_key_set_rdata(soft_key, &rdata);
+	ok(r == DNSSEC_EOK, MSG_SOFTWARE " dnssec_key_set_rdata()");
+
+	*p11_key_ptr = p11_key;
+	*soft_key_ptr = soft_key;
+}
+
+static void test_sign(dnssec_key_t *p11_key, dnssec_key_t *soft_key)
+{
+	int r;
+
+	static const dnssec_binary_t input = {
+		.data = (uint8_t *)"So Long, and Thanks for All the Fish.",
+		.size = 37
+	};
+
+	dnssec_binary_t sign = { 0 };
+
+	// usage constraints
+
+	ok(dnssec_key_can_sign(p11_key),   MSG_PKCS11 " dnssec_key_can_sign()");
+	ok(dnssec_key_can_verify(p11_key), MSG_PKCS11 " dnssec_key_can_verify()");
+
+	ok(!dnssec_key_can_sign(soft_key),  MSG_SOFTWARE " dnssec_key_can_sign()");
+	ok(dnssec_key_can_verify(soft_key), MSG_SOFTWARE " dnssec_key_can_verify()");
+
+	// PKCS #11 key signature
+
+	dnssec_sign_ctx_t *ctx = NULL;
+	r = dnssec_sign_new(&ctx, p11_key);
+	ok(r == DNSSEC_EOK, MSG_PKCS11 " dnssec_sign_init() ");
+
+	r = dnssec_sign_add(ctx, &input);
+	ok(r == DNSSEC_EOK, MSG_PKCS11 " dnssec_sign_add()");
+
+	r = dnssec_sign_write(ctx, &sign);
+	ok(r == DNSSEC_EOK, MSG_PKCS11 " dnssec_sign_write()");
+
+	// PKCS #11 key verification
+
+	r = dnssec_sign_init(ctx);
+	ok(r == DNSSEC_EOK, MSG_PKCS11 " dnssec_sign_init()");
+
+	r = dnssec_sign_add(ctx, &input);
+	ok(r == DNSSEC_EOK, MSG_PKCS11 " dnssec_sign_add()");
+
+	r = dnssec_sign_verify(ctx, &sign);
+	ok(r == DNSSEC_EOK, MSG_PKCS11 " dnssec_sign_verify()");
+
+	// software verification
+
+	dnssec_sign_free(ctx);
+	ctx = NULL;
+
+	r = dnssec_sign_new(&ctx, soft_key);
+	ok(r == DNSSEC_EOK, MSG_SOFTWARE " dnssec_sign_init()");
+
+	r = dnssec_sign_add(ctx, &input);
+	ok(r == DNSSEC_EOK, MSG_SOFTWARE " dnssec_sign_add()");
+
+	r = dnssec_sign_verify(ctx, &sign);
+	ok(r == DNSSEC_EOK, MSG_SOFTWARE " dnssec_sign_verify()");
+
+	dnssec_binary_free(&sign);
+	dnssec_sign_free(ctx);
+}
+
+static void test_key_use(dnssec_keystore_t *store,
+			 dnssec_key_algorithm_t algorithm,
+			 const char *keyid)
+{
+	dnssec_key_t *p11_key = NULL;
+	dnssec_key_t *soft_key = NULL;
+
+	create_dnskeys(store, algorithm, keyid, &p11_key, &soft_key);
+	test_sign(p11_key, soft_key);
+
+	dnssec_key_free(p11_key);
+	dnssec_key_free(soft_key);
+}
+
+static void test_algorithm(dnssec_keystore_t *store,
+			   const key_parameters_t *params)
+{
+	char *id_generate = NULL;
+	char *id_import = NULL;
+
+	int r;
+
+	diag("algorithm %d, generated key", params->algorithm);
+
+	r = dnssec_keystore_generate_key(store, params->algorithm, params->bit_size, &id_generate);
+	ok(r == DNSSEC_EOK && id_generate != NULL, "dnssec_keystore_generate_key()");
+	test_key_use(store, params->algorithm, id_generate);
+
+	diag("algorithm %d, imported key", params->algorithm);
+
+	r = dnssec_keystore_import(store, &params->pem, &id_import);
+	ok(r == DNSSEC_EOK && id_import != NULL, "dnssec_keystore_import()");
+	test_key_use(store, params->algorithm, id_import);
+
+	free(id_generate);
+	free(id_import);
 }
 
 int main(int argc, char *argv[])
@@ -252,7 +387,7 @@ int main(int argc, char *argv[])
 	free(dso_name);
 	ok(r > 0 && r < sizeof(config), "build configuration");
 
-	// key manipulation
+	// key store access
 
 	r = dnssec_keystore_init(store, config);
 	ok(r == DNSSEC_NOT_IMPLEMENTED_ERROR, "dnssec_keystore_init(), not implemented");
@@ -265,87 +400,71 @@ int main(int argc, char *argv[])
 	ok(r == DNSSEC_EOK && dnssec_list_size(keys) == 0, "dnssec_keystore_list_keys(), empty");
 	dnssec_list_free_full(keys, NULL, NULL);
 
-	char *id_ecc = NULL;
-	r = dnssec_keystore_generate_key(store, DNSSEC_KEY_ALGORITHM_ECDSA_P256_SHA256, 256, &id_ecc);
-	ok(r == DNSSEC_EOK && id_ecc, "dnssec_keystore_generate_key(ECDSA)");
+	// key manipulation
 
-	char *id_rsa = NULL;
-	r = dnssec_keystore_import(store, &SAMPLE_RSA_KEY.pem, &id_rsa);
-	ok(r == DNSSEC_EOK && id_rsa, "dnssec_keystore_import(RSA)");
-	ok(id_rsa && strcmp(id_rsa, SAMPLE_RSA_KEY.key_id) == 0, "predictable key ID after import");
-
-	keys = NULL;
-	r = dnssec_keystore_list_keys(store, &keys);
-	ok(r == DNSSEC_EOK && dnssec_list_size(keys), "dnssec_keystore_list_keys(), two keys");
-	bool found_ecc = false, found_rsa = false;
-	dnssec_list_foreach(item, keys) {
-		char *id = dnssec_item_get(item);
-		if (id) {
-			if (id_ecc && strcmp(id, id_ecc) == 0) { found_ecc = true; }
-			if (id_rsa && strcmp(id, id_rsa) == 0) { found_rsa = true; }
-		}
-	}
-	ok(found_ecc, "list contains ECC key");
-	ok(found_rsa, "list contains RSA key");
-	dnssec_list_free_full(keys, NULL, NULL);
-
-	r = dnssec_keystore_remove_key(store, id_ecc);
-	ok(r == DNSSEC_EOK, "dnssec_keystore_remove_key(ECC)");
-
-	keys = NULL;
-	r = dnssec_keystore_list_keys(store, &keys);
-	ok(r == DNSSEC_EOK && dnssec_list_size(keys) == 1, "dnssec_keystore_list_keys(), one key");
-	dnssec_list_free_full(keys, NULL, NULL);
-
-	// key usage
-
-	dnssec_key_t *key = NULL;
-	r = dnssec_key_new(&key);
-	ok(r == DNSSEC_EOK && key, "dnssec_key_new()");
-	dnssec_key_set_algorithm(key, DNSSEC_KEY_ALGORITHM_RSA_SHA256);
-
-	r = dnssec_key_import_keystore(key, store, "0000000000000000000000000000000000000000");
-	ok(r == DNSSEC_NOT_FOUND, "dnssec_key_import_keystore(invalid), not found");
-
-	r = dnssec_key_import_keystore(key, store, id_rsa);
-	ok(r == DNSSEC_EOK, "dnssec_key_import_keystore(RSA)");
-
-	ok(dnssec_key_can_sign(key) == true, "dnssec_key_can_sign()");
-
-	const dnssec_binary_t data = {
-		.size = 36,
-		.data = (uint8_t *)"So Long, and Thanks for All the Fish"
+	static const key_parameters_t *KEYS[] = {
+		&SAMPLE_RSA_KEY,
+		&SAMPLE_ECDSA_KEY,
 	};
 
-	const dnssec_binary_t expected = { .size = 64, .data = (uint8_t []) {
-		0x96, 0x62, 0xe7, 0xf3, 0xc3, 0xc2, 0x65, 0xc6, 0x13, 0x68,
-		0xa9, 0x61, 0xbf, 0x01, 0x42, 0x5f, 0x50, 0x42, 0x1b, 0xeb,
-		0x86, 0xc1, 0xf3, 0x2c, 0xc4, 0xb9, 0x6a, 0xbe, 0x84, 0x61,
-		0xfa, 0x9a, 0xfc, 0x1a, 0xee, 0x74, 0x32, 0xd1, 0xe2, 0xe4,
-		0x08, 0x3b, 0xd6, 0x16, 0xb1, 0x50, 0x95, 0x81, 0x49, 0xc8,
-		0xef, 0x93, 0x7f, 0x07, 0x9b, 0xfb, 0xc2, 0xb3, 0x59, 0x9c,
-		0xa7, 0x24, 0xd9, 0xe2,
-	}};
+	static const int KEYS_COUNT = sizeof(KEYS) / sizeof(*KEYS);
 
-	dnssec_sign_ctx_t *sign_ctx = NULL;
-	r = dnssec_sign_new(&sign_ctx, key);
-	ok(r == DNSSEC_EOK, "dnssec_sign_new()");
+	for (int i = 0; i < KEYS_COUNT; i++) {
+		test_algorithm(store, KEYS[i]);
+	}
 
-	r = dnssec_sign_add(sign_ctx, &data);
-	ok(r == DNSSEC_EOK, "dnssec_sign_add()");
+	// key listing
 
-	dnssec_binary_t signature = { 0 };
-	r = dnssec_sign_write(sign_ctx, &signature);
-	ok(r == DNSSEC_EOK, "dnssec_sign_write()");
+	keys = NULL;
+	r = dnssec_keystore_list_keys(store, &keys);
+	ok(r == DNSSEC_EOK && dnssec_list_size(keys) == KEYS_COUNT * 2,
+	   "dnssec_keystore_list_keys(), two keys per algorithm");
 
-	ok(dnssec_binary_cmp(&signature, &expected) == 0, "expected signature");
+	bool imported_found[KEYS_COUNT] = { 0 };
+	dnssec_list_foreach(item, keys) {
+		const char *id = dnssec_item_get(item);
+		for (int i = 0; i < KEYS_COUNT; i++) {
+			if (strcmp(id, KEYS[i]->key_id) == 0) {
+				imported_found[i] = true;
+				break;
+			}
+		}
+	}
 
-	dnssec_binary_free(&signature);
-	dnssec_sign_free(sign_ctx);
-	dnssec_key_free(key);
+	int imported_count = 0;
+	for (int i = 0; i < KEYS_COUNT; i++) {
+		imported_count += imported_found[i] ? 1 : 0;
+	}
 
-	free(id_rsa);
-	free(id_ecc);
+	ok(imported_count == KEYS_COUNT, "list contains key for all algorithms");
+
+	dnssec_list_free_full(keys, NULL, NULL);
+
+	// key removal
+
+	assert(KEYS_COUNT > 0);
+	const key_parameters_t *key_remove = KEYS[0];
+
+	r = dnssec_keystore_remove_key(store, key_remove->key_id);
+	ok(r == DNSSEC_EOK, "dnssec_keystore_remove_key");
+
+	keys = NULL;
+	r = dnssec_keystore_list_keys(store, &keys);
+	ok(r == DNSSEC_EOK && dnssec_list_size(keys) == KEYS_COUNT * 2 - 1,
+	   "dnssec_keystore_list_keys(), one less key than before");
+
+	bool removed_found = false;
+	dnssec_list_foreach(item, keys) {
+		const char *id = dnssec_item_get(item);
+		if (strcmp(id, key_remove->key_id) == 0) {
+			removed_found = true;
+			break;
+		}
+	}
+
+	ok(!removed_found, "dnssec_keystore_list_keys(), removed key not found");
+
+	dnssec_list_free_full(keys, NULL, NULL);
 
 	r = dnssec_keystore_close(store);
 	ok(r == DNSSEC_EOK, "dnssec_keystore_close()");
