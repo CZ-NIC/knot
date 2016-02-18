@@ -338,6 +338,14 @@ static int check_rrsig_rdata(err_handler_t *handler,
 	return KNOT_EOK;
 }
 
+static void check_signed_rrsig(const zone_node_t *node, semchecks_data_t *data)
+{
+	/* signed rrsig - nonsense */
+	if (node_rrtype_is_signed(node, KNOT_RRTYPE_RRSIG)) {
+		err_handler_handle_error(data->handler, data->zone, node,
+		                         ZC_ERR_RRSIG_SIGNED, NULL);
+	}
+}
 /*!
  * \brief Semantic check - RRSet's RRSIG.
  *
@@ -383,14 +391,6 @@ static int check_rrsig_in_rrset(err_handler_t *handler,
 		                         ZC_ERR_RRSIG_NO_RRSIG,
 		                         info_str);
 		return KNOT_EOK;
-	}
-
-	/* signed rrsig - nonsense */
-	if (node_rrtype_is_signed(node, KNOT_RRTYPE_RRSIG)) {
-		err_handler_handle_error(handler, zone, node,
-		                         ZC_ERR_RRSIG_SIGNED,
-		                         info_str);
-		/* Safe to continue, nothing is malformed. */
 	}
 
 	const knot_rdata_t *sig_rr = knot_rdataset_at(&rrsigs, 0);
@@ -472,8 +472,7 @@ static int rdata_nsec_to_type_array(const knot_rdataset_t *rrs, uint16_t type,
 			return KNOT_ENOMEM;
 		}
 
-		memcpy(bitmap, data + i + increment,
-		       bitmap_size);
+		memcpy(bitmap, data + i + increment, bitmap_size);
 
 		increment += bitmap_size;
 
@@ -555,17 +554,21 @@ static void check_rrsig(const zone_node_t *node, semchecks_data_t *data)
 		return;
 	}
 
-	bool deleg = (node->flags & NODE_FLAGS_DELEG);
-	short rrset_count = node->rrset_count;
+	bool deleg = node->flags & NODE_FLAGS_DELEG;
 
+	int rrset_count = node->rrset_count;
 	for (int i = 0; i < rrset_count; i++) {
+		knot_rrset_t rrset = node_rrset_at(node, i);
+		if (rrset.type == KNOT_RRTYPE_RRSIG) {
+			continue;
+		}
+		if (deleg && rrset.type != KNOT_RRTYPE_NSEC) {
+			continue;
+		}
 
 		knot_rrset_t dnskey_rrset = node_rrset(data->zone->apex, KNOT_RRTYPE_DNSKEY);
-		knot_rrset_t rrset = node_rrset_at(node, i);
-		if (!deleg && rrset.type != KNOT_RRTYPE_RRSIG) {
-			check_rrsig_in_rrset(data->handler, data->zone, node,
-			                     &rrset, &dnskey_rrset);
-		}
+		check_rrsig_in_rrset(data->handler, data->zone, node,
+		                     &rrset, &dnskey_rrset);
 	}
 }
 
@@ -925,11 +928,13 @@ static int do_checks_in_tree(zone_node_t *node, void *data)
 	}
 
 	if (s_data->level & SEM_CHECK_NSEC) {
+		check_signed_rrsig(node, s_data);
 		check_rrsig(node, s_data);
 		check_nsec(node, s_data);
 	}
 
 	if(s_data->level & SEM_CHECK_NSEC3) {
+		check_signed_rrsig(node, s_data);
 		check_rrsig(node, s_data);
 		check_nsec3(node, s_data);
 	}
