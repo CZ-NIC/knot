@@ -211,10 +211,8 @@ class Server(object):
 
             start_event = self.logwatch.register(self.START_MESSAGE)
 
-            self.proc = Popen(self.valgrind + [self.daemon_bin] + \
-                                self.start_params,
-                                stdout=fout,
-                                stderr=self.logwatch.fd)
+            self.proc = Popen(self.valgrind + [self.daemon_bin] + self.start_params,
+                              stdout=fout, stderr=self.logwatch.fd)
             os.close(self.logwatch.fd)
 
             if not self.logwatch.wait(start_event, self.START_TIMEOUT):
