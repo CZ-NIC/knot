@@ -14,9 +14,6 @@ AM_CPPFLAGS = \
 	-DRUN_DIR='"${run_dir}"'		\
 	-I$(srcdir)/dnssec/lib
 
-AM_CFLAGS = $(CODE_COVERAGE_CFLAGS)
-AM_LDFLAGS = $(CODE_COVERAGE_LDFLAGS)
-
 ######################
 # Knot DNS Libraries #
 ######################

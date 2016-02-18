@@ -6,12 +6,8 @@ AM_CPPFLAGS = \
 	-I$(srcdir)/lib \
 	-I$(srcdir)/lib/dnssec \
 	-I$(top_srcdir)/src \
-	$(CODE_COVERAGE_CFLAGS) \
 	$(gnutls_CFLAGS) \
 	$(jansson_CFLAGS)
-
-AM_LDFLAGS = \
-	$(CODE_COVERAGE_LDFLAGS)
 
 noinst_LTLIBRARIES = libshared.la
 lib_LTLIBRARIES = libdnssec.la
