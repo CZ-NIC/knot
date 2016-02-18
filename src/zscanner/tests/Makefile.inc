@@ -24,7 +24,7 @@ tests/unittests:
 	$(edit) < $(top_srcdir)/src/zscanner/$@.in > $(top_builddir)/src/zscanner/$@
 	chmod +x $(top_builddir)/src/zscanner/$@
 
-check-compile-only: $(check_SCRIPTS) $(check_PROGRAMS)
+check-compile-local: $(check_SCRIPTS) $(check_PROGRAMS)
 
 check-local: $(check_PROGRAMS)
 	$(top_builddir)/libtap/runtests \

@@ -65,7 +65,7 @@ check_PROGRAMS = \
 check_PROGRAMS += \
 	modules/online_sign
 
-check-compile-only: $(check_PROGRAMS)
+check-compile-local: $(check_PROGRAMS)
 
 check-local: $(check_PROGRAMS)
 	$(top_builddir)/libtap/runtests -s $(top_srcdir)/tests \

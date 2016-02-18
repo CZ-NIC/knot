@@ -48,7 +48,7 @@ check_PROGRAMS = \
 
 keystore_pkcs11_CPPFLAGS = $(AM_CPPFLAGS) -DLIBDIR='"$(libdir)"'
 
-check-compile-only: $(check_PROGRAMS)
+check-compile-local: $(check_PROGRAMS)
 
 check-local: $(check_PROGRAMS)
 	$(top_builddir)/libtap/runtests -s $(srcdir) \

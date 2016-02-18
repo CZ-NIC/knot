@@ -11,6 +11,7 @@ m4_define([knot_PKG_VERSION],[knot_VERSION_MAJOR.knot_VERSION_MINOR.knot_VERSION
 AC_INIT([knot], knot_PKG_VERSION, [knot-dns@labs.nic.cz])
 AM_INIT_AUTOMAKE([gnits subdir-objects no-dist-gzip dist-xz -Wall -Werror])
 AM_SILENT_RULES([yes])
+AM_EXTRA_RECURSIVE_TARGETS([check-compile])
 AC_CONFIG_SRCDIR([src/knot])
 AC_CONFIG_HEADERS([src/config.h])
 AC_CONFIG_MACRO_DIR([m4])
