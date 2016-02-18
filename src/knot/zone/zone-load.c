@@ -126,7 +126,7 @@ int zone_load_journal(conf_t *conf, zone_t *zone, zone_contents_t *contents)
 	}
 
 	/* Apply changesets. */
-	apply_ctx_t a_ctx = {0};
+	apply_ctx_t a_ctx = { { 0 } };
 	apply_init_ctx(&a_ctx);
 
 	ret = apply_changesets_directly(&a_ctx, contents, &chgs);
@@ -166,7 +166,7 @@ int zone_load_post(conf_t *conf, zone_t *zone, zone_contents_t *contents,
 
 		/* Apply DNSSEC changes. */
 		if (!changeset_empty(&change)) {
-			apply_ctx_t a_ctx = {0};
+			apply_ctx_t a_ctx = { { 0 } };
 			apply_init_ctx(&a_ctx);
 
 			ret = apply_changeset_directly(&a_ctx, contents, &change);
