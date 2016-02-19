@@ -350,6 +350,64 @@ static void test_algorithm(dnssec_keystore_t *store,
 	free(id_import);
 }
 
+static void test_key_listing(dnssec_keystore_t *store,
+			     const key_parameters_t **key_params, int count)
+{
+	dnssec_list_t *keys = NULL;
+	int r = dnssec_keystore_list_keys(store, &keys);
+	ok(r == DNSSEC_EOK && dnssec_list_size(keys) == count * 2,
+	   "dnssec_keystore_list_keys(), two keys per algorithm");
+
+	bool imported_found[count];
+	for (int i = 0; i < count; i++) {
+		imported_found[i] = false;
+	}
+
+	dnssec_list_foreach(item, keys) {
+		const char *id = dnssec_item_get(item);
+		for (int i = 0; i < count; i++) {
+			if (strcmp(id, key_params[i]->key_id) == 0) {
+				imported_found[i] = true;
+				break;
+			}
+		}
+	}
+
+	int imported_count = 0;
+	for (int i = 0; i < count; i++) {
+		imported_count += imported_found[i] ? 1 : 0;
+	}
+
+	ok(imported_count == count, "list contains key for all algorithms");
+	dnssec_list_free_full(keys, NULL, NULL);
+
+	// key removal
+
+	assert(count > 0);
+	const key_parameters_t *key_remove = key_params[0];
+
+	r = dnssec_keystore_remove_key(store, key_remove->key_id);
+	ok(r == DNSSEC_EOK, "dnssec_keystore_remove_key");
+
+	keys = NULL;
+	r = dnssec_keystore_list_keys(store, &keys);
+	ok(r == DNSSEC_EOK && dnssec_list_size(keys) == count * 2 - 1,
+	   "dnssec_keystore_list_keys(), one less key than before");
+
+	bool removed_found = false;
+	dnssec_list_foreach(item, keys) {
+		const char *id = dnssec_item_get(item);
+		if (strcmp(id, key_remove->key_id) == 0) {
+			removed_found = true;
+			break;
+		}
+	}
+
+	ok(!removed_found, "dnssec_keystore_list_keys(), removed key not found");
+
+	dnssec_list_free_full(keys, NULL, NULL);
+}
+
 int main(int argc, char *argv[])
 {
 	plan_lazy();
@@ -402,69 +460,17 @@ int main(int argc, char *argv[])
 
 	// key manipulation
 
+	static const int KEYS_COUNT = 2;
 	static const key_parameters_t *KEYS[] = {
 		&SAMPLE_RSA_KEY,
 		&SAMPLE_ECDSA_KEY,
 	};
 
-	static const int KEYS_COUNT = sizeof(KEYS) / sizeof(*KEYS);
-
 	for (int i = 0; i < KEYS_COUNT; i++) {
 		test_algorithm(store, KEYS[i]);
 	}
 
-	// key listing
-
-	keys = NULL;
-	r = dnssec_keystore_list_keys(store, &keys);
-	ok(r == DNSSEC_EOK && dnssec_list_size(keys) == KEYS_COUNT * 2,
-	   "dnssec_keystore_list_keys(), two keys per algorithm");
-
-	bool imported_found[KEYS_COUNT] = { 0 };
-	dnssec_list_foreach(item, keys) {
-		const char *id = dnssec_item_get(item);
-		for (int i = 0; i < KEYS_COUNT; i++) {
-			if (strcmp(id, KEYS[i]->key_id) == 0) {
-				imported_found[i] = true;
-				break;
-			}
-		}
-	}
-
-	int imported_count = 0;
-	for (int i = 0; i < KEYS_COUNT; i++) {
-		imported_count += imported_found[i] ? 1 : 0;
-	}
-
-	ok(imported_count == KEYS_COUNT, "list contains key for all algorithms");
-
-	dnssec_list_free_full(keys, NULL, NULL);
-
-	// key removal
-
-	assert(KEYS_COUNT > 0);
-	const key_parameters_t *key_remove = KEYS[0];
-
-	r = dnssec_keystore_remove_key(store, key_remove->key_id);
-	ok(r == DNSSEC_EOK, "dnssec_keystore_remove_key");
-
-	keys = NULL;
-	r = dnssec_keystore_list_keys(store, &keys);
-	ok(r == DNSSEC_EOK && dnssec_list_size(keys) == KEYS_COUNT * 2 - 1,
-	   "dnssec_keystore_list_keys(), one less key than before");
-
-	bool removed_found = false;
-	dnssec_list_foreach(item, keys) {
-		const char *id = dnssec_item_get(item);
-		if (strcmp(id, key_remove->key_id) == 0) {
-			removed_found = true;
-			break;
-		}
-	}
-
-	ok(!removed_found, "dnssec_keystore_list_keys(), removed key not found");
-
-	dnssec_list_free_full(keys, NULL, NULL);
+	test_key_listing(store, KEYS, KEYS_COUNT);
 
 	r = dnssec_keystore_close(store);
 	ok(r == DNSSEC_EOK, "dnssec_keystore_close()");
