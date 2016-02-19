@@ -21,4 +21,4 @@ knotd_stdio_LDADD = \
 	$(top_builddir)/src/utils/knotd/knotd-main.o \
 	$(top_builddir)/src/libknotd.la $(liburcu_LIBS)
 
-check-compile-local: $(check_PROGRAMS)
+check-compile: $(check_PROGRAMS)

@@ -12,4 +12,4 @@ check_PROGRAMS = \
 EXTRA_DIST = \
 	tap/libtap.sh
 
-check-compile-local: $(check_LTLIBRARIES) $(check_PROGRAMS)
+check-compile: $(check_LTLIBRARIES) $(check_PROGRAMS)

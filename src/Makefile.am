@@ -1,6 +1,11 @@
 ACLOCAL_AMFLAGS = -I $(top_srcdir)/m4
 SUBDIRS = zscanner dnssec contrib/dnstap .
 
+.PHONY: check-compile
+check-compile:
+	$(MAKE) $(AM_MAKEFLAGS) -C zscanner $@
+	$(MAKE) $(AM_MAKEFLAGS) -C dnssec $@
+
 lib_LTLIBRARIES =				\
 	libknot.la
 noinst_LTLIBRARIES = 				\

@@ -1,5 +1,9 @@
 SUBDIRS = . utils tests
 
+.PHONY: check-compile
+check-compile:
+	$(MAKE) $(AM_MAKEFLAGS) -C tests $@
+
 AM_CPPFLAGS = \
 	-include $(top_builddir)/src/config.h \
 	-I$(srcdir)/shared \

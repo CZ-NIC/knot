@@ -1,8 +1,16 @@
 ACLOCAL_AMFLAGS = -I m4
 SUBDIRS = libtap src tests tests-fuzz samples doc
 
+.PHONY: singlehtml install-singlehtml
 singlehtml install-singlehtml:
 	$(MAKE) -C doc $@
+
+.PHONY: check-compile
+check-compile:
+	$(MAKE) $(AM_MAKEFLAGS) -C libtap $@
+	$(MAKE) $(AM_MAKEFLAGS) -C src $@
+	$(MAKE) $(AM_MAKEFLAGS) -C tests $@
+	$(MAKE) $(AM_MAKEFLAGS) -C tests-fuzz $@
 
 AM_DISTCHECK_CONFIGURE_FLAGS =
 
@@ -86,5 +94,6 @@ code-coverage-clean:
 	-find . -name "*.gcda" -o -name "*.gcov" -delete
 endif
 
-.PHONY: check-code-coverage code-coverage-initial code-coverage-capture code-coverage-html code-coverage-summary code-coverage-clean singlehtml install-singlehtml
+
+.PHONY: check-code-coverage code-coverage-initial code-coverage-capture code-coverage-html code-coverage-summary code-coverage-clean
 .NOTPARALLEL: clean
