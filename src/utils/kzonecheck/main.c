@@ -17,6 +17,7 @@
 #include <unistd.h>
 #include <getopt.h>
 #include <stdio.h>
+#include <libgen.h>
 
 #include "libknot/libknot.h"
 #include "utils/common/params.h"
