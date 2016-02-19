@@ -71,6 +71,7 @@ bool netrange_match(const struct sockaddr_storage *ss,
  * If a proper ACL rule is found and tsig.name is not empty,
  * tsig.secret is filled.
  *
+ * \param conf     Configuration.
  * \param acl      Pointer to ACL config multivalued identifier.
  * \param action   ACL action.
  * \param addr     IP address.
@@ -78,7 +79,7 @@ bool netrange_match(const struct sockaddr_storage *ss,
  *
  * \retval bool  if authenticated.
  */
-bool acl_allowed(conf_val_t *acl, acl_action_t action,
+bool acl_allowed(conf_t *conf, conf_val_t *acl, acl_action_t action,
                  const struct sockaddr_storage *addr,
                  knot_tsig_key_t *tsig);
 
