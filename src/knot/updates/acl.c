@@ -97,7 +97,7 @@ bool netrange_match(const struct sockaddr_storage *ss,
 	return true;
 }
 
-bool acl_allowed(conf_val_t *acl, acl_action_t action,
+bool acl_allowed(conf_t *conf, conf_val_t *acl, acl_action_t action,
                  const struct sockaddr_storage *addr,
                  knot_tsig_key_t *tsig)
 {
@@ -109,7 +109,7 @@ bool acl_allowed(conf_val_t *acl, acl_action_t action,
 		conf_val_t val;
 
 		/* Check if the address matches the current acl address list. */
-		val = conf_id_get(conf(), C_ACL, C_ADDR, acl);
+		val = conf_id_get(conf, C_ACL, C_ADDR, acl);
 		while (val.code == KNOT_EOK) {
 			struct sockaddr_storage ss, ss_max;
 			int prefix;
@@ -135,7 +135,7 @@ bool acl_allowed(conf_val_t *acl, acl_action_t action,
 		}
 
 		/* Check if the key matches the current acl key list. */
-		conf_val_t key_val = conf_id_get(conf(), C_ACL, C_KEY, acl);
+		conf_val_t key_val = conf_id_get(conf, C_ACL, C_KEY, acl);
 		while (key_val.code == KNOT_EOK) {
 			/* No key provided, but required. */
 			if (tsig->name == NULL) {
@@ -151,7 +151,7 @@ bool acl_allowed(conf_val_t *acl, acl_action_t action,
 			}
 
 			/* Compare key algorithms. */
-			conf_val_t alg_val = conf_id_get(conf(), C_KEY, C_ALG,
+			conf_val_t alg_val = conf_id_get(conf, C_KEY, C_ALG,
 			                                 &key_val);
 			if (conf_opt(&alg_val) != tsig->algorithm) {
 				conf_val_next(&key_val);
@@ -168,7 +168,7 @@ bool acl_allowed(conf_val_t *acl, acl_action_t action,
 
 		/* Check if the action is allowed. */
 		if (action != ACL_ACTION_NONE) {
-			val = conf_id_get(conf(), C_ACL, C_ACTION, acl);
+			val = conf_id_get(conf, C_ACL, C_ACTION, acl);
 			while (val.code == KNOT_EOK) {
 				if (conf_opt(&val) != action) {
 					conf_val_next(&val);
@@ -188,14 +188,14 @@ bool acl_allowed(conf_val_t *acl, acl_action_t action,
 		}
 
 		/* Check if denied. */
-		val = conf_id_get(conf(), C_ACL, C_DENY, acl);
+		val = conf_id_get(conf, C_ACL, C_DENY, acl);
 		if (conf_bool(&val)) {
 			return false;
 		}
 
 		/* Fill the output with tsig secret if provided. */
 		if (tsig->name != NULL) {
-			val = conf_id_get(conf(), C_KEY, C_SECRET, &key_val);
+			val = conf_id_get(conf, C_KEY, C_SECRET, &key_val);
 			tsig->secret.data = (uint8_t *)conf_bin(&val, &tsig->secret.size);
 		}
 
