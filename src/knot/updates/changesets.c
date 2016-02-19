@@ -25,22 +25,26 @@
 
 /* -------------------- Changeset iterator helpers -------------------------- */
 
-/*! \brief Adds RRSet to given zone. */
-static int add_rr_to_contents(zone_contents_t *z, knot_rrset_t **soa, const knot_rrset_t *rrset)
+static int handle_soa(knot_rrset_t **soa, const knot_rrset_t *rrset)
 {
-	if (rrset->type == KNOT_RRTYPE_SOA) {
-		if (*soa != NULL) {
-			knot_rrset_free(soa, NULL);
-		}
-		*soa = knot_rrset_copy(rrset, NULL);
-		if (*soa == NULL) {
-			return KNOT_ENOMEM;
-		}
+	assert(soa);
+	assert(rrset);
 
-		/* Do not add SOAs into actual contents. */
-		return KNOT_EOK;
+	if (*soa != NULL) {
+		knot_rrset_free(soa, NULL);
 	}
 
+	*soa = knot_rrset_copy(rrset, NULL);
+	if (*soa == NULL) {
+		return KNOT_ENOMEM;
+	}
+
+	return KNOT_EOK;
+}
+
+/*! \brief Adds RRSet to given zone. */
+static int add_rr_to_contents(zone_contents_t *z, const knot_rrset_t *rrset)
+{
 	zone_node_t *n = NULL;
 	int ret = zone_contents_add_rr(z, rrset, &n);
 	UNUSED(n);
@@ -254,6 +258,15 @@ size_t changeset_size(const changeset_t *ch)
 
 int changeset_add_rrset(changeset_t *ch, const knot_rrset_t *rrset, bool check_redundancy)
 {
+	if (!ch || !rrset) {
+		return KNOT_EINVAL;
+	}
+
+	if (rrset->type == KNOT_RRTYPE_SOA) {
+		/* Do not add SOAs into actual contents. */
+		return handle_soa(&ch->soa_to, rrset);
+	}
+
 	/* Check if there's any removal and remove that, then add this
 	 * addition anyway. Required to change TTLs. */
 	if (check_redundancy) {
@@ -266,7 +279,7 @@ int changeset_add_rrset(changeset_t *ch, const knot_rrset_t *rrset, bool check_r
 		need_to_insert(ch->remove, rrset);
 	}
 
-	int ret = add_rr_to_contents(ch->add, &ch->soa_to, rrset);
+	int ret = add_rr_to_contents(ch->add, rrset);
 
 	if (check_redundancy) {
 		knot_rrset_free((knot_rrset_t **)&rrset, NULL);
@@ -277,6 +290,15 @@ int changeset_add_rrset(changeset_t *ch, const knot_rrset_t *rrset, bool check_r
 
 int changeset_rem_rrset(changeset_t *ch, const knot_rrset_t *rrset, bool check_redundancy)
 {
+	if (!ch || !rrset) {
+		return KNOT_EINVAL;
+	}
+
+	if (rrset->type == KNOT_RRTYPE_SOA) {
+		/* Do not add SOAs into actual contents. */
+		return handle_soa(&ch->soa_from, rrset);
+	}
+
 	/* Check if there's any addition and remove that, then add this
 	 * removal anyway. */
 	if (check_redundancy) {
@@ -289,7 +311,7 @@ int changeset_rem_rrset(changeset_t *ch, const knot_rrset_t *rrset, bool check_r
 		need_to_insert(ch->add, rrset);
 	}
 
-	int ret = add_rr_to_contents(ch->remove, &ch->soa_from, rrset);
+	int ret = add_rr_to_contents(ch->remove, rrset);
 
 	if (check_redundancy) {
 		knot_rrset_free((knot_rrset_t **)&rrset, NULL);
