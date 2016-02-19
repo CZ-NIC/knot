@@ -520,23 +520,13 @@ static int process_rem_rr(const knot_rrset_t *rr,
 		return KNOT_EOK;
 	}
 
-	knot_rrset_t intersection;
-	knot_rrset_init(&intersection, to_modify.owner, to_modify.type,
-	                KNOT_CLASS_IN);
-	int ret = knot_rdataset_intersect(&to_modify.rrs, &rr->rrs,
-	                                  &intersection.rrs, NULL);
-	if (ret != KNOT_EOK) {
-		return ret;
-	}
-
-	if (knot_rrset_empty(&intersection)) {
-		// No such RR
+	knot_rdataset_t *rrs = node_rdataset(node, rr->type);
+	if (!knot_rdataset_member(rrs, rr->rrs.data, false)) {
+		// Node does not contain this RR
 		return KNOT_EOK;
 	}
-	assert(intersection.rrs.rr_count == 1);
-	ret = zone_update_remove(update, &intersection);
-	knot_rdataset_clear(&intersection.rrs, NULL);
-	return ret;
+
+	return rem_rr_to_chgset(rr, update);
 }
 
 /*!< \brief Removes RRSet from zone. */
