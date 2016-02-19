@@ -19,92 +19,33 @@
 #include <stdio.h>
 
 #include "libknot/libknot.h"
-#include "knot/zone/contents.h"
-#include "knot/zone/zonefile.h"
-#include "contrib/ucw/lists.h"
 #include "utils/common/params.h"
 #include "knot/common/log.h"
-
+#include "utils/kzonecheck/zone_check.h"
 
 #define PROGRAM_NAME "kzonecheck"
 
 static void print_help(void)
 {
-	printf("Usage: %s [parameters] <action> [action_args]\n"
+	printf("Usage: %s [parameters] <zonefile> \n"
 	       "\n"
 	       "Parameters:\n"
-	       " -o, --origin <zone origin>                  blabla\n"
-	       "                                       (default blabla)\n"
+	       " -o, --origin <zone_origin>           Zone name\n"
+	       "                                      (default filename or\n"
+	       "                                               filename without trailing .zone)\n"
 	       " -v, --verbose                        Enable debug output.\n"
 	       " -h, --help                           Print the program help.\n"
 	       " -V, --version                        Print the program version.\n"
-	       "\n"
-	       "Actions:\n",
+	       "\n",
 	       PROGRAM_NAME);
 }
-
-void print_errors(err_handler_t *handler)
-{
-	err_node_t *n;
-	WALK_LIST(n, handler->error_list) {
-		if (n->error > (int)ZC_ERR_GLUE_RECORD) {
-			fprintf(stderr, "zone: [%s], semantic check, unknown error\n",
-			        n->zone_name ? n->zone_name : "?");
-			return;
-		}
-
-		const char *errmsg = zonechecks_error_messages[-n->error];
-
-		fprintf(stderr ,"node: '%s' (%s%s%s)\n",
-		        n->name ? n->name : "?",
-		        errmsg ? errmsg : "unknown error",
-		        n->data ? " " : "",
-		        n->data ? n->data : "");
-	}
-}
-
-void  print_statistics(err_handler_t *handler)
-{
-	fprintf(stderr, "\nERRORS SUMMARY:\n\tCount\tError\n");
-	for(int i = ZC_ERR_UNKNOWN; i < ZC_ERR_LAST; ++i) {
-		if (handler->errors[-i] > 0) {
-			fprintf(stderr, "\t%u\t%s\n", handler->errors[-i], zonechecks_error_messages[-i]);
-		}
-	}
-}
-
-int zone_check(const char *zone_file, const knot_dname_t *zone_name)
-{
-	zloader_t zl;
-	int ret = zonefile_open(&zl, zone_file, zone_name, true);
-	if (ret != KNOT_EOK) {
-		return ret;
-	}
-
-	zl.creator->master = true;
-
-	zone_contents_t *contents;
-	contents = zonefile_load(&zl);
-
-	print_errors(&zl.err_handler);
-	print_statistics(&zl.err_handler);
-
-	zonefile_close(&zl);
-	if (contents == NULL) {
-		return KNOT_ERROR;
-	}
-
-	zone_contents_deep_free(&contents);
-
-	return KNOT_EOK;
-}
-
 
 int main(int argc, char *argv[])
 {
 	char *filename;
-	char *zonename = "";
+	char *zonename = NULL;
 	bool verbose = false;
+	FILE *outfile = stdout;
 
 	/* Long options. */
 	struct option opts[] = {
@@ -139,17 +80,26 @@ int main(int argc, char *argv[])
 
 	/* Check if there's at least one remaining non-option. */
 	if (optind >= argc) {
-		fprintf(stderr, "Expected argument after options\n");
+		fprintf(outfile, "Expected argument (zone file) after options\n");
 		print_help();
 		return EXIT_FAILURE;
 	}
+
 	filename = argv[optind];
 
+	if (zonename == NULL) {
+		/* Get zone name from file name */
+		const char *ext = ".zone";
+		zonename = basename(filename);
+		if (strcmp(zonename+strlen(zonename)-strlen(ext), ext) == 0) {
+			zonename = strndup(zonename, strlen(zonename)-strlen(ext));
+		}
+	}
 
-	/* Set up simplified logging just to stdout/stderr. */
+	/* Set up simplified logging just to stdout */
 	log_init();
-	log_levels_set(LOGT_STDOUT, LOG_ANY, LOG_MASK(LOG_INFO) | LOG_MASK(LOG_NOTICE));
-	log_levels_set(LOGT_STDERR, LOG_ANY, LOG_UPTO(LOG_WARNING));
+	log_levels_set(LOGT_STDOUT, LOG_ANY, LOG_MASK(LOG_ERR));
+	log_levels_set(LOGT_STDERR, LOG_ANY, 0);
 	log_levels_set(LOGT_SYSLOG, LOG_ANY, 0);
 	log_flag_set(LOG_FNO_TIMESTAMP | LOG_FNO_INFO);
 	if (verbose) {
@@ -157,12 +107,10 @@ int main(int argc, char *argv[])
 	}
 
 	knot_dname_t *dname = knot_dname_from_str_alloc(zonename);
-
-	int ret = zone_check(filename, dname);
-
-	printf("%d", ret);
-
+	int ret = zone_check(filename, dname, outfile);
 	free(dname);
 
-	return ret;
+	log_close();
+
+	return ret == KNOT_EOK ? EXIT_SUCCESS : EXIT_FAILURE;
 }

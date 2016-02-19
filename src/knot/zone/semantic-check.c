@@ -105,17 +105,44 @@ const char *zonechecks_error_messages[(-ZC_ERR_UNKNOWN) + 1] = {
 	[-ZC_ERR_DNAME_WILDCARD_SELF] =
 	"DNAME, wildcard pointing to itself",
 
-	/* ^
-	   | Important errors (to be logged on first occurrence and counted) */
-
-	/* Below are errors of lesser importance, to be counted unless
-	   specified otherwise */
-
 	[-ZC_ERR_GLUE_NODE] =
 	"GLUE, node with glue record missing",
 	[-ZC_ERR_GLUE_RECORD] =
 	"GLUE, record with glue address missing",
 };
+
+typedef struct semchecks_data {
+	zone_contents_t *zone;
+	err_handler_t *handler;
+	bool fatal_error;
+	const zone_node_t *next_nsec;
+	enum check_levels level;
+} semchecks_data_t;
+
+static void check_cname_multiple(const zone_node_t *node, semchecks_data_t *data);
+static void check_dname(const zone_node_t *node, semchecks_data_t *data);
+static void check_delegation(const zone_node_t *node, semchecks_data_t *data);
+static void check_nsec(const zone_node_t *node, semchecks_data_t *data);
+static void check_nsec3(const zone_node_t *node, semchecks_data_t *data);
+static void check_rrsig(const zone_node_t *node, semchecks_data_t *data);
+static void check_signed_rrsig(const zone_node_t *node, semchecks_data_t *data);
+
+struct check_function {
+	void (*function)(const zone_node_t *, semchecks_data_t *);
+	enum check_levels level;
+};
+
+const struct check_function check_functions[] = {
+	{check_cname_multiple, SEM_CHECK_MANDATORY},
+	{check_dname, SEM_CHECK_MANDATORY},
+	{check_delegation, SEM_CHECK_OPTIONAL},
+	{check_rrsig, SEM_CHECK_NSEC | SEM_CHECK_NSEC3},
+	{check_signed_rrsig, SEM_CHECK_NSEC | SEM_CHECK_NSEC3},
+	{check_nsec, SEM_CHECK_NSEC},
+	{check_nsec3, SEM_CHECK_NSEC3},
+};
+
+const int check_functions_len = sizeof(check_functions)/sizeof(struct check_function);
 
 void err_handler_init(err_handler_t *h)
 {
@@ -380,10 +407,8 @@ static int check_rrsig_in_rrset(err_handler_t *handler,
 	ret = knot_synth_rrsig(rrset->type,
 	                           node_rdataset(node, KNOT_RRTYPE_RRSIG),
 	                           &rrsigs, NULL);
-	if (ret != KNOT_EOK) {
-		if (ret != KNOT_ENOENT) {
-			return ret;
-		}
+	if (ret != KNOT_EOK && ret != KNOT_ENOENT) {
+		return ret;
 	}
 
 	if (ret == KNOT_ENOENT) {
@@ -556,6 +581,7 @@ static void check_rrsig(const zone_node_t *node, semchecks_data_t *data)
 
 	bool deleg = node->flags & NODE_FLAGS_DELEG;
 
+	knot_rrset_t dnskey_rrset = node_rrset(data->zone->apex, KNOT_RRTYPE_DNSKEY);
 	int rrset_count = node->rrset_count;
 	for (int i = 0; i < rrset_count; i++) {
 		knot_rrset_t rrset = node_rrset_at(node, i);
@@ -566,7 +592,6 @@ static void check_rrsig(const zone_node_t *node, semchecks_data_t *data)
 			continue;
 		}
 
-		knot_rrset_t dnskey_rrset = node_rrset(data->zone->apex, KNOT_RRTYPE_DNSKEY);
 		check_rrsig_in_rrset(data->handler, data->zone, node,
 		                     &rrset, &dnskey_rrset);
 	}
@@ -652,7 +677,7 @@ static void check_nsec(const zone_node_t *node,
 /*!
  * \brief Run semantic checks for node with DNSSEC-related types.
  */
-static void check_nsec3(zone_node_t *node, semchecks_data_t *data)
+static void check_nsec3(const zone_node_t *node, semchecks_data_t *data)
 {
 	assert(node);
 	bool auth = !(node->flags & NODE_FLAGS_NONAUTH);
@@ -919,24 +944,10 @@ static int do_checks_in_tree(zone_node_t *node, void *data)
 {
 	struct semchecks_data *s_data = (semchecks_data_t *)data;
 
-	// mandatory checks
-	check_cname_multiple(node, s_data);
-	check_dname(node, s_data);
-
-	if (s_data->level & SEM_CHECK_OPTIONAL) {
-		check_delegation(node, s_data);
-	}
-
-	if (s_data->level & SEM_CHECK_NSEC) {
-		check_signed_rrsig(node, s_data);
-		check_rrsig(node, s_data);
-		check_nsec(node, s_data);
-	}
-
-	if(s_data->level & SEM_CHECK_NSEC3) {
-		check_signed_rrsig(node, s_data);
-		check_rrsig(node, s_data);
-		check_nsec3(node, s_data);
+	for (int i=0; i < check_functions_len; ++i) {
+		if (check_functions[i].level & s_data->level) {
+			check_functions[i].function(node, s_data);
+		}
 	}
 
 	return KNOT_EOK;

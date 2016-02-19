@@ -122,15 +122,6 @@ typedef struct err_node {
 	char *data;
 } err_node_t;
 
-
-typedef struct semchecks_data {
-	zone_contents_t *zone;
-	err_handler_t *handler;
-	bool fatal_error;
-	const zone_node_t *next_nsec;
-	enum check_levels level;
-} semchecks_data_t;
-
 /*!
  * \brief Inits semantic error handler. No optional events will be logged.
  *
@@ -146,8 +137,8 @@ void err_handler_init(err_handler_t *err_handler);
 void err_handler_deinit(err_handler_t *h);
 
 /*!
- * \brief Called when error has been encountered in node. Will either log error
- *        or print it, depending on handler's options.
+ * \brief Called when error has been encountered in node. Will save error to
+ *        list for future possibility to log it.
  *
  * \param handler Error handler.
  * \param zone Zone content which is being checked.
@@ -156,8 +147,7 @@ void err_handler_deinit(err_handler_t *h);
  * \param data Additional info in string.
  *
  * \retval KNOT_EOK on success.
- * \retval ZC_ERR_UNKNOWN if unknown error.
- * \retval ZC_ERR_ALLOC if memory error.
+ * \retval KNOT_ENOMEM if memory error.
  */
 int err_handler_handle_error(err_handler_t *handler,
                              const zone_contents_t *zone,
@@ -169,9 +159,10 @@ int err_handler_handle_error(err_handler_t *handler,
  *        calls function that does the actual work.
  *
  * \param zone Zone to be searched / checked
- * \param check_level Level of semantic checks.
+ * \param optional To do also optional check
  * \param handler Semantic error handler.
- * \param last_node Last checked node, that is a part of NSEC(3) chain.
+ * \param first_nsec3_node
+ * \param last_nsec3_node
  */
 int zone_do_sem_checks(zone_contents_t *zone, bool optional,
                        err_handler_t *handler, zone_node_t *first_nsec3_node,

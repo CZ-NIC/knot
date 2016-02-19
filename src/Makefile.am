@@ -407,7 +407,9 @@ knotc_LDADD = libknotd.la libknotus.la $(libedit_LIBS)
 knot1to2_LDADD = libcontrib.la
 
 kzonecheck_SOURCES = \
-	utils/kzonecheck/main.c
+	utils/kzonecheck/main.c \
+	utils/kzonecheck/zone_check.c \
+	utils/kzonecheck/zone_check.h
 
 kzonecheck_LDADD = libknotd.la
 
