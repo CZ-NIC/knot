@@ -326,10 +326,10 @@ static void forward_requests(conf_t *conf, zone_t *zone, list_t *requests)
 	}
 }
 
-static bool update_tsig_check(struct query_data *qdata, struct knot_request *req)
+static bool update_tsig_check(conf_t *conf, struct query_data *qdata, struct knot_request *req)
 {
 	// Check that ACL is still valid.
-	if (!process_query_acl_check(qdata->zone->name, ACL_ACTION_UPDATE, qdata)) {
+	if (!process_query_acl_check(conf, qdata->zone->name, ACL_ACTION_UPDATE, qdata)) {
 		UPDATE_LOG(LOG_WARNING, "ACL check failed");
 		knot_wire_set_rcode(req->resp->wire, qdata->rcode);
 		return false;
@@ -419,7 +419,7 @@ static int init_update_responses(conf_t *conf, const zone_t *zone, list_t *updat
 		struct query_data qdata;
 		init_qdata_from_request(&qdata, zone, req, &param);
 
-		if (!update_tsig_check(&qdata, req)) {
+		if (!update_tsig_check(conf, &qdata, req)) {
 			// ACL/TSIG check failed, send response.
 			send_update_response(conf, zone, req);
 			// Remove this request from processing list.
