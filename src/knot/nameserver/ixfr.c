@@ -377,8 +377,11 @@ static int ixfrin_finalize(struct answer_data *adata)
 	struct ixfr_proc *ixfr = adata->ext;
 	assert(ixfr->state == IXFR_DONE);
 
+	apply_ctx_t a_ctx = { { 0 } };
+	apply_init_ctx(&a_ctx);
+
 	zone_contents_t *new_contents;
-	int ret = apply_changesets(ixfr->zone, &ixfr->changesets, &new_contents);
+	int ret = apply_changesets(&a_ctx, ixfr->zone, &ixfr->changesets, &new_contents);
 	if (ret != KNOT_EOK) {
 		IXFRIN_LOG(LOG_WARNING, "failed to apply changes to zone (%s)",
 		           knot_strerror(ret));
@@ -390,7 +393,7 @@ static int ixfrin_finalize(struct answer_data *adata)
 	if (ret != KNOT_EOK) {
 		IXFRIN_LOG(LOG_WARNING, "failed to write changes to journal (%s)",
 		           knot_strerror(ret));
-		updates_rollback(&ixfr->changesets);
+		update_rollback(&a_ctx);
 		update_free_zone(&new_contents);
 		return ret;
 	}
@@ -410,7 +413,7 @@ static int ixfrin_finalize(struct answer_data *adata)
 	           ixfr->proc.npkts, ixfr->proc.nbytes);
 
 	update_free_zone(&old_contents);
-	updates_cleanup(&ixfr->changesets);
+	update_cleanup(&a_ctx);
 
 	return KNOT_EOK;
 }
@@ -474,13 +477,13 @@ static int solve_soa_add(const knot_rrset_t *rr, changeset_t *change, knot_mm_t 
 /*! \brief Adds single RR into remove section of changeset. */
 static int solve_del(const knot_rrset_t *rr, changeset_t *change, knot_mm_t *mm)
 {
-	return changeset_rem_rrset(change, rr);
+	return changeset_rem_rrset(change, rr, 0);
 }
 
 /*! \brief Adds single RR into add section of changeset. */
 static int solve_add(const knot_rrset_t *rr, changeset_t *change, knot_mm_t *mm)
 {
-	return changeset_add_rrset(change, rr);
+	return changeset_add_rrset(change, rr, 0);
 }
 
 /*! \brief Decides what the next IXFR-in state should be. */

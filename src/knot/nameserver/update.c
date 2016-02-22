@@ -15,7 +15,6 @@
 */
 
 #include <sys/socket.h>
-#include <urcu.h>
 
 #include "dnssec/random.h"
 #include "knot/common/log.h"
@@ -150,8 +149,7 @@ static int process_normal(conf_t *conf, zone_t *zone, list_t *requests)
 	}
 
 	// Apply changes.
-	zone_contents_t *new_contents = NULL;
-	ret = zone_update_commit(conf, &up, &new_contents);
+	ret = zone_update_commit(conf, &up);
 	if (ret != KNOT_EOK) {
 		if (ret == KNOT_ETTL) {
 			set_rcodes(requests, KNOT_RCODE_REFUSED);
@@ -159,18 +157,6 @@ static int process_normal(conf_t *conf, zone_t *zone, list_t *requests)
 			set_rcodes(requests, KNOT_RCODE_SERVFAIL);
 		}
 		return ret;
-	}
-
-	/* If there is anything to change */
-	if (new_contents) {
-		/* Switch zone contents. */
-		zone_contents_t *old_contents = zone_switch_contents(zone, new_contents);
-
-		/* Sync RCU. */
-		synchronize_rcu();
-
-		/* Clear obsolete zone contents. */
-		update_free_zone(&old_contents);
 	}
 
 	zone_update_clear(&up);

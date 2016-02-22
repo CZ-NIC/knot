@@ -24,6 +24,7 @@
 
 #pragma once
 
+#include "knot/updates/apply.h"
 #include "knot/conf/conf.h"
 #include "knot/updates/changesets.h"
 #include "knot/zone/contents.h"
@@ -35,6 +36,7 @@ typedef struct {
 	zone_t *zone;                /*!< Zone being updated. */
 	zone_contents_t *new_cont;   /*!< New zone contents for full updates. */
 	changeset_t change;          /*!< Changes we want to apply. */
+	apply_ctx_t a_ctx;           /*!< Context for applying changesets. */
 	uint8_t flags;               /*!< Zone update flags. */
 	knot_mm_t mm;                /*!< Memory context used for intermediate nodes. */
 } zone_update_t;
@@ -140,11 +142,10 @@ int zone_update_remove(zone_update_t *update, const knot_rrset_t *rrset);
  *
  * \param conf          Configuration.
  * \param update        Zone update.
- * \param contents_out  Where to store the resulting zone contents pointer.
  *
  * \return KNOT_E*
  */
-int zone_update_commit(conf_t *conf, zone_update_t *update, zone_contents_t **contents_out);
+int zone_update_commit(conf_t *conf, zone_update_t *update);
 
 /*!
  * \brief Returns bool whether there are any changes at all.

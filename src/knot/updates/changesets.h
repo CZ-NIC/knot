@@ -28,6 +28,12 @@
 #include "knot/zone/contents.h"
 #include "contrib/ucw/lists.h"
 
+/*! \brief Changeset addition/removal flags */
+enum {
+	CHANGESET_NONE = 0,
+	CHANGESET_CHECK = 1 << 0, /*! Perform redundancy check on additions/removals */
+};
+
 /*! \brief One zone change, from 'soa_from' to 'soa_to'. */
 typedef struct {
 	node_t n;                 /*!< List node. */
@@ -35,8 +41,6 @@ typedef struct {
 	knot_rrset_t *soa_to;     /*!< Destination SOA. */
 	zone_contents_t *add;     /*!< Change additions. */
 	zone_contents_t *remove;  /*!< Change removals. */
-	list_t old_data;          /*!< Old data, to be freed after successful update. */
-	list_t new_data;          /*!< New data, to be freed after failed update. */
 	size_t size;              /*!< Size of serialized changeset. */
 	uint8_t *data;            /*!< Serialized changeset. */
 } changeset_t;
@@ -89,22 +93,24 @@ size_t changeset_size(const changeset_t *ch);
 /*!
  * \brief Add RRSet to 'add' part of changeset.
  *
- * \param ch     Changeset to add RRSet into.
- * \param rrset  RRSet to be added.
+ * \param ch                Changeset to add RRSet into.
+ * \param rrset             RRSet to be added.
+ * \param check_redundancy  Check the added RR for redundancy already in the changeset.
  *
  * \return KNOT_E*
  */
-int changeset_add_rrset(changeset_t *ch, const knot_rrset_t *rrset);
+int changeset_add_rrset(changeset_t *ch, const knot_rrset_t *rrset, unsigned flags);
 
 /*!
  * \brief Add RRSet to 'remove' part of changeset.
  *
- * \param ch     Changeset to add RRSet into.
- * \param rrset  RRSet to be added.
+ * \param ch                Changeset to add RRSet into.
+ * \param rrset             RRSet to be added.
+ * \param check_redundancy  Check the added RR for redundancy already in the changeset.
  *
  * \return KNOT_E*
  */
-int changeset_rem_rrset(changeset_t *ch, const knot_rrset_t *rrset);
+int changeset_rem_rrset(changeset_t *ch, const knot_rrset_t *rrset, unsigned flags);
 
 /*!
  * \brief Merges two changesets together. Legacy, to be removed with new zone API.

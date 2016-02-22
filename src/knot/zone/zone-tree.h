@@ -165,6 +165,16 @@ int zone_tree_remove(zone_tree_t *tree,
                      zone_node_t **removed);
 
 /*!
+ * \brief Delete a node that has no RRSets and no children.
+ *
+ * \param tree      The tree to remove from.
+ * \param node      The node to remove.
+ *
+ * \return KNOT_E*.
+ */
+int zone_tree_delete_empty_node(zone_tree_t *tree, zone_node_t *node);
+
+/*!
  * \brief Applies the given function to each node in the zone.
  *
  * This function uses in-order depth-first forward traversal, i.e. the function

@@ -16,12 +16,13 @@
 
 #include "knot/common/log.h"
 #include "knot/dnssec/zone-events.h"
-#include "knot/updates/apply.h"
 #include "knot/updates/zone-update.h"
 #include "knot/zone/serial.h"
 #include "contrib/mempattern.h"
 #include "contrib/ucw/lists.h"
 #include "contrib/ucw/mempool.h"
+
+#include <urcu.h>
 
 static int add_to_node(zone_node_t *node, const zone_node_t *add_node,
                        knot_mm_t *mm)
@@ -120,11 +121,14 @@ static zone_node_t *node_deep_copy(const zone_node_t *node, knot_mm_t *mm)
 
 static int init_incremental(zone_update_t *update, zone_t *zone)
 {
+	assert(zone->contents);
+
 	int ret = changeset_init(&update->change, zone->name);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
-	assert(zone->contents);
+
+	apply_init_ctx(&update->a_ctx);
 
 	// Copy base SOA RR.
 	update->change.soa_from =
@@ -252,8 +256,11 @@ const knot_rdataset_t *zone_update_to(zone_update_t *update)
 void zone_update_clear(zone_update_t *update)
 {
 	if (update) {
-		update_cleanup(&update->change);
-		changeset_clear(&update->change);
+		if (update->flags & UPDATE_INCREMENTAL) {
+			/* Revert any changes on error, do nothing on success. */
+			update_rollback(&update->a_ctx);
+			changeset_clear(&update->change);
+		}
 		mp_delete(update->mm.ctx);
 		memset(update, 0, sizeof(*update));
 	}
@@ -262,7 +269,7 @@ void zone_update_clear(zone_update_t *update)
 int zone_update_add(zone_update_t *update, const knot_rrset_t *rrset)
 {
 	if (update->flags & UPDATE_INCREMENTAL) {
-		return changeset_add_rrset(&update->change, rrset);
+		return changeset_add_rrset(&update->change, rrset, CHANGESET_CHECK);
 	} else if (update->flags & UPDATE_FULL) {
 		zone_node_t *n = NULL;
 		return zone_contents_add_rr(update->new_cont, rrset, &n);
@@ -274,7 +281,7 @@ int zone_update_add(zone_update_t *update, const knot_rrset_t *rrset)
 int zone_update_remove(zone_update_t *update, const knot_rrset_t *rrset)
 {
 	if (update->flags & UPDATE_INCREMENTAL) {
-		return changeset_rem_rrset(&update->change, rrset);
+		return changeset_rem_rrset(&update->change, rrset, CHANGESET_CHECK);
 	} else {
 		return KNOT_ENOTSUP;
 	}
@@ -334,7 +341,7 @@ static int sign_update(zone_update_t *update,
 	}
 
 	// Apply DNSSEC changeset
-	ret = apply_changeset_directly(new_contents, &sec_ch);
+	ret = apply_changeset_directly(&update->a_ctx, new_contents, &sec_ch);
 	if (ret != KNOT_EOK) {
 		changeset_clear(&sec_ch);
 		return ret;
@@ -343,7 +350,7 @@ static int sign_update(zone_update_t *update,
 	// Merge changesets
 	ret = changeset_merge(&update->change, &sec_ch);
 	if (ret != KNOT_EOK) {
-		update_rollback(&sec_ch);
+		update_rollback(&update->a_ctx);
 		changeset_clear(&sec_ch);
 		return ret;
 	}
@@ -407,7 +414,7 @@ static int commit_incremental(conf_t *conf, zone_update_t *update, zone_contents
 
 	// Apply changes.
 	zone_contents_t *new_contents = NULL;
-	ret = apply_changeset(update->zone, &update->change, &new_contents);
+	ret = apply_changeset(&update->a_ctx, update->zone, &update->change, &new_contents);
 	if (ret != KNOT_EOK) {
 		changeset_clear(&update->change);
 		return ret;
@@ -422,7 +429,7 @@ static int commit_incremental(conf_t *conf, zone_update_t *update, zone_contents
 	if (dnssec_enable) {
 		ret = sign_update(update, new_contents);
 		if (ret != KNOT_EOK) {
-			update_rollback(&update->change);
+			update_rollback(&update->a_ctx);
 			update_free_zone(&new_contents);
 			changeset_clear(&update->change);
 			return ret;
@@ -432,7 +439,7 @@ static int commit_incremental(conf_t *conf, zone_update_t *update, zone_contents
 	// Write changes to journal if all went well. (DNSSEC merged)
 	ret = zone_change_store(conf, update->zone, &update->change);
 	if (ret != KNOT_EOK) {
-		update_rollback(&update->change);
+		update_rollback(&update->a_ctx);
 		update_free_zone(&new_contents);
 		return ret;
 	}
@@ -442,13 +449,39 @@ static int commit_incremental(conf_t *conf, zone_update_t *update, zone_contents
 	return KNOT_EOK;
 }
 
-int zone_update_commit(conf_t *conf, zone_update_t *update, zone_contents_t **contents_out)
+int zone_update_commit(conf_t *conf, zone_update_t *update)
 {
-	if (update->flags & UPDATE_INCREMENTAL) {
-		return commit_incremental(conf, update, contents_out);
+	if (!conf || !update) {
+		return KNOT_EINVAL;
 	}
 
-	return KNOT_ENOTSUP;
+	int ret = KNOT_EOK;
+	zone_contents_t *new_contents = NULL;
+	if (update->flags & UPDATE_INCREMENTAL) {
+		ret = commit_incremental(conf, update, &new_contents);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+	} else {
+		return KNOT_ENOTSUP;
+	}
+
+	/* If there is anything to change */
+	if (new_contents) {
+		/* Switch zone contents. */
+		zone_contents_t *old_contents = zone_switch_contents(update->zone, new_contents);
+
+		/* Sync RCU. */
+		synchronize_rcu();
+
+		if (update->flags & UPDATE_INCREMENTAL) {
+			update_cleanup(&update->a_ctx);
+			update_free_zone(&old_contents);
+			changeset_clear(&update->change);
+		}
+	}
+
+	return KNOT_EOK;
 }
 
 bool zone_update_no_change(zone_update_t *up)

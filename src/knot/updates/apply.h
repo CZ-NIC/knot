@@ -28,6 +28,20 @@
 #include "knot/updates/changesets.h"
 #include "contrib/ucw/lists.h"
 
+struct apply_ctx {
+	list_t old_data;          /*!< Old data, to be freed after successful update. */
+	list_t new_data;          /*!< New data, to be freed after failed update. */
+};
+
+typedef struct apply_ctx apply_ctx_t;
+
+/*!
+ * \brief Initialize a new context structure.
+ *
+ * \param ctx  Context to be initialized.
+ */
+void apply_init_ctx(apply_ctx_t *ctx);
+
 /*!
  * \brief Applies changesets *with* zone shallow copy.
  *
@@ -37,7 +51,7 @@
  *
  * \return KNOT_E*
  */
-int apply_changesets(zone_t *zone, list_t *chsets,
+int apply_changesets(apply_ctx_t *ctx, zone_t *zone, list_t *chsets,
                      zone_contents_t **new_contents);
 
 /*!
@@ -49,7 +63,7 @@ int apply_changesets(zone_t *zone, list_t *chsets,
  *
  * \return KNOT_E*
  */
-int apply_changeset(zone_t *zone, changeset_t *ch,
+int apply_changeset(apply_ctx_t *ctx, zone_t *zone, changeset_t *ch,
                     zone_contents_t **new_contents);
 
 /*!
@@ -60,7 +74,7 @@ int apply_changeset(zone_t *zone, changeset_t *ch,
  *
  * \return KNOT_E*
  */
-int apply_changesets_directly(zone_contents_t *contents, list_t *chsets);
+int apply_changesets_directly(apply_ctx_t *ctx, zone_contents_t *contents, list_t *chsets);
 
 /*!
  * \brief Applies changeset directly to the zone, without copying it.
@@ -70,35 +84,21 @@ int apply_changesets_directly(zone_contents_t *contents, list_t *chsets);
  *
  * \return KNOT_E*
  */
-int apply_changeset_directly(zone_contents_t *contents, changeset_t *ch);
-
-/*!
- * \brief Cleanups successful zone updates.
-
- * \param chgs  Changesets used to create the update.
- */
-void updates_cleanup(list_t *chgs);
+int apply_changeset_directly(apply_ctx_t *ctx, zone_contents_t *contents, changeset_t *ch);
 
 /*!
  * \brief Cleanups successful zone update.
 
  * \param chgs  Changeset used to create the update.
  */
-void update_cleanup(changeset_t *change);
-
-/*!
- * \brief Rollbacks failed zone updates.
- *
- * \param chgs   Changesets used to create the update.
- */
-void updates_rollback(list_t *chgs);
+void update_cleanup(apply_ctx_t *ctx);
 
 /*!
  * \brief Rollbacks failed zone update.
  *
  * \param chgs   Changeset. used to create the update.
  */
-void update_rollback(changeset_t *change);
+void update_rollback(apply_ctx_t *ctx);
 
 /*!
  * \brief Shallow frees zone contents - either shallow copy after failed update

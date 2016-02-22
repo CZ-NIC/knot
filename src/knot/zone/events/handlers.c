@@ -660,8 +660,11 @@ int event_dnssec(conf_t *conf, zone_t *zone)
 	bool zone_changed = !changeset_empty(&ch);
 	if (zone_changed) {
 		/* Apply change. */
+		apply_ctx_t a_ctx = { { 0 } };
+		apply_init_ctx(&a_ctx);
+
 		zone_contents_t *new_contents = NULL;
-		int ret = apply_changeset(zone, &ch, &new_contents);
+		int ret = apply_changeset(&a_ctx, zone, &ch, &new_contents);
 		if (ret != KNOT_EOK) {
 			log_zone_error(zone->name, "DNSSEC, failed to sign zone (%s)",
 				       knot_strerror(ret));
@@ -673,7 +676,7 @@ int event_dnssec(conf_t *conf, zone_t *zone)
 		if (ret != KNOT_EOK) {
 			log_zone_error(zone->name, "DNSSEC, failed to sign zone (%s)",
 				       knot_strerror(ret));
-			update_rollback(&ch);
+			update_rollback(&a_ctx);
 			update_free_zone(&new_contents);
 			goto done;
 		}
@@ -684,7 +687,7 @@ int event_dnssec(conf_t *conf, zone_t *zone)
 		synchronize_rcu();
 		update_free_zone(&old_contents);
 
-		update_cleanup(&ch);
+		update_cleanup(&a_ctx);
 	}
 
 	// Schedule dependent events.

@@ -145,7 +145,7 @@ static int connect_nsec_nodes(zone_node_t *a, zone_node_t *b,
 	}
 
 	// Add new NSEC to the changeset (no matter if old was removed)
-	ret = changeset_add_rrset(data->changeset, &new_nsec);
+	ret = changeset_add_rrset(data->changeset, &new_nsec, 0);
 	knot_rdataset_clear(&new_nsec.rrs, NULL);
 	return ret;
 }
@@ -223,7 +223,7 @@ int knot_nsec_changeset_remove(const zone_node_t *n,
 	}
 	if (!knot_rrset_empty(&nsec)) {
 		// update changeset
-		result = changeset_rem_rrset(changeset, &nsec);
+		result = changeset_rem_rrset(changeset, &nsec, 0);
 		if (result != KNOT_EOK) {
 			return result;
 		}
@@ -251,7 +251,7 @@ int knot_nsec_changeset_remove(const zone_node_t *n,
 		}
 
 		// store RRSIG
-		result = changeset_rem_rrset(changeset, &synth_rrsigs);
+		result = changeset_rem_rrset(changeset, &synth_rrsigs, 0);
 		knot_rdataset_clear(&synth_rrsigs.rrs, NULL);
 	}
 

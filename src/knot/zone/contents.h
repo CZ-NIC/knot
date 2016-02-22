@@ -47,9 +47,35 @@ typedef struct zone_contents {
  */
 typedef int (*zone_contents_apply_cb_t)(zone_node_t *node, void *data);
 
+/*!
+ * \brief Allocate and create new zone contents.
+ *
+ * \param apex_name  Name of the root node.
+ *
+ * \return New contents or NULL on error.
+ */
 zone_contents_t *zone_contents_new(const knot_dname_t *apex_name);
 
+/*!
+ * \brief Add an RR to contents.
+ *
+ * \param z   Contents to add to.
+ * \param rr  The RR to add.
+ * \param n   Node to which the RR has been added to on success, unchanged otherwise.
+ *
+ * \return KNOT_E*
+ */
 int zone_contents_add_rr(zone_contents_t *z, const knot_rrset_t *rr, zone_node_t **n);
+
+/*!
+ * \brief Get the node with this RR (the RR's owner).
+ *
+ * \param zone   Contents to add to.
+ * \param rrset  The RR to add.
+ *
+ * \return The searched node if it exists, a new added empty node or NULL on error.
+ */
+zone_node_t *zone_contents_get_node_for_rr(zone_contents_t *zone, const knot_rrset_t *rrset);
 
 /*!
  * \brief Tries to find a node with the specified name in the zone.
@@ -62,8 +88,9 @@ int zone_contents_add_rr(zone_contents_t *z, const knot_rrset_t *rr, zone_node_t
  *
  * \return Corresponding node if found, NULL otherwise.
  */
-const zone_node_t *zone_contents_find_node(const zone_contents_t *contents,
-                                           const knot_dname_t *name);
+const zone_node_t *zone_contents_find_node(const zone_contents_t *contents, const knot_dname_t *name);
+
+zone_node_t *zone_contents_find_node_for_rr(zone_contents_t *contents, const knot_rrset_t *rrset);
 
 /*!
  * \brief Tries to find a node by owner in the zone contents.
@@ -244,8 +271,18 @@ int zone_contents_nsec3_apply_inorder(zone_contents_t *zone,
  */
 int zone_contents_shallow_copy(const zone_contents_t *from, zone_contents_t **to);
 
+/*!
+ * \brief Deallocate directly owned data of zone contents.
+ *
+ * \param contents  Zone contents to free.
+ */
 void zone_contents_free(zone_contents_t **contents);
 
+/*!
+ * \brief Deallocate node RRSets inside the trees, then call zone_contents_free.
+ *
+ * \param contents  Zone contents to free.
+ */
 void zone_contents_deep_free(zone_contents_t **contents);
 
 /*!
@@ -266,9 +303,5 @@ bool zone_contents_is_signed(const zone_contents_t *zone);
  * \brief Return true if zone is empty.
  */
 bool zone_contents_is_empty(const zone_contents_t *zone);
-
-zone_node_t *zone_contents_get_node_for_rr(zone_contents_t *zone, const knot_rrset_t *rrset);
-
-zone_node_t *zone_contents_find_node_for_rr(zone_contents_t *zone, const knot_rrset_t *rrset);
 
 /*! @} */

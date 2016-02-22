@@ -643,17 +643,23 @@ static int recreate_nsec3_tree(const zone_contents_t *z, zone_contents_t *out)
 	return KNOT_EOK;
 }
 
-static bool rrset_is_nsec3rel(const knot_rrset_t *rr)
+static zone_node_t *get_previous(const zone_contents_t *zone,
+                                 const knot_dname_t *name)
 {
-	if (rr == NULL) {
-		return false;
+	if (zone == NULL || name == NULL) {
+		return NULL;
 	}
 
-	/* Is NSEC3 or non-empty RRSIG covering NSEC3. */
-	return ((rr->type == KNOT_RRTYPE_NSEC3) ||
-	        (rr->type == KNOT_RRTYPE_RRSIG
-	         && knot_rrsig_type_covered(&rr->rrs, 0) == KNOT_RRTYPE_NSEC3));
+	zone_node_t *found = NULL, *prev = NULL;
+
+	int exact_match = find_in_tree(zone->nodes, name, &found, &prev);
+	assert(exact_match >= 0);
+	assert(prev != NULL);
+
+	return prev;
 }
+
+// Public API
 
 int zone_contents_add_rr(zone_contents_t *z, const knot_rrset_t *rr,
                          zone_node_t **n)
@@ -662,13 +668,46 @@ int zone_contents_add_rr(zone_contents_t *z, const knot_rrset_t *rr,
 		return KNOT_EINVAL;
 	}
 
-	return insert_rr(z, rr, n, rrset_is_nsec3rel(rr));
+	return insert_rr(z, rr, n, knot_rrset_is_nsec3rel(rr));
 }
 
-const zone_node_t *zone_contents_find_node(const zone_contents_t *zone,
-                                           const knot_dname_t *name)
+zone_node_t *zone_contents_get_node_for_rr(zone_contents_t *zone, const knot_rrset_t *rrset)
+{
+	if (zone == NULL || rrset == NULL) {
+		return NULL;
+	}
+
+	const bool nsec3 = knot_rrset_is_nsec3rel(rrset);
+	zone_node_t *node = nsec3 ? get_nsec3_node(zone, rrset->owner) :
+	                            get_node(zone, rrset->owner);
+	if (node == NULL) {
+		node = node_new(rrset->owner, NULL);
+		int ret = nsec3 ? add_nsec3_node(zone, node) : add_node(zone, node, true);
+		if (ret != KNOT_EOK) {
+			node_free(&node, NULL);
+			return NULL;
+		}
+
+		return node;
+	} else {
+		return node;
+	}
+}
+
+const zone_node_t *zone_contents_find_node(const zone_contents_t *zone, const knot_dname_t *name)
 {
 	return get_node(zone, name);
+}
+
+zone_node_t *zone_contents_find_node_for_rr(zone_contents_t *contents, const knot_rrset_t *rrset)
+{
+	if (contents == NULL || rrset == NULL) {
+		return NULL;
+	}
+
+	const bool nsec3 = knot_rrset_is_nsec3rel(rrset);
+	return nsec3 ? get_nsec3_node(contents, rrset->owner) :
+	               get_node(contents, rrset->owner);
 }
 
 int zone_contents_find_dname(const zone_contents_t *zone,
@@ -721,22 +760,6 @@ int zone_contents_find_dname(const zone_contents_t *zone,
 	}
 
 	return exact_match ? ZONE_NAME_FOUND : ZONE_NAME_NOT_FOUND;
-}
-
-static zone_node_t *get_previous(const zone_contents_t *zone,
-                                 const knot_dname_t *name)
-{
-	if (zone == NULL || name == NULL) {
-		return NULL;
-	}
-
-	zone_node_t *found = NULL, *prev = NULL;
-
-	int exact_match = find_in_tree(zone->nodes, name, &found, &prev);
-	assert(exact_match >= 0);
-	assert(prev != NULL);
-
-	return prev;
 }
 
 const zone_node_t *zone_contents_find_previous(const zone_contents_t *zone,
@@ -1099,38 +1122,4 @@ bool zone_contents_is_signed(const zone_contents_t *zone)
 bool zone_contents_is_empty(const zone_contents_t *zone)
 {
 	return !zone || !node_rrtype_exists(zone->apex, KNOT_RRTYPE_SOA);
-}
-
-zone_node_t *zone_contents_get_node_for_rr(zone_contents_t *zone, const knot_rrset_t *rrset)
-{
-	if (zone == NULL || rrset == NULL) {
-		return NULL;
-	}
-
-	const bool nsec3 = rrset_is_nsec3rel(rrset);
-	zone_node_t *node = nsec3 ? get_nsec3_node(zone, rrset->owner) :
-	                            get_node(zone, rrset->owner);
-	if (node == NULL) {
-		node = node_new(rrset->owner, NULL);
-		int ret = nsec3 ? add_nsec3_node(zone, node) : add_node(zone, node, 1);
-		if (ret != KNOT_EOK) {
-			node_free(&node, NULL);
-			return NULL;
-		}
-
-		return node;
-	} else {
-		return node;
-	}
-}
-
-zone_node_t *zone_contents_find_node_for_rr(zone_contents_t *zone, const knot_rrset_t *rrset)
-{
-	if (zone == NULL || rrset == NULL) {
-		return NULL;
-	}
-
-	const bool nsec3 = rrset_is_nsec3rel(rrset);
-	return nsec3 ? get_nsec3_node(zone, rrset->owner) :
-	               get_node(zone, rrset->owner);
 }
