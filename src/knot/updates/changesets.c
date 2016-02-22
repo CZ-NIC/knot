@@ -142,22 +142,22 @@ static knot_rrset_t get_next_rr(changeset_iter_t *ch_it, hattrie_iter_t *t_it)
 	return node_rrset_at(ch_it->node, ch_it->node_pos++);
 }
 
-static bool need_to_insert(zone_contents_t *counterpart, const knot_rrset_t *rr)
+static void check_redundancy(zone_contents_t *counterpart, const knot_rrset_t *rr)
 {
 	zone_node_t *node = zone_contents_find_node_for_rr(counterpart, rr);
 	if (node == NULL) {
-		return true;
+		return;
 	}
 
 	if (!node_rrtype_exists(node, rr->type)) {
-		return true;
+		return;
 	}
 
 	// Subtract the data from node's RRSet.
 	knot_rdataset_t *rrs = node_rdataset(node, rr->type);
 	int ret = knot_rdataset_subtract(rrs, &rr->rrs, NULL);
 	if (ret != KNOT_EOK) {
-		return true;
+		return;
 	}
 
 	if (knot_rdataset_size(rrs) == 0) {
@@ -172,7 +172,7 @@ static bool need_to_insert(zone_contents_t *counterpart, const knot_rrset_t *rr)
 		}
 	}
 
-	return false;
+	return;
 }
 
 /* ------------------------------- API -------------------------------------- */
@@ -276,7 +276,7 @@ int changeset_add_rrset(changeset_t *ch, const knot_rrset_t *rrset, unsigned fla
 			return KNOT_ENOMEM;
 		}
 
-		need_to_insert(ch->remove, rrset);
+		check_redundancy(ch->remove, rrset);
 	}
 
 	int ret = add_rr_to_contents(ch->add, rrset);
@@ -308,7 +308,7 @@ int changeset_rem_rrset(changeset_t *ch, const knot_rrset_t *rrset, unsigned fla
 			return KNOT_ENOMEM;
 		}
 
-		need_to_insert(ch->add, rrset);
+		check_redundancy(ch->add, rrset);
 	}
 
 	int ret = add_rr_to_contents(ch->remove, rrset);
