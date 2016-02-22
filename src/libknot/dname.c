@@ -126,7 +126,7 @@ knot_dname_t *knot_dname_parse(const uint8_t *pkt, size_t *pos, size_t maxpos,
 		if (knot_dname_unpack(res, name, decompressed_len, pkt) > 0) {
 			*pos += parsed;
 		} else {
-			free(res);
+			mm_free(mm, res);
 			res = NULL;
 		}
 	}
@@ -154,7 +154,7 @@ knot_dname_t *knot_dname_copy_part(const knot_dname_t *name, unsigned len,
 
 	knot_dname_t *dst = mm_alloc(mm, len);
 	if (knot_dname_to_wire(dst, name, len) < 1) {
-		free(dst);
+		mm_free(mm, dst);
 		return NULL;
 	}
 
