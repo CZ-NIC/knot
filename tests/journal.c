@@ -97,7 +97,7 @@ static void init_random_changeset(changeset_t *ch, const uint32_t from, const ui
 	for (size_t i = 0; i < size / 2; ++i) {
 		knot_rrset_t rr;
 		init_random_rr(&rr, apex);
-		int ret = changeset_add_rrset(ch, &rr, false);
+		int ret = changeset_add_rrset(ch, &rr, 0);
 		assert(ret == KNOT_EOK);
 		knot_rrset_clear(&rr, NULL);
 	}
@@ -106,7 +106,7 @@ static void init_random_changeset(changeset_t *ch, const uint32_t from, const ui
 	for (size_t i = 0; i < size / 2; ++i) {
 		knot_rrset_t rr;
 		init_random_rr(&rr, apex);
-		int ret = changeset_rem_rrset(ch, &rr, false);
+		int ret = changeset_rem_rrset(ch, &rr, 0);
 		assert(ret == KNOT_EOK);
 		knot_rrset_clear(&rr, NULL);
 	}

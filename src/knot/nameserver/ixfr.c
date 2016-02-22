@@ -477,13 +477,13 @@ static int solve_soa_add(const knot_rrset_t *rr, changeset_t *change, knot_mm_t 
 /*! \brief Adds single RR into remove section of changeset. */
 static int solve_del(const knot_rrset_t *rr, changeset_t *change, knot_mm_t *mm)
 {
-	return changeset_rem_rrset(change, rr, false);
+	return changeset_rem_rrset(change, rr, 0);
 }
 
 /*! \brief Adds single RR into add section of changeset. */
 static int solve_add(const knot_rrset_t *rr, changeset_t *change, knot_mm_t *mm)
 {
-	return changeset_add_rrset(change, rr, false);
+	return changeset_add_rrset(change, rr, 0);
 }
 
 /*! \brief Decides what the next IXFR-in state should be. */

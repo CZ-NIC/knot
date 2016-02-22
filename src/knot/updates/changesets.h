@@ -28,6 +28,12 @@
 #include "knot/zone/contents.h"
 #include "contrib/ucw/lists.h"
 
+/*! \brief Changeset addition/removal flags */
+enum {
+	CHANGESET_NONE = 0,
+	CHANGESET_CHECK = 1 << 0, /*! Perform redundancy check on additions/removals */
+};
+
 /*! \brief One zone change, from 'soa_from' to 'soa_to'. */
 typedef struct {
 	node_t n;                 /*!< List node. */
@@ -93,7 +99,7 @@ size_t changeset_size(const changeset_t *ch);
  *
  * \return KNOT_E*
  */
-int changeset_add_rrset(changeset_t *ch, const knot_rrset_t *rrset, bool check_redundancy);
+int changeset_add_rrset(changeset_t *ch, const knot_rrset_t *rrset, unsigned flags);
 
 /*!
  * \brief Add RRSet to 'remove' part of changeset.
@@ -104,7 +110,7 @@ int changeset_add_rrset(changeset_t *ch, const knot_rrset_t *rrset, bool check_r
  *
  * \return KNOT_E*
  */
-int changeset_rem_rrset(changeset_t *ch, const knot_rrset_t *rrset, bool check_redundancy);
+int changeset_rem_rrset(changeset_t *ch, const knot_rrset_t *rrset, unsigned flags);
 
 /*!
  * \brief Merges two changesets together. Legacy, to be removed with new zone API.

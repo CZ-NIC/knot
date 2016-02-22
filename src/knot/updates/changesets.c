@@ -256,7 +256,7 @@ size_t changeset_size(const changeset_t *ch)
 	return size;
 }
 
-int changeset_add_rrset(changeset_t *ch, const knot_rrset_t *rrset, bool check_redundancy)
+int changeset_add_rrset(changeset_t *ch, const knot_rrset_t *rrset, unsigned flags)
 {
 	if (!ch || !rrset) {
 		return KNOT_EINVAL;
@@ -269,7 +269,7 @@ int changeset_add_rrset(changeset_t *ch, const knot_rrset_t *rrset, bool check_r
 
 	/* Check if there's any removal and remove that, then add this
 	 * addition anyway. Required to change TTLs. */
-	if (check_redundancy) {
+	if (flags & CHANGESET_CHECK) {
 		/* If we delete the rrset, we need to hold a copy to add it later */
 		rrset = knot_rrset_copy(rrset, NULL);
 		if (rrset == NULL) {
@@ -281,14 +281,14 @@ int changeset_add_rrset(changeset_t *ch, const knot_rrset_t *rrset, bool check_r
 
 	int ret = add_rr_to_contents(ch->add, rrset);
 
-	if (check_redundancy) {
+	if (flags & CHANGESET_CHECK) {
 		knot_rrset_free((knot_rrset_t **)&rrset, NULL);
 	}
 
 	return ret;
 }
 
-int changeset_rem_rrset(changeset_t *ch, const knot_rrset_t *rrset, bool check_redundancy)
+int changeset_rem_rrset(changeset_t *ch, const knot_rrset_t *rrset, unsigned flags)
 {
 	if (!ch || !rrset) {
 		return KNOT_EINVAL;
@@ -301,7 +301,7 @@ int changeset_rem_rrset(changeset_t *ch, const knot_rrset_t *rrset, bool check_r
 
 	/* Check if there's any addition and remove that, then add this
 	 * removal anyway. */
-	if (check_redundancy) {
+	if (flags & CHANGESET_CHECK) {
 		/* If we delete the rrset, we need to hold a copy to add it later */
 		rrset = knot_rrset_copy(rrset, NULL);
 		if (rrset == NULL) {
@@ -313,7 +313,7 @@ int changeset_rem_rrset(changeset_t *ch, const knot_rrset_t *rrset, bool check_r
 
 	int ret = add_rr_to_contents(ch->remove, rrset);
 
-	if (check_redundancy) {
+	if (flags & CHANGESET_CHECK) {
 		knot_rrset_free((knot_rrset_t **)&rrset, NULL);
 	}
 
@@ -327,7 +327,7 @@ int changeset_merge(changeset_t *ch1, const changeset_t *ch2)
 
 	knot_rrset_t rrset = changeset_iter_next(&itt);
 	while (!knot_rrset_empty(&rrset)) {
-		int ret = changeset_add_rrset(ch1, &rrset, true);
+		int ret = changeset_add_rrset(ch1, &rrset, CHANGESET_CHECK);
 		if (ret != KNOT_EOK) {
 			changeset_iter_clear(&itt);
 			return ret;
@@ -340,7 +340,7 @@ int changeset_merge(changeset_t *ch1, const changeset_t *ch2)
 
 	rrset = changeset_iter_next(&itt);
 	while (!knot_rrset_empty(&rrset)) {
-		int ret = changeset_rem_rrset(ch1, &rrset, true);
+		int ret = changeset_rem_rrset(ch1, &rrset, CHANGESET_CHECK);
 		if (ret != KNOT_EOK) {
 			changeset_iter_clear(&itt);
 			return ret;
