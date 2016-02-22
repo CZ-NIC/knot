@@ -145,20 +145,6 @@ static bool can_remove(const zone_node_t *node, const knot_rrset_t *rr)
 	return false;
 }
 
-/*! \todo part of the new zone API. */
-static bool rrset_is_nsec3rel(const knot_rrset_t *rr)
-{
-	if (rr == NULL) {
-		return false;
-	}
-
-	/* Is NSEC3 or non-empty RRSIG covering NSEC3. */
-	return ((rr->type == KNOT_RRTYPE_NSEC3)
-	        || (rr->type == KNOT_RRTYPE_RRSIG
-	            && knot_rrsig_type_covered(&rr->rrs, 0)
-	            == KNOT_RRTYPE_NSEC3));
-}
-
 /*! \brief Removes single RR from zone contents. */
 static int remove_rr(apply_ctx_t *ctx, zone_tree_t *tree, zone_node_t *node,
                      const knot_rrset_t *rr, changeset_t *chset)
@@ -220,7 +206,7 @@ static int apply_remove(apply_ctx_t *ctx, zone_contents_t *contents, changeset_t
 			continue;
 		}
 
-		zone_tree_t *tree = rrset_is_nsec3rel(&rr) ?
+		zone_tree_t *tree = knot_rrset_is_nsec3rel(&rr) ?
 		                    contents->nsec3_nodes : contents->nodes;
 		int ret = remove_rr(ctx, tree, node, &rr, chset);
 		if (ret != KNOT_EOK) {
