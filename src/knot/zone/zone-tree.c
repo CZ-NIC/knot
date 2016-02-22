@@ -213,6 +213,45 @@ int zone_tree_remove(zone_tree_t *tree,
 	return KNOT_EOK;
 }
 
+/*! \brief Clears wildcard child if set in parent node. */
+static void fix_wildcard_child(zone_node_t *node, const knot_dname_t *owner)
+{
+	if ((node->flags & NODE_FLAGS_WILDCARD_CHILD)
+	    && knot_dname_is_wildcard(owner)) {
+		node->flags &= ~NODE_FLAGS_WILDCARD_CHILD;
+	}
+}
+
+int zone_tree_delete_empty_node(zone_tree_t *tree, zone_node_t *node)
+{
+	if (!tree || !node) {
+		return KNOT_EINVAL;
+	}
+
+	if (node->rrset_count == 0 && node->children == 0) {
+		zone_node_t *parent_node = node->parent;
+		if (parent_node) {
+			parent_node->children--;
+			fix_wildcard_child(parent_node, node->owner);
+			if (parent_node->parent != NULL) { /* Is not apex */
+				// Recurse using the parent node, do not delete possibly empty parent.
+				int ret = zone_tree_delete_empty_node(tree, parent_node);
+				if (ret != KNOT_EOK) {
+					return ret;
+				}
+			}
+		}
+
+		// Delete node
+		zone_node_t *removed_node = NULL;
+		zone_tree_remove(tree, node->owner, &removed_node);
+		UNUSED(removed_node);
+		node_free(&node, NULL);
+	}
+
+	return KNOT_EOK;
+}
+
 int zone_tree_apply_inorder(zone_tree_t *tree,
                             zone_tree_apply_cb_t function,
                             void *data)

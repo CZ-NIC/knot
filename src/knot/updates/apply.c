@@ -60,38 +60,6 @@ static int free_additional(zone_node_t **node, void *data)
 	return KNOT_EOK;
 }
 
-/* ------------------------- Empty node cleanup ----------------------------- */
-
-/*! \brief Clears wildcard child if set in parent node. */
-static void fix_wildcard_child(zone_node_t *node, const knot_dname_t *owner)
-{
-	if ((node->flags & NODE_FLAGS_WILDCARD_CHILD)
-	    && knot_dname_is_wildcard(owner)) {
-		node->flags &= ~NODE_FLAGS_WILDCARD_CHILD;
-	}
-}
-
-/*! \todo move this to new zone API - zone should do this automatically. */
-/*! \brief Deletes possibly empty node and all its empty parents recursively. */
-static void delete_empty_node(zone_tree_t *tree, zone_node_t *node)
-{
-	if (node->rrset_count == 0 && node->children == 0) {
-		zone_node_t *parent_node = node->parent;
-		if (parent_node) {
-			fix_wildcard_child(parent_node, node->owner);
-			parent_node->children--;
-			// Recurse using the parent node
-			delete_empty_node(tree, parent_node);
-		}
-
-		// Delete node
-		zone_node_t *removed_node = NULL;
-		zone_tree_remove(tree, node->owner, &removed_node);
-		UNUSED(removed_node);
-		node_free(&node, NULL);
-	}
-}
-
 /* -------------------- Changeset application helpers ----------------------- */
 
 /*! \brief Replaces rdataset of given type with a copy. */
@@ -229,7 +197,7 @@ static int remove_rr(apply_ctx_t *ctx, zone_tree_t *tree, zone_node_t *node,
 		node_remove_rdataset(node, rr->type);
 		// If node is empty now, delete it from zone tree.
 		if (node->rrset_count == 0) {
-			delete_empty_node(tree, node);
+			zone_tree_delete_empty_node(tree, node);
 		}
 	}
 

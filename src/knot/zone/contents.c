@@ -659,12 +659,6 @@ static zone_node_t *get_previous(const zone_contents_t *zone,
 	return prev;
 }
 
-static bool contents_has_children(const zone_contents_t *zone, const knot_dname_t *owner)
-{
-	zone_node_t *parent = get_node(zone, owner);
-	return parent->children > 0;
-}
-
 // Public API
 
 int zone_contents_add_rr(zone_contents_t *z, const knot_rrset_t *rr,
@@ -698,32 +692,6 @@ zone_node_t *zone_contents_get_node_for_rr(zone_contents_t *zone, const knot_rrs
 	} else {
 		return node;
 	}
-}
-
-int zone_contents_delete_empty_node(zone_contents_t *contents, zone_tree_t *tree, zone_node_t *node)
-{
-	if (!contents || !tree || !node) {
-		return KNOT_EINVAL;
-	}
-
-	if (node->rrset_count == 0 && !contents_has_children(contents, node->owner)) {
-		zone_node_t *parent_node = node->parent;
-		if (parent_node && parent_node != contents->apex) {
-			// Recurse using the parent node, do not delete possibly empty parent.
-			int ret = zone_contents_delete_empty_node(contents, tree, parent_node);
-			if (ret != KNOT_EOK) {
-				return ret;
-			}
-		}
-
-		// Delete node
-		zone_node_t *removed_node = NULL;
-		zone_tree_remove(tree, node->owner, &removed_node);
-		UNUSED(removed_node);
-		node_free(&node, NULL);
-	}
-
-	return KNOT_EOK;
 }
 
 const zone_node_t *zone_contents_find_node(const zone_contents_t *zone, const knot_dname_t *name)

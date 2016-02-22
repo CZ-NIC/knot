@@ -78,17 +78,6 @@ int zone_contents_add_rr(zone_contents_t *z, const knot_rrset_t *rr, zone_node_t
 zone_node_t *zone_contents_get_node_for_rr(zone_contents_t *zone, const knot_rrset_t *rrset);
 
 /*!
- * \brief Delete a node that has no RRSets and no children.
- *
- * \param contents  Contents to delete from.
- * \param tree      The tree to remove from.
- * \param node      The node to remove.
- *
- * \return KNOT_E*.
- */
-int zone_contents_delete_empty_node(zone_contents_t *contents, zone_tree_t *tree, zone_node_t *node);
-
-/*!
  * \brief Tries to find a node with the specified name in the zone.
  *
  * \note This function is identical to zone_contents_get_node(), only it returns
