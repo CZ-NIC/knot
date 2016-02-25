@@ -107,8 +107,18 @@ static int log_message(int state, const knot_pkt_t *pkt, struct query_data *qdat
 	return state;
 }
 
-/*! \brief Submit message. */
-static int dnstap_message_log(int state, knot_pkt_t *pkt, struct query_data *qdata, void *ctx)
+/*! \brief Submit message - query. */
+static int dnstap_message_log_query(int state, knot_pkt_t *pkt, struct query_data *qdata, void *ctx)
+{
+	if (pkt == NULL || qdata == NULL || ctx == NULL) {
+		return KNOT_STATE_FAIL;
+	}
+
+	return log_message(state, qdata->query, qdata, ctx);
+}
+
+/*! \brief Submit message - response. */
+static int dnstap_message_log_response(int state, knot_pkt_t *pkt, struct query_data *qdata, void *ctx)
 {
 	if (pkt == NULL || qdata == NULL || ctx == NULL) {
 		return KNOT_STATE_FAIL;
@@ -226,8 +236,8 @@ int dnstap_load(struct query_plan *plan, struct query_module *self,
 	self->ctx = iothread;
 
 	/* Hook to the query plan. */
-	query_plan_step(plan, QPLAN_BEGIN, dnstap_message_log, self->ctx);
-	query_plan_step(plan, QPLAN_END, dnstap_message_log, self->ctx);
+	query_plan_step(plan, QPLAN_BEGIN, dnstap_message_log_query, self->ctx);
+	query_plan_step(plan, QPLAN_END, dnstap_message_log_response, self->ctx);
 
 	return KNOT_EOK;
 fail:
