@@ -55,7 +55,8 @@ static int log_message(int state, const knot_pkt_t *pkt, struct query_data *qdat
 
 	int ret = KNOT_ERROR;
 	struct fstrm_iothr* iothread = ctx;
-	struct fstrm_iothr_queue *ioq = fstrm_iothr_get_input_queue_idx(iothread, qdata->param->thread_id);
+	struct fstrm_iothr_queue *ioq =
+		fstrm_iothr_get_input_queue_idx(iothread, qdata->param->thread_id);
 
 	/* Unless we want to measure the time it takes to process each query,
 	 * we can treat Q/R times the same. */
@@ -134,9 +135,8 @@ static struct fstrm_writer* dnstap_unix_writer(const char *path)
 	if (wopt == NULL) {
 		goto finish;
 	}
-	fstrm_writer_options_add_content_type(wopt,
-		(const uint8_t *) DNSTAP_CONTENT_TYPE,
-		strlen(DNSTAP_CONTENT_TYPE));
+	fstrm_writer_options_add_content_type(wopt, DNSTAP_CONTENT_TYPE,
+	                                      strlen(DNSTAP_CONTENT_TYPE));
 	writer = fstrm_unix_writer_init(opt, wopt);
 
 finish:
@@ -162,9 +162,8 @@ static struct fstrm_writer* dnstap_file_writer(const char *path)
 	if (wopt == NULL) {
 		goto finish;
 	}
-	fstrm_writer_options_add_content_type(wopt,
-		(const uint8_t *) DNSTAP_CONTENT_TYPE,
-		strlen(DNSTAP_CONTENT_TYPE));
+	fstrm_writer_options_add_content_type(wopt, DNSTAP_CONTENT_TYPE,
+	                                      strlen(DNSTAP_CONTENT_TYPE));
 	writer = fstrm_file_writer_init(fopt, wopt);
 
 finish:
@@ -181,7 +180,7 @@ static struct fstrm_writer* dnstap_writer(const char *path)
 
 	/* UNIX socket prefix. */
 	if (strlen(path) > prefix_len && strncmp(path, prefix, prefix_len) == 0) {
-			return dnstap_unix_writer(path + prefix_len);
+		return dnstap_unix_writer(path + prefix_len);
 	}
 
 	return dnstap_file_writer(path);

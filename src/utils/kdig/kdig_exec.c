@@ -64,12 +64,12 @@ static int write_dnstap(dt_writer_t          *writer,
 
 	ret = dt_message_fill(&msg, msg_type, net->local_info->ai_addr,
 	                      net->srv->ai_addr, protocol,
-			      wire, wire_len, qtime, rtime);
+	                      wire, wire_len, qtime, rtime);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
 
-	return dt_writer_write(writer, (const ProtobufCMessage *) &msg);
+	return dt_writer_write(writer, (const ProtobufCMessage *)&msg);
 }
 
 static float get_query_time(const Dnstap__Dnstap *frame)
@@ -147,16 +147,14 @@ static void process_dnstap(const query_t *query)
 
 		// Parse packet and reconstruct required data.
 		if (knot_pkt_parse(pkt, 0) == KNOT_EOK) {
-			time_t              timestamp = 0;
-			float               query_time = 0.0;
-			net_t               net_ctx = { 0 };
+			time_t timestamp = 0;
+			float  query_time = 0.0;
+			net_t  net_ctx = { 0 };
 
 			if (is_response) {
-
 				timestamp = message->response_time_sec;
 				query_time = get_query_time(frame);
 			} else {
-
 				timestamp = message->query_time_sec;
 			}
 
