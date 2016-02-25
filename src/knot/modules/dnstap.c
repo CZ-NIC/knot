@@ -1,4 +1,4 @@
-/*  Copyright (C) 2014 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -23,17 +23,20 @@
 #include "contrib/dnstap/writer.h"
 #include "contrib/dnstap/message.h"
 #include "contrib/dnstap/dnstap.h"
+#include "contrib/mempattern.h"
 #include "libknot/libknot.h"
-
-#define PROGRAM_VERSION	("Knot DNS " PACKAGE_VERSION)
 
 /* Module configuration scheme. */
 #define MOD_SINK	"\x04""sink"
+#define MOD_IDENTITY	"\x08""identity"
+#define MOD_VERSION	"\x07""version"
 
 const yp_item_t scheme_mod_dnstap[] = {
-	{ C_ID,      YP_TSTR, YP_VNONE },
-	{ MOD_SINK,  YP_TSTR, YP_VNONE },
-	{ C_COMMENT, YP_TSTR, YP_VNONE },
+	{ C_ID,         YP_TSTR, YP_VNONE },
+	{ MOD_SINK,     YP_TSTR, YP_VNONE },
+	{ MOD_IDENTITY, YP_TSTR, YP_VNONE },
+	{ MOD_VERSION,  YP_TSTR, YP_VSTR = { "Knot DNS " PACKAGE_VERSION } },
+	{ C_COMMENT,    YP_TSTR, YP_VNONE },
 	{ NULL }
 };
 
@@ -49,16 +52,24 @@ int check_mod_dnstap(conf_check_t *args)
 	return KNOT_EOK;
 }
 
-static int log_message(int state, const knot_pkt_t *pkt, struct query_data *qdata, void *ctx)
+typedef struct {
+	struct fstrm_iothr *iothread;
+	char *identity;
+	size_t identity_len;
+	char *version;
+	size_t version_len;
+} dnstap_ctx_t;
+
+static int log_message(int state, const knot_pkt_t *pkt, struct query_data *qdata,
+                       dnstap_ctx_t *ctx)
 {
 	if (pkt == NULL || qdata == NULL || ctx == NULL) {
 		return KNOT_STATE_FAIL;
 	}
 
 	int ret = KNOT_ERROR;
-	struct fstrm_iothr* iothread = ctx;
 	struct fstrm_iothr_queue *ioq =
-		fstrm_iothr_get_input_queue_idx(iothread, qdata->param->thread_id);
+		fstrm_iothr_get_input_queue_idx(ctx->iothread, qdata->param->thread_id);
 
 	/* Unless we want to measure the time it takes to process each query,
 	 * we can treat Q/R times the same. */
@@ -91,9 +102,17 @@ static int log_message(int state, const knot_pkt_t *pkt, struct query_data *qdat
 	dnstap.type = DNSTAP__DNSTAP__TYPE__MESSAGE;
 	dnstap.message = (Dnstap__Message *)&msg;
 
-	dnstap.version.data = (uint8_t *)PROGRAM_VERSION;
-	dnstap.version.len = strlen(PROGRAM_VERSION);
-	dnstap.has_version = 1;
+	/* Set message version and identity. */
+	if (ctx->identity_len > 0) {
+		dnstap.identity.data = (uint8_t *)ctx->identity;
+		dnstap.identity.len = ctx->identity_len;
+		dnstap.has_identity = 1;
+	}
+	if (ctx->version_len > 0) {
+		dnstap.version.data = (uint8_t *)ctx->version;
+		dnstap.version.len = ctx->version_len;
+		dnstap.has_version = 1;
+	}
 
 	/* Pack the message. */
 	uint8_t *frame = NULL;
@@ -104,7 +123,7 @@ static int log_message(int state, const knot_pkt_t *pkt, struct query_data *qdat
 	}
 
 	/* Submit a request. */
-	fstrm_res res = fstrm_iothr_submit(iothread, ioq, frame, size,
+	fstrm_res res = fstrm_iothr_submit(ctx->iothread, ioq, frame, size,
 	                                   fstrm_free_wrapper, NULL);
 	if (res != fstrm_res_success) {
 		free(frame);
@@ -115,9 +134,10 @@ static int log_message(int state, const knot_pkt_t *pkt, struct query_data *qdat
 }
 
 /*! \brief Submit message - query. */
-static int dnstap_message_log_query(int state, knot_pkt_t *pkt, struct query_data *qdata, void *ctx)
+static int dnstap_message_log_query(int state, knot_pkt_t *pkt, struct query_data *qdata,
+                                    void *ctx)
 {
-	if (pkt == NULL || qdata == NULL || ctx == NULL) {
+	if (qdata == NULL) {
 		return KNOT_STATE_FAIL;
 	}
 
@@ -125,12 +145,9 @@ static int dnstap_message_log_query(int state, knot_pkt_t *pkt, struct query_dat
 }
 
 /*! \brief Submit message - response. */
-static int dnstap_message_log_response(int state, knot_pkt_t *pkt, struct query_data *qdata, void *ctx)
+static int dnstap_message_log_response(int state, knot_pkt_t *pkt, struct query_data *qdata,
+                                       void *ctx)
 {
-	if (pkt == NULL || qdata == NULL || ctx == NULL) {
-		return KNOT_STATE_FAIL;
-	}
-
 	return log_message(state, pkt, qdata, ctx);
 }
 
@@ -209,7 +226,29 @@ int dnstap_load(struct query_plan *plan, struct query_module *self,
 		return KNOT_EINVAL;
 	}
 
-	conf_val_t val = conf_mod_get(self->config, MOD_SINK, self->id);
+	/* Create dnstap context. */
+	dnstap_ctx_t *ctx = mm_alloc(self->mm, sizeof(*ctx));
+	if (ctx == NULL) {
+		return KNOT_ENOMEM;
+	}
+
+	conf_val_t val;
+
+	// Set identity.
+	val = conf_mod_get(self->config, MOD_IDENTITY, self->id);
+	const char *identity = (val.code == KNOT_EOK) ?
+	                       conf_str(&val) : conf()->hostname;
+	if (identity != NULL) {
+		ctx->identity = strdup(identity);
+		ctx->identity_len = strlen(ctx->identity);
+	}
+
+	// Set version.
+	val = conf_mod_get(self->config, MOD_VERSION, self->id);
+	ctx->version = strdup(conf_str(&val));
+	ctx->version_len = strlen(ctx->version);
+
+	val = conf_mod_get(self->config, MOD_SINK, self->id);
 	const char *sink = conf_str(&val);
 
 	/* Initialize the writer and the options. */
@@ -230,15 +269,14 @@ int dnstap_load(struct query_plan *plan, struct query_module *self,
 	fstrm_iothr_options_set_num_input_queues(opt, qcount);
 
 	/* Create the I/O thread. */
-	struct fstrm_iothr* iothread = fstrm_iothr_init(opt, &writer);
+	ctx->iothread = fstrm_iothr_init(opt, &writer);
 	fstrm_iothr_options_destroy(&opt);
-
-	if (iothread == NULL) {
+	if (ctx->iothread == NULL) {
 		fstrm_writer_destroy(&writer);
 		goto fail;
 	}
 
-	self->ctx = iothread;
+	self->ctx = ctx;
 
 	/* Hook to the query plan. */
 	query_plan_step(plan, QPLAN_BEGIN, dnstap_message_log_query, self->ctx);
@@ -247,6 +285,11 @@ int dnstap_load(struct query_plan *plan, struct query_module *self,
 	return KNOT_EOK;
 fail:
 	MODULE_ERR(C_MOD_DNSTAP, "failed to init sink '%s'", sink);
+
+	free(ctx->identity);
+	free(ctx->version);
+	mm_free(self->mm, ctx);
+
 	return KNOT_ENOMEM;
 }
 
@@ -256,7 +299,12 @@ int dnstap_unload(struct query_module *self)
 		return KNOT_EINVAL;
 	}
 
-	struct fstrm_iothr* iothread = self->ctx;
-	fstrm_iothr_destroy(&iothread);
+	dnstap_ctx_t *ctx = self->ctx;
+
+	fstrm_iothr_destroy(&ctx->iothread);
+	free(ctx->identity);
+	free(ctx->version);
+	mm_free(self->mm, ctx);
+
 	return KNOT_EOK;
 }

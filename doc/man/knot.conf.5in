@@ -809,6 +809,8 @@ zone\-specific logging, use this module in the proper zone configuration.
 mod\-dnstap:
   \- id: STR
     sink: STR
+    identity: STR
+    version: STR
 .ft P
 .fi
 .UNINDENT
@@ -822,6 +824,16 @@ A sink path, which can be either a file or a UNIX socket when prefixed with
 \fBunix:\fP\&.
 .sp
 \fIRequired\fP
+.SS identity
+.sp
+A DNS server identity. Set empty value to disable.
+.sp
+\fIDefault:\fP FQDN hostname
+.SS version
+.sp
+A DNS server version. Set empty value to disable.
+.sp
+\fIDefault:\fP server version
 .SH MODULE SYNTH-RECORD
 .sp
 This module is able to synthesize either forward or reverse records for the
