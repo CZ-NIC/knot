@@ -25,6 +25,8 @@
 #include "contrib/dnstap/dnstap.h"
 #include "libknot/libknot.h"
 
+#define PROGRAM_VERSION	("Knot DNS " PACKAGE_VERSION)
+
 /* Module configuration scheme. */
 #define MOD_SINK	"\x04""sink"
 
@@ -88,6 +90,10 @@ static int log_message(int state, const knot_pkt_t *pkt, struct query_data *qdat
 	Dnstap__Dnstap dnstap = DNSTAP__DNSTAP__INIT;
 	dnstap.type = DNSTAP__DNSTAP__TYPE__MESSAGE;
 	dnstap.message = (Dnstap__Message *)&msg;
+
+	dnstap.version.data = (uint8_t *)PROGRAM_VERSION;
+	dnstap.version.len = strlen(PROGRAM_VERSION);
+	dnstap.has_version = 1;
 
 	/* Pack the message. */
 	uint8_t *frame = NULL;
