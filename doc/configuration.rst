@@ -621,7 +621,7 @@ if it is used for all queries.
 
 A module for query and response logging based on dnstap_ library.
 You can capture either all or zone-specific queries and responses; usually
-you want to do the former. The configuration conprises only a
+you want to do the former. The configuration comprises only a
 :ref:`mod-dnstap_sink` path parameter, which can be either a file or
 a UNIX socket::
 
@@ -632,6 +632,12 @@ a UNIX socket::
     template:
       - id: default
         global-module: mod-dnstap/capture_all
+
+Note: to be able to use a Unix socket you need an external program to create it.
+Knot DNS connects to it as a client using the libfstrm library. It operates
+exactly like syslog. See `here
+<https://www.nlnetlabs.nl/bugs-script/show_bug.cgi?id=741#c10>`_ for
+more details.
 
 .. _dnstap: http://dnstap.info/
 
