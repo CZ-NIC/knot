@@ -931,6 +931,8 @@ zone-specific logging, use this module in the proper zone configuration.
  mod-dnstap:
    - id: STR
      sink: STR
+     identity: STR
+     version: STR
 
 .. _mod-dnstap_id:
 
@@ -948,6 +950,24 @@ A sink path, which can be either a file or a UNIX socket when prefixed with
 ``unix:``.
 
 *Required*
+
+.. _mod-dnstap_identity:
+
+identity
+--------
+
+A DNS server identity. Set empty value to disable.
+
+*Default:* FQDN hostname
+
+.. _mod-dnstap_version:
+
+version
+-------
+
+A DNS server version. Set empty value to disable.
+
+*Default:* server version
 
 .. _Module synth-record:
 
