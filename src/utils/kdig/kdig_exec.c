@@ -159,7 +159,7 @@ static void process_dnstap(const query_t *query)
 			}
 
 			// Prepare connection information string.
-			if (message->response_address.data != NULL &&
+			if (message->query_address.data != NULL &&
 			    message->has_socket_family &&
 			    message->has_socket_protocol) {
 				struct sockaddr_storage ss;
@@ -181,14 +181,14 @@ static void process_dnstap(const query_t *query)
 				}
 
 				sockaddr_set_raw(&ss, family,
-				                 message->response_address.data,
-				                 message->response_address.len);
-				sockaddr_port_set(&ss, message->response_port);
+				                 message->query_address.data,
+				                 message->query_address.len);
+				sockaddr_port_set(&ss, message->query_port);
 				get_addr_str(&ss, sock_type, &net_ctx.remote_str);
 			}
 
 			print_packet(pkt, &net_ctx, pkt->size, query_time,
-			             timestamp, is_response, &query->style);
+			             timestamp, !is_response, &query->style);
 
 			net_clean(&net_ctx);
 		} else {
