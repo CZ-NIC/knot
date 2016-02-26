@@ -1,4 +1,4 @@
-/*  Copyright (C) 2014 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -54,8 +54,13 @@ int dt_protocol_decode(Dnstap__SocketProtocol dnstap_protocol);
 bool dt_message_type_is_query(Dnstap__Message__Type type);
 
 /*!
- * Check if a message type is a ny type of a response.
+ * Check if a message type is any type of a response.
  */
 bool dt_message_type_is_response(Dnstap__Message__Type type);
+
+/*!
+ * Check if a message role is any type of an initiator.
+ */
+bool dt_message_role_is_initiator(Dnstap__Message__Type type);
 
 /*! @} */

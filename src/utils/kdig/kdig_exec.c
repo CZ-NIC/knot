@@ -1,4 +1,4 @@
-/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -35,7 +35,7 @@
 # include "contrib/dnstap/writer.h"
 
 static int write_dnstap(dt_writer_t          *writer,
-                        const bool           is_response,
+                        const bool           is_query,
                         const uint8_t        *wire,
                         const size_t         wire_len,
                         net_t                *net,
@@ -53,8 +53,8 @@ static int write_dnstap(dt_writer_t          *writer,
 
 	net_set_local_info(net);
 
-	msg_type = is_response ? DNSTAP__MESSAGE__TYPE__TOOL_RESPONSE
-	                       : DNSTAP__MESSAGE__TYPE__TOOL_QUERY;
+	msg_type = is_query ? DNSTAP__MESSAGE__TYPE__TOOL_QUERY :
+	                      DNSTAP__MESSAGE__TYPE__TOOL_RESPONSE;
 
 	if (net->socktype == SOCK_DGRAM) {
 		protocol = IPPROTO_UDP;
@@ -87,6 +87,46 @@ static float get_query_time(const Dnstap__Dnstap *frame)
 	return time_diff(&from, &to);
 }
 
+static void fill_remote_addr(net_t *net, Dnstap__Message *message, bool is_initiator)
+{
+	if (!message->has_socket_family || !message->has_socket_protocol) {
+		return;
+	}
+
+	if ((message->response_address.data == NULL && is_initiator) ||
+	     message->query_address.data == NULL) {
+		return;
+	}
+
+	struct sockaddr_storage ss = { 0 };
+	int family = dt_family_decode(message->socket_family);
+	int proto = dt_protocol_decode(message->socket_protocol);
+	int sock_type = 0;
+
+	switch (proto) {
+	case IPPROTO_TCP:
+		sock_type = SOCK_STREAM;
+		break;
+	case IPPROTO_UDP:
+		sock_type = SOCK_DGRAM;
+		break;
+	default:
+		break;
+	}
+
+	if (is_initiator) {
+		sockaddr_set_raw(&ss, family, message->response_address.data,
+		                 message->response_address.len);
+		sockaddr_port_set(&ss, message->response_port);
+	} else {
+		sockaddr_set_raw(&ss, family, message->query_address.data,
+		                 message->query_address.len);
+		sockaddr_port_set(&ss, message->query_port);
+	}
+
+	get_addr_str(&ss, sock_type, &net->remote_str);
+}
+
 static void process_dnstap(const query_t *query)
 {
 	dt_reader_t *reader = query->dt_reader;
@@ -99,7 +139,8 @@ static void process_dnstap(const query_t *query)
 		Dnstap__Dnstap      *frame = NULL;
 		Dnstap__Message     *message = NULL;
 		ProtobufCBinaryData *wire = NULL;
-		bool                is_response;
+		bool                is_query;
+		bool                is_initiator;
 
 		// Read next message.
 		int ret = dt_reader_read(reader, &frame);
@@ -122,20 +163,24 @@ static void process_dnstap(const query_t *query)
 		// Check for the type of dnstap message.
 		if (message->has_response_message) {
 			wire = &message->response_message;
-			is_response = true;
+			is_query = false;
 		} else if (message->has_query_message) {
 			wire = &message->query_message;
-			is_response = false;
+			is_query = true;
 		} else {
 			WARN("dnstap frame contains no message\n");
 			dt_reader_free_frame(reader, &frame);
 			continue;
 		}
 
-		if (!is_response && !query->style.show_query) {
+		// Ignore query message if requested.
+		if (is_query && !query->style.show_query) {
 			dt_reader_free_frame(reader, &frame);
 			continue;
 		}
+
+		// Get the message role.
+		is_initiator = dt_message_role_is_initiator(message->type);
 
 		// Create dns packet based on dnstap wire data.
 		knot_pkt_t *pkt = knot_pkt_new(wire->data, wire->len, NULL);
@@ -151,44 +196,18 @@ static void process_dnstap(const query_t *query)
 			float  query_time = 0.0;
 			net_t  net_ctx = { 0 };
 
-			if (is_response) {
+			if (is_query) {
+				timestamp = message->query_time_sec;
+			} else {
 				timestamp = message->response_time_sec;
 				query_time = get_query_time(frame);
-			} else {
-				timestamp = message->query_time_sec;
 			}
 
 			// Prepare connection information string.
-			if (message->query_address.data != NULL &&
-			    message->has_socket_family &&
-			    message->has_socket_protocol) {
-				struct sockaddr_storage ss;
-				int family, proto, sock_type;
+			fill_remote_addr(&net_ctx, message, is_initiator);
 
-				family = dt_family_decode(message->socket_family);
-				proto = dt_protocol_decode(message->socket_protocol);
-
-				switch (proto) {
-				case IPPROTO_TCP:
-					sock_type = SOCK_STREAM;
-					break;
-				case IPPROTO_UDP:
-					sock_type = SOCK_DGRAM;
-					break;
-				default:
-					sock_type = 0;
-					break;
-				}
-
-				sockaddr_set_raw(&ss, family,
-				                 message->query_address.data,
-				                 message->query_address.len);
-				sockaddr_port_set(&ss, message->query_port);
-				get_addr_str(&ss, sock_type, &net_ctx.remote_str);
-			}
-
-			print_packet(pkt, &net_ctx, pkt->size, query_time,
-			             timestamp, !is_response, &query->style);
+			print_packet(pkt, &net_ctx, pkt->size, query_time, timestamp,
+			             is_query ^ is_initiator, &query->style);
 
 			net_clean(&net_ctx);
 		} else {
@@ -516,7 +535,7 @@ static int process_query_packet(const knot_pkt_t      *query,
 
 #if USE_DNSTAP
 	// Make the dnstap copy of the query.
-	write_dnstap(query_ctx->dt_writer, false, query->wire, query->size,
+	write_dnstap(query_ctx->dt_writer, true, query->wire, query->size,
 	             net, &t_query, NULL);
 #endif // USE_DNSTAP
 
@@ -554,7 +573,7 @@ static int process_query_packet(const knot_pkt_t      *query,
 
 #if USE_DNSTAP
 		// Make the dnstap copy of the response.
-		write_dnstap(query_ctx->dt_writer, true, in, in_len, net,
+		write_dnstap(query_ctx->dt_writer, false, in, in_len, net,
 		             &t_query, &t_end);
 #endif // USE_DNSTAP
 
@@ -760,7 +779,7 @@ static int process_xfr_packet(const knot_pkt_t      *query,
 
 #if USE_DNSTAP
 	// Make the dnstap copy of the query.
-	write_dnstap(query_ctx->dt_writer, false, query->wire, query->size,
+	write_dnstap(query_ctx->dt_writer, true, query->wire, query->size,
 	             net, &t_query, NULL);
 #endif // USE_DNSTAP
 
@@ -798,7 +817,7 @@ static int process_xfr_packet(const knot_pkt_t      *query,
 
 #if USE_DNSTAP
 		// Make the dnstap copy of the response.
-		write_dnstap(query_ctx->dt_writer, true, in, in_len, net,
+		write_dnstap(query_ctx->dt_writer, false, in, in_len, net,
 		             &t_query, &t_end);
 #endif // USE_DNSTAP
 

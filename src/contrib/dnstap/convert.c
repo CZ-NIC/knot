@@ -1,4 +1,4 @@
-/*  Copyright (C) 2014 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -125,5 +125,18 @@ bool dt_message_type_is_response(Dnstap__Message__Type type)
 		return true;
 	default:
 		return false;
+	}
+}
+
+bool dt_message_role_is_initiator(Dnstap__Message__Type type)
+{
+	switch (type) {
+	case DNSTAP__MESSAGE__TYPE__AUTH_QUERY:
+	case DNSTAP__MESSAGE__TYPE__AUTH_RESPONSE:
+	case DNSTAP__MESSAGE__TYPE__CLIENT_QUERY:
+	case DNSTAP__MESSAGE__TYPE__CLIENT_RESPONSE:
+		return false;
+	default:
+		return true;
 	}
 }
