@@ -1,4 +1,4 @@
-/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -35,7 +35,7 @@
 # include "contrib/dnstap/writer.h"
 
 static int write_dnstap(dt_writer_t          *writer,
-                        const bool           is_response,
+                        const bool           is_query,
                         const uint8_t        *wire,
                         const size_t         wire_len,
                         net_t                *net,
@@ -53,8 +53,8 @@ static int write_dnstap(dt_writer_t          *writer,
 
 	net_set_local_info(net);
 
-	msg_type = is_response ? DNSTAP__MESSAGE__TYPE__TOOL_RESPONSE
-	                       : DNSTAP__MESSAGE__TYPE__TOOL_QUERY;
+	msg_type = is_query ? DNSTAP__MESSAGE__TYPE__TOOL_QUERY :
+	                      DNSTAP__MESSAGE__TYPE__TOOL_RESPONSE;
 
 	if (net->socktype == SOCK_DGRAM) {
 		protocol = IPPROTO_UDP;
@@ -99,7 +99,7 @@ static void process_dnstap(const query_t *query)
 		Dnstap__Dnstap      *frame = NULL;
 		Dnstap__Message     *message = NULL;
 		ProtobufCBinaryData *wire = NULL;
-		bool                is_response;
+		bool                is_query;
 
 		// Read next message.
 		int ret = dt_reader_read(reader, &frame);
@@ -122,17 +122,18 @@ static void process_dnstap(const query_t *query)
 		// Check for the type of dnstap message.
 		if (message->has_response_message) {
 			wire = &message->response_message;
-			is_response = true;
+			is_query = false;
 		} else if (message->has_query_message) {
 			wire = &message->query_message;
-			is_response = false;
+			is_query = true;
 		} else {
 			WARN("dnstap frame contains no message\n");
 			dt_reader_free_frame(reader, &frame);
 			continue;
 		}
 
-		if (!is_response && !query->style.show_query) {
+		// Ignore query message if requested.
+		if (is_query && !query->style.show_query) {
 			dt_reader_free_frame(reader, &frame);
 			continue;
 		}
@@ -151,11 +152,11 @@ static void process_dnstap(const query_t *query)
 			float  query_time = 0.0;
 			net_t  net_ctx = { 0 };
 
-			if (is_response) {
+			if (is_query) {
+				timestamp = message->query_time_sec;
+			} else {
 				timestamp = message->response_time_sec;
 				query_time = get_query_time(frame);
-			} else {
-				timestamp = message->query_time_sec;
 			}
 
 			// Prepare connection information string.
@@ -188,7 +189,7 @@ static void process_dnstap(const query_t *query)
 			}
 
 			print_packet(pkt, &net_ctx, pkt->size, query_time,
-			             timestamp, !is_response, &query->style);
+			             timestamp, is_query, &query->style);
 
 			net_clean(&net_ctx);
 		} else {
@@ -516,7 +517,7 @@ static int process_query_packet(const knot_pkt_t      *query,
 
 #if USE_DNSTAP
 	// Make the dnstap copy of the query.
-	write_dnstap(query_ctx->dt_writer, false, query->wire, query->size,
+	write_dnstap(query_ctx->dt_writer, true, query->wire, query->size,
 	             net, &t_query, NULL);
 #endif // USE_DNSTAP
 
@@ -554,7 +555,7 @@ static int process_query_packet(const knot_pkt_t      *query,
 
 #if USE_DNSTAP
 		// Make the dnstap copy of the response.
-		write_dnstap(query_ctx->dt_writer, true, in, in_len, net,
+		write_dnstap(query_ctx->dt_writer, false, in, in_len, net,
 		             &t_query, &t_end);
 #endif // USE_DNSTAP
 
@@ -760,7 +761,7 @@ static int process_xfr_packet(const knot_pkt_t      *query,
 
 #if USE_DNSTAP
 	// Make the dnstap copy of the query.
-	write_dnstap(query_ctx->dt_writer, false, query->wire, query->size,
+	write_dnstap(query_ctx->dt_writer, true, query->wire, query->size,
 	             net, &t_query, NULL);
 #endif // USE_DNSTAP
 
@@ -798,7 +799,7 @@ static int process_xfr_packet(const knot_pkt_t      *query,
 
 #if USE_DNSTAP
 		// Make the dnstap copy of the response.
-		write_dnstap(query_ctx->dt_writer, true, in, in_len, net,
+		write_dnstap(query_ctx->dt_writer, false, in, in_len, net,
 		             &t_query, &t_end);
 #endif // USE_DNSTAP
 
