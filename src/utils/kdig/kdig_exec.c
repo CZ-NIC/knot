@@ -87,6 +87,46 @@ static float get_query_time(const Dnstap__Dnstap *frame)
 	return time_diff(&from, &to);
 }
 
+static void fill_remote_addr(net_t *net, Dnstap__Message *message, bool is_initiator)
+{
+	if (!message->has_socket_family || !message->has_socket_protocol) {
+		return;
+	}
+
+	if ((message->response_address.data == NULL && is_initiator) ||
+	     message->query_address.data == NULL) {
+		return;
+	}
+
+	struct sockaddr_storage ss = { 0 };
+	int family = dt_family_decode(message->socket_family);
+	int proto = dt_protocol_decode(message->socket_protocol);
+	int sock_type = 0;
+
+	switch (proto) {
+	case IPPROTO_TCP:
+		sock_type = SOCK_STREAM;
+		break;
+	case IPPROTO_UDP:
+		sock_type = SOCK_DGRAM;
+		break;
+	default:
+		break;
+	}
+
+	if (is_initiator) {
+		sockaddr_set_raw(&ss, family, message->response_address.data,
+		                 message->response_address.len);
+		sockaddr_port_set(&ss, message->response_port);
+	} else {
+		sockaddr_set_raw(&ss, family, message->query_address.data,
+		                 message->query_address.len);
+		sockaddr_port_set(&ss, message->query_port);
+	}
+
+	get_addr_str(&ss, sock_type, &net->remote_str);
+}
+
 static void process_dnstap(const query_t *query)
 {
 	dt_reader_t *reader = query->dt_reader;
@@ -100,6 +140,7 @@ static void process_dnstap(const query_t *query)
 		Dnstap__Message     *message = NULL;
 		ProtobufCBinaryData *wire = NULL;
 		bool                is_query;
+		bool                is_initiator;
 
 		// Read next message.
 		int ret = dt_reader_read(reader, &frame);
@@ -138,6 +179,9 @@ static void process_dnstap(const query_t *query)
 			continue;
 		}
 
+		// Get the message role.
+		is_initiator = dt_message_role_is_initiator(message->type);
+
 		// Create dns packet based on dnstap wire data.
 		knot_pkt_t *pkt = knot_pkt_new(wire->data, wire->len, NULL);
 		if (pkt == NULL) {
@@ -160,36 +204,10 @@ static void process_dnstap(const query_t *query)
 			}
 
 			// Prepare connection information string.
-			if (message->query_address.data != NULL &&
-			    message->has_socket_family &&
-			    message->has_socket_protocol) {
-				struct sockaddr_storage ss;
-				int family, proto, sock_type;
+			fill_remote_addr(&net_ctx, message, is_initiator);
 
-				family = dt_family_decode(message->socket_family);
-				proto = dt_protocol_decode(message->socket_protocol);
-
-				switch (proto) {
-				case IPPROTO_TCP:
-					sock_type = SOCK_STREAM;
-					break;
-				case IPPROTO_UDP:
-					sock_type = SOCK_DGRAM;
-					break;
-				default:
-					sock_type = 0;
-					break;
-				}
-
-				sockaddr_set_raw(&ss, family,
-				                 message->query_address.data,
-				                 message->query_address.len);
-				sockaddr_port_set(&ss, message->query_port);
-				get_addr_str(&ss, sock_type, &net_ctx.remote_str);
-			}
-
-			print_packet(pkt, &net_ctx, pkt->size, query_time,
-			             timestamp, is_query, &query->style);
+			print_packet(pkt, &net_ctx, pkt->size, query_time, timestamp,
+			             is_query ^ is_initiator, &query->style);
 
 			net_clean(&net_ctx);
 		} else {
