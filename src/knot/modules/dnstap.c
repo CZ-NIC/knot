@@ -236,12 +236,12 @@ int dnstap_load(struct query_plan *plan, struct query_module *self,
 
 	// Set identity.
 	val = conf_mod_get(self->config, MOD_IDENTITY, self->id);
-	const char *identity = (val.code == KNOT_EOK) ?
-	                       conf_str(&val) : sockaddr_hostname();
-	if (identity != NULL) {
-		ctx->identity = strdup(identity);
-		ctx->identity_len = strlen(ctx->identity);
+	if (val.code == KNOT_EOK) {
+		ctx->identity = strdup(conf_str(&val));
+	} else {
+		ctx->identity = sockaddr_hostname();
 	}
+	ctx->identity_len = strlen(ctx->identity);
 
 	// Set version.
 	val = conf_mod_get(self->config, MOD_VERSION, self->id);
