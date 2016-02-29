@@ -689,11 +689,12 @@ static void reopen_timers_database(conf_t *conf, server_t *server)
 	free(storage);
 
 	int ret = open_timers_db(timer_db, &server->timers_db);
-	free(timer_db);
-	if (ret != KNOT_EOK && ret != KNOT_ENOTSUP) {
-		log_warning("cannot open persistent timers DB (%s)",
-		            knot_strerror(ret));
+	if (ret != KNOT_EOK) {
+		log_warning("cannot open persistent timers DB '%s' (%s)",
+		            timer_db, knot_strerror(ret));
 	}
+
+	free(timer_db);
 }
 
 void server_update_zones(conf_t *conf, server_t *server)

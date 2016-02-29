@@ -143,9 +143,6 @@ int open_timers_db(const char *path, knot_db_t **timer_db)
 	}
 
 	const knot_db_api_t *db_api = knot_db_lmdb_api();
-	if (db_api == NULL) {
-		return KNOT_ENOTSUP;
-	}
 
 	struct knot_db_lmdb_opts opts = KNOT_DB_LMDB_OPTS_INITIALIZER;
 	opts.mapsize = (size_t)TIMER_MAPSIZE * 1024 * 1024;
