@@ -10,22 +10,28 @@ LOG=$TMPDIR/log
 #param zonefile fatal_error expected_erros_count semcheck_err_msg
 test_zone()
 {
+	if [ ! -r $DATA/$1 ]; then
+		skip_block 4 "missing zone file for test"
+		return
+	fi
 	$KZONECHECK -o example.com "$DATA/$1" > $LOG
-	ok "$1 - program return code" test $? == 1
+	ok "$1 - program return code" test $? -eq 1
 
 	grep "error.*(semantic check)" $LOG > /dev/null
-	ok "$1 - check fatal" test $? != $2
+	ok "$1 - check fatal" test $? -ne $2
 	grep "node: .* (${4}.*" $LOG > /dev/null
-	ok "$1 - check message" test $? == 0
+	ok "$1 - check message" test $? -eq 0
 	
 	errors=$(grep "node:" $LOG | wc -l)
-	ok "number of found errors" test $errors == $3
+	ok "number of found errors" test $errors -eq $3
 	if [ $errors != $3 ]; then
 		diag "expected errors $3 but found $errors"
 	fi
 }
 
-
+if [ ! -x $KZONECHECK ]; then
+	skip_all "kzonecheck is missing or is not executable"
+fi
 
 plan_lazy
 

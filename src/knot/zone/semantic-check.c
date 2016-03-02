@@ -747,11 +747,9 @@ static void check_nsec3(const zone_node_t *node, semchecks_data_t *data)
 	knot_dname_free(&next_dname, NULL);
 
 	if (next_nsec3 == NULL) {
-		printf("XXX");
 		err_handler_handle_error(data->handler, data->zone, node,
 		                         ZC_ERR_NSEC3_RDATA_CHAIN, NULL);
 	} else if (next_nsec3->prev != nsec3_node) {
-		printf("BBB");
 		err_handler_handle_error(data->handler, data->zone, node,
 		                         ZC_ERR_NSEC3_RDATA_CHAIN, NULL);
 	}
