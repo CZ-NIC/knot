@@ -1,6 +1,6 @@
 
 dns1.example.com.	3600	IN A	192.0.2.1
-			600	RRSIG	A 7 3 3600 (
+			3600	RRSIG	A 7 3 600 (
 					20840201000000 20160201000000 29600 example.com.
 					f24sVhH1P/0mEMYTMbFLrWmJtl6kqZF6yzaS
 					TcyK6JhVM4sDT//YnjizJGsTVGSCelz3FxMj

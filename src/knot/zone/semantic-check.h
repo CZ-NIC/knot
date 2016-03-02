@@ -31,10 +31,10 @@
 
 
 enum check_levels {
-	SEM_CHECK_MANDATORY = 1,
-	SEM_CHECK_OPTIONAL = 2,
-	SEM_CHECK_NSEC = 4,
-	SEM_CHECK_NSEC3 = 8
+	SEM_CHECK_MANDATORY = 1 << 0,
+	SEM_CHECK_OPTIONAL =  1 << 1,
+	SEM_CHECK_NSEC =      1 << 2,
+	SEM_CHECK_NSEC3 =     1 << 3,
 };
 
 /*!
@@ -78,7 +78,6 @@ enum zonechecks_errors {
 	ZC_ERR_NSEC3_UNSECURED_DELEGATION_OPT,
 	ZC_ERR_NSEC3_RDATA_TTL,
 	ZC_ERR_NSEC3_RDATA_CHAIN,
-	ZC_ERR_NSEC3_RDATA_BITMAP,
 	ZC_ERR_NSEC3_EXTRA_RECORD,
 
 	ZC_ERR_NSEC3_GENERAL_ERROR, /* NSEC3 error delimiter. */
@@ -161,12 +160,9 @@ int err_handler_handle_error(err_handler_t *handler,
  * \param zone Zone to be searched / checked
  * \param optional To do also optional check
  * \param handler Semantic error handler.
- * \param first_nsec3_node
- * \param last_nsec3_node
  */
 int zone_do_sem_checks(zone_contents_t *zone, bool optional,
-                       err_handler_t *handler, zone_node_t *first_nsec3_node,
-                       zone_node_t *last_nsec3_node);
+                       err_handler_t *handler);
 
 /*!
  * \brief Log all found errors using standard knot log.

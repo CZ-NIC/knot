@@ -10,11 +10,5 @@ $TTL 3600
 
 	NS	dns1
 	NS	dns2
-	MX	10 mail
 
-mail	A	192.0.2.3
-	AAAA	2001:DB8::3
-
-email	CNAME	mail
-
-
+; no A records for NS

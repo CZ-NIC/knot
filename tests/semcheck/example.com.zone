@@ -2,25 +2,12 @@ $ORIGIN example.com.
 $TTL 3600
 
 @	IN	SOA	dns1.example.com. hostmaster.example.com. (
-		2010111221	; serial
+		2010111222	; serial
 		6h		; refresh
 		1h		; retry
 		1w		; expire
 		1d )		; minimum
+	NS	ns
 
-	NS	dns1
-	NS	dns2
-	MX	10 mail
+ns	A	192.0.2.1
 
-dns1	A	192.0.2.1
-	AAAA	2001:DB8::1
-
-dns2	A	192.0.2.2
-	AAAA	2001:DB8::2
-
-mail	A	192.0.2.3
-	AAAA	2001:DB8::3
-
-email	CNAME	mail
-
-5NPA4RJPDJE6HUTJJIGU4A1KEBPAKMD4.example.com.	A	10.0.0.1

@@ -30,6 +30,7 @@
 #include "contrib/base32hex.h"
 #include "contrib/mempattern.h"
 #include "contrib/wire.h"
+#include "knot/dnssec/nsec-chain.h"
 
 const char *zonechecks_error_messages[(-ZC_ERR_UNKNOWN) + 1] = {
 	[-ZC_ERR_MISSING_SOA] =
@@ -67,7 +68,7 @@ const char *zonechecks_error_messages[(-ZC_ERR_UNKNOWN) + 1] = {
 	[-ZC_ERR_NO_NSEC] =
 	"NSEC, missing record",
 	[-ZC_ERR_NSEC_RDATA_BITMAP] =
-	"NSEC, wrong bitmap",
+	"NSEC(3), wrong bitmap",
 	[-ZC_ERR_NSEC_RDATA_MULTIPLE] =
 	"NSEC, multiple records",
 	[-ZC_ERR_NSEC_RDATA_CHAIN] =
@@ -85,8 +86,6 @@ const char *zonechecks_error_messages[(-ZC_ERR_UNKNOWN) + 1] = {
 	"NSEC3, original TTL RDATA field is wrong",
 	[-ZC_ERR_NSEC3_RDATA_CHAIN] =
 	"NSEC3, chain is not coherent",
-	[-ZC_ERR_NSEC3_RDATA_BITMAP] =
-	"NSEC3, wrong bitmap",
 	[-ZC_ERR_NSEC3_EXTRA_RECORD] =
 	"NSEC3, node contains extra record, unsupported",
 
@@ -124,8 +123,10 @@ static void check_dname(const zone_node_t *node, semchecks_data_t *data);
 static void check_delegation(const zone_node_t *node, semchecks_data_t *data);
 static void check_nsec(const zone_node_t *node, semchecks_data_t *data);
 static void check_nsec3(const zone_node_t *node, semchecks_data_t *data);
+static void check_nsec3_opt_out(const zone_node_t *node, semchecks_data_t *data);
 static void check_rrsig(const zone_node_t *node, semchecks_data_t *data);
 static void check_signed_rrsig(const zone_node_t *node, semchecks_data_t *data);
+static void check_nsec_bitmap(const zone_node_t *node, semchecks_data_t *data);
 
 struct check_function {
 	void (*function)(const zone_node_t *, semchecks_data_t *);
@@ -140,6 +141,8 @@ const struct check_function check_functions[] = {
 	{check_signed_rrsig, SEM_CHECK_NSEC | SEM_CHECK_NSEC3},
 	{check_nsec, SEM_CHECK_NSEC},
 	{check_nsec3, SEM_CHECK_NSEC3},
+	{check_nsec3_opt_out, SEM_CHECK_NSEC3},
+	{check_nsec_bitmap, SEM_CHECK_NSEC | SEM_CHECK_NSEC3},
 };
 
 const int check_functions_len = sizeof(check_functions)/sizeof(struct check_function);
@@ -437,91 +440,6 @@ static int check_rrsig_in_rrset(err_handler_t *handler,
 	return ret;
 }
 
-/*!
- * \brief Returns bit on index from array in network order. Taken from NSD.
- *
- * \param bits Array in network order.
- * \param index Index to return from array.
- *
- * \return int Bit on given index.
- */
-static inline int get_bit(uint8_t *bits, size_t index)
-{
-	/*
-	 * The bits are counted from left to right, so bit #0 is the
-	 * leftmost bit.
-	 */
-	return bits[index / 8] & (1 << (7 - index % 8));
-}
-
-/*!
- * \brief Converts NSEC bitmap to array of integers. (Inspired by NSD code)
- *
- * \param item Item containing the bitmap.
- * \param array Array to be created.
- * \param count Count of items in array.
- *
- * \retval KNOT_OK on success.
- * \retval KNOT_NOMEM on memory error.
- */
-static int rdata_nsec_to_type_array(const knot_rdataset_t *rrs, uint16_t type,
-                                    size_t pos, uint16_t **array, size_t *count)
-{
-	assert(*array == NULL);
-
-	uint8_t *data = NULL;
-	uint16_t rr_bitmap_size = 0;
-	if (type == KNOT_RRTYPE_NSEC) {
-		knot_nsec_bitmap(rrs, &data, &rr_bitmap_size);
-	} else {
-		knot_nsec3_bitmap(rrs, pos, &data, &rr_bitmap_size);
-	}
-	if (data == NULL) {
-		return KNOT_EMALF;
-	}
-
-	*count = 0;
-	int increment = 0;
-	for (int i = 0; i < rr_bitmap_size; i += increment) {
-		increment = 0;
-		uint8_t window = data[i];
-		increment++;
-
-		uint8_t bitmap_size = data[i + increment];
-		increment++;
-
-		uint8_t *bitmap =
-			malloc(sizeof(uint8_t) * (bitmap_size));
-		if (bitmap == NULL) {
-			free(*array);
-			return KNOT_ENOMEM;
-		}
-
-		memcpy(bitmap, data + i + increment, bitmap_size);
-
-		increment += bitmap_size;
-
-		for (int j = 0; j < bitmap_size * 8; j++) {
-			if (get_bit(bitmap, j)) {
-				(*count)++;
-				void *tmp = realloc(*array,
-						    sizeof(uint16_t) *
-						    *count);
-				if (tmp == NULL) {
-					free(bitmap);
-					free(*array);
-					return KNOT_ENOMEM;
-				}
-				*array = tmp;
-				(*array)[*count - 1] = j + window * 256;
-			}
-		}
-		free(bitmap);
-	}
-
-	return KNOT_EOK;
-}
-
 static void check_delegation(const zone_node_t *node, semchecks_data_t *data)
 {
 	if (!((node->flags & NODE_FLAGS_DELEG) || data->zone->apex == node)) {
@@ -597,8 +515,80 @@ static void check_rrsig(const zone_node_t *node, semchecks_data_t *data)
 	}
 }
 
-static void check_nsec(const zone_node_t *node,
-                                  semchecks_data_t *data)
+/*!
+ * \brief Add all RR types from a node into the bitmap.
+ */
+inline static void bitmap_add_all_node_rrsets(dnssec_nsec_bitmap_t *bitmap,
+                                          const zone_node_t *node)
+{
+	bool deleg = node->flags && NODE_FLAGS_DELEG;
+	for (int i = 0; i < node->rrset_count; i++) {
+		knot_rrset_t rr = node_rrset_at(node, i);
+		if (deleg && (rr.type != KNOT_RRTYPE_NS &&
+		              rr.type != KNOT_RRTYPE_DS &&
+			      rr.type != KNOT_RRTYPE_NSEC &&
+			      rr.type != KNOT_RRTYPE_RRSIG)) {
+			continue;
+		}
+		dnssec_nsec_bitmap_add(bitmap, rr.type);
+	}
+}
+
+static void check_nsec_bitmap(const zone_node_t *node, semchecks_data_t *data)
+{
+	assert(node);
+	if (node->flags & NODE_FLAGS_NONAUTH) {
+		return;
+	}
+
+	knot_rdataset_t *nsec_rrs;
+
+	if (data->level & SEM_CHECK_NSEC) {
+		nsec_rrs = node_rdataset(node, KNOT_RRTYPE_NSEC);
+	} else {
+		if ( node->nsec3_node == NULL ) {
+			return;
+		}
+		nsec_rrs = node_rdataset(node->nsec3_node, KNOT_RRTYPE_NSEC3);
+	}
+	if (nsec_rrs == NULL) {
+		return;
+	}
+
+	// create NSEC bitmap from node
+	dnssec_nsec_bitmap_t *node_bitmap = dnssec_nsec_bitmap_new();
+	if (node_bitmap == NULL) {
+		return ;
+	}
+	bitmap_add_all_node_rrsets(node_bitmap, node);
+
+	uint16_t node_wire_size = dnssec_nsec_bitmap_size(node_bitmap);
+	uint8_t *node_wire = malloc(node_wire_size);
+	if (node_wire == NULL) {
+		dnssec_nsec_bitmap_free(node_bitmap);
+		return;
+	}
+	dnssec_nsec_bitmap_write(node_bitmap, node_wire);
+
+	// get NSEC bitmap from NSEC node
+	uint8_t *nsec_wire = NULL;
+	uint16_t nsec_wire_size = 0;
+	if (data->level & SEM_CHECK_NSEC) {
+		knot_nsec_bitmap(nsec_rrs, &nsec_wire, &nsec_wire_size);
+	} else {
+		knot_nsec3_bitmap(nsec_rrs, 0, &nsec_wire, &nsec_wire_size);
+	}
+
+	if (node_wire_size != nsec_wire_size ||
+	    memcmp(node_wire, nsec_wire, node_wire_size) != 0) {
+		err_handler_handle_error(data->handler,
+		                         data->zone, node,
+		                         ZC_ERR_NSEC_RDATA_BITMAP,
+		                         NULL);
+	}
+}
+
+static void check_nsec(const zone_node_t *node, semchecks_data_t *data)
 {
 	assert(node);
 	if (node->flags & NODE_FLAGS_NONAUTH) {
@@ -614,33 +604,7 @@ static void check_nsec(const zone_node_t *node,
 		return;
 	}
 
-	/* check NSEC/NSEC3 bitmap */
-	size_t count;
-	uint16_t *array = NULL;
-	int ret = rdata_nsec_to_type_array(nsec_rrs,
-	                                   KNOT_RRTYPE_NSEC,
-	                                   0,
-	                                   &array,
-	                                   &count);
-	if (ret != KNOT_EOK) {
-		return;
-	}
 
-	uint16_t type = 0;
-	for (int j = 0; j < count; j++) {
-		/* test for each type's presence */
-		type = array[j];
-		if (type == KNOT_RRTYPE_RRSIG) {
-			continue;
-		}
-		if (!node_rrtype_exists(node, type)) {
-			err_handler_handle_error(data->handler,
-			                         data->zone, node,
-			                         ZC_ERR_NSEC_RDATA_BITMAP,
-			                         NULL);
-		}
-	}
-	free(array);
 
 	/* Test that only one record is in the NSEC RRSet */
 	if (nsec_rrs->rr_count != 1) {
@@ -674,6 +638,61 @@ static void check_nsec(const zone_node_t *node,
 	}
 }
 
+
+static void check_nsec3_opt_out(const zone_node_t *node, semchecks_data_t *data)
+{
+	if (node->nsec3_node != NULL) {
+		return;
+	}
+	// check for nodes without NSEC3
+
+	/* I know it's probably not what RFCs say, but it will have to
+	 * do for now. */
+	if (node_rrtype_exists(node, KNOT_RRTYPE_DS)) {
+		err_handler_handle_error(
+				data->handler, data->zone, node,
+				ZC_ERR_NSEC3_UNSECURED_DELEGATION, NULL);
+		return;
+	} else {
+		/* Unsecured delegation, check whether it is part of
+		 * opt-out span */
+		const zone_node_t *nsec3_previous;
+		const zone_node_t *nsec3_node;
+		if (zone_contents_find_nsec3_for_name(data->zone,
+		                                      node->owner,
+		                                      &nsec3_node,
+		                                      &nsec3_previous) != ZONE_NAME_NOT_FOUND) {
+			err_handler_handle_error(data->handler,
+			                         data->zone, node,
+			                         ZC_ERR_NSEC3_NOT_FOUND,
+			                         NULL);
+			return;
+		}
+		assert(nsec3_previous);
+
+		const knot_rdataset_t *previous_rrs =
+			node_rdataset(nsec3_previous, KNOT_RRTYPE_NSEC3);
+
+		assert(previous_rrs);
+
+		/* check for Opt-Out flag */
+		uint8_t flags = knot_nsec3_flags(previous_rrs, 0);
+		uint8_t opt_out_mask = 1;
+
+		if (flags & opt_out_mask) {
+			// opt-out no need to check more
+			return;
+		} else {
+			err_handler_handle_error(data->handler,
+				data->zone, node,
+				ZC_ERR_NSEC3_UNSECURED_DELEGATION_OPT,
+				NULL);
+			/* We cannot continue from here. */
+			return;
+		}
+	}
+}
+
 /*!
  * \brief Run semantic checks for node with DNSSEC-related types.
  */
@@ -687,57 +706,11 @@ static void check_nsec3(const zone_node_t *node, semchecks_data_t *data)
 		return;
 	}
 
-	const zone_node_t *nsec3_node = node->nsec3_node;
-
-	if (nsec3_node == NULL) {
-		/* I know it's probably not what RFCs say, but it will have to
-		 * do for now. */
-		if (node_rrtype_exists(node, KNOT_RRTYPE_DS)) {
-			err_handler_handle_error(
-				data->handler, data->zone, node,
-				ZC_ERR_NSEC3_UNSECURED_DELEGATION, NULL);
-			return;
-		} else {
-			/* Unsecured delegation, check whether it is part of
-			 * opt-out span */
-			const zone_node_t *nsec3_previous;
-			const zone_node_t *nsec3_node;
-			if (zone_contents_find_nsec3_for_name(data->zone,
-			                                      node->owner,
-			                                      &nsec3_node,
-			                                      &nsec3_previous) != 0) {
-				err_handler_handle_error(data->handler,
-				                         data->zone, node,
-				                         ZC_ERR_NSEC3_NOT_FOUND,
-				                         NULL);
-				return;
-			}
-			assert(nsec3_previous);
-
-			const knot_rdataset_t *previous_rrs =
-				node_rdataset(nsec3_previous, KNOT_RRTYPE_NSEC3);
-
-			assert(previous_rrs);
-
-			/* check for Opt-Out flag */
-			uint8_t flags =
-				knot_nsec3_flags(previous_rrs, 0);
-			uint8_t opt_out_mask = 1;
-
-			if (flags & opt_out_mask) {
-				// opt-out no need to check more
-				return;
-			} else {
-				err_handler_handle_error(data->handler,
-					data->zone, node,
-					ZC_ERR_NSEC3_UNSECURED_DELEGATION_OPT,
-					NULL);
-				/* We cannot continue from here. */
-				return;
-			}
-		}
+	if (node->nsec3_node == NULL) {
+		return;
 	}
 
+	const zone_node_t *nsec3_node = node->nsec3_node;
 	const knot_rdataset_t *nsec3_rrs = node_rdataset(nsec3_node,
 	                                            KNOT_RRTYPE_NSEC3);
 	if (nsec3_rrs == NULL) {
@@ -755,6 +728,7 @@ static void check_nsec3(const zone_node_t *node, semchecks_data_t *data)
 		                         ZC_ERR_NSEC3_RDATA_TTL, NULL);
 	}
 
+	/* Get next nsec3 node */
 	/* Result is a dname, it can't be larger */
 	const zone_node_t *apex = data->zone->apex;
 	uint8_t *next_dname_str = NULL;
@@ -768,36 +742,18 @@ static void check_nsec3(const zone_node_t *node, semchecks_data_t *data)
 		return;
 	}
 
-	if (zone_contents_find_nsec3_node(data->zone, next_dname) == NULL) {
-		err_handler_handle_error(data->handler, data->zone, node,
-		                         ZC_ERR_NSEC3_RDATA_CHAIN, NULL);
-	}
-
+	const zone_node_t *next_nsec3 =
+		zone_contents_find_nsec3_node(data->zone, next_dname);
 	knot_dname_free(&next_dname, NULL);
 
-	size_t arr_size;
-	uint16_t *array = NULL;
-	/* TODO only works for one NSEC3 RR. */
-	int ret = rdata_nsec_to_type_array(nsec3_rrs,
-	                                   KNOT_RRTYPE_NSEC3, 0,
-	                                   &array, &arr_size);
-	if (ret != KNOT_EOK) {
-		return;
-	}
-
-	uint16_t type = 0;
-	for (int j = 0; j < arr_size; j++) {
-		/* test for each type's presence */
-		type = array[j];
-		if (type == KNOT_RRTYPE_RRSIG) {
-			continue;
-		}
-
-		if (!node_rrtype_exists(node, type)) {
-			err_handler_handle_error(data->handler, data->zone, node,
-			                         ZC_ERR_NSEC3_RDATA_BITMAP,
-			                         NULL);
-		}
+	if (next_nsec3 == NULL) {
+		printf("XXX");
+		err_handler_handle_error(data->handler, data->zone, node,
+		                         ZC_ERR_NSEC3_RDATA_CHAIN, NULL);
+	} else if (next_nsec3->prev != nsec3_node) {
+		printf("BBB");
+		err_handler_handle_error(data->handler, data->zone, node,
+		                         ZC_ERR_NSEC3_RDATA_CHAIN, NULL);
 	}
 
 	/* Check that the node only contains NSEC3 and RRSIG. */
@@ -811,8 +767,6 @@ static void check_nsec3(const zone_node_t *node, semchecks_data_t *data)
 			                         NULL);
 		}
 	}
-
-	free(array);
 }
 
 static void check_cname_multiple(const zone_node_t *node, semchecks_data_t *data)
@@ -954,8 +908,7 @@ static int do_checks_in_tree(zone_node_t *node, void *data)
 }
 
 int zone_do_sem_checks(zone_contents_t *zone, bool optional,
-                       err_handler_t *handler, zone_node_t *first_nsec3_node,
-                       zone_node_t *last_nsec3_node)
+                       err_handler_t *handler)
 {
 	if (!zone || !handler) {
 		return KNOT_EINVAL;
@@ -990,9 +943,6 @@ int zone_do_sem_checks(zone_contents_t *zone, bool optional,
 	// check cyclic chain after every node was checked
 	if (data.level & SEM_CHECK_NSEC) {
 		check_nsec_cyclic(&data);
-	}
-	if (data.level & SEM_CHECK_NSEC3) {
-		check_nsec3_cyclic(&data, first_nsec3_node, last_nsec3_node);
 	}
 
 	if (data.fatal_error) {

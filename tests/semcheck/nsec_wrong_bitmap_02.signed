@@ -1,8 +1,14 @@
-; not coherent NSEC chain
 example.com.		86400	NSEC	dns1.example.com. NS SOA RRSIG NSEC DNSKEY
 dns1.example.com.	86400	NSEC	www.example.com. A RRSIG NSEC
-www.example.com.	86400	NSEC	example.com. A RRSIG NSEC
-www.example.com.	86400	NSEC	www.example.com. A RRSIG NSEC
+
+; missing A type in NSEC bitmap
+www.example.com.	86400	NSEC	example.com. RRSIG NSEC
+www.example.com.	3600	IN A	192.0.2.2
+			3600	RRSIG	A 7 3 3600 (
+					20840201000000 20160224082919 29600 example.com.
+					FLR8e2k6u7dhQA1xZ3YMxkvuktoydXC+ZNwl
+					xzW9hLpF3oKoqqY/V+kw7m2OMgnOEu2jWN4Q
+					EETdmMeQzkiuNw== )
 
 ; signatures for NSECs
 example.com.		86400	RRSIG	NSEC 7 2 86400 (
@@ -66,10 +72,5 @@ dns1.example.com.	3600	IN A	192.0.2.1
 					Uxfryu9va7bj+xoK4gLADGau69GCZxJNSvwK
 					TAGEqGRYFSY9Ew== )
 
-www.example.com.	3600	IN A	192.0.2.2
-			3600	RRSIG	A 7 3 3600 (
-					20840201000000 20160224082919 29600 example.com.
-					FLR8e2k6u7dhQA1xZ3YMxkvuktoydXC+ZNwl
-					xzW9hLpF3oKoqqY/V+kw7m2OMgnOEu2jWN4Q
-					EETdmMeQzkiuNw== )
+
 

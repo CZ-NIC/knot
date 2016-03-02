@@ -7,15 +7,4 @@ $TTL 3600
 		1h		; retry
 		1w		; expire
 		1d )		; minimum
-
-
-
-dns1	A	192.0.2.1
-	AAAA	2001:DB8::1
-
-
-
-
-
-
-
+; missing NS in SOA

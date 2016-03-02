@@ -263,10 +263,7 @@ zone_contents_t *zonefile_load(zloader_t *loader)
 		goto fail;
 	}
 
-	zone_node_t *first_nsec3_node = NULL;
-	zone_node_t *last_nsec3_node = NULL;
-
-	ret = zone_contents_adjust_full(zc->z, &first_nsec3_node, &last_nsec3_node);
+	ret = zone_contents_adjust_full(zc->z, NULL, NULL);
 	if (ret != KNOT_EOK) {
 		ERROR(zname, "failed to finalize zone contents (%s)",
 		      knot_strerror(ret));
@@ -274,8 +271,7 @@ zone_contents_t *zonefile_load(zloader_t *loader)
 	}
 
 	ret = zone_do_sem_checks(zc->z, loader->semantic_checks,
-	                         &loader->err_handler, first_nsec3_node,
-	                         last_nsec3_node);
+	                         &loader->err_handler);
 	INFO(zname, "semantic check, completed");
 
 	if (ret != KNOT_EOK) {

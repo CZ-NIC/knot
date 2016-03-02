@@ -7,18 +7,11 @@ $TTL 3600
 		1h		; retry
 		1w		; expire
 		1d )		; minimum
-
 	NS	dns1
 
 dns1	A	192.0.2.1
 	AAAA	2001:DB8::1
 
-
-bar.foo	A	192.0.0.1
-
 foo	DNAME	bar
-
-
-
-
+bar.foo	A	192.0.0.1
 

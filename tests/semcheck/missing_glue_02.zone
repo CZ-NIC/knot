@@ -10,11 +10,7 @@ $TTL 3600
 
 	NS	dns1
 	NS	dns2
-	MX	10 mail
 
 dns1	A	192.0.2.1
-	AAAA	2001:DB8::1
 
-
-
-
+; missing A record for dns2
