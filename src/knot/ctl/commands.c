@@ -365,7 +365,6 @@ static int ctl_conf_commit(server_t *s, remote_cmdargs_t *a)
 	// First check the database.
 	int ret = conf_io_check(&io);
 	if (ret != KNOT_EOK) {
-		conf_io_abort(false);
 		return ret;
 	}
 
