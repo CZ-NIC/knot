@@ -91,7 +91,7 @@ if HAVE_DOCS
 
 if HAVE_SPHINXBUILD
 html-local:
-	$(AM_V_SPHINX)$(SPHINXBUILD) -b html -d $(SPHINXBUILDDIR)/doctrees-html $(ALLSPHINXOPTS) $(SPHINXBUILDDIR)/html
+	$(AM_V_SPHINX)$(SPHINXBUILD) -b html -d $(SPHINXBUILDDIR)/doctrees $(ALLSPHINXOPTS) $(SPHINXBUILDDIR)/html
 	$(AM_V_ECHO)
 	$(AM_V_ECHO) "Build finished. The HTML pages are in $(SPHINXBUILDDIR)/html/."
 
@@ -102,7 +102,7 @@ install-html-local:
 	$(INSTALL_DATA) $(SPHINXBUILDDIR)/html/_static/* $(DESTDIR)/$(docdir)/_static/
 
 singlehtml:
-	$(AM_V_SPHINX)$(SPHINXBUILD) -b singlehtml -d $(SPHINXBUILDDIR)/doctrees-singlehtml $(ALLSPHINXOPTS) $(SPHINXBUILDDIR)/singlehtml
+	$(AM_V_SPHINX)$(SPHINXBUILD) -b singlehtml -d $(SPHINXBUILDDIR)/doctrees $(ALLSPHINXOPTS) $(SPHINXBUILDDIR)/singlehtml
 	$(AM_V_ECHO)
 	$(AM_V_ECHO) "Build finished. The HTML page is in $(SPHINXBUILDDIR)/singlehtml/."
 
@@ -113,7 +113,7 @@ install-singlehtml: singlehtml
 
 if HAVE_PDFLATEX
 pdf-local:
-	$(AM_V_SPHINX)$(SPHINXBUILD) -b latex -d $(SPHINXBUILDDIR)/doctrees-latex $(ALLSPHINXOPTS) $(SPHINXBUILDDIR)/latex
+	$(AM_V_SPHINX)$(SPHINXBUILD) -b latex -d $(SPHINXBUILDDIR)/doctrees $(ALLSPHINXOPTS) $(SPHINXBUILDDIR)/latex
 	$(MAKE) -C $(SPHINXBUILDDIR)/latex all-pdf
 	$(AM_V_ECHO)
 	$(AM_V_ECHO) "Build finished. The PDF file is in $(SPHINXBUILDDIR)/latex/."
@@ -130,7 +130,7 @@ endif
 
 if HAVE_MAKEINFO
 info-local:
-	$(AM_V_SPHINX)$(SPHINXBUILD) -b texinfo -d $(SPHINXBUILDDIR)/doctrees-texinfo $(ALLSPHINXOPTS) $(SPHINXBUILDDIR)/texinfo
+	$(AM_V_SPHINX)$(SPHINXBUILD) -b texinfo -d $(SPHINXBUILDDIR)/doctrees $(ALLSPHINXOPTS) $(SPHINXBUILDDIR)/texinfo
 	$(MAKE) -C $(SPHINXBUILDDIR)/texinfo info
 	$(AM_V_ECHO)
 	$(AM_V_ECHO) "Build finished. The Info file is in $(SPHINXBUILDDIR)/texinfo/."
@@ -148,7 +148,7 @@ endif
 .NOTPARALLEL: man
 man: $(man_MANS)
 $(MANPAGES_IN): $(MANPAGES_RST)
-	$(AM_V_SPHINX)$(SPHINXBUILD) -b man -d $(SPHINXBUILDDIR)/doctrees-man $(man_SPHINXOPTS) $(SPHINXBUILDDIR)/man
+	$(AM_V_SPHINX)$(SPHINXBUILD) -b man -d $(SPHINXBUILDDIR)/doctrees $(man_SPHINXOPTS) $(SPHINXBUILDDIR)/man
 	mkdir -p $(srcdir)/man
 	for f in $(SPHINXBUILDDIR)/man/*; do \
 	  sed -e '/^.TP$$/{n;s/^.B //}' "$$f" > "$(srcdir)/man/$$(basename $$f)in"; \
