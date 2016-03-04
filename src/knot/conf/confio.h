@@ -142,11 +142,11 @@ int conf_io_diff(
 /*!
  * Gets the configuration item(s) value(s).
  *
- * \param[in] key0        Section name (NULL to get all sections).
- * \param[in] key1        Item name (NULL to get all section items).
- * \param[in] id          Section identifier name (NULL to consider all section identifiers).
- * \param[in] get_current The current configuration or the active transaction switch.
- * \param[out] io         Operation output.
+ * \param[in] key0         Section name (NULL to get all sections).
+ * \param[in] key1         Item name (NULL to get all section items).
+ * \param[in] id           Section identifier name (NULL to consider all section identifiers).
+ * \param[in] get_current  The current configuration or the active transaction switch.
+ * \param[out] io          Operation output.
  *
  * \return Error code, KNOT_EOK if success.
  */

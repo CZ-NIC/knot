@@ -616,7 +616,7 @@ static inline int conf_user(
  * \param[in] conf   Configuration.
  * \param[in] txn    Configuration DB transaction.
  * \param[in] id     Remote identifier.
- * \param[in] index  Remote index.
+ * \param[in] index  Remote index (counted from 0).
  *
  * \return Remote parameters.
  */

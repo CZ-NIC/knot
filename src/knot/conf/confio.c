@@ -1345,16 +1345,9 @@ char *conf_io_txt_data(
 			return NULL;
 		}
 	// Format multivalued item data.
-	} else if (item->flags & YP_FMULTI) {
+	} else if ((item->flags & YP_FMULTI) && io->data.index == 0) {
 		size_t values = conf_val_count(io->data.val);
 		for (size_t i = 0; i < values; i++) {
-			// Skip other values if known index (counted from 1).
-			if (io->data.index > 0 &&
-			    io->data.index != i + 1) {
-				conf_val_next(io->data.val);
-				continue;
-			}
-
 			if (i > 0) {
 				if (strlcat(out, " ", sizeof(out)) >= sizeof(out)) {
 					return NULL;

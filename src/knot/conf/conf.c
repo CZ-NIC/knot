@@ -347,8 +347,8 @@ void conf_val(
 	assert(val->code == KNOT_EOK || val->code == KNOT_EOF);
 
 	if (val->item->flags & YP_FMULTI) {
-		// Check if already called.
-		if (val->data != NULL) {
+		// Check if already called and not at the end.
+		if (val->data != NULL && val->code != KNOT_EOF) {
 			return;
 		}
 
