@@ -61,12 +61,19 @@ typedef int (*chain_iterate_create_cb)(zone_node_t *, zone_node_t *,
 inline static void bitmap_add_node_rrsets(dnssec_nsec_bitmap_t *bitmap,
                                           const zone_node_t *node)
 {
+	bool deleg = node->flags & NODE_FLAGS_DELEG;
 	for (int i = 0; i < node->rrset_count; i++) {
 		knot_rrset_t rr = node_rrset_at(node, i);
-		if (rr.type != KNOT_RRTYPE_NSEC &&
-		    rr.type != KNOT_RRTYPE_RRSIG) {
-			dnssec_nsec_bitmap_add(bitmap, rr.type);
+		if (deleg && (rr.type != KNOT_RRTYPE_NS &&
+		              rr.type != KNOT_RRTYPE_DS)) {
+			continue;
 		}
+		if (rr.type == KNOT_RRTYPE_NSEC ||
+		    rr.type == KNOT_RRTYPE_RRSIG) {
+			continue;
+		}
+
+		dnssec_nsec_bitmap_add(bitmap, rr.type);
 	}
 }
 
