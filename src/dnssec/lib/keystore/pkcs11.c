@@ -37,7 +37,8 @@ typedef struct pkcs11_ctx pkcs11_ctx_t;
 /*!
  * Flags used when generating/import key into the token.
  */
-static const int TOKEN_ADD_FLAGS = GNUTLS_PKCS11_OBJ_FLAG_MARK_PRIVATE;
+static const int TOKEN_ADD_FLAGS = GNUTLS_PKCS11_OBJ_FLAG_MARK_SENSITIVE
+				 | GNUTLS_PKCS11_OBJ_FLAG_MARK_PRIVATE;
 
 static int key_url(const char *token_uri, const char *key_id, char **url_ptr)
 {
