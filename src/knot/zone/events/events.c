@@ -202,7 +202,7 @@ static void event_wrap(task_t *task)
 /*!
  * \brief Called by scheduler thread if the event occurs.
  */
-static int event_dispatch(event_t *event)
+static void event_dispatch(event_t *event)
 {
 	assert(event);
 	assert(event->data);
@@ -215,8 +215,6 @@ static int event_dispatch(event_t *event)
 		worker_pool_assign(events->pool, &events->task);
 	}
 	pthread_mutex_unlock(&events->mx);
-
-	return KNOT_EOK;
 }
 
 int zone_events_init(zone_t *zone)

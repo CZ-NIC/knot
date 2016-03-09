@@ -85,9 +85,7 @@ static int evsched_run(dthread_t *thread)
 
 		if (timercmp_ge(&dt, &ev->tv)) {
 			heap_delmin(&sched->heap);
-			pthread_mutex_unlock(&sched->heap_lock);
 			ev->cb(ev);
-			pthread_mutex_lock(&sched->heap_lock);
 		} else {
 			/* Wait for next event or interrupt. Unlock calendar. */
 			struct timespec ts;
@@ -180,14 +178,15 @@ void evsched_event_free(event_t *ev)
 
 int evsched_schedule(event_t *ev, uint32_t dt)
 {
-	if (ev == NULL) {
+	if (ev == NULL || ev->sched == NULL) {
 		return KNOT_EINVAL;
 	}
 
 	struct timeval new_time = timeval_in(dt);
 
-	/* Lock calendar. */
 	evsched_t *sched = ev->sched;
+
+	/* Lock calendar. */
 	pthread_mutex_lock(&sched->heap_lock);
 
 	ev->tv = new_time;
@@ -201,7 +200,7 @@ int evsched_schedule(event_t *ev, uint32_t dt)
 	}
 
 	/* Unlock calendar. */
-	pthread_cond_broadcast(&sched->notify);
+	pthread_cond_signal(&sched->notify);
 	pthread_mutex_unlock(&sched->heap_lock);
 
 	return KNOT_EOK;
@@ -213,17 +212,19 @@ int evsched_cancel(event_t *ev)
 		return KNOT_EINVAL;
 	}
 
-	/* Lock calendar. */
-	pthread_mutex_lock(&ev->sched->heap_lock);
+	evsched_t *sched = ev->sched;
 
-	int found = heap_find(&ev->sched->heap, ev);
+	/* Lock calendar. */
+	pthread_mutex_lock(&sched->heap_lock);
+
+	int found = heap_find(&sched->heap, ev);
 	if (found > 0) {
-		heap_delete(&ev->sched->heap, found);
+		heap_delete(&sched->heap, found);
 	}
 
 	/* Unlock calendar. */
-	pthread_cond_broadcast(&ev->sched->notify);
-	pthread_mutex_unlock(&ev->sched->heap_lock);
+	pthread_cond_signal(&sched->notify);
+	pthread_mutex_unlock(&sched->heap_lock);
 
 	/* Reset event timer. */
 	memset(&ev->tv, 0, sizeof(struct timeval));
@@ -240,7 +241,7 @@ void evsched_stop(evsched_t *sched)
 {
 	pthread_mutex_lock(&sched->heap_lock);
 	dt_stop(sched->thread);
-	pthread_cond_broadcast(&sched->notify);
+	pthread_cond_signal(&sched->notify);
 	pthread_mutex_unlock(&sched->heap_lock);
 }
 
