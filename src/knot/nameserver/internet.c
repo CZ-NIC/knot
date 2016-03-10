@@ -701,19 +701,36 @@ int ns_put_rr(knot_pkt_t *pkt, const knot_rrset_t *rr,
 static int default_answer(knot_pkt_t *response, struct query_data *qdata)
 {
 	int state = BEGIN;
+	struct query_plan *global_plan = conf()->query_plan;
+	struct query_step *step = NULL;
 
 	/* Resolve ANSWER. */
 	knot_pkt_begin(response, KNOT_ANSWER);
+	if (global_plan != NULL) {
+		WALK_LIST(step, global_plan->stage[QPLAN_ANSWER]) {
+			SOLVE_STEP(step->process, state, step->ctx);
+		}
+	}
 	SOLVE_STEP(solve_answer, state, NULL);
 	SOLVE_STEP(solve_answer_dnssec, state, NULL);
 
 	/* Resolve AUTHORITY. */
 	knot_pkt_begin(response, KNOT_AUTHORITY);
+	if (global_plan != NULL) {
+		WALK_LIST(step, global_plan->stage[QPLAN_AUTHORITY]) {
+			SOLVE_STEP(step->process, state, step->ctx);
+		}
+	}
 	SOLVE_STEP(solve_authority, state, NULL);
 	SOLVE_STEP(solve_authority_dnssec, state, NULL);
 
 	/* Resolve ADDITIONAL. */
 	knot_pkt_begin(response, KNOT_ADDITIONAL);
+	if (global_plan != NULL) {
+		WALK_LIST(step, global_plan->stage[QPLAN_ADDITIONAL]) {
+			SOLVE_STEP(step->process, state, step->ctx);
+		}
+	}
 	SOLVE_STEP(solve_additional, state, NULL);
 	SOLVE_STEP(solve_additional_dnssec, state, NULL);
 
@@ -725,9 +742,11 @@ static int default_answer(knot_pkt_t *response, struct query_data *qdata)
 
 static int planned_answer(struct query_plan *plan, knot_pkt_t *response, struct query_data *qdata)
 {
-	/* Before query processing code. */
 	int state = BEGIN;
+	struct query_plan *global_plan = conf()->query_plan;
 	struct query_step *step = NULL;
+
+	/* Before query processing code. */
 	WALK_LIST(step, plan->stage[QPLAN_BEGIN]) {
 		SOLVE_STEP(step->process, state, step->ctx);
 	}
@@ -735,6 +754,11 @@ static int planned_answer(struct query_plan *plan, knot_pkt_t *response, struct 
 	/* Begin processing. */
 	for (int section = KNOT_ANSWER; section <= KNOT_ADDITIONAL; ++section) {
 		knot_pkt_begin(response, section);
+		if (global_plan != NULL) {
+			WALK_LIST(step, global_plan->stage[QPLAN_STAGE + section]) {
+				SOLVE_STEP(step->process, state, step->ctx);
+			}
+		}
 		WALK_LIST(step, plan->stage[QPLAN_STAGE + section]) {
 			SOLVE_STEP(step->process, state, step->ctx);
 		}
