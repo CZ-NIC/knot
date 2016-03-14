@@ -508,6 +508,47 @@ static void wire_len_data_encode_to_str(rrset_dump_params_t *p,
 	p->ret = 0;
 }
 
+static void wire_unknown_to_str(rrset_dump_params_t *p)
+{
+	int    ret;
+	size_t in_len = p->in_max;
+	size_t out_len = 0;
+
+	// Write unknown length header.
+	if (in_len > 0) {
+		ret = snprintf(p->out, p->out_max, "\\# %zu ", in_len);
+	} else {
+		ret = snprintf(p->out, p->out_max, "\\# 0");
+	}
+	if (ret <= 0 || (size_t)ret >= p->out_max) {
+		return;
+	}
+	out_len = ret;
+
+	// Fill in output.
+	p->out += out_len;
+	p->out_max -= out_len;
+	p->total += out_len;
+
+	// Write hex data if any.
+	if (in_len > 0) {
+		// If wrap mode wrap line.
+		if (p->style->wrap) {
+			dump_string(p, BLOCK_INDENT);
+			if (p->ret != 0) {
+				return;
+			}
+		}
+
+		wire_data_encode_to_str(p, &hex_encode, &hex_encode_alloc);
+		if (p->ret != 0) {
+			return;
+		}
+	}
+
+	p->ret = 0;
+}
+
 static void wire_text_to_str(rrset_dump_params_t *p)
 {
 	// First byte is string length.
@@ -938,6 +979,14 @@ static void wire_loc_to_str(rrset_dump_params_t *p)
 	// Read values.
 	wire_ctx_t wire = wire_ctx_init_const(p->in, p->in_max);
 	uint8_t version = wire_ctx_read_u8(&wire);
+
+	// Version check.
+	if (version != 0) {
+		wire_unknown_to_str(p);
+		return;
+	}
+
+	// Continue to read values.
 	uint8_t size_w = wire_ctx_read_u8(&wire);
 	uint8_t hpre_w = wire_ctx_read_u8(&wire);
 	uint8_t vpre_w = wire_ctx_read_u8(&wire);
@@ -952,11 +1001,6 @@ static void wire_loc_to_str(rrset_dump_params_t *p)
 
 	p->in += wire_ctx_offset(&wire);
 	p->in_max = wire_ctx_available(&wire);
-
-	// Version check.
-	if (version != 0) {
-		return;
-	}
 
 	// Latitude calculation.
 	char lat_mark;
@@ -1207,47 +1251,6 @@ static void wire_tsig_rcode_to_str(rrset_dump_params_t *p)
 	// Fill in output.
 	p->in += in_len;
 	p->in_max -= in_len;
-	p->ret = 0;
-}
-
-static void wire_unknown_to_str(rrset_dump_params_t *p)
-{
-	int    ret;
-	size_t in_len = p->in_max;
-	size_t out_len = 0;
-
-	// Write unknown length header.
-	if (in_len > 0) {
-		ret = snprintf(p->out, p->out_max, "\\# %zu ", in_len);
-	} else {
-		ret = snprintf(p->out, p->out_max, "\\# 0");
-	}
-	if (ret <= 0 || (size_t)ret >= p->out_max) {
-		return;
-	}
-	out_len = ret;
-
-	// Fill in output.
-	p->out += out_len;
-	p->out_max -= out_len;
-	p->total += out_len;
-
-	// Write hex data if any.
-	if (in_len > 0) {
-		// If wrap mode wrap line.
-		if (p->style->wrap) {
-			dump_string(p, BLOCK_INDENT);
-			if (p->ret != 0) {
-				return;
-			}
-		}
-
-		wire_data_encode_to_str(p, &hex_encode, &hex_encode_alloc);
-		if (p->ret != 0) {
-			return;
-		}
-	}
-
 	p->ret = 0;
 }
 
