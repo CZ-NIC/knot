@@ -17,7 +17,7 @@ t.start()
 master.zone_wait(zone)
 
 t.sleep(1)
-master.flush()
+master.flush(zone)
 t.sleep(1)
 
 # Verify signed zone file.

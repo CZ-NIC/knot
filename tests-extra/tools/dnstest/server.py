@@ -79,6 +79,9 @@ class Server(object):
     RELOAD_MESSAGE = None
     RELOAD_TIMEOUT = 5
 
+    ZONE_LOADED_MESSAGE = None
+    ZONE_LOADED_TIMEOUT = 10
+
     STOP_TIMEOUT = 30
     COMPILE_TIMEOUT = 60
     DIG_TIMEOUT = 5
@@ -198,6 +201,7 @@ class Server(object):
 
         assert self.daemon_bin != None
         assert self.START_MESSAGE
+        assert self.ZONE_LOADED_MESSAGE
 
         try:
             if self.compile_cmd:
@@ -210,12 +214,20 @@ class Server(object):
             self.logwatch.start()
 
             start_event = self.logwatch.register(self.START_MESSAGE)
+            load_event = self.logwatch.register(self.ZONE_LOADED_MESSAGE)
 
             self.proc = Popen(self.valgrind + [self.daemon_bin] + self.start_params,
                               stdout=fout, stderr=self.logwatch.fd)
             os.close(self.logwatch.fd)
 
-            if not self.logwatch.wait(start_event, self.START_TIMEOUT):
+            # wait until server start. Zone load event increase timeout.
+            events_list = [start_event, load_event]
+            event, events_list = self.logwatch.wait_list(events_list, self.ZONE_LOADED_TIMEOUT)
+            while event:
+                if event == start_event[0]:
+                    break
+                event, events_list = self.logwatch.wait_list(events_list, self.ZONE_LOADED_TIMEOUT)
+            else:
                 raise Failed("Timeout when starting server='%s'" % self.name)
 
         except OSError:
@@ -697,6 +709,9 @@ class Server(object):
 class Bind(Server):
 
     START_MESSAGE = re.compile(r'[^ ]+ [^ ]+ running$')
+    RELOAD_MESSAGE = "reloading zones succeeded"
+    ZONE_LOADED_MESSAGE = re.compile(r"[^ ]+ [^ ]+ zone \[.*\] loaded serial")
+
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -865,6 +880,8 @@ class Knot(Server):
 
     START_MESSAGE = "info: server started in the foreground"
     RELOAD_MESSAGE = "info: configuration reloaded"
+    ZONE_LOADED_MESSAGE = re.compile(r"info: \[.*\] loaded, serial")
+    ZONE_FLUSH_MESSAGE = re.compile(r"\[.*\] zone flushed")
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -883,9 +900,20 @@ class Knot(Server):
         udp = super()._check_socket("udp", self.port)
         return (tcp and udp)
 
-    def flush(self):
+    def flush(self, zone_list=None):
+        assert self.logwatch
+        event = self.logwatch.register(self.ZONE_FLUSH_MESSAGE)
         self.ctl("zone-flush")
-        time.sleep(Server.START_TIMEOUT)
+
+        if zone_list is None:
+            time.sleep(Server.START_TIMEOUT)
+        else:
+            if not isinstance(zone_list, list):
+                zone_list = [zone_list]
+            for zone in zone_list:
+                if not self.logwatch.wait(event, self.ZONE_LOADED_TIMEOUT):
+                    raise Failed("Timeout after flushed server='%s'" % self.name)
+                event = self.logwatch.register(self.ZONE_FLUSH_MESSAGE)
 
     def _on_str_hex(self, conf, name, value):
         if value == True:

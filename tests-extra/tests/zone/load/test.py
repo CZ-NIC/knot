@@ -23,7 +23,7 @@ slave.zones_wait(zones)
 reference.zones_wait(zones)
 
 # Dump zones on slave.
-slave.flush()
+slave.flush(zones)
 
 # Compare master with reference server
 t.xfr_diff(reference, master, zones)

@@ -34,7 +34,7 @@ for zone in zones:
 knot.gen_confile()
 knot.reload()
 t.sleep(2)
-knot.flush()
+knot.flush(zones)
 t.sleep(2)
 knot.stop()
 

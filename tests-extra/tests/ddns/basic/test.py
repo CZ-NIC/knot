@@ -14,7 +14,7 @@ def check_soa(master, prev_soa):
 def verify(master, zone, dnssec):
     if not dnssec:
         return
-    master.flush()
+    master.flush(zone)
     t.sleep(1)
     master.zone_verify(zone)
 

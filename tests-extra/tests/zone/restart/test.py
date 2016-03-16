@@ -53,7 +53,7 @@ check_axfr(master, zone)
 serial = master.zone_wait(zone)
 
 # Update zonefile on master
-master.flush()
+master.flush(zone)
 t.sleep(1)
 master.update_zonefile(zone, random=True)
 master.reload()

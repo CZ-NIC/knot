@@ -101,6 +101,29 @@ class LogWatch:
         else:
             return False
 
+    def _check_waits(self, events):
+        for event in events:
+            message, counter = event
+            if self._watch[message] > counter:
+                return message
+
+        if not self._running:
+            raise LogWatchException("Descriptor closed while waiting for the event.")
+        else:
+            return False
+
+    def wait_list(self, events_list, timeout):
+        import time
+        t = time.time()
+
+        with self._sync:
+            hit = lambda: self._check_waits(events_list)
+            ret = self._sync.wait_for(hit, timeout)
+        
+        new_event_lists = list([(k, self._watch[k]) for k in self._watch
+                                if k in dict(events_list).keys()])
+        return ret, new_event_lists
+
     def wait(self, event, timeout):
         """Wait for a watched event. Return if the event happened."""
         with self._sync:
