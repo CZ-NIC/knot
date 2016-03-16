@@ -120,9 +120,10 @@ class LogWatch:
             hit = lambda: self._check_waits(events_list)
             ret = self._sync.wait_for(hit, timeout)
         
-        new_event_lists = list([(k, self._watch[k]) for k in self._watch
-                                if k in dict(events_list).keys()])
-        return ret, new_event_lists
+        events_list = dict(events_list)
+        events_list[ret] = self._watch[ret]
+        events_list = list(events_list.items())
+        return ret, events_list
 
     def wait(self, event, timeout):
         """Wait for a watched event. Return if the event happened."""
