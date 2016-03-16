@@ -176,8 +176,7 @@ class Test(object):
         # Remove server/servers from the test.
 
         if server:
-            if server.listening():
-                server.stop()
+            server.stop()
             self.servers.discard(server)
             return
 
