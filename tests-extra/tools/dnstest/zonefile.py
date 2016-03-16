@@ -75,6 +75,8 @@ class ZoneFile(object):
 
             shutil.copyfile(src_file, self.path)
 
+            self.update_mtime()
+
             # Copy zone keys.
             keydir = self.storage + "/keys"
             if os.path.isdir(keydir):
@@ -250,6 +252,7 @@ class ZoneFile(object):
         except OSError:
             raise Exception("Can't modify zone file '%s'" % self.path)
 
+        self.update_mtime()
         os.remove(old_name)
 
     def remove(self):
@@ -259,4 +262,8 @@ class ZoneFile(object):
             os.remove("%s/%s" % (self.file_dir, self.file_name))
         except:
             pass
+
+    def update_mtime(self):
+        stats = os.stat(self.path)
+        os.utime(self.path, (stats.st_atime + 1, stats.st_mtime + 1))
 
