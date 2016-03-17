@@ -121,7 +121,12 @@ static int init_and_check(
 		}
 	}
 
-	return conf->api->txn_commit(&txn);
+	if (flags & CONF_FREADONLY) {
+		conf->api->txn_abort(&txn);
+		return KNOT_EOK;
+	} else {
+		return conf->api->txn_commit(&txn);
+	}
 }
 
 int conf_refresh_txn(
