@@ -96,7 +96,7 @@ static inline conf_val_t conf_get(
  * \param[in] txn         Configuration DB transaction.
  * \param[in] key0_name   Section name.
  * \param[in] key1_name   Item name.
- * \param[in] id Section  identifier (raw value).
+ * \param[in] id          Section identifier (raw value).
  * \param[in] id_len      Length of the section identifier.
  *
  * \return Item value.
@@ -127,7 +127,7 @@ static inline conf_val_t conf_rawid_get(
  * \param[in] txn         Configuration DB transaction.
  * \param[in] key0_name   Section name.
  * \param[in] key1_name   Item name.
- * \param[in] id Section  identifier (output of a config getter).
+ * \param[in] id          Section identifier (output of a config getter).
  *
  * \return Item value.
  */
@@ -216,6 +216,57 @@ static inline conf_val_t conf_default_get(
 	const yp_name_t *key1_name)
 {
 	return conf_default_get_txn(conf, &conf->read_txn, key1_name);
+}
+
+/*!
+ * Checks the configuration section for the identifier (raw version).
+ *
+ * \param[in] conf        Configuration.
+ * \param[in] txn         Configuration DB transaction.
+ * \param[in] key0_name   Section name.
+ * \param[in] id          Section identifier (raw value).
+ * \param[in] id_len      Length of the section identifier.
+ *
+ * \return True if exists.
+ */
+bool conf_rawid_exists_txn(
+	conf_t *conf,
+	knot_db_txn_t *txn,
+	const yp_name_t *key0_name,
+	const uint8_t *id,
+	size_t id_len
+);
+static inline bool conf_rawid_exists(
+	conf_t *conf,
+	const yp_name_t *key0_name,
+	const uint8_t *id,
+	size_t id_len)
+{
+	return conf_rawid_exists_txn(conf, &conf->read_txn, key0_name, id, id_len);
+}
+
+/*!
+ * Checks the configuration section for the identifier.
+ *
+ * \param[in] conf        Configuration.
+ * \param[in] txn         Configuration DB transaction.
+ * \param[in] key0_name   Section name.
+ * \param[in] id          Section identifier (output of a config getter).
+ *
+ * \return True if exists.
+ */
+bool conf_id_exists_txn(
+	conf_t *conf,
+	knot_db_txn_t *txn,
+	const yp_name_t *key0_name,
+	conf_val_t *id
+);
+static inline bool conf_id_exists(
+	conf_t *conf,
+	const yp_name_t *key0_name,
+	conf_val_t *id)
+{
+	return conf_id_exists_txn(conf, &conf->read_txn, key0_name, id);
 }
 
 /*!

@@ -238,6 +238,57 @@ conf_val_t conf_default_get_txn(
 	return val;
 }
 
+bool conf_rawid_exists_txn(
+	conf_t *conf,
+	knot_db_txn_t *txn,
+	const yp_name_t *key0_name,
+	const uint8_t *id,
+	size_t id_len)
+{
+	if (key0_name == NULL || id == NULL) {
+		CONF_LOG(LOG_DEBUG, "conf_rawid_exists (%s)", knot_strerror(KNOT_EINVAL));
+		return false;
+	}
+
+	int ret = conf_db_get(conf, txn, key0_name, NULL, id, id_len, NULL);
+	switch (ret) {
+	case KNOT_EOK:
+		return true;
+	default:
+		CONF_LOG(LOG_ERR, "failed to check '%s' for identifier (%s)",
+		         key0_name + 1, knot_strerror(ret));
+		// FALLTHROUGH
+	case KNOT_YP_EINVAL_ID:
+		return false;
+	}
+}
+
+bool conf_id_exists_txn(
+	conf_t *conf,
+	knot_db_txn_t *txn,
+	const yp_name_t *key0_name,
+	conf_val_t *id)
+{
+	if (key0_name == NULL || id == NULL || id->code != KNOT_EOK) {
+		CONF_LOG(LOG_DEBUG, "conf_id_exists (%s)", knot_strerror(KNOT_EINVAL));
+		return false;
+	}
+
+	conf_val(id);
+
+	int ret = conf_db_get(conf, txn, key0_name, NULL, id->data, id->len, NULL);
+	switch (ret) {
+	case KNOT_EOK:
+		return true;
+	default:
+		CONF_LOG(LOG_ERR, "failed to check '%s' for identifier (%s)",
+		         key0_name + 1, knot_strerror(ret));
+		// FALLTHROUGH
+	case KNOT_YP_EINVAL_ID:
+		return false;
+	}
+}
+
 size_t conf_id_count_txn(
 	conf_t *conf,
 	knot_db_txn_t *txn,
