@@ -1,4 +1,4 @@
-/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -26,16 +26,19 @@
 /*! \brief Discard zone in zone database. */
 static void discard_zone(zone_t *zone)
 {
-	char *journal_file = conf_journalfile(conf(), zone->name);
+	// Don't flush if removed zone (no previous configuration available).
+	if (conf_rawid_exists(conf(), C_ZONE, zone->name, knot_dname_size(zone->name))) {
+		char *journal_file = conf_journalfile(conf(), zone->name);
 
-	/* Flush if bootstrapped or if the journal doesn't exist. */
-	if (zone->zonefile_mtime == 0 || !journal_exists(journal_file)) {
-		pthread_mutex_lock(&zone->journal_lock);
-		zone_flush_journal(conf(), zone);
-		pthread_mutex_unlock(&zone->journal_lock);
+		/* Flush if bootstrapped or if the journal doesn't exist. */
+		if (zone->zonefile_mtime == 0 || !journal_exists(journal_file)) {
+			pthread_mutex_lock(&zone->journal_lock);
+			zone_flush_journal(conf(), zone);
+			pthread_mutex_unlock(&zone->journal_lock);
+		}
+
+		free(journal_file);
 	}
-
-	free(journal_file);
 
 	zone_free(&zone);
 }
