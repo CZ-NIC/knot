@@ -1,4 +1,4 @@
-/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -31,7 +31,6 @@
 
 #include "knot/conf/tools.h"
 #include "knot/conf/conf.h"
-#include "knot/conf/confdb.h"
 #include "knot/conf/scheme.h"
 #include "knot/common/log.h"
 #include "libknot/errcode.h"
@@ -298,15 +297,13 @@ int check_ref(
 	const yp_item_t *ref = args->item->var.r.ref;
 
 	// Try to find a referenced block with the id.
-	// Cannot use conf_raw_get as id is not stored in confdb directly!
-	int ret = conf_db_get(args->conf, args->txn, ref->name, NULL,
-	                      args->data, args->data_len, NULL);
-	if (ret != KNOT_EOK) {
+	if (!conf_rawid_exists_txn(args->conf, args->txn, ref->name, args->data,
+	                           args->data_len)) {
 		args->err_str = "invalid reference";
-
+		return KNOT_EINVAL;
 	}
 
-	return ret;
+	return KNOT_EOK;
 }
 
 int check_modref(
@@ -317,15 +314,12 @@ int check_modref(
 	size_t id_len = args->data_len - 1 - args->data[0];
 
 	// Try to find a module with the id.
-	// Cannot use conf_raw_get as id is not stored in confdb directly!
-	int ret = conf_db_get(args->conf, args->txn, mod_name, NULL, id, id_len,
-	                      NULL);
-	if (ret != KNOT_EOK) {
+	if (!conf_rawid_exists_txn(args->conf, args->txn, mod_name, id, id_len)) {
 		args->err_str = "invalid module reference";
-
+		return KNOT_EINVAL;
 	}
 
-	return ret;
+	return KNOT_EOK;
 }
 
 int check_key(
