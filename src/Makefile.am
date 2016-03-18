@@ -98,6 +98,7 @@ nobase_libknot_la_HEADERS =			\
 	libknot/binary.h			\
 	libknot/codes.h				\
 	libknot/consts.h			\
+	libknot/control/control.h		\
 	libknot/descriptor.h			\
 	libknot/dname.h				\
 	libknot/dnssec/rrset-sign.h		\
@@ -141,6 +142,7 @@ nobase_libknot_la_HEADERS =			\
 libknot_la_SOURCES =				\
 	libknot/binary.c			\
 	libknot/codes.c				\
+	libknot/control/control.c		\
 	libknot/descriptor.c			\
 	libknot/dname.c				\
 	libknot/dnssec/rrset-sign.c		\
