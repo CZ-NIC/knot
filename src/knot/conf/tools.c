@@ -300,7 +300,7 @@ int check_ref(
 	if (!conf_rawid_exists_txn(args->conf, args->txn, ref->name, args->data,
 	                           args->data_len)) {
 		args->err_str = "invalid reference";
-		return KNOT_EINVAL;
+		return KNOT_ENOENT;
 	}
 
 	return KNOT_EOK;
@@ -316,7 +316,7 @@ int check_modref(
 	// Try to find a module with the id.
 	if (!conf_rawid_exists_txn(args->conf, args->txn, mod_name, id, id_len)) {
 		args->err_str = "invalid module reference";
-		return KNOT_EINVAL;
+		return KNOT_ENOENT;
 	}
 
 	return KNOT_EOK;
