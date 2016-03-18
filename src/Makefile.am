@@ -211,8 +211,6 @@ knotc_SOURCES =					\
 	utils/knotc/commands.h			\
 	utils/knotc/estimator.c			\
 	utils/knotc/estimator.h			\
-	utils/knotc/remote.c			\
-	utils/knotc/remote.h			\
 	utils/knotc/main.c
 
 knotd_SOURCES =					\
@@ -245,8 +243,8 @@ libknotd_la_SOURCES =				\
 	knot/conf/tools.h			\
 	knot/ctl/commands.c			\
 	knot/ctl/commands.h			\
-	knot/ctl/remote.c			\
-	knot/ctl/remote.h			\
+	knot/ctl/process.c			\
+	knot/ctl/process.h			\
 	knot/dnssec/context.c			\
 	knot/dnssec/context.h			\
 	knot/dnssec/nsec-chain.c		\

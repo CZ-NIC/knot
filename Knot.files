@@ -226,8 +226,8 @@ src/knot/conf/tools.c
 src/knot/conf/tools.h
 src/knot/ctl/commands.c
 src/knot/ctl/commands.h
-src/knot/ctl/remote.c
-src/knot/ctl/remote.h
+src/knot/ctl/process.c
+src/knot/ctl/process.h
 src/knot/dnssec/context.c
 src/knot/dnssec/context.h
 src/knot/dnssec/nsec-chain.c
@@ -466,8 +466,6 @@ src/utils/knotc/commands.h
 src/utils/knotc/estimator.c
 src/utils/knotc/estimator.h
 src/utils/knotc/main.c
-src/utils/knotc/remote.c
-src/utils/knotc/remote.h
 src/utils/knotd/main.c
 src/utils/knsupdate/knsupdate_exec.c
 src/utils/knsupdate/knsupdate_exec.h

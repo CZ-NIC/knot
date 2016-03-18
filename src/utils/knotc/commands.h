@@ -1,4 +1,4 @@
-/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -24,36 +24,44 @@
 
 #pragma once
 
+#include "libknot/control/control.h"
+#include "knot/ctl/commands.h"
+
 /*! \brief Command parameter flags. */
 typedef enum {
 	CMD_FNONE  = 0,      /*!< Empty flag. */
-	CMD_FFORCE = 1 << 0  /*!< Forced operation. */
+	CMD_FFORCE = 1 << 0, /*!< Forced operation. */
 } cmd_flag_t;
 
 /*! \brief Command condition flags. */
 typedef enum {
-	CMD_CONF_FNONE  = 0,      /*!< Empty flag. */
-	CMD_CONF_FREAD  = 1 << 0, /*!< Required read access to config or confdb. */
-	CMD_CONF_FWRITE = 1 << 1  /*!< Required write access to confdb. */
+	CMD_CONF_FNONE     = 0,      /*!< Empty flag. */
+	CMD_CONF_FREAD     = 1 << 0, /*!< Required read access to config or confdb. */
+	CMD_CONF_FWRITE    = 1 << 1, /*!< Required write access to confdb. */
+	CMD_CONF_FOPT_ITEM = 1 << 2, /*!< Optional item argument. */
+	CMD_CONF_FREQ_ITEM = 1 << 3, /*!< Required item argument. */
+	CMD_CONF_FOPT_DATA = 1 << 4, /*!< Optional item data argument. */
 } cmd_conf_flag_t;
+
+struct cmd_desc;
+typedef struct cmd_desc cmd_desc_t;
 
 /*! \brief Command callback arguments. */
 typedef struct {
-	char *socket;
+	const cmd_desc_t *desc;
+	knot_ctl_t *ctl;
 	int argc;
 	char **argv;
 	cmd_flag_t flags;
 } cmd_args_t;
 
-/*! \brief Command callback prototype. */
-typedef int (*cmd_t)(cmd_args_t *args);
-
 /*! \brief Command callback description. */
-typedef struct {
+struct cmd_desc {
 	const char *name;
-	cmd_t cmd;
+	int (*fcn)(cmd_args_t *);
+	ctl_cmd_t cmd;
 	cmd_conf_flag_t flags;
-} cmd_desc_t;
+};
 
 /*! \brief Old command name translation. */
 typedef struct {

@@ -453,15 +453,25 @@ Configuration of the server control interface.
 
  control:
      listen: STR
+     timeout: TIME
 
 .. _control_listen:
 
 listen
 ------
 
-A UNIX socket path where the server listens for remote control commands.
+A UNIX socket path where the server listens for control commands.
 
 *Default:* :ref:`rundir<server_rundir>`/knot.sock
+
+.. _control_timeout:
+
+timeout
+-------
+
+Maximum time the control socket operations can take. Set 0 for infinity.
+
+*Default:* 5
 
 .. _Remote section:
 

@@ -404,15 +404,21 @@ Configuration of the server control interface.
 .ft C
 control:
     listen: STR
+    timeout: TIME
 .ft P
 .fi
 .UNINDENT
 .UNINDENT
 .SS listen
 .sp
-A UNIX socket path where the server listens for remote control commands.
+A UNIX socket path where the server listens for control commands.
 .sp
 \fIDefault:\fP \fI\%rundir\fP/knot.sock
+.SS timeout
+.sp
+Maximum time the control socket operations can take. Set 0 for infinity.
+.sp
+\fIDefault:\fP 5
 .SH REMOTE SECTION
 .sp
 Definitions of remote servers for outgoing connections (source of a zone

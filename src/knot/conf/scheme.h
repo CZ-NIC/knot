@@ -78,6 +78,7 @@
 #define C_TCP_REPLY_TIMEOUT	"\x11""tcp-reply-timeout"
 #define C_TCP_WORKERS		"\x0B""tcp-workers"
 #define C_TIMER_DB		"\x08""timer-db"
+#define C_TIMEOUT		"\x07""timeout"
 #define C_TPL			"\x08""template"
 #define C_UDP_WORKERS		"\x0B""udp-workers"
 #define C_USER			"\x04""user"

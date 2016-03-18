@@ -23,7 +23,10 @@ Parameters
   configuration file.
 
 **-s**, **--socket** *path*
-  Use a remote control UNIX socket path (default is :file:`@run_dir@/knot.sock`).
+  Use a control UNIX socket path (default is :file:`@run_dir@/knot.sock`).
+
+**-t**, **--timeout** *seconds*
+  Use a control timeout in seconds. Set 0 for infinity (default is 5).
 
 **-f**, **--force**
   Forced operation. Overrides some checks.
