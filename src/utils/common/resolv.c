@@ -1,4 +1,4 @@
-/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -109,16 +109,14 @@ srv_info_t* parse_nameserver(const char *str, const char *def_port)
 	return server;
 }
 
-static int get_resolv_nameservers(list_t *servers, const char *def_port)
+static size_t get_resolv_nameservers(list_t *servers, const char *def_port)
 {
 	char	line[512];
 
 	// Open config file.
 	FILE *f = fopen(RESOLV_FILE, "r");
-
-	// Check correct open.
 	if (f == NULL) {
-		return KNOT_ENOENT;
+		return 0;
 	}
 
 	// Read lines from config file.
@@ -178,24 +176,18 @@ static int get_resolv_nameservers(list_t *servers, const char *def_port)
 	return list_size(servers);
 }
 
-int get_nameservers(list_t *servers, const char *def_port)
+void get_nameservers(list_t *servers, const char *def_port)
 {
 	if (servers == NULL || def_port == NULL) {
 		DBG_NULL;
-		return KNOT_EINVAL;
+		return;
 	}
 
 	// Initialize list of servers.
 	init_list(servers);
 
-	// Read nameservers from resolv file.
-	int ret = get_resolv_nameservers(servers, def_port);
-
-	// If found nameservers or error.
-	if (ret != 0) {
-		return ret;
-	// If no nameservers.
-	} else {
+	// Read nameservers from resolv file or use the default ones.
+	if (get_resolv_nameservers(servers, def_port) == 0) {
 		srv_info_t *server;
 
 		// Add default ipv6 nameservers.
@@ -211,7 +203,5 @@ int get_nameservers(list_t *servers, const char *def_port)
 		if (server != NULL) {
 			add_tail(servers, (node_t *)server);
 		}
-
-		return list_size(servers);
 	}
 }

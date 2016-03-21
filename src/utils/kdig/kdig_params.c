@@ -1265,8 +1265,8 @@ static void complete_servers(query_t *query, const query_t *conf)
 			add_tail(&query->servers, (node_t *)server);
 		}
 	// Use system specific.
-	} else if (get_nameservers(&query->servers, def_port) <= 0) {
-		WARN("can't read any nameservers\n");
+	} else {
+		get_nameservers(&query->servers, def_port);
 	}
 }
 
