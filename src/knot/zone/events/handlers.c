@@ -407,7 +407,7 @@ static int try_refresh(conf_t *conf, zone_t *zone, const conf_remote_t *master, 
 	assert(master);
 
 	int ret = zone_query_execute(conf, zone, KNOT_QUERY_NORMAL, master);
-	if (ret != KNOT_EOK) {
+	if (ret != KNOT_EOK && ret != KNOT_LAYER_ERROR) {
 		ZONE_QUERY_LOG(LOG_WARNING, zone, master, "refresh, outgoing",
 		               "failed (%s)", knot_strerror(ret));
 	}

@@ -825,10 +825,22 @@ static int process_soa_answer(knot_pkt_t *pkt, struct answer_data *data)
 {
 	zone_t *zone = data->param->zone;
 
+	/* Check RCODE. */
+	uint8_t rcode = knot_wire_get_rcode(pkt->wire);
+	if (rcode != KNOT_RCODE_NOERROR) {
+		const knot_lookup_t *lut = knot_lookup_by_id(knot_rcode_names, rcode);
+		if (lut != NULL) {
+			ANSWER_LOG(LOG_WARNING, data, "refresh, outgoing",
+			           "server responded with %s", lut->name);
+		}
+		return KNOT_STATE_FAIL;
+	}
+
 	/* Expect SOA in answer section. */
 	const knot_pktsection_t *answer = knot_pkt_section(pkt, KNOT_ANSWER);
 	const knot_rrset_t *first_rr = knot_pkt_rr(answer, 0);
 	if (answer->count < 1 || first_rr->type != KNOT_RRTYPE_SOA) {
+		ANSWER_LOG(LOG_WARNING, data, "refresh, outgoing", "malformed message");
 		return KNOT_STATE_FAIL;
 	}
 
