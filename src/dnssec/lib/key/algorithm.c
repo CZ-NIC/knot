@@ -23,14 +23,67 @@
 
 /* -- internal ------------------------------------------------------------- */
 
-static bool is_dsa(dnssec_key_algorithm_t algorithm)
+struct limits {
+	unsigned min;
+	unsigned max;
+	unsigned def;
+	bool (*validate)(unsigned bits);
+};
+
+static bool dsa_validate(unsigned bits)
 {
+	return (bits % 64 == 0);
+}
+
+static const struct limits *get_limits(dnssec_key_algorithm_t algorithm)
+{
+	static const struct limits DSA = {
+		.min = 512,
+		.max = 1024,
+		.def = 1024,
+		.validate = dsa_validate,
+	};
+
+	static const struct limits RSA = {
+		.min = 512,
+		.max = 4096,
+		.def = 2048,
+	};
+
+	static const struct limits RSA_SHA512 = {
+		.min = 1024,
+		.max = 4096,
+		.def = 2048,
+	};
+
+	static const struct limits EC256 = {
+		.min = 256,
+		.max = 256,
+		.def = 256,
+	};
+
+	static const struct limits EC384 = {
+		.min = 384,
+		.max = 384,
+		.def = 384,
+	};
+
 	switch (algorithm) {
 	case DNSSEC_KEY_ALGORITHM_DSA_SHA1:
 	case DNSSEC_KEY_ALGORITHM_DSA_SHA1_NSEC3:
-		return true;
+		return &DSA;
+	case DNSSEC_KEY_ALGORITHM_RSA_SHA1:
+	case DNSSEC_KEY_ALGORITHM_RSA_SHA1_NSEC3:
+	case DNSSEC_KEY_ALGORITHM_RSA_SHA256:
+		return &RSA;
+	case DNSSEC_KEY_ALGORITHM_RSA_SHA512:
+		return &RSA_SHA512;
+	case DNSSEC_KEY_ALGORITHM_ECDSA_P256_SHA256:
+		return &EC256;
+	case DNSSEC_KEY_ALGORITHM_ECDSA_P384_SHA384:
+		return &EC384;
 	default:
-		return false;
+		return NULL;
 	}
 }
 
@@ -65,29 +118,13 @@ int dnssec_algorithm_key_size_range(dnssec_key_algorithm_t algorithm,
 		return DNSSEC_EINVAL;
 	}
 
-	unsigned min = 0;
-	unsigned max = 0;
-
-	switch (algorithm) {
-	case DNSSEC_KEY_ALGORITHM_DSA_SHA1:
-	case DNSSEC_KEY_ALGORITHM_DSA_SHA1_NSEC3:
-		min = 512; max = 1024; break;
-	case DNSSEC_KEY_ALGORITHM_RSA_SHA1:
-	case DNSSEC_KEY_ALGORITHM_RSA_SHA1_NSEC3:
-	case DNSSEC_KEY_ALGORITHM_RSA_SHA256:
-		min = 512; max = 4096; break;
-	case DNSSEC_KEY_ALGORITHM_RSA_SHA512:
-		min = 1024; max = 4096; break;
-	case DNSSEC_KEY_ALGORITHM_ECDSA_P256_SHA256:
-		min = max = 256; break;
-	case DNSSEC_KEY_ALGORITHM_ECDSA_P384_SHA384:
-		min = max = 384; break;
-	default:
+	const struct limits *limits = get_limits(algorithm);
+	if (!limits) {
 		return DNSSEC_INVALID_KEY_ALGORITHM;
 	}
 
-	if (min_ptr) { *min_ptr = min; }
-	if (max_ptr) { *max_ptr = max; }
+	*min_ptr = limits->min;
+	*max_ptr = limits->max;
 
 	return DNSSEC_EOK;
 }
@@ -96,20 +133,17 @@ _public_
 bool dnssec_algorithm_key_size_check(dnssec_key_algorithm_t algorithm,
 				     unsigned bits)
 {
-	unsigned min = 0;
-	unsigned max = 0;
-
-	int r = dnssec_algorithm_key_size_range(algorithm, &min, &max);
-	if (r != DNSSEC_EOK) {
+	const struct limits *limits = get_limits(algorithm);
+	if (!limits) {
 		return false;
 	}
 
-	if (bits < min || bits > max) {
+	if (bits < limits->min || bits > limits->max) {
 		return false;
 	}
 
-	if (is_dsa(algorithm)) {
-		return (bits % 64 == 0);
+	if (limits->validate && !limits->validate(bits)) {
+		return false;
 	}
 
 	return true;
@@ -118,20 +152,6 @@ bool dnssec_algorithm_key_size_check(dnssec_key_algorithm_t algorithm,
 _public_
 int dnssec_algorithm_key_size_default(dnssec_key_algorithm_t algorithm)
 {
-	switch (algorithm) {
-	case DNSSEC_KEY_ALGORITHM_DSA_SHA1:
-	case DNSSEC_KEY_ALGORITHM_DSA_SHA1_NSEC3:
-		return 1024;
-	case DNSSEC_KEY_ALGORITHM_RSA_SHA1:
-	case DNSSEC_KEY_ALGORITHM_RSA_SHA1_NSEC3:
-	case DNSSEC_KEY_ALGORITHM_RSA_SHA256:
-	case DNSSEC_KEY_ALGORITHM_RSA_SHA512:
-		return 2048;
-	case DNSSEC_KEY_ALGORITHM_ECDSA_P256_SHA256:
-		return 256;
-	case DNSSEC_KEY_ALGORITHM_ECDSA_P384_SHA384:
-		return 384;
-	default:
-		return 0;
-	}
+	const struct limits *limits = get_limits(algorithm);
+	return limits ? limits->def : 0;
 }
