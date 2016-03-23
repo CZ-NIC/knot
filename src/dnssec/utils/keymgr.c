@@ -1031,8 +1031,7 @@ static int cmd_zone_key_generate(int argc, char *argv[])
 	}
 
 	if (config.size == 0) {
-		error("Key size has to be specified.");
-		return 1;
+		config.size = dnssec_algorithm_key_size_default(config.algorithm);
 	}
 
 	if (!dnssec_algorithm_key_size_check(config.algorithm, config.size)) {
