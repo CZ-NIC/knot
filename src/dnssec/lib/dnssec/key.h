@@ -262,6 +262,14 @@ bool dnssec_algorithm_key_size_check(dnssec_key_algorithm_t algorithm,
 				     unsigned bits);
 
 /*!
+ * Get default key size for given algorithm.
+ *
+ * The default size is balance between security and response lengths with
+ * respect to use in DNS.
+ */
+int dnssec_algorithm_key_size_default(dnssec_key_algorithm_t algorithm);
+
+/*!
  * DS algorithm numbers.
  *
  * \see https://www.iana.org/assignments/ds-rr-types/ds-rr-types.xhtml

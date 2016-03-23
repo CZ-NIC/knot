@@ -114,3 +114,24 @@ bool dnssec_algorithm_key_size_check(dnssec_key_algorithm_t algorithm,
 
 	return true;
 }
+
+_public_
+int dnssec_algorithm_key_size_default(dnssec_key_algorithm_t algorithm)
+{
+	switch (algorithm) {
+	case DNSSEC_KEY_ALGORITHM_DSA_SHA1:
+	case DNSSEC_KEY_ALGORITHM_DSA_SHA1_NSEC3:
+		return 1024;
+	case DNSSEC_KEY_ALGORITHM_RSA_SHA1:
+	case DNSSEC_KEY_ALGORITHM_RSA_SHA1_NSEC3:
+	case DNSSEC_KEY_ALGORITHM_RSA_SHA256:
+	case DNSSEC_KEY_ALGORITHM_RSA_SHA512:
+		return 2048;
+	case DNSSEC_KEY_ALGORITHM_ECDSA_P256_SHA256:
+		return 256;
+	case DNSSEC_KEY_ALGORITHM_ECDSA_P384_SHA384:
+		return 384;
+	default:
+		return 0;
+	}
+}
