@@ -65,7 +65,7 @@ static const struct error errors[] = {
 	{ KNOT_EZONENOENT,   "zone file not found" },
 	{ KNOT_ENOZONE,      "no such zone found" },
 	{ KNOT_ENONODE,      "no such node in zone found" },
-	{ KNOT_ENOMASTER,    "no active master" },
+	{ KNOT_ENOMASTER,    "no usable master" },
 	{ KNOT_EDNAMEPTR,    "domain name pointer larger than allowed" },
 	{ KNOT_EPAYLOAD,     "invalid EDNS payload size" },
 	{ KNOT_EPREREQ,      "UPDATE prerequisity not met" },
