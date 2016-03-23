@@ -96,3 +96,42 @@ void dnssec_kasp_policy_free(dnssec_kasp_policy_t *policy)
 	free(policy->keystore);
 	free(policy);
 }
+
+static bool valid_algorithm(const dnssec_kasp_policy_t *p)
+{
+	return dnssec_algorithm_key_size_check(p->algorithm, p->ksk_size) &&
+	       dnssec_algorithm_key_size_check(p->algorithm, p->zsk_size);
+
+}
+
+_public_
+int dnssec_kasp_policy_validate(const dnssec_kasp_policy_t *policy)
+{
+	if (!policy) {
+		return DNSSEC_EINVAL;
+	}
+
+	/*
+	 * NOTES:
+	 *
+	 * - Don't check if key store is set.
+	 * - Allow zero TTL for any record.
+	 *
+	 */
+
+	// required parameters
+
+	if (policy->rrsig_lifetime == 0 ||
+	    policy->rrsig_refresh_before == 0
+	) {
+		return DNSSEC_CONFIG_MALFORMED;
+	}
+
+	// signing algorithm constraints
+
+	if (!policy->manual && !valid_algorithm(policy)) {
+		return DNSSEC_INVALID_KEY_SIZE;
+	}
+
+	return DNSSEC_EOK;
+}

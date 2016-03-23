@@ -23,6 +23,7 @@ check_PROGRAMS = \
 	event_keystate	\
 	kasp_dir_escape	\
 	kasp_dir_file	\
+	kasp_policy	\
 	kasp_store	\
 	key		\
 	key_algorithm	\
