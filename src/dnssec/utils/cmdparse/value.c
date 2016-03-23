@@ -20,6 +20,7 @@
 #include "print.h"
 
 #include <assert.h>
+#include <ctype.h>
 #include <errno.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -101,6 +102,25 @@ int value_string(int argc, char *argv[], const parameter_t *p, void *data)
 	return 1;
 }
 
+/*!
+ * Skip non-alphanumerc characters and convert to lower case.
+ */
+static void simplify_algorithm_name(char *name)
+{
+	size_t len = strlen(name);
+
+	int ri, wi;
+	for (ri = 0, wi = 0; ri < len; ri++) {
+		int c = name[ri];
+		if (isalnum(c)) {
+			name[wi] = tolower(c);
+			wi += 1;
+		}
+	}
+
+	name[wi] = '\0';
+}
+
 int value_algorithm(int argc, char *argv[], const parameter_t *p, void *data)
 {
 	assert(p);
@@ -129,7 +149,7 @@ int value_algorithm(int argc, char *argv[], const parameter_t *p, void *data)
 		return 1;
 	}
 
-	// mnemonic (as specified in the IANA algorithm list)
+	// name (IANA mnemonics, simplified)
 
 	struct lookup {
 		const char *name;
@@ -137,19 +157,20 @@ int value_algorithm(int argc, char *argv[], const parameter_t *p, void *data)
 	};
 
 	static const struct lookup mnemonics[] = {
-		{ "dsa",                DNSSEC_KEY_ALGORITHM_DSA_SHA1  },
-		{ "rsasha1",            DNSSEC_KEY_ALGORITHM_RSA_SHA1  },
-		{ "dsa-nsec3-sha1",     DNSSEC_KEY_ALGORITHM_DSA_SHA1_NSEC3  },
-		{ "rsasha1-nsec3-sha1", DNSSEC_KEY_ALGORITHM_RSA_SHA1_NSEC3  },
-		{ "rsasha256",          DNSSEC_KEY_ALGORITHM_RSA_SHA256  },
-		{ "rsasha512",          DNSSEC_KEY_ALGORITHM_RSA_SHA512  },
-		{ "ecdsap256sha256",    DNSSEC_KEY_ALGORITHM_ECDSA_P256_SHA256 },
-		{ "ecdsap384sha384",    DNSSEC_KEY_ALGORITHM_ECDSA_P384_SHA384 },
+		{ "dsa",              DNSSEC_KEY_ALGORITHM_DSA_SHA1  },
+		{ "rsasha1",          DNSSEC_KEY_ALGORITHM_RSA_SHA1  },
+		{ "dsansec3sha1",     DNSSEC_KEY_ALGORITHM_DSA_SHA1_NSEC3  },
+		{ "rsasha1nsec3sha1", DNSSEC_KEY_ALGORITHM_RSA_SHA1_NSEC3  },
+		{ "rsasha256",        DNSSEC_KEY_ALGORITHM_RSA_SHA256  },
+		{ "rsasha512",        DNSSEC_KEY_ALGORITHM_RSA_SHA512  },
+		{ "ecdsap256sha256",  DNSSEC_KEY_ALGORITHM_ECDSA_P256_SHA256 },
+		{ "ecdsap384sha384",  DNSSEC_KEY_ALGORITHM_ECDSA_P384_SHA384 },
 		{ NULL }
 	};
 
+	simplify_algorithm_name(input);
 	for (const struct lookup *m = mnemonics; m->name; m++) {
-		if (strcasecmp(input, m->name) == 0) {
+		if (strcmp(input, m->name) == 0) {
 			*algorithm = m->algorithm;
 			return 1;
 		}
