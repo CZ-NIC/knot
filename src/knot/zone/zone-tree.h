@@ -79,57 +79,12 @@ int zone_tree_insert(zone_tree_t *tree, zone_node_t *node);
  * \retval KNOT_EINVAL
  * \retval KNOT_ENOMEM
  */
-int zone_tree_find(zone_tree_t *tree,
-                   const knot_dname_t *owner,
-                   const zone_node_t **found);
-
-/*!
- * \brief Finds node with the given owner in the zone tree.
- *
- * \note This function is identical to zone_tree_find() except that it
- *       returns non-const node.
- *
- * \param tree Zone tree to search in.
- * \param owner Owner of the node to find.
- *
- * \retval KNOT_EOK
- * \retval KNOT_EINVAL
- * \retval KNOT_ENOMEM
- */
-int zone_tree_get(zone_tree_t *tree,
-                  const knot_dname_t *owner,
+int zone_tree_get(zone_tree_t *tree, const knot_dname_t *owner,
                   zone_node_t **found);
 
 /*!
  * \brief Tries to find the given domain name in the zone tree and returns the
  *        associated node and previous node in canonical order.
- *
- * \param zone Zone to search in.
- * \param owner Owner of the node to find.
- * \param found Found node.
- * \param previous Previous node in canonical order (i.e. the one directly
- *                 preceding \a owner in canonical order, regardless if the name
- *                 is in the zone or not).
- *
- * \retval > 0 if the domain name was found. In such case \a found holds the
- *             zone node with \a owner as its owner.
- *             \a previous is set properly.
- * \retval 0 if the domain name was not found. \a found may hold any (or none)
- *           node. \a previous is set properly.
- * \retval KNOT_EINVAL
- * \retval KNOT_ENOMEM
- */
-int zone_tree_find_less_or_equal(zone_tree_t *tree,
-                                 const knot_dname_t *owner,
-                                 const zone_node_t **found,
-                                 const zone_node_t **previous);
-
-/*!
- * \brief Tries to find the given domain name in the zone tree and returns the
- *        associated node and previous node in canonical order.
- *
- * \note This function is identical to zone_tree_find_less_or_equal()
- *       except that it returns non-const nodes.
  *
  * \param zone Zone to search in.
  * \param owner Owner of the node to find.

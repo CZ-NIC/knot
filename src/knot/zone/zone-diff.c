@@ -240,7 +240,8 @@ static int knot_zone_diff_node(zone_node_t **node_ptr, void *data)
 	const knot_dname_t *node_owner = node->owner;
 	assert(node_owner);
 
-	zone_tree_find(param->nodes, node_owner, &node_in_second_tree);
+	zone_tree_get(param->nodes, (knot_dname_t *)node_owner,
+	              (zone_node_t **)&node_in_second_tree);
 
 	if (node_in_second_tree == NULL) {
 		return knot_zone_diff_remove_node(param->changeset, node);

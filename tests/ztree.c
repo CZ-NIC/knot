@@ -88,9 +88,9 @@ int main(int argc, char *argv[])
 
 	/* 3. check data test */
 	passed = 1;
-	const zone_node_t *node = NULL;
+	zone_node_t *node = NULL;
 	for (unsigned i = 0; i < NCOUNT; ++i) {
-		int r = zone_tree_find(t, NAME[i], &node);
+		int r = zone_tree_get(t, NAME[i], &node);
 		if (r != KNOT_EOK || node != NODE + i) {
 			passed = 0;
 			break;
@@ -103,9 +103,9 @@ int main(int argc, char *argv[])
 
 	/* 4. ordered lookup */
 	node = NULL;
-	const zone_node_t *prev = NULL;
+	zone_node_t *prev = NULL;
 	knot_dname_t *tmp_dn = knot_dname_from_str_alloc("z.ac.");
-	zone_tree_find_less_or_equal(t, tmp_dn, &node, &prev);
+	zone_tree_get_less_or_equal(t, tmp_dn, &node, &prev);
 	knot_dname_free(&tmp_dn, NULL);
 	ok(prev == NODE + 1, "ztree: ordered lookup");
 

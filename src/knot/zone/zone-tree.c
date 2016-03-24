@@ -51,18 +51,8 @@ int zone_tree_insert(zone_tree_t *tree, zone_node_t *node)
 	return KNOT_EOK;
 }
 
-int zone_tree_find(zone_tree_t *tree, const knot_dname_t *owner,
-                          const zone_node_t **found)
-{
-	if (owner == NULL || found == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	return zone_tree_get(tree, owner, (zone_node_t **)found);
-}
-
 int zone_tree_get(zone_tree_t *tree, const knot_dname_t *owner,
-                         zone_node_t **found)
+                  zone_node_t **found)
 {
 	if (owner == NULL) {
 		return KNOT_EINVAL;
@@ -83,24 +73,6 @@ int zone_tree_get(zone_tree_t *tree, const knot_dname_t *owner,
 	}
 
 	return KNOT_EOK;
-}
-
-int zone_tree_find_less_or_equal(zone_tree_t *tree,
-                                 const knot_dname_t *owner,
-                                 const zone_node_t **found,
-                                 const zone_node_t **previous)
-{
-	if (owner == NULL || found == NULL || previous == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	zone_node_t *f = NULL, *p = NULL;
-	int ret = zone_tree_get_less_or_equal(tree, owner, &f, &p);
-
-	*found = f;
-	*previous = p;
-
-	return ret;
 }
 
 int zone_tree_get_less_or_equal(zone_tree_t *tree,

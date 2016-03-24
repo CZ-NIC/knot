@@ -797,8 +797,9 @@ int zone_contents_find_nsec3_for_name(const zone_contents_t *zone,
 
 	const zone_node_t *found = NULL, *prev = NULL;
 
-	int exact_match = zone_tree_find_less_or_equal(zone->nsec3_nodes, nsec3_name,
-	                                               &found, &prev);
+	int exact_match = zone_tree_get_less_or_equal(zone->nsec3_nodes, nsec3_name,
+	                                              (zone_node_t **)&found,
+	                                              (zone_node_t **)&prev);
 	assert(exact_match >= 0);
 
 	knot_dname_free(&nsec3_name, NULL);
