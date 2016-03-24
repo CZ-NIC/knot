@@ -258,6 +258,7 @@ bool conf_rawid_exists_txn(
 		CONF_LOG(LOG_ERR, "failed to check '%s' for identifier (%s)",
 		         key0_name + 1, knot_strerror(ret));
 		// FALLTHROUGH
+	case KNOT_ENOENT:
 	case KNOT_YP_EINVAL_ID:
 		return false;
 	}
