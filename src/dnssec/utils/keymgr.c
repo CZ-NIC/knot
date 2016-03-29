@@ -984,6 +984,15 @@ static int cmd_zone_key_ds(int argc, char *argv[])
 	return 0;
 }
 
+static void assure_key_size(uint16_t *size, dnssec_key_algorithm_t algorithm)
+{
+	assert(size);
+
+	if (*size == 0) {
+		*size = dnssec_algorithm_key_size_default(algorithm);
+	}
+}
+
 /*
  * keymgr zone key generate <zone> algorithm <algorithm> size <size> [ksk]
  *                                 [publish <publish>] [active <active>]
@@ -999,7 +1008,7 @@ static int cmd_zone_key_generate(int argc, char *argv[])
 	struct config {
 		char *name;
 		dnssec_key_algorithm_t algorithm;
-		unsigned size;
+		uint16_t size;
 		bool is_ksk;
 		dnssec_kasp_key_timing_t timing;
 	};
@@ -1030,9 +1039,7 @@ static int cmd_zone_key_generate(int argc, char *argv[])
 		return 1;
 	}
 
-	if (config.size == 0) {
-		config.size = dnssec_algorithm_key_size_default(config.algorithm);
-	}
+	assure_key_size(&config.size, config.algorithm);
 
 	if (!dnssec_algorithm_key_size_check(config.algorithm, config.size)) {
 		error("Key size is invalid for given algorithm.");
@@ -1430,9 +1437,15 @@ static int cmd_policy_add(int argc, char *argv[])
 	dnssec_kasp_policy_defaults(policy);
 	policy->keystore = strdup(DEFAULT_KEYSTORE);
 
+	policy->ksk_size = 0;
+	policy->zsk_size = 0;
+
 	if (parse_parameters(POLICY_PARAMS, argc -1, argv + 1, policy) != 0) {
 		return 1;
 	}
+
+	assure_key_size(&policy->ksk_size, policy->algorithm);
+	assure_key_size(&policy->zsk_size, policy->algorithm);
 
 	int r = dnssec_kasp_policy_validate(policy);
 	if (r != DNSSEC_EOK) {
