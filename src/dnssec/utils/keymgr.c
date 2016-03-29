@@ -1434,12 +1434,18 @@ static int cmd_policy_add(int argc, char *argv[])
 		return 1;
 	}
 
+	int r = dnssec_kasp_policy_validate(policy);
+	if (r != DNSSEC_EOK) {
+		error("Policy configuration is invalid (%s).", dnssec_strerror(r));
+		return 1;
+	}
+
 	_cleanup_kasp_ dnssec_kasp_t *kasp = get_kasp();
 	if (!kasp) {
 		return 1;
 	}
 
-	int r = dnssec_kasp_policy_exists(kasp, policy_name);
+	r = dnssec_kasp_policy_exists(kasp, policy_name);
 	if (r == DNSSEC_EOK) {
 		error("Policy with given name alredy exists.");
 		return 1;
@@ -1481,7 +1487,13 @@ static int cmd_policy_set(int argc, char *argv[])
 		return 1;
 	}
 
-	int r = dnssec_kasp_policy_save(kasp, policy);
+	int r = dnssec_kasp_policy_validate(policy);
+	if (r != DNSSEC_EOK) {
+		error("Policy configuration is invalid (%s).", dnssec_strerror(r));
+		return 1;
+	}
+
+	r = dnssec_kasp_policy_save(kasp, policy);
 	if (r != DNSSEC_EOK) {
 		error("Failed to save updated policy (%s).", dnssec_strerror(r));
 		return 1;
