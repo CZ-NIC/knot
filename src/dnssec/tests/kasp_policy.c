@@ -62,13 +62,13 @@ static void test_set_parameters(void)
 	p->zsk_size = 1024;
 	p->rrsig_lifetime = 60;
 	p->rrsig_refresh_before = 50;
-	ok(dnssec_kasp_policy_validate(p) != DNSSEC_EOK, "validation succeeds with valid setting");
+	ok(dnssec_kasp_policy_validate(p) == DNSSEC_EOK, "validation succeeds with valid setting");
 
 	p->algorithm = DNSSEC_KEY_ALGORITHM_ECDSA_P256_SHA256;
 	ok(dnssec_kasp_policy_validate(p) != DNSSEC_EOK, "validation fails with incorrect key size");
 
 	p->manual = true;
-	ok(dnssec_kasp_policy_validate(p) != DNSSEC_EOK, "validation succeeds in manual mode");
+	ok(dnssec_kasp_policy_validate(p) == DNSSEC_EOK, "validation succeeds in manual mode");
 
 	dnssec_kasp_policy_free(p);
 }
