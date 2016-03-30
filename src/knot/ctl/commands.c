@@ -113,8 +113,6 @@ static int zone_status(zone_t *zone, ctl_args_t *args)
 		[KNOT_CTL_IDX_ZONE] = name
 	};
 
-	char buff[128];
-
 	// Zone type.
 	data[KNOT_CTL_IDX_TYPE] = "type";
 
@@ -132,6 +130,7 @@ static int zone_status(zone_t *zone, ctl_args_t *args)
 	// Zone serial.
 	data[KNOT_CTL_IDX_TYPE] = "serial";
 
+	char buff[128];
 	uint32_t serial = 0;
 	if (zone->contents != NULL) {
 		serial = knot_soa_serial(node_rdataset(zone->contents->apex,
@@ -345,7 +344,7 @@ static int send_block(conf_io_t *io)
 	char id[KNOT_DNAME_TXT_MAXLEN + 1] = "\0";
 
 	// Get the textual item id.
-	if (io->id_len > 0) {
+	if (io->id_len > 0 && io->key0 != NULL) {
 		size_t id_len = sizeof(id);
 		int ret = yp_item_to_txt(io->key0->var.g.id, io->id, io->id_len,
 		                         id, &id_len, YP_SNOQUOTE);
@@ -364,6 +363,7 @@ static int send_block(conf_io_t *io)
 	}
 
 	const yp_item_t *item = (io->key1 != NULL) ? io->key1 : io->key0;
+	assert(item != NULL);
 
 	char buff[YP_MAX_TXT_DATA_LEN + 1] = "\0";
 

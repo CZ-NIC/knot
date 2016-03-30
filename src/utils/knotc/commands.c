@@ -416,7 +416,7 @@ static int zone_memstats(const knot_dname_t *dname, void *data)
 
 	if (est.node_table == NULL || zone_name == NULL || zone_file == NULL ||
 	    zs == NULL) {
-		log_zone_error(dname, "%s", strerror(KNOT_ENOMEM));
+		log_zone_error(dname, "%s", knot_strerror(KNOT_ENOMEM));
 		hattrie_free(est.node_table);
 		free(zone_file);
 		free(zone_name);

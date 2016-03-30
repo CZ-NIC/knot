@@ -202,9 +202,9 @@ static void test_client_server_client(void)
 		ctl_server(socket, data_len, data);
 	}
 
-	int status;
+	int status = 0;
 	wait(&status);
-	ok(status >= 0, "Wait for client");
+	ok(WIFEXITED(status), "Wait for client");
 
 	test_rm_rf(socket);
 	free(socket);
