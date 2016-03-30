@@ -1,4 +1,4 @@
-/*  Copyright (C) 2013 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -14,13 +14,11 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 /*!
- * \file estimator.h
- *
- * \author Jan Kadlec <jan.kadlec@nic.cz>
+ * \file
  *
  * \brief Memory estimation for zone files.
  *
- * \addtogroup config
+ * \addtogroup knot_utils
  * @{
  */
 
@@ -29,19 +27,16 @@
 #include "contrib/hat-trie/hat-trie.h"
 #include "zscanner/scanner.h"
 
-// Mutiplicative constant, needed because of malloc's fragmentation
-static const double ESTIMATE_MAGIC = 1.0;
-
 /*!
  * \brief Memory estimation context.
  */
-typedef struct zone_estim {
+typedef struct {
 	hattrie_t *node_table; /*!< Same trie is in actual zone. */
-	size_t rdata_size; /*!< Estimated RDATA size. */
-	size_t dname_size; /*!< Estimated DNAME size. */
-	size_t node_size; /*!< Estimated node size. */
-	size_t htable_size; /*!< Estimated ahtable size. */
-	size_t record_count; /*!< Total record count for zone. */
+	size_t rdata_size;     /*!< Estimated RDATA size. */
+	size_t dname_size;     /*!< Estimated DNAME size. */
+	size_t node_size;      /*!< Estimated node size. */
+	size_t htable_size;    /*!< Estimated ahtable size. */
+	size_t record_count;   /*!< Total record count for zone. */
 } zone_estim_t;
 
 /*!
@@ -53,7 +48,7 @@ typedef struct zone_estim {
  * \retval Alloc'd data on succes.
  * \retval NULL on error.
  */
-void *estimator_malloc(void* ctx, size_t len);
+void *estimator_malloc(void *ctx, size_t len);
 
 /*!
  * \brief Size counting free wrapper.

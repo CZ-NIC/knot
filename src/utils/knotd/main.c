@@ -1,4 +1,4 @@
-/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -34,7 +34,7 @@
 
 #include "dnssec/crypto.h"
 #include "libknot/libknot.h"
-#include "knot/ctl/remote.h"
+#include "knot/ctl/process.h"
 #include "knot/conf/conf.h"
 #include "knot/common/log.h"
 #include "knot/common/process.h"
@@ -215,9 +215,6 @@ static void setup_capabilities(void)
 /*! \brief Event loop listening for signals and remote commands. */
 static void event_loop(server_t *server, char *socket)
 {
-	uint8_t buf[KNOT_WIRE_MAX_PKTSIZE];
-	size_t buflen = sizeof(buf);
-
 	/* Get control socket configuration. */
 	char *listen = socket;
 	if (socket == NULL) {
@@ -228,8 +225,27 @@ static void event_loop(server_t *server, char *socket)
 		free(rundir);
 	}
 
-	/* Bind to control socket (error logging is inside the function. */
-	int sock = remote_bind(listen);
+	knot_ctl_t *ctl = knot_ctl_alloc();
+	if (ctl == NULL) {
+		log_fatal("control, failed to initialize (%s)",
+		          knot_strerror(KNOT_ENOMEM));
+		return;
+	}
+
+	// Set control timeout.
+	conf_val_t val = conf_get(conf(), C_CTL, C_TIMEOUT);
+	knot_ctl_set_timeout(ctl, conf_int(&val) * 1000);
+
+	log_info("control, binding to '%s'", listen);
+
+	/* Bind the control socket. */
+	int ret = knot_ctl_bind(ctl, listen);
+	if (ret != KNOT_EOK) {
+		knot_ctl_free(ctl);
+		log_fatal("control, failed to bind socket '%s' (%s)",
+		          listen, knot_strerror(ret));
+		return;
+	}
 
 	if (socket == NULL) {
 		free(listen);
@@ -248,19 +264,21 @@ static void event_loop(server_t *server, char *socket)
 			server_reload(server, conf()->filename, true);
 		}
 
-		/* Control interface. */
-		struct pollfd pfd = { .fd = sock, .events = POLLIN };
-		int ret = poll(&pfd, 1, -1);
-		if (ret > 0) {
-			ret = remote_process(server, sock, buf, buflen);
-			if (ret == KNOT_CTL_ESTOP) {
-				break;
-			}
+		ret = knot_ctl_accept(ctl);
+		if (ret != KNOT_EOK) {
+			continue;
+		}
+
+		ret = ctl_process(ctl, server);
+		knot_ctl_close(ctl);
+		if (ret == KNOT_CTL_ESTOP) {
+			break;
 		}
 	}
 
-	/* Close control socket. */
-	remote_unbind(sock);
+	/* Unbind the control socket. */
+	knot_ctl_unbind(ctl);
+	knot_ctl_free(ctl);
 }
 
 static void print_help(void)

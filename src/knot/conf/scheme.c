@@ -98,6 +98,7 @@ static const yp_item_t desc_server[] = {
 
 static const yp_item_t desc_control[] = {
 	{ C_LISTEN,  YP_TSTR, YP_VSTR = { "knot.sock" } },
+	{ C_TIMEOUT, YP_TINT, YP_VINT = { 0, INT32_MAX, 5, YP_STIME } },
 	{ C_COMMENT, YP_TSTR, YP_VNONE },
 	{ NULL }
 };

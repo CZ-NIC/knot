@@ -19,6 +19,7 @@ check_PROGRAMS = \
 	conf_tools			\
 	confdb				\
 	confio				\
+	control				\
 	db				\
 	descriptor			\
 	dname				\

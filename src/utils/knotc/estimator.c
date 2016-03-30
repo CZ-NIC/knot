@@ -1,4 +1,4 @@
-/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -18,9 +18,7 @@
 
 #include "utils/knotc/estimator.h"
 #include "knot/zone/node.h"
-#include "libknot/errcode.h"
-#include "libknot/dname.h"
-#include "libknot/descriptor.h"
+#include "libknot/libknot.h"
 #include "contrib/macros.h"
 #include "contrib/string.h"
 #include "contrib/ucw/lists.h"
@@ -31,7 +29,7 @@ enum estim_consts {
 	MALLOC_MIN = MALLOC_OVERHEAD * 3    // minimum size of malloc'd chunk
 };
 
-typedef struct type_list_item {
+typedef struct {
 	node_t n;
 	uint16_t type;
 } type_list_item_t;

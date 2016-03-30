@@ -1,4 +1,4 @@
-/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -21,15 +21,14 @@
 #include "libknot/libknot.h"
 #include "knot/common/log.h"
 #include "knot/ctl/commands.h"
-#include "knot/ctl/remote.h"
 #include "knot/conf/conf.h"
 #include "knot/conf/confdb.h"
 #include "knot/zone/zonefile.h"
 #include "knot/zone/zone-load.h"
+#include "contrib/macros.h"
 #include "contrib/string.h"
-#include "utils/knotc/estimator.h"
 #include "utils/knotc/commands.h"
-#include "utils/knotc/remote.h"
+#include "utils/knotc/estimator.h"
 
 #define CMD_STATUS		"status"
 #define CMD_STOP		"stop"
@@ -58,80 +57,467 @@
 #define CMD_CONF_SET		"conf-set"
 #define CMD_CONF_UNSET		"conf-unset"
 
-static int cmd_status(cmd_args_t *args)
+static int check_args(cmd_args_t *args, unsigned count)
 {
-	if (args->argc > 0) {
-		log_error("command does not take arguments");
-		return KNOT_EINVAL;
+	if (args->argc == count) {
+		return KNOT_EOK;
 	}
 
-	return cmd_remote(args->socket, KNOT_CTL_STATUS, KNOT_RRTYPE_TXT, 0, NULL);
+	log_error("command requires %u arguments", count);
+
+	return KNOT_EINVAL;
 }
 
-static int cmd_stop(cmd_args_t *args)
+static int check_conf_args(cmd_args_t *args)
 {
-	if (args->argc > 0) {
-		log_error("command does not take arguments");
-		return KNOT_EINVAL;
+	// Mask relevant flags.
+	cmd_conf_flag_t flags = args->desc->flags;
+	flags &= CMD_CONF_FOPT_ITEM | CMD_CONF_FREQ_ITEM | CMD_CONF_FOPT_DATA;
+
+	switch (args->argc) {
+	case 0:
+		if (flags == CMD_CONF_FNONE || (flags & CMD_CONF_FOPT_ITEM)) {
+			return KNOT_EOK;
+		}
+		break;
+	case 1:
+		if (flags & (CMD_CONF_FOPT_ITEM | CMD_CONF_FREQ_ITEM)) {
+			return KNOT_EOK;
+		}
+		break;
+	default:
+		if (flags != CMD_CONF_FNONE) {
+			return KNOT_EOK;
+		}
+		break;
 	}
 
-	return cmd_remote(args->socket, KNOT_CTL_STOP, KNOT_RRTYPE_TXT, 0, NULL);
+	log_error("invalid number of arguments");
+
+	return KNOT_EINVAL;
 }
 
-static int cmd_reload(cmd_args_t *args)
+static int get_conf_key(char *key, knot_ctl_data_t *data)
 {
-	if (args->argc > 0) {
-		log_error("command does not take arguments");
-		return KNOT_EINVAL;
+	// Get key0.
+	char *key0 = key;
+
+	// Check for id.
+	char *id = strchr(key, '[');
+	if (id != NULL) {
+		// Separate key0 and id.
+		*id++ = '\0';
+
+		// Check for id end.
+		char *id_end = id;
+		while ((id_end = strchr(id_end, ']')) != NULL) {
+			// Check for escaped character.
+			if (*(id_end - 1) != '\\') {
+				break;
+			}
+			id_end++;
+		}
+
+		// Check for unclosed id.
+		if (id_end == NULL) {
+			log_error("(missing bracket after identifier) %s", id);
+			return KNOT_EINVAL;
+		}
+
+		// Separate id and key1.
+		*id_end = '\0';
+
+		key = id_end + 1;
+
+		// Key1 or nothing must follow.
+		if (*key != '.' && *key != '\0') {
+			log_error("(unexpected token) %s", key);
+			return KNOT_EINVAL;
+		}
 	}
 
-	return cmd_remote(args->socket, KNOT_CTL_RELOAD, KNOT_RRTYPE_TXT, 0, NULL);
+	// Check for key1.
+	char *key1 = strchr(key, '.');
+	if (key1 != NULL) {
+		// Separate key0/id and key1.
+		*key1++ = '\0';
+
+		if (*key1 == '\0') {
+			log_error("(missing item specification)");
+			return KNOT_EINVAL;
+		}
+	}
+
+	(*data)[KNOT_CTL_IDX_SECTION] = key0;
+	(*data)[KNOT_CTL_IDX_ITEM] = key1;
+	(*data)[KNOT_CTL_IDX_ID] = id;
+
+	return KNOT_EOK;
 }
 
-static int cmd_zone_status(cmd_args_t *args)
+static void format_data(ctl_cmd_t cmd, knot_ctl_type_t type, knot_ctl_data_t *data,
+                        bool *empty)
 {
-	return cmd_remote(args->socket, KNOT_CTL_ZONE_STATUS, KNOT_RRTYPE_NS,
-	                  args->argc, args->argv);
+	const char *error = (*data)[KNOT_CTL_IDX_ERROR];
+	const char *key0  = (*data)[KNOT_CTL_IDX_SECTION];
+	const char *key1  = (*data)[KNOT_CTL_IDX_ITEM];
+	const char *id    = (*data)[KNOT_CTL_IDX_ID];
+	const char *zone  = (*data)[KNOT_CTL_IDX_ZONE];
+	const char *param = (*data)[KNOT_CTL_IDX_TYPE];
+	const char *value = (*data)[KNOT_CTL_IDX_DATA];
+
+	switch (cmd) {
+	case CTL_STATUS:
+	case CTL_STOP:
+	case CTL_RELOAD:
+	case CTL_CONF_BEGIN:
+	case CTL_CONF_ABORT:
+	case CTL_CONF_COMMIT:
+		// Only error message is expected here.
+		if (error != NULL) {
+			printf("error: (%s)", error);
+		}
+		break;
+	case CTL_ZONE_STATUS:
+	case CTL_ZONE_RELOAD:
+	case CTL_ZONE_REFRESH:
+	case CTL_ZONE_RETRANSFER:
+	case CTL_ZONE_FLUSH:
+	case CTL_ZONE_SIGN:
+		if (type == KNOT_CTL_TYPE_DATA) {
+			printf("%s%s%s%s%s%s%s%s",
+			       (!(*empty)     ? "\n"      : ""),
+			       (error != NULL ? "error: " : ""),
+			       (zone  != NULL ? "["       : ""),
+			       (zone  != NULL ? zone      : ""),
+			       (zone  != NULL ? "]"       : ""),
+			       (error != NULL ? " ("      : ""),
+			       (error != NULL ? error     : ""),
+			       (error != NULL ? ")"       : ""));
+			*empty = false;
+		}
+		if (param != NULL) {
+			printf("%s %s: %s",
+			       (type != KNOT_CTL_TYPE_DATA ? " |" : ""),
+			       param, value);
+		}
+		break;
+	case CTL_CONF_LIST:
+	case CTL_CONF_READ:
+	case CTL_CONF_DIFF:
+	case CTL_CONF_GET:
+	case CTL_CONF_SET:
+	case CTL_CONF_UNSET:
+		if (type == KNOT_CTL_TYPE_DATA) {
+			printf("%s%s%s%s%s%s%s%s%s%s%s%s",
+			       (!(*empty)     ? "\n"       : ""),
+			       (error != NULL ? "error: (" : ""),
+			       (error != NULL ? error      : ""),
+			       (error != NULL ? ") "       : ""),
+			       (param != NULL ? param      : ""),
+			       (key0  != NULL ? key0       : ""),
+			       (id    != NULL ? "["        : ""),
+			       (id    != NULL ? id         : ""),
+			       (id    != NULL ? "]"        : ""),
+			       (key1  != NULL ? "."        : ""),
+			       (key1  != NULL ? key1       : ""),
+			       (value != NULL ? " ="       : ""));
+			*empty = false;
+		}
+		if (value != NULL) {
+			printf(" %s", value);
+		}
+		break;
+	default:
+		assert(0);
+	}
 }
 
-static int cmd_zone_reload(cmd_args_t *args)
+static void format_block(ctl_cmd_t cmd, bool failed, bool empty)
 {
-	return cmd_remote(args->socket, KNOT_CTL_ZONE_RELOAD, KNOT_RRTYPE_NS,
-	                  args->argc, args->argv);
+	switch (cmd) {
+	case CTL_STATUS:
+		printf("%s\n", failed ? "" : "Running");
+		break;
+	case CTL_STOP:
+		printf("%s\n", failed ? "" : "Stopped");
+		break;
+	case CTL_RELOAD:
+		printf("%s\n", failed ? "" : "Reloaded");
+		break;
+	case CTL_CONF_BEGIN:
+	case CTL_CONF_ABORT:
+	case CTL_CONF_COMMIT:
+	case CTL_CONF_SET:
+	case CTL_CONF_UNSET:
+	case CTL_ZONE_RELOAD:
+	case CTL_ZONE_REFRESH:
+	case CTL_ZONE_RETRANSFER:
+	case CTL_ZONE_FLUSH:
+	case CTL_ZONE_SIGN:
+		printf("%s\n", failed ? "" : "OK");
+		break;
+	case CTL_ZONE_STATUS:
+	case CTL_CONF_LIST:
+	case CTL_CONF_READ:
+	case CTL_CONF_DIFF:
+	case CTL_CONF_GET:
+		printf("%s", empty ? "" : "\n");
+		break;
+	default:
+		break;
+	}
 }
 
-static int cmd_zone_refresh(cmd_args_t *args)
+static int ctl_receive(cmd_args_t *args)
 {
-	return cmd_remote(args->socket, KNOT_CTL_ZONE_REFRESH, KNOT_RRTYPE_NS,
-	                  args->argc, args->argv);
+	bool failed = false;
+	bool empty = true;
+
+	while (true) {
+		knot_ctl_type_t type;
+		knot_ctl_data_t data;
+
+		int ret = knot_ctl_receive(args->ctl, &type, &data);
+		if (ret != KNOT_EOK) {
+			log_error("failed to control (%s)", knot_strerror(ret));
+			return ret;
+		}
+
+		switch (type) {
+		case KNOT_CTL_TYPE_END:
+			log_error("failed to control (%s)", knot_strerror(KNOT_EMALF));
+			return KNOT_EMALF;
+		case KNOT_CTL_TYPE_BLOCK:
+			format_block(args->desc->cmd, failed, empty);
+			return failed ? KNOT_ERROR : KNOT_EOK;
+		case KNOT_CTL_TYPE_DATA:
+		case KNOT_CTL_TYPE_EXTRA:
+			format_data(args->desc->cmd, type, &data, &empty);
+			break;
+		default:
+			assert(0);
+		}
+
+		if (data[KNOT_CTL_IDX_ERROR] != NULL) {
+			failed = true;
+		}
+	}
+
+	return KNOT_EOK;
 }
 
-static int cmd_zone_retransfer(cmd_args_t *args)
+static int cmd_ctl(cmd_args_t *args)
 {
-	return cmd_remote(args->socket, KNOT_CTL_ZONE_RETRANSFER, KNOT_RRTYPE_NS,
-	                  args->argc, args->argv);
+	int ret = check_args(args, 0);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	knot_ctl_data_t data = {
+		[KNOT_CTL_IDX_CMD] = ctl_cmd_to_str(args->desc->cmd)
+	};
+
+	// Send the command.
+	ret = knot_ctl_send(args->ctl, KNOT_CTL_TYPE_DATA, &data);
+	if (ret != KNOT_EOK) {
+		log_error("failed to control (%s)", knot_strerror(ret));
+		return ret;
+	}
+
+	// Finish the input block.
+	ret = knot_ctl_send(args->ctl, KNOT_CTL_TYPE_BLOCK, NULL);
+	if (ret != KNOT_EOK) {
+		log_error("failed to control (%s)", knot_strerror(ret));
+		return ret;
+	}
+
+	return ctl_receive(args);
 }
 
-static int cmd_zone_flush(cmd_args_t *args)
+static int zone_exec(cmd_args_t *args, int (*fcn)(const knot_dname_t *, void *),
+                     void *data)
 {
-	return cmd_remote(args->socket, KNOT_CTL_ZONE_FLUSH, KNOT_RRTYPE_NS,
-	                  args->argc, args->argv);
+	bool failed = false;
+
+	// Process specified zones.
+	if (args->argc > 0) {
+		uint8_t id[KNOT_DNAME_MAXLEN];
+
+		for (int i = 0; i < args->argc; i++) {
+			if (knot_dname_from_str(id, args->argv[i], sizeof(id)) == NULL ||
+			    knot_dname_to_lower(id) != KNOT_EOK) {
+				log_zone_str_error(args->argv[i], "invalid name");
+				failed = true;
+				continue;
+			}
+
+			if (!conf_rawid_exists(conf(), C_ZONE, id, knot_dname_size(id))) {
+				log_zone_error(id, "%s", knot_strerror(KNOT_ENOZONE));
+				failed = true;
+				continue;
+			}
+
+			if (fcn(id, data) != KNOT_EOK) {
+				failed = true;
+			}
+		}
+	// Process all configured zones.
+	} else {
+		for (conf_iter_t iter = conf_iter(conf(), C_ZONE);
+		     iter.code == KNOT_EOK; conf_iter_next(conf(), &iter)) {
+			conf_val_t val = conf_iter_id(conf(), &iter);
+			const knot_dname_t *id = conf_dname(&val);
+
+			if (fcn(id, data) != KNOT_EOK) {
+				failed = true;
+			}
+		}
+	}
+
+	return failed ? KNOT_ERROR : KNOT_EOK;
 }
 
-static int cmd_zone_sign(cmd_args_t *args)
+static int zone_check(const knot_dname_t *dname, void *data)
 {
-	return cmd_remote(args->socket, KNOT_CTL_ZONE_SIGN, KNOT_RRTYPE_NS,
-	                  args->argc, args->argv);
+	UNUSED(data);
+
+	zone_contents_t *contents;
+	int ret = zone_load_contents(conf(), dname, &contents);
+	if (ret == KNOT_EOK) {
+		zone_contents_deep_free(&contents);
+	}
+	return ret;
+}
+
+static int cmd_zone_check(cmd_args_t *args)
+{
+	return zone_exec(args, zone_check, NULL);
+}
+
+static int zone_memstats(const knot_dname_t *dname, void *data)
+{
+	// Init malloc wrapper for trie size estimation.
+	size_t malloc_size = 0;
+	knot_mm_t mem_ctx = {
+		.ctx = &malloc_size,
+		.alloc = estimator_malloc,
+		.free = estimator_free
+	};
+
+	// Init memory estimation context.
+	zone_estim_t est = {
+		.node_table = hattrie_create_n(TRIE_BUCKET_SIZE, &mem_ctx),
+	};
+
+	char *zone_name = knot_dname_to_str_alloc(dname);
+	char *zone_file = conf_zonefile(conf(), dname);
+	zs_scanner_t *zs = malloc(sizeof(zs_scanner_t));
+
+	if (est.node_table == NULL || zone_name == NULL || zone_file == NULL ||
+	    zs == NULL) {
+		log_zone_error(dname, "%s", strerror(KNOT_ENOMEM));
+		hattrie_free(est.node_table);
+		free(zone_file);
+		free(zone_name);
+		free(zs);
+		return KNOT_ENOMEM;
+	}
+
+	// Do a parser run, but do not actually create the zone.
+	if (zs_init(zs, zone_name, KNOT_CLASS_IN, 3600) != 0 ||
+	    zs_set_processing(zs, estimator_rrset_memsize_wrap, NULL, &est) != 0 ||
+	    zs_set_input_file(zs, zone_file) != 0 ||
+	    zs_parse_all(zs) != 0) {
+		log_zone_error(dname, "failed to parse zone file '%s' (%s)",
+		               zone_file, zs_errorname(zs->error.code));
+		hattrie_apply_rev(est.node_table, estimator_free_trie_node, NULL);
+		hattrie_free(est.node_table);
+		free(zone_file);
+		free(zone_name);
+		zs_deinit(zs);
+		free(zs);
+		return KNOT_EPARSEFAIL;
+	}
+	free(zone_file);
+	free(zone_name);
+	zs_deinit(zs);
+	free(zs);
+
+	// Only size of ahtables inside trie's nodes is missing.
+	assert(est.htable_size == 0);
+	est.htable_size = estimator_trie_htable_memsize(est.node_table);
+
+	// Cleanup.
+	hattrie_apply_rev(est.node_table, estimator_free_trie_node, NULL);
+	hattrie_free(est.node_table);
+
+	double zone_size = (est.rdata_size + est.node_size + est.dname_size +
+	                    est.htable_size + malloc_size) / (1024.0 * 1024.0);
+
+	log_zone_info(dname, "%zu records, %.1f MiB memory",
+	              est.record_count, zone_size);
+
+	double *total_size = (double *)data;
+	*total_size += zone_size;
+
+	return KNOT_EOK;
+}
+
+static int cmd_zone_memstats(cmd_args_t *args)
+{
+	double total_size = 0;
+
+	int ret = zone_exec(args, zone_memstats, &total_size);
+
+	if (args->argc != 1) {
+		log_info("Total %.1f MiB memory", total_size);
+	}
+
+	return ret;
+}
+
+static int cmd_zone_ctl(cmd_args_t *args)
+{
+	knot_ctl_data_t data = {
+		[KNOT_CTL_IDX_CMD] = ctl_cmd_to_str(args->desc->cmd)
+	};
+
+	if (args->argc == 0) {
+		int ret = knot_ctl_send(args->ctl, KNOT_CTL_TYPE_DATA, &data);
+		if (ret != KNOT_EOK) {
+			log_error("failed to control (%s)", knot_strerror(ret));
+			return ret;
+		}
+	}
+	for (int i = 0; i < args->argc; i++) {
+		data[KNOT_CTL_IDX_ZONE] = args->argv[i];
+
+		int ret = knot_ctl_send(args->ctl, KNOT_CTL_TYPE_DATA, &data);
+		if (ret != KNOT_EOK) {
+			log_error("failed to control (%s)", knot_strerror(ret));
+			return ret;
+		}
+	}
+
+	// Finish the input block.
+	int ret = knot_ctl_send(args->ctl, KNOT_CTL_TYPE_BLOCK, NULL);
+	if (ret != KNOT_EOK) {
+		log_error("failed to control (%s)", knot_strerror(ret));
+		return ret;
+	}
+
+	return ctl_receive(args);
 }
 
 static int cmd_conf_init(cmd_args_t *args)
 {
-	if (args->argc > 0) {
-		log_error("command does not take arguments");
-		return KNOT_EINVAL;
+	int ret = check_args(args, 0);
+	if (ret != KNOT_EOK) {
+		return ret;
 	}
 
-	int ret = conf_db_check(conf(), &conf()->read_txn);
+	ret = conf_db_check(conf(), &conf()->read_txn);
 	if ((ret >= KNOT_EOK || ret == KNOT_CONF_EVERSION)) {
 		if (ret != KNOT_EOK && !(args->flags & CMD_FFORCE)) {
 			log_error("use force option to overwrite the existing "
@@ -153,9 +539,9 @@ static int cmd_conf_init(cmd_args_t *args)
 
 static int cmd_conf_check(cmd_args_t *args)
 {
-	if (args->argc > 0) {
-		log_error("command does not take arguments");
-		return KNOT_EINVAL;
+	int ret = check_args(args, 0);
+	if (ret != KNOT_EOK) {
+		return ret;
 	}
 
 	log_info("Configuration is valid");
@@ -165,12 +551,12 @@ static int cmd_conf_check(cmd_args_t *args)
 
 static int cmd_conf_import(cmd_args_t *args)
 {
-	if (args->argc != 1) {
-		log_error("command takes one argument");
-		return KNOT_EINVAL;
+	int ret = check_args(args, 1);
+	if (ret != KNOT_EOK) {
+		return ret;
 	}
 
-	int ret = conf_db_check(conf(), &conf()->read_txn);
+	ret = conf_db_check(conf(), &conf()->read_txn);
 	if ((ret >= KNOT_EOK || ret == KNOT_CONF_EVERSION)) {
 		if (ret != KNOT_EOK && !(args->flags & CMD_FFORCE)) {
 			log_error("use force option to overwrite the existing "
@@ -194,14 +580,14 @@ static int cmd_conf_import(cmd_args_t *args)
 
 static int cmd_conf_export(cmd_args_t *args)
 {
-	if (args->argc != 1) {
-		log_error("command takes one argument");
-		return KNOT_EINVAL;
+	int ret = check_args(args, 1);
+	if (ret != KNOT_EOK) {
+		return ret;
 	}
 
 	log_debug("exporting confdb into file '%s'", args->argv[0]);
 
-	int ret = conf_export(conf(), args->argv[0], YP_SNONE);
+	ret = conf_export(conf(), args->argv[0], YP_SNONE);
 
 	if (ret == KNOT_EOK) {
 		log_info("OK");
@@ -212,281 +598,97 @@ static int cmd_conf_export(cmd_args_t *args)
 	return ret;
 }
 
-static int cmd_conf_list(cmd_args_t *args)
+static int cmd_conf_ctl(cmd_args_t *args)
 {
-	if (args->argc > 1) {
-		log_error("command takes no or one argument");
-		return KNOT_EINVAL;
+	// Check the number of arguments.
+	int ret = check_conf_args(args);
+	if (ret != KNOT_EOK) {
+		return ret;
 	}
 
-	return cmd_remote(args->socket, KNOT_CTL_CONF_LIST, KNOT_RRTYPE_TXT,
-	                  args->argc, args->argv);
-}
+	knot_ctl_data_t data = {
+		[KNOT_CTL_IDX_CMD] = ctl_cmd_to_str(args->desc->cmd)
+	};
 
-static int cmd_conf_read(cmd_args_t *args)
-{
-	if (args->argc > 1) {
-		log_error("command takes no or one argument");
-		return KNOT_EINVAL;
-	}
-
-	return cmd_remote(args->socket, KNOT_CTL_CONF_READ, KNOT_RRTYPE_TXT,
-	                  args->argc, args->argv);
-}
-
-static int cmd_conf_begin(cmd_args_t *args)
-{
-	if (args->argc > 0) {
-		log_error("command does not take arguments");
-		return KNOT_EINVAL;
-	}
-
-	return cmd_remote(args->socket, KNOT_CTL_CONF_BEGIN, KNOT_RRTYPE_TXT,
-	                  0, NULL);
-}
-
-static int cmd_conf_commit(cmd_args_t *args)
-{
-	if (args->argc > 0) {
-		log_error("command does not take arguments");
-		return KNOT_EINVAL;
-	}
-
-	return cmd_remote(args->socket, KNOT_CTL_CONF_COMMIT, KNOT_RRTYPE_TXT, 0, NULL);
-}
-
-static int cmd_conf_abort(cmd_args_t *args)
-{
-	if (args->argc > 0) {
-		log_error("command does not take arguments");
-		return KNOT_EINVAL;
-	}
-
-	return cmd_remote(args->socket, KNOT_CTL_CONF_ABORT, KNOT_RRTYPE_TXT,
-	                  0, NULL);
-}
-
-static int cmd_conf_diff(cmd_args_t *args)
-{
-	if (args->argc > 1) {
-		log_error("command takes no or one argument");
-		return KNOT_EINVAL;
-	}
-
-	return cmd_remote(args->socket, KNOT_CTL_CONF_DIFF, KNOT_RRTYPE_TXT,
-	                  args->argc, args->argv);
-}
-
-static int cmd_conf_get(cmd_args_t *args)
-{
-	if (args->argc > 1) {
-		log_error("command takes no or one argument");
-		return KNOT_EINVAL;
-	}
-
-	return cmd_remote(args->socket, KNOT_CTL_CONF_GET, KNOT_RRTYPE_TXT,
-	                  args->argc, args->argv);
-}
-
-static int cmd_conf_set(cmd_args_t *args)
-{
-	if (args->argc < 1 || args->argc > 255) {
-		log_error("command takes one or up to 255 arguments");
-		return KNOT_EINVAL;
-	}
-
-	return cmd_remote(args->socket, KNOT_CTL_CONF_SET, KNOT_RRTYPE_TXT,
-	                  args->argc, args->argv);
-}
-
-static int cmd_conf_unset(cmd_args_t *args)
-{
-	if (args->argc > 255) {
-		log_error("command doesn't take more than 255 arguments");
-		return KNOT_EINVAL;
-	}
-
-	return cmd_remote(args->socket, KNOT_CTL_CONF_UNSET, KNOT_RRTYPE_TXT,
-	                  args->argc, args->argv);
-}
-
-static bool fetch_zone(int argc, char *argv[], const knot_dname_t *name)
-{
-	bool found = false;
-
-	int i = 0;
-	while (!found && i < argc) {
-		/* Convert the argument to dname */
-		knot_dname_t *arg_name = knot_dname_from_str_alloc(argv[i]);
-
-		if (arg_name != NULL) {
-			(void)knot_dname_to_lower(arg_name);
-			found = knot_dname_is_equal(name, arg_name);
-		}
-
-		i++;
-		knot_dname_free(&arg_name, NULL);
-	}
-
-	return found;
-}
-
-static int cmd_zone_check(cmd_args_t *args)
-{
-	/* Zone checking */
-	int rc = 0;
-
-	/* Generate databases for all zones */
-	for (conf_iter_t iter = conf_iter(conf(), C_ZONE); iter.code == KNOT_EOK;
-	     conf_iter_next(conf(), &iter)) {
-		conf_val_t id = conf_iter_id(conf(), &iter);
-
-		/* Fetch zone */
-		bool match = fetch_zone(args->argc, args->argv, conf_dname(&id));
-		if (!match && args->argc > 0) {
-			continue;
-		}
-
-		/* Create zone loader context. */
-		zone_contents_t *contents;
-		int ret = zone_load_contents(conf(), conf_dname(&id), &contents);
+	// Send the command without parameters.
+	if (args->argc == 0) {
+		ret = knot_ctl_send(args->ctl, KNOT_CTL_TYPE_DATA, &data);
 		if (ret != KNOT_EOK) {
-			rc = 1;
-			continue;
+			log_error("failed to control (%s)", knot_strerror(ret));
+			return ret;
 		}
-		zone_contents_deep_free(&contents);
+	// Set the first item argument.
+	} else {
+		ret = get_conf_key(args->argv[0], &data);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+
+		// Send if only one argument or item without values.
+		if (args->argc == 1 || !(args->desc->flags & CMD_CONF_FOPT_DATA)) {
+			ret = knot_ctl_send(args->ctl, KNOT_CTL_TYPE_DATA, &data);
+			if (ret != KNOT_EOK) {
+				log_error("failed to control (%s)", knot_strerror(ret));
+				return ret;
+			}
+		}
 	}
 
-	return rc;
-}
+	// Send the item values or the other items.
+	for (int i = 1; i < args->argc; i++) {
+		if (args->desc->flags & CMD_CONF_FOPT_DATA) {
+			data[KNOT_CTL_IDX_DATA] = args->argv[i];
+		} else {
+			ret = get_conf_key(args->argv[i], &data);
+			if (ret != KNOT_EOK) {
+				return ret;
+			}
+		}
 
-static int cmd_zone_memstats(cmd_args_t *args)
-{
-	zs_scanner_t *zs = malloc(sizeof(zs_scanner_t));
-	if (zs == NULL) {
-		log_error("not enough memory");
-		return 1;
+		ret = knot_ctl_send(args->ctl, KNOT_CTL_TYPE_DATA, &data);
+		if (ret != KNOT_EOK) {
+			log_error("failed to control (%s)", knot_strerror(ret));
+			return ret;
+		}
 	}
 
-	/* Zone checking */
-	double total_size = 0;
-
-	/* Generate databases for all zones */
-	for (conf_iter_t iter = conf_iter(conf(), C_ZONE); iter.code == KNOT_EOK;
-	     conf_iter_next(conf(), &iter)) {
-		conf_val_t id = conf_iter_id(conf(), &iter);
-
-		/* Fetch zone */
-		bool match = fetch_zone(args->argc, args->argv, conf_dname(&id));
-		if (!match && args->argc > 0) {
-			continue;
-		}
-
-		/* Init malloc wrapper for trie size estimation. */
-		size_t malloc_size = 0;
-		knot_mm_t mem_ctx = { .ctx = &malloc_size,
-		                      .alloc = estimator_malloc,
-		                      .free = estimator_free };
-
-		/* Init memory estimation context. */
-		zone_estim_t est = {.node_table = hattrie_create_n(TRIE_BUCKET_SIZE, &mem_ctx),
-		                    .dname_size = 0, .node_size = 0,
-		                    .htable_size = 0, .rdata_size = 0,
-		                    .record_count = 0 };
-		if (est.node_table == NULL) {
-			log_error("not enough memory");
-			conf_iter_finish(conf(), &iter);
-			break;
-		}
-
-		/* Create zone scanner. */
-		char *zone_name = knot_dname_to_str_alloc(conf_dname(&id));
-		if (zone_name == NULL) {
-			log_error("not enough memory");
-			hattrie_free(est.node_table);
-			conf_iter_finish(conf(), &iter);
-			break;
-		}
-		if (zs_init(zs, zone_name, KNOT_CLASS_IN, 3600) != 0 ||
-		    zs_set_processing(zs, estimator_rrset_memsize_wrap, NULL, &est) != 0) {
-			log_zone_error(conf_dname(&id), "failed to load zone");
-			zs_deinit(zs);
-			free(zone_name);
-			hattrie_free(est.node_table);
-			continue;
-		}
-		free(zone_name);
-
-		/* Do a parser run, but do not actually create the zone. */
-		char *zonefile = conf_zonefile(conf(), conf_dname(&id));
-		if (zs_set_input_file(zs, zonefile) != 0 ||
-		    zs_parse_all(zs) != 0) {
-			log_zone_error(conf_dname(&id), "failed to parse zone");
-			hattrie_apply_rev(est.node_table, estimator_free_trie_node, NULL);
-			hattrie_free(est.node_table);
-			free(zonefile);
-			zs_deinit(zs);
-			continue;
-		}
-		free(zonefile);
-		zs_deinit(zs);
-
-		/* Only size of ahtables inside trie's nodes is missing. */
-		assert(est.htable_size == 0);
-		est.htable_size = estimator_trie_htable_memsize(est.node_table);
-
-		/* Cleanup */
-		hattrie_apply_rev(est.node_table, estimator_free_trie_node, NULL);
-		hattrie_free(est.node_table);
-
-		double zone_size = ((double)(est.rdata_size +
-		                   est.node_size +
-		                   est.dname_size +
-		                   est.htable_size +
-		                   malloc_size) * ESTIMATE_MAGIC) / (1024.0 * 1024.0);
-
-		log_zone_info(conf_dname(&id), "%zu RRs, used memory estimation is %zu MiB",
-		              est.record_count, (size_t)zone_size);
-		total_size += zone_size;
+	// Finish the input block.
+	ret = knot_ctl_send(args->ctl, KNOT_CTL_TYPE_BLOCK, NULL);
+	if (ret != KNOT_EOK) {
+		log_error("failed to control (%s)", knot_strerror(ret));
+		return ret;
 	}
 
-	free(zs);
-
-	if (args->argc == 0) { // for all zones
-		log_info("Estimated memory consumption for all zones is %zu MiB",
-		         (size_t)total_size);
-	}
-
-	return 0;
+	return ctl_receive(args);
 }
 
 const cmd_desc_t cmd_table[] = {
-	{ CMD_STATUS,          cmd_status },
-	{ CMD_STOP,            cmd_stop },
-	{ CMD_RELOAD,          cmd_reload },
+	{ CMD_STATUS,          cmd_ctl,           CTL_STATUS },
+	{ CMD_STOP,            cmd_ctl,           CTL_STOP },
+	{ CMD_RELOAD,          cmd_ctl,           CTL_RELOAD },
 
-	{ CMD_ZONE_CHECK,      cmd_zone_check,    CMD_CONF_FREAD },
-	{ CMD_ZONE_MEMSTATS,   cmd_zone_memstats, CMD_CONF_FREAD },
-	{ CMD_ZONE_STATUS,     cmd_zone_status },
-	{ CMD_ZONE_RELOAD,     cmd_zone_reload },
-	{ CMD_ZONE_REFRESH,    cmd_zone_refresh },
-	{ CMD_ZONE_RETRANSFER, cmd_zone_retransfer },
-	{ CMD_ZONE_FLUSH,      cmd_zone_flush },
-	{ CMD_ZONE_SIGN,       cmd_zone_sign },
+	{ CMD_ZONE_CHECK,      cmd_zone_check,    CTL_NONE,       CMD_CONF_FREAD },
+	{ CMD_ZONE_MEMSTATS,   cmd_zone_memstats, CTL_NONE,       CMD_CONF_FREAD },
+	{ CMD_ZONE_STATUS,     cmd_zone_ctl,      CTL_ZONE_STATUS },
+	{ CMD_ZONE_RELOAD,     cmd_zone_ctl,      CTL_ZONE_RELOAD },
+	{ CMD_ZONE_REFRESH,    cmd_zone_ctl,      CTL_ZONE_REFRESH },
+	{ CMD_ZONE_RETRANSFER, cmd_zone_ctl,      CTL_ZONE_RETRANSFER },
+	{ CMD_ZONE_FLUSH,      cmd_zone_ctl,      CTL_ZONE_FLUSH },
+	{ CMD_ZONE_SIGN,       cmd_zone_ctl,      CTL_ZONE_SIGN },
 
-	{ CMD_CONF_INIT,       cmd_conf_init,     CMD_CONF_FWRITE },
-	{ CMD_CONF_CHECK,      cmd_conf_check,    CMD_CONF_FREAD },
-	{ CMD_CONF_IMPORT,     cmd_conf_import,   CMD_CONF_FWRITE },
-	{ CMD_CONF_EXPORT,     cmd_conf_export,   CMD_CONF_FREAD },
-	{ CMD_CONF_LIST,       cmd_conf_list },
-	{ CMD_CONF_READ,       cmd_conf_read },
-	{ CMD_CONF_BEGIN,      cmd_conf_begin },
-	{ CMD_CONF_COMMIT,     cmd_conf_commit },
-	{ CMD_CONF_ABORT,      cmd_conf_abort },
-	{ CMD_CONF_DIFF,       cmd_conf_diff },
-	{ CMD_CONF_GET,        cmd_conf_get },
-	{ CMD_CONF_SET,        cmd_conf_set },
-	{ CMD_CONF_UNSET,      cmd_conf_unset },
+	{ CMD_CONF_INIT,       cmd_conf_init,     CTL_NONE,       CMD_CONF_FWRITE },
+	{ CMD_CONF_CHECK,      cmd_conf_check,    CTL_NONE,       CMD_CONF_FREAD },
+	{ CMD_CONF_IMPORT,     cmd_conf_import,   CTL_NONE,       CMD_CONF_FWRITE },
+	{ CMD_CONF_EXPORT,     cmd_conf_export,   CTL_NONE,       CMD_CONF_FREAD },
+	{ CMD_CONF_LIST,       cmd_conf_ctl,      CTL_CONF_LIST,  CMD_CONF_FOPT_ITEM },
+	{ CMD_CONF_READ,       cmd_conf_ctl,      CTL_CONF_READ,  CMD_CONF_FOPT_ITEM },
+	{ CMD_CONF_BEGIN,      cmd_conf_ctl,      CTL_CONF_BEGIN },
+	{ CMD_CONF_COMMIT,     cmd_conf_ctl,      CTL_CONF_COMMIT },
+	{ CMD_CONF_ABORT,      cmd_conf_ctl,      CTL_CONF_ABORT },
+	{ CMD_CONF_DIFF,       cmd_conf_ctl,      CTL_CONF_DIFF,  CMD_CONF_FOPT_ITEM },
+	{ CMD_CONF_GET,        cmd_conf_ctl,      CTL_CONF_GET,   CMD_CONF_FOPT_ITEM },
+	{ CMD_CONF_SET,        cmd_conf_ctl,      CTL_CONF_SET,   CMD_CONF_FREQ_ITEM | CMD_CONF_FOPT_DATA },
+	{ CMD_CONF_UNSET,      cmd_conf_ctl,      CTL_CONF_UNSET, CMD_CONF_FOPT_ITEM | CMD_CONF_FOPT_DATA },
 	{ NULL }
 };
 
@@ -520,13 +722,13 @@ const cmd_help_t cmd_help_table[] = {
 	{ CMD_CONF_CHECK,      "",                     "Check the server configuration. (*)" },
 	{ CMD_CONF_IMPORT,     "<filename>",           "Import a config file into the confdb. (*)" },
 	{ CMD_CONF_EXPORT,     "<filename>",           "Export the confdb into a config file. (*)" },
-	{ CMD_CONF_LIST,       "[<item>]",             "List the confdb sections or section items." },
-	{ CMD_CONF_READ,       "[<item>]",             "Read the item from the active confdb." },
+	{ CMD_CONF_LIST,       "[<item>...]",          "List the confdb sections or section items." },
+	{ CMD_CONF_READ,       "[<item>...]",          "Read the item from the active confdb." },
 	{ CMD_CONF_BEGIN,      "",                     "Begin a writing confdb transaction." },
 	{ CMD_CONF_COMMIT,     "",                     "Commit the confdb transaction." },
 	{ CMD_CONF_ABORT,      "",                     "Rollback the confdb transaction." },
-	{ CMD_CONF_DIFF,       "[<item>]",             "Get the item difference in the transaction." },
-	{ CMD_CONF_GET,        "[<item>]",             "Get the item data from the transaction." },
+	{ CMD_CONF_DIFF,       "[<item>...]",          "Get the item difference in the transaction." },
+	{ CMD_CONF_GET,        "[<item>...]",          "Get the item data from the transaction." },
 	{ CMD_CONF_SET,        " <item>  [<data>...]", "Set the item data in the transaction." },
 	{ CMD_CONF_UNSET,      "[<item>] [<data>...]", "Unset the item data in the transaction." },
 	{ NULL }

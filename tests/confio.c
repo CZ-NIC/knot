@@ -19,7 +19,7 @@
 #include "test_conf.h"
 #include "knot/conf/confio.h"
 #include "knot/conf/tools.h"
-#include "knot/ctl/remote.h"
+#include "libknot/yparser/yptrafo.h"
 #include "contrib/string.h"
 #include "contrib/openbsd/strlcat.h"
 
@@ -29,13 +29,128 @@
 #define ZONE2		"zone2"
 #define ZONE3		"zone3"
 
+char *format_key(conf_io_t *io)
+{
+	char id[KNOT_DNAME_TXT_MAXLEN + 1] = "\0";
+	size_t id_len = sizeof(id);
+
+	// Get the textual item id.
+	if (io->id_len > 0 && !io->id_as_data) {
+		if (yp_item_to_txt(io->key0->var.g.id, io->id, io->id_len, id,
+		                   &id_len, YP_SNOQUOTE) != KNOT_EOK) {
+			return NULL;
+		}
+	}
+
+	// Get the item prefix.
+	const char *prefix = "";
+	switch (io->type) {
+	case NEW: prefix = "+"; break;
+	case OLD: prefix = "-"; break;
+	default: break;
+	}
+
+	// Format the item key.
+	return sprintf_alloc(
+		"%s%.*s%s%.*s%s%s%.*s",
+		prefix, (int)io->key0->name[0], io->key0->name + 1,
+		(io->id_len > 0 && !io->id_as_data ? "[" : ""),
+		(io->id_len > 0 && !io->id_as_data ? (int)id_len : 0), id,
+		(io->id_len > 0 && !io->id_as_data ? "]" : ""),
+		(io->key1 != NULL ? "." : ""),
+		(io->key1 != NULL ? (int)io->key1->name[0] : 0),
+		(io->key1 != NULL ? io->key1->name + 1 : ""));
+}
+
+static int append_data(const yp_item_t *item, const uint8_t *bin, size_t bin_len,
+                       char *out, size_t out_len)
+{
+	char buf[YP_MAX_TXT_DATA_LEN + 1] = "\0";
+	size_t buf_len = sizeof(buf);
+
+	int ret = yp_item_to_txt(item, bin, bin_len, buf, &buf_len, YP_SNONE);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	if (strlcat(out, buf, out_len) >= out_len) {
+		return KNOT_ESPACE;
+	}
+
+	return KNOT_EOK;
+}
+
+char *format_data(conf_io_t *io)
+{
+	char out[YP_MAX_TXT_DATA_LEN + 1] = "\0";
+
+	// Return the item identifier as the item data.
+	if (io->id_as_data) {
+		if (append_data(io->key0->var.g.id, io->id, io->id_len, out,
+		                sizeof(out)) != KNOT_EOK) {
+			return NULL;
+		}
+
+		return strdup(out);
+	}
+
+	// Check for no data.
+	if (io->data.val == NULL && io->data.bin == NULL) {
+		return NULL;
+	}
+
+	const yp_item_t *item = (io->key1 != NULL) ? io->key1 : io->key0;
+
+	// Format explicit binary data value.
+	if (io->data.bin != NULL) {
+		if (append_data(item, io->data.bin, io->data.bin_len, out,
+		                sizeof(out)) != KNOT_EOK) {
+			return NULL;
+		}
+	// Format multivalued item data.
+	} else if (item->flags & YP_FMULTI) {
+		size_t values = conf_val_count(io->data.val);
+		for (size_t i = 0; i < values; i++) {
+			// Skip other values if known index (counted from 1).
+			if (io->data.index > 0 &&
+			    io->data.index != i + 1) {
+				conf_val_next(io->data.val);
+				continue;
+			}
+
+			if (i > 0) {
+				if (strlcat(out, " ", sizeof(out)) >= sizeof(out)) {
+					return NULL;
+				}
+			}
+
+			conf_val(io->data.val);
+			if (append_data(item, io->data.val->data, io->data.val->len,
+			                out, sizeof(out)) != KNOT_EOK) {
+				return NULL;
+			}
+
+			conf_val_next(io->data.val);
+		}
+	// Format singlevalued item data.
+	} else {
+		conf_val(io->data.val);
+		if (append_data(item, io->data.val->data, io->data.val->len, out,
+		                sizeof(out)) != KNOT_EOK) {
+			return NULL;
+		}
+	}
+
+	return strdup(out);
+}
+
 static int format_item(conf_io_t *io)
 {
 	char *out = (char *)io->misc;
 
 	// Get the item key and data strings.
-	char *key = conf_io_txt_key(io);
-	char *data = conf_io_txt_data(io);
+	char *key = format_key(io);
+	char *data = format_data(io);
 
 	// Format the item.
 	char *item = sprintf_alloc(

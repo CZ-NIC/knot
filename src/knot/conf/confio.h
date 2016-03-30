@@ -205,30 +205,4 @@ int conf_io_check(
 	conf_io_t *io
 );
 
-/*!
- * Returns textual item key part of the operation result.
- *
- * \note The result must be deallocated.
- *
- * \param[out] io  Operation output.
- *
- * \return String or NULL.
- */
-char *conf_io_txt_key(
-	conf_io_t *io
-);
-
-/*!
- * Returns textual item data part of the operation result.
- *
- * \note The result must be deallocated.
- *
- * \param[out] io  Operation output.
- *
- * \return String or NULL.
- */
-char *conf_io_txt_data(
-	conf_io_t *io
-);
-
 /*! @} */

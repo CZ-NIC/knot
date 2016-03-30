@@ -1,4 +1,4 @@
-/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -14,176 +14,200 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <assert.h>
 #include <urcu.h>
 
 #include "knot/common/log.h"
 #include "knot/conf/confio.h"
 #include "knot/ctl/commands.h"
-#include "knot/ctl/remote.h"
+#include "knot/ctl/process.h"
 #include "libknot/libknot.h"
+#include "libknot/yparser/yptrafo.h"
 #include "contrib/macros.h"
 #include "contrib/string.h"
 
-/*! \brief Callback prototype for per-zone operations. */
-typedef int (remote_zonef_t)(zone_t *, remote_cmdargs_t *);
-
-/*! \brief Append data to the output buffer. */
-static int cmdargs_append(remote_cmdargs_t *args, const char *data, size_t size)
+static void send_error(ctl_args_t *args, const char *msg)
 {
-	assert(args);
-	assert(size <= CMDARGS_ALLOC_BLOCK);
+	knot_ctl_data_t data;
+	memcpy(&data, args->data, sizeof(data));
 
-	if (args->response_size + size >= args->response_max) {
-		size_t new_max = args->response_max + CMDARGS_ALLOC_BLOCK;
-		char *new_response = realloc(args->response, new_max);
-		if (!new_response) {
-			return KNOT_ENOMEM;
-		}
+	data[KNOT_CTL_IDX_ERROR] = msg;
 
-		args->response = new_response;
-		args->response_max = new_max;
+	int ret = knot_ctl_send(args->ctl, KNOT_CTL_TYPE_DATA, &data);
+	if (ret != KNOT_EOK) {
+		log_debug("control, failed to send error (%s)", knot_strerror(ret));
+	}
+}
+
+static int get_zone(ctl_args_t *args, zone_t **zone)
+{
+	const char *name = args->data[KNOT_CTL_IDX_ZONE];
+	assert(name != NULL);
+
+	uint8_t buff[KNOT_DNAME_MAXLEN];
+
+	knot_dname_t *dname = knot_dname_from_str(buff, name, sizeof(buff));
+	if (dname == NULL) {
+		return KNOT_EINVAL;
 	}
 
-	memcpy(args->response + args->response_size, data, size);
-	args->response_size += size;
-	args->response[args->response_size] = '\0';
+	int ret = knot_dname_to_lower(dname);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	*zone = knot_zonedb_find(args->server->zone_db, dname);
+	if (*zone == NULL) {
+		return KNOT_ENOZONE;
+	}
 
 	return KNOT_EOK;
 }
 
-static void zone_apply(server_t *s, remote_cmdargs_t *a, remote_zonef_t *cb,
-                       const knot_dname_t *dname)
+static int zones_apply(ctl_args_t *args, int (*fcn)(zone_t *, ctl_args_t *))
 {
-	int ret = KNOT_ENOZONE;
-
-	zone_t *zone = knot_zonedb_find(s->zone_db, dname);
-	if (zone != NULL) {
-		ret = cb(zone, a);
+	// Process all configured zones if none is specified.
+	if (args->data[KNOT_CTL_IDX_ZONE] == NULL) {
+		rcu_read_lock();
+		knot_zonedb_foreach(args->server->zone_db, fcn, args);
+		rcu_read_unlock();
+		return KNOT_EOK;
 	}
 
-	if (ret != KNOT_EOK) {
-		char name[KNOT_DNAME_TXT_MAXLEN] = "";
-		knot_dname_to_str(name, dname, sizeof(name));
-
-		char *msg = sprintf_alloc("%signoring [%s] %s",
-		                          (a->response_size > 0) ? "\n" : "",
-		                          name, knot_strerror(ret));
-		cmdargs_append(a, msg, strlen(msg));
-		free(msg);
-	}
-}
-
-/*! \brief Apply callback to all zones specified by RDATA. */
-static int zones_apply(server_t *s, remote_cmdargs_t *a, remote_zonef_t *cb)
-{
-	assert(s);
-	assert(a);
-	assert(cb);
+	int ret = KNOT_EOK;
 
 	rcu_read_lock();
 
-	/* Process all configured zones if none is specified. */
-	if (a->argc == 0) {
-		knot_zonedb_foreach(s->zone_db, cb, a);
-	} else {
-		/* Process all specified zones. */
-		for (unsigned i = 0; i < a->argc; i++) {
-			const knot_rrset_t *rr = &a->arg[i];
-			if (rr->type != KNOT_RRTYPE_NS) {
-				continue;
-			}
+	while (true) {
+		zone_t *zone;
+		int ret = get_zone(args, &zone);
+		if (ret == KNOT_EOK) {
+			ret = fcn(zone, args);
+		}
+		if (ret != KNOT_EOK) {
+			log_zone_str_debug(args->data[KNOT_CTL_IDX_ZONE],
+			                   "control, (%s)", knot_strerror(ret));
+			send_error(args, knot_strerror(ret));
+		}
 
-			for (unsigned j = 0; j < rr->rrs.rr_count; j++) {
-				zone_apply(s, a, cb, knot_ns_name(&rr->rrs, j));
-			}
+		// Get next zone name.
+		ret = knot_ctl_receive(args->ctl, &args->type, &args->data);
+		if (ret != KNOT_EOK || args->type != KNOT_CTL_TYPE_DATA) {
+			break;
 		}
 	}
 
 	rcu_read_unlock();
 
-	return KNOT_EOK;
+	return ret;
 }
 
-static char *dnssec_info(const zone_t *zone, char *buf, size_t buf_size)
+static int zone_status(zone_t *zone, ctl_args_t *args)
 {
-	assert(zone);
-	assert(buf);
-
-	time_t refresh_at = zone_events_get_time(zone, ZONE_EVENT_DNSSEC);
-	struct tm time_gm = { 0 };
-
-	gmtime_r(&refresh_at, &time_gm);
-	size_t written = strftime(buf, buf_size, KNOT_LOG_TIME_FORMAT, &time_gm);
-	if (written == 0) {
-		return NULL;
+	// Zone name.
+	char name[KNOT_DNAME_TXT_MAXLEN + 1];
+	if (knot_dname_to_str(name, zone->name, sizeof(name)) == NULL) {
+		return KNOT_EINVAL;
 	}
 
-	return buf;
-}
+	knot_ctl_data_t data = {
+		[KNOT_CTL_IDX_ZONE] = name
+	};
 
-static int zone_status(zone_t *zone, remote_cmdargs_t *a)
-{
-	/* Fetch latest serial. */
-	uint32_t serial = 0;
-	if (zone->contents) {
-		const knot_rdataset_t *soa_rrs = node_rdataset(zone->contents->apex,
-		                                               KNOT_RRTYPE_SOA);
-		assert(soa_rrs != NULL);
-		serial = knot_soa_serial(soa_rrs);
-	}
+	char buff[128];
 
-	/* Fetch next zone event. */
-	char when[128] = { '\0' };
-	zone_event_type_t next_type = ZONE_EVENT_INVALID;
-	const char *next_name = "";
-	time_t next_time = zone_events_get_next(zone, &next_type);
-	if (next_type != ZONE_EVENT_INVALID) {
-		next_name = zone_events_get_name(next_type);
-		next_time = next_time - time(NULL);
-		if (next_time < 0) {
-			memcpy(when, "pending", strlen("pending"));
-		} else if (snprintf(when, sizeof(when),
-		                    "in %lldh%lldm%llds",
-		                    (long long)(next_time / 3600),
-		                    (long long)(next_time % 3600) / 60,
-		                    (long long)(next_time % 60)) < 0) {
-			return KNOT_ESPACE;
-		}
+	// Zone type.
+	data[KNOT_CTL_IDX_TYPE] = "type";
+
+	if (zone_is_slave(conf(), zone)) {
+		data[KNOT_CTL_IDX_DATA] = "slave";
 	} else {
-		memcpy(when, "idle", strlen("idle"));
+		data[KNOT_CTL_IDX_DATA] = "master";
 	}
 
-	/* Prepare zone info. */
-	char buf[512] = { '\0' };
-	char dnssec_buf[128] = { '\0' };
-	char *zone_name = knot_dname_to_str_alloc(zone->name);
+	int ret = knot_ctl_send(args->ctl, KNOT_CTL_TYPE_DATA, &data);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
 
-	conf_val_t val = conf_zone_get(conf(), C_DNSSEC_SIGNING, zone->name);
-	bool dnssec_enable = conf_bool(&val);
-	bool is_slave = zone_is_slave(conf(), zone);
+	// Zone serial.
+	data[KNOT_CTL_IDX_TYPE] = "serial";
 
-	int n = snprintf(buf, sizeof(buf),
-	                 "%s%s\ttype=%s | serial=%u | %s %s | %s %s",
-	                 (a->response_size > 0) ? "\n" : "",
-	                 zone_name,
-	                 is_slave ? "slave" : "master",
-	                 serial,
-	                 next_name,
-	                 when,
-	                 dnssec_enable ? "automatic DNSSEC, resigning at:" : "DNSSEC signing disabled",
-	                 dnssec_enable ? dnssec_info(zone, dnssec_buf, sizeof(dnssec_buf)) : "");
-	free(zone_name);
-	if (n < 0 || n >= sizeof(buf)) {
+	uint32_t serial = 0;
+	if (zone->contents != NULL) {
+		serial = knot_soa_serial(node_rdataset(zone->contents->apex,
+		                         KNOT_RRTYPE_SOA));
+	}
+	ret = snprintf(buff, sizeof(buff), "%u", serial);
+	if (ret < 0 || ret >= sizeof(buff)) {
 		return KNOT_ESPACE;
 	}
 
-	return cmdargs_append(a, buf, n);
+	data[KNOT_CTL_IDX_DATA] = buff;
+
+	ret = knot_ctl_send(args->ctl, KNOT_CTL_TYPE_EXTRA, &data);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	// Next event.
+	data[KNOT_CTL_IDX_TYPE] = "next-event";
+
+	zone_event_type_t next_type = ZONE_EVENT_INVALID;
+	time_t next_time = zone_events_get_next(zone, &next_type);
+	if (next_type != ZONE_EVENT_INVALID) {
+		const char *next_name = zone_events_get_name(next_type);
+
+		next_time = next_time - time(NULL);
+		if (next_time < 0) {
+			ret = snprintf(buff, sizeof(buff), "%s pending",
+			               next_name);
+		} else {
+			ret = snprintf(buff, sizeof(buff), "%s in %lldh%lldm%llds",
+			               next_name,
+			               (long long)(next_time / 3600),
+			               (long long)(next_time % 3600) / 60,
+			               (long long)(next_time % 60));
+		}
+		if (ret < 0 || ret >= sizeof(buff)) {
+			return KNOT_ESPACE;
+		}
+
+		data[KNOT_CTL_IDX_DATA] = buff;
+	} else {
+		data[KNOT_CTL_IDX_DATA] = "idle";
+	}
+
+	ret = knot_ctl_send(args->ctl, KNOT_CTL_TYPE_EXTRA, &data);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	// DNSSEC re-signing time.
+	data[KNOT_CTL_IDX_TYPE] = "auto-dnssec";
+
+	conf_val_t val = conf_zone_get(conf(), C_DNSSEC_SIGNING, zone->name);
+	if (conf_bool(&val)) {
+		struct tm time_gm = { 0 };
+		time_t refresh_at = zone_events_get_time(zone, ZONE_EVENT_DNSSEC);
+		gmtime_r(&refresh_at, &time_gm);
+
+		size_t written = strftime(buff, sizeof(buff), KNOT_LOG_TIME_FORMAT,
+		                          &time_gm);
+		if (written == 0) {
+			return KNOT_ESPACE;
+		}
+
+		data[KNOT_CTL_IDX_DATA] = buff;
+	} else {
+		data[KNOT_CTL_IDX_DATA] = "disabled";
+	}
+
+	return knot_ctl_send(args->ctl, KNOT_CTL_TYPE_EXTRA, &data);
 }
 
-static int zone_reload(zone_t *zone, remote_cmdargs_t *a)
+static int zone_reload(zone_t *zone, ctl_args_t *args)
 {
-	UNUSED(a);
+	UNUSED(args);
 
 	if (zone->flags & ZONE_EXPIRED) {
 		return KNOT_ENOTSUP;
@@ -194,9 +218,9 @@ static int zone_reload(zone_t *zone, remote_cmdargs_t *a)
 	return KNOT_EOK;
 }
 
-static int zone_refresh(zone_t *zone, remote_cmdargs_t *a)
+static int zone_refresh(zone_t *zone, ctl_args_t *args)
 {
-	UNUSED(a);
+	UNUSED(args);
 
 	if (!zone_is_slave(conf(), zone)) {
 		return KNOT_ENOTSUP;
@@ -207,9 +231,9 @@ static int zone_refresh(zone_t *zone, remote_cmdargs_t *a)
 	return KNOT_EOK;
 }
 
-static int zone_retransfer(zone_t *zone, remote_cmdargs_t *a)
+static int zone_retransfer(zone_t *zone, ctl_args_t *args)
 {
-	UNUSED(a);
+	UNUSED(args);
 
 	if (!zone_is_slave(conf(), zone)) {
 		return KNOT_ENOTSUP;
@@ -221,9 +245,9 @@ static int zone_retransfer(zone_t *zone, remote_cmdargs_t *a)
 	return KNOT_EOK;
 }
 
-static int zone_flush(zone_t *zone, remote_cmdargs_t *a)
+static int zone_flush(zone_t *zone, ctl_args_t *args)
 {
-	UNUSED(a);
+	UNUSED(args);
 
 	zone->flags |= ZONE_FORCE_FLUSH;
 	zone_events_schedule(zone, ZONE_EVENT_FLUSH, ZONE_EVENT_NOW);
@@ -231,9 +255,9 @@ static int zone_flush(zone_t *zone, remote_cmdargs_t *a)
 	return KNOT_EOK;
 }
 
-static int zone_sign(zone_t *zone, remote_cmdargs_t *a)
+static int zone_sign(zone_t *zone, ctl_args_t *args)
 {
-	UNUSED(a);
+	UNUSED(args);
 
 	conf_val_t val = conf_zone_get(conf(), C_DNSSEC_SIGNING, zone->name);
 	if (!conf_bool(&val)) {
@@ -246,65 +270,53 @@ static int zone_sign(zone_t *zone, remote_cmdargs_t *a)
 	return KNOT_EOK;
 }
 
-static int ctl_status(server_t *s, remote_cmdargs_t *a)
+static int ctl_zone(ctl_args_t *args, ctl_cmd_t cmd)
 {
-	UNUSED(s);
-
-	const char *msg = "Running";
-	cmdargs_append(a, msg, strlen(msg));
-
-	return KNOT_EOK;
+	switch (cmd) {
+	case CTL_ZONE_STATUS:
+		return zones_apply(args, zone_status);
+	case CTL_ZONE_RELOAD:
+		return zones_apply(args, zone_reload);
+	case CTL_ZONE_REFRESH:
+		return zones_apply(args, zone_refresh);
+	case CTL_ZONE_RETRANSFER:
+		return zones_apply(args, zone_retransfer);
+	case CTL_ZONE_FLUSH:
+		return zones_apply(args, zone_flush);
+	case CTL_ZONE_SIGN:
+		return zones_apply(args, zone_sign);
+	default:
+		assert(0);
+	}
 }
 
-static int ctl_stop(server_t *s, remote_cmdargs_t *a)
+static int ctl_server(ctl_args_t *args, ctl_cmd_t cmd)
 {
-	UNUSED(s);
-	UNUSED(a);
+	int ret = KNOT_EOK;
 
-	return KNOT_CTL_ESTOP;
+	switch (cmd) {
+	case CTL_STATUS:
+		ret = KNOT_EOK;
+		break;
+	case CTL_STOP:
+		ret = KNOT_CTL_ESTOP;
+		break;
+	case CTL_RELOAD:
+		ret = server_reload(args->server, conf()->filename, true);
+		if (ret != KNOT_EOK) {
+			send_error(args, knot_strerror(ret));
+		}
+		break;
+	default:
+		assert(0);
+	}
+
+	return ret;
 }
 
-static int ctl_reload(server_t *s, remote_cmdargs_t *a)
+static int send_block(conf_io_t *io)
 {
-	UNUSED(s);
-	UNUSED(a);
-
-	return server_reload(s, conf()->filename, true);
-}
-
-static int ctl_zone_status(server_t *s, remote_cmdargs_t *a)
-{
-	return zones_apply(s, a, zone_status);
-}
-
-static int ctl_zone_reload(server_t *s, remote_cmdargs_t *a)
-{
-	return zones_apply(s, a, zone_reload);
-}
-
-static int ctl_zone_refresh(server_t *s, remote_cmdargs_t *a)
-{
-	return zones_apply(s, a, zone_refresh);
-}
-
-static int ctl_zone_retransfer(server_t *s, remote_cmdargs_t *a)
-{
-	return zones_apply(s, a, zone_retransfer);
-}
-
-static int ctl_zone_flush(server_t *s, remote_cmdargs_t *a)
-{
-	return zones_apply(s, a, zone_flush);
-}
-
-static int ctl_zone_sign(server_t *s, remote_cmdargs_t *a)
-{
-	return zones_apply(s, a, zone_sign);
-}
-
-static int format_item(conf_io_t *io)
-{
-	remote_cmdargs_t *a = (remote_cmdargs_t *)io->misc;
+	knot_ctl_t *ctl = (knot_ctl_t *)io->misc;
 
 	// Get possible error message.
 	const char *err = io->error.str;
@@ -312,384 +324,301 @@ static int format_item(conf_io_t *io)
 		err = knot_strerror(io->error.code);
 	}
 
-	// Get the item key and data strings.
-	char *key = conf_io_txt_key(io);
-	if (key == NULL) {
-		return KNOT_ERROR;
-	}
-	char *data = conf_io_txt_data(io);
-
-	// Format the item.
-	char *item = sprintf_alloc(
-		"%s%s%s%s%s%s%s",
-		(a->response_size > 0 ? "\n" : ""),
-		(err != NULL ? "Error (" : ""),
-		(err != NULL ? err : ""),
-		(err != NULL ? "): " : ""),
-		key,
-		(data != NULL ? " = " : ""),
-		(data != NULL ? data : ""));
-	free(key);
-	free(data);
-	if (item == NULL) {
-		return KNOT_ENOMEM;
-	}
-
-	// Append the item.
-	int ret = cmdargs_append(a, item, strlen(item));
-	free(item);
-	if (ret != KNOT_EOK) {
-		return ret;
-	}
-
-	return KNOT_EOK;
-}
-
-static int ctl_conf_begin(server_t *s, remote_cmdargs_t *a)
-{
-	UNUSED(s);
-	UNUSED(a);
-
-	return conf_io_begin(false);
-}
-
-static int ctl_conf_commit(server_t *s, remote_cmdargs_t *a)
-{
-	UNUSED(a);
-
-	conf_io_t io = {
-		.fcn = format_item,
-		.misc = a
+	knot_ctl_data_t data = {
+		[KNOT_CTL_IDX_ERROR] = err,
 	};
 
-	// First check the database.
-	int ret = conf_io_check(&io);
-	if (ret != KNOT_EOK) {
-		return ret;
+	if (io->key0 != NULL) {
+		data[KNOT_CTL_IDX_SECTION] = io->key0->name + 1;
+	}
+	if (io->key1 != NULL) {
+		data[KNOT_CTL_IDX_ITEM] = io->key1->name + 1;
 	}
 
-	ret = conf_io_commit(false);
-	if (ret != KNOT_EOK) {
-		conf_io_abort(false);
-		return ret;
+	// Get the item prefix.
+	switch (io->type) {
+	case NEW: data[KNOT_CTL_IDX_TYPE] = "+"; break;
+	case OLD: data[KNOT_CTL_IDX_TYPE] = "-"; break;
+	default: break;
 	}
 
-	return server_reload(s, NULL, false);
-}
+	char id[KNOT_DNAME_TXT_MAXLEN + 1] = "\0";
 
-static int ctl_conf_abort(server_t *s, remote_cmdargs_t *a)
-{
-	UNUSED(s);
-	UNUSED(a);
+	// Get the textual item id.
+	if (io->id_len > 0) {
+		size_t id_len = sizeof(id);
+		int ret = yp_item_to_txt(io->key0->var.g.id, io->id, io->id_len,
+		                         id, &id_len, YP_SNOQUOTE);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+		if (io->id_as_data) {
+			data[KNOT_CTL_IDX_DATA] = id;
+		} else {
+			data[KNOT_CTL_IDX_ID] = id;
+		}
+	}
 
-	conf_io_abort(false);
+	if (io->data.val == NULL && io->data.bin == NULL) {
+		return knot_ctl_send(ctl, KNOT_CTL_TYPE_DATA, &data);
+	}
 
-	return KNOT_EOK;
-}
+	const yp_item_t *item = (io->key1 != NULL) ? io->key1 : io->key0;
 
-static int parse_conf_key(char *key, char **key0, char **id, char **key1)
-{
-	// Check for the empty argument.
-	if (key == NULL) {
-		*key0 = NULL;
-		*key1 = NULL;
-		*id = NULL;
+	char buff[YP_MAX_TXT_DATA_LEN + 1] = "\0";
+
+	data[KNOT_CTL_IDX_DATA] = buff;
+
+	// Format explicit binary data value.
+	if (io->data.bin != NULL) {
+		size_t buff_len = sizeof(buff);
+		int ret = yp_item_to_txt(item, io->data.bin, io->data.bin_len, buff,
+		                         &buff_len, YP_SNOQUOTE);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+		return knot_ctl_send(ctl, KNOT_CTL_TYPE_DATA, &data);
+	// Format all multivalued item data if no specified index.
+	} else if ((item->flags & YP_FMULTI) && io->data.index == 0) {
+		size_t values = conf_val_count(io->data.val);
+		for (size_t i = 0; i < values; i++) {
+			conf_val(io->data.val);
+			size_t buff_len = sizeof(buff);
+			int ret = yp_item_to_txt(item, io->data.val->data,
+			                         io->data.val->len, buff,&buff_len,
+			                         YP_SNOQUOTE);
+			if (ret != KNOT_EOK) {
+				return ret;
+			}
+
+			knot_ctl_type_t type = (i == 0) ? KNOT_CTL_TYPE_DATA :
+			                                  KNOT_CTL_TYPE_EXTRA;
+			ret = knot_ctl_send(ctl, type, &data);
+			if (ret != KNOT_EOK) {
+				return ret;
+			}
+
+			conf_val_next(io->data.val);
+		}
 		return KNOT_EOK;
+	// Format singlevalued item data or a specified one from multivalued.
+	} else {
+		conf_val(io->data.val);
+		size_t buff_len = sizeof(buff);
+		int ret = yp_item_to_txt(item, io->data.val->data, io->data.val->len,
+		                         buff, &buff_len, YP_SNOQUOTE);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+		return knot_ctl_send(ctl, KNOT_CTL_TYPE_DATA, &data);
 	}
-
-	// Get key0.
-	char *_key0 = key;
-
-	// Check for id.
-	char *_id = strchr(key, '[');
-	if (_id != NULL) {
-		// Separate key0 and id.
-		*_id++ = '\0';
-
-		// Check for id end.
-		char *id_end = _id;
-		while ((id_end = strchr(id_end, ']')) != NULL) {
-			// Check for escaped character.
-			if (*(id_end - 1) != '\\') {
-				break;
-			}
-			id_end++;
-		}
-
-		// Check for unclosed id.
-		if (id_end == NULL) {
-			return KNOT_EINVAL;
-		}
-
-		// Separate id and key1.
-		*id_end = '\0';
-
-		key = id_end + 1;
-
-		// Key1 or nothing must follow.
-		if (*key != '.' && *key != '\0') {
-			return KNOT_EINVAL;
-		}
-	}
-
-	// Check for key1.
-	char *_key1 = strchr(key, '.');
-	if (_key1 != NULL) {
-		// Separate key0/id and key1.
-		*_key1++ = '\0';
-
-		if (*_key1 == '\0') {
-			return KNOT_EINVAL;
-		}
-	}
-
-	*key0 = _key0;
-	*key1 = _key1;
-	*id = _id;
-
-	return KNOT_EOK;
 }
 
-static int ctl_conf_list(server_t *s, remote_cmdargs_t *a)
+static int ctl_conf_txn(ctl_args_t *args, ctl_cmd_t cmd)
 {
-	UNUSED(s);
-
-	if (a->argc > 1) {
-		return KNOT_EINVAL;
-	}
-
-	char *key = (a->argc == 1) ?
-	            (char *)remote_get_txt(&a->arg[0], 0, NULL) : NULL;
-
-	// Split key path.
-	char *key0, *key1, *id;
-	int ret = parse_conf_key(key, &key0, &id, &key1);
-	if (ret != KNOT_EOK) {
-		free(key);
-		return ret;
-	}
-
-	if (key1 != NULL || id != NULL) {
-		free(key);
-		return KNOT_EINVAL;
-	}
-
 	conf_io_t io = {
-		.fcn = format_item,
-		.misc = a
+		.fcn = send_block,
+		.misc = args->ctl
 	};
 
-	// Get items.
-	ret = conf_io_list(key0, &io);
+	int ret = KNOT_EOK;
 
-	free(key);
+	switch (cmd) {
+	case CTL_CONF_BEGIN:
+		ret = conf_io_begin(false);
+		break;
+	case CTL_CONF_ABORT:
+		conf_io_abort(false);
+		ret = KNOT_EOK;
+		break;
+	case CTL_CONF_COMMIT:
+		// First check the database.
+		ret = conf_io_check(&io);
+		if (ret != KNOT_EOK) {
+			// No transaction abort!
+			break;
+		}
+
+		ret = conf_io_commit(false);
+		if (ret != KNOT_EOK) {
+			conf_io_abort(false);
+			break;
+		}
+
+		ret = server_reload(args->server, NULL, false);
+		break;
+	default:
+		assert(0);
+	}
+
+	if (ret != KNOT_EOK) {
+		send_error(args, knot_strerror(ret));
+	}
 
 	return ret;
 }
 
-static int ctl_conf_diff(server_t *s, remote_cmdargs_t *a)
+static int ctl_conf_read(ctl_args_t *args, ctl_cmd_t cmd)
 {
-	UNUSED(s);
-
-	if (a->argc > 1) {
-		return KNOT_EINVAL;
-	}
-
-	char *key = (a->argc == 1) ?
-	            (char *)remote_get_txt(&a->arg[0], 0, NULL) : NULL;
-
-	// Split key path.
-	char *key0, *key1, *id;
-	int ret = parse_conf_key(key, &key0, &id, &key1);
-	if (ret != KNOT_EOK) {
-		free(key);
-		return ret;
-	}
-
 	conf_io_t io = {
-		.fcn = format_item,
-		.misc = a
+		.fcn = send_block,
+		.misc = args->ctl
 	};
 
-	// Get the difference.
-	ret = conf_io_diff(key0, key1, id, &io);
+	int ret = KNOT_EOK;
 
-	free(key);
+	while (true) {
+		const char *key0 = args->data[KNOT_CTL_IDX_SECTION];
+		const char *key1 = args->data[KNOT_CTL_IDX_ITEM];
+		const char *id   = args->data[KNOT_CTL_IDX_ID];
+
+		switch (cmd) {
+		case CTL_CONF_LIST:
+			ret = conf_io_list(key0, &io);
+			break;
+		case CTL_CONF_READ:
+			ret = conf_io_get(key0, key1, id, true, &io);
+			break;
+		case CTL_CONF_DIFF:
+			ret = conf_io_diff(key0, key1, id, &io);
+			break;
+		case CTL_CONF_GET:
+			ret = conf_io_get(key0, key1, id, false, &io);
+			break;
+		default:
+			assert(0);
+		}
+		if (ret != KNOT_EOK) {
+			send_error(args, knot_strerror(ret));
+			break;
+		}
+
+		// Get next data unit.
+		ret = knot_ctl_receive(args->ctl, &args->type, &args->data);
+		if (ret != KNOT_EOK || args->type != KNOT_CTL_TYPE_DATA) {
+			break;
+		}
+	}
 
 	return ret;
 }
 
-static int conf_read(server_t *s, remote_cmdargs_t *a, bool get_current)
+static int ctl_conf_modify(ctl_args_t *args, ctl_cmd_t cmd)
 {
-	UNUSED(s);
-
-	if (a->argc > 1) {
-		return KNOT_EINVAL;
-	}
-
-	char *key = (a->argc == 1) ?
-	            (char *)remote_get_txt(&a->arg[0], 0, NULL) : NULL;
-
-	// Split key path.
-	char *key0, *key1, *id;
-	int ret = parse_conf_key(key, &key0, &id, &key1);
-	if (ret != KNOT_EOK) {
-		free(key);
-		return ret;
-	}
-
 	conf_io_t io = {
-		.fcn = format_item,
-		.misc = a
-	};
-
-	// Get item(s) value.
-	ret = conf_io_get(key0, key1, id, get_current, &io);
-
-	free(key);
-
-	return ret;
-}
-
-static int ctl_conf_read(server_t *s, remote_cmdargs_t *a)
-{
-	return conf_read(s, a, true);
-}
-
-static int ctl_conf_get(server_t *s, remote_cmdargs_t *a)
-{
-	return conf_read(s, a, false);
-}
-
-static int ctl_conf_set(server_t *s, remote_cmdargs_t *a)
-{
-	UNUSED(s);
-
-	if (a->argc < 1 || a->argc > 255) {
-		return KNOT_EINVAL;
-	}
-
-	char *key = (char *)remote_get_txt(&a->arg[0], 0, NULL);
-
-	// Split key path.
-	char *key0, *key1, *id;
-	int ret = parse_conf_key(key, &key0, &id, &key1);
-	if (ret != KNOT_EOK) {
-		free(key);
-		return ret;
-	}
-
-	conf_io_t io = {
-		.fcn = format_item,
-		.misc = a
+		.fcn = send_block,
+		.misc = args->ctl
 	};
 
 	// Start child transaction.
-	ret = conf_io_begin(true);
+	int ret = conf_io_begin(true);
 	if (ret != KNOT_EOK) {
-		free(key);
+		send_error(args, knot_strerror(ret));
 		return ret;
 	}
 
-	// Add item with no data.
-	if (a->argc == 1) {
-		ret = conf_io_set(key0, key1, id, NULL, &io);
-	// Add item with specified data.
-	} else {
-		for (int i = 1; i < a->argc; i++) {
-			char *data = (char *)remote_get_txt(&a->arg[i], 0, NULL);
+	while (true) {
+		const char *key0 = args->data[KNOT_CTL_IDX_SECTION];
+		const char *key1 = args->data[KNOT_CTL_IDX_ITEM];
+		const char *id   = args->data[KNOT_CTL_IDX_ID];
+		const char *data = args->data[KNOT_CTL_IDX_DATA];
+
+		switch (cmd) {
+		case CTL_CONF_SET:
 			ret = conf_io_set(key0, key1, id, data, &io);
-			free(data);
-			if (ret != KNOT_EOK) {
-				break;
-			}
-		}
-	}
-
-	free(key);
-
-	// Finish child transaction.
-	if (ret == KNOT_EOK) {
-		return conf_io_commit(true);
-	} else {
-		conf_io_abort(true);
-		return ret;
-	}
-}
-
-static int ctl_conf_unset(server_t *s, remote_cmdargs_t *a)
-{
-	UNUSED(s);
-
-	if (a->argc > 255) {
-		return KNOT_EINVAL;
-	}
-
-	char *key = (a->argc >= 1) ?
-	            (char *)remote_get_txt(&a->arg[0], 0, NULL) : NULL;
-
-	// Split key path.
-	char *key0, *key1, *id;
-	int ret = parse_conf_key(key, &key0, &id, &key1);
-	if (ret != KNOT_EOK) {
-		free(key);
-		return ret;
-	}
-
-	// Start child transaction.
-	ret = conf_io_begin(true);
-	if (ret != KNOT_EOK) {
-		free(key);
-		return ret;
-	}
-
-	// Delete item with no data.
-	if (a->argc <= 1) {
-		ret = conf_io_unset(key0, key1, id, NULL);
-	// Delete specified data.
-	} else {
-		for (int i = 1; i < a->argc; i++) {
-			char *data = (char *)remote_get_txt(&a->arg[i], 0, NULL);
+			break;
+		case CTL_CONF_UNSET:
 			ret = conf_io_unset(key0, key1, id, data);
-			free(data);
-			if (ret != KNOT_EOK) {
-				break;
-			}
+			break;
+		default:
+			assert(0);
+		}
+		if (ret != KNOT_EOK) {
+			send_error(args, knot_strerror(ret));
+			break;
+		}
+
+		// Get next data unit.
+		ret = knot_ctl_receive(args->ctl, &args->type, &args->data);
+		if (ret != KNOT_EOK || args->type != KNOT_CTL_TYPE_DATA) {
+			break;
 		}
 	}
 
-	free(key);
-
 	// Finish child transaction.
 	if (ret == KNOT_EOK) {
-		return conf_io_commit(true);
+		ret = conf_io_commit(true);
+		if (ret != KNOT_EOK) {
+			send_error(args, knot_strerror(ret));
+		}
 	} else {
 		conf_io_abort(true);
-		return ret;
 	}
+
+	return ret;
 }
 
-/*! \brief Table of remote commands. */
-const remote_cmd_t remote_cmd_tbl[] = {
-	{ KNOT_CTL_STATUS,          ctl_status },
-	{ KNOT_CTL_STOP,            ctl_stop },
-	{ KNOT_CTL_RELOAD,          ctl_reload },
+typedef struct {
+	const char *name;
+	int (*fcn)(ctl_args_t *, ctl_cmd_t);
+} desc_t;
 
-	{ KNOT_CTL_ZONE_STATUS,     ctl_zone_status },
-	{ KNOT_CTL_ZONE_RELOAD,     ctl_zone_reload },
-	{ KNOT_CTL_ZONE_REFRESH,    ctl_zone_refresh },
-	{ KNOT_CTL_ZONE_RETRANSFER, ctl_zone_retransfer },
-	{ KNOT_CTL_ZONE_FLUSH,      ctl_zone_flush },
-	{ KNOT_CTL_ZONE_SIGN,       ctl_zone_sign },
+static const desc_t cmd_table[] = {
+	[CTL_NONE]            = { "" },
 
-	{ KNOT_CTL_CONF_LIST,       ctl_conf_list },
-	{ KNOT_CTL_CONF_READ,       ctl_conf_read },
-	{ KNOT_CTL_CONF_BEGIN,      ctl_conf_begin },
-	{ KNOT_CTL_CONF_COMMIT,     ctl_conf_commit },
-	{ KNOT_CTL_CONF_ABORT,      ctl_conf_abort },
-	{ KNOT_CTL_CONF_DIFF,       ctl_conf_diff },
-	{ KNOT_CTL_CONF_GET,        ctl_conf_get },
-	{ KNOT_CTL_CONF_SET,        ctl_conf_set },
-	{ KNOT_CTL_CONF_UNSET,      ctl_conf_unset },
+	[CTL_STATUS]          = { "status",          ctl_server },
+	[CTL_STOP]            = { "stop",            ctl_server },
+	[CTL_RELOAD]          = { "reload",          ctl_server },
+
+	[CTL_ZONE_STATUS]     = { "zone-status",     ctl_zone },
+	[CTL_ZONE_RELOAD]     = { "zone-reload",     ctl_zone },
+	[CTL_ZONE_REFRESH]    = { "zone-refresh",    ctl_zone },
+	[CTL_ZONE_RETRANSFER] = { "zone-retransfer", ctl_zone },
+	[CTL_ZONE_FLUSH]      = { "zone-flush",      ctl_zone },
+	[CTL_ZONE_SIGN]       = { "zone-sign",       ctl_zone },
+
+	[CTL_CONF_LIST]       = { "conf-list",       ctl_conf_read },
+	[CTL_CONF_READ]       = { "conf-read",       ctl_conf_read },
+	[CTL_CONF_BEGIN]      = { "conf-begin",      ctl_conf_txn },
+	[CTL_CONF_COMMIT]     = { "conf-commit",     ctl_conf_txn },
+	[CTL_CONF_ABORT]      = { "conf-abort",      ctl_conf_txn },
+	[CTL_CONF_DIFF]       = { "conf-diff",       ctl_conf_read },
+	[CTL_CONF_GET]        = { "conf-get",        ctl_conf_read },
+	[CTL_CONF_SET]        = { "conf-set",        ctl_conf_modify },
+	[CTL_CONF_UNSET]      = { "conf-unset",      ctl_conf_modify },
+
 	{ NULL }
 };
+
+const char* ctl_cmd_to_str(ctl_cmd_t cmd)
+{
+	if (cmd < CTL_STATUS || cmd > CTL_CONF_UNSET) {
+		return NULL;
+	}
+
+	return cmd_table[cmd].name;
+}
+
+ctl_cmd_t ctl_str_to_cmd(const char *cmd_str)
+{
+	if (cmd_str == NULL) {
+		return CTL_NONE;
+	}
+
+	for (ctl_cmd_t cmd = CTL_NONE; cmd_table[cmd].name != NULL; cmd++) {
+		if (strcmp(cmd_str, cmd_table[cmd].name) == 0) {
+			return cmd;
+		}
+	}
+
+	return CTL_NONE;
+}
+
+int ctl_exec(ctl_cmd_t cmd, ctl_args_t *args)
+{
+	if (args == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	return cmd_table[cmd].fcn(args, cmd);
+}
