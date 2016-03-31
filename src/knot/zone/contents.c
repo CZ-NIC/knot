@@ -920,9 +920,7 @@ int zone_contents_adjust_pointers(zone_contents_t *contents)
 	return adjust_nodes(contents->nodes, &adjust_arg, adjust_additional);
 }
 
-int zone_contents_adjust_full(zone_contents_t *zone,
-                              zone_node_t **first_nsec3_node,
-                              zone_node_t **last_nsec3_node)
+int zone_contents_adjust_full(zone_contents_t *zone)
 {
 	if (zone == NULL) {
 		return KNOT_EINVAL;
@@ -944,14 +942,6 @@ int zone_contents_adjust_full(zone_contents_t *zone,
 	result = adjust_nodes(zone->nsec3_nodes, &adjust_arg, adjust_nsec3_node);
 	if (result != KNOT_EOK) {
 		return result;
-	}
-
-	// optional output for NSEC3 nodes
-	if (first_nsec3_node) {
-		*first_nsec3_node = adjust_arg.first_node;
-	}
-	if (last_nsec3_node) {
-		*last_nsec3_node = adjust_arg.previous_node;
 	}
 
 	// adjust normal nodes

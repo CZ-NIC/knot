@@ -318,7 +318,7 @@ static int axfr_answer_finalize(struct answer_data *adata)
 	 * marked authoritative / delegation point.
 	 */
 	struct xfr_proc *proc = adata->ext;
-	int rc = zone_contents_adjust_full(proc->contents, NULL, NULL);
+	int rc = zone_contents_adjust_full(proc->contents);
 	if (rc != KNOT_EOK) {
 		return rc;
 	}

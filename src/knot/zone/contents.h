@@ -184,9 +184,7 @@ int zone_contents_adjust_pointers(zone_contents_t *contents);
  *        Will not be saved if set to NULL.
  * \param zone Zone to adjust domain names in.
  */
-int zone_contents_adjust_full(zone_contents_t *contents,
-                              zone_node_t **first_nsec3_node,
-                              zone_node_t **last_nsec3_node);
+int zone_contents_adjust_full(zone_contents_t *contents);
 
 /*!
  * \brief Parses the NSEC3PARAM record stored in the zone.
