@@ -133,6 +133,7 @@ struct check_function {
 	enum check_levels level;
 };
 
+/* List of function callbacks for defined check_level */
 const struct check_function check_functions[] = {
 	{check_cname_multiple, SEM_CHECK_MANDATORY},
 	{check_dname, SEM_CHECK_MANDATORY},
@@ -440,6 +441,13 @@ static int check_rrsig_in_rrset(err_handler_t *handler,
 	return ret;
 }
 
+/*!
+ * \brief Check if glue record for delegation are presenr.
+ *
+ * Also check if there is NS record in the zone.
+ * \param node Node to check
+ * \param data Semantic checks context data
+ */
 static void check_delegation(const zone_node_t *node, semchecks_data_t *data)
 {
 	if (!((node->flags & NODE_FLAGS_DELEG) || data->zone->apex == node)) {
@@ -490,6 +498,12 @@ static void check_delegation(const zone_node_t *node, semchecks_data_t *data)
 	}
 }
 
+/*!
+ * \brief Run all semantic check related to RRSIG record
+ *
+ * \param node Node to check
+ * \param data Semantic checks context data
+ */
 static void check_rrsig(const zone_node_t *node, semchecks_data_t *data)
 {
 	assert(node);
@@ -534,6 +548,12 @@ inline static void bitmap_add_all_node_rrsets(dnssec_nsec_bitmap_t *bitmap,
 	}
 }
 
+/*!
+ * \brief Check NSEC and NSEC3 type bitmap
+ *
+ * \param node Node to check
+ * \param data Semantic checks context data
+ */
 static void check_nsec_bitmap(const zone_node_t *node, semchecks_data_t *data)
 {
 	assert(node);
@@ -588,6 +608,12 @@ static void check_nsec_bitmap(const zone_node_t *node, semchecks_data_t *data)
 	}
 }
 
+/*!
+ * \brief Run NSEC related semantic checks
+ *
+ * \param node Node to check
+ * \param data Semantic checks context data
+ */
 static void check_nsec(const zone_node_t *node, semchecks_data_t *data)
 {
 	assert(node);
@@ -603,8 +629,6 @@ static void check_nsec(const zone_node_t *node, semchecks_data_t *data)
 		                         ZC_ERR_NO_NSEC, NULL);
 		return;
 	}
-
-
 
 	/* Test that only one record is in the NSEC RRSet */
 	if (nsec_rrs->rr_count != 1) {
@@ -638,7 +662,12 @@ static void check_nsec(const zone_node_t *node, semchecks_data_t *data)
 	}
 }
 
-
+/*!
+ * \brief Check if node has NSEC3 node.
+ *
+ * \param node Node to check
+ * \param data Semantic checks context data
+ */
 static void check_nsec3_opt_out(const zone_node_t *node, semchecks_data_t *data)
 {
 	if (node->nsec3_node != NULL) {
@@ -694,7 +723,12 @@ static void check_nsec3_opt_out(const zone_node_t *node, semchecks_data_t *data)
 }
 
 /*!
- * \brief Run semantic checks for node with DNSSEC-related types.
+ * \brief Run checks related to NSEC3.
+ *
+ * Check NSEC3 node for given node.
+ * Check if NSEC3 chain is coherent and cyclic.
+ * \param node Node to check
+ * \param data Semantic checks context data
  */
 static void check_nsec3(const zone_node_t *node, semchecks_data_t *data)
 {
@@ -766,7 +800,12 @@ static void check_nsec3(const zone_node_t *node, semchecks_data_t *data)
 		}
 	}
 }
-
+/*!
+ * \brief Check if CNAME record contains other records
+ *
+ * \param node Node to check
+ * \param data Semantic checks context data
+ */
 static void check_cname_multiple(const zone_node_t *node, semchecks_data_t *data)
 {
 	const  knot_rdataset_t *cname_rrs = node_rdataset(node, KNOT_RRTYPE_CNAME);
@@ -798,6 +837,12 @@ static void check_cname_multiple(const zone_node_t *node, semchecks_data_t *data
 	}
 }
 
+/*!
+ * \brief Check if DNAME record has children.
+ *
+ * \param node Node to check
+ * \param data Semantic checks context data
+ */
 static void check_dname(const zone_node_t *node, semchecks_data_t *data)
 {
 	const knot_rdataset_t *dname_rrs = node_rdataset(node, KNOT_RRTYPE_DNAME);
@@ -809,7 +854,6 @@ static void check_dname(const zone_node_t *node, semchecks_data_t *data)
 		                         "error triggered by parent node");
 	}
 
-
 	if (node->parent != NULL && node_rrtype_exists(node->parent, KNOT_RRTYPE_DNAME)) {
 		data->fatal_error = true;
 		err_handler_handle_error(data->handler, data->zone, node,
@@ -818,57 +862,12 @@ static void check_dname(const zone_node_t *node, semchecks_data_t *data)
 	}
 }
 
-static void check_nsec3_cyclic(semchecks_data_t *data,
-                       const zone_node_t *first_nsec3_node,
-                       const zone_node_t *last_nsec3_node)
-{
-	/* Each NSEC3 node should only contain one RRSET. */
-	if (last_nsec3_node == NULL || first_nsec3_node == NULL) {
-		return;
-	}
-	const knot_rdataset_t *nsec3_rrs =
-		node_rdataset(last_nsec3_node, KNOT_RRTYPE_NSEC3);
-	if (nsec3_rrs == NULL) {
-		err_handler_handle_error(data->handler, data->zone,
-		                         last_nsec3_node,
-		                         ZC_ERR_NSEC3_RDATA_CHAIN, NULL);
-		return;
-	}
-
-	/* Result is a dname, it can't be larger */
-	const zone_node_t *apex = data->zone->apex;
-
-	uint8_t *next_dname_str = NULL;
-	uint8_t next_dname_size = 0;
-	knot_nsec3_next_hashed(nsec3_rrs, 0, &next_dname_str,
-	                           &next_dname_size);
-	knot_dname_t *next_dname = knot_nsec3_hash_to_dname(next_dname_str,
-	                                                    next_dname_size,
-	                                                    apex->owner);
-	if (next_dname == NULL) {
-		log_zone_warning(data->zone->apex->owner, "semantic check, "
-		                 "failed to create new dname");
-		return;
-	}
-
-	/* Check it points somewhere first. */
-	if (zone_contents_find_nsec3_node(data->zone, next_dname) == NULL) {
-		err_handler_handle_error(data->handler, data->zone,
-		                         last_nsec3_node,
-		                         ZC_ERR_NSEC3_RDATA_CHAIN, NULL);
-	} else {
-		/* Compare with the actual first NSEC3 node. */
-		if (!knot_dname_is_equal(first_nsec3_node->owner, next_dname)) {
-			err_handler_handle_error(data->handler, data->zone,
-			                         last_nsec3_node,
-			                         ZC_ERR_NSEC3_RDATA_CHAIN, NULL);
-		}
-	}
-
-	/* Directly discard. */
-	knot_dname_free(&next_dname, NULL);
-}
-
+/*!
+ * \brief Check that nsec chain is cyclic.
+ *
+ * Run only once per zone. Check that last nsec node points to first one.
+ * \param data Semantic checks context data
+ */
 static void check_nsec_cyclic(semchecks_data_t *data)
 {
 	if (data->next_nsec == NULL) {
@@ -886,11 +885,13 @@ static void check_nsec_cyclic(semchecks_data_t *data)
 }
 
 /*!
- * \brief Function called by zone traversal function. Used to call
- *        knot_zone_save_enclosers.
+ * \brief Call all semantic checks for each node.
  *
- * \param node Node to be searched.
- * \param data Arguments.
+ * This function is called as callback from zone_contents_tree_apply_inorder.
+ * Checks are functions from global const array check_functions.
+ *
+ * \param node Node to be checked
+ * \param data Semantic checks context data
  */
 static int do_checks_in_tree(zone_node_t *node, void *data)
 {

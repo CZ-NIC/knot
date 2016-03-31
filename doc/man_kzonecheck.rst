@@ -17,7 +17,7 @@ Options
 ..........
 
 **-o**, **--origin** *origin*
-  The zone origin. If not specified the name of file or name without .zone ending is assumed to be the origin.
+  The zone origin. If not specified the name of file or name without '.zone' ending is assumed to be the origin.
 
 **-v**, **--verbose**
   Enable debug output.

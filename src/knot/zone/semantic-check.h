@@ -154,12 +154,16 @@ int err_handler_handle_error(err_handler_t *handler,
                              int error, const char *data);
 
 /*!
- * \brief Helper function - wraps its arguments into arg_t structure and
- *        calls function that does the actual work.
+ * \brief Check zone for semantic errors.
+ *
+ * Errors are logged in error handler.
  *
  * \param zone Zone to be searched / checked
  * \param optional To do also optional check
  * \param handler Semantic error handler.
+ * \retval KNOT_EOK no error found
+ * \retval KNOT_ESEMCHECK found semantic error
+ * \retval KNOT_EINVAL or other error
  */
 int zone_do_sem_checks(zone_contents_t *zone, bool optional,
                        err_handler_t *handler);
