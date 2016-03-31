@@ -865,6 +865,7 @@ class Knot(Server):
 
         s.begin("control")
         s.item_str("listen", "knot.sock")
+        s.item_str("timeout", "15")
         s.end()
 
         if self.tsig:
@@ -1034,7 +1035,7 @@ class Knot(Server):
         s.end()
 
         self.start_params = ["-c", self.confile]
-        self.ctl_params = ["-c", self.confile]
+        self.ctl_params = ["-c", self.confile, "-t", "15"]
 
         return s.conf
 
