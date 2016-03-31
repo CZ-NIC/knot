@@ -65,11 +65,10 @@ int zone_check(const char *zone_file, const knot_dname_t *zone_name,
 	zone_contents_t *contents;
 	contents = zonefile_load(&zl);
 
-	print_errors(&zl.err_handler, outfile);
-	print_statistics(&zl.err_handler, outfile);
-
 	if (zl.err_handler.error_count > 0) {
 		ret = KNOT_ESEMCHECK;
+		print_errors(&zl.err_handler, outfile);
+		print_statistics(&zl.err_handler, outfile);
 	}
 
 	zonefile_close(&zl);

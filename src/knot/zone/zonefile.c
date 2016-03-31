@@ -179,7 +179,6 @@ int zonefile_open(zloader_t *loader, const char *source,
 	memset(loader, 0, sizeof(zloader_t));
 	err_handler_init(&loader->err_handler);
 
-
 	/* Check zone file. */
 	if (access(source, F_OK | R_OK) != 0) {
 		return KNOT_EACCES;

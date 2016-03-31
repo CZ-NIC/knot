@@ -1,5 +1,5 @@
-; File written on Mon Feb 29 10:31:10 2016
-; dnssec_signzone version 9.10.3-P3-RedHat-9.10.3-8.P3.fc22
+; Zone without any semantic error
+
 example.com.		3600	IN SOA	dns1.example.com. hostmaster.example.com. (
 					2010111220 ; serial
 					21600      ; refresh (6 hours)

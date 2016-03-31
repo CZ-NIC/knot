@@ -53,7 +53,6 @@ int zone_load_contents(conf_t *conf, const knot_dname_t *zone_name,
 		return KNOT_ERROR;
 	}
 
-
 	return KNOT_EOK;
 }
 

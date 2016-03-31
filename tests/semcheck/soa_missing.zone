@@ -1,9 +1,0 @@
-$ORIGIN example.com.
-$TTL 3600
-
-	NS	dns1
-
-dns1	A	192.0.2.1
-	AAAA	2001:DB8::1
-
-

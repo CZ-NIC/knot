@@ -113,13 +113,14 @@ int main(int argc, char *argv[])
 
 	log_close();
 
-//	if (ret == KNOT_EOK) {
-//		return EXIT_SUCCESS;
-//	} else if (ret == KNOT_ESEMCHECK) {
-//		return EXIT_FAILURE;
-//	} else {
-//		return 2;
-//	}
-
-	return ret == KNOT_EOK ? EXIT_SUCCESS : EXIT_FAILURE;
+	if (ret == KNOT_ESEMCHECK) {
+		return 2;
+	} else if (ret == KNOT_EOK) {
+		if (verbose) {
+			fprintf(outfile, "No sematic errors found.\n");
+		}
+		return EXIT_SUCCESS;
+	} else {
+		return EXIT_FAILURE;
+	}
 }
