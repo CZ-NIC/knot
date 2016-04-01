@@ -639,6 +639,8 @@ exactly like syslog. See `here
 <https://www.nlnetlabs.nl/bugs-script/show_bug.cgi?id=741#c10>`_ for
 more details.
 
+Note: dnstap log files can also be created or read using ``kdig``.
+
 .. _dnstap: http://dnstap.info/
 
 ``synth-record`` – Automatic forward/reverse records
