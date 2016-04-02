@@ -63,6 +63,7 @@
 #define C_RATE_LIMIT		"\x0A""rate-limit"
 #define C_RATE_LIMIT_SLIP	"\x0F""rate-limit-slip"
 #define C_RATE_LIMIT_TBL_SIZE	"\x15""rate-limit-table-size"
+#define C_RATE_LIMIT_WHITELIST	"\x14""rate-limit-whitelist"
 #define C_REQUEST_EDNS_OPTION	"\x13""request-edns-option"
 #define C_RMT			"\x06""remote"
 #define C_RUNDIR		"\x06""rundir"
