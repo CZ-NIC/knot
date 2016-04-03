@@ -88,7 +88,7 @@ int sockaddr_set(struct sockaddr_storage *ss, int family, const char *straddr, i
 	return KNOT_EINVAL;
 }
 
-void *sockaddr_raw(struct sockaddr_storage *ss, size_t *addr_size)
+void *sockaddr_raw(const struct sockaddr_storage *ss, size_t *addr_size)
 {
 	if (ss == NULL || addr_size == NULL) {
 		return NULL;

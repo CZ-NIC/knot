@@ -81,7 +81,7 @@ int sockaddr_set(struct sockaddr_storage *ss, int family, const char *straddr, i
  * \param addr_size Length of the address will be stored in addr_size.
  * \return pointer to raw address
  */
-void *sockaddr_raw(struct sockaddr_storage *ss, size_t *addr_size);
+void *sockaddr_raw(const struct sockaddr_storage *ss, size_t *addr_size);
 
 /*!
  * \brief Set raw address.
