@@ -39,33 +39,6 @@ typedef enum {
 } acl_action_t;
 
 /*!
- * \brief Checks if two netblocks match.
- *
- * \param ss1     First address.
- * \param ss2     Second address.
- * \param prefix  Netblock length (negative value for maximum prefix length).
- *
- * \retval bool if match.
- */
-bool netblock_match(const struct sockaddr_storage *ss1,
-                    const struct sockaddr_storage *ss2,
-                    int prefix);
-
-/*!
- * \brief Checks if the address is within the network range.
- *
- * \param ss     Address to check.
- * \param ss_min Minimum address.
- * \param ss_max Maximum address.
- *
- * \retval bool if match.
- */
-bool netrange_match(const struct sockaddr_storage *ss,
-                    const struct sockaddr_storage *ss_min,
-                    const struct sockaddr_storage *ss_max
-);
-
-/*!
  * \brief Checks if the address and/or tsig key matches given ACL list.
  *
  * If a proper ACL rule is found and tsig.name is not empty,
