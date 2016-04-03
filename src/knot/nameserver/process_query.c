@@ -417,6 +417,12 @@ static int ratelimit_apply(int state, knot_pkt_t *pkt, knot_layer_t *ctx)
 		return state;
 	}
 
+	/* Exempt clients. */
+	conf_val_t whitelist = conf_get(conf(), C_SRV, C_RATE_LIMIT_WHITELIST);
+	if (conf_addr_range_match(&whitelist, qdata->param->remote)) {
+		return state;
+	}
+
 	rrl_req_t rrl_rq = {0};
 	rrl_rq.w = pkt->wire;
 	rrl_rq.query = qdata->query;
