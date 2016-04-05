@@ -460,10 +460,12 @@ static int64_t first_serial_check(const knot_pkt_t *reply)
 	}
 }
 
-static bool last_serial_check(const uint32_t serial, const knot_pkt_t *reply)
+static bool last_serial_check(const uint32_t serial, const knot_pkt_t *reply,
+                              const size_t msg_count)
 {
 	const knot_pktsection_t *answer = knot_pkt_section(reply, KNOT_ANSWER);
-	if (answer->count <= 0) {
+
+	if (answer->count <= 0 || (answer->count == 1 && msg_count == 1)) {
 		return false;
 	}
 
@@ -473,11 +475,7 @@ static bool last_serial_check(const uint32_t serial, const knot_pkt_t *reply)
 		return false;
 	} else {
 		int64_t last_serial = knot_soa_serial(&last->rrs);
-		if (last_serial == serial) {
-			return true;
-		} else {
-			return false;
-		}
+		return last_serial == serial;
 	}
 }
 
@@ -892,7 +890,7 @@ static int process_xfr_packet(const knot_pkt_t      *query,
 		print_data_xfr(reply, style);
 
 		// Stop if last SOA record has correct serial.
-		if (last_serial_check(serial, reply)) {
+		if (last_serial_check(serial, reply, msg_count)) {
 			knot_pkt_free(&reply);
 			break;
 		}
