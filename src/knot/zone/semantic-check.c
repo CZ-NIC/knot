@@ -606,6 +606,9 @@ static void check_nsec_bitmap(const zone_node_t *node, semchecks_data_t *data)
 		                         ZC_ERR_NSEC_RDATA_BITMAP,
 		                         NULL);
 	}
+
+	free(node_wire);
+	dnssec_nsec_bitmap_free(node_bitmap);
 }
 
 /*!
