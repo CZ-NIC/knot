@@ -22,6 +22,7 @@
 #include "knot/nameserver/internet.h"
 #include "knot/updates/apply.h"
 #include "knot/zone/serial.h"
+#include "knot/zone/semantic-check.h"
 #include "libknot/libknot.h"
 #include "contrib/mempattern.h"
 #include "contrib/print.h"
@@ -385,6 +386,17 @@ static int ixfrin_finalize(struct answer_data *adata)
 	if (ret != KNOT_EOK) {
 		IXFRIN_LOG(LOG_WARNING, "failed to apply changes to zone (%s)",
 		           knot_strerror(ret));
+		return ret;
+	}
+
+	err_handler_t err_handler;
+	err_handler_init(&err_handler);
+	ret = zone_do_sem_checks(new_contents, 0, &err_handler, NULL, NULL);
+	if (ret != KNOT_EOK) {
+		IXFRIN_LOG(LOG_WARNING, "failed to apply changes to zone (%s)",
+		           knot_strerror(KNOT_ESEMCHECK));
+		update_rollback(&a_ctx);
+		update_free_zone(&new_contents);
 		return ret;
 	}
 
