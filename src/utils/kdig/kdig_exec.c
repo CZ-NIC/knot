@@ -584,7 +584,7 @@ static int process_query_packet(const knot_pkt_t      *query,
 		}
 
 		// Parse reply to the packet structure.
-		if (knot_pkt_parse(reply, 0) != KNOT_EOK) {
+		if (knot_pkt_parse(reply, KNOT_PF_NOCANON) != KNOT_EOK) {
 			ERR("malformed reply packet from %s\n", net->remote_str);
 			knot_pkt_free(&reply);
 			net_close(net);
