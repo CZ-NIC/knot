@@ -46,7 +46,6 @@ enum zonechecks_errors {
 
 	ZC_ERR_MISSING_SOA,
 	ZC_ERR_MISSING_NS_DEL_POINT,
-	ZC_ERR_TTL_MISMATCH,
 
 	ZC_ERR_GENERIC_GENERAL_ERROR, /* Generic error delimiter. */
 
@@ -148,10 +147,25 @@ void err_handler_deinit(err_handler_t *h);
  * \retval KNOT_EOK on success.
  * \retval KNOT_ENOMEM if memory error.
  */
-int err_handler_handle_error(err_handler_t *handler,
+int err_handler_node_error(err_handler_t *handler,
                              const zone_contents_t *zone,
                              const zone_node_t *node,
                              int error, const char *data);
+
+/*!
+ * \brief Called when error has been encountered for entire zone.
+ *
+ * Will save error to list for future possibility to log it.
+ *
+ * \param handler Error handler.
+ * \param zname Zone name
+ * \param error Type of error.
+ *
+ * \retval KNOT_EOK on success.
+ * \retval KNOT_ENOMEM if memory error.
+ */
+int err_handler_zone_error(err_handler_t *handler, const knot_dname_t *zname,
+                           int error);
 
 /*!
  * \brief Check zone for semantic errors.
