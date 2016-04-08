@@ -429,6 +429,8 @@ src/utils/common/exec.c
 src/utils/common/exec.h
 src/utils/common/hex.c
 src/utils/common/hex.h
+src/utils/common/lookup.c
+src/utils/common/lookup.h
 src/utils/common/msg.c
 src/utils/common/msg.h
 src/utils/common/netio.c
@@ -465,7 +467,11 @@ src/utils/knotc/commands.c
 src/utils/knotc/commands.h
 src/utils/knotc/estimator.c
 src/utils/knotc/estimator.h
+src/utils/knotc/interactive.c
+src/utils/knotc/interactive.h
 src/utils/knotc/main.c
+src/utils/knotc/process.c
+src/utils/knotc/process.h
 src/utils/knotd/main.c
 src/utils/knsupdate/knsupdate_exec.c
 src/utils/knsupdate/knsupdate_exec.h
@@ -530,6 +536,7 @@ tests/server.c
 tests/sockaddr.c
 tests/test_conf.h
 tests/tsig_key.c
+tests/utils/test_lookup.c
 tests/wire.c
 tests/wire_ctx.c
 tests/worker_pool.c

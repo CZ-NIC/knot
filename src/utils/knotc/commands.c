@@ -30,6 +30,8 @@
 #include "utils/knotc/commands.h"
 #include "utils/knotc/estimator.h"
 
+#define CMD_EXIT		"exit"
+
 #define CMD_STATUS		"status"
 #define CMD_STOP		"stop"
 #define CMD_RELOAD		"reload"
@@ -97,10 +99,10 @@ static int check_conf_args(cmd_args_t *args)
 	return KNOT_EINVAL;
 }
 
-static int get_conf_key(char *key, knot_ctl_data_t *data)
+static int get_conf_key(const char *key, knot_ctl_data_t *data)
 {
 	// Get key0.
-	char *key0 = key;
+	const char *key0 = key;
 
 	// Check for id.
 	char *id = strchr(key, '[');
@@ -410,7 +412,8 @@ static int zone_memstats(const knot_dname_t *dname, void *data)
 		.node_table = hattrie_create_n(TRIE_BUCKET_SIZE, &mem_ctx),
 	};
 
-	char *zone_name = knot_dname_to_str_alloc(dname);
+	char buff[KNOT_DNAME_TXT_MAXLEN + 1];
+	char *zone_name = knot_dname_to_str(buff, dname, sizeof(buff));
 	char *zone_file = conf_zonefile(conf(), dname);
 	zs_scanner_t *zs = malloc(sizeof(zs_scanner_t));
 
@@ -419,7 +422,6 @@ static int zone_memstats(const knot_dname_t *dname, void *data)
 		log_zone_error(dname, "%s", knot_strerror(KNOT_ENOMEM));
 		hattrie_free(est.node_table);
 		free(zone_file);
-		free(zone_name);
 		free(zs);
 		return KNOT_ENOMEM;
 	}
@@ -434,13 +436,11 @@ static int zone_memstats(const knot_dname_t *dname, void *data)
 		hattrie_apply_rev(est.node_table, estimator_free_trie_node, NULL);
 		hattrie_free(est.node_table);
 		free(zone_file);
-		free(zone_name);
 		zs_deinit(zs);
 		free(zs);
 		return KNOT_EPARSEFAIL;
 	}
 	free(zone_file);
-	free(zone_name);
 	zs_deinit(zs);
 	free(zs);
 
@@ -663,48 +663,40 @@ static int cmd_conf_ctl(cmd_args_t *args)
 }
 
 const cmd_desc_t cmd_table[] = {
+	{ CMD_EXIT,            NULL,              CTL_NONE },
+
 	{ CMD_STATUS,          cmd_ctl,           CTL_STATUS },
 	{ CMD_STOP,            cmd_ctl,           CTL_STOP },
 	{ CMD_RELOAD,          cmd_ctl,           CTL_RELOAD },
 
-	{ CMD_ZONE_CHECK,      cmd_zone_check,    CTL_NONE,       CMD_CONF_FREAD },
-	{ CMD_ZONE_MEMSTATS,   cmd_zone_memstats, CTL_NONE,       CMD_CONF_FREAD },
-	{ CMD_ZONE_STATUS,     cmd_zone_ctl,      CTL_ZONE_STATUS },
-	{ CMD_ZONE_RELOAD,     cmd_zone_ctl,      CTL_ZONE_RELOAD },
-	{ CMD_ZONE_REFRESH,    cmd_zone_ctl,      CTL_ZONE_REFRESH },
-	{ CMD_ZONE_RETRANSFER, cmd_zone_ctl,      CTL_ZONE_RETRANSFER },
-	{ CMD_ZONE_FLUSH,      cmd_zone_ctl,      CTL_ZONE_FLUSH },
-	{ CMD_ZONE_SIGN,       cmd_zone_ctl,      CTL_ZONE_SIGN },
+	{ CMD_ZONE_CHECK,      cmd_zone_check,    CTL_NONE,            CMD_CONF_FOPT_ZONE | CMD_CONF_FREAD },
+	{ CMD_ZONE_MEMSTATS,   cmd_zone_memstats, CTL_NONE,            CMD_CONF_FOPT_ZONE | CMD_CONF_FREAD },
+	{ CMD_ZONE_STATUS,     cmd_zone_ctl,      CTL_ZONE_STATUS,     CMD_CONF_FOPT_ZONE },
+	{ CMD_ZONE_RELOAD,     cmd_zone_ctl,      CTL_ZONE_RELOAD,     CMD_CONF_FOPT_ZONE },
+	{ CMD_ZONE_REFRESH,    cmd_zone_ctl,      CTL_ZONE_REFRESH,    CMD_CONF_FOPT_ZONE },
+	{ CMD_ZONE_RETRANSFER, cmd_zone_ctl,      CTL_ZONE_RETRANSFER, CMD_CONF_FOPT_ZONE },
+	{ CMD_ZONE_FLUSH,      cmd_zone_ctl,      CTL_ZONE_FLUSH,      CMD_CONF_FOPT_ZONE },
+	{ CMD_ZONE_SIGN,       cmd_zone_ctl,      CTL_ZONE_SIGN,       CMD_CONF_FOPT_ZONE },
 
-	{ CMD_CONF_INIT,       cmd_conf_init,     CTL_NONE,       CMD_CONF_FWRITE },
-	{ CMD_CONF_CHECK,      cmd_conf_check,    CTL_NONE,       CMD_CONF_FREAD },
-	{ CMD_CONF_IMPORT,     cmd_conf_import,   CTL_NONE,       CMD_CONF_FWRITE },
-	{ CMD_CONF_EXPORT,     cmd_conf_export,   CTL_NONE,       CMD_CONF_FREAD },
-	{ CMD_CONF_LIST,       cmd_conf_ctl,      CTL_CONF_LIST,  CMD_CONF_FOPT_ITEM },
-	{ CMD_CONF_READ,       cmd_conf_ctl,      CTL_CONF_READ,  CMD_CONF_FOPT_ITEM },
+	{ CMD_CONF_INIT,       cmd_conf_init,     CTL_NONE,            CMD_CONF_FWRITE },
+	{ CMD_CONF_CHECK,      cmd_conf_check,    CTL_NONE,            CMD_CONF_FREAD },
+	{ CMD_CONF_IMPORT,     cmd_conf_import,   CTL_NONE,            CMD_CONF_FWRITE },
+	{ CMD_CONF_EXPORT,     cmd_conf_export,   CTL_NONE,            CMD_CONF_FREAD },
+	{ CMD_CONF_LIST,       cmd_conf_ctl,      CTL_CONF_LIST,       CMD_CONF_FOPT_ITEM },
+	{ CMD_CONF_READ,       cmd_conf_ctl,      CTL_CONF_READ,       CMD_CONF_FOPT_ITEM },
 	{ CMD_CONF_BEGIN,      cmd_conf_ctl,      CTL_CONF_BEGIN },
 	{ CMD_CONF_COMMIT,     cmd_conf_ctl,      CTL_CONF_COMMIT },
 	{ CMD_CONF_ABORT,      cmd_conf_ctl,      CTL_CONF_ABORT },
-	{ CMD_CONF_DIFF,       cmd_conf_ctl,      CTL_CONF_DIFF,  CMD_CONF_FOPT_ITEM },
-	{ CMD_CONF_GET,        cmd_conf_ctl,      CTL_CONF_GET,   CMD_CONF_FOPT_ITEM },
-	{ CMD_CONF_SET,        cmd_conf_ctl,      CTL_CONF_SET,   CMD_CONF_FREQ_ITEM | CMD_CONF_FOPT_DATA },
-	{ CMD_CONF_UNSET,      cmd_conf_ctl,      CTL_CONF_UNSET, CMD_CONF_FOPT_ITEM | CMD_CONF_FOPT_DATA },
+	{ CMD_CONF_DIFF,       cmd_conf_ctl,      CTL_CONF_DIFF,       CMD_CONF_FOPT_ITEM | CMD_CONF_FREQ_TXN },
+	{ CMD_CONF_GET,        cmd_conf_ctl,      CTL_CONF_GET,        CMD_CONF_FOPT_ITEM | CMD_CONF_FREQ_TXN },
+	{ CMD_CONF_SET,        cmd_conf_ctl,      CTL_CONF_SET,        CMD_CONF_FREQ_ITEM | CMD_CONF_FOPT_DATA | CMD_CONF_FREQ_TXN },
+	{ CMD_CONF_UNSET,      cmd_conf_ctl,      CTL_CONF_UNSET,      CMD_CONF_FOPT_ITEM | CMD_CONF_FOPT_DATA | CMD_CONF_FREQ_TXN },
 	{ NULL }
 };
 
-const cmd_desc_old_t cmd_table_old[] = {
-	{ "checkzone",  CMD_ZONE_CHECK },
-	{ "memstats",   CMD_ZONE_MEMSTATS },
-	{ "zonestatus", CMD_ZONE_STATUS },
-	{ "refresh",    CMD_ZONE_REFRESH },
-	{ "flush",      CMD_ZONE_FLUSH },
-	{ "signzone",   CMD_ZONE_SIGN },
-	{ "checkconf",  CMD_CONF_CHECK },
-	{ "conf-desc",  CMD_CONF_LIST },
-	{ NULL }
-};
-
-const cmd_help_t cmd_help_table[] = {
+static const cmd_help_t cmd_help_table[] = {
+	{ CMD_EXIT,            "",                     "Exit interactive mode." },
+	{ "",                  "",                     "" },
 	{ CMD_STATUS,          "",                     "Check if the server is running." },
 	{ CMD_STOP,            "",                     "Stop the server if running." },
 	{ CMD_RELOAD,          "",                     "Reload the server configuration and modified zones." },
@@ -733,3 +725,18 @@ const cmd_help_t cmd_help_table[] = {
 	{ CMD_CONF_UNSET,      "[<item>] [<data>...]", "Unset the item data in the transaction." },
 	{ NULL }
 };
+
+void print_commands(void)
+{
+	printf("\nActions:\n");
+
+	for (const cmd_help_t *cmd = cmd_help_table; cmd->name != NULL; cmd++) {
+		printf(" %-15s %-20s %s\n", cmd->name, cmd->params, cmd->desc);
+	}
+
+	printf("\n"
+	       "Note:\n"
+	       " Empty <zone> parameter means all zones.\n"
+	       " Type <item> parameter in the form of <section>[<identifier>].<name>.\n"
+	       " (*) indicates a local operation which requires a configuration.\n");
+}

@@ -447,6 +447,38 @@ AS_IF([test "$with_libidn" != "no"],[
 
 ]) # Knot DNS utilities dependencies
 
+PKG_CHECK_MODULES([libedit], [libedit], [], [
+  save_CFLAGS="$CFLAGS"
+  save_LIBS="$LIBS"
+
+  with_libedit=no
+  for try_path in "" "/usr" "/usr/local"; do
+    AS_IF([test -d "$try_path"], [
+      libedit_CFLAGS="-I$try_path/include"
+      libedit_LIBS="-L$try_path/lib"
+    ],[
+      continue
+    ])
+
+    CFLAGS="$CFLAGS $libedit_CFLAGS"
+    LIBS="$LIBS $libedit_LIBS"
+
+    AC_CHECK_HEADERS([histedit.h], [], [continue])
+    AC_SEARCH_LIBS([el_init], [edit], [], [continue])
+
+    with_libedit=yes
+    libedit_LIBS="$libedit_LIBS -ledit"
+    break
+  done
+
+  CFLAGS="$save_CFLAGS"
+  LIBS="$save_LIBS"
+
+  AS_IF([test "$with_libedit" = "no"], [
+    AC_MSG_ERROR([libedit library not found])
+  ])
+])
+
 # Bash completions
 AC_ARG_WITH([bash-completions],
   AC_HELP_STRING([--with-bash-completions=[DIR]], [Bash completions directory [default=no]]),

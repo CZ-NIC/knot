@@ -11,6 +11,11 @@ Synopsis
 Description
 -----------
 
+If no *action* is specified, the program is executed in interactive mode. Then
+various command or parameters completion is available via the TAB key. And
+command history is enabled (see :manpage:`editrc(5)` for additional
+customization).
+
 Parameters
 ..........
 
@@ -185,4 +190,4 @@ Add example.org zone with a zonefile location
 See Also
 --------
 
-:manpage:`knotd(8)`, :manpage:`knot.conf(5)`.
+:manpage:`knotd(8)`, :manpage:`knot.conf(5)`, :manpage:`editrc(5)`.

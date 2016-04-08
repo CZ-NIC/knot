@@ -34,6 +34,11 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .sp
 \fBknotc\fP [\fIparameters\fP] \fIaction\fP [\fIaction_args\fP]
 .SH DESCRIPTION
+.sp
+If no \fIaction\fP is specified, the program is executed in interactive mode. Then
+various command or parameters completion is available via the TAB key. And
+command history is enabled (see \fIeditrc(5)\fP for additional
+customization).
 .SS Parameters
 .INDENT 0.0
 .TP
@@ -225,7 +230,7 @@ $ knotc conf\-commit
 .UNINDENT
 .SH SEE ALSO
 .sp
-\fIknotd(8)\fP, \fIknot.conf(5)\fP\&.
+\fIknotd(8)\fP, \fIknot.conf(5)\fP, \fIeditrc(5)\fP\&.
 .SH AUTHOR
 CZ.NIC Labs <http://www.knot-dns.cz>
 .SH COPYRIGHT
