@@ -1,4 +1,4 @@
-/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -418,8 +418,8 @@ static int ratelimit_apply(int state, knot_pkt_t *pkt, knot_layer_t *ctx)
 	}
 
 	/* Exempt clients. */
-	conf_val_t whitelist = conf_get(conf(), C_SRV, C_RATE_LIMIT_WHITELIST);
-	if (conf_addr_range_match(&whitelist, qdata->param->remote)) {
+	conf_val_t *whitelist = &conf()->cache.srv_rate_limit_whitelist;
+	if (conf_addr_range_match(whitelist, qdata->param->remote)) {
 		return state;
 	}
 
@@ -436,8 +436,7 @@ static int ratelimit_apply(int state, knot_pkt_t *pkt, knot_layer_t *ctx)
 	}
 
 	/* Now it is slip or drop. */
-	conf_val_t val = conf_get(conf(), C_SRV, C_RATE_LIMIT_SLIP);
-	int slip = conf_int(&val);
+	int slip = conf_int(&conf()->cache.srv_rate_limit_slip);
 	if (slip > 0 && rrl_slip_roll(slip)) {
 		/* Answer slips. */
 		if (process_query_err(ctx, pkt) != KNOT_STATE_DONE) {
