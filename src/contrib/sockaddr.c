@@ -1,4 +1,4 @@
-/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -23,6 +23,7 @@
 #include "libknot/errcode.h"
 #include "contrib/sockaddr.h"
 #include "contrib/openbsd/strlcpy.h"
+#include "contrib/macros.h"
 
 int sockaddr_len(const struct sockaddr *ss)
 {
@@ -88,7 +89,7 @@ int sockaddr_set(struct sockaddr_storage *ss, int family, const char *straddr, i
 	return KNOT_EINVAL;
 }
 
-void *sockaddr_raw(struct sockaddr_storage *ss, size_t *addr_size)
+void *sockaddr_raw(const struct sockaddr_storage *ss, size_t *addr_size)
 {
 	if (ss == NULL || addr_size == NULL) {
 		return NULL;
@@ -258,4 +259,50 @@ bool sockaddr_is_any(const struct sockaddr_storage *ss)
 	}
 
 	return false;
+}
+
+bool sockaddr_net_match(const struct sockaddr_storage *ss1,
+                        const struct sockaddr_storage *ss2,
+                        unsigned prefix)
+{
+	if (ss1 == NULL || ss2 == NULL) {
+		return false;
+	}
+
+	if (ss1->ss_family != ss2->ss_family) {
+		return false;
+	}
+
+	size_t raw_len = 0;
+	const uint8_t *raw_1 = sockaddr_raw(ss1, &raw_len);
+	const uint8_t *raw_2 = sockaddr_raw(ss2, &raw_len);
+
+	prefix = MIN(prefix, raw_len * 8);
+	unsigned bytes = prefix / 8;
+	unsigned bits = prefix % 8;
+
+	/* Compare full bytes. */
+	if (memcmp(raw_1, raw_2, bytes) != 0) {
+		return false;
+	}
+
+	/* Compare last partial byte. */
+	return bits == 0 ||
+	       (raw_1[bytes] >> (8 - bits) == raw_2[bytes] >> (8 - bits));
+}
+
+bool sockaddr_range_match(const struct sockaddr_storage *ss,
+                          const struct sockaddr_storage *ss_min,
+                          const struct sockaddr_storage *ss_max)
+{
+	if (ss == NULL || ss_min == NULL || ss_max == NULL) {
+		return false;
+	}
+
+	if (ss_min->ss_family != ss_max->ss_family ||
+	    ss_min->ss_family != ss->ss_family) {
+		return false;
+	}
+
+	return sockaddr_cmp(ss, ss_min) >= 0 && sockaddr_cmp(ss, ss_max) <= 0;
 }

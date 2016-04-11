@@ -150,6 +150,7 @@ server:
     rate\-limit: INT
     rate\-limit\-slip: INT
     rate\-limit\-table\-size: INT
+    rate\-limit\-whitelist: ADDR[/INT] | ADDR\-ADDR ...
     listen: ADDR[@INT] ...
 .ft P
 .fi
@@ -295,6 +296,13 @@ proportional to the configured value. Setting the value high is not advisable.
 .UNINDENT
 .sp
 \fIDefault:\fP 1
+.SS rate\-limit\-whitelist
+.sp
+A list of IP addresses, network subnets, or network ranges to exempt from
+rate limiting. Empty list means that no incoming connection will be
+white\-listed.
+.sp
+\fIDefault:\fP not set
 .SS max\-udp\-payload
 .sp
 Maximum EDNS0 UDP payload size.

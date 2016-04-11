@@ -1,4 +1,4 @@
-/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -81,7 +81,7 @@ int sockaddr_set(struct sockaddr_storage *ss, int family, const char *straddr, i
  * \param addr_size Length of the address will be stored in addr_size.
  * \return pointer to raw address
  */
-void *sockaddr_raw(struct sockaddr_storage *ss, size_t *addr_size);
+void *sockaddr_raw(const struct sockaddr_storage *ss, size_t *addr_size);
 
 /*!
  * \brief Set raw address.
@@ -137,5 +137,31 @@ char *sockaddr_hostname(void);
  * \brief Check if address is ANY address.
  */
 bool sockaddr_is_any(const struct sockaddr_storage *ss);
+
+/*!
+ * \brief Check if two addresses match the given network prefix.
+ *
+ * \param ss1     First address.
+ * \param ss2     Second address.
+ * \param prefix  Prefix length.
+ *
+ * \retval True if match.
+ */
+bool sockaddr_net_match(const struct sockaddr_storage *ss1,
+                        const struct sockaddr_storage *ss2,
+                        unsigned prefix);
+
+/*!
+ * \brief Check if the address is within the given address range (inclusive).
+ *
+ * \param ss      Address to check.
+ * \param ss_min  Minimum address.
+ * \param ss_max  Maximum address.
+ *
+ * \retval True if match.
+ */
+bool sockaddr_range_match(const struct sockaddr_storage *ss,
+                          const struct sockaddr_storage *ss_min,
+                          const struct sockaddr_storage *ss_max);
 
 /*! @} */

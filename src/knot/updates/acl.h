@@ -1,4 +1,4 @@
-/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -39,48 +39,19 @@ typedef enum {
 } acl_action_t;
 
 /*!
- * \brief Checks if two netblocks match.
- *
- * \param ss1     First address.
- * \param ss2     Second address.
- * \param prefix  Netblock length (negative value for maximum prefix length).
- *
- * \retval bool if match.
- */
-bool netblock_match(const struct sockaddr_storage *ss1,
-                    const struct sockaddr_storage *ss2,
-                    int prefix);
-
-/*!
- * \brief Checks if the address is within the network range.
- *
- * \param ss     Address to check.
- * \param ss_min Minimum address.
- * \param ss_max Maximum address.
- *
- * \retval bool if match.
- */
-bool netrange_match(const struct sockaddr_storage *ss,
-                    const struct sockaddr_storage *ss_min,
-                    const struct sockaddr_storage *ss_max
-);
-
-/*!
  * \brief Checks if the address and/or tsig key matches given ACL list.
  *
- * If a proper ACL rule is found and tsig.name is not empty,
- * tsig.secret is filled.
+ * If a proper ACL rule is found and tsig.name is not empty, tsig.secret is filled.
  *
- * \param conf     Configuration.
- * \param acl      Pointer to ACL config multivalued identifier.
- * \param action   ACL action.
- * \param addr     IP address.
- * \param tsig     TSIG parameters.
+ * \param conf    Configuration.
+ * \param acl     Pointer to ACL config multivalued identifier.
+ * \param action  ACL action.
+ * \param addr    IP address.
+ * \param tsig    TSIG parameters.
  *
- * \retval bool  if authenticated.
+ * \retval True if authenticated.
  */
 bool acl_allowed(conf_t *conf, conf_val_t *acl, acl_action_t action,
-                 const struct sockaddr_storage *addr,
-                 knot_tsig_key_t *tsig);
+                 const struct sockaddr_storage *addr, knot_tsig_key_t *tsig);
 
 /*! @} */

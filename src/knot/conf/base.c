@@ -1,4 +1,4 @@
-/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -162,6 +162,8 @@ static void init_cache(
 	conf->cache.srv_tcp_hshake_timeout = conf_get(conf, C_SRV, C_TCP_HSHAKE_TIMEOUT);
 	conf->cache.srv_tcp_idle_timeout = conf_get(conf, C_SRV, C_TCP_IDLE_TIMEOUT);
 	conf->cache.srv_tcp_reply_timeout = conf_get(conf, C_SRV, C_TCP_REPLY_TIMEOUT);
+	conf->cache.srv_rate_limit_slip = conf_get(conf, C_SRV, C_RATE_LIMIT_SLIP);
+	conf->cache.srv_rate_limit_whitelist = conf_get(conf, C_SRV, C_RATE_LIMIT_WHITELIST);
 }
 
 int conf_new(

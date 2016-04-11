@@ -103,6 +103,7 @@ General options related to the server.
      rate-limit: INT
      rate-limit-slip: INT
      rate-limit-table-size: INT
+     rate-limit-whitelist: ADDR[/INT] | ADDR-ADDR ...
      listen: ADDR[@INT] ...
 
 .. _server_identity:
@@ -310,6 +311,17 @@ noting, that some responses can't be truncated (e.g. SERVFAIL).
   proportional to the configured value. Setting the value high is not advisable.
 
 *Default:* 1
+
+.. _server_rate-limit-whitelist:
+
+rate-limit-whitelist
+--------------------
+
+A list of IP addresses, network subnets, or network ranges to exempt from
+rate limiting. Empty list means that no incoming connection will be
+white-listed.
+
+*Default:* not set
 
 .. _server_max-udp-payload:
 
