@@ -138,7 +138,7 @@ static int rrl_clsname(char *dst, size_t maxlen, uint8_t cls,
                        rrl_req_t *req, const zone_t *zone)
 {
 	/* Fallback zone (for errors etc.) */
-	const knot_dname_t *dn = (const knot_dname_t*)"\x00";
+	const knot_dname_t *dn = (const knot_dname_t *)"\x00";
 
 	/* Found associated zone. */
 	if (zone != NULL) {
@@ -178,7 +178,7 @@ static int rrl_classify(char *dst, size_t maxlen, const struct sockaddr_storage 
 	uint64_t nb = 0;
 	if (a->ss_family == AF_INET6) {
 		struct sockaddr_in6 *ipv6 = (struct sockaddr_in6 *)a;
-		nb = *((uint64_t*)(&ipv6->sin6_addr)) & RRL_V6_PREFIX;
+		nb = *((uint64_t *)(&ipv6->sin6_addr)) & RRL_V6_PREFIX;
 	} else {
 		struct sockaddr_in *ipv4 = (struct sockaddr_in *)a;
 		nb = ((uint32_t)ipv4->sin_addr.s_addr) & RRL_V4_PREFIX;
@@ -186,11 +186,11 @@ static int rrl_classify(char *dst, size_t maxlen, const struct sockaddr_storage 
 	if (blklen + sizeof(nb) > maxlen) {
 		return KNOT_ESPACE;
 	}
-	memcpy(dst + blklen, (void*)&nb, sizeof(nb));
+	memcpy(dst + blklen, (void *)&nb, sizeof(nb));
 	blklen += sizeof(nb);
 
 	/* Name */
-	uint16_t *nlen = (uint16_t*)(dst + blklen);
+	uint16_t *nlen = (uint16_t *)(dst + blklen);
 	blklen += sizeof(uint16_t);
 	int len = rrl_clsname(dst + blklen, maxlen - blklen, cls, p, z);
 	if (len < 0) {
@@ -374,7 +374,7 @@ int rrl_setlocks(rrl_table_t *rrl, unsigned granularity)
 	return KNOT_EOK;
 }
 
-rrl_item_t* rrl_hash(rrl_table_t *t, const struct sockaddr_storage *a, rrl_req_t *p,
+rrl_item_t *rrl_hash(rrl_table_t *t, const struct sockaddr_storage *a, rrl_req_t *p,
                      const zone_t *zone, uint32_t stamp, int *lock)
 {
 	char buf[RRL_CLSBLK_MAXLEN];
@@ -389,11 +389,11 @@ rrl_item_t* rrl_hash(rrl_table_t *t, const struct sockaddr_storage *a, rrl_req_t
 	pthread_mutex_lock(&t->ll);
 
 	/* Find an exact match in <id, id + HOP_LEN). */
-	uint16_t *qname = (uint16_t*)(buf + sizeof(uint8_t) + sizeof(uint64_t));
+	uint16_t *qname = (uint16_t *)(buf + sizeof(uint8_t) + sizeof(uint64_t));
 	rrl_item_t match = {
-	        0, *((uint64_t*)(buf + 1)), t->rate,    /* hop, netblk, ntok */
-	        buf[0], RRL_BF_NULL,                    /* cls, flags */
-	        hash((char*)(qname + 1), *qname), stamp /* qname, time*/
+	        0, *((uint64_t *)(buf + 1)), t->rate,    /* hop, netblk, ntok */
+	        buf[0], RRL_BF_NULL,                     /* cls, flags */
+	        hash((char *)(qname + 1), *qname), stamp /* qname, time */
 	};
 
 	unsigned d = find_match(t, id, &match);
@@ -414,7 +414,7 @@ rrl_item_t* rrl_hash(rrl_table_t *t, const struct sockaddr_storage *a, rrl_req_t
 
 	/* found free elm 'k' which is in <id, id + HOP_LEN) */
 	t->arr[id].hop |= (1 << d);
-	rrl_item_t* b = t->arr + f;
+	rrl_item_t *b = t->arr + f;
 	assert(f == (id+d) % t->size);
 
 	/* Inspect bucket state. */
