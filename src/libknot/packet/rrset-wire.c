@@ -1,4 +1,4 @@
-/*  Copyright (C) 2014 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -690,9 +690,8 @@ static int parse_rdata(const uint8_t *pkt_wire, size_t *pos, size_t pkt_size,
 }
 
 _public_
-int knot_rrset_rr_from_wire(const uint8_t *pkt_wire, size_t *pos,
-                            size_t pkt_size, knot_mm_t *mm,
-                            knot_rrset_t *rrset)
+int knot_rrset_rr_from_wire(const uint8_t *pkt_wire, size_t *pos, size_t pkt_size,
+                            knot_mm_t *mm, knot_rrset_t *rrset, bool canonical)
 {
 	if (!pkt_wire || !pos || !rrset || *pos > pkt_size) {
 		return KNOT_EINVAL;
@@ -712,10 +711,11 @@ int knot_rrset_rr_from_wire(const uint8_t *pkt_wire, size_t *pos,
 	}
 
 	/* Convert RR to canonical format. */
-	ret = knot_rrset_rr_to_canonical(rrset);
-
-	if (ret != KNOT_EOK) {
-		knot_rrset_clear(rrset, mm);
+	if (canonical) {
+		ret = knot_rrset_rr_to_canonical(rrset);
+		if (ret != KNOT_EOK) {
+			knot_rrset_clear(rrset, mm);
+		}
 	}
 
 	return KNOT_EOK;

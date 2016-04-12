@@ -70,7 +70,8 @@ enum {
 	KNOT_PF_FREE      = 1 << 1, /*!< Free with packet. */
 	KNOT_PF_NOTRUNC   = 1 << 2, /*!< Don't truncate. */
 	KNOT_PF_CHECKDUP  = 1 << 3, /*!< Check for duplicates. */
-	KNOT_PF_KEEPWIRE  = 1 << 4  /*!< Keep wireformat untouched when parsing. */
+	KNOT_PF_KEEPWIRE  = 1 << 4, /*!< Keep wireformat untouched when parsing. */
+	KNOT_PF_NOCANON   = 1 << 5, /*!< Don't canonicalize rrsets during parsing. */
 };
 
 /*!

@@ -1,4 +1,4 @@
-/*  Copyright (C) 2014 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -192,23 +192,73 @@ static const struct wire_data FROM_CASES[FROM_CASE_COUNT] = {
 
 #define TEST_CASE_FROM(rrset, i) size_t _pos##i = FROM_CASES[i].pos; \
 	ok(knot_rrset_rr_from_wire(FROM_CASES[i].wire, &_pos##i, FROM_CASES[i].size, \
-	NULL, rrset) == FROM_CASES[i].code, "rrset wire: %s", FROM_CASES[i].msg)
+	NULL, rrset, true) == FROM_CASES[i].code, "rrset wire: %s", FROM_CASES[i].msg)
 
-int main(int argc, char *argv[])
+static void test_inputs(void)
 {
-	plan(1 + FROM_CASE_COUNT);
-
-	// Test NULL params.
-	int ret = knot_rrset_rr_from_wire(NULL, NULL, 0, NULL, NULL);
-	ok(ret == KNOT_EINVAL, "rr wire: Invalid params");
-
-	// Test defined cases
 	for (size_t i = 0; i < FROM_CASE_COUNT; ++i) {
 		knot_rrset_t rrset;
 		knot_rrset_init_empty(&rrset);
 		TEST_CASE_FROM(&rrset, i);
 		knot_rrset_clear(&rrset, NULL);
 	}
+}
+
+static void check_canon(uint8_t *wire, size_t size, size_t pos, bool canon,
+                        knot_dname_t *qname, knot_dname_t *dname)
+{
+	knot_rrset_t rrset;
+	knot_rrset_init_empty(&rrset);
+
+	int ret = knot_rrset_rr_from_wire(wire, &pos, size, NULL, &rrset, canon);
+	ok(ret == KNOT_EOK, "OK %s canonization", canon ? "with" : "without");
+	ok(memcmp(rrset.owner, qname, knot_dname_size(qname)) == 0, "compare owner");
+
+	uint8_t *rdata = knot_rdata_data(knot_rdataset_at(&rrset.rrs, 0));
+	ok(memcmp(rdata, dname, knot_dname_size(dname)) == 0, "compare rdata dname");
+
+	knot_rrset_clear(&rrset, NULL);
+}
+
+static void test_canonization(void)
+{
+	#define UPP_QNAME_SIZE	5
+	#define UPP_QNAME 0x01, 0x41, 0x01, 0x5a, 0x00	// A.Z.
+	#define LOW_QNAME 0x01, 0x61, 0x01, 0x7a, 0x00	// a.z.
+
+	#define UPP_DNAME_SIZE	3
+	#define UPP_DNAME 0x01, 0x58, 0x00	// X.
+	#define LOW_DNAME 0x01, 0x78, 0x00	// x.
+
+	uint8_t wire[] = {
+		MESSAGE_HEADER(1, 0, 0), QUERY(UPP_QNAME, KNOT_RRTYPE_NS),
+		RR_HEADER(UPP_QNAME, KNOT_RRTYPE_NS, 0x00, UPP_DNAME_SIZE), UPP_DNAME
+	};
+	size_t size = QUERY_SIZE + RR_HEADER_SIZE + UPP_QNAME_SIZE * 2 + UPP_DNAME_SIZE;
+	size_t pos = QUERY_SIZE + UPP_QNAME_SIZE;
+
+	knot_dname_t upp_qname[] = { UPP_QNAME };
+	knot_dname_t upp_dname[] = { UPP_DNAME };
+	check_canon(wire, size, pos, false, upp_qname, upp_dname);
+
+	knot_dname_t low_qname[] = { LOW_QNAME };
+	knot_dname_t low_dname[] = { LOW_DNAME };
+	check_canon(wire, size, pos, true, low_qname, low_dname);
+}
+
+int main(int argc, char *argv[])
+{
+	plan_lazy();
+
+	diag("Test NULL parameters");
+	int ret = knot_rrset_rr_from_wire(NULL, NULL, 0, NULL, NULL, true);
+	ok(ret == KNOT_EINVAL, "rr wire: Invalid params");
+
+	diag("Test various inputs");
+	test_inputs();
+
+	diag("Test canonization");
+	test_canonization();
 
 	return EXIT_SUCCESS;
 }

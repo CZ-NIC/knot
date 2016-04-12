@@ -1,4 +1,4 @@
-/*  Copyright (C) 2014 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -14,10 +14,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 /*!
- * \file rrset.h
- *
- * \author Lubos Slovak <lubos.slovak@nic.cz>
- * \author Jan Vcelak <jan.vcelak@nic.cz>
+ * \file
  *
  * \brief RRSet from/to wire conversion functions.
  *
@@ -57,10 +54,11 @@ int knot_rrset_to_wire(const knot_rrset_t *rrset, uint8_t *wire, uint16_t max_si
 * \param pkt_size    Total size of data in \a wire (size of the packet).
 * \param mm          Memory context.
 * \param rrset       Destination RRSet.
+* \param canonical   Convert rrset to canonical format indication.
 *
 * \return KNOT_E*
 */
-int knot_rrset_rr_from_wire(const uint8_t *pkt_wire, size_t *pos,
-                            size_t pkt_size, knot_mm_t *mm, knot_rrset_t *rrset);
+int knot_rrset_rr_from_wire(const uint8_t *pkt_wire, size_t *pos, size_t pkt_size,
+                            knot_mm_t *mm, knot_rrset_t *rrset, bool canonical);
 
 /*! @} */
