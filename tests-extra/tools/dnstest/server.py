@@ -96,6 +96,8 @@ class Server(object):
         self.zones = dict()
 
         self.ratelimit = None
+        self.ratelimit_slip = None
+        self.ratelimit_whitelist = None
         self.disable_any = None
         self.disable_notify = None
         self.tcp_reply_timeout = None
@@ -859,8 +861,12 @@ class Knot(Server):
         s.item_str("listen", "%s@%s" % (self.addr, self.port))
         if (self.tcp_reply_timeout):
             s.item_str("tcp-reply-timeout", self.tcp_reply_timeout)
-        if (self.ratelimit):
+        if self.ratelimit is not None:
             s.item_str("rate-limit", self.ratelimit)
+            if self.ratelimit_slip is not None:
+                s.item_str("rate-limit-slip", self.ratelimit_slip)
+            if self.ratelimit_whitelist is not None:
+                s.item_str("rate-limit-whitelist", self.ratelimit_whitelist)
         s.end()
 
         s.begin("control")
