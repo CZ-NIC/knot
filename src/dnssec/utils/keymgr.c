@@ -646,11 +646,11 @@ static int cmd_zone_add(int argc, char *argv[])
 		return 1;
 	}
 
-	char *zone_name = argv[0];
-	char *policy = DEFAULT_POLICY;
+	const char *zone_name = argv[0];
+	const char *policy = DEFAULT_POLICY;
 
 	static const parameter_t params[] = {
-		{ "policy", value_string },
+		{ "policy", value_static_string },
 		{ NULL }
 	};
 
@@ -1288,7 +1288,7 @@ static int cmd_zone_set(int argc, char *argv[])
 	const char *policy = dnssec_kasp_zone_get_policy(zone);
 
 	static const parameter_t params[] = {
-		{ "policy", value_string },
+		{ "policy", value_static_string },
 		{ NULL }
 	};
 
@@ -1440,7 +1440,7 @@ static int cmd_policy_add(int argc, char *argv[])
 	policy->ksk_size = 0;
 	policy->zsk_size = 0;
 
-	if (parse_parameters(POLICY_PARAMS, argc -1, argv + 1, policy) != 0) {
+	if (parse_parameters(POLICY_PARAMS, argc - 1, argv + 1, policy) != 0) {
 		return 1;
 	}
 
@@ -1635,8 +1635,8 @@ static int cmd_keystore_add(int argc, char *argv[])
 
 	static const parameter_t params[] = {
 		#define off(member) offsetof(dnssec_kasp_keystore_t, member)
-		{ "backend", value_string, .offset = off(backend) },
-		{ "config",  value_string, .offset = off(config) },
+		{ "backend", value_static_string, .offset = off(backend) },
+		{ "config",  value_static_string, .offset = off(config) },
 		{ NULL },
 		#undef off
 	};
