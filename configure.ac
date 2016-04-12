@@ -447,36 +447,19 @@ AS_IF([test "$with_libidn" != "no"],[
 
 ]) # Knot DNS utilities dependencies
 
-PKG_CHECK_MODULES([libedit], [libedit], [], [
-  save_CFLAGS="$CFLAGS"
-  save_LIBS="$LIBS"
-
+# libedit
+PKG_CHECK_MODULES([libedit], [libedit], [with_libedit=yes], [
   with_libedit=no
-  for try_path in "" "/usr" "/usr/local"; do
-    AS_IF([test -d "$try_path"], [
-      libedit_CFLAGS="-I$try_path/include"
-      libedit_LIBS="-L$try_path/lib"
-    ],[
-      continue
+  AC_CHECK_HEADER([histedit.h], [
+    AC_CHECK_LIB([edit], [el_init], [
+      with_libedit=yes
+      libedit_CFLAGS=
+      libedit_LIBS=-ledit
     ])
-
-    CFLAGS="$CFLAGS $libedit_CFLAGS"
-    LIBS="$LIBS $libedit_LIBS"
-
-    AC_CHECK_HEADERS([histedit.h], [], [continue])
-    AC_SEARCH_LIBS([el_init], [edit], [], [continue])
-
-    with_libedit=yes
-    libedit_LIBS="$libedit_LIBS -ledit"
-    break
-  done
-
-  CFLAGS="$save_CFLAGS"
-  LIBS="$save_LIBS"
-
-  AS_IF([test "$with_libedit" = "no"], [
-    AC_MSG_ERROR([libedit library not found])
   ])
+])
+AS_IF([test "$with_libedit" != "yes"], [
+  AC_MSG_ERROR([libedit not found])
 ])
 
 # Bash completions
@@ -586,6 +569,7 @@ AC_MSG_RESULT([
     LibURCU:  ${liburcu_LIBS} ${liburcu_CFLAGS}
     GnuTLS:   ${gnutls_LIBS} ${gnutls_CFLAGS}
     Jansson:  ${jansson_LIBS} ${jansson_CFLAGS}
+    Libedit:  ${libedit_LIBS} ${libedit_CFLAGS}
     LMDB:     ${enable_lmdb} ${lmdb_LIBS} ${lmdb_CFLAGS}
 
     Sanitizer: ${sanitize_CFLAGS}
