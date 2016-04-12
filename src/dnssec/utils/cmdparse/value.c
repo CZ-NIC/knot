@@ -96,6 +96,29 @@ int value_string(int argc, char *argv[], const parameter_t *p, void *data)
 		return -1;
 	}
 
+	char *copy = strdup(argv[0]);
+	if (!copy) {
+		error("Allocation failed for '%s'.", p->name);
+		return -1;
+	}
+
+	char **string = data + p->offset;
+	free(*string);
+	*string = copy;
+
+	return 1;
+}
+
+int value_static_string(int argc, char *argv[], const parameter_t *p, void *data)
+{
+	assert(p);
+	assert(data);
+
+	if (argc < 1) {
+		error_missing_option(p);
+		return -1;
+	}
+
 	char **string = data + p->offset;
 	*string = argv[0];
 
