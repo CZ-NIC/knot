@@ -38,7 +38,7 @@ Global options
 
 **--dir** *path*
   The location of the KASP database to work with. Defaults to current working
-  directory.
+  directory or ``KEYMGR_DIR`` environment variable (if set).
 
 Main commands
 .............

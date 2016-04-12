@@ -1797,11 +1797,6 @@ int main(int argc, char *argv[])
 {
 	int exit_code = 1;
 
-	// global configuration
-
-	global.kasp_dir = getcwd(NULL, 0);
-	assert(global.kasp_dir);
-
 	// global options
 
 	static const struct option opts[] = {
@@ -1833,6 +1828,19 @@ int main(int argc, char *argv[])
 			goto failed;
 		}
 	}
+
+	// global configuration
+
+	if (global.kasp_dir == NULL) {
+		char *env = getenv("KEYMGR_DIR");
+		if (env) {
+			global.kasp_dir = strdup(env);
+		} else {
+			global.kasp_dir = getcwd(NULL, 0);
+		}
+	}
+
+	assert(global.kasp_dir);
 
 	// subcommands
 

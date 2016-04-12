@@ -61,7 +61,7 @@ a name must be unique amongst the other names.
 .TP
 \fB\-\-dir\fP \fIpath\fP
 The location of the KASP database to work with. Defaults to current working
-directory.
+directory or \fBKEYMGR_DIR\fP environment variable (if set).
 .UNINDENT
 .SS Main commands
 .INDENT 0.0
