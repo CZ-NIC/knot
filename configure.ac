@@ -451,11 +451,17 @@ AS_IF([test "$with_libidn" != "no"],[
 PKG_CHECK_MODULES([libedit], [libedit], [with_libedit=yes], [
   with_libedit=no
   AC_CHECK_HEADER([histedit.h], [
+    # workaround for OpenBSD
+    AS_CASE([$host_os],
+      [openbsd*], [libedit_deps=-lcurses],
+      [libedit_deps=]
+    )
     AC_CHECK_LIB([edit], [el_init], [
       with_libedit=yes
       libedit_CFLAGS=
-      libedit_LIBS=-ledit
-    ])
+      libedit_LIBS="-ledit $libedit_deps"
+      ], [], [$libedit_deps]
+    )
   ])
 ])
 AS_IF([test "$with_libedit" != "yes"], [
