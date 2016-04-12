@@ -203,9 +203,8 @@ static int rrl_classify(char *dst, size_t maxlen, const struct sockaddr_storage 
 	if (blklen + sizeof(seed) > maxlen) {
 		return KNOT_ESPACE;
 	}
-	if (memcpy(dst + blklen, (void*)&seed, sizeof(seed)) == 0) {
-		blklen += sizeof(seed);
-	}
+	memcpy(dst + blklen, (void *)&seed, sizeof(seed));
+	blklen += sizeof(seed);
 
 	return blklen;
 }
