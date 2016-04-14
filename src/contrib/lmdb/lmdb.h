@@ -40,6 +40,9 @@
  *	corrupt the database. Of course if your application code is known to
  *	be bug-free (...) then this is not an issue.
  *
+ *	If this is your first time using a transactional embedded key/value
+ *	store, you may find the \ref starting page to be helpful.
+ *
  *	@section caveats_sec Caveats
  *	Troubleshooting the lock file, plus semaphores on BSD systems:
  *
@@ -49,9 +52,13 @@
  *	  stale locks can block further operation.
  *
  *	  Fix: Check for stale readers periodically, using the
- *	  #mdb_reader_check function or the \ref mdb_stat_1 "mdb_stat" tool. Or just
- *	  make all programs using the database close it; the lockfile
- *	  is always reset on first open of the environment.
+ *	  #mdb_reader_check function or the \ref mdb_stat_1 "mdb_stat" tool.
+ *	  Stale writers will be cleared automatically on some systems:
+ *	  - Windows - automatic
+ *	  - Linux, systems using POSIX mutexes with Robust option - automatic
+ *	  - not on BSD, systems using POSIX semaphores.
+ *	  Otherwise just make all programs using the database close it;
+ *	  the lockfile is always reset on first open of the environment.
  *
  *	- On BSD systems or others configured with MDB_USE_POSIX_SEM,
  *	  startup can fail due to semaphores owned by another userid.
@@ -106,6 +113,9 @@
  *	  for stale readers is performed or the lockfile is reset,
  *	  since the process may not remove it from the lockfile.
  *
+ *	  This does not apply to write transactions if the system clears
+ *	  stale writers, see above.
+ *
  *	- If you do that anyway, do a periodic check for stale readers. Or
  *	  close the environment once in a while, so the lockfile can get reset.
  *
@@ -119,7 +129,7 @@
  *
  *	@author	Howard Chu, Symas Corporation.
  *
- *	@copyright Copyright 2011-2015 Howard Chu, Symas Corp. All rights reserved.
+ *	@copyright Copyright 2011-2016 Howard Chu, Symas Corp. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted only as authorized by the OpenLDAP
@@ -184,7 +194,7 @@ typedef int mdb_filehandle_t;
 /** Library minor version */
 #define MDB_VERSION_MINOR	9
 /** Library patch version */
-#define MDB_VERSION_PATCH	16
+#define MDB_VERSION_PATCH	18
 
 /** Combine args a,b,c into a single integer for easy version comparisons */
 #define MDB_VERINT(a,b,c)	(((a) << 24) | ((b) << 16) | (c))
@@ -194,7 +204,7 @@ typedef int mdb_filehandle_t;
 	MDB_VERINT(MDB_VERSION_MAJOR,MDB_VERSION_MINOR,MDB_VERSION_PATCH)
 
 /** The release date of this library version */
-#define MDB_VERSION_DATE	"August 14, 2015"
+#define MDB_VERSION_DATE	"February 5, 2016"
 
 /** A stringifier for the version info */
 #define MDB_VERSTR(a,b,c,d)	"LMDB " #a "." #b "." #c ": (" d ")"
@@ -391,7 +401,7 @@ typedef enum MDB_cursor_op {
 #define MDB_PAGE_NOTFOUND	(-30797)
 	/** Located page was wrong type */
 #define MDB_CORRUPTED	(-30796)
-	/** Update of meta page failed, probably I/O error */
+	/** Update of meta page failed or environment had fatal error */
 #define MDB_PANIC		(-30795)
 	/** Environment version mismatch */
 #define MDB_VERSION_MISMATCH	(-30794)
@@ -424,7 +434,7 @@ typedef enum MDB_cursor_op {
 #define MDB_INCOMPATIBLE	(-30784)
 	/** Invalid reuse of reader locktable slot */
 #define MDB_BAD_RSLOT		(-30783)
-	/** Transaction cannot recover - it must be aborted */
+	/** Transaction must abort, has a child, or is invalid */
 #define MDB_BAD_TXN			(-30782)
 	/** Unsupported size of key/DB name/data, or wrong DUPFIXED size */
 #define MDB_BAD_VALSIZE		(-30781)
@@ -519,9 +529,11 @@ int  mdb_env_create(MDB_env **env);
 	 *		allowed. LMDB will still modify the lock file - except on read-only
 	 *		filesystems, where LMDB does not use locks.
 	 *	<li>#MDB_WRITEMAP
-	 *		Use a writeable memory map unless MDB_RDONLY is set. This is faster
-	 *		and uses fewer mallocs, but loses protection from application bugs
+	 *		Use a writeable memory map unless MDB_RDONLY is set. This uses
+	 *		fewer mallocs but loses protection from application bugs
 	 *		like wild pointer writes and other bad updates into the database.
+	 *		This may be slightly faster for DBs that fit entirely in RAM, but
+	 *		is slower for DBs larger than RAM.
 	 *		Incompatible with nested transactions.
 	 *		Do not mix processes with and without MDB_WRITEMAP on the same
 	 *		environment.  This can defeat durability (#mdb_env_sync etc).
@@ -953,6 +965,17 @@ int  mdb_txn_begin(MDB_env *env, MDB_txn *parent, unsigned int flags, MDB_txn **
 	 */
 MDB_env *mdb_txn_env(MDB_txn *txn);
 
+	/** @brief Return the transaction's ID.
+	 *
+	 * This returns the identifier associated with this transaction. For a
+	 * read-only transaction, this corresponds to the snapshot being read;
+	 * concurrent readers will frequently have the same transaction ID.
+	 *
+	 * @param[in] txn A transaction handle returned by #mdb_txn_begin()
+	 * @return A transaction ID, valid if input is an active transaction.
+	 */
+size_t mdb_txn_id(MDB_txn *txn);
+
 	/** @brief Commit all the operations of a transaction into the database.
 	 *
 	 * The transaction handle is freed. It and its cursors must not be used
@@ -1280,7 +1303,8 @@ int  mdb_get(MDB_txn *txn, MDB_dbi dbi, MDB_val *key, MDB_val *data);
 	 *		the next update operation or the transaction ends. This saves
 	 *		an extra memcpy if the data is being generated later.
 	 *		LMDB does nothing else with this memory, the caller is expected
-	 *		to modify all of the space requested.
+	 *		to modify all of the space requested. This flag must not be
+	 *		specified if the database was opened with #MDB_DUPSORT.
 	 *	<li>#MDB_APPEND - append the given key/data pair to the end of the
 	 *		database. This option allows fast bulk loading when keys are
 	 *		already known to be in the correct order. Loading unsorted keys
@@ -1436,13 +1460,15 @@ int  mdb_cursor_get(MDB_cursor *cursor, MDB_val *key, MDB_val *data,
 	 *		the database supports duplicates (#MDB_DUPSORT).
 	 *	<li>#MDB_RESERVE - reserve space for data of the given size, but
 	 *		don't copy the given data. Instead, return a pointer to the
-	 *		reserved space, which the caller can fill in later. This saves
-	 *		an extra memcpy if the data is being generated later.
+	 *		reserved space, which the caller can fill in later - before
+	 *		the next update operation or the transaction ends. This saves
+	 *		an extra memcpy if the data is being generated later. This flag
+	 *		must not be specified if the database was opened with #MDB_DUPSORT.
 	 *	<li>#MDB_APPEND - append the given key/data pair to the end of the
 	 *		database. No key comparisons are performed. This option allows
 	 *		fast bulk loading when keys are already known to be in the
 	 *		correct order. Loading unsorted keys with this flag will cause
-	 *		data corruption.
+	 *		a #MDB_KEYEXIST error.
 	 *	<li>#MDB_APPENDDUP - as above, but for sorted dup data.
 	 *	<li>#MDB_MULTIPLE - store multiple contiguous data elements in a
 	 *		single request. This flag may only be specified if the database
