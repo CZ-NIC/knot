@@ -149,20 +149,24 @@ typedef enum {
  * http://www.iana.org/assignments/dns-sec-alg-numbers/dns-sec-alg-numbers.xml
  */
 typedef enum {
-	KNOT_DNSSEC_ALG_RSAMD5             =  1,
-	KNOT_DNSSEC_ALG_DH                 =  2,
-	KNOT_DNSSEC_ALG_DSA                =  3,
+	KNOT_DNSSEC_ALG_RSAMD5             =   1,
+	KNOT_DNSSEC_ALG_DH                 =   2,
+	KNOT_DNSSEC_ALG_DSA                =   3,
 
-	KNOT_DNSSEC_ALG_RSASHA1            =  5,
-	KNOT_DNSSEC_ALG_DSA_NSEC3_SHA1     =  6,
-	KNOT_DNSSEC_ALG_RSASHA1_NSEC3_SHA1 =  7,
-	KNOT_DNSSEC_ALG_RSASHA256          =  8,
+	KNOT_DNSSEC_ALG_RSASHA1            =   5,
+	KNOT_DNSSEC_ALG_DSA_NSEC3_SHA1     =   6,
+	KNOT_DNSSEC_ALG_RSASHA1_NSEC3_SHA1 =   7,
+	KNOT_DNSSEC_ALG_RSASHA256          =   8,
 
-	KNOT_DNSSEC_ALG_RSASHA512          = 10,
+	KNOT_DNSSEC_ALG_RSASHA512          =  10,
 
-	KNOT_DNSSEC_ALG_ECC_GOST           = 12,
-	KNOT_DNSSEC_ALG_ECDSAP256SHA256    = 13,
-	KNOT_DNSSEC_ALG_ECDSAP384SHA384    = 14
+	KNOT_DNSSEC_ALG_ECC_GOST           =  12,
+	KNOT_DNSSEC_ALG_ECDSAP256SHA256    =  13,
+	KNOT_DNSSEC_ALG_ECDSAP384SHA384    =  14,
+
+	KNOT_DNSSEC_ALG_INDIRECT           = 252,
+	KNOT_DNSSEC_ALG_PRIVATEDNS         = 253,
+	KNOT_DNSSEC_ALG_PRIVATEOID         = 254
 } knot_dnssec_algorithm_t;
 
 /*!
