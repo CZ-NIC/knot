@@ -174,7 +174,7 @@ static bool zone_add_dnskey(dnssec_kasp_zone_t *zone, const char *id,
 	return true;
 }
 
-/* -- list item matching anr printing -------------------------------------- */
+/* -- list item matching and printing -------------------------------------- */
 
 /*!
  * Check if a string item contains a substring (case insensitive).
@@ -827,7 +827,7 @@ static int cmd_zone_remove(int argc, char *argv[])
 static int cmd_zone_key_list(int argc, char *argv[])
 {
 	if (argc < 1 || argc > 2) {
-		error("Name of one zone has to be specified.");
+		error("Zone name and optional filter has to be specified.");
 		return 1;
 	}
 
@@ -1460,7 +1460,7 @@ static int cmd_policy_add(int argc, char *argv[])
 
 	r = dnssec_kasp_policy_exists(kasp, policy_name);
 	if (r == DNSSEC_EOK) {
-		error("Policy with given name alredy exists.");
+		error("Policy with given name already exists.");
 		return 1;
 	} else if (r != DNSSEC_NOT_FOUND) {
 		error("Failed to check if given policy exists (%s).", dnssec_strerror(r));

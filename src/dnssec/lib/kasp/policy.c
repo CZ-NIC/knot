@@ -101,7 +101,6 @@ static bool valid_algorithm(const dnssec_kasp_policy_t *p)
 {
 	return dnssec_algorithm_key_size_check(p->algorithm, p->ksk_size) &&
 	       dnssec_algorithm_key_size_check(p->algorithm, p->zsk_size);
-
 }
 
 _public_
