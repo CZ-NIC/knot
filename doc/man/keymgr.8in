@@ -61,7 +61,7 @@ a name must be unique amongst the other names.
 .TP
 \fB\-\-dir\fP \fIpath\fP
 The location of the KASP database to work with. Defaults to current working
-directory.
+directory or \fBKEYMGR_DIR\fP environment variable (if set).
 .UNINDENT
 .SS Main commands
 .INDENT 0.0
@@ -109,7 +109,7 @@ Change zone configuration. At the moment, only a policy can be changed.
 \fBzone\fP \fBshow\fP \fIzone\-name\fP
 Show zone details.
 .TP
-\fBzone\fP \fBkey\fP \fBlist\fP \fIzone\-name\fP
+\fBzone\fP \fBkey\fP \fBlist\fP \fIzone\-name\fP [\fBfilter\fP]
 List key IDs and tags of zone keys.
 .TP
 \fBzone\fP \fBkey\fP \fBshow\fP \fIzone\-name\fP \fIkey\fP

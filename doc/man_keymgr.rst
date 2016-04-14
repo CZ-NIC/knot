@@ -38,7 +38,7 @@ Global options
 
 **--dir** *path*
   The location of the KASP database to work with. Defaults to current working
-  directory.
+  directory or ``KEYMGR_DIR`` environment variable (if set).
 
 Main commands
 .............
@@ -86,7 +86,7 @@ zone commands
 **zone** **show** *zone-name*
   Show zone details.
 
-**zone** **key** **list** *zone-name*
+**zone** **key** **list** *zone-name* [**filter**]
   List key IDs and tags of zone keys.
 
 **zone** **key** **show** *zone-name* *key*

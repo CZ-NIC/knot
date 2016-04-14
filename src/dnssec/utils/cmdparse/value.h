@@ -34,6 +34,11 @@ int value_bool(int argc, char *argv[], const parameter_t *p, void *data);
 int value_string(int argc, char *argv[], const parameter_t *p, void *data);
 
 /*!
+ * const char *
+ */
+int value_static_string(int argc, char *argv[], const parameter_t *p, void *data);
+
+/*!
  * dnssec_key_algorithm_t
  */
 int value_algorithm(int argc, char *argv[], const parameter_t *p, void *data);

@@ -40,42 +40,6 @@ static void clear_policy(dnssec_kasp_policy_t *policy)
 	policy->keystore = keystore;
 }
 
-struct key_size {
-	dnssec_key_algorithm_t algorithm;
-	uint16_t zsk;
-	uint16_t ksk;
-};
-
-static const struct key_size DEFAULT_KEY_SIZES[] = {
-	// DSA: maximum supported by DNSSEC
-	{ DNSSEC_KEY_ALGORITHM_DSA_SHA1,          1024, 1024 },
-	{ DNSSEC_KEY_ALGORITHM_DSA_SHA1_NSEC3,    1024, 1024 },
-	{ DNSSEC_KEY_ALGORITHM_RSA_SHA1_NSEC3,    1024, 1024 },
-	// RSA: small keys for short-lived keys (security/size compromise)
-	{ DNSSEC_KEY_ALGORITHM_RSA_SHA1,          1024, 2048 },
-	{ DNSSEC_KEY_ALGORITHM_RSA_SHA256,        1024, 2048 },
-	{ DNSSEC_KEY_ALGORITHM_RSA_SHA512,        1024, 2048 },
-	// ECDSA: fixed key size
-	{ DNSSEC_KEY_ALGORITHM_ECDSA_P256_SHA256, 256,  256 },
-	{ DNSSEC_KEY_ALGORITHM_ECDSA_P384_SHA384, 384,  384 },
-	{ 0 }
-};
-
-static void default_key_size(dnssec_key_algorithm_t algorithm,
-			     uint16_t *zsk_size, uint16_t *ksk_size)
-{
-	for (const struct key_size *ks = DEFAULT_KEY_SIZES; ks->algorithm; ks++) {
-		if (algorithm == ks->algorithm) {
-			*zsk_size = ks->zsk;
-			*ksk_size = ks->ksk;
-			return;
-		}
-	}
-
-	*zsk_size = 0;
-	*ksk_size = 0;
-}
-
 /* -- public API ----------------------------------------------------------- */
 
 _public_
@@ -107,7 +71,8 @@ void dnssec_kasp_policy_defaults(dnssec_kasp_policy_t *policy)
 	clear_policy(policy);
 
 	policy->algorithm = DNSSEC_KEY_ALGORITHM_ECDSA_P256_SHA256;
-	default_key_size(policy->algorithm, &policy->zsk_size, &policy->ksk_size);
+	policy->zsk_size = dnssec_algorithm_key_size_default(policy->algorithm);
+	policy->ksk_size = dnssec_algorithm_key_size_default(policy->algorithm);
 	policy->dnskey_ttl = 1200;
 
 	policy->zsk_lifetime = DAYS(30);
@@ -130,4 +95,42 @@ void dnssec_kasp_policy_free(dnssec_kasp_policy_t *policy)
 	free(policy->name);
 	free(policy->keystore);
 	free(policy);
+}
+
+static bool valid_algorithm(const dnssec_kasp_policy_t *p)
+{
+	return dnssec_algorithm_key_size_check(p->algorithm, p->ksk_size) &&
+	       dnssec_algorithm_key_size_check(p->algorithm, p->zsk_size);
+}
+
+_public_
+int dnssec_kasp_policy_validate(const dnssec_kasp_policy_t *policy)
+{
+	if (!policy) {
+		return DNSSEC_EINVAL;
+	}
+
+	/*
+	 * NOTES:
+	 *
+	 * - Don't check if key store is set.
+	 * - Allow zero TTL for any record.
+	 *
+	 */
+
+	// required parameters
+
+	if (policy->rrsig_lifetime == 0 ||
+	    policy->rrsig_refresh_before == 0
+	) {
+		return DNSSEC_CONFIG_MALFORMED;
+	}
+
+	// signing algorithm constraints
+
+	if (!policy->manual && !valid_algorithm(policy)) {
+		return DNSSEC_INVALID_KEY_SIZE;
+	}
+
+	return DNSSEC_EOK;
 }

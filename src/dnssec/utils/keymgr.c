@@ -174,37 +174,111 @@ static bool zone_add_dnskey(dnssec_kasp_zone_t *zone, const char *id,
 	return true;
 }
 
-static void print_key(const char *id, const dnssec_key_t *key)
-{
-	printf("id %s keytag %d\n", id, dnssec_key_get_keytag(key));
-}
-
-/* -- generic list operations ---------------------------------------------- */
+/* -- list item matching and printing -------------------------------------- */
 
 /*!
- * Print filtered items from a string list.
- *
- * \param list    List of strings.
- * \param filter  Filter for case-insensitive substring match. Can be NULL.
- *
- * \retval DNSSEC_EOK        At least one item was printed.
- * \retval DNSSEC_NOT_FOUND  No item matched the filter.
+ * Check if a string item contains a substring (case insensitive).
  */
-static int print_list(dnssec_list_t *list, const char *filter)
+static bool item_match_substring(const void *_item, const char *filter)
+{
+	assert(_item);
+	const char *item = _item;
+
+	return strcasestr(item, filter) != NULL;
+}
+
+/*!
+ * Check if a string contains a prefix (case insensitive).
+ */
+static bool str_prefix_match(const char *str, const char *prefix)
+{
+	size_t str_len = strlen(str);
+	size_t prefix_len = strlen(prefix);
+
+	return prefix_len <= str_len &&
+	       strncasecmp(str, prefix, prefix_len) == 0;
+}
+
+/*!
+ * Check if a string content is matching a key tag.
+ */
+static bool keytag_match(uint16_t keytag, const char *filter)
+{
+	uint16_t converted = 0;
+
+	return str_to_u16(filter, &converted) == DNSSEC_EOK &&
+	       keytag == converted;
+}
+
+/*!
+ * Check if a \dnssec_kasp_key_t item matches a filter.
+ *
+ * The filter can be a key ID prefix or match the key tag.
+ */
+static bool item_match_key(const void *_item, const char *filter)
+{
+	assert(_item);
+	const dnssec_kasp_key_t *item = _item;
+
+	return str_prefix_match(item->id, filter) ||
+	       keytag_match(dnssec_key_get_keytag(item->key), filter);
+}
+
+/*!
+ * Print key item.
+ */
+static void item_print_key(const void *item)
+{
+	assert(item);
+	const dnssec_kasp_key_t *key = item;
+
+	printf("- %s %5d\n", key->id, dnssec_key_get_keytag(key->key));
+}
+
+/*!
+ * Print key string.
+ */
+static void item_print_string(const void *item)
+{
+	assert(item);
+	const char *str = item;
+	printf("- %s\n", str);
+}
+
+static bool empty_filter(const char *filter)
+{
+	return (filter == NULL || filter[0] == '\0');
+}
+
+typedef bool (*list_match_cb)(const void *item, const char *filter);
+typedef void (*list_print_cb)(const void *item);
+
+/*!
+ * Iterate over a list and print each matching item.
+ *
+ * \param list    List to walk through.
+ * \param filter  Filter value passed to match callback (can be NULL).
+ * \param match   Item match callback (can be NULL in case filter is NULL).
+ * \param print   Item print callback.
+ *
+ * \return Number of printed items.
+ */
+static int print_list(dnssec_list_t *list, const char *filter,
+		      list_match_cb match, list_print_cb print)
 {
 	assert(list);
 
-	bool found_match = NULL;
+	int found = 0;
 
 	dnssec_list_foreach(item, list) {
-		const char *value = dnssec_item_get(item);
-		if (filter == NULL || strcasestr(value, filter) != NULL) {
-			found_match = true;
-			printf("%s\n", value);
+		const void *value = dnssec_item_get(item);
+		if (empty_filter(filter) || match(value, filter)) {
+			found += 1;
+			print(value);
 		}
 	}
 
-	return found_match ? DNSSEC_EOK : DNSSEC_NOT_FOUND;
+	return found;
 }
 
 /* -- key matching --------------------------------------------------------- */
@@ -572,11 +646,11 @@ static int cmd_zone_add(int argc, char *argv[])
 		return 1;
 	}
 
-	char *zone_name = argv[0];
-	char *policy = DEFAULT_POLICY;
+	const char *zone_name = argv[0];
+	const char *policy = DEFAULT_POLICY;
 
 	static const parameter_t params[] = {
-		{ "policy", value_string },
+		{ "policy", value_static_string },
 		{ NULL }
 	};
 
@@ -648,13 +722,12 @@ static int cmd_zone_list(int argc, char *argv[])
 		return 1;
 	}
 
-	r = print_list(zones, match);
-	if (r == DNSSEC_NOT_FOUND) {
+	int found = print_list(zones, match, item_match_substring, item_print_string);
+	if (found == 0) {
 		error("No matching zone found.");
 		return 1;
 	}
 
-	assert(r == DNSSEC_EOK);
 	return 0;
 }
 
@@ -749,16 +822,17 @@ static int cmd_zone_remove(int argc, char *argv[])
 }
 
 /*
- * keymgr zone key list <zone>
+ * keymgr zone key list <zone> [<filter>]
  */
 static int cmd_zone_key_list(int argc, char *argv[])
 {
-	if (argc != 1) {
-		error("Name of one zone has to be specified.");
+	if (argc < 1 || argc > 2) {
+		error("Zone name and optional filter has to be specified.");
 		return 1;
 	}
 
-	char *zone_name = argv[0];
+	const char *zone_name = argv[0];
+	const char *filter = (argc == 2 ? argv[1] : NULL);
 
 	// list the keys
 
@@ -773,9 +847,10 @@ static int cmd_zone_key_list(int argc, char *argv[])
 	}
 
 	dnssec_list_t *zone_keys = dnssec_kasp_zone_get_keys(zone);
-	dnssec_list_foreach(item, zone_keys) {
-		const dnssec_kasp_key_t *key = dnssec_item_get(item);
-		print_key(key->id, key->key);
+	int count = print_list(zone_keys, filter, item_match_key, item_print_key);
+	if (count == 0) {
+		error("No matching zone key found.");
+		return 1;
 	}
 
 	return 0;
@@ -909,6 +984,15 @@ static int cmd_zone_key_ds(int argc, char *argv[])
 	return 0;
 }
 
+static void assure_key_size(uint16_t *size, dnssec_key_algorithm_t algorithm)
+{
+	assert(size);
+
+	if (*size == 0) {
+		*size = dnssec_algorithm_key_size_default(algorithm);
+	}
+}
+
 /*
  * keymgr zone key generate <zone> algorithm <algorithm> size <size> [ksk]
  *                                 [publish <publish>] [active <active>]
@@ -924,7 +1008,7 @@ static int cmd_zone_key_generate(int argc, char *argv[])
 	struct config {
 		char *name;
 		dnssec_key_algorithm_t algorithm;
-		unsigned size;
+		uint16_t size;
 		bool is_ksk;
 		dnssec_kasp_key_timing_t timing;
 	};
@@ -955,10 +1039,7 @@ static int cmd_zone_key_generate(int argc, char *argv[])
 		return 1;
 	}
 
-	if (config.size == 0) {
-		error("Key size has to be specified.");
-		return 1;
-	}
+	assure_key_size(&config.size, config.algorithm);
 
 	if (!dnssec_algorithm_key_size_check(config.algorithm, config.size)) {
 		error("Key size is invalid for given algorithm.");
@@ -1026,7 +1107,7 @@ static int cmd_zone_key_generate(int argc, char *argv[])
 		return 1;
 	}
 
-	print_key(keyid, dnskey);
+	printf("%s\n", keyid);
 
 	return 0;
 }
@@ -1165,7 +1246,7 @@ static int cmd_zone_key_import(int argc, char *argv[])
 		return 1;
 	}
 
-	print_key(keyid, key);
+	printf("%s\n", keyid);
 
 	return 0;
 }
@@ -1207,7 +1288,7 @@ static int cmd_zone_set(int argc, char *argv[])
 	const char *policy = dnssec_kasp_zone_get_policy(zone);
 
 	static const parameter_t params[] = {
-		{ "policy", value_string },
+		{ "policy", value_static_string },
 		{ NULL }
 	};
 
@@ -1269,13 +1350,12 @@ static int cmd_policy_list(int argc, char *argv[])
 		return 1;
 	}
 
-	r = print_list(policies, match);
-	if (r == DNSSEC_NOT_FOUND) {
+	int found = print_list(policies, match, item_match_substring, item_print_string);
+	if (found == 0) {
 		error("No matching policy found.");
 		return 1;
 	}
 
-	assert(r == DNSSEC_EOK);
 	return 0;
 }
 
@@ -1357,19 +1437,30 @@ static int cmd_policy_add(int argc, char *argv[])
 	dnssec_kasp_policy_defaults(policy);
 	policy->keystore = strdup(DEFAULT_KEYSTORE);
 
-	if (parse_parameters(POLICY_PARAMS, argc -1, argv + 1, policy) != 0) {
+	policy->ksk_size = 0;
+	policy->zsk_size = 0;
+
+	if (parse_parameters(POLICY_PARAMS, argc - 1, argv + 1, policy) != 0) {
 		return 1;
 	}
 
+	assure_key_size(&policy->ksk_size, policy->algorithm);
+	assure_key_size(&policy->zsk_size, policy->algorithm);
+
+	int r = dnssec_kasp_policy_validate(policy);
+	if (r != DNSSEC_EOK) {
+		error("Policy configuration is invalid (%s).", dnssec_strerror(r));
+		return 1;
+	}
 
 	_cleanup_kasp_ dnssec_kasp_t *kasp = get_kasp();
 	if (!kasp) {
 		return 1;
 	}
 
-	int r = dnssec_kasp_policy_exists(kasp, policy_name);
+	r = dnssec_kasp_policy_exists(kasp, policy_name);
 	if (r == DNSSEC_EOK) {
-		error("Policy with given name alredy exists.");
+		error("Policy with given name already exists.");
 		return 1;
 	} else if (r != DNSSEC_NOT_FOUND) {
 		error("Failed to check if given policy exists (%s).", dnssec_strerror(r));
@@ -1409,7 +1500,13 @@ static int cmd_policy_set(int argc, char *argv[])
 		return 1;
 	}
 
-	int r = dnssec_kasp_policy_save(kasp, policy);
+	int r = dnssec_kasp_policy_validate(policy);
+	if (r != DNSSEC_EOK) {
+		error("Policy configuration is invalid (%s).", dnssec_strerror(r));
+		return 1;
+	}
+
+	r = dnssec_kasp_policy_save(kasp, policy);
 	if (r != DNSSEC_EOK) {
 		error("Failed to save updated policy (%s).", dnssec_strerror(r));
 		return 1;
@@ -1538,8 +1635,8 @@ static int cmd_keystore_add(int argc, char *argv[])
 
 	static const parameter_t params[] = {
 		#define off(member) offsetof(dnssec_kasp_keystore_t, member)
-		{ "backend", value_string, .offset = off(backend) },
-		{ "config",  value_string, .offset = off(config) },
+		{ "backend", value_static_string, .offset = off(backend) },
+		{ "config",  value_static_string, .offset = off(config) },
 		{ NULL },
 		#undef off
 	};
@@ -1700,11 +1797,6 @@ int main(int argc, char *argv[])
 {
 	int exit_code = 1;
 
-	// global configuration
-
-	global.kasp_dir = getcwd(NULL, 0);
-	assert(global.kasp_dir);
-
 	// global options
 
 	static const struct option opts[] = {
@@ -1736,6 +1828,19 @@ int main(int argc, char *argv[])
 			goto failed;
 		}
 	}
+
+	// global configuration
+
+	if (global.kasp_dir == NULL) {
+		char *env = getenv("KEYMGR_DIR");
+		if (env) {
+			global.kasp_dir = strdup(env);
+		} else {
+			global.kasp_dir = getcwd(NULL, 0);
+		}
+	}
+
+	assert(global.kasp_dir);
 
 	// subcommands
 
