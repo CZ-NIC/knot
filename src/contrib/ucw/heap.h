@@ -20,13 +20,13 @@ struct heap_val {
 	int pos;
 };
 
-typedef struct heap_val* heap_val_t;
+typedef struct heap_val heap_val_t;
 
 struct heap {
    int num;		/* Number of elements */
    int max_size;	/* Size of allocated memory */
    int (*cmp)(void *, void *);
-   heap_val_t *data;
+   heap_val_t **data;
 };		/* Array follows */
 
 #define INITIAL_HEAP_SIZE	512 /* initial heap size */
@@ -38,7 +38,7 @@ struct heap {
 
 int heap_init(struct heap *, int (*cmp)(), int);
 void heap_delmin(struct heap *);
-int heap_insert(struct heap *, heap_val_t);
-int heap_find(struct heap *, heap_val_t);
+int heap_insert(struct heap *, heap_val_t *);
+int heap_find(struct heap *, heap_val_t *);
 void heap_delete(struct heap *, int);
-void heap_replace(struct heap *h, int pos, heap_val_t e);
+void heap_replace(struct heap *h, int pos, heap_val_t *);

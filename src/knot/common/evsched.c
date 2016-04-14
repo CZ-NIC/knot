@@ -193,11 +193,11 @@ int evsched_schedule(event_t *ev, uint32_t dt)
 	ev->tv = new_time;
 
 	/* Make sure it's not already enqueued. */
-	int found = heap_find(&sched->heap, (heap_val_t)ev);
+	int found = heap_find(&sched->heap, (heap_val_t *)ev);
 	if (found > 0) {
-		heap_replace(&sched->heap, found, (heap_val_t)ev);
+		heap_replace(&sched->heap, found, (heap_val_t *)ev);
 	} else {
-		heap_insert(&sched->heap, (heap_val_t)ev);
+		heap_insert(&sched->heap, (heap_val_t *)ev);
 	}
 
 	/* Unlock calendar. */
@@ -218,7 +218,7 @@ int evsched_cancel(event_t *ev)
 	/* Lock calendar. */
 	pthread_mutex_lock(&sched->heap_lock);
 
-	int found = heap_find(&sched->heap, (heap_val_t)ev);
+	int found = heap_find(&sched->heap, (heap_val_t *)ev);
 	if (found > 0) {
 		heap_delete(&sched->heap, found);
 	}
