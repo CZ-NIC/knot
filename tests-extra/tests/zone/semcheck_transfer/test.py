@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
 
-
-
 from dnstest.test import Test
 import dnstest.utils
 
@@ -18,8 +16,7 @@ zone = t.zone("example.com.", storage=".")
 t.link(zone, ixfr_master, ixfr_slave, ixfr=True)
 t.link(zone, axfr_master, axfr_slave, ixfr=False)
 
-
-def test(master, slave, zone):
+def prepare(master, slave, zone):
     # Wait for zones.
     serial = master.zone_wait(zone)
     slave.zone_wait(zone)
@@ -30,26 +27,27 @@ def test(master, slave, zone):
 
     # Wait for zones and compare them.
     master_serial = master.zone_wait(zone, serial)
-    slave_serial = slave.zone_wait(zone, serial-1)
+    return master_serial
+
+
+def test(slave, zone, master_serial):
+    slave_serial = slave.zone_wait(zone)
 
     return slave_serial == master_serial
 
-
 t.start()
 
-ixfr = test(ixfr_master, ixfr_slave, zone)
-axfr = test(axfr_master, axfr_slave, zone)
+ixfr_serial = prepare(ixfr_master, ixfr_slave, zone)
+axfr_serial = prepare(axfr_master, axfr_slave, zone)
 
+t.sleep(10)
+
+ixfr = test(ixfr_slave, zone, ixfr_serial)
+axfr = test(axfr_slave, zone, axfr_serial)
+
+dnstest.utils.detail_log("IXFR %s" % (not ixfr))
+dnstest.utils.detail_log("AXFR %s" % (not axfr))
 if ixfr or axfr:
-    if ixfr and axfr:
-        msg = "IXFR and AXFR"
-    elif ixfr:
-        msg = "IXFR"
-    else:
-        msg = "AXFR"
-    msg = "{} semantic check failed".format(msg)
-    dnstest.utils.set_err(msg)
-
-
+    dnstest.utils.set_err("SEMANTIC CHECK")
 
 t.end()
