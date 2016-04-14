@@ -36,12 +36,15 @@
 #include <stdlib.h>
 #include "contrib/ucw/heap.h"
 
-static inline void heap_swap(heap_val_t *e1, heap_val_t *e2)
+static inline void heap_swap(heap_val_t **e1, heap_val_t **e2)
 {
 	if (e1 == e2) return; /* Stack tmp should be faster than tmpelem. */
-	heap_val_t tmp = *e1; /* Even faster than 2-XOR nowadays. */
+	heap_val_t *tmp = *e1; /* Even faster than 2-XOR nowadays. */
 	*e1 = *e2;
 	*e2 = tmp;
+	int pos = (*e1)->pos;
+	(*e1)->pos = (*e2)->pos;
+	(*e2)->pos = pos;
 }
 
 int heap_init(struct heap *h, int (*cmp)(void *, void *), int init_size)
@@ -51,7 +54,7 @@ int heap_init(struct heap *h, int (*cmp)(void *, void *), int init_size)
 	h->num = 0;
 	h->max_size = isize;
 	h->cmp = cmp;
-	h->data = malloc((isize + 1) * sizeof(heap_val_t)); /* Temp element unused. */
+	h->data = malloc((isize + 1) * sizeof(heap_val_t*)); /* Temp element unused. */
 
 	return h->data ? 1 : 0;
 }
@@ -83,19 +86,21 @@ static inline void _heap_bubble_up(struct heap *h, int e)
 
 }
 
-static void heap_increase(struct heap *h, int pos, void *e)
+static void heap_increase(struct heap *h, int pos, heap_val_t *e)
 {
 	*HELEMENT(h, pos) = e;
+	e->pos = pos;
 	_heap_bubble_down(h, pos);
 }
 
-static void heap_decrease(struct heap *h, int pos, void *e)
+static void heap_decrease(struct heap *h, int pos, heap_val_t *e)
 {
 	*HELEMENT(h, pos) = e;
+	e->pos = pos;
 	_heap_bubble_up(h, pos);
 }
 
-void heap_replace(struct heap *h, int pos, void *e)
+void heap_replace(struct heap *h, int pos, heap_val_t *e)
 {
 	if (h->cmp(*HELEMENT(h, pos),e) < 0) {
 		heap_increase(h, pos, e);
@@ -111,16 +116,17 @@ void heap_delmin(struct heap *h)
 	{
 		heap_swap(HHEAD(h),HELEMENT(h,h->num));
 	}
+	(*HELEMENT(h, h->num))->pos = 0;
 	--h->num;
 	_heap_bubble_down(h, 1);
 }
 
-int heap_insert(struct heap *h, void *e)
+int heap_insert(struct heap *h, heap_val_t *e)
 {
 	if(h->num == h->max_size)
 	{
 		h->max_size = h->max_size * HEAP_INCREASE_STEP;
-		h->data = realloc(h->data, (h->max_size + 1) * sizeof(heap_val_t));
+		h->data = realloc(h->data, (h->max_size + 1) * sizeof(heap_val_t*));
 		if (!h->data) {
 			return 0;
 		}
@@ -128,25 +134,20 @@ int heap_insert(struct heap *h, void *e)
 
 	h->num++;
 	*HELEMENT(h,h->num) = e;
+	e->pos = h->num;
 	_heap_bubble_up(h,h->num);
 	return 1;
 }
 
-int heap_find(struct heap *h, void *elm)	/* FIXME - very slow */
+int heap_find(struct heap *h, heap_val_t *elm)
 {
-	int i = 1; /* Skip tmp element. */
-	int np = h->num + 1; /* Start from min-heap top. */
-	while(i != np)
-	{
-		if(*HELEMENT(h, i) == elm) return i;
-		++i;
-	}
-	return 0;
+	return ((struct heap_val *) elm)->pos;
 }
 
 void heap_delete(struct heap *h, int e)
 {
 	heap_swap(HELEMENT(h, e), HELEMENT(h, h->num));
+	(*HELEMENT(h, h->num))->pos = 0;
 	h->num--;
 	if(h->cmp(*HELEMENT(h, e), *HELEMENT(h, h->num + 1)) < 0) _heap_bubble_up(h, e);
 	else _heap_bubble_down(h, e);
@@ -154,6 +155,6 @@ void heap_delete(struct heap *h, int e)
 	if ((h->num > INITIAL_HEAP_SIZE) && (h->num < h->max_size / HEAP_DECREASE_THRESHOLD))
 	{
 		h->max_size = h->max_size / HEAP_INCREASE_STEP;
-		h->data = realloc(h->data, (h->max_size + 1) * sizeof(heap_val_t));
+		h->data = realloc(h->data, (h->max_size + 1) * sizeof(heap_val_t*));
 	}
 }

@@ -57,6 +57,7 @@ typedef void (*event_cb_t)(struct event *);
  * \brief Event structure.
  */
 typedef struct event {
+	struct heap_val hpos;
 	struct timeval tv; /*!< Event scheduled time. */
 	void *data;        /*!< Usable data ptr. */
 	event_cb_t cb;     /*!< Event callback. */
