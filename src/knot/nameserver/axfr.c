@@ -323,6 +323,16 @@ static int axfr_answer_finalize(struct answer_data *adata)
 		return rc;
 	}
 
+	err_handler_t handler;
+	err_handler_init(&handler);
+	rc = zone_do_sem_checks(proc->contents, false, &handler);
+	err_handler_log_errors(&handler);
+	err_handler_deinit(&handler);
+
+	if (rc != KNOT_EOK) {
+		return rc;
+	}
+
 	/* Switch contents. */
 	zone_t *zone = adata->param->zone;
 	zone_contents_t *old_contents =
