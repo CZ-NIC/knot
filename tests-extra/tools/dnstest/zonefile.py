@@ -98,8 +98,10 @@ class ZoneFile(object):
             Keymgr.run_check(keydir, "zone", "add", zone_name)
 
         # retrieve existing keys
-        _, stdout, _ = Keymgr.run_check(keydir, "zone", "key", "list", zone_name)
-        tags = [int(re.search(r'\bkeytag\s+(\d+)\b', x).group(1)) for x in stdout.splitlines()]
+        tags = []
+        exitcode, stdout, _ = Keymgr.run(keydir, "zone", "key", "list", zone_name)
+        if exitcode != 0:
+            tags = [int(re.search(r'\bkeytag\s+(\d+)\b', x).group(1)) for x in stdout.splitlines()]
 
         # import new keys, ignore existing (compare keytag)
         assert(zone_name.endswith("."))
