@@ -1,4 +1,4 @@
-/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -14,23 +14,20 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 /*!
- * \file descriptor.h
+ * \file
  *
- * \author Daniel Salzman <daniel.salzman@nic.cz>
- * \author Jan Kadlec <jan.kadlec@nic.cz>
- *
- * \addtogroup common_lib
+ * \addtogroup libknot
  * @{
  */
 
 #pragma once
 
 #include <stdbool.h>
+#include <stddef.h>
 #include <stdint.h>
-#include <stdio.h>
 
 #define KNOT_MAX_RDATA_BLOCKS	8
-#define KNOT_MAX_RDATA_DNAMES	2	// update this when defining new RR types
+#define KNOT_MAX_RDATA_DNAMES	2	// Update this when defining new RR types!
 
 /*!
  * \brief Resource record class codes.
@@ -115,7 +112,9 @@ enum knot_rr_type {
 	KNOT_RRTYPE_IXFR       = 251, /*!< QTYPE. Incremental zone transfer. */
 	KNOT_RRTYPE_AXFR       = 252, /*!< QTYPE. Authoritative zone transfer. */
 
-	KNOT_RRTYPE_ANY        = 255  /*!< QTYPE. Any record. */
+	KNOT_RRTYPE_ANY        = 255, /*!< QTYPE. Any record. */
+	KNOT_RRTYPE_URI        = 256, /*!< Uniform resource identifier. */
+	KNOT_RRTYPE_CAA        = 257, /*!< Certification authority restriction. */
 };
 
 /*!

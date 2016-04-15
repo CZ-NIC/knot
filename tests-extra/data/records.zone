@@ -57,6 +57,13 @@ l64	L64	10 2001:0DB8:1140:1000
 lp	LP	10 l64-subnet1.example.com.
 eui48	EUI48	00-00-5e-00-53-2a
 eui64	EUI64	00-00-5e-ef-10-00-00-2a
+; Bind 9.9.5 doesn't support CAA and has wrong URI implementation
+;_ftp._tcp URI	10 1 "ftp://ftp1.example.com/public"
+;caa	CAA	0 issue "ca.example.net"
+;	CAA	0 iodef "mailto:security@example.com"
+;	CAA	0 iodef "http://iodef.example.com/"
+;	CAA	0 issue "ca.example.net; account=230123"
+;	CAA	128 tbs "Unknown"
 
 ; Miscellaneous
 empty		IN TYPE999 \# 0

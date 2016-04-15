@@ -1,4 +1,4 @@
-/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -131,8 +131,14 @@ static const knot_rdata_descriptor_t rdata_descriptors[] = {
 	[KNOT_RRTYPE_AXFR]       = { { KNOT_RDATA_WF_REMAINDER,
 	                               KNOT_RDATA_WF_END }, "AXFR" },
 	[KNOT_RRTYPE_ANY]        = { { KNOT_RDATA_WF_REMAINDER,
-	                               KNOT_RDATA_WF_END }, "ANY" }
+	                               KNOT_RDATA_WF_END }, "ANY" },
+	[KNOT_RRTYPE_URI]        = { { KNOT_RDATA_WF_REMAINDER,
+	                               KNOT_RDATA_WF_END }, "URI" },
+	[KNOT_RRTYPE_CAA]        = { { KNOT_RDATA_WF_REMAINDER,
+	                               KNOT_RDATA_WF_END }, "CAA" },
 };
+
+#define MAX_RRTYPE sizeof(rdata_descriptors) / sizeof(knot_rdata_descriptor_t) - 1
 
 /*!
  * \brief Some (OBSOLETE) RR type descriptors.
@@ -161,8 +167,7 @@ static const knot_rdata_descriptor_t obsolete_rdata_descriptors[] = {
 _public_
 const knot_rdata_descriptor_t *knot_get_rdata_descriptor(const uint16_t type)
 {
-	if (type <= KNOT_RRTYPE_ANY &&
-	    rdata_descriptors[type].type_name != NULL) {
+	if (type <= MAX_RRTYPE && rdata_descriptors[type].type_name != NULL) {
 		return &rdata_descriptors[type];
 	} else {
 		return &rdata_descriptors[0];
@@ -218,7 +223,7 @@ int knot_rrtype_from_string(const char *name, uint16_t *num)
 	unsigned long n;
 
 	// Try to find name in descriptors table.
-	for (i = 0; i <= KNOT_RRTYPE_ANY; i++) {
+	for (i = 0; i <= MAX_RRTYPE; i++) {
 		if (rdata_descriptors[i].type_name != NULL &&
 		    strcasecmp(rdata_descriptors[i].type_name, name) == 0) {
 			*num = i;
