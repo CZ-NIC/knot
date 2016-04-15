@@ -11,7 +11,7 @@ TMPDIR=$(test_tmpdir)
 TESTS_DIR="$SOURCE"/data
 ZSCANNER_TOOL="$BUILD"/zscanner-tool
 
-plan 73
+plan 75
 
 mkdir -p "$TMPDIR"/includes/
 for a in 1 2 3 4 5 6; do

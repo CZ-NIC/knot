@@ -1,0 +1,23 @@
+$ORIGIN	.
+$TTL	1
+
+; OK
+@	CAA	0	a	a		; The simplest variant
+@	CAA	255	a	a		; Maximal flags
+@	CAA	0       a	"a ; b"		; Quoted value
+@	CAA	0       a	012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789 ; Value longer than 255
+@	TYPE257	\# 4 00016161			; TYPE + Hexadecimal rdata
+@	TYPE257	0	a	a		; TYPE
+@	caa	0	a	a		; Type in lower-case
+
+; OK fallbacks and extensions
+@	CAA	0	""	a		; Empty tag
+@	CAA	0	"a"	a		; Quoted tag
+@	CAA	0	abcdefghijklmnopqrstuvwxyz0123456789	a	; All allowed characters, longer than 15
+
+; KO
+@	CAA
+@	CAA					; Empty rdata
+@	CAA	\# 0				; Hex empty rdata
+@	CAA	256	a	a		; Flags overflow
+@	CAA	0	a	a	a	; Unexpected item
