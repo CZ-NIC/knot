@@ -274,6 +274,11 @@ static int check_item(
 	bool is_id = false;
 
 	if (parent != NULL) {
+		// Check for invalid indentation.
+		if (parent->item == NULL) {
+			return KNOT_YP_EINVAL_INDENT;
+		}
+
 		// Check if valid group parent.
 		if (parent->item->type != YP_TGRP) {
 			return KNOT_YP_EINVAL_ITEM;
