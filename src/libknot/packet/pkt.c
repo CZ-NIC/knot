@@ -412,7 +412,7 @@ uint16_t knot_pkt_type(const knot_pkt_t *pkt)
 	bool is_query = (knot_wire_get_qr(pkt->wire) == 0);
 	uint16_t ret = KNOT_QUERY_INVALID;
 	uint8_t opcode = knot_wire_get_opcode(pkt->wire);
-	uint8_t query_type = knot_pkt_qtype(pkt);
+	uint16_t query_type = knot_pkt_qtype(pkt);
 
 	switch (opcode) {
 	case KNOT_OPCODE_QUERY:
