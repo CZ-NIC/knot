@@ -123,8 +123,12 @@ int dnssec_algorithm_key_size_range(dnssec_key_algorithm_t algorithm,
 		return DNSSEC_INVALID_KEY_ALGORITHM;
 	}
 
-	*min_ptr = limits->min;
-	*max_ptr = limits->max;
+	if (min_ptr) {
+		*min_ptr = limits->min;
+	}
+	if (max_ptr) {
+		*max_ptr = limits->max;
+	}
 
 	return DNSSEC_EOK;
 }

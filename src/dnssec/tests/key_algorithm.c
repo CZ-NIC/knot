@@ -29,6 +29,20 @@ static void ok_range(dnssec_key_algorithm_t algo,
 	   "dnssec_algorithm_key_size_range() for %s", name);
 }
 
+static void null_range(void)
+{
+	dnssec_key_algorithm_t algo = DNSSEC_KEY_ALGORITHM_RSA_SHA256;
+	unsigned val = 0;
+	int r;
+
+	r = dnssec_algorithm_key_size_range(algo, NULL, NULL);
+	ok(r == DNSSEC_EINVAL, "dnssec_algorithm_key_size_range() all null");
+	r = dnssec_algorithm_key_size_range(algo, &val, NULL);
+	ok(r == DNSSEC_EOK && val == 512, "dnssec_algorithm_key_size_range() min only");
+	r = dnssec_algorithm_key_size_range(algo, NULL, &val);
+	ok(r == DNSSEC_EOK && val == 4096, "dnssec_algorithm_key_size_range() max only");
+}
+
 static void check_borders(void)
 {
 	dnssec_key_algorithm_t rsa = DNSSEC_KEY_ALGORITHM_RSA_SHA1;
@@ -57,6 +71,7 @@ int main(void)
 	ok_range(DNSSEC_KEY_ALGORITHM_RSA_SHA256, 512, 4096, "RSA/SHA256");
 	ok_range(DNSSEC_KEY_ALGORITHM_RSA_SHA512, 1024, 4096, "RSA/SHA512");
 	ok_range(DNSSEC_KEY_ALGORITHM_ECDSA_P384_SHA384, 384, 384, "ECDSA/SHA384");
+	null_range();
 
 	// special restrictions
 	dnssec_key_algorithm_t dsa = DNSSEC_KEY_ALGORITHM_DSA_SHA1_NSEC3;
