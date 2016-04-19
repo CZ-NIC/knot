@@ -16,16 +16,9 @@
 
 #include "files.h"
 
-#include <assert.h>
-#include <dirent.h>
-#include <fcntl.h>
-#include <stdbool.h>
-#include <stdio.h>
+#include "../../src/contrib/files.c"
+
 #include <stdlib.h>
-#include <string.h>
-#include <sys/stat.h>
-#include <sys/types.h>
-#include <unistd.h>
 
 static char *make_temp(bool is_directory)
 {
@@ -66,68 +59,7 @@ char *test_mkdtemp(void)
 	return make_temp(true);
 }
 
-static bool special_name(const char *name)
-{
-	return strcmp(name, ".") == 0 || strcmp(name, "..") == 0;
-}
-
-static bool rm_dir_contents(int dir_fd)
-{
-	DIR *dir = fdopendir(dir_fd);
-	if (!dir) {
-		return false;
-	}
-
-	bool success = true;
-
-	struct dirent entry = { 0 };
-	struct dirent *result = NULL;
-	while (success && readdir_r(dir, &entry, &result) == 0 && result) {
-		if (special_name(result->d_name)) {
-			continue;
-		}
-
-		bool is_dir = result->d_type == DT_DIR;
-
-		if (is_dir) {
-			int sub = openat(dir_fd, result->d_name, O_NOFOLLOW);
-			success = rm_dir_contents(sub);
-			close(sub);
-		}
-
-		if (success) {
-			int flags = is_dir ? AT_REMOVEDIR : 0;
-			success = unlinkat(dir_fd, result->d_name, flags) == 0;
-		}
-	}
-
-	closedir(dir);
-
-	return success;
-}
-
 bool test_rm_rf(const char *path)
 {
-	if (!path) {
-		return false;
-	}
-
-	int fd = open(path, O_NOFOLLOW);
-	if (fd < 0) {
-		return false;
-	}
-
-	struct stat st = { 0 };
-	if (fstat(fd, &st) != 0) {
-		close(fd);
-		return false;
-	}
-
-	if (S_ISDIR(st.st_mode) && !rm_dir_contents(fd)) {
-		close(fd);
-		return false;
-	}
-
-	close(fd);
-	return (remove(path) == 0);
+	return remove_path(path);
 }

@@ -14,10 +14,6 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <dirent.h>
-#include <stdio.h>
-#include <string.h>
-#include <unistd.h>
 #include <urcu.h>
 
 #include "knot/conf/base.h"
@@ -29,6 +25,7 @@
 #include "libknot/libknot.h"
 #include "libknot/yparser/ypformat.h"
 #include "libknot/yparser/yptrafo.h"
+#include "contrib/files.h"
 #include "contrib/mempattern.h"
 #include "contrib/sockaddr.h"
 #include "contrib/string.h"
@@ -39,53 +36,6 @@ conf_t *s_conf;
 
 conf_t* conf(void) {
 	return s_conf;
-}
-
-static void rm_dir(const char *path)
-{
-	DIR *dir = opendir(path);
-	if (dir == NULL) {
-		CONF_LOG(LOG_WARNING, "failed to remove directory '%s'", path);
-		return;
-	}
-
-	// Prepare own dirent structure (see NOTES in man readdir_r).
-	size_t len = offsetof(struct dirent, d_name) +
-	             fpathconf(dirfd(dir), _PC_NAME_MAX) + 1;
-
-	struct dirent *entry = malloc(len);
-	if (entry == NULL) {
-		CONF_LOG(LOG_WARNING, "failed to remove directory '%s'", path);
-		closedir(dir);
-		return;
-	}
-	memset(entry, 0, len);
-
-	// Firstly, delete all files in the directory.
-	int ret;
-	struct dirent *result = NULL;
-	while ((ret = readdir_r(dir, entry, &result)) == 0 &&
-	       result != NULL) {
-		if (entry->d_name[0] == '.') {
-			continue;
-		}
-
-		char *file = sprintf_alloc("%s/%s", path, entry->d_name);
-		if (file == NULL) {
-			ret = KNOT_ENOMEM;
-			break;
-		}
-		remove(file);
-		free(file);
-	}
-
-	free(entry);
-	closedir(dir);
-
-	// Secondly, delete the directory if it is empty.
-	if (ret != 0 || remove(path) != 0) {
-		CONF_LOG(LOG_WARNING, "failed to remove whole directory '%s'", path);
-	}
 }
 
 static int init_and_check(
@@ -219,7 +169,9 @@ int conf_new(
 		ret = out->api->init(&out->db, out->mm, &lmdb_opts);
 
 		// Remove the database to ensure it is temporary.
-		rm_dir(lmdb_opts.path);
+		if (!remove_path(lmdb_opts.path)) {
+			CONF_LOG(LOG_WARNING, "failed to purge temporary directory '%s'", lmdb_opts.path);
+		}
 	} else {
 		// Set the specified database.
 		lmdb_opts.path = db_dir;
