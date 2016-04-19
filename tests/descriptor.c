@@ -1,4 +1,4 @@
-/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -93,17 +93,17 @@ int main(int argc, char *argv[])
 	ok(ret != -1, "get ANY ret");
 	ok(strcmp(name, "ANY") == 0, "get ANY name");
 
-	// 6. TYPE256
-	descr = knot_get_rdata_descriptor(256);
-	ok(descr->type_name == 0, "get TYPE256 descriptor name");
+	// 6. TYPE65535
+	descr = knot_get_rdata_descriptor(65535);
+	ok(descr->type_name == 0, "get TYPE65535 descriptor name");
 	ok(descr->block_types[0] == KNOT_RDATA_WF_REMAINDER,
-	   "get TYPE256 descriptor 1. item type");
+	   "get TYPE65535 descriptor 1. item type");
 	ok(descr->block_types[1] == KNOT_RDATA_WF_END,
-	   "get TYPE256 descriptor 2. item type");
+	   "get TYPE65535 descriptor 2. item type");
 
-	ret = knot_rrtype_to_string(256, name, BUF_LEN);
-	ok(ret != -1, "get TYPE256 ret");
-	ok(strcmp(name, "TYPE256") == 0, "get TYPE256 name");
+	ret = knot_rrtype_to_string(65535, name, BUF_LEN);
+	ok(ret != -1, "get TYPE65535 ret");
+	ok(strcmp(name, "TYPE65535") == 0, "get TYPE65535 name");
 
 	// Class num to string:
 	// 7. CLASS0
