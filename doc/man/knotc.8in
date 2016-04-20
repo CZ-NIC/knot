@@ -35,10 +35,7 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 \fBknotc\fP [\fIparameters\fP] \fIaction\fP [\fIaction_args\fP]
 .SH DESCRIPTION
 .sp
-If no \fIaction\fP is specified, the program is executed in interactive mode. Then
-various command or parameters completion is available via the TAB key. And
-command history is enabled (see \fIeditrc(5)\fP for additional
-customization).
+If no \fIaction\fP is specified, the program is executed in interactive mode.
 .SS Parameters
 .INDENT 0.0
 .TP
@@ -151,13 +148,22 @@ Set the item data in the transaction.
 \fBconf\-unset\fP [\fIitem\fP] [\fIdata\fP\&...]
 Unset the item data in the transaction.
 .UNINDENT
-.SH NOTE
+.SS Note
 .sp
 Empty \fIzone\fP parameter means all zones.
 .sp
 Type \fIitem\fP parameter in the form of \fIsection\fP[\fB[\fP\fIid\fP\fB]\fP][\fB\&.\fP\fIname\fP].
 .sp
 (*) indicates a local operation which requires a configuration.
+.SS Interactive mode
+.sp
+The utility provides interactive mode with basic line editing functionality,
+command completion, and command history.
+.sp
+Interactive mode behavior can be customized in \fI~/.editrc\fP\&. Refer to
+\fIeditrc(5)\fP for details.
+.sp
+Command history is saved in \fI~/.knotc_history\fP\&.
 .SH EXAMPLES
 .SS Reload the whole server configuration
 .INDENT 0.0
