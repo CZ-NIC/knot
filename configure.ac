@@ -424,6 +424,35 @@ AC_ARG_ENABLE([rosedb],
 AS_IF([test "$enable_rosedb" = yes], [AC_DEFINE([HAVE_ROSEDB], [1], [Define to 1 to enable static RR query module.])])
 AM_CONDITIONAL([HAVE_ROSEDB], [test "$enable_rosedb" = yes])
 
+# libedit
+AS_IF([test "$enable_daemon" = "yes"],[
+  # daemon enabled
+  PKG_CHECK_MODULES([libedit], [libedit], [with_libedit=yes], [
+    with_libedit=no
+    AC_CHECK_HEADER([histedit.h], [
+      # workaround for OpenBSD
+      AS_CASE([$host_os],
+        [openbsd*], [libedit_deps=-lcurses],
+        [libedit_deps=]
+      )
+      AC_CHECK_LIB([edit], [el_init], [
+        with_libedit=yes
+        libedit_CFLAGS=
+        libedit_LIBS="-ledit $libedit_deps"
+        ], [], [$libedit_deps]
+      )
+    ])
+  ])
+  AS_IF([test "$with_libedit" != "yes"], [
+    AC_MSG_ERROR([libedit not found])
+  ])
+],[
+  # daemon disabled
+  with_libedit=no
+  libedit_CFLAGS=
+  libedit_LIBS=
+])
+
 ############################################
 # Dependencies needed for Knot DNS utilities
 ############################################
@@ -446,27 +475,6 @@ AS_IF([test "$with_libidn" != "no"],[
         ])])
 
 ]) # Knot DNS utilities dependencies
-
-# libedit
-PKG_CHECK_MODULES([libedit], [libedit], [with_libedit=yes], [
-  with_libedit=no
-  AC_CHECK_HEADER([histedit.h], [
-    # workaround for OpenBSD
-    AS_CASE([$host_os],
-      [openbsd*], [libedit_deps=-lcurses],
-      [libedit_deps=]
-    )
-    AC_CHECK_LIB([edit], [el_init], [
-      with_libedit=yes
-      libedit_CFLAGS=
-      libedit_LIBS="-ledit $libedit_deps"
-      ], [], [$libedit_deps]
-    )
-  ])
-])
-AS_IF([test "$with_libedit" != "yes"], [
-  AC_MSG_ERROR([libedit not found])
-])
 
 # Bash completions
 AC_ARG_WITH([bash-completions],
