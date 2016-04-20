@@ -21,7 +21,7 @@
 #include "utils/knotc/commands.h"
 #include "utils/knotc/process.h"
 
-static const cmd_desc_t* get_cmd_desc(const char *command)
+static const cmd_desc_t *get_cmd_desc(const char *command)
 {
 	/* Find requested command. */
 	const cmd_desc_t *desc = cmd_table;

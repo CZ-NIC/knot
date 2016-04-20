@@ -80,7 +80,7 @@ local_zones_lookup_finish:
 	lookup_deinit(&lookup);
 }
 
-static char* get_id_name(const char *section)
+static char *get_id_name(const char *section)
 {
 	const cmd_desc_t *desc = cmd_table;
 	while (desc->name != NULL && desc->cmd != CTL_CONF_LIST) {
@@ -347,7 +347,7 @@ complete_exit:
 	return CC_REDISPLAY;
 }
 
-static char* prompt(EditLine *el)
+static char *prompt(EditLine *el)
 {
 	return PROGRAM_NAME"> ";
 }
