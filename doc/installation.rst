@@ -34,6 +34,7 @@ Knot DNS requires few libraries to be compiled:
 * GnuTLS, at least 3.0
 * Jansson, at least 2.3
 * Userspace RCU, at least 0.5.4
+* libedit
 * lmdb (included)
 * libcap-ng, at least 0.6.4 (optional)
 * libidn (optional)

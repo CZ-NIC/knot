@@ -64,7 +64,13 @@ check_PROGRAMS = \
 	ztree
 
 check_PROGRAMS += \
-	modules/online_sign
+	modules/online_sign		\
+	utils/test_lookup
+
+utils_test_lookup_LDADD = \
+	$(top_builddir)/libtap/libtap.la \
+	$(top_builddir)/src/libknotus.la \
+	$(libedit_LIBS)
 
 check-compile: $(check_PROGRAMS)
 

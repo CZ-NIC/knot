@@ -213,6 +213,10 @@ knotc_SOURCES =					\
 	utils/knotc/commands.h			\
 	utils/knotc/estimator.c			\
 	utils/knotc/estimator.h			\
+	utils/knotc/interactive.c		\
+	utils/knotc/interactive.h		\
+	utils/knotc/process.c			\
+	utils/knotc/process.h			\
 	utils/knotc/main.c
 
 knotd_SOURCES =					\
@@ -372,7 +376,7 @@ libknotd_la_LIBADD = libknot.la libknot-yparser.la zscanner/libzscanner.la $(lib
 
 knotd_CPPFLAGS = $(AM_CPPFLAGS) $(liburcu_CFLAGS)
 knotd_LDADD = libknotd.la $(liburcu_LIBS)
-knotc_LDADD = libknotd.la
+knotc_LDADD = libknotd.la libknotus.la $(libedit_LIBS)
 knot1to2_LDADD = libcontrib.la
 
 ####################################
@@ -439,6 +443,8 @@ libknotus_la_SOURCES =				\
 	utils/common/exec.h			\
 	utils/common/hex.c			\
 	utils/common/hex.h			\
+	utils/common/lookup.c			\
+	utils/common/lookup.h			\
 	utils/common/msg.c			\
 	utils/common/msg.h			\
 	utils/common/netio.c			\

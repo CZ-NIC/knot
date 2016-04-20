@@ -7,6 +7,7 @@ Knot DNS has several dependencies:
 * liburcu >= 0.5.4
 * gnutls >= 3.0
 * jansson >= 2.3
+* libedit
 
 Embedded libraries:
 * lmdb               (system library is preferred)

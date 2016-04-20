@@ -11,6 +11,8 @@ Synopsis
 Description
 -----------
 
+If no *action* is specified, the program is executed in interactive mode.
+
 Parameters
 ..........
 
@@ -126,13 +128,24 @@ Actions
   Unset the item data in the transaction.
 
 Note
-----
+....
 
 Empty *zone* parameter means all zones.
 
 Type *item* parameter in the form of *section*\ [**[**\ *id*\ **]**\ ][**.**\ *name*].
 
 (*) indicates a local operation which requires a configuration.
+
+Interactive mode
+................
+
+The utility provides interactive mode with basic line editing functionality,
+command completion, and command history.
+
+Interactive mode behavior can be customized in `~/.editrc`. Refer to
+:manpage:`editrc(5)` for details.
+
+Command history is saved in `~/.knotc_history`.
 
 Examples
 --------
@@ -185,4 +198,4 @@ Add example.org zone with a zonefile location
 See Also
 --------
 
-:manpage:`knotd(8)`, :manpage:`knot.conf(5)`.
+:manpage:`knotd(8)`, :manpage:`knot.conf(5)`, :manpage:`editrc(5)`.
