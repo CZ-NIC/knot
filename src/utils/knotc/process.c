@@ -155,6 +155,7 @@ int set_ctl(knot_ctl_t **ctl, const cmd_desc_t *desc, params_t *params)
 	int ret = knot_ctl_connect(*ctl, path);
 	if (ret != KNOT_EOK) {
 		knot_ctl_free(*ctl);
+		*ctl = NULL;
 		log_error("failed to connect to socket '%s' (%s)", path,
 		          knot_strerror(ret));
 		free(path);
