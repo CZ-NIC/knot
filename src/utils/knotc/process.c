@@ -227,5 +227,5 @@ int process_cmd(int argc, const char **argv, params_t *params)
 	unset_ctl(args.ctl);
 	conf_update(NULL);
 
-	return KNOT_EOK;
+	return ret;
 }
