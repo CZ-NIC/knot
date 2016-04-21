@@ -200,7 +200,10 @@ endif
 
 if HAVE_DAEMON
 
-sbin_PROGRAMS = knotc knotd
+sbin_PROGRAMS = knotd
+if HAVE_UTILS
+sbin_PROGRAMS += knotc
+endif #HAVE_UTILS
 libexec_PROGRAMS = knot1to2
 noinst_LTLIBRARIES += libknotd.la
 
