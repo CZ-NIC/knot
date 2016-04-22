@@ -390,7 +390,8 @@ rrl_item_t *rrl_hash(rrl_table_t *t, const struct sockaddr_storage *a, rrl_req_t
 	/* Find an exact match in <id, id + HOP_LEN). */
 	uint16_t *qname = (uint16_t *)(buf + sizeof(uint8_t) + sizeof(uint64_t));
 	rrl_item_t match = {
-	        0, *((uint64_t *)(buf + 1)), t->rate,    /* hop, netblk, ntok */
+	        0, *((uint64_t *)(buf + 1)),             /* hop, netblk */
+		t->rate * RRL_CAPACITY,                  /* ntok */
 	        buf[0], RRL_BF_NULL,                     /* cls, flags */
 	        hash((char *)(qname + 1), *qname), stamp /* qname, time */
 	};
