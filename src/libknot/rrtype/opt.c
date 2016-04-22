@@ -216,45 +216,94 @@ static uint8_t *find_option(knot_rdata_t *rdata, uint16_t opt_code)
 }
 
 /*----------------------------------------------------------------------------*/
-_public_
-int knot_edns_add_option(knot_rrset_t *opt_rr, uint16_t code,
-                         uint16_t length, const uint8_t *data, knot_mm_t *mm)
+
+/*!
+ * \brief Add new EDNS option by replacing RDATA of OPT RR.
+ *
+ * \param opt   OPT RR structure to add the Option to.
+ * \param code  Option code.
+ * \param size  Option data length in bytes.
+ * \param mm    Memory context.
+ *
+ * \return Pointer to uninitialized option data.
+ */
+static uint8_t *edns_add(knot_rrset_t *opt, uint16_t code, uint16_t size,
+                         knot_mm_t *mm)
 {
-	if (opt_rr == NULL || (length != 0 && data == NULL)) {
-		return KNOT_EINVAL;
-	}
+	assert(opt->rrs.rr_count == 1);
 
-	/* We need to replace the RDATA currently in the OPT RR */
+	// extract old RDATA
 
-	/* 1) create new RDATA by appending the new option after the current
-	 *    RDATA.
-	 */
-	assert(opt_rr->rrs.rr_count == 1);
-	knot_rdata_t *old_rdata = knot_rdataset_at(&opt_rr->rrs, 0);
-
+	knot_rdata_t *old_rdata = knot_rdataset_at(&opt->rrs, 0);
 	uint8_t *old_data = knot_rdata_data(old_rdata);
 	uint16_t old_data_len = knot_rdata_rdlen(old_rdata);
-	uint16_t new_data_len = old_data_len + KNOT_EDNS_OPTION_HDRLEN + length;
 
+	// construct new RDATA
+
+	uint16_t new_data_len = old_data_len + KNOT_EDNS_OPTION_HDRLEN + size;
 	uint8_t new_data[new_data_len];
 
 	wire_ctx_t wire = wire_ctx_init(new_data, new_data_len);
 	wire_ctx_write(&wire, old_data, old_data_len);
-	// write length and code in wireformat (convert endian)
 	wire_ctx_write_u16(&wire, code);
-	wire_ctx_write_u16(&wire, length);
-	// write the option data
-	wire_ctx_write(&wire, data, length);
+	wire_ctx_write_u16(&wire, size);
 
-	if (wire.error != KNOT_EOK) {
-		return wire.error;
+	assert(wire_ctx_available(&wire) == size);
+	assert(wire.error == KNOT_EOK);
+
+	// TMP
+	memset(wire.position, '\0', size);
+
+	size_t offset = wire_ctx_offset(&wire);
+
+	// replace RDATA
+
+	uint32_t ttl = knot_rdata_ttl(old_rdata);
+	knot_rdataset_clear(&opt->rrs, mm);
+	if (knot_rrset_add_rdata(opt, new_data, new_data_len, ttl, mm) != KNOT_EOK) {
+		return NULL;
 	}
 
-	/* 2) Replace the RDATA in the RRSet. */
-	uint32_t old_ttl = knot_rdata_ttl(old_rdata);
-	knot_rdataset_clear(&opt_rr->rrs, mm);
-	return knot_rrset_add_rdata(opt_rr, new_data, new_data_len,
-	                            old_ttl, mm);
+	return knot_rdata_data(knot_rdataset_at(&opt->rrs, 0)) + offset;
+}
+
+_public_
+int knot_edns_reserve_option(knot_rrset_t *opt_rr, uint16_t code,
+                             uint16_t size, uint8_t **wire_ptr, knot_mm_t *mm)
+{
+	if (!opt_rr) {
+		return KNOT_EINVAL;
+	}
+
+	uint8_t *wire = edns_add(opt_rr, code, size, mm);
+	if (!wire) {
+		return KNOT_ENOMEM;
+	}
+
+	memset(wire, 0, size);
+	if (wire_ptr) {
+		*wire_ptr = wire;
+	}
+
+	return KNOT_EOK;
+}
+
+_public_
+int knot_edns_add_option(knot_rrset_t *opt_rr, uint16_t code,
+                         uint16_t size, const uint8_t *data, knot_mm_t *mm)
+{
+	if (!opt_rr || (size > 0 && !data)) {
+		return KNOT_EINVAL;
+	}
+
+	uint8_t *wire = edns_add(opt_rr, code, size, mm);
+	if (!wire) {
+		return KNOT_ENOMEM;
+	}
+
+	memcpy(wire, data, size);
+
+	return KNOT_EOK;
 }
 
 /*----------------------------------------------------------------------------*/

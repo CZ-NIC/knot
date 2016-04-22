@@ -215,6 +215,20 @@ bool knot_edns_do(const knot_rrset_t *opt_rr);
 void knot_edns_set_do(knot_rrset_t *opt_rr);
 
 /*!
+ * \brief Add EDNS option into the package with empty (zeroed) content.
+ *
+ * \param[in]  opt_rr    OPT RR in the packet.
+ * \param[in]  code      Option code.
+ * \param[in]  size      Desired option size.
+ * \param[out] wire_ptr  Pointer to reserved option data (can be NULL).
+ * \param[in]  mm        Memory context.
+ *
+ * \return Error code, KNOT_EOF if successful.
+ */
+int knot_edns_reserve_option(knot_rrset_t *opt_rr, uint16_t code,
+                             uint16_t size, uint8_t **wire_ptr, knot_mm_t *mm);
+
+/*!
  * \brief Adds EDNS Option to the OPT RR.
  *
  * \note The function now supports adding empty OPTION (just having its code).
@@ -222,14 +236,15 @@ void knot_edns_set_do(knot_rrset_t *opt_rr);
  *
  * \param opt_rr  OPT RR structure to add the Option to.
  * \param code    Option code.
- * \param length  Option data length in bytes.
+ * \param size    Option data length in bytes.
  * \param data    Option data.
+ * \param mm      Memory context.
  *
  * \retval KNOT_EOK
  * \retval KNOT_ENOMEM
  */
 int knot_edns_add_option(knot_rrset_t *opt_rr, uint16_t code,
-                         uint16_t length, const uint8_t *data, knot_mm_t *mm);
+                         uint16_t size, const uint8_t *data, knot_mm_t *mm);
 
 /*!
  * \brief Checks if the OPT RR contains Option with the specified code.
