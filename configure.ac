@@ -425,8 +425,7 @@ AS_IF([test "$enable_rosedb" = yes], [AC_DEFINE([HAVE_ROSEDB], [1], [Define to 1
 AM_CONDITIONAL([HAVE_ROSEDB], [test "$enable_rosedb" = yes])
 
 # libedit
-AS_IF([test "$enable_daemon" = "yes"],[
-  # daemon enabled
+AS_IF([test "$enable_daemon" = "yes" -o "$enable_utilities" = "yes"], [
   PKG_CHECK_MODULES([libedit], [libedit], [with_libedit=yes], [
     with_libedit=no
     AC_CHECK_HEADER([histedit.h], [
@@ -446,8 +445,7 @@ AS_IF([test "$enable_daemon" = "yes"],[
   AS_IF([test "$with_libedit" != "yes"], [
     AC_MSG_ERROR([libedit not found])
   ])
-],[
-  # daemon disabled
+], [
   with_libedit=no
   libedit_CFLAGS=
   libedit_LIBS=

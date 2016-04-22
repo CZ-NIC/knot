@@ -194,6 +194,32 @@ libknot_la_CPPFLAGS +=				\
 	-I$(srcdir)/contrib/lmdb/
 endif
 
+# static: utilities shared
+libknotus_la_SOURCES =				\
+	utils/common/exec.c			\
+	utils/common/exec.h			\
+	utils/common/hex.c			\
+	utils/common/hex.h			\
+	utils/common/lookup.c			\
+	utils/common/lookup.h			\
+	utils/common/msg.c			\
+	utils/common/msg.h			\
+	utils/common/netio.c			\
+	utils/common/netio.h			\
+	utils/common/params.c			\
+	utils/common/params.h			\
+	utils/common/resolv.c			\
+	utils/common/resolv.h			\
+	utils/common/sign.c			\
+	utils/common/sign.h			\
+	utils/common/strtonum.h			\
+	utils/common/token.c			\
+	utils/common/token.h
+
+libknotus_la_CPPFLAGS = $(AM_CPPFLAGS) $(libidn_CFLAGS) $(libedit_CFLAGS)
+libknotus_la_LDFLAGS = $(AM_LDFLAGS) $(libidn_LIBS)
+libknotus_la_LIBADD = libcontrib.la libknot.la
+
 ###################
 # Knot DNS Daemon #
 ###################
@@ -202,7 +228,7 @@ if HAVE_DAEMON
 
 sbin_PROGRAMS = knotc knotd
 libexec_PROGRAMS = knot1to2
-noinst_LTLIBRARIES += libknotd.la
+noinst_LTLIBRARIES += libknotd.la libknotus.la
 
 EXTRA_DIST += 					\
 	utils/knot1to2/cf-lex.l			\
@@ -376,6 +402,7 @@ libknotd_la_LIBADD = libknot.la libknot-yparser.la zscanner/libzscanner.la $(lib
 
 knotd_CPPFLAGS = $(AM_CPPFLAGS) $(liburcu_CFLAGS)
 knotd_LDADD = libknotd.la $(liburcu_LIBS)
+knotc_CPPFLAGS = $(AM_CPPFLAGS) $(libedit_CFLAGS)
 knotc_LDADD = libknotd.la libknotus.la $(libedit_LIBS)
 knot1to2_LDADD = libcontrib.la
 
@@ -436,32 +463,6 @@ knsupdate_SOURCES =				\
 	utils/knsupdate/knsupdate_main.c	\
 	utils/knsupdate/knsupdate_params.c	\
 	utils/knsupdate/knsupdate_params.h
-
-# static: utilities shared
-libknotus_la_SOURCES =				\
-	utils/common/exec.c			\
-	utils/common/exec.h			\
-	utils/common/hex.c			\
-	utils/common/hex.h			\
-	utils/common/lookup.c			\
-	utils/common/lookup.h			\
-	utils/common/msg.c			\
-	utils/common/msg.h			\
-	utils/common/netio.c			\
-	utils/common/netio.h			\
-	utils/common/params.c			\
-	utils/common/params.h			\
-	utils/common/resolv.c			\
-	utils/common/resolv.h			\
-	utils/common/sign.c			\
-	utils/common/sign.h			\
-	utils/common/strtonum.h			\
-	utils/common/token.c			\
-	utils/common/token.h
-
-libknotus_la_CPPFLAGS = $(AM_CPPFLAGS) $(libidn_CFLAGS)
-libknotus_la_LDFLAGS = $(AM_LDFLAGS) $(libidn_LIBS)
-libknotus_la_LIBADD = libcontrib.la libknot.la
 
 # bin programs
 kdig_LDADD       = $(libidn_LIBS) libknotus.la
