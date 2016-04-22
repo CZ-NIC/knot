@@ -33,7 +33,6 @@
 #define RRL_V4_PREFIX ((uint32_t)0x00ffffff)         /* /24 */
 #define RRL_V6_PREFIX ((uint64_t)0x00ffffffffffffff) /* /56 */
 /* Defaults */
-#define RRL_DEFAULT_RATE 100
 #define RRL_CAPACITY 4 /* N seconds. */
 #define RRL_SSTART 2 /* 1/Nth of the rate for slow start */
 #define RRL_PSIZE_LARGE 1024
