@@ -23,34 +23,12 @@ AC_DEFUN([AX_CODE_COVERAGE], [
 	AC_SUBST([CODE_COVERAGE_ENABLED], [$enable_code_coverage])
 
 	AS_IF([test "$enable_code_coverage" = "yes"], [
-		dnl Check whether gcc is used
-		AS_IF([test "$GCC" = "no"], [
-			AC_MSG_ERROR([compiling with gcc is required for gcov code coverage])
-		])
-
 		AC_CHECK_PROG([LCOV], [lcov], [lcov])
-		AC_CHECK_PROG([GENHTML], [genhtml], [genhtml])		
+		AC_CHECK_PROG([GENHTML], [genhtml], [genhtml])
 
-		lcov_version_list="1.6 1.7 1.8 1.9 1.10 1.11"
-
-		AS_IF([test "$LCOV"], [
-			AC_CACHE_CHECK([for lcov version], ac_cv_lvoc_version, [
-				ac_cv_lcov_version=invalid
-				lcov_version=`$LCOV -v 2>/dev/null | $SED -e 's/^.* //'`
-			for lcov_check_version in $lcov_version_list; do
-					if test "$lcov_version" = "$lcov_check_version"; then
-						ac_cv_lcov_version="$lcov_check_version (ok)"
-					fi
-				done
-			])
-		],[
-			AC_MSG_ERROR([You must have one of the following lcov versions installed: $lcov_version_list to enable gcov code coverage reporting])
+		AS_IF([test -z "$LCOV"], [
+			AC_MSG_ERROR([Could not find lcov])
 		])
-	
-		AS_CASE([$ac_cv_lcov_version],
-			[""|invalid], [AC_MSG_ERROR([You must have one of the following lcov versions installed: $lcov_version_list to enable gcov code coverage reporting])
-		])
-	
 		AS_IF([test -z "$GENHTML"], [
 			AC_MSG_ERROR([Could not find genhtml from the lcov package])
 		])
@@ -60,11 +38,8 @@ AC_DEFUN([AX_CODE_COVERAGE], [
 		CFLAGS=`echo "$CFLAGS" | $SED -e 's/-O[0-9]*//g'`
 		changequote([,])
 	
-		dnl Add the special gcc flags
-		CODE_COVERAGE_CFLAGS="-O0 -g -fprofile-arcs -ftest-coverage"
-		CODE_COVERAGE_LDFLAGS="-lgcov"
-	
-		AC_SUBST([CODE_COVERAGE_CFLAGS])
-		AC_SUBST([CODE_COVERAGE_LDFLAGS])
+		dnl Add the coverage flags (clang, gcc)
+		CFLAGS="$CFLAGS --coverage"
+		LDFLAGS="$LDFLAGS --coverage"
 	])
 ]) # AC_CODE_COVERAGE
