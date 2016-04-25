@@ -775,6 +775,7 @@ int conf_db_iter_begin(
 	// Check for no section id.
 	out.code = check_iter(conf, &out);
 	if (out.code != KNOT_EOK) {
+		out.code = KNOT_ENOENT; // Treat all errors as no entry.
 		goto iter_begin_error;
 	}
 
