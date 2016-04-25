@@ -15,3 +15,4 @@ Welcome to Knot DNS's documentation!
    reference
    utilities
    migration
+   appendices
