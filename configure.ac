@@ -5,7 +5,7 @@ AC_PREREQ([2.60])
 m4_define([knot_VERSION_MAJOR],2)dnl
 m4_define([knot_VERSION_MINOR],2)dnl
 m4_define([knot_VERSION_PATCH],0)dnl
-m4_define([knot_VERSION_EXTRA],-dev)dnl
+m4_define([knot_VERSION_EXTRA],)dnl
 m4_define([knot_PKG_VERSION],[knot_VERSION_MAJOR.knot_VERSION_MINOR.knot_VERSION_PATCH]knot_VERSION_EXTRA)dnl
 
 AC_INIT([knot], knot_PKG_VERSION, [knot-dns@labs.nic.cz])

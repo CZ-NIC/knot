@@ -1,15 +1,34 @@
-Knot DNS 2.2.0 (TBD)
-====================
+Knot DNS 2.2.0 (2016-04-26)
+===========================
 
 Bugfixes:
 ---------
+ - Fix build dependencies on FreeBSD
+ - Fix query/response message type setting in dnstap module
+ - Fix remote address retrieval from dnstap capture in kdig
+ - Fix global modules execution for queries hitting existing zones
+ - Fix execution of semantic checks after an IXFR transfer
+ - Fix PKCS#11 support detection at build time
+ - Fix kdig failure when the first AXFR message contains just the SOA record
+ - Exclude non-authoritative types from NSEC/NSEC3 bitmap at a delegation
+ - Mark PKCS#11 generated keys as sensitive (required by Luna SA)
+ - Fix error when removing the only zone from the server
+ - Don't abort knotc transaction when some check fails
 
 Features:
 ---------
+ - URI and CAA resource record types support
+ - RRL client address based white list
+ - knotc interactive mode
 
 Improvements:
 -------------
-
+ - Consistent IXFR error messages
+ - Various fixes for better compatibility with PKCS#11 devices
+ - Various keymgr user interface improvements
+ - Better zone event scheduler performance with many zones
+ - New server control interface
+ - kdig uses local resolver if resolv.conf is empty
 
 Knot DNS 2.1.1 (2016-02-10)
 ===========================
