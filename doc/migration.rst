@@ -56,15 +56,16 @@ server configuration:
    $ ...
    $ keymgr zone key list example.com
 
-5. Add the zone into the Knot DNS configuration file. Zone configuration must
-   include correct path to zone file (option :ref:`file<zone_file>`) and KASP
-   database (option :ref:`kasp-db<zone_kasp_db>`). You can follow this example::
+5. Add the zone into the Knot DNS configuration. Zone configuration must
+   include correct zone file path (option :ref:`file<zone_file>`) and KASP
+   database location (option :ref:`kasp-db<zone_kasp_db>`). You can follow
+   this configuration file snippet::
 
     zone:
       - domain: example.com
         storage: /var/lib/knot
         kasp-db: /var/lib/knot/keys
-        file: example.com.db
+        file: example.com.zone
         dnssec-signing: on
 
 6. Start Knot DNS and check the log files to verify that everything went right.
