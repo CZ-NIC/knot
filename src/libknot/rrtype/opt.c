@@ -203,13 +203,14 @@ static uint8_t *find_option(knot_rdata_t *rdata, uint16_t opt_code)
 	uint8_t *found_position = NULL;
 
 	while (wire_ctx_available(&wire) > 0) {
+		found_position = wire.position;
 		uint16_t code = wire_ctx_read_u16(&wire);
 		if (wire.error != KNOT_EOK) {
 			break;
 		}
 
-		if (code == opt_code) {
-			found_position = wire.position;
+		if (code != opt_code) {
+			found_position = NULL;
 		}
 
 		uint16_t opt_len = wire_ctx_read_u16(&wire);
