@@ -44,7 +44,6 @@
 #include "libknot/db/db.h"
 #include "libknot/db/db_lmdb.h"
 #include "libknot/db/db_trie.h"
-#include "libknot/dnssec/rrset-sign.h"
 #include "libknot/packet/compr.h"
 #include "libknot/packet/pkt.h"
 #include "libknot/packet/rrset-wire.h"

@@ -19,6 +19,7 @@
 #include "libknot/rrtype/rdname.h"
 #include "libknot/rrtype/soa.h"
 #include "knot/common/log.h"
+#include "knot/dnssec/rrset-sign.h"
 #include "knot/nameserver/internet.h"
 #include "knot/nameserver/nsec_proofs.h"
 #include "knot/nameserver/process_query.h"
@@ -26,7 +27,6 @@
 #include "knot/nameserver/query_module.h"
 #include "knot/zone/serial.h"
 #include "knot/zone/zonedb.h"
-#include "libknot/dnssec/rrset-sign.h"
 #include "contrib/mempattern.h"
 #include "contrib/sockaddr.h"
 

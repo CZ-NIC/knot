@@ -18,13 +18,13 @@
 
 #include "knot/common/log.h"
 
+#include "knot/dnssec/rrset-sign.h"
 #include "knot/modules/online_sign/module.h"
 #include "knot/modules/online_sign/nsec_next.h"
-#include "knot/nameserver/process_query.h"
 #include "knot/nameserver/internet.h"
+#include "knot/nameserver/process_query.h"
 
 #include "libknot/dname.h"
-#include "libknot/dnssec/rrset-sign.h"
 #include "contrib/string.h"
 
 #include "dnssec/error.h"

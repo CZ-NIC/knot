@@ -103,7 +103,6 @@ nobase_libknot_la_HEADERS =			\
 	libknot/control/control.h		\
 	libknot/descriptor.h			\
 	libknot/dname.h				\
-	libknot/dnssec/rrset-sign.h		\
 	libknot/errcode.h			\
 	libknot/error.h				\
 	libknot/libknot.h			\
@@ -147,7 +146,6 @@ libknot_la_SOURCES =				\
 	libknot/control/control.c		\
 	libknot/descriptor.c			\
 	libknot/dname.c				\
-	libknot/dnssec/rrset-sign.c		\
 	libknot/error.c				\
 	libknot/db/db_lmdb.c			\
 	libknot/db/db_trie.c			\
@@ -285,6 +283,8 @@ libknotd_la_SOURCES =				\
 	knot/dnssec/nsec3-chain.h		\
 	knot/dnssec/policy.c			\
 	knot/dnssec/policy.h			\
+	knot/dnssec/rrset-sign.c		\
+	knot/dnssec/rrset-sign.h		\
 	knot/dnssec/zone-events.c		\
 	knot/dnssec/zone-events.h		\
 	knot/dnssec/zone-keys.c			\

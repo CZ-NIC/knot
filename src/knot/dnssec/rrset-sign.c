@@ -19,19 +19,19 @@
 #include <stdint.h>
 #include <stdlib.h>
 
+#include "contrib/wire_ctx.h"
 #include "dnssec/error.h"
 #include "dnssec/kasp.h"
 #include "dnssec/key.h"
 #include "dnssec/sign.h"
+#include "knot/dnssec/rrset-sign.h"
 #include "libknot/attribute.h"
 #include "libknot/descriptor.h"
-#include "libknot/dnssec/rrset-sign.h"
 #include "libknot/libknot.h"
 #include "libknot/packet/rrset-wire.h"
 #include "libknot/packet/wire.h"
 #include "libknot/rrset.h"
 #include "libknot/rrtype/rrsig.h"
-#include "contrib/wire_ctx.h"
 
 #define RRSIG_RDATA_SIGNER_OFFSET 18
 
