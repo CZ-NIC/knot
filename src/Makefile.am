@@ -127,6 +127,7 @@ nobase_libknot_la_HEADERS =			\
 	libknot/rrtype/nsec3.h			\
 	libknot/rrtype/nsec3param.h		\
 	libknot/rrtype/opt.h			\
+	libknot/rrtype/opt_cookie.h		\
 	libknot/rrtype/rdname.h			\
 	libknot/rrtype/rrsig.h			\
 	libknot/rrtype/soa.h			\
@@ -161,6 +162,7 @@ libknot_la_SOURCES =				\
 	libknot/rrtype/nsec3.c			\
 	libknot/rrtype/nsec3param.c		\
 	libknot/rrtype/opt.c			\
+	libknot/rrtype/opt_cookie.c		\
 	libknot/rrtype/rrsig.c			\
 	libknot/rrtype/soa.c			\
 	libknot/rrtype/tsig.c			\

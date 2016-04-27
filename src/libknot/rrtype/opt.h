@@ -50,7 +50,9 @@ enum knot_edns_const {
 	/*! \brief NSID option code. */
 	KNOT_EDNS_OPTION_NSID          = 3,
 	/*! \brief EDNS client subnet option code. */
-	KNOT_EDNS_OPTION_CLIENT_SUBNET = 8
+	KNOT_EDNS_OPTION_CLIENT_SUBNET = 8,
+	/*! \brief EDNS DNS Cookie option code. */
+	KNOT_EDNS_OPTION_COOKIE        = 10
 };
 
 /* Helpers for splitting extended RCODE. */
@@ -256,6 +258,53 @@ int knot_edns_add_option(knot_rrset_t *opt_rr, uint16_t code,
  * \retval 0 otherwise.
  */
 bool knot_edns_has_option(const knot_rrset_t *opt_rr, uint16_t code);
+
+/*!
+ * \brief Searches the OPT RR for option with the specified code.
+ *
+ * \param opt_rr OPT RR structure to search for the Option in.
+ * \param code Option code to search for.
+ *
+ * \retval pointer to option if found
+ * \retval NULL otherwise.
+ */
+uint8_t *knot_edns_get_option(const knot_rrset_t *opt_rr, uint16_t code);
+
+/*!
+ * \brief Returns the option code.
+ *
+ * \warning No safety checks are performed on the supplied data.
+ *
+ * \param opt EDNS option (including code, length and data portion).
+ *
+ * \retval EDNS option code
+ */
+uint16_t knot_edns_opt_get_code(uint8_t *opt);
+
+/*!
+ * \brief Returns the option data length.
+ *
+ * \warning No safety checks are performed on the supplied data.
+ *
+ * \param opt EDNS option (including code, length and data portion).
+ *
+ * \retval EDNS option length
+ */
+uint16_t knot_edns_opt_get_length(uint8_t *opt);
+
+/*!
+ * \brief Returns pointer to option data.
+ *
+ * \warning No safety checks are performed on the supplied data.
+ *
+ * \param opt EDNS option (including code, length and data portion).
+ *
+ * \retval pointer to place where ENDS option data would reside
+ */
+static inline uint8_t *knot_edns_opt_get_data(uint8_t *opt)
+{
+	return opt + 4; /* 2 * sizeof(uint16_t) */
+}
 
 /*! \brief Return true if RRSet has NSID option. */
 bool knot_edns_has_nsid(const knot_rrset_t *opt_rr);

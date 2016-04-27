@@ -331,6 +331,36 @@ bool knot_edns_has_option(const knot_rrset_t *opt_rr, uint16_t code)
 	return pos != NULL;
 }
 
+_public_
+uint8_t *knot_edns_get_option(const knot_rrset_t *opt_rr, uint16_t code)
+{
+	assert(opt_rr != NULL);
+
+	knot_rdata_t *rdata = knot_rdataset_at(&opt_rr->rrs, 0);
+	assert(rdata != NULL);
+
+	return find_option(rdata, code);
+}
+
+_public_
+uint16_t knot_edns_opt_get_code(uint8_t *opt)
+{
+	assert(opt != NULL);
+
+	wire_ctx_t wire = wire_ctx_init_const(opt, sizeof(uint16_t));
+	return wire_ctx_read_u16(&wire);
+}
+
+_public_
+uint16_t knot_edns_opt_get_length(uint8_t *opt)
+{
+	assert(opt != NULL);
+
+	wire_ctx_t wire = wire_ctx_init_const(opt + sizeof(uint16_t),
+	                                      sizeof(uint16_t));
+	return wire_ctx_read_u16(&wire);
+}
+
 /*----------------------------------------------------------------------------*/
 _public_
 bool knot_edns_check_record(knot_rrset_t *opt_rr)
