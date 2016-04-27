@@ -189,6 +189,9 @@ void knot_edns_set_do(knot_rrset_t *opt_rr)
 /*!
  * \brief Find OPTION with the given code in the OPT RDATA.
  *
+ * \note It is ensured that the full option, as declared in option length,
+ *       is encompassed in the RDATA when found.
+ *
  * \param rdata     RDATA to search in.
  * \param opt_code  Code of the OPTION to find.
  * \param[out] pos  Position of the OPTION or NULL if not found.
@@ -197,6 +200,7 @@ static uint8_t *find_option(knot_rdata_t *rdata, uint16_t opt_code)
 {
 	wire_ctx_t wire = wire_ctx_init_const(knot_rdata_data(rdata),
 	                                      knot_rdata_rdlen(rdata));
+	uint8_t *found_position = NULL;
 
 	while (wire_ctx_available(&wire) > 0) {
 		uint16_t code = wire_ctx_read_u16(&wire);
@@ -205,10 +209,16 @@ static uint8_t *find_option(knot_rdata_t *rdata, uint16_t opt_code)
 		}
 
 		if (code == opt_code) {
-			return wire.position;
+			found_position = wire.position;
 		}
 
 		uint16_t opt_len = wire_ctx_read_u16(&wire);
+		/* Return position only when the entire option fits
+		 * in the RDATA. */
+		if (found_position != NULL && wire.error == KNOT_EOK &&
+		    wire_ctx_available(&wire) >= opt_len) {
+			return found_position;
+		}
 		wire_ctx_skip(&wire, opt_len);
 	}
 
