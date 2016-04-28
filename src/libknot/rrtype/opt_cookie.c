@@ -26,8 +26,8 @@
 #include "libknot/rrtype/opt_cookie.h"
 
 _public_
-int knot_edns_opt_cookie_create(uint8_t cc[KNOT_OPT_COOKIE_CLNT],
-                                uint8_t *sc, uint16_t sc_len,
+int knot_edns_opt_cookie_create(const uint8_t cc[KNOT_OPT_COOKIE_CLNT],
+                                const uint8_t *sc, const uint16_t sc_len,
                                 uint8_t *data, uint16_t *data_len)
 {
 	assert(cc != NULL);
@@ -64,7 +64,7 @@ int knot_edns_opt_cookie_create(uint8_t cc[KNOT_OPT_COOKIE_CLNT],
 }
 
 _public_
-int knot_ends_opt_cookie_parse(const uint8_t *data, const uint16_t data_len,
+int knot_edns_opt_cookie_parse(const uint8_t *data, const uint16_t data_len,
                                uint8_t *cc, uint16_t cc_len,
                                uint8_t *sc, uint16_t sc_len)
 {

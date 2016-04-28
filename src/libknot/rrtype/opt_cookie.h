@@ -67,8 +67,8 @@ static inline uint16_t knot_edns_opt_cookie_data_len(uint16_t sc_len)
  * \retval KNOT_EINVAL
  * \retval KNOT_ESPACE
  */
-int knot_edns_opt_cookie_create(uint8_t cc[KNOT_OPT_COOKIE_CLNT],
-                                uint8_t *sc, uint16_t sc_len,
+int knot_edns_opt_cookie_create(const uint8_t cc[KNOT_OPT_COOKIE_CLNT],
+                                const uint8_t *sc, const uint16_t sc_len,
                                 uint8_t *data, uint16_t *data_len);
 
 /*!
