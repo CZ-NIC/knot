@@ -33,7 +33,7 @@ typedef struct {
 	const char *confdb;
 	const char *socket;
 	bool verbose;
-	uint16_t timeout;
+	int timeout;
 } params_t;
 
 /*!

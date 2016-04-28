@@ -85,7 +85,7 @@ int main(int argc, char **argv)
 			params.socket = optarg;
 			break;
 		case 't':
-			if (knot_str2uint16t(optarg, &params.timeout) != KNOT_EOK) {
+			if (knot_str2int(optarg, &params.timeout) != KNOT_EOK) {
 				print_help();
 				return EXIT_FAILURE;
 			}
