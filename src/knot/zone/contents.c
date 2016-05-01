@@ -490,7 +490,7 @@ static int add_nsec3_node(zone_contents_t *zone, zone_node_t *node)
 		}
 	}
 
-	// how to know if this is successfull??
+	// how to know if this is successful??
 	ret = zone_tree_insert(zone->nsec3_nodes, node);
 	if (ret != KNOT_EOK) {
 		return ret;

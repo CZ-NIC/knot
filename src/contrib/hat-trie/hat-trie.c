@@ -475,7 +475,7 @@ int hattrie_apply_rev_ahtable(hattrie_t* T, int (*f)(void*,void*), void* d)
 int hattrie_split_mid(node_ptr node, unsigned *left_m, unsigned *right_m)
 {
     /* count the number of occourances of every leading character */
-    unsigned int cs[NODE_CHILDS]; // occurance count for leading chars
+    unsigned int cs[NODE_CHILDS]; // occurrence count for leading chars
     memset(cs, 0, NODE_CHILDS * sizeof(unsigned int));
     uint16_t len;
     const char* key;

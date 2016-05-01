@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-'''Test for signing a zone with wierd records.'''
+'''Test for signing a zone with weird records.'''
 
 from dnstest.utils import *
 from dnstest.test import Test

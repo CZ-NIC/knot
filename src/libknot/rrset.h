@@ -65,7 +65,7 @@ typedef enum {
  * \param type    TYPE of the RRSet.
  * \param rclass  CLASS of the RRSet.
  *
- * \return New RRSet structure or NULL if an error occured.
+ * \return New RRSet structure or NULL if an error occurred.
  */
 knot_rrset_t *knot_rrset_new(const knot_dname_t *owner, uint16_t type,
                              uint16_t rclass, knot_mm_t *mm);
@@ -161,7 +161,7 @@ bool knot_rrset_equal(const knot_rrset_t *r1, const knot_rrset_t *r2,
  */
 bool knot_rrset_empty(const knot_rrset_t *rrset);
 
-/* --------------------------- Miscelaneous --------------------------------- */
+/* --------------------------- Miscellaneous --------------------------------- */
 
 /*!
  * \brief Returns the TTL of the RRSet (of its first RR).

@@ -849,7 +849,7 @@ static int changeset_pack(const changeset_t *chs, journal_t *j)
 	/* Serialize changeset, saving it bit by bit. */
 	ret = serialize_and_store_chgset(chs, journal_entry, entry_size);
 	/* Unmap the journal entry.
-	 * If successfuly written changeset to journal, validate the entry. */
+	 * If successfully written changeset to journal, validate the entry. */
 	int unmap_ret = journal_unmap(j, k, journal_entry, ret == KNOT_EOK);
 	if (ret == KNOT_EOK && unmap_ret != KNOT_EOK) {
 		ret = unmap_ret; /* Propagate the result. */

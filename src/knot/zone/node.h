@@ -83,7 +83,7 @@ enum node_flags {
  * \param owner  Node's owner, will be duplicated.
  * \param mm     Memory context to use.
  *
- * \return Newly created node or NULL if an error occured.
+ * \return Newly created node or NULL if an error occurred.
  */
 zone_node_t *node_new(const knot_dname_t *owner, knot_mm_t *mm);
 

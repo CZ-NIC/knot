@@ -115,7 +115,7 @@ typedef struct synth_template {
 	int mask;
 } synth_template_t;
 
-/*! \brief Substitute all occurences of given character. */
+/*! \brief Substitute all occurrences of given character. */
 static void str_subst(char *str, size_t len, char from, char to)
 {
 	for (int i = 0; i < len; ++i) {

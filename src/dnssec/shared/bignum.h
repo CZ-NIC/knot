@@ -35,6 +35,6 @@ size_t bignum_size_s(const dnssec_binary_t *value);
 /*!
  * Write unsigned number on a fixed width in a big-endian byte order.
  *
- * The destination size has to be set properly to accomodate used encoding.
+ * The destination size has to be set properly to accommodate used encoding.
  */
 void bignum_write(dnssec_binary_t *dest, const dnssec_binary_t *value);

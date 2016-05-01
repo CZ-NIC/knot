@@ -95,7 +95,7 @@ static int create_txt_rrset(knot_rrset_t *rrset, const knot_dname_t *owner,
 /*!
  * \brief Create a response for a TXT CHAOS query.
  *
- * \param return KNOT_RCODE_NOERROR if the response was succesfully created,
+ * \param return KNOT_RCODE_NOERROR if the response was successfully created,
  *               otherwise an RCODE representing the failure.
  */
 static int answer_txt(knot_pkt_t *response)

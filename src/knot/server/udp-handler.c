@@ -93,7 +93,7 @@ static void udp_handle(udp_context_t *udp, int fd, struct sockaddr_storage *ss,
 		state = knot_overlay_produce(&udp->overlay, ans);
 	}
 
-	/* Send response only if finished successfuly. */
+	/* Send response only if finished successfully. */
 	if (state == KNOT_STATE_DONE) {
 		tx->iov_len = ans->size;
 	} else {

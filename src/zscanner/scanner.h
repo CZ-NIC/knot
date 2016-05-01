@@ -88,7 +88,7 @@ typedef struct {
 typedef enum {
 	ZS_STATE_NONE,     /*!< Initial state. */
 	ZS_STATE_DATA,     /*!< A record parsed. */
-	ZS_STATE_ERROR,    /*!< An error occured. */
+	ZS_STATE_ERROR,    /*!< An error occurred. */
 	ZS_STATE_INCLUDE,  /*!< An include directive parsed. */
 	ZS_STATE_EOF,      /*!< The end of the current input reached. */
 	ZS_STATE_STOP      /*!< Finished parsing. */
@@ -97,7 +97,7 @@ typedef enum {
 /*!
  * \brief Context structure for zone scanner.
  *
- * This structure contains folowing items:
+ * This structure contains following items:
  *  - Copies of Ragel internal variables. The scanner can be called many times
  *    on smaller parts of zone file/memory. So it is necessary to preserve
  *    internal values between subsequent scanner callings.
@@ -106,7 +106,7 @@ typedef enum {
  *    can be used in callback functions.
  *  - Zone file and error information.
  *  - Output variables (r_ prefix) containing all parts of zone record. These
- *    data are usefull during processing via callback function.
+ *    data are useful during processing via callback function.
  */
 typedef struct scanner zs_scanner_t; // Forward declaration due to arguments.
 struct scanner {
@@ -215,7 +215,7 @@ struct scanner {
 	} file;
 
 	struct {
-		/*! Last occured error/warning code. */
+		/*! Last occurred error/warning code. */
 		int code;
 		/*! Error/warning counter. */
 		uint64_t counter;

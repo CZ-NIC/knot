@@ -76,7 +76,7 @@ void conf_includes_free(conf_includes_t *includes)
  * e.g. path_relative_to("b.conf", "samples/a.conf") == "samples/b.conf"
  *
  * \param filename   File name of the target file.
- * \param reference  Referece file name (just path is used).
+ * \param reference  Reference file name (just path is used).
  *
  * \return Relative path to a reference file.
  */

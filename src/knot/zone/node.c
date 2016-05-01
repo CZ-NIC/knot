@@ -92,7 +92,7 @@ zone_node_t *node_new(const knot_dname_t *owner, knot_mm_t *mm)
 		}
 	}
 
-	// Node is authoritive by default.
+	// Node is authoritative by default.
 	ret->flags = NODE_FLAGS_AUTH;
 
 	return ret;

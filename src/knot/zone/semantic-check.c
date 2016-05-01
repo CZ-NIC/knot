@@ -106,7 +106,7 @@ static char *error_messages[(-ZC_ERR_UNKNOWN) + 1] = {
 	"DNAME, wildcard pointing to itself",
 
 	/* ^
-	   | Important errors (to be logged on first occurence and counted) */
+	   | Important errors (to be logged on first occurrence and counted) */
 
 	/* Below are errors of lesser importance, to be counted unless
 	   specified otherwise */

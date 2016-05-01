@@ -92,11 +92,11 @@ int main(int argc, char *argv[])
 
 	/* Corner-case: these serials' distance is exactly 2^31. */
 	uint32_t s1 = random_serial();
-	uint32_t s2 = s1 + S_ABOVE_MIDDLE;  // exactly the 'oposite' number
+	uint32_t s2 = s1 + S_ABOVE_MIDDLE;  // exactly the 'opposite' number
 	ok(serial_compare(s1, s2) < 0,
-	   "serial compare: random oposites (s1 < s2)");
+	   "serial compare: random opposites (s1 < s2)");
 	ok(serial_compare(s2, s1) < 0,
-	   "serial compare: random oposites (s2 < s1)");
+	   "serial compare: random opposites (s2 < s1)");
 
 	return 0;
 }

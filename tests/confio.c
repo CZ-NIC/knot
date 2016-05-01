@@ -235,7 +235,7 @@ static void test_conf_io_abort()
 	conf_io_abort(false);
 	ok(conf()->io.txn == NULL, "check txn depth");
 
-	// Test child abort with commited subchild.
+	// Test child abort with committed subchild.
 	ok(conf_io_begin(false) == KNOT_EOK, "begin new parent txn");
 	ok(conf_io_begin(true) == KNOT_EOK, "begin child txn");
 	ok(conf_io_begin(true) == KNOT_EOK, "begin subchild txn");

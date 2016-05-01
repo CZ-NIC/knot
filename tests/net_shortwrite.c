@@ -131,7 +131,7 @@ int main(int argc, char *argv[])
 	// receive message
 
 	r = pthread_join(thr, NULL);
-	ok(r == 0, "server: wait for reciever thread to terminate");
+	ok(r == 0, "server: wait for receiver thread to terminate");
 
 	ok(recv_data.result == sizeof(recvbuf) &&
 	   memcmp(sndbuf, recvbuf, sizeof(recvbuf)) == 0,

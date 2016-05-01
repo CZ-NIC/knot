@@ -224,7 +224,7 @@ static int sign_ctx_add_data(dnssec_sign_ctx_t *ctx,
  * \param[in]  sig_incepted  Timestamp of signature inception.
  * \param[in]  sig_expires   Timestamp of signature expiration.
  *
- * \return Error code, KNOT_EOK if succesful.
+ * \return Error code, KNOT_EOK if successful.
  */
 static int rrsigs_create_rdata(knot_rrset_t *rrsigs, dnssec_sign_ctx_t *ctx,
                                const knot_rrset_t *covered,

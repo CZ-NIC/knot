@@ -30,7 +30,7 @@
 /* -- key parameters ------------------------------------------------------- */
 
 /*!
- * Key parameters as writting in zone config file.
+ * Key parameters as writing in zone config file.
  */
 struct key_params {
 	char *id;

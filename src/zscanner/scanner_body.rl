@@ -188,7 +188,7 @@
 
 	# BEGIN - Domain name processing.
 	action _absolute_dname_exit {
-		// Enough room for the terminal label is garanteed (_label_exit).
+		// Enough room for the terminal label is guaranteed (_label_exit).
 		(s->dname)[s->dname_tmp_length++] = 0;
 	}
 	action _relative_dname_exit {

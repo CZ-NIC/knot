@@ -156,7 +156,7 @@ void zone_events_freeze(struct zone *zone);
 void zone_events_start(struct zone *zone);
 
 /*!
- * \brief Return time of the occurence of the given event.
+ * \brief Return time of the occurrence of the given event.
  *
  * \param zone  Zone to get event time from.
  * \param type  Event type.

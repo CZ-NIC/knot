@@ -15,7 +15,7 @@ dns2	A	192.0.2.2
 mail	A	192.0.2.3
 	AAAA	2001:DB8::3
 
-;obsolete-md	MD	domain-name1.	; Bind doens't support MD type,
+;obsolete-md	MD	domain-name1.	; Bind doesn't support MD type,
 ;obsolete-md	TYPE3	\# 0C646F6D61696E2D6E616D653100 ; neither this one
 ;obsolete-mf	MF	domain-name2.	; Bind doesn't support MF type,
 ;obsolete-mf	TYPE4	\# 0C646F6D61696E2D6E616D653200 ; neither this one

@@ -191,7 +191,7 @@ int net_send(const net_t *net, const uint8_t *buf, const size_t buf_len);
  * \brief Receives data from connected remote server.
  *
  * \param net		Connection parameters.
- * \param buf		Buffer for incomming data.
+ * \param buf		Buffer for incoming data.
  * \param buf_len	Length of the buffer.
  *
  * \retval >=0		length of successfully received data.

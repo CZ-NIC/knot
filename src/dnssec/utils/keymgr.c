@@ -667,7 +667,7 @@ static int cmd_zone_add(int argc, char *argv[])
 
 	int r = dnssec_kasp_zone_exists(kasp, zone_name);
 	if (r == DNSSEC_EOK) {
-		error("Zone with given name alredy exists.");
+		error("Zone with given name already exists.");
 		return 1;
 	} else if (r != DNSSEC_NOT_FOUND) {
 		error("Failed to check if given zone exists (%s).", dnssec_strerror(r));

@@ -263,7 +263,7 @@ static int knot_zone_diff_node(zone_node_t **node_ptr, void *data)
 		/* Search for the RRSet in the node from the second tree. */
 		knot_rrset_t rrset = node_rrset_at(node, i);
 
-		/* SOAs are handled explicitely. */
+		/* SOAs are handled explicitly. */
 		if (rrset.type == KNOT_RRTYPE_SOA) {
 			continue;
 		}
@@ -292,7 +292,7 @@ static int knot_zone_diff_node(zone_node_t **node_ptr, void *data)
 		/* Search for the RRSet in the node from the second tree. */
 		knot_rrset_t rrset = node_rrset_at(node_in_second_tree, i);
 
-		/* SOAs are handled explicitely. */
+		/* SOAs are handled explicitly. */
 		if (rrset.type == KNOT_RRTYPE_SOA) {
 			continue;
 		}

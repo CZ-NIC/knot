@@ -85,7 +85,7 @@ typedef struct zone
  *
  * \param name  Zone name.
  *
- * \return The initialized zone structure or NULL if an error occured.
+ * \return The initialized zone structure or NULL if an error occurred.
  */
 zone_t* zone_new(const knot_dname_t *name);
 

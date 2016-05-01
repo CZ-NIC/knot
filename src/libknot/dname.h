@@ -194,7 +194,7 @@ _pure_
 int knot_dname_size(const knot_dname_t *name);
 
 /*!
- * \brief Returns wire size of the given domain name (expaned compression ptrs).
+ * \brief Returns wire size of the given domain name (expanded compression ptrs).
  *
  * \param name Domain name to get the size of.
  * \param pkt Related packet (or NULL if unpacked)

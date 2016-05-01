@@ -186,7 +186,7 @@ int knot_dname_unpack(uint8_t *dst, const knot_dname_t *src,
 	if (dst == NULL || src == NULL)
 		return KNOT_EINVAL;
 
-	/* Seek first real label occurence. */
+	/* Seek first real label occurrence. */
 	src = knot_wire_seek_label(src, pkt);
 
 	/* Unpack rest of the labels. */
@@ -668,7 +668,7 @@ int knot_dname_cmp_wire(const knot_dname_t *d1, const knot_dname_t *d2,
 	/* Convert to lookup format. */
 	uint8_t d1_lf[KNOT_DNAME_MAXLEN], d2_lf[KNOT_DNAME_MAXLEN];
 	if (knot_dname_lf(d1_lf, d1, pkt) < 0 || knot_dname_lf(d2_lf, d2, pkt) < 0) {
-		assert(0); /* This must not happend as the d1, d2 are checked. */
+		assert(0); /* This must not happened as the d1, d2 are checked. */
 		return KNOT_EINVAL;
 	}
 
@@ -732,7 +732,7 @@ int knot_dname_prefixlen(const uint8_t *name, unsigned nlabels, const uint8_t *p
 	if (nlabels == 0)
 		return 0;
 
-	/* Seek first real label occurence. */
+	/* Seek first real label occurrence. */
 	name = knot_wire_seek_label(name, pkt);
 
 	int len = 0;

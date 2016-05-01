@@ -251,7 +251,7 @@ int dnssec_algorithm_key_size_range(dnssec_key_algorithm_t algorithm,
 				    unsigned *min, unsigned *max);
 
 /*!
- * Check if the private key size matches DNSKEY contraints.
+ * Check if the private key size matches DNSKEY constraints.
  *
  * \param algorithm  DNSKEY algorithm.
  * \param bits       Private key size.

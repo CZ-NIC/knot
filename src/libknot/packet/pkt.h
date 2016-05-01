@@ -217,7 +217,7 @@ int knot_pkt_begin(knot_pkt_t *pkt, knot_section_t section_id);
  * \brief Put QUESTION in the packet.
  *
  * \note Since we support QD=1 only, QUESTION is a special type of packet section.
- * \note Must not be used after puting RRsets into the packet.
+ * \note Must not be used after putting RRsets into the packet.
  *
  * \param pkt
  * \param qname

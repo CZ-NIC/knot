@@ -40,13 +40,13 @@ Bugfixes:
 ---------
  - DNSSEC: Allow import of duplicate private key into the KASP
  - DNSSEC: Avoid duplicate NSEC for Wildcard No Data answer
- - Fix server crash when an incomming transfer is in progress and reload is issued
+ - Fix server crash when an incoming transfer is in progress and reload is issued
  - Fix socket polling when configured with many interfaces and threads
  - Fix compilation against Nettle 3.2
 
 Improvements:
 -------------
- - Select correct source address for UDP messages recieved on ANY address
+ - Select correct source address for UDP messages received on ANY address
  - Extend documentation of knotc commands
 
 Knot DNS 2.1.0 (2016-01-14)
@@ -253,7 +253,7 @@ Knot DNS 1.5.2 (2014-09-08)
 Bugfixes:
 ---------
  - Some RR parsing corner cases were not handled properly
- - AXFR-style IXFR was refused and had to be retransfered
+ - AXFR-style IXFR was refused and had to be retransferred
  - Hash character (#) was not properly escaped when storing text zone file
 
 Knot DNS 1.5.1 (2014-08-19)
@@ -391,7 +391,7 @@ Bugfixes:
  - Journal race condition
  - Notifies are sent immediately
  - Crash in particular additionals processing
- - Race condition in event cancelation
+ - Race condition in event cancellation
  - Journal corruption after failed transactions
  - DNSSEC: fixed detection of ECDSA support
  - Refactored zone loading
@@ -801,5 +801,5 @@ Known issues:
  - RRSet rotation not implmented
  - Dynamic update support
  - IXFR code might be flaky sometimes
- - IXFR may be slow when too much (10 000+) RRSets are transfered at
+ - IXFR may be slow when too much (10 000+) RRSets are transferred at
    once

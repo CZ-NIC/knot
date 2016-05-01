@@ -1071,7 +1071,7 @@ static int sign_changeset_wrap(knot_rrset_t *chg_rrset, changeset_signing_data_t
 			/*
 			 * If RRSet in zone DOES have RRSIGs although we
 			 * should not sign it, DDNS-caused change to node/rr
-			 * occured and we have to drop all RRSIGs.
+			 * occurred and we have to drop all RRSIGs.
 			 *
 			 * OR
 			 *

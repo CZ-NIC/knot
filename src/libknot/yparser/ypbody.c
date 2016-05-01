@@ -171,7 +171,7 @@ int _yp_parse(
 		p = parser->input.current;
 		pe = parser->input.end;
 		eof = NULL;
-	} else { // Set the last artifical block with just one new line char.
+	} else { // Set the last artificial block with just one new line char.
 		p = "\n";
 		pe = p + 1;
 		eof = pe;

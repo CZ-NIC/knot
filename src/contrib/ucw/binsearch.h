@@ -34,17 +34,17 @@
 })
 
 /**
- * The default comparision macro for @BIN_SEARCH_FIRST_GE_CMP().
+ * The default comparison macro for @BIN_SEARCH_FIRST_GE_CMP().
  **/
 #define ARY_LT_NUM(ary,i,x) (ary)[i] < (x)
 
 /**
- * Same as @BIN_SEARCH_FIRST_GE_CMP(), but uses the default `<` operator for comparisions.
+ * Same as @BIN_SEARCH_FIRST_GE_CMP(), but uses the default `<` operator for comparisons.
  **/
 #define BIN_SEARCH_FIRST_GE(ary,N,x) BIN_SEARCH_FIRST_GE_CMP(ary,N,ARY_LT_NUM,x)
 
 /**
- * Search the sorted array @ary of @N elements (non-decreasing) for the first occurence of @x.
- * Returns the index or -1 if no such element exists. Uses the `<` operator for comparisions.
+ * Search the sorted array @ary of @N elements (non-decreasing) for the first occurrence of @x.
+ * Returns the index or -1 if no such element exists. Uses the `<` operator for comparisons.
  **/
 #define BIN_SEARCH_EQ(ary,N,x) ({ int i = BIN_SEARCH_FIRST_GE(ary,N,x); if (i >= (N) || (ary)[i] != (x)) i=-1; i; })

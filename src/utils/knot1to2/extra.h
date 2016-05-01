@@ -51,7 +51,7 @@ typedef struct {
  *
  * \param file                Name of the main configuration file.
  *
- * \return Initialized stucture or NULL.
+ * \return Initialized structure or NULL.
  */
 conf_extra_t *conf_extra_init(const char *file, int run, share_t *share);
 

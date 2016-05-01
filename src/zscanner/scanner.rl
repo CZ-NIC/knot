@@ -449,7 +449,7 @@ int zs_parse_all(
 		parse(s);
 	}
 
-	// Check if any errors has occured.
+	// Check if any errors has occurred.
 	if (s->error.counter > 0) {
 		return -1;
 	}

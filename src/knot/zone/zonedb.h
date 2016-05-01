@@ -72,7 +72,7 @@ typedef hhash_iter_t knot_zonedb_iter_t;
  * \brief Allocates and initializes the zone database structure.
  *
  * \return Pointer to the created zone database structure or NULL if an error
- *         occured.
+ *         occurred.
  */
 knot_zonedb_t *knot_zonedb_new(uint32_t size);
 

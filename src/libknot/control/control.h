@@ -113,7 +113,7 @@ void knot_ctl_unbind(knot_ctl_t *ctx);
 int knot_ctl_connect(knot_ctl_t *ctx, const char *path);
 
 /*!
- * Waits for an incomming connection.
+ * Waits for an incoming connection.
  *
  * \note Server operation.
  *

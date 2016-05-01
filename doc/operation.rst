@@ -92,7 +92,7 @@ to get all section identifiers or to get a specific configuration item::
 
 Modifying operations require an active configuration database transaction.
 Just one transaction can be active at a time. Such a transaction then can
-be aborted or commited. A semantic check is executed automatically before
+be aborted or committed. A semantic check is executed automatically before
 every commit::
 
     $ knotc conf-begin
