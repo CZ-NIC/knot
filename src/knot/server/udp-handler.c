@@ -407,16 +407,13 @@ void __attribute__ ((constructor)) udp_master_init()
 
 	/* Optimized functions. */
 #ifdef HAVE_RECVMMSG
-	/* Check for recvmmsg() support. */
-	if (dlsym(RTLD_DEFAULT, "recvmmsg") != 0) {
-		recvmmsg(0, NULL, 0, 0, 0);
-		if (errno != ENOSYS) {
-			_udp_init = udp_recvmmsg_init;
-			_udp_deinit = udp_recvmmsg_deinit;
-			_udp_recv = udp_recvmmsg_recv;
-			_udp_send = udp_recvmmsg_send;
-			_udp_handle = udp_recvmmsg_handle;
-		}
+	recvmmsg(0, NULL, 0, 0, 0);
+	if (errno != ENOSYS) {
+		_udp_init = udp_recvmmsg_init;
+		_udp_deinit = udp_recvmmsg_deinit;
+		_udp_recv = udp_recvmmsg_recv;
+		_udp_send = udp_recvmmsg_send;
+		_udp_handle = udp_recvmmsg_handle;
 	}
 
 	/* Check for sendmmsg() support. */
