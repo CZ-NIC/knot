@@ -5720,7 +5720,7 @@ _match:
 	break;
 	case 16:
 	{
-		// Enough room for the terminal label is garanteed (_label_exit).
+		// Enough room for the terminal label is guaranteed (_label_exit).
 		(s->dname)[s->dname_tmp_length++] = 0;
 	}
 	break;
@@ -7982,7 +7982,7 @@ int zs_parse_all(
 		parse(s);
 	}
 
-	// Check if any errors has occured.
+	// Check if any errors has occurred.
 	if (s->error.counter > 0) {
 		return -1;
 	}

@@ -32291,7 +32291,7 @@ tr832:
 	goto st1122;
 tr836:
 	{
-		// Enough room for the terminal label is garanteed (_label_exit).
+		// Enough room for the terminal label is guaranteed (_label_exit).
 		(s->dname)[s->dname_tmp_length++] = 0;
 	}
 	{
@@ -33838,13 +33838,13 @@ tr929:
 	goto st297;
 tr920:
 	{
-		// Enough room for the terminal label is garanteed (_label_exit).
+		// Enough room for the terminal label is guaranteed (_label_exit).
 		(s->dname)[s->dname_tmp_length++] = 0;
 	}
 	goto st297;
 tr921:
 	{
-		// Enough room for the terminal label is garanteed (_label_exit).
+		// Enough room for the terminal label is guaranteed (_label_exit).
 		(s->dname)[s->dname_tmp_length++] = 0;
 	}
 	{
@@ -33857,7 +33857,7 @@ tr921:
 	goto st297;
 tr922:
 	{
-		// Enough room for the terminal label is garanteed (_label_exit).
+		// Enough room for the terminal label is guaranteed (_label_exit).
 		(s->dname)[s->dname_tmp_length++] = 0;
 	}
 	{
@@ -33897,7 +33897,7 @@ case 297:
 	goto tr919;
 tr925:
 	{
-		// Enough room for the terminal label is garanteed (_label_exit).
+		// Enough room for the terminal label is guaranteed (_label_exit).
 		(s->dname)[s->dname_tmp_length++] = 0;
 	}
 	{
@@ -33928,7 +33928,7 @@ case 1126:
 	goto st0;
 tr926:
 	{
-		// Enough room for the terminal label is garanteed (_label_exit).
+		// Enough room for the terminal label is guaranteed (_label_exit).
 		(s->dname)[s->dname_tmp_length++] = 0;
 	}
 	goto st298;
@@ -34499,7 +34499,7 @@ tr976:
 	goto st311;
 tr967:
 	{
-		// Enough room for the terminal label is garanteed (_label_exit).
+		// Enough room for the terminal label is guaranteed (_label_exit).
 		(s->dname)[s->dname_tmp_length++] = 0;
 	}
 	{
@@ -34508,7 +34508,7 @@ tr967:
 	goto st311;
 tr968:
 	{
-		// Enough room for the terminal label is garanteed (_label_exit).
+		// Enough room for the terminal label is guaranteed (_label_exit).
 		(s->dname)[s->dname_tmp_length++] = 0;
 	}
 	{
@@ -34524,7 +34524,7 @@ tr968:
 	goto st311;
 tr969:
 	{
-		// Enough room for the terminal label is garanteed (_label_exit).
+		// Enough room for the terminal label is guaranteed (_label_exit).
 		(s->dname)[s->dname_tmp_length++] = 0;
 	}
 	{
@@ -34711,7 +34711,7 @@ tr960:
 	goto st1127;
 tr972:
 	{
-		// Enough room for the terminal label is garanteed (_label_exit).
+		// Enough room for the terminal label is guaranteed (_label_exit).
 		(s->dname)[s->dname_tmp_length++] = 0;
 	}
 	{
@@ -34804,7 +34804,7 @@ tr951:
 	goto st312;
 tr973:
 	{
-		// Enough room for the terminal label is garanteed (_label_exit).
+		// Enough room for the terminal label is guaranteed (_label_exit).
 		(s->dname)[s->dname_tmp_length++] = 0;
 	}
 	{
@@ -78795,7 +78795,7 @@ int zs_parse_all(
 		parse(s);
 	}
 
-	// Check if any errors has occured.
+	// Check if any errors has occurred.
 	if (s->error.counter > 0) {
 		return -1;
 	}
