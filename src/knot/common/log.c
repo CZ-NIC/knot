@@ -1,4 +1,4 @@
-/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -31,44 +31,40 @@
 
 #include "knot/common/log.h"
 #include "libknot/libknot.h"
-#include "contrib/macros.h"
-#include "contrib/openbsd/strlcpy.h"
 #include "contrib/ucw/lists.h"
 
-/* Single log message buffer length (one line). */
-#define LOG_BUFLEN 512
-
-#define LOG_NULL_ZONE_STRING "?"
-
-/*! Log source table. */
-struct log_sink
-{
-	uint8_t *facility;     /* Log sinks. */
-	size_t facility_count; /* Sink count. */
-	FILE **file;           /* Open files. */
-	ssize_t file_count;    /* Nr of open files. */
-	logflag_t flags;       /* Formatting flags. */
-};
-
-/*! Log sink singleton. */
-struct log_sink *s_log = NULL;
+/*! Single log message buffer length (one line). */
+#define LOG_BUFLEN	512
+#define NULL_ZONE_STR	"?"
 
 #ifdef ENABLE_SYSTEMD
 int use_journal = 0;
 #endif
 
-#define facility_at(s, i) (s->facility + ((i) << LOG_SRC_BITS))
-#define facility_next(f) (f) += (1 << LOG_SRC_BITS)
-#define facility_levels(f, i) *((f) + (i))
+/*! Log context. */
+typedef struct {
+	size_t facility_count; /*!< Log sink count. */
+	int *facility;         /*!< Log sinks. */
+	size_t file_count;     /*!< Open files count. */
+	FILE **file;           /*!< Open files. */
+	logflag_t flags;       /*!< Formatting flags. */
+} log_t;
 
-/*! \brief Close open files and free given sink. */
-static void sink_free(struct log_sink *log)
+/*! Log singleton. */
+log_t *s_log = NULL;
+
+static bool log_isopen(void)
+{
+	return s_log != NULL;
+}
+
+static void sink_free(log_t *log)
 {
 	if (log == NULL) {
 		return;
 	}
 
-	/* Close open logfiles. */
+	// Close open log files.
 	for (int i = 0; i < log->file_count; ++i) {
 		fclose(log->file[i]);
 	}
@@ -78,112 +74,101 @@ static void sink_free(struct log_sink *log)
 }
 
 /*!
- * \brief Create logging facilities respecting their
- *        canonical order.
+ * \brief Create logging facilities respecting their canonical order.
  *
  * Facilities ordering: Syslog, Stderr, Stdout, File0...
  */
-static struct log_sink *sink_setup(unsigned logfiles)
+static log_t *sink_setup(size_t file_count)
 {
-	struct log_sink *log = malloc(sizeof(struct log_sink));
+	log_t *log = malloc(sizeof(*log));
 	if (log == NULL) {
 		return NULL;
 	}
+	memset(log, 0, sizeof(*log));
 
-	/* Ensure minimum facilities count. */
-	int facilities = LOGT_FILE + logfiles;
-
-	/* Reserve space for facilities. */
-	memset(log, 0, sizeof(struct log_sink));
-	log->facility_count = facilities << LOG_SRC_BITS;
-	log->facility = malloc(log->facility_count);
+	// Reserve space for facilities.
+	log->facility_count = LOGT_FILE + file_count;
+	log->facility = malloc(LOG_ANY * sizeof(int) * log->facility_count);
 	if (!log->facility) {
 		free(log);
 		return NULL;
 	}
-	memset(log->facility, 0, log->facility_count);
+	memset(log->facility, 0, LOG_ANY * sizeof(int) * log->facility_count);
 
-	/* Reserve space for logfiles. */
-	if (logfiles > 0) {
-		log->file = malloc(sizeof(FILE*) * logfiles);
+	// Reserve space for log files.
+	if (file_count > 0) {
+		log->file = malloc(sizeof(FILE *) * file_count);
 		if (!log->file) {
 			free(log->facility);
 			free(log);
 			return NULL;
 		}
-		memset(log->file, 0, sizeof(FILE*) * logfiles);
+		memset(log->file, 0, sizeof(FILE *) * file_count);
 	}
 
 	return log;
 }
 
-/*! \brief Publish new log sink and free the replaced. */
-static void sink_publish(struct log_sink *log)
+static void sink_publish(log_t *log)
 {
-	struct log_sink **current_log = &s_log;
-	struct log_sink *old_log = rcu_xchg_pointer(current_log, log);
+	log_t **current_log = &s_log;
+	log_t *old_log = rcu_xchg_pointer(current_log, log);
 	synchronize_rcu();
 	sink_free(old_log);
 }
 
-static uint8_t sink_levels(struct log_sink *log, int facility, logsrc_t src)
+static int *src_levels(log_t *log, logfacility_t facility, logsrc_t src)
 {
-	assert(log);
-
-	// Check facility
-	if (unlikely(log->facility_count == 0 || facility >= log->facility_count)) {
-		return 0;
-	}
-
-	return *(log->facility + (facility << LOG_SRC_BITS) + src);
+	assert(src < LOG_ANY);
+	return log->facility + LOG_ANY * facility + src;
 }
 
-static int sink_levels_set(struct log_sink *log, int facility, logsrc_t src, uint8_t levels)
+static void sink_levels_set(log_t *log, logfacility_t facility, logsrc_t src, int levels)
 {
-	// Check facility
-	if (unlikely(log->facility_count == 0 || facility >= log->facility_count)) {
-		return KNOT_EINVAL;
-	}
-
-	// Get facility pointer from offset
-	uint8_t *lp = log->facility + (facility << LOG_SRC_BITS);
-
-	// Assign level if not multimask
+	// Assign levels to the specified source.
 	if (src != LOG_ANY) {
-		*(lp + src) = levels;
+		*src_levels(log, facility, src) = levels;
 	} else {
-		// Any == set to all sources
-		for (int i = 0; i <= LOG_ANY; ++i) {
-			*(lp + i) = levels;
+		// ANY ~ set levels to all sources.
+		for (int i = 0; i < LOG_ANY; ++i) {
+			*src_levels(log, facility, i) = levels;
 		}
 	}
-
-	return KNOT_EOK;
 }
 
-static int sink_levels_add(struct log_sink *log, int facility, logsrc_t src, uint8_t levels)
+static void sink_levels_add(log_t *log, logfacility_t facility, logsrc_t src, int levels)
 {
-	uint8_t new_levels = sink_levels(log, facility, src) | levels;
-	return sink_levels_set(log, facility, src, new_levels);
+	// Add levels to the specified source.
+	if (src != LOG_ANY) {
+		int new_levels = *src_levels(log, facility, src) | levels;
+		*src_levels(log, facility, src) = new_levels;
+	} else {
+		// ANY ~ add levels to all sources.
+		for (int i = 0; i < LOG_ANY; ++i) {
+			int new_levels = *src_levels(log, facility, i) | levels;
+			*src_levels(log, facility, i) = new_levels;
+		}
+	}
 }
 
-int log_init()
+void log_init(void)
 {
-	/* Setup initial state. */
-	int ret = KNOT_EOK;
+	// Setup initial state.
 	int emask = LOG_MASK(LOG_CRIT) | LOG_MASK(LOG_ERR) | LOG_MASK(LOG_WARNING);
 	int imask = LOG_MASK(LOG_NOTICE) | LOG_MASK(LOG_INFO);
 
-	/* Publish base log sink. */
-	struct log_sink *log = sink_setup(0);
+	// Publish base log sink.
+	log_t *log = sink_setup(0);
 	if (log == NULL) {
-		return KNOT_EINVAL;
+		fprintf(stderr, "Failed to setup logging\n");
+		return;
 	}
 
 #ifdef ENABLE_SYSTEMD
-	/* Should only use the journal if system was booted with systemd */
+	// Should only use the journal if system was booted with systemd.
 	use_journal = sd_booted();
 #endif
+
 	sink_levels_set(log, LOGT_SYSLOG, LOG_ANY, emask);
 	sink_levels_set(log, LOGT_STDERR, LOG_ANY, emask);
 	sink_levels_set(log, LOGT_STDOUT, LOG_ANY, imask);
@@ -191,10 +176,9 @@ int log_init()
 
 	setlogmask(LOG_UPTO(LOG_DEBUG));
 	openlog(PACKAGE_NAME, LOG_PID, LOG_DAEMON);
-	return ret;
 }
 
-void log_close()
+void log_close(void)
 {
 	sink_publish(NULL);
 
@@ -204,65 +188,34 @@ void log_close()
 	closelog();
 }
 
-bool log_isopen()
-{
-	return s_log != NULL;
-}
-
 void log_flag_set(logflag_t flag)
 {
-	s_log->flags |= flag;
-}
-
-/*! \brief Open file as a logging facility. */
-static int log_open_file(struct log_sink *log, const char* filename)
-{
-	// Check facility
-	if (unlikely(log->facility_count  == 0 ||
-	                  LOGT_FILE + log->file_count >= log->facility_count)) {
-		return KNOT_ERROR;
+	if (log_isopen()) {
+		s_log->flags |= flag;
 	}
+}
 
-	// Open file
-	log->file[log->file_count] = fopen(filename, "a");
-	if (!log->file[log->file_count]) {
-		return KNOT_EINVAL;
+void log_levels_set(logfacility_t facility, logsrc_t src, int levels)
+{
+	if (log_isopen()) {
+		sink_levels_set(s_log, facility, src, levels);
 	}
-
-	// Disable buffering
-	setvbuf(log->file[log->file_count], (char *)0, _IONBF, 0);
-
-	return LOGT_FILE + log->file_count++;
 }
 
-uint8_t log_levels(int facility, logsrc_t src)
+void log_levels_add(logfacility_t facility, logsrc_t src, int levels)
 {
-	return sink_levels(s_log, facility, src);
-}
-
-int log_levels_set(int facility, logsrc_t src, uint8_t levels)
-{
-	return sink_levels_set(s_log, facility, src, levels);
-}
-
-int log_levels_add(int facility, logsrc_t src, uint8_t levels)
-{
-	return sink_levels_add(s_log, facility, src, levels);
-}
-
-static int emit_log_msg(int level, const char *zone, size_t zone_len, const char *msg)
-{
-	struct log_sink *log = s_log;
-	if(!log_isopen()) {
-		return KNOT_ERROR;
+	if (log_isopen()) {
+		sink_levels_add(s_log, facility, src, levels);
 	}
+}
 
-	int ret = 0;
-	uint8_t *f = facility_at(log, LOGT_SYSLOG);
+static void emit_log_msg(int level, const char *zone, size_t zone_len, const char *msg)
+{
+	log_t *log = s_log;
 	logsrc_t src = zone ? LOG_ZONE : LOG_SERVER;
 
-	// Syslog
-	if (facility_levels(f, src) & LOG_MASK(level)) {
+	// Syslog facility.
+	if (*src_levels(log, LOGT_SYSLOG, src) & LOG_MASK(level)) {
 #ifdef ENABLE_SYSTEMD
 		if (use_journal) {
 			char *zone_fmt = zone ? "ZONE=%.*s" : NULL;
@@ -275,13 +228,9 @@ static int emit_log_msg(int level, const char *zone, size_t zone_len, const char
 		{
 			syslog(level, "%s", msg);
 		}
-		ret = 1; // To prevent considering the message as ignored.
 	}
 
-	// Convert level to mask
-	level = LOG_MASK(level);
-
-	/* Prefix date and time. */
+	// Prefix date and time.
 	char tstr[LOG_BUFLEN] = { 0 };
 	if (!(s_log->flags & LOG_FNO_TIMESTAMP)) {
 		struct tm lt;
@@ -293,34 +242,23 @@ static int emit_log_msg(int level, const char *zone, size_t zone_len, const char
 		}
 	}
 
-	// Log streams
+	// Other log facilities.
 	for (int i = LOGT_STDERR; i < LOGT_FILE + log->file_count; ++i) {
-
-		// Check facility levels mask
-		f = facility_at(log, i);
-		if (facility_levels(f, src) & level) {
-
-			// Select stream
+		if (*src_levels(log, i, src) & LOG_MASK(level)) {
 			FILE *stream;
-			switch(i) {
+			switch (i) {
 			case LOGT_STDERR: stream = stderr; break;
 			case LOGT_STDOUT: stream = stdout; break;
 			default: stream = log->file[i - LOGT_FILE]; break;
 			}
 
-			// Print
-			ret = fprintf(stream, "%s%s\n", tstr, msg);
+			// Print the message.
+			fprintf(stream, "%s%s\n", tstr, msg);
 			if (stream == stdout) {
 				fflush(stream);
 			}
 		}
 	}
-
-	if (ret < 0) {
-		return KNOT_EINVAL;
-	}
-
-	return ret;
 }
 
 static const char *level_prefix(int level)
@@ -332,17 +270,12 @@ static const char *level_prefix(int level)
 	case LOG_WARNING: return "warning";
 	case LOG_ERR:     return "error";
 	case LOG_CRIT:    return "critical";
-	default:
-		return NULL;
+	default:          return NULL;
 	};
 }
 
 static int log_msg_add(char **write, size_t *capacity, const char *fmt, ...)
 {
-	assert(*write);
-	assert(capacity);
-	assert(fmt);
-
 	va_list args;
 	va_start(args, fmt);
 	int written = vsnprintf(*write, *capacity, fmt, args);
@@ -358,108 +291,98 @@ static int log_msg_add(char **write, size_t *capacity, const char *fmt, ...)
 	return KNOT_EOK;
 }
 
-static int log_msg_text(int level, const char *zone, const char *fmt, va_list args)
+static void log_msg_text(int level, const char *zone, const char *fmt, va_list args)
 {
-	int ret;
+	if (!log_isopen()) {
+		return;
+	}
 
-	/* Buffer for log message. */
-	char sbuf[LOG_BUFLEN];
-	char *write = sbuf;
-	size_t capacity = sizeof(sbuf) - 1;
+	// Buffer for log message.
+	char buff[LOG_BUFLEN];
+	char *write = buff;
+	size_t capacity = sizeof(buff);
 
 	rcu_read_lock();
 
-	/* Prefix error level. */
-	if (level != LOG_INFO || !log_isopen() || !(s_log->flags & LOG_FNO_INFO)) {
+	// Prefix error level.
+	if (level != LOG_INFO || !(s_log->flags & LOG_FNO_INFO)) {
 		const char *prefix = level_prefix(level);
-		ret = log_msg_add(&write, &capacity, "%s: ", prefix);
+		int ret = log_msg_add(&write, &capacity, "%s: ", prefix);
 		if (ret != KNOT_EOK) {
 			rcu_read_unlock();
-			return ret;
+			return;
 		}
 	}
 
-	/* Prefix zone name. */
+	// Prefix zone name.
 	size_t zone_len = 0;
-	if (zone) {
-		/* Strip terminating dot (unless root zone). */
+	if (zone != NULL) {
+		// Strip terminating dot (unless root zone).
 		zone_len = strlen(zone);
 		if (zone_len > 1 && zone[zone_len - 1] == '.') {
 			zone_len -= 1;
 		}
 
-		ret = log_msg_add(&write, &capacity, "[%.*s] ", zone_len, zone);
+		int ret = log_msg_add(&write, &capacity, "[%.*s] ", zone_len, zone);
 		if (ret != KNOT_EOK) {
 			rcu_read_unlock();
-			return ret;
+			return;
 		}
 	}
 
-	/* Compile log message. */
-	ret = vsnprintf(write, capacity, fmt, args);
-
-	/* Send to logging facilities. */
+	// Compile log message.
+	int ret = vsnprintf(write, capacity, fmt, args);
 	if (ret >= 0) {
-		ret = emit_log_msg(level, zone, zone_len, sbuf);
+		// Send to logging facilities.
+		emit_log_msg(level, zone, zone_len, buff);
 	}
 
 	rcu_read_unlock();
-
-	return ret;
 }
 
-int log_msg(int priority, const char *fmt, ...)
-{
-	if (!fmt) {
-		return KNOT_EINVAL;
-	}
-
-	va_list args;
-	va_start(args, fmt);
-	int result = log_msg_text(priority, NULL, fmt, args);
-	va_end(args);
-
-	return result;
-}
-
-int log_msg_zone(int priority, const knot_dname_t *zone, const char *fmt, ...)
+void log_msg(int priority, const char *fmt, ...)
 {
 	va_list args;
 	va_start(args, fmt);
-	char *zone_str = knot_dname_to_str_alloc(zone);
-	int result = log_msg_text(priority,
-				  zone_str ? zone_str : LOG_NULL_ZONE_STRING,
-				  fmt, args);
-	free(zone_str);
+	log_msg_text(priority, NULL, fmt, args);
 	va_end(args);
-
-	return result;
 }
 
-int log_msg_zone_str(int priority, const char *zone, const char *fmt, ...)
+void log_msg_zone(int priority, const knot_dname_t *zone, const char *fmt, ...)
+{
+	char buff[KNOT_DNAME_TXT_MAXLEN + 1];
+	char *zone_str = knot_dname_to_str(buff, zone, sizeof(buff));
+
+	va_list args;
+	va_start(args, fmt);
+	log_msg_text(priority, zone_str ? zone_str : NULL_ZONE_STR, fmt, args);
+	va_end(args);
+}
+
+void log_msg_zone_str(int priority, const char *zone, const char *fmt, ...)
 {
 	va_list args;
 	va_start(args, fmt);
-	int result = log_msg_text(priority,
-				  zone ? zone : LOG_NULL_ZONE_STRING,
-				  fmt, args);
+	log_msg_text(priority, zone ? zone : NULL_ZONE_STR, fmt, args);
 	va_end(args);
-
-	return result;
 }
 
 int log_update_privileges(int uid, int gid)
 {
-	for (unsigned i = 0; i < s_log->file_count; ++i) {
-		if (fchown(fileno(s_log->file[i]), uid, gid) < 0) {
-			return KNOT_ERROR;
-		}
-
+	if (!log_isopen()) {
+		return KNOT_EOK;
 	}
+
+	for (int i = 0; i < s_log->file_count; ++i) {
+		if (fchown(fileno(s_log->file[i]), uid, gid) < 0) {
+			return knot_map_errno();
+		}
+	}
+
 	return KNOT_EOK;
 }
 
-static logtype_t get_logtype(const char *logname)
+static logfacility_t get_logtype(const char *logname)
 {
 	assert(logname);
 
@@ -474,6 +397,22 @@ static logtype_t get_logtype(const char *logname)
 	}
 }
 
+static int log_open_file(log_t *log, const char *filename)
+{
+	assert(LOGT_FILE + log->file_count < log->facility_count);
+
+	// Open the file.
+	log->file[log->file_count] = fopen(filename, "a");
+	if (log->file[log->file_count] == NULL) {
+		return knot_map_errno();
+	}
+
+	// Disable buffering.
+	setvbuf(log->file[log->file_count], NULL, _IONBF, 0);
+
+	return LOGT_FILE + log->file_count++;
+}
+
 void log_reconfigure(conf_t *conf)
 {
 	// Use defaults if no 'log' section is configured.
@@ -483,7 +422,7 @@ void log_reconfigure(conf_t *conf)
 		return;
 	}
 
-	// Find maximum log facility id
+	// Find maximum log facility id.
 	unsigned files = 0;
 	for (conf_iter_t iter = conf_iter(conf, C_LOG); iter.code == KNOT_EOK;
 	     conf_iter_next(conf, &iter)) {
@@ -493,13 +432,14 @@ void log_reconfigure(conf_t *conf)
 		}
 	}
 
-	// Initialize logsystem
-	struct log_sink *log = sink_setup(files);
+	// Initialize logsystem.
+	log_t *log = sink_setup(files);
 	if (log == NULL) {
+		fprintf(stderr, "Failed to setup logging\n");
 		return;
 	}
 
-	// Setup logs
+	// Setup logs.
 	for (conf_iter_t iter = conf_iter(conf, C_LOG); iter.code == KNOT_EOK;
 	     conf_iter_next(conf, &iter)) {
 		conf_val_t id = conf_iter_id(conf, &iter);
@@ -510,29 +450,29 @@ void log_reconfigure(conf_t *conf)
 		if (facility == LOGT_FILE) {
 			facility = log_open_file(log, logname);
 			if (facility < 0) {
-				log_error("failed to open log, file '%s'",
-				          logname);
+				log_error("failed to open log, file '%s' (%s)",
+				          logname, knot_strerror(facility));
 				continue;
 			}
 		}
 
-		conf_val_t level_val;
-		unsigned level;
+		conf_val_t levels_val;
+		unsigned levels;
 
 		// Set SERVER logging.
-		level_val = conf_id_get(conf, C_LOG, C_SERVER, &id);
-		level = conf_opt(&level_val);
-		sink_levels_add(log, facility, LOG_SERVER, level);
+		levels_val = conf_id_get(conf, C_LOG, C_SERVER, &id);
+		levels = conf_opt(&levels_val);
+		sink_levels_add(log, facility, LOG_SERVER, levels);
 
 		// Set ZONE logging.
-		level_val = conf_id_get(conf, C_LOG, C_ZONE, &id);
-		level = conf_opt(&level_val);
-		sink_levels_add(log, facility, LOG_ZONE, level);
+		levels_val = conf_id_get(conf, C_LOG, C_ZONE, &id);
+		levels = conf_opt(&levels_val);
+		sink_levels_add(log, facility, LOG_ZONE, levels);
 
 		// Set ANY logging.
-		level_val = conf_id_get(conf, C_LOG, C_ANY, &id);
-		level = conf_opt(&level_val);
-		sink_levels_add(log, facility, LOG_ANY, level);
+		levels_val = conf_id_get(conf, C_LOG, C_ANY, &id);
+		levels = conf_opt(&levels_val);
+		sink_levels_add(log, facility, LOG_ANY, levels);
 	}
 
 	sink_publish(log);
