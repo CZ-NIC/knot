@@ -574,7 +574,8 @@ timer-db
 Specifies a path of the persistent timer database. The path can be specified
 as a relative path to the *default* template :ref:`storage<zone_storage>`.
 
-*Caution:* This option is only available in the *default* template.
+.. NOTE::
+   This option is only available in the *default* template.
 
 *Default:* :ref:`storage<zone_storage>`/timers
 
@@ -586,7 +587,8 @@ global-module
 An ordered list of references to query modules in the form
 *module_name/module_id*. These modules apply to all queries.
 
-*Caution:* This option is only available in the *default* template.
+.. NOTE::
+   This option is only available in the *default* template.
 
 *Default:* not set
 
@@ -771,8 +773,9 @@ flush). This is applicable when the zone is updated via IXFR, DDNS or automatic
 DNSSEC signing. In order to disable automatic zonefile synchronization, -1 value
 can be used (manual zone flush is still possible).
 
-*Caution:* If you are serving large zones with frequent updates where
-the immediate sync with a zone file is not desirable, increase the value.
+.. NOTE::
+   If you are serving large zones with frequent updates where
+   the immediate sync with a zone file is not desirable, increase the value.
 
 *Default:* 0 (immediate)
 
@@ -785,8 +788,9 @@ If enabled, the server creates zone differences from changes you made to the
 zone file upon server reload. This option is relevant only if the server
 is a master server for the zone.
 
-*Caution:* This option has no effect with enabled
-:ref:`dnssec-signing<zone_dnssec-signing>`.
+.. NOTE::
+   This option has no effect with enabled
+   :ref:`dnssec-signing<zone_dnssec-signing>`.
 
 *Default:* off
 
@@ -806,7 +810,8 @@ dnssec-signing
 
 If enabled, automatic DNSSEC signing for the zone is turned on.
 
-*Caution:* Cannot be enabled on a slave zone.
+.. NOTE::
+   Cannot be enabled on a slave zone.
 
 *Default:* off
 
@@ -844,10 +849,11 @@ Possible values:
 - ``increment`` – The serial is incremented according to serial number arithmetic
 - ``unixtime`` – The serial is set to the current unix time
 
-*Caution:* If your serial was in other than unix time format, be careful
-with the transition to unix time.  It may happen that the new serial will
-be \'lower\' than the old one. If this is the case, the transition should be
-done by hand (see RFC 1982).
+.. NOTE::
+   If your serial was in other than unix time format, be careful
+   with the transition to unix time.  It may happen that the new serial will
+   be \'lower\' than the old one. If this is the case, the transition should be
+   done by hand (see RFC 1982).
 
 *Default:* increment
 
@@ -1037,8 +1043,9 @@ prefix
 
 A record owner prefix.
 
-*Caution:* *prefix* doesn’t allow dots, address parts in the synthetic names are
-separated with a dash.
+.. NOTE::
+   The value doesn’t allow dots, address parts in the synthetic names are
+   separated with a dash.
 
 *Default:* empty
 

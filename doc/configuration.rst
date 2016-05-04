@@ -625,21 +625,23 @@ you want to do the former. The configuration comprises only a
 :ref:`mod-dnstap_sink` path parameter, which can be either a file or
 a UNIX socket::
 
-    mod-dnstap:
-      - id: capture_all
-        sink: /tmp/capture.tap
+   mod-dnstap:
+     - id: capture_all
+       sink: /tmp/capture.tap
 
-    template:
-      - id: default
-        global-module: mod-dnstap/capture_all
+   template:
+     - id: default
+       global-module: mod-dnstap/capture_all
 
-Note: to be able to use a Unix socket you need an external program to create it.
-Knot DNS connects to it as a client using the libfstrm library. It operates
-exactly like syslog. See `here
-<https://www.nlnetlabs.nl/bugs-script/show_bug.cgi?id=741#c10>`_ for
-more details.
+.. NOTE::
+   To be able to use a Unix socket you need an external program to create it.
+   Knot DNS connects to it as a client using the libfstrm library. It operates
+   exactly like syslog. See `here
+   <https://www.nlnetlabs.nl/bugs-script/show_bug.cgi?id=741#c10>`_ for
+   more details.
 
-Note: dnstap log files can also be created or read using ``kdig``.
+.. NOTE::
+   Dnstap log files can also be created or read using ``kdig``.
 
 .. _dnstap: http://dnstap.info/
 
@@ -737,8 +739,9 @@ uses of this feature:
 * Local zones (poor man's "views"), rest is forwarded to the public-facing server
 * etc.
 
-*Note: The module does not alter the query/response as the resolver would,
-and the original transport protocol is kept as well.*
+.. NOTE::
+   The module does not alter the query/response as the resolver would,
+   and the original transport protocol is kept as well.
 
 The configuration is straightforward and just a single remote server is
 required::
@@ -794,9 +797,9 @@ And we query the nameserver with the following:
    $ kdig IN AAAA ipv6.myrecord.com
      ... returns NOERROR, ::1
 
-*Note: An entry in the database matches anything at the same or a lower domain
+An entry in the database matches anything at the same or a lower domain
 level, i.e. 'myrecord.com' matches 'a.a.myrecord.com' as well.
-This can be utilized to create catch-all entries.*
+This can be utilized to create catch-all entries.
 
 You can also add authority information for the entries, provided you create
 SOA + NS records for a name, like so:
@@ -817,7 +820,7 @@ In this case, the responses will:
    the example)*, but not the RR type *(this is to allow the synthesis of
    negative responses)*
 
-*Note: The SOA record applies only to the 'myrecord.com.', not to any other
+The SOA record applies only to the 'myrecord.com.', not to any other
 record (not even those of its subdomains). From this point of view, all records
 in the database are unrelated and not hierarchical. The idea is to provide
 subtree isolation for each entry.*
@@ -846,7 +849,8 @@ Here is an example on how to use the module:
    ipv6.myrecord.com.      AAAA RDATA=22B  ipv6_query      10.0.0.1
    myrecord.com.           A RDATA=10B     -               -
 
-  *Note: The database may be modified later on while the server is running.*
+.. NOTE::
+   The database may be modified later on while the server is running.
 
 * Configure the query module::
 
@@ -858,8 +862,8 @@ Here is an example on how to use the module:
      - id: default
        global-module: mod-rosedb/default
 
-  *Note: The module accepts just one parameter – the path to the directory where
-  the database will be stored.*
+The module accepts just one parameter – the path to the directory where
+the database will be stored.
 
 * Start the server:
 

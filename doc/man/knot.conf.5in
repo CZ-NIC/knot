@@ -497,7 +497,12 @@ A template identifier.
 Specifies a path of the persistent timer database. The path can be specified
 as a relative path to the \fIdefault\fP template \fI\%storage\fP\&.
 .sp
-\fICaution:\fP This option is only available in the \fIdefault\fP template.
+\fBNOTE:\fP
+.INDENT 0.0
+.INDENT 3.5
+This option is only available in the \fIdefault\fP template.
+.UNINDENT
+.UNINDENT
 .sp
 \fIDefault:\fP \fI\%storage\fP/timers
 .SS global\-module
@@ -505,7 +510,12 @@ as a relative path to the \fIdefault\fP template \fI\%storage\fP\&.
 An ordered list of references to query modules in the form
 \fImodule_name/module_id\fP\&. These modules apply to all queries.
 .sp
-\fICaution:\fP This option is only available in the \fIdefault\fP template.
+\fBNOTE:\fP
+.INDENT 0.0
+.INDENT 3.5
+This option is only available in the \fIdefault\fP template.
+.UNINDENT
+.UNINDENT
 .sp
 \fIDefault:\fP not set
 .SH ZONE SECTION
@@ -675,8 +685,13 @@ flush). This is applicable when the zone is updated via IXFR, DDNS or automatic
 DNSSEC signing. In order to disable automatic zonefile synchronization, \-1 value
 can be used (manual zone flush is still possible).
 .sp
-\fICaution:\fP If you are serving large zones with frequent updates where
+\fBNOTE:\fP
+.INDENT 0.0
+.INDENT 3.5
+If you are serving large zones with frequent updates where
 the immediate sync with a zone file is not desirable, increase the value.
+.UNINDENT
+.UNINDENT
 .sp
 \fIDefault:\fP 0 (immediate)
 .SS ixfr\-from\-differences
@@ -685,8 +700,13 @@ If enabled, the server creates zone differences from changes you made to the
 zone file upon server reload. This option is relevant only if the server
 is a master server for the zone.
 .sp
-\fICaution:\fP This option has no effect with enabled
+\fBNOTE:\fP
+.INDENT 0.0
+.INDENT 3.5
+This option has no effect with enabled
 \fI\%dnssec\-signing\fP\&.
+.UNINDENT
+.UNINDENT
 .sp
 \fIDefault:\fP off
 .SS max\-journal\-size
@@ -698,7 +718,12 @@ Maximum size of the zone journal file.
 .sp
 If enabled, automatic DNSSEC signing for the zone is turned on.
 .sp
-\fICaution:\fP Cannot be enabled on a slave zone.
+\fBNOTE:\fP
+.INDENT 0.0
+.INDENT 3.5
+Cannot be enabled on a slave zone.
+.UNINDENT
+.UNINDENT
 .sp
 \fIDefault:\fP off
 .SS kasp\-db
@@ -727,10 +752,15 @@ Possible values:
 \fBunixtime\fP – The serial is set to the current unix time
 .UNINDENT
 .sp
-\fICaution:\fP If your serial was in other than unix time format, be careful
+\fBNOTE:\fP
+.INDENT 0.0
+.INDENT 3.5
+If your serial was in other than unix time format, be careful
 with the transition to unix time.  It may happen that the new serial will
 be \(aqlower\(aq than the old one. If this is the case, the transition should be
 done by hand (see RFC 1982).
+.UNINDENT
+.UNINDENT
 .sp
 \fIDefault:\fP increment
 .SS module
@@ -888,8 +918,13 @@ Possible values:
 .sp
 A record owner prefix.
 .sp
-\fICaution:\fP \fIprefix\fP doesn’t allow dots, address parts in the synthetic names are
+\fBNOTE:\fP
+.INDENT 0.0
+.INDENT 3.5
+The value doesn’t allow dots, address parts in the synthetic names are
 separated with a dash.
+.UNINDENT
+.UNINDENT
 .sp
 \fIDefault:\fP empty
 .SS origin

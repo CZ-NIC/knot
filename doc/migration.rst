@@ -26,7 +26,9 @@ server configuration:
    .. NOTE::
       If dynamic updates (DDNS) are enabled for the given zone, you
       might need to freeze the zone before flushing it. That can be done
-      similarly: ``rndc freeze example.com``
+      similarly::
+
+      $ rndc freeze example.com
 
 2. Copy the fresh zone file into the zones storage directory of Knot
    DNS. Its default location is ``/var/lib/knot``.

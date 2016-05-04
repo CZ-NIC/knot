@@ -52,9 +52,10 @@ Also the configuration database can be exported into a textual file::
 
     $ knotc conf-export output.conf
 
-*Caution:* The import and export commands access the configuration database
-directly, without any interaction with the server. So it is strictly
-recommended to perform these operations when the server is not running.
+.. WARNING::
+   The import and export commands access the configuration database
+   directly, without any interaction with the server. So it is strictly
+   recommended to perform these operations when the server is not running.
 
 .. _Dynamic configuration:
 
@@ -67,7 +68,8 @@ the server must be started with a specified configuration database location
 or with the default database initialized. Otherwise all the changes to the
 configuration will be temporary (until the server stop).
 
-*Note:* The database can be :ref:`imported<Configuration database>` in advance.
+.. NOTE::
+   The database can be :ref:`imported<Configuration database>` in advance.
 
 Most of the commands get an item name and value parameters. The item name is
 in the form of ``section[identifier].name``. If the item is multivalued,
@@ -88,7 +90,8 @@ to get all section identifiers or to get a specific configuration item::
     $ knotc conf-read 'zone.domain'
     $ knotc conf-read 'zone[example.com].master'
 
-*Caution:* The following operations don't work on OpenBSD!
+.. WARNING::
+   The following operations don't work on OpenBSD!
 
 Modifying operations require an active configuration database transaction.
 Just one transaction can be active at a time. Such a transaction then can
@@ -107,10 +110,12 @@ section identifier or to add a value to all identified sections::
     $ knotc conf-set 'zone[example.com]'
     $ knotc conf-set 'zone.slave' 'slave2'
 
-*Note:* Also the include operation can be performed. A non-absolute file
-location is relative to the server binary path, not to the control binary path!::
+.. NOTE::
+   Also the include operation can be performed. A non-absolute file
+   location is relative to the server binary path, not to the control binary
+   path!::
 
-    $ knotc conf-set 'include' '/tmp/new_zones.conf'
+      $ knotc conf-set 'include' '/tmp/new_zones.conf'
 
 To unset the whole configuration or to unset the whole configuration section
 or to unset an identified section or to unset an item or to unset a specific

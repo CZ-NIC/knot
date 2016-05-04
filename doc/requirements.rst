@@ -36,10 +36,11 @@ memory demanding. The rough estimate for memory requirements is
 an estimate and you are advised to do your own measurements before
 deploying Knot DNS to production.
 
-Also note that to ensure uninterrupted serving of the zone, Knot DNS
-employs a Read-Copy-Update mechanism instead of locking and thus
-requires twice the amount of memory for the duration of incoming
-transfers.
+.. NOTE::
+   To ensure uninterrupted serving of the zone, Knot DNS
+   employs the Read-Copy-Update mechanism instead of locking and thus
+   requires twice the amount of memory for the duration of incoming
+   transfers.
 
 Operating system
 ================
