@@ -262,13 +262,13 @@ int conf_clone(
 		out->filename = strdup(s_conf->filename);
 	}
 
-	// Initialize query modules list.
-	init_list(&out->query_modules);
-
-	// Reuse the hostname.
+	// Copy the hostname.
 	if (s_conf->hostname != NULL) {
 		out->hostname = strdup(s_conf->hostname);
 	}
+
+	// Initialize query modules list.
+	init_list(&out->query_modules);
 
 	// Initialize cached values.
 	init_cache(out);
@@ -283,19 +283,19 @@ int conf_clone(
 void conf_update(
 	conf_t *conf)
 {
-	if (conf == NULL) {
-		return;
+	// Remove the clone flag for new master configuration.
+	if (conf != NULL) {
+		conf->is_clone = false;
 	}
-
-	conf->is_clone = false;
 
 	conf_t **current_conf = &s_conf;
 	conf_t *old_conf = rcu_xchg_pointer(current_conf, conf);
 
 	synchronize_rcu();
 
-	if (old_conf) {
-		old_conf->is_clone = true;
+	if (old_conf != NULL) {
+		// Remove the clone flag if a single configuration.
+		old_conf->is_clone = (conf != NULL) ? true : false;
 		conf_free(old_conf);
 	}
 }
