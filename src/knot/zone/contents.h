@@ -178,11 +178,7 @@ int zone_contents_adjust_pointers(zone_contents_t *contents);
  * \brief Sets parent and previous pointers, sets node flags and NSEC3 links.
  *        This has to be called before the zone can be served.
  *
- * \param first_nsec3_node First node in NSEC3 tree - needed in sem. checks.
- *        Will not be saved if set to NULL.
- * \param last_nsec3_node Last node in NSEC3 tree - needed in sem. checks.
- *        Will not be saved if set to NULL.
- * \param zone Zone to adjust domain names in.
+ * \param contents Zone contents to be adjusted.
  */
 int zone_contents_adjust_full(zone_contents_t *contents);
 
