@@ -1,23 +1,29 @@
 .. highlight:: console
 
-kzonecheck – Knot DNS zone check tool
-=====================================
+kzonecheck – Knot DNS zone file checking tool
+=============================================
 
 Synopsis
 --------
 
-:program:`kzonecheck` [*options*] *zonefile*
+:program:`kzonecheck` [*options*] *zone-file*
 
 Description
 -----------
 
-This utility checks zone similar to knotc zonecheck, but without running server.
+The utility checks zone file syntax and runs semantic checks on the zone
+content. The executed checks are the same as the checks run by the Knot
+DNS server.
+
+Please, refer to the ``semantic-checks`` configuration option in
+:manpage:`knot.conf(5)` for the full list of available semantic checks.
 
 Options
 ..........
 
 **-o**, **--origin** *origin*
-  The zone origin. If not specified the name of file or name without '.zone' ending is assumed to be the origin.
+  Zone origin. If not specified, the origin is determined from the file name
+  (possibly removing the ``.zone`` suffix).
 
 **-v**, **--verbose**
   Enable debug output.
@@ -31,4 +37,4 @@ Options
 See Also
 --------
 
-:manpage:`knotc(8)`.
+:manpage:`knotd(8)`, :manpage:`knot.conf(5)`
