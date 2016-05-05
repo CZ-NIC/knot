@@ -29,7 +29,6 @@
 #include "contrib/ucw/lists.h"
 #include "libknot/mm_ctx.h"
 
-
 enum check_levels {
 	SEM_CHECK_MANDATORY = 1 << 0,
 	SEM_CHECK_OPTIONAL =  1 << 1,
