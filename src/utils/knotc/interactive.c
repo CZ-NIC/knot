@@ -313,9 +313,9 @@ static unsigned char complete(EditLine *el, int ch)
 		goto complete_exit;
 	}
 
-	if (token > 1 || desc->flags == CMD_CONF_FNONE ||
-	                 desc->flags == CMD_CONF_FREAD ||
-	                 desc->flags == CMD_CONF_FWRITE) {
+	// Finish if a command with no or unsupported arguments.
+	if (desc->flags == CMD_CONF_FNONE || desc->flags == CMD_CONF_FREAD ||
+	    desc->flags == CMD_CONF_FWRITE) {
 		goto complete_exit;
 	}
 
@@ -327,18 +327,19 @@ static unsigned char complete(EditLine *el, int ch)
 	// Complete the zone name.
 	if (desc->flags & CMD_CONF_FOPT_ZONE) {
 		if (desc->flags & CMD_CONF_FREAD) {
-			local_zones_lookup(el, argv[1], pos);
+			local_zones_lookup(el, argv[token], pos);
 		} else {
-			id_lookup(el, argv[1], pos, desc, "zone", true);
+			id_lookup(el, argv[token], pos, desc, "zone", true);
+		}
+		goto complete_exit;
+	// Complete the section/id/item name.
+	} else if (desc->flags & (CMD_CONF_FOPT_ITEM | CMD_CONF_FREQ_ITEM)) {
+		if (token == 1) {
+			item_lookup(el, argv[1], desc);
 		}
 		goto complete_exit;
 	}
 
-	// Complete the section/id/item name.
-	if (desc->flags & (CMD_CONF_FOPT_ITEM | CMD_CONF_FREQ_ITEM)) {
-		item_lookup(el, argv[1], desc);
-		goto complete_exit;
-	}
 complete_exit:
 	conf_update(NULL);
 	tok_reset(tok);

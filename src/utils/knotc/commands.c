@@ -267,7 +267,7 @@ static void format_block(ctl_cmd_t cmd, bool failed, bool empty)
 		printf("%s", empty ? "" : "\n");
 		break;
 	default:
-		break;
+		assert(0);
 	}
 }
 
