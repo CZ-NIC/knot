@@ -162,7 +162,6 @@ event_t *evsched_event_create(evsched_t *sched, event_cb_t cb, void *data)
 
 	/* Initialize. */
 	memset(e, 0, sizeof(event_t));
-	e->sched = sched;
 	e->cb = cb;
 	e->data = data;
 	e->hpos.pos=0;
@@ -179,19 +178,18 @@ void evsched_event_free(event_t *ev)
 	free(ev);
 }
 
-int evsched_schedule(event_t *ev, uint32_t dt)
+int evsched_schedule(evsched_t *sched, event_t *ev, uint32_t dt)
 {
-	if (ev == NULL || ev->sched == NULL) {
+	if (ev == NULL || sched == NULL) {
 		return KNOT_EINVAL;
 	}
 
 	struct timeval new_time = timeval_in(dt);
 
-	evsched_t *sched = ev->sched;
-
 	/* Lock calendar. */
 	pthread_mutex_lock(&sched->heap_lock);
 
+	ev->sched = sched;
 	ev->tv = new_time;
 
 	/* Make sure it's not already enqueued. */
@@ -215,6 +213,7 @@ int evsched_cancel(event_t *ev)
 		return KNOT_EINVAL;
 	}
 
+	int ret = KNOT_EOK;
 	evsched_t *sched = ev->sched;
 
 	/* Lock calendar. */
@@ -223,6 +222,9 @@ int evsched_cancel(event_t *ev)
 	int found = heap_find(&sched->heap, (heap_val_t *)ev);
 	if (found > 0) {
 		heap_delete(&sched->heap, found);
+		ev->sched = NULL;
+	} else {
+		ret = KNOT_ENOENT;
 	}
 
 	/* Unlock calendar. */
@@ -232,7 +234,7 @@ int evsched_cancel(event_t *ev)
 	/* Reset event timer. */
 	memset(&ev->tv, 0, sizeof(struct timeval));
 
-	return KNOT_EOK;
+	return ret;
 }
 
 void evsched_start(evsched_t *sched)
