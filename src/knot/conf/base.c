@@ -101,6 +101,10 @@ void conf_refresh_hostname(
 
 	free(conf->hostname);
 	conf->hostname = sockaddr_hostname();
+	if (conf->hostname == NULL) {
+		// Empty hostname fallback, NULL cannot be passed to strlen!
+		conf->hostname = strdup("");
+	}
 }
 
 static void init_cache(
@@ -206,7 +210,7 @@ int conf_new(
 
 	// Cache the current hostname.
 	if (!(flags & CONF_FNOHOSTNAME)) {
-		out->hostname = sockaddr_hostname();
+		conf_refresh_hostname(out);
 	}
 
 	// Initialize cached values.

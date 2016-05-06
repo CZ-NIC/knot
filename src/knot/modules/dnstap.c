@@ -241,7 +241,7 @@ int dnstap_load(struct query_plan *plan, struct query_module *self,
 	} else {
 		ctx->identity = sockaddr_hostname();
 	}
-	ctx->identity_len = strlen(ctx->identity);
+	ctx->identity_len = (ctx->identity != NULL) ? strlen(ctx->identity) : 0;
 
 	// Set version.
 	val = conf_mod_get(self->config, MOD_VERSION, self->id);
