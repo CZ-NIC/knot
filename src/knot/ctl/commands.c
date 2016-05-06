@@ -286,6 +286,7 @@ static int ctl_zone(ctl_args_t *args, ctl_cmd_t cmd)
 		return zones_apply(args, zone_sign);
 	default:
 		assert(0);
+		return KNOT_EINVAL;
 	}
 }
 
@@ -308,6 +309,7 @@ static int ctl_server(ctl_args_t *args, ctl_cmd_t cmd)
 		break;
 	default:
 		assert(0);
+		ret = KNOT_EINVAL;
 	}
 
 	return ret;
@@ -449,6 +451,7 @@ static int ctl_conf_txn(ctl_args_t *args, ctl_cmd_t cmd)
 		break;
 	default:
 		assert(0);
+		ret = KNOT_EINVAL;
 	}
 
 	if (ret != KNOT_EOK) {
@@ -487,6 +490,7 @@ static int ctl_conf_read(ctl_args_t *args, ctl_cmd_t cmd)
 			break;
 		default:
 			assert(0);
+			ret = KNOT_EINVAL;
 		}
 		if (ret != KNOT_EOK) {
 			send_error(args, knot_strerror(ret));
@@ -532,6 +536,7 @@ static int ctl_conf_modify(ctl_args_t *args, ctl_cmd_t cmd)
 			break;
 		default:
 			assert(0);
+			ret = KNOT_EINVAL;
 		}
 		if (ret != KNOT_EOK) {
 			send_error(args, knot_strerror(ret));
