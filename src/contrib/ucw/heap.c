@@ -59,6 +59,12 @@ int heap_init(struct heap *h, int (*cmp)(void *, void *), int init_size)
 	return h->data ? 1 : 0;
 }
 
+void heap_deinit(struct heap *h)
+{
+	free(h->data);
+	memset(h, 0, sizeof(*h));
+}
+
 static inline void _heap_bubble_down(struct heap *h, int e)
 {
 	int e1;

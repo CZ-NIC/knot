@@ -37,6 +37,8 @@ struct heap {
 #define EMPTY_HEAP(h) 		((h)->num == 0) /* h->num == 0 */
 
 int heap_init(struct heap *, int (*cmp)(), int);
+void heap_deinit(struct heap *);
+
 void heap_delmin(struct heap *);
 int heap_insert(struct heap *, heap_val_t *);
 int heap_find(struct heap *, heap_val_t *);
