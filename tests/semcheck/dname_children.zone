@@ -14,4 +14,3 @@ dns1	A	192.0.2.1
 
 foo	DNAME	bar
 bar.foo	A	192.0.0.1
-

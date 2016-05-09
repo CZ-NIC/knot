@@ -18,7 +18,7 @@ expect_error()
 	ret=$?
 	if [ $2 -eq 1 ]; then
 		ok "$1 - program return code" test $ret -eq 1
-	else 
+	else
 		ok "$1 - program return code" test $ret -eq 2
 	fi
 
@@ -26,7 +26,7 @@ expect_error()
 	ok "$1 - check fatal" test $? -ne $2
 	grep "node: .* (${4}.*" $LOG > /dev/null
 	ok "$1 - check message" test $? -eq 0
-	
+
 	errors=$(grep "node:" $LOG | wc -l)
 	ok "number of found errors" test $errors -eq $3
 	if [ $errors != $3 ]; then
@@ -80,4 +80,3 @@ test_correct "no_error_delegaton_bitmap.signed"
 test_correct "no_error_nsec3_delegation.signed"
 
 rm $LOG
-
