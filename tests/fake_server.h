@@ -70,7 +70,7 @@ static inline int create_fake_server(server_t *server, knot_mm_t *mm)
 	}
 
 	/* Load test configuration. */
-	const char *conf_str = "server:\n identity: bogus.ns\n version: 0.11\n"
+	const char *conf_str = "server:\n identity: bogus.ns\n version: 0.11\n nsid: ""\n"
 	                       "zone:\n - domain: .\n   zonefile-sync: -1\n";
 	ret = test_conf(conf_str, NULL);
 	if (ret != KNOT_EOK) {
