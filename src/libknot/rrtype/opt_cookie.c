@@ -19,7 +19,6 @@
 #include <stdlib.h>
 
 #include "contrib/wire_ctx.h"
-#include "libknot/attribute.h"
 #include "libknot/consts.h" // knot_addr_family_t -- is unused
 #include "libknot/errcode.h"
 #include "libknot/rrtype/opt.h"

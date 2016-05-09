@@ -24,6 +24,8 @@
 
 #pragma once
 
+#include "libknot/attribute.h"
+
 #define KNOT_OPT_COOKIE_MIN  8
 #define KNOT_OPT_COOKIE_CLNT KNOT_OPT_COOKIE_MIN
 #define KNOT_OPT_COOKIE_SRVR_MIN 8
@@ -47,7 +49,7 @@
  * \retval <> 0 if the supplied arguments are within limits
  * \retval 0 if the supplied parameters violate the requirements
  */
-_mustcheck_
+_pure_ _mustcheck_
 static inline uint16_t knot_edns_opt_cookie_data_len(uint16_t sc_len)
 {
 	/* + size of client cookie */
