@@ -329,16 +329,25 @@ static int open_tmp_filename(const char *old_name, char **new_name)
 {
 	*new_name = sprintf_alloc("%s.XXXXXX", old_name);
 	if (*new_name == NULL) {
-		return -1;
+		goto open_tmp_failed;
 	}
 
 	int fd = mkstemp(*new_name);
-	if (fd < 0 || fchmod(fd, S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP) != 0) {
-		free(*new_name);
-		*new_name = NULL;
+	if (fd < 0) {
+		goto open_tmp_failed;
+	}
+
+	if (fchmod(fd, S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP) != 0) {
+		close(fd);
+		goto open_tmp_failed;
 	}
 
 	return fd;
+open_tmp_failed:
+	free(*new_name);
+	*new_name = NULL;
+
+	return -1;
 }
 
 /*! \brief Prepare a directory for the file. */
