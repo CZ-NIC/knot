@@ -27,7 +27,7 @@ for server in [master, slave]:
 master.zones[zone.name].zfile.update_soa(serial=10)
 master.reload()
 for server in [master, slave]:
-    server.zone_wait(zone, serial=9)
+    server.zone_wait(zone, serial=10, equal=True, greater=False)
 
 # stop servers
 master.stop()
@@ -35,13 +35,13 @@ slave.stop()
 
 # verify zone persistence after boostrap
 slave.start()
-slave.zone_wait(zone, serial=9)
+slave.zone_wait(zone, serial=10, equal=True, greater=False)
 
 # update zone
 master.zones[zone.name].zfile.update_soa(serial=20)
 master.start()
 for server in [master, slave]:
-    server.zone_wait(zone, serial=19)
+    server.zone_wait(zone, serial=20, equal=True, greater=False)
 
 # stop servers
 master.stop()
@@ -49,6 +49,6 @@ slave.stop()
 
 # verify zone persistence without journal
 slave.start()
-slave.zone_wait(zone, serial=19)
+slave.zone_wait(zone, serial=20, equal=True, greater=False)
 
 t.stop()

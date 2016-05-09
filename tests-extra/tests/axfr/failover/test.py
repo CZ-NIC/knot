@@ -42,19 +42,19 @@ for server in [master1, master2, slave]:
 master1.zones[zone.name].zfile.update_soa(serial=10)
 master1.reload()
 for server in [master1, master2, slave]:
-    server.zone_wait(zone, serial=9)
+    server.zone_wait(zone, serial=10, equal=True, greater=False)
 
 # stop slave, update masters
 slave.stop()
 master1.zones[zone.name].zfile.update_soa(serial=20)
 master1.reload()
 for server in [master1, master2]:
-    server.zone_wait(zone, serial=19)
+    server.zone_wait(zone, serial=20, equal=True, greater=False)
 
 # failover to second master
 master1.stop()
 slave.start()
-slave.zone_wait(zone, serial=19)
+slave.zone_wait(zone, serial=20, equal=True, greater=False)
 master1.start()
 
 # stop slave, update masters
@@ -62,14 +62,14 @@ slave.stop()
 master1.zones[zone.name].zfile.update_soa(serial=30)
 master1.reload()
 for server in [master1, master2]:
-    server.zone_wait(zone, serial=29)
+    server.zone_wait(zone, serial=30, equal=True, greater=False)
 
 # failover after notify
 master1.stop()
 master2.stop()
 slave.start()
-slave.zone_wait(zone, serial=19)
+slave.zone_wait(zone, serial=20, equal=True, greater=False)
 master2.start()
-slave.zone_wait(zone, serial=29)
+slave.zone_wait(zone, serial=30, equal=True, greater=False)
 
 t.end()
