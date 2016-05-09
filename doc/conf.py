@@ -87,7 +87,6 @@ pygments_style = 'sphinx'
 # A list of ignored prefixes for module index sorting.
 #modindex_common_prefix = []
 
-
 # -- Options for HTML output ---------------------------------------------------
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for
@@ -167,7 +166,6 @@ html_use_index = False
 # Output file base name for HTML help builder.
 htmlhelp_basename = 'KnotDNSdoc'
 
-
 # -- Options for LaTeX output --------------------------------------------------
 
 latex_elements = {
@@ -213,7 +211,6 @@ latex_logo = 'logo.eps'
 # If false, no module index is generated.
 latex_domain_indices = False
 
-
 # -- Options for manual page output --------------------------------------------
 
 # One entry per manual page. List of tuples
@@ -232,7 +229,6 @@ man_pages = [
 
 # If true, show URL addresses after external links.
 #man_show_urls = False
-
 
 # -- Options for Texinfo output ------------------------------------------------
 

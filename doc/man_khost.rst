@@ -24,7 +24,7 @@ Parameters
 
 *server*
   Is a name or an address of the nameserver to send a query to.  The address
-  can be specified using [address]:port notation. If no server is specified, 
+  can be specified using [address]:port notation. If no server is specified,
   the servers from :file:`/etc/resolv.conf` are used.
 
 If no arguments are provided, :program:`khost` prints a short help.

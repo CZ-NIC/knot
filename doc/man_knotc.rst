@@ -54,7 +54,6 @@ Actions
 **reload**
   Reload the server configuration and modified zone files.
 
-
 **zone-check** [*zone*...]
   Test if the server can load the zone. Semantic checks are executed if enabled
   in the configuration. (*)
@@ -84,7 +83,6 @@ Actions
 **zone-sign** [*zone*...]
   Trigger a DNSSEC re-sign of the zone. Existing signatures will be dropped.
   This command is valid for zones with automatic DNSSEC signing.
-
 
 **conf-init**
   Initialize the configuration database. (*)

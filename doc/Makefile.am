@@ -30,7 +30,7 @@ AM_V_SPHINX = $(AM_V_SPHINX_@AM_V@)
 AM_V_SPHINX_ = $(AM_V_SPHINX_@AM_DEFAULT_V@)
 AM_V_SPHINX_0 = @echo "  SPHINX   $@";
 
-AM_V_ECHO = @sh -c 'if $(AM_V_P); then echo $$1; fi' -- 
+AM_V_ECHO = @sh -c 'if $(AM_V_P); then echo $$1; fi' --
 
 SPHINXBUILDDIR = $(builddir)/_build
 
@@ -55,7 +55,7 @@ man_SPHINXOPTS = $(_SPHINXOPTS) \
 
 .PHONY: html-local singlehtml pdf-local info-local man install-html-local install-singlehtml install-pdf-local install-info-local
 
-man_MANS = 
+man_MANS =
 
 if HAVE_DAEMON
 man_MANS += man/knot.conf.5 man/knotc.8 man/knotd.8
@@ -85,7 +85,6 @@ man_SUBST = $(AM_V_GEN)mkdir -p man; sed -e 's,[@]VERSION@,$(VERSION),' -e 's,[@
 
 .8in.8:
 	$(man_SUBST)
-
 
 if HAVE_DOCS
 
