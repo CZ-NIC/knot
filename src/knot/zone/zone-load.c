@@ -190,7 +190,7 @@ int zone_load_post(conf_t *conf, zone_t *zone, zone_contents_t *contents,
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
-		ret = zone_contents_create_diff(zone->contents, contents, &change);
+		ret = zone_contents_diff(zone->contents, contents, &change);
 		if (ret == KNOT_ENODIFF) {
 			log_zone_warning(zone->name, "failed to create journal "
 			                 "entry, zone file changed without "
