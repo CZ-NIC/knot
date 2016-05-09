@@ -511,8 +511,9 @@ class Server(object):
             raise Failed("Can't send RAW data (%d bytes) to server='%s'" %
                          (len(data), self.name))
 
-    def zone_wait(self, zone, serial=None):
-        '''Try to get SOA record with serial higher then specified'''
+    def zone_wait(self, zone, serial=None, equal=False, greater=True):
+        '''Try to get SOA record. With an optional serial number and given
+           relation (equal or/and greater).'''
 
         zone = zone_arg_check(zone)
 
@@ -535,28 +536,31 @@ class Server(object):
                     soa = str((resp.resp.answer[0]).to_rdataset())
                     _serial = int(soa.split()[5])
 
-                    if serial:
-                        if serial < _serial:
-                            break
-                    else:
+                    if not serial:
+                        break
+                    elif equal and serial == _serial:
+                        break
+                    elif greater and serial < _serial:
                         break
             time.sleep(2)
         else:
             self.backtrace()
+            serial_str = "%s%s%i" % \
+                         (">" if greater else "", "=" if equal else "", serial)
             raise Failed("Can't get SOA%s, zone='%s', server='%s'" %
-                         (" serial > %i" % serial if serial else "",
-                          zone.name, self.name))
+                         (serial_str if serial else "", zone.name, self.name))
 
         detail_log(SEP)
 
         return _serial
 
-    def zones_wait(self, zone_list, serials=None):
+    def zones_wait(self, zone_list, serials=None, equal=False, greater=True):
         new_serials = dict()
 
         for zone in zone_list:
             old_serial = serials[zone.name] if serials else None
-            new_serial = self.zone_wait(zone, serial=old_serial)
+            new_serial = self.zone_wait(zone, serial=old_serial, equal=equal,
+                                        greater=greater)
             new_serials[zone.name] = new_serial
 
         return new_serials
