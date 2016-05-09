@@ -24,6 +24,7 @@ edns
 endian
 fdset
 hattrie
+heap
 hhash
 internal_mem
 journal
