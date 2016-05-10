@@ -28,6 +28,7 @@ check_PROGRAMS = \
 	endian				\
 	fdset				\
 	hattrie				\
+	heap				\
 	hhash				\
 	internal_mem			\
 	journal				\

@@ -137,7 +137,7 @@ void evsched_deinit(evsched_t *sched)
 		evsched_event_free(e);
 	}
 
-	free(sched->heap.data);
+	heap_deinit(&sched->heap);
 
 	if (sched->thread != NULL) {
 		dt_delete(&sched->thread);
