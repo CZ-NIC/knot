@@ -34,26 +34,6 @@ support.
      - RSA 4096-bit
      - DSA 512-bit
      - DSA 1024-bit
-   * - `SoftHSM 2.0 <https://www.opendnssec.org/softhsm/>`_
-     - |yes|
-     - |yes|
-     - |yes|
-     - |yes|
-     - |yes|
-     - |yes|
-     - |yes|
-     - |yes|
-     - |yes|
-   * - `SafeNet Network HSM (Luna) <http://www.safenet-inc.com/data-encryption/hardware-security-modules-hsms/luna-hsms-key-management/luna-sa-network-hsm/>`_
-     - |yes|
-     - |no|
-     - |no|
-     - |no|
-     - |yes|
-     - |yes|
-     - |yes|
-     - |unknown|
-     - |unknown|
    * - `Feitian ePass 2003 <http://www.ftsafe.com/product/epass/epass2003>`_
      - |yes|
      - |no|
@@ -64,7 +44,26 @@ support.
      - |no|
      - |no|
      - |no|
-
+   * - `SafeNet Network HSM (Luna SA 4) <http://www.safenet-inc.com/data-encryption/hardware-security-modules-hsms/luna-hsms-key-management/luna-sa-network-hsm/>`_
+     - |yes|
+     - |no|
+     - |no|
+     - |no|
+     - |yes|
+     - |yes|
+     - |yes|
+     - |no|
+     - |no|
+   * - `SoftHSM 2.0 <https://www.opendnssec.org/softhsm/>`_
+     - |yes|
+     - |yes|
+     - |yes|
+     - |yes|
+     - |yes|
+     - |yes|
+     - |yes|
+     - |yes|
+     - |yes|
 .. in progress
    * - `Trustway Proteccio NetHSM <http://www.bull.com/fr/cybers%C3%A9curit%C3%A9-trustway-proteccio-nethsm>`_
      - |unknown|
@@ -77,12 +76,12 @@ support.
      - |unknown|
      - |unknown|
 
-.. in progress: works with small hacks, only one key possible
+.. in progress: key ID checks have to be disabled in code
    * - `Yubikey NEO <https://www.yubico.com/products/yubikey-hardware/yubikey-neo/>`_
      - |no|
      - |no|
      - |yes|
-     - |yes|
+     - |no|
      - |yes|
      - |yes|
      - |no|
