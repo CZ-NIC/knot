@@ -16,8 +16,8 @@ indicates which algorithms and operations have been observed to work. Please
 notice minimal GnuTLS library version required for particular algorithm
 support.
 
-.. |yes| replace:: **yes**
-.. |no| replace:: no
+.. |yes|     replace:: **yes**
+.. |no|      replace:: no
 .. |unknown| replace:: ?
 
 .. list-table::
@@ -64,17 +64,16 @@ support.
      - |yes|
      - |yes|
      - |yes|
-.. in progress
    * - `Trustway Proteccio NetHSM <http://www.bull.com/fr/cybers%C3%A9curit%C3%A9-trustway-proteccio-nethsm>`_
-     - |unknown|
-     - |unknown|
-     - |unknown|
-     - |unknown|
-     - |unknown|
-     - |unknown|
-     - |unknown|
-     - |unknown|
-     - |unknown|
+     - |yes|
+     - ECDSA only
+     - |yes|
+     - |yes|
+     - |yes|
+     - |yes|
+     - |yes|
+     - |no|
+     - |no|
 
 .. in progress: key ID checks have to be disabled in code
    * - `Yubikey NEO <https://www.yubico.com/products/yubikey-hardware/yubikey-neo/>`_
