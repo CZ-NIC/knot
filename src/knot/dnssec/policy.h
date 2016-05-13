@@ -1,4 +1,4 @@
-/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -16,7 +16,6 @@
 
 #pragma once
 
-#include "knot/conf/conf.h"
 #include "knot/dnssec/context.h"
 #include "knot/zone/contents.h"
 
@@ -25,9 +24,3 @@
  */
 void update_policy_from_zone(dnssec_kasp_policy_t *policy,
                              const zone_contents_t *zone);
-
-/*!
- * \brief Set default DNSSEC policy for zone without assigned policy.
- */
-void set_default_policy(dnssec_kasp_policy_t *policy,
-                        const zone_contents_t *zone);

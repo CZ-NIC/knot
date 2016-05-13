@@ -1,4 +1,4 @@
-/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -17,6 +17,7 @@
 #include <assert.h>
 
 #include "knot/dnssec/context.h"
+#include "knot/dnssec/zone-nsec.h"
 #include "knot/zone/contents.h"
 #include "libknot/rrtype/soa.h"
 
@@ -41,4 +42,5 @@ void update_policy_from_zone(dnssec_kasp_policy_t *policy,
 	policy->soa_minimal_ttl = zone_soa_min_ttl(zone);
 	policy->dnskey_ttl = zone_soa_ttl(zone);
 	policy->zone_maximal_ttl = 0; // TODO
+	policy->nsec3_enabled = knot_is_nsec3_enabled(zone); // TODO: temporary
 }

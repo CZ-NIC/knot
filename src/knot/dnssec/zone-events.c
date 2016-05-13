@@ -1,4 +1,4 @@
-/*  Copyright (C) 2013 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -15,12 +15,10 @@
  */
 
 #include <assert.h>
-#include <time.h>
 
 #include "dnssec/error.h"
 #include "dnssec/event.h"
 #include "contrib/macros.h"
-#include "contrib/string.h"
 #include "libknot/libknot.h"
 #include "knot/conf/conf.h"
 #include "knot/common/log.h"
@@ -31,7 +29,6 @@
 #include "knot/dnssec/zone-nsec.h"
 #include "knot/dnssec/zone-sign.h"
 #include "knot/zone/serial.h"
-#include "knot/zone/zone.h"
 
 static int sign_init(const zone_contents_t *zone, int flags, kdnssec_ctx_t *ctx)
 {
@@ -62,7 +59,6 @@ static int sign_init(const zone_contents_t *zone, int flags, kdnssec_ctx_t *ctx)
 	// update policy based on the zone content
 
 	update_policy_from_zone(ctx->policy, zone);
-	ctx->policy->nsec3_enabled = knot_is_nsec3_enabled(zone); // TODO: temporary
 
 	// RRSIG handling
 
