@@ -21,7 +21,7 @@
 #include "contrib/ucw/lists.h"
 #include "utils/kzonecheck/zone_check.h"
 
-void print_errors(err_handler_t *handler, FILE *outfile)
+static void print_errors(err_handler_t *handler, FILE *outfile)
 {
 	err_node_t *n;
 	WALK_LIST(n, handler->error_list) {
@@ -41,7 +41,7 @@ void print_errors(err_handler_t *handler, FILE *outfile)
 	}
 }
 
-void print_statistics(err_handler_t *handler, FILE *outfile)
+static void print_statistics(err_handler_t *handler, FILE *outfile)
 {
 	fprintf(outfile, "\nERRORS SUMMARY:\n\tCount\tError\n");
 	for(int i = ZC_ERR_UNKNOWN; i < ZC_ERR_LAST; ++i) {

@@ -74,12 +74,10 @@ const char *zonechecks_error_messages[(-ZC_ERR_UNKNOWN) + 1] = {
 	[-ZC_ERR_NSEC_RDATA_CHAIN_NOT_CYCLIC] =
 	"NSEC, chain is not cyclic",
 
-	[-ZC_ERR_NSEC3_UNSECURED_DELEGATION] =
-	"NSEC3, zone contains unsecured delegation",
 	[-ZC_ERR_NSEC3_NOT_FOUND] =
-	"NSEC3, failed to find previous NSEC3 record in the zone",
-	[-ZC_ERR_NSEC3_UNSECURED_DELEGATION_OPT] =
-	"NSEC3, unsecured delegation is not part of the opt-out span",
+	"NSEC3, failed to find NSEC3 record in the zone",
+	[-ZC_ERR_NSEC3_INSECURED_DELEGATION_OPT] =
+	"NSEC3, insecured delegation is not part of the opt-out span",
 	[-ZC_ERR_NSEC3_RDATA_TTL] =
 	"NSEC3, original TTL RDATA field is wrong",
 	[-ZC_ERR_NSEC3_RDATA_CHAIN] =
@@ -102,10 +100,16 @@ const char *zonechecks_error_messages[(-ZC_ERR_UNKNOWN) + 1] = {
 	[-ZC_ERR_DNAME_WILDCARD_SELF] =
 	"DNAME, wildcard pointing to itself",
 
-	[-ZC_ERR_GLUE_NODE] =
-	"GLUE, node with glue record missing",
 	[-ZC_ERR_GLUE_RECORD] =
 	"GLUE, record with glue address missing",
+};
+
+
+enum check_levels {
+	MANDATORY = 1 << 0,
+	OPTIONAL =  1 << 1,
+	NSEC =      1 << 2,
+	NSEC3 =     1 << 3,
 };
 
 typedef struct semchecks_data {
@@ -125,6 +129,7 @@ static void check_nsec3_opt_out(const zone_node_t *node, semchecks_data_t *data)
 static void check_rrsig(const zone_node_t *node, semchecks_data_t *data);
 static void check_signed_rrsig(const zone_node_t *node, semchecks_data_t *data);
 static void check_nsec_bitmap(const zone_node_t *node, semchecks_data_t *data);
+static void check_nsec3_presence(const zone_node_t *node, semchecks_data_t *data);
 
 struct check_function {
 	void (*function)(const zone_node_t *, semchecks_data_t *);
@@ -133,15 +138,16 @@ struct check_function {
 
 /* List of function callbacks for defined check_level */
 const struct check_function check_functions[] = {
-	{check_cname_multiple, SEM_CHECK_MANDATORY},
-	{check_dname, SEM_CHECK_MANDATORY},
-	{check_delegation, SEM_CHECK_OPTIONAL},
-	{check_rrsig, SEM_CHECK_NSEC | SEM_CHECK_NSEC3},
-	{check_signed_rrsig, SEM_CHECK_NSEC | SEM_CHECK_NSEC3},
-	{check_nsec, SEM_CHECK_NSEC},
-	{check_nsec3, SEM_CHECK_NSEC3},
-	{check_nsec3_opt_out, SEM_CHECK_NSEC3},
-	{check_nsec_bitmap, SEM_CHECK_NSEC | SEM_CHECK_NSEC3},
+	{check_cname_multiple, MANDATORY},
+	{check_dname,          MANDATORY},
+	{check_delegation,     OPTIONAL},
+	{check_rrsig,          NSEC | NSEC3},
+	{check_signed_rrsig,   NSEC | NSEC3},
+	{check_nsec,           NSEC},
+	{check_nsec3,          NSEC3},
+	{check_nsec3_presence, NSEC3},
+	{check_nsec3_opt_out,  NSEC3},
+	{check_nsec_bitmap,    NSEC | NSEC3},
 };
 
 const int check_functions_len = sizeof(check_functions) / sizeof(struct check_function);
@@ -210,7 +216,7 @@ void err_handler_log_errors(err_handler_t *handler)
 {
 	err_node_t *n;
 	WALK_LIST(n, handler->error_list) {
-		if (n->error > (int)ZC_ERR_GLUE_RECORD) {
+		if (n->error >= ZC_ERR_LAST) {
 			log_zone_str_warning(n->zone_name,
 			                     "semantic check, unknown error");
 			return;
@@ -495,21 +501,12 @@ static void check_delegation(const zone_node_t *node, semchecks_data_t *data)
 			knot_dname_to_wire(wildcard + 2,
 			                   knot_wire_next_label(ns_dname, NULL),
 			                   sizeof(wildcard) - 2);
-
-			const zone_node_t *wildcard_node =
-				zone_contents_find_node(data->zone, wildcard);
-			if (wildcard_node == NULL) {
-				err_handler_node_error(data->handler, data->zone,
-				                       node, ZC_ERR_GLUE_NODE, NULL);
-				// Cannot continue
-				return;
-			}
-			glue_node = wildcard_node;
+			glue_node = zone_contents_find_node(data->zone, wildcard);
 		}
 		if (!node_rrtype_exists(glue_node, KNOT_RRTYPE_A) &&
 		    !node_rrtype_exists(glue_node, KNOT_RRTYPE_AAAA)) {
 			err_handler_node_error(data->handler, data->zone,
-			                       node, ZC_ERR_GLUE_RECORD, NULL);
+			                       node, ZC_ERR_GLUE_RECORD, NULL /* for node 'ns.example.com' */);
 		}
 	}
 }
@@ -536,7 +533,8 @@ static void check_rrsig(const zone_node_t *node, semchecks_data_t *data)
 		if (rrset.type == KNOT_RRTYPE_RRSIG) {
 			continue;
 		}
-		if (deleg && rrset.type != KNOT_RRTYPE_NSEC) {
+		if (deleg && rrset.type != KNOT_RRTYPE_NSEC &&
+		    rrset.type != KNOT_RRTYPE_DS ) {
 			continue;
 		}
 
@@ -579,7 +577,7 @@ static void check_nsec_bitmap(const zone_node_t *node, semchecks_data_t *data)
 
 	knot_rdataset_t *nsec_rrs;
 
-	if (data->level & SEM_CHECK_NSEC) {
+	if (data->level & NSEC) {
 		nsec_rrs = node_rdataset(node, KNOT_RRTYPE_NSEC);
 	} else {
 		if ( node->nsec3_node == NULL ) {
@@ -609,7 +607,7 @@ static void check_nsec_bitmap(const zone_node_t *node, semchecks_data_t *data)
 	// get NSEC bitmap from NSEC node
 	uint8_t *nsec_wire = NULL;
 	uint16_t nsec_wire_size = 0;
-	if (data->level & SEM_CHECK_NSEC) {
+	if (data->level & NSEC) {
 		knot_nsec_bitmap(nsec_rrs, &nsec_wire, &nsec_wire_size);
 	} else {
 		knot_nsec3_bitmap(nsec_rrs, 0, &nsec_wire, &nsec_wire_size);
@@ -686,55 +684,57 @@ static void check_nsec(const zone_node_t *node, semchecks_data_t *data)
  * \param node Node to check
  * \param data Semantic checks context data
  */
+static void check_nsec3_presence(const zone_node_t *node, semchecks_data_t *data)
+{
+	bool auth = (node->flags & NODE_FLAGS_NONAUTH) == 0;
+	bool deleg = (node->flags & NODE_FLAGS_DELEG) != 0;
+
+	if ((deleg && node_rrtype_exists(node, KNOT_RRTYPE_DS)) ||
+	    (auth && !deleg)) {
+		if(node->nsec3_node == NULL) {
+		err_handler_node_error(data->handler, data->zone, node,
+		                       ZC_ERR_NSEC3_NOT_FOUND, NULL);
+		}
+	}
+}
+
+/*!
+ * \brief Check NSEC3 opt out.
+ *
+ * \param node Node to check
+ * \param data Semantic checks context data
+ */
 static void check_nsec3_opt_out(const zone_node_t *node, semchecks_data_t *data)
 {
-	if (node->nsec3_node != NULL) {
+	if (!(node->nsec3_node == NULL && node->flags & NODE_FLAGS_DELEG)) {
 		return;
 	}
-	// check for nodes without NSEC3
+	/* Unsecured delegation, check whether it is part of opt-out span */
 
-	/* I know it's probably not what RFCs say, but it will have to
-	 * do for now. */
-	if (node_rrtype_exists(node, KNOT_RRTYPE_DS)) {
+	const zone_node_t *nsec3_previous = NULL;
+	const zone_node_t *nsec3_node;
+	zone_contents_find_nsec3_for_name(data->zone, node->owner, &nsec3_node,
+	                                  &nsec3_previous);
+
+	if (nsec3_previous == NULL) {
 		err_handler_node_error(data->handler, data->zone, node,
-		                       ZC_ERR_NSEC3_UNSECURED_DELEGATION, NULL);
+		                       ZC_ERR_NSEC3_NOT_FOUND, NULL);
 		return;
-	} else {
-		/* Unsecured delegation, check whether it is part of
-		 * opt-out span */
-		const zone_node_t *nsec3_previous;
-		const zone_node_t *nsec3_node;
-		if (zone_contents_find_nsec3_for_name(data->zone,
-		                                      node->owner,
-		                                      &nsec3_node,
-		                                      &nsec3_previous) != ZONE_NAME_NOT_FOUND) {
-			err_handler_node_error(data->handler,
-			                       data->zone, node,
-			                       ZC_ERR_NSEC3_NOT_FOUND,
-			                       NULL);
-			return;
-		}
-		assert(nsec3_previous);
+	}
 
-		const knot_rdataset_t *previous_rrs =
-			node_rdataset(nsec3_previous, KNOT_RRTYPE_NSEC3);
+	const knot_rdataset_t *previous_rrs;
+	previous_rrs = node_rdataset(nsec3_previous, KNOT_RRTYPE_NSEC3);
 
-		assert(previous_rrs);
+	assert(previous_rrs);
 
-		/* check for Opt-Out flag */
-		uint8_t flags = knot_nsec3_flags(previous_rrs, 0);
-		uint8_t opt_out_mask = 1;
+	/* check for Opt-Out flag */
+	uint8_t flags = knot_nsec3_flags(previous_rrs, 0);
+	uint8_t opt_out_mask = 1;
 
-		if (flags & opt_out_mask) {
-			// opt-out no need to check more
-			return;
-		} else {
-			err_handler_node_error(data->handler, data->zone, node,
-			                       ZC_ERR_NSEC3_UNSECURED_DELEGATION_OPT,
-			                       NULL);
-			/* We cannot continue from here. */
-			return;
-		}
+	if (!(flags & opt_out_mask)) {
+		err_handler_node_error(data->handler, data->zone, node,
+		                       ZC_ERR_NSEC3_INSECURED_DELEGATION_OPT,
+		                       NULL);
 	}
 }
 
@@ -839,11 +839,10 @@ static void check_cname_multiple(const zone_node_t *node, semchecks_data_t *data
 
 	if (node->rrset_count > rrset_limit) {
 		data->fatal_error = true;
-		err_handler_node_error(data->handler,
-		data->zone, node,
-		rrset_limit > 1 ?
-		ZC_ERR_CNAME_EXTRA_RECORDS_DNSSEC :
-		ZC_ERR_CNAME_EXTRA_RECORDS, NULL);
+		err_handler_node_error(data->handler, data->zone, node,
+		                       rrset_limit > 1 ?
+		                       ZC_ERR_CNAME_EXTRA_RECORDS_DNSSEC :
+		                       ZC_ERR_CNAME_EXTRA_RECORDS, NULL);
 	}
 	if (cname_rrs->rr_count != 1) {
 		data->fatal_error = true;
@@ -880,7 +879,7 @@ static void check_dname(const zone_node_t *node, semchecks_data_t *data)
 /*!
  * \brief Check that nsec chain is cyclic.
  *
- * Run only once per zone. Check that last nsec node points to first one.
+ * Run only once per zone. Check that last NSEC node points to first one.
  * \param data Semantic checks context data
  */
 static void check_nsec_cyclic(semchecks_data_t *data)
@@ -912,7 +911,7 @@ static int do_checks_in_tree(zone_node_t *node, void *data)
 {
 	struct semchecks_data *s_data = (semchecks_data_t *)data;
 
-	for (int i=0; i < check_functions_len; ++i) {
+	for (int i = 0; i < check_functions_len; ++i) {
 		if (check_functions[i].level & s_data->level) {
 			check_functions[i].function(node, s_data);
 		}
@@ -928,19 +927,20 @@ int zone_do_sem_checks(zone_contents_t *zone, bool optional,
 		return KNOT_EINVAL;
 	}
 
-	semchecks_data_t data;
-	data.handler = handler;
-	data.zone = zone;
-	data.next_nsec = zone->apex;
-	data.fatal_error = false;
-	data.level = SEM_CHECK_MANDATORY;
+	semchecks_data_t data = {
+		.handler = handler,
+		.zone = zone,
+		.next_nsec = zone->apex,
+		.fatal_error = false,
+		.level = MANDATORY,
+		};
 	if (optional) {
-		data.level |= SEM_CHECK_OPTIONAL;
+		data.level |= OPTIONAL;
 		if (zone_contents_is_signed(zone)) {
 			if (node_rrtype_exists(zone->apex, KNOT_RRTYPE_NSEC3PARAM)) {
-				data.level |= SEM_CHECK_NSEC3;
+				data.level |= NSEC3;
 			} else {
-				data.level |= SEM_CHECK_NSEC;
+				data.level |= NSEC;
 			}
 		}
 	}
@@ -955,7 +955,7 @@ int zone_do_sem_checks(zone_contents_t *zone, bool optional,
 		return KNOT_ESEMCHECK;
 	}
 	// check cyclic chain after every node was checked
-	if (data.level & SEM_CHECK_NSEC) {
+	if (data.level & NSEC) {
 		check_nsec_cyclic(&data);
 	}
 

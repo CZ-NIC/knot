@@ -29,12 +29,7 @@
 #include "contrib/ucw/lists.h"
 #include "libknot/mm_ctx.h"
 
-enum check_levels {
-	SEM_CHECK_MANDATORY = 1 << 0,
-	SEM_CHECK_OPTIONAL =  1 << 1,
-	SEM_CHECK_NSEC =      1 << 2,
-	SEM_CHECK_NSEC3 =     1 << 3,
-};
+
 
 /*!
  *\brief Internal error constants. General errors are added for convenience,
@@ -71,9 +66,8 @@ enum zonechecks_errors {
 
 	ZC_ERR_NSEC_GENERAL_ERROR, /* NSEC error delimiter. */
 
-	ZC_ERR_NSEC3_UNSECURED_DELEGATION,
 	ZC_ERR_NSEC3_NOT_FOUND,
-	ZC_ERR_NSEC3_UNSECURED_DELEGATION_OPT,
+	ZC_ERR_NSEC3_INSECURED_DELEGATION_OPT,
 	ZC_ERR_NSEC3_RDATA_TTL,
 	ZC_ERR_NSEC3_RDATA_CHAIN,
 	ZC_ERR_NSEC3_EXTRA_RECORD,
@@ -90,7 +84,6 @@ enum zonechecks_errors {
 
 	ZC_ERR_CNAME_GENERAL_ERROR, /* CNAME/DNAME error delimiter. */
 
-	ZC_ERR_GLUE_NODE,
 	ZC_ERR_GLUE_RECORD,
 
 	ZC_ERR_GLUE_GENERAL_ERROR, /* GLUE error delimiter. */

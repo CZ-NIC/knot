@@ -28,12 +28,12 @@
 
 static void print_help(void)
 {
-	printf("Usage: %s [parameters] <zonefile> \n"
+	printf("Usage: %s [parameters] <zonefile>\n"
 	       "\n"
 	       "Parameters:\n"
 	       " -o, --origin <zone_origin>           Zone name\n"
 	       "                                      (default filename or\n"
-	       "                                               filename without trailing .zone)\n"
+	       "                                      filename without trailing .zone)\n"
 	       " -v, --verbose                        Enable debug output.\n"
 	       " -h, --help                           Print the program help.\n"
 	       " -V, --version                        Print the program version.\n"
@@ -81,7 +81,7 @@ int main(int argc, char *argv[])
 
 	/* Check if there's at least one remaining non-option. */
 	if (optind >= argc) {
-		fprintf(outfile, "Expected argument (zone file) after options\n");
+		fprintf(outfile, "Expected zone file name.\n");
 		print_help();
 		return EXIT_FAILURE;
 	}
@@ -92,8 +92,8 @@ int main(int argc, char *argv[])
 		/* Get zone name from file name */
 		const char *ext = ".zone";
 		zonename = basename(filename);
-		if (strcmp(zonename+strlen(zonename)-strlen(ext), ext) == 0) {
-			zonename = strndup(zonename, strlen(zonename)-strlen(ext));
+		if (strcmp(zonename + strlen(zonename) - strlen(ext), ext) == 0) {
+			zonename = strndup(zonename, strlen(zonename) - strlen(ext));
 		}
 	}
 
