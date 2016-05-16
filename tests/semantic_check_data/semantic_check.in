@@ -1,7 +1,7 @@
 #!/bin/sh
 
 KZONECHECK=@top_builddir@/src/kzonecheck
-DATA=@top_srcdir@/tests/semcheck
+DATA=@top_srcdir@/tests/semantic_check_data
 
 . @top_srcdir@/libtap/tap/libtap.sh
 

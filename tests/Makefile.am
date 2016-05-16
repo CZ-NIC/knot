@@ -74,7 +74,7 @@ utils_test_lookup_LDADD = \
 
 CLEANFILES = runtests.log
 
-include $(srcdir)/semcheck/Makefile.inc
+include $(srcdir)/semantic_check_data/Makefile.inc
 
 check-compile: $(check_PROGRAMS) $(check_SCRIPTS)
 
