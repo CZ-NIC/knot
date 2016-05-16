@@ -1,4 +1,4 @@
-/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -325,29 +325,43 @@ time_t zonefile_mtime(const char *path)
 }
 
 /*! \brief Open a temporary zonefile. */
-static int open_tmp_filename(const char *old_name, char **new_name)
+static int open_tmp_filename(const char *name, char **tmp_name, FILE **file)
 {
-	*new_name = sprintf_alloc("%s.XXXXXX", old_name);
-	if (*new_name == NULL) {
+	int ret;
+
+	*tmp_name = sprintf_alloc("%s.XXXXXX", name);
+	if (*tmp_name == NULL) {
+		ret = KNOT_ENOMEM;
 		goto open_tmp_failed;
 	}
 
-	int fd = mkstemp(*new_name);
+	int fd = mkstemp(*tmp_name);
 	if (fd < 0) {
+		ret = knot_map_errno();
 		goto open_tmp_failed;
 	}
 
 	if (fchmod(fd, S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP) != 0) {
+		ret = knot_map_errno();
 		close(fd);
+		unlink(*tmp_name);
 		goto open_tmp_failed;
 	}
 
-	return fd;
-open_tmp_failed:
-	free(*new_name);
-	*new_name = NULL;
+	*file = fdopen(fd, "w");
+	if (*file == NULL) {
+		ret = knot_map_errno();
+		close(fd);
+		unlink(*tmp_name);
+		goto open_tmp_failed;
+	}
 
-	return -1;
+	return KNOT_EOK;
+open_tmp_failed:
+	free(*tmp_name);
+	*tmp_name = NULL;
+
+	return ret;
 }
 
 /*! \brief Prepare a directory for the file. */
@@ -387,43 +401,31 @@ int zonefile_write(const char *path, zone_contents_t *zone)
 		return ret;
 	}
 
-	char *new_fname = NULL;
-	int fd = open_tmp_filename(path, &new_fname);
-	if (fd < 0) {
-		return KNOT_EWRITABLE;
-	}
-
-	FILE *f = fdopen(fd, "w");
-	if (f == NULL) {
-		ret = knot_map_errno();
-		close(fd);
-		unlink(new_fname);
-		free(new_fname);
-		return ret;
-	}
-
-	ret = zone_dump_text(zone, f);
+	FILE *file = NULL;
+	char *tmp_name = NULL;
+	ret = open_tmp_filename(path, &tmp_name, &file);
 	if (ret != KNOT_EOK) {
-		fclose(f);
-		close(fd);
-		unlink(new_fname);
-		free(new_fname);
 		return ret;
 	}
 
-	fclose(f);
-	close(fd);
+	ret = zone_dump_text(zone, file);
+	fclose(file);
+	if (ret != KNOT_EOK) {
+		unlink(tmp_name);
+		free(tmp_name);
+		return ret;
+	}
 
 	/* Swap temporary zonefile and new zonefile. */
-	ret = rename(new_fname, path);
+	ret = rename(tmp_name, path);
 	if (ret != 0) {
 		ret = knot_map_errno();
-		unlink(new_fname);
-		free(new_fname);
+		unlink(tmp_name);
+		free(tmp_name);
 		return ret;
 	}
 
-	free(new_fname);
+	free(tmp_name);
 
 	return KNOT_EOK;
 }
