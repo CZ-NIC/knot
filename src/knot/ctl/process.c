@@ -71,6 +71,7 @@ int ctl_process(knot_ctl_t *ctl, server_t *server)
 		ctl_cmd_t cmd = ctl_str_to_cmd(cmd_name);
 		if (cmd != CTL_NONE) {
 			log_info("control, received command '%s'", cmd_name);
+			ctl_log_data(&args.data);
 		} else if (cmd_name != NULL){
 			log_debug("control, invalid command '%s'", cmd_name);
 			continue;

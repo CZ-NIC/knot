@@ -89,4 +89,11 @@ ctl_cmd_t ctl_str_to_cmd(const char *cmd_str);
  */
 int ctl_exec(ctl_cmd_t cmd, ctl_args_t *args);
 
+/*!
+ * Logs control data items at the debug level.
+ *
+ * \param[in] data  Control data.
+ */
+void ctl_log_data(knot_ctl_data_t *data);
+
 /*! @} */

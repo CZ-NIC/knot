@@ -19,11 +19,33 @@
 #include "knot/common/log.h"
 #include "knot/conf/confio.h"
 #include "knot/ctl/commands.h"
-#include "knot/ctl/process.h"
 #include "libknot/libknot.h"
 #include "libknot/yparser/yptrafo.h"
 #include "contrib/macros.h"
 #include "contrib/string.h"
+
+void ctl_log_data(knot_ctl_data_t *data)
+{
+	if (data == NULL) {
+		return;
+	}
+
+	const char *zone = (*data)[KNOT_CTL_IDX_ZONE];
+	const char *section = (*data)[KNOT_CTL_IDX_SECTION];
+	const char *item = (*data)[KNOT_CTL_IDX_ITEM];
+	const char *id = (*data)[KNOT_CTL_IDX_ID];
+
+	if (zone != NULL) {
+		log_debug("control, zone '%s'", zone);
+	} else if (section != NULL) {
+		log_debug("control, item '%s%s%s%s%s%s'", section,
+		          (id   != NULL ? "["  : ""),
+		          (id   != NULL ? id   : ""),
+		          (id   != NULL ? "]"  : ""),
+		          (item != NULL ? "."  : ""),
+		          (item != NULL ? item : ""));
+	}
+}
 
 static void send_error(ctl_args_t *args, const char *msg)
 {
@@ -94,6 +116,7 @@ static int zones_apply(ctl_args_t *args, int (*fcn)(zone_t *, ctl_args_t *))
 		if (ret != KNOT_EOK || args->type != KNOT_CTL_TYPE_DATA) {
 			break;
 		}
+		ctl_log_data(&args->data);
 	}
 
 	rcu_read_unlock();
@@ -502,6 +525,7 @@ static int ctl_conf_read(ctl_args_t *args, ctl_cmd_t cmd)
 		if (ret != KNOT_EOK || args->type != KNOT_CTL_TYPE_DATA) {
 			break;
 		}
+		ctl_log_data(&args->data);
 	}
 
 	return ret;
@@ -548,6 +572,7 @@ static int ctl_conf_modify(ctl_args_t *args, ctl_cmd_t cmd)
 		if (ret != KNOT_EOK || args->type != KNOT_CTL_TYPE_DATA) {
 			break;
 		}
+		ctl_log_data(&args->data);
 	}
 
 	// Finish child transaction.
