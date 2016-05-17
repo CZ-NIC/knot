@@ -42,7 +42,7 @@ enum {
 	DELEG,   /* Result is delegation. */
 	FOLLOW,  /* Resolution not complete (CNAME/DNAME chain). */
 	ERROR,   /* Resolution failed. */
-	TRUNC    /* Finished, but truncated. */
+	TRUNC    /* Finished, packet size limit encountered. */
 };
 
 /*!
