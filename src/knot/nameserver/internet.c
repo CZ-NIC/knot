@@ -273,7 +273,8 @@ static int put_delegation(knot_pkt_t *pkt, struct query_data *qdata)
 
 /*! \brief Put additional records for given RR. */
 static int put_additional(knot_pkt_t *pkt, const knot_rrset_t *rr,
-                          struct query_data *qdata, knot_rrinfo_t *info)
+                          struct query_data *qdata, knot_rrinfo_t *info,
+                          bool is_deleg)
 {
 	/* Valid types for ADDITIONALS insertion. */
 	/* \note Not resolving CNAMEs as MX/NS name must not be an alias. (RFC2181/10.3) */
@@ -281,29 +282,27 @@ static int put_additional(knot_pkt_t *pkt, const knot_rrset_t *rr,
 	static const int ar_type_count = 2;
 
 	int ret = KNOT_EOK;
-	uint32_t flags = KNOT_PF_NOTRUNC|KNOT_PF_CHECKDUP;
-	uint16_t hint = KNOT_COMPR_HINT_NONE;
-	const zone_node_t *node = NULL;
 
 	/* All RRs should have additional node cached or NULL. */
 	uint16_t rr_rdata_count = rr->rrs.rr_count;
 	for (uint16_t i = 0; i < rr_rdata_count; i++) {
-		hint = knot_pkt_compr_hint(info, KNOT_COMPR_HINT_RDATA + i);
-		node = rr->additional[i];
-
-		/* No additional node for this record. */
+		const zone_node_t *node = rr->additional[i];
 		if (node == NULL) {
 			continue;
 		}
 
+		/* Glue is required as per RFC 1034 Section 4.3.2 step 3b. */
+		bool is_glue = is_deleg && (node->flags & NODE_FLAGS_NONAUTH);
+		uint32_t flags = KNOT_PF_CHECKDUP | (is_glue ? 0 : KNOT_PF_NOTRUNC);
+
+		uint16_t hint = knot_pkt_compr_hint(info, KNOT_COMPR_HINT_RDATA + i);
 		knot_rrset_t rrsigs = node_rrset(node, KNOT_RRTYPE_RRSIG);
 		for (int k = 0; k < ar_type_count; ++k) {
 			knot_rrset_t additional = node_rrset(node, ar_type_list[k]);
 			if (knot_rrset_empty(&additional)) {
 				continue;
 			}
-			ret = ns_put_rr(pkt, &additional, &rrsigs,
-			                hint, flags, qdata);
+			ret = ns_put_rr(pkt, &additional, &rrsigs, hint, flags, qdata);
 			if (ret != KNOT_EOK) {
 				break;
 			}
@@ -601,12 +600,16 @@ static int solve_additional(int state, knot_pkt_t *pkt,
 
 	/* Scan all RRs in ANSWER/AUTHORITY. */
 	for (uint16_t i = 0; i < pkt->rrset_count; ++i) {
+		knot_rrset_t *rr = &pkt->rr[i];
+		knot_rrinfo_t *info = &pkt->rr_info[i];
+
 		/* Skip types for which it doesn't apply. */
 		if (!knot_rrtype_additional_needed(pkt->rr[i].type)) {
 			continue;
 		}
 		/* Put additional records for given type. */
-		ret = put_additional(pkt, &pkt->rr[i], qdata, &pkt->rr_info[i]);
+		bool is_deleg = (rr->type == KNOT_RRTYPE_NS && state == DELEG);
+		ret = put_additional(pkt, rr, qdata, info, is_deleg);
 		if (ret != KNOT_EOK) {
 			break;
 		}
