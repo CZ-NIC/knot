@@ -4,7 +4,7 @@ Tests for TC flag setting in delegations.
 
 from dnstest.test import Test
 
-t = Test(stress=False)
+t = Test()
 
 knot = t.server("knot", tsig=False)
 zone = t.zone("tc.test", storage=".")
@@ -12,101 +12,114 @@ t.link(zone, knot)
 
 t.start()
 
-def test_delegation(delegation, bufsize=None, truncated=False, counts=None):
-    name = "www.%s" % delegation
-    resp = knot.dig(name, "A", udp=True, dnssec=True, bufsize=bufsize)
-    if truncated:
-        flags = "TC"
-        noflags = "AA"
-    else:
-        flags = ""
-        noflags = "AA TC"
+class DelegationTest:
+    def __init__(self, name):
+        self._name = name
 
-    resp.check(rcode="NOERROR", noflags=noflags, flags=flags)
-    for section in counts:
-        for rtype in counts[section]:
-            resp.check_count(counts[section][rtype], rtype, section)
+    def _get_flags(self, truncated):
+        if truncated:
+            return ("TC", "AA")
+        else:
+            return ("", "AA TC")
 
-## delegation with glue
+    def run(self, bufsize=None, truncated=False, counts=None):
+        name = "www.%s" % self._name
+        flags, noflags = self._get_flags(truncated)
+        resp = knot.dig(name, "A", udp=True, dnssec=True, bufsize=bufsize)
+        resp.check(rcode="NOERROR", noflags=noflags, flags=flags)
+        for section in counts:
+            for rtype in counts[section]:
+                resp.check_count(counts[section][rtype], rtype, section)
 
-# incomplete delegation, no DS
-test_delegation("glue.tc.test", bufsize=512, truncated=True, counts={
-    "authority": {"NS": 2, "DS": 0, "RRSIG": 0},
-    "additional": {"AAAA": 0, "RRSIG": 0}}
-)
-# incomplete delegation, no glue
-test_delegation("glue.tc.test", bufsize=712, truncated=True, counts={
-    "authority": {"NS": 2, "DS": 1, "RRSIG": 1},
-    "additional": {"AAAA": 0, "RRSIG": 0}}
-)
-# incomplete delegation, partial glue
-test_delegation("glue.tc.test", bufsize=740, truncated=True, counts={
-    "authority": {"NS": 2, "DS": 1, "RRSIG": 1},
-    "additional": {"AAAA": 1, "RRSIG": 0}}
-)
-# complete delegation, complete glue
-test_delegation("glue.tc.test", bufsize=768, truncated=False, counts={
-    "authority": {"NS": 2, "DS": 1, "RRSIG": 1},
-    "additional": {"AAAA": 2, "RRSIG": 0}}
-)
+    def __enter__(self):
+        return self
 
-## unreachable delegation due to missing glue
+    def __exit__(self, exc_type, exc_vaue, traceback):
+        return False
 
-# incomplete delegation, no DS
-test_delegation("unreachable.tc.test", bufsize=512, truncated=True, counts={
-    "authority": {"NS": 2, "DS": 0, "RRSIG": 0},
-    "additional": {"AAAA": 0, "RRSIG": 0}}
-)
-# complete delegation, no glue available
-test_delegation("unreachable.tc.test", bufsize=719, truncated=False, counts={
-    "authority": {"NS": 2, "DS": 1, "RRSIG": 1},
-    "additional": {"AAAA": 0, "RRSIG": 0}}
-)
+# Delegation with glue
 
-## delegation with foreign name servers
+with DelegationTest("glue.tc.test") as test:
+    # incomplete delegation, no DS
+    test.run(bufsize=512, truncated=True, counts={
+        "authority": {"NS": 2, "DS": 0, "RRSIG": 0},
+        "additional": {"AAAA": 0, "RRSIG": 0}}
+    )
+    # incomplete delegation, no glue
+    test.run(bufsize=712, truncated=True, counts={
+        "authority": {"NS": 2, "DS": 1, "RRSIG": 1},
+        "additional": {"AAAA": 0, "RRSIG": 0}}
+    )
+    # incomplete delegation, partial glue
+    test.run(bufsize=740, truncated=True, counts={
+        "authority": {"NS": 2, "DS": 1, "RRSIG": 1},
+        "additional": {"AAAA": 1, "RRSIG": 0}}
+    )
+    # complete delegation, complete glue
+    test.run(bufsize=768, truncated=False, counts={
+        "authority": {"NS": 2, "DS": 1, "RRSIG": 1},
+        "additional": {"AAAA": 2, "RRSIG": 0}}
+    )
 
-# incomplete delegation, no DS
-test_delegation("foreign.tc.test", bufsize=512, truncated=True, counts={
-    "authority": {"NS": 2, "DS": 0, "RRSIG": 0},
-    "additional": {"AAAA": 0, "RRSIG": 0}}
-)
-# complete delegation, no glue needed
-test_delegation("unreachable.tc.test", bufsize=722, truncated=False, counts={
-    "authority": {"NS": 2, "DS": 1, "RRSIG": 1},
-    "additional": {"AAAA": 0, "RRSIG": 0}}
-)
+# Unreachable delegation due to missing glue
 
-## delegation with name servers from parent
+with DelegationTest("unreachable.tc.test") as test:
+    # incomplete delegation, no DS
+    test.run(bufsize=512, truncated=True, counts={
+        "authority": {"NS": 2, "DS": 0, "RRSIG": 0},
+        "additional": {"AAAA": 0, "RRSIG": 0}}
+    )
+    # complete delegation, no glue available
+    test.run(bufsize=719, truncated=False, counts={
+        "authority": {"NS": 2, "DS": 1, "RRSIG": 1},
+        "additional": {"AAAA": 0, "RRSIG": 0}}
+    )
+# Delegation with foreign name servers
 
-# incomplete delegation, no DS
-test_delegation("parent.tc.test", bufsize=512, truncated=True, counts={
-    "authority": {"NS": 2, "DS": 0, "RRSIG": 0},
-    "additional": {"AAAA": 0, "RRSIG": 0}}
-)
-# complete delegation, no optional additionals
-test_delegation("parent.tc.test", bufsize=714, truncated=False, counts={
-    "authority": {"NS": 2, "DS": 1, "RRSIG": 1},
-    "additional": {"AAAA": 0, "RRSIG": 0}}
-)
-# complete delegation, one optional additional
-test_delegation("parent.tc.test", bufsize=742, truncated=False, counts={
-    "authority": {"NS": 2, "DS": 1, "RRSIG": 1},
-    "additional": {"AAAA": 1, "RRSIG": 0}}
-)
-# complete delegation, all optional additionals without signatures
-test_delegation("parent.tc.test", bufsize=770, truncated=False, counts={
-    "authority": {"NS": 2, "DS": 1, "RRSIG": 1},
-    "additional": {"AAAA": 2, "RRSIG": 0}}
-)
-# complete delegation, all optional additionals partially signed
-test_delegation("parent.tc.test", bufsize=873, truncated=False, counts={
-    "authority": {"NS": 2, "DS": 1, "RRSIG": 1},
-    "additional": {"AAAA": 2, "RRSIG": 1}}
-)
-# complete delegation, all optional additionals with signatures
-test_delegation("parent.tc.test", bufsize=976, truncated=False, counts={
-    "authority": {"NS": 2, "DS": 1, "RRSIG": 1},
-    "additional": {"AAAA": 2, "RRSIG": 2}}
-)
+with DelegationTest("foreign.tc.test") as test:
+    # incomplete delegation, no DS
+    test.run(bufsize=512, truncated=True, counts={
+        "authority": {"NS": 2, "DS": 0, "RRSIG": 0},
+        "additional": {"AAAA": 0, "RRSIG": 0}}
+    )
+    # complete delegation, no glue needed
+    test.run(bufsize=722, truncated=False, counts={
+        "authority": {"NS": 2, "DS": 1, "RRSIG": 1},
+        "additional": {"AAAA": 0, "RRSIG": 0}}
+    )
+
+# Delegation with name servers from parent
+
+with DelegationTest("parent.tc.test") as test:
+    # incomplete delegation, no DS
+    test.run(bufsize=512, truncated=True, counts={
+        "authority": {"NS": 2, "DS": 0, "RRSIG": 0},
+        "additional": {"AAAA": 0, "RRSIG": 0}}
+    )
+    # complete delegation, no optional additionals
+    test.run(bufsize=714, truncated=False, counts={
+        "authority": {"NS": 2, "DS": 1, "RRSIG": 1},
+        "additional": {"AAAA": 0, "RRSIG": 0}}
+    )
+    # complete delegation, one optional additional
+    test.run(bufsize=742, truncated=False, counts={
+        "authority": {"NS": 2, "DS": 1, "RRSIG": 1},
+        "additional": {"AAAA": 1, "RRSIG": 0}}
+    )
+    # complete delegation, all optional additionals without signatures
+    test.run(bufsize=770, truncated=False, counts={
+        "authority": {"NS": 2, "DS": 1, "RRSIG": 1},
+        "additional": {"AAAA": 2, "RRSIG": 0}}
+    )
+    # complete delegation, all optional additionals partially signed
+    test.run(bufsize=873, truncated=False, counts={
+        "authority": {"NS": 2, "DS": 1, "RRSIG": 1},
+        "additional": {"AAAA": 2, "RRSIG": 1}}
+    )
+    # complete delegation, all optional additionals with signatures
+    test.run(bufsize=976, truncated=False, counts={
+        "authority": {"NS": 2, "DS": 1, "RRSIG": 1},
+        "additional": {"AAAA": 2, "RRSIG": 2}}
+    )
 
 t.stop()
