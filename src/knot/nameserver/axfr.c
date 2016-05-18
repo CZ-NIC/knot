@@ -323,11 +323,9 @@ static int axfr_answer_finalize(struct answer_data *adata)
 		return rc;
 	}
 
-	err_handler_t handler;
-	err_handler_init(&handler);
-	rc = zone_do_sem_checks(proc->contents, false, &handler);
-	err_handler_log_errors(&handler);
-	err_handler_deinit(&handler);
+	err_handler_logger_t handler;
+	handler._cb.cb = err_handler_logger;
+	rc = zone_do_sem_checks(proc->contents, false, &handler._cb);
 
 	if (rc != KNOT_EOK) {
 		return rc;

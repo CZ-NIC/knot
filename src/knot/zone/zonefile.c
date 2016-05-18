@@ -173,7 +173,6 @@ int zonefile_open(zloader_t *loader, const char *source,
 	}
 
 	memset(loader, 0, sizeof(zloader_t));
-	err_handler_init(&loader->err_handler);
 
 	/* Check zone file. */
 	if (access(source, F_OK | R_OK) != 0) {
@@ -254,7 +253,7 @@ zone_contents_t *zonefile_load(zloader_t *loader)
 	}
 
 	if (!node_rrtype_exists(loader->creator->z->apex, KNOT_RRTYPE_SOA)) {
-		err_handler_zone_error(&loader->err_handler, zname, ZC_ERR_MISSING_SOA);
+		loader->err_handler->cb(loader->err_handler, zc->z, NULL, ZC_ERR_MISSING_SOA, NULL);
 		goto fail;
 	}
 
@@ -266,7 +265,7 @@ zone_contents_t *zonefile_load(zloader_t *loader)
 	}
 
 	ret = zone_do_sem_checks(zc->z, loader->semantic_checks,
-	                         &loader->err_handler);
+	                         loader->err_handler);
 	INFO(zname, "semantic check, completed");
 
 	if (ret != KNOT_EOK) {
@@ -397,7 +396,31 @@ void zonefile_close(zloader_t *loader)
 	zs_deinit(&loader->scanner);
 	free(loader->source);
 	free(loader->creator);
-	err_handler_deinit(&loader->err_handler);
+}
+
+int err_handler_logger(err_handler_t *handler, const zone_contents_t *zone,
+                        const zone_node_t *node, int error, const char *data)
+{
+	assert(handler != NULL);
+	assert(zone != NULL);
+	err_handler_logger_t *h = (err_handler_logger_t *) handler;
+
+	const char *errmsg = semantic_check_error_msg(error);
+
+	if (node == NULL) { // zone error
+		log_zone_warning(zone->apex->owner, "semantic check, (%s%s%s)",
+		                 errmsg, data ? " " : "", data ? data : "");
+	} else {
+		char buff[KNOT_DNAME_TXT_MAXLEN + 1];
+		char *name = knot_dname_to_str(buff, node->owner, sizeof(buff));
+		log_zone_warning(zone->apex->owner,
+		                 "semantic check, node '%s' (%s%s%s)",
+		                 name ? name : "", errmsg, data ? " " : "",
+		                 data ? data : "");
+	}
+
+	h->error_count++;
+	return KNOT_EOK;
 }
 
 #undef ERROR

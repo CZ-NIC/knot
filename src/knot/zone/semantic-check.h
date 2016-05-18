@@ -86,78 +86,31 @@ enum zonechecks_errors {
 
 	ZC_ERR_GLUE_RECORD,
 
-	ZC_ERR_GLUE_GENERAL_ERROR, /* GLUE error delimiter. */
-	ZC_ERR_LAST = ZC_ERR_GLUE_GENERAL_ERROR,
+	ZC_ERR_LAST,
 };
 
-extern const char *zonechecks_error_messages[];
+const char *semantic_check_error_msg(int ecode);
 
 /*!
  * \brief Structure for handling semantic errors.
  */
-struct err_handler {
-	/* Consider moving error messages here */
-	unsigned errors[(-ZC_ERR_UNKNOWN) + 1]; /*!< Counting errors by type */
-	unsigned error_count; /*!< Total error count */
-	list_t error_list; /*!< List of all errors */
-};
 
 typedef struct err_handler err_handler_t;
 
-typedef struct err_node {
-	node_t node;  ///< must be first
-	int error;
-	char *zone_name;
-	char *name;
-	char *data;
-} err_node_t;
 
 /*!
- * \brief Inits semantic error handler. No optional events will be logged.
+ * \brief Callback for handle error.
  *
- * \param handler Variable to be initialized.
+ * Return KNOT_EOK to continue in semantic checks.
+ * Return other KNOT_E* to stop semantic check with error.
  */
-void err_handler_init(err_handler_t *err_handler);
+typedef int (*error_cb) (err_handler_t *ctx, const zone_contents_t *zone,
+                         const zone_node_t *node, int error, const char *data);
 
-/*!
- * \brief Free all allocated memory and deinit error handler.
- *
- * \param handler Handler to be freed
- */
-void err_handler_deinit(err_handler_t *h);
+struct err_handler {
+	error_cb cb;
+};
 
-/*!
- * \brief Called when error has been encountered in node. Will save error to
- *        list for future possibility to log it.
- *
- * \param handler Error handler.
- * \param zone Zone content which is being checked.
- * \param node Node with semantic error in it.
- * \param error Type of error.
- * \param data Additional info in string.
- *
- * \retval KNOT_EOK on success.
- * \retval KNOT_ENOMEM if memory error.
- */
-int err_handler_node_error(err_handler_t *handler,
-                             const zone_contents_t *zone,
-                             const zone_node_t *node,
-                             int error, const char *data);
-
-/*!
- * \brief Called when error has been encountered for entire zone.
- *
- * Will save error to list for future possibility to log it.
- *
- * \param handler Error handler.
- * \param zname Zone name
- * \param error Type of error.
- *
- * \retval KNOT_EOK on success.
- * \retval KNOT_ENOMEM if memory error.
- */
-int err_handler_zone_error(err_handler_t *handler, const knot_dname_t *zname,
-                           int error);
 
 /*!
  * \brief Check zone for semantic errors.
@@ -173,12 +126,5 @@ int err_handler_zone_error(err_handler_t *handler, const knot_dname_t *zname,
  */
 int zone_do_sem_checks(zone_contents_t *zone, bool optional,
                        err_handler_t *handler);
-
-/*!
- * \brief Log all found errors using standard knot log.
- *
- * \param handler Error handler
- */
-void err_handler_log_errors(err_handler_t *handler);
 
 /*! @} */

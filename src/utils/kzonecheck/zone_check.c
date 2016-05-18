@@ -15,38 +15,55 @@
 */
 
 #include <stdio.h>
+#include <assert.h>
 
 #include "knot/zone/contents.h"
 #include "knot/zone/zonefile.h"
 #include "contrib/ucw/lists.h"
 #include "utils/kzonecheck/zone_check.h"
 
-static void print_errors(err_handler_t *handler, FILE *outfile)
+typedef struct {
+	err_handler_t _cb;
+	FILE *outfile;
+	unsigned errors[(-ZC_ERR_UNKNOWN) + 1]; /*!< Counting errors by type */
+	unsigned error_count; /*!< Total error count */
+} err_handler_stats_t;
+
+int err_handler_printf(err_handler_t *handler, const zone_contents_t *zone,
+                        const zone_node_t *node, int error, const char *data)
 {
-	err_node_t *n;
-	WALK_LIST(n, handler->error_list) {
-		if (n->error > (int)ZC_ERR_GLUE_RECORD) {
-			fprintf(outfile, "zone: [%s], semantic check, unknown error\n",
-			        n->zone_name ? n->zone_name : "?");
-			return;
-		}
+	assert(handler != NULL);
+	assert(zone != NULL);
+	err_handler_stats_t *h = (err_handler_stats_t *)handler;
+	char buff[KNOT_DNAME_TXT_MAXLEN + 1];
 
-		const char *errmsg = zonechecks_error_messages[-n->error];
+	const char *errmsg = semantic_check_error_msg(error);
 
-		fprintf(outfile ,"node: '%s' (%s%s%s)\n",
-		        n->name ? n->name : "?",
-		        errmsg ? errmsg : "unknown error",
-		        n->data ? " " : "",
-		        n->data ? n->data : "");
+	if (node == NULL) { // zone error
+		char *zone_name = knot_dname_to_str(buff, zone->apex->owner, sizeof(buff));
+		fprintf(h->outfile, "zone: [%s], semantic check, (%s%s%s)\n",
+		        zone_name ? zone_name : "?", errmsg,
+		        data ? " " : "", data ? data : "");
+	} else {
+		char *name = knot_dname_to_str(buff, node->owner, sizeof(buff));
+		fprintf(h->outfile, "node: '%s' (%s%s%s)\n", name ? name : "",
+		        errmsg, data ? " " : "", data ? data : "");
 	}
+
+	h->errors[-error]++;
+	h->error_count++;
+
+	return KNOT_EOK;
 }
 
-static void print_statistics(err_handler_t *handler, FILE *outfile)
+static void print_statistics(err_handler_stats_t *handler)
 {
-	fprintf(outfile, "\nERRORS SUMMARY:\n\tCount\tError\n");
+	err_handler_stats_t *h = (err_handler_stats_t *)handler;
+	fprintf(h->outfile, "\nERRORS SUMMARY:\n\tCount\tError\n");
 	for(int i = ZC_ERR_UNKNOWN; i < ZC_ERR_LAST; ++i) {
-		if (handler->errors[-i] > 0) {
-			fprintf(outfile, "\t%u\t%s\n", handler->errors[-i], zonechecks_error_messages[-i]);
+		if (h->errors[-i] > 0) {
+			fprintf(h->outfile, "\t%u\t%s\n", h->errors[-i],
+			        semantic_check_error_msg(i));
 		}
 	}
 }
@@ -60,15 +77,20 @@ int zone_check(const char *zone_file, const knot_dname_t *zone_name,
 		return ret;
 	}
 
+	err_handler_stats_t handler;
+	memset(&handler, 0, sizeof(handler));
+	handler._cb.cb = err_handler_printf;
+	handler.outfile = outfile;
+
+	zl.err_handler = (err_handler_t *)&handler;
 	zl.creator->master = true;
 
 	zone_contents_t *contents;
 	contents = zonefile_load(&zl);
 
-	if (zl.err_handler.error_count > 0) {
+	if (handler.error_count > 0) {
 		ret = KNOT_ESEMCHECK;
-		print_errors(&zl.err_handler, outfile);
-		print_statistics(&zl.err_handler, outfile);
+		print_statistics(&handler);
 	}
 
 	zonefile_close(&zl);

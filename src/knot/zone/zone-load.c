@@ -34,6 +34,12 @@ int zone_load_contents(conf_t *conf, const knot_dname_t *zone_name,
 	char *zonefile = conf_zonefile(conf, zone_name);
 	conf_val_t val = conf_zone_get(conf, C_SEM_CHECKS, zone_name);
 	int ret = zonefile_open(&zl, zonefile, zone_name, conf_bool(&val));
+
+	err_handler_logger_t handler;
+	memset(&handler, 0, sizeof(handler));
+	handler._cb.cb = err_handler_logger;
+
+	zl.err_handler = (err_handler_t *) &handler;
 	free(zonefile);
 	if (ret != KNOT_EOK) {
 		return ret;
@@ -45,8 +51,6 @@ int zone_load_contents(conf_t *conf, const knot_dname_t *zone_name,
 	zl.creator->master = !zone_load_can_bootstrap(conf, zone_name);
 
 	*contents = zonefile_load(&zl);
-
-	err_handler_log_errors(&zl.err_handler);
 
 	zonefile_close(&zl);
 	if (*contents == NULL) {

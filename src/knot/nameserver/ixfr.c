@@ -23,6 +23,7 @@
 #include "knot/updates/apply.h"
 #include "knot/zone/serial.h"
 #include "knot/zone/semantic-check.h"
+#include "knot/zone/zonefile.h"
 #include "libknot/libknot.h"
 #include "contrib/mempattern.h"
 #include "contrib/print.h"
@@ -389,11 +390,9 @@ static int ixfrin_finalize(struct answer_data *adata)
 		return ret;
 	}
 
-	err_handler_t handler;
-	err_handler_init(&handler);
-	ret = zone_do_sem_checks(new_contents, false, &handler);
-	err_handler_log_errors(&handler);
-	err_handler_deinit(&handler);
+	err_handler_logger_t handler;
+	handler._cb.cb = err_handler_logger;
+	ret = zone_do_sem_checks(new_contents, false, &handler._cb);
 
 	if (ret != KNOT_EOK) {
 		IXFRIN_LOG(LOG_WARNING, "failed to apply changes to zone (%s)",
