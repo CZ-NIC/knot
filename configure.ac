@@ -195,15 +195,6 @@ AS_IF([test "$enable_reuseport" != no], [
 AS_IF([test "$enable_reuseport" = yes],[
    AC_DEFINE([ENABLE_REUSEPORT], [1], [Use SO_REUSEPORT.])])
 
-# Check for link time optimizations support and predictive commoning
-AC_ARG_ENABLE([lto],
-    AS_HELP_STRING([--enable-lto=yes|no], [enable link-time optimizations, enable if not broken for some extra speed [default=no]]),
-    [case "${enableval}" in
-      yes) AX_CHECK_COMPILE_FLAG("-flto", [CFLAGS="$CFLAGS -flto"], []) ;;
-      no) ;;
-      *)  AC_MSG_ERROR([bad value ${enableval} for --enable-lto]) ;;
-    esac])
-
 AX_CHECK_COMPILE_FLAG("-fpredictive-commoning", [CFLAGS="$CFLAGS -fpredictive-commoning"], [], "-Werror")
 
 # Default directories
