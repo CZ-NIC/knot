@@ -293,7 +293,7 @@ static int put_additional(knot_pkt_t *pkt, const knot_rrset_t *rr,
 
 		/* Glue is required as per RFC 1034 Section 4.3.2 step 3b. */
 		bool is_glue = is_deleg && (node->flags & NODE_FLAGS_NONAUTH);
-		uint32_t flags = KNOT_PF_CHECKDUP|(is_glue ? 0 : KNOT_PF_NOTRUNC);
+		uint32_t flags = KNOT_PF_CHECKDUP | (is_glue ? 0 : KNOT_PF_NOTRUNC);
 
 		uint16_t hint = knot_pkt_compr_hint(info, KNOT_COMPR_HINT_RDATA + i);
 		knot_rrset_t rrsigs = node_rrset(node, KNOT_RRTYPE_RRSIG);
