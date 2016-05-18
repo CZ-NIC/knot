@@ -356,6 +356,7 @@ int event_load(conf_t *conf, zone_t *zone)
 	zone->zonefile_mtime = mtime;
 	zone_contents_t *old = zone_switch_contents(zone, contents);
 	zone->flags &= ~ZONE_EXPIRED;
+	bool old_contents = (old != NULL);
 	uint32_t old_serial = zone_contents_serial(old);
 	if (old != NULL) {
 		synchronize_rcu();
@@ -385,8 +386,12 @@ int event_load(conf_t *conf, zone_t *zone)
 	}
 
 	uint32_t current_serial = zone_contents_serial(zone->contents);
-	log_zone_info(zone->name, "loaded, serial %u -> %u",
-	              old_serial, current_serial);
+	if (old_contents) {
+		log_zone_info(zone->name, "loaded, serial %u -> %u",
+		              old_serial, current_serial);
+	} else {
+		log_zone_info(zone->name, "loaded, serial %u", current_serial);
+	}
 
 	return KNOT_EOK;
 
@@ -718,4 +723,3 @@ uint32_t bootstrap_next(uint32_t timer)
 	}
 	return timer;
 }
-

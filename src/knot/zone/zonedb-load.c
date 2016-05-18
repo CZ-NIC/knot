@@ -79,8 +79,8 @@ static zone_status_t zone_file_status(conf_t *conf, const zone_t *old_zone,
 /*!
  * \brief Log message about loaded zone (name and status).
  *
- * \param zone       Zone structure.
- * \param status     Zone file status.
+ * \param zone    Zone structure.
+ * \param status  Zone file status.
  */
 static void log_zone_load_info(const zone_t *zone, zone_status_t status)
 {
@@ -97,14 +97,14 @@ static void log_zone_load_info(const zone_t *zone, zone_status_t status)
 	}
 	assert(action);
 
-	uint32_t serial = 0;
 	if (zone->contents && zone->contents->apex) {
 		const knot_rdataset_t *soa = node_rdataset(zone->contents->apex,
 		                                           KNOT_RRTYPE_SOA);
-		serial = knot_soa_serial(soa);
+		uint32_t serial = knot_soa_serial(soa);
+		log_zone_info(zone->name, "zone %s, serial %u", action, serial);
+	} else {
+		log_zone_info(zone->name, "zone %s", action);
 	}
-
-	log_zone_info(zone->name, "zone %s, serial %u", action, serial);
 }
 
 static zone_t *create_zone_from(const knot_dname_t *name, server_t *server)
