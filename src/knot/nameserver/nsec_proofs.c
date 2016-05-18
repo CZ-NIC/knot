@@ -709,7 +709,7 @@ int nsec_prove_dp_security(knot_pkt_t *pkt, struct query_data *qdata)
 int nsec_append_rrsigs(knot_pkt_t *pkt, struct query_data *qdata, bool optional)
 {
 	int ret = KNOT_EOK;
-	uint32_t flags = (optional) ? KNOT_PF_NOTRUNC : KNOT_PF_NULL;
+	uint32_t flags = optional ? KNOT_PF_NOTRUNC : KNOT_PF_NULL;
 	flags |= KNOT_PF_FREE; // Free all RRSIGs, they are synthesized
 
 	/* Append RRSIGs for section. */
@@ -728,7 +728,7 @@ int nsec_append_rrsigs(knot_pkt_t *pkt, struct query_data *qdata, bool optional)
 	/* Clear the list. */
 	nsec_clear_rrsigs(qdata);
 
-	return KNOT_EOK;
+	return ret;
 }
 
 void nsec_clear_rrsigs(struct query_data *qdata)

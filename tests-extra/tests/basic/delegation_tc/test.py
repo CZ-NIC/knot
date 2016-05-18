@@ -45,6 +45,11 @@ with DelegationTest("glue.tc.test") as test:
         "authority": {"NS": 2, "DS": 0, "RRSIG": 0},
         "additional": {"AAAA": 0, "RRSIG": 0}}
     )
+    # incomplete delegation, DS without signature
+    test.run(bufsize=665, truncated=True, counts={
+        "authority": {"NS": 2, "DS": 1, "RRSIG": 0},
+        "additional": {"AAAA": 0, "RRSIG": 0}}
+    )
     # incomplete delegation, no glue
     test.run(bufsize=712, truncated=True, counts={
         "authority": {"NS": 2, "DS": 1, "RRSIG": 1},
@@ -69,6 +74,11 @@ with DelegationTest("unreachable.tc.test") as test:
         "authority": {"NS": 2, "DS": 0, "RRSIG": 0},
         "additional": {"AAAA": 0, "RRSIG": 0}}
     )
+    # incomplete delegation, DS without signature
+    test.run(bufsize=616, truncated=True, counts={
+        "authority": {"NS": 2, "DS": 1, "RRSIG": 0},
+        "additional": {"AAAA": 0, "RRSIG": 0}}
+    )
     # complete delegation, no glue available
     test.run(bufsize=719, truncated=False, counts={
         "authority": {"NS": 2, "DS": 1, "RRSIG": 1},
@@ -80,6 +90,11 @@ with DelegationTest("foreign.tc.test") as test:
     # incomplete delegation, no DS
     test.run(bufsize=512, truncated=True, counts={
         "authority": {"NS": 2, "DS": 0, "RRSIG": 0},
+        "additional": {"AAAA": 0, "RRSIG": 0}}
+    )
+    # incomplete delegation, DS without signature
+    test.run(bufsize=619, truncated=True, counts={
+        "authority": {"NS": 2, "DS": 1, "RRSIG": 0},
         "additional": {"AAAA": 0, "RRSIG": 0}}
     )
     # complete delegation, no glue needed
@@ -94,6 +109,11 @@ with DelegationTest("parent.tc.test") as test:
     # incomplete delegation, no DS
     test.run(bufsize=512, truncated=True, counts={
         "authority": {"NS": 2, "DS": 0, "RRSIG": 0},
+        "additional": {"AAAA": 0, "RRSIG": 0}}
+    )
+    # incomplete delegation, DS without signature
+    test.run(bufsize=611, truncated=True, counts={
+        "authority": {"NS": 2, "DS": 1, "RRSIG": 0},
         "additional": {"AAAA": 0, "RRSIG": 0}}
     )
     # complete delegation, no optional additionals
