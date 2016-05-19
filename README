@@ -40,7 +40,7 @@ $ sudo apt-get upgrade
 
 Install prerequisites:
 $ sudo apt-get install \
-  libtool autoconf liburcu-dev libgnutls28-dev libjansson-dev
+  libtool autoconf liburcu-dev libgnutls28-dev libjansson-dev libedit-dev
 
 Install optional packages to override embedded libraries:
 $ sudo apt-get install liblmdb-dev
@@ -58,7 +58,7 @@ Install basic development tools:
 
 Install prerequisites:
 # yum install \
-  libtool autoconf automake userspace-rcu-devel gnutls-devel jansson-devel
+  libtool autoconf automake userspace-rcu-devel gnutls-devel jansson-devel libedit-devel
 
 Install optional packages to override embedded libraries:
 # yum install lmdb-devel
