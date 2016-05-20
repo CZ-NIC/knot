@@ -121,6 +121,14 @@ int main(int argc, char *argv[])
 		}
 		return EXIT_SUCCESS;
 	} else {
+
+		fprintf(outfile, "Fatal zone error. Zone file cannot be used for server.\n");
+		if(ret == KNOT_EACCES || ret == KNOT_EFILE) {
+			fprintf(stderr, "Invalid zone file\n");
+
+		} else if (ret != KNOT_ERROR) {
+			fprintf(stderr, "error: %s\n", knot_strerror(ret));
+		}
 		return EXIT_FAILURE;
 	}
 }
