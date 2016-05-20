@@ -35,20 +35,20 @@ int err_handler_printf(err_handler_t *handler, const zone_contents_t *zone,
 	assert(handler != NULL);
 	assert(zone != NULL);
 	err_handler_stats_t *h = (err_handler_stats_t *)handler;
-	char buff[KNOT_DNAME_TXT_MAXLEN + 1] = { 0 };
 
 	const char *errmsg = semantic_check_error_msg(error);
-
-	if (node == NULL) { // zone error
-		char *zone_name = knot_dname_to_str(buff, zone->apex->owner, sizeof(buff));
-		fprintf(h->outfile, "zone: [%s], semantic check, (%s%s%s)\n",
-		        zone_name ? zone_name : "?", errmsg,
-		        data ? " " : "", data ? data : "");
-	} else {
-		char *name = knot_dname_to_str(buff, node->owner, sizeof(buff));
-		fprintf(h->outfile, "node: '%s' (%s%s%s)\n", name ? name : "",
-		        errmsg, data ? " " : "", data ? data : "");
+	const char *type = node ? "name" : "zone";
+	char *name = NULL;
+	if (node) {
+		name = knot_dname_to_str_alloc(node->owner);
+	} else if (zone && zone->apex) {
+		name = knot_dname_to_str_alloc(zone->apex->owner);
 	}
+
+	fprintf(h->outfile, "%s '%s': %s%s%s%s\n", type, name ? name : "?",
+	        errmsg, (data ? " (" : ""), (data ? data : ""), (data ? ")" : ""));
+
+	free(name);
 
 	h->errors[-error]++;
 	h->error_count++;
