@@ -408,15 +408,15 @@ int err_handler_logger(err_handler_t *handler, const zone_contents_t *zone,
 	const char *errmsg = semantic_check_error_msg(error);
 
 	if (node == NULL) { // zone error
-		log_zone_warning(zone->apex->owner, "semantic check, (%s%s%s)",
-		                 errmsg, data ? " " : "", data ? data : "");
+		log_zone_warning(zone->apex->owner, "semantic check, %s%s%s",
+		                 errmsg, data ? ", " : "", data ? data : "");
 	} else {
 		char buff[KNOT_DNAME_TXT_MAXLEN + 1];
 		char *name = knot_dname_to_str(buff, node->owner, sizeof(buff));
 		log_zone_warning(zone->apex->owner,
-		                 "semantic check, node '%s' (%s%s%s)",
-		                 name ? name : "", errmsg, data ? " " : "",
-		                 data ? data : "");
+		                 "semantic check, record '%s', %s%s%s",
+		                 name ? name : "", errmsg,
+		                 data ? ", " : "", data ? data : "");
 	}
 
 	h->error_count++;
