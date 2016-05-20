@@ -50,8 +50,8 @@ plan_lazy
 expect_error "cname_extra_01.zone" 1 1 "CNAME, node contains other records)"
 expect_error "cname_extra_02.signed" 1 1 "CNAME, node contains other records than RRSIG and NSEC/NSEC3"
 expect_error "cname_multiple.zone" 1 1 "CNAME, multiple records"
-expect_error "dname_children.zone" 1 2 "DNAME, node has children error triggered by child node"
-expect_error "dname_children.zone" 1 2 "DNAME, node has children error triggered by parent node"
+expect_error "dname_children.zone" 1 2 "DNAME, node has children record is occluded by a parent DNAME"
+expect_error "dname_children.zone" 1 2 "DNAME, node has children records exist below the DNAME"
 
 expect_error "missing_ns.zone" 0 1 "NS record missing in zone apex"
 expect_error "missing_glue_01.zone" 0 2 "GLUE, record with glue address missing"

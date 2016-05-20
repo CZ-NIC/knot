@@ -903,10 +903,6 @@ static int do_checks_in_tree(zone_node_t *node, void *data)
 		if (CHECK_FUNCTIONS[i].level & s_data->level) {
 			ret = CHECK_FUNCTIONS[i].function(node, s_data);
 		}
-		if (ret != KNOT_EOK) {
-		printf("**************** - %d\n", i);
-		}
-
 	}
 
 
