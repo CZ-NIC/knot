@@ -59,7 +59,7 @@ int err_handler_printf(err_handler_t *handler, const zone_contents_t *zone,
 static void print_statistics(err_handler_stats_t *handler)
 {
 	err_handler_stats_t *h = (err_handler_stats_t *)handler;
-	fprintf(h->outfile, "\nERRORS SUMMARY:\n\tCount\tError\n");
+	fprintf(h->outfile, "\nERROR SUMMARY:\n\tCount\tError\n");
 	for(int i = ZC_ERR_UNKNOWN; i < ZC_ERR_LAST; ++i) {
 		if (h->errors[-i] > 0) {
 			fprintf(h->outfile, "\t%u\t%s\n", h->errors[-i],
