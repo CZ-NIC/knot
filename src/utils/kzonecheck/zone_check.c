@@ -35,7 +35,7 @@ int err_handler_printf(err_handler_t *handler, const zone_contents_t *zone,
 	assert(handler != NULL);
 	assert(zone != NULL);
 	err_handler_stats_t *h = (err_handler_stats_t *)handler;
-	char buff[KNOT_DNAME_TXT_MAXLEN + 1];
+	char buff[KNOT_DNAME_TXT_MAXLEN + 1] = { 0 };
 
 	const char *errmsg = semantic_check_error_msg(error);
 
