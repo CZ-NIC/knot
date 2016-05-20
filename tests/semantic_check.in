@@ -70,7 +70,7 @@ expect_error "nsec3_missing.signed" 0 1 "NSEC3, failed to find NSEC3 record in t
 expect_error "nsec3_wrong_bitmap_01.signed" 0 1 "NSEC(3), wrong bitmap"
 expect_error "nsec3_wrong_bitmap_02.signed" 0 1 "NSEC(3), wrong bitmap"
 expect_error "nsec3_ds.signed" 0 1 "NSEC3, failed to find NSEC3 record in the zone"
-expect_error "nsec3_optout.signed" 0 1 "NSEC3, unsecure delegation is not part of the opt-out span"
+expect_error "nsec3_optout.signed" 0 1 "NSEC3, insecure delegation is not part of the opt-out span"
 expect_error "nsec3_chain_01.signed" 0 1 "NSEC3, chain is not coherent"
 expect_error "nsec3_chain_02.signed" 0 2 "NSEC3, chain is not coherent"
 expect_error "nsec3_chain_03.signed" 0 2 "NSEC3, chain is not coherent"
