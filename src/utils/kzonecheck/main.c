@@ -113,22 +113,20 @@ int main(int argc, char *argv[])
 
 	log_close();
 
-	if (ret == KNOT_ESEMCHECK) {
-		return 2;
-	} else if (ret == KNOT_EOK) {
+	switch (ret) {
+	case KNOT_EOK:
 		if (verbose) {
-			fprintf(outfile, "No sematic errors found.\n");
+			fprintf(outfile, "No sematic error found.\n");
 		}
 		return EXIT_SUCCESS;
-	} else {
-
-		fprintf(outfile, "Fatal zone error. Zone file cannot be used for server.\n");
-		if(ret == KNOT_EACCES || ret == KNOT_EFILE) {
-			fprintf(stderr, "Invalid zone file\n");
-
-		} else if (ret != KNOT_ERROR) {
-			fprintf(stderr, "error: %s\n", knot_strerror(ret));
-		}
+	case KNOT_ESEMCHECK:
+		return 2;
+	case KNOT_EACCES:
+	case KNOT_EFILE:
+		fprintf(stderr, "Failed to load the zone file.\n");
+		return EXIT_FAILURE;
+	default:
+		fprintf(stderr, "Failed to run semantic checks (%s).\n", knot_strerror(ret));
 		return EXIT_FAILURE;
 	}
 }
