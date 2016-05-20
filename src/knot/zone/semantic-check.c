@@ -508,8 +508,8 @@ static int check_rrsig(const zone_node_t *node, semchecks_data_t *data)
 /*!
  * \brief Add all RR types from a node into the bitmap.
  */
-inline static void bitmap_add_all_node_rrsets(dnssec_nsec_bitmap_t *bitmap,
-                                              const zone_node_t *node)
+static void bitmap_add_all_node_rrsets(dnssec_nsec_bitmap_t *bitmap,
+                                       const zone_node_t *node)
 {
 	bool deleg = node->flags && NODE_FLAGS_DELEG;
 	for (int i = 0; i < node->rrset_count; i++) {
