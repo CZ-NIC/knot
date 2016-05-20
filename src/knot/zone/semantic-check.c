@@ -151,7 +151,7 @@ struct check_function {
 };
 
 /* List of function callbacks for defined check_level */
-const struct check_function check_functions[] = {
+static const struct check_function CHECK_FUNCTIONS[] = {
 	{check_cname_multiple, MANDATORY},
 	{check_dname,          MANDATORY},
 	{check_delegation,     OPTIONAL},
@@ -164,7 +164,8 @@ const struct check_function check_functions[] = {
 	{check_nsec_bitmap,    NSEC | NSEC3},
 };
 
-const int check_functions_len = sizeof(check_functions) / sizeof(struct check_function);
+static const int CHECK_FUNCTIONS_LEN = sizeof(CHECK_FUNCTIONS)
+                                     / sizeof(struct check_function);
 
 /*!
  * \brief Check whether DNSKEY rdata are valid.
@@ -898,9 +899,9 @@ static int do_checks_in_tree(zone_node_t *node, void *data)
 
 	int ret = KNOT_EOK;
 
-	for (int i = 0; ret == KNOT_EOK && i < check_functions_len; ++i) {
-		if (check_functions[i].level & s_data->level) {
-			ret = check_functions[i].function(node, s_data);
+	for (int i = 0; ret == KNOT_EOK && i < CHECK_FUNCTIONS_LEN; ++i) {
+		if (CHECK_FUNCTIONS[i].level & s_data->level) {
+			ret = CHECK_FUNCTIONS[i].function(node, s_data);
 		}
 		if (ret != KNOT_EOK) {
 		printf("**************** - %d\n", i);
