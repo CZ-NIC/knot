@@ -32,7 +32,7 @@
 #include "contrib/wire.h"
 #include "knot/dnssec/nsec-chain.h"
 
-const char *zonechecks_error_messages[(-ZC_ERR_UNKNOWN) + 1] = {
+static const char *zonechecks_error_messages[(-ZC_ERR_UNKNOWN) + 1] = {
 	[-ZC_ERR_UNKNOWN] =
 	"unknown error",
 
@@ -864,7 +864,7 @@ static int check_dname(const zone_node_t *node, semchecks_data_t *data)
 }
 
 /*!
- * \brief Check that nsec chain is cyclic.
+ * \brief Check that NSEC chain is cyclic.
  *
  * Run only once per zone. Check that last NSEC node points to first one.
  * \param data Semantic checks context data
