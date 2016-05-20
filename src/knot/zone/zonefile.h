@@ -1,4 +1,4 @@
-/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -72,8 +72,15 @@ int zonefile_open(zloader_t *loader, const char *source,
  */
 zone_contents_t *zonefile_load(zloader_t *loader);
 
-/*! \brief Return zone file mtime. */
-time_t zonefile_mtime(const char *path);
+/*!
+ * \brief Checks if zonefile exists.
+ *
+ * \param path   Zonefile path.
+ * \param mtime  Zonefile mtime if exists (can be NULL).
+ *
+ * \return KNOT_E*
+ */
+int zonefile_exists(const char *path, time_t *mtime);
 
 /*!
  * \brief Write zone contents to zone file.

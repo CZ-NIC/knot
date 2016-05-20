@@ -1,4 +1,4 @@
-/*  Copyright (C) 2014 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -311,7 +311,7 @@ int zone_flush_journal(conf_t *conf, zone_t *zone)
 	/* Check for difference against zonefile serial. */
 	zone_contents_t *contents = zone->contents;
 	uint32_t serial_to = zone_contents_serial(contents);
-	if (zone->zonefile_serial == serial_to) {
+	if (zone->zonefile.exists && zone->zonefile.serial == serial_to) {
 		return KNOT_EOK; /* No differences. */
 	}
 
@@ -319,21 +319,26 @@ int zone_flush_journal(conf_t *conf, zone_t *zone)
 
 	/* Synchronize journal. */
 	int ret = zonefile_write(zonefile, contents);
-	if (ret == KNOT_EOK) {
-		log_zone_info(zone->name, "zone file updated, serial %u -> %u",
-		              zone->zonefile_serial, serial_to);
-	} else {
+	if (ret != KNOT_EOK) {
 		log_zone_warning(zone->name, "failed to update zone file (%s)",
 		                 knot_strerror(ret));
 		free(zonefile);
 		return ret;
 	}
 
+	if (zone->zonefile.exists) {
+		log_zone_info(zone->name, "zone file updated, serial %u -> %u",
+		              zone->zonefile.serial, serial_to);
+	} else {
+		log_zone_info(zone->name, "zone file updated, serial %u",
+		              serial_to);
+	}
+
 	/* Update zone version. */
 	struct stat st;
 	if (stat(zonefile, &st) < 0) {
 		log_zone_warning(zone->name, "failed to update zone file (%s)",
-		                 knot_strerror(KNOT_EACCES));
+		                 knot_strerror(knot_map_errno()));
 		free(zonefile);
 		return KNOT_EACCES;
 	}
@@ -343,8 +348,9 @@ int zone_flush_journal(conf_t *conf, zone_t *zone)
 	char *journal_file = conf_journalfile(conf, zone->name);
 
 	/* Update zone file serial and journal. */
-	zone->zonefile_mtime = st.st_mtime;
-	zone->zonefile_serial = serial_to;
+	zone->zonefile.exists = true;
+	zone->zonefile.mtime = st.st_mtime;
+	zone->zonefile.serial = serial_to;
 	journal_mark_synced(journal_file);
 
 	free(journal_file);

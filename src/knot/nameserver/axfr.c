@@ -1,4 +1,4 @@
-/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -330,12 +330,20 @@ static int axfr_answer_finalize(struct answer_data *adata)
 	zone->flags &= ~ZONE_EXPIRED;
 	synchronize_rcu();
 
-	AXFRIN_LOG(LOG_INFO, "finished, "
-	           "serial %u -> %u, %.02f seconds, %u messages, %u bytes",
-	           zone_contents_serial(old_contents),
-	           zone_contents_serial(proc->contents),
-	           time_diff(&proc->tstamp, &now) / 1000.0,
-	           proc->npkts, proc->nbytes);
+	if (old_contents != NULL) {
+		AXFRIN_LOG(LOG_INFO, "finished, "
+		           "serial %u -> %u, %.02f seconds, %u messages, %u bytes",
+		           zone_contents_serial(old_contents),
+		           zone_contents_serial(proc->contents),
+		           time_diff(&proc->tstamp, &now) / 1000.0,
+		           proc->npkts, proc->nbytes);
+	} else {
+		AXFRIN_LOG(LOG_INFO, "finished, "
+		           "serial %u, %.02f seconds, %u messages, %u bytes",
+		           zone_contents_serial(proc->contents),
+		           time_diff(&proc->tstamp, &now) / 1000.0,
+		           proc->npkts, proc->nbytes);
+	}
 
 	/* Do not free new contents with cleanup. */
 	zone_contents_deep_free(&old_contents);

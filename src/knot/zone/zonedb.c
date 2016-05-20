@@ -31,7 +31,7 @@ static void discard_zone(zone_t *zone)
 		char *journal_file = conf_journalfile(conf(), zone->name);
 
 		/* Flush if bootstrapped or if the journal doesn't exist. */
-		if (zone->zonefile_mtime == 0 || !journal_exists(journal_file)) {
+		if (!zone->zonefile.exists || !journal_exists(journal_file)) {
 			pthread_mutex_lock(&zone->journal_lock);
 			zone_flush_journal(conf(), zone);
 			pthread_mutex_unlock(&zone->journal_lock);

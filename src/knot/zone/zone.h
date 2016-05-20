@@ -1,4 +1,4 @@
-/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -56,6 +56,17 @@ typedef struct zone
 	zone_contents_t *contents;
 	zone_flag_t flags;
 
+	/*! \brief Zonefile parameters. */
+	struct {
+		time_t mtime;
+		uint32_t serial;
+		bool exists;
+	} zonefile;
+
+	/*! \brief Zone events. */
+	uint32_t bootstrap_retry; /*!< AXFR/IN bootstrap retry. */
+	zone_events_t events;     /*!< Zone events timers. */
+
 	/*! \brief DDNS queue and lock. */
 	pthread_mutex_t ddns_lock;
 	size_t ddns_queue_size;
@@ -63,12 +74,6 @@ typedef struct zone
 
 	/*! \brief Journal access lock. */
 	pthread_mutex_t journal_lock;
-
-	/*! \brief Zone events. */
-	zone_events_t events;     /*!< Zone events timers. */
-	time_t zonefile_mtime;
-	uint32_t bootstrap_retry; /*!< AXFR/IN bootstrap retry. */
-	uint32_t zonefile_serial;
 
 	/*! \brief Preferred master lock. */
 	pthread_mutex_t preferred_lock;

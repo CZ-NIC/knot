@@ -313,15 +313,22 @@ fail:
 	return NULL;
 }
 
-/*! \brief Return zone file mtime. */
-time_t zonefile_mtime(const char *path)
+int zonefile_exists(const char *path, time_t *mtime)
 {
-	struct stat zonefile_st = { 0 };
-	int result = stat(path, &zonefile_st);
-	if (result < 0) {
-		return result;
+	if (path == NULL) {
+		return KNOT_EINVAL;
 	}
-	return zonefile_st.st_mtime;
+
+	struct stat zonefile_st = { 0 };
+	if (stat(path, &zonefile_st) < 0) {
+		return knot_map_errno();
+	}
+
+	if (mtime != NULL) {
+		*mtime = zonefile_st.st_mtime;
+	}
+
+	return KNOT_EOK;
 }
 
 /*! \brief Open a temporary zonefile. */
