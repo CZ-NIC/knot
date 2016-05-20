@@ -38,7 +38,7 @@ int err_handler_printf(err_handler_t *handler, const zone_contents_t *zone,
 
 	const char *errmsg = semantic_check_error_msg(error);
 
-	const char *type = node ? "name" : "zone";
+	const char *type = node ? "record" : "zone";
 	char *name = NULL;
 	if (node) {
 		name = knot_dname_to_str_alloc(node->owner);

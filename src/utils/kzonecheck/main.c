@@ -120,7 +120,7 @@ int main(int argc, char *argv[])
 		}
 		return EXIT_SUCCESS;
 	case KNOT_ESEMCHECK:
-		return 2;
+		return EXIT_FAILURE;
 	case KNOT_EACCES:
 	case KNOT_EFILE:
 		fprintf(stderr, "Failed to load the zone file.\n");
