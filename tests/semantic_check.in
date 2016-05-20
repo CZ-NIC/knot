@@ -1,20 +1,20 @@
 #!/bin/sh
 
-KZONECHECK=@top_builddir@/src/kzonecheck
-DATA=@top_srcdir@/tests/semantic_check_data
+KZONECHECK="@top_builddir@/src/kzonecheck"
+DATA="@top_srcdir@/tests/semantic_check_data"
 
-. @top_srcdir@/libtap/tap/libtap.sh
+. "@top_srcdir@/libtap/tap/libtap.sh"
 
 TMPDIR=$(test_tmpdir)
-LOG=$TMPDIR/log
+LOG="$TMPDIR/log"
 #param zonefile fatal_error expected_erros_count semcheck_err_msg
 expect_error()
 {
-	if [ ! -r $DATA/$1 ]; then
+	if [ ! -r "$DATA/$1" ]; then
 		skip_block 4 "missing zone file for test"
 		return
 	fi
-	$KZONECHECK -o example.com "$DATA/$1" > $LOG
+	"$KZONECHECK" -o example.com "$DATA/$1" > "$LOG"
 	ret=$?
 	if [ $2 -eq 1 ]; then
 		ok "$1 - program return code" test $ret -eq 1
@@ -24,10 +24,11 @@ expect_error()
 
 	grep "error.*(semantic check)" $LOG > /dev/null
 	ok "$1 - check fatal" test $? -ne $2
-	grep "node: .* (${4}.*" $LOG > /dev/null
+
+	grep -E "^name '[^']+': ${4}$" $LOG > /dev/null
 	ok "$1 - check message" test $? -eq 0
 
-	errors=$(grep "node:" $LOG | wc -l)
+	errors=$(grep "^name " $LOG | wc -l)
 	ok "$1 - number of found errors" test $errors -eq $3
 	if [ $errors != $3 ]; then
 		diag "expected errors $3 but found $errors"
@@ -47,37 +48,37 @@ fi
 
 plan_lazy
 
-expect_error "cname_extra_01.zone" 1 1 "CNAME, node contains other records)"
+expect_error "cname_extra_01.zone" 1 1 "CNAME, node contains other records"
 expect_error "cname_extra_02.signed" 1 1 "CNAME, node contains other records than RRSIG and NSEC/NSEC3"
 expect_error "cname_multiple.zone" 1 1 "CNAME, multiple records"
-expect_error "dname_children.zone" 1 2 "DNAME, node has children record is occluded by a parent DNAME"
-expect_error "dname_children.zone" 1 2 "DNAME, node has children records exist below the DNAME"
+expect_error "dname_children.zone" 1 2 "DNAME, node has children \\(record is occluded by a parent DNAME\\)"
+expect_error "dname_children.zone" 1 2 "DNAME, node has children \\(records exist below the DNAME\\)"
 
 expect_error "missing_ns.zone" 0 1 "NS record missing in zone apex"
 expect_error "missing_glue_01.zone" 0 2 "GLUE, record with glue address missing"
 expect_error "missing_glue_02.zone" 0 1 "GLUE, record with glue address missing"
 expect_error "missing_glue_03.zone" 0 1 "GLUE, record with glue address missing"
-expect_error "different_signer_name.signed" 0 1 "RRSIG, signer name is different than in DNSKEY"
-expect_error "no_rrsig.signed" 0 2 "RRSIG, no RRSIG"
-expect_error "no_rrsig_with_delegation.signed" 0 1 "RRSIG, no RRSIG"
+expect_error "different_signer_name.signed" 0 1 "RRSIG, signer name is different than in DNSKEY \\(record type 'NSEC'\\)"
+expect_error "no_rrsig.signed" 0 2 "RRSIG, no RRSIG \\(record type 'A'\\)"
+expect_error "no_rrsig_with_delegation.signed" 0 1 "RRSIG, no RRSIG \\(record type 'NSEC'\\)"
 expect_error "nsec_broken_chain_01.signed" 0 1 "NSEC, chain is not coherent"
 expect_error "nsec_broken_chain_02.signed" 0 1 "NSEC, chain is not cyclic"
 expect_error "nsec_missing.signed" 0 1 "NSEC, missing record"
 expect_error "nsec_multiple.signed" 0 2 "NSEC, multiple records"
-expect_error "nsec_wrong_bitmap_01.signed" 0 1 "NSEC(3), wrong bitmap"
-expect_error "nsec_wrong_bitmap_02.signed" 0 1 "NSEC(3), wrong bitmap"
+expect_error "nsec_wrong_bitmap_01.signed" 0 1 "NSEC\\(3\\), wrong bitmap"
+expect_error "nsec_wrong_bitmap_02.signed" 0 1 "NSEC\\(3\\), wrong bitmap"
 expect_error "nsec3_missing.signed" 0 1 "NSEC3, failed to find NSEC3 record in the zone"
-expect_error "nsec3_wrong_bitmap_01.signed" 0 1 "NSEC(3), wrong bitmap"
-expect_error "nsec3_wrong_bitmap_02.signed" 0 1 "NSEC(3), wrong bitmap"
+expect_error "nsec3_wrong_bitmap_01.signed" 0 1 "NSEC\\(3\\), wrong bitmap"
+expect_error "nsec3_wrong_bitmap_02.signed" 0 1 "NSEC\\(3\\), wrong bitmap"
 expect_error "nsec3_ds.signed" 0 1 "NSEC3, failed to find NSEC3 record in the zone"
 expect_error "nsec3_optout.signed" 0 1 "NSEC3, insecure delegation is not part of the opt-out span"
 expect_error "nsec3_chain_01.signed" 0 1 "NSEC3, chain is not coherent"
 expect_error "nsec3_chain_02.signed" 0 2 "NSEC3, chain is not coherent"
 expect_error "nsec3_chain_03.signed" 0 2 "NSEC3, chain is not coherent"
 expect_error "rrsig_signed.signed" 0 1 "RRSIG, signed RRSIG"
-expect_error "rrsig_ttl.signed" 0 1 "RRSIG, TTL is wrong"
-expect_error "rrsig_rdata_ttl.signed" 0 1 "RRSIG, TTL RDATA field is wrong"
-expect_error "wrong_dnskey.signed" 0 5 "RRSIG, missing DNSKEY for RRSIG"
+expect_error "rrsig_ttl.signed" 0 1 "RRSIG, TTL is wrong \\(record type 'A'\\)"
+expect_error "rrsig_rdata_ttl.signed" 0 1 "RRSIG, TTL RDATA field is wrong \\(record type 'A'\\)"
+expect_error "wrong_dnskey.signed" 0 5 "RRSIG, missing DNSKEY for RRSIG \\(record type '.*'\\)"
 
 test_correct "no_error_delegaton_bitmap.signed"
 test_correct "no_error_nsec3_delegation.signed"

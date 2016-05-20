@@ -37,12 +37,21 @@ int err_handler_printf(err_handler_t *handler, const zone_contents_t *zone,
 	err_handler_stats_t *h = (err_handler_stats_t *)handler;
 
 	const char *errmsg = semantic_check_error_msg(error);
+
 	const char *type = node ? "name" : "zone";
 	char *name = NULL;
 	if (node) {
 		name = knot_dname_to_str_alloc(node->owner);
 	} else if (zone && zone->apex) {
 		name = knot_dname_to_str_alloc(zone->apex->owner);
+	}
+
+	if (name) {
+		// trim terminating dot
+		int len = strlen(name);
+		if (len > 1) {
+			name[len - 1] = '\0';
+		}
 	}
 
 	fprintf(h->outfile, "%s '%s': %s%s%s%s\n", type, name ? name : "?",

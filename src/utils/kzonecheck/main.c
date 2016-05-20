@@ -43,7 +43,7 @@ static void print_help(void)
 
 int main(int argc, char *argv[])
 {
-	char *filename;
+	char *filename = NULL;
 	char *zonename = NULL;
 	bool verbose = false;
 	FILE *outfile = stdout;
@@ -97,7 +97,7 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	/* Set up simplified logging just to stdout */
+	/* TODO: Remove logging from zone loading. */
 	log_init();
 	log_levels_set(LOGT_STDOUT, LOG_ANY, LOG_MASK(LOG_ERR));
 	log_levels_set(LOGT_STDERR, LOG_ANY, 0);
