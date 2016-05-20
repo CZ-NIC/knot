@@ -79,8 +79,8 @@ static const char *zonechecks_error_messages[(-ZC_ERR_UNKNOWN) + 1] = {
 
 	[-ZC_ERR_NSEC3_NOT_FOUND] =
 	"NSEC3, failed to find NSEC3 record in the zone",
-	[-ZC_ERR_NSEC3_INSECURED_DELEGATION_OPT] =
-	"NSEC3, insecured delegation is not part of the opt-out span",
+	[-ZC_ERR_NSEC3_INSECURE_DELEGATION_OPT] =
+	"NSEC3, insecure delegation is not part of the opt-out span",
 	[-ZC_ERR_NSEC3_RDATA_TTL] =
 	"NSEC3, original TTL RDATA field is wrong",
 	[-ZC_ERR_NSEC3_RDATA_CHAIN] =
@@ -682,7 +682,7 @@ static int check_nsec3_opt_out(const zone_node_t *node, semchecks_data_t *data)
 	if (!(node->nsec3_node == NULL && node->flags & NODE_FLAGS_DELEG)) {
 		return KNOT_EOK;
 	}
-	/* Unsecured delegation, check whether it is part of opt-out span */
+	/* Insecure delegation, check whether it is part of opt-out span */
 
 	const zone_node_t *nsec3_previous = NULL;
 	const zone_node_t *nsec3_node;
@@ -705,7 +705,7 @@ static int check_nsec3_opt_out(const zone_node_t *node, semchecks_data_t *data)
 
 	if (!(flags & opt_out_mask)) {
 		return data->handler->cb(data->handler, data->zone, node,
-		                         ZC_ERR_NSEC3_INSECURED_DELEGATION_OPT,
+		                         ZC_ERR_NSEC3_INSECURE_DELEGATION_OPT,
 		                         NULL);
 	}
 	return KNOT_EOK;

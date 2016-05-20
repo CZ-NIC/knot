@@ -734,7 +734,7 @@ Extra checks:
 - Wrong NSEC(3) type bitmap
 - Multiple NSEC records at the same node
 - Missing NSEC records at authoritative nodes
-- NSEC3-insecured delegation that is not part of Opt-out span
+- NSEC3 insecure delegation that is not part of Opt-out span
 - Wrong original TTL value in NSEC3 records
 - Wrong RDATA TTL value in RRSIG record
 - Signer name in RRSIG RR not the same as in DNSKEY

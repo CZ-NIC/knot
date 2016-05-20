@@ -643,7 +643,7 @@ Multiple NSEC records at the same node
 .IP \(bu 2
 Missing NSEC records at authoritative nodes
 .IP \(bu 2
-NSEC3\-insecured delegation that is not part of Opt\-out span
+NSEC3 insecure delegation that is not part of Opt\-out span
 .IP \(bu 2
 Wrong original TTL value in NSEC3 records
 .IP \(bu 2
