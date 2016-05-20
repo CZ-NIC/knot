@@ -219,6 +219,24 @@ static void event_dispatch(event_t *event)
 	pthread_mutex_unlock(&events->mx);
 }
 
+/*!
+ * \brief Wait until we can safely free the event. Required to avoid races.
+ *
+ * \warning Mutex events->mx is assumed to be locked.
+ */
+static void wait_for_cancellation(zone_events_t *events)
+{
+	events->frozen = true;
+
+	/* Cancel current event. */
+	if (evsched_cancel(events->event) == KNOT_ENOENT) {
+		/* The event was not cancelled, wait until we stopped */
+		while (events->event->sched != NULL) {
+			pthread_cond_wait(&events->cancel, &events->mx);
+		}
+	}
+}
+
 int zone_events_init(zone_t *zone)
 {
 	if (!zone) {
@@ -264,15 +282,7 @@ void zone_events_deinit(zone_t *zone)
 
 	zone_events_t *events = &zone->events;
 	pthread_mutex_lock(&events->mx);
-	events->frozen = true;
-	/* Cancel current event. */
-	int ret = evsched_cancel(events->event);
-	if (ret == KNOT_ENOENT) {
-		/* The event was not cancelled, wait until we stopped */
-		while (events->event->sched != NULL) {
-			pthread_cond_wait(&events->cancel, &events->mx);
-		}
-	}
+	wait_for_cancellation(events);
 	evsched_event_free(events->event);
 	pthread_mutex_unlock(&events->mx);
 
@@ -349,17 +359,7 @@ void zone_events_freeze(zone_t *zone)
 
 	/* Prevent new events being enqueued. */
 	pthread_mutex_lock(&events->mx);
-	events->frozen = true;
-
-	/* Cancel current event. */
-	int ret = evsched_cancel(events->event);
-	if (ret == KNOT_ENOENT) {
-		/* The event was not cancelled, wait until we stopped */
-		while (events->event->sched != NULL) {
-			pthread_cond_wait(&events->cancel, &events->mx);
-		}
-	}
-
+	wait_for_cancellation(events);
 	pthread_mutex_unlock(&events->mx);
 }
 
