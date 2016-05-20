@@ -76,6 +76,9 @@ int knot_edns_opt_cookie_create(const uint8_t cc[KNOT_OPT_COOKIE_CLNT],
 /*!
  * \brief Parse cookie wire data.
  *
+ * \note The function only sets the pointers into the buffer. It does not
+ * copy any data.
+ *
  * \param data     Input data buffer containing whole cookie option.
  * \param data_len Length of input data buffer.
  * \param cc       Client cookie.
@@ -85,10 +88,9 @@ int knot_edns_opt_cookie_create(const uint8_t cc[KNOT_OPT_COOKIE_CLNT],
  *
  * \return KNOT_EOK
  * \return KNOT_EINVAL
- * \return KNOT_ESPACE
  */
 int knot_edns_opt_cookie_parse(const uint8_t *data, const uint16_t data_len,
-                               uint8_t *cc, uint16_t cc_len,
-                               uint8_t *sc, uint16_t sc_len);
+                               const uint8_t **cc, uint16_t *cc_len,
+                               const uint8_t **sc, uint16_t *sc_len);
 
 /*! @} */

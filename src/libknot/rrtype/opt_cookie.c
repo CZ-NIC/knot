@@ -64,22 +64,22 @@ int knot_edns_opt_cookie_create(const uint8_t cc[KNOT_OPT_COOKIE_CLNT],
 
 _public_
 int knot_edns_opt_cookie_parse(const uint8_t *data, const uint16_t data_len,
-                               uint8_t *cc, uint16_t cc_len,
-                               uint8_t *sc, uint16_t sc_len)
+                               const uint8_t **cc, uint16_t *cc_len,
+                               const uint8_t **sc, uint16_t *sc_len)
 {
-	if (data == NULL || cc == NULL || cc_len != KNOT_OPT_COOKIE_CLNT ||
-	    sc == NULL || !srvr_cookie_len_ok(sc_len)) {
+	if (data == NULL ||
+	    !srvr_cookie_len_ok(data_len - KNOT_OPT_COOKIE_CLNT)) {
 		return KNOT_EINVAL;
 	}
 
-	wire_ctx_t wire = wire_ctx_init_const(data, data_len);
-	wire_ctx_read(&wire, cc, cc_len);
-	if (sc_len > 0) {
-		wire_ctx_read(&wire, sc, sc_len);
+	if (cc != NULL && cc_len != NULL) {
+		*cc_len = KNOT_OPT_COOKIE_CLNT;
+		*cc = data;
 	}
 
-	if (wire.error != KNOT_EOK) {
-		return wire.error;
+	if (sc != NULL && sc_len != NULL) {
+		*sc_len = data_len - KNOT_OPT_COOKIE_CLNT;
+		*sc = (*sc_len == 0) ? NULL : (data + KNOT_OPT_COOKIE_CLNT);
 	}
 
 	return KNOT_EOK;
