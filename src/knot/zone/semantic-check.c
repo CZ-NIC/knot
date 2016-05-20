@@ -849,7 +849,7 @@ static int check_dname(const zone_node_t *node, semchecks_data_t *data)
 		data->fatal_error = true;
 		ret = data->handler->cb(data->handler, data->zone, node,
 		                        ZC_ERR_DNAME_CHILDREN,
-		                        "error triggered by parent node");
+		                        "records exist below the DNAME");
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
@@ -859,7 +859,7 @@ static int check_dname(const zone_node_t *node, semchecks_data_t *data)
 		data->fatal_error = true;
 		ret = data->handler->cb(data->handler, data->zone, node,
 		                        ZC_ERR_DNAME_CHILDREN,
-		                        "error triggered by child node");
+		                        "record is occluded by a parent DNAME");
 	}
 	return ret;
 }
