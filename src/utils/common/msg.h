@@ -33,9 +33,9 @@
 #define WARNING_	";; WARNING: "
 #define DEBUG_		";; DEBUG: "
 
-#define ERR(msg, ...)	{ printf(ERROR_ msg, ##__VA_ARGS__); fflush(stdout); }
-#define INFO(msg, ...)	{ printf(INFO_ msg, ##__VA_ARGS__); fflush(stdout); }
-#define WARN(msg, ...)	{ printf(WARNING_ msg, ##__VA_ARGS__); fflush(stdout); }
+#define ERR(msg, ...)	{ fprintf(stderr, ERROR_ msg, ##__VA_ARGS__); fflush(stderr); }
+#define INFO(msg, ...)	{ fprintf(stdout, INFO_ msg, ##__VA_ARGS__); fflush(stdout); }
+#define WARN(msg, ...)	{ fprintf(stderr, WARNING_ msg, ##__VA_ARGS__); fflush(stderr); }
 #define DBG(msg, ...)	msg_debug(DEBUG_ msg, ##__VA_ARGS__)
 
 /*! \brief Enable/disable debugging. */
