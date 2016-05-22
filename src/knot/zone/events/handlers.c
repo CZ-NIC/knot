@@ -314,8 +314,9 @@ int event_load(conf_t *conf, zone_t *zone)
 	assert(zone);
 
 	/* Take zone file mtime and load it. */
+	time_t mtime;
 	char *filename = conf_zonefile(conf, zone->name);
-	int ret = zonefile_exists(filename, &zone->zonefile.mtime);
+	int ret = zonefile_exists(filename, &mtime);
 	free(filename);
 	if (ret != KNOT_EOK) {
 		goto fail;
@@ -329,12 +330,20 @@ int event_load(conf_t *conf, zone_t *zone)
 		goto fail;
 	}
 
-	/* Store zonefile serial and apply changes from the journal. */
+	/* Store the zonefile SOA serial. */
 	zone->zonefile.serial = zone_contents_serial(contents);
-	ret = zone_load_journal(conf, zone, contents);
-	if (ret != KNOT_EOK) {
-		goto fail;
+
+	/* Apply journal if first load or reload with original zonefile. */
+	if (zone->contents == NULL ||
+	    (zone->zonefile.exists && zone->zonefile.mtime == mtime)) {
+		ret = zone_load_journal(conf, zone, contents);
+		if (ret != KNOT_EOK) {
+			goto fail;
+		}
 	}
+
+	/* Store the zonefile mtime. */
+	zone->zonefile.mtime = mtime;
 
 	/* Post load actions - calculate delta, sign with DNSSEC... */
 	/*! \todo issue #242 dnssec signing should occur in the special event */

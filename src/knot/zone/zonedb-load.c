@@ -68,7 +68,7 @@ static zone_status_t zone_file_status(conf_t *conf, const zone_t *old_zone,
 	} else {
 		if (old_zone == NULL) {
 			return ZONE_STATUS_FOUND_NEW;
-		} else if (old_zone->zonefile.mtime == mtime) {
+		} else if (old_zone->zonefile.exists && old_zone->zonefile.mtime == mtime) {
 			return ZONE_STATUS_FOUND_CURRENT;
 		} else {
 			return ZONE_STATUS_FOUND_UPDATED;
