@@ -47,9 +47,11 @@ typedef enum zone_event_type {
 
 typedef struct zone_events {
 	pthread_mutex_t mx;		//!< Mutex protecting the struct.
+	pthread_cond_t cancel;
 	bool running;			//!< Some zone event is being run.
 	bool frozen;			//!< Terminated, don't schedule new events.
 
+	evsched_t *sched;
 	event_t *event;			//!< Scheduler event.
 	worker_pool_t *pool;		//!< Server worker pool.
 	knot_db_t *timers_db;		//!< Persistent zone timers database.
@@ -85,6 +87,8 @@ int zone_events_setup(struct zone *zone, worker_pool_t *workers,
 
 /*!
  * \brief Deinitialize zone events.
+ *
+ * \warning It is expected that the worker threads are suspended and cleared.
  *
  * \param zone  Zone whose events we want to deinitialize.
  */
