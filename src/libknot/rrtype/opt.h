@@ -303,7 +303,7 @@ uint16_t knot_edns_opt_get_length(uint8_t *opt);
  */
 static inline uint8_t *knot_edns_opt_get_data(uint8_t *opt)
 {
-	return opt + 4; /* 2 * sizeof(uint16_t) */
+	return opt + KNOT_EDNS_OPTION_HDRLEN;
 }
 
 /*! \brief Return true if RRSet has NSID option. */
