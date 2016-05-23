@@ -368,6 +368,7 @@ open_tmp_failed:
 	free(*tmp_name);
 	*tmp_name = NULL;
 
+	assert(ret != KNOT_EOK);
 	return ret;
 }
 
