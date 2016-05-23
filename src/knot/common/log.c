@@ -120,7 +120,7 @@ static void sink_publish(log_t *log)
 static int *src_levels(log_t *log, logfacility_t facility, logsrc_t src)
 {
 	assert(src < LOG_ANY);
-	return log->facility + LOG_ANY * facility + src;
+	return &log->facility[LOG_ANY * facility + src];
 }
 
 static void sink_levels_set(log_t *log, logfacility_t facility, logsrc_t src, int levels)
@@ -140,13 +140,11 @@ static void sink_levels_add(log_t *log, logfacility_t facility, logsrc_t src, in
 {
 	// Add levels to the specified source.
 	if (src != LOG_ANY) {
-		int new_levels = *src_levels(log, facility, src) | levels;
-		*src_levels(log, facility, src) = new_levels;
+		*src_levels(log, facility, src) |= levels;
 	} else {
 		// ANY ~ add levels to all sources.
 		for (int i = 0; i < LOG_ANY; ++i) {
-			int new_levels = *src_levels(log, facility, i) | levels;
-			*src_levels(log, facility, i) = new_levels;
+			*src_levels(log, facility, i) |= levels;
 		}
 	}
 }
