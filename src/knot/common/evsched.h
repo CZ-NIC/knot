@@ -127,7 +127,7 @@ void evsched_event_free(event_t *ev);
  * \retval KNOT_EOK on success.
  * \retval KNOT_EINVAL
  */
-int evsched_schedule(evsched_t *sched, event_t *ev, uint32_t dt);
+int evsched_schedule(event_t *ev, uint32_t dt);
 
 /*!
  * \brief Cancel a scheduled event.

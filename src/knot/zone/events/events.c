@@ -146,7 +146,7 @@ static void reschedule(zone_events_t *events)
 
 	time_t diff = time_until(event_get_time(events, type));
 
-	evsched_schedule(events->sched, events->event, diff * 1000);
+	evsched_schedule(events->event, diff * 1000);
 }
 
 /*!
@@ -210,31 +210,11 @@ static void event_dispatch(event_t *event)
 	zone_events_t *events = event->data;
 
 	pthread_mutex_lock(&events->mx);
-	event->sched = NULL;
 	if (!events->running && !events->frozen) {
 		events->running = true;
 		worker_pool_assign(events->pool, &events->task);
 	}
-	pthread_cond_broadcast(&events->cancel);
 	pthread_mutex_unlock(&events->mx);
-}
-
-/*!
- * \brief Wait until we can safely free the event. Required to avoid races.
- *
- * \warning Mutex events->mx is assumed to be locked.
- */
-static void wait_for_cancellation(zone_events_t *events)
-{
-	events->frozen = true;
-
-	/* Cancel current event. */
-	if (evsched_cancel(events->event) == KNOT_ENOENT) {
-		/* The event was not cancelled, wait until we stopped */
-		while (events->event->sched != NULL) {
-			pthread_cond_wait(&events->cancel, &events->mx);
-		}
-	}
 }
 
 int zone_events_init(zone_t *zone)
@@ -266,7 +246,6 @@ int zone_events_setup(struct zone *zone, worker_pool_t *workers,
 		return KNOT_ENOMEM;
 	}
 
-	zone->events.sched = scheduler;
 	zone->events.event = event;
 	zone->events.pool = workers;
 	zone->events.timers_db = timers_db;
@@ -280,13 +259,10 @@ void zone_events_deinit(zone_t *zone)
 		return;
 	}
 
-	zone_events_t *events = &zone->events;
-	pthread_mutex_lock(&events->mx);
-	wait_for_cancellation(events);
-	evsched_event_free(events->event);
-	pthread_mutex_unlock(&events->mx);
+	evsched_cancel(zone->events.event);
+	evsched_event_free(zone->events.event);
 
-	pthread_mutex_destroy(&events->mx);
+	pthread_mutex_destroy(&zone->events.mx);
 
 	memset(&zone->events, 0, sizeof(zone->events));
 }
@@ -359,8 +335,11 @@ void zone_events_freeze(zone_t *zone)
 
 	/* Prevent new events being enqueued. */
 	pthread_mutex_lock(&events->mx);
-	wait_for_cancellation(events);
+	events->frozen = true;
 	pthread_mutex_unlock(&events->mx);
+
+	/* Cancel current event. */
+	evsched_cancel(events->event);
 }
 
 void zone_events_start(zone_t *zone)
