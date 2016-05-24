@@ -1,5 +1,25 @@
-Knot DNS 2.3.0-dev
-==================
+Knot DNS 2.2.1 (2016-05-24)
+===========================
+
+Bugfixes:
+---------
+ - Fix separate logging of server and zone events
+ - Fix concurrent zone file flushing with many zones
+ - Fix possible server crash with empty hostname on OpenWRT
+ - Fix control timeout parsing in knotc
+ - Fix "Environment maxreaders limit reached" error in knotc
+ - Don't apply journal changes on modified zone file
+ - Remove broken LTO option from configure script
+ - Enable multiple zone names completion in interactive knotc
+ - Set the TC flag in a response if a glue doesn't fit the response
+ - Disallow server reload when there is an active configuration transaction
+
+Improvements:
+-------------
+ - Distinguish unavailable zones from zones with zero serial in log messages
+ - Log warning and error messages to standard error output in all utilities
+ - Document tested PKCS #11 devices
+ - Extended Python configuration interface
 
 Knot DNS 2.2.0 (2016-04-26)
 ===========================
