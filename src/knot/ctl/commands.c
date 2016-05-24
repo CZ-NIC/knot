@@ -154,12 +154,13 @@ static int zone_status(zone_t *zone, ctl_args_t *args)
 	data[KNOT_CTL_IDX_TYPE] = "serial";
 
 	char buff[128];
-	uint32_t serial = 0;
 	if (zone->contents != NULL) {
-		serial = knot_soa_serial(node_rdataset(zone->contents->apex,
-		                         KNOT_RRTYPE_SOA));
+		knot_rdataset_t *soa = node_rdataset(zone->contents->apex,
+		                                     KNOT_RRTYPE_SOA);
+		ret = snprintf(buff, sizeof(buff), "%u", knot_soa_serial(soa));
+	} else {
+		ret = snprintf(buff, sizeof(buff), "none");
 	}
-	ret = snprintf(buff, sizeof(buff), "%u", serial);
 	if (ret < 0 || ret >= sizeof(buff)) {
 		return KNOT_ESPACE;
 	}
