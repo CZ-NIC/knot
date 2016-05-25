@@ -82,6 +82,7 @@
 /src/knsupdate
 /src/knsec3hash
 /src/rosedb_tool
+/src/kzonecheck
 
 # Plugin binaries
 /src/rosedb_tool
@@ -91,14 +92,3 @@
 *.gcno
 /coverage.info
 /coverage.html
-
-# sphinx-build manpages
-/doc/man/kdig.1
-/doc/man/keymgr.8
-/doc/man/khost.1
-/doc/man/knot.conf.5
-/doc/man/knot1to2.1
-/doc/man/knotc.8
-/doc/man/knotd.8
-/doc/man/knsec3hash.1
-/doc/man/knsupdate.1

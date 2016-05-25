@@ -318,7 +318,15 @@ static int axfr_answer_finalize(struct answer_data *adata)
 	 * marked authoritative / delegation point.
 	 */
 	struct xfr_proc *proc = adata->ext;
-	int rc = zone_contents_adjust_full(proc->contents, NULL, NULL);
+	int rc = zone_contents_adjust_full(proc->contents);
+	if (rc != KNOT_EOK) {
+		return rc;
+	}
+
+	err_handler_logger_t handler;
+	handler._cb.cb = err_handler_logger;
+	rc = zone_do_sem_checks(proc->contents, false, &handler._cb);
+
 	if (rc != KNOT_EOK) {
 		return rc;
 	}

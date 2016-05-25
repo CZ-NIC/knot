@@ -73,13 +73,17 @@ utils_test_lookup_LDADD = \
 	$(top_builddir)/src/libknotus.la \
 	$(libedit_LIBS)
 
-check-compile: $(check_PROGRAMS)
+CLEANFILES = runtests.log
 
-check-local: $(check_PROGRAMS)
+include $(srcdir)/semantic_check_data/Makefile.inc
+
+check-compile: $(check_PROGRAMS) $(check_SCRIPTS)
+
+check-local: $(check_PROGRAMS) $(check_SCRIPTS)
 	$(top_builddir)/libtap/runtests -s $(top_srcdir)/tests \
 					-b $(top_builddir)/tests \
 					-L $(top_builddir)/tests/runtests.log \
-					$(check_PROGRAMS)
+					$(check_PROGRAMS) $(check_SCRIPTS)
 
 acl_SOURCES = acl.c test_conf.h
 conf_SOURCES = conf.c test_conf.h
@@ -87,4 +91,3 @@ confdb_SOURCES = confdb.c test_conf.h
 confio_SOURCES = confio.c test_conf.h
 process_query_SOURCES = process_query.c fake_server.h test_conf.h
 process_answer_SOURCES = process_answer.c fake_server.h test_conf.h
-CLEANFILES = runtests.log

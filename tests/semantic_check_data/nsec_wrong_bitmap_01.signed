@@ -1,0 +1,73 @@
+example.com.		86400	NSEC	dns1.example.com. NS SOA RRSIG NSEC DNSKEY
+dns1.example.com.	86400	NSEC	www.example.com. A RRSIG NSEC
+
+; extra AAAA type in NSEC bitmap
+www.example.com.	86400	NSEC	example.com. A RRSIG NSEC AAAA
+www.example.com.	3600	IN A	192.0.2.2
+			3600	RRSIG	A 7 3 3600 (
+					20840201000000 20160224082919 29600 example.com.
+					FLR8e2k6u7dhQA1xZ3YMxkvuktoydXC+ZNwl
+					xzW9hLpF3oKoqqY/V+kw7m2OMgnOEu2jWN4Q
+					EETdmMeQzkiuNw== )
+
+; signatures for NSECs
+example.com.		86400	RRSIG	NSEC 7 2 86400 (
+					20840201000000 20160224082919 29600 example.com.
+					FHLUUQTvnVboNzGoQVLpwQAcB+fUEF5xQqMQ
+					oKhE86sdvlQUiEfUpv2PJ9y3YfXHeYxJUtvm
+					cY14UkYqsdP3fA== )
+dns1.example.com.	86400	RRSIG	NSEC 7 3 86400 (
+					20840201000000 20160224082919 29600 example.com.
+					GF3mqBf6Ny481XSbEor1uTzQZtT2DSA/3jU2
+					ZcLXXhlmHG3nI/PB49lG+17O83rDrbhcYc8G
+					cHEbLIGNr/6+Mw== )
+www.example.com.	86400	RRSIG	NSEC 7 3 86400 (
+					20840201000000 20160224082919 29600 example.com.
+					FDPJTLixRBZtMFLqk5wfYTSLnLMZiLtN7uTA
+					COEqyphK33oW+7XJzfG6ADvwGewY4hTCPQkk
+					cEg+DBI7qZ88NA== )
+
+example.com.		3600	IN SOA	dns1.example.com. hostmaster.example.com. (
+					2010111220 ; serial
+					21600      ; refresh (6 hours)
+					3600       ; retry (1 hour)
+					604800     ; expire (1 week)
+					86400      ; minimum (1 day)
+					)
+			3600	RRSIG	SOA 7 2 3600 (
+					20840201000000 20160224082919 29600 example.com.
+					xJIoENJ4d24FIVd9ZSGpQlcWN4zuriU90r/H
+					+ufcM2qtWcOGR1M1LVNIAWEVJEcD2dBGA2w1
+					B7Cx+BILQRev8w== )
+			3600	NS	dns1.example.com.
+			3600	RRSIG	NS 7 2 3600 (
+					20840201000000 20160224082919 29600 example.com.
+					vBffD+/kBuxUHfeXKYBVYxeMIbuW5f8BstRM
+					XJnC1GTGfdNvb8NknHuv5fEytBmnnpH6f9pC
+					iWLeZzFR1+aJBA== )
+			3600	DNSKEY	256 3 7 (
+					AwEAAcvvW/oJAjcRdntRC8J52baXoNFVWOFz
+					oVFe3Vgl8aBBiGh3gnbuNt7xKmy9z2qc2/35
+					MFwieWYfDdgUnPxyKMM=
+					) ; ZSK; alg = NSEC3RSASHA1; key id = 29600
+			3600	DNSKEY	257 3 7 (
+					AwEAAeXCF7sHLcFiaCwCFH4xh2CJcCp55i04
+					exG41EtzILS2waabEM5byhRkoylbv91q6HY+
+					JH9YXitS21LMD0Hqp1s=
+					) ; KSK; alg = NSEC3RSASHA1; key id = 31323
+			3600	RRSIG	DNSKEY 7 2 3600 (
+					20840201000000 20160224082919 29600 example.com.
+					LMyY8+vWsFB7CziWt8rnR5jfg4Loe/xzy4TQ
+					/ITEDbz5pkoadG+0mqTHQ0F5XCe6ZJPamcyr
+					kcMw0GqUzOVb9w== )
+			3600	RRSIG	DNSKEY 7 2 3600 (
+					20840201000000 20160224082919 31323 example.com.
+					tpHcGRuIkul47hHXVpNAOL48c5YYMsaIJkFE
+					rlQi9wU4TCiukdJkLuPk7ykk9XrxbiCB/FwD
+					o63Vcqyy3gZfvA== )
+dns1.example.com.	3600	IN A	192.0.2.1
+			3600	RRSIG	A 7 3 3600 (
+					20840201000000 20160224082919 29600 example.com.
+					HlfZThngg+1xglDUh8kjDtzVn5D5a9T3emMt
+					Uxfryu9va7bj+xoK4gLADGau69GCZxJNSvwK
+					TAGEqGRYFSY9Ew== )

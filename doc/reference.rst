@@ -723,9 +723,6 @@ logged only.
 Mandatory checks:
 
 - An extra record together with CNAME record (except for RRSIG and DS)
-- CNAME link chain length greater than 10 (including infinite cycles)
-- DNAME and CNAME records under the same owner (RFC 2672)
-- CNAME and DNAME wildcards pointing to themselves
 - SOA record missing in the zone (RFC 1034)
 - DNAME records having records under it (DNAME children) (RFC 2672)
 
@@ -737,14 +734,11 @@ Extra checks:
 - Wrong NSEC(3) type bitmap
 - Multiple NSEC records at the same node
 - Missing NSEC records at authoritative nodes
-- Extra record types under the same name as NSEC3 record (this is RFC-valid, but
-  Knot will not serve such a zone correctly)
-- NSEC3-unsecured delegation that is not part of Opt-out span
+- NSEC3 insecure delegation that is not part of Opt-out span
 - Wrong original TTL value in NSEC3 records
 - Wrong RDATA TTL value in RRSIG record
 - Signer name in RRSIG RR not the same as in DNSKEY
 - Signed RRSIG
-- Not all RRs in the node are signed
 - Wrong key flags or wrong key in RRSIG record (not the same as ZSK)
 
 *Default:* off

@@ -623,12 +623,6 @@ Mandatory checks:
 .IP \(bu 2
 An extra record together with CNAME record (except for RRSIG and DS)
 .IP \(bu 2
-CNAME link chain length greater than 10 (including infinite cycles)
-.IP \(bu 2
-DNAME and CNAME records under the same owner (RFC 2672)
-.IP \(bu 2
-CNAME and DNAME wildcards pointing to themselves
-.IP \(bu 2
 SOA record missing in the zone (RFC 1034)
 .IP \(bu 2
 DNAME records having records under it (DNAME children) (RFC 2672)
@@ -649,10 +643,7 @@ Multiple NSEC records at the same node
 .IP \(bu 2
 Missing NSEC records at authoritative nodes
 .IP \(bu 2
-Extra record types under the same name as NSEC3 record (this is RFC\-valid, but
-Knot will not serve such a zone correctly)
-.IP \(bu 2
-NSEC3\-unsecured delegation that is not part of Opt\-out span
+NSEC3 insecure delegation that is not part of Opt\-out span
 .IP \(bu 2
 Wrong original TTL value in NSEC3 records
 .IP \(bu 2
@@ -661,8 +652,6 @@ Wrong RDATA TTL value in RRSIG record
 Signer name in RRSIG RR not the same as in DNSKEY
 .IP \(bu 2
 Signed RRSIG
-.IP \(bu 2
-Not all RRs in the node are signed
 .IP \(bu 2
 Wrong key flags or wrong key in RRSIG record (not the same as ZSK)
 .UNINDENT

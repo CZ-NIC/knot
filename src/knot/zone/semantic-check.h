@@ -26,12 +26,10 @@
 
 #include "knot/zone/node.h"
 #include "knot/zone/contents.h"
+#include "contrib/ucw/lists.h"
+#include "libknot/mm_ctx.h"
 
-enum check_levels {
-	SEM_CHECK_UNSIGNED = 1,
-	SEM_CHECK_NSEC = 2,
-	SEM_CHECK_NSEC3 = 3
-};
+
 
 /*!
  *\brief Internal error constants. General errors are added for convenience,
@@ -42,7 +40,6 @@ enum zonechecks_errors {
 
 	ZC_ERR_MISSING_SOA,
 	ZC_ERR_MISSING_NS_DEL_POINT,
-	ZC_ERR_TTL_MISMATCH,
 
 	ZC_ERR_GENERIC_GENERAL_ERROR, /* Generic error delimiter. */
 
@@ -69,12 +66,10 @@ enum zonechecks_errors {
 
 	ZC_ERR_NSEC_GENERAL_ERROR, /* NSEC error delimiter. */
 
-	ZC_ERR_NSEC3_UNSECURED_DELEGATION,
 	ZC_ERR_NSEC3_NOT_FOUND,
-	ZC_ERR_NSEC3_UNSECURED_DELEGATION_OPT,
+	ZC_ERR_NSEC3_INSECURE_DELEGATION_OPT,
 	ZC_ERR_NSEC3_RDATA_TTL,
 	ZC_ERR_NSEC3_RDATA_CHAIN,
-	ZC_ERR_NSEC3_RDATA_BITMAP,
 	ZC_ERR_NSEC3_EXTRA_RECORD,
 
 	ZC_ERR_NSEC3_GENERAL_ERROR, /* NSEC3 error delimiter. */
@@ -89,131 +84,47 @@ enum zonechecks_errors {
 
 	ZC_ERR_CNAME_GENERAL_ERROR, /* CNAME/DNAME error delimiter. */
 
-	ZC_ERR_GLUE_NODE,
 	ZC_ERR_GLUE_RECORD,
 
-	ZC_ERR_GLUE_GENERAL_ERROR, /* GLUE error delimiter. */
+	ZC_ERR_LAST,
 };
 
-/*!
- * \brief Arguments to be used with tree traversal functions. Uses void pointers
- *        to be more versatile.
- * \todo This is not needed. Just enumerate all the variables.
- *
- */
-struct arg {
-	void *arg1; /* FILE *f / zone */
-	void *arg2; /* skip_list_t */
-	void *arg3; /* zone */
-	void *arg4; /* first node */
-	void *arg5; /* last node */
-	void *arg6; /* error handler */
-	void *arg7; /* CRC */
-	int error_code; /* Error code. */
-};
-
-typedef struct arg arg_t;
-
-/*!
- * \brief Structure representing handle options.
- */
-struct handler_options {
-	char log_cname; /*!< Log all CNAME related semantic errors. */
-	char log_glue; /*!< Log all glue related semantic errors. */
-	char log_rrsigs; /*!< Log all RRSIG related semantic errors. */
-	char log_nsec; /*!< Log all NSEC related semantic errors. */
-	char log_nsec3; /*!< Log all NSEC3 related semantic errors. */
-};
+const char *semantic_check_error_msg(int ecode);
 
 /*!
  * \brief Structure for handling semantic errors.
  */
-struct err_handler {
-	/* Consider moving error messages here */
-	struct handler_options options; /*!< Handler options. */
-	unsigned errors[(-ZC_ERR_UNKNOWN) + 1]; /*!< Array with error messages */
-	unsigned error_count; /*!< Total error count */
-};
 
 typedef struct err_handler err_handler_t;
 
-/*!
- * \brief Inits semantic error handler. No optional events will be logged.
- *
- * \param handler Variable to be initialized.
- */
-void err_handler_init(err_handler_t *err_handler);
 
 /*!
- * \brief Creates new semantic error handler.
+ * \brief Callback for handle error.
  *
- * \return err_handler_t * Created error handler.
+ * Return KNOT_EOK to continue in semantic checks.
+ * Return other KNOT_E* to stop semantic check with error.
  */
-err_handler_t *err_handler_new(void);
+typedef int (*error_cb) (err_handler_t *ctx, const zone_contents_t *zone,
+                         const zone_node_t *node, int error, const char *data);
+
+struct err_handler {
+	error_cb cb;
+};
+
 
 /*!
- * \brief Called when error has been encountered in node. Will either log error
- *        or print it, depending on handler's options.
+ * \brief Check zone for semantic errors.
  *
- * \param handler Error handler.
- * \param zone Zone content which is being checked.
- * \param node Node with semantic error in it.
- * \param error Type of error.
- * \param data Additional info in string.
- *
- * \retval KNOT_EOK on success.
- * \retval ZC_ERR_UNKNOWN if unknown error.
- * \retval ZC_ERR_ALLOC if memory error.
- */
-int err_handler_handle_error(err_handler_t *handler,
-                             const zone_contents_t *zone,
-                             const zone_node_t *node,
-                             int error, const char *data);
-
-/*!
- * \brief Checks if last node in NSEC/NSEC3 chain points to first node in the
- *        chain and prints possible errors.
- *
- * \param handler Semantic error handler.
- * \param zone Current zone.
- * \param last_node Last node in NSEC/NSEC3 chain.
- * \param do_checks Level of semantic checks.
- */
-void log_cyclic_errors_in_zone(err_handler_t *handler,
-                               zone_contents_t *zone,
-                               zone_node_t *last_node,
-                               const zone_node_t *first_nsec3_node,
-                               const zone_node_t *last_nsec3_node,
-                               char do_checks);
-
-/*!
- * \brief Helper function - wraps its arguments into arg_t structure and
- *        calls function that does the actual work.
+ * Errors are logged in error handler.
  *
  * \param zone Zone to be searched / checked
- * \param check_level Level of semantic checks.
+ * \param optional To do also optional check
  * \param handler Semantic error handler.
- * \param last_node Last checked node, that is a part of NSEC(3) chain.
+ * \retval KNOT_EOK no error found
+ * \retval KNOT_ESEMCHECK found semantic error
+ * \retval KNOT_EINVAL or other error
  */
-int zone_do_sem_checks(zone_contents_t *zone, int check_level,
-                       err_handler_t *handler, zone_node_t *first_nsec3_node,
-                       zone_node_t *last_nsec3_node);
-
-/*!
- * \brief Does a non-DNSSEC semantic node check. Logs errors via error handler.
- *
- * \param zone            Zone containing the node.
- * \param node            Node to be tested.
- * \param handler         Error handler.
- * \param only_mandatory  Mandatory/optional switch.
- * \param fatal_error     Fatal error out param.
- *
- * \return KNOT_E*
- */
-int sem_check_node_plain(const zone_contents_t *zone,
-                         const zone_node_t *node,
-                         err_handler_t *handler,
-                         bool only_mandatory,
-                         bool *fatal_error);
+int zone_do_sem_checks(zone_contents_t *zone, bool optional,
+                       err_handler_t *handler);
 
 /*! @} */

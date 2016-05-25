@@ -18,3 +18,4 @@ the server. This section collects manual pages for all provided binaries:
    man_knotd
    man_knsec3hash
    man_knsupdate
+   man_kzonecheck

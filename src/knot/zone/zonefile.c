@@ -56,24 +56,20 @@ static int add_rdata_to_rr(knot_rrset_t *rrset, const zs_scanner_t *scanner)
 	                            scanner->r_ttl, NULL);
 }
 
-static void log_ttl_error(const zone_contents_t *zone, const zone_node_t *node,
-                          const knot_rrset_t *rr)
+static void log_ttl_error(const zcreator_t *zc, const zone_node_t *node,
+                          const knot_rrset_t *rr, const knot_dname_t *zone_name)
 {
-	err_handler_t err_handler;
-	err_handler_init(&err_handler);
-	// Prepare additional info string.
-	char info_str[64] = { '\0' };
+	// Prepare additional type string.
 	char type_str[16] = { '\0' };
 	knot_rrtype_to_string(rr->type, type_str, sizeof(type_str));
-	int ret = snprintf(info_str, sizeof(info_str), "record type %s",
-	                   type_str);
-	if (ret <= 0 || ret >= sizeof(info_str)) {
-		*info_str = '\0';
-	}
 
-	/*!< \todo REPLACE WITH FATAL ERROR for master. */
-	err_handler_handle_error(&err_handler, zone, node,
-	                         ZC_ERR_TTL_MISMATCH, info_str);
+	char *node_name = knot_dname_to_str_alloc(node->owner);
+
+	WARNING(zone_name, "RRSet TTLs mismatched, node '%s' (record type %s)",
+	        node_name == NULL ? "?" : node_name,
+	        type_str);
+
+	free(node_name);
 }
 
 static bool handle_err(zcreator_t *zc, const zone_node_t *node,
@@ -89,7 +85,7 @@ static bool handle_err(zcreator_t *zc, const zone_node_t *node,
 	} else if (ret == KNOT_ETTL) {
 		free(rrname);
 		assert(node);
-		log_ttl_error(zc->z, node, rr);
+		log_ttl_error(zc, node, rr, zname);
 		// Fail if we're the master for this zone.
 		return !master;
 	} else {
@@ -124,21 +120,7 @@ int zcreator_step(zcreator_t *zc, const knot_rrset_t *rr)
 			return KNOT_EOK;
 		}
 	}
-	assert(node);
-
-	// Do node semantic checks
-	err_handler_t err_handler;
-	err_handler_init(&err_handler);
-	bool sem_fatal_error = false;
-
-	ret = sem_check_node_plain(zc->z, node,
-	                           &err_handler, true,
-	                           &sem_fatal_error);
-	if (ret != KNOT_EOK) {
-		return ret;
-	}
-
-	return sem_fatal_error ? KNOT_ESEMCHECK : KNOT_EOK;
+	return KNOT_EOK;
 }
 
 /*! \brief Creates RR from parser input, passes it to handling function. */
@@ -271,39 +253,25 @@ zone_contents_t *zonefile_load(zloader_t *loader)
 	}
 
 	if (!node_rrtype_exists(loader->creator->z->apex, KNOT_RRTYPE_SOA)) {
-		ERROR(zname, "no SOA record, file '%s'", loader->source);
+		loader->err_handler->cb(loader->err_handler, zc->z, NULL, ZC_ERR_MISSING_SOA, NULL);
 		goto fail;
 	}
 
-	zone_node_t *first_nsec3_node = NULL;
-	zone_node_t *last_nsec3_node = NULL;
-
-	ret = zone_contents_adjust_full(zc->z, &first_nsec3_node, &last_nsec3_node);
+	ret = zone_contents_adjust_full(zc->z);
 	if (ret != KNOT_EOK) {
 		ERROR(zname, "failed to finalize zone contents (%s)",
 		      knot_strerror(ret));
 		goto fail;
 	}
 
-	if (loader->semantic_checks) {
-		int check_level = SEM_CHECK_UNSIGNED;
-		knot_rrset_t soa_rr = node_rrset(zc->z->apex, KNOT_RRTYPE_SOA);
-		assert(!knot_rrset_empty(&soa_rr)); // In this point, SOA has to exist
-		const bool have_nsec3param =
-			node_rrtype_exists(zc->z->apex, KNOT_RRTYPE_NSEC3PARAM);
-		if (zone_contents_is_signed(zc->z) && !have_nsec3param) {
+	ret = zone_do_sem_checks(zc->z, loader->semantic_checks,
+	                         loader->err_handler);
+	INFO(zname, "semantic check, completed");
 
-			/* Set check level to DNSSEC. */
-			check_level = SEM_CHECK_NSEC;
-		} else if (zone_contents_is_signed(zc->z) && have_nsec3param) {
-			check_level = SEM_CHECK_NSEC3;
-		}
-		err_handler_t err_handler;
-		err_handler_init(&err_handler);
-		zone_do_sem_checks(zc->z, check_level,
-		                   &err_handler, first_nsec3_node,
-		                   last_nsec3_node);
-		INFO(zname, "semantic check, completed");
+	if (ret != KNOT_EOK) {
+		ERROR(zname, "failed to load zone, file '%s' (%s)",
+		      loader->source, knot_strerror(ret));
+		goto fail;
 	}
 
 	return zc->z;
@@ -447,6 +415,31 @@ void zonefile_close(zloader_t *loader)
 	zs_deinit(&loader->scanner);
 	free(loader->source);
 	free(loader->creator);
+}
+
+int err_handler_logger(err_handler_t *handler, const zone_contents_t *zone,
+                        const zone_node_t *node, int error, const char *data)
+{
+	assert(handler != NULL);
+	assert(zone != NULL);
+	err_handler_logger_t *h = (err_handler_logger_t *) handler;
+
+	const char *errmsg = semantic_check_error_msg(error);
+
+	if (node == NULL) { // zone error
+		log_zone_warning(zone->apex->owner, "semantic check, %s%s%s",
+		                 errmsg, data ? ", " : "", data ? data : "");
+	} else {
+		char buff[KNOT_DNAME_TXT_MAXLEN + 1];
+		char *name = knot_dname_to_str(buff, node->owner, sizeof(buff));
+		log_zone_warning(zone->apex->owner,
+		                 "semantic check, record '%s', %s%s%s",
+		                 name ? name : "", errmsg,
+		                 data ? ", " : "", data ? data : "");
+	}
+
+	h->error_count++;
+	return KNOT_EOK;
 }
 
 #undef ERROR

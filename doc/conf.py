@@ -225,6 +225,7 @@ man_pages = [
     ('man_knotd', 'knotd', 'Knot DNS server daemon', author, 8),
     ('man_knsec3hash', 'knsec3hash', "Simple utility to compute NSEC3 hash", author, 1),
     ('man_knsupdate', 'knsupdate', 'Dynamic DNS update utility', author, 1),
+    ('man_kzonecheck', 'kzonecheck', 'Knot DNS zone check tool', author, 1),
 ]
 
 # If true, show URL addresses after external links.

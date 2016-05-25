@@ -1,0 +1,61 @@
+ns.deleg.example.com.	3600	IN A	192.168.0.2
+deleg.example.com.	3600	IN NS	ns.deleg.example.com.
+			86400	NSEC	dns1.example.com. NS NSEC
+; missing RRSIG for NSEC record
+
+example.com.		3600	IN SOA	dns1.example.com. hostmaster.example.com. (
+					2010111220 ; serial
+					21600      ; refresh (6 hours)
+					3600       ; retry (1 hour)
+					604800     ; expire (1 week)
+					86400      ; minimum (1 day)
+					)
+			3600	RRSIG	SOA 7 2 3600 (
+					20840201000000 20160224081610 29600 example.com.
+					HhnlCtlIaZFVklpzVUnzm6AzFd65CSc4WCJL
+					f2o7Gkevu+HTnkiPN6gqtERC/BKJz1EKd2fC
+					KDyLxXw6KeTRAw== )
+			3600	NS	dns1.example.com.
+			3600	RRSIG	NS 7 2 3600 (
+					20840201000000 20160224081610 29600 example.com.
+					rcHuZd9wTYykzis+9Z8uyqD8V9h22szf2bmE
+					GYNyJBlHZO0sOmys31xnvDfQ9sdk9hf1TUfB
+					9ACGIF5lDHBEog== )
+			86400	NSEC	deleg.example.com. NS SOA RRSIG NSEC DNSKEY
+			86400	RRSIG	NSEC 7 2 86400 (
+					20840201000000 20160224081610 29600 example.com.
+					YGSe1OINjOY3I8BY1EoxcOJsDZ/DjGCT5nqY
+					J6BBjTcbT5S1W61SN50xc2sGB4Q8F2KTotAe
+					arzn4DGDt9mOMw== )
+			3600	DNSKEY	256 3 7 (
+					AwEAAcvvW/oJAjcRdntRC8J52baXoNFVWOFz
+					oVFe3Vgl8aBBiGh3gnbuNt7xKmy9z2qc2/35
+					MFwieWYfDdgUnPxyKMM=
+					) ; ZSK; alg = NSEC3RSASHA1; key id = 29600
+			3600	DNSKEY	257 3 7 (
+					AwEAAeXCF7sHLcFiaCwCFH4xh2CJcCp55i04
+					exG41EtzILS2waabEM5byhRkoylbv91q6HY+
+					JH9YXitS21LMD0Hqp1s=
+					) ; KSK; alg = NSEC3RSASHA1; key id = 31323
+			3600	RRSIG	DNSKEY 7 2 3600 (
+					20840201000000 20160224081610 29600 example.com.
+					rdmqHOUXqhwrJusNt/7FTV+AtO/v6Md3LXzj
+					/QzR/pCADNC6ZA+FvqaOycnUxoryKk7PY3pM
+					5ispCMuEx/1OGA== )
+			3600	RRSIG	DNSKEY 7 2 3600 (
+					20840201000000 20160224081610 31323 example.com.
+					jELyXsaJx+G4heZJ96dyE12hSyTNFazwWDkq
+					1Mkja9/bTTdYAd+t8fhf/c35bUiTVJWMivJe
+					+YcCwqGf2U+2zw== )
+dns1.example.com.	3600	IN A	192.0.2.1
+			3600	RRSIG	A 7 3 3600 (
+					20840201000000 20160224081610 29600 example.com.
+					ln2xuvghOWBDOfyk19Wwtv3oc8+1go3WQuMf
+					vel5x/uHVx6voNA25cpFIQ6nPlCo8pmd5R3w
+					paMxgoQtBkzBcA== )
+			86400	NSEC	example.com. A RRSIG NSEC
+			86400	RRSIG	NSEC 7 3 86400 (
+					20840201000000 20160224081610 29600 example.com.
+					EEKcIegUeyn/1FIgxHV+gSX3b/ygQPAcjD8g
+					aCt1yiO0B1xmVm09RJNxzCLaTKxQENhxIoUZ
+					2l7250pBQnrlAQ== )

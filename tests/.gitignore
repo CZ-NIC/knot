@@ -44,9 +44,11 @@ requestor
 rrl
 rrset
 rrset_wire
+semantic_check
 server
 sockaddr
 tsig_key
+utils/test_lookup
 wire
 wire_ctx
 worker_pool
@@ -60,4 +62,3 @@ zone_timers
 zone_update
 zonedb
 ztree
-utils/test_lookup

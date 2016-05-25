@@ -1,0 +1,48 @@
+dns1.example.com.	3600	IN A	192.0.2.1
+			86400	NSEC	example.com. A NSEC
+; missing RRSIGs
+
+example.com.		3600	IN SOA	dns1.example.com. hostmaster.example.com. (
+					2010111220 ; serial
+					21600      ; refresh (6 hours)
+					3600       ; retry (1 hour)
+					604800     ; expire (1 week)
+					86400      ; minimum (1 day)
+					)
+			3600	RRSIG	SOA 7 2 3600 (
+					20840201000000 20160224081310 29600 example.com.
+					ieEKhIV69ywg+YFSqdz0t17eE+PLl1eR4kpv
+					Mq6Q6TfjC7V5/PcFW6KRoP50RFp4m4cD0E7T
+					GpmpnPF++QV1Vw== )
+			3600	NS	dns1.example.com.
+			3600	RRSIG	NS 7 2 3600 (
+					20840201000000 20160224081310 29600 example.com.
+					kYbAbCGzyWPBEfc0TH1calUiKsZi12MH3TNV
+					7vtjOvIYEqeNmuJkrw899a7nOPNoahB6h7o/
+					DXuRlFqYYCC16Q== )
+			86400	NSEC	dns1.example.com. NS SOA RRSIG NSEC DNSKEY
+			86400	RRSIG	NSEC 7 2 86400 (
+					20840201000000 20160224081310 29600 example.com.
+					PchT9RWRkLCMxWAQ3ut6LZlh4MYT4CkAPThQ
+					cnIn0ORi/fVgGzlifQ88xfEdEr1ZoXk9PlhT
+					5b+wocBOl2HhGg== )
+			3600	DNSKEY	256 3 7 (
+					AwEAAcvvW/oJAjcRdntRC8J52baXoNFVWOFz
+					oVFe3Vgl8aBBiGh3gnbuNt7xKmy9z2qc2/35
+					MFwieWYfDdgUnPxyKMM=
+					) ; ZSK; alg = NSEC3RSASHA1; key id = 29600
+			3600	DNSKEY	257 3 7 (
+					AwEAAeXCF7sHLcFiaCwCFH4xh2CJcCp55i04
+					exG41EtzILS2waabEM5byhRkoylbv91q6HY+
+					JH9YXitS21LMD0Hqp1s=
+					) ; KSK; alg = NSEC3RSASHA1; key id = 31323
+			3600	RRSIG	DNSKEY 7 2 3600 (
+					20840201000000 20160224081310 29600 example.com.
+					JLcSyR8KgSicUou0c7Zs7Ol1DYiaQ8Lfyort
+					8a+5OP3em3r3NH1nJkiVfs8+xdvUcGlGkbib
+					RKlfRWiIcOEalQ== )
+			3600	RRSIG	DNSKEY 7 2 3600 (
+					20840201000000 20160224081310 31323 example.com.
+					EQMX5DPXhwa+blMRkzl+swUW3BtzpGJ5tGEU
+					hkH7bJfM51gIAO5qnUO/mMPnEA8b4dc20nnZ
+					8j8lETDjqBLgDQ== )

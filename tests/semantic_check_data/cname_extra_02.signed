@@ -1,0 +1,76 @@
+email.example.com.	3600	IN CNAME mail.example.com.
+			3600	RRSIG	CNAME 7 3 3600 (
+					20840201000000 20160224073150 29600 example.com.
+					IxkF8oqOEzhlZDSRBIi4448EGvQwxm0QDFE3
+					JExA4Byx2QaJvXo8LoCeyQxS/f9E6bXpXQk2
+					4dgQxUrRZqnKEA== )
+			86400	NSEC	example.com. CNAME RRSIG NSEC A
+			86400	RRSIG	NSEC 7 3 86400 (
+					20840201000000 20160224073150 29600 example.com.
+					iKA+5qsYA7A7JN7Df99aJnToYESjqordQgVj
+					yMS/1RVBYEGE4y3ggehzAxvc8bsNYnUwGeGt
+					vse5dMVKCcIaPA== )
+; CNAME extra record A
+email.example.com.	3600	IN A	192.0.2.1
+			3600	RRSIG	A 7 3 3600 (
+					20840201000000 20160224073150 29600 example.com.
+					DummySignatureDEADBEEFToYESjqordQgVj
+					yMS/1RVBYEGE4y3ggehzAxvc8bsNYnUwGeGt
+					vse5dMVKCcIaPA== )
+
+example.com.		3600	IN SOA	dns1.example.com. hostmaster.example.com. (
+					2010111220 ; serial
+					21600      ; refresh (6 hours)
+					3600       ; retry (1 hour)
+					604800     ; expire (1 week)
+					86400      ; minimum (1 day)
+					)
+			3600	RRSIG	SOA 7 2 3600 (
+					20840201000000 20160224073150 29600 example.com.
+					MT+QgXcsDzkrFgncNwFyH8lwXiOTpj1rnPgs
+					OUIOfIhyJyzT1hpozAHt+IWOPHUkKjBN1C5y
+					SwyTnlqwJtG0yw== )
+			3600	NS	dns1.example.com.
+			3600	RRSIG	NS 7 2 3600 (
+					20840201000000 20160224073150 29600 example.com.
+					Mr0Gu7PUu9PsUBflhd8tMhcQ9+ve+z561/ml
+					kP6PL0MHgLg7V8KVmL2tc7+JAhSOVSpJ4BGQ
+					c9HKD15lFDFEgw== )
+			86400	NSEC	dns1.example.com. NS SOA RRSIG NSEC DNSKEY
+			86400	RRSIG	NSEC 7 2 86400 (
+					20840201000000 20160224073150 29600 example.com.
+					oEMpoEhi86OM/SdyobPEh90zF3c3FhOgv68j
+					paD5BLUsAntf3qU+KoIMb9iVglp+VTGrg0Ol
+					XdJ2D/xSMA+XHA== )
+			3600	DNSKEY	256 3 7 (
+					AwEAAcvvW/oJAjcRdntRC8J52baXoNFVWOFz
+					oVFe3Vgl8aBBiGh3gnbuNt7xKmy9z2qc2/35
+					MFwieWYfDdgUnPxyKMM=
+					) ; ZSK; alg = NSEC3RSASHA1; key id = 29600
+			3600	DNSKEY	257 3 7 (
+					AwEAAeXCF7sHLcFiaCwCFH4xh2CJcCp55i04
+					exG41EtzILS2waabEM5byhRkoylbv91q6HY+
+					JH9YXitS21LMD0Hqp1s=
+					) ; KSK; alg = NSEC3RSASHA1; key id = 31323
+			3600	RRSIG	DNSKEY 7 2 3600 (
+					20840201000000 20160224073150 29600 example.com.
+					WOtx+LBKbS2MOahlpDJMqgeH1TI5dZoQitmA
+					SOkDRlJgfPsiKeiaGMrnWN9xnPZOVr9MsInE
+					sKYjh6EZM1nuBQ== )
+			3600	RRSIG	DNSKEY 7 2 3600 (
+					20840201000000 20160224073150 31323 example.com.
+					nL4eJLv62C56wexu10DMPHqXCXSE/3vRe4es
+					4e0e1CkY9bdj+LgLfgs7CH7UDNXFX2CxKxHd
+					mL4sp5AtaA8fnQ== )
+dns1.example.com.	3600	IN A	192.0.2.1
+			3600	RRSIG	A 7 3 3600 (
+					20840201000000 20160224073150 29600 example.com.
+					nn2dG+ORbcNQWHT87ijfOddx0SKCSE+8hAxt
+					SiQQpxAzPw13CZmnbYas8uvFFtth6U689V3h
+					rMzzZcxQEA1z8w== )
+			86400	NSEC	email.example.com. A RRSIG NSEC
+			86400	RRSIG	NSEC 7 3 86400 (
+					20840201000000 20160224073150 29600 example.com.
+					BFz1Z7dbBNgHXDOaufuCoIzGHbwyLUrA+Wad
+					QBPD9xCYkXHoHfvVOhtEeMR19Rz+fi6ottJI
+					4AWItiobBC/DAQ== )

@@ -371,7 +371,7 @@ static int finalize_updated_zone(zone_contents_t *contents_copy,
 	}
 
 	if (set_nsec3_names) {
-		return zone_contents_adjust_full(contents_copy, NULL, NULL);
+		return zone_contents_adjust_full(contents_copy);
 	} else {
 		return zone_contents_adjust_pointers(contents_copy);
 	}

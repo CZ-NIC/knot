@@ -1,0 +1,58 @@
+dns1.example.com.	3600	IN A	192.0.2.1
+			3600	RRSIG	A 7 3 3600 (
+					20840201000000 20160224081051 29600 example.com.
+					fEcJTvz6hu2rhfrdc/pS2/P/OWhq1dZhnUGS
+					6+bamvMIqfNuYasJzeMZp1zneEETiMf7h+0E
+					cdmHKHKdVTukCA== )
+			86400	NSEC	example.com. A RRSIG NSEC
+; different signer name in RRSIG
+			86400	RRSIG	NSEC 7 3 86400 (
+					20840201000000 20160224081051 29600 different.com.
+					V6veOuBzm7n82hwIBbln9lY3pxKR/h8d7okC
+					deEeaF6jpDt8aoTJjo0UbtEJJwBNKARKfe4F
+					9U0NVIL0HnN2/Q== )
+
+example.com.		3600	IN SOA	dns1.example.com. hostmaster.example.com. (
+					2010111220 ; serial
+					21600      ; refresh (6 hours)
+					3600       ; retry (1 hour)
+					604800     ; expire (1 week)
+					86400      ; minimum (1 day)
+					)
+			3600	RRSIG	SOA 7 2 3600 (
+					20840201000000 20160224081051 29600 example.com.
+					Pej4N9K4S9PA8wV0Ks6KtqAblfd05eRmv8T9
+					fBnR8V3vCtYONryKOP3cFlMXr2quWDCh5iwF
+					CQU98zle4CI9fg== )
+			3600	NS	dns1.example.com.
+			3600	RRSIG	NS 7 2 3600 (
+					20840201000000 20160224081051 29600 example.com.
+					UY1XRRhfD6a9xOm/+FsAo2/uYG/HRWR4k33B
+					amre+LBqabcXm9qX8wOU2W1h/sK/v8WFRjIn
+					dnCCjY/iwixfGg== )
+			86400	NSEC	dns1.example.com. NS SOA RRSIG NSEC DNSKEY
+			86400	RRSIG	NSEC 7 2 86400 (
+					20840201000000 20160224081051 29600 example.com.
+					IWxMxnZfLFFrQ3xOujrKKedNvIiIXN9QCL/G
+					Y615FWxxQcufNEZmlRILStAKtVsRJTFSInBP
+					NoTix1W8vttyeA== )
+			3600	DNSKEY	256 3 7 (
+					AwEAAcvvW/oJAjcRdntRC8J52baXoNFVWOFz
+					oVFe3Vgl8aBBiGh3gnbuNt7xKmy9z2qc2/35
+					MFwieWYfDdgUnPxyKMM=
+					) ; ZSK; alg = NSEC3RSASHA1; key id = 29600
+			3600	DNSKEY	257 3 7 (
+					AwEAAeXCF7sHLcFiaCwCFH4xh2CJcCp55i04
+					exG41EtzILS2waabEM5byhRkoylbv91q6HY+
+					JH9YXitS21LMD0Hqp1s=
+					) ; KSK; alg = NSEC3RSASHA1; key id = 31323
+			3600	RRSIG	DNSKEY 7 2 3600 (
+					20840201000000 20160224081051 29600 example.com.
+					dA9WweUpYtqqCm18zk+Jv3Md7WtVlXuvSeX3
+					5IHmbezmlzrPpHBs+gWdD6bnGwlRRcea7FkS
+					u0Nt96PkXVuXPA== )
+			3600	RRSIG	DNSKEY 7 2 3600 (
+					20840201000000 20160224081051 31323 example.com.
+					nvruQZ5cZZ9+/I6wAh5AjWlxomueuuFiFoZe
+					XYBFmB+VH+eWpWL2Lp4hgaQ6UyKaHAKqtzMC
+					pqVA7Vwz4HEftQ== )

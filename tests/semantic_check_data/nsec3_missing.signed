@@ -1,0 +1,120 @@
+
+; extra record without corresponding NSEC3
+extra.example.com.	3600	IN A	1.2.3.4
+			3600	RRSIG	A 7 3 3600 (
+					20840201000000 20160302125715 29600 example.com.
+					DummySignatureDummySignature12345678
+					123456789123456789123456789123456789
+					lqhxunAbh08dsQ== )
+20G1GOL477RO51RK9A9NFD54TFQAL7IQ.example.com. 86400 IN NSEC3 1 0 10 - (
+					6DFJITU5VML86QNKU9FO2LJDDQQTQPVT 
+					A RRSIG )
+6DFJITU5VML86QNKU9FO2LJDDQQTQPVT.example.com. 86400 IN NSEC3 1 0 10 - (
+					MJV836RJQEJ5UBGHVKSQ7N44RSO3Q938
+					A RRSIG )
+MJV836RJQEJ5UBGHVKSQ7N44RSO3Q938.example.com. 86400 IN NSEC3 1 0 10 - (
+					UI312KQOP1NG8IQEIEFNPSLA94KB5Q92 
+					NS )
+UI312KQOP1NG8IQEIEFNPSLA94KB5Q92.example.com. 86400 IN NSEC3 1 0 10 - (
+					UTQVUHU2BLK3DHMRR5T1HD9VTEOHQT0A 
+					A RRSIG)
+UTQVUHU2BLK3DHMRR5T1HD9VTEOHQT0A.example.com. 86400 IN NSEC3 1 0 10 - (
+					20G1GOL477RO51RK9A9NFD54TFQAL7IQ
+					NS SOA RRSIG DNSKEY NSEC3PARAM )
+
+UTQVUHU2BLK3DHMRR5T1HD9VTEOHQT0A.example.com. 86400 IN A 1.2.3.4
+UTQVUHU2BLK3DHMRR5T1HD9VTEOHQT0A.example.com. 86400	RRSIG	A 7 3 86400 (
+					20840201000000 20160302125715 29600 example.com.
+					DPwNyH7r/4wIBfTGxikNv4pY7omY6IqpQS6Q
+					jtTNuStA+5gk98dvcgRjluxqo/+ZlZz4V53f
+					1y506ytGbX/q4Q== )
+
+
+UI312KQOP1NG8IQEIEFNPSLA94KB5Q92.example.com. 86400	RRSIG	NSEC3 7 3 86400 (
+					20840201000000 20160302125715 29600 example.com.
+					DummySignatureDummySignature4ey0Qcln
+					uquQZT+z2HIdCE9HeslAkTlu/Xt78vF4+3db
+					t2Vno21DkteA+w== )
+20G1GOL477RO51RK9A9NFD54TFQAL7IQ.example.com. 86400	RRSIG	NSEC3 7 3 86400 (
+					20840201000000 20160302125715 29600 example.com.
+					DummySignatureDummySignature4ey0Qcln
+					uquQZT+z2HIdCE9HeslAkTlu/Xt78vF4+3db
+					t2Vno21DkteA+w== )
+6DFJITU5VML86QNKU9FO2LJDDQQTQPVT.example.com. 86400	RRSIG	NSEC3 7 3 86400 (
+					20840201000000 20160302125715 29600 example.com.
+					KElp8dLKBKFzgEFV8r5aP9pCyYUD+Z8rLBA9
+					KkCDm1y82x5T/Cu5UXuZJwhvDGDzwPqoY5Dr
+					Qbiek52n6umbEw== )
+MJV836RJQEJ5UBGHVKSQ7N44RSO3Q938.example.com. 86400	RRSIG	NSEC3 7 3 86400 (
+					20840201000000 20160302125715 29600 example.com.
+					DummySignatureDummySignatureD37X9Bw2
+					9JOkecZnmzCwBqfMCBvRYmNRpMd512+ZnW/I
+					1vIViE7CGwkHyA== )
+UTQVUHU2BLK3DHMRR5T1HD9VTEOHQT0A.example.com. 86400	RRSIG	NSEC3 7 3 86400 (
+					20840201000000 20160302125715 29600 example.com.
+					DPwNyH7r/4wIBfTGxikNv4pY7omY6IqpQS6Q
+					jtTNuStA+5gk98dvcgRjluxqo/+ZlZz4V53f
+					1y506ytGbX/q4Q== )
+
+example.com.		3600	IN SOA	dns1.example.com. hostmaster.example.com. (
+					2010111220 ; serial
+					21600      ; refresh (6 hours)
+					3600       ; retry (1 hour)
+					604800     ; expire (1 week)
+					86400      ; minimum (1 day)
+					)
+			3600	RRSIG	SOA 7 2 3600 (
+					20840201000000 20160302125715 29600 example.com.
+					bGk1vLxVuJpcEy7n0gPvQVzfanbvINLJLcbD
+					eeie4sXZZAOwu6oQZy6kd8tvKtV4mL0OJzpH
+					XCO6BdZkmk/aQA== )
+			3600	NS	dns1.example.com.
+			3600	RRSIG	NS 7 2 3600 (
+					20840201000000 20160302125715 29600 example.com.
+					roe4aBp4G3TqQ4x5eRxbVIjApIh17gXDjfOY
+					zvRFLOkrwqKz3eX9WrRiCk3bYNn8s1fuenaQ
+					OSV1D5SL7utX5w== )
+			3600	DNSKEY	256 3 7 (
+					AwEAAcvvW/oJAjcRdntRC8J52baXoNFVWOFz
+					oVFe3Vgl8aBBiGh3gnbuNt7xKmy9z2qc2/35
+					MFwieWYfDdgUnPxyKMM=
+					) ; ZSK; alg = NSEC3RSASHA1; key id = 29600
+			3600	DNSKEY	257 3 7 (
+					AwEAAeXCF7sHLcFiaCwCFH4xh2CJcCp55i04
+					exG41EtzILS2waabEM5byhRkoylbv91q6HY+
+					JH9YXitS21LMD0Hqp1s=
+					) ; KSK; alg = NSEC3RSASHA1; key id = 31323
+			3600	RRSIG	DNSKEY 7 2 3600 (
+					20840201000000 20160302125715 29600 example.com.
+					c1yhXb8wRGYndpVqG61+lHAAbZg+JcVYGPX3
+					Fw0jYigN4G+P0+VUCqPLkC4yfJylzuefyGfk
+					TUmriM3ihfXxIg== )
+			3600	RRSIG	DNSKEY 7 2 3600 (
+					20840201000000 20160302125715 31323 example.com.
+					mZiLLTzbdaj7EJ8uj3TwvcvAfaMxYjyavlGT
+					qpa+cElfvBDm7R6MF4MaEQ9aZ2ylMt1lppjq
+					YyYRaaQC6yhm4g== )
+			0	NSEC3PARAM 1 0 10 -
+			0	RRSIG	NSEC3PARAM 7 2 0 (
+					20840201000000 20160302125715 29600 example.com.
+					K3PkVYZZV8QvZFtDsz9+ZfiM9wDkFu/eO2S5
+					tAtCXd1fktcW44TLWL0qADfFEEcMotvzLqv1
+					YJrD7TvrFDot8Q== )
+deleg.example.com.	3600	IN NS	deleg.example.com.
+			3600	A	192.0.2.1
+
+dns1.example.com.	3600	IN A	192.0.2.1
+			3600	RRSIG	A 7 3 3600 (
+					20840201000000 20160302125715 29600 example.com.
+					vlzRtVFa44pRtdD8XZcgDa6021uA9A3TnNEw
+					5jRnor4aoftUuVQNAanQMCgrWk63d14XZ2d0
+					lqhxunAbh08dsQ== )
+
+www.example.com.	3600	IN A	192.0.2.1
+			3600	RRSIG	A 7 3 3600 (
+					20840201000000 20160302125715 29600 example.com.
+					NWFuYaSEg3z3K4l/fHu/X9dK+rDZ177BbCNN
+					ZeFTPCAdOnX0nw1CQys629k7Vzdv1pHaanmy
+					0Ru0tX9R65NlKw== )
+
+
