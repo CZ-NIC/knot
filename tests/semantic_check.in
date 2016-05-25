@@ -16,19 +16,17 @@ expect_error()
 	fi
 	"$KZONECHECK" -o example.com "$DATA/$1" > "$LOG"
 	ret=$?
-	if [ $2 -eq 1 ]; then
-		ok "$1 - program return code" test $ret -eq 1
-	else
-		ok "$1 - program return code" test $ret -eq 2
-	fi
+	
+	ok "$1 - program return code" test $ret -eq 1
+
 
 	grep "error.*(semantic check)" $LOG > /dev/null
 	ok "$1 - check fatal" test $? -ne $2
 
-	grep -E "^name '[^']+': ${4}$" $LOG > /dev/null
+	grep -E "^record '[^']+': ${4}$" $LOG > /dev/null
 	ok "$1 - check message" test $? -eq 0
 
-	errors=$(grep "^name " $LOG | wc -l)
+	errors=$(grep "^record " $LOG | wc -l)
 	ok "$1 - number of found errors" test $errors -eq $3
 	if [ $errors != $3 ]; then
 		diag "expected errors $3 but found $errors"
