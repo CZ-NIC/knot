@@ -2,7 +2,7 @@
                    KX, TXT, SPF, RP, AAAA, LOC, SRV, NAPTR, CERT, DS, SSHFP,
                    IPSECKEY, RRSIG, NSEC, KEY, DNSKEY, DHCID, NSEC3, NSEC3PARAM,
                    TLSA, CDS, CDNSKEY, APL, EUI48, EUI64, NID, L32, L64, LP,
-                   TYPE12345
+                   URI, CAA, TYPE12345
 - the class IN is supported only (CLASS12345 notation is not supported too)
 - domain names can contain alphanumeric, '-', '_' and '/' characters
 - \x and \DDD notations are allowed in domain names and in text strings

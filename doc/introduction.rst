@@ -34,17 +34,19 @@ DNS features:
 * RR types A, NS, CNAME, SOA, PTR, HINFO, MINFO, MX, TXT, RP, AFSDB, RT, KEY,
   AAAA, LOC, SRV, NAPTR, KX, CERT, DNAME, APL, DS, SSHFP, IPSECKEY, RRSIG, NSEC,
   DNSKEY, DHCID, NSEC3, NSEC3PARAM, TLSA, CDS, CDNSKEY, SPF, NID, L32, L64, LP,
-  EUI48, EUI64 and Unknown
+  EUI48, EUI64, URI, CAA and Unknown
 
 Server features:
 
 * Adding/removing zones on-the-fly
 * Reconfiguring server instance on-the-fly
+* Dynamic configuration
 * IPv4 and IPv6 support
 * Semantic checks of zones
 * DDNS support
 * Persistent zone timers
 * Automatic DNSSEC signing
+* PKCS #11 interface
 * Forward and reverse records synthesis
 
 For more info and downloads see `www.knot-dns.cz <https://www.knot-dns.cz>`_.
