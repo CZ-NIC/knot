@@ -17,11 +17,65 @@
 #include <assert.h>
 #include <gnutls/gnutls.h>
 #include <gnutls/crypto.h>
+#include <openssl/evp.h>
 #include <string.h>
 
 #include "libdnssec/error.h"
 #include "libdnssec/nsec.h"
 #include "libdnssec/shared/shared.h"
+
+static int openssl_nsec3_hash(gnutls_digest_algorithm_t algorithm, int iterations,
+			      const dnssec_binary_t *salt, const dnssec_binary_t *data,
+			      dnssec_binary_t *hash)
+{
+	assert(salt);
+	assert(data);
+	assert(hash);
+
+	const EVP_MD *md = EVP_sha1();
+
+	int hash_size = EVP_MD_size(md);
+	if (hash_size <= 0) {
+		return DNSSEC_NSEC3_HASHING_ERROR;
+	}
+
+	int r = dnssec_binary_resize(hash, hash_size);
+	if (r != DNSSEC_EOK) {
+		return r;
+	}
+
+	const uint8_t *in = data->data;
+	size_t in_size = data->size;
+
+	for (int i = 0; i <= iterations; i++) {
+		EVP_MD_CTX ctx;
+		r = EVP_DigestInit(&ctx, md);
+		if (r != 1) {
+			return DNSSEC_NSEC3_HASHING_ERROR;
+		}
+
+		r = EVP_DigestUpdate(&ctx, in, in_size);
+		if (r != 1) {
+			return DNSSEC_NSEC3_HASHING_ERROR;
+		}
+
+		r = EVP_DigestUpdate(&ctx, salt->data, salt->size);
+		if (r != 1) {
+			return DNSSEC_NSEC3_HASHING_ERROR;
+		}
+
+		unsigned int size = hash->size;
+		r = EVP_DigestFinal(&ctx, hash->data, &size);
+		if (r != 1 || size != hash->size) {
+			return DNSSEC_NSEC3_HASHING_ERROR;
+		}
+
+		in = hash->data;
+		in_size = hash->size;
+	}
+
+	return DNSSEC_EOK;
+}
 
 /*!
  * Compute NSEC3 hash for given data and algorithm.
@@ -30,6 +84,7 @@
  *
  * \todo Input data should be converted to lowercase.
  */
+__attribute__((unused))
 static int nsec3_hash(gnutls_digest_algorithm_t algorithm, int iterations,
 		      const dnssec_binary_t *salt, const dnssec_binary_t *data,
 		      dnssec_binary_t *hash)
@@ -107,7 +162,7 @@ int dnssec_nsec3_hash(const dnssec_binary_t *data,
 		return DNSSEC_INVALID_NSEC3_ALGORITHM;
 	}
 
-	return nsec3_hash(algorithm, params->iterations, &params->salt, data, hash);
+	return openssl_nsec3_hash(algorithm, params->iterations, &params->salt, data, hash);
 }
 
 /*!
