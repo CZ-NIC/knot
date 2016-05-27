@@ -343,7 +343,7 @@ uint8_t *knot_edns_get_option(const knot_rrset_t *opt_rr, uint16_t code)
 }
 
 _public_
-uint16_t knot_edns_opt_get_code(uint8_t *opt)
+uint16_t knot_edns_opt_get_code(const uint8_t *opt)
 {
 	assert(opt != NULL);
 
@@ -352,7 +352,7 @@ uint16_t knot_edns_opt_get_code(uint8_t *opt)
 }
 
 _public_
-uint16_t knot_edns_opt_get_length(uint8_t *opt)
+uint16_t knot_edns_opt_get_length(const uint8_t *opt)
 {
 	assert(opt != NULL);
 

@@ -279,7 +279,7 @@ uint8_t *knot_edns_get_option(const knot_rrset_t *opt_rr, uint16_t code);
  *
  * \retval EDNS option code
  */
-uint16_t knot_edns_opt_get_code(uint8_t *opt);
+uint16_t knot_edns_opt_get_code(const uint8_t *opt);
 
 /*!
  * \brief Returns the option data length.
@@ -290,7 +290,7 @@ uint16_t knot_edns_opt_get_code(uint8_t *opt);
  *
  * \retval EDNS option length
  */
-uint16_t knot_edns_opt_get_length(uint8_t *opt);
+uint16_t knot_edns_opt_get_length(const uint8_t *opt);
 
 /*!
  * \brief Returns pointer to option data.
