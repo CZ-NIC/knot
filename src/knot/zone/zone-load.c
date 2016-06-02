@@ -1,4 +1,4 @@
-/*  Copyright (C) 2014 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -71,25 +71,15 @@ int zone_load_check(conf_t *conf, zone_contents_t *contents)
 		return KNOT_EOK;
 	}
 
-	const knot_dname_t *zone_name = contents->apex->owner;
-
 	/* Check minimum EDNS0 payload if signed. (RFC4035/sec. 3) */
 	if (zone_contents_is_signed(contents)) {
 		conf_val_t *max_payload = &conf->cache.srv_max_udp_payload;
 		if (conf_int(max_payload) < KNOT_EDNS_MIN_DNSSEC_PAYLOAD) {
-			log_zone_error(zone_name, "EDNS payload size is "
-			               "lower than %u bytes for DNSSEC zone",
+			log_zone_error(contents->apex->owner, "EDNS payload size "
+			               "is lower than %u bytes for DNSSEC zone",
 			               KNOT_EDNS_MIN_DNSSEC_PAYLOAD);
 			return KNOT_EPAYLOAD;
 		}
-	}
-
-	/* Check NSEC3PARAM state if present. */
-	int result = zone_contents_load_nsec3param(contents);
-	if (result != KNOT_EOK) {
-		log_zone_error(zone_name, "NSEC3 signed zone has invalid or no "
-		               "NSEC3PARAM record");
-		return result;
 	}
 
 	return KNOT_EOK;
