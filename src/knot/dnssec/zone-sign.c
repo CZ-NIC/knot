@@ -499,13 +499,8 @@ static int sign_node_rrsets(const zone_node_t *node,
 		if (rrset.type == KNOT_RRTYPE_RRSIG) {
 			continue;
 		}
-		bool should_sign = false;
-		result = knot_zone_sign_rr_should_be_signed(node, &rrset,
-		                                            &should_sign);
-		if (result != KNOT_EOK) {
-			return result;
-		}
-		if (!should_sign) {
+
+		if (!knot_zone_sign_rr_should_be_signed(node, &rrset)) {
 			continue;
 		}
 
@@ -1039,13 +1034,8 @@ static int sign_changeset_wrap(knot_rrset_t *chg_rrset, changeset_signing_data_t
 	if (node) {
 		knot_rrset_t zone_rrset = node_rrset(node, chg_rrset->type);
 		knot_rrset_t rrsigs = node_rrset(node, KNOT_RRTYPE_RRSIG);
-		bool should_sign = false;
 
-		int ret = knot_zone_sign_rr_should_be_signed(node, &zone_rrset,
-		                                             &should_sign);
-		if (ret != KNOT_EOK) {
-			return ret;
-		}
+		bool should_sign = knot_zone_sign_rr_should_be_signed(node, &zone_rrset);
 
 		// Check for RRSet in the 'already_signed' table
 		if (args->signed_tree && (should_sign && knot_rrset_empty(&zone_rrset))) {
@@ -1121,9 +1111,6 @@ static void knot_zone_clear_sorted_changes(hattrie_t *t)
 
 /*- public API ---------------------------------------------------------------*/
 
-/*!
- * \brief Update zone signatures and store performed changes in changeset.
- */
 int knot_zone_sign(const zone_contents_t *zone,
                    const zone_keyset_t *zone_keys,
                    const kdnssec_ctx_t *dnssec_ctx,
@@ -1162,9 +1149,6 @@ int knot_zone_sign(const zone_contents_t *zone,
 	return KNOT_EOK;
 }
 
-/*!
- * \brief Check if zone SOA signatures are expired.
- */
 bool knot_zone_sign_soa_expired(const zone_contents_t *zone,
                                 const zone_keyset_t *zone_keys,
                                 const kdnssec_ctx_t *dnssec_ctx)
@@ -1179,9 +1163,6 @@ bool knot_zone_sign_soa_expired(const zone_contents_t *zone,
 	return !all_signatures_exist(&soa, &rrsigs, zone_keys, dnssec_ctx);
 }
 
-/*!
- * \brief Update and sign SOA and store performed changes in changeset.
- */
 int knot_zone_sign_update_soa(const knot_rrset_t *soa,
                               const knot_rrset_t *rrsigs,
                               const zone_keyset_t *zone_keys,
@@ -1242,9 +1223,6 @@ int knot_zone_sign_update_soa(const knot_rrset_t *soa,
 	return KNOT_EOK;
 }
 
-/*!
- * \brief Sign changeset created by DDNS or zone-diff.
- */
 int knot_zone_sign_changeset(const zone_contents_t *zone,
                              const changeset_t *in_ch,
                              changeset_t *out_ch,
@@ -1288,9 +1266,6 @@ int knot_zone_sign_changeset(const zone_contents_t *zone,
 	return KNOT_EOK;
 }
 
-/*!
- * \brief Sign NSEC/NSEC3 nodes in changeset and update the changeset.
- */
 int knot_zone_sign_nsecs_in_changeset(const zone_keyset_t *zone_keys,
                                       const kdnssec_ctx_t *dnssec_ctx,
                                       changeset_t *changeset)
@@ -1320,55 +1295,42 @@ int knot_zone_sign_nsecs_in_changeset(const zone_keyset_t *zone_keys,
 	return KNOT_EOK;
 }
 
-/*!
- * \brief Checks whether RRSet in a node has to be signed. Will not return
- *        true for all types that should be signed, do not use this as an
- *        universal function, it is implementation specific.
- */
-int knot_zone_sign_rr_should_be_signed(const zone_node_t *node,
-                                       const knot_rrset_t *rrset,
-                                       bool *should_sign)
+bool knot_zone_sign_rr_should_be_signed(const zone_node_t *node,
+                                        const knot_rrset_t *rrset)
 {
-	if (should_sign == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	*should_sign = false; // Only one case at the end is set to true
 	if (node == NULL || knot_rrset_empty(rrset)) {
-		return KNOT_EOK;
+		return false;
 	}
 
 	// We do not want to sign RRSIGs
 	if (rrset->type == KNOT_RRTYPE_RRSIG) {
-		return KNOT_EOK;
+		return false;
 	}
 
 	// SOA and DNSKEYs are handled separately in the zone apex
 	if (node_rrtype_exists(node, KNOT_RRTYPE_SOA)) {
 		if (rrset->type == KNOT_RRTYPE_SOA) {
-			return KNOT_EOK;
+			return false;
 		}
 
 		if (rrset->type == KNOT_RRTYPE_DNSKEY) {
-			return KNOT_EOK;
+			return false;
 		}
 	}
 
 	// At delegation points we only want to sign NSECs and DSs
-	if ((node->flags & NODE_FLAGS_DELEG)) {
+	if (node->flags & NODE_FLAGS_DELEG) {
 		if (!(rrset->type == KNOT_RRTYPE_NSEC ||
-		    rrset->type == KNOT_RRTYPE_DS)) {
-			return KNOT_EOK;
+		      rrset->type == KNOT_RRTYPE_DS)) {
+			return false;
 		}
 	}
 
 	// These RRs have their signatures stored in changeset already
-	if (node->flags & NODE_FLAGS_REMOVED_NSEC
-	    && ((rrset->type == KNOT_RRTYPE_NSEC)
-	         || (rrset->type == KNOT_RRTYPE_NSEC3))) {
-		return KNOT_EOK;
+	if ((node->flags & NODE_FLAGS_REMOVED_NSEC) &&
+	    (rrset->type == KNOT_RRTYPE_NSEC || rrset->type == KNOT_RRTYPE_NSEC3)) {
+		return false;
 	}
 
-	*should_sign = true;
-	return KNOT_EOK;
+	return true;
 }

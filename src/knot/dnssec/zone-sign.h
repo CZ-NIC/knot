@@ -119,12 +119,10 @@ int knot_zone_sign_nsecs_in_changeset(const zone_keyset_t *zone_keys,
  * \param node         Node containing the RRSet.
  * \param rrset        RRSet we are checking for.
  * \param table        Optional hat trie with already signed RRs.
- * \param should_sign  Set to true if RR should be signed, false otherwise.
  *
- * \return KNOT_E*
+ * \retval true if should be signed.
  */
-int knot_zone_sign_rr_should_be_signed(const zone_node_t *node,
-                                       const knot_rrset_t *rrset,
-                                       bool *should_sign);
+bool knot_zone_sign_rr_should_be_signed(const zone_node_t *node,
+                                        const knot_rrset_t *rrset);
 
 /*! @} */

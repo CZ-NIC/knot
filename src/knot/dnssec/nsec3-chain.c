@@ -85,11 +85,8 @@ static bool node_should_be_signed_nsec3(const zone_node_t *n)
 		    rrset.type == KNOT_RRTYPE_RRSIG) {
 			continue;
 		}
-		bool should_sign = false;
-		int ret = knot_zone_sign_rr_should_be_signed(n, &rrset,
-		                                             &should_sign);
-		assert(ret == KNOT_EOK); // No tree inside the function, no fail
-		if (should_sign) {
+
+		if (knot_zone_sign_rr_should_be_signed(n, &rrset)) {
 			return true;
 		}
 	}
