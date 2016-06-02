@@ -1,4 +1,4 @@
-/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -171,6 +171,8 @@ const zone_node_t *zone_contents_find_wildcard_child(const zone_contents_t *cont
 /*!
  * \brief Sets parent and previous pointers and node flags. (cheap operation)
  *        For both normal and NSEC3 tree
+ *
+ * \param contents Zone contents to be adjusted.
  */
 int zone_contents_adjust_pointers(zone_contents_t *contents);
 
@@ -181,36 +183,6 @@ int zone_contents_adjust_pointers(zone_contents_t *contents);
  * \param contents Zone contents to be adjusted.
  */
 int zone_contents_adjust_full(zone_contents_t *contents);
-
-/*!
- * \brief Parses the NSEC3PARAM record stored in the zone.
- *
- * This function properly fills in the nsec3_params field of the zone structure
- * according to data stored in the NSEC3PARAM record. This is necessary to do
- * before any NSEC3 operations on the zone are requested, otherwise they will
- * fail (error KNOT_ENSEC3PAR).
- *
- * \note If there is no NSEC3PARAM record in the zone, this function clears
- *       the nsec3_params field of the zone structure (fills it with zeros).
- *
- * \param zone Zone to get the NSEC3PARAM record from.
- */
-int zone_contents_load_nsec3param(zone_contents_t *contents);
-
-/*!
- * \brief Returns the parsed NSEC3PARAM record of the zone.
- *
- * \note You must parse the NSEC3PARAM record prior to calling this function
- *       (zone_contents_load_nsec3param()).
- *
- * \param zone Zone to get the NSEC3PARAM record from.
- *
- * \return Parsed NSEC3PARAM from the zone or NULL if the zone does not use
- *         NSEC3 or the record was not parsed before.
- *
- * \see zone_contents_load_nsec3param()
- */
-const knot_nsec3_params_t *zone_contents_nsec3params(const zone_contents_t *contents);
 
 /*!
  * \brief Applies the given function to each regular node in the zone.
