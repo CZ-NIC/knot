@@ -312,14 +312,14 @@ static int adjust_additional(zone_node_t **tnode, void *data)
  *                 preceding \a name in canonical order, regardless if the name
  *                 is in the zone or not).
  *
- * \retval <> 0 if the domain name was found. In such case \a node holds the
+ * \retval true if the domain name was found. In such case \a node holds the
  *              zone node with \a name as its owner. \a previous is set
  *              properly.
- * \retval 0 if the domain name was not found. \a node may hold any (or none)
- *           node. \a previous is set properly.
+ * \retval false if the domain name was not found. \a node may hold any (or none)
+ *               node. \a previous is set properly.
  */
-static int find_in_tree(zone_tree_t *tree, const knot_dname_t *name,
-                        zone_node_t **node, zone_node_t **previous)
+static bool find_in_tree(zone_tree_t *tree, const knot_dname_t *name,
+                         zone_node_t **node, zone_node_t **previous)
 {
 	assert(tree != NULL);
 	assert(name != NULL);
@@ -328,13 +328,16 @@ static int find_in_tree(zone_tree_t *tree, const knot_dname_t *name,
 
 	zone_node_t *found = NULL, *prev = NULL;
 
-	int exact_match = zone_tree_get_less_or_equal(tree, name, &found, &prev);
-	assert(exact_match >= 0);
+	int match = zone_tree_get_less_or_equal(tree, name, &found, &prev);
+	if (match < 0) {
+		assert(0);
+		return false;
+	}
 
 	*node = found;
 	*previous = prev;
 
-	return exact_match;
+	return match > 0;
 }
 
 static bool nsec3_params_match(const knot_rdataset_t *rrs,
@@ -651,9 +654,7 @@ static zone_node_t *get_previous(const zone_contents_t *zone,
 	}
 
 	zone_node_t *found = NULL, *prev = NULL;
-
-	int exact_match = find_in_tree(zone->nodes, name, &found, &prev);
-	assert(exact_match >= 0);
+	(void)find_in_tree(zone->nodes, name, &found, &prev);
 	assert(prev != NULL);
 
 	return prev;
@@ -723,9 +724,8 @@ int zone_contents_find_dname(const zone_contents_t *zone,
 	}
 
 	zone_node_t *found = NULL, *prev = NULL;
+	bool match = find_in_tree(zone->nodes, name, &found, &prev);
 
-	int exact_match = find_in_tree(zone->nodes, name, &found, &prev);
-	assert(exact_match >= 0);
 	*node = found;
 	*previous = prev;
 
@@ -740,7 +740,7 @@ int zone_contents_find_dname(const zone_contents_t *zone,
 	 * closest encloser from this node.
 	 */
 
-	if (exact_match) {
+	if (match) {
 		*closest_encloser = *node;
 	} else {
 		if (!knot_dname_is_sub(name, zone->apex->owner)) {
@@ -759,7 +759,7 @@ int zone_contents_find_dname(const zone_contents_t *zone,
 		}
 	}
 
-	return exact_match ? ZONE_NAME_FOUND : ZONE_NAME_NOT_FOUND;
+	return match ? ZONE_NAME_FOUND : ZONE_NAME_NOT_FOUND;
 }
 
 const zone_node_t *zone_contents_find_previous(const zone_contents_t *zone,
@@ -795,12 +795,8 @@ int zone_contents_find_nsec3_for_name(const zone_contents_t *zone,
 		return ret;
 	}
 
-	const zone_node_t *found = NULL, *prev = NULL;
-
-	int exact_match = zone_tree_get_less_or_equal(zone->nsec3_nodes, nsec3_name,
-	                                              (zone_node_t **)&found,
-	                                              (zone_node_t **)&prev);
-	assert(exact_match >= 0);
+	zone_node_t *found = NULL, *prev = NULL;
+	bool match = find_in_tree(zone->nsec3_nodes, nsec3_name, &found, &prev);
 
 	knot_dname_free(&nsec3_name, NULL);
 
@@ -810,7 +806,7 @@ int zone_contents_find_nsec3_for_name(const zone_contents_t *zone,
 		// either the returned node is the root of the tree, or it is
 		// the leftmost node in the tree; in both cases node was found
 		// set the previous node of the found node
-		assert(exact_match > 0);
+		assert(match);
 		assert(*nsec3_node != NULL);
 		*nsec3_previous = (*nsec3_node)->prev;
 	} else {
@@ -824,7 +820,7 @@ int zone_contents_find_nsec3_for_name(const zone_contents_t *zone,
 	const knot_rdataset_t *nsec3_rrs = node_rdataset(*nsec3_previous, KNOT_RRTYPE_NSEC3);
 	const zone_node_t *original_prev = *nsec3_previous;
 
-	ret = exact_match ? ZONE_NAME_FOUND : ZONE_NAME_NOT_FOUND;
+	ret = match ? ZONE_NAME_FOUND : ZONE_NAME_NOT_FOUND;
 
 	while (nsec3_rrs) {
 		for (uint16_t i = 0; i < nsec3_rrs->rr_count; i++) {
