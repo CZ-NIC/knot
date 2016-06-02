@@ -855,7 +855,6 @@ const zone_node_t *zone_contents_find_wildcard_child(const zone_contents_t *cont
 static int adjust_nodes(zone_tree_t *nodes, zone_adjust_arg_t *adjust_arg,
                         zone_tree_apply_cb_t callback)
 {
-	assert(nodes);
 	assert(adjust_arg);
 	assert(callback);
 
