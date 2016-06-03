@@ -94,9 +94,11 @@ static char *path_relative_to(const char *filename, const char *reference)
 		return NULL;
 	}
 
-	int w;
-	w = snprintf(result, result_len, "%.*s/%s", path_len, reference, filename);
-	assert(w + 1 == (int)result_len);
+	int ret = snprintf(result, result_len, "%.*s/%s", path_len, reference, filename);
+	if (ret < 0 || ret >= result_len) {
+		free(result);
+		return NULL;
+	}
 
 	return result;
 }
