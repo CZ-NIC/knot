@@ -22,6 +22,8 @@ src/contrib/dnstap/reader.h
 src/contrib/dnstap/writer.c
 src/contrib/dnstap/writer.h
 src/contrib/endian.h
+src/contrib/files.c
+src/contrib/files.h
 src/contrib/getline.c
 src/contrib/getline.h
 src/contrib/hat-trie/hat-trie.c
@@ -163,6 +165,7 @@ src/dnssec/tests/crypto.c
 src/dnssec/tests/event_keystate.c
 src/dnssec/tests/kasp_dir_escape.c
 src/dnssec/tests/kasp_dir_file.c
+src/dnssec/tests/kasp_policy.c
 src/dnssec/tests/kasp_store.c
 src/dnssec/tests/key.c
 src/dnssec/tests/key_algorithm.c
@@ -236,6 +239,8 @@ src/knot/dnssec/nsec3-chain.c
 src/knot/dnssec/nsec3-chain.h
 src/knot/dnssec/policy.c
 src/knot/dnssec/policy.h
+src/knot/dnssec/rrset-sign.c
+src/knot/dnssec/rrset-sign.h
 src/knot/dnssec/zone-events.c
 src/knot/dnssec/zone-events.h
 src/knot/dnssec/zone-keys.c
@@ -358,8 +363,6 @@ src/libknot/descriptor.c
 src/libknot/descriptor.h
 src/libknot/dname.c
 src/libknot/dname.h
-src/libknot/dnssec/rrset-sign.c
-src/libknot/dnssec/rrset-sign.h
 src/libknot/errcode.h
 src/libknot/error.c
 src/libknot/error.h
@@ -478,6 +481,9 @@ src/utils/knsupdate/knsupdate_exec.h
 src/utils/knsupdate/knsupdate_main.c
 src/utils/knsupdate/knsupdate_params.c
 src/utils/knsupdate/knsupdate_params.h
+src/utils/kzonecheck/main.c
+src/utils/kzonecheck/zone_check.c
+src/utils/kzonecheck/zone_check.h
 src/zscanner/error.c
 src/zscanner/error.h
 src/zscanner/functions.c
@@ -513,6 +519,7 @@ tests/endian.c
 tests/fake_server.h
 tests/fdset.c
 tests/hattrie.c
+tests/heap.c
 tests/hhash.c
 tests/internal_mem.c
 tests/journal.c
