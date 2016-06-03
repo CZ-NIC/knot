@@ -1,4 +1,4 @@
-/*  Copyright (C) 2014 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -14,11 +14,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 /*!
- * \file zone-nsec.h
- *
- * \author Jan Vcelak <jan.vcelak@nic.cz>
- * \author Lubos Slovak <lubos.slovak@nic.cz>
- * \author Jan Kadlec <jan.kadlec@nic.cz>
+ * \file
  *
  * \brief Interface for generating of NSEC/NSEC3 records in zone.
  *
@@ -29,11 +25,10 @@
 #pragma once
 
 #include <stdbool.h>
-#include "knot/updates/changesets.h"
-#include "knot/zone/contents.h"
 #include "knot/dnssec/context.h"
 #include "knot/dnssec/zone-keys.h"
-#include "dnssec/nsec.h"
+#include "knot/updates/changesets.h"
+#include "knot/zone/contents.h"
 
 /*!
  * Check if NSEC3 is enabled for the given zone.
