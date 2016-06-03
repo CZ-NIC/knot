@@ -1,4 +1,4 @@
-/*  Copyright (C) 2014 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -16,16 +16,12 @@
 
 #include <assert.h>
 
-#include "dnssec/nsec.h"
-#include "knot/dnssec/nsec3-chain.h"
 #include "libknot/dname.h"
-#include "libknot/packet/wire.h"
-#include "libknot/rrtype/nsec3.h"
-#include "knot/zone/contents.h"
-#include "knot/zone/zone-diff.h"
 #include "knot/dnssec/nsec-chain.h"
+#include "knot/dnssec/nsec3-chain.h"
 #include "knot/dnssec/zone-sign.h"
 #include "knot/dnssec/zone-nsec.h"
+#include "knot/zone/zone-diff.h"
 #include "contrib/base32hex.h"
 #include "contrib/macros.h"
 #include "contrib/wire_ctx.h"
@@ -529,22 +525,6 @@ static int nsec3_mark_empty(zone_node_t **node_p, void *data)
 }
 
 /*!
- * \brief Function for temporary marking nodes as empty if NSEC3s should not be
- *        generated for them.
- *
- * This is only temporary for the time of NSEC3 generation. Afterwards it must
- * be reset (removed flag and fixed children counts).
- */
-static void mark_empty_nodes_tmp(const zone_contents_t *zone)
-{
-	assert(zone);
-
-	int ret = zone_tree_apply(zone->nodes, nsec3_mark_empty, NULL);
-
-	assert(ret == KNOT_EOK);
-}
-
-/*!
  * \brief Resets the empty flag in the node and increases its parent's children
  *        count if the node was marked as empty.
  *
@@ -566,22 +546,6 @@ static int nsec3_reset(zone_node_t **node_p, void *data)
 	}
 
 	return KNOT_EOK;
-}
-
-/*!
- * \brief Resets empty node flag and children count in nodes that were
- *        previously marked as empty by the \a mark_empty_nodes_tmp() function.
- *
- * This function must be called after NSEC3 generation, so that flags and
- * children count are back to normal before further processing.
- */
-static void reset_nodes(const zone_contents_t *zone)
-{
-	assert(zone);
-
-	int ret = zone_tree_apply(zone->nodes, nsec3_reset, NULL);
-
-	assert(ret == KNOT_EOK);
 }
 
 /* - Public API ------------------------------------------------------------- */
@@ -610,8 +574,11 @@ int knot_nsec3_create_chain(const zone_contents_t *zone, uint32_t ttl,
 	 * The flag will be removed when the node is encountered during NSEC3
 	 * creation procedure.
 	 */
-
-	mark_empty_nodes_tmp(zone);
+	result = zone_tree_apply(zone->nodes, nsec3_mark_empty, NULL);
+	if (result != KNOT_EOK) {
+		free_nsec3_tree(nsec3_nodes);
+		return result;
+	}
 
 	result = create_nsec3_nodes(zone, ttl, nsec3_nodes, changeset);
 	if (result != KNOT_EOK) {
@@ -619,7 +586,16 @@ int knot_nsec3_create_chain(const zone_contents_t *zone, uint32_t ttl,
 		return result;
 	}
 
-	reset_nodes(zone);
+	/* Resets empty node flag and children count in nodes that were
+	 * previously marked as empty. Must be called after NSEC3 generation,
+	 * so that flags and children count are back to normal before further
+	 * processing.
+	 */
+	result = zone_tree_apply(zone->nodes, nsec3_reset, NULL);
+	if (result != KNOT_EOK) {
+		free_nsec3_tree(nsec3_nodes);
+		return result;
+	}
 
 	result = knot_nsec_chain_iterate_create(nsec3_nodes,
 	                                        connect_nsec3_nodes, NULL);

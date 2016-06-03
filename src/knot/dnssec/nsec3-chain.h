@@ -1,4 +1,4 @@
-/*  Copyright (C) 2014 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -14,9 +14,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 /*!
- * \file nsec3-chain.h
- *
- * \author Jan Vcelak <jan.vcelak@nic.cz> (chain creation)
+ * \file
  *
  * \brief NSEC3 chain creation.
  *
@@ -26,8 +24,7 @@
 
 #pragma once
 
-#include "knot/dnssec/zone-nsec.h"
-#include "knot/dnssec/nsec-chain.h"
+#include "knot/updates/changesets.h"
 
 /*!
  * \brief Creates new NSEC3 chain, add differences from current into a changeset.
