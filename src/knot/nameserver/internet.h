@@ -117,11 +117,9 @@ int ns_put_rr(knot_pkt_t *pkt, const knot_rrset_t *rr,
 /*! \brief Require authentication. */
 #define NS_NEED_AUTH(qdata, zone_name, action) \
 	if (!process_query_acl_check(conf(), (zone_name), (action), (qdata))) { \
-		qdata->rcode = KNOT_RCODE_REFUSED; \
 		return KNOT_STATE_FAIL; \
 	} else { \
 		if (process_query_verify(qdata) != KNOT_EOK) { \
-			qdata->rcode = KNOT_RCODE_REFUSED; \
 			return KNOT_STATE_FAIL; \
 		} \
 	}
