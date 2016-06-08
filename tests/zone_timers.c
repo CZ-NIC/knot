@@ -23,9 +23,9 @@
 
 #include "contrib/string.h"
 #include "libknot/libknot.h"
+#include "knot/events/events.h"
 #include "knot/zone/timers.h"
 #include "knot/zone/zone.h"
-#include "knot/zone/events/events.h"
 
 #define SLIP (1024 * 1024)
 static const size_t REFRESH_SLIP = SLIP;

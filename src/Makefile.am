@@ -293,6 +293,18 @@ libknotd_la_SOURCES =				\
 	knot/dnssec/zone-nsec.h			\
 	knot/dnssec/zone-sign.c			\
 	knot/dnssec/zone-sign.h			\
+	knot/events/events.c			\
+	knot/events/events.h			\
+	knot/events/handlers.h			\
+	knot/events/handlers/dnssec.c		\
+	knot/events/handlers/expire.c		\
+	knot/events/handlers/flush.c		\
+	knot/events/handlers/load.c		\
+	knot/events/handlers/notify.c		\
+	knot/events/handlers/refresh.c		\
+	knot/events/handlers/update.c		\
+	knot/events/replan.c			\
+	knot/events/replan.h			\
 	knot/modules/dnsproxy.c			\
 	knot/modules/dnsproxy.h			\
 	knot/modules/online_sign/module.c	\
@@ -325,6 +337,8 @@ libknotd_la_SOURCES =				\
 	knot/nameserver/tsig_ctx.h		\
 	knot/nameserver/update.c		\
 	knot/nameserver/update.h		\
+	knot/query/query.c			\
+	knot/query/query.h			\
 	knot/common/evsched.c			\
 	knot/common/evsched.h			\
 	knot/common/fdset.c			\
@@ -365,12 +379,6 @@ libknotd_la_SOURCES =				\
 	knot/worker/queue.h			\
 	knot/zone/contents.c			\
 	knot/zone/contents.h			\
-	knot/zone/events/events.c		\
-	knot/zone/events/events.h		\
-	knot/zone/events/handlers.c		\
-	knot/zone/events/handlers.h		\
-	knot/zone/events/replan.c		\
-	knot/zone/events/replan.h		\
 	knot/zone/node.c			\
 	knot/zone/node.h			\
 	knot/zone/semantic-check.c		\

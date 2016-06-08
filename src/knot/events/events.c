@@ -20,9 +20,9 @@
 
 #include "libknot/libknot.h"
 #include "knot/common/log.h"
-#include "knot/zone/events/events.h"
-#include "knot/zone/events/handlers.h"
-#include "knot/zone/events/replan.h"
+#include "knot/events/events.h"
+#include "knot/events/handlers.h"
+#include "knot/events/replan.h"
 #include "knot/zone/zone.h"
 
 #define ZONE_EVENT_IMMEDIATE 1 /* Fast-track to worker queue. */

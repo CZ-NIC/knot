@@ -18,7 +18,7 @@
 
 #include "knot/common/evsched.h"
 #include "knot/worker/pool.h"
-#include "knot/zone/events/events.h"
+#include "knot/events/events.h"
 #include "knot/zone/zone.h"
 
 static void test_scheduling(zone_t *zone)

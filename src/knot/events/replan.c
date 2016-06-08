@@ -16,8 +16,8 @@
 
 #include <assert.h>
 
-#include "knot/zone/events/replan.h"
-#include "knot/zone/events/handlers.h"
+#include "knot/events/replan.h"
+#include "knot/events/handlers.h"
 #include "libknot/rrtype/soa.h"
 #include "contrib/macros.h"
 
@@ -68,7 +68,9 @@ static void replan_xfer(conf_t *conf, zone_t *zone, const zone_t *old_zone)
 		replan_event(zone, old_zone, ZONE_EVENT_XFER);
 	} else if (zone_contents_is_empty(zone->contents)) {
 		// Plan transfer anew.
-		zone->bootstrap_retry = bootstrap_next(zone->bootstrap_retry);
+		// XXX: temporary workaround
+//		zone->bootstrap_retry = bootstrap_next(zone->bootstrap_retry);
+		zone->bootstrap_retry = 30;
 		zone_events_schedule(zone, ZONE_EVENT_XFER, zone->bootstrap_retry);
 	}
 }
