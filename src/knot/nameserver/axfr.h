@@ -26,7 +26,7 @@
 
 #include "libknot/packet/pkt.h"
 #include "knot/nameserver/log.h"
-#include "knot/nameserver/process_answer.h"
+#include "knot/query/query.h"
 #include "knot/nameserver/process_query.h"
 #include "knot/zone/contents.h"
 #include "contrib/ucw/lists.h"

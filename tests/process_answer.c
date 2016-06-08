@@ -21,7 +21,7 @@
 
 #include "libknot/descriptor.h"
 #include "libknot/packet/wire.h"
-#include "knot/nameserver/process_answer.h"
+#include "knot/query/query.h"
 #include "fake_server.h"
 #include "contrib/ucw/mempool.h"
 
@@ -134,7 +134,7 @@ int main(int argc, char *argv[])
 	knot_pkt_t *pkt = knot_pkt_new(NULL, KNOT_WIRE_MAX_PKTSIZE, proc.mm);
 
 	/* Begin processing. */
-	int state = knot_layer_begin(&proc, KNOT_STATE_ANSWER, &param);
+	int state = knot_layer_begin(&proc, process_answer_layer(), &param);
 	ok(state == KNOT_STATE_PRODUCE, "proc_answer: expects query to be sent");
 
 	/* Invalid generic input tests. */

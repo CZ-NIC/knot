@@ -23,7 +23,7 @@
 #include "knot/nameserver/internet.h"
 #include "knot/nameserver/nsec_proofs.h"
 #include "knot/nameserver/process_query.h"
-#include "knot/nameserver/process_answer.h"
+#include "knot/query/query.h"
 #include "knot/nameserver/query_module.h"
 #include "knot/zone/serial.h"
 #include "knot/zone/zonedb.h"

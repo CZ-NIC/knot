@@ -25,7 +25,7 @@
 #pragma once
 
 #include "libknot/packet/pkt.h"
-#include "knot/nameserver/process_answer.h"
+#include "knot/query/query.h"
 #include "knot/nameserver/process_query.h"
 
 #define NOTIFY_TIMEOUT 3 /*!< Interval between NOTIFY retries. */
