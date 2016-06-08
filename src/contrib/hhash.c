@@ -145,16 +145,12 @@ static int hhelem_free(hhash_t* tbl, uint32_t id, unsigned dist, value_t *val)
 	}
 
 	/* Erase data from target element. */
-	if (tbl->mm->free) {
-		tbl->mm->free(elm->d);
-		elm->d = NULL;
-	}
+	mm_free(tbl->mm, elm->d);
+	elm->d = NULL;
 
 	/* Invalidate index. */
-	if (tbl->mm->free) {
-		tbl->mm->free(tbl->index);
-		tbl->index = NULL;
-	}
+	mm_free(tbl->mm, tbl->index);
+	tbl->index = NULL;
 
 	/* Update table weight. */
 	--tbl->weight;
@@ -210,15 +206,13 @@ static unsigned find_match(hhash_t *tbl, uint32_t idx, const char* key, uint16_t
 static void hhash_free_buckets(hhash_t *tbl)
 {
 	assert(tbl != NULL);
-	if (tbl->mm->free) {
-		/* Free buckets. */
-		for (unsigned i = 0; i < tbl->size; ++i) {
-			tbl->mm->free(tbl->item[i].d);
-		}
-
-		/* Free order index. */
-		tbl->mm->free(tbl->index);
+	/* Free buckets. */
+	for (unsigned i = 0; i < tbl->size; ++i) {
+		mm_free(tbl->mm, tbl->item[i].d);
 	}
+
+	/* Free order index. */
+	mm_free(tbl->mm, tbl->index);
 }
 
 hhash_t *hhash_create(uint32_t size)
@@ -342,7 +336,7 @@ value_t *hhash_map(hhash_t* tbl, const char* key, uint16_t len, uint16_t mode)
 	}
 
 	/* Insert to given position. */
-	char *new_key = tbl->mm->alloc(tbl->mm->ctx, HHKEY_LEN + len);
+	char *new_key = mm_alloc(tbl->mm, HHKEY_LEN + len);
 	if (new_key != NULL) {
 		memset(KEY_VAL(new_key), 0,    sizeof(value_t));
 		memcpy(KEY_LEN(new_key), &len, sizeof(uint16_t));
@@ -360,9 +354,7 @@ value_t *hhash_map(hhash_t* tbl, const char* key, uint16_t len, uint16_t mode)
 
 	/* Free old index. */
 	if (tbl->index) {
-		if (tbl->mm->free) {
-			free(tbl->index);
-		}
+		mm_free(tbl->mm, tbl->index);
 		tbl->index = NULL;
 	}
 
@@ -411,9 +403,7 @@ void hhash_build_index(hhash_t* tbl)
 
 	/* Free old index. */
 	if (tbl->index) {
-		if (tbl->mm->free) {
-			tbl->mm->free(tbl->index);
-		}
+		mm_free(tbl->mm, tbl->index);
 		tbl->index = NULL;
 	}
 
@@ -422,7 +412,7 @@ void hhash_build_index(hhash_t* tbl)
 	if (total == 0) {
 		return;
 	}
-	tbl->index = tbl->mm->alloc(tbl->mm->ctx, total * sizeof(uint32_t));
+	tbl->index = mm_alloc(tbl->mm, total * sizeof(uint32_t));
 
 	uint32_t i = 0, indexed = 0;
 	while (indexed < total) {
