@@ -25,10 +25,33 @@
 #pragma once
 
 #include "libknot/packet/pkt.h"
+#include "knot/nameserver/log.h"
 #include "knot/nameserver/process_answer.h"
 #include "knot/nameserver/process_query.h"
 #include "knot/zone/contents.h"
 #include "contrib/ucw/lists.h"
+
+/*!
+ * \brief Transfer-specific logging (internal, expects 'qdata' variable set).
+ *
+ * Emits a message in the following format:
+ * > [zone] type, outgoing, address: custom formatted message
+ */
+#define TRANSFER_OUT_LOG(type, priority, msg, ...) \
+	NS_PROC_LOG(priority, (qdata)->zone->name, (qdata)->param->remote, \
+	            type ", outgoing", msg, ##__VA_ARGS__)
+#define AXFROUT_LOG(args...) TRANSFER_OUT_LOG("AXFR", args)
+#define IXFROUT_LOG(args...) TRANSFER_OUT_LOG("IXFR", args)
+
+/*!
+ * \brief Transfer-specific logging (internal, expects 'adata' variable set).
+ */
+#define TRANSFER_IN_LOG(type, priority, msg, ...) \
+	NS_PROC_LOG(priority, (adata)->param->zone->name, (adata)->param->remote, \
+	            type ", incoming", msg, ##__VA_ARGS__)
+#define AXFRIN_LOG(args...) TRANSFER_IN_LOG("AXFR", args)
+#define IXFRIN_LOG(args...) TRANSFER_IN_LOG("IXFR", args)
+
 
 /*! \brief Generic transfer processing state. */
 struct xfr_proc {

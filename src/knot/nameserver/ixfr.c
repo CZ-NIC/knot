@@ -17,8 +17,8 @@
 #include <urcu.h>
 
 #include "knot/common/log.h"
-#include "knot/nameserver/ixfr.h"
 #include "knot/nameserver/axfr.h"
+#include "knot/nameserver/ixfr.h"
 #include "knot/nameserver/internet.h"
 #include "knot/updates/apply.h"
 #include "knot/zone/serial.h"
@@ -56,10 +56,6 @@ struct ixfr_proc {
 	const knot_rrset_t *soa_from;
 	const knot_rrset_t *soa_to;
 };
-
-/* IXFR-out-specific logging (internal, expects 'qdata' variable set). */
-#define IXFROUT_LOG(severity, msg, ...) \
-	QUERY_LOG(severity, qdata, "IXFR, outgoing", msg, ##__VA_ARGS__)
 
 /*! \brief Helper macro for putting RRs into packet. */
 #define IXFR_SAFE_PUT(pkt, rr) \
@@ -325,10 +321,6 @@ static int ixfr_answer_soa(knot_pkt_t *pkt, struct query_data *qdata)
 }
 
 /* ------------------------- IXFR-in processing ----------------------------- */
-
-/* IXFR-in-specific logging (internal, expects 'adata' variable set). */
-#define IXFRIN_LOG(severity, msg, ...) \
-	ANSWER_LOG(severity, adata, "IXFR, incoming", msg, ##__VA_ARGS__)
 
 /*! \brief Checks whether server responded with AXFR-style IXFR. */
 static bool ixfr_is_axfr(const knot_pkt_t *pkt)
@@ -765,5 +757,3 @@ int ixfr_process_answer(knot_pkt_t *pkt, struct answer_data *adata)
 
 	return ret;
 }
-
-#undef IXFROUT_LOG

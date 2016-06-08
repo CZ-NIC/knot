@@ -33,19 +33,6 @@
 const knot_layer_api_t *process_query_layer(void);
 #define NS_PROC_QUERY process_query_layer()
 
-/*! \brief Query processing logging common base. */
-#define NS_PROC_LOG(severity, remote, zone_name, operation, msg, ...) do { \
-	char addr_str[SOCKADDR_STRLEN] = {0}; \
-	sockaddr_tostr(addr_str, sizeof(addr_str), remote); \
-	log_msg_zone(severity, zone_name, operation ", %s: " msg, \
-	             addr_str, ##__VA_ARGS__); \
-	} while (0)
-
-/*! \brief Query logging common base. */
-#define QUERY_LOG(severity, qdata, operation, msg, ...) \
-	NS_PROC_LOG(severity, (qdata)->param->remote, knot_pkt_qname((qdata)->query), \
-	            operation, msg, ##__VA_ARGS__);
-
 /* Query processing specific flags. */
 enum process_query_flag {
 	NS_QUERY_NO_AXFR    = 1 << 0, /* Don't process AXFR */

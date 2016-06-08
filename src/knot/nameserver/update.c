@@ -22,16 +22,18 @@
 #include "knot/nameserver/capture.h"
 #include "knot/nameserver/internet.h"
 #include "knot/nameserver/process_query.h"
+#include "knot/nameserver/log.h"
 #include "knot/updates/ddns.h"
 #include "knot/updates/apply.h"
-#include "knot/zone/events/events.h"
+#include "knot/events/events.h"
 #include "libknot/libknot.h"
 #include "contrib/net.h"
 #include "contrib/print.h"
 
 /* UPDATE-specific logging (internal, expects 'qdata' variable set). */
 #define UPDATE_LOG(severity, msg, ...) \
-	QUERY_LOG(severity, qdata, "DDNS", msg, ##__VA_ARGS__)
+	NS_PROC_LOG(severity, qdata->zone->name, qdata->param->remote, \
+	            "DDNS", msg, ##__VA_ARGS__)
 
 static void init_qdata_from_request(struct query_data *qdata,
                                     const zone_t *zone,
@@ -335,8 +337,6 @@ static bool update_tsig_check(conf_t *conf, struct query_data *qdata, struct kno
 
 	return true;
 }
-
-#undef UPDATE_LOG
 
 static void send_update_response(conf_t *conf, const zone_t *zone, struct knot_request *req)
 {

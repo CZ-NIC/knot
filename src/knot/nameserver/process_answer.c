@@ -20,6 +20,7 @@
 #include "knot/nameserver/internet.h"
 #include "knot/nameserver/ixfr.h"
 #include "knot/nameserver/notify.h"
+#include "knot/nameserver/log.h"
 #include "contrib/mempattern.h"
 
 /*! \brief Accessor to query-specific data. */
@@ -115,8 +116,9 @@ static int process_answer(knot_layer_t *ctx, knot_pkt_t *pkt)
 	/* Verify incoming packet. */
 	int ret = tsig_verify_packet(&data->param->tsig_ctx, pkt);
 	if (ret != KNOT_EOK) {
-		ANSWER_LOG(LOG_WARNING, data, "response", "denied (%s)",
-		           knot_strerror(ret));
+		// XXX: "response" operation sounds like placeholder
+		NS_PROC_LOG(LOG_WARNING, data->param->zone->name, data->param->remote,
+		            "response", "denied (%s)", knot_strerror(ret));
 		return KNOT_STATE_FAIL;
 	}
 

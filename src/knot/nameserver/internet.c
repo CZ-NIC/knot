@@ -823,6 +823,11 @@ int internet_query_plan(struct query_plan *plan)
 	return KNOT_EOK;
 }
 
+#include "knot/nameserver/log.h"
+#define REFRESH_LOG(priority, msg, ...) \
+	NS_PROC_LOG(priority, (data)->param->zone->name, (data)->param->remote, \
+	            "refresh, outgoing", msg, ##__VA_ARGS__)
+
 /*! \brief Process answer to SOA query. */
 static int process_soa_answer(knot_pkt_t *pkt, struct answer_data *data)
 {
@@ -833,8 +838,7 @@ static int process_soa_answer(knot_pkt_t *pkt, struct answer_data *data)
 	if (rcode != KNOT_RCODE_NOERROR) {
 		const knot_lookup_t *lut = knot_lookup_by_id(knot_rcode_names, rcode);
 		if (lut != NULL) {
-			ANSWER_LOG(LOG_WARNING, data, "refresh, outgoing",
-			           "server responded with %s", lut->name);
+			REFRESH_LOG(LOG_WARNING, "server responded with %s", lut->name);
 		}
 		return KNOT_STATE_FAIL;
 	}
@@ -843,7 +847,7 @@ static int process_soa_answer(knot_pkt_t *pkt, struct answer_data *data)
 	const knot_pktsection_t *answer = knot_pkt_section(pkt, KNOT_ANSWER);
 	const knot_rrset_t *first_rr = knot_pkt_rr(answer, 0);
 	if (answer->count < 1 || first_rr->type != KNOT_RRTYPE_SOA) {
-		ANSWER_LOG(LOG_WARNING, data, "refresh, outgoing", "malformed message");
+		REFRESH_LOG(LOG_WARNING, "malformed message");
 		return KNOT_STATE_FAIL;
 	}
 
@@ -858,15 +862,14 @@ static int process_soa_answer(knot_pkt_t *pkt, struct answer_data *data)
 	uint32_t our_serial = knot_soa_serial(soa);
 	uint32_t their_serial =	knot_soa_serial(&first_rr->rrs);
 	if (serial_compare(our_serial, their_serial) >= 0) {
-		ANSWER_LOG(LOG_INFO, data, "refresh, outgoing", "zone is up-to-date");
+		REFRESH_LOG(LOG_INFO, "zone is up-to-date");
 		zone_events_cancel(zone, ZONE_EVENT_EXPIRE);
 		zone_clear_preferred_master(zone);
 		return KNOT_STATE_DONE; /* Our zone is up to date. */
 	}
 
 	/* Our zone is outdated, schedule zone transfer. */
-	ANSWER_LOG(LOG_INFO, data, "refresh, outgoing", "master has newer serial %u -> %u",
-	           our_serial, their_serial);
+	REFRESH_LOG(LOG_INFO, "master has newer serial %u -> %u", our_serial, their_serial);
 	zone_set_preferred_master(zone, data->param->remote);
 	zone_events_schedule(zone, ZONE_EVENT_XFER, ZONE_EVENT_NOW);
 	return KNOT_STATE_DONE;
