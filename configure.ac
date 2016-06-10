@@ -556,7 +556,6 @@ AC_CONFIG_FILES([Makefile
                  src/contrib/dnstap/Makefile
                  src/dnssec/Makefile
                  src/dnssec/tests/Makefile
-                 src/dnssec/utils/Makefile
                  src/zscanner/Makefile
                  ])
 

@@ -1,4 +1,4 @@
-SUBDIRS = . utils tests
+SUBDIRS = . tests
 
 .PHONY: check-compile
 check-compile:

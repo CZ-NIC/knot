@@ -1,4 +1,4 @@
-/*  Copyright (C) 2014 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -23,11 +23,11 @@
 #include "dnssec/binary.h"
 #include "dnssec/error.h"
 #include "dnssec/kasp.h"
-#include "legacy/key.h"
-#include "legacy/privkey.h"
-#include "legacy/pubkey.h"
-#include "pem.h"
-#include "shared.h"
+#include "shared/pem.h"
+#include "shared/shared.h"
+#include "utils/keymgr/legacy/key.h"
+#include "utils/keymgr/legacy/privkey.h"
+#include "utils/keymgr/legacy/pubkey.h"
 
 static int rsa_params_to_pem(const legacy_privkey_t *params, dnssec_binary_t *pem)
 {

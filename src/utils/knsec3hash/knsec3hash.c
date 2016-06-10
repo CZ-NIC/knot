@@ -1,4 +1,4 @@
-/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -21,13 +21,13 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "base32hex.h"
-#include "dname.h"
 #include "dnssec/error.h"
 #include "dnssec/nsec.h"
-#include "hex.h"
-#include "print.h"
-#include "strtonum.h"
+#include "shared/base32hex.h"
+#include "shared/dname.h"
+#include "shared/hex.h"
+#include "shared/print.h"
+#include "shared/strtonum.h"
 
 #define PROGRAM_NAME "knsec3hash"
 

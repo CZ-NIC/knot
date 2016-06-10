@@ -14,9 +14,9 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "cmdparse/match.h"
-#include "cmdparse/parameter.h"
-#include "print.h"
+#include "shared/print.h"
+#include "utils/keymgr/cmdparse/match.h"
+#include "utils/keymgr/cmdparse/parameter.h"
 
 #include <assert.h>
 

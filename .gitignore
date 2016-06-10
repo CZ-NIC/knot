@@ -74,15 +74,16 @@
 /src/zscanner/version.h
 
 # Binaries
+/src/kdig
+/src/keymgr
+/src/khost
+/src/knot1to2
 /src/knotc
 /src/knotd
-/src/knot1to2
-/src/kdig
-/src/khost
-/src/knsupdate
 /src/knsec3hash
-/src/rosedb_tool
+/src/knsupdate
 /src/kzonecheck
+/src/rosedb_tool
 
 # Plugin binaries
 /src/rosedb_tool

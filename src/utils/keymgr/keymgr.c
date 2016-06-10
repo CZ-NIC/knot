@@ -1,4 +1,4 @@
-/*  Copyright (C) 2014 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -30,12 +30,12 @@
 #include "cmdparse/command.h"
 #include "cmdparse/parameter.h"
 #include "cmdparse/value.h"
-#include "dname.h"
 #include "legacy/key.h"
-#include "print.h"
-#include "shared.h"
-#include "strtonum.h"
-#include "wire.h"
+#include "shared/dname.h"
+#include "shared/print.h"
+#include "shared/shared.h"
+#include "shared/strtonum.h"
+#include "shared/wire.h"
 
 #define PROGRAM_NAME "keymgr"
 

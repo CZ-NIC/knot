@@ -16,7 +16,7 @@
 
 #pragma once
 
-#include "cmdparse/parameter.h"
+#include "utils/keymgr/cmdparse/parameter.h"
 
 /*!
  * bool (set only)

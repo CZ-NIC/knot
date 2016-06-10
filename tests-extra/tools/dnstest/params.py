@@ -55,7 +55,7 @@ knot_bin = get_binary("KNOT_TEST_KNOT", repo_binary("src/knotd"))
 # KNOT_TEST_KNOTC - Knot control binary.
 knot_ctl = get_binary("KNOT_TEST_KNOTC", repo_binary("src/knotc"))
 # KNOT_TEST_KEYMGR - Knot key management binary.
-keymgr_bin = get_binary("KNOT_TEST_KEYMGR", repo_binary("src/dnssec/utils/keymgr"))
+keymgr_bin = get_binary("KNOT_TEST_KEYMGR", repo_binary("src/keymgr"))
 # KNOT_TEST_BIND - Bind binary.
 bind_bin = get_binary("KNOT_TEST_BIND", "named")
 # KNOT_TEST_BINDC - Bind control binary.

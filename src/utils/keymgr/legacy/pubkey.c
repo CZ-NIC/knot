@@ -22,8 +22,7 @@
 #include "dnssec/error.h"
 #include "dnssec/binary.h"
 #include "dnssec/key.h"
-
-#include "legacy/pubkey.h"
+#include "utils/keymgr/legacy/pubkey.h"
 
 #define CLASS_IN 1
 #define RTYPE_DNSKEY 48
