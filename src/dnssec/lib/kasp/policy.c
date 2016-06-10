@@ -94,6 +94,7 @@ void dnssec_kasp_policy_free(dnssec_kasp_policy_t *policy)
 
 	free(policy->name);
 	free(policy->keystore);
+	dnssec_nsec3_params_free(&policy->nsec3_params);
 	free(policy);
 }
 

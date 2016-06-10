@@ -16,20 +16,7 @@
 
 #pragma once
 
-#include <stdint.h>
-
-#include "kasp.h"
-#include "kasp/internal.h"
 #include "list.h"
-
-struct dnssec_kasp_zone {
-	char *name;
-	uint8_t *dname;
-
-	char *policy;
-
-	dnssec_list_t *keys;
-};
 
 /*!
  * Free KASP zone keys.
