@@ -246,6 +246,8 @@ keymgr_SOURCES =				\
 	utils/keymgr/legacy/privkey.h		\
 	utils/keymgr/legacy/pubkey.c		\
 	utils/keymgr/legacy/pubkey.h		\
+	utils/keymgr/options.c			\
+	utils/keymgr/options.h			\
 	utils/keymgr/keymgr.c
 
 knotc_SOURCES =					\
@@ -422,7 +424,8 @@ libknotd_la_LDFLAGS = $(AM_LDFLAGS) $(systemd_LIBS) $(liburcu_LIBS)
 libknotd_la_LIBADD = libknot.la libknot-yparser.la zscanner/libzscanner.la $(liburcu_LIBS)
 
 keymgr_CPPFLAGS = $(AM_CPPFLAGS) -I$(srcdir)/dnssec/lib/dnssec -I$(srcdir)/dnssec $(gnutls_CFLAGS)
-keymgr_LDADD = dnssec/libdnssec.la dnssec/libshared.la zscanner/libzscanner.la $(gnutls_LIBS)
+keymgr_LDADD = libknotd.la libknotus.la dnssec/libdnssec.la dnssec/libshared.la \
+               zscanner/libzscanner.la $(gnutls_LIBS)
 knotd_CPPFLAGS = $(AM_CPPFLAGS) $(liburcu_CFLAGS)
 knotd_LDADD = libknotd.la $(liburcu_LIBS)
 knotc_CPPFLAGS = $(AM_CPPFLAGS) $(libedit_CFLAGS)

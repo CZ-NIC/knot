@@ -1,10 +1,10 @@
 libtap
 src
 src/contrib
+src/dnssec
 src/dnssec/lib
 src/dnssec/lib/dnssec
 src/dnssec/shared
-src/dnssec/utils
 src/zscanner
 tests
 tests-fuzz

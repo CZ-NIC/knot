@@ -31,6 +31,7 @@
 #include "cmdparse/parameter.h"
 #include "cmdparse/value.h"
 #include "legacy/key.h"
+#include "options.h"
 #include "shared/dname.h"
 #include "shared/print.h"
 #include "shared/shared.h"
@@ -45,12 +46,6 @@
 #define MANUAL_POLICY "default_manual"
 
 /* -- global options ------------------------------------------------------- */
-
-struct options {
-	char *kasp_dir;
-};
-
-typedef struct options options_t;
 
 static options_t global = { 0 };
 
@@ -95,12 +90,21 @@ static void cleanup_list(dnssec_list_t **list_ptr)
 
 /* -- frequent operations -------------------------------------------------- */
 
-static dnssec_kasp_t *get_kasp(void)
+static dnssec_kasp_t *get_zone_kasp(const char *zone_name)
 {
+	int r = options_zone_kasp_path(&global, zone_name);
+	if (r != DNSSEC_EOK) {
+		return NULL;
+	}
+
 	dnssec_kasp_t *kasp = NULL;
 
-	dnssec_kasp_init_dir(&kasp);
-	int r = dnssec_kasp_open(kasp, global.kasp_dir);
+	r = options_zone_kasp_init(&global, zone_name, &kasp);
+	if (r != DNSSEC_EOK) {
+		return NULL;
+	}
+
+	r = dnssec_kasp_open(kasp, global.kasp_dir);
 	if (r != DNSSEC_EOK) {
 		error("Cannot open KASP directory (%s).", dnssec_strerror(r));
 		dnssec_kasp_deinit(kasp);
@@ -108,6 +112,11 @@ static dnssec_kasp_t *get_kasp(void)
 	}
 
 	return kasp;
+}
+
+static dnssec_kasp_t *get_kasp(void)
+{
+	return get_zone_kasp(NULL);
 }
 
 static dnssec_kasp_zone_t *get_zone(dnssec_kasp_t *kasp, const char *name)
@@ -660,7 +669,7 @@ static int cmd_zone_add(int argc, char *argv[])
 
 	// create zone
 
-	_cleanup_kasp_ dnssec_kasp_t *kasp = get_kasp();
+	_cleanup_kasp_ dnssec_kasp_t *kasp = get_zone_kasp(zone_name);
 	if (!kasp) {
 		return 1;
 	}
@@ -710,7 +719,7 @@ static int cmd_zone_list(int argc, char *argv[])
 		return 1;
 	}
 
-	_cleanup_kasp_ dnssec_kasp_t *kasp = get_kasp();
+	_cleanup_kasp_ dnssec_kasp_t *kasp = get_zone_kasp(match);
 	if (!kasp) {
 		return 1;
 	}
@@ -740,7 +749,7 @@ static int cmd_zone_show(int argc, char *argv[])
 
 	char *zone_name = argv[0];
 
-	_cleanup_kasp_ dnssec_kasp_t *kasp = get_kasp();
+	_cleanup_kasp_ dnssec_kasp_t *kasp = get_zone_kasp(zone_name);
 	if (!kasp) {
 		return 1;
 	}
@@ -796,7 +805,7 @@ static int cmd_zone_remove(int argc, char *argv[])
 
 	// delete zone
 
-	_cleanup_kasp_ dnssec_kasp_t *kasp = get_kasp();
+	_cleanup_kasp_ dnssec_kasp_t *kasp = get_zone_kasp(zone_name);
 	if (!kasp) {
 		return 1;
 	}
@@ -836,7 +845,7 @@ static int cmd_zone_key_list(int argc, char *argv[])
 
 	// list the keys
 
-	_cleanup_kasp_ dnssec_kasp_t *kasp = get_kasp();
+	_cleanup_kasp_ dnssec_kasp_t *kasp = get_zone_kasp(zone_name);
 	if (!kasp) {
 		return 1;
 	}
@@ -871,7 +880,7 @@ static int cmd_zone_key_show(int argc, char *argv[])
 
 	// list the keys
 
-	_cleanup_kasp_ dnssec_kasp_t *kasp = get_kasp();
+	_cleanup_kasp_ dnssec_kasp_t *kasp = get_zone_kasp(zone_name);
 	if (!kasp) {
 		return 1;
 	}
@@ -960,7 +969,7 @@ static int cmd_zone_key_ds(int argc, char *argv[])
 	const char *zone_name = argv[0];
 	const char *key_name = argv[1];
 
-	_cleanup_kasp_ dnssec_kasp_t *kasp = get_kasp();
+	_cleanup_kasp_ dnssec_kasp_t *kasp = get_zone_kasp(zone_name);
 	_cleanup_zone_ dnssec_kasp_zone_t *zone = get_zone(kasp, zone_name);
 	dnssec_list_t *keys = dnssec_kasp_zone_get_keys(zone);
 
@@ -1048,7 +1057,7 @@ static int cmd_zone_key_generate(int argc, char *argv[])
 
 	// open KASP and key store
 
-	_cleanup_kasp_ dnssec_kasp_t *kasp = get_kasp();
+	_cleanup_kasp_ dnssec_kasp_t *kasp = get_zone_kasp(config.name);
 	if (!kasp) {
 		return 1;
 	}
@@ -1144,7 +1153,7 @@ static int cmd_zone_key_set(int argc, char *argv[])
 
 	// update the key
 
-	_cleanup_kasp_ dnssec_kasp_t *kasp = get_kasp();
+	_cleanup_kasp_ dnssec_kasp_t *kasp = get_zone_kasp(zone_name);
 	if (!kasp) {
 		return 1;
 	}
@@ -1188,7 +1197,7 @@ static int cmd_zone_key_import(int argc, char *argv[])
 	char *zone_name = argv[0];
 	char *input_file = argv[1];
 
-	_cleanup_kasp_ dnssec_kasp_t *kasp = get_kasp();
+	_cleanup_kasp_ dnssec_kasp_t *kasp = get_zone_kasp(zone_name);
 	if (!kasp) {
 		return 1;
 	}
@@ -1275,7 +1284,7 @@ static int cmd_zone_set(int argc, char *argv[])
 
 	char *zone_name = argv[0];
 
-	_cleanup_kasp_ dnssec_kasp_t *kasp = get_kasp();
+	_cleanup_kasp_ dnssec_kasp_t *kasp = get_zone_kasp(zone_name);
 	if (!kasp) {
 		return 1;
 	}
@@ -1313,15 +1322,21 @@ static int cmd_zone_set(int argc, char *argv[])
 
 static int cmd_zone(int argc, char *argv[])
 {
-	static const command_t commands[] = {
+	static command_t commands[] = {
+		{ "key",    cmd_zone_key },
+		// legacy operations
 		{ "add",    cmd_zone_add },
 		{ "list",   cmd_zone_list },
 		{ "remove", cmd_zone_remove },
 		{ "show",   cmd_zone_show },
-		{ "key",    cmd_zone_key },
 		{ "set",    cmd_zone_set },
 		{ NULL }
 	};
+
+	// disable legacy operations
+	if (!global.legacy) {
+		commands[1].name = NULL;
+	}
 
 	return subcommand(commands, argc, argv);
 }
@@ -1800,15 +1815,24 @@ int main(int argc, char *argv[])
 	// global options
 
 	static const struct option opts[] = {
+		{ "config",  required_argument, NULL, 'c' },
+		{ "confdb",  required_argument, NULL, 'C' },
 		{ "dir",     required_argument, NULL, 'd' },
 		{ "help",    no_argument,       NULL, 'h' },
+		{ "legacy",  no_argument,       NULL, 'l' },
 		{ "version", no_argument,       NULL, 'V' },
 		{ NULL }
 	};
 
 	int c = 0;
-	while (c = getopt_long(argc, argv, "+", opts, NULL), c != -1) {
+	while (c = getopt_long(argc, argv, "+c:C:d:hlV", opts, NULL), c != -1) {
 		switch (c) {
+		case 'c':
+			global.config = optarg;
+			break;
+		case 'C':
+			global.confdb = optarg;
+			break;
 		case 'd':
 			free(global.kasp_dir);
 			global.kasp_dir = strdup(optarg);
@@ -1817,50 +1841,48 @@ int main(int argc, char *argv[])
 			print_help();
 			exit_code = 0;
 			goto failed;
+		case 'l':
+			global.legacy = true;
+			break;
 		case 'V':
 			print_version();
 			exit_code = 0;
 			goto failed;
-		case '?':
-			goto failed;
 		default:
-			assert_unreachable();
 			goto failed;
 		}
 	}
 
 	// global configuration
 
-	if (global.kasp_dir == NULL) {
-		char *env = getenv("KEYMGR_DIR");
-		if (env) {
-			global.kasp_dir = strdup(env);
-		} else {
-			global.kasp_dir = getcwd(NULL, 0);
-		}
+	int r = options_init(&global);
+	if (r != DNSSEC_EOK) {
+		goto failed;
 	}
-
-	assert(global.kasp_dir);
 
 	// subcommands
 
-	static const command_t commands[] = {
-		{ "init",     cmd_init },
+	static command_t commands[] = {
+		{ "tsig",     cmd_tsig },
 		{ "zone",     cmd_zone },
+		// legacy operations
+		{ "init",     cmd_init },
 		{ "policy",   cmd_policy },
 		{ "keystore", cmd_keystore },
-		{ "tsig",     cmd_tsig },
 		{ NULL }
 	};
 
+	// disable legacy operations
+	if (!global.legacy) {
+		commands[2].name = NULL;
+	}
+
 	dnssec_crypto_init();
-
 	exit_code = subcommand(commands, argc - optind, argv + optind);
-
-failed:
 	dnssec_crypto_cleanup();
 
-	free(global.kasp_dir);
+failed:
+	options_cleanup(&global);
 
 	return exit_code;
 }

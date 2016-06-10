@@ -451,6 +451,8 @@ src/utils/keymgr/legacy/privkey.c
 src/utils/keymgr/legacy/privkey.h
 src/utils/keymgr/legacy/pubkey.c
 src/utils/keymgr/legacy/pubkey.h
+src/utils/keymgr/options.c
+src/utils/keymgr/options.h
 src/utils/khost/khost_main.c
 src/utils/khost/khost_params.c
 src/utils/khost/khost_params.h
