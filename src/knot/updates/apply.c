@@ -182,7 +182,7 @@ static int remove_rr(apply_ctx_t *ctx, zone_tree_t *tree, zone_node_t *node,
 		// RRSet is empty now, remove it from node, all data freed.
 		node_remove_rdataset(node, rr->type);
 		// If node is empty now, delete it from zone tree.
-		if (node->rrset_count == 0) {
+		if (node->rrset_count == 0 && node != ctx->apex) {
 			zone_tree_delete_empty_node(tree, node);
 		}
 	}
@@ -319,6 +319,8 @@ static int apply_single(apply_ctx_t *ctx, zone_contents_t *contents, changeset_t
 	if (soa == NULL || knot_soa_serial(soa) != knot_soa_serial(&chset->soa_from->rrs)) {
 		return KNOT_EINVAL;
 	}
+
+	ctx->apex = contents->apex;
 
 	int ret = apply_remove(ctx, contents, chset);
 	if (ret != KNOT_EOK) {
