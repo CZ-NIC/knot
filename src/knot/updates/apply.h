@@ -31,6 +31,7 @@
 struct apply_ctx {
 	list_t old_data;          /*!< Old data, to be freed after successful update. */
 	list_t new_data;          /*!< New data, to be freed after failed update. */
+	zone_node_t *apex;
 };
 
 typedef struct apply_ctx apply_ctx_t;
