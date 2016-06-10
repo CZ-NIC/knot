@@ -16,6 +16,7 @@
 
 #include "files.h"
 
+#include <assert.h>
 #include <dirent.h>
 #include <fcntl.h>
 #include <stdbool.h>
@@ -23,6 +24,7 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include "libknot/errcode.h"
 
 static bool special_name(const char *name)
 {
@@ -87,4 +89,28 @@ bool remove_path(const char *path)
 
 	close(fd);
 	return (remove(path) == 0);
+}
+
+int make_dir(const char *path, mode_t mode, bool ignore_existing)
+{
+	if (mkdir(path, mode) == 0) {
+		return KNOT_EOK;
+	}
+
+	if (!ignore_existing || errno != EEXIST) {
+		return knot_map_errno();
+	}
+
+	assert(errno == EEXIST);
+
+	struct stat st = { 0 };
+	if (stat(path, &st) != 0) {
+		return knot_map_errno();
+	}
+
+	if (!S_ISDIR(st.st_mode)) {
+		return knot_map_errno_code(ENOTDIR);
+	}
+
+	return KNOT_EOK;
 }
