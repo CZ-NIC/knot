@@ -11,20 +11,14 @@ import datetime
 import subprocess
 
 from dnstest.utils import *
+from dnstest.keys import Keymgr
 from dnstest.test import Test
-
-def keymgr(server, args):
-    cmd = subprocess.Popen([params.keymgr_bin, "--dir", server.keydir] + args)
-    (stdout, stderr) = cmd.communicate()
-    return (cmd.returncode, stdout, stderr)
 
 def key_set(server, zone, key_id, **new_values):
     cmd = ["zone", "key", "set", zone, key_id]
     for option, value in new_values.items():
         cmd += [option, value]
-    (exitcode, _x, _y) = keymgr(server, cmd)
-    if exitcode != 0:
-        raise Failed("Unable to modify key timing values.")
+    Keymgr.run_check(server.keydir, *cmd)
 
 # check zone if keys are present and used for signing
 def check_zone(server, expect_dnskey, expect_rrsig, msg):
@@ -49,9 +43,10 @@ def check_zone(server, expect_dnskey, expect_rrsig, msg):
 t = Test()
 
 knot = t.server("knot")
-knot.dnssec_enable = True
 zone = t.zone("example.com.")
 t.link(zone, knot)
+knot.dnssec(zone).enable = True
+knot.dnssec(zone).manual = True
 
 # install keys (one always enabled, one for testing)
 shutil.copytree(os.path.join(t.data_dir, "keys"), knot.keydir)

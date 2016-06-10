@@ -27,7 +27,10 @@ knot.gen_key(zones[3], ksk=True, alg="RSASHA256", key_len="1024")
 knot.gen_key(zones[3], ksk=False, alg="RSASHA256", key_len="1024")
 knot.gen_key(zones[3], ksk=False, alg="RSASHA512", key_len="1024")
 
-knot.dnssec_enable = True
+for zone in zones:
+    knot.dnssec(zone).enable = True
+    knot.dnssec(zone).manual = True
+
 knot.gen_confile()
 knot.reload()
 t.sleep(2)

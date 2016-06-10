@@ -38,24 +38,23 @@ old_nsec3_serial = master.zone_wait(nsec3_zone)
 old_static_serial = master.zone_wait(static_zone)
 
 # Enable autosigning.
-master.dnssec_enable = True
+master.dnssec(nsec_zone).enable = True
+master.dnssec(nsec3_zone).enable = True
+master.dnssec(static_zone).enable = True
 master.use_keys(nsec_zone)
 master.use_keys(nsec3_zone)
 master.use_keys(static_zone)
 master.gen_confile()
-t.sleep(1)
-master.stop()
-master.start()
+master.reload()
 
 new_nsec_serial = master.zone_wait(nsec_zone)
 new_nsec3_serial = master.zone_wait(nsec3_zone)
 new_static_serial = master.zone_wait(static_zone)
 
 # Check if the zones are resigned.
-if old_nsec_serial < new_nsec_serial:
+if old_nsec_serial != new_nsec_serial:
     if not only_nsec_changed(master, nsec_zone, old_nsec_serial):
         set_err("NSEC zone got resigned")
-    old_nsec_serial = new_nsec_serial
 
 compare(old_nsec3_serial, new_nsec3_serial, "NSEC3 zone got resigned")
 compare(old_static_serial, new_static_serial, "static zone got resigned")

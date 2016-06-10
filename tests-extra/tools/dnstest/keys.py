@@ -118,29 +118,6 @@ class Key(object):
     def _keymgr(self, *args):
         return Keymgr.run(self.dir, *args)
 
-    def _ensure_zone(self):
-        # initialize KASP (currently NOOP if initialized)
-        (exit_code, _, _) = self._keymgr("init");
-        if exit_code != 0:
-            raise Failed("Failed to initialize the KASP.")
-
-        # disable automatic signing
-        (exit_code, _, _) = self._keymgr("policy", "set", "default", "manual", "true");
-        if exit_code != 0:
-            raise Failed("Failed to disable automatic signing in KASP.")
-
-        # check if zone exists in KASP
-        (exit_code, _, _) = self._keymgr("zone", "show", self.zone_name)
-        if exit_code == 0:
-            return
-
-        # add zone into KASP
-        (exit_code, _, _) = self._keymgr("zone", "add", self.zone_name)
-        if exit_code == 0:
-            return
-
-        raise Failed("Unable to add zone '%s' into KASP." % self.zone_name)
-
     def _gen_command(self):
         cmd = [
             "zone", "key", "generate", self.zone_name,
@@ -154,7 +131,6 @@ class Key(object):
         return cmd
 
     def generate(self):
-        self._ensure_zone()
         command = self._gen_command()
         (exit_code, _, _) = self._keymgr(*command)
         if exit_code != 0:

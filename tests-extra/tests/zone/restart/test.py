@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-'''Test for changeset application after restart. '''
+'''Test for changeset application after restart.'''
 
 from dnstest.test import Test
 import dnstest.utils
@@ -28,13 +28,11 @@ slave = t.server("knot")
 
 # Zone setup
 zone = t.zone_rnd(1, dnssec=False)
-t.link(zone, master, slave, ixfr = True, ddns=True)
+t.link(zone, master, slave, ixfr=True, ddns=True)
 
 # Turn automatic DNSSEC on
-master.dnssec_enable = True
-master.enable_nsec3(zone)
-master.gen_key(zone, ksk=True, alg="RSASHA256")
-master.gen_key(zone, alg="RSASHA256")
+master.dnssec(zone).enable = True
+master.dnssec(zone).nsec3 = True
 
 t.start()
 

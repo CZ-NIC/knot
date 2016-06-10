@@ -52,14 +52,10 @@ t.link(zone, nsec_master, nsec_slave)
 t.link(zone, nsec3_master, nsec3_slave)
 
 # Enable autosigning
-nsec_master.dnssec_enable = True
-nsec_master.gen_key(zone, ksk=True, alg="RSASHA256")
-nsec_master.gen_key(zone, alg="RSASHA256")
+nsec_master.dnssec(zone).enable = True
 
-nsec3_master.dnssec_enable = True
-nsec3_master.enable_nsec3(zone)
-nsec3_master.gen_key(zone, ksk=True, alg="RSASHA256")
-nsec3_master.gen_key(zone, alg="RSASHA256")
+nsec3_master.dnssec(zone).enable = True
+nsec3_master.dnssec(zone).nsec3 = True
 
 t.start()
 

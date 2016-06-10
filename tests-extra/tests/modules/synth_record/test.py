@@ -22,10 +22,8 @@ zone = t.zone("forward.", storage=".") + \
 t.link(zone, knot)
 
 # Enable DNSSEC
-knot.dnssec_enable = True
 for z in zone:
-    knot.gen_key(z, ksk=True, alg="RSASHA256")
-    knot.gen_key(z, alg="RSASHA256")
+    knot.dnssec(z).enable = True
 
 # Configure 'synth_record' modules for auto forward/reverse zones
 knot.add_module(zone[FWD],  ModSynthRecord("forward", None,        None,  "192.168.0.1"))

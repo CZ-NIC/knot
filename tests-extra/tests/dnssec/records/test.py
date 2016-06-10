@@ -10,12 +10,7 @@ t = Test()
 master = t.server("knot")
 zone = t.zone("records.")
 t.link(zone, master)
-
-# Enable autosigning.
-master.dnssec_enable = True
-master.gen_key(zone, ksk=True, alg="RSASHA1")
-master.gen_key(zone, alg="RSASHA1")
-master.gen_confile()
+master.dnssec(zone).enable = True
 
 t.start()
 

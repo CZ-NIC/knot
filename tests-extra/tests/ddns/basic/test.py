@@ -521,16 +521,12 @@ t.link(zone, master_plain, ddns=True)
 
 master_nsec = t.server("knot")
 t.link(zone, master_nsec, ddns=True)
-master_nsec.dnssec_enable = True
-master_nsec.gen_key(zone, ksk=True, alg="RSASHA256")
-master_nsec.gen_key(zone, alg="RSASHA256")
+master_nsec.dnssec(zone).enable = True
 
 master_nsec3 = t.server("knot")
 t.link(zone, master_nsec3, ddns=True)
-master_nsec3.dnssec_enable = True
-master_nsec3.enable_nsec3(zone)
-master_nsec3.gen_key(zone, ksk=True, alg="RSASHA256")
-master_nsec3.gen_key(zone, alg="RSASHA256")
+master_nsec3.dnssec(zone).enable = True
+master_nsec3.dnssec(zone).nsec3 = True
 
 t.start()
 
