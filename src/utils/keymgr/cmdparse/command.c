@@ -1,4 +1,4 @@
-/*  Copyright (C) 2014 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -14,9 +14,9 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "cmdparse/command.h"
-#include "cmdparse/match.h"
-#include "print.h"
+#include "shared/print.h"
+#include "utils/keymgr/cmdparse/command.h"
+#include "utils/keymgr/cmdparse/match.h"
 
 #include <assert.h>
 #include <string.h>

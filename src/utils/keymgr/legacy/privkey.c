@@ -1,4 +1,4 @@
-/*  Copyright (C) 2014 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -19,9 +19,9 @@
 
 #include "dnssec/binary.h"
 #include "dnssec/error.h"
-#include "legacy/privkey.h"
-#include "shared.h"
-#include "strtonum.h"
+#include "shared/shared.h"
+#include "shared/strtonum.h"
+#include "utils/keymgr/legacy/privkey.h"
 
 /* -- private key params conversion ---------------------------------------- */
 
