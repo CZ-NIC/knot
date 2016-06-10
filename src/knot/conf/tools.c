@@ -29,6 +29,7 @@
   #define PATH_MAX 4096
 #endif
 
+#include "dnssec/key.h"
 #include "knot/conf/tools.h"
 #include "knot/conf/conf.h"
 #include "knot/conf/scheme.h"
@@ -38,6 +39,14 @@
 #include "contrib/wire_ctx.h"
 
 #define MAX_INCLUDE_DEPTH	5
+
+static bool is_default_id(
+	const uint8_t *id,
+	size_t id_len)
+{
+	return id_len == CONF_DEFAULT_ID[0] &&
+	       memcmp(id, CONF_DEFAULT_ID + 1, id_len) == 0;
+}
 
 int conf_exec_callbacks(
 	const yp_item_t *item,
@@ -306,6 +315,17 @@ int check_ref(
 	return KNOT_EOK;
 }
 
+int check_ref_dflt(
+	conf_check_t *args)
+{
+	if (check_ref(args) != KNOT_EOK && !is_default_id(args->data, args->data_len)) {
+		args->err_str = "invalid reference";
+		return KNOT_ENOENT;
+	}
+
+	return KNOT_EOK;
+}
+
 int check_modref(
 	conf_check_t *args)
 {
@@ -317,6 +337,47 @@ int check_modref(
 	if (!conf_rawid_exists_txn(args->conf, args->txn, mod_name, id, id_len)) {
 		args->err_str = "invalid module reference";
 		return KNOT_ENOENT;
+	}
+
+	return KNOT_EOK;
+}
+
+int check_keystore(
+	conf_check_t *args)
+{
+	conf_val_t backend = conf_rawid_get_txn(args->conf, args->txn, C_KEYSTORE,
+	                                        C_BACKEND, args->id, args->id_len);
+	conf_val_t config = conf_rawid_get_txn(args->conf, args->txn, C_KEYSTORE,
+	                                       C_CONFIG, args->id, args->id_len);
+
+	if (conf_opt(&backend) == KEYSTORE_BACKEND_PKCS11 && conf_str(&config) == NULL) {
+		args->err_str = "no PKCS11 configuration defined";
+		return KNOT_EINVAL;
+	}
+
+	return KNOT_EOK;
+}
+
+int check_policy(
+	conf_check_t *args)
+{
+	conf_val_t alg = conf_rawid_get_txn(args->conf, args->txn, C_POLICY,
+	                                    C_ALG, args->id, args->id_len);
+	conf_val_t ksk = conf_rawid_get_txn(args->conf, args->txn, C_POLICY,
+	                                    C_KSK_SIZE, args->id, args->id_len);
+	conf_val_t zsk = conf_rawid_get_txn(args->conf, args->txn, C_POLICY,
+	                                    C_ZSK_SIZE, args->id, args->id_len);
+
+	int64_t ksk_size = conf_int(&ksk);
+	if (ksk_size != YP_NIL && !dnssec_algorithm_key_size_check(conf_opt(&alg), ksk_size)) {
+		args->err_str = "KSK key size not compatible with the algorithm";
+		return KNOT_EINVAL;
+	}
+
+	int64_t zsk_size = conf_int(&zsk);
+	if (zsk_size != YP_NIL && !dnssec_algorithm_key_size_check(conf_opt(&alg), zsk_size)) {
+		args->err_str = "ZSK key size not compatible with the algorithm";
+		return KNOT_EINVAL;
 	}
 
 	return KNOT_EOK;
@@ -373,9 +434,8 @@ int check_remote(
 int check_template(
 	conf_check_t *args)
 {
-	// Ignore the default template.
-	if (args->id_len == CONF_DEFAULT_ID[0] &&
-	    memcmp(args->id, CONF_DEFAULT_ID + 1, args->id_len) == 0) {
+	// Stop if the default template.
+	if (is_default_id(args->id, args->id_len)) {
 		return KNOT_EOK;
 	}
 
@@ -413,6 +473,16 @@ int check_zone(
 	if (conf_val_count(&master) > 0 && conf_bool(&dnssec)) {
 		args->err_str = "slave zone with DNSSEC signing";
 		return KNOT_EINVAL;
+	}
+
+	conf_val_t signing = conf_zone_get_txn(args->conf, args->txn,
+	                                       C_DNSSEC_SIGNING, args->id);
+	conf_val_t policy = conf_zone_get_txn(args->conf, args->txn,
+	                                       C_DNSSEC_POLICY, args->id);
+	if (conf_bool(&signing) && policy.code != KNOT_EOK) {
+		CONF_LOG(LOG_NOTICE, "dnssec policy settings in KASP database "
+		         "is obsolete and will be removed in the next major release. "
+		         "Use proper zone.dnssec-policy configuration.");
 	}
 
 	return KNOT_EOK;
