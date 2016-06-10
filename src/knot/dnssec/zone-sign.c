@@ -1280,7 +1280,8 @@ int knot_zone_sign_nsecs_in_changeset(const zone_keyset_t *zone_keys,
 	knot_rrset_t rr = changeset_iter_next(&itt);
 	while (!knot_rrset_empty(&rr)) {
 		if (rr.type == KNOT_RRTYPE_NSEC ||
-		    rr.type == KNOT_RRTYPE_NSEC3) {
+		    rr.type == KNOT_RRTYPE_NSEC3 ||
+		    rr.type == KNOT_RRTYPE_NSEC3PARAM) {
 			int ret =  add_missing_rrsigs(&rr, NULL, zone_keys,
 			                              dnssec_ctx, changeset);
 			if (ret != KNOT_EOK) {
