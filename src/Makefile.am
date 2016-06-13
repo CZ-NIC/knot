@@ -482,6 +482,7 @@ khost_SOURCES =					\
 	utils/khost/khost_params.h
 
 knsec3hash_SOURCES =				\
+	dnssec/shared/print.h			\
 	utils/knsec3hash/knsec3hash.c
 
 knsupdate_SOURCES =				\
