@@ -17,9 +17,9 @@
 #include <assert.h>
 #include <tap/basic.h>
 
-#include <libknot/packet/rrset-wire.h>
-#include <libknot/descriptor.h>
-#include <libknot/errcode.h>
+#include "libknot/packet/rrset-wire.h"
+#include "libknot/descriptor.h"
+#include "libknot/errcode.h"
 
 // Wire initializers
 
