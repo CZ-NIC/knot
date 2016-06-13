@@ -18,8 +18,8 @@
 
 #include "dnssec/random.h"
 #include "knot/common/log.h"
+#include "knot/query/capture.h"
 #include "knot/nameserver/update.h"
-#include "knot/nameserver/capture.h"
 #include "knot/nameserver/internet.h"
 #include "knot/nameserver/process_query.h"
 #include "knot/nameserver/log.h"
@@ -230,7 +230,7 @@ static int remote_forward(conf_t *conf, struct knot_request *request, conf_remot
 		.sink = request->resp
 	};
 
-	ret = knot_requestor_overlay(&re, LAYER_CAPTURE, &param);
+	ret = knot_requestor_overlay(&re, query_capture_api(), &param);
 	if (ret != KNOT_EOK) {
 		knot_requestor_clear(&re);
 		knot_pkt_free(&query);

@@ -17,7 +17,7 @@
 #include "libknot/processing/requestor.h"
 #include "knot/common/log.h"
 #include "knot/modules/dnsproxy.h"
-#include "knot/nameserver/capture.h"
+#include "knot/query/capture.h"
 #include "knot/nameserver/process_query.h"
 #include "contrib/mempattern.h"
 #include "contrib/net.h"
@@ -75,7 +75,7 @@ static int dnsproxy_fwd(int state, knot_pkt_t *pkt, struct query_data *qdata, vo
 		.sink = pkt
 	};
 
-	ret = knot_requestor_overlay(&re, LAYER_CAPTURE, &param);
+	ret = knot_requestor_overlay(&re, query_capture_api(), &param);
 	if (ret != KNOT_EOK) {
 		knot_requestor_clear(&re);
 		return state; /* Ignore, not enough memory. */

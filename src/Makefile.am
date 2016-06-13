@@ -315,8 +315,6 @@ libknotd_la_SOURCES =				\
 	knot/modules/synth_record.h		\
 	knot/nameserver/axfr.c			\
 	knot/nameserver/axfr.h			\
-	knot/nameserver/capture.c		\
-	knot/nameserver/capture.h		\
 	knot/nameserver/chaos.c			\
 	knot/nameserver/chaos.h			\
 	knot/nameserver/internet.c		\
@@ -336,6 +334,8 @@ libknotd_la_SOURCES =				\
 	knot/nameserver/tsig_ctx.h		\
 	knot/nameserver/update.c		\
 	knot/nameserver/update.h		\
+	knot/query/capture.c			\
+	knot/query/capture.h			\
 	knot/query/query.c			\
 	knot/query/query.h			\
 	knot/common/evsched.c			\
