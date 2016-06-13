@@ -19,8 +19,9 @@
 #include <stdint.h>
 
 #include "knot/conf/conf.h"
-#include "knot/zone/zone.h"
 #include "knot/nameserver/tsig_ctx.h"
+#include "knot/query/layer.h"
+#include "knot/zone/zone.h"
 
 /* Answer processing module implementation. */
 const knot_layer_api_t *process_answer_layer(void);

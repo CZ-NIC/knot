@@ -18,10 +18,10 @@
 #include <string.h>
 #include <stdlib.h>
 
-#include "libknot/errcode.h"
-#include "libknot/processing/overlay.h"
 #include "contrib/mempattern.h"
 #include "contrib/ucw/mempool.h"
+#include "knot/query/overlay.h"
+#include "libknot/errcode.h"
 
 /* @note Purpose of this test is to verify, that FSM chaining works. */
 

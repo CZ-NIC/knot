@@ -19,6 +19,7 @@
 #include "dnssec/random.h"
 #include "knot/common/log.h"
 #include "knot/query/capture.h"
+#include "knot/query/requestor.h"
 #include "knot/nameserver/update.h"
 #include "knot/nameserver/internet.h"
 #include "knot/nameserver/process_query.h"

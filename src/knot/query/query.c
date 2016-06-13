@@ -24,6 +24,7 @@
 #include "contrib/wire.h"
 #include "dnssec/random.h"
 #include "knot/query/query.h"
+#include "knot/query/requestor.h"
 #include "knot/zone/zone.h"
 #include "libknot/mm_ctx.h"
 #include "libknot/packet/pkt.h"

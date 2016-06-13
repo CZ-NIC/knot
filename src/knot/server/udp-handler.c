@@ -33,14 +33,14 @@
 #include <cap-ng.h>
 #endif /* HAVE_CAP_NG_H */
 
-#include "knot/server/udp-handler.h"
-#include "knot/server/server.h"
-#include "knot/nameserver/process_query.h"
-#include "libknot/libknot.h"
 #include "contrib/macros.h"
 #include "contrib/mempattern.h"
 #include "contrib/sockaddr.h"
 #include "contrib/ucw/mempool.h"
+#include "knot/nameserver/process_query.h"
+#include "knot/query/overlay.h"
+#include "knot/server/server.h"
+#include "knot/server/udp-handler.h"
 
 /* Buffer identifiers. */
 enum {
