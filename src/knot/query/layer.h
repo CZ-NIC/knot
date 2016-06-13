@@ -16,8 +16,6 @@
 
 #pragma once
 
-#include <stdint.h>
-
 #include "libknot/packet/pkt.h"
 #include "libknot/mm_ctx.h"
 
@@ -39,7 +37,7 @@ struct knot_layer_api;
 /*! \brief Packet processing context. */
 typedef struct knot_layer {
 	knot_mm_t *mm;   /* Processing memory context. */
-	uint16_t state;  /* Bitmap of enum knot_layer_state. */
+	int state;       /* Bitmap of enum knot_layer_state. */
 	void *data;      /* Module specific. */
 	const struct knot_layer_api *api;
 } knot_layer_t;
