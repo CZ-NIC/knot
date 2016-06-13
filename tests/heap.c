@@ -30,7 +30,9 @@ static void seed_random(void)
 
 	FILE *f = fopen("/dev/urandom", "r");
 	if (f) {
-		fread(seed, sizeof(seed), 1, f);
+		if (fread(seed, sizeof(seed), 1, f) != 1) {
+			diag("failed to seed random source");
+		}
 		fclose(f);
 	}
 
