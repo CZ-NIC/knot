@@ -14,7 +14,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "libknot/processing/requestor.h"
+#include "knot/query/requestor.h"
 #include "knot/common/log.h"
 #include "knot/modules/dnsproxy.h"
 #include "knot/query/capture.h"

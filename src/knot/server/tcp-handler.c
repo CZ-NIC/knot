@@ -37,7 +37,7 @@
 #include "knot/common/fdset.h"
 #include "knot/common/log.h"
 #include "knot/nameserver/process_query.h"
-#include "libknot/processing/overlay.h"
+#include "knot/query/overlay.h"
 #include "contrib/macros.h"
 #include "contrib/mempattern.h"
 #include "contrib/net.h"

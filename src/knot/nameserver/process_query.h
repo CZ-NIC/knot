@@ -24,7 +24,7 @@
 
 #pragma once
 
-#include "libknot/processing/layer.h"
+#include "knot/query/layer.h"
 #include "knot/server/server.h"
 #include "knot/updates/acl.h"
 #include "contrib/sockaddr.h"

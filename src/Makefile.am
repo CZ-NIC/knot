@@ -115,9 +115,6 @@ nobase_libknot_la_HEADERS =			\
 	libknot/packet/pkt.h			\
 	libknot/packet/rrset-wire.h		\
 	libknot/packet/wire.h			\
-	libknot/processing/layer.h		\
-	libknot/processing/overlay.h		\
-	libknot/processing/requestor.h		\
 	libknot/rdata.h				\
 	libknot/rdataset.h			\
 	libknot/rrset-dump.h			\
@@ -153,9 +150,6 @@ libknot_la_SOURCES =				\
 	libknot/packet/pkt.c			\
 	libknot/packet/rrset-wire.c		\
 	libknot/packet/wire.c			\
-	libknot/processing/layer.c		\
-	libknot/processing/overlay.c		\
-	libknot/processing/requestor.c		\
 	libknot/rdata.c				\
 	libknot/rdataset.c			\
 	libknot/rrset-dump.c			\
@@ -336,8 +330,14 @@ libknotd_la_SOURCES =				\
 	knot/nameserver/update.h		\
 	knot/query/capture.c			\
 	knot/query/capture.h			\
+	knot/query/layer.c			\
+	knot/query/layer.h			\
+	knot/query/overlay.c			\
+	knot/query/overlay.h			\
 	knot/query/query.c			\
 	knot/query/query.h			\
+	knot/query/requestor.c			\
+	knot/query/requestor.h			\
 	knot/common/evsched.c			\
 	knot/common/evsched.h			\
 	knot/common/fdset.c			\

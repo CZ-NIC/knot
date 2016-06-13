@@ -1,4 +1,4 @@
-/*  Copyright (C) 2014 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -17,7 +17,7 @@
 #include <assert.h>
 
 #include "libknot/attribute.h"
-#include "libknot/processing/requestor.h"
+#include "knot/query/requestor.h"
 #include "libknot/errcode.h"
 #include "contrib/mempattern.h"
 #include "contrib/net.h"

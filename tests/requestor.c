@@ -22,8 +22,8 @@
 #include <fcntl.h>
 
 #include "knot/conf/conf.h"
-#include "libknot/processing/layer.h"
-#include "libknot/processing/requestor.h"
+#include "knot/query/layer.h"
+#include "knot/query/requestor.h"
 #include "contrib/mempattern.h"
 #include "contrib/net.h"
 #include "contrib/sockaddr.h"

@@ -16,7 +16,7 @@
 
 #pragma once
 
-#include "libknot/processing/layer.h"
+#include "knot/query/layer.h"
 #include "libknot/packet/pkt.h"
 
 /*!

@@ -1,4 +1,4 @@
-/*  Copyright (C) 2014 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -13,18 +13,10 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-/*!
- * \file overlay.h
- *
- * \author Marek Vavrusa <marek.vavrusa@nic.cz>
- *
- * \addtogroup query_processing
- * @{
- */
 
 #pragma once
 
-#include "libknot/processing/layer.h"
+#include "knot/query/layer.h"
 
 /*! \brief Processsing overlay (list of aggregated FSMs). */
 struct knot_overlay {
@@ -99,5 +91,3 @@ int knot_overlay_consume(struct knot_overlay *overlay, knot_pkt_t *pkt);
  * \return Overlay state.
  */
 int knot_overlay_produce(struct knot_overlay *overlay, knot_pkt_t *pkt);
-
-/*! @} */

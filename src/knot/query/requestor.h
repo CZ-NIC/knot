@@ -1,4 +1,4 @@
-/*  Copyright (C) 2014 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -19,7 +19,7 @@
 #include <sys/socket.h>
 #include <sys/time.h>
 
-#include "libknot/processing/overlay.h"
+#include "knot/query/overlay.h"
 #include "libknot/rrtype/tsig.h"
 #include "libknot/mm_ctx.h"
 
