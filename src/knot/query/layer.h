@@ -31,19 +31,22 @@ enum knot_layer_state {
 	KNOT_STATE_FAIL    = 1 << 3  /*!< Error. */
 };
 
-/* Forward declarations. */
 struct knot_layer_api;
+typedef struct knot_layer_api knot_layer_api_t;
+
+struct knot_layer;
+typedef struct knot_layer knot_layer_t;
 
 /*! \brief Packet processing context. */
-typedef struct knot_layer {
+struct knot_layer {
 	knot_mm_t *mm;   /* Processing memory context. */
 	int state;       /* Bitmap of enum knot_layer_state. */
 	void *data;      /* Module specific. */
 	const struct knot_layer_api *api;
-} knot_layer_t;
+};
 
 /*! \brief Packet processing module API. */
-typedef struct knot_layer_api {
+struct knot_layer_api {
 	int (*begin)(knot_layer_t *ctx, void *module_param);
 	int (*reset)(knot_layer_t *ctx);
 	int (*finish)(knot_layer_t *ctx);
@@ -51,18 +54,26 @@ typedef struct knot_layer_api {
 	int (*produce)(knot_layer_t *ctx, knot_pkt_t *pkt);
 	int (*fail)(knot_layer_t *ctx, knot_pkt_t *pkt);
 	void *data;
-} knot_layer_api_t;
+};
 
 /*!
  * \brief Initialize packet processing context.
  *
  * \param ctx Layer context.
+ * \param mm  Memory context.
  * \param api Layer API.
- * \param param Parameters for given module.
+ */
+void knot_layer_init(knot_layer_t *ctx, knot_mm_t *mm, const knot_layer_api_t *api);
+
+/*!
+ * \brief Prepare packet processing.
+ *
+ * \param ctx Layer context.
+ * \param param Initialization params.
  *
  * \return Layer state.
  */
-int knot_layer_begin(knot_layer_t *ctx, const knot_layer_api_t *api, void *param);
+int knot_layer_begin(knot_layer_t *ctx, void *param);
 
 /*!
  * \brief Reset current packet processing context.
