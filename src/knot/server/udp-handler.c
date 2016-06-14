@@ -38,7 +38,7 @@
 #include "contrib/sockaddr.h"
 #include "contrib/ucw/mempool.h"
 #include "knot/nameserver/process_query.h"
-#include "knot/query/overlay.h"
+#include "knot/query/layer.h"
 #include "knot/server/server.h"
 #include "knot/server/udp-handler.h"
 
@@ -51,7 +51,7 @@ enum {
 
 /*! \brief UDP context data. */
 typedef struct udp_context {
-	struct knot_overlay overlay; /*!< Query processing overlay. */
+	struct knot_layer layer;     /*!< Query processing layer. */
 	server_t *server;            /*!< Name server structure. */
 	unsigned thread_id;          /*!< Thread identifier. */
 } udp_context_t;
@@ -74,23 +74,20 @@ static void udp_handle(udp_context_t *udp, int fd, struct sockaddr_storage *ss,
 		param.proc_flags |= NS_QUERY_LIMIT_RATE;
 	}
 
-	knot_mm_t *mm = udp->overlay.mm;
-
-	/* Create query processing context. */
-	knot_overlay_init(&udp->overlay, mm);
-	knot_overlay_add(&udp->overlay, NS_PROC_QUERY, &param);
+	/* Start query processing. */
+	udp->layer.state = knot_layer_begin(&udp->layer, &param);
 
 	/* Create packets. */
-	knot_pkt_t *query = knot_pkt_new(rx->iov_base, rx->iov_len, mm);
-	knot_pkt_t *ans = knot_pkt_new(tx->iov_base, tx->iov_len, mm);
+	knot_pkt_t *query = knot_pkt_new(rx->iov_base, rx->iov_len, udp->layer.mm);
+	knot_pkt_t *ans = knot_pkt_new(tx->iov_base, tx->iov_len, udp->layer.mm);
 
 	/* Input packet. */
 	(void) knot_pkt_parse(query, 0);
-	int state = knot_overlay_consume(&udp->overlay, query);
+	int state = knot_layer_consume(&udp->layer, query);
 
 	/* Process answer. */
 	while (state & (KNOT_STATE_PRODUCE|KNOT_STATE_FAIL)) {
-		state = knot_overlay_produce(&udp->overlay, ans);
+		state = knot_layer_produce(&udp->layer, ans);
 	}
 
 	/* Send response only if finished successfully. */
@@ -101,8 +98,7 @@ static void udp_handle(udp_context_t *udp, int fd, struct sockaddr_storage *ss,
 	}
 
 	/* Reset after processing. */
-	knot_overlay_finish(&udp->overlay);
-	knot_overlay_deinit(&udp->overlay);
+	knot_layer_finish(&udp->layer);
 
 	/* Cleanup. */
 	knot_pkt_free(&query);
@@ -503,16 +499,16 @@ int udp_master(dthread_t *thread)
 	void *rq = _udp_init();
 	ifacelist_t *ref = NULL;
 
+	/* Create big enough memory cushion. */
+	knot_mm_t mm;
+	mm_ctx_mempool(&mm, 16 * MM_DEFAULT_BLKSIZE);
+
 	/* Create UDP answering context. */
 	udp_context_t udp;
 	memset(&udp, 0, sizeof(udp_context_t));
 	udp.server = handler->server;
 	udp.thread_id = handler->thread_id[thr_id];
-
-	/* Create big enough memory cushion. */
-	knot_mm_t mm;
-	mm_ctx_mempool(&mm, 16 * MM_DEFAULT_BLKSIZE);
-	udp.overlay.mm = &mm;
+	knot_layer_init(&udp.layer, &mm, NS_PROC_QUERY);
 
 	/* Event source. */
 	struct pollfd *fds = NULL;
