@@ -19,9 +19,9 @@
 #include <sys/socket.h>
 #include <sys/time.h>
 
-#include "knot/query/overlay.h"
-#include "libknot/rrtype/tsig.h"
+#include "knot/query/layer.h"
 #include "libknot/mm_ctx.h"
+#include "libknot/rrtype/tsig.h"
 
 struct knot_request;
 
@@ -37,7 +37,7 @@ enum {
 struct knot_requestor {
 	knot_mm_t *mm;                /*!< Memory context. */
 	void *pending;                /*!< Pending requests (FIFO). */
-	struct knot_overlay overlay;  /*!< Response processing overlay. */
+	struct knot_layer layer;      /*!< Response processing layer. */
 };
 
 /*! \brief Request data (socket, payload, response, TSIG and endpoints). */

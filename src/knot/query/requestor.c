@@ -114,7 +114,6 @@ static int request_recv(struct knot_request *request, int timeout_ms)
 	return ret;
 }
 
-_public_
 struct knot_request *knot_request_make(knot_mm_t *mm,
                                        const struct sockaddr *dst,
                                        const struct sockaddr *src,
@@ -145,7 +144,6 @@ struct knot_request *knot_request_make(knot_mm_t *mm,
 	return request;
 }
 
-_public_
 void knot_request_free(struct knot_request *request, knot_mm_t *mm)
 {
 	if (request == NULL) {
@@ -161,7 +159,6 @@ void knot_request_free(struct knot_request *request, knot_mm_t *mm)
 	mm_free(mm, request);
 }
 
-_public_
 int knot_requestor_init(struct knot_requestor *requestor, knot_mm_t *mm)
 {
 	if (requestor == NULL) {
@@ -176,19 +173,12 @@ int knot_requestor_init(struct knot_requestor *requestor, knot_mm_t *mm)
 	}
 	init_list(pending);
 
-	int ret = knot_overlay_init(&requestor->overlay, mm);
-	if (ret != KNOT_EOK) {
-		mm_free(mm, pending);
-		return ret;
-	}
-
 	requestor->mm = mm;
 	requestor->pending = pending;
 
 	return KNOT_EOK;
 }
 
-_public_
 void knot_requestor_clear(struct knot_requestor *requestor)
 {
 	if (requestor == NULL) {
@@ -198,18 +188,19 @@ void knot_requestor_clear(struct knot_requestor *requestor)
 	while (knot_requestor_dequeue(requestor) == KNOT_EOK)
 		;
 
-	knot_overlay_finish(&requestor->overlay);
-	knot_overlay_deinit(&requestor->overlay);
+	// XXX: API migration, should be run per request
+	if (requestor->layer.api) {
+		knot_layer_finish(&requestor->layer);
+	}
+
 	mm_free(requestor->mm, PENDING(requestor));
 }
 
-_public_
 bool knot_requestor_finished(struct knot_requestor *requestor)
 {
 	return requestor == NULL || EMPTY_LIST(*PENDING(requestor));
 }
 
-_public_
 int knot_requestor_overlay(struct knot_requestor *requestor,
                            const knot_layer_api_t *proc, void *param)
 {
@@ -217,10 +208,15 @@ int knot_requestor_overlay(struct knot_requestor *requestor,
 		return KNOT_EINVAL;
 	}
 
-	return knot_overlay_add(&requestor->overlay, proc, param);
+	// XXX: API migration, prevent adding multiple layers
+	assert(requestor->layer.api == NULL);
+
+	knot_layer_init(&requestor->layer, requestor->mm, proc);
+	requestor->layer.state = knot_layer_begin(&requestor->layer, param);
+
+	return KNOT_EOK;
 }
 
-_public_
 int knot_requestor_enqueue(struct knot_requestor *requestor,
                            struct knot_request *request)
 {
@@ -243,7 +239,6 @@ int knot_requestor_enqueue(struct knot_requestor *requestor,
 	return KNOT_EOK;
 }
 
-_public_
 int knot_requestor_dequeue(struct knot_requestor *requestor)
 {
 	if (requestor == NULL) {
@@ -270,12 +265,12 @@ static int request_io(struct knot_requestor *req, struct knot_request *last,
 	knot_pkt_t *resp = last->resp;
 
 	/* Data to be sent. */
-	if (req->overlay.state == KNOT_STATE_PRODUCE) {
+	if (req->layer.state == KNOT_STATE_PRODUCE) {
 
 		/* Process query and send it out. */
-		knot_overlay_produce(&req->overlay, query);
+		knot_layer_produce(&req->layer, query);
 
-		if (req->overlay.state == KNOT_STATE_CONSUME) {
+		if (req->layer.state == KNOT_STATE_CONSUME) {
 			ret = request_send(last, timeout_ms);
 			if (ret != KNOT_EOK) {
 				return ret;
@@ -284,7 +279,7 @@ static int request_io(struct knot_requestor *req, struct knot_request *last,
 	}
 
 	/* Data to be read. */
-	if (req->overlay.state == KNOT_STATE_CONSUME) {
+	if (req->layer.state == KNOT_STATE_CONSUME) {
 		/* Read answer and process it. */
 		ret = request_recv(last, timeout_ms);
 		if (ret < 0) {
@@ -292,7 +287,7 @@ static int request_io(struct knot_requestor *req, struct knot_request *last,
 		}
 
 		(void) knot_pkt_parse(resp, 0);
-		knot_overlay_consume(&req->overlay, resp);
+		knot_layer_consume(&req->layer, resp);
 	}
 
 	return KNOT_EOK;
@@ -304,26 +299,25 @@ static int exec_request(struct knot_requestor *req, struct knot_request *last,
 	int ret = KNOT_EOK;
 
 	/* Do I/O until the processing is satisifed or fails. */
-	while (req->overlay.state & (KNOT_STATE_PRODUCE|KNOT_STATE_CONSUME)) {
+	while (req->layer.state & (KNOT_STATE_PRODUCE|KNOT_STATE_CONSUME)) {
 		ret = request_io(req, last, timeout_ms);
 		if (ret != KNOT_EOK) {
-			knot_overlay_reset(&req->overlay);
+			knot_layer_reset(&req->layer);
 			return ret;
 		}
 	}
 
 	/* Expect complete request. */
-	if (req->overlay.state != KNOT_STATE_DONE) {
+	if (req->layer.state != KNOT_STATE_DONE) {
 		ret = KNOT_LAYER_ERROR;
 	}
 
 	/* Finish current query processing. */
-	knot_overlay_reset(&req->overlay);
+	knot_layer_reset(&req->layer);
 
 	return ret;
 }
 
-_public_
 int knot_requestor_exec(struct knot_requestor *requestor, int timeout_ms)
 {
 	if (knot_requestor_finished(requestor)) {
