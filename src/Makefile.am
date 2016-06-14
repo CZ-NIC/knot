@@ -332,8 +332,6 @@ libknotd_la_SOURCES =				\
 	knot/query/capture.h			\
 	knot/query/layer.c			\
 	knot/query/layer.h			\
-	knot/query/overlay.c			\
-	knot/query/overlay.h			\
 	knot/query/query.c			\
 	knot/query/query.h			\
 	knot/query/requestor.c			\
