@@ -281,7 +281,6 @@ static int rrsigs_create_rdata(knot_rrset_t *rrsigs, dnssec_sign_ctx_t *ctx,
 	                            knot_rdata_ttl(covered_data), mm);
 }
 
-_public_
 int knot_sign_rrset(knot_rrset_t *rrsigs, const knot_rrset_t *covered,
                     const dnssec_key_t *key, dnssec_sign_ctx_t *sign_ctx,
                     const kdnssec_ctx_t *dnssec_ctx, knot_mm_t *mm)
@@ -300,7 +299,6 @@ int knot_sign_rrset(knot_rrset_t *rrsigs, const knot_rrset_t *covered,
 	                           sig_expire, mm);
 }
 
-_public_
 int knot_synth_rrsig(uint16_t type, const knot_rdataset_t *rrsig_rrs,
                 knot_rdataset_t *out_sig, knot_mm_t *mm)
 {
@@ -349,7 +347,6 @@ static bool is_expired_signature(const knot_rrset_t *rrsigs, size_t pos,
 	return expire_in <= refresh_before;
 }
 
-_public_
 int knot_check_signature(const knot_rrset_t *covered,
                     const knot_rrset_t *rrsigs, size_t pos,
                     const dnssec_key_t *key,
