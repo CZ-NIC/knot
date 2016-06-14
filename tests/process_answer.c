@@ -117,6 +117,7 @@ int main(int argc, char *argv[])
 
 	knot_layer_t proc;
 	memset(&proc, 0, sizeof(knot_layer_t));
+	knot_layer_init(&proc, &mm, process_answer_layer());
 	proc.mm = &mm;
 
 	/* Create fake server environment. */
@@ -134,7 +135,7 @@ int main(int argc, char *argv[])
 	knot_pkt_t *pkt = knot_pkt_new(NULL, KNOT_WIRE_MAX_PKTSIZE, proc.mm);
 
 	/* Begin processing. */
-	int state = knot_layer_begin(&proc, process_answer_layer(), &param);
+	int state = knot_layer_begin(&proc, &param);
 	ok(state == KNOT_STATE_PRODUCE, "proc_answer: expects query to be sent");
 
 	/* Invalid generic input tests. */
