@@ -300,7 +300,10 @@ static int apply_replace_soa(apply_ctx_t *ctx, zone_contents_t *contents, change
 		return ret;
 	}
 
-	assert(!node_rrtype_exists(contents->apex, KNOT_RRTYPE_SOA));
+	// Check for SOA with proper serial but different rdata.
+	if (node_rrtype_exists(contents->apex, KNOT_RRTYPE_SOA)) {
+		return KNOT_EINVAL;
+	}
 
 	return add_rr(ctx, contents, contents->apex, chset->soa_to, chset);
 }
