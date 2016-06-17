@@ -36,12 +36,44 @@ a name must be unique amongst the other names.
 Global options
 ..............
 
-**--dir** *path*
-  The location of the KASP database to work with. Defaults to current working
-  directory or ``KEYMGR_DIR`` environment variable (if set).
+**-c**, **--config** *file*
+  Use a textual configuration file to get KASP database location (default is
+  :file:`@config_dir@/knot.conf`).
+
+**-C**, **--confdb** *directory*
+  Use a binary configuration database directory to get KASP database location
+  (default is :file:`@storage_dir@/confdb`).
+  The default configuration database, if exists, has a preference to the default
+  configuration file.
+
+**-d**, **--dir** *path*
+  Use a specified KASP database path to work with. Defaults to current working
+  directory (if no configuration is used) or ``KEYMGR_DIR`` environment
+  variable (if set). This option also overides **--config** and **--confdb**
+  options.
+
+**-h**, **--help**
+  Print the program help.
+
+**-l**, **--legacy**
+  Enable legacy mode. Zone, policy, and keystore configuration is stored
+  in KASP database (not in server configuration).
+
+**-V**, **--version**
+  Print the program version.
 
 Main commands
 .............
+
+**tsig** ...
+  Operations with TSIG keys.
+
+**zone** ...
+  Operations with zones in the database. A zone holds assigned signing
+  configuration and signing metadata.
+
+Main commands (legacy)
+......................
 
 **init**
   Initialize new KASP database or upgrade existing one. The command is
@@ -50,10 +82,6 @@ Main commands
   The command creates a default policy and default key store (both named
   *default*). In case of upgrade, existing objects are checked and any missing
   attributes are filled in.
-
-**zone** ...
-  Operations with zones in the database. A zone holds assigned signing
-  configuration and signing metadata.
 
 **policy** ...
   Operations with KASP policies. A policy holds parameters that define the
@@ -64,27 +92,21 @@ Main commands
   store holds private key material for zone signing separately from the zone
   metadata.
 
-**tsig** ...
-  Operations with TSIG keys.
+tsig commands
+.............
+
+**tsig** **generate** *name* [**algorithm** *id*] [**size** *bits*]
+  Generate new TSIG key and print it on the standard output. The algorithm
+  defaults to *hmac-sha256*. The default key size is determined optimally based
+  on the selected algorithm.
+
+  The generated key is printed out in the server configuration format to allow
+  direct inclusion into the server configuration. The first line of the output
+  contains a comment with the key in the one-line key format accepted by client
+  utilities.
 
 zone commands
 .............
-
-**zone** **add** *zone-name* [**policy** *policy-name*]
-  Add a zone into the database. The policy defaults to 'default'.
-
-**zone** **list** [*pattern*]
-  List zones in the database matching the *pattern* as a substring.
-
-**zone** **remove** *zone-name* [**force**]
-  Remove a zone from the database. If some keys are currently active, the
-  **force** argument must be specified.
-
-**zone** **set** *zone-name* [**policy** *policy-name*]
-  Change zone configuration. At the moment, only a policy can be changed.
-
-**zone** **show** *zone-name*
-  Show zone details.
 
 **zone** **key** **list** *zone-name* [**filter**]
   List key IDs and tags of zone keys.
@@ -134,8 +156,27 @@ current time. For the offset, add **+** or **-** prefix and optionally a
 suffix **mi**, **h**, **d**, **w**, **mo**, or **y**. If no suffix is specified,
 the offset is in seconds.
 
-policy commands
-...............
+zone commands (legacy)
+......................
+
+**zone** **add** *zone-name* [**policy** *policy-name*]
+  Add a zone into the database. The policy defaults to 'default'.
+
+**zone** **list** [*pattern*]
+  List zones in the database matching the *pattern* as a substring.
+
+**zone** **remove** *zone-name* [**force**]
+  Remove a zone from the database. If some keys are currently active, the
+  **force** argument must be specified.
+
+**zone** **set** *zone-name* [**policy** *policy-name*]
+  Change zone configuration. At the moment, only a policy can be changed.
+
+**zone** **show** *zone-name*
+  Show zone details.
+
+policy commands (legacy)
+........................
 
 **policy** **list**
   List policies in the database.
@@ -201,8 +242,8 @@ Available *policy-parameter*\ s:
   **keystore** *name*
     Name of the key store to be used for private key material.
 
-keystore commands
-.................
+keystore commands (legacy)
+..........................
 
 **keystore** **list**
   List names of configured key stores.
@@ -235,82 +276,23 @@ Supported key store backends:
     The PKCS #11 module path can be an absolute path or just a module name. In
     the later case, the module is looked up in the default modules location.
 
-tsig commands
-.............
-
-**tsig** **generate** *name* [**algorithm** *id*] [**size** *bits*]
-  Generate new TSIG key and print it on the standard output. The algorithm
-  defaults to *hmac-sha256*. The default key size is determined optimally based
-  on the selected algorithm.
-
-  The generated key is printed out in the server configuration format to allow
-  direct inclusion into the server configuration. The first line of the output
-  contains a comment with the key in the one-line key format accepted by client
-  utilities.
-
 Examples
 --------
 
-1. Initialize a new KASP database and add a zone *example.com* with the
-   *default* policy assigned::
+1. Generate two RSA-SHA-256 signing keys. The first key will be used as a KSK,
+   the second one as a ZSK::
 
-    $ keymgr init
-    $ keymgr policy add default
-    $ keymgr zone add example.com policy default
-
-2. List zones containing *.com* substring::
-
-    $ keymgr zone list .com
-
-3. Add a testing policy *lab* with rapid key rollovers. Apply the policy to an
-   existing zone::
-
-    $ keymgr policy add lab rrsig-lifetime 300 rrsig-refresh 150 \
-        zsk-lifetime 600 delay 10
-    $ keymgr zone set example.com policy lab
-
-4. Add an existing and already secured zone. Let the keys be managed by the
-   KASP. Make sure to import all used keys. Also the used algorithm must match
-   with the one configured in the policy::
-
-    $ keymgr zone add example.com policy default
-    $ keymgr zone key import example.com Kexample.com+010+12345.private
-    $ keymgr zone key import example.com Kexample.com+010+67890.private
-
-5. Disable automatic key management for a secured zone. For this purpose,
-   create a policy named 'manual' with otherwise default signing parameters::
-
-    $ keymgr policy add manual manual true
-    $ keymgr zone set example.com policy manual
-
-6. Add a zone to be signed with manual key maintenance. Generate one ECDSA
-   signing key. The Single-Type Signing scheme will be used::
-
-    $ keymgr policy add manual manual true
-    $ keymgr zone add example.com policy manual
-    $ keymgr zone key gen example.com algo 13 size 256
-
-7. Add a zone to be signed with manual key maintenance. Generate two
-   RSA-SHA-256 signing keys. The first key will be used as a KSK, the second
-   one as a ZSK::
-
-    $ keymgr policy add manual manual true
-    $ keymgr zone add example.com policy manual
     $ keymgr zone key generate example.com algorithm rsasha256 size 2048 ksk
     $ keymgr zone key generate example.com algorithm rsasha256 size 1024
 
-8. Generate a TSIG key named *operator.key*::
+2. Import a key in legacy format. The used algorithm must match with the one
+   configured in the policy::
+
+    $ keymgr zone key import example.com Kexample.com+010+12345.private
+
+3. Generate a TSIG key named *operator.key*::
 
     $ keymgr tsig generate operator.key algorithm hmac-sha512
-
-9. Add a new key store named *hsm* and backed by the SoftHSM PKCS #11 module,
-   then add a new policy named *secure* with default parameters using this key
-   store, and finally add the zone *example.com* which will use this policy::
-
-    $ keymgr keystore add hsm backend pkcs11 \
-        config "pkcs11:token=knot;pin-value=1234 libsofthsm2.so"
-    $ keymgr policy add secure keystore hsm
-    $ keymgr zone add example.com policy secure
 
 See Also
 --------

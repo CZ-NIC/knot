@@ -66,10 +66,10 @@ the following symbols:
 | – Choice
 .UNINDENT
 .sp
-There are 8 main sections (\fBserver\fP, \fBkey\fP, \fBacl\fP, \fBcontrol\fP,
-\fBremote\fP, \fBtemplate\fP, \fBzone\fP and \fBlog\fP) and module sections with the
-\fBmod\-\fP prefix. The most of the sections (excluding \fBserver\fP and
-\fBcontrol\fP) are sequences of settings blocks. Each settings block
+There are 10 main sections (\fBserver\fP, \fBcontrol\fP, \fBlog\fP, \fBkeystore\fP,
+\fBpolicy\fP, \fBkey\fP, \fBacl\fP, \fBremote\fP, \fBtemplate\fP, and \fBzone\fP) and
+module sections with the \fBmod\-\fP prefix. Most of the sections (excluding
+\fBserver\fP and \fBcontrol\fP) are sequences of settings blocks. Each settings block
 begins with a unique identifier, which can be used as a reference from other
 sections (such identifier must be defined in advance).
 .sp
@@ -427,6 +427,158 @@ A UNIX socket path where the server listens for control commands.
 Maximum time the control socket operations can take. Set 0 for infinity.
 .sp
 \fIDefault:\fP 5
+.SH KEYSTORE SECTION
+.sp
+DNSSEC keystore configuration.
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+keystore:
+  \- id: STR
+    backend: pem | pkcs11
+    config: STR
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.SS id
+.sp
+A keystore identifier.
+.SS backend
+.sp
+A key storage backend type. A directory with PEM files or a PKCS11 storage.
+.sp
+\fIDefault:\fP pem
+.SS config
+.sp
+A backend specific configuration. A directory for PEM storage (the path can
+be specified as a relative path to \fI\%kasp\-db\fP) or
+a configuration string for PKCS11 storage.
+.sp
+\fBNOTE:\fP
+.INDENT 0.0
+.INDENT 3.5
+A PKCS11 configuration can look like:
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+"pkcs11:token=knot;pin\-value=1234 libsofthsm2.so"
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.UNINDENT
+.UNINDENT
+.sp
+\fIDefault:\fP \fI\%kasp\-db\fP/keys
+.SH POLICY SECTION
+.sp
+DNSSEC policy configuration.
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+policy:
+  \- id: STR
+    keystore: STR
+    manual: BOOL
+    algorithm: dsa | rsasha1 | dsansec3sha1 | rsasha1nsec3sha1 | rsasha256 | rsasha512 | ecdsap256sha256 | ecdsap384sha384
+    ksk\-size: SIZE
+    zsk\-size: SIZE
+    dnskey\-ttl: TIME
+    zsk\-lifetime: TIME
+    rrsig\-lifetime: TIME
+    rrsig\-refresh: TIME
+    nsec3: BOOL
+    nsec3\-iterations: INT
+    nsec3\-salt\-length: INT
+    nsec3\-resalt: TIME
+    propagation\-delay: TIME
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.SS id
+.sp
+A policy identifier.
+.SS keystore
+.sp
+A \fI\%reference\fP to a keystore holding private key material
+for zones.
+.sp
+\fIDefault:\fP default
+.SS manual
+.sp
+If enabled, automatic key management is not used.
+.sp
+\fIDefault:\fP off
+.SS algorithm
+.sp
+An algorithm of signing keys and issued signatures.
+.sp
+\fIDefault:\fP ECDSA\-P256\-SHA256
+.SS ksk\-size
+.sp
+A length of newly generated KSK keys.
+.sp
+\fIDefault:\fP 256 (algorithm dependent)
+.SS zsk\-size
+.sp
+A length of newly generated ZSK keys.
+.sp
+\fIDefault:\fP 256 (algorithm dependent)
+.SS dnskey\-ttl
+.sp
+A TTL value for DNSKEY records added into zone apex.
+.sp
+\fIDefault:\fP zone SOA TTL
+.SS zsk\-lifetime
+.sp
+A period between ZSK publication and the next rollover initiation.
+.sp
+\fIDefault:\fP 30 days
+.SS rrsig\-lifetime
+.sp
+A validity period of newly issued signatures.
+.sp
+\fIDefault:\fP 14 days
+.SS rrsig\-refresh
+.sp
+A period how long before a signature expiration the signature will be refreshed.
+.sp
+\fIDefault:\fP 7 days
+.SS nsec3
+.sp
+Specifies if NSEC3 will be used instead of NSEC.
+.sp
+\fIDefault:\fP off
+.SS nsec3\-iterations
+.sp
+A number of additional times the hashing is performed.
+.sp
+\fIDefault:\fP 5
+.SS nsec3\-salt\-length
+.sp
+A length of a salt field in octets, which is appended to the original owner
+name before hashing.
+.sp
+\fIDefault:\fP 8
+.SS nsec3\-resalt
+.sp
+A validity period of newly issued salt field.
+.sp
+\fIDefault:\fP 30 days
+.SS propagation\-delay
+.sp
+An extra delay added for each key rollover step. This value should be high
+enough to cover propagation of data from the master server to all slaves.
+.sp
+\fIDefault:\fP 1 day
 .SH REMOTE SECTION
 .sp
 Definitions of remote servers for outgoing connections (source of a zone
@@ -541,6 +693,7 @@ zone:
     ixfr\-from\-differences: BOOL
     max\-journal\-size: SIZE
     dnssec\-signing: BOOL
+    dnssec\-policy: STR
     kasp\-db: STR
     request\-edns\-option: INT:[HEXSTR]
     serial\-policy: increment | unixtime
@@ -715,6 +868,11 @@ Cannot be enabled on a slave zone.
 .UNINDENT
 .sp
 \fIDefault:\fP off
+.SS dnssec\-policy
+.sp
+A \fI\%reference\fP to DNSSEC signing policy.
+.sp
+\fIDefault:\fP default
 .SS kasp\-db
 .sp
 A KASP database path. Non absolute path is relative to

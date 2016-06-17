@@ -60,7 +60,7 @@ server configuration:
 
 5. Add the zone into the Knot DNS configuration. Zone configuration must
    include correct zone file path (option :ref:`file<zone_file>`) and KASP
-   database location (option :ref:`kasp-db<zone_kasp_db>`). You can follow
+   database location (option :ref:`kasp-db<zone_kasp-db>`). You can follow
    this configuration file snippet::
 
     zone:
