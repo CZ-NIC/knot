@@ -268,16 +268,10 @@ static int zone_query_request(knot_pkt_t *query, const conf_remote_t *remote,
                               struct process_answer_param *param, knot_mm_t *mm)
 {
 	/* Create requestor instance. */
-	struct knot_requestor re;
-	int ret = knot_requestor_init(&re, mm);
-	if (ret != KNOT_EOK) {
-		return ret;
-	}
-
 	const knot_layer_api_t *api = process_answer_layer();
-	ret = knot_requestor_overlay(&re, api, param);
+	struct knot_requestor re;
+	int ret = knot_requestor_init(&re, api, param, mm);
 	if (ret != KNOT_EOK) {
-		knot_requestor_clear(&re);
 		return ret;
 	}
 

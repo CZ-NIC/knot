@@ -218,22 +218,16 @@ static int remote_forward(conf_t *conf, struct knot_request *request, conf_remot
 	knot_wire_set_id(query->wire, dnssec_random_uint16_t());
 	knot_tsig_append(query->wire, &query->size, query->max_size, query->tsig_rr);
 
-	/* Create requestor instance. */
-	struct knot_requestor re;
-	ret = knot_requestor_init(&re, NULL);
-	if (ret != KNOT_EOK) {
-		knot_pkt_free(&query);
-		return ret;
-	}
-
 	/* Prepare packet capture layer. */
-	struct capture_param param = {
+	const knot_layer_api_t *capture = query_capture_api();
+	struct capture_param capture_param = {
 		.sink = request->resp
 	};
 
-	ret = knot_requestor_overlay(&re, query_capture_api(), &param);
+	/* Create requestor instance. */
+	struct knot_requestor re;
+	ret = knot_requestor_init(&re, capture, &capture_param, NULL);
 	if (ret != KNOT_EOK) {
-		knot_requestor_clear(&re);
 		knot_pkt_free(&query);
 		return ret;
 	}

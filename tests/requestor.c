@@ -123,8 +123,7 @@ int main(int argc, char *argv[])
 
 	/* Initialize requestor. */
 	struct knot_requestor requestor;
-	knot_requestor_init(&requestor, &mm);
-	knot_requestor_overlay(&requestor, &dummy_module, NULL);
+	knot_requestor_init(&requestor, &dummy_module, NULL, &mm);
 
 	/* Define endpoints. */
 	struct sockaddr_storage client = { 0 };

@@ -77,12 +77,16 @@ void knot_request_free(struct knot_request *request, knot_mm_t *mm);
 /*!
  * \brief Initialize requestor structure.
  *
- * \param requestor Requestor instance.
- * \param mm        Memory context.
+ * \param requestor   Requestor instance.
+ * \param proc        Response processing module.
+ * \param proc_param  Processing module context.
+ * \param mm          Memory context.
  *
  * \return KNOT_EOK or error
  */
-int knot_requestor_init(struct knot_requestor *requestor, knot_mm_t *mm);
+int knot_requestor_init(struct knot_requestor *requestor,
+                        const knot_layer_api_t *proc, void *proc_param,
+                        knot_mm_t *mm);
 
 /*!
  * \brief Clear the requestor structure and close pending queries.
@@ -90,16 +94,6 @@ int knot_requestor_init(struct knot_requestor *requestor, knot_mm_t *mm);
  * \param requestor Requestor instance.
  */
 void knot_requestor_clear(struct knot_requestor *requestor);
-
-/*!
- * \brief Add a processing layer.
- *
- * \param requestor Requestor instance.
- * \param proc      Response processing module.
- * \param param     Processing module parameters.
- */
-int knot_requestor_overlay(struct knot_requestor *requestor,
-                           const knot_layer_api_t *proc, void *param);
 
 /*!
  * \brief Execute a request.

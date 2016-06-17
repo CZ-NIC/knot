@@ -64,20 +64,16 @@ static int dnsproxy_fwd(int state, knot_pkt_t *pkt, struct query_data *qdata, vo
 		return state;
 	}
 
-	/* Create a forwarding request. */
-	struct knot_requestor re;
-	int ret = knot_requestor_init(&re, qdata->mm);
-	if (ret != KNOT_EOK) {
-		return state; /* Ignore, not enough memory. */
-	}
-
-	struct capture_param param = {
+	/* Capture layer context. */
+	const knot_layer_api_t *capture = query_capture_api();
+	struct capture_param capture_param = {
 		.sink = pkt
 	};
 
-	ret = knot_requestor_overlay(&re, query_capture_api(), &param);
+	/* Create a forwarding request. */
+	struct knot_requestor re;
+	int ret = knot_requestor_init(&re, capture, &capture_param, qdata->mm);
 	if (ret != KNOT_EOK) {
-		knot_requestor_clear(&re);
 		return state; /* Ignore, not enough memory. */
 	}
 

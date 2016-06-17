@@ -149,15 +149,19 @@ void knot_request_free(struct knot_request *request, knot_mm_t *mm)
 	mm_free(mm, request);
 }
 
-int knot_requestor_init(struct knot_requestor *requestor, knot_mm_t *mm)
+int knot_requestor_init(struct knot_requestor *requestor,
+                        const knot_layer_api_t *proc, void *proc_param,
+                        knot_mm_t *mm)
 {
-	if (requestor == NULL) {
+	if (requestor == NULL || proc == NULL) {
 		return KNOT_EINVAL;
 	}
 
 	memset(requestor, 0, sizeof(*requestor));
 
 	requestor->mm = mm;
+	knot_layer_init(&requestor->layer, mm, proc);
+	requestor->layer.state = knot_layer_begin(&requestor->layer, proc_param);
 
 	return KNOT_EOK;
 }
@@ -168,25 +172,9 @@ void knot_requestor_clear(struct knot_requestor *requestor)
 		return;
 	}
 
-	if (requestor->layer.api) {
-		knot_layer_finish(&requestor->layer);
-	}
-}
+	knot_layer_finish(&requestor->layer);
 
-int knot_requestor_overlay(struct knot_requestor *requestor,
-                           const knot_layer_api_t *proc, void *param)
-{
-	if (requestor == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	// XXX: API migration, prevent adding multiple layers
-	assert(requestor->layer.api == NULL);
-
-	knot_layer_init(&requestor->layer, requestor->mm, proc);
-	requestor->layer.state = knot_layer_begin(&requestor->layer, param);
-
-	return KNOT_EOK;
+	memset(requestor, 0, sizeof(*requestor));
 }
 
 static int request_io(struct knot_requestor *req, struct knot_request *last,
