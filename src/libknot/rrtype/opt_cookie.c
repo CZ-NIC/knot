@@ -25,13 +25,13 @@
 #include "libknot/rrtype/opt_cookie.h"
 
 _public_
-int knot_edns_opt_cookie_create(const uint8_t cc[KNOT_OPT_COOKIE_CLNT],
-                                const uint8_t *sc, const uint16_t sc_len,
-                                uint8_t *data, uint16_t *data_len)
+int knot_edns_opt_cookie_write(const uint8_t *cc, uint16_t cc_len,
+                               const uint8_t *sc, uint16_t sc_len,
+                               uint8_t *data, uint16_t *data_len)
 {
 	assert(cc != NULL);
 
-	if (sc == NULL && sc_len > 0) {
+	if ((cc == NULL && cc_len > 0) || (sc == NULL && sc_len > 0)) {
 		return KNOT_EINVAL;
 	}
 
@@ -39,7 +39,7 @@ int knot_edns_opt_cookie_create(const uint8_t cc[KNOT_OPT_COOKIE_CLNT],
 		return KNOT_EINVAL;
 	}
 
-	uint16_t cookies_size = knot_edns_opt_cookie_data_len(sc_len);
+	uint16_t cookies_size = knot_edns_opt_cookie_data_len(cc_len, sc_len);
 	if (cookies_size == 0) {
 		return KNOT_EINVAL;
 	}
@@ -48,7 +48,7 @@ int knot_edns_opt_cookie_create(const uint8_t cc[KNOT_OPT_COOKIE_CLNT],
 	}
 
 	wire_ctx_t wire = wire_ctx_init(data, *data_len);
-	wire_ctx_write(&wire, cc, KNOT_OPT_COOKIE_CLNT);
+	wire_ctx_write(&wire, cc, cc_len);
 	if (sc_len) {
 		wire_ctx_write(&wire, sc, sc_len);
 	}
@@ -63,12 +63,11 @@ int knot_edns_opt_cookie_create(const uint8_t cc[KNOT_OPT_COOKIE_CLNT],
 }
 
 _public_
-int knot_edns_opt_cookie_parse(const uint8_t *data, const uint16_t data_len,
+int knot_edns_opt_cookie_parse(const uint8_t *data, uint16_t data_len,
                                const uint8_t **cc, uint16_t *cc_len,
                                const uint8_t **sc, uint16_t *sc_len)
 {
-	if (data == NULL ||
-	    !srvr_cookie_len_ok(data_len - KNOT_OPT_COOKIE_CLNT)) {
+	if (data == NULL || !cookie_len_ok(data_len)) {
 		return KNOT_EINVAL;
 	}
 

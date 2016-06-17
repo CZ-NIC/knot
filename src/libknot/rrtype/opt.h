@@ -225,7 +225,7 @@ void knot_edns_set_do(knot_rrset_t *opt_rr);
  * \param[out] wire_ptr  Pointer to reserved option data (can be NULL).
  * \param[in]  mm        Memory context.
  *
- * \return Error code, KNOT_EOF if successful.
+ * \return Error code, KNOT_EOK if successful.
  */
 int knot_edns_reserve_option(knot_rrset_t *opt_rr, uint16_t code,
                              uint16_t size, uint8_t **wire_ptr, knot_mm_t *mm);

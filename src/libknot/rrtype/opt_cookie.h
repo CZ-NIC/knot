@@ -35,31 +35,42 @@
 /* EDNS Cookie option handling functions.                                     */
 /*----------------------------------------------------------------------------*/
 
-#define srvr_cookie_len_ok(sc_len) \
-	((sc_len == 0) || \
-	 ((sc_len) >= KNOT_OPT_COOKIE_SRVR_MIN && (sc_len) <= KNOT_OPT_COOKIE_SRVR_MAX))
+#define cookie_len_ok(clen) \
+	(((clen) == KNOT_OPT_COOKIE_CLNT) || \
+	 ((clen) >= (KNOT_OPT_COOKIE_CLNT + KNOT_OPT_COOKIE_SRVR_MIN) && \
+	  (clen) <= (KNOT_OPT_COOKIE_CLNT + KNOT_OPT_COOKIE_SRVR_MAX)))
+
+#define ccookie_len_ok(cclen) \
+	((cclen) == KNOT_OPT_COOKIE_CLNT)
+
+#define scookie_len_ok(sclen) \
+	(((sclen) == 0) || \
+	 ((sclen) >= KNOT_OPT_COOKIE_SRVR_MIN && \
+	  (sclen) <= KNOT_OPT_COOKIE_SRVR_MAX))
 
 /*!
  * \brief Returns the size of the buffer required to store the cookie.
  *
- * \note The value of \a sc_len must be within defined limits.
+ * \note The value of \a clen and \a slen must be within defined limits.
  *
- * \param sc_len Server cookie portion length.
+ * \param clen Client cookie portion length.
+ * \param slen Server cookie portion length.
  *
  * \retval <> 0 if the supplied arguments are within limits
  * \retval 0 if the supplied parameters violate the requirements
  */
 _pure_ _mustcheck_
-static inline uint16_t knot_edns_opt_cookie_data_len(uint16_t sc_len)
+static inline uint16_t knot_edns_opt_cookie_data_len(uint16_t clen,
+                                                     uint16_t slen)
 {
-	/* + size of client cookie */
-	return srvr_cookie_len_ok(sc_len) ? (sc_len + KNOT_OPT_COOKIE_CLNT) : 0;
+	return (ccookie_len_ok(clen) && scookie_len_ok(slen)) ? (clen + slen) : 0;
 }
 
 /*!
- * \brief Creates cookie wire data.
+ * \brief Write cookie wire data.
  *
  * \param cc       Client cookie.
+ * \param cc_len   Client cookie size.
  * \param sc       Server cookie.
  * \param sc_len   Server cookie size.
  * \param data     Output data buffer.
@@ -69,9 +80,9 @@ static inline uint16_t knot_edns_opt_cookie_data_len(uint16_t sc_len)
  * \retval KNOT_EINVAL
  * \retval KNOT_ESPACE
  */
-int knot_edns_opt_cookie_create(const uint8_t cc[KNOT_OPT_COOKIE_CLNT],
-                                const uint8_t *sc, const uint16_t sc_len,
-                                uint8_t *data, uint16_t *data_len);
+int knot_edns_opt_cookie_write(const uint8_t *cc, uint16_t cc_len,
+                               const uint8_t *sc, uint16_t sc_len,
+                               uint8_t *data, uint16_t *data_len);
 
 /*!
  * \brief Parse cookie wire data.
@@ -89,7 +100,7 @@ int knot_edns_opt_cookie_create(const uint8_t cc[KNOT_OPT_COOKIE_CLNT],
  * \return KNOT_EOK
  * \return KNOT_EINVAL
  */
-int knot_edns_opt_cookie_parse(const uint8_t *data, const uint16_t data_len,
+int knot_edns_opt_cookie_parse(const uint8_t *data, uint16_t data_len,
                                const uint8_t **cc, uint16_t *cc_len,
                                const uint8_t **sc, uint16_t *sc_len);
 
