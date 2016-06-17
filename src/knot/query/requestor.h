@@ -36,7 +36,6 @@ enum {
  */
 struct knot_requestor {
 	knot_mm_t *mm;                /*!< Memory context. */
-	void *pending;                /*!< Pending requests (FIFO). */
 	struct knot_layer layer;      /*!< Response processing layer. */
 };
 
@@ -44,10 +43,10 @@ struct knot_requestor {
 struct knot_request {
 	int fd;
 	unsigned flags;
-	struct sockaddr_storage remote, origin;
-	knot_sign_context_t sign;
+	struct sockaddr_storage remote, source;
 	knot_pkt_t *query;
 	knot_pkt_t *resp;
+	knot_sign_context_t sign;
 };
 
 /*!
@@ -93,13 +92,6 @@ int knot_requestor_init(struct knot_requestor *requestor, knot_mm_t *mm);
 void knot_requestor_clear(struct knot_requestor *requestor);
 
 /*!
- * \brief Return true if there are no pending queries.
- *
- * \param requestor Requestor instance.
- */
-bool knot_requestor_finished(struct knot_requestor *requestor);
-
-/*!
  * \brief Add a processing layer.
  *
  * \param requestor Requestor instance.
@@ -110,34 +102,14 @@ int knot_requestor_overlay(struct knot_requestor *requestor,
                            const knot_layer_api_t *proc, void *param);
 
 /*!
- * \brief Enqueue a query for processing.
- *
- * \note This function asynchronously creates a new connection to remote, but
- *       it does not send any data until requestor_exec().
- *
- * \param requestor Requestor instance.
- * \param request   Prepared request.
- *
- * \return KNOT_EOK or error
- */
-int knot_requestor_enqueue(struct knot_requestor *requestor,
-                           struct knot_request *request);
-
-/*!
- * \brief Close first pending request.
- *
- * \param requestor Requestor instance.
- *
- * \return KNOT_EOK or error
- */
-int knot_requestor_dequeue(struct knot_requestor *requestor);
-
-/*!
- * \brief Execute next pending query (FIFO).
+ * \brief Execute a request.
  *
  * \param requestor  Requestor instance.
+ * \param request    Request instance.
  * \param timeout_ms Timeout of each operation in miliseconds (-1 for infinity).
  *
  * \return KNOT_EOK or error
  */
-int knot_requestor_exec(struct knot_requestor *requestor, int timeout_ms);
+int knot_requestor_exec(struct knot_requestor *requestor,
+                        struct knot_request *request,
+                        int timeout_ms);

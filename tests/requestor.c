@@ -96,14 +96,11 @@ static void test_disconnected(struct knot_requestor *requestor,
                               const struct sockaddr_storage *dst,
                               const struct sockaddr_storage *src)
 {
-	/* Enqueue packet. */
 	struct knot_request *req = make_query(requestor, dst, src);
-	int ret = knot_requestor_enqueue(requestor, req);
-	is_int(KNOT_EOK, ret, "requestor: disconnected/enqueue");
+	int ret = knot_requestor_exec(requestor, req, TIMEOUT);
+	is_int(KNOT_ECONN, ret, "requestor: disconnected/exec");
+	knot_request_free(req, requestor->mm);
 
-	/* Wait for completion. */
-	ret = knot_requestor_exec(requestor, TIMEOUT);
-	is_int(KNOT_ECONN, ret, "requestor: disconnected/wait");
 }
 
 static void test_connected(struct knot_requestor *requestor,
@@ -112,27 +109,9 @@ static void test_connected(struct knot_requestor *requestor,
 {
 	/* Enqueue packet. */
 	struct knot_request *req = make_query(requestor, dst, src);
-	int ret = knot_requestor_enqueue(requestor, req);
-	is_int(KNOT_EOK, ret, "requestor: connected/enqueue");
-
-	/* Wait for completion. */
-	ret = knot_requestor_exec(requestor, TIMEOUT);
-	is_int(KNOT_EOK, ret, "requestor: connected/wait");
-
-	/* Enqueue multiple queries. */
-	ret = KNOT_EOK;
-	for (unsigned i = 0; i < 10; ++i) {
-		struct knot_request *req = make_query(requestor, dst, src);
-		ret |= knot_requestor_enqueue(requestor, req);
-	}
-	is_int(KNOT_EOK, ret, "requestor: multiple enqueue");
-
-	/* Wait for multiple queries. */
-	ret = KNOT_EOK;
-	for (unsigned i = 0; i < 10; ++i) {
-		ret |= knot_requestor_exec(requestor, TIMEOUT);
-	}
-	is_int(KNOT_EOK, ret, "requestor: multiple wait");
+	int ret = knot_requestor_exec(requestor, req, TIMEOUT);
+	is_int(KNOT_EOK, ret, "requestor: connected/exec");
+	knot_request_free(req, requestor->mm);
 }
 
 int main(int argc, char *argv[])

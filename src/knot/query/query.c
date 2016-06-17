@@ -291,16 +291,12 @@ static int zone_query_request(knot_pkt_t *query, const conf_remote_t *remote,
 	}
 
 	/* Send the queries and process responses. */
-	ret = knot_requestor_enqueue(&re, req);
-	if (ret == KNOT_EOK) {
-		conf_val_t *val = &param->conf->cache.srv_tcp_reply_timeout;
-		int timeout = conf_int(val) * 1000;
-		ret = knot_requestor_exec(&re, timeout);
-	} else {
-		knot_request_free(req, re.mm);
-	}
+	conf_val_t *val = &param->conf->cache.srv_tcp_reply_timeout;
+	int timeout = conf_int(val) * 1000;
+	ret = knot_requestor_exec(&re, req, timeout);
 
 	/* Cleanup. */
+	knot_request_free(req, re.mm);
 	knot_requestor_clear(&re);
 
 	return ret;

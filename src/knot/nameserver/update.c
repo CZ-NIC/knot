@@ -248,17 +248,12 @@ static int remote_forward(conf_t *conf, struct knot_request *request, conf_remot
 		return KNOT_ENOMEM;
 	}
 
-	/* Enqueue the request. */
-	ret = knot_requestor_enqueue(&re, req);
-	if (ret == KNOT_EOK) {
-		conf_val_t *val = &conf->cache.srv_tcp_reply_timeout;
-		int timeout = conf_int(val) * 1000;
-		ret = knot_requestor_exec(&re, timeout);
-	} else {
-		knot_request_free(req, re.mm);
-	}
+	/* Execute the request. */
+	conf_val_t *val = &conf->cache.srv_tcp_reply_timeout;
+	int timeout = conf_int(val) * 1000;
+	ret = knot_requestor_exec(&re, req, timeout);
 
-
+	knot_request_free(req, re.mm);
 	knot_requestor_clear(&re);
 
 	return ret;

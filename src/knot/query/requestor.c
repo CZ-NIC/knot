@@ -22,38 +22,23 @@
 #include "contrib/mempattern.h"
 #include "contrib/net.h"
 #include "contrib/sockaddr.h"
-#include "contrib/ucw/lists.h"
-
-#define PENDING(requestor)	((list_t *)requestor->pending)
 
 static bool use_tcp(struct knot_request *request)
 {
 	return (request->flags & KNOT_RQ_UDP) == 0;
 }
 
-static struct knot_request *request_make(knot_mm_t *mm)
-{
-	struct knot_request *request = mm_alloc(mm, sizeof(*request));
-	if (request == NULL) {
-		return NULL;
-	}
-
-	memset(request, 0, sizeof(*request));
-
-	return request;
-}
-
 /*! \brief Ensure a socket is connected. */
 static int request_ensure_connected(struct knot_request *request)
 {
-	/* Connect the socket if not already connected. */
+	if (request->fd >= 0) {
+		return KNOT_EOK;
+	}
+
+	int sock_type = use_tcp(request) ? SOCK_STREAM : SOCK_DGRAM;
+	request->fd = net_connected_socket(sock_type, &request->remote, &request->source);
 	if (request->fd < 0) {
-		int sock_type = use_tcp(request) ? SOCK_STREAM : SOCK_DGRAM;
-		request->fd = net_connected_socket(sock_type, &request->remote,
-		                                   &request->origin);
-		if (request->fd < 0) {
-			return KNOT_ECONN;
-		}
+		return KNOT_ECONN;
 	}
 
 	return KNOT_EOK;
@@ -115,32 +100,37 @@ static int request_recv(struct knot_request *request, int timeout_ms)
 }
 
 struct knot_request *knot_request_make(knot_mm_t *mm,
-                                       const struct sockaddr *dst,
-                                       const struct sockaddr *src,
+                                       const struct sockaddr *remote,
+                                       const struct sockaddr *source,
                                        knot_pkt_t *query,
                                        unsigned flags)
 {
-	if (dst == NULL || query == NULL) {
+	if (remote == NULL || query == NULL) {
 		return NULL;
 	}
 
-	/* Form a pending request. */
-	struct knot_request *request = request_make(mm);
+	struct knot_request *request = mm_alloc(mm, sizeof(*request));
 	if (request == NULL) {
 		return NULL;
 	}
+	memset(request, 0, sizeof(*request));
 
-	memcpy(&request->remote, dst, sockaddr_len(dst));
-	if (src) {
-		memcpy(&request->origin, src, sockaddr_len(src));
-	} else {
-		request->origin.ss_family = AF_UNSPEC;
+	request->resp = knot_pkt_new(NULL, KNOT_WIRE_MAX_PKTSIZE, mm);
+	if (request->resp == NULL) {
+		mm_free(mm, request);
+		return NULL;
 	}
 
-	request->fd = -1;
 	request->query = query;
-	request->resp  = NULL;
+	request->fd = -1;
 	request->flags = flags;
+	memcpy(&request->remote, remote, sockaddr_len(remote));
+	if (source) {
+		memcpy(&request->source, source, sockaddr_len(source));
+	} else {
+		request->source.ss_family = AF_UNSPEC;
+	}
+
 	return request;
 }
 
@@ -167,14 +157,7 @@ int knot_requestor_init(struct knot_requestor *requestor, knot_mm_t *mm)
 
 	memset(requestor, 0, sizeof(*requestor));
 
-	list_t *pending = mm_alloc(mm, sizeof(list_t));
-	if (pending == NULL) {
-		return KNOT_ENOMEM;
-	}
-	init_list(pending);
-
 	requestor->mm = mm;
-	requestor->pending = pending;
 
 	return KNOT_EOK;
 }
@@ -185,20 +168,9 @@ void knot_requestor_clear(struct knot_requestor *requestor)
 		return;
 	}
 
-	while (knot_requestor_dequeue(requestor) == KNOT_EOK)
-		;
-
-	// XXX: API migration, should be run per request
 	if (requestor->layer.api) {
 		knot_layer_finish(&requestor->layer);
 	}
-
-	mm_free(requestor->mm, PENDING(requestor));
-}
-
-bool knot_requestor_finished(struct knot_requestor *requestor)
-{
-	return requestor == NULL || EMPTY_LIST(*PENDING(requestor));
 }
 
 int knot_requestor_overlay(struct knot_requestor *requestor,
@@ -213,46 +185,6 @@ int knot_requestor_overlay(struct knot_requestor *requestor,
 
 	knot_layer_init(&requestor->layer, requestor->mm, proc);
 	requestor->layer.state = knot_layer_begin(&requestor->layer, param);
-
-	return KNOT_EOK;
-}
-
-int knot_requestor_enqueue(struct knot_requestor *requestor,
-                           struct knot_request *request)
-{
-	if (requestor == NULL || request == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	/* Socket must be uninitialized. */
-	assert(request->fd == -1);
-
-	/* Prepare response buffers. */
-	request->resp = knot_pkt_new(NULL, KNOT_WIRE_MAX_PKTSIZE, requestor->mm);
-	if (request->resp == NULL) {
-		mm_free(requestor->mm, request);
-		return KNOT_ENOMEM;
-	}
-
-	ptrlist_add(PENDING(requestor), request, requestor->mm);
-
-	return KNOT_EOK;
-}
-
-int knot_requestor_dequeue(struct knot_requestor *requestor)
-{
-	if (requestor == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	if (knot_requestor_finished(requestor)) {
-		return KNOT_ENOENT;
-	}
-
-	ptrnode_t *node = HEAD(*PENDING(requestor));
-	struct knot_request *last = node->d;
-	knot_request_free(last, requestor->mm);
-	ptrlist_rem(node, requestor->mm);
 
 	return KNOT_EOK;
 }
@@ -293,44 +225,32 @@ static int request_io(struct knot_requestor *req, struct knot_request *last,
 	return KNOT_EOK;
 }
 
-static int exec_request(struct knot_requestor *req, struct knot_request *last,
+int knot_requestor_exec(struct knot_requestor *requestor,
+                        struct knot_request *request,
                         int timeout_ms)
 {
+	if (!requestor || !request) {
+		return KNOT_EINVAL;
+	}
+
 	int ret = KNOT_EOK;
 
 	/* Do I/O until the processing is satisifed or fails. */
-	while (req->layer.state & (KNOT_STATE_PRODUCE|KNOT_STATE_CONSUME)) {
-		ret = request_io(req, last, timeout_ms);
+	while (requestor->layer.state & (KNOT_STATE_PRODUCE|KNOT_STATE_CONSUME)) {
+		ret = request_io(requestor, request, timeout_ms);
 		if (ret != KNOT_EOK) {
-			knot_layer_reset(&req->layer);
+			knot_layer_reset(&requestor->layer);
 			return ret;
 		}
 	}
 
 	/* Expect complete request. */
-	if (req->layer.state != KNOT_STATE_DONE) {
+	if (requestor->layer.state != KNOT_STATE_DONE) {
 		ret = KNOT_LAYER_ERROR;
 	}
 
 	/* Finish current query processing. */
-	knot_layer_reset(&req->layer);
-
-	return ret;
-}
-
-int knot_requestor_exec(struct knot_requestor *requestor, int timeout_ms)
-{
-	if (knot_requestor_finished(requestor)) {
-		return KNOT_ENOENT;
-	}
-
-	/* Execute next request. */
-	ptrnode_t *node = HEAD(*PENDING(requestor));
-	struct knot_request *last = node->d;
-	int ret = exec_request(requestor, last, timeout_ms);
-
-	/* Remove it from processing. */
-	knot_requestor_dequeue(requestor);
+	knot_layer_reset(&requestor->layer);
 
 	return ret;
 }
