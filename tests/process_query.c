@@ -85,7 +85,7 @@ int main(int argc, char *argv[])
 	/* Create processing context. */
 	knot_layer_t proc;
 	memset(&proc, 0, sizeof(knot_layer_t));
-	knot_layer_init(&proc, &mm, NS_PROC_QUERY);
+	knot_layer_init(&proc, &mm, process_query_layer());
 
 	/* Create fake server environment. */
 	server_t server;

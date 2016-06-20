@@ -312,7 +312,7 @@ int tcp_master(dthread_t *thread)
 	/* Create TCP answering context. */
 	tcp.server = handler->server;
 	tcp.thread_id = handler->thread_id[dt_get_id(thread)];
-	knot_layer_init(&tcp.layer, &mm, NS_PROC_QUERY);
+	knot_layer_init(&tcp.layer, &mm, process_query_layer());
 
 	/* Prepare structures for bound sockets. */
 	conf_val_t val = conf_get(conf(), C_SRV, C_LISTEN);

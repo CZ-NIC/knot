@@ -508,7 +508,7 @@ int udp_master(dthread_t *thread)
 	memset(&udp, 0, sizeof(udp_context_t));
 	udp.server = handler->server;
 	udp.thread_id = handler->thread_id[thr_id];
-	knot_layer_init(&udp.layer, &mm, NS_PROC_QUERY);
+	knot_layer_init(&udp.layer, &mm, process_query_layer());
 
 	/* Event source. */
 	struct pollfd *fds = NULL;

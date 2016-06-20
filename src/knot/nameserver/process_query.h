@@ -31,7 +31,6 @@
 
 /* Query processing module implementation. */
 const knot_layer_api_t *process_query_layer(void);
-#define NS_PROC_QUERY process_query_layer()
 
 /* Query processing specific flags. */
 enum process_query_flag {
