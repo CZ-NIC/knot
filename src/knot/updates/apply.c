@@ -90,7 +90,7 @@ static int replace_rdataset_with_copy(zone_node_t *node, uint16_t type)
 	return KNOT_EOK;
 }
 
-/*! \brief Stores RR data for update cleanup. */
+/*! \brief Frees RR dataset. For use when a copy was made. */
 static void clear_new_rrs(zone_node_t *node, uint16_t type)
 {
 	knot_rdataset_t *new_rrs = node_rdataset(node, type);

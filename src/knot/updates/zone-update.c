@@ -55,6 +55,10 @@ static int rem_from_node(zone_node_t *node, const zone_node_t *rem_node,
 			if (ret != KNOT_EOK) {
 				return ret;
 			}
+			// Remove whole rdataset if empty
+			if (to_change->rr_count == 0) {
+				node_remove_rdataset(node, rem_rrset.type);
+			}
 		}
 	}
 
@@ -121,14 +125,14 @@ static zone_node_t *node_deep_copy(const zone_node_t *node, knot_mm_t *mm)
 
 static int init_incremental(zone_update_t *update, zone_t *zone)
 {
-	assert(zone->contents);
+	if (zone->contents == NULL) {
+		return KNOT_EINVAL;
+	}
 
 	int ret = changeset_init(&update->change, zone->name);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
-
-	apply_init_ctx(&update->a_ctx);
 
 	// Copy base SOA RR.
 	update->change.soa_from =
@@ -150,35 +154,8 @@ static int init_full(zone_update_t *update, zone_t *zone)
 	return KNOT_EOK;
 }
 
-/* ------------------------------- API -------------------------------------- */
-
-int zone_update_init(zone_update_t *update, zone_t *zone, zone_update_flags_t flags)
+const zone_node_t *get_synth_node(zone_update_t *update, const knot_dname_t *dname)
 {
-	if (update == NULL || zone == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	memset(update, 0, sizeof(*update));
-	update->zone = zone;
-
-	mm_ctx_mempool(&update->mm, MM_DEFAULT_BLKSIZE);
-	update->flags = flags;
-
-	if (flags & UPDATE_INCREMENTAL) {
-		return init_incremental(update, zone);
-	} else if (flags & UPDATE_FULL) {
-		return init_full(update, zone);
-	} else {
-		return KNOT_EINVAL;
-	}
-}
-
-const zone_node_t *zone_update_get_node(zone_update_t *update, const knot_dname_t *dname)
-{
-	if (update == NULL || dname == NULL) {
-		return NULL;
-	}
-
 	const zone_node_t *old_node =
 		zone_contents_find_node(update->zone->contents, dname);
 	const zone_node_t *add_node =
@@ -221,6 +198,44 @@ const zone_node_t *zone_update_get_node(zone_update_t *update, const knot_dname_
 	return synth_node;
 }
 
+/* ------------------------------- API -------------------------------------- */
+
+int zone_update_init(zone_update_t *update, zone_t *zone, zone_update_flags_t flags)
+{
+	if (update == NULL || zone == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	memset(update, 0, sizeof(*update));
+	update->zone = zone;
+
+	apply_init_ctx(&update->a_ctx);
+
+	mm_ctx_mempool(&update->mm, MM_DEFAULT_BLKSIZE);
+	update->flags = flags;
+
+	if (flags & UPDATE_INCREMENTAL) {
+		return init_incremental(update, zone);
+	} else if (flags & UPDATE_FULL) {
+		return init_full(update, zone);
+	} else {
+		return KNOT_EINVAL;
+	}
+}
+
+const zone_node_t *zone_update_get_node(zone_update_t *update, const knot_dname_t *dname)
+{
+	if (update == NULL || dname == NULL) {
+		return NULL;
+	}
+
+	if (update->flags & UPDATE_FULL) {
+		return zone_contents_find_node(update->new_cont, dname);
+	} else {
+		return get_synth_node(update, dname);
+	}
+}
+
 const zone_node_t *zone_update_get_apex(zone_update_t *update)
 {
 	return zone_update_get_node(update, update->zone->name);
@@ -238,19 +253,29 @@ uint32_t zone_update_current_serial(zone_update_t *update)
 
 const knot_rdataset_t *zone_update_from(zone_update_t *update)
 {
-	const zone_node_t *apex = update->zone->contents->apex;
-	return node_rdataset(apex, KNOT_RRTYPE_SOA);
+	if (update->flags & UPDATE_INCREMENTAL) {
+		const zone_node_t *apex = update->zone->contents->apex;
+		return node_rdataset(apex, KNOT_RRTYPE_SOA);
+	}
+
+	return NULL;
 }
 
 const knot_rdataset_t *zone_update_to(zone_update_t *update)
 {
 	assert(update);
 
-	if (update->change.soa_to == NULL) {
-		return NULL;
+	if (update->flags & UPDATE_FULL) {
+		const zone_node_t *apex = update->new_cont->apex;
+		return node_rdataset(apex, KNOT_RRTYPE_SOA);
+	} else if (update->flags & UPDATE_INCREMENTAL) {
+		if (update->change.soa_to == NULL) {
+			return NULL;
+		}
+		return &update->change.soa_to->rrs;
 	}
 
-	return &update->change.soa_to->rrs;
+	return NULL;
 }
 
 void zone_update_clear(zone_update_t *update)
@@ -260,6 +285,8 @@ void zone_update_clear(zone_update_t *update)
 			/* Revert any changes on error, do nothing on success. */
 			update_rollback(&update->a_ctx);
 			changeset_clear(&update->change);
+		} else if (update->flags & UPDATE_FULL) {
+			zone_contents_deep_free(&update->new_cont);
 		}
 		mp_delete(update->mm.ctx);
 		memset(update, 0, sizeof(*update));
@@ -282,8 +309,11 @@ int zone_update_remove(zone_update_t *update, const knot_rrset_t *rrset)
 {
 	if (update->flags & UPDATE_INCREMENTAL) {
 		return changeset_rem_rrset(&update->change, rrset, CHANGESET_CHECK);
+	} else if (update->flags & UPDATE_FULL) {
+		zone_node_t *n = NULL;
+		return zone_contents_remove_rr(update->new_cont, rrset, &n);
 	} else {
-		return KNOT_ENOTSUP;
+		return KNOT_EINVAL;
 	}
 }
 
@@ -347,12 +377,14 @@ static int sign_update(zone_update_t *update,
 		return ret;
 	}
 
-	// Merge changesets
-	ret = changeset_merge(&update->change, &sec_ch);
-	if (ret != KNOT_EOK) {
-		update_rollback(&update->a_ctx);
-		changeset_clear(&sec_ch);
-		return ret;
+	if (!full_sign) {
+		// Merge changesets
+		ret = changeset_merge(&update->change, &sec_ch);
+		if (ret != KNOT_EOK) {
+			update_rollback(&update->a_ctx);
+			changeset_clear(&sec_ch);
+			return ret;
+		}
 	}
 
 	// Plan next zone resign.
@@ -449,6 +481,31 @@ static int commit_incremental(conf_t *conf, zone_update_t *update, zone_contents
 	return KNOT_EOK;
 }
 
+static int commit_full(conf_t *conf, zone_update_t *update, zone_contents_t **contents_out)
+{
+	int ret = KNOT_EOK;
+	//!\todo: perform some semantic checks, like if the zone has SOA
+	//        - actually, do we really want to?
+
+	zone_contents_adjust_full(update->new_cont);
+
+	conf_val_t val = conf_zone_get(conf, C_DNSSEC_SIGNING, update->zone->name);
+	bool dnssec_enable = update->flags & UPDATE_SIGN && conf_bool(&val);
+
+	// Sign the update.
+	if (dnssec_enable) {
+		ret = sign_update(update, update->new_cont);
+		if (ret != KNOT_EOK) {
+			update_rollback(&update->a_ctx);
+			return ret;
+		}
+	}
+
+	update_cleanup(&update->a_ctx);
+	*contents_out = update->new_cont;
+	return KNOT_EOK;
+}
+
 int zone_update_commit(conf_t *conf, zone_update_t *update)
 {
 	if (!conf || !update) {
@@ -463,7 +520,10 @@ int zone_update_commit(conf_t *conf, zone_update_t *update)
 			return ret;
 		}
 	} else {
-		return KNOT_ENOTSUP;
+		ret = commit_full(conf, update, &new_contents);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
 	}
 
 	/* If there is anything to change */
@@ -473,8 +533,9 @@ int zone_update_commit(conf_t *conf, zone_update_t *update)
 
 		/* Sync RCU. */
 		synchronize_rcu();
-
-		if (update->flags & UPDATE_INCREMENTAL) {
+		if (update->flags & UPDATE_FULL) {
+			update->new_cont = NULL;
+		} else if (update->flags & UPDATE_INCREMENTAL) {
 			update_cleanup(&update->a_ctx);
 			update_free_zone(&old_contents);
 			changeset_clear(&update->change);
@@ -484,7 +545,11 @@ int zone_update_commit(conf_t *conf, zone_update_t *update)
 	return KNOT_EOK;
 }
 
-bool zone_update_no_change(zone_update_t *up)
+bool zone_update_no_change(zone_update_t *update)
 {
-	return changeset_empty(&up->change);
+	if (update->flags & UPDATE_INCREMENTAL) {
+		return changeset_empty(&update->change);
+	} else {
+		return false; //FIXME: there's no zone_contents_empty() function, do we need it?
+	}
 }

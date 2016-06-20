@@ -68,6 +68,17 @@ zone_contents_t *zone_contents_new(const knot_dname_t *apex_name);
 int zone_contents_add_rr(zone_contents_t *z, const knot_rrset_t *rr, zone_node_t **n);
 
 /*!
+ * \brief Remove an RR from contents.
+ *
+ * \param z   Contents to remove from.
+ * \param rr  The RR to remove.
+ * \param n   Node from which the RR to be removed from on success, unchanged otherwise.
+ *
+ * \return KNOT_E*
+ */
+int zone_contents_remove_rr(zone_contents_t *z, const knot_rrset_t *rr, zone_node_t **n);
+
+/*!
  * \brief Get the node with this RR (the RR's owner).
  *
  * \param zone   Contents to add to.
