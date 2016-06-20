@@ -118,7 +118,6 @@ int main(int argc, char *argv[])
 	knot_layer_t proc;
 	memset(&proc, 0, sizeof(knot_layer_t));
 	knot_layer_init(&proc, &mm, process_answer_layer());
-	proc.mm = &mm;
 
 	/* Create fake server environment. */
 	server_t server;
