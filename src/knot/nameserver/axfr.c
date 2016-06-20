@@ -16,14 +16,14 @@
 
 #include <urcu.h>
 
+#include "contrib/mempattern.h"
+#include "contrib/print.h"
+#include "contrib/sockaddr.h"
 #include "knot/common/log.h"
 #include "knot/nameserver/axfr.h"
 #include "knot/nameserver/internet.h"
 #include "knot/zone/zonefile.h"
 #include "libknot/libknot.h"
-#include "contrib/mempattern.h"
-#include "contrib/print.h"
-#include "contrib/sockaddr.h"
 
 /* AXFR context. @note aliasing the generic xfr_proc */
 struct axfr_proc {
@@ -206,10 +206,6 @@ int xfr_process_list(knot_pkt_t *pkt, xfr_put_cb process_item,
 	return ret;
 }
 
-/* AXFR-specific logging (internal, expects 'qdata' variable set). */
-#define AXFROUT_LOG(severity, msg, ...) \
-	QUERY_LOG(severity, qdata, "AXFR, outgoing", msg, ##__VA_ARGS__)
-
 int axfr_process_query(knot_pkt_t *pkt, struct query_data *qdata)
 {
 	if (pkt == NULL || qdata == NULL) {
@@ -261,7 +257,6 @@ int axfr_process_query(knot_pkt_t *pkt, struct query_data *qdata)
 		return KNOT_STATE_FAIL;
 	}
 }
-#undef AXFROUT_LOG
 
 static void axfr_answer_cleanup(struct answer_data *data)
 {
@@ -303,10 +298,6 @@ static int axfr_answer_init(struct answer_data *data)
 
 	return KNOT_EOK;
 }
-
-/* AXFR-specific logging (internal, expects 'adata' variable set). */
-#define AXFRIN_LOG(severity, msg, ...) \
-	ANSWER_LOG(severity, adata, "AXFR, incoming", msg, ##__VA_ARGS__)
 
 static int axfr_answer_finalize(struct answer_data *adata)
 {
@@ -432,5 +423,3 @@ int axfr_process_answer(knot_pkt_t *pkt, struct answer_data *adata)
 
 	return ret;
 }
-
-#undef AXFRIN_LOG

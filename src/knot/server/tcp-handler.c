@@ -37,7 +37,7 @@
 #include "knot/common/fdset.h"
 #include "knot/common/log.h"
 #include "knot/nameserver/process_query.h"
-#include "libknot/processing/overlay.h"
+#include "knot/query/layer.h"
 #include "contrib/macros.h"
 #include "contrib/mempattern.h"
 #include "contrib/net.h"
@@ -47,7 +47,7 @@
 
 /*! \brief TCP context data. */
 typedef struct tcp_context {
-	struct knot_overlay overlay;/*!< Query processing overlay. */
+	knot_layer_t layer;         /*!< Query processing layer. */
 	server_t *server;           /*!< Name server structure. */
 	struct iovec iov[2];        /*!< TX/RX buffers. */
 	unsigned client_threshold;  /*!< Index of first TCP client. */
@@ -132,30 +132,22 @@ static int tcp_handle(tcp_context_t *tcp, int fd,
 		rx->iov_len = ret;
 	}
 
-	knot_mm_t *mm = tcp->overlay.mm;
+	/* Initialize processing layer. */
 
-	/* Initialize processing overlay. */
-	ret = knot_overlay_init(&tcp->overlay, mm);
-	if (ret != KNOT_EOK) {
-		return ret;
-	}
-	ret = knot_overlay_add(&tcp->overlay, NS_PROC_QUERY, &param);
-	if (ret != KNOT_EOK) {
-		return ret;
-	}
+	tcp->layer.state = knot_layer_begin(&tcp->layer, &param);
 
 	/* Create packets. */
-	knot_pkt_t *ans = knot_pkt_new(tx->iov_base, tx->iov_len, mm);
-	knot_pkt_t *query = knot_pkt_new(rx->iov_base, rx->iov_len, mm);
+	knot_pkt_t *ans = knot_pkt_new(tx->iov_base, tx->iov_len, tcp->layer.mm);
+	knot_pkt_t *query = knot_pkt_new(rx->iov_base, rx->iov_len, tcp->layer.mm);
 
 	/* Input packet. */
 	(void) knot_pkt_parse(query, 0);
-	int state = knot_overlay_consume(&tcp->overlay, query);
+	int state = knot_layer_consume(&tcp->layer, query);
 
 	/* Resolve until NOOP or finished. */
 	ret = KNOT_EOK;
 	while (state & (KNOT_STATE_PRODUCE|KNOT_STATE_FAIL)) {
-		state = knot_overlay_produce(&tcp->overlay, ans);
+		state = knot_layer_produce(&tcp->layer, ans);
 
 		/* Send, if response generation passed and wasn't ignored. */
 		if (ans->size > 0 && !(state & (KNOT_STATE_FAIL|KNOT_STATE_NOOP))) {
@@ -167,8 +159,7 @@ static int tcp_handle(tcp_context_t *tcp, int fd,
 	}
 
 	/* Reset after processing. */
-	knot_overlay_finish(&tcp->overlay);
-	knot_overlay_deinit(&tcp->overlay);
+	knot_layer_finish(&tcp->layer);
 
 	/* Cleanup. */
 	knot_pkt_free(&query);
@@ -232,7 +223,7 @@ static int tcp_event_serve(tcp_context_t *tcp, unsigned i)
 	int ret = tcp_handle(tcp, fd, &tcp->iov[0], &tcp->iov[1]);
 
 	/* Flush per-query memory. */
-	mp_flush(tcp->overlay.mm->ctx);
+	mp_flush(tcp->layer.mm->ctx);
 
 	if (ret == KNOT_EOK) {
 		/* Update socket activity timer. */
@@ -315,13 +306,13 @@ int tcp_master(dthread_t *thread)
 	memset(&tcp, 0, sizeof(tcp_context_t));
 
 	/* Create big enough memory cushion. */
-	knot_mm_t mm;
+	knot_mm_t mm = { 0 };
 	mm_ctx_mempool(&mm, 16 * MM_DEFAULT_BLKSIZE);
 
 	/* Create TCP answering context. */
 	tcp.server = handler->server;
 	tcp.thread_id = handler->thread_id[dt_get_id(thread)];
-	tcp.overlay.mm = &mm;
+	knot_layer_init(&tcp.layer, &mm, process_query_layer());
 
 	/* Prepare structures for bound sockets. */
 	conf_val_t val = conf_get(conf(), C_SRV, C_LISTEN);

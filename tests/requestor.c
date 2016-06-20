@@ -21,9 +21,10 @@
 #include <string.h>
 #include <fcntl.h>
 
-#include "knot/conf/conf.h"
-#include "libknot/processing/layer.h"
-#include "libknot/processing/requestor.h"
+#include "libknot/descriptor.h"
+#include "libknot/errcode.h"
+#include "knot/query/layer.h"
+#include "knot/query/requestor.h"
 #include "contrib/mempattern.h"
 #include "contrib/net.h"
 #include "contrib/sockaddr.h"
@@ -52,11 +53,12 @@ static void set_blocking_mode(int sock)
 	fcntl(sock, F_SETFL, flags);
 }
 
-static void* responder_thread(void *arg)
+static void *responder_thread(void *arg)
 {
-	int fd = *((int *)arg);
+	int fd = *(int *)arg;
+
 	set_blocking_mode(fd);
-	uint8_t buf[KNOT_WIRE_MAX_PKTSIZE];
+	uint8_t buf[KNOT_WIRE_MAX_PKTSIZE] = { 0 };
 	while (true) {
 		int client = accept(fd, NULL, NULL);
 		if (client < 0) {
@@ -71,57 +73,45 @@ static void* responder_thread(void *arg)
 		net_dns_tcp_send(client, buf, len, -1);
 		close(client);
 	}
+
 	return NULL;
 }
 
 /* Test implementations. */
 
-static struct knot_request *make_query(struct knot_requestor *requestor, conf_remote_t *remote)
+static struct knot_request *make_query(struct knot_requestor *requestor,
+                                       const struct sockaddr_storage *dst,
+                                       const struct sockaddr_storage *src)
 {
 	knot_pkt_t *pkt = knot_pkt_new(NULL, KNOT_WIRE_MAX_PKTSIZE, requestor->mm);
 	assert(pkt);
 	static const knot_dname_t *root = (uint8_t *)"";
 	knot_pkt_put_question(pkt, root, KNOT_CLASS_IN, KNOT_RRTYPE_SOA);
 
-	const struct sockaddr *dst = (const struct sockaddr *)&remote->addr;
-	const struct sockaddr *src = (const struct sockaddr *)&remote->via;
-	return knot_request_make(requestor->mm, dst, src, pkt, 0);
+	return knot_request_make(requestor->mm, (struct sockaddr *)dst,
+	                         (struct sockaddr *)src, pkt, 0);
 }
 
-static void test_disconnected(struct knot_requestor *requestor, conf_remote_t *remote)
+static void test_disconnected(struct knot_requestor *requestor,
+                              const struct sockaddr_storage *dst,
+                              const struct sockaddr_storage *src)
 {
-	/* Enqueue packet. */
-	int ret = knot_requestor_enqueue(requestor, make_query(requestor, remote));
-	is_int(KNOT_EOK, ret, "requestor: disconnected/enqueue");
+	struct knot_request *req = make_query(requestor, dst, src);
+	int ret = knot_requestor_exec(requestor, req, TIMEOUT);
+	is_int(KNOT_ECONN, ret, "requestor: disconnected/exec");
+	knot_request_free(req, requestor->mm);
 
-	/* Wait for completion. */
-	ret = knot_requestor_exec(requestor, TIMEOUT);
-	is_int(KNOT_ECONN, ret, "requestor: disconnected/wait");
 }
 
-static void test_connected(struct knot_requestor *requestor, conf_remote_t *remote)
+static void test_connected(struct knot_requestor *requestor,
+                           const struct sockaddr_storage *dst,
+                           const struct sockaddr_storage *src)
 {
 	/* Enqueue packet. */
-	int ret = knot_requestor_enqueue(requestor, make_query(requestor, remote));
-	is_int(KNOT_EOK, ret, "requestor: connected/enqueue");
-
-	/* Wait for completion. */
-	ret = knot_requestor_exec(requestor, TIMEOUT);
-	is_int(KNOT_EOK, ret, "requestor: connected/wait");
-
-	/* Enqueue multiple queries. */
-	ret = KNOT_EOK;
-	for (unsigned i = 0; i < 10; ++i) {
-		ret |= knot_requestor_enqueue(requestor, make_query(requestor, remote));
-	}
-	is_int(KNOT_EOK, ret, "requestor: multiple enqueue");
-
-	/* Wait for multiple queries. */
-	ret = KNOT_EOK;
-	for (unsigned i = 0; i < 10; ++i) {
-		ret |= knot_requestor_exec(requestor, TIMEOUT);
-	}
-	is_int(KNOT_EOK, ret, "requestor: multiple wait");
+	struct knot_request *req = make_query(requestor, dst, src);
+	int ret = knot_requestor_exec(requestor, req, TIMEOUT);
+	is_int(KNOT_EOK, ret, "requestor: connected/exec");
+	knot_request_free(req, requestor->mm);
 }
 
 int main(int argc, char *argv[])
@@ -131,50 +121,43 @@ int main(int argc, char *argv[])
 	knot_mm_t mm;
 	mm_ctx_mempool(&mm, MM_DEFAULT_BLKSIZE);
 
-	conf_remote_t remote;
-	memset(&remote, 0, sizeof(conf_remote_t));
-	sockaddr_set(&remote.addr, AF_INET, "127.0.0.1", 0);
-	sockaddr_set(&remote.via, AF_INET, "127.0.0.1", 0);
-
 	/* Initialize requestor. */
 	struct knot_requestor requestor;
-	knot_requestor_init(&requestor, &mm);
-	knot_requestor_overlay(&requestor, &dummy_module, NULL);
+	knot_requestor_init(&requestor, &dummy_module, NULL, &mm);
 
-	/* Test requestor in disconnected environment. */
-	test_disconnected(&requestor, &remote);
+	/* Define endpoints. */
+	struct sockaddr_storage client = { 0 };
+	sockaddr_set(&client, AF_INET, "127.0.0.1", 0);
+	struct sockaddr_storage server = { 0 };
+	sockaddr_set(&server, AF_INET, "127.0.0.1", 0);
 
 	/* Bind to random port. */
-	int origin_fd = net_bound_socket(SOCK_STREAM, &remote.addr, 0);
-	assert(origin_fd > 0);
-	socklen_t addr_len = sockaddr_len((struct sockaddr *)&remote.addr);
-	getsockname(origin_fd, (struct sockaddr *)&remote.addr, &addr_len);
-	int ret = listen(origin_fd, 10);
-	assert(ret == 0);
+	int responder_fd = net_bound_socket(SOCK_STREAM, &server, 0);
+	assert(responder_fd >= 0);
+	socklen_t addr_len = sockaddr_len((struct sockaddr *)&server);
+	getsockname(responder_fd, (struct sockaddr *)&server, &addr_len);
 
-	/* Responder thread. */
+	/* Test requestor in disconnected environment. */
+	test_disconnected(&requestor, &server, &client);
+
+	/* Start responder. */
+	int ret = listen(responder_fd, 10);
+	assert(ret == 0);
 	pthread_t thread;
-	pthread_create(&thread, 0, responder_thread, &origin_fd);
+	pthread_create(&thread, 0, responder_thread, &responder_fd);
 
 	/* Test requestor in connected environment. */
-	test_connected(&requestor, &remote);
-
-	/*! \todo #243 TSIG secured requests test should be implemented. */
+	test_connected(&requestor, &server, &client);
 
 	/* Terminate responder. */
-	int responder = net_connected_socket(SOCK_STREAM, &remote.addr, NULL);
-	assert(responder > 0);
-	net_dns_tcp_send(responder, (const uint8_t *)"", 1, TIMEOUT);
-	(void) pthread_join(thread, 0);
-	close(responder);
-
-	/* Close requestor. */
-	knot_requestor_clear(&requestor);
-	close(origin_fd);
+	int conn = net_connected_socket(SOCK_STREAM, &server, NULL);
+	assert(conn > 0);
+	net_dns_tcp_send(conn, (uint8_t *)"", 1, TIMEOUT);
+	pthread_join(thread, NULL);
+	close(responder_fd);
 
 	/* Cleanup. */
 	mp_delete((struct mempool *)mm.ctx);
-	conf_free(conf());
 
 	return 0;
 }

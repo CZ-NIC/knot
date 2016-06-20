@@ -25,7 +25,7 @@
 #pragma once
 
 #include "libknot/packet/pkt.h"
-#include "libknot/processing/layer.h"
+#include "knot/query/layer.h"
 
 /* Query data (from query processing). */
 struct query_data;

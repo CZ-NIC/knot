@@ -1,4 +1,4 @@
-/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -13,31 +13,19 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-/*!
- * \file
- *
- * \brief Answer processor.
- *
- * \addtogroup answer_processing
- * @{
- */
 
 #pragma once
 
-#include <sys/socket.h>
+#include <stdint.h>
 
 #include "knot/conf/conf.h"
-#include "knot/nameserver/process_query.h"
 #include "knot/nameserver/tsig_ctx.h"
+#include "knot/nameserver/log.h"
+#include "knot/query/layer.h"
+#include "knot/zone/zone.h"
 
 /* Answer processing module implementation. */
 const knot_layer_api_t *process_answer_layer(void);
-#define KNOT_STATE_ANSWER process_answer_layer()
-
-/*! \brief Answer processing logging base. */
-#define ANSWER_LOG(severity, data, operation, msg, ...) \
-	NS_PROC_LOG(severity, (data)->param->remote, (data)->param->zone->name, \
-	            operation, msg, ##__VA_ARGS__);
 
 /*!
  * \brief Processing module parameters.
@@ -65,4 +53,7 @@ struct answer_data {
 	knot_mm_t *mm;                      /*!< Memory context. */
 };
 
-/*! @} */
+int zone_query_execute(conf_t *conf, zone_t *zone, uint16_t pkt_type, const conf_remote_t *remote);
+
+#define ZONE_QUERY_LOG(priority, zone, remote, operation, msg, ...) \
+	NS_PROC_LOG(priority, zone->name, &(remote)->addr, operation, msg, ##__VA_ARGS__)

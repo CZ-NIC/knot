@@ -100,12 +100,16 @@ int tok_find(const char *lp, const char **tbl)
 	return bp;
 }
 
-const char* tok_skipspace(const char *lp)
+const char *tok_skipspace(const char *lp)
 {
 	if (lp == NULL) {
 		DBG_NULL;
 		return NULL;
 	}
 
-	while (isspace((unsigned char)(*lp))) ++lp; return lp;
+	while (isspace((unsigned char)(*lp))) {
+		lp += 1;
+	}
+
+	return lp;
 }

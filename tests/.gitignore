@@ -33,7 +33,6 @@ modules/online_sign
 net
 net_shortwrite
 node
-overlay
 pkt
 process_answer
 process_query

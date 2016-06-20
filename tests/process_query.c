@@ -85,7 +85,7 @@ int main(int argc, char *argv[])
 	/* Create processing context. */
 	knot_layer_t proc;
 	memset(&proc, 0, sizeof(knot_layer_t));
-	proc.mm = &mm;
+	knot_layer_init(&proc, &mm, process_query_layer());
 
 	/* Create fake server environment. */
 	server_t server;
@@ -106,7 +106,7 @@ int main(int argc, char *argv[])
 	param.server = &server;
 
 	/* Query processor (CH zone) */
-	knot_layer_begin(&proc, NS_PROC_QUERY, &param);
+	knot_layer_begin(&proc, &param);
 	knot_pkt_clear(query);
 	knot_pkt_put_question(query, IDSERVER_DNAME, KNOT_CLASS_CH, KNOT_RRTYPE_TXT);
 	exec_query(&proc, "CH TXT", query, KNOT_RCODE_NOERROR);

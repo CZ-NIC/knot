@@ -72,6 +72,6 @@ int tok_find(const char *lp, const char **tbl);
  * \param lp Pointer to current line.
  * \return ptr to next non-blank character.
  */
-const char* tok_skipspace(const char *lp);
+const char *tok_skipspace(const char *lp);
 
 /*! @} */

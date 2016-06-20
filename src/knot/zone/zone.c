@@ -20,11 +20,12 @@
 #include <urcu.h>
 
 #include "knot/common/log.h"
+#include "knot/nameserver/process_query.h"
+#include "knot/query/requestor.h"
+#include "knot/zone/contents.h"
 #include "knot/zone/serial.h"
 #include "knot/zone/zone.h"
 #include "knot/zone/zonefile.h"
-#include "knot/zone/contents.h"
-#include "knot/nameserver/process_query.h"
 #include "libknot/libknot.h"
 #include "contrib/trim.h"
 #include "contrib/mempattern.h"

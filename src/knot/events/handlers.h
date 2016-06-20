@@ -1,4 +1,4 @@
-/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -12,7 +12,7 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
-*/
+ */
 
 #pragma once
 
@@ -33,8 +33,8 @@ int event_expire(conf_t *conf, zone_t *zone);
 int event_flush(conf_t *conf, zone_t *zone);
 /*! \brief Sends notify to slaves. */
 int event_notify(conf_t *conf, zone_t *zone);
-/*! \brief (re)Signs the zone using its DNSSEC keys. */
+/*! \brief Signs the zone using its DNSSEC keys. */
 int event_dnssec(conf_t *conf, zone_t *zone);
 
-/*! \brief Progressive bootstrap retry timer. */
-uint32_t bootstrap_next(uint32_t timer);
+/*! \brief Get next bootstrap interval. */
+uint32_t bootstrap_next(uint32_t interval);

@@ -115,9 +115,6 @@ nobase_libknot_la_HEADERS =			\
 	libknot/packet/pkt.h			\
 	libknot/packet/rrset-wire.h		\
 	libknot/packet/wire.h			\
-	libknot/processing/layer.h		\
-	libknot/processing/overlay.h		\
-	libknot/processing/requestor.h		\
 	libknot/rdata.h				\
 	libknot/rdataset.h			\
 	libknot/rrset-dump.h			\
@@ -153,9 +150,6 @@ libknot_la_SOURCES =				\
 	libknot/packet/pkt.c			\
 	libknot/packet/rrset-wire.c		\
 	libknot/packet/wire.c			\
-	libknot/processing/layer.c		\
-	libknot/processing/overlay.c		\
-	libknot/processing/requestor.c		\
 	libknot/rdata.c				\
 	libknot/rdataset.c			\
 	libknot/rrset-dump.c			\
@@ -314,6 +308,18 @@ libknotd_la_SOURCES =				\
 	knot/dnssec/zone-nsec.h			\
 	knot/dnssec/zone-sign.c			\
 	knot/dnssec/zone-sign.h			\
+	knot/events/events.c			\
+	knot/events/events.h			\
+	knot/events/handlers.h			\
+	knot/events/handlers/dnssec.c		\
+	knot/events/handlers/expire.c		\
+	knot/events/handlers/flush.c		\
+	knot/events/handlers/load.c		\
+	knot/events/handlers/notify.c		\
+	knot/events/handlers/refresh.c		\
+	knot/events/handlers/update.c		\
+	knot/events/replan.c			\
+	knot/events/replan.h			\
 	knot/modules/dnsproxy.c			\
 	knot/modules/dnsproxy.h			\
 	knot/modules/online_sign/module.c	\
@@ -324,20 +330,17 @@ libknotd_la_SOURCES =				\
 	knot/modules/synth_record.h		\
 	knot/nameserver/axfr.c			\
 	knot/nameserver/axfr.h			\
-	knot/nameserver/capture.c		\
-	knot/nameserver/capture.h		\
 	knot/nameserver/chaos.c			\
 	knot/nameserver/chaos.h			\
 	knot/nameserver/internet.c		\
 	knot/nameserver/internet.h		\
 	knot/nameserver/ixfr.c			\
 	knot/nameserver/ixfr.h			\
+	knot/nameserver/log.h			\
 	knot/nameserver/notify.c		\
 	knot/nameserver/notify.h		\
 	knot/nameserver/nsec_proofs.c		\
 	knot/nameserver/nsec_proofs.h		\
-	knot/nameserver/process_answer.c	\
-	knot/nameserver/process_answer.h	\
 	knot/nameserver/process_query.c		\
 	knot/nameserver/process_query.h		\
 	knot/nameserver/query_module.c		\
@@ -346,6 +349,14 @@ libknotd_la_SOURCES =				\
 	knot/nameserver/tsig_ctx.h		\
 	knot/nameserver/update.c		\
 	knot/nameserver/update.h		\
+	knot/query/capture.c			\
+	knot/query/capture.h			\
+	knot/query/layer.c			\
+	knot/query/layer.h			\
+	knot/query/query.c			\
+	knot/query/query.h			\
+	knot/query/requestor.c			\
+	knot/query/requestor.h			\
 	knot/common/evsched.c			\
 	knot/common/evsched.h			\
 	knot/common/fdset.c			\
@@ -386,12 +397,6 @@ libknotd_la_SOURCES =				\
 	knot/worker/queue.h			\
 	knot/zone/contents.c			\
 	knot/zone/contents.h			\
-	knot/zone/events/events.c		\
-	knot/zone/events/events.h		\
-	knot/zone/events/handlers.c		\
-	knot/zone/events/handlers.h		\
-	knot/zone/events/replan.c		\
-	knot/zone/events/replan.h		\
 	knot/zone/node.c			\
 	knot/zone/node.h			\
 	knot/zone/semantic-check.c		\

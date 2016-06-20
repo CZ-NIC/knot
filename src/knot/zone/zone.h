@@ -30,7 +30,7 @@
 
 #include "knot/conf/conf.h"
 #include "knot/server/journal.h"
-#include "knot/zone/events/events.h"
+#include "knot/events/events.h"
 #include "knot/zone/contents.h"
 #include "libknot/dname.h"
 #include "libknot/packet/pkt.h"

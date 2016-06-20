@@ -36,7 +36,6 @@ check_PROGRAMS = \
 	net				\
 	net_shortwrite			\
 	node				\
-	overlay				\
 	pkt				\
 	process_answer			\
 	process_query			\

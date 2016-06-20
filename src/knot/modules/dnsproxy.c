@@ -14,10 +14,10 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "libknot/processing/requestor.h"
+#include "knot/query/requestor.h"
 #include "knot/common/log.h"
 #include "knot/modules/dnsproxy.h"
-#include "knot/nameserver/capture.h"
+#include "knot/query/capture.h"
 #include "knot/nameserver/process_query.h"
 #include "contrib/mempattern.h"
 #include "contrib/net.h"
@@ -64,20 +64,16 @@ static int dnsproxy_fwd(int state, knot_pkt_t *pkt, struct query_data *qdata, vo
 		return state;
 	}
 
-	/* Create a forwarding request. */
-	struct knot_requestor re;
-	int ret = knot_requestor_init(&re, qdata->mm);
-	if (ret != KNOT_EOK) {
-		return state; /* Ignore, not enough memory. */
-	}
-
-	struct capture_param param = {
+	/* Capture layer context. */
+	const knot_layer_api_t *capture = query_capture_api();
+	struct capture_param capture_param = {
 		.sink = pkt
 	};
 
-	ret = knot_requestor_overlay(&re, LAYER_CAPTURE, &param);
+	/* Create a forwarding request. */
+	struct knot_requestor re;
+	int ret = knot_requestor_init(&re, capture, &capture_param, qdata->mm);
 	if (ret != KNOT_EOK) {
-		knot_requestor_clear(&re);
 		return state; /* Ignore, not enough memory. */
 	}
 
@@ -92,15 +88,11 @@ static int dnsproxy_fwd(int state, knot_pkt_t *pkt, struct query_data *qdata, vo
 	}
 
 	/* Forward request. */
-	ret = knot_requestor_enqueue(&re, req);
-	if (ret == KNOT_EOK) {
-		conf_val_t *val = &conf()->cache.srv_tcp_reply_timeout;
-		int timeout = conf_int(val) * 1000;
-		ret = knot_requestor_exec(&re, timeout);
-	} else {
-		knot_request_free(req, re.mm);
-	}
+	conf_val_t *val = &conf()->cache.srv_tcp_reply_timeout;
+	int timeout = conf_int(val) * 1000;
+	ret = knot_requestor_exec(&re, req, timeout);
 
+	knot_request_free(req, re.mm);
 	knot_requestor_clear(&re);
 
 	/* Check result. */
