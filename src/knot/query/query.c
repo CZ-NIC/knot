@@ -17,8 +17,6 @@
 #include <stdint.h>
 #include <string.h>
 
-// XXX: mempattern + mempool?
-
 #include "contrib/mempattern.h"
 #include "contrib/ucw/mempool.h"
 #include "contrib/wire.h"
@@ -30,7 +28,7 @@
 #include "libknot/packet/pkt.h"
 #include "libknot/yparser/yptrafo.h"
 
-// XXX: temporary location of handlers
+// event handlers:
 #include "knot/nameserver/axfr.h"
 #include "knot/nameserver/internet.h"
 #include "knot/nameserver/ixfr.h"
@@ -129,7 +127,6 @@ static int process_answer(knot_layer_t *ctx, knot_pkt_t *pkt)
 	/* Verify incoming packet. */
 	int ret = tsig_verify_packet(&data->param->tsig_ctx, pkt);
 	if (ret != KNOT_EOK) {
-		// XXX: "response" operation sounds like placeholder
 		NS_PROC_LOG(LOG_WARNING, data->param->zone->name, data->param->remote,
 		            "response", "denied (%s)", knot_strerror(ret));
 		return KNOT_STATE_FAIL;

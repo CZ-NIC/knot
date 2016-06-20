@@ -20,6 +20,7 @@
 
 #include "knot/conf/conf.h"
 #include "knot/nameserver/tsig_ctx.h"
+#include "knot/nameserver/log.h"
 #include "knot/query/layer.h"
 #include "knot/zone/zone.h"
 
@@ -54,6 +55,5 @@ struct answer_data {
 
 int zone_query_execute(conf_t *conf, zone_t *zone, uint16_t pkt_type, const conf_remote_t *remote);
 
-#include "knot/nameserver/log.h"
 #define ZONE_QUERY_LOG(priority, zone, remote, operation, msg, ...) \
 	NS_PROC_LOG(priority, zone->name, &(remote)->addr, operation, msg, ##__VA_ARGS__)

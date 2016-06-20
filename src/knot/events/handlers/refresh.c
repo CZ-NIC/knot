@@ -28,10 +28,6 @@
 #define BOOTSTRAP_RETRY (30) /*!< Interval between AXFR bootstrap retries. */
 #define BOOTSTRAP_MAXTIME (24*60*60) /*!< Maximum AXFR retry cap of 24 hours. */
 
-#include "knot/nameserver/log.h"
-
-// XXX: duplicate message
-/* @note Module specific, expects some variables set. */
 #define LOG_TRANSFER(severity, pkt_type, msg, ...) \
 	if (pkt_type == KNOT_QUERY_AXFR) { \
 		ZONE_QUERY_LOG(severity, zone, master, "AXFR, incoming", msg, ##__VA_ARGS__); \

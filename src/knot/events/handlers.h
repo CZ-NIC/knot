@@ -16,12 +16,8 @@
 
 #pragma once
 
-// XXX: Consider forward declaration of conf_t a zone_t.
 #include "knot/conf/conf.h"
 #include "knot/zone/zone.h"
-
-// XXX: logging workaround
-#include "knot/nameserver/log.h"
 
 /*! \brief Loads or reloads potentially changed zone. */
 int event_load(conf_t *conf, zone_t *zone);
