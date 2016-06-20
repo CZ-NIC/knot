@@ -39,15 +39,15 @@
 		ZONE_QUERY_LOG(severity, zone, master, "IXFR, incoming", msg, ##__VA_ARGS__); \
 	}
 
-/*! \brief Progressive bootstrap retry timer. */
-static uint32_t bootstrap_next(uint32_t timer)
+/*! \brief Get next bootstrap interval. */
+uint32_t bootstrap_next(uint32_t interval)
 {
-	timer *= 2;
-	timer += dnssec_random_uint32_t() % BOOTSTRAP_RETRY;
-	if (timer > BOOTSTRAP_MAXTIME) {
-		timer = BOOTSTRAP_MAXTIME;
+	interval *= 2;
+	interval += dnssec_random_uint32_t() % BOOTSTRAP_RETRY;
+	if (interval > BOOTSTRAP_MAXTIME) {
+		interval = BOOTSTRAP_MAXTIME;
 	}
-	return timer;
+	return interval;
 }
 
 /*! \brief Get SOA from zone. */
