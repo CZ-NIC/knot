@@ -33,7 +33,7 @@
 
 /* UPDATE-specific logging (internal, expects 'qdata' variable set). */
 #define UPDATE_LOG(severity, msg, ...) \
-	NS_PROC_LOG(severity, qdata->zone->name, qdata->param->remote, \
+	NS_PROC_LOG(severity, knot_pkt_qname(qdata->query), qdata->param->remote, \
 	            "DDNS", msg, ##__VA_ARGS__)
 
 static void init_qdata_from_request(struct query_data *qdata,

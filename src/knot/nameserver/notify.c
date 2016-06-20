@@ -26,7 +26,7 @@
 
 /* NOTIFY-specific logging (internal, expects 'qdata' variable set). */
 #define NOTIFY_IN_LOG(priority, msg, ...) \
-	NS_PROC_LOG(priority, qdata->zone->name, qdata->param->remote, \
+	NS_PROC_LOG(priority, knot_pkt_qname(qdata->query), qdata->param->remote, \
 	            "NOTIFY, incoming", msg, ##__VA_ARGS__)
 
 /* NOTIFY-specific logging (internal, expects 'adata' variable set). */
