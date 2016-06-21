@@ -46,6 +46,8 @@ struct ixfr_proc {
 	knot_rrset_t *final_soa;       /* First SOA received via IXFR. */
 	list_t changesets;             /* Processed changesets. */
 	size_t change_count;           /* Count of changesets received. */
+	size_t add_size;
+	size_t del_size;
 	zone_t *zone;                  /* Modified zone - for journal access. */
 	mm_ctx_t *mm;                  /* Memory context for RR allocations. */
 	struct query_data *qdata;
@@ -349,6 +351,7 @@ static void ixfrin_cleanup(struct answer_data *data)
 	if (proc) {
 		changesets_free(&proc->changesets);
 		knot_rrset_free(&proc->final_soa, proc->mm);
+		conf_free(proc->proc.conf);
 		mm_free(data->mm, proc);
 		data->ext = NULL;
 	}
@@ -357,12 +360,21 @@ static void ixfrin_cleanup(struct answer_data *data)
 /*! \brief Initializes IXFR-in processing context. */
 static int ixfrin_answer_init(struct answer_data *data)
 {
+	conf_t *conf;
+	int ret = conf_clone(&conf);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
 	struct ixfr_proc *proc = mm_alloc(data->mm, sizeof(struct ixfr_proc));
 	if (proc == NULL) {
+		conf_free(conf);
 		return KNOT_ENOMEM;
 	}
+
 	memset(proc, 0, sizeof(struct ixfr_proc));
 	gettimeofday(&proc->proc.tstamp, NULL);
+	proc->proc.conf = conf;
 
 	init_list(&proc->changesets);
 
@@ -539,17 +551,34 @@ static int ixfrin_step(const knot_rrset_t *rr, struct ixfr_proc *proc)
 	proc->state = ixfrin_next_state(proc, rr);
 	changeset_t *change = TAIL(proc->changesets);
 
+	int ret;
 	switch (proc->state) {
 	case IXFR_START:
 		return solve_start(rr, proc);
 	case IXFR_SOA_DEL:
-		return solve_soa_del(rr, proc);
+		ret = solve_soa_del(rr, proc);
+		if (ret == KNOT_EOK) {
+			proc->del_size += knot_rrset_size(rr);
+		}
+		return ret;
 	case IXFR_DEL:
-		return solve_del(rr, change, proc->mm);
+		ret = solve_del(rr, change, proc->mm);
+		if (ret == KNOT_EOK) {
+			proc->del_size += knot_rrset_size(rr);
+		}
+		return ret;
 	case IXFR_SOA_ADD:
-		return solve_soa_add(rr, change, proc->mm);
+		ret = solve_soa_add(rr, change, proc->mm);
+		if (ret == KNOT_EOK) {
+			proc->add_size += knot_rrset_size(rr);
+		}
+		return ret;
 	case IXFR_ADD:
-		return solve_add(rr, change, proc->mm);
+		ret = solve_add(rr, change, proc->mm);
+		if (ret == KNOT_EOK) {
+			proc->add_size += knot_rrset_size(rr);
+		}
+		return ret;
 	case IXFR_DONE:
 		return KNOT_EOK;
 	default:
@@ -585,6 +614,11 @@ static int process_ixfrin_packet(knot_pkt_t *pkt, struct answer_data *adata)
 	ixfr->proc.npkts  += 1;
 	ixfr->proc.nbytes += pkt->size;
 
+	conf_val_t val = conf_zone_get(ixfr->proc.conf, C_MAX_ZONE_SIZE,
+	                               ixfr->zone->name);
+	const int64_t size_limit = conf_int(&val);
+	const size_t zone_size = ixfr->zone->contents->size;
+
 	// Process RRs in the message.
 	const knot_pktsection_t *answer = knot_pkt_section(pkt, KNOT_ANSWER);
 	for (uint16_t i = 0; i < answer->count; ++i) {
@@ -607,6 +641,13 @@ static int process_ixfrin_packet(knot_pkt_t *pkt, struct answer_data *adata)
 		if (ixfr->state == IXFR_DONE) {
 			// Transfer done, do not consume more RRs.
 			return NS_PROC_DONE;
+		}
+
+		if ((ixfr->add_size + ixfr->del_size > 2 * size_limit) ||
+		    (zone_size + ixfr->add_size - ixfr->del_size > size_limit)) {
+			IXFRIN_LOG(LOG_WARNING, "zone size exceeded, limit %ld",
+			           size_limit);
+			return KNOT_STATE_FAIL;
 		}
 	}
 

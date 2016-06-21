@@ -191,4 +191,6 @@ uint32_t knot_rrset_ttl(const knot_rrset_t *rrset);
  */
 int knot_rrset_rr_to_canonical(knot_rrset_t *rrset);
 
+size_t knot_rrset_size(const knot_rrset_t *rrset);
+
 /*! @} */
