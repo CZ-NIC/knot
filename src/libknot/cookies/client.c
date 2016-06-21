@@ -1,0 +1,91 @@
+/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+#include <arpa/inet.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <stdint.h>
+#include <stdlib.h>
+#include <string.h>
+
+#include "libknot/attribute.h"
+#include "libknot/cookies/client.h"
+#include "libknot/errcode.h"
+#include "libknot/rrtype/opt_cookie.h"
+
+_public_
+int knot_sockaddr_bytes(const void *sockaddr,
+                        const uint8_t **addr, size_t *len)
+{
+	if (!sockaddr || !addr || !len) {
+		return KNOT_EINVAL;
+	}
+
+	int addr_family = ((struct sockaddr *) sockaddr)->sa_family;
+
+	switch (addr_family) {
+	case AF_INET:
+		*addr = (uint8_t *) &((struct sockaddr_in *) sockaddr)->sin_addr;
+		*len = 4;
+		break;
+	case AF_INET6:
+		*addr = (uint8_t *) &((struct sockaddr_in6 *) sockaddr)->sin6_addr;
+		*len = 16;
+		break;
+	default:
+		*addr = NULL;
+		*len = 0;
+		addr_family = AF_UNSPEC;
+		return KNOT_EINVAL;
+		break;
+	}
+
+	return KNOT_EOK;
+}
+
+_public_
+int knot_ccookie_check(const uint8_t *cc, uint16_t cc_len,
+                       const struct knot_ccookie_input *input,
+                       const struct knot_cc_alg *cc_alg)
+{
+	if (!cc || !cc_len || !input ||
+	    !cc_alg || !cc_alg->cc_size || cc_alg->gen_func) {
+		return KNOT_EINVAL;
+	}
+
+	if (cc_alg->cc_size > KNOT_OPT_COOKIE_CLNT) {
+		return KNOT_ESPACE;
+	}
+
+	uint8_t generated_cc[KNOT_OPT_COOKIE_CLNT] = { 0, };
+	uint16_t generated_cc_len = KNOT_OPT_COOKIE_CLNT;
+
+	int ret = cc_alg->gen_func(input, generated_cc, &generated_cc_len);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	if (generated_cc_len != cc_len) {
+		return KNOT_EINVAL;
+	}
+
+	ret = memcmp(cc, generated_cc, generated_cc_len);
+	if (ret != 0) {
+		return KNOT_EINVAL;
+	}
+
+	return KNOT_EOK;
+}

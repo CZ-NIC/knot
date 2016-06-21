@@ -14,7 +14,6 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <assert.h>
 #include <stdint.h>
 #include <stdlib.h>
 
@@ -29,8 +28,6 @@ int knot_edns_opt_cookie_write(const uint8_t *cc, uint16_t cc_len,
                                const uint8_t *sc, uint16_t sc_len,
                                uint8_t *data, uint16_t *data_len)
 {
-	assert(cc != NULL);
-
 	if ((cc == NULL && cc_len > 0) || (sc == NULL && sc_len > 0)) {
 		return KNOT_EINVAL;
 	}
@@ -69,6 +66,10 @@ int knot_edns_opt_cookie_parse(const uint8_t *data, uint16_t data_len,
 {
 	if (data == NULL || !cookie_len_ok(data_len)) {
 		return KNOT_EINVAL;
+	}
+
+	if (!cookie_len_ok(data_len)) {
+		return KNOT_EMALF;
 	}
 
 	if (cc != NULL && cc_len != NULL) {

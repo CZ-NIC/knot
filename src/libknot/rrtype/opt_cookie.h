@@ -16,7 +16,7 @@
 /*!
  * \file
  *
- * \brief Functions for manipulating the EDNS OPT pseudo-RR.
+ * \brief Functions for manipulating the EDNS Cookie OPT pseudo-RR.
  *
  * \addtogroup libknot
  * @{
@@ -97,8 +97,9 @@ int knot_edns_opt_cookie_write(const uint8_t *cc, uint16_t cc_len,
  * \param sc       Server cookie.
  * \param sc_len   Server cookie size.
  *
- * \return KNOT_EOK
- * \return KNOT_EINVAL
+ * \retval KNOT_EOK
+ * \retval KNOT_EINVAL
+ * \retval KNOT_EMALF
  */
 int knot_edns_opt_cookie_parse(const uint8_t *data, uint16_t data_len,
                                const uint8_t **cc, uint16_t *cc_len,
