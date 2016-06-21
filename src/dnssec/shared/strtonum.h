@@ -25,7 +25,7 @@
 
 #include "error.h"
 
-inline static int str_to_intmax(const char *src, intmax_t *dest)
+inline static int intmax_from_str(const char *src, intmax_t *dest)
 {
 	if (!isdigit((int)*src) && *src != '-' && *src != '+') {
 		return DNSSEC_MALFORMED_DATA;
@@ -47,7 +47,7 @@ inline static int str_to_intmax(const char *src, intmax_t *dest)
 	return DNSSEC_EOK;
 }
 
-inline static int str_to_uintmax(const char *src, uintmax_t *dest)
+inline static int uintmax_from_str(const char *src, uintmax_t *dest)
 {
 	if (!isdigit((int)*src) && *src != '-' && *src != '+') {
 		return DNSSEC_MALFORMED_DATA;
@@ -69,33 +69,36 @@ inline static int str_to_uintmax(const char *src, uintmax_t *dest)
 	return DNSSEC_EOK;
 }
 
-#define CONVERT(function, maxtype, type, min, max, src, dest) \
-{                                                             \
-	maxtype value;                                        \
-	int result = function(src, &value);                   \
-	if (result != DNSSEC_EOK) {                           \
-		return result;                                \
-	}                                                     \
-	if (value < (min) || value > (max)) {                 \
-		return DNSSEC_OUT_OF_RANGE;                   \
-	}                                                     \
-	*dest = (type)value;                                  \
-	return DNSSEC_EOK;                                    \
+#define CONVERT(prefix, type, min, max, src, dest)          \
+{                                                           \
+	prefix##max_t value;                                \
+	int result = prefix##max_from_str(src, &value);     \
+	if (result != DNSSEC_EOK) {                         \
+		return result;                              \
+	}                                                   \
+	if (CHECK_MIN_##min(value, min) || value > (max)) { \
+		return DNSSEC_OUT_OF_RANGE;                 \
+	}                                                   \
+	*dest = (type)value;                                \
+	return DNSSEC_EOK;                                  \
 }
+
+#define CHECK_MIN_0(value, min)	      0
+#define CHECK_MIN_INT_MIN(value, min) (value) < (min)
 
 inline static int str_to_int(const char *src, int *dest)
 {
-	CONVERT(str_to_intmax, intmax_t, int, INT_MIN, INT_MAX, src, dest);
+	CONVERT(int, int, INT_MIN, INT_MAX, src, dest);
 }
 
 inline static int str_to_u8(const char *src, uint8_t *dest)
 {
-	CONVERT(str_to_uintmax, uintmax_t, uint8_t, 0, UINT8_MAX, src, dest);
+	CONVERT(uint, uint8_t, 0, UINT8_MAX, src, dest);
 }
 
 inline static int str_to_u16(const char *src, uint16_t *dest)
 {
-	CONVERT(str_to_uintmax, uintmax_t, uint16_t, 0, UINT16_MAX, src, dest);
+	CONVERT(uint, uint16_t, 0, UINT16_MAX, src, dest);
 }
 
 #undef CONVERT
