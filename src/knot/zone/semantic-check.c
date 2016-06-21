@@ -144,6 +144,7 @@ static int check_rrsig(const zone_node_t *node, semchecks_data_t *data);
 static int check_signed_rrsig(const zone_node_t *node, semchecks_data_t *data);
 static int check_nsec_bitmap(const zone_node_t *node, semchecks_data_t *data);
 static int check_nsec3_presence(const zone_node_t *node, semchecks_data_t *data);
+static int measure_size(const zone_node_t *node, semchecks_data_t *data);
 
 struct check_function {
 	int (*function)(const zone_node_t *, semchecks_data_t *);
@@ -162,10 +163,23 @@ static const struct check_function CHECK_FUNCTIONS[] = {
 	{check_nsec3_presence, NSEC3},
 	{check_nsec3_opt_out,  NSEC3},
 	{check_nsec_bitmap,    NSEC | NSEC3},
+	{measure_size,         MANDATORY}
 };
 
 static const int CHECK_FUNCTIONS_LEN = sizeof(CHECK_FUNCTIONS)
                                      / sizeof(struct check_function);
+
+static int measure_size(const zone_node_t *node, semchecks_data_t *data){
+
+	int rrset_count = node->rrset_count;
+	for (int i = 0; i < rrset_count; i++) {
+		knot_rrset_t rrset = node_rrset_at(node, i);
+
+		data->zone->size += knot_rrset_size(&rrset);
+	}
+	return KNOT_EOK;
+}
+
 
 /*!
  * \brief Check whether DNSKEY rdata are valid.
@@ -916,6 +930,8 @@ int zone_do_sem_checks(zone_contents_t *zone, bool optional,
 		return KNOT_EINVAL;
 	}
 
+	zone->size = 0;
+
 	semchecks_data_t data = {
 		.handler = handler,
 		.zone = zone,
@@ -936,6 +952,8 @@ int zone_do_sem_checks(zone_contents_t *zone, bool optional,
 
 	int ret = zone_contents_tree_apply_inorder(zone, do_checks_in_tree,
 	                                           &data);
+
+	log_zone_debug(zone->apex->owner, "semcheck: size of zone: %zu", zone->size);
 
 	if (ret != KNOT_EOK) {
 		return ret;

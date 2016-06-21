@@ -20,6 +20,7 @@
 #include "contrib/print.h"
 #include "contrib/sockaddr.h"
 #include "knot/common/log.h"
+#include "knot/conf/conf.h"
 #include "knot/nameserver/axfr.h"
 #include "knot/nameserver/internet.h"
 #include "knot/zone/zonefile.h"
@@ -265,6 +266,7 @@ static void axfr_answer_cleanup(struct answer_data *data)
 	struct xfr_proc *proc = data->ext;
 	if (proc) {
 		zone_contents_deep_free(&proc->contents);
+		conf_free(proc->conf);
 		mm_free(data->mm, proc);
 		data->ext = NULL;
 	}
@@ -281,16 +283,25 @@ static int axfr_answer_init(struct answer_data *data)
 		return KNOT_ENOMEM;
 	}
 
+	conf_t *conf;
+	int ret = conf_clone(&conf);
+	if (ret != KNOT_EOK) {
+		zone_contents_deep_free(&new_contents);
+		return ret;
+	}
+
 	/* Create new processing context. */
 	struct xfr_proc *proc = mm_alloc(data->mm, sizeof(struct xfr_proc));
 	if (proc == NULL) {
 		zone_contents_deep_free(&new_contents);
+		conf_free(conf);
 		return KNOT_ENOMEM;
 	}
 
 	memset(proc, 0, sizeof(struct xfr_proc));
 	proc->contents = new_contents;
 	gettimeofday(&proc->tstamp, NULL);
+	proc->conf = conf;
 
 	/* Set up cleanup callback. */
 	data->ext = proc;
@@ -360,6 +371,10 @@ static int axfr_answer_packet(knot_pkt_t *pkt, struct xfr_proc *proc)
 	proc->npkts  += 1;
 	proc->nbytes += pkt->size;
 
+	conf_val_t val = conf_zone_get(proc->conf, C_MAX_ZONE_SIZE,
+	                               proc->contents->apex->owner);
+	int64_t size_limit = conf_int(&val);
+
 	/* Init zone creator. */
 	zcreator_t zc = {.z = proc->contents, .master = false, .ret = KNOT_EOK };
 
@@ -368,12 +383,20 @@ static int axfr_answer_packet(knot_pkt_t *pkt, struct xfr_proc *proc)
 	for (uint16_t i = 0; i < answer->count; ++i) {
 		if (answer_rr[i].type == KNOT_RRTYPE_SOA &&
 		    node_rrtype_exists(zc.z->apex, KNOT_RRTYPE_SOA)) {
-			return KNOT_STATE_DONE;
+			    log_zone_debug(proc->contents->apex->owner, "size: %zu", proc->contents->size);
+			    return KNOT_STATE_DONE;
 		} else {
 			int ret = zcreator_step(&zc, &answer_rr[i]);
 			if (ret != KNOT_EOK) {
 				return KNOT_STATE_FAIL;
 			}
+		}
+		proc->contents->size += knot_rrset_size(&answer_rr[i]);
+		if (proc->contents->size > size_limit) {
+			log_zone_warning(proc->contents->apex->owner,
+			                 "AXFR, incoming, zone size exceeded, "
+			                 "limit %ld", size_limit);
+			return KNOT_STATE_FAIL;
 		}
 	}
 

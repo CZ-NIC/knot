@@ -194,4 +194,6 @@ bool knot_rrset_is_nsec3rel(const knot_rrset_t *rr);
  */
 int knot_rrset_rr_to_canonical(knot_rrset_t *rrset);
 
+size_t knot_rrset_size(const knot_rrset_t *rrset);
+
 /*! @} */

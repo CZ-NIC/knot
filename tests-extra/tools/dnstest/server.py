@@ -847,6 +847,7 @@ class Knot(Server):
         self.daemon_bin = params.knot_bin
         self.control_bin = params.knot_ctl
         self.inquirer = dnstest.inquirer.Inquirer()
+        self.zone_size_limit = None
 
     @property
     def keydir(self):
@@ -1033,6 +1034,8 @@ class Knot(Server):
                     modules += ", "
                 modules += module.get_conf_ref()
             s.item("global-module", "[%s]" % modules)
+        if self.zone_size_limit:
+            s.item("max-zone-size", self.zone_size_limit)
         s.end()
 
         s.begin("zone")

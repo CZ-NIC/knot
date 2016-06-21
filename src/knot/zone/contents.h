@@ -41,6 +41,7 @@ typedef struct zone_contents {
 	zone_tree_t *nsec3_nodes;
 
 	dnssec_nsec3_params_t nsec3_params;
+	size_t size;
 } zone_contents_t;
 
 /*!

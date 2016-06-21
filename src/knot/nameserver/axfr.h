@@ -25,6 +25,7 @@
 #pragma once
 
 #include "libknot/packet/pkt.h"
+#include "knot/conf/conf.h"
 #include "knot/nameserver/log.h"
 #include "knot/query/query.h"
 #include "knot/nameserver/process_query.h"
@@ -60,6 +61,7 @@ struct xfr_proc {
 	unsigned nbytes; /* Bytes processed. */
 	struct timeval tstamp; /* Start time. */
 	zone_contents_t *contents; /* Processed zone. */
+	conf_t *conf;
 };
 
 /*! \brief Generic transfer processing (reused for IXFR).
