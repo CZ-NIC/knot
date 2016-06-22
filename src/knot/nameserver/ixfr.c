@@ -385,6 +385,12 @@ static int ixfrin_answer_init(struct answer_data *data)
 	data->ext = proc;
 	data->ext_cleanup = &ixfrin_cleanup;
 
+	/// \TODO Temporary solution, because not every zone input is checked
+	/// measured. Used only for measure size of zone.
+	err_handler_logger_t handler;
+	handler._cb.cb = err_handler_logger;
+	zone_do_sem_checks(proc->zone->contents, false, &handler._cb);
+
 	return KNOT_EOK;
 }
 
@@ -400,6 +406,17 @@ static int ixfrin_finalize(struct answer_data *adata)
 		IXFRIN_LOG(LOG_WARNING, "failed to apply changes to zone (%s)",
 		           knot_strerror(ret));
 		return ret;
+	}
+
+	conf_val_t val = conf_zone_get(ixfr->proc.conf, C_MAX_ZONE_SIZE,
+	                               ixfr->zone->name);
+	const int64_t size_limit = conf_int(&val);
+
+	if (new_contents->size > size_limit) { // secodary check
+		IXFRIN_LOG(LOG_WARNING, "zone size exceeded, limit %ld", size_limit);
+		update_rollback(&a_ctx);
+		update_free_zone(&new_contents);
+		return KNOT_STATE_FAIL;
 	}
 
 	/* Write changes to journal. */
@@ -643,8 +660,14 @@ static int process_ixfrin_packet(knot_pkt_t *pkt, struct answer_data *adata)
 			return NS_PROC_DONE;
 		}
 
-		if ((ixfr->add_size + ixfr->del_size > 2 * size_limit) ||
-		    (zone_size + ixfr->add_size - ixfr->del_size > size_limit)) {
+		if (ixfr->add_size + ixfr->del_size > 2 * size_limit) {
+			IXFRIN_LOG(LOG_WARNING, "transfer size exceeded, limit %ld",
+			           2 * size_limit);
+		}
+
+		if (ixfr->add_size > ixfr->del_size &&
+		    (zone_size + ixfr->add_size - ixfr->del_size) > size_limit) {
+			log_zone_debug(ixfr->zone->name, "zone_size:%zu + add_size:%zu + del_size:%zu", zone_size, ixfr->add_size, ixfr->del_size);
 			IXFRIN_LOG(LOG_WARNING, "zone size exceeded, limit %ld",
 			           size_limit);
 			return KNOT_STATE_FAIL;

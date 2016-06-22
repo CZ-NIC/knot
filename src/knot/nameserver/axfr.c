@@ -332,6 +332,15 @@ static int axfr_answer_finalize(struct answer_data *adata)
 		return rc;
 	}
 
+	conf_val_t val = conf_zone_get(proc->conf, C_MAX_ZONE_SIZE,
+	                               proc->contents->apex->owner);
+	int64_t size_limit = conf_int(&val);
+
+	if (proc->contents->size > size_limit) {
+		AXFRIN_LOG(LOG_WARNING, "zone size exceeded, limit %ld", size_limit);
+		return KNOT_STATE_FAIL;
+	}
+
 	/* Switch contents. */
 	zone_t *zone = adata->param->zone;
 	zone_contents_t *old_contents =
