@@ -16,6 +16,9 @@
 
 #pragma once
 
+#include <stdint.h>
+#include <stdlib.h>
+
 /*!
  * \brief Convenience structure holding both, server and client, cookies.
  */

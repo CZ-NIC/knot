@@ -16,6 +16,8 @@
 
 #pragma once
 
+#include <stdint.h>
+
 #include "libknot/attribute.h"
 
 #define KNOT_OPT_COOKIE_MIN  8

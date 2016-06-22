@@ -16,6 +16,9 @@
 
 #pragma once
 
+#include <stdint.h>
+#include <stdlib.h>
+
 /*!
  * \brief Input data needed to compute the client cookie value.
  */
