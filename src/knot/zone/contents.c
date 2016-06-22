@@ -1129,3 +1129,21 @@ bool zone_contents_is_empty(const zone_contents_t *zone)
 {
 	return !zone || !node_rrtype_exists(zone->apex, KNOT_RRTYPE_SOA);
 }
+
+static int measure_size(const zone_node_t *node, void *data){
+
+	size_t *size = data;
+	int rrset_count = node->rrset_count;
+	for (int i = 0; i < rrset_count; i++) {
+		knot_rrset_t rrset = node_rrset_at(node, i);
+		*size += knot_rrset_size(&rrset);
+	}
+	return KNOT_EOK;
+}
+
+size_t zone_contents_measure_size(zone_contents_t *zone)
+{
+	zone->size = 0;
+	zone_contents_tree_apply_inorder(zone, measure_size, &zone->size);
+	return zone->size;
+}

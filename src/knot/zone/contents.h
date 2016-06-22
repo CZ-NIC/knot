@@ -283,4 +283,7 @@ bool zone_contents_is_signed(const zone_contents_t *zone);
  */
 bool zone_contents_is_empty(const zone_contents_t *zone);
 
+
+size_t zone_contents_measure_size(zone_contents_t *zone);
+
 /*! @} */
