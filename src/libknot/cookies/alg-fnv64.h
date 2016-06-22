@@ -13,14 +13,6 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-/*!
- * \file
- *
- * \brief Cookie algorithms based on FNV-64 hash.
- *
- * \addtogroup libknot
- * @{
- */
 
 #pragma once
 
@@ -45,5 +37,3 @@ extern const struct knot_sc_alg knot_sc_alg_fnv64_simple;
  * \note The algorithm expects a nonce value, time stamp and hash value.
  */
 extern const struct knot_sc_alg knot_sc_alg_fnv64;
-
-/*! @} */

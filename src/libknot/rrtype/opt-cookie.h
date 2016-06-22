@@ -13,14 +13,6 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-/*!
- * \file
- *
- * \brief Functions for manipulating the EDNS Cookie OPT pseudo-RR.
- *
- * \addtogroup libknot
- * @{
- */
 
 #pragma once
 
@@ -104,5 +96,3 @@ int knot_edns_opt_cookie_write(const uint8_t *cc, uint16_t cc_len,
 int knot_edns_opt_cookie_parse(const uint8_t *data, uint16_t data_len,
                                const uint8_t **cc, uint16_t *cc_len,
                                const uint8_t **sc, uint16_t *sc_len);
-
-/*! @} */

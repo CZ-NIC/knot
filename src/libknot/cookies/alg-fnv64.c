@@ -29,13 +29,16 @@
 /* When defined, client address will be used when generating client cookie. */
 //#define CC_HASH_USE_CLIENT_ADDRESS
 
-/**
+/*!
  * Compute client cookie using FNV-64.
- * @note At least one of the arguments must be non-null.
- * @param input  Input parameters.
- * @param cc_out Buffer for computed client cookie.
- * @param cc_len Size of buffer/written data.
- * @return KNOT_EOK on success, error code else.
+ *
+ * \note At least one input address must be provided.
+ *
+ * \param[in]     input   Input parameters.
+ * \param[in]     cc_out  Buffer for computed client cookie.
+ * \param[in,out] cc_len  Size of buffer/written data.
+ *
+ * \return KNOT_EOK on success, error code else.
  */
 static int cc_gen_fnv64(const struct knot_ccookie_input *input,
                         uint8_t *cc_out, uint16_t *cc_len)
@@ -88,13 +91,16 @@ static int cc_gen_fnv64(const struct knot_ccookie_input *input,
 
 #define SRVR_FNV64_SIMPLE_HASH_SIZE 8
 
-/**
- * @brief Compute server cookie using FNV-64 (hash only).
- * @note Server cookie = FNV-64( client IP | client cookie | server secret )
- * @param input Data to compute cookie from.
- * @param sc_out Server cookie output buffer.
- * @param sc_len Buffer size / written data size.
- * @return KNOT_EOK or error code.
+/*!
+ * \brief Compute server cookie using FNV-64 (hash only).
+ *
+ * Server cookie = FNV-64(client IP | client cookie | server secret)
+ *
+ * \param[in]     input   Data to compute cookie from.
+ * \param[in]     sc_out  Server cookie output buffer.
+ * \param[in,out] sc_len  Buffer size/written data size.
+ *
+ * \return KNOT_EOK or error code.
  */
 static int sc_gen_fnv64_simple(const struct knot_scookie_input *input,
                                uint8_t *sc_out, uint16_t *sc_len)
@@ -135,12 +141,15 @@ static int sc_gen_fnv64_simple(const struct knot_scookie_input *input,
 #define SRVR_FNV64_SIZE 16
 
 /**
- * @brief Compute server cookie using FNV-64.
- * @note Server cookie = nonce | time | FNV-64( client IP | nonce| time | client cookie | server secret )
- * @param input Data to compute cookie from.
- * @param sc_out Server cookie output buffer.
- * @param sc_len Buffer size / written data size.
- * @return KNOT_EOK or error code.
+ * \brief Compute server cookie using FNV-64.
+ *
+ * Server cookie = nonce | time | FNV-64(client IP | nonce | time | client cookie | server secret)
+ *
+ * \param[in]     input   Data to compute cookie from.
+ * \param[in]     sc_out  Server cookie output buffer.
+ * \param[in,out] sc_len  Buffer size/written data size.
+ *
+ * \return KNOT_EOK or error code.
  */
 static int sc_gen_fnv64(const struct knot_scookie_input *input,
                         uint8_t *sc_out, uint16_t *sc_len)

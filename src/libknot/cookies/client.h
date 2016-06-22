@@ -13,14 +13,6 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-/*!
- * \file
- *
- * \brief Functions for manipulating client cookie values.
- *
- * \addtogroup libknot
- * @{
- */
 
 #pragma once
 
@@ -37,10 +29,10 @@ struct knot_ccookie_input {
 /*!
  * \brief Client cookie generator function type.
  *
- * \param input   Data which to generate the cookie from.
- * \param cc_out  Buffer to write the resulting client cookie data into.
- * \param cc_len  On input set to cookie buffer size.
- *                On successful return contains size of client cookie.
+ * \param[in]     input   Data which to generate the cookie from.
+ * \param[in]     cc_out  Buffer to write the resulting client cookie data into.
+ * \param[in,out] cc_len  On input set to cookie buffer size. On successful
+ *                        return contains size of client cookie.
  *
  * \retval KNOT_EOK
  * \retval KNOT_ESPACE
@@ -58,19 +50,6 @@ struct knot_cc_alg {
 };
 
 /*!
- * \brief Get pointer to IP address and the size of the address.
- *
- * \param sockaddr  Socket address.
- * \param addr      Pointer to address to be set.
- * \param len       Address length to be set.
- *
- * \retval KNOT_EOK
- * \retval KNOT_EINVAL
- */
-int knot_sockaddr_bytes(const void *sockaddr,
-                        const uint8_t **addr, size_t *len);
-
-/*!
  * \brief Check whether client cookie \a cc was generated from given \a input.
  *
  * \param cc      Client cookie that should be checked.
@@ -85,5 +64,3 @@ int knot_sockaddr_bytes(const void *sockaddr,
 int knot_ccookie_check(const uint8_t *cc, uint16_t cc_len,
                        const struct knot_ccookie_input *input,
                        const struct knot_cc_alg *cc_alg);
-
-/*! @} */

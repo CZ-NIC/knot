@@ -13,14 +13,6 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-/*!
- * \file
- *
- * \brief Functions for manipulating server cookie values.
- *
- * \addtogroup libknot
- * @{
- */
 
 #pragma once
 
@@ -116,5 +108,3 @@ struct knot_sc_alg {
 int knot_scookie_check(const struct knot_dns_cookies *cookies,
                        const struct knot_scookie_check_ctx *check_ctx,
                        const struct knot_sc_alg *sc_alg);
-
-/*! @} */

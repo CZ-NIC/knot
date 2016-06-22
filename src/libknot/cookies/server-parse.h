@@ -13,14 +13,6 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-/*!
- * \file
- *
- * \brief Functions for reading server cookie values.
- *
- * \addtogroup libknot
- * @{
- */
 
 #pragma once
 
@@ -29,32 +21,29 @@
 /*!
  * \brief Reads a server cookie that consists only of a hash value.
  *
- * \note DNS Cookies -- Appendix B.1
+ * \see DNS Cookies, RFC 7873, Appendix B.1
  *
  * \param sc       Server cookie.
  * \param sc_len   Server cookie length.
  * \param inbound  Inbound server cookie structure to be populated.
  *
  * \retval KNOT_EOK
- * \ratval KNOT_EINVAL
+ * \retval KNOT_EINVAL
  */
 int knot_scookie_parse_simple(const uint8_t *sc, uint16_t sc_len,
                               struct knot_scookie_inbound *inbound);
 
 /*!
- * \brief Reads a server cookie contains nonce and times stamp before actual
- *        hash value.
+ * \brief Reads a server cookie contains nonce and times stamp before actual hash value.
  *
- * \note DNS Cookies -- Appendix B.2
+ * \see DNS Cookies, RFC 7873, Appendix B.2
  *
  * \param sc       Server cookie.
  * \param sc_len   Server cookie length.
  * \param inbound  Inbound server cookie structure to be populated.
  *
  * \retval KNOT_EOK
- * \ratval KNOT_EINVAL
+ * \retval KNOT_EINVAL
  */
 int knot_scookie_parse(const uint8_t *sc, uint16_t sc_len,
                        struct knot_scookie_inbound *inbound);
-
-/*! @} */
