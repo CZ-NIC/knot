@@ -26,9 +26,6 @@
 #include "libknot/rrtype/opt-cookie.h"
 #include "libknot/errcode.h"
 
-/* When defined, client address will be used when generating client cookie. */
-//#define CC_HASH_USE_CLIENT_ADDRESS
-
 /*!
  * Compute client cookie using FNV-64.
  *
@@ -57,7 +54,6 @@ static int cc_gen_fnv64(const struct knot_ccookie_input *input,
 
 	Fnv64_t hash_val = FNV1A_64_INIT;
 
-#if defined(CC_HASH_USE_CLIENT_ADDRESS)
 	if (input->clnt_sockaddr) {
 		if (KNOT_EOK == knot_sockaddr_bytes(input->clnt_sockaddr,
 		                                    &addr, &alen)) {
@@ -65,7 +61,6 @@ static int cc_gen_fnv64(const struct knot_ccookie_input *input,
 			hash_val = fnv_64a_buf(addr, alen, hash_val);
 		}
 	}
-#endif /* defined(CC_HASH_USE_CLIENT_ADDRESS) */
 
 	if (input->srvr_sockaddr) {
 		if (KNOT_EOK == knot_sockaddr_bytes(input->srvr_sockaddr,
