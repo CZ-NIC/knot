@@ -292,4 +292,6 @@ zone_node_t *zone_contents_get_node_for_rr(zone_contents_t *zone, const knot_rrs
 
 zone_node_t *zone_contents_find_node_for_rr(zone_contents_t *zone, const knot_rrset_t *rrset);
 
+size_t zone_contents_measure_size(zone_contents_t *zone);
+
 /*! @} */
