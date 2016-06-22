@@ -44,6 +44,9 @@ libcontrib_la_SOURCES = 			\
 	contrib/endian.h			\
 	contrib/files.c				\
 	contrib/files.h				\
+	contrib/fnv/fnv.h			\
+	contrib/fnv/hash_64a.c			\
+	contrib/fnv/longlong.h			\
 	contrib/getline.c			\
 	contrib/getline.h			\
 	contrib/hhash.c				\
@@ -101,6 +104,7 @@ nobase_libknot_la_HEADERS =			\
 	libknot/codes.h				\
 	libknot/consts.h			\
 	libknot/control/control.h		\
+	libknot/cookies/alg-fnv64.h		\
 	libknot/cookies/client.h		\
 	libknot/cookies/server.h		\
 	libknot/cookies/server-parse.h		\
@@ -145,6 +149,7 @@ libknot_la_SOURCES =				\
 	libknot/binary.c			\
 	libknot/codes.c				\
 	libknot/control/control.c		\
+	libknot/cookies/alg-fnv64.c		\
 	libknot/cookies/client.c		\
 	libknot/cookies/server.c		\
 	libknot/cookies/server-parse.c		\
