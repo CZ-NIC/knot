@@ -1,4 +1,4 @@
-/*  Copyright (C) 2014 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -20,15 +20,14 @@
 #include <inttypes.h>
 #include <limits.h>
 #include <stdint.h>
-#include <stdlib.h>
 #include <ctype.h>
 
-#include "error.h"
+#include "libknot/errcode.h"
 
 inline static int intmax_from_str(const char *src, intmax_t *dest)
 {
 	if (!isdigit((int)*src) && *src != '-' && *src != '+') {
-		return DNSSEC_MALFORMED_DATA;
+		return KNOT_EINVAL;
 	}
 
 	errno = 0;
@@ -36,21 +35,21 @@ inline static int intmax_from_str(const char *src, intmax_t *dest)
 	intmax_t result = strtoimax(src, &end, 10);
 
 	if (errno == ERANGE) {
-		return DNSSEC_OUT_OF_RANGE;
+		return KNOT_ERANGE;
 	}
 
 	if (src == end || *end != '\0') {
-		return DNSSEC_MALFORMED_DATA;
+		return KNOT_EINVAL;
 	}
 
 	*dest = result;
-	return DNSSEC_EOK;
+	return KNOT_EOK;
 }
 
 inline static int uintmax_from_str(const char *src, uintmax_t *dest)
 {
 	if (!isdigit((int)*src) && *src != '-' && *src != '+') {
-		return DNSSEC_MALFORMED_DATA;
+		return KNOT_EINVAL;
 	}
 
 	errno = 0;
@@ -58,29 +57,29 @@ inline static int uintmax_from_str(const char *src, uintmax_t *dest)
 	uintmax_t result = strtoumax(src, &end, 10);
 
 	if (errno == ERANGE) {
-		return DNSSEC_OUT_OF_RANGE;
+		return KNOT_ERANGE;
 	}
 
 	if (src == end || *end != '\0') {
-		return DNSSEC_MALFORMED_DATA;
+		return KNOT_EINVAL;
 	}
 
 	*dest = result;
-	return DNSSEC_EOK;
+	return KNOT_EOK;
 }
 
 #define CONVERT(prefix, type, min, max, src, dest)          \
 {                                                           \
 	prefix##max_t value;                                \
 	int result = prefix##max_from_str(src, &value);     \
-	if (result != DNSSEC_EOK) {                         \
+	if (result != KNOT_EOK) {                           \
 		return result;                              \
 	}                                                   \
 	if (CHECK_MIN_##min(value, min) || value > (max)) { \
-		return DNSSEC_OUT_OF_RANGE;                 \
+		return KNOT_ERANGE;                         \
 	}                                                   \
 	*dest = (type)value;                                \
-	return DNSSEC_EOK;                                  \
+	return KNOT_EOK;                                    \
 }
 
 #define CHECK_MIN_0(value, min)	      0

@@ -23,7 +23,6 @@
 #include "key.h"
 #include "keyid.h"
 #include "shared.h"
-#include "strtonum.h"
 #include "timestamp.h"
 
 int decode_ignore(_unused_ const json_t *value, _unused_ void *result)

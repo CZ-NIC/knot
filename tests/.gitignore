@@ -12,6 +12,7 @@ conf_tools
 confdb
 confio
 control
+contrib/test_strtonum
 db
 descriptor
 dname

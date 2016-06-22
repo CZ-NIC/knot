@@ -21,13 +21,13 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "contrib/strtonum.h"
 #include "dnssec/error.h"
 #include "dnssec/nsec.h"
 #include "shared/base32hex.h"
 #include "shared/dname.h"
 #include "shared/hex.h"
 #include "shared/print.h"
-#include "shared/strtonum.h"
 
 #define PROGRAM_NAME "knsec3hash"
 
@@ -69,15 +69,15 @@ static bool parse_nsec3_params(dnssec_nsec3_params_t *params, const char *salt_s
 {
 	uint8_t algorithm = 0;
 	int r = str_to_u8(algorithm_str, &algorithm);
-	if (r != DNSSEC_EOK) {
+	if (r != KNOT_EOK) {
 		error("Invalid algorithm number.");
 		return false;
 	}
 
 	uint16_t iterations = 0;
 	r = str_to_u16(iterations_str, &iterations);
-	if (r != DNSSEC_EOK) {
-		error("Invalid iteration count, %s.", dnssec_strerror(r));
+	if (r != KNOT_EOK) {
+		error("Invalid iteration count.");
 		return false;
 	}
 

@@ -64,6 +64,7 @@ check_PROGRAMS = \
 	ztree
 
 check_PROGRAMS += \
+	contrib/test_strtonum		\
 	modules/online_sign		\
 	utils/test_lookup
 

@@ -30,11 +30,11 @@
 #include "cmdparse/command.h"
 #include "cmdparse/parameter.h"
 #include "cmdparse/value.h"
+#include "contrib/strtonum.h"
 #include "legacy/key.h"
 #include "shared/dname.h"
 #include "shared/print.h"
 #include "shared/shared.h"
-#include "shared/strtonum.h"
 #include "shared/wire.h"
 
 #define PROGRAM_NAME "keymgr"
@@ -206,7 +206,7 @@ static bool keytag_match(uint16_t keytag, const char *filter)
 {
 	uint16_t converted = 0;
 
-	return str_to_u16(filter, &converted) == DNSSEC_EOK &&
+	return str_to_u16(filter, &converted) == KNOT_EOK &&
 	       keytag == converted;
 }
 
@@ -300,7 +300,7 @@ static int search_str_to_keytag(const char *search)
 	uint16_t keytag = 0;
 	int r = str_to_u16(search, &keytag);
 
-	return (r == DNSSEC_EOK ? keytag : -1);
+	return (r == KNOT_EOK ? keytag : -1);
 }
 
 /*!

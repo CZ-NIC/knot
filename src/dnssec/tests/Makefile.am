@@ -42,7 +42,6 @@ check_PROGRAMS = \
 	shared_base32hex \
 	shared_bignum	\
 	shared_dname	\
-	shared_strtonum	\
 	shared_timestamp \
 	shared_wire	\
 	tsig

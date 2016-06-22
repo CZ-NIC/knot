@@ -59,6 +59,7 @@ libcontrib_la_SOURCES = 			\
 	contrib/sockaddr.h			\
 	contrib/string.c			\
 	contrib/string.h			\
+	contrib/strtonum.h			\
 	contrib/time.h				\
 	contrib/tolower.h			\
 	contrib/trim.h				\
@@ -204,7 +205,6 @@ libknotus_la_SOURCES =				\
 	utils/common/resolv.h			\
 	utils/common/sign.c			\
 	utils/common/sign.h			\
-	utils/common/strtonum.h			\
 	utils/common/token.c			\
 	utils/common/token.h
 

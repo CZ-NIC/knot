@@ -17,9 +17,9 @@
 #include <getopt.h>
 #include <stdio.h>
 
+#include "contrib/strtonum.h"
 #include "knot/common/log.h"
 #include "utils/common/params.h"
-#include "utils/common/strtonum.h"
 #include "utils/knotc/commands.h"
 #include "utils/knotc/interactive.h"
 #include "utils/knotc/process.h"
@@ -85,7 +85,7 @@ int main(int argc, char **argv)
 			params.socket = optarg;
 			break;
 		case 't':
-			if (knot_str2int(optarg, &params.timeout) != KNOT_EOK) {
+			if (str_to_int(optarg, &params.timeout) != KNOT_EOK) {
 				print_help();
 				return EXIT_FAILURE;
 			}

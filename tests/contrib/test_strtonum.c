@@ -1,4 +1,4 @@
-/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -16,12 +16,11 @@
 
 #include <assert.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <tap/basic.h>
-#include <assert.h>
-#include <inttypes.h>
 
+#include "contrib/strtonum.h"
 #include "dnssec/error.h"
-#include "strtonum.h"
 
 static void test_u8(const char *in, uint8_t expected, int errcode)
 {
@@ -29,9 +28,9 @@ static void test_u8(const char *in, uint8_t expected, int errcode)
 	assert(expected != out);
 
 	ok(str_to_u8(in, &out) == errcode &&
-	   (errcode != DNSSEC_EOK || out == expected),
+	   (errcode != KNOT_EOK || out == expected),
 	   "str_to_u8 %s on \"%s\"",
-	   (errcode == DNSSEC_EOK ? "succeeds" : "fails"), in);
+	   (errcode == KNOT_EOK ? "succeeds" : "fails"), in);
 }
 
 static void test_u16(const char *in, uint16_t expected, int errcode)
@@ -40,9 +39,9 @@ static void test_u16(const char *in, uint16_t expected, int errcode)
 	assert(expected != out);
 
 	ok(str_to_u16(in, &out) == errcode &&
-	   (errcode != DNSSEC_EOK || out == expected),
+	   (errcode != KNOT_EOK || out == expected),
 	   "str_to_u16 %s on \"%s\"",
-	   (errcode == DNSSEC_EOK ? "succeeds" : "fails"), in);
+	   (errcode == KNOT_EOK ? "succeeds" : "fails"), in);
 }
 
 static void test_int(const char *in, int expected, int errcode)
@@ -51,9 +50,9 @@ static void test_int(const char *in, int expected, int errcode)
 	assert(expected != out);
 
 	ok(str_to_int(in, &out) == errcode &&
-	   (errcode != DNSSEC_EOK || out == expected),
+	   (errcode != KNOT_EOK || out == expected),
 	   "str_to_int %s on \"%s\"",
-	   (errcode == DNSSEC_EOK ? "succeeds" : "fails"), in);
+	   (errcode == KNOT_EOK ? "succeeds" : "fails"), in);
 }
 
 // mute warn_unused_result
@@ -65,25 +64,25 @@ int main(int argc, char *argv[])
 {
 	plan_lazy();
 
-	test_u8("-1",      0,      DNSSEC_OUT_OF_RANGE);
-	test_u8("256",     0,      DNSSEC_OUT_OF_RANGE);
-	test_u8("0x1",     0,      DNSSEC_MALFORMED_DATA);
-	test_u8(" 1",      0,      DNSSEC_MALFORMED_DATA);
-	test_u8("1 ",      0,      DNSSEC_MALFORMED_DATA);
-	test_u8("0",       0,      DNSSEC_EOK);
-	test_u8("42",      42,     DNSSEC_EOK);
-	test_u8("+84",     84,     DNSSEC_EOK);
-	test_u8("255",     0xff,   DNSSEC_EOK);
+	test_u8("-1",      0,      KNOT_ERANGE);
+	test_u8("256",     0,      KNOT_ERANGE);
+	test_u8("0x1",     0,      KNOT_EINVAL);
+	test_u8(" 1",      0,      KNOT_EINVAL);
+	test_u8("1 ",      0,      KNOT_EINVAL);
+	test_u8("0",       0,      KNOT_EOK);
+	test_u8("42",      42,     KNOT_EOK);
+	test_u8("+84",     84,     KNOT_EOK);
+	test_u8("255",     0xff,   KNOT_EOK);
 
-	test_u16("-1",     0,      DNSSEC_OUT_OF_RANGE);
-	test_u16("65536",  0,      DNSSEC_OUT_OF_RANGE);
-	test_u16("0x1",    0,      DNSSEC_MALFORMED_DATA);
-	test_u16(" 1",     0,      DNSSEC_MALFORMED_DATA);
-	test_u16("1 ",     0,      DNSSEC_MALFORMED_DATA);
-	test_u16("0",      0,      DNSSEC_EOK);
-	test_u16("65280",  65280,  DNSSEC_EOK);
-	test_u16("+256",   256,    DNSSEC_EOK);
-	test_u16("65535",  65535,  DNSSEC_EOK);
+	test_u16("-1",     0,      KNOT_ERANGE);
+	test_u16("65536",  0,      KNOT_ERANGE);
+	test_u16("0x1",    0,      KNOT_EINVAL);
+	test_u16(" 1",     0,      KNOT_EINVAL);
+	test_u16("1 ",     0,      KNOT_EINVAL);
+	test_u16("0",      0,      KNOT_EOK);
+	test_u16("65280",  65280,  KNOT_EOK);
+	test_u16("+256",   256,    KNOT_EOK);
+	test_u16("65535",  65535,  KNOT_EOK);
 
 	char *int_under = NULL;
 	asprintf(&int_under, "%lld", (long long)INT_MIN - 1);
@@ -94,16 +93,16 @@ int main(int argc, char *argv[])
 	char *int_over = NULL;
 	asprintf(&int_over,  "%lld", (long long)INT_MAX + 1);
 
-	test_int(int_under,      0,           DNSSEC_OUT_OF_RANGE);
-	test_int(int_over,       0,           DNSSEC_OUT_OF_RANGE);
-	test_int("0x1",          0,           DNSSEC_MALFORMED_DATA);
-	test_int(" 1",           0,           DNSSEC_MALFORMED_DATA);
-	test_int("1 ",           0,           DNSSEC_MALFORMED_DATA);
-	test_int(int_min,        INT_MIN,     DNSSEC_EOK);
-	test_int("0",            0,           DNSSEC_EOK);
-	test_int("268435459",    268435459,   DNSSEC_EOK);
-	test_int("+1073741827",  1073741827,  DNSSEC_EOK);
-	test_int(int_max,        INT_MAX,     DNSSEC_EOK);
+	test_int(int_under,      0,           KNOT_ERANGE);
+	test_int(int_over,       0,           KNOT_ERANGE);
+	test_int("0x1",          0,           KNOT_EINVAL);
+	test_int(" 1",           0,           KNOT_EINVAL);
+	test_int("1 ",           0,           KNOT_EINVAL);
+	test_int(int_min,        INT_MIN,     KNOT_EOK);
+	test_int("0",            0,           KNOT_EOK);
+	test_int("268435459",    268435459,   KNOT_EOK);
+	test_int("+1073741827",  1073741827,  KNOT_EOK);
+	test_int(int_max,        INT_MAX,     KNOT_EOK);
 
 	free(int_under);
 	free(int_min);

@@ -17,10 +17,10 @@
 #include <ctype.h>
 #include <string.h>
 
+#include "contrib/strtonum.h"
 #include "dnssec/binary.h"
 #include "dnssec/error.h"
 #include "shared/shared.h"
-#include "shared/strtonum.h"
 #include "utils/keymgr/legacy/privkey.h"
 
 /* -- private key params conversion ---------------------------------------- */
@@ -95,7 +95,7 @@ static int parse_algorithm(char *string, void *_algorithm)
 	uint8_t *algorithm = _algorithm;
 	int r = str_to_u8(string, algorithm);
 
-	return (r == DNSSEC_EOK ? DNSSEC_EOK : DNSSEC_INVALID_KEY_ALGORITHM);
+	return (r == KNOT_EOK ? DNSSEC_EOK : DNSSEC_INVALID_KEY_ALGORITHM);
 }
 
 /*!
