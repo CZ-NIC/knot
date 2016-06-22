@@ -23,8 +23,8 @@
  * \brief Input data needed to compute the client cookie value.
  */
 struct knot_ccookie_input {
-	const void *clnt_sockaddr;  /*!< Client (local) socket address. */
-	const void *srvr_sockaddr;  /*!< Server (remote) socket address. */
+	const struct sockaddr *clnt_sockaddr; /*!< Client (local) socket address. */
+	const struct sockaddr *srvr_sockaddr; /*!< Server (remote) socket address. */
 	const uint8_t *secret_data; /*!< Client secret data. */
 	size_t secret_len;          /*!< Secret data length. */
 };

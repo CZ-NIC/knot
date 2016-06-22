@@ -35,7 +35,7 @@ struct knot_dns_cookies {
  * Additional data needed to check the inbound server cookie.
  */
 struct knot_scookie_check_ctx {
-	const void *clnt_sockaddr;  /*!< Client (remote) socket address. */
+	const struct sockaddr *clnt_sockaddr; /*!< Client (remote) socket address. */
 	const uint8_t *secret_data; /*!< Server secret data. */
 	size_t secret_len;          /*!< Secret data length. */
 };
