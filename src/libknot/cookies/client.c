@@ -27,36 +27,6 @@
 #include "libknot/rrtype/opt-cookie.h"
 
 _public_
-int knot_sockaddr_bytes(const void *sockaddr,
-                        const uint8_t **addr, size_t *len)
-{
-	if (!sockaddr || !addr || !len) {
-		return KNOT_EINVAL;
-	}
-
-	int addr_family = ((struct sockaddr *) sockaddr)->sa_family;
-
-	switch (addr_family) {
-	case AF_INET:
-		*addr = (uint8_t *) &((struct sockaddr_in *) sockaddr)->sin_addr;
-		*len = 4;
-		break;
-	case AF_INET6:
-		*addr = (uint8_t *) &((struct sockaddr_in6 *) sockaddr)->sin6_addr;
-		*len = 16;
-		break;
-	default:
-		*addr = NULL;
-		*len = 0;
-		addr_family = AF_UNSPEC;
-		return KNOT_EINVAL;
-		break;
-	}
-
-	return KNOT_EOK;
-}
-
-_public_
 int knot_ccookie_check(const uint8_t *cc, uint16_t cc_len,
                        const struct knot_ccookie_input *input,
                        const struct knot_cc_alg *cc_alg)

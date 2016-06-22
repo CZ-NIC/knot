@@ -21,6 +21,7 @@
 #include <string.h>
 
 #include "contrib/fnv/fnv.h"
+#include "contrib/sockaddr.h"
 #include "libknot/cookies/alg-fnv64.h"
 #include "libknot/cookies/server-parse.h"
 #include "libknot/rrtype/opt-cookie.h"
@@ -55,17 +56,17 @@ static int cc_gen_fnv64(const struct knot_ccookie_input *input,
 	Fnv64_t hash_val = FNV1A_64_INIT;
 
 	if (input->clnt_sockaddr) {
-		if (KNOT_EOK == knot_sockaddr_bytes(input->clnt_sockaddr,
-		                                    &addr, &addr_len)) {
-			assert(addr && addr_len);
+		addr = sockaddr_raw(input->clnt_sockaddr, &addr_len);
+		if (addr) {
+			assert(addr_len);
 			hash_val = fnv_64a_buf((void *)addr, addr_len, hash_val);
 		}
 	}
 
 	if (input->srvr_sockaddr) {
-		if (KNOT_EOK == knot_sockaddr_bytes(input->srvr_sockaddr,
-		                                    &addr, &addr_len)) {
-			assert(addr && addr_len);
+		addr = sockaddr_raw(input->srvr_sockaddr, &addr_len);
+		if (addr) {
+			assert(addr_len);
 			hash_val = fnv_64a_buf((void *)addr, addr_len, hash_val);
 		}
 	}
@@ -112,9 +113,9 @@ static int sc_gen_fnv64_simple(const struct knot_scookie_input *input,
 
 	Fnv64_t hash_val = FNV1A_64_INIT;
 
-	if (KNOT_EOK == knot_sockaddr_bytes(input->srvr_data->clnt_sockaddr,
-	                                    &addr, &addr_len)) {
-		assert(addr && addr_len);
+	addr = sockaddr_raw(input->srvr_data->clnt_sockaddr, &addr_len);
+	if (addr) {
+		assert(addr_len);
 		hash_val = fnv_64a_buf((void *)addr, addr_len, hash_val);
 	}
 
@@ -161,9 +162,9 @@ static int sc_gen_fnv64(const struct knot_scookie_input *input,
 	Fnv64_t hash_val = FNV1A_64_INIT;
 
 	if (input->srvr_data->clnt_sockaddr) {
-		if (KNOT_EOK == knot_sockaddr_bytes(input->srvr_data->clnt_sockaddr,
-		                                    &addr, &addr_len)) {
-			assert(addr && addr_len);
+		addr = sockaddr_raw(input->srvr_data->clnt_sockaddr, &addr_len);
+		if (addr) {
+			assert(addr_len);
 			hash_val = fnv_64a_buf((void *)addr, addr_len, hash_val);
 		}
 	}
