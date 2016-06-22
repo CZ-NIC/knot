@@ -21,7 +21,7 @@
 #include "libknot/consts.h" // knot_addr_family_t -- is unused
 #include "libknot/errcode.h"
 #include "libknot/rrtype/opt.h"
-#include "libknot/rrtype/opt_cookie.h"
+#include "libknot/rrtype/opt-cookie.h"
 
 _public_
 int knot_edns_opt_cookie_write(const uint8_t *cc, uint16_t cc_len,

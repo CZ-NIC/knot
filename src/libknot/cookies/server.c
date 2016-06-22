@@ -21,7 +21,7 @@
 #include "libknot/attribute.h"
 #include "libknot/cookies/server.h"
 #include "libknot/errcode.h"
-#include "libknot/rrtype/opt_cookie.h"
+#include "libknot/rrtype/opt-cookie.h"
 
 _public_
 int knot_scookie_check(const struct knot_dns_cookies *cookies,

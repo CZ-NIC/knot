@@ -24,7 +24,7 @@
 #include "libknot/attribute.h"
 #include "libknot/cookies/client.h"
 #include "libknot/errcode.h"
-#include "libknot/rrtype/opt_cookie.h"
+#include "libknot/rrtype/opt-cookie.h"
 
 _public_
 int knot_sockaddr_bytes(const void *sockaddr,
