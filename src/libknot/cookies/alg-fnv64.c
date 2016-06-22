@@ -50,27 +50,27 @@ static int cc_gen_fnv64(const struct knot_ccookie_input *input,
 	}
 
 	const uint8_t *addr = NULL;
-	size_t alen = 0; /* Address length. */
+	size_t addr_len = 0;
 
 	Fnv64_t hash_val = FNV1A_64_INIT;
 
 	if (input->clnt_sockaddr) {
 		if (KNOT_EOK == knot_sockaddr_bytes(input->clnt_sockaddr,
-		                                    &addr, &alen)) {
-			assert(addr && alen);
-			hash_val = fnv_64a_buf(addr, alen, hash_val);
+		                                    &addr, &addr_len)) {
+			assert(addr && addr_len);
+			hash_val = fnv_64a_buf((void *)addr, addr_len, hash_val);
 		}
 	}
 
 	if (input->srvr_sockaddr) {
 		if (KNOT_EOK == knot_sockaddr_bytes(input->srvr_sockaddr,
-		                                    &addr, &alen)) {
-			assert(addr && alen);
-			hash_val = fnv_64a_buf((void *) addr, alen, hash_val);
+		                                    &addr, &addr_len)) {
+			assert(addr && addr_len);
+			hash_val = fnv_64a_buf((void *)addr, addr_len, hash_val);
 		}
 	}
 
-	hash_val = fnv_64a_buf((void *) input->secret_data, input->secret_len,
+	hash_val = fnv_64a_buf((void *)input->secret_data, input->secret_len,
 	                       hash_val);
 
 	assert(KNOT_OPT_COOKIE_CLNT == sizeof(hash_val));
@@ -108,19 +108,19 @@ static int sc_gen_fnv64_simple(const struct knot_scookie_input *input,
 	}
 
 	const uint8_t *addr = NULL;
-	size_t alen = 0; /* Address length. */
+	size_t addr_len = 0;
 
 	Fnv64_t hash_val = FNV1A_64_INIT;
 
 	if (KNOT_EOK == knot_sockaddr_bytes(input->srvr_data->clnt_sockaddr,
-	                                    &addr, &alen)) {
-		assert(addr && alen);
-		hash_val = fnv_64a_buf((void *) addr, alen, hash_val);
+	                                    &addr, &addr_len)) {
+		assert(addr && addr_len);
+		hash_val = fnv_64a_buf((void *)addr, addr_len, hash_val);
 	}
 
-	hash_val = fnv_64a_buf((void *) input->cc, input->cc_len, hash_val);
+	hash_val = fnv_64a_buf((void *)input->cc, input->cc_len, hash_val);
 
-	hash_val = fnv_64a_buf((void *) input->srvr_data->secret_data,
+	hash_val = fnv_64a_buf((void *)input->srvr_data->secret_data,
 	                       input->srvr_data->secret_len, hash_val);
 
 	memcpy(sc_out, &hash_val, sizeof(hash_val));
@@ -146,8 +146,7 @@ static int sc_gen_fnv64_simple(const struct knot_scookie_input *input,
 static int sc_gen_fnv64(const struct knot_scookie_input *input,
                         uint8_t *sc_out, uint16_t *sc_len)
 {
-	if (!input || !sc_out ||
-	    !sc_len || (*sc_len < SRVR_FNV64_SIZE)) {
+	if (!input || !sc_out || !sc_len || (*sc_len < SRVR_FNV64_SIZE)) {
 		return KNOT_EINVAL;
 	}
 
@@ -157,27 +156,27 @@ static int sc_gen_fnv64(const struct knot_scookie_input *input,
 	}
 
 	const uint8_t *addr = NULL;
-	size_t alen = 0; /* Address length. */
+	size_t addr_len = 0;
 
 	Fnv64_t hash_val = FNV1A_64_INIT;
 
 	if (input->srvr_data->clnt_sockaddr) {
 		if (KNOT_EOK == knot_sockaddr_bytes(input->srvr_data->clnt_sockaddr,
-		                                    &addr, &alen)) {
-			assert(addr && alen);
-			hash_val = fnv_64a_buf((void *) addr, alen, hash_val);
+		                                    &addr, &addr_len)) {
+			assert(addr && addr_len);
+			hash_val = fnv_64a_buf((void *)addr, addr_len, hash_val);
 		}
 	}
 
-	hash_val = fnv_64a_buf((void *) &input->nonce, sizeof(input->nonce),
+	hash_val = fnv_64a_buf((void *)&input->nonce, sizeof(input->nonce),
 	                       hash_val);
 
-	hash_val = fnv_64a_buf((void *) &input->time, sizeof(input->time),
+	hash_val = fnv_64a_buf((void *)&input->time, sizeof(input->time),
 	                       hash_val);
 
-	hash_val = fnv_64a_buf((void *) input->cc, input->cc_len, hash_val);
+	hash_val = fnv_64a_buf((void *)input->cc, input->cc_len, hash_val);
 
-	hash_val = fnv_64a_buf((void *) input->srvr_data->secret_data,
+	hash_val = fnv_64a_buf((void *)input->srvr_data->secret_data,
 	                       input->srvr_data->secret_len, hash_val);
 
 	uint32_t aux = htonl(input->nonce);
