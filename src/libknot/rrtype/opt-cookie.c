@@ -22,6 +22,25 @@
 #include "libknot/rrtype/opt.h"
 #include "libknot/rrtype/opt-cookie.h"
 
+#define cookie_len_ok(clen) \
+	(((clen) == KNOT_OPT_COOKIE_CLNT) || \
+	 ((clen) >= (KNOT_OPT_COOKIE_CLNT + KNOT_OPT_COOKIE_SRVR_MIN) && \
+	  (clen) <= (KNOT_OPT_COOKIE_CLNT + KNOT_OPT_COOKIE_SRVR_MAX)))
+
+#define ccookie_len_ok(cclen) \
+	((cclen) == KNOT_OPT_COOKIE_CLNT)
+
+#define scookie_len_ok(sclen) \
+	(((sclen) == 0) || \
+	 ((sclen) >= KNOT_OPT_COOKIE_SRVR_MIN && \
+	  (sclen) <= KNOT_OPT_COOKIE_SRVR_MAX))
+
+_public_
+uint16_t knot_edns_opt_cookie_data_len(uint16_t clen, uint16_t slen)
+{
+	return (ccookie_len_ok(clen) && scookie_len_ok(slen)) ? (clen + slen) : 0;
+}
+
 _public_
 int knot_edns_opt_cookie_write(const uint8_t *cc, uint16_t cc_len,
                                const uint8_t *sc, uint16_t sc_len,
