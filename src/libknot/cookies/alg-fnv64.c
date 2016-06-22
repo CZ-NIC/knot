@@ -40,7 +40,7 @@
 static int cc_gen_fnv64(const struct knot_ccookie_input *input,
                         uint8_t *cc_out, uint16_t *cc_len)
 {
-	if (!input || !cc_out || !cc_len) {
+	if (!input || !cc_out || !cc_len || *cc_len< KNOT_OPT_COOKIE_CLNT) {
 		return KNOT_EINVAL;
 	}
 
@@ -74,9 +74,6 @@ static int cc_gen_fnv64(const struct knot_ccookie_input *input,
 	                       hash_val);
 
 	assert(KNOT_OPT_COOKIE_CLNT == sizeof(hash_val));
-	if (*cc_len < KNOT_OPT_COOKIE_CLNT) {
-		return KNOT_ESPACE;
-	}
 
 	*cc_len = KNOT_OPT_COOKIE_CLNT;
 	memcpy(cc_out, &hash_val, *cc_len);
