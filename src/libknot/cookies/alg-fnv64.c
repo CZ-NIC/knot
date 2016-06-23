@@ -125,8 +125,7 @@ static int sc_gen_fnv64(const struct knot_sc_input *input,
 	}
 
 	if (input->nonce && input->nonce_len) {
-		hash_val = fnv_64a_buf((void *)&input->nonce, input->nonce_len,
-		                       hash_val);
+		hash_val = fnv_64a_buf((void *)input->nonce, input->nonce_len, hash_val);
 	}
 
 	hash_val = fnv_64a_buf((void *)input->cc, input->cc_len, hash_val);
