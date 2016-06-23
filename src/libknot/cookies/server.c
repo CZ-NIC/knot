@@ -22,11 +22,32 @@
 #include "libknot/rrtype/opt-cookie.h"
 
 _public_
-int knot_scookie_check(const struct knot_dns_cookies *cookies,
-                       const struct knot_scookie_check_ctx *check_ctx,
-                       const struct knot_sc_alg *sc_alg)
+int knot_sc_parse(uint16_t nonce_len, const uint8_t *sc, uint16_t sc_len,
+                  struct knot_sc_content *content)
 {
-	if (!cookies || !check_ctx || !sc_alg) {
+	if (!sc || !sc_len || !content) {
+		return KNOT_EINVAL;
+	}
+
+	if (nonce_len >= sc_len) {
+		return KNOT_EINVAL;
+	}
+
+	content->nonce = nonce_len ? sc : NULL;
+	content->nonce_len = nonce_len;
+	/* Rest of server cookie contains hash. */
+	content->hash = sc + nonce_len;
+	content->hash_len = sc_len - nonce_len;
+
+	return KNOT_EOK;
+}
+
+_public_
+int knot_sc_check(uint16_t nonce_len, const struct knot_dns_cookies *cookies,
+                  const struct knot_sc_private *srvr_data,
+                  const struct knot_sc_alg *sc_alg)
+{
+	if (!cookies || !srvr_data || !sc_alg) {
 		return KNOT_EINVAL;
 	}
 
@@ -35,49 +56,50 @@ int knot_scookie_check(const struct knot_dns_cookies *cookies,
 		return KNOT_EINVAL;
 	}
 
-	if (!check_ctx->clnt_sockaddr ||
-	    !check_ctx->secret_data || !check_ctx->secret_len) {
+	if (!srvr_data->clnt_sockaddr ||
+	    !srvr_data->secret_data || !srvr_data->secret_len) {
 		return KNOT_EINVAL;
 	}
 
-	if (!sc_alg->sc_size || !sc_alg->parse_func || !sc_alg->gen_func) {
+	if (!sc_alg->hash_size || !sc_alg->hash_func) {
 		return KNOT_EINVAL;
 	}
 
-	if (sc_alg->sc_size > KNOT_OPT_COOKIE_SRVR_MAX) {
+	if ((nonce_len + sc_alg->hash_size) > KNOT_OPT_COOKIE_SRVR_MAX) {
 		return KNOT_ESPACE;
 	}
 
-	if (cookies->sc_len != sc_alg->sc_size) {
+	if (cookies->sc_len != (nonce_len + sc_alg->hash_size)) {
 		/* Cookie size does to match. */
 		return KNOT_EINVAL;
 	}
 
-	struct knot_scookie_inbound inbound = { 0, };
+	struct knot_sc_content content = { 0, };
 
 	/* Obtain data from received server cookie. */
-	int ret = sc_alg->parse_func(cookies->sc, cookies->sc_len, &inbound);
+	int ret = knot_sc_parse(nonce_len, cookies->sc, cookies->sc_len, &content);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
 
-	uint8_t generated_sc[KNOT_OPT_COOKIE_SRVR_MAX] = { 0, };
-	uint16_t generated_sc_len = KNOT_OPT_COOKIE_SRVR_MAX;
-	struct knot_scookie_input sc_input = {
+	uint8_t generated_hash[KNOT_OPT_COOKIE_SRVR_MAX] = { 0, };
+	uint16_t generated_hash_len = KNOT_OPT_COOKIE_SRVR_MAX;
+	struct knot_sc_input sc_input = {
 		.cc = cookies->cc,
 		.cc_len = cookies->cc_len,
-		.nonce = inbound.nonce,
-		.time = inbound.time,
-		.srvr_data = check_ctx
+		.nonce = content.nonce,
+		.nonce_len = content.nonce_len,
+		.srvr_data = srvr_data
 	};
 
-	/* Generate a new server cookie. */
-	ret = sc_alg->gen_func(&sc_input, generated_sc, &generated_sc_len);
+	/* Generate a new hash. */
+	ret = sc_alg->hash_func(&sc_input, generated_hash, &generated_hash_len);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
 
-	ret = memcmp(cookies->sc, generated_sc, generated_sc_len);
+	/* Compare hashes. */
+	ret = memcmp(content.hash, generated_hash, generated_hash_len);
 	if (ret != 0) {
 		return KNOT_EINVAL;
 	}

@@ -22,7 +22,7 @@
 /*!
  * \brief Input data needed to compute the client cookie value.
  */
-struct knot_ccookie_input {
+struct knot_cc_input {
 	const struct sockaddr *clnt_sockaddr; /*!< Client (local) socket address. */
 	const struct sockaddr *srvr_sockaddr; /*!< Server (remote) socket address. */
 	const uint8_t *secret_data; /*!< Client secret data. */
@@ -41,7 +41,7 @@ struct knot_ccookie_input {
  * \retval KNOT_ESPACE
  * \retval KNOT_EINVAL
  */
-typedef int (knot_cc_gen_t)(const struct knot_ccookie_input *input,
+typedef int (knot_cc_gen_t)(const struct knot_cc_input *input,
                             uint8_t *cc_out, uint16_t *cc_len);
 
 /*!
@@ -64,6 +64,6 @@ struct knot_cc_alg {
  * \retval KNOT_ESPACE
  * \retval KNOT_EINVAL
  */
-int knot_ccookie_check(const uint8_t *cc, uint16_t cc_len,
-                       const struct knot_ccookie_input *input,
-                       const struct knot_cc_alg *cc_alg);
+int knot_cc_check(const uint8_t *cc, uint16_t cc_len,
+                  const struct knot_cc_input *input,
+                  const struct knot_cc_alg *cc_alg);

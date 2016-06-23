@@ -25,14 +25,7 @@
 extern const struct knot_cc_alg knot_cc_alg_fnv64;
 
 /*!
- * \brief FNV-64 simple server cookie algorithm.
- *
- * \note The algorithm only expects a hash value in the server cookie.
- */
-extern const struct knot_sc_alg knot_sc_alg_fnv64_simple;
-
-/*!
- * \brief FNV-64 server cookie algorithm.
+ * \brief FNV-64 server hash algorithm.
  *
  * \note The algorithm expects a nonce value, time stamp and hash value.
  */

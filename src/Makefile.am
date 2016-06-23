@@ -107,7 +107,6 @@ nobase_libknot_la_HEADERS =			\
 	libknot/cookies/alg-fnv64.h		\
 	libknot/cookies/client.h		\
 	libknot/cookies/server.h		\
-	libknot/cookies/server-parse.h		\
 	libknot/descriptor.h			\
 	libknot/dname.h				\
 	libknot/errcode.h			\
@@ -152,7 +151,6 @@ libknot_la_SOURCES =				\
 	libknot/cookies/alg-fnv64.c		\
 	libknot/cookies/client.c		\
 	libknot/cookies/server.c		\
-	libknot/cookies/server-parse.c		\
 	libknot/descriptor.c			\
 	libknot/dname.c				\
 	libknot/error.c				\

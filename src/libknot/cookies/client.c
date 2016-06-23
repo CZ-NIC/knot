@@ -14,9 +14,6 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <arpa/inet.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
 #include <string.h>
 
 #include "libknot/attribute.h"
@@ -25,9 +22,9 @@
 #include "libknot/rrtype/opt-cookie.h"
 
 _public_
-int knot_ccookie_check(const uint8_t *cc, uint16_t cc_len,
-                       const struct knot_ccookie_input *input,
-                       const struct knot_cc_alg *cc_alg)
+int knot_cc_check(const uint8_t *cc, uint16_t cc_len,
+                  const struct knot_cc_input *input,
+                  const struct knot_cc_alg *cc_alg)
 {
 	if (!cc || !cc_len || !input ||
 	    !cc_alg || !cc_alg->cc_size || cc_alg->gen_func) {
