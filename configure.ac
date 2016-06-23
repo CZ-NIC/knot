@@ -100,8 +100,6 @@ AM_CONDITIONAL([HAVE_DOCS], [test "$enable_documentation" = "yes"])
 
 AC_PROG_INSTALL
 
-AX_CC_LLVM
-
 AC_ARG_ENABLE([fastparser],
     AS_HELP_STRING([--disable-fastparser], [Disable use of fastest zone parser]),[],[
     # Set zone parser type - fastest on release build, slowest on dev build
@@ -112,12 +110,18 @@ AC_ARG_ENABLE([fastparser],
         ])
     ])
 
+AX_CC_CLANG
 AS_IF([test "$enable_fastparser" = "yes"],[
-    AS_IF([test "${CC_LLVM}" = "yes"],[
-        AC_MSG_WARN([LLVM based compiler detected; disabling fastest zone parser, see https://gitlab.labs.nic.cz/labs/knot/issues/351])
+    AS_IF([test -n "$CC_CLANG_VERSION"],[
+       clang_vernum=$(printf "%02d%02d%02d" $(tr "." " " <<< "$CC_CLANG_VERSION"))
+      AS_IF([test $clang_vernum -lt 030900],[
+        AC_MSG_WARN([Fast parser disabled due to a compiler bug, see https://llvm.org/bugs/show_bug.cgi?id=23490])
         enable_fastparser=no
-        ])
+      ])
     ])
+])
+
+AS_IF([test "$enable_fastparser" = "force"],[enable_fastparser=yes])
 
 AM_CONDITIONAL([FAST_PARSER], [test "$enable_fastparser" = "yes"])
 
