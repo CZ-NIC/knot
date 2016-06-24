@@ -545,11 +545,221 @@ int zone_update_commit(conf_t *conf, zone_update_t *update)
 	return KNOT_EOK;
 }
 
+static void select_next_node(zone_update_iter_t *it)
+{
+	int compare = 0;
+	if (it->t_node) {
+		if (it->add_node) {
+			/* Both original and new node exists. Choose the 'smaller' node to return. */
+			compare = knot_dname_cmp(it->t_node->owner, it->add_node->owner);
+			if (compare <= 0) {
+				// Return the original node.
+				it->next_n = it->t_node;
+				it->t_node = NULL;
+				if (compare == 0) {
+					it->add_node = NULL;
+				}
+			} else {
+				// Return the new node.
+				it->next_n = it->add_node;
+				it->add_node = NULL;
+			}
+		} else {
+			// Return the original node.
+			it->next_n = it->t_node;
+			it->t_node = NULL;
+		}
+	} else {
+		if (it->add_node) {
+			// Return the new node.
+			it->next_n = it->add_node;
+			it->add_node = NULL;
+		} else {
+			// Iteration done.
+			it->next_n = NULL;
+		}
+	}
+}
+
+static int iter_init_tree_iters(zone_update_iter_t *it, zone_update_t *update,
+                                bool nsec3)
+{
+	zone_tree_t *tree;
+
+	/* Set zone iterator. */
+	zone_contents_t *_contents = NULL;
+	if (update->flags & UPDATE_FULL) {
+		_contents = update->new_cont;
+	} else if (update->flags & UPDATE_INCREMENTAL) {
+		_contents = update->zone->contents;
+	} else {
+		return KNOT_EINVAL;
+	}
+
+	/* Begin iteration. We can safely assume _contents is a valid pointer. */
+	tree = nsec3 ? _contents->nsec3_nodes : _contents->nodes;
+	hattrie_build_index(tree);
+	it->t_it = hattrie_iter_begin(nsec3 ? _contents->nsec3_nodes : _contents->nodes, true);
+	if (it->t_it == NULL) {
+		return KNOT_ENOMEM;
+	}
+
+	/* Set changeset iterator. */
+	if (update->flags & UPDATE_INCREMENTAL && !changeset_empty(&update->change)) {
+		tree = nsec3 ? update->change.add->nsec3_nodes :
+		               update->change.add->nodes;
+		if (tree == NULL) {
+			it->add_it = NULL;
+		} else {
+			hattrie_build_index(tree);
+			it->add_it = hattrie_iter_begin(tree, true);
+			if (it->add_it == NULL) {
+				hattrie_iter_free(it->t_it);
+				return KNOT_ENOMEM;
+			}
+		}
+	} else {
+		it->add_it = NULL;
+	}
+	
+	return KNOT_EOK;
+}
+
+static int iter_get_added_node(zone_update_iter_t *it)
+{
+	hattrie_iter_next(it->add_it);
+	if (hattrie_iter_finished(it->add_it)) {
+		hattrie_iter_free(it->add_it);
+		it->add_it = NULL;
+		return KNOT_ENOENT;
+	}
+
+	it->add_node = (zone_node_t *)(*hattrie_iter_val(it->add_it));
+
+	return KNOT_EOK;
+}
+
+static int iter_get_synth_node(zone_update_iter_t *it)
+{
+	hattrie_iter_next(it->t_it);
+	if (hattrie_iter_finished(it->t_it)) {
+		hattrie_iter_free(it->t_it);
+		it->t_it = NULL;
+		return KNOT_ENOENT;
+	}
+
+	const zone_node_t *n = (zone_node_t *)(*hattrie_iter_val(it->t_it));
+	if (it->update->flags & UPDATE_FULL) {
+		it->t_node = n;
+	} else {
+		it->t_node = zone_update_get_node(it->update, n->owner);
+		if (it->t_node == NULL) {
+			return KNOT_ENOMEM;
+		}
+	}
+
+	return KNOT_EOK;
+}
+
+static int iter_init(zone_update_iter_t *it, zone_update_t *update, const bool nsec3)
+{
+	memset(it, 0, sizeof(*it));
+
+	it->update = update;
+	it->nsec3 = nsec3;
+	int ret = iter_init_tree_iters(it, update, nsec3);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	if (it->add_it) {
+		it->add_node = (zone_node_t *)(*hattrie_iter_val(it->add_it));
+		assert(it->add_node);
+	}
+	if (it->t_it) {
+		it->t_node = (zone_node_t *)(*hattrie_iter_val(it->t_it));
+		assert(it->t_node);
+		if (it->update->flags & UPDATE_INCREMENTAL) {
+			it->t_node = zone_update_get_node(it->update, it->t_node->owner);
+			if (it->t_node == NULL) {
+				return KNOT_ENOMEM;
+			}
+		}
+	}
+
+	select_next_node(it);
+	return KNOT_EOK;
+}
+
+int zone_update_iter(zone_update_iter_t *it, zone_update_t *update)
+{
+	return iter_init(it, update, false);
+}
+
+int zone_update_iter_nsec3(zone_update_iter_t *it, zone_update_t *update)
+{
+	if (update->flags & UPDATE_FULL) {
+		if (update->new_cont->nsec3_nodes == NULL) {
+			// No NSEC3 tree.
+			return KNOT_ENOENT;
+		}
+	} else {
+		if (update->change.add->nsec3_nodes == NULL &&
+		    update->change.remove->nsec3_nodes == NULL) {
+			// No NSEC3 changes.
+			return KNOT_ENOENT;
+		}
+	}
+
+	return iter_init(it, update, true);
+}
+
+int zone_update_iter_next(zone_update_iter_t *it)
+{
+	if (it == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	// Get nodes from both iterators if needed.
+	if (it->t_it && it->t_node == NULL) {
+		int ret = iter_get_synth_node(it);
+		if (ret != KNOT_EOK && ret != KNOT_ENOENT) {
+			return ret;
+		}
+	}
+
+	if (it->add_it && it->add_node == NULL) {
+		int ret = iter_get_added_node(it);
+		if (ret != KNOT_EOK && ret != KNOT_ENOENT) {
+			return ret;
+		}
+	}
+	
+	select_next_node(it);
+	return KNOT_EOK;
+}
+
+const zone_node_t *zone_update_iter_val(zone_update_iter_t *it)
+{
+	if (it) {
+		return it->next_n;
+	} else {
+		return NULL;
+	}
+}
+
+int zone_update_iter_finish(zone_update_iter_t *it)
+{
+	hattrie_iter_free(it->t_it);
+	return KNOT_EOK;
+}
+
 bool zone_update_no_change(zone_update_t *update)
 {
 	if (update->flags & UPDATE_INCREMENTAL) {
 		return changeset_empty(&update->change);
 	} else {
-		return false; //FIXME: there's no zone_contents_empty() function, do we need it?
+		return false; //!\todo: there's no zone_contents_empty() function, do we need it?
 	}
 }
+

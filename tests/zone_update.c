@@ -17,13 +17,16 @@
 #include <assert.h>
 #include <tap/basic.h>
 
+#include "test_conf.h"
 #include "contrib/macros.h"
 #include "contrib/getline.h"
 #include "knot/updates/zone-update.h"
+#include "knot/zone/node.h"
 #include "zscanner/scanner.h"
 
-static const char *zone_str =
-"test. 3600 IN SOA a.ns.test. hostmaster.nic.cz. 1406641065 900 300 604800 900 \n"
+static const char *zone_str1 =
+"test. 3600 IN SOA a.ns.test. hostmaster.nic.cz. 1406641065 900 300 604800 900 \n";
+static const char *zone_str2 =
 "test. IN TXT \"test\"\n";
 
 static const char *add_str =
@@ -32,105 +35,216 @@ static const char *add_str =
 static const char *del_str =
 "test. IN TXT \"test\"\n";
 
-bool to_zone;
 knot_rrset_t rrset;
+
+/*!< \brief Returns true if node contains given RR in its RRSets. */
+static bool node_contains_rr(const zone_node_t *node,
+                             const knot_rrset_t *rr)
+{
+        const knot_rdataset_t *zone_rrs = node_rdataset(node, rr->type);
+        if (zone_rrs) {
+                assert(rr->rrs.rr_count == 1);
+                const bool compare_ttls = false;
+                return knot_rdataset_member(zone_rrs,
+                                            knot_rdataset_at(&rr->rrs, 0),
+                                            compare_ttls);
+        } else {
+                return false;
+        }
+}
 
 static void process_rr(zs_scanner_t *scanner)
 {
-	// get zone to insert into
-	zone_contents_t *zc = scanner->process.data;
-
-	// create data
 	knot_rrset_init(&rrset, scanner->r_owner, scanner->r_type, scanner->r_class);
 
 	int ret = knot_rrset_add_rdata(&rrset, scanner->r_data,
 	                               scanner->r_data_length,
 	                               scanner->r_ttl, NULL);
 	assert(ret == KNOT_EOK);
-
-	if (to_zone) {
-		// Add initial node to zone
-		zone_node_t *n = NULL;
-		ret = zone_contents_add_rr(zc, &rrset, &n);
-		UNUSED(n);
-		knot_rdataset_clear(&rrset.rrs, NULL);
-		assert(ret == KNOT_EOK);
-	}
 }
 
-int main(int argc, char *argv[])
+void test_full(zone_t *zone, zs_scanner_t *sc)
 {
+	zone_update_t update;
+	int ret = zone_update_init(&update, zone, UPDATE_FULL);
+	ok(ret == KNOT_EOK, "zone update: init full");
 
-	plan_lazy();
+	if (zs_set_input_string(sc, zone_str1, strlen(zone_str1)) != 0 ||
+	    zs_parse_all(sc) != 0) {
+		assert(0);
+	}
 
+	ret = zone_update_add(&update, &rrset);
+	knot_rdataset_clear(&rrset.rrs, NULL);
+	ok(ret == KNOT_EOK, "full zone update: first addition");
+
+	if (zs_set_input_string(sc, zone_str2, strlen(zone_str2)) != 0 ||
+	    zs_parse_all(sc) != 0) {
+		assert(0);
+	}
+
+	ret = zone_update_add(&update, &rrset);
+	zone_node_t *node = zone_contents_find_node_for_rr(update.new_cont, &rrset);
+	bool rrset_present = node_contains_rr(node, &rrset);
+	ok(ret == KNOT_EOK && rrset_present, "full zone update: second addition");
+
+	ret = zone_update_remove(&update, &rrset);
+	node = zone_contents_find_node_for_rr(update.new_cont, &rrset);
+	rrset_present = node_contains_rr(node, &rrset);
+	ok(ret == KNOT_EOK && !rrset_present, "full zone update: removal");
+
+	ret = zone_update_add(&update, &rrset);
+	node = zone_contents_find_node_for_rr(update.new_cont, &rrset);
+	rrset_present = node_contains_rr(node, &rrset);
+	ok(ret == KNOT_EOK && rrset_present, "full zone update: last addition");
+
+	knot_rdataset_clear(&rrset.rrs, NULL);
+
+	zone_update_iter_t it;
+	ret = zone_update_iter(&it, &update);
+	ok(ret == KNOT_EOK, "full zone update: init iter");
+
+	const zone_node_t *iter_node = zone_update_iter_val(&it);
+	assert(iter_node);
+	if (zs_set_input_string(sc, zone_str1, strlen(zone_str1)) != 0 ||
+	    zs_parse_all(sc) != 0) {
+		assert(0);
+	}
+	rrset_present = node_contains_rr(iter_node, &rrset);
+	ok(rrset_present, "full zone update: first iter value check");
+
+	knot_rdataset_clear(&rrset.rrs, NULL);
+
+	if (zs_set_input_string(sc, zone_str2, strlen(zone_str2)) != 0 ||
+	    zs_parse_all(sc) != 0) {
+		assert(0);
+	}
+	rrset_present = node_contains_rr(iter_node, &rrset);
+	ok(rrset_present, "full zone update: second iter value check");
+
+	ret = zone_update_iter_next(&it);
+	ok(ret == KNOT_EOK, "full zone update: iter next");
+
+	iter_node = zone_update_iter_val(&it);
+	ok(iter_node == NULL, "full zone update: iter val past end");
+
+	ret = zone_update_iter_finish(&it);
+	ok(ret == KNOT_EOK, "full zone update: iter finish");
+
+	ret = zone_update_commit(conf(), &update);
+	node = zone_contents_find_node_for_rr(zone->contents, &rrset);
+	rrset_present = node_contains_rr(node, &rrset);
+	ok(ret == KNOT_EOK && rrset_present, "full zone update: commit");
+
+	knot_rdataset_clear(&rrset.rrs, NULL);
+}
+
+void test_incremental(zone_t *zone, zs_scanner_t *sc)
+{
 	int ret = KNOT_EOK;
-	to_zone = true;
-
-	knot_dname_t *apex = knot_dname_from_str_alloc("test");
-	assert(apex);
-	zone_contents_t *zc = zone_contents_new(apex);
-	assert(zc);
-	zone_t zone = { .contents = zc, .name = apex };
-
-	// Parse initial node
-	zs_scanner_t sc;
-	if (zs_init(&sc, "test.", KNOT_CLASS_IN, 3600) != 0 ||
-	    zs_set_processing(&sc, process_rr, NULL, zc) != 0) {
-		assert(0);
-	}
-
-	if (zs_set_input_string(&sc, zone_str, strlen(zone_str)) != 0 ||
-	    zs_parse_all(&sc) != 0) {
-		assert(0);
-	}
-
-	// Initial node added, now just parse the RRs
-	to_zone = false;
 
 	zone_update_t update;
-	zone_update_init(&update, &zone, UPDATE_INCREMENTAL);
-	ok(update.zone == &zone && changeset_empty(&update.change) && update.mm.alloc,
+	zone_update_init(&update, zone, UPDATE_INCREMENTAL);
+	ok(update.zone == zone && changeset_empty(&update.change) && update.mm.alloc,
 	   "incremental zone update: init");
 
-	// Check that old node is returned without changes
-	ok(zc->apex == zone_update_get_node(&update, zc->apex->owner) &&
+	ok(zone->contents->apex == zone_update_get_apex(&update) &&
 	   zone_update_no_change(&update),
 	   "incremental zone update: no change");
 
-	// Parse RR for addition and add it
-	if (zs_set_input_string(&sc, add_str, strlen(add_str)) != 0 ||
-	    zs_parse_all(&sc) != 0) {
+	if (zs_set_input_string(sc, add_str, strlen(add_str)) != 0 ||
+	    zs_parse_all(sc) != 0) {
 		assert(0);
 	}
+	
 	ret = zone_update_add(&update, &rrset);
 	knot_rdataset_clear(&rrset.rrs, NULL);
 	ok(ret == KNOT_EOK, "incremental zone update: addition");
 
-	// Check that apex TXT has two RRs now
-	const zone_node_t *synth_node = zone_update_get_node(&update, zc->apex->owner);
+	const zone_node_t *synth_node = zone_update_get_apex(&update);
 	ok(synth_node && node_rdataset(synth_node, KNOT_RRTYPE_TXT)->rr_count == 2,
 	   "incremental zone update: add change");
 
-	// Parse RR for removal and remove it
-	if (zs_set_input_string(&sc, del_str, strlen(del_str)) != 0 ||
-	    zs_parse_all(&sc) != 0) {
+	if (zs_set_input_string(sc, del_str, strlen(del_str)) != 0 ||
+	    zs_parse_all(sc) != 0) {
 		assert(0);
 	}
 	ret = zone_update_remove(&update, &rrset);
-	knot_rdataset_clear(&rrset.rrs, NULL);
 	ok(ret == KNOT_EOK, "incremental zone update: removal");
 
-	// Check that apex TXT has one RR again
-	synth_node = zone_update_get_node(&update, zc->apex->owner);
+	synth_node = zone_update_get_apex(&update);
 	ok(synth_node && node_rdataset(synth_node, KNOT_RRTYPE_TXT)->rr_count == 1,
 	   "incremental zone update: del change");
 
-	zone_update_clear(&update);
-	ok(update.zone == NULL && changeset_empty(&update.change), "incremental zone update: cleanup");
+	zone_update_iter_t it;
+	ret = zone_update_iter(&it, &update);
+	ok(ret == KNOT_EOK, "incremental zone update: init iter");
+
+	const zone_node_t *iter_node = zone_update_iter_val(&it);
+	assert(iter_node);
+
+	bool rrset_present = node_contains_rr(iter_node, &rrset);
+	ok(!rrset_present, "incremental zone update: first iter value check");
+
+	knot_rdataset_clear(&rrset.rrs, NULL);
+
+	if (zs_set_input_string(sc, add_str, strlen(add_str)) != 0 ||
+	    zs_parse_all(sc) != 0) {
+		assert(0);
+	}
+	rrset_present = node_contains_rr(iter_node, &rrset);
+	ok(rrset_present, "incremental zone update: second iter value check");
+
+	ret = zone_update_iter_next(&it);
+	ok(ret == KNOT_EOK, "incremental zone update: iter next");
+
+	iter_node = zone_update_iter_val(&it);
+	ok(iter_node == NULL, "incremental zone update: iter val past end");
+
+	ret = zone_update_iter_finish(&it);
+	ok(ret == KNOT_EOK, "incremental zone update: iter finish");
+
+	ret = zone_update_commit(conf(), &update);
+	iter_node = zone_contents_find_node_for_rr(zone->contents, &rrset);
+	rrset_present = node_contains_rr(iter_node, &rrset);
+	ok(ret == KNOT_EOK && rrset_present, "incremental zone update: commit");
+
+	knot_rdataset_clear(&rrset.rrs, NULL);
+}
+
+int main(int argc, char *argv[])
+{
+	plan_lazy();
+
+	/* Load test configuration. */
+	const char *conf_str = "server:\n identity: bogus.ns\n version: 0.11\n nsid: \n"
+	                       "zone:\n - domain: test.\n   zonefile-sync: -1\n"
+	                       "   storage: /tmp\n";
+	int ret = test_conf(conf_str, NULL);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	// Set up empty zone
+	knot_dname_t *apex = knot_dname_from_str_alloc("test");
+	assert(apex);
+	zone_t *zone = zone_new(apex);
+
+	// Parse initial node
+	zs_scanner_t sc;
+	if (zs_init(&sc, "test.", KNOT_CLASS_IN, 3600) != 0 ||
+	    zs_set_processing(&sc, process_rr, NULL, NULL) != 0) {
+		assert(0);
+	}
+
+	// Test FULL update, commit it and use the result to test the INCREMENTAL update
+	test_full(zone, &sc);
+	test_incremental(zone, &sc);
 
 	zs_deinit(&sc);
-	zone_contents_deep_free(&zc);
+	zone_free(&zone);
 	knot_dname_free(&apex, NULL);
+	conf_free(conf());
 
 	return 0;
 }
