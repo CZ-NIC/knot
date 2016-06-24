@@ -27,7 +27,7 @@ int knot_cc_check(const uint8_t *cc, uint16_t cc_len,
                   const struct knot_cc_alg *cc_alg)
 {
 	if (!cc || !cc_len || !input ||
-	    !cc_alg || !cc_alg->cc_size || cc_alg->gen_func) {
+	    !cc_alg || !cc_alg->cc_size || !cc_alg->gen_func) {
 		return KNOT_EINVAL;
 	}
 
