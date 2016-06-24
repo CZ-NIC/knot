@@ -545,10 +545,12 @@ class Server(object):
             time.sleep(2)
         else:
             self.backtrace()
-            serial_str = "%s%s%i" % \
-                         (">" if greater else "", "=" if equal else "", serial)
+            serial_str = ""
+            if serial:
+                serial_str = "%s%s%i" % (">" if greater else "",
+                                         "=" if equal else "", serial)
             raise Failed("Can't get SOA%s, zone='%s', server='%s'" %
-                         (serial_str if serial else "", zone.name, self.name))
+                         (serial_str, zone.name, self.name))
 
         detail_log(SEP)
 
