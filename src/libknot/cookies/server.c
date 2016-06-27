@@ -70,7 +70,6 @@ int knot_sc_check(uint16_t nonce_len, const struct knot_dns_cookies *cookies,
 	}
 
 	if (cookies->sc_len != (nonce_len + sc_alg->hash_size)) {
-		/* Cookie size does to match. */
 		return KNOT_EINVAL;
 	}
 
