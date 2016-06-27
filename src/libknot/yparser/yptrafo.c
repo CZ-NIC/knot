@@ -944,7 +944,7 @@ struct sockaddr_storage yp_addr(
 	if (addr_len > 0) {
 		int64_t port = wire_read_u64(data + sizeof(uint8_t) + addr_len);
 		if (port >= 0) {
-			sockaddr_port_set(&ss, port);
+			sockaddr_port_set((struct sockaddr *)&ss, port);
 			*no_port = false;
 		} else {
 			*no_port = true;

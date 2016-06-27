@@ -114,15 +114,18 @@ static void fill_remote_addr(net_t *net, Dnstap__Message *message, bool is_initi
 		break;
 	}
 
+	ProtobufCBinaryData *addr = NULL;
+	uint32_t port = 0;
 	if (is_initiator) {
-		sockaddr_set_raw(&ss, family, message->response_address.data,
-		                 message->response_address.len);
-		sockaddr_port_set(&ss, message->response_port);
+		addr = &message->response_address;
+		port = message->response_port;
 	} else {
-		sockaddr_set_raw(&ss, family, message->query_address.data,
-		                 message->query_address.len);
-		sockaddr_port_set(&ss, message->query_port);
+		addr = &message->query_address;
+		port = message->query_port;
 	}
+
+	sockaddr_set_raw(&ss, family, addr->data, addr->len);
+	sockaddr_port_set((struct sockaddr *)&ss, port);
 
 	get_addr_str(&ss, sock_type, &net->remote_str);
 }

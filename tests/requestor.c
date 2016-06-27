@@ -132,7 +132,7 @@ int main(int argc, char *argv[])
 	sockaddr_set(&server, AF_INET, "127.0.0.1", 0);
 
 	/* Bind to random port. */
-	int responder_fd = net_bound_socket(SOCK_STREAM, &server, 0);
+	int responder_fd = net_bound_socket(SOCK_STREAM, (struct sockaddr *)&server, 0);
 	assert(responder_fd >= 0);
 	socklen_t addr_len = sockaddr_len((struct sockaddr *)&server);
 	getsockname(responder_fd, (struct sockaddr *)&server, &addr_len);
@@ -150,7 +150,7 @@ int main(int argc, char *argv[])
 	test_connected(&requestor, &server, &client);
 
 	/* Terminate responder. */
-	int conn = net_connected_socket(SOCK_STREAM, &server, NULL);
+	int conn = net_connected_socket(SOCK_STREAM, (struct sockaddr *)&server, NULL);
 	assert(conn > 0);
 	net_dns_tcp_send(conn, (uint8_t *)"", 1, TIMEOUT);
 	pthread_join(thread, NULL);

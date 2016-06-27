@@ -206,7 +206,7 @@ int knot_ctl_bind(knot_ctl_t *ctx, const char *path)
 	}
 
 	// Bind the socket.
-	ctx->listen_sock = net_bound_socket(SOCK_STREAM, &addr, 0);
+	ctx->listen_sock = net_bound_socket(SOCK_STREAM, (struct sockaddr *)&addr, 0);
 	if (ctx->listen_sock < 0) {
 		return ctx->listen_sock;
 	}
@@ -232,7 +232,7 @@ void knot_ctl_unbind(knot_ctl_t *ctx)
 	socklen_t addr_len = sizeof(addr);
 	if (getsockname(ctx->listen_sock, (struct sockaddr *)&addr, &addr_len) == 0) {
 		char addr_str[SOCKADDR_STRLEN] = { 0 };
-		if (sockaddr_tostr(addr_str, sizeof(addr_str), &addr) > 0) {
+		if (sockaddr_tostr(addr_str, sizeof(addr_str), (struct sockaddr *)&addr) > 0) {
 			(void)unlink(addr_str);
 		}
 	}
@@ -284,7 +284,7 @@ int knot_ctl_connect(knot_ctl_t *ctx, const char *path)
 	}
 
 	// Connect to socket.
-	ctx->sock = net_connected_socket(SOCK_STREAM, &addr, NULL);
+	ctx->sock = net_connected_socket(SOCK_STREAM, (struct sockaddr *)&addr, NULL);
 	if (ctx->sock < 0) {
 		return ctx->sock;
 	}

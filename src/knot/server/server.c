@@ -148,7 +148,7 @@ static int server_init_iface(iface_t *new_if, struct sockaddr_storage *addr, int
 
 	/* Convert to string address format. */
 	char addr_str[SOCKADDR_STRLEN] = { 0 };
-	sockaddr_tostr(addr_str, sizeof(addr_str), addr);
+	sockaddr_tostr(addr_str, sizeof(addr_str), (struct sockaddr *)addr);
 
 	int udp_socket_count = 1;
 	int bind_flags = 0;
@@ -174,10 +174,10 @@ static int server_init_iface(iface_t *new_if, struct sockaddr_storage *addr, int
 
 	/* Create bound UDP sockets. */
 	for (int i = 0; i < udp_socket_count; i++ ) {
-		int sock = net_bound_socket(SOCK_DGRAM, addr, bind_flags);
+		int sock = net_bound_socket(SOCK_DGRAM, (struct sockaddr *)addr, bind_flags);
 		if (sock == KNOT_EADDRNOTAVAIL) {
 			bind_flags |= NET_BIND_NONLOCAL;
-			sock = net_bound_socket(SOCK_DGRAM, addr, bind_flags);
+			sock = net_bound_socket(SOCK_DGRAM, (struct sockaddr *)addr, bind_flags);
 			if (sock >= 0 && !warn_bind) {
 				log_warning("address '%s' is not available", addr_str);
 				warn_bind = true;
@@ -197,7 +197,7 @@ static int server_init_iface(iface_t *new_if, struct sockaddr_storage *addr, int
 			warn_bufsize = true;
 		}
 
-		if (sockaddr_is_any(addr) && !enable_pktinfo(sock, addr->ss_family)) {
+		if (sockaddr_is_any((struct sockaddr *)addr) && !enable_pktinfo(sock, addr->ss_family)) {
 			log_warning("failed to enable received packet information retrieval");
 		}
 
@@ -206,7 +206,7 @@ static int server_init_iface(iface_t *new_if, struct sockaddr_storage *addr, int
 	}
 
 	/* Create bound TCP socket. */
-	int sock = net_bound_socket(SOCK_STREAM, addr, bind_flags);
+	int sock = net_bound_socket(SOCK_STREAM, (struct sockaddr *)addr, bind_flags);
 	if (sock < 0) {
 		log_error("cannot bind address '%s' (%s)", addr_str,
 		          knot_strerror(sock));
@@ -239,7 +239,7 @@ static void remove_ifacelist(struct ref *p)
 	char addr_str[SOCKADDR_STRLEN] = {0};
 	iface_t *n = NULL, *m = NULL;
 	WALK_LIST_DELSAFE(n, m, ifaces->u) {
-		sockaddr_tostr(addr_str, sizeof(addr_str), &n->addr);
+		sockaddr_tostr(addr_str, sizeof(addr_str), (struct sockaddr *)&n->addr);
 		log_info("removing interface '%s'", addr_str);
 		server_remove_iface(n);
 	}
@@ -286,7 +286,8 @@ static int reconfigure_sockets(conf_t *conf, server_t *s)
 		if (s->ifaces) {
 			WALK_LIST(m, s->ifaces->u) {
 				/* Matching port and address. */
-				if (sockaddr_cmp(&addr, &m->addr) == 0) {
+				if (sockaddr_cmp((struct sockaddr *)&addr,
+				                 (struct sockaddr *)&m->addr) == 0) {
 					found_match = 1;
 					break;
 				}
@@ -298,7 +299,7 @@ static int reconfigure_sockets(conf_t *conf, server_t *s)
 			rem_node((node_t *)m);
 		} else {
 			char addr_str[SOCKADDR_STRLEN] = { 0 };
-			sockaddr_tostr(addr_str, sizeof(addr_str), &addr);
+			sockaddr_tostr(addr_str, sizeof(addr_str), (struct sockaddr *)&addr);
 			log_info("binding to interface '%s'", addr_str);
 
 			/* Create new interface. */

@@ -339,11 +339,15 @@ static int template_match(int state, synth_template_t *tpl, knot_pkt_t *pkt, str
 		return state;
 	}
 	if (tpl->addr_max.ss_family == AF_UNSPEC) {
-		if (!sockaddr_net_match(&query_addr, &tpl->addr, tpl->mask)) {
+		if (!sockaddr_net_match((struct sockaddr *)&query_addr,
+		                        (struct sockaddr *)&tpl->addr,
+		                        tpl->mask)) {
 			return state; /* Out of our netblock, not applicable. */
 		}
 	} else {
-		if (!sockaddr_range_match(&query_addr, &tpl->addr, &tpl->addr_max)) {
+		if (!sockaddr_range_match((struct sockaddr *)&query_addr,
+		                          (struct sockaddr *)&tpl->addr,
+		                          (struct sockaddr *)&tpl->addr_max)) {
 			return state; /* Out of our netblock, not applicable. */
 		}
 	}

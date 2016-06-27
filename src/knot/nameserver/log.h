@@ -27,6 +27,6 @@
  */
 #define NS_PROC_LOG(priority, zone, remote, operation, msg, ...) do { \
 	char addr[SOCKADDR_STRLEN] = ""; \
-	sockaddr_tostr(addr, sizeof(addr), remote); \
+	sockaddr_tostr(addr, sizeof(addr), (struct sockaddr *)remote); \
 	log_msg_zone(priority, zone, "%s, %s: " msg, operation, addr, ##__VA_ARGS__); \
 	} while (0)

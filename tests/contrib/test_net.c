@@ -215,12 +215,12 @@ static void handler_echo(int sock, void *_server)
 		addr = &remote;
 	}
 
-	int in = net_recv(sock, buffer, sizeof(buffer), addr, TIMEOUT);
+	int in = net_recv(sock, buffer, sizeof(buffer), (struct sockaddr *)addr, TIMEOUT);
 	if (in <= 0) {
 		return;
 	}
 
-	net_send(sock, buffer, in, addr, TIMEOUT);
+	net_send(sock, buffer, in, (struct sockaddr *)addr, TIMEOUT);
 }
 
 static void test_connected_one(const struct sockaddr_storage *server_addr,
@@ -229,7 +229,7 @@ static void test_connected_one(const struct sockaddr_storage *server_addr,
 {
 	int r;
 
-	int client = net_connected_socket(type, server_addr, NULL);
+	int client = net_connected_socket(type, (struct sockaddr *)server_addr, NULL);
 	ok(client >= 0, "%s, %s: client, create connected socket", name, addr_name);
 
 	const uint8_t out[] = "test message";
@@ -266,7 +266,7 @@ static void test_connected(int type)
 
 	// setup server
 
-	int server = net_bound_socket(type, &local_addr, 0);
+	int server = net_bound_socket(type, (struct sockaddr *)&local_addr, 0);
 	ok(server >= 0, "%s: server, create bound socket", name);
 
 	if (socktype_is_stream(type)) {
@@ -307,7 +307,7 @@ static void test_unconnected(void)
 
 	// server
 
-	int server = net_bound_socket(SOCK_DGRAM, &local, 0);
+	int server = net_bound_socket(SOCK_DGRAM, (struct sockaddr *)&local, 0);
 	ok(server >= 0, "UDP, create server socket");
 
 	server_ctx_t server_ctx = { 0 };
@@ -316,7 +316,7 @@ static void test_unconnected(void)
 
 	// UDP
 
-	sock = net_unbound_socket(SOCK_DGRAM, &local);
+	sock = net_unbound_socket(SOCK_DGRAM, (struct sockaddr *)&local);
 	ok(sock >= 0, "UDP, create unbound socket");
 
 	ok(!net_is_connected(sock), "UDP, is not connected");
@@ -328,14 +328,14 @@ static void test_unconnected(void)
 	ok(r == KNOT_ETIMEOUT, "UDP, receive timeout on unconnected socket");
 
 	struct sockaddr_storage server_addr = addr_from_socket(server);
-	r = net_dgram_send(sock, buffer, buffer_len, &server_addr);
+	r = net_dgram_send(sock, buffer, buffer_len, (struct sockaddr *)&server_addr);
 	ok(r == buffer_len, "UDP, send on defined address");
 
 	close(sock);
 
 	// TCP
 
-	sock = net_unbound_socket(SOCK_STREAM, &local);
+	sock = net_unbound_socket(SOCK_STREAM, (struct sockaddr *)&local);
 	ok(sock >= 0, "TCP, create unbound socket");
 
 	ok(!net_is_connected(sock), "TCP, is not connected");
@@ -399,14 +399,14 @@ static void test_refused(void)
 	// listening, not accepting
 
 	addr = addr_local();
-	server = net_bound_socket(SOCK_STREAM, &addr, 0);
+	server = net_bound_socket(SOCK_STREAM, (struct sockaddr *)&addr, 0);
 	ok(server >= 0, "server, create server");
 	addr = addr_from_socket(server);
 
 	r = listen(server, LISTEN_BACKLOG);
 	ok(r == 0, "server, start listening");
 
-	client = net_connected_socket(SOCK_STREAM, &addr, NULL);
+	client = net_connected_socket(SOCK_STREAM, (struct sockaddr *)&addr, NULL);
 	ok(client >= 0, "client, connect");
 
 	r = net_stream_send(client, (uint8_t *)"", 1, TIMEOUT);
@@ -419,7 +419,7 @@ static void test_refused(void)
 
 	// listening, closed immediately
 
-	client = net_connected_socket(SOCK_STREAM, &addr, NULL);
+	client = net_connected_socket(SOCK_STREAM, (struct sockaddr *)&addr, NULL);
 	ok(client >= 0, "client, connect");
 
 	r = close(server);
@@ -539,7 +539,7 @@ static void test_dns_tcp(void)
 		};
 
 		struct sockaddr_storage addr = addr_local();
-		int server = net_bound_socket(SOCK_STREAM, &addr, 0);
+		int server = net_bound_socket(SOCK_STREAM, (struct sockaddr *)&addr, 0);
 		ok(server >= 0, "%s, server, create socket", t->name);
 
 		int r = listen(server, LISTEN_BACKLOG);
@@ -550,7 +550,7 @@ static void test_dns_tcp(void)
 		ok(r, "%s, server, start handler", t->name);
 
 		addr = addr_from_socket(server);
-		int client = net_connected_socket(SOCK_STREAM, &addr, NULL);
+		int client = net_connected_socket(SOCK_STREAM, (struct sockaddr *)&addr, NULL);
 		ok(client >= 0, "%s, client, create connected socket", t->name);
 
 		sync_wait(client);
@@ -574,12 +574,12 @@ static void test_nonblocking_mode(int type)
 	const char *name = socktype_name(type);
 	const struct sockaddr_storage addr = addr_local();
 
-	int client = net_unbound_socket(type, &addr);
+	int client = net_unbound_socket(type, (struct sockaddr *)&addr);
 	ok(client >= 0, "%s: unbound, create", name);
 	ok(!socket_is_blocking(client), "%s: unbound, nonblocking mode", name);
 	close(client);
 
-	int server = net_bound_socket(type, &addr, 0);
+	int server = net_bound_socket(type, (struct sockaddr *)&addr, 0);
 	ok(server >= 0, "%s: bound, create", name);
 	ok(!socket_is_blocking(server), "%s: bound, nonblocking mode", name);
 
@@ -589,7 +589,7 @@ static void test_nonblocking_mode(int type)
 	}
 
 	struct sockaddr_storage server_addr = addr_from_socket(server);
-	client = net_connected_socket(type, &server_addr, NULL);
+	client = net_connected_socket(type, (struct sockaddr *)&server_addr, NULL);
 	ok(client >= 0, "%s: connected, create", name);
 	ok(!socket_is_blocking(client), "%s: connected, nonblocking mode", name);
 
@@ -605,7 +605,7 @@ static void test_nonblocking_accept(void)
 
 	struct sockaddr_storage addr_server = addr_local();
 
-	int server = net_bound_socket(SOCK_STREAM, &addr_server, 0);
+	int server = net_bound_socket(SOCK_STREAM, (struct sockaddr *)&addr_server, 0);
 	ok(server >= 0, "server, create socket");
 
 	r = listen(server, LISTEN_BACKLOG);
@@ -615,7 +615,7 @@ static void test_nonblocking_accept(void)
 
 	// create client
 
-	int client = net_connected_socket(SOCK_STREAM, &addr_server, NULL);
+	int client = net_connected_socket(SOCK_STREAM, (struct sockaddr *)&addr_server, NULL);
 	ok(client >= 0, "client, create connected socket");
 
 	struct sockaddr_storage addr_client = addr_from_socket(client);
@@ -631,14 +631,22 @@ static void test_nonblocking_accept(void)
 
 	ok(!socket_is_blocking(accepted), "accepted, nonblocking mode");
 
-	ok(sockaddr_cmp(&addr_client, &addr_accepted) == 0, "accepted, correct address");
+	char buf[128] = "";
+	sockaddr_tostr(buf, sizeof(buf), (struct sockaddr *)&addr_client);
+	diag("client %s", buf);
+	sockaddr_tostr(buf, sizeof(buf), (struct sockaddr *)&addr_accepted);
+	diag("accepted %s", buf);
+
+	ok(sockaddr_cmp((struct sockaddr *)&addr_client,
+	                (struct sockaddr *)&addr_accepted) == 0,
+	   "accepted, correct address");
 
 	close(client);
 
 	// client reconnect
 
 	close(client);
-	client = net_connected_socket(SOCK_STREAM, &addr_server, NULL);
+	client = net_connected_socket(SOCK_STREAM, (struct sockaddr *)&addr_server, NULL);
 	ok(client >= 0, "client, reconnect");
 
 	r = poll_read(server);
@@ -672,7 +680,7 @@ static void test_socket_types(void)
 	};
 
 	for (const struct testcase *t = testcases; t->name != NULL; t++) {
-		int sock = net_unbound_socket(t->type, &addr);
+		int sock = net_unbound_socket(t->type, (struct sockaddr *)&addr);
 		ok(sock >= 0, "%s, create socket", t->name);
 
 		is_int(t->type, net_socktype(sock), "%s, socket type", t->name);
@@ -692,7 +700,7 @@ static void test_bind_multiple(void)
 
 	// bind first socket
 
-	int sock_one = net_bound_socket(SOCK_DGRAM, &addr, NET_BIND_MULTIPLE);
+	int sock_one = net_bound_socket(SOCK_DGRAM, (struct sockaddr *)&addr, NET_BIND_MULTIPLE);
 	if (sock_one == KNOT_ENOTSUP) {
 		skip("not supported on this system");
 		return;
@@ -702,7 +710,7 @@ static void test_bind_multiple(void)
 	// bind second socket to the same address
 
 	const struct sockaddr_storage addr_one = addr_from_socket(sock_one);
-	int sock_two = net_bound_socket(SOCK_DGRAM, &addr_one, NET_BIND_MULTIPLE);
+	int sock_two = net_bound_socket(SOCK_DGRAM, (struct sockaddr *)&addr_one, NET_BIND_MULTIPLE);
 	ok(sock_two >= 0, "bind second socket");
 
 	// compare sockets
@@ -710,7 +718,9 @@ static void test_bind_multiple(void)
 	ok(sock_one != sock_two, "descriptors are different");
 
 	const struct sockaddr_storage addr_two = addr_from_socket(sock_two);
-	ok(sockaddr_cmp(&addr_one, &addr_two) == 0, "addresses are the same");
+	ok(sockaddr_cmp((struct sockaddr *)&addr_one,
+	                (struct sockaddr *)&addr_two) == 0,
+	   "addresses are the same");
 
 	close(sock_one);
 	close(sock_two);

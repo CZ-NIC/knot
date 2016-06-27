@@ -85,7 +85,7 @@ int main(int argc, char *argv[])
 	// create TCP server
 
 	struct sockaddr_storage addr = localhost();
-	int server = net_bound_socket(SOCK_STREAM, &addr, 0);
+	int server = net_bound_socket(SOCK_STREAM, (struct sockaddr *)&addr, 0);
 	ok(server >= 0, "server: bind socket");
 
 	r = listen(server, 0);
@@ -98,7 +98,7 @@ int main(int argc, char *argv[])
 
 	// create TCP client
 
-	int client = net_connected_socket(SOCK_STREAM, &addr, NULL);
+	int client = net_connected_socket(SOCK_STREAM, (struct sockaddr *)&addr, NULL);
 	ok(client >= 0, "client: connect to server");
 
 	int optval = 8192;

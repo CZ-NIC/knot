@@ -36,7 +36,9 @@ static int request_ensure_connected(struct knot_request *request)
 	}
 
 	int sock_type = use_tcp(request) ? SOCK_STREAM : SOCK_DGRAM;
-	request->fd = net_connected_socket(sock_type, &request->remote, &request->source);
+	request->fd = net_connected_socket(sock_type,
+	                                  (struct sockaddr *)&request->remote,
+	                                  (struct sockaddr *)&request->source);
 	if (request->fd < 0) {
 		return KNOT_ECONN;
 	}

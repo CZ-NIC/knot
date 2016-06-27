@@ -390,14 +390,14 @@ static int rosedb_log_message(char *stream, size_t *maxlen, knot_pkt_t *pkt,
 	/* Field 2/3 Remote, local address. */
 	const struct sockaddr *remote = (const struct sockaddr *)qdata->param->remote;
 	memcpy(&addr, remote, sockaddr_len(remote));
-	int client_port = sockaddr_port(&addr);
-	sockaddr_port_set(&addr, 0);
-	STREAM_WRITE(stream, maxlen, sockaddr_tostr, &addr);
+	int client_port = sockaddr_port((struct sockaddr *)&addr);
+	sockaddr_port_set((struct sockaddr *)&addr, 0);
+	STREAM_WRITE(stream, maxlen, sockaddr_tostr, (struct sockaddr *)&addr);
 	STREAM_WRITE(stream, maxlen, snprintf, "\t");
 	getsockname(qdata->param->socket, (struct sockaddr *)&addr, &addr_len);
-	int server_port = sockaddr_port(&addr);
-	sockaddr_port_set(&addr, 0);
-	STREAM_WRITE(stream, maxlen, sockaddr_tostr, &addr);
+	int server_port = sockaddr_port((struct sockaddr *)&addr);
+	sockaddr_port_set((struct sockaddr *)&addr, 0);
+	STREAM_WRITE(stream, maxlen, sockaddr_tostr, (struct sockaddr *)&addr);
 	STREAM_WRITE(stream, maxlen, snprintf, "\t");
 
 	/* Field 4/5 Local, remote port. */
@@ -485,8 +485,7 @@ static int rosedb_send_log(int sock, struct sockaddr_storage *dst_addr, knot_pkt
 	}
 
 	/* Send log message line. */
-	net_dgram_send(sock, (uint8_t *)buf, sizeof(buf) - maxlen, dst_addr);
-
+	net_dgram_send(sock, (uint8_t *)buf, sizeof(buf) - maxlen, (struct sockaddr *)dst_addr);
 	return ret;
 }
 
@@ -550,7 +549,7 @@ static int rosedb_synth(knot_pkt_t *pkt, const knot_dname_t *key, struct iter *i
 	/* Send message to syslog. */
 	struct sockaddr_storage syslog_addr;
 	if (sockaddr_set(&syslog_addr, AF_INET, entry.syslog_ip, DEFAULT_PORT) == KNOT_EOK) {
-		int sock = net_unbound_socket(SOCK_DGRAM, &syslog_addr);
+		int sock = net_unbound_socket(SOCK_DGRAM, (struct sockaddr *)&syslog_addr);
 		if (sock > 0) {
 			rosedb_send_log(sock, &syslog_addr, pkt,
 			                entry.threat_code, qdata);

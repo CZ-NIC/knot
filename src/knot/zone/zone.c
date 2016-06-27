@@ -230,7 +230,9 @@ int static preferred_master(conf_t *conf, zone_t *zone, conf_remote_t *master)
 
 		for (size_t i = 0; i < addr_count; i++) {
 			conf_remote_t remote = conf_remote(conf, &masters, i);
-			if (sockaddr_net_match(&remote.addr, zone->preferred_master, -1)) {
+			if (sockaddr_net_match((struct sockaddr *)&remote.addr,
+			                       (struct sockaddr *)zone->preferred_master,
+			                       -1)) {
 				*master = remote;
 				pthread_mutex_unlock(&zone->preferred_lock);
 				return KNOT_EOK;
@@ -274,7 +276,9 @@ int zone_master_try(conf_t *conf, zone_t *zone, zone_master_cb callback,
 		for (size_t i = 0; i < addr_count; i++) {
 			conf_remote_t master = conf_remote(conf, &masters, i);
 			if (preferred.addr.ss_family != AF_UNSPEC &&
-			    sockaddr_net_match(&master.addr, &preferred.addr, -1)) {
+			    sockaddr_net_match((struct sockaddr *)&master.addr,
+			                       (struct sockaddr *)&preferred.addr,
+			                       -1)) {
 				preferred.addr.ss_family = AF_UNSPEC;
 				continue;
 			}

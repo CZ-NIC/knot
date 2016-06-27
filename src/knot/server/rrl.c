@@ -288,7 +288,7 @@ static void rrl_log_state(const struct sockaddr_storage *ss, uint16_t flags, uin
 {
 #ifdef RRL_ENABLE_LOG
 	char addr_str[SOCKADDR_STRLEN] = {0};
-	sockaddr_tostr(addr_str, sizeof(addr_str), ss);
+	sockaddr_tostr(addr_str, sizeof(addr_str), (struct sockaddr *)ss);
 
 	const char *what = "leaves";
 	if (flags & RRL_BF_ELIMIT) {

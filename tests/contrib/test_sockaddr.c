@@ -34,26 +34,26 @@ static void test_sockaddr_is_any(void)
 	ok(!sockaddr_is_any(SA(&path)), "sockaddr_is_any: unix");
 
 	struct sockaddr_storage ipv4_local = { 0 };
-	sockaddr_set(SA(&ipv4_local), AF_INET, "127.0.0.1", 0);
+	sockaddr_set(&ipv4_local, AF_INET, "127.0.0.1", 0);
 	ok(!sockaddr_is_any(SA(&ipv4_local)), "sockaddr_is_any: IPv4 local");
 
 	struct sockaddr_storage ipv4_any = { 0 };
-	sockaddr_set(SA(&ipv4_any), AF_INET, "0.0.0.0", 0);
+	sockaddr_set(&ipv4_any, AF_INET, "0.0.0.0", 0);
 	ok(sockaddr_is_any(SA(&ipv4_any)), "sockaddr_is_any: IPv4 any");
 
 	struct sockaddr_storage ipv6_local = { 0 };
-	sockaddr_set(SA(&ipv6_local), AF_INET6, "::1", 0);
+	sockaddr_set(&ipv6_local, AF_INET6, "::1", 0);
 	ok(!sockaddr_is_any(SA(&ipv6_local)), "sockaddr_is_any: IPv6 local");
 
 	struct sockaddr_storage ipv6_any = { 0 };
-	sockaddr_set(SA(&ipv6_any), AF_INET6, "::", 0);
+	sockaddr_set(&ipv6_any, AF_INET6, "::", 0);
 	ok(sockaddr_is_any(SA(&ipv6_any)), "sockaddr_is_any: IPv6 any");
 }
 
 static void check_sockaddr_set(struct sockaddr_storage *ss, int family,
                                const char *straddr, int port)
 {
-	int ret = sockaddr_set(SA(ss), family, straddr, port);
+	int ret = sockaddr_set(ss, family, straddr, port);
 	ok(ret == KNOT_EOK, "set address '%s'", straddr);
 }
 

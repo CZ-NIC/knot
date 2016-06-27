@@ -346,7 +346,7 @@ static void send_update_response(conf_t *conf, const zone_t *zone, struct knot_r
 			                 timeout);
 		} else {
 			net_dgram_send(req->fd, req->resp->wire, req->resp->size,
-			               &req->remote);
+			               (struct sockaddr *)&req->remote);
 		}
 	}
 }
