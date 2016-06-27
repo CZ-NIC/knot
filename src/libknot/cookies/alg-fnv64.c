@@ -21,6 +21,7 @@
 
 #include "contrib/fnv/fnv.h"
 #include "contrib/sockaddr.h"
+#include "libknot/attribute.h"
 #include "libknot/cookies/alg-fnv64.h"
 #include "libknot/rrtype/opt-cookie.h"
 #include "libknot/errcode.h"

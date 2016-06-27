@@ -24,6 +24,7 @@
 
 #pragma once
 
+#include "libknot/consts.h"
 #include "libknot/rrset.h"
 
 /*! \brief Constants related to EDNS. */

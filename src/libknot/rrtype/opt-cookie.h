@@ -18,8 +18,6 @@
 
 #include <stdint.h>
 
-#include "libknot/attribute.h"
-
 #define KNOT_OPT_COOKIE_MIN  8
 #define KNOT_OPT_COOKIE_CLNT KNOT_OPT_COOKIE_MIN
 #define KNOT_OPT_COOKIE_SRVR_MIN 8
