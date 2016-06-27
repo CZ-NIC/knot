@@ -34,11 +34,11 @@ enum net_flags {
  * \note The socket is set to non-blocking mode.
  *
  * \param type  Socket transport type (SOCK_STREAM, SOCK_DGRAM).
- * \param ss    Socket address storage.
+ * \param sa    Socket address.
  *
  * \return socket or error code
  */
-int net_unbound_socket(int type, const struct sockaddr_storage *ss);
+int net_unbound_socket(int type, const struct sockaddr *sa);
 
 /*!
  * \brief Create socket bound to given address.
@@ -46,13 +46,12 @@ int net_unbound_socket(int type, const struct sockaddr_storage *ss);
  * The socket is set to non-blocking mode.
  *
  * \param type   Socket transport type (SOCK_STREAM, SOCK_DGRAM).
- * \param ss     Socket address storage.
+ * \param sa     Socket address.
  * \param flags  Socket binding options.
  *
  * \return socket or error code
  */
-int net_bound_socket(int type, const struct sockaddr_storage *ss,
-                     enum net_flags flags);
+int net_bound_socket(int type, const struct sockaddr *sa, enum net_flags flags);
 
 /*!
  * \brief Create socket connected (asynchronously) to destination address.
@@ -65,8 +64,8 @@ int net_bound_socket(int type, const struct sockaddr_storage *ss,
  *
  * \return socket or error code
  */
-int net_connected_socket(int type, const struct sockaddr_storage *dst_addr,
-                         const struct sockaddr_storage *src_addr);
+int net_connected_socket(int type, const struct sockaddr *dst_addr,
+                         const struct sockaddr *src_addr);
 
 /*!
  * \brief Return true if the socket is fully connected.
@@ -118,7 +117,7 @@ int net_accept(int sock, struct sockaddr_storage *addr);
  * \return Number of bytes sent or negative error code.
  */
 ssize_t net_send(int sock, const uint8_t *buffer, size_t size,
-                 const struct sockaddr_storage *addr, int timeout_ms);
+                 const struct sockaddr *addr, int timeout_ms);
 
 /*!
  * \brief Receive a message from a socket.
@@ -132,7 +131,7 @@ ssize_t net_send(int sock, const uint8_t *buffer, size_t size,
  * \return Number of bytes read or negative error code.
  */
 ssize_t net_recv(int sock, uint8_t *buffer, size_t size,
-                 struct sockaddr_storage *addr, int timeout_ms);
+                 struct sockaddr *addr, int timeout_ms);
 
 /*!
  * \brief Send a message on a SOCK_DGRAM socket.
@@ -140,7 +139,7 @@ ssize_t net_recv(int sock, uint8_t *buffer, size_t size,
  * \see net_send
  */
 ssize_t net_dgram_send(int sock, const uint8_t *buffer, size_t size,
-                       const struct sockaddr_storage *addr);
+                       const struct sockaddr *addr);
 
 /*!
  * \brief Receive a message from a SOCK_DGRAM socket.
