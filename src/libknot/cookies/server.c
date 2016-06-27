@@ -74,7 +74,7 @@ int knot_sc_check(uint16_t nonce_len, const struct knot_dns_cookies *cookies,
 		return KNOT_EINVAL;
 	}
 
-	struct knot_sc_content content = { 0, };
+	struct knot_sc_content content = { 0 };
 
 	/* Obtain data from received server cookie. */
 	int ret = knot_sc_parse(nonce_len, cookies->sc, cookies->sc_len, &content);
@@ -82,7 +82,7 @@ int knot_sc_check(uint16_t nonce_len, const struct knot_dns_cookies *cookies,
 		return ret;
 	}
 
-	uint8_t generated_hash[KNOT_OPT_COOKIE_SRVR_MAX] = { 0, };
+	uint8_t generated_hash[KNOT_OPT_COOKIE_SRVR_MAX] = { 0 };
 	uint16_t generated_hash_len = KNOT_OPT_COOKIE_SRVR_MAX;
 	struct knot_sc_input sc_input = {
 		.cc = cookies->cc,

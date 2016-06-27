@@ -35,7 +35,7 @@ int knot_cc_check(const uint8_t *cc, uint16_t cc_len,
 		return KNOT_ESPACE;
 	}
 
-	uint8_t generated_cc[KNOT_OPT_COOKIE_CLNT] = { 0, };
+	uint8_t generated_cc[KNOT_OPT_COOKIE_CLNT] = { 0 };
 	uint16_t generated_cc_len = KNOT_OPT_COOKIE_CLNT;
 
 	int ret = cc_alg->gen_func(input, generated_cc, &generated_cc_len);
