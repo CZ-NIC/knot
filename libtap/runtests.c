@@ -902,6 +902,8 @@ test_run(struct testset *ts, FILE *logfile)
     }
     if (ts->all_skipped)
         ts->aborted = 0;
+    if (WEXITSTATUS(ts->status) > 0)
+        ts->failed++;
     status = test_analyze(ts);
 
     /* Convert missing tests to failed tests. */
