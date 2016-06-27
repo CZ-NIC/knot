@@ -13,14 +13,6 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-/*!
- * \file
- *
- * \brief Socket address abstraction layer.
- *
- * \addtogroup contrib
- * @{
- */
 
 #pragma once
 
@@ -49,49 +41,50 @@
 /*!
  * \brief Calculate current structure length based on address family.
  *
- * \param ss Socket address storage.
+ * \param sa  Socket address.
  *
- * \return number of bytes or error code
+ * \return Number of bytes or error code.
  */
-int sockaddr_len(const struct sockaddr *ss);
+int sockaddr_len(const struct sockaddr *sa);
 
 /*!
- * \brief Compare address storages.
+ * \brief Compare addresses.
  *
  * \return like memcmp(3)
  */
-int sockaddr_cmp(const struct sockaddr_storage *k1, const struct sockaddr_storage *k2);
+int sockaddr_cmp(const struct sockaddr *k1, const struct sockaddr *k2);
 
 /*!
  * \brief Set address and port.
  *
- * \param ss Socket address storage.
- * \param family Address family.
- * \param straddr IP address in string format.
- * \param port Port.
+ * \param ss       Socket address.
+ * \param family   Address family.
+ * \param straddr  IP address in string format.
+ * \param port     Port.
  *
- * \return KNOT_EOK on success or an error code
+ * \return KNOT_EOK on success or an error code.
  */
 int sockaddr_set(struct sockaddr_storage *ss, int family, const char *straddr, int port);
 
 /*!
  * \brief Return raw network address in network byte order.
  *
- * \param ss Socket address storage.
- * \param addr_size Length of the address will be stored in addr_size.
- * \return pointer to raw address
+ * \param[in]  sa        Socket address.
+ * \param[out] addr_size Address length.
+ *
+ * \return Pointer to binary buffer of size addr_size.
  */
-void *sockaddr_raw(const struct sockaddr_storage *ss, size_t *addr_size);
+void *sockaddr_raw(const struct sockaddr *sa, size_t *addr_size);
 
 /*!
  * \brief Set raw address.
  *
- * \param ss Socket address storage.
- * \param family Address family.
- * \param raw_addr IP address in binary format.
- * \param raw_addr_size Size of the binary address.
+ * \param ss             Socket address.
+ * \param family         Address family.
+ * \param raw_addr       IP address in binary format.
+ * \param raw_addr_size  Size of the binary address.
  *
- * \return KNOT_EOK on success or an error code
+ * \return KNOT_EOK on success or an error code.
  */
 int sockaddr_set_raw(struct sockaddr_storage *ss, int family,
                      const uint8_t *raw_addr, size_t raw_addr_size);
@@ -101,67 +94,67 @@ int sockaddr_set_raw(struct sockaddr_storage *ss, int family,
  *
  * \note String format: <address>[@<port>], f.e. '127.0.0.1@53'
  *
- * \param ss Socket address storage.
- * \param buf Destination for string representation.
- * \param maxlen Maximum number of written bytes.
+ * \param buf     Destination for string representation.
+ * \param maxlen  Maximum number of written bytes.
+ * \param sa      Socket address.
  *
- * \return Number of bytes written on success, error code on failure
+ * \return Number of bytes written on success, error code on failure.
  */
-int sockaddr_tostr(char *buf, size_t maxlen, const struct sockaddr_storage *ss);
+int sockaddr_tostr(char *buf, size_t maxlen, const struct sockaddr *sa);
 
 /*!
  * \brief Return port number from address.
  *
- * \param ss Socket address storage.
+ * \param sa  Socket address.
  *
- * \return port number or error code
+ * \return Port number or error code.
  */
-int sockaddr_port(const struct sockaddr_storage *ss);
+int sockaddr_port(const struct sockaddr *sa);
 
 /*!
  * \brief Set port number.
  *
- * \param ss Socket address storage.
- *
+ * \param sa    Socket address.
+ * \param port  Port to set.
  */
-void sockaddr_port_set(struct sockaddr_storage *ss, uint16_t port);
+void sockaddr_port_set(struct sockaddr *sa, uint16_t port);
 
 /*!
  * \brief Get host FQDN address.
  *
- * \return hostname string or NULL
+ * \return Hostname string or NULL.
  */
 char *sockaddr_hostname(void);
 
 /*!
  * \brief Check if address is ANY address.
+ *
+ * \param sa  Socket address.
  */
-bool sockaddr_is_any(const struct sockaddr_storage *ss);
+bool sockaddr_is_any(const struct sockaddr *sa);
 
 /*!
  * \brief Check if two addresses match the given network prefix.
  *
- * \param ss1     First address.
- * \param ss2     Second address.
+ * \param sa1     First address.
+ * \param sa2     Second address.
  * \param prefix  Prefix length.
  *
- * \retval True if match.
+ * \return True on match.
  */
-bool sockaddr_net_match(const struct sockaddr_storage *ss1,
-                        const struct sockaddr_storage *ss2,
+bool sockaddr_net_match(const struct sockaddr *sa1,
+                        const struct sockaddr *sa2,
                         unsigned prefix);
 
 /*!
  * \brief Check if the address is within the given address range (inclusive).
  *
- * \param ss      Address to check.
- * \param ss_min  Minimum address.
- * \param ss_max  Maximum address.
+ * \param sa      Address to check.
+ * \param sa_min  Minimum address.
+ * \param sa_max  Maximum address.
  *
- * \retval True if match.
+ * \return True on match.
  */
-bool sockaddr_range_match(const struct sockaddr_storage *ss,
-                          const struct sockaddr_storage *ss_min,
-                          const struct sockaddr_storage *ss_max);
-
-/*! @} */
+bool sockaddr_range_match(const struct sockaddr *sa,
+                          const struct sockaddr *sa_min,
+                          const struct sockaddr *sa_max);

@@ -25,14 +25,13 @@
 #include "contrib/openbsd/strlcpy.h"
 #include "contrib/macros.h"
 
-int sockaddr_len(const struct sockaddr *ss)
+int sockaddr_len(const struct sockaddr *sa)
 {
-	if (ss == NULL) {
+	if (sa == NULL) {
 		return 0;
 	}
 
-	const struct sockaddr_storage *sa = (const struct sockaddr_storage *)ss;
-	switch(sa->ss_family) {
+	switch(sa->sa_family) {
 	case AF_INET:
 		return sizeof(struct sockaddr_in);
 	case AF_INET6:
@@ -44,13 +43,13 @@ int sockaddr_len(const struct sockaddr *ss)
 	}
 }
 
-int sockaddr_cmp(const struct sockaddr_storage *k1, const struct sockaddr_storage *k2)
+int sockaddr_cmp(const struct sockaddr *k1, const struct sockaddr *k2)
 {
-	if (k1->ss_family != k2->ss_family) {
-		return (int)k1->ss_family - (int)k2->ss_family;
+	if (k1->sa_family != k2->sa_family) {
+		return (int)k1->sa_family - (int)k2->sa_family;
 	}
 
-	return memcmp(k1, k2, sockaddr_len((const struct sockaddr *)k1));
+	return memcmp(k1, k2, sockaddr_len(k1));
 }
 
 int sockaddr_set(struct sockaddr_storage *ss, int family, const char *straddr, int port)
@@ -59,10 +58,10 @@ int sockaddr_set(struct sockaddr_storage *ss, int family, const char *straddr, i
 		return KNOT_EINVAL;
 	}
 
-	/* Clear the structure and set family and port. */
-	memset(ss, 0, sizeof(struct sockaddr_storage));
+	/* Set family and port. */
+	memset(ss, 0, sizeof(*ss));
 	ss->ss_family = family;
-	sockaddr_port_set(ss, port);
+	sockaddr_port_set((struct sockaddr *)ss, port);
 
 	/* Initialize address depending on address family. */
 	if (family == AF_INET6) {
@@ -89,18 +88,18 @@ int sockaddr_set(struct sockaddr_storage *ss, int family, const char *straddr, i
 	return KNOT_EINVAL;
 }
 
-void *sockaddr_raw(const struct sockaddr_storage *ss, size_t *addr_size)
+void *sockaddr_raw(const struct sockaddr *sa, size_t *addr_size)
 {
-	if (ss == NULL || addr_size == NULL) {
+	if (sa == NULL || addr_size == NULL) {
 		return NULL;
 	}
 
-	if (ss->ss_family == AF_INET) {
-		struct sockaddr_in *ipv4 = (struct sockaddr_in *)ss;
+	if (sa->sa_family == AF_INET) {
+		struct sockaddr_in *ipv4 = (struct sockaddr_in *)sa;
 		*addr_size = sizeof(ipv4->sin_addr);
 		return &ipv4->sin_addr;
-	} else if (ss->ss_family == AF_INET6) {
-		struct sockaddr_in6 *ipv6 = (struct sockaddr_in6 *)ss;
+	} else if (sa->sa_family == AF_INET6) {
+		struct sockaddr_in6 *ipv6 = (struct sockaddr_in6 *)sa;
 		*addr_size = sizeof(ipv6->sin6_addr);
 		return &ipv6->sin6_addr;
 	} else {
@@ -115,39 +114,37 @@ int sockaddr_set_raw(struct sockaddr_storage *ss, int family,
 		return KNOT_EINVAL;
 	}
 
+	memset(ss, 0, sizeof(*ss));
 	ss->ss_family = family;
 
 	size_t sa_size = 0;
-	void *sa_data = sockaddr_raw(ss, &sa_size);
-
+	void *sa_data = sockaddr_raw((struct sockaddr *)ss, &sa_size);
 	if (sa_data == NULL || sa_size != raw_addr_size) {
 		return KNOT_EINVAL;
 	}
 
-	memset(ss, 0, sizeof(*ss));
-	ss->ss_family = family;
 	memcpy(sa_data, raw_addr, sa_size);
 
 	return KNOT_EOK;
 }
 
-int sockaddr_tostr(char *buf, size_t maxlen, const struct sockaddr_storage *ss)
+int sockaddr_tostr(char *buf, size_t maxlen, const struct sockaddr *sa)
 {
-	if (ss == NULL || buf == NULL) {
+	if (sa == NULL || buf == NULL) {
 		return KNOT_EINVAL;
 	}
 
 	const char *out = NULL;
 
 	/* Convert network address string. */
-	if (ss->ss_family == AF_INET6) {
-		const struct sockaddr_in6 *s = (const struct sockaddr_in6 *)ss;
-		out = inet_ntop(ss->ss_family, &s->sin6_addr, buf, maxlen);
-	} else if (ss->ss_family == AF_INET) {
-		const struct sockaddr_in *s = (const struct sockaddr_in *)ss;
-		out = inet_ntop(ss->ss_family, &s->sin_addr, buf, maxlen);
-	} else if (ss->ss_family == AF_UNIX) {
-		const struct sockaddr_un *s = (const struct sockaddr_un *)ss;
+	if (sa->sa_family == AF_INET6) {
+		const struct sockaddr_in6 *s = (const struct sockaddr_in6 *)sa;
+		out = inet_ntop(sa->sa_family, &s->sin6_addr, buf, maxlen);
+	} else if (sa->sa_family == AF_INET) {
+		const struct sockaddr_in *s = (const struct sockaddr_in *)sa;
+		out = inet_ntop(sa->sa_family, &s->sin_addr, buf, maxlen);
+	} else if (sa->sa_family == AF_UNIX) {
+		const struct sockaddr_un *s = (const struct sockaddr_un *)sa;
 		size_t ret = strlcpy(buf, s->sun_path, maxlen);
 		out = (ret < maxlen) ? buf : NULL;
 	} else {
@@ -161,7 +158,7 @@ int sockaddr_tostr(char *buf, size_t maxlen, const struct sockaddr_storage *ss)
 
 	/* Write separator and port. */
 	int written = strlen(buf);
-	int port = sockaddr_port(ss);
+	int port = sockaddr_port(sa);
 	if (port > 0) {
 		int ret = snprintf(&buf[written], maxlen - written, "@%d", port);
 		if (ret <= 0 || (size_t)ret >= maxlen - written) {
@@ -175,31 +172,31 @@ int sockaddr_tostr(char *buf, size_t maxlen, const struct sockaddr_storage *ss)
 	return written;
 }
 
-int sockaddr_port(const struct sockaddr_storage *ss)
+int sockaddr_port(const struct sockaddr *sa)
 {
-	if (ss == NULL) {
+	if (sa == NULL) {
 		return KNOT_EINVAL;
 	}
 
-	if (ss->ss_family == AF_INET6) {
-		return ntohs(((struct sockaddr_in6 *)ss)->sin6_port);
-	} else if (ss->ss_family == AF_INET) {
-		return ntohs(((struct sockaddr_in *)ss)->sin_port);
+	if (sa->sa_family == AF_INET6) {
+		return ntohs(((struct sockaddr_in6 *)sa)->sin6_port);
+	} else if (sa->sa_family == AF_INET) {
+		return ntohs(((struct sockaddr_in *)sa)->sin_port);
 	} else {
 		return KNOT_EINVAL;
 	}
 }
 
-void sockaddr_port_set(struct sockaddr_storage *ss, uint16_t port)
+void sockaddr_port_set(struct sockaddr *sa, uint16_t port)
 {
-	if (ss == NULL) {
+	if (sa == NULL) {
 		return;
 	}
 
-	if (ss->ss_family == AF_INET6) {
-		((struct sockaddr_in6 *)ss)->sin6_port = htons(port);
-	} else if (ss->ss_family == AF_INET) {
-		((struct sockaddr_in *)ss)->sin_port = htons(port);
+	if (sa->sa_family == AF_INET6) {
+		((struct sockaddr_in6 *)sa)->sin6_port = htons(port);
+	} else if (sa->sa_family == AF_INET) {
+		((struct sockaddr_in *)sa)->sin_port = htons(port);
 	}
 }
 
@@ -242,34 +239,34 @@ char *sockaddr_hostname(void)
 	return hname;
 }
 
-bool sockaddr_is_any(const struct sockaddr_storage *ss)
+bool sockaddr_is_any(const struct sockaddr *sa)
 {
-	if (ss == NULL) {
+	if (sa == NULL) {
 		return false;
 	}
 
-	if (ss->ss_family == AF_INET) {
-		const struct sockaddr_in *sa = (struct sockaddr_in *)ss;
-		return sa->sin_addr.s_addr == INADDR_ANY;
+	if (sa->sa_family == AF_INET) {
+		const struct sockaddr_in *ipv4 = (struct sockaddr_in *)sa;
+		return ipv4->sin_addr.s_addr == INADDR_ANY;
 	}
 
-	if (ss->ss_family == AF_INET6) {
-		const struct sockaddr_in6 *sa6 = (struct sockaddr_in6 *)ss;
-		return memcmp(&sa6->sin6_addr, &in6addr_any, sizeof(sa6->sin6_addr)) == 0;
+	if (sa->sa_family == AF_INET6) {
+		const struct sockaddr_in6 *ipv6 = (struct sockaddr_in6 *)sa;
+		return memcmp(&ipv6->sin6_addr, &in6addr_any, sizeof(ipv6->sin6_addr)) == 0;
 	}
 
 	return false;
 }
 
-bool sockaddr_net_match(const struct sockaddr_storage *ss1,
-                        const struct sockaddr_storage *ss2,
+bool sockaddr_net_match(const struct sockaddr *ss1,
+                        const struct sockaddr *ss2,
                         unsigned prefix)
 {
 	if (ss1 == NULL || ss2 == NULL) {
 		return false;
 	}
 
-	if (ss1->ss_family != ss2->ss_family) {
+	if (ss1->sa_family != ss2->sa_family) {
 		return false;
 	}
 
@@ -291,18 +288,18 @@ bool sockaddr_net_match(const struct sockaddr_storage *ss1,
 	       (raw_1[bytes] >> (8 - bits) == raw_2[bytes] >> (8 - bits));
 }
 
-bool sockaddr_range_match(const struct sockaddr_storage *ss,
-                          const struct sockaddr_storage *ss_min,
-                          const struct sockaddr_storage *ss_max)
+bool sockaddr_range_match(const struct sockaddr *sa,
+                          const struct sockaddr *ss_min,
+                          const struct sockaddr *ss_max)
 {
-	if (ss == NULL || ss_min == NULL || ss_max == NULL) {
+	if (sa == NULL || ss_min == NULL || ss_max == NULL) {
 		return false;
 	}
 
-	if (ss_min->ss_family != ss_max->ss_family ||
-	    ss_min->ss_family != ss->ss_family) {
+	if (ss_min->sa_family != ss_max->sa_family ||
+	    ss_min->sa_family != sa->sa_family) {
 		return false;
 	}
 
-	return sockaddr_cmp(ss, ss_min) >= 0 && sockaddr_cmp(ss, ss_max) <= 0;
+	return sockaddr_cmp(sa, ss_min) >= 0 && sockaddr_cmp(sa, ss_max) <= 0;
 }
