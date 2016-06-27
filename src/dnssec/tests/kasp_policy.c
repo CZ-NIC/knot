@@ -32,6 +32,8 @@ static void test_new_policy(void)
 		dnssec_kasp_policy_free(p);
 	}
 
+	dnssec_kasp_policy_free(p);
+
 	p = dnssec_kasp_policy_new("domestic");
 	ok(p != NULL, "create policy with name");
 	if (!p) {
