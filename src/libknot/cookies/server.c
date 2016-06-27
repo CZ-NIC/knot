@@ -66,7 +66,7 @@ int knot_sc_check(uint16_t nonce_len, const struct knot_dns_cookies *cookies,
 	}
 
 	if ((nonce_len + sc_alg->hash_size) > KNOT_OPT_COOKIE_SRVR_MAX) {
-		return KNOT_ESPACE;
+		return KNOT_EINVAL;
 	}
 
 	if (cookies->sc_len != (nonce_len + sc_alg->hash_size)) {
