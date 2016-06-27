@@ -30,6 +30,12 @@
 #include "contrib/mempattern.h"
 #include "contrib/sockaddr.h"
 
+/*! \brief Kind of additional record. */
+enum additional_kind {
+	ADDITIONAL_OPTIONAL = 0,
+	ADDITIONAL_MANDATORY,
+};
+
 /*! \brief Check if given node was already visited. */
 static int wildcard_has_visited(struct query_data *qdata, const zone_node_t *node)
 {
@@ -274,7 +280,7 @@ static int put_delegation(knot_pkt_t *pkt, struct query_data *qdata)
 /*! \brief Put additional records for given RR. */
 static int put_additional(knot_pkt_t *pkt, const knot_rrset_t *rr,
                           struct query_data *qdata, knot_rrinfo_t *info,
-                          bool is_deleg)
+                          int state, enum additional_kind kind)
 {
 	/* Valid types for ADDITIONALS insertion. */
 	/* \note Not resolving CNAMEs as MX/NS name must not be an alias. (RFC2181/10.3) */
@@ -284,17 +290,28 @@ static int put_additional(knot_pkt_t *pkt, const knot_rrset_t *rr,
 	int ret = KNOT_EOK;
 
 	/* All RRs should have additional node cached or NULL. */
-	uint16_t rr_rdata_count = rr->rrs.rr_count;
-	for (uint16_t i = 0; i < rr_rdata_count; i++) {
+	for (uint16_t i = 0; i < rr->rrs.rr_count; i++) {
 		const zone_node_t *node = rr->additional[i];
 		if (node == NULL) {
 			continue;
 		}
 
-		/* Glue is required as per RFC 1034 Section 4.3.2 step 3b. */
-		bool is_glue = is_deleg && (node->flags & NODE_FLAGS_NONAUTH);
-		uint32_t flags = KNOT_PF_CHECKDUP | (is_glue ? 0 : KNOT_PF_NOTRUNC);
+		bool is_notauth = (node->flags & (NODE_FLAGS_DELEG | NODE_FLAGS_NONAUTH));
+		bool is_glue = is_notauth &&
+		               state == DELEG && rr->type == KNOT_RRTYPE_NS &&
+		               knot_dname_in(rr->owner, node->owner);
 
+		/* Non-authoritative node allowed only as a glue. */
+		if (is_notauth && !is_glue) {
+			continue;
+		}
+
+		/* Glue is required as per RFC 1034 Section 4.3.2 step 3b. */
+		if (kind != (is_glue ? ADDITIONAL_MANDATORY : ADDITIONAL_OPTIONAL)) {
+			continue;
+		}
+
+		uint32_t flags = KNOT_PF_CHECKDUP | (is_glue ? 0 : KNOT_PF_NOTRUNC);
 		uint16_t hint = knot_pkt_compr_hint(info, KNOT_COMPR_HINT_RDATA + i);
 		knot_rrset_t rrsigs = node_rrset(node, KNOT_RRTYPE_RRSIG);
 		for (int k = 0; k < ar_type_count; ++k) {
@@ -593,10 +610,15 @@ static int solve_authority_dnssec(int state, knot_pkt_t *pkt, struct query_data 
 	}
 }
 
-static int solve_additional(int state, knot_pkt_t *pkt,
-                            struct query_data *qdata, void *ctx)
+static int solve_additional_kind(int state, knot_pkt_t *pkt, struct query_data *qdata,
+                                 enum additional_kind kind)
 {
 	int ret = KNOT_EOK;
+
+	/* Only glue can be mandatory. */
+	if (kind == ADDITIONAL_MANDATORY && state != DELEG) {
+		return ret;
+	}
 
 	/* Scan all RRs in ANSWER/AUTHORITY. */
 	for (uint16_t i = 0; i < pkt->rrset_count; ++i) {
@@ -607,12 +629,26 @@ static int solve_additional(int state, knot_pkt_t *pkt,
 		if (!knot_rrtype_additional_needed(pkt->rr[i].type)) {
 			continue;
 		}
+
 		/* Put additional records for given type. */
-		bool is_deleg = (rr->type == KNOT_RRTYPE_NS && state == DELEG);
-		ret = put_additional(pkt, rr, qdata, info, is_deleg);
+		ret = put_additional(pkt, rr, qdata, info, state, kind);
 		if (ret != KNOT_EOK) {
 			break;
 		}
+	}
+
+	return ret;
+}
+
+static int solve_additional(int state, knot_pkt_t *pkt,
+                            struct query_data *qdata, void *ctx)
+{
+	int ret = KNOT_EOK;
+
+	/* First mandatory, then optional. */
+	ret = solve_additional_kind(state, pkt, qdata, ADDITIONAL_MANDATORY);
+	if (ret == KNOT_EOK) {
+		ret = solve_additional_kind(state, pkt, qdata, ADDITIONAL_OPTIONAL);
 	}
 
 	/* Evaluate final state. */
