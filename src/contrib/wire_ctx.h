@@ -181,20 +181,6 @@ static inline bool wire_ctx_can_write(wire_ctx_t *ctx, size_t size)
 	return true;
 }
 
-/*!
- * \brief Set whole data to zero.
- *
- * \note Noop if previous error.
- */
-static inline void wire_ctx_clear(wire_ctx_t *ctx)
-{
-	assert(ctx);
-
-	if (wire_ctx_can_write(ctx, 0)) {
-		memset(ctx->wire, 0, ctx->size);
-	}
-}
-
 static inline uint8_t wire_ctx_read_u8(wire_ctx_t *ctx)
 {
 	assert(ctx);
@@ -409,5 +395,21 @@ static inline void wire_ctx_write(wire_ctx_t *ctx, const uint8_t *data, size_t s
 	}
 
 	memcpy(ctx->position, data, size);
+	ctx->position += size;
+}
+
+static inline void wire_ctx_clear(wire_ctx_t *ctx, size_t size)
+{
+	assert(ctx);
+
+	if (ctx->error != KNOT_EOK) {
+		return;
+	}
+
+	if (!wire_ctx_can_write(ctx, size)) {
+		return;
+	}
+
+	memset(ctx->position, 0, size);
 	ctx->position += size;
 }
