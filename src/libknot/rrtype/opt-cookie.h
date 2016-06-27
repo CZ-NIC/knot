@@ -23,10 +23,6 @@
 #define KNOT_OPT_COOKIE_SRVR_MIN 8
 #define KNOT_OPT_COOKIE_SRVR_MAX 32
 
-/*----------------------------------------------------------------------------*/
-/* EDNS Cookie option handling functions.                                     */
-/*----------------------------------------------------------------------------*/
-
 /*!
  * \brief Returns the size of the buffer required to store the cookie.
  *
