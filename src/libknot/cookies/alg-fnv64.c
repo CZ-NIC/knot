@@ -39,7 +39,7 @@
 static int cc_gen_fnv64(const struct knot_cc_input *input,
                         uint8_t *cc_out, uint16_t *cc_len)
 {
-	if (!input || !cc_out || !cc_len || *cc_len< KNOT_OPT_COOKIE_CLNT) {
+	if (!input || !cc_out || !cc_len || *cc_len < KNOT_OPT_COOKIE_CLNT) {
 		return KNOT_EINVAL;
 	}
 
