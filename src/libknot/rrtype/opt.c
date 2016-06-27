@@ -259,13 +259,13 @@ static uint8_t *edns_add(knot_rrset_t *opt, uint16_t code, uint16_t size,
 	wire_ctx_write_u16(&wire, code);
 	wire_ctx_write_u16(&wire, size);
 
-	assert(wire_ctx_available(&wire) == size);
-	assert(wire.error == KNOT_EOK);
-
-	// TMP
-	memset(wire.position, '\0', size);
+	// prepare EDNS option data
 
 	size_t offset = wire_ctx_offset(&wire);
+	wire_ctx_clear(&wire, size);
+
+	assert(wire_ctx_available(&wire) == 0);
+	assert(wire.error == KNOT_EOK);
 
 	// replace RDATA
 
