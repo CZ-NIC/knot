@@ -67,6 +67,10 @@ check_PROGRAMS += \
 	modules/online_sign		\
 	utils/test_lookup
 
+utils_test_lookup_CPPFLAGS = \
+	$(AM_CPPFLAGS) \
+	$(libedit_CFLAGS)
+
 utils_test_lookup_LDADD = \
 	$(top_builddir)/libtap/libtap.la \
 	$(top_builddir)/src/libknotus.la \
