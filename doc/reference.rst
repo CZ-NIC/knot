@@ -521,7 +521,7 @@ A key storage backend type. A directory with PEM files or a PKCS #11 storage.
 config
 ------
 
-A backend specific configuration. A directory for PEM storage (the path can
+A backend specific configuration. A directory with PEM files (the path can
 be specified as a relative path to :ref:`kasp-db<zone_kasp-db>`) or
 a configuration string for PKCS #11 storage.
 
