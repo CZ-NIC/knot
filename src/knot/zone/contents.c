@@ -524,7 +524,7 @@ static zone_node_t *get_nsec3_node(const zone_contents_t *zone,
 static int insert_rr(zone_contents_t *z, const knot_rrset_t *rr,
                      zone_node_t **n, bool nsec3)
 {
-	if (z == NULL || knot_rrset_empty(rr) || n == NULL) {
+	if (knot_rrset_empty(rr)) {
 		return KNOT_EINVAL;
 	}
 
@@ -551,6 +551,49 @@ static int insert_rr(zone_contents_t *z, const knot_rrset_t *rr,
 	}
 
 	return node_add_rrset(*n, rr, NULL);
+}
+
+static int remove_rr(zone_contents_t *z, const knot_rrset_t *rr,
+                     zone_node_t **n, bool nsec3)
+{
+	if (knot_rrset_empty(rr)) {
+		return KNOT_EINVAL;
+	}
+
+	// check if the RRSet belongs to the zone
+	if (!knot_dname_is_sub(rr->owner, z->apex->owner) &&
+	    !knot_dname_is_equal(rr->owner, z->apex->owner)) {
+		return KNOT_EOUTOFZONE;
+	}
+
+	zone_node_t *node;
+	if (*n == NULL) {
+		node = nsec3 ? get_nsec3_node(z, rr->owner) : get_node(z, rr->owner);
+		if (node == NULL) {
+			return KNOT_ENONODE;
+		}
+	} else {
+		node = *n;
+	}
+
+	knot_rdataset_t *node_rrs = node_rdataset(node, rr->type);
+	// Subtract changeset RRS from node RRS.
+	int ret = knot_rdataset_subtract(node_rrs, &rr->rrs, NULL);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	if (node_rrs->rr_count == 0) {
+		// RRSet is empty now, remove it from node, all data freed.
+		node_remove_rdataset(node, rr->type);
+		// If node is empty now, delete it from zone tree.
+		if (node->rrset_count == 0) {
+			zone_tree_delete_empty_node(nsec3 ? z->nsec3_nodes : z->nodes, node);
+		}
+	}
+
+	*n = node;
+	return KNOT_EOK;
 }
 
 static int recreate_normal_tree(const zone_contents_t *z, zone_contents_t *out)
@@ -662,11 +705,21 @@ static zone_node_t *get_previous(const zone_contents_t *zone,
 int zone_contents_add_rr(zone_contents_t *z, const knot_rrset_t *rr,
                          zone_node_t **n)
 {
-	if (z == NULL || rr == NULL) {
+	if (z == NULL || rr == NULL || n == NULL) {
 		return KNOT_EINVAL;
 	}
 
 	return insert_rr(z, rr, n, knot_rrset_is_nsec3rel(rr));
+}
+
+int zone_contents_remove_rr(zone_contents_t *z, const knot_rrset_t *rr,
+                            zone_node_t **n)
+{
+	if (z == NULL || rr == NULL || n == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	return remove_rr(z, rr, n, knot_rrset_is_nsec3rel(rr));
 }
 
 zone_node_t *zone_contents_get_node_for_rr(zone_contents_t *zone, const knot_rrset_t *rrset)
