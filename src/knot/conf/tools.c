@@ -351,7 +351,7 @@ int check_keystore(
 	                                       C_CONFIG, args->id, args->id_len);
 
 	if (conf_opt(&backend) == KEYSTORE_BACKEND_PKCS11 && conf_str(&config) == NULL) {
-		args->err_str = "no PKCS11 configuration defined";
+		args->err_str = "no PKCS #11 configuration defined";
 		return KNOT_EINVAL;
 	}
 
