@@ -1130,7 +1130,7 @@ bool zone_contents_is_empty(const zone_contents_t *zone)
 	return !zone || !node_rrtype_exists(zone->apex, KNOT_RRTYPE_SOA);
 }
 
-static int measure_size(const zone_node_t *node, void *data){
+static int measure_size(zone_node_t *node, void *data){
 
 	size_t *size = data;
 	int rrset_count = node->rrset_count;

@@ -50,8 +50,8 @@ struct ixfr_proc {
 	knot_rrset_t *final_soa;       /* First SOA received via IXFR. */
 	list_t changesets;             /* Processed changesets. */
 	size_t change_count;           /* Count of changesets received. */
-	size_t add_size;
-	size_t del_size;
+	size_t add_size;               /* Size of records to add */
+	size_t del_size;               /* Size of records to remove */
 	zone_t *zone;                  /* Modified zone - for journal access. */
 	knot_mm_t *mm;                 /* Memory context for RR allocations. */
 	struct query_data *qdata;
@@ -340,7 +340,6 @@ static void ixfrin_cleanup(struct answer_data *data)
 	if (proc) {
 		changesets_free(&proc->changesets);
 		knot_rrset_free(&proc->final_soa, proc->mm);
-		conf_free(proc->proc.conf);
 		mm_free(data->mm, proc);
 		data->ext = NULL;
 	}
@@ -349,21 +348,13 @@ static void ixfrin_cleanup(struct answer_data *data)
 /*! \brief Initializes IXFR-in processing context. */
 static int ixfrin_answer_init(struct answer_data *data)
 {
-	conf_t *conf;
-	int ret = conf_clone(&conf);
-	if (ret != KNOT_EOK) {
-		return ret;
-	}
-
 	struct ixfr_proc *proc = mm_alloc(data->mm, sizeof(struct ixfr_proc));
 	if (proc == NULL) {
-		conf_free(conf);
 		return KNOT_ENOMEM;
 	}
 
 	memset(proc, 0, sizeof(struct ixfr_proc));
 	gettimeofday(&proc->proc.tstamp, NULL);
-	proc->proc.conf = conf;
 
 	init_list(&proc->changesets);
 
@@ -410,11 +401,11 @@ static int ixfrin_finalize(struct answer_data *adata)
 		return ret;
 	}
 
-	conf_val_t val = conf_zone_get(ixfr->proc.conf, C_MAX_ZONE_SIZE,
+	conf_val_t val = conf_zone_get(adata->param->conf, C_MAX_ZONE_SIZE,
 	                               ixfr->zone->name);
 	const int64_t size_limit = conf_int(&val);
 
-	if (new_contents->size > size_limit) { // secodary check
+	if (new_contents->size > size_limit) { // secondary check
 		IXFRIN_LOG(LOG_WARNING, "zone size exceeded, limit %ld", size_limit);
 		update_rollback(&a_ctx);
 		update_free_zone(&new_contents);
@@ -633,7 +624,7 @@ static int process_ixfrin_packet(knot_pkt_t *pkt, struct answer_data *adata)
 	ixfr->proc.npkts  += 1;
 	ixfr->proc.nbytes += pkt->size;
 
-	conf_val_t val = conf_zone_get(ixfr->proc.conf, C_MAX_ZONE_SIZE,
+	conf_val_t val = conf_zone_get(adata->param->conf, C_MAX_ZONE_SIZE,
 	                               ixfr->zone->name);
 	const int64_t size_limit = conf_int(&val);
 	const size_t zone_size = ixfr->zone->contents->size;

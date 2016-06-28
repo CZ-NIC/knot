@@ -283,7 +283,13 @@ bool zone_contents_is_signed(const zone_contents_t *zone);
  */
 bool zone_contents_is_empty(const zone_contents_t *zone);
 
-
+/*!
+ * \brief Measure zone contents size.
+ *
+ * Size is measured in uncompressed wire format. Measured size is saved into
+ * zone contents structure.
+ * \return Measured size
+ */
 size_t zone_contents_measure_size(zone_contents_t *zone);
 
 /*! @} */
