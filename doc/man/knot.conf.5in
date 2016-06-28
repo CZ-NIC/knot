@@ -448,19 +448,19 @@ keystore:
 A keystore identifier.
 .SS backend
 .sp
-A key storage backend type. A directory with PEM files or a PKCS11 storage.
+A key storage backend type. A directory with PEM files or a PKCS #11 storage.
 .sp
 \fIDefault:\fP pem
 .SS config
 .sp
 A backend specific configuration. A directory for PEM storage (the path can
 be specified as a relative path to \fI\%kasp\-db\fP) or
-a configuration string for PKCS11 storage.
+a configuration string for PKCS #11 storage.
 .sp
 \fBNOTE:\fP
 .INDENT 0.0
 .INDENT 3.5
-A PKCS11 configuration can look like:
+Example configuration string for PKCS #11:
 .INDENT 0.0
 .INDENT 3.5
 .sp

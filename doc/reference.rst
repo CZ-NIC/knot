@@ -512,7 +512,7 @@ A keystore identifier.
 backend
 -------
 
-A key storage backend type. A directory with PEM files or a PKCS11 storage.
+A key storage backend type. A directory with PEM files or a PKCS #11 storage.
 
 *Default:* pem
 
@@ -523,10 +523,10 @@ config
 
 A backend specific configuration. A directory for PEM storage (the path can
 be specified as a relative path to :ref:`kasp-db<zone_kasp-db>`) or
-a configuration string for PKCS11 storage.
+a configuration string for PKCS #11 storage.
 
 .. NOTE::
-   A PKCS11 configuration can look like::
+   Example configuration string for PKCS #11::
 
      "pkcs11:token=knot;pin-value=1234 libsofthsm2.so"
 
