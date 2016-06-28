@@ -528,7 +528,7 @@ a configuration string for PKCS #11 storage.
 .. NOTE::
    Example configuration string for PKCS #11::
 
-     "pkcs11:token=knot;pin-value=1234 libsofthsm2.so"
+     "pkcs11:token=knot;pin-value=1234 /usr/lib64/pkcs11/libsofthsm2.so"
 
 *Default:* :ref:`kasp-db<zone_kasp-db>`/keys
 
