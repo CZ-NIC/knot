@@ -37,20 +37,13 @@ Global options
 ..............
 
 **-c**, **--config** *file*
-  Use a textual configuration file to get KASP database location (default is
-  :file:`@config_dir@/knot.conf`).
+  Use a textual configuration file to get the KASP database location.
 
 **-C**, **--confdb** *directory*
-  Use a binary configuration database directory to get KASP database location
-  (default is :file:`@storage_dir@/confdb`).
-  The default configuration database, if exists, has a preference to the default
-  configuration file.
+  Use a binary configuration database directory to get the KASP database location.
 
 **-d**, **--dir** *path*
-  Use a specified KASP database path to work with. Defaults to current working
-  directory (if no configuration is used) or ``KEYMGR_DIR`` environment
-  variable (if set). This option also overides **--config** and **--confdb**
-  options.
+  Use a specified KASP database path to work with.
 
 **-h**, **--help**
   Print the program help.
@@ -61,6 +54,19 @@ Global options
 
 **-V**, **--version**
   Print the program version.
+
+KASP database location
+......................
+
+The location of the KASP database is determined as follows:
+
+- The path read from configuration database specified with **--confdb**.
+- The path read from configuration file specified with **--config**.
+- The path read from the default configuration database in :file:`/var/lib/knot/confdb`.
+- The path read from the default configuration file in :file:`/etc/knot.conf`.
+- The path specified with **--dir**.
+- The path specified in the ``KEYMGR_DIR`` environment variable.
+- The current path if the **--legacy** option is set.
 
 Main commands
 .............

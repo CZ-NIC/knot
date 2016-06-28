@@ -60,20 +60,13 @@ a name must be unique amongst the other names.
 .INDENT 0.0
 .TP
 \fB\-c\fP, \fB\-\-config\fP \fIfile\fP
-Use a textual configuration file to get KASP database location (default is
-\fB@config_dir@/knot.conf\fP).
+Use a textual configuration file to get the KASP database location.
 .TP
 \fB\-C\fP, \fB\-\-confdb\fP \fIdirectory\fP
-Use a binary configuration database directory to get KASP database location
-(default is \fB@storage_dir@/confdb\fP).
-The default configuration database, if exists, has a preference to the default
-configuration file.
+Use a binary configuration database directory to get the KASP database location.
 .TP
 \fB\-d\fP, \fB\-\-dir\fP \fIpath\fP
-Use a specified KASP database path to work with. Defaults to current working
-directory (if no configuration is used) or \fBKEYMGR_DIR\fP environment
-variable (if set). This option also overides \fB\-\-config\fP and \fB\-\-confdb\fP
-options.
+Use a specified KASP database path to work with.
 .TP
 \fB\-h\fP, \fB\-\-help\fP
 Print the program help.
@@ -84,6 +77,25 @@ in KASP database (not in server configuration).
 .TP
 \fB\-V\fP, \fB\-\-version\fP
 Print the program version.
+.UNINDENT
+.SS KASP database location
+.sp
+The location of the KASP database is determined as follows:
+.INDENT 0.0
+.IP \(bu 2
+The path read from configuration database specified with \fB\-\-confdb\fP\&.
+.IP \(bu 2
+The path read from configuration file specified with \fB\-\-config\fP\&.
+.IP \(bu 2
+The path read from the default configuration database in \fB/var/lib/knot/confdb\fP\&.
+.IP \(bu 2
+The path read from the default configuration file in \fB/etc/knot.conf\fP\&.
+.IP \(bu 2
+The path specified with \fB\-\-dir\fP\&.
+.IP \(bu 2
+The path specified in the \fBKEYMGR_DIR\fP environment variable.
+.IP \(bu 2
+The current path if the \fB\-\-legacy\fP option is set.
 .UNINDENT
 .SS Main commands
 .INDENT 0.0
