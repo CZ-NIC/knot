@@ -142,4 +142,43 @@ with DelegationTest("parent.tc.test") as test:
         "additional": {"AAAA": 2, "RRSIG": 2}}
     )
 
+# Delegation with mixed set of servers
+
+with DelegationTest("mixed.tc.test") as test:
+    # incomplete delegation, no DS
+    test.run(bufsize=512, truncated=True, counts={
+        "authority": {"NS": 6, "DS": 0, "RRSIG": 0},
+        "additional": {"AAAA": 0, "RRSIG": 0}}
+    )
+    # incomplete delegation, DS without signature
+    test.run(bufsize=709, truncated=True, counts={
+        "authority": {"NS": 6, "DS": 1, "RRSIG": 0},
+        "additional": {"AAAA": 0, "RRSIG": 0}}
+    )
+    # complete delegation, no glue
+    test.run(bufsize=812, truncated=True, counts={
+        "authority": {"NS": 6, "DS": 1, "RRSIG": 1},
+        "additional": {"AAAA": 0, "RRSIG": 0}}
+    )
+    # complete delegation, partial glue
+    test.run(bufsize=840, truncated=True, counts={
+        "authority": {"NS": 6, "DS": 1, "RRSIG": 1},
+        "additional": {"AAAA": 1, "RRSIG": 0}}
+    )
+    # complete delegation, full glue, no optional
+    test.run(bufsize=868, truncated=False, counts={
+        "authority": {"NS": 6, "DS": 1, "RRSIG": 1},
+        "additional": {"AAAA": 2, "RRSIG": 0}}
+    )
+    # complete delegation, full glue, optional without signature
+    test.run(bufsize=896, truncated=False, counts={
+        "authority": {"NS": 6, "DS": 1, "RRSIG": 1},
+        "additional": {"AAAA": 3, "RRSIG": 0}}
+    )
+    # complete delegation, full glue, optional
+    test.run(bufsize=999, truncated=False, counts={
+        "authority": {"NS": 6, "DS": 1, "RRSIG": 1},
+        "additional": {"AAAA": 3, "RRSIG": 1}}
+    )
+
 t.stop()
