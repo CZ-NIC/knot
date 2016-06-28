@@ -480,9 +480,9 @@ int check_zone(
 	conf_val_t policy = conf_zone_get_txn(args->conf, args->txn,
 	                                       C_DNSSEC_POLICY, args->id);
 	if (conf_bool(&signing) && policy.code != KNOT_EOK) {
-		CONF_LOG(LOG_NOTICE, "dnssec policy settings in KASP database "
+		CONF_LOG(LOG_NOTICE, "DNSSEC policy settings in KASP database "
 		         "is obsolete and will be removed in the next major release. "
-		         "Use proper zone.dnssec-policy configuration.");
+		         "Use zone.dnssec-policy in server configuration instead.");
 	}
 
 	return KNOT_EOK;
