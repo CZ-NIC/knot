@@ -217,9 +217,7 @@ int main(int argc, char *argv[])
 	plan_lazy();
 
 	/* Load test configuration. */
-	const char *conf_str = "server:\n identity: bogus.ns\n version: 0.11\n nsid: \n"
-	                       "zone:\n - domain: test.\n   zonefile-sync: -1\n"
-	                       "   storage: /tmp\n";
+	const char *conf_str = "zone:\n - domain: test.\n   storage: /tmp\n";
 	int ret = test_conf(conf_str, NULL);
 	if (ret != KNOT_EOK) {
 		return ret;

@@ -566,7 +566,6 @@ static int remove_rr(zone_contents_t *z, const knot_rrset_t *rr,
 		return KNOT_EOUTOFZONE;
 	}
 
-	int ret = KNOT_EOK;
 	zone_node_t *node;
 	if (*n == NULL) {
 		node = nsec3 ? get_nsec3_node(z, rr->owner) : get_node(z, rr->owner);
@@ -579,7 +578,7 @@ static int remove_rr(zone_contents_t *z, const knot_rrset_t *rr,
 
 	knot_rdataset_t *node_rrs = node_rdataset(node, rr->type);
 	// Subtract changeset RRS from node RRS.
-	ret = knot_rdataset_subtract(node_rrs, &rr->rrs, NULL);
+	int ret = knot_rdataset_subtract(node_rrs, &rr->rrs, NULL);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
