@@ -38,7 +38,6 @@ struct knot_cc_input {
  *                        return contains size of client cookie.
  *
  * \retval KNOT_EOK
- * \retval KNOT_ESPACE
  * \retval KNOT_EINVAL
  */
 typedef int (knot_cc_gen_t)(const struct knot_cc_input *input,
@@ -61,7 +60,6 @@ struct knot_cc_alg {
  * \param cc_alg  Client cookie algorithm.
  *
  * \retval KNOT_EOK
- * \retval KNOT_ESPACE
  * \retval KNOT_EINVAL
  */
 int knot_cc_check(const uint8_t *cc, uint16_t cc_len,

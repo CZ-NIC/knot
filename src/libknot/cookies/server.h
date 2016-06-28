@@ -96,7 +96,6 @@ int knot_sc_parse(uint16_t nonce_len, const uint8_t *sc, uint16_t sc_len,
  *                          return contains size of written hash.
  *
  * \retval KNOT_EOK
- * \retval KNOT_ESPACE
  * \retval KNOT_EINVAL
  */
 typedef int (knot_sc_hash_t)(const struct knot_sc_input *input,
@@ -119,7 +118,6 @@ struct knot_sc_alg {
  * \param sc_alg     Server cookie algorithm.
  *
  * \retval KNOT_EOK
- * \retval KNOT_ESPACE
  * \retval KNOT_EINVAL
  */
 int knot_sc_check(uint16_t nonce_len, const struct knot_dns_cookies *cookies,
