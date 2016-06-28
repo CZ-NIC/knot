@@ -131,7 +131,7 @@ ssize_t net_send(int sock, const uint8_t *buffer, size_t size,
  * \return Number of bytes read or negative error code.
  */
 ssize_t net_recv(int sock, uint8_t *buffer, size_t size,
-                 struct sockaddr *addr, int timeout_ms);
+                 struct sockaddr_storage *addr, int timeout_ms);
 
 /*!
  * \brief Send a message on a SOCK_DGRAM socket.

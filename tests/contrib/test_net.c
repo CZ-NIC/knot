@@ -215,7 +215,7 @@ static void handler_echo(int sock, void *_server)
 		addr = &remote;
 	}
 
-	int in = net_recv(sock, buffer, sizeof(buffer), (struct sockaddr *)addr, TIMEOUT);
+	int in = net_recv(sock, buffer, sizeof(buffer), addr, TIMEOUT);
 	if (in <= 0) {
 		return;
 	}
@@ -630,12 +630,6 @@ static void test_nonblocking_accept(void)
 	ok(accepted >= 0, "server, accept connection");
 
 	ok(!socket_is_blocking(accepted), "accepted, nonblocking mode");
-
-	char buf[128] = "";
-	sockaddr_tostr(buf, sizeof(buf), (struct sockaddr *)&addr_client);
-	diag("client %s", buf);
-	sockaddr_tostr(buf, sizeof(buf), (struct sockaddr *)&addr_accepted);
-	diag("accepted %s", buf);
 
 	ok(sockaddr_cmp((struct sockaddr *)&addr_client,
 	                (struct sockaddr *)&addr_accepted) == 0,

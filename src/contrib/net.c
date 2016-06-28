@@ -495,7 +495,7 @@ ssize_t net_send(int sock, const uint8_t *buffer, size_t size,
 }
 
 ssize_t net_recv(int sock, uint8_t *buffer, size_t size,
-                 struct sockaddr *addr, int timeout_ms)
+                 struct sockaddr_storage *addr, int timeout_ms)
 {
 	if (sock < 0 || buffer == NULL) {
 		return KNOT_EINVAL;
