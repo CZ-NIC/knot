@@ -81,7 +81,7 @@ int knot_edns_opt_cookie_parse(const uint8_t *data, uint16_t data_len,
                                const uint8_t **cc, uint16_t *cc_len,
                                const uint8_t **sc, uint16_t *sc_len)
 {
-	if (data == NULL || !cookie_len_ok(data_len)) {
+	if (data == NULL) {
 		return KNOT_EINVAL;
 	}
 
