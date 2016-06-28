@@ -32,7 +32,7 @@ int knot_cc_check(const uint8_t *cc, uint16_t cc_len,
 	}
 
 	if (cc_alg->cc_size > KNOT_OPT_COOKIE_CLNT) {
-		return KNOT_ESPACE;
+		return KNOT_EINVAL;
 	}
 
 	uint8_t generated_cc[KNOT_OPT_COOKIE_CLNT] = { 0 };
