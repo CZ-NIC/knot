@@ -20,6 +20,7 @@ check_PROGRAMS = \
 	confdb				\
 	confio				\
 	control				\
+	cookies				\
 	db				\
 	descriptor			\
 	dname				\
