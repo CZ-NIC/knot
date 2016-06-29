@@ -14,49 +14,22 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <arpa/inet.h>
-#include <netinet/in.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 #include <tap/basic.h>
 
+#include "contrib/sockaddr.h"
 #include "libknot/consts.h"
 #include "libknot/cookies/alg-fnv64.h"
 #include "libknot/cookies/client.h"
 #include "libknot/errcode.h"
-
-static int init_sa4(struct sockaddr_in *sa, uint16_t port, const char *addr)
-{
-	memset(sa, 0, sizeof(*sa));
-
-	sa->sin_family = AF_INET;
-	sa->sin_port = port;
-	int ret = inet_pton(sa->sin_family, addr, &sa->sin_addr);
-	return ret;
-}
-
-static int init_sa6(struct sockaddr_in6 *sa, uint16_t port, const char *addr)
-{
-	memset(sa, 0, sizeof(*sa));
-
-	sa->sin6_family = AF_INET6;
-	sa->sin6_port = port;
-	int ret = inet_pton(sa->sin6_family, addr, &sa->sin6_addr);
-	return ret;
-}
 
 int main(int argc, char *argv[])
 {
 	plan_lazy();
 
 	int ret;
-
-	struct sockaddr unspec_sa = {
-		.sa_family = AF_UNSPEC
-	};
-	struct sockaddr_in c4_sa, s4_sa;
-	struct sockaddr_in6 c6_sa, s6_sa;
 
 	const uint8_t secret[] = { 0, 1, 2, 3, 4, 5, 6, 7 };
 
@@ -65,11 +38,17 @@ int main(int argc, char *argv[])
 
 	struct knot_cc_input cc_in = { 0 };
 
-	init_sa4(&c4_sa, 0, "127.0.0.1");
-	init_sa4(&s4_sa, 0, "10.0.0.1");
+	struct sockaddr_storage unspec_sa = { 0 };
 
-	init_sa6(&c6_sa, 0, "2001:db8:8714:3a90::12");
-	init_sa6(&s6_sa, 0, "::1");
+	struct sockaddr_storage c4_sa = { 0 };
+	struct sockaddr_storage s4_sa = { 0 };
+	sockaddr_set(&c4_sa, AF_INET, "127.0.0.1", 0);
+	sockaddr_set(&s4_sa, AF_INET, "10.0.0.1", 0);
+
+	struct sockaddr_storage c6_sa = { 0 };
+	struct sockaddr_storage s6_sa = { 0 };
+	sockaddr_set(&c6_sa, AF_INET6, "2001:db8:8714:3a90::12", 0);
+	sockaddr_set(&s6_sa, AF_INET6, "::1", 0);
 
 	/* Client cookie hash algorithm. */
 
