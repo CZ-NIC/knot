@@ -60,13 +60,17 @@ KASP database location
 
 The location of the KASP database is determined as follows:
 
-- The path read from configuration database specified with **--confdb**.
-- The path read from configuration file specified with **--config**.
-- The path read from the default configuration database in :file:`/var/lib/knot/confdb`.
-- The path read from the default configuration file in :file:`/etc/knot.conf`.
-- The path specified with **--dir**.
-- The path specified in the ``KEYMGR_DIR`` environment variable.
-- The current path if the **--legacy** option is set.
+1. The path specified with **--dir**.
+2. The path read from the server configuration specified with **--confdb** or
+   **--config**.
+3. The path read from the server default configuration database.
+4. The path read from the server default configuration file.
+
+In legacy mode, the path is determined as follows:
+
+1. The path specified with **--dir**.
+2. The path specified in the ``KEYMGR_DIR`` environment variable.
+3. The current working dir.
 
 Main commands
 .............

@@ -82,20 +82,25 @@ Print the program version.
 .sp
 The location of the KASP database is determined as follows:
 .INDENT 0.0
-.IP \(bu 2
-The path read from configuration database specified with \fB\-\-confdb\fP\&.
-.IP \(bu 2
-The path read from configuration file specified with \fB\-\-config\fP\&.
-.IP \(bu 2
-The path read from the default configuration database in \fB/var/lib/knot/confdb\fP\&.
-.IP \(bu 2
-The path read from the default configuration file in \fB/etc/knot.conf\fP\&.
-.IP \(bu 2
+.IP 1. 3
 The path specified with \fB\-\-dir\fP\&.
-.IP \(bu 2
+.IP 2. 3
+The path read from the server configuration specified with \fB\-\-confdb\fP or
+\fB\-\-config\fP\&.
+.IP 3. 3
+The path read from the server default configuration database.
+.IP 4. 3
+The path read from the server default configuration file.
+.UNINDENT
+.sp
+In legacy mode, the path is determined as follows:
+.INDENT 0.0
+.IP 1. 3
+The path specified with \fB\-\-dir\fP\&.
+.IP 2. 3
 The path specified in the \fBKEYMGR_DIR\fP environment variable.
-.IP \(bu 2
-The current path if the \fB\-\-legacy\fP option is set.
+.IP 3. 3
+The current working dir.
 .UNINDENT
 .SS Main commands
 .INDENT 0.0

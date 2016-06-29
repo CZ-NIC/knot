@@ -14,6 +14,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <assert.h>
 #include <sys/stat.h>
 #include <unistd.h>
 
@@ -23,23 +24,35 @@
 #include "options.h"
 #include "shared/print.h"
 
-int options_init(options_t *options)
+/*!
+ * Initialize kasp_dir in legacy mode.
+ */
+static int options_init_legacy(options_t *options)
 {
-	if (options == NULL) {
-		return DNSSEC_EINVAL;
+	assert(options);
+
+	if (options->kasp_dir) {
+		return DNSSEC_EOK;
 	}
 
-	if (options->kasp_dir == NULL) {
-		char *env = getenv("KEYMGR_DIR");
-		if (env != NULL) {
-			options->kasp_dir = strdup(env);
-		}
+	char *env = getenv("KEYMGR_DIR");
+	if (env) {
+		options->kasp_dir = strdup(env);
+		return options->kasp_dir ? DNSSEC_EOK : DNSSEC_ENOMEM;
 	}
 
-	if (options->legacy) {
-		if (options->kasp_dir == NULL) {
-			options->kasp_dir = getcwd(NULL, 0);
-		}
+	options->kasp_dir = getcwd(NULL, 0);
+	return options->kasp_dir ? DNSSEC_EOK : DNSSEC_ENOMEM;
+}
+
+/*!
+ * Initialize kasp_dir with policies in database.
+ */
+static int options_init_modern(options_t *options)
+{
+	assert(options);
+
+	if (options->kasp_dir) {
 		return DNSSEC_EOK;
 	}
 
@@ -61,8 +74,9 @@ int options_init(options_t *options)
 	} else if (stat(CONF_DEFAULT_FILE, &st) == 0) {
 		import = true;
 		options->config = CONF_DEFAULT_FILE;
-	} else if (options->kasp_dir == NULL) {
-		options->kasp_dir = getcwd(NULL, 0);
+	} else {
+		error("Couldn't determine configuration source.");
+		return DNSSEC_EINVAL;
 	}
 
 	// Prepare config flags.
@@ -93,6 +107,19 @@ int options_init(options_t *options)
 	conf_update(new_conf);
 
 	return DNSSEC_EOK;
+}
+
+int options_init(options_t *options)
+{
+	if (options == NULL) {
+		return DNSSEC_EINVAL;
+	}
+
+	if (options->legacy) {
+		return options_init_legacy(options);
+	} else {
+		return options_init_modern(options);
+	}
 }
 
 void options_cleanup(options_t *options)
