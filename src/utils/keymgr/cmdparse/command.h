@@ -1,4 +1,4 @@
-/*  Copyright (C) 2014 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -16,14 +16,21 @@
 
 #pragma once
 
+#include <stdbool.h>
+
 typedef int (*command_cb)(int argc, char *argv[]);
+
+enum command_flag {
+	NONE = 0,
+	LEGACY
+};
 
 struct command {
 	char *name;
 	command_cb process;
-	char *help;
+	enum command_flag flags;
 };
 
 typedef struct command command_t;
 
-int subcommand(const command_t *commands, int argc, char *argv[]);
+int subcommand(const command_t *commands, bool legacy, int argc, char *argv[]);

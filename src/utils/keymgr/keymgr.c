@@ -1272,7 +1272,7 @@ static int cmd_zone_key(int argc, char *argv[])
 		{ NULL }
 	};
 
-	return subcommand(commands, argc, argv);
+	return subcommand(commands, global.legacy, argc, argv);
 }
 
 static int cmd_zone_set(int argc, char *argv[])
@@ -1324,21 +1324,15 @@ static int cmd_zone(int argc, char *argv[])
 {
 	static command_t commands[] = {
 		{ "key",    cmd_zone_key },
-		// legacy operations
-		{ "add",    cmd_zone_add },
-		{ "list",   cmd_zone_list },
-		{ "remove", cmd_zone_remove },
-		{ "show",   cmd_zone_show },
-		{ "set",    cmd_zone_set },
+		{ "add",    cmd_zone_add,    LEGACY },
+		{ "list",   cmd_zone_list,   LEGACY },
+		{ "remove", cmd_zone_remove, LEGACY },
+		{ "show",   cmd_zone_show,   LEGACY },
+		{ "set",    cmd_zone_set,    LEGACY },
 		{ NULL }
 	};
 
-	// disable legacy operations
-	if (!global.legacy) {
-		commands[1].name = NULL;
-	}
-
-	return subcommand(commands, argc, argv);
+	return subcommand(commands, global.legacy, argc, argv);
 }
 
 static int cmd_policy_list(int argc, char *argv[])
@@ -1558,15 +1552,15 @@ static int cmd_policy_remove(int argc, char *argv[])
 static int cmd_policy(int argc, char *argv[])
 {
 	static const command_t commands[] = {
-		{ "list",   cmd_policy_list   },
-		{ "show",   cmd_policy_show   },
-		{ "add",    cmd_policy_add    },
-		{ "set",    cmd_policy_set    },
-		{ "remove", cmd_policy_remove },
+		{ "list",   cmd_policy_list,   LEGACY },
+		{ "show",   cmd_policy_show,   LEGACY },
+		{ "add",    cmd_policy_add,    LEGACY },
+		{ "set",    cmd_policy_set,    LEGACY },
+		{ "remove", cmd_policy_remove, LEGACY },
 		{ NULL }
 	};
 
-	return subcommand(commands, argc, argv);
+	return subcommand(commands, global.legacy, argc, argv);
 }
 
 static int cmd_keystore_list(int argc, char *argv[])
@@ -1779,23 +1773,23 @@ static int cmd_tsig_generate(int argc, char *argv[])
 static int cmd_keystore(int argc, char *argv[])
 {
 	static const command_t commands[] = {
-		{ "list",   cmd_keystore_list },
-		{ "show",   cmd_keystore_show },
-		{ "add",    cmd_keystore_add },
+		{ "list", cmd_keystore_list, LEGACY },
+		{ "show", cmd_keystore_show, LEGACY },
+		{ "add",  cmd_keystore_add,  LEGACY },
 		{ NULL }
 	};
 
-	return subcommand(commands, argc, argv);
+	return subcommand(commands, global.legacy, argc, argv);
 }
 
 static int cmd_tsig(int argc, char *argv[])
 {
 	static const command_t commands[] = {
-		{ "generate",   cmd_tsig_generate },
+		{ "generate", cmd_tsig_generate },
 		{ NULL }
 	};
 
-	return subcommand(commands, argc, argv);
+	return subcommand(commands, global.legacy, argc, argv);
 }
 
 static void print_help(void)
@@ -1865,20 +1859,14 @@ int main(int argc, char *argv[])
 	static command_t commands[] = {
 		{ "tsig",     cmd_tsig },
 		{ "zone",     cmd_zone },
-		// legacy operations
-		{ "init",     cmd_init },
-		{ "policy",   cmd_policy },
-		{ "keystore", cmd_keystore },
+		{ "init",     cmd_init,     LEGACY },
+		{ "policy",   cmd_policy,   LEGACY },
+		{ "keystore", cmd_keystore, LEGACY },
 		{ NULL }
 	};
 
-	// disable legacy operations
-	if (!global.legacy) {
-		commands[2].name = NULL;
-	}
-
 	dnssec_crypto_init();
-	exit_code = subcommand(commands, argc - optind, argv + optind);
+	exit_code = subcommand(commands, global.legacy, argc - optind, argv + optind);
 	dnssec_crypto_cleanup();
 
 failed:
