@@ -48,8 +48,8 @@ AC_CONFIG_FILES([src/libknot/version.h
 # 6. If any interfaces have been removed or changed since the last
 #    public release, then set age to 0.
 
-AC_SUBST([libknot_VERSION_INFO],["-version-info 2:0:0"])
-AC_SUBST([libdnssec_VERSION_INFO],["-version-info 1:0:0"])
+AC_SUBST([libknot_VERSION_INFO],["-version-info 3:0:0"])
+AC_SUBST([libdnssec_VERSION_INFO],["-version-info 2:0:0"])
 AC_SUBST([libzscanner_VERSION_INFO],["-version-info 1:0:0"])
 
 # Automatically update release date based on configure.ac date
