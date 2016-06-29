@@ -25,6 +25,35 @@
 #include "libknot/cookies/alg-fnv64.h"
 #include "libknot/cookies/server.h"
 #include "libknot/errcode.h"
+#include "libknot/rrtype/opt.h"
+#include "libknot/rrtype/opt-cookie.h"
+
+#define OPTCOUNT 4
+
+const char *cookie_opts[OPTCOUNT] = {
+	"\x00\x0a" "\x00\x10" "\x00\x01\x02\x03\x04\x05\x06\x07" "\xe0\xd9\x95\x4e\xbc\xc3\x99\x18", /* 8 octets long wrong server cookie. */
+	"\x00\x0a" "\x00\x10" "\x00\x01\x02\x03\x04\x05\x06\x07" "\xe0\xd9\x95\x4e\xbc\xc3\x99\x19", /* 8 octets long OK server cookie. */
+	"\x00\x0a" "\x00\x18" "\x00\x01\x02\x03\x04\x05\x06\x07" "\x0a\x0b\x0c\x0d\x0e\x0f\x10\x11\xc0\xbd\xdb\xec\x19\x78\x88\x38", /* 8B nonce 8B hash long wrong server cookie. */
+	"\x00\x0a" "\x00\x18" "\x00\x01\x02\x03\x04\x05\x06\x07" "\x0a\x0b\x0c\x0d\x0e\x0f\x10\x11\xc0\xbd\xdb\xec\x19\x78\x88\x39" /* 8B nonce 8B hash long OK server cookie. */
+};
+
+#define ROPT(i) ((const uint8_t *)cookie_opts[(i)])
+
+static void get_opt_cookies(const uint8_t *opt, struct knot_dns_cookies *cookies)
+{
+	memset(cookies, 0, sizeof(*cookies));
+
+	if (opt == NULL) {
+		return;
+	}
+
+	const uint8_t *data = knot_edns_opt_get_data((uint8_t *)opt);
+	uint16_t data_len = knot_edns_opt_get_length((uint8_t *)opt);
+
+	knot_edns_opt_cookie_parse(data, data_len,
+	                           &cookies->cc, &cookies->cc_len,
+	                           &cookies->sc, &cookies->sc_len);
+}
 
 static int init_sa4(struct sockaddr_in *sa, uint16_t port, const char *addr)
 {
@@ -55,7 +84,7 @@ static int init_sa6(struct sockaddr_in6 *sa, uint16_t port, const char *addr)
 
 int main(int argc, char *argv[])
 {
-	plan(25);
+	plan(38);
 
 	int ret;
 
@@ -93,6 +122,8 @@ int main(int argc, char *argv[])
 
 	init_sa6(&c6_sa, PORT, A6_0);
 	init_sa6(&s6_sa, PORT, A6_1);
+
+	struct knot_dns_cookies cookies;
 
 	/* Server cookie hash algorithm. */
 
@@ -335,7 +366,100 @@ int main(int argc, char *argv[])
 
 	/* Server cookie check. */
 
-	/* TODO */
+	get_opt_cookies(ROPT(1), &cookies);
+	srvr_data.clnt_sockaddr = (struct sockaddr *)&c6_sa;
+	srvr_data.secret_data = secret;
+	srvr_data.secret_len = SECRET_LEN;
+	ret = knot_sc_check(1, &cookies, &srvr_data, &knot_sc_alg_fnv64);
+	ok(ret == KNOT_EINVAL, "cookies: FNV64 server cookie check - wrong nonce length");
+
+	get_opt_cookies(ROPT(1), &cookies);
+	srvr_data.clnt_sockaddr = (struct sockaddr *)&c6_sa;
+	srvr_data.secret_data = secret;
+	srvr_data.secret_len = SECRET_LEN;
+	ret = knot_sc_check(17, &cookies, &srvr_data, &knot_sc_alg_fnv64);
+	ok(ret == KNOT_EINVAL, "cookies: FNV64 server cookie check - too long nonce");
+
+	get_opt_cookies(ROPT(1), &cookies);
+	srvr_data.clnt_sockaddr = (struct sockaddr *)&c6_sa;
+	srvr_data.secret_data = secret;
+	srvr_data.secret_len = SECRET_LEN;
+	ret = knot_sc_check(0, NULL, &srvr_data, &knot_sc_alg_fnv64);
+	ok(ret == KNOT_EINVAL, "cookies: FNV64 server cookie check - no cookies");
+
+	get_opt_cookies(ROPT(1), &cookies);
+	cookies.cc = NULL;
+	cookies.cc_len = 0;
+	srvr_data.clnt_sockaddr = (struct sockaddr *)&c6_sa;
+	srvr_data.secret_data = secret;
+	srvr_data.secret_len = SECRET_LEN;
+	ret = knot_sc_check(0, NULL, &srvr_data, &knot_sc_alg_fnv64);
+	ok(ret == KNOT_EINVAL, "cookies: FNV64 server cookie check - no client cookie");
+
+	get_opt_cookies(ROPT(1), &cookies);
+	cookies.sc = NULL;
+	cookies.sc_len = 0;
+	srvr_data.clnt_sockaddr = (struct sockaddr *)&c6_sa;
+	srvr_data.secret_data = secret;
+	srvr_data.secret_len = SECRET_LEN;
+	ret = knot_sc_check(0, NULL, &srvr_data, &knot_sc_alg_fnv64);
+	ok(ret == KNOT_EINVAL, "cookies: FNV64 server cookie check - no server cookie");
+
+	get_opt_cookies(ROPT(1), &cookies);
+	srvr_data.clnt_sockaddr = NULL;
+	srvr_data.secret_data = secret;
+	srvr_data.secret_len = SECRET_LEN;
+	ret = knot_sc_check(0, NULL, &srvr_data, &knot_sc_alg_fnv64);
+	ok(ret == KNOT_EINVAL, "cookies: FNV64 server cookie check - no socket address");
+
+	get_opt_cookies(ROPT(1), &cookies);
+	srvr_data.clnt_sockaddr = (struct sockaddr *)&c6_sa;
+	srvr_data.secret_data = NULL;
+	srvr_data.secret_len = 0;
+	ret = knot_sc_check(0, &cookies, &srvr_data, &knot_sc_alg_fnv64);
+	ok(ret == KNOT_EINVAL, "cookies: FNV64 server cookie check - no secret");
+
+	get_opt_cookies(ROPT(0), &cookies);
+	srvr_data.clnt_sockaddr = (struct sockaddr *)&c6_sa;
+	srvr_data.secret_data = secret;
+	srvr_data.secret_len = SECRET_LEN;
+	ret = knot_sc_check(0, &cookies, &srvr_data, &knot_sc_alg_fnv64);
+	ok(ret == KNOT_EINVAL, "cookies: FNV64 server cookie check - bad server cookie");
+
+	get_opt_cookies(ROPT(1), &cookies);
+	srvr_data.clnt_sockaddr = (struct sockaddr *)&unspec_sa;
+	srvr_data.secret_data = secret;
+	srvr_data.secret_len = SECRET_LEN;
+	ret = knot_sc_check(0, &cookies, &srvr_data, &knot_sc_alg_fnv64);
+	ok(ret == KNOT_EINVAL, "cookies: FNV64 server cookie check - bad socket");
+
+	get_opt_cookies(ROPT(1), &cookies);
+	srvr_data.clnt_sockaddr = (struct sockaddr *)&c6_sa;
+	srvr_data.secret_data = secret;
+	srvr_data.secret_len = SECRET_LEN - 1;
+	ret = knot_sc_check(0, &cookies, &srvr_data, &knot_sc_alg_fnv64);
+	ok(ret == KNOT_EINVAL, "cookies: FNV64 server cookie check - bad secret");
+
+	get_opt_cookies(ROPT(1), &cookies);
+	srvr_data.clnt_sockaddr = (struct sockaddr *)&c6_sa;
+	srvr_data.secret_data = secret;
+	srvr_data.secret_len = SECRET_LEN;
+	ret = knot_sc_check(0, &cookies, &srvr_data, &knot_sc_alg_fnv64);
+	ok(ret == KNOT_EOK, "cookies: FNV64 server cookie check");
+
+	get_opt_cookies(ROPT(2), &cookies);
+	srvr_data.clnt_sockaddr = (struct sockaddr *)&c6_sa;
+	srvr_data.secret_data = secret;
+	srvr_data.secret_len = SECRET_LEN;
+	ret = knot_sc_check(8, &cookies, &srvr_data, &knot_sc_alg_fnv64);
+	ok(ret == KNOT_EINVAL, "cookies: FNV64 server cookie check - bad server cookie");
+
+	get_opt_cookies(ROPT(3), &cookies);
+	srvr_data.clnt_sockaddr = (struct sockaddr *)&c6_sa;
+	srvr_data.secret_data = secret;
+	srvr_data.secret_len = SECRET_LEN;
+	ret = knot_sc_check(8, &cookies, &srvr_data, &knot_sc_alg_fnv64);
+	ok(ret == KNOT_EOK, "cookies: FNV64 server cookie check");
 
 	return 0;
 }
