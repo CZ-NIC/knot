@@ -44,6 +44,9 @@ libcontrib_la_SOURCES = 			\
 	contrib/endian.h			\
 	contrib/files.c				\
 	contrib/files.h				\
+	contrib/fnv/fnv.h			\
+	contrib/fnv/hash_64a.c			\
+	contrib/fnv/longlong.h			\
 	contrib/getline.c			\
 	contrib/getline.h			\
 	contrib/hhash.c				\
@@ -102,6 +105,9 @@ nobase_libknot_la_HEADERS =			\
 	libknot/codes.h				\
 	libknot/consts.h			\
 	libknot/control/control.h		\
+	libknot/cookies/alg-fnv64.h		\
+	libknot/cookies/client.h		\
+	libknot/cookies/server.h		\
 	libknot/descriptor.h			\
 	libknot/dname.h				\
 	libknot/errcode.h			\
@@ -128,6 +134,7 @@ nobase_libknot_la_HEADERS =			\
 	libknot/rrtype/nsec3.h			\
 	libknot/rrtype/nsec3param.h		\
 	libknot/rrtype/opt.h			\
+	libknot/rrtype/opt-cookie.h		\
 	libknot/rrtype/rdname.h			\
 	libknot/rrtype/rrsig.h			\
 	libknot/rrtype/soa.h			\
@@ -142,6 +149,9 @@ libknot_la_SOURCES =				\
 	libknot/binary.c			\
 	libknot/codes.c				\
 	libknot/control/control.c		\
+	libknot/cookies/alg-fnv64.c		\
+	libknot/cookies/client.c		\
+	libknot/cookies/server.c		\
 	libknot/descriptor.c			\
 	libknot/dname.c				\
 	libknot/error.c				\
@@ -162,6 +172,7 @@ libknot_la_SOURCES =				\
 	libknot/rrtype/nsec3.c			\
 	libknot/rrtype/nsec3param.c		\
 	libknot/rrtype/opt.c			\
+	libknot/rrtype/opt-cookie.c		\
 	libknot/rrtype/rrsig.c			\
 	libknot/rrtype/soa.c			\
 	libknot/rrtype/tsig.c			\

@@ -189,6 +189,9 @@ void knot_edns_set_do(knot_rrset_t *opt_rr)
 /*!
  * \brief Find OPTION with the given code in the OPT RDATA.
  *
+ * \note It is ensured that the full option, as declared in option length,
+ *       is encompassed in the RDATA when found.
+ *
  * \param rdata     RDATA to search in.
  * \param opt_code  Code of the OPTION to find.
  * \param[out] pos  Position of the OPTION or NULL if not found.
@@ -197,18 +200,26 @@ static uint8_t *find_option(knot_rdata_t *rdata, uint16_t opt_code)
 {
 	wire_ctx_t wire = wire_ctx_init_const(knot_rdata_data(rdata),
 	                                      knot_rdata_rdlen(rdata));
+	uint8_t *found_position = NULL;
 
 	while (wire_ctx_available(&wire) > 0) {
+		found_position = wire.position;
 		uint16_t code = wire_ctx_read_u16(&wire);
 		if (wire.error != KNOT_EOK) {
 			break;
 		}
 
-		if (code == opt_code) {
-			return wire.position;
+		if (code != opt_code) {
+			found_position = NULL;
 		}
 
 		uint16_t opt_len = wire_ctx_read_u16(&wire);
+		/* Return position only when the entire option fits
+		 * in the RDATA. */
+		if (found_position != NULL && wire.error == KNOT_EOK &&
+		    wire_ctx_available(&wire) >= opt_len) {
+			return found_position;
+		}
 		wire_ctx_skip(&wire, opt_len);
 	}
 
@@ -216,45 +227,94 @@ static uint8_t *find_option(knot_rdata_t *rdata, uint16_t opt_code)
 }
 
 /*----------------------------------------------------------------------------*/
-_public_
-int knot_edns_add_option(knot_rrset_t *opt_rr, uint16_t code,
-                         uint16_t length, const uint8_t *data, knot_mm_t *mm)
+
+/*!
+ * \brief Add new EDNS option by replacing RDATA of OPT RR.
+ *
+ * \param opt   OPT RR structure to add the Option to.
+ * \param code  Option code.
+ * \param size  Option data length in bytes.
+ * \param mm    Memory context.
+ *
+ * \return Pointer to uninitialized option data.
+ */
+static uint8_t *edns_add(knot_rrset_t *opt, uint16_t code, uint16_t size,
+                         knot_mm_t *mm)
 {
-	if (opt_rr == NULL || (length != 0 && data == NULL)) {
-		return KNOT_EINVAL;
-	}
+	assert(opt->rrs.rr_count == 1);
 
-	/* We need to replace the RDATA currently in the OPT RR */
+	// extract old RDATA
 
-	/* 1) create new RDATA by appending the new option after the current
-	 *    RDATA.
-	 */
-	assert(opt_rr->rrs.rr_count == 1);
-	knot_rdata_t *old_rdata = knot_rdataset_at(&opt_rr->rrs, 0);
-
+	knot_rdata_t *old_rdata = knot_rdataset_at(&opt->rrs, 0);
 	uint8_t *old_data = knot_rdata_data(old_rdata);
 	uint16_t old_data_len = knot_rdata_rdlen(old_rdata);
-	uint16_t new_data_len = old_data_len + KNOT_EDNS_OPTION_HDRLEN + length;
 
+	// construct new RDATA
+
+	uint16_t new_data_len = old_data_len + KNOT_EDNS_OPTION_HDRLEN + size;
 	uint8_t new_data[new_data_len];
 
 	wire_ctx_t wire = wire_ctx_init(new_data, new_data_len);
 	wire_ctx_write(&wire, old_data, old_data_len);
-	// write length and code in wireformat (convert endian)
 	wire_ctx_write_u16(&wire, code);
-	wire_ctx_write_u16(&wire, length);
-	// write the option data
-	wire_ctx_write(&wire, data, length);
+	wire_ctx_write_u16(&wire, size);
 
-	if (wire.error != KNOT_EOK) {
-		return wire.error;
+	// prepare EDNS option data
+
+	size_t offset = wire_ctx_offset(&wire);
+	wire_ctx_clear(&wire, size);
+
+	assert(wire_ctx_available(&wire) == 0);
+	assert(wire.error == KNOT_EOK);
+
+	// replace RDATA
+
+	uint32_t ttl = knot_rdata_ttl(old_rdata);
+	knot_rdataset_clear(&opt->rrs, mm);
+	if (knot_rrset_add_rdata(opt, new_data, new_data_len, ttl, mm) != KNOT_EOK) {
+		return NULL;
 	}
 
-	/* 2) Replace the RDATA in the RRSet. */
-	uint32_t old_ttl = knot_rdata_ttl(old_rdata);
-	knot_rdataset_clear(&opt_rr->rrs, mm);
-	return knot_rrset_add_rdata(opt_rr, new_data, new_data_len,
-	                            old_ttl, mm);
+	return knot_rdata_data(knot_rdataset_at(&opt->rrs, 0)) + offset;
+}
+
+_public_
+int knot_edns_reserve_option(knot_rrset_t *opt_rr, uint16_t code,
+                             uint16_t size, uint8_t **wire_ptr, knot_mm_t *mm)
+{
+	if (!opt_rr) {
+		return KNOT_EINVAL;
+	}
+
+	uint8_t *wire = edns_add(opt_rr, code, size, mm);
+	if (!wire) {
+		return KNOT_ENOMEM;
+	}
+
+	memset(wire, 0, size);
+	if (wire_ptr) {
+		*wire_ptr = wire;
+	}
+
+	return KNOT_EOK;
+}
+
+_public_
+int knot_edns_add_option(knot_rrset_t *opt_rr, uint16_t code,
+                         uint16_t size, const uint8_t *data, knot_mm_t *mm)
+{
+	if (!opt_rr || (size > 0 && !data)) {
+		return KNOT_EINVAL;
+	}
+
+	uint8_t *wire = edns_add(opt_rr, code, size, mm);
+	if (!wire) {
+		return KNOT_ENOMEM;
+	}
+
+	memcpy(wire, data, size);
+
+	return KNOT_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -269,6 +329,36 @@ bool knot_edns_has_option(const knot_rrset_t *opt_rr, uint16_t code)
 	uint8_t *pos = find_option(rdata, code);
 
 	return pos != NULL;
+}
+
+_public_
+uint8_t *knot_edns_get_option(const knot_rrset_t *opt_rr, uint16_t code)
+{
+	assert(opt_rr != NULL);
+
+	knot_rdata_t *rdata = knot_rdataset_at(&opt_rr->rrs, 0);
+	assert(rdata != NULL);
+
+	return find_option(rdata, code);
+}
+
+_public_
+uint16_t knot_edns_opt_get_code(const uint8_t *opt)
+{
+	assert(opt != NULL);
+
+	wire_ctx_t wire = wire_ctx_init_const(opt, sizeof(uint16_t));
+	return wire_ctx_read_u16(&wire);
+}
+
+_public_
+uint16_t knot_edns_opt_get_length(const uint8_t *opt)
+{
+	assert(opt != NULL);
+
+	wire_ctx_t wire = wire_ctx_init_const(opt + sizeof(uint16_t),
+	                                      sizeof(uint16_t));
+	return wire_ctx_read_u16(&wire);
 }
 
 /*----------------------------------------------------------------------------*/

@@ -42,6 +42,7 @@ const knot_lookup_t knot_rcode_names[] = {
 	{ KNOT_RCODE_NOTAUTH,  "NOTAUTH" },
 	{ KNOT_RCODE_NOTZONE,  "NOTZONE" },
 	{ KNOT_RCODE_BADVERS,  "BADVERS" },
+	{ KNOT_RCODE_BADCOOKIE, "BADCOOKIE" },
 	{ 0, NULL }
 };
 

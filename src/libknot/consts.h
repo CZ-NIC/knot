@@ -86,7 +86,8 @@ typedef enum {
 	KNOT_RCODE_NXRRSET  =  8, /*!< RR set does not exist. */
 	KNOT_RCODE_NOTAUTH  =  9, /*!< Server not authoritative. / Query not authorized. */
 	KNOT_RCODE_NOTZONE  = 10, /*!< Name is not inside zone. */
-	KNOT_RCODE_BADVERS  = 16  /*!< Bad OPT Version. */
+	KNOT_RCODE_BADVERS  = 16, /*!< Bad OPT Version. */
+	KNOT_RCODE_BADCOOKIE = 23 /*!< Bad/missing server cookie. */
 } knot_rcode_t;
 
 /*!

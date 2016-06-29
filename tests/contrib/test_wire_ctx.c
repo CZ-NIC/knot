@@ -122,19 +122,17 @@ void clear_test(void)
 
 	wire_ctx_t wire = wire_ctx_init(data, sizeof(data));
 
-	wire_ctx_clear(&wire);
+	wire_ctx_clear(&wire, 10);
+	NOK(&wire, KNOT_ESPACE);
+	is_int(1, data[0], "no attempt to clear");
+
+	wire = wire_ctx_init(data, sizeof(data));
+	wire_ctx_clear(&wire, 3);
 	OK(&wire);
-	is_int(0, wire_ctx_offset(&wire), "no position change after clear");
+	is_int(0, wire_ctx_available(&wire), "no space available");
 	for (int i = 0; i < sizeof(data); i++) {
 		is_int(0, data[i], "wire position %i is zero", i);
 	}
-
-	data[0] = 1;
-	wire_ctx_set_offset(&wire, 4);
-	NOK(&wire, KNOT_ERANGE);
-	wire_ctx_clear(&wire);
-	NOK(&wire, KNOT_ERANGE);
-	is_int(1, data[0], "no data change after clear after error");
 }
 
 #define check_rw(size, value, ...) { \
