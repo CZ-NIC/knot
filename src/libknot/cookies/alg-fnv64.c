@@ -30,15 +30,14 @@
  * \brief Update hash value.
  *
  * \param hash_val  Hash value to be updated.
- * \param sockaddr  Socket address.
+ * \param sa        Socket address.
  */
-static inline void update_hash(Fnv64_t *hash_val, const struct sockaddr *sockaddr)
+static inline void update_hash(Fnv64_t *hash_val, const struct sockaddr *sa)
 {
-	assert(hash_val && sockaddr);
+	assert(hash_val && sa);
 
 	size_t addr_len = 0;
-	const uint8_t *addr = sockaddr_raw((struct sockaddr_storage *)sockaddr,
-	                                   &addr_len);
+	const uint8_t *addr = sockaddr_raw((struct sockaddr_storage *)sa, &addr_len);
 	if (addr) {
 		assert(addr_len);
 		*hash_val = fnv_64a_buf((void *)addr, addr_len, *hash_val);
