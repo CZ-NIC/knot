@@ -47,7 +47,7 @@
 
 /* -- global options ------------------------------------------------------- */
 
-static options_t global = { 0 };
+static options_t options = { 0 };
 
 /* -- internal ------------------------------------------------------------- */
 
@@ -92,19 +92,19 @@ static void cleanup_list(dnssec_list_t **list_ptr)
 
 static dnssec_kasp_t *get_zone_kasp(const char *zone_name)
 {
-	int r = options_zone_kasp_path(&global, zone_name);
+	int r = options_zone_kasp_path(&options, zone_name);
 	if (r != DNSSEC_EOK) {
 		return NULL;
 	}
 
 	dnssec_kasp_t *kasp = NULL;
 
-	r = options_zone_kasp_init(&global, zone_name, &kasp);
+	r = options_zone_kasp_init(&options, zone_name, &kasp);
 	if (r != DNSSEC_EOK) {
 		return NULL;
 	}
 
-	r = dnssec_kasp_open(kasp, global.kasp_dir);
+	r = dnssec_kasp_open(kasp, options.kasp_dir);
 	if (r != DNSSEC_EOK) {
 		error("Cannot open KASP directory (%s).", dnssec_strerror(r));
 		dnssec_kasp_deinit(kasp);
@@ -427,14 +427,14 @@ static bool init_kasp(dnssec_kasp_t **kasp_ptr)
 	dnssec_kasp_t *kasp = NULL;
 	dnssec_kasp_init_dir(&kasp);
 
-	int r = dnssec_kasp_init(kasp, global.kasp_dir);
+	int r = dnssec_kasp_init(kasp, options.kasp_dir);
 	if (r != DNSSEC_EOK) {
 		error("Cannot initialize KASP directory (%s).", dnssec_strerror(r));
 		free(kasp);
 		return false;
 	}
 
-	r = dnssec_kasp_open(kasp, global.kasp_dir);
+	r = dnssec_kasp_open(kasp, options.kasp_dir);
 	if (r != DNSSEC_EOK) {
 		error("Cannot open KASP directory (%s).", dnssec_strerror(r));
 		free(kasp);
@@ -1272,7 +1272,7 @@ static int cmd_zone_key(int argc, char *argv[])
 		{ NULL }
 	};
 
-	return subcommand(commands, global.legacy, argc, argv);
+	return subcommand(commands, options.legacy, argc, argv);
 }
 
 static int cmd_zone_set(int argc, char *argv[])
@@ -1332,7 +1332,7 @@ static int cmd_zone(int argc, char *argv[])
 		{ NULL }
 	};
 
-	return subcommand(commands, global.legacy, argc, argv);
+	return subcommand(commands, options.legacy, argc, argv);
 }
 
 static int cmd_policy_list(int argc, char *argv[])
@@ -1560,7 +1560,7 @@ static int cmd_policy(int argc, char *argv[])
 		{ NULL }
 	};
 
-	return subcommand(commands, global.legacy, argc, argv);
+	return subcommand(commands, options.legacy, argc, argv);
 }
 
 static int cmd_keystore_list(int argc, char *argv[])
@@ -1779,7 +1779,7 @@ static int cmd_keystore(int argc, char *argv[])
 		{ NULL }
 	};
 
-	return subcommand(commands, global.legacy, argc, argv);
+	return subcommand(commands, options.legacy, argc, argv);
 }
 
 static int cmd_tsig(int argc, char *argv[])
@@ -1789,7 +1789,7 @@ static int cmd_tsig(int argc, char *argv[])
 		{ NULL }
 	};
 
-	return subcommand(commands, global.legacy, argc, argv);
+	return subcommand(commands, options.legacy, argc, argv);
 }
 
 static void print_help(void)
@@ -1822,21 +1822,21 @@ int main(int argc, char *argv[])
 	while (c = getopt_long(argc, argv, "+c:C:d:hlV", opts, NULL), c != -1) {
 		switch (c) {
 		case 'c':
-			global.config = optarg;
+			options.config = optarg;
 			break;
 		case 'C':
-			global.confdb = optarg;
+			options.confdb = optarg;
 			break;
 		case 'd':
-			free(global.kasp_dir);
-			global.kasp_dir = strdup(optarg);
+			free(options.kasp_dir);
+			options.kasp_dir = strdup(optarg);
 			break;
 		case 'h':
 			print_help();
 			exit_code = 0;
 			goto failed;
 		case 'l':
-			global.legacy = true;
+			options.legacy = true;
 			break;
 		case 'V':
 			print_version();
@@ -1849,7 +1849,7 @@ int main(int argc, char *argv[])
 
 	// global configuration
 
-	int r = options_init(&global);
+	int r = options_init(&options);
 	if (r != DNSSEC_EOK) {
 		goto failed;
 	}
@@ -1866,11 +1866,11 @@ int main(int argc, char *argv[])
 	};
 
 	dnssec_crypto_init();
-	exit_code = subcommand(commands, global.legacy, argc - optind, argv + optind);
+	exit_code = subcommand(commands, options.legacy, argc - optind, argv + optind);
 	dnssec_crypto_cleanup();
 
 failed:
-	options_cleanup(&global);
+	options_cleanup(&options);
 
 	return exit_code;
 }
