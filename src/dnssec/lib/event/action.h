@@ -30,6 +30,7 @@ typedef struct event_action_functions event_action_functions_t;
 
 extern const event_action_functions_t event_action_initial_key;
 extern const event_action_functions_t event_action_zsk_rollover;
+extern const event_action_functions_t event_action_nsec3_resalt;
 
 /*!
  * List of event implementations sorted by priority.
@@ -37,5 +38,6 @@ extern const event_action_functions_t event_action_zsk_rollover;
 static const event_action_functions_t * const EVENT_ACTION_HANDLERS[] = {
 	&event_action_initial_key,
 	&event_action_zsk_rollover,
+	&event_action_nsec3_resalt,
 	NULL,
 };

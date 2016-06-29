@@ -27,6 +27,7 @@ enum dnssec_event_type {
 	DNSSEC_EVENT_ZSK_ROLL_PUBLISH_NEW_KEY,
 	DNSSEC_EVENT_ZSK_ROLL_REPLACE_SIGNATURES,
 	DNSSEC_EVENT_ZSK_ROLL_REMOVE_OLD_KEY,
+	DNSSEC_EVENT_NSEC3_RESALT,
 };
 
 typedef enum dnssec_event_type dnssec_event_type_t;

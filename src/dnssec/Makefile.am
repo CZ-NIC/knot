@@ -78,6 +78,7 @@ libdnssec_la_SOURCES = \
 	lib/error.c \
 	lib/event/action.h \
 	lib/event/action/initial_key.c \
+	lib/event/action/nsec3_resalt.c \
 	lib/event/action/zsk_rollover.c \
 	lib/event/event.c \
 	lib/event/keystate.c \
