@@ -21,6 +21,7 @@ check_PROGRAMS = \
 	binary		\
 	crypto		\
 	event_keystate	\
+	event_nsec3_resalt \
 	kasp_dir_escape	\
 	kasp_dir_file	\
 	kasp_policy	\
