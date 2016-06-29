@@ -28,9 +28,7 @@
 #include "libknot/rrtype/opt.h"
 #include "libknot/rrtype/opt-cookie.h"
 
-#define OPTCOUNT 4
-
-const char *cookie_opts[OPTCOUNT] = {
+const char *cookie_opts[] = {
 	"\x00\x0a" "\x00\x10" "\x00\x01\x02\x03\x04\x05\x06\x07" "\xe0\xd9\x95\x4e\xbc\xc3\x99\x18", /* 8 octets long wrong server cookie. */
 	"\x00\x0a" "\x00\x10" "\x00\x01\x02\x03\x04\x05\x06\x07" "\xe0\xd9\x95\x4e\xbc\xc3\x99\x19", /* 8 octets long OK server cookie. */
 	"\x00\x0a" "\x00\x18" "\x00\x01\x02\x03\x04\x05\x06\x07" "\x0a\x0b\x0c\x0d\x0e\x0f\x10\x11\xc0\xbd\xdb\xec\x19\x78\x88\x38", /* 8B nonce 8B hash long wrong server cookie. */
@@ -84,7 +82,7 @@ static int init_sa6(struct sockaddr_in6 *sa, uint16_t port, const char *addr)
 
 int main(int argc, char *argv[])
 {
-	plan(38);
+	plan_lazy();
 
 	int ret;
 
@@ -94,22 +92,16 @@ int main(int argc, char *argv[])
 	struct sockaddr_in c4_sa, s4_sa;
 	struct sockaddr_in6 c6_sa, s6_sa;
 
-#define SC0_LEN 8
-	const uint8_t sc0[SC0_LEN] = { 0, 1, 2, 3, 4, 5, 6, 7 };
-#define SC1_LEN 16
-	const uint8_t sc1[SC1_LEN] = { 0, 1, 2, 3, 4, 5, 6, 7, 10, 11, 12, 13, 14, 15, 16, 17 };
+	const uint8_t sc0[] = { 0, 1, 2, 3, 4, 5, 6, 7 };
+	const uint8_t sc1[] = { 0, 1, 2, 3, 4, 5, 6, 7, 10, 11, 12, 13, 14, 15, 16, 17 };
 
-#define CC_LEN 8
-	const uint8_t cc[CC_LEN] = { 0, 1, 2, 3, 4, 5, 6, 7 };
+	const uint8_t cc[] = { 0, 1, 2, 3, 4, 5, 6, 7 };
 
-#define SECRET_LEN 8
-	const uint8_t secret[SECRET_LEN] = { 0, 1, 2, 3, 4, 5, 6, 7 };
+	const uint8_t secret[] = { 0, 1, 2, 3, 4, 5, 6, 7 };
 
-#define NONCE_LEN 8
-	const uint8_t nonce[NONCE_LEN] = { 10, 11, 12, 13, 14, 15, 16, 17 };
+	const uint8_t nonce[] = { 10, 11, 12, 13, 14, 15, 16, 17 };
 
-#define HASH_MAX 32
-	uint8_t hash[HASH_MAX];
+	uint8_t hash[32] = { 0 };
 	uint16_t hash_len;
 
 	struct knot_sc_content sc_content;
@@ -127,7 +119,7 @@ int main(int argc, char *argv[])
 
 	/* Server cookie hash algorithm. */
 
-	hash_len = HASH_MAX;
+	hash_len = sizeof(hash);
 	ret = knot_sc_alg_fnv64.hash_func(NULL, hash, &hash_len);
 	ok(ret == KNOT_EINVAL, "cookies: FNV64 server cookie no input");
 
@@ -137,7 +129,7 @@ int main(int argc, char *argv[])
 	sc_in.nonce = NULL;
 	sc_in.nonce_len = 0;
 	sc_in.srvr_data = NULL;
-	hash_len = HASH_MAX;
+	hash_len = sizeof(hash);
 	ret = knot_sc_alg_fnv64.hash_func(&sc_in, hash, &hash_len);
 	ok(ret == KNOT_EINVAL, "cookies: FNV64 server cookie input no data");
 
@@ -150,20 +142,20 @@ int main(int argc, char *argv[])
 	sc_in.nonce = NULL;
 	sc_in.nonce_len = 0;
 	sc_in.srvr_data = &srvr_data;
-	hash_len = HASH_MAX;
+	hash_len = sizeof(hash);
 	ret = knot_sc_alg_fnv64.hash_func(&sc_in, hash, &hash_len);
 	ok(ret == KNOT_EINVAL, "cookies: FNV64 server cookie input no data");
 
 	memset(&sc_in, 0, sizeof(sc_in));
 	srvr_data.clnt_sockaddr = NULL;
 	srvr_data.secret_data = secret;
-	srvr_data.secret_len = SECRET_LEN;
+	srvr_data.secret_len = sizeof(secret);
 	sc_in.cc = cc;
-	sc_in.cc_len = CC_LEN;
+	sc_in.cc_len = sizeof(cc);
 	sc_in.nonce = nonce;
-	sc_in.nonce_len = NONCE_LEN;
+	sc_in.nonce_len = sizeof(nonce);
 	sc_in.srvr_data = &srvr_data;
-	hash_len = HASH_MAX;
+	hash_len = sizeof(hash);
 	ret = knot_sc_alg_fnv64.hash_func(&sc_in, NULL, NULL);
 	ok(ret == KNOT_EINVAL, "cookies: FNV64 server cookie output no socket");
 
@@ -172,45 +164,45 @@ int main(int argc, char *argv[])
 	srvr_data.secret_data = NULL;
 	srvr_data.secret_len = 0;
 	sc_in.cc = cc;
-	sc_in.cc_len = CC_LEN;
+	sc_in.cc_len = sizeof(cc);
 	sc_in.nonce = nonce;
-	sc_in.nonce_len = NONCE_LEN;
+	sc_in.nonce_len = sizeof(nonce);
 	sc_in.srvr_data = &srvr_data;
-	hash_len = HASH_MAX;
+	hash_len = sizeof(hash);
 	ret = knot_sc_alg_fnv64.hash_func(&sc_in, NULL, NULL);
 	ok(ret == KNOT_EINVAL, "cookies: FNV64 server cookie output no secret");
 
 	memset(&sc_in, 0, sizeof(sc_in));
 	sc_in.cc = cc;
-	sc_in.cc_len = CC_LEN;
+	sc_in.cc_len = sizeof(cc);
 	sc_in.nonce = nonce;
-	sc_in.nonce_len = NONCE_LEN;
+	sc_in.nonce_len = sizeof(nonce);
 	sc_in.srvr_data = NULL;
-	hash_len = HASH_MAX;
+	hash_len = sizeof(hash);
 	ret = knot_sc_alg_fnv64.hash_func(&sc_in, NULL, NULL);
 	ok(ret == KNOT_EINVAL, "cookies: FNV64 server cookie output no server data");
 
 	memset(&sc_in, 0, sizeof(sc_in));
 	srvr_data.clnt_sockaddr = (struct sockaddr *)&c4_sa;
 	srvr_data.secret_data = secret;
-	srvr_data.secret_len = SECRET_LEN;
+	srvr_data.secret_len = sizeof(secret);
 	sc_in.cc = cc;
-	sc_in.cc_len = CC_LEN;
+	sc_in.cc_len = sizeof(cc);
 	sc_in.nonce = nonce;
-	sc_in.nonce_len = NONCE_LEN;
+	sc_in.nonce_len = sizeof(nonce);
 	sc_in.srvr_data = &srvr_data;
-	hash_len = HASH_MAX;
+	hash_len = sizeof(hash);
 	ret = knot_sc_alg_fnv64.hash_func(&sc_in, NULL, NULL);
 	ok(ret == KNOT_EINVAL, "cookies: FNV64 server cookie output no hash");
 
 	memset(&sc_in, 0, sizeof(sc_in));
 	srvr_data.clnt_sockaddr = (struct sockaddr *)&c4_sa;
 	srvr_data.secret_data = secret;
-	srvr_data.secret_len = SECRET_LEN;
+	srvr_data.secret_len = sizeof(secret);
 	sc_in.cc = cc;
-	sc_in.cc_len = CC_LEN;
+	sc_in.cc_len = sizeof(cc);
 	sc_in.nonce = nonce;
-	sc_in.nonce_len = NONCE_LEN;
+	sc_in.nonce_len = sizeof(nonce);
 	sc_in.srvr_data = &srvr_data;
 	hash_len = 1;
 	ret = knot_sc_alg_fnv64.hash_func(&sc_in, hash, &hash_len);
@@ -219,147 +211,129 @@ int main(int argc, char *argv[])
 	memset(&sc_in, 0, sizeof(sc_in));
 	srvr_data.clnt_sockaddr = (struct sockaddr *)&c4_sa;
 	srvr_data.secret_data = secret;
-	srvr_data.secret_len = SECRET_LEN;
+	srvr_data.secret_len = sizeof(secret);
 	sc_in.cc = cc;
-	sc_in.cc_len = CC_LEN;
+	sc_in.cc_len = sizeof(cc);
 	sc_in.nonce = nonce;
-	sc_in.nonce_len = NONCE_LEN;
+	sc_in.nonce_len = sizeof(nonce);
 	sc_in.srvr_data = &srvr_data;
-	hash_len = HASH_MAX;
+	hash_len = sizeof(hash);
 	ret = knot_sc_alg_fnv64.hash_func(&sc_in, hash, &hash_len);
 	ok(ret == KNOT_EOK, "cookies: FNV64 server cookie output");
 	{
-#define EXPECTED_LEN 8
-		uint8_t expected[EXPECTED_LEN] = { 0x75, 0x45, 0x7c, 0x9a, 0xe0, 0x13, 0xa8, 0xea };
-
-		ok(EXPECTED_LEN == hash_len && 0 == memcmp(expected, hash, hash_len), "cookies: FNV64 server cookie content");
-#undef EXPECTED_LEN
+		uint8_t expected[] = { 0x75, 0x45, 0x7c, 0x9a, 0xe0, 0x13, 0xa8, 0xea };
+		ok(sizeof(expected) == hash_len && 0 == memcmp(expected, hash, hash_len), "cookies: FNV64 server cookie content");
 	}
 
 	memset(&sc_in, 0, sizeof(sc_in));
 	srvr_data.clnt_sockaddr = (struct sockaddr *)&c6_sa;
 	srvr_data.secret_data = secret;
-	srvr_data.secret_len = SECRET_LEN;
+	srvr_data.secret_len = sizeof(secret);
 	sc_in.cc = cc;
-	sc_in.cc_len = CC_LEN;
+	sc_in.cc_len = sizeof(cc);
 	sc_in.nonce = nonce;
-	sc_in.nonce_len = NONCE_LEN;
+	sc_in.nonce_len = sizeof(nonce);
 	sc_in.srvr_data = &srvr_data;
-	hash_len = HASH_MAX;
+	hash_len = sizeof(hash);
 	ret = knot_sc_alg_fnv64.hash_func(&sc_in, hash, &hash_len);
 	ok(ret == KNOT_EOK, "cookies: FNV64 server cookie output");
 	{
-#define EXPECTED_LEN 8
-		uint8_t expected[EXPECTED_LEN] = { 0xc0, 0xbd, 0xdb, 0xec, 0x19, 0x78, 0x88, 0x39 };
-
-		ok(EXPECTED_LEN == hash_len && 0 == memcmp(expected, hash, hash_len), "cookies: FNV64 server cookie content");
-#undef EXPECTED_LEN
+		uint8_t expected[] = { 0xc0, 0xbd, 0xdb, 0xec, 0x19, 0x78, 0x88, 0x39 };
+		ok(sizeof(expected) == hash_len && 0 == memcmp(expected, hash, hash_len), "cookies: FNV64 server cookie content");
 	}
 
 	memset(&sc_in, 0, sizeof(sc_in));
 	srvr_data.clnt_sockaddr = (struct sockaddr *)&c6_sa;
 	srvr_data.secret_data = secret;
-	srvr_data.secret_len = SECRET_LEN;
+	srvr_data.secret_len = sizeof(secret);
 	sc_in.cc = cc;
-	sc_in.cc_len = CC_LEN;
+	sc_in.cc_len = sizeof(cc);
 	sc_in.nonce = NULL;
 	sc_in.nonce_len = 0;
 	sc_in.srvr_data = &srvr_data;
-	hash_len = HASH_MAX;
+	hash_len = sizeof(hash);
 	ret = knot_sc_alg_fnv64.hash_func(&sc_in, hash, &hash_len);
 	ok(ret == KNOT_EOK, "cookies: FNV64 server cookie output");
 	{
-#define EXPECTED_LEN 8
-		uint8_t expected[EXPECTED_LEN] = { 0xe0, 0xd9, 0x95, 0x4e, 0xbc, 0xc3, 0x99, 0x19 };
-
-		ok(EXPECTED_LEN == hash_len && 0 == memcmp(expected, hash, hash_len), "cookies: FNV64 server cookie content");
-#undef EXPECTED_LEN
+		uint8_t expected[] = { 0xe0, 0xd9, 0x95, 0x4e, 0xbc, 0xc3, 0x99, 0x19 };
+		ok(sizeof(expected) == hash_len && 0 == memcmp(expected, hash, hash_len), "cookies: FNV64 server cookie content");
 	}
 
 	memset(&sc_in, 0, sizeof(sc_in));
 	srvr_data.clnt_sockaddr = (struct sockaddr *)&unspec_sa;
 	srvr_data.secret_data = secret;
-	srvr_data.secret_len = SECRET_LEN;
+	srvr_data.secret_len = sizeof(secret);
 	sc_in.cc = cc;
-	sc_in.cc_len = CC_LEN;
+	sc_in.cc_len = sizeof(cc);
 	sc_in.nonce = nonce;
-	sc_in.nonce_len = NONCE_LEN;
+	sc_in.nonce_len = sizeof(nonce);
 	sc_in.srvr_data = &srvr_data;
-	hash_len = HASH_MAX;
+	hash_len = sizeof(hash);
 	ret = knot_sc_alg_fnv64.hash_func(&sc_in, hash, &hash_len);
 	ok(ret == KNOT_EOK, "cookies: FNV64 server cookie output");
 	{
-#define EXPECTED_LEN 8
-		uint8_t expected[EXPECTED_LEN] = { 0x4d, 0xde, 0xfa, 0x22, 0xb9, 0x0a, 0xcc, 0xd8 };
-
-		ok(EXPECTED_LEN == hash_len && 0 == memcmp(expected, hash, hash_len), "cookies: FNV64 server cookie content");
-#undef EXPECTED_LEN
+		uint8_t expected[] = { 0x4d, 0xde, 0xfa, 0x22, 0xb9, 0x0a, 0xcc, 0xd8 };
+		ok(sizeof(expected) == hash_len && 0 == memcmp(expected, hash, hash_len), "cookies: FNV64 server cookie content");
 	}
 
 	memset(&sc_in, 0, sizeof(sc_in));
 	srvr_data.clnt_sockaddr = (struct sockaddr *)&unspec_sa;
 	srvr_data.secret_data = secret;
-	srvr_data.secret_len = SECRET_LEN;
+	srvr_data.secret_len = sizeof(secret);
 	sc_in.cc = cc;
-	sc_in.cc_len = CC_LEN - 1;
+	sc_in.cc_len = sizeof(cc) - 1;
 	sc_in.nonce = nonce;
-	sc_in.nonce_len = NONCE_LEN;
+	sc_in.nonce_len = sizeof(nonce);
 	sc_in.srvr_data = &srvr_data;
-	hash_len = HASH_MAX;
+	hash_len = sizeof(hash);
 	ret = knot_sc_alg_fnv64.hash_func(&sc_in, hash, &hash_len);
 	ok(ret == KNOT_EOK, "cookies: FNV64 server cookie output");
 	{
-#define EXPECTED_LEN 8
-		uint8_t expected[EXPECTED_LEN] = { 0xa0, 0x35, 0xe3, 0xe0, 0x78, 0x7a, 0x91, 0xaf };
-
-		ok(EXPECTED_LEN == hash_len && 0 == memcmp(expected, hash, hash_len), "cookies: FNV64 server cookie content");
-#undef EXPECTED_LEN
+		uint8_t expected[] = { 0xa0, 0x35, 0xe3, 0xe0, 0x78, 0x7a, 0x91, 0xaf };
+		ok(sizeof(expected) == hash_len && 0 == memcmp(expected, hash, hash_len), "cookies: FNV64 server cookie content");
 	}
 
 	memset(&sc_in, 0, sizeof(sc_in));
 	srvr_data.clnt_sockaddr = (struct sockaddr *)&unspec_sa;
 	srvr_data.secret_data = secret;
-	srvr_data.secret_len = SECRET_LEN;
+	srvr_data.secret_len = sizeof(secret);
 	sc_in.cc = cc;
-	sc_in.cc_len = CC_LEN;
+	sc_in.cc_len = sizeof(cc);
 	sc_in.nonce = nonce;
-	sc_in.nonce_len = NONCE_LEN - 1;
+	sc_in.nonce_len = sizeof(nonce) - 1;
 	sc_in.srvr_data = &srvr_data;
-	hash_len = HASH_MAX;
+	hash_len = sizeof(hash);
 	ret = knot_sc_alg_fnv64.hash_func(&sc_in, hash, &hash_len);
 	ok(ret == KNOT_EOK, "cookies: FNV64 server cookie output");
 	{
-#define EXPECTED_LEN 8
-		uint8_t expected[EXPECTED_LEN] = { 0x8e, 0xa3, 0xf8, 0x97, 0x84, 0x0a, 0x3d, 0x8b };
-
-		ok(EXPECTED_LEN == hash_len && 0 == memcmp(expected, hash, hash_len), "cookies: FNV64 server cookie content");
-#undef EXPECTED_LEN
+		uint8_t expected[] = { 0x8e, 0xa3, 0xf8, 0x97, 0x84, 0x0a, 0x3d, 0x8b };
+		ok(sizeof(expected) == hash_len && 0 == memcmp(expected, hash, hash_len), "cookies: FNV64 server cookie content");
 	}
 
 	/* Server cookie parse. */
 
-#define DUMMYPTR ((void *)0x01)
-#define DUMMYVAL 1
+	const void *DUMMYPTR = (void *)1;
+	const int DUMMYVAL = 1;
 
 	ret = knot_sc_parse(0, NULL, 0, &sc_content);
 	ok(ret == KNOT_EINVAL, "cookies: parse server cookie no cookie");
 
-	ret = knot_sc_parse(0, sc0, SC0_LEN, NULL);
+	ret = knot_sc_parse(0, sc0, sizeof(sc0), NULL);
 	ok(ret == KNOT_EINVAL, "cookies: parse server cookie no content");
 
-	ret = knot_sc_parse(SC0_LEN, sc0, SC0_LEN, &sc_content);
+	ret = knot_sc_parse(sizeof(sc0), sc0, sizeof(sc0), &sc_content);
 	ok(ret == KNOT_EINVAL, "cookies: parse server cookie too large nonce");
 
 	sc_content.nonce = sc_content.hash = DUMMYPTR;
 	sc_content.nonce_len = sc_content.hash_len = DUMMYVAL;
-	ret = knot_sc_parse(0, sc0, SC0_LEN, &sc_content);
+	ret = knot_sc_parse(0, sc0, sizeof(sc0), &sc_content);
 	ok(ret == KNOT_EOK &&
 	   sc_content.nonce == NULL && sc_content.nonce_len == 0 &&
-	   sc_content.hash == sc0 && sc_content.hash_len == SC0_LEN, "cookies: parse server cookie 0B nonce");
+	   sc_content.hash == sc0 && sc_content.hash_len == sizeof(sc0), "cookies: parse server cookie 0B nonce");
 
 	sc_content.nonce = sc_content.hash = DUMMYPTR;
 	sc_content.nonce_len = sc_content.hash_len = DUMMYVAL;
-	ret = knot_sc_parse(8, sc1, SC1_LEN, &sc_content);
+	ret = knot_sc_parse(8, sc1, sizeof(sc1), &sc_content);
 	ok(ret == KNOT_EOK &&
 	   sc_content.nonce == sc1 && sc_content.nonce_len == 8 &&
 	   sc_content.hash == (sc1 + 8) && sc_content.hash_len == 8, "cookies: parse server cookie 8B nonce");
@@ -369,21 +343,21 @@ int main(int argc, char *argv[])
 	get_opt_cookies(ROPT(1), &cookies);
 	srvr_data.clnt_sockaddr = (struct sockaddr *)&c6_sa;
 	srvr_data.secret_data = secret;
-	srvr_data.secret_len = SECRET_LEN;
+	srvr_data.secret_len = sizeof(secret);
 	ret = knot_sc_check(1, &cookies, &srvr_data, &knot_sc_alg_fnv64);
 	ok(ret == KNOT_EINVAL, "cookies: FNV64 server cookie check - wrong nonce length");
 
 	get_opt_cookies(ROPT(1), &cookies);
 	srvr_data.clnt_sockaddr = (struct sockaddr *)&c6_sa;
 	srvr_data.secret_data = secret;
-	srvr_data.secret_len = SECRET_LEN;
+	srvr_data.secret_len = sizeof(secret);
 	ret = knot_sc_check(17, &cookies, &srvr_data, &knot_sc_alg_fnv64);
 	ok(ret == KNOT_EINVAL, "cookies: FNV64 server cookie check - too long nonce");
 
 	get_opt_cookies(ROPT(1), &cookies);
 	srvr_data.clnt_sockaddr = (struct sockaddr *)&c6_sa;
 	srvr_data.secret_data = secret;
-	srvr_data.secret_len = SECRET_LEN;
+	srvr_data.secret_len = sizeof(secret);
 	ret = knot_sc_check(0, NULL, &srvr_data, &knot_sc_alg_fnv64);
 	ok(ret == KNOT_EINVAL, "cookies: FNV64 server cookie check - no cookies");
 
@@ -392,7 +366,7 @@ int main(int argc, char *argv[])
 	cookies.cc_len = 0;
 	srvr_data.clnt_sockaddr = (struct sockaddr *)&c6_sa;
 	srvr_data.secret_data = secret;
-	srvr_data.secret_len = SECRET_LEN;
+	srvr_data.secret_len = sizeof(secret);
 	ret = knot_sc_check(0, NULL, &srvr_data, &knot_sc_alg_fnv64);
 	ok(ret == KNOT_EINVAL, "cookies: FNV64 server cookie check - no client cookie");
 
@@ -401,14 +375,14 @@ int main(int argc, char *argv[])
 	cookies.sc_len = 0;
 	srvr_data.clnt_sockaddr = (struct sockaddr *)&c6_sa;
 	srvr_data.secret_data = secret;
-	srvr_data.secret_len = SECRET_LEN;
+	srvr_data.secret_len = sizeof(secret);
 	ret = knot_sc_check(0, NULL, &srvr_data, &knot_sc_alg_fnv64);
 	ok(ret == KNOT_EINVAL, "cookies: FNV64 server cookie check - no server cookie");
 
 	get_opt_cookies(ROPT(1), &cookies);
 	srvr_data.clnt_sockaddr = NULL;
 	srvr_data.secret_data = secret;
-	srvr_data.secret_len = SECRET_LEN;
+	srvr_data.secret_len = sizeof(secret);
 	ret = knot_sc_check(0, NULL, &srvr_data, &knot_sc_alg_fnv64);
 	ok(ret == KNOT_EINVAL, "cookies: FNV64 server cookie check - no socket address");
 
@@ -422,42 +396,42 @@ int main(int argc, char *argv[])
 	get_opt_cookies(ROPT(0), &cookies);
 	srvr_data.clnt_sockaddr = (struct sockaddr *)&c6_sa;
 	srvr_data.secret_data = secret;
-	srvr_data.secret_len = SECRET_LEN;
+	srvr_data.secret_len = sizeof(secret);
 	ret = knot_sc_check(0, &cookies, &srvr_data, &knot_sc_alg_fnv64);
 	ok(ret == KNOT_EINVAL, "cookies: FNV64 server cookie check - bad server cookie");
 
 	get_opt_cookies(ROPT(1), &cookies);
 	srvr_data.clnt_sockaddr = (struct sockaddr *)&unspec_sa;
 	srvr_data.secret_data = secret;
-	srvr_data.secret_len = SECRET_LEN;
+	srvr_data.secret_len = sizeof(secret);
 	ret = knot_sc_check(0, &cookies, &srvr_data, &knot_sc_alg_fnv64);
 	ok(ret == KNOT_EINVAL, "cookies: FNV64 server cookie check - bad socket");
 
 	get_opt_cookies(ROPT(1), &cookies);
 	srvr_data.clnt_sockaddr = (struct sockaddr *)&c6_sa;
 	srvr_data.secret_data = secret;
-	srvr_data.secret_len = SECRET_LEN - 1;
+	srvr_data.secret_len = sizeof(secret) - 1;
 	ret = knot_sc_check(0, &cookies, &srvr_data, &knot_sc_alg_fnv64);
 	ok(ret == KNOT_EINVAL, "cookies: FNV64 server cookie check - bad secret");
 
 	get_opt_cookies(ROPT(1), &cookies);
 	srvr_data.clnt_sockaddr = (struct sockaddr *)&c6_sa;
 	srvr_data.secret_data = secret;
-	srvr_data.secret_len = SECRET_LEN;
+	srvr_data.secret_len = sizeof(secret);
 	ret = knot_sc_check(0, &cookies, &srvr_data, &knot_sc_alg_fnv64);
 	ok(ret == KNOT_EOK, "cookies: FNV64 server cookie check");
 
 	get_opt_cookies(ROPT(2), &cookies);
 	srvr_data.clnt_sockaddr = (struct sockaddr *)&c6_sa;
 	srvr_data.secret_data = secret;
-	srvr_data.secret_len = SECRET_LEN;
+	srvr_data.secret_len = sizeof(secret);
 	ret = knot_sc_check(8, &cookies, &srvr_data, &knot_sc_alg_fnv64);
 	ok(ret == KNOT_EINVAL, "cookies: FNV64 server cookie check - bad server cookie");
 
 	get_opt_cookies(ROPT(3), &cookies);
 	srvr_data.clnt_sockaddr = (struct sockaddr *)&c6_sa;
 	srvr_data.secret_data = secret;
-	srvr_data.secret_len = SECRET_LEN;
+	srvr_data.secret_len = sizeof(secret);
 	ret = knot_sc_check(8, &cookies, &srvr_data, &knot_sc_alg_fnv64);
 	ok(ret == KNOT_EOK, "cookies: FNV64 server cookie check");
 

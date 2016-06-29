@@ -24,9 +24,7 @@
 #include "libknot/rrtype/opt.h"
 #include "libknot/rrtype/opt-cookie.h"
 
-#define OPTCOUNT 9
-
-const char *cookie_opts[OPTCOUNT] = {
+const char *cookie_opts[] = {
 	"\x00\x0a" "\x00\x00", /* Zero length cookie. */
 	"\x00\x0a" "\x00\x01" "\x00", /* Short client cookie. */
 	"\x00\x0a" "\x00\x07" "\x00\x01\x02\x03\x04\x05\x06", /* Short client cookie. */
@@ -54,7 +52,7 @@ static void get_opt_data(const uint8_t *opt,
 
 int main(int argc, char *argv[])
 {
-	plan(17);
+	plan_lazy();
 
 	uint16_t code;
 	uint16_t data_len;
@@ -126,8 +124,8 @@ int main(int argc, char *argv[])
 
 	/* Valid cookies. */
 
-#define DUMMYPTR ((void *)0x01)
-#define DUMMYVAL 1
+	const void *DUMMYPTR = (void *)1;
+	const int DUMMYVAL = 1;
 
 	cc = sc = DUMMYPTR;
 	cc_len = sc_len = DUMMYVAL;
