@@ -20,12 +20,8 @@ t = Test()
 
 server = t.server("knot")
 zone = t.zone("example.", storage=".")
-
-server.dnssec_enable = True
-server.gen_key(zone, ksk=True)
-server.gen_key(zone)
-
 t.link(zone, server)
+server.dnssec(zone).enable = True
 
 t.start()
 

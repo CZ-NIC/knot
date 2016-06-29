@@ -26,23 +26,23 @@
 /*!
  * Print list of available commands.
  */
-static void command_help(const command_t *commands)
+static void command_help(const command_t *commands, bool legacy)
 {
 	fprintf(stderr, "Available commands:\n");
 
 	for (const command_t *cmd = commands; cmd->name != NULL; cmd++) {
-		if (cmd->help) {
-			fprintf(stderr, "- %s (%s)\n", cmd->name, cmd->help);
-		} else {
-			fprintf(stderr, "- %s\n", cmd->name);
+		if (!legacy && (cmd->flags & LEGACY)) {
+			continue;
 		}
+
+		fprintf(stderr, "- %s\n", cmd->name);
 	}
 }
 
 /*!
  * Execute a subcommand.
  */
-int subcommand(const command_t *commands, int argc, char *argv[])
+int subcommand(const command_t *commands, bool legacy, int argc, char *argv[])
 {
 	assert(commands);
 	assert(argv);
@@ -56,11 +56,15 @@ int subcommand(const command_t *commands, int argc, char *argv[])
 	const command_t *match = NULL;
 
 	if (strcmp(search, HELP_COMMAND) == 0) {
-		command_help(commands);
+		command_help(commands, legacy);
 		return 0;
 	}
 
 	for (const command_t *cmd = commands; cmd->name != NULL;  cmd++) {
+		if (!legacy && (cmd->flags & LEGACY)) {
+			continue;
+		}
+
 		cmd_match_t m = cmd_match(cmd->name, search);
 
 		if (m == CMD_MATCH_NO) {

@@ -267,9 +267,9 @@ static int kasp_dir_keystore_save(void *ctx, const dnssec_kasp_keystore_t *keyst
 /* -- public API ----------------------------------------------------------- */
 
 _public_
-int dnssec_kasp_init_dir(dnssec_kasp_t **kasp_ptr)
+const dnssec_kasp_store_functions_t *dnssec_kasp_dir_api(void)
 {
-	static const dnssec_kasp_store_functions_t implementation = {
+	static const dnssec_kasp_store_functions_t api = {
 		.init      = kasp_dir_init,
 		.open      = kasp_dir_open,
 		.close     = kasp_dir_close,
@@ -279,5 +279,18 @@ int dnssec_kasp_init_dir(dnssec_kasp_t **kasp_ptr)
 		ENTITY_CALLBACKS(keystore),
 	};
 
-	return dnssec_kasp_create(kasp_ptr, &implementation);
+	return &api;
+}
+
+_public_
+int dnssec_kasp_init_dir(dnssec_kasp_t **kasp)
+{
+	return dnssec_kasp_create(kasp, dnssec_kasp_dir_api());
+}
+
+_public_
+int dnssec_kasp_init_custom(dnssec_kasp_t **kasp,
+			    const dnssec_kasp_store_functions_t *implementation)
+{
+	return dnssec_kasp_create(kasp, implementation);
 }

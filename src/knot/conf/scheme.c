@@ -1,4 +1,4 @@
-/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -26,6 +26,7 @@
 #include "knot/updates/acl.h"
 #include "libknot/rrtype/opt.h"
 #include "dnssec/lib/dnssec/tsig.h"
+#include "dnssec/lib/dnssec/key.h"
 
 #include "knot/modules/synth_record.h"
 #include "knot/modules/dnsproxy.h"
@@ -37,13 +38,34 @@
 #include "knot/modules/dnstap.h"
 #endif
 
-static const knot_lookup_t key_algs[] = {
+#define HOURS(x)	((x) * 3600)
+#define DAYS(x)		((x) * HOURS(24))
+
+static const knot_lookup_t keystore_backends[] = {
+	{ KEYSTORE_BACKEND_PEM,    "pem" },
+	{ KEYSTORE_BACKEND_PKCS11, "pkcs11" },
+	{ 0, NULL }
+};
+
+static const knot_lookup_t tsig_key_algs[] = {
 	{ DNSSEC_TSIG_HMAC_MD5,    "hmac-md5" },
 	{ DNSSEC_TSIG_HMAC_SHA1,   "hmac-sha1" },
 	{ DNSSEC_TSIG_HMAC_SHA224, "hmac-sha224" },
 	{ DNSSEC_TSIG_HMAC_SHA256, "hmac-sha256" },
 	{ DNSSEC_TSIG_HMAC_SHA384, "hmac-sha384" },
 	{ DNSSEC_TSIG_HMAC_SHA512, "hmac-sha512" },
+	{ 0, NULL }
+};
+
+static const knot_lookup_t dnssec_key_algs[] = {
+	{ DNSSEC_KEY_ALGORITHM_DSA_SHA1,          "dsa" },
+	{ DNSSEC_KEY_ALGORITHM_RSA_SHA1,          "rsasha1" },
+	{ DNSSEC_KEY_ALGORITHM_DSA_SHA1_NSEC3,    "dsa-nsec3-sha1" },
+	{ DNSSEC_KEY_ALGORITHM_RSA_SHA1_NSEC3,    "rsasha1-nsec3-sha1" },
+	{ DNSSEC_KEY_ALGORITHM_RSA_SHA256,        "rsasha256" },
+	{ DNSSEC_KEY_ALGORITHM_RSA_SHA512,        "rsasha512" },
+	{ DNSSEC_KEY_ALGORITHM_ECDSA_P256_SHA256, "ecdsap256sha256" },
+	{ DNSSEC_KEY_ALGORITHM_ECDSA_P384_SHA384, "ecdsap384sha384" },
 	{ 0, NULL }
 };
 
@@ -114,9 +136,38 @@ static const yp_item_t desc_log[] = {
 	{ NULL }
 };
 
+static const yp_item_t desc_keystore[] = {
+	{ C_ID,      YP_TSTR, YP_VNONE },
+	{ C_BACKEND, YP_TOPT, YP_VOPT = { keystore_backends, KEYSTORE_BACKEND_PEM } },
+	{ C_CONFIG,  YP_TSTR, YP_VSTR = { "keys" } },
+	{ C_COMMENT, YP_TSTR, YP_VNONE },
+	{ NULL }
+};
+
+static const yp_item_t desc_policy[] = {
+	{ C_ID,             YP_TSTR,  YP_VNONE },
+	{ C_KEYSTORE,       YP_TREF,  YP_VREF = { C_KEYSTORE }, YP_FNONE, { check_ref_dflt } },
+	{ C_MANUAL,         YP_TBOOL, YP_VNONE },
+	{ C_ALG,            YP_TOPT,  YP_VOPT = { dnssec_key_algs,
+	                                          DNSSEC_KEY_ALGORITHM_ECDSA_P256_SHA256 } },
+	{ C_KSK_SIZE,       YP_TINT,  YP_VINT = { 0, UINT16_MAX, YP_NIL, YP_SSIZE } },
+	{ C_ZSK_SIZE,       YP_TINT,  YP_VINT = { 0, UINT16_MAX, YP_NIL, YP_SSIZE } },
+	{ C_DNSKEY_TTL,     YP_TINT,  YP_VINT = { 0, UINT32_MAX, YP_NIL, YP_STIME } },
+	{ C_ZSK_LIFETIME,   YP_TINT,  YP_VINT = { 0, UINT32_MAX, DAYS(30), YP_STIME } },
+	{ C_RRSIG_LIFETIME, YP_TINT,  YP_VINT = { 0, UINT32_MAX, DAYS(14), YP_STIME } },
+	{ C_RRSIG_REFRESH,  YP_TINT,  YP_VINT = { 0, UINT32_MAX, DAYS(7), YP_STIME } },
+	{ C_NSEC3,          YP_TBOOL, YP_VNONE },
+	{ C_NSEC3_ITER,     YP_TINT,  YP_VINT = { 0, UINT16_MAX, 5 } },
+	{ C_NSEC3_SALT_LEN, YP_TINT,  YP_VINT = { 0, UINT8_MAX, 8 } },
+	{ C_NSEC3_RESALT,   YP_TINT,  YP_VINT = { 0, UINT32_MAX, DAYS(30), YP_STIME } },
+	{ C_PROPAG_DELAY,   YP_TINT,  YP_VINT = { 0, UINT32_MAX, HOURS(1), YP_STIME } },
+	{ C_COMMENT,        YP_TSTR,  YP_VNONE },
+	{ NULL }
+};
+
 static const yp_item_t desc_key[] = {
 	{ C_ID,      YP_TDNAME, YP_VNONE },
-	{ C_ALG,     YP_TOPT,   YP_VOPT = { key_algs, DNSSEC_TSIG_UNKNOWN } },
+	{ C_ALG,     YP_TOPT,   YP_VOPT = { tsig_key_algs, DNSSEC_TSIG_UNKNOWN } },
 	{ C_SECRET,  YP_TB64,   YP_VNONE },
 	{ C_COMMENT, YP_TSTR,   YP_VNONE },
 	{ NULL }
@@ -154,8 +205,9 @@ static const yp_item_t desc_remote[] = {
 	{ C_ZONEFILE_SYNC,       YP_TINT,  YP_VINT = { -1, INT32_MAX, 0, YP_STIME } }, \
 	{ C_IXFR_DIFF,           YP_TBOOL, YP_VNONE }, \
 	{ C_MAX_JOURNAL_SIZE,    YP_TINT,  YP_VINT = { 0, INT64_MAX, INT64_MAX, YP_SSIZE } }, \
-	{ C_DNSSEC_SIGNING,      YP_TBOOL, YP_VNONE }, \
 	{ C_KASP_DB,             YP_TSTR,  YP_VSTR = { "keys" } }, \
+	{ C_DNSSEC_SIGNING,      YP_TBOOL, YP_VNONE }, \
+	{ C_DNSSEC_POLICY,       YP_TREF,  YP_VREF = { C_POLICY }, YP_FNONE, { check_ref_dflt } }, \
 	{ C_SERIAL_POLICY,       YP_TOPT,  YP_VOPT = { serial_policies, SERIAL_POLICY_INCREMENT } }, \
 	{ C_REQUEST_EDNS_OPTION, YP_TDATA, YP_VDATA = { 0, NULL, edns_opt_to_bin, edns_opt_to_txt } }, \
 	{ C_MODULE,              YP_TDATA, YP_VDATA = { 0, NULL, mod_id_to_bin, mod_id_to_txt }, \
@@ -179,12 +231,14 @@ static const yp_item_t desc_zone[] = {
 };
 
 const yp_item_t conf_scheme[] = {
-	{ C_SRV,  YP_TGRP, YP_VGRP = { desc_server } },
-	{ C_CTL,  YP_TGRP, YP_VGRP = { desc_control } },
-	{ C_LOG,  YP_TGRP, YP_VGRP = { desc_log }, YP_FMULTI },
-	{ C_KEY,  YP_TGRP, YP_VGRP = { desc_key }, YP_FMULTI, { check_key } },
-	{ C_ACL,  YP_TGRP, YP_VGRP = { desc_acl }, YP_FMULTI, { check_acl } },
-	{ C_RMT,  YP_TGRP, YP_VGRP = { desc_remote }, YP_FMULTI, { check_remote } },
+	{ C_SRV,      YP_TGRP, YP_VGRP = { desc_server } },
+	{ C_CTL,      YP_TGRP, YP_VGRP = { desc_control } },
+	{ C_LOG,      YP_TGRP, YP_VGRP = { desc_log }, YP_FMULTI },
+	{ C_KEYSTORE, YP_TGRP, YP_VGRP = { desc_keystore }, YP_FMULTI, { check_keystore } },
+	{ C_POLICY,   YP_TGRP, YP_VGRP = { desc_policy }, YP_FMULTI, { check_policy } },
+	{ C_KEY,      YP_TGRP, YP_VGRP = { desc_key }, YP_FMULTI, { check_key } },
+	{ C_ACL,      YP_TGRP, YP_VGRP = { desc_acl }, YP_FMULTI, { check_acl } },
+	{ C_RMT,      YP_TGRP, YP_VGRP = { desc_remote }, YP_FMULTI, { check_remote } },
 /* MODULES */
 	{ C_MOD_SYNTH_RECORD, YP_TGRP, YP_VGRP = { scheme_mod_synth_record }, YP_FMULTI,
 	                                         { check_mod_synth_record } },
@@ -200,8 +254,8 @@ const yp_item_t conf_scheme[] = {
 #endif
 	{ C_MOD_ONLINE_SIGN,  YP_TGRP, YP_VGRP = { scheme_mod_online_sign }, YP_FMULTI },
 /***********/
-	{ C_TPL,  YP_TGRP, YP_VGRP = { desc_template }, YP_FMULTI, { check_template } },
-	{ C_ZONE, YP_TGRP, YP_VGRP = { desc_zone }, YP_FMULTI, { check_zone } },
-	{ C_INCL, YP_TSTR, YP_VNONE, YP_FNONE, { include_file } },
+	{ C_TPL,      YP_TGRP, YP_VGRP = { desc_template }, YP_FMULTI, { check_template } },
+	{ C_ZONE,     YP_TGRP, YP_VGRP = { desc_zone }, YP_FMULTI, { check_zone } },
+	{ C_INCL,     YP_TSTR, YP_VNONE, YP_FNONE, { include_file } },
 	{ NULL }
 };

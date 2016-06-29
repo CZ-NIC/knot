@@ -1,4 +1,4 @@
-/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -21,12 +21,15 @@
 #include <dnssec/kasp.h>
 #include <dnssec/keystore.h>
 
+#include "libknot/dname.h"
+
 /*!
  * \brief DNSSEC signing context.
  */
 struct kdnssec_ctx {
 	time_t now;
 
+	bool legacy;
 	dnssec_kasp_t *kasp;
 	dnssec_kasp_zone_t *zone;
 	dnssec_kasp_policy_t *policy;
@@ -40,14 +43,24 @@ struct kdnssec_ctx {
 typedef struct kdnssec_ctx kdnssec_ctx_t;
 
 /*!
+ * \brief Initialize DNSSEC KASP context.
+ */
+int kdnssec_kasp(dnssec_kasp_t **kasp, bool legacy);
+
+/*!
+ * \brief Initialize DNSSEC parameters of the DNSSEC context.
+ *
+ * No cleanup is performed on failure.
+ */
+int kdnssec_kasp_init(kdnssec_ctx_t *ctx, const char *kasp_path, const char *zone_name);
+
+/*!
  * \brief Initialize DNSSEC signing context.
  *
  * \param ctx        Signing context to be initialized.
- * \param kasp_path  Path to KASP store.
  * \param zone_name  Name of the zone.
  */
-int kdnssec_ctx_init(kdnssec_ctx_t *ctx, const char *kasp_path,
-                     const char *zone_name);
+int kdnssec_ctx_init(kdnssec_ctx_t *ctx, const knot_dname_t *zone_name);
 
 /*!
  * \brief Cleanup DNSSEC signing context.

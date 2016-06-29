@@ -107,9 +107,7 @@ zone = t.zone_rnd(1, dnssec=False)
 master = t.server("knot")
 t.link(zone, master, ddns=True)
 
-master.dnssec_enable = True
-master.gen_key(zone, ksk=True, alg="RSASHA256")
-master.gen_key(zone, alg="RSASHA256")
+master.dnssec(zone).enable = True
 master.gen_confile()
 
 t.start()
@@ -119,7 +117,7 @@ master.zone_wait(zone)
 check_log("============ NSEC test ============")
 test_run(master, zone, "NSEC")
 
-master.enable_nsec3(zone)
+master.dnssec(zone).nsec3 = True
 master.reload()
 t.sleep(2)
 

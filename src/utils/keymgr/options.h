@@ -1,4 +1,4 @@
-/*  Copyright (C) 2014 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -16,9 +16,22 @@
 
 #pragma once
 
-#include "list.h"
+#include "knot/dnssec/context.h"
 
-/*!
- * Free KASP zone keys.
- */
-void kasp_zone_keys_free(dnssec_list_t *keys);
+struct options {
+	bool legacy;
+	char *kasp_dir;
+	char *config;
+	char *confdb;
+};
+
+typedef struct options options_t;
+
+int options_init(options_t *options);
+
+void options_cleanup(options_t *options);
+
+int options_zone_kasp_path(options_t *options, const char *zone_name);
+
+int options_zone_kasp_init(options_t *options, const char *zone_name,
+                           dnssec_kasp_t **kasp);

@@ -59,11 +59,60 @@ a name must be unique amongst the other names.
 .SS Global options
 .INDENT 0.0
 .TP
-\fB\-\-dir\fP \fIpath\fP
-The location of the KASP database to work with. Defaults to current working
-directory or \fBKEYMGR_DIR\fP environment variable (if set).
+\fB\-c\fP, \fB\-\-config\fP \fIfile\fP
+Use a textual configuration file to get the KASP database location.
+.TP
+\fB\-C\fP, \fB\-\-confdb\fP \fIdirectory\fP
+Use a binary configuration database directory to get the KASP database location.
+.TP
+\fB\-d\fP, \fB\-\-dir\fP \fIpath\fP
+Use a specified KASP database path to work with.
+.TP
+\fB\-h\fP, \fB\-\-help\fP
+Print the program help.
+.TP
+\fB\-l\fP, \fB\-\-legacy\fP
+Enable legacy mode. Zone, policy, and keystore configuration is stored
+in KASP database (not in server configuration).
+.TP
+\fB\-V\fP, \fB\-\-version\fP
+Print the program version.
+.UNINDENT
+.SS KASP database location
+.sp
+The location of the KASP database is determined as follows:
+.INDENT 0.0
+.IP 1. 3
+The path specified with \fB\-\-dir\fP\&.
+.IP 2. 3
+The path read from the server configuration specified with \fB\-\-confdb\fP or
+\fB\-\-config\fP\&.
+.IP 3. 3
+The path read from the server default configuration database.
+.IP 4. 3
+The path read from the server default configuration file.
+.UNINDENT
+.sp
+In legacy mode, the path is determined as follows:
+.INDENT 0.0
+.IP 1. 3
+The path specified with \fB\-\-dir\fP\&.
+.IP 2. 3
+The path specified in the \fBKEYMGR_DIR\fP environment variable.
+.IP 3. 3
+The current working dir.
 .UNINDENT
 .SS Main commands
+.INDENT 0.0
+.TP
+\fBtsig\fP ...
+Operations with TSIG keys.
+.TP
+\fBzone\fP ...
+Operations with zones in the database. A zone holds assigned signing
+configuration and signing metadata.
+.UNINDENT
+.SS Main commands (legacy)
 .INDENT 0.0
 .TP
 \fBinit\fP
@@ -74,10 +123,6 @@ The command creates a default policy and default key store (both named
 \fIdefault\fP). In case of upgrade, existing objects are checked and any missing
 attributes are filled in.
 .TP
-\fBzone\fP ...
-Operations with zones in the database. A zone holds assigned signing
-configuration and signing metadata.
-.TP
 \fBpolicy\fP ...
 Operations with KASP policies. A policy holds parameters that define the
 way how a zone is signed.
@@ -86,28 +131,22 @@ way how a zone is signed.
 Operations with key stores configured for the KASP database. A private key
 store holds private key material for zone signing separately from the zone
 metadata.
+.UNINDENT
+.SS tsig commands
+.INDENT 0.0
 .TP
-\fBtsig\fP ...
-Operations with TSIG keys.
+\fBtsig\fP \fBgenerate\fP \fIname\fP [\fBalgorithm\fP \fIid\fP] [\fBsize\fP \fIbits\fP]
+Generate new TSIG key and print it on the standard output. The algorithm
+defaults to \fIhmac\-sha256\fP\&. The default key size is determined optimally based
+on the selected algorithm.
+.sp
+The generated key is printed out in the server configuration format to allow
+direct inclusion into the server configuration. The first line of the output
+contains a comment with the key in the one\-line key format accepted by client
+utilities.
 .UNINDENT
 .SS zone commands
 .INDENT 0.0
-.TP
-\fBzone\fP \fBadd\fP \fIzone\-name\fP [\fBpolicy\fP \fIpolicy\-name\fP]
-Add a zone into the database. The policy defaults to \(aqdefault\(aq.
-.TP
-\fBzone\fP \fBlist\fP [\fIpattern\fP]
-List zones in the database matching the \fIpattern\fP as a substring.
-.TP
-\fBzone\fP \fBremove\fP \fIzone\-name\fP [\fBforce\fP]
-Remove a zone from the database. If some keys are currently active, the
-\fBforce\fP argument must be specified.
-.TP
-\fBzone\fP \fBset\fP \fIzone\-name\fP [\fBpolicy\fP \fIpolicy\-name\fP]
-Change zone configuration. At the moment, only a policy can be changed.
-.TP
-\fBzone\fP \fBshow\fP \fIzone\-name\fP
-Show zone details.
 .TP
 \fBzone\fP \fBkey\fP \fBlist\fP \fIzone\-name\fP [\fBfilter\fP]
 List key IDs and tags of zone keys.
@@ -163,7 +202,26 @@ The \fItime\fP accepts YYYYMMDDHHMMSS format, unix timestamp, or offset from the
 current time. For the offset, add \fB+\fP or \fB\-\fP prefix and optionally a
 suffix \fBmi\fP, \fBh\fP, \fBd\fP, \fBw\fP, \fBmo\fP, or \fBy\fP\&. If no suffix is specified,
 the offset is in seconds.
-.SS policy commands
+.SS zone commands (legacy)
+.INDENT 0.0
+.TP
+\fBzone\fP \fBadd\fP \fIzone\-name\fP [\fBpolicy\fP \fIpolicy\-name\fP]
+Add a zone into the database. The policy defaults to \(aqdefault\(aq.
+.TP
+\fBzone\fP \fBlist\fP [\fIpattern\fP]
+List zones in the database matching the \fIpattern\fP as a substring.
+.TP
+\fBzone\fP \fBremove\fP \fIzone\-name\fP [\fBforce\fP]
+Remove a zone from the database. If some keys are currently active, the
+\fBforce\fP argument must be specified.
+.TP
+\fBzone\fP \fBset\fP \fIzone\-name\fP [\fBpolicy\fP \fIpolicy\-name\fP]
+Change zone configuration. At the moment, only a policy can be changed.
+.TP
+\fBzone\fP \fBshow\fP \fIzone\-name\fP
+Show zone details.
+.UNINDENT
+.SS policy commands (legacy)
 .INDENT 0.0
 .TP
 \fBpolicy\fP \fBlist\fP
@@ -236,7 +294,7 @@ Name of the key store to be used for private key material.
 .UNINDENT
 .UNINDENT
 .UNINDENT
-.SS keystore commands
+.SS keystore commands (legacy)
 .INDENT 0.0
 .TP
 \fBkeystore\fP \fBlist\fP
@@ -276,126 +334,36 @@ the later case, the module is looked up in the default modules location.
 .UNINDENT
 .UNINDENT
 .UNINDENT
-.SS tsig commands
-.INDENT 0.0
-.TP
-\fBtsig\fP \fBgenerate\fP \fIname\fP [\fBalgorithm\fP \fIid\fP] [\fBsize\fP \fIbits\fP]
-Generate new TSIG key and print it on the standard output. The algorithm
-defaults to \fIhmac\-sha256\fP\&. The default key size is determined optimally based
-on the selected algorithm.
-.sp
-The generated key is printed out in the server configuration format to allow
-direct inclusion into the server configuration. The first line of the output
-contains a comment with the key in the one\-line key format accepted by client
-utilities.
-.UNINDENT
 .SH EXAMPLES
 .INDENT 0.0
 .IP 1. 3
-Initialize a new KASP database and add a zone \fIexample.com\fP with the
-\fIdefault\fP policy assigned:
+Generate two RSA\-SHA\-256 signing keys. The first key will be used as a KSK,
+the second one as a ZSK:
 .INDENT 3.0
 .INDENT 3.5
 .sp
 .nf
 .ft C
-$ keymgr init
-$ keymgr policy add default
-$ keymgr zone add example.com policy default
-.ft P
-.fi
-.UNINDENT
-.UNINDENT
-.IP 2. 3
-List zones containing \fI\&.com\fP substring:
-.INDENT 3.0
-.INDENT 3.5
-.sp
-.nf
-.ft C
-$ keymgr zone list .com
-.ft P
-.fi
-.UNINDENT
-.UNINDENT
-.IP 3. 3
-Add a testing policy \fIlab\fP with rapid key rollovers. Apply the policy to an
-existing zone:
-.INDENT 3.0
-.INDENT 3.5
-.sp
-.nf
-.ft C
-$ keymgr policy add lab rrsig\-lifetime 300 rrsig\-refresh 150 \e
-    zsk\-lifetime 600 delay 10
-$ keymgr zone set example.com policy lab
-.ft P
-.fi
-.UNINDENT
-.UNINDENT
-.IP 4. 3
-Add an existing and already secured zone. Let the keys be managed by the
-KASP. Make sure to import all used keys. Also the used algorithm must match
-with the one configured in the policy:
-.INDENT 3.0
-.INDENT 3.5
-.sp
-.nf
-.ft C
-$ keymgr zone add example.com policy default
-$ keymgr zone key import example.com Kexample.com+010+12345.private
-$ keymgr zone key import example.com Kexample.com+010+67890.private
-.ft P
-.fi
-.UNINDENT
-.UNINDENT
-.IP 5. 3
-Disable automatic key management for a secured zone. For this purpose,
-create a policy named \(aqmanual\(aq with otherwise default signing parameters:
-.INDENT 3.0
-.INDENT 3.5
-.sp
-.nf
-.ft C
-$ keymgr policy add manual manual true
-$ keymgr zone set example.com policy manual
-.ft P
-.fi
-.UNINDENT
-.UNINDENT
-.IP 6. 3
-Add a zone to be signed with manual key maintenance. Generate one ECDSA
-signing key. The Single\-Type Signing scheme will be used:
-.INDENT 3.0
-.INDENT 3.5
-.sp
-.nf
-.ft C
-$ keymgr policy add manual manual true
-$ keymgr zone add example.com policy manual
-$ keymgr zone key gen example.com algo 13 size 256
-.ft P
-.fi
-.UNINDENT
-.UNINDENT
-.IP 7. 3
-Add a zone to be signed with manual key maintenance. Generate two
-RSA\-SHA\-256 signing keys. The first key will be used as a KSK, the second
-one as a ZSK:
-.INDENT 3.0
-.INDENT 3.5
-.sp
-.nf
-.ft C
-$ keymgr policy add manual manual true
-$ keymgr zone add example.com policy manual
 $ keymgr zone key generate example.com algorithm rsasha256 size 2048 ksk
 $ keymgr zone key generate example.com algorithm rsasha256 size 1024
 .ft P
 .fi
 .UNINDENT
 .UNINDENT
-.IP 8. 3
+.IP 2. 3
+Import a key in legacy format. The used algorithm must match with the one
+configured in the policy:
+.INDENT 3.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+$ keymgr zone key import example.com Kexample.com+010+12345.private
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.IP 3. 3
 Generate a TSIG key named \fIoperator.key\fP:
 .INDENT 3.0
 .INDENT 3.5
@@ -403,23 +371,6 @@ Generate a TSIG key named \fIoperator.key\fP:
 .nf
 .ft C
 $ keymgr tsig generate operator.key algorithm hmac\-sha512
-.ft P
-.fi
-.UNINDENT
-.UNINDENT
-.IP 9. 3
-Add a new key store named \fIhsm\fP and backed by the SoftHSM PKCS #11 module,
-then add a new policy named \fIsecure\fP with default parameters using this key
-store, and finally add the zone \fIexample.com\fP which will use this policy:
-.INDENT 3.0
-.INDENT 3.5
-.sp
-.nf
-.ft C
-$ keymgr keystore add hsm backend pkcs11 \e
-    config "pkcs11:token=knot;pin\-value=1234 libsofthsm2.so"
-$ keymgr policy add secure keystore hsm
-$ keymgr zone add example.com policy secure
 .ft P
 .fi
 .UNINDENT

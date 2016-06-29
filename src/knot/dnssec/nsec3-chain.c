@@ -337,6 +337,7 @@ static zone_node_t *create_nsec3_node_for_node(zone_node_t *node,
 	}
 	if (node == apex) {
 		dnssec_nsec_bitmap_add(rr_types, KNOT_RRTYPE_DNSKEY);
+		dnssec_nsec_bitmap_add(rr_types, KNOT_RRTYPE_NSEC3PARAM);
 	}
 
 	zone_node_t *nsec3_node;

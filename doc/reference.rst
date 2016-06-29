@@ -31,10 +31,10 @@ the following symbols:
 - [ ] – Optional value
 - \| – Choice
 
-There are 8 main sections (``server``, ``key``, ``acl``, ``control``,
-``remote``, ``template``, ``zone`` and ``log``) and module sections with the
-``mod-`` prefix. The most of the sections (excluding ``server`` and
-``control``) are sequences of settings blocks. Each settings block
+There are 10 main sections (``server``, ``control``, ``log``, ``keystore``,
+``policy``, ``key``, ``acl``, ``remote``, ``template``, and ``zone``) and
+module sections with the ``mod-`` prefix. Most of the sections (excluding
+``server`` and ``control``) are sequences of settings blocks. Each settings block
 begins with a unique identifier, which can be used as a reference from other
 sections (such identifier must be defined in advance).
 
@@ -485,6 +485,215 @@ Maximum time the control socket operations can take. Set 0 for infinity.
 
 *Default:* 5
 
+.. _Keystore section:
+
+Keystore section
+================
+
+DNSSEC keystore configuration.
+
+::
+
+ keystore:
+   - id: STR
+     backend: pem | pkcs11
+     config: STR
+
+.. _keystore_id:
+
+id
+--
+
+A keystore identifier.
+
+
+.. _keystore_backend:
+
+backend
+-------
+
+A key storage backend type. A directory with PEM files or a PKCS #11 storage.
+
+*Default:* pem
+
+.. _keystore_config:
+
+config
+------
+
+A backend specific configuration. A directory with PEM files (the path can
+be specified as a relative path to :ref:`kasp-db<zone_kasp-db>`) or
+a configuration string for PKCS #11 storage.
+
+.. NOTE::
+   Example configuration string for PKCS #11::
+
+     "pkcs11:token=knot;pin-value=1234 /usr/lib64/pkcs11/libsofthsm2.so"
+
+*Default:* :ref:`kasp-db<zone_kasp-db>`/keys
+
+.. _Policy section:
+
+Policy section
+==============
+
+DNSSEC policy configuration.
+
+::
+
+ policy:
+   - id: STR
+     keystore: STR
+     manual: BOOL
+     algorithm: dsa | rsasha1 | dsa-nsec3-sha1 | rsasha1-nsec3-sha1 | rsasha256 | rsasha512 | ecdsap256sha256 | ecdsap384sha384
+     ksk-size: SIZE
+     zsk-size: SIZE
+     dnskey-ttl: TIME
+     zsk-lifetime: TIME
+     rrsig-lifetime: TIME
+     rrsig-refresh: TIME
+     nsec3: BOOL
+     nsec3-iterations: INT
+     nsec3-salt-length: INT
+     nsec3-resalt: TIME
+     propagation-delay: TIME
+
+.. _policy_id:
+
+id
+--
+
+A policy identifier.
+
+.. _policy_keystore:
+
+keystore
+--------
+
+A :ref:`reference<keystore_id>` to a keystore holding private key material
+for zones. A special *default* value can be used for the default keystore settings.
+
+*Default:* default
+
+.. _policy_manual:
+
+manual
+------
+
+If enabled, automatic key management is not used.
+
+*Default:* off
+
+.. _policy_algorithm:
+
+algorithm
+---------
+
+An algorithm of signing keys and issued signatures.
+
+*Default:* ecdsap256sha256
+
+.. _policy_ksk-size:
+
+ksk-size
+--------
+
+A length of newly generated :abbr:`KSK (Key Signing Key)` keys.
+
+*Default:* 1024 (dsa*), 2048 (rsa*), 256 (ecdsap256*), 384 (ecdsap384*)
+
+.. _policy_zsk-size:
+
+zsk-size
+--------
+
+A length of newly generated :abbr:`ZSK (Zone Signing Key)` keys.
+
+*Default:* see default for :ref:`ksk-size<policy_ksk-size>`
+
+.. _policy_dnskey-ttl:
+
+dnskey-ttl
+----------
+
+A TTL value for DNSKEY records added into zone apex.
+
+*Default:* zone SOA TTL
+
+.. _policy_zsk-lifetime:
+
+zsk-lifetime
+------------
+
+A period between ZSK publication and the next rollover initiation.
+
+*Default:* 30 days
+
+.. _policy_rrsig-lifetime:
+
+rrsig-lifetime
+--------------
+
+A validity period of newly issued signatures.
+
+*Default:* 14 days
+
+.. _policy_rrsig-refresh:
+
+rrsig-refresh
+-------------
+
+A period how long before a signature expiration the signature will be refreshed.
+
+*Default:* 7 days
+
+.. _policy_nsec:
+
+nsec3
+-----
+
+Specifies if NSEC3 will be used instead of NSEC.
+
+*Default:* off
+
+.. _policy_nsec3-iterations:
+
+nsec3-iterations
+----------------
+
+A number of additional times the hashing is performed.
+
+*Default:* 5
+
+.. _policy_nsec3-salt-length:
+
+nsec3-salt-length
+-----------------
+
+A length of a salt field in octets, which is appended to the original owner
+name before hashing.
+
+*Default:* 8
+
+.. _policy_nsec3-resalt:
+
+nsec3-resalt
+------------
+
+A validity period of newly issued salt field.
+
+*Default:* 30 days
+
+.. _policy_propagation-delay:
+
+propagation-delay
+-----------------
+
+An extra delay added for each key rollover step. This value should be high
+enough to cover propagation of data from the master server to all slaves.
+
+*Default:* 1 day
+
 .. _Remote section:
 
 Remote section
@@ -616,6 +825,7 @@ Definition of zones served by the server.
      ixfr-from-differences: BOOL
      max-journal-size: SIZE
      dnssec-signing: BOOL
+     dnssec-policy: STR
      kasp-db: STR
      request-edns-option: INT:[HEXSTR]
      serial-policy: increment | unixtime
@@ -809,7 +1019,17 @@ If enabled, automatic DNSSEC signing for the zone is turned on.
 
 *Default:* off
 
-.. _zone_kasp_db:
+.. _zone_dnssec-policy:
+
+dnssec-policy
+-------------
+
+A :ref:`reference<policy_id>` to DNSSEC signing policy. A special *default*
+value can be used for the default policy settings.
+
+*Required*
+
+.. _zone_kasp-db:
 
 kasp-db
 -------

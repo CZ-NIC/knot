@@ -31,6 +31,20 @@ def zone_arg_check(zone):
         return zone[0]
     return zone
 
+class ZoneDnssec(object):
+    '''Zone DNSSEC signing configuration'''
+
+    def __init__(self):
+        self.enable = None
+        self.manual = None
+        self.alg = None
+        self.ksk_size = None
+        self.zsk_size = None
+        self.nsec3 = None
+        self.nsec3_iters = None
+        self.nsec3_resalt = None
+        self.nsec3_salt_len = None
+
 class Zone(object):
     '''DNS zone description'''
 
@@ -39,10 +53,9 @@ class Zone(object):
         self.masters = set()
         self.slaves = set()
         self.ddns = ddns
-        # ixfr from differences
-        self.ixfr = ixfr
-        # modules
+        self.ixfr = ixfr # ixfr from differences
         self.modules = []
+        self.dnssec = ZoneDnssec()
 
     @property
     def name(self):
@@ -115,7 +128,7 @@ class Server(object):
         self.fout = None
         self.ferr = None
         self.valgrind_log = None
-        self.conffile = None
+        self.confile = None
 
     def _check_socket(self, proto, port):
         if ipaddress.ip_address(self.addr).version == 4:
@@ -589,7 +602,6 @@ class Server(object):
     def gen_key(self, zone, **args):
         zone = zone_arg_check(zone)
 
-        prepare_dir(self.keydir)
         key = dnstest.keys.Key(self.keydir, zone.name, **args)
         key.generate()
 
@@ -599,6 +611,11 @@ class Server(object):
         zone = zone_arg_check(zone)
         # copy all keys, even for other zones
         distutils.dir_util.copy_tree(zone.key_dir, self.keydir, update=True)
+
+    def dnssec(self, zone):
+        zone = zone_arg_check(zone)
+
+        return self.zones[zone.name].dnssec
 
     def enable_nsec3(self, zone, **args):
         zone = zone_arg_check(zone)
@@ -857,6 +874,14 @@ class Knot(Server):
         conf.item_str("algorithm", key.alg)
         conf.item_str("secret", key.key)
 
+    def _bool(self, conf, name, value):
+        if value != None:
+            conf.item_str(name, "on" if value else "off")
+
+    def _str(self, conf, name, value):
+        if value != None:
+            conf.item_str(name, value)
+
     def get_config(self):
         s = dnstest.config.KnotConf()
         s.begin("server")
@@ -972,9 +997,26 @@ class Knot(Server):
                 for module in z.modules:
                     module.get_conf(s)
 
+        s.begin("policy")
+        for zone in sorted(self.zones):
+            z = self.zones[zone]
+            if not z.dnssec.enable:
+                continue
+            s.id_item("id", z.name)
+            self._bool(s, "manual", z.dnssec.manual)
+            self._str(s, "algorithm", z.dnssec.alg)
+            self._str(s, "ksk_size", z.dnssec.ksk_size)
+            self._str(s, "zsk_size", z.dnssec.zsk_size)
+            self._bool(s, "nsec3", z.dnssec.nsec3)
+            self._str(s, "nsec3-iterations", z.dnssec.nsec3_iters)
+            self._str(s, "nsec3-resalt", z.dnssec.nsec3_resalt)
+            self._str(s, "nsec3-salt-length", z.dnssec.nsec3_salt_len)
+        s.end()
+
         s.begin("template")
         s.id_item("id", "default")
         s.item_str("storage", self.dir)
+        s.item_str("kasp-db", self.keydir)
         if self.zonefile_sync:
             s.item_str("zonefile-sync", self.zonefile_sync)
         else:
@@ -984,9 +1026,6 @@ class Knot(Server):
         s.item_str("semantic-checks", "on")
         if self.disable_any:
             s.item_str("disable-any", "on")
-        if self.dnssec_enable:
-            s.item_str("kasp-db", self.keydir)
-            s.item_str("dnssec-signing", "on")
         if len(self.modules) > 0:
             modules = ""
             for module in self.modules:
@@ -1031,6 +1070,10 @@ class Knot(Server):
 
             if z.ixfr and not z.masters:
                 s.item_str("ixfr-from-differences", "on")
+
+            if z.dnssec.enable:
+                s.item_str("dnssec-signing", "on")
+                s.item_str("dnssec-policy", z.name)
 
             if len(z.modules) > 0:
                 modules = ""

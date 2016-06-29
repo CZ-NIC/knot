@@ -85,15 +85,19 @@
 
 #include <dnssec/key.h>
 #include <dnssec/list.h>
+#include <dnssec/nsec.h>
 #include <stdbool.h>
 #include <time.h>
 
-struct dnssec_kasp;
+struct dnssec_kasp_store_functions;
 
 /*!
- * KASP store.
+ * DNSSEC KASP reference.
  */
-typedef struct dnssec_kasp dnssec_kasp_t;
+typedef struct dnssec_kasp {
+	const struct dnssec_kasp_store_functions *functions;
+	void *ctx;
+} dnssec_kasp_t;
 
 /*!
  * Initialize default KASP state store context.
@@ -136,12 +140,18 @@ int dnssec_kasp_open(dnssec_kasp_t *kasp, const char *config);
  */
 void dnssec_kasp_close(dnssec_kasp_t *kasp);
 
-struct dnssec_kasp_zone;
-
 /*!
  * Zone state structure in the KASP.
  */
-typedef struct dnssec_kasp_zone dnssec_kasp_zone_t;
+typedef struct dnssec_kasp_zone {
+	char *name;
+	uint8_t *dname;
+
+	char *policy;
+
+	dnssec_list_t *keys;
+	dnssec_binary_t *nsec3_salt;
+} dnssec_kasp_zone_t;
 
 /*!
  * Create new KASP zone.
@@ -292,6 +302,8 @@ typedef struct dnssec_kasp_policy {
 	uint32_t rrsig_refresh_before;
 	// NSEC3
 	bool nsec3_enabled;
+	uint32_t nsec3_resalt;
+	dnssec_nsec3_params_t nsec3_params;
 	// SOA
 	uint32_t soa_minimal_ttl;
 	// zone
@@ -404,5 +416,52 @@ int dnssec_kasp_keystore_init(dnssec_kasp_t *kasp, const char *backend,
 			      const char *config, struct dnssec_keystore **store);
 int dnssec_kasp_keystore_open(dnssec_kasp_t *kasp, const char *backend,
 			      const char *config, struct dnssec_keystore **store);
+
+/*!
+ * KASP store API implementation.
+ */
+typedef struct dnssec_kasp_store_functions {
+	int (*init)(const char *config);
+	// internal context initialization
+	int (*open)(void **ctx_ptr, const char *config);
+	void (*close)(void *ctx);
+	// internal information
+	const char *(*base_path)(void *ctx);
+	// zone serialization/deserialization
+	int (*zone_load)(void *ctx, dnssec_kasp_zone_t *zone);
+	int (*zone_save)(void *ctx, const dnssec_kasp_zone_t *zone);
+	int (*zone_remove)(void *ctx, const char *zone_name);
+	int (*zone_list)(void *ctx, dnssec_list_t *zone_names);
+	int (*zone_exists)(void *ctx, const char *zone_name);
+	// policy serialization/deserialization
+	int (*policy_load)(void *ctx, dnssec_kasp_policy_t *policy);
+	int (*policy_save)(void *ctx, const dnssec_kasp_policy_t *policy);
+	int (*policy_remove)(void *ctx, const char *name);
+	int (*policy_list)(void *ctx, dnssec_list_t *policy_names);
+	int (*policy_exists)(void *ctx, const char *name);
+	// keystore serialization/deserialization
+	int (*keystore_load)(void *ctx, dnssec_kasp_keystore_t *keystore);
+	int (*keystore_save)(void *ctx, const dnssec_kasp_keystore_t *keystore);
+	int (*keystore_remove)(void *ctx, const char *name);
+	int (*keystore_list)(void *ctx, dnssec_list_t *names);
+	int (*keystore_exists)(void *ctx, const char *name);
+} dnssec_kasp_store_functions_t;
+
+/*!
+ * Get KASP store API implementation.
+ *
+ * \return Pointer to functions.
+ */
+const dnssec_kasp_store_functions_t *dnssec_kasp_dir_api(void);
+
+/*!
+ * Initialize custom KASP state store context.
+ *
+ * \param[out] kasp  Pointer to KASP store instance.
+ *
+ * \return Error code, DNSSEC_EOK if successful.
+ */
+int dnssec_kasp_init_custom(dnssec_kasp_t **kasp,
+			    const dnssec_kasp_store_functions_t *implementation);
 
 /*! @} */

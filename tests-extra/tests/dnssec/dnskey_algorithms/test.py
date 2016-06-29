@@ -30,7 +30,6 @@ TEST_CASES = {
 t = Test()
 
 knot = t.server("knot")
-knot.dnssec_enable = True
 
 # setup keys
 
@@ -48,6 +47,10 @@ for zone_name in TEST_CASES:
     zones.append(zone)
 
 t.link(zones, knot)
+
+for zone in zones:
+    knot.dnssec(zone).enable = True
+    knot.dnssec(zone).manual = True
 
 t.start()
 

@@ -81,5 +81,9 @@ int knot_nsec3param_from_wire(knot_nsec3_params_t *params,
 static inline
 void knot_nsec3param_free(knot_nsec3_params_t *params)
 {
+	if (params == NULL) {
+		return;
+	}
+
 	free(params->salt);
 }

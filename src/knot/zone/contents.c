@@ -936,6 +936,7 @@ static int load_nsec3param(zone_contents_t *contents)
 	const knot_rdataset_t *rrs = node_rdataset(contents->apex,
 	                                           KNOT_RRTYPE_NSEC3PARAM);
 	if (rrs == NULL) {
+		knot_nsec3param_free(&contents->nsec3_params);
 		memset(&contents->nsec3_params, 0, sizeof(knot_nsec3_params_t));
 		return KNOT_EOK;
 	}

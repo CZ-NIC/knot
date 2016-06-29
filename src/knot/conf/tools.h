@@ -77,7 +77,19 @@ int check_ref(
 	conf_check_t *args
 );
 
+int check_ref_dflt(
+	conf_check_t *args
+);
+
 int check_modref(
+	conf_check_t *args
+);
+
+int check_keystore(
+	conf_check_t *args
+);
+
+int check_policy(
 	conf_check_t *args
 );
 

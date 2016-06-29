@@ -17,6 +17,7 @@
 #pragma once
 
 #include <stdbool.h>
+#include <sys/types.h>
 
 /*!
  * \brief Delete file or directory (recursive).
@@ -24,3 +25,8 @@
  * \return true on success, false when one or more files failed to be removed.
  */
 bool remove_path(const char *path);
+
+/*!
+ * Equivalent to mkdir(2), can succeed if the directory already exists.
+ */
+int make_dir(const char *path, mode_t mode, bool ignore_existing);
