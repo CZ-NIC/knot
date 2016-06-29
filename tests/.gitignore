@@ -12,6 +12,9 @@ conf_tools
 confdb
 confio
 control
+cookie-client
+cookie-opt
+cookie-server
 db
 descriptor
 dname
