@@ -571,7 +571,7 @@ keystore
 --------
 
 A :ref:`reference<keystore_id>` to a keystore holding private key material
-for zones.
+for zones. A special *default* value can be used for the default keystore settings.
 
 *Default:* default
 
@@ -1024,9 +1024,10 @@ If enabled, automatic DNSSEC signing for the zone is turned on.
 dnssec-policy
 -------------
 
-A :ref:`reference<policy_id>` to DNSSEC signing policy.
+A :ref:`reference<policy_id>` to DNSSEC signing policy. A special *default*
+value can be used for the default policy settings.
 
-*Default:* default
+*Required*
 
 .. _zone_kasp-db:
 

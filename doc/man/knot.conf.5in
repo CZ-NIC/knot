@@ -509,7 +509,7 @@ A policy identifier.
 .SS keystore
 .sp
 A \fI\%reference\fP to a keystore holding private key material
-for zones.
+for zones. A special \fIdefault\fP value can be used for the default keystore settings.
 .sp
 \fIDefault:\fP default
 .SS manual
@@ -870,9 +870,10 @@ Cannot be enabled on a slave zone.
 \fIDefault:\fP off
 .SS dnssec\-policy
 .sp
-A \fI\%reference\fP to DNSSEC signing policy.
+A \fI\%reference\fP to DNSSEC signing policy. A special \fIdefault\fP
+value can be used for the default policy settings.
 .sp
-\fIDefault:\fP default
+\fIRequired\fP
 .SS kasp\-db
 .sp
 A KASP database path. Non absolute path is relative to
