@@ -487,7 +487,7 @@ policy:
   \- id: STR
     keystore: STR
     manual: BOOL
-    algorithm: dsa | rsasha1 | dsansec3sha1 | rsasha1nsec3sha1 | rsasha256 | rsasha512 | ecdsap256sha256 | ecdsap384sha384
+    algorithm: dsa | rsasha1 | dsa\-nsec3\-sha1 | rsasha1\-nsec3\-sha1 | rsasha256 | rsasha512 | ecdsap256sha256 | ecdsap384sha384
     ksk\-size: SIZE
     zsk\-size: SIZE
     dnskey\-ttl: TIME
@@ -521,17 +521,17 @@ If enabled, automatic key management is not used.
 .sp
 An algorithm of signing keys and issued signatures.
 .sp
-\fIDefault:\fP ECDSA\-P256\-SHA256
+\fIDefault:\fP ecdsap256sha256
 .SS ksk\-size
 .sp
 A length of newly generated KSK keys.
 .sp
-\fIDefault:\fP 256 (algorithm dependent)
+\fIDefault:\fP 1024 (dsa*), 2048 (rsa*), 256 (ecdsap256*), 384 (ecdsap384*)
 .SS zsk\-size
 .sp
 A length of newly generated ZSK keys.
 .sp
-\fIDefault:\fP 256 (algorithm dependent)
+\fIDefault:\fP see default for \fI\%ksk\-size\fP
 .SS dnskey\-ttl
 .sp
 A TTL value for DNSKEY records added into zone apex.
