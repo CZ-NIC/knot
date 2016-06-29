@@ -52,10 +52,6 @@ static int options_init_modern(options_t *options)
 {
 	assert(options);
 
-	if (options->kasp_dir) {
-		return DNSSEC_EOK;
-	}
-
 	if (options->config != NULL && options->confdb != NULL) {
 		error("Ambiguous configuration source.");
 		return DNSSEC_EINVAL;
@@ -64,7 +60,9 @@ static int options_init_modern(options_t *options)
 	// Choose the optimal config source.
 	struct stat st;
 	bool import = false;
-	if (options->confdb != NULL) {
+	if (options->kasp_dir != NULL) {
+		import = false;
+	} else if (options->confdb != NULL) {
 		import = false;
 	} else if (options->config != NULL) {
 		import = true;
