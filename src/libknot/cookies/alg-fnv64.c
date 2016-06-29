@@ -27,7 +27,26 @@
 #include "libknot/errcode.h"
 
 /*!
- * Compute client cookie using FNV-64.
+ * \brief Update hash value.
+ *
+ * \param hash_val  Hash value to be updated.
+ * \param sockaddr  Socket address.
+ */
+static inline void update_hash(Fnv64_t *hash_val, const struct sockaddr *sockaddr)
+{
+	assert(hash_val && sockaddr);
+
+	size_t addr_len = 0;
+	const uint8_t *addr = sockaddr_raw((struct sockaddr_storage *)sockaddr,
+	                                   &addr_len);
+	if (addr) {
+		assert(addr_len);
+		*hash_val = fnv_64a_buf((void *)addr, addr_len, *hash_val);
+	}
+}
+
+/*!
+ * \brief Compute client cookie using FNV-64.
  *
  * \note At least one input address must be provided.
  *
@@ -49,27 +68,14 @@ static int cc_gen_fnv64(const struct knot_cc_input *input,
 		return KNOT_EINVAL;
 	}
 
-	const uint8_t *addr = NULL;
-	size_t addr_len = 0;
-
 	Fnv64_t hash_val = FNV1A_64_INIT;
 
 	if (input->clnt_sockaddr) {
-		addr = sockaddr_raw((struct sockaddr_storage *)input->clnt_sockaddr,
-		                    &addr_len);
-		if (addr) {
-			assert(addr_len);
-			hash_val = fnv_64a_buf((void *)addr, addr_len, hash_val);
-		}
+		update_hash(&hash_val, input->clnt_sockaddr);
 	}
 
 	if (input->srvr_sockaddr) {
-		addr = sockaddr_raw((struct sockaddr_storage *)input->srvr_sockaddr,
-		                    &addr_len);
-		if (addr) {
-			assert(addr_len);
-			hash_val = fnv_64a_buf((void *)addr, addr_len, hash_val);
-		}
+		update_hash(&hash_val, input->srvr_sockaddr);
 	}
 
 	hash_val = fnv_64a_buf((void *)input->secret_data, input->secret_len,
@@ -111,18 +117,10 @@ static int sc_gen_fnv64(const struct knot_sc_input *input,
 		return KNOT_EINVAL;
 	}
 
-	const uint8_t *addr = NULL;
-	size_t addr_len = 0;
-
 	Fnv64_t hash_val = FNV1A_64_INIT;
 
 	if (input->srvr_data->clnt_sockaddr) {
-		addr = sockaddr_raw((struct sockaddr_storage *)input->srvr_data->clnt_sockaddr,
-		                    &addr_len);
-		if (addr) {
-			assert(addr_len);
-			hash_val = fnv_64a_buf((void *)addr, addr_len, hash_val);
-		}
+		update_hash(&hash_val, input->srvr_data->clnt_sockaddr);
 	}
 
 	if (input->nonce && input->nonce_len) {
