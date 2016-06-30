@@ -75,15 +75,12 @@ inline static int uintmax_from_str(const char *src, uintmax_t *dest)
 	if (result != KNOT_EOK) {                           \
 		return result;                              \
 	}                                                   \
-	if (CHECK_MIN_##min(value, min) || value > (max)) { \
+	if (value < (min) || value > (max)) { \
 		return KNOT_ERANGE;                         \
 	}                                                   \
 	*dest = (type)value;                                \
 	return KNOT_EOK;                                    \
 }
-
-#define CHECK_MIN_0(value, min)	      0
-#define CHECK_MIN_INT_MIN(value, min) (value) < (min)
 
 inline static int str_to_int(const char *src, int *dest)
 {
