@@ -282,7 +282,7 @@ static int export_zone_config(const dnssec_kasp_zone_t *zone, json_t **config_pt
 	}
 
 	_json_cleanup_ json_t *salt = NULL;
-	if (zone->nsec3_salt.data) {
+	if (zone->nsec3_salt.size > 0) {
 		r = encode_binary(&zone->nsec3_salt, &salt);
 		if (r != DNSSEC_EOK) {
 			return r;
@@ -294,7 +294,9 @@ static int export_zone_config(const dnssec_kasp_zone_t *zone, json_t **config_pt
 	_json_cleanup_ json_t *salt_created = NULL;
 	r = encode_time(&zone->nsec3_salt_created, &salt_created);
 	if (r != DNSSEC_EOK) {
-		return DNSSEC_ENOMEM;
+		return r;
+	} else if (salt_created == NULL) {
+		salt_created = json_null();
 	}
 
 	_json_cleanup_ json_t *policy = zone->policy ? json_string(zone->policy) : json_null();
