@@ -84,16 +84,14 @@ static int policy_load(void *ctx, dnssec_kasp_policy_t *policy)
 	val = conf_rawid_get(conf(), C_POLICY, C_NSEC3, id, id_len);
 	policy->nsec3_enabled = conf_bool(&val);
 
-	val = conf_rawid_get(conf(), C_POLICY, C_NSEC3_RESALT, id, id_len);
-	policy->nsec3_resalt = conf_int(&val);
-
-	policy->nsec3_params.algorithm = DNSSEC_NSEC3_ALGORITHM_SHA1;
-
 	val = conf_rawid_get(conf(), C_POLICY, C_NSEC3_ITER, id, id_len);
-	policy->nsec3_params.iterations = conf_int(&val);
+	policy->nsec3_iterations = conf_int(&val);
 
 	val = conf_rawid_get(conf(), C_POLICY, C_NSEC3_SALT_LEN, id, id_len);
-	policy->nsec3_params.salt.size = conf_int(&val);
+	policy->nsec3_salt_length = conf_int(&val);
+
+	val = conf_rawid_get(conf(), C_POLICY, C_NSEC3_SALT_LIFETIME, id, id_len);
+	policy->nsec3_salt_lifetime = conf_int(&val);
 
 	val = conf_rawid_get(conf(), C_POLICY, C_PROPAG_DELAY, id, id_len);
 	policy->propagation_delay = conf_int(&val);
