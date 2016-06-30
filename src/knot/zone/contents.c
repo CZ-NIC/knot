@@ -16,6 +16,7 @@
 
 #include <assert.h>
 
+#include "dnssec/error.h"
 #include "knot/zone/contents.h"
 #include "knot/common/log.h"
 #include "knot/dnssec/zone-nsec.h"
@@ -950,7 +951,15 @@ static int load_nsec3param(zone_contents_t *contents)
 		.data = knot_rdata_data(rr)
 	};
 
-	return dnssec_nsec3_params_from_rdata(&contents->nsec3_params, &rdata);
+	dnssec_nsec3_params_t new_params = { 0 };
+	int r = dnssec_nsec3_params_from_rdata(&new_params, &rdata);
+	if (r != DNSSEC_EOK) {
+		return KNOT_EMALF;
+	}
+
+	dnssec_nsec3_params_free(&contents->nsec3_params);
+	contents->nsec3_params = new_params;
+	return KNOT_EOK;
 }
 
 static int contents_adjust(zone_contents_t *contents, bool normal)
