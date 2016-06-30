@@ -1,4 +1,4 @@
-/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -21,38 +21,37 @@
 #include "contrib/wire.h"
 
 _public_
+uint8_t knot_nsec3param_algorithm(const knot_rdataset_t *rrs, size_t pos)
+{
+	KNOT_RDATASET_CHECK(rrs, pos, return 0);
+	return *knot_rdata_offset(rrs, pos, 0);
+}
+
+_public_
+uint8_t knot_nsec3param_flags(const knot_rdataset_t *rrs, size_t pos)
+{
+	KNOT_RDATASET_CHECK(rrs, pos, return 0);
+	return *knot_rdata_offset(rrs, pos, 1);
+}
+
+_public_
 uint16_t knot_nsec3param_iterations(const knot_rdataset_t *rrs, size_t pos)
 {
 	KNOT_RDATASET_CHECK(rrs, pos, return 0);
 	return wire_read_u16(knot_rdata_offset(rrs, pos, 2));
 }
 
+
 _public_
-int knot_nsec3param_from_wire(knot_nsec3_params_t *params,
-                                const knot_rdataset_t *rrs)
+uint8_t knot_nsec3param_salt_length(const knot_rdataset_t *rrs, size_t pos)
 {
-	if (params == NULL || rrs == NULL || rrs->rr_count == 0) {
-		return KNOT_EINVAL;
-	}
+	KNOT_RDATASET_CHECK(rrs, pos, return 0);
+	return *knot_rdata_offset(rrs, pos, 4);
+}
 
-	knot_nsec3_params_t result = { 0 };
-
-	result.algorithm   = knot_nsec3param_algorithm(rrs, 0);
-	result.iterations  = knot_nsec3param_iterations(rrs, 0);
-	result.flags       = knot_nsec3param_flags(rrs, 0);
-	result.salt_length = knot_nsec3param_salt_length(rrs, 0);
-
-	if (result.salt_length > 0) {
-		result.salt = memdup(knot_nsec3param_salt(rrs, 0), result.salt_length);
-		if (!result.salt) {
-			return KNOT_ENOMEM;
-		}
-	} else {
-		result.salt = NULL;
-	}
-
-	knot_nsec3param_free(params);
-	*params = result;
-
-	return KNOT_EOK;
+_public_
+const uint8_t *knot_nsec3param_salt(const knot_rdataset_t *rrs, size_t pos)
+{
+	KNOT_RDATASET_CHECK(rrs, pos, return 0);
+	return knot_rdata_offset(rrs, pos, 5);
 }
