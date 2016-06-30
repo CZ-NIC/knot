@@ -24,6 +24,7 @@
 
 #pragma once
 
+#include "dnssec/nsec.h"
 #include "libknot/rrtype/nsec3param.h"
 #include "knot/zone/node.h"
 #include "knot/zone/zone-tree.h"
@@ -39,7 +40,7 @@ typedef struct zone_contents {
 	zone_tree_t *nodes;
 	zone_tree_t *nsec3_nodes;
 
-	knot_nsec3_params_t nsec3_params;
+	dnssec_nsec3_params_t nsec3_params;
 } zone_contents_t;
 
 /*!

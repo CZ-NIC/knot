@@ -165,7 +165,7 @@ knot_dname_t *knot_nsec3_hash_to_dname(const uint8_t *hash, size_t hash_size,
 
 knot_dname_t *knot_create_nsec3_owner(const knot_dname_t *owner,
                                       const knot_dname_t *zone_apex,
-                                      const knot_nsec3_params_t *params)
+                                      const dnssec_nsec3_params_t *params)
 {
 	if (owner == NULL || zone_apex == NULL || params == NULL) {
 		return NULL;
@@ -181,19 +181,9 @@ knot_dname_t *knot_create_nsec3_owner(const knot_dname_t *owner,
 		.size = owner_size
 	};
 
-	dnssec_nsec3_params_t xparams = {
-		.algorithm = params->algorithm,
-		.flags = params->flags,
-		.iterations = params->iterations,
-		.salt = {
-			.data = params->salt,
-			.size = params->salt_length
-		}
-	};
-
 	dnssec_binary_t hash = { 0 };
 
-	int ret = dnssec_nsec3_hash(&data, &xparams, &hash);
+	int ret = dnssec_nsec3_hash(&data, params, &hash);
 	if (ret != DNSSEC_EOK) {
 		return NULL;
 	}

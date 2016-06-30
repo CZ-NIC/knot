@@ -546,7 +546,7 @@ void update_free_zone(zone_contents_t **contents)
 	zone_tree_deep_free(&(*contents)->nodes);
 	zone_tree_deep_free(&(*contents)->nsec3_nodes);
 
-	knot_nsec3param_free(&(*contents)->nsec3_params);
+	dnssec_nsec3_params_free(&(*contents)->nsec3_params);
 
 	free(*contents);
 	*contents = NULL;
