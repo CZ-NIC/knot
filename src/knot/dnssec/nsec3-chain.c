@@ -418,17 +418,15 @@ static int connect_nsec3_nodes(zone_node_t *a, zone_node_t *b,
  *
  * \return Error code, KNOT_EOK if successful.
  */
-static int create_nsec3_nodes(const zone_contents_t *zone, uint32_t ttl,
+static int create_nsec3_nodes(const zone_contents_t *zone,
+                              const dnssec_nsec3_params_t *params,
+                              uint32_t ttl,
                               zone_tree_t *nsec3_nodes,
                               changeset_t *chgset)
 {
 	assert(zone);
 	assert(nsec3_nodes);
 	assert(chgset);
-
-	const knot_nsec3_params_t *params = &zone->nsec3_params;
-
-	assert(params);
 
 	int result = KNOT_EOK;
 
@@ -555,10 +553,13 @@ static int nsec3_reset(zone_node_t **node_p, void *data)
 /*!
  * \brief Create new NSEC3 chain, add differences from current into a changeset.
  */
-int knot_nsec3_create_chain(const zone_contents_t *zone, uint32_t ttl,
+int knot_nsec3_create_chain(const zone_contents_t *zone,
+                            const dnssec_nsec3_params_t *params,
+			    uint32_t ttl,
                             changeset_t *changeset)
 {
 	assert(zone);
+	assert(params);
 	assert(changeset);
 
 	int result;
@@ -582,7 +583,7 @@ int knot_nsec3_create_chain(const zone_contents_t *zone, uint32_t ttl,
 		return result;
 	}
 
-	result = create_nsec3_nodes(zone, ttl, nsec3_nodes, changeset);
+	result = create_nsec3_nodes(zone, params, ttl, nsec3_nodes, changeset);
 	if (result != KNOT_EOK) {
 		free_nsec3_tree(nsec3_nodes);
 		return result;
@@ -608,8 +609,7 @@ int knot_nsec3_create_chain(const zone_contents_t *zone, uint32_t ttl,
 
 	copy_signatures(zone->nsec3_nodes, nsec3_nodes);
 
-	result = zone_tree_add_diff(zone->nsec3_nodes, nsec3_nodes,
-	                                 changeset);
+	result = zone_tree_add_diff(zone->nsec3_nodes, nsec3_nodes, changeset);
 
 	free_nsec3_tree(nsec3_nodes);
 
