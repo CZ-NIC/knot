@@ -128,6 +128,7 @@ libdnssec_la_SOURCES = \
 	lib/list/ucw_clists.h \
 	lib/nsec/bitmap.c \
 	lib/nsec/hash.c \
+	lib/nsec/nsec.c \
 	lib/random.c \
 	lib/sign/der.c \
 	lib/sign/der.h \
