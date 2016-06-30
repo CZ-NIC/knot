@@ -83,28 +83,28 @@ static int sign_process_events(const knot_dname_t *zone_name,
 	dnssec_event_t event = { 0 };
 	dnssec_event_ctx_t ctx = kctx2ctx(kctx);
 
-	int r = dnssec_event_get_next(&ctx, &event);
-	if (r != DNSSEC_EOK) {
-		log_zone_error(zone_name, "DNSSEC, failed to get next event (%s)",
-		               dnssec_strerror(r));
-		return r;
+	for (;;) {
+		int r = dnssec_event_get_next(&ctx, &event);
+		if (r != DNSSEC_EOK) {
+			log_zone_error(zone_name, "DNSSEC, failed to get next event (%s)",
+			               dnssec_strerror(r));
+			return r;
+		}
+
+		if (event.type == DNSSEC_EVENT_NONE || kctx->now < event.time) {
+			return KNOT_EOK;
+		}
+
+		log_zone_info(zone_name, "DNSSEC, executing event '%s'",
+		              dnssec_event_name(event.type));
+
+		r = dnssec_event_execute(&ctx, &event);
+		if (r != DNSSEC_EOK) {
+			log_zone_error(zone_name, "DNSSEC, failed to execute event (%s)",
+			               dnssec_strerror(r));
+			return r;
+		}
 	}
-
-	if (event.type == DNSSEC_EVENT_NONE || kctx->now < event.time) {
-		return DNSSEC_EOK;
-	}
-
-	log_zone_info(zone_name, "DNSSEC, executing event '%s'",
-	              dnssec_event_name(event.type));
-
-	r = dnssec_event_execute(&ctx, &event);
-	if (r != DNSSEC_EOK) {
-		log_zone_error(zone_name, "DNSSEC, failed to execute event (%s)",
-		               dnssec_strerror(r));
-		return r;
-	}
-
-	return KNOT_EOK;
 }
 
 static int sign_update_soa(const zone_contents_t *zone, changeset_t *chset,
