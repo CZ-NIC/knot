@@ -16,10 +16,12 @@
 
 #include <assert.h>
 #include <tap/basic.h>
+#include <tap/files.h>
 
 #include "test_conf.h"
 #include "contrib/macros.h"
 #include "contrib/getline.h"
+#include "contrib/openbsd/strlcat.h"
 #include "knot/updates/zone-update.h"
 #include "knot/zone/node.h"
 #include "zscanner/scanner.h"
@@ -156,7 +158,7 @@ void test_incremental(zone_t *zone, zs_scanner_t *sc)
 	    zs_parse_all(sc) != 0) {
 		assert(0);
 	}
-	
+
 	ret = zone_update_add(&update, &rrset);
 	knot_rdataset_clear(&rrset.rrs, NULL);
 	ok(ret == KNOT_EOK, "incremental zone update: addition");
@@ -216,26 +218,30 @@ int main(int argc, char *argv[])
 {
 	plan_lazy();
 
-	/* Load test configuration. */
-	const char *conf_str = "zone:\n - domain: test.\n   storage: /tmp\n";
-	int ret = test_conf(conf_str, NULL);
-	if (ret != KNOT_EOK) {
-		return ret;
-	}
+	char *temp_dir = test_mkdtemp();
+	ok(temp_dir != NULL, "make temporary directory");
 
-	// Set up empty zone
+	char conf_str[256] = "zone:\n - domain: test.\n   storage: ";
+	strlcat(conf_str, temp_dir, 256);
+	strlcat(conf_str, "\n", 256);
+
+	/* Load test configuration. */
+	int ret = test_conf(conf_str, NULL);
+	assert(ret == KNOT_EOK);
+
+	/* Set up empty zone */
 	knot_dname_t *apex = knot_dname_from_str_alloc("test");
 	assert(apex);
 	zone_t *zone = zone_new(apex);
 
-	// Parse initial node
+	/* Parse initial node */
 	zs_scanner_t sc;
 	if (zs_init(&sc, "test.", KNOT_CLASS_IN, 3600) != 0 ||
 	    zs_set_processing(&sc, process_rr, NULL, NULL) != 0) {
 		assert(0);
 	}
 
-	// Test FULL update, commit it and use the result to test the INCREMENTAL update
+	/* Test FULL update, commit it and use the result to test the INCREMENTAL update */
 	test_full(zone, &sc);
 	test_incremental(zone, &sc);
 
@@ -243,6 +249,8 @@ int main(int argc, char *argv[])
 	zone_free(&zone);
 	knot_dname_free(&apex, NULL);
 	conf_free(conf());
+	test_rm_rf(temp_dir);
+	free(temp_dir);
 
 	return 0;
 }
