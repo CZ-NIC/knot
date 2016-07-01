@@ -35,7 +35,7 @@
  * function. This would require to split refresh event to zone load and zone
  * publishing.
  */
-static void schedule_dnssec(zone_t *zone, time_t refresh_at)
+void schedule_dnssec(zone_t *zone, time_t refresh_at)
 {
 	// log a message
 
