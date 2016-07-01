@@ -42,7 +42,7 @@ class ZoneDnssec(object):
         self.zsk_size = None
         self.nsec3 = None
         self.nsec3_iters = None
-        self.nsec3_resalt = None
+        self.nsec3_salt_lifetime = None
         self.nsec3_salt_len = None
 
 class Zone(object):
@@ -1009,7 +1009,7 @@ class Knot(Server):
             self._str(s, "zsk_size", z.dnssec.zsk_size)
             self._bool(s, "nsec3", z.dnssec.nsec3)
             self._str(s, "nsec3-iterations", z.dnssec.nsec3_iters)
-            self._str(s, "nsec3-resalt", z.dnssec.nsec3_resalt)
+            self._str(s, "nsec3-salt-lifetime", z.dnssec.nsec3_salt_lifetime)
             self._str(s, "nsec3-salt-length", z.dnssec.nsec3_salt_len)
         s.end()
 
