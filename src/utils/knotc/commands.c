@@ -157,15 +157,16 @@ static int get_conf_key(const char *key, knot_ctl_data_t *data)
 	return KNOT_EOK;
 }
 
-static void format_data(ctl_cmd_t cmd, knot_ctl_type_t type, knot_ctl_data_t *data,
-                        bool *empty)
+static void format_data(ctl_cmd_t cmd, knot_ctl_type_t data_type,
+                        knot_ctl_data_t *data, bool *empty)
 {
 	const char *error = (*data)[KNOT_CTL_IDX_ERROR];
+	const char *flags = (*data)[KNOT_CTL_IDX_FLAGS];
 	const char *key0  = (*data)[KNOT_CTL_IDX_SECTION];
 	const char *key1  = (*data)[KNOT_CTL_IDX_ITEM];
 	const char *id    = (*data)[KNOT_CTL_IDX_ID];
 	const char *zone  = (*data)[KNOT_CTL_IDX_ZONE];
-	const char *param = (*data)[KNOT_CTL_IDX_TYPE];
+	const char *type  = (*data)[KNOT_CTL_IDX_TYPE];
 	const char *value = (*data)[KNOT_CTL_IDX_DATA];
 
 	switch (cmd) {
@@ -186,7 +187,7 @@ static void format_data(ctl_cmd_t cmd, knot_ctl_type_t type, knot_ctl_data_t *da
 	case CTL_ZONE_RETRANSFER:
 	case CTL_ZONE_FLUSH:
 	case CTL_ZONE_SIGN:
-		if (type == KNOT_CTL_TYPE_DATA) {
+		if (data_type == KNOT_CTL_TYPE_DATA) {
 			printf("%s%s%s%s%s%s%s%s",
 			       (!(*empty)     ? "\n"      : ""),
 			       (error != NULL ? "error: " : ""),
@@ -198,10 +199,10 @@ static void format_data(ctl_cmd_t cmd, knot_ctl_type_t type, knot_ctl_data_t *da
 			       (error != NULL ? ")"       : ""));
 			*empty = false;
 		}
-		if (param != NULL) {
+		if (cmd == CTL_ZONE_STATUS && type != NULL) {
 			printf("%s %s: %s",
-			       (type != KNOT_CTL_TYPE_DATA ? " |" : ""),
-			       param, value);
+			       (data_type != KNOT_CTL_TYPE_DATA ? " |" : ""),
+			       type, value);
 		}
 		break;
 	case CTL_CONF_LIST:
@@ -210,13 +211,20 @@ static void format_data(ctl_cmd_t cmd, knot_ctl_type_t type, knot_ctl_data_t *da
 	case CTL_CONF_GET:
 	case CTL_CONF_SET:
 	case CTL_CONF_UNSET:
-		if (type == KNOT_CTL_TYPE_DATA) {
+		if (data_type == KNOT_CTL_TYPE_DATA) {
+			const char *sign = NULL;
+			if (ctl_has_flag(flags, CTL_FLAG_ADD)) {
+				sign = CTL_FLAG_ADD;
+			} else if (ctl_has_flag(flags, CTL_FLAG_REM)) {
+				sign = CTL_FLAG_REM;
+			}
+
 			printf("%s%s%s%s%s%s%s%s%s%s%s%s",
 			       (!(*empty)     ? "\n"       : ""),
 			       (error != NULL ? "error: (" : ""),
 			       (error != NULL ? error      : ""),
 			       (error != NULL ? ") "       : ""),
-			       (param != NULL ? param      : ""),
+			       (sign  != NULL ? sign       : ""),
 			       (key0  != NULL ? key0       : ""),
 			       (id    != NULL ? "["        : ""),
 			       (id    != NULL ? id         : ""),

@@ -27,6 +27,10 @@
 #include "libknot/libknot.h"
 #include "knot/server/server.h"
 
+#define CTL_FLAG_FORCE	"F"
+#define CTL_FLAG_ADD	"+"
+#define CTL_FLAG_REM	"-"
+
 /*! Control commands. */
 typedef enum {
 	CTL_NONE,
@@ -96,5 +100,15 @@ int ctl_exec(ctl_cmd_t cmd, ctl_args_t *args);
  * \param[in] data  Control data.
  */
 void ctl_log_data(knot_ctl_data_t *data);
+
+/*!
+ * Checks flag presence in flags.
+ *
+ * \param[in] flags  Flags to check presence in.
+ * \param[in] flag   Checked flag.
+ *
+ * \return True if presented.
+ */
+bool ctl_has_flag(const char *flags, const char *flag);
 
 /*! @} */

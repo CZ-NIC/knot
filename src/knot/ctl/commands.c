@@ -14,6 +14,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <string.h>
 #include <urcu.h>
 
 #include "knot/common/log.h"
@@ -362,8 +363,8 @@ static int send_block(conf_io_t *io)
 
 	// Get the item prefix.
 	switch (io->type) {
-	case NEW: data[KNOT_CTL_IDX_TYPE] = "+"; break;
-	case OLD: data[KNOT_CTL_IDX_TYPE] = "-"; break;
+	case NEW: data[KNOT_CTL_IDX_FLAGS] = CTL_FLAG_ADD; break;
+	case OLD: data[KNOT_CTL_IDX_FLAGS] = CTL_FLAG_REM; break;
 	default: break;
 	}
 
@@ -652,4 +653,13 @@ int ctl_exec(ctl_cmd_t cmd, ctl_args_t *args)
 	}
 
 	return cmd_table[cmd].fcn(args, cmd);
+}
+
+bool ctl_has_flag(const char *flags, const char *flag)
+{
+	if (flags == NULL || flag == NULL) {
+		return false;
+	}
+
+	return strstr(flags, flag) != NULL;
 }
