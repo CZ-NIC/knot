@@ -41,7 +41,7 @@ static void test_plan(void)
 	dnssec_kasp_zone_t zone = { 0 };
 
 	dnssec_kasp_policy_t policy = {
-		.nsec3_enabled = true,
+		.nsec3_enabled = false,
 		.nsec3_salt_lifetime = 1000,
 		.nsec3_iterations = 10,
 		.nsec3_salt_length = 16,
@@ -56,8 +56,14 @@ static void test_plan(void)
 	dnssec_event_t event = { 0 };
 
 	int r = api()->plan(&ctx, &event);
+	ok(r == DNSSEC_EOK && event.type == DNSSEC_EVENT_NONE,
+	   "NSEC3 disabled");
+
+	policy.nsec3_enabled = true;
+	clear_struct(&event);
+	r = api()->plan(&ctx, &event);
 	ok(r == DNSSEC_EOK && event.type == DNSSEC_EVENT_NSEC3_RESALT &&
-	   event.time == 42000, "salt not configured");
+	   event.time == 42000, "salt not generated");
 
 	dnssec_binary_alloc(&zone.nsec3_salt, 16);
 	zone.nsec3_salt_created = 43000;
@@ -82,6 +88,12 @@ static void test_plan(void)
 	r = api()->plan(&ctx, &event);
 	ok(r == DNSSEC_EOK && event.type == DNSSEC_EVENT_NSEC3_RESALT &&
 	   event.time == 42000, "salt size incorrect");
+
+	policy.nsec3_salt_length = 0;
+	clear_struct(&event);
+	r = api()->plan(&ctx, &event);
+	ok(r == DNSSEC_EOK && event.type == DNSSEC_EVENT_NONE,
+	   "nothing to resalt");
 
 	dnssec_binary_free(&zone.nsec3_salt);
 
