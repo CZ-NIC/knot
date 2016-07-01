@@ -617,13 +617,13 @@ static const desc_t cmd_table[] = {
 	[CTL_CONF_GET]        = { "conf-get",        ctl_conf_read },
 	[CTL_CONF_SET]        = { "conf-set",        ctl_conf_modify },
 	[CTL_CONF_UNSET]      = { "conf-unset",      ctl_conf_modify },
-
-	{ NULL }
 };
 
-const char* ctl_cmd_to_str(ctl_cmd_t cmd)
+#define MAX_CTL_CODE (sizeof(cmd_table) / sizeof(desc_t) - 1)
+
+const char *ctl_cmd_to_str(ctl_cmd_t cmd)
 {
-	if (cmd < CTL_STATUS || cmd > CTL_CONF_UNSET) {
+	if (cmd <= CTL_NONE || cmd > MAX_CTL_CODE) {
 		return NULL;
 	}
 
@@ -636,7 +636,7 @@ ctl_cmd_t ctl_str_to_cmd(const char *cmd_str)
 		return CTL_NONE;
 	}
 
-	for (ctl_cmd_t cmd = CTL_NONE; cmd_table[cmd].name != NULL; cmd++) {
+	for (ctl_cmd_t cmd = CTL_NONE + 1; cmd <= MAX_CTL_CODE; cmd++) {
 		if (strcmp(cmd_str, cmd_table[cmd].name) == 0) {
 			return cmd;
 		}

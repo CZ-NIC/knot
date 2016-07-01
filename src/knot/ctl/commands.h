@@ -55,6 +55,7 @@ typedef enum {
 
 /*! Control command parameters. */
 typedef struct {
+	knot_mm_t mm;
 	knot_ctl_t *ctl;
 	knot_ctl_type_t type;
 	knot_ctl_data_t data;
@@ -68,7 +69,7 @@ typedef struct {
  *
  * \return Command string or NULL.
  */
-const char* ctl_cmd_to_str(ctl_cmd_t cmd);
+const char *ctl_cmd_to_str(ctl_cmd_t cmd);
 
 /*!
  * Returns a command corresponding to the string.

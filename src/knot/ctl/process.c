@@ -14,6 +14,8 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "contrib/mempattern.h"
+#include "contrib/ucw/mempool.h"
 #include "knot/common/log.h"
 #include "knot/ctl/commands.h"
 #include "knot/ctl/process.h"
@@ -31,6 +33,8 @@ int ctl_process(knot_ctl_t *ctl, server_t *server)
 		.server = server
 	};
 
+	mm_ctx_mempool(&args.mm, MM_DEFAULT_BLKSIZE);
+
 	// Strip redundant/unprocessed data units in the current block.
 	bool strip = false;
 
@@ -40,6 +44,7 @@ int ctl_process(knot_ctl_t *ctl, server_t *server)
 		if (ret != KNOT_EOK) {
 			log_debug("control, failed to receive (%s)",
 			          knot_strerror(ret));
+			mp_delete(args.mm.ctx);
 			return ret;
 		}
 
@@ -61,6 +66,7 @@ int ctl_process(knot_ctl_t *ctl, server_t *server)
 			strip = false;
 			continue;
 		case KNOT_CTL_TYPE_END:
+			mp_delete(args.mm.ctx);
 			return KNOT_EOF;
 		default:
 			assert(0);
@@ -109,6 +115,7 @@ int ctl_process(knot_ctl_t *ctl, server_t *server)
 				          knot_strerror(ret));
 			}
 
+			mp_delete(args.mm.ctx);
 			return cmd_ret;
 		}
 	}
