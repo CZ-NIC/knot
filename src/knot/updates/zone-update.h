@@ -1,4 +1,4 @@
-/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -32,7 +32,7 @@
 #include "libknot/mm_ctx.h"
 
 /*! \brief Structure for zone contents updating / querying. */
-typedef struct {
+typedef struct zone_update {
 	zone_t *zone;                /*!< Zone being updated. */
 	zone_contents_t *new_cont;   /*!< New zone contents for full updates. */
 	changeset_t change;          /*!< Changes we want to apply. */
@@ -217,10 +217,8 @@ const zone_node_t *zone_update_iter_val(zone_update_iter_t *it);
  * \brief Finish the iterator and clean it up.
  *
  * \param it  Iterator.
- *
- * \return KNOT_E*
  */
-int zone_update_iter_finish(zone_update_iter_t *it);
+void zone_update_iter_finish(zone_update_iter_t *it);
 
 /*!
  * \brief Returns bool whether there are any changes at all.

@@ -1,4 +1,4 @@
-/*  Copyright (C) 2014 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -26,16 +26,10 @@
 #include "knot/zone/node.h"
 #include "zscanner/scanner.h"
 
-static const char *zone_str1 =
-"test. 3600 IN SOA a.ns.test. hostmaster.nic.cz. 1406641065 900 300 604800 900 \n";
-static const char *zone_str2 =
-"test. IN TXT \"test\"\n";
-
-static const char *add_str =
-"test. IN TXT \"test2\"\n";
-
-static const char *del_str =
-"test. IN TXT \"test\"\n";
+static const char *zone_str1 = "test. 600 IN SOA ns.test. m.test. 1 900 300 4800 900 \n";
+static const char *zone_str2 = "test. IN TXT \"test\"\n";
+static const char *add_str = "test. IN TXT \"test2\"\n";
+static const char *del_str = "test. IN TXT \"test\"\n";
 
 knot_rrset_t rrset;
 
@@ -130,8 +124,7 @@ void test_full(zone_t *zone, zs_scanner_t *sc)
 	iter_node = zone_update_iter_val(&it);
 	ok(iter_node == NULL, "full zone update: iter val past end");
 
-	ret = zone_update_iter_finish(&it);
-	ok(ret == KNOT_EOK, "full zone update: iter finish");
+	zone_update_iter_finish(&it);
 
 	ret = zone_update_commit(conf(), &update);
 	node = zone_contents_find_node_for_rr(zone->contents, &rrset);
@@ -203,8 +196,7 @@ void test_incremental(zone_t *zone, zs_scanner_t *sc)
 	iter_node = zone_update_iter_val(&it);
 	ok(iter_node == NULL, "incremental zone update: iter val past end");
 
-	ret = zone_update_iter_finish(&it);
-	ok(ret == KNOT_EOK, "incremental zone update: iter finish");
+	zone_update_iter_finish(&it);
 
 	ret = zone_update_commit(conf(), &update);
 	iter_node = zone_contents_find_node_for_rr(zone->contents, &rrset);

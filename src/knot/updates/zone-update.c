@@ -1,4 +1,4 @@
-/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -789,14 +789,13 @@ const zone_node_t *zone_update_iter_val(zone_update_iter_t *it)
 	}
 }
 
-int zone_update_iter_finish(zone_update_iter_t *it)
+void zone_update_iter_finish(zone_update_iter_t *it)
 {
 	if (it == NULL) {
-		return KNOT_EINVAL;
+		return;
 	}
 
 	hattrie_iter_free(it->base_it);
-	return KNOT_EOK;
 }
 
 bool zone_update_no_change(zone_update_t *update)
