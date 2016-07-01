@@ -89,8 +89,6 @@ static const struct error errors[] = {
 
 	/* Control states. */
 	{ KNOT_CTL_ESTOP,     "stopping server" },
-	{ KNOT_CTL_EACCEPTED, "command accepted" },
-	{ KNOT_CTL_EARG_REQ,  "argument required" },
 
 	/* Network errors. */
 	{ KNOT_NET_EADDR,    "bad address or host name" },
@@ -136,9 +134,10 @@ static const struct error errors[] = {
 	{ KNOT_CONF_ENOTINIT,  "config DB not initialized" },
 	{ KNOT_CONF_EVERSION,  "invalid config DB version" },
 	{ KNOT_CONF_EREDEFINE, "duplicate identifier" },
-	{ KNOT_CONF_ETXN,      "failed to open another config DB transaction" },
-	{ KNOT_CONF_ENOTXN,    "no active config DB transaction" },
-	{ KNOT_CONF_EMANYTXN,  "too many nested config DB transactions" },
+
+	/* Transaction errors. */
+	{ KNOT_TXN_EEXISTS,    "too many transactions" },
+	{ KNOT_TXN_ENOTEXISTS, "no active transaction" },
 
 	/* Processing errors. */
 	{ KNOT_LAYER_ERROR, "processing layer error" },

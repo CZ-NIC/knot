@@ -90,8 +90,6 @@ enum knot_error {
 
 	/* Control states. */
 	KNOT_CTL_ESTOP,
-	KNOT_CTL_EACCEPTED,
-	KNOT_CTL_EARG_REQ,
 
 	/* Network errors. */
 	KNOT_NET_EADDR,
@@ -137,9 +135,10 @@ enum knot_error {
 	KNOT_CONF_ENOTINIT,
 	KNOT_CONF_EVERSION,
 	KNOT_CONF_EREDEFINE,
-	KNOT_CONF_ETXN,
-	KNOT_CONF_ENOTXN,
-	KNOT_CONF_EMANYTXN,
+
+	/* Transaction errors. */
+	KNOT_TXN_EEXISTS,
+	KNOT_TXN_ENOTEXISTS,
 
 	/* Processing error. */
 	KNOT_LAYER_ERROR,

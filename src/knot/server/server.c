@@ -516,7 +516,7 @@ int server_reload(server_t *server, const char *cf, bool refresh_hostname)
 	// Check for no edit mode.
 	if (conf()->io.txn != NULL) {
 		log_warning("reload aborted due to active configuration transaction");
-		return KNOT_CONF_ETXN;
+		return KNOT_TXN_EEXISTS;
 	}
 
 	conf_t *new_conf = NULL;

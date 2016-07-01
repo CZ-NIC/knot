@@ -60,15 +60,15 @@ int conf_io_begin(
 	assert(conf() != NULL);
 
 	if (conf()->io.txn != NULL && !child) {
-		return KNOT_CONF_ETXN;
+		return KNOT_TXN_EEXISTS;
 	} else if (conf()->io.txn == NULL && child) {
-		return KNOT_CONF_ENOTXN;
+		return KNOT_TXN_ENOTEXISTS;
 	}
 
 	knot_db_txn_t *parent = conf()->io.txn;
 	knot_db_txn_t *txn = (parent == NULL) ? conf()->io.txn_stack : parent + 1;
 	if (txn >= conf()->io.txn_stack + CONF_MAX_TXN_DEPTH) {
-		return KNOT_CONF_EMANYTXN;
+		return KNOT_TXN_EEXISTS;
 	}
 
 	// Start the writing transaction.
@@ -89,7 +89,7 @@ int conf_io_commit(
 
 	if (conf()->io.txn == NULL ||
 	    (child && conf()->io.txn == conf()->io.txn_stack)) {
-		return KNOT_CONF_ENOTXN;
+		return KNOT_TXN_ENOTEXISTS;
 	}
 
 	knot_db_txn_t *txn = child ? conf()->io.txn : conf()->io.txn_stack;
@@ -347,7 +347,7 @@ int conf_io_diff(
 	assert(conf() != NULL);
 
 	if (conf()->io.txn == NULL) {
-		return KNOT_CONF_ENOTXN;
+		return KNOT_TXN_ENOTEXISTS;
 	}
 
 	// Compare all sections by default.
@@ -604,7 +604,7 @@ int conf_io_get(
 	assert(conf() != NULL);
 
 	if (conf()->io.txn == NULL && !get_current) {
-		return KNOT_CONF_ENOTXN;
+		return KNOT_TXN_ENOTEXISTS;
 	}
 
 	// List all sections by default.
@@ -759,7 +759,7 @@ int conf_io_set(
 	assert(conf() != NULL);
 
 	if (conf()->io.txn == NULL) {
-		return KNOT_CONF_ENOTXN;
+		return KNOT_TXN_ENOTEXISTS;
 	}
 
 	// At least key0 must be specified.
@@ -926,7 +926,7 @@ int conf_io_unset(
 	assert(conf() != NULL);
 
 	if (conf()->io.txn == NULL) {
-		return KNOT_CONF_ENOTXN;
+		return KNOT_TXN_ENOTEXISTS;
 	}
 
 	// Delete all sections by default.
@@ -1181,7 +1181,7 @@ int conf_io_check(
 	assert(conf() != NULL);
 
 	if (conf()->io.txn == NULL) {
-		return KNOT_CONF_ENOTXN;
+		return KNOT_TXN_ENOTEXISTS;
 	}
 
 	int ret;
