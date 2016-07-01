@@ -118,7 +118,7 @@ static void id_lookup(EditLine *el, const char *str, size_t str_len,
                       const cmd_desc_t *cmd_desc, const char *section, bool add_space)
 {
 	// Decide which confdb transaction to ask.
-	unsigned ctl_code = (cmd_desc->flags & CMD_CONF_FREQ_TXN) ?
+	unsigned ctl_code = (cmd_desc->flags & CMD_FREQ_TXN) ?
 	                    CTL_CONF_GET : CTL_CONF_READ;
 
 	const cmd_desc_t *desc = cmd_table;
@@ -314,8 +314,8 @@ static unsigned char complete(EditLine *el, int ch)
 	}
 
 	// Finish if a command with no or unsupported arguments.
-	if (desc->flags == CMD_CONF_FNONE || desc->flags == CMD_CONF_FREAD ||
-	    desc->flags == CMD_CONF_FWRITE) {
+	if (desc->flags == CMD_FNONE || desc->flags == CMD_FREAD ||
+	    desc->flags == CMD_FWRITE) {
 		goto complete_exit;
 	}
 
@@ -325,15 +325,15 @@ static unsigned char complete(EditLine *el, int ch)
 	}
 
 	// Complete the zone name.
-	if (desc->flags & CMD_CONF_FOPT_ZONE) {
-		if (desc->flags & CMD_CONF_FREAD) {
+	if (desc->flags & CMD_FOPT_ZONE) {
+		if (desc->flags & CMD_FREAD) {
 			local_zones_lookup(el, argv[token], pos);
 		} else {
 			id_lookup(el, argv[token], pos, desc, "zone", true);
 		}
 		goto complete_exit;
 	// Complete the section/id/item name.
-	} else if (desc->flags & (CMD_CONF_FOPT_ITEM | CMD_CONF_FREQ_ITEM)) {
+	} else if (desc->flags & (CMD_FOPT_ITEM | CMD_FREQ_ITEM)) {
 		if (token == 1) {
 			item_lookup(el, argv[1], desc);
 		}

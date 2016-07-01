@@ -28,11 +28,11 @@
 
 /*! Utility command line parameters. */
 typedef struct {
-	cmd_flag_t flags;
 	const char *config;
 	const char *confdb;
 	const char *socket;
 	bool verbose;
+	bool force;
 	int timeout;
 } params_t;
 

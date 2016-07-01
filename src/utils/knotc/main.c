@@ -52,7 +52,6 @@ static void print_help(void)
 }
 
 params_t params = {
-	.flags = CMD_FNONE,
 	.timeout = DEFAULT_CTL_TIMEOUT * 1000
 };
 
@@ -93,7 +92,7 @@ int main(int argc, char **argv)
 			params.timeout *= 1000;
 			break;
 		case 'f':
-			params.flags |= CMD_FFORCE;
+			params.force = true;
 			break;
 		case 'v':
 			params.verbose = true;

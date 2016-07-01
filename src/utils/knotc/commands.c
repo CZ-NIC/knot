@@ -73,22 +73,22 @@ static int check_args(cmd_args_t *args, unsigned count)
 static int check_conf_args(cmd_args_t *args)
 {
 	// Mask relevant flags.
-	cmd_conf_flag_t flags = args->desc->flags;
-	flags &= CMD_CONF_FOPT_ITEM | CMD_CONF_FREQ_ITEM | CMD_CONF_FOPT_DATA;
+	cmd_flag_t flags = args->desc->flags;
+	flags &= CMD_FOPT_ITEM | CMD_FREQ_ITEM | CMD_FOPT_DATA;
 
 	switch (args->argc) {
 	case 0:
-		if (flags == CMD_CONF_FNONE || (flags & CMD_CONF_FOPT_ITEM)) {
+		if (flags == CMD_FNONE || (flags & CMD_FOPT_ITEM)) {
 			return KNOT_EOK;
 		}
 		break;
 	case 1:
-		if (flags & (CMD_CONF_FOPT_ITEM | CMD_CONF_FREQ_ITEM)) {
+		if (flags & (CMD_FOPT_ITEM | CMD_FREQ_ITEM)) {
 			return KNOT_EOK;
 		}
 		break;
 	default:
-		if (flags != CMD_CONF_FNONE) {
+		if (flags != CMD_FNONE) {
 			return KNOT_EOK;
 		}
 		break;
@@ -519,7 +519,7 @@ static int cmd_conf_init(cmd_args_t *args)
 
 	ret = conf_db_check(conf(), &conf()->read_txn);
 	if ((ret >= KNOT_EOK || ret == KNOT_CONF_EVERSION)) {
-		if (ret != KNOT_EOK && !(args->flags & CMD_FFORCE)) {
+		if (ret != KNOT_EOK && !args->force) {
 			log_error("use force option to overwrite the existing "
 			          "destination and ensure the server is not running!");
 			return KNOT_EDENIED;
@@ -558,7 +558,7 @@ static int cmd_conf_import(cmd_args_t *args)
 
 	ret = conf_db_check(conf(), &conf()->read_txn);
 	if ((ret >= KNOT_EOK || ret == KNOT_CONF_EVERSION)) {
-		if (ret != KNOT_EOK && !(args->flags & CMD_FFORCE)) {
+		if (ret != KNOT_EOK && !args->force) {
 			log_error("use force option to overwrite the existing "
 			          "destination and ensure the server is not running!");
 			return KNOT_EDENIED;
@@ -625,7 +625,7 @@ static int cmd_conf_ctl(cmd_args_t *args)
 		}
 
 		// Send if only one argument or item without values.
-		if (args->argc == 1 || !(args->desc->flags & CMD_CONF_FOPT_DATA)) {
+		if (args->argc == 1 || !(args->desc->flags & CMD_FOPT_DATA)) {
 			ret = knot_ctl_send(args->ctl, KNOT_CTL_TYPE_DATA, &data);
 			if (ret != KNOT_EOK) {
 				log_error("failed to control (%s)", knot_strerror(ret));
@@ -636,7 +636,7 @@ static int cmd_conf_ctl(cmd_args_t *args)
 
 	// Send the item values or the other items.
 	for (int i = 1; i < args->argc; i++) {
-		if (args->desc->flags & CMD_CONF_FOPT_DATA) {
+		if (args->desc->flags & CMD_FOPT_DATA) {
 			data[KNOT_CTL_IDX_DATA] = args->argv[i];
 		} else {
 			ret = get_conf_key(args->argv[i], &data);
@@ -669,28 +669,28 @@ const cmd_desc_t cmd_table[] = {
 	{ CMD_STOP,            cmd_ctl,           CTL_STOP },
 	{ CMD_RELOAD,          cmd_ctl,           CTL_RELOAD },
 
-	{ CMD_ZONE_CHECK,      cmd_zone_check,    CTL_NONE,            CMD_CONF_FOPT_ZONE | CMD_CONF_FREAD },
-	{ CMD_ZONE_MEMSTATS,   cmd_zone_memstats, CTL_NONE,            CMD_CONF_FOPT_ZONE | CMD_CONF_FREAD },
-	{ CMD_ZONE_STATUS,     cmd_zone_ctl,      CTL_ZONE_STATUS,     CMD_CONF_FOPT_ZONE },
-	{ CMD_ZONE_RELOAD,     cmd_zone_ctl,      CTL_ZONE_RELOAD,     CMD_CONF_FOPT_ZONE },
-	{ CMD_ZONE_REFRESH,    cmd_zone_ctl,      CTL_ZONE_REFRESH,    CMD_CONF_FOPT_ZONE },
-	{ CMD_ZONE_RETRANSFER, cmd_zone_ctl,      CTL_ZONE_RETRANSFER, CMD_CONF_FOPT_ZONE },
-	{ CMD_ZONE_FLUSH,      cmd_zone_ctl,      CTL_ZONE_FLUSH,      CMD_CONF_FOPT_ZONE },
-	{ CMD_ZONE_SIGN,       cmd_zone_ctl,      CTL_ZONE_SIGN,       CMD_CONF_FOPT_ZONE },
+	{ CMD_ZONE_CHECK,      cmd_zone_check,    CTL_NONE,            CMD_FOPT_ZONE | CMD_FREAD },
+	{ CMD_ZONE_MEMSTATS,   cmd_zone_memstats, CTL_NONE,            CMD_FOPT_ZONE | CMD_FREAD },
+	{ CMD_ZONE_STATUS,     cmd_zone_ctl,      CTL_ZONE_STATUS,     CMD_FOPT_ZONE },
+	{ CMD_ZONE_RELOAD,     cmd_zone_ctl,      CTL_ZONE_RELOAD,     CMD_FOPT_ZONE },
+	{ CMD_ZONE_REFRESH,    cmd_zone_ctl,      CTL_ZONE_REFRESH,    CMD_FOPT_ZONE },
+	{ CMD_ZONE_RETRANSFER, cmd_zone_ctl,      CTL_ZONE_RETRANSFER, CMD_FOPT_ZONE },
+	{ CMD_ZONE_FLUSH,      cmd_zone_ctl,      CTL_ZONE_FLUSH,      CMD_FOPT_ZONE },
+	{ CMD_ZONE_SIGN,       cmd_zone_ctl,      CTL_ZONE_SIGN,       CMD_FOPT_ZONE },
 
-	{ CMD_CONF_INIT,       cmd_conf_init,     CTL_NONE,            CMD_CONF_FWRITE },
-	{ CMD_CONF_CHECK,      cmd_conf_check,    CTL_NONE,            CMD_CONF_FREAD },
-	{ CMD_CONF_IMPORT,     cmd_conf_import,   CTL_NONE,            CMD_CONF_FWRITE },
-	{ CMD_CONF_EXPORT,     cmd_conf_export,   CTL_NONE,            CMD_CONF_FREAD },
-	{ CMD_CONF_LIST,       cmd_conf_ctl,      CTL_CONF_LIST,       CMD_CONF_FOPT_ITEM },
-	{ CMD_CONF_READ,       cmd_conf_ctl,      CTL_CONF_READ,       CMD_CONF_FOPT_ITEM },
+	{ CMD_CONF_INIT,       cmd_conf_init,     CTL_NONE,            CMD_FWRITE },
+	{ CMD_CONF_CHECK,      cmd_conf_check,    CTL_NONE,            CMD_FREAD },
+	{ CMD_CONF_IMPORT,     cmd_conf_import,   CTL_NONE,            CMD_FWRITE },
+	{ CMD_CONF_EXPORT,     cmd_conf_export,   CTL_NONE,            CMD_FREAD },
+	{ CMD_CONF_LIST,       cmd_conf_ctl,      CTL_CONF_LIST,       CMD_FOPT_ITEM },
+	{ CMD_CONF_READ,       cmd_conf_ctl,      CTL_CONF_READ,       CMD_FOPT_ITEM },
 	{ CMD_CONF_BEGIN,      cmd_conf_ctl,      CTL_CONF_BEGIN },
 	{ CMD_CONF_COMMIT,     cmd_conf_ctl,      CTL_CONF_COMMIT },
 	{ CMD_CONF_ABORT,      cmd_conf_ctl,      CTL_CONF_ABORT },
-	{ CMD_CONF_DIFF,       cmd_conf_ctl,      CTL_CONF_DIFF,       CMD_CONF_FOPT_ITEM | CMD_CONF_FREQ_TXN },
-	{ CMD_CONF_GET,        cmd_conf_ctl,      CTL_CONF_GET,        CMD_CONF_FOPT_ITEM | CMD_CONF_FREQ_TXN },
-	{ CMD_CONF_SET,        cmd_conf_ctl,      CTL_CONF_SET,        CMD_CONF_FREQ_ITEM | CMD_CONF_FOPT_DATA | CMD_CONF_FREQ_TXN },
-	{ CMD_CONF_UNSET,      cmd_conf_ctl,      CTL_CONF_UNSET,      CMD_CONF_FOPT_ITEM | CMD_CONF_FOPT_DATA | CMD_CONF_FREQ_TXN },
+	{ CMD_CONF_DIFF,       cmd_conf_ctl,      CTL_CONF_DIFF,       CMD_FOPT_ITEM | CMD_FREQ_TXN },
+	{ CMD_CONF_GET,        cmd_conf_ctl,      CTL_CONF_GET,        CMD_FOPT_ITEM | CMD_FREQ_TXN },
+	{ CMD_CONF_SET,        cmd_conf_ctl,      CTL_CONF_SET,        CMD_FREQ_ITEM | CMD_FOPT_DATA | CMD_FREQ_TXN },
+	{ CMD_CONF_UNSET,      cmd_conf_ctl,      CTL_CONF_UNSET,      CMD_FOPT_ITEM | CMD_FOPT_DATA | CMD_FREQ_TXN },
 	{ NULL }
 };
 

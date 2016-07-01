@@ -47,17 +47,17 @@ int set_config(const cmd_desc_t *desc, params_t *params)
 	}
 
 	/* Mask relevant flags. */
-	cmd_conf_flag_t flags = desc->flags & (CMD_CONF_FREAD | CMD_CONF_FWRITE);
+	cmd_flag_t flags = desc->flags & (CMD_FREAD | CMD_FWRITE);
 
 	/* Choose the optimal config source. */
 	struct stat st;
 	bool import = false;
-	if (flags == CMD_CONF_FNONE && params->socket != NULL) {
+	if (flags == CMD_FNONE && params->socket != NULL) {
 		import = false;
 		params->confdb = NULL;
 	} else if (params->confdb != NULL) {
 		import = false;
-	} else if (flags == CMD_CONF_FWRITE) {
+	} else if (flags == CMD_FWRITE) {
 		import = false;
 		params->confdb = CONF_DEFAULT_DBDIR;
 	} else if (params->config != NULL){
@@ -68,7 +68,7 @@ int set_config(const cmd_desc_t *desc, params_t *params)
 	} else if (stat(CONF_DEFAULT_FILE, &st) == 0) {
 		import = true;
 		params->config = CONF_DEFAULT_FILE;
-	} else if (flags != CMD_CONF_FNONE) {
+	} else if (flags != CMD_FNONE) {
 		log_error("no configuration source available");
 		return KNOT_EINVAL;
 	}
@@ -79,7 +79,7 @@ int set_config(const cmd_desc_t *desc, params_t *params)
 
 	/* Prepare config flags. */
 	conf_flag_t conf_flags = CONF_FNOHOSTNAME;
-	if (params->confdb != NULL && !(flags & CMD_CONF_FWRITE)) {
+	if (params->confdb != NULL && !(flags & CMD_FWRITE)) {
 		conf_flags |= CONF_FREADONLY;
 	}
 
@@ -118,10 +118,10 @@ int set_ctl(knot_ctl_t **ctl, const cmd_desc_t *desc, params_t *params)
 	}
 
 	/* Mask relevant flags. */
-	cmd_conf_flag_t flags = desc->flags & (CMD_CONF_FREAD | CMD_CONF_FWRITE);
+	cmd_flag_t flags = desc->flags & (CMD_FREAD | CMD_FWRITE);
 
 	/* Check if control socket is required. */
-	if (flags != CMD_CONF_FNONE) {
+	if (flags != CMD_FNONE) {
 		*ctl = NULL;
 		return KNOT_EOK;
 	}
@@ -210,7 +210,7 @@ int process_cmd(int argc, const char **argv, params_t *params)
 		.desc = desc,
 		.argc = argc - 1,
 		.argv = argv + 1,
-		.flags = params->flags
+		.force = params->force
 	};
 
 	/* Set control interface if necessary. */

@@ -27,23 +27,17 @@
 #include "libknot/control/control.h"
 #include "knot/ctl/commands.h"
 
-/*! \brief Command parameter flags. */
-typedef enum {
-	CMD_FNONE  = 0,      /*!< Empty flag. */
-	CMD_FFORCE = 1 << 0, /*!< Forced operation. */
-} cmd_flag_t;
-
 /*! \brief Command condition flags. */
 typedef enum {
-	CMD_CONF_FNONE     = 0,      /*!< Empty flag. */
-	CMD_CONF_FREAD     = 1 << 0, /*!< Required read access to config or confdb. */
-	CMD_CONF_FWRITE    = 1 << 1, /*!< Required write access to confdb. */
-	CMD_CONF_FOPT_ITEM = 1 << 2, /*!< Optional item argument. */
-	CMD_CONF_FREQ_ITEM = 1 << 3, /*!< Required item argument. */
-	CMD_CONF_FOPT_DATA = 1 << 4, /*!< Optional item data argument. */
-	CMD_CONF_FOPT_ZONE = 1 << 5, /*!< Optional zone name argument. */
-	CMD_CONF_FREQ_TXN  = 1 << 6, /*!< Required opened confdb transaction. */
-} cmd_conf_flag_t;
+	CMD_FNONE      = 0,      /*!< Empty flag. */
+	CMD_FREAD      = 1 << 0, /*!< Required read access to config or confdb. */
+	CMD_FWRITE     = 1 << 1, /*!< Required write access to confdb. */
+	CMD_FOPT_ITEM  = 1 << 2, /*!< Optional item argument. */
+	CMD_FREQ_ITEM  = 1 << 3, /*!< Required item argument. */
+	CMD_FOPT_DATA  = 1 << 4, /*!< Optional item data argument. */
+	CMD_FOPT_ZONE  = 1 << 5, /*!< Optional zone name argument. */
+	CMD_FREQ_TXN   = 1 << 6, /*!< Required open confdb transaction. */
+} cmd_flag_t;
 
 struct cmd_desc;
 typedef struct cmd_desc cmd_desc_t;
@@ -54,7 +48,7 @@ typedef struct {
 	knot_ctl_t *ctl;
 	int argc;
 	const char **argv;
-	cmd_flag_t flags;
+	bool force;
 } cmd_args_t;
 
 /*! \brief Command callback description. */
@@ -62,7 +56,7 @@ struct cmd_desc {
 	const char *name;
 	int (*fcn)(cmd_args_t *);
 	ctl_cmd_t cmd;
-	cmd_conf_flag_t flags;
+	cmd_flag_t flags;
 };
 
 /*! \brief Command description. */
