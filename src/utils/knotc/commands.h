@@ -36,7 +36,8 @@ typedef enum {
 	CMD_FREQ_ITEM  = 1 << 3, /*!< Required item argument. */
 	CMD_FOPT_DATA  = 1 << 4, /*!< Optional item data argument. */
 	CMD_FOPT_ZONE  = 1 << 5, /*!< Optional zone name argument. */
-	CMD_FREQ_TXN   = 1 << 6, /*!< Required open confdb transaction. */
+	CMD_FREQ_ZONE  = 1 << 6, /*!< Required zone name argument. */
+	CMD_FREQ_TXN   = 1 << 7, /*!< Required open confdb transaction. */
 } cmd_flag_t;
 
 struct cmd_desc;

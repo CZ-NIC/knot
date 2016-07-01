@@ -52,7 +52,8 @@ Actions
   Stop the server if running.
 
 **reload**
-  Reload the server configuration and modified zone files.
+  Reload the server configuration and modified zone files. All open zone
+  transactions will be aborted!
 
 **zone-check** [*zone*...]
   Test if the server can load the zone. Semantic checks are executed if enabled
@@ -67,7 +68,8 @@ Actions
 **zone-reload** [*zone*...]
   Trigger a zone reload from a disk without checking its modification time. For
   slave zone, the refresh from a master server is scheduled; for master zone,
-  the notification of slave servers is scheduled.
+  the notification of slave servers is scheduled. An open zone transaction
+  will be aborted!
 
 **zone-refresh** [*zone*...]
   Trigger a check for the zone serial on the zone's master. If the master has a
@@ -83,6 +85,31 @@ Actions
 **zone-sign** [*zone*...]
   Trigger a DNSSEC re-sign of the zone. Existing signatures will be dropped.
   This command is valid for zones with automatic DNSSEC signing.
+
+**zone-read** *zone* [*owner* [*type*]]
+  Get zone data that are currently being presented.
+
+**zone-begin** *zone*...
+  Begin a zone transaction.
+
+**zone-commit** *zone*...
+  Commit the zone transaction. All changes are applied to the zone.
+
+**zone-abort** *zone*...
+  Abort the zone transaction. All changes are discarded.
+
+**zone-diff** *zone*
+  Get zone changes within the transaction.
+
+**zone-get** *zone* [*owner* [*type*]]
+  Get zone data within the transaction.
+
+**zone-set** *zone* *owner* [*ttl*] *type* *rdata*
+  Add zone record within the transaction. The first record in a rrset
+  requires a ttl value specified.
+
+**zone-unset** *zone* *owner* [*type* [*rdata*]]
+  Remove zone data within the transaction.
 
 **conf-init**
   Initialize the configuration database. (*)
@@ -128,7 +155,9 @@ Actions
 Note
 ....
 
-Empty *zone* parameter means all zones.
+Empty or **--** *zone* parameter means all zones or all zones with a transaction.
+
+Use **@** *owner* to denote the zone name.
 
 Type *item* parameter in the form of *section*\ [**[**\ *id*\ **]**\ ][**.**\ *name*].
 
@@ -192,6 +221,13 @@ Add example.org zone with a zonefile location
   $ knotc conf-set 'zone[example.org]'
   $ knotc conf-set 'zone[example.org].file' '/var/zones/example.org.zone'
   $ knotc conf-commit
+
+Get the SOA record for each configured zone
+...........................................
+
+::
+
+  $ knotc zone-read -- @ SOA
 
 See Also
 --------

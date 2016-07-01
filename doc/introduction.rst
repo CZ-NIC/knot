@@ -38,7 +38,7 @@ DNS features:
 
 Server features:
 
-* Adding/removing zones on-the-fly
+* Adding/removing/editing zones on-the-fly
 * Reconfiguring server instance on-the-fly
 * Dynamic configuration
 * IPv4 and IPv6 support

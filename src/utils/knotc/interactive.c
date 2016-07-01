@@ -325,7 +325,11 @@ static unsigned char complete(EditLine *el, int ch)
 	}
 
 	// Complete the zone name.
-	if (desc->flags & CMD_FOPT_ZONE) {
+	if (desc->flags & (CMD_FREQ_ZONE | CMD_FOPT_ZONE)) {
+		if (token > 1 && !(desc->flags & CMD_FOPT_ZONE)) {
+			goto complete_exit;
+		}
+
 		if (desc->flags & CMD_FREAD) {
 			local_zones_lookup(el, argv[token], pos);
 		} else {
