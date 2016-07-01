@@ -325,7 +325,8 @@ static int cmd_ctl(cmd_args_t *args)
 	}
 
 	knot_ctl_data_t data = {
-		[KNOT_CTL_IDX_CMD] = ctl_cmd_to_str(args->desc->cmd)
+		[KNOT_CTL_IDX_CMD] = ctl_cmd_to_str(args->desc->cmd),
+		[KNOT_CTL_IDX_FLAGS] = args->force ? CTL_FLAG_FORCE : ""
 	};
 
 	// Send the command.
@@ -488,7 +489,8 @@ static int cmd_zone_memstats(cmd_args_t *args)
 static int cmd_zone_ctl(cmd_args_t *args)
 {
 	knot_ctl_data_t data = {
-		[KNOT_CTL_IDX_CMD] = ctl_cmd_to_str(args->desc->cmd)
+		[KNOT_CTL_IDX_CMD] = ctl_cmd_to_str(args->desc->cmd),
+		[KNOT_CTL_IDX_FLAGS] = args->force ? CTL_FLAG_FORCE : ""
 	};
 
 	if (args->argc == 0) {
@@ -615,7 +617,8 @@ static int cmd_conf_ctl(cmd_args_t *args)
 	}
 
 	knot_ctl_data_t data = {
-		[KNOT_CTL_IDX_CMD] = ctl_cmd_to_str(args->desc->cmd)
+		[KNOT_CTL_IDX_CMD] = ctl_cmd_to_str(args->desc->cmd),
+		[KNOT_CTL_IDX_FLAGS] = args->force ? CTL_FLAG_FORCE : ""
 	};
 
 	// Send the command without parameters.

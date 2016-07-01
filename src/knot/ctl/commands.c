@@ -273,7 +273,10 @@ static int zone_flush(zone_t *zone, ctl_args_t *args)
 {
 	UNUSED(args);
 
-	zone->flags |= ZONE_FORCE_FLUSH;
+	if (ctl_has_flag(args->data[KNOT_CTL_IDX_FLAGS], CTL_FLAG_FORCE)) {
+		zone->flags |= ZONE_FORCE_FLUSH;
+	}
+
 	zone_events_schedule(zone, ZONE_EVENT_FLUSH, ZONE_EVENT_NOW);
 
 	return KNOT_EOK;
