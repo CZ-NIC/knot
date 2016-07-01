@@ -24,9 +24,9 @@
 #define MAX_BIN_DATA_LEN	((INT32_MAX / 4) * 3)
 
 /*! \brief Base64 padding character. */
-const uint8_t base64_pad = '=';
+static const uint8_t base64_pad = '=';
 /*! \brief Base64 alphabet. */
-const uint8_t base64_enc[] =
+static const uint8_t base64_enc[] =
 	"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
 /*! \brief Indicates bad Base64 character. */
@@ -35,7 +35,7 @@ const uint8_t base64_enc[] =
 #define PD	 64
 
 /*! \brief Transformation and validation table for decoding Base64. */
-const uint8_t base64_dec[256] = {
+static const uint8_t base64_dec[256] = {
 	[  0] = KO, ['+'] = 62, ['V'] = 21, [129] = KO, [172] = KO, [215] = KO,
 	[  1] = KO, [ 44] = KO, ['W'] = 22, [130] = KO, [173] = KO, [216] = KO,
 	[  2] = KO, [ 45] = KO, ['X'] = 23, [131] = KO, [174] = KO, [217] = KO,
