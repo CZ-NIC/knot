@@ -195,128 +195,66 @@ knot_dname_t *knot_create_nsec3_owner(const knot_dname_t *owner,
 	return result;
 }
 
-static int set_nsec3param(knot_rrset_t *rrset, const kdnssec_ctx_t *dnssec_ctx)
+static bool nsec3param_valid(const knot_rdataset_t *rrs,
+                             const dnssec_nsec3_params_t *params)
 {
-	assert(rrset);
-	assert(dnssec_ctx);
+	assert(rrs);
+	assert(params);
 
-	dnssec_nsec3_params_t *new_params = &dnssec_ctx->policy->nsec3_params;
-	dnssec_binary_t *new_salt = dnssec_ctx->zone->nsec3_salt;
-
-	// Prepare wire rdata.
-	size_t rdata_len = 3 * sizeof(uint8_t) + sizeof(uint16_t) + new_salt->size;
-	uint8_t rdata[rdata_len];
-	wire_ctx_t wire = wire_ctx_init(rdata, rdata_len);
-
-	wire_ctx_write_u8(&wire, new_params->algorithm);
-	wire_ctx_write_u8(&wire, new_params->flags);
-	wire_ctx_write_u16(&wire, new_params->iterations);
-	wire_ctx_write_u8(&wire, new_salt->size);
-	wire_ctx_write(&wire, new_salt->data, new_salt->size);
-
-	if (wire.error != KNOT_EOK) {
-		return wire.error;
+	// NSEC3 disabled
+	if (params->algorithm == 0) {
+		return false;
 	}
 
-	return knot_rrset_add_rdata(rrset, rdata, rdata_len, 0, NULL);
+	// multiple NSEC3 records
+	if (rrs->rr_count != 1) {
+		return false;
+	}
+
+	knot_rdata_t *rrd = knot_rdataset_at(rrs, 0);
+	dnssec_binary_t rdata = {
+		.size = knot_rdata_rdlen(rrd),
+		.data = knot_rdata_data(rrd),
+	};
+
+	dnssec_nsec3_params_t parsed = { 0 };
+	int r = dnssec_nsec3_params_from_rdata(&parsed, &rdata);
+	if (r != DNSSEC_EOK) {
+		return false;
+	}
+
+	bool equal = parsed.algorithm == params->algorithm &&
+	             parsed.flags == params->flags &&
+	             parsed.iterations == params->iterations &&
+	             dnssec_binary_cmp(&parsed.salt, &params->salt) == 0;
+
+	dnssec_nsec3_params_free(&parsed);
+
+	return equal;
 }
 
-static bool match_nsec3param(const knot_nsec3_params_t *params,
-                             const kdnssec_ctx_t *dnssec_ctx)
-{
-	assert(params);
-	assert(dnssec_ctx);
-
-	dnssec_nsec3_params_t *new_params = &dnssec_ctx->policy->nsec3_params;
-	dnssec_binary_t *new_salt = dnssec_ctx->zone->nsec3_salt;
-
-	return params->algorithm == new_params->algorithm &&
-	       params->flags == new_params->flags &&
-	       params->iterations == new_params->iterations &&
-	       params->salt_length == new_salt->size &&
-	       memcmp(params->salt, new_salt->data, new_salt->size) == 0;
-}
-
-static int update_nsec3param(const zone_contents_t *zone,
-                             const kdnssec_ctx_t *dnssec_ctx,
-                             changeset_t *changeset)
+static int remove_nsec3param(const zone_contents_t *zone, changeset_t *changeset)
 {
 	assert(zone);
-	assert(dnssec_ctx);
 	assert(changeset);
 
-	dnssec_kasp_policy_t *policy = dnssec_ctx->policy;
-	knot_rdataset_t *nsec3param = node_rdataset(zone->apex, KNOT_RRTYPE_NSEC3PARAM);
-
-	// Check for changed NSEC3PARAM record.
-	bool changed = false;
-	if (nsec3param != NULL && policy->nsec3_enabled &&
-	    match_nsec3param(&zone->nsec3_params, dnssec_ctx)) {
-		changed = true;
+	knot_rrset_t rrset = node_rrset(zone->apex, KNOT_RRTYPE_NSEC3PARAM);
+	int ret = changeset_rem_rrset(changeset, &rrset, 0);
+	if (ret != KNOT_EOK) {
+		return ret;
 	}
 
-	// Remove redundant or changed NSEC3PARAM record and its RRSIG.
-	if ((nsec3param != NULL && !policy->nsec3_enabled) || changed) {
-		knot_rrset_t rrset = node_rrset(zone->apex, KNOT_RRTYPE_NSEC3PARAM);
-		int ret = changeset_rem_rrset(changeset, &rrset, 0);
+	rrset = node_rrset(zone->apex, KNOT_RRTYPE_RRSIG);
+	if (!knot_rrset_empty(&rrset)) {
+		knot_rrset_t rrsig;
+		knot_rrset_init(&rrsig, zone->apex->owner, KNOT_RRTYPE_RRSIG, KNOT_CLASS_IN);
+		ret = knot_synth_rrsig(KNOT_RRTYPE_NSEC3PARAM, &rrset.rrs, &rrsig.rrs, NULL);
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
 
-		rrset = node_rrset(zone->apex, KNOT_RRTYPE_RRSIG);
-		if (!knot_rrset_empty(&rrset)) {
-			knot_rrset_t synth_rrsig;
-			knot_rrset_init(&synth_rrsig, zone->apex->owner,
-			                KNOT_RRTYPE_RRSIG, KNOT_CLASS_IN);
-
-			ret = knot_synth_rrsig(KNOT_RRTYPE_NSEC3PARAM, &rrset.rrs,
-			                       &synth_rrsig.rrs, NULL);
-			if (ret != KNOT_EOK) {
-				return ret;
-			}
-
-			ret = changeset_rem_rrset(changeset, &synth_rrsig, 0);
-			knot_rdataset_clear(&synth_rrsig.rrs, NULL);
-			if (ret != KNOT_EOK) {
-				return ret;
-			}
-		}
-
-		// Also remove the record from the zone.
-		knot_rdataset_clear(nsec3param, NULL);
-		node_remove_rdataset(zone->apex, KNOT_RRTYPE_NSEC3PARAM);
-
-		// Reset zone nsec3 paramaters.
-		knot_nsec3param_free((knot_nsec3_params_t *)&zone->nsec3_params);
-		memset((knot_nsec3_params_t *)&zone->nsec3_params, 0,
-		       sizeof(knot_nsec3_params_t));
-	}
-
-	// Add new NSEC3PARAM record.
-	if ((nsec3param == NULL && policy->nsec3_enabled) || changed) {
-		knot_rrset_t *rrset = knot_rrset_new(zone->apex->owner,
-		                                     KNOT_RRTYPE_NSEC3PARAM,
-		                                     KNOT_CLASS_IN, NULL);
-		if (rrset == NULL) {
-			return KNOT_ENOMEM;
-		}
-
-		int ret = set_nsec3param(rrset, dnssec_ctx);
-		if (ret != KNOT_EOK) {
-			knot_rrset_free(&rrset, NULL);
-			return ret;
-		}
-
-		ret = changeset_add_rrset(changeset, rrset, 0);
-		if (ret != KNOT_EOK) {
-			knot_rrset_free(&rrset, NULL);
-			return ret;
-		}
-
-		// Update zone nsec3 paramaters.
-		ret = knot_nsec3param_from_wire((knot_nsec3_params_t *)&zone->nsec3_params,
-		                                 &rrset->rrs);
-		knot_rrset_free(&rrset, NULL);
+		ret = changeset_rem_rrset(changeset, &rrsig, 0);
+		knot_rdataset_clear(&rrsig.rrs, NULL);
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
@@ -325,31 +263,130 @@ static int update_nsec3param(const zone_contents_t *zone,
 	return KNOT_EOK;
 }
 
-int knot_zone_create_nsec_chain(const zone_contents_t *zone,
-                                changeset_t *changeset,
-                                const zone_keyset_t *zone_keys,
-                                const kdnssec_ctx_t *dnssec_ctx)
+static int set_nsec3param(knot_rrset_t *rrset, const dnssec_nsec3_params_t *params)
 {
-	if (zone == NULL || changeset == NULL || dnssec_ctx == NULL) {
-		return KNOT_EINVAL;
+	assert(rrset);
+	assert(params);
+
+	// Prepare wire rdata.
+	size_t rdata_len = 3 * sizeof(uint8_t) + sizeof(uint16_t) + params->salt.size;
+	uint8_t rdata[rdata_len];
+	wire_ctx_t wire = wire_ctx_init(rdata, rdata_len);
+
+	wire_ctx_write_u8(&wire, params->algorithm);
+	wire_ctx_write_u8(&wire, params->flags);
+	wire_ctx_write_u16(&wire, params->iterations);
+	wire_ctx_write_u8(&wire, params->salt.size);
+	wire_ctx_write(&wire, params->salt.data, params->salt.size);
+
+	if (wire.error != KNOT_EOK) {
+		return wire.error;
 	}
 
-	const knot_rdataset_t *soa = node_rdataset(zone->apex, KNOT_RRTYPE_SOA);
-	if (soa == NULL) {
-		return KNOT_EINVAL;
-	}
-	uint32_t nsec_ttl = knot_soa_minimum(soa);
+	assert(wire_ctx_available(&wire) == 0);
 
-	// Update NSEC3PARAM record.
-	if (!dnssec_ctx->legacy) {
-		int ret = update_nsec3param(zone, dnssec_ctx, changeset);
-		if (ret != KNOT_EOK) {
-			return ret;
+	return knot_rrset_add_rdata(rrset, rdata, rdata_len, 0, NULL);
+}
+
+static int add_nsec3param(const zone_contents_t *zone, changeset_t *changeset,
+                          const dnssec_nsec3_params_t *params)
+{
+	assert(zone);
+	assert(changeset);
+	assert(params);
+
+	knot_rrset_t *rrset = NULL;
+	rrset = knot_rrset_new(zone->apex->owner, KNOT_RRTYPE_NSEC3PARAM, KNOT_CLASS_IN, NULL);
+	if (!rrset) {
+		return KNOT_ENOMEM;
+	}
+
+	int r = set_nsec3param(rrset, params);
+	if (r != KNOT_EOK) {
+		knot_rrset_free(&rrset, NULL);
+		return r;
+	}
+
+	r = changeset_add_rrset(changeset, rrset, 0);
+	knot_rrset_free(&rrset, NULL);
+	return r;
+}
+
+static int update_nsec3param(const zone_contents_t *zone,
+                             changeset_t *changeset,
+                             const dnssec_nsec3_params_t *params)
+{
+	assert(zone);
+	assert(changeset);
+	assert(params);
+
+	knot_rdataset_t *nsec3param = node_rdataset(zone->apex, KNOT_RRTYPE_NSEC3PARAM);
+	bool valid = nsec3param && nsec3param_valid(nsec3param, params);
+
+	if (nsec3param && !valid) {
+		int r = remove_nsec3param(zone, changeset);
+		if (r != KNOT_EOK) {
+			return r;
 		}
 	}
 
-	if (dnssec_ctx->policy->nsec3_enabled) {
-		int ret = knot_nsec3_create_chain(zone, nsec_ttl, changeset);
+	if (params->algorithm != 0 && !valid) {
+		return add_nsec3param(zone, changeset, params);
+	}
+
+	return KNOT_EOK;
+}
+
+static uint32_t soa_minimum(const zone_contents_t *zone)
+{
+	const knot_rdataset_t *soa = node_rdataset(zone->apex, KNOT_RRTYPE_SOA);
+	if (soa == NULL) {
+		return 0;
+	}
+
+	return knot_soa_minimum(soa);
+}
+
+/*!
+ * \brief Initialize NSEC3PARAM based on the signing policy.
+ *
+ * \note For NSEC, the algorithm number is set to 0.
+ */
+static dnssec_nsec3_params_t nsec3param_init(const dnssec_kasp_policy_t *policy,
+                                             const dnssec_kasp_zone_t *zone)
+{
+	assert(policy);
+	assert(zone);
+
+	dnssec_nsec3_params_t params = { 0 };
+	if (policy->nsec3_enabled) {
+		params.algorithm = DNSSEC_NSEC3_ALGORITHM_SHA1;
+		params.iterations = policy->nsec3_iterations;
+		params.salt = zone->nsec3_salt;
+	}
+
+	return params;
+}
+
+int knot_zone_create_nsec_chain(const zone_contents_t *zone,
+                                changeset_t *changeset,
+                                const zone_keyset_t *zone_keys,
+                                const kdnssec_ctx_t *ctx)
+{
+	if (zone == NULL || changeset == NULL || ctx == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	uint32_t nsec_ttl = soa_minimum(zone);
+	dnssec_nsec3_params_t params = nsec3param_init(ctx->policy, ctx->zone);
+
+	int ret = update_nsec3param(zone, changeset, &params);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	if (ctx->policy->nsec3_enabled) {
+		int ret = knot_nsec3_create_chain(zone, &params, nsec_ttl, changeset);
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
@@ -372,5 +409,5 @@ int knot_zone_create_nsec_chain(const zone_contents_t *zone,
 	}
 
 	// Sign newly created records right away.
-	return knot_zone_sign_nsecs_in_changeset(zone_keys, dnssec_ctx, changeset);
+	return knot_zone_sign_nsecs_in_changeset(zone_keys, ctx, changeset);
 }
