@@ -102,7 +102,7 @@ static int zones_apply(ctl_args_t *args, int (*fcn)(zone_t *, ctl_args_t *))
 
 	while (true) {
 		zone_t *zone;
-		int ret = get_zone(args, &zone);
+		ret = get_zone(args, &zone);
 		if (ret == KNOT_EOK) {
 			ret = fcn(zone, args);
 		}
@@ -343,6 +343,62 @@ static int ctl_server(ctl_args_t *args, ctl_cmd_t cmd)
 	return ret;
 }
 
+static int send_block_data(conf_io_t *io, knot_ctl_data_t *data)
+{
+	knot_ctl_t *ctl = (knot_ctl_t *)io->misc;
+
+	const yp_item_t *item = (io->key1 != NULL) ? io->key1 : io->key0;
+	assert(item != NULL);
+
+	char buff[YP_MAX_TXT_DATA_LEN + 1] = "\0";
+
+	(*data)[KNOT_CTL_IDX_DATA] = buff;
+
+	// Format explicit binary data value.
+	if (io->data.bin != NULL) {
+		size_t buff_len = sizeof(buff);
+		int ret = yp_item_to_txt(item, io->data.bin, io->data.bin_len, buff,
+		                         &buff_len, YP_SNOQUOTE);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+		return knot_ctl_send(ctl, KNOT_CTL_TYPE_DATA, data);
+	// Format all multivalued item data if no specified index.
+	} else if ((item->flags & YP_FMULTI) && io->data.index == 0) {
+		size_t values = conf_val_count(io->data.val);
+		for (size_t i = 0; i < values; i++) {
+			conf_val(io->data.val);
+			size_t buff_len = sizeof(buff);
+			int ret = yp_item_to_txt(item, io->data.val->data,
+			                         io->data.val->len, buff,&buff_len,
+			                         YP_SNOQUOTE);
+			if (ret != KNOT_EOK) {
+				return ret;
+			}
+
+			knot_ctl_type_t type = (i == 0) ? KNOT_CTL_TYPE_DATA :
+			                                  KNOT_CTL_TYPE_EXTRA;
+			ret = knot_ctl_send(ctl, type, data);
+			if (ret != KNOT_EOK) {
+				return ret;
+			}
+
+			conf_val_next(io->data.val);
+		}
+		return KNOT_EOK;
+	// Format singlevalued item data or a specified one from multivalued.
+	} else {
+		conf_val(io->data.val);
+		size_t buff_len = sizeof(buff);
+		int ret = yp_item_to_txt(item, io->data.val->data, io->data.val->len,
+		                         buff, &buff_len, YP_SNOQUOTE);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+		return knot_ctl_send(ctl, KNOT_CTL_TYPE_DATA, data);
+	}
+}
+
 static int send_block(conf_io_t *io)
 {
 	knot_ctl_t *ctl = (knot_ctl_t *)io->misc;
@@ -390,57 +446,8 @@ static int send_block(conf_io_t *io)
 
 	if (io->data.val == NULL && io->data.bin == NULL) {
 		return knot_ctl_send(ctl, KNOT_CTL_TYPE_DATA, &data);
-	}
-
-	const yp_item_t *item = (io->key1 != NULL) ? io->key1 : io->key0;
-	assert(item != NULL);
-
-	char buff[YP_MAX_TXT_DATA_LEN + 1] = "\0";
-
-	data[KNOT_CTL_IDX_DATA] = buff;
-
-	// Format explicit binary data value.
-	if (io->data.bin != NULL) {
-		size_t buff_len = sizeof(buff);
-		int ret = yp_item_to_txt(item, io->data.bin, io->data.bin_len, buff,
-		                         &buff_len, YP_SNOQUOTE);
-		if (ret != KNOT_EOK) {
-			return ret;
-		}
-		return knot_ctl_send(ctl, KNOT_CTL_TYPE_DATA, &data);
-	// Format all multivalued item data if no specified index.
-	} else if ((item->flags & YP_FMULTI) && io->data.index == 0) {
-		size_t values = conf_val_count(io->data.val);
-		for (size_t i = 0; i < values; i++) {
-			conf_val(io->data.val);
-			size_t buff_len = sizeof(buff);
-			int ret = yp_item_to_txt(item, io->data.val->data,
-			                         io->data.val->len, buff,&buff_len,
-			                         YP_SNOQUOTE);
-			if (ret != KNOT_EOK) {
-				return ret;
-			}
-
-			knot_ctl_type_t type = (i == 0) ? KNOT_CTL_TYPE_DATA :
-			                                  KNOT_CTL_TYPE_EXTRA;
-			ret = knot_ctl_send(ctl, type, &data);
-			if (ret != KNOT_EOK) {
-				return ret;
-			}
-
-			conf_val_next(io->data.val);
-		}
-		return KNOT_EOK;
-	// Format singlevalued item data or a specified one from multivalued.
 	} else {
-		conf_val(io->data.val);
-		size_t buff_len = sizeof(buff);
-		int ret = yp_item_to_txt(item, io->data.val->data, io->data.val->len,
-		                         buff, &buff_len, YP_SNOQUOTE);
-		if (ret != KNOT_EOK) {
-			return ret;
-		}
-		return knot_ctl_send(ctl, KNOT_CTL_TYPE_DATA, &data);
+		return send_block_data(io, &data);
 	}
 }
 
