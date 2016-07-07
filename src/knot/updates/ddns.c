@@ -344,35 +344,6 @@ static int add_rr_to_chgset(const knot_rrset_t *rr,
 	return zone_update_add(update, rr);
 }
 
-/*!< \brief Adds RR into remove section of changeset if it is deemed worthy. */
-static int rem_rr_to_chgset(const knot_rrset_t *rr,
-                            zone_update_t *update)
-{
-	return zone_update_remove(update, rr);
-}
-
-/*!< \brief Adds all RRs from RRSet into remove section of changeset. */
-static int rem_rrset_to_chgset(const knot_rrset_t *rrset,
-                               zone_update_t *update)
-{
-	knot_rrset_t rr;
-	knot_rrset_init(&rr, rrset->owner, rrset->type, rrset->rclass);
-	for (uint16_t i = 0; i < rrset->rrs.rr_count; ++i) {
-		knot_rdata_t *rr_add = knot_rdataset_at(&rrset->rrs, i);
-		int ret = knot_rdataset_add(&rr.rrs, rr_add, NULL);
-		if (ret != KNOT_EOK) {
-			return ret;
-		}
-		ret = rem_rr_to_chgset(&rr, update);
-		knot_rdataset_clear(&rr.rrs, NULL);
-		if (ret != KNOT_EOK) {
-			return ret;
-		}
-	}
-
-	return KNOT_EOK;
-}
-
 /* ------------------------ RR processing logic ----------------------------- */
 
 /* --------------------------- RR additions --------------------------------- */
@@ -389,7 +360,7 @@ static int process_add_cname(const zone_node_t *node,
 			return KNOT_EOK;
 		}
 
-		int ret = rem_rr_to_chgset(&cname, update);
+		int ret = zone_update_remove(update, &cname);
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
@@ -526,7 +497,7 @@ static int process_rem_rr(const knot_rrset_t *rr,
 		return KNOT_EOK;
 	}
 
-	return rem_rr_to_chgset(rr, update);
+	return zone_update_remove(update, rr);
 }
 
 /*!< \brief Removes RRSet from zone. */
@@ -556,7 +527,7 @@ static int process_rem_rrset(const knot_rrset_t *rrset,
 	}
 
 	knot_rrset_t to_remove = node_rrset(node, rrset->type);
-	return rem_rrset_to_chgset(&to_remove, update);
+	return zone_update_remove(update, &to_remove);
 }
 
 /*!< \brief Removes node from zone. */
