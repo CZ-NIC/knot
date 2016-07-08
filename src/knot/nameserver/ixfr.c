@@ -46,8 +46,8 @@ struct ixfr_proc {
 	knot_rrset_t *final_soa;       /* First SOA received via IXFR. */
 	list_t changesets;             /* Processed changesets. */
 	size_t change_count;           /* Count of changesets received. */
-	size_t add_size;
-	size_t del_size;
+	size_t add_size;               /* Size of records to add */
+	size_t del_size;               /* Size of records to remove */
 	zone_t *zone;                  /* Modified zone - for journal access. */
 	mm_ctx_t *mm;                  /* Memory context for RR allocations. */
 	struct query_data *qdata;
@@ -351,7 +351,6 @@ static void ixfrin_cleanup(struct answer_data *data)
 	if (proc) {
 		changesets_free(&proc->changesets);
 		knot_rrset_free(&proc->final_soa, proc->mm);
-		conf_free(proc->proc.conf);
 		mm_free(data->mm, proc);
 		data->ext = NULL;
 	}
@@ -360,21 +359,13 @@ static void ixfrin_cleanup(struct answer_data *data)
 /*! \brief Initializes IXFR-in processing context. */
 static int ixfrin_answer_init(struct answer_data *data)
 {
-	conf_t *conf;
-	int ret = conf_clone(&conf);
-	if (ret != KNOT_EOK) {
-		return ret;
-	}
-
 	struct ixfr_proc *proc = mm_alloc(data->mm, sizeof(struct ixfr_proc));
 	if (proc == NULL) {
-		conf_free(conf);
 		return KNOT_ENOMEM;
 	}
 
 	memset(proc, 0, sizeof(struct ixfr_proc));
 	gettimeofday(&proc->proc.tstamp, NULL);
-	proc->proc.conf = conf;
 
 	init_list(&proc->changesets);
 
@@ -385,8 +376,6 @@ static int ixfrin_answer_init(struct answer_data *data)
 	data->ext = proc;
 	data->ext_cleanup = &ixfrin_cleanup;
 
-	/// \TODO Temporary solution, because not every zone input is checked by
-	/// semantic checks. And zone size is not set properly.
 	zone_contents_measure_size(proc->zone->contents);
 
 	return KNOT_EOK;
@@ -406,15 +395,15 @@ static int ixfrin_finalize(struct answer_data *adata)
 		return ret;
 	}
 
-	conf_val_t val = conf_zone_get(ixfr->proc.conf, C_MAX_ZONE_SIZE,
-	                               ixfr->zone->name);
-	const int64_t size_limit = conf_int(&val);
+	zone_contents_measure_size(new_contents);
 
-	if (new_contents->size > size_limit) { // secodary check
+	size_t size_limit = adata->param->zone->conf->max_zone_size;
+
+	if (new_contents->size > size_limit) { // secondary check
 		IXFRIN_LOG(LOG_WARNING, "zone size exceeded, limit %ld", size_limit);
-		update_rollback(&a_ctx);
+		updates_rollback(&ixfr->changesets);
 		update_free_zone(&new_contents);
-		return KNOT_STATE_FAIL;
+		return NS_PROC_FAIL;
 	}
 
 	/* Write changes to journal. */
@@ -629,9 +618,7 @@ static int process_ixfrin_packet(knot_pkt_t *pkt, struct answer_data *adata)
 	ixfr->proc.npkts  += 1;
 	ixfr->proc.nbytes += pkt->size;
 
-	conf_val_t val = conf_zone_get(ixfr->proc.conf, C_MAX_ZONE_SIZE,
-	                               ixfr->zone->name);
-	const int64_t size_limit = conf_int(&val);
+	size_t size_limit = adata->param->zone->conf->max_zone_size;
 	const size_t zone_size = ixfr->zone->contents->size;
 
 	// Process RRs in the message.
@@ -667,7 +654,7 @@ static int process_ixfrin_packet(knot_pkt_t *pkt, struct answer_data *adata)
 		    (zone_size + ixfr->add_size - ixfr->del_size) > size_limit) {
 			IXFRIN_LOG(LOG_WARNING, "zone size exceeded, limit %ld",
 			           size_limit);
-			return KNOT_STATE_FAIL;
+			return NS_PROC_FAIL;
 		}
 	}
 
@@ -745,12 +732,12 @@ int ixfr_process_answer(knot_pkt_t *pkt, struct answer_data *adata)
 	if (pkt == NULL || adata == NULL) {
 		return NS_PROC_FAIL;
 	}
-	
+
 	if (adata->ext == NULL) {
 		if (!ixfr_enough_data(pkt)) {
 			return NS_PROC_FAIL;
 		}
-	
+
 		/* Check for AXFR-style IXFR. */
 		if (ixfr_is_axfr(pkt)) {
 			IXFRIN_LOG(LOG_NOTICE, "receiving AXFR-style IXFR");
@@ -758,7 +745,7 @@ int ixfr_process_answer(knot_pkt_t *pkt, struct answer_data *adata)
 			return axfr_answer_process(pkt, adata);
 		}
 	}
-	
+
 	/* Check RCODE. */
 	uint8_t rcode = knot_wire_get_rcode(pkt->wire);
 	if (rcode != KNOT_RCODE_NOERROR) {
@@ -768,7 +755,7 @@ int ixfr_process_answer(knot_pkt_t *pkt, struct answer_data *adata)
 		}
 		return NS_PROC_FAIL;
 	}
-	
+
 	/* Initialize processing with first packet. */
 	if (adata->ext == NULL) {
 		NS_NEED_TSIG_SIGNED(&adata->param->tsig_ctx, 0);

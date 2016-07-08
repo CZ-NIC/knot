@@ -969,7 +969,7 @@ class Knot(Server):
         if self.dnssec_enable:
             s.item_str("dnssec-keydir", self.keydir)
             s.item("dnssec-enable", "on")
-       if self.zone_size_limit:
+        if self.zone_size_limit:
             s.item("max-zone-size", self.zone_size_limit)
         for zone in sorted(self.zones):
             z = self.zones[zone]

@@ -1436,7 +1436,7 @@ zone_node_t *zone_contents_find_node_for_rr(zone_contents_t *zone, const knot_rr
 	return node;
 }
 
-static int measure_size(const zone_node_t *node, void *data){
+static int measure_size(zone_node_t *node, void *data){
 
 	size_t *size = data;
 	int rrset_count = node->rrset_count;

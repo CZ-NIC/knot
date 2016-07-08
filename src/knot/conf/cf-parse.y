@@ -510,6 +510,7 @@ static void ident_auto(void *scanner, int tok, conf_t *conf, bool val)
 %token <tok> NOTIFY_TIMEOUT
 %token <tok> DBSYNC_TIMEOUT
 %token <tok> IXFR_FSLIMIT
+%token <tok> MAX_ZONE_SIZE
 %token <tok> XFR_IN
 %token <tok> XFR_OUT
 %token <tok> UPDATE_IN
@@ -941,10 +942,16 @@ zone:
 	SET_INT(this_zone->dbsync_timeout, $3.i, "zonefile-sync");
  }
  | zone IXFR_FSLIMIT SIZE ';' {
-	SET_SIZE(new_config->ixfr_fslimit, $3.l, "ixfr-fslimit");
+	SET_SIZE(this_zone->ixfr_fslimit, $3.l, "ixfr-fslimit");
  }
  | zone IXFR_FSLIMIT NUM ';' {
 	SET_SIZE(this_zone->ixfr_fslimit, $3.i, "ixfr-fslimit");
+ }
+ | zone MAX_ZONE_SIZE SIZE ';' {
+	SET_SIZE(this_zone->max_zone_size, $3.l, "max-zone-size");
+ }
+ | zone MAX_ZONE_SIZE NUM ';' {
+	SET_SIZE(this_zone->max_zone_size, $3.i, "max-zone-size");
  }
  | zone NOTIFY_RETRIES NUM ';' {
 	SET_NUM(this_zone->notify_retries, $3.i, 1, INT_MAX, "notify-retries");
@@ -996,6 +1003,12 @@ zones:
  }
  | zones IXFR_FSLIMIT NUM ';' {
 	SET_SIZE(new_config->ixfr_fslimit, $3.i, "ixfr-fslimit");
+ }
+ | zones MAX_ZONE_SIZE SIZE ';' {
+	SET_SIZE(new_config->max_zone_size, $3.l, "max-zone-size");
+ }
+ | zones MAX_ZONE_SIZE NUM ';' {
+	SET_SIZE(new_config->max_zone_size, $3.i, "max-zone-size");
  }
  | zones NOTIFY_RETRIES NUM ';' {
 	SET_NUM(new_config->notify_retries, $3.i, 1, INT_MAX, "notify-retries");
