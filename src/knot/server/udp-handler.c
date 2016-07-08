@@ -392,7 +392,7 @@ static int udp_recvmmsg_send(void *d)
 #endif /* HAVE_RECVMMSG */
 
 /*! \brief Initialize UDP master routine on run-time. */
-void __attribute__ ((constructor)) udp_master_init()
+void __attribute__ ((constructor)) udp_master_init(void)
 {
 	/* Initialize defaults. */
 	_udp_init = udp_recvfrom_init;

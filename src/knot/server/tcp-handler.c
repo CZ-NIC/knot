@@ -64,7 +64,7 @@ typedef struct tcp_context {
 #define TCP_THROTTLE_HI 2 /*!< Maximum recovery time on errors. */
 
 /*! \brief Calculate TCP throttle time (random). */
-static inline int tcp_throttle() {
+static inline int tcp_throttle(void) {
 	return TCP_THROTTLE_LO + (dnssec_random_uint16_t() % TCP_THROTTLE_HI);
 }
 

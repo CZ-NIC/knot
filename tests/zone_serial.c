@@ -28,7 +28,7 @@ enum serials {
 	S_HIGHEST = 0xffffffff		// highest value
 };
 
-static uint32_t random_serial()
+static uint32_t random_serial(void)
 {
 	uint32_t s = rand() & 0xff;
 	s |= (rand() & 0xff) << 8;

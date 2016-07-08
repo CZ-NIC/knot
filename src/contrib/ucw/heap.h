@@ -36,7 +36,7 @@ struct heap {
 #define HHEAD(h) 		HELEMENT((h), 1)
 #define EMPTY_HEAP(h) 		((h)->num == 0) /* h->num == 0 */
 
-int heap_init(struct heap *, int (*cmp)(), int);
+int heap_init(struct heap *, int (*cmp)(void *, void *), int);
 void heap_deinit(struct heap *);
 
 void heap_delmin(struct heap *);

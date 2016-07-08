@@ -50,7 +50,7 @@ static void help(void)
 	       " -h           Print this help.\n");
 }
 
-static int time_test()
+static int time_test(void)
 {
 	pthread_t t1, t2, t3;
 	int ret1, ret2, ret3;

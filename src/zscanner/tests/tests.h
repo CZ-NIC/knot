@@ -26,6 +26,6 @@
 
 #pragma once
 
-int test__date_to_timestamp();
+int test__date_to_timestamp(void);
 
 /*! @} */

@@ -39,7 +39,7 @@ typedef int (*zone_tree_apply_cb_t)(zone_node_t **node, void *data);
  *
  * \return created zone tree structure.
  */
-zone_tree_t* zone_tree_create();
+zone_tree_t* zone_tree_create(void);
 
 /*!
  * \brief Return weight of the zone tree (number of nodes).

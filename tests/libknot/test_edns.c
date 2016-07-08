@@ -714,7 +714,7 @@ static void test_unique(void)
 	knot_rrset_clear(&opt_rr, NULL);
 }
 
-static void test_client_subnet()
+static void test_client_subnet(void)
 {
 	int ret;
 	knot_addr_family_t family;
@@ -826,7 +826,7 @@ static void test_client_subnet()
            "EDNS-client-subnet: parse (cmp addr)");
 }
 
-static void test_alignment()
+static void test_alignment(void)
 {
 	int ret;
 

@@ -94,7 +94,7 @@ uint16_t knot_tsig_rdata_other_data_length(const knot_rrset_t *tsig);
 
 size_t knot_tsig_rdata_tsig_variables_length(const knot_rrset_t *tsig);
 
-size_t knot_tsig_rdata_tsig_timers_length();
+size_t knot_tsig_rdata_tsig_timers_length(void);
 
 /*!
  * \brief Return TSIG RRSET maximum wire size for given algorithm.

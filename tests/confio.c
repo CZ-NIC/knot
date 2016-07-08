@@ -175,7 +175,7 @@ static int format_item(conf_io_t *io)
 	return KNOT_EOK;
 }
 
-static void test_conf_io_begin()
+static void test_conf_io_begin(void)
 {
 	ok(conf_io_begin(true) == KNOT_TXN_ENOTEXISTS, "begin child txn with no parent");
 	ok(conf()->io.txn == NULL, "check txn depth");
@@ -202,7 +202,7 @@ static void test_conf_io_begin()
 #endif
 }
 
-static void test_conf_io_abort()
+static void test_conf_io_abort(void)
 {
 #if defined(__OpenBSD__)
 	SKIP_OPENBSD
@@ -257,7 +257,7 @@ static void test_conf_io_abort()
 #endif
 }
 
-static void test_conf_io_commit()
+static void test_conf_io_commit(void)
 {
 	ok(conf_io_commit(false) == KNOT_TXN_ENOTEXISTS, "commit no txt txn");
 	ok(conf_io_commit(true) == KNOT_TXN_ENOTEXISTS, "commit no txt txn");
@@ -308,7 +308,7 @@ static void test_conf_io_commit()
 #endif
 }
 
-static void test_conf_io_check()
+static void test_conf_io_check(void)
 {
 	conf_io_t io = { NULL };
 
@@ -350,7 +350,7 @@ static void test_conf_io_check()
 	conf_io_abort(false);
 }
 
-static void test_conf_io_set()
+static void test_conf_io_set(void)
 {
 	conf_io_t io = { NULL };
 
@@ -450,7 +450,7 @@ static void test_conf_io_set()
 	ok(conf_refresh_txn(conf()) == KNOT_EOK, "update read-only txn");
 }
 
-static void test_conf_io_unset()
+static void test_conf_io_unset(void)
 {
 	// ERR no txn.
 	ok(conf_io_unset("server", "version", NULL, "text") ==
@@ -633,7 +633,7 @@ static void test_conf_io_unset()
 	conf_io_abort(false);
 }
 
-static void test_conf_io_get()
+static void test_conf_io_get(void)
 {
 	const char *ref;
 	char out[OUT_LEN];
@@ -761,7 +761,7 @@ static void test_conf_io_get()
 	conf_io_abort(false);
 }
 
-static void test_conf_io_diff()
+static void test_conf_io_diff(void)
 {
 	const char *ref;
 	char out[OUT_LEN];
@@ -858,7 +858,7 @@ static void test_conf_io_diff()
 	conf_io_abort(false);
 }
 
-static void test_conf_io_list()
+static void test_conf_io_list(void)
 {
 	const char *ref;
 	char out[OUT_LEN];

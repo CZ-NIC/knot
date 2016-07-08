@@ -31,7 +31,7 @@
 #include "knot/conf/conf.h"
 #include "libknot/errcode.h"
 
-static char* pid_filename()
+static char* pid_filename(void)
 {
 	conf_val_t val = conf_get(conf(), C_SRV, C_RUNDIR);
 	char *rundir = conf_abs_path(&val, NULL);
@@ -103,7 +103,7 @@ static int pid_write(const char *filename)
 	return ret;
 }
 
-char *pid_check_and_create()
+char *pid_check_and_create(void)
 {
 	struct stat st;
 	char *pidfile = pid_filename();
@@ -116,7 +116,7 @@ char *pid_check_and_create()
 		return NULL;
 	} else if (stat(pidfile, &st) == 0) {
 		log_warning("removing stale PID file '%s'", pidfile);
-		pid_cleanup(pidfile);
+		pid_cleanup();
 	}
 
 	/* Create a PID file. */
@@ -131,7 +131,7 @@ char *pid_check_and_create()
 	return pidfile;
 }
 
-void pid_cleanup()
+void pid_cleanup(void)
 {
 	char *pidfile = pid_filename();
 	if (pidfile != NULL) {

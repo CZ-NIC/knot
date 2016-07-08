@@ -35,7 +35,7 @@ struct conf_includes {
 /*!
  * \brief Initialize structure for storing names of included files.
  */
-conf_includes_t *conf_includes_init()
+conf_includes_t *conf_includes_init(void)
 {
 	conf_includes_t *includes = calloc(1, sizeof(conf_includes_t));
 	if (!includes) {

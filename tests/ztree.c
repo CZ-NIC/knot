@@ -23,7 +23,7 @@
 static knot_dname_t* NAME[NCOUNT];
 static zone_node_t NODE[NCOUNT];
 static knot_dname_t* ORDER[NCOUNT];
-static void ztree_init_data()
+static void ztree_init_data(void)
 {
 	NAME[0] = knot_dname_from_str_alloc(".");
 	NAME[1] = knot_dname_from_str_alloc("master.ac.");
@@ -43,7 +43,7 @@ static void ztree_init_data()
 	}
 }
 
-static void ztree_free_data()
+static void ztree_free_data(void)
 {
 	for (unsigned i = 0; i < NCOUNT; ++i)
 		knot_dname_free(NAME + i, NULL);

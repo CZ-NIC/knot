@@ -362,7 +362,7 @@ size_t knot_tsig_rdata_tsig_variables_length(const knot_rrset_t *tsig)
 }
 
 _public_
-size_t knot_tsig_rdata_tsig_timers_length()
+size_t knot_tsig_rdata_tsig_timers_length(void)
 {
 	/*! \todo Cleanup */
 	return KNOT_TSIG_TIMERS_LENGTH;

@@ -22,7 +22,7 @@
 #include "tests/tests.h"
 #include "functions.c"
 
-int test__date_to_timestamp()
+int test__date_to_timestamp(void)
 {
 	time_t    ref_timestamp, max_timestamp;
 	uint32_t  test_timestamp;

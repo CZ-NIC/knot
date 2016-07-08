@@ -36,7 +36,7 @@ typedef struct conf_includes conf_includes_t;
 /*!
  * \brief Initialize structure for storing names of included files.
  */
-conf_includes_t *conf_includes_init();
+conf_includes_t *conf_includes_init(void);
 
 /*!
  * \brief Free structure for storing the names of included files.

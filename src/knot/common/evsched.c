@@ -29,10 +29,10 @@ static inline int timercmp_ge(struct timeval *a, struct timeval *b) {
 	return timercmp(a, b, >) || timercmp(a, b, ==);
 }
 
-static int compare_event_heap_nodes(event_t *e1, event_t *e2)
+static int compare_event_heap_nodes(void *e1, void *e2)
 {
-	if (timercmp(&e1->tv, &e2->tv, <)) return -1;
-	if (timercmp(&e1->tv, &e2->tv, >)) return 1;
+	if (timercmp(&((event_t *)e1)->tv, &((event_t *)e2)->tv, <)) return -1;
+	if (timercmp(&((event_t *)e1)->tv, &((event_t *)e2)->tv, >)) return 1;
 	return 0;
 }
 

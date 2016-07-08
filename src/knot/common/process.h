@@ -33,14 +33,14 @@
  * \retval NULL if failed.
  * \retval Created PID file path.
  */
-char *pid_check_and_create();
+char *pid_check_and_create(void);
 
 /*!
  * \brief Remove PID file.
  *
  * \warning PID file content won't be checked.
  */
-void pid_cleanup();
+void pid_cleanup(void);
 
 /*!
  * \brief Return true if the PID is running.
