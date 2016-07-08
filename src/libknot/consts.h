@@ -1,4 +1,4 @@
-/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -75,19 +75,19 @@ typedef enum {
  *       other RRs.
  */
 typedef enum {
-	KNOT_RCODE_NOERROR  =  0, /*!< No error. */
-	KNOT_RCODE_FORMERR  =  1, /*!< Format error. */
-	KNOT_RCODE_SERVFAIL =  2, /*!< Server failure. */
-	KNOT_RCODE_NXDOMAIN =  3, /*!< Non-existend domain. */
-	KNOT_RCODE_NOTIMPL  =  4, /*!< Not implemented. */
-	KNOT_RCODE_REFUSED  =  5, /*!< Refused. */
-	KNOT_RCODE_YXDOMAIN =  6, /*!< Name should not exist. */
-	KNOT_RCODE_YXRRSET  =  7, /*!< RR set should not exist. */
-	KNOT_RCODE_NXRRSET  =  8, /*!< RR set does not exist. */
-	KNOT_RCODE_NOTAUTH  =  9, /*!< Server not authoritative. / Query not authorized. */
-	KNOT_RCODE_NOTZONE  = 10, /*!< Name is not inside zone. */
-	KNOT_RCODE_BADVERS  = 16, /*!< Bad OPT Version. */
-	KNOT_RCODE_BADCOOKIE = 23 /*!< Bad/missing server cookie. */
+	KNOT_RCODE_NOERROR   =  0, /*!< No error. */
+	KNOT_RCODE_FORMERR   =  1, /*!< Format error. */
+	KNOT_RCODE_SERVFAIL  =  2, /*!< Server failure. */
+	KNOT_RCODE_NXDOMAIN  =  3, /*!< Non-existent domain. */
+	KNOT_RCODE_NOTIMPL   =  4, /*!< Not implemented. */
+	KNOT_RCODE_REFUSED   =  5, /*!< Refused. */
+	KNOT_RCODE_YXDOMAIN  =  6, /*!< Name should not exist. */
+	KNOT_RCODE_YXRRSET   =  7, /*!< RR set should not exist. */
+	KNOT_RCODE_NXRRSET   =  8, /*!< RR set does not exist. */
+	KNOT_RCODE_NOTAUTH   =  9, /*!< Server not authoritative. / Query not authorized. */
+	KNOT_RCODE_NOTZONE   = 10, /*!< Name is not inside zone. */
+	KNOT_RCODE_BADVERS   = 16, /*!< Bad OPT Version. */
+	KNOT_RCODE_BADCOOKIE = 23  /*!< Bad/missing server cookie. */
 } knot_rcode_t;
 
 /*!
