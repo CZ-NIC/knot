@@ -413,6 +413,7 @@ int interactive_loop(params_t *params)
 		// Process the command.
 		ret = process_cmd(argc, argv, params);
 
+		history(hist, &hev, H_SAVE, hist_file);
 		tok_reset(tok);
 		tok_end(tok);
 
@@ -422,7 +423,6 @@ int interactive_loop(params_t *params)
 		}
 	}
 
-	history(hist, &hev, H_SAVE, hist_file);
 	history_end(hist);
 	free(hist_file);
 
