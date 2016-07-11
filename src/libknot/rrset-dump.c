@@ -1785,6 +1785,86 @@ static int dump_unknown(DUMP_PARAMS)
 	DUMP_END;
 }
 
+static int txt_dump_data(rrset_dump_params_t *p, uint16_t type)
+{
+	switch (type) {
+		case KNOT_RRTYPE_A:
+			return dump_a(p);
+		case KNOT_RRTYPE_NS:
+		case KNOT_RRTYPE_CNAME:
+		case KNOT_RRTYPE_PTR:
+		case KNOT_RRTYPE_DNAME:
+			return dump_ns(p);
+		case KNOT_RRTYPE_SOA:
+			return dump_soa(p);
+		case KNOT_RRTYPE_HINFO:
+			return dump_hinfo(p);
+		case KNOT_RRTYPE_MINFO:
+		case KNOT_RRTYPE_RP:
+			return dump_minfo(p);
+		case KNOT_RRTYPE_MX:
+		case KNOT_RRTYPE_AFSDB:
+		case KNOT_RRTYPE_RT:
+		case KNOT_RRTYPE_KX:
+		case KNOT_RRTYPE_LP:
+			return dump_mx(p);
+		case KNOT_RRTYPE_TXT:
+		case KNOT_RRTYPE_SPF:
+			return dump_txt(p);
+		case KNOT_RRTYPE_KEY:
+		case KNOT_RRTYPE_DNSKEY:
+		case KNOT_RRTYPE_CDNSKEY:
+			return dump_dnskey(p);
+		case KNOT_RRTYPE_AAAA:
+			return dump_aaaa(p);
+		case KNOT_RRTYPE_LOC:
+			return dump_loc(p);
+		case KNOT_RRTYPE_SRV:
+			return dump_srv(p);
+		case KNOT_RRTYPE_NAPTR:
+			return dump_naptr(p);
+		case KNOT_RRTYPE_CERT:
+			return dump_cert(p);
+		case KNOT_RRTYPE_APL:
+			return dump_apl(p);
+		case KNOT_RRTYPE_DS:
+		case KNOT_RRTYPE_CDS:
+			return dump_ds(p);
+		case KNOT_RRTYPE_SSHFP:
+			return dump_sshfp(p);
+		case KNOT_RRTYPE_IPSECKEY:
+			return dump_ipseckey(p);
+		case KNOT_RRTYPE_RRSIG:
+			return dump_rrsig(p);
+		case KNOT_RRTYPE_NSEC:
+			return dump_nsec(p);
+		case KNOT_RRTYPE_DHCID:
+			return dump_dhcid(p);
+		case KNOT_RRTYPE_NSEC3:
+			return dump_nsec3(p);
+		case KNOT_RRTYPE_NSEC3PARAM:
+			return dump_nsec3param(p);
+		case KNOT_RRTYPE_TLSA:
+			return dump_tlsa(p);
+		case KNOT_RRTYPE_NID:
+		case KNOT_RRTYPE_L64:
+			return dump_l64(p);
+		case KNOT_RRTYPE_L32:
+			return dump_l32(p);
+		case KNOT_RRTYPE_EUI48:
+		case KNOT_RRTYPE_EUI64:
+			return dump_eui(p);
+		case KNOT_RRTYPE_TSIG:
+			return dump_tsig(p);
+		case KNOT_RRTYPE_URI:
+			return dump_uri(p);
+		case KNOT_RRTYPE_CAA:
+			return dump_caa(p);
+		default:
+			return dump_unknown(p);
+	}
+}
+
 _public_
 int knot_rrset_txt_dump_data(const knot_rrset_t      *rrset,
                              const size_t            pos,
@@ -1810,121 +1890,21 @@ int knot_rrset_txt_dump_data(const knot_rrset_t      *rrset,
 		.ret = -1
 	};
 
-	int ret = 0;
+	int ret;
 
+	// Allow empty rdata with the CH class (knsupdate).
 	if (data_len == 0 && rrset->rclass != KNOT_CLASS_IN) {
-		return ret;
+		ret = 0;
+	} else if (style->generic) {
+		ret = dump_unknown(&p);
+	} else {
+		ret = txt_dump_data(&p, rrset->type);
 	}
 
-	if (style->generic) {
-		return dump_unknown(&p);
-	}
-
-	switch (rrset->type) {
-		case KNOT_RRTYPE_A:
-			ret = dump_a(&p);
-			break;
-		case KNOT_RRTYPE_NS:
-		case KNOT_RRTYPE_CNAME:
-		case KNOT_RRTYPE_PTR:
-		case KNOT_RRTYPE_DNAME:
-			ret = dump_ns(&p);
-			break;
-		case KNOT_RRTYPE_SOA:
-			ret = dump_soa(&p);
-			break;
-		case KNOT_RRTYPE_HINFO:
-			ret = dump_hinfo(&p);
-			break;
-		case KNOT_RRTYPE_MINFO:
-		case KNOT_RRTYPE_RP:
-			ret = dump_minfo(&p);
-			break;
-		case KNOT_RRTYPE_MX:
-		case KNOT_RRTYPE_AFSDB:
-		case KNOT_RRTYPE_RT:
-		case KNOT_RRTYPE_KX:
-		case KNOT_RRTYPE_LP:
-			ret = dump_mx(&p);
-			break;
-		case KNOT_RRTYPE_TXT:
-		case KNOT_RRTYPE_SPF:
-			ret = dump_txt(&p);
-			break;
-		case KNOT_RRTYPE_KEY:
-		case KNOT_RRTYPE_DNSKEY:
-		case KNOT_RRTYPE_CDNSKEY:
-			ret = dump_dnskey(&p);
-			break;
-		case KNOT_RRTYPE_AAAA:
-			ret = dump_aaaa(&p);
-			break;
-		case KNOT_RRTYPE_LOC:
-			ret = dump_loc(&p);
-			break;
-		case KNOT_RRTYPE_SRV:
-			ret = dump_srv(&p);
-			break;
-		case KNOT_RRTYPE_NAPTR:
-			ret = dump_naptr(&p);
-			break;
-		case KNOT_RRTYPE_CERT:
-			ret = dump_cert(&p);
-			break;
-		case KNOT_RRTYPE_APL:
-			ret = dump_apl(&p);
-			break;
-		case KNOT_RRTYPE_DS:
-		case KNOT_RRTYPE_CDS:
-			ret = dump_ds(&p);
-			break;
-		case KNOT_RRTYPE_SSHFP:
-			ret = dump_sshfp(&p);
-			break;
-		case KNOT_RRTYPE_IPSECKEY:
-			ret = dump_ipseckey(&p);
-			break;
-		case KNOT_RRTYPE_RRSIG:
-			ret = dump_rrsig(&p);
-			break;
-		case KNOT_RRTYPE_NSEC:
-			ret = dump_nsec(&p);
-			break;
-		case KNOT_RRTYPE_DHCID:
-			ret = dump_dhcid(&p);
-			break;
-		case KNOT_RRTYPE_NSEC3:
-			ret = dump_nsec3(&p);
-			break;
-		case KNOT_RRTYPE_NSEC3PARAM:
-			ret = dump_nsec3param(&p);
-			break;
-		case KNOT_RRTYPE_TLSA:
-			ret = dump_tlsa(&p);
-			break;
-		case KNOT_RRTYPE_NID:
-		case KNOT_RRTYPE_L64:
-			ret = dump_l64(&p);
-			break;
-		case KNOT_RRTYPE_L32:
-			ret = dump_l32(&p);
-			break;
-		case KNOT_RRTYPE_EUI48:
-		case KNOT_RRTYPE_EUI64:
-			ret = dump_eui(&p);
-			break;
-		case KNOT_RRTYPE_TSIG:
-			ret = dump_tsig(&p);
-			break;
-		case KNOT_RRTYPE_URI:
-			ret = dump_uri(&p);
-			break;
-		case KNOT_RRTYPE_CAA:
-			ret = dump_caa(&p);
-			break;
-		default:
-			ret = dump_unknown(&p);
-			break;
+	// Terminate the string just in case.
+	if (ret >= 0) {
+		assert(ret < maxlen);
+		dst[ret] = '\0';
 	}
 
 	return ret;
