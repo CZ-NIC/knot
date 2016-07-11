@@ -47,7 +47,7 @@ static int create_nsec_rrset(knot_rrset_t *rrset, const zone_node_t *from,
 		return KNOT_ENOMEM;
 	}
 
-	bitmap_add_node_rrsets(rr_types, from);
+	bitmap_add_node_rrsets(rr_types, KNOT_RRTYPE_NSEC, from);
 	dnssec_nsec_bitmap_add(rr_types, KNOT_RRTYPE_NSEC);
 	dnssec_nsec_bitmap_add(rr_types, KNOT_RRTYPE_RRSIG);
 	if (node_rrtype_exists(from, KNOT_RRTYPE_SOA)) {

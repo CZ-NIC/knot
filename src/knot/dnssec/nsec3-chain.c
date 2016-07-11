@@ -332,7 +332,7 @@ static zone_node_t *create_nsec3_node_for_node(zone_node_t *node,
 		return NULL;
 	}
 
-	bitmap_add_node_rrsets(rr_types, node);
+	bitmap_add_node_rrsets(rr_types, KNOT_RRTYPE_NSEC3, node);
 	if (node->rrset_count > 0 && node_should_be_signed_nsec3(node)) {
 		dnssec_nsec_bitmap_add(rr_types, KNOT_RRTYPE_RRSIG);
 	}
