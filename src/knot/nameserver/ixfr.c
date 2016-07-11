@@ -352,7 +352,6 @@ static int ixfrin_answer_init(struct answer_data *data)
 	if (proc == NULL) {
 		return KNOT_ENOMEM;
 	}
-
 	memset(proc, 0, sizeof(struct ixfr_proc));
 	gettimeofday(&proc->proc.tstamp, NULL);
 

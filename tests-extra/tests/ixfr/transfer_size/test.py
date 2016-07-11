@@ -37,6 +37,4 @@ resp = slave.dig("test.example.com.", "TXT")
 
 resp.check("passed")
 
-#t.xfr_diff(master, slave, zone)
-
 t.end()

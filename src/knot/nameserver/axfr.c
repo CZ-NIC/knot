@@ -363,6 +363,7 @@ static int axfr_answer_finalize(struct answer_data *adata)
 
 static int axfr_answer_packet(knot_pkt_t *pkt, struct answer_data *adata)
 {
+	assert(adata != NULL);
 	struct xfr_proc *proc = adata->ext;
 	assert(pkt != NULL);
 	assert(proc != NULL);
@@ -383,8 +384,7 @@ static int axfr_answer_packet(knot_pkt_t *pkt, struct answer_data *adata)
 	for (uint16_t i = 0; i < answer->count; ++i) {
 		if (answer_rr[i].type == KNOT_RRTYPE_SOA &&
 		    node_rrtype_exists(zc.z->apex, KNOT_RRTYPE_SOA)) {
-			    log_zone_debug(proc->contents->apex->owner, "size: %zu", proc->contents->size);
-			    return KNOT_STATE_DONE;
+			return KNOT_STATE_DONE;
 		} else {
 			int ret = zcreator_step(&zc, &answer_rr[i]);
 			if (ret != KNOT_EOK) {

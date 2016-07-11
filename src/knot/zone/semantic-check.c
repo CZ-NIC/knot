@@ -169,6 +169,12 @@ static const struct check_function CHECK_FUNCTIONS[] = {
 static const int CHECK_FUNCTIONS_LEN = sizeof(CHECK_FUNCTIONS)
                                      / sizeof(struct check_function);
 
+/*!
+ * \biref Measure size of zone
+ *
+ * Not actual semantic check, but measure size of zone.
+ * Zone size is saved into zone_contents structure.
+ */
 static int measure_size(const zone_node_t *node, semchecks_data_t *data){
 
 	int rrset_count = node->rrset_count;
@@ -179,7 +185,6 @@ static int measure_size(const zone_node_t *node, semchecks_data_t *data){
 	}
 	return KNOT_EOK;
 }
-
 
 /*!
  * \brief Check whether DNSKEY rdata are valid.
@@ -952,8 +957,6 @@ int zone_do_sem_checks(zone_contents_t *zone, bool optional,
 
 	int ret = zone_contents_tree_apply_inorder(zone, do_checks_in_tree,
 	                                           &data);
-
-	log_zone_debug(zone->apex->owner, "semcheck: size of zone: %zu", zone->size);
 
 	if (ret != KNOT_EOK) {
 		return ret;

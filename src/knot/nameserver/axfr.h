@@ -25,7 +25,6 @@
 #pragma once
 
 #include "libknot/packet/pkt.h"
-#include "knot/conf/conf.h"
 #include "knot/nameserver/log.h"
 #include "knot/query/query.h"
 #include "knot/nameserver/process_query.h"
