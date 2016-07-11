@@ -352,6 +352,7 @@ static int axfr_answer_finalize(struct answer_data *adata)
 
 static int axfr_answer_packet(knot_pkt_t *pkt, struct answer_data *adata)
 {
+	assert(adata != NULL);
 	struct xfr_proc *proc = adata->ext;
 	assert(pkt != NULL);
 	assert(proc != NULL);
