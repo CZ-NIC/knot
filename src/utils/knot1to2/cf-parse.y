@@ -384,6 +384,7 @@ static void grp_add(void *scanner, const char *value)
 %token <tok> NOTIFY_TIMEOUT
 %token <tok> DBSYNC_TIMEOUT
 %token <tok> IXFR_FSLIMIT
+%token <tok> MAX_ZONE_SIZE
 %token <tok> XFR_IN
 %token <tok> XFR_OUT
 %token <tok> UPDATE_IN
@@ -658,6 +659,8 @@ zone:
  | zone SEMANTIC_CHECKS BOOL ';'		{ f_bool(scanner,  R_ZONE, C_SEM_CHECKS,       $3.i); }
  | zone IXFR_FSLIMIT SIZE ';'			{ f_int(scanner,   R_ZONE, C_MAX_JOURNAL_SIZE, $3.l); }
  | zone IXFR_FSLIMIT NUM ';'			{ f_int(scanner,   R_ZONE, C_MAX_JOURNAL_SIZE, $3.i); }
+ | zone MAX_ZONE_SIZE SIZE ';'			{ f_int(scanner,   R_ZONE, C_MAX_ZONE_SIZE,    $3.l); }
+ | zone MAX_ZONE_SIZE NUM ';'			{ f_int(scanner,   R_ZONE, C_MAX_ZONE_SIZE,    $3.i); }
  | zone DBSYNC_TIMEOUT NUM ';'			{ f_int(scanner,   R_ZONE, C_ZONEFILE_SYNC,    $3.i); }
  | zone DBSYNC_TIMEOUT INTERVAL ';'		{ f_int(scanner,   R_ZONE, C_ZONEFILE_SYNC,    $3.i); }
  | zone STORAGE TEXT ';'			{ f_quote(scanner, R_ZONE, C_STORAGE,          $3.t); free($3.t); }
@@ -696,6 +699,8 @@ zones:
  | zones SEMANTIC_CHECKS BOOL ';'		{ f_bool(scanner,  R_ZONE_TPL, C_SEM_CHECKS,       $3.i); }
  | zones IXFR_FSLIMIT SIZE ';'			{ f_int(scanner,   R_ZONE_TPL, C_MAX_JOURNAL_SIZE, $3.l); }
  | zones IXFR_FSLIMIT NUM ';'			{ f_int(scanner,   R_ZONE_TPL, C_MAX_JOURNAL_SIZE, $3.i); }
+ | zones MAX_ZONE_SIZE SIZE ';'			{ f_int(scanner,   R_ZONE_TPL, C_MAX_ZONE_SIZE,    $3.l); }
+ | zones MAX_ZONE_SIZE NUM ';'			{ f_int(scanner,   R_ZONE_TPL, C_MAX_ZONE_SIZE,    $3.i); }
  | zones DBSYNC_TIMEOUT NUM ';'			{ f_int(scanner,   R_ZONE_TPL, C_ZONEFILE_SYNC,    $3.i); }
  | zones DBSYNC_TIMEOUT INTERVAL ';'		{ f_int(scanner,   R_ZONE_TPL, C_ZONEFILE_SYNC,    $3.i); }
  | zones STORAGE TEXT ';'			{ f_quote(scanner, R_ZONE_TPL, C_STORAGE,          $3.t); free($3.t); }
