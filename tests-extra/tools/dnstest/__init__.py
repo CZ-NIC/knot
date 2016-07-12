@@ -9,5 +9,6 @@ __all__ = [
     "test",
     "update",
     "utils",
-    "zonefile"
+    "zonefile",
+    "faketime"
 ]
