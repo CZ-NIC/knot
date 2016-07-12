@@ -367,21 +367,6 @@ static int prepare_zone_copy(zone_contents_t *old_contents,
 	return KNOT_EOK;
 }
 
-/*! \brief Removes empty nodes from updated zone a does zone adjusting. */
-static int finalize_updated_zone(zone_contents_t *contents_copy,
-                                 bool set_nsec3_names)
-{
-	if (contents_copy == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	if (set_nsec3_names) {
-		return zone_contents_adjust_full(contents_copy);
-	} else {
-		return zone_contents_adjust_pointers(contents_copy);
-	}
-}
-
 /* ------------------------------- API -------------------------------------- */
 
 void apply_init_ctx(apply_ctx_t *ctx)
@@ -424,7 +409,7 @@ int apply_changesets(apply_ctx_t *ctx, zone_t *zone, list_t *chsets, zone_conten
 
 	assert(contents_copy->apex != NULL);
 
-	ret = finalize_updated_zone(contents_copy, true);
+	ret = zone_contents_adjust_full(contents_copy);
 	if (ret != KNOT_EOK) {
 		update_rollback(ctx);
 		update_free_zone(&contents_copy);
@@ -460,7 +445,7 @@ int apply_changeset(apply_ctx_t *ctx, zone_t *zone, changeset_t *change, zone_co
 		return ret;
 	}
 
-	ret = finalize_updated_zone(contents_copy, true);
+	ret = zone_contents_adjust_full(contents_copy);
 	if (ret != KNOT_EOK) {
 		update_rollback(ctx);
 		update_free_zone(&contents_copy);
@@ -487,7 +472,7 @@ int apply_changesets_directly(apply_ctx_t *ctx, zone_contents_t *contents, list_
 		}
 	}
 
-	int ret = finalize_updated_zone(contents, true);
+	int ret = zone_contents_adjust_full(contents);
 	if (ret != KNOT_EOK) {
 		update_cleanup(ctx);
 	}
@@ -507,11 +492,7 @@ int apply_changeset_directly(apply_ctx_t *ctx, zone_contents_t *contents, change
 		return ret;
 	}
 
-	ret = finalize_updated_zone(contents, true);
-	if (ret != KNOT_EOK) {
-		update_cleanup(ctx);
-		return ret;
-	}
+	ret = zone_contents_adjust_full(contents);
 
 	return KNOT_EOK;
 }
