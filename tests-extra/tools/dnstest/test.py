@@ -165,7 +165,8 @@ class Test(object):
 
         if params.valgrind_bin and \
            (valgrind or (valgrind == None and server == "knot")):
-            srv.valgrind = [params.valgrind_bin] + \
+            srv.valgrind = ["libtool", "e"] + \
+                           [params.valgrind_bin] + \
                            params.valgrind_flags.split() + \
                            ["--log-file=%s" % srv.valgrind_log]
 

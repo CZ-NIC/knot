@@ -73,17 +73,23 @@ class ZoneFile(object):
             if version:
                 src_file += "." + str(version)
 
-            shutil.copyfile(src_file, self.path)
-
-            self.update_mtime()
+            try:
+                stats = os.stat(self.path)
+            except FileNotFoundError:
+                shutil.copyfile(src_file, self.path)
+            else:
+                shutil.copyfile(src_file, self.path)
+                new_stats = os.stat(self.path)
+                if new_stats.st_mtime - stats.st_mtime < 1:
+                    os.utime(self.path, (stats.st_atime + 1, stats.st_mtime + 1))
 
             # Copy zone keys.
             keydir = self.storage + "/keys"
             if os.path.isdir(keydir):
                 distutils.dir_util.copy_tree(keydir, self.key_dir, update=True)
 
-        except:
-            raise Exception("Can't use zone file '%s'" % src_file)
+        except Exception as e:
+            raise Exception("Can't use zone file '%s'" % src_file, e)
 
     def upd_file(self, file_name=None, storage=None, version=None):
         '''Replace zone file with a different one.'''
@@ -220,6 +226,10 @@ class ZoneFile(object):
                 else:
                     new_file.write(line)
 
+        stats = os.stat(old_name)
+        new_stats = os.stat(self.path)
+        if new_stats.st_mtime - stats.st_mtime < 1:
+            os.utime(self.path, (stats.st_atime + 1, stats.st_mtime + 1))
         os.remove(old_name)
 
     def update_rnd(self):
@@ -252,7 +262,10 @@ class ZoneFile(object):
         except OSError:
             raise Exception("Can't modify zone file '%s'" % self.path)
 
-        self.update_mtime()
+        stats = os.stat(old_name)
+        new_stats = os.stat(self.path)
+        if new_stats.st_mtime - stats.st_mtime < 1:
+            os.utime(self.path, (stats.st_atime + 1, stats.st_mtime + 1))
         os.remove(old_name)
 
     def remove(self):
@@ -262,8 +275,3 @@ class ZoneFile(object):
             os.remove("%s/%s" % (self.file_dir, self.file_name))
         except:
             pass
-
-    def update_mtime(self):
-        stats = os.stat(self.path)
-        os.utime(self.path, (stats.st_atime + 1, stats.st_mtime + 1))
-

@@ -4,6 +4,7 @@
 
 from dnstest.test import Test
 from dnstest.utils import set_err, detail_log
+from dnstest.logwatch import LogWatchException
 
 t = Test()
 
@@ -21,7 +22,7 @@ serial = master.zone_wait(zone)
 
 def reload_zone(serial, version):
     master.update_zonefile(zone, version)
-    master.reload()
+    master.reload(wait_for_nzones=1)
     new_serial = master.zone_wait(zone)
     if new_serial != serial:
         set_err("SOA MISMATCH")

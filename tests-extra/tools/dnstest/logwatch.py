@@ -81,7 +81,7 @@ class LogWatch:
                 self._pass_through(line)
         self._process_end()
 
-    def register(self, message):
+    def register(self, message, expect_count=1):
         """Register new message to watch for.
 
         The message can be a string for a substring match. Or a compiled RE.
@@ -90,7 +90,7 @@ class LogWatch:
         """
         with self._sync:
             self._watch.setdefault(message, 0)
-            return (message, self._watch[message])
+            return message, self._watch[message] + expect_count - 1
 
     def _check_wait(self, event):
         message, counter = event

@@ -263,12 +263,19 @@ class Server(object):
             raise Failed("Can't control='%s' server='%s', ret='%i'" %
                          (cmd, self.name, e.returncode))
 
-    def reload(self):
+    def reload(self, wait_for_nzones=0):
         assert self.RELOAD_MESSAGE
-        event = self.logwatch.register(self.RELOAD_MESSAGE)
+        zone_loaded = self.logwatch.register(self.ZONE_LOADED_MESSAGE)
+        server_reloaded = self.logwatch.register(self.RELOAD_MESSAGE)
         self.ctl("reload")
-        if not self.logwatch.wait(event, self.RELOAD_TIMEOUT):
+
+        if not self.logwatch.wait(server_reloaded, self.RELOAD_TIMEOUT):
             raise Failed("Server didn't reload in time (%s)" % self.name)
+        for i in range(wait_for_nzones):
+            zone_loaded = zone_loaded[0], zone_loaded[1] + i
+            if not self.logwatch.wait(zone_loaded, self.ZONE_LOADED_TIMEOUT):
+                raise Failed("Zone didn't loaded in time (%s)" % self.name)
+
 
     def running(self):
         proc = psutil.Process(self.proc.pid)
@@ -567,10 +574,11 @@ class Server(object):
 
         check_log("ZONE WAIT %s: %s" % (self.name, zone.name))
 
-        for t in range(60):
+        for t in range(90):
             try:
                 resp = self.dig(zone.name, "SOA", udp=True, tries=1,
                                 timeout=2, log_no_sep=True)
+                check_log("ANSWER:{}".format(str((resp.resp.answer[0]).to_rdataset())))
             except:
                 pass
             else:
@@ -588,7 +596,7 @@ class Server(object):
                         break
                     elif greater and serial < _serial:
                         break
-            time.sleep(2)
+            time.sleep(1)
         else:
             self.backtrace()
             serial_str = ""
