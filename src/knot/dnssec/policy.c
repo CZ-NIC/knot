@@ -46,10 +46,4 @@ void update_policy_from_zone(dnssec_kasp_policy_t *policy,
 
 	policy->soa_minimal_ttl = zone_soa_min_ttl(zone);
 	policy->zone_maximal_ttl = 0; // TODO
-
-	// Check for legacy NSEC3 detection.
-	val = conf_zone_get(conf(), C_DNSSEC_POLICY, zone->apex->owner);
-	if (val.code != KNOT_EOK) {
-		policy->nsec3_enabled = knot_is_nsec3_enabled(zone);
-	}
 }
