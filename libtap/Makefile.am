@@ -1,3 +1,7 @@
+AM_CPPFLAGS = \
+	-include $(top_builddir)/src/config.h \
+	-I$(top_srcdir)/src
+
 libtap_la_SOURCES = \
 	tap/basic.c tap/basic.h \
 	tap/files.c tap/files.h \
