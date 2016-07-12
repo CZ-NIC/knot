@@ -54,6 +54,16 @@ int value_tsig_algorithm(int argc, char *argv[], const parameter_t *p, void *dat
 int value_key_size(int argc, char *argv[], const parameter_t *p, void *data);
 
 /*!
+ * uint8_t
+ */
+int value_uint8(int argc, char *argv[], const parameter_t *p, void *data);
+
+/*!
+ * uint16_t
+ */
+int value_uint16(int argc, char *argv[], const parameter_t *p, void *data);
+
+/*!
  * uint32_t
  */
 int value_uint32(int argc, char *argv[], const parameter_t *p, void *data);
