@@ -16,7 +16,6 @@
 %{
 
 #include <arpa/inet.h>
-#include <config.h>
 #include <dirent.h>
 #include <netinet/in.h>
 #include <stdlib.h>

@@ -15,7 +15,6 @@
  */
 
 #include <arpa/inet.h>
-#include <config.h>
 #include <fcntl.h>
 #include <stdbool.h>
 #include <stdint.h>
