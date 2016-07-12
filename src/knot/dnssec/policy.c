@@ -40,12 +40,9 @@ void update_policy_from_zone(dnssec_kasp_policy_t *policy,
 	assert(policy);
 	assert(zone);
 
-	const uint8_t *id = (const uint8_t *)policy->name;
-	const size_t id_len = strlen(policy->name) + 1;
-
-	conf_val_t val = conf_rawid_get(conf(), C_POLICY, C_DNSKEY_TTL, id, id_len);
-	int64_t ttl = conf_int(&val);
-	policy->dnskey_ttl = (ttl != YP_NIL) ? ttl : zone_soa_ttl(zone);
+	if (policy->dnskey_ttl == 0) {
+		policy->dnskey_ttl = zone_soa_ttl(zone);
+	}
 
 	policy->soa_minimal_ttl = zone_soa_min_ttl(zone);
 	policy->zone_maximal_ttl = 0; // TODO
