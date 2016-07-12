@@ -1,4 +1,4 @@
-/*  Copyright (C) 2014 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -12,7 +12,7 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
-*/
+ */
 
 #include <string.h>
 #include <tap/basic.h>
@@ -21,24 +21,25 @@
 #include "error.h"
 #include "nsec.h"
 
-void test_length(void)
+static const dnssec_binary_t RDATA = { .size = 9, .data = (uint8_t []) {
+	0x01,			// algorithm
+	0x00,			// flags
+	0x00, 0x0a,		// iterations
+	0x04,			// salt length
+	'a', 'b', 'c', 'd'	// salt
+}};
+
+static void test_length(void)
 {
 	ok(dnssec_nsec3_hash_length(DNSSEC_NSEC3_ALGORITHM_SHA1) == 20,
 	   "dnssec_nsec3_hash_length() for SHA1");
 }
 
-void test_parsing(void)
+static void test_parsing(void)
 {
-	const dnssec_binary_t rdata = { .size = 9, .data = (uint8_t []) {
-		0x01,			// algorithm
-		0x00,			// flags
-		0x00, 0x0a,		// iterations
-		0x04,			// salt length
-		'a', 'b', 'c', 'd'	// salt
-	}};
 
 	dnssec_nsec3_params_t params = { 0 };
-	int result = dnssec_nsec3_params_from_rdata(&params, &rdata);
+	int result = dnssec_nsec3_params_from_rdata(&params, &RDATA);
 	ok(result == DNSSEC_EOK, "dnssec_nsec3_params_from_rdata()");
 
 	ok(params.algorithm == 1, "algorithm");
@@ -52,7 +53,7 @@ void test_parsing(void)
 	ok(params.salt.data == NULL, "dnssec_nsec3_params_free()");
 }
 
-void test_hashing(void)
+static void test_hashing(void)
 {
 	const dnssec_binary_t dname = {
 		.size = 13,
@@ -83,6 +84,22 @@ void test_hashing(void)
 	dnssec_binary_free(&hash);
 }
 
+static void test_clear(void)
+{
+	const dnssec_nsec3_params_t empty = { 0 };
+	dnssec_nsec3_params_t params = { 0 };
+
+	dnssec_nsec3_params_from_rdata(&params, &RDATA);
+
+	ok(memcmp(&params, &empty, sizeof(dnssec_nsec3_params_t)) != 0,
+	   "non-empty after dnssec_nsec3_params_from_rdata()");
+
+	dnssec_nsec3_params_free(&params);
+
+	ok(memcmp(&params, &empty, sizeof(dnssec_nsec3_params_t)) == 0,
+	   "cleared after dnssec_nsec3_params_free()");
+}
+
 int main(void)
 {
 	plan_lazy();
@@ -90,6 +107,7 @@ int main(void)
 	test_length();
 	test_parsing();
 	test_hashing();
+	test_clear();
 
 	return 0;
 }

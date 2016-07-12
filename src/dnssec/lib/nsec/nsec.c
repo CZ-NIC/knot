@@ -32,7 +32,7 @@ void dnssec_nsec3_params_free(dnssec_nsec3_params_t *params)
 	}
 
 	dnssec_binary_free(&params->salt);
-	clear_struct(&params);
+	clear_struct(params);
 }
 
 /*!
