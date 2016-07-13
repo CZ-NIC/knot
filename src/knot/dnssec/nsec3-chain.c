@@ -555,7 +555,7 @@ static int nsec3_reset(zone_node_t **node_p, void *data)
  */
 int knot_nsec3_create_chain(const zone_contents_t *zone,
                             const dnssec_nsec3_params_t *params,
-			    uint32_t ttl,
+                            uint32_t ttl,
                             changeset_t *changeset)
 {
 	assert(zone);
