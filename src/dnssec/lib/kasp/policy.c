@@ -66,8 +66,6 @@ void dnssec_kasp_policy_defaults(dnssec_kasp_policy_t *policy)
 		return;
 	}
 
-	// TODO: determine defaults for NSEC
-
 	clear_policy(policy);
 
 	policy->algorithm = DNSSEC_KEY_ALGORITHM_ECDSA_P256_SHA256;
@@ -83,6 +81,9 @@ void dnssec_kasp_policy_defaults(dnssec_kasp_policy_t *policy)
 	policy->propagation_delay = HOURS(1);
 
 	policy->nsec3_enabled = false;
+	policy->nsec3_iterations = 10;
+	policy->nsec3_salt_length = 8;
+	policy->nsec3_salt_lifetime = DAYS(30);
 }
 
 _public_
@@ -94,7 +95,6 @@ void dnssec_kasp_policy_free(dnssec_kasp_policy_t *policy)
 
 	free(policy->name);
 	free(policy->keystore);
-	dnssec_nsec3_params_free(&policy->nsec3_params);
 	free(policy);
 }
 

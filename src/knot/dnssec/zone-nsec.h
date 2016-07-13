@@ -25,6 +25,7 @@
 #pragma once
 
 #include <stdbool.h>
+#include "dnssec/nsec.h"
 #include "knot/dnssec/context.h"
 #include "knot/dnssec/zone-keys.h"
 #include "knot/updates/changesets.h"
@@ -62,7 +63,7 @@ knot_dname_t *knot_nsec3_hash_to_dname(const uint8_t *hash, size_t hash_size,
  */
 knot_dname_t *knot_create_nsec3_owner(const knot_dname_t *owner,
                                       const knot_dname_t *zone_apex,
-                                      const knot_nsec3_params_t *params);
+                                      const dnssec_nsec3_params_t *params);
 
 /*!
  * \brief Create NSEC or NSEC3 chain in the zone.

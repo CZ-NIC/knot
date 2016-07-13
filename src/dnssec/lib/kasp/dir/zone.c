@@ -282,8 +282,8 @@ static int export_zone_config(const dnssec_kasp_zone_t *zone, json_t **config_pt
 	}
 
 	_json_cleanup_ json_t *salt = NULL;
-	if (zone->nsec3_salt) {
-		r = encode_binary(zone->nsec3_salt, &salt);
+	if (zone->nsec3_salt.size > 0) {
+		r = encode_binary(&zone->nsec3_salt, &salt);
 		if (r != DNSSEC_EOK) {
 			return r;
 		}
@@ -291,13 +291,24 @@ static int export_zone_config(const dnssec_kasp_zone_t *zone, json_t **config_pt
 		salt = json_null();
 	}
 
+	_json_cleanup_ json_t *salt_created = NULL;
+	r = encode_time(&zone->nsec3_salt_created, &salt_created);
+	if (r != DNSSEC_EOK) {
+		return r;
+	} else if (salt_created == NULL) {
+		salt_created = json_null();
+	}
+
 	_json_cleanup_ json_t *policy = zone->policy ? json_string(zone->policy) : json_null();
 	if (!policy) {
 		return DNSSEC_ENOMEM;
 	}
 
-	json_t *config = json_pack("{sOsOsO}", "policy", policy,
-				   "nsec3_salt", salt, "keys", keys);
+	json_t *config = json_pack("{sOsOsOsO}",
+				   "policy", policy,
+				   "nsec3_salt", salt,
+				   "nsec3_salt_created", salt_created,
+				   "keys", keys);
 	if (!config) {
 		return DNSSEC_ENOMEM;
 	}
@@ -322,21 +333,24 @@ static int parse_zone_config(dnssec_kasp_zone_t *zone, json_t *config)
 		}
 	}
 
-	// get nsec3_salt
+	// get NSEC3 salt
 
-	dnssec_binary_t *salt = NULL;
+	dnssec_binary_t salt = { 0 };
 	json_t *json_salt = json_object_get(config, "nsec3_salt");
 	if (json_salt && !json_is_null(json_salt)) {
-		salt = malloc(sizeof(*salt));
-		if (!salt) {
-			free(policy);
-			return DNSSEC_ENOMEM;
-		}
-		clear_struct(salt);
-
-		int r = decode_binary(json_salt, salt);
+		int r = decode_binary(json_salt, &salt);
 		if (r != DNSSEC_EOK) {
-			free(salt);
+			free(policy);
+			return r;
+		}
+	}
+
+	time_t salt_created = 0;
+	json_t *json_salt_created = json_object_get(config, "nsec3_salt_created");
+	if (json_salt_created && !json_is_null(json_salt_created)) {
+		int r = decode_time(json_salt_created, &salt_created);
+		if (r != DNSSEC_EOK) {
+			dnssec_binary_free(&salt);
 			free(policy);
 			return r;
 		}
@@ -348,8 +362,7 @@ static int parse_zone_config(dnssec_kasp_zone_t *zone, json_t *config)
 	json_t *json_keys = json_object_get(config, "keys");
 	int r = load_zone_keys(zone->dname, &keys, json_keys);
 	if (r != DNSSEC_EOK) {
-		dnssec_binary_free(salt);
-		free(salt);
+		dnssec_binary_free(&salt);
 		free(policy);
 		return r;
 	}
@@ -357,7 +370,9 @@ static int parse_zone_config(dnssec_kasp_zone_t *zone, json_t *config)
 	// store the result
 
 	zone->policy = policy;
+	dnssec_binary_free(&zone->nsec3_salt);
 	zone->nsec3_salt = salt;
+	zone->nsec3_salt_created = salt_created;
 	kasp_zone_keys_free(zone->keys);
 	zone->keys = keys;
 

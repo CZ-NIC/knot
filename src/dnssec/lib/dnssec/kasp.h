@@ -150,7 +150,9 @@ typedef struct dnssec_kasp_zone {
 	char *policy;
 
 	dnssec_list_t *keys;
-	dnssec_binary_t *nsec3_salt;
+
+	dnssec_binary_t nsec3_salt;
+	time_t nsec3_salt_created;
 } dnssec_kasp_zone_t;
 
 /*!
@@ -302,8 +304,9 @@ typedef struct dnssec_kasp_policy {
 	uint32_t rrsig_refresh_before;
 	// NSEC3
 	bool nsec3_enabled;
-	uint32_t nsec3_resalt;
-	dnssec_nsec3_params_t nsec3_params;
+	uint32_t nsec3_salt_lifetime;
+	uint16_t nsec3_iterations;
+	uint8_t nsec3_salt_length;
 	// SOA
 	uint32_t soa_minimal_ttl;
 	// zone

@@ -329,7 +329,8 @@ int knot_rrtype_is_dnssec(const uint16_t type)
 	       type == KNOT_RRTYPE_NSEC       ||
 	       type == KNOT_RRTYPE_NSEC3      ||
 	       type == KNOT_RRTYPE_NSEC3PARAM ||
-	       type == KNOT_RRTYPE_CDNSKEY;
+	       type == KNOT_RRTYPE_CDNSKEY    ||
+	       type == KNOT_RRTYPE_CDS;
 }
 
 _public_

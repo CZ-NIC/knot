@@ -16,6 +16,7 @@
 
 #include <assert.h>
 
+#include "dnssec/error.h"
 #include "knot/zone/contents.h"
 #include "knot/common/log.h"
 #include "knot/dnssec/zone-nsec.h"
@@ -338,7 +339,7 @@ static bool find_in_tree(zone_tree_t *tree, const knot_dname_t *name,
 }
 
 static bool nsec3_params_match(const knot_rdataset_t *rrs,
-                               const knot_nsec3_params_t *params,
+                               const dnssec_nsec3_params_t *params,
                                size_t rdata_pos)
 {
 	assert(rrs != NULL);
@@ -346,9 +347,9 @@ static bool nsec3_params_match(const knot_rdataset_t *rrs,
 
 	return (knot_nsec3_algorithm(rrs, rdata_pos) == params->algorithm
 		&& knot_nsec3_iterations(rrs, rdata_pos) == params->iterations
-		&& knot_nsec3_salt_length(rrs, rdata_pos) == params->salt_length
-		&& memcmp(knot_nsec3_salt(rrs, rdata_pos), params->salt,
-		          params->salt_length) == 0);
+		&& knot_nsec3_salt_length(rrs, rdata_pos) == params->salt.size
+		&& memcmp(knot_nsec3_salt(rrs, rdata_pos), params->salt.data,
+		          params->salt.size) == 0);
 }
 
 zone_contents_t *zone_contents_new(const knot_dname_t *apex_name)
@@ -933,15 +934,32 @@ static int load_nsec3param(zone_contents_t *contents)
 	assert(contents);
 	assert(contents->apex);
 
-	const knot_rdataset_t *rrs = node_rdataset(contents->apex,
-	                                           KNOT_RRTYPE_NSEC3PARAM);
+	const knot_rdataset_t *rrs = NULL;
+	rrs = node_rdataset(contents->apex, KNOT_RRTYPE_NSEC3PARAM);
 	if (rrs == NULL) {
-		knot_nsec3param_free(&contents->nsec3_params);
-		memset(&contents->nsec3_params, 0, sizeof(knot_nsec3_params_t));
+		dnssec_nsec3_params_free(&contents->nsec3_params);
 		return KNOT_EOK;
 	}
 
-	return knot_nsec3param_from_wire(&contents->nsec3_params, rrs);
+	if (rrs->rr_count < 1) {
+		return KNOT_EINVAL;
+	}
+
+	const knot_rdata_t *rr = knot_rdataset_at(rrs, 0);
+	dnssec_binary_t rdata = {
+		.size = knot_rdata_rdlen(rr),
+		.data = knot_rdata_data(rr)
+	};
+
+	dnssec_nsec3_params_t new_params = { 0 };
+	int r = dnssec_nsec3_params_from_rdata(&new_params, &rdata);
+	if (r != DNSSEC_EOK) {
+		return KNOT_EMALF;
+	}
+
+	dnssec_nsec3_params_free(&contents->nsec3_params);
+	contents->nsec3_params = new_params;
+	return KNOT_EOK;
 }
 
 static int contents_adjust(zone_contents_t *contents, bool normal)
@@ -1065,7 +1083,7 @@ void zone_contents_free(zone_contents_t **contents)
 	zone_tree_free(&(*contents)->nodes);
 	zone_tree_free(&(*contents)->nsec3_nodes);
 
-	knot_nsec3param_free(&(*contents)->nsec3_params);
+	dnssec_nsec3_params_free(&(*contents)->nsec3_params);
 
 	free(*contents);
 	*contents = NULL;

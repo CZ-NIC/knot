@@ -31,61 +31,6 @@
 #include "knot/dnssec/zone-sign.h"
 #include "knot/zone/serial.h"
 
-static int salt_init(kdnssec_ctx_t *ctx)
-{
-	assert(ctx);
-
-	if (!ctx->policy->nsec3_enabled) {
-		// Remove unused salt.
-		if (ctx->zone->nsec3_salt != NULL) {
-			dnssec_binary_free(ctx->zone->nsec3_salt);
-			free(ctx->zone->nsec3_salt);
-			ctx->zone->nsec3_salt = NULL;
-			return dnssec_kasp_zone_save(ctx->kasp, ctx->zone);
-		}
-
-		return KNOT_EOK;
-	}
-
-	const size_t policy_size = ctx->policy->nsec3_params.salt.size;
-
-	// Reuse existing salt if has configured size.
-	if (ctx->zone->nsec3_salt != NULL &&
-	    ctx->zone->nsec3_salt->size == policy_size) {
-		return KNOT_EOK;
-	}
-
-	dnssec_binary_t *new_salt = malloc(sizeof(*new_salt));
-	if (new_salt == NULL) {
-		return KNOT_ENOMEM;
-	}
-
-	// Generate new salt.
-	if (policy_size > 0) {
-		int ret = dnssec_binary_alloc(new_salt, policy_size);
-		if (ret != DNSSEC_EOK) {
-			free(new_salt);
-			return ret;
-		}
-
-		ret = dnssec_random_binary(new_salt);
-		if (ret != DNSSEC_EOK) {
-			dnssec_binary_free(new_salt);
-			free(new_salt);
-			return ret;
-		}
-	} else {
-		memset(new_salt, 0, sizeof(*new_salt));
-	}
-
-	// Switch to the new salt.
-	dnssec_binary_free(ctx->zone->nsec3_salt);
-	free(ctx->zone->nsec3_salt);
-	ctx->zone->nsec3_salt = new_salt;
-
-	return dnssec_kasp_zone_save(ctx->kasp, ctx->zone);
-}
-
 static int sign_init(const zone_contents_t *zone, int flags, kdnssec_ctx_t *ctx)
 {
 	assert(zone);
@@ -101,15 +46,6 @@ static int sign_init(const zone_contents_t *zone, int flags, kdnssec_ctx_t *ctx)
 	// update policy based on the zone content
 
 	update_policy_from_zone(ctx->policy, zone);
-
-	// initialize NSEC3 salt
-
-	if (!ctx->legacy) {
-		r = salt_init(ctx);
-		if (r != KNOT_EOK) {
-			return r;
-		}
-	}
 
 	// RRSIG handling
 
@@ -147,28 +83,28 @@ static int sign_process_events(const knot_dname_t *zone_name,
 	dnssec_event_t event = { 0 };
 	dnssec_event_ctx_t ctx = kctx2ctx(kctx);
 
-	int r = dnssec_event_get_next(&ctx, &event);
-	if (r != DNSSEC_EOK) {
-		log_zone_error(zone_name, "DNSSEC, failed to get next event (%s)",
-		               dnssec_strerror(r));
-		return r;
+	for (;;) {
+		int r = dnssec_event_get_next(&ctx, &event);
+		if (r != DNSSEC_EOK) {
+			log_zone_error(zone_name, "DNSSEC, failed to get next event (%s)",
+			               dnssec_strerror(r));
+			return r;
+		}
+
+		if (event.type == DNSSEC_EVENT_NONE || kctx->now < event.time) {
+			return KNOT_EOK;
+		}
+
+		log_zone_info(zone_name, "DNSSEC, executing event '%s'",
+		              dnssec_event_name(event.type));
+
+		r = dnssec_event_execute(&ctx, &event);
+		if (r != DNSSEC_EOK) {
+			log_zone_error(zone_name, "DNSSEC, failed to execute event (%s)",
+			               dnssec_strerror(r));
+			return r;
+		}
 	}
-
-	if (event.type == DNSSEC_EVENT_NONE || kctx->now < event.time) {
-		return DNSSEC_EOK;
-	}
-
-	log_zone_info(zone_name, "DNSSEC, executing event '%s'",
-	              dnssec_event_name(event.type));
-
-	r = dnssec_event_execute(&ctx, &event);
-	if (r != DNSSEC_EOK) {
-		log_zone_error(zone_name, "DNSSEC, failed to execute event (%s)",
-		               dnssec_strerror(r));
-		return r;
-	}
-
-	return KNOT_EOK;
 }
 
 static int sign_update_soa(const zone_contents_t *zone, changeset_t *chset,

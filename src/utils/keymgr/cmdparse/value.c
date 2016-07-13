@@ -22,6 +22,7 @@
 #include <assert.h>
 #include <ctype.h>
 #include <errno.h>
+#include <inttypes.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <string.h>
@@ -253,28 +254,28 @@ int value_key_size(int argc, char *argv[], const parameter_t *p, void *data)
 	return 1;
 }
 
-int value_uint32(int argc, char *argv[], const parameter_t *p, void *data)
+static int value_uint(int argc, char *argv[], const parameter_t *p,
+		      uintmax_t max, uintmax_t *value_ptr)
 {
 	assert(p);
-	assert(data);
+	assert(value_ptr);
 
 	if (argc < 1) {
 		error_missing_option(p);
 		return -1;
 	}
 
-	uint32_t *value_ptr = data + p->offset;
 	char *input = argv[0];
 
 	errno = 0;
 	char *end = NULL;
-	unsigned long value = strtoul(input, &end, 10);
+	uintmax_t value = strtoumax(input, &end, 10);
 	if (*end != '\0' || errno != 0) {
 		error_invalid_value(p, input);
 		return -1;
 	}
 
-	if (value > UINT32_MAX) {
+	if (value > max) {
 		error_invalid_value(p, input);
 		return -1;
 	}
@@ -282,6 +283,31 @@ int value_uint32(int argc, char *argv[], const parameter_t *p, void *data)
 	*value_ptr = value;
 
 	return 1;
+}
+
+#define VALUE_UINT(argc, argv, p, data, type, max) ({ \
+	uintmax_t value = 0; \
+	int r = value_uint((argc), (argv), (p), (max), &value); \
+	if (r >= 0) { \
+		assert(value <= (max)); \
+		*(type *)((data) + (p)->offset) = value; \
+	} \
+	r; \
+})
+
+int value_uint8(int argc, char *argv[], const parameter_t *p, void *data)
+{
+	return VALUE_UINT(argc, argv, p, data, uint8_t, UINT8_MAX);
+}
+
+int value_uint16(int argc, char *argv[], const parameter_t *p, void *data)
+{
+	return VALUE_UINT(argc, argv, p, data, uint16_t, UINT16_MAX);
+}
+
+int value_uint32(int argc, char *argv[], const parameter_t *p, void *data)
+{
+	return VALUE_UINT(argc, argv, p, data, uint32_t, UINT32_MAX);
 }
 
 static const time_t TIME_PARSE_ERROR = -1;

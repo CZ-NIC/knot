@@ -1370,19 +1370,22 @@ static int cmd_policy_list(int argc, char *argv[])
 
 static void print_policy(const dnssec_kasp_policy_t *policy)
 {
-	printf("manual control:   %s\n", policy->manual ? "true" : "false");
-	printf("keystore:         %s\n", policy->keystore ? policy->keystore : "(not set)");
-	printf("algorithm:        %d\n", policy->algorithm);
-	printf("DNSKEY TTL:       %u\n", policy->dnskey_ttl);
-	printf("KSK key size:     %u\n", policy->ksk_size);
-	printf("ZSK key size:     %u\n", policy->zsk_size);
-	printf("ZSK lifetime:     %u\n", policy->zsk_lifetime);
-	printf("RRSIG lifetime:   %u\n", policy->rrsig_lifetime);
-	printf("RRSIG refresh:    %u\n", policy->rrsig_refresh_before);
-	printf("NSEC3 enabled:    %s\n", policy->nsec3_enabled ? "true" : "false");
-	printf("SOA min TTL:      %u\n", policy->soa_minimal_ttl);
-	printf("zone max TTL:     %u\n", policy->zone_maximal_ttl);
-	printf("data propagation: %u\n", policy->propagation_delay);
+	printf("manual control:      %s\n", policy->manual ? "true" : "false");
+	printf("keystore:            %s\n", policy->keystore ? policy->keystore : "(not set)");
+	printf("algorithm:           %d\n", policy->algorithm);
+	printf("DNSKEY TTL:          %u\n", policy->dnskey_ttl);
+	printf("KSK key size:        %u\n", policy->ksk_size);
+	printf("ZSK key size:        %u\n", policy->zsk_size);
+	printf("ZSK lifetime:        %u\n", policy->zsk_lifetime);
+	printf("RRSIG lifetime:      %u\n", policy->rrsig_lifetime);
+	printf("RRSIG refresh:       %u\n", policy->rrsig_refresh_before);
+	printf("NSEC3 enabled:       %s\n", policy->nsec3_enabled ? "true" : "false");
+	printf("NSEC3 iterations:    %u\n", policy->nsec3_iterations);
+	printf("NSEC3 salt length:   %u\n", policy->nsec3_salt_length);
+	printf("NSEC3 salt lifetime: %u\n", policy->nsec3_salt_lifetime);
+	printf("SOA min TTL:         %u\n", policy->soa_minimal_ttl);
+	printf("zone max TTL:        %u\n", policy->zone_maximal_ttl);
+	printf("data propagation:    %u\n", policy->propagation_delay);
 }
 
 static int cmd_policy_show(int argc, char *argv[])
@@ -1411,19 +1414,22 @@ static int cmd_policy_show(int argc, char *argv[])
 
 static const parameter_t POLICY_PARAMS[] = {
 	#define o(member) offsetof(dnssec_kasp_policy_t, member)
-	{ "algorithm",      value_algorithm, .offset = o(algorithm) },
-	{ "manual",         value_bool,      .offset = o(manual) },
-	{ "keystore",       value_string,    .offset = o(keystore) },
-	{ "dnskey-ttl",     value_uint32,    .offset = o(dnskey_ttl) },
-	{ "ksk-size",       value_key_size,  .offset = o(ksk_size) },
-	{ "zsk-size",       value_key_size,  .offset = o(zsk_size) },
-	{ "zsk-lifetime",   value_uint32,    .offset = o(zsk_lifetime) },
-	{ "rrsig-lifetime", value_uint32,    .offset = o(rrsig_lifetime) },
-	{ "rrsig-refresh",  value_uint32,    .offset = o(rrsig_refresh_before) },
-	{ "nsec3",          value_bool,      .offset = o(nsec3_enabled) },
-	{ "soa-min-ttl",    value_uint32,    .offset = o(soa_minimal_ttl) },
-	{ "zone-max-ttl",   value_uint32,    .offset = o(zone_maximal_ttl) },
-	{ "delay",          value_uint32,    .offset = o(propagation_delay) },
+	{ "algorithm",           value_algorithm, .offset = o(algorithm) },
+	{ "manual",              value_bool,      .offset = o(manual) },
+	{ "keystore",            value_string,    .offset = o(keystore) },
+	{ "dnskey-ttl",          value_uint32,    .offset = o(dnskey_ttl) },
+	{ "ksk-size",            value_key_size,  .offset = o(ksk_size) },
+	{ "zsk-size",            value_key_size,  .offset = o(zsk_size) },
+	{ "zsk-lifetime",        value_uint32,    .offset = o(zsk_lifetime) },
+	{ "rrsig-lifetime",      value_uint32,    .offset = o(rrsig_lifetime) },
+	{ "rrsig-refresh",       value_uint32,    .offset = o(rrsig_refresh_before) },
+	{ "nsec3",               value_bool,      .offset = o(nsec3_enabled) },
+	{ "nsec3-iterations",    value_uint16,    .offset = o(nsec3_iterations) },
+	{ "nsec3-salt-length",   value_uint8,     .offset = o(nsec3_salt_length) },
+	{ "nsec3-salt-lifetime", value_uint32,    .offset = o(nsec3_salt_lifetime) },
+	{ "soa-min-ttl",         value_uint32,    .offset = o(soa_minimal_ttl) },
+	{ "zone-max-ttl",        value_uint32,    .offset = o(zone_maximal_ttl) },
+	{ "delay",               value_uint32,    .offset = o(propagation_delay) },
 	{ NULL }
 	#undef o
 };

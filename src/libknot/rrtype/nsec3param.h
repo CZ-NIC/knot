@@ -1,4 +1,4 @@
-/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -17,73 +17,16 @@
 #pragma once
 
 #include <stdint.h>
+#include <stdlib.h>
 
 #include "libknot/rdataset.h"
 
-/*!
- * \brief Structure representing the NSEC3PARAM resource record.
- */
-typedef struct {
-	uint8_t algorithm;    //!< Hash algorithm.
-	uint8_t flags;        //!< Flags.
-	uint16_t iterations;  //!< Additional iterations of the hash function.
-	uint8_t salt_length;  //!< Length of the salt field in bytes.
-	uint8_t *salt;        //!< Salt used in hashing.
-} knot_nsec3_params_t;
+uint8_t knot_nsec3param_algorithm(const knot_rdataset_t *rrs, size_t pos);
 
-/*---------------------------------------------------------------------------*/
-
-static inline
-uint8_t knot_nsec3param_algorithm(const knot_rdataset_t *rrs, size_t pos)
-{
-	KNOT_RDATASET_CHECK(rrs, pos, return 0);
-	return *knot_rdata_offset(rrs, pos, 0);
-}
-
-static inline
-uint8_t knot_nsec3param_flags(const knot_rdataset_t *rrs, size_t pos)
-{
-	KNOT_RDATASET_CHECK(rrs, pos, return 0);
-	return *knot_rdata_offset(rrs, pos, 1);
-}
+uint8_t knot_nsec3param_flags(const knot_rdataset_t *rrs, size_t pos);
 
 uint16_t knot_nsec3param_iterations(const knot_rdataset_t *rrs, size_t pos);
 
-static inline
-uint8_t knot_nsec3param_salt_length(const knot_rdataset_t *rrs, size_t pos)
-{
-	KNOT_RDATASET_CHECK(rrs, pos, return 0);
-	return *knot_rdata_offset(rrs, pos, 4);
-}
+uint8_t knot_nsec3param_salt_length(const knot_rdataset_t *rrs, size_t pos);
 
-static inline
-const uint8_t *knot_nsec3param_salt(const knot_rdataset_t *rrs, size_t pos)
-{
-	KNOT_RDATASET_CHECK(rrs, pos, return 0);
-	return knot_rdata_offset(rrs, pos, 5);
-}
-
-/*!
- * \brief Initialize the structure with NSEC3 params from NSEC3PARAM RR set.
- *
- * \param params      Structure to initialize.
- * \param rrs         The NSEC3PARAM RRs.
- *
- * \return Error code, KNOT_EOK on success.
- */
-int knot_nsec3param_from_wire(knot_nsec3_params_t *params,
-                              const knot_rdataset_t *rrs);
-/*!
- * \brief Clean up structure with NSEC3 params (do not deallocate).
- *
- * \param params Structure with NSEC3 params.
- */
-static inline
-void knot_nsec3param_free(knot_nsec3_params_t *params)
-{
-	if (params == NULL) {
-		return;
-	}
-
-	free(params->salt);
-}
+const uint8_t *knot_nsec3param_salt(const knot_rdataset_t *rrs, size_t pos);

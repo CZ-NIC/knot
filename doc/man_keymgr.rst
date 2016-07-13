@@ -211,7 +211,6 @@ Available *policy-parameter*\ s:
 
   **dnskey-ttl** *seconds*
     TTL value for DNSKEY records.
-    **Note**, the value is temporarily overridden by the SOA TTL.
 
   **ksk-size** *bits*
     Size of the KSK.
@@ -230,8 +229,15 @@ Available *policy-parameter*\ s:
 
   **nsec3** *enable*
     Specifies if NSEC3 will be used instead of NSEC.
-    **Note**, currently unused (the setting is derived from NSEC3PARAM presence
-    in the zone).
+
+  **nsec3-iterations** *iterations*
+    Specifies the number of additional iterations in NSEC3 computation.
+
+  **nsec3-salt-length** *bytes*
+    Specifies salt length for NSEC3 computation.
+
+  **nsec3-salt-lifetime** *seconds*
+    Period after which a new NSEC3 salt is generated.
 
   **soa-min-ttl** *seconds*
     SOA Minimum TTL field.

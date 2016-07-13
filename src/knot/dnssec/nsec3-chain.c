@@ -16,6 +16,7 @@
 
 #include <assert.h>
 
+#include "dnssec/nsec.h"
 #include "libknot/dname.h"
 #include "knot/dnssec/nsec-chain.h"
 #include "knot/dnssec/nsec3-chain.h"
@@ -175,13 +176,13 @@ static void free_nsec3_tree(zone_tree_t *nodes)
 /*!
  * \brief Get NSEC3 RDATA size.
  */
-static size_t nsec3_rdata_size(const knot_nsec3_params_t *params,
+static size_t nsec3_rdata_size(const dnssec_nsec3_params_t *params,
                                const dnssec_nsec_bitmap_t *rr_types)
 {
 	assert(params);
 	assert(rr_types);
 
-	return 6 + params->salt_length
+	return 6 + params->salt.size
 	       + dnssec_nsec3_hash_length(params->algorithm)
 	       + dnssec_nsec_bitmap_size(rr_types);
 }
@@ -192,7 +193,7 @@ static size_t nsec3_rdata_size(const knot_nsec3_params_t *params,
  * \note Content of next hash field is not changed.
  */
 static int nsec3_fill_rdata(uint8_t *rdata, size_t rdata_len,
-                            const knot_nsec3_params_t *params,
+                            const dnssec_nsec3_params_t *params,
                             const dnssec_nsec_bitmap_t *rr_types,
                             const uint8_t *next_hashed)
 {
@@ -204,15 +205,15 @@ static int nsec3_fill_rdata(uint8_t *rdata, size_t rdata_len,
 
 	wire_ctx_t wire = wire_ctx_init(rdata, rdata_len);
 
-	wire_ctx_write_u8(&wire, params->algorithm);			// hash algorithm
-	wire_ctx_write_u8(&wire, 0);					// flags
-	wire_ctx_write_u16(&wire, params->iterations);			// itertions
-	wire_ctx_write_u8(&wire, params->salt_length);			// salt length
-	wire_ctx_write(&wire, params->salt, params->salt_length);	// salt
-	wire_ctx_write_u8(&wire, hash_length);				// hash length
+	wire_ctx_write_u8(&wire, params->algorithm);
+	wire_ctx_write_u8(&wire, params->flags);
+	wire_ctx_write_u16(&wire, params->iterations);
+	wire_ctx_write_u8(&wire, params->salt.size);
+	wire_ctx_write(&wire, params->salt.data, params->salt.size);
+	wire_ctx_write_u8(&wire, hash_length);
 
 	if (next_hashed != NULL) {
-		wire_ctx_write(&wire, next_hashed, hash_length);	// hash
+		wire_ctx_write(&wire, next_hashed, hash_length);
 	} else {
 		wire_ctx_skip(&wire, hash_length);
 	}
@@ -221,7 +222,7 @@ static int nsec3_fill_rdata(uint8_t *rdata, size_t rdata_len,
 		return wire.error;
 	}
 
-	dnssec_nsec_bitmap_write(rr_types, wire.position);		// RR types bit map
+	dnssec_nsec_bitmap_write(rr_types, wire.position);
 
 	return KNOT_EOK;
 }
@@ -239,7 +240,7 @@ static int nsec3_fill_rdata(uint8_t *rdata, size_t rdata_len,
  */
 static int create_nsec3_rrset(knot_rrset_t *rrset,
                               knot_dname_t *owner,
-                              const knot_nsec3_params_t *params,
+                              const dnssec_nsec3_params_t *params,
                               const dnssec_nsec_bitmap_t *rr_types,
                               const uint8_t *next_hashed,
                               uint32_t ttl)
@@ -266,7 +267,7 @@ static int create_nsec3_rrset(knot_rrset_t *rrset,
  * \brief Create NSEC3 node.
  */
 static zone_node_t *create_nsec3_node(knot_dname_t *owner,
-                                      const knot_nsec3_params_t *nsec3_params,
+                                      const dnssec_nsec3_params_t *nsec3_params,
                                       zone_node_t *apex_node,
                                       const dnssec_nsec_bitmap_t *rr_types,
                                       uint32_t ttl)
@@ -313,7 +314,7 @@ static zone_node_t *create_nsec3_node(knot_dname_t *owner,
  */
 static zone_node_t *create_nsec3_node_for_node(zone_node_t *node,
                                                zone_node_t *apex,
-                                               const knot_nsec3_params_t *params,
+                                               const dnssec_nsec3_params_t *params,
                                                uint32_t ttl)
 {
 	assert(node);
@@ -331,7 +332,7 @@ static zone_node_t *create_nsec3_node_for_node(zone_node_t *node,
 		return NULL;
 	}
 
-	bitmap_add_node_rrsets(rr_types, node);
+	bitmap_add_node_rrsets(rr_types, KNOT_RRTYPE_NSEC3, node);
 	if (node->rrset_count > 0 && node_should_be_signed_nsec3(node)) {
 		dnssec_nsec_bitmap_add(rr_types, KNOT_RRTYPE_RRSIG);
 	}
@@ -417,17 +418,15 @@ static int connect_nsec3_nodes(zone_node_t *a, zone_node_t *b,
  *
  * \return Error code, KNOT_EOK if successful.
  */
-static int create_nsec3_nodes(const zone_contents_t *zone, uint32_t ttl,
+static int create_nsec3_nodes(const zone_contents_t *zone,
+                              const dnssec_nsec3_params_t *params,
+                              uint32_t ttl,
                               zone_tree_t *nsec3_nodes,
                               changeset_t *chgset)
 {
 	assert(zone);
 	assert(nsec3_nodes);
 	assert(chgset);
-
-	const knot_nsec3_params_t *params = &zone->nsec3_params;
-
-	assert(params);
 
 	int result = KNOT_EOK;
 
@@ -554,10 +553,13 @@ static int nsec3_reset(zone_node_t **node_p, void *data)
 /*!
  * \brief Create new NSEC3 chain, add differences from current into a changeset.
  */
-int knot_nsec3_create_chain(const zone_contents_t *zone, uint32_t ttl,
+int knot_nsec3_create_chain(const zone_contents_t *zone,
+                            const dnssec_nsec3_params_t *params,
+                            uint32_t ttl,
                             changeset_t *changeset)
 {
 	assert(zone);
+	assert(params);
 	assert(changeset);
 
 	int result;
@@ -581,7 +583,7 @@ int knot_nsec3_create_chain(const zone_contents_t *zone, uint32_t ttl,
 		return result;
 	}
 
-	result = create_nsec3_nodes(zone, ttl, nsec3_nodes, changeset);
+	result = create_nsec3_nodes(zone, params, ttl, nsec3_nodes, changeset);
 	if (result != KNOT_EOK) {
 		free_nsec3_tree(nsec3_nodes);
 		return result;
@@ -607,8 +609,7 @@ int knot_nsec3_create_chain(const zone_contents_t *zone, uint32_t ttl,
 
 	copy_signatures(zone->nsec3_nodes, nsec3_nodes);
 
-	result = zone_tree_add_diff(zone->nsec3_nodes, nsec3_nodes,
-	                                 changeset);
+	result = zone_tree_add_diff(zone->nsec3_nodes, nsec3_nodes, changeset);
 
 	free_nsec3_tree(nsec3_nodes);
 

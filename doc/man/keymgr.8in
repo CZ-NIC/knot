@@ -251,7 +251,6 @@ DNSKEY algorithm number or IANA mnemonic.
 .TP
 \fBdnskey\-ttl\fP \fIseconds\fP
 TTL value for DNSKEY records.
-\fBNote\fP, the value is temporarily overridden by the SOA TTL.
 .TP
 \fBksk\-size\fP \fIbits\fP
 Size of the KSK.
@@ -270,8 +269,15 @@ Period before signature expiration when the signature will be refreshed.
 .TP
 \fBnsec3\fP \fIenable\fP
 Specifies if NSEC3 will be used instead of NSEC.
-\fBNote\fP, currently unused (the setting is derived from NSEC3PARAM presence
-in the zone).
+.TP
+\fBnsec3\-iterations\fP \fIiterations\fP
+Specifies the number of additional iterations in NSEC3 computation.
+.TP
+\fBnsec3\-salt\-length\fP \fIbytes\fP
+Specifies salt length for NSEC3 computation.
+.TP
+\fBnsec3\-salt\-lifetime\fP \fIseconds\fP
+Period after which a new NSEC3 salt is generated.
 .TP
 \fBsoa\-min\-ttl\fP \fIseconds\fP
 SOA Minimum TTL field.

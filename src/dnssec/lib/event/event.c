@@ -36,6 +36,8 @@ const char *dnssec_event_name(dnssec_event_type_t event)
 		return "ZSK rollover, replace signatures";
 	case DNSSEC_EVENT_ZSK_ROLL_REMOVE_OLD_KEY:
 		return "ZSK rollover, remove old key";
+	case DNSSEC_EVENT_NSEC3_RESALT:
+		return "refresh NSEC3 salt";
 	default:
 		return "unknown event";
 	}

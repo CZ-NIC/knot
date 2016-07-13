@@ -19,6 +19,7 @@
 
 #include "knot/common/log.h"
 #include "knot/conf/conf.h"
+#include "knot/events/handlers.h"
 #include "knot/zone/zone-load.h"
 #include "knot/zone/zone.h"
 #include "knot/zone/zonefile.h"
@@ -102,7 +103,7 @@ int event_load(conf_t *conf, zone_t *zone)
 	/* Schedule zone resign. */
 	conf_val_t val = conf_zone_get(conf, C_DNSSEC_SIGNING, zone->name);
 	if (conf_bool(&val)) {
-		//schedule_dnssec(zone, dnssec_refresh);
+		schedule_dnssec(zone, dnssec_refresh);
 	}
 
 	/* Periodic execution. */
