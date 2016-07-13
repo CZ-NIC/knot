@@ -24,6 +24,9 @@ src/contrib/dnstap/writer.h
 src/contrib/endian.h
 src/contrib/files.c
 src/contrib/files.h
+src/contrib/fnv/fnv.h
+src/contrib/fnv/hash_64a.c
+src/contrib/fnv/longlong.h
 src/contrib/getline.c
 src/contrib/getline.h
 src/contrib/hat-trie/hat-trie.c
@@ -86,6 +89,7 @@ src/dnssec/lib/dnssec/tsig.h
 src/dnssec/lib/error.c
 src/dnssec/lib/event/action.h
 src/dnssec/lib/event/action/initial_key.c
+src/dnssec/lib/event/action/nsec3_resalt.c
 src/dnssec/lib/event/action/zsk_rollover.c
 src/dnssec/lib/event/event.c
 src/dnssec/lib/event/keystate.c
@@ -135,6 +139,7 @@ src/dnssec/lib/list/list.c
 src/dnssec/lib/list/ucw_clists.h
 src/dnssec/lib/nsec/bitmap.c
 src/dnssec/lib/nsec/hash.c
+src/dnssec/lib/nsec/nsec.c
 src/dnssec/lib/random.c
 src/dnssec/lib/sign/der.c
 src/dnssec/lib/sign/der.h
@@ -164,6 +169,7 @@ src/dnssec/shared/wire.h
 src/dnssec/tests/binary.c
 src/dnssec/tests/crypto.c
 src/dnssec/tests/event_keystate.c
+src/dnssec/tests/event_nsec3_resalt.c
 src/dnssec/tests/kasp_dir_escape.c
 src/dnssec/tests/kasp_dir_file.c
 src/dnssec/tests/kasp_policy.c
@@ -349,6 +355,12 @@ src/libknot/codes.h
 src/libknot/consts.h
 src/libknot/control/control.c
 src/libknot/control/control.h
+src/libknot/cookies/alg-fnv64.c
+src/libknot/cookies/alg-fnv64.h
+src/libknot/cookies/client.c
+src/libknot/cookies/client.h
+src/libknot/cookies/server.c
+src/libknot/cookies/server.h
 src/libknot/db/db.h
 src/libknot/db/db_lmdb.c
 src/libknot/db/db_lmdb.h
@@ -393,6 +405,8 @@ src/libknot/rrtype/nsec3.c
 src/libknot/rrtype/nsec3.h
 src/libknot/rrtype/nsec3param.c
 src/libknot/rrtype/nsec3param.h
+src/libknot/rrtype/opt-cookie.c
+src/libknot/rrtype/opt-cookie.h
 src/libknot/rrtype/opt.c
 src/libknot/rrtype/opt.h
 src/libknot/rrtype/rdname.h
@@ -530,6 +544,9 @@ tests/fake_server.h
 tests/fdset.c
 tests/journal.c
 tests/libknot/test_control.c
+tests/libknot/test_cookies-client.c
+tests/libknot/test_cookies-opt.c
+tests/libknot/test_cookies-server.c
 tests/libknot/test_db.c
 tests/libknot/test_descriptor.c
 tests/libknot/test_dname.c
