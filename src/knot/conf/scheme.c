@@ -152,7 +152,7 @@ static const yp_item_t desc_policy[] = {
 	                                               DNSSEC_KEY_ALGORITHM_ECDSA_P256_SHA256 } },
 	{ C_KSK_SIZE,            YP_TINT,  YP_VINT = { 0, UINT16_MAX, YP_NIL, YP_SSIZE } },
 	{ C_ZSK_SIZE,            YP_TINT,  YP_VINT = { 0, UINT16_MAX, YP_NIL, YP_SSIZE } },
-	{ C_DNSKEY_TTL,          YP_TINT,  YP_VINT = { 0, UINT32_MAX, YP_NIL, YP_STIME } },
+	{ C_DNSKEY_TTL,          YP_TINT,  YP_VINT = { 0, UINT32_MAX, 0, YP_STIME } },
 	{ C_ZSK_LIFETIME,        YP_TINT,  YP_VINT = { 1, UINT32_MAX, DAYS(30), YP_STIME } },
 	{ C_RRSIG_LIFETIME,      YP_TINT,  YP_VINT = { 1, UINT32_MAX, DAYS(14), YP_STIME } },
 	{ C_RRSIG_REFRESH,       YP_TINT,  YP_VINT = { 1, UINT32_MAX, DAYS(7), YP_STIME } },

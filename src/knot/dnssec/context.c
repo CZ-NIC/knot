@@ -73,8 +73,7 @@ static int policy_load(void *ctx, dnssec_kasp_policy_t *policy)
 	                   dnssec_algorithm_key_size_default(policy->algorithm);
 
 	val = conf_rawid_get(conf(), C_POLICY, C_DNSKEY_TTL, id, id_len);
-	num = conf_int(&val);
-	policy->dnskey_ttl = (num != YP_NIL) ? num : 0;
+	policy->dnskey_ttl = conf_int(&val);
 
 	val = conf_rawid_get(conf(), C_POLICY, C_ZSK_LIFETIME, id, id_len);
 	policy->zsk_lifetime = conf_int(&val);
