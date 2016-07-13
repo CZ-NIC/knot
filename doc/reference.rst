@@ -1013,8 +1013,13 @@ Maximum size of the zone journal file.
 max-zone-size
 ----------------
 
-Maximum size of the zone, used to limit AXFR and IXFR zone trasnfer.
-Size is measured in wire format without compression.
+Maximum size of the zone. The size is measured as size of the zone records
+in wire format without compression. The limit is enforced for incoming zone
+transfers.
+
+For incremental transfers (IXFR), the effective limit for the total size of
+the records in the transfer is twice the configured value. However the final
+size of the zone must satisfy the configured value.
 
 *Default:* 2^64
 
