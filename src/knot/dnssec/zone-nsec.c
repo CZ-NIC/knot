@@ -337,16 +337,6 @@ static int update_nsec3param(const zone_contents_t *zone,
 	return KNOT_EOK;
 }
 
-static uint32_t soa_minimum(const zone_contents_t *zone)
-{
-	const knot_rdataset_t *soa = node_rdataset(zone->apex, KNOT_RRTYPE_SOA);
-	if (soa == NULL) {
-		return 0;
-	}
-
-	return knot_soa_minimum(soa);
-}
-
 /*!
  * \brief Initialize NSEC3PARAM based on the signing policy.
  *
@@ -377,7 +367,12 @@ int knot_zone_create_nsec_chain(const zone_contents_t *zone,
 		return KNOT_EINVAL;
 	}
 
-	uint32_t nsec_ttl = soa_minimum(zone);
+	const knot_rdataset_t *soa = node_rdataset(zone->apex, KNOT_RRTYPE_SOA);
+	if (soa == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	uint32_t nsec_ttl = knot_soa_minimum(soa);
 	dnssec_nsec3_params_t params = nsec3param_init(ctx->policy, ctx->zone);
 
 	int ret = update_nsec3param(zone, changeset, &params);
