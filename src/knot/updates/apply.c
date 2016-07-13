@@ -493,6 +493,10 @@ int apply_changeset_directly(apply_ctx_t *ctx, zone_contents_t *contents, change
 	}
 
 	ret = zone_contents_adjust_full(contents);
+	if (ret != KNOT_EOK) {
+		update_cleanup(ctx);
+		return ret;
+	}
 
 	return KNOT_EOK;
 }
