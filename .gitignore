@@ -1,6 +1,3 @@
-/*.tar.gz
-/*.tar.bz2
-/*.tar.xz
 *.swp
 *~
 *.la
@@ -85,6 +82,10 @@
 
 # Plugin binaries
 /src/rosedb_tool
+
+# Generated tarballs
+/knot-*.tar.gz
+/knot-*.tar.xz
 
 # Code coverage
 *.gcda
