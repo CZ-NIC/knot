@@ -106,6 +106,37 @@ static int parse_config(const char *config, char **uri_ptr, char **module_ptr)
 	return DNSSEC_EOK;
 }
 
+/*!
+ * Load PKCS #11 module and check if the token is available.
+ */
+static int safe_open(const char *config, char **url_ptr)
+{
+	char *url = NULL;
+	char *module = NULL;
+
+	int r = parse_config(config, &url, &module);
+	if (r != DNSSEC_EOK) {
+		return r;
+	}
+
+	r = gnutls_pkcs11_add_provider(module, NULL);
+	free(module);
+	if (r != GNUTLS_E_SUCCESS) {
+		free(url);
+		return DNSSEC_KEYSTORE_FAILED_TO_LOAD_P11_MODULE;
+	}
+
+	unsigned int flags = 0;
+	r = gnutls_pkcs11_token_get_flags(url, &flags);
+	if (r != GNUTLS_E_SUCCESS) {
+		free(url);
+		return DNSSEC_KEYSTORE_FAILED_TO_LOAD_P11_MODULE;
+	}
+
+	*url_ptr = url;
+
+	return DNSSEC_EOK;
+}
 
 /* -- internal API --------------------------------------------------------- */
 
@@ -148,19 +179,7 @@ static int pkcs11_open(void *_ctx, const char *config)
 {
 	pkcs11_ctx_t *ctx = _ctx;
 
-	char *module = NULL;
-	int r = parse_config(config, &ctx->url, &module);
-	if (r != DNSSEC_EOK) {
-		return r;
-	}
-
-	r = gnutls_pkcs11_add_provider(module, NULL);
-	free(module);
-	if (r != GNUTLS_E_SUCCESS) {
-		return DNSSEC_KEYSTORE_FAILED_TO_LOAD_P11_MODULE;
-	}
-
-	return DNSSEC_EOK;
+	return safe_open(config, &ctx->url);
 }
 
 static int pkcs11_close(void *_ctx)
