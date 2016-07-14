@@ -352,6 +352,14 @@ static int zone_txn_commit(zone_t *zone, ctl_args_t *args)
 	free(zone->control_update);
 	zone->control_update = NULL;
 
+	/* Sync zonefile immediately if configured. */
+	conf_val_t val = conf_zone_get(conf(), C_ZONEFILE_SYNC, zone->name);
+	if (conf_int(&val) == 0) {
+		zone_events_schedule(zone, ZONE_EVENT_FLUSH, ZONE_EVENT_NOW);
+	}
+
+	zone_events_schedule(zone, ZONE_EVENT_NOTIFY, ZONE_EVENT_NOW);
+
 	return KNOT_EOK;
 }
 
