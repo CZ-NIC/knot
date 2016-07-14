@@ -172,7 +172,15 @@ static int pkcs11_ctx_free(void *ctx)
 
 static int pkcs11_init(void *ctx, const char *config)
 {
-	return DNSSEC_NOT_IMPLEMENTED_ERROR;
+	/*
+	 * Current keystore initialization is idempotent. We don't really
+	 * initialize the token because don't want to wipe the data. We just
+	 * check that the token is available the same way pkcs11_open() does.
+	 */
+
+	_cleanup_free_ char *url = NULL;
+
+	return safe_open(config, &url);
 }
 
 static int pkcs11_open(void *_ctx, const char *config)
