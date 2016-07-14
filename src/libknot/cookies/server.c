@@ -92,9 +92,9 @@ int knot_sc_check(uint16_t nonce_len, const struct knot_dns_cookies *cookies,
 	};
 
 	/* Generate a new hash. */
-	ret = sc_alg->hash_func(&sc_input, generated_hash, &generated_hash_len);
-	if (ret != KNOT_EOK) {
-		return ret;
+	generated_hash_len = sc_alg->hash_func(&sc_input, generated_hash, generated_hash_len);
+	if (generated_hash_len == 0) {
+		return KNOT_EINVAL;
 	}
 
 	/* Compare hashes. */

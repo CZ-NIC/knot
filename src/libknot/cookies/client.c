@@ -26,7 +26,7 @@ int knot_cc_check(const uint8_t *cc, uint16_t cc_len,
                   const struct knot_cc_input *input,
                   const struct knot_cc_alg *cc_alg)
 {
-	if (!cc || !cc_len || !input ||
+	if (!cc || cc_len == 0 || !input ||
 	    !cc_alg || !cc_alg->cc_size || !cc_alg->gen_func) {
 		return KNOT_EINVAL;
 	}
@@ -38,16 +38,12 @@ int knot_cc_check(const uint8_t *cc, uint16_t cc_len,
 	uint8_t generated_cc[KNOT_OPT_COOKIE_CLNT] = { 0 };
 	uint16_t generated_cc_len = KNOT_OPT_COOKIE_CLNT;
 
-	int ret = cc_alg->gen_func(input, generated_cc, &generated_cc_len);
-	if (ret != KNOT_EOK) {
-		return ret;
-	}
-
+	generated_cc_len = cc_alg->gen_func(input, generated_cc, generated_cc_len);
 	if (generated_cc_len != cc_len) {
 		return KNOT_EINVAL;
 	}
 
-	ret = memcmp(cc, generated_cc, generated_cc_len);
+	int ret = memcmp(cc, generated_cc, generated_cc_len);
 	if (ret != 0) {
 		return KNOT_EINVAL;
 	}

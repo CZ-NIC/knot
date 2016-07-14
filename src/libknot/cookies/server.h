@@ -90,16 +90,15 @@ int knot_sc_parse(uint16_t nonce_len, const uint8_t *sc, uint16_t sc_len,
  *       data prefixed before the actual hash value. Nonce data must be written
  *       by an external function into the server cookie.
  *
- * \param[in]     input     Data which to generate the cookie from.
- * \param[in]     hash_out  Buffer to write the resulting hash data into.
- * \param[in,out] hash_len  On input set to hash buffer size. On successful
- *                          return contains size of written hash.
+ * \param input     Data which to generate the cookie from.
+ * \param hash_out  Buffer to write the resulting hash data into.
+ * \param hash_len  Hash buffer size.
  *
- * \retval KNOT_EOK
- * \retval KNOT_EINVAL
+ * \retval non-zero size of written data on successful return
+ * \retval 0 on error
  */
-typedef int (knot_sc_hash_t)(const struct knot_sc_input *input,
-                             uint8_t *hash_out, uint16_t *hash_len);
+typedef uint16_t (knot_sc_hash_t)(const struct knot_sc_input *input,
+                                  uint8_t *hash_out, uint16_t hash_len);
 
 /*!
  * \brief Holds description of the server cookie algorithm.

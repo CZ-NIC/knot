@@ -32,16 +32,15 @@ struct knot_cc_input {
 /*!
  * \brief Client cookie generator function type.
  *
- * \param[in]     input   Data which to generate the cookie from.
- * \param[in]     cc_out  Buffer to write the resulting client cookie data into.
- * \param[in,out] cc_len  On input set to cookie buffer size. On successful
- *                        return contains size of client cookie.
+ * \param input   Data which to generate the cookie from.
+ * \param cc_out  Buffer to write the resulting client cookie data into.
+ * \param cc_len  Cookie buffer size.
  *
- * \retval KNOT_EOK
- * \retval KNOT_EINVAL
+ * \retval non-zero size of written data on successful return
+ * \retval 0 on error
  */
-typedef int (knot_cc_gen_t)(const struct knot_cc_input *input,
-                            uint8_t *cc_out, uint16_t *cc_len);
+typedef uint16_t (knot_cc_gen_t)(const struct knot_cc_input *input,
+                                 uint8_t *cc_out, uint16_t cc_len);
 
 /*!
  * \brief Holds description of the client cookie algorithm.
