@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
 
@@ -28,6 +29,25 @@ struct knot_cc_input {
 	const uint8_t *secret_data; /*!< Client secret data. */
 	size_t secret_len;          /*!< Secret data length. */
 };
+
+/*!
+ * \brief Check client cookie input data for basic sanity.
+ *
+ * \param input  Data which to generate the cookie from.
+ *
+ * \retval true if input contains at least one socket and secret data
+ * \retval false if input is insufficient or NULL pointer passed
+ */
+static inline bool knot_cc_input_is_valid(const struct knot_cc_input *input)
+{
+	/*
+	 * RFC7873 4.1 -- Client cookie should be generated from
+	 * client IP address, server IP address and a secret quantity.
+	 */
+
+	return input && (input->clnt_sockaddr || input->srvr_sockaddr) &&
+	       input->secret_data && input->secret_len > 0;
+}
 
 /*!
  * \brief Client cookie generator function type.

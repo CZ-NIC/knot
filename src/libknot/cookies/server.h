@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
 
@@ -65,6 +66,25 @@ struct knot_sc_input {
 	uint16_t nonce_len;   /*!< Nonce data length. */
 	const struct knot_sc_private *srvr_data; /*!< Private data known to the server. */
 };
+
+/*!
+ * \brief Check server cookie input data for basic sanity.
+ *
+ * \param input  Data which to generate the cookie from.
+ *
+ * \retval true if input contains client cookie and server secret data
+ * \retval false if input is insufficient or NULL pointer passed
+ */
+static inline bool knot_sc_input_is_valid(const struct knot_sc_input *input)
+{
+	/*
+	 * RFC7873 4.2 -- Server should be generated from request
+	 * source IP address, a secret quantity and request client cookie.
+	 */
+
+	return input && input->cc && input->cc_len > 0 && input->srvr_data &&
+	       input->srvr_data->secret_data && input->srvr_data->secret_len > 0;
+}
 
 /*!
  * \brief Reads a server cookie that contains \a nonce_len bytes of data

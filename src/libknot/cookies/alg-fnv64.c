@@ -59,12 +59,8 @@ static inline void update_hash(Fnv64_t *hash_val, const struct sockaddr *sa)
 static uint16_t cc_gen_fnv64(const struct knot_cc_input *input,
                              uint8_t *cc_out, uint16_t cc_len)
 {
-	if (!input || !cc_out || cc_len < KNOT_OPT_COOKIE_CLNT) {
-		return 0;
-	}
-
-	if ((!input->clnt_sockaddr && !input->srvr_sockaddr) ||
-	    !(input->secret_data && input->secret_len)) {
+	if (!knot_cc_input_is_valid(input) ||
+	    !cc_out || cc_len < KNOT_OPT_COOKIE_CLNT) {
 		return 0;
 	}
 
@@ -108,12 +104,8 @@ static uint16_t cc_gen_fnv64(const struct knot_cc_input *input,
 static uint16_t sc_gen_fnv64(const struct knot_sc_input *input,
                              uint8_t *hash_out, uint16_t hash_len)
 {
-	if (!input || !hash_out || hash_len < SRVR_FNV64_HASH_SIZE) {
-		return 0;
-	}
-
-	if (!input->cc || !input->cc_len || !input->srvr_data ||
-	    !input->srvr_data->secret_data || !input->srvr_data->secret_len) {
+	if (!knot_sc_input_is_valid(input) ||
+	    !hash_out || hash_len < SRVR_FNV64_HASH_SIZE) {
 		return 0;
 	}
 
