@@ -278,8 +278,6 @@ static int zone_contents_adjust_normal_node(zone_node_t **tnode, void *data)
 		return ret;
 	}
 
-	measure_size(*tnode, &((zone_adjust_arg_t *)data)->zone->size);
-
 	// Connect nodes to their NSEC3 nodes
 	return adjust_nsec3_pointers(tnode, data);
 }
@@ -329,6 +327,8 @@ static int adjust_additional(zone_node_t **tnode, void *data)
 	int ret = KNOT_EOK;
 	zone_adjust_arg_t *args = (zone_adjust_arg_t *)data;
 	zone_node_t *node = *tnode;
+
+	measure_size(node, &args->zone->size);
 
 	/* Lookup additional records for specific nodes. */
 	for(uint16_t i = 0; i < node->rrset_count; ++i) {
@@ -1110,6 +1110,7 @@ int zone_contents_adjust_pointers(zone_contents_t *contents)
 	zone_adjust_arg_t adjust_arg = { .first_node = NULL,
 	                                 .previous_node = NULL,
 	                                 .zone = contents };
+	contents->size = 0;
 	ret =  zone_contents_adjust_nodes(contents->nodes, &adjust_arg,
 	                                       adjust_pointers);
 	if (ret != KNOT_EOK) {
@@ -1147,6 +1148,7 @@ int zone_contents_adjust_full(zone_contents_t *zone,
 
 	zone_adjust_arg_t adjust_arg = { 0 };
 	adjust_arg.zone = zone;
+	zone->size = 0;
 
 	// adjust NSEC3 nodes
 

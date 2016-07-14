@@ -225,7 +225,7 @@ static int process_normal(zone_t *zone, list_t *requests)
 	// Apply changes.
 	ret = apply_changeset(zone, &ddns_ch, &new_contents);
 	if (ret != KNOT_EOK) {
-		if (ret == KNOT_ETTL) {
+		if (ret == KNOT_ETTL || ret == KNOT_EZONESIZE) {
 			set_rcodes(requests, KNOT_RCODE_REFUSED);
 		} else {
 			set_rcodes(requests, KNOT_RCODE_SERVFAIL);
