@@ -245,6 +245,17 @@ static int adjust_nsec3_pointers(zone_node_t **tnode, void *data)
 	return ret;
 }
 
+static int measure_size(zone_node_t *node, void *data){
+
+	size_t *size = data;
+	int rrset_count = node->rrset_count;
+	for (int i = 0; i < rrset_count; i++) {
+		knot_rrset_t rrset = node_rrset_at(node, i);
+		*size += knot_rrset_size(&rrset);
+	}
+	return KNOT_EOK;
+}
+
 /*!
  * \brief Adjust normal (non NSEC3) node.
  *
@@ -266,6 +277,8 @@ static int zone_contents_adjust_normal_node(zone_node_t **tnode, void *data)
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
+
+	measure_size(*tnode, &((zone_adjust_arg_t *)data)->zone->size);
 
 	// Connect nodes to their NSEC3 nodes
 	return adjust_nsec3_pointers(tnode, data);
@@ -301,6 +314,8 @@ static int zone_contents_adjust_nsec3_node(zone_node_t **tnode, void *data)
 
 	node->prev = args->previous_node;
 	args->previous_node = node;
+
+	measure_size(*tnode, &args->zone->size);
 
 	return KNOT_EOK;
 }
@@ -1436,16 +1451,6 @@ zone_node_t *zone_contents_find_node_for_rr(zone_contents_t *zone, const knot_rr
 	return node;
 }
 
-static int measure_size(zone_node_t *node, void *data){
-
-	size_t *size = data;
-	int rrset_count = node->rrset_count;
-	for (int i = 0; i < rrset_count; i++) {
-		knot_rrset_t rrset = node_rrset_at(node, i);
-		*size += knot_rrset_size(&rrset);
-	}
-	return KNOT_EOK;
-}
 
 size_t zone_contents_measure_size(zone_contents_t *zone)
 {

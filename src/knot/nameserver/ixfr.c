@@ -46,8 +46,7 @@ struct ixfr_proc {
 	knot_rrset_t *final_soa;       /* First SOA received via IXFR. */
 	list_t changesets;             /* Processed changesets. */
 	size_t change_count;           /* Count of changesets received. */
-	size_t add_size;               /* Size of records to add */
-	size_t del_size;               /* Size of records to remove */
+	size_t change_size;            /* Size of records to add and remove */
 	zone_t *zone;                  /* Modified zone - for journal access. */
 	mm_ctx_t *mm;                  /* Memory context for RR allocations. */
 	struct query_data *qdata;
@@ -375,8 +374,6 @@ static int ixfrin_answer_init(struct answer_data *data)
 	data->ext = proc;
 	data->ext_cleanup = &ixfrin_cleanup;
 
-	zone_contents_measure_size(proc->zone->contents);
-
 	return KNOT_EOK;
 }
 
@@ -398,8 +395,8 @@ static int ixfrin_finalize(struct answer_data *adata)
 
 	size_t size_limit = adata->param->zone->conf->max_zone_size;
 
-	if (new_contents->size > size_limit) { // secondary check
-		IXFRIN_LOG(LOG_WARNING, "zone size exceeded, limit %ld", size_limit);
+	if (new_contents->size > size_limit) {
+		IXFRIN_LOG(LOG_WARNING, "zone size exceeded");
 		updates_rollback(&ixfr->changesets);
 		update_free_zone(&new_contents);
 		return NS_PROC_FAIL;
@@ -560,33 +557,25 @@ static int ixfrin_step(const knot_rrset_t *rr, struct ixfr_proc *proc)
 		return solve_start(rr, proc);
 	case IXFR_SOA_DEL:
 		ret = solve_soa_del(rr, proc);
-		if (ret == KNOT_EOK) {
-			proc->del_size += knot_rrset_size(rr);
-		}
-		return ret;
+		break;
 	case IXFR_DEL:
 		ret = solve_del(rr, change, proc->mm);
-		if (ret == KNOT_EOK) {
-			proc->del_size += knot_rrset_size(rr);
-		}
-		return ret;
+		break;
 	case IXFR_SOA_ADD:
 		ret = solve_soa_add(rr, change, proc->mm);
-		if (ret == KNOT_EOK) {
-			proc->add_size += knot_rrset_size(rr);
-		}
-		return ret;
+		break;
 	case IXFR_ADD:
 		ret = solve_add(rr, change, proc->mm);
-		if (ret == KNOT_EOK) {
-			proc->add_size += knot_rrset_size(rr);
-		}
-		return ret;
+		break;
 	case IXFR_DONE:
 		return KNOT_EOK;
 	default:
 		return KNOT_ERROR;
 	}
+	if (ret == KNOT_EOK) {
+		proc->change_size += knot_rrset_size(rr);
+	}
+	return ret;
 }
 
 /*! \brief Checks whether journal node limit has not been exceeded. */
@@ -618,7 +607,6 @@ static int process_ixfrin_packet(knot_pkt_t *pkt, struct answer_data *adata)
 	ixfr->proc.nbytes += pkt->size;
 
 	size_t size_limit = adata->param->zone->conf->max_zone_size;
-	const size_t zone_size = ixfr->zone->contents->size;
 
 	// Process RRs in the message.
 	const knot_pktsection_t *answer = knot_pkt_section(pkt, KNOT_ANSWER);
@@ -644,17 +632,10 @@ static int process_ixfrin_packet(knot_pkt_t *pkt, struct answer_data *adata)
 			return NS_PROC_DONE;
 		}
 
-		if (ixfr->add_size + ixfr->del_size > 2 * size_limit) {
-			IXFRIN_LOG(LOG_WARNING, "transfer size exceeded, limit %ld",
-			           2 * size_limit);
+		if (ixfr->change_size > 2 * size_limit) {
+			IXFRIN_LOG(LOG_WARNING, "transfer size exceeded");
 		}
 
-		if (ixfr->add_size > ixfr->del_size &&
-		    (zone_size + ixfr->add_size - ixfr->del_size) > size_limit) {
-			IXFRIN_LOG(LOG_WARNING, "zone size exceeded, limit %ld",
-			           size_limit);
-			return NS_PROC_FAIL;
-		}
 	}
 
 	return NS_PROC_MORE;

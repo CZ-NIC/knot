@@ -325,7 +325,7 @@ static int axfr_answer_finalize(struct answer_data *adata)
 	size_t size_limit = adata->param->zone->conf->max_zone_size;
 
 	if (proc->contents->size > size_limit) {
-		AXFRIN_LOG(LOG_WARNING, "zone size exceeded, limit %ld", size_limit);
+		AXFRIN_LOG(LOG_WARNING, "zone size exceeded");
 		return NS_PROC_FAIL;
 	}
 
@@ -380,9 +380,7 @@ static int axfr_answer_packet(knot_pkt_t *pkt, struct answer_data *adata)
 		}
 		proc->contents->size += knot_rrset_size(rr);
 		if (proc->contents->size > size_limit) {
-			log_zone_warning(proc->contents->apex->owner,
-			                 "AXFR, incoming, zone size exceeded, "
-			                 "limit %ld", size_limit);
+			AXFRIN_LOG(LOG_WARNING, "zone size exceeded");
 			return NS_PROC_FAIL;
 		}
 	}
