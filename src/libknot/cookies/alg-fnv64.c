@@ -49,22 +49,19 @@ static inline void update_hash(Fnv64_t *hash_val, const struct sockaddr *sa)
  *
  * \note At least one input address must be provided.
  *
- * \param[in]     input   Input parameters.
- * \param[in]     cc_out  Buffer for computed client cookie.
- * \param[in,out] cc_len  Size of buffer/written data.
+ * \param input   Input parameters.
+ * \param cc_out  Buffer for computed client cookie.
+ * \param cc_len  Buffer size.
  *
- * \return KNOT_EOK on success, error code else.
+ * \retval non-zero size of written data on successful return
+ * \retval 0 on error
  */
-static int cc_gen_fnv64(const struct knot_cc_input *input,
-                        uint8_t *cc_out, uint16_t *cc_len)
+static uint16_t cc_gen_fnv64(const struct knot_cc_input *input,
+                             uint8_t *cc_out, uint16_t cc_len)
 {
-	if (!input || !cc_out || !cc_len || *cc_len < KNOT_OPT_COOKIE_CLNT) {
-		return KNOT_EINVAL;
-	}
-
-	if ((!input->clnt_sockaddr && !input->srvr_sockaddr) ||
-	    !(input->secret_data && input->secret_len)) {
-		return KNOT_EINVAL;
+	if (!knot_cc_input_is_valid(input) ||
+	    !cc_out || cc_len < KNOT_OPT_COOKIE_CLNT) {
+		return 0;
 	}
 
 	Fnv64_t hash_val = FNV1A_64_INIT;
@@ -82,10 +79,10 @@ static int cc_gen_fnv64(const struct knot_cc_input *input,
 
 	assert(KNOT_OPT_COOKIE_CLNT == sizeof(hash_val));
 
-	*cc_len = KNOT_OPT_COOKIE_CLNT;
-	memcpy(cc_out, &hash_val, *cc_len);
+	cc_len = sizeof(hash_val);
+	memcpy(cc_out, &hash_val, cc_len);
 
-	return KNOT_EOK;
+	return cc_len;
 }
 
 #define SRVR_FNV64_HASH_SIZE 8
@@ -97,23 +94,19 @@ static int cc_gen_fnv64(const struct knot_cc_input *input,
  *
  * \note This function computes only the hash value.
  *
- * \param[in]     input     Data to compute cookie from.
- * \param[in]     hash_out  Buffer to write the resulting hash data into.
- * \param[in,out] hash_len  On input set to hash buffer size. On successful
- *                          return contains size of written hash.
+ * \param input     Data to compute cookie from.
+ * \param hash_out  Buffer to write the resulting hash data into.
+ * \param hash_len  Buffer size.
  *
- * \return KNOT_EOK or error code.
+ * \retval non-zero size of written data on successful return
+ * \retval 0 on error
  */
-static int sc_gen_fnv64(const struct knot_sc_input *input,
-                        uint8_t *hash_out, uint16_t *hash_len)
+static uint16_t sc_gen_fnv64(const struct knot_sc_input *input,
+                             uint8_t *hash_out, uint16_t hash_len)
 {
-	if (!input || !hash_out || !hash_len || (*hash_len < SRVR_FNV64_HASH_SIZE)) {
-		return KNOT_EINVAL;
-	}
-
-	if (!input->cc || !input->cc_len || !input->srvr_data ||
-	    !input->srvr_data->secret_data || !input->srvr_data->secret_len) {
-		return KNOT_EINVAL;
+	if (!knot_sc_input_is_valid(input) ||
+	    !hash_out || hash_len < SRVR_FNV64_HASH_SIZE) {
+		return 0;
 	}
 
 	Fnv64_t hash_val = FNV1A_64_INIT;
@@ -131,11 +124,12 @@ static int sc_gen_fnv64(const struct knot_sc_input *input,
 	hash_val = fnv_64a_buf((void *)input->srvr_data->secret_data,
 	                       input->srvr_data->secret_len, hash_val);
 
-	*hash_len = sizeof(hash_val);
-	memcpy(hash_out, &hash_val, *hash_len);
-	assert(SRVR_FNV64_HASH_SIZE == *hash_len);
+	assert(SRVR_FNV64_HASH_SIZE == sizeof(hash_val));
 
-	return KNOT_EOK;
+	hash_len = sizeof(hash_val);
+	memcpy(hash_out, &hash_val, hash_len);
+
+	return hash_len;
 }
 
 _public_
