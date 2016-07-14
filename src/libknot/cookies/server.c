@@ -22,6 +22,18 @@
 #include "libknot/rrtype/opt-cookie.h"
 
 _public_
+bool knot_sc_input_is_valid(const struct knot_sc_input *input)
+{
+	/*
+	 * RFC7873 4.2 -- Server cookie should be generated from request
+	 * source IP address, a secret quantity and request client cookie.
+	 */
+
+	return input && input->cc && input->cc_len > 0 && input->srvr_data &&
+	       input->srvr_data->secret_data && input->srvr_data->secret_len > 0;
+}
+
+_public_
 int knot_sc_parse(uint16_t nonce_len, const uint8_t *sc, uint16_t sc_len,
                   struct knot_sc_content *content)
 {

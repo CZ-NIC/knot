@@ -38,16 +38,7 @@ struct knot_cc_input {
  * \retval true if input contains at least one socket and secret data
  * \retval false if input is insufficient or NULL pointer passed
  */
-static inline bool knot_cc_input_is_valid(const struct knot_cc_input *input)
-{
-	/*
-	 * RFC7873 4.1 -- Client cookie should be generated from
-	 * client IP address, server IP address and a secret quantity.
-	 */
-
-	return input && (input->clnt_sockaddr || input->srvr_sockaddr) &&
-	       input->secret_data && input->secret_len > 0;
-}
+bool knot_cc_input_is_valid(const struct knot_cc_input *input);
 
 /*!
  * \brief Client cookie generator function type.
