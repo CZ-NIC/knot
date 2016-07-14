@@ -81,6 +81,32 @@ static int key_url(const char *token_uri, const char *key_id, char **url_ptr)
 	return DNSSEC_EOK;
 }
 
+/**
+ * Parse configuration string. Accepted format: "<pkcs11-url> <module-path>"
+ */
+static int parse_config(const char *config, char **uri_ptr, char **module_ptr)
+{
+	const char *space = strchr(config, ' ');
+	if (!space) {
+		return DNSSEC_KEYSTORE_INVALID_CONFIG;
+	}
+
+	char *url = strndup(config, space - config);
+	char *module = strdup(space + 1);
+
+	if (!url || !module) {
+		free(url);
+		free(module);
+		return DNSSEC_ENOMEM;
+	}
+
+	*uri_ptr = url;
+	*module_ptr = module;
+
+	return DNSSEC_EOK;
+}
+
+
 /* -- internal API --------------------------------------------------------- */
 
 static void disable_pkcs11_callbacks(void)
@@ -116,31 +142,6 @@ static int pkcs11_ctx_free(void *ctx)
 static int pkcs11_init(void *ctx, const char *config)
 {
 	return DNSSEC_NOT_IMPLEMENTED_ERROR;
-}
-
-/**
- * Parse configuration string. Accepted format: "<pkcs11-url> <module-path>"
- */
-static int parse_config(const char *config, char **uri_ptr, char **module_ptr)
-{
-	const char *space = strchr(config, ' ');
-	if (!space) {
-		return DNSSEC_KEYSTORE_INVALID_CONFIG;
-	}
-
-	char *url = strndup(config, space - config);
-	char *module = strdup(space + 1);
-
-	if (!url || !module) {
-		free(url);
-		free(module);
-		return DNSSEC_ENOMEM;
-	}
-
-	*uri_ptr = url;
-	*module_ptr = module;
-
-	return DNSSEC_EOK;
 }
 
 static int pkcs11_open(void *_ctx, const char *config)
