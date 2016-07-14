@@ -403,7 +403,7 @@ static int ixfrin_finalize(struct answer_data *adata)
 		IXFRIN_LOG(LOG_WARNING, "zone size exceeded");
 		update_rollback(&a_ctx);
 		update_free_zone(&new_contents);
-		return KNOT_STATE_FAIL;
+		return KNOT_EZONESIZE;
 	}
 
 	/* Write changes to journal. */

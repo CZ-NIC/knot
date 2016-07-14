@@ -82,6 +82,7 @@ static const struct error errors[] = {
 	{ KNOT_EDSDIGESTLEN, "DS digest length does not match digest type" },
 	{ KNOT_ENOTSIG,      "expected a TSIG or SIG(0)" },
 	{ KNOT_ELIMIT,       "exceeded response rate limit" },
+	{ KNOT_EZONESIZE,    "zone size exceeded" },
 	{ KNOT_EWRITABLE,    "file is not writable" },
 	{ KNOT_EOF,          "end of file" },
 	{ KNOT_ESYSTEM,      "system error" },
