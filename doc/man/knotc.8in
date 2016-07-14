@@ -75,7 +75,8 @@ Check if the server is running.
 Stop the server if running.
 .TP
 \fBreload\fP
-Reload the server configuration and modified zone files.
+Reload the server configuration and modified zone files. All open zone
+transactions will be aborted!
 .TP
 \fBzone\-check\fP [\fIzone\fP\&...]
 Test if the server can load the zone. Semantic checks are executed if enabled
@@ -90,7 +91,8 @@ Show the zone status. (*)
 \fBzone\-reload\fP [\fIzone\fP\&...]
 Trigger a zone reload from a disk without checking its modification time. For
 slave zone, the refresh from a master server is scheduled; for master zone,
-the notification of slave servers is scheduled.
+the notification of slave servers is scheduled. An open zone transaction
+will be aborted!
 .TP
 \fBzone\-refresh\fP [\fIzone\fP\&...]
 Trigger a check for the zone serial on the zone\(aqs master. If the master has a
@@ -106,6 +108,31 @@ Trigger a zone journal flush into the zone file.
 \fBzone\-sign\fP [\fIzone\fP\&...]
 Trigger a DNSSEC re\-sign of the zone. Existing signatures will be dropped.
 This command is valid for zones with automatic DNSSEC signing.
+.TP
+\fBzone\-read\fP \fIzone\fP [\fIowner\fP [\fItype\fP]]
+Get zone data that are currently being presented.
+.TP
+\fBzone\-begin\fP \fIzone\fP\&...
+Begin a zone transaction.
+.TP
+\fBzone\-commit\fP \fIzone\fP\&...
+Commit the zone transaction. All changes are applied to the zone.
+.TP
+\fBzone\-abort\fP \fIzone\fP\&...
+Abort the zone transaction. All changes are discarded.
+.TP
+\fBzone\-diff\fP \fIzone\fP
+Get zone changes within the transaction.
+.TP
+\fBzone\-get\fP \fIzone\fP [\fIowner\fP [\fItype\fP]]
+Get zone data within the transaction.
+.TP
+\fBzone\-set\fP \fIzone\fP \fIowner\fP [\fIttl\fP] \fItype\fP \fIrdata\fP
+Add zone record within the transaction. The first record in a rrset
+requires a ttl value specified.
+.TP
+\fBzone\-unset\fP \fIzone\fP \fIowner\fP [\fItype\fP [\fIrdata\fP]]
+Remove zone data within the transaction.
 .TP
 \fBconf\-init\fP
 Initialize the configuration database. (*)
@@ -150,7 +177,9 @@ Unset the item data in the transaction.
 .UNINDENT
 .SS Note
 .sp
-Empty \fIzone\fP parameter means all zones.
+Empty or \fB\-\-\fP \fIzone\fP parameter means all zones or all zones with a transaction.
+.sp
+Use \fB@\fP \fIowner\fP to denote the zone name.
 .sp
 Type \fIitem\fP parameter in the form of \fIsection\fP[\fB[\fP\fIid\fP\fB]\fP][\fB\&.\fP\fIname\fP].
 .sp
@@ -230,6 +259,17 @@ $ knotc conf\-begin
 $ knotc conf\-set \(aqzone[example.org]\(aq
 $ knotc conf\-set \(aqzone[example.org].file\(aq \(aq/var/zones/example.org.zone\(aq
 $ knotc conf\-commit
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.SS Get the SOA record for each configured zone
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+$ knotc zone\-read \-\- @ SOA
 .ft P
 .fi
 .UNINDENT

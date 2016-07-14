@@ -22,6 +22,7 @@
 #include "knot/common/log.h"
 #include "knot/nameserver/process_query.h"
 #include "knot/query/requestor.h"
+#include "knot/updates/zone-update.h"
 #include "knot/zone/contents.h"
 #include "knot/zone/serial.h"
 #include "knot/zone/zone.h"
@@ -77,6 +78,17 @@ zone_t* zone_new(const knot_dname_t *name)
 	return zone;
 }
 
+void zone_control_clear(zone_t *zone)
+{
+	if (zone == NULL) {
+		return;
+	}
+
+	zone_update_clear(zone->control_update);
+	free(zone->control_update);
+	zone->control_update = NULL;
+}
+
 void zone_free(zone_t **zone_ptr)
 {
 	if (zone_ptr == NULL || *zone_ptr == NULL) {
@@ -92,6 +104,9 @@ void zone_free(zone_t **zone_ptr)
 	free_ddns_queue(zone);
 	pthread_mutex_destroy(&zone->ddns_lock);
 	pthread_mutex_destroy(&zone->journal_lock);
+
+	/* Control update. */
+	zone_control_clear(zone);
 
 	/* Free preferred master. */
 	pthread_mutex_destroy(&zone->preferred_lock);

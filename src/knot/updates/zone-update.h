@@ -137,6 +137,7 @@ void zone_update_clear(zone_update_t *update);
  *          in the zone_update iterator(s).
  *
  * \param update  Zone update.
+ * \param rrset   RRSet to add.
  *
  * \return KNOT_E*
  */
@@ -150,10 +151,40 @@ int zone_update_add(zone_update_t *update, const knot_rrset_t *rrset);
  *          in the zone_update iterator(s).
  *
  * \param update  Zone update.
+ * \param rrset   RRSet to remove.
  *
  * \return KNOT_E*
  */
 int zone_update_remove(zone_update_t *update, const knot_rrset_t *rrset);
+
+/*!
+ * \brief Removes a whole RRSet of specified type from the zone.
+ *
+ * \warning Do not edit the zone_update when any iterator is active. Any
+ *          zone_update modifications will invalidate the trie iterators
+ *          in the zone_update iterator(s).
+ *
+ * \param update  Zone update.
+ * \param owner   Node name to remove.
+ * \param type    RRSet type to remove.
+ *
+ * \return KNOT_E*
+ */
+int zone_update_remove_rrset(zone_update_t *update, knot_dname_t *owner, uint16_t type);
+
+/*!
+ * \brief Removes a whole node from the zone.
+ *
+ * \warning Do not edit the zone_update when any iterator is active. Any
+ *          zone_update modifications will invalidate the trie iterators
+ *          in the zone_update iterator(s).
+ *
+ * \param update  Zone update.
+ * \param owner   Node name to remove.
+ *
+ * \return KNOT_E*
+ */
+int zone_update_remove_node(zone_update_t *update, const knot_dname_t *owner);
 
 /*!
  * \brief Commits all changes to the zone, signs it, saves changes to journal.

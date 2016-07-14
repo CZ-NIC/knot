@@ -162,6 +162,35 @@ static const zone_node_t *get_synth_node(zone_update_t *update, const knot_dname
 {
 	const zone_node_t *old_node =
 		zone_contents_find_node(update->zone->contents, dname);
+
+	if (old_node == update->zone->contents->apex && update->change.soa_to != NULL) {
+		/* We have an apex and a SOA change, make a copy and apply the change. */
+		zone_node_t *synth_node = node_deep_copy(old_node, &update->mm);
+		if (synth_node == NULL) {
+			return NULL;
+		}
+
+		/* Remove the old SOA */
+		knot_rdataset_t *from = node_rdataset(synth_node, KNOT_RRTYPE_SOA);
+		knot_rdataset_t *what = node_rdataset(old_node, KNOT_RRTYPE_SOA);
+		int ret = knot_rdataset_subtract(from, what, &update->mm);
+		if (ret != KNOT_EOK) {
+			node_free_rrsets(synth_node, &update->mm);
+			node_free(&synth_node, &update->mm);
+			return NULL;
+		}
+
+		/* Add the new SOA */
+		ret = node_add_rrset(synth_node, update->change.soa_to, &update->mm);
+		if (ret != KNOT_EOK) {
+			node_free_rrsets(synth_node, &update->mm);
+			node_free(&synth_node, &update->mm);
+			return NULL;
+		}
+
+		old_node = synth_node;
+	}
+
 	const zone_node_t *add_node =
 		zone_contents_find_node(update->change.add, dname);
 	const zone_node_t *rem_node =
@@ -294,17 +323,19 @@ const knot_rdataset_t *zone_update_to(zone_update_t *update)
 
 void zone_update_clear(zone_update_t *update)
 {
-	if (update != NULL) {
-		if (update->flags & UPDATE_INCREMENTAL) {
-			/* Revert any changes on error, do nothing on success. */
-			update_rollback(&update->a_ctx);
-			changeset_clear(&update->change);
-		} else if (update->flags & UPDATE_FULL) {
-			zone_contents_deep_free(&update->new_cont);
-		}
-		mp_delete(update->mm.ctx);
-		memset(update, 0, sizeof(*update));
+	if (update == NULL) {
+		return;
 	}
+
+	if (update->flags & UPDATE_INCREMENTAL) {
+		/* Revert any changes on error, do nothing on success. */
+		update_rollback(&update->a_ctx);
+		changeset_clear(&update->change);
+	} else if (update->flags & UPDATE_FULL) {
+		zone_contents_deep_free(&update->new_cont);
+	}
+	mp_delete(update->mm.ctx);
+	memset(update, 0, sizeof(*update));
 }
 
 int zone_update_add(zone_update_t *update, const knot_rrset_t *rrset)
@@ -333,10 +364,116 @@ int zone_update_remove(zone_update_t *update, const knot_rrset_t *rrset)
 		return changeset_rem_rrset(&update->change, rrset, CHANGESET_CHECK);
 	} else if (update->flags & UPDATE_FULL) {
 		zone_node_t *n = NULL;
-		return zone_contents_remove_rr(update->new_cont, rrset, &n);
+		knot_rrset_t *rrs_copy = knot_rrset_copy(rrset, &update->mm);
+		int ret = zone_contents_remove_rr(update->new_cont, rrs_copy, &n);
+		knot_rrset_free(&rrs_copy, &update->mm);
+		return ret;
 	} else {
 		return KNOT_EINVAL;
 	}
+}
+
+int zone_update_remove_rrset(zone_update_t *update, knot_dname_t *owner, uint16_t type)
+{
+	if (update == NULL || owner == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	if (update->flags & UPDATE_INCREMENTAL) {
+		/* Remove the RRSet from the original node */
+		const zone_node_t *node = zone_contents_find_node(update->zone->contents, owner);
+		if (node != NULL) {
+			knot_rrset_t rrset = node_rrset(node, type);
+			int ret = changeset_rem_rrset(&update->change, &rrset, CHANGESET_CHECK);
+			if (ret != KNOT_EOK) {
+				return ret;
+			}
+		}
+
+		/* Remove the RRSet from the additions in the changeset */
+		const zone_node_t *additions = zone_contents_find_node(update->change.add, owner);
+		if (additions != NULL) {
+			knot_rrset_t rrset = node_rrset(additions, type);
+			int ret = changeset_rem_rrset(&update->change, &rrset, CHANGESET_CHECK);
+			if (ret != KNOT_EOK) {
+				return ret;
+			}
+		}
+
+		if (node == NULL && additions == NULL) {
+			return KNOT_ENONODE;
+		}
+	} else if (update->flags & UPDATE_FULL) {
+		/* Remove the RRSet from the non-synthesized new node */
+		const zone_node_t *node = zone_contents_find_node(update->new_cont, owner);
+		if (node == NULL) {
+			return KNOT_ENONODE;
+		}
+
+		knot_rrset_t rrset = node_rrset(node, type);
+		int ret = zone_update_remove(update, &rrset);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+	}
+
+	return KNOT_EOK;
+}
+
+int zone_update_remove_node(zone_update_t *update, const knot_dname_t *owner)
+{
+	if (update == NULL || owner == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	if (update->flags & UPDATE_INCREMENTAL) {
+		/* Remove all RRSets from the original node */
+		const zone_node_t *node = zone_contents_find_node(update->zone->contents, owner);
+		if (node != NULL) {
+			size_t rrset_count = node->rrset_count;
+			for (int i = 0; i < rrset_count; ++i) {
+				knot_rrset_t rrset = node_rrset_at(node, rrset_count - 1 - i);
+				int ret = changeset_rem_rrset(&update->change, &rrset, CHANGESET_CHECK);
+				if (ret != KNOT_EOK) {
+					return ret;
+				}
+			}
+		}
+
+		/* Remove all RRSets from the additions in the changeset */
+		const zone_node_t *additions = zone_contents_find_node(update->change.add, owner);
+		if (additions != NULL) {
+			size_t rrset_count = additions->rrset_count;
+			for (int i = 0; i < rrset_count; ++i) {
+				knot_rrset_t rrset = node_rrset_at(additions, rrset_count - 1 - i);
+				int ret = changeset_rem_rrset(&update->change, &rrset, CHANGESET_CHECK);
+				if (ret != KNOT_EOK) {
+					return ret;
+				}
+			}
+		}
+
+		if (node == NULL && additions == NULL) {
+			return KNOT_ENONODE;
+		}
+	} else if (update->flags & UPDATE_FULL) {
+		/* Remove all RRSets from the non-synthesized new node */
+		const zone_node_t *node = zone_contents_find_node(update->new_cont, owner);
+		if (node == NULL) {
+			return KNOT_ENONODE;
+		}
+
+		size_t rrset_count = node->rrset_count;
+		for (int i = 0; i < rrset_count; ++i) {
+			knot_rrset_t rrset = node_rrset_at(node, rrset_count - 1 - i);
+			int ret = zone_update_remove(update, &rrset);
+			if (ret != KNOT_EOK) {
+				return ret;
+			}
+		}
+	}
+
+	return KNOT_EOK;
 }
 
 static bool apex_rr_changed(const zone_node_t *old_apex,

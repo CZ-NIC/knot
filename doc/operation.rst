@@ -180,6 +180,68 @@ actual consumption. Also, for slave servers with incoming transfers
 enabled, be aware that the actual memory consumption might be double
 or higher during transfers.
 
+.. _Editing zones:
+
+Reading and editing zones
+=========================
+
+Knot DNS allows you to read or change zone contents online using server
+control interface.
+
+To get contents of all configured zones, or a specific zone contents, or zone
+records with a specific owner, or even with a specific record type::
+
+    $ knotc zone-read --
+    $ knotc zone-read example.com
+    $ knotc zone-read example.com ns1
+    $ knotc zone-read example.com ns1 NS
+
+.. NOTE::
+   If the record owner is not a fully qualified domain name, then it is
+   considered as a relative name to the zone name.
+
+To start a writing transaction on all zones or on specific zones::
+
+    $ knotc zone-begin --
+    $ knotc zone-begin example.com example.net
+
+Now you can list all nodes within the transaction using the ```zone-get```
+command, which always returns current data with all changes included. The
+command has the same syntax as ```zone-read```.
+
+Within the transaction, you can add a record to a specific zone or to all
+zones with an open transaction::
+
+    $ knotc zone-add example.com ns1 3600 A 192.168.0.1
+    $ knotc zone-add -- ns1 3600 A 192.168.0.1
+
+To remove all records with a specific owner, or a specific rrset, or a
+specific record data::
+
+    $ knotc zone-remove example.com ns1
+    $ knotc zone-remove example.com ns1 A
+    $ knotc zone-remove example.com ns1 A 192.168.0.2
+
+To see the difference between the original zone and the current version::
+
+    $ knotc zone-diff example.com
+
+Finally, either commit or abort your transaction::
+
+    $ knotc zone-commit example.com
+    $ knotc zone-abort example.com
+
+A full example of setting up a completely new zone from scratch::
+
+    $ knotc conf-begin
+    $ knotc conf-set zone.domain example.com
+    $ knotc conf-commit
+    $ knotc zone-begin example.com
+    $ knotc zone-add example.com @ 7200 SOA ns hostmaster 1 86400 900 691200 3600
+    $ knotc zone-add example.com ns 3600 A 192.168.0.1
+    $ knotc zone-add example.com www 3600 A 192.168.0.100
+    $ knotc zone-commit example.com
+
 .. _Controlling running daemon:
 
 Daemon controls

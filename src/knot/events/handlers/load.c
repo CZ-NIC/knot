@@ -121,6 +121,11 @@ int event_load(conf_t *conf, zone_t *zone)
 		log_zone_info(zone->name, "loaded, serial %u", current_serial);
 	}
 
+	if (zone->control_update != NULL) {
+		log_zone_warning(zone->name, "control transaction aborted");
+		zone_control_clear(zone);
+	}
+
 	return KNOT_EOK;
 
 fail:
