@@ -220,6 +220,17 @@ static int adjust_nsec3_pointers(zone_node_t **tnode, void *data)
 	return ret;
 }
 
+static int measure_size(zone_node_t *node, void *data){
+
+	size_t *size = data;
+	int rrset_count = node->rrset_count;
+	for (int i = 0; i < rrset_count; i++) {
+		knot_rrset_t rrset = node_rrset_at(node, i);
+		*size += knot_rrset_size(&rrset);
+	}
+	return KNOT_EOK;
+}
+
 /*!
  * \brief Adjust normal (non NSEC3) node.
  *
@@ -242,6 +253,8 @@ static int adjust_normal_node(zone_node_t **tnode, void *data)
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
+
+	measure_size(*tnode, &((zone_adjust_arg_t *)data)->zone->size);
 
 	// Connect nodes to their NSEC3 nodes
 	return adjust_nsec3_pointers(tnode, data);
@@ -273,6 +286,8 @@ static int adjust_nsec3_node(zone_node_t **tnode, void *data)
 	// set previous node
 	node->prev = args->previous_node;
 	args->previous_node = node;
+
+	measure_size(*tnode, &args->zone->size);
 
 	return KNOT_EOK;
 }
@@ -980,6 +995,8 @@ static int contents_adjust(zone_contents_t *contents, bool normal)
 		.zone = contents
 	};
 
+	contents->size = 0;
+
 	ret = adjust_nodes(contents->nodes, &arg,
 	                   normal ? adjust_normal_node : adjust_pointers);
 	if (ret != KNOT_EOK) {
@@ -1128,17 +1145,6 @@ bool zone_contents_is_signed(const zone_contents_t *zone)
 bool zone_contents_is_empty(const zone_contents_t *zone)
 {
 	return !zone || !node_rrtype_exists(zone->apex, KNOT_RRTYPE_SOA);
-}
-
-static int measure_size(zone_node_t *node, void *data){
-
-	size_t *size = data;
-	int rrset_count = node->rrset_count;
-	for (int i = 0; i < rrset_count; i++) {
-		knot_rrset_t rrset = node_rrset_at(node, i);
-		*size += knot_rrset_size(&rrset);
-	}
-	return KNOT_EOK;
 }
 
 size_t zone_contents_measure_size(zone_contents_t *zone)
