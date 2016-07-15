@@ -448,7 +448,7 @@ int main(int argc, char *argv[])
 	// key store access
 
 	r = dnssec_keystore_init(store, config);
-	ok(r == DNSSEC_NOT_IMPLEMENTED_ERROR, "dnssec_keystore_init(), not implemented");
+	ok(r == DNSSEC_EOK, "dnssec_keystore_init()");
 
 	r = dnssec_keystore_open(store, config);
 	ok(r == DNSSEC_EOK, "dnssec_keystore_open()");

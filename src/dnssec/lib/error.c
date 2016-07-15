@@ -68,7 +68,10 @@ static const error_message_t ERROR_MESSAGES[] = {
 
 	{ DNSSEC_KEYSTORE_INVALID_BACKEND, "invalid KASP keystore backend" },
 	{ DNSSEC_KEYSTORE_INVALID_CONFIG,  "invalid KASP keystore configuration" },
-	{ DNSSEC_KEYSTORE_FAILED_TO_LOAD_P11_MODULE, "failed to load PKCS #11 module" },
+
+	{ DNSSEC_P11_FAILED_TO_LOAD_MODULE, "failed to load PKCS #11 module" },
+	{ DNSSEC_P11_TOO_MANY_MODULES,      "too many PKCS #11 modules loaded" },
+	{ DNSSEC_P11_TOKEN_NOT_AVAILABLE,   "PKCS #11 token not available" },
 
 	{ 0 }
 };

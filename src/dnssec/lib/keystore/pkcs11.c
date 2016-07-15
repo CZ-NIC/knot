@@ -23,6 +23,7 @@
 #include "keyid_gnutls.h"
 #include "keystore.h"
 #include "keystore/internal.h"
+#include "p11/p11.h"
 #include "pem.h"
 #include "shared.h"
 
@@ -81,6 +82,63 @@ static int key_url(const char *token_uri, const char *key_id, char **url_ptr)
 	return DNSSEC_EOK;
 }
 
+/**
+ * Parse configuration string. Accepted format: "<pkcs11-url> <module-path>"
+ */
+static int parse_config(const char *config, char **uri_ptr, char **module_ptr)
+{
+	const char *space = strchr(config, ' ');
+	if (!space) {
+		return DNSSEC_KEYSTORE_INVALID_CONFIG;
+	}
+
+	char *url = strndup(config, space - config);
+	char *module = strdup(space + 1);
+
+	if (!url || !module) {
+		free(url);
+		free(module);
+		return DNSSEC_ENOMEM;
+	}
+
+	*uri_ptr = url;
+	*module_ptr = module;
+
+	return DNSSEC_EOK;
+}
+
+/*!
+ * Load PKCS #11 module and check if the token is available.
+ */
+static int safe_open(const char *config, char **url_ptr)
+{
+	char *url = NULL;
+	char *module = NULL;
+
+	int r = parse_config(config, &url, &module);
+	if (r != DNSSEC_EOK) {
+		return r;
+	}
+
+	r = p11_load_module(module);
+	free(module);
+	if (r != GNUTLS_E_SUCCESS) {
+		free(url);
+		return DNSSEC_P11_FAILED_TO_LOAD_MODULE;
+	}
+
+	unsigned int flags = 0;
+	r = gnutls_pkcs11_token_get_flags(url, &flags);
+	if (r != GNUTLS_E_SUCCESS) {
+		free(url);
+		return DNSSEC_P11_TOKEN_NOT_AVAILABLE;
+	}
+
+	*url_ptr = url;
+
+	return DNSSEC_EOK;
+}
+
 /* -- internal API --------------------------------------------------------- */
 
 static void disable_pkcs11_callbacks(void)
@@ -115,51 +173,22 @@ static int pkcs11_ctx_free(void *ctx)
 
 static int pkcs11_init(void *ctx, const char *config)
 {
-	return DNSSEC_NOT_IMPLEMENTED_ERROR;
-}
+	/*
+	 * Current keystore initialization is idempotent. We don't really
+	 * initialize the token because don't want to wipe the data. We just
+	 * check that the token is available the same way pkcs11_open() does.
+	 */
 
-/**
- * Parse configuration string. Accepted format: "<pkcs11-url> <module-path>"
- */
-static int parse_config(const char *config, char **uri_ptr, char **module_ptr)
-{
-	const char *space = strchr(config, ' ');
-	if (!space) {
-		return DNSSEC_KEYSTORE_INVALID_CONFIG;
-	}
+	_cleanup_free_ char *url = NULL;
 
-	char *url = strndup(config, space - config);
-	char *module = strdup(space + 1);
-
-	if (!url || !module) {
-		free(url);
-		free(module);
-		return DNSSEC_ENOMEM;
-	}
-
-	*uri_ptr = url;
-	*module_ptr = module;
-
-	return DNSSEC_EOK;
+	return safe_open(config, &url);
 }
 
 static int pkcs11_open(void *_ctx, const char *config)
 {
 	pkcs11_ctx_t *ctx = _ctx;
 
-	char *module = NULL;
-	int r = parse_config(config, &ctx->url, &module);
-	if (r != DNSSEC_EOK) {
-		return r;
-	}
-
-	r = gnutls_pkcs11_add_provider(module, NULL);
-	free(module);
-	if (r != GNUTLS_E_SUCCESS) {
-		return DNSSEC_KEYSTORE_FAILED_TO_LOAD_P11_MODULE;
-	}
-
-	return DNSSEC_EOK;
+	return safe_open(config, &ctx->url);
 }
 
 static int pkcs11_close(void *_ctx)
@@ -213,7 +242,7 @@ static int pkcs11_list_keys(void *_ctx, dnssec_list_t **list)
 	int r = gnutls_pkcs11_obj_list_import_url4(&objects, &count, ctx->url, flags);
 	if (r != GNUTLS_E_SUCCESS) {
 		dnssec_list_free(ids);
-		return DNSSEC_ERROR; // TODO
+		return DNSSEC_P11_TOKEN_NOT_AVAILABLE;
 	}
 
 	for (unsigned i = 0; i < count; i++) {
