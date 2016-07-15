@@ -23,6 +23,7 @@
 #include "keyid_gnutls.h"
 #include "keystore.h"
 #include "keystore/internal.h"
+#include "p11/p11.h"
 #include "pem.h"
 #include "shared.h"
 
@@ -119,18 +120,18 @@ static int safe_open(const char *config, char **url_ptr)
 		return r;
 	}
 
-	r = gnutls_pkcs11_add_provider(module, NULL);
+	r = p11_load_module(module);
 	free(module);
 	if (r != GNUTLS_E_SUCCESS) {
 		free(url);
-		return DNSSEC_KEYSTORE_FAILED_TO_LOAD_P11_MODULE;
+		return DNSSEC_P11_FAILED_TO_LOAD_MODULE;
 	}
 
 	unsigned int flags = 0;
 	r = gnutls_pkcs11_token_get_flags(url, &flags);
 	if (r != GNUTLS_E_SUCCESS) {
 		free(url);
-		return DNSSEC_KEYSTORE_FAILED_TO_LOAD_P11_MODULE;
+		return DNSSEC_P11_TOKEN_NOT_AVAILABLE;
 	}
 
 	*url_ptr = url;
@@ -241,7 +242,7 @@ static int pkcs11_list_keys(void *_ctx, dnssec_list_t **list)
 	int r = gnutls_pkcs11_obj_list_import_url4(&objects, &count, ctx->url, flags);
 	if (r != GNUTLS_E_SUCCESS) {
 		dnssec_list_free(ids);
-		return DNSSEC_ERROR; // TODO
+		return DNSSEC_P11_TOKEN_NOT_AVAILABLE;
 	}
 
 	for (unsigned i = 0; i < count; i++) {

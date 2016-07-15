@@ -129,6 +129,8 @@ libdnssec_la_SOURCES = \
 	lib/nsec/bitmap.c \
 	lib/nsec/hash.c \
 	lib/nsec/nsec.c \
+	lib/p11/p11.c \
+	lib/p11/p11.h \
 	lib/random.c \
 	lib/sign/der.c \
 	lib/sign/der.h \

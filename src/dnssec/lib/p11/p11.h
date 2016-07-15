@@ -1,4 +1,4 @@
-/*  Copyright (C) 2014 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -12,38 +12,20 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
-*/
+ */
 
-#include <gnutls/gnutls.h>
-#include <gnutls/pkcs11.h>
+#pragma once
 
-#include "crypto.h"
-#include "p11/p11.h"
-#include "shared.h"
+/*!
+ * Load PKCS11 module unless the module was already loaded.
+ *
+ * Duplicates are detected based on the module path.
+ */
+int p11_load_module(const char *name);
 
-_public_
-void dnssec_crypto_init(void)
-{
-#ifdef ENABLE_PKCS11
-	gnutls_pkcs11_init(GNUTLS_PKCS11_FLAG_MANUAL, NULL);
-#endif
-	gnutls_global_init();
-}
-
-_public_
-void dnssec_crypto_cleanup(void)
-{
-	gnutls_global_deinit();
-#ifdef ENABLE_PKCS11
-	gnutls_pkcs11_deinit();
-	p11_cleanup();
-#endif
-}
-
-_public_
-void dnssec_crypto_reinit(void)
-{
-#ifdef ENABLE_PKCS11
-	gnutls_pkcs11_reinit();
-#endif
-}
+/*!
+ * Clenaup list of loaded modules.
+ *
+ * Should be called when the library is deinitialized to prevent memory leaks.
+ */
+void p11_cleanup(void);
