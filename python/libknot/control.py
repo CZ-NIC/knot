@@ -171,7 +171,8 @@ class KnotCtl(object):
             raise Exception(err if isinstance(err, str) else err.decode())
         return KnotCtlType(data_type.value)
 
-    def send_block(self, cmd, section=None, identifier=None, item=None, zone=None, data=None):
+    def send_block(self, cmd, section=None, item=None, identifier=None, zone=None,
+                   owner=None, ttl=None, rtype=None, data=None):
         """Sends a control query block.
 
         @type cmd: str
@@ -179,6 +180,9 @@ class KnotCtl(object):
         @type item: str
         @type identifier: str
         @type zone: str
+        @type owner: str
+        @type ttl: str
+        @type rtype: str
         @type data: str
         """
 
@@ -188,10 +192,82 @@ class KnotCtl(object):
         query[KnotCtlDataIdx.ITEM] = item
         query[KnotCtlDataIdx.ID] = identifier
         query[KnotCtlDataIdx.ZONE] = zone
+        query[KnotCtlDataIdx.OWNER] = owner
+        query[KnotCtlDataIdx.TTL] = ttl
+        query[KnotCtlDataIdx.TYPE] = rtype
         query[KnotCtlDataIdx.DATA] = data
 
         self.send(KnotCtlType.DATA, query)
         self.send(KnotCtlType.BLOCK)
+
+    def _receive_conf(self, out, reply):
+
+        section = reply[KnotCtlDataIdx.SECTION]
+        ident = reply[KnotCtlDataIdx.ID]
+        item = reply[KnotCtlDataIdx.ITEM]
+        data = reply[KnotCtlDataIdx.DATA]
+
+        # Add the section if not exists.
+        if section not in out:
+            out[section] = dict()
+
+        # Add the identifier if not exists.
+        if ident and ident not in section:
+            section[ident] = dict()
+
+        # Return if no item/value.
+        if not item:
+            return
+
+        item_level = section[ident] if ident else section
+
+        # Treat alone identifier item differently.
+        if item in ["id", "domain", "target"]:
+            section[data] = dict()
+        else:
+            if item not in item_level:
+                item_level[item] = list()
+
+            if data:
+                item_level[item].append(data)
+
+    def _receive_zone_status(self, out, reply):
+
+        zone = reply[KnotCtlDataIdx.ZONE]
+        rtype = reply[KnotCtlDataIdx.TYPE]
+        data = reply[KnotCtlDataIdx.DATA]
+
+        # Add the zone if not exists.
+        if zone not in out:
+            out[zone] = dict()
+
+        out[zone][rtype] = data
+
+    def _receive_zone(self, out, reply):
+
+        zone = reply[KnotCtlDataIdx.ZONE]
+        owner = reply[KnotCtlDataIdx.OWNER]
+        ttl = reply[KnotCtlDataIdx.TTL]
+        rtype = reply[KnotCtlDataIdx.TYPE]
+        data = reply[KnotCtlDataIdx.DATA]
+
+        # Add the zone if not exists.
+        if zone not in out:
+            out[zone] = dict()
+
+        if owner not in out[zone]:
+            out[zone][owner] = dict()
+
+        if rtype not in out[zone][owner]:
+            out[zone][owner][rtype] = dict()
+
+        # Add the key/value.
+        out[zone][owner][rtype]["ttl"] = ttl
+
+        if not "data" in out[zone][owner][rtype]:
+            out[zone][owner][rtype]["data"] = [data]
+        else:
+            out[zone][owner][rtype]["data"].append(data)
 
     def receive_block(self):
         """Receives a control answer and returns it as a structured dictionary.
@@ -215,42 +291,14 @@ class KnotCtl(object):
 
             # Check for config data.
             if reply[KnotCtlDataIdx.SECTION]:
-                ident = reply[KnotCtlDataIdx.ID]
-                key = reply[KnotCtlDataIdx.ITEM]
+                self._receive_conf(out, reply)
             # Check for zone data.
             elif reply[KnotCtlDataIdx.ZONE]:
-                ident = reply[KnotCtlDataIdx.ZONE]
-                key = reply[KnotCtlDataIdx.TYPE]
+                if reply[KnotCtlDataIdx.OWNER]:
+                    self._receive_zone(out, reply)
+                else:
+                    self._receive_zone_status(out, reply)
             else:
                 continue
-
-            section = reply[KnotCtlDataIdx.SECTION]
-            data = reply[KnotCtlDataIdx.DATA]
-
-            # Add the section if not exists.
-            if section:
-                if section not in out:
-                    out[section] = dict()
-
-            level1 = out[section] if section else out
-
-            # Add the identifier if not exists.
-            if ident:
-                if ident not in level1:
-                    level1[ident] = dict()
-
-            level2 = level1[ident] if ident else level1
-
-            # Add the key/value.
-            if key:
-                # Treat alone identifier item differently.
-                if reply[KnotCtlDataIdx.SECTION] and key in ["id", "domain", "target"]:
-                    level1[data] = dict()
-                else:
-                    if key not in level2:
-                        level2[key] = list()
-
-                    if data:
-                        level2[key].append(data)
 
         return out
