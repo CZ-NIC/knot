@@ -916,8 +916,6 @@ int zone_do_sem_checks(zone_contents_t *zone, bool optional,
 		return KNOT_EINVAL;
 	}
 
-	zone->size = 0;
-
 	semchecks_data_t data = {
 		.handler = handler,
 		.zone = zone,
