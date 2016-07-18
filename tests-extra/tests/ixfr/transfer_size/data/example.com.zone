@@ -1,8 +1,0 @@
-$ORIGIN example.com.
-$TTL 3600
-
-@	SOA	dns1 hostmaster 2010111200 10800 3600 1209600 7200
-	NS	dns1
-
-dns1	A	192.0.2.1
-	A	192.0.2.2
