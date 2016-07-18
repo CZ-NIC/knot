@@ -1015,7 +1015,7 @@ max-zone-size
 
 Maximum size of the zone. The size is measured as size of the zone records
 in wire format without compression. The limit is enforced for incoming zone
-transfers.
+transfers and dynamic updates.
 
 For incremental transfers (IXFR), the effective limit for the total size of
 the records in the transfer is twice the configured value. However the final
