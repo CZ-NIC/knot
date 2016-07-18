@@ -7,12 +7,10 @@ from dnstest.test import Test
 t = Test()
 
 master1 = t.server("knot")
-master2 = t.server("knot")
 slave = t.server("knot")
-zone = t.zone("example.com.", storage=".")
+zone = t.zone("example.com.", storage=".", version=1)
 slave.zone_size_limit = 230
 t.link(zone, master1, slave, ixfr=True)
-t.link(zone, master2, slave, ixfr=True)
 
 t.start()
 
@@ -27,11 +25,6 @@ master1.reload()
 # Wait for zones and compare them.
 master1.zone_wait(zone, serial)
 t.sleep(10)
-
-master2.update_zonefile(zone, version=1)  # smaller zone
-master2.reload()
-
-slave.zone_wait(zone, serial)
 
 resp = slave.dig("test.example.com.", "TXT")
 
