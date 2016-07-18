@@ -71,8 +71,8 @@ int main(int argc, char **argv)
 	};
 
 	/* Parse command line arguments */
-	int opt = 0, li = 0;
-	while ((opt = getopt_long(argc, argv, "c:C:s:t:fvhV", opts, &li)) != -1) {
+	int opt = 0;
+	while ((opt = getopt_long(argc, argv, "+c:C:s:t:fvhV", opts, NULL)) != -1) {
 		switch (opt) {
 		case 'c':
 			params.config = optarg;
