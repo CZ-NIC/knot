@@ -59,7 +59,7 @@ class FakeTime:
     def check(cls):
         """Check if libfaketime is present in system.
 
-        :raise Skip if not present.
+        :raises Skip: if not present.
         :return: True
         """
         from subprocess import check_output, CalledProcessError
