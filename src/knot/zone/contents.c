@@ -1453,7 +1453,6 @@ zone_node_t *zone_contents_find_node_for_rr(zone_contents_t *zone, const knot_rr
 	return node;
 }
 
-
 size_t zone_contents_measure_size(zone_contents_t *zone)
 {
 	zone->size = 0;

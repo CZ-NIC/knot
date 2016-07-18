@@ -391,8 +391,6 @@ static int ixfrin_finalize(struct answer_data *adata)
 		return ret;
 	}
 
-	zone_contents_measure_size(new_contents);
-
 	size_t size_limit = adata->param->zone->conf->max_zone_size;
 
 	if (new_contents->size > size_limit) {
