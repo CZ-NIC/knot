@@ -212,15 +212,15 @@ command has the same syntax as ```zone-read```.
 Within the transaction, you can add a record to a specific zone or to all
 zones with an open transaction::
 
-    $ knotc zone-add example.com ns1 3600 A 192.168.0.1
-    $ knotc zone-add -- ns1 3600 A 192.168.0.1
+    $ knotc zone-set example.com ns1 3600 A 192.168.0.1
+    $ knotc zone-set -- ns1 3600 A 192.168.0.1
 
 To remove all records with a specific owner, or a specific rrset, or a
 specific record data::
 
-    $ knotc zone-remove example.com ns1
-    $ knotc zone-remove example.com ns1 A
-    $ knotc zone-remove example.com ns1 A 192.168.0.2
+    $ knotc zone-unset example.com ns1
+    $ knotc zone-unset example.com ns1 A
+    $ knotc zone-unset example.com ns1 A 192.168.0.2
 
 To see the difference between the original zone and the current version::
 
@@ -237,9 +237,9 @@ A full example of setting up a completely new zone from scratch::
     $ knotc conf-set zone.domain example.com
     $ knotc conf-commit
     $ knotc zone-begin example.com
-    $ knotc zone-add example.com @ 7200 SOA ns hostmaster 1 86400 900 691200 3600
-    $ knotc zone-add example.com ns 3600 A 192.168.0.1
-    $ knotc zone-add example.com www 3600 A 192.168.0.100
+    $ knotc zone-set example.com @ 7200 SOA ns hostmaster 1 86400 900 691200 3600
+    $ knotc zone-set example.com ns 3600 A 192.168.0.1
+    $ knotc zone-set example.com www 3600 A 192.168.0.100
     $ knotc zone-commit example.com
 
 .. _Controlling running daemon:
