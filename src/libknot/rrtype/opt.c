@@ -292,7 +292,6 @@ int knot_edns_reserve_option(knot_rrset_t *opt_rr, uint16_t code,
 		return KNOT_ENOMEM;
 	}
 
-	memset(wire, 0, size);
 	if (wire_ptr) {
 		*wire_ptr = wire;
 	}
