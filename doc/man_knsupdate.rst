@@ -134,6 +134,8 @@ Notes
 
 Options **-k** and **-y** can not be used simultaneously.
 
+Dnssec-keygen keyfile format is not supported. Use :manpage:`keymgr(8)` instead.
+
 Missing features with regard to ISC nsupdate:
 
   Authentication using GSS-TSIG or SIG(0).
@@ -171,4 +173,4 @@ Examples
 See Also
 --------
 
-:manpage:`kdig(1)`, :manpage:`khost(1)`.
+:manpage:`kdig(1)`, :manpage:`khost(1)`, :manpage:`keymgr(8)`.

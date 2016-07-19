@@ -229,6 +229,8 @@ Set the EDNS buffer size in bytes (default is 512 bytes).
 .sp
 Options \fB\-k\fP and \fB\-y\fP can not be used simultaneously.
 .sp
+Dnssec\-keygen keyfile format is not supported. Use \fIkeymgr(8)\fP instead.
+.sp
 Missing features with regard to ISC dig:
 .INDENT 0.0
 .INDENT 3.5
@@ -303,7 +305,7 @@ $ kdig +tcp example.com \-t A @192.0.2.1 \-x 2001:DB8::1 @192.0.2.2
 \fB/etc/resolv.conf\fP
 .SH SEE ALSO
 .sp
-\fIkhost(1)\fP, \fIknsupdate(1)\fP\&.
+\fIkhost(1)\fP, \fIknsupdate(1)\fP, \fIkeymgr(8)\fP\&.
 .SH AUTHOR
 CZ.NIC Labs <http://www.knot-dns.cz>
 .SH COPYRIGHT

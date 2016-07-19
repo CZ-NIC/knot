@@ -84,7 +84,12 @@ Access control list (ACL)
 
 An ACL list specifies which remotes are allowed to send the server a specific
 request. A remote can be a single IP address or a network subnet. Also a TSIG
-key can be assigned::
+key can be assigned (see :doc:`keymgr <man_keymgr>` how to generate a TSIG key)::
+
+    key:
+      - id: key1
+        algorithm: hmac-md5
+        secret: Wg==
 
     acl:
       - id: address_rule
