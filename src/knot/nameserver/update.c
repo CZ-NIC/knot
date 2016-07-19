@@ -154,7 +154,7 @@ static int process_normal(conf_t *conf, zone_t *zone, list_t *requests)
 	// Apply changes.
 	ret = zone_update_commit(conf, &up);
 	if (ret != KNOT_EOK) {
-		if (ret == KNOT_ETTL) {
+		if (ret == KNOT_ETTL || ret == KNOT_EZONESIZE) {
 			set_rcodes(requests, KNOT_RCODE_REFUSED);
 		} else {
 			set_rcodes(requests, KNOT_RCODE_SERVFAIL);

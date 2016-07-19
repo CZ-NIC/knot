@@ -696,6 +696,18 @@ int zone_update_commit(conf_t *conf, zone_update_t *update)
 		}
 	}
 
+	conf_val_t val = conf_zone_get(conf, C_MAX_ZONE_SIZE, update->zone->name);
+	int64_t size_limit = conf_int(&val);
+
+	if (new_contents != NULL && new_contents->size > size_limit) {
+		if (update->flags & UPDATE_INCREMENTAL) {
+			update_rollback(&update->a_ctx);
+			update_free_zone(&new_contents);
+			changeset_clear(&update->change);
+		}
+		return KNOT_EZONESIZE;
+	}
+
 	/* If there is anything to change */
 	if (new_contents != NULL) {
 		/* Switch zone contents. */

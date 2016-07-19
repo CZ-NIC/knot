@@ -824,6 +824,7 @@ Definition of zones served by the server.
      zonefile-sync: TIME
      ixfr-from-differences: BOOL
      max-journal-size: SIZE
+     max-zone-size : SIZE
      dnssec-signing: BOOL
      dnssec-policy: STR
      kasp-db: STR
@@ -1004,6 +1005,21 @@ max-journal-size
 ----------------
 
 Maximum size of the zone journal file.
+
+*Default:* 2^64
+
+.. _zone_max_zone_size:
+
+max-zone-size
+----------------
+
+Maximum size of the zone. The size is measured as size of the zone records
+in wire format without compression. The limit is enforced for incoming zone
+transfers and dynamic updates.
+
+For incremental transfers (IXFR), the effective limit for the total size of
+the records in the transfer is twice the configured value. However the final
+size of the zone must satisfy the configured value.
 
 *Default:* 2^64
 

@@ -41,6 +41,7 @@ typedef struct zone_contents {
 	zone_tree_t *nsec3_nodes;
 
 	dnssec_nsec3_params_t nsec3_params;
+	size_t size;
 } zone_contents_t;
 
 /*!
@@ -281,5 +282,14 @@ bool zone_contents_is_signed(const zone_contents_t *zone);
  * \brief Return true if zone is empty.
  */
 bool zone_contents_is_empty(const zone_contents_t *zone);
+
+/*!
+ * \brief Measure zone contents size.
+ *
+ * Size is measured in uncompressed wire format. Measured size is saved into
+ * zone contents structure.
+ * \return Measured size
+ */
+size_t zone_contents_measure_size(zone_contents_t *zone);
 
 /*! @} */
