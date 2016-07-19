@@ -188,6 +188,46 @@ void knot_edns_set_do(knot_rrset_t *opt_rr)
 
 /*----------------------------------------------------------------------------*/
 /*!
+ * \brief Skips an option from the supplied \a wire data.
+ *
+ * \param      wire      Wire data containing sequence of OPT RDATA.
+ * \param[out] code      Code of the option that is at hand.
+ * \param[out] full_len  Length of the entire skipped option.
+ *
+ * \return Pointer to the first byte of the entire skipped option,
+ *         NULL when none or incomplete option data left.
+ */
+static uint8_t *skip_option(wire_ctx_t *wire,
+                            uint16_t *code, uint16_t *full_len)
+{
+	assert(wire && code && full_len);
+
+	uint8_t *position = NULL;
+
+	if (wire_ctx_available(wire) > 0) {
+		position = wire->position;
+		uint16_t opt_code = wire_ctx_read_u16(wire);
+		if (wire->error != KNOT_EOK) {
+			return NULL;
+		}
+
+		uint16_t opt_len = wire_ctx_read_u16(wire);
+		wire_ctx_skip(wire, opt_len);
+		/*
+		 * Return position only when the entire option fits
+		 * in the RDATA.
+		 */
+		if (wire->error == KNOT_EOK) {
+			*code = opt_code;
+			*full_len = KNOT_EDNS_OPTION_HDRLEN + opt_len;
+			return position;
+		}
+	}
+
+	return NULL;
+}
+
+/*!
  * \brief Find OPTION with the given code in the OPT RDATA.
  *
  * \note It is ensured that the full option, as declared in option length,
@@ -195,33 +235,21 @@ void knot_edns_set_do(knot_rrset_t *opt_rr)
  *
  * \param rdata     RDATA to search in.
  * \param opt_code  Code of the OPTION to find.
- * \param[out] pos  Position of the OPTION or NULL if not found.
+ *
+ * \return Pointer to the first byte of the first option that matches
+ *         \a opt_code, NULL if no option found or error occurred.
  */
 static uint8_t *find_option(knot_rdata_t *rdata, uint16_t opt_code)
 {
 	wire_ctx_t wire = wire_ctx_init_const(knot_rdata_data(rdata),
 	                                      knot_rdata_rdlen(rdata));
-	uint8_t *found_position = NULL;
+	uint8_t *position = NULL;
+	uint16_t code, full_len;
 
-	while (wire_ctx_available(&wire) > 0) {
-		found_position = wire.position;
-		uint16_t code = wire_ctx_read_u16(&wire);
-		if (wire.error != KNOT_EOK) {
-			break;
+	while ( (position = skip_option(&wire, &code, &full_len)) ) {
+		if (code == opt_code) {
+			return position;
 		}
-
-		if (code != opt_code) {
-			found_position = NULL;
-		}
-
-		uint16_t opt_len = wire_ctx_read_u16(&wire);
-		/* Return position only when the entire option fits
-		 * in the RDATA. */
-		if (found_position != NULL && wire.error == KNOT_EOK &&
-		    wire_ctx_available(&wire) >= opt_len) {
-			return found_position;
-		}
-		wire_ctx_skip(&wire, opt_len);
 	}
 
 	return NULL;
@@ -277,6 +305,85 @@ static uint8_t *edns_add(knot_rrset_t *opt, uint16_t code, uint16_t size,
 	}
 
 	return knot_rdata_data(knot_rdataset_at(&opt->rrs, 0)) + offset;
+}
+
+_public_
+int knot_edns_reserve_unique_option(knot_rrset_t *opt_rr, uint16_t code,
+                                    uint16_t size, uint8_t **wire_ptr,
+                                    knot_mm_t *mm)
+{
+	if (!opt_rr) {
+		return KNOT_EINVAL;
+	}
+
+	knot_rdata_t *rdata = knot_rdataset_at(&opt_rr->rrs, 0);
+	assert(rdata != NULL);
+	wire_ctx_t rd_wire = wire_ctx_init_const(knot_rdata_data(rdata),
+	                                         knot_rdata_rdlen(rdata));
+	wire_ctx_t wr_wire = wire_ctx_init(knot_rdata_data(rdata),
+	                                   knot_rdata_rdlen(rdata));
+
+	uint16_t deleted_len = 0; /* Length of the deleted areas. */
+
+	uint8_t *rd_pos = NULL;
+	uint8_t *wr_pos = NULL; /* Set non-null if enough freed space found. */
+	uint16_t opt_code, full_len;
+
+	/*
+	 * Deletes all occurrences of options with given code. Shoves all
+	 * remaining options towards beginning. Uses first opportunity to
+	 * uses freed space to reserve option.
+	 */
+	while ( (rd_pos = skip_option(&rd_wire, &opt_code, &full_len)) ) {
+		if (opt_code != code) {
+			if (deleted_len == 0) {
+				/* No data must be shoved towards front. */
+				wire_ctx_skip(&wr_wire, full_len);
+				assert(wr_wire.error == KNOT_EOK);
+			} else if (deleted_len >= full_len) {
+				/* There is enough space for a copy. */
+				wire_ctx_write(&wr_wire, rd_pos, full_len);
+				assert(wr_wire.error == KNOT_EOK);
+			} else {
+				/* There isn't enough space for a copy. */
+				wire_ctx_skip(&wr_wire, full_len);
+				assert(wr_wire.error == KNOT_EOK);
+				memmove(knot_rdata_data(rdata) + wire_ctx_offset(&wr_wire),
+				        rd_pos, full_len);
+			}
+		} else {
+			deleted_len += full_len;
+			if (!wr_pos &&
+			    deleted_len >= (KNOT_EDNS_OPTION_HDRLEN + size)) {
+				/* Reserve this freed space. */
+				wr_pos = knot_rdata_data(rdata) + wire_ctx_offset(&wr_wire);
+				deleted_len -= KNOT_EDNS_OPTION_HDRLEN + size;
+				wire_ctx_skip(&wr_wire, KNOT_EDNS_OPTION_HDRLEN + size);
+			}
+		}
+	}
+
+	if (deleted_len > 0) {
+		/* Adjust data length. */
+		assert(knot_rdata_rdlen(rdata) >= deleted_len);
+		knot_rdata_set_rdlen(rdata, knot_rdata_rdlen(rdata) - deleted_len);
+	}
+
+	if (wr_pos) {
+		/* Found enough space when deleting entries. */
+		wire_ctx_t wire = wire_ctx_init(wr_pos, KNOT_EDNS_OPTION_HDRLEN + size);
+		wire_ctx_write_u16(&wire, code);
+		wire_ctx_write_u16(&wire, size);
+		size_t offset = wire_ctx_offset(&wire);
+		wire_ctx_clear(&wire, size);
+		if (wire_ptr) {
+			*wire_ptr = wr_pos + offset;
+		}
+	} else {
+		return knot_edns_reserve_option(opt_rr, code, size, wire_ptr, mm);
+	}
+
+	return KNOT_EOK;
 }
 
 _public_
