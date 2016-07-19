@@ -22,10 +22,29 @@
 #include <stdlib.h>
 #include <string.h>
 
+#ifdef ENABLE_PKCS11
+
 #define PKCS11_MODULES_MAX 16
 
 static char *pkcs11_modules[PKCS11_MODULES_MAX] = { 0 };
 static int pkcs11_modules_count = 0;
+
+static int map_result(int gnutls_result)
+{
+	return gnutls_result == GNUTLS_E_SUCCESS ? DNSSEC_EOK : DNSSEC_ERROR;
+}
+
+int p11_init(void)
+{
+	int r = gnutls_pkcs11_init(GNUTLS_PKCS11_FLAG_MANUAL, NULL);
+	return map_result(r);
+}
+
+int p11_reinit(void)
+{
+	int r = gnutls_pkcs11_reinit();
+	return map_result(r);
+}
 
 int p11_load_module(const char *module)
 {
@@ -65,4 +84,30 @@ void p11_cleanup(void)
 	}
 
 	pkcs11_modules_count = 0;
+
+	gnutls_pkcs11_deinit();
 }
+
+#else
+
+int p11_init(void)
+{
+	return DNSSEC_EOK;
+}
+
+int p11_reinit(void)
+{
+	return DNSSEC_EOK;
+}
+
+int p11_load_module(const char *module)
+{
+	return DNSSEC_NOT_IMPLEMENTED_ERROR;
+}
+
+void p11_cleanup(void)
+{
+	// this function intentionally left blank
+}
+
+#endif
