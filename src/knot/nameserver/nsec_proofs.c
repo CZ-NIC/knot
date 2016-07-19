@@ -428,7 +428,6 @@ static int put_nsec_nxdomain(const knot_dname_t *qname,
 	rrsigs = node_rrset(previous, KNOT_RRTYPE_RRSIG);
 	if (knot_rrset_empty(&rrset)) {
 		// no NSEC records
-		//return NS_ERR_SERVFAIL;
 		return KNOT_EOK;
 	}
 
