@@ -635,6 +635,7 @@ static bool test_unique(void)
 	                                    "\xaa\xa2\x00\x0a\xe0\xe1\xe2\xe3\xe4\xe5\xe6\xe7\xe8\xe9");
 	ok(bret, "OPT RR unique: check written option");
 
+	knot_rrset_clear(&opt_rr, NULL);
 	return true;
 }
 
