@@ -140,6 +140,8 @@ src/dnssec/lib/list/ucw_clists.h
 src/dnssec/lib/nsec/bitmap.c
 src/dnssec/lib/nsec/hash.c
 src/dnssec/lib/nsec/nsec.c
+src/dnssec/lib/p11/p11.c
+src/dnssec/lib/p11/p11.h
 src/dnssec/lib/random.c
 src/dnssec/lib/sign/der.c
 src/dnssec/lib/sign/der.h
