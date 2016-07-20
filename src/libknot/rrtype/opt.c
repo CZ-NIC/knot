@@ -323,7 +323,7 @@ int knot_edns_reserve_unique_option(knot_rrset_t *opt_rr, uint16_t code,
 	wire_ctx_t wr_wire = wire_ctx_init(knot_rdata_data(rdata),
 	                                   knot_rdata_rdlen(rdata));
 
-	uint16_t deleted_len = 0; /* Length of the deleted areas. */
+	uint16_t deleted_len = 0; /* Total area length acquired by deleting. */
 
 	uint8_t *rd_pos = NULL;
 	uint8_t *wr_pos = NULL; /* Set non-null if enough freed space found. */
@@ -331,8 +331,8 @@ int knot_edns_reserve_unique_option(knot_rrset_t *opt_rr, uint16_t code,
 
 	/*
 	 * Deletes all occurrences of options with given code. Shoves all
-	 * remaining options towards beginning. Uses first opportunity to
-	 * uses freed space to reserve option.
+	 * remaining options towards beginning. Takes first opportunity to
+	 * use freed space to reserve option.
 	 */
 	while ( (rd_pos = skip_option(&rd_wire, &opt_code, &full_len)) ) {
 		if (opt_code != code) {
