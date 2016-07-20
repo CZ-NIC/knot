@@ -323,10 +323,10 @@ int knot_edns_reserve_unique_option(knot_rrset_t *opt_rr, uint16_t code,
 	wire_ctx_t wr_wire = wire_ctx_init(knot_rdata_data(rdata),
 	                                   knot_rdata_rdlen(rdata));
 
-	uint16_t deleted_len = 0; /* Total area length acquired by deleting. */
+	uint16_t deleted_len = 0; // Total area length acquired by deleting.
 
 	uint8_t *rd_pos = NULL;
-	uint8_t *wr_pos = NULL; /* Set non-null if enough freed space found. */
+	uint8_t *wr_pos = NULL; // Set non-null if enough freed space found.
 	uint16_t opt_code, full_len;
 
 	/*
@@ -337,15 +337,15 @@ int knot_edns_reserve_unique_option(knot_rrset_t *opt_rr, uint16_t code,
 	while ((rd_pos = skip_option(&rd_wire, &opt_code, &full_len)) != NULL) {
 		if (opt_code != code) {
 			if (deleted_len == 0) {
-				/* No data must be shoved towards front. */
+				// No data must be shoved towards front.
 				wire_ctx_skip(&wr_wire, full_len);
 				assert(wr_wire.error == KNOT_EOK);
 			} else if (deleted_len >= full_len) {
-				/* There is enough space for a copy. */
+				// There is enough space for a copy.
 				wire_ctx_write(&wr_wire, rd_pos, full_len);
 				assert(wr_wire.error == KNOT_EOK);
 			} else {
-				/* There isn't enough space for a copy. */
+				// There isn't enough space for a copy.
 				memmove(knot_rdata_data(rdata) + wire_ctx_offset(&wr_wire),
 				        rd_pos, full_len);
 				wire_ctx_skip(&wr_wire, full_len);
@@ -355,7 +355,7 @@ int knot_edns_reserve_unique_option(knot_rrset_t *opt_rr, uint16_t code,
 			deleted_len += full_len;
 			if (!wr_pos &&
 			    deleted_len >= (KNOT_EDNS_OPTION_HDRLEN + size)) {
-				/* Reserve this freed space. */
+				// Reserve this freed space.
 				wr_pos = knot_rdata_data(rdata) + wire_ctx_offset(&wr_wire);
 				deleted_len -= KNOT_EDNS_OPTION_HDRLEN + size;
 				wire_ctx_skip(&wr_wire, KNOT_EDNS_OPTION_HDRLEN + size);
@@ -364,13 +364,13 @@ int knot_edns_reserve_unique_option(knot_rrset_t *opt_rr, uint16_t code,
 	}
 
 	if (deleted_len > 0) {
-		/* Adjust data length. */
+		// Adjust data length.
 		assert(knot_rdata_rdlen(rdata) >= deleted_len);
 		knot_rdata_set_rdlen(rdata, knot_rdata_rdlen(rdata) - deleted_len);
 	}
 
 	if (wr_pos) {
-		/* Found enough space when deleting entries. */
+		// Found enough space when deleting entries.
 		wire_ctx_t wire = wire_ctx_init(wr_pos, KNOT_EDNS_OPTION_HDRLEN + size);
 		wire_ctx_write_u16(&wire, code);
 		wire_ctx_write_u16(&wire, size);
