@@ -332,13 +332,6 @@ static bool test_setters(knot_rrset_t *opt_rr, int *done)
 	return success;
 }
 
-#define OPT_DATA_MAX 16
-static const uint8_t opt_data[OPT_DATA_MAX] = {
-	0xf0, 0xf1, 0xf2, 0xf3, 0xf4, 0xf5, 0xf6, 0xf7, 0xf8, 0xf9, 0xfa, 0xfb, 0xfc, 0xfd, 0xfe, 0xff
-};
-static const uint8_t opt_data2[OPT_DATA_MAX] = {
-	0xe0, 0xe1, 0xe2, 0xe3, 0xe4, 0xe5, 0xe6, 0xe7, 0xe8, 0xe9, 0xea, 0xeb, 0xec, 0xed, 0xee, 0xef
-};
 #define OPT_ID_0 0xaaa0
 #define OPT_ID_1 0xaaa1
 #define OPT_ID_2 0xaaa2
@@ -358,22 +351,27 @@ static bool prepare_edns_data(knot_rrset_t *opt_rr)
 	knot_edns_set_version(opt_rr, E_VERSION2);
 	knot_edns_set_do(opt_rr);
 
-	ret = knot_edns_add_option(opt_rr, OPT_ID_1, 3, opt_data, NULL);
+	static const uint8_t OPT_DATA[] = {
+		0xf0, 0xf1, 0xf2, 0xf3, 0xf4, 0xf5, 0xf6, 0xf7,
+		0xf8, 0xf9, 0xfa, 0xfb, 0xfc, 0xfd, 0xfe, 0xff,
+	};
+
+	ret = knot_edns_add_option(opt_rr, OPT_ID_1, 3, OPT_DATA, NULL);
 	if (ret != KNOT_EOK) {
 		return false;
 	}
 
-	ret = knot_edns_add_option(opt_rr, OPT_ID_0, 4, opt_data, NULL);
+	ret = knot_edns_add_option(opt_rr, OPT_ID_0, 4, OPT_DATA, NULL);
 	if (ret != KNOT_EOK) {
 		return false;
 	}
 
-	ret = knot_edns_add_option(opt_rr, OPT_ID_1, 3, opt_data, NULL);
+	ret = knot_edns_add_option(opt_rr, OPT_ID_1, 3, OPT_DATA, NULL);
 	if (ret != KNOT_EOK) {
 		return false;
 	}
 
-	ret = knot_edns_add_option(opt_rr, OPT_ID_2, 8, opt_data, NULL);
+	ret = knot_edns_add_option(opt_rr, OPT_ID_2, 8, OPT_DATA, NULL);
 	if (ret != KNOT_EOK) {
 		return false;
 	}
@@ -403,6 +401,11 @@ static bool test_unique(void)
 	knot_rrset_t opt_rr;
 	uint16_t new_opt_size, new_expected_len;
 	uint8_t *reserved_data;
+
+	static const uint8_t OPT_DATA[] = {
+		0xe0, 0xe1, 0xe2, 0xe3, 0xe4, 0xe5, 0xe6, 0xe7,
+		0xe8, 0xe9, 0xea, 0xeb, 0xec, 0xed, 0xee, 0xef,
+	};
 
 	iret = knot_edns_init(&opt_rr, E_MAX_PLD, E_RCODE, E_VERSION, NULL);
 	if (iret != KNOT_EOK) {
@@ -440,7 +443,7 @@ static bool test_unique(void)
 	ok(iret == KNOT_EOK && reserved_data != NULL && bret,
 	   "OPT RR unique: reserve unique non-existent option (ret = %s)",
 	   knot_strerror(iret));
-	memcpy(reserved_data, opt_data2, new_opt_size);
+	memcpy(reserved_data, OPT_DATA, new_opt_size);
 	bret = check_rdata(&opt_rr, new_expected_len,
 	                   (const uint8_t *)"\xaa\xa1\x00\x03\xf0\xf1\xf2"
 	                                    "\xaa\xa0\x00\x04\xf0\xf1\xf2\xf3"
@@ -462,7 +465,7 @@ static bool test_unique(void)
 	ok(iret == KNOT_EOK && reserved_data != NULL && bret,
 	   "OPT RR unique: reserve unique existent option (ret = %s)",
 	   knot_strerror(iret));
-	memcpy(reserved_data, opt_data2, new_opt_size);
+	memcpy(reserved_data, OPT_DATA, new_opt_size);
 	bret = check_rdata(&opt_rr, new_expected_len,
 	                   (const uint8_t *)"\xaa\xa1\x00\x03\xe0\xe1\xe2"
 	                                    "\xaa\xa0\x00\x04\xf0\xf1\xf2\xf3"
@@ -482,7 +485,7 @@ static bool test_unique(void)
 	ok(iret == KNOT_EOK && reserved_data != NULL && bret,
 	   "OPT RR unique: reserve unique existent option (ret = %s)",
 	   knot_strerror(iret));
-	memcpy(reserved_data, opt_data2, new_opt_size);
+	memcpy(reserved_data, OPT_DATA, new_opt_size);
 	bret = check_rdata(&opt_rr, new_expected_len,
 	                   (const uint8_t *)"\xaa\xa1\x00\x02\xe0\xe1"
 	                                    "\xaa\xa0\x00\x04\xf0\xf1\xf2\xf3"
@@ -502,7 +505,7 @@ static bool test_unique(void)
 	ok(iret == KNOT_EOK && reserved_data != NULL && bret,
 	   "OPT RR unique: reserve unique existent option (ret = %s)",
 	   knot_strerror(iret));
-	memcpy(reserved_data, opt_data2, new_opt_size);
+	memcpy(reserved_data, OPT_DATA, new_opt_size);
 	bret = check_rdata(&opt_rr, new_expected_len,
 	                   (const uint8_t *)"\xaa\xa0\x00\x04\xf0\xf1\xf2\xf3"
 	                                    "\xaa\xa1\x00\x06\xe0\xe1\xe2\xe3\xe4\xe5"
@@ -522,7 +525,7 @@ static bool test_unique(void)
 	ok(iret == KNOT_EOK && reserved_data != NULL && bret,
 	   "OPT RR unique: reserve unique existent option (ret = %s)",
 	   knot_strerror(iret));
-	memcpy(reserved_data, opt_data2, new_opt_size);
+	memcpy(reserved_data, OPT_DATA, new_opt_size);
 	bret = check_rdata(&opt_rr, new_expected_len,
 	                   (const uint8_t *)"\xaa\xa0\x00\x04\xf0\xf1\xf2\xf3"
 	                                    "\xaa\xa1\x00\x0a\xe0\xe1\xe2\xe3\xe4\xe5\xe6\xe7\xe8\xe9"
@@ -543,7 +546,7 @@ static bool test_unique(void)
 	ok(iret == KNOT_EOK && reserved_data != NULL && bret,
 	   "OPT RR unique: reserve unique existent option (ret = %s)",
 	   knot_strerror(iret));
-	memcpy(reserved_data, opt_data2, new_opt_size);
+	memcpy(reserved_data, OPT_DATA, new_opt_size);
 	bret = check_rdata(&opt_rr, new_expected_len,
 	                   (const uint8_t *)"\xaa\xa1\x00\x03\xf0\xf1\xf2"
 	                                    "\xaa\xa0\x00\x04\xe0\xe1\xe2\xe3"
@@ -580,7 +583,7 @@ static bool test_unique(void)
 	ok(iret == KNOT_EOK && reserved_data != NULL && bret,
 	   "OPT RR unique: reserve unique existent option (ret = %s)",
 	   knot_strerror(iret));
-	memcpy(reserved_data, opt_data2, new_opt_size);
+	memcpy(reserved_data, OPT_DATA, new_opt_size);
 	bret = check_rdata(&opt_rr, new_expected_len,
 	                   (const uint8_t *)"\xaa\xa1\x00\x03\xf0\xf1\xf2"
 	                                    "\xaa\xa1\x00\x03\xf0\xf1\xf2"
@@ -602,7 +605,7 @@ static bool test_unique(void)
 	ok(iret == KNOT_EOK && reserved_data != NULL && bret,
 	   "OPT RR unique: reserve unique existent option (ret = %s)",
 	   knot_strerror(iret));
-	memcpy(reserved_data, opt_data2, new_opt_size);
+	memcpy(reserved_data, OPT_DATA, new_opt_size);
 	bret = check_rdata(&opt_rr, new_expected_len,
 	                   (const uint8_t *)"\xaa\xa1\x00\x03\xf0\xf1\xf2"
 	                                    "\xaa\xa0\x00\x04\xf0\xf1\xf2\xf3"
@@ -624,7 +627,7 @@ static bool test_unique(void)
 	ok(iret == KNOT_EOK && reserved_data != NULL && bret,
 	   "OPT RR unique: reserve unique existent option (ret = %s)",
 	   knot_strerror(iret));
-	memcpy(reserved_data, opt_data2, new_opt_size);
+	memcpy(reserved_data, OPT_DATA, new_opt_size);
 	bret = check_rdata(&opt_rr, new_expected_len,
 	                   (const uint8_t *)"\xaa\xa1\x00\x03\xf0\xf1\xf2"
 	                                    "\xaa\xa0\x00\x04\xf0\xf1\xf2\xf3"
