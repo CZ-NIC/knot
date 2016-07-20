@@ -192,7 +192,7 @@ void knot_edns_set_do(knot_rrset_t *opt_rr)
  *
  * \param      wire      Wire data containing sequence of OPT RDATA.
  * \param[out] code      Code of the option that is at hand.
- * \param[out] full_len  Length of the entire skipped option.
+ * \param[out] full_len  Length of the entire skipped option with its header.
  *
  * \return Pointer to the first byte of the entire skipped option,
  *         NULL when none or incomplete option data left.
@@ -246,7 +246,7 @@ static uint8_t *find_option(knot_rdata_t *rdata, uint16_t opt_code)
 	uint8_t *position = NULL;
 	uint16_t code, full_len;
 
-	while ( (position = skip_option(&wire, &code, &full_len)) ) {
+	while ((position = skip_option(&wire, &code, &full_len)) != NULL) {
 		if (code == opt_code) {
 			return position;
 		}
@@ -334,7 +334,7 @@ int knot_edns_reserve_unique_option(knot_rrset_t *opt_rr, uint16_t code,
 	 * remaining options towards beginning. Takes first opportunity to
 	 * use freed space to reserve option.
 	 */
-	while ( (rd_pos = skip_option(&rd_wire, &opt_code, &full_len)) ) {
+	while ((rd_pos = skip_option(&rd_wire, &opt_code, &full_len)) != NULL) {
 		if (opt_code != code) {
 			if (deleted_len == 0) {
 				/* No data must be shoved towards front. */
