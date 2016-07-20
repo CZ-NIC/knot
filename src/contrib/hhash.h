@@ -156,7 +156,11 @@ int hhash_del(hhash_t* tbl, const char* key, uint16_t len);
 /*! \brief Return value from ordered index. */
 value_t *hhash_indexval(hhash_t* tbl, unsigned i);
 
-/*! \brief Build index for fast ordered lookup. */
+/*! \brief Build index for fast ordered lookup.
+ *
+ * Nothing is done if the index was OK already;
+ * it's automatically invalidated when an operation could damage it.
+ * */
 void hhash_build_index(hhash_t* tbl);
 
 /*!
