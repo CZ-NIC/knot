@@ -346,10 +346,10 @@ int knot_edns_reserve_unique_option(knot_rrset_t *opt_rr, uint16_t code,
 				assert(wr_wire.error == KNOT_EOK);
 			} else {
 				/* There isn't enough space for a copy. */
-				wire_ctx_skip(&wr_wire, full_len);
-				assert(wr_wire.error == KNOT_EOK);
 				memmove(knot_rdata_data(rdata) + wire_ctx_offset(&wr_wire),
 				        rd_pos, full_len);
+				wire_ctx_skip(&wr_wire, full_len);
+				assert(wr_wire.error == KNOT_EOK);
 			}
 		} else {
 			deleted_len += full_len;
