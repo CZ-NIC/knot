@@ -51,6 +51,11 @@ resp = knot.dig("a.z.w.example", "AAAA", dnssec=True)
 resp.check(rcode="NOERROR", flags="QR AA", eflags="DO")
 resp.cmp(bind)
 
+# No wildcard match because empty non-terminal (y.w.example) exists.
+resp = knot.dig("a.y.w.example", "AAAA", dnssec=True)
+resp.check(rcode="NXDOMAIN", flags="QR AA", eflags="DO")
+resp.cmp(bind)
+
 # Wildcard Expansion to apex
 resp = knot.dig("a.to-apex.example", "SOA", dnssec=True)
 resp.check(rcode="NOERROR", flags="QR AA", eflags="DO")
