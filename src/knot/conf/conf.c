@@ -341,7 +341,7 @@ static int conf_process(conf_t *conf)
 		}
 
 		// Default policy for maximum ZONE size
-		if (zone->max_zone_size == -1) {
+		if (zone->max_zone_size == 0) {
 			zone->max_zone_size = conf->max_zone_size;
 		}
 
@@ -613,7 +613,7 @@ conf_t *conf_new(char* path)
 	c->xfers = -1;
 	c->rrl_slip = -1;
 	c->build_diffs = 0; /* Disable by default. */
-	c->max_zone_size = -1;
+	c->max_zone_size = (~((size_t)0)); /* Unlimited by default. */
 
 	/* DNSSEC. */
 	c->dnssec_enable = 0;
@@ -945,7 +945,6 @@ void conf_init_zone(conf_zone_t *zone)
 	zone->build_diffs = -1;
 	zone->sig_lifetime = -1;
 	zone->dnssec_enable = -1;
-	zone->max_zone_size = -1;
 
 	// Initialize ACL lists.
 	init_list(&zone->acl.xfr_in);

@@ -962,8 +962,7 @@ For incremental transfers (IXFR), the effective limit for the total size of
 the records in the transfer is twice the configured value. However the final
 size of the zone must satisfy the configured value.
 
-*Default:* 2^64
-
+*Default:* unlimited
 
 .. _disable-any:
 

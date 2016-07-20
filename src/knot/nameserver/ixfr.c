@@ -397,7 +397,7 @@ static int ixfrin_finalize(struct answer_data *adata)
 		IXFRIN_LOG(LOG_WARNING, "zone size exceeded");
 		updates_rollback(&ixfr->changesets);
 		update_free_zone(&new_contents);
-		return NS_PROC_FAIL;
+		return KNOT_EZONESIZE;
 	}
 
 	/* Write changes to journal. */
@@ -630,10 +630,9 @@ static int process_ixfrin_packet(knot_pkt_t *pkt, struct answer_data *adata)
 			return NS_PROC_DONE;
 		}
 
-		if (ixfr->change_size > 2 * size_limit) {
+		if (ixfr->change_size / 2 > size_limit) {
 			IXFRIN_LOG(LOG_WARNING, "transfer size exceeded");
 		}
-
 	}
 
 	return NS_PROC_MORE;
