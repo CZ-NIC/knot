@@ -104,13 +104,13 @@ static node_ptr hattrie_consume_ns(node_ptr **s, size_t *sp, size_t slen,
                     memcpy(bs, *s, (slen/2) * sizeof(node_ptr));
                 } else {        /* points to heap memory already */
                     node_ptr *bs_new = realloc(bs, slen * sizeof(node_ptr));
-					/* \note tricky, hattrie should be slowly moved from 'never-expect-malloc-fail' state */
-					if (bs_new == NULL) {
-						*sp = 0;      /* caller will get take care of freeing old 'bs' */
-						return bs[0]; /* return root node, so the search fails */
-					} else {
-						bs = bs_new;
-					}
+                    /* \note tricky, hattrie should be slowly moved from 'never-expect-malloc-fail' state */
+                    if (bs_new == NULL) {
+                        *sp = 0;      /* caller will get take care of freeing old 'bs' */
+                        return bs[0]; /* return root node, so the search fails */
+                    } else {
+                        bs = bs_new;
+                    }
                 }
                 /* update parent pointer on resize */
                 *s = bs;
