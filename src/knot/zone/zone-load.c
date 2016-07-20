@@ -73,10 +73,15 @@ int zone_load_check(conf_t *conf, zone_contents_t *contents)
 
 	/* Check minimum EDNS0 payload if signed. (RFC4035/sec. 3) */
 	if (zone_contents_is_signed(contents)) {
-		conf_val_t *max_payload = &conf->cache.srv_max_udp_payload;
-		if (conf_int(max_payload) < KNOT_EDNS_MIN_DNSSEC_PAYLOAD) {
+		if (conf->cache.srv_max_ipv4_udp_payload < KNOT_EDNS_MIN_DNSSEC_PAYLOAD) {
 			log_zone_error(contents->apex->owner, "EDNS payload size "
-			               "is lower than %u bytes for DNSSEC zone",
+			               "for IPv4 is lower than %u bytes for DNSSEC zone",
+			               KNOT_EDNS_MIN_DNSSEC_PAYLOAD);
+			return KNOT_EPAYLOAD;
+		}
+		if (conf->cache.srv_max_ipv6_udp_payload < KNOT_EDNS_MIN_DNSSEC_PAYLOAD) {
+			log_zone_error(contents->apex->owner, "EDNS payload size "
+			               "for IPv6 is lower than %u bytes for DNSSEC zone",
 			               KNOT_EDNS_MIN_DNSSEC_PAYLOAD);
 			return KNOT_EPAYLOAD;
 		}

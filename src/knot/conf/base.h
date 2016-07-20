@@ -91,8 +91,9 @@ typedef struct {
 
 	/*! Cached critical confdb items. */
 	struct {
+		int16_t srv_max_ipv4_udp_payload;
+		int16_t srv_max_ipv6_udp_payload;
 		conf_val_t srv_nsid;
-		conf_val_t srv_max_udp_payload;
 		conf_val_t srv_max_tcp_clients;
 		conf_val_t srv_tcp_hshake_timeout;
 		conf_val_t srv_tcp_idle_timeout;

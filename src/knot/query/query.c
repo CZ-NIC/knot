@@ -222,7 +222,8 @@ static knot_pkt_t *zone_query(const zone_t *zone, uint16_t pkt_type, knot_mm_t *
 }
 
 /*! \brief Set EDNS section. */
-static int prepare_edns(conf_t *conf, zone_t *zone, knot_pkt_t *pkt)
+static int prepare_edns(conf_t *conf, zone_t *zone, knot_pkt_t *pkt,
+                        const conf_remote_t *remote)
 {
 	conf_val_t val = conf_zone_get(conf, C_REQUEST_EDNS_OPTION, zone->name);
 
@@ -233,10 +234,21 @@ static int prepare_edns(conf_t *conf, zone_t *zone, knot_pkt_t *pkt)
 		return KNOT_EOK;
 	}
 
+	int16_t max_payload;
+	switch (remote->addr.ss_family) {
+	case AF_INET:
+		max_payload = conf->cache.srv_max_ipv4_udp_payload;
+		break;
+	case AF_INET6:
+		max_payload = conf->cache.srv_max_ipv6_udp_payload;
+		break;
+	default:
+		return KNOT_ERROR;
+	}
+
 	knot_rrset_t opt_rr;
-	conf_val_t *max_payload = &conf->cache.srv_max_udp_payload;
-	int ret = knot_edns_init(&opt_rr, conf_int(max_payload), 0,
-	                         KNOT_EDNS_VERSION, &pkt->mm);
+
+	int ret = knot_edns_init(&opt_rr, max_payload, 0, KNOT_EDNS_VERSION, &pkt->mm);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
@@ -299,7 +311,8 @@ static int zone_query_request(knot_pkt_t *query, const conf_remote_t *remote,
  * \note Everything in this function is executed synchronously, returns when
  *       the query processing is either complete or an error occurs.
  */
-int zone_query_execute(conf_t *conf, zone_t *zone, uint16_t pkt_type, const conf_remote_t *remote)
+int zone_query_execute(conf_t *conf, zone_t *zone, uint16_t pkt_type,
+                       const conf_remote_t *remote)
 {
 	/* Create a memory pool for this task. */
 	knot_mm_t mm;
@@ -313,7 +326,7 @@ int zone_query_execute(conf_t *conf, zone_t *zone, uint16_t pkt_type, const conf
 	}
 
 	/* Set EDNS section. */
-	int ret = prepare_edns(conf, zone, query);
+        int ret = prepare_edns(conf, zone, query, remote);
 	if (ret != KNOT_EOK) {
 		knot_pkt_free(&query);
 		mp_delete(mm.ctx);
