@@ -692,6 +692,7 @@ zone:
     zonefile\-sync: TIME
     ixfr\-from\-differences: BOOL
     max\-journal\-size: SIZE
+    max\-zone\-size : SIZE
     dnssec\-signing: BOOL
     dnssec\-policy: STR
     kasp\-db: STR
@@ -854,6 +855,17 @@ This option has no effect with enabled
 .SS max\-journal\-size
 .sp
 Maximum size of the zone journal file.
+.sp
+\fIDefault:\fP 2^64
+.SS max\-zone\-size
+.sp
+Maximum size of the zone. The size is measured as size of the zone records
+in wire format without compression. The limit is enforced for incoming zone
+transfers and dynamic updates.
+.sp
+For incremental transfers (IXFR), the effective limit for the total size of
+the records in the transfer is twice the configured value. However the final
+size of the zone must satisfy the configured value.
 .sp
 \fIDefault:\fP 2^64
 .SS dnssec\-signing
