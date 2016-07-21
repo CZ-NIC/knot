@@ -460,6 +460,7 @@ static int dt_start_id(dthread_t *thread)
 	// Start thread
 	sigset_t mask_all, mask_old;
 	sigfillset(&mask_all);
+	sigdelset(&mask_all, SIGPROF);
 	pthread_sigmask(SIG_SETMASK, &mask_all, &mask_old);
 	int res = pthread_create(&thread->_thr,  /* pthread_t */
 	                         &thread->_attr, /* pthread_attr_t */

@@ -150,6 +150,7 @@ static void setup_signals(void)
 	/* Block all signals. */
 	static sigset_t all;
 	sigfillset(&all);
+	sigdelset(&all, SIGPROF);
 	pthread_sigmask(SIG_SETMASK, &all, NULL);
 
 	/* Setup handlers. */
