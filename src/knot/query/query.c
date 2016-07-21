@@ -326,7 +326,7 @@ int zone_query_execute(conf_t *conf, zone_t *zone, uint16_t pkt_type,
 	}
 
 	/* Set EDNS section. */
-        int ret = prepare_edns(conf, zone, query, remote);
+	int ret = prepare_edns(conf, zone, query, remote);
 	if (ret != KNOT_EOK) {
 		knot_pkt_free(&query);
 		mp_delete(mm.ctx);
