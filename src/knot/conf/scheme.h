@@ -64,6 +64,8 @@
 #define C_MAX_TCP_CLIENTS	"\x0F""max-tcp-clients"
 #define C_MAX_UDP_PAYLOAD	"\x0F""max-udp-payload"
 #define C_MAX_ZONE_SIZE		"\x0D""max-zone-size"
+#define C_MAX_IPV4_UDP_PAYLOAD	"\x14""max-ipv4-udp-payload"
+#define C_MAX_IPV6_UDP_PAYLOAD	"\x14""max-ipv6-udp-payload"
 #define C_MODULE		"\x06""module"
 #define C_NOTIFY		"\x06""notify"
 #define C_NSEC3			"\x05""nsec3"

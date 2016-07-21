@@ -229,9 +229,19 @@ static int answer_edns_init(const knot_pkt_t *query, knot_pkt_t *resp,
 	}
 
 	/* Initialize OPT record. */
-	conf_val_t *max_payload = &conf()->cache.srv_max_udp_payload;
-	int ret = knot_edns_init(&qdata->opt_rr, conf_int(max_payload), 0,
-	                     KNOT_EDNS_VERSION, qdata->mm);
+	int16_t max_payload;
+	switch (qdata->param->remote->ss_family) {
+	case AF_INET:
+		max_payload = conf()->cache.srv_max_ipv4_udp_payload;
+		break;
+	case AF_INET6:
+		max_payload = conf()->cache.srv_max_ipv6_udp_payload;
+		break;
+	default:
+		return KNOT_ERROR;
+	}
+	int ret = knot_edns_init(&qdata->opt_rr, max_payload, 0,
+	                         KNOT_EDNS_VERSION, qdata->mm);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
@@ -341,9 +351,18 @@ static int prepare_answer(const knot_pkt_t *query, knot_pkt_t *resp, knot_layer_
 	if (has_limit) {
 		resp->max_size = KNOT_WIRE_MIN_PKTSIZE;
 		if (knot_pkt_has_edns(query)) {
-			conf_val_t *max_payload = &conf()->cache.srv_max_udp_payload;
+			uint16_t server;
+			switch (qdata->param->remote->ss_family) {
+			case AF_INET:
+				server = conf()->cache.srv_max_ipv4_udp_payload;
+				break;
+			case AF_INET6:
+				server = conf()->cache.srv_max_ipv6_udp_payload;
+				break;
+			default:
+				return KNOT_ERROR;
+			}
 			uint16_t client = knot_edns_get_payload(query->opt_rr);
-			uint16_t server = conf_int(max_payload);
 			uint16_t transfer = MIN(client, server);
 			resp->max_size = MAX(resp->max_size, transfer);
 		}

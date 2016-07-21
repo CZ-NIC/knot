@@ -110,8 +110,19 @@ void conf_refresh_hostname(
 static void init_cache(
 	conf_t *conf)
 {
+	conf_val_t val = conf_get(conf, C_SRV, C_MAX_IPV4_UDP_PAYLOAD);
+	if (val.code != KNOT_EOK) {
+		val = conf_get(conf, C_SRV, C_MAX_UDP_PAYLOAD);
+	}
+	conf->cache.srv_max_ipv4_udp_payload = conf_int(&val);
+
+	val = conf_get(conf, C_SRV, C_MAX_IPV6_UDP_PAYLOAD);
+	if (val.code != KNOT_EOK) {
+		val = conf_get(conf, C_SRV, C_MAX_UDP_PAYLOAD);
+	}
+	conf->cache.srv_max_ipv6_udp_payload = conf_int(&val);
+
 	conf->cache.srv_nsid = conf_get(conf, C_SRV, C_NSID);
-	conf->cache.srv_max_udp_payload = conf_get(conf, C_SRV, C_MAX_UDP_PAYLOAD);
 	conf->cache.srv_max_tcp_clients = conf_get(conf, C_SRV, C_MAX_TCP_CLIENTS);
 	conf->cache.srv_tcp_hshake_timeout = conf_get(conf, C_SRV, C_TCP_HSHAKE_TIMEOUT);
 	conf->cache.srv_tcp_idle_timeout = conf_get(conf, C_SRV, C_TCP_IDLE_TIMEOUT);

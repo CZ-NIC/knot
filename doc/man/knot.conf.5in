@@ -147,6 +147,8 @@ server:
     tcp\-reply\-timeout: TIME
     max\-tcp\-clients: INT
     max\-udp\-payload: SIZE
+    max\-ipv4\-udp\-payload: SIZE
+    max\-ipv6\-udp\-payload: SIZE
     rate\-limit: INT
     rate\-limit\-slip: INT
     rate\-limit\-table\-size: INT
@@ -305,7 +307,17 @@ white\-listed.
 \fIDefault:\fP not set
 .SS max\-udp\-payload
 .sp
-Maximum EDNS0 UDP payload size.
+Maximum EDNS0 UDP payload size default for both IPv4 and IPv6.
+.sp
+\fIDefault:\fP 4096
+.SS max\-ipv4\-udp\-payload
+.sp
+Maximum EDNS0 UDP payload size for IPv4.
+.sp
+\fIDefault:\fP 4096
+.SS max\-ipv6\-udp\-payload
+.sp
+Maximum EDNS0 UDP payload size for IPv6.
 .sp
 \fIDefault:\fP 4096
 .SS listen
