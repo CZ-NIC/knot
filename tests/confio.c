@@ -893,14 +893,21 @@ static void test_conf_io_list()
 	   KNOT_EOK, "list group");
 	ref = "server.version\n"
 	      "server.rate-limit\n"
-	      "server.listen";
+	      "server.listen\n"
+	      "server.max-udp-payload\n"
+	      "server.max-ipv4-udp-payload\n"
+	      "server.max-ipv6-udp-payload";
 	ok(strcmp(ref, out) == 0, "compare result");
 }
 
 static const yp_item_t desc_server[] = {
-	{ C_VERSION,    YP_TSTR,  YP_VNONE },
-	{ C_RATE_LIMIT, YP_TINT,  YP_VNONE },
-	{ C_LISTEN,     YP_TADDR, YP_VNONE, YP_FMULTI },
+	{ C_VERSION,              YP_TSTR,  YP_VNONE },
+	{ C_RATE_LIMIT,           YP_TINT,  YP_VNONE },
+	{ C_LISTEN,               YP_TADDR, YP_VNONE, YP_FMULTI },
+	// Required config cache items - assert fix.
+	{ C_MAX_UDP_PAYLOAD,      YP_TINT,  YP_VNONE },
+	{ C_MAX_IPV4_UDP_PAYLOAD, YP_TINT,  YP_VNONE },
+	{ C_MAX_IPV6_UDP_PAYLOAD, YP_TINT,  YP_VNONE },
 	{ NULL }
 };
 
