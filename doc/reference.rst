@@ -100,6 +100,8 @@ General options related to the server.
      tcp-reply-timeout: TIME
      max-tcp-clients: INT
      max-udp-payload: SIZE
+     max-ipv4-udp-payload: SIZE
+     max-ipv6-udp-payload: SIZE
      rate-limit: INT
      rate-limit-slip: INT
      rate-limit-table-size: INT
@@ -328,7 +330,25 @@ white-listed.
 max-udp-payload
 ---------------
 
-Maximum EDNS0 UDP payload size.
+Maximum EDNS0 UDP payload size default for both IPv4 and IPv6.
+
+*Default:* 4096
+
+.. _server_max-ipv4-udp-payload:
+
+max-ipv4-udp-payload
+---------------
+
+Maximum EDNS0 UDP payload size for IPv4.
+
+*Default:* 4096
+
+.. _server_max-ipv6-udp-payload:
+
+max-ipv6-udp-payload
+---------------
+
+Maximum EDNS0 UDP payload size for IPv6.
 
 *Default:* 4096
 
