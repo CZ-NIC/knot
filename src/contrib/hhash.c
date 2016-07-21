@@ -388,11 +388,13 @@ int hhash_del(hhash_t* tbl, const char* key, uint16_t len)
 
 value_t *hhash_indexval(hhash_t* tbl, unsigned i)
 {
-	if (tbl != NULL && tbl->index != NULL) {
-		return (value_t *)KEY_VAL(tbl->item[ tbl->index[i] ].d);
+	if (unlikely(tbl == NULL)) {
+		return 0;
 	}
-
-	return 0;
+	if (unlikely(tbl->index == NULL)) {
+		hhash_build_index(tbl);
+	}
+	return (value_t *)KEY_VAL(tbl->item[ tbl->index[i] ].d);
 }
 
 void hhash_build_index(hhash_t* tbl)
@@ -427,6 +429,9 @@ int hhash_find_leq(hhash_t* tbl, const char* key, uint16_t len, value_t** dst)
 	if (tbl->weight == 0) {
 		return 1;
 	}
+	if (unlikely(tbl->index == NULL)) {
+		hhash_build_index(tbl);
+	}
 
 	int k = BIN_SEARCH_FIRST_GE_CMP(tbl, tbl->weight, CMP_LE, key, len) - 1;
 	if (k > -1) {
@@ -450,6 +455,9 @@ int hhash_find_next(hhash_t* tbl, const char* key, uint16_t len, value_t** dst)
 	if (tbl->weight == 0) {
 		return 1;
 	}
+	if (unlikely(tbl->index == NULL)) {
+		hhash_build_index(tbl);
+	}
 
 	int k = BIN_SEARCH_FIRST_GE_CMP(tbl, tbl->weight, CMP_LE, key, len);
 	/* Found prev or equal, we want next */
@@ -470,6 +478,7 @@ enum {
 static void* hhash_sorted_iter_item(hhash_iter_t *i)
 {
 	hhash_t *tbl = i->tbl;
+	assert(tbl->index != NULL); /* rebuilt during hhash_iter_begin() */
 	uint32_t pos = tbl->index[i->i];
 	return tbl->item[pos].d;
 }
@@ -564,8 +573,8 @@ void hhash_iter_begin(hhash_t* tbl, hhash_iter_t* i, bool sorted)
 	i->tbl = tbl;
 	if (sorted) {
 		i->flags |= HH_SORTED;
-		if (!hhash_iter_finished(i)) {
-			assert(tbl->index);
+		if (!hhash_iter_finished(i) && unlikely(tbl->index == NULL)) {
+			hhash_build_index(tbl);
 		}
 	} else {
 		hhash_unsorted_iter_begin(i);
