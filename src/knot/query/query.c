@@ -294,8 +294,7 @@ static int zone_query_request(knot_pkt_t *query, const conf_remote_t *remote,
 	}
 
 	/* Send the queries and process responses. */
-	conf_val_t *val = &param->conf->cache.srv_tcp_reply_timeout;
-	int timeout = conf_int(val) * 1000;
+	int timeout = 1000 * param->conf->cache.srv_tcp_reply_timeout;
 	ret = knot_requestor_exec(&re, req, timeout);
 
 	/* Cleanup. */

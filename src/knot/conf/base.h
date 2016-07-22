@@ -93,12 +93,12 @@ typedef struct {
 	struct {
 		int16_t srv_max_ipv4_udp_payload;
 		int16_t srv_max_ipv6_udp_payload;
+		int32_t srv_tcp_hshake_timeout;
+		int32_t srv_tcp_idle_timeout;
+		int32_t srv_tcp_reply_timeout;
+		int32_t srv_max_tcp_clients;
+		int32_t srv_rate_limit_slip;
 		conf_val_t srv_nsid;
-		conf_val_t srv_max_tcp_clients;
-		conf_val_t srv_tcp_hshake_timeout;
-		conf_val_t srv_tcp_idle_timeout;
-		conf_val_t srv_tcp_reply_timeout;
-		conf_val_t srv_rate_limit_slip;
 		conf_val_t srv_rate_limit_whitelist;
 	} cache;
 
