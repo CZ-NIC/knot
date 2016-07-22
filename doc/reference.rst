@@ -337,7 +337,7 @@ Maximum EDNS0 UDP payload size default for both IPv4 and IPv6.
 .. _server_max-ipv4-udp-payload:
 
 max-ipv4-udp-payload
----------------
+--------------------
 
 Maximum EDNS0 UDP payload size for IPv4.
 
@@ -346,7 +346,7 @@ Maximum EDNS0 UDP payload size for IPv4.
 .. _server_max-ipv6-udp-payload:
 
 max-ipv6-udp-payload
----------------
+--------------------
 
 Maximum EDNS0 UDP payload size for IPv6.
 
