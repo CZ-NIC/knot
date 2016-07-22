@@ -113,11 +113,10 @@ AC_ARG_ENABLE([fastparser],
 AX_CC_CLANG
 AS_IF([test "$enable_fastparser" = "yes"],[
     AS_IF([test -n "$CC_CLANG_VERSION"],[
-      clang_vernum=$(printf "%02d%02d%02d" $(echo "$CC_CLANG_VERSION" | tr "." " "))
-      AS_IF([test $clang_vernum -lt 030900],[
-        AC_MSG_WARN([Fast parser disabled due to a compiler bug, see https://llvm.org/bugs/show_bug.cgi?id=23490])
-        enable_fastparser=no
-      ])
+      enable_fastparser=no
+      AC_MSG_WARN([Fast zone parser disabled due to possible compiler bug.])
+      AC_MSG_WARN([See https://llvm.org/bugs/show_bug.cgi?id=23490 for details.])
+      AC_MSG_WARN([Use --enable-fastparser=force if your know your clang is fixed.])
     ])
 ])
 

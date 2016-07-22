@@ -6,7 +6,8 @@ AC_DEFUN([AX_CC_CLANG],[
   CC_CLANG_VERSION=$(
     $CC -x c -dM -E /dev/null | \
     $GREP '__clang_version__' | \
-    $EGREP -o '[[0-9]]+\.[[0-9]]+\.[[0-9]]+'
+    $GREP -o '".*"' | \
+    $SED 's/^"\(.*\)"$/\1/g'
   )
   AC_SUBST([CC_CLANG_VERSION])
   if test -n "$CC_CLANG_VERSION"; then
