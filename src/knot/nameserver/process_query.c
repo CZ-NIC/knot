@@ -455,7 +455,7 @@ static int ratelimit_apply(int state, knot_pkt_t *pkt, knot_layer_t *ctx)
 	}
 
 	/* Now it is slip or drop. */
-	int slip = conf_int(&conf()->cache.srv_rate_limit_slip);
+	int slip = conf()->cache.srv_rate_limit_slip;
 	if (slip > 0 && rrl_slip_roll(slip)) {
 		/* Answer slips. */
 		if (process_query_err(ctx, pkt) != KNOT_STATE_DONE) {

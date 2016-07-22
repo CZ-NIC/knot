@@ -122,12 +122,23 @@ static void init_cache(
 	}
 	conf->cache.srv_max_ipv6_udp_payload = conf_int(&val);
 
+	val = conf_get(conf, C_SRV, C_TCP_HSHAKE_TIMEOUT);
+	conf->cache.srv_tcp_hshake_timeout = conf_int(&val);
+
+	val = conf_get(conf, C_SRV, C_TCP_IDLE_TIMEOUT);
+	conf->cache.srv_tcp_idle_timeout = conf_int(&val);
+
+	val = conf_get(conf, C_SRV, C_TCP_REPLY_TIMEOUT);
+	conf->cache.srv_tcp_reply_timeout = conf_int(&val);
+
+	val = conf_get(conf, C_SRV, C_MAX_TCP_CLIENTS);
+	conf->cache.srv_max_tcp_clients = conf_int(&val);
+
+	val = conf_get(conf, C_SRV, C_RATE_LIMIT_SLIP);
+	conf->cache.srv_rate_limit_slip = conf_int(&val);
+
 	conf->cache.srv_nsid = conf_get(conf, C_SRV, C_NSID);
-	conf->cache.srv_max_tcp_clients = conf_get(conf, C_SRV, C_MAX_TCP_CLIENTS);
-	conf->cache.srv_tcp_hshake_timeout = conf_get(conf, C_SRV, C_TCP_HSHAKE_TIMEOUT);
-	conf->cache.srv_tcp_idle_timeout = conf_get(conf, C_SRV, C_TCP_IDLE_TIMEOUT);
-	conf->cache.srv_tcp_reply_timeout = conf_get(conf, C_SRV, C_TCP_REPLY_TIMEOUT);
-	conf->cache.srv_rate_limit_slip = conf_get(conf, C_SRV, C_RATE_LIMIT_SLIP);
+
 	conf->cache.srv_rate_limit_whitelist = conf_get(conf, C_SRV, C_RATE_LIMIT_WHITELIST);
 }
 
