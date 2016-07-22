@@ -255,6 +255,95 @@ static uint8_t *find_option(knot_rdata_t *rdata, uint16_t opt_code)
 	return NULL;
 }
 
+/*!
+ * \brief Removes all occurrences of options with given \a code. Shoves all
+ *        remaining options toward beginning. Takes first opportunity to use
+ *        freed space to reserve option, if reservation required.
+ *
+ * \note When adding an option then it may be placed into first suitable place
+ *       i.e. not necessary at the end.
+ *
+ * \param[in]  opt_rr    OPT RR in the packet.
+ * \param[in]  code      Option code.
+ * \param[in]  reserve   False when options should only be deleted.
+ * \param[in]  size      Desired option size.
+ * \param[out] wire_ptr  Pointer to reserved option data (can be NULL).
+ * \param[in]  mm        Memory context.
+ *
+ * \return Error code, KNOT_EOK if successful.
+ */
+static int delete_and_reserve_option(knot_rrset_t *opt_rr, uint16_t code,
+                                     bool reserve, uint16_t size,
+                                     uint8_t **wire_ptr, knot_mm_t *mm)
+{
+	assert(opt_rr != NULL);
+
+	knot_rdata_t *rdata = knot_rdataset_at(&opt_rr->rrs, 0);
+	assert(rdata != NULL);
+	wire_ctx_t rd_wire = wire_ctx_init_const(knot_rdata_data(rdata),
+	                                         knot_rdata_rdlen(rdata));
+	wire_ctx_t wr_wire = wire_ctx_init(knot_rdata_data(rdata),
+	                                   knot_rdata_rdlen(rdata));
+
+	uint16_t deleted_len = 0; // Total area length acquired by deleting.
+
+	uint8_t *rd_pos = NULL;
+	uint8_t *wr_pos = NULL; // Set non-null if enough freed space found.
+	uint16_t opt_code, full_len;
+
+	// Removes, shove and reserve if have enough place.
+	while ((rd_pos = skip_option(&rd_wire, &opt_code, &full_len)) != NULL) {
+		if (opt_code != code) {
+			if (deleted_len == 0) {
+				// No data must be shoved towards front.
+				wire_ctx_skip(&wr_wire, full_len);
+				assert(wr_wire.error == KNOT_EOK);
+			} else if (deleted_len >= full_len) {
+				// There is enough space for a copy.
+				wire_ctx_write(&wr_wire, rd_pos, full_len);
+				assert(wr_wire.error == KNOT_EOK);
+			} else {
+				// There isn't enough space for a copy.
+				memmove(knot_rdata_data(rdata) + wire_ctx_offset(&wr_wire),
+				        rd_pos, full_len);
+				wire_ctx_skip(&wr_wire, full_len);
+				assert(wr_wire.error == KNOT_EOK);
+			}
+		} else {
+			deleted_len += full_len;
+			if (reserve && !wr_pos &&
+			    deleted_len >= (KNOT_EDNS_OPTION_HDRLEN + size)) {
+				// Reserve this freed space.
+				wr_pos = knot_rdata_data(rdata) + wire_ctx_offset(&wr_wire);
+				deleted_len -= KNOT_EDNS_OPTION_HDRLEN + size;
+				wire_ctx_skip(&wr_wire, KNOT_EDNS_OPTION_HDRLEN + size);
+			}
+		}
+	}
+
+	if (deleted_len > 0) {
+		// Adjust data length.
+		assert(knot_rdata_rdlen(rdata) >= deleted_len);
+		knot_rdata_set_rdlen(rdata, knot_rdata_rdlen(rdata) - deleted_len);
+	}
+
+	if (reserve && wr_pos) {
+		// Found enough space when deleting entries.
+		wire_ctx_t wire = wire_ctx_init(wr_pos, KNOT_EDNS_OPTION_HDRLEN + size);
+		wire_ctx_write_u16(&wire, code);
+		wire_ctx_write_u16(&wire, size);
+		size_t offset = wire_ctx_offset(&wire);
+		wire_ctx_clear(&wire, size);
+		if (wire_ptr) {
+			*wire_ptr = wr_pos + offset;
+		}
+	} else if (reserve) {
+		return knot_edns_reserve_option(opt_rr, code, size, wire_ptr, mm);
+	}
+
+	return KNOT_EOK;
+}
+
 /*----------------------------------------------------------------------------*/
 
 /*!
@@ -308,82 +397,25 @@ static uint8_t *edns_add(knot_rrset_t *opt, uint16_t code, uint16_t size,
 }
 
 _public_
+int knot_edns_remove_options(knot_rrset_t *opt_rr, uint16_t code)
+{
+	if (opt_rr == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	return delete_and_reserve_option(opt_rr, code, false, 0, NULL, NULL);
+}
+
+_public_
 int knot_edns_reserve_unique_option(knot_rrset_t *opt_rr, uint16_t code,
                                     uint16_t size, uint8_t **wire_ptr,
                                     knot_mm_t *mm)
 {
-	if (!opt_rr) {
+	if (opt_rr == NULL) {
 		return KNOT_EINVAL;
 	}
 
-	knot_rdata_t *rdata = knot_rdataset_at(&opt_rr->rrs, 0);
-	assert(rdata != NULL);
-	wire_ctx_t rd_wire = wire_ctx_init_const(knot_rdata_data(rdata),
-	                                         knot_rdata_rdlen(rdata));
-	wire_ctx_t wr_wire = wire_ctx_init(knot_rdata_data(rdata),
-	                                   knot_rdata_rdlen(rdata));
-
-	uint16_t deleted_len = 0; // Total area length acquired by deleting.
-
-	uint8_t *rd_pos = NULL;
-	uint8_t *wr_pos = NULL; // Set non-null if enough freed space found.
-	uint16_t opt_code, full_len;
-
-	/*
-	 * Deletes all occurrences of options with given code. Shoves all
-	 * remaining options towards beginning. Takes first opportunity to
-	 * use freed space to reserve option.
-	 */
-	while ((rd_pos = skip_option(&rd_wire, &opt_code, &full_len)) != NULL) {
-		if (opt_code != code) {
-			if (deleted_len == 0) {
-				// No data must be shoved towards front.
-				wire_ctx_skip(&wr_wire, full_len);
-				assert(wr_wire.error == KNOT_EOK);
-			} else if (deleted_len >= full_len) {
-				// There is enough space for a copy.
-				wire_ctx_write(&wr_wire, rd_pos, full_len);
-				assert(wr_wire.error == KNOT_EOK);
-			} else {
-				// There isn't enough space for a copy.
-				memmove(knot_rdata_data(rdata) + wire_ctx_offset(&wr_wire),
-				        rd_pos, full_len);
-				wire_ctx_skip(&wr_wire, full_len);
-				assert(wr_wire.error == KNOT_EOK);
-			}
-		} else {
-			deleted_len += full_len;
-			if (!wr_pos &&
-			    deleted_len >= (KNOT_EDNS_OPTION_HDRLEN + size)) {
-				// Reserve this freed space.
-				wr_pos = knot_rdata_data(rdata) + wire_ctx_offset(&wr_wire);
-				deleted_len -= KNOT_EDNS_OPTION_HDRLEN + size;
-				wire_ctx_skip(&wr_wire, KNOT_EDNS_OPTION_HDRLEN + size);
-			}
-		}
-	}
-
-	if (deleted_len > 0) {
-		// Adjust data length.
-		assert(knot_rdata_rdlen(rdata) >= deleted_len);
-		knot_rdata_set_rdlen(rdata, knot_rdata_rdlen(rdata) - deleted_len);
-	}
-
-	if (wr_pos) {
-		// Found enough space when deleting entries.
-		wire_ctx_t wire = wire_ctx_init(wr_pos, KNOT_EDNS_OPTION_HDRLEN + size);
-		wire_ctx_write_u16(&wire, code);
-		wire_ctx_write_u16(&wire, size);
-		size_t offset = wire_ctx_offset(&wire);
-		wire_ctx_clear(&wire, size);
-		if (wire_ptr) {
-			*wire_ptr = wr_pos + offset;
-		}
-	} else {
-		return knot_edns_reserve_option(opt_rr, code, size, wire_ptr, mm);
-	}
-
-	return KNOT_EOK;
+	return delete_and_reserve_option(opt_rr, code, true, size, wire_ptr, mm);
 }
 
 _public_

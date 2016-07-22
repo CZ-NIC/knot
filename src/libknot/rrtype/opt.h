@@ -218,11 +218,21 @@ bool knot_edns_do(const knot_rrset_t *opt_rr);
 void knot_edns_set_do(knot_rrset_t *opt_rr);
 
 /*!
+ * \brief Removes all EDNS options with given \a code.
+ *
+ * \param[in] opt_rr  OPT RR structure to remove the options from.
+ * \param[in] code    Option code.
+ *
+ * \return Error code, KNOT_EOK if successful (even if nothing removed).
+ */
+int knot_edns_remove_options(knot_rrset_t *opt_rr, uint16_t code);
+
+/*!
  * \brief Adds EDNS option into the package with empty (zeroed) content.
  *
  * \note All other occurrences of the option type will be removed.
  *
- * \param[in]  opt_rr    OPT RR in the packet.
+ * \param[in]  opt_rr    OPT RR structure to reserve the option in.
  * \param[in]  code      Option code.
  * \param[in]  size      Desired option size.
  * \param[out] wire_ptr  Pointer to reserved option data (can be NULL).
@@ -237,7 +247,7 @@ int knot_edns_reserve_unique_option(knot_rrset_t *opt_rr, uint16_t code,
 /*!
  * \brief Add EDNS option into the package with empty (zeroed) content.
  *
- * \param[in]  opt_rr    OPT RR in the packet.
+ * \param[in]  opt_rr    OPT RR structure to reserve the option in.
  * \param[in]  code      Option code.
  * \param[in]  size      Desired option size.
  * \param[out] wire_ptr  Pointer to reserved option data (can be NULL).
