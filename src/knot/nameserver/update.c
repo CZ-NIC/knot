@@ -153,6 +153,7 @@ static int process_normal(conf_t *conf, zone_t *zone, list_t *requests)
 
 	// Apply changes.
 	ret = zone_update_commit(conf, &up);
+	zone_update_clear(&up);
 	if (ret != KNOT_EOK) {
 		if (ret == KNOT_ETTL || ret == KNOT_EZONESIZE) {
 			set_rcodes(requests, KNOT_RCODE_REFUSED);
@@ -161,8 +162,6 @@ static int process_normal(conf_t *conf, zone_t *zone, list_t *requests)
 		}
 		return ret;
 	}
-
-	zone_update_clear(&up);
 
 	/* Sync zonefile immediately if configured. */
 	conf_val_t val = conf_zone_get(conf, C_ZONEFILE_SYNC, zone->name);

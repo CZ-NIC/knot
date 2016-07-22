@@ -716,6 +716,7 @@ int zone_update_commit(conf_t *conf, zone_update_t *update)
 		/* Sync RCU. */
 		synchronize_rcu();
 		if (update->flags & UPDATE_FULL) {
+			zone_contents_deep_free(&old_contents);
 			update->new_cont = NULL;
 		} else if (update->flags & UPDATE_INCREMENTAL) {
 			update_cleanup(&update->a_ctx);
