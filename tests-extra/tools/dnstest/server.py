@@ -90,8 +90,6 @@ class Server(object):
 
         self.data_dir = None
 
-        self.dnssec_enable = None
-
         self.nsid = None
         self.ident = None
         self.version = None
@@ -111,11 +109,15 @@ class Server(object):
         self.ratelimit = None
         self.ratelimit_slip = None
         self.ratelimit_whitelist = None
+        self.tcp_reply_timeout = None
+        self.max_udp_payload = None
+        self.max_udp4_payload = None
+        self.max_udp6_payload = None
         self.disable_any = None
         self.disable_notify = None
-        self.tcp_reply_timeout = None
         self.zonefile_sync = None
         self.journal_size = None
+        self.zone_size_limit = None
 
         self.inquirer = None
 
@@ -847,7 +849,6 @@ class Knot(Server):
         self.daemon_bin = params.knot_bin
         self.control_bin = params.knot_ctl
         self.inquirer = dnstest.inquirer.Inquirer()
-        self.zone_size_limit = None
 
     @property
     def keydir(self):
@@ -891,8 +892,10 @@ class Knot(Server):
         self._on_str_hex(s, "nsid", self.nsid)
         s.item_str("rundir", self.dir)
         s.item_str("listen", "%s@%s" % (self.addr, self.port))
-        if (self.tcp_reply_timeout):
-            s.item_str("tcp-reply-timeout", self.tcp_reply_timeout)
+        self._str(s, "tcp-reply-timeout", self.tcp_reply_timeout)
+        self._str(s, "max-udp-payload", self.max_udp_payload)
+        self._str(s, "max-ipv4-udp-payload", self.max_udp4_payload)
+        self._str(s, "max-ipv6-udp-payload", self.max_udp6_payload)
         if self.ratelimit is not None:
             s.item_str("rate-limit", self.ratelimit)
             if self.ratelimit_slip is not None:
