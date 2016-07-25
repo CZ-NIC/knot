@@ -123,10 +123,9 @@ class Test(object):
         srv.ident = ident
         srv.version = version
 
-        if address:
-            if ipaddress.ip_address(address).version != \
-               ipaddress.ip_address(self.addr).version:
-                raise Failed("IP version missmatch '%s'" % server)
+        if address == 4 or address == 6:
+            srv.addr = Test.LOCAL_ADDR[address]
+        elif address:
             srv.addr = address
         else:
             srv.addr = self.addr
