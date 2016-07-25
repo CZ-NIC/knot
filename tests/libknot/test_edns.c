@@ -1,4 +1,4 @@
-/*  Copyright (C) 2014 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -436,6 +436,7 @@ static bool test_remove(void)
 	/* Removing from empty OPT RR. */
 	new_expected_len = 0;
 	bret = prepare_edns_data(&opt_rr, false);
+	ok(bret, "OPT RR remove: internal data preparation");
 	iret = knot_edns_remove_options(&opt_rr, OPT_ID_3);
 	bret = check_rdata(&opt_rr, new_expected_len,
 	                   (const uint8_t *)"");
@@ -446,6 +447,7 @@ static bool test_remove(void)
 	/* Removing non-existent option. */
 	new_expected_len = 34;
 	bret = prepare_edns_data(&opt_rr, true);
+	ok(bret, "OPT RR remove: internal data preparation");
 	iret = knot_edns_remove_options(&opt_rr, OPT_ID_3);
 	bret = check_rdata(&opt_rr, new_expected_len,
 	                   (const uint8_t *)"\xaa\xa1\x00\x03\xf0\xf1\xf2"
@@ -459,6 +461,7 @@ static bool test_remove(void)
 	/* Removing existent option. */
 	new_expected_len = 26;
 	bret = prepare_edns_data(&opt_rr, true);
+	ok(bret, "OPT RR remove: internal data preparation");
 	iret = knot_edns_remove_options(&opt_rr, OPT_ID_0);
 	bret = check_rdata(&opt_rr, new_expected_len,
 	                   (const uint8_t *)"\xaa\xa1\x00\x03\xf0\xf1\xf2"
@@ -471,6 +474,7 @@ static bool test_remove(void)
 	/* Removing existent options. */
 	new_expected_len = 20;
 	bret = prepare_edns_data(&opt_rr, true);
+	ok(bret, "OPT RR remove: internal data preparation");
 	iret = knot_edns_remove_options(&opt_rr, OPT_ID_1);
 	bret = check_rdata(&opt_rr, new_expected_len,
 	                   (const uint8_t *)"\xaa\xa0\x00\x04\xf0\xf1\xf2\xf3"
@@ -482,6 +486,7 @@ static bool test_remove(void)
 	/* Removing existent option. */
 	new_expected_len = 22;
 	bret = prepare_edns_data(&opt_rr, true);
+	ok(bret, "OPT RR remove: internal data preparation");
 	iret = knot_edns_remove_options(&opt_rr, OPT_ID_2);
 	bret = check_rdata(&opt_rr, new_expected_len,
 	                   (const uint8_t *)"\xaa\xa1\x00\x03\xf0\xf1\xf2"
@@ -523,6 +528,7 @@ static bool test_unique(void)
 	new_opt_size = 4;
 	new_expected_len = 8;
 	bret = prepare_edns_data(&opt_rr, false);
+	ok(bret, "OPT RR remove: internal data preparation");
 	iret = knot_edns_reserve_unique_option(&opt_rr, OPT_ID_3, new_opt_size,
 	                                       &reserved_data, NULL);
 	bret = check_rdata(&opt_rr, new_expected_len,
@@ -539,6 +545,7 @@ static bool test_unique(void)
 	new_opt_size = 4;
 	new_expected_len = 42;
 	bret = prepare_edns_data(&opt_rr, true);
+	ok(bret, "OPT RR remove: internal data preparation");
 	iret = knot_edns_reserve_unique_option(&opt_rr, OPT_ID_3, new_opt_size,
 	                                       &reserved_data, NULL);
 	bret = check_rdata(&opt_rr, new_expected_len,
@@ -563,6 +570,7 @@ static bool test_unique(void)
 	new_opt_size = 3;
 	new_expected_len = 27;
 	bret = prepare_edns_data(&opt_rr, true);
+	ok(bret, "OPT RR remove: internal data preparation");
 	iret = knot_edns_reserve_unique_option(&opt_rr, OPT_ID_1, new_opt_size,
 	                                       &reserved_data, NULL);
 	bret = check_rdata(&opt_rr, new_expected_len,
@@ -583,6 +591,7 @@ static bool test_unique(void)
 	new_opt_size = 2;
 	new_expected_len = 26;
 	bret = prepare_edns_data(&opt_rr, true);
+	ok(bret, "OPT RR remove: internal data preparation");
 	iret = knot_edns_reserve_unique_option(&opt_rr, OPT_ID_1, new_opt_size,
 	                                       &reserved_data, NULL);
 	bret = check_rdata(&opt_rr, new_expected_len,
@@ -603,6 +612,7 @@ static bool test_unique(void)
 	new_opt_size = 6;
 	new_expected_len = 30;
 	bret = prepare_edns_data(&opt_rr, true);
+	ok(bret, "OPT RR remove: internal data preparation");
 	iret = knot_edns_reserve_unique_option(&opt_rr, OPT_ID_1, new_opt_size,
 	                                       &reserved_data, NULL);
 	bret = check_rdata(&opt_rr, new_expected_len,
@@ -623,6 +633,7 @@ static bool test_unique(void)
 	new_opt_size = 10;
 	new_expected_len = 34;
 	bret = prepare_edns_data(&opt_rr, true);
+	ok(bret, "OPT RR remove: internal data preparation");
 	iret = knot_edns_reserve_unique_option(&opt_rr, OPT_ID_1, new_opt_size,
 	                                       &reserved_data, NULL);
 	bret = check_rdata(&opt_rr, new_expected_len,
@@ -643,6 +654,7 @@ static bool test_unique(void)
 	new_opt_size = 4;
 	new_expected_len = 34;
 	bret = prepare_edns_data(&opt_rr, true);
+	ok(bret, "OPT RR remove: internal data preparation");
 	iret = knot_edns_reserve_unique_option(&opt_rr, OPT_ID_0, new_opt_size,
 	                                       &reserved_data, NULL);
 	bret = check_rdata(&opt_rr, new_expected_len,
@@ -665,6 +677,7 @@ static bool test_unique(void)
 	new_opt_size = 0;
 	new_expected_len = 30;
 	bret = prepare_edns_data(&opt_rr, true);
+	ok(bret, "OPT RR remove: internal data preparation");
 	iret = knot_edns_reserve_unique_option(&opt_rr, OPT_ID_0, new_opt_size,
 	                                       &reserved_data, NULL);
 	bret = check_rdata(&opt_rr, new_expected_len,
@@ -680,6 +693,7 @@ static bool test_unique(void)
 	new_opt_size = 6;
 	new_expected_len = 36;
 	bret = prepare_edns_data(&opt_rr, true);
+	ok(bret, "OPT RR remove: internal data preparation");
 	iret = knot_edns_reserve_unique_option(&opt_rr, OPT_ID_0, new_opt_size,
 	                                       &reserved_data, NULL);
 	bret = check_rdata(&opt_rr, new_expected_len,
@@ -702,6 +716,7 @@ static bool test_unique(void)
 	new_opt_size = 4;
 	new_expected_len = 30;
 	bret = prepare_edns_data(&opt_rr, true);
+	ok(bret, "OPT RR remove: internal data preparation");
 	iret = knot_edns_reserve_unique_option(&opt_rr, OPT_ID_2, new_opt_size,
 	                                       &reserved_data, NULL);
 	bret = check_rdata(&opt_rr, new_expected_len,
@@ -724,6 +739,7 @@ static bool test_unique(void)
 	new_opt_size = 10;
 	new_expected_len = 36;
 	bret = prepare_edns_data(&opt_rr, true);
+	ok(bret, "OPT RR remove: internal data preparation");
 	iret = knot_edns_reserve_unique_option(&opt_rr, OPT_ID_2, new_opt_size,
 	                                       &reserved_data, NULL);
 	bret = check_rdata(&opt_rr, new_expected_len,
