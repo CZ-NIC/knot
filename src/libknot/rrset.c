@@ -263,6 +263,8 @@ size_t knot_rrset_size(const knot_rrset_t *rrset)
 	}
 
 	uint16_t rr_count = rrset->rrs.rr_count;
+
+	assert(rrset->owner);
 	size_t total_size = knot_dname_size(rrset->owner) * rr_count;
 
 	for (size_t i = 0; i < rr_count; ++i) {
