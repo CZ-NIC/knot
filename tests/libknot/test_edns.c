@@ -459,6 +459,9 @@ static void test_unique(void)
 	ok(iret == KNOT_EOK && reserved_data != NULL && bret,
 	   "OPT RR unique: reserve unique non-existent option into empty OPT RR (ret = %s)",
 	   knot_strerror(iret));
+	if (reserved_data == NULL) {
+		return;
+	}
 	memcpy(reserved_data, OPT_DATA, new_opt_size);
 	bret = check_rdata(&opt_rr, new_expected_len,
 	                   (const uint8_t *)"\xaa\xa3\x00\x04\xe0\xe1\xe2\xe3");
@@ -480,6 +483,9 @@ static void test_unique(void)
 	ok(iret == KNOT_EOK && reserved_data != NULL && bret,
 	   "OPT RR unique: reserve unique non-existent option (ret = %s)",
 	   knot_strerror(iret));
+	if (reserved_data == NULL) {
+		return;
+	}
 	memcpy(reserved_data, OPT_DATA, new_opt_size);
 	bret = check_rdata(&opt_rr, new_expected_len,
 	                   (const uint8_t *)"\xaa\xa1\x00\x03\xf0\xf1\xf2"
@@ -503,6 +509,9 @@ static void test_unique(void)
 	ok(iret == KNOT_EOK && reserved_data != NULL && bret,
 	   "OPT RR unique: reserve unique existent option (ret = %s)",
 	   knot_strerror(iret));
+	if (reserved_data == NULL) {
+		return;
+	}
 	memcpy(reserved_data, OPT_DATA, new_opt_size);
 	bret = check_rdata(&opt_rr, new_expected_len,
 	                   (const uint8_t *)"\xaa\xa1\x00\x03\xe0\xe1\xe2"
@@ -524,6 +533,9 @@ static void test_unique(void)
 	ok(iret == KNOT_EOK && reserved_data != NULL && bret,
 	   "OPT RR unique: reserve unique existent option (ret = %s)",
 	   knot_strerror(iret));
+	if (reserved_data == NULL) {
+		return;
+	}
 	memcpy(reserved_data, OPT_DATA, new_opt_size);
 	bret = check_rdata(&opt_rr, new_expected_len,
 	                   (const uint8_t *)"\xaa\xa1\x00\x02\xe0\xe1"
@@ -545,6 +557,9 @@ static void test_unique(void)
 	ok(iret == KNOT_EOK && reserved_data != NULL && bret,
 	   "OPT RR unique: reserve unique existent option (ret = %s)",
 	   knot_strerror(iret));
+	if (reserved_data == NULL) {
+		return;
+	}
 	memcpy(reserved_data, OPT_DATA, new_opt_size);
 	bret = check_rdata(&opt_rr, new_expected_len,
 	                   (const uint8_t *)"\xaa\xa0\x00\x04\xf0\xf1\xf2\xf3"
@@ -566,6 +581,9 @@ static void test_unique(void)
 	ok(iret == KNOT_EOK && reserved_data != NULL && bret,
 	   "OPT RR unique: reserve unique existent option (ret = %s)",
 	   knot_strerror(iret));
+	if (reserved_data == NULL) {
+		return;
+	}
 	memcpy(reserved_data, OPT_DATA, new_opt_size);
 	bret = check_rdata(&opt_rr, new_expected_len,
 	                   (const uint8_t *)"\xaa\xa0\x00\x04\xf0\xf1\xf2\xf3"
@@ -588,6 +606,9 @@ static void test_unique(void)
 	ok(iret == KNOT_EOK && reserved_data != NULL && bret,
 	   "OPT RR unique: reserve unique existent option (ret = %s)",
 	   knot_strerror(iret));
+	if (reserved_data == NULL) {
+		return;
+	}
 	memcpy(reserved_data, OPT_DATA, new_opt_size);
 	bret = check_rdata(&opt_rr, new_expected_len,
 	                   (const uint8_t *)"\xaa\xa1\x00\x03\xf0\xf1\xf2"
@@ -627,6 +648,9 @@ static void test_unique(void)
 	ok(iret == KNOT_EOK && reserved_data != NULL && bret,
 	   "OPT RR unique: reserve unique existent option (ret = %s)",
 	   knot_strerror(iret));
+	if (reserved_data == NULL) {
+		return;
+	}
 	memcpy(reserved_data, OPT_DATA, new_opt_size);
 	bret = check_rdata(&opt_rr, new_expected_len,
 	                   (const uint8_t *)"\xaa\xa1\x00\x03\xf0\xf1\xf2"
@@ -650,6 +674,9 @@ static void test_unique(void)
 	ok(iret == KNOT_EOK && reserved_data != NULL && bret,
 	   "OPT RR unique: reserve unique existent option (ret = %s)",
 	   knot_strerror(iret));
+	if (reserved_data == NULL) {
+		return;
+	}
 	memcpy(reserved_data, OPT_DATA, new_opt_size);
 	bret = check_rdata(&opt_rr, new_expected_len,
 	                   (const uint8_t *)"\xaa\xa1\x00\x03\xf0\xf1\xf2"
@@ -673,6 +700,9 @@ static void test_unique(void)
 	ok(iret == KNOT_EOK && reserved_data != NULL && bret,
 	   "OPT RR unique: reserve unique existent option (ret = %s)",
 	   knot_strerror(iret));
+	if (reserved_data == NULL) {
+		return;
+	}
 	memcpy(reserved_data, OPT_DATA, new_opt_size);
 	bret = check_rdata(&opt_rr, new_expected_len,
 	                   (const uint8_t *)"\xaa\xa1\x00\x03\xf0\xf1\xf2"
