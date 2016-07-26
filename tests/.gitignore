@@ -17,9 +17,9 @@
 /contrib/test_wire_ctx
 
 /libknot/test_control
-/libknot/test_cookie-client
-/libknot/test_cookie-opt
-/libknot/test_cookie-server
+/libknot/test_cookies-client
+/libknot/test_cookies-opt
+/libknot/test_cookies-server
 /libknot/test_db
 /libknot/test_descriptor
 /libknot/test_dname
