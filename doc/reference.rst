@@ -235,8 +235,7 @@ tcp-reply-timeout
 -----------------
 
 Maximum time to wait for an outgoing connection or for a reply to an issued
-request (SOA, NOTIFY, AXFR...). This limit also applies to knotc remote
-operation over an internet socket.
+request (SOA, NOTIFY, AXFR...).
 
 *Default:* 10
 

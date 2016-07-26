@@ -234,8 +234,7 @@ receiving of a single query, each query must be received in this time limit.
 .SS tcp\-reply\-timeout
 .sp
 Maximum time to wait for an outgoing connection or for a reply to an issued
-request (SOA, NOTIFY, AXFR...). This limit also applies to knotc remote
-operation over an internet socket.
+request (SOA, NOTIFY, AXFR...).
 .sp
 \fIDefault:\fP 10
 .SS max\-tcp\-clients
