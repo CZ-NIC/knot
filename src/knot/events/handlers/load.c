@@ -64,13 +64,6 @@ int event_load(conf_t *conf, zone_t *zone)
 	/*! \todo issue #242 dnssec signing should occur in the special event */
 	ret = zone_load_post(conf, zone, contents, &dnssec_refresh);
 	if (ret != KNOT_EOK) {
-		if (ret == KNOT_ESPACE) {
-			log_zone_error(zone->name, "journal size is too small "
-			               "to fit the changes");
-		} else {
-			log_zone_error(zone->name, "failed to store changes into "
-			               "journal (%s)", knot_strerror(ret));
-		}
 		goto fail;
 	}
 
