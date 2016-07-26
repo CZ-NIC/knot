@@ -173,7 +173,8 @@ A PID file location.
 udp-workers
 -----------
 
-A number of quering UDP workers (threads).
+A number of UDP workers (threads) used to process incoming queries
+over UDP.
 
 *Default:* auto-estimated optimal value based on the number of online CPUs
 
@@ -182,7 +183,8 @@ A number of quering UDP workers (threads).
 tcp-workers
 -----------
 
-A number of quering TCP workers (threads).
+A number of TCP workers (threads) used to process incoming queries
+over TCP.
 
 *Default:* auto-estimated optimal value based on the number of online CPUs
 
