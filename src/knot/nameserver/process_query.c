@@ -494,8 +494,7 @@ static int process_query_out(knot_layer_t *ctx, knot_pkt_t *pkt)
 	 * Preprocessing.
 	 */
 
-	int ret = prepare_answer(query, pkt, ctx);
-	if (ret != KNOT_EOK) {
+	if (prepare_answer(query, pkt, ctx) != KNOT_EOK) {
 		next_state = KNOT_STATE_FAIL;
 		goto finish;
 	}
@@ -538,8 +537,7 @@ static int process_query_out(knot_layer_t *ctx, knot_pkt_t *pkt)
 		}
 
 		/* Put OPT RR to the additional section. */
-		ret = answer_edns_put(pkt, qdata);
-		if (ret != KNOT_EOK) {
+		if (answer_edns_put(pkt, qdata) != KNOT_EOK) {
 			next_state = KNOT_STATE_FAIL;
 			goto finish;
 		}
