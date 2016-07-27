@@ -43,10 +43,8 @@ typedef struct zone_update {
 
 typedef struct {
 	zone_update_t *update;          /*!< The update we're iterating over. */
-	hattrie_iter_t *base_it;        /*!< Iterator for the original zone in the case of INCREMENTAL update or the new zone in case of FULL update. */
-	hattrie_iter_t *add_it;         /*!< Iterator for the added nodes in the changeset. Available in the INCREMENTAL update only. */
-	const zone_node_t *base_node;   /*!< The original node (INCREMENTAL update) or new node (FULL update). */
-	const zone_node_t *add_node;    /*!< The additions to that node (INCREMENTAL update only). */
+	hattrie_iter_t *base_it;        /*!< Iterator for the new zone. */
+	const zone_node_t *base_node;   /*!< The new node. */
 	const zone_node_t *next_node;   /*!< The smaller of t_node and ch_node (INCREMENTAL update) or next new node (FULL update). */
 	bool nsec3;                     /*!< Set when we're using the NSEC3 node tree. */
 } zone_update_iter_t;

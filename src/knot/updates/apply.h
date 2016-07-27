@@ -48,6 +48,20 @@ typedef struct apply_ctx apply_ctx_t;
  */
 void apply_init_ctx(apply_ctx_t *ctx, uint32_t flags);
 
+/*! \brief Removes single RR from zone contents. */
+int apply_remove_rr(apply_ctx_t *ctx, zone_contents_t *contents,
+                    const knot_rrset_t *rr);
+
+/*! \brief Adds a single RR into zone contents. */
+int apply_add_rr(apply_ctx_t *ctx, zone_contents_t *contents,
+                 const knot_rrset_t *rr);
+
+int apply_replace_soa(apply_ctx_t *ctx, zone_contents_t *contents, changeset_t *chset);
+
+/*! \brief Creates a shallow zone contents copy. */
+int apply_prepare_zone_copy(zone_contents_t *old_contents,
+                            zone_contents_t **new_contents);
+
 /*!
  * \brief Applies changesets *with* zone shallow copy.
  *

@@ -256,7 +256,7 @@ size_t changeset_size(const changeset_t *ch)
 	return size;
 }
 
-int changeset_add_rrset(changeset_t *ch, const knot_rrset_t *rrset, unsigned flags)
+int changeset_add_addition(changeset_t *ch, const knot_rrset_t *rrset, unsigned flags)
 {
 	if (!ch || !rrset) {
 		return KNOT_EINVAL;
@@ -288,7 +288,7 @@ int changeset_add_rrset(changeset_t *ch, const knot_rrset_t *rrset, unsigned fla
 	return ret;
 }
 
-int changeset_rem_rrset(changeset_t *ch, const knot_rrset_t *rrset, unsigned flags)
+int changeset_add_removal(changeset_t *ch, const knot_rrset_t *rrset, unsigned flags)
 {
 	if (!ch || !rrset) {
 		return KNOT_EINVAL;
@@ -320,6 +320,36 @@ int changeset_rem_rrset(changeset_t *ch, const knot_rrset_t *rrset, unsigned fla
 	return ret;
 }
 
+int changeset_remove_addition(changeset_t *ch, const knot_rrset_t *rrset)
+{
+	if (rrset->type == KNOT_RRTYPE_SOA) {
+		/* Do not add SOAs into actual contents. */
+		if (ch->soa_to != NULL) {
+			knot_rrset_free(&ch->soa_to, NULL);
+			ch->soa_to = NULL;
+		}
+		return KNOT_EOK;
+	}
+
+	zone_node_t *n = NULL;
+	return zone_contents_remove_rr(ch->add, rrset, &n);
+}
+
+int changeset_remove_removal(changeset_t *ch, const knot_rrset_t *rrset)
+{
+	if (rrset->type == KNOT_RRTYPE_SOA) {
+		/* Do not add SOAs into actual contents. */
+		if (ch->soa_from != NULL) {
+			knot_rrset_free(&ch->soa_from, NULL);
+			ch->soa_from = NULL;
+		}
+		return KNOT_EOK;
+	}
+
+	zone_node_t *n = NULL;
+	return zone_contents_remove_rr(ch->remove, rrset, &n);
+}
+
 int changeset_merge(changeset_t *ch1, const changeset_t *ch2)
 {
 	changeset_iter_t itt;
@@ -327,7 +357,7 @@ int changeset_merge(changeset_t *ch1, const changeset_t *ch2)
 
 	knot_rrset_t rrset = changeset_iter_next(&itt);
 	while (!knot_rrset_empty(&rrset)) {
-		int ret = changeset_add_rrset(ch1, &rrset, CHANGESET_CHECK);
+		int ret = changeset_add_addition(ch1, &rrset, CHANGESET_CHECK);
 		if (ret != KNOT_EOK) {
 			changeset_iter_clear(&itt);
 			return ret;
@@ -340,7 +370,7 @@ int changeset_merge(changeset_t *ch1, const changeset_t *ch2)
 
 	rrset = changeset_iter_next(&itt);
 	while (!knot_rrset_empty(&rrset)) {
-		int ret = changeset_rem_rrset(ch1, &rrset, CHANGESET_CHECK);
+		int ret = changeset_add_removal(ch1, &rrset, CHANGESET_CHECK);
 		if (ret != KNOT_EOK) {
 			changeset_iter_clear(&itt);
 			return ret;

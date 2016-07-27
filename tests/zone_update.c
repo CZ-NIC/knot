@@ -190,10 +190,6 @@ void test_incremental(zone_t *zone, zs_scanner_t *sc)
 	ok(update.zone == zone && changeset_empty(&update.change) && update.mm.alloc,
 	   "incremental zone update: init");
 
-	ok(zone->contents->apex == zone_update_get_apex(&update) &&
-	   zone_update_no_change(&update),
-	   "incremental zone update: no change");
-
 	if (zs_set_input_string(sc, add_str, strlen(add_str)) != 0 ||
 	    zs_parse_all(sc) != 0) {
 		assert(0);
@@ -236,7 +232,7 @@ void test_incremental(zone_t *zone, zs_scanner_t *sc)
 	/* Node Removal */
 	ret = zone_update_remove_node(&update, rem_node_name);
 	synth_node = zone_update_get_node(&update, rem_node_name);
-	ok(ret == KNOT_EOK && synth_node && node_empty(synth_node),
+	ok(ret == KNOT_EOK && !synth_node,// && node_empty(synth_node),
 	   "incremental zone update: node removal");
 	knot_dname_free(&rem_node_name, NULL);
 

@@ -146,9 +146,23 @@ static bool can_remove(const zone_node_t *node, const knot_rrset_t *rr)
 }
 
 /*! \brief Removes single RR from zone contents. */
-static int remove_rr(apply_ctx_t *ctx, zone_tree_t *tree, zone_node_t *node,
-                     const knot_rrset_t *rr, changeset_t *chset)
+int apply_remove_rr(apply_ctx_t *ctx, zone_contents_t *contents,
+                     const knot_rrset_t *rr)
 {
+	// Find node for this owner
+	zone_node_t *node = zone_contents_find_node_for_rr(contents, rr);
+	if (!can_remove(node, rr)) {
+		// Cannot be removed, either no node or nonexistent RR
+		if (ctx->flags & APPLY_STRICT) {
+			// Don't ignore missing RR if strict. Required for IXFR.
+			return KNOT_ENORECORD;
+		}
+		return KNOT_EOK;
+	}
+
+	zone_tree_t *tree = knot_rrset_is_nsec3rel(rr) ?
+		                contents->nsec3_nodes : contents->nodes;
+
 	knot_rrset_t removed_rrset = node_rrset(node, rr->type);
 	knot_rdata_t *old_data = removed_rrset.rrs.data;
 	int ret = replace_rdataset_with_copy(node, rr->type);
@@ -198,23 +212,7 @@ static int apply_remove(apply_ctx_t *ctx, zone_contents_t *contents, changeset_t
 
 	knot_rrset_t rr = changeset_iter_next(&itt);
 	while (!knot_rrset_empty(&rr)) {
-		// Find node for this owner
-		zone_node_t *node = zone_contents_find_node_for_rr(contents, &rr);
-		if (!can_remove(node, &rr)) {
-			// Cannot be removed, either no node or nonexistent RR
-			if (ctx->flags & APPLY_STRICT) {
-				// Don't ignore missing RR if strict. Required for IXFR.
-				changeset_iter_clear(&itt);
-				return KNOT_ENORECORD;
-			}
-
-			rr = changeset_iter_next(&itt);
-			continue;
-		}
-
-		zone_tree_t *tree = knot_rrset_is_nsec3rel(&rr) ?
-		                    contents->nsec3_nodes : contents->nodes;
-		int ret = remove_rr(ctx, tree, node, &rr, chset);
+		int ret = apply_remove_rr(ctx, contents, &rr);
 		if (ret != KNOT_EOK) {
 			changeset_iter_clear(&itt);
 			return ret;
@@ -228,9 +226,15 @@ static int apply_remove(apply_ctx_t *ctx, zone_contents_t *contents, changeset_t
 }
 
 /*! \brief Adds a single RR into zone contents. */
-static int add_rr(apply_ctx_t *ctx, const zone_contents_t *zone, zone_node_t *node,
-                  const knot_rrset_t *rr, changeset_t *chset)
+int apply_add_rr(apply_ctx_t *ctx, zone_contents_t *zone,
+                 const knot_rrset_t *rr)
 {
+	// Get or create node with this owner
+	zone_node_t *node = zone_contents_get_node_for_rr(zone, rr);
+	if (node == NULL) {
+		return KNOT_ENOMEM;
+	}
+
 	knot_rrset_t changed_rrset = node_rrset(node, rr->type);
 	if (!knot_rrset_empty(&changed_rrset)) {
 		// Modifying existing RRSet.
@@ -278,14 +282,7 @@ static int apply_add(apply_ctx_t *ctx, zone_contents_t *contents, changeset_t *c
 
 	knot_rrset_t rr = changeset_iter_next(&itt);
 	while(!knot_rrset_empty(&rr)) {
-		// Get or create node with this owner
-		zone_node_t *node = zone_contents_get_node_for_rr(contents, &rr);
-		if (node == NULL) {
-			changeset_iter_clear(&itt);
-			return KNOT_ENOMEM;
-		}
-
-		int ret = add_rr(ctx, contents, node, &rr, chset);
+		int ret = apply_add_rr(ctx, contents, &rr);
 		if (ret != KNOT_EOK) {
 			changeset_iter_clear(&itt);
 			return ret;
@@ -298,10 +295,10 @@ static int apply_add(apply_ctx_t *ctx, zone_contents_t *contents, changeset_t *c
 }
 
 /*! \brief Replace old SOA with a new one. */
-static int apply_replace_soa(apply_ctx_t *ctx, zone_contents_t *contents, changeset_t *chset)
+int apply_replace_soa(apply_ctx_t *ctx, zone_contents_t *contents, changeset_t *chset)
 {
 	assert(chset->soa_from && chset->soa_to);
-	int ret = remove_rr(ctx, contents->nodes, contents->apex, chset->soa_from, chset);
+	int ret = apply_remove_rr(ctx, contents, chset->soa_from);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
@@ -311,7 +308,7 @@ static int apply_replace_soa(apply_ctx_t *ctx, zone_contents_t *contents, change
 		return KNOT_EINVAL;
 	}
 
-	return add_rr(ctx, contents, contents->apex, chset->soa_to, chset);
+	return apply_add_rr(ctx, contents, chset->soa_to);
 }
 
 /*! \brief Apply single change to zone contents structure. */
@@ -347,7 +344,7 @@ static int apply_single(apply_ctx_t *ctx, zone_contents_t *contents, changeset_t
 /* --------------------- Zone copy and finalization ------------------------- */
 
 /*! \brief Creates a shallow zone contents copy. */
-static int prepare_zone_copy(zone_contents_t *old_contents,
+int apply_prepare_zone_copy(zone_contents_t *old_contents,
                              zone_contents_t **new_contents)
 {
 	if (old_contents == NULL || new_contents == NULL) {
@@ -397,7 +394,7 @@ int apply_changesets(apply_ctx_t *ctx, zone_t *zone, list_t *chsets, zone_conten
 	}
 
 	zone_contents_t *contents_copy = NULL;
-	int ret = prepare_zone_copy(old_contents, &contents_copy);
+	int ret = apply_prepare_zone_copy(old_contents, &contents_copy);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
@@ -441,7 +438,7 @@ int apply_changeset(apply_ctx_t *ctx, zone_t *zone, changeset_t *change, zone_co
 	}
 
 	zone_contents_t *contents_copy = NULL;
-	int ret = prepare_zone_copy(old_contents, &contents_copy);
+	int ret = apply_prepare_zone_copy(old_contents, &contents_copy);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
@@ -535,12 +532,14 @@ void update_rollback(apply_ctx_t *ctx)
 
 void update_free_zone(zone_contents_t **contents)
 {
-	zone_tree_apply((*contents)->nodes, free_additional, NULL);
-	zone_tree_deep_free(&(*contents)->nodes);
-	zone_tree_deep_free(&(*contents)->nsec3_nodes);
+	if (contents && *contents) {
+		zone_tree_apply((*contents)->nodes, free_additional, NULL);
+		zone_tree_deep_free(&(*contents)->nodes);
+		zone_tree_deep_free(&(*contents)->nsec3_nodes);
 
-	dnssec_nsec3_params_free(&(*contents)->nsec3_params);
+		dnssec_nsec3_params_free(&(*contents)->nsec3_params);
 
-	free(*contents);
-	*contents = NULL;
+		free(*contents);
+		*contents = NULL;
+	}
 }

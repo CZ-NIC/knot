@@ -80,7 +80,7 @@ static int add_node(const zone_node_t *node, changeset_t *changeset)
 	/* Add all rrsets from node. */
 	for (unsigned i = 0; i < node->rrset_count; i++) {
 		knot_rrset_t rrset = node_rrset_at(node, i);
-		int ret = changeset_add_rrset(changeset, &rrset, 0);
+		int ret = changeset_add_addition(changeset, &rrset, 0);
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
@@ -94,7 +94,7 @@ static int remove_node(const zone_node_t *node, changeset_t *changeset)
 	/* Remove all the RRSets of the node. */
 	for (unsigned i = 0; i < node->rrset_count; i++) {
 		knot_rrset_t rrset = node_rrset_at(node, i);
-		int ret = changeset_rem_rrset(changeset, &rrset, 0);
+		int ret = changeset_add_removal(changeset, &rrset, 0);
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
@@ -175,7 +175,7 @@ static int diff_rrsets(const knot_rrset_t *rrset1, const knot_rrset_t *rrset2,
 	}
 
 	if (!knot_rrset_empty(&to_remove)) {
-		int ret = changeset_rem_rrset(changeset, &to_remove, 0);
+		int ret = changeset_add_removal(changeset, &to_remove, 0);
 		knot_rdataset_clear(&to_remove.rrs, NULL);
 		if (ret != KNOT_EOK) {
 			knot_rdataset_clear(&to_add.rrs, NULL);
@@ -184,7 +184,7 @@ static int diff_rrsets(const knot_rrset_t *rrset1, const knot_rrset_t *rrset2,
 	}
 
 	if (!knot_rrset_empty(&to_add)) {
-		int ret = changeset_add_rrset(changeset, &to_add, 0);
+		int ret = changeset_add_addition(changeset, &to_add, 0);
 		knot_rdataset_clear(&to_add.rrs, NULL);
 		return ret;
 	}
@@ -244,7 +244,7 @@ static int knot_zone_diff_node(zone_node_t **node_ptr, void *data)
 			node_rrset(node_in_second_tree, rrset.type);
 		if (knot_rrset_empty(&rrset_from_second_node)) {
 			/* RRSet has been removed. Make a copy and remove. */
-			int ret = changeset_rem_rrset(
+			int ret = changeset_add_removal(
 				param->changeset, &rrset, 0);
 			if (ret != KNOT_EOK) {
 				return ret;
@@ -271,7 +271,7 @@ static int knot_zone_diff_node(zone_node_t **node_ptr, void *data)
 		knot_rrset_t rrset_from_first_node = node_rrset(node, rrset.type);
 		if (knot_rrset_empty(&rrset_from_first_node)) {
 			/* RRSet has been added. Make a copy and add. */
-			int ret = changeset_add_rrset(
+			int ret = changeset_add_addition(
 				param->changeset, &rrset, 0);
 			if (ret != KNOT_EOK) {
 				return ret;
