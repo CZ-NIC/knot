@@ -21,7 +21,6 @@
 #include "knot/conf/tools.h"
 #include "knot/common/log.h"
 #include "knot/nameserver/query_module.h"
-#include "knot/nameserver/internet.h"
 #include "libknot/libknot.h"
 #include "libknot/yparser/ypformat.h"
 #include "libknot/yparser/yptrafo.h"
@@ -375,10 +374,12 @@ void conf_activate_modules(
 		val = conf_default_get(conf, C_GLOBAL_MODULE);
 	}
 
-	// Check if a module is configured at all.
-	if (val.code == KNOT_ENOENT) {
+	switch (val.code) {
+	case KNOT_EOK:
+		break;
+	case KNOT_ENOENT: // Check if a module is configured at all.
 		return;
-	} else if (val.code != KNOT_EOK) {
+	default:
 		ret = val.code;
 		goto activate_error;
 	}
@@ -388,11 +389,6 @@ void conf_activate_modules(
 	if (*query_plan == NULL) {
 		ret = KNOT_ENOMEM;
 		goto activate_error;
-	}
-
-	if (zone_name != NULL) {
-		// Only supported zone class is now IN.
-		internet_query_plan(*query_plan);
 	}
 
 	// Initialize query modules list.

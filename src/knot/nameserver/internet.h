@@ -1,4 +1,4 @@
-/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -52,13 +52,6 @@ enum {
  * \retval DONE if finished.
  */
 int internet_process_query(knot_pkt_t *resp, struct query_data *qdata);
-
-/*!
- * \brief Initialize query plan for IN class zone.
- * \param plan
- * \return
- */
-int internet_query_plan(struct query_plan *plan);
 
 /*!
  * \brief Process answer in an IN class zone.

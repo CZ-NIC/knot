@@ -737,11 +737,18 @@ int ns_put_rr(knot_pkt_t *pkt, const knot_rrset_t *rr,
 		return KNOT_STATE_FAIL; \
 	}
 
-static int default_answer(knot_pkt_t *response, struct query_data *qdata)
+static int answer_query(struct query_plan *plan, knot_pkt_t *response, struct query_data *qdata)
 {
 	int state = BEGIN;
 	struct query_plan *global_plan = conf()->query_plan;
 	struct query_step *step = NULL;
+
+	/* Before query processing code. */
+	if (plan != NULL) {
+		WALK_LIST(step, plan->stage[QPLAN_BEGIN]) {
+			SOLVE_STEP(step->process, state, step->ctx);
+		}
+	}
 
 	/* Resolve ANSWER. */
 	knot_pkt_begin(response, KNOT_ANSWER);
@@ -752,6 +759,11 @@ static int default_answer(knot_pkt_t *response, struct query_data *qdata)
 	}
 	SOLVE_STEP(solve_answer, state, NULL);
 	SOLVE_STEP(solve_answer_dnssec, state, NULL);
+	if (plan != NULL) {
+		WALK_LIST(step, plan->stage[QPLAN_ANSWER]) {
+			SOLVE_STEP(step->process, state, step->ctx);
+		}
+	}
 
 	/* Resolve AUTHORITY. */
 	knot_pkt_begin(response, KNOT_AUTHORITY);
@@ -762,6 +774,11 @@ static int default_answer(knot_pkt_t *response, struct query_data *qdata)
 	}
 	SOLVE_STEP(solve_authority, state, NULL);
 	SOLVE_STEP(solve_authority_dnssec, state, NULL);
+	if (plan != NULL) {
+		WALK_LIST(step, plan->stage[QPLAN_AUTHORITY]) {
+			SOLVE_STEP(step->process, state, step->ctx);
+		}
+	}
 
 	/* Resolve ADDITIONAL. */
 	knot_pkt_begin(response, KNOT_ADDITIONAL);
@@ -772,40 +789,17 @@ static int default_answer(knot_pkt_t *response, struct query_data *qdata)
 	}
 	SOLVE_STEP(solve_additional, state, NULL);
 	SOLVE_STEP(solve_additional_dnssec, state, NULL);
-
-	/* Write resulting RCODE. */
-	knot_wire_set_rcode(response->wire, qdata->rcode);
-
-	return KNOT_STATE_DONE;
-}
-
-static int planned_answer(struct query_plan *plan, knot_pkt_t *response, struct query_data *qdata)
-{
-	int state = BEGIN;
-	struct query_plan *global_plan = conf()->query_plan;
-	struct query_step *step = NULL;
-
-	/* Before query processing code. */
-	WALK_LIST(step, plan->stage[QPLAN_BEGIN]) {
-		SOLVE_STEP(step->process, state, step->ctx);
-	}
-
-	/* Begin processing. */
-	for (int section = KNOT_ANSWER; section <= KNOT_ADDITIONAL; ++section) {
-		knot_pkt_begin(response, section);
-		if (global_plan != NULL) {
-			WALK_LIST(step, global_plan->stage[QPLAN_STAGE + section]) {
-				SOLVE_STEP(step->process, state, step->ctx);
-			}
-		}
-		WALK_LIST(step, plan->stage[QPLAN_STAGE + section]) {
+	if (plan != NULL) {
+		WALK_LIST(step, plan->stage[QPLAN_ADDITIONAL]) {
 			SOLVE_STEP(step->process, state, step->ctx);
 		}
 	}
 
 	/* After query processing code. */
-	WALK_LIST(step, plan->stage[QPLAN_END]) {
-		SOLVE_STEP(step->process, state, step->ctx);
+	if (plan != NULL) {
+		WALK_LIST(step, plan->stage[QPLAN_END]) {
+			SOLVE_STEP(step->process, state, step->ctx);
+		}
 	}
 
 	/* Write resulting RCODE. */
@@ -839,24 +833,7 @@ int internet_process_query(knot_pkt_t *response, struct query_data *qdata)
 	/* Get answer to QNAME. */
 	qdata->name = knot_pkt_qname(qdata->query);
 
-	/* If the zone doesn't have a query plan, go for fast default. */
-	if (qdata->zone->query_plan == NULL) {
-		return default_answer(response, qdata);
-	}
-
-	return planned_answer(qdata->zone->query_plan, response, qdata);
-}
-
-int internet_query_plan(struct query_plan *plan)
-{
-	query_plan_step(plan, QPLAN_ANSWER, solve_answer, NULL);
-	query_plan_step(plan, QPLAN_ANSWER, solve_answer_dnssec, NULL);
-	query_plan_step(plan, QPLAN_AUTHORITY, solve_authority, NULL);
-	query_plan_step(plan, QPLAN_AUTHORITY, solve_authority_dnssec, NULL);
-	query_plan_step(plan, QPLAN_ADDITIONAL, solve_additional, NULL);
-	query_plan_step(plan, QPLAN_ADDITIONAL, solve_additional_dnssec, NULL);
-
-	return KNOT_EOK;
+	return answer_query(qdata->zone->query_plan, response, qdata);
 }
 
 #include "knot/nameserver/log.h"
