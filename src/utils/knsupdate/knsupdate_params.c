@@ -1,4 +1,4 @@
-/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -27,6 +27,7 @@
 #include "libknot/libknot.h"
 #include "libknot/tsig.h"
 #include "contrib/mempattern.h"
+#include "contrib/strtonum.h"
 #include "contrib/ucw/mempool.h"
 
 #define PROGRAM_NAME "knsupdate"
@@ -202,8 +203,8 @@ int knsupdate_parse(knsupdate_params_t *params, int argc, char *argv[])
 	};
 
 	/* Command line options processing. */
-	int opt = 0, li = 0;
-	while ((opt = getopt_long(argc, argv, "dhDvVp:t:r:y:k:", opts, &li))
+	int opt = 0;
+	while ((opt = getopt_long(argc, argv, "dhDvVp:t:r:y:k:", opts, NULL))
 	       != -1) {
 		switch (opt) {
 		case 'd':
@@ -230,14 +231,16 @@ int knsupdate_parse(knsupdate_params_t *params, int argc, char *argv[])
 			}
 			break;
 		case 'r':
-			ret = params_parse_num(optarg, &params->retries);
+			ret = str_to_u32(optarg, &params->retries);
 			if (ret != KNOT_EOK) {
+				ERR("invalid retries '%s'\n", optarg);
 				return ret;
 			}
 			break;
 		case 't':
 			ret = params_parse_wait(optarg, &params->wait);
 			if (ret != KNOT_EOK) {
+				ERR("invalid timeout '%s'\n", optarg);
 				return ret;
 			}
 			break;

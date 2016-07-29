@@ -28,6 +28,7 @@
 #include "libknot/descriptor.h"
 #include "libknot/libknot.h"
 #include "contrib/sockaddr.h"
+#include "contrib/strtonum.h"
 #include "contrib/ucw/lists.h"
 
 #define PROGRAM_NAME "kdig"
@@ -572,21 +573,11 @@ static int opt_edns(const char *arg, void *query)
 	if (arg == NULL) {
 		q->edns = 0;
 		return KNOT_EOK;
-	} else if (*arg == '\0') {
-		ERR("missing edns version\n");
-		return KNOT_EFEWDATA;
 	} else {
-		char *end;
-		long long num = strtoll(arg, &end, 10);
-		// Check for bad string.
-		if (end == arg || *end != '\0') {
-			ERR("bad +edns=%s\n", arg);
+		uint8_t num;
+		if (str_to_u8(arg, &num) != KNOT_EOK) {
+			ERR("invalid +edns=%s\n", arg);
 			return KNOT_EINVAL;
-		}
-
-		if (num < 0 || num > UINT8_MAX) {
-			ERR("+edns=%s is out of range\n", arg);
-			return KNOT_ERANGE;
 		}
 
 		q->edns = num;
@@ -614,11 +605,11 @@ static int opt_client(const char *arg, void *query)
 	struct in_addr  addr4;
 	struct in6_addr addr6;
 
-	char          *sep = NULL;
-	const size_t  arg_len = strlen(arg);
-	const char    *arg_end = arg + arg_len;
-	char          *addr = NULL;
-	size_t        addr_len = 0;
+	char         *sep = NULL;
+	const size_t arg_len = strlen(arg);
+	const char   *arg_end = arg + arg_len;
+	char         *addr = NULL;
+	size_t       addr_len = 0;
 
 	subnet_t *subnet = calloc(sizeof(subnet_t), 1);
 
@@ -651,11 +642,9 @@ static int opt_client(const char *arg, void *query)
 
 	// Parse network mask.
 	if (arg + addr_len < arg_end) {
-		char *end;
-
 		arg += addr_len + 1;
-		unsigned long num = strtoul(arg, &end, 10);
-		if (end == arg || *end != '\0' || num > subnet->netmask) {
+		uint8_t num;
+		if (str_to_u8(arg, &num) != KNOT_EOK || num > subnet->netmask) {
 			free(subnet);
 			ERR("invalid network mask +client=%s\n", arg);
 			return KNOT_EINVAL;
@@ -673,42 +662,42 @@ static int opt_time(const char *arg, void *query)
 {
 	query_t *q = query;
 
-	return params_parse_wait(arg, &q->wait);
+	if (params_parse_wait(arg, &q->wait) != KNOT_EOK) {
+		ERR("invalid +time=%s\n", arg);
+		return KNOT_EINVAL;
+	}
+
+	return KNOT_EOK;
 }
 
 static int opt_retry(const char *arg, void *query)
 {
 	query_t *q = query;
 
-	return params_parse_num(arg, &q->retries);
+	if (str_to_u32(arg, &q->retries) != KNOT_EOK) {
+		ERR("invalid +retry=%s\n", arg);
+		return KNOT_EINVAL;
+	}
+
+	return KNOT_EOK;
 }
 
 static int opt_bufsize(const char *arg, void *query)
 {
 	query_t *q = query;
 
-	char *end;
-	long long num = strtoll(arg, &end, 10);
-	// Check for bad string.
-	if (end == arg || *end != '\0') {
-		ERR("bad +bufsize=%s\n", arg);
+	uint16_t num;
+	if (str_to_u16(arg, &num) != KNOT_EOK) {
+		ERR("invalid +bufsize=%s\n", arg);
 		return KNOT_EINVAL;
 	}
 
-	if (num > UINT16_MAX) {
-		num = UINT16_MAX;
-		WARN("+bufsize=%s is too big, using %lld instead\n", arg, num);
-	} else if (num < 0) {
-		num = 0;
-		WARN("+bufsize=%s is too small, using %lld instead\n", arg, num);
+	if (num < KNOT_WIRE_HEADER_SIZE) {
+		num = KNOT_WIRE_HEADER_SIZE;
 	}
 
 	// Disable EDNS if zero bufsize.
-	if (num == 0) {
-		q->udp_size = -1;
-	} else {
-		q->udp_size = num;
-	}
+	q->udp_size = (num != 0) ? num : -1;
 
 	return KNOT_EOK;
 }
@@ -1678,8 +1667,7 @@ static int parse_token(const char *value, kdig_params_t *params)
 		return KNOT_EOK;
 	} else if (parse_class(value, query) == KNOT_EOK) {
 		return KNOT_EOK;
-	} else if (parse_name(value, &params->queries, params->config)
-	           == KNOT_EOK) {
+	} else if (parse_name(value, &params->queries, params->config) == KNOT_EOK) {
 		return KNOT_EOK;
 	}
 

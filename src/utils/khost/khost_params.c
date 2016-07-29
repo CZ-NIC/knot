@@ -26,6 +26,7 @@
 #include "utils/common/params.h"
 #include "utils/common/resolv.h"
 #include "libknot/libknot.h"
+#include "contrib/strtonum.h"
 #include "contrib/ucw/lists.h"
 
 #define PROGRAM_NAME "khost"
@@ -255,8 +256,8 @@ int khost_parse(kdig_params_t *params, int argc, char *argv[])
 	};
 
 	// Command line options processing.
-	int opt = 0, li = 0;
-	while ((opt = getopt_long(argc, argv, "46adhrsTvVwc:t:R:W:", opts, &li))
+	int opt = 0;
+	while ((opt = getopt_long(argc, argv, "46adhrsTvVwc:t:R:W:", opts, NULL))
 	       != -1) {
 		switch (opt) {
 		case '4':
@@ -299,9 +300,8 @@ int khost_parse(kdig_params_t *params, int argc, char *argv[])
 			conf->wait = -1;
 			break;
 		case 'c':
-			if (params_parse_class(optarg, &rclass)
-			    != KNOT_EOK) {
-				ERR("bad class %s\n", optarg);
+			if (params_parse_class(optarg, &rclass) != KNOT_EOK) {
+				ERR("invalid class '%s'\n", optarg);
 				return KNOT_EINVAL;
 			}
 			conf->class_num = rclass;
@@ -309,7 +309,7 @@ int khost_parse(kdig_params_t *params, int argc, char *argv[])
 		case 't':
 			if (params_parse_type(optarg, &rtype, &serial, &notify)
 			    != KNOT_EOK) {
-				ERR("bad type %s\n", optarg);
+				ERR("invalid type '%s'\n", optarg);
 				return KNOT_EINVAL;
 			}
 			conf->type_num = rtype;
@@ -322,14 +322,14 @@ int khost_parse(kdig_params_t *params, int argc, char *argv[])
 			}
 			break;
 		case 'R':
-			if (params_parse_num(optarg, &conf->retries)
-			    != KNOT_EOK) {
+			if (str_to_u32(optarg, &conf->retries) != KNOT_EOK) {
+				ERR("invalid retries '%s'\n", optarg);
 				return KNOT_EINVAL;
 			}
 			break;
 		case 'W':
-			if (params_parse_wait(optarg, &conf->wait)
-			    != KNOT_EOK) {
+			if (params_parse_wait(optarg, &conf->wait) != KNOT_EOK) {
+				ERR("invalid wait '%s'\n", optarg);
 				return KNOT_EINVAL;
 			}
 			break;
