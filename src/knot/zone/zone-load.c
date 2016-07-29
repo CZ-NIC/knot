@@ -222,7 +222,7 @@ int zone_load_post(conf_t *conf, zone_t *zone, zone_contents_t *contents,
 		if (ret == KNOT_ESPACE) {
 			log_zone_error(zone->name, "journal size is too small "
 			               "to fit the changes");
-		} else {
+		} else if (ret != KNOT_EOK) {
 			log_zone_error(zone->name, "failed to store changes into "
 			               "journal (%s)", knot_strerror(ret));
 		}
