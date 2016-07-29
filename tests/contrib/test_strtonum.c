@@ -44,6 +44,17 @@ static void test_u16(const char *in, uint16_t expected, int errcode)
 	   (errcode == KNOT_EOK ? "succeeds" : "fails"), in);
 }
 
+static void test_u32(const char *in, uint32_t expected, int errcode)
+{
+	uint32_t out = 0x010101;
+	assert(expected != out);
+
+	ok(str_to_u32(in, &out) == errcode &&
+	   (errcode != KNOT_EOK || out == expected),
+	   "str_to_u32 %s on \"%s\"",
+	   (errcode == KNOT_EOK ? "succeeds" : "fails"), in);
+}
+
 static void test_int(const char *in, int expected, int errcode)
 {
 	int out = 12345;
@@ -64,25 +75,35 @@ int main(int argc, char *argv[])
 {
 	plan_lazy();
 
-	test_u8("-1",      0,      KNOT_ERANGE);
-	test_u8("256",     0,      KNOT_ERANGE);
-	test_u8("0x1",     0,      KNOT_EINVAL);
-	test_u8(" 1",      0,      KNOT_EINVAL);
-	test_u8("1 ",      0,      KNOT_EINVAL);
-	test_u8("0",       0,      KNOT_EOK);
-	test_u8("42",      42,     KNOT_EOK);
-	test_u8("+84",     84,     KNOT_EOK);
-	test_u8("255",     0xff,   KNOT_EOK);
+	test_u8("-1",          0,          KNOT_EINVAL);
+	test_u8("256",         0,          KNOT_ERANGE);
+	test_u8("0x1",         0,          KNOT_EINVAL);
+	test_u8(" 1",          0,          KNOT_EINVAL);
+	test_u8("1 ",          0,          KNOT_EINVAL);
+	test_u8("0",           0,          KNOT_EOK);
+	test_u8("42",          42,         KNOT_EOK);
+	test_u8("+84",         84,         KNOT_EOK);
+	test_u8("255",         UINT8_MAX,  KNOT_EOK);
 
-	test_u16("-1",     0,      KNOT_ERANGE);
-	test_u16("65536",  0,      KNOT_ERANGE);
-	test_u16("0x1",    0,      KNOT_EINVAL);
-	test_u16(" 1",     0,      KNOT_EINVAL);
-	test_u16("1 ",     0,      KNOT_EINVAL);
-	test_u16("0",      0,      KNOT_EOK);
-	test_u16("65280",  65280,  KNOT_EOK);
-	test_u16("+256",   256,    KNOT_EOK);
-	test_u16("65535",  65535,  KNOT_EOK);
+	test_u16("-1",         0,          KNOT_EINVAL);
+	test_u16("65536",      0,          KNOT_ERANGE);
+	test_u16("0x1",        0,          KNOT_EINVAL);
+	test_u16(" 1",         0,          KNOT_EINVAL);
+	test_u16("1 ",         0,          KNOT_EINVAL);
+	test_u16("0",          0,          KNOT_EOK);
+	test_u16("65280",      65280,      KNOT_EOK);
+	test_u16("+256",       256,        KNOT_EOK);
+	test_u16("65535",      UINT16_MAX, KNOT_EOK);
+
+	test_u32("-1",         0,          KNOT_EINVAL);
+	test_u32("4294967296", 0,          KNOT_ERANGE);
+	test_u32("0x1",        0,          KNOT_EINVAL);
+	test_u32(" 1",         0,          KNOT_EINVAL);
+	test_u32("1 ",         0,          KNOT_EINVAL);
+	test_u32("0",          0,          KNOT_EOK);
+	test_u32("65280",      65280,      KNOT_EOK);
+	test_u32("+256",       256,        KNOT_EOK);
+	test_u32("4294967295", UINT32_MAX, KNOT_EOK);
 
 	char *int_under = NULL;
 	asprintf(&int_under, "%lld", (long long)INT_MIN - 1);

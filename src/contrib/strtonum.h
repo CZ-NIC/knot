@@ -48,7 +48,7 @@ inline static int intmax_from_str(const char *src, intmax_t *dest)
 
 inline static int uintmax_from_str(const char *src, uintmax_t *dest)
 {
-	if (!isdigit((int)*src) && *src != '-' && *src != '+') {
+	if (!isdigit((int)*src) && *src != '+') {
 		return KNOT_EINVAL;
 	}
 
@@ -95,6 +95,11 @@ inline static int str_to_u8(const char *src, uint8_t *dest)
 inline static int str_to_u16(const char *src, uint16_t *dest)
 {
 	CONVERT(uint, uint16_t, 0, UINT16_MAX, src, dest);
+}
+
+inline static int str_to_u32(const char *src, uint32_t *dest)
+{
+	CONVERT(uint, uint32_t, 0, UINT32_MAX, src, dest);
 }
 
 #undef CONVERT
