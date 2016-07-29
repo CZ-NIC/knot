@@ -1,4 +1,4 @@
-/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -14,9 +14,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 /*!
- * \file kdig_params.h
- *
- * \author Daniel Salzman <daniel.salzman@nic.cz>
+ * \file
  *
  * \brief kdig command line parameters.
  *
@@ -152,7 +150,7 @@ typedef struct {
 	query_t	*config;
 } kdig_params_t;
 
-query_t* query_create(const char *owner, const query_t *config);
+query_t *query_create(const char *owner, const query_t *config);
 void query_free(query_t *query);
 void complete_queries(list_t *queries, const query_t *conf);
 

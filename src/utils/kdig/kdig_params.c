@@ -1,4 +1,4 @@
-/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -811,7 +811,7 @@ static const param_t kdig_opts2[] = {
 	{ NULL }
 };
 
-query_t* query_create(const char *owner, const query_t *conf)
+query_t *query_create(const char *owner, const query_t *conf)
 {
 	// Create output structure.
 	query_t *query = calloc(1, sizeof(query_t));
@@ -1146,7 +1146,12 @@ static int parse_server(const char *value, kdig_params_t *params)
 		query = params->config;
 	}
 
-	return params_parse_server(value, &query->servers, query->port);
+	if (params_parse_server(value, &query->servers, query->port) != KNOT_EOK) {
+		ERR("invalid server @%s\n", value);
+		return KNOT_EINVAL;
+	}
+
+	return KNOT_EOK;
 }
 
 static int parse_tsig(const char *value, query_t *query)

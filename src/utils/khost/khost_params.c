@@ -1,4 +1,4 @@
-/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -94,6 +94,16 @@ void khost_clean(kdig_params_t *params)
 	kdig_clean(params);
 }
 
+static int parse_server(const char *value, list_t *servers, const char *def_port)
+{
+	if (params_parse_server(value, servers, def_port) != KNOT_EOK) {
+		ERR("invalid server '%s'\n", value);
+		return KNOT_EINVAL;
+	}
+
+	return KNOT_EOK;
+}
+
 static int parse_name(const char *value, list_t *queries, const query_t *conf)
 {
 	char	*reverse = get_reverse_name(value);
@@ -122,7 +132,7 @@ static int parse_name(const char *value, list_t *queries, const query_t *conf)
 
 			// Check for correct address.
 			if (reverse == NULL) {
-				ERR("invalid IPv4 or IPv6 address %s\n", value);
+				ERR("invalid IPv4/IPv6 address '%s'\n", value);
 				return KNOT_EINVAL;
 			}
 
@@ -332,8 +342,7 @@ int khost_parse(kdig_params_t *params, int argc, char *argv[])
 	// Process non-option parameters.
 	switch (argc - optind) {
 	case 2:
-		if (params_parse_server(argv[optind + 1], &conf->servers,
-		                        conf->port)
+		if (parse_server(argv[optind + 1], &conf->servers, conf->port)
 		    != KNOT_EOK) {
 			return KNOT_EINVAL;
 		}

@@ -1,4 +1,4 @@
-/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -35,7 +35,7 @@
 #define IPV4_REVERSE_DOMAIN	"in-addr.arpa."
 #define IPV6_REVERSE_DOMAIN	"ip6.arpa."
 
-char* name_from_idn(const char *idn_name) {
+char *name_from_idn(const char *idn_name) {
 #ifdef LIBIDN
 	char *name = NULL;
 
@@ -143,7 +143,7 @@ int best_param(const char *str, const size_t str_len, const param_t *tbl,
 	}
 }
 
-char* get_reverse_name(const char *name)
+char *get_reverse_name(const char *name)
 {
 	struct in_addr	addr4;
 	struct in6_addr	addr6;
@@ -200,7 +200,7 @@ char* get_reverse_name(const char *name)
 	}
 }
 
-char* get_fqd_name(const char *name)
+char *get_fqd_name(const char *name)
 {
 	char *fqd_name = NULL;
 
@@ -287,15 +287,14 @@ int params_parse_type(const char *value, uint16_t *rtype, int64_t *serial,
 			unsigned long long num = strtoull(param_str, &end, 10);
 
 			// Check for bad serial string.
-			if (end == param_str || *end != '\0' ||
-			    num > UINT32_MAX) {
-				DBG("bad SOA serial %s\n", param_str);
+			if (end == param_str || *end != '\0' || num > UINT32_MAX) {
+				DBG("bad SOA serial '%s'\n", param_str);
 				return KNOT_EINVAL;
 			}
 
 			*serial = num;
 		} else {
-			DBG("unsupported parameter in query type '%s'\n", value);
+			DBG("unsupported parameter '%s'\n", value);
 			return KNOT_EINVAL;
 		}
 	}
@@ -313,7 +312,6 @@ int params_parse_server(const char *value, list_t *servers, const char *def_port
 	// Add specified nameserver.
 	srv_info_t *server = parse_nameserver(value, def_port);
 	if (server == NULL) {
-		ERR("bad nameserver %s\n", value);
 		return KNOT_EINVAL;
 	}
 	add_tail(servers, (node_t *)server);

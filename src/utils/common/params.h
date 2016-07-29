@@ -1,4 +1,4 @@
-/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -14,9 +14,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 /*!
- * \file host_params.h
- *
- * \author Daniel Salzman <daniel.salzman@nic.cz>
+ * \file
  *
  * \brief Common utils parameters processing.
  *
@@ -129,7 +127,7 @@ inline static void print_version(const char *program_name)
  * \retval NULL		if transformation fails.
  * \retval string	if ok.
  */
-char* name_from_idn(const char *idn_name);
+char *name_from_idn(const char *idn_name);
 
 /*!
  * \brief Transforms ASCII punycode to localized IDN string.
@@ -154,9 +152,9 @@ void name_to_idn(char **name);
 int best_param(const char *str, const size_t str_len, const param_t *tbl,
                bool *unique);
 
-char* get_reverse_name(const char *name);
+char *get_reverse_name(const char *name);
 
-char* get_fqd_name(const char *name);
+char *get_fqd_name(const char *name);
 
 int params_parse_class(const char *value, uint16_t *rclass);
 

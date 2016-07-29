@@ -1,4 +1,4 @@
-/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -14,9 +14,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 /*!
- * \file exec.h
- *
- * \author Daniel Salzman <daniel.salzman@nic.cz>
+ * \file
  *
  * \brief Common executives for utils.
  *
@@ -40,7 +38,7 @@
  * \retval packet	if success.
  * \retval NULL		if error.
  */
-knot_pkt_t* create_empty_packet(const size_t max_size);
+knot_pkt_t *create_empty_packet(const size_t max_size);
 
 /*!
  * \brief Prints information header for transfer.

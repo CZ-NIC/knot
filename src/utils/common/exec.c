@@ -1,4 +1,4 @@
-/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -462,7 +462,7 @@ static void print_error_host(const uint16_t   code,
 	free(owner);
 }
 
-knot_pkt_t* create_empty_packet(const size_t max_size)
+knot_pkt_t *create_empty_packet(const size_t max_size)
 {
 	// Create packet skeleton.
 	knot_pkt_t *packet = knot_pkt_new(NULL, max_size, NULL);

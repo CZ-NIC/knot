@@ -223,7 +223,7 @@ static void process_dnstap(const query_t *query)
 }
 #endif // USE_DNSTAP
 
-static int add_query_edns(knot_pkt_t *packet, const query_t *query, int max_size)
+static int add_query_edns(knot_pkt_t *packet, const query_t *query, uint16_t max_size)
 {
 	/* Initialize OPT RR. */
 	knot_rrset_t opt_rr;
@@ -281,15 +281,12 @@ static int add_query_edns(knot_pkt_t *packet, const query_t *query, int max_size
 
 static bool use_edns(const query_t *query)
 {
-	return query->flags.do_flag || query->nsid || query->edns > -1 ||
-	       query->subnet != NULL;
+	return query->edns > -1 || query->udp_size > -1 || query->nsid ||
+	       query->flags.do_flag || query->subnet != NULL;
 }
 
-static knot_pkt_t* create_query_packet(const query_t *query)
+static knot_pkt_t *create_query_packet(const query_t *query)
 {
-	knot_pkt_t *packet;
-	int        ret = 0;
-
 	// Set packet buffer size.
 	uint16_t max_size;
 	if (query->udp_size < 0) {
@@ -303,7 +300,7 @@ static knot_pkt_t* create_query_packet(const query_t *query)
 	}
 
 	// Create packet skeleton.
-	packet = create_empty_packet(max_size);
+	knot_pkt_t *packet = create_empty_packet(max_size);
 	if (packet == NULL) {
 		return NULL;
 	}
@@ -344,8 +341,8 @@ static knot_pkt_t* create_query_packet(const query_t *query)
 	}
 
 	// Set packet question.
-	ret = knot_pkt_put_question(packet, qname, query->class_num,
-	                            query->type_num);
+	int ret = knot_pkt_put_question(packet, qname, query->class_num,
+	                                query->type_num);
 	if (ret != KNOT_EOK) {
 		knot_dname_free(&qname, NULL);
 		knot_pkt_free(&packet);
@@ -386,7 +383,7 @@ static knot_pkt_t* create_query_packet(const query_t *query)
 		// Set SOA serial.
 		knot_soa_serial_set(&soa->rrs, query->serial);
 
-		ret = knot_pkt_put(packet, 0, soa, KNOT_PF_FREE);
+		ret = knot_pkt_put(packet, KNOT_COMPR_HINT_NONE, soa, KNOT_PF_FREE);
 		if (ret != KNOT_EOK) {
 			knot_rrset_free(&soa, &packet->mm);
 			knot_pkt_free(&packet);
@@ -400,7 +397,7 @@ static knot_pkt_t* create_query_packet(const query_t *query)
 	knot_pkt_begin(packet, KNOT_ADDITIONAL);
 
 	// Create EDNS section if required.
-	if (query->udp_size >= 0 || use_edns(query)) {
+	if (use_edns(query)) {
 		int ret = add_query_edns(packet, query, max_size);
 		if (ret != KNOT_EOK) {
 			ERR("can't set up EDNS section\n");
