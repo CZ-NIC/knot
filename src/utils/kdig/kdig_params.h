@@ -132,6 +132,10 @@ struct query {
 	knot_tsig_key_t tsig_key;
 	/*!< EDNS client subnet. */
 	subnet_t	*subnet;
+	/*!< EDNS0 padding (16unsigned + -1 uninitialized). */
+	int32_t		padding;
+	/*!< Query alignment with EDNS0 padding (0 ~ uninitialized). */
+	uint16_t	alignment;
 #if USE_DNSTAP
 	/*!< Context for dnstap reader input. */
 	dt_reader_t	*dt_reader;

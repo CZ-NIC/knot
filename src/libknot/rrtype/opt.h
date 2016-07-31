@@ -24,6 +24,8 @@
 
 #pragma once
 
+#include <assert.h>
+
 #include "libknot/consts.h"
 #include "libknot/rrset.h"
 
@@ -53,7 +55,9 @@ enum knot_edns_const {
 	/*! \brief EDNS client subnet option code. */
 	KNOT_EDNS_OPTION_CLIENT_SUBNET = 8,
 	/*! \brief EDNS DNS Cookie option code. */
-	KNOT_EDNS_OPTION_COOKIE        = 10
+	KNOT_EDNS_OPTION_COOKIE        = 10,
+	/*! \brief EDNS Padding option code. */
+	KNOT_EDNS_OPTION_PADDING       = 12
 };
 
 /* Helpers for splitting extended RCODE. */
@@ -385,4 +389,31 @@ int knot_edns_client_subnet_parse(const uint8_t *data,
                                   uint16_t *addr_len,
                                   uint8_t *src_mask,
                                   uint8_t *dst_mask);
+
+/*!
+ * \brief Computes additional Padding data length for required packet alignment.
+ *
+ * \param current_pkt_size  Current packet size.
+ * \param current_opt_size  Current OPT rrset size (OPT must be used).
+ * \param block_size        Required packet block length (must be non-zero).
+ *
+ * \return Required padding length or -1 if padding not required.
+ */
+static inline int knot_edns_alignment_size(size_t current_pkt_size,
+                                           size_t current_opt_size,
+                                           size_t block_size)
+{
+	assert(current_opt_size > 0);
+	assert(block_size > 0);
+
+	size_t current_size = current_pkt_size + current_opt_size;
+	if (current_size % block_size == 0) {
+		return -1;
+	}
+
+	size_t modulo = (current_size + KNOT_EDNS_OPTION_HDRLEN) % block_size;
+
+	return (modulo == 0) ? 0 : block_size - modulo;
+}
+
 /*! @} */

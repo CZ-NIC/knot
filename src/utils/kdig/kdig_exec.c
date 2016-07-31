@@ -270,6 +270,25 @@ static int add_query_edns(knot_pkt_t *packet, const query_t *query, uint16_t max
 		}
 	}
 
+	/* Append EDNS Padding. */
+	int padding = query->padding;
+	if (query->alignment > 0) {
+		padding = knot_edns_alignment_size(packet->size,
+		                                   knot_rrset_size(&opt_rr),
+		                                   query->alignment);
+	}
+	if (padding > -1) {
+		uint8_t zeros[padding];
+		memset(zeros, 0, sizeof(zeros));
+
+		ret = knot_edns_add_option(&opt_rr, KNOT_EDNS_OPTION_PADDING,
+		                           padding, zeros, &packet->mm);
+		if (ret != KNOT_EOK) {
+			knot_rrset_clear(&opt_rr, &packet->mm);
+			return ret;
+		}
+	}
+
 	/* Add prepared OPT to packet. */
 	ret = knot_pkt_put(packet, KNOT_COMPR_HINT_NONE, &opt_rr, KNOT_PF_FREE);
 	if (ret != KNOT_EOK) {
@@ -282,7 +301,8 @@ static int add_query_edns(knot_pkt_t *packet, const query_t *query, uint16_t max
 static bool use_edns(const query_t *query)
 {
 	return query->edns > -1 || query->udp_size > -1 || query->nsid ||
-	       query->flags.do_flag || query->subnet != NULL;
+	       query->flags.do_flag || query->subnet != NULL ||
+	       query->padding > -1 || query->alignment > 0;
 }
 
 static knot_pkt_t *create_query_packet(const query_t *query)

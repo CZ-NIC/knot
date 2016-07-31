@@ -826,6 +826,26 @@ static void test_client_subnet()
            "EDNS-client-subnet: parse (cmp addr)");
 }
 
+static void test_alignment()
+{
+	int ret;
+
+	ret = knot_edns_alignment_size(1, 1, 1);
+	ok(ret == -1, "no alignment");
+
+	ret = knot_edns_alignment_size(1, 1, 2);
+	ok(ret == -1, "no alignment");
+
+	ret = knot_edns_alignment_size(1, 1, 3);
+	ok(ret == (6 - (1 + 1 + KNOT_EDNS_OPTION_HDRLEN)), "%i-Byte alignment", ret);
+
+	ret = knot_edns_alignment_size(1, 1, 4);
+	ok(ret == (8 - (1 + 1 + KNOT_EDNS_OPTION_HDRLEN)), "%i-Byte alignment", ret);
+
+	ret = knot_edns_alignment_size(1, 1, 512);
+	ok(ret == (512 - (1 + 1 + KNOT_EDNS_OPTION_HDRLEN)), "%i-Byte alignment", ret);
+}
+
 int main(int argc, char *argv[])
 {
 	plan_lazy();
@@ -842,6 +862,7 @@ int main(int argc, char *argv[])
 	test_remove();
 	test_unique();
 	test_client_subnet();
+	test_alignment();
 
 	knot_rrset_clear(&opt_rr, NULL);
 

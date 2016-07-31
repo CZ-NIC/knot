@@ -35,6 +35,7 @@
 
 #define DEFAULT_RETRIES_DIG	2
 #define DEFAULT_TIMEOUT_DIG	5
+#define DEFAULT_ALIGNMENT_SIZE	128
 
 static const flags_t DEFAULT_FLAGS_DIG = {
 	.aa_flag = false,
@@ -596,6 +597,58 @@ static int opt_nobufsize(const char *arg, void *query)
 	return KNOT_EOK;
 }
 
+static int opt_padding(const char *arg, void *query)
+{
+	query_t *q = query;
+
+	uint16_t num;
+	if (str_to_u16(arg, &num) != KNOT_EOK) {
+		ERR("invalid +padding=%s\n", arg);
+		return KNOT_EINVAL;
+	}
+
+	q->padding = num;
+
+	return KNOT_EOK;
+}
+
+static int opt_nopadding(const char *arg, void *query)
+{
+	query_t *q = query;
+
+	q->padding = -1;
+
+	return KNOT_EOK;
+}
+
+static int opt_alignment(const char *arg, void *query)
+{
+	query_t *q = query;
+
+	if (arg == NULL) {
+		q->alignment = DEFAULT_ALIGNMENT_SIZE;
+		return KNOT_EOK;
+	} else {
+		uint16_t num;
+		if (str_to_u16(arg, &num) != KNOT_EOK || num < 2) {
+			ERR("invalid +alignment=%s\n", arg);
+			return KNOT_EINVAL;
+		}
+
+		q->alignment = num;
+		return KNOT_EOK;
+	}
+}
+
+static int opt_noalignment(const char *arg, void *query)
+{
+	query_t *q = query;
+
+	q->alignment = 0;
+
+	return KNOT_EOK;
+}
+
 static int opt_client(const char *arg, void *query)
 {
 	query_t *q = query;
@@ -693,6 +746,8 @@ static int opt_noedns(const char *arg, void *query)
 	opt_nodoflag(arg, query);
 	opt_nonsid(arg, query);
 	opt_nobufsize(arg, query);
+	opt_nopadding(arg, query);
+	opt_noalignment(arg, query);
 	opt_noclient(arg, query);
 
 	return KNOT_EOK;
@@ -835,6 +890,12 @@ static const param_t kdig_opts2[] = {
 	{ "bufsize",      ARG_REQUIRED, opt_bufsize },
 	{ "nobufsize",    ARG_NONE,     opt_nobufsize },
 
+	{ "padding",      ARG_REQUIRED, opt_padding },
+	{ "nopadding",    ARG_NONE,     opt_nopadding },
+
+	{ "alignment",    ARG_OPTIONAL, opt_alignment },
+	{ "noalignment",  ARG_NONE,     opt_noalignment },
+
 	{ "client",       ARG_REQUIRED, opt_client },
 	{ "noclient",     ARG_NONE,     opt_noclient },
 
@@ -895,6 +956,8 @@ query_t *query_create(const char *owner, const query_t *conf)
 		query->idn = true;
 		query->nsid = false;
 		query->edns = -1;
+		query->padding = -1;
+		query->alignment = 0;
 		//query->tsig_key
 		query->subnet = NULL;
 #if USE_DNSTAP
@@ -930,6 +993,8 @@ query_t *query_create(const char *owner, const query_t *conf)
 		query->idn = conf->idn;
 		query->nsid = conf->nsid;
 		query->edns = conf->edns;
+		query->padding = conf->padding;
+		query->alignment = conf->alignment;
 		if (conf->tsig_key.name != NULL) {
 			int ret = knot_tsig_key_copy(&query->tsig_key,
 			                             &conf->tsig_key);
@@ -1410,6 +1475,8 @@ static void print_help(void)
 	       "       +[no]ignore        Don't use TCP automatically if truncated.\n"
 	       "       +[no]nsid          Request NSID.\n"
 	       "       +[no]bufsize=B     Set EDNS buffer size.\n"
+	       "       +[no]padding=N     Padding block size EDNS(0) padding.\n"
+	       "       +[no]alignment(=N) Set packet alignment with EDNS(0) padding.\n"
 	       "       +[no]client=SUBN   Set EDNS(0) client subnet IP/prefix.\n"
 	       "       +[no]edns(=N)      Use EDNS (=version).\n"
 	       "       +[no]time=T        Set wait for reply interval in seconds.\n"

@@ -38,7 +38,7 @@
  * \retval packet	if success.
  * \retval NULL		if error.
  */
-knot_pkt_t *create_empty_packet(const size_t max_size);
+knot_pkt_t *create_empty_packet(const uint16_t max_size);
 
 /*!
  * \brief Prints information header for transfer.
