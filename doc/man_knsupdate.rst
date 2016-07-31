@@ -136,21 +136,9 @@ Options **-k** and **-y** can not be used simultaneously.
 
 Dnssec-keygen keyfile format is not supported. Use :manpage:`keymgr(8)` instead.
 
-Missing features with regard to ISC nsupdate:
+Zone name/server guessing is not supported if the zone name/server is not specified.
 
-  Authentication using GSS-TSIG or SIG(0).
-
-  Options **-D**, **-g**, **-o**, **-l**, **-L**, **-R** and **-u**.
-
-  Commands: **gsstsig**, **oldgsstsig** and **realm**.
-
-Differences with regard to ISC nsupdate:
-
-  Zone name/server guessing, if the zone name/server is not specified.
-
-  Empty line doesn't send the update.
-
-  BIND-like key format (:program:`ddns-confgen` output) is not supported.
+Empty line doesn't send the update.
 
 Examples
 --------

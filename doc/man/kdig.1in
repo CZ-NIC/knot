@@ -128,6 +128,10 @@ Wrap long records to more lines and improve human readability.
 \fB+\fP[\fBno\fP]\fBshort\fP
 Show record data only.
 .TP
+\fB+\fP[\fBno\fP]\fBgeneric\fP
+Use the generic representation format when printing resource record types
+and data.
+.TP
 \fB+\fP[\fBno\fP]\fBaaflag\fP
 Set the AA flag.
 .TP
@@ -200,66 +204,32 @@ Don\(aqt use TCP automatically if a truncated reply is received.
 \fB+\fP[\fBno\fP]\fBnsid\fP
 Request the nameserver identifier (NSID).
 .TP
-\fB+\fP[\fBno\fP]\fBedns\fP=\fIN\fP
+\fB+\fP[\fBno\fP]\fBbufsize\fP=\fIB\fP
+Set the EDNS buffer size in bytes (default is 512 bytes).
+.TP
+\fB+\fP[\fBno\fP]\fBclient\fP=\fISUBN\fP
+Set the EDNS client subnet SUBN=IP/prefix.
+.TP
+\fB+\fP[\fBno\fP]\fBedns\fP[=\fIN\fP]
 Use EDNS version (default is 0).
+.TP
+\fB+\fP[\fBno\fP]\fBtime\fP=\fIT\fP
+Set the wait\-for\-reply interval in seconds (default is 5 seconds). This timeout
+applies to each query attempt.
+.TP
+\fB+\fP[\fBno\fP]\fBretry\fP=\fIN\fP
+Set the number (>=0) of UDP retries (default is 2). This doesn\(aqt apply to
+AXFR/IXFR.
 .TP
 \fB+noidn\fP
 Disable the IDN transformation to ASCII and vice versa. IDNA2003 support depends
 on libidn availability during project building!
-.TP
-\fB+generic\fP
-Use the generic representation format when printing resource record types
-and data.
-.TP
-\fB+client\fP=\fISUBN\fP
-Set the EDNS client subnet SUBN=IP/prefix.
-.TP
-\fB+time\fP=\fIT\fP
-Set the wait\-for\-reply interval in seconds (default is 5 seconds). This timeout
-applies to each query attempt.
-.TP
-\fB+retry\fP=\fIN\fP
-Set the number (>=0) of UDP retries (default is 2). This doesn\(aqt apply to
-AXFR/IXFR.
-.TP
-\fB+bufsize\fP=\fIB\fP
-Set the EDNS buffer size in bytes (default is 512 bytes).
 .UNINDENT
 .SH NOTES
 .sp
 Options \fB\-k\fP and \fB\-y\fP can not be used simultaneously.
 .sp
 Dnssec\-keygen keyfile format is not supported. Use \fIkeymgr(8)\fP instead.
-.sp
-Missing features with regard to ISC dig:
-.INDENT 0.0
-.INDENT 3.5
-Options \fB\-f\fP and \fB\-m\fP and query options:
-\fB+split\fP=\fIW\fP,
-\fB+tries\fP=\fIT\fP,
-\fB+ndots\fP=\fID\fP,
-\fB+domain\fP=\fIsomename\fP,
-\fB+trusted\-key\fP=\fI####\fP,
-\fB+\fP[\fBno\fP]\fBfail\fP,
-\fB+\fP[\fBno\fP]\fBvc\fP,
-\fB+\fP[\fBno\fP]\fBsearch\fP,
-\fB+\fP[\fBno\fP]\fBshowsearch\fP,
-\fB+\fP[\fBno\fP]\fBdefname\fP,
-\fB+\fP[\fBno\fP]\fBaaonly\fP,
-\fB+\fP[\fBno\fP]\fBcmd\fP,
-\fB+\fP[\fBno\fP]\fBidentify\fP,
-\fB+\fP[\fBno\fP]\fBcomments\fP,
-\fB+\fP[\fBno\fP]\fBrrcomments\fP,
-\fB+\fP[\fBno\fP]\fBonesoa\fP,
-\fB+\fP[\fBno\fP]\fBbesteffort\fP,
-\fB+\fP[\fBno\fP]\fBsigchase\fP,
-\fB+\fP[\fBno\fP]\fBtopdown\fP,
-\fB+\fP[\fBno\fP]\fBnssearch\fP, and
-\fB+\fP[\fBno\fP]\fBtrace\fP\&.
-.sp
-Per\-user file configuration via \fB~/.digrc\fP\&.
-.UNINDENT
-.UNINDENT
 .SH EXAMPLES
 .INDENT 0.0
 .IP 1. 3

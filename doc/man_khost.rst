@@ -76,21 +76,6 @@ Options
   The time to wait for a reply in seconds. This timeout applies to each query
   try. The default is 2 seconds.
 
-Notes
------
-
-Missing features with regard to ISC dig:
-
-  Options **-C**, **-i**, **-l**, **-m**, **-N** and **-s**.
-
-Differences with regard to ISC host:
-
-  Option **-d** is not equivalent to **-v**, but enables debug messages.
-
-  The number of retries can be set to zero.
-
-  Verbose mode has slightly different format (same as :program:`kdig`).
-
 Examples
 --------
 

@@ -105,6 +105,10 @@ Options
 **+**\ [\ **no**\ ]\ **short**
   Show record data only.
 
+**+**\ [\ **no**\ ]\ **generic**
+  Use the generic representation format when printing resource record types
+  and data.
+
 **+**\ [\ **no**\ ]\ **aaflag**
   Set the AA flag.
 
@@ -177,30 +181,26 @@ Options
 **+**\ [\ **no**\ ]\ **nsid**
   Request the nameserver identifier (NSID).
 
-**+**\ [\ **no**\ ]\ **edns**\ =\ *N*
+**+**\ [\ **no**\ ]\ **bufsize**\ =\ *B*
+  Set the EDNS buffer size in bytes (default is 512 bytes).
+
+**+**\ [\ **no**\ ]\ **client**\ =\ *SUBN*
+  Set the EDNS client subnet SUBN=IP/prefix.
+
+**+**\ [\ **no**\ ]\ **edns**\[\ =\ *N*\]
   Use EDNS version (default is 0).
+
+**+**\ [\ **no**\ ]\ **time**\ =\ *T*
+  Set the wait-for-reply interval in seconds (default is 5 seconds). This timeout
+  applies to each query attempt.
+
+**+**\ [\ **no**\ ]\ **retry**\ =\ *N*
+  Set the number (>=0) of UDP retries (default is 2). This doesn't apply to
+  AXFR/IXFR.
 
 **+noidn**
   Disable the IDN transformation to ASCII and vice versa. IDNA2003 support depends
   on libidn availability during project building!
-
-**+generic**
-  Use the generic representation format when printing resource record types
-  and data.
-
-**+client**\ =\ *SUBN*
-  Set the EDNS client subnet SUBN=IP/prefix.
-
-**+time**\ =\ *T*
-  Set the wait-for-reply interval in seconds (default is 5 seconds). This timeout
-  applies to each query attempt.
-
-**+retry**\ =\ *N*
-  Set the number (>=0) of UDP retries (default is 2). This doesn't apply to
-  AXFR/IXFR.
-
-**+bufsize**\ =\ *B*
-  Set the EDNS buffer size in bytes (default is 512 bytes).
 
 Notes
 -----
@@ -208,33 +208,6 @@ Notes
 Options **-k** and **-y** can not be used simultaneously.
 
 Dnssec-keygen keyfile format is not supported. Use :manpage:`keymgr(8)` instead.
-
-Missing features with regard to ISC dig:
-
-  Options **-f** and **-m** and query options:
-  **+split**\ =\ *W*,
-  **+tries**\ =\ *T*,
-  **+ndots**\ =\ *D*,
-  **+domain**\ =\ *somename*,
-  **+trusted-key**\ =\ *####*,
-  **+**\ [\ **no**\ ]\ **fail**,
-  **+**\ [\ **no**\ ]\ **vc**,
-  **+**\ [\ **no**\ ]\ **search**,
-  **+**\ [\ **no**\ ]\ **showsearch**,
-  **+**\ [\ **no**\ ]\ **defname**,
-  **+**\ [\ **no**\ ]\ **aaonly**,
-  **+**\ [\ **no**\ ]\ **cmd**,
-  **+**\ [\ **no**\ ]\ **identify**,
-  **+**\ [\ **no**\ ]\ **comments**,
-  **+**\ [\ **no**\ ]\ **rrcomments**,
-  **+**\ [\ **no**\ ]\ **onesoa**,
-  **+**\ [\ **no**\ ]\ **besteffort**,
-  **+**\ [\ **no**\ ]\ **sigchase**,
-  **+**\ [\ **no**\ ]\ **topdown**,
-  **+**\ [\ **no**\ ]\ **nssearch**, and
-  **+**\ [\ **no**\ ]\ **trace**.
-
-  Per-user file configuration via :file:`~/.digrc`.
 
 Examples
 --------
