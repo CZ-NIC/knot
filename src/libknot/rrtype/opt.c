@@ -1,4 +1,4 @@
-/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -14,18 +14,18 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <assert.h>
 #include <stdint.h>
 #include <stdlib.h>
-#include <assert.h>
 #include <string.h>
 #include <sys/socket.h>
 
 #include "libknot/attribute.h"
 #include "libknot/consts.h"
-#include "libknot/rrtype/opt.h"
 #include "libknot/descriptor.h"
-#include "contrib/wire_ctx.h"
+#include "libknot/rrtype/opt.h"
 #include "contrib/wire.h"
+#include "contrib/wire_ctx.h"
 
 /*! \brief Some implementation-related constants. */
 enum knot_edns_private_consts {
@@ -47,17 +47,16 @@ enum knot_edns_private_consts {
 	EDNS_OFFSET_CLIENT_SUBNET_ADDR     = 4,
 };
 
-/*----------------------------------------------------------------------------*/
 _public_
 int knot_edns_init(knot_rrset_t *opt_rr, uint16_t max_pld,
-                  uint8_t ext_rcode, uint8_t ver, knot_mm_t *mm)
+                   uint8_t ext_rcode, uint8_t ver, knot_mm_t *mm)
 {
 	if (opt_rr == NULL) {
 		return KNOT_EINVAL;
 	}
 
 	/* Initialize RRSet. */
-	knot_dname_t *owner = knot_dname_copy((const uint8_t*)"", mm);
+	knot_dname_t *owner = knot_dname_copy((const uint8_t *)"", mm);
 	if (owner == NULL) {
 		return KNOT_ENOMEM;
 	}
@@ -74,7 +73,6 @@ int knot_edns_init(knot_rrset_t *opt_rr, uint16_t max_pld,
 	return ret;
 }
 
-/*----------------------------------------------------------------------------*/
 _public_
 size_t knot_edns_wire_size(knot_rrset_t *opt_rr)
 {
@@ -88,7 +86,6 @@ size_t knot_edns_wire_size(knot_rrset_t *opt_rr)
 	return KNOT_EDNS_MIN_SIZE + knot_rdata_rdlen(rdata);
 }
 
-/*----------------------------------------------------------------------------*/
 _public_
 uint16_t knot_edns_get_payload(const knot_rrset_t *opt_rr)
 {
@@ -96,7 +93,6 @@ uint16_t knot_edns_get_payload(const knot_rrset_t *opt_rr)
 	return opt_rr->rclass;
 }
 
-/*----------------------------------------------------------------------------*/
 _public_
 void knot_edns_set_payload(knot_rrset_t *opt_rr, uint16_t payload)
 {
@@ -104,25 +100,22 @@ void knot_edns_set_payload(knot_rrset_t *opt_rr, uint16_t payload)
 	opt_rr->rclass = payload;
 }
 
-/*----------------------------------------------------------------------------*/
 _public_
 uint8_t knot_edns_get_ext_rcode(const knot_rrset_t *opt_rr)
 {
 	assert(opt_rr != NULL);
 	uint32_t ttl = 0;
-	wire_ctx_t w = wire_ctx_init((uint8_t *) &ttl, sizeof(ttl));
+	wire_ctx_t w = wire_ctx_init((uint8_t *)&ttl, sizeof(ttl));
 	// TTL is stored in machine byte order. Convert it to wire order first.
 	wire_ctx_write_u32(&w, knot_rrset_ttl(opt_rr));
 	wire_ctx_set_offset(&w, EDNS_OFFSET_RCODE);
 	return wire_ctx_read_u8(&w);
 }
 
-/*----------------------------------------------------------------------------*/
-
 static void set_value_to_ttl(knot_rrset_t *opt_rr, size_t offset, uint8_t value)
 {
 	uint32_t ttl = 0;
-	wire_ctx_t w = wire_ctx_init((uint8_t*) &ttl, sizeof(ttl));
+	wire_ctx_t w = wire_ctx_init((uint8_t *)&ttl, sizeof(ttl));
 	// TTL is stored in machine byte order. Convert it to wire order first.
 	wire_ctx_write_u32(&w, knot_rrset_ttl(opt_rr));
 	// Set the Extended RCODE in the converted TTL
@@ -135,7 +128,6 @@ static void set_value_to_ttl(knot_rrset_t *opt_rr, size_t offset, uint8_t value)
 	knot_rdata_set_ttl(knot_rdataset_at(&opt_rr->rrs, 0), ttl_local);
 }
 
-/*----------------------------------------------------------------------------*/
 _public_
 void knot_edns_set_ext_rcode(knot_rrset_t *opt_rr, uint8_t ext_rcode)
 {
@@ -143,20 +135,18 @@ void knot_edns_set_ext_rcode(knot_rrset_t *opt_rr, uint8_t ext_rcode)
 	set_value_to_ttl(opt_rr, EDNS_OFFSET_RCODE, ext_rcode);
 }
 
-/*----------------------------------------------------------------------------*/
 _public_
 uint8_t knot_edns_get_version(const knot_rrset_t *opt_rr)
 {
 	assert(opt_rr != NULL);
 	uint32_t ttl = 0;
-	wire_ctx_t w = wire_ctx_init((uint8_t*) &ttl, sizeof(ttl));
+	wire_ctx_t w = wire_ctx_init((uint8_t *)&ttl, sizeof(ttl));
 	// TTL is stored in machine byte order. Convert it to wire order first.
 	wire_ctx_write_u32(&w, knot_rrset_ttl(opt_rr));
 	wire_ctx_set_offset(&w, EDNS_OFFSET_VERSION);
 	return wire_ctx_read_u8(&w);
 }
 
-/*----------------------------------------------------------------------------*/
 _public_
 void knot_edns_set_version(knot_rrset_t *opt_rr, uint8_t version)
 {
@@ -164,7 +154,6 @@ void knot_edns_set_version(knot_rrset_t *opt_rr, uint8_t version)
 	set_value_to_ttl(opt_rr, EDNS_OFFSET_VERSION, version);
 }
 
-/*----------------------------------------------------------------------------*/
 _public_
 bool knot_edns_do(const knot_rrset_t *opt_rr)
 {
@@ -172,7 +161,6 @@ bool knot_edns_do(const knot_rrset_t *opt_rr)
 	return knot_rrset_ttl(opt_rr) & EDNS_DO_MASK;
 }
 
-/*----------------------------------------------------------------------------*/
 _public_
 void knot_edns_set_do(knot_rrset_t *opt_rr)
 {
@@ -186,7 +174,6 @@ void knot_edns_set_do(knot_rrset_t *opt_rr)
 	knot_rdata_set_ttl(knot_rdataset_at(&opt_rr->rrs, 0), ttl);
 }
 
-/*----------------------------------------------------------------------------*/
 /*!
  * \brief Skips an option from the supplied \a wire data.
  *
@@ -197,8 +184,7 @@ void knot_edns_set_do(knot_rrset_t *opt_rr)
  * \return Pointer to the first byte of the entire skipped option,
  *         NULL when none or incomplete option data left.
  */
-static uint8_t *skip_option(wire_ctx_t *wire,
-                            uint16_t *code, uint16_t *full_len)
+static uint8_t *skip_option(wire_ctx_t *wire, uint16_t *code, uint16_t *full_len)
 {
 	assert(wire && code && full_len);
 
@@ -344,8 +330,6 @@ static int delete_and_reserve_option(knot_rrset_t *opt_rr, uint16_t code,
 	return KNOT_EOK;
 }
 
-/*----------------------------------------------------------------------------*/
-
 /*!
  * \brief Add new EDNS option by replacing RDATA of OPT RR.
  *
@@ -456,7 +440,6 @@ int knot_edns_add_option(knot_rrset_t *opt_rr, uint16_t code,
 	return KNOT_EOK;
 }
 
-/*----------------------------------------------------------------------------*/
 _public_
 bool knot_edns_has_option(const knot_rrset_t *opt_rr, uint16_t code)
 {
@@ -497,7 +480,6 @@ uint16_t knot_edns_opt_get_length(const uint8_t *opt)
 	return wire_read_u16(opt + sizeof(uint16_t));
 }
 
-/*----------------------------------------------------------------------------*/
 _public_
 bool knot_edns_check_record(knot_rrset_t *opt_rr)
 {
@@ -524,7 +506,6 @@ bool knot_edns_check_record(knot_rrset_t *opt_rr)
 	return wire.error == KNOT_EOK;
 }
 
-/*----------------------------------------------------------------------------*/
 _public_
 int knot_edns_client_subnet_create(const knot_addr_family_t family,
                                    const uint8_t *addr,
