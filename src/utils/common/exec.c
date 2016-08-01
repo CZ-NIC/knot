@@ -262,6 +262,9 @@ static void print_section_opt(const knot_rrset_t *rr, const uint8_t rcode)
 			printf(";; CLIENT-SUBNET: ");
 			print_edns_client_subnet(opt_data, opt_len);
 			break;
+		case KNOT_EDNS_OPTION_PADDING:
+			printf(";; PADDING: %u B\n", opt_len);
+			break;
 		default:
 			printf(";; Option (%u): ", opt_code);
 			short_hex_print(opt_data, opt_len);
@@ -462,7 +465,7 @@ static void print_error_host(const uint16_t   code,
 	free(owner);
 }
 
-knot_pkt_t *create_empty_packet(const size_t max_size)
+knot_pkt_t *create_empty_packet(const uint16_t max_size)
 {
 	// Create packet skeleton.
 	knot_pkt_t *packet = knot_pkt_new(NULL, max_size, NULL);

@@ -184,6 +184,13 @@ Options
 **+**\ [\ **no**\ ]\ **bufsize**\ =\ *B*
   Set the EDNS buffer size in bytes (default is 512 bytes).
 
+**+**\ [\ **no**\ ]\ **padding**\ =\ *B*
+  Set EDNS(0) padding option data length (default is no).
+
+**+**\ [\ **no**\ ]\ **alignment**\[\ =\ *B*\]
+  Align the query to B\-byte-block message using the EDNS(0) padding option
+  (default is no or 128 if no argument is specified).
+
 **+**\ [\ **no**\ ]\ **client**\ =\ *SUBN*
   Set the EDNS client subnet SUBN=IP/prefix.
 
