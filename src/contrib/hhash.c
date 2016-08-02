@@ -131,7 +131,15 @@ static bool hhelem_isequal(hhelem_t *elm, const char *key, uint16_t len)
 #define CMP_I2K(t, k) (t)->item[t->index[k]].d
 #define CMP_LE(t, i, x, ...) (key_cmp(KEY_STR(CMP_I2K(t, i)), key_readlen(CMP_I2K(t, i)), x, __VA_ARGS__) <= 0)
 
-/*! \brief Find matching index + offset. */
+/* Free and NULL the index, if any exists. */
+static inline void hhash_invalidate_index(hhash_t* tbl) {
+	if (!tbl->index)
+		return;
+	mm_free(tbl->mm, tbl->index);
+	tbl->index = NULL;
+}
+
+/*! \brief Free a table element. Find matching index + offset. */
 static int hhelem_free(hhash_t* tbl, uint32_t id, unsigned dist, value_t *val)
 {
 	/* Remove from the source bitvector. */
@@ -148,9 +156,7 @@ static int hhelem_free(hhash_t* tbl, uint32_t id, unsigned dist, value_t *val)
 	mm_free(tbl->mm, elm->d);
 	elm->d = NULL;
 
-	/* Invalidate index. */
-	mm_free(tbl->mm, tbl->index);
-	tbl->index = NULL;
+	hhash_invalidate_index(tbl);
 
 	/* Update table weight. */
 	--tbl->weight;
@@ -210,9 +216,8 @@ static void hhash_free_buckets(hhash_t *tbl)
 	for (unsigned i = 0; i < tbl->size; ++i) {
 		mm_free(tbl->mm, tbl->item[i].d);
 	}
-
-	/* Free order index. */
-	mm_free(tbl->mm, tbl->index);
+	
+	hhash_invalidate_index(tbl);
 }
 
 hhash_t *hhash_create(uint32_t size)
@@ -258,7 +263,6 @@ void hhash_clear(hhash_t *tbl)
 	/* Clear buckets. */
 	hhash_free_buckets(tbl);
 	memset(tbl->item, 0, tbl->size * sizeof(hhelem_t));
-	tbl->index = NULL;
 
 	/* Reset weight. */
 	tbl->weight = 0;
@@ -321,6 +325,8 @@ value_t *hhash_map(hhash_t* tbl, const char* key, uint16_t len, uint16_t mode)
 		return NULL;
 	}
 
+	hhash_invalidate_index(tbl);
+
 	/* Reduce distance to fit <id, id + HOP_LEN) */
 	dist = find_free(tbl, id);
 	if (dist < 0) { /* Did not find any fit. */
@@ -352,12 +358,6 @@ value_t *hhash_map(hhash_t* tbl, const char* key, uint16_t len, uint16_t mode)
 
 	++tbl->weight;
 
-	/* Free old index. */
-	if (tbl->index) {
-		mm_free(tbl->mm, tbl->index);
-		tbl->index = NULL;
-	}
-
 	return (value_t *)KEY_VAL(new_key);
 }
 
@@ -388,23 +388,19 @@ int hhash_del(hhash_t* tbl, const char* key, uint16_t len)
 
 value_t *hhash_indexval(hhash_t* tbl, unsigned i)
 {
-	if (tbl != NULL && tbl->index != NULL) {
-		return (value_t *)KEY_VAL(tbl->item[ tbl->index[i] ].d);
+	if (unlikely(tbl == NULL)) {
+		return 0;
 	}
-
-	return 0;
+	if (unlikely(tbl->index == NULL)) {
+		hhash_build_index(tbl);
+	}
+	return (value_t *)KEY_VAL(tbl->item[ tbl->index[i] ].d);
 }
 
 void hhash_build_index(hhash_t* tbl)
 {
-	if (tbl == NULL) {
+	if (tbl == NULL || tbl->index) { /* no need to rebuild if exists */
 		return;
-	}
-
-	/* Free old index. */
-	if (tbl->index) {
-		mm_free(tbl->mm, tbl->index);
-		tbl->index = NULL;
 	}
 
 	/* Rebuild index. */
@@ -433,6 +429,9 @@ int hhash_find_leq(hhash_t* tbl, const char* key, uint16_t len, value_t** dst)
 	if (tbl->weight == 0) {
 		return 1;
 	}
+	if (unlikely(tbl->index == NULL)) {
+		hhash_build_index(tbl);
+	}
 
 	int k = BIN_SEARCH_FIRST_GE_CMP(tbl, tbl->weight, CMP_LE, key, len) - 1;
 	if (k > -1) {
@@ -456,6 +455,9 @@ int hhash_find_next(hhash_t* tbl, const char* key, uint16_t len, value_t** dst)
 	if (tbl->weight == 0) {
 		return 1;
 	}
+	if (unlikely(tbl->index == NULL)) {
+		hhash_build_index(tbl);
+	}
 
 	int k = BIN_SEARCH_FIRST_GE_CMP(tbl, tbl->weight, CMP_LE, key, len);
 	/* Found prev or equal, we want next */
@@ -476,6 +478,7 @@ enum {
 static void* hhash_sorted_iter_item(hhash_iter_t *i)
 {
 	hhash_t *tbl = i->tbl;
+	assert(tbl->index != NULL); /* rebuilt during hhash_iter_begin() */
 	uint32_t pos = tbl->index[i->i];
 	return tbl->item[pos].d;
 }
@@ -570,8 +573,8 @@ void hhash_iter_begin(hhash_t* tbl, hhash_iter_t* i, bool sorted)
 	i->tbl = tbl;
 	if (sorted) {
 		i->flags |= HH_SORTED;
-		if (!hhash_iter_finished(i)) {
-			assert(tbl->index);
+		if (!hhash_iter_finished(i) && unlikely(tbl->index == NULL)) {
+			hhash_build_index(tbl);
 		}
 	} else {
 		hhash_unsorted_iter_begin(i);
