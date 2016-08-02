@@ -28,10 +28,15 @@
 #include "knot/updates/changesets.h"
 #include "contrib/ucw/lists.h"
 
+enum {
+	APPLY_STRICT = 1 << 0,    /* Apply strictly, don't ignore removing non-existent RRs. */
+};
+
 struct apply_ctx {
 	list_t old_data;          /*!< Old data, to be freed after successful update. */
 	list_t new_data;          /*!< New data, to be freed after failed update. */
 	zone_node_t *apex;
+	uint32_t flags;
 };
 
 typedef struct apply_ctx apply_ctx_t;
@@ -41,7 +46,7 @@ typedef struct apply_ctx apply_ctx_t;
  *
  * \param ctx  Context to be initialized.
  */
-void apply_init_ctx(apply_ctx_t *ctx);
+void apply_init_ctx(apply_ctx_t *ctx, uint32_t flags);
 
 /*!
  * \brief Applies changesets *with* zone shallow copy.

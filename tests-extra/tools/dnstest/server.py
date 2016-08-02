@@ -526,6 +526,13 @@ class Server(object):
             raise Failed("Can't send RAW data (%d bytes) to server='%s'" %
                          (len(data), self.name))
 
+    def log_search(self, pattern):
+        with open(self.fout) as log:
+            for line in log:
+                if pattern in line:
+                    return True
+        return False
+
     def zone_wait(self, zone, serial=None, equal=False, greater=True):
         '''Try to get SOA record. With an optional serial number and given
            relation (equal or/and greater).'''
