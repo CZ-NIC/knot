@@ -242,7 +242,7 @@ int zone_update_init(zone_update_t *update, zone_t *zone, zone_update_flags_t fl
 	memset(update, 0, sizeof(*update));
 	update->zone = zone;
 
-	apply_init_ctx(&update->a_ctx);
+	apply_init_ctx(&update->a_ctx, 0);
 
 	mm_ctx_mempool(&update->mm, MM_DEFAULT_BLKSIZE);
 	update->flags = flags;

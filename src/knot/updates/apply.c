@@ -201,7 +201,13 @@ static int apply_remove(apply_ctx_t *ctx, zone_contents_t *contents, changeset_t
 		// Find node for this owner
 		zone_node_t *node = zone_contents_find_node_for_rr(contents, &rr);
 		if (!can_remove(node, &rr)) {
-			// Nothing to remove from, skip.
+			// Cannot be removed, either no node or nonexistent RR
+			if (ctx->flags & APPLY_STRICT) {
+				// Don't ignore missing RR if strict. Required for IXFR.
+				changeset_iter_clear(&itt);
+				return KNOT_ENORECORD;
+			}
+
 			rr = changeset_iter_next(&itt);
 			continue;
 		}
@@ -369,12 +375,14 @@ static int prepare_zone_copy(zone_contents_t *old_contents,
 
 /* ------------------------------- API -------------------------------------- */
 
-void apply_init_ctx(apply_ctx_t *ctx)
+void apply_init_ctx(apply_ctx_t *ctx, uint32_t flags)
 {
 	assert(ctx);
 
 	init_list(&ctx->old_data);
 	init_list(&ctx->new_data);
+
+	ctx->flags = flags;
 }
 
 int apply_changesets(apply_ctx_t *ctx, zone_t *zone, list_t *chsets, zone_contents_t **new_contents)
