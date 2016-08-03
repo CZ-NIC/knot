@@ -133,3 +133,22 @@ class ModDnsproxy(KnotModule):
         conf.end()
 
         return conf
+
+class ModWhoami(KnotModule):
+    '''Whoami module'''
+
+    src_name = "whoami_load"
+    conf_name = "mod-whoami"
+
+    def __init__(self):
+        super().__init__()
+
+    def get_conf(self, conf=None):
+        if not conf:
+            conf = dnstest.config.KnotConf()
+
+        conf.begin(self.conf_name)
+        conf.id_item("id", self.conf_id)
+        conf.end()
+
+        return conf
