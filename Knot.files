@@ -266,6 +266,8 @@ src/knot/modules/rosedb.h
 src/knot/modules/rosedb_tool.c
 src/knot/modules/synth_record.c
 src/knot/modules/synth_record.h
+src/knot/modules/whoami.c
+src/knot/modules/whoami.h
 src/knot/nameserver/axfr.c
 src/knot/nameserver/axfr.h
 src/knot/nameserver/chaos.c

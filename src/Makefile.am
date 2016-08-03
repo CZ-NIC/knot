@@ -282,6 +282,8 @@ libknotd_la_SOURCES =				\
 	knot/modules/online_sign/nsec_next.h	\
 	knot/modules/synth_record.c		\
 	knot/modules/synth_record.h		\
+	knot/modules/whoami.c			\
+	knot/modules/whoami.h			\
 	knot/nameserver/axfr.c			\
 	knot/nameserver/axfr.h			\
 	knot/nameserver/chaos.c			\

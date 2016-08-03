@@ -37,6 +37,7 @@
 #if USE_DNSTAP
 #include "knot/modules/dnstap.h"
 #endif
+#include "knot/modules/whoami.h"
 
 #define HOURS(x)	((x) * 3600)
 #define DAYS(x)		((x) * HOURS(24))
@@ -260,6 +261,7 @@ const yp_item_t conf_scheme[] = {
 	                                         { check_mod_dnstap } },
 #endif
 	{ C_MOD_ONLINE_SIGN,  YP_TGRP, YP_VGRP = { scheme_mod_online_sign }, YP_FMULTI },
+	{ C_MOD_WHOAMI,       YP_TGRP, YP_VGRP = { scheme_mod_whoami }, YP_FMULTI },
 /***********/
 	{ C_TPL,      YP_TGRP, YP_VGRP = { desc_template }, YP_FMULTI, { check_template } },
 	{ C_ZONE,     YP_TGRP, YP_VGRP = { desc_zone }, YP_FMULTI, { check_zone } },

@@ -29,6 +29,7 @@
 #if USE_DNSTAP
 #include "knot/modules/dnstap.h"
 #endif
+#include "knot/modules/whoami.h"
 
 typedef struct static_module {
 	const yp_name_t *name;
@@ -48,6 +49,7 @@ static_module_t MODULES[] = {
 #if USE_DNSTAP
         { C_MOD_DNSTAP,       &dnstap_load,       &dnstap_unload,       MOD_SCOPE_ANY },
 #endif
+        { C_MOD_WHOAMI,       &whoami_load,       &whoami_unload,       MOD_SCOPE_ANY },
         { NULL }
 };
 
