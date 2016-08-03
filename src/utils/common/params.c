@@ -119,10 +119,8 @@ int best_param(const char *str, const size_t str_len, const param_t *tbl,
 		case -1:
 			continue;
 		case 0:
-			best_pos = i;
-			best_match = 0;
-			matches = 1;
-			break;
+			*unique = true;
+			return i;
 		default:
 			if (ret < best_match) {
 				best_pos = i;

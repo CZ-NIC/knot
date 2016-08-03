@@ -178,6 +178,21 @@ Options
 **+**\ [\ **no**\ ]\ **ignore**
   Don't use TCP automatically if a truncated reply is received.
 
+**+**\ [\ **no**\ ]\ **tls**
+  Use TLS with the Opportunistic privacy profile.
+
+**+**\ [\ **no**\ ]\ **tls-ca**\[\ =\ *FILE*\]
+  Use TLS with the Out-Of-Band privacy profile, use a specified PEM file
+  (default is system certificate storage if no argument is provided).
+  Can be specified multiple times.
+
+**+**\ [\ **no**\ ]\ **tls-pin**\ =\ *BASE64*
+  Use TLS with a pinned certificate check. The PIN must be a Base64 encoded
+  SHA-256 hash of the X.509 SubjectPublicKeyInfo. Can be specified multiple times.
+
+**+**\ [\ **no**\ ]\ **tls-hostname**\ =\ *STR*
+  Use TLS with a remote server hostname check.
+
 **+**\ [\ **no**\ ]\ **nsid**
   Request the nameserver identifier (NSID).
 
@@ -231,6 +246,13 @@ Examples
    2001:DB8::1 from 192.0.2.2. Both using the TCP protocol::
 
      $ kdig +tcp example.com -t A @192.0.2.1 -x 2001:DB8::1 @192.0.2.2
+
+4. Get SOA record for example.com, use TLS, use system certificates, check
+   for specified hostname, check for certificate pin, and print additional
+   debug info::
+
+     $ kdig -d @185.49.141.38 +tls-ca +tls-host=getdnsapi.net \
+       +tls-pin=foxZRnIh9gZpWnl+zEiKa0EJ2rdCGroMWm02gaxSc9S= soa example.com
 
 Files
 -----

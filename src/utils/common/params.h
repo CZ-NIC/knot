@@ -67,16 +67,6 @@ typedef enum {
 	FORMAT_NSUPDATE
 } format_t;
 
-/*! \brief DNS over TLS Privacy Profiles. */
-typedef enum {
-	/*!< No TLS */
-	TLS_PROFILE_NONE,
-	/*!< Opportunistic Privacy Profile. */
-	TLS_PROFILE_OPPORTUNISTIC,
-	/*!< Out-of-Band Key-Pinned Privacy Profile. */
-	TLS_PROFILE_OOB_PINNED,
-} tls_profile_t;
-
 /*! \brief Text output settings. */
 typedef struct {
 	/*!< Output format. */

@@ -1,4 +1,4 @@
-/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -21,11 +21,6 @@
 #include <stdlib.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
-#include <assert.h>
-#include <gnutls/gnutls.h>
-#include <gnutls/x509.h>
-#include <contrib/print.h>
-#include <contrib/base64.h>
 
 #ifdef HAVE_SYS_UIO_H
 #include <sys/uio.h>
@@ -33,11 +28,11 @@
 
 #include "utils/common/netio.h"
 #include "utils/common/msg.h"
-#include "utils/common/cert.h"
+#include "utils/common/tls.h"
 #include "libknot/libknot.h"
 #include "contrib/sockaddr.h"
 
-srv_info_t* srv_info_create(const char *name, const char *service)
+srv_info_t *srv_info_create(const char *name, const char *service)
 {
 	if (name == NULL || service == NULL) {
 		DBG_NULL;
@@ -105,7 +100,7 @@ int get_socktype(const protocol_t proto, const uint16_t type)
 	}
 }
 
-const char* get_sockname(const int socktype)
+const char *get_sockname(const int socktype)
 {
 	switch (socktype) {
 	case SOCK_STREAM:
@@ -163,251 +158,12 @@ void get_addr_str(const struct sockaddr_storage *ss,
 	}
 }
 
-static char *strip_quotes(char *value) {
-	if (value == NULL) {
-		return NULL;
-	}
-
-	int value_len = strlen(value);
-	if (value[0] == '"') {
-		value++; value_len--;
-		if ((value_len <= 1) || (value[value_len-1] != '"')) {
-			return NULL;
-		}
-		value[value_len-1] = '\0'; value_len--;
-	}
-	return value;
-}
-
-typedef enum {
-	KNOT_TLS_PROFILE_PIN_END      = 0, /*!< End of TLS Profile String. */
-	KNOT_TLS_PROFILE_PIN_DEFAULT  = 1, /*!< Just use default x509 CA list */
-	KNOT_TLS_PROFILE_PIN_HOSTNAME = 2, /*!< hostname="<string>" */
-	KNOT_TLS_PROFILE_PIN_SHA256   = 3, /*!< pin-sha256="<base64>" */
-	KNOT_TLS_PROFILE_PIN_CAFILE   = 4, /*!< ca-file="<filename>" */
-} knot_tls_profile_pin_t;
-
-static int parse_pin(char *tls_pin, char **value, char **saveptr) {
-	char *token = strtok_r(tls_pin, ";", saveptr);
-
-	if (token == NULL) {
-		return KNOT_TLS_PROFILE_PIN_END;
-	}
-
-	char *key = strtok_r(token, "=", value);
-
-	if (key == NULL || (*value = strip_quotes(*value)) == NULL) {
-		return GNUTLS_E_CERTIFICATE_ERROR;
-	}
-
-	if (strcmp(key, "default") == 0) {
-		return KNOT_TLS_PROFILE_PIN_DEFAULT;
-	} else if (strcmp(key, "hostname") == 0) {
-		return KNOT_TLS_PROFILE_PIN_HOSTNAME;
-	} else if (strcmp(key, "pin-sha256") == 0) {
-		return KNOT_TLS_PROFILE_PIN_SHA256;
-	} else if (strcmp(key, "ca-file") == 0) {
-		return KNOT_TLS_PROFILE_PIN_CAFILE;
-	} else {
-		INFO("invalid value = '%s'\n", token);
-		return KNOT_EINVAL;
-	}
-}
-
-static int compare_pin(gnutls_session_t session, uint8_t *pin, size_t pin_len) {
-	if (gnutls_certificate_type_get(session) != GNUTLS_CRT_X509) {	\
-		ERR("Invalid certificate type\n");
-		return GNUTLS_E_CERTIFICATE_ERROR;
-	}
-
-	unsigned int raw_certificate_list_size;
-	const gnutls_datum_t *raw_certificate_list =			\
-		gnutls_certificate_get_peers(session, &raw_certificate_list_size);
-	if (raw_certificate_list == NULL || raw_certificate_list_size == 0) {
-		ERR("Certificate list is empty\n");
-		return GNUTLS_E_NO_CERTIFICATE_FOUND;
-	}
-
-	for (int i = 0; i < raw_certificate_list_size; i++) {
-		int ret;
-		gnutls_x509_crt_t certificate;
-		if ((ret = gnutls_x509_crt_init(&certificate)) < 0) {
-			return ret;
-		}
-
-		if ((ret = gnutls_x509_crt_import(certificate,
-						  &raw_certificate_list[i],
-						  GNUTLS_X509_FMT_DER)) < 0) {
-			gnutls_x509_crt_deinit(certificate);
-			return ret;
-		}
-
-		uint8_t cert_pin[CERT_PIN_LEN] = { 0 };
-		if ((ret = cert_get_pin(certificate, cert_pin, sizeof(cert_pin))) < 0) {
-			gnutls_x509_crt_deinit(certificate);
-			return GNUTLS_E_CERTIFICATE_ERROR;
-		}
-		gnutls_x509_crt_deinit(certificate);
-
-		if (pin_len == sizeof(cert_pin) &&
-		    memcmp(cert_pin, pin, sizeof(cert_pin)) == 0) {
-			// Matching PIN was found
-			return 1;
-		}
-	}
-
-	// No matching PIN was found
-	return 0;
-}
-
-static int verify_x509_peers(gnutls_session_t session, gnutls_typed_vdata_st *data, int data_len) {
-	if (data_len == 0) {
-		// We don't have any data to verify
-		return 0;
-	}
-
-	unsigned int status;
-	int ret;
-	ret = gnutls_certificate_verify_peers(session, data, data_len,
-					      &status);
-	for (int i = 0; i < data_len; i++) {
-		if (data[i].type == GNUTLS_DT_DNS_HOSTNAME) {
-			free(data[i].data);
-		}
-	}
-
-	if (ret < 0) {
-		ERR("Error in peer certificate verification\n");
-		return GNUTLS_E_CERTIFICATE_ERROR;
-	}
-
-	gnutls_datum_t out;
-	if ((ret = gnutls_certificate_verification_status_print(status,
-								gnutls_certificate_type_get(session),
-								&out, 0)) < 0) {
-		ERR("Error in peer certificate verification\n");
-		return GNUTLS_E_CERTIFICATE_ERROR;
-	}
-
-	gnutls_free(out.data);
-
-	if (status != 0)        // Certificate is not trusted
-		return GNUTLS_E_CERTIFICATE_ERROR;
-
-	return 0;
-}
-
-static int verify_certificate_oob(gnutls_session_t session)
-{
-	net_t *net = gnutls_session_get_ptr(session);
-	bool pin_seen = false, pin_required = false;
-
-	gnutls_typed_vdata_st data[64];
-	int data_len = 0;
-
-	for (char *tls_pin = net->tls_pin;;tls_pin = NULL) {
-		char *value, *saveptr;
-		int ret;
-
-		if ((ret = parse_pin(tls_pin, &value, &saveptr)) < 0) {
-			ERR("Invalid TLS Privacy Profile Pin Key: %s.\n", net->tls_pin);
-			return GNUTLS_E_CERTIFICATE_ERROR;
-		}
-
-		if (ret == KNOT_TLS_PROFILE_PIN_END) {
-			break;
-		}
-
-		switch (ret) {
-		case KNOT_TLS_PROFILE_PIN_DEFAULT:
-			// Verify certificate using credentials
-			data[data_len].type = GNUTLS_DT_KEY_PURPOSE_OID;
-			data[data_len].data = (void *)GNUTLS_KP_TLS_WWW_SERVER;
-			data[data_len].size = 0;
-			data_len++;
-			break;
-		case KNOT_TLS_PROFILE_PIN_HOSTNAME:
-			// Verify peer hostname
-			data[data_len].type = GNUTLS_DT_DNS_HOSTNAME;
-			data[data_len].data = (void *)strdup(value);
-			data[data_len].size = 0;
-			data_len++;
-			break;
-		case KNOT_TLS_PROFILE_PIN_SHA256:
-			// Verify peer certificate using SPKI SHA256 PIN
-			pin_required = true;
-
-			if (pin_seen) { // We have already verified the peer certificate
-				break;
-			}
-
-			uint8_t pin[64] = { 0 };
-			int pin_len;
-			if ((pin_len = base64_decode((uint8_t *)value, strlen(value),
-							 pin, sizeof(pin))) < 0) {
-				ERR("Invalid pin-sha256=\"%s\"\n", value);
-				return GNUTLS_E_CERTIFICATE_ERROR;
-			}
-
-			if ((ret = compare_pin(session, pin, pin_len)) < 0) {
-				return ret;
-			}
-			pin_seen = (ret == 1) ? true : false;
-			break;
-		case KNOT_TLS_PROFILE_PIN_CAFILE:
-			/* This verification function uses the trusted CAs in the credentials
-			 * structure. So you must have installed one or more CA certificates.
-			 */
-			if ((gnutls_certificate_set_x509_trust_file(net->tls_creds, value,
-								    GNUTLS_X509_FMT_PEM)) < 0) {
-				ERR("Adding trusted CAs from %s failed.\n", value);
-				return GNUTLS_E_CERTIFICATE_ERROR;
-			}
-
-			data[data_len].type = GNUTLS_DT_KEY_PURPOSE_OID;
-			data[data_len].data = (void *)GNUTLS_KP_TLS_WWW_SERVER;
-			data[data_len].size = 0;
-			data_len++;
-			break;
-		default:
-			ERR("Invalid TLS Privacy Profile Pin Key: %s.\n", net->tls_pin);
-			return GNUTLS_E_CERTIFICATE_ERROR;
-		}
-	}
-
-	if ((pin_required == true) && (pin_seen == false)) {
-		ERR("certificate PIN required but not seen.\n");
-	}
-
-	return verify_x509_peers(session, data, data_len);
-}
-
-static int verify_certificate_callback(gnutls_session_t session)
-{
-	net_t *net = gnutls_session_get_ptr(session);
-
-	switch (net->tls) {
-	case TLS_PROFILE_NONE:
-		ERR("TLS in progress, but TLS Profile set to TLS_PROFILE_NONE\n");
-		return GNUTLS_E_CERTIFICATE_ERROR;
-	case TLS_PROFILE_OPPORTUNISTIC:
-		// Accept any certificate
-		return 0;
-	case TLS_PROFILE_OOB_PINNED:
-		return verify_certificate_oob(session);
-	default:
-		ERR("Unknown TLS Privacy Profile.\n");
-		return GNUTLS_E_CERTIFICATE_ERROR;
-	}
-}
-
 int net_init(const srv_info_t    *local,
              const srv_info_t    *remote,
              const int           iptype,
              const int           socktype,
              const int           wait,
-	     const tls_profile_t tls,
-	     const char          *tls_pin,
+             const tls_params_t  *tls_params,
              net_t               *net)
 {
 	if (remote == NULL || net == NULL) {
@@ -440,31 +196,11 @@ int net_init(const srv_info_t    *local,
 	net->local = local;
 	net->remote = remote;
 
-	if (tls != TLS_PROFILE_NONE) {
-		net->tls = tls;
-		if (tls == TLS_PROFILE_OOB_PINNED) {
-			net->tls_pin = strdup(tls_pin);
-		}
-
-		if (gnutls_certificate_allocate_credentials(&net->tls_creds) < 0) {
-			return KNOT_ENOMEM;
-		}
-		gnutls_certificate_set_verify_function(net->tls_creds,
-						       verify_certificate_callback);
-
-		int ret;
-		if ((ret = gnutls_certificate_set_x509_system_trust(net->tls_creds)) < 0) {
-			if (ret != GNUTLS_E_UNIMPLEMENTED_FEATURE) {
-				WARN("gnutls_certificate_set_x509_system_trust() failed: (%d) %s\n",
-				     ret, gnutls_strerror_name(ret));
-			}
-		}
-
-		if (gnutls_init(&net->tls_session, GNUTLS_CLIENT | GNUTLS_NONBLOCK) < 0) {
-			return KNOT_NET_ECONNECT;
-		}
-		if (gnutls_set_default_priority(net->tls_session) < 0) {
-			return KNOT_NET_ECONNECT;
+	// Prepare for TLS.
+	if (tls_params != NULL && tls_params->enable) {
+		int ret = tls_ctx_init(&net->tls, tls_params, net->wait);
+		if (ret != KNOT_EOK) {
+			return ret;
 		}
 	}
 
@@ -473,9 +209,6 @@ int net_init(const srv_info_t    *local,
 
 int net_connect(net_t *net)
 {
-	struct pollfd pfd;
-	int           sockfd;
-
 	if (net == NULL || net->srv == NULL) {
 		DBG_NULL;
 		return KNOT_EINVAL;
@@ -486,16 +219,18 @@ int net_connect(net_t *net)
 	             net->socktype, &net->remote_str);
 
 	// Create socket.
-	sockfd = socket(net->srv->ai_family, net->socktype, 0);
+	int sockfd = socket(net->srv->ai_family, net->socktype, 0);
 	if (sockfd == -1) {
 		WARN("can't create socket for %s\n", net->remote_str);
 		return KNOT_NET_ESOCKET;
 	}
 
 	// Initialize poll descriptor structure.
-	pfd.fd = sockfd;
-	pfd.events = POLLOUT;
-	pfd.revents = 0;
+	struct pollfd pfd = {
+		.fd = sockfd,
+		.events = POLLOUT,
+		.revents = 0,
+	};
 
 	// Set non-blocking socket.
 	if (fcntl(sockfd, F_SETFL, O_NONBLOCK) == -1) {
@@ -538,39 +273,19 @@ int net_connect(net_t *net)
 			close(sockfd);
 			return KNOT_NET_ECONNECT;
 		}
+
+		// Establish TLS connection.
+		if (net->tls.params != NULL) {
+			int ret = tls_ctx_connect(&net->tls, sockfd, net->remote->name);
+			if (ret != KNOT_EOK) {
+				close(sockfd);
+				return ret;
+			}
+		}
 	}
 
 	// Store socket descriptor.
 	net->sockfd = sockfd;
-
-	if (net->tls) {
-		if (gnutls_credentials_set(net->tls_session, GNUTLS_CRD_CERTIFICATE, net->tls_creds) < 0) {
-			return KNOT_NET_ECONNECT;
-		}
-		gnutls_session_set_ptr(net->tls_session, net);
-		if (gnutls_server_name_set(net->tls_session, GNUTLS_NAME_DNS, net->remote->name,
-					   strlen(net->remote->name)) < 0) {
-			return KNOT_NET_ECONNECT;
-		}
-
-		if (gnutls_set_default_priority(net->tls_session) < 0) {
-			return KNOT_NET_ECONNECT;
-		}
-
-		gnutls_transport_set_int(net->tls_session, net->sockfd);
-
-		int ret;
-
-		// Perform the TLS handshake
-		do {
-			ret = gnutls_handshake(net->tls_session);
-		}
-		while (ret < 0 && gnutls_error_is_fatal(ret) == 0);
-		if (ret < 0) {
-			ERR("TLS handshake failed: %s\n", gnutls_strerror(ret));
-			return KNOT_NET_ESOCKET;
-		}
-	}
 
 	return KNOT_EOK;
 }
@@ -616,64 +331,37 @@ int net_send(const net_t *net, const uint8_t *buf, const size_t buf_len)
 		return KNOT_EINVAL;
 	}
 
-	if (net->socktype == SOCK_STREAM) {
-
-		if (net->tls) {
-			// Send data over TLS
-			ssize_t ret;
-			uint16_t pktsize = htons(buf_len);
-			ret = gnutls_record_send(net->tls_session, &pktsize, sizeof(pktsize));
-			do {
-				ret = gnutls_record_send(net->tls_session, buf, buf_len);
-			}
-			while (ret < 0 && gnutls_error_is_fatal(ret) == 0);
-			if (ret < 0) {
-				// Peer has closed the connectin
-				WARN("can't send query to %s: %s\n", net->remote_str, gnutls_strerror(ret));
-				return KNOT_NET_ESEND;
-			}
-			if (ret == 0) {
-				WARN("can't send query to %s\n", net->remote_str);
-				return KNOT_NET_ESEND;
-			}
-			do {
-				ret = gnutls_record_send(net->tls_session, buf, buf_len);
-			}
-			while (ret < 0 && gnutls_error_is_fatal(ret) == 0);
-			if (ret < 0) {
-				// Peer has closed the connectin
-				WARN("can't send query to %s: %s\n", net->remote_str, gnutls_strerror(ret));
-				return KNOT_NET_ESEND;
-			}
-			if (ret == 0) {
-				WARN("can't send query to %s\n", net->remote_str);
-				return KNOT_NET_ESEND;
-			}
-
-		} else {
-			// Send data over TCP
-			struct iovec iov[2];
-
-			// Leading packet length bytes.
-			uint16_t pktsize = htons(buf_len);
-
-			iov[0].iov_base = &pktsize;
-			iov[0].iov_len = sizeof(pktsize);
-			iov[1].iov_base = (uint8_t *)buf;
-			iov[1].iov_len = buf_len;
-
-			// Compute packet total length.
-			ssize_t total = iov[0].iov_len + iov[1].iov_len;
-
-			if (writev(net->sockfd, iov, 2) != total) {
-				WARN("can't send query to %s\n", net->remote_str);
-				return KNOT_NET_ESEND;
-			}
-		}
-	} else {
-		// Send data over UDP
+	// Send data over UDP.
+	if (net->socktype == SOCK_DGRAM) {
 		if (sendto(net->sockfd, buf, buf_len, 0, net->srv->ai_addr,
 		           net->srv->ai_addrlen) != (ssize_t)buf_len) {
+			WARN("can't send query to %s\n", net->remote_str);
+			return KNOT_NET_ESEND;
+		}
+	// Send data over TLS.
+	} else if (net->tls.params != NULL) {
+		int ret = tls_ctx_send((tls_ctx_t *)&net->tls, buf, buf_len);
+		if (ret != KNOT_EOK) {
+			WARN("can't send query to %s\n", net->remote_str);
+			return KNOT_NET_ESEND;
+		}
+	// Send data over TCP.
+	} else {
+		struct iovec iov[2];
+
+		// Leading packet length bytes.
+		uint16_t pktsize = htons(buf_len);
+
+		iov[0].iov_base = &pktsize;
+		iov[0].iov_len = sizeof(pktsize);
+		iov[1].iov_base = (uint8_t *)buf;
+		iov[1].iov_len = buf_len;
+
+		// Compute packet total length.
+		ssize_t total = iov[0].iov_len + iov[1].iov_len;
+
+		// Send data.
+		if (writev(net->sockfd, iov, 2) != total) {
 			WARN("can't send query to %s\n", net->remote_str);
 			return KNOT_NET_ESEND;
 		}
@@ -684,94 +372,20 @@ int net_send(const net_t *net, const uint8_t *buf, const size_t buf_len)
 
 int net_receive(const net_t *net, uint8_t *buf, const size_t buf_len)
 {
-	ssize_t       ret;
-	struct pollfd pfd;
-	uint32_t total = 0;
-
 	if (net == NULL || buf == NULL) {
 		DBG_NULL;
 		return KNOT_EINVAL;
 	}
 
 	// Initialize poll descriptor structure.
-	pfd.fd = net->sockfd;
-	pfd.events = POLLIN;
-	pfd.revents = 0;
+	struct pollfd pfd = {
+		.fd = net->sockfd,
+		.events = POLLIN,
+		.revents = 0,
+	};
 
-	if (net->socktype == SOCK_STREAM) {
-
-		if (net->tls) {
-			uint16_t msg_len = 0;
-			do {
-				ret = gnutls_record_recv(net->tls_session, &msg_len, sizeof(msg_len));
-			}
-			while (ret < 0 && gnutls_error_is_fatal(ret) == 0);
-			if (ret <= 0) {
-				WARN("can't receive reply from %s; peer has closed the TLS connection\n",
-				     net->remote_str);
-				return KNOT_NET_ERECV;
-			}
-			// Receive data over TLS
-			total = 0;
-			do {
-				ret = gnutls_record_recv(net->tls_session, buf, buf_len);
-			}
-			while (ret < 0 && gnutls_error_is_fatal(ret) == 0);
-			if (ret <= 0) {
-				WARN("can't receive reply from %s; peer has closed the TLS connection\n",
-				     net->remote_str);
-				return KNOT_NET_ERECV;
-			}
-			total = ret;
-		} else {
-			// Receive data over TCP
-			uint16_t msg_len = 0;
-			uint32_t total = 0;
-			// Receive TCP message header.
-			while (total < sizeof(msg_len)) {
-				if (poll(&pfd, 1, 1000 * net->wait) != 1) {
-					WARN("response timeout for %s\n",
-					     net->remote_str);
-					return KNOT_NET_ETIMEOUT;
-				}
-
-				// Receive piece of message.
-				ret = recv(net->sockfd, (uint8_t *)&msg_len + total,
-					   sizeof(msg_len) - total, 0);
-				if (ret <= 0) {
-					WARN("can't receive reply from %s\n",
-					     net->remote_str);
-					return KNOT_NET_ERECV;
-				}
-				total += ret;
-			}
-
-			// Convert number to host format.
-			msg_len = ntohs(msg_len);
-
-			total = 0;
-
-			// Receive whole answer message by parts.
-			while (total < msg_len) {
-				if (poll(&pfd, 1, 1000 * net->wait) != 1) {
-					WARN("response timeout for %s\n",
-					     net->remote_str);
-					return KNOT_NET_ETIMEOUT;
-				}
-
-				// Receive piece of message.
-				ret = recv(net->sockfd, buf + total, msg_len - total, 0);
-				if (ret <= 0) {
-					WARN("can't receive reply from %s\n",
-					     net->remote_str);
-					return KNOT_NET_ERECV;
-				}
-				total += ret;
-			}
-		}
-
-		return total;
-	} else {
+	// Receive data over UDP.
+	if (net->socktype == SOCK_DGRAM) {
 		struct sockaddr_storage from;
 		memset(&from, '\0', sizeof(from));
 
@@ -787,8 +401,8 @@ int net_receive(const net_t *net, uint8_t *buf, const size_t buf_len)
 			}
 
 			// Receive whole UDP datagram.
-			ret = recvfrom(net->sockfd, buf, buf_len, 0,
-			               (struct sockaddr *)&from, &from_len);
+			ssize_t ret = recvfrom(net->sockfd, buf, buf_len, 0,
+			                       (struct sockaddr *)&from, &from_len);
 			if (ret <= 0) {
 				WARN("can't receive reply from %s\n",
 				     net->remote_str);
@@ -807,6 +421,66 @@ int net_receive(const net_t *net, uint8_t *buf, const size_t buf_len)
 
 			return ret;
 		}
+	// Receive data over TLS.
+	} else if (net->tls.params != NULL) {
+		int ret = tls_ctx_receive((tls_ctx_t *)&net->tls, buf, buf_len);
+		if (ret < 0) {
+			WARN("can't receive reply from %s\n", net->remote_str);
+			return KNOT_NET_ERECV;
+		}
+
+		return ret;
+	// Receive data over TCP.
+	} else {
+		uint32_t total = 0;
+
+		uint16_t msg_len = 0;
+		// Receive TCP message header.
+		while (total < sizeof(msg_len)) {
+			if (poll(&pfd, 1, 1000 * net->wait) != 1) {
+				WARN("response timeout for %s\n",
+				     net->remote_str);
+				return KNOT_NET_ETIMEOUT;
+			}
+
+			// Receive piece of message.
+			ssize_t ret = recv(net->sockfd, (uint8_t *)&msg_len + total,
+				           sizeof(msg_len) - total, 0);
+			if (ret <= 0) {
+				WARN("can't receive reply from %s\n",
+				     net->remote_str);
+				return KNOT_NET_ERECV;
+			}
+			total += ret;
+		}
+
+		// Convert number to host format.
+		msg_len = ntohs(msg_len);
+		if (msg_len > buf_len) {
+			return KNOT_ESPACE;
+		}
+
+		total = 0;
+
+		// Receive whole answer message by parts.
+		while (total < msg_len) {
+			if (poll(&pfd, 1, 1000 * net->wait) != 1) {
+				WARN("response timeout for %s\n",
+				     net->remote_str);
+				return KNOT_NET_ETIMEOUT;
+			}
+
+			// Receive piece of message.
+			ssize_t ret = recv(net->sockfd, buf + total, msg_len - total, 0);
+			if (ret <= 0) {
+				WARN("can't receive reply from %s\n",
+				     net->remote_str);
+				return KNOT_NET_ERECV;
+			}
+			total += ret;
+		}
+
+		return total;
 	}
 
 	return KNOT_NET_ERECV;
@@ -819,25 +493,9 @@ void net_close(net_t *net)
 		return;
 	}
 
-	if (net->tls_session != NULL) {
-		char *desc = gnutls_session_get_desc(net->tls_session);
-		printf(";; TLS session info: %s\n", desc);
-		gnutls_free(desc);
-		gnutls_bye(net->tls_session, GNUTLS_SHUT_RDWR);
-	}
-
+	tls_ctx_close(&net->tls);
 	close(net->sockfd);
 	net->sockfd = -1;
-
-	gnutls_deinit(net->tls_session);
-
-	if (net->tls_pin != NULL) {
-		free(net->tls_pin);
-	}
-
-	if (net->tls_creds != NULL) {
-		gnutls_certificate_free_credentials(net->tls_creds);
-	}
 }
 
 void net_clean(net_t *net)
@@ -858,7 +516,5 @@ void net_clean(net_t *net)
 		freeaddrinfo(net->remote_info);
 	}
 
-	if (net->tls) {
-		gnutls_global_deinit();
-	}
+	tls_ctx_deinit(&net->tls);
 }
