@@ -41,39 +41,34 @@ uint16_t knot_edns_opt_cookie_data_len(uint16_t clen, uint16_t slen)
 }
 
 _public_
-int knot_edns_opt_cookie_write(const uint8_t *cc, uint16_t cc_len,
-                               const uint8_t *sc, uint16_t sc_len,
-                               uint8_t *data, uint16_t *data_len)
+uint16_t knot_edns_opt_cookie_write(const uint8_t *cc, uint16_t cc_len,
+                                    const uint8_t *sc, uint16_t sc_len,
+                                    uint8_t *data, uint16_t data_len)
 {
 	if ((cc == NULL && cc_len > 0) || (sc == NULL && sc_len > 0)) {
-		return KNOT_EINVAL;
+		return 0;
 	}
 
-	if (data == NULL || data_len == NULL) {
-		return KNOT_EINVAL;
+	if (data == NULL || data_len == 0) {
+		return 0;
 	}
 
 	uint16_t cookies_size = knot_edns_opt_cookie_data_len(cc_len, sc_len);
-	if (cookies_size == 0) {
-		return KNOT_EINVAL;
-	}
-	if (*data_len < cookies_size) {
-		return KNOT_ESPACE;
+	if (cookies_size == 0 || data_len < cookies_size) {
+		return 0;
 	}
 
-	wire_ctx_t wire = wire_ctx_init(data, *data_len);
+	wire_ctx_t wire = wire_ctx_init(data, data_len);
 	wire_ctx_write(&wire, cc, cc_len);
-	if (sc_len) {
+	if (sc_len > 0) {
 		wire_ctx_write(&wire, sc, sc_len);
 	}
 
 	if (wire.error != KNOT_EOK) {
-		return wire.error;
+		return 0;
 	}
 
-	*data_len = wire_ctx_offset(&wire);
-
-	return KNOT_EOK;
+	return wire_ctx_offset(&wire);
 }
 
 _public_
