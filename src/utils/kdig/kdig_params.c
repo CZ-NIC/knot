@@ -530,6 +530,41 @@ static int opt_notcp(const char *arg, void *query)
 	return KNOT_EOK;
 }
 
+static int opt_tls(const char *arg, void *query)
+{
+	query_t *q = query;
+
+	if (arg == NULL) {
+		// Opportunistic Privacy Profile
+		q->tls = TLS_PROFILE_OPPORTUNISTIC;
+	} else if (*arg == '\0') {
+		ERR("missing tls profile");
+		return KNOT_EFEWDATA;
+	} else {
+		// Out-of-Band Key-Pinned Privacy Profile
+		// hostname="hostname"
+		// pin-sha256="foo";pin-sha256="bar"
+		// ca-file="/etc/ssl/certs/ca-certificates.crt"
+		q->tls = TLS_PROFILE_OOB_PINNED;
+		q->tls_pin = strdup(arg);
+	}
+
+	if (q->protocol == PROTO_UDP) {
+		WARN("+tls cannot be used with +notcp; switching to +notcp\n");
+	}
+	
+	return opt_tcp(arg, query);	
+}
+
+static int opt_notls(const char *arg, void *query)
+{
+	query_t *q = query;
+
+	q->tls = TLS_PROFILE_NONE;
+
+	return KNOT_EOK;
+}
+
 static int opt_ignore(const char *arg, void *query)
 {
 	query_t *q = query;
@@ -881,6 +916,9 @@ static const param_t kdig_opts2[] = {
 	{ "tcp",          ARG_NONE,     opt_tcp },
 	{ "notcp",        ARG_NONE,     opt_notcp },
 
+	{ "tls",          ARG_OPTIONAL, opt_tls },
+	{ "notls",        ARG_NONE,     opt_notls },
+	
 	{ "ignore",       ARG_NONE,     opt_ignore },
 	{ "noignore",     ARG_NONE,     opt_noignore },
 
@@ -995,6 +1033,12 @@ query_t *query_create(const char *owner, const query_t *conf)
 		query->edns = conf->edns;
 		query->padding = conf->padding;
 		query->alignment = conf->alignment;
+		query->tls = conf->tls;
+		if (conf->tls_pin != NULL) {
+			query->tls_pin = strdup(conf->tls_pin); // FIXME
+		} else {
+			query->tls_pin = NULL;
+		}
 		if (conf->tsig_key.name != NULL) {
 			int ret = knot_tsig_key_copy(&query->tsig_key,
 			                             &conf->tsig_key);
@@ -1337,6 +1381,8 @@ static void complete_servers(query_t *query, const query_t *conf)
 		def_port = query->port;
 	} else if (strlen(conf->port) > 0) {
 		def_port = conf->port;
+	} else if (conf->tls != TLS_PROFILE_NONE) {
+		def_port = DEFAULT_DNS_TLS_PORT;
 	} else {
 		def_port = DEFAULT_DNS_PORT;
 	}
@@ -1472,6 +1518,11 @@ static void print_help(void)
 	       "       +[no]class         Show DNS class.\n"
 	       "       +[no]ttl           Show TTL value.\n"
 	       "       +[no]tcp           Use TCP protocol.\n"
+	       "       +[no]tls        Use DNS over TLS with Opportunistic Privacy Profile.\n"
+	       "       +[no]tls=pin    Use DNS over TLS with Out-Of-Band Privacy Profile.\n"
+	       "                       ca-file=/etc/ssl/ca-certificates.crt\n"
+	       "                       pin-sha256=hpkp-style-pin\n"
+	       "                       hostname=remote_peer_hostname\n"
 	       "       +[no]ignore        Don't use TCP automatically if truncated.\n"
 	       "       +[no]nsid          Request NSID.\n"
 	       "       +[no]bufsize=B     Set EDNS buffer size.\n"

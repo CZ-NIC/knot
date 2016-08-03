@@ -34,6 +34,7 @@
 #define DEFAULT_IPV4_NAME	"127.0.0.1"
 #define DEFAULT_IPV6_NAME	"::1"
 #define DEFAULT_DNS_PORT	"53"
+#define DEFAULT_DNS_TLS_PORT	"853"
 #define DEFAULT_UDP_SIZE	512
 #define DEFAULT_EDNS_SIZE	4096
 #define MAX_PACKET_SIZE		65535
@@ -65,6 +66,16 @@ typedef enum {
 	/*!< Brief nsupdate output. */
 	FORMAT_NSUPDATE
 } format_t;
+
+/*! \brief DNS over TLS Privacy Profiles. */
+typedef enum {
+	/*!< No TLS */
+	TLS_PROFILE_NONE,
+	/*!< Opportunistic Privacy Profile. */
+	TLS_PROFILE_OPPORTUNISTIC,
+	/*!< Out-of-Band Key-Pinned Privacy Profile. */
+	TLS_PROFILE_OOB_PINNED,
+} tls_profile_t;
 
 /*! \brief Text output settings. */
 typedef struct {

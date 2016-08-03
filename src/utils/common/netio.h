@@ -29,6 +29,7 @@
 #include <netdb.h>
 #include <stdint.h>
 #include <sys/socket.h>
+#include <gnutls/gnutls.h>
 
 #include "utils/common/params.h"
 
@@ -74,6 +75,13 @@ typedef struct {
 	 *  used.
 	 */
 	struct addrinfo *local_info;
+	/*! TLS Privacy Profile. */
+	tls_profile_t tls;
+	/*! TLS Privacy Profile Pin. */
+	char *tls_pin;
+	/*! GnuTLS session handle */
+	gnutls_session_t tls_session;
+	gnutls_certificate_credentials_t tls_creds;
 } net_t;
 
 /*!
@@ -147,12 +155,14 @@ void get_addr_str(const struct sockaddr_storage *ss,
  * \retval KNOT_EOK	if success.
  * \retval errcode	if error.
  */
-int net_init(const srv_info_t *local,
-             const srv_info_t *remote,
-             const int        iptype,
-             const int        socktype,
-             const int        wait,
-             net_t            *net);
+int net_init(const srv_info_t    *local,
+             const srv_info_t    *remote,
+             const int           iptype,
+             const int           socktype,
+             const int           wait,
+	     const tls_profile_t tls,
+	     const char          *tls_pin,
+             net_t               *net);
 
 /*!
  * \brief Creates socket and connects (if TCP) to remote address specified

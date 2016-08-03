@@ -136,6 +136,10 @@ struct query {
 	int32_t		padding;
 	/*!< Query alignment with EDNS0 padding (0 ~ uninitialized). */
 	uint16_t	alignment;
+	/*!< TLS Privacy Profile. */
+	tls_profile_t	tls;
+	/*!< TLS Privacy Profile PIN. */
+	char		*tls_pin;
 #if USE_DNSTAP
 	/*!< Context for dnstap reader input. */
 	dt_reader_t	*dt_reader;

@@ -434,6 +434,8 @@ static int pkt_sendrecv(knsupdate_params_t *params)
 	               get_iptype(params->ip),
 	               get_socktype(params->protocol, KNOT_RRTYPE_SOA),
 	               params->wait,
+		       TLS_PROFILE_NONE, // TLS
+		       NULL,
 	               &net);
 	if (ret != KNOT_EOK) {
 		return -1;
