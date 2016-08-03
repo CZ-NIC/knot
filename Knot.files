@@ -433,6 +433,8 @@ src/libknot/yparser/ypscheme.c
 src/libknot/yparser/ypscheme.h
 src/libknot/yparser/yptrafo.c
 src/libknot/yparser/yptrafo.h
+src/utils/common/cert.c
+src/utils/common/cert.h
 src/utils/common/exec.c
 src/utils/common/exec.h
 src/utils/common/hex.c

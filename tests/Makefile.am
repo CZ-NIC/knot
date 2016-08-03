@@ -47,6 +47,7 @@ check_PROGRAMS += \
 
 check_PROGRAMS += \
 	modules/online_sign		\
+	utils/test_cert			\
 	utils/test_lookup		\
 	acl				\
 	changeset			\
@@ -78,6 +79,15 @@ utils_test_lookup_CPPFLAGS = \
 	$(libedit_CFLAGS)
 
 utils_test_lookup_LDADD = \
+	$(top_builddir)/libtap/libtap.la \
+	$(top_builddir)/src/libknotus.la \
+	$(libedit_LIBS)
+
+utils_test_cert_CPPFLAGS = \
+	$(AM_CPPFLAGS) \
+	$(libedit_CFLAGS)
+
+utils_test_cert_LDADD = \
 	$(top_builddir)/libtap/libtap.la \
 	$(top_builddir)/src/libknotus.la \
 	$(libedit_LIBS)
