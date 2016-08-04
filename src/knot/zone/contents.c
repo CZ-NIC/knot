@@ -779,53 +779,53 @@ zone_node_t *zone_contents_find_node_for_rr(zone_contents_t *contents, const kno
 
 int zone_contents_find_dname(const zone_contents_t *zone,
                              const knot_dname_t *name,
-                             const zone_node_t **node,
-                             const zone_node_t **closest_encloser,
+                             const zone_node_t **match,
+                             const zone_node_t **closest,
                              const zone_node_t **previous)
 {
-	if (zone == NULL || name == NULL || node == NULL
-	    || closest_encloser == NULL || previous == NULL
-	    || zone->apex == NULL || zone->apex->owner == NULL) {
+	if (!zone || !name || !match || !closest || !previous) {
 		return KNOT_EINVAL;
 	}
 
-	zone_node_t *found = NULL, *prev = NULL;
-	bool match = find_in_tree(zone->nodes, name, &found, &prev);
-
-	*node = found;
-	*previous = prev;
-
-	// there must be at least one node with domain name less or equal to
-	// the searched name if the name belongs to the zone (the root)
-	if (*node == NULL && *previous == NULL) {
+	if (!knot_dname_in(zone->apex->owner, name)) {
 		return KNOT_EOUTOFZONE;
 	}
 
-	/* This function was quite out of date. The find_in_tree() function
-	 * may return NULL in the 'found' field, so we cannot search for the
-	 * closest encloser from this node.
-	 */
+	zone_node_t *node = NULL;
+	zone_node_t *prev = NULL;
 
-	if (match) {
-		*closest_encloser = *node;
+	int found = zone_tree_get_less_or_equal(zone->nodes, name, &node, &prev);
+	if (found < 0) {
+		// error
+		return found;
+	} else if (found == 1) {
+		// exact match
+
+		assert(node && prev);
+
+		*match = node;
+		*closest = node;
+		*previous = prev;
+
+		return ZONE_NAME_FOUND;
 	} else {
-		if (!knot_dname_is_sub(name, zone->apex->owner)) {
-			*node = NULL;
-			*closest_encloser = NULL;
-			return KNOT_EOUTOFZONE;
+		// closest match
+
+		assert(!node && prev);
+
+		node = prev;
+		int matched_labels = knot_dname_matched_labels(node->owner, name);
+		while (matched_labels < knot_dname_labels(node->owner, NULL)) {
+			node = node->parent;
+			assert(node);
 		}
 
-		*closest_encloser = *previous;
-		assert(*closest_encloser != NULL);
+		*match = NULL;
+		*closest = node;
+		*previous = prev;
 
-		int matched_labels = knot_dname_matched_labels((*closest_encloser)->owner, name);
-		while (matched_labels < knot_dname_labels((*closest_encloser)->owner, NULL)) {
-			*closest_encloser = (*closest_encloser)->parent;
-			assert(*closest_encloser);
-		}
+		return ZONE_NAME_NOT_FOUND;
 	}
-
-	return match ? ZONE_NAME_FOUND : ZONE_NAME_NOT_FOUND;
 }
 
 const zone_node_t *zone_contents_find_previous(const zone_contents_t *zone,
