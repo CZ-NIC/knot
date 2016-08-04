@@ -321,17 +321,19 @@ int zone_flush_journal(conf_t *conf, zone_t *zone)
 		return KNOT_EINVAL;
 	}
 
+	bool force = zone->flags & ZONE_FORCE_FLUSH;
+	zone->flags &= ~ZONE_FORCE_FLUSH;
+
 	/* Check for disabled zonefile synchronization. */
 	conf_val_t val = conf_zone_get(conf, C_ZONEFILE_SYNC, zone->name);
-	if (conf_int(&val) < 0 && (zone->flags & ZONE_FORCE_FLUSH) == 0) {
+	if (conf_int(&val) < 0 && !force) {
 		return KNOT_EOK;
 	}
-	zone->flags &= ~ZONE_FORCE_FLUSH;
 
 	/* Check for difference against zonefile serial. */
 	zone_contents_t *contents = zone->contents;
 	uint32_t serial_to = zone_contents_serial(contents);
-	if (zone->zonefile.exists && zone->zonefile.serial == serial_to) {
+	if (!force && zone->zonefile.exists && zone->zonefile.serial == serial_to) {
 		return KNOT_EOK; /* No differences. */
 	}
 
