@@ -44,15 +44,14 @@ uint16_t knot_edns_opt_cookie_data_len(uint16_t clen, uint16_t slen);
  * \param sc        Server cookie.
  * \param sc_len    Server cookie size.
  * \param data      Output data buffer.
- * \param data_len  Size of output data buffer/written data.
+ * \param data_len  Size of output data buffer.
  *
- * \retval KNOT_EOK
- * \retval KNOT_EINVAL
- * \retval KNOT_ESPACE
+ * \retval non-zero size of written data on successful return
+ * \retval 0 on error
  */
-int knot_edns_opt_cookie_write(const uint8_t *cc, uint16_t cc_len,
-                               const uint8_t *sc, uint16_t sc_len,
-                               uint8_t *data, uint16_t *data_len);
+uint16_t knot_edns_opt_cookie_write(const uint8_t *cc, uint16_t cc_len,
+                                    const uint8_t *sc, uint16_t sc_len,
+                                    uint8_t *data, uint16_t data_len);
 
 /*!
  * \brief Parse cookie wire data.
