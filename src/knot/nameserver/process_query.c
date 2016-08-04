@@ -562,16 +562,16 @@ finish:
 	}
 	/* In case of NS_PROC_FAIL, RCODE is set in the error-processing function. */
 
-	/* Rate limits (if applicable). */
-	if (qdata->param->proc_flags & NS_QUERY_LIMIT_RATE) {
-		next_state = ratelimit_apply(next_state, pkt, ctx);
-	}
-
 	/* After query processing code. */
 	if (plan) {
 		WALK_LIST(step, plan->stage[QPLAN_END]) {
 			next_state = step->process(next_state, pkt, qdata, step->ctx);
 		}
+	}
+
+	/* Rate limits (if applicable). */
+	if (qdata->param->proc_flags & NS_QUERY_LIMIT_RATE) {
+		next_state = ratelimit_apply(next_state, pkt, ctx);
 	}
 
 	rcu_read_unlock();
