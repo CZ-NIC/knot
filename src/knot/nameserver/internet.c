@@ -49,7 +49,8 @@ static int wildcard_has_visited(struct query_data *qdata, const zone_node_t *nod
 }
 
 /*! \brief Mark given node as visited. */
-static int wildcard_visit(struct query_data *qdata, const zone_node_t *node, const knot_dname_t *sname)
+static int wildcard_visit(struct query_data *qdata, const zone_node_t *node,
+                          const zone_node_t *prev, const knot_dname_t *sname)
 {
 	assert(qdata);
 	assert(node);
@@ -62,6 +63,7 @@ static int wildcard_visit(struct query_data *qdata, const zone_node_t *node, con
 	knot_mm_t *mm = qdata->mm;
 	struct wildcard_hit *item = mm_alloc(mm, sizeof(struct wildcard_hit));
 	item->node = node;
+	item->prev = prev;
 	item->sname = sname;
 	add_tail(&qdata->wildcards, (node_t *)item);
 	return KNOT_EOK;
@@ -388,7 +390,7 @@ static int follow_cname(knot_pkt_t *pkt, uint16_t rrtype, struct query_data *qda
 		}
 
 		/* Put to wildcard node list. */
-		if (wildcard_visit(qdata, cname_node, qdata->name) != KNOT_EOK) {
+		if (wildcard_visit(qdata, cname_node, qdata->previous, qdata->name) != KNOT_EOK) {
 			return ERROR;
 		}
 	}
@@ -448,14 +450,11 @@ static int name_not_found(knot_pkt_t *pkt, struct query_data *qdata)
 		qdata->node = wildcard_node;
 		assert(qdata->node != NULL);
 
-		/* keep encloser */
-		qdata->previous = NULL;
-
 		/* Follow expanded wildcard. */
 		int next_state = name_found(pkt, qdata);
 
 		/* Put to wildcard node list. */
-		if (wildcard_visit(qdata, wildcard_node, qdata->name) != KNOT_EOK) {
+		if (wildcard_visit(qdata, wildcard_node, qdata->previous, qdata->name) != KNOT_EOK) {
 			next_state = ERROR;
 		}
 
