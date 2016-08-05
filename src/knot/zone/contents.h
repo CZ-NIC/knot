@@ -131,17 +131,6 @@ int zone_contents_find_dname(const zone_contents_t *contents,
                              const zone_node_t **previous);
 
 /*!
- * \brief Finds previous name in canonical order to the given name in the zone.
- *
- * \param zone Zone to search for the name.
- * \param name Domain name to find the previous domain name of.
- *
- * \return Previous node in canonical order, or NULL if some parameter is wrong.
- */
-const zone_node_t *zone_contents_find_previous(const zone_contents_t *contents,
-                                               const knot_dname_t *name);
-
-/*!
  * \brief Tries to find a node with the specified name among the NSEC3 nodes
  *        of the zone.
  *

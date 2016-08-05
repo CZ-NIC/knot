@@ -702,20 +702,6 @@ static int recreate_nsec3_tree(const zone_contents_t *z, zone_contents_t *out)
 	return KNOT_EOK;
 }
 
-static zone_node_t *get_previous(const zone_contents_t *zone,
-                                 const knot_dname_t *name)
-{
-	if (zone == NULL || name == NULL) {
-		return NULL;
-	}
-
-	zone_node_t *found = NULL, *prev = NULL;
-	(void)find_in_tree(zone->nodes, name, &found, &prev);
-	assert(prev != NULL);
-
-	return prev;
-}
-
 // Public API
 
 int zone_contents_add_rr(zone_contents_t *z, const knot_rrset_t *rr,
@@ -826,12 +812,6 @@ int zone_contents_find_dname(const zone_contents_t *zone,
 
 		return ZONE_NAME_NOT_FOUND;
 	}
-}
-
-const zone_node_t *zone_contents_find_previous(const zone_contents_t *zone,
-                                               const knot_dname_t *name)
-{
-	return get_previous(zone, name);
 }
 
 const zone_node_t *zone_contents_find_nsec3_node(const zone_contents_t *zone,
