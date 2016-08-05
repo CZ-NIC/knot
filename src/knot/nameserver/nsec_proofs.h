@@ -13,14 +13,6 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-/*!
- * \file
- *
- * \brief NSEC/NSEC3 proofs for various states.
- *
- * \addtogroup query_processing
- * @{
- */
 
 #pragma once
 
@@ -44,5 +36,3 @@ int nsec_append_rrsigs(knot_pkt_t *pkt, struct query_data *qdata, bool optional)
 
 /*! \brief Clear RRSIG list. */
 void nsec_clear_rrsigs(struct query_data *qdata);
-
-/*! @} */

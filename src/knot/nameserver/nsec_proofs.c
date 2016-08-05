@@ -21,12 +21,71 @@
 #include "knot/nameserver/internet.h"
 #include "knot/dnssec/zone-nsec.h"
 
-/*! \note #191 There is a lot of duplicate and legacy code here. I have just
- *             divided the API into 3 + 1 basic proofs used and separated the
- *             code to its own file. Still, it should be cleaned up and
- *             each proof should be very briefly documented (what proves what)
- *             with hints to the RFC, as it's not so complicated as it looks here.
+/*!
+ * \brief Check if node is empty non-terminal.
  */
+static bool empty_nonterminal(const zone_node_t *node)
+{
+	return node && node->rrset_count == 0;
+}
+
+/*!
+ * \brief Check if wildcard expansion happened for given node and QNAME.
+ */
+static bool wildcard_expanded(const zone_node_t *node, const knot_dname_t *qname)
+{
+	return !knot_dname_is_wildcard(qname) && knot_dname_is_wildcard(node->owner);
+}
+
+/*!
+ * \brief Check if out-out can take effect.
+ */
+static bool ds_optout(const zone_node_t *node, const knot_pkt_t *pkt)
+{
+	return node->nsec3_node == NULL && knot_pkt_qtype(pkt) == KNOT_RRTYPE_DS;
+}
+
+/*!
+ * \brief Get closest provable encloser from closest matching parent node.
+ *
+ * The encloser can be either non-authoritative node or empty non-terminal.
+ */
+static const zone_node_t *auth_encloser(const zone_node_t *closest)
+{
+	assert(closest);
+
+	/*!
+	 * TODO: Empty non-terminals are handled differently in NSEC and NSEC3.
+	 *
+	 * NSEC3: all non-terminals have NSEC3 node.
+	 * NSEC: all non-terminals are skipped in proves
+	 *
+	 * The old NSEC3 code traversed up to the first node which has
+	 * corresponding NSEC3.
+	 */
+
+	while (closest->flags & NODE_FLAGS_NONAUTH || empty_nonterminal(closest)) {
+		closest = closest->parent;
+		assert(closest);
+	}
+
+	return closest;
+}
+
+/*!
+ * \brief Walk previous names until we reach an authoritative one.
+ */
+static const zone_node_t *auth_previous(const zone_node_t *previous)
+{
+	assert(previous);
+
+	while (previous->flags & NODE_FLAGS_NONAUTH || empty_nonterminal(previous)) {
+		previous = previous->prev;
+		assert(previous);
+	}
+
+	return previous;
+}
 
 /*!
  * \brief Creates a 'next closer name' to the given domain name.
@@ -57,138 +116,165 @@ static knot_dname_t *get_next_closer(const knot_dname_t *closest_encloser,
 }
 
 /*!
- * \brief Adds NSEC3 RRSet (together with corresponding RRSIGs) from the given
- *        node into the response.
- *
- * \param node Node to get the NSEC3 RRSet from.
- * \param resp Response where to add the RRSets.
+ * \brief Put NSEC/NSEC3 record with corresponding RRSIG into the response.
+ */
+static int put_nxt_from_node(const zone_node_t *node,
+                             uint16_t type,
+                             struct query_data *qdata,
+                             knot_pkt_t *resp)
+{
+	assert(type == KNOT_RRTYPE_NSEC || type == KNOT_RRTYPE_NSEC3);
+
+	knot_rrset_t rrset = node_rrset(node, type);
+	if (knot_rrset_empty(&rrset)) {
+		return KNOT_EOK;
+	}
+
+	knot_rrset_t rrsigs = node_rrset(node, KNOT_RRTYPE_RRSIG);
+
+	return ns_put_rr(resp, &rrset, &rrsigs, KNOT_COMPR_HINT_NONE,
+	                 KNOT_PF_CHECKDUP, qdata);
+}
+
+/*!
+ * \brief Put NSEC record with corresponding RRSIG into the response.
+ */
+static int put_nsec_from_node(const zone_node_t *node,
+                              struct query_data *qdata,
+                              knot_pkt_t *resp)
+{
+	return put_nxt_from_node(node, KNOT_RRTYPE_NSEC, qdata, resp);
+}
+
+/*!
+ * \brief Put NSEC3 record with corresponding RRSIG into the response.
  */
 static int put_nsec3_from_node(const zone_node_t *node,
                                struct query_data *qdata,
                                knot_pkt_t *resp)
 {
-	knot_rrset_t rrset = node_rrset(node, KNOT_RRTYPE_NSEC3);
-	knot_rrset_t rrsigs = node_rrset(node, KNOT_RRTYPE_RRSIG);
-	if (knot_rrset_empty(&rrset)) {
-		// bad zone, ignore
-		return KNOT_EOK;
-	}
-
-	int res = ns_put_rr(resp, &rrset, &rrsigs, KNOT_COMPR_HINT_NONE,
-	                    KNOT_PF_CHECKDUP, qdata);
-
-	/*! \note TC bit is already set, if something went wrong. */
-
-	// return the error code, so that other code may be skipped
-	return res;
+	return put_nxt_from_node(node, KNOT_RRTYPE_NSEC3, qdata, resp);
 }
 
 /*!
- * \brief Finds and adds NSEC3 covering the given domain name (and their
- *        associated RRSIGs) to the response.
+ * \brief Find NSEC for given name and put it into the response.
  *
- * \param zone Zone used for answering.
- * \param name Domain name to cover.
- * \param resp Response where to add the RRSets.
- *
- * \retval KNOT_EOK
- * \retval NS_ERR_SERVFAIL if a runtime collision occurred. The server should
- *                         respond with SERVFAIL in such case.
+ * Note this function allows the name to match the QNAME. The NODATA proof
+ * for empty non-terminal is equivalent to NXDOMAIN proof, except that the
+ * names may exist. This is why.
+ */
+static int put_covering_nsec(const zone_contents_t *zone,
+                             const knot_dname_t *name,
+                             struct query_data *qdata,
+                             knot_pkt_t *resp)
+{
+	const zone_node_t *match = NULL;
+	const zone_node_t *closest = NULL;
+	const zone_node_t *prev = NULL;
+
+	const zone_node_t *proof = NULL;
+
+	int ret = zone_contents_find_dname(zone, name, &match, &closest, &prev);
+	if (ret == ZONE_NAME_FOUND) {
+		proof = match;
+	} else if (ret == ZONE_NAME_NOT_FOUND) {
+		proof = auth_previous(prev);
+	} else {
+		assert(ret < 0);
+		return ret;
+	}
+
+	return put_nsec_from_node(proof, qdata, resp);
+}
+
+/*!
+ * \brief Find NSEC3 covering the given name and put it into the response.
  */
 static int put_covering_nsec3(const zone_contents_t *zone,
                               const knot_dname_t *name,
                               struct query_data *qdata,
                               knot_pkt_t *resp)
 {
-	const zone_node_t *prev, *node;
-	/*! \todo Check version. */
+	const zone_node_t *prev = NULL;
+	const zone_node_t *node = NULL;
+
 	int match = zone_contents_find_nsec3_for_name(zone, name, &node, &prev);
 	if (match < 0) {
-		// ignoring, what can we do anyway?
+		// ignore if missing
 		return KNOT_EOK;
 	}
 
 	if (match == ZONE_NAME_FOUND || prev == NULL){
-		// if run-time collision => SERVFAIL
-		return KNOT_EOK;
+		return KNOT_ERROR;
 	}
 
 	return put_nsec3_from_node(prev, qdata, resp);
 }
 
 /*!
- * \brief Adds NSEC3s comprising the 'closest encloser proof' for the given
- *        (non-existent) domain name (and their associated RRSIGs) to the
- *        response.
+ * \brief Add NSEC3 covering the next closer name to closest encloser.
  *
- * For definition of 'closest encloser proof', see RFC5155, section 7.2.1,
- * Page 18.
+ * \param cpe    Closest provable encloser of \a qname.
+ * \param qname  Source QNAME.
+ * \param zone   Source zone.
+ * \param qdata  Query processing data.
+ * \param resp   Response packet.
  *
- * \note This function does not check if DNSSEC is enabled, nor if it is
- *       requested by the query.
- *
- * \param zone Zone used for answering.
- * \param closest_encloser Closest encloser of \a qname in the zone.
- * \param qname Searched (non-existent) name.
- * \param resp Response where to add the NSEC3s.
- *
- * \retval KNOT_EOK
- * \retval NS_ERR_SERVFAIL
+ * \return KNOT_E*
  */
-static int put_closest_encloser_proof(const zone_contents_t *zone,
-                                      const zone_node_t **closest_encloser,
-                                      const knot_dname_t *qname,
+static int put_nsec3_next_closer(const zone_node_t *cpe,
+                                 const knot_dname_t *qname,
+                                 const zone_contents_t *zone,
+                                 struct query_data *qdata,
+                                 knot_pkt_t *resp)
+{
+	knot_dname_t *next_closer = get_next_closer(cpe->owner, qname);
+	if (!next_closer) {
+		return KNOT_ENOMEM;
+	}
+
+	int ret = put_covering_nsec3(zone, next_closer, qdata, resp);
+
+	knot_dname_free(&next_closer, NULL);
+
+	return ret;
+}
+
+/*!
+ * \brief Add NSEC3s for closest encloser proof.
+ *
+ * Adds up to two NSEC3 records. The first one proves that closest encloser
+ * of the queried name exists, the second one proves that the name bellow the
+ * encloser doesn't.
+ *
+ * \see https://tools.ietf.org/html/rfc5155#section-7.2.1
+ *
+ * \param qname  Source QNAME.
+ * \param zone   Source zone.
+ * \param cpe    Closest provable encloser of \a qname.
+ * \param qdata  Query processing data.
+ * \param resp   Response packet.
+ *
+ * \return KNOT_E*
+ */
+static int put_closest_encloser_proof(const knot_dname_t *qname,
+                                      const zone_contents_t *zone,
+                                      const zone_node_t *cpe,
                                       struct query_data *qdata,
                                       knot_pkt_t *resp)
 {
-	assert(zone != NULL);
-	assert(knot_is_nsec3_enabled(zone));
-	assert(closest_encloser != NULL);
-	assert(*closest_encloser != NULL);
-	assert(qname != NULL);
-	assert(resp != NULL);
+	assert(auth_encloser(cpe) == cpe);
 
-	/*
-	 * 1) NSEC3 that matches closest provable encloser.
-	 */
-	const zone_node_t *nsec3_node = NULL;
-	const knot_dname_t *next_closer = NULL;
-	while ((nsec3_node = (*closest_encloser)->nsec3_node) == NULL) {
-		next_closer = (*closest_encloser)->owner;
-		*closest_encloser = (*closest_encloser)->parent;
-		if (*closest_encloser == NULL) {
-			// there are no NSEC3s to add
-			return KNOT_EOK;
-		}
-	}
+	// An NSEC3 RR that matches the closest (provable) encloser.
 
-	assert(nsec3_node != NULL);
-
-	int ret = put_nsec3_from_node(nsec3_node, qdata, resp);
-	if (ret != KNOT_EOK) {
+	int ret = put_nsec3_from_node(cpe->nsec3_node, qdata, resp);
+	if (ret !=  KNOT_EOK) {
 		return ret;
 	}
 
-	/*
-	 * 2) NSEC3 that covers the "next closer" name.
-	 */
-	if (next_closer == NULL) {
-		// create the "next closer" name by appending from qname
-		knot_dname_t *new_next_closer = get_next_closer((*closest_encloser)->owner,
-		                                                qname);
+	// An NSEC3 RR that covers the "next closer" name to the closest encloser.
 
-		if (new_next_closer == NULL) {
-			return KNOT_ERROR; /*servfail */
-		}
-
-		ret = put_covering_nsec3(zone, new_next_closer, qdata, resp);
-
-		knot_dname_free(&new_next_closer, NULL);
-	} else {
-		ret = put_covering_nsec3(zone, next_closer, qdata, resp);
-	}
-
-	return ret;
+	return put_nsec3_next_closer(cpe, qname, zone, qdata, resp);
 }
 
 /*!
@@ -216,317 +302,187 @@ static knot_dname_t *wildcard_child_name(const knot_dname_t *name)
 }
 
 /*!
- * \brief Puts NSECs for wildcard answer into the response.
+ * \brief Put NSEC for wildcard answer into the response.
  *
- * \note This function does not check if DNSSEC is enabled, nor if it is
- *       requested by the query.
+ * Add NSEC record proving that no better match on QNAME exists.
  *
- * \param zone Zone used for answering.
- * \param qname Domain name covered by the wildcard used for answering the
- *              query.
- * \param previous Previous node of \a qname in canonical order.
- * \param qdata Query data.
- * \param resp Response to put the NSEC3s into.
+ * \see https://tools.ietf.org/html/rfc4035#section-3.1.3.3
+ *
+ * \param previous  Previous name for QNAME.
+ * \param qdata     Query processing data.
+ * \param resp      Response packet.
+ *
+ * \return KNOT_E*
  */
-static int put_nsec_wildcard(const zone_contents_t *zone,
-                             const knot_dname_t *qname,
-                             const zone_node_t *previous,
+static int put_nsec_wildcard(const zone_node_t *previous,
                              struct query_data *qdata,
                              knot_pkt_t *resp)
 {
-	// check if we have previous; if not, find one using the tree
-	if (previous == NULL) {
-		previous = zone_contents_find_previous(zone, qname);
-		assert(previous != NULL);
-
-		while (previous->flags & NODE_FLAGS_NONAUTH) {
-			previous = previous->prev;
-		}
-	}
-
-	knot_rrset_t rrset = node_rrset(previous, KNOT_RRTYPE_NSEC);
-	int ret = KNOT_EOK;
-
-	if (!knot_rrset_empty(&rrset)) {
-		knot_rrset_t rrsigs = node_rrset(previous, KNOT_RRTYPE_RRSIG);
-		// NSEC proving that there is no node with the searched name
-		ret = ns_put_rr(resp, &rrset, &rrsigs, KNOT_COMPR_HINT_NONE,
-		                KNOT_PF_CHECKDUP, qdata);
-	}
-
-	return ret;
+	return put_nsec_from_node(previous, qdata, resp);
 }
 
 /*!
- * \brief Puts NSEC3s covering the non-existent wildcard child of a node
- *        (and their associated RRSIGs) into the response.
+ * \brief Put NSEC3s for wildcard answer into the response.
  *
- * \note This function does not check if DNSSEC is enabled, nor if it is
- *       requested by the query.
+ * Add NSEC3 record proving that no better match on QNAME exists.
  *
- * \param zone Zone used for answering.
- * \param node Node whose non-existent wildcard child should be covered.
- * \param qdata Query data.
- * \param resp Response where to add the NSEC3s.
+ * \see https://tools.ietf.org/html/rfc5155#section-7.2.6
  *
- * \retval KNOT_EOK
- * \retval NS_ERR_SERVFAIL
+ * \param wildcard  Wildcard node that was used for expansion.
+ * \param qname     Source QNAME.
+ * \param zone      Source zone.
+ * \param qdata     Query processing data.
+ * \param resp      Response packet.
  */
-static int put_nsec3_no_wildcard_child(const zone_contents_t *zone,
-                                       const zone_node_t *node,
-                                       struct query_data *qdata,
-                                       knot_pkt_t *resp)
-{
-	assert(node != NULL);
-	assert(resp != NULL);
-	assert(node->owner != NULL);
-
-	int ret = 0;
-	knot_dname_t *wildcard = wildcard_child_name(node->owner);
-	if (wildcard == NULL) {
-		ret = KNOT_ERROR; /* servfail */
-	} else {
-		ret = put_covering_nsec3(zone, wildcard, qdata, resp);
-
-		/* Directly discard wildcard. */
-		knot_dname_free(&wildcard, NULL);
-	}
-
-	return ret;
-}
-
-/*!
- * \brief Puts NSEC3s for wildcard answer into the response.
- *
- * \note This function does not check if DNSSEC is enabled, nor if it is
- *       requested by the query.
- *
- * \param zone Zone used for answering.
- * \param closest_encloser Closest encloser of \a qname in the zone. In this
- *                         case it is the parent of the source of synthesis.
- * \param qname Domain name covered by the wildcard used for answering the
- *              query.
- * \param qdata Query data.
- * \param resp Response to put the NSEC3s into.
- *
- * \retval KNOT_EOK
- * \retval NS_ERR_SERVFAIL
- */
-static int put_nsec3_wildcard(const zone_contents_t *zone,
-                              const zone_node_t *closest_encloser,
+static int put_nsec3_wildcard(const zone_node_t *wildcard,
                               const knot_dname_t *qname,
+                              const zone_contents_t *zone,
                               struct query_data *qdata,
                               knot_pkt_t *resp)
 {
-	assert(closest_encloser != NULL);
-	assert(qname != NULL);
-	assert(resp != NULL);
-
-	if (!knot_is_nsec3_enabled(zone)) {
-		return KNOT_EOK;
-	}
-
-	/*
-	 * NSEC3 that covers the "next closer" name.
-	 */
-	// create the "next closer" name by appending from qname
-	knot_dname_t *next_closer =
-		get_next_closer(closest_encloser->owner, qname);
-
-	if (next_closer == NULL) {
-		return KNOT_ERROR; /* servfail */
-	}
-
-	int ret = put_covering_nsec3(zone, next_closer, qdata, resp);
-
-	/* Duplicate from ns_next_close(), safe to discard. */
-	knot_dname_free(&next_closer, NULL);
-
-	return ret;
+	return put_nsec3_next_closer(wildcard, qname, zone, qdata, resp);
 }
 
 /*!
- * \brief Puts NSECs or NSEC3s for wildcard answer into the response.
+ * \brief Put NSECs or NSEC3s for wildcard expansion in the response.
  *
- * \note This function first checks if DNSSEC is enabled and requested by the
- *       query and if the node's owner is a wildcard.
- *
- * \param node Node used for answering.
- * \param closest_encloser Closest encloser of \a qname in the zone.
- * \param previous Previous node of \a qname in canonical order.
- * \param zone Zone used for answering.
- * \param qname Actual searched domain name.
- * \param qdata Query data.
- * \param resp Response where to put the NSECs and NSEC3s.
- *
- * \retval KNOT_EOK
- * \retval NS_ERR_SERVFAIL
+ * \return KNOT_E*
  */
-static int put_wildcard_answer(const zone_node_t *node,
-                               const zone_node_t *closest_encloser,
+static int put_wildcard_answer(const zone_node_t *wildcard,
                                const zone_node_t *previous,
                                const zone_contents_t *zone,
                                const knot_dname_t *qname,
                                struct query_data *qdata,
                                knot_pkt_t *resp)
 {
-	int ret = KNOT_EOK;
+	if (!wildcard_expanded(wildcard, qname)) {
+		return KNOT_EOK;
+	}
 
-	if (knot_dname_is_wildcard(node->owner)
-	    && !knot_dname_is_equal(qname, node->owner)) {
-		if (knot_is_nsec3_enabled(zone)) {
-			ret = put_nsec3_wildcard(zone, closest_encloser, qname,
-			                         qdata, resp);
-		} else {
-			ret = put_nsec_wildcard(zone, qname, previous, qdata,
-			                        resp);
-		}
+	int ret = 0;
+
+	if (knot_is_nsec3_enabled(zone)) {
+		ret = put_nsec3_wildcard(wildcard, qname, zone, qdata, resp);
+	} else {
+		previous = auth_previous(previous);
+		ret = put_nsec_wildcard(previous, qdata, resp);
 	}
 
 	return ret;
 }
 
 /*!
- * \brief Puts NSECs for NXDOMAIN error to the response.
+ * \brief Put NSECs for NXDOMAIN error into the response.
  *
- * \note This function does not check if DNSSEC is enabled, nor if it is
- *       requested by the query.
+ * Adds up to two NSEC records. We have to prove that the queried name doesn't
+ * exist and that no wildcard expansion is possible for that name.
  *
- * \param qname QNAME which generated the NXDOMAIN error (i.e. not found in the
- *              zone).
- * \param zone Zone used for answering.
- * \param previous Previous node to \a qname in the zone. May also be NULL. In
- *                 such case the function finds the previous node in the zone.
- * \param closest_encloser Closest encloser of \a qname. Must not be NULL.
- * \param qdata Query data.
- * \param resp Response where to put the NSECs.
+ * \see https://tools.ietf.org/html/rfc4035#section-3.1.3.2
  *
- * \retval KNOT_EOK
- * \retval NS_ERR_SERVFAIL
+ * \param qname     Source QNAME.
+ * \param zone      Source zone.
+ * \param previous  Previous node to \a qname in the zone.
+ * \param closest   Closest matching parent of \a qname.
+ * \param qdata     Query data.
+ * \param resp      Response packet.
+ *
+ * \return KNOT_E*
  */
 static int put_nsec_nxdomain(const knot_dname_t *qname,
                              const zone_contents_t *zone,
                              const zone_node_t *previous,
-                             const zone_node_t *closest_encloser,
+                             const zone_node_t *closest,
                              struct query_data *qdata,
                              knot_pkt_t *resp)
 {
-	knot_rrset_t rrset = { 0 };
-	knot_rrset_t rrsigs = { 0 };
+	assert(previous);
+	assert(closest);
 
-	// check if we have previous; if not, find one using the tree
-	if (previous == NULL) {
-		previous = zone_contents_find_previous(zone, qname);
-		assert(previous != NULL);
-		while (previous->flags & NODE_FLAGS_NONAUTH) {
-			previous = previous->prev;
-		}
-	}
+	// An NSEC RR proving that there is no exact match for <SNAME, SCLASS>.
 
-	// 1) NSEC proving that there is no node with the searched name
-	rrset = node_rrset(previous, KNOT_RRTYPE_NSEC);
-	rrsigs = node_rrset(previous, KNOT_RRTYPE_RRSIG);
-	if (knot_rrset_empty(&rrset)) {
-		// no NSEC records
-		return KNOT_EOK;
-	}
-
-	int ret = ns_put_rr(resp, &rrset, &rrsigs, KNOT_COMPR_HINT_NONE, 0, qdata);
+	previous = auth_previous(previous);
+	int ret = put_nsec_from_node(previous, qdata, resp);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
 
-	// 2) NSEC proving that there is no wildcard covering the name
-	// this is only different from 1) if the wildcard would be
-	// before 'previous' in canonical order, i.e. we can
-	// search for previous until we find name lesser than wildcard
-	assert(closest_encloser != NULL);
+	// An NSEC RR proving that the zone contains no RRsets that would match
+	// <SNAME, SCLASS> via wildcard name expansion.
 
-	knot_dname_t *wildcard = wildcard_child_name(closest_encloser->owner);
+	// NOTE: closest may be empty non-terminal and thus not authoritative.
+
+	knot_dname_t *wildcard = wildcard_child_name(closest->owner);
 	if (wildcard == NULL) {
-		return KNOT_ERROR; /* servfail */
+		return KNOT_ENOMEM;
 	}
-
-	const zone_node_t *prev_new = zone_contents_find_previous(zone, wildcard);
-	while (prev_new->flags & NODE_FLAGS_NONAUTH) {
-		prev_new = prev_new->prev;
-	}
-
-	/* Directly discard dname. */
+	ret = put_covering_nsec(zone, wildcard, qdata, resp);
 	knot_dname_free(&wildcard, NULL);
-
-	if (prev_new != previous) {
-		rrset = node_rrset(prev_new, KNOT_RRTYPE_NSEC);
-		rrsigs = node_rrset(prev_new, KNOT_RRTYPE_RRSIG);
-		if (knot_rrset_empty(&rrset)) {
-			// bad zone, ignore
-			return KNOT_EOK;
-		}
-		ret = ns_put_rr(resp, &rrset, &rrsigs, KNOT_COMPR_HINT_NONE, 0, qdata);
-		if (ret != KNOT_EOK) {
-			return ret;
-		}
-	}
-
-	return KNOT_EOK;
-}
-
-/*!
- * \brief Puts NSEC3s for NXDOMAIN error to the response.
- *
- * \note This function does not check if DNSSEC is enabled, nor if it is
- *       requested by the query.
- *
- * \param zone Zone used for answering.
- * \param closest_encloser Closest encloser of \a qname.
- * \param qname Domain name which generated the NXDOMAIN error (i.e. not found
- *              in the zone.
- * \param qdata Query data.
- * \param resp Response where to put the NSEC3s.
- *
- * \retval KNOT_EOK
- * \retval NS_ERR_SERVFAIL
- */
-static int put_nsec3_nxdomain(const zone_contents_t *zone,
-                              const zone_node_t *closest_encloser,
-                              const knot_dname_t *qname,
-                              struct query_data *qdata,
-                              knot_pkt_t *resp)
-{
-	// 1) Closest encloser proof
-	int ret = put_closest_encloser_proof(zone, &closest_encloser, qname,
-	                                     qdata, resp);
-	// 2) NSEC3 covering non-existent wildcard
-	if (ret == KNOT_EOK && closest_encloser != NULL) {
-		ret = put_nsec3_no_wildcard_child(zone, closest_encloser, qdata,
-		                                  resp);
-	}
 
 	return ret;
 }
 
 /*!
- * \brief Puts NSECs or NSEC3s for the NXDOMAIN error to the response.
+ * \brief Put NSEC3s for NXDOMAIN error into the response.
  *
- * \note This function first checks if DNSSEC is enabled and requested by the
- *       query.
- * \note Note that for each zone there are either NSEC or NSEC3 records used.
+ * Adds up to three NSEC3 records. We have to proove that some parent name
+ * exists (closest encloser proof) and that no wildcard expansion is possible
+ * bellow that closest encloser.
  *
- * \param zone Zone used for answering.
- * \param previous Previous node to \a qname in the zone. May also be NULL. In
- *                 such case the function finds the previous node in the zone.
- * \param closest_encloser Closest encloser of \a qname. Must not be NULL.
- * \param qname QNAME which generated the NXDOMAIN error (i.e. not found in the
- *              zone).
- * \param qdata Query data.
- * \param resp Response where to put the NSECs.
+ * \see https://tools.ietf.org/html/rfc5155#section-7.2.2
  *
- * \retval KNOT_EOK
- * \retval NS_ERR_SERVFAIL
+ * \param qname    Source QNAME.
+ * \param zone     Source zone.
+ * \param closest  Closest matching parent of \a qname.
+ * \param qdata    Query processing data.
+ * \param resp     Response packet.
+ *
+ * \retval KNOT_E*
+ */
+static int put_nsec3_nxdomain(const knot_dname_t *qname,
+                              const zone_contents_t *zone,
+                              const zone_node_t *closest,
+                              struct query_data *qdata,
+                              knot_pkt_t *resp)
+{
+	const zone_node_t *cpe = auth_encloser(closest);
+
+	assert(cpe->nsec3_node);
+
+	// Closest encloser proof.
+
+	int ret = put_closest_encloser_proof(qname, zone, cpe, qdata, resp);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	// NSEC3 covering the (nonexistent) wildcard at the closest encloser.
+
+	knot_dname_t *wildcard = wildcard_child_name(cpe->owner);
+	if (!wildcard) {
+		return KNOT_ENOMEM;
+	}
+
+	ret = put_covering_nsec3(zone, wildcard, qdata, resp);
+	knot_dname_free(&wildcard, NULL);
+
+	return ret;
+}
+
+/*!
+ * \brief Put NSECs or NSEC3s for the NXDOMAIN error into the response.
+ *
+ * \param zone      Zone used for answering.
+ * \param previous  Previous node to \a qname.
+ * \param closest   Closest matching parent name for \a qname.
+ * \param qname     Source QNAME.
+ * \param qdata     Query processing data.
+ * \param resp      Response packet.
+ *
+ * \return KNOT_E*
  */
 static int put_nxdomain(const zone_contents_t *zone,
                         const zone_node_t *previous,
-                        const zone_node_t *closest_encloser,
+                        const zone_node_t *closest,
                         const knot_dname_t *qname,
                         struct query_data *qdata,
                         knot_pkt_t *resp)
@@ -534,23 +490,91 @@ static int put_nxdomain(const zone_contents_t *zone,
 	int ret = 0;
 
 	if (knot_is_nsec3_enabled(zone)) {
-		ret = put_nsec3_nxdomain(zone, closest_encloser, qname, qdata,
-		                         resp);
+		ret = put_nsec3_nxdomain(qname, zone, closest, qdata, resp);
 	} else {
-		ret = put_nsec_nxdomain(qname, zone, previous, closest_encloser,
-		                        qdata, resp);
+		ret = put_nsec_nxdomain(qname, zone, previous, closest, qdata, resp);
 	}
 
 	return ret;
 }
 
 /*!
- * \brief Puts NSECs or NSEC3s for NODATA error (and their associated RRSIGs)
- *        to the response.
+ * \brief Put NSEC for NODATA error into the response.
  *
- * \note This function first checks if DNSSEC is enabled and requested by the
- *       query.
- * \note Note that for each zone there are either NSEC or NSEC3 records used.
+ * Then NSEC matching the QNAME must be added into the response and the bitmap
+ * will indicate that the QTYPE doesn't exist. As NSECs for empty non-terminals
+ * don't exist, the proof for NODATA match on non-terminal is proved as for
+ * NXDOMAIN.
+ *
+ * \see https://tools.ietf.org/html/rfc4035#section-3.1.3.1
+ * \see https://tools.ietf.org/html/rfc4035#section-3.1.3.2 (empty non-terminal)
+ *
+ * \param qname     Source QNAME.
+ * \param zone      Source zone.
+ * \param match     Node matching QNAME.
+ * \param previous  Previous node to \a qname in the zone.
+ * \param qdata     Query procssing data.
+ * \param resp      Response packet.
+ *
+ * \return KNOT_E*
+ */
+static int put_nsec_nodata(const knot_dname_t *qname,
+                           const zone_contents_t *zone,
+                           const zone_node_t *match,
+                           const zone_node_t *closest,
+                           const zone_node_t *previous,
+                           struct query_data *qdata,
+                           knot_pkt_t *resp)
+{
+	if (empty_nonterminal(match)) {
+		return put_nsec_nxdomain(qname, zone, previous, closest, qdata, resp);
+	}
+
+	return put_nsec_from_node(match, qdata, resp);
+}
+
+/*!
+ * \brief Put NSEC3 for NODATA error into the response.
+ *
+ * The NSEC3 matching the QNAME is added into the response and the bitmap
+ * will indicate that the QTYPE doesn't exist. For QTYPE==DS, the server
+ * may alternatively serve a closest encloser proof with opt-out. For wildcard
+ * expansion, the closest encloser proof must included as well.
+ *
+ * \see https://tools.ietf.org/html/rfc5155#section-7.2.3
+ * \see https://tools.ietf.org/html/rfc5155#section-7.2.4
+ * \see https://tools.ietf.org/html/rfc5155#section-7.2.5
+ */
+static int put_nsec3_nodata(const knot_dname_t *qname,
+                           const zone_contents_t *zone,
+                           const zone_node_t *match,
+                           const zone_node_t *closest,
+                           struct query_data *qdata,
+                           knot_pkt_t *resp)
+{
+	int ret = KNOT_EOK;
+
+	// NSEC3 matching QNAME is always included.
+
+	if (match->nsec3_node) {
+		ret = put_nsec3_from_node(match->nsec3_node, qdata, resp);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+	}
+
+	// Closest encloser proof for wildcard effect or NSEC3 opt-out.
+
+	if (wildcard_expanded(match, qname) || ds_optout(match, resp)) {
+		const zone_node_t *cpe = auth_encloser(closest);
+		ret = put_closest_encloser_proof(qname, zone, cpe, qdata, resp);
+	}
+
+	return ret;
+}
+
+/*!
+ * \brief Put NSECs or NSEC3s for the NODATA error into the response.
  *
  * \param node Node which generated the NODATA response (i.e. not containing
  *             RRSets of the requested type).
@@ -558,46 +582,19 @@ static int put_nxdomain(const zone_contents_t *zone,
  * \param resp Response where to add the NSECs or NSEC3s.
  */
 static int put_nodata(const zone_node_t *node,
-                      const zone_node_t *closest_encloser,
+                      const zone_node_t *closest,
                       const zone_node_t *previous,
                       const zone_contents_t *zone,
                       const knot_dname_t *qname,
                       struct query_data *qdata,
                       knot_pkt_t *resp)
 {
-	// This case must be handled first, before handling the wildcard case
-	if (node->rrset_count == 0 && !knot_is_nsec3_enabled(zone)) {
-		// node is an empty non-terminal => NSEC for NXDOMAIN
-		return put_nsec_nxdomain(qname, zone, previous,
-		                         closest_encloser, qdata, resp);
-	}
-
-	/*! \todo Maybe distinguish different errors. */
-	int ret = KNOT_ERROR;
+	int ret = 0;
 
 	if (knot_is_nsec3_enabled(zone)) {
-
-		/* RFC5155 7.2.5 Wildcard No Data Responses */
-		if (!knot_dname_is_wildcard(qname) && knot_dname_is_wildcard(node->owner)) {
-			put_closest_encloser_proof(zone, &closest_encloser,
-			                           qname, qdata, resp);
-		}
-
-		/* RFC5155 7.2.3-7.2.5 common proof. */
-		const zone_node_t *nsec3_node = node->nsec3_node;
-		if (nsec3_node) {
-			ret = put_nsec3_from_node(nsec3_node, qdata, resp);
-		} else {
-			// No NSEC3 node => Opt-out
-			return put_closest_encloser_proof(zone, &node, qname,
-			                                  qdata, resp);
-		}
+		ret = put_nsec3_nodata(qname, zone, node, closest, qdata, resp);
 	} else {
-		knot_rrset_t rrset = node_rrset(node, KNOT_RRTYPE_NSEC);
-		if (!knot_rrset_empty(&rrset)) {
-			knot_rrset_t rrsigs = node_rrset(node, KNOT_RRTYPE_RRSIG);
-			ret = ns_put_rr(resp, &rrset, &rrsigs, KNOT_COMPR_HINT_NONE, 0, qdata);
-		}
+		ret = put_nsec_nodata(qname, zone, node, closest, previous, qdata, resp);
 	}
 
 	return ret;
@@ -616,8 +613,7 @@ int nsec_prove_wildcards(knot_pkt_t *pkt, struct query_data *qdata)
 		if (item->node == NULL) {
 			return KNOT_EINVAL;
 		}
-		ret = put_wildcard_answer(item->node, item->node->parent,
-		                          NULL, qdata->zone->contents,
+		ret = put_wildcard_answer(item->node, item->prev, qdata->zone->contents,
 		                          item->sname, qdata, pkt);
 		if (ret != KNOT_EOK) {
 			break;
@@ -629,8 +625,7 @@ int nsec_prove_wildcards(knot_pkt_t *pkt, struct query_data *qdata)
 
 int nsec_prove_nodata(knot_pkt_t *pkt, struct query_data *qdata)
 {
-	if (qdata->node == NULL || qdata->encloser == NULL ||
-	    qdata->zone->contents == NULL) {
+	if (qdata->zone->contents == NULL || qdata->node == NULL) {
 		return KNOT_EINVAL;
 	}
 
@@ -640,12 +635,13 @@ int nsec_prove_nodata(knot_pkt_t *pkt, struct query_data *qdata)
 
 int nsec_prove_nxdomain(knot_pkt_t *pkt, struct query_data *qdata)
 {
-	if (qdata->encloser == NULL || qdata->zone->contents == NULL) {
+	if (qdata->zone->contents == NULL) {
 		return KNOT_EINVAL;
 	}
 
-	return put_nxdomain(qdata->zone->contents, qdata->previous,
-	                    qdata->encloser, qdata->name, qdata, pkt);
+	return put_nxdomain(qdata->zone->contents,
+	                    qdata->previous, qdata->encloser,
+	                    qdata->name, qdata, pkt);
 }
 
 int nsec_prove_dp_security(knot_pkt_t *pkt, struct query_data *qdata)
@@ -655,14 +651,16 @@ int nsec_prove_dp_security(knot_pkt_t *pkt, struct query_data *qdata)
 		return KNOT_EINVAL;
 	}
 
-	/* Add DS record if present. */
+	// Add DS into the response.
+
 	knot_rrset_t rrset = node_rrset(qdata->node, KNOT_RRTYPE_DS);
 	if (!knot_rrset_empty(&rrset)) {
 		knot_rrset_t rrsigs = node_rrset(qdata->node, KNOT_RRTYPE_RRSIG);
 		return ns_put_rr(pkt, &rrset, &rrsigs, KNOT_COMPR_HINT_NONE, 0, qdata);
 	}
 
-	/* DS doesn't exist => NODATA proof. */
+	// Alternatively prove that DS doesn't exist.
+
 	return put_nodata(qdata->node, qdata->encloser, qdata->previous,
 	                  qdata->zone->contents, qdata->name, qdata, pkt);
 }
