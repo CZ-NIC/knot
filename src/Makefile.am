@@ -516,21 +516,24 @@ knsupdate_SOURCES =				\
 	utils/knsupdate/knsupdate_params.h
 
 # bin programs
-kdig_LDADD       = $(libidn_LIBS) libknotus.la
-khost_LDADD      = $(libidn_LIBS) libknotus.la
-knsupdate_LDADD  = zscanner/libzscanner.la libknotus.la
+kdig_CPPFLAGS       = $(AM_CFLAGS) $(gnutls_CFLAGS)
+kdig_LDADD          = $(libidn_LIBS) libknotus.la
+khost_CPPFLAGS      = $(AM_CFLAGS) $(gnutls_CFLAGS)
+khost_LDADD         = $(libidn_LIBS) libknotus.la
+knsupdate_CPPFLAGS  = $(AM_CFLAGS) $(gnutls_CFLAGS)
+knsupdate_LDADD     = zscanner/libzscanner.la libknotus.la
 knsec3hash_CPPFLAGS = $(AM_CPPFLAGS) -I$(srcdir)/dnssec/lib/dnssec -I$(srcdir)/dnssec
-knsec3hash_LDADD = dnssec/libdnssec.la dnssec/libshared.la
+knsec3hash_LDADD    = dnssec/libdnssec.la dnssec/libshared.la
 
 #######################################
 # Optional Knot DNS Utilities modules #
 #######################################
 
 if HAVE_DNSTAP
-kdig_LDADD         += $(DNSTAP_LIBS) contrib/dnstap/libdnstap.la
-khost_LDADD        += $(DNSTAP_LIBS) contrib/dnstap/libdnstap.la
-kdig_CFLAGS = $(AM_CFLAGS) $(DNSTAP_CFLAGS) $(gnutls_CFLAGS)
-khost_CFLAGS = $(AM_CFLAGS) $(DNSTAP_CFLAGS) $(gnutls_CFLAGS)
+kdig_LDADD     += $(DNSTAP_LIBS) contrib/dnstap/libdnstap.la
+khost_LDADD    += $(DNSTAP_LIBS) contrib/dnstap/libdnstap.la
+kdig_CPPFLAGS  += $(DNSTAP_CFLAGS)
+khost_CPPFLAGS += $(DNSTAP_CFLAGS)
 endif # HAVE_DNSTAP
 
 if HAVE_ROSEDB
