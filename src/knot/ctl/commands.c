@@ -18,9 +18,11 @@
 #include <unistd.h>
 
 #include "knot/common/log.h"
+#include "knot/common/stats.h"
 #include "knot/conf/confio.h"
 #include "knot/ctl/commands.h"
 #include "knot/events/handlers.h"
+#include "knot/nameserver/query_module.h"
 #include "knot/updates/zone-update.h"
 #include "knot/zone/timers.h"
 #include "libknot/libknot.h"
@@ -29,6 +31,7 @@
 #include "contrib/mempattern.h"
 #include "contrib/string.h"
 #include "zscanner/scanner.h"
+#include "contrib/strtonum.h"
 
 void ctl_log_data(knot_ctl_data_t *data)
 {
@@ -938,6 +941,150 @@ static int zone_purge(zone_t *zone, ctl_args_t *args)
 	return KNOT_EOK;
 }
 
+static int send_stats_ctr(mod_ctr_t *ctr, ctl_args_t *args, knot_ctl_data_t *data)
+{
+	char index[128];
+	char value[32];
+
+	if (ctr->count == 1) {
+		int ret = snprintf(value, sizeof(value), "%"PRIu64, ctr->counter);
+		if (ret <= 0 || ret >= sizeof(value)) {
+			return ret;
+		}
+
+		(*data)[KNOT_CTL_IDX_ID] = NULL;
+		(*data)[KNOT_CTL_IDX_DATA] = value;
+
+		ret = knot_ctl_send(args->ctl, KNOT_CTL_TYPE_DATA, data);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+	} else {
+		bool force = ctl_has_flag(args->data[KNOT_CTL_IDX_FLAGS],
+		                          CTL_FLAG_FORCE);
+
+		for (uint32_t i = 0; i < ctr->count; i++) {
+			// Skip empty counters.
+			if (ctr->counters[i] == 0 && !force) {
+				continue;
+			}
+
+			int ret;
+			if (ctr->idx_to_str) {
+				char *str = ctr->idx_to_str(i, ctr->count);
+				if (str == NULL) {
+					continue;
+				}
+				ret = snprintf(index, sizeof(index), "%s", str);
+				free(str);
+			} else {
+				ret = snprintf(index, sizeof(index), "%u", i);
+			}
+			if (ret <= 0 || ret >= sizeof(index)) {
+				return ret;
+			}
+
+			ret = snprintf(value, sizeof(value),  "%"PRIu64,
+			               ctr->counters[i]);
+			if (ret <= 0 || ret >= sizeof(value)) {
+				return ret;
+			}
+
+			(*data)[KNOT_CTL_IDX_ID] = index;
+			(*data)[KNOT_CTL_IDX_DATA] = value;
+
+			knot_ctl_type_t type = (i == 0) ? KNOT_CTL_TYPE_DATA :
+			                                  KNOT_CTL_TYPE_EXTRA;
+			ret = knot_ctl_send(args->ctl, type, data);
+			if (ret != KNOT_EOK) {
+				return ret;
+			}
+		}
+	}
+
+	return KNOT_EOK;
+}
+
+static int modules_stats(list_t *query_modules, ctl_args_t *args, knot_dname_t *zone)
+{
+	if (query_modules == NULL) {
+		return KNOT_EOK;
+	}
+
+	const char *section = args->data[KNOT_CTL_IDX_SECTION];
+	const char *item = args->data[KNOT_CTL_IDX_ITEM];
+
+	char name[KNOT_DNAME_TXT_MAXLEN + 1] = { 0 };
+	knot_ctl_data_t data = { 0 };
+
+	bool section_found = (section == NULL) ? true : false;
+	bool item_found = (item == NULL) ? true : false;
+
+	struct query_module *mod = NULL;
+	WALK_LIST(mod, *query_modules) {
+		// Skip modules without statistics.
+		if (mod->stats_count == 0) {
+			continue;
+		}
+
+		// Check for specific module.
+		if (section != NULL) {
+			if (section_found) {
+				break;
+			} else if (strcasecmp(mod->id->name + 1, section) == 0) {
+				section_found = true;
+			} else {
+				continue;
+			}
+		}
+
+		data[KNOT_CTL_IDX_SECTION] = mod->id->name + 1;
+
+		for (int i = 0; i < mod->stats_count; i++) {
+			mod_ctr_t *ctr = mod->stats + i;
+
+			// Skip empty counter.
+			if (ctr->name == NULL) {
+				continue;
+			}
+
+			// Check for specific counter.
+			if (item != NULL) {
+				if (item_found) {
+					break;
+				} else if (strcasecmp(ctr->name, item) == 0) {
+					item_found = true;
+				} else {
+					continue;
+				}
+			}
+
+			// Prepare zone name if not already prepared.
+			if (zone != NULL && name[0] == '\0') {
+				if (knot_dname_to_str(name, zone, sizeof(name)) == NULL) {
+					return KNOT_EINVAL;
+				}
+				data[KNOT_CTL_IDX_ZONE] = name;
+			}
+
+			data[KNOT_CTL_IDX_ITEM] = ctr->name;
+
+			// Send the counters.
+			int ret = send_stats_ctr(ctr, args, &data);
+			if (ret != KNOT_EOK) {
+				return ret;
+			}
+		}
+	}
+
+	return (section_found && item_found) ? KNOT_EOK : KNOT_ENOENT;
+}
+
+static int zone_stats(zone_t *zone, ctl_args_t *args)
+{
+	return modules_stats(&zone->query_modules, args, zone->name);
+}
+
 static int ctl_zone(ctl_args_t *args, ctl_cmd_t cmd)
 {
 	switch (cmd) {
@@ -971,6 +1118,8 @@ static int ctl_zone(ctl_args_t *args, ctl_cmd_t cmd)
 		return zones_apply(args, zone_txn_unset);
 	case CTL_ZONE_PURGE:
 		return zones_apply(args, zone_purge);
+	case CTL_ZONE_STATS:
+		return zones_apply(args, zone_stats);
 	default:
 		assert(0);
 		return KNOT_EINVAL;
@@ -1000,6 +1149,69 @@ static int ctl_server(ctl_args_t *args, ctl_cmd_t cmd)
 	}
 
 	return ret;
+}
+
+static int ctl_stats(ctl_args_t *args, ctl_cmd_t cmd)
+{
+	const char *section = args->data[KNOT_CTL_IDX_SECTION];
+	const char *item = args->data[KNOT_CTL_IDX_ITEM];
+
+	bool found = (section == NULL) ? true : false;
+
+	// Process server metrics.
+	if (section == NULL || strcasecmp(section, "server") == 0) {
+		char value[32];
+		knot_ctl_data_t data = {
+			[KNOT_CTL_IDX_SECTION] = "server",
+			[KNOT_CTL_IDX_DATA] = value
+		};
+
+		for (const stats_item_t *i = server_stats; i->name != NULL; i++) {
+			if (item != NULL) {
+				if (found) {
+					break;
+				} else if (strcmp(i->name, item) == 0) {
+					found = true;
+				} else {
+					continue;
+				}
+			} else {
+				found = true;
+			}
+
+			data[KNOT_CTL_IDX_ITEM] = i->name;
+			int ret = snprintf(value, sizeof(value), "%"PRIu64,
+			                   i->val(args->server));
+			if (ret <= 0 || ret >= sizeof(value)) {
+				send_error(args, knot_strerror(ret));
+				return ret;
+			}
+
+			ret = knot_ctl_send(args->ctl, KNOT_CTL_TYPE_DATA, &data);
+			if (ret != KNOT_EOK) {
+				send_error(args, knot_strerror(ret));
+				return ret;
+			}
+		}
+	}
+
+	// Process modules metrics.
+	if (section == NULL || strncasecmp(section, "mod-", strlen("mod-")) == 0) {
+		int ret = modules_stats(&conf()->query_modules, args, NULL);
+		if (ret != KNOT_EOK) {
+			send_error(args, knot_strerror(ret));
+			return ret;
+		}
+
+		found = true;
+	}
+
+	if (!found) {
+		send_error(args, knot_strerror(KNOT_EINVAL));
+		return KNOT_EINVAL;
+	}
+
+	return KNOT_EOK;
 }
 
 static int send_block_data(conf_io_t *io, knot_ctl_data_t *data)
@@ -1266,6 +1478,7 @@ static const desc_t cmd_table[] = {
 	[CTL_STATUS]          = { "status",          ctl_server },
 	[CTL_STOP]            = { "stop",            ctl_server },
 	[CTL_RELOAD]          = { "reload",          ctl_server },
+	[CTL_STATS]           = { "stats",           ctl_stats },
 
 	[CTL_ZONE_STATUS]     = { "zone-status",     ctl_zone },
 	[CTL_ZONE_RELOAD]     = { "zone-reload",     ctl_zone },
@@ -1283,6 +1496,7 @@ static const desc_t cmd_table[] = {
 	[CTL_ZONE_SET]        = { "zone-set",        ctl_zone },
 	[CTL_ZONE_UNSET]      = { "zone-unset",      ctl_zone },
 	[CTL_ZONE_PURGE]      = { "zone-purge",      ctl_zone },
+	[CTL_ZONE_STATS]      = { "zone-stats",	     ctl_zone },
 
 	[CTL_CONF_LIST]       = { "conf-list",       ctl_conf_read },
 	[CTL_CONF_READ]       = { "conf-read",       ctl_conf_read },

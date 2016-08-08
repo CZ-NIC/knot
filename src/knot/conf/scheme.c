@@ -29,6 +29,7 @@
 #include "dnssec/lib/dnssec/tsig.h"
 #include "dnssec/lib/dnssec/key.h"
 
+#include "knot/modules/stats/stats.h"
 #include "knot/modules/synth_record/synth_record.h"
 #include "knot/modules/dnsproxy/dnsproxy.h"
 #include "knot/modules/online_sign/online_sign.h"
@@ -148,6 +149,13 @@ static const yp_item_t desc_log[] = {
 	{ NULL }
 };
 
+static const yp_item_t desc_stats[] = {
+	{ C_TIMER,  YP_TINT,  YP_VINT = { 1, UINT32_MAX, 0, YP_STIME } },
+	{ C_FILE,   YP_TSTR,  YP_VSTR = { "stats.yaml" } },
+	{ C_APPEND, YP_TBOOL, YP_VNONE },
+	{ NULL }
+};
+
 static const yp_item_t desc_keystore[] = {
 	{ C_ID,      YP_TSTR, YP_VNONE },
 	{ C_BACKEND, YP_TOPT, YP_VOPT = { keystore_backends, KEYSTORE_BACKEND_PEM },
@@ -261,12 +269,14 @@ const yp_item_t conf_scheme[] = {
 	{ C_SRV,      YP_TGRP, YP_VGRP = { desc_server }, CONF_IO_FRLD_SRV },
 	{ C_CTL,      YP_TGRP, YP_VGRP = { desc_control } },
 	{ C_LOG,      YP_TGRP, YP_VGRP = { desc_log }, YP_FMULTI | CONF_IO_FRLD_LOG },
+	{ C_STATS,    YP_TGRP, YP_VGRP = { desc_stats }, CONF_IO_FRLD_SRV },
 	{ C_KEYSTORE, YP_TGRP, YP_VGRP = { desc_keystore }, YP_FMULTI, { check_keystore } },
 	{ C_POLICY,   YP_TGRP, YP_VGRP = { desc_policy }, YP_FMULTI, { check_policy } },
 	{ C_KEY,      YP_TGRP, YP_VGRP = { desc_key }, YP_FMULTI, { check_key } },
 	{ C_ACL,      YP_TGRP, YP_VGRP = { desc_acl }, YP_FMULTI, { check_acl } },
 	{ C_RMT,      YP_TGRP, YP_VGRP = { desc_remote }, YP_FMULTI, { check_remote } },
 /* MODULES */
+	{ C_MOD_STATS,        YP_TGRP, YP_VGRP = { scheme_mod_stats }, FMOD },
 	{ C_MOD_SYNTH_RECORD, YP_TGRP, YP_VGRP = { scheme_mod_synth_record }, FMOD,
 	                               { check_mod_synth_record } },
 	{ C_MOD_DNSPROXY,     YP_TGRP, YP_VGRP = { scheme_mod_dnsproxy }, FMOD,

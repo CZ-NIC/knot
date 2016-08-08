@@ -38,6 +38,7 @@
 #include "knot/conf/conf.h"
 #include "knot/common/log.h"
 #include "knot/common/process.h"
+#include "knot/common/stats.h"
 #include "knot/server/server.h"
 #include "knot/server/tcp-handler.h"
 #include "knot/zone/timers.h"
@@ -525,6 +526,8 @@ int main(int argc, char **argv)
 		log_warning("no zones loaded");
 	}
 
+	stats_reconfigure(conf(), &server);
+
 	/* Start it up. */
 	log_info("starting server");
 	conf_val_t async_val = conf_get(conf(), C_SRV, C_ASYNC_START);
@@ -532,6 +535,7 @@ int main(int argc, char **argv)
 	if (ret != KNOT_EOK) {
 		log_fatal("failed to start server (%s)", knot_strerror(ret));
 		server_wait(&server);
+		stats_deinit();
 		server_deinit(&server);
 		rcu_unregister_thread();
 		pid_cleanup();
@@ -553,6 +557,7 @@ int main(int argc, char **argv)
 	/* Teardown server. */
 	server_stop(&server);
 	server_wait(&server);
+	stats_deinit();
 
 	log_info("updating zone timers database");
 	write_timer_db(server.timers_db, server.zone_db);

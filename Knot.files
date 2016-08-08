@@ -208,6 +208,8 @@ src/knot/common/process.c
 src/knot/common/process.h
 src/knot/common/ref.c
 src/knot/common/ref.h
+src/knot/common/stats.c
+src/knot/common/stats.h
 src/knot/conf/base.c
 src/knot/conf/base.h
 src/knot/conf/conf.c
@@ -267,6 +269,8 @@ src/knot/modules/online_sign/online_sign.h
 src/knot/modules/rosedb/rosedb.c
 src/knot/modules/rosedb/rosedb.h
 src/knot/modules/rosedb/rosedb_tool.c
+src/knot/modules/stats/stats.c
+src/knot/modules/stats/stats.h
 src/knot/modules/synth_record/synth_record.c
 src/knot/modules/synth_record/synth_record.h
 src/knot/modules/whoami/whoami.c

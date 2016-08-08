@@ -36,6 +36,7 @@
 #define CMD_STATUS		"status"
 #define CMD_STOP		"stop"
 #define CMD_RELOAD		"reload"
+#define CMD_STATS		"stats"
 
 #define CMD_ZONE_CHECK		"zone-check"
 #define CMD_ZONE_MEMSTATS	"zone-memstats"
@@ -55,6 +56,7 @@
 #define CMD_ZONE_SET		"zone-set"
 #define CMD_ZONE_UNSET		"zone-unset"
 #define CMD_ZONE_PURGE		"zone-purge"
+#define CMD_ZONE_STATS		"zone-stats"
 
 #define CMD_CONF_INIT		"conf-init"
 #define CMD_CONF_CHECK		"conf-check"
@@ -270,26 +272,43 @@ static void format_data(ctl_cmd_t cmd, knot_ctl_type_t data_type,
 	case CTL_ZONE_GET:
 	case CTL_ZONE_SET:
 	case CTL_ZONE_UNSET:
-		if (data_type == KNOT_CTL_TYPE_DATA) {
-			printf("%s%s%s%s%s%s%s%s%s%s%s%s%s",
-			       (!(*empty)     ? "\n"       : ""),
-			       (error != NULL ? "error: (" : ""),
-			       (error != NULL ? error      : ""),
-			       (error != NULL ? ") "       : ""),
-			       (zone  != NULL ? "["        : ""),
-			       (zone  != NULL ? zone       : ""),
-			       (zone  != NULL ? "] "       : ""),
-			       (sign  != NULL ? sign       : ""),
-			       (owner != NULL ? owner      : ""),
-			       (ttl   != NULL ? " "        : ""),
-			       (ttl   != NULL ? ttl        : ""),
-			       (type  != NULL ? " "        : ""),
-			       (type  != NULL ? type       : ""));
-			*empty = false;
-		}
-		if (value != NULL) {
-			printf(" %s", value);
-		}
+		printf("%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s",
+		       (!(*empty)     ? "\n"       : ""),
+		       (error != NULL ? "error: (" : ""),
+		       (error != NULL ? error      : ""),
+		       (error != NULL ? ") "       : ""),
+		       (zone  != NULL ? "["        : ""),
+		       (zone  != NULL ? zone       : ""),
+		       (zone  != NULL ? "] "       : ""),
+		       (sign  != NULL ? sign       : ""),
+		       (owner != NULL ? owner      : ""),
+		       (ttl   != NULL ? " "        : ""),
+		       (ttl   != NULL ? ttl        : ""),
+		       (type  != NULL ? " "        : ""),
+		       (type  != NULL ? type       : ""),
+		       (value != NULL ? " "        : ""),
+		       (value != NULL ? value      : ""));
+		*empty = false;
+		break;
+	case CTL_STATS:
+	case CTL_ZONE_STATS:
+		printf("%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s",
+		       (!(*empty)     ? "\n"       : ""),
+		       (error != NULL ? "error: (" : ""),
+		       (error != NULL ? error      : ""),
+		       (error != NULL ? ") "       : ""),
+		       (zone  != NULL ? "["        : ""),
+		       (zone  != NULL ? zone       : ""),
+		       (zone  != NULL ? "] "       : ""),
+		       (key0  != NULL ? key0       : ""),
+		       (key1  != NULL ? "."        : ""),
+		       (key1  != NULL ? key1       : ""),
+		       (id    != NULL ? "["        : ""),
+		       (id    != NULL ? id         : ""),
+		       (id    != NULL ? "]"        : ""),
+		       (value != NULL ? " = "      : ""),
+		       (value != NULL ? value      : ""));
+		*empty = false;
 		break;
 	default:
 		assert(0);
@@ -334,6 +353,8 @@ static void format_block(ctl_cmd_t cmd, bool failed, bool empty)
 	case CTL_CONF_READ:
 	case CTL_CONF_DIFF:
 	case CTL_CONF_GET:
+	case CTL_ZONE_STATS:
+	case CTL_STATS:
 		printf("%s", empty ? "" : "\n");
 		break;
 	default:
@@ -393,6 +414,75 @@ static int cmd_ctl(cmd_args_t *args)
 	};
 
 	// Send the command.
+	ret = knot_ctl_send(args->ctl, KNOT_CTL_TYPE_DATA, &data);
+	if (ret != KNOT_EOK) {
+		log_error(CTL_LOG_STR" (%s)", knot_strerror(ret));
+		return ret;
+	}
+
+	// Finish the input block.
+	ret = knot_ctl_send(args->ctl, KNOT_CTL_TYPE_BLOCK, NULL);
+	if (ret != KNOT_EOK) {
+		log_error(CTL_LOG_STR" (%s)", knot_strerror(ret));
+		return ret;
+	}
+
+	return ctl_receive(args);
+}
+
+static int set_stats_items(cmd_args_t *args, knot_ctl_data_t *data)
+{
+	int min_args, max_args;
+	switch (args->desc->cmd) {
+	case CTL_STATS:      min_args = 0; max_args = 1; break;
+	case CTL_ZONE_STATS: min_args = 1; max_args = 2; break;
+	default:
+		assert(0);
+		return KNOT_EINVAL;
+	}
+
+	// Check the number of arguments.
+	int ret = check_args(args, min_args, max_args);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	int idx = 0;
+
+	// Set ZONE name.
+	if (args->argc > idx && args->desc->cmd == CTL_ZONE_STATS) {
+		if (strcmp(args->argv[idx], "--") != 0) {
+			(*data)[KNOT_CTL_IDX_ZONE] = args->argv[idx];
+		}
+		idx++;
+	}
+
+	if (args->argc > idx) {
+		(*data)[KNOT_CTL_IDX_SECTION] = args->argv[idx];
+
+		char *item = strchr(args->argv[idx], '.');
+		if (item != NULL) {
+			// Separate section and item.
+			*item++ = '\0';
+			(*data)[KNOT_CTL_IDX_ITEM] = item;
+		}
+	}
+
+	return KNOT_EOK;
+}
+
+static int cmd_stats_ctl(cmd_args_t *args)
+{
+	knot_ctl_data_t data = {
+		[KNOT_CTL_IDX_CMD] = ctl_cmd_to_str(args->desc->cmd),
+		[KNOT_CTL_IDX_FLAGS] = args->force ? CTL_FLAG_FORCE : NULL
+	};
+
+	int ret = set_stats_items(args, &data);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
 	ret = knot_ctl_send(args->ctl, KNOT_CTL_TYPE_DATA, &data);
 	if (ret != KNOT_EOK) {
 		log_error(CTL_LOG_STR" (%s)", knot_strerror(ret));
@@ -870,6 +960,7 @@ const cmd_desc_t cmd_table[] = {
 	{ CMD_STATUS,          cmd_ctl,           CTL_STATUS },
 	{ CMD_STOP,            cmd_ctl,           CTL_STOP },
 	{ CMD_RELOAD,          cmd_ctl,           CTL_RELOAD },
+	{ CMD_STATS,           cmd_stats_ctl,     CTL_STATS },
 
 	{ CMD_ZONE_CHECK,      cmd_zone_check,    CTL_NONE,            CMD_FOPT_ZONE | CMD_FREAD },
 	{ CMD_ZONE_MEMSTATS,   cmd_zone_memstats, CTL_NONE,            CMD_FOPT_ZONE | CMD_FREAD },
@@ -889,6 +980,7 @@ const cmd_desc_t cmd_table[] = {
 	{ CMD_ZONE_SET,        cmd_zone_node_ctl, CTL_ZONE_SET,        CMD_FREQ_ZONE },
 	{ CMD_ZONE_UNSET,      cmd_zone_node_ctl, CTL_ZONE_UNSET,      CMD_FREQ_ZONE },
 	{ CMD_ZONE_PURGE,      cmd_zone_ctl,      CTL_ZONE_PURGE,      CMD_FREQ_ZONE },
+	{ CMD_ZONE_STATS,      cmd_stats_ctl,     CTL_ZONE_STATS,      CMD_FREQ_ZONE },
 
 	{ CMD_CONF_INIT,       cmd_conf_init,     CTL_NONE,            CMD_FWRITE },
 	{ CMD_CONF_CHECK,      cmd_conf_check,    CTL_NONE,            CMD_FREAD },
@@ -912,6 +1004,7 @@ static const cmd_help_t cmd_help_table[] = {
 	{ CMD_STATUS,          "",                                       "Check if the server is running." },
 	{ CMD_STOP,            "",                                       "Stop the server if running." },
 	{ CMD_RELOAD,          "",                                       "Reload the server configuration and modified zones." },
+	{ CMD_STATS,           "[<module>[.<counter>]]",                 "Show global statistics counter(s)." },
 	{ "",                  "",                                       "" },
 	{ CMD_ZONE_CHECK,      "[<zone>...]",                            "Check if the zone can be loaded. (*)" },
 	{ CMD_ZONE_MEMSTATS,   "[<zone>...]",                            "Estimate memory use for the zone. (*)" },
@@ -931,6 +1024,7 @@ static const cmd_help_t cmd_help_table[] = {
 	{ CMD_ZONE_SET,        "<zone>  <owner> [<ttl>] <type> <rdata>", "Add zone record within the transaction." },
 	{ CMD_ZONE_UNSET,      "<zone>  <owner> [<type> [<rdata>]]",     "Remove zone data within the transaction." },
 	{ CMD_ZONE_PURGE,      "<zone>...",                              "Purge zone data, file, journal, and timers." },
+	{ CMD_ZONE_STATS,      "<zone> [<module>[.<counter>]]",          "Show zone statistics counter(s)."},
 	{ "",                  "",                                       "" },
 	{ CMD_CONF_INIT,       "",                                       "Initialize the confdb. (*)" },
 	{ CMD_CONF_CHECK,      "",                                       "Check the server configuration. (*)" },

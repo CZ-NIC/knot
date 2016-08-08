@@ -22,6 +22,7 @@
 
 #include "libknot/errcode.h"
 #include "knot/common/log.h"
+#include "knot/common/stats.h"
 #include "knot/conf/confio.h"
 #include "knot/server/server.h"
 #include "knot/server/udp-handler.h"
@@ -585,6 +586,7 @@ int server_reload(server_t *server)
 	}
 	if (full || (flags & CONF_IO_FRLD_SRV)) {
 		server_reconfigure(conf(), server);
+		stats_reconfigure(conf(), server);
 	}
 	if (full || (flags & (CONF_IO_FRLD_ZONES | CONF_IO_FRLD_ZONE))) {
 		server_update_zones(conf(), server);
