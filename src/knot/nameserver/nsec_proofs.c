@@ -304,8 +304,6 @@ static int put_closest_encloser_proof(const knot_dname_t *qname,
                                       struct query_data *qdata,
                                       knot_pkt_t *resp)
 {
-	assert(auth_encloser(cpe) == cpe);
-
 	// An NSEC3 RR that matches the closest (provable) encloser.
 
 	int ret = put_nsec3_from_node(cpe->nsec3_node, qdata, resp);
