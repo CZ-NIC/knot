@@ -8,11 +8,8 @@ class FakeTime:
     """Set system environment variables.
     All application started with these variables will use libfaketime.
 
-    Library faketime should be in LD_LIBRARY_PATH or you have to change
-    class variable LIBFAKETIME.
     """
     DATE_FORMAT = "%Y-%m-%d %T"
-    LIBFAKETIME = "libfaketimeMT.so.1"
 
     def __init__(self):
         if not os.path.exists(params.out_dir):
@@ -20,7 +17,7 @@ class FakeTime:
         self.file_path = params.out_dir + "/faketime.conf"
 
     def __enter__(self):
-        os.environ["LD_PRELOAD"] = self.LIBFAKETIME
+        os.environ["LD_PRELOAD"] = params.libfaketime_path
         os.environ["FAKETIME_TIMESTAMP_FILE"] = self.file_path
         os.environ["FAKETIME_NO_CACHE"] = "1"
         return self
@@ -66,7 +63,7 @@ class FakeTime:
         timestamp = 1337  # just some timestamp
         dt = datetime.datetime.fromtimestamp(timestamp)
         env = os.environ.copy()
-        env["LD_PRELOAD"] = cls.LIBFAKETIME
+        env["LD_PRELOAD"] = params.libfaketime_path
         env["FAKETIME"] = dt.strftime(cls.DATE_FORMAT)
         try:
             if int(check_output(["date", "+%s"], env=env)) == timestamp:
