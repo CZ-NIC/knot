@@ -73,6 +73,19 @@ static const zone_node_t *auth_encloser(const zone_node_t *closest)
 }
 
 /*!
+ * \brief Check if node is part of the NSEC3 chain.
+ *
+ * NSEC3 is created for each node with authoritative data, empty-non terminal,
+ * and delegation (unless opt-out is in effect).
+ *
+ * \see https://tools.ietf.org/html/rfc5155#section-7.1
+ */
+static bool node_in_nsec3(const zone_node_t *node)
+{
+	return (node->flags & NODE_FLAGS_NONAUTH) == 0 && !ds_optout(node);
+}
+
+/*!
  * \brief Walk previous names until we reach an authoritative one.
  */
 static const zone_node_t *auth_previous(const zone_node_t *previous)
@@ -88,7 +101,20 @@ static const zone_node_t *auth_previous(const zone_node_t *previous)
 }
 
 /*!
- * \brief Creates a 'next closer name' to the given domain name.
+ * \brief Get closest provable encloser from closest matching parent node.
+ */
+static const zone_node_t *nsec3_encloser(const zone_node_t *closest)
+{
+	assert(closest);
+
+	while (!node_in_nsec3(closest)) {
+		closest = closest->parent;
+		assert(closest);
+	}
+
+	return closest;
+}
+
  *
  * For definition of 'next closer name', see RFC5155, Page 6.
  *
@@ -341,7 +367,9 @@ static int put_nsec3_wildcard(const zone_node_t *wildcard,
                               struct query_data *qdata,
                               knot_pkt_t *resp)
 {
-	return put_nsec3_next_closer(wildcard, qname, zone, qdata, resp);
+	const zone_node_t *cpe = nsec3_encloser(wildcard->parent);
+
+	return put_nsec3_next_closer(cpe, qname, zone, qdata, resp);
 }
 
 /*!
@@ -445,9 +473,7 @@ static int put_nsec3_nxdomain(const knot_dname_t *qname,
                               struct query_data *qdata,
                               knot_pkt_t *resp)
 {
-	const zone_node_t *cpe = auth_encloser(closest);
-
-	assert(cpe->nsec3_node);
+	const zone_node_t *cpe = nsec3_encloser(closest);
 
 	// Closest encloser proof.
 
@@ -567,7 +593,7 @@ static int put_nsec3_nodata(const knot_dname_t *qname,
 	// Closest encloser proof for wildcard effect or NSEC3 opt-out.
 
 	if (wildcard_expanded(match, qname) || ds_optout(match)) {
-		const zone_node_t *cpe = auth_encloser(closest);
+		const zone_node_t *cpe = nsec3_encloser(closest);
 		ret = put_closest_encloser_proof(qname, zone, cpe, qdata, resp);
 	}
 
@@ -577,10 +603,9 @@ static int put_nsec3_nodata(const knot_dname_t *qname,
 /*!
  * \brief Put NSECs or NSEC3s for the NODATA error into the response.
  *
- * \param node Node which generated the NODATA response (i.e. not containing
- *             RRSets of the requested type).
- * \param qdata Query data.
- * \param resp Response where to add the NSECs or NSEC3s.
+ * \param node   Source node.
+ * \param qdata  Query processing data.
+ * \param resp   Response packet.
  */
 static int put_nodata(const zone_node_t *node,
                       const zone_node_t *closest,
