@@ -46,30 +46,15 @@ static bool ds_optout(const zone_node_t *node)
 }
 
 /*!
- * \brief Get closest provable encloser from closest matching parent node.
+ * \brief Check if node is part of the NSEC chain.
  *
- * The encloser can be either non-authoritative node or empty non-terminal.
+ * NSEC is created for each node with authoritative data or delegation.
+ *
+ * \see https://tools.ietf.org/html/rfc4035#section-2.3
  */
-static const zone_node_t *auth_encloser(const zone_node_t *closest)
+static bool node_in_nsec(const zone_node_t *node)
 {
-	assert(closest);
-
-	/*!
-	 * TODO: Empty non-terminals are handled differently in NSEC and NSEC3.
-	 *
-	 * NSEC3: all non-terminals have NSEC3 node.
-	 * NSEC: all non-terminals are skipped in proves
-	 *
-	 * The old NSEC3 code traversed up to the first node which has
-	 * corresponding NSEC3.
-	 */
-
-	while (closest->flags & NODE_FLAGS_NONAUTH || empty_nonterminal(closest)) {
-		closest = closest->parent;
-		assert(closest);
-	}
-
-	return closest;
+	return (node->flags & NODE_FLAGS_NONAUTH) == 0 && !empty_nonterminal(node);
 }
 
 /*!
@@ -86,13 +71,14 @@ static bool node_in_nsec3(const zone_node_t *node)
 }
 
 /*!
- * \brief Walk previous names until we reach an authoritative one.
+ * \brief Walk previous names until we reach a node in NSEC chain.
+ *
  */
-static const zone_node_t *auth_previous(const zone_node_t *previous)
+static const zone_node_t *nsec_previous(const zone_node_t *previous)
 {
 	assert(previous);
 
-	while (previous->flags & NODE_FLAGS_NONAUTH || empty_nonterminal(previous)) {
+	while (!node_in_nsec(previous)) {
 		previous = previous->prev;
 		assert(previous);
 	}
@@ -229,7 +215,7 @@ static int put_covering_nsec(const zone_contents_t *zone,
 	if (ret == ZONE_NAME_FOUND) {
 		proof = match;
 	} else if (ret == ZONE_NAME_NOT_FOUND) {
-		proof = auth_previous(prev);
+		proof = nsec_previous(prev);
 	} else {
 		assert(ret < 0);
 		return ret;
@@ -393,7 +379,7 @@ static int put_wildcard_answer(const zone_node_t *wildcard,
 	if (knot_is_nsec3_enabled(zone)) {
 		ret = put_nsec3_wildcard(wildcard, qname, zone, qdata, resp);
 	} else {
-		previous = auth_previous(previous);
+		previous = nsec_previous(previous);
 		ret = put_nsec_wildcard(previous, qdata, resp);
 	}
 
@@ -429,7 +415,7 @@ static int put_nsec_nxdomain(const knot_dname_t *qname,
 
 	// An NSEC RR proving that there is no exact match for <SNAME, SCLASS>.
 
-	previous = auth_previous(previous);
+	previous = nsec_previous(previous);
 	int ret = put_nsec_from_node(previous, qdata, resp);
 	if (ret != KNOT_EOK) {
 		return ret;
