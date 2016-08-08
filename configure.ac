@@ -125,7 +125,7 @@ AS_IF([test "$enable_fastparser" = "force"],[enable_fastparser=yes])
 AM_CONDITIONAL([FAST_PARSER], [test "$enable_fastparser" = "yes"])
 
 # GnuTLS crypto backend
-PKG_CHECK_MODULES([gnutls], [gnutls >= 3.0 nettle], [
+PKG_CHECK_MODULES([gnutls], [gnutls >= 3.3 nettle], [
     save_CFLAGS=$CFLAGS
     CFLAGS="$CFLAGS $gnutls_CFLAGS"
     AC_CHECK_HEADERS([nettle/version.h])
