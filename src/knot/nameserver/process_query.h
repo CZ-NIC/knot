@@ -85,6 +85,7 @@ struct query_data {
 struct wildcard_hit {
 	node_t n;
 	const zone_node_t *node;   /* Visited node. */
+	const zone_node_t *prev;   /* Previous node from the SNAME. */
 	const knot_dname_t *sname; /* Name leading to this node. */
 };
 

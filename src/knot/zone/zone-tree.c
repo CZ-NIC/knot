@@ -118,45 +118,7 @@ int zone_tree_get_less_or_equal(zone_tree_t *tree,
 		hattrie_iter_free(i);
 	}
 
-	/* Previous node for proof must be non-empty and authoritative. */
-	if (*previous &&
-	    ((*previous)->rrset_count == 0 || (*previous)->flags & NODE_FLAGS_NONAUTH)) {
-		*previous = (*previous)->prev;
-	}
-
 	return exact_match;
-}
-
-zone_node_t *zone_tree_get_next(zone_tree_t *tree,
-                                const knot_dname_t *owner)
-{
-	if (tree == NULL || owner == NULL) {
-		return NULL;
-	}
-
-	uint8_t lf[KNOT_DNAME_MAXLEN];
-	knot_dname_lf(lf, owner, NULL);
-
-	value_t *fval = NULL;
-	zone_node_t *n = NULL;
-	(void)hattrie_find_next(tree, (char*)lf + 1, *lf, &fval);
-	if (fval == NULL) {
-		/* Return first node. */
-		hattrie_iter_t *it = hattrie_iter_begin(tree, true);
-		if (it == NULL) {
-			return NULL;
-		}
-		fval = hattrie_iter_val(it);
-		hattrie_iter_free(it);
-	}
-
-	n = (zone_node_t *)*fval;
-	/* Next node must be non-empty and auth. */
-	if (n->rrset_count == 0 || n->flags & NODE_FLAGS_NONAUTH) {
-		return zone_tree_get_next(tree, n->owner);
-	} else {
-		return n;
-	}
 }
 
 int zone_tree_remove(zone_tree_t *tree,
