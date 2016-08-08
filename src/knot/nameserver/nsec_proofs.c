@@ -38,11 +38,11 @@ static bool wildcard_expanded(const zone_node_t *node, const knot_dname_t *qname
 }
 
 /*!
- * \brief Check if out-out can take effect.
+ * \brief Check if out-out can take an effect.
  */
-static bool ds_optout(const zone_node_t *node, const knot_pkt_t *pkt)
+static bool ds_optout(const zone_node_t *node)
 {
-	return node->nsec3_node == NULL && knot_pkt_qtype(pkt) == KNOT_RRTYPE_DS;
+	return node->nsec3_node == NULL && node->flags & NODE_FLAGS_DELEG;
 }
 
 /*!
@@ -565,7 +565,7 @@ static int put_nsec3_nodata(const knot_dname_t *qname,
 
 	// Closest encloser proof for wildcard effect or NSEC3 opt-out.
 
-	if (wildcard_expanded(match, qname) || ds_optout(match, resp)) {
+	if (wildcard_expanded(match, qname) || ds_optout(match)) {
 		const zone_node_t *cpe = auth_encloser(closest);
 		ret = put_closest_encloser_proof(qname, zone, cpe, qdata, resp);
 	}
