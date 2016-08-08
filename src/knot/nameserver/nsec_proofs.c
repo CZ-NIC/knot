@@ -38,7 +38,7 @@ static bool wildcard_expanded(const zone_node_t *node, const knot_dname_t *qname
 }
 
 /*!
- * \brief Check if out-out can take an effect.
+ * \brief Check if opt-out can take an effect.
  */
 static bool ds_optout(const zone_node_t *node)
 {
