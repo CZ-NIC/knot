@@ -116,6 +116,31 @@ static knot_dname_t *get_next_closer(const knot_dname_t *closest_encloser,
 }
 
 /*!
+ * \brief Create a wildcard child of a name.
+ *
+ * \param name  Parent of the wildcard.
+ *
+ * \return Wildcard child name, NULL on error.
+ */
+static knot_dname_t *wildcard_child_name(const knot_dname_t *name)
+{
+	assert(name != NULL);
+
+	knot_dname_t *wildcard = knot_dname_from_str_alloc("*");
+	if (wildcard == NULL) {
+		return NULL;
+	}
+
+	wildcard = knot_dname_cat(wildcard, name);
+	if (wildcard == NULL) {
+		return NULL;
+	}
+
+	return wildcard;
+}
+
+
+/*!
  * \brief Put NSEC/NSEC3 record with corresponding RRSIG into the response.
  */
 static int put_nxt_from_node(const zone_node_t *node,
@@ -275,30 +300,6 @@ static int put_closest_encloser_proof(const knot_dname_t *qname,
 	// An NSEC3 RR that covers the "next closer" name to the closest encloser.
 
 	return put_nsec3_next_closer(cpe, qname, zone, qdata, resp);
-}
-
-/*!
- * \brief Creates a name of a wildcard child of \a name.
- *
- * \param name Domain name to get the wildcard child name of.
- *
- * \return Wildcard child name or NULL if an error occurred.
- */
-static knot_dname_t *wildcard_child_name(const knot_dname_t *name)
-{
-	assert(name != NULL);
-
-	knot_dname_t *wildcard = knot_dname_from_str_alloc("*");
-	if (wildcard == NULL) {
-		return NULL;
-	}
-
-	wildcard = knot_dname_cat(wildcard, name);
-	if (wildcard == NULL) {
-		return NULL;
-	}
-
-	return wildcard;
 }
 
 /*!
