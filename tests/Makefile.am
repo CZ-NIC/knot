@@ -85,7 +85,8 @@ utils_test_lookup_LDADD = \
 
 utils_test_cert_CPPFLAGS = \
 	$(AM_CPPFLAGS) \
-	$(libedit_CFLAGS)
+	$(libedit_CFLAGS) \
+	$(gnutls_CFLAGS)
 
 utils_test_cert_LDADD = \
 	$(top_builddir)/libtap/libtap.la \
