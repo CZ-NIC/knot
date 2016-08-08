@@ -509,6 +509,12 @@ int apply_changeset(zone_t *zone, changeset_t *change, zone_contents_t **new_con
 		update_free_zone(&contents_copy);
 		return ret;
 	}
+
+	if (contents_copy->size > zone->conf->max_zone_size) {
+		update_rollback(change);
+		update_free_zone(&contents_copy);
+		return KNOT_EZONESIZE;
+	}
 	
 	*new_contents = contents_copy;
 	

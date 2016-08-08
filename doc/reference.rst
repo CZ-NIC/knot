@@ -811,6 +811,7 @@ The ``zones`` statement contains definition of zones served by Knot DNS.
       [ zonefile-sync ( integer | integer(s | m | h | d); ) ]
       [ ixfr-fslimit ( integer | integer(k | M | G) ); ]
       [ ixfr-from-differences boolean; ]
+      [ max-zone-size ( integer | integer(k | M | G) ); ]
       [ dnssec-keydir "string"; ]
       [ dnssec-enable ( on | off ); ]
       [ signature-lifetime ( integer | integer(s | m | h | d); ) ]
@@ -947,6 +948,21 @@ upon server reload.  See :ref:`Controlling running daemon` for more
 information.
 
 Possible values are ``on`` and ``off``.  Disabled by default.
+
+.. _zone_max_zone_size:
+
+max-zone-size
+----------------
+
+Maximum size of the zone. The size is measured as size of the zone records
+in wire format without compression. The limit is enforced for incoming zone
+transfers and dynamic updates.
+
+For incremental transfers (IXFR), the effective limit for the total size of
+the records in the transfer is twice the configured value. However the final
+size of the zone must satisfy the configured value.
+
+*Default:* unlimited
 
 .. _disable-any:
 

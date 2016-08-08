@@ -322,6 +322,13 @@ static int axfr_answer_finalize(struct answer_data *adata)
 		return rc;
 	}
 
+	size_t size_limit = adata->param->zone->conf->max_zone_size;
+
+	if (proc->contents->size > size_limit) {
+		AXFRIN_LOG(LOG_WARNING, "zone size exceeded");
+		return NS_PROC_FAIL;
+	}
+
 	/* Switch contents. */
 	zone_t *zone = adata->param->zone;
 	zone_contents_t *old_contents =
@@ -343,8 +350,10 @@ static int axfr_answer_finalize(struct answer_data *adata)
 	return KNOT_EOK;
 }
 
-static int axfr_answer_packet(knot_pkt_t *pkt, struct xfr_proc *proc)
+static int axfr_answer_packet(knot_pkt_t *pkt, struct answer_data *adata)
 {
+	assert(adata != NULL);
+	struct xfr_proc *proc = adata->ext;
 	assert(pkt != NULL);
 	assert(proc != NULL);
 
@@ -352,11 +361,14 @@ static int axfr_answer_packet(knot_pkt_t *pkt, struct xfr_proc *proc)
 	proc->npkts  += 1;
 	proc->nbytes += pkt->size;
 
+	size_t size_limit = adata->param->zone->conf->max_zone_size;
+
 	/* Init zone creator. */
 	zcreator_t zc = {.z = proc->contents, .master = false, .ret = KNOT_EOK };
 
 	const knot_pktsection_t *answer = knot_pkt_section(pkt, KNOT_ANSWER);
 	for (uint16_t i = 0; i < answer->count; ++i) {
+
 		const knot_rrset_t *rr = &answer->rr[i];
 		if (rr->type == KNOT_RRTYPE_SOA &&
 		    node_rrtype_exists(zc.z->apex, KNOT_RRTYPE_SOA)) {
@@ -366,6 +378,11 @@ static int axfr_answer_packet(knot_pkt_t *pkt, struct xfr_proc *proc)
 			if (ret != KNOT_EOK) {
 				return NS_PROC_FAIL;
 			}
+		}
+		proc->contents->size += knot_rrset_size(rr);
+		if (proc->contents->size > size_limit) {
+			AXFRIN_LOG(LOG_WARNING, "zone size exceeded");
+			return NS_PROC_FAIL;
 		}
 	}
 
@@ -403,7 +420,7 @@ int axfr_answer_process(knot_pkt_t *pkt, struct answer_data *adata)
 	}
 
 	/* Process answer packet. */
-	int ret = axfr_answer_packet(pkt, (struct xfr_proc *)adata->ext);
+	int ret = axfr_answer_packet(pkt, adata);
 	if (ret == NS_PROC_DONE) {
 		NS_NEED_TSIG_SIGNED(&adata->param->tsig_ctx, 0);
 		/* This was the last packet, finalize zone and publish it. */

@@ -120,6 +120,7 @@ typedef struct conf_zone_t {
 	char *ixfr_db;             /*!< Path to a IXFR database file. */
 	int dnssec_enable;         /*!< DNSSEC: Online signing enabled. */
 	size_t ixfr_fslimit;       /*!< File size limit for IXFR journal. */
+	size_t max_zone_size;      /*!< Maximum zone size for XFR */
 	int sig_lifetime;          /*!< Validity period of DNSSEC signatures. */
 	int dbsync_timeout;        /*!< Interval between syncing to zonefile.*/
 	int enable_checks;         /*!< Semantic checks for parser.*/
@@ -264,6 +265,7 @@ typedef struct conf_t {
 	int notify_timeout;  /*!< Timeout for NOTIFY response in seconds. */
 	int dbsync_timeout;  /*!< Default interval between syncing to zonefile.*/
 	size_t ixfr_fslimit; /*!< File size limit for IXFR journal. */
+	size_t max_zone_size;/*!< Maximum zone size for XFR */
 	int build_diffs;     /*!< Calculate differences from changes. */
 	char *storage;       /*!< Storage dir. */
 	char *timer_db;      /*!< Path to timer database. */

@@ -221,3 +221,21 @@ int knot_rrset_rr_to_canonical(knot_rrset_t *rrset)
 	return KNOT_EOK;
 }
 
+size_t knot_rrset_size(const knot_rrset_t *rrset)
+{
+	if (rrset == NULL) {
+		return 0;
+	}
+
+	uint16_t rr_count = rrset->rrs.rr_count;
+	size_t total_size = knot_dname_size(rrset->owner) * rr_count;
+
+	for (size_t i = 0; i < rr_count; ++i) {
+		const knot_rdata_t *rr = knot_rdataset_at(&rrset->rrs, i);
+		assert(rr);
+		/* 10B = TYPE + CLASS + TTL + RDLENGTH */
+		total_size += knot_rdata_rdlen(rr) + 10;
+	}
+
+	return total_size;
+}

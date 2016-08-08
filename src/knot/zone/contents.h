@@ -47,6 +47,7 @@ typedef struct zone_contents_t {
 	zone_tree_t *nsec3_nodes;
 
 	knot_nsec3_params_t nsec3_params;
+	size_t size;
 } zone_contents_t;
 
 /*!
@@ -290,5 +291,14 @@ bool zone_contents_is_empty(const zone_contents_t *zone);
 zone_node_t *zone_contents_get_node_for_rr(zone_contents_t *zone, const knot_rrset_t *rrset);
 
 zone_node_t *zone_contents_find_node_for_rr(zone_contents_t *zone, const knot_rrset_t *rrset);
+
+/*!
+ * \brief Measure zone contents size.
+ *
+ * Size is measured in uncompressed wire format. Measured size is saved into
+ * zone contents structure.
+ * \return Measured size
+ */
+size_t zone_contents_measure_size(zone_contents_t *zone);
 
 /*! @} */
