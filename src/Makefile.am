@@ -223,7 +223,7 @@ libknotus_la_SOURCES =				\
 	utils/common/token.c			\
 	utils/common/token.h
 
-libknotus_la_CPPFLAGS = $(AM_CPPFLAGS) $(libidn_CFLAGS) $(libedit_CFLAGS)
+libknotus_la_CPPFLAGS = $(AM_CPPFLAGS) $(libidn_CFLAGS) $(libedit_CFLAGS) $(gnutls_CFLAGS)
 libknotus_la_LDFLAGS = $(AM_LDFLAGS) $(libidn_LIBS)
 libknotus_la_LIBADD = libcontrib.la libknot.la
 
@@ -529,8 +529,8 @@ knsec3hash_LDADD = dnssec/libdnssec.la dnssec/libshared.la
 if HAVE_DNSTAP
 kdig_LDADD         += $(DNSTAP_LIBS) contrib/dnstap/libdnstap.la
 khost_LDADD        += $(DNSTAP_LIBS) contrib/dnstap/libdnstap.la
-kdig_CFLAGS = $(AM_CFLAGS) $(DNSTAP_CFLAGS)
-khost_CFLAGS = $(AM_CFLAGS) $(DNSTAP_CFLAGS)
+kdig_CFLAGS = $(AM_CFLAGS) $(DNSTAP_CFLAGS) $(gnutls_CFLAGS)
+khost_CFLAGS = $(AM_CFLAGS) $(DNSTAP_CFLAGS) $(gnutls_CFLAGS)
 endif # HAVE_DNSTAP
 
 if HAVE_ROSEDB
