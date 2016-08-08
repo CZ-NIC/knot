@@ -516,11 +516,11 @@ knsupdate_SOURCES =				\
 	utils/knsupdate/knsupdate_params.h
 
 # bin programs
-kdig_CPPFLAGS       = $(AM_CFLAGS) $(gnutls_CFLAGS)
+kdig_CPPFLAGS       = $(AM_CPPFLAGS) $(gnutls_CFLAGS)
 kdig_LDADD          = $(libidn_LIBS) libknotus.la
-khost_CPPFLAGS      = $(AM_CFLAGS) $(gnutls_CFLAGS)
+khost_CPPFLAGS      = $(AM_CPPFLAGS) $(gnutls_CFLAGS)
 khost_LDADD         = $(libidn_LIBS) libknotus.la
-knsupdate_CPPFLAGS  = $(AM_CFLAGS) $(gnutls_CFLAGS)
+knsupdate_CPPFLAGS  = $(AM_CPPFLAGS) $(gnutls_CFLAGS)
 knsupdate_LDADD     = zscanner/libzscanner.la libknotus.la
 knsec3hash_CPPFLAGS = $(AM_CPPFLAGS) -I$(srcdir)/dnssec/lib/dnssec -I$(srcdir)/dnssec
 knsec3hash_LDADD    = dnssec/libdnssec.la dnssec/libshared.la
