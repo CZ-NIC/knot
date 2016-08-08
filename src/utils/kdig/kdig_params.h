@@ -136,6 +136,8 @@ struct query {
 	int32_t		padding;
 	/*!< Query alignment with EDNS0 padding (0 ~ uninitialized). */
 	uint16_t	alignment;
+	/*!< TLS parameters. */
+	tls_params_t	tls;
 #if USE_DNSTAP
 	/*!< Context for dnstap reader input. */
 	dt_reader_t	*dt_reader;

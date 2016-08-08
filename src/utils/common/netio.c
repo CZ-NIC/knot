@@ -1,4 +1,4 @@
-/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -28,10 +28,11 @@
 
 #include "utils/common/netio.h"
 #include "utils/common/msg.h"
+#include "utils/common/tls.h"
 #include "libknot/libknot.h"
 #include "contrib/sockaddr.h"
 
-srv_info_t* srv_info_create(const char *name, const char *service)
+srv_info_t *srv_info_create(const char *name, const char *service)
 {
 	if (name == NULL || service == NULL) {
 		DBG_NULL;
@@ -99,7 +100,7 @@ int get_socktype(const protocol_t proto, const uint16_t type)
 	}
 }
 
-const char* get_sockname(const int socktype)
+const char *get_sockname(const int socktype)
 {
 	switch (socktype) {
 	case SOCK_STREAM:
@@ -157,12 +158,13 @@ void get_addr_str(const struct sockaddr_storage *ss,
 	}
 }
 
-int net_init(const srv_info_t *local,
-             const srv_info_t *remote,
-             const int        iptype,
-             const int        socktype,
-             const int        wait,
-             net_t            *net)
+int net_init(const srv_info_t    *local,
+             const srv_info_t    *remote,
+             const int           iptype,
+             const int           socktype,
+             const int           wait,
+             const tls_params_t  *tls_params,
+             net_t               *net)
 {
 	if (remote == NULL || net == NULL) {
 		DBG_NULL;
@@ -194,14 +196,19 @@ int net_init(const srv_info_t *local,
 	net->local = local;
 	net->remote = remote;
 
+	// Prepare for TLS.
+	if (tls_params != NULL && tls_params->enable) {
+		int ret = tls_ctx_init(&net->tls, tls_params, net->wait);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+	}
+
 	return KNOT_EOK;
 }
 
 int net_connect(net_t *net)
 {
-	struct pollfd pfd;
-	int           sockfd;
-
 	if (net == NULL || net->srv == NULL) {
 		DBG_NULL;
 		return KNOT_EINVAL;
@@ -212,16 +219,18 @@ int net_connect(net_t *net)
 	             net->socktype, &net->remote_str);
 
 	// Create socket.
-	sockfd = socket(net->srv->ai_family, net->socktype, 0);
+	int sockfd = socket(net->srv->ai_family, net->socktype, 0);
 	if (sockfd == -1) {
 		WARN("can't create socket for %s\n", net->remote_str);
 		return KNOT_NET_ESOCKET;
 	}
 
 	// Initialize poll descriptor structure.
-	pfd.fd = sockfd;
-	pfd.events = POLLOUT;
-	pfd.revents = 0;
+	struct pollfd pfd = {
+		.fd = sockfd,
+		.events = POLLOUT,
+		.revents = 0,
+	};
 
 	// Set non-blocking socket.
 	if (fcntl(sockfd, F_SETFL, O_NONBLOCK) == -1) {
@@ -263,6 +272,15 @@ int net_connect(net_t *net)
 			WARN("can't connect to %s\n", net->remote_str);
 			close(sockfd);
 			return KNOT_NET_ECONNECT;
+		}
+
+		// Establish TLS connection.
+		if (net->tls.params != NULL) {
+			int ret = tls_ctx_connect(&net->tls, sockfd, net->remote->name);
+			if (ret != KNOT_EOK) {
+				close(sockfd);
+				return ret;
+			}
 		}
 	}
 
@@ -313,7 +331,22 @@ int net_send(const net_t *net, const uint8_t *buf, const size_t buf_len)
 		return KNOT_EINVAL;
 	}
 
-	if (net->socktype == SOCK_STREAM) {
+	// Send data over UDP.
+	if (net->socktype == SOCK_DGRAM) {
+		if (sendto(net->sockfd, buf, buf_len, 0, net->srv->ai_addr,
+		           net->srv->ai_addrlen) != (ssize_t)buf_len) {
+			WARN("can't send query to %s\n", net->remote_str);
+			return KNOT_NET_ESEND;
+		}
+	// Send data over TLS.
+	} else if (net->tls.params != NULL) {
+		int ret = tls_ctx_send((tls_ctx_t *)&net->tls, buf, buf_len);
+		if (ret != KNOT_EOK) {
+			WARN("can't send query to %s\n", net->remote_str);
+			return KNOT_NET_ESEND;
+		}
+	// Send data over TCP.
+	} else {
 		struct iovec iov[2];
 
 		// Leading packet length bytes.
@@ -332,13 +365,6 @@ int net_send(const net_t *net, const uint8_t *buf, const size_t buf_len)
 			WARN("can't send query to %s\n", net->remote_str);
 			return KNOT_NET_ESEND;
 		}
-	} else {
-		// Send data.
-		if (sendto(net->sockfd, buf, buf_len, 0, net->srv->ai_addr,
-		           net->srv->ai_addrlen) != (ssize_t)buf_len) {
-			WARN("can't send query to %s\n", net->remote_str);
-			return KNOT_NET_ESEND;
-		}
 	}
 
 	return KNOT_EOK;
@@ -346,69 +372,20 @@ int net_send(const net_t *net, const uint8_t *buf, const size_t buf_len)
 
 int net_receive(const net_t *net, uint8_t *buf, const size_t buf_len)
 {
-	ssize_t       ret;
-	struct pollfd pfd;
-
 	if (net == NULL || buf == NULL) {
 		DBG_NULL;
 		return KNOT_EINVAL;
 	}
 
 	// Initialize poll descriptor structure.
-	pfd.fd = net->sockfd;
-	pfd.events = POLLIN;
-	pfd.revents = 0;
+	struct pollfd pfd = {
+		.fd = net->sockfd,
+		.events = POLLIN,
+		.revents = 0,
+	};
 
-	if (net->socktype == SOCK_STREAM) {
-		uint16_t msg_len = 0;
-		uint32_t total = 0;
-
-		// Receive TCP message header.
-		while (total < sizeof(msg_len)) {
-			if (poll(&pfd, 1, 1000 * net->wait) != 1) {
-				WARN("response timeout for %s\n",
-				     net->remote_str);
-				return KNOT_NET_ETIMEOUT;
-			}
-
-			// Receive piece of message.
-			ret = recv(net->sockfd, (uint8_t *)&msg_len + total,
-			           sizeof(msg_len) - total, 0);
-			if (ret <= 0) {
-				WARN("can't receive reply from %s\n",
-				     net->remote_str);
-				return KNOT_NET_ERECV;
-			}
-
-			total += ret;
-		}
-
-		// Convert number to host format.
-		msg_len = ntohs(msg_len);
-
-		total = 0;
-
-		// Receive whole answer message by parts.
-		while (total < msg_len) {
-			if (poll(&pfd, 1, 1000 * net->wait) != 1) {
-				WARN("response timeout for %s\n",
-				     net->remote_str);
-				return KNOT_NET_ETIMEOUT;
-			}
-
-			// Receive piece of message.
-			ret = recv(net->sockfd, buf + total, msg_len - total, 0);
-			if (ret <= 0) {
-				WARN("can't receive reply from %s\n",
-				     net->remote_str);
-				return KNOT_NET_ERECV;
-			}
-
-			total += ret;
-		}
-
-		return total;
-	} else {
+	// Receive data over UDP.
+	if (net->socktype == SOCK_DGRAM) {
 		struct sockaddr_storage from;
 		memset(&from, '\0', sizeof(from));
 
@@ -424,8 +401,8 @@ int net_receive(const net_t *net, uint8_t *buf, const size_t buf_len)
 			}
 
 			// Receive whole UDP datagram.
-			ret = recvfrom(net->sockfd, buf, buf_len, 0,
-			               (struct sockaddr *)&from, &from_len);
+			ssize_t ret = recvfrom(net->sockfd, buf, buf_len, 0,
+			                       (struct sockaddr *)&from, &from_len);
 			if (ret <= 0) {
 				WARN("can't receive reply from %s\n",
 				     net->remote_str);
@@ -444,6 +421,66 @@ int net_receive(const net_t *net, uint8_t *buf, const size_t buf_len)
 
 			return ret;
 		}
+	// Receive data over TLS.
+	} else if (net->tls.params != NULL) {
+		int ret = tls_ctx_receive((tls_ctx_t *)&net->tls, buf, buf_len);
+		if (ret < 0) {
+			WARN("can't receive reply from %s\n", net->remote_str);
+			return KNOT_NET_ERECV;
+		}
+
+		return ret;
+	// Receive data over TCP.
+	} else {
+		uint32_t total = 0;
+
+		uint16_t msg_len = 0;
+		// Receive TCP message header.
+		while (total < sizeof(msg_len)) {
+			if (poll(&pfd, 1, 1000 * net->wait) != 1) {
+				WARN("response timeout for %s\n",
+				     net->remote_str);
+				return KNOT_NET_ETIMEOUT;
+			}
+
+			// Receive piece of message.
+			ssize_t ret = recv(net->sockfd, (uint8_t *)&msg_len + total,
+				           sizeof(msg_len) - total, 0);
+			if (ret <= 0) {
+				WARN("can't receive reply from %s\n",
+				     net->remote_str);
+				return KNOT_NET_ERECV;
+			}
+			total += ret;
+		}
+
+		// Convert number to host format.
+		msg_len = ntohs(msg_len);
+		if (msg_len > buf_len) {
+			return KNOT_ESPACE;
+		}
+
+		total = 0;
+
+		// Receive whole answer message by parts.
+		while (total < msg_len) {
+			if (poll(&pfd, 1, 1000 * net->wait) != 1) {
+				WARN("response timeout for %s\n",
+				     net->remote_str);
+				return KNOT_NET_ETIMEOUT;
+			}
+
+			// Receive piece of message.
+			ssize_t ret = recv(net->sockfd, buf + total, msg_len - total, 0);
+			if (ret <= 0) {
+				WARN("can't receive reply from %s\n",
+				     net->remote_str);
+				return KNOT_NET_ERECV;
+			}
+			total += ret;
+		}
+
+		return total;
 	}
 
 	return KNOT_NET_ERECV;
@@ -456,6 +493,7 @@ void net_close(net_t *net)
 		return;
 	}
 
+	tls_ctx_close(&net->tls);
 	close(net->sockfd);
 	net->sockfd = -1;
 }
@@ -477,4 +515,6 @@ void net_clean(net_t *net)
 	if (net->remote_info != NULL) {
 		freeaddrinfo(net->remote_info);
 	}
+
+	tls_ctx_deinit(&net->tls);
 }

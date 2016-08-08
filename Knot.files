@@ -433,6 +433,8 @@ src/libknot/yparser/ypscheme.c
 src/libknot/yparser/ypscheme.h
 src/libknot/yparser/yptrafo.c
 src/libknot/yparser/yptrafo.h
+src/utils/common/cert.c
+src/utils/common/cert.h
 src/utils/common/exec.c
 src/utils/common/exec.h
 src/utils/common/hex.c
@@ -449,6 +451,8 @@ src/utils/common/resolv.c
 src/utils/common/resolv.h
 src/utils/common/sign.c
 src/utils/common/sign.h
+src/utils/common/tls.c
+src/utils/common/tls.h
 src/utils/common/token.c
 src/utils/common/token.h
 src/utils/kdig/kdig_exec.c
@@ -572,6 +576,7 @@ tests/requestor.c
 tests/rrl.c
 tests/server.c
 tests/test_conf.h
+tests/utils/test_cert.c
 tests/utils/test_lookup.c
 tests/worker_pool.c
 tests/worker_queue.c

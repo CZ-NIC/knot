@@ -53,6 +53,7 @@
 /rrl
 /semantic_check
 /server
+/utils/test_cert
 /utils/test_lookup
 /worker_pool
 /worker_queue

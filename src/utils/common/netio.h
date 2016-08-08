@@ -1,4 +1,4 @@
-/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -14,9 +14,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 /*!
- * \file netio.h
- *
- * \author Daniel Salzman <daniel.salzman@nic.cz>
+ * \file
  *
  * \brief Networking abstraction for utilities.
  *
@@ -31,6 +29,7 @@
 #include <sys/socket.h>
 
 #include "utils/common/params.h"
+#include "utils/common/tls.h"
 
 /*! \brief Structure containing server information. */
 typedef struct {
@@ -74,6 +73,9 @@ typedef struct {
 	 *  used.
 	 */
 	struct addrinfo *local_info;
+
+	/*! TLS context. */
+	tls_ctx_t tls;
 } net_t;
 
 /*!
@@ -85,7 +87,7 @@ typedef struct {
  * \retval server	if success.
  * \retval NULL		if error.
  */
-srv_info_t* srv_info_create(const char *name, const char *service);
+srv_info_t *srv_info_create(const char *name, const char *service);
 
 /*!
  * \brief Destroys server structure.
@@ -121,7 +123,7 @@ int get_socktype(const protocol_t proto, const uint16_t type);
  *
  * \retval "TCP" or "UDP".
  */
-const char* get_sockname(const int socktype);
+const char *get_sockname(const int socktype);
 
 /*!
  * \brief Translates int socket type to the common string one.
@@ -142,17 +144,19 @@ void get_addr_str(const struct sockaddr_storage *ss,
  * \param iptype	IP version.
  * \param socktype	Socket type.
  * \param wait		Network timeout interval.
+ * \param tls_params	TLS parameters.
  * \param net		Network structure to initialize.
  *
  * \retval KNOT_EOK	if success.
  * \retval errcode	if error.
  */
-int net_init(const srv_info_t *local,
-             const srv_info_t *remote,
-             const int        iptype,
-             const int        socktype,
-             const int        wait,
-             net_t            *net);
+int net_init(const srv_info_t    *local,
+             const srv_info_t    *remote,
+             const int           iptype,
+             const int           socktype,
+             const int           wait,
+             const tls_params_t  *tls_params,
+             net_t               *net);
 
 /*!
  * \brief Creates socket and connects (if TCP) to remote address specified
