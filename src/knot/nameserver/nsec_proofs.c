@@ -101,14 +101,18 @@ static const zone_node_t *nsec3_encloser(const zone_node_t *closest)
 	return closest;
 }
 
+/*!
+ * \brief Create a 'next closer name' to the given domain name.
  *
- * For definition of 'next closer name', see RFC5155, Page 6.
+ * Next closer is the name one label longer than the closest provable encloser
+ * of a name.
  *
- * \param closest_encloser Closest encloser of \a name.
- * \param name Domain name to create the 'next closer' name to.
+ * \see https://tools.ietf.org/html/rfc5155#section-1.3
  *
- * \return 'Next closer name' to the given domain name or NULL if an error
- *         occurred.
+ * \param closest_encloser  Closest provable encloser of \a name.
+ * \param name              Domain name to create the 'next closer' name to.
+ *
+ * \return Next closer name, NULL on error.
  */
 static knot_dname_t *get_next_closer(const knot_dname_t *closest_encloser,
                                      const knot_dname_t *name)
@@ -625,7 +629,8 @@ int nsec_prove_wildcards(knot_pkt_t *pkt, struct query_data *qdata)
 		if (item->node == NULL) {
 			return KNOT_EINVAL;
 		}
-		ret = put_wildcard_answer(item->node, item->prev, qdata->zone->contents,
+		ret = put_wildcard_answer(item->node, item->prev,
+		                          qdata->zone->contents,
 		                          item->sname, qdata, pkt);
 		if (ret != KNOT_EOK) {
 			break;
