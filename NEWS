@@ -1,5 +1,27 @@
-Knot DNS 2.3.0-dev
-==================
+Knot DNS 2.3.0 (2016-08-09)
+===========================
+
+Bugfixes:
+---------
+ - No wildcard expansion below empty non-terminal for NSEC signed zone
+ - Avoid multiple loads of the same PKCS #11 module
+ - Fix kdig IXFR response processing if the transfer content is empty
+ - Don't ignore non-existing records to be removed in IXFR
+
+Improvements:
+-------------
+ - Refactored semantic checks and improved error messages
+ - Set TC flag in delegation only if mandatory glue doesn't fit the response
+ - Separate EDNS(0) payload size configuration for IPv4 and IPv6
+
+Features:
+---------
+ - DNSSEC policy can be defined in server configuration
+ - Automatic NSEC3 resalt according to DNSSEC policy
+ - Zone content editing using control interface
+ - Zone size limit restriction for DDNS, AXFR, and IXFR (CVE-2016-6171)
+ - DNS-over-TLS support in kdig (RFC 7858)
+ - EDNS(0) padding and alignment support in kdig (RFC 7830)
 
 Knot DNS 2.2.1 (2016-05-24)
 ===========================

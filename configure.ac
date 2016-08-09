@@ -5,7 +5,7 @@ AC_PREREQ([2.60])
 m4_define([knot_VERSION_MAJOR],2)dnl
 m4_define([knot_VERSION_MINOR],3)dnl
 m4_define([knot_VERSION_PATCH],0)dnl
-m4_define([knot_VERSION_EXTRA],-dev)dnl
+m4_define([knot_VERSION_EXTRA],)dnl
 m4_define([knot_PKG_VERSION],[knot_VERSION_MAJOR.knot_VERSION_MINOR.knot_VERSION_PATCH]knot_VERSION_EXTRA)dnl
 
 AC_INIT([knot], knot_PKG_VERSION, [knot-dns@labs.nic.cz])
@@ -26,28 +26,8 @@ AC_CONFIG_FILES([src/libknot/version.h
                  src/zscanner/version.h
                  src/dnssec/lib/dnssec/version.h])
 
-# Here are a set of rules to help you update your library version
-# information:
-#
-# 1. Start with version information of ‘0:0:0’ for each libtool library.
-#
-# 2. Update the version information only immediately before a public
-#    release of your software. More frequent updates are unnecessary,
-#    and only guarantee that the current interface number gets larger
-#    faster.
-#
-# 3. If the library source code has changed at all since the last
-#    update, then increment revision (‘c:r:a’ becomes ‘c:r+1:a’).
-#
-# 4. If any interfaces have been added, removed, or changed since the
-#    last update, increment current, and set revision to 0.
-#
-# 5. If any interfaces have been added since the last public release,
-#    then increment age.
-#
-# 6. If any interfaces have been removed or changed since the last
-#    public release, then set age to 0.
-
+# Updating version info
+# https://www.gnu.org/software/libtool/manual/html_node/Updating-version-info.html
 AC_SUBST([libknot_VERSION_INFO],["-version-info 3:0:0"])
 AC_SUBST([libdnssec_VERSION_INFO],["-version-info 2:0:0"])
 AC_SUBST([libzscanner_VERSION_INFO],["-version-info 1:0:0"])
