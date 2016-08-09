@@ -60,6 +60,7 @@ static void process_rr(zs_scanner_t *scanner)
 	int ret = knot_rrset_add_rdata(&rrset, scanner->r_data,
 	                               scanner->r_data_length,
 	                               scanner->r_ttl, NULL);
+	(void)ret;
 	assert(ret == KNOT_EOK);
 }
 
@@ -296,6 +297,7 @@ int main(int argc, char *argv[])
 
 	/* Load test configuration. */
 	int ret = test_conf(conf_str, NULL);
+	(void)ret;
 	assert(ret == KNOT_EOK);
 
 	/* Set up empty zone */

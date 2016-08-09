@@ -50,6 +50,7 @@ static void init_soa(knot_rrset_t *rr, const uint32_t serial, const knot_dname_t
 	assert(serial < 256);
 	uint8_t soa_data[MIN_SOA_SIZE] = { 0, 0, 0, 0, 0, serial };
 	int ret = knot_rrset_add_rdata(rr, soa_data, sizeof(soa_data), 3600, NULL);
+	(void)ret;
 	assert(ret == KNOT_EOK);
 }
 
@@ -71,6 +72,7 @@ static void init_random_rr(knot_rrset_t *rr , const knot_dname_t *apex)
 	randstr((char *)(txt + 1), RAND_RR_PAYLOAD);
 
 	int ret = knot_rrset_add_rdata(rr, txt, RAND_RR_PAYLOAD, 3600, NULL);
+	(void)ret;
 	assert(ret == KNOT_EOK);
 }
 
@@ -78,6 +80,7 @@ static void init_random_rr(knot_rrset_t *rr , const knot_dname_t *apex)
 static void init_random_changeset(changeset_t *ch, const uint32_t from, const uint32_t to, const size_t size, const knot_dname_t *apex)
 {
 	int ret = changeset_init(ch, apex);
+	(void)ret;
 	assert(ret == KNOT_EOK);
 
 	// Add SOAs
@@ -98,6 +101,7 @@ static void init_random_changeset(changeset_t *ch, const uint32_t from, const ui
 		knot_rrset_t rr;
 		init_random_rr(&rr, apex);
 		int ret = changeset_add_rrset(ch, &rr, 0);
+		(void)ret;
 		assert(ret == KNOT_EOK);
 		knot_rrset_clear(&rr, NULL);
 	}
@@ -107,6 +111,7 @@ static void init_random_changeset(changeset_t *ch, const uint32_t from, const ui
 		knot_rrset_t rr;
 		init_random_rr(&rr, apex);
 		int ret = changeset_rem_rrset(ch, &rr, 0);
+		(void)ret;
 		assert(ret == KNOT_EOK);
 		knot_rrset_clear(&rr, NULL);
 	}
@@ -220,6 +225,7 @@ static void test_store_load(const char *jfilename)
 	changeset_t ch;
 	init_random_changeset(&ch, 0, 1, 128, apex);
 	int ret = journal_store_changeset(&ch, jfilename, filesize);
+	(void)ret;
 	ok(ret == KNOT_EOK, "journal: store changeset");
 	list_t l;
 	init_list(&l);

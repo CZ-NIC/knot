@@ -142,6 +142,7 @@ int main(int argc, char *argv[])
 
 	/* Start responder. */
 	int ret = listen(responder_fd, 10);
+	(void)ret;
 	assert(ret == 0);
 	pthread_t thread;
 	pthread_create(&thread, 0, responder_thread, &responder_fd);

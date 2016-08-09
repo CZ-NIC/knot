@@ -31,6 +31,7 @@ static knot_rrset_t *create_dummy_rrset(const knot_dname_t *owner,
 	memcpy(wire, "testtest", strlen("testtest"));
 	int ret = knot_rrset_add_rdata(r, wire, strlen("testtest"), 3600, NULL);
 	assert(ret == KNOT_EOK);
+	(void)ret;
 	return r;
 }
 
@@ -44,6 +45,7 @@ static knot_rrset_t *create_dummy_rrsig(const knot_dname_t *owner,
 	wire_write_u16(wire, type);
 	int ret = knot_rrset_add_rdata(r, wire, sizeof(uint16_t), 3600, NULL);
 	assert(ret == KNOT_EOK);
+	(void)ret;
 	return r;
 }
 

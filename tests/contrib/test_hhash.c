@@ -134,8 +134,7 @@ int main(int argc, char *argv[])
 			break;
 		}
 		prev = cur;
-		int strl = strlen(cur);
-		assert(strl + 1 == len);
+		assert(strlen(cur) + 1 == len);
 		hhash_iter_next(&it);
 	}
 	ok(hhash_iter_finished(&it), "hhash: passed order index checks");
