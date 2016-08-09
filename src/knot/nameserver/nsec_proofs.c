@@ -396,17 +396,15 @@ static int put_wildcard_answer(const zone_node_t *wildcard,
  *
  * \see https://tools.ietf.org/html/rfc4035#section-3.1.3.2
  *
- * \param qname     Source QNAME.
  * \param zone      Source zone.
- * \param previous  Previous node to \a qname in the zone.
- * \param closest   Closest matching parent of \a qname.
+ * \param previous  Previous node to QNAME.
+ * \param closest   Closest matching parent of QNAME.
  * \param qdata     Query data.
  * \param resp      Response packet.
  *
  * \return KNOT_E*
  */
-static int put_nsec_nxdomain(const knot_dname_t *qname,
-                             const zone_contents_t *zone,
+static int put_nsec_nxdomain(const zone_contents_t *zone,
                              const zone_node_t *previous,
                              const zone_node_t *closest,
                              struct query_data *qdata,
@@ -507,7 +505,7 @@ static int put_nxdomain(const zone_contents_t *zone,
 	if (knot_is_nsec3_enabled(zone)) {
 		ret = put_nsec3_nxdomain(qname, zone, closest, qdata, resp);
 	} else {
-		ret = put_nsec_nxdomain(qname, zone, previous, closest, qdata, resp);
+		ret = put_nsec_nxdomain(zone, previous, closest, qdata, resp);
 	}
 
 	return ret;
@@ -524,17 +522,15 @@ static int put_nxdomain(const zone_contents_t *zone,
  * \see https://tools.ietf.org/html/rfc4035#section-3.1.3.1
  * \see https://tools.ietf.org/html/rfc4035#section-3.1.3.2 (empty non-terminal)
  *
- * \param qname     Source QNAME.
  * \param zone      Source zone.
  * \param match     Node matching QNAME.
- * \param previous  Previous node to \a qname in the zone.
+ * \param previous  Previous node to QNAME in the zone.
  * \param qdata     Query procssing data.
  * \param resp      Response packet.
  *
  * \return KNOT_E*
  */
-static int put_nsec_nodata(const knot_dname_t *qname,
-                           const zone_contents_t *zone,
+static int put_nsec_nodata(const zone_contents_t *zone,
                            const zone_node_t *match,
                            const zone_node_t *closest,
                            const zone_node_t *previous,
@@ -542,7 +538,7 @@ static int put_nsec_nodata(const knot_dname_t *qname,
                            knot_pkt_t *resp)
 {
 	if (empty_nonterminal(match)) {
-		return put_nsec_nxdomain(qname, zone, previous, closest, qdata, resp);
+		return put_nsec_nxdomain(zone, previous, closest, qdata, resp);
 	}
 
 	return put_nsec_from_node(match, qdata, resp);
@@ -608,7 +604,7 @@ static int put_nodata(const zone_node_t *node,
 	if (knot_is_nsec3_enabled(zone)) {
 		ret = put_nsec3_nodata(qname, zone, node, closest, qdata, resp);
 	} else {
-		ret = put_nsec_nodata(qname, zone, node, closest, previous, qdata, resp);
+		ret = put_nsec_nodata(zone, node, closest, previous, qdata, resp);
 	}
 
 	return ret;
