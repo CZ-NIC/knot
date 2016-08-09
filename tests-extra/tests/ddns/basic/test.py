@@ -235,8 +235,8 @@ def do_normal_tests(master, zone, dnssec=False):
     up = master.update(zone)
     up.add("ddns.", 3600, "SOA",
            "dns1.ddns. hostmaster.ddns. 2010111213 10800 3600 1209600 7200")
-    resp = master.dig("ddns.", "SOA")
     up.send("NOERROR")
+    resp = master.dig("ddns.", "SOA")
     resp.check(rcode="NOERROR",
                rdata="dns1.ddns. hostmaster.ddns. 2013111213 10800 3600 1209600 7200")
     verify(master, zone, dnssec)
