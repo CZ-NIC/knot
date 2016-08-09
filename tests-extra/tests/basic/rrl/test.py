@@ -23,7 +23,7 @@ def send_queries(server, run_time=1.0, query_time=0.05):
     start = time.time()
     while time.time() < start + run_time:
         try:
-            query = dns.message.make_query("example.com", "SOA", want_dnssec=True)
+            query = dns.message.make_query("example.com", "SOA", want_dnssec=False)
             response = dns.query.udp(query, server.addr, port=server.port, timeout=query_time)
         except dns.exception.Timeout:
             response = None
