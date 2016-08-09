@@ -200,10 +200,12 @@ static int pkt_reset_sections(knot_pkt_t *pkt)
 	return knot_pkt_begin(pkt, KNOT_ANSWER);
 }
 
-/*! \brief Clear packet payload and free allocated data. */
-static void pkt_clear_payload(knot_pkt_t *pkt)
+_public_
+void knot_pkt_clear_payload(knot_pkt_t *pkt)
 {
-	assert(pkt);
+	if (!pkt) {
+		return;
+	}
 
 	/* Keep question. */
 	pkt->parsed = 0;
@@ -328,7 +330,7 @@ int knot_pkt_init_response(knot_pkt_t *pkt, const knot_pkt_t *query)
 	knot_wire_clear_aa(pkt->wire);
 
 	/* Clear payload. */
-	pkt_clear_payload(pkt);
+	knot_pkt_clear_payload(pkt);
 	return KNOT_EOK;
 }
 
@@ -340,7 +342,7 @@ void knot_pkt_clear(knot_pkt_t *pkt)
 	}
 
 	/* Clear payload. */
-	pkt_clear_payload(pkt);
+	knot_pkt_clear_payload(pkt);
 
 	/* Reset to header size. */
 	pkt->size = KNOT_WIRE_HEADER_SIZE;
