@@ -42,69 +42,67 @@ static const char *zonechecks_error_messages[(-ZC_ERR_UNKNOWN) + 1] = {
 	"NS record missing in zone apex",
 
 	[-ZC_ERR_RRSIG_RDATA_TYPE_COVERED] =
-	"RRSIG, type covered RDATA field is wrong",
+	"RRSIG has wrong type covered RDATA field",
 	[-ZC_ERR_RRSIG_RDATA_TTL] =
-	"RRSIG, TTL RDATA field is wrong",
+	"RRSIG has wrong TTL RDATA field",
 	[-ZC_ERR_RRSIG_RDATA_EXPIRATION] =
-	"RRSIG, expired signature",
+	"RRSIG with expired signature",
 	[-ZC_ERR_RRSIG_RDATA_LABELS] =
-	"RRSIG, labels RDATA field is wrong",
+	"RRSIG has wrong labels RDATA field",
 	[-ZC_ERR_RRSIG_RDATA_DNSKEY_OWNER] =
-	"RRSIG, signer name is different than in DNSKEY",
+	"RRSIG has different signer name than in DNSKEY",
 	[-ZC_ERR_RRSIG_NO_DNSKEY] =
-	"RRSIG, missing DNSKEY for RRSIG",
+	"missing DNSKEY for RRSIG",
 	[-ZC_ERR_RRSIG_RDATA_SIGNED_WRONG] =
-	"RRSIG, key error",
+	"wrong signed RRSIG",
 	[-ZC_ERR_RRSIG_NO_RRSIG] =
-	"RRSIG, no RRSIG",
+	"misssing RRSIG",
 	[-ZC_ERR_RRSIG_SIGNED] =
-	"RRSIG, signed RRSIG",
+	"signed RRSIG",
 	[-ZC_ERR_RRSIG_OWNER] =
-	"RRSIG, owner name RDATA field is wrong",
-	[-ZC_ERR_RRSIG_CLASS] =
-	"RRSIG, class is wrong",
+	"RRSIG has wrong owner name RDATA field",
 	[-ZC_ERR_RRSIG_TTL] =
-	"RRSIG, TTL is wrong",
+	"RRSIG has wrong TTL",
 
 	[-ZC_ERR_NO_NSEC] =
-	"NSEC, missing record",
+	"missing NSEC record",
 	[-ZC_ERR_NSEC_RDATA_BITMAP] =
-	"NSEC(3), wrong bitmap",
+	"NSEC with wrong bitmap",
 	[-ZC_ERR_NSEC_RDATA_MULTIPLE] =
-	"NSEC, multiple records",
+	"multiple NSEC records",
 	[-ZC_ERR_NSEC_RDATA_CHAIN] =
-	"NSEC, chain is not coherent",
+	"NSEC chain is not coherent",
 	[-ZC_ERR_NSEC_RDATA_CHAIN_NOT_CYCLIC] =
-	"NSEC, chain is not cyclic",
+	"NSEC chain is not cyclic",
 
 	[-ZC_ERR_NSEC3_NOT_FOUND] =
-	"NSEC3, failed to find NSEC3 record in the zone",
+	"failed to find NSEC3 record in the zone",
 	[-ZC_ERR_NSEC3_INSECURE_DELEGATION_OPT] =
-	"NSEC3, insecure delegation is not part of the opt-out span",
+	"insecure delegation is not part of the NSEC3 opt-out span",
 	[-ZC_ERR_NSEC3_RDATA_TTL] =
-	"NSEC3, original TTL RDATA field is wrong",
+	"NSEC3 has worng original TTL RDATA field",
 	[-ZC_ERR_NSEC3_RDATA_CHAIN] =
-	"NSEC3, chain is not coherent",
+	"NSEC3 chain is not coherent",
 	[-ZC_ERR_NSEC3_EXTRA_RECORD] =
-	"NSEC3, node contains extra record, unsupported",
+	"NSEC3 record with other record type",
 
 	[-ZC_ERR_CNAME_EXTRA_RECORDS] =
-	"CNAME, node contains other records",
+	"CNAME with other records",
 	[-ZC_ERR_DNAME_CHILDREN] =
-	"DNAME, node has children",
+	"DNAME record has children",
 	[-ZC_ERR_CNAME_EXTRA_RECORDS_DNSSEC] =
-	"CNAME, node contains other records than RRSIG and NSEC/NSEC3",
+	"CNAME with other records than RRSIG and NSEC/NSEC3",
 	[-ZC_ERR_CNAME_MULTIPLE] =
-	"CNAME, multiple records",
+	"multiple CNAME records",
 	[-ZC_ERR_DNAME_MULTIPLE] =
-	"DNAME, multiple records",
+	"multiple DNAME records",
 	[-ZC_ERR_CNAME_WILDCARD_SELF] =
-	"CNAME, wildcard pointing to itself",
+	"CNAME with wildcard pointing to itself",
 	[-ZC_ERR_DNAME_WILDCARD_SELF] =
-	"DNAME, wildcard pointing to itself",
+	"DNAME with wildcard pointing to itself",
 
 	[-ZC_ERR_GLUE_RECORD] =
-	"GLUE, record with glue address missing",
+	"missing glue record for delegation",
 };
 
 
@@ -445,7 +443,7 @@ static int check_delegation(const zone_node_t *node, semchecks_data_t *data)
 	// check glue record for delegation
 	for (int i = 0; ret == KNOT_EOK && i < ns_rrs->rr_count; ++i) {
 		const knot_dname_t *ns_dname = knot_ns_name(ns_rrs, i);
-		if (!knot_dname_is_sub(ns_dname, data->zone->apex->owner)) {
+		if (!knot_dname_is_sub(ns_dname, node->owner)) {
 			continue;
 		}
 
@@ -464,7 +462,7 @@ static int check_delegation(const zone_node_t *node, semchecks_data_t *data)
 		if (!node_rrtype_exists(glue_node, KNOT_RRTYPE_A) &&
 		    !node_rrtype_exists(glue_node, KNOT_RRTYPE_AAAA)) {
 			ret = data->handler->cb(data->handler, data->zone,
-			                        node, ZC_ERR_GLUE_RECORD, NULL /* for node 'ns.example.com' */);
+			                        node, ZC_ERR_GLUE_RECORD, NULL);
 		}
 	}
 	return ret;
@@ -600,6 +598,10 @@ static int check_nsec(const zone_node_t *node, semchecks_data_t *data)
 {
 	assert(node);
 	if (node->flags & NODE_FLAGS_NONAUTH) {
+		return KNOT_EOK;
+	}
+
+	if (node->rrset_count == 0) { // empty nonterminal
 		return KNOT_EOK;
 	}
 
