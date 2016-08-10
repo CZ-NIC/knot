@@ -23,6 +23,7 @@
 #include "utils/common/tls.h"
 #include "utils/common/cert.h"
 #include "utils/common/msg.h"
+#include "contrib/base64.h"
 #include "libknot/errcode.h"
 
 void tls_params_init(tls_params_t *params)
@@ -99,11 +100,29 @@ void tls_params_clean(tls_params_t *params)
 	memset(params, 0, sizeof(*params));
 }
 
-static int compare_pin(gnutls_session_t session, uint8_t *pin, size_t pin_len)
+static bool check_pin(const uint8_t *cert_pin, size_t cert_pin_len, const list_t *pins)
+{
+	if (EMPTY_LIST(*pins)) {
+		return false;
+	}
+
+	ptrnode_t *n = NULL;
+	WALK_LIST(n, *pins) {
+		uint8_t *pin = (uint8_t *)n->d;
+		if (pin[0] == cert_pin_len &&
+		    memcmp(cert_pin, &pin[1], cert_pin_len) == 0) {
+			return true;
+		}
+	}
+
+	return false;
+}
+
+static int check_certificates(gnutls_session_t session, const list_t *pins)
 {
 	if (gnutls_certificate_type_get(session) != GNUTLS_CRT_X509) {
 		DBG("TLS, invalid certificate type\n");
-		return -1;
+		return GNUTLS_E_CERTIFICATE_ERROR;
 	}
 
 	unsigned cert_list_size;
@@ -111,37 +130,68 @@ static int compare_pin(gnutls_session_t session, uint8_t *pin, size_t pin_len)
 		gnutls_certificate_get_peers(session, &cert_list_size);
 	if (cert_list == NULL || cert_list_size == 0) {
 		DBG("TLS, empty certificate list\n");
-		return -1;
+		return GNUTLS_E_CERTIFICATE_ERROR;
 	}
 
+	size_t matches = 0;
+
+	DBG("TLS, received certificate hierarchy:\n");
 	for (int i = 0; i < cert_list_size; i++) {
 		gnutls_x509_crt_t cert;
 		int ret = gnutls_x509_crt_init(&cert);
 		if (ret != GNUTLS_E_SUCCESS) {
-			return -1;
+			return ret;
 		}
 
 		ret = gnutls_x509_crt_import(cert, &cert_list[i], GNUTLS_X509_FMT_DER);
 		if (ret != GNUTLS_E_SUCCESS) {
 			gnutls_x509_crt_deinit(cert);
-			return -1;
+			return ret;
 		}
+
+		gnutls_datum_t cert_name = { 0 };
+		ret = gnutls_x509_crt_get_dn2(cert, &cert_name);
+		if (ret != GNUTLS_E_SUCCESS) {
+			gnutls_x509_crt_deinit(cert);
+			return ret;
+		}
+		DBG(" #%i, %s\n", i + 1, cert_name.data);
+		gnutls_free(cert_name.data);
 
 		uint8_t cert_pin[CERT_PIN_LEN] = { 0 };
 		ret = cert_get_pin(cert, cert_pin, sizeof(cert_pin));
 		if (ret != KNOT_EOK) {
 			gnutls_x509_crt_deinit(cert);
-			return -1;
+			return GNUTLS_E_CERTIFICATE_ERROR;
 		}
-		gnutls_x509_crt_deinit(cert);
 
-		if (pin_len == sizeof(cert_pin) &&
-		    memcmp(cert_pin, pin, sizeof(cert_pin)) == 0) {
-			return 0; // PIN matches.
+		// Check if correspond to a specified PIN.
+		bool match = check_pin(cert_pin, sizeof(cert_pin), pins);
+		if (match) {
+			matches++;
 		}
+
+		uint8_t *txt_pin;
+		ret = base64_encode_alloc(cert_pin, sizeof(cert_pin), &txt_pin);
+		if (ret < 0) {
+			gnutls_x509_crt_deinit(cert);
+			return ret;
+		}
+		DBG("     SHA-256 PIN: %.*s%s\n", ret, txt_pin, match ? ", MATCH" : "");
+		free(txt_pin);
+
+		gnutls_x509_crt_deinit(cert);
 	}
 
-	return -1;
+	if (matches > 0) {
+		return GNUTLS_E_SUCCESS;
+	} else if (EMPTY_LIST(*pins)) {
+		DBG("TLS, skipping certificate PIN check\n");
+		return GNUTLS_E_SUCCESS;
+	} else {
+		DBG("TLS, no certificate PIN match\n");
+		return GNUTLS_E_CERTIFICATE_ERROR;
+	}
 }
 
 static bool do_verification(const tls_params_t *params)
@@ -154,22 +204,10 @@ static int verify_certificate(gnutls_session_t session)
 {
 	tls_ctx_t *ctx = gnutls_session_get_ptr(session);
 
-	// Check for pinned certificates.
-	if (!EMPTY_LIST(ctx->params->pins)) {
-		bool match = false;
-		ptrnode_t *n = NULL;
-		WALK_LIST(n, ctx->params->pins) {
-			uint8_t *pin = (uint8_t *)n->d;
-			if (compare_pin(session, &pin[1], pin[0]) == 0) {
-				DBG("TLS, certificate PIN match\n");
-				match = true;
-				break;
-			}
-		}
-		if (!match) {
-			DBG("TLS, no certificate PIN match\n");
-			return GNUTLS_E_CERTIFICATE_ERROR;
-		}
+	// Check for pinned certificates and print certificate hierarchy.
+	int ret = check_certificates(session, &ctx->params->pins);
+	if (ret != GNUTLS_E_SUCCESS) {
+		return ret;
 	}
 
 	if (!do_verification(ctx->params)) {
@@ -187,7 +225,7 @@ static int verify_certificate(gnutls_session_t session)
 	size_t data_count = (ctx->params->hostname != NULL) ? 2 : 1;
 
 	unsigned int status;
-	int ret = gnutls_certificate_verify_peers(session, data, data_count, &status);
+	ret = gnutls_certificate_verify_peers(session, data, data_count, &status);
 	if (ret != GNUTLS_E_SUCCESS) {
 		WARN("TLS, failed to verify peer certificate\n");
 		return GNUTLS_E_CERTIFICATE_ERROR;
