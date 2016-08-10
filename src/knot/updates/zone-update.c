@@ -41,8 +41,7 @@ static int init_incremental(zone_update_t *update, zone_t *zone)
 		return ret;
 	}
 
-	//! \todo is there a better way?
-	update->a_ctx.apex = update->new_cont->apex;
+	apply_init_ctx(&update->a_ctx, update->new_cont, 0);
 
 	/* Copy base SOA RR. */
 	update->change.soa_from =
@@ -63,6 +62,8 @@ static int init_full(zone_update_t *update, zone_t *zone)
 		return KNOT_ENOMEM;
 	}
 
+	apply_init_ctx(&update->a_ctx, update->new_cont, 0);
+
 	return KNOT_EOK;
 }
 
@@ -76,8 +77,6 @@ int zone_update_init(zone_update_t *update, zone_t *zone, zone_update_flags_t fl
 
 	memset(update, 0, sizeof(*update));
 	update->zone = zone;
-
-	apply_init_ctx(&update->a_ctx, 0);
 
 	mm_ctx_mempool(&update->mm, MM_DEFAULT_BLKSIZE);
 	update->flags = flags;
@@ -184,14 +183,14 @@ int zone_update_add(zone_update_t *update, const knot_rrset_t *rrset)
 
 		if (rrset->type == KNOT_RRTYPE_SOA) {
 			/* replace previous SOA */
-			ret = apply_replace_soa(&update->a_ctx, update->new_cont, &update->change);
+			ret = apply_replace_soa(&update->a_ctx, &update->change);
 			if (ret != KNOT_EOK) {
 				changeset_remove_addition(&update->change, rrset);
 			}
 			return ret;
 		}
 
-		ret = apply_add_rr(&update->a_ctx, update->new_cont, rrset);
+		ret = apply_add_rr(&update->a_ctx, rrset);
 		if (ret != KNOT_EOK) {
 			changeset_remove_addition(&update->change, rrset);
 			return ret;
@@ -223,7 +222,7 @@ int zone_update_remove(zone_update_t *update, const knot_rrset_t *rrset)
 			return KNOT_EOK;
 		}
 
-		ret = apply_remove_rr(&update->a_ctx, update->new_cont, rrset);
+		ret = apply_remove_rr(&update->a_ctx, rrset);
 		if (ret != KNOT_EOK) {
 			changeset_remove_removal(&update->change, rrset);
 			return ret;
@@ -262,7 +261,7 @@ int zone_update_remove_rrset(zone_update_t *update, knot_dname_t *owner, uint16_
 				return KNOT_EOK;
 			}
 
-			ret = apply_remove_rr(&update->a_ctx, update->new_cont, &rrset);
+			ret = apply_remove_rr(&update->a_ctx, &rrset);
 			if (ret != KNOT_EOK) {
 				return ret;
 			}
@@ -309,7 +308,7 @@ int zone_update_remove_node(zone_update_t *update, const knot_dname_t *owner)
 					return KNOT_EOK;
 				}
 
-				ret = apply_remove_rr(&update->a_ctx, update->new_cont, &rrset);
+				ret = apply_remove_rr(&update->a_ctx, &rrset);
 				if (ret != KNOT_EOK) {
 					return ret;
 				}
@@ -397,7 +396,7 @@ static int sign_update(zone_update_t *update,
 	}
 
 	/* Apply DNSSEC changeset */
-	ret = apply_changeset_directly(&update->a_ctx, new_contents, &sec_ch);
+	ret = apply_changeset_directly(&update->a_ctx, &sec_ch);
 	if (ret != KNOT_EOK) {
 		changeset_clear(&sec_ch);
 		return ret;
@@ -472,7 +471,7 @@ static int commit_incremental(conf_t *conf, zone_update_t *update, zone_contents
 			return ret;
 		}
 
-		ret = apply_replace_soa(&update->a_ctx, new_contents, &update->change);
+		ret = apply_replace_soa(&update->a_ctx, &update->change);
 		if (ret != KNOT_EOK) {
 			update_rollback(&update->a_ctx);
 			update_free_zone(&new_contents);
@@ -486,7 +485,14 @@ static int commit_incremental(conf_t *conf, zone_update_t *update, zone_contents
 
 	/* Sign the update. */
 	if (dnssec_enable) {
-		zone_contents_adjust_pointers(new_contents);
+		ret = apply_prepare_to_sign(&update->a_ctx);
+		if (ret != KNOT_EOK) {
+			update_rollback(&update->a_ctx);
+			update_free_zone(&new_contents);
+			changeset_clear(&update->change);
+			return ret;
+		}
+
 		ret = sign_update(update, new_contents);
 		if (ret != KNOT_EOK) {
 			update_rollback(&update->a_ctx);
@@ -495,8 +501,13 @@ static int commit_incremental(conf_t *conf, zone_update_t *update, zone_contents
 			return ret;
 		}
 	} else {
-		//! \todo refactor apply_* to make this shinier
-		zone_contents_adjust_full(new_contents);
+		ret = apply_finalize(&update->a_ctx);
+		if (ret != KNOT_EOK) {
+			update_rollback(&update->a_ctx);
+			update_free_zone(&new_contents);
+			changeset_clear(&update->change);
+			return ret;
+		}
 	}
 
 	/* Write changes to journal if all went well. (DNSSEC merged) */
@@ -609,15 +620,7 @@ static int iter_init_tree_iters(zone_update_iter_t *it, zone_update_t *update,
 	zone_tree_t *tree;
 
 	/* Set zone iterator. */
-	zone_contents_t *_contents = NULL;
-	if (update->flags & UPDATE_FULL) {
-		_contents = update->new_cont;
-	} else if (update->flags & UPDATE_INCREMENTAL) {
-		//_contents = update->zone->contents;
-		_contents = update->new_cont;
-	} else {
-		return KNOT_EINVAL;
-	}
+	zone_contents_t *_contents = update->new_cont;
 
 	/* Begin iteration. We can safely assume _contents is a valid pointer. */
 	tree = nsec3 ? _contents->nsec3_nodes : _contents->nodes;
@@ -629,7 +632,6 @@ static int iter_init_tree_iters(zone_update_iter_t *it, zone_update_t *update,
 
 	return KNOT_EOK;
 }
-
 
 static int iter_get_synth_node(zone_update_iter_t *it)
 {
@@ -644,7 +646,6 @@ static int iter_get_synth_node(zone_update_iter_t *it)
 	if (it->update->flags & UPDATE_FULL) {
 		it->base_node = n;
 	} else {
-		//! \todo we can probably use just zone_contents_find_node directly
 		it->base_node = zone_update_get_node(it->update, n->owner);
 		if (it->base_node == NULL) {
 			return KNOT_ENOMEM;
@@ -669,7 +670,6 @@ static int iter_init(zone_update_iter_t *it, zone_update_t *update, const bool n
 		it->base_node = (zone_node_t *)(*hattrie_iter_val(it->base_it));
 		assert(it->base_node);
 		if (it->update->flags & UPDATE_INCREMENTAL) {
-			//! \todo we can probably use just zone_contents_find_node directly
 			it->base_node = zone_update_get_node(it->update, it->base_node->owner);
 			if (it->base_node == NULL) {
 				return KNOT_ENOMEM;
@@ -677,7 +677,6 @@ static int iter_init(zone_update_iter_t *it, zone_update_t *update, const bool n
 		}
 	}
 
-	//! get rid of this, use base_node directly, and better yet rename it to something more fitting
 	select_next_node(it);
 	return KNOT_EOK;
 }
@@ -727,7 +726,6 @@ int zone_update_iter_next(zone_update_iter_t *it)
 		}
 	}
 
-	//! get rid of this, use base_node directly, and better yet rename it to something more fitting
 	select_next_node(it);
 	return KNOT_EOK;
 }

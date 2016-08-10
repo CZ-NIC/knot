@@ -145,10 +145,170 @@ static bool can_remove(const zone_node_t *node, const knot_rrset_t *rr)
 	return false;
 }
 
-/*! \brief Removes single RR from zone contents. */
-int apply_remove_rr(apply_ctx_t *ctx, zone_contents_t *contents,
-                     const knot_rrset_t *rr)
+/*! \brief Removes all RRs from changeset from zone contents. */
+static int apply_remove(apply_ctx_t *ctx, changeset_t *chset)
 {
+	changeset_iter_t itt;
+	changeset_iter_rem(&itt, chset, false);
+
+	knot_rrset_t rr = changeset_iter_next(&itt);
+	while (!knot_rrset_empty(&rr)) {
+		int ret = apply_remove_rr(ctx, &rr);
+		if (ret != KNOT_EOK) {
+			changeset_iter_clear(&itt);
+			return ret;
+		}
+
+		rr = changeset_iter_next(&itt);
+	}
+	changeset_iter_clear(&itt);
+
+	return KNOT_EOK;
+}
+
+/*! \brief Adds all RRs from changeset into zone contents. */
+static int apply_add(apply_ctx_t *ctx, changeset_t *chset)
+{
+	changeset_iter_t itt;
+	changeset_iter_add(&itt, chset, false);
+
+	knot_rrset_t rr = changeset_iter_next(&itt);
+	while(!knot_rrset_empty(&rr)) {
+		int ret = apply_add_rr(ctx, &rr);
+		if (ret != KNOT_EOK) {
+			changeset_iter_clear(&itt);
+			return ret;
+		}
+		rr = changeset_iter_next(&itt);
+	}
+	changeset_iter_clear(&itt);
+
+	return KNOT_EOK;
+}
+
+/*! \brief Apply single change to zone contents structure. */
+static int apply_single(apply_ctx_t *ctx, changeset_t *chset)
+{
+	/*
+	 * Applies one changeset to the zone. Checks if the changeset may be
+	 * applied (i.e. the origin SOA (soa_from) has the same serial as
+	 * SOA in the zone apex.
+	 */
+
+	zone_contents_t *contents = ctx->contents;
+
+	// check if serial matches
+	const knot_rdataset_t *soa = node_rdataset(contents->apex, KNOT_RRTYPE_SOA);
+	if (soa == NULL || knot_soa_serial(soa) != knot_soa_serial(&chset->soa_from->rrs)) {
+		return KNOT_EINVAL;
+	}
+
+	int ret = apply_remove(ctx, chset);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	ret = apply_add(ctx, chset);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	return apply_replace_soa(ctx, chset);
+}
+
+/* ------------------------------- API -------------------------------------- */
+
+void apply_init_ctx(apply_ctx_t *ctx, zone_contents_t *contents, uint32_t flags)
+{
+	assert(ctx);
+
+	ctx->contents = contents;
+
+	init_list(&ctx->old_data);
+	init_list(&ctx->new_data);
+
+	ctx->flags = flags;
+}
+
+int apply_prepare_zone_copy(zone_contents_t *old_contents,
+                             zone_contents_t **new_contents)
+{
+	if (old_contents == NULL || new_contents == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	/*
+	 * Create a shallow copy of the zone, so that the structures may be
+	 * updated.
+	 *
+	 * This will create new zone contents structures (normal nodes' tree,
+	 * NSEC3 tree), and copy all nodes.
+	 * The data in the nodes (RRSets) remain the same though.
+	 */
+	zone_contents_t *contents_copy = NULL;
+	int ret = zone_contents_shallow_copy(old_contents, &contents_copy);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	*new_contents = contents_copy;
+
+	return KNOT_EOK;
+}
+
+int apply_add_rr(apply_ctx_t *ctx, const knot_rrset_t *rr)
+{
+	zone_contents_t *contents = ctx->contents;
+
+	// Get or create node with this owner
+	zone_node_t *node = zone_contents_get_node_for_rr(contents, rr);
+	if (node == NULL) {
+		return KNOT_ENOMEM;
+	}
+
+	knot_rrset_t changed_rrset = node_rrset(node, rr->type);
+	if (!knot_rrset_empty(&changed_rrset)) {
+		// Modifying existing RRSet.
+		knot_rdata_t *old_data = changed_rrset.rrs.data;
+		int ret = replace_rdataset_with_copy(node, rr->type);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+
+		// Store old RRS for cleanup.
+		ret = add_old_data(ctx, old_data);
+		if (ret != KNOT_EOK) {
+			clear_new_rrs(node, rr->type);
+			return ret;
+		}
+	}
+
+	// Insert new RR to RRSet, data will be copied.
+	int ret = node_add_rrset(node, rr, NULL);
+	if (ret == KNOT_EOK || ret == KNOT_ETTL) {
+		// RR added, store for possible rollback.
+		knot_rdataset_t *rrs = node_rdataset(node, rr->type);
+		int data_ret = add_new_data(ctx, rrs->data);
+		if (data_ret != KNOT_EOK) {
+			knot_rdataset_clear(rrs, NULL);
+			return data_ret;
+		}
+
+		if (ret == KNOT_ETTL) {
+			log_zone_notice(contents->apex->owner,
+			                "rrset (type %u) TTL mismatch, updated to %u",
+			                rr->type, knot_rrset_ttl(rr));
+			return KNOT_EOK;
+		}
+	}
+
+	return ret;
+}
+
+int apply_remove_rr(apply_ctx_t *ctx, const knot_rrset_t *rr)
+{
+	zone_contents_t *contents = ctx->contents;
+
 	// Find node for this owner
 	zone_node_t *node = zone_contents_find_node_for_rr(contents, rr);
 	if (!can_remove(node, rr)) {
@@ -196,7 +356,7 @@ int apply_remove_rr(apply_ctx_t *ctx, zone_contents_t *contents,
 		// RRSet is empty now, remove it from node, all data freed.
 		node_remove_rdataset(node, rr->type);
 		// If node is empty now, delete it from zone tree.
-		if (node->rrset_count == 0 && node != ctx->apex) {
+		if (node->rrset_count == 0 && node != contents->apex) {
 			zone_tree_delete_empty_node(tree, node);
 		}
 	}
@@ -204,101 +364,12 @@ int apply_remove_rr(apply_ctx_t *ctx, zone_contents_t *contents,
 	return KNOT_EOK;
 }
 
-/*! \brief Removes all RRs from changeset from zone contents. */
-static int apply_remove(apply_ctx_t *ctx, zone_contents_t *contents, changeset_t *chset)
+int apply_replace_soa(apply_ctx_t *ctx, changeset_t *chset)
 {
-	changeset_iter_t itt;
-	changeset_iter_rem(&itt, chset, false);
+	zone_contents_t *contents = ctx->contents;
 
-	knot_rrset_t rr = changeset_iter_next(&itt);
-	while (!knot_rrset_empty(&rr)) {
-		int ret = apply_remove_rr(ctx, contents, &rr);
-		if (ret != KNOT_EOK) {
-			changeset_iter_clear(&itt);
-			return ret;
-		}
-
-		rr = changeset_iter_next(&itt);
-	}
-	changeset_iter_clear(&itt);
-
-	return KNOT_EOK;
-}
-
-/*! \brief Adds a single RR into zone contents. */
-int apply_add_rr(apply_ctx_t *ctx, zone_contents_t *zone,
-                 const knot_rrset_t *rr)
-{
-	// Get or create node with this owner
-	zone_node_t *node = zone_contents_get_node_for_rr(zone, rr);
-	if (node == NULL) {
-		return KNOT_ENOMEM;
-	}
-
-	knot_rrset_t changed_rrset = node_rrset(node, rr->type);
-	if (!knot_rrset_empty(&changed_rrset)) {
-		// Modifying existing RRSet.
-		knot_rdata_t *old_data = changed_rrset.rrs.data;
-		int ret = replace_rdataset_with_copy(node, rr->type);
-		if (ret != KNOT_EOK) {
-			return ret;
-		}
-
-		// Store old RRS for cleanup.
-		ret = add_old_data(ctx, old_data);
-		if (ret != KNOT_EOK) {
-			clear_new_rrs(node, rr->type);
-			return ret;
-		}
-	}
-
-	// Insert new RR to RRSet, data will be copied.
-	int ret = node_add_rrset(node, rr, NULL);
-	if (ret == KNOT_EOK || ret == KNOT_ETTL) {
-		// RR added, store for possible rollback.
-		knot_rdataset_t *rrs = node_rdataset(node, rr->type);
-		int data_ret = add_new_data(ctx, rrs->data);
-		if (data_ret != KNOT_EOK) {
-			knot_rdataset_clear(rrs, NULL);
-			return data_ret;
-		}
-
-		if (ret == KNOT_ETTL) {
-			log_zone_notice(zone->apex->owner,
-			                "rrset (type %u) TTL mismatch, updated to %u",
-			                rr->type, knot_rrset_ttl(rr));
-			return KNOT_EOK;
-		}
-	}
-
-	return ret;
-}
-
-/*! \brief Adds all RRs from changeset into zone contents. */
-static int apply_add(apply_ctx_t *ctx, zone_contents_t *contents, changeset_t *chset)
-{
-	changeset_iter_t itt;
-	changeset_iter_add(&itt, chset, false);
-
-	knot_rrset_t rr = changeset_iter_next(&itt);
-	while(!knot_rrset_empty(&rr)) {
-		int ret = apply_add_rr(ctx, contents, &rr);
-		if (ret != KNOT_EOK) {
-			changeset_iter_clear(&itt);
-			return ret;
-		}
-		rr = changeset_iter_next(&itt);
-	}
-	changeset_iter_clear(&itt);
-
-	return KNOT_EOK;
-}
-
-/*! \brief Replace old SOA with a new one. */
-int apply_replace_soa(apply_ctx_t *ctx, zone_contents_t *contents, changeset_t *chset)
-{
 	assert(chset->soa_from && chset->soa_to);
-	int ret = apply_remove_rr(ctx, contents, chset->soa_from);
+	int ret = apply_remove_rr(ctx, chset->soa_from);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
@@ -308,78 +379,12 @@ int apply_replace_soa(apply_ctx_t *ctx, zone_contents_t *contents, changeset_t *
 		return KNOT_EINVAL;
 	}
 
-	return apply_add_rr(ctx, contents, chset->soa_to);
+	return apply_add_rr(ctx, chset->soa_to);
 }
 
-/*! \brief Apply single change to zone contents structure. */
-static int apply_single(apply_ctx_t *ctx, zone_contents_t *contents, changeset_t *chset)
+int apply_prepare_to_sign(apply_ctx_t *ctx)
 {
-	/*
-	 * Applies one changeset to the zone. Checks if the changeset may be
-	 * applied (i.e. the origin SOA (soa_from) has the same serial as
-	 * SOA in the zone apex.
-	 */
-
-	// check if serial matches
-	const knot_rdataset_t *soa = node_rdataset(contents->apex, KNOT_RRTYPE_SOA);
-	if (soa == NULL || knot_soa_serial(soa) != knot_soa_serial(&chset->soa_from->rrs)) {
-		return KNOT_EINVAL;
-	}
-
-	ctx->apex = contents->apex;
-
-	int ret = apply_remove(ctx, contents, chset);
-	if (ret != KNOT_EOK) {
-		return ret;
-	}
-
-	ret = apply_add(ctx, contents, chset);
-	if (ret != KNOT_EOK) {
-		return ret;
-	}
-
-	return apply_replace_soa(ctx, contents, chset);
-}
-
-/* --------------------- Zone copy and finalization ------------------------- */
-
-/*! \brief Creates a shallow zone contents copy. */
-int apply_prepare_zone_copy(zone_contents_t *old_contents,
-                             zone_contents_t **new_contents)
-{
-	if (old_contents == NULL || new_contents == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	/*
-	 * Create a shallow copy of the zone, so that the structures may be
-	 * updated.
-	 *
-	 * This will create new zone contents structures (normal nodes' tree,
-	 * NSEC3 tree), and copy all nodes.
-	 * The data in the nodes (RRSets) remain the same though.
-	 */
-	zone_contents_t *contents_copy = NULL;
-	int ret = zone_contents_shallow_copy(old_contents, &contents_copy);
-	if (ret != KNOT_EOK) {
-		return ret;
-	}
-
-	*new_contents = contents_copy;
-
-	return KNOT_EOK;
-}
-
-/* ------------------------------- API -------------------------------------- */
-
-void apply_init_ctx(apply_ctx_t *ctx, uint32_t flags)
-{
-	assert(ctx);
-
-	init_list(&ctx->old_data);
-	init_list(&ctx->new_data);
-
-	ctx->flags = flags;
+	return zone_contents_adjust_pointers(ctx->contents);
 }
 
 int apply_changesets(apply_ctx_t *ctx, zone_t *zone, list_t *chsets, zone_contents_t **new_contents)
@@ -399,15 +404,14 @@ int apply_changesets(apply_ctx_t *ctx, zone_t *zone, list_t *chsets, zone_conten
 		return ret;
 	}
 
-	/*
-	 * Apply the changesets.
-	 */
+	ctx->contents = contents_copy;
+
 	changeset_t *set = NULL;
 	WALK_LIST(set, *chsets) {
-		ret = apply_single(ctx, contents_copy, set);
+		ret = apply_single(ctx, set);
 		if (ret != KNOT_EOK) {
 			update_rollback(ctx);
-			update_free_zone(&contents_copy);
+			update_free_zone(&ctx->contents);
 			return ret;
 		}
 	}
@@ -417,7 +421,7 @@ int apply_changesets(apply_ctx_t *ctx, zone_t *zone, list_t *chsets, zone_conten
 	ret = zone_contents_adjust_full(contents_copy);
 	if (ret != KNOT_EOK) {
 		update_rollback(ctx);
-		update_free_zone(&contents_copy);
+		update_free_zone(&ctx->contents);
 		return ret;
 	}
 
@@ -443,17 +447,19 @@ int apply_changeset(apply_ctx_t *ctx, zone_t *zone, changeset_t *change, zone_co
 		return ret;
 	}
 
-	ret = apply_single(ctx, contents_copy, change);
+	ctx->contents = contents_copy;
+
+	ret = apply_single(ctx, change);
 	if (ret != KNOT_EOK) {
 		update_rollback(ctx);
-		update_free_zone(&contents_copy);
+		update_free_zone(&ctx->contents);
 		return ret;
 	}
 
 	ret = zone_contents_adjust_full(contents_copy);
 	if (ret != KNOT_EOK) {
 		update_rollback(ctx);
-		update_free_zone(&contents_copy);
+		update_free_zone(&ctx->contents);
 		return ret;
 	}
 
@@ -462,48 +468,53 @@ int apply_changeset(apply_ctx_t *ctx, zone_t *zone, changeset_t *change, zone_co
 	return KNOT_EOK;
 }
 
-int apply_changesets_directly(apply_ctx_t *ctx, zone_contents_t *contents, list_t *chsets)
+int apply_changesets_directly(apply_ctx_t *ctx, list_t *chsets)
 {
-	if (ctx == NULL || contents == NULL || chsets == NULL) {
+	if (ctx == NULL || ctx->contents == NULL || chsets == NULL) {
 		return KNOT_EINVAL;
 	}
 
 	changeset_t *set = NULL;
 	WALK_LIST(set, *chsets) {
-		int ret = apply_single(ctx, contents, set);
+		int ret = apply_single(ctx, set);
 		if (ret != KNOT_EOK) {
-			update_cleanup(ctx);
+			update_rollback(ctx);
 			return ret;
 		}
 	}
 
-	int ret = zone_contents_adjust_full(contents);
+	int ret = zone_contents_adjust_full(ctx->contents);
 	if (ret != KNOT_EOK) {
-		update_cleanup(ctx);
+		update_rollback(ctx);
 	}
 
 	return ret;
 }
 
-int apply_changeset_directly(apply_ctx_t *ctx, zone_contents_t *contents, changeset_t *ch)
+int apply_changeset_directly(apply_ctx_t *ctx, changeset_t *ch)
 {
-	if (ctx == NULL || contents == NULL || ch == NULL) {
+	if (ctx == NULL || ctx->contents == NULL || ch == NULL) {
 		return KNOT_EINVAL;
 	}
 
-	int ret = apply_single(ctx, contents, ch);
+	int ret = apply_single(ctx, ch);
 	if (ret != KNOT_EOK) {
-		update_cleanup(ctx);
+		update_rollback(ctx);
 		return ret;
 	}
 
-	ret = zone_contents_adjust_full(contents);
+	zone_contents_adjust_full(ctx->contents);
 	if (ret != KNOT_EOK) {
-		update_cleanup(ctx);
+		update_rollback(ctx);
 		return ret;
 	}
 
 	return KNOT_EOK;
+}
+
+int apply_finalize(apply_ctx_t *ctx)
+{
+	return zone_contents_adjust_full(ctx->contents);
 }
 
 void update_cleanup(apply_ctx_t *ctx)

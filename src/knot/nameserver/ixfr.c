@@ -372,8 +372,8 @@ static int ixfrin_finalize(struct answer_data *adata)
 	struct ixfr_proc *ixfr = adata->ext;
 	assert(ixfr->state == IXFR_DONE);
 
-	apply_ctx_t a_ctx = { { 0 } };
-	apply_init_ctx(&a_ctx, APPLY_STRICT);
+	apply_ctx_t a_ctx = { 0 };
+	apply_init_ctx(&a_ctx, NULL, APPLY_STRICT);
 
 	zone_contents_t *new_contents;
 	int ret = apply_changesets(&a_ctx, ixfr->zone, &ixfr->changesets, &new_contents);
