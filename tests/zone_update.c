@@ -232,7 +232,7 @@ void test_incremental(zone_t *zone, zs_scanner_t *sc)
 	/* Node Removal */
 	ret = zone_update_remove_node(&update, rem_node_name);
 	synth_node = zone_update_get_node(&update, rem_node_name);
-	ok(ret == KNOT_EOK && !synth_node,// && node_empty(synth_node),
+	ok(ret == KNOT_EOK && !synth_node,
 	   "incremental zone update: node removal");
 	knot_dname_free(&rem_node_name, NULL);
 

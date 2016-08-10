@@ -602,18 +602,6 @@ int zone_update_commit(conf_t *conf, zone_update_t *update)
 	return KNOT_EOK;
 }
 
-static void select_next_node(zone_update_iter_t *it)
-{
-	if (it->base_node != NULL) {
-		/* Return the original node. */
-		it->next_node = it->base_node;
-		it->base_node = NULL;
-	} else {
-		/* Iteration done. */
-		it->next_node = NULL;
-	}
-}
-
 static int iter_init_tree_iters(zone_update_iter_t *it, zone_update_t *update,
                                 bool nsec3)
 {
@@ -625,32 +613,27 @@ static int iter_init_tree_iters(zone_update_iter_t *it, zone_update_t *update,
 	/* Begin iteration. We can safely assume _contents is a valid pointer. */
 	tree = nsec3 ? _contents->nsec3_nodes : _contents->nodes;
 	hattrie_build_index(tree);
-	it->base_it = hattrie_iter_begin(nsec3 ? _contents->nsec3_nodes : _contents->nodes, true);
-	if (it->base_it == NULL) {
+	it->tree_it = hattrie_iter_begin(nsec3 ? _contents->nsec3_nodes : _contents->nodes, true);
+	if (it->tree_it == NULL) {
 		return KNOT_ENOMEM;
 	}
+
+	it->cur_node = (zone_node_t *)(*hattrie_iter_val(it->tree_it));
 
 	return KNOT_EOK;
 }
 
-static int iter_get_synth_node(zone_update_iter_t *it)
+static int iter_get_next_node(zone_update_iter_t *it)
 {
-	hattrie_iter_next(it->base_it);
-	if (hattrie_iter_finished(it->base_it)) {
-		hattrie_iter_free(it->base_it);
-		it->base_it = NULL;
+	hattrie_iter_next(it->tree_it);
+	if (hattrie_iter_finished(it->tree_it)) {
+		hattrie_iter_free(it->tree_it);
+		it->tree_it = NULL;
+		it->cur_node = NULL;
 		return KNOT_ENOENT;
 	}
 
-	const zone_node_t *n = (zone_node_t *)(*hattrie_iter_val(it->base_it));
-	if (it->update->flags & UPDATE_FULL) {
-		it->base_node = n;
-	} else {
-		it->base_node = zone_update_get_node(it->update, n->owner);
-		if (it->base_node == NULL) {
-			return KNOT_ENOMEM;
-		}
-	}
+	it->cur_node = (zone_node_t *)(*hattrie_iter_val(it->tree_it));
 
 	return KNOT_EOK;
 }
@@ -666,18 +649,8 @@ static int iter_init(zone_update_iter_t *it, zone_update_t *update, const bool n
 		return ret;
 	}
 
-	if (it->base_it != NULL) {
-		it->base_node = (zone_node_t *)(*hattrie_iter_val(it->base_it));
-		assert(it->base_node);
-		if (it->update->flags & UPDATE_INCREMENTAL) {
-			it->base_node = zone_update_get_node(it->update, it->base_node->owner);
-			if (it->base_node == NULL) {
-				return KNOT_ENOMEM;
-			}
-		}
-	}
+	it->cur_node = (zone_node_t *)(*hattrie_iter_val(it->tree_it));
 
-	select_next_node(it);
 	return KNOT_EOK;
 }
 
@@ -718,22 +691,20 @@ int zone_update_iter_next(zone_update_iter_t *it)
 		return KNOT_EINVAL;
 	}
 
-	/* Get nodes from both iterators if needed. */
-	if (it->base_it != NULL && it->base_node == NULL) {
-		int ret = iter_get_synth_node(it);
+	if (it->tree_it != NULL) {
+		int ret = iter_get_next_node(it);
 		if (ret != KNOT_EOK && ret != KNOT_ENOENT) {
 			return ret;
 		}
 	}
 
-	select_next_node(it);
 	return KNOT_EOK;
 }
 
 const zone_node_t *zone_update_iter_val(zone_update_iter_t *it)
 {
 	if (it != NULL) {
-		return it->next_node;
+		return it->cur_node;
 	} else {
 		return NULL;
 	}
@@ -745,7 +716,7 @@ void zone_update_iter_finish(zone_update_iter_t *it)
 		return;
 	}
 
-	hattrie_iter_free(it->base_it);
+	hattrie_iter_free(it->tree_it);
 }
 
 bool zone_update_no_change(zone_update_t *update)
