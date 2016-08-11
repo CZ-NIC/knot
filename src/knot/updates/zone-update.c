@@ -251,6 +251,9 @@ int zone_update_remove_rrset(zone_update_t *update, knot_dname_t *owner, uint16_
 		const zone_node_t *node = zone_contents_find_node(update->new_cont, owner);
 		if (node != NULL) {
 			knot_rrset_t rrset = node_rrset(node, type);
+			if (rrset.owner == NULL) {
+				return KNOT_ENOENT;
+			}
 			int ret = changeset_add_removal(&update->change, &rrset,
 			                                CHANGESET_CHECK);
 			if (ret != KNOT_EOK) {
