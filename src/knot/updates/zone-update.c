@@ -310,7 +310,7 @@ int zone_update_remove_node(zone_update_t *update, const knot_dname_t *owner)
 
 				if (rrset.type == KNOT_RRTYPE_SOA) {
 					/* SOA is replaced with addition */
-					return KNOT_EOK;
+					continue;
 				}
 
 				ret = apply_remove_rr(&update->a_ctx, &rrset);
