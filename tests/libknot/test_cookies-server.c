@@ -28,10 +28,10 @@
 #include "libknot/rrtype/opt-cookie.h"
 
 const char *cookie_opts[] = {
-	"\x00\x0a" "\x00\x10" "\x00\x01\x02\x03\x04\x05\x06\x07" "\xe0\xd9\x95\x4e\xbc\xc3\x99\x18", /* 8 octets long wrong server cookie. */
-	"\x00\x0a" "\x00\x10" "\x00\x01\x02\x03\x04\x05\x06\x07" "\xe0\xd9\x95\x4e\xbc\xc3\x99\x19", /* 8 octets long OK server cookie. */
-	"\x00\x0a" "\x00\x18" "\x00\x01\x02\x03\x04\x05\x06\x07" "\x0a\x0b\x0c\x0d\x0e\x0f\x10\x11\xc0\xbd\xdb\xec\x19\x78\x88\x38", /* 8B nonce 8B hash long wrong server cookie. */
-	"\x00\x0a" "\x00\x18" "\x00\x01\x02\x03\x04\x05\x06\x07" "\x0a\x0b\x0c\x0d\x0e\x0f\x10\x11\xc0\xbd\xdb\xec\x19\x78\x88\x39" /* 8B nonce 8B hash long OK server cookie. */
+	"\x00\x0a" "\x00\x10" "\x00\x01\x02\x03\x04\x05\x06\x07" "\x19\x99\xc3\xbc\x4e\x95\xd9\xdf", /* 8 octets long wrong server cookie. */
+	"\x00\x0a" "\x00\x10" "\x00\x01\x02\x03\x04\x05\x06\x07" "\x19\x99\xc3\xbc\x4e\x95\xd9\xe0", /* 8 octets long OK server cookie. */
+	"\x00\x0a" "\x00\x18" "\x00\x01\x02\x03\x04\x05\x06\x07" "\x0a\x0b\x0c\x0d\x0e\x0f\x10\x11\x39\x88\x78\x19\xec\xdb\xbd\xbf", /* 8B nonce 8B hash long wrong server cookie. */
+	"\x00\x0a" "\x00\x18" "\x00\x01\x02\x03\x04\x05\x06\x07" "\x0a\x0b\x0c\x0d\x0e\x0f\x10\x11\x39\x88\x78\x19\xec\xdb\xbd\xc0"/* 8B nonce 8B hash long OK server cookie. */
 };
 
 #define ROPT(i) ((const uint8_t *)cookie_opts[(i)])
@@ -193,7 +193,7 @@ int main(int argc, char *argv[])
 	hash_len = knot_sc_alg_fnv64.hash_func(&sc_in, hash, hash_len);
 	ok(hash_len != 0, "cookies: FNV64 server cookie output");
 	{
-		uint8_t expected[] = { 0x75, 0x45, 0x7c, 0x9a, 0xe0, 0x13, 0xa8, 0xea };
+		uint8_t expected[] = { 0xea, 0xa8, 0x13, 0xe0, 0x9a, 0x7c, 0x45, 0x75 };
 		ok(sizeof(expected) == hash_len && 0 == memcmp(expected, hash, hash_len), "cookies: FNV64 server cookie content");
 	}
 
@@ -210,7 +210,7 @@ int main(int argc, char *argv[])
 	hash_len = knot_sc_alg_fnv64.hash_func(&sc_in, hash, hash_len);
 	ok(hash_len != 0, "cookies: FNV64 server cookie output");
 	{
-		uint8_t expected[] = { 0xc0, 0xbd, 0xdb, 0xec, 0x19, 0x78, 0x88, 0x39 };
+		uint8_t expected[] = { 0x39, 0x88, 0x78, 0x19, 0xec, 0xdb, 0xbd, 0xc0 };
 		ok(sizeof(expected) == hash_len && 0 == memcmp(expected, hash, hash_len), "cookies: FNV64 server cookie content");
 	}
 
@@ -227,7 +227,7 @@ int main(int argc, char *argv[])
 	hash_len = knot_sc_alg_fnv64.hash_func(&sc_in, hash, hash_len);
 	ok(hash_len != 0, "cookies: FNV64 server cookie output");
 	{
-		uint8_t expected[] = { 0xe0, 0xd9, 0x95, 0x4e, 0xbc, 0xc3, 0x99, 0x19 };
+		uint8_t expected[] = { 0x19, 0x99, 0xc3, 0xbc, 0x4e, 0x95, 0xd9, 0xe0 };
 		ok(sizeof(expected) == hash_len && 0 == memcmp(expected, hash, hash_len), "cookies: FNV64 server cookie content");
 	}
 
@@ -244,7 +244,7 @@ int main(int argc, char *argv[])
 	hash_len = knot_sc_alg_fnv64.hash_func(&sc_in, hash, hash_len);
 	ok(hash_len != 0, "cookies: FNV64 server cookie output");
 	{
-		uint8_t expected[] = { 0x4d, 0xde, 0xfa, 0x22, 0xb9, 0x0a, 0xcc, 0xd8 };
+		uint8_t expected[] = { 0xd8, 0xcc, 0x0a, 0xb9, 0x22, 0xfa, 0xde, 0x4d };
 		ok(sizeof(expected) == hash_len && 0 == memcmp(expected, hash, hash_len), "cookies: FNV64 server cookie content");
 	}
 
@@ -261,7 +261,7 @@ int main(int argc, char *argv[])
 	hash_len = knot_sc_alg_fnv64.hash_func(&sc_in, hash, hash_len);
 	ok(hash_len != 0, "cookies: FNV64 server cookie output");
 	{
-		uint8_t expected[] = { 0xa0, 0x35, 0xe3, 0xe0, 0x78, 0x7a, 0x91, 0xaf };
+		uint8_t expected[] = { 0xaf, 0x91, 0x7a, 0x78, 0xe0, 0xe3, 0x35, 0xa0 };
 		ok(sizeof(expected) == hash_len && 0 == memcmp(expected, hash, hash_len), "cookies: FNV64 server cookie content");
 	}
 
@@ -278,7 +278,7 @@ int main(int argc, char *argv[])
 	hash_len = knot_sc_alg_fnv64.hash_func(&sc_in, hash, hash_len);
 	ok(hash_len != 0, "cookies: FNV64 server cookie output");
 	{
-		uint8_t expected[] = { 0x8e, 0xa3, 0xf8, 0x97, 0x84, 0x0a, 0x3d, 0x8b };
+		uint8_t expected[] = { 0x8b, 0x3d, 0x0a, 0x84, 0x97, 0xf8, 0xa3, 0x8e };
 		ok(sizeof(expected) == hash_len && 0 == memcmp(expected, hash, hash_len), "cookies: FNV64 server cookie content");
 	}
 

@@ -110,7 +110,7 @@ int main(int argc, char *argv[])
 	hash_len = knot_cc_alg_fnv64.gen_func(&cc_in, hash, hash_len);
 	ok(hash_len != 0 && hash_len == knot_cc_alg_fnv64.cc_size, "cookies: FNV64 client cookie output");
 	{
-		uint8_t expected[] = { 0x74, 0x31, 0xf9, 0xa8, 0x03, 0xef, 0x15, 0xb1 };
+		uint8_t expected[] = { 0xb1, 0x15, 0xef, 0x03, 0xa8, 0xf9, 0x31, 0x74 };
 		ok(sizeof(expected) == hash_len && 0 == memcmp(expected, hash, hash_len), "cookies: FNV64 client cookie content");
 	}
 
@@ -123,7 +123,7 @@ int main(int argc, char *argv[])
 	hash_len = knot_cc_alg_fnv64.gen_func(&cc_in, hash, hash_len);
 	ok(hash_len != 0 && hash_len == knot_cc_alg_fnv64.cc_size, "cookies: FNV64 client cookie output");
 	{
-		uint8_t expected[] = { 0x7c, 0x62, 0x25, 0xd2, 0x43, 0xdd, 0x09, 0xe7 };
+		uint8_t expected[] = { 0xe7, 0x09, 0xdd, 0x43, 0xd2, 0x25, 0x62, 0x7c };
 		ok(sizeof(expected) == hash_len && 0 == memcmp(expected, hash, hash_len), "cookies: FNV64 client cookie content");
 	}
 
@@ -136,7 +136,7 @@ int main(int argc, char *argv[])
 	hash_len = knot_cc_alg_fnv64.gen_func(&cc_in, hash, hash_len);
 	ok(hash_len != 0 && hash_len == knot_cc_alg_fnv64.cc_size, "cookies: FNV64 client cookie output");
 	{
-		uint8_t expected[] = { 0x7c, 0x62, 0x25, 0xd2, 0x43, 0xdd, 0x09, 0xe7 };
+		uint8_t expected[] = { 0xe7, 0x09, 0xdd, 0x43, 0xd2, 0x25, 0x62, 0x7c };
 		ok(sizeof(expected) == hash_len && 0 == memcmp(expected, hash, hash_len), "cookies: FNV64 client cookie content");
 	}
 
@@ -149,7 +149,7 @@ int main(int argc, char *argv[])
 	hash_len = knot_cc_alg_fnv64.gen_func(&cc_in, hash, hash_len);
 	ok(hash_len != 0 && hash_len == knot_cc_alg_fnv64.cc_size, "cookies: FNV64 client cookie output");
 	{
-		uint8_t expected[] = { 0x05, 0xa9, 0xd1, 0x08, 0x1b, 0x98, 0xe0, 0xaa };
+		uint8_t expected[] = { 0xaa, 0xe0, 0x98, 0x1b, 0x08, 0xd1, 0xa9, 0x05 };
 		ok(sizeof(expected) == hash_len && 0 == memcmp(expected, hash, hash_len), "cookies: FNV64 client cookie content");
 	}
 
@@ -162,7 +162,7 @@ int main(int argc, char *argv[])
 	hash_len = knot_cc_alg_fnv64.gen_func(&cc_in, hash, hash_len);
 	ok(hash_len != 0 && hash_len == knot_cc_alg_fnv64.cc_size, "cookies: FNV64 client cookie output");
 	{
-		uint8_t expected[] = { 0x05, 0xa9, 0xd1, 0x08, 0x1b, 0x98, 0xe0, 0xaa };
+		uint8_t expected[] = { 0xaa, 0xe0, 0x98, 0x1b, 0x08, 0xd1, 0xa9, 0x05 };
 		ok(sizeof(expected) == hash_len && 0 == memcmp(expected, hash, hash_len), "cookies: FNV64 client cookie content");
 	}
 
@@ -179,7 +179,7 @@ int main(int argc, char *argv[])
 	}
 
 	{
-		uint8_t cookie[] = { 0x33, 0x0c, 0xa6, 0x80, 0x94, 0x17, 0xe5, 0xaf };
+		uint8_t cookie[] = { 0xaf, 0xe5, 0x17, 0x94, 0x80, 0xa6, 0x0c, 0x33 };
 		ret = knot_cc_check(cookie, sizeof(cookie), NULL, &knot_cc_alg_fnv64);
 		ok(ret == KNOT_EINVAL, "cookies: FNV64 client cookie check no input");
 	}
@@ -190,7 +190,7 @@ int main(int argc, char *argv[])
 	cc_in.secret_data = secret;
 	cc_in.secret_len = sizeof(secret);
 	{
-		uint8_t cookie[] = { 0x33, 0x0c, 0xa6, 0x80, 0x94, 0x17, 0xe5, 0xaf };
+		uint8_t cookie[] = { 0xaf, 0xe5, 0x17, 0x94, 0x80, 0xa6, 0x0c, 0x33 };
 		ret = knot_cc_check(cookie, sizeof(cookie), &cc_in, NULL);
 		ok(ret == KNOT_EINVAL, "cookies: FNV64 client cookie check no algorithm");
 	}
@@ -201,7 +201,7 @@ int main(int argc, char *argv[])
 	cc_in.secret_data = secret;
 	cc_in.secret_len = sizeof(secret);
 	{
-		uint8_t cookie[] = { 0x33, 0x0c, 0xa6, 0x80, 0x94, 0x17, 0xe5, 0xaf };
+		uint8_t cookie[] = { 0xaf, 0xe5, 0x17, 0x94, 0x80, 0xa6, 0x0c, 0x33 };
 		ret = knot_cc_check(cookie, sizeof(cookie), &cc_in, &knot_cc_alg_fnv64);
 		ok(ret == KNOT_EOK, "cookies: FNV64 client good cookie check");
 	}
@@ -212,7 +212,7 @@ int main(int argc, char *argv[])
 	cc_in.secret_data = secret;
 	cc_in.secret_len = sizeof(secret);
 	{
-		uint8_t cookie[] = { 0x33, 0x0c, 0xa6, 0x80, 0x94, 0x17, 0xe5, 0xaf };
+		uint8_t cookie[] = { 0xaf, 0xe5, 0x17, 0x94, 0x80, 0xa6, 0x0c, 0x33 };
 		ret = knot_cc_check(cookie, sizeof(cookie) - 1, &cc_in, &knot_cc_alg_fnv64);
 		ok(ret == KNOT_EINVAL, "cookies: FNV64 client cookie check invalid length");
 	}
@@ -223,7 +223,7 @@ int main(int argc, char *argv[])
 	cc_in.secret_data = secret;
 	cc_in.secret_len = sizeof(secret);
 	{
-		uint8_t cookie[] = { 0x33, 0x0c, 0xa6, 0x80, 0x94, 0x17, 0xe5, 0xae };
+		uint8_t cookie[] = { 0xaf, 0xe5, 0x17, 0x94, 0x80, 0xa6, 0x0c, 0x32 };
 		ret = knot_cc_check(cookie, sizeof(cookie), &cc_in, &knot_cc_alg_fnv64);
 		ok(ret == KNOT_EINVAL, "cookies: FNV64 client cookie check invalid cookie");
 	}
