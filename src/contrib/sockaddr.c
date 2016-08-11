@@ -43,13 +43,59 @@ int sockaddr_len(const struct sockaddr *sa)
 	}
 }
 
-int sockaddr_cmp(const struct sockaddr *k1, const struct sockaddr *k2)
+static int cmp_ipv4(const struct sockaddr_in *a, const struct sockaddr_in *b)
 {
-	if (k1->sa_family != k2->sa_family) {
-		return (int)k1->sa_family - (int)k2->sa_family;
+	if (a->sin_addr.s_addr < b->sin_addr.s_addr) {
+		return -1;
+	} else if (a->sin_addr.s_addr > b->sin_addr.s_addr) {
+		return 1;
+	} else {
+		return a->sin_port - b->sin_port;
+	}
+}
+
+static int cmp_ipv6(const struct sockaddr_in6 *a, const struct sockaddr_in6 *b)
+{
+	int ret = memcmp(&a->sin6_addr, &b->sin6_addr, sizeof(struct in6_addr));
+	if (ret == 0) {
+		ret = a->sin6_port - b->sin6_port;
 	}
 
-	return memcmp(k1, k2, sockaddr_len(k1));
+	return ret;
+}
+
+static int cmp_unix(const struct sockaddr_un *a, const struct sockaddr_un *b)
+{
+	int len_a = strnlen(a->sun_path, sizeof(a->sun_path));
+	int len_b = strnlen(b->sun_path, sizeof(b->sun_path));
+	int len_min = len_a <= len_b ? len_a : len_b;
+
+	int ret = strncmp(a->sun_path, b->sun_path, len_min);
+	if (ret == 0) {
+		ret = len_a - len_b;
+	}
+
+	return ret;
+}
+
+int sockaddr_cmp(const struct sockaddr *a, const struct sockaddr *b)
+{
+	if (a->sa_family != a->sa_family) {
+		return (int)a->sa_family - (int)b->sa_family;
+	}
+
+	switch (a->sa_family) {
+	case AF_UNSPEC:
+		return 0;
+	case AF_INET:
+		return cmp_ipv4((struct sockaddr_in *)a, (struct sockaddr_in *)b);
+	case AF_INET6:
+		return cmp_ipv6((struct sockaddr_in6 *)a, (struct sockaddr_in6 *)b);
+	case AF_UNIX:
+		return cmp_unix((struct sockaddr_un *)a, (struct sockaddr_un *)b);
+	default:
+		return 1;
+	}
 }
 
 int sockaddr_set(struct sockaddr_storage *ss, int family, const char *straddr, int port)
