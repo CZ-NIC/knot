@@ -17,10 +17,10 @@
 #include <assert.h>
 #include <stdint.h>
 #include <stdlib.h>
-#include <string.h>
 
 #include "contrib/fnv/fnv.h"
 #include "contrib/sockaddr.h"
+#include "contrib/wire.h"
 #include "libknot/attribute.h"
 #include "libknot/cookies/alg-fnv64.h"
 #include "libknot/rrtype/opt-cookie.h"
@@ -80,7 +80,7 @@ static uint16_t cc_gen_fnv64(const struct knot_cc_input *input,
 	assert(KNOT_OPT_COOKIE_CLNT == sizeof(hash_val));
 
 	cc_len = sizeof(hash_val);
-	memcpy(cc_out, &hash_val, cc_len);
+	wire_write_u64(cc_out, hash_val);
 
 	return cc_len;
 }
@@ -127,7 +127,7 @@ static uint16_t sc_gen_fnv64(const struct knot_sc_input *input,
 	assert(SRVR_FNV64_HASH_SIZE == sizeof(hash_val));
 
 	hash_len = sizeof(hash_val);
-	memcpy(hash_out, &hash_val, hash_len);
+	wire_write_u64(hash_out, hash_val);
 
 	return hash_len;
 }
