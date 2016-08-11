@@ -1,4 +1,4 @@
-/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -33,9 +33,9 @@ enum {
 };
 
 struct apply_ctx {
+	zone_contents_t *contents;
 	list_t old_data;          /*!< Old data, to be freed after successful update. */
 	list_t new_data;          /*!< New data, to be freed after failed update. */
-	zone_node_t *apex;
 	uint32_t flags;
 };
 
@@ -44,16 +44,70 @@ typedef struct apply_ctx apply_ctx_t;
 /*!
  * \brief Initialize a new context structure.
  *
- * \param ctx  Context to be initialized.
+ * \param ctx       Context to be initialized.
+ * \param contents  Zone contents to apply changes onto.
+ * \param flags     Flags to control the application process.
  */
-void apply_init_ctx(apply_ctx_t *ctx, uint32_t flags);
+void apply_init_ctx(apply_ctx_t *ctx, zone_contents_t *contents, uint32_t flags);
 
 /*!
- * \brief Applies changesets *with* zone shallow copy.
+ * \brief Creates a shallow zone contents copy.
+ *
+ * \param old_contents  Source.
+ * \param new_contents  Target.
+ *
+ * \return KNOT_E*
+ */
+int apply_prepare_zone_copy(zone_contents_t *old_contents,
+                            zone_contents_t **new_contents);
+
+/*!
+ * \brief Adds a single RR into zone contents.
+ *
+ * \param ctx  Apply context.
+ * \param rr   RRSet to add.
+ *
+ * \return KNOT_E*
+ */
+int apply_add_rr(apply_ctx_t *ctx, const knot_rrset_t *rr);
+
+/*!
+ * \brief Removes single RR from zone contents.
+ *
+ * \param ctx  Apply context.
+ * \param rr   RRSet to remove.
+ *
+ * \return KNOT_E*
+ */
+int apply_remove_rr(apply_ctx_t *ctx, const knot_rrset_t *rr);
+
+/*!
+ * \brief Adds a single RR into zone contents.
+ *
+ * \param ctx  Apply context.
+ * \param ch   Changeset to be applied to the zone.
+ *
+ * \return KNOT_E*
+ */
+int apply_replace_soa(apply_ctx_t *ctx, changeset_t *ch);
+
+/*!
+ * \brief Prepares the new zone contents for signing.
+ *
+ * Adjusted pointers are required for DNSSEC.
+ *
+ * \param ctx  Apply context.
+ *
+ * \return KNOT_E*
+ */
+int apply_prepare_to_sign(apply_ctx_t *ctx);
+
+/*!
+ * \brief Applies changesets to a shallow zone-copy.
  *
  * \param zone          Zone to be updated.
- * \param chsets        Changes to be made.
- * \param new_contents  New zone will be returned using this arg.
+ * \param chsets        List of changesets to be applied.
+ * \param new_contents  Storage for the new zone contents pointer.
  *
  * \return KNOT_E*
  */
@@ -61,11 +115,11 @@ int apply_changesets(apply_ctx_t *ctx, zone_t *zone, list_t *chsets,
                      zone_contents_t **new_contents);
 
 /*!
- * \brief Applies changeset *with* zone shallow copy.
+ * \brief Applies changeset to a shallow zone-copy.
  *
  * \param zone          Zone to be updated.
- * \param ch            Change to be made.
- * \param new_contents  New zone will be returned using this arg.
+ * \param ch            Changeset to be applied.
+ * \param new_contents  Storage for the new zone contents pointer.
  *
  * \return KNOT_E*
  */
@@ -75,26 +129,37 @@ int apply_changeset(apply_ctx_t *ctx, zone_t *zone, changeset_t *ch,
 /*!
  * \brief Applies changesets directly to the zone, without copying it.
  *
- * \param contents Zone contents to apply the changesets to. Will be modified.
- * \param chsets   Changesets to be applied to the zone.
+ * \param ctx     Apply context.
+ * \param chsets  List of changesets to be applied to the zone.
  *
  * \return KNOT_E*
  */
-int apply_changesets_directly(apply_ctx_t *ctx, zone_contents_t *contents, list_t *chsets);
+int apply_changesets_directly(apply_ctx_t *ctx, list_t *chsets);
 
 /*!
  * \brief Applies changeset directly to the zone, without copying it.
  *
- * \param contents Zone contents to apply the changesets to. Will be modified.
- * \param chsets   Changeset to be applied to the zone.
+ * \param ctx  Apply context.
+ * \param ch   Changeset to be applied to the zone.
  *
  * \return KNOT_E*
  */
-int apply_changeset_directly(apply_ctx_t *ctx, zone_contents_t *contents, changeset_t *ch);
+int apply_changeset_directly(apply_ctx_t *ctx, changeset_t *ch);
+
+/*!
+ * \brief Finalizes the zone contents for publishing.
+ *
+ * Fully adjusts the zone.
+ *
+ * \param ctx  Apply context.
+ *
+ * \return KNOT_E*
+ */
+int apply_finalize(apply_ctx_t *ctx);
 
 /*!
  * \brief Cleanups successful zone update.
-
+ *
  * \param chgs  Changeset used to create the update.
  */
 void update_cleanup(apply_ctx_t *ctx);

@@ -81,8 +81,8 @@ int event_dnssec(conf_t *conf, zone_t *zone)
 	bool zone_changed = !changeset_empty(&ch);
 	if (zone_changed) {
 		/* Apply change. */
-		apply_ctx_t a_ctx = { { 0 } };
-		apply_init_ctx(&a_ctx, APPLY_STRICT);
+		apply_ctx_t a_ctx = { 0 };
+		apply_init_ctx(&a_ctx, NULL, APPLY_STRICT);
 
 		zone_contents_t *new_contents = NULL;
 		int ret = apply_changeset(&a_ctx, zone, &ch, &new_contents);

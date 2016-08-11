@@ -239,7 +239,7 @@ static int remove_nsec3param(const zone_contents_t *zone, changeset_t *changeset
 	assert(changeset);
 
 	knot_rrset_t rrset = node_rrset(zone->apex, KNOT_RRTYPE_NSEC3PARAM);
-	int ret = changeset_rem_rrset(changeset, &rrset, 0);
+	int ret = changeset_add_removal(changeset, &rrset, 0);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
@@ -253,7 +253,7 @@ static int remove_nsec3param(const zone_contents_t *zone, changeset_t *changeset
 			return ret;
 		}
 
-		ret = changeset_rem_rrset(changeset, &rrsig, 0);
+		ret = changeset_add_removal(changeset, &rrsig, 0);
 		knot_rdataset_clear(&rrsig.rrs, NULL);
 		if (ret != KNOT_EOK) {
 			return ret;
@@ -307,7 +307,7 @@ static int add_nsec3param(const zone_contents_t *zone, changeset_t *changeset,
 		return r;
 	}
 
-	r = changeset_add_rrset(changeset, rrset, 0);
+	r = changeset_add_addition(changeset, rrset, 0);
 	knot_rrset_free(&rrset, NULL);
 	return r;
 }

@@ -286,7 +286,7 @@ static int remove_expired_rrsigs(const knot_rrset_t *covered,
 	}
 
 	if (!knot_rrset_empty(&to_remove) && result == KNOT_EOK) {
-		result = changeset_rem_rrset(changeset, &to_remove, 0);
+		result = changeset_add_removal(changeset, &to_remove, 0);
 	}
 
 	knot_rdataset_clear(&synth_rrsig.rrs, NULL);
@@ -341,7 +341,7 @@ static int add_missing_rrsigs(const knot_rrset_t *covered,
 	}
 
 	if (!knot_rrset_empty(&to_add) && result == KNOT_EOK) {
-		result = changeset_add_rrset(changeset, &to_add, 0);
+		result = changeset_add_addition(changeset, &to_add, 0);
 	}
 
 	knot_rdataset_clear(&to_add.rrs, NULL);
@@ -374,7 +374,7 @@ static int remove_rrset_rrsigs(const knot_dname_t *owner, uint16_t type,
 		return KNOT_EOK;
 	}
 
-	ret = changeset_rem_rrset(changeset, &synth_rrsig, 0);
+	ret = changeset_add_removal(changeset, &synth_rrsig, 0);
 	knot_rdataset_clear(&synth_rrsig.rrs, NULL);
 
 	return ret;
@@ -460,7 +460,7 @@ static int remove_standalone_rrsigs(const zone_node_t *node,
 			if (ret != KNOT_EOK) {
 				return ret;
 			}
-			ret = changeset_rem_rrset(changeset, &to_remove, 0);
+			ret = changeset_add_removal(changeset, &to_remove, 0);
 			knot_rdataset_clear(&to_remove.rrs, NULL);
 			if (ret != KNOT_EOK) {
 				return ret;
@@ -742,7 +742,7 @@ static int remove_invalid_dnskeys(const knot_rrset_t *soa,
 	}
 
 	if (!knot_rrset_empty(&to_remove) && result == KNOT_EOK) {
-		result = changeset_rem_rrset(changeset, &to_remove, 0);
+		result = changeset_add_removal(changeset, &to_remove, 0);
 	}
 
 	knot_rdataset_clear(&to_remove.rrs, NULL);
@@ -798,7 +798,7 @@ static int add_missing_dnskeys(const knot_rrset_t *soa,
 	}
 
 	if (!knot_rrset_empty(&to_add) && result == KNOT_EOK) {
-		result = changeset_add_rrset(changeset, &to_add, 0);
+		result = changeset_add_addition(changeset, &to_add, 0);
 	}
 
 	knot_rdataset_clear(&to_add.rrs, NULL);
