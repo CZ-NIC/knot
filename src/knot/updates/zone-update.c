@@ -251,7 +251,8 @@ int zone_update_remove_rrset(zone_update_t *update, knot_dname_t *owner, uint16_
 		const zone_node_t *node = zone_contents_find_node(update->new_cont, owner);
 		if (node != NULL) {
 			knot_rrset_t rrset = node_rrset(node, type);
-			int ret = changeset_add_removal(&update->change, &rrset, CHANGESET_CHECK);
+			int ret = changeset_add_removal(&update->change, &rrset,
+			                                CHANGESET_CHECK);
 			if (ret != KNOT_EOK) {
 				return ret;
 			}
@@ -298,7 +299,8 @@ int zone_update_remove_node(zone_update_t *update, const knot_dname_t *owner)
 			size_t rrset_count = node->rrset_count;
 			for (int i = 0; i < rrset_count; ++i) {
 				knot_rrset_t rrset = node_rrset_at(node, rrset_count - 1 - i);
-				int ret = changeset_add_removal(&update->change, &rrset, CHANGESET_CHECK);
+				int ret = changeset_add_removal(&update->change, &rrset,
+				                                CHANGESET_CHECK);
 				if (ret != KNOT_EOK) {
 					return ret;
 				}
@@ -429,7 +431,8 @@ static int set_new_soa(zone_update_t *update, unsigned serial_policy)
 {
 	assert(update);
 
-	knot_rrset_t *soa_cpy = node_create_rrset(zone_update_get_apex(update), KNOT_RRTYPE_SOA);
+	knot_rrset_t *soa_cpy = node_create_rrset(zone_update_get_apex(update),
+	                                          KNOT_RRTYPE_SOA);
 	if (soa_cpy == NULL) {
 		return KNOT_ENOMEM;
 	}
@@ -448,7 +451,8 @@ static int set_new_soa(zone_update_t *update, unsigned serial_policy)
 	return KNOT_EOK;
 }
 
-static int commit_incremental(conf_t *conf, zone_update_t *update, zone_contents_t **contents_out)
+static int commit_incremental(conf_t *conf, zone_update_t *update,
+                              zone_contents_t **contents_out)
 {
 	assert(update);
 	assert(contents_out);
@@ -584,7 +588,8 @@ int zone_update_commit(conf_t *conf, zone_update_t *update)
 	/* If there is anything to change */
 	if (new_contents != NULL) {
 		/* Switch zone contents. */
-		zone_contents_t *old_contents = zone_switch_contents(update->zone, new_contents);
+		zone_contents_t *old_contents = zone_switch_contents(update->zone,
+		                                                     new_contents);
 
 		/* Sync RCU. */
 		synchronize_rcu();
@@ -733,4 +738,3 @@ bool zone_update_no_change(zone_update_t *update)
 		return false;
 	}
 }
-

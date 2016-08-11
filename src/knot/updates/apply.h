@@ -1,4 +1,4 @@
-/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -85,7 +85,7 @@ int apply_remove_rr(apply_ctx_t *ctx, const knot_rrset_t *rr);
  * \brief Adds a single RR into zone contents.
  *
  * \param ctx  Apply context.
- * \param ch
+ * \param ch   Changeset to be applied to the zone.
  *
  * \return KNOT_E*
  */
@@ -97,7 +97,6 @@ int apply_replace_soa(apply_ctx_t *ctx, changeset_t *ch);
  * Adjusted pointers are required for DNSSEC.
  *
  * \param ctx  Apply context.
- * \param ch
  *
  * \return KNOT_E*
  */
@@ -146,7 +145,6 @@ int apply_changesets_directly(apply_ctx_t *ctx, list_t *chsets);
  * \return KNOT_E*
  */
 int apply_changeset_directly(apply_ctx_t *ctx, changeset_t *ch);
-
 
 /*!
  * \brief Finalizes the zone contents for publishing.

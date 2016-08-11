@@ -1,4 +1,4 @@
-/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -231,7 +231,7 @@ void apply_init_ctx(apply_ctx_t *ctx, zone_contents_t *contents, uint32_t flags)
 }
 
 int apply_prepare_zone_copy(zone_contents_t *old_contents,
-                             zone_contents_t **new_contents)
+                            zone_contents_t **new_contents)
 {
 	if (old_contents == NULL || new_contents == NULL) {
 		return KNOT_EINVAL;
@@ -321,7 +321,7 @@ int apply_remove_rr(apply_ctx_t *ctx, const knot_rrset_t *rr)
 	}
 
 	zone_tree_t *tree = knot_rrset_is_nsec3rel(rr) ?
-		                contents->nsec3_nodes : contents->nodes;
+	                    contents->nsec3_nodes : contents->nodes;
 
 	knot_rrset_t removed_rrset = node_rrset(node, rr->type);
 	knot_rdata_t *old_data = removed_rrset.rrs.data;
@@ -387,9 +387,11 @@ int apply_prepare_to_sign(apply_ctx_t *ctx)
 	return zone_contents_adjust_pointers(ctx->contents);
 }
 
-int apply_changesets(apply_ctx_t *ctx, zone_t *zone, list_t *chsets, zone_contents_t **new_contents)
+int apply_changesets(apply_ctx_t *ctx, zone_t *zone, list_t *chsets,
+                     zone_contents_t **new_contents)
 {
-	if (ctx == NULL || zone == NULL || chsets == NULL || EMPTY_LIST(*chsets) || new_contents == NULL) {
+	if (ctx == NULL || zone == NULL || chsets == NULL ||
+	    EMPTY_LIST(*chsets) || new_contents == NULL) {
 		return KNOT_EINVAL;
 	}
 
@@ -430,9 +432,10 @@ int apply_changesets(apply_ctx_t *ctx, zone_t *zone, list_t *chsets, zone_conten
 	return KNOT_EOK;
 }
 
-int apply_changeset(apply_ctx_t *ctx, zone_t *zone, changeset_t *change, zone_contents_t **new_contents)
+int apply_changeset(apply_ctx_t *ctx, zone_t *zone, changeset_t *ch,
+                    zone_contents_t **new_contents)
 {
-	if (ctx == NULL || zone == NULL || change == NULL || new_contents == NULL) {
+	if (ctx == NULL || zone == NULL || ch == NULL || new_contents == NULL) {
 		return KNOT_EINVAL;
 	}
 
@@ -449,7 +452,7 @@ int apply_changeset(apply_ctx_t *ctx, zone_t *zone, changeset_t *change, zone_co
 
 	ctx->contents = contents_copy;
 
-	ret = apply_single(ctx, change);
+	ret = apply_single(ctx, ch);
 	if (ret != KNOT_EOK) {
 		update_rollback(ctx);
 		update_free_zone(&ctx->contents);
@@ -519,38 +522,44 @@ int apply_finalize(apply_ctx_t *ctx)
 
 void update_cleanup(apply_ctx_t *ctx)
 {
-	if (ctx) {
-		// Delete old RR data
-		rrs_list_clear(&ctx->old_data, NULL);
-		init_list(&ctx->old_data);
-		// Keep new RR data
-		ptrlist_free(&ctx->new_data, NULL);
-		init_list(&ctx->new_data);
+	if (ctx == NULL) {
+		return;
 	}
+
+	// Delete old RR data
+	rrs_list_clear(&ctx->old_data, NULL);
+	init_list(&ctx->old_data);
+	// Keep new RR data
+	ptrlist_free(&ctx->new_data, NULL);
+	init_list(&ctx->new_data);
 }
 
 void update_rollback(apply_ctx_t *ctx)
 {
-	if (ctx) {
-		// Delete new RR data
-		rrs_list_clear(&ctx->new_data, NULL);
-		init_list(&ctx->new_data);
-		// Keep old RR data
-		ptrlist_free(&ctx->old_data, NULL);
-		init_list(&ctx->old_data);
+	if (ctx == NULL) {
+		return;
 	}
+
+	// Delete new RR data
+	rrs_list_clear(&ctx->new_data, NULL);
+	init_list(&ctx->new_data);
+	// Keep old RR data
+	ptrlist_free(&ctx->old_data, NULL);
+	init_list(&ctx->old_data);
 }
 
 void update_free_zone(zone_contents_t **contents)
 {
-	if (contents && *contents) {
-		zone_tree_apply((*contents)->nodes, free_additional, NULL);
-		zone_tree_deep_free(&(*contents)->nodes);
-		zone_tree_deep_free(&(*contents)->nsec3_nodes);
-
-		dnssec_nsec3_params_free(&(*contents)->nsec3_params);
-
-		free(*contents);
-		*contents = NULL;
+	if (contents == NULL || *contents == NULL) {
+		return;
 	}
+
+	zone_tree_apply((*contents)->nodes, free_additional, NULL);
+	zone_tree_deep_free(&(*contents)->nodes);
+	zone_tree_deep_free(&(*contents)->nsec3_nodes);
+
+	dnssec_nsec3_params_free(&(*contents)->nsec3_params);
+
+	free(*contents);
+	*contents = NULL;
 }
