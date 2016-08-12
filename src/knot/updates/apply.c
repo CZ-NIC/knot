@@ -368,6 +368,10 @@ int apply_replace_soa(apply_ctx_t *ctx, changeset_t *chset)
 {
 	zone_contents_t *contents = ctx->contents;
 
+	if (!knot_dname_is_equal(chset->soa_to->owner, contents->apex->owner)) {
+		return KNOT_EDENIED;
+	}
+
 	assert(chset->soa_from && chset->soa_to);
 	int ret = apply_remove_rr(ctx, chset->soa_from);
 	if (ret != KNOT_EOK) {
