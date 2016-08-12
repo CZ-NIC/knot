@@ -449,6 +449,7 @@ static void _sync(int remote, int send)
 
 	}
 	assert(r == sizeof(buf));
+	(void)r;
 }
 
 static void sync_signal(int remote)
