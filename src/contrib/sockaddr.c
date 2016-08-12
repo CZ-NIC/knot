@@ -80,7 +80,7 @@ static int cmp_unix(const struct sockaddr_un *a, const struct sockaddr_un *b)
 
 int sockaddr_cmp(const struct sockaddr *a, const struct sockaddr *b)
 {
-	if (a->sa_family != a->sa_family) {
+	if (a->sa_family != b->sa_family) {
 		return (int)a->sa_family - (int)b->sa_family;
 	}
 

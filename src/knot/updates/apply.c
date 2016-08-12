@@ -506,7 +506,7 @@ int apply_changeset_directly(apply_ctx_t *ctx, changeset_t *ch)
 		return ret;
 	}
 
-	zone_contents_adjust_full(ctx->contents);
+	ret = zone_contents_adjust_full(ctx->contents);
 	if (ret != KNOT_EOK) {
 		update_rollback(ctx);
 		return ret;
