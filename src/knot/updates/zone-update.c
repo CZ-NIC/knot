@@ -41,7 +41,8 @@ static int init_incremental(zone_update_t *update, zone_t *zone)
 		return ret;
 	}
 
-	apply_init_ctx(&update->a_ctx, update->new_cont, 0);
+	uint32_t apply_flags = update->flags & UPDATE_STRICT ? APPLY_STRICT : 0;
+	apply_init_ctx(&update->a_ctx, update->new_cont, apply_flags);
 
 	/* Copy base SOA RR. */
 	update->change.soa_from =

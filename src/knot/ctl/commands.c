@@ -323,7 +323,7 @@ static int zone_txn_begin(zone_t *zone, ctl_args_t *args)
 	}
 
 	zone_update_flags_t type = (zone->contents == NULL) ? UPDATE_FULL : UPDATE_INCREMENTAL;
-	int ret = zone_update_init(zone->control_update, zone, type | UPDATE_SIGN);
+	int ret = zone_update_init(zone->control_update, zone, type | UPDATE_SIGN | UPDATE_STRICT);
 	if (ret != KNOT_EOK) {
 		free(zone->control_update);
 		zone->control_update = NULL;
