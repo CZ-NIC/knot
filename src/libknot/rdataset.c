@@ -292,7 +292,7 @@ bool knot_rdataset_eq(const knot_rdataset_t *rrs1, const knot_rdataset_t *rrs2)
 
 _public_
 bool knot_rdataset_member(const knot_rdataset_t *rrs, const knot_rdata_t *rr,
-			  bool cmp_ttl)
+                          bool cmp_ttl)
 {
 	for (uint16_t i = 0; i < rrs->rr_count; ++i) {
 		const knot_rdata_t *cmp_rr = knot_rdataset_at(rrs, i);
@@ -334,7 +334,7 @@ int knot_rdataset_merge(knot_rdataset_t *rrs1, const knot_rdataset_t *rrs2, knot
 
 _public_
 int knot_rdataset_intersect(const knot_rdataset_t *a, const knot_rdataset_t *b,
-                       knot_rdataset_t *out, knot_mm_t *mm)
+                            knot_rdataset_t *out, knot_mm_t *mm)
 {
 	if (a == NULL || b == NULL || out == NULL) {
 		return KNOT_EINVAL;
@@ -359,10 +359,16 @@ int knot_rdataset_intersect(const knot_rdataset_t *a, const knot_rdataset_t *b,
 
 _public_
 int knot_rdataset_subtract(knot_rdataset_t *from, const knot_rdataset_t *what,
-			   knot_mm_t *mm)
+                           knot_mm_t *mm)
 {
-	if (from == NULL || what == NULL || from->data == what->data) {
+	if (from == NULL || what == NULL) {
 		return KNOT_EINVAL;
+	}
+
+	if (from->data == what->data) {
+		knot_rdataset_clear(from, mm);
+		knot_rdataset_init((knot_rdataset_t *) what);
+		return KNOT_EOK;
 	}
 
 	for (uint16_t i = 0; i < what->rr_count; ++i) {

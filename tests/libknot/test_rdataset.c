@@ -155,8 +155,10 @@ int main(int argc, char *argv[])
 	// Test subtract
 	ok(knot_rdataset_subtract(NULL, NULL, NULL) == KNOT_EINVAL,
 	   "rdataset: subtract NULL.");
-	ok(knot_rdataset_subtract(&rdataset, &rdataset, NULL) == KNOT_EINVAL,
-	   "rdataset: subtract self.");
+	ret = knot_rdataset_copy(&copy, &rdataset, NULL);
+	assert(ret == KNOT_EOK);
+	ok(knot_rdataset_subtract(&copy, &copy, NULL) == KNOT_EOK &&
+	   copy.rr_count == 0, "rdataset: subtract self.");
 
 	ret = knot_rdataset_copy(&copy, &rdataset, NULL);
 	assert(ret == KNOT_EOK);

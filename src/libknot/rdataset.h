@@ -166,8 +166,7 @@ int knot_rdataset_intersect(const knot_rdataset_t *a, const knot_rdataset_t *b,
                             knot_rdataset_t *out, knot_mm_t *mm);
 
 /*!
- * \brief Does set-like RRS subtraction. \a from RRS is changed. Both sets must
-          be unique, i.e. data point to different locations.
+ * \brief Does set-like RRS subtraction. \a from RRS is changed.
  * \param from  RRS to subtract from.
  * \param what  RRS to subtract.
  * \param mm    Memory context use to reallocated \a from data.
