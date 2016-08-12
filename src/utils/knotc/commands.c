@@ -516,16 +516,12 @@ static int zone_memstats(const knot_dname_t *dname, void *data)
 	zs_deinit(zs);
 	free(zs);
 
-	// Only size of ahtables inside trie's nodes is missing.
-	assert(est.htable_size == 0);
-	est.htable_size = estimator_trie_htable_memsize(est.node_table);
-
 	// Cleanup.
 	hattrie_apply_rev(est.node_table, estimator_free_trie_node, NULL);
 	hattrie_free(est.node_table);
 
 	double zone_size = (est.rdata_size + est.node_size + est.dname_size +
-	                    est.htable_size + malloc_size) / (1024.0 * 1024.0);
+	                    malloc_size) / (1024.0 * 1024.0);
 
 	log_zone_info(dname, "%zu records, %.1f MiB memory",
 	              est.record_count, zone_size);
