@@ -68,6 +68,23 @@ static int init_full(zone_update_t *update, zone_t *zone)
 	return KNOT_EOK;
 }
 
+static int replace_soa(zone_contents_t *contents, const knot_rrset_t *rr)
+{
+	/* SOA possible only within apex. */
+	if (!knot_dname_is_equal(rr->owner, contents->apex->owner)) {
+		return KNOT_EDENIED;
+	}
+
+	knot_rrset_t old_soa = node_rrset(contents->apex, KNOT_RRTYPE_SOA);
+	zone_node_t *n = contents->apex;
+	int ret = zone_contents_remove_rr(contents, &old_soa, &n);
+	if (ret != KNOT_EOK && ret != KNOT_EINVAL) {
+		return ret;
+	}
+
+	return zone_contents_add_rr(contents, rr, &n);
+}
+
 /* ------------------------------- API -------------------------------------- */
 
 int zone_update_init(zone_update_t *update, zone_t *zone, zone_update_flags_t flags)
@@ -172,7 +189,7 @@ void zone_update_clear(zone_update_t *update)
 
 int zone_update_add(zone_update_t *update, const knot_rrset_t *rrset)
 {
-	if (update == NULL) {
+	if (update == NULL || rrset == NULL) {
 		return KNOT_EINVAL;
 	}
 
@@ -199,6 +216,11 @@ int zone_update_add(zone_update_t *update, const knot_rrset_t *rrset)
 
 		return KNOT_EOK;
 	} else if (update->flags & UPDATE_FULL) {
+		if (rrset->type == KNOT_RRTYPE_SOA) {
+			/* replace previous SOA */
+			return replace_soa(update->new_cont, rrset);
+		}
+
 		zone_node_t *n = NULL;
 		return zone_contents_add_rr(update->new_cont, rrset, &n);
 	} else {
@@ -208,7 +230,7 @@ int zone_update_add(zone_update_t *update, const knot_rrset_t *rrset)
 
 int zone_update_remove(zone_update_t *update, const knot_rrset_t *rrset)
 {
-	if (update == NULL) {
+	if (update == NULL || rrset == NULL) {
 		return KNOT_EINVAL;
 	}
 

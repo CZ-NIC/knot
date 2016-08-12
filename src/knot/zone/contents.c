@@ -603,7 +603,7 @@ static int remove_rr(zone_contents_t *z, const knot_rrset_t *rr,
 		// RRSet is empty now, remove it from node, all data freed.
 		node_remove_rdataset(node, rr->type);
 		// If node is empty now, delete it from zone tree.
-		if (node->rrset_count == 0) {
+		if (node->rrset_count == 0 && node != z->apex) {
 			zone_tree_delete_empty_node(nsec3 ? z->nsec3_nodes : z->nodes, node);
 		}
 	}
