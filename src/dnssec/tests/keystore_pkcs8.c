@@ -106,7 +106,9 @@ static int test_list(void *handle, dnssec_list_t **list_ptr)
 		test_list_ok = true;
 	}
 
-	*list_ptr = dnssec_list_new();
+	if (list_ptr) {
+		*list_ptr = dnssec_list_new();
+	}
 
 	return DNSSEC_EOK;
 }

@@ -224,6 +224,9 @@ static void test_zone(dnssec_kasp_t *kasp)
 	ok(r == DNSSEC_EOK && zone, "zone load, call");
 	ok(mock_zone_load_ok, "zone load, input");
 	ok(zone && streq(zone->policy, "bleedingedge"), "zone load, output");
+	if (!zone) {
+		return;
+	}
 
 	// save
 

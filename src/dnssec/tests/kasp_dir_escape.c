@@ -28,9 +28,13 @@ static void test_function(int (*function)(const char *, char **),
 	char *output = NULL;
 	int result = function(input, &output);
 
-	ok((result == DNSSEC_EOK && strcmp(output, expected) == 0) ||
-	   (result != DNSSEC_EOK && output == NULL && expected == NULL),
-	   "%s '%s'", function_name, input);
+	if (result == DNSSEC_EOK) {
+		ok(output && expected && strcmp(output, expected) == 0,
+		   "%s on '%s' succeeds", function_name, input);
+	} else {
+		ok(output == NULL && expected == NULL,
+		   "%s on '%s' fails", function_name, input);
+	}
 
 	free(output);
 }
