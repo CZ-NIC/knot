@@ -62,7 +62,7 @@ int main(int argc, char *argv[])
 	while ((opt = getopt_long(argc, argv, "o:vVh", opts, &li)) != -1) {
 		switch (opt) {
 		case 'o':
-			zonename = optarg;
+			zonename = strdup(optarg);
 			break;
 		case 'v':
 			verbose = true;
@@ -108,8 +108,9 @@ int main(int argc, char *argv[])
 	}
 
 	knot_dname_t *dname = knot_dname_from_str_alloc(zonename);
+	free(zonename);
 	int ret = zone_check(filename, dname, outfile);
-	free(dname);
+	knot_dname_free(&dname, NULL);
 
 	log_close();
 
