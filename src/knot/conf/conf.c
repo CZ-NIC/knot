@@ -963,6 +963,7 @@ static char* get_filename(
 		if (block == NULL ||
 		    strlcat(out, block, sizeof(out)) >= sizeof(out)) {
 			CONF_LOG_ZONE(LOG_WARNING, zone, "too long zonefile name");
+			free(block);
 			return NULL;
 		}
 		free(block);
