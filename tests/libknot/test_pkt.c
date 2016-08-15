@@ -45,6 +45,9 @@ const char *g_rdata[DATACOUNT] = {
 /* @note Packet equivalence test, 5 checks. */
 static void packet_match(knot_pkt_t *in, knot_pkt_t *out)
 {
+	assert(in);
+	assert(out);
+
 	/* Check counts */
 	is_int(knot_wire_get_qdcount(out->wire),
 	       knot_wire_get_qdcount(in->wire), "pkt: QD match");
@@ -67,7 +70,7 @@ static void packet_match(knot_pkt_t *in, knot_pkt_t *out)
 
 int main(int argc, char *argv[])
 {
-	plan(25);
+	plan_lazy();
 
 	/* Create memory pool context. */
 	int ret = 0;
@@ -83,20 +86,14 @@ int main(int argc, char *argv[])
 
 	uint8_t *edns_str = (uint8_t *)"ab";
 	/* Create OPT RR. */
-	knot_rrset_t opt_rr;
+	knot_rrset_t opt_rr = { 0 };
 	ret = knot_edns_init(&opt_rr, 1024, 0, 0, &mm);
-	if (ret != KNOT_EOK) {
-		skip_block(25, "Failed to initialize OPT RR.");
-		return 0;
-	}
+	ok(ret == KNOT_EOK, "initialize OPT RR");
+
 	/* Add NSID */
 	ret = knot_edns_add_option(&opt_rr, KNOT_EDNS_OPTION_NSID,
 	                           strlen((char *)edns_str), edns_str, &mm);
-	if (ret != KNOT_EOK) {
-		knot_rrset_clear(&opt_rr, &mm);
-		skip_block(25, "Failed to add NSID to OPT RR.");
-		return 0;
-	}
+	ok(ret == KNOT_EOK, "initialize NSID in OPT RR");
 
 	/*
 	 * Packet writer tests.
@@ -105,6 +102,7 @@ int main(int argc, char *argv[])
 	/* Create packet. */
 	knot_pkt_t *out = knot_pkt_new(NULL, MM_DEFAULT_BLKSIZE, &mm);
 	ok(out != NULL, "pkt: new");
+	assert(out);
 
 	/* Mark as response (not part of the test). */
 	knot_wire_set_qr(out->wire);

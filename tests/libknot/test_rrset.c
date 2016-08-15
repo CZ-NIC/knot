@@ -28,7 +28,11 @@ static bool check_rrset(const knot_rrset_t *rrset,
                         const knot_dname_t *owner,
                         uint16_t type, uint16_t rclass)
 {
-	const bool dname_cmp = owner == NULL ? owner == rrset->owner :
+	if (!rrset) {
+		return false;
+	}
+
+	const bool dname_cmp = owner == NULL ? rrset->owner == NULL:
 	                                       knot_dname_is_equal(rrset->owner, owner);
 	return rrset->type == type && rrset->rclass == rclass && dname_cmp
 	       && rrset->rrs.rr_count == 0; // We do not test rdataset here
@@ -66,6 +70,7 @@ int main(int argc, char *argv[])
 	ok(check_rrset(copy, rrset->owner, rrset->type, rrset->rclass),
 	   "rrset: set fields during copy.");
 	ok(knot_rrset_copy(NULL, NULL) == NULL, "rrset: copy NULL.");
+	assert(copy);
 
 	// Test equal - pointers
 	ok(knot_rrset_equal((knot_rrset_t *)0xdeadbeef, (knot_rrset_t *)0xdeadbeef,

@@ -383,7 +383,9 @@ int main(int argc, char *argv[])
 		journal = journal_open(jfilename, fsize);
 		ok(journal != NULL, "journal: reopen after flush #%u", i);
 		/* Journal fillup. */
-		test_fillup(journal, fsize, i, sizes[i % num_sizes]);
+		if (journal) {
+			test_fillup(journal, fsize, i, sizes[i % num_sizes]);
+		}
 	}
 
 	/* Close journal. */

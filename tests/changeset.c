@@ -23,7 +23,7 @@
 
 int main(int argc, char *argv[])
 {
-	plan(23);
+	plan_lazy();
 
 	// Test with NULL changeset
 	ok(changeset_size(NULL) == 0, "changeset: NULL size");
@@ -35,6 +35,9 @@ int main(int argc, char *argv[])
 	changeset_t *ch = changeset_new(d);
 	knot_dname_free(&d, NULL);
 	ok(ch != NULL, "changeset: new");
+	if (!ch) {
+		return 1;
+	}
 	ok(changeset_empty(ch), "changeset: empty");
 	ch->soa_to = (knot_rrset_t *)0xdeadbeef;
 	ok(!changeset_empty(ch), "changseset: empty SOA");
