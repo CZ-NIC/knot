@@ -380,7 +380,7 @@ it yet:
 
 .. code-block:: console
 
-  $ keymgr zone key generate myzone.test algorithm RSASHA256 size 1024 activate +1d
+  $ keymgr zone key generate myzone.test algorithm RSASHA256 size 1024 active +1d
 
 Take the key ID (or key tag) of the old RSA key and disable it the same time
 the new key gets activated:
