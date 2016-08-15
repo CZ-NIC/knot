@@ -208,7 +208,7 @@ _public_
 uint8_t dnssec_key_get_protocol(const dnssec_key_t *key)
 {
 	if (!key) {
-		return DNSSEC_EINVAL;
+		return 0;
 	}
 
 	wire_ctx_t wire = wire_init_binary(&key->rdata);
