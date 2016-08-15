@@ -772,7 +772,7 @@ static int opt_client(const char *arg, void *query)
 	char         *addr = NULL;
 	size_t       addr_len = 0;
 
-	subnet_t *subnet = calloc(sizeof(subnet_t), 1);
+	subnet_t *subnet = calloc(1, sizeof(subnet_t));
 
 	// Separate address and network mask.
 	if ((sep = index(arg, '/')) != NULL) {
