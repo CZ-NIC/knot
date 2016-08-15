@@ -303,7 +303,7 @@ uint16_t knot_tsig_rdata_orig_id(const knot_rrset_t *tsig)
 {
 	uint8_t *rd = rdata_seek(tsig, TSIG_ORIGID_O, sizeof(uint16_t));
 	if (!rd) {
-		return KNOT_ERROR;
+		return 0;
 	}
 	return wire_read_u16(rd);
 }
@@ -313,7 +313,7 @@ uint16_t knot_tsig_rdata_error(const knot_rrset_t *tsig)
 {
 	uint8_t *rd = rdata_seek(tsig, TSIG_ERROR_O, sizeof(uint16_t));
 	if (!rd) {
-		return KNOT_ERROR;
+		return 0;
 	}
 	return wire_read_u16(rd);
 }
@@ -333,7 +333,7 @@ uint16_t knot_tsig_rdata_other_data_length(const knot_rrset_t *tsig)
 {
 	uint8_t *rd = rdata_seek(tsig, TSIG_OLEN_O, sizeof(uint16_t));
 	if (!rd) {
-		return KNOT_ERROR;
+		return 0;
 	}
 	return wire_read_u16(rd);
 }
