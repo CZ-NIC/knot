@@ -227,64 +227,6 @@ libknotus_la_CPPFLAGS = $(AM_CPPFLAGS) $(libidn_CFLAGS) $(libedit_CFLAGS) $(gnut
 libknotus_la_LDFLAGS = $(AM_LDFLAGS) $(libidn_LIBS)
 libknotus_la_LIBADD = libcontrib.la libknot.la
 
-###################
-# Knot DNS Daemon #
-###################
-
-if HAVE_DAEMON
-
-sbin_PROGRAMS = keymgr knotc knotd
-libexec_PROGRAMS = knot1to2
-noinst_LTLIBRARIES += libknotd.la libknotus.la
-
-EXTRA_DIST += 					\
-	utils/knot1to2/cf-lex.l			\
-	utils/knot1to2/cf-parse.y
-
-keymgr_SOURCES =				\
-	utils/keymgr/cmdparse/command.c		\
-	utils/keymgr/cmdparse/command.h		\
-	utils/keymgr/cmdparse/match.h		\
-	utils/keymgr/cmdparse/parameter.c	\
-	utils/keymgr/cmdparse/parameter.h	\
-	utils/keymgr/cmdparse/value.c		\
-	utils/keymgr/cmdparse/value.h		\
-	utils/keymgr/legacy/key.c		\
-	utils/keymgr/legacy/key.h		\
-	utils/keymgr/legacy/privkey.c		\
-	utils/keymgr/legacy/privkey.h		\
-	utils/keymgr/legacy/pubkey.c		\
-	utils/keymgr/legacy/pubkey.h		\
-	utils/keymgr/options.c			\
-	utils/keymgr/options.h			\
-	utils/keymgr/keymgr.c
-
-knotc_SOURCES =					\
-	utils/knotc/commands.c			\
-	utils/knotc/commands.h			\
-	utils/knotc/estimator.c			\
-	utils/knotc/estimator.h			\
-	utils/knotc/interactive.c		\
-	utils/knotc/interactive.h		\
-	utils/knotc/process.c			\
-	utils/knotc/process.h			\
-	utils/knotc/main.c
-
-knotd_SOURCES =					\
-	utils/knotd/main.c
-
-knot1to2_SOURCES =				\
-	utils/knot1to2/cf-lex.c			\
-	utils/knot1to2/cf-parse.tab.c		\
-	utils/knot1to2/cf-parse.tab.h		\
-	utils/knot1to2/extra.c			\
-	utils/knot1to2/extra.h			\
-	utils/knot1to2/includes.c		\
-	utils/knot1to2/includes.h		\
-	utils/knot1to2/main.c			\
-	utils/knot1to2/scheme.h
-
-# static: server shared
 libknotd_la_SOURCES =				\
 	knot/conf/base.c			\
 	knot/conf/base.h			\
@@ -438,6 +380,63 @@ libknotd_la_CPPFLAGS  = $(AM_CPPFLAGS) $(systemd_CFLAGS) $(liburcu_CFLAGS)
 libknotd_la_LDFLAGS = $(AM_LDFLAGS) $(systemd_LIBS) $(liburcu_LIBS)
 libknotd_la_LIBADD = libknot.la libknot-yparser.la zscanner/libzscanner.la $(liburcu_LIBS)
 
+###################
+# Knot DNS Daemon #
+###################
+
+if HAVE_DAEMON
+
+sbin_PROGRAMS = keymgr knotc knotd
+libexec_PROGRAMS = knot1to2
+noinst_LTLIBRARIES += libknotd.la libknotus.la
+
+EXTRA_DIST += 					\
+	utils/knot1to2/cf-lex.l			\
+	utils/knot1to2/cf-parse.y
+
+keymgr_SOURCES =				\
+	utils/keymgr/cmdparse/command.c		\
+	utils/keymgr/cmdparse/command.h		\
+	utils/keymgr/cmdparse/match.h		\
+	utils/keymgr/cmdparse/parameter.c	\
+	utils/keymgr/cmdparse/parameter.h	\
+	utils/keymgr/cmdparse/value.c		\
+	utils/keymgr/cmdparse/value.h		\
+	utils/keymgr/legacy/key.c		\
+	utils/keymgr/legacy/key.h		\
+	utils/keymgr/legacy/privkey.c		\
+	utils/keymgr/legacy/privkey.h		\
+	utils/keymgr/legacy/pubkey.c		\
+	utils/keymgr/legacy/pubkey.h		\
+	utils/keymgr/options.c			\
+	utils/keymgr/options.h			\
+	utils/keymgr/keymgr.c
+
+knotc_SOURCES =					\
+	utils/knotc/commands.c			\
+	utils/knotc/commands.h			\
+	utils/knotc/estimator.c			\
+	utils/knotc/estimator.h			\
+	utils/knotc/interactive.c		\
+	utils/knotc/interactive.h		\
+	utils/knotc/process.c			\
+	utils/knotc/process.h			\
+	utils/knotc/main.c
+
+knotd_SOURCES =					\
+	utils/knotd/main.c
+
+knot1to2_SOURCES =				\
+	utils/knot1to2/cf-lex.c			\
+	utils/knot1to2/cf-parse.tab.c		\
+	utils/knot1to2/cf-parse.tab.h		\
+	utils/knot1to2/extra.c			\
+	utils/knot1to2/extra.h			\
+	utils/knot1to2/includes.c		\
+	utils/knot1to2/includes.h		\
+	utils/knot1to2/main.c			\
+	utils/knot1to2/scheme.h
+
 keymgr_CPPFLAGS = $(AM_CPPFLAGS) -I$(srcdir)/dnssec/lib/dnssec -I$(srcdir)/dnssec $(gnutls_CFLAGS)
 keymgr_LDADD = libknotd.la libknotus.la dnssec/libdnssec.la dnssec/libshared.la \
                zscanner/libzscanner.la $(gnutls_LIBS)
@@ -480,7 +479,9 @@ endif # HAVE_DAEMON
 if HAVE_UTILS
 
 bin_PROGRAMS = kdig khost knsec3hash knsupdate kzonecheck
-noinst_LTLIBRARIES += libknotus.la
+if !HAVE_DAEMON
+noinst_LTLIBRARIES += libknotd.la
+endif
 
 kdig_SOURCES =					\
 	utils/kdig/kdig_exec.c			\
