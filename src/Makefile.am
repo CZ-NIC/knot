@@ -233,7 +233,7 @@ libknotus_la_LIBADD = libcontrib.la libknot.la
 
 if HAVE_DAEMON
 
-sbin_PROGRAMS = keymgr knotc knotd kzonecheck
+sbin_PROGRAMS = keymgr knotc knotd
 libexec_PROGRAMS = knot1to2
 noinst_LTLIBRARIES += libknotd.la libknotus.la
 
@@ -283,11 +283,6 @@ knot1to2_SOURCES =				\
 	utils/knot1to2/includes.h		\
 	utils/knot1to2/main.c			\
 	utils/knot1to2/scheme.h
-
-kzonecheck_SOURCES =				\
-	utils/kzonecheck/main.c			\
-	utils/kzonecheck/zone_check.c		\
-	utils/kzonecheck/zone_check.h
 
 # static: server shared
 libknotd_la_SOURCES =				\
@@ -451,7 +446,6 @@ knotd_LDADD = libknotd.la $(liburcu_LIBS)
 knotc_CPPFLAGS = $(AM_CPPFLAGS) $(libedit_CFLAGS)
 knotc_LDADD = libknotd.la libknotus.la $(libedit_LIBS)
 knot1to2_LDADD = libcontrib.la
-kzonecheck_LDADD = libknotd.la
 
 ####################################
 # Optional Knot DNS Daemon modules #
@@ -485,7 +479,7 @@ endif # HAVE_DAEMON
 
 if HAVE_UTILS
 
-bin_PROGRAMS = kdig khost knsec3hash knsupdate
+bin_PROGRAMS = kdig khost knsec3hash knsupdate kzonecheck
 noinst_LTLIBRARIES += libknotus.la
 
 kdig_SOURCES =					\
@@ -515,6 +509,11 @@ knsupdate_SOURCES =				\
 	utils/knsupdate/knsupdate_params.c	\
 	utils/knsupdate/knsupdate_params.h
 
+kzonecheck_SOURCES =				\
+	utils/kzonecheck/main.c			\
+	utils/kzonecheck/zone_check.c		\
+	utils/kzonecheck/zone_check.h
+
 # bin programs
 kdig_CPPFLAGS       = $(AM_CPPFLAGS) $(gnutls_CFLAGS)
 kdig_LDADD          = $(libidn_LIBS) libknotus.la
@@ -524,6 +523,7 @@ knsupdate_CPPFLAGS  = $(AM_CPPFLAGS) $(gnutls_CFLAGS)
 knsupdate_LDADD     = zscanner/libzscanner.la libknotus.la
 knsec3hash_CPPFLAGS = $(AM_CPPFLAGS) -I$(srcdir)/dnssec/lib/dnssec -I$(srcdir)/dnssec
 knsec3hash_LDADD    = dnssec/libdnssec.la dnssec/libshared.la
+kzonecheck_LDADD = libknotd.la
 
 #######################################
 # Optional Knot DNS Utilities modules #
