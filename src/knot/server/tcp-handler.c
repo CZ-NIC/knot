@@ -89,6 +89,16 @@ static enum fdset_sweep_state tcp_sweep(fdset_t *set, int i, void *data)
 	return FDSET_SWEEP;
 }
 
+static bool tcp_active_state(int state)
+{
+	return (state == KNOT_STATE_PRODUCE || state == KNOT_STATE_FAIL);
+}
+
+static bool tcp_send_state(int state)
+{
+	return (state != KNOT_STATE_FAIL && state != KNOT_STATE_NOOP);
+}
+
 /*!
  * \brief TCP event handler function.
  */
@@ -132,8 +142,7 @@ static int tcp_handle(tcp_context_t *tcp, int fd,
 	}
 
 	/* Initialize processing layer. */
-
-	tcp->layer.state = knot_layer_begin(&tcp->layer, &param);
+	knot_layer_begin(&tcp->layer, &param);
 
 	/* Create packets. */
 	knot_pkt_t *ans = knot_pkt_new(tx->iov_base, tx->iov_len, tcp->layer.mm);
@@ -141,15 +150,14 @@ static int tcp_handle(tcp_context_t *tcp, int fd,
 
 	/* Input packet. */
 	(void) knot_pkt_parse(query, 0);
-	int state = knot_layer_consume(&tcp->layer, query);
+	knot_layer_consume(&tcp->layer, query);
 
 	/* Resolve until NOOP or finished. */
 	ret = KNOT_EOK;
-	while (state & (KNOT_STATE_PRODUCE|KNOT_STATE_FAIL)) {
-		state = knot_layer_produce(&tcp->layer, ans);
-
+	while (tcp_active_state(tcp->layer.state)) {
+		knot_layer_produce(&tcp->layer, ans);
 		/* Send, if response generation passed and wasn't ignored. */
-		if (ans->size > 0 && !(state & (KNOT_STATE_FAIL|KNOT_STATE_NOOP))) {
+		if (ans->size > 0 && tcp_send_state(tcp->layer.state)) {
 			if (net_dns_tcp_send(fd, ans->wire, ans->size, timeout) != ans->size) {
 				ret = KNOT_ECONNREFUSED;
 				break;

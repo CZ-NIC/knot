@@ -53,11 +53,11 @@ static void exec_query(knot_layer_t *query_ctx, const char *name,
 	knot_pkt_parse(query, 0);
 	int state = knot_layer_consume(query_ctx, query);
 
-	ok(state & (KNOT_STATE_PRODUCE|KNOT_STATE_FAIL), "ns: process %s query", name);
+	ok(state == KNOT_STATE_PRODUCE || state == KNOT_STATE_FAIL, "ns: process %s query", name);
 
 	/* Create answer. */
 	state = knot_layer_produce(query_ctx, answer);
-	if (state & KNOT_STATE_FAIL) {
+	if (state == KNOT_STATE_FAIL) {
 		/* Allow 1 generic error response. */
 		state = knot_layer_produce(query_ctx, answer);
 	}

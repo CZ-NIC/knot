@@ -215,6 +215,17 @@ static int request_io(struct knot_requestor *req, struct knot_request *last,
 	return KNOT_EOK;
 }
 
+static bool layer_active(enum knot_layer_state state)
+{
+	switch (state) {
+	case KNOT_STATE_PRODUCE:
+	case KNOT_STATE_CONSUME:
+		return true;
+	default:
+		return false;
+	}
+}
+
 int knot_requestor_exec(struct knot_requestor *requestor,
                         struct knot_request *request,
                         int timeout_ms)
@@ -226,7 +237,7 @@ int knot_requestor_exec(struct knot_requestor *requestor,
 	int ret = KNOT_EOK;
 
 	/* Do I/O until the processing is satisifed or fails. */
-	while (requestor->layer.state & (KNOT_STATE_PRODUCE|KNOT_STATE_CONSUME)) {
+	while (layer_active(requestor->layer.state)) {
 		ret = request_io(requestor, request, timeout_ms);
 		if (ret != KNOT_EOK) {
 			knot_layer_reset(&requestor->layer);

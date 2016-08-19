@@ -19,16 +19,18 @@
 #include "libknot/packet/pkt.h"
 #include "libknot/mm_ctx.h"
 
-/*! Layer processing states.
- *  Each state represents the state machine transition,
- *  and determines readiness for the next action.
+/*!
+ * \brief Layer processing states.
+ *
+ * Each state represents the state machine transition,
+ * and determines readiness for the next action.
  */
 enum knot_layer_state {
-	KNOT_STATE_NOOP    = 0,      /*!< N/A */
-	KNOT_STATE_CONSUME = 1 << 0, /*!< Consume data. */
-	KNOT_STATE_PRODUCE = 1 << 1, /*!< Produce data. */
-	KNOT_STATE_DONE    = 1 << 2, /*!< Finished. */
-	KNOT_STATE_FAIL    = 1 << 3  /*!< Error. */
+	KNOT_STATE_NOOP = 0,   //!< Invalid.
+	KNOT_STATE_CONSUME,    //!< Consume data.
+	KNOT_STATE_PRODUCE,    //!< Produce data.
+	KNOT_STATE_DONE,       //!< Finished.
+	KNOT_STATE_FAIL        //!< Error.
 };
 
 struct knot_layer_api;
@@ -39,9 +41,9 @@ typedef struct knot_layer knot_layer_t;
 
 /*! \brief Packet processing context. */
 struct knot_layer {
-	knot_mm_t *mm;   /* Processing memory context. */
-	int state;       /* Bitmap of enum knot_layer_state. */
-	void *data;      /* Module specific. */
+	knot_mm_t *mm;                //!< Processing memory context.
+	enum knot_layer_state state;  //!< Processing state.
+	void *data;                   //!< Module specific.
 	const struct knot_layer_api *api;
 };
 
