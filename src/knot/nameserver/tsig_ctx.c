@@ -44,6 +44,16 @@ void tsig_cleanup(tsig_ctx_t *ctx)
 	memset(ctx, 0, sizeof(*ctx));
 }
 
+void tsig_reset(tsig_ctx_t *ctx)
+{
+	if (!ctx) {
+		return;
+	}
+
+	const knot_tsig_key_t *backup = ctx->key;
+	tsig_init(ctx, backup);
+}
+
 int tsig_sign_packet(tsig_ctx_t *ctx, knot_pkt_t *packet)
 {
 	if (!ctx || !packet) {
