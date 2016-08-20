@@ -173,7 +173,7 @@ int knot_tsig_append(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
  *  \todo Proper documentation.
  */
 static inline bool knot_tsig_can_sign(uint16_t tsig_rcode) {
-	return (tsig_rcode == KNOT_RCODE_NOERROR || tsig_rcode == KNOT_TSIG_ERR_BADTIME);
+	return tsig_rcode == KNOT_RCODE_NOERROR || tsig_rcode == KNOT_RCODE_BADTIME;
 }
 
 /*! @} */

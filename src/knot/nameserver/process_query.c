@@ -618,7 +618,7 @@ bool process_query_acl_check(conf_t *conf, const knot_dname_t *zone_name,
 		free(key_name);
 
 		qdata->rcode = KNOT_RCODE_NOTAUTH;
-		qdata->rcode_tsig = KNOT_TSIG_ERR_BADKEY;
+		qdata->rcode_tsig = KNOT_RCODE_BADKEY;
 		return false;
 	}
 
@@ -656,15 +656,15 @@ int process_query_verify(struct query_data *qdata)
 		break;
 	case KNOT_TSIG_EBADKEY:
 		qdata->rcode = KNOT_RCODE_NOTAUTH;
-		qdata->rcode_tsig = KNOT_TSIG_ERR_BADKEY;
+		qdata->rcode_tsig = KNOT_RCODE_BADKEY;
 		break;
 	case KNOT_TSIG_EBADSIG:
 		qdata->rcode = KNOT_RCODE_NOTAUTH;
-		qdata->rcode_tsig = KNOT_TSIG_ERR_BADSIG;
+		qdata->rcode_tsig = KNOT_RCODE_BADSIG;
 		break;
 	case KNOT_TSIG_EBADTIME:
 		qdata->rcode = KNOT_RCODE_NOTAUTH;
-		qdata->rcode_tsig = KNOT_TSIG_ERR_BADTIME;
+		qdata->rcode_tsig = KNOT_RCODE_BADTIME;
 		ctx->tsig_time_signed = knot_tsig_rdata_time_signed(query->tsig_rr);
 		break;
 	case KNOT_EMALF:

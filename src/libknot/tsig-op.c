@@ -368,7 +368,7 @@ int knot_tsig_sign(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
 
 	/* Create rdata for TSIG RR. */
 	uint16_t rdata_rcode = 0;
-	if (tsig_rcode == KNOT_TSIG_ERR_BADTIME)
+	if (tsig_rcode == KNOT_RCODE_BADTIME)
 		rdata_rcode = tsig_rcode;
 
 	const uint8_t *alg_name = dnssec_tsig_algorithm_to_dname(key->algorithm);
@@ -376,7 +376,7 @@ int knot_tsig_sign(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
 	knot_tsig_create_rdata(tmp_tsig, alg_name, alg_size, rdata_rcode);
 
 	/* Distinguish BADTIME response. */
-	if (tsig_rcode == KNOT_TSIG_ERR_BADTIME) {
+	if (tsig_rcode == KNOT_RCODE_BADTIME) {
 		/* Set client's time signed into the time signed field. */
 		knot_tsig_rdata_set_time_signed(tmp_tsig, request_time_signed);
 
@@ -675,7 +675,7 @@ int knot_tsig_add(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
 		return KNOT_ENOMEM;
 	}
 
-	assert(tsig_rcode != KNOT_TSIG_ERR_BADTIME);
+	assert(tsig_rcode != KNOT_RCODE_BADTIME);
 	knot_tsig_create_rdata(tmp_tsig, knot_tsig_rdata_alg_name(tsig_rr), 0, tsig_rcode);
 	knot_tsig_rdata_set_time_signed(tmp_tsig, knot_tsig_rdata_time_signed(tsig_rr));
 
