@@ -414,7 +414,7 @@ static inline void wire_ctx_clear(wire_ctx_t *ctx, size_t size)
 	ctx->position += size;
 }
 
-static inline void wire_ctx_copy(wire_ctx_t *dst, wire_ctx_t *src, size_t count)
+static inline void wire_ctx_copy(wire_ctx_t *dst, wire_ctx_t *src, size_t size)
 {
 	assert(dst);
 	assert(src);
@@ -423,22 +423,22 @@ static inline void wire_ctx_copy(wire_ctx_t *dst, wire_ctx_t *src, size_t count)
 		return;
 	}
 
-	if (count == 0) {
+	if (size == 0) {
 		return;
 	}
 
-	bool can_write = wire_ctx_can_write(dst, count);
-	bool can_read = wire_ctx_can_read(src, count);
+	bool can_write = wire_ctx_can_write(dst, size);
+	bool can_read = wire_ctx_can_read(src, size);
 	if (!can_write || !can_read) {
 		return;
 	}
 
-	memcpy(dst->position, src->position, count);
-	dst->position += count;
-	src->position += count;
+	memcpy(dst->position, src->position, size);
+	dst->position += size;
+	src->position += size;
 }
 
-static inline void wire_ctx_memset(wire_ctx_t *dst, int value, size_t count)
+static inline void wire_ctx_memset(wire_ctx_t *dst, int value, size_t size)
 {
 	assert(dst);
 
@@ -446,14 +446,14 @@ static inline void wire_ctx_memset(wire_ctx_t *dst, int value, size_t count)
 		return;
 	}
 
-	if (count == 0) {
+	if (size == 0) {
 		return;
 	}
 
-	if (!wire_ctx_can_write(dst, count)) {
+	if (!wire_ctx_can_write(dst, size)) {
 		return;
 	}
 
-	memset(dst->position, value, count);
-	dst->position += count;
+	memset(dst->position, value, size);
+	dst->position += size;
 }
