@@ -434,6 +434,9 @@ class Server(object):
             elif flag == "CD":
                 query.flags |= dns.flags.CD
                 dig_flags += " +cd"
+            elif flag == "Z":
+                query.flags |= 64
+                dig_flags += " +z"
 
         # Set EDNS.
         if edns != None or bufsize or nsid:

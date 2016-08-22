@@ -328,6 +328,7 @@ int knot_pkt_init_response(knot_pkt_t *pkt, const knot_pkt_t *query)
 	knot_wire_clear_ad(pkt->wire);
 	knot_wire_clear_ra(pkt->wire);
 	knot_wire_clear_aa(pkt->wire);
+	knot_wire_clear_z(pkt->wire);
 
 	/* Clear payload. */
 	knot_pkt_clear_payload(pkt);
