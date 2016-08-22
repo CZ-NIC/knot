@@ -83,7 +83,7 @@
 #define C_REQUEST_EDNS_OPTION	"\x13""request-edns-option"
 #define C_RMT			"\x06""remote"
 #define C_RRSIG_LIFETIME	"\x0E""rrsig-lifetime"
-#define C_RRSIG_REFRESH		"\x14""rrsig-refresh-before"
+#define C_RRSIG_REFRESH		"\x0D""rrsig-refresh"
 #define C_RUNDIR		"\x06""rundir"
 #define C_SECRET		"\x06""secret"
 #define C_SEM_CHECKS		"\x0F""semantic-checks"

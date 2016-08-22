@@ -576,7 +576,7 @@ DNSSEC policy configuration.
      nsec3: BOOL
      nsec3-iterations: INT
      nsec3-salt-length: INT
-     nsec3-resalt: TIME
+     nsec3-salt-lifetime: TIME
      propagation-delay: TIME
 
 .. _policy_id:
@@ -696,10 +696,10 @@ name before hashing.
 
 *Default:* 8
 
-.. _policy_nsec3-resalt:
+.. _policy_nsec3-salt-lifetime:
 
-nsec3-resalt
-------------
+nsec3-salt-lifetime
+-------------------
 
 A validity period of newly issued salt field.
 

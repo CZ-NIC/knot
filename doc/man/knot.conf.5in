@@ -510,7 +510,7 @@ policy:
     nsec3: BOOL
     nsec3\-iterations: INT
     nsec3\-salt\-length: INT
-    nsec3\-resalt: TIME
+    nsec3\-salt\-lifetime: TIME
     propagation\-delay: TIME
 .ft P
 .fi
@@ -581,7 +581,7 @@ A length of a salt field in octets, which is appended to the original owner
 name before hashing.
 .sp
 \fIDefault:\fP 8
-.SS nsec3\-resalt
+.SS nsec3\-salt\-lifetime
 .sp
 A validity period of newly issued salt field.
 .sp
