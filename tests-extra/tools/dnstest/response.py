@@ -37,12 +37,18 @@ class Response(object):
     def _check_flags(self, flags, noflags):
         flag_names = flags.split()
         for flag in flag_names:
-            flag_val = dns.flags.from_text(flag)
+            if flag == "Z":
+                flag_val = 64
+            else:
+                flag_val = dns.flags.from_text(flag)
             isset(self.resp.flags & flag_val, "%s FLAG" % flag)
 
         flag_names = noflags.split()
         for flag in flag_names:
-            flag_val = dns.flags.from_text(flag)
+            if flag == "Z":
+                flag_val = 64
+            else:
+                flag_val = dns.flags.from_text(flag)
             isset(not(self.resp.flags & flag_val), "NO %s FLAG" % flag)
 
     def _check_eflags(self, eflags, noeflags):
