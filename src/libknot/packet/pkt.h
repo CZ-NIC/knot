@@ -316,17 +316,27 @@ int knot_pkt_parse_section(knot_pkt_t *pkt, unsigned flags);
 int knot_pkt_parse_payload(knot_pkt_t *pkt, unsigned flags);
 
 /*!
- * \brief Get the Extended RCODE from the packet.
+ * \brief Get packet extended RCODE.
  *
- * Extended RCODE is created by using the Extended RCODE field from OPT RR as
- * higher 8 bits and the RCODE from DNS Header as the lower 4 bits, resulting
- * in a 12-bit unsigned integer. (See RFC 6891, Section 6.1.3).
+ * Extended RCODE is created by considering TSIG RCODE, EDNS RCODE and
+ * DNS Header RCODE. (See RFC 6895, Section 2.3).
  *
  * \param pkt Packet to get the response code from.
  *
  * \return Whole extended RCODE (0 if pkt == NULL).
  */
-uint16_t knot_pkt_get_ext_rcode(const knot_pkt_t *pkt);
+uint16_t knot_pkt_ext_rcode(const knot_pkt_t *pkt);
+
+/*!
+ * \brief Get packet extended RCODE name.
+ *
+ * The packet parameter is important as the name depends on TSIG.
+ *
+ * \param pkt Packet to get the response code from.
+ *
+ * \return RCODE name (or empty string if not known).
+ */
+const char *knot_pkt_ext_rcode_name(const knot_pkt_t *pkt);
 
 /*!
  * \brief Checks if there is an OPT RR in the packet.

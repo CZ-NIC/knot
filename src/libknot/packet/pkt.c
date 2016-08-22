@@ -20,6 +20,7 @@
 
 #include "libknot/attribute.h"
 #include "libknot/packet/pkt.h"
+#include "libknot/codes.h"
 #include "libknot/descriptor.h"
 #include "libknot/errcode.h"
 #include "libknot/rrtype/tsig.h"
@@ -860,18 +861,56 @@ int knot_pkt_parse_payload(knot_pkt_t *pkt, unsigned flags)
 }
 
 _public_
-uint16_t knot_pkt_get_ext_rcode(const knot_pkt_t *pkt)
+uint16_t knot_pkt_ext_rcode(const knot_pkt_t *pkt)
 {
 	if (pkt == NULL) {
 		return 0;
 	}
 
-	uint8_t rcode = knot_wire_get_rcode(pkt->wire);
+	/* Get header RCODE. */
+	uint16_t rcode = knot_wire_get_rcode(pkt->wire);
 
-	if (pkt->opt_rr) {
+	/* Update to extended RCODE if EDNS is available. */
+	if (pkt->opt_rr != NULL) {
 		uint8_t opt_rcode = knot_edns_get_ext_rcode(pkt->opt_rr);
-		return knot_edns_whole_rcode(opt_rcode, rcode);
+		rcode = knot_edns_whole_rcode(opt_rcode, rcode);
+	}
+
+	/* Return if not NOTAUTH. */
+	if (rcode != KNOT_RCODE_NOTAUTH) {
+		return rcode;
+	}
+
+	/* Get TSIG RCODE. */
+	uint16_t tsig_rcode = KNOT_RCODE_NOERROR;
+	if (pkt->tsig_rr != NULL) {
+		tsig_rcode = knot_tsig_rdata_error(pkt->tsig_rr);
+	}
+
+	/* Return proper RCODE. */
+	if (tsig_rcode != KNOT_RCODE_NOERROR) {
+		return tsig_rcode;
 	} else {
 		return rcode;
 	}
+}
+
+_public_
+const char *knot_pkt_ext_rcode_name(const knot_pkt_t *pkt)
+{
+	if (pkt == NULL) {
+		return "";
+	}
+
+	uint16_t rcode = knot_pkt_ext_rcode(pkt);
+
+	const knot_lookup_t *item = NULL;
+	if (pkt->tsig_rr != NULL) {
+		item = knot_lookup_by_id(knot_tsig_rcode_names, rcode);
+	}
+	if (item == NULL) {
+		item = knot_lookup_by_id(knot_rcode_names, rcode);
+	}
+
+	return (item != NULL) ? item->name : "";
 }
