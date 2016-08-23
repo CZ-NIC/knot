@@ -726,14 +726,13 @@ int knot_edns_client_subnet_get_addr(struct sockaddr_storage *addr,
 		return KNOT_ENOTSUP;
 	}
 
+	addr->ss_family = f->platform;
+
 	wire_ctx_t dst = wire_ctx_init((void *)addr + f->offset, f->size);
 	wire_ctx_t src = wire_ctx_init_const(ecs->address, sizeof(ecs->address));
 	ecs_write_address(&dst, &src, ecs->source_len);
-	if (dst.error != KNOT_EOK) {
-		return KNOT_EINVAL;
-	}
 
-	addr->ss_family = f->platform;
+	assert(dst.error == KNOT_EOK);
 
-	return (dst.error == KNOT_EOK ? KNOT_EOK : KNOT_EINVAL);
+	return KNOT_EOK;
 }
