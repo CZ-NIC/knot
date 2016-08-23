@@ -49,6 +49,8 @@ enum knot_edns_const {
 	KNOT_EDNS_OPTION_HDRLEN            = 4,
 	/*! \brief Maximal edns client subnet data size (IPv6). */
 	KNOT_EDNS_MAX_OPTION_CLIENT_SUBNET = 20,
+	/*! \brief Maximal size of EDNS client subnet address in bytes (IPv6). */
+	KNOT_EDNS_CLIENT_SUBNET_ADDRESS_MAXLEN = 16,
 
 	/*! \brief NSID option code. */
 	KNOT_EDNS_OPTION_NSID          = 3,
@@ -349,48 +351,6 @@ bool knot_edns_has_nsid(const knot_rrset_t *opt_rr);
 bool knot_edns_check_record(knot_rrset_t *opt_rr);
 
 /*!
- * \brief Creates client subnet wire data.
- *
- * \param family    Address family.
- * \param addr      Binary representation of IP address.
- * \param addr_len  Length of the address.
- * \param src_mask  Source mask.
- * \param dst_mask  Destination mask.
- * \param data      Output data buffer.
- * \param data_len  Size of output data buffer/written data.
- *
- * \return Error code, KNOT_EOK if successful.
- */
-int knot_edns_client_subnet_create(const knot_addr_family_t family,
-                                   const uint8_t *addr,
-                                   const uint16_t addr_len,
-                                   uint8_t src_mask,
-                                   uint8_t dst_mask,
-                                   uint8_t *data,
-                                   uint16_t *data_len);
-
-/*!
- * \brief Parses client subnet wire data.
- *
- * \param data      Input data buffer.
- * \param data_len  Length of input data buffer.
- * \param family    Address family.
- * \param addr      Binary representation of IP address.
- * \param addr_len  Size of address buffer/written address data.
- * \param src_mask  Source mask.
- * \param dst_mask  Destination mask.
- *
- * \return Error code, KNOT_EOK if successful.
- */
-int knot_edns_client_subnet_parse(const uint8_t *data,
-                                  const uint16_t data_len,
-                                  knot_addr_family_t *family,
-                                  uint8_t *addr,
-                                  uint16_t *addr_len,
-                                  uint8_t *src_mask,
-                                  uint8_t *dst_mask);
-
-/*!
  * \brief Computes additional Padding data length for required packet alignment.
  *
  * \param current_pkt_size  Current packet size.
@@ -415,5 +375,80 @@ static inline int knot_edns_alignment_size(size_t current_pkt_size,
 
 	return (modulo == 0) ? 0 : block_size - modulo;
 }
+
+/*!
+ * \brief EDNS Client Subnet content.
+ *
+ * \see draft-ietf-dnsop-edns-client-subnet
+ */
+struct knot_edns_client_subnet {
+	/*! \brief FAMILY */
+	uint16_t family;
+	/*! \brief SOURCE PREFIX-LENGTH */
+	uint8_t source_len;
+	/*! \brief SCOPE PREFIX-LENGTH */
+	uint8_t scope_len;
+	/*! \brief ADDRESS */
+	uint8_t address[KNOT_EDNS_CLIENT_SUBNET_ADDRESS_MAXLEN];
+};
+
+typedef struct knot_edns_client_subnet knot_edns_client_subnet_t;
+struct sockaddr_storage;
+
+/*!
+ * \brief Get size of the EDNS Client Subnet option wire size.
+ *
+ * \param ecs  EDNS Client Subnet data.
+ *
+ * \return Size of the EDNS option data.
+ */
+size_t knot_edns_client_subnet_size(const knot_edns_client_subnet_t *ecs);
+
+/*!
+ * \brief Write EDNS Client Subnet data from the ECS structure to wire.
+ *
+ * \param option      EDNS option data buffer.
+ * \param option_len  EDNS option data buffer size.
+ * \param ecs         EDNS Client Subnet data.
+ *
+ * \return Error code, KNOT_EOK if sucessful.
+ */
+int knot_edns_client_subnet_write(uint8_t *option, size_t option_len,
+                                  const knot_edns_client_subnet_t *ecs);
+
+/*!
+ * \brief Parse EDNS Client Subnet data from wire to the ECS structure.
+ *
+ * \param[out] ecs         EDNS Client Subnet data.
+ * \param[in]  option      EDNS option data.
+ * \param[in]  option_len  EDNS option size.
+ *
+ * \return Error code, KNOT_EOK if sucessful.
+ */
+int knot_edns_client_subnet_parse(knot_edns_client_subnet_t *ecs,
+                                  const uint8_t *option, size_t option_len);
+
+/*!
+ * \brief Set address to the ECS structure.
+ *
+ * \param ecs   ECS structure to set address into.
+ * \param addr  Address to be set.
+ *
+ * \return Error code. KNOT_EOK if succesful.
+ */
+int knot_edns_client_subnet_set_addr(knot_edns_client_subnet_t *ecs,
+                                     const struct sockaddr_storage *addr);
+
+/*!
+ * \brief Get address from the ECS structure.
+ *
+ * Only the family and raw address is set in the structure. The bits not
+ * covered by the prefix length are cleared.
+ *
+ * \param addr  Address to be set.
+ * \param ecs   ECS structure to retrieve address from.
+ */
+int knot_edns_client_subnet_get_addr(struct sockaddr_storage *addr,
+                                     const knot_edns_client_subnet_t *ecs);
 
 /*! @} */

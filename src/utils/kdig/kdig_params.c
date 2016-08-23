@@ -763,16 +763,15 @@ static int opt_client(const char *arg, void *query)
 {
 	query_t *q = query;
 
-	struct in_addr  addr4;
-	struct in6_addr addr6;
-
 	char         *sep = NULL;
 	const size_t arg_len = strlen(arg);
 	const char   *arg_end = arg + arg_len;
-	char         *addr = NULL;
 	size_t       addr_len = 0;
 
-	subnet_t *subnet = calloc(1, sizeof(subnet_t));
+	knot_edns_client_subnet_t *subnet = calloc(1, sizeof(*subnet));
+	if (subnet == NULL) {
+		return KNOT_ENOMEM;
+	}
 
 	// Separate address and network mask.
 	if ((sep = index(arg, '/')) != NULL) {
@@ -782,35 +781,40 @@ static int opt_client(const char *arg, void *query)
 	}
 
 	// Check IP address.
-	addr = strndup(arg, addr_len);
-	if (inet_pton(AF_INET, addr, &addr4) == 1) {
-		subnet->family = KNOT_ADDR_FAMILY_IPV4;
-		memcpy(subnet->addr, &(addr4.s_addr), IPV4_PREFIXLEN / 8);
-		subnet->addr_len = IPV4_PREFIXLEN / 8;
-		subnet->netmask = IPV4_PREFIXLEN;
-	} else if (inet_pton(AF_INET6, addr, &addr6) == 1) {
-		subnet->family = KNOT_ADDR_FAMILY_IPV6;
-		memcpy(subnet->addr, &(addr6.s6_addr), IPV6_PREFIXLEN / 8);
-		subnet->addr_len = IPV6_PREFIXLEN / 8;
-		subnet->netmask = IPV6_PREFIXLEN;
-	} else {
-		free(addr);
+
+	struct sockaddr_storage ss = { 0 };
+	struct addrinfo hints = { .ai_flags = AI_NUMERICHOST };
+	struct addrinfo *ai = NULL;
+
+	char *addr_str = strndup(arg, addr_len);
+	if (getaddrinfo(addr_str, NULL, &hints, &ai) != 0) {
+		free(addr_str);
 		free(subnet);
 		ERR("invalid address +client=%s\n", arg);
 		return KNOT_EINVAL;
 	}
-	free(addr);
+
+	memcpy(&ss, ai->ai_addr, ai->ai_addrlen);
+	freeaddrinfo(ai);
+	free(addr_str);
+
+	if (knot_edns_client_subnet_set_addr(subnet, &ss) != KNOT_EOK) {
+		free(subnet);
+		ERR("invalid address +client=%s\n", arg);
+		return KNOT_EINVAL;
+	}
 
 	// Parse network mask.
-	if (arg + addr_len < arg_end) {
-		arg += addr_len + 1;
-		uint8_t num;
-		if (str_to_u8(arg, &num) != KNOT_EOK || num > subnet->netmask) {
+	const char *mask = arg;
+	if (mask + addr_len < arg_end) {
+		mask += addr_len + 1;
+		uint8_t num = 0;
+		if (str_to_u8(mask, &num) != KNOT_EOK || num > subnet->source_len) {
 			free(subnet);
 			ERR("invalid network mask +client=%s\n", arg);
 			return KNOT_EINVAL;
 		}
-		subnet->netmask = num;
+		subnet->source_len = num;
 	}
 
 	free(q->subnet);
@@ -1128,7 +1132,7 @@ query_t *query_create(const char *owner, const query_t *conf)
 			}
 		}
 		if (conf->subnet != NULL) {
-			query->subnet = malloc(sizeof(subnet_t));
+			query->subnet = malloc(sizeof(*query->subnet));
 			if (query->subnet == NULL) {
 				query_free(query);
 				return NULL;

@@ -249,21 +249,17 @@ static int add_query_edns(knot_pkt_t *packet, const query_t *query, uint16_t max
 
 	/* Append EDNS-client-subnet. */
 	if (query->subnet != NULL) {
-		uint8_t  data[KNOT_EDNS_MAX_OPTION_CLIENT_SUBNET] = { 0 };
-		uint16_t data_len = sizeof(data);
+		size_t size = knot_edns_client_subnet_size(query->subnet);
+		uint8_t data[size];
 
-		ret = knot_edns_client_subnet_create(query->subnet->family,
-		                                     query->subnet->addr,
-		                                     query->subnet->addr_len,
-		                                     query->subnet->netmask,
-		                                     0, data, &data_len);
+		ret = knot_edns_client_subnet_write(data, size, query->subnet);
 		if (ret != KNOT_EOK) {
 			knot_rrset_clear(&opt_rr, &packet->mm);
 			return ret;
 		}
 
 		ret = knot_edns_add_option(&opt_rr, KNOT_EDNS_OPTION_CLIENT_SUBNET,
-		                           data_len, data, &packet->mm);
+		                           size, data, &packet->mm);
 		if (ret != KNOT_EOK) {
 			knot_rrset_clear(&opt_rr, &packet->mm);
 			return ret;
