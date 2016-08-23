@@ -807,10 +807,9 @@ static int opt_client(const char *arg, void *query)
 	// Parse network mask.
 	const char *mask = arg;
 	if (mask + addr_len < arg_end) {
-		char *end = NULL;
 		mask += addr_len + 1;
-		unsigned long num = strtoul(mask, &end, 10);
-		if (end == mask || *end != '\0' || num > subnet->source_len) {
+		uint8_t num = 0;
+		if (str_to_u8(mask, &num) != KNOT_EOK || num > subnet->source_len) {
 			free(subnet);
 			ERR("invalid network mask +client=%s\n", arg);
 			return KNOT_EINVAL;
