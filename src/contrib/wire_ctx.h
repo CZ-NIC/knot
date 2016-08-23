@@ -445,17 +445,18 @@ static inline void wire_ctx_copy(wire_ctx_t *dst, wire_ctx_t *src, size_t size)
 	assert(dst);
 	assert(src);
 
-	if (dst->error != KNOT_EOK || src->error != KNOT_EOK) {
+	if (size == 0 || dst->error != KNOT_EOK) {
 		return;
 	}
 
-	if (size == 0) {
+	if (wire_ctx_can_read(src, size) != KNOT_EOK) {
+		dst->error = KNOT_EFEWDATA;
 		return;
 	}
 
-	bool can_write = wire_ctx_can_write(dst, size);
-	bool can_read = wire_ctx_can_read(src, size);
-	if (!can_write || !can_read) {
+	int ret = wire_ctx_can_write(dst, size);
+	if (ret != KNOT_EOK) {
+		dst->error = ret;
 		return;
 	}
 
