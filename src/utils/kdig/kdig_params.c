@@ -759,7 +759,7 @@ static int opt_noalignment(const char *arg, void *query)
 	return KNOT_EOK;
 }
 
-static int opt_client(const char * const arg, void *query)
+static int opt_client(const char *arg, void *query)
 {
 	query_t *q = query;
 
