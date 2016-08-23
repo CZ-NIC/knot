@@ -154,7 +154,7 @@ static inline int wire_ctx_can_read(wire_ctx_t *ctx, size_t size)
 {
 	assert(ctx);
 
-	if (ctx->error) {
+	if (ctx->error != KNOT_EOK) {
 		return ctx->error;
 	}
 
