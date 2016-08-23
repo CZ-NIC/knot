@@ -768,7 +768,7 @@ static int opt_client(const char *arg, void *query)
 	const char   *arg_end = arg + arg_len;
 	size_t       addr_len = 0;
 
-	knot_edns_client_subnet_t *subnet = calloc(sizeof(*subnet), 1);
+	knot_edns_client_subnet_t *subnet = calloc(1, sizeof(*subnet));
 	if (subnet == NULL) {
 		return KNOT_ENOMEM;
 	}
