@@ -1417,3 +1417,23 @@ id
 --
 
 A module identifier.
+
+.. _mod-whoami:
+
+Module whoami
+=============
+
+The module synthesizes an A or AAAA record containing the query source IP address, 
+at the apex of the zone being served.
+
+::
+
+ mod-whoami:
+   - id: STR
+
+.. _mod-online-sign_id:
+
+id
+--
+
+A module identifier.

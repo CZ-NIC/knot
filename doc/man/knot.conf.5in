@@ -1188,6 +1188,24 @@ mod\-online\-sign:
 .SS id
 .sp
 A module identifier.
+.SH MODULE WHOAMI
+.sp
+The module synthesizes an A or AAAA record containing the query source IP address,
+at the apex of the zone being served.
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+mod\-whoami:
+  \- id: STR
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.SS id
+.sp
+A module identifier.
 .SH AUTHOR
 CZ.NIC Labs <http://www.knot-dns.cz>
 .SH COPYRIGHT
