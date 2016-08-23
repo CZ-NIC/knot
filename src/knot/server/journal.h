@@ -109,13 +109,14 @@ typedef struct journal
 /*!
  * \brief Open journal.
  *
+ * \param journal Returned journal.
  * \param path Journal file name.
  * \param fslimit File size limit (0 for no limit).
  *
  * \retval new journal instance if successful.
  * \retval NULL on error.
  */
-journal_t* journal_open(const char *path, size_t fslimit);
+int journal_open(journal_t **journal, const char *path, size_t fslimit);
 
 /*!
  * \brief Map journal entry for read/write.
