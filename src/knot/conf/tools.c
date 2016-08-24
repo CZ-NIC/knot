@@ -367,6 +367,10 @@ int check_policy(
 	                                    C_KSK_SIZE, args->id, args->id_len);
 	conf_val_t zsk = conf_rawid_get_txn(args->conf, args->txn, C_POLICY,
 	                                    C_ZSK_SIZE, args->id, args->id_len);
+	conf_val_t lifetime = conf_rawid_get_txn(args->conf, args->txn, C_POLICY,
+	                                    C_RRSIG_LIFETIME, args->id, args->id_len);
+	conf_val_t refresh = conf_rawid_get_txn(args->conf, args->txn, C_POLICY,
+	                                    C_RRSIG_REFRESH, args->id, args->id_len);
 
 	int64_t ksk_size = conf_int(&ksk);
 	if (ksk_size != YP_NIL && !dnssec_algorithm_key_size_check(conf_opt(&alg), ksk_size)) {
@@ -377,6 +381,13 @@ int check_policy(
 	int64_t zsk_size = conf_int(&zsk);
 	if (zsk_size != YP_NIL && !dnssec_algorithm_key_size_check(conf_opt(&alg), zsk_size)) {
 		args->err_str = "ZSK key size not compatible with the algorithm";
+		return KNOT_EINVAL;
+	}
+
+	int64_t lifetime_val = conf_int(&lifetime);
+	int64_t refresh_val = conf_int(&refresh);
+	if (lifetime_val <= refresh_val) {
+		args->err_str = "RRSIG lifetime is supposed to be lower than refresh";
 		return KNOT_EINVAL;
 	}
 
