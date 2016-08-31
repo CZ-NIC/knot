@@ -34,7 +34,7 @@
  *       but simply if the requesting/receiving works, so mirror is okay. */
 static int reset(knot_layer_t *ctx) { return KNOT_STATE_PRODUCE; }
 static int begin(knot_layer_t *ctx, void *module_param) { return reset(ctx); }
-static int finish(knot_layer_t *ctx) { return KNOT_STATE_NOOP; }
+static int finish(knot_layer_t *ctx) { return reset(ctx); }
 static int in(knot_layer_t *ctx, knot_pkt_t *pkt) { return KNOT_STATE_DONE; }
 static int out(knot_layer_t *ctx, knot_pkt_t *pkt) { return KNOT_STATE_CONSUME; }
 
@@ -42,8 +42,7 @@ static const int TIMEOUT = 2000;
 
 /*! \brief Dummy answer processing module. */
 const knot_layer_api_t dummy_module = {
-        &begin, &reset, &finish,
-        &in, &out, NULL
+        &begin, &reset, &finish, &in, &out, NULL
 };
 
 static void set_blocking_mode(int sock)

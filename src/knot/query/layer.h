@@ -29,6 +29,7 @@ enum knot_layer_state {
 	KNOT_STATE_NOOP = 0,   //!< Invalid.
 	KNOT_STATE_CONSUME,    //!< Consume data.
 	KNOT_STATE_PRODUCE,    //!< Produce data.
+	KNOT_STATE_RESET,      //!< Restart processing.
 	KNOT_STATE_DONE,       //!< Finished.
 	KNOT_STATE_FAIL        //!< Error.
 };

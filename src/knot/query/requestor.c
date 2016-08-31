@@ -105,6 +105,7 @@ struct knot_request *knot_request_make(knot_mm_t *mm,
                                        const struct sockaddr *remote,
                                        const struct sockaddr *source,
                                        knot_pkt_t *query,
+                                       const knot_tsig_key_t *tsig_key,
                                        unsigned flags)
 {
 	if (remote == NULL || query == NULL) {
@@ -133,6 +134,8 @@ struct knot_request *knot_request_make(knot_mm_t *mm,
 		request->source.ss_family = AF_UNSPEC;
 	}
 
+	tsig_init(&request->tsig, tsig_key);
+
 	return request;
 }
 
@@ -147,6 +150,7 @@ void knot_request_free(struct knot_request *request, knot_mm_t *mm)
 	}
 	knot_pkt_free(&request->query);
 	knot_pkt_free(&request->resp);
+	tsig_cleanup(&request->tsig);
 
 	mm_free(mm, request);
 }
@@ -163,7 +167,7 @@ int knot_requestor_init(struct knot_requestor *requestor,
 
 	requestor->mm = mm;
 	knot_layer_init(&requestor->layer, mm, proc);
-	requestor->layer.state = knot_layer_begin(&requestor->layer, proc_param);
+	knot_layer_begin(&requestor->layer, proc_param);
 
 	return KNOT_EOK;
 }
@@ -179,38 +183,58 @@ void knot_requestor_clear(struct knot_requestor *requestor)
 	memset(requestor, 0, sizeof(*requestor));
 }
 
-static int request_io(struct knot_requestor *req, struct knot_request *last,
-                      int timeout_ms)
+static int request_reset(struct knot_requestor *req,
+                         struct knot_request *last)
 {
-	int ret = KNOT_EOK;
-	knot_pkt_t *query = last->query;
-	knot_pkt_t *resp = last->resp;
+	knot_layer_reset(&req->layer);
+	tsig_reset(&last->tsig);
 
-	/* Data to be sent. */
-	if (req->layer.state == KNOT_STATE_PRODUCE) {
-
-		/* Process query and send it out. */
-		knot_layer_produce(&req->layer, query);
-
-		if (req->layer.state == KNOT_STATE_CONSUME) {
-			ret = request_send(last, timeout_ms);
-			if (ret != KNOT_EOK) {
-				return ret;
-			}
-		}
+	if (req->layer.state == KNOT_STATE_RESET) {
+		return KNOT_LAYER_ERROR;
 	}
 
-	/* Data to be read. */
+	return KNOT_EOK;
+}
+
+static int request_produce(struct knot_requestor *req,
+                           struct knot_request *last,
+                           int timeout_ms)
+{
+	knot_layer_produce(&req->layer, last->query);
+
+	int ret = tsig_sign_packet(&last->tsig, last->query);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	// TODO: verify condition
 	if (req->layer.state == KNOT_STATE_CONSUME) {
-		/* Read answer and process it. */
-		ret = request_recv(last, timeout_ms);
-		if (ret < 0) {
-			return ret;
-		}
-
-		(void) knot_pkt_parse(resp, 0);
-		knot_layer_consume(&req->layer, resp);
+		ret = request_send(last, timeout_ms);
 	}
+
+	return ret;
+}
+
+static int request_consume(struct knot_requestor *req,
+                           struct knot_request *last,
+                           int timeout_ms)
+{
+	int ret = request_recv(last, timeout_ms);
+	if (ret < 0) {
+		return ret;
+	}
+
+	ret = knot_pkt_parse(last->resp, 0);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	ret = tsig_verify_packet(&last->tsig, last->resp);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	knot_layer_consume(&req->layer, last->resp);
 
 	return KNOT_EOK;
 }
@@ -218,11 +242,27 @@ static int request_io(struct knot_requestor *req, struct knot_request *last,
 static bool layer_active(enum knot_layer_state state)
 {
 	switch (state) {
-	case KNOT_STATE_PRODUCE:
 	case KNOT_STATE_CONSUME:
+	case KNOT_STATE_PRODUCE:
+	case KNOT_STATE_RESET:
 		return true;
 	default:
 		return false;
+	}
+}
+
+static int request_io(struct knot_requestor *req, struct knot_request *last,
+                      int timeout_ms)
+{
+	switch (req->layer.state) {
+	case KNOT_STATE_CONSUME:
+		return request_consume(req, last, timeout_ms);
+	case KNOT_STATE_PRODUCE:
+		return request_produce(req, last, timeout_ms);
+	case KNOT_STATE_RESET:
+		return request_reset(req, last);
+	default:
+		return KNOT_EINVAL;
 	}
 }
 
@@ -240,7 +280,7 @@ int knot_requestor_exec(struct knot_requestor *requestor,
 	while (layer_active(requestor->layer.state)) {
 		ret = request_io(requestor, request, timeout_ms);
 		if (ret != KNOT_EOK) {
-			knot_layer_reset(&requestor->layer);
+			knot_layer_finish(&requestor->layer);
 			return ret;
 		}
 	}
@@ -250,8 +290,13 @@ int knot_requestor_exec(struct knot_requestor *requestor,
 		ret = KNOT_LAYER_ERROR;
 	}
 
+	/* Verify last TSIG */
+	if (tsig_unsigned_count(&request->tsig) != 0) {
+		ret = KNOT_LAYER_ERROR;
+	}
+
 	/* Finish current query processing. */
-	knot_layer_reset(&requestor->layer);
+	knot_layer_finish(&requestor->layer);
 
 	return ret;
 }
