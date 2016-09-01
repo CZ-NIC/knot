@@ -51,6 +51,7 @@ void tsig_reset(tsig_ctx_t *ctx)
 	}
 
 	const knot_tsig_key_t *backup = ctx->key;
+	tsig_cleanup(ctx);
 	tsig_init(ctx, backup);
 }
 
