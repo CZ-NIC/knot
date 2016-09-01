@@ -60,10 +60,8 @@ keymgr_bin = get_binary("KNOT_TEST_KEYMGR", repo_binary("src/keymgr"))
 bind_bin = get_binary("KNOT_TEST_BIND", "named")
 # KNOT_TEST_BINDC - Bind control binary.
 bind_ctl = get_binary("KNOT_TEST_BINDC", "rndc")
-# KNOT_TEST_NSD - Nsd binary.
-#nsd_bin = get_binary("KNOT_TEST_NSD", "nsd")
-# KNOT_TEST_NSDC - Nsd control binary.
-#nsd_ctl = get_binary("KNOT_TEST_NSDC", "nsdc")
+# KNOT_TEST_ROSEDB_TOOL - Rosedb tool binary.
+rosedb_tool = get_binary("KNOT_TEST_ROSEDB_TOOL", repo_binary("src/rosedb_tool"))
 
 # KNOT_TEST_OUTS_DIR - working directories location.
 outs_dir = get_param("KNOT_TEST_OUTS_DIR", "/tmp")

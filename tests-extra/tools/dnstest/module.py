@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 
+import os
 import re
-from subprocess import Popen, PIPE, check_call, CalledProcessError
+from subprocess import Popen, PIPE, check_call
 from dnstest.utils import *
 import dnstest.config
 import dnstest.params as params
-import dnstest.server
 
 class KnotModule(object):
     '''Query module configuration'''
@@ -152,3 +152,36 @@ class ModWhoami(KnotModule):
         conf.end()
 
         return conf
+
+class ModRosedb(KnotModule):
+    '''Rosedb module'''
+
+    src_name = "rosedb_load"
+    conf_name = "mod-rosedb"
+
+    def __init__(self, dbdir):
+        super().__init__()
+        self.dbdir = dbdir
+
+    def get_conf(self, conf=None):
+        if not conf:
+            conf = dnstest.config.KnotConf()
+
+        conf.begin(self.conf_name)
+        conf.id_item("id", self.conf_id)
+        conf.item_str("dbdir", "%s" % (self.dbdir))
+        conf.end()
+
+        return conf
+
+    def add_record(self, owner, rtype, ttl, rdata, code="-", target="-"):
+        prepare_dir(self.dbdir)
+        try:
+            check_call([params.rosedb_tool, self.dbdir, 'add', owner, rtype,
+                        ttl, rdata, code, target],
+                       stdout=open(os.path.join(params.out_dir, "rosedb-tool.out"), mode="a"),
+                       stderr=open(os.path.join(params.out_dir, "rosedb-tool.err"), mode="a"))
+        except:
+            set_err("ROSEDB_TOOL")
+            detail_log("!Failed to add a record into rosedb '%s'" % self.dbdir)
+            detail_log(SEP)
