@@ -123,32 +123,18 @@ static int process_query_in(knot_layer_t *ctx, knot_pkt_t *pkt)
 static int query_internet(knot_pkt_t *pkt, knot_layer_t *ctx)
 {
 	struct query_data *data = QUERY_DATA(ctx);
-	int next_state = KNOT_STATE_FAIL;
 
 	switch(data->packet_type) {
-	case KNOT_QUERY_NORMAL:
-		next_state = internet_process_query(pkt, data);
-		break;
-	case KNOT_QUERY_NOTIFY:
-		next_state = notify_process_query(pkt, data);
-		break;
-	case KNOT_QUERY_AXFR:
-		next_state = axfr_process_query(pkt, data);
-		break;
-	case KNOT_QUERY_IXFR:
-		next_state = ixfr_process_query(pkt, data);
-		break;
-	case KNOT_QUERY_UPDATE:
-		next_state = update_process_query(pkt, data);
-		break;
+	case KNOT_QUERY_NORMAL: return internet_process_query(pkt, data);
+	case KNOT_QUERY_NOTIFY: return notify_process_query(pkt, data);
+	case KNOT_QUERY_AXFR:   return axfr_process_query(pkt, data);
+	case KNOT_QUERY_IXFR:   return ixfr_process_query(pkt, data);
+	case KNOT_QUERY_UPDATE: return update_process_query(pkt, data);
 	default:
 		/* Nothing else is supported. */
 		data->rcode = KNOT_RCODE_NOTIMPL;
-		next_state = KNOT_STATE_FAIL;
-		break;
+		return KNOT_STATE_FAIL;
 	}
-
-	return next_state;
 }
 
 /*!
