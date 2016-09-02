@@ -16,7 +16,6 @@
 
 #include <string.h>
 #include <unistd.h>
-#include <urcu.h>
 
 #include "knot/common/log.h"
 #include "knot/conf/confio.h"
@@ -95,15 +94,11 @@ static int zones_apply(ctl_args_t *args, int (*fcn)(zone_t *, ctl_args_t *))
 {
 	// Process all configured zones if none is specified.
 	if (args->data[KNOT_CTL_IDX_ZONE] == NULL) {
-		rcu_read_lock();
 		knot_zonedb_foreach(args->server->zone_db, fcn, args);
-		rcu_read_unlock();
 		return KNOT_EOK;
 	}
 
 	int ret = KNOT_EOK;
-
-	rcu_read_lock();
 
 	while (true) {
 		zone_t *zone;
@@ -124,8 +119,6 @@ static int zones_apply(ctl_args_t *args, int (*fcn)(zone_t *, ctl_args_t *))
 		}
 		ctl_log_data(&args->data);
 	}
-
-	rcu_read_unlock();
 
 	return ret;
 }
@@ -343,9 +336,7 @@ static int zone_txn_commit(zone_t *zone, ctl_args_t *args)
 		return KNOT_TXN_ENOTEXISTS;
 	}
 
-	rcu_read_unlock();
 	int ret = zone_update_commit(conf(), zone->control_update);
-	rcu_read_lock();
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
