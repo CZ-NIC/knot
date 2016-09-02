@@ -234,6 +234,10 @@ static int request_consume(struct knot_requestor *req,
 		return ret;
 	}
 
+	if (tsig_unsigned_count(&last->tsig) >= 100) {
+		return KNOT_TSIG_EBADSIG;
+	}
+
 	knot_layer_consume(&req->layer, last->resp);
 
 	return KNOT_EOK;
@@ -292,7 +296,7 @@ int knot_requestor_exec(struct knot_requestor *requestor,
 
 	/* Verify last TSIG */
 	if (tsig_unsigned_count(&request->tsig) != 0) {
-		ret = KNOT_LAYER_ERROR;
+		ret = KNOT_TSIG_EBADSIG;
 	}
 
 	/* Finish current query processing. */
