@@ -15,11 +15,13 @@
  */
 
 #include <string.h>
+#include <unistd.h>
 #include <urcu.h>
 
 #include "knot/common/log.h"
 #include "knot/conf/confio.h"
 #include "knot/ctl/commands.h"
+#include "knot/events/handlers.h"
 #include "knot/updates/zone-update.h"
 #include "libknot/libknot.h"
 #include "libknot/yparser/yptrafo.h"
@@ -903,6 +905,31 @@ static int zone_txn_unset(zone_t *zone, ctl_args_t *args)
 
 }
 
+static int zone_purge(zone_t *zone, ctl_args_t *args)
+{
+	UNUSED(args);
+
+	// Abort possible editing transaction.
+	(void)zone_txn_abort(zone, args);
+
+	// Expire the zone.
+	event_expire(conf(), zone);
+
+	// Purge the zone file.
+	char *zonefile = conf_zonefile(conf(), zone->name);
+	(void)unlink(zonefile);
+	free(zonefile);
+
+	// Purge the zone journal.
+	char *journalfile = conf_journalfile(conf(), zone->name);
+	(void)unlink(journalfile);
+	free(journalfile);
+
+	// TODO: Purge the zone timers (after zone events refactoring).
+
+	return KNOT_EOK;
+}
+
 static int ctl_zone(ctl_args_t *args, ctl_cmd_t cmd)
 {
 	switch (cmd) {
@@ -934,6 +961,8 @@ static int ctl_zone(ctl_args_t *args, ctl_cmd_t cmd)
 		return zones_apply(args, zone_txn_set);
 	case CTL_ZONE_UNSET:
 		return zones_apply(args, zone_txn_unset);
+	case CTL_ZONE_PURGE:
+		return zones_apply(args, zone_purge);
 	default:
 		assert(0);
 		return KNOT_EINVAL;
@@ -1249,6 +1278,7 @@ static const desc_t cmd_table[] = {
 	[CTL_ZONE_GET]        = { "zone-get",        ctl_zone },
 	[CTL_ZONE_SET]        = { "zone-set",        ctl_zone },
 	[CTL_ZONE_UNSET]      = { "zone-unset",      ctl_zone },
+	[CTL_ZONE_PURGE]      = { "zone-purge",      ctl_zone },
 
 	[CTL_CONF_LIST]       = { "conf-list",       ctl_conf_read },
 	[CTL_CONF_READ]       = { "conf-read",       ctl_conf_read },

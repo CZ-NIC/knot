@@ -111,6 +111,9 @@ Actions
 **zone-unset** *zone* *owner* [*type* [*rdata*]]
   Remove zone data within the transaction.
 
+**zone-purge** *zone*...
+  Purge zone data, zone file, and zone journal.
+
 **conf-init**
   Initialize the configuration database. (*)
 
