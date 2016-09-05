@@ -188,6 +188,10 @@ Reading and editing zones
 Knot DNS allows you to read or change zone contents online using server
 control interface.
 
+.. WARNING::
+   Avoid concurrent zone file modification, and/or dynamic updates, and/or
+   zone changing over control interface. Otherwise, the zone could be inconsistent.
+
 To get contents of all configured zones, or a specific zone contents, or zone
 records with a specific owner, or even with a specific record type::
 
