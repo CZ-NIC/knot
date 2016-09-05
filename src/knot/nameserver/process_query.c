@@ -405,7 +405,7 @@ static int process_query_err(knot_layer_t *ctx, knot_pkt_t *pkt)
 	knot_wire_clear_cd(pkt->wire); // TODO: should be inside knot_pkt_init_response.
 
 	/* Restore original QNAME. */
-	process_query_qname_case_restore(qdata, pkt);
+	process_query_qname_case_restore(pkt, qdata);
 
 	/* Add OPT and TSIG (best effort, send reply anyway if fails). */
 	if (pkt->current != KNOT_ADDITIONAL) {
@@ -532,7 +532,7 @@ static int process_query_out(knot_layer_t *ctx, knot_pkt_t *pkt)
 	if (next_state == KNOT_STATE_DONE || next_state == KNOT_STATE_PRODUCE) {
 
 		/* Restore original QNAME. */
-		process_query_qname_case_restore(qdata, pkt);
+		process_query_qname_case_restore(pkt, qdata);
 
 		if (pkt->current != KNOT_ADDITIONAL) {
 			knot_pkt_begin(pkt, KNOT_ADDITIONAL);
@@ -644,7 +644,7 @@ int process_query_verify(struct query_data *qdata)
 	ctx->tsig_digestlen = knot_tsig_rdata_mac_length(query->tsig_rr);
 
 	/* Checking query. */
-	process_query_qname_case_restore(qdata, query);
+	process_query_qname_case_restore(query, qdata);
 	int ret = knot_tsig_server_check(query->tsig_rr, query->wire,
 	                                 query->size, &ctx->tsig_key);
 	process_query_qname_case_lower(query);
@@ -732,7 +732,7 @@ fail:
 	return ret;
 }
 
-void process_query_qname_case_restore(struct query_data *qdata, knot_pkt_t *pkt)
+void process_query_qname_case_restore(knot_pkt_t *pkt, struct query_data *qdata)
 {
 	/* If original QNAME is empty, Query is either unparsed or for root domain.
 	 * Either way, letter case doesn't matter. */

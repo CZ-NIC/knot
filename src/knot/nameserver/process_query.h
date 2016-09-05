@@ -133,10 +133,10 @@ int process_query_sign_response(knot_pkt_t *pkt, struct query_data *qdata);
 /*!
  * \brief Restore QNAME letter case.
  *
- * \param qdata  Query data.
  * \param pkt    Incoming message.
+ * \param qdata  Query data.
  */
-void process_query_qname_case_restore(struct query_data *qdata, knot_pkt_t *pkt);
+void process_query_qname_case_restore(knot_pkt_t *pkt, struct query_data *qdata);
 
 /*!
  * \brief Convert QNAME to lowercase format for processing.
