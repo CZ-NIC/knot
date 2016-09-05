@@ -25,7 +25,7 @@ Example:
 from ctypes import cdll, c_void_p, c_int, c_char_p, c_uint, byref
 from enum import IntEnum
 
-LIB = cdll.LoadLibrary('libknot.so.2')
+LIB = cdll.LoadLibrary('libknot.so')
 
 CTL_ALLOC = LIB.knot_ctl_alloc
 CTL_ALLOC.restype = c_void_p
