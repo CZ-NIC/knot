@@ -391,16 +391,11 @@ int apply_prepare_to_sign(apply_ctx_t *ctx)
 	return zone_contents_adjust_pointers(ctx->contents);
 }
 
-int apply_changesets(apply_ctx_t *ctx, zone_t *zone, list_t *chsets,
-                     zone_contents_t **new_contents)
+int apply_changesets(apply_ctx_t *ctx, zone_contents_t *old_contents,
+                     list_t *chsets, zone_contents_t **new_contents)
 {
-	if (ctx == NULL || zone == NULL || chsets == NULL ||
+	if (ctx == NULL || old_contents == NULL || chsets == NULL ||
 	    EMPTY_LIST(*chsets) || new_contents == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	zone_contents_t *old_contents = zone->contents;
-	if (!old_contents) {
 		return KNOT_EINVAL;
 	}
 
@@ -436,15 +431,10 @@ int apply_changesets(apply_ctx_t *ctx, zone_t *zone, list_t *chsets,
 	return KNOT_EOK;
 }
 
-int apply_changeset(apply_ctx_t *ctx, zone_t *zone, changeset_t *ch,
-                    zone_contents_t **new_contents)
+int apply_changeset(apply_ctx_t *ctx, zone_contents_t *old_contents,
+                    changeset_t *ch, zone_contents_t **new_contents)
 {
-	if (ctx == NULL || zone == NULL || ch == NULL || new_contents == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	zone_contents_t *old_contents = zone->contents;
-	if (!old_contents) {
+	if (ctx == NULL || old_contents == NULL || ch == NULL || new_contents == NULL) {
 		return KNOT_EINVAL;
 	}
 

@@ -24,7 +24,7 @@
 
 #pragma once
 
-#include "knot/zone/zone.h"
+#include "knot/zone/contents.h"
 #include "knot/updates/changesets.h"
 #include "contrib/ucw/lists.h"
 
@@ -105,26 +105,26 @@ int apply_prepare_to_sign(apply_ctx_t *ctx);
 /*!
  * \brief Applies changesets to a shallow zone-copy.
  *
- * \param zone          Zone to be updated.
+ * \param old_contents  Zone to be updated.
  * \param chsets        List of changesets to be applied.
  * \param new_contents  Storage for the new zone contents pointer.
  *
  * \return KNOT_E*
  */
-int apply_changesets(apply_ctx_t *ctx, zone_t *zone, list_t *chsets,
-                     zone_contents_t **new_contents);
+int apply_changesets(apply_ctx_t *ctx, zone_contents_t *old_contents,
+                     list_t *chsets, zone_contents_t **new_contents);
 
 /*!
  * \brief Applies changeset to a shallow zone-copy.
  *
- * \param zone          Zone to be updated.
+ * \param old_contents  Zone to be updated.
  * \param ch            Changeset to be applied.
  * \param new_contents  Storage for the new zone contents pointer.
  *
  * \return KNOT_E*
  */
-int apply_changeset(apply_ctx_t *ctx, zone_t *zone, changeset_t *ch,
-                    zone_contents_t **new_contents);
+int apply_changeset(apply_ctx_t *ctx, zone_contents_t *old_contents,
+                    changeset_t *ch, zone_contents_t **new_contents);
 
 /*!
  * \brief Applies changesets directly to the zone, without copying it.
