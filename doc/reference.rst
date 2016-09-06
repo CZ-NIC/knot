@@ -1431,7 +1431,7 @@ at the apex of the zone being served.
  mod-whoami:
    - id: STR
 
-.. _mod-online-sign_id:
+.. _mod-whoami_id:
 
 id
 --
