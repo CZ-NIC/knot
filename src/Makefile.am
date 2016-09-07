@@ -276,6 +276,8 @@ libknotd_la_SOURCES =				\
 	knot/events/replan.h			\
 	knot/modules/dnsproxy.c			\
 	knot/modules/dnsproxy.h			\
+	knot/modules/noudp.c			\
+	knot/modules/noudp.h			\
 	knot/modules/online_sign/module.c	\
 	knot/modules/online_sign/module.h	\
 	knot/modules/online_sign/nsec_next.c	\
