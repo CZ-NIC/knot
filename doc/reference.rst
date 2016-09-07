@@ -1437,3 +1437,22 @@ id
 --
 
 A module identifier.
+
+.. _mod-noudp:
+
+Module noudp
+============
+
+The module sends empty truncated response to any UDP query.
+
+::
+
+ mod-noudp:
+   - id: STR
+
+.. _mod-noudp_id:
+
+id
+--
+
+A module identifier.

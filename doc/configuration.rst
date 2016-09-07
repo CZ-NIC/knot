@@ -955,3 +955,21 @@ The parent domain would then delegate whoami.domain.example to
 ns[1-4].whoami.domain.example and whoami6.domain.example to
 ns[1-4].whoami6.domain.example, and include the corresponding A-only or
 AAAA-only glue records.
+
+``noudp`` — noudp module
+------------------------
+
+The module sends empty truncated response to any UDP query. This is similar
+to a slipped answer in :ref:`response rate limiting<server_rate-limit>`.
+
+To enable this module globally, you need to add something like the following
+to the configuration file::
+
+    mod-noudp:
+      - id: default
+
+    template:
+      - id: default
+        global-module: mod-noudp/default
+
+The TCP queries are not affected.
