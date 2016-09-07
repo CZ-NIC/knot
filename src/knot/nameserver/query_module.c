@@ -30,6 +30,7 @@
 #include "knot/modules/dnstap.h"
 #endif
 #include "knot/modules/whoami.h"
+#include "knot/modules/noudp.h"
 
 typedef struct static_module {
 	const yp_name_t *name;
@@ -50,6 +51,7 @@ static_module_t MODULES[] = {
         { C_MOD_DNSTAP,       &dnstap_load,       &dnstap_unload,       MOD_SCOPE_ANY },
 #endif
         { C_MOD_WHOAMI,       &whoami_load,       &whoami_unload,       MOD_SCOPE_ANY },
+	{ C_MOD_NOUDP,        &noudp_load,        &noudp_unload,        MOD_SCOPE_ANY },
         { NULL }
 };
 
