@@ -31,7 +31,7 @@ int noudp_begin(int state, knot_pkt_t *pkt, struct query_data *qdata, void *ctx)
 {
 	if (is_udp(qdata)) {
 		knot_wire_set_tc(pkt->wire);
-		KNOT_STATE_DONE;
+		return KNOT_STATE_DONE;
 	}
 
 	return state;
