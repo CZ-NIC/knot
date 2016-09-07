@@ -1206,6 +1206,23 @@ mod\-whoami:
 .SS id
 .sp
 A module identifier.
+.SH MODULE NOUDP
+.sp
+The module sends empty truncated response to any UDP query.
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+mod\-noudp:
+  \- id: STR
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.SS id
+.sp
+A module identifier.
 .SH AUTHOR
 CZ.NIC Labs <http://www.knot-dns.cz>
 .SH COPYRIGHT
