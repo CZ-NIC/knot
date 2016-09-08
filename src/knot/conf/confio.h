@@ -27,6 +27,29 @@
 
 #include "knot/conf/conf.h"
 
+/*! Configuration schema additional flags for dynamic changes. */
+#define CONF_IO_FACTIVE		YP_FUSR1  /*!< Active confio transaction indicator. */
+#define CONF_IO_FZONE		YP_FUSR2  /*!< Zone section indicator. */
+#define CONF_IO_FREF		YP_FUSR3  /*!< Possibly referenced id from a zone. */
+#define CONF_IO_FDIFF_ZONES	YP_FUSR4  /*!< All zones config has changed. */
+#define CONF_IO_FCHECK_ZONES	YP_FUSR5  /*!< All zones config needs to check. */
+#define CONF_IO_FRLD_SRV	YP_FUSR6  /*!< Reload server. */
+#define CONF_IO_FRLD_LOG	YP_FUSR7  /*!< Reload logging. */
+#define CONF_IO_FRLD_MOD	YP_FUSR8  /*!< Reload global modules. */
+#define CONF_IO_FRLD_ZONE	YP_FUSR9  /*!< Reload a specific zone. */
+#define CONF_IO_FRLD_ZONES	YP_FUSR10 /*!< Reload all zones. */
+#define CONF_IO_FRLD_ALL	(CONF_IO_FRLD_SRV | CONF_IO_FRLD_LOG | \
+				 CONF_IO_FRLD_MOD | CONF_IO_FRLD_ZONES)
+
+/*! Zone configuration change type. */
+typedef enum {
+	CONF_IO_TNONE   = 0,      /*!< Unspecified. */
+	CONF_IO_TSET    = 1 << 0, /*!< Zone added. */
+	CONF_IO_TUNSET  = 1 << 1, /*!< Zone removed. */
+	CONF_IO_TCHANGE = 1 << 2, /*!< Zone has changed configuration. */
+	CONF_IO_TRELOAD = 1 << 3, /*!< Zone must be reloaded. */
+} conf_io_type_t;
+
 /*! Configuration interface output. */
 typedef struct conf_io conf_io_t;
 struct conf_io {
