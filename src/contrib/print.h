@@ -61,6 +61,6 @@ void txt_print(const uint8_t *data, unsigned length);
  *
  * \return time diff
  */
-float time_diff(struct timeval *begin, struct timeval *end);
+float time_diff(const struct timeval *begin, const struct timeval *end);
 
 /*! @} */

@@ -60,7 +60,7 @@ void txt_print(const uint8_t *data, unsigned length)
 	array_printf(data, length, &printf, 't');
 }
 
-float time_diff(struct timeval *begin, struct timeval *end)
+float time_diff(const struct timeval *begin, const struct timeval *end)
 {
 	return (end->tv_sec - begin->tv_sec) * 1000 +
 	       (end->tv_usec - begin->tv_usec) / 1000.0;
