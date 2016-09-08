@@ -881,6 +881,7 @@ static void test_conf_io_list(void)
 	ok(conf_io_list(NULL, &io) ==
 	   KNOT_EOK, "list schema");
 	ref = "server\n"
+	      "control\n"
 	      "remote\n"
 	      "template\n"
 	      "zone\n"
@@ -921,6 +922,11 @@ static const yp_item_t desc_server[] = {
 	{ NULL }
 };
 
+static const yp_item_t desc_control[] = {
+	{ C_TIMEOUT, YP_TINT, YP_VNONE },
+	{ NULL }
+};
+
 static const yp_item_t desc_remote[] = {
 	{ C_ID,   YP_TSTR,  YP_VNONE },
 	{ C_ADDR, YP_TADDR, YP_VNONE, YP_FMULTI },
@@ -947,6 +953,7 @@ static const yp_item_t desc_zone[] = {
 
 const yp_item_t test_scheme[] = {
 	{ C_SRV,  YP_TGRP, YP_VGRP = { desc_server } },
+	{ C_CTL,  YP_TGRP, YP_VGRP = { desc_control } },
 	{ C_RMT,  YP_TGRP, YP_VGRP = { desc_remote }, YP_FMULTI, { check_remote } },
 	{ C_TPL,  YP_TGRP, YP_VGRP = { desc_template }, YP_FMULTI, { check_template } },
 	{ C_ZONE, YP_TGRP, YP_VGRP = { desc_zone }, YP_FMULTI, { check_zone } },
