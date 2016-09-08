@@ -36,6 +36,7 @@
 #include "contrib/mempattern.h"
 #include "contrib/sockaddr.h"
 #include "contrib/ucw/mempool.h"
+#include "knot/common/fdset.h"
 #include "knot/nameserver/process_query.h"
 #include "knot/query/layer.h"
 #include "knot/server/server.h"
@@ -369,11 +370,10 @@ static int iface_udp_fd(const iface_t *iface, int thread_id)
 }
 
 /*! \brief Release the interface list reference and free watched descriptor set. */
-static void forget_ifaces(ifacelist_t *ifaces, struct pollfd **fds_ptr)
+static void forget_ifaces(ifacelist_t *ifaces, fdset_t *fds)
 {
 	ref_release((ref_t *)ifaces);
-	free(*fds_ptr);
-	*fds_ptr = NULL;
+	fdset_clear(fds);
 }
 
 /*!
@@ -381,34 +381,27 @@ static void forget_ifaces(ifacelist_t *ifaces, struct pollfd **fds_ptr)
  *
  * \param[in]   ifaces  New interface list.
  * \param[in]   thrid   Thread ID.
- * \param[out]  fds_ptr Allocated set of descriptors.
+ * \param[out]  fds     Allocated set of descriptors.
  *
- * \return Number of watched descriptors, zero on error.
+ * \return A Knot error code.
  */
-static nfds_t track_ifaces(const ifacelist_t *ifaces, int thrid,
-                           struct pollfd **fds_ptr)
+static int track_ifaces(const ifacelist_t *ifaces, int thrid,
+                           fdset_t *fds)
 {
-	assert(ifaces && fds_ptr);
+	assert(ifaces && fds && fds->n == 0);
 
 	nfds_t nfds = list_size(&ifaces->l);
-	struct pollfd *fds = malloc(nfds * sizeof(*fds));
-	if (!fds) {
-		*fds_ptr = NULL;
-		return 0;
-	}
+	int rc = fdset_init(fds, nfds);
+	if (rc != KNOT_EOK)
+		return rc;
 
 	iface_t *iface = NULL;
-	int i = 0;
 	WALK_LIST(iface, ifaces->l) {
-		fds[i].fd = iface_udp_fd(iface, thrid);
-		fds[i].events = POLLIN;
-		fds[i].revents = 0;
-		i += 1;
+		fdset_add(fds, iface_udp_fd(iface, thrid), POLLIN, NULL);
 	}
-	assert(i == nfds);
+	assert(fds->n == nfds);
 
-	*fds_ptr = fds;
-	return nfds;
+	return KNOT_EOK;
 }
 
 int udp_master(dthread_t *thread)
@@ -446,8 +439,8 @@ int udp_master(dthread_t *thread)
 	knot_layer_init(&udp.layer, &mm, process_query_layer());
 
 	/* Event source. */
-	struct pollfd *fds = NULL;
-	nfds_t nfds = 0;
+	fdset_t fds;
+	fdset_init(&fds, 0);
 
 	/* Loop until all data is read. */
 	for (;;) {
@@ -460,9 +453,9 @@ int udp_master(dthread_t *thread)
 			rcu_read_lock();
 			forget_ifaces(ref, &fds);
 			ref = handler->server->ifaces;
-			nfds = track_ifaces(ref, udp.thread_id, &fds);
+			track_ifaces(ref, udp.thread_id, &fds);
 			rcu_read_unlock();
-			if (nfds == 0) {
+			if (fds.n == 0) {
 				break;
 			}
 		}
@@ -473,20 +466,20 @@ int udp_master(dthread_t *thread)
 		}
 
 		/* Wait for events. */
-		int events = poll(fds, nfds, -1);
+		int events = poll(fds.pfd, fds.n, -1);
 		if (events <= 0) {
 			if (errno == EINTR) continue;
 			break;
 		}
 
 		/* Process the events. */
-		for (nfds_t i = 0; i < nfds && events > 0; i++) {
-			if (fds[i].revents == 0) {
+		for (nfds_t i = 0; i < fds.n && events > 0; i++) {
+			if (fds.pfd[i].revents == 0) {
 				continue;
 			}
 			events -= 1;
 			int rcvd = 0;
-			if ((rcvd = _udp_recv(fds[i].fd, rq)) > 0) {
+			if ((rcvd = _udp_recv(fds.pfd[i].fd, rq)) > 0) {
 				_udp_handle(&udp, rq);
 				/* Flush allocated memory. */
 				mp_flush(mm.ctx);
