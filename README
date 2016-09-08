@@ -46,7 +46,7 @@ Install optional packages to override embedded libraries:
 $ sudo apt-get install liblmdb-dev
 
 Install optional packages:
-$ sudo apt-get install libcap-ng-dev libsystemd-dev
+$ sudo apt-get install libcap-ng-dev libsystemd-dev libidn11-dev protobuf-c-compiler libfstrm-dev
 
 Fedora like distributions
 -------------------------
@@ -64,7 +64,7 @@ Install optional packages to override embedded libraries:
 # yum install lmdb-devel
 
 Install optional packages:
-# yum install libcap-ng-devel systemd-devel protobuf-c-devel fstrm-devel libidn-devel
+# yum install libcap-ng-devel systemd-devel libidn-devel protobuf-c-devel fstrm-devel
 
 2) Install Knot DNS
 
