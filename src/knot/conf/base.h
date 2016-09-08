@@ -98,6 +98,7 @@ typedef struct {
 		int32_t srv_tcp_reply_timeout;
 		int32_t srv_max_tcp_clients;
 		int32_t srv_rate_limit_slip;
+		int32_t ctl_timeout;
 		conf_val_t srv_nsid;
 		conf_val_t srv_rate_limit_whitelist;
 	} cache;

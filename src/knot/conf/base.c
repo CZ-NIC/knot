@@ -136,6 +136,9 @@ static void init_cache(
 	val = conf_get(conf, C_SRV, C_RATE_LIMIT_SLIP);
 	conf->cache.srv_rate_limit_slip = conf_int(&val);
 
+	val = conf_get(conf, C_CTL, C_TIMEOUT);
+	conf->cache.ctl_timeout = conf_int(&val) * 1000;
+
 	conf->cache.srv_nsid = conf_get(conf, C_SRV, C_NSID);
 
 	conf->cache.srv_rate_limit_whitelist = conf_get(conf, C_SRV, C_RATE_LIMIT_WHITELIST);

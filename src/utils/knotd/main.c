@@ -234,8 +234,7 @@ static void event_loop(server_t *server, char *socket)
 	}
 
 	// Set control timeout.
-	conf_val_t val = conf_get(conf(), C_CTL, C_TIMEOUT);
-	knot_ctl_set_timeout(ctl, conf_int(&val) * 1000);
+	knot_ctl_set_timeout(ctl, conf()->cache.ctl_timeout);
 
 	log_info("control, binding to '%s'", listen);
 
@@ -264,6 +263,9 @@ static void event_loop(server_t *server, char *socket)
 			sig_req_reload = false;
 			server_reload(server, conf()->filename, true);
 		}
+
+		// Update control timeout.
+		knot_ctl_set_timeout(ctl, conf()->cache.ctl_timeout);
 
 		ret = knot_ctl_accept(ctl);
 		if (ret != KNOT_EOK) {
