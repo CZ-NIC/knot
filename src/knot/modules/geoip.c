@@ -23,6 +23,7 @@
 #include "knot/modules/geoip.h"
 #include "knot/nameserver/internet.h"
 #include "knot/nameserver/process_query.h"
+#include "libknot/rrtype/opt.h"
 
 /*
  * mod-geoip:
@@ -45,8 +46,22 @@ const yp_item_t scheme_mod_geoip[] = {
 	{ NULL }
 };
 
+#define GEOIP_RRTYPE 65280
+
 struct geoip_ctx {
 	MMDB_s db;
+};
+
+struct qsource {
+	uint8_t *ecs_wire;
+	uint16_t ecs_size;
+	knot_edns_client_subnet_t ecs_data;
+	struct sockaddr_storage addr;
+};
+
+struct node_config {
+	char *pattern;
+	char *fallback;
 };
 
 static struct geoip_ctx *geoip_ctx_new(void)
@@ -97,7 +112,120 @@ static char *get_country(struct geoip_ctx *ctx, const struct sockaddr_storage *s
 	return country;
 }
 
-static int geoip_addional(int state, knot_pkt_t *pkt, struct query_data *qdata, void *_ctx)
+static int get_query_source(struct qsource *src, knot_pkt_t *pkt, struct query_data *qdata)
+{
+	assert(pkt);
+	assert(qdata);
+
+	uint8_t *ecs = knot_edns_get_option(&qdata->opt_rr, KNOT_EDNS_OPTION_CLIENT_SUBNET);
+	if (ecs == NULL) {
+		src->addr = *qdata->param->remote;
+		return KNOT_EOK;
+	}
+
+	src->ecs_wire = knot_edns_opt_get_data(ecs);
+	src->ecs_size = knot_edns_opt_get_length(ecs);
+
+	int r = knot_edns_client_subnet_parse(&src->ecs_data, src->ecs_wire, src->ecs_size);
+	if (r != KNOT_EOK) {
+		return r;
+	}
+
+	r = knot_edns_client_subnet_get_addr(&src->addr, &src->ecs_data);
+	assert(r == KNOT_EOK);
+
+	return KNOT_EOK;
+}
+
+static int write_query_scope(knot_pkt_t *pkt, struct qsource *src)
+{
+	if (src->ecs_wire == NULL) {
+		return KNOT_EOK;
+	}
+
+	src->ecs_data.scope_len = src->ecs_data.source_len;
+
+	uint8_t write_size = knot_edns_client_subnet_size(&src->ecs_data);
+	if (write_size == 0 || write_size < src->ecs_size) {
+		return KNOT_ERROR;
+	}
+
+	return knot_edns_client_subnet_write(src->ecs_wire, src->ecs_size,
+	                                     &src->ecs_data);
+}
+
+static bool get_node_config(const zone_node_t *node, struct node_config *config)
+{
+	knot_rrset_t rrset = node_rrset(node, GEOIP_RRTYPE);
+	if (knot_rrset_empty(&rrset)) {
+		return false;
+	}
+
+	knot_rdata_t *rr = knot_rdataset_at(&rrset.rrs, 0);
+	uint16_t raw_len = knot_rdata_rdlen(rr);
+
+	// format "<pattern> <default>"
+	const char *raw = (char *)knot_rdata_data(rr);
+	const char *sep = memchr(raw, ' ', raw_len);
+	const char *end = raw + raw_len;
+
+	if (sep == NULL) {
+		return false;
+	}
+
+	config->pattern =  strndup(raw, sep - raw);
+	config->fallback = strndup(sep + 1, end - sep - 1);
+
+	return true;
+}
+
+static knot_dname_t *lookup_name(const char *pattern, const char *country,
+                                 const knot_dname_t *apex)
+{
+	if (strlen(country) != 2) {
+		return NULL;
+	}
+
+	// replace %c by country code
+
+	char *prefix = strdup(pattern);
+	if (!prefix) {
+		return NULL;
+	}
+
+	char *pos = strstr(prefix, "%c");
+	if (pos != NULL) {
+		memcpy(pos, country, 2);
+	}
+
+	// add zone apex
+
+	knot_dname_t *result = knot_dname_from_str_alloc(prefix);
+	knot_dname_to_lower(result);
+	free(prefix);
+
+	return knot_dname_cat(result, apex);
+}
+
+static void fill_from_zone(const knot_dname_t *lookup, uint16_t rrtype, knot_pkt_t *pkt,
+                           struct query_data *qdata, knot_mm_t *mm)
+{
+	const zone_node_t *match = NULL;
+	const zone_node_t *closest = NULL;
+	const zone_node_t *previous = NULL;
+	int r = zone_contents_find_dname(qdata->zone->contents, lookup, &match, &closest, &previous);
+	if (r != ZONE_NAME_FOUND) {
+		return;
+	}
+
+	knot_rrset_t rr = node_rrset(match, rrtype);
+	rr.owner = (knot_dname_t *)knot_pkt_qname(qdata->query);
+
+	knot_rrset_t *copy = knot_rrset_copy(&rr, mm);
+	knot_pkt_put(pkt, KNOT_COMPR_HINT_QNAME, copy, 0);
+}
+
+static int geoip_answer(int state, knot_pkt_t *pkt, struct query_data *qdata, void *_ctx)
 {
 	assert(pkt);
 	assert(qdata);
@@ -105,25 +233,35 @@ static int geoip_addional(int state, knot_pkt_t *pkt, struct query_data *qdata, 
 
 	struct geoip_ctx *ctx = _ctx;
 
-	// synthesize TXT record with country of the originating query
-
-	const knot_dname_t *owner = (uint8_t *)"\x7""country""\x5""geoip";
-
-	char *country = get_country(ctx, qdata->param->remote);
-	const char *country_write = country ? country : "unknown";
-
-	uint8_t buffer[16] = { 0 };
-	int wrote = snprintf((char *)buffer, sizeof(buffer), "%c%s",
-				(int)strlen(country_write), country_write);
-	free(country);
-	if (wrote < 0) {
+	struct qsource qsource = { 0 };
+	int r = get_query_source(&qsource, pkt, qdata);
+	if (r != KNOT_EOK) {
 		return ERROR;
 	}
 
-	knot_rrset_t *rr;
-	rr = knot_rrset_new(owner, KNOT_RRTYPE_TXT, KNOT_CLASS_IN, &pkt->mm);
-	knot_rrset_add_rdata(rr, buffer, wrote, 0, &pkt->mm);
-	knot_pkt_put(pkt, KNOT_COMPR_HINT_NONE, rr, KNOT_PF_NULL);
+	struct node_config config = { 0 };
+	if (!get_node_config(qdata->node, &config)) {
+		return state;
+	}
+
+	char *country = get_country(ctx, &qsource.addr);
+	if (country) {
+		knot_dname_t *x = lookup_name(config.pattern, country, qdata->zone->name);
+		fill_from_zone(x, knot_pkt_qtype(qdata->query), pkt, qdata, &pkt->mm);
+		free(x);
+	}
+
+//	knot_rrset_t *rr;
+//	rr = knot_rrset_new(owner, KNOT_RRTYPE_TXT, KNOT_CLASS_IN, &pkt->mm);
+//	knot_rrset_add_rdata(rr, buffer, wrote, 0, &pkt->mm);
+//	knot_pkt_put(pkt, KNOT_COMPR_HINT_NONE, rr, KNOT_PF_NULL);
+
+	// update EDNS scope
+
+	r = write_query_scope(pkt, &qsource);
+	if (r != KNOT_EOK) {
+		return ERROR;
+	}
 
 	return state;
 }
@@ -173,7 +311,7 @@ int geoip_load(struct query_plan *plan, struct query_module *self,
 		return KNOT_ERROR;
 	}
 
-	query_plan_step(plan, QPLAN_ADDITIONAL, geoip_addional, ctx);
+	query_plan_step(plan, QPLAN_ANSWER, geoip_answer, ctx);
 
 	self->ctx = ctx;
 
