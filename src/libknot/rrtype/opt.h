@@ -203,8 +203,8 @@ void knot_edns_set_version(knot_rrset_t *opt_rr, uint8_t version);
  *
  * \param opt_rr  OPT RR to get the DO bit from.
  *
- * \return <> 0 if the DO bit is set.
- * \return 0 if the DO bit is not set.
+ * \return true if the DO bit is set.
+ * \return false if the DO bit is not set.
  */
 bool knot_edns_do(const knot_rrset_t *opt_rr);
 
@@ -284,8 +284,8 @@ int knot_edns_add_option(knot_rrset_t *opt_rr, uint16_t code,
  * \param opt_rr OPT RR structure to check for the Option in.
  * \param code Option code to check for.
  *
- * \retval <> 0 if the OPT RR contains Option with Option code \a code.
- * \retval 0 otherwise.
+ * \retval true if the OPT RR contains Option with Option code \a code.
+ * \retval false otherwise.
  */
 bool knot_edns_has_option(const knot_rrset_t *opt_rr, uint16_t code);
 
