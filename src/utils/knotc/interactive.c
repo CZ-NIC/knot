@@ -345,7 +345,7 @@ static unsigned char complete(EditLine *el, int ch)
 	}
 
 complete_exit:
-	conf_update(NULL);
+	conf_update(NULL, CONF_UPD_FNONE);
 	tok_reset(tok);
 	tok_end(tok);
 

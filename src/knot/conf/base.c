@@ -309,11 +309,22 @@ int conf_clone(
 }
 
 void conf_update(
-	conf_t *conf)
+	conf_t *conf,
+	conf_update_flag_t flags)
 {
 	// Remove the clone flag for new master configuration.
 	if (conf != NULL) {
 		conf->is_clone = false;
+
+		if ((flags & CONF_UPD_FCONFIO) && s_conf != NULL) {
+			conf->io.flags = s_conf->io.flags;
+			conf->io.zones = s_conf->io.zones;
+		}
+		if ((flags & CONF_UPD_FMODULES) && s_conf != NULL) {
+			list_dup(&conf->query_modules, &s_conf->query_modules,
+			         sizeof(struct query_module));
+			conf->query_plan = s_conf->query_plan;
+		}
 	}
 
 	conf_t **current_conf = &s_conf;
@@ -324,6 +335,15 @@ void conf_update(
 	if (old_conf != NULL) {
 		// Remove the clone flag if a single configuration.
 		old_conf->is_clone = (conf != NULL) ? true : false;
+
+		if (flags & CONF_UPD_FCONFIO) {
+			old_conf->io.zones = NULL;
+		}
+		if (flags & CONF_UPD_FMODULES) {
+			init_list(&old_conf->query_modules);
+			old_conf->query_plan = NULL;
+		}
+
 		conf_free(old_conf);
 	}
 }
@@ -342,6 +362,10 @@ void conf_free(
 
 	if (conf->io.txn != NULL) {
 		conf->api->txn_abort(conf->io.txn_stack);
+	}
+	if (conf->io.zones != NULL) {
+		hattrie_free(conf->io.zones);
+		mm_free(conf->mm, conf->io.zones);
 	}
 
 	conf_deactivate_modules(&conf->query_modules, &conf->query_plan);

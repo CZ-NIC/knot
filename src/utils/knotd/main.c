@@ -358,7 +358,7 @@ static int set_config(const char *confdb, const char *config)
 	                      &new_conf->query_plan);
 
 	/* Update to the new config. */
-	conf_update(new_conf);
+	conf_update(new_conf, CONF_UPD_FNONE);
 
 	return KNOT_EOK;
 }
