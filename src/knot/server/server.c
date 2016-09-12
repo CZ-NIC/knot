@@ -1,4 +1,4 @@
-/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -22,6 +22,7 @@
 
 #include "libknot/errcode.h"
 #include "knot/common/log.h"
+#include "knot/conf/confio.h"
 #include "knot/server/server.h"
 #include "knot/server/udp-handler.h"
 #include "knot/server/tcp-handler.h"
@@ -507,13 +508,38 @@ void server_wait(server_t *server)
 	}
 }
 
-int server_reload(server_t *server, const char *cf, bool refresh_hostname)
+static int reload_conf(conf_t *new_conf)
+{
+	/* Re-import zonefile if specified. */
+	const char *filename = conf()->filename;
+	if (filename != NULL) {
+		log_info("reloading configuration file '%s'", filename);
+
+		/* Import the configuration file. */
+		int ret = conf_import(new_conf, filename, true);
+		if (ret != KNOT_EOK) {
+			log_error("failed to load configuration file (%s)",
+			          knot_strerror(ret));
+			conf_free(new_conf);
+			return ret;
+		}
+	} else {
+		log_info("reloading configuration database");
+	}
+
+	/* Refresh hostname. */
+	conf_refresh_hostname(new_conf);
+
+	return KNOT_EOK;
+}
+
+int server_reload(server_t *server)
 {
 	if (server == NULL) {
 		return KNOT_EINVAL;
 	}
 
-	// Check for no edit mode.
+	/* Check for no edit mode. */
 	if (conf()->io.txn != NULL) {
 		log_warning("reload aborted due to active configuration transaction");
 		return KNOT_TXN_EEXISTS;
@@ -527,38 +553,50 @@ int server_reload(server_t *server, const char *cf, bool refresh_hostname)
 		return ret;
 	}
 
-	if (cf != NULL) {
-		log_info("reloading configuration file '%s'", cf);
+	yp_flag_t flags = conf()->io.flags;
+	bool full = !(flags & CONF_IO_FACTIVE);
+	bool reuse_modules = !full && !(flags & CONF_IO_FRLD_MOD);
 
-		/* Import the configuration file. */
-		ret = conf_import(new_conf, cf, true);
+	/* Reload configuration if full reload. */
+	if (full) {
+		ret = reload_conf(new_conf);
 		if (ret != KNOT_EOK) {
-			log_error("failed to load configuration file (%s)",
-			          knot_strerror(ret));
-			conf_free(new_conf);
 			return ret;
 		}
-	} else {
-		log_info("reloading configuration database");
 	}
 
-	/* Activate global query modules. */
-	conf_activate_modules(new_conf, NULL, &new_conf->query_modules,
-	                      &new_conf->query_plan);
+	/* Load global modules if full reload or required. */
+	if (full || !reuse_modules) {
+		conf_activate_modules(new_conf, NULL, &new_conf->query_modules,
+		                      &new_conf->query_plan);
+	}
 
-	/* Refresh hostname. */
-	if (refresh_hostname) {
-		conf_refresh_hostname(new_conf);
+	conf_update_flag_t upd_flags = full ? CONF_UPD_FNONE : CONF_UPD_FCONFIO;
+	if (reuse_modules) {
+		upd_flags |= CONF_UPD_FMODULES;
 	}
 
 	/* Update to the new config. */
-	conf_update(new_conf);
+	conf_update(new_conf, upd_flags);
 
-	log_reconfigure(conf());
-	server_reconfigure(conf(), server);
-	server_update_zones(conf(), server);
+	/* Reload each component if full reload or a specific one if required. */
+	if (full || (flags & CONF_IO_FRLD_LOG)) {
+		log_reconfigure(conf());
+	}
+	if (full || (flags & CONF_IO_FRLD_SRV)) {
+		server_reconfigure(conf(), server);
+	}
+	if (full || (flags & (CONF_IO_FRLD_ZONES | CONF_IO_FRLD_ZONE))) {
+		server_update_zones(conf(), server);
+	}
 
-	log_info("configuration reloaded");
+	if (full) {
+		log_info("configuration reloaded");
+	} else {
+		// Reset confio reload context.
+		conf()->io.flags = YP_FNONE;
+		hattrie_clear(conf()->io.zones);
+	}
 
 	return KNOT_EOK;
 }

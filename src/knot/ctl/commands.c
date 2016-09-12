@@ -972,7 +972,7 @@ static int ctl_server(ctl_args_t *args, ctl_cmd_t cmd)
 		ret = KNOT_CTL_ESTOP;
 		break;
 	case CTL_RELOAD:
-		ret = server_reload(args->server, conf()->filename, true);
+		ret = server_reload(args->server);
 		if (ret != KNOT_EOK) {
 			send_error(args, knot_strerror(ret));
 		}
@@ -1125,7 +1125,7 @@ static int ctl_conf_txn(ctl_args_t *args, ctl_cmd_t cmd)
 			break;
 		}
 
-		ret = server_reload(args->server, NULL, false);
+		ret = server_reload(args->server);
 		break;
 	default:
 		assert(0);

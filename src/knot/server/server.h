@@ -1,4 +1,4 @@
-/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -155,12 +155,11 @@ void server_wait(server_t *server);
 /*!
  * \brief Reload server configuration.
  *
- * \param server            Server instance.
- * \param cf                Config file path.
- * \param refresh_hostname  Refresh hostname indicator.
- * \return
+ * \param server  Server instance.
+ *
+ * \return Error code, KNOT_EOK if success.
  */
-int server_reload(server_t *server, const char *cf, bool refresh_hostname);
+int server_reload(server_t *server);
 
 /*!
  * \brief Requests server to stop.
@@ -174,7 +173,7 @@ void server_stop(server_t *server);
  *
  * Routine for dynamic server reconfiguration.
  */
-void server_reconfigure(conf_t *conf, server_t *data);
+void server_reconfigure(conf_t *conf, server_t *server);
 
 /*!
  * \brief Reconfigure zone database.
