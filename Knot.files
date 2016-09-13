@@ -257,6 +257,8 @@ src/knot/modules/dnsproxy.c
 src/knot/modules/dnsproxy.h
 src/knot/modules/dnstap.c
 src/knot/modules/dnstap.h
+src/knot/modules/noudp.c
+src/knot/modules/noudp.h
 src/knot/modules/online_sign/module.c
 src/knot/modules/online_sign/module.h
 src/knot/modules/online_sign/nsec_next.c
@@ -559,6 +561,7 @@ tests/libknot/test_db.c
 tests/libknot/test_descriptor.c
 tests/libknot/test_dname.c
 tests/libknot/test_edns.c
+tests/libknot/test_edns_ecs.c
 tests/libknot/test_lookup.c
 tests/libknot/test_pkt.c
 tests/libknot/test_rdata.c
