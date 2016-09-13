@@ -39,7 +39,7 @@ typedef struct fdset {
 	unsigned size;       /*!< Array size (allocated). */
 	void* *ctx;          /*!< Context for each fd. */
 	struct pollfd *pfd;  /*!< poll state for each fd */
-	time_t *timeout;       /*!< Timeout for each fd (seconds precision). */
+	time_t *timeout;     /*!< Timeout for each fd (seconds precision). */
 } fdset_t;
 
 /*! \brief Mark-and-sweep state. */

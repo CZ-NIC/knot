@@ -24,16 +24,16 @@
 
 /* Realloc memory or return error (part of fdset_resize). */
 #define MEM_RESIZE(tmp, p, n) \
-	if ((tmp = realloc((p), (n))) == NULL) \
+	if ((tmp = realloc((p), (n) * sizeof(*p))) == NULL) \
 		return KNOT_ENOMEM; \
 	(p) = tmp;
 
 static int fdset_resize(fdset_t *set, unsigned size)
 {
 	void *tmp = NULL;
-	MEM_RESIZE(tmp, set->ctx, size * sizeof(void*));
-	MEM_RESIZE(tmp, set->pfd, size * sizeof(struct pollfd));
-	MEM_RESIZE(tmp, set->timeout, size * sizeof(timev_t));
+	MEM_RESIZE(tmp, set->ctx, size);
+	MEM_RESIZE(tmp, set->pfd, size);
+	MEM_RESIZE(tmp, set->timeout, size);
 	set->size = size;
 	return KNOT_EOK;
 }
