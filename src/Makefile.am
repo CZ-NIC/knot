@@ -63,6 +63,7 @@ libcontrib_la_SOURCES = 			\
 	contrib/string.c			\
 	contrib/string.h			\
 	contrib/strtonum.h			\
+	contrib/time.c				\
 	contrib/time.h				\
 	contrib/tolower.h			\
 	contrib/trim.h				\

@@ -55,6 +55,7 @@ src/contrib/sockaddr.h
 src/contrib/string.c
 src/contrib/string.h
 src/contrib/strtonum.h
+src/contrib/time.c
 src/contrib/time.h
 src/contrib/tolower.h
 src/contrib/trim.h
@@ -547,6 +548,7 @@ tests/contrib/test_net_shortwrite.c
 tests/contrib/test_sockaddr.c
 tests/contrib/test_string.c
 tests/contrib/test_strtonum.c
+tests/contrib/test_time.c
 tests/contrib/test_wire.c
 tests/contrib/test_wire_ctx.c
 tests/dthreads.c

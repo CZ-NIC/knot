@@ -22,6 +22,7 @@ check_PROGRAMS = \
 	contrib/test_sockaddr		\
 	contrib/test_string		\
 	contrib/test_strtonum		\
+	contrib/test_time		\
 	contrib/test_wire		\
 	contrib/test_wire_ctx
 
