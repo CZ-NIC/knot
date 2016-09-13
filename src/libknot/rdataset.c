@@ -242,32 +242,33 @@ int knot_rdataset_add(knot_rdataset_t *rrs, const knot_rdata_t *rr, knot_mm_t *m
 }
 
 _public_
-int knot_rdataset_gather(knot_rdataset_t *dst, knot_rdata_t **src, int src_len,
-		knot_mm_t *mm)
+int knot_rdataset_gather(knot_rdataset_t *dst, knot_rdata_t **src, uint16_t count,
+                         knot_mm_t *mm)
 {
-	if (unlikely(dst == NULL || src == NULL)) {
+	if (dst == NULL || src == NULL) {
 		return KNOT_EINVAL;
 	}
 
-	int size = 0;
-	for (int i = 0; i < src_len; ++i) {
+	size_t size = 0;
+	for (int i = 0; i < count; ++i) {
 		size += knot_rdata_array_size(knot_rdata_rdlen(src[i]));
 	}
 
 	knot_rdata_t *data = mm_alloc(mm, size);
-	if (unlikely(data == NULL)) {
+	if (data == NULL) {
 		return KNOT_ENOMEM;
 	}
 
 	mm_free(mm, dst->data);
-	dst->rr_count = src_len;
+	dst->rr_count = count;
 	dst->data = data;
 
-	for (int i = 0; i < src_len; ++i) {
-		int len = knot_rdata_array_size(knot_rdata_rdlen(src[i]));
+	for (int i = 0; i < count; ++i) {
+		size_t len = knot_rdata_array_size(knot_rdata_rdlen(src[i]));
 		memcpy(data, src[i], len);
 		data += len;
 	}
+
 	return KNOT_EOK;
 }
 

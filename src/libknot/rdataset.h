@@ -73,13 +73,13 @@ knot_rdata_t *knot_rdataset_at(const knot_rdataset_t *rrs, size_t pos);
 
 /*!
  * \brief Makes RRS structure from a list of resource records (in the given order).
- * \param dst      RRS structure to write into.
- * \param src      Array of records to copy from.
- * \param src_len  The number of records to copy.
- * \param mm       Memory context.
+ * \param dst    RRS structure to write into.
+ * \param src    Array of records to copy from.
+ * \param count  The number of records to copy.
+ * \param mm     Memory context.
  */
-int knot_rdataset_gather(knot_rdataset_t *dst, knot_rdata_t **src, int src_len,
-		knot_mm_t *mm);
+int knot_rdataset_gather(knot_rdataset_t *dst, knot_rdata_t **src, uint16_t count,
+                         knot_mm_t *mm);
 
 /*!
  * \brief Returns size of the structures holding the RR set.
