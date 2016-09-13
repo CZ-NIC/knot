@@ -88,7 +88,7 @@ static struct knot_request *make_query(struct knot_requestor *requestor,
 	knot_pkt_put_question(pkt, root, KNOT_CLASS_IN, KNOT_RRTYPE_SOA);
 
 	return knot_request_make(requestor->mm, (struct sockaddr *)dst,
-	                         (struct sockaddr *)src, pkt, 0);
+	                         (struct sockaddr *)src, pkt, NULL, 0);
 }
 
 static void test_disconnected(struct knot_requestor *requestor,

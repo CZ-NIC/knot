@@ -24,9 +24,41 @@
 
 #pragma once
 
-#include "libknot/packet/pkt.h"
-#include "knot/query/query.h"
 #include "knot/nameserver/process_query.h"
+#include "knot/nameserver/xfr.h"
+#include "knot/query/query.h"
+#include "libknot/packet/pkt.h"
+
+/*! \brief IXFR-in processing states. */
+enum ixfr_state {
+	IXFR_INVALID = 0,
+	IXFR_START,      /* IXFR-in starting, expecting final SOA. */
+	IXFR_SOA_DEL,    /* Expecting starting SOA. */
+	IXFR_SOA_ADD,    /* Expecting ending SOA. */
+	IXFR_DEL,        /* Expecting RR to delete. */
+	IXFR_ADD,        /* Expecting RR to add. */
+	IXFR_DONE        /* Processing done, IXFR-in complete. */
+};
+
+/*! \brief Extended structure for IXFR-in/IXFR-out processing. */
+struct ixfr_proc {
+	/* Processing state. */
+	struct xfr_proc proc;
+	enum ixfr_state state;
+
+	/* Changes to be sent. */
+	list_t changesets;
+
+	/* Currenty processed changeset. */
+	knot_rrset_t cur_rr;
+	changeset_iter_t cur;
+	const knot_rrset_t *soa_from;
+	const knot_rrset_t *soa_to;
+
+	/* Processing context. */
+	struct query_data *qdata;
+	knot_mm_t *mm;
+};
 
 /*!
  * \brief IXFR query processing module.
@@ -36,14 +68,5 @@
  * \retval DONE if finished.
  */
 int ixfr_process_query(knot_pkt_t *pkt, struct query_data *qdata);
-
-/*!
- * \brief IXFR response processing module.
- *
- * \retval CONSUME if more data are required.
- * \retval FAIL if it encountered an error, retry over AXFR will be done.
- * \retval DONE if finished.
- */
-int ixfr_process_answer(knot_pkt_t *pkt, struct answer_data *adata);
 
 /*! @} */

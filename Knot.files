@@ -292,6 +292,8 @@ src/knot/nameserver/tsig_ctx.c
 src/knot/nameserver/tsig_ctx.h
 src/knot/nameserver/update.c
 src/knot/nameserver/update.h
+src/knot/nameserver/xfr.c
+src/knot/nameserver/xfr.h
 src/knot/query/capture.c
 src/knot/query/capture.h
 src/knot/query/layer.c
@@ -576,7 +578,6 @@ tests/libknot/test_ypscheme.c
 tests/libknot/test_yptrafo.c
 tests/modules/online_sign.c
 tests/node.c
-tests/process_answer.c
 tests/process_query.c
 tests/query_module.c
 tests/requestor.c

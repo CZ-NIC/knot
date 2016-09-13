@@ -38,12 +38,4 @@
  */
 int notify_process_query(knot_pkt_t *pkt, struct query_data *qdata);
 
-/*!
- * \brief Process an answer to the NOTIFY query.
- *
- * \retval FAIL if it encountered an error.
- * \retval DONE if finished.
- */
-int notify_process_answer(knot_pkt_t *pkt, struct answer_data *data);
-
 /*! @} */

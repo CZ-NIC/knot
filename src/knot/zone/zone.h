@@ -48,6 +48,8 @@ typedef enum zone_flag_t {
 	ZONE_EXPIRED      = 1 << 3, /* Zone is expired. */
 } zone_flag_t;
 
+/// XXX: ^ remove expired?
+
 /*!
  * \brief Structure for holding DNS zone.
  */
@@ -158,8 +160,5 @@ int zone_update_enqueue(zone_t *zone, knot_pkt_t *pkt, struct process_query_para
 
 /*! \brief Dequeue UPDATE request. Returns number of queued updates. */
 size_t zone_update_dequeue(zone_t *zone, list_t *updates);
-
-/*! \brief Returns true if final SOA in transfer has newer serial than zone */
-bool zone_transfer_needed(const zone_t *zone, const knot_pkt_t *pkt);
 
 /*! @} */

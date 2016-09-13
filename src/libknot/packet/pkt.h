@@ -41,6 +41,7 @@
 /* Forward decls */
 struct knot_pkt;
 
+/// XXX: server internal, wipe from the library
 /*!
  * \brief DNS query types (internal use only).
  *
@@ -181,6 +182,7 @@ int knot_pkt_reserve(knot_pkt_t *pkt, uint16_t size);
  */
 int knot_pkt_reclaim(knot_pkt_t *pkt, uint16_t size);
 
+// XXX: probably useless
 /*! \brief Classify packet according to the question.
  *  \return see enum knot_pkt_type_t
  */

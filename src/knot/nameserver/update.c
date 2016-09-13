@@ -31,10 +31,9 @@
 #include "contrib/net.h"
 #include "contrib/time.h"
 
-/* UPDATE-specific logging (internal, expects 'qdata' variable set). */
-#define UPDATE_LOG(severity, msg, ...) \
-	NS_PROC_LOG(severity, knot_pkt_qname(qdata->query), qdata->param->remote, \
-	            "DDNS", msg, ##__VA_ARGS__)
+#define UPDATE_LOG(priority, qdata, fmt...) \
+	ns_log(priority, knot_pkt_qname(qdata->query), LOG_OPERATION_UPDATE, \
+	       LOG_DIRECTION_IN, (struct sockaddr *)qdata->param->remote, fmt)
 
 static void init_qdata_from_request(struct query_data *qdata,
                                     const zone_t *zone,
@@ -55,7 +54,7 @@ static int check_prereqs(struct knot_request *request,
 	uint16_t rcode = KNOT_RCODE_NOERROR;
 	int ret = ddns_process_prereqs(request->query, update, &rcode);
 	if (ret != KNOT_EOK) {
-		UPDATE_LOG(LOG_WARNING, "prerequisites not met (%s)",
+		UPDATE_LOG(LOG_WARNING, qdata, "prerequisites not met (%s)",
 		           knot_strerror(ret));
 		assert(rcode != KNOT_RCODE_NOERROR);
 		knot_wire_set_rcode(request->resp->wire, rcode);
@@ -72,7 +71,7 @@ static int process_single_update(struct knot_request *request,
 	uint16_t rcode = KNOT_RCODE_NOERROR;
 	int ret = ddns_process_update(zone, request->query, update, &rcode);
 	if (ret != KNOT_EOK) {
-		UPDATE_LOG(LOG_WARNING, "failed to apply (%s)",
+		UPDATE_LOG(LOG_WARNING, qdata, "failed to apply (%s)",
 		           knot_strerror(ret));
 		assert(rcode != KNOT_RCODE_NOERROR);
 		knot_wire_set_rcode(request->resp->wire, rcode);
@@ -233,7 +232,7 @@ static int remote_forward(conf_t *conf, struct knot_request *request, conf_remot
 	/* Create a request. */
 	const struct sockaddr *dst = (const struct sockaddr *)&remote->addr;
 	const struct sockaddr *src = (const struct sockaddr *)&remote->via;
-	struct knot_request *req = knot_request_make(re.mm, dst, src, query, 0);
+	struct knot_request *req = knot_request_make(re.mm, dst, src, query, NULL, 0);
 	if (req == NULL) {
 		knot_requestor_clear(&re);
 		knot_pkt_free(&query);
@@ -305,14 +304,14 @@ static bool update_tsig_check(conf_t *conf, struct query_data *qdata, struct kno
 {
 	// Check that ACL is still valid.
 	if (!process_query_acl_check(conf, qdata->zone->name, ACL_ACTION_UPDATE, qdata)) {
-		UPDATE_LOG(LOG_WARNING, "ACL check failed");
+		UPDATE_LOG(LOG_WARNING, qdata, "ACL check failed");
 		knot_wire_set_rcode(req->resp->wire, qdata->rcode);
 		return false;
 	} else {
 		// Check TSIG validity.
 		int ret = process_query_verify(qdata);
 		if (ret != KNOT_EOK) {
-			UPDATE_LOG(LOG_WARNING, "failed (%s)",
+			UPDATE_LOG(LOG_WARNING, qdata, "failed (%s)",
 			           knot_strerror(ret));
 			knot_wire_set_rcode(req->resp->wire, qdata->rcode);
 			return false;

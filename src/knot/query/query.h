@@ -16,44 +16,51 @@
 
 #pragma once
 
-#include <stdint.h>
-
-#include "knot/conf/conf.h"
-#include "knot/nameserver/tsig_ctx.h"
 #include "knot/nameserver/log.h"
-#include "knot/query/layer.h"
-#include "knot/zone/zone.h"
-
-/* Answer processing module implementation. */
-const knot_layer_api_t *process_answer_layer(void);
+#include "libknot/packet/pkt.h"
 
 /*!
- * \brief Processing module parameters.
+ * \brief EDNS data.
  */
-struct process_answer_param {
-	zone_t *zone;                          /*!< Answer bailiwick. */
-	conf_t *conf;                          /*!< Configuration. */
-	const knot_pkt_t *query;               /*!< Query preceding the answer. */
-	const struct sockaddr_storage *remote; /*!< Answer origin. */
-	tsig_ctx_t tsig_ctx;                   /*!< Signing context. */
+struct query_edns_data {
+	uint16_t max_payload;
+
+	// Custom EDNS option:
+	uint16_t custom_code;
+	const uint8_t *custom_data;
+	uint16_t custom_len;
 };
 
 /*!
- * \brief Processing module context.
+ * \brief Initialize new packet.
+ *
+ * Clear the packet and generate random transaction ID.
+ *
+ * \param pkt  Packet to initialize.
+ *
+ * \return Always KNOT_EOK if valid parameters supplied.
  */
-struct answer_data {
-	/* Extensions. */
-	void *ext;
-	void (*ext_cleanup)(struct answer_data*); /*!< Extensions cleanup callback. */
-	knot_sign_context_t sign;            /*!< Signing context. */
+int query_init_pkt(knot_pkt_t *pkt);
 
-	/* Everything below should be kept on reset. */
-	int response_type; /*!< Type of incoming response. */
-	struct process_answer_param *param; /*!< Module parameters. */
-	knot_mm_t *mm;                      /*!< Memory context. */
-};
+/*!
+ * \brief Initialize EDNS parameters from server configuration.
+ *
+ * \param[out] edns           EDNS parameters to initialize.
+ * \param[in]  conf           Server configuration.
+ * \param[in]  zone           Zone name.
+ * \param[in]  remote_family  Address family for remote host.
+ *
+ * \return KNOT_E*
+ */
+int query_edns_data_init(struct query_edns_data *edns, conf_t *conf,
+                         const knot_dname_t *zone, int remote_family);
 
-int zone_query_execute(conf_t *conf, zone_t *zone, uint16_t pkt_type, const conf_remote_t *remote);
-
-#define ZONE_QUERY_LOG(priority, zone, remote, operation, msg, ...) \
-	NS_PROC_LOG(priority, zone->name, &(remote)->addr, operation, msg, ##__VA_ARGS__)
+/*!
+ * \brief Append EDNS into the packet.
+ *
+ * \param pkt   Packet to add EDNS into.
+ * \param edns  EDNS data.
+ *
+ * \return KNOT_E*
+ */
+int query_put_edns(knot_pkt_t *pkt, const struct query_edns_data *edns);

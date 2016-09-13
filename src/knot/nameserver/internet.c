@@ -807,8 +807,6 @@ static int answer_query(struct query_plan *plan, knot_pkt_t *response, struct qu
 	return KNOT_STATE_DONE;
 }
 
-#undef SOLVE_STEP
-
 int internet_process_query(knot_pkt_t *response, struct query_data *qdata)
 {
 	if (response == NULL || qdata == NULL) {
@@ -833,73 +831,4 @@ int internet_process_query(knot_pkt_t *response, struct query_data *qdata)
 	qdata->name = knot_pkt_qname(qdata->query);
 
 	return answer_query(qdata->zone->query_plan, response, qdata);
-}
-
-#include "knot/nameserver/log.h"
-#define REFRESH_LOG(priority, msg, ...) \
-	NS_PROC_LOG(priority, (data)->param->zone->name, (data)->param->remote, \
-	            "refresh, outgoing", msg, ##__VA_ARGS__)
-
-/*! \brief Process answer to SOA query. */
-static int process_soa_answer(knot_pkt_t *pkt, struct answer_data *data)
-{
-	zone_t *zone = data->param->zone;
-
-	/* Check RCODE. */
-	uint8_t rcode = knot_wire_get_rcode(pkt->wire);
-	if (rcode != KNOT_RCODE_NOERROR) {
-		const knot_lookup_t *lut = knot_lookup_by_id(knot_rcode_names, rcode);
-		if (lut != NULL) {
-			REFRESH_LOG(LOG_WARNING, "server responded with %s", lut->name);
-		}
-		return KNOT_STATE_FAIL;
-	}
-
-	/* Expect SOA in answer section. */
-	const knot_pktsection_t *answer = knot_pkt_section(pkt, KNOT_ANSWER);
-	const knot_rrset_t *first_rr = knot_pkt_rr(answer, 0);
-	if (answer->count < 1 || first_rr->type != KNOT_RRTYPE_SOA) {
-		REFRESH_LOG(LOG_WARNING, "malformed message");
-		return KNOT_STATE_FAIL;
-	}
-
-	/* Our zone is expired, schedule transfer. */
-	if (zone_contents_is_empty(zone->contents)) {
-		zone_events_schedule(zone, ZONE_EVENT_XFER, ZONE_EVENT_NOW);
-		return KNOT_STATE_DONE;
-	}
-
-	/* Check if master has newer zone and schedule transfer. */
-	knot_rdataset_t *soa = node_rdataset(zone->contents->apex, KNOT_RRTYPE_SOA);
-	uint32_t our_serial = knot_soa_serial(soa);
-	uint32_t their_serial =	knot_soa_serial(&first_rr->rrs);
-	if (serial_compare(our_serial, their_serial) >= 0) {
-		REFRESH_LOG(LOG_INFO, "zone is up-to-date");
-		zone_events_cancel(zone, ZONE_EVENT_EXPIRE);
-		zone_clear_preferred_master(zone);
-		return KNOT_STATE_DONE; /* Our zone is up to date. */
-	}
-
-	/* Our zone is outdated, schedule zone transfer. */
-	REFRESH_LOG(LOG_INFO, "master has newer serial %u -> %u", our_serial, their_serial);
-	zone_set_preferred_master(zone, data->param->remote);
-	zone_events_schedule(zone, ZONE_EVENT_XFER, ZONE_EVENT_NOW);
-	return KNOT_STATE_DONE;
-}
-
-int internet_process_answer(knot_pkt_t *pkt, struct answer_data *data)
-{
-	if (pkt == NULL || data == NULL) {
-		return KNOT_STATE_FAIL;
-	}
-
-	NS_NEED_TSIG_SIGNED(&data->param->tsig_ctx, 0);
-
-	/* As of now, server can only issue SOA queries. */
-	switch(knot_pkt_qtype(pkt)) {
-	case KNOT_RRTYPE_SOA:
-		return process_soa_answer(pkt, data);
-	default:
-		return KNOT_STATE_NOOP;
-	}
 }

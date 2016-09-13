@@ -80,7 +80,7 @@ static int dnsproxy_fwd(int state, knot_pkt_t *pkt, struct query_data *qdata, vo
 	bool is_tcp = net_is_stream(qdata->param->socket);
 	const struct sockaddr *dst = (const struct sockaddr *)&proxy->remote.addr;
 	const struct sockaddr *src = (const struct sockaddr *)&proxy->remote.via;
-	struct knot_request *req = knot_request_make(re.mm, dst, src, qdata->query,
+	struct knot_request *req = knot_request_make(re.mm, dst, src, qdata->query, NULL,
 	                                             is_tcp ? 0 : KNOT_RQ_UDP);
 	if (req == NULL) {
 		knot_requestor_clear(&re);

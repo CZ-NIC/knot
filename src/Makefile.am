@@ -308,6 +308,8 @@ libknotd_la_SOURCES =				\
 	knot/nameserver/tsig_ctx.h		\
 	knot/nameserver/update.c		\
 	knot/nameserver/update.h		\
+	knot/nameserver/xfr.c			\
+	knot/nameserver/xfr.h			\
 	knot/query/capture.c			\
 	knot/query/capture.h			\
 	knot/query/layer.c			\

@@ -689,7 +689,6 @@ int process_query_sign_response(knot_pkt_t *pkt, struct query_data *qdata)
 
 	/* KEY provided and verified TSIG or BADTIME allows signing. */
 	if (ctx->tsig_key.name != NULL && knot_tsig_can_sign(qdata->rcode_tsig)) {
-
 		/* Sign query response. */
 		size_t new_digest_len = dnssec_tsig_algorithm_size(ctx->tsig_key.algorithm);
 		if (ctx->pkt_count == 0) {

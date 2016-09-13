@@ -85,7 +85,7 @@ int event_dnssec(conf_t *conf, zone_t *zone)
 		apply_init_ctx(&a_ctx, NULL, APPLY_STRICT);
 
 		zone_contents_t *new_contents = NULL;
-		int ret = apply_changeset(&a_ctx, zone, &ch, &new_contents);
+		int ret = apply_changeset(&a_ctx, zone->contents, &ch, &new_contents);
 		if (ret != KNOT_EOK) {
 			log_zone_error(zone->name, "DNSSEC, failed to sign zone (%s)",
 				       knot_strerror(ret));

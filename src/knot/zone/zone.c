@@ -444,27 +444,3 @@ size_t zone_update_dequeue(zone_t *zone, list_t *updates)
 
 	return update_count;
 }
-
-bool zone_transfer_needed(const zone_t *zone, const knot_pkt_t *pkt)
-{
-	if (zone == NULL || pkt == NULL) {
-		return false;
-	}
-
-	if (zone_contents_is_empty(zone->contents)) {
-		return true;
-	}
-
-	const knot_pktsection_t *answer = knot_pkt_section(pkt, KNOT_ANSWER);
-	if (answer->count < 1) {
-		return false;
-	}
-
-	const knot_rrset_t *soa = knot_pkt_rr(answer, 0);
-	if (soa->type != KNOT_RRTYPE_SOA) {
-		return false;
-	}
-
-	return serial_compare(zone_contents_serial(zone->contents),
-	                           knot_soa_serial(&soa->rrs)) < 0;
-}

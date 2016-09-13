@@ -28,6 +28,11 @@ static bool use_tcp(struct knot_request *request)
 	return (request->flags & KNOT_RQ_UDP) == 0;
 }
 
+static bool is_answer_to_query(const knot_pkt_t *query, const knot_pkt_t *answer)
+{
+	return knot_wire_get_id(query->wire) == knot_wire_get_id(answer->wire);
+}
+
 /*! \brief Ensure a socket is connected. */
 static int request_ensure_connected(struct knot_request *request)
 {
@@ -227,6 +232,10 @@ static int request_consume(struct knot_requestor *req,
 	ret = knot_pkt_parse(last->resp, 0);
 	if (ret != KNOT_EOK) {
 		return ret;
+	}
+
+	if (!is_answer_to_query(last->query, last->resp)) {
+		return KNOT_EMALF;
 	}
 
 	ret = tsig_verify_packet(&last->tsig, last->resp);

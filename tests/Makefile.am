@@ -61,7 +61,6 @@ check_PROGRAMS += \
 	fdset				\
 	journal				\
 	node				\
-	process_answer			\
 	process_query			\
 	query_module			\
 	requestor			\
@@ -112,4 +111,3 @@ conf_SOURCES = conf.c test_conf.h
 confdb_SOURCES = confdb.c test_conf.h
 confio_SOURCES = confio.c test_conf.h
 process_query_SOURCES = process_query.c fake_server.h test_conf.h
-process_answer_SOURCES = process_answer.c fake_server.h test_conf.h
