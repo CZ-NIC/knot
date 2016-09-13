@@ -266,7 +266,6 @@ zone_contents_t *zonefile_load(zloader_t *loader)
 
 	ret = zone_do_sem_checks(zc->z, loader->semantic_checks,
 	                         loader->err_handler);
-	INFO(zname, "semantic check, completed");
 
 	if (ret != KNOT_EOK) {
 		ERROR(zname, "failed to load zone, file '%s' (%s)",
