@@ -73,8 +73,8 @@ int dt_message_fill(Dnstap__Message             *m,
                     const int                   protocol,
                     const void                  *wire,
                     const size_t                len_wire,
-                    const struct timeval        *qtime,
-                    const struct timeval        *rtime)
+                    const struct timespec       *qtime,
+                    const struct timespec       *rtime)
 {
 	if (m == NULL) {
 		return KNOT_EINVAL;
@@ -116,7 +116,7 @@ int dt_message_fill(Dnstap__Message             *m,
 	// Message.query_time_sec, Message.query_time_nsec
 	if (qtime != NULL) {
 		m->query_time_sec = qtime->tv_sec;
-		m->query_time_nsec = qtime->tv_usec * 1000;
+		m->query_time_nsec = qtime->tv_nsec;
 		m->has_query_time_sec = 1;
 		m->has_query_time_nsec = 1;
 	}
@@ -124,7 +124,7 @@ int dt_message_fill(Dnstap__Message             *m,
 	// Message.response_time_sec, Message.response_time_nsec
 	if (rtime != NULL) {
 		m->response_time_sec = rtime->tv_sec;
-		m->response_time_nsec = rtime->tv_usec * 1000;
+		m->response_time_nsec = rtime->tv_nsec;
 		m->has_response_time_sec = 1;
 		m->has_response_time_nsec = 1;
 	}

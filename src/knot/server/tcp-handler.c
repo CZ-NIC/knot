@@ -47,14 +47,14 @@
 
 /*! \brief TCP context data. */
 typedef struct tcp_context {
-	knot_layer_t layer;         /*!< Query processing layer. */
-	server_t *server;           /*!< Name server structure. */
-	struct iovec iov[2];        /*!< TX/RX buffers. */
-	unsigned client_threshold;  /*!< Index of first TCP client. */
-	timev_t last_poll_time;     /*!< Time of the last socket poll. */
-	timev_t throttle_end;       /*!< End of accept() throttling. */
-	fdset_t set;                /*!< Set of server/client sockets. */
-	unsigned thread_id;         /*!< Thread identifier. */
+	knot_layer_t layer;              /*!< Query processing layer. */
+	server_t *server;                /*!< Name server structure. */
+	struct iovec iov[2];             /*!< TX/RX buffers. */
+	unsigned client_threshold;       /*!< Index of first TCP client. */
+	struct timespec last_poll_time;  /*!< Time of the last socket poll. */
+	struct timespec throttle_end;    /*!< End of accept() throttling. */
+	fdset_t set;                     /*!< Set of server/client sockets. */
+	unsigned thread_id;              /*!< Thread identifier. */
 } tcp_context_t;
 
 /*
@@ -249,7 +249,7 @@ static int tcp_wait_for_events(tcp_context_t *tcp)
 	int nfds = poll(set->pfd, set->n, TCP_SWEEP_INTERVAL * 1000);
 
 	/* Mark the time of last poll call. */
-	time_now(&tcp->last_poll_time);
+	tcp->last_poll_time = time_now();
 	bool is_throttled = (tcp->last_poll_time.tv_sec < tcp->throttle_end.tv_sec);
 	if (!is_throttled) {
 		/* Configuration limit, infer maximal pool size. */
@@ -273,7 +273,7 @@ static int tcp_wait_for_events(tcp_context_t *tcp)
 			/* Master sockets */
 			if (i < tcp->client_threshold) {
 				if (!is_throttled && tcp_event_accept(tcp, i) == KNOT_EBUSY) {
-					time_now(&tcp->throttle_end);
+					tcp->throttle_end = time_now();
 					tcp->throttle_end.tv_sec += tcp_throttle();
 				}
 			/* Client sockets */
@@ -335,8 +335,7 @@ int tcp_master(dthread_t *thread)
 	}
 
 	/* Initialize sweep interval. */
-	timev_t next_sweep = {0};
-	time_now(&next_sweep);
+	struct timespec next_sweep = time_now();
 	next_sweep.tv_sec += TCP_SWEEP_INTERVAL;
 
 	for(;;) {
@@ -370,7 +369,7 @@ int tcp_master(dthread_t *thread)
 		/* Sweep inactive clients. */
 		if (tcp.last_poll_time.tv_sec >= next_sweep.tv_sec) {
 			fdset_sweep(&tcp.set, &tcp_sweep, NULL);
-			time_now(&next_sweep);
+			next_sweep = time_now();
 			next_sweep.tv_sec += TCP_SWEEP_INTERVAL;
 		}
 	}

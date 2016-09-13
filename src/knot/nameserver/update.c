@@ -29,7 +29,7 @@
 #include "knot/events/events.h"
 #include "libknot/libknot.h"
 #include "contrib/net.h"
-#include "contrib/print.h"
+#include "contrib/time.h"
 
 /* UPDATE-specific logging (internal, expects 'qdata' variable set). */
 #define UPDATE_LOG(severity, msg, ...) \
@@ -178,8 +178,7 @@ static void process_requests(conf_t *conf, zone_t *zone, list_t *requests)
 	assert(requests);
 
 	/* Keep original state. */
-	struct timeval t_start, t_end;
-	gettimeofday(&t_start, NULL);
+	struct timespec t_start = time_now();
 	const uint32_t old_serial = zone_contents_serial(zone->contents);
 
 	/* Process authenticated packet. */
@@ -197,10 +196,10 @@ static void process_requests(conf_t *conf, zone_t *zone, list_t *requests)
 		return;
 	}
 
-	gettimeofday(&t_end, NULL);
+	struct timespec t_end = time_now();
 	log_zone_info(zone->name, "DDNS, update finished, serial %u -> %u, "
 	              "%.02f seconds", old_serial, new_serial,
-	              time_diff(&t_start, &t_end) / 1000.0);
+	              time_diff_ms(&t_start, &t_end));
 
 	zone_events_schedule(zone, ZONE_EVENT_NOTIFY, ZONE_EVENT_NOW);
 }

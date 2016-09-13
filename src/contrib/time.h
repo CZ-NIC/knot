@@ -39,6 +39,6 @@ struct timespec time_diff(const struct timespec *begin, const struct timespec *e
 /*!
  * \brief Get time elapsed between two events in miliseconds.
  */
-float time_diff_ms(const struct timespec *begin, const struct timespec *end);
+double time_diff_ms(const struct timespec *begin, const struct timespec *end);
 
 /*! @} */

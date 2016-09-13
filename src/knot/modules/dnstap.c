@@ -24,6 +24,7 @@
 #include "contrib/dnstap/message.h"
 #include "contrib/dnstap/dnstap.h"
 #include "contrib/mempattern.h"
+#include "contrib/time.h"
 #include "libknot/libknot.h"
 
 /* Module configuration scheme. */
@@ -77,8 +78,7 @@ static int log_message(int state, const knot_pkt_t *pkt, struct query_data *qdat
 
 	/* Unless we want to measure the time it takes to process each query,
 	 * we can treat Q/R times the same. */
-	struct timeval tv;
-	gettimeofday(&tv, NULL);
+	struct timespec tv = time_now();
 
 	/* Determine query / response. */
 	Dnstap__Message__Type msgtype = DNSTAP__MESSAGE__TYPE__AUTH_QUERY;

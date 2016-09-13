@@ -39,9 +39,9 @@ struct timespec time_diff(const struct timespec *begin, const struct timespec *e
 	return result;
 }
 
-float time_diff_ms(const struct timespec *begin, const struct timespec *end)
+double time_diff_ms(const struct timespec *begin, const struct timespec *end)
 {
 	struct timespec result = time_diff(begin, end);
 
-	return (result.tv_sec * 1000.0) + (result.tv_nsec / 1e6);
+	return (result.tv_sec * 1e3) + (result.tv_nsec / 1e6);
 }

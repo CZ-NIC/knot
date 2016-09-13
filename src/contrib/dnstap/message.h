@@ -66,7 +66,7 @@ int dt_message_fill(Dnstap__Message             *m,
                     const int                   protocol,
                     const void                  *wire,
                     const size_t                len_wire,
-                    const struct timeval        *qtime,
-                    const struct timeval        *rtime);
+                    const struct timespec       *qtime,
+                    const struct timespec       *rtime);
 
 /*! @} */

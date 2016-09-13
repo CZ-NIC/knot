@@ -117,9 +117,7 @@ int fdset_set_watchdog(fdset_t* set, int i, int interval)
 	}
 
 	/* Update clock. */
-	timev_t now;
-	if (time_now(&now) < 0)
-		return KNOT_ERROR;
+	struct timespec now = time_now();
 
 	set->timeout[i] = now.tv_sec + interval; /* Only seconds precision. */
 	return KNOT_EOK;
@@ -132,10 +130,7 @@ int fdset_sweep(fdset_t* set, fdset_sweep_cb_t cb, void *data)
 	}
 
 	/* Get time threshold. */
-	timev_t now;
-	if (time_now(&now) < 0) {
-		return KNOT_ERROR;
-	}
+	struct timespec now = time_now();
 
 	unsigned i = 0;
 	while (i < set->n) {

@@ -26,7 +26,8 @@
 #include "utils/common/sign.h"
 #include "libknot/libknot.h"
 #include "contrib/sockaddr.h"
-#include "contrib/print.h"
+//#include "contrib/print.h"
+#include "contrib/time.h"
 #include "contrib/ucw/lists.h"
 
 #if USE_DNSTAP
@@ -34,13 +35,13 @@
 # include "contrib/dnstap/message.h"
 # include "contrib/dnstap/writer.h"
 
-static int write_dnstap(dt_writer_t          *writer,
-                        const bool           is_query,
-                        const uint8_t        *wire,
-                        const size_t         wire_len,
-                        net_t                *net,
-                        const struct timeval *qtime,
-                        const struct timeval *rtime)
+static int write_dnstap(dt_writer_t           *writer,
+                        const bool            is_query,
+                        const uint8_t         *wire,
+                        const size_t          wire_len,
+                        net_t                 *net,
+                        const struct timespec *qtime,
+                        const struct timespec *rtime)
 {
 	Dnstap__Message       msg;
 	Dnstap__Message__Type msg_type;
@@ -74,17 +75,17 @@ static int write_dnstap(dt_writer_t          *writer,
 
 static float get_query_time(const Dnstap__Dnstap *frame)
 {
-	struct timeval from = {
+	struct timespec from = {
 		.tv_sec = frame->message->query_time_sec,
-		.tv_usec = frame->message->query_time_nsec / 1000
+		.tv_nsec = frame->message->query_time_nsec
 	};
 
-	struct timeval to = {
+	struct timespec to = {
 		.tv_sec = frame->message->response_time_sec,
-		.tv_usec = frame->message->response_time_nsec / 1000
+		.tv_nsec = frame->message->response_time_nsec
 	};
 
-	return time_diff(&from, &to);
+	return time_diff_ms(&from, &to);
 }
 
 static void fill_remote_addr(net_t *net, Dnstap__Message *message, bool is_initiator)
@@ -523,14 +524,14 @@ static int process_query_packet(const knot_pkt_t      *query,
                                 const sign_context_t  *sign_ctx,
                                 const style_t         *style)
 {
-	struct timeval	t_start, t_query, t_end;
+	struct timespec	t_start, t_query, t_end;
 	knot_pkt_t	*reply;
 	uint8_t		in[MAX_PACKET_SIZE];
 	int		in_len;
 	int		ret;
 
 	// Get start query time.
-	gettimeofday(&t_start, NULL);
+	t_start = time_now();
 
 	// Connect to the server.
 	ret = net_connect(net);
@@ -546,7 +547,7 @@ static int process_query_packet(const knot_pkt_t      *query,
 	}
 
 	// Get stop query time and start reply time.
-	gettimeofday(&t_query, NULL);
+	t_query = time_now();
 
 #if USE_DNSTAP
 	// Make the dnstap copy of the query.
@@ -561,7 +562,7 @@ static int process_query_packet(const knot_pkt_t      *query,
 		if (q != NULL) {
 			if (knot_pkt_parse(q, 0) == KNOT_EOK) {
 				print_packet(q, net, query->size,
-				             time_diff(&t_start, &t_query), 0,
+				             time_diff_ms(&t_start, &t_query), 0,
 				             false, style);
 			} else {
 				ERR("can't print query packet\n");
@@ -584,7 +585,7 @@ static int process_query_packet(const knot_pkt_t      *query,
 		}
 
 		// Get stop reply time.
-		gettimeofday(&t_end, NULL);
+		t_end = time_now();
 
 #if USE_DNSTAP
 		// Make the dnstap copy of the response.
@@ -612,7 +613,7 @@ static int process_query_packet(const knot_pkt_t      *query,
 		if (check_reply_id(reply, query)) {
 			break;
 		// Check for timeout.
-		} else if (time_diff(&t_query, &t_end) > 1000 * net->wait) {
+		} else if (time_diff_ms(&t_query, &t_end) > 1000 * net->wait) {
 			knot_pkt_free(&reply);
 			net_close(net);
 			return -1;
@@ -639,7 +640,7 @@ static int process_query_packet(const knot_pkt_t      *query,
 	check_reply_question(reply, query);
 
 	// Print reply packet.
-	print_packet(reply, net, in_len, time_diff(&t_query, &t_end), 0,
+	print_packet(reply, net, in_len, time_diff_ms(&t_query, &t_end), 0,
 	             true, style);
 
 	// Verify signature if a key was specified.
@@ -763,18 +764,18 @@ static int process_xfr_packet(const knot_pkt_t      *query,
                               const sign_context_t  *sign_ctx,
                               const style_t         *style)
 {
-	struct timeval t_start, t_query, t_end;
-	knot_pkt_t     *reply;
-	uint8_t        in[MAX_PACKET_SIZE];
-	int            in_len;
-	int            ret;
-	int64_t        serial = 0;
-	size_t         total_len = 0;
-	size_t         msg_count = 0;
-	size_t         rr_count = 0;
+	struct timespec t_start, t_query, t_end;
+	knot_pkt_t      *reply;
+	uint8_t         in[MAX_PACKET_SIZE];
+	int             in_len;
+	int             ret;
+	int64_t         serial = 0;
+	size_t          total_len = 0;
+	size_t          msg_count = 0;
+	size_t          rr_count = 0;
 
 	// Get start query time.
-	gettimeofday(&t_start, NULL);
+	t_start = time_now();
 
 	// Connect to the server.
 	ret = net_connect(net);
@@ -790,7 +791,7 @@ static int process_xfr_packet(const knot_pkt_t      *query,
 	}
 
 	// Get stop query time and start reply time.
-	gettimeofday(&t_query, NULL);
+	t_query = time_now();
 
 #if USE_DNSTAP
 	// Make the dnstap copy of the query.
@@ -805,7 +806,7 @@ static int process_xfr_packet(const knot_pkt_t      *query,
 		if (q != NULL) {
 			if (knot_pkt_parse(q, 0) == KNOT_EOK) {
 				print_packet(q, net, query->size,
-				             time_diff(&t_start, &t_query), 0,
+				             time_diff_ms(&t_start, &t_query), 0,
 				             false, style);
 			} else {
 				ERR("can't print query packet\n");
@@ -828,7 +829,7 @@ static int process_xfr_packet(const knot_pkt_t      *query,
 		}
 
 		// Get stop message time.
-		gettimeofday(&t_end, NULL);
+		t_end = time_now();
 
 #if USE_DNSTAP
 		// Make the dnstap copy of the response.
@@ -933,11 +934,11 @@ static int process_xfr_packet(const knot_pkt_t      *query,
 	}
 
 	// Get stop reply time.
-	gettimeofday(&t_end, NULL);
+	t_end = time_now();
 
 	// Print trailing transfer information.
 	print_footer_xfr(total_len, msg_count, rr_count, net,
-	                 time_diff(&t_query, &t_end), 0, style);
+	                 time_diff_ms(&t_query, &t_end), 0, style);
 
 	net_close(net);
 
