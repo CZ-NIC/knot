@@ -66,6 +66,10 @@ Install optional packages to override embedded libraries:
 Install optional packages:
 # yum install libcap-ng-devel systemd-devel libidn-devel protobuf-c-devel fstrm-devel
 
+When compiling on RHEL based system, the Fedora EPEL repository has to be
+enabled. Also for RHEL 6, forward compatibility package gnutls30-devel
+with newer GnuTLS is required instead of gnutls-devel.
+
 2) Install Knot DNS
 
 Knot DNS requires compiler to support atomic intrinsics.

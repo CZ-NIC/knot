@@ -31,7 +31,7 @@ Required libraries
 
 Knot DNS requires few libraries to be compiled:
 
-* GnuTLS, at least 3.0
+* GnuTLS, at least 3.3
 * Jansson, at least 2.3
 * Userspace RCU, at least 0.5.4
 * libedit
@@ -39,6 +39,7 @@ Knot DNS requires few libraries to be compiled:
 * libcap-ng, at least 0.6.4 (optional)
 * libidn (optional)
 * libsystemd (optional)
+* protobuf-c and fstrm (optional)
 
 The LMDB library is required. It is included with the Knot DNS source code,
 however linking with the system library is preferred.
@@ -52,6 +53,9 @@ support in Knot DNS utilities.
 
 If the libsystemd library is available, the server will use systemd's startup
 notifications mechanism and journald for logging.
+
+If the protobuf-c and fstrm libraries are available, the support for logging
+in Dnstap format will be included.
 
 .. _Installation from source code:
 
