@@ -204,7 +204,6 @@ static void format_data(ctl_cmd_t cmd, knot_ctl_type_t data_type,
 	case CTL_STOP:
 	case CTL_RELOAD:
 	case CTL_CONF_BEGIN:
-	case CTL_CONF_COMMIT:
 	case CTL_CONF_ABORT:
 		// Only error message is expected here.
 		if (error != NULL) {
@@ -239,6 +238,7 @@ static void format_data(ctl_cmd_t cmd, knot_ctl_type_t data_type,
 			       type, value);
 		}
 		break;
+	case CTL_CONF_COMMIT: // Can return a check error context.
 	case CTL_CONF_LIST:
 	case CTL_CONF_READ:
 	case CTL_CONF_DIFF:

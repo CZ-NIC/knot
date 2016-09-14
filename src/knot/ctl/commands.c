@@ -1114,8 +1114,9 @@ static int ctl_conf_txn(ctl_args_t *args, ctl_cmd_t cmd)
 		// First check the database.
 		ret = conf_io_check(&io);
 		if (ret != KNOT_EOK) {
+			// Error response is already sent by the check function.
 			// No transaction abort!
-			break;
+			return KNOT_EOK;
 		}
 
 		ret = conf_io_commit(false);
