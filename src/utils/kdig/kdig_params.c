@@ -759,7 +759,7 @@ static int opt_noalignment(const char *arg, void *query)
 	return KNOT_EOK;
 }
 
-static int opt_client(const char *arg, void *query)
+static int opt_subnet(const char *arg, void *query)
 {
 	query_t *q = query;
 
@@ -790,7 +790,7 @@ static int opt_client(const char *arg, void *query)
 	if (getaddrinfo(addr_str, NULL, &hints, &ai) != 0) {
 		free(addr_str);
 		free(subnet);
-		ERR("invalid address +client=%s\n", arg);
+		ERR("invalid address +subnet=%s\n", arg);
 		return KNOT_EINVAL;
 	}
 
@@ -800,7 +800,7 @@ static int opt_client(const char *arg, void *query)
 
 	if (knot_edns_client_subnet_set_addr(subnet, &ss) != KNOT_EOK) {
 		free(subnet);
-		ERR("invalid address +client=%s\n", arg);
+		ERR("invalid address +subnet=%s\n", arg);
 		return KNOT_EINVAL;
 	}
 
@@ -811,7 +811,7 @@ static int opt_client(const char *arg, void *query)
 		uint8_t num = 0;
 		if (str_to_u8(mask, &num) != KNOT_EOK || num > subnet->source_len) {
 			free(subnet);
-			ERR("invalid network mask +client=%s\n", arg);
+			ERR("invalid network mask +subnet=%s\n", arg);
 			return KNOT_EINVAL;
 		}
 		subnet->source_len = num;
@@ -823,7 +823,7 @@ static int opt_client(const char *arg, void *query)
 	return KNOT_EOK;
 }
 
-static int opt_noclient(const char *arg, void *query)
+static int opt_nosubnet(const char *arg, void *query)
 {
 	query_t *q = query;
 
@@ -862,7 +862,7 @@ static int opt_noedns(const char *arg, void *query)
 	opt_nobufsize(arg, query);
 	opt_nopadding(arg, query);
 	opt_noalignment(arg, query);
-	opt_noclient(arg, query);
+	opt_nosubnet(arg, query);
 
 	return KNOT_EOK;
 }
@@ -1022,8 +1022,12 @@ static const param_t kdig_opts2[] = {
 	{ "alignment",      ARG_OPTIONAL, opt_alignment },
 	{ "noalignment",    ARG_NONE,     opt_noalignment },
 
-	{ "client",         ARG_REQUIRED, opt_client },
-	{ "noclient",       ARG_NONE,     opt_noclient },
+	{ "subnet",         ARG_REQUIRED, opt_subnet },
+	{ "nosubnet",       ARG_NONE,     opt_nosubnet },
+
+	// Obsolete aliases.
+	{ "client",         ARG_REQUIRED, opt_subnet },
+	{ "noclient",       ARG_NONE,     opt_nosubnet },
 
 	{ "edns",           ARG_OPTIONAL, opt_edns },
 	{ "noedns",         ARG_NONE,     opt_noedns },
@@ -1613,8 +1617,8 @@ static void print_help(void)
 	       "       +[no]bufsize=B        Set EDNS buffer size.\n"
 	       "       +[no]padding=N        Padding block size EDNS(0) padding.\n"
 	       "       +[no]alignment[=N]    Set packet alignment with EDNS(0) padding.\n"
-	       "       +[no]client=SUBN      Set EDNS(0) client subnet IP/prefix.\n"
-	       "       +[no]edns[=N]         Use EDNS (=version).\n"
+	       "       +[no]subnet=SUBN      Set EDNS(0) client subnet addr/prefix.\n"
+	       "       +[no]edns[=N]         Use EDNS(=version).\n"
 	       "       +[no]time=T           Set wait for reply interval in seconds.\n"
 	       "       +[no]retry=N          Set number of retries.\n"
 	       "       +noidn                Disable IDN transformation.\n"
