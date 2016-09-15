@@ -582,7 +582,9 @@ void print_packet(const knot_pkt_t *packet,
 
 	// Print packet information header.
 	if (style->show_header) {
-		print_tls(&net->tls);
+		if (net != NULL) {
+			print_tls(&net->tls);
+		}
 		print_header(packet, style, rcode);
 	}
 
