@@ -499,20 +499,26 @@ static int process_line(char *lp, void *arg)
 	return ret;
 }
 
-static int process_lines(knsupdate_params_t *params, FILE *fp)
+static bool is_terminal(FILE *file)
+{
+	int fd = fileno(file);
+	assert(fd >= 0);
+	return isatty(fd);
+}
+
+static int process_lines(knsupdate_params_t *params, FILE *input)
 {
 	char *buf = NULL;
 	size_t buflen = 0;
+	bool interactive = is_terminal(input);
 	int ret = KNOT_EOK;
 
 	/* Print first program prompt if interactive. */
-	if (fp == NULL) {
-		/* Don't mess up stdout. */
+	if (interactive) {
 		fprintf(stderr, "> ");
 	}
 
 	/* Process lines. */
-	FILE *input = (fp != NULL) ? fp : stdin;
 	while (!params->stop && knot_getline(&buf, &buflen, input) != -1) {
 		/* Remove leading and trailing white space. */
 		char *line = strstrip(buf);
@@ -526,16 +532,20 @@ static int process_lines(knsupdate_params_t *params, FILE *fp)
 			}
 
 			/* Exit if error and not interactive. */
-			if (fp != NULL) {
+			if (!interactive) {
 				break;
 			}
 		}
 
 		/* Print program prompt if interactive. */
-		if (fp == NULL && !params->stop) {
-			/* Don't mess up stdout. */
+		if (interactive && !params->stop) {
 			fprintf(stderr, "> ");
 		}
+	}
+
+	if (interactive && feof(input)) {
+		/* Terminate line after empty prompt. */
+		fprintf(stderr, "\n");
 	}
 
 	if (buf != NULL) {
@@ -556,7 +566,7 @@ int knsupdate_exec(knsupdate_params_t *params)
 
 	/* If no file specified, use stdin. */
 	if (EMPTY_LIST(params->qfiles)) {
-		ret = process_lines(params, NULL);
+		ret = process_lines(params, stdin);
 	}
 
 	/* Read from each specified file. */
@@ -564,7 +574,7 @@ int knsupdate_exec(knsupdate_params_t *params)
 	WALK_LIST(n, params->qfiles) {
 		const char *filename = (const char*)n->d;
 		if (strcmp(filename, "-") == 0) {
-			ret = process_lines(params, NULL);
+			ret = process_lines(params, stdin);
 			if (ret != KNOT_EOK) {
 				break;
 			}
