@@ -619,10 +619,9 @@ int conf_parse(
 	conf_t *conf,
 	knot_db_txn_t *txn,
 	const char *input,
-	bool is_file,
-	void *data)
+	bool is_file)
 {
-	if (conf == NULL || txn == NULL || input == NULL || data == NULL) {
+	if (conf == NULL || txn == NULL || input == NULL) {
 		return KNOT_EINVAL;
 	}
 
@@ -728,10 +727,8 @@ int conf_import(
 		goto import_error;
 	}
 
-	conf_check_t args = { NULL };
-
 	// Parse and import given file.
-	ret = conf_parse(conf, &txn, input, is_file, &args);
+	ret = conf_parse(conf, &txn, input, is_file);
 	if (ret != KNOT_EOK) {
 		conf->api->txn_abort(&txn);
 		goto import_error;

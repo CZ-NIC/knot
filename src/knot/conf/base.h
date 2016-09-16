@@ -227,7 +227,6 @@ void conf_deactivate_modules(
  * \param[in] txn      Transaction.
  * \param[in] input    Configuration string or filename.
  * \param[in] is_file  Specifies if the input is string or input filename.
- * \param[in] data     Internal data.
  *
  * \return Error code, KNOT_EOK if success.
  */
@@ -235,8 +234,7 @@ int conf_parse(
 	conf_t *conf,
 	knot_db_txn_t *txn,
 	const char *input,
-	bool is_file,
-	void *data
+	bool is_file
 );
 
 /*!

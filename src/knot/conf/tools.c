@@ -579,8 +579,7 @@ int include_file(
 		}
 
 		// Include regular file.
-		ret = conf_parse(args->conf, args->txn, glob_buf.gl_pathv[i],
-		                 true, args);
+		ret = conf_parse(args->conf, args->txn, glob_buf.gl_pathv[i], true);
 		if (ret != KNOT_EOK) {
 			goto include_error;
 		}
