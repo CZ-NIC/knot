@@ -45,7 +45,6 @@ typedef struct {
 } conf_check_t;
 
 int conf_exec_callbacks(
-	const yp_item_t *item,
 	conf_check_t *args
 );
 

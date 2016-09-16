@@ -49,15 +49,14 @@ static bool is_default_id(
 }
 
 int conf_exec_callbacks(
-	const yp_item_t *item,
 	conf_check_t *args)
 {
-	if (item == NULL || args == NULL) {
+	if (args == NULL) {
 		return KNOT_EINVAL;
 	}
 
 	for (size_t i = 0; i < YP_MAX_MISC_COUNT; i++) {
-		int (*fcn)(conf_check_t *) = item->misc[i];
+		int (*fcn)(conf_check_t *) = args->item->misc[i];
 		if (fcn == NULL) {
 			break;
 		}

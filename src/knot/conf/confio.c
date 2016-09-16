@@ -732,7 +732,7 @@ static int set_item(
 		};
 
 		// Call the item callbacks.
-		io->error.code = conf_exec_callbacks(args.item, &args);
+		io->error.code = conf_exec_callbacks(&args);
 		if (io->error.code != KNOT_EOK) {
 			io->error.str = args.err_str;
 			ret = FCN(io);
@@ -1106,7 +1106,7 @@ static int check_section(
 
 		// Check the identifier.
 		if ((group->flags & YP_FMULTI) != 0 && group->var.g.id == item) {
-			io->error.code = conf_exec_callbacks(item, &args);
+			io->error.code = conf_exec_callbacks(&args);
 			if (io->error.code != KNOT_EOK) {
 				io_reset_val(io, group, item, NULL, 0, false, NULL);
 				goto check_section_error;
@@ -1133,7 +1133,7 @@ static int check_section(
 			args.data = bin.data;
 			args.data_len = bin.len;
 
-			io->error.code = conf_exec_callbacks(item, &args);
+			io->error.code = conf_exec_callbacks(&args);
 			if (io->error.code != KNOT_EOK) {
 				io_reset_val(io, group, item, id, id_len, false,
 				             &bin);
@@ -1153,7 +1153,7 @@ static int check_section(
 		args.data = NULL;
 		args.data_len = 0;
 
-		io->error.code = conf_exec_callbacks(group, &args);
+		io->error.code = conf_exec_callbacks(&args);
 		if (io->error.code != KNOT_EOK) {
 			io_reset_val(io, group, NULL, id, id_len, false, NULL);
 			goto check_section_error;

@@ -557,7 +557,7 @@ static int parser_calls(
 				.line = prev_line
 			};
 
-			int ret = conf_exec_callbacks(prev_item, &args);
+			int ret = conf_exec_callbacks(&args);
 			if (ret != KNOT_EOK) {
 				log_prev_err(&args, ret);
 				return ret;
@@ -606,8 +606,7 @@ static int parser_calls(
 		.line = parser->line_count
 	};
 
-	int ret = conf_exec_callbacks(is_id ? node->item->var.g.id : node->item,
-	                              &args);
+	int ret = conf_exec_callbacks(&args);
 	if (ret != KNOT_EOK) {
 		log_call_err(parser, &args, ret);
 	}
