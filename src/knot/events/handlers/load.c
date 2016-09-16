@@ -28,6 +28,8 @@ int event_load(conf_t *conf, zone_t *zone)
 {
 	assert(zone);
 
+	zone_contents_t *contents = NULL;
+
 	/* Take zone file mtime and load it. */
 	time_t mtime;
 	char *filename = conf_zonefile(conf, zone->name);
@@ -39,7 +41,6 @@ int event_load(conf_t *conf, zone_t *zone)
 
 	uint32_t dnssec_refresh = time(NULL);
 
-	zone_contents_t *contents = NULL;
 	ret = zone_load_contents(conf, zone->name, &contents);
 	if (ret != KNOT_EOK) {
 		goto fail;
