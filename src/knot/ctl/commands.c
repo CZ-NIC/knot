@@ -1188,11 +1188,6 @@ static int ctl_conf_read(ctl_args_t *args, ctl_cmd_t cmd)
 
 static int ctl_conf_modify(ctl_args_t *args, ctl_cmd_t cmd)
 {
-	conf_io_t io = {
-		.fcn = send_block,
-		.misc = args->ctl
-	};
-
 	// Start child transaction.
 	int ret = conf_io_begin(true);
 	if (ret != KNOT_EOK) {
@@ -1208,7 +1203,7 @@ static int ctl_conf_modify(ctl_args_t *args, ctl_cmd_t cmd)
 
 		switch (cmd) {
 		case CTL_CONF_SET:
-			ret = conf_io_set(key0, key1, id, data, &io);
+			ret = conf_io_set(key0, key1, id, data);
 			break;
 		case CTL_CONF_UNSET:
 			ret = conf_io_unset(key0, key1, id, data);

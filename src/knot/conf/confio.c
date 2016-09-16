@@ -872,42 +872,28 @@ static int set_item(
 	}
 
 	// Postpone group callbacks to config check.
-	if (io->key0->type != YP_TGRP) {
-		conf_check_t args = {
-			.conf = conf(),
-			.txn = conf()->io.txn,
-			.item = (io->key1 != NULL) ? io->key1 : io->key0,
-			.id = io->id,
-			.id_len = io->id_len,
-			.data = io->data.bin,
-			.data_len = io->data.bin_len
-		};
-
-		// Call the item callbacks.
-		io->error.code = conf_exec_callbacks(&args);
-		if (io->error.code != KNOT_EOK) {
-			io->error.str = args.err_str;
-			ret = FCN(io);
-			if (ret == KNOT_EOK) {
-				ret = io->error.code;
-			}
-		}
+	if (io->key0->type == YP_TGRP) {
+		return KNOT_EOK;
 	}
 
-	return ret;
+	conf_check_t args = {
+		.conf = conf(),
+		.txn = conf()->io.txn,
+		.item = (io->key1 != NULL) ? io->key1 : io->key0,
+		.data = io->data.bin,
+		.data_len = io->data.bin_len
+	};
+
+	// Call the item callbacks (include).
+	return conf_exec_callbacks(&args);
 }
 
 int conf_io_set(
 	const char *key0,
 	const char *key1,
 	const char *id,
-	const char *data,
-	conf_io_t *io)
+	const char *data)
 {
-	if (io == NULL) {
-		return KNOT_EINVAL;
-	}
-
 	assert(conf() != NULL);
 
 	if (conf()->io.txn == NULL) {
@@ -936,11 +922,13 @@ int conf_io_set(
 	yp_flag_t upd_flags = node->item->flags;
 	conf_io_type_t upd_type = CONF_IO_TNONE;
 
+	conf_io_t io = { NULL };
+
 	// Key1 is not a group identifier.
 	if (parent != NULL) {
 		upd_type = CONF_IO_TCHANGE;
 		upd_flags |= parent->item->flags;
-		io_reset_bin(io, parent->item, node->item, parent->id,
+		io_reset_bin(&io, parent->item, node->item, parent->id,
 		             parent->id_len, node->data, node->data_len);
 	// No key1 but a group identifier.
 	} else if (node->id_len != 0) {
@@ -950,11 +938,11 @@ int conf_io_set(
 
 		upd_type = CONF_IO_TSET;
 		upd_flags |= node->item->var.g.id->flags;
-		io_reset_bin(io, node->item, node->item->var.g.id, node->id,
+		io_reset_bin(&io, node->item, node->item->var.g.id, node->id,
 		             node->id_len, NULL, 0);
 	// Ensure some data for non-group items (include).
 	} else if (node->item->type == YP_TGRP || node->data_len != 0) {
-		io_reset_bin(io, node->item, NULL, node->id, node->id_len,
+		io_reset_bin(&io, node->item, NULL, node->id, node->id_len,
 		             node->data, node->data_len);
 	// Non-group without data.
 	} else {
@@ -963,10 +951,10 @@ int conf_io_set(
 	}
 
 	// Set the item for all identifiers by default.
-	if (io->key0->type == YP_TGRP && io->key1 != NULL &&
-	    (io->key0->flags & YP_FMULTI) != 0 && io->id_len == 0) {
+	if (io.key0->type == YP_TGRP && io.key1 != NULL &&
+	    (io.key0->flags & YP_FMULTI) != 0 && io.id_len == 0) {
 		conf_iter_t iter;
-		ret = conf_db_iter_begin(conf(), conf()->io.txn, io->key0->name,
+		ret = conf_db_iter_begin(conf(), conf()->io.txn, io.key0->name,
 		                         &iter);
 		switch (ret) {
 		case KNOT_EOK:
@@ -980,14 +968,14 @@ int conf_io_set(
 
 		while (ret == KNOT_EOK) {
 			// Get the identifier.
-			ret = conf_db_iter_id(conf(), &iter, &io->id, &io->id_len);
+			ret = conf_db_iter_id(conf(), &iter, &io.id, &io.id_len);
 			if (ret != KNOT_EOK) {
 				conf_db_iter_finish(conf(), &iter);
 				goto set_error;
 			}
 
 			// Set the data.
-			ret = set_item(io);
+			ret = set_item(&io);
 			if (ret != KNOT_EOK) {
 				conf_db_iter_finish(conf(), &iter);
 				goto set_error;
@@ -999,17 +987,17 @@ int conf_io_set(
 			goto set_error;
 		}
 
-		upd_changes(io, upd_type, upd_flags, true);
+		upd_changes(&io, upd_type, upd_flags, true);
 
 		ret = KNOT_EOK;
 		goto set_error;
 	}
 
 	// Set the item with a possible identifier.
-	ret = set_item(io);
+	ret = set_item(&io);
 
 	if (ret == KNOT_EOK) {
-		upd_changes(io, upd_type, upd_flags, false);
+		upd_changes(&io, upd_type, upd_flags, false);
 	}
 set_error:
 	yp_scheme_check_deinit(ctx);

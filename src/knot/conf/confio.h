@@ -188,7 +188,6 @@ int conf_io_get(
  * \param[in] key1  Item name (NULL to add identifier only).
  * \param[in] id    Section identifier name (NULL to consider all section identifiers).
  * \param[in] data  Item data to set/add.
- * \param[out] io   Operation output (callback error output).
  *
  * \return Error code, KNOT_EOK if success.
  */
@@ -196,8 +195,7 @@ int conf_io_set(
 	const char *key0,
 	const char *key1,
 	const char *id,
-	const char *data,
-	conf_io_t *io
+	const char *data
 );
 
 /*!
