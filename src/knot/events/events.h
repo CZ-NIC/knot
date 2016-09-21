@@ -35,7 +35,6 @@ typedef enum zone_event_type {
 	// supported event types
 	ZONE_EVENT_LOAD = 0,
 	ZONE_EVENT_REFRESH,
-	ZONE_EVENT_XFER,
 	ZONE_EVENT_UPDATE,
 	ZONE_EVENT_EXPIRE,
 	ZONE_EVENT_FLUSH,

@@ -21,10 +21,8 @@
 
 /*! \brief Loads or reloads potentially changed zone. */
 int event_load(conf_t *conf, zone_t *zone);
-/*! \brief Sends a SOA query to master. */
+/*! \brief Refresh a zone from a master. */
 int event_refresh(conf_t *conf, zone_t *zone);
-/*! \brief Initiates transfer with master. */
-int event_xfer(conf_t *conf, zone_t *zone);
 /*! \brief Processes DDNS updates in the zone's DDNS queue. */
 int event_update(conf_t *conf, zone_t *zone);
 /*! \brief Empties in-memory zone contents. */

@@ -127,8 +127,8 @@ fail:
 	zone_contents_deep_free(&contents);
 
 	/* Try to bootstrap the zone if local error. */
-	if (zone_is_slave(conf, zone) && !zone_events_is_scheduled(zone, ZONE_EVENT_XFER)) {
-		zone_events_schedule(zone, ZONE_EVENT_XFER, ZONE_EVENT_NOW);
+	if (zone_is_slave(conf, zone) && !zone_events_is_scheduled(zone, ZONE_EVENT_REFRESH)) {
+		zone_events_schedule(zone, ZONE_EVENT_REFRESH, ZONE_EVENT_NOW);
 	}
 
 	return ret;

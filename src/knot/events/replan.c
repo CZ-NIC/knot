@@ -55,24 +55,6 @@ static void replan_soa_events(conf_t *conf, zone_t *zone, const zone_t *old_zone
 	}
 }
 
-/*!< \brief Replans transfer event. */
-static void replan_xfer(conf_t *conf, zone_t *zone, const zone_t *old_zone)
-{
-	if (!zone_is_slave(conf, zone)) {
-		// Only valid for slaves.
-		return;
-	}
-
-	if (zone_is_slave(conf, old_zone)) {
-		// Replan the transfer from old zone.
-		replan_event(zone, old_zone, ZONE_EVENT_XFER);
-	} else if (zone_contents_is_empty(zone->contents)) {
-		// Plan transfer anew.
-		zone->bootstrap_retry = bootstrap_next(zone->bootstrap_retry);
-		zone_events_schedule(zone, ZONE_EVENT_XFER, zone->bootstrap_retry);
-	}
-}
-
 /*!< \brief Replans flush event. */
 static void replan_flush(conf_t *conf, zone_t *zone, const zone_t *old_zone)
 {
@@ -134,7 +116,6 @@ void replan_update(zone_t *zone, zone_t *old_zone)
 void replan_events(conf_t *conf, zone_t *zone, zone_t *old_zone)
 {
 	replan_soa_events(conf, zone, old_zone);
-	replan_xfer(conf, zone, old_zone);
 	replan_flush(conf, zone, old_zone);
 	replan_event(zone, old_zone, ZONE_EVENT_NOTIFY);
 	replan_update(zone, old_zone);

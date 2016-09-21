@@ -271,7 +271,7 @@ static int zone_retransfer(zone_t *zone, ctl_args_t *args)
 	}
 
 	zone->flags |= ZONE_FORCE_AXFR;
-	zone_events_schedule(zone, ZONE_EVENT_XFER, ZONE_EVENT_NOW);
+	zone_events_schedule(zone, ZONE_EVENT_REFRESH, ZONE_EVENT_NOW);
 
 	return KNOT_EOK;
 }

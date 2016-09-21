@@ -38,7 +38,6 @@ typedef struct event_info {
 static const event_info_t EVENT_INFO[] = {
 	{ ZONE_EVENT_LOAD,    event_load,    "load" },
 	{ ZONE_EVENT_REFRESH, event_refresh, "refresh" },
-	{ ZONE_EVENT_XFER,    event_xfer,    "transfer" },
 	{ ZONE_EVENT_UPDATE,  event_update,  "update" },
 	{ ZONE_EVENT_EXPIRE,  event_expire,  "expiration" },
 	{ ZONE_EVENT_FLUSH,   event_flush,   "journal flush" },
