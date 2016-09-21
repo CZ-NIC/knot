@@ -34,13 +34,13 @@
 #define MOD_RESPONSES	"\x0D""log-responses"
 
 const yp_item_t scheme_mod_dnstap[] = {
-	{ C_ID,         YP_TSTR, YP_VNONE },
-	{ MOD_SINK,     YP_TSTR, YP_VNONE },
-	{ MOD_IDENTITY, YP_TSTR, YP_VNONE },
-	{ MOD_VERSION,  YP_TSTR, YP_VSTR = { "Knot DNS " PACKAGE_VERSION } },
-	{ MOD_QUERIES,	YP_TBOOL, YP_VBOOL = true },
-	{ MOD_RESPONSES,YP_TBOOL, YP_VBOOL = true },
-	{ C_COMMENT,    YP_TSTR, YP_VNONE },
+	{ C_ID,          YP_TSTR,  YP_VNONE },
+	{ MOD_SINK,      YP_TSTR,  YP_VNONE },
+	{ MOD_IDENTITY,  YP_TSTR,  YP_VNONE },
+	{ MOD_VERSION,   YP_TSTR,  YP_VSTR = { "Knot DNS " PACKAGE_VERSION } },
+	{ MOD_QUERIES,   YP_TBOOL, YP_VBOOL = { true } },
+	{ MOD_RESPONSES, YP_TBOOL, YP_VBOOL = { true } },
+	{ C_COMMENT,     YP_TSTR,  YP_VNONE },
 	{ NULL }
 };
 
@@ -238,7 +238,7 @@ int dnstap_load(struct query_plan *plan, struct query_module *self,
 
 	conf_val_t val;
 
-	// Set identity.
+	/* Set identity. */
 	val = conf_mod_get(self->config, MOD_IDENTITY, self->id);
 	if (val.code == KNOT_EOK) {
 		ctx->identity = strdup(conf_str(&val));
@@ -247,7 +247,7 @@ int dnstap_load(struct query_plan *plan, struct query_module *self,
 	}
 	ctx->identity_len = (ctx->identity != NULL) ? strlen(ctx->identity) : 0;
 
-	// Set version.
+	/* Set version. */
 	val = conf_mod_get(self->config, MOD_VERSION, self->id);
 	ctx->version = strdup(conf_str(&val));
 	ctx->version_len = strlen(ctx->version);

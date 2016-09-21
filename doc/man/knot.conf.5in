@@ -1028,6 +1028,8 @@ mod\-dnstap:
     sink: STR
     identity: STR
     version: STR
+    log\-queries: BOOL
+    log\-responses: BOOL
 .ft P
 .fi
 .UNINDENT
@@ -1051,6 +1053,16 @@ A DNS server identity. Set empty value to disable.
 A DNS server version. Set empty value to disable.
 .sp
 \fIDefault:\fP server version
+.SS log\-queries
+.sp
+If enabled, query messages will be logged.
+.sp
+\fIDefault:\fP on
+.SS log\-responses
+.sp
+If enabled, response messages will be logged.
+.sp
+\fIDefault:\fP on
 .SH MODULE SYNTH-RECORD
 .sp
 This module is able to synthesize either forward or reverse records for the

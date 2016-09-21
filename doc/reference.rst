@@ -1250,12 +1250,16 @@ A DNS server version. Set empty value to disable.
 
 *Default:* server version
 
+.. _mod-dnstap_log-queries:
+
 log-queries
 -----------
 
 If enabled, query messages will be logged.
 
 *Default:* on
+
+.. _mod-dnstap_log-responses:
 
 log-responses
 -------------
