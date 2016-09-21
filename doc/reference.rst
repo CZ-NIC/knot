@@ -1212,6 +1212,8 @@ zone-specific logging, use this module in the proper zone configuration.
      sink: STR
      identity: STR
      version: STR
+     log-queries: BOOL
+     log-responses: BOOL
 
 .. _mod-dnstap_id:
 
@@ -1247,6 +1249,20 @@ version
 A DNS server version. Set empty value to disable.
 
 *Default:* server version
+
+log-queries
+-----------
+
+If enabled, query messages will be logged.
+
+*Default:* on
+
+log-responses
+-------------
+
+If enabled, response messages will be logged.
+
+*Default:* on
 
 .. _Module synth-record:
 
