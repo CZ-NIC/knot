@@ -29,7 +29,8 @@
 struct notify_data {
 	const knot_dname_t *zone;
 	const knot_rrset_t *soa;
-	const struct sockaddr_storage *remote;
+	const struct sockaddr *remote;
+	struct query_edns_data edns;
 	uint16_t response_rcode;
 };
 
@@ -56,6 +57,8 @@ static int notify_produce(knot_layer_t *layer, knot_pkt_t *pkt)
 		knot_pkt_put(pkt, KNOT_COMPR_HINT_QNAME, data->soa, 0);
 	}
 
+	query_put_edns(pkt, &data->edns);
+
 	return KNOT_STATE_CONSUME;
 }
 
@@ -77,14 +80,16 @@ static const knot_layer_api_t NOTIFY_API = {
 	.consume = notify_consume,
 };
 
-static int send_notify(zone_t *zone, const knot_rrset_t *soa,
+static int send_notify(conf_t *conf, zone_t *zone, const knot_rrset_t *soa,
                        const conf_remote_t *slave, int timeout, uint16_t *rcode)
 {
 	struct notify_data data = {
 		.zone = zone->name,
 		.soa = soa,
-		.remote = &slave->addr,
+		.remote = (struct sockaddr *)&slave->addr,
 	};
+
+	query_edns_data_init(&data.edns, conf, zone->name, slave->addr.ss_family);
 
 	struct knot_requestor requestor = { 0 };
 	knot_requestor_init(&requestor, &NOTIFY_API, &data, NULL);
@@ -158,7 +163,7 @@ int event_notify(conf_t *conf, zone_t *zone)
 		for (int i = 0; i < addr_count; i++) {
 			uint16_t rcode = 0;
 			conf_remote_t slave = conf_remote(conf, &notify, i);
-			int ret = send_notify(zone, &soa, &slave, timeout, &rcode);
+			int ret = send_notify(conf, zone, &soa, &slave, timeout, &rcode);
 			log_notify_result(ret, rcode, zone->name, &slave.addr, serial);
 			if (ret == KNOT_EOK) {
 				break;
