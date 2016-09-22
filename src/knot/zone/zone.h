@@ -32,6 +32,7 @@
 #include "knot/server/journal.h"
 #include "knot/events/events.h"
 #include "knot/zone/contents.h"
+#include "knot/zone/timers.h"
 #include "libknot/dname.h"
 #include "libknot/packet/pkt.h"
 
@@ -67,8 +68,10 @@ typedef struct zone
 	} zonefile;
 
 	/*! \brief Zone events. */
-	uint32_t bootstrap_retry; /*!< AXFR/IN bootstrap retry. */
-	zone_events_t events;     /*!< Zone events timers. */
+	// TODO: remove bootstrap_retry
+	uint32_t bootstrap_retry;  //!< AXFR/IN bootstrap retry.
+	zone_timers_t timers;      //!< Persistent zone timers.
+	zone_events_t events;      //!< Zone events timers.
 
 	/*! \brief DDNS queue and lock. */
 	pthread_mutex_t ddns_lock;

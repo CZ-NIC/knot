@@ -165,42 +165,6 @@ static zone_t *create_zone_reload(conf_t *conf, const knot_dname_t *name,
 	return zone;
 }
 
-static bool slave_event(zone_event_type_t event)
-{
-	return event == ZONE_EVENT_EXPIRE || event == ZONE_EVENT_REFRESH;
-}
-
-static int reuse_events(conf_t *conf, knot_db_t *timer_db, zone_t *zone)
-{
-	// Get persistent timers
-
-	time_t timers[ZONE_EVENT_COUNT] = { 0 };
-	int ret = read_zone_timers(timer_db, zone, timers);
-	if (ret != KNOT_EOK) {
-		return ret;
-	}
-
-	for (zone_event_type_t event = 0; event < ZONE_EVENT_COUNT; ++event) {
-		if (timers[event] == 0) {
-			// Timer unset.
-			continue;
-		}
-		if (slave_event(event) && !zone_is_slave(conf, zone)) {
-			// Slave-only event.
-			continue;
-		}
-
-		if (event == ZONE_EVENT_EXPIRE && timers[event] <= time(NULL)) {
-			zone->flags |= ZONE_EXPIRED;
-			continue;
-		}
-
-		zone_events_schedule_at(zone, event, timers[event]);
-	}
-
-	return KNOT_EOK;
-}
-
 static zone_t *create_zone_new(conf_t *conf, const knot_dname_t *name,
                                server_t *server)
 {
@@ -209,13 +173,15 @@ static zone_t *create_zone_new(conf_t *conf, const knot_dname_t *name,
 		return NULL;
 	}
 
-	int ret = reuse_events(conf, server->timers_db, zone);
-	if (ret != KNOT_EOK) {
-		log_zone_error(zone->name, "cannot read zone timers (%s)",
+	int ret = zone_timers_read(server->timers_db, name, &zone->timers);
+	if (ret != KNOT_EOK && ret != KNOT_ENOENT) {
+		log_zone_error(zone->name, "failed to load persistent timers (%s)",
 		               knot_strerror(ret));
 		zone_free(&zone);
 		return NULL;
 	}
+
+	// TODO: process the timers
 
 	zone_status_t zstatus = zone_file_status(conf, NULL, name);
 	if (zone->flags & ZONE_EXPIRED) {
@@ -341,6 +307,16 @@ static void remove_old_zonedb(const knot_zonedb_t *db_new, knot_zonedb_t *db_old
 	knot_zonedb_deep_free(&db_old);
 }
 
+static bool zone_exists(const knot_dname_t *zone, void *data)
+{
+	assert(zone);
+	assert(data);
+
+	knot_zonedb_t *db = data;
+
+	return knot_zonedb_find(db, zone) != NULL;
+}
+
 void zonedb_reload(conf_t *conf, server_t *server)
 {
 	/* Check parameters */
@@ -366,7 +342,11 @@ void zonedb_reload(conf_t *conf, server_t *server)
 	synchronize_rcu();
 
 	/* Sweep the timer database. */
-	sweep_timer_db(server->timers_db, db_new);
+	int ret = zone_timers_sweep(server->timers_db, zone_exists, db_new);
+	if (ret != KNOT_EOK) {
+		log_warning("failed to clear persistent timers for removed zones (%s)",
+		            knot_strerror(ret));
+	}
 
 	/*
 	 * Remove all zones present in the new DB from the old DB.
