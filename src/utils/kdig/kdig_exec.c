@@ -26,7 +26,6 @@
 #include "utils/common/sign.h"
 #include "libknot/libknot.h"
 #include "contrib/sockaddr.h"
-//#include "contrib/print.h"
 #include "contrib/time.h"
 #include "contrib/ucw/lists.h"
 
