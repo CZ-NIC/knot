@@ -16,112 +16,84 @@
 
 #include <assert.h>
 #include <stdlib.h>
-#include <time.h>
-#include <unistd.h>
 #include <tap/basic.h>
 #include <tap/files.h>
 
-#include "contrib/string.h"
-#include "libknot/libknot.h"
-#include "knot/events/events.h"
 #include "knot/zone/timers.h"
-#include "knot/zone/zone.h"
+#include "libknot/db/db_lmdb.h"
+#include "libknot/dname.h"
+#include "libknot/error.h"
 
-#define SLIP (1024 * 1024)
-static const size_t REFRESH_SLIP = SLIP;
-static const size_t EXPIRE_SLIP = SLIP + 1;
-static const size_t FLUSH_SLIP = SLIP + 2;
+static const zone_timers_t MOCK_TIMERS = {
+	.soa_expire = 3600,
+	.last_refresh = 1474559950,
+	.next_refresh = 1474559960,
+	.last_flush = 1474559900,
+};
+
+static bool keep_all(const knot_dname_t *zone, void *data)
+{
+	return true;
+}
+
+static bool remove_all(const knot_dname_t *zone, void *data)
+{
+	return false;
+}
+
+static bool timers_eq(const zone_timers_t *a, const zone_timers_t *b)
+{
+	return a->soa_expire == b->soa_expire &&
+	       a->last_refresh == b->last_refresh &&
+	       a->next_refresh == b->next_refresh &&
+	       a->last_flush == b->last_flush;
+}
 
 int main(int argc, char *argv[])
 {
 	plan_lazy();
-
-	if (knot_db_lmdb_api() == NULL) {
-		skip("LMDB API not compiled");
-		return EXIT_SUCCESS;
-	}
+	assert(knot_db_lmdb_api());
 
 	char *dbid = test_mkdtemp();
-	ok(dbid != NULL, "make temporary directory");
+	if (!dbid) {
+		return EXIT_FAILURE;
+	}
 
-	// Mockup zones.
-	knot_dname_t *zone_name;
-	zone_name = knot_dname_from_str_alloc("test1.");
-	zone_t *zone_1 = zone_new(zone_name);
-	knot_dname_free(&zone_name, NULL);
-	zone_name = knot_dname_from_str_alloc("test2.");
-	zone_t *zone_2 = zone_new(zone_name);
-	knot_dname_free(&zone_name, NULL);
-	assert(zone_1 && zone_2);
+	const knot_dname_t *zone = (uint8_t *)"\x7""example""\x3""com";
+	struct zone_timers timers = MOCK_TIMERS;
 
-	// Mockup zonedb.
-	knot_zonedb_t *zone_db = knot_zonedb_new(2);
-	assert(zone_db);
-	int ret = knot_zonedb_insert(zone_db, zone_1);
-	assert(ret == KNOT_EOK);
-	ret = knot_zonedb_insert(zone_db, zone_2);
-	assert(ret == KNOT_EOK);
-
-	knot_zonedb_build_index(zone_db);
-
+	// Create database
 	knot_db_t *db = NULL;
-	ret = open_timers_db(dbid, &db);
-	ok(ret == KNOT_EOK && db != NULL, "zone timers: create");
+	int ret = zone_timers_open(dbid, &db);
+	ok(ret == KNOT_EOK && db != NULL, "zone_timers_open()");
 
-	// Set up events in the future.
-	const time_t now = time(NULL);
-	const time_t REFRESH_TIME = now + REFRESH_SLIP;
-	const time_t EXPIRE_TIME = now + EXPIRE_SLIP;
-	const time_t FLUSH_TIME = now + FLUSH_SLIP;
+	// Lookup nonexistent
+	ret = zone_timers_read(db, zone, &timers);
+	ok(ret == KNOT_ENOENT, "zone_timer_read() nonexistent");
 
-	// Refresh, expire and flush are the permanent events for now.
-	zone_events_schedule_at(zone_1, ZONE_EVENT_REFRESH, REFRESH_TIME);
-	zone_events_schedule_at(zone_1, ZONE_EVENT_EXPIRE, EXPIRE_TIME);
-	zone_events_schedule_at(zone_1, ZONE_EVENT_FLUSH, FLUSH_TIME);
+	// Write timers
+	ret = zone_timers_write(db, zone, &timers);
+	ok(ret == KNOT_EOK, "zone_timers_write()");
 
-	// Write the timers.
-	ret = write_timer_db(db, zone_db);
-	ok(ret == KNOT_EOK, "zone timers: write");
+	// Read timers
+	memset(&timers, 0, sizeof(timers));
+	ret = zone_timers_read(db, zone, &timers);
+	ok(ret == KNOT_EOK && timers_eq(&timers, &MOCK_TIMERS), "zone_timers_read()");
 
-	// Read the timers.
-	time_t timers[ZONE_EVENT_COUNT];
-	ret = read_zone_timers(db, zone_1, timers);
-	ok(ret == KNOT_EOK &&
-	   timers[ZONE_EVENT_REFRESH] == REFRESH_TIME &&
-	   timers[ZONE_EVENT_EXPIRE] == EXPIRE_TIME &&
-	   timers[ZONE_EVENT_FLUSH] == FLUSH_TIME, "zone timers: read set");
+	// Sweep none
+	ret = zone_timers_sweep(db, keep_all, NULL);
+	ok(ret == KNOT_EOK, "zone_timers_sweep() none");
+	ret = zone_timers_read(db, zone, &timers);
+	ok(ret == KNOT_EOK, "zone_timers_read()");
 
-	// Sweep and read again - timers should stay the same.
-	int s_ret = sweep_timer_db(db, zone_db);
-	if (s_ret == KNOT_EOK) {
-		ret = read_zone_timers(db, zone_1, timers);
-	}
-	ok(s_ret == KNOT_EOK && ret == KNOT_EOK &&
-	   timers[ZONE_EVENT_REFRESH] == REFRESH_TIME &&
-	   timers[ZONE_EVENT_EXPIRE] == EXPIRE_TIME &&
-	   timers[ZONE_EVENT_FLUSH] == FLUSH_TIME, "zone timers: sweep no-op");
-
-	// Read timers for unset zone.
-	const time_t empty_timers[ZONE_EVENT_COUNT] = { '\0' };
-	ret = read_zone_timers(db, zone_2, timers);
-	ok(ret == KNOT_EOK &&
-	   memcmp(timers, empty_timers, sizeof(timers)) == 0, "zone timers: read unset");
-
-	// Remove first zone from db and sweep.
-	ret = knot_zonedb_del(zone_db, zone_1->name);
-	assert(ret == KNOT_EOK);
-
-	s_ret = sweep_timer_db(db, zone_db);
-	if (s_ret == KNOT_EOK) {
-		ret = read_zone_timers(db, zone_1, timers);
-	}
-	ok(s_ret == KNOT_EOK && ret == KNOT_EOK &&
-	   memcmp(timers, empty_timers, sizeof(timers)) == 0, "zone timers: sweep");
+	// Sweep all
+	ret = zone_timers_sweep(db, remove_all, NULL);
+	ok(ret == KNOT_EOK, "zone_timers_sweep() all");
+	ret = zone_timers_read(db, zone, &timers);
+	ok(ret == KNOT_ENOENT, "zone_timers_read() nonexistent");
 
 	// Clean up.
-	zone_free(&zone_1);
-	zone_free(&zone_2);
-	close_timers_db(db);
+	zone_timers_close(db);
 	test_rm_rf(dbid);
 	free(dbid);
 

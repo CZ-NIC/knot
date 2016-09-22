@@ -16,57 +16,81 @@
 
 #pragma once
 
+#include <stdint.h>
+#include <time.h>
+
 #include "libknot/db/db.h"
-#include "knot/zone/zone.h"
-#include "knot/zone/zonedb.h"
+#include "libknot/dname.h"
 
 /*!
- * \brief Opens zone timers db.
+ * \brief Persistent zone timers.
+ */
+struct zone_timers {
+	uint32_t soa_expire;    //!< SOA expire value.
+	time_t last_flush;      //!< Last zone file synchronization.
+	time_t last_refresh;    //!< Last successful zone refresh attempt.
+	time_t next_refresh;    //!< Next zone refresh attempt.
+};
+
+typedef struct zone_timers zone_timers_t;
+
+/*!
+ * \brief Open zone timers database.
  *
- * \param[in]  path      Path to a directory with the database.
- * \param[out] timer_db  Created database.
+ * \param[in]  path  Path to a directory with the database.
+ * \param[out] db    Created database.
  *
  * \return KNOT_E*
  */
-int open_timers_db(const char *path, knot_db_t **timer_db);
+int zone_timers_open(const char *path, knot_db_t **db);
 
 /*!
- * \brief Closes zone timers db.
+ * \brief Closes zone timers database.
  *
- * \param timer_db  Timer database.
+ * \param db  Timer database.
  */
-void close_timers_db(knot_db_t *timer_db);
+void zone_timers_close(knot_db_t *db);
 
 /*!
- * \brief Reads zone timers from timers db.
- *        Currently these events are read (and stored):
- *          ZONE_EVENT_REFRESH
- *          ZONE_EVENT_EXPIRE
- *          ZONE_EVENT_FLUSH
+ * \brief Load timers for one zone.
  *
- * \param timer_db  Timer database.
- * \param zone      Zone to read timers for.
- * \param timers    Output array with timers (size must be ZONE_EVENT_COUNT).
+ * \param[in]  db      Timer database.
+ * \param[in]  zone    Zone name.
+ * \param[out] timers  Loaded timers
+ *
+ * \return KNOT_E*
+ * \retval KNOT_ENOENT  Zone not found in the database.
+ */
+int zone_timers_read(knot_db_t *db, const knot_dname_t *zone,
+                     zone_timers_t *timers);
+
+/*!
+ * \brief Write timers for one zone.
+ *
+ * \param db      Timer database.
+ * \param zone    Zone name.
+ * \param timers  Loaded timers
  *
  * \return KNOT_E*
  */
-int read_zone_timers(knot_db_t *timer_db, const zone_t *zone, time_t *timers);
+int zone_timers_write(knot_db_t *db, const knot_dname_t *zone,
+                      const zone_timers_t *timers);
 
 /*!
- * \brief Writes all zone timers to timers db.
+ * \brief Callback used in \ref zone_timers_sweep.
  *
- * \param timer_db  Timer database.
- * \param zone_db   Zone database.
+ * \retval true for zones to preserve.
+ * \retval false for zones to remove.
+ */
+typedef bool (*sweep_cb)(const knot_dname_t *zone, void *data);
+
+/*!
+ * \brief Selectively delete zones from the database.
+ *
+ * \param db         Timer dababase.
+ * \param keep_zone  Filtering callback.
+ * \param cb_data    Data passed to callback function.
  *
  * \return KNOT_E*
  */
-int write_timer_db(knot_db_t *timer_db, knot_zonedb_t *zone_db);
-
-/*!
- * \brief Removes stale zones info from timers db.
- *
- * \param timer_db  Timer database.
- * \param zone_db   Current zone database.
- * \return KNOT_EOK or an error
- */
-int sweep_timer_db(knot_db_t *timer_db, knot_zonedb_t *zone_db);
+int zone_timers_sweep(knot_db_t *db, sweep_cb keep_zone, void *cb_data);
