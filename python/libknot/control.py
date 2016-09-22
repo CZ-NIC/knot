@@ -1,6 +1,9 @@
 """Libknot server control interface wrapper.
 
 Example:
+    import json
+    from libknot.control import *
+
     ctl = KnotCtl()
     ctl.connect("/var/run/knot/knot.sock")
 
@@ -25,35 +28,56 @@ Example:
 from ctypes import cdll, c_void_p, c_int, c_char_p, c_uint, byref
 from enum import IntEnum
 
-LIB = cdll.LoadLibrary('libknot.so')
+CTL_ALLOC = None
+CTL_FREE = None
+CTL_SET_TIMEOUT = None
+CTL_CONNECT = None
+CTL_CLOSE = None
+CTL_SEND = None
+CTL_RECEIVE = None
+CTL_ERROR = None
 
-CTL_ALLOC = LIB.knot_ctl_alloc
-CTL_ALLOC.restype = c_void_p
 
-CTL_FREE = LIB.knot_ctl_free
-CTL_FREE.argtypes = [c_void_p]
+def load_lib(path="libknot.so"):
+    """Loads the libknot library."""
 
-CTL_SET_TIMEOUT = LIB.knot_ctl_set_timeout
-CTL_SET_TIMEOUT.argtypes = [c_void_p, c_int]
+    LIB = cdll.LoadLibrary(path)
 
-CTL_CONNECT = LIB.knot_ctl_connect
-CTL_CONNECT.restype = c_int
-CTL_CONNECT.argtypes = [c_void_p, c_char_p]
+    global CTL_ALLOC
+    CTL_ALLOC = LIB.knot_ctl_alloc
+    CTL_ALLOC.restype = c_void_p
 
-CTL_CLOSE = LIB.knot_ctl_close
-CTL_CLOSE.argtypes = [c_void_p]
+    global CTL_FREE
+    CTL_FREE = LIB.knot_ctl_free
+    CTL_FREE.argtypes = [c_void_p]
 
-CTL_SEND = LIB.knot_ctl_send
-CTL_SEND.restype = c_int
-CTL_SEND.argtypes = [c_void_p, c_uint, c_void_p]
+    global CTL_SET_TIMEOUT
+    CTL_SET_TIMEOUT = LIB.knot_ctl_set_timeout
+    CTL_SET_TIMEOUT.argtypes = [c_void_p, c_int]
 
-CTL_RECEIVE = LIB.knot_ctl_receive
-CTL_RECEIVE.restype = c_int
-CTL_RECEIVE.argtypes = [c_void_p, c_void_p, c_void_p]
+    global CTL_CONNECT
+    CTL_CONNECT = LIB.knot_ctl_connect
+    CTL_CONNECT.restype = c_int
+    CTL_CONNECT.argtypes = [c_void_p, c_char_p]
 
-CTL_ERROR = LIB.knot_strerror
-CTL_ERROR.restype = c_char_p
-CTL_ERROR.argtypes = [c_int]
+    global CTL_CLOSE
+    CTL_CLOSE = LIB.knot_ctl_close
+    CTL_CLOSE.argtypes = [c_void_p]
+
+    global CTL_SEND
+    CTL_SEND = LIB.knot_ctl_send
+    CTL_SEND.restype = c_int
+    CTL_SEND.argtypes = [c_void_p, c_uint, c_void_p]
+
+    global CTL_RECEIVE
+    CTL_RECEIVE = LIB.knot_ctl_receive
+    CTL_RECEIVE.restype = c_int
+    CTL_RECEIVE.argtypes = [c_void_p, c_void_p, c_void_p]
+
+    global CTL_ERROR
+    CTL_ERROR = LIB.knot_strerror
+    CTL_ERROR.restype = c_char_p
+    CTL_ERROR.argtypes = [c_int]
 
 
 class KnotCtlType(IntEnum):
@@ -114,6 +138,8 @@ class KnotCtl(object):
     """Libknot server control interface."""
 
     def __init__(self):
+        if not CTL_ALLOC:
+            load_lib()
         self.obj = CTL_ALLOC()
 
     def __del__(self):

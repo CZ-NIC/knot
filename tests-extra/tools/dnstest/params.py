@@ -50,6 +50,8 @@ gdb_bin = get_binary("KNOT_TEST_GDB", "gdb")
 vgdb_bin = get_binary("KNOT_TEST_VGDB", "vgdb")
 # KNOT_TEST_LIBTOOL - libtool script.
 libtool_bin = get_binary("KNOT_TEST_LIBTOOL", repo_binary("libtool"))
+# KNOT_TEST_LIBKNOT - libknot library.
+libknot_lib = get_binary("KNOT_TEST_LIBKNOT", repo_binary("src/.libs/libknot.so"))
 # KNOT_TEST_KNOT - Knot binary.
 knot_bin = get_binary("KNOT_TEST_KNOT", repo_binary("src/knotd"))
 # KNOT_TEST_KNOTC - Knot control binary.
