@@ -781,18 +781,6 @@ uint32_t bootstrap_next(uint32_t interval)
 	return interval;
 }
 
-/*! \brief Get SOA from zone. */
-static const knot_rdataset_t *zone_soa(zone_t *zone)
-{
-	assert(zone);
-
-	if (zone->contents == NULL) {
-		return NULL;
-	}
-
-	return node_rdataset(zone->contents->apex, KNOT_RRTYPE_SOA);
-}
-
 /*! \brief Schedule expire event, unless it is already scheduled. */
 static void start_expire_timer(conf_t *conf, zone_t *zone, const knot_rdataset_t *soa)
 {

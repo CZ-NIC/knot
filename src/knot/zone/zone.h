@@ -140,6 +140,9 @@ void zone_set_preferred_master(zone_t *zone, const struct sockaddr_storage *addr
 /*! \brief Clears the current preferred master address. */
 void zone_clear_preferred_master(zone_t *zone);
 
+/*! \brief Get zone SOA RR. */
+const knot_rdataset_t *zone_soa(const zone_t *zone);
+
 typedef int (*zone_master_cb)(conf_t *conf, zone_t *zone, const conf_remote_t *remote,
                               void *data);
 

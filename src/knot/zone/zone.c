@@ -226,6 +226,15 @@ void zone_clear_preferred_master(zone_t *zone)
 	pthread_mutex_unlock(&zone->preferred_lock);
 }
 
+const knot_rdataset_t *zone_soa(const zone_t *zone)
+{
+	if (!zone || zone_contents_is_empty(zone->contents)) {
+		return NULL;
+	}
+
+	return node_rdataset(zone->contents->apex, KNOT_RRTYPE_SOA);
+}
+
 /*!
  * \brief Get preferred zone master while checking its existence.
  */
