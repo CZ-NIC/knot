@@ -170,8 +170,7 @@ static zone_t *create_zone_reload(conf_t *conf, const knot_dname_t *name,
 	timers_sanitize(conf, zone);
 
 	zone_status_t zstatus;
-	if (zone_is_slave(conf, zone) && old_zone->flags & ZONE_EXPIRED) {
-		zone->flags |= ZONE_EXPIRED;
+	if (zone_expired(zone)) {
 		zstatus = ZONE_STATUS_FOUND_CURRENT;
 	} else {
 		zstatus = zone_file_status(conf, old_zone, name);
@@ -220,7 +219,7 @@ static zone_t *create_zone_new(conf_t *conf, const knot_dname_t *name,
 	timers_sanitize(conf, zone);
 
 	zone_status_t zstatus = zone_file_status(conf, NULL, name);
-	if (zone->flags & ZONE_EXPIRED) {
+	if (zone_expired(zone)) {
 		assert(zone_is_slave(conf, zone));
 		zstatus = ZONE_STATUS_BOOSTRAP;
 	}

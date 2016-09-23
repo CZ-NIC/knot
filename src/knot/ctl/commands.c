@@ -240,7 +240,7 @@ static int zone_reload(zone_t *zone, ctl_args_t *args)
 {
 	UNUSED(args);
 
-	if (zone->flags & ZONE_EXPIRED) {
+	if (zone_expired(zone)) {
 		return KNOT_ENOTSUP;
 	}
 

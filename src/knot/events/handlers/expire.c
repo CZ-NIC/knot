@@ -29,7 +29,6 @@ int event_expire(conf_t *conf, zone_t *zone)
 	assert(zone);
 
 	zone_contents_t *expired = zone_switch_contents(zone, NULL);
-	zone->flags |= ZONE_EXPIRED;
 	log_zone_info(zone->name, "zone expired");
 
 	synchronize_rcu();

@@ -75,7 +75,6 @@ int event_load(conf_t *conf, zone_t *zone)
 	}
 
 	/* Everything went alright, switch the contents. */
-	zone->flags &= ~ZONE_EXPIRED;
 	zone->zonefile.exists = true;
 	zone_contents_t *old = zone_switch_contents(zone, contents);
 	bool old_contents = (old != NULL);

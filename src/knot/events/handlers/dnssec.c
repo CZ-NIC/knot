@@ -104,7 +104,6 @@ int event_dnssec(conf_t *conf, zone_t *zone)
 
 		/* Switch zone contents. */
 		zone_contents_t *old_contents = zone_switch_contents(zone, new_contents);
-		zone->flags &= ~ZONE_EXPIRED;
 		synchronize_rcu();
 		update_free_zone(&old_contents);
 

@@ -667,7 +667,6 @@ static int publish_zone(conf_t *conf, zone_t *zone, const struct sockaddr *remot
 	// Publish new zone
 
 	zone_contents_t *old_zone = zone_switch_contents(zone, new_zone);
-	zone->flags &= ~ZONE_EXPIRED;
 
 	if (old_zone) {
 		REFRESH_LOG(LOG_INFO, zone->name, remote,
