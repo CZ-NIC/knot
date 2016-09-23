@@ -238,18 +238,19 @@ class KnotCtl(object):
             out[section] = dict()
 
         # Add the identifier if not exists.
-        if ident and ident not in section:
-            section[ident] = dict()
+        if ident and ident not in out[section]:
+            out[section][ident] = dict()
 
         # Return if no item/value.
         if not item:
             return
 
-        item_level = section[ident] if ident else section
+        item_level = out[section][ident] if ident else out[section]
 
         # Treat alone identifier item differently.
         if item in ["id", "domain", "target"]:
-            section[data] = dict()
+            if data not in out[section]:
+                out[section][data] = dict()
         else:
             if item not in item_level:
                 item_level[item] = list()
