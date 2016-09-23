@@ -126,7 +126,7 @@ static zone_t *create_zone_from(const knot_dname_t *name, server_t *server)
 
 static void time_set_default(time_t *time, time_t value)
 {
-	assert(*time);
+	assert(time);
 
 	if (*time == 0) {
 		*time = value;
