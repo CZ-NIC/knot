@@ -235,6 +235,18 @@ const knot_rdataset_t *zone_soa(const zone_t *zone)
 	return node_rdataset(zone->contents->apex, KNOT_RRTYPE_SOA);
 }
 
+bool zone_expired(const zone_t *zone)
+{
+	if (!zone) {
+		return false;
+	}
+
+	const zone_timers_t *timers = &zone->timers;
+
+	return timers->soa_expire > 0 && timers->last_refresh > 0 &&
+	       timers->last_refresh + timers->soa_expire <= time(NULL);
+}
+
 /*!
  * \brief Get preferred zone master while checking its existence.
  */
