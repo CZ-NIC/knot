@@ -41,7 +41,7 @@ int event_update(conf_t *conf, zone_t *zone)
 	pthread_mutex_unlock(&zone->ddns_lock);
 
 	if (!empty) {
-		zone_events_schedule(zone, ZONE_EVENT_UPDATE, ZONE_EVENT_NOW);
+		zone_events_schedule_now(zone, ZONE_EVENT_UPDATE);
 	}
 
 	return KNOT_EOK;

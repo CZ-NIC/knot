@@ -27,7 +27,7 @@
 static void replan_event(zone_t *zone, const zone_t *old_zone, zone_event_type_t e)
 {
 	const time_t event_time = zone_events_get_time(old_zone, e);
-	if (event_time > ZONE_EVENT_NOW) {
+	if (event_time > 1) {
 		zone_events_schedule_at(zone, e, event_time);
 	}
 }
@@ -50,7 +50,7 @@ static void replan_soa_events(conf_t *conf, zone_t *zone, const zone_t *old_zone
 			const knot_rdataset_t *soa = node_rdataset(zone->contents->apex,
 			                                           KNOT_RRTYPE_SOA);
 			assert(soa);
-			zone_events_schedule(zone, ZONE_EVENT_REFRESH, knot_soa_refresh(soa));
+			zone_events_schedule_at(zone, ZONE_EVENT_REFRESH, time(NULL) + knot_soa_refresh(soa));
 		}
 	}
 }
@@ -66,9 +66,9 @@ static void replan_flush(conf_t *conf, zone_t *zone, const zone_t *old_zone)
 	}
 
 	const time_t flush_time = zone_events_get_time(old_zone, ZONE_EVENT_FLUSH);
-	if (flush_time <= ZONE_EVENT_NOW) {
+	if (flush_time <= 1) {
 		// Not scheduled previously.
-		zone_events_schedule(zone, ZONE_EVENT_FLUSH, sync_timeout);
+		zone_events_schedule_at(zone, ZONE_EVENT_FLUSH, time(NULL) + sync_timeout);
 		return;
 	}
 
@@ -96,7 +96,7 @@ static void replan_dnssec(conf_t *conf, zone_t *zone)
 	conf_val_t val = conf_zone_get(conf, C_DNSSEC_SIGNING, zone->name);
 	if (conf_bool(&val)) {
 		/* Keys could have changed, force resign. */
-		zone_events_schedule(zone, ZONE_EVENT_DNSSEC, ZONE_EVENT_NOW);
+		zone_events_schedule_now(zone, ZONE_EVENT_DNSSEC);
 	}
 }
 
@@ -109,7 +109,7 @@ void replan_update(zone_t *zone, zone_t *old_zone)
 	}
 
 	if (have_updates) {
-		zone_events_schedule(zone, ZONE_EVENT_UPDATE, ZONE_EVENT_NOW);
+		zone_events_schedule_now(zone, ZONE_EVENT_UPDATE);
 	}
 }
 

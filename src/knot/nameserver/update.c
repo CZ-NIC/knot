@@ -165,7 +165,7 @@ static int process_normal(conf_t *conf, zone_t *zone, list_t *requests)
 	/* Sync zonefile immediately if configured. */
 	conf_val_t val = conf_zone_get(conf, C_ZONEFILE_SYNC, zone->name);
 	if (conf_int(&val) == 0) {
-		zone_events_schedule(zone, ZONE_EVENT_FLUSH, ZONE_EVENT_NOW);
+		zone_events_schedule_now(zone, ZONE_EVENT_FLUSH);
 	}
 
 	return KNOT_EOK;
@@ -200,7 +200,7 @@ static void process_requests(conf_t *conf, zone_t *zone, list_t *requests)
 	              "%.02f seconds", old_serial, new_serial,
 	              time_diff_ms(&t_start, &t_end));
 
-	zone_events_schedule(zone, ZONE_EVENT_NOTIFY, ZONE_EVENT_NOW);
+	zone_events_schedule_now(zone, ZONE_EVENT_NOTIFY);
 }
 
 static int remote_forward(conf_t *conf, struct knot_request *request, conf_remote_t *remote)

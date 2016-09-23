@@ -20,6 +20,7 @@
 #include "knot/common/log.h"
 #include "knot/conf/conf.h"
 #include "knot/events/handlers.h"
+#include "knot/events/log.h"
 #include "knot/zone/zone-load.h"
 #include "knot/zone/zone.h"
 #include "knot/zone/zonefile.h"
@@ -86,24 +87,25 @@ int event_load(conf_t *conf, zone_t *zone)
 
 	/* Schedule notify and refresh after load. */
 	if (zone_is_slave(conf, zone)) {
-		zone_events_schedule(zone, ZONE_EVENT_REFRESH, ZONE_EVENT_NOW);
+		zone_events_schedule_now(zone, ZONE_EVENT_REFRESH);
 	}
 	if (!zone_contents_is_empty(contents)) {
-		zone_events_schedule(zone, ZONE_EVENT_NOTIFY, ZONE_EVENT_NOW);
-		zone->bootstrap_retry = ZONE_EVENT_NOW;
+		zone_events_schedule_now(zone, ZONE_EVENT_NOTIFY);
+		zone->bootstrap_retry = 0;
 	}
 
 	/* Schedule zone resign. */
 	conf_val_t val = conf_zone_get(conf, C_DNSSEC_SIGNING, zone->name);
 	if (conf_bool(&val)) {
-		schedule_dnssec(zone, dnssec_refresh);
+		log_dnssec_next(zone->name, dnssec_refresh);
+		zone_events_schedule_at(zone, ZONE_EVENT_DNSSEC, dnssec_refresh);
 	}
 
 	/* Periodic execution. */
 	val = conf_zone_get(conf, C_ZONEFILE_SYNC, zone->name);
 	int64_t sync_timeout = conf_int(&val);
 	if (sync_timeout >= 0) {
-		zone_events_schedule(zone, ZONE_EVENT_FLUSH, sync_timeout);
+		//zone_events_schedule(zone, ZONE_EVENT_FLUSH, sync_timeout);
 	}
 
 	uint32_t current_serial = zone_contents_serial(zone->contents);
@@ -130,9 +132,9 @@ fail:
 	zone_contents_deep_free(&contents);
 
 	/* Try to bootstrap the zone if local error. */
-	if (zone_is_slave(conf, zone) && !zone_events_is_scheduled(zone, ZONE_EVENT_REFRESH)) {
-		zone_events_schedule(zone, ZONE_EVENT_REFRESH, ZONE_EVENT_NOW);
-	}
+	//if (zone_is_slave(conf, zone) && !zone_events_is_scheduled(zone, ZONE_EVENT_REFRESH)) {
+	//	zone_events_schedule_now(zone, ZONE_EVENT_REFRESH);
+	//}
 
 	return ret;
 }

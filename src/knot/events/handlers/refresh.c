@@ -783,11 +783,11 @@ uint32_t bootstrap_next(uint32_t interval)
 /*! \brief Schedule expire event, unless it is already scheduled. */
 static void start_expire_timer(conf_t *conf, zone_t *zone, const knot_rdataset_t *soa)
 {
-	if (zone_events_is_scheduled(zone, ZONE_EVENT_EXPIRE)) {
-		return;
-	}
+	//if (zone_events_is_scheduled(zone, ZONE_EVENT_EXPIRE)) {
+	//	return;
+	//}
 
-	zone_events_schedule(zone, ZONE_EVENT_EXPIRE, knot_soa_expire(soa));
+	zone_events_schedule_at(zone, ZONE_EVENT_EXPIRE, time(NULL) + knot_soa_expire(soa));
 }
 
 int event_refresh(conf_t *conf, zone_t *zone)
@@ -824,7 +824,7 @@ int event_refresh(conf_t *conf, zone_t *zone)
 	}
 	zone->timers.next_refresh = time(NULL) + next;
 
-	zone_events_schedule(zone, ZONE_EVENT_REFRESH, next);
+	zone_events_schedule_at(zone, ZONE_EVENT_REFRESH, time(NULL) + next);
 
 	// TODO: temporary until timers are refactored
 	if (ret != KNOT_EOK) {
