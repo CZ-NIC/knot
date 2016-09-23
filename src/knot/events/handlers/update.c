@@ -41,6 +41,8 @@ int event_update(conf_t *conf, zone_t *zone)
 	pthread_mutex_unlock(&zone->ddns_lock);
 
 	if (!empty) {
+		// TODO: Race condition? What if the update was received after
+		// checking when this event was still running.
 		zone_events_schedule_now(zone, ZONE_EVENT_UPDATE);
 	}
 
