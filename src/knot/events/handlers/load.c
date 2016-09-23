@@ -120,6 +120,10 @@ int event_load(conf_t *conf, zone_t *zone)
 		zone_control_clear(zone);
 	}
 
+	/* Update expiration in timers. */
+	const knot_rdataset_t *soa = zone_soa(zone);
+	zone->timers.soa_expire = knot_soa_expire(soa);
+
 	return KNOT_EOK;
 
 fail:

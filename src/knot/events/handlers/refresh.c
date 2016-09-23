@@ -819,6 +819,12 @@ int event_refresh(conf_t *conf, zone_t *zone)
 		}
 	}
 
+	if (ret == KNOT_EOK) {
+		zone->timers.soa_expire = knot_soa_expire(soa);
+		zone->timers.last_refresh = time(NULL);
+	}
+	zone->timers.next_refresh = time(NULL) + next;
+
 	zone_events_schedule(zone, ZONE_EVENT_REFRESH, next);
 
 	// TODO: temporary until timers are refactored

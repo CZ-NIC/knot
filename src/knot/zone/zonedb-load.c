@@ -124,6 +124,38 @@ static zone_t *create_zone_from(const knot_dname_t *name, server_t *server)
 	return zone;
 }
 
+static void time_set_default(time_t *time, time_t value)
+{
+	assert(*time);
+
+	if (*time == 0) {
+		*time = value;
+	}
+}
+
+/*!
+ * \brief Set default timers for new zones or invalidate if not valid.
+ */
+static void timers_sanitize(conf_t *conf, zone_t *zone)
+{
+	assert(conf);
+	assert(zone);
+
+	time_t now = time(NULL);
+
+	// soa_expire always intact
+
+	time_set_default(&zone->timers.last_flush, now);
+
+	if (zone_is_slave(conf, zone)) {
+		time_set_default(&zone->timers.last_refresh, now);
+		time_set_default(&zone->timers.next_refresh, now);
+	} else {
+		zone->timers.last_refresh = 0;
+		zone->timers.next_refresh = 0;
+	}
+}
+
 static zone_t *create_zone_reload(conf_t *conf, const knot_dname_t *name,
                                   server_t *server, zone_t *old_zone)
 {
@@ -131,7 +163,11 @@ static zone_t *create_zone_reload(conf_t *conf, const knot_dname_t *name,
 	if (!zone) {
 		return NULL;
 	}
+
 	zone->contents = old_zone->contents;
+
+	zone->timers = old_zone->timers;
+	timers_sanitize(conf, zone);
 
 	zone_status_t zstatus;
 	if (zone_is_slave(conf, zone) && old_zone->flags & ZONE_EXPIRED) {
@@ -181,7 +217,7 @@ static zone_t *create_zone_new(conf_t *conf, const knot_dname_t *name,
 		return NULL;
 	}
 
-	// TODO: process the timers
+	timers_sanitize(conf, zone);
 
 	zone_status_t zstatus = zone_file_status(conf, NULL, name);
 	if (zone->flags & ZONE_EXPIRED) {

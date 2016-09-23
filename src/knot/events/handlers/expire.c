@@ -29,15 +29,12 @@ int event_expire(conf_t *conf, zone_t *zone)
 	assert(zone);
 
 	zone_contents_t *expired = zone_switch_contents(zone, NULL);
-	synchronize_rcu();
-
-	/* Expire zonefile information. */
-	zone->zonefile.exists = false;
 	zone->flags |= ZONE_EXPIRED;
-	zone_contents_deep_free(&expired);
-
 	log_zone_info(zone->name, "zone expired");
 
+	synchronize_rcu();
+	zone_contents_deep_free(&expired);
+	zone->zonefile.exists = false;
 	mem_trim();
 
 	return KNOT_EOK;
