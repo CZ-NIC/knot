@@ -26,7 +26,6 @@ int event_flush(conf_t *conf, zone_t *zone)
 	assert(zone);
 
 	if (zone_contents_is_empty(zone->contents)) {
-		zone->timers.last_flush = 0;
 		return KNOT_EOK;
 	}
 

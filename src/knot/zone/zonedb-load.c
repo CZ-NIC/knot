@@ -143,7 +143,7 @@ static void timers_sanitize(conf_t *conf, zone_t *zone)
 
 	time_t now = time(NULL);
 
-	// soa_expire always intact
+	// soa_expire: keep intact
 
 	time_set_default(&zone->timers.last_flush, now);
 

@@ -164,6 +164,13 @@ int zone_changes_store(conf_t *conf, zone_t *zone, list_t *chgs)
 	if (ret == KNOT_EBUSY) {
 		log_zone_notice(zone->name, "journal is full, flushing");
 
+		/*
+		 * TODO: Check zone_flush_journal() outside event_flush()
+		 *
+		 * zone->timers.last flush needs to be updated and flush
+		 * event rescheduled
+		 */
+
 		/* Transaction rolled back, journal released, we may flush. */
 		ret = zone_flush_journal(conf, zone);
 		if (ret == KNOT_EOK) {
