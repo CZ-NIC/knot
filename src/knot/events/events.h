@@ -25,9 +25,6 @@
 #include "knot/worker/pool.h"
 #include "libknot/db/db.h"
 
-/* Timer special values. */
-#define ZONE_EVENT_NOW 0
-
 struct zone;
 
 typedef enum zone_event_type {
@@ -101,44 +98,26 @@ void zone_events_deinit(struct zone *zone);
 void zone_events_enqueue(struct zone *zone, zone_event_type_t type);
 
 /*!
- * \brief Schedule new zone event to absolute time.
+ * \brief Schedule new zone event.
  *
  * If the event is already scheduled, the new time will be set only if the
  * new time is earlier than the currently scheduled one. An exception is
  * a zero time, which causes event cancellation.
  *
- * \param zone  Zone to schedule new event for.
- * \param type  Type of event.
- * \param time  Absolute time.
- */
-void zone_events_schedule_at(struct zone *zone, zone_event_type_t type, time_t time);
-
-/*!
- * \brief Schedule new zone event using relative time to current time.
- *
- * The function internally uses \ref zone_events_schedule_at.
+ * The function allows to set multiple events at once. The
  *
  * \param zone  Zone to schedule new event for.
- * \param type  Type of event.
- * \param dt    Relative time.
+ * \param ...   Sequence of zone_event_type_t and time_t terminated with
+ *              ZONE_EVENT_INVALID.
  */
-void zone_events_schedule(struct zone *zone, zone_event_type_t type, unsigned dt);
+void _zone_events_schedule_at(struct zone *zone, ...);
 
-/*!
- * \brief Check if zone event is scheduled.
- *
- * \param zone  Zone to check event of.
- * \param type  Type of event.
- */
-bool zone_events_is_scheduled(struct zone *zone, zone_event_type_t type);
+#define zone_events_schedule_at(zone, events...) \
+	_zone_events_schedule_at(zone, events, ZONE_EVENT_INVALID)
 
-/*!
- * \brief Cancel one zone event.
- *
- * \param zone  Zone to cancel event in.
- * \param type  Type of event to cancel.
- */
-void zone_events_cancel(struct zone *zone, zone_event_type_t type);
+#define zone_events_schedule_now(zone, type) \
+	zone_events_schedule_at(zone, type, time(NULL))
+
 
 /*!
  * \brief Freeze all zone events and prevent new events from running.

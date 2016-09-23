@@ -15,6 +15,7 @@
 */
 
 #include <assert.h>
+#include <stdarg.h>
 #include <time.h>
 #include <urcu.h>
 
@@ -72,6 +73,28 @@ static time_t time_until(time_t planned)
 }
 
 /*!
+ * \brief Set time of a given event type.
+ */
+static void event_set_time(zone_events_t *events, zone_event_type_t type, time_t time)
+{
+	assert(events);
+	assert(valid_event(type));
+
+	events->time[type] = time;
+}
+
+/*!
+ * \brief Get time of a given event type.
+ */
+static time_t event_get_time(zone_events_t *events, zone_event_type_t type)
+{
+	assert(events);
+	assert(valid_event(type));
+
+	return events->time[type];
+}
+
+/*!
  * \brief Find next scheduled zone event.
  *
  * \param events  Zone events.
@@ -103,25 +126,12 @@ static zone_event_type_t get_next_event(zone_events_t *events)
 }
 
 /*!
- * \brief Set time of a given event type.
+ * \brief Fined time of next scheduled event.
  */
-static void event_set_time(zone_events_t *events, zone_event_type_t type, time_t time)
+static time_t get_next_time(zone_events_t *events)
 {
-	assert(events);
-	assert(valid_event(type));
-
-	events->time[type] = time;
-}
-
-/*!
- * \brief Get time of a given event type.
- */
-static time_t event_get_time(zone_events_t *events, zone_event_type_t type)
-{
-	assert(events);
-	assert(valid_event(type));
-
-	return events->time[type];
+	zone_event_type_t type = get_next_event(events);
+	return valid_event(type) ? event_get_time(events, type) : 0;
 }
 
 /*!
@@ -266,21 +276,38 @@ void zone_events_deinit(zone_t *zone)
 	memset(&zone->events, 0, sizeof(zone->events));
 }
 
-void zone_events_schedule_at(zone_t *zone, zone_event_type_t type, time_t time)
+void _zone_events_schedule_at(zone_t *zone, ...)
 {
-	if (!zone || !valid_event(type)) {
-		return;
-	}
-
 	zone_events_t *events = &zone->events;
+	va_list args;
+	va_start(args, zone);
 
 	pthread_mutex_lock(&events->mx);
-	time_t current = event_get_time(events, type);
-	if (time == 0 || current == 0 || time < current) {
-		event_set_time(events, type, time);
+
+	time_t old_next = get_next_time(events);
+
+	// update timers
+	for (int type = va_arg(args, int); valid_event(type); type = va_arg(args, int)) {
+		time_t planned = va_arg(args, time_t);
+		if (planned < 0) {
+			continue;
+		}
+
+		time_t current = event_get_time(events, type);
+		if (planned == 0 || current == 0 || planned < current) {
+			event_set_time(events, type, planned);
+		}
+	}
+
+	// reschedule if changed
+	time_t next = get_next_time(events);
+	if (old_next != next) {
 		reschedule(events);
 	}
+
 	pthread_mutex_unlock(&events->mx);
+
+	va_end(args);
 }
 
 bool zone_events_is_scheduled(zone_t *zone, zone_event_type_t type)
@@ -310,13 +337,7 @@ void zone_events_enqueue(zone_t *zone, zone_event_type_t type)
 	pthread_mutex_unlock(&events->mx);
 
 	/* Execute as soon as possible. */
-	zone_events_schedule(zone, type, ZONE_EVENT_NOW);
-}
-
-void zone_events_schedule(zone_t *zone, zone_event_type_t type, unsigned dt)
-{
-	time_t abstime = time(NULL) + dt;
-	zone_events_schedule_at(zone, type, abstime);
+	zone_events_schedule_at(zone, type, time(NULL));
 }
 
 void zone_events_cancel(zone_t *zone, zone_event_type_t type)
