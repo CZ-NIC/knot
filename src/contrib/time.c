@@ -28,7 +28,7 @@ struct timespec time_diff(const struct timespec *begin, const struct timespec *e
 {
 	struct timespec result = { 0 };
 
-	if (end->tv_nsec > begin->tv_nsec) {
+	if (end->tv_nsec >= begin->tv_nsec) {
 		result.tv_sec  = end->tv_sec - begin->tv_sec;
 		result.tv_nsec = end->tv_nsec - begin->tv_nsec;
 	} else {
