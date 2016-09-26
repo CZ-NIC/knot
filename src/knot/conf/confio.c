@@ -82,7 +82,9 @@ int conf_io_begin(
 	// Reset master transaction flags.
 	if (!child) {
 		conf()->io.flags = CONF_IO_FACTIVE;
-		hattrie_clear(conf()->io.zones);
+		if (conf()->io.zones != NULL) {
+			hattrie_clear(conf()->io.zones);
+		}
 	}
 
 	return KNOT_EOK;
@@ -127,7 +129,9 @@ void conf_io_abort(
 	// Reset master transaction flags.
 	if (!child) {
 		conf()->io.flags = YP_FNONE;
-		hattrie_clear(conf()->io.zones);
+		if (conf()->io.zones != NULL) {
+			hattrie_clear(conf()->io.zones);
+		}
 	}
 }
 

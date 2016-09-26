@@ -595,7 +595,9 @@ int server_reload(server_t *server)
 	} else {
 		// Reset confio reload context.
 		conf()->io.flags = YP_FNONE;
-		hattrie_clear(conf()->io.zones);
+		if (conf()->io.zones != NULL) {
+			hattrie_clear(conf()->io.zones);
+		}
 	}
 
 	return KNOT_EOK;
