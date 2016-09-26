@@ -1039,10 +1039,10 @@ int zone_contents_adjust_full(zone_contents_t *contents)
 	return contents_adjust(contents, true);
 }
 
-int zone_contents_tree_apply_inorder(zone_contents_t *zone,
-                                     zone_contents_apply_cb_t function, void *data)
+int zone_contents_apply(zone_contents_t *contents,
+                        zone_contents_apply_cb_t function, void *data)
 {
-	if (zone == NULL) {
+	if (contents == NULL) {
 		return KNOT_EINVAL;
 	}
 
@@ -1051,13 +1051,13 @@ int zone_contents_tree_apply_inorder(zone_contents_t *zone,
 		.data = data
 	};
 
-	return zone_tree_apply(zone->nodes, tree_apply_cb, &f);
+	return zone_tree_apply(contents->nodes, tree_apply_cb, &f);
 }
 
-int zone_contents_nsec3_apply_inorder(zone_contents_t *zone,
-                                      zone_contents_apply_cb_t function, void *data)
+int zone_contents_nsec3_apply(zone_contents_t *contents,
+                              zone_contents_apply_cb_t function, void *data)
 {
-	if (zone == NULL) {
+	if (contents == NULL) {
 		return KNOT_EINVAL;
 	}
 
@@ -1066,7 +1066,7 @@ int zone_contents_nsec3_apply_inorder(zone_contents_t *zone,
 		.data = data
 	};
 
-	return zone_tree_apply(zone->nsec3_nodes, tree_apply_cb, &f);
+	return zone_tree_apply(contents->nsec3_nodes, tree_apply_cb, &f);
 }
 
 int zone_contents_shallow_copy(const zone_contents_t *from, zone_contents_t **to)
@@ -1168,6 +1168,6 @@ bool zone_contents_is_empty(const zone_contents_t *zone)
 size_t zone_contents_measure_size(zone_contents_t *zone)
 {
 	zone->size = 0;
-	zone_contents_tree_apply_inorder(zone, measure_size, &zone->size);
+	zone_contents_apply(zone, measure_size, &zone->size);
 	return zone->size;
 }

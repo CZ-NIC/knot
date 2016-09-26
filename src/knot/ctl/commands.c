@@ -548,7 +548,7 @@ static int zone_read(zone_t *zone, ctl_args_t *args)
 
 		ret = send_node((zone_node_t *)node, ctx);
 	} else if (zone->contents != NULL) {
-		ret = zone_contents_tree_apply_inorder(zone->contents, send_node, ctx);
+		ret = zone_contents_apply(zone->contents, send_node, ctx);
 	}
 
 zone_read_failed:

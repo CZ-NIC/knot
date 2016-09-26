@@ -155,7 +155,7 @@ int zone_dump_text(zone_contents_t *zone, FILE *file)
 	// Dump standard zone records without rrsigs.
 	params.dump_rrsig = false;
 	params.dump_nsec = false;
-	ret = zone_contents_tree_apply_inorder(zone, node_dump_text, &params);
+	ret = zone_contents_apply(zone, node_dump_text, &params);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
@@ -167,8 +167,7 @@ int zone_dump_text(zone_contents_t *zone, FILE *file)
 		// Dump rrsig records.
 		params.dump_rrsig = true;
 		params.dump_nsec = false;
-		ret = zone_contents_tree_apply_inorder(zone, node_dump_text,
-		                                       &params);
+		ret = zone_contents_apply(zone, node_dump_text, &params);
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
@@ -180,8 +179,7 @@ int zone_dump_text(zone_contents_t *zone, FILE *file)
 
 		params.dump_rrsig = false;
 		params.dump_nsec = true;
-		ret = zone_contents_nsec3_apply_inorder(zone, node_dump_text,
-		                                        &params);
+		ret = zone_contents_nsec3_apply(zone, node_dump_text, &params);
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
@@ -190,8 +188,7 @@ int zone_dump_text(zone_contents_t *zone, FILE *file)
 
 		params.dump_rrsig = true;
 		params.dump_nsec = false;
-		ret = zone_contents_nsec3_apply_inorder(zone, node_dump_text,
-		                                        &params);
+		ret = zone_contents_nsec3_apply(zone, node_dump_text, &params);
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
@@ -201,8 +198,7 @@ int zone_dump_text(zone_contents_t *zone, FILE *file)
 		// Dump nsec records.
 		params.dump_rrsig = false;
 		params.dump_nsec = true;
-		ret = zone_contents_tree_apply_inorder(zone, node_dump_text,
-		                                       &params);
+		ret = zone_contents_apply(zone, node_dump_text, &params);
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
