@@ -53,11 +53,6 @@ inline static size_t hattrie_weight(const hattrie_t *trie)
 	return qp_trie_weight(trie);
 }
 
-inline static hattrie_t* hattrie_dup(const hattrie_t *trie, value_t (*nval)(value_t))
-{
-	return qp_trie_dup(trie, nval);
-}
-
 inline static void hattrie_build_index(hattrie_t *trie)
 {
 	// not needed

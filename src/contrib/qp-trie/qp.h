@@ -47,13 +47,6 @@ void qp_trie_free(struct qp_trie *tbl);
 /*! \brief Clear a trie instance (make it empty). */
 void qp_trie_clear(struct qp_trie *tbl);
 
-/*!
- * \brief Duplicate a trie instance, using a value_t transforming function.
- *
- *  If nval == NULL, make the new trie empty (but copy mm).
- */
-struct qp_trie* qp_trie_dup(const struct qp_trie *tbl, value_t (*nval)(value_t));
-
 /*! \brief Return the number of keys in the trie. */
 size_t qp_trie_weight(const struct qp_trie *tbl);
 

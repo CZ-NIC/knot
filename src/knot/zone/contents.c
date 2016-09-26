@@ -652,7 +652,7 @@ static int remove_rr(zone_contents_t *z, const knot_rrset_t *rr,
 
 static int recreate_normal_tree(const zone_contents_t *z, zone_contents_t *out)
 {
-	out->nodes = hattrie_dup(z->nodes, NULL);
+	out->nodes = hattrie_create();
 	if (out->nodes == NULL) {
 		return KNOT_ENOMEM;
 	}
@@ -707,7 +707,7 @@ static int recreate_normal_tree(const zone_contents_t *z, zone_contents_t *out)
 
 static int recreate_nsec3_tree(const zone_contents_t *z, zone_contents_t *out)
 {
-	out->nsec3_nodes = hattrie_dup(z->nsec3_nodes, NULL);
+	out->nsec3_nodes = hattrie_create();
 	if (out->nsec3_nodes == NULL) {
 		return KNOT_ENOMEM;
 	}

@@ -280,56 +280,6 @@ void qp_trie_clear(struct qp_trie *tbl)
 	tbl->weight = 0;
 }
 
-/*! \brief Duplicate everything under the trie node (assumed allocated itself). */
-static int dup_trie(const node_t *t1, node_t *t2, value_t (*nval)(value_t), knot_mm_t *mm)
-{
-	if (!isbranch(t1)) {
-		tkey_t *key1 = t1->leaf.key;
-		tkey_t *key2 = mm_alloc(mm, sizeof(tkey_t) + key1->len);
-		if (!key2)
-			return KNOT_ENOMEM;
-		key2->len = key1->len;
-		memcpy(key2->chars, key1->chars, key1->len);
-		t2->leaf.key = key2;
-		t2->leaf.val = nval(t1->leaf.val);
-		return 0;
-	}
-	memcpy(t2, t1, sizeof(branch_t)); // flags etc.; will rewrite the pointer
-	int child_count = bitmap_weight(t1->branch.bitmap);
-	t2->branch.twigs = mm_alloc(mm, sizeof(node_t) * child_count);
-	node_t *twigs1 = t1->branch.twigs;
-	node_t *twigs2 = t2->branch.twigs;
-	if (unlikely(!twigs2))
-		return KNOT_ENOMEM;
-	for (int i = 0; i < child_count; ++i) {
-		int err = dup_trie(twigs1 + i, twigs2 + i, nval, mm);
-		if (unlikely(err)) { // error: we need to free already allocated stuff
-			while (--i >= 0)
-				clear_trie(twigs2 + i, mm);
-			return err;
-		};
-	}
-	return 0;
-}
-
-trie_t* qp_trie_dup(const struct qp_trie *tbl, value_t (*nval)(value_t))
-{
-	trie_t *t = mm_alloc(/*const-cast*/(knot_mm_t*)&tbl->mm, sizeof(trie_t));
-	if (unlikely(!t))
-		return NULL;
-	t->mm = tbl->mm;
-	if (!nval) {
-		t->weight = 0;
-		return t;
-	}
-	t->weight = tbl->weight;
-	if (unlikely(!dup_trie(&tbl->root, &t->root, nval, &t->mm))) {
-		qp_trie_free(t);
-		return NULL;
-	};
-	return t;
-}
-
 size_t qp_trie_weight(const struct qp_trie *tbl)
 {
 	assert(tbl);
