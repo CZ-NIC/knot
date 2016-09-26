@@ -42,11 +42,11 @@ typedef int (*zone_tree_apply_cb_t)(zone_node_t **node, void *data);
 zone_tree_t* zone_tree_create(void);
 
 /*!
- * \brief Return weight of the zone tree (number of nodes).
+ * \brief Return number of nodes in the zone tree.
  * \param tree Zone tree.
  * \return number of nodes in tree.
  */
-size_t zone_tree_weight(const zone_tree_t* tree);
+size_t zone_tree_count(const zone_tree_t *tree);
 
 /*!
  * \brief Checks if the zone tree is empty.

@@ -1,4 +1,4 @@
-/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -27,14 +27,18 @@ zone_tree_t* zone_tree_create()
 	return hattrie_create();
 }
 
-size_t zone_tree_weight(const zone_tree_t* tree)
+size_t zone_tree_count(const zone_tree_t *tree)
 {
+	if (tree == NULL) {
+		return 0;
+	}
+
 	return hattrie_weight(tree);
 }
 
 int zone_tree_is_empty(const zone_tree_t *tree)
 {
-	return zone_tree_weight(tree) == 0;
+	return zone_tree_count(tree) == 0;
 }
 
 int zone_tree_insert(zone_tree_t *tree, zone_node_t *node)
