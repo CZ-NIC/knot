@@ -79,6 +79,12 @@ int conf_io_begin(
 
 	conf()->io.txn = txn;
 
+	// Reset master transaction flags.
+	if (!child) {
+		conf()->io.flags = CONF_IO_FACTIVE;
+		hattrie_clear(conf()->io.zones);
+	}
+
 	return KNOT_EOK;
 }
 
@@ -117,6 +123,12 @@ void conf_io_abort(
 	// Abort the writing transaction.
 	conf()->api->txn_abort(txn);
 	conf()->io.txn = child ? txn - 1 : NULL;
+
+	// Reset master transaction flags.
+	if (!child) {
+		conf()->io.flags = YP_FNONE;
+		hattrie_clear(conf()->io.zones);
+	}
 }
 
 static int list_section(
@@ -334,6 +346,114 @@ static int diff_section(
 	return KNOT_EOK;
 }
 
+static int diff_iter_section(
+	conf_io_t *io)
+{
+	// First compare the section with the old and common identifiers.
+	conf_iter_t iter;
+	int ret = conf_db_iter_begin(conf(), &conf()->read_txn, io->key0->name,
+	                             &iter);
+	switch (ret) {
+	case KNOT_EOK:
+		break;
+	case KNOT_ENOENT:
+		return KNOT_EOK;
+	default:
+		return ret;
+	}
+
+	while (ret == KNOT_EOK) {
+		ret = conf_db_iter_id(conf(), &iter, &io->id, &io->id_len);
+		if (ret != KNOT_EOK) {
+			conf_db_iter_finish(conf(), &iter);
+			return ret;
+		}
+
+		ret = diff_section(io);
+		if (ret != KNOT_EOK) {
+			conf_db_iter_finish(conf(), &iter);
+			return ret;
+		}
+
+		ret = conf_db_iter_next(conf(), &iter);
+	}
+	if (ret != KNOT_EOF) {
+		return ret;
+	}
+
+	// Second compare the section with the new identifiers.
+	ret = conf_db_iter_begin(conf(), conf()->io.txn, io->key0->name, &iter);
+	switch (ret) {
+	case KNOT_EOK:
+		break;
+	case KNOT_ENOENT:
+		return KNOT_EOK;
+	default:
+		return ret;
+	}
+
+	while (ret == KNOT_EOK) {
+		ret = conf_db_iter_id(conf(), &iter, &io->id, &io->id_len);
+		if (ret != KNOT_EOK) {
+			conf_db_iter_finish(conf(), &iter);
+			return ret;
+		}
+
+		// Ignore old and common identifiers.
+		ret = conf_db_get(conf(), &conf()->read_txn, io->key0->name,
+		                  NULL, io->id, io->id_len, NULL);
+		switch (ret) {
+		case KNOT_EOK:
+			ret = conf_db_iter_next(conf(), &iter);
+			continue;
+		case KNOT_ENOENT:
+		case KNOT_YP_EINVAL_ID:
+			break;
+		default:
+			conf_db_iter_finish(conf(), &iter);
+			return ret;
+		}
+
+		ret = diff_section(io);
+		if (ret != KNOT_EOK) {
+			conf_db_iter_finish(conf(), &iter);
+			return ret;
+		}
+
+		ret = conf_db_iter_next(conf(), &iter);
+	}
+	if (ret != KNOT_EOF) {
+		return ret;
+	}
+
+	return KNOT_EOK;
+}
+
+static int diff_zone_section(
+	conf_io_t *io)
+{
+	assert(io->key0->flags & CONF_IO_FZONE);
+
+	if (conf()->io.zones == NULL) {
+		return KNOT_EOK;
+	}
+
+	hattrie_iter_t *it = hattrie_iter_begin(conf()->io.zones, true);
+	for (; !hattrie_iter_finished(it); hattrie_iter_next(it)) {
+		io->id = (const uint8_t *)hattrie_iter_key(it, &io->id_len);
+
+		// Get the difference for specific zone.
+		int ret = diff_section(io);
+		if (ret != KNOT_EOK) {
+			hattrie_iter_free(it);
+			return ret;
+		}
+	}
+	hattrie_iter_free(it);
+
+	return KNOT_EOK;
+}
+
 int conf_io_diff(
 	const char *key0,
 	const char *key1,
@@ -410,79 +530,22 @@ int conf_io_diff(
 
 	// Compare the section with all identifiers by default.
 	if ((io->key0->flags & YP_FMULTI) != 0 && io->id_len == 0) {
-		// First compare the section with the old and common identifiers.
-		conf_iter_t iter;
-		ret = conf_db_iter_begin(conf(), &conf()->read_txn,
-		                         io->key0->name, &iter);
-		switch (ret) {
-		case KNOT_EOK:
-		case KNOT_ENOENT:
-			break;
-		default:
-			goto diff_error;
+		// The zone section has an optimized diff.
+		if (io->key0->flags & CONF_IO_FZONE) {
+			// Full diff by default.
+			if (!(conf()->io.flags & CONF_IO_FACTIVE)) {
+				ret = diff_iter_section(io);
+			// Full diff if all zones changed.
+			} else if (conf()->io.flags & CONF_IO_FDIFF_ZONES) {
+				ret = diff_iter_section(io);
+			// Optimized diff for specific zones.
+			} else {
+				ret = diff_zone_section(io);
+			}
+		} else {
+			ret = diff_iter_section(io);
 		}
 
-		while (ret == KNOT_EOK) {
-			// Set the section identifier.
-			ret = conf_db_iter_id(conf(), &iter, &io->id, &io->id_len);
-			if (ret != KNOT_EOK) {
-				conf_db_iter_finish(conf(), &iter);
-				return ret;
-			}
-
-			ret = diff_section(io);
-			if (ret != KNOT_EOK) {
-				conf_db_iter_finish(conf(), &iter);
-				return ret;
-			}
-
-			ret = conf_db_iter_next(conf(), &iter);
-		}
-
-		// Second compare the section with the new identifiers.
-		ret = conf_db_iter_begin(conf(), conf()->io.txn, io->key0->name,
-		                         &iter);
-		switch (ret) {
-		case KNOT_EOK:
-		case KNOT_ENOENT:
-			break;
-		default:
-			goto diff_error;
-		}
-
-		while (ret == KNOT_EOK) {
-			// Set the section identifier.
-			ret = conf_db_iter_id(conf(), &iter, &io->id, &io->id_len);
-			if (ret != KNOT_EOK) {
-				conf_db_iter_finish(conf(), &iter);
-				return ret;
-			}
-
-			// Ignore old and common identifiers.
-			ret = conf_db_get(conf(), &conf()->read_txn, io->key0->name,
-			                  NULL, io->id, io->id_len, NULL);
-			switch (ret) {
-			case KNOT_EOK:
-				ret = conf_db_iter_next(conf(), &iter);
-				continue;
-			case KNOT_ENOENT:
-			case KNOT_YP_EINVAL_ID:
-				break;
-			default:
-				conf_db_iter_finish(conf(), &iter);
-				return ret;
-			}
-
-			ret = diff_section(io);
-			if (ret != KNOT_EOK) {
-				conf_db_iter_finish(conf(), &iter);
-				return ret;
-			}
-
-			ret = conf_db_iter_next(conf(), &iter);
-		}
-
-		ret = KNOT_EOK;
 		goto diff_error;
 	}
 
@@ -709,6 +772,95 @@ get_error:
 	return ret;
 }
 
+static void upd_changes(
+	const conf_io_t *io,
+	conf_io_type_t type,
+	yp_flag_t flags,
+	bool any_id)
+{
+	// Update common flags.
+	conf()->io.flags |= flags;
+
+	// Return if not important change.
+	if (type == CONF_IO_TNONE) {
+		return;
+	}
+
+	// Update reference item.
+	if (flags & CONF_IO_FREF) {
+		// Expected an identifier, which cannot be changed.
+		assert(type != CONF_IO_TCHANGE);
+
+		// Re-check and reload all zones if a reference has been removed.
+		if (type == CONF_IO_TUNSET) {
+			conf()->io.flags |= CONF_IO_FCHECK_ZONES | CONF_IO_FRLD_ZONES;
+		}
+		return;
+	// Return if no specific zone operation.
+	} else if (!(flags & CONF_IO_FZONE)) {
+		return;
+	}
+
+	// Don't process each zone individually, process all instead.
+	if (any_id) {
+		// Diff all zone changes.
+		conf()->io.flags |= CONF_IO_FCHECK_ZONES | CONF_IO_FDIFF_ZONES;
+
+		// Reload just with important changes.
+		if (flags & CONF_IO_FRLD_ZONE) {
+			conf()->io.flags |= CONF_IO_FRLD_ZONES;
+		}
+		return;
+	}
+
+	// Prepare zone changes storage if it doesn't exist.
+	hattrie_t *zones = conf()->io.zones;
+	if (zones == NULL) {
+		zones = hattrie_create_n(TRIE_BUCKET_SIZE, conf()->mm);
+		if (zones == NULL) {
+			return;
+		}
+		conf()->io.zones = zones;
+	}
+
+	// Get zone status or create new.
+	value_t *val = hattrie_get(zones, (const char *)io->id, io->id_len);
+	conf_io_type_t *current = (conf_io_type_t *)val;
+
+	switch (type) {
+	case CONF_IO_TSET:
+		// Revert remove zone, but don't remove (probably changed).
+		if (*current & CONF_IO_TUNSET) {
+			*current &= ~CONF_IO_TUNSET;
+		} else {
+			// Must be a new zone.
+			assert(*current == CONF_IO_TNONE);
+			// Mark added zone.
+			*current = type;
+		}
+		break;
+	case CONF_IO_TUNSET:
+		if (*current & CONF_IO_TSET) {
+			// Remove inserted zone -> no change.
+			hattrie_del(zones, (const char *)io->id, io->id_len);
+		} else {
+			// Remove existing zone.
+			*current |= type;
+		}
+		break;
+	case CONF_IO_TCHANGE:
+		*current |= type;
+		// Mark zone to reload if required.
+		if (flags & CONF_IO_FRLD_ZONE) {
+			*current |= CONF_IO_TRELOAD;
+		}
+		break;
+	case CONF_IO_TRELOAD:
+	default:
+		assert(0);
+	}
+}
+
 static int set_item(
 	conf_io_t *io)
 {
@@ -720,42 +872,28 @@ static int set_item(
 	}
 
 	// Postpone group callbacks to config check.
-	if (io->key0->type != YP_TGRP) {
-		conf_check_t args = {
-			.conf = conf(),
-			.txn = conf()->io.txn,
-			.item = (io->key1 != NULL) ? io->key1 : io->key0,
-			.id = io->id,
-			.id_len = io->id_len,
-			.data = io->data.bin,
-			.data_len = io->data.bin_len
-		};
-
-		// Call the item callbacks.
-		io->error.code = conf_exec_callbacks(&args);
-		if (io->error.code != KNOT_EOK) {
-			io->error.str = args.err_str;
-			ret = FCN(io);
-			if (ret == KNOT_EOK) {
-				ret = io->error.code;
-			}
-		}
+	if (io->key0->type == YP_TGRP) {
+		return KNOT_EOK;
 	}
 
-	return ret;
+	conf_check_t args = {
+		.conf = conf(),
+		.txn = conf()->io.txn,
+		.item = (io->key1 != NULL) ? io->key1 : io->key0,
+		.data = io->data.bin,
+		.data_len = io->data.bin_len
+	};
+
+	// Call the item callbacks (include).
+	return conf_exec_callbacks(&args);
 }
 
 int conf_io_set(
 	const char *key0,
 	const char *key1,
 	const char *id,
-	const char *data,
-	conf_io_t *io)
+	const char *data)
 {
-	if (io == NULL) {
-		return KNOT_EINVAL;
-	}
-
 	assert(conf() != NULL);
 
 	if (conf()->io.txn == NULL) {
@@ -781,9 +919,16 @@ int conf_io_set(
 	yp_node_t *node = &ctx->nodes[ctx->current];
 	yp_node_t *parent = node->parent;
 
+	yp_flag_t upd_flags = node->item->flags;
+	conf_io_type_t upd_type = CONF_IO_TNONE;
+
+	conf_io_t io = { NULL };
+
 	// Key1 is not a group identifier.
 	if (parent != NULL) {
-		io_reset_bin(io, parent->item, node->item, parent->id,
+		upd_type = CONF_IO_TCHANGE;
+		upd_flags |= parent->item->flags;
+		io_reset_bin(&io, parent->item, node->item, parent->id,
 		             parent->id_len, node->data, node->data_len);
 	// No key1 but a group identifier.
 	} else if (node->id_len != 0) {
@@ -791,11 +936,13 @@ int conf_io_set(
 		       (node->item->flags & YP_FMULTI) != 0);
 		assert(node->data_len == 0);
 
-		io_reset_bin(io, node->item, node->item->var.g.id, node->id,
+		upd_type = CONF_IO_TSET;
+		upd_flags |= node->item->var.g.id->flags;
+		io_reset_bin(&io, node->item, node->item->var.g.id, node->id,
 		             node->id_len, NULL, 0);
 	// Ensure some data for non-group items (include).
 	} else if (node->item->type == YP_TGRP || node->data_len != 0) {
-		io_reset_bin(io, node->item, NULL, node->id, node->id_len,
+		io_reset_bin(&io, node->item, NULL, node->id, node->id_len,
 		             node->data, node->data_len);
 	// Non-group without data.
 	} else {
@@ -804,10 +951,10 @@ int conf_io_set(
 	}
 
 	// Set the item for all identifiers by default.
-	if (io->key0->type == YP_TGRP && io->key1 != NULL &&
-	    (io->key0->flags & YP_FMULTI) != 0 && io->id_len == 0) {
+	if (io.key0->type == YP_TGRP && io.key1 != NULL &&
+	    (io.key0->flags & YP_FMULTI) != 0 && io.id_len == 0) {
 		conf_iter_t iter;
-		ret = conf_db_iter_begin(conf(), conf()->io.txn, io->key0->name,
+		ret = conf_db_iter_begin(conf(), conf()->io.txn, io.key0->name,
 		                         &iter);
 		switch (ret) {
 		case KNOT_EOK:
@@ -821,14 +968,14 @@ int conf_io_set(
 
 		while (ret == KNOT_EOK) {
 			// Get the identifier.
-			ret = conf_db_iter_id(conf(), &iter, &io->id, &io->id_len);
+			ret = conf_db_iter_id(conf(), &iter, &io.id, &io.id_len);
 			if (ret != KNOT_EOK) {
 				conf_db_iter_finish(conf(), &iter);
 				goto set_error;
 			}
 
 			// Set the data.
-			ret = set_item(io);
+			ret = set_item(&io);
 			if (ret != KNOT_EOK) {
 				conf_db_iter_finish(conf(), &iter);
 				goto set_error;
@@ -840,12 +987,18 @@ int conf_io_set(
 			goto set_error;
 		}
 
+		upd_changes(&io, upd_type, upd_flags, true);
+
 		ret = KNOT_EOK;
 		goto set_error;
 	}
 
 	// Set the item with a possible identifier.
-	ret = set_item(io);
+	ret = set_item(&io);
+
+	if (ret == KNOT_EOK) {
+		upd_changes(&io, upd_type, upd_flags, false);
+	}
 set_error:
 	yp_scheme_check_deinit(ctx);
 
@@ -855,14 +1008,14 @@ set_error:
 static int unset_section_data(
 	conf_io_t *io)
 {
-	// Delete the value for the specified item.
+	// Unset the value for the specified item.
 	if (io->key1 != NULL) {
 		return conf_db_unset(conf(), conf()->io.txn, io->key0->name,
 		                     io->key1->name, io->id, io->id_len,
 		                     io->data.bin, io->data.bin_len, false);
 	}
 
-	// Delete the whole section by default.
+	// Unset the whole section by default.
 	for (yp_item_t *i = io->key0->sub_items; i->name != NULL; i++) {
 		// Skip the identifier item.
 		if ((io->key0->flags & YP_FMULTI) != 0 && io->key0->var.g.id == i) {
@@ -887,7 +1040,7 @@ static int unset_section_data(
 static int unset_section(
 	const yp_item_t *key0)
 {
-	// Delete the section items.
+	// Unset the section items.
 	for (yp_item_t *i = key0->sub_items; i->name != NULL; i++) {
 		// Skip the identifier item.
 		if ((key0->flags & YP_FMULTI) != 0 && key0->var.g.id == i) {
@@ -905,7 +1058,7 @@ static int unset_section(
 		}
 	}
 
-	// Delete the section.
+	// Unset the section.
 	int ret = conf_db_unset(conf(), conf()->io.txn, key0->name, NULL, NULL,
 	                        0, NULL, 0, false);
 	switch (ret) {
@@ -929,7 +1082,7 @@ int conf_io_unset(
 		return KNOT_TXN_ENOTEXISTS;
 	}
 
-	// Delete all sections by default.
+	// Unset all sections by default.
 	if (key0 == NULL) {
 		for (yp_item_t *i = conf()->scheme; i->name != NULL; i++) {
 			// Skip non-group item.
@@ -964,12 +1117,26 @@ int conf_io_unset(
 	yp_node_t *node = &ctx->nodes[ctx->current];
 	yp_node_t *parent = node->parent;
 
+	yp_flag_t upd_flags = node->item->flags;
+	conf_io_type_t upd_type = CONF_IO_TNONE;
+
 	conf_io_t io = { NULL };
 
+	// Key1 is not a group identifier.
 	if (parent != NULL) {
+		upd_type = CONF_IO_TCHANGE;
+		upd_flags |= parent->item->flags;
 		io_reset_bin(&io, parent->item, node->item, parent->id,
 		             parent->id_len, node->data, node->data_len);
+	// No key1 but a group identifier or whole group.
 	} else {
+		if (node->id_len != 0) {
+			assert(node->item->type == YP_TGRP &&
+			       (node->item->flags & YP_FMULTI) != 0);
+
+			upd_type = CONF_IO_TUNSET;
+			upd_flags |= node->item->var.g.id->flags;
+		}
 		io_reset_bin(&io, node->item, NULL, node->id, node->id_len,
 		             node->data, node->data_len);
 	}
@@ -980,7 +1147,7 @@ int conf_io_unset(
 		goto unset_error;
 	}
 
-	// Delete the section with all identifiers by default.
+	// Unset the section with all identifiers by default.
 	if ((io.key0->flags & YP_FMULTI) != 0 && io.id_len == 0) {
 		conf_iter_t iter;
 		ret = conf_db_iter_begin(conf(), conf()->io.txn, io.key0->name,
@@ -1003,7 +1170,7 @@ int conf_io_unset(
 				goto unset_error;
 			}
 
-			// Delete the section data.
+			// Unset the section data.
 			ret = unset_section_data(&io);
 			switch (ret) {
 			case KNOT_EOK:
@@ -1021,7 +1188,7 @@ int conf_io_unset(
 		}
 
 		if (io.key1 == NULL) {
-			// Delete all identifiers.
+			// Unset all identifiers.
 			ret = conf_db_iter_begin(conf(), conf()->io.txn,
 			                         io.key0->name, &iter);
 			switch (ret) {
@@ -1047,38 +1214,44 @@ int conf_io_unset(
 				goto unset_error;
 			}
 
-			// Delete the section.
+			// Unset the section.
 			ret = unset_section(io.key0);
 			if (ret != KNOT_EOK) {
 				goto unset_error;
 			}
 		}
 
+		upd_changes(&io, upd_type, upd_flags, true);
+
 		ret = KNOT_EOK;
 		goto unset_error;
 	}
 
-	// Delete the section data.
+	// Unset the section data.
 	ret = unset_section_data(&io);
 	if (ret != KNOT_EOK) {
 		goto unset_error;
 	}
 
 	if (io.key1 == NULL) {
-		// Delete the identifier.
+		// Unset the identifier.
 		if (io.id_len != 0) {
 			ret = conf_db_unset(conf(), conf()->io.txn, io.key0->name,
 			                    NULL, io.id, io.id_len, NULL, 0, false);
 			if (ret != KNOT_EOK) {
 				goto unset_error;
 			}
-		// Delete the section.
+		// Unset the section.
 		} else {
 			ret = unset_section(io.key0);
 			if (ret != KNOT_EOK) {
 				goto unset_error;
 			}
 		}
+	}
+
+	if (ret == KNOT_EOK) {
+		upd_changes(&io, upd_type, upd_flags, false);
 	}
 unset_error:
 	yp_scheme_check_deinit(ctx);
@@ -1171,6 +1344,80 @@ check_section_error:
 	return ret;
 }
 
+static int check_iter_section(
+	const yp_item_t *item,
+	conf_io_t *io)
+{
+	// Iterate over all identifiers.
+	conf_iter_t iter;
+	int ret = conf_db_iter_begin(conf(), conf()->io.txn, item->name, &iter);
+	switch (ret) {
+	case KNOT_EOK:
+		break;
+	case KNOT_ENOENT:
+		return KNOT_EOK;
+	default:
+		return ret;
+	}
+
+	while (ret == KNOT_EOK) {
+		size_t id_len;
+		const uint8_t *id;
+		ret = conf_db_iter_id(conf(), &iter, &id, &id_len);
+		if (ret != KNOT_EOK) {
+			conf_db_iter_finish(conf(), &iter);
+			return ret;
+		}
+
+		// Check specific section item.
+		ret = check_section(item, id, id_len, io);
+		if (ret != KNOT_EOK) {
+			conf_db_iter_finish(conf(), &iter);
+			return ret;
+		}
+
+		ret = conf_db_iter_next(conf(), &iter);
+	}
+	if (ret != KNOT_EOF) {
+		return ret;
+	}
+
+	return KNOT_EOK;
+}
+
+static int check_zone_section(
+	const yp_item_t *item,
+	conf_io_t *io)
+{
+	assert(item->flags & CONF_IO_FZONE);
+
+	if (conf()->io.zones == NULL) {
+		return KNOT_EOK;
+	}
+
+	hattrie_iter_t *it = hattrie_iter_begin(conf()->io.zones, true);
+	for (; !hattrie_iter_finished(it); hattrie_iter_next(it)) {
+		size_t id_len;
+		const uint8_t *id = (const uint8_t *)hattrie_iter_key(it, &id_len);
+
+		conf_io_type_t type = (conf_io_type_t)(*hattrie_iter_val(it));
+		if (type == CONF_IO_TUNSET) {
+			// Nothing to check.
+			continue;
+		}
+
+		// Check specific zone.
+		int ret = check_section(item, id, id_len, io);
+		if (ret != KNOT_EOK) {
+			hattrie_iter_free(it);
+			return ret;
+		}
+	}
+	hattrie_iter_free(it);
+
+	return KNOT_EOK;
+}
+
 int conf_io_check(
 	conf_io_t *io)
 {
@@ -1199,41 +1446,25 @@ int conf_io_check(
 			if (ret != KNOT_EOK) {
 				goto check_error;
 			}
-
 			continue;
 		}
 
-		// Iterate over all identifiers.
-		conf_iter_t iter;
-		ret = conf_db_iter_begin(conf(), conf()->io.txn, item->name, &iter);
-		switch (ret) {
-		case KNOT_EOK:
-			break;
-		case KNOT_ENOENT:
-			continue;
-		default:
-			goto check_error;
-		}
-
-		while (ret == KNOT_EOK) {
-			const uint8_t *id;
-			size_t id_len;
-			ret = conf_db_iter_id(conf(), &iter, &id, &id_len);
-			if (ret != KNOT_EOK) {
-				conf_db_iter_finish(conf(), &iter);
-				goto check_error;
+		// The zone section has an optimized check.
+		if (item->flags & CONF_IO_FZONE) {
+			// Full check by default.
+			if (!(conf()->io.flags & CONF_IO_FACTIVE)) {
+				ret = check_iter_section(item, io);
+			// Full check if all zones changed.
+			} else if (conf()->io.flags & CONF_IO_FCHECK_ZONES) {
+				ret = check_iter_section(item, io);
+			// Optimized check for specific zones.
+			} else {
+				ret = check_zone_section(item, io);
 			}
-
-			// Check group with identifiers.
-			ret = check_section(item, id, id_len, io);
-			if (ret != KNOT_EOK) {
-				conf_db_iter_finish(conf(), &iter);
-				goto check_error;
-			}
-
-			ret = conf_db_iter_next(conf(), &iter);
+		} else {
+			ret = check_iter_section(item, io);
 		}
-		if (ret != KNOT_EOF) {
+		if (ret != KNOT_EOK) {
 			goto check_error;
 		}
 	}

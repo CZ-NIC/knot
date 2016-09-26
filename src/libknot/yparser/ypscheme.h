@@ -83,8 +83,24 @@ typedef enum {
 
 /*! Scheme item flags. */
 typedef enum {
-	YP_FNONE  = 0,     /*!< Unspecified. */
-	YP_FMULTI = 1 << 0 /*!< Multivalued item. */
+	YP_FNONE  = 0,       /*!< Unspecified. */
+	YP_FMULTI = 1 <<  0, /*!< Multivalued item. */
+	YP_FUSR1  = 1 <<  1, /*!< User-defined flag1. */
+	YP_FUSR2  = 1 <<  2, /*!< User-defined flag2. */
+	YP_FUSR3  = 1 <<  3, /*!< User-defined flag3. */
+	YP_FUSR4  = 1 <<  4, /*!< User-defined flag4. */
+	YP_FUSR5  = 1 <<  5, /*!< User-defined flag5. */
+	YP_FUSR6  = 1 <<  6, /*!< User-defined flag6. */
+	YP_FUSR7  = 1 <<  7, /*!< User-defined flag7. */
+	YP_FUSR8  = 1 <<  8, /*!< User-defined flag8. */
+	YP_FUSR9  = 1 <<  9, /*!< User-defined flag9. */
+	YP_FUSR10 = 1 << 10, /*!< User-defined flag10. */
+	YP_FUSR11 = 1 << 11, /*!< User-defined flag11. */
+	YP_FUSR12 = 1 << 12, /*!< User-defined flag12. */
+	YP_FUSR13 = 1 << 13, /*!< User-defined flag13. */
+	YP_FUSR14 = 1 << 14, /*!< User-defined flag14. */
+	YP_FUSR15 = 1 << 15, /*!< User-defined flag15. */
+	YP_FUSR16 = 1 << 16, /*!< User-defined flag16. */
 } yp_flag_t;
 
 /*! Scheme item style. */

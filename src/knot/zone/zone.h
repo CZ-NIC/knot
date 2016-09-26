@@ -29,6 +29,7 @@
 #include <stdint.h>
 
 #include "knot/conf/conf.h"
+#include "knot/conf/confio.h"
 #include "knot/server/journal.h"
 #include "knot/events/events.h"
 #include "knot/zone/contents.h"
@@ -56,6 +57,9 @@ typedef struct zone
 	knot_dname_t *name;
 	zone_contents_t *contents;
 	zone_flag_t flags;
+
+	/*! \brief Dynamic configuration zone change type. */
+	conf_io_type_t change_type;
 
 	/*! \brief Zonefile parameters. */
 	struct {

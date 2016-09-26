@@ -105,7 +105,7 @@ int set_config(const cmd_desc_t *desc, params_t *params)
 	}
 
 	/* Update to the new config. */
-	conf_update(new_conf);
+	conf_update(new_conf, CONF_UPD_FNONE);
 
 	return KNOT_EOK;
 }
@@ -216,7 +216,7 @@ int process_cmd(int argc, const char **argv, params_t *params)
 	/* Set control interface if necessary. */
 	ret = set_ctl(&args.ctl, desc, params);
 	if (ret != KNOT_EOK) {
-		conf_update(NULL);
+		conf_update(NULL, CONF_UPD_FNONE);
 		return ret;
 	}
 
@@ -225,7 +225,7 @@ int process_cmd(int argc, const char **argv, params_t *params)
 
 	/* Cleanup */
 	unset_ctl(args.ctl);
-	conf_update(NULL);
+	conf_update(NULL, CONF_UPD_FNONE);
 
 	return ret;
 }

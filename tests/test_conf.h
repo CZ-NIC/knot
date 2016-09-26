@@ -39,7 +39,7 @@ static inline int test_conf(const char *conf_str, const yp_item_t *scheme)
 		return ret;
 	}
 
-	conf_update(new_conf);
+	conf_update(new_conf, CONF_UPD_FNONE);
 
 	return KNOT_EOK;
 }
