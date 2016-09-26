@@ -1,4 +1,4 @@
-/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -130,14 +130,7 @@ int zone_tree_remove(zone_tree_t *tree,
 int zone_tree_delete_empty_node(zone_tree_t *tree, zone_node_t *node);
 
 /*!
- * \brief Applies the given function to each node in the zone.
- *
- * This function uses in-order depth-first forward traversal, i.e. the function
- * is first recursively applied to left subtree, then to the root and then to
- * the right subtree.
- *
- * \note This implies that the zone is stored in a binary tree. Is there a way
- *       to make this traversal independent on the underlying structure?
+ * \brief Applies the given function to each node in the zone in order.
  *
  * \param tree Zone tree to apply the function to.
  * \param function Function to be applied to each node of the zone.
@@ -146,23 +139,7 @@ int zone_tree_delete_empty_node(zone_tree_t *tree, zone_node_t *node);
  * \retval KNOT_EOK
  * \retval KNOT_EINVAL
  */
-int zone_tree_apply_inorder(zone_tree_t *tree,
-                            zone_tree_apply_cb_t function,
-                            void *data);
-
-/*!
- * \brief Applies the given function to each node in the zone. No
- *        specific order is maintained.
- *
- * \param tree Zone tree to apply the function to.
- * \param function Function to be applied to each node of the zone.
- * \param data Arbitrary data to be passed to the function.
- *
- * \retval KNOT_EOK
- * \retval KNOT_EINVAL
- */
-int zone_tree_apply(zone_tree_t *tree,
-                    zone_tree_apply_cb_t function, void *data);
+int zone_tree_apply(zone_tree_t *tree, zone_tree_apply_cb_t function, void *data);
 
 /*!
  * \brief Destroys the zone tree, not touching the saved data.

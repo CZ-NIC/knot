@@ -186,9 +186,7 @@ int zone_tree_delete_empty_node(zone_tree_t *tree, zone_node_t *node)
 	return KNOT_EOK;
 }
 
-int zone_tree_apply_inorder(zone_tree_t *tree,
-                            zone_tree_apply_cb_t function,
-                            void *data)
+int zone_tree_apply(zone_tree_t *tree, zone_tree_apply_cb_t function, void *data)
 {
 	if (function == NULL) {
 		return KNOT_EINVAL;
@@ -198,34 +196,7 @@ int zone_tree_apply_inorder(zone_tree_t *tree,
 		return KNOT_EOK;
 	}
 
-	int result = KNOT_EOK;
-
-	hattrie_iter_t *i = hattrie_iter_begin(tree, 1);
-	while(!hattrie_iter_finished(i)) {
-		result = function((zone_node_t **)hattrie_iter_val(i), data);
-		if (result != KNOT_EOK) {
-			break;
-		}
-		hattrie_iter_next(i);
-	}
-	hattrie_iter_free(i);
-
-	return result;
-}
-
-int zone_tree_apply(zone_tree_t *tree,
-                    zone_tree_apply_cb_t function,
-                    void *data)
-{
-	if (function == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	if (zone_tree_is_empty(tree)) {
-		return KNOT_EOK;
-	}
-
-	return hattrie_apply_rev(tree, (int (*)(value_t*,void*))function, data);
+	return hattrie_apply_rev(tree, (int (*)(value_t *, void *))function, data);
 }
 
 void zone_tree_free(zone_tree_t **tree)

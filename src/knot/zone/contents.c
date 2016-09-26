@@ -953,7 +953,7 @@ static int adjust_nodes(zone_tree_t *nodes, zone_adjust_arg_t *adjust_arg,
 	adjust_arg->previous_node = NULL;
 
 	hattrie_build_index(nodes);
-	int ret = zone_tree_apply_inorder(nodes, callback, adjust_arg);
+	int ret = zone_tree_apply(nodes, callback, adjust_arg);
 
 	if (adjust_arg->first_node) {
 		adjust_arg->first_node->prev = adjust_arg->previous_node;
@@ -1051,7 +1051,7 @@ int zone_contents_tree_apply_inorder(zone_contents_t *zone,
 		.data = data
 	};
 
-	return zone_tree_apply_inorder(zone->nodes, tree_apply_cb, &f);
+	return zone_tree_apply(zone->nodes, tree_apply_cb, &f);
 }
 
 int zone_contents_nsec3_apply_inorder(zone_contents_t *zone,
@@ -1066,7 +1066,7 @@ int zone_contents_nsec3_apply_inorder(zone_contents_t *zone,
 		.data = data
 	};
 
-	return zone_tree_apply_inorder(zone->nsec3_nodes, tree_apply_cb, &f);
+	return zone_tree_apply(zone->nsec3_nodes, tree_apply_cb, &f);
 }
 
 int zone_contents_shallow_copy(const zone_contents_t *from, zone_contents_t **to)
