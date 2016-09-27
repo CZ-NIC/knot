@@ -20,6 +20,7 @@
 #include "libknot/errcode.h"
 #include "libknot/db/db_trie.h"
 #include "contrib/hat-trie/hat-trie.h"
+#include "contrib/macros.h"
 #include "contrib/mempattern.h"
 
 static int init(knot_db_t **db, knot_mm_t *mm, void *arg)

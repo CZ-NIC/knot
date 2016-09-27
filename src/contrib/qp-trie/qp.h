@@ -33,26 +33,29 @@
 /*! \brief Element value. */
 typedef void* trie_val_t;
 
-/*! Opaque type for holding a QP-trie iterator. */
-typedef struct qp_trie_it qp_trie_it_t;
+/*! \brief Opaque structure holding a QP-trie. */
+typedef struct trie trie_t;
+
+/*! \brief Opaque type for holding a QP-trie iterator. */
+typedef struct trie_it trie_it_t;
 
 /*! \brief Create a trie instance. */
-struct qp_trie* qp_trie_create(knot_mm_t *mm);
+trie_t* trie_create(knot_mm_t *mm);
 
 /*! \brief Free a trie instance. */
-void qp_trie_free(struct qp_trie *tbl);
+void trie_free(trie_t *tbl);
 
 /*! \brief Clear a trie instance (make it empty). */
-void qp_trie_clear(struct qp_trie *tbl);
+void trie_clear(trie_t *tbl);
 
 /*! \brief Return the number of keys in the trie. */
-size_t qp_trie_weight(const struct qp_trie *tbl);
+size_t trie_weight(const trie_t *tbl);
 
 /*! \brief Search the trie, returning NULL on failure. */
-trie_val_t* qp_trie_get_try(struct qp_trie *tbl, const char *key, uint32_t len);
+trie_val_t* trie_get_try(trie_t *tbl, const char *key, uint32_t len);
 
 /*! \brief Search the trie, inserting NULL trie_val_t on failure. */
-trie_val_t* qp_trie_get_ins(struct qp_trie *tbl, const char *key, uint32_t len);
+trie_val_t* trie_get_ins(trie_t *tbl, const char *key, uint32_t len);
 
 /*!
  * \brief Search for less-or-equal element.
@@ -61,24 +64,24 @@ trie_val_t* qp_trie_get_ins(struct qp_trie *tbl, const char *key, uint32_t len);
  * \return KNOT_EOK for exact match, 1 for previous, KNOT_ENOENT for not-found,
  *         or KNOT_E*.
  */
-int qp_trie_get_leq(struct qp_trie *tbl, const char *key, uint32_t len, trie_val_t **val);
+int trie_get_leq(trie_t *tbl, const char *key, uint32_t len, trie_val_t **val);
 
 /*!
  * \brief Apply a function to every trie_val_t, in order.
  *
  * \return KNOT_EOK if success or KNOT_E* if error.
  */
-int qp_trie_apply(struct qp_trie *tbl, int (*f)(trie_val_t *, void *), void *d);
+int trie_apply(trie_t *tbl, int (*f)(trie_val_t *, void *), void *d);
 
 /*!
  * \brief Remove an item, returning KNOT_EOK if succeeded or KNOT_ENOENT if not found.
  *
  * If val!=NULL and deletion succeeded, the deleted value is set.
  */
-int qp_trie_del(struct qp_trie *tbl, const char *key, uint32_t len, trie_val_t *val);
+int trie_del(trie_t *tbl, const char *key, uint32_t len, trie_val_t *val);
 
 /*! \brief Create a new iterator pointing to the first element (if any). */
-qp_trie_it_t* qp_trie_it_begin(struct qp_trie *tbl);
+trie_it_t* trie_it_begin(trie_t *tbl);
 
 /*!
  * \brief Advance the iterator to the next element.
@@ -86,16 +89,16 @@ qp_trie_it_t* qp_trie_it_begin(struct qp_trie *tbl);
  * Iteration is in ascending lexicographical order.
  * In particular, the empty string would be considered as the very first.
  */
-void qp_trie_it_next(qp_trie_it_t *it);
+void trie_it_next(trie_it_t *it);
 
 /*! \brief Test if the iterator has gone past the last element. */
-bool qp_trie_it_finished(qp_trie_it_t *it);
+bool trie_it_finished(trie_it_t *it);
 
 /*! \brief Free any resources of the iterator. It's OK to call it on NULL. */
-void qp_trie_it_free(qp_trie_it_t *it);
+void trie_it_free(trie_it_t *it);
 
 /*! \brief Return pointer to the key of the current element. */
-const char* qp_trie_it_key(qp_trie_it_t *it, size_t *len);
+const char* trie_it_key(trie_it_t *it, size_t *len);
 
 /*! \brief Return pointer to the value of the current element (writable). */
-trie_val_t* qp_trie_it_val(qp_trie_it_t *it);
+trie_val_t* trie_it_val(trie_it_t *it);

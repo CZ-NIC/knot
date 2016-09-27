@@ -14,11 +14,12 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <stdlib.h>
 #include <string.h>
 #include <time.h>
 #include <tap/basic.h>
 
-#include "contrib/hat-trie/hat-trie.h"
+#include "contrib/qp-trie/qp.h"
 #include "contrib/macros.h"
 #include "contrib/string.h"
 #include "libknot/errcode.h"
@@ -45,12 +46,12 @@ static char *str_key_rand(size_t len)
 }
 
 /* \brief Check lesser or equal result. */
-static bool str_key_find_leq(hattrie_t *trie, char **keys, size_t i, size_t size)
+static bool str_key_get_leq(trie_t *trie, char **keys, size_t i, size_t size)
 {
 	static char key_buf[KEY_MAXLEN];
 
 	int ret = 0;
-	value_t *val = NULL;
+	trie_val_t *val = NULL;
 	const char *key = keys[i];
 	size_t key_len = strlen(key) + 1;
 	memcpy(key_buf, key, key_len);
@@ -68,13 +69,13 @@ static bool str_key_find_leq(hattrie_t *trie, char **keys, size_t i, size_t size
 	/* Before current key. */
 	key_buf[key_len - 2] -= 1;
 	if (i < first_key_count) {
-		ret = hattrie_find_leq(trie, key_buf, key_len, &val);
+		ret = trie_get_leq(trie, key_buf, key_len, &val);
 		if (ret != KNOT_ENOENT) {
 			diag("%s: leq for key BEFORE %zu/'%s' ret = %d", __func__, i, keys[i], ret);
 			return false; /* No key before first. */
 		}
 	} else {
-		ret = hattrie_find_leq(trie, key_buf, key_len, &val);
+		ret = trie_get_leq(trie, key_buf, key_len, &val);
 		if (ret < KNOT_EOK || strcmp(*val, key_buf) > 0) {
 			diag("%s: '%s' is not before the key %zu/'%s'", __func__, (char*)*val, i, keys[i]);
 			return false; /* Found key must be LEQ than searched. */
@@ -83,7 +84,7 @@ static bool str_key_find_leq(hattrie_t *trie, char **keys, size_t i, size_t size
 
 	/* Current key. */
 	key_buf[key_len - 2] += 1;
-	ret = hattrie_find_leq(trie, key_buf, key_len, &val);
+	ret = trie_get_leq(trie, key_buf, key_len, &val);
 	if (! (ret == KNOT_EOK && val && strcmp(*val, key_buf) == 0)) {
 		diag("%s: leq for key %zu/'%s' ret = %d", __func__, i, keys[i], ret);
 		return false; /* Must find equal match. */
@@ -91,7 +92,7 @@ static bool str_key_find_leq(hattrie_t *trie, char **keys, size_t i, size_t size
 
 	/* After the current key. */
 	key_buf[key_len - 2] += 1;
-	ret = hattrie_find_leq(trie, key_buf, key_len, &val);
+	ret = trie_get_leq(trie, key_buf, key_len, &val);
 	if (! (ret >= KNOT_EOK && strcmp(*val, key_buf) <= 0)) {
 		diag("%s: leq for key AFTER %zu/'%s' ret = %d %s", __func__, i, keys[i], ret, (char*)*val);
 		return false; /* Every key must have its LEQ match. */
@@ -117,15 +118,15 @@ int main(int argc, char *argv[])
 	str_key_sort(keys, key_count);
 
 	/* Create trie */
-	value_t *val = NULL;
-	hattrie_t *trie = hattrie_create(NULL);
-	ok(trie != NULL, "hattrie: create");
+	trie_val_t *val = NULL;
+	trie_t *trie = trie_create(NULL);
+	ok(trie != NULL, "trie: create");
 
 	/* Insert keys */
 	bool passed = true;
 	size_t inserted = 0;
 	for (unsigned i = 0; i < key_count; ++i) {
-		val = hattrie_get(trie, keys[i], strlen(keys[i]) + 1);
+		val = trie_get_ins(trie, keys[i], strlen(keys[i]) + 1);
 		if (!val) {
 			passed = false;
 			break;
@@ -135,29 +136,29 @@ int main(int argc, char *argv[])
 			++inserted;
 		}
 	}
-	ok(passed, "hattrie: insert");
+	ok(passed, "trie: insert");
 
 	/* Check total insertions against trie weight. */
-	is_int(hattrie_weight(trie), inserted, "hattrie: trie weight matches insertions");
+	is_int(trie_weight(trie), inserted, "trie: trie weight matches insertions");
 
 	/* Lookup all keys */
 	passed = true;
 	for (unsigned i = 0; i < key_count; ++i) {
-		val = hattrie_tryget(trie, keys[i], strlen(keys[i]) + 1);
+		val = trie_get_try(trie, keys[i], strlen(keys[i]) + 1);
 		if (val && (*val == keys[i] || strcmp(*val, keys[i]) == 0)) {
 			continue;
 		} else {
-			diag("hattrie: mismatch on element '%u'", i);
+			diag("trie: mismatch on element '%u'", i);
 			passed = false;
 			break;
 		}
 	}
-	ok(passed, "hattrie: lookup all keys");
+	ok(passed, "trie: lookup all keys");
 
 	/* Lesser or equal lookup. */
 	passed = true;
 	for (unsigned i = 0; i < key_count; ++i) {
-		if (!str_key_find_leq(trie, keys, i, key_count)) {
+		if (!str_key_get_leq(trie, keys, i, key_count)) {
 			passed = false;
 			for (int off = -10; off < 10; ++off) {
 				int k = (int)i + off;
@@ -169,15 +170,15 @@ int main(int argc, char *argv[])
 			break;
 		}
 	}
-	ok(passed, "hattrie: find lesser or equal for all keys");
+	ok(passed, "trie: find lesser or equal for all keys");
 
 	/* Sorted iteration. */
 	char key_buf[KEY_MAXLEN] = {'\0'};
 	size_t iterated = 0;
-	hattrie_iter_t *it = hattrie_iter_begin(trie);
-	while (!hattrie_iter_finished(it)) {
+	trie_it_t *it = trie_it_begin(trie);
+	while (!trie_it_finished(it)) {
 		size_t cur_key_len = 0;
-		const char *cur_key = hattrie_iter_key(it, &cur_key_len);
+		const char *cur_key = trie_it_key(it, &cur_key_len);
 		if (iterated > 0) { /* Only if previous exists. */
 			if (strcmp(key_buf, cur_key) > 0) {
 				diag("'%s' <= '%s' FAIL\n", key_buf, cur_key);
@@ -186,16 +187,16 @@ int main(int argc, char *argv[])
 		}
 		++iterated;
 		memcpy(key_buf, cur_key, cur_key_len);
-		hattrie_iter_next(it);
+		trie_it_next(it);
 	}
-	is_int(inserted, iterated, "hattrie: sorted iteration");
-	hattrie_iter_free(it);
+	is_int(inserted, iterated, "trie: sorted iteration");
+	trie_it_free(it);
 
 	/* Cleanup */
 	for (unsigned i = 0; i < key_count; ++i) {
 		free(keys[i]);
 	}
 	free(keys);
-	hattrie_free(trie);
+	trie_free(trie);
 	return 0;
 }

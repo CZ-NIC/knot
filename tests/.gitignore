@@ -5,11 +5,11 @@
 /contrib/test_base32hex
 /contrib/test_base64
 /contrib/test_endian
-/contrib/test_hat-trie
 /contrib/test_heap
 /contrib/test_hhash
 /contrib/test_net
 /contrib/test_net_shortwrite
+/contrib/test_qp-trie
 /contrib/test_sockaddr
 /contrib/test_string
 /contrib/test_strtonum

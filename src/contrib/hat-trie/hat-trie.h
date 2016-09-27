@@ -16,86 +16,83 @@
 
 #pragma once
 
-#include <stdbool.h>
-#include <stddef.h>
-
 #include "contrib/qp-trie/qp.h"
-#include "contrib/macros.h"
 
-typedef struct qp_trie hattrie_t;
-typedef struct qp_trie_it hattrie_iter_t;
+typedef trie_t hattrie_t;
+typedef trie_val_t value_t;
+typedef trie_it_t hattrie_iter_t;
 
 inline static hattrie_t* hattrie_create(struct knot_mm *mm)
 {
-	return qp_trie_create(mm);
+	return trie_create(mm);
 }
 
 inline static void hattrie_free(hattrie_t *trie)
 {
-	qp_trie_free(trie);
+	trie_free(trie);
 }
 
 inline static void hattrie_clear(hattrie_t *trie)
 {
-	qp_trie_clear(trie);
+	trie_clear(trie);
 }
 
 inline static size_t hattrie_weight(const hattrie_t *trie)
 {
-	return qp_trie_weight(trie);
+	return trie_weight(trie);
 }
 
 inline static int hattrie_apply_rev(hattrie_t *trie, int (*f)(value_t*,void*), void* d)
 {
-	return qp_trie_apply(trie, f, d);
+	return trie_apply(trie, f, d);
 }
 
 inline static value_t* hattrie_tryget(hattrie_t *trie, const char *key, size_t len)
 {
-	return qp_trie_get_try(trie, key, len);
+	return trie_get_try(trie, key, len);
 }
 
 inline static value_t* hattrie_get(hattrie_t *trie, const char *key, size_t len)
 {
-	return qp_trie_get_ins(trie, key, len);
+	return trie_get_ins(trie, key, len);
 }
 
 inline static int hattrie_find_leq(hattrie_t *trie, const char *key, size_t len, value_t **dst)
 {
-	return qp_trie_get_leq(trie, key, len, dst);
+	return trie_get_leq(trie, key, len, dst);
 }
 
 inline static int hattrie_del(hattrie_t *trie, const char* key, size_t len, value_t *val)
 {
-	return qp_trie_del(trie, key, len, val);
+	return trie_del(trie, key, len, val);
 }
 
 inline static hattrie_iter_t* hattrie_iter_begin(hattrie_t *trie)
 {
-	return qp_trie_it_begin(trie);
+	return trie_it_begin(trie);
 }
 
 inline static void hattrie_iter_next(hattrie_iter_t *it)
 {
-	qp_trie_it_next(it);
+	trie_it_next(it);
 }
 
 inline static bool hattrie_iter_finished(hattrie_iter_t *it)
 {
-	return qp_trie_it_finished(it);
+	return trie_it_finished(it);
 }
 
 inline static void hattrie_iter_free(hattrie_iter_t *it)
 {
-	qp_trie_it_free(it);
+	trie_it_free(it);
 }
 
 inline static const char* hattrie_iter_key(hattrie_iter_t *it, size_t *len)
 {
-	return qp_trie_it_key(it, len);
+	return trie_it_key(it, len);
 }
 
 inline static value_t* hattrie_iter_val(hattrie_iter_t *it)
 {
-	return qp_trie_it_val(it);
+	return trie_it_val(it);
 }

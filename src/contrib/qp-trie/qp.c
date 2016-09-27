@@ -22,8 +22,8 @@
 #include <string.h>
 
 #include "contrib/qp-trie/qp.h"
-#include "contrib/mempattern.h"
 #include "contrib/macros.h"
+#include "contrib/mempattern.h"
 #include "libknot/errcode.h"
 
 #if defined(__i386) || defined(__x86_64) || defined(_M_IX86) \
@@ -51,14 +51,13 @@ typedef unsigned char byte;
 typedef unsigned int uint;
 typedef uint bitmap_t; /*! Bit-maps, using the range of 1<<0 to 1<<16 (inclusive). */
 
-/*! \brief A trie node is either leaf_t or branch_t. */
-typedef union node node_t;
-
-/*! \brief What we use as trie key internally. */
-typedef struct tkey tkey_t;
+typedef struct {
+	uint32_t len; // 32 bits are enough for key lengths; probably even 16 bits would be.
+	char chars[];
+} tkey_t;
 
 /*! \brief Leaf of trie. */
-typedef struct leaf {
+typedef struct {
 	#if !FLAGS_HACK
 		byte flags;
 	#endif
@@ -66,10 +65,8 @@ typedef struct leaf {
 	trie_val_t val;
 } leaf_t;
 
-struct tkey {
-	uint32_t len; // 32 bits are enough for key lengths; probably even 16 bits would be.
-	char chars[];
-};
+/*! \brief A trie node is either leaf_t or branch_t. */
+typedef union node node_t;
 
 /*!
  * \brief Branch node of trie.
@@ -91,7 +88,7 @@ struct tkey {
  * \note The branch nodes are never allocated individually, but they are
  *   always part of either the root node or the twigs array of the parent.
  */
-typedef struct branch {
+typedef struct {
 	#if FLAGS_HACK
 		uint32_t flags  : 2,
 		         bitmap : 17; /*!< The first bitmap bit is for end-of-string child. */
@@ -104,15 +101,15 @@ typedef struct branch {
 } branch_t;
 
 union node {
-	struct leaf leaf;
-	struct branch branch;
+	leaf_t leaf;
+	branch_t branch;
 };
 
-typedef struct qp_trie {
+struct trie {
 	node_t root; // undefined when weight == 0, see empty_root()
 	size_t weight;
 	knot_mm_t mm;
-} trie_t;
+};
 
 /*! \brief Make the root node empty (debug-only). */
 static inline void empty_root(node_t *root) {
@@ -232,7 +229,7 @@ static int key_cmp(const char *k1, uint32_t k1_len, const char *k2, uint32_t k2_
 	}
 }
 
-struct qp_trie* qp_trie_create(knot_mm_t *mm)
+trie_t* trie_create(knot_mm_t *mm)
 {
 	assert_portability();
 	trie_t *trie = mm_alloc(mm, sizeof(trie_t));
@@ -261,7 +258,7 @@ static void clear_trie(node_t *trie, knot_mm_t *mm)
 	}
 }
 
-void qp_trie_free(struct qp_trie *tbl)
+void trie_free(trie_t *tbl)
 {
 	if (tbl == NULL)
 		return;
@@ -270,7 +267,7 @@ void qp_trie_free(struct qp_trie *tbl)
 	mm_free(&tbl->mm, tbl);
 }
 
-void qp_trie_clear(struct qp_trie *tbl)
+void trie_clear(trie_t *tbl)
 {
 	assert(tbl);
 	if (!tbl->weight)
@@ -280,13 +277,13 @@ void qp_trie_clear(struct qp_trie *tbl)
 	tbl->weight = 0;
 }
 
-size_t qp_trie_weight(const struct qp_trie *tbl)
+size_t trie_weight(const trie_t *tbl)
 {
 	assert(tbl);
 	return tbl->weight;
 }
 
-trie_val_t* qp_trie_get_try(trie_t *tbl, const char *key, uint32_t len)
+trie_val_t* trie_get_try(trie_t *tbl, const char *key, uint32_t len)
 {
 	assert(tbl);
 	if (!tbl->weight)
@@ -304,7 +301,7 @@ trie_val_t* qp_trie_get_try(trie_t *tbl, const char *key, uint32_t len)
 	return &t->leaf.val;
 }
 
-int qp_trie_del(struct qp_trie *tbl, const char *key, uint32_t len, trie_val_t *val)
+int trie_del(trie_t *tbl, const char *key, uint32_t len, trie_val_t *val)
 {
 	assert(tbl);
 	if (!tbl->weight)
@@ -356,11 +353,11 @@ int qp_trie_del(struct qp_trie *tbl, const char *key, uint32_t len, trie_val_t *
 /*!
  * \brief Stack of nodes, storing a path down a trie.
  *
- * The structure also serves directly as the public qp_trie_it_t type,
+ * The structure also serves directly as the public trie_it_t type,
  * in which case it always points to the current leaf, unless we've finished
  * (i.e. it->len == 0).
  */
-typedef struct qp_trie_it {
+typedef struct trie_it {
 	node_t* *stack; /*!< The stack; malloc is used directly instead of mm. */
 	uint32_t len;   /*!< Current length of the stack. */
 	uint32_t alen;  /*!< Allocated/available length of the stack. */
@@ -369,7 +366,7 @@ typedef struct qp_trie_it {
 } nstack_t;
 
 /*! \brief Create a node stack containing just the root (or empty). */
-static void ns_init(nstack_t *ns, struct qp_trie *tbl)
+static void ns_init(nstack_t *ns, trie_t *tbl)
 {
 	assert(tbl);
 	ns->stack = ns->stack_init;
@@ -608,7 +605,7 @@ static int ns_next_leaf(nstack_t *ns)
 	} while (true);
 }
 
-int qp_trie_get_leq(struct qp_trie *tbl, const char *key, uint32_t len, trie_val_t **val)
+int trie_get_leq(trie_t *tbl, const char *key, uint32_t len, trie_val_t **val)
 {
 	assert(tbl && val);
 	*val = NULL; // so on failure we can just return;
@@ -683,7 +680,7 @@ static int mk_leaf(node_t *leaf, const char *key, uint32_t len, knot_mm_t *mm)
 	return KNOT_EOK;
 }
 
-trie_val_t* qp_trie_get_ins(struct qp_trie *tbl, const char *key, uint32_t len)
+trie_val_t* trie_get_ins(trie_t *tbl, const char *key, uint32_t len)
 {
 	assert(tbl);
 	// First leaf in an empty tbl?
@@ -764,7 +761,7 @@ static int apply_trie(node_t *t, int (*f)(trie_val_t *, void *), void *d)
 	return KNOT_EOK;
 }
 
-int qp_trie_apply(struct qp_trie *tbl, int (*f)(trie_val_t *, void *), void *d)
+int trie_apply(trie_t *tbl, int (*f)(trie_val_t *, void *), void *d)
 {
 	assert(tbl && f);
 	if (!tbl->weight)
@@ -773,10 +770,10 @@ int qp_trie_apply(struct qp_trie *tbl, int (*f)(trie_val_t *, void *), void *d)
 }
 
 /* These are all thin wrappers around static Tns* functions. */
-qp_trie_it_t* qp_trie_it_begin(struct qp_trie *tbl)
+trie_it_t* trie_it_begin(trie_t *tbl)
 {
 	assert(tbl);
-	qp_trie_it_t *it = malloc(sizeof(nstack_t));
+	trie_it_t *it = malloc(sizeof(nstack_t));
 	if (!it)
 		return NULL;
 	ns_init(it, tbl);
@@ -790,20 +787,20 @@ qp_trie_it_t* qp_trie_it_begin(struct qp_trie *tbl)
 	return it;
 }
 
-void qp_trie_it_next(qp_trie_it_t *it)
+void trie_it_next(trie_it_t *it)
 {
 	assert(it && it->len);
 	if (ns_next_leaf(it) != KNOT_EOK)
 		it->len = 0;
 }
 
-bool qp_trie_it_finished(qp_trie_it_t *it)
+bool trie_it_finished(trie_it_t *it)
 {
 	assert(it);
 	return it->len == 0;
 }
 
-void qp_trie_it_free(qp_trie_it_t *it)
+void trie_it_free(trie_it_t *it)
 {
 	if (!it)
 		return;
@@ -811,7 +808,7 @@ void qp_trie_it_free(qp_trie_it_t *it)
 	free(it);
 }
 
-const char* qp_trie_it_key(qp_trie_it_t *it, size_t *len)
+const char* trie_it_key(trie_it_t *it, size_t *len)
 {
 	assert(it && it->len);
 	node_t *t = it->stack[it->len - 1];
@@ -822,7 +819,7 @@ const char* qp_trie_it_key(qp_trie_it_t *it, size_t *len)
 	return key->chars;
 }
 
-trie_val_t* qp_trie_it_val(qp_trie_it_t *it)
+trie_val_t* trie_it_val(trie_it_t *it)
 {
 	assert(it && it->len);
 	node_t *t = it->stack[it->len - 1];
