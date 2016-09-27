@@ -20,19 +20,18 @@
 #include <stdint.h>
 
 #include "libknot/mm_ctx.h"
-#include "contrib/hhash.h" /* only for value_t */
 
 /*!
  * \file \brief Native API of QP-tries:
  *
  * - keys are char strings, not necessarily zero-terminated,
  *   the structure copies the contents of the passed keys
- * - values are typedef void* value_t, typically you get an ephemeral pointer to it
+ * - values are void* pointers, typically you get an ephemeral pointer to it
  * - key lengths are limited by 2^32-1 ATM
  */
 
-/*! Opaque structure holding a QP-trie. */
-struct qp_trie;
+/*! \brief Element value. */
+typedef void* trie_val_t;
 
 /*! Opaque type for holding a QP-trie iterator. */
 typedef struct qp_trie_it qp_trie_it_t;
@@ -50,10 +49,10 @@ void qp_trie_clear(struct qp_trie *tbl);
 size_t qp_trie_weight(const struct qp_trie *tbl);
 
 /*! \brief Search the trie, returning NULL on failure. */
-value_t* qp_trie_get_try(struct qp_trie *tbl, const char *key, uint32_t len);
+trie_val_t* qp_trie_get_try(struct qp_trie *tbl, const char *key, uint32_t len);
 
-/*! \brief Search the trie, inserting NULL value_t on failure. */
-value_t* qp_trie_get_ins(struct qp_trie *tbl, const char *key, uint32_t len);
+/*! \brief Search the trie, inserting NULL trie_val_t on failure. */
+trie_val_t* qp_trie_get_ins(struct qp_trie *tbl, const char *key, uint32_t len);
 
 /*!
  * \brief Search for less-or-equal element.
@@ -62,21 +61,21 @@ value_t* qp_trie_get_ins(struct qp_trie *tbl, const char *key, uint32_t len);
  * \return KNOT_EOK for exact match, 1 for previous, KNOT_ENOENT for not-found,
  *         or KNOT_E*.
  */
-int qp_trie_get_leq(struct qp_trie *tbl, const char *key, uint32_t len, value_t **val);
+int qp_trie_get_leq(struct qp_trie *tbl, const char *key, uint32_t len, trie_val_t **val);
 
 /*!
- * \brief Apply a function to every value_t, in order.
+ * \brief Apply a function to every trie_val_t, in order.
  *
  * \return KNOT_EOK if success or KNOT_E* if error.
  */
-int qp_trie_apply(struct qp_trie *tbl, int (*f)(value_t *, void *), void *d);
+int qp_trie_apply(struct qp_trie *tbl, int (*f)(trie_val_t *, void *), void *d);
 
 /*!
  * \brief Remove an item, returning KNOT_EOK if succeeded or KNOT_ENOENT if not found.
  *
  * If val!=NULL and deletion succeeded, the deleted value is set.
  */
-int qp_trie_del(struct qp_trie *tbl, const char *key, uint32_t len, value_t *val);
+int qp_trie_del(struct qp_trie *tbl, const char *key, uint32_t len, trie_val_t *val);
 
 /*! \brief Create a new iterator pointing to the first element (if any). */
 qp_trie_it_t* qp_trie_it_begin(struct qp_trie *tbl);
@@ -99,4 +98,4 @@ void qp_trie_it_free(qp_trie_it_t *it);
 const char* qp_trie_it_key(qp_trie_it_t *it, size_t *len);
 
 /*! \brief Return pointer to the value of the current element (writable). */
-value_t* qp_trie_it_val(qp_trie_it_t *it);
+trie_val_t* qp_trie_it_val(qp_trie_it_t *it);

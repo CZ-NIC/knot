@@ -63,7 +63,7 @@ typedef struct leaf {
 		byte flags;
 	#endif
 	tkey_t *key; /*!< The pointer must be aligned to 4-byte multiples! */
-	value_t val;
+	trie_val_t val;
 } leaf_t;
 
 struct tkey {
@@ -286,7 +286,7 @@ size_t qp_trie_weight(const struct qp_trie *tbl)
 	return tbl->weight;
 }
 
-value_t* qp_trie_get_try(trie_t *tbl, const char *key, uint32_t len)
+trie_val_t* qp_trie_get_try(trie_t *tbl, const char *key, uint32_t len)
 {
 	assert(tbl);
 	if (!tbl->weight)
@@ -304,7 +304,7 @@ value_t* qp_trie_get_try(trie_t *tbl, const char *key, uint32_t len)
 	return &t->leaf.val;
 }
 
-int qp_trie_del(struct qp_trie *tbl, const char *key, uint32_t len, value_t *val)
+int qp_trie_del(struct qp_trie *tbl, const char *key, uint32_t len, trie_val_t *val)
 {
 	assert(tbl);
 	if (!tbl->weight)
@@ -324,7 +324,7 @@ int qp_trie_del(struct qp_trie *tbl, const char *key, uint32_t len, value_t *val
 		return KNOT_ENOENT;
 	mm_free(&tbl->mm, t->leaf.key);
 	if (val != NULL)
-		*val = t->leaf.val; // we return value_t directly when deleting
+		*val = t->leaf.val; // we return trie_val_t directly when deleting
 	--tbl->weight;
 	if (unlikely(!p)) { // whole trie was a single leaf
 		assert(tbl->weight == 0);
@@ -608,7 +608,7 @@ static int ns_next_leaf(nstack_t *ns)
 	} while (true);
 }
 
-int qp_trie_get_leq(struct qp_trie *tbl, const char *key, uint32_t len, value_t **val)
+int qp_trie_get_leq(struct qp_trie *tbl, const char *key, uint32_t len, trie_val_t **val)
 {
 	assert(tbl && val);
 	*val = NULL; // so on failure we can just return;
@@ -683,7 +683,7 @@ static int mk_leaf(node_t *leaf, const char *key, uint32_t len, knot_mm_t *mm)
 	return KNOT_EOK;
 }
 
-value_t* qp_trie_get_ins(struct qp_trie *tbl, const char *key, uint32_t len)
+trie_val_t* qp_trie_get_ins(struct qp_trie *tbl, const char *key, uint32_t len)
 {
 	assert(tbl);
 	// First leaf in an empty tbl?
@@ -752,8 +752,8 @@ err_leaf:
 	return NULL;
 }
 
-/*! \brief Apply a function to every value_t*, in order; a recursive solution. */
-static int apply_trie(node_t *t, int (*f)(value_t *, void *), void *d)
+/*! \brief Apply a function to every trie_val_t*, in order; a recursive solution. */
+static int apply_trie(node_t *t, int (*f)(trie_val_t *, void *), void *d)
 {
 	assert(t);
 	if (!isbranch(t))
@@ -764,7 +764,7 @@ static int apply_trie(node_t *t, int (*f)(value_t *, void *), void *d)
 	return KNOT_EOK;
 }
 
-int qp_trie_apply(struct qp_trie *tbl, int (*f)(value_t *, void *), void *d)
+int qp_trie_apply(struct qp_trie *tbl, int (*f)(trie_val_t *, void *), void *d)
 {
 	assert(tbl && f);
 	if (!tbl->weight)
@@ -822,7 +822,7 @@ const char* qp_trie_it_key(qp_trie_it_t *it, size_t *len)
 	return key->chars;
 }
 
-value_t* qp_trie_it_val(qp_trie_it_t *it)
+trie_val_t* qp_trie_it_val(qp_trie_it_t *it)
 {
 	assert(it && it->len);
 	node_t *t = it->stack[it->len - 1];
