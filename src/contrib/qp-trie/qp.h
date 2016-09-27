@@ -72,7 +72,7 @@ int qp_trie_get_leq(struct qp_trie *tbl, const char *key, uint32_t len, value_t 
 int qp_trie_apply(struct qp_trie *tbl, int (*f)(value_t *, void *), void *d);
 
 /*!
- * \brief Remove an item, returning 0 if succeeded or 1 if not found.
+ * \brief Remove an item, returning KNOT_EOK if succeeded or KNOT_ENOENT if not found.
  *
  * If val!=NULL and deletion succeeded, the deleted value is set.
  */

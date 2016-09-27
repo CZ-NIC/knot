@@ -846,7 +846,7 @@ static void upd_changes(
 	case CONF_IO_TUNSET:
 		if (*current & CONF_IO_TSET) {
 			// Remove inserted zone -> no change.
-			hattrie_del(zones, (const char *)io->id, io->id_len);
+			hattrie_del(zones, (const char *)io->id, io->id_len, NULL);
 		} else {
 			// Remove existing zone.
 			*current |= type;

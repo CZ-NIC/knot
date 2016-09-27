@@ -147,7 +147,7 @@ int zone_tree_remove(zone_tree_t *tree,
 		*removed = (zone_node_t *)(*rval);
 	}
 
-	hattrie_del(tree, (char*)lf+1, *lf);
+	hattrie_del(tree, (char*)lf+1, *lf, NULL);
 	return KNOT_EOK;
 }
 

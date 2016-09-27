@@ -65,10 +65,9 @@ inline static int hattrie_find_leq(hattrie_t *trie, const char *key, size_t len,
 	return qp_trie_get_leq(trie, key, len, dst);
 }
 
-inline static int hattrie_del(hattrie_t *trie, const char* key, size_t len)
+inline static int hattrie_del(hattrie_t *trie, const char* key, size_t len, value_t *val)
 {
-	// QP has 1 as error instead of -1, to be consistent with qp_trie_get_leq
-	return - qp_trie_del(trie, key, len, NULL);
+	return qp_trie_del(trie, key, len, val);
 }
 
 inline static hattrie_iter_t* hattrie_iter_begin(hattrie_t *trie)

@@ -103,7 +103,7 @@ static int insert(knot_db_txn_t *txn, knot_db_val_t *key, knot_db_val_t *val, un
 
 static int del(knot_db_txn_t *txn, knot_db_val_t *key)
 {
-	return hattrie_del((hattrie_t *)txn->db, key->data, key->len);
+	return hattrie_del((hattrie_t *)txn->db, key->data, key->len, NULL);
 }
 
 static knot_db_iter_t *iter_begin(knot_db_txn_t *txn, unsigned flags)
