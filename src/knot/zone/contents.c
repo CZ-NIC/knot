@@ -672,7 +672,7 @@ static int recreate_normal_tree(const zone_contents_t *z, zone_contents_t *out)
 
 	out->apex = apex_cpy;
 
-	hattrie_iter_t *itt = hattrie_iter_begin(z->nodes, true);
+	hattrie_iter_t *itt = hattrie_iter_begin(z->nodes);
 	if (itt == NULL) {
 		return KNOT_ENOMEM;
 	}
@@ -711,7 +711,7 @@ static int recreate_nsec3_tree(const zone_contents_t *z, zone_contents_t *out)
 		return KNOT_ENOMEM;
 	}
 
-	hattrie_iter_t *itt = hattrie_iter_begin(z->nsec3_nodes, false);
+	hattrie_iter_t *itt = hattrie_iter_begin(z->nsec3_nodes);
 	if (itt == NULL) {
 		return KNOT_ENOMEM;
 	}

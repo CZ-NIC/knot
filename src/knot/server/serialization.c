@@ -78,7 +78,7 @@ int changeset_binary_size(const changeset_t *chgset, size_t *size)
 	size_t soa_from_size = rrset_binary_size(chgset->soa_from);
 	size_t soa_to_size = rrset_binary_size(chgset->soa_to);
 	changeset_iter_t itt;
-	changeset_iter_all(&itt, chgset, false);
+	changeset_iter_all(&itt, chgset);
 
 	size_t change_size = 0;
 	knot_rrset_t rrset = changeset_iter_next(&itt);

@@ -170,20 +170,10 @@ int main(int argc, char *argv[])
 	}
 	ok(passed, "hattrie: find lesser or equal for all keys");
 
-	/* Unsorted iteration */
-	size_t iterated = 0;
-	hattrie_iter_t *it = hattrie_iter_begin(trie, false);
-	while (!hattrie_iter_finished(it)) {
-		++iterated;
-		hattrie_iter_next(it);
-	}
-	is_int(inserted, iterated, "hattrie: unsorted iteration");
-	hattrie_iter_free(it);
-
 	/* Sorted iteration. */
 	char key_buf[KEY_MAXLEN] = {'\0'};
-	iterated = 0;
-	it = hattrie_iter_begin(trie, true);
+	size_t iterated = 0;
+	hattrie_iter_t *it = hattrie_iter_begin(trie);
 	while (!hattrie_iter_finished(it)) {
 		size_t cur_key_len = 0;
 		const char *cur_key = hattrie_iter_key(it, &cur_key_len);

@@ -115,7 +115,7 @@ int zone_tree_get_less_or_equal(zone_tree_t *tree,
 		 * cases like NSEC3, there is no such sort of thing (name wise).
 		 */
 		/*! \todo We could store rightmost node in zonetree probably. */
-		hattrie_iter_t *i = hattrie_iter_begin(tree, 1);
+		hattrie_iter_t *i = hattrie_iter_begin(tree);
 		*previous = *(zone_node_t **)hattrie_iter_val(i); /* leftmost */
 		*previous = (*previous)->prev; /* rightmost */
 		*found = NULL;

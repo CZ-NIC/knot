@@ -275,7 +275,7 @@ static void mark_changed_zones(knot_zonedb_t *zonedb, hattrie_t *changed)
 		return;
 	}
 
-	hattrie_iter_t *it = hattrie_iter_begin(changed, false);
+	hattrie_iter_t *it = hattrie_iter_begin(changed);
 	for (; !hattrie_iter_finished(it); hattrie_iter_next(it)) {
 		size_t len;
 		const knot_dname_t *name =

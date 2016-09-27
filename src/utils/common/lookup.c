@@ -118,7 +118,7 @@ int lookup_search(lookup_t *lookup, const char *str, size_t str_len)
 	reset_output(lookup);
 
 	size_t new_len = 0;
-	hattrie_iter_t *it = hattrie_iter_begin(lookup->trie, true);
+	hattrie_iter_t *it = hattrie_iter_begin(lookup->trie);
 	for (; !hattrie_iter_finished(it); hattrie_iter_next(it)) {
 		size_t len;
 		const char *key = hattrie_iter_key(it, &len);
@@ -205,7 +205,7 @@ void lookup_list(lookup_t *lookup)
 		return;
 	}
 
-	lookup->iter.it = hattrie_iter_begin(lookup->trie, true);
+	lookup->iter.it = hattrie_iter_begin(lookup->trie);
 	while (!hattrie_iter_finished(lookup->iter.it)) {
 		size_t len;
 		const char *key = hattrie_iter_key(lookup->iter.it, &len);

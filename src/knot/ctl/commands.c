@@ -645,8 +645,7 @@ static int send_changeset_part(changeset_t *ch, send_ctx_t *ctx, bool from)
 
 	// Send other records.
 	changeset_iter_t it;
-	int ret = from ? changeset_iter_rem(&it, ch, true) :
-	                 changeset_iter_add(&it, ch, true);
+	int ret = from ? changeset_iter_rem(&it, ch) : changeset_iter_add(&it, ch);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}

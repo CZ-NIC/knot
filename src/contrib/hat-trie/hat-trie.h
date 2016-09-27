@@ -71,10 +71,9 @@ inline static int hattrie_del(hattrie_t *trie, const char* key, size_t len)
 	return - qp_trie_del(trie, key, len, NULL);
 }
 
-inline static hattrie_iter_t* hattrie_iter_begin(const hattrie_t *trie, bool sorted)
+inline static hattrie_iter_t* hattrie_iter_begin(hattrie_t *trie)
 {
-	UNUSED(sorted); // iteration over QP is always sorted ATM
-	return qp_trie_it_begin(/*const-cast*/(hattrie_t*)trie);
+	return qp_trie_it_begin(trie);
 }
 
 inline static void hattrie_iter_next(hattrie_iter_t *it)

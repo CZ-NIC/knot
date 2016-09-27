@@ -65,8 +65,8 @@ static void cleanup_iter_list(list_t *l)
 }
 
 /*! \brief Inits changeset iterator with given HAT-tries. */
-static int changeset_iter_init(changeset_iter_t *ch_it,
-                               const changeset_t *ch, bool sorted, size_t tries, ...)
+static int changeset_iter_init(changeset_iter_t *ch_it, const changeset_t *ch,
+                               size_t tries, ...)
 {
 	memset(ch_it, 0, sizeof(*ch_it));
 	init_list(&ch_it->iters);
@@ -77,7 +77,7 @@ static int changeset_iter_init(changeset_iter_t *ch_it,
 	for (size_t i = 0; i < tries; ++i) {
 		hattrie_t *t = va_arg(args, hattrie_t *);
 		if (t) {
-			hattrie_iter_t *it = hattrie_iter_begin(t, sorted);
+			hattrie_iter_t *it = hattrie_iter_begin(t);
 			if (it == NULL) {
 				cleanup_iter_list(&ch_it->iters);
 				return KNOT_ENOMEM;
@@ -218,7 +218,7 @@ bool changeset_empty(const changeset_t *ch)
 	}
 
 	changeset_iter_t itt;
-	changeset_iter_all(&itt, ch, false);
+	changeset_iter_all(&itt, ch);
 
 	knot_rrset_t rr = changeset_iter_next(&itt);
 	changeset_iter_clear(&itt);
@@ -233,7 +233,7 @@ size_t changeset_size(const changeset_t *ch)
 	}
 
 	changeset_iter_t itt;
-	changeset_iter_all(&itt, ch, false);
+	changeset_iter_all(&itt, ch);
 
 	size_t size = 0;
 	knot_rrset_t rr = changeset_iter_next(&itt);
@@ -350,7 +350,7 @@ int changeset_remove_removal(changeset_t *ch, const knot_rrset_t *rrset)
 int changeset_merge(changeset_t *ch1, const changeset_t *ch2)
 {
 	changeset_iter_t itt;
-	changeset_iter_add(&itt, ch2, false);
+	changeset_iter_add(&itt, ch2);
 
 	knot_rrset_t rrset = changeset_iter_next(&itt);
 	while (!knot_rrset_empty(&rrset)) {
@@ -363,7 +363,7 @@ int changeset_merge(changeset_t *ch1, const changeset_t *ch2)
 	}
 	changeset_iter_clear(&itt);
 
-	changeset_iter_rem(&itt, ch2, false);
+	changeset_iter_rem(&itt, ch2);
 
 	rrset = changeset_iter_next(&itt);
 	while (!knot_rrset_empty(&rrset)) {
@@ -435,22 +435,19 @@ void changeset_free(changeset_t *ch)
 	free(ch);
 }
 
-int changeset_iter_add(changeset_iter_t *itt, const changeset_t *ch, bool sorted)
+int changeset_iter_add(changeset_iter_t *itt, const changeset_t *ch)
 {
-	return changeset_iter_init(itt, ch, sorted, 2,
-	                           ch->add->nodes, ch->add->nsec3_nodes);
+	return changeset_iter_init(itt, ch, 2, ch->add->nodes, ch->add->nsec3_nodes);
 }
 
-int changeset_iter_rem(changeset_iter_t *itt, const changeset_t *ch, bool sorted)
+int changeset_iter_rem(changeset_iter_t *itt, const changeset_t *ch)
 {
-	return changeset_iter_init(itt, ch, sorted, 2,
-	                           ch->remove->nodes, ch->remove->nsec3_nodes);
+	return changeset_iter_init(itt, ch, 2, ch->remove->nodes, ch->remove->nsec3_nodes);
 }
 
-int changeset_iter_all(changeset_iter_t *itt, const changeset_t *ch, bool sorted)
+int changeset_iter_all(changeset_iter_t *itt, const changeset_t *ch)
 {
-	return changeset_iter_init(itt, ch, sorted, 4,
-	                           ch->add->nodes, ch->add->nsec3_nodes,
+	return changeset_iter_init(itt, ch, 4, ch->add->nodes, ch->add->nsec3_nodes,
 	                           ch->remove->nodes, ch->remove->nsec3_nodes);
 }
 

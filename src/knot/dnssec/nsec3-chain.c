@@ -112,7 +112,7 @@ static int shallow_copy_signature(const zone_node_t *from, zone_node_t *to)
 /*!
  * \brief Reuse signatatures by shallow copying them from one tree to another.
  */
-static int copy_signatures(const zone_tree_t *from, zone_tree_t *to)
+static int copy_signatures(zone_tree_t *from, zone_tree_t *to)
 {
 	if (zone_tree_is_empty(from)) {
 		return KNOT_EOK;
@@ -120,8 +120,7 @@ static int copy_signatures(const zone_tree_t *from, zone_tree_t *to)
 
 	assert(to);
 
-	bool sorted = false;
-	hattrie_iter_t *it = hattrie_iter_begin(from, sorted);
+	hattrie_iter_t *it = hattrie_iter_begin(from);
 
 	for (/* NOP */; !hattrie_iter_finished(it); hattrie_iter_next(it)) {
 		zone_node_t *node_from = (zone_node_t *)*hattrie_iter_val(it);
@@ -155,8 +154,7 @@ static void free_nsec3_tree(zone_tree_t *nodes)
 {
 	assert(nodes);
 
-	bool sorted = false;
-	hattrie_iter_t *it = hattrie_iter_begin(nodes, sorted);
+	hattrie_iter_t *it = hattrie_iter_begin(nodes);
 	for (/* NOP */; !hattrie_iter_finished(it); hattrie_iter_next(it)) {
 		zone_node_t *node = (zone_node_t *)*hattrie_iter_val(it);
 		// newly allocated NSEC3 nodes
@@ -430,8 +428,7 @@ static int create_nsec3_nodes(const zone_contents_t *zone,
 
 	int result = KNOT_EOK;
 
-	const bool sorted = false;
-	hattrie_iter_t *it = hattrie_iter_begin(zone->nodes, sorted);
+	hattrie_iter_t *it = hattrie_iter_begin(zone->nodes);
 	while (!hattrie_iter_finished(it)) {
 		zone_node_t *node = (zone_node_t *)*hattrie_iter_val(it);
 

@@ -93,7 +93,7 @@ static int convert(const char *file_out, const char *file_in)
 	}
 
 	// Remove ifaces data.
-	hattrie_iter_t *it = hattrie_iter_begin(share.ifaces, false);
+	hattrie_iter_t *it = hattrie_iter_begin(share.ifaces);
 	for (; !hattrie_iter_finished(it); hattrie_iter_next(it)) {
 		char *data = *hattrie_iter_val(it);
 		free(data);
@@ -101,7 +101,7 @@ static int convert(const char *file_out, const char *file_in)
 	hattrie_iter_free(it);
 
 	// Remove groups data.
-	it = hattrie_iter_begin(share.groups, false);
+	it = hattrie_iter_begin(share.groups);
 	for (; !hattrie_iter_finished(it); hattrie_iter_next(it)) {
 		hattrie_t *trie = *hattrie_iter_val(it);
 		hattrie_free(trie);

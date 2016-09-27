@@ -785,7 +785,7 @@ static int serialize_and_store_chgset(const changeset_t *chs,
 	}
 
 	changeset_iter_t itt;
-	ret = changeset_iter_rem(&itt, chs, false);
+	ret = changeset_iter_rem(&itt, chs);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
@@ -808,7 +808,7 @@ static int serialize_and_store_chgset(const changeset_t *chs,
 	}
 
 	/* Serialize RRSets from the 'add' section. */
-	ret = changeset_iter_add(&itt, chs, false);
+	ret = changeset_iter_add(&itt, chs);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}

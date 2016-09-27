@@ -442,7 +442,7 @@ static int diff_zone_section(
 		return KNOT_EOK;
 	}
 
-	hattrie_iter_t *it = hattrie_iter_begin(conf()->io.zones, true);
+	hattrie_iter_t *it = hattrie_iter_begin(conf()->io.zones);
 	for (; !hattrie_iter_finished(it); hattrie_iter_next(it)) {
 		io->id = (const uint8_t *)hattrie_iter_key(it, &io->id_len);
 
@@ -1399,7 +1399,7 @@ static int check_zone_section(
 		return KNOT_EOK;
 	}
 
-	hattrie_iter_t *it = hattrie_iter_begin(conf()->io.zones, true);
+	hattrie_iter_t *it = hattrie_iter_begin(conf()->io.zones);
 	for (; !hattrie_iter_finished(it); hattrie_iter_next(it)) {
 		size_t id_len;
 		const uint8_t *id = (const uint8_t *)hattrie_iter_key(it, &id_len);

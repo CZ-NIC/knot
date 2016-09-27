@@ -1,4 +1,4 @@
-/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -1247,7 +1247,7 @@ int knot_zone_sign_changeset(const zone_contents_t *zone,
 
 	}
 	changeset_iter_t itt;
-	changeset_iter_all(&itt, in_ch, false);
+	changeset_iter_all(&itt, in_ch);
 
 	knot_rrset_t rr = changeset_iter_next(&itt);
 	while (!knot_rrset_empty(&rr)) {
@@ -1275,7 +1275,7 @@ int knot_zone_sign_nsecs_in_changeset(const zone_keyset_t *zone_keys,
 	}
 
 	changeset_iter_t itt;
-	changeset_iter_add(&itt, changeset, false);
+	changeset_iter_add(&itt, changeset);
 
 	knot_rrset_t rr = changeset_iter_next(&itt);
 	while (!knot_rrset_empty(&rr)) {
