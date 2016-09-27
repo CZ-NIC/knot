@@ -1,4 +1,4 @@
-/*  Copyright (C) 2014 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -29,7 +29,8 @@ static int init(knot_db_t **db, knot_mm_t *mm, void *arg)
 	}
 
 	struct knot_db_trie_opts *opts = arg;
-	hattrie_t *trie = hattrie_create_n(opts->bucket_size, mm);
+	UNUSED(opts);
+	hattrie_t *trie = hattrie_create(mm);
 	if (!trie) {
 		return KNOT_ENOMEM;
 	}

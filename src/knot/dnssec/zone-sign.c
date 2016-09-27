@@ -1239,7 +1239,7 @@ int knot_zone_sign_changeset(const zone_contents_t *zone,
 		.zone_keys = zone_keys,
 		.dnssec_ctx = dnssec_ctx,
 		.changeset = out_ch,
-		.signed_tree = hattrie_create()
+		.signed_tree = hattrie_create(NULL)
 	};
 
 	if (args.signed_tree == NULL) {

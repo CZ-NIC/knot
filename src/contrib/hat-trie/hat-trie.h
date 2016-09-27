@@ -25,17 +25,9 @@
 typedef struct qp_trie hattrie_t;
 typedef struct qp_trie_it hattrie_iter_t;
 
-#define TRIE_BUCKET_SIZE (-1)
-
-inline static hattrie_t* hattrie_create(void)
+inline static hattrie_t* hattrie_create(struct knot_mm *mm)
 {
-	return qp_trie_create(NULL);
-}
-
-inline static hattrie_t* hattrie_create_n(unsigned bucket_size, const struct knot_mm *mm)
-{
-	UNUSED(bucket_size);
-	return qp_trie_create(/*const-cast*/(struct knot_mm *)mm);
+	return qp_trie_create(mm);
 }
 
 inline static void hattrie_free(hattrie_t *trie)

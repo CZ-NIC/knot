@@ -820,7 +820,7 @@ static void upd_changes(
 	// Prepare zone changes storage if it doesn't exist.
 	hattrie_t *zones = conf()->io.zones;
 	if (zones == NULL) {
-		zones = hattrie_create_n(TRIE_BUCKET_SIZE, conf()->mm);
+		zones = hattrie_create(conf()->mm);
 		if (zones == NULL) {
 			return;
 		}

@@ -117,7 +117,7 @@ int main(int argc, char *argv[])
 
 	/* Create trie */
 	value_t *val = NULL;
-	hattrie_t *trie = hattrie_create();
+	hattrie_t *trie = hattrie_create(NULL);
 	ok(trie != NULL, "hattrie: create");
 
 	/* Insert keys */

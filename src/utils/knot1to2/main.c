@@ -75,12 +75,12 @@ static int convert(const char *file_out, const char *file_in)
 
 	share_t share = {
 		.out = out,
-		.ifaces = hattrie_create(),
-		.groups = hattrie_create(),
-		.remotes = hattrie_create(),
-		.acl_xfer = hattrie_create(),
-		.acl_notify = hattrie_create(),
-		.acl_update = hattrie_create()
+		.ifaces = hattrie_create(NULL),
+		.groups = hattrie_create(NULL),
+		.remotes = hattrie_create(NULL),
+		.acl_xfer = hattrie_create(NULL),
+		.acl_notify = hattrie_create(NULL),
+		.acl_update = hattrie_create(NULL)
 	};
 
 	// Parse the input file multiple times to get some context.

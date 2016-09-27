@@ -1,4 +1,4 @@
-/*  Copyright (C) 2014 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -18,17 +18,14 @@
 
 #include "libknot/db/db.h"
 
-/* Defines */
-#define KNOT_DB_TRIE_BUCKET_SIZE  253 /* 1 page per bucket, see hat-trie.h */
-
 /* Native options. */
 struct knot_db_trie_opts {
-	unsigned bucket_size; /*!< Trie bucket size. */
+	unsigned unused;
 };
 
 /* Default options. */
 #define KNOT_DB_TRIE_OPTS_INITIALIZER { \
-	KNOT_DB_TRIE_BUCKET_SIZE \
+	0 \
 }
 
 const knot_db_api_t *knot_db_trie_api(void);

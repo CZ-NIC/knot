@@ -481,7 +481,7 @@ static int zone_memstats(const knot_dname_t *dname, void *data)
 
 	// Init memory estimation context.
 	zone_estim_t est = {
-		.node_table = hattrie_create_n(TRIE_BUCKET_SIZE, &mem_ctx),
+		.node_table = hattrie_create(&mem_ctx),
 	};
 
 	char buff[KNOT_DNAME_TXT_MAXLEN + 1];

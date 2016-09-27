@@ -327,7 +327,7 @@ static void grp_init(void *scanner, const char *name)
 		hattrie_t **trie = (hattrie_t **)hattrie_get(extra->share->groups,
 		                                             name, strlen(name));
 		if (*trie == NULL) {
-			*trie = hattrie_create();
+			*trie = hattrie_create(NULL);
 		}
 		extra->current_trie = *trie;
 	}

@@ -24,7 +24,7 @@
 
 zone_tree_t* zone_tree_create()
 {
-	return hattrie_create();
+	return hattrie_create(NULL);
 }
 
 size_t zone_tree_count(const zone_tree_t *tree)

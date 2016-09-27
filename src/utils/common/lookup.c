@@ -29,7 +29,7 @@ int lookup_init(lookup_t *lookup)
 	memset(lookup, 0, sizeof(*lookup));
 
 	mm_ctx_mempool(&lookup->mm, MM_DEFAULT_BLKSIZE);
-	lookup->trie = hattrie_create_n(TRIE_BUCKET_SIZE, &lookup->mm);
+	lookup->trie = hattrie_create(&lookup->mm);
 	if (lookup->trie == NULL) {
 		mp_delete(lookup->mm.ctx);
 		return KNOT_ENOMEM;
