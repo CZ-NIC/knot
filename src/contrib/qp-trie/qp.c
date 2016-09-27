@@ -411,7 +411,7 @@ static int ns_longer_alloc(nstack_t *ns)
 	if (st == NULL)
 		return KNOT_ENOMEM;
 	ns->stack = st;
-	return 0;
+	return KNOT_EOK;
 }
 
 /*! \brief Ensure the node stack can be extended by one. */
@@ -419,7 +419,7 @@ static inline int ns_longer(nstack_t *ns)
 {
 	// get a longer stack if needed
 	if (likely(ns->len < ns->alen))
-		return 0;
+		return KNOT_EOK;
 	return ns_longer_alloc(ns); // hand-split the part suitable for inlining
 }
 
@@ -436,7 +436,7 @@ static inline int ns_longer(nstack_t *ns)
  *  \param first  Set the value of the first non-matching character (from trie),
  *                optionally; end-of-string character has value -256 (that's why it's int).
  *
- *  \return 0 or KNOT_ENOMEM.
+ *  \return KNOT_EOK or KNOT_ENOMEM.
  */
 static int ns_find_branch(nstack_t *ns, const char *key, uint32_t len,
                           branch_t *info, int *first)
@@ -505,13 +505,13 @@ success:
 			       && (t->flags < flags || (t->flags == 1 && flags == 0))));
 		}
 	#endif
-	return 0;
+	return KNOT_EOK;
 }
 
 /*!
  * \brief Advance the node stack to the last leaf in the subtree.
  *
- * \return 0 or KNOT_ENOMEM.
+ * \return KNOT_EOK or KNOT_ENOMEM.
  */
 static int ns_last_leaf(nstack_t *ns)
 {
@@ -520,7 +520,7 @@ static int ns_last_leaf(nstack_t *ns)
 		ERR_RETURN(ns_longer(ns));
 		node_t *t = ns->stack[ns->len - 1];
 		if (!isbranch(t))
-			return 0;
+			return KNOT_EOK;
 		int lasti = bitmap_weight(t->branch.bitmap) - 1;
 		assert(lasti >= 0);
 		ns->stack[ns->len++] = twig(t, lasti);
@@ -530,7 +530,7 @@ static int ns_last_leaf(nstack_t *ns)
 /*!
  * \brief Advance the node stack to the first leaf in the subtree.
  *
- * \return 0 or KNOT_ENOMEM.
+ * \return KNOT_EOK or KNOT_ENOMEM.
  */
 static int ns_first_leaf(nstack_t *ns)
 {
@@ -539,7 +539,7 @@ static int ns_first_leaf(nstack_t *ns)
 		ERR_RETURN(ns_longer(ns));
 		node_t *t = ns->stack[ns->len - 1];
 		if (!isbranch(t))
-			return 0;
+			return KNOT_EOK;
 		ns->stack[ns->len++] = twig(t, 0);
 	} while (true);
 }
@@ -548,7 +548,7 @@ static int ns_first_leaf(nstack_t *ns)
  * \brief Advance the node stack to the leaf that is previous to the current node.
  *
  * \note Prefix leaf under the current node DOES count (if present; perhaps questionable).
- * \return 0 on success, 1 on not-found, or possibly KNOT_ENOMEM.
+ * \return KNOT_EOK on success, KNOT_ENOENT on not-found, or possibly KNOT_ENOMEM.
  */
 static int ns_prev_leaf(nstack_t *ns)
 {
@@ -559,12 +559,12 @@ static int ns_prev_leaf(nstack_t *ns)
 		t = twig(t, 0);
 		ERR_RETURN(ns_longer(ns));
 		ns->stack[ns->len++] = t;
-		return 0;
+		return KNOT_EOK;
 	}
 
 	do {
 		if (ns->len < 2)
-			return 1; // root without empty key has no previous leaf
+			return KNOT_ENOENT; // root without empty key has no previous leaf
 		t = ns->stack[ns->len - 1];
 		node_t *p = ns->stack[ns->len - 2];
 		int pindex = t - p->branch.twigs; // index in parent via pointer arithmetic
@@ -582,7 +582,7 @@ static int ns_prev_leaf(nstack_t *ns)
  * \brief Advance the node stack to the leaf that is successor to the current node.
  *
  * \note Prefix leaf or anything else under the current node DOES count.
- * Return 0 on success, 1 on not-found, or possibly KNOT_ENOMEM.
+ * \return KNOT_EOK on success, KNOT_ENOENT on not-found, or possibly KNOT_ENOMEM.
  */
 static int ns_next_leaf(nstack_t *ns)
 {
@@ -593,7 +593,7 @@ static int ns_next_leaf(nstack_t *ns)
 		return ns_first_leaf(ns);
 	do {
 		if (ns->len < 2)
-			return 1; // not found, as no more parent is available
+			return KNOT_ENOENT; // not found, as no more parent is available
 		t = ns->stack[ns->len - 1];
 		node_t *p = ns->stack[ns->len - 2];
 		int pindex = t - p->branch.twigs; // index in parent via pointer arithmetic
@@ -611,9 +611,9 @@ static int ns_next_leaf(nstack_t *ns)
 int qp_trie_get_leq(struct qp_trie *tbl, const char *key, uint32_t len, value_t **val)
 {
 	assert(tbl && val);
-	*val = NULL; // so on failure we can just return 1;
+	*val = NULL; // so on failure we can just return;
 	if (tbl->weight == 0)
-		return 1;
+		return KNOT_ENOENT;
 	// First find a key with longest-matching prefix
 	__attribute__((cleanup(ns_cleanup)))
 		nstack_t ns_local;
@@ -626,7 +626,7 @@ int qp_trie_get_leq(struct qp_trie *tbl, const char *key, uint32_t len, value_t 
 	node_t *t = ns->stack[ns->len - 1];
 	if (bp.flags == 0) { // found exact match
 		*val = &t->leaf.val;
-		return 0;
+		return KNOT_EOK;
 	}
 	// Get t: the last node on matching path
 	if (isbranch(t) && t->branch.index == bp.index && t->branch.flags == bp.flags) {
@@ -636,7 +636,7 @@ int qp_trie_get_leq(struct qp_trie *tbl, const char *key, uint32_t len, value_t 
 		if (ns->len == 1) {
 			// root was unmatched already
 			if (un_key < un_leaf)
-				return 1;
+				return KNOT_ENOENT;
 			ERR_RETURN(ns_last_leaf(ns));
 			goto success;
 		}
@@ -654,12 +654,12 @@ int qp_trie_get_leq(struct qp_trie *tbl, const char *key, uint32_t len, value_t 
 		ns->stack[ns->len++] = twig(t, i);
 		ERR_RETURN(ns_last_leaf(ns));
 	} else {
-		ERR_RETURN(ns_prev_leaf(ns)); // KNOT_ENOMEM or 1 for no-leq
+		ERR_RETURN(ns_prev_leaf(ns));
 	}
 success:
 	assert(!isbranch(ns->stack[ns->len - 1]));
 	*val = &ns->stack[ns->len - 1]->leaf.val;
-	return -1;
+	return 1;
 }
 
 /*! \brief Initialize a new leaf, copying the key, and returning failure code. */
@@ -680,7 +680,7 @@ static int mk_leaf(node_t *leaf, const char *key, uint32_t len, knot_mm_t *mm)
 		.val = NULL,
 		.key = k
 	};
-	return 0;
+	return KNOT_EOK;
 }
 
 value_t* qp_trie_get_ins(struct qp_trie *tbl, const char *key, uint32_t len)

@@ -100,16 +100,17 @@ int zone_tree_get_less_or_equal(zone_tree_t *tree,
 	if (fval) {
 		*found = (zone_node_t *)(*fval);
 	}
+
 	int exact_match = 0;
-	if (ret == 0) {
+	if (ret == KNOT_EOK) {
 		if (fval) {
 			*previous = (*found)->prev;
 		}
 		exact_match = 1;
-	} else if (ret < 0) {
+	} else if (ret == 1) {
 		*previous = *found;
 		*found = NULL;
-	} else if (ret > 0) {
+	} else {
 		/* Previous should be the rightmost node.
 		 * For regular zone it is the node left of apex, but for some
 		 * cases like NSEC3, there is no such sort of thing (name wise).

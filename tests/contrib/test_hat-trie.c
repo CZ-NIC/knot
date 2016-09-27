@@ -1,4 +1,4 @@
-/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -21,6 +21,7 @@
 #include "contrib/hat-trie/hat-trie.h"
 #include "contrib/macros.h"
 #include "contrib/string.h"
+#include "libknot/errcode.h"
 
 /* UCW array sorting defines. */
 #define ASORT_PREFIX(X) str_key_##X
@@ -68,13 +69,13 @@ static bool str_key_find_leq(hattrie_t *trie, char **keys, size_t i, size_t size
 	key_buf[key_len - 2] -= 1;
 	if (i < first_key_count) {
 		ret = hattrie_find_leq(trie, key_buf, key_len, &val);
-		if (ret != 1) {
+		if (ret != KNOT_ENOENT) {
 			diag("%s: leq for key BEFORE %zu/'%s' ret = %d", __func__, i, keys[i], ret);
 			return false; /* No key before first. */
 		}
 	} else {
 		ret = hattrie_find_leq(trie, key_buf, key_len, &val);
-		if (ret > 0 || strcmp(*val, key_buf) > 0) {
+		if (ret < KNOT_EOK || strcmp(*val, key_buf) > 0) {
 			diag("%s: '%s' is not before the key %zu/'%s'", __func__, (char*)*val, i, keys[i]);
 			return false; /* Found key must be LEQ than searched. */
 		}
@@ -83,7 +84,7 @@ static bool str_key_find_leq(hattrie_t *trie, char **keys, size_t i, size_t size
 	/* Current key. */
 	key_buf[key_len - 2] += 1;
 	ret = hattrie_find_leq(trie, key_buf, key_len, &val);
-	if (! (ret == 0 && val && strcmp(*val, key_buf) == 0)) {
+	if (! (ret == KNOT_EOK && val && strcmp(*val, key_buf) == 0)) {
 		diag("%s: leq for key %zu/'%s' ret = %d", __func__, i, keys[i], ret);
 		return false; /* Must find equal match. */
 	}
@@ -91,7 +92,7 @@ static bool str_key_find_leq(hattrie_t *trie, char **keys, size_t i, size_t size
 	/* After the current key. */
 	key_buf[key_len - 2] += 1;
 	ret = hattrie_find_leq(trie, key_buf, key_len, &val);
-	if (! (ret <= 0 && strcmp(*val, key_buf) <= 0)) {
+	if (! (ret >= KNOT_EOK && strcmp(*val, key_buf) <= 0)) {
 		diag("%s: leq for key AFTER %zu/'%s' ret = %d %s", __func__, i, keys[i], ret, (char*)*val);
 		return false; /* Every key must have its LEQ match. */
 	}

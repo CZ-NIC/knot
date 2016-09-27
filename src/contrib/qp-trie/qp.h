@@ -59,7 +59,8 @@ value_t* qp_trie_get_ins(struct qp_trie *tbl, const char *key, uint32_t len);
  * \brief Search for less-or-equal element.
  *
  * \param val must be valid; it will be set to NULL if not found or errored.
- * \return 0 for exact match, -1 for previous, 1 for not-found, or KNOT_ENOMEM.
+ * \return KNOT_EOK for exact match, 1 for previous, KNOT_ENOENT for not-found,
+ *         or KNOT_E*.
  */
 int qp_trie_get_leq(struct qp_trie *tbl, const char *key, uint32_t len, value_t **val);
 
