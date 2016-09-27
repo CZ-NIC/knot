@@ -17,7 +17,6 @@
 #pragma once
 
 #include <stdbool.h>
-#include <stddef.h>
 #include <stdint.h>
 
 #include "libknot/mm_ctx.h"
@@ -96,7 +95,7 @@ bool qp_trie_it_finished(qp_trie_it_t *it);
 void qp_trie_it_free(qp_trie_it_t *it);
 
 /*! \brief Return pointer to the key of the current element. */
-const char* qp_trie_it_key(qp_trie_it_t *it, uint32_t *len);
+const char* qp_trie_it_key(qp_trie_it_t *it, size_t *len);
 
 /*! \brief Return pointer to the value of the current element (writable). */
 value_t* qp_trie_it_val(qp_trie_it_t *it);

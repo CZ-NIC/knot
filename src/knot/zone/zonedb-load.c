@@ -277,9 +277,8 @@ static void mark_changed_zones(knot_zonedb_t *zonedb, hattrie_t *changed)
 
 	hattrie_iter_t *it = hattrie_iter_begin(changed);
 	for (; !hattrie_iter_finished(it); hattrie_iter_next(it)) {
-		size_t len;
 		const knot_dname_t *name =
-			(const knot_dname_t *)hattrie_iter_key(it, &len);
+			(const knot_dname_t *)hattrie_iter_key(it, NULL);
 
 		zone_t *zone = knot_zonedb_find(zonedb, name);
 		if (zone != NULL) {

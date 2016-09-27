@@ -90,14 +90,9 @@ inline static void hattrie_iter_free(hattrie_iter_t *it)
 	qp_trie_it_free(it);
 }
 
-inline static const char* hattrie_iter_key(hattrie_iter_t *it, size_t *plen)
+inline static const char* hattrie_iter_key(hattrie_iter_t *it, size_t *len)
 {
-	// it's a bit cumbersome to change the type of `plen` safely
-	uint32_t len32;
-	const char *res = qp_trie_it_key(it, &len32);
-	if (plen)
-		*plen = len32;
-	return res;
+	return qp_trie_it_key(it, len);
 }
 
 inline static value_t* hattrie_iter_val(hattrie_iter_t *it)

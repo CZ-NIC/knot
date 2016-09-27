@@ -811,7 +811,7 @@ void qp_trie_it_free(qp_trie_it_t *it)
 	free(it);
 }
 
-const char* qp_trie_it_key(qp_trie_it_t *it, uint32_t *len)
+const char* qp_trie_it_key(qp_trie_it_t *it, size_t *len)
 {
 	assert(it && it->len);
 	node_t *t = it->stack[it->len - 1];
