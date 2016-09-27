@@ -98,9 +98,6 @@ int main(int argc, char *argv[])
 	}
 	ok(passed, "ztree: lookup");
 
-	/* heal index for ordered lookup */
-	hattrie_build_index(t);
-
 	/* 4. ordered lookup */
 	node = NULL;
 	zone_node_t *prev = NULL;

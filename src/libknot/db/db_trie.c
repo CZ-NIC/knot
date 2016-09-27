@@ -54,12 +54,6 @@ static int txn_begin(knot_db_t *db, knot_db_txn_t *txn, unsigned flags)
 
 static int txn_commit(knot_db_txn_t *txn)
 {
-	/* Rebuild order index only for WR transactions. */
-	if ((size_t)txn->txn & KNOT_DB_RDONLY) {
-		return KNOT_EOK;
-	}
-
-	hattrie_build_index((hattrie_t *)txn->db);
 	return KNOT_EOK;
 }
 

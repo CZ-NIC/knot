@@ -89,15 +89,6 @@ int lookup_insert(lookup_t *lookup, const char *str, void *data)
 	return KNOT_EOK;
 }
 
-void lookup_index(lookup_t *lookup)
-{
-	if (lookup == NULL) {
-		return;
-	}
-
-	hattrie_build_index(lookup->trie);
-}
-
 static int set_key(lookup_t *lookup, char **dst, const char *key, size_t key_len)
 {
 	if (*dst != NULL) {

@@ -469,9 +469,6 @@ static int create_nsec3_nodes(const zone_contents_t *zone,
 
 	hattrie_iter_free(it);
 
-	/* Rebuild index over nsec3 nodes. */
-	hattrie_build_index(nsec3_nodes);
-
 	return result;
 }
 

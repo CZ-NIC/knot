@@ -139,9 +139,6 @@ int main(int argc, char *argv[])
 	/* Check total insertions against trie weight. */
 	is_int(hattrie_weight(trie), inserted, "hattrie: trie weight matches insertions");
 
-	/* Build order-index. */
-	hattrie_build_index(trie);
-
 	/* Lookup all keys */
 	passed = true;
 	for (unsigned i = 0; i < key_count; ++i) {

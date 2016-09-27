@@ -643,7 +643,6 @@ static int iter_init_tree_iters(zone_update_iter_t *it, zone_update_t *update,
 
 	/* Begin iteration. We can safely assume _contents is a valid pointer. */
 	tree = nsec3 ? _contents->nsec3_nodes : _contents->nodes;
-	hattrie_build_index(tree);
 	it->tree_it = hattrie_iter_begin(nsec3 ? _contents->nsec3_nodes : _contents->nodes, true);
 	if (it->tree_it == NULL) {
 		return KNOT_ENOMEM;

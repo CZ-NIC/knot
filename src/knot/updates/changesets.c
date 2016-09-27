@@ -77,9 +77,6 @@ static int changeset_iter_init(changeset_iter_t *ch_it,
 	for (size_t i = 0; i < tries; ++i) {
 		hattrie_t *t = va_arg(args, hattrie_t *);
 		if (t) {
-			if (sorted) {
-				hattrie_build_index(t);
-			}
 			hattrie_iter_t *it = hattrie_iter_begin(t, sorted);
 			if (it == NULL) {
 				cleanup_iter_list(&ch_it->iters);

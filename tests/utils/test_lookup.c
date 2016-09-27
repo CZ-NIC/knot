@@ -63,8 +63,6 @@ static void init(lookup_t *l, const char **table)
 		ok(ret == KNOT_EOK, "Insert '%s'", *table);
 		table++;
 	}
-
-	lookup_index(l);
 }
 
 static void test_search_basic(void)

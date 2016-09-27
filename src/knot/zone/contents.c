@@ -700,7 +700,6 @@ static int recreate_normal_tree(const zone_contents_t *z, zone_contents_t *out)
 	}
 
 	hattrie_iter_free(itt);
-	hattrie_build_index(out->nodes);
 
 	return KNOT_EOK;
 }
@@ -735,7 +734,6 @@ static int recreate_nsec3_tree(const zone_contents_t *z, zone_contents_t *out)
 	}
 
 	hattrie_iter_free(itt);
-	hattrie_build_index(out->nsec3_nodes);
 
 	return KNOT_EOK;
 }
@@ -952,7 +950,6 @@ static int adjust_nodes(zone_tree_t *nodes, zone_adjust_arg_t *adjust_arg,
 	adjust_arg->first_node = NULL;
 	adjust_arg->previous_node = NULL;
 
-	hattrie_build_index(nodes);
 	int ret = zone_tree_apply(nodes, callback, adjust_arg);
 
 	if (adjust_arg->first_node) {

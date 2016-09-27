@@ -45,12 +45,6 @@ inline static size_t hattrie_weight(const hattrie_t *trie)
 	return qp_trie_weight(trie);
 }
 
-inline static void hattrie_build_index(hattrie_t *trie)
-{
-	// not needed
-	UNUSED(trie);
-}
-
 inline static int hattrie_apply_rev(hattrie_t *trie, int (*f)(value_t*,void*), void* d)
 {
 	return qp_trie_apply(trie, f, d);
