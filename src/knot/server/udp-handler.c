@@ -51,48 +51,49 @@ enum {
 
 /*! \brief UDP context data. */
 typedef struct {
+	knot_mm_t mm;
+	void *rq;
 	knot_layer_t layer; /*!< Query processing layer. */
-	server_t *server;   /*!< Name server structure. */
-	unsigned thread_id; /*!< Thread identifier. */
+	struct process_query_param param;
+	knot_pkt_t *query;
+	knot_pkt_t *ans;
 } udp_context_t;
 
 static void udp_handle(udp_context_t *udp, int fd, struct sockaddr_storage *ss,
                        struct iovec *rx, struct iovec *tx)
 {
 	/* Create query processing parameter. */
-	struct process_query_param param = {0};
-	param.remote = ss;
-	param.proc_flags  = NS_QUERY_NO_AXFR|NS_QUERY_NO_IXFR; /* No transfers. */
-	param.proc_flags |= NS_QUERY_LIMIT_SIZE; /* Enforce UDP packet size limit. */
-	param.proc_flags |= NS_QUERY_LIMIT_ANY;  /* Limit ANY over UDP (depends on zone as well). */
-	param.socket = fd;
-	param.server = udp->server;
-	param.thread_id = udp->thread_id;
+	udp->param.proc_flags = 0;
+	udp->param.remote = ss;
+	udp->param.proc_flags  = NS_QUERY_NO_AXFR|NS_QUERY_NO_IXFR; /* No transfers. */
+	udp->param.proc_flags |= NS_QUERY_LIMIT_SIZE; /* Enforce UDP packet size limit. */
+	udp->param.proc_flags |= NS_QUERY_LIMIT_ANY;  /* Limit ANY over UDP (depends on zone as well). */
+	udp->param.socket = fd;
 
 	/* Rate limit is applied? */
-	if (unlikely(udp->server->rrl != NULL) && udp->server->rrl->rate > 0) {
-		param.proc_flags |= NS_QUERY_LIMIT_RATE;
+	if (unlikely(udp->param.server->rrl != NULL) && udp->param.server->rrl->rate > 0) {
+		udp->param.proc_flags |= NS_QUERY_LIMIT_RATE;
 	}
 
 	/* Start query processing. */
-	udp->layer.state = knot_layer_begin(&udp->layer, &param);
+	udp->layer.state = knot_layer_begin(&udp->layer, &udp->param);
 
 	/* Create packets. */
-	knot_pkt_t *query = knot_pkt_new(rx->iov_base, rx->iov_len, udp->layer.mm);
-	knot_pkt_t *ans = knot_pkt_new(tx->iov_base, tx->iov_len, udp->layer.mm);
+	udp->query = knot_pkt_new(rx->iov_base, rx->iov_len, udp->layer.mm);
+	udp->ans = knot_pkt_new(tx->iov_base, tx->iov_len, udp->layer.mm);
 
 	/* Input packet. */
-	(void) knot_pkt_parse(query, 0);
-	int state = knot_layer_consume(&udp->layer, query);
+	(void) knot_pkt_parse(udp->query, 0);
+	knot_layer_consume(&udp->layer, udp->query);
 
 	/* Process answer. */
-	while (state & (KNOT_STATE_PRODUCE|KNOT_STATE_FAIL)) {
-		state = knot_layer_produce(&udp->layer, ans);
+	while (udp->layer.state & (KNOT_STATE_PRODUCE|KNOT_STATE_FAIL)) {
+		udp->layer.state = knot_layer_produce(&udp->layer, udp->ans);
 	}
 
 	/* Send response only if finished successfully. */
-	if (state == KNOT_STATE_DONE) {
-		tx->iov_len = ans->size;
+	if (udp->layer.state == KNOT_STATE_DONE) {
+		tx->iov_len = udp->ans->size;
 	} else {
 		tx->iov_len = 0;
 	}
@@ -101,8 +102,8 @@ static void udp_handle(udp_context_t *udp, int fd, struct sockaddr_storage *ss,
 	knot_layer_finish(&udp->layer);
 
 	/* Cleanup. */
-	knot_pkt_free(&query);
-	knot_pkt_free(&ans);
+	knot_pkt_free(&udp->query);
+	knot_pkt_free(&udp->ans);
 }
 
 /*! \brief Pointer to selected UDP master implementation. */
@@ -424,19 +425,18 @@ int udp_master(dthread_t *thread)
 	unsigned thr_id = dt_get_id(thread);
 	iohandler_t *handler = (iohandler_t *)thread->data;
 	unsigned *iostate = &handler->thread_state[thr_id];
-	void *rq = _udp_init();
 	ifacelist_t *ref = NULL;
-
-	/* Create big enough memory cushion. */
-	knot_mm_t mm;
-	mm_ctx_mempool(&mm, 16 * MM_DEFAULT_BLKSIZE);
 
 	/* Create UDP answering context. */
 	udp_context_t udp;
 	memset(&udp, 0, sizeof(udp_context_t));
-	udp.server = handler->server;
-	udp.thread_id = handler->thread_id[thr_id];
-	knot_layer_init(&udp.layer, &mm, process_query_layer());
+	udp.rq = _udp_init();
+	udp.param.server = handler->server;
+	udp.param.thread_id = handler->thread_id[thr_id];
+	knot_layer_init(&udp.layer, &udp.mm, process_query_layer());
+
+	/* Create big enough memory cushion. */
+	mm_ctx_mempool(&udp.mm, 16 * MM_DEFAULT_BLKSIZE);
 
 	/* Event source. */
 	fdset_t fds;
@@ -448,12 +448,12 @@ int udp_master(dthread_t *thread)
 		/* Check handler state. */
 		if (unlikely(*iostate & ServerReload)) {
 			*iostate &= ~ServerReload;
-			udp.thread_id = handler->thread_id[thr_id];
+			udp.param.thread_id = handler->thread_id[thr_id];
 
 			rcu_read_lock();
 			forget_ifaces(ref, &fds);
 			ref = handler->server->ifaces;
-			track_ifaces(ref, udp.thread_id, &fds);
+			track_ifaces(ref, udp.param.thread_id, &fds);
 			rcu_read_unlock();
 			if (fds.n == 0) {
 				break;
@@ -479,17 +479,17 @@ int udp_master(dthread_t *thread)
 			}
 			events -= 1;
 			int rcvd = 0;
-			if ((rcvd = _udp_recv(fds.pfd[i].fd, rq)) > 0) {
-				_udp_handle(&udp, rq);
+			if ((rcvd = _udp_recv(fds.pfd[i].fd, udp.rq)) > 0) {
+				_udp_handle(&udp, udp.rq);
 				/* Flush allocated memory. */
-				mp_flush(mm.ctx);
-				_udp_send(rq);
+				mp_flush(udp.mm.ctx);
+				_udp_send(udp.rq);
 			}
 		}
 	}
 
-	_udp_deinit(rq);
+	_udp_deinit(udp.rq);
 	forget_ifaces(ref, &fds);
-	mp_delete(mm.ctx);
+	mp_delete(udp.mm.ctx);
 	return KNOT_EOK;
 }
