@@ -370,13 +370,6 @@ static int iface_udp_fd(const iface_t *iface, int thread_id)
 #endif
 }
 
-/*! \brief Release the interface list reference and free watched descriptor set. */
-static void forget_ifaces(ifacelist_t *ifaces, fdset_t *fds)
-{
-	ref_release((ref_t *)ifaces);
-	fdset_clear(fds);
-}
-
 /*!
  * \brief Make a set of watched descriptors based on the interface list.
  *
@@ -389,12 +382,17 @@ static void forget_ifaces(ifacelist_t *ifaces, fdset_t *fds)
 static int track_ifaces(const ifacelist_t *ifaces, int thrid,
                            fdset_t *fds)
 {
-	assert(ifaces && fds && fds->n == 0);
+	assert(ifaces && fds);
 
 	nfds_t nfds = list_size(&ifaces->l);
-	int rc = fdset_init(fds, nfds);
-	if (rc != KNOT_EOK)
-		return rc;
+	if (fds->size == 0) {
+		int rc = fdset_init(fds, nfds);
+		if (rc != KNOT_EOK)
+			return rc;
+	} else {
+		/* Remove any obsolete file descriptors. */
+               fdset_clear(fds);
+	}
 
 	iface_t *iface = NULL;
 	WALK_LIST(iface, ifaces->l) {
@@ -403,6 +401,10 @@ static int track_ifaces(const ifacelist_t *ifaces, int thrid,
 	assert(fds->n == nfds);
 
 	return KNOT_EOK;
+}
+
+static void udp_cleanup(udp_context_t *udp) {
+	_udp_deinit(udp->rq);
 }
 
 int udp_master(dthread_t *thread)
@@ -451,7 +453,7 @@ int udp_master(dthread_t *thread)
 			udp.param.thread_id = handler->thread_id[thr_id];
 
 			rcu_read_lock();
-			forget_ifaces(ref, &fds);
+			ref_release((ref_t *)ref);
 			ref = handler->server->ifaces;
 			track_ifaces(ref, udp.param.thread_id, &fds);
 			rcu_read_unlock();
@@ -488,8 +490,9 @@ int udp_master(dthread_t *thread)
 		}
 	}
 
-	_udp_deinit(udp.rq);
-	forget_ifaces(ref, &fds);
+	udp_cleanup(&udp);
 	mp_delete(udp.mm.ctx);
+	ref_release((ref_t *)ref);
+	fdset_clear(&fds);
 	return KNOT_EOK;
 }
