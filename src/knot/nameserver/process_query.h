@@ -48,6 +48,7 @@ struct process_query_param {
 	int        socket;
 	const struct sockaddr_storage *remote;
 	unsigned   thread_id;
+	knot_layer_t *layer;
 };
 
 /*! \brief Query processing intermediate data. */

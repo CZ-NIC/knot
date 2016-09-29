@@ -62,37 +62,42 @@ typedef struct {
 static void udp_handle(udp_context_t *udp, int fd, struct sockaddr_storage *ss,
                        struct iovec *rx, struct iovec *tx)
 {
-	/* Create query processing parameter. */
-	udp->param.proc_flags = 0;
-	udp->param.remote = ss;
-	udp->param.proc_flags  = NS_QUERY_NO_AXFR|NS_QUERY_NO_IXFR; /* No transfers. */
-	udp->param.proc_flags |= NS_QUERY_LIMIT_SIZE; /* Enforce UDP packet size limit. */
-	udp->param.proc_flags |= NS_QUERY_LIMIT_ANY;  /* Limit ANY over UDP (depends on zone as well). */
-	udp->param.socket = fd;
+	int state = udp->layer.state;
 
-	/* Rate limit is applied? */
-	if (unlikely(udp->param.server->rrl != NULL) && udp->param.server->rrl->rate > 0) {
-		udp->param.proc_flags |= NS_QUERY_LIMIT_RATE;
+	if (udp->layer.defer_fd.fd == 0) {
+		/* Create query processing parameter. */
+		udp->param.proc_flags = 0;
+		udp->param.remote = ss;
+		udp->param.proc_flags  = NS_QUERY_NO_AXFR|NS_QUERY_NO_IXFR; /* No transfers. */
+		udp->param.proc_flags |= NS_QUERY_LIMIT_SIZE; /* Enforce UDP packet size limit. */
+		udp->param.proc_flags |= NS_QUERY_LIMIT_ANY;  /* Limit ANY over UDP (depends on zone as well). */
+		udp->param.socket = fd;
+
+		/* Rate limit is applied? */
+		if (unlikely(udp->param.server->rrl != NULL) && udp->param.server->rrl->rate > 0) {
+			udp->param.proc_flags |= NS_QUERY_LIMIT_RATE;
+		}
+
+		/* Start query processing. */
+		udp->layer.state = knot_layer_begin(&udp->layer, &udp->param);
+
+		/* Create packets. */
+		udp->query = knot_pkt_new(rx->iov_base, rx->iov_len, udp->layer.mm);
+		udp->ans = knot_pkt_new(tx->iov_base, tx->iov_len, udp->layer.mm);
+
+		/* Input packet. */
+		(void) knot_pkt_parse(udp->query, 0);
+		state = knot_layer_consume(&udp->layer, udp->query);
 	}
 
-	/* Start query processing. */
-	udp->layer.state = knot_layer_begin(&udp->layer, &udp->param);
-
-	/* Create packets. */
-	udp->query = knot_pkt_new(rx->iov_base, rx->iov_len, udp->layer.mm);
-	udp->ans = knot_pkt_new(tx->iov_base, tx->iov_len, udp->layer.mm);
-
-	/* Input packet. */
-	(void) knot_pkt_parse(udp->query, 0);
-	knot_layer_consume(&udp->layer, udp->query);
-
 	/* Process answer. */
-	while (udp->layer.state & (KNOT_STATE_PRODUCE|KNOT_STATE_FAIL)) {
-		udp->layer.state = knot_layer_produce(&udp->layer, udp->ans);
+	while (state & (KNOT_STATE_PRODUCE|KNOT_STATE_FAIL)) {
+		state = knot_layer_produce(&udp->layer, udp->ans);
+		if (udp->layer.defer_fd.fd) return;
 	}
 
 	/* Send response only if finished successfully. */
-	if (udp->layer.state == KNOT_STATE_DONE) {
+	if (state == KNOT_STATE_DONE) {
 		tx->iov_len = udp->ans->size;
 	} else {
 		tx->iov_len = 0;
@@ -386,25 +391,128 @@ static int track_ifaces(const ifacelist_t *ifaces, int thrid,
 
 	nfds_t nfds = list_size(&ifaces->l);
 	if (fds->size == 0) {
+		/* Use a modest initial size. */
 		int rc = fdset_init(fds, nfds);
 		if (rc != KNOT_EOK)
 			return rc;
 	} else {
 		/* Remove any obsolete file descriptors. */
-               fdset_clear(fds);
+		unsigned i = 0;
+		while (i < fds->n) {
+			if (fds->ctx[i] == NULL) fdset_remove(fds, i);
+			else ++i;
+		}
 	}
 
 	iface_t *iface = NULL;
 	WALK_LIST(iface, ifaces->l) {
 		fdset_add(fds, iface_udp_fd(iface, thrid), POLLIN, NULL);
 	}
-	assert(fds->n == nfds);
+	assert(fds->n >= nfds);
 
 	return KNOT_EOK;
 }
 
 static void udp_cleanup(udp_context_t *udp) {
+	if (udp->layer.defer_fd.fd) {
+		/* Ask the module to clean up its resources. */
+		udp->layer.defer_fd.fd = 0;
+		_udp_handle(udp, udp->rq);
+	}
+
 	_udp_deinit(udp->rq);
+}
+
+static int cache_udp_query(udp_context_t *main_udp, fdset_t *fds) {
+	/* Try to move the query into the deferred set. */
+	udp_context_t *udp = malloc(sizeof(*udp));
+	if (udp == NULL) return KNOT_ENOMEM;
+
+	/* Duplicate the UDP context, preserving internal references. */
+	*udp = *main_udp;
+	udp->param.layer = &udp->layer;
+	((struct query_data*)udp->layer.data)->param = &udp->param;
+
+	/* Reinitialize the original context */
+	main_udp->rq = _udp_init();
+	knot_layer_init(&main_udp->layer, &main_udp->mm, process_query_layer());
+
+	int i = fdset_add(fds, udp->layer.defer_fd.fd,
+	                  udp->layer.defer_fd.events, udp);
+	if (i < 0) {
+		free(udp);
+		return i;
+	}
+
+	fdset_set_watchdog(fds, i, udp->layer.defer_timeout);
+
+	return KNOT_EOK;
+}
+
+static void handle_udp_event(udp_context_t *main_udp,
+                             fdset_t *fds, nfds_t i) {
+	udp_context_t *udp = fds->ctx[i];
+	if (udp == NULL) {
+		/* This event is an incoming query. */
+		if (_udp_recv(fds->pfd[i].fd, main_udp->rq) <= 0) return;
+		udp = main_udp;
+	}
+
+	udp->layer.defer_fd.revents = fds->pfd[i].revents;
+	_udp_handle(udp, udp->rq);
+
+	if (udp->layer.defer_fd.fd) {
+		if (udp == main_udp) {
+			/* This is the first time this query is being
+			 * deferred.  Move it into the deferred set. */
+			int rc = cache_udp_query(udp, fds);
+			if (rc != KNOT_EOK) {
+				/* Can't stash the query -- clean it up but
+				 * leave main_udp ready for reuse. */
+				udp->layer.defer_fd.fd = 0;
+				_udp_handle(udp, udp->rq);
+				udp->layer.state = KNOT_STATE_FAIL;
+				mp_flush(udp->mm.ctx);
+			}
+		} else {
+			/* The file descriptor and/or timeout value may have
+			 * changed.  Update the fdset accordingly. */
+			fds->pfd[i].fd = udp->layer.defer_fd.fd;
+			fds->pfd[i].events = udp->layer.defer_fd.events;
+			fdset_set_watchdog(fds, i, udp->layer.defer_timeout);
+		}
+
+		return;
+	}
+
+	/* Flush allocated memory. */
+	mp_flush(udp->mm.ctx);
+	_udp_send(udp->rq);
+
+	if (udp != main_udp) {
+		/* Remove the query from the deferred set. */
+		fdset_remove(fds, i);
+		udp_cleanup(udp);
+		free(udp);
+	}
+}
+
+static enum fdset_sweep_state sweep_cb(fdset_t* fds, int i, void* data) {
+	udp_context_t *udp = fds->ctx[i];
+
+	/* udp will never be NULL because the sweep callback is only
+	 * called when timeouts occur, and timeouts are only set on
+	 * file descriptors for deferred queries. */
+	assert(udp != NULL);
+
+	udp->layer.defer_timeout = -1;
+	_udp_handle(udp, udp->rq);
+
+	if (udp->layer.defer_fd.fd) {
+		return FDSET_KEEP;
+	}
+
+	return FDSET_SWEEP;
 }
 
 int udp_master(dthread_t *thread)
@@ -435,6 +543,7 @@ int udp_master(dthread_t *thread)
 	udp.rq = _udp_init();
 	udp.param.server = handler->server;
 	udp.param.thread_id = handler->thread_id[thr_id];
+	udp.param.layer = &udp.layer;
 	knot_layer_init(&udp.layer, &udp.mm, process_query_layer());
 
 	/* Create big enough memory cushion. */
@@ -474,20 +583,27 @@ int udp_master(dthread_t *thread)
 			break;
 		}
 
-		/* Process the events. */
-		for (nfds_t i = 0; i < fds.n && events > 0; i++) {
+		/* Process the events.  This must be done in reverse
+                 * order so that handle_udp_event() may safely add or
+                 * remove entries. */
+		for (int i = fds.n-1; i >= 0 && events > 0; i--) {
 			if (fds.pfd[i].revents == 0) {
 				continue;
 			}
 			events -= 1;
-			int rcvd = 0;
-			if ((rcvd = _udp_recv(fds.pfd[i].fd, udp.rq)) > 0) {
-				_udp_handle(&udp, udp.rq);
-				/* Flush allocated memory. */
-				mp_flush(udp.mm.ctx);
-				_udp_send(udp.rq);
-			}
+			handle_udp_event(&udp, &fds, i);
 		}
+
+		/* Handle timeouts. */
+		fdset_sweep(&fds, sweep_cb, NULL);
+	}
+
+	/* Drop any remaining deferred queries. */
+	for (int i=0; i < fds.n; ++i) {
+		udp_context_t *_udp = fds.ctx[i];
+		if (_udp == NULL) continue;
+		udp_cleanup(_udp);
+		free(_udp);
 	}
 
 	udp_cleanup(&udp);

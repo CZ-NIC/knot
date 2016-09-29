@@ -481,10 +481,19 @@ static int process_query_out(knot_layer_t *ctx, knot_pkt_t *pkt)
 	struct query_data *qdata = QUERY_DATA(ctx);
 	struct query_plan *plan = conf()->query_plan;
 	struct query_step *step = NULL;
+	int next_state;
+
+	if (ctx->defer_fd.fd) {
+		/* We are resuming from an earlier invocation. */
+		step = ctx->step;
+		next_state = ctx->state;
+		if (ctx->resume_index == 1) goto resume1;
+		goto resume2;
+	}
 
 	/* Check parse state. */
 	knot_pkt_t *query = qdata->query;
-	int next_state = KNOT_STATE_PRODUCE;
+	next_state = KNOT_STATE_PRODUCE;
 	if (query->parsed < query->size) {
 		knot_pkt_clear(pkt);
 		qdata->rcode = KNOT_RCODE_FORMERR;
@@ -504,7 +513,14 @@ static int process_query_out(knot_layer_t *ctx, knot_pkt_t *pkt)
 	/* Before query processing code. */
 	if (plan) {
 		WALK_LIST(step, plan->stage[QPLAN_BEGIN]) {
+resume1:
 			next_state = step->process(next_state, pkt, qdata, step->ctx);
+			if (ctx->defer_fd.fd) {
+				ctx->step = step;
+				ctx->resume_index = 1;
+				rcu_read_unlock();
+				return next_state;
+			}
 		}
 	}
 
@@ -567,7 +583,14 @@ finish:
 	/* After query processing code. */
 	if (plan) {
 		WALK_LIST(step, plan->stage[QPLAN_END]) {
+resume2:
 			next_state = step->process(next_state, pkt, qdata, step->ctx);
+			if (ctx->defer_fd.fd) {
+				ctx->step = step;
+				ctx->resume_index = 2;
+				rcu_read_unlock();
+				return next_state;
+			}
 		}
 	}
 
@@ -578,6 +601,7 @@ finish:
 
 	rcu_read_unlock();
 
+	ctx->defer_fd.fd = 0;
 	return next_state;
 }
 

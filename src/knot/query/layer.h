@@ -16,6 +16,8 @@
 
 #pragma once
 
+#include <poll.h>
+
 #include "libknot/packet/pkt.h"
 #include "libknot/mm_ctx.h"
 
@@ -42,6 +44,11 @@ struct knot_layer {
 	knot_mm_t *mm;   /* Processing memory context. */
 	int state;       /* Bitmap of enum knot_layer_state. */
 	void *data;      /* Module specific. */
+	struct pollfd defer_fd;  /* Polling information for deferred query. */
+	int defer_timeout;       /* Polling timeout in seconds. */
+	void *defer_data;        /* Async I/O state info. */
+	struct query_step *step; /* Current query step. */
+	int resume_index;        /* Resume point for deferred functions. */
 	const struct knot_layer_api *api;
 };
 
