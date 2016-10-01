@@ -163,6 +163,26 @@ ssize_t net_stream_send(int sock, const uint8_t *buffer, size_t size, int timeou
 ssize_t net_stream_recv(int sock, uint8_t *buffer, size_t size, int timeout_ms);
 
 /*!
+ * \brief Send a message without blocking.
+ *
+ * The sent data is shifted out of msg.  If there is any data remaining in msg
+ * then this function should be reinvoked when sock is ready for writing.
+ *
+ * \see net_send
+ */
+ssize_t net_send_nonblocking(int sock, struct msghdr *msg);
+
+/*!
+ * \brief Receive a message without blocking.
+ *
+ * The received data is shifted out of msg.  If there is any space remaining in
+ * msg then this function should be reinvoked when sock is ready for reading.
+ *
+ * \see net_recv
+ */
+ssize_t net_recv_nonblocking(int sock, struct msghdr *msg);
+
+/*!
  * \brief Send a DNS message on a TCP socket.
  *
  * The outgoing message is prefixed with a two-byte value carrying the DNS

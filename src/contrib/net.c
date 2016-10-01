@@ -535,6 +535,20 @@ ssize_t net_stream_recv(int sock, uint8_t *buffer, size_t size, int timeout_ms)
 	return net_recv(sock, buffer, size, NULL, timeout_ms);
 }
 
+ssize_t net_send_nonblocking(int sock, struct msghdr *msg)
+{
+	ssize_t len = sendmsg(sock, msg, MSG_NOSIGNAL);
+	if (len > 0) msg_iov_shift(msg, len);
+	return len;
+}
+
+ssize_t net_recv_nonblocking(int sock, struct msghdr *msg)
+{
+	ssize_t len = recvmsg(sock, msg, MSG_DONTWAIT | MSG_NOSIGNAL);
+	if (len > 0) msg_iov_shift(msg, len);
+	return len;
+}
+
 /* -- DNS specific I/O ----------------------------------------------------- */
 
 ssize_t net_dns_tcp_send(int sock, const uint8_t *buffer, size_t size, int timeout_ms)
