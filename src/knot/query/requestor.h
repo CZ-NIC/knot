@@ -47,6 +47,11 @@ struct knot_request {
 	knot_pkt_t *query;
 	knot_pkt_t *resp;
 	knot_sign_context_t sign;
+
+	/* For non-blocking I/O state */
+	struct iovec iov[2];
+	struct msghdr msg;
+	uint16_t pktsize;
 };
 
 /*!
@@ -107,3 +112,19 @@ void knot_requestor_clear(struct knot_requestor *requestor);
 int knot_requestor_exec(struct knot_requestor *requestor,
                         struct knot_request *request,
                         int timeout_ms);
+
+/*!
+ * \brief Execute a request asynchronously.  This does the same thing as
+ * knot_requestor_exec() except that, instead of blocking, it returns an
+ * event mask and expects to be reinvoked when request->fd becomes ready
+ * for the specified event(s).
+ *
+ * \param requestor  Requestor instance.
+ * \param request    Request instance.
+ *
+ * \return KNOT_EOK, an error or a set of POLL events (see poll(2)).
+ * You can distinguish these three cases because errors are negative,
+ * KNOT_EOK is zero and POLL event masks are positive.
+ */
+int knot_requestor_exec_nonblocking(struct knot_requestor *requestor,
+                                    struct knot_request *request);

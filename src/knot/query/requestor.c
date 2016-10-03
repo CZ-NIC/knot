@@ -15,6 +15,7 @@
  */
 
 #include <assert.h>
+#include <poll.h>
 
 #include "libknot/attribute.h"
 #include "knot/query/requestor.h"
@@ -72,6 +73,66 @@ static int request_send(struct knot_request *request, int timeout_ms)
 	return KNOT_EOK;
 }
 
+/*
+ * Returns KNOT_EOK, a negative error code or a positive poll() event mask.
+ */
+static int request_tcp_send_nonblocking(struct knot_request *request)
+{
+	struct msghdr *msg = &request->msg;
+
+	if (msg->msg_iov == NULL) {
+		request->pktsize = htons(request->query->size);
+		request->iov[0].iov_base = &request->pktsize;
+		request->iov[0].iov_len = sizeof(request->pktsize);
+		request->iov[1].iov_base = request->query->wire;
+		request->iov[1].iov_len = request->query->size;
+		msg->msg_iov = request->iov;
+		msg->msg_iovlen = 2;
+	}
+
+	int len = net_send_nonblocking(request->fd, msg);
+	if (len < 0) return len;
+
+	if (msg->msg_iovlen != 0) {
+		/* Request re-invocation. */
+		return POLLOUT;
+	}
+
+	/* Mark the msg as unused. */
+	msg->msg_iov = NULL;
+
+	return KNOT_EOK;
+}
+
+/*
+ * Returns KNOT_EOK, a negative error code or a positive poll() event mask.
+ */
+static int request_send_nonblocking(struct knot_request *request)
+{
+	/* Initiate non-blocking connect if not connected. */
+	int ret = request_ensure_connected(request);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	/* Send query. */
+	if (use_tcp(request)) {
+		ret = request_tcp_send_nonblocking(request);
+		if (ret < 0) {
+			return KNOT_ECONN;
+		}
+	} else {
+		ret = net_dgram_send(request->fd, request->query->wire,
+		                     request->query->size, NULL);
+		if (ret != request->query->size) {
+			return KNOT_ECONN;
+		}
+		return KNOT_EOK;
+	}
+
+	return ret;
+}
+
 static int request_recv(struct knot_request *request, int timeout_ms)
 {
 	knot_pkt_t *resp = request->resp;
@@ -99,6 +160,89 @@ static int request_recv(struct knot_request *request, int timeout_ms)
 
 	resp->size = ret;
 	return ret;
+}
+
+/*
+ * Returns KNOT_EOK, a negative error or a poll() event mask.
+ */
+static int request_tcp_recv_nonblocking(struct knot_request *request)
+{
+	struct msghdr *msg = &request->msg;
+
+	if (msg->msg_iov == NULL) {
+		knot_pkt_clear(request->resp);
+		request->iov[0].iov_base = &request->pktsize;
+		request->iov[0].iov_len = sizeof(request->pktsize);
+		msg->msg_iov = request->iov;
+		msg->msg_iovlen = 1;
+		return POLLIN;
+	}
+
+	if (request->iov[0].iov_base == &request->pktsize) {
+		/* Read the packet size. */
+		ssize_t len = net_recv_nonblocking(request->fd, msg);
+		if (len < 0) return len;
+
+		if (msg->msg_iovlen == 0) {
+			uint16_t pktsize = ntohs(request->pktsize);
+			if (request->resp->max_size < pktsize) {
+				return KNOT_ESPACE;
+			}
+
+			/* Begin reading the packet data. */
+			request->iov[0].iov_base = request->resp->wire;
+			request->iov[0].iov_len = pktsize;
+			msg->msg_iovlen = 1;
+		}
+
+		/* Request re-invocation. */
+		return POLLIN;
+	} else {
+		// Read the packet data
+		ssize_t len = net_recv_nonblocking(request->fd, msg);
+		if (len < 0) return len;
+
+		request->resp->size += len;
+
+		if (msg->msg_iovlen > 0) {
+			/* Request re-invocation. */
+			return POLLIN;
+		}
+	}
+
+	return KNOT_EOK;
+}
+
+/*
+ * Returns KNOT_EOK, a negative error or a poll() event mask.
+ */
+static int request_recv_nonblocking(struct knot_request *request)
+{
+	/* Wait for readability */
+	int ret = request_ensure_connected(request);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	/* Receive it */
+	if (use_tcp(request)) {
+		ret = request_tcp_recv_nonblocking(request);
+		if (ret < 0) {
+			return KNOT_ECONN;
+		}
+		return ret;
+	}
+
+	/* Receive a UDP datagram */
+	knot_pkt_t *resp = request->resp;
+	knot_pkt_clear(resp);
+	ret = recv(request->fd, resp->wire, resp->max_size, 0);
+	if (ret < 0) {
+		return KNOT_ECONN;
+	}
+
+	resp->size = ret;
+	return KNOT_EOK;
 }
 
 struct knot_request *knot_request_make(knot_mm_t *mm,
@@ -215,6 +359,62 @@ static int request_io(struct knot_requestor *req, struct knot_request *last,
 	return KNOT_EOK;
 }
 
+/*
+ * Returns KNOT_EOK or a negative error.
+ */
+static int request_io_nonblocking(struct knot_requestor *req,
+                                  struct knot_request *last)
+{
+	knot_pkt_t *query = last->query;
+	knot_pkt_t *resp = last->resp;
+
+	/* Data to be sent. */
+	if (req->layer.state == KNOT_STATE_PRODUCE) {
+
+		/* Process query and send it out. */
+		knot_layer_produce(&req->layer, query);
+
+		if (req->layer.state == KNOT_STATE_CONSUME) {
+			int ret = request_send_nonblocking(last);
+			if (ret < 0) {
+				return ret;
+			}
+
+			if (ret > 0) {
+				// Instruct the caller to wait on the fd
+				req->layer.defer_fd.fd = last->fd;
+				req->layer.defer_fd.events = ret;
+				return KNOT_EOK;
+			}
+
+			// Instruct the caller to wait for the response
+			req->layer.defer_fd.fd = last->fd;
+			req->layer.defer_fd.events = POLLIN;
+			return KNOT_EOK;
+		}
+	}
+
+	/* Data to be read. */
+	if (req->layer.state == KNOT_STATE_CONSUME) {
+		/* Read answer and process it. */
+		int ret = request_recv_nonblocking(last);
+		if (ret < 0) {
+			return ret;
+		}
+		if (ret > 0) {
+			req->layer.defer_fd.fd = last->fd;
+			req->layer.defer_fd.events = ret;
+			return KNOT_EOK;
+		}
+
+		(void) knot_pkt_parse(resp, 0);
+		knot_layer_consume(&req->layer, resp);
+		req->layer.defer_fd.fd = 0;
+	}
+
+	return KNOT_EOK;
+}
+
 int knot_requestor_exec(struct knot_requestor *requestor,
                         struct knot_request *request,
                         int timeout_ms)
@@ -233,6 +433,42 @@ int knot_requestor_exec(struct knot_requestor *requestor,
 			return ret;
 		}
 	}
+
+	/* Expect complete request. */
+	if (requestor->layer.state != KNOT_STATE_DONE) {
+		ret = KNOT_LAYER_ERROR;
+	}
+
+	/* Finish current query processing. */
+	knot_layer_reset(&requestor->layer);
+
+	return ret;
+}
+
+/*
+ * Returns KNOT_EOK or a negative error code.
+ */
+int knot_requestor_exec_nonblocking(struct knot_requestor *requestor,
+                                    struct knot_request *request)
+{
+	if (!requestor || !request) {
+		return KNOT_EINVAL;
+	}
+
+	/* Do I/O until the processing is satisfied or fails. */
+	while (requestor->layer.state & (KNOT_STATE_PRODUCE|KNOT_STATE_CONSUME)) {
+		int ret = request_io_nonblocking(requestor, request);
+		if (ret < 0) {
+			knot_layer_reset(&requestor->layer);
+			return ret;
+		}
+		if (requestor->layer.defer_fd.fd) {
+			/* Request re-invocation. */
+			return KNOT_EOK;
+		}
+	}
+
+	int ret = KNOT_EOK;
 
 	/* Expect complete request. */
 	if (requestor->layer.state != KNOT_STATE_DONE) {
