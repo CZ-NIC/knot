@@ -54,47 +54,84 @@ struct dnsproxy {
 	int timeout;
 };
 
+struct dnsproxy_data {
+	struct knot_requestor re;
+	struct knot_request *req;
+};
+
 static int dnsproxy_fwd(int state, knot_pkt_t *pkt, struct query_data *qdata, void *ctx)
 {
-	if (pkt == NULL || qdata == NULL || ctx == NULL) {
-		return KNOT_STATE_FAIL;
-	}
-
-	/* Forward only queries ending with REFUSED (no zone) or NXDOMAIN (if configured) */
+	knot_layer_t *layer = qdata->param->layer;
 	struct dnsproxy *proxy = ctx;
-	if (!(qdata->rcode == KNOT_RCODE_REFUSED ||
-	     (qdata->rcode == KNOT_RCODE_NXDOMAIN && proxy->catch_nxdomain))) {
-		return state;
-	}
+	struct dnsproxy_data *proxy_data = layer->defer_data;
 
-	/* Capture layer context. */
-	const knot_layer_api_t *capture = query_capture_api();
-	struct capture_param capture_param = {
-		.sink = pkt
-	};
+	if (proxy_data == NULL) {
+		if (pkt == NULL || qdata == NULL || ctx == NULL) {
+			return KNOT_STATE_FAIL;
+		}
 
-	/* Create a forwarding request. */
-	struct knot_requestor re;
-	int ret = knot_requestor_init(&re, capture, &capture_param, qdata->mm);
-	if (ret != KNOT_EOK) {
-		return state; /* Ignore, not enough memory. */
-	}
+		/* Forward only queries ending with REFUSED (no zone) or NXDOMAIN (if configured) */
+		if (!(qdata->rcode == KNOT_RCODE_REFUSED ||
+		     (qdata->rcode == KNOT_RCODE_NXDOMAIN && proxy->catch_nxdomain))) {
+			return state;
+		}
 
-	bool is_tcp = net_is_stream(qdata->param->socket);
-	const struct sockaddr *dst = (const struct sockaddr *)&proxy->remote.addr;
-	const struct sockaddr *src = (const struct sockaddr *)&proxy->remote.via;
-	struct knot_request *req = knot_request_make(re.mm, dst, src, qdata->query,
-	                                             is_tcp ? 0 : KNOT_RQ_UDP);
-	if (req == NULL) {
-		knot_requestor_clear(&re);
-		return state; /* Ignore, not enough memory. */
+		proxy_data = malloc(sizeof(*proxy_data));
+		if (proxy_data == NULL) {
+			return state; /* Ignore, not enough memory. */
+		}
+
+		/* Capture layer context. */
+		const knot_layer_api_t *capture = query_capture_api();
+		struct capture_param capture_param = {
+			.sink = pkt
+		};
+
+		/* Create a forwarding request. */
+		int ret = knot_requestor_init(&proxy_data->re, capture,
+		                              &capture_param, qdata->mm);
+		if (ret != KNOT_EOK) {
+			free(proxy_data);
+			return state; /* Ignore, not enough memory. */
+		}
+
+		bool is_tcp = net_is_stream(qdata->param->socket);
+		proxy_data->req = knot_request_make(proxy_data->re.mm,
+			(const struct sockaddr *)&proxy->remote.addr,
+			(const struct sockaddr *)&proxy->remote.via,
+			qdata->query, is_tcp ? 0 : KNOT_RQ_UDP);
+		if (proxy_data->req == NULL) {
+			knot_requestor_clear(&proxy_data->re);
+			free(proxy_data);
+			return state; /* Ignore, not enough memory. */
+		}
+
+		layer->defer_data = proxy_data;
+	} else if (layer->defer_fd.fd == 0 || layer->defer_timeout == -1) {
+		// The request is being cancelled.  We need to clean up.
+		layer->defer_fd.fd = 0;
+		knot_request_free(proxy_data->req, proxy_data->re.mm);
+		knot_requestor_clear(&proxy_data->re);
+		free(proxy_data);
+		return KNOT_STATE_DONE;
 	}
 
 	/* Forward request. */
-	ret = knot_requestor_exec(&re, req, proxy->timeout);
+	int ret = knot_requestor_exec_nonblocking(
+		&proxy_data->re, proxy_data->req);
 
-	knot_request_free(req, re.mm);
-	knot_requestor_clear(&re);
+	/* If the request is incomplete, defer. */
+	if (proxy_data->re.layer.defer_fd.fd) {
+		layer->defer_fd.fd = proxy_data->re.layer.defer_fd.fd;
+		layer->defer_fd.events = proxy_data->re.layer.defer_fd.events;
+		layer->defer_timeout = conf()->cache.srv_tcp_reply_timeout;
+		return KNOT_STATE_PRODUCE;
+	}
+
+	knot_request_free(proxy_data->req, proxy_data->re.mm);
+	knot_requestor_clear(&proxy_data->re);
+	free(proxy_data);
+	layer->defer_fd.fd = 0;
 
 	/* Check result. */
 	if (ret != KNOT_EOK) {
