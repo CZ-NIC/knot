@@ -47,14 +47,16 @@
 
 /*! \brief TCP context data. */
 typedef struct tcp_context {
+	knot_mm_t mm;
 	knot_layer_t layer;         /*!< Query processing layer. */
-	server_t *server;           /*!< Name server structure. */
 	struct iovec iov[2];        /*!< TX/RX buffers. */
 	unsigned client_threshold;  /*!< Index of first TCP client. */
 	timev_t last_poll_time;     /*!< Time of the last socket poll. */
 	timev_t throttle_end;       /*!< End of accept() throttling. */
 	fdset_t set;                /*!< Set of server/client sockets. */
-	unsigned thread_id;         /*!< Thread identifier. */
+	struct process_query_param param;
+	knot_pkt_t *query;
+	knot_pkt_t *ans;
 } tcp_context_t;
 
 /*
@@ -98,11 +100,8 @@ static int tcp_handle(tcp_context_t *tcp, int fd,
 	/* Create query processing parameter. */
 	struct sockaddr_storage ss;
 	memset(&ss, 0, sizeof(struct sockaddr_storage));
-	struct process_query_param param = {0};
-	param.socket = fd;
-	param.remote = &ss;
-	param.server = tcp->server;
-	param.thread_id = tcp->thread_id;
+	tcp->param.socket = fd;
+	tcp->param.remote = &ss;
 	rx->iov_len = KNOT_WIRE_MAX_PKTSIZE;
 	tx->iov_len = KNOT_WIRE_MAX_PKTSIZE;
 
@@ -133,24 +132,24 @@ static int tcp_handle(tcp_context_t *tcp, int fd,
 
 	/* Initialize processing layer. */
 
-	tcp->layer.state = knot_layer_begin(&tcp->layer, &param);
+	tcp->layer.state = knot_layer_begin(&tcp->layer, &tcp->param);
 
 	/* Create packets. */
-	knot_pkt_t *ans = knot_pkt_new(tx->iov_base, tx->iov_len, tcp->layer.mm);
-	knot_pkt_t *query = knot_pkt_new(rx->iov_base, rx->iov_len, tcp->layer.mm);
+	tcp->ans = knot_pkt_new(tx->iov_base, tx->iov_len, tcp->layer.mm);
+	tcp->query = knot_pkt_new(rx->iov_base, rx->iov_len, tcp->layer.mm);
 
 	/* Input packet. */
-	(void) knot_pkt_parse(query, 0);
-	int state = knot_layer_consume(&tcp->layer, query);
+	(void) knot_pkt_parse(tcp->query, 0);
+	int state = knot_layer_consume(&tcp->layer, tcp->query);
 
 	/* Resolve until NOOP or finished. */
 	ret = KNOT_EOK;
 	while (state & (KNOT_STATE_PRODUCE|KNOT_STATE_FAIL)) {
-		state = knot_layer_produce(&tcp->layer, ans);
+		state = knot_layer_produce(&tcp->layer, tcp->ans);
 
 		/* Send, if response generation passed and wasn't ignored. */
-		if (ans->size > 0 && !(state & (KNOT_STATE_FAIL|KNOT_STATE_NOOP))) {
-			if (net_dns_tcp_send(fd, ans->wire, ans->size, timeout) != ans->size) {
+		if (tcp->ans->size > 0 && !(state & (KNOT_STATE_FAIL|KNOT_STATE_NOOP))) {
+			if (net_dns_tcp_send(fd, tcp->ans->wire, tcp->ans->size, timeout) != tcp->ans->size) {
 				ret = KNOT_ECONNREFUSED;
 				break;
 			}
@@ -161,8 +160,8 @@ static int tcp_handle(tcp_context_t *tcp, int fd,
 	knot_layer_finish(&tcp->layer);
 
 	/* Cleanup. */
-	knot_pkt_free(&query);
-	knot_pkt_free(&ans);
+	knot_pkt_free(&tcp->query);
+	knot_pkt_free(&tcp->ans);
 
 	return ret;
 }
@@ -303,14 +302,13 @@ int tcp_master(dthread_t *thread)
 	tcp_context_t tcp;
 	memset(&tcp, 0, sizeof(tcp_context_t));
 
-	/* Create big enough memory cushion. */
-	knot_mm_t mm = { 0 };
-	mm_ctx_mempool(&mm, 16 * MM_DEFAULT_BLKSIZE);
-
 	/* Create TCP answering context. */
-	tcp.server = handler->server;
-	tcp.thread_id = handler->thread_id[dt_get_id(thread)];
-	knot_layer_init(&tcp.layer, &mm, process_query_layer());
+	tcp.param.server = handler->server;
+	tcp.param.thread_id = handler->thread_id[dt_get_id(thread)];
+	knot_layer_init(&tcp.layer, &tcp.mm, process_query_layer());
+
+	/* Create big enough memory cushion. */
+	mm_ctx_mempool(&tcp.mm, 16 * MM_DEFAULT_BLKSIZE);
 
 	/* Prepare structures for bound sockets. */
 	conf_val_t val = conf_get(conf(), C_SRV, C_LISTEN);
@@ -343,7 +341,7 @@ int tcp_master(dthread_t *thread)
 			}
 
 			ref_release(ref);
-			ref = server_set_ifaces(handler->server, &tcp.set, IO_TCP, tcp.thread_id);
+			ref = server_set_ifaces(handler->server, &tcp.set, IO_TCP, tcp.param.thread_id);
 			if (tcp.set.n == 0) {
 				break; /* Terminate on zero interfaces. */
 			}
@@ -370,7 +368,7 @@ int tcp_master(dthread_t *thread)
 finish:
 	free(tcp.iov[0].iov_base);
 	free(tcp.iov[1].iov_base);
-	mp_delete(mm.ctx);
+	mp_delete(tcp.mm.ctx);
 	fdset_clear(&tcp.set);
 	ref_release(ref);
 
