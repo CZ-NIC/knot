@@ -1,4 +1,4 @@
-/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -332,6 +332,7 @@ int knot_pkt_init_response(knot_pkt_t *pkt, const knot_pkt_t *query)
 
 	/* Clear payload. */
 	knot_pkt_clear_payload(pkt);
+
 	return KNOT_EOK;
 }
 
@@ -402,7 +403,6 @@ int knot_pkt_reclaim(knot_pkt_t *pkt, uint16_t size)
 	} else {
 		return KNOT_ERANGE;
 	}
-
 }
 
 _public_
@@ -438,7 +438,6 @@ uint16_t knot_pkt_type(const knot_pkt_t *pkt)
 	return ret;
 }
 
-/*----------------------------------------------------------------------------*/
 _public_
 uint16_t knot_pkt_question_size(const knot_pkt_t *pkt)
 {
@@ -449,7 +448,6 @@ uint16_t knot_pkt_question_size(const knot_pkt_t *pkt)
 	return pkt->qname_size + 2 * sizeof(uint16_t);
 }
 
-/*----------------------------------------------------------------------------*/
 _public_
 const knot_dname_t *knot_pkt_qname(const knot_pkt_t *pkt)
 {
@@ -460,7 +458,6 @@ const knot_dname_t *knot_pkt_qname(const knot_pkt_t *pkt)
 	return pkt->wire + KNOT_WIRE_HEADER_SIZE;
 }
 
-/*----------------------------------------------------------------------------*/
 _public_
 uint16_t knot_pkt_qtype(const knot_pkt_t *pkt)
 {
@@ -472,7 +469,6 @@ uint16_t knot_pkt_qtype(const knot_pkt_t *pkt)
 	return wire_read_u16(pkt->wire + off);
 }
 
-/*----------------------------------------------------------------------------*/
 _public_
 uint16_t knot_pkt_qclass(const knot_pkt_t *pkt)
 {
@@ -563,8 +559,7 @@ int knot_pkt_put(knot_pkt_t *pkt, uint16_t compr_hint, const knot_rrset_t *rr,
 	memcpy(pkt->rr + pkt->rrset_count, rr, sizeof(knot_rrset_t));
 
 	/* Check for double insertion. */
-	if ((flags & KNOT_PF_CHECKDUP) &&
-	    pkt_contains(pkt, rr)) {
+	if ((flags & KNOT_PF_CHECKDUP) && pkt_contains(pkt, rr)) {
 		return KNOT_EOK; /*! \todo return rather a number of added RRs */
 	}
 
@@ -584,7 +579,7 @@ int knot_pkt_put(knot_pkt_t *pkt, uint16_t compr_hint, const knot_rrset_t *rr,
 	if (ret < 0) {
 		/* Truncate packet if required. */
 		if (ret == KNOT_ESPACE && !(flags & KNOT_PF_NOTRUNC)) {
-				knot_wire_set_tc(pkt->wire);
+			knot_wire_set_tc(pkt->wire);
 		}
 		return ret;
 	}
@@ -722,7 +717,7 @@ static int check_rr_constraints(knot_pkt_t *pkt, knot_rrset_t *rr, size_t rr_siz
                                 unsigned flags)
 {
 	/* Check RR constraints. */
-	switch(rr->type) {
+	switch (rr->type) {
 	case KNOT_RRTYPE_TSIG:
 		CHECK_AR_CONSTRAINTS(pkt, rr, tsig_rr, knot_tsig_rdata_is_ok);
 
