@@ -336,7 +336,6 @@ static int follow_cname(knot_pkt_t *pkt, uint16_t rrtype, struct query_data *qda
 	const zone_node_t *cname_node = qdata->node;
 	knot_rrset_t cname_rr = node_rrset(qdata->node, rrtype);
 	knot_rrset_t rrsigs = node_rrset(qdata->node, KNOT_RRTYPE_RRSIG);
-	int ret = KNOT_EOK;
 
 	assert(!knot_rrset_empty(&cname_rr));
 
@@ -345,7 +344,7 @@ static int follow_cname(knot_pkt_t *pkt, uint16_t rrtype, struct query_data *qda
 
 	/* Now, try to put CNAME to answer. */
 	uint16_t rr_count_before = pkt->rrset_count;
-	ret = ns_put_rr(pkt, &cname_rr, &rrsigs, 0, flags, qdata);
+	int ret = ns_put_rr(pkt, &cname_rr, &rrsigs, 0, flags, qdata);
 	switch (ret) {
 	case KNOT_EOK:    break;
 	case KNOT_ESPACE: return TRUNC;
@@ -365,8 +364,8 @@ static int follow_cname(knot_pkt_t *pkt, uint16_t rrtype, struct query_data *qda
 			return ERROR;
 		}
 		knot_rrset_t dname_rr = cname_rr;
-		ret = dname_cname_synth(&dname_rr, qdata->name, &cname_rr,
-		                        &pkt->mm);
+		int ret = dname_cname_synth(&dname_rr, qdata->name, &cname_rr,
+		                            &pkt->mm);
 		if (ret != KNOT_EOK) {
 			qdata->rcode = KNOT_RCODE_SERVFAIL;
 			return ERROR;
@@ -483,7 +482,7 @@ static int solve_name(int state, knot_pkt_t *pkt, struct query_data *qdata)
 	                                        &qdata->node, &qdata->encloser,
 	                                        &qdata->previous);
 
-	switch(ret) {
+	switch (ret) {
 	case ZONE_NAME_FOUND:
 		return name_found(pkt, qdata);
 	case ZONE_NAME_NOT_FOUND:
@@ -523,7 +522,7 @@ static int solve_answer_dnssec(int state, knot_pkt_t *pkt, struct query_data *qd
 
 	/* RFC4035, section 3.1 RRSIGs for RRs in ANSWER are mandatory. */
 	int ret = nsec_append_rrsigs(pkt, qdata, false);
-	switch(ret) {
+	switch (ret) {
 	case KNOT_ESPACE: return TRUNC;
 	case KNOT_EOK:    return state;
 	default:          return ERROR;
@@ -687,11 +686,12 @@ int ns_put_rr(knot_pkt_t *pkt, const knot_rrset_t *rr,
 		/* Expand if RR is wildcard & we didn't query for wildcard. */
 		expand = (knot_dname_is_wildcard(rr->owner) && !knot_dname_is_wildcard(qdata->name));
 	}
+	
+	int ret = KNOT_EOK;
 
 	/* If we already have compressed name on the wire and compression hint,
 	 * we can just insert RRSet and fake synthesis by using compression
 	 * hint. */
-	int ret = KNOT_EOK;
 	knot_rrset_t to_add;
 	if (compr_hint == KNOT_COMPR_HINT_NONE && expand) {
 		knot_dname_t *qname_cpy = knot_dname_copy(qdata->name, &pkt->mm);
@@ -699,9 +699,10 @@ int ns_put_rr(knot_pkt_t *pkt, const knot_rrset_t *rr,
 			return KNOT_ENOMEM;
 		}
 		knot_rrset_init(&to_add, qname_cpy, rr->type, rr->rclass);
-		int ret = knot_rdataset_copy(&to_add.rrs, &rr->rrs, &pkt->mm);
+		ret = knot_rdataset_copy(&to_add.rrs, &rr->rrs, &pkt->mm);
 		if (ret != KNOT_EOK) {
 			knot_dname_free(&qname_cpy, &pkt->mm);
+			return ret;
 		}
 		to_add.additional = rr->additional;
 		flags |= KNOT_PF_FREE;
