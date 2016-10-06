@@ -13,19 +13,21 @@ t.link(zone, knot)
 t.start()
 
 class DelegationTest:
-    def __init__(self, name):
+    def __init__(self, name, authoritative=False):
         self._name = name
+        self._auth = authoritative
 
     def _get_flags(self, truncated):
-        if truncated:
-            return ("TC", "AA")
+        if self._auth:
+            return ("AA TC", "") if truncated else ("AA", "TC")
         else:
-            return ("", "AA TC")
+            return ("TC", "AA") if truncated else ("", "AA TC")
 
     def run(self, bufsize=None, truncated=False, counts=None):
-        name = "www.%s" % self._name
+        name = "%s%s" % ("" if self._auth else "www.", self._name)
+        rtype = "NS" if self._auth else "A"
         flags, noflags = self._get_flags(truncated)
-        resp = knot.dig(name, "A", udp=True, dnssec=True, bufsize=bufsize)
+        resp = knot.dig(name, rtype, udp=True, dnssec=True, bufsize=bufsize)
         resp.check(rcode="NOERROR", noflags=noflags, flags=flags)
         for section in counts:
             for rtype in counts[section]:
@@ -36,6 +38,35 @@ class DelegationTest:
 
     def __exit__(self, exc_type, exc_vaue, traceback):
         return False
+
+# Authoritative answer with glue of foreign name server
+
+with DelegationTest("tc.test", authoritative=True) as test:
+    # incomplete answer, no signature
+    test.run(bufsize=592, truncated=True, counts={
+        "answer": {"NS": 4, "RRSIG": 0},
+        "additional": {"AAAA": 0, "RRSIG": 0}}
+    )
+    # complete answer, no additionals
+    test.run(bufsize=695, truncated=False, counts={
+        "answer": {"NS": 4, "RRSIG": 1},
+        "additional": {"AAAA": 0, "RRSIG": 0}}
+    )
+    # complete answer, one optional additional for foreign name server
+    test.run(bufsize=723, truncated=False, counts={
+        "answer": {"NS": 4, "RRSIG": 1},
+        "additional": {"AAAA": 1, "RRSIG": 0}}
+    )
+    # complete answer, all optional additionals
+    test.run(bufsize=751, truncated=False, counts={
+        "answer": {"NS": 4, "RRSIG": 1},
+        "additional": {"AAAA": 2, "RRSIG": 0}}
+    )
+    # complete answer, all optional additionals with signature
+    test.run(bufsize=2000, truncated=False, counts={
+        "answer": {"NS": 4, "RRSIG": 1},
+        "additional": {"AAAA": 2, "RRSIG": 1}}
+    )
 
 # Delegation with glue
 
@@ -61,7 +92,7 @@ with DelegationTest("glue.tc.test") as test:
         "additional": {"AAAA": 1, "RRSIG": 0}}
     )
     # complete delegation, complete glue
-    test.run(bufsize=768, truncated=False, counts={
+    test.run(bufsize=2000, truncated=False, counts={
         "authority": {"NS": 2, "DS": 1, "RRSIG": 1},
         "additional": {"AAAA": 2, "RRSIG": 0}}
     )
@@ -80,10 +111,11 @@ with DelegationTest("unreachable.tc.test") as test:
         "additional": {"AAAA": 0, "RRSIG": 0}}
     )
     # complete delegation, no glue available
-    test.run(bufsize=719, truncated=False, counts={
+    test.run(bufsize=2000, truncated=False, counts={
         "authority": {"NS": 2, "DS": 1, "RRSIG": 1},
         "additional": {"AAAA": 0, "RRSIG": 0}}
     )
+
 # Delegation with foreign name servers
 
 with DelegationTest("foreign.tc.test") as test:
@@ -98,7 +130,7 @@ with DelegationTest("foreign.tc.test") as test:
         "additional": {"AAAA": 0, "RRSIG": 0}}
     )
     # complete delegation, no glue needed
-    test.run(bufsize=722, truncated=False, counts={
+    test.run(bufsize=2000, truncated=False, counts={
         "authority": {"NS": 2, "DS": 1, "RRSIG": 1},
         "additional": {"AAAA": 0, "RRSIG": 0}}
     )
@@ -137,7 +169,7 @@ with DelegationTest("parent.tc.test") as test:
         "additional": {"AAAA": 2, "RRSIG": 1}}
     )
     # complete delegation, all optional additionals with signatures
-    test.run(bufsize=976, truncated=False, counts={
+    test.run(bufsize=2000, truncated=False, counts={
         "authority": {"NS": 2, "DS": 1, "RRSIG": 1},
         "additional": {"AAAA": 2, "RRSIG": 2}}
     )
@@ -176,9 +208,14 @@ with DelegationTest("mixed.tc.test") as test:
         "additional": {"AAAA": 3, "RRSIG": 0}}
     )
     # complete delegation, full glue, optional
-    test.run(bufsize=999, truncated=False, counts={
+    test.run(bufsize=924, truncated=False, counts={
         "authority": {"NS": 6, "DS": 1, "RRSIG": 1},
-        "additional": {"AAAA": 3, "RRSIG": 1}}
+        "additional": {"AAAA": 4, "RRSIG": 0}}
+    )
+    # complete delegation, full glue, optional with signature
+    test.run(bufsize=2000, truncated=False, counts={
+        "authority": {"NS": 6, "DS": 1, "RRSIG": 1},
+        "additional": {"AAAA": 4, "RRSIG": 1}}
     )
 
 t.stop()

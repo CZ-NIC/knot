@@ -1,4 +1,4 @@
-/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -54,11 +54,24 @@ typedef struct zone_node {
 	uint8_t flags; /*!< \ref node_flags enum. */
 } zone_node_t;
 
+/*!< \brief Glue node context. */
+typedef struct {
+	const zone_node_t *node; /*!< Glue node. */
+	uint16_t ns_pos; /*!< Corresponding NS record position (for compression). */
+	bool optional; /*!< Optional glue indicator. */
+} glue_t;
+
+/*!< \brief Additional data. */
+typedef struct {
+	glue_t *glues; /*!< Glue data. */
+	uint16_t count; /*!< Number of glue nodes. */
+} additional_t;
+
 /*!< \brief Structure storing RR data. */
 struct rr_data {
-	uint16_t type; /*!< \brief RR type of data. */
-	knot_rdataset_t rrs; /*!< \brief Data of given type. */
-	zone_node_t **additional; /*!< \brief Additional nodes with glues. */
+	uint16_t type; /*!< RR type of data. */
+	knot_rdataset_t rrs; /*!< Data of given type. */
+	additional_t *additional; /*!< Additional nodes with glues. */
 };
 
 /*! \brief Flags used to mark nodes with some property. */
@@ -76,6 +89,13 @@ enum node_flags {
 	/*! \brief Node has a wildcard child. */
 	NODE_FLAGS_WILDCARD_CHILD =  1 << 4
 };
+
+/*!
+ * \brief Clears additional structure.
+ *
+ * \param additional  Additional to clear.
+ */
+void additional_clear(additional_t *additional);
 
 /*!
  * \brief Creates and initializes new node structure.

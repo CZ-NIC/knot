@@ -114,22 +114,23 @@ static int create_nsec3_name(const zone_contents_t *zone,
 }
 
 /*! \brief Link pointers to additional nodes for this RRSet. */
-static int discover_additionals(struct rr_data *rr_data, zone_contents_t *zone)
+static int discover_additionals(const knot_dname_t *owner, struct rr_data *rr_data,
+                                zone_contents_t *zone)
 {
 	assert(rr_data != NULL);
 
+	/* Drop possible previous additional nodes. */
+	additional_clear(rr_data->additional);
+
 	const knot_rdataset_t *rrs = &rr_data->rrs;
-
-	/* Create new additional nodes. */
 	uint16_t rdcount = rrs->rr_count;
-	if (rr_data->additional) {
-		free(rr_data->additional);
-	}
-	rr_data->additional = malloc(rdcount * sizeof(zone_node_t *));
-	if (rr_data->additional == NULL) {
-		return KNOT_ENOMEM;
-	}
 
+	uint16_t mandatory_count = 0;
+	uint16_t others_count = 0;
+	glue_t mandatory[rdcount];
+	glue_t others[rdcount];
+
+	/* Scan new additional nodes. */
 	for (uint16_t i = 0; i < rdcount; i++) {
 		const knot_dname_t *dname = knot_rdata_name(rrs, i, rr_data->type);
 		const zone_node_t *node = NULL, *encloser = NULL, *prev = NULL;
@@ -143,7 +144,44 @@ static int discover_additionals(struct rr_data *rr_data, zone_contents_t *zone)
 			assert(node != NULL);
 		}
 
-		rr_data->additional[i] = (zone_node_t *)node;
+		if (node == NULL) {
+			continue;
+		}
+
+		glue_t *glue;
+		if ((node->flags & (NODE_FLAGS_DELEG | NODE_FLAGS_NONAUTH)) &&
+		    rr_data->type == KNOT_RRTYPE_NS &&
+		    knot_dname_in(owner, node->owner)) {
+			glue = &mandatory[mandatory_count++];
+			glue->optional = false;
+		} else {
+			glue = &others[others_count++];
+			glue->optional = true;
+		}
+		glue->node = node;
+		glue->ns_pos = i;
+	}
+
+	/* Store sorted additionals by the type, mandatory first. */
+	size_t total_count = mandatory_count + others_count;
+	if (total_count > 0) {
+		rr_data->additional = malloc(sizeof(additional_t));
+		if (rr_data->additional == NULL) {
+			return KNOT_ENOMEM;
+		}
+		rr_data->additional->count = total_count;
+
+		size_t size = total_count * sizeof(glue_t);
+		rr_data->additional->glues = malloc(size);
+		if (rr_data->additional->glues == NULL) {
+			free(rr_data->additional);
+			return KNOT_ENOMEM;
+		}
+
+		size_t mandatory_size = mandatory_count * sizeof(glue_t);
+		memcpy(rr_data->additional->glues, mandatory, mandatory_size);
+		memcpy(rr_data->additional->glues + mandatory_count, others,
+		       size - mandatory_size);
 	}
 
 	return KNOT_EOK;
@@ -305,7 +343,7 @@ static int adjust_additional(zone_node_t **tnode, void *data)
 	for(uint16_t i = 0; i < node->rrset_count; ++i) {
 		struct rr_data *rr_data = &node->rrs[i];
 		if (knot_rrtype_additional_needed(rr_data->type)) {
-			int ret = discover_additionals(rr_data, args->zone);
+			int ret = discover_additionals(node->owner, rr_data, args->zone);
 			if (ret != KNOT_EOK) {
 				return ret;
 			}

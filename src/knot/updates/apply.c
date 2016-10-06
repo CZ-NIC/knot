@@ -51,10 +51,8 @@ static int free_additional(zone_node_t **node, void *data)
 
 	for (uint16_t i = 0; i < (*node)->rrset_count; ++i) {
 		struct rr_data *data = &(*node)->rrs[i];
-		if (data->additional) {
-			free(data->additional);
-			data->additional = NULL;
-		}
+		additional_clear(data->additional);
+		data->additional = NULL;
 	}
 
 	return KNOT_EOK;

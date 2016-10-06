@@ -1,4 +1,4 @@
-/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -19,11 +19,21 @@
 #include "libknot/rrtype/rrsig.h"
 #include "contrib/mempattern.h"
 
+void additional_clear(additional_t *additional)
+{
+	if (additional == NULL) {
+		return;
+	}
+
+	free(additional->glues);
+	free(additional);
+}
+
 /*! \brief Clears allocated data in RRSet entry. */
 static void rr_data_clear(struct rr_data *data, knot_mm_t *mm)
 {
 	knot_rdataset_clear(&data->rrs, mm);
-	free(data->additional);
+	additional_clear(data->additional);
 }
 
 /*! \brief Clears allocated data in RRSet entry. */
