@@ -372,7 +372,8 @@ static int request_io_nonblocking(struct knot_requestor *req,
 	if (req->layer.state == KNOT_STATE_PRODUCE) {
 
 		/* Process query and send it out. */
-		knot_layer_produce(&req->layer, query);
+		knot_layer_produce_nonblocking(&req->layer, query);
+		if (req->layer.defer_fd.fd) return KNOT_EOK;
 
 		if (req->layer.state == KNOT_STATE_CONSUME) {
 			int ret = request_send_nonblocking(last);

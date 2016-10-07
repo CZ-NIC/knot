@@ -92,7 +92,7 @@ static void udp_handle(udp_context_t *udp, int fd, struct sockaddr_storage *ss,
 
 	/* Process answer. */
 	while (state & (KNOT_STATE_PRODUCE|KNOT_STATE_FAIL)) {
-		state = knot_layer_produce(&udp->layer, udp->ans);
+		state = knot_layer_produce_nonblocking(&udp->layer, udp->ans);
 		if (udp->layer.defer_fd.fd) return;
 	}
 

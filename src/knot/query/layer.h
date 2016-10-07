@@ -119,3 +119,17 @@ int knot_layer_consume(knot_layer_t *ctx, knot_pkt_t *pkt);
  * \return Layer state.
  */
 int knot_layer_produce(knot_layer_t *ctx, knot_pkt_t *pkt);
+
+/*!
+ * \brief Generate output from layer.
+ *
+ * This is the same as knot_layer_produce except that, instead of blocking,
+ * it provides a pollfd structure and timeout value and expects to be
+ * reinvoked when the file descriptor is ready for the specified events.
+ *
+ * \param ctx Layer context.
+ * \param pkt Data packet.
+ *
+ * \return Layer state.
+ */
+int knot_layer_produce_nonblocking(knot_layer_t *ctx, knot_pkt_t *pkt);

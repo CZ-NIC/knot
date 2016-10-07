@@ -15,6 +15,7 @@
  */
 
 #include <assert.h>
+#include <errno.h>
 
 #include "libknot/attribute.h"
 #include "knot/query/layer.h"
@@ -60,7 +61,7 @@ int knot_layer_consume(knot_layer_t *ctx, knot_pkt_t *pkt)
 	return ctx->state;
 }
 
-int knot_layer_produce(knot_layer_t *ctx, knot_pkt_t *pkt)
+int knot_layer_produce_nonblocking(knot_layer_t *ctx, knot_pkt_t *pkt)
 {
 	switch (ctx->state) {
 	case KNOT_STATE_FAIL: LAYER_CALL(ctx, fail, pkt); break;
@@ -69,6 +70,24 @@ int knot_layer_produce(knot_layer_t *ctx, knot_pkt_t *pkt)
 	}
 
 	return ctx->state;
+}
+
+int knot_layer_produce(knot_layer_t *ctx, knot_pkt_t *pkt)
+{
+	for(;;) {
+		knot_layer_produce_nonblocking(ctx, pkt);
+		if (ctx->defer_fd.fd == 0) return ctx->state;
+
+		int rc;
+		do {
+			rc = poll(&ctx->defer_fd, 1, ctx->defer_timeout * 1000);
+		} while (rc == -1 && errno == EAGAIN);
+
+		if (rc == 0) {
+			// The poll timed out
+			ctx->defer_timeout = -1;
+		}
+	}
 }
 
 #undef LAYER_STATE_STR
