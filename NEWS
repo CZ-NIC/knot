@@ -1,5 +1,26 @@
-Knot DNS 2.4.0-dev
-==================
+Knot DNS 2.3.1 (2016-10-07)
+===========================
+
+Bugfixes:
+---------
+ - Missing glue records in some responses
+ - Knsupdate prompt printing on non-terminal
+ - Mismatch between configuration policy item names and documentation
+ - Segfault on OS X (Sierra)
+
+Improvements:
+-------------
+ - Significant speed-up of conf-commit and conf-diff operations (in most cases)
+ - New EDNS Client Subnet libknot API
+ - Better semantic-checks error messages
+
+Features:
+---------
+ - Print TLS certificate hierarchy in kdig verbose mode
+ - New +subnet alias for +client
+ - New mod-whoami and mod-noudp modules
+ - New zone-purge control command
+ - New log-queries and log-responses options for mod-dnstap
 
 Knot DNS 2.3.0 (2016-08-09)
 ===========================
