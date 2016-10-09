@@ -104,7 +104,7 @@ void zone_events_enqueue(struct zone *zone, zone_event_type_t type);
  * new time is earlier than the currently scheduled one. An exception is
  * a zero time, which causes event cancellation.
  *
- * The function allows to set multiple events at once. The
+ * The function allows to set multiple events at once.
  *
  * \param zone  Zone to schedule new event for.
  * \param ...   Sequence of zone_event_type_t and time_t terminated with
@@ -118,6 +118,22 @@ void _zone_events_schedule_at(struct zone *zone, ...);
 #define zone_events_schedule_now(zone, type) \
 	zone_events_schedule_at(zone, type, time(NULL))
 
+
+///*!
+// * \brief Check if zone event is scheduled.
+// *
+// * \param zone  Zone to check event of.
+// * \param type  Type of event.
+// */
+//bool zone_events_is_scheduled(struct zone *zone, zone_event_type_t type);
+
+///*!
+// * \brief Cancel one zone event.
+// *
+// * \param zone  Zone to cancel event in.
+// * \param type  Type of event to cancel.
+// */
+//void zone_events_cancel(struct zone *zone, zone_event_type_t type);
 
 /*!
  * \brief Freeze all zone events and prevent new events from running.
@@ -164,20 +180,3 @@ const char *zone_events_get_name(zone_event_type_t type);
  * \return time of the next event or an error (negative number)
  */
 time_t zone_events_get_next(const struct zone *zone, zone_event_type_t *type);
-
-/*!
- * \brief Replans zone events after config change. Will reuse events where applicable.
- *
- * \param conf      Configuration.
- * \param zone      Zone with new config.
- * \param old_zone  Zone with old config.
- */
-void zone_events_update(conf_t *conf, struct zone *zone, struct zone *old_zone);
-
-/*!
- * \brief Replans DDNS processing event if DDNS queue is not empty.
- *
- * \param zone      Zone with new config.
- * \param old_zone  Zone with old config.
- */
-void zone_events_replan_ddns(struct zone *zone, struct zone *old_zone);

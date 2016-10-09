@@ -428,15 +428,3 @@ time_t zone_events_get_next(const struct zone *zone, zone_event_type_t *type)
 
 	return next_time;
 }
-
-void zone_events_update(conf_t *conf, zone_t *zone, zone_t *old_zone)
-{
-	replan_events(conf, zone, old_zone);
-}
-
-void zone_events_replan_ddns(zone_t *zone, zone_t *old_zone)
-{
-	if (old_zone) {
-		replan_update(zone, old_zone);
-	}
-}

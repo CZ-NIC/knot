@@ -33,6 +33,7 @@ int event_expire(conf_t *conf, zone_t *zone)
 
 	synchronize_rcu();
 	zone_contents_deep_free(&expired);
+
 	zone->zonefile.exists = false;
 	mem_trim();
 

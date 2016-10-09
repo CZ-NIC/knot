@@ -91,7 +91,6 @@ int event_load(conf_t *conf, zone_t *zone)
 	}
 	if (!zone_contents_is_empty(contents)) {
 		zone_events_schedule_now(zone, ZONE_EVENT_NOTIFY);
-		zone->bootstrap_retry = 0;
 	}
 
 	/* Schedule zone resign. */
@@ -105,6 +104,7 @@ int event_load(conf_t *conf, zone_t *zone)
 	val = conf_zone_get(conf, C_ZONEFILE_SYNC, zone->name);
 	int64_t sync_timeout = conf_int(&val);
 	if (sync_timeout >= 0) {
+		// TODO: tmp
 		//zone_events_schedule(zone, ZONE_EVENT_FLUSH, sync_timeout);
 	}
 
@@ -132,6 +132,7 @@ fail:
 	zone_contents_deep_free(&contents);
 
 	/* Try to bootstrap the zone if local error. */
+	// TODO: review
 	//if (zone_is_slave(conf, zone) && !zone_events_is_scheduled(zone, ZONE_EVENT_REFRESH)) {
 	//	zone_events_schedule_now(zone, ZONE_EVENT_REFRESH);
 	//}

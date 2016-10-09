@@ -17,13 +17,14 @@
 #include <assert.h>
 #include <urcu.h>
 
-#include "knot/zone/zonedb-load.h"
+#include "knot/common/log.h"
+#include "knot/events/replan.h"
+#include "knot/zone/timers.h"
 #include "knot/zone/zone-load.h"
 #include "knot/zone/zone.h"
-#include "knot/zone/zonefile.h"
+#include "knot/zone/zonedb-load.h"
 #include "knot/zone/zonedb.h"
-#include "knot/zone/timers.h"
-#include "knot/common/log.h"
+#include "knot/zone/zonefile.h"
 #include "libknot/libknot.h"
 
 /*!
@@ -97,13 +98,12 @@ static void log_zone_load_info(const zone_t *zone, zone_status_t status)
 	}
 	assert(action);
 
-	if (zone->contents && zone->contents->apex) {
-		const knot_rdataset_t *soa = node_rdataset(zone->contents->apex,
-		                                           KNOT_RRTYPE_SOA);
+	if (!zone_contents_is_empty(zone->contents)) {
+		const knot_rdataset_t *soa = zone_soa(zone);
 		uint32_t serial = knot_soa_serial(soa);
 		log_zone_info(zone->name, "zone %s, serial %u", action, serial);
 	} else {
-		log_zone_info(zone->name, "zone %s", action);
+		log_zone_info(zone->name, "zone %s, serial none", action);
 	}
 }
 
@@ -124,6 +124,9 @@ static zone_t *create_zone_from(const knot_dname_t *name, server_t *server)
 	return zone;
 }
 
+/*!
+ * \brief Set timer if unset (value is 0).
+ */
 static void time_set_default(time_t *time, time_t value)
 {
 	assert(time);
@@ -143,14 +146,21 @@ static void timers_sanitize(conf_t *conf, zone_t *zone)
 
 	time_t now = time(NULL);
 
-	// soa_expire: keep intact
+	// replace SOA expire if we have better knowledge
+	if (!zone_contents_is_empty(zone->contents)) {
+		const knot_rdataset_t *soa = zone_soa(zone);
+		zone->timers.soa_expire = knot_soa_expire(soa);
+	}
 
+	// assume now if we don't know when we flushed
 	time_set_default(&zone->timers.last_flush, now);
 
 	if (zone_is_slave(conf, zone)) {
+		// assume now if we don't know
 		time_set_default(&zone->timers.last_refresh, now);
 		time_set_default(&zone->timers.next_refresh, now);
 	} else {
+		// invalidate if we don't have a master
 		zone->timers.last_refresh = 0;
 		zone->timers.next_refresh = 0;
 	}
@@ -178,15 +188,11 @@ static zone_t *create_zone_reload(conf_t *conf, const knot_dname_t *name,
 
 	switch (zstatus) {
 	case ZONE_STATUS_FOUND_UPDATED:
-		/* Enqueueing makes the first zone load waitable. */
-		zone_events_enqueue(zone, ZONE_EVENT_LOAD);
-		/* Replan DDNS processing if there are pending updates. */
-		zone_events_replan_ddns(zone, old_zone);
+		zone_events_replan_updated(zone, old_zone);
 		break;
 	case ZONE_STATUS_FOUND_CURRENT:
 		zone->zonefile = old_zone->zonefile;
-		/* Reuse events from old zone. */
-		zone_events_update(conf, zone, old_zone);
+		zone_events_replan_current(conf, zone, old_zone);
 		break;
 	default:
 		assert(0);

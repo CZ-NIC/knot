@@ -22,6 +22,7 @@
 #include "dnssec/random.h"
 #include "knot/common/log.h"
 #include "knot/conf/conf.h"
+#include "knot/events/replan.h"
 #include "knot/query/layer.h"
 #include "knot/query/query.h"
 #include "knot/updates/apply.h"
@@ -77,6 +78,9 @@
 
 #define IXFRIN_LOG(priority, zone, remote, msg...) \
 	_XFRIN_LOG(priority, LOG_OPERATION_IXFR, zone, remote, msg)
+
+#define BOOTSTRAP_MAXTIME (24*60*60)
+#define BOOTSTRAP_JITTER (30)
 
 enum refresh_state {
 	REFRESH_STATE_INVALID = 0,
@@ -135,6 +139,26 @@ static void refresh_result_cleanup(struct refresh_result *result)
 static bool refresh_result_empty(const struct refresh_result *result)
 {
 	return result->zone == NULL && EMPTY_LIST(result->changesets);
+}
+
+time_t bootstrap_next(const zone_timers_t *timers)
+{
+	// previous interval
+	time_t interval = timers->next_refresh - timers->last_refresh;
+	if (interval < 0) {
+		interval = 0;
+	}
+
+	// exponentional backoff
+	interval *= 2;
+	if (interval > BOOTSTRAP_MAXTIME) {
+		interval = BOOTSTRAP_MAXTIME;
+	}
+
+	// prevent burst refresh
+	interval += dnssec_random_uint16_t() % BOOTSTRAP_JITTER;
+
+	return interval;
 }
 
 static int axfr_consume_packet(knot_pkt_t *pkt, zone_contents_t *zone)
@@ -766,30 +790,6 @@ static int try_refresh(conf_t *conf, zone_t *zone, const conf_remote_t *master, 
 	return ret;
 }
 
-#define BOOTSTRAP_RETRY (30) /*!< Interval between AXFR bootstrap retries. */
-#define BOOTSTRAP_MAXTIME (24*60*60) /*!< Maximum AXFR retry cap of 24 hours. */
-
-/*! \brief Get next bootstrap interval. */
-uint32_t bootstrap_next(uint32_t interval)
-{
-	interval *= 2;
-	interval += dnssec_random_uint16_t() % BOOTSTRAP_RETRY;
-	if (interval > BOOTSTRAP_MAXTIME) {
-		interval = BOOTSTRAP_MAXTIME;
-	}
-	return interval;
-}
-
-/*! \brief Schedule expire event, unless it is already scheduled. */
-static void start_expire_timer(conf_t *conf, zone_t *zone, const knot_rdataset_t *soa)
-{
-	//if (zone_events_is_scheduled(zone, ZONE_EVENT_EXPIRE)) {
-	//	return;
-	//}
-
-	zone_events_schedule_at(zone, ZONE_EVENT_EXPIRE, time(NULL) + knot_soa_expire(soa));
-}
-
 int event_refresh(conf_t *conf, zone_t *zone)
 {
 	assert(zone);
@@ -801,47 +801,35 @@ int event_refresh(conf_t *conf, zone_t *zone)
 	}
 
 	int ret = zone_master_try(conf, zone, try_refresh, NULL, "refresh");
-
-	const knot_rdataset_t *soa = zone_soa(zone);
-	time_t next = 0;
-
-	if (ret == KNOT_EOK) {
-		assert(soa);
-		next = knot_soa_refresh(soa);
-	} else {
+	if (ret != KNOT_EOK) {
 		log_zone_error(zone->name, "refresh, failed (%s)", knot_strerror(ret));
-		if (soa) {
-			next = knot_soa_retry(soa);
-		} else {
-			// TODO: boostrap period from timers
-			next = bootstrap_next(10);
-		}
 	}
+
+	time_t now = time(NULL);
+	const knot_rdataset_t *soa = zone_soa(zone);
 
 	if (ret == KNOT_EOK) {
 		zone->timers.soa_expire = knot_soa_expire(soa);
-		zone->timers.last_refresh = time(NULL);
+		zone->timers.last_refresh = now;
+		zone->timers.next_refresh = now + knot_soa_refresh(soa);
+	} else {
+		time_t next = 0;
+		if (soa) {
+			next = knot_soa_retry(soa);
+		} else {
+			next = bootstrap_next(&zone->timers);
+		}
+		zone->timers.next_refresh = now + next;
 	}
-	zone->timers.next_refresh = time(NULL) + next;
 
-	zone_events_schedule_at(zone, ZONE_EVENT_REFRESH, time(NULL) + next);
-
-	// TODO: temporary until timers are refactored
-	if (ret != KNOT_EOK) {
-		start_expire_timer(conf, zone, soa);
+	/* Rechedule events. */
+	zone_events_replan_after_timers(conf, zone);
+	zone_events_schedule_at(zone, ZONE_EVENT_NOTIFY, now);
+	conf_val_t val = conf_zone_get(conf, C_ZONEFILE_SYNC, zone->name);
+	int64_t sync_timeout = conf_int(&val);
+	if (sync_timeout == 0) {
+		zone_events_schedule_at(zone, ZONE_EVENT_FLUSH, now);
 	}
-
-
-
-	// TODO: reschedule all events here
-	// REFRESH
-	// NOTIFY
-	// EXPIRE
-	// FLUSH
-
-	///* Transfer cleanup. */
-	//zone->bootstrap_retry = ZONE_EVENT_NOW;
-	//zone->flags &= ~ZONE_FORCE_AXFR;
 
 	// MEMORY TRIM?
 	/* Trim extra heap. */
@@ -849,19 +837,5 @@ int event_refresh(conf_t *conf, zone_t *zone)
 	//	mem_trim();
 	//}
 
-#if 0
-	/* Rechedule events. */
-	zone_events_schedule(zone, ZONE_EVENT_REFRESH, knot_soa_refresh(soa));
-	zone_events_schedule(zone, ZONE_EVENT_NOTIFY,  ZONE_EVENT_NOW);
-	zone_events_cancel(zone, ZONE_EVENT_EXPIRE);
-	conf_val_t val = conf_zone_get(conf, C_ZONEFILE_SYNC, zone->name);
-	int64_t sync_timeout = conf_int(&val);
-	if (sync_timeout == 0) {
-		zone_events_schedule(zone, ZONE_EVENT_FLUSH, ZONE_EVENT_NOW);
-	} else if (sync_timeout > 0 &&
-	           !zone_events_is_scheduled(zone, ZONE_EVENT_FLUSH)) {
-		zone_events_schedule(zone, ZONE_EVENT_FLUSH, sync_timeout);
-	}
-#endif
 	return KNOT_EOK;
 }

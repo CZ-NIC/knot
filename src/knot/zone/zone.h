@@ -65,8 +65,6 @@ typedef struct zone
 	} zonefile;
 
 	/*! \brief Zone events. */
-	// TODO: remove bootstrap_retry
-	uint32_t bootstrap_retry;  //!< AXFR/IN bootstrap retry.
 	zone_timers_t timers;      //!< Persistent zone timers.
 	zone_events_t events;      //!< Zone events timers.
 

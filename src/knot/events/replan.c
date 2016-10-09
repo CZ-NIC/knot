@@ -17,65 +17,6 @@
 #include <assert.h>
 
 #include "knot/events/replan.h"
-#include "knot/events/handlers.h"
-#include "libknot/rrtype/soa.h"
-#include "contrib/macros.h"
-
-/* -- Zone event replanning functions --------------------------------------- */
-
-/*!< \brief Replans event for new zone according to old zone. */
-static void replan_event(zone_t *zone, const zone_t *old_zone, zone_event_type_t e)
-{
-	const time_t event_time = zone_events_get_time(old_zone, e);
-	if (event_time > 1) {
-		zone_events_schedule_at(zone, e, event_time);
-	}
-}
-
-/*!< \brief Replans events that are dependent on the SOA record. */
-static void replan_soa_events(conf_t *conf, zone_t *zone, const zone_t *old_zone)
-{
-	if (!zone_is_slave(conf, zone)) {
-		// Events only valid for slaves.
-		return;
-	}
-
-	if (zone_is_slave(conf, old_zone)) {
-		// Replan SOA events.
-		replan_event(zone, old_zone, ZONE_EVENT_REFRESH);
-		replan_event(zone, old_zone, ZONE_EVENT_EXPIRE);
-	} else {
-		// Plan SOA events anew.
-		if (!zone_contents_is_empty(zone->contents)) {
-			const knot_rdataset_t *soa = node_rdataset(zone->contents->apex,
-			                                           KNOT_RRTYPE_SOA);
-			assert(soa);
-			zone_events_schedule_at(zone, ZONE_EVENT_REFRESH, time(NULL) + knot_soa_refresh(soa));
-		}
-	}
-}
-
-/*!< \brief Replans flush event. */
-static void replan_flush(conf_t *conf, zone_t *zone, const zone_t *old_zone)
-{
-	conf_val_t val = conf_zone_get(conf, C_ZONEFILE_SYNC, zone->name);
-	int64_t sync_timeout = conf_int(&val);
-	if (sync_timeout <= 0) {
-		// Immediate sync scheduled after events.
-		return;
-	}
-
-	const time_t flush_time = zone_events_get_time(old_zone, ZONE_EVENT_FLUSH);
-	if (flush_time <= 1) {
-		// Not scheduled previously.
-		zone_events_schedule_at(zone, ZONE_EVENT_FLUSH, time(NULL) + sync_timeout);
-		return;
-	}
-
-	// Pick time to schedule: either reuse or schedule sooner than old event.
-	const time_t schedule_at = MIN(time(NULL) + sync_timeout, flush_time);
-	zone_events_schedule_at(zone, ZONE_EVENT_FLUSH, schedule_at);
-}
 
 /*!< \brief Creates new DDNS q in the new zone - q contains references from the old zone. */
 static void duplicate_ddns_q(zone_t *zone, zone_t *old_zone)
@@ -90,18 +31,7 @@ static void duplicate_ddns_q(zone_t *zone, zone_t *old_zone)
 	ptrlist_free(&old_zone->ddns_queue, NULL);
 }
 
-/*!< Replans DNSSEC event. Not whole resign needed, \todo #247 */
-static void replan_dnssec(conf_t *conf, zone_t *zone)
-{
-	conf_val_t val = conf_zone_get(conf, C_DNSSEC_SIGNING, zone->name);
-	if (conf_bool(&val)) {
-		/* Keys could have changed, force resign. */
-		zone_events_schedule_now(zone, ZONE_EVENT_DNSSEC);
-	}
-}
-
-/*!< Replans DDNS event. */
-void replan_update(zone_t *zone, zone_t *old_zone)
+void replan_ddns(zone_t *zone, zone_t *old_zone)
 {
 	const bool have_updates = old_zone->ddns_queue_size > 0;
 	if (have_updates) {
@@ -113,11 +43,75 @@ void replan_update(zone_t *zone, zone_t *old_zone)
 	}
 }
 
-void replan_events(conf_t *conf, zone_t *zone, zone_t *old_zone)
+static void replan_dnssec(conf_t *conf, zone_t *zone)
 {
-	replan_soa_events(conf, zone, old_zone);
-	replan_flush(conf, zone, old_zone);
-	replan_event(zone, old_zone, ZONE_EVENT_NOTIFY);
-	replan_update(zone, old_zone);
+	conf_val_t val = conf_zone_get(conf, C_DNSSEC_SIGNING, zone->name);
+	if (conf_bool(&val)) {
+		/* Keys could have changed, force resign. */
+		zone_events_schedule_now(zone, ZONE_EVENT_DNSSEC);
+	}
+}
+
+static void replan_notify(zone_t *zone, const zone_t *old_zone)
+{
+	if (!old_zone) {
+		return;
+	}
+
+	time_t notify = zone_events_get_time(old_zone, ZONE_EVENT_NOTIFY);
+	if (notify > 0) {
+		zone_events_schedule_at(zone, notify);
+	}
+}
+
+/*!
+ * \brief Replan events that depend on zone timers.
+ */
+static void replan_from_timers(conf_t *conf, zone_t *zone)
+{
+	assert(conf);
+	assert(zone);
+
+	time_t refresh = 0;
+	if (zone_is_slave(conf, zone)) {
+		refresh = zone->timers.next_refresh;
+		assert(refresh > 0);
+	}
+
+	time_t expire = 0;
+	// TODO: does this condition cover all cases?
+	if (zone_is_slave(conf, zone) && !zone_expired(zone) && zone->timers.soa_expire > 0) {
+		expire = zone->timers.last_refresh + zone->timers.soa_expire;
+	}
+
+	time_t flush = 0;
+	conf_val_t val = conf_zone_get(conf, C_ZONEFILE_SYNC, zone->name);
+	int64_t sync_timeout = conf_int(&val);
+	if (sync_timeout > 0) {
+		flush = zone->timers.last_flush + sync_timeout;
+	}
+
+	zone_events_schedule_at(zone, ZONE_EVENT_REFRESH, refresh,
+	                              ZONE_EVENT_EXPIRE, expire,
+	                              ZONE_EVENT_FLUSH, flush);
+}
+
+void zone_events_replan_updated(zone_t *zone, zone_t *old_zone)
+{
+	// other events will cascade from new zone load
+	zone_events_enqueue(zone, ZONE_EVENT_LOAD);
+	replan_ddns(zone, old_zone);
+}
+
+void zone_events_replan_current(conf_t *conf, zone_t *zone, zone_t *old_zone)
+{
+	replan_from_timers(conf, zone);
+	replan_notify(zone, old_zone);
+	replan_ddns(zone, old_zone);
 	replan_dnssec(conf, zone);
+}
+
+void zone_events_replan_after_timers(conf_t *conf, zone_t *zone)
+{
+	replan_from_timers(conf, zone);
 }

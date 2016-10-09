@@ -33,6 +33,3 @@ int event_flush(conf_t *conf, zone_t *zone);
 int event_notify(conf_t *conf, zone_t *zone);
 /*! \brief Signs the zone using its DNSSEC keys. */
 int event_dnssec(conf_t *conf, zone_t *zone);
-
-/*! \brief Get next bootstrap interval. */
-uint32_t bootstrap_next(uint32_t interval);

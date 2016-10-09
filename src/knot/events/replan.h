@@ -19,8 +19,17 @@
 #include "knot/conf/conf.h"
 #include "knot/zone/zone.h"
 
-/*! \brief Replans zone's events using old zone. */
-void replan_events(conf_t *conf, zone_t *zone, zone_t *old_zone);
+/*!
+ * \brief Replan events when the zone is reloaded and updated.
+ */
+void zone_events_replan_updated(zone_t *zone, zone_t *old_zone);
 
-/*! \brief Replans zone's DDNS events using old zone's DDNS queue. */
-void replan_update(zone_t *zone, zone_t *old_zone);
+/*!
+ * \brief Replan events when the zone is reloaded and current.
+ */
+void zone_events_replan_current(conf_t *conf, zone_t *zone, zone_t *old_zone);
+
+/*!
+ * \brief Replan events when zone timers change.
+ */
+void zone_events_replan_after_timers(conf_t *conf, zone_t *zone);
