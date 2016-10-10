@@ -56,10 +56,9 @@ enum timer_id {
 	TIMER_NEXT_REFRESH
 };
 
-static const int TIMER_COUNT = 4;
-static const int TIMER_SIZE = (sizeof(uint8_t) + sizeof(uint64_t));
-
-static const int SERIALIZED_SIZE = TIMER_COUNT * TIMER_SIZE;
+#define TIMER_COUNT 4
+#define TIMER_SIZE (sizeof(uint8_t) + sizeof(uint64_t))
+#define SERIALIZED_SIZE (TIMER_COUNT * TIMER_SIZE)
 
 /*!
  * \brief Serialize timers into a binary buffer.
