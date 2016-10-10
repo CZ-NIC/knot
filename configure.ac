@@ -28,7 +28,7 @@ AC_CONFIG_FILES([src/libknot/version.h
 
 # Updating version info
 # https://www.gnu.org/software/libtool/manual/html_node/Updating-version-info.html
-AC_SUBST([libknot_VERSION_INFO],["-version-info 3:0:0"])
+AC_SUBST([libknot_VERSION_INFO],["-version-info 4:0:0"])
 AC_SUBST([libdnssec_VERSION_INFO],["-version-info 2:0:0"])
 AC_SUBST([libzscanner_VERSION_INFO],["-version-info 1:0:0"])
 
