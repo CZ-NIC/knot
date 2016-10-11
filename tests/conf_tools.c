@@ -1,4 +1,4 @@
-/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -140,7 +140,7 @@ int main(int argc, char *argv[])
 
 	/* Module id tests. */
 	mod_id_test("module/id", "\x06moduleid");
-	mod_id_bad_test("module", KNOT_EINVAL);
+	mod_id_test("module", "\x06module");
 	mod_id_bad_test("module/", KNOT_EINVAL);
 	mod_id_bad_test("/", KNOT_EINVAL);
 	mod_id_bad_test("/id", KNOT_EINVAL);

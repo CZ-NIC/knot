@@ -1,4 +1,4 @@
-/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -32,27 +32,20 @@
 #include "knot/modules/whoami.h"
 #include "knot/modules/noudp.h"
 
-typedef struct static_module {
-	const yp_name_t *name;
-	qmodule_load_t load;
-	qmodule_unload_t unload;
-	unsigned scope;
-} static_module_t;
-
 /*! \note All modules should be dynamically loaded later on. */
 static_module_t MODULES[] = {
-        { C_MOD_SYNTH_RECORD, &synth_record_load, &synth_record_unload, MOD_SCOPE_ANY },
-        { C_MOD_DNSPROXY,     &dnsproxy_load,     &dnsproxy_unload,     MOD_SCOPE_ANY },
-        { C_MOD_ONLINE_SIGN,  &online_sign_load,  &online_sign_unload,  MOD_SCOPE_ZONE },
+	{ C_MOD_SYNTH_RECORD, &synth_record_load, &synth_record_unload, MOD_SCOPE_ANY },
+	{ C_MOD_DNSPROXY,     &dnsproxy_load,     &dnsproxy_unload,     MOD_SCOPE_ANY },
+	{ C_MOD_ONLINE_SIGN,  &online_sign_load,  &online_sign_unload,  MOD_SCOPE_ZONE, true },
 #ifdef HAVE_ROSEDB
-        { C_MOD_ROSEDB,       &rosedb_load,       &rosedb_unload,       MOD_SCOPE_ANY },
+	{ C_MOD_ROSEDB,       &rosedb_load,       &rosedb_unload,       MOD_SCOPE_ANY },
 #endif
 #if USE_DNSTAP
-        { C_MOD_DNSTAP,       &dnstap_load,       &dnstap_unload,       MOD_SCOPE_ANY },
+	{ C_MOD_DNSTAP,       &dnstap_load,       &dnstap_unload,       MOD_SCOPE_ANY },
 #endif
-        { C_MOD_WHOAMI,       &whoami_load,       &whoami_unload,       MOD_SCOPE_ANY },
-	{ C_MOD_NOUDP,        &noudp_load,        &noudp_unload,        MOD_SCOPE_ANY },
-        { NULL }
+	{ C_MOD_WHOAMI,       &whoami_load,       &whoami_unload,       MOD_SCOPE_ANY, true },
+	{ C_MOD_NOUDP,        &noudp_load,        &noudp_unload,        MOD_SCOPE_ANY, true },
+	{ NULL }
 };
 
 struct query_plan *query_plan_create(knot_mm_t *mm)
@@ -114,7 +107,7 @@ int query_plan_step(struct query_plan *plan, int stage, qmodule_process_t proces
 	return KNOT_EOK;
 }
 
-static static_module_t *find_module(const yp_name_t *name)
+static_module_t *find_module(const yp_name_t *name)
 {
 	/* Search for the module by name. */
 	static_module_t *module = NULL;

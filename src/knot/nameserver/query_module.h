@@ -78,6 +78,14 @@ typedef int (*qmodule_load_t)(struct query_plan *plan, struct query_module *self
 typedef int (*qmodule_unload_t)(struct query_module *self);
 typedef int (*qmodule_process_t)(int state, knot_pkt_t *pkt, struct query_data *qdata, void *ctx);
 
+typedef struct static_module {
+	const yp_name_t *name;
+	qmodule_load_t load;
+	qmodule_unload_t unload;
+	unsigned scope;
+	bool opt_conf;
+} static_module_t;
+
 /*!
  * Query module is a dynamically loadable unit that can alter query processing plan.
  * Module requires load and unload callback handlers and is provided with a context
@@ -109,6 +117,8 @@ struct query_plan {
 	knot_mm_t *mm;
 	list_t stage[QUERY_PLAN_STAGES];
 };
+
+static_module_t *find_module(const yp_name_t *name);
 
 /*! \brief Create an empty query plan. */
 struct query_plan *query_plan_create(knot_mm_t *mm);
