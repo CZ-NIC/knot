@@ -123,27 +123,21 @@ PKG_CHECK_MODULES([gnutls], [gnutls >= 3.3 nettle], [
 # JSON for DNSSEC status storage
 PKG_CHECK_MODULES([jansson], [jansson >= 2.3])
 
-# recvmmsg() (valgrind doesn't support it, so disable for debugging)
-# The check for struct mmsghdr is required when libc doesn't have an API but the function links
 AC_ARG_ENABLE([recvmmsg],
-    AS_HELP_STRING([--enable-recvmmsg=yes|no], [enable recvmmsg() network API under Linux (kernel support required) (set to 'no' if you have trouble running server under valgrind) [default=yes]]),
-    [case "${enableval}" in
-      yes)
-          AC_CHECK_FUNCS([sendmmsg])
-          AC_LINK_IFELSE([AC_LANG_PROGRAM([[#include <sys/socket.h>]], [[struct mmsghdr v; recvmmsg(0,0,0,0,0);]])],
-          [AC_DEFINE(HAVE_RECVMMSG, 1, [Define if struct mmsghdr and recvmmsg() exists.])])
-          ;;
-      no)
-          ;;
-      *)
-          AC_MSG_ERROR([bad value ${enableval} for --enable-recvmmsg])
-          ;;
-    esac],
-    [
-      AC_CHECK_FUNCS([sendmmsg])
-      AC_LINK_IFELSE([AC_LANG_PROGRAM([[#include <sys/socket.h>]], [[struct mmsghdr v; recvmmsg(0,0,0,0,0);]])],
-      [AC_DEFINE(HAVE_RECVMMSG, 1, [Define if struct mmsghdr and recvmmsg() exists.])])
-    ])
+   AS_HELP_STRING([--enable-recvmmsg=auto|yes|no], [enable recvmmsg() network API [default=auto]]),
+   [], [enable_recvmmsg=auto])
+
+AS_CASE([$enable_recvmmsg],
+   [auto|yes],[
+      AC_CHECK_FUNC([recvmmsg],
+                    [AC_CHECK_FUNC([sendmmsg],[enable_recvmmsg=yes],[enable_recvmmsg=no])],
+                    [enable_recvmmsg=no])],
+   [no],[],
+   [*], [AC_MSG_ERROR([Invalid value of --enable-recvmmsg.]
+ )])
+
+AS_IF([test "$enable_recvmmsg" = yes],[
+   AC_DEFINE([ENABLE_RECVMMSG], [1], [Use recvmmsg().])])
 
 AC_ARG_ENABLE([reuseport],
     AS_HELP_STRING([--enable-reuseport=auto|yes|no], [enable Linux SO_REUSEPORT support [default=auto]]),
@@ -572,6 +566,7 @@ AC_MSG_RESULT([
     Knot DNS utils:         ${enable_utilities}
     Knot DNS documentation: ${enable_documentation}
 
+    Use recvmmsg:        ${enable_recvmmsg}
     Use SO_REUSEPORT:    ${enable_reuseport}
     Fast zone parser:    ${enable_fastparser}
     Utilities with IDN:  ${with_libidn}
