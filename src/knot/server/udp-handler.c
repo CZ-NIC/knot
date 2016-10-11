@@ -1,4 +1,4 @@
-/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -50,10 +50,10 @@ enum {
 };
 
 /*! \brief UDP context data. */
-typedef struct udp_context {
-	struct knot_layer layer;     /*!< Query processing layer. */
-	server_t *server;            /*!< Name server structure. */
-	unsigned thread_id;          /*!< Thread identifier. */
+typedef struct {
+	knot_layer_t layer; /*!< Query processing layer. */
+	server_t *server;   /*!< Name server structure. */
+	unsigned thread_id; /*!< Thread identifier. */
 } udp_context_t;
 
 static void udp_handle(udp_context_t *udp, int fd, struct sockaddr_storage *ss,
@@ -357,7 +357,7 @@ static int udp_recvmmsg_handle(udp_context_t *ctx, void *d)
 		struct iovec *tx = rq->msgs[TX][i].msg_hdr.msg_iov;
 		rx->iov_len = rq->msgs[RX][i].msg_len; /* Received bytes. */
 
-		udp_pktinfo_handle(&rq->msgs[RX][i].msg_hdr,&rq->msgs[TX][i].msg_hdr);
+		udp_pktinfo_handle(&rq->msgs[RX][i].msg_hdr, &rq->msgs[TX][i].msg_hdr);
 
 		udp_handle(ctx, rq->fd, rq->addrs + i, rx, tx);
 		rq->msgs[TX][i].msg_len = tx->iov_len;
