@@ -672,7 +672,7 @@ This option is only available in the \fIdefault\fP template.
 \fIDefault:\fP \fI\%storage\fP/timers
 .SS global\-module
 .sp
-An ordered list of references to query modules in the form
+An ordered list of references to query modules in the form of \fImodule_name\fP or
 \fImodule_name/module_id\fP\&. These modules apply to all queries.
 .sp
 \fBNOTE:\fP
@@ -938,7 +938,7 @@ done by hand (see RFC 1982).
 \fIDefault:\fP increment
 .SS module
 .sp
-An ordered list of references to query modules in the form
+An ordered list of references to query modules in the form of \fImodule_name\fP or
 \fImodule_name/module_id\fP\&. These modules apply only to the current zone queries.
 .sp
 \fIDefault:\fP not set
@@ -1183,58 +1183,6 @@ A module identifier.
 A path to the directory where the database is stored.
 .sp
 \fIRequired\fP
-.SH MODULE ONLINE-SIGN
-.sp
-The module provides online DNSSEC signing.
-.INDENT 0.0
-.INDENT 3.5
-.sp
-.nf
-.ft C
-mod\-online\-sign:
-  \- id: STR
-.ft P
-.fi
-.UNINDENT
-.UNINDENT
-.SS id
-.sp
-A module identifier.
-.SH MODULE WHOAMI
-.sp
-The module synthesizes an A or AAAA record containing the query source IP address,
-at the apex of the zone being served.
-.INDENT 0.0
-.INDENT 3.5
-.sp
-.nf
-.ft C
-mod\-whoami:
-  \- id: STR
-.ft P
-.fi
-.UNINDENT
-.UNINDENT
-.SS id
-.sp
-A module identifier.
-.SH MODULE NOUDP
-.sp
-The module sends empty truncated response to any UDP query.
-.INDENT 0.0
-.INDENT 3.5
-.sp
-.nf
-.ft C
-mod\-noudp:
-  \- id: STR
-.ft P
-.fi
-.UNINDENT
-.UNINDENT
-.SS id
-.sp
-A module identifier.
 .SH AUTHOR
 CZ.NIC Labs <http://www.knot-dns.cz>
 .SH COPYRIGHT
