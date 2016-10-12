@@ -1,4 +1,4 @@
-/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -24,7 +24,8 @@
 
 #pragma once
 
-#if defined(__linux__)
+#if defined(__linux__) || defined(__gnu_hurd__) || \
+    (defined(__FreeBSD_kernel__) && defined(__GLIBC__))
 #       include <endian.h>
 #  ifndef be64toh
 #       include <arpa/inet.h>
