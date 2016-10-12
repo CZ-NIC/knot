@@ -24,9 +24,3 @@
  */
 const knot_layer_api_t *query_capture_api(void);
 
-/*!
- * \brief Processing module parameters.
- */
-struct capture_param {
-	knot_pkt_t *sink; /*!< Container for captured response. */
-};

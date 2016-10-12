@@ -219,13 +219,10 @@ static int remote_forward(conf_t *conf, struct knot_request *request, conf_remot
 
 	/* Prepare packet capture layer. */
 	const knot_layer_api_t *capture = query_capture_api();
-	struct capture_param capture_param = {
-		.sink = request->resp
-	};
 
 	/* Create requestor instance. */
 	struct knot_requestor re;
-	ret = knot_requestor_init(&re, capture, &capture_param, NULL);
+	ret = knot_requestor_init(&re, capture, request->resp, NULL);
 	if (ret != KNOT_EOK) {
 		knot_pkt_free(&query);
 		return ret;

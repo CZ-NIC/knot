@@ -83,13 +83,10 @@ static int dnsproxy_fwd(int state, knot_pkt_t *pkt, struct query_data *qdata, vo
 
 		/* Capture layer context. */
 		const knot_layer_api_t *capture = query_capture_api();
-		struct capture_param capture_param = {
-			.sink = pkt
-		};
 
 		/* Create a forwarding request. */
 		int ret = knot_requestor_init(&proxy_data->re, capture,
-		                              &capture_param, qdata->mm);
+		                              pkt, qdata->mm);
 		if (ret != KNOT_EOK) {
 			free(proxy_data);
 			return state; /* Ignore, not enough memory. */

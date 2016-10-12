@@ -30,7 +30,7 @@ static int finish(knot_layer_t *ctx)
 
 static int begin(knot_layer_t *ctx, void *module_param)
 {
-	ctx->data = module_param; /* struct capture_param */
+	ctx->data = module_param; /* struct knot_pkt */
 	return reset(ctx);
 }
 
@@ -42,9 +42,9 @@ static int prepare_query(knot_layer_t *ctx, knot_pkt_t *pkt)
 static int capture(knot_layer_t *ctx, knot_pkt_t *pkt)
 {
 	assert(pkt && ctx && ctx->data);
-	struct capture_param *param = ctx->data;
+	knot_pkt_t *sink = ctx->data;
 
-	knot_pkt_copy(param->sink, pkt);
+	knot_pkt_copy(sink, pkt);
 
 	return KNOT_STATE_DONE;
 }
