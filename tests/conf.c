@@ -1,4 +1,4 @@
-/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -19,11 +19,11 @@
 #include "knot/conf/conf.c"
 #include "test_conf.h"
 
-#define ZONE1	"0/25.2.0.192.in-addr.arpa."
-#define ZONE2	"."
-#define ZONE3	"x."
-#define ZONE4	"abc.ab.a."
-#define ZONEX	"unknown."
+#define ZONE_ARPA	"0/25.2.0.192.in-addr.arpa."
+#define ZONE_ROOT	"."
+#define ZONE_1LABEL	"x."
+#define ZONE_3LABEL	"abc.ab.a."
+#define ZONE_UNKNOWN	"unknown."
 
 static void check_name(const char *zone, const char *name, const char *ref)
 {
@@ -50,11 +50,19 @@ static void check_name_err(const char *zone, const char *name)
 
 static void test_get_filename(void)
 {
+	// Name formatter.
+	char *zone = "abc";
+	check_name(zone, "/%s", "/abc");
+
+	zone = ".";
+	check_name(zone, "/%s", "/");
+
 	// Char formatter.
-	char *zone = "abc.def.gh";
+	zone = "abc.def.g";
 	check_name(zone, "/%c[0]", "/a");
-	check_name(zone, "/%c[9]", "/h");
 	check_name(zone, "/%c[3]", "/.");
+	check_name(zone, "/%c[8]", "/g");
+	check_name(zone, "/%c[9]", "/.");
 	check_name(zone, "/%c[0-1]", "/ab");
 	check_name(zone, "/%c[1-1]", "/b");
 	check_name(zone, "/%c[1-3]", "/bc.");
@@ -64,21 +72,21 @@ static void test_get_filename(void)
 	check_name_err(zone, "/%c[a]");
 	check_name_err(zone, "/%c[:]");
 	check_name_err(zone, "/%c[/]");
-	check_name_err(zone, "/%c[12]");
+	check_name_err(zone, "/%c[10]");
 	check_name_err(zone, "/%c[");
 	check_name_err(zone, "/%c[1");
 	check_name_err(zone, "/%c[1-");
 	check_name_err(zone, "/%c[1-2");
 	check_name_err(zone, "/%c[1-b]");
-	check_name_err(zone, "/%c[9-0]");
+	check_name_err(zone, "/%c[8-0]");
 
 	zone = "abcd";
-	check_name(zone, "/%c[2-9]", "/cd");
+	check_name(zone, "/%c[2-9]", "/cd.");
 	check_name(zone, "/%c[3]", "/d");
-	check_name(zone, "/%c[4]", "/");
+	check_name(zone, "/%c[4]", "/.");
 
 	zone = ".";
-	check_name(zone, "/%c[0]", "/");
+	check_name(zone, "/%c[0]", "/.");
 	check_name(zone, "/%c[1]", "/");
 
 	// Label formatter.
@@ -91,7 +99,7 @@ static void test_get_filename(void)
 	check_name_err(zone, "/%l[0-1]");
 
 	zone = ".";
-	check_name(zone, "/%l[0]", "/.");
+	check_name(zone, "/%l[0]", "/");
 	check_name(zone, "/%l[1]", "/");
 }
 
@@ -100,16 +108,16 @@ static void test_conf_zonefile(void)
 	int ret;
 	char *file;
 
-	knot_dname_t *zone1 = knot_dname_from_str_alloc(ZONE1);
-	ok(zone1 != NULL, "create dname "ZONE1);
-	knot_dname_t *zone2 = knot_dname_from_str_alloc(ZONE2);
-	ok(zone2 != NULL, "create dname "ZONE2);
-	knot_dname_t *zone3 = knot_dname_from_str_alloc(ZONE3);
-	ok(zone3 != NULL, "create dname "ZONE3);
-	knot_dname_t *zone4 = knot_dname_from_str_alloc(ZONE4);
-	ok(zone4 != NULL, "create dname "ZONE4);
-	knot_dname_t *zonex = knot_dname_from_str_alloc(ZONEX);
-	ok(zonex != NULL, "create dname "ZONEX);
+	knot_dname_t *zone_arpa = knot_dname_from_str_alloc(ZONE_ARPA);
+	ok(zone_arpa != NULL, "create dname "ZONE_ARPA);
+	knot_dname_t *zone_root = knot_dname_from_str_alloc(ZONE_ROOT);
+	ok(zone_root != NULL, "create dname "ZONE_ROOT);
+	knot_dname_t *zone_1label = knot_dname_from_str_alloc(ZONE_1LABEL);
+	ok(zone_1label != NULL, "create dname "ZONE_1LABEL);
+	knot_dname_t *zone_3label = knot_dname_from_str_alloc(ZONE_3LABEL);
+	ok(zone_3label != NULL, "create dname "ZONE_3LABEL);
+	knot_dname_t *zone_unknown = knot_dname_from_str_alloc(ZONE_UNKNOWN);
+	ok(zone_unknown != NULL, "create dname "ZONE_UNKNOWN);
 
 	const char *conf_str =
 		"template:\n"
@@ -117,68 +125,68 @@ static void test_conf_zonefile(void)
 		"    storage: /tmp\n"
 		"\n"
 		"zone:\n"
-		"  - domain: "ZONE1"\n"
+		"  - domain: "ZONE_ARPA"\n"
 		"    file: dir/a%%b/%s.suffix/%a\n"
-		"  - domain: "ZONE2"\n"
+		"  - domain: "ZONE_ROOT"\n"
 		"    file: /%s\n"
-		"  - domain: "ZONE3"\n"
+		"  - domain: "ZONE_1LABEL"\n"
 		"    file: /%s\n"
-		"  - domain: "ZONE4"\n";
+		"  - domain: "ZONE_3LABEL"\n";
 
 	ret = test_conf(conf_str, NULL);
 	ok(ret == KNOT_EOK, "Prepare configuration");
 
 	// Relative path with formatters.
-	file = conf_zonefile(conf(), zone1);
-	ok(file != NULL, "Get zonefile path for "ZONE1);
+	file = conf_zonefile(conf(), zone_arpa);
+	ok(file != NULL, "Get zonefile path for "ZONE_ARPA);
 	if (file != NULL) {
 		ok(strcmp(file, "/tmp/dir/a%b/0_25.2.0.192.in-addr.arpa.suffix/") == 0,
-		          "Zonefile path compare for "ZONE1);
+		          "Zonefile path compare for "ZONE_ARPA);
 		free(file);
 	}
 
 	// Absolute path without formatters - root zone.
-	file = conf_zonefile(conf(), zone2);
-	ok(file != NULL, "Get zonefile path for "ZONE2);
+	file = conf_zonefile(conf(), zone_root);
+	ok(file != NULL, "Get zonefile path for "ZONE_ROOT);
 	if (file != NULL) {
-		ok(strcmp(file, "/.") == 0,
-		          "Zonefile path compare for "ZONE2);
+		ok(strcmp(file, "/") == 0,
+		          "Zonefile path compare for "ZONE_ROOT);
 		free(file);
 	}
 
-	// Absolute path without formatters.
-	file = conf_zonefile(conf(), zone3);
-	ok(file != NULL, "Get zonefile path for "ZONE3);
+	// Absolute path without formatters - non-root zone.
+	file = conf_zonefile(conf(), zone_1label);
+	ok(file != NULL, "Get zonefile path for "ZONE_1LABEL);
 	if (file != NULL) {
 		ok(strcmp(file, "/x") == 0,
-		          "Zonefile path compare for "ZONE3);
+		          "Zonefile path compare for "ZONE_1LABEL);
 		free(file);
 	}
 
 	// Default zonefile path.
-	file = conf_zonefile(conf(), zone4);
-	ok(file != NULL, "Get zonefile path for "ZONE4);
+	file = conf_zonefile(conf(), zone_3label);
+	ok(file != NULL, "Get zonefile path for "ZONE_3LABEL);
 	if (file != NULL) {
-		ok(strcmp(file, "/tmp/"ZONE4"zone") == 0,
-		          "Zonefile path compare for "ZONE4);
+		ok(strcmp(file, "/tmp/abc.ab.a.zone") == 0,
+		          "Zonefile path compare for "ZONE_3LABEL);
 		free(file);
 	}
 
 	// Unknown zone zonefile path.
-	file = conf_zonefile(conf(), zonex);
-	ok(file != NULL, "Get zonefile path for "ZONEX);
+	file = conf_zonefile(conf(), zone_unknown);
+	ok(file != NULL, "Get zonefile path for "ZONE_UNKNOWN);
 	if (file != NULL) {
-		ok(strcmp(file, "/tmp/"ZONEX"zone") == 0,
-		          "Zonefile path compare for "ZONEX);
+		ok(strcmp(file, "/tmp/unknown.zone") == 0,
+		          "Zonefile path compare for "ZONE_UNKNOWN);
 		free(file);
 	}
 
 	conf_free(conf());
-	knot_dname_free(&zone1, NULL);
-	knot_dname_free(&zone2, NULL);
-	knot_dname_free(&zone3, NULL);
-	knot_dname_free(&zone4, NULL);
-	knot_dname_free(&zonex, NULL);
+	knot_dname_free(&zone_arpa, NULL);
+	knot_dname_free(&zone_root, NULL);
+	knot_dname_free(&zone_1label, NULL);
+	knot_dname_free(&zone_3label, NULL);
+	knot_dname_free(&zone_unknown, NULL);
 }
 
 int main(int argc, char *argv[])

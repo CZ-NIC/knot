@@ -880,8 +880,8 @@ A path to the zone file. Non absolute path is relative to
 - ``%c[``\ *N*\ ``]`` or ``%c[``\ *N*\ ``-``\ *M*\ ``]`` – means the *N*\ th
   character or a sequence of characters beginning from the *N*\ th and ending
   with the *M*\ th character of the textual zone name (see ``%s``). The
-  indexes are counted from 0 from the left. If the character is not available,
-  the formatter has no effect.
+  indexes are counted from 0 from the left. All dots (including the terminal
+  one) are considered. If the character is not available, the formatter has no effect.
 - ``%l[``\ *N*\ ``]`` – means the *N*\ th label of the textual zone name
   (see ``%s``). The index is counted from 0 from the right (0 ~ TLD).
   If the label is not available, the formatter has no effect.
