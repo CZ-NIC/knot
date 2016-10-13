@@ -46,11 +46,7 @@ Zone templates
 ==============
 
 A zone template allows a single zone configuration to be shared among several zones.
-
 The ``default`` template identifier is reserved for the default template::
-
-.. NOTE::
-    Each template option can be explicitly overridden in zone-specific configuration.
 
     template:
       - id: default
@@ -61,6 +57,7 @@ The ``default`` template identifier is reserved for the default template::
         storage: /var/lib/knot/signed
         dnssec-signing: on
         semantic-checks: on
+        master: [master1, master2]
 
       - id: slave
         storage: /var/lib/knot/slave
@@ -73,6 +70,7 @@ The ``default`` template identifier is reserved for the default template::
 
       - domain: example.cz
         template: signed
+        master: master3          # Override masters to just master3
 
       - domain: example1.eu
         template: slave
@@ -81,6 +79,9 @@ The ``default`` template identifier is reserved for the default template::
       - domain: example2.eu
         template: slave
         master: master2
+
+.. NOTE::
+   Each template option can be explicitly overridden in zone-specific configuration.
 
 Access control list (ACL)
 =========================
