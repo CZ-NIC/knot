@@ -576,8 +576,18 @@ int udp_master(dthread_t *thread)
 			break;
 		}
 
+		/* Check whether there are pending timeouts.  If so,
+		 * we need to use a positive poll() timeout value. */
+		int timeout = -1;
+		for (int i=0; i < fds.n; ++i) {
+			if (fds.timeout[i] > 0) {
+				timeout = 2;
+				break;
+			}
+		}
+
 		/* Wait for events. */
-		int events = poll(fds.pfd, fds.n, -1);
+		int events = poll(fds.pfd, fds.n, timeout);
 		if (events <= 0) {
 			if (errno == EINTR) continue;
 			break;
