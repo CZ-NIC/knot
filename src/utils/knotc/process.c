@@ -53,8 +53,8 @@ int set_config(const cmd_desc_t *desc, params_t *params)
 	struct stat st;
 	bool import = false;
 	if (flags == CMD_FNONE && params->socket != NULL) {
-		import = false;
-		params->confdb = NULL;
+		/* Control operation, known socket, skip configuration. */
+		return KNOT_EOK;
 	} else if (params->confdb != NULL) {
 		import = false;
 	} else if (flags == CMD_FWRITE) {
