@@ -500,6 +500,8 @@ int journal_open(journal_t **journal, const char *path, size_t fslimit)
 	/* Open journal file. */
 	int ret = journal_open_file(j);
 	if (ret != KNOT_EOK) {
+		log_error("journal '%s', failed to open (%s)", path,
+		          knot_strerror(ret));
 		journal_close(j);
 		return ret;
 	}
