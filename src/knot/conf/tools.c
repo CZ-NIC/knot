@@ -34,6 +34,7 @@
 #include "knot/conf/conf.h"
 #include "knot/conf/scheme.h"
 #include "knot/common/log.h"
+#include "knot/nameserver/query_module.h"
 #include "libknot/errcode.h"
 #include "libknot/yparser/yptrafo.h"
 #include "contrib/wire_ctx.h"
@@ -77,33 +78,31 @@ int mod_id_to_bin(
 
 	// Check for "mod_name/mod_id" format.
 	const uint8_t *pos = (uint8_t *)strchr((char *)in->position, '/');
-	if (pos == NULL || pos >= stop) {
-		return KNOT_EINVAL;
-	}
-
-	// Check for missing module name.
 	if (pos == in->position) {
+		// Missing module name.
+		return KNOT_EINVAL;
+	} else if (pos >= stop - 1) {
+		// Missing module identifier after slash.
 		return KNOT_EINVAL;
 	}
 
 	// Write mod_name in the yp_name_t format.
-	uint8_t name_len = pos - in->position;
+	uint8_t name_len = (pos != NULL) ? (pos - in->position) :
+	                                   wire_ctx_available(in);
 	wire_ctx_write_u8(out, name_len);
 	wire_ctx_write(out, in->position, name_len);
 	wire_ctx_skip(in, name_len);
 
-	// Skip the separator.
-	wire_ctx_skip(in, sizeof(uint8_t));
+	// Check for mod_id.
+	if (pos != NULL) {
+		// Skip the separator.
+		wire_ctx_skip(in, sizeof(uint8_t));
 
-	// Check for missing id.
-	if (wire_ctx_available(in) == 0) {
-		return KNOT_EINVAL;
-	}
-
-	// Write mod_id as a zero terminated string.
-	int ret = yp_str_to_bin(in, out, stop);
-	if (ret != KNOT_EOK) {
-		return ret;
+		// Write mod_id as a zero terminated string.
+		int ret = yp_str_to_bin(in, out, stop);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
 	}
 
 	YP_CHECK_RET;
@@ -119,13 +118,16 @@ int mod_id_to_txt(
 	wire_ctx_write(out, in->position, name_len);
 	wire_ctx_skip(in, name_len);
 
-	// Write the separator.
-	wire_ctx_write_u8(out, '/');
+	// Check for mod_id.
+	if (wire_ctx_available(in) > 0) {
+		// Write the separator.
+		wire_ctx_write_u8(out, '/');
 
-	// Write mod_id.
-	int ret = yp_str_to_txt(in, out);
-	if (ret != KNOT_EOK) {
-		return ret;
+		// Write mod_id.
+		int ret = yp_str_to_txt(in, out);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
 	}
 
 	YP_CHECK_RET;
@@ -331,6 +333,16 @@ int check_modref(
 	const yp_name_t *mod_name = (const yp_name_t *)args->data;
 	const uint8_t *id = args->data + 1 + args->data[0];
 	size_t id_len = args->data_len - 1 - args->data[0];
+
+	// Check if the module requires some configuration.
+	if (id_len == 0) {
+		static_module_t *mod = find_module(mod_name);
+		if (mod == NULL) {
+			return KNOT_EINVAL;
+		}
+
+		return mod->opt_conf ? KNOT_EOK : KNOT_YP_ENOID;
+	}
 
 	// Try to find a module with the id.
 	if (!conf_rawid_exists_txn(args->conf, args->txn, mod_name, id, id_len)) {

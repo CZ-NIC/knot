@@ -814,7 +814,7 @@ as a relative path to the *default* template :ref:`storage<zone_storage>`.
 global-module
 -------------
 
-An ordered list of references to query modules in the form
+An ordered list of references to query modules in the form of *module_name* or
 *module_name/module_id*. These modules apply to all queries.
 
 .. NOTE::
@@ -1113,7 +1113,7 @@ Possible values:
 module
 ------
 
-An ordered list of references to query modules in the form
+An ordered list of references to query modules in the form of *module_name* or
 *module_name/module_id*. These modules apply only to the current zone queries.
 
 *Default:* not set
@@ -1418,61 +1418,3 @@ dbdir
 A path to the directory where the database is stored.
 
 *Required*
-
-.. _mod-online-sign:
-
-Module online-sign
-==================
-
-The module provides online DNSSEC signing.
-
-::
-
- mod-online-sign:
-   - id: STR
-
-.. _mod-online-sign_id:
-
-id
---
-
-A module identifier.
-
-.. _mod-whoami:
-
-Module whoami
-=============
-
-The module synthesizes an A or AAAA record containing the query source IP address, 
-at the apex of the zone being served.
-
-::
-
- mod-whoami:
-   - id: STR
-
-.. _mod-whoami_id:
-
-id
---
-
-A module identifier.
-
-.. _mod-noudp:
-
-Module noudp
-============
-
-The module sends empty truncated response to any UDP query.
-
-::
-
- mod-noudp:
-   - id: STR
-
-.. _mod-noudp_id:
-
-id
---
-
-A module identifier.

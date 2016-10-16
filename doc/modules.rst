@@ -22,11 +22,16 @@ represents a 'processing step'. Now, if a query module is loaded for a
 zone, it is provided with an implicit query plan which can be extended
 by the module or even changed altogether.
 
-Each module is configured in the corresponding module section and is
-identified for the subsequent usage. Then the identifier is referenced
-in the form of ``module_name/module_id`` through a zone/template :ref:`zone_module`
-option or through the *default* template :ref:`template_global-module` option
-if it is used for all queries.
+A module is active if its name, which includes the ``mod-`` prefix, is assigned
+to the zone/template :ref:`zone_module` option or to the *default* template
+:ref:`template_global-module` option if activating for all queries.
+If the module is configurable, a corresponding module section with
+an identifier must be created and then referenced in the form of
+``module_name/module_id``.
+
+.. NOTE::
+   Query modules are processed in the order they are specified in the
+   zone/template configuration.
 
 ``dnstap`` – dnstap-enabled query logging
 -----------------------------------------
@@ -343,13 +348,13 @@ How to use the online signing module:
 
 * Enable the module in server configuration and hook it to the zone::
 
-   mod-online-sign:
-     - id: default
-
    zone:
      - domain: example.com
-       module: mod-online-sign/default
+       module: mod-online-sign
        dnssec-signing: false
+
+  .. NOTE::
+     This module is not configurable.
 
 * Make sure the zone is not signed and also that the automatic signing is
   disabled. All is set, you are good to go. Reload (or start) the server:
@@ -360,9 +365,6 @@ How to use the online signing module:
 
 The following example stacks the online signing with reverse record synthesis
 module::
-
- mod-online-sign:
-   - id: default
 
  mod-synth-record:
    - id: lan-forward
@@ -377,8 +379,7 @@ module::
 
  zone:
    - domain: corp.example.net
-     module: mod-synth-record/lan-forward
-     module: mod-online-sign/default
+     module: [mod-synth-record/lan-forward, mod-online-sign]
 
 Known issues:
 
@@ -424,18 +425,18 @@ nameservers that only have IPv6 addresses.
 To enable this module, you need to add something like the following to
 the Knot DNS configuration file::
 
-    mod-whoami:
-      - id: default
-
     zone:
       - domain: whoami.domain.example
         file: "/path/to/whoami.domain.example"
-        module: [mod-whoami/default]
+        module: mod-whoami
 
     zone:
       - domain: whoami6.domain.example
         file: "/path/to/whoami6.domain.example"
-        module: [mod-whoami/default]
+        module: mod-whoami
+
+.. NOTE::
+   This module is not configurable.
 
 The whoami.domain.example zone file example:
 
@@ -503,15 +504,14 @@ AAAA-only glue records.
 
 The module sends empty truncated response to any UDP query. This is similar
 to a slipped answer in :ref:`response rate limiting<server_rate-limit>`.
+TCP queries are not affected.
 
 To enable this module globally, you need to add something like the following
 to the configuration file::
 
-    mod-noudp:
-      - id: default
-
     template:
       - id: default
-        global-module: mod-noudp/default
+        global-module: mod-noudp
 
-The TCP queries are not affected.
+.. NOTE::
+   This module is not configurable.

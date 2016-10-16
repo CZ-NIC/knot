@@ -16,6 +16,8 @@ class KnotModule(object):
     src_name = None
     # Module name in the configuration.
     conf_name = None
+    # Empty configuration
+    empty = False
 
     def __init__(self):
         self.conf_id = "id%s" % type(self).count
@@ -47,9 +49,12 @@ class KnotModule(object):
             raise Skip("Module '%s' not detected" % cls.conf_name)
 
     def get_conf_ref(self):
-        return "%s/%s" % (self.conf_name, self.conf_id)
+        if self.empty:
+            return str(self.conf_name)
+        else:
+            return "%s/%s" % (self.conf_name, self.conf_id)
 
-    def get_conf(self): pass
+    def get_conf(self, conf=None): pass
 
 class ModSynthRecord(KnotModule):
     '''Automatic forward/reverse records module'''
@@ -139,19 +144,10 @@ class ModWhoami(KnotModule):
 
     src_name = "whoami_load"
     conf_name = "mod-whoami"
+    empty = True
 
     def __init__(self):
         super().__init__()
-
-    def get_conf(self, conf=None):
-        if not conf:
-            conf = dnstest.config.KnotConf()
-
-        conf.begin(self.conf_name)
-        conf.id_item("id", self.conf_id)
-        conf.end()
-
-        return conf
 
 class ModRosedb(KnotModule):
     '''Rosedb module'''
