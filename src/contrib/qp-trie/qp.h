@@ -97,7 +97,12 @@ bool trie_it_finished(trie_it_t *it);
 /*! \brief Free any resources of the iterator. It's OK to call it on NULL. */
 void trie_it_free(trie_it_t *it);
 
-/*! \brief Return pointer to the key of the current element. */
+/*!
+ * \brief Return pointer to the key of the current element.
+ *
+ * \note The len is uint32_t internally but size_t is better for our usage
+ *       as it is without an additional type conversion.
+ */
 const char* trie_it_key(trie_it_t *it, size_t *len);
 
 /*! \brief Return pointer to the value of the current element (writable). */
