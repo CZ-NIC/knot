@@ -17,9 +17,9 @@
 #pragma once
 
 #include "contrib/qp-trie/qp.h"
+#include "contrib/hhash.h"
 
 typedef trie_t hattrie_t;
-typedef trie_val_t value_t;
 typedef trie_it_t hattrie_iter_t;
 
 inline static hattrie_t* hattrie_create(struct knot_mm *mm)
