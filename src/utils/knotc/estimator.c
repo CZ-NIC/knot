@@ -134,39 +134,6 @@ void estimator_free(void *p)
 	free(p);
 }
 
-static int get_htable_size(void *t, void *d)
-{
-	hhash_t *table = (hhash_t *)t;
-	size_t *size = (size_t *)d;
-
-	/* Size of the empty table. */
-	*size += add_overhead(sizeof(hhash_t) + table->size * sizeof(hhelem_t));
-
-	/* Allocated keys. */
-	uint16_t key_len = 0;
-	hhash_iter_t it;
-	hhash_iter_begin(table, &it, false);
-	while (!hhash_iter_finished(&it)) {
-		(void)hhash_iter_key(&it, &key_len);
-		*size += add_overhead(sizeof(value_t) + sizeof(uint16_t) + key_len);
-		hhash_iter_next(&it);
-	}
-
-	return KNOT_EOK;
-}
-
-size_t estimator_trie_htable_memsize(hattrie_t *table)
-{
-	/*
-	 * Iterate through trie's node, and get stats from each htable.
-	 * Space taken up by the trie itself is measured using malloc wrapper.
-	 * (Even for large zones, space taken by trie itself is very small)
-	 */
-	size_t size = 0;
-	hattrie_apply_rev_ahtable(table, get_htable_size, &size);
-	return size;
-}
-
 void estimator_rrset_memsize_wrap(zs_scanner_t *scanner)
 {
 	rrset_memsize(scanner->process.data, scanner);

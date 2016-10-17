@@ -1,4 +1,4 @@
-/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -98,9 +98,6 @@ int main(int argc, char *argv[])
 	}
 	ok(passed, "ztree: lookup");
 
-	/* heal index for ordered lookup */
-	hattrie_build_index(t);
-
 	/* 4. ordered lookup */
 	node = NULL;
 	zone_node_t *prev = NULL;
@@ -111,7 +108,7 @@ int main(int argc, char *argv[])
 
 	/* 5. ordered traversal */
 	unsigned i = 0;
-	int ret = zone_tree_apply_inorder(t, ztree_iter_data, &i);
+	int ret = zone_tree_apply(t, ztree_iter_data, &i);
 	ok (ret == KNOT_EOK, "ztree: ordered traversal");
 
 	zone_tree_free(&t);

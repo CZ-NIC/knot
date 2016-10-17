@@ -228,7 +228,7 @@ static void acl_next(void *scanner, const char *value)
 
 	if (extra->run == S_FIRST) {
 		if (trie != NULL) {
-			hattrie_iter_t *it = hattrie_iter_begin(*trie, false);
+			hattrie_iter_t *it = hattrie_iter_begin(*trie);
 			for (; !hattrie_iter_finished(it); hattrie_iter_next(it)) {
 				size_t len = 0;
 				const char *data = hattrie_iter_key(it, &len);
@@ -250,7 +250,7 @@ static void acl_next(void *scanner, const char *value)
 
 	if (trie != NULL) {
 		bool init = true;
-		hattrie_iter_t *it = hattrie_iter_begin(*trie, false);
+		hattrie_iter_t *it = hattrie_iter_begin(*trie);
 		for (; !hattrie_iter_finished(it); hattrie_iter_next(it)) {
 			size_t len = 0;
 			const char *data = hattrie_iter_key(it, &len);
@@ -327,7 +327,7 @@ static void grp_init(void *scanner, const char *name)
 		hattrie_t **trie = (hattrie_t **)hattrie_get(extra->share->groups,
 		                                             name, strlen(name));
 		if (*trie == NULL) {
-			*trie = hattrie_create();
+			*trie = hattrie_create(NULL);
 		}
 		extra->current_trie = *trie;
 	}

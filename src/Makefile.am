@@ -28,7 +28,6 @@ EXTRA_DIST =					\
 	contrib/licenses/LGPL-2.0		\
 	contrib/licenses/MIT			\
 	contrib/licenses/OLDAP-2.8		\
-	contrib/hat-trie/LICENSE		\
 	contrib/lmdb/LICENSE			\
 	contrib/murmurhash3/LICENSE		\
 	contrib/openbsd/LICENSE			\
@@ -49,6 +48,7 @@ libcontrib_la_SOURCES = 			\
 	contrib/fnv/longlong.h			\
 	contrib/getline.c			\
 	contrib/getline.h			\
+	contrib/hat-trie/hat-trie.h		\
 	contrib/hhash.c				\
 	contrib/hhash.h				\
 	contrib/macros.h			\
@@ -58,6 +58,8 @@ libcontrib_la_SOURCES = 			\
 	contrib/net.h				\
 	contrib/print.c				\
 	contrib/print.h				\
+	contrib/qp-trie/qp.c			\
+	contrib/qp-trie/qp.h			\
 	contrib/sockaddr.c			\
 	contrib/sockaddr.h			\
 	contrib/string.c			\
@@ -68,8 +70,6 @@ libcontrib_la_SOURCES = 			\
 	contrib/trim.h				\
 	contrib/wire.h				\
 	contrib/wire_ctx.h			\
-	contrib/hat-trie/hat-trie.c		\
-	contrib/hat-trie/hat-trie.h		\
 	contrib/murmurhash3/murmurhash3.c	\
 	contrib/murmurhash3/murmurhash3.h	\
 	contrib/openbsd/strlcat.c		\

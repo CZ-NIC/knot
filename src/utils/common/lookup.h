@@ -83,13 +83,6 @@ void lookup_deinit(lookup_t *lookup);
 int lookup_insert(lookup_t *lookup, const char *str, void *data);
 
 /*!
- * Indexes the lookup container.
- *
- * \param[in] lookup  Lookup context.
- */
-void lookup_index(lookup_t *lookup);
-
-/*!
  * Searches the lookup container for the given key.
  *
  * \note If one candidate, lookup.found contains the key/data,

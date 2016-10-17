@@ -29,7 +29,6 @@ src/contrib/fnv/hash_64a.c
 src/contrib/fnv/longlong.h
 src/contrib/getline.c
 src/contrib/getline.h
-src/contrib/hat-trie/hat-trie.c
 src/contrib/hat-trie/hat-trie.h
 src/contrib/hhash.c
 src/contrib/hhash.h
@@ -50,6 +49,8 @@ src/contrib/openbsd/strlcpy.c
 src/contrib/openbsd/strlcpy.h
 src/contrib/print.c
 src/contrib/print.h
+src/contrib/qp-trie/qp.c
+src/contrib/qp-trie/qp.h
 src/contrib/sockaddr.c
 src/contrib/sockaddr.h
 src/contrib/string.c
@@ -539,11 +540,11 @@ tests/confio.c
 tests/contrib/test_base32hex.c
 tests/contrib/test_base64.c
 tests/contrib/test_endian.c
-tests/contrib/test_hat-trie.c
 tests/contrib/test_heap.c
 tests/contrib/test_hhash.c
 tests/contrib/test_net.c
 tests/contrib/test_net_shortwrite.c
+tests/contrib/test_qp-trie.c
 tests/contrib/test_sockaddr.c
 tests/contrib/test_string.c
 tests/contrib/test_strtonum.c

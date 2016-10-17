@@ -80,7 +80,7 @@ int main(int argc, char *argv[])
 
 	// Test add traversal.
 	changeset_iter_t it;
-	ret = changeset_iter_add(&it, ch, true);
+	ret = changeset_iter_add(&it, ch);
 	ok(ret == KNOT_EOK, "changeset: create iter add");
 	// Order: non.terminals.test. TXT, SPF, here.come.more.non.terminals.test. TXT.
 	knot_rrset_t iter = changeset_iter_next(&it);
@@ -100,7 +100,7 @@ int main(int argc, char *argv[])
 	changeset_add_removal(ch, apex_txt_rr, CHANGESET_CHECK);
 
 	// Test remove traversal.
-	ret = changeset_iter_rem(&it, ch, false);
+	ret = changeset_iter_rem(&it, ch);
 	ok(ret == KNOT_EOK, "changeset: create iter rem");
 	iter = changeset_iter_next(&it);
 	ok(knot_rrset_equal(&iter, apex_txt_rr, KNOT_RRSET_COMPARE_WHOLE),
@@ -108,7 +108,7 @@ int main(int argc, char *argv[])
 	changeset_iter_clear(&it);
 
 	// Test all traversal - just count.
-	ret = changeset_iter_all(&it, ch, false);
+	ret = changeset_iter_all(&it, ch);
 	ok(ret == KNOT_EOK, "changest: create iter all");
 	size_t size = 0;
 	iter = changeset_iter_next(&it);

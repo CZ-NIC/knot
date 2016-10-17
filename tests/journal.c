@@ -125,9 +125,9 @@ static bool changesets_eq(const changeset_t *ch1, changeset_t *ch2)
 	}
 
 	changeset_iter_t it1;
-	changeset_iter_all(&it1, ch1, true);
+	changeset_iter_all(&it1, ch1);
 	changeset_iter_t it2;
-	changeset_iter_all(&it2, ch2, true);
+	changeset_iter_all(&it2, ch2);
 
 	knot_rrset_t rr1 = changeset_iter_next(&it1);
 	knot_rrset_t rr2 = changeset_iter_next(&it2);

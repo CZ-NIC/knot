@@ -97,7 +97,7 @@ static int mark_removed_nsec3(const zone_contents_t *zone, changeset_t *ch)
 	}
 
 	changeset_iter_t itt;
-	changeset_iter_rem(&itt, ch, false);
+	changeset_iter_rem(&itt, ch);
 
 	knot_rrset_t rr = changeset_iter_next(&itt);
 	while (!knot_rrset_empty(&rr)) {

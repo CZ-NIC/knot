@@ -1,4 +1,4 @@
-/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -174,35 +174,32 @@ void changeset_free(changeset_t *ch);
 /*!
  * \brief Inits changeset iteration structure with changeset additions.
  *
- * \param itt     Iterator to init.
- * \param ch      Changeset to use.
- * \param sorted  Sort the iteration?
+ * \param itt  Iterator to init.
+ * \param ch   Changeset to use.
  *
  * \return KNOT_E*
  */
-int changeset_iter_add(changeset_iter_t *itt, const changeset_t *ch, bool sorted);
+int changeset_iter_add(changeset_iter_t *itt, const changeset_t *ch);
 
 /*!
  * \brief Inits changeset iteration structure with changeset removals.
  *
- * \param itt     Iterator to init.
- * \param ch      Changeset to use.
- * \param sorted  Sort the iteration?
+ * \param itt  Iterator to init.
+ * \param ch   Changeset to use.
  *
  * \return KNOT_E*
  */
-int changeset_iter_rem(changeset_iter_t *itt, const changeset_t *ch, bool sorted);
+int changeset_iter_rem(changeset_iter_t *itt, const changeset_t *ch);
 
 /*!
  * \brief Inits changeset iteration structure with changeset additions and removals.
  *
- * \param itt     Iterator to init.
- * \param ch      Changeset to use.
- * \param sorted  Sort the iteration?
+ * \param itt  Iterator to init.
+ * \param ch   Changeset to use.
  *
  * \return KNOT_E*
  */
-int changeset_iter_all(changeset_iter_t *itt, const changeset_t *ch, bool sorted);
+int changeset_iter_all(changeset_iter_t *itt, const changeset_t *ch);
 
 /*!
  * \brief Gets next RRSet from changeset iterator.

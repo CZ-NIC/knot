@@ -442,7 +442,7 @@ static int diff_zone_section(
 		return KNOT_EOK;
 	}
 
-	hattrie_iter_t *it = hattrie_iter_begin(conf()->io.zones, true);
+	hattrie_iter_t *it = hattrie_iter_begin(conf()->io.zones);
 	for (; !hattrie_iter_finished(it); hattrie_iter_next(it)) {
 		io->id = (const uint8_t *)hattrie_iter_key(it, &io->id_len);
 
@@ -820,7 +820,7 @@ static void upd_changes(
 	// Prepare zone changes storage if it doesn't exist.
 	hattrie_t *zones = conf()->io.zones;
 	if (zones == NULL) {
-		zones = hattrie_create_n(TRIE_BUCKET_SIZE, conf()->mm);
+		zones = hattrie_create(conf()->mm);
 		if (zones == NULL) {
 			return;
 		}
@@ -846,7 +846,7 @@ static void upd_changes(
 	case CONF_IO_TUNSET:
 		if (*current & CONF_IO_TSET) {
 			// Remove inserted zone -> no change.
-			hattrie_del(zones, (const char *)io->id, io->id_len);
+			hattrie_del(zones, (const char *)io->id, io->id_len, NULL);
 		} else {
 			// Remove existing zone.
 			*current |= type;
@@ -1399,7 +1399,7 @@ static int check_zone_section(
 		return KNOT_EOK;
 	}
 
-	hattrie_iter_t *it = hattrie_iter_begin(conf()->io.zones, true);
+	hattrie_iter_t *it = hattrie_iter_begin(conf()->io.zones);
 	for (; !hattrie_iter_finished(it); hattrie_iter_next(it)) {
 		size_t id_len;
 		const uint8_t *id = (const uint8_t *)hattrie_iter_key(it, &id_len);
