@@ -107,11 +107,14 @@ static int dnsproxy_fwd(int state, knot_pkt_t *pkt, struct query_data *qdata, vo
 	} else if (layer->defer_fd.fd == 0 || layer->defer_timeout == -1) {
 		// The request is being cancelled.  We need to clean up.
 		layer->defer_fd.fd = 0;
+		proxy_data->re.mm = qdata->mm;
 		knot_request_free(proxy_data->req, proxy_data->re.mm);
 		knot_requestor_clear(&proxy_data->re);
 		free(proxy_data);
 		return KNOT_STATE_DONE;
 	}
+
+	proxy_data->re.mm = qdata->mm;
 
 	/* Forward request. */
 	int ret = knot_requestor_exec_nonblocking(

@@ -421,6 +421,7 @@ static void udp_cleanup(udp_context_t *udp) {
 	}
 
 	_udp_deinit(udp->rq);
+	mp_delete(udp->mm.ctx);
 }
 
 static int cache_udp_query(udp_context_t *main_udp, fdset_t *fds) {
@@ -430,12 +431,15 @@ static int cache_udp_query(udp_context_t *main_udp, fdset_t *fds) {
 
 	/* Duplicate the UDP context, preserving internal references. */
 	*udp = *main_udp;
+	udp->layer.mm = &udp->mm;
 	udp->param.layer = &udp->layer;
 	((struct query_data*)udp->layer.data)->param = &udp->param;
+	((struct query_data*)udp->layer.data)->mm = &udp->mm;
 
 	/* Reinitialize the original context */
 	main_udp->rq = _udp_init();
 	knot_layer_init(&main_udp->layer, &main_udp->mm, process_query_layer());
+	mm_ctx_mempool(&main_udp->mm, 16 * MM_DEFAULT_BLKSIZE);
 
 	int i = fdset_add(fds, udp->layer.defer_fd.fd,
 	                  udp->layer.defer_fd.events, udp);
@@ -617,7 +621,6 @@ int udp_master(dthread_t *thread)
 	}
 
 	udp_cleanup(&udp);
-	mp_delete(udp.mm.ctx);
 	ref_release((ref_t *)ref);
 	fdset_clear(&fds);
 	return KNOT_EOK;
