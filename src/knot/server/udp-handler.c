@@ -413,6 +413,18 @@ static int track_ifaces(const ifacelist_t *ifaces, int thrid,
 	return KNOT_EOK;
 }
 
+static void udp_setup(udp_context_t *udp, server_t *server, unsigned thread_id) {
+	memset(udp, 0, sizeof(udp_context_t));
+	udp->rq = _udp_init();
+	udp->param.server = server;
+	udp->param.thread_id = thread_id;
+	udp->param.layer = &udp->layer;
+	knot_layer_init(&udp->layer, &udp->mm, process_query_layer());
+
+	/* Create big enough memory cushion. */
+	mm_ctx_mempool(&udp->mm, 16 * MM_DEFAULT_BLKSIZE);
+}
+
 static void udp_cleanup(udp_context_t *udp) {
 	if (udp->layer.defer_fd.fd) {
 		/* Ask the module to clean up its resources. */
@@ -437,9 +449,7 @@ static int cache_udp_query(udp_context_t *main_udp, fdset_t *fds) {
 	((struct query_data*)udp->layer.data)->mm = &udp->mm;
 
 	/* Reinitialize the original context */
-	main_udp->rq = _udp_init();
-	knot_layer_init(&main_udp->layer, &main_udp->mm, process_query_layer());
-	mm_ctx_mempool(&main_udp->mm, 16 * MM_DEFAULT_BLKSIZE);
+	udp_setup(main_udp, udp->param.server, udp->param.thread_id);
 
 	int i = fdset_add(fds, udp->layer.defer_fd.fd,
 	                  udp->layer.defer_fd.events, udp);
@@ -543,15 +553,7 @@ int udp_master(dthread_t *thread)
 
 	/* Create UDP answering context. */
 	udp_context_t udp;
-	memset(&udp, 0, sizeof(udp_context_t));
-	udp.rq = _udp_init();
-	udp.param.server = handler->server;
-	udp.param.thread_id = handler->thread_id[thr_id];
-	udp.param.layer = &udp.layer;
-	knot_layer_init(&udp.layer, &udp.mm, process_query_layer());
-
-	/* Create big enough memory cushion. */
-	mm_ctx_mempool(&udp.mm, 16 * MM_DEFAULT_BLKSIZE);
+	udp_setup(&udp, handler->server, handler->thread_id[thr_id]);
 
 	/* Event source. */
 	fdset_t fds;
