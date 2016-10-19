@@ -315,18 +315,18 @@ static int pkcs8_dir_list(void *_handle, dnssec_list_t **list_ptr)
 		return DNSSEC_ENOMEM;
 	}
 
-	int error;
-	struct dirent entry, *result;
-	while (error = readdir_r(dir, &entry, &result), error == 0 && result) {
-		char *keyid = filename_to_keyid(entry.d_name);
+	errno = 0;
+	struct dirent *result;
+	while ((result = readdir(dir)) != NULL) {
+		char *keyid = filename_to_keyid(result->d_name);
 		if (keyid) {
 			dnssec_list_append(list, keyid);
 		}
 	}
 
-	if (error != 0) {
+	if (errno != 0) {
 		dnssec_list_free_full(list, NULL, NULL);
-		return dnssec_errno_to_error(error);
+		return dnssec_errno_to_error(errno);
 	}
 
 	*list_ptr = list;

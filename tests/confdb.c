@@ -126,6 +126,7 @@ static void check_set(
 	}
 
 	uint8_t section_code, item_code;
+	section_code = 0, item_code = 0; // prevents Wuninitialized
 	ok(db_code(conf, txn, KEY0_ROOT, key0, DB_GET, &section_code) == KNOT_EOK,
 	   "Get DB section code");
 	if (key1 != NULL) {
@@ -418,6 +419,7 @@ static void test_conf_db_iter(conf_t *conf, knot_db_txn_t *txn)
 	while (ret == KNOT_EOK) {
 		const uint8_t *id;
 		size_t id_len;
+		id = NULL, id_len = 0; // prevents Wuinitialized
 		ret = conf_db_iter_id(conf, &iter, &id, &id_len);
 		ok(ret == KNOT_EOK, "Get iteration id");
 		ok(id_len == strlen(names[count]), "Compare iteration id length");
