@@ -413,7 +413,13 @@ static int track_ifaces(const ifacelist_t *ifaces, int thrid,
 	return KNOT_EOK;
 }
 
-static void udp_setup(udp_context_t *udp, server_t *server, unsigned thread_id) {
+static udp_context_t *udp_setup(udp_context_t *udp,
+                                server_t *server, unsigned thread_id) {
+	if (udp != NULL) return udp;
+
+	udp = malloc(sizeof(*udp));
+	if (udp == NULL) return NULL;
+
 	memset(udp, 0, sizeof(udp_context_t));
 	udp->rq = _udp_init();
 	udp->param.server = server;
@@ -423,6 +429,8 @@ static void udp_setup(udp_context_t *udp, server_t *server, unsigned thread_id) 
 
 	/* Create big enough memory cushion. */
 	mm_ctx_mempool(&udp->mm, 16 * MM_DEFAULT_BLKSIZE);
+
+	return udp;
 }
 
 static void udp_cleanup(udp_context_t *udp) {
@@ -436,39 +444,15 @@ static void udp_cleanup(udp_context_t *udp) {
 	mp_delete(udp->mm.ctx);
 }
 
-static int cache_udp_query(udp_context_t *main_udp, fdset_t *fds) {
-	/* Try to move the query into the deferred set. */
-	udp_context_t *udp = malloc(sizeof(*udp));
-	if (udp == NULL) return KNOT_ENOMEM;
-
-	/* Duplicate the UDP context, preserving internal references. */
-	*udp = *main_udp;
-	udp->layer.mm = &udp->mm;
-	udp->param.layer = &udp->layer;
-	((struct query_data*)udp->layer.data)->param = &udp->param;
-	((struct query_data*)udp->layer.data)->mm = &udp->mm;
-
-	/* Reinitialize the original context */
-	udp_setup(main_udp, udp->param.server, udp->param.thread_id);
-
-	int i = fdset_add(fds, udp->layer.defer_fd.fd,
-	                  udp->layer.defer_fd.events, udp);
-	if (i < 0) {
-		free(udp);
-		return i;
-	}
-
-	fdset_set_watchdog(fds, i, udp->layer.defer_timeout);
-
-	return KNOT_EOK;
-}
-
-static void handle_udp_event(udp_context_t *main_udp,
-                             fdset_t *fds, nfds_t i) {
+/* Returns main_udp if it is available for reuse, or NULL if main_udp has
+ * been assigned to a deferred query. */
+static udp_context_t *handle_udp_event(udp_context_t *main_udp,
+                                       fdset_t *fds, nfds_t i) {
 	udp_context_t *udp = fds->ctx[i];
 	if (udp == NULL) {
 		/* This event is an incoming query. */
-		if (_udp_recv(fds->pfd[i].fd, main_udp->rq) <= 0) return;
+		if (_udp_recv(fds->pfd[i].fd, main_udp->rq) <= 0)
+			return main_udp;
 		udp = main_udp;
 	}
 
@@ -479,24 +463,26 @@ static void handle_udp_event(udp_context_t *main_udp,
 		if (udp == main_udp) {
 			/* This is the first time this query is being
 			 * deferred.  Move it into the deferred set. */
-			int rc = cache_udp_query(udp, fds);
-			if (rc != KNOT_EOK) {
-				/* Can't stash the query -- clean it up but
-				 * leave main_udp ready for reuse. */
-				udp->layer.defer_fd.fd = 0;
+			int i = fdset_add(fds, udp->layer.defer_fd.fd,
+					  udp->layer.defer_fd.events, udp);
+			if (i < 0) {
+				/* Failed to add fd. */
+				udp->layer.defer_fd.fd = -1;
 				_udp_handle(udp, udp->rq);
-				udp->layer.state = KNOT_STATE_FAIL;
-				mp_flush(udp->mm.ctx);
+				udp->layer.defer_fd.fd = 0;
+				return main_udp;
 			}
+
+			fdset_set_watchdog(fds, i, udp->layer.defer_timeout);
+			return NULL;
 		} else {
 			/* The file descriptor and/or timeout value may have
 			 * changed.  Update the fdset accordingly. */
 			fds->pfd[i].fd = udp->layer.defer_fd.fd;
 			fds->pfd[i].events = udp->layer.defer_fd.events;
 			fdset_set_watchdog(fds, i, udp->layer.defer_timeout);
+			return main_udp;
 		}
-
-		return;
 	}
 
 	/* Flush allocated memory. */
@@ -509,6 +495,8 @@ static void handle_udp_event(udp_context_t *main_udp,
 		udp_cleanup(udp);
 		free(udp);
 	}
+
+	return main_udp;
 }
 
 static enum fdset_sweep_state sweep_cb(fdset_t* fds, int i, void* data) {
@@ -550,10 +538,7 @@ int udp_master(dthread_t *thread)
 	iohandler_t *handler = (iohandler_t *)thread->data;
 	unsigned *iostate = &handler->thread_state[thr_id];
 	ifacelist_t *ref = NULL;
-
-	/* Create UDP answering context. */
-	udp_context_t udp;
-	udp_setup(&udp, handler->server, handler->thread_id[thr_id]);
+	udp_context_t *udp = NULL;
 
 	/* Event source. */
 	fdset_t fds;
@@ -565,12 +550,12 @@ int udp_master(dthread_t *thread)
 		/* Check handler state. */
 		if (unlikely(*iostate & ServerReload)) {
 			*iostate &= ~ServerReload;
-			udp.param.thread_id = handler->thread_id[thr_id];
+			if(udp) udp->param.thread_id = handler->thread_id[thr_id];
 
 			rcu_read_lock();
 			ref_release((ref_t *)ref);
 			ref = handler->server->ifaces;
-			track_ifaces(ref, udp.param.thread_id, &fds);
+			track_ifaces(ref, handler->thread_id[thr_id], &fds);
 			rcu_read_unlock();
 			if (fds.n == 0) {
 				break;
@@ -592,6 +577,10 @@ int udp_master(dthread_t *thread)
 			}
 		}
 
+		/* Make sure we have a UDP context ready. */
+		udp = udp_setup(udp, handler->server, handler->thread_id[thr_id]);
+		if (udp == NULL) break;
+
 		/* Wait for events. */
 		int events = poll(fds.pfd, fds.n, timeout);
 		if (events <= 0) {
@@ -607,7 +596,12 @@ int udp_master(dthread_t *thread)
 				continue;
 			}
 			events -= 1;
-			handle_udp_event(&udp, &fds, i);
+
+			udp = udp_setup(udp, handler->server,
+				handler->thread_id[thr_id]);
+			if (udp == NULL) break;
+
+			udp = handle_udp_event(udp, &fds, i);
 		}
 
 		/* Handle timeouts. */
@@ -622,7 +616,7 @@ int udp_master(dthread_t *thread)
 		free(_udp);
 	}
 
-	udp_cleanup(&udp);
+	if(udp) udp_cleanup(udp);
 	ref_release((ref_t *)ref);
 	fdset_clear(&fds);
 	return KNOT_EOK;
