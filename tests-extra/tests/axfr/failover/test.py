@@ -53,6 +53,7 @@ for server in [master1, master2]:
 
 # failover to second master
 master1.stop()
+slave.clean(zone=False, timers=True)
 slave.start()
 slave.zone_wait(zone, serial=20, equal=True, greater=False)
 master1.start()
