@@ -230,10 +230,7 @@ static zone_t *create_zone_new(conf_t *conf, const knot_dname_t *name,
 		zone_events_enqueue(zone, ZONE_EVENT_LOAD);
 		break;
 	case ZONE_STATUS_BOOSTRAP:
-		if (zone_events_get_time(zone, ZONE_EVENT_REFRESH) == 0) {
-			// Plan immediate refresh if not already planned.
-			zone_events_schedule(zone, ZONE_EVENT_REFRESH, ZONE_EVENT_NOW);
-		}
+		zone_events_schedule(zone, ZONE_EVENT_REFRESH, ZONE_EVENT_NOW);
 		break;
 	case ZONE_STATUS_NOT_FOUND:
 		break;
