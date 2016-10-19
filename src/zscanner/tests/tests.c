@@ -48,6 +48,7 @@ int test__date_to_timestamp(void)
 			 gmtime_r(&ref_timestamp, &result));
 
 		// Get testing timestamp.
+		test_timestamp = 0U; // prevents Wunitialized
 		date_to_timestamp(buffer, &test_timestamp);
 
 		// Some continuous loging.
