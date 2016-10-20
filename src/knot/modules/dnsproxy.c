@@ -65,7 +65,7 @@ static int dnsproxy_fwd(int state, knot_pkt_t *pkt, struct query_data *qdata, vo
 	struct dnsproxy *proxy = ctx;
 	struct dnsproxy_data *proxy_data = layer->defer_data;
 
-	if (proxy_data == NULL) {
+	if (layer->defer_fd.fd == 0) {
 		if (pkt == NULL || qdata == NULL || ctx == NULL) {
 			return KNOT_STATE_FAIL;
 		}
@@ -104,7 +104,7 @@ static int dnsproxy_fwd(int state, knot_pkt_t *pkt, struct query_data *qdata, vo
 		}
 
 		layer->defer_data = proxy_data;
-	} else if (layer->defer_fd.fd == 0 || layer->defer_timeout == -1) {
+	} else if (layer->defer_fd.fd == -1 || layer->defer_timeout == -1) {
 		// The request is being cancelled.  We need to clean up.
 		layer->defer_fd.fd = 0;
 		proxy_data->re.mm = qdata->mm;

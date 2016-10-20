@@ -436,7 +436,7 @@ static udp_context_t *udp_setup(udp_context_t *udp,
 static void udp_cleanup(udp_context_t *udp) {
 	if (udp->layer.defer_fd.fd) {
 		/* Ask the module to clean up its resources. */
-		udp->layer.defer_fd.fd = 0;
+		udp->layer.defer_fd.fd = -1;
 		_udp_handle(udp, udp->rq);
 	}
 
@@ -454,6 +454,7 @@ static udp_context_t *handle_udp_event(udp_context_t *main_udp,
 		if (_udp_recv(fds->pfd[i].fd, main_udp->rq) <= 0)
 			return main_udp;
 		udp = main_udp;
+		udp->layer.defer_fd.fd = 0;
 	}
 
 	udp->layer.defer_fd.revents = fds->pfd[i].revents;
