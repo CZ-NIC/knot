@@ -663,6 +663,8 @@ class Server(object):
 
     def clean(self, zone=True, timers=True):
         if zone:
+            zone = zone_arg_check(zone)
+
             # Remove all zonefiles.
             if zone is True:
                 for _z in sorted(self.zones):
