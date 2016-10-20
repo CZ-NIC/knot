@@ -14,7 +14,7 @@ class TimerDBInfo:
         self._path = path
 
     # the order is significant
-    TIMERS = [ "refresh", "expire", "flush" ]
+    TIMERS = [ "refresh", "expire", "flush", "transfer" ]
 
     @classmethod
     def parse_dname(cls, dname):
