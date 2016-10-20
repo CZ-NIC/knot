@@ -19,30 +19,33 @@
 #include "contrib/wire.h"
 #include "contrib/wire_ctx.h"
 
-#define PERSISTENT_EVENT_COUNT 3
+#define PERSISTENT_EVENT_COUNT 4
 
 enum {
 	KEY_REFRESH = 1,
 	KEY_EXPIRE,
-	KEY_FLUSH
+	KEY_FLUSH,
+	KEY_XFER
 };
 
 // Do not change these mappings if you want backwards compatibility.
 static const uint8_t event_id_to_key[ZONE_EVENT_COUNT] = {
 	[ZONE_EVENT_REFRESH] = KEY_REFRESH,
 	[ZONE_EVENT_EXPIRE] = KEY_EXPIRE,
-	[ZONE_EVENT_FLUSH] = KEY_FLUSH
+	[ZONE_EVENT_FLUSH] = KEY_FLUSH,
+	[ZONE_EVENT_XFER] = KEY_XFER
 };
 
 static const int key_to_event_id[PERSISTENT_EVENT_COUNT + 1] = {
 	[KEY_REFRESH] = ZONE_EVENT_REFRESH,
 	[KEY_EXPIRE] = ZONE_EVENT_EXPIRE,
-	[KEY_FLUSH] = ZONE_EVENT_FLUSH
+	[KEY_FLUSH] = ZONE_EVENT_FLUSH,
+	[KEY_XFER] = ZONE_EVENT_XFER
 };
 
 static bool known_event_key(uint8_t key)
 {
-	return key <= KEY_FLUSH;
+	return key <= KEY_XFER;
 }
 
 #define EVENT_KEY_PAIR_SIZE (sizeof(uint8_t) + sizeof(int64_t))
