@@ -85,10 +85,12 @@ int event_load(conf_t *conf, zone_t *zone)
 		zone_contents_deep_free(&old);
 	}
 
-	/* Schedule notify and refresh after load. */
-	if (zone_is_slave(conf, zone)) {
+	/* Schedule refresh after load if not already scheduled. */
+	if (zone_is_slave(conf, zone) &&
+	    zone_events_get_time(zone, ZONE_EVENT_REFRESH) == 0) {
 		zone_events_schedule(zone, ZONE_EVENT_REFRESH, ZONE_EVENT_NOW);
 	}
+	/* Schedule notify. */
 	if (!zone_contents_is_empty(contents)) {
 		zone_events_schedule(zone, ZONE_EVENT_NOTIFY, ZONE_EVENT_NOW);
 		zone->bootstrap_retry = ZONE_EVENT_NOW;
