@@ -584,10 +584,6 @@ int udp_master(dthread_t *thread)
 
 		/* Wait for events. */
 		int events = poll(fds.pfd, fds.n, timeout);
-		if (events <= 0) {
-			if (errno == EINTR) continue;
-			break;
-		}
 
 		/* Process the events.  This must be done in reverse
                  * order so that handle_udp_event() may safely add or

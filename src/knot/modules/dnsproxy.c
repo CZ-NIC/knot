@@ -64,6 +64,7 @@ static int dnsproxy_fwd(int state, knot_pkt_t *pkt, struct query_data *qdata, vo
 	knot_layer_t *layer = qdata->param->layer;
 	struct dnsproxy *proxy = ctx;
 	struct dnsproxy_data *proxy_data = layer->defer_data;
+	int ret;
 
 	if (layer->defer_fd.fd == 0) {
 		if (pkt == NULL || qdata == NULL || ctx == NULL) {
@@ -104,28 +105,26 @@ static int dnsproxy_fwd(int state, knot_pkt_t *pkt, struct query_data *qdata, vo
 		}
 
 		layer->defer_data = proxy_data;
-	} else if (layer->defer_fd.fd == -1 || layer->defer_timeout == -1) {
-		// The request is being cancelled.  We need to clean up.
-		layer->defer_fd.fd = 0;
-		proxy_data->re.mm = qdata->mm;
-		knot_request_free(proxy_data->req, proxy_data->re.mm);
-		knot_requestor_clear(&proxy_data->re);
-		free(proxy_data);
-		return KNOT_STATE_DONE;
 	}
 
-	proxy_data->re.mm = qdata->mm;
+	if (layer->defer_fd.fd == -1) {
+		ret = KNOT_EOK;
+	} else if (layer->defer_timeout == -1) {
+		ret = KNOT_ETIMEOUT;
+	} else if (layer->defer_fd.revents & POLLERR) {
+		ret = KNOT_ECONN;
+	} else {
+		/* Forward request. */
+		ret = knot_requestor_exec_nonblocking(
+			&proxy_data->re, proxy_data->req);
 
-	/* Forward request. */
-	int ret = knot_requestor_exec_nonblocking(
-		&proxy_data->re, proxy_data->req);
-
-	/* If the request is incomplete, defer. */
-	if (proxy_data->re.layer.defer_fd.fd) {
-		layer->defer_fd.fd = proxy_data->re.layer.defer_fd.fd;
-		layer->defer_fd.events = proxy_data->re.layer.defer_fd.events;
-		layer->defer_timeout = conf()->cache.srv_tcp_reply_timeout;
-		return KNOT_STATE_PRODUCE;
+		/* If the request is incomplete, defer. */
+		if (proxy_data->re.layer.defer_fd.fd) {
+			layer->defer_fd.fd = proxy_data->re.layer.defer_fd.fd;
+			layer->defer_fd.events = proxy_data->re.layer.defer_fd.events;
+			layer->defer_timeout = conf()->cache.srv_tcp_reply_timeout;
+			return KNOT_STATE_PRODUCE;
+		}
 	}
 
 	knot_request_free(proxy_data->req, proxy_data->re.mm);
