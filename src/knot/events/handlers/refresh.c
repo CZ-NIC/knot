@@ -82,20 +82,20 @@
 #define BOOTSTRAP_MAXTIME (24*60*60)
 #define BOOTSTRAP_JITTER (30)
 
-enum refresh_state {
+enum state {
 	REFRESH_STATE_INVALID = 0,
-	REFRESH_STATE_SOA_QUERY,
-	REFRESH_STATE_TRANSFER,
+	STATE_SOA_QUERY,
+	STATE_TRANSFER,
 };
 
-struct refresh_result {
+struct transfer_result {
 	zone_contents_t *zone;  //!< AXFR, new zone
 	list_t changesets;      //!< IXFR, zone updates
 };
 
 struct refresh_data {
-	enum refresh_state state;         //!< Event processing state.
-	struct refresh_result result;     //!< Result of the refresh event.
+	enum state state;                 //!< Event processing state.
+	struct transfer_result result;    //!< Result of the refresh event.
 	bool is_ixfr;                     //!< Transfer is IXFR not AXFR.
 
 	const knot_dname_t *zone;         //!< Zone name.
@@ -124,21 +124,22 @@ static bool serial_is_current(uint32_t local_serial, uint32_t remote_serial)
 	return serial_compare(local_serial, remote_serial) >= 0;
 }
 
-static void refresh_result_init(struct refresh_result *result)
+static void transfer_result_init(struct transfer_result *result)
 {
 	result->zone = NULL;
 	init_list(&result->changesets);
 }
 
-static void refresh_result_cleanup(struct refresh_result *result)
+static void transfer_result_cleanup(struct transfer_result *result)
 {
 	zone_contents_deep_free(&result->zone);
 	changesets_free(&result->changesets);
+	memset(result, 0, sizeof(*result));
 }
 
-static bool refresh_result_empty(const struct refresh_result *result)
+static bool transfer_result_has_data(const struct transfer_result *result)
 {
-	return result->zone == NULL && EMPTY_LIST(result->changesets);
+	return result->zone || !EMPTY_LIST(result->changesets);
 }
 
 time_t bootstrap_next(const zone_timers_t *timers)
@@ -540,7 +541,7 @@ static int soa_query_consume(knot_layer_t *layer, knot_pkt_t *pkt)
 	if (current) {
 		return KNOT_STATE_DONE;
 	} else {
-		data->state = REFRESH_STATE_TRANSFER;
+		data->state = STATE_TRANSFER;
 		return KNOT_STATE_RESET;
 	}
 }
@@ -600,10 +601,10 @@ static int refresh_begin(knot_layer_t *layer, void *_data)
 	struct refresh_data *data = _data;
 
 	if (data->soa) {
-		data->state = REFRESH_STATE_SOA_QUERY;
+		data->state = STATE_SOA_QUERY;
 		data->is_ixfr = true;
 	} else {
-		data->state = REFRESH_STATE_TRANSFER;
+		data->state = STATE_TRANSFER;
 		data->is_ixfr = false;
 	}
 
@@ -615,8 +616,8 @@ static int refresh_produce(knot_layer_t *layer, knot_pkt_t *pkt)
 	struct refresh_data *data = layer->data;
 
 	switch (data->state) {
-	case REFRESH_STATE_SOA_QUERY: return soa_query_produce(layer, pkt);
-	case REFRESH_STATE_TRANSFER:  return transfer_produce(layer, pkt);
+	case STATE_SOA_QUERY: return soa_query_produce(layer, pkt);
+	case STATE_TRANSFER:  return transfer_produce(layer, pkt);
 	default:
 		return KNOT_STATE_FAIL;
 	}
@@ -627,8 +628,8 @@ static int refresh_consume(knot_layer_t *layer, knot_pkt_t *pkt)
 	struct refresh_data *data = layer->data;
 
 	switch (data->state) {
-	case REFRESH_STATE_SOA_QUERY: return soa_query_consume(layer, pkt);
-	case REFRESH_STATE_TRANSFER:  return transfer_consume(layer, pkt);
+	case STATE_SOA_QUERY: return soa_query_consume(layer, pkt);
+	case STATE_TRANSFER:  return transfer_consume(layer, pkt);
 	default:
 		return KNOT_STATE_FAIL;
 	}
@@ -647,7 +648,7 @@ static const knot_layer_api_t REFRESH_API = {
 };
 
 static int publish_zone(conf_t *conf, zone_t *zone, const struct sockaddr *remote,
-                        struct refresh_result *result)
+                        struct transfer_result *result)
 {
 	int ret = KNOT_ERROR;
 	bool axfr = result->zone != NULL;
@@ -747,7 +748,7 @@ static int try_refresh(conf_t *conf, zone_t *zone, const conf_remote_t *master, 
 		.soa = zone->contents ? &soa : NULL,
 	};
 
-	refresh_result_init(&data.result);
+	transfer_result_init(&data.result);
 	query_edns_data_init(&data.edns, conf, zone->name, master->addr.ss_family);
 
 	// TODO: temporary until we can get event specific flags
@@ -781,11 +782,16 @@ static int try_refresh(conf_t *conf, zone_t *zone, const conf_remote_t *master, 
 	knot_request_free(req, NULL);
 	knot_requestor_clear(&requestor);
 
-	if (ret == KNOT_EOK && !refresh_result_empty(&data.result)) {
+	bool updated = transfer_result_has_data(&data.result);
+	if (ret == KNOT_EOK && updated) {
 		ret = publish_zone(conf, zone, data.remote, &data.result);
 	}
 
-	refresh_result_cleanup(&data.result);
+	transfer_result_cleanup(&data.result);
+
+	if (ret == KNOT_EOK && ctx) {
+		*(bool *)ctx = updated;
+	}
 
 	return ret;
 }
@@ -796,11 +802,13 @@ int event_refresh(conf_t *conf, zone_t *zone)
 
 	// slave zones only
 	if (!zone_is_slave(conf, zone)) {
-		log_zone_debug(zone->name, "%s:%d possibly unreachable", __func__, __LINE__);
+		assert(0 && "unreachable");
 		return KNOT_EOK;
 	}
 
-	int ret = zone_master_try(conf, zone, try_refresh, NULL, "refresh");
+	bool updated = false;
+
+	int ret = zone_master_try(conf, zone, try_refresh, &updated, "refresh");
 	if (ret != KNOT_EOK) {
 		log_zone_error(zone->name, "refresh, failed (%s)", knot_strerror(ret));
 	}
@@ -825,9 +833,10 @@ int event_refresh(conf_t *conf, zone_t *zone)
 	/* Rechedule events. */
 	zone_events_replan_after_timers(conf, zone);
 	zone_events_schedule_at(zone, ZONE_EVENT_NOTIFY, now);
+
 	conf_val_t val = conf_zone_get(conf, C_ZONEFILE_SYNC, zone->name);
 	int64_t sync_timeout = conf_int(&val);
-	if (sync_timeout == 0) {
+	if (sync_timeout == 0 && updated) {
 		zone_events_schedule_at(zone, ZONE_EVENT_FLUSH, now);
 	}
 
