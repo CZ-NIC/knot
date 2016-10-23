@@ -775,8 +775,7 @@ static int try_refresh(conf_t *conf, zone_t *zone, const conf_remote_t *master, 
 		return KNOT_ENOMEM;
 	}
 
-	// TODO: hardcoded
-	int timeout = 2000;
+	int timeout = conf->cache.srv_tcp_reply_timeout * 1000;
 
 	int ret = knot_requestor_exec(&requestor, req, timeout);
 	knot_request_free(req, NULL);
