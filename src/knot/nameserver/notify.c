@@ -70,12 +70,12 @@ int notify_process_query(knot_pkt_t *pkt, struct query_data *qdata)
 		const knot_rrset_t *soa = knot_pkt_rr(answer, 0);
 		if (soa->type == KNOT_RRTYPE_SOA) {
 			uint32_t serial = knot_soa_serial(&soa->rrs);
-			NOTIFY_IN_LOG(LOG_INFO, qdata, "received serial %u", serial);
+			NOTIFY_IN_LOG(LOG_INFO, qdata, "received, serial %u", serial);
 		} else { /* Complain, but accept N/A record. */
 			NOTIFY_IN_LOG(LOG_NOTICE, qdata, "received, bad record in answer section");
 		}
 	} else {
-		NOTIFY_IN_LOG(LOG_INFO, qdata, "received, doesn't have SOA");
+		NOTIFY_IN_LOG(LOG_INFO, qdata, "received, serial none");
 	}
 
 	/* Incoming NOTIFY expires REFRESH timer and renews EXPIRE timer. */
