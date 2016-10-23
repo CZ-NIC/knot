@@ -63,8 +63,7 @@ static void cleanup_iter_list(list_t *l)
 }
 
 /*! \brief Inits changeset iterator with given tries. */
-static int changeset_iter_init(changeset_iter_t *ch_it, const changeset_t *ch,
-                               size_t tries, ...)
+static int changeset_iter_init(changeset_iter_t *ch_it, size_t tries, ...)
 {
 	memset(ch_it, 0, sizeof(*ch_it));
 	init_list(&ch_it->iters);
@@ -438,17 +437,17 @@ void changeset_free(changeset_t *ch)
 
 int changeset_iter_add(changeset_iter_t *itt, const changeset_t *ch)
 {
-	return changeset_iter_init(itt, ch, 2, ch->add->nodes, ch->add->nsec3_nodes);
+	return changeset_iter_init(itt, 2, ch->add->nodes, ch->add->nsec3_nodes);
 }
 
 int changeset_iter_rem(changeset_iter_t *itt, const changeset_t *ch)
 {
-	return changeset_iter_init(itt, ch, 2, ch->remove->nodes, ch->remove->nsec3_nodes);
+	return changeset_iter_init(itt, 2, ch->remove->nodes, ch->remove->nsec3_nodes);
 }
 
 int changeset_iter_all(changeset_iter_t *itt, const changeset_t *ch)
 {
-	return changeset_iter_init(itt, ch, 4, ch->add->nodes, ch->add->nsec3_nodes,
+	return changeset_iter_init(itt, 4, ch->add->nodes, ch->add->nsec3_nodes,
 	                           ch->remove->nodes, ch->remove->nsec3_nodes);
 }
 
