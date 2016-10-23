@@ -805,6 +805,7 @@ int event_refresh(conf_t *conf, zone_t *zone)
 		return KNOT_EOK;
 	}
 
+	bool bootstrap = zone_contents_is_empty(zone->contents);
 	bool updated = false;
 
 	int ret = zone_master_try(conf, zone, try_refresh, &updated, "refresh");
@@ -839,11 +840,9 @@ int event_refresh(conf_t *conf, zone_t *zone)
 		zone_events_schedule_at(zone, ZONE_EVENT_FLUSH, now);
 	}
 
-	// MEMORY TRIM?
-	/* Trim extra heap. */
-	//if (!is_bootstrap) {
-	//	mem_trim();
-	//}
+	if (!bootstrap) {
+		mem_trim();
+	}
 
 	return KNOT_EOK;
 }
