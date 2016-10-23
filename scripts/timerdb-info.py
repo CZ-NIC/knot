@@ -1,8 +1,10 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 # vim: et ts=4 sw=4 sts=4
 #
 # Dump content of zone timers database in user readable format.
 #
+
+from __future__ import print_function
 
 import datetime
 import lmdb
@@ -13,14 +15,40 @@ class TimerDBInfo:
     def __init__(self, path):
         self._path = path
 
-    # the order is significant
-    TIMERS = [ "refresh", "expire", "flush" ]
+    @classmethod
+    def format_timestamp(cls, timestamp):
+        if timestamp == 0:
+            return "never"
+        else:
+            return datetime.datetime.fromtimestamp(timestamp).isoformat()
+
+    @classmethod
+    def format_seconds(cls, value):
+        return "%d" % value
+
+    @classmethod
+    def format_value(cls, id, value):
+        timers = {
+                # knot >= 1.6
+                0x01: ("legacy_refresh", cls.format_timestamp),
+                0x02: ("legacy_expire",  cls.format_timestamp),
+                0x03: ("legacy_flush",   cls.format_timestamp),
+                # knot >= 2.4
+                0x80: ("soa_expire",   cls.format_seconds),
+                0x81: ("last_flush",   cls.format_timestamp),
+                0x82: ("last_refresh", cls.format_timestamp),
+                0x83: ("next_refresh", cls.format_timestamp),
+        }
+        if id in timers:
+            return (timers[id][0], timers[id][1](value))
+        else:
+            return ("%02x" % id, "%08x" % value)
 
     @classmethod
     def parse_dname(cls, dname):
         labels = []
-        while dname[0] != 0:
-            llen = dname[0]
+        while ord(dname[0]) != 0:
+            llen = ord(dname[0])
             label = dname[1:llen+1].decode("utf-8")
             dname = dname[llen+1:]
             labels.append(label)
@@ -33,22 +61,14 @@ class TimerDBInfo:
             chunk = binary[:9]
             binary = binary[9:]
             id, value = struct.unpack("!BQ", chunk)
-            if id > 0 and id <= len(cls.TIMERS):
-                timers[id - 1] = value
+            timers[id] = value
         return timers
-
-    @classmethod
-    def format_date(cls, timestamp):
-        if timestamp == 0:
-            return "never"
-        else:
-            return datetime.datetime.fromtimestamp(timestamp).isoformat()
 
     @classmethod
     def format_line(cls, zone, timers):
         parts = [zone]
-        for id, name in enumerate(cls.TIMERS):
-            parts.append("%s %s" % (name, cls.format_date(timers.get(id, 0))))
+        for id, value in timers.items():
+            parts.append("%s %s" % cls.format_value(id, value))
         return " | ".join(parts)
 
     def run(self):
