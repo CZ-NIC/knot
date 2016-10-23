@@ -1,4 +1,4 @@
-/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -22,8 +22,6 @@
 #include "libknot/libknot.h"
 #include "contrib/macros.h"
 #include "contrib/mempattern.h"
-
-/* -------------------- Changeset iterator helpers -------------------------- */
 
 static int handle_soa(knot_rrset_t **soa, const knot_rrset_t *rrset)
 {
@@ -64,7 +62,7 @@ static void cleanup_iter_list(list_t *l)
 	init_list(l);
 }
 
-/*! \brief Inits changeset iterator with given HAT-tries. */
+/*! \brief Inits changeset iterator with given tries. */
 static int changeset_iter_init(changeset_iter_t *ch_it, const changeset_t *ch,
                                size_t tries, ...)
 {
@@ -76,16 +74,21 @@ static int changeset_iter_init(changeset_iter_t *ch_it, const changeset_t *ch,
 
 	for (size_t i = 0; i < tries; ++i) {
 		hattrie_t *t = va_arg(args, hattrie_t *);
-		if (t) {
-			hattrie_iter_t *it = hattrie_iter_begin(t);
-			if (it == NULL) {
-				cleanup_iter_list(&ch_it->iters);
-				return KNOT_ENOMEM;
-			}
-			if (ptrlist_add(&ch_it->iters, it, NULL) == NULL) {
-				cleanup_iter_list(&ch_it->iters);
-				return KNOT_ENOMEM;
-			}
+		if (t == NULL) {
+			continue;
+		}
+
+		hattrie_iter_t *it = hattrie_iter_begin(t);
+		if (it == NULL) {
+			cleanup_iter_list(&ch_it->iters);
+			va_end(args);
+			return KNOT_ENOMEM;
+		}
+
+		if (ptrlist_add(&ch_it->iters, it, NULL) == NULL) {
+			cleanup_iter_list(&ch_it->iters);
+			va_end(args);
+			return KNOT_ENOMEM;
 		}
 	}
 
@@ -171,8 +174,6 @@ static void check_redundancy(zone_contents_t *counterpart, const knot_rrset_t *r
 
 	return;
 }
-
-/* ------------------------------- API -------------------------------------- */
 
 int changeset_init(changeset_t *ch, const knot_dname_t *apex)
 {
