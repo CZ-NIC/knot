@@ -16,10 +16,13 @@
 
 #include <assert.h>
 #include <time.h>
+#include <string.h>
 
 #include "dnssec/kasp.h"
-#include "event/keystate.h"
+#include "dnssec/keystate.h"
+#include "shared.h"
 
+_public_
 key_state_t get_key_state(const dnssec_kasp_key_t *key, time_t moment)
 {
 	assert(key);

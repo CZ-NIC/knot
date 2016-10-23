@@ -20,12 +20,15 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 #include <dnssec/crypto.h>
 #include <dnssec/error.h>
 #include <dnssec/kasp.h>
 #include <dnssec/keystore.h>
 #include <dnssec/tsig.h>
+#include <dnssec/key.h>
+#include <dnssec/keystate.h>
 
 #include "cmdparse/command.h"
 #include "cmdparse/parameter.h"
@@ -262,6 +265,33 @@ static bool empty_filter(const char *filter)
 typedef bool (*list_match_cb)(const void *item, const char *filter);
 typedef void (*list_print_cb)(const void *item);
 
+key_state_t str_to_keystate(const char *filter) {
+        if (!filter) {
+               return DNSSEC_KEY_STATE_INVALID;
+        }
+        if (strcmp(filter, "removed") == 0) {
+                return DNSSEC_KEY_STATE_REMOVED;
+
+        }
+
+	if (strcmp(filter, "retired") == 0) {
+		return DNSSEC_KEY_STATE_RETIRED;
+	}
+
+	if (strcmp(filter, "active") == 0) {
+		return DNSSEC_KEY_STATE_ACTIVE;
+	}
+
+	if (strcmp(filter, "published") == 0) {
+		return DNSSEC_KEY_STATE_PUBLISHED;
+	}
+
+	return DNSSEC_KEY_STATE_INVALID;
+}
+//constants to tell apart KSK and ZSK keys
+static const uint16_t DNSKEY_FLAGS_KSK = 257;
+static const uint16_t DNSKEY_FLAGS_ZSK = 256;
+
 /*!
  * Iterate over a list and print each matching item.
  *
@@ -287,6 +317,67 @@ static int print_list(dnssec_list_t *list, const char *filter,
 		}
 	}
 
+	return found;
+}
+
+/*!
+ * Iterate over a list and print each matching item.
+ *
+ * \param list    List to walk through.
+ * \param filter  Limits printed keys to given state.
+ * \param print   Item print callback.
+ *
+ * \return Number of printed items.
+ */
+static int print_list_filtered(dnssec_list_t *list, const char *filter, list_print_cb print)
+{
+	assert(list);
+	key_state_t state = str_to_keystate(filter);
+	if (state == DNSSEC_KEY_STATE_INVALID) {
+		return -1;
+	}
+
+	int found = 0;
+	time_t current = time(NULL);
+	dnssec_list_foreach(item, list) {
+		dnssec_kasp_key_t *key = dnssec_item_get(item);
+		const void *value = dnssec_item_get(item);
+		if (get_key_state(key, current) == state) {
+			print(value);
+			found+=1;
+		}
+	}
+	return found;
+}
+
+/*!
+ * Iterate over a list and print each matching item.
+ *
+ * \param list    List to walk through.
+ * \param filter  Limits printed keys to ksk or zsk.
+ * \param print   Item print callback.
+ *
+ * \return Number of printed items.
+ */
+static int print_list_zsk_ksk(dnssec_list_t *list, const char *filter, list_print_cb print)
+{
+	assert(list);
+	if (!filter || (strcmp(filter, "ksk") != 0 && strcmp(filter, "zsk") != 0 )) {
+		return -1;
+	}
+
+	int found = 0;
+	dnssec_list_foreach(item, list) {
+		dnssec_kasp_key_t *key = dnssec_item_get(item);
+		const void *value = dnssec_item_get(item);
+		uint16_t flags = dnssec_key_get_flags(key->key);
+
+		if ((flags == DNSKEY_FLAGS_KSK && strcmp(filter, "ksk") == 0) ||
+			(flags == DNSKEY_FLAGS_ZSK && strcmp(filter, "zsk") == 0)) {
+			print(value);
+			found+=1;
+		}
+	}
 	return found;
 }
 
@@ -856,7 +947,13 @@ static int cmd_zone_key_list(int argc, char *argv[])
 	}
 
 	dnssec_list_t *zone_keys = dnssec_kasp_zone_get_keys(zone);
-	int count = print_list(zone_keys, filter, item_match_key, item_print_key);
+	int count = print_list_filtered(zone_keys, filter, item_print_key);
+	if (count < 0) { // Look only if filter isnt state
+		count = print_list_zsk_ksk(zone_keys, filter, item_print_key);
+		if (count < 0) { // Look only if filter wasnt key type
+			count = print_list(zone_keys, filter, item_match_key, item_print_key);
+		}
+	}
 	if (count == 0) {
 		error("No matching zone key found.");
 		return 1;
@@ -973,12 +1070,6 @@ static int cmd_zone_key_ds(int argc, char *argv[])
 	_cleanup_zone_ dnssec_kasp_zone_t *zone = get_zone(kasp, zone_name);
 	dnssec_list_t *keys = dnssec_kasp_zone_get_keys(zone);
 
-	dnssec_kasp_key_t *key = NULL;
-	int r = search_unique_key(keys, key_name, &key);
-	if (r != DNSSEC_EOK) {
-		return 1;
-	}
-
 	static const dnssec_key_digest_t digests[] = {
 		DNSSEC_KEY_DIGEST_SHA1,
 		DNSSEC_KEY_DIGEST_SHA256,
@@ -986,8 +1077,32 @@ static int cmd_zone_key_ds(int argc, char *argv[])
 		0
 	};
 
-	for (const dnssec_key_digest_t *d = digests; *d != 0; d++) {
-		create_and_print_ds(key->key, *d);
+	dnssec_kasp_key_t *key = NULL;
+
+	key_state_t state = str_to_keystate(key_name);
+	if (state == DNSSEC_KEY_STATE_INVALID) {
+		int r = search_unique_key(keys, key_name, &key);
+		if (r != DNSSEC_EOK) {
+			return 1;
+		}
+		for (const dnssec_key_digest_t *d = digests; *d != 0; d++) {
+			create_and_print_ds(key->key, *d);
+		}
+	} else if (state == DNSSEC_KEY_STATE_ACTIVE || state == DNSSEC_KEY_STATE_PUBLISHED){
+		time_t current = time(NULL);
+		dnssec_list_foreach(item, keys) {
+			key = dnssec_item_get(item);
+			uint16_t flags = dnssec_key_get_flags(key->key);
+			const void *value = dnssec_item_get(item);
+			if (get_key_state(key, current) == state && flags == DNSKEY_FLAGS_KSK) {
+				item_print_key(value);
+				for (const dnssec_key_digest_t *d = digests; *d != 0; d++) {
+					create_and_print_ds(key->key, *d);
+				}
+			}
+		}
+	} else { // if onther state than active or published
+		error("Wrong filter.");
 	}
 
 	return 0;

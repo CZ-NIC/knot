@@ -19,7 +19,7 @@
 #include "dnssec/error.h"
 #include "dnssec/event.h"
 #include "event/action.h"
-#include "event/keystate.h"
+#include "dnssec/keystate.h"
 #include "event/utils.h"
 #include "key/internal.h"
 #include "shared.h"

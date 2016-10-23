@@ -149,13 +149,13 @@ utilities.
 .INDENT 0.0
 .TP
 \fBzone\fP \fBkey\fP \fBlist\fP \fIzone\-name\fP [\fBfilter\fP]
-List key IDs and tags of zone keys.
+List key IDs and tags of zone keys. The \fBfilter\fP can be a key tag, a key ID prefix a key state (active, published, retired, removed) or ksk/zsk.
 .TP
 \fBzone\fP \fBkey\fP \fBshow\fP \fIzone\-name\fP \fIkey\fP
 Show zone key details. The \fIkey\fP can be a key tag or a key ID prefix.
 .TP
 \fBzone\fP \fBkey\fP \fBds\fP \fIzone\-name\fP \fIkey\fP
-Show DS records for a zone key. The \fIkey\fP can be a key tag or a key ID prefix.
+Show DS records for a zone key. The \fIkey\fP can be a key tag, a key ID prefix or state (limited to active and published ksk).
 .TP
 \fBzone\fP \fBkey\fP \fBgenerate\fP \fIzone\-name\fP [\fIkey\-parameter\fP\&...]
 Generate a new key for a zone.
