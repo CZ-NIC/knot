@@ -362,7 +362,9 @@ int zone_flush_journal(conf_t *conf, zone_t *zone)
 	zone_contents_t *contents = zone->contents;
 	uint32_t serial_to = zone_contents_serial(contents);
 	if (!force && zone->zonefile.exists && zone->zonefile.serial == serial_to) {
-		return KNOT_EOK; /* No differences. */
+		log_zone_info(zone->name, "zone file up-to-date, serial %u",
+		              zone->zonefile.serial);
+		return KNOT_EOK;
 	}
 
 	char *zonefile = conf_zonefile(conf, zone->name);
@@ -370,7 +372,7 @@ int zone_flush_journal(conf_t *conf, zone_t *zone)
 	/* Synchronize journal. */
 	int ret = zonefile_write(zonefile, contents);
 	if (ret != KNOT_EOK) {
-		log_zone_warning(zone->name, "failed to update zone file (%s)",
+		log_zone_warning(zone->name, "zone file update failed (%s)",
 		                 knot_strerror(ret));
 		free(zonefile);
 		return ret;
@@ -380,14 +382,14 @@ int zone_flush_journal(conf_t *conf, zone_t *zone)
 		log_zone_info(zone->name, "zone file updated, serial %u -> %u",
 		              zone->zonefile.serial, serial_to);
 	} else {
-		log_zone_info(zone->name, "zone file updated, serial %u",
+		log_zone_info(zone->name, "zone file updated, serial none -> %u",
 		              serial_to);
 	}
 
 	/* Update zone version. */
 	struct stat st;
 	if (stat(zonefile, &st) < 0) {
-		log_zone_warning(zone->name, "failed to update zone file (%s)",
+		log_zone_warning(zone->name, "zone file update failed (%s)",
 		                 knot_strerror(knot_map_errno()));
 		free(zonefile);
 		return KNOT_EACCES;
