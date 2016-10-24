@@ -26,6 +26,7 @@
 #include <inttypes.h>
 
 #include "libknot/libknot.h"
+#include "contrib/files.h"
 #include "contrib/macros.h"
 #include "contrib/string.h"
 #include "knot/common/log.h"
@@ -337,32 +338,6 @@ open_tmp_failed:
 
 	assert(ret != KNOT_EOK);
 	return ret;
-}
-
-/*! \brief Prepare a directory for the file. */
-static int make_path(const char *path, mode_t mode)
-{
-	if (path == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	char *dir = strdup(path);
-	if (dir == NULL) {
-		return KNOT_ENOMEM;
-	}
-
-	for (char *p = strchr(dir + 1, '/'); p != NULL; p = strchr(p + 1, '/')) {
-		*p = '\0';
-		if (mkdir(dir, mode) == -1 && errno != EEXIST) {
-			free(dir);
-			return knot_map_errno();
-		}
-		*p = '/';
-	}
-
-	free(dir);
-
-	return KNOT_EOK;
 }
 
 int zonefile_write(const char *path, zone_contents_t *zone)
