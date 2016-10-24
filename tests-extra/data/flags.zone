@@ -19,6 +19,8 @@ mail	A	192.0.2.3
 
 ; Delegation of a subdomain
 sub	NS	ns.sub
+sub	NS	sub
+sub	A	192.0.0.1
 ns.sub	A	192.0.2.4
 
 ; CNAME to A record
@@ -55,7 +57,6 @@ cname-mx-wc	MX	10 cname-wildcard
 
 ; MX record leading to CNAME (outside zone)
 cname-mx-out	MX	10 cname-out
-
 
 ; DNAME subtree
 dname		DNAME	dname-tree
