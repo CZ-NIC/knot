@@ -1062,7 +1062,15 @@ char* conf_journalfile_txn(
 		return NULL;
 	}
 
-	return get_filename(conf, txn, zone, "%s.db");
+	conf_val_t val = conf_zone_get_txn(conf, txn, C_JOURNAL, zone);
+	const char *journal = conf_str(&val);
+
+	// Use default journalfile name pattern if not specified.
+	if (journal == NULL) {
+		journal = "%s.db";
+	}
+
+	return get_filename(conf, txn, zone, journal);
 }
 
 size_t conf_udp_threads_txn(

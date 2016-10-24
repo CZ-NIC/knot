@@ -52,6 +52,7 @@
 #define C_IDENT			"\x08""identity"
 #define C_INCL			"\x07""include"
 #define C_IXFR_DIFF		"\x15""ixfr-from-differences"
+#define C_JOURNAL		"\x07""journal"
 #define C_KASP_DB		"\x07""kasp-db"
 #define C_KEY			"\x03""key"
 #define C_KEYSTORE		"\x08""keystore"
