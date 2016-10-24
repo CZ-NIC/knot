@@ -694,8 +694,9 @@ Definition of zones served by the server.
 zone:
   \- domain: DNAME
     template: template_id
-    file: STR
     storage: STR
+    file: STR
+    journal: STR
     master: remote_id ...
     ddns\-master: remote_id
     notify: remote_id ...
@@ -724,6 +725,11 @@ A zone name identifier.
 A \fI\%reference\fP to a configuration template.
 .sp
 \fIDefault:\fP not set or \fIdefault\fP (if the template exists)
+.SS storage
+.sp
+A data directory for storing zone files, journal files and timers database.
+.sp
+\fIDefault:\fP \fB${localstatedir}/lib/knot\fP (configured with \fB\-\-with\-storage=path\fP)
 .SS file
 .sp
 A path to the zone file. Non absolute path is relative to
@@ -749,11 +755,13 @@ terminating dot (the result for the root zone is the empty string!).
 .UNINDENT
 .sp
 \fIDefault:\fP \fI\%storage\fP/\fB%s\fP\&.zone
-.SS storage
+.SS journal
 .sp
-A data directory for storing zone files, journal files and timers database.
+A path to the zone journal. Non absolute path is relative to
+\fI\%storage\fP\&. The same set of formatters as for
+\fI\%file\fP is supported.
 .sp
-\fIDefault:\fP \fB${localstatedir}/lib/knot\fP (configured with \fB\-\-with\-storage=path\fP)
+\fIDefault:\fP \fI\%storage\fP/\fB%s\fP\&.db
 .SS master
 .sp
 An ordered list of \fI\%references\fP to zone master servers.

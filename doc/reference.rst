@@ -834,8 +834,9 @@ Definition of zones served by the server.
  zone:
    - domain: DNAME
      template: template_id
-     file: STR
      storage: STR
+     file: STR
+     journal: STR
      master: remote_id ...
      ddns-master: remote_id
      notify: remote_id ...
@@ -869,6 +870,15 @@ A :ref:`reference<template_id>` to a configuration template.
 
 *Default:* not set or *default* (if the template exists)
 
+.. _zone_storage:
+
+storage
+-------
+
+A data directory for storing zone files, journal files and timers database.
+
+*Default:* ``${localstatedir}/lib/knot`` (configured with ``--with-storage=path``)
+
 .. _zone_file:
 
 file
@@ -893,14 +903,16 @@ A path to the zone file. Non absolute path is relative to
 
 *Default:* :ref:`storage<zone_storage>`/``%s``\ .zone
 
-.. _zone_storage:
+.. _zone_journal:
 
-storage
+journal
 -------
 
-A data directory for storing zone files, journal files and timers database.
+A path to the zone journal. Non absolute path is relative to
+:ref:`storage<zone_storage>`. The same set of formatters as for
+:ref:`file<zone_file>` is supported.
 
-*Default:* ``${localstatedir}/lib/knot`` (configured with ``--with-storage=path``)
+*Default:* :ref:`storage<zone_storage>`/``%s``\ .db
 
 .. _zone_master:
 

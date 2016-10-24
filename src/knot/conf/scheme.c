@@ -216,8 +216,9 @@ static const yp_item_t desc_remote[] = {
 };
 
 #define ZONE_ITEMS(FLAGS) \
-	{ C_FILE,                YP_TSTR,  YP_VNONE, FLAGS }, \
 	{ C_STORAGE,             YP_TSTR,  YP_VSTR = { STORAGE_DIR }, FLAGS }, \
+	{ C_FILE,                YP_TSTR,  YP_VNONE, FLAGS }, \
+	{ C_JOURNAL,             YP_TSTR,  YP_VNONE, FLAGS }, \
 	{ C_MASTER,              YP_TREF,  YP_VREF = { C_RMT }, YP_FMULTI, { check_ref } }, \
 	{ C_DDNS_MASTER,         YP_TREF,  YP_VREF = { C_RMT }, YP_FNONE, { check_ref } }, \
 	{ C_NOTIFY,              YP_TREF,  YP_VREF = { C_RMT }, YP_FMULTI, { check_ref } }, \
