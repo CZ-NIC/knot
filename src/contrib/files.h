@@ -30,3 +30,8 @@ bool remove_path(const char *path);
  * Equivalent to mkdir(2), can succeed if the directory already exists.
  */
 int make_dir(const char *path, mode_t mode, bool ignore_existing);
+
+/*!
+ * Makes a directory part of the path with all parent directories if not exist.
+ */
+int make_path(const char *path, mode_t mode);

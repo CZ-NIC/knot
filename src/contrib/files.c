@@ -21,6 +21,7 @@
 #include <fcntl.h>
 #include <stdbool.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -111,6 +112,31 @@ int make_dir(const char *path, mode_t mode, bool ignore_existing)
 	if (!S_ISDIR(st.st_mode)) {
 		return knot_map_errno_code(ENOTDIR);
 	}
+
+	return KNOT_EOK;
+}
+
+int make_path(const char *path, mode_t mode)
+{
+	if (path == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	char *dir = strdup(path);
+	if (dir == NULL) {
+		return KNOT_ENOMEM;
+	}
+
+	for (char *p = strchr(dir + 1, '/'); p != NULL; p = strchr(p + 1, '/')) {
+		*p = '\0';
+		if (mkdir(dir, mode) == -1 && errno != EEXIST) {
+			free(dir);
+			return knot_map_errno();
+		}
+		*p = '/';
+	}
+
+	free(dir);
 
 	return KNOT_EOK;
 }
