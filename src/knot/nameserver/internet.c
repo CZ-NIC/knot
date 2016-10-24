@@ -430,8 +430,8 @@ static int name_not_found(knot_pkt_t *pkt, struct query_data *qdata)
 	if (qdata->encloser->flags & NODE_FLAGS_WILDCARD_CHILD) {
 		/* Find wildcard child in the zone. */
 		const zone_node_t *wildcard_node =
-		                zone_contents_find_wildcard_child(
-		                        qdata->zone->contents, qdata->encloser);
+			zone_contents_find_wildcard_child(
+				qdata->zone->contents, qdata->encloser);
 
 		qdata->node = wildcard_node;
 		assert(qdata->node != NULL);
@@ -466,8 +466,8 @@ static int name_not_found(knot_pkt_t *pkt, struct query_data *qdata)
 static int solve_name(int state, knot_pkt_t *pkt, struct query_data *qdata)
 {
 	int ret = zone_contents_find_dname(qdata->zone->contents, qdata->name,
-	                                        &qdata->node, &qdata->encloser,
-	                                        &qdata->previous);
+	                                   &qdata->node, &qdata->encloser,
+	                                   &qdata->previous);
 
 	switch (ret) {
 	case ZONE_NAME_FOUND:
@@ -654,7 +654,7 @@ int ns_put_rr(knot_pkt_t *pkt, const knot_rrset_t *rr,
 		/* Expand if RR is wildcard & we didn't query for wildcard. */
 		expand = (knot_dname_is_wildcard(rr->owner) && !knot_dname_is_wildcard(qdata->name));
 	}
-	
+
 	int ret = KNOT_EOK;
 
 	/* If we already have compressed name on the wire and compression hint,
