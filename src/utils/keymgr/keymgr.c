@@ -266,31 +266,27 @@ typedef bool (*list_match_cb)(const void *item, const char *filter);
 typedef void (*list_print_cb)(const void *item);
 
 key_state_t str_to_keystate(const char *filter) {
-        if (!filter) {
-               return DNSSEC_KEY_STATE_INVALID;
-        }
-        if (strcmp(filter, "removed") == 0) {
-                return DNSSEC_KEY_STATE_REMOVED;
+	if (!filter) {
+		return DNSSEC_KEY_STATE_INVALID;
+	}
+	if (strcmp(filter, "+removed") == 0) {
+		return DNSSEC_KEY_STATE_REMOVED;
+	}
 
-        }
-
-	if (strcmp(filter, "retired") == 0) {
+	if (strcmp(filter, "+retired") == 0) {
 		return DNSSEC_KEY_STATE_RETIRED;
 	}
 
-	if (strcmp(filter, "active") == 0) {
+	if (strcmp(filter, "+active") == 0) {
 		return DNSSEC_KEY_STATE_ACTIVE;
 	}
 
-	if (strcmp(filter, "published") == 0) {
+	if (strcmp(filter, "+published") == 0) {
 		return DNSSEC_KEY_STATE_PUBLISHED;
 	}
 
 	return DNSSEC_KEY_STATE_INVALID;
 }
-//constants to tell apart KSK and ZSK keys
-static const uint16_t DNSKEY_FLAGS_KSK = 257;
-static const uint16_t DNSKEY_FLAGS_ZSK = 256;
 
 /*!
  * Iterate over a list and print each matching item.
@@ -329,12 +325,20 @@ static int print_list(dnssec_list_t *list, const char *filter,
  *
  * \return Number of printed items.
  */
-static int print_list_filtered(dnssec_list_t *list, const char *filter, list_print_cb print)
+static int print_list_filtered(dnssec_list_t *list, const char *filter1, const char *filter2, list_print_cb print)
 {
 	assert(list);
-	key_state_t state = str_to_keystate(filter);
+	key_state_t state = str_to_keystate(filter1);
 	if (state == DNSSEC_KEY_STATE_INVALID) {
-		return -1;
+	state = str_to_keystate(filter2);
+	}
+	uint16_t flag;
+	if ((filter1 && strcmp(filter1, "+ksk") == 0) || (filter2 && strcmp(filter2, "+ksk") == 0)) {
+		flag = 257;
+	} else if ((filter1 && strcmp(filter1, "+zsk") == 0) || (filter2 && strcmp(filter2, "+zsk") == 0)) {
+		flag = 256;
+	} else {
+		flag = 0;
 	}
 
 	int found = 0;
@@ -342,38 +346,8 @@ static int print_list_filtered(dnssec_list_t *list, const char *filter, list_pri
 	dnssec_list_foreach(item, list) {
 		dnssec_kasp_key_t *key = dnssec_item_get(item);
 		const void *value = dnssec_item_get(item);
-		if (get_key_state(key, current) == state) {
-			print(value);
-			found+=1;
-		}
-	}
-	return found;
-}
-
-/*!
- * Iterate over a list and print each matching item.
- *
- * \param list    List to walk through.
- * \param filter  Limits printed keys to ksk or zsk.
- * \param print   Item print callback.
- *
- * \return Number of printed items.
- */
-static int print_list_zsk_ksk(dnssec_list_t *list, const char *filter, list_print_cb print)
-{
-	assert(list);
-	if (!filter || (strcmp(filter, "ksk") != 0 && strcmp(filter, "zsk") != 0 )) {
-		return -1;
-	}
-
-	int found = 0;
-	dnssec_list_foreach(item, list) {
-		dnssec_kasp_key_t *key = dnssec_item_get(item);
-		const void *value = dnssec_item_get(item);
 		uint16_t flags = dnssec_key_get_flags(key->key);
-
-		if ((flags == DNSKEY_FLAGS_KSK && strcmp(filter, "ksk") == 0) ||
-			(flags == DNSKEY_FLAGS_ZSK && strcmp(filter, "zsk") == 0)) {
+		if ((state == DNSSEC_KEY_STATE_INVALID || get_key_state(key, current) == state) && (flags == flag || flag == 0)) {
 			print(value);
 			found+=1;
 		}
@@ -926,13 +900,14 @@ static int cmd_zone_remove(int argc, char *argv[])
  */
 static int cmd_zone_key_list(int argc, char *argv[])
 {
-	if (argc < 1 || argc > 2) {
+	if (argc < 1 || argc > 3) {
 		error("Zone name and optional filter has to be specified.");
 		return 1;
 	}
 
 	const char *zone_name = argv[0];
-	const char *filter = (argc == 2 ? argv[1] : NULL);
+	const char *filter1 = (argc >= 2 ? argv[1] : NULL);
+	const char *filter2 = (argc == 3 ? argv[2] : NULL);
 
 	// list the keys
 
@@ -947,12 +922,9 @@ static int cmd_zone_key_list(int argc, char *argv[])
 	}
 
 	dnssec_list_t *zone_keys = dnssec_kasp_zone_get_keys(zone);
-	int count = print_list_filtered(zone_keys, filter, item_print_key);
+	int count = print_list_filtered(zone_keys, filter1, filter2, item_print_key);
 	if (count < 0) { // Look only if filter isnt state
-		count = print_list_zsk_ksk(zone_keys, filter, item_print_key);
-		if (count < 0) { // Look only if filter wasnt key type
-			count = print_list(zone_keys, filter, item_match_key, item_print_key);
-		}
+		count = print_list(zone_keys, filter1, item_match_key, item_print_key);
 	}
 	if (count == 0) {
 		error("No matching zone key found.");
@@ -1094,7 +1066,7 @@ static int cmd_zone_key_ds(int argc, char *argv[])
 			key = dnssec_item_get(item);
 			uint16_t flags = dnssec_key_get_flags(key->key);
 			const void *value = dnssec_item_get(item);
-			if (get_key_state(key, current) == state && flags == DNSKEY_FLAGS_KSK) {
+			if (get_key_state(key, current) == state && flags == 257) {
 				item_print_key(value);
 				for (const dnssec_key_digest_t *d = digests; *d != 0; d++) {
 					create_and_print_ds(key->key, *d);
