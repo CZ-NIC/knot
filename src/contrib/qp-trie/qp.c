@@ -611,11 +611,12 @@ int trie_get_leq(trie_t *tbl, const char *key, uint32_t len, trie_val_t **val)
 	*val = NULL; // so on failure we can just return;
 	if (tbl->weight == 0)
 		return KNOT_ENOENT;
+	{ // Intentionally un-indented; until end of function, to bound cleanup attr.
 	// First find a key with longest-matching prefix
 	__attribute__((cleanup(ns_cleanup)))
 		nstack_t ns_local;
+	ns_init(&ns_local, tbl);
 	nstack_t *ns = &ns_local;
-	ns_init(ns, tbl);
 	branch_t bp;
 	int un_leaf; // first unmatched character in the leaf
 	ERR_RETURN(ns_find_branch(ns, key, len, &bp, &un_leaf));
@@ -657,6 +658,7 @@ success:
 	assert(!isbranch(ns->stack[ns->len - 1]));
 	*val = &ns->stack[ns->len - 1]->leaf.val;
 	return 1;
+	}
 }
 
 /*! \brief Initialize a new leaf, copying the key, and returning failure code. */
@@ -690,11 +692,12 @@ trie_val_t* trie_get_ins(trie_t *tbl, const char *key, uint32_t len)
 		++tbl->weight;
 		return &tbl->root.leaf.val;
 	}
+	{ // Intentionally un-indented; until end of function, to bound cleanup attr.
 	// Find the branching-point
 	__attribute__((cleanup(ns_cleanup)))
 		nstack_t ns_local;
+	ns_init(&ns_local, tbl);
 	nstack_t *ns = &ns_local;
-	ns_init(ns, tbl);
 	branch_t bp; // branch-point: index and flags signifying the longest common prefix
 	int k2; // the first unmatched character in the leaf
 	if (unlikely(ns_find_branch(ns, key, len, &bp, &k2)))
@@ -734,7 +737,8 @@ trie_val_t* trie_get_ins(trie_t *tbl, const char *key, uint32_t len)
 		if (unlikely(!twigs))
 			goto err_leaf;
 		node_t t2 = *t; // Save before overwriting t.
-		t->branch = bp; // copy flags and index
+		t->branch.flags = bp.flags;
+		t->branch.index = bp.index;
 		t->branch.twigs = twigs;
 		bitmap_t b1 = twigbit(t, key, len);
 		bitmap_t b2 = unlikely(k2 == -256) ? (1 << 0) : nibbit(k2, bp.flags);
@@ -747,6 +751,7 @@ trie_val_t* trie_get_ins(trie_t *tbl, const char *key, uint32_t len)
 err_leaf:
 	mm_free(&tbl->mm, leaf.leaf.key);
 	return NULL;
+	}
 }
 
 /*! \brief Apply a function to every trie_val_t*, in order; a recursive solution. */
