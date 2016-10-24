@@ -454,9 +454,16 @@ static int name_not_found(knot_pkt_t *pkt, struct query_data *qdata)
 		return follow_cname(pkt, KNOT_RRTYPE_DNAME, qdata);
 	}
 
+	/* Look up an authoritative encloser or its parent. */
+	const zone_node_t *node = qdata->encloser;
+	while (node->rrset_count == 0 || node->flags & NODE_FLAGS_NONAUTH) {
+		node = node->parent;
+		assert(node);
+	}
+
 	/* Name is below delegation. */
-	if ((qdata->encloser->flags & NODE_FLAGS_DELEG)) {
-		qdata->node = qdata->encloser;
+	if ((node->flags & NODE_FLAGS_DELEG)) {
+		qdata->node = node;
 		return DELEG;
 	}
 
