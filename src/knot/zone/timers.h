@@ -63,6 +63,18 @@ int read_zone_timers(knot_db_t *timer_db, const zone_t *zone, time_t *timers);
 int write_timer_db(knot_db_t *timer_db, knot_zonedb_t *zone_db);
 
 /*!
+ * \brief Removes specific zone timers from timers db.
+ *
+ * \param timer_db   Timer database.
+ * \param zone_db    Zone database.
+ * \param zone_name  Zone name.
+ *
+ * \return KNOT_E*
+ */
+int remove_timer_db(knot_db_t *timer_db, knot_zonedb_t *zone_db,
+                    const knot_dname_t *zone_name);
+
+/*!
  * \brief Removes stale zones info from timers db.
  *
  * \param timer_db  Timer database.
