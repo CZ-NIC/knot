@@ -934,7 +934,7 @@ static const cmd_help_t cmd_help_table[] = {
 	{ CMD_ZONE_GET,        "<zone> [<owner> [<type>]]",              "Get zone data within the transaction." },
 	{ CMD_ZONE_SET,        "<zone>  <owner> [<ttl>] <type> <rdata>", "Add zone record within the transaction." },
 	{ CMD_ZONE_UNSET,      "<zone>  <owner> [<type> [<rdata>]]",     "Remove zone data within the transaction." },
-	{ CMD_ZONE_PURGE,      "<zone>...",                              "Purge zone data, zone file, and zone journal." },
+	{ CMD_ZONE_PURGE,      "<zone>...",                              "Purge zone data, file, journal, and timers." },
 	{ "",                  "",                                       "" },
 	{ CMD_CONF_INIT,       "",                                       "Initialize the confdb. (*)" },
 	{ CMD_CONF_CHECK,      "",                                       "Check the server configuration. (*)" },

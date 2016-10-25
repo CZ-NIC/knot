@@ -135,7 +135,7 @@ requires a ttl value specified.
 Remove zone data within the transaction.
 .TP
 \fBzone\-purge\fP \fIzone\fP\&...
-Purge zone data, zone file, and zone journal.
+Purge zone data, file, journal, and timers.
 .TP
 \fBconf\-init\fP
 Initialize the configuration database. (*)

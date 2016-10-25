@@ -219,6 +219,40 @@ int write_timer_db(knot_db_t *timer_db, knot_zonedb_t *zone_db)
 	return db_api->txn_commit(&txn);
 }
 
+int remove_timer_db(knot_db_t *timer_db, knot_zonedb_t *zone_db,
+                    const knot_dname_t *zone_name)
+{
+	if (timer_db == NULL) {
+		return KNOT_EOK;
+	}
+
+	if (zone_db == NULL || zone_name == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	const knot_db_api_t *db_api = knot_db_lmdb_api();
+	assert(db_api);
+
+	knot_db_txn_t txn;
+	int ret = db_api->txn_begin(timer_db, &txn, KNOT_DB_SORTED);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	knot_db_val_t key = {
+		.data = (void *)zone_name,
+		.len = knot_dname_size(zone_name)
+	};
+
+	ret = db_api->del(&txn, &key);
+	if (ret != KNOT_EOK) {
+		db_api->txn_abort(&txn);
+		return ret;
+	}
+
+	return db_api->txn_commit(&txn);
+}
+
 int sweep_timer_db(knot_db_t *timer_db, knot_zonedb_t *zone_db)
 {
 	if (timer_db == NULL) {

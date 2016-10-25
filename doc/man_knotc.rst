@@ -112,7 +112,7 @@ Actions
   Remove zone data within the transaction.
 
 **zone-purge** *zone*...
-  Purge zone data, zone file, and zone journal.
+  Purge zone data, file, journal, and timers.
 
 **conf-init**
   Initialize the configuration database. (*)
