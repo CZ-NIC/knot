@@ -1,4 +1,4 @@
-/*  Copyright (C) 2014 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -24,11 +24,13 @@
 
 /* Module configuration scheme. */
 #define MOD_REMOTE		"\x06""remote"
+#define MOD_TIMEOUT		"\x07""timeout"
 #define MOD_CATCH_NXDOMAIN	"\x0E""catch-nxdomain"
 
 const yp_item_t scheme_mod_dnsproxy[] = {
 	{ C_ID,               YP_TSTR,  YP_VNONE },
 	{ MOD_REMOTE,         YP_TREF,  YP_VREF = { C_RMT }, YP_FNONE, { check_ref } },
+	{ MOD_TIMEOUT,        YP_TINT,  YP_VINT = { 0, INT32_MAX, 500 } },
 	{ MOD_CATCH_NXDOMAIN, YP_TBOOL, YP_VNONE },
 	{ C_COMMENT,          YP_TSTR,  YP_VNONE },
 	{ NULL }
@@ -49,6 +51,7 @@ int check_mod_dnsproxy(conf_check_t *args)
 struct dnsproxy {
 	conf_remote_t remote;
 	bool catch_nxdomain;
+	int timeout;
 };
 
 static int dnsproxy_fwd(int state, knot_pkt_t *pkt, struct query_data *qdata, void *ctx)
@@ -88,8 +91,7 @@ static int dnsproxy_fwd(int state, knot_pkt_t *pkt, struct query_data *qdata, vo
 	}
 
 	/* Forward request. */
-	int timeout = 1000 * conf()->cache.srv_tcp_reply_timeout;
-	ret = knot_requestor_exec(&re, req, timeout);
+	ret = knot_requestor_exec(&re, req, proxy->timeout);
 
 	knot_request_free(req, re.mm);
 	knot_requestor_clear(&re);
@@ -118,6 +120,9 @@ int dnsproxy_load(struct query_plan *plan, struct query_module *self,
 
 	conf_val_t val = conf_mod_get(self->config, MOD_REMOTE, self->id);
 	proxy->remote = conf_remote(self->config, &val, 0);
+
+	val = conf_mod_get(self->config, MOD_TIMEOUT, self->id);
+	proxy->timeout = conf_int(&val);
 
 	val = conf_mod_get(self->config, MOD_CATCH_NXDOMAIN, self->id);
 	proxy->catch_nxdomain = conf_bool(&val);

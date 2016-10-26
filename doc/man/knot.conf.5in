@@ -1147,6 +1147,7 @@ server for resolution.
 mod\-dnsproxy:
   \- id: STR
     remote: remote_id
+    timeout: INT
     catch\-nxdomain: BOOL
 .ft P
 .fi
@@ -1161,6 +1162,11 @@ A \fI\%reference\fP to a remote server where the queries are
 forwarded to.
 .sp
 \fIRequired\fP
+.SS timeout
+.sp
+A remote response timeout in milliseconds.
+.sp
+\fIDefault:\fP 500
 .SS catch\-nxdomain
 .sp
 If enabled, all unsatisfied queries (also applies to local zone lookups)
