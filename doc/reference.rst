@@ -1372,6 +1372,7 @@ server for resolution.
  mod-dnsproxy:
    - id: STR
      remote: remote_id
+     timeout: INT
      catch-nxdomain: BOOL
 
 .. _mod-dnsproxy_id:
@@ -1390,6 +1391,15 @@ A :ref:`reference<remote_id>` to a remote server where the queries are
 forwarded to.
 
 *Required*
+
+.. _mod-dnsproxy_timeout:
+
+timeout
+-------
+
+A remote response timeout in milliseconds.
+
+*Default:* 500
 
 .. _mod-dnsproxy_catch-nxdomain:
 
