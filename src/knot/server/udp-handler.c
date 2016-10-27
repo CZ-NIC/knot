@@ -248,6 +248,7 @@ struct udp_recvmmsg {
 	unsigned rcvd;
 	knot_mm_t mm;
 	cmsg_pktinfo_t pktinfo[RECVMMSG_BATCHLEN];
+	unsigned msg_index;
 };
 
 static void *udp_recvmmsg_init(void)
@@ -306,8 +307,11 @@ static int udp_recvmmsg_handle(udp_context_t *ctx, void *d)
 {
 	struct udp_recvmmsg *rq = (struct udp_recvmmsg *)d;
 
+	/* rq->msg_index should be initialized by now. */
+	assert(ctx->layer.defer_fd.fd != 0 || rq->msg_index == 0);
+
 	/* Handle each received msg. */
-	for (unsigned i = 0; i < rq->rcvd; ++i) {
+	for (unsigned i = rq->msg_index; i < rq->rcvd; ++i) {
 		struct iovec *rx = rq->msgs[RX][i].msg_hdr.msg_iov;
 		struct iovec *tx = rq->msgs[TX][i].msg_hdr.msg_iov;
 		rx->iov_len = rq->msgs[RX][i].msg_len; /* Received bytes. */
@@ -315,6 +319,11 @@ static int udp_recvmmsg_handle(udp_context_t *ctx, void *d)
 		udp_pktinfo_handle(&rq->msgs[RX][i].msg_hdr, &rq->msgs[TX][i].msg_hdr);
 
 		udp_handle(ctx, rq->fd, rq->addrs + i, rx, tx);
+		if (ctx->layer.defer_fd.fd) {
+			rq->msg_index = i;
+			return KNOT_EOK;
+		}
+
 		rq->msgs[TX][i].msg_len = tx->iov_len;
 		rq->msgs[TX][i].msg_hdr.msg_namelen = 0;
 		if (tx->iov_len > 0) {
