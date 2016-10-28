@@ -42,6 +42,9 @@
 #include "knot/server/server.h"
 #include "knot/server/udp-handler.h"
 
+/* Hard-coded for now. */
+#define MAX_QUERIES_PER_THREAD 40
+
 /* Buffer identifiers. */
 enum {
 	RX = 0,
@@ -384,6 +387,26 @@ static int iface_udp_fd(const iface_t *iface, int thread_id)
 #endif
 }
 
+/* Helper function to swap the positions of two fds in an fdset. */
+static void swap_fds(fdset_t *fds, int i, int j)
+{
+	assert(i >= 0 && i < fds->n);
+	assert(j >= 0 && j < fds->n);
+	if (i == j) return;
+
+	struct pollfd t_pfd = fds->pfd[i];
+	fds->pfd[i] = fds->pfd[j];
+	fds->pfd[j] = t_pfd;
+
+	void *t_ctx = fds->ctx[i];
+	fds->ctx[i] = fds->ctx[j];
+	fds->ctx[j] = t_ctx;
+
+	time_t t_timeout = fds->timeout[i];
+	fds->timeout[i] = fds->timeout[j];
+	fds->timeout[j] = t_timeout;
+}
+
 /*!
  * \brief Make a set of watched descriptors based on the interface list.
  *
@@ -391,7 +414,7 @@ static int iface_udp_fd(const iface_t *iface, int thread_id)
  * \param[in]   thrid   Thread ID.
  * \param[out]  fds     Allocated set of descriptors.
  *
- * \return A Knot error code.
+ * \return The number of interfaces.
  */
 static int track_ifaces(const ifacelist_t *ifaces, int thrid,
                            fdset_t *fds)
@@ -403,7 +426,7 @@ static int track_ifaces(const ifacelist_t *ifaces, int thrid,
 		/* Use a modest initial size. */
 		int rc = fdset_init(fds, nfds);
 		if (rc != KNOT_EOK)
-			return rc;
+			return 0;
 	} else {
 		/* Remove any obsolete file descriptors. */
 		unsigned i = 0;
@@ -413,13 +436,20 @@ static int track_ifaces(const ifacelist_t *ifaces, int thrid,
 		}
 	}
 
+	/* Insert the interface FDs at the beginning of the fdset. */
+	int pos = 0;
 	iface_t *iface = NULL;
 	WALK_LIST(iface, ifaces->l) {
 		fdset_add(fds, iface_udp_fd(iface, thrid), POLLIN, NULL);
+
+		/* Move this fd to the intended position. */
+		swap_fds(fds, pos, fds->n - 1);
+
+		pos++;
 	}
 	assert(fds->n >= nfds);
 
-	return KNOT_EOK;
+	return pos;
 }
 
 static udp_context_t *udp_setup(udp_context_t *udp,
@@ -553,6 +583,7 @@ int udp_master(dthread_t *thread)
 	/* Event source. */
 	fdset_t fds;
 	fdset_init(&fds, 0);
+	int n_ifaces = 0;
 
 	/* Loop until all data is read. */
 	for (;;) {
@@ -565,9 +596,10 @@ int udp_master(dthread_t *thread)
 			rcu_read_lock();
 			ref_release((ref_t *)ref);
 			ref = handler->server->ifaces;
-			track_ifaces(ref, handler->thread_id[thr_id], &fds);
+			n_ifaces = track_ifaces(ref,
+				handler->thread_id[thr_id], &fds);
 			rcu_read_unlock();
-			if (fds.n == 0) {
+			if (n_ifaces == 0) {
 				break;
 			}
 		}
@@ -592,12 +624,21 @@ int udp_master(dthread_t *thread)
 		if (udp == NULL) break;
 
 		/* Wait for events. */
-		int events = poll(fds.pfd, fds.n, timeout);
+
+		int fd_offset = 0;
+		if (fds.n - n_ifaces >= MAX_QUERIES_PER_THREAD) {
+			/* Ignore any incoming queries until the number
+			 * of deferred queries is under control. */
+			fd_offset = n_ifaces;
+		}
+
+		int events = poll(fds.pfd + fd_offset,
+		                  fds.n - fd_offset, timeout);
 
 		/* Process the events.  This must be done in reverse
                  * order so that handle_udp_event() may safely add or
                  * remove entries. */
-		for (int i = fds.n-1; i >= 0 && events > 0; i--) {
+		for (int i = fds.n-1; i >= fd_offset && events > 0; i--) {
 			if (fds.pfd[i].revents == 0) {
 				continue;
 			}
