@@ -23,10 +23,10 @@ resp = knot.dig("flags", "NS", flags="RD")
 resp.check(flags="QR AA RD", noflags="TC RA AD CD Z")
 resp.cmp(bind)
 
-# CD flag preservation.
+# CD flag must be cleared (RFC 4035, Section 3.1.6).
 resp = knot.dig("flags", "NS", flags="CD")
-resp.check(flags="QR AA CD", noflags="TC RA AD RD Z")
-resp.cmp(bind)
+resp.check(flags="QR AA", noflags="TC RA AD RD CD Z")
+# Bind preserves CD flag
 
 # TC flag must be cleared
 resp = knot.dig("flags", "NS", flags="TC")
