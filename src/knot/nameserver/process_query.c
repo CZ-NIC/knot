@@ -321,6 +321,7 @@ static int prepare_answer(const knot_pkt_t *query, knot_pkt_t *resp, knot_layer_
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
+	knot_wire_clear_cd(resp->wire); // TODO: should be inside knot_pkt_init_response.
 
 	/* Query MUST carry a question. */
 	const knot_dname_t *qname = knot_pkt_qname(query);
@@ -401,6 +402,7 @@ static int process_query_err(knot_layer_t *ctx, knot_pkt_t *pkt)
 	/* Initialize response from query packet. */
 	knot_pkt_t *query = qdata->query;
 	knot_pkt_init_response(pkt, query);
+	knot_wire_clear_cd(pkt->wire); // TODO: should be inside knot_pkt_init_response.
 
 	/* Restore original QNAME. */
 	process_query_qname_case_restore(qdata, pkt);
