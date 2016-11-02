@@ -1,6 +1,27 @@
 
-Knot DNS 2.3.2 (?)
-==================
+Knot DNS 2.3.2 (2016-11-03)
+===========================
+
+Bugfixes:
+---------
+ - Incorrect %s expansion for the root zone
+ - Failed to refresh not existing slave zone after restart
+ - Immediate zone refresh upon restart if refresh already scheduled
+ - Early zone transfer after restart if transfer already scheduled
+ - Not ignoring empty non-terminal parents during delegation lookup
+ - CD bit preservation in responses
+ - Compilation error on GNU/kFreeBSD
+
+Improvements:
+-------------
+ - Speed-up of knotc if control operation and known socket
+ - Zone purge operation purges also zone timers
+
+Features:
+---------
+ - Simple modules don't require empty configuration section
+ - New zone journal path configuration option
+ - New timeout configuration option for module dnsproxy
 
 Knot DNS 2.3.1 (2016-10-07)
 ===========================
