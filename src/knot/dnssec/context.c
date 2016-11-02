@@ -78,6 +78,9 @@ static int policy_load(void *ctx, dnssec_kasp_policy_t *policy)
 	val = conf_rawid_get(conf(), C_POLICY, C_ZSK_LIFETIME, id, id_len);
 	policy->zsk_lifetime = conf_int(&val);
 
+	val = conf_rawid_get(conf(), C_POLICY, C_PROPAG_DELAY, id, id_len);
+	policy->propagation_delay = conf_int(&val);
+
 	val = conf_rawid_get(conf(), C_POLICY, C_RRSIG_LIFETIME, id, id_len);
 	policy->rrsig_lifetime = conf_int(&val);
 
@@ -95,9 +98,6 @@ static int policy_load(void *ctx, dnssec_kasp_policy_t *policy)
 
 	val = conf_rawid_get(conf(), C_POLICY, C_NSEC3_SALT_LIFETIME, id, id_len);
 	policy->nsec3_salt_lifetime = conf_int(&val);
-
-	val = conf_rawid_get(conf(), C_POLICY, C_PROPAG_DELAY, id, id_len);
-	policy->propagation_delay = conf_int(&val);
 
 	return DNSSEC_EOK;
 }
