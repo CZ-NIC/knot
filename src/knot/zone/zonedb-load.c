@@ -32,7 +32,7 @@
  */
 typedef enum {
 	ZONE_STATUS_NOT_FOUND = 0,  //!< Zone file does not exist.
-	ZONE_STATUS_BOOSTRAP,       //!< Zone file does not exist, can boostrap.
+	ZONE_STATUS_BOOTSTRAP,      //!< Zone file does not exist, can bootstrap.
 	ZONE_STATUS_FOUND_NEW,      //!< Zone file exists, not loaded yet.
 	ZONE_STATUS_FOUND_CURRENT,  //!< Zone file exists, same as loaded.
 	ZONE_STATUS_FOUND_UPDATED,  //!< Zone file exists, newer than loaded.
@@ -64,7 +64,7 @@ static zone_status_t zone_file_status(conf_t *conf, const zone_t *old_zone,
 			return ZONE_STATUS_FOUND_CURRENT;
 		} else {
 			return zone_load_can_bootstrap(conf, name) ?
-			       ZONE_STATUS_BOOSTRAP : ZONE_STATUS_NOT_FOUND;
+			       ZONE_STATUS_BOOTSTRAP : ZONE_STATUS_NOT_FOUND;
 		}
 	} else {
 		if (old_zone == NULL) {
@@ -91,7 +91,7 @@ static void log_zone_load_info(const zone_t *zone, zone_status_t status)
 
 	switch (status) {
 	case ZONE_STATUS_NOT_FOUND:     action = "not found";            break;
-	case ZONE_STATUS_BOOSTRAP:      action = "will be bootstrapped"; break;
+	case ZONE_STATUS_BOOTSTRAP:     action = "will be bootstrapped"; break;
 	case ZONE_STATUS_FOUND_NEW:     action = "will be loaded";       break;
 	case ZONE_STATUS_FOUND_CURRENT: action = "is up-to-date";        break;
 	case ZONE_STATUS_FOUND_UPDATED: action = "will be reloaded";     break;
@@ -221,7 +221,7 @@ static zone_t *create_zone_new(conf_t *conf, const knot_dname_t *name,
 	zone_status_t zstatus = zone_file_status(conf, NULL, name);
 	if (zone->flags & ZONE_EXPIRED) {
 		assert(zone_is_slave(conf, zone));
-		zstatus = ZONE_STATUS_BOOSTRAP;
+		zstatus = ZONE_STATUS_BOOTSTRAP;
 	}
 
 	switch (zstatus) {
@@ -229,7 +229,7 @@ static zone_t *create_zone_new(conf_t *conf, const knot_dname_t *name,
 		/* Enqueueing makes the first zone load waitable. */
 		zone_events_enqueue(zone, ZONE_EVENT_LOAD);
 		break;
-	case ZONE_STATUS_BOOSTRAP:
+	case ZONE_STATUS_BOOTSTRAP:
 		if (zone_events_get_time(zone, ZONE_EVENT_XFER) == 0) {
 			zone_events_schedule(zone, ZONE_EVENT_REFRESH, ZONE_EVENT_NOW);
 		}
