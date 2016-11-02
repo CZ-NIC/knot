@@ -505,13 +505,13 @@ policy:
     zsk\-size: SIZE
     dnskey\-ttl: TIME
     zsk\-lifetime: TIME
+    propagation\-delay: TIME
     rrsig\-lifetime: TIME
     rrsig\-refresh: TIME
     nsec3: BOOL
     nsec3\-iterations: INT
     nsec3\-salt\-length: INT
     nsec3\-salt\-lifetime: TIME
-    propagation\-delay: TIME
 .ft P
 .fi
 .UNINDENT
@@ -550,11 +550,38 @@ A length of newly generated ZSK keys.
 A TTL value for DNSKEY records added into zone apex.
 .sp
 \fIDefault:\fP zone SOA TTL
+.sp
+\fBNOTE:\fP
+.INDENT 0.0
+.INDENT 3.5
+has infuence over ZSK key lifetime
+.UNINDENT
+.UNINDENT
 .SS zsk\-lifetime
 .sp
 A period between ZSK publication and the next rollover initiation.
 .sp
 \fIDefault:\fP 30 days
+.sp
+\fBNOTE:\fP
+.INDENT 0.0
+.INDENT 3.5
+ZSK key lifetime is also infuenced by propagation\-delay and dnskey\-ttl
+.UNINDENT
+.UNINDENT
+.SS propagation\-delay
+.sp
+An extra delay added for each key rollover step. This value should be high
+enough to cover propagation of data from the master server to all slaves.
+.sp
+\fIDefault:\fP 1 day
+.sp
+\fBNOTE:\fP
+.INDENT 0.0
+.INDENT 3.5
+has infuence over ZSK key lifetime
+.UNINDENT
+.UNINDENT
 .SS rrsig\-lifetime
 .sp
 A validity period of newly issued signatures.
@@ -586,12 +613,6 @@ name before hashing.
 A validity period of newly issued salt field.
 .sp
 \fIDefault:\fP 30 days
-.SS propagation\-delay
-.sp
-An extra delay added for each key rollover step. This value should be high
-enough to cover propagation of data from the master server to all slaves.
-.sp
-\fIDefault:\fP 1 day
 .SH REMOTE SECTION
 .sp
 Definitions of remote servers for outgoing connections (source of a zone

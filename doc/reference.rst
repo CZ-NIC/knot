@@ -571,13 +571,13 @@ DNSSEC policy configuration.
      zsk-size: SIZE
      dnskey-ttl: TIME
      zsk-lifetime: TIME
+     propagation-delay: TIME
      rrsig-lifetime: TIME
      rrsig-refresh: TIME
      nsec3: BOOL
      nsec3-iterations: INT
      nsec3-salt-length: INT
      nsec3-salt-lifetime: TIME
-     propagation-delay: TIME
 
 .. _policy_id:
 
@@ -641,6 +641,9 @@ A TTL value for DNSKEY records added into zone apex.
 
 *Default:* zone SOA TTL
 
+.. NOTE::
+   has infuence over ZSK key lifetime
+
 .. _policy_zsk-lifetime:
 
 zsk-lifetime
@@ -649,6 +652,22 @@ zsk-lifetime
 A period between ZSK publication and the next rollover initiation.
 
 *Default:* 30 days
+
+.. NOTE::
+   ZSK key lifetime is also infuenced by propagation-delay and dnskey-ttl
+
+.. _policy_propagation-delay:
+
+propagation-delay
+-----------------
+
+An extra delay added for each key rollover step. This value should be high
+enough to cover propagation of data from the master server to all slaves.
+
+*Default:* 1 day
+
+.. NOTE::
+   has infuence over ZSK key lifetime
 
 .. _policy_rrsig-lifetime:
 
@@ -704,16 +723,6 @@ nsec3-salt-lifetime
 A validity period of newly issued salt field.
 
 *Default:* 30 days
-
-.. _policy_propagation-delay:
-
-propagation-delay
------------------
-
-An extra delay added for each key rollover step. This value should be high
-enough to cover propagation of data from the master server to all slaves.
-
-*Default:* 1 day
 
 .. _Remote section:
 
