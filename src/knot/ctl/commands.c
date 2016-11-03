@@ -339,6 +339,11 @@ static int zone_txn_commit(zone_t *zone, ctl_args_t *args)
 
 	int ret = zone_update_commit(conf(), zone->control_update);
 	if (ret != KNOT_EOK) {
+		/* Invalidate the transaction if aborted. */
+		if (zone->control_update->zone == NULL) {
+			free(zone->control_update);
+			zone->control_update = NULL;
+		}
 		return ret;
 	}
 
