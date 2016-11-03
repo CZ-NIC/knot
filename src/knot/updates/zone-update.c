@@ -48,8 +48,8 @@ static int init_incremental(zone_update_t *update, zone_t *zone)
 	update->change.soa_from =
 		node_create_rrset(update->zone->contents->apex, KNOT_RRTYPE_SOA);
 	if (update->change.soa_from == NULL) {
-		changeset_clear(&update->change);
 		zone_contents_free(&update->new_cont);
+		changeset_clear(&update->change);
 		return KNOT_ENOMEM;
 	}
 
@@ -129,7 +129,7 @@ const zone_node_t *zone_update_get_apex(zone_update_t *update)
 uint32_t zone_update_current_serial(zone_update_t *update)
 {
 	const zone_node_t *apex = zone_update_get_apex(update);
-	if (apex) {
+	if (apex != NULL) {
 		return knot_soa_serial(node_rdataset(apex, KNOT_RRTYPE_SOA));
 	} else {
 		return 0;
@@ -495,17 +495,13 @@ static int commit_incremental(conf_t *conf, zone_update_t *update,
 		conf_val_t val = conf_zone_get(conf, C_SERIAL_POLICY, update->zone->name);
 		ret = set_new_soa(update, conf_opt(&val));
 		if (ret != KNOT_EOK) {
-			update_rollback(&update->a_ctx);
-			update_free_zone(&new_contents);
-			changeset_clear(&update->change);
+			zone_update_clear(update);
 			return ret;
 		}
 
 		ret = apply_replace_soa(&update->a_ctx, &update->change);
 		if (ret != KNOT_EOK) {
-			update_rollback(&update->a_ctx);
-			update_free_zone(&new_contents);
-			changeset_clear(&update->change);
+			zone_update_clear(update);
 			return ret;
 		}
 	}
@@ -517,25 +513,19 @@ static int commit_incremental(conf_t *conf, zone_update_t *update,
 	if (dnssec_enable) {
 		ret = apply_prepare_to_sign(&update->a_ctx);
 		if (ret != KNOT_EOK) {
-			update_rollback(&update->a_ctx);
-			update_free_zone(&new_contents);
-			changeset_clear(&update->change);
+			zone_update_clear(update);
 			return ret;
 		}
 
 		ret = sign_update(update, new_contents);
 		if (ret != KNOT_EOK) {
-			update_rollback(&update->a_ctx);
-			update_free_zone(&new_contents);
-			changeset_clear(&update->change);
+			zone_update_clear(update);
 			return ret;
 		}
 	} else {
 		ret = apply_finalize(&update->a_ctx);
 		if (ret != KNOT_EOK) {
-			update_rollback(&update->a_ctx);
-			update_free_zone(&new_contents);
-			changeset_clear(&update->change);
+			zone_update_clear(update);
 			return ret;
 		}
 	}
@@ -565,7 +555,11 @@ static int commit_full(conf_t *conf, zone_update_t *update, zone_contents_t **co
 		return KNOT_ESEMCHECK;
 	}
 
-	zone_contents_adjust_full(update->new_cont);
+	int ret = zone_contents_adjust_full(update->new_cont);
+	if (ret != KNOT_EOK) {
+		zone_update_clear(update);
+		return ret;
+	}
 
 	conf_val_t val = conf_zone_get(conf, C_DNSSEC_SIGNING, update->zone->name);
 	bool dnssec_enable = (update->flags & UPDATE_SIGN) && conf_bool(&val);
@@ -574,13 +568,13 @@ static int commit_full(conf_t *conf, zone_update_t *update, zone_contents_t **co
 	if (dnssec_enable) {
 		int ret = sign_update(update, update->new_cont);
 		if (ret != KNOT_EOK) {
-			update_rollback(&update->a_ctx);
+			zone_update_clear(update);
 			return ret;
 		}
 	}
 
-	update_cleanup(&update->a_ctx);
 	*contents_out = update->new_cont;
+
 	return KNOT_EOK;
 }
 
@@ -594,41 +588,41 @@ int zone_update_commit(conf_t *conf, zone_update_t *update)
 	zone_contents_t *new_contents = NULL;
 	if (update->flags & UPDATE_INCREMENTAL) {
 		ret = commit_incremental(conf, update, &new_contents);
-		if (ret != KNOT_EOK) {
-			return ret;
-		}
 	} else {
 		ret = commit_full(conf, update, &new_contents);
-		if (ret != KNOT_EOK) {
-			return ret;
-		}
+	}
+	if (ret != KNOT_EOK) {
+		return ret;
 	}
 
+	/* If there is anything to change. */
+	if (new_contents == NULL) {
+		return KNOT_EOK;
+	}
+
+	/* Check the zone size. */
 	conf_val_t val = conf_zone_get(conf, C_MAX_ZONE_SIZE, update->zone->name);
 	int64_t size_limit = conf_int(&val);
 
-	if (new_contents != NULL && new_contents->size > size_limit) {
+	if (new_contents->size > size_limit) {
+		/* Recoverable error. */
 		return KNOT_EZONESIZE;
 	}
 
-	/* If there is anything to change */
-	if (new_contents != NULL) {
-		/* Switch zone contents. */
-		zone_contents_t *old_contents = zone_switch_contents(update->zone,
-		                                                     new_contents);
+	/* Switch zone contents. */
+	zone_contents_t *old_contents = zone_switch_contents(update->zone,
+	                                                     new_contents);
 
-		/* Sync RCU. */
-		synchronize_rcu();
-		if (update->flags & UPDATE_FULL) {
-			zone_contents_deep_free(&old_contents);
-			update->new_cont = NULL;
-		} else if (update->flags & UPDATE_INCREMENTAL) {
-			update_cleanup(&update->a_ctx);
-			update_free_zone(&old_contents);
-			update->new_cont = NULL;
-			changeset_clear(&update->change);
-		}
+	/* Sync RCU. */
+	synchronize_rcu();
+	if (update->flags & UPDATE_FULL) {
+		zone_contents_deep_free(&old_contents);
+	} else if (update->flags & UPDATE_INCREMENTAL) {
+		update_free_zone(&old_contents);
+		changeset_clear(&update->change);
 	}
+	update_cleanup(&update->a_ctx);
+	update->new_cont = NULL;
 
 	return KNOT_EOK;
 }
