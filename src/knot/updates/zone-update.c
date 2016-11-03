@@ -543,8 +543,7 @@ static int commit_incremental(conf_t *conf, zone_update_t *update,
 	/* Write changes to journal if all went well. (DNSSEC merged) */
 	ret = zone_change_store(conf, update->zone, &update->change);
 	if (ret != KNOT_EOK) {
-		update_rollback(&update->a_ctx);
-		update_free_zone(&new_contents);
+		/* Recoverable error. */
 		return ret;
 	}
 
