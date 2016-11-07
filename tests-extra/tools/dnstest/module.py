@@ -181,3 +181,36 @@ class ModRosedb(KnotModule):
             set_err("ROSEDB_TOOL")
             detail_log("!Failed to add a record into rosedb '%s'" % self.dbdir)
             detail_log(SEP)
+
+class ModStats(KnotModule):
+    '''Stats module'''
+
+    src_name = "stats_load"
+    conf_name = "mod-stats"
+
+    def __init__(self):
+        super().__init__()
+
+    def _bool(self, conf, name, value=True):
+        conf.item_str(name, "on" if value else "off")
+
+    def get_conf(self, conf=None):
+        if not conf:
+            conf = dnstest.config.KnotConf()
+
+        conf.begin(self.conf_name)
+        conf.id_item("id", self.conf_id)
+        self._bool(conf, "request-protocol", True)
+        self._bool(conf, "server-operation", True)
+        self._bool(conf, "request-bytes", True)
+        self._bool(conf, "response-bytes", True)
+        self._bool(conf, "edns-presence", True)
+        self._bool(conf, "flag-presence", True)
+        self._bool(conf, "response-code", True)
+        self._bool(conf, "reply-nodata", True)
+        self._bool(conf, "query-type", True)
+        self._bool(conf, "query-size", True)
+        self._bool(conf, "reply-size", True)
+        conf.end()
+
+        return conf
