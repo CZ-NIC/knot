@@ -198,7 +198,7 @@ class KnotCtl(object):
         return KnotCtlType(data_type.value)
 
     def send_block(self, cmd, section=None, item=None, identifier=None, zone=None,
-                   owner=None, ttl=None, rtype=None, data=None):
+                   owner=None, ttl=None, rtype=None, data=None, flags=None):
         """Sends a control query block.
 
         @type cmd: str
@@ -222,6 +222,7 @@ class KnotCtl(object):
         query[KnotCtlDataIdx.TTL] = ttl
         query[KnotCtlDataIdx.TYPE] = rtype
         query[KnotCtlDataIdx.DATA] = data
+        query[KnotCtlDataIdx.FLAGS] = flags
 
         self.send(KnotCtlType.DATA, query)
         self.send(KnotCtlType.BLOCK)
@@ -295,6 +296,59 @@ class KnotCtl(object):
             out[zone][owner][rtype]["data"] = [data]
         else:
             out[zone][owner][rtype]["data"].append(data)
+
+    def _receive_stats(self, out, reply):
+
+        zone = reply[KnotCtlDataIdx.ZONE]
+        section = reply[KnotCtlDataIdx.SECTION]
+        item = reply[KnotCtlDataIdx.ITEM]
+        idx = reply[KnotCtlDataIdx.ID]
+        data = reply[KnotCtlDataIdx.DATA]
+
+        # Add the zone if not exists.
+        if zone:
+            if "zone" not in out:
+                out["zone"] = dict()
+
+            if zone not in out["zone"]:
+                out["zone"][zone] = dict()
+
+        section_level = out["zone"][zone] if zone else out
+
+        if section not in section_level:
+            section_level[section] = dict()
+
+        if idx:
+            if item not in section_level[section]:
+                section_level[section][item] = dict()
+
+            section_level[section][item][idx] = data
+        else:
+            section_level[section][item] = data
+
+    def receive_stats(self):
+        """Receives statistics answer and returns it as a structured dictionary.
+
+        @rtype: dict
+        """
+
+        out = dict()
+
+        while True:
+            reply = KnotCtlData()
+            reply_type = self.receive(reply)
+
+            # Stop if not data type.
+            if reply_type not in [KnotCtlType.DATA, KnotCtlType.EXTRA]:
+                break
+
+            # Check for an error.
+            if reply[KnotCtlDataIdx.ERROR]:
+                raise Exception(reply[KnotCtlDataIdx.ERROR])
+
+            self._receive_stats(out, reply)
+
+        return out
 
     def receive_block(self):
         """Receives a control answer and returns it as a structured dictionary.
