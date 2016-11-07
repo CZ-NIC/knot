@@ -78,6 +78,10 @@ Stop the server if running.
 Reload the server configuration and modified zone files. All open zone
 transactions will be aborted!
 .TP
+\fBstats\fP [\fImodule\fP[\fB\&.\fP\fIcounter\fP]]
+Show global statistics counter(s). To print also counters with value 0, use
+force option.
+.TP
 \fBzone\-check\fP [\fIzone\fP\&...]
 Test if the server can load the zone. Semantic checks are executed if enabled
 in the configuration. (*)
@@ -136,6 +140,10 @@ Remove zone data within the transaction.
 .TP
 \fBzone\-purge\fP \fIzone\fP\&...
 Purge zone data, file, journal, and timers.
+.TP
+\fBzone\-stats\fP \fIzone\fP [\fImodule\fP[\fB\&.\fP\fIcounter\fP]]
+Show zone statistics counter(s). To print also counters with value 0, use
+force option.
 .TP
 \fBconf\-init\fP
 Initialize the configuration database. (*)

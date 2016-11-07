@@ -515,3 +515,33 @@ to the configuration file::
 
 .. NOTE::
    This module is not configurable.
+
+``stats`` — query statistics
+----------------------------
+
+The module extends server statistics with incoming DNS request and corresponding
+response counters, such as used network protocol, total number of responded bytes,
+etc (see :ref:`mod-stats<mod-stats>` for full list of supported counters).
+This module should be configured as the last module.
+
+Common statistics with default module configuration::
+
+    template:
+      - id: default
+        global-module: mod-stats
+
+Per zone statistics with explicit module configuration::
+
+    mod-stats:
+      - id: custom
+        edns-presence: on
+        query-type: on
+
+    template:
+      - id: default
+        module: mod-stats/custom
+
+.. NOTE::
+   Server initiated communication (outgoing NOTIFY, incoming \*XFR,...) is not
+   counted by this module.
+

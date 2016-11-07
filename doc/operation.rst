@@ -266,3 +266,24 @@ no differences will be created.
 If you want to refresh the slave zones, you can do this with::
 
     $ knotc zone-refresh
+
+.. _Statistics:
+
+Statistics
+==========
+
+The server provides some general statistics and optional query module statistics
+(see :ref:`mod-stats<mod-stats>`).
+
+Server statistics or global module statistics can be shown by::
+
+    $ knotc stats
+    $ knotc stats server             # Show all server counters
+    $ knotc stats mod-stats          # Show all mod-stats counters
+    $ knotc stats server.zone-count  # Show specific server counter
+
+Per zone statistics can be shown by::
+
+    $ knotc zone-stats example.com mod-stats
+
+To show all supported counters even with 0 value use the force option.

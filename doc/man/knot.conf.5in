@@ -440,6 +440,39 @@ A UNIX socket path where the server listens for control commands.
 Maximum time the control socket operations can take. Set 0 for infinity.
 .sp
 \fIDefault:\fP 5
+.SH STATISTICS SECTION
+.sp
+Periodic server statistics dumping.
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+statistics:
+    timer: TIME
+    file: STR
+    append: BOOL
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.SS timer
+.sp
+A period after which all available statistics metrics will by written to the
+\fI\%file\fP\&.
+.sp
+\fIDefault:\fP not set
+.SS file
+.sp
+A file path of statistics output in the YAML format.
+.sp
+\fIDefault:\fP \fI\%rundir\fP/stats.yaml
+.SS append
+.sp
+If enabled, the output will be appended to the \fI\%file\fP
+instead of file replacement.
+.sp
+\fIDefault:\fP off
 .SH KEYSTORE SECTION
 .sp
 DNSSEC keystore configuration.
@@ -1233,6 +1266,252 @@ A module identifier.
 A path to the directory where the database is stored.
 .sp
 \fIRequired\fP
+.SH MODULE STATS
+.sp
+The module provides incoming query processing statistics.
+.sp
+\fBNOTE:\fP
+.INDENT 0.0
+.INDENT 3.5
+Leading 16\-bit message size over TCP is not considered.
+.UNINDENT
+.UNINDENT
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+mod\-stats:
+  \- id: STR
+    request\-protocol: BOOL
+    server\-operation: BOOL
+    request\-bytes: BOOL
+    response\-bytes: BOOL
+    edns\-presence: BOOL
+    flag\-presence: BOOL
+    response\-code: BOOL
+    reply\-nodata: BOOL
+    query\-type: BOOL
+    query\-size: BOOL
+    reply\-size: BOOL
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.SS id
+.sp
+A module identifier.
+.SS request\-protocol
+.sp
+If enabled, all incoming requests are counted by the network protocol:
+.INDENT 0.0
+.IP \(bu 2
+udp4 \- UDP over IPv4
+.IP \(bu 2
+tcp4 \- TCP over IPv4
+.IP \(bu 2
+udp6 \- UDP over IPv6
+.IP \(bu 2
+tcp6 \- TCP over IPv6
+.UNINDENT
+.sp
+\fIDefault:\fP on
+.SS server\-operation
+.sp
+If enabled, all incoming requests are counted by the server operation. The
+server operation is based on message header OpCode and message query (meta) type:
+.INDENT 0.0
+.IP \(bu 2
+query \- Normal query operation
+.IP \(bu 2
+update \- Dynamic update operation
+.IP \(bu 2
+notify \- NOTIFY request operation
+.IP \(bu 2
+axfr \- Full zone transfer operation
+.IP \(bu 2
+ixfr \- Incremental zone transfer operation
+.IP \(bu 2
+invalid \- Invalid server operation
+.UNINDENT
+.sp
+\fIDefault:\fP on
+.SS request\-bytes
+.sp
+If enabled, all incoming request bytes are counted by the server operation:
+.INDENT 0.0
+.IP \(bu 2
+query \- Normal query bytes
+.IP \(bu 2
+update \- Dynamic update bytes
+.IP \(bu 2
+other \- Other request bytes
+.UNINDENT
+.sp
+\fIDefault:\fP on
+.SS response\-bytes
+.sp
+If enabled, outgoing response bytes are counted by the server operation:
+.INDENT 0.0
+.IP \(bu 2
+reply \- Normal response bytes
+.IP \(bu 2
+transfer \- Zone transfer bytes
+.IP \(bu 2
+other \- Other response bytes
+.UNINDENT
+.sp
+\fBWARNING:\fP
+.INDENT 0.0
+.INDENT 3.5
+Dynamic update response bytes are not counted by this module.
+.UNINDENT
+.UNINDENT
+.sp
+\fIDefault:\fP on
+.SS edns\-presence
+.sp
+If enabled, EDNS pseudo section presence is counted by the message direction:
+.INDENT 0.0
+.IP \(bu 2
+request \- EDNS present in request
+.IP \(bu 2
+response \- EDNS present in response
+.UNINDENT
+.sp
+\fIDefault:\fP off
+.SS flag\-presence
+.sp
+If enabled, some message header flags are counted:
+.INDENT 0.0
+.IP \(bu 2
+TC \- Truncated Answer in response
+.IP \(bu 2
+DO \- DNSSEC OK in request
+.UNINDENT
+.sp
+\fIDefault:\fP off
+.SS response\-code
+.sp
+If enabled, outgoing response code is counted:
+.INDENT 0.0
+.IP \(bu 2
+NOERROR
+.IP \(bu 2
+\&...
+.IP \(bu 2
+NOTZONE
+.IP \(bu 2
+BADVERS
+.IP \(bu 2
+\&...
+.IP \(bu 2
+BADCOOKIE
+.IP \(bu 2
+other \- All other codes
+.UNINDENT
+.sp
+\fBNOTE:\fP
+.INDENT 0.0
+.INDENT 3.5
+In the case of multi\-message zone transfer response, just one counter is
+incremented.
+.UNINDENT
+.UNINDENT
+.sp
+\fBWARNING:\fP
+.INDENT 0.0
+.INDENT 3.5
+Dynamic update response code is not counted by this module.
+.UNINDENT
+.UNINDENT
+.sp
+\fIDefault:\fP on
+.SS reply\-nodata
+.sp
+If enabled, NODATA pseudo RCODE (see RFC 2308, Section 2.2) is counted by the
+query type:
+.INDENT 0.0
+.IP \(bu 2
+A
+.IP \(bu 2
+AAAA
+.IP \(bu 2
+other \- All other types
+.UNINDENT
+.sp
+\fIDefault:\fP off
+.SS query\-type
+.sp
+If enabled, normal query type is counted:
+.INDENT 0.0
+.IP \(bu 2
+A (TYPE1)
+.IP \(bu 2
+\&...
+.IP \(bu 2
+TYPE65
+.IP \(bu 2
+SPF (TYPE99)
+.IP \(bu 2
+\&...
+.IP \(bu 2
+TYPE110
+.IP \(bu 2
+ANY (TYPE255)
+.IP \(bu 2
+\&...
+.IP \(bu 2
+TYPE260
+.IP \(bu 2
+other \- All other types
+.UNINDENT
+.sp
+\fBNOTE:\fP
+.INDENT 0.0
+.INDENT 3.5
+Not all assigned meta types (IXFR, AXFR,...) have their own counters,
+because such types are not processed as normal query.
+.UNINDENT
+.UNINDENT
+.sp
+\fIDefault:\fP off
+.SS query\-size
+.sp
+If enabled, normal query message size distribution is counted by the size range
+in bytes:
+.INDENT 0.0
+.IP \(bu 2
+0\-15
+.IP \(bu 2
+16\-31
+.IP \(bu 2
+\&...
+.IP \(bu 2
+272\-287
+.IP \(bu 2
+288\-65535
+.UNINDENT
+.sp
+\fIDefault:\fP off
+.SS reply\-size
+.sp
+If enabled, normal reply message size distribution is counted by the size range
+in bytes:
+.INDENT 0.0
+.IP \(bu 2
+0\-15
+.IP \(bu 2
+16\-31
+.IP \(bu 2
+\&...
+.IP \(bu 2
+4080\-4095
+.IP \(bu 2
+4096\-65535
+.UNINDENT
+.sp
+\fIDefault:\fP off
 .SH AUTHOR
 CZ.NIC Labs <http://www.knot-dns.cz>
 .SH COPYRIGHT
