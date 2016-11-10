@@ -17,6 +17,7 @@
 #pragma once
 
 #include <stdbool.h>
+#include <stdio.h>
 #include <sys/types.h>
 
 /*!
@@ -35,3 +36,8 @@ int make_dir(const char *path, mode_t mode, bool ignore_existing);
  * Makes a directory part of the path with all parent directories if not exist.
  */
 int make_path(const char *path, mode_t mode);
+
+/*!
+ * Creates and opens for writing a temporary file based on given path.
+ */
+int open_tmp_file(const char *path, char **tmp_name, FILE **file, mode_t mode);

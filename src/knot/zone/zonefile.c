@@ -28,7 +28,6 @@
 #include "libknot/libknot.h"
 #include "contrib/files.h"
 #include "contrib/macros.h"
-#include "contrib/string.h"
 #include "knot/common/log.h"
 #include "knot/dnssec/zone-nsec.h"
 #include "knot/zone/semantic-check.h"
@@ -299,47 +298,6 @@ int zonefile_exists(const char *path, time_t *mtime)
 	return KNOT_EOK;
 }
 
-/*! \brief Open a temporary zonefile. */
-static int open_tmp_filename(const char *name, char **tmp_name, FILE **file)
-{
-	int ret;
-
-	*tmp_name = sprintf_alloc("%s.XXXXXX", name);
-	if (*tmp_name == NULL) {
-		ret = KNOT_ENOMEM;
-		goto open_tmp_failed;
-	}
-
-	int fd = mkstemp(*tmp_name);
-	if (fd < 0) {
-		ret = knot_map_errno();
-		goto open_tmp_failed;
-	}
-
-	if (fchmod(fd, S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP) != 0) {
-		ret = knot_map_errno();
-		close(fd);
-		unlink(*tmp_name);
-		goto open_tmp_failed;
-	}
-
-	*file = fdopen(fd, "w");
-	if (*file == NULL) {
-		ret = knot_map_errno();
-		close(fd);
-		unlink(*tmp_name);
-		goto open_tmp_failed;
-	}
-
-	return KNOT_EOK;
-open_tmp_failed:
-	free(*tmp_name);
-	*tmp_name = NULL;
-
-	assert(ret != KNOT_EOK);
-	return ret;
-}
-
 int zonefile_write(const char *path, zone_contents_t *zone)
 {
 	if (!zone || !path) {
@@ -353,7 +311,7 @@ int zonefile_write(const char *path, zone_contents_t *zone)
 
 	FILE *file = NULL;
 	char *tmp_name = NULL;
-	ret = open_tmp_filename(path, &tmp_name, &file);
+	ret = open_tmp_file(path, &tmp_name, &file, S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
