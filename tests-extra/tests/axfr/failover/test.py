@@ -24,7 +24,7 @@ master1 = t.server("knot")
 master2 = t.server("bind")
 slave = t.server("knot")
 
-# flush zones immediatelly
+# flush zones immediately
 for server in [master1, master2, slave]:
     slave.zonefile_sync = "0"
 

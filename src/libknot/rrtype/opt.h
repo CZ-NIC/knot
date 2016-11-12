@@ -411,7 +411,7 @@ size_t knot_edns_client_subnet_size(const knot_edns_client_subnet_t *ecs);
  * \param option_len  EDNS option data buffer size.
  * \param ecs         EDNS Client Subnet data.
  *
- * \return Error code, KNOT_EOK if sucessful.
+ * \return Error code, KNOT_EOK if successful.
  */
 int knot_edns_client_subnet_write(uint8_t *option, size_t option_len,
                                   const knot_edns_client_subnet_t *ecs);
@@ -423,7 +423,7 @@ int knot_edns_client_subnet_write(uint8_t *option, size_t option_len,
  * \param[in]  option      EDNS option data.
  * \param[in]  option_len  EDNS option size.
  *
- * \return Error code, KNOT_EOK if sucessful.
+ * \return Error code, KNOT_EOK if successful.
  */
 int knot_edns_client_subnet_parse(knot_edns_client_subnet_t *ecs,
                                   const uint8_t *option, size_t option_len);
@@ -434,7 +434,7 @@ int knot_edns_client_subnet_parse(knot_edns_client_subnet_t *ecs,
  * \param ecs   ECS structure to set address into.
  * \param addr  Address to be set.
  *
- * \return Error code. KNOT_EOK if succesful.
+ * \return Error code. KNOT_EOK if successful.
  */
 int knot_edns_client_subnet_set_addr(knot_edns_client_subnet_t *ecs,
                                      const struct sockaddr_storage *addr);

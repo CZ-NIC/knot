@@ -204,7 +204,7 @@ int zone_dump_text(zone_contents_t *zone, FILE *file)
 		}
 	}
 
-	// Create formated date-time string.
+	// Create formatted date-time string.
 	time_t now = time(NULL);
 	struct tm tm;
 	localtime_r(&now, &tm);

@@ -48,7 +48,7 @@ resp = knot.dig("mail6.example.com", "A")
 resp.check(rcode="NOERROR", noflags="AA")
 compare(resp.count(), 0, "A count")
 
-# Add autority information.
+# Add authority information.
 module.add_record("example.net",     "SOA", "1", "ns1 host 1 3600 60 3600 3600")
 module.add_record("example.net",     "NS",  "2", "ns1.example.net")
 module.add_record("ns1.example.net", "A",   "3", "127.0.0.2")

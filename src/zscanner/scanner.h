@@ -361,7 +361,7 @@ int zs_parse_record(
  * \brief Launches automatic parsing of the whole input.
  *
  * For each correctly recognized record, the record callback is executed.
- * If any syntax error occures, the error callback is executed.
+ * If any syntax error occurs, the error callback is executed.
  *
  * \note Error code and other information are stored in the scanner context.
  *

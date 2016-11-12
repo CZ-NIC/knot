@@ -56,8 +56,8 @@ Comments
 ========
 
 A comment begins with a ``#`` character and is ignored during processing.
-Also each configuration section or sequence block allows to specify permanent
-comment using ``comment`` item which is stored in the server beside the
+Also each configuration section or sequence block allows a permanent
+comment using the ``comment`` item which is stored in the server beside the
 configuration.
 
 .. _Includes:
