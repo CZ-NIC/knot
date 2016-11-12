@@ -133,7 +133,7 @@ char *name_from_idn(const char *idn_name);
 /*!
  * \brief Transforms ASCII punycode to localized IDN string.
  *
- * If an error occures or IDN support is missing, this function does nothing.
+ * If an error occurs or IDN support is missing, this function does nothing.
  *
  * \param idn_name	ASCII name to transform and replace with IDN name.
  */

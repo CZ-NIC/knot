@@ -103,8 +103,8 @@ to enclose such value within double quotes \fB"\fP \fB"\fP\&.
 .SH COMMENTS
 .sp
 A comment begins with a \fB#\fP character and is ignored during processing.
-Also each configuration section or sequence block allows to specify permanent
-comment using \fBcomment\fP item which is stored in the server beside the
+Also each configuration section or sequence block allows a permanent
+comment using the \fBcomment\fP item which is stored in the server beside the
 configuration.
 .SH INCLUDES
 .sp
@@ -651,7 +651,7 @@ can be appended to the address using \fB@\fP separator.
 \fIDefault:\fP not set
 .SS key
 .sp
-A \fI\%reference\fP to the TSIG key which ise used to autenticate
+A \fI\%reference\fP to the TSIG key which ise used to authenticate
 the communication with the remote server.
 .sp
 \fIDefault:\fP not set

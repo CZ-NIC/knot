@@ -73,7 +73,7 @@ int encode_keyid(const void *value, json_t **result)
 }
 
 /*!
- * Decode bounded interger value from JSON.
+ * Decode bounded integer value from JSON.
  */
 static int decode_int(const json_int_t min, const json_int_t max,
 		      const json_t *value, json_int_t *result)

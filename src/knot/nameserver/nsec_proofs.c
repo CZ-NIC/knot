@@ -439,7 +439,7 @@ static int put_nsec_nxdomain(const zone_contents_t *zone,
 /*!
  * \brief Put NSEC3s for NXDOMAIN error into the response.
  *
- * Adds up to three NSEC3 records. We have to proove that some parent name
+ * Adds up to three NSEC3 records. We have to prove that some parent name
  * exists (closest encloser proof) and that no wildcard expansion is possible
  * bellow that closest encloser.
  *
