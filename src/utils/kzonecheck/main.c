@@ -117,7 +117,7 @@ int main(int argc, char *argv[])
 	switch (ret) {
 	case KNOT_EOK:
 		if (verbose) {
-			fprintf(outfile, "No sematic error found.\n");
+			fprintf(outfile, "No semantic error found.\n");
 		}
 		return EXIT_SUCCESS;
 	case KNOT_ESEMCHECK:

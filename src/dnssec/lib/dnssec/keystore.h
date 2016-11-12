@@ -27,7 +27,7 @@
  *
  * PKCS #8 uses unencrypted PEM, and allows implementation of custom stores.
  *
- * PKCS #11 allows to access Hardware Security Modules.
+ * PKCS #11 provides access Hardware Security Modules.
  *
  * Example of using default PKCS #8 and to generate an RSA key:
  *

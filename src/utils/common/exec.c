@@ -143,7 +143,7 @@ static void print_footer(const size_t total_len,
 		exec_time = time(NULL);
 	}
 
-	// Create formated date-time string.
+	// Create formatted date-time string.
 	localtime_r(&exec_time, &tm);
 	strftime(date, sizeof(date), "%Y-%m-%d %H:%M:%S %Z", &tm);
 

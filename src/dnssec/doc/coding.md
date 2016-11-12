@@ -3,7 +3,7 @@
 ## Components Location
 
 - library: `lib` (public headers in `lib/dnssec`)
-- shared: `shared` (shared code for library and utilities, inaccesible from the library)
+- shared: `shared` (shared code for library and utilities, inaccessible from the library)
 - tests: `tests`
 - utilities: `utils`
 
