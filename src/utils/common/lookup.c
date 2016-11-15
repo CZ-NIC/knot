@@ -219,7 +219,7 @@ void lookup_list(lookup_t *lookup)
 		size_t len;
 		const char *key = hattrie_iter_key(lookup->iter.it, &len);
 
-		if (strcmp(key, lookup->iter.first_key) == 0) {
+		if (memcmp(key, lookup->iter.first_key, len) == 0) {
 			int ret = set_key(lookup, &lookup->found.key, key, len);
 			if (ret == KNOT_EOK) {
 				lookup->found.data = *hattrie_iter_val(lookup->iter.it);
