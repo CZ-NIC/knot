@@ -306,8 +306,8 @@ static void print_section_full(const knot_rrset_t *rrsets,
 			continue;
 		}
 
-		if (knot_rrset_txt_dump_dynamic(&rrsets[i], &buf, &buflen,
-		                                &(style->style)) < 0) {
+		if (knot_rrset_txt_dump(&rrsets[i], &buf, &buflen,
+		                        &(style->style)) < 0) {
 				WARN("can't print whole section\n");
 				break;
 		}

@@ -1991,26 +1991,24 @@ int knot_rrset_txt_dump_header(const knot_rrset_t      *rrset,
 	return len;
 }
 
-_public_
-int knot_rrset_txt_dump(const knot_rrset_t      *rrset,
-                        char                    *dst,
-                        const size_t            maxlen,
-                        const knot_dump_style_t *style)
+static int rrset_txt_dump(const knot_rrset_t      *rrset,
+                          char                    *dst,
+                          const size_t            maxlen,
+                          const knot_dump_style_t *style)
 {
 	if (rrset == NULL || dst == NULL || style == NULL) {
 		return KNOT_EINVAL;
 	}
 
 	size_t len = 0;
-	int    ret;
 
 	// Loop over rdata in rrset.
 	uint16_t rr_count = rrset->rrs.rr_count;
 	for (uint16_t i = 0; i < rr_count; i++) {
 		// Dump rdata owner, class, ttl and type.
 		const knot_rdata_t *rr_data = knot_rdataset_at(&rrset->rrs, i);
-		ret = knot_rrset_txt_dump_header(rrset, knot_rdata_ttl(rr_data),
-		                                 dst + len, maxlen - len, style);
+		int ret = knot_rrset_txt_dump_header(rrset, knot_rdata_ttl(rr_data),
+		                                     dst + len, maxlen - len, style);
 		if (ret < 0) {
 			return KNOT_ESPACE;
 		}
@@ -2036,19 +2034,17 @@ int knot_rrset_txt_dump(const knot_rrset_t      *rrset,
 }
 
 _public_
-int knot_rrset_txt_dump_dynamic(const knot_rrset_t	*rrset,
-				char			**dst,
-				size_t			*dst_size,
-				const knot_dump_style_t	*style)
+int knot_rrset_txt_dump(const knot_rrset_t      *rrset,
+                        char                    **dst,
+                        size_t                  *dst_size,
+                        const knot_dump_style_t *style)
 {
 	if (dst == NULL || dst_size == NULL) {
 		return KNOT_EINVAL;
 	}
 
-	int ret;
-
 	while (1) {
-		ret = knot_rrset_txt_dump(rrset, *dst, *dst_size, style);
+		int ret = rrset_txt_dump(rrset, *dst, *dst_size, style);
 		if (ret != KNOT_ESPACE) {
 			return ret;
 		}

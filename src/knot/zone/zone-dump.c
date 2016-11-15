@@ -43,7 +43,8 @@ static int apex_node_dump_text(zone_node_t *node, dump_params_t *params)
 
 	// Dump SOA record as a first.
 	if (!params->dump_nsec) {
-		int ret = knot_rrset_txt_dump_dynamic(&soa, &params->buf, &params->buflen, &soa_style);
+		int ret = knot_rrset_txt_dump(&soa, &params->buf, &params->buflen,
+		                              &soa_style);
 		if (ret < 0) {
 			return ret;
 		}
@@ -66,7 +67,8 @@ static int apex_node_dump_text(zone_node_t *node, dump_params_t *params)
 			break;
 		}
 
-		int ret = knot_rrset_txt_dump_dynamic(&rrset, &params->buf, &params->buflen, params->style);
+		int ret = knot_rrset_txt_dump(&rrset, &params->buf, &params->buflen,
+		                              params->style);
 		if (ret < 0) {
 			return ret;
 		}
@@ -121,7 +123,8 @@ static int node_dump_text(zone_node_t *node, void *data)
 			params->first_comment = NULL;
 		}
 
-		int ret = knot_rrset_txt_dump_dynamic(&rrset, &params->buf, &params->buflen, params->style);
+		int ret = knot_rrset_txt_dump(&rrset, &params->buf, &params->buflen,
+		                              params->style);
 		if (ret < 0) {
 			return ret;
 		}
