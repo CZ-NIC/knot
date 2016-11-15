@@ -90,19 +90,19 @@ int knot_rrset_txt_dump_data(const knot_rrset_t      *rrset,
                              const knot_dump_style_t *style);
 
 /*!
- * \brief Dumps rrset.
+ * \brief Dumps rrset, re-allocates dst to double (4x, 8x, ...) if too small.
  *
  * \param rrset		RRset to dump.
  * \param dst		Output buffer.
- * \param maxlen	Output buffer size.
+ * \param dst_size	Output buffer size (changed if *dst re-allocated).
  * \param style		Output style.
  *
  * \retval output length	if success.
  * \retval < 0			if error.
  */
 int knot_rrset_txt_dump(const knot_rrset_t      *rrset,
-                        char                    *dst,
-                        const size_t            maxlen,
+                        char                    **dst,
+                        size_t                  *dst_size,
                         const knot_dump_style_t *style);
 
 /*! @} */
