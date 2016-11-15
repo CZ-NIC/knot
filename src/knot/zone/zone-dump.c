@@ -43,9 +43,9 @@ static int apex_node_dump_text(zone_node_t *node, dump_params_t *params)
 
 	// Dump SOA record as a first.
 	if (!params->dump_nsec) {
-		if (knot_rrset_txt_dump(&soa, params->buf, params->buflen,
-		                        &soa_style) < 0) {
-			return KNOT_ENOMEM;
+		int ret = knot_rrset_txt_dump_dynamic(&soa, &params->buf, &params->buflen, &soa_style);
+		if (ret < 0) {
+			return ret;
 		}
 		params->rr_count += soa.rrs.rr_count;
 		fprintf(params->file, "%s", params->buf);
@@ -66,9 +66,9 @@ static int apex_node_dump_text(zone_node_t *node, dump_params_t *params)
 			break;
 		}
 
-		if (knot_rrset_txt_dump(&rrset, params->buf, params->buflen,
-		                        params->style) < 0) {
-			return KNOT_ENOMEM;
+		int ret = knot_rrset_txt_dump_dynamic(&rrset, &params->buf, &params->buflen, params->style);
+		if (ret < 0) {
+			return ret;
 		}
 		params->rr_count +=  rrset.rrs.rr_count;
 		fprintf(params->file, "%s", params->buf);
@@ -121,9 +121,9 @@ static int node_dump_text(zone_node_t *node, void *data)
 			params->first_comment = NULL;
 		}
 
-		if (knot_rrset_txt_dump(&rrset, params->buf, params->buflen,
-		                        params->style) < 0) {
-			return KNOT_ENOMEM;
+		int ret = knot_rrset_txt_dump_dynamic(&rrset, &params->buf, &params->buflen, params->style);
+		if (ret < 0) {
+			return ret;
 		}
 		params->rr_count += rrset.rrs.rr_count;
 		fprintf(params->file, "%s", params->buf);
@@ -213,7 +213,7 @@ int zone_dump_text(zone_contents_t *zone, FILE *file)
 	              ";; Time %s\n",
 	        params.rr_count, date);
 
-	free(buf);
+	free(params.buf); // params.buf may be != buf because of knot_rrset_txt_dump_dynamic()
 
 	return KNOT_EOK;
 }

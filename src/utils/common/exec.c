@@ -306,21 +306,10 @@ static void print_section_full(const knot_rrset_t *rrsets,
 			continue;
 		}
 
-		while (knot_rrset_txt_dump(&rrsets[i], buf, buflen,
-		                           &(style->style)) < 0) {
-			buflen += 4096;
-			// Oversize protection.
-			if (buflen > 100000) {
+		if (knot_rrset_txt_dump_dynamic(&rrsets[i], &buf, &buflen,
+		                                &(style->style)) < 0) {
 				WARN("can't print whole section\n");
 				break;
-			}
-
-			char *newbuf = realloc(buf, buflen);
-			if (newbuf == NULL) {
-				WARN("can't print whole section\n");
-				break;
-			}
-			buf = newbuf;
 		}
 		printf("%s", buf);
 	}

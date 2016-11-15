@@ -2034,3 +2034,33 @@ int knot_rrset_txt_dump(const knot_rrset_t      *rrset,
 
 	return len;
 }
+
+_public_
+int knot_rrset_txt_dump_dynamic(const knot_rrset_t	*rrset,
+				char			**dst,
+				size_t			*dst_size,
+				const knot_dump_style_t	*style)
+{
+	if (dst == NULL || dst_size == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	int ret;
+
+	while (1) {
+		ret = knot_rrset_txt_dump(rrset, *dst, *dst_size, style);
+		if (ret != KNOT_ESPACE) {
+			return ret;
+		}
+
+		size_t new_dst_size = 2 * (*dst_size);
+		char * new_dst = malloc(new_dst_size);
+		if (new_dst == NULL) {
+			return KNOT_ENOMEM;
+		}
+
+		free(*dst);
+		*dst = new_dst;
+		*dst_size = new_dst_size;
+	}
+}
