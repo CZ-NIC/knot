@@ -651,7 +651,7 @@ can be appended to the address using \fB@\fP separator.
 \fIDefault:\fP not set
 .SS key
 .sp
-A \fI\%reference\fP to the TSIG key which ise used to authenticate
+A \fI\%reference\fP to the TSIG key which is used to authenticate
 the communication with the remote server.
 .sp
 \fIDefault:\fP not set

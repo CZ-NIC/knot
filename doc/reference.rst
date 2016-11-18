@@ -775,7 +775,7 @@ can be appended to the address using ``@`` separator.
 key
 ---
 
-A :ref:`reference<key_id>` to the TSIG key which ise used to autenticate
+A :ref:`reference<key_id>` to the TSIG key which is used to authenticate
 the communication with the remote server.
 
 *Default:* not set
