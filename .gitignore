@@ -18,6 +18,8 @@
 /src/Makefile.in
 /src/zscanner/Makefile
 /src/zscanner/Makefile.in
+/python/Makefile
+/python/Makefile.in
 /samples/Makefile
 /samples/Makefile.in
 /samples/knot.sample.conf

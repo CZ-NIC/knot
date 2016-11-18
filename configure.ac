@@ -531,6 +531,7 @@ AC_CONFIG_FILES([Makefile
                  tests/Makefile
                  tests-fuzz/Makefile
                  samples/Makefile
+                 python/Makefile
                  src/Makefile
                  src/contrib/dnstap/Makefile
                  src/dnssec/Makefile
