@@ -212,7 +212,7 @@ uint16_t knot_pkt_qclass(const knot_pkt_t *pkt);
  *
  * \param pkt
  * \param section_id
- * \return KNOT_EOK
+ * \return KNOT_EOK or KNOT_EINVAL
  */
 int knot_pkt_begin(knot_pkt_t *pkt, knot_section_t section_id);
 

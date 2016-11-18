@@ -483,17 +483,17 @@ uint16_t knot_pkt_qclass(const knot_pkt_t *pkt)
 _public_
 int knot_pkt_begin(knot_pkt_t *pkt, knot_section_t section_id)
 {
-	if (pkt == NULL) {
+	if (pkt == NULL || section_id < pkt->current) {
 		return KNOT_EINVAL;
 	}
 
-	/* Cannot step to lower section. */
-	assert(section_id >= pkt->current);
-	pkt->current = section_id;
-
-	/* Remember watermark. */
+	/* Remember watermark but not on repeated calls. */
 	pkt->sections[section_id].pkt = pkt;
-	pkt->sections[section_id].pos = pkt->rrset_count;
+	if (section_id > pkt->current) {
+		pkt->sections[section_id].pos = pkt->rrset_count;
+	}
+
+	pkt->current = section_id;
 
 	return KNOT_EOK;
 }
