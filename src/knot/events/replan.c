@@ -18,45 +18,39 @@
 
 #include "knot/events/replan.h"
 
-/*!< \brief Creates new DDNS q in the new zone - q contains references from the old zone. */
-static void duplicate_ddns_q(zone_t *zone, zone_t *old_zone)
+/*!
+ * \brief Move DDNS queue from old zone to new zone and replan if necessary.
+ *
+ * New zone will contain references from the old zone. New zone will free
+ * the data.
+ */
+static void replan_ddns(zone_t *zone, zone_t *old_zone)
 {
+	assert(zone);
+	assert(old_zone);
+
+	if (old_zone->ddns_queue_size == 0) {
+		return;
+	}
+
 	ptrnode_t *node = NULL;
 	WALK_LIST(node, old_zone->ddns_queue) {
 		ptrlist_add(&zone->ddns_queue, node->d, NULL);
 	}
 	zone->ddns_queue_size = old_zone->ddns_queue_size;
 
-	// Reset the list, new zone will free the data.
 	ptrlist_free(&old_zone->ddns_queue, NULL);
+
+	zone_events_schedule_now(zone, ZONE_EVENT_UPDATE);
 }
 
-void replan_ddns(zone_t *zone, zone_t *old_zone)
-{
-	const bool have_updates = old_zone->ddns_queue_size > 0;
-	if (have_updates) {
-		duplicate_ddns_q(zone, old_zone);
-	}
-
-	if (have_updates) {
-		zone_events_schedule_now(zone, ZONE_EVENT_UPDATE);
-	}
-}
-
-static void replan_dnssec(conf_t *conf, zone_t *zone)
-{
-	conf_val_t val = conf_zone_get(conf, C_DNSSEC_SIGNING, zone->name);
-	if (conf_bool(&val)) {
-		/* Keys could have changed, force resign. */
-		zone_events_schedule_now(zone, ZONE_EVENT_DNSSEC);
-	}
-}
-
+/*!
+ * \brief Replan NOTIFY event if it was queued for the old zone.
+ */
 static void replan_notify(zone_t *zone, const zone_t *old_zone)
 {
-	if (!old_zone) {
-		return;
-	}
+	assert(zone);
+	assert(old_zone);
 
 	time_t notify = zone_events_get_time(old_zone, ZONE_EVENT_NOTIFY);
 	if (notify > 0) {
@@ -65,9 +59,26 @@ static void replan_notify(zone_t *zone, const zone_t *old_zone)
 }
 
 /*!
- * \brief Replan events that depend on zone timers.
+ * \brief Replan DNSSEC if automatic signing enabled.
+ *
+ * This is required as the configuration could have changed.
  */
-static void replan_from_timers(conf_t *conf, zone_t *zone)
+static void replan_dnssec(conf_t *conf, zone_t *zone)
+{
+	assert(conf);
+	assert(zone);
+
+	conf_val_t val = conf_zone_get(conf, C_DNSSEC_SIGNING, zone->name);
+	if (conf_bool(&val)) {
+		zone_events_schedule_now(zone, ZONE_EVENT_DNSSEC);
+	}
+}
+
+/*!
+ * \brief Replan events that depend on zone timers (REFRESH, EXPIRE, FLUSH).
+ */
+void replan_from_timers(conf_t *conf, zone_t *zone)
+
 {
 	assert(conf);
 	assert(zone);
@@ -79,16 +90,17 @@ static void replan_from_timers(conf_t *conf, zone_t *zone)
 	}
 
 	time_t expire = 0;
-	// TODO: does this condition cover all cases?
-	if (zone_is_slave(conf, zone) && !zone_expired(zone) && zone->timers.soa_expire > 0) {
+	if (zone_is_slave(conf, zone) && !zone_expired(zone)) {
 		expire = zone->timers.last_refresh + zone->timers.soa_expire;
 	}
 
 	time_t flush = 0;
-	conf_val_t val = conf_zone_get(conf, C_ZONEFILE_SYNC, zone->name);
-	int64_t sync_timeout = conf_int(&val);
-	if (sync_timeout > 0) {
-		flush = zone->timers.last_flush + sync_timeout;
+	if (!zone_expired(zone)) {
+		conf_val_t val = conf_zone_get(conf, C_ZONEFILE_SYNC, zone->name);
+		int64_t sync_timeout = conf_int(&val);
+		if (sync_timeout > 0) {
+			flush = zone->timers.last_flush + sync_timeout;
+		}
 	}
 
 	zone_events_schedule_at(zone, ZONE_EVENT_REFRESH, refresh,
@@ -96,22 +108,32 @@ static void replan_from_timers(conf_t *conf, zone_t *zone)
 	                              ZONE_EVENT_FLUSH, flush);
 }
 
-void zone_events_replan_updated(zone_t *zone, zone_t *old_zone)
+void replan_load_new(zone_t *zone)
 {
-	// other events will cascade from new zone load
+	// enqueue directly, make first load waitable
+	// other events will cascade from load
 	zone_events_enqueue(zone, ZONE_EVENT_LOAD);
-	replan_ddns(zone, old_zone);
 }
 
-void zone_events_replan_current(conf_t *conf, zone_t *zone, zone_t *old_zone)
+void replan_load_bootstrap(conf_t *conf, zone_t *zone)
 {
 	replan_from_timers(conf, zone);
-	replan_notify(zone, old_zone);
+}
+
+void replan_load_current(conf_t *conf, zone_t *zone, zone_t *old_zone)
+{
 	replan_ddns(zone, old_zone);
+	replan_notify(zone, old_zone);
+
+	replan_from_timers(conf, zone);
 	replan_dnssec(conf, zone);
 }
 
-void zone_events_replan_after_timers(conf_t *conf, zone_t *zone)
+void replan_load_updated(zone_t *zone, zone_t *old_zone)
 {
-	replan_from_timers(conf, zone);
+	replan_ddns(zone, old_zone);
+	replan_notify(zone, old_zone);
+
+	// other events will cascade from load
+	zone_events_schedule_now(zone, ZONE_EVENT_LOAD);
 }

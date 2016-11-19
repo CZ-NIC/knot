@@ -20,16 +20,16 @@
 #include "knot/zone/zone.h"
 
 /*!
- * \brief Replan events when the zone is reloaded and updated.
+ * \brief Replan timer dependent refresh, expire, and flush.
  */
-void zone_events_replan_updated(zone_t *zone, zone_t *old_zone);
+void replan_from_timers(conf_t *conf, zone_t *zone);
 
 /*!
- * \brief Replan events when the zone is reloaded and current.
+ * \defgroup replan_load Replan timers after zone load or reload.
+ * @{
  */
-void zone_events_replan_current(conf_t *conf, zone_t *zone, zone_t *old_zone);
-
-/*!
- * \brief Replan events when zone timers change.
- */
-void zone_events_replan_after_timers(conf_t *conf, zone_t *zone);
+void replan_load_new(zone_t *zone);
+void replan_load_bootstrap(conf_t *conf, zone_t *zone);
+void replan_load_current(conf_t *conf, zone_t *zone, zone_t *old_zone);
+void replan_load_updated(zone_t *zone, zone_t *old_zone);
+/*! @} */

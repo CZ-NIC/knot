@@ -188,11 +188,11 @@ static zone_t *create_zone_reload(conf_t *conf, const knot_dname_t *name,
 
 	switch (zstatus) {
 	case ZONE_STATUS_FOUND_UPDATED:
-		zone_events_replan_updated(zone, old_zone);
+		replan_load_updated(zone, old_zone);
 		break;
 	case ZONE_STATUS_FOUND_CURRENT:
 		zone->zonefile = old_zone->zonefile;
-		zone_events_replan_current(conf, zone, old_zone);
+		replan_load_current(conf, zone, old_zone);
 		break;
 	default:
 		assert(0);
@@ -232,14 +232,10 @@ static zone_t *create_zone_new(conf_t *conf, const knot_dname_t *name,
 
 	switch (zstatus) {
 	case ZONE_STATUS_FOUND_NEW:
-		/* Enqueueing makes the first zone load waitable. */
-		zone_events_enqueue(zone, ZONE_EVENT_LOAD);
+		replan_load_new(zone);
 		break;
 	case ZONE_STATUS_BOOSTRAP:
-		if (zone_events_get_time(zone, ZONE_EVENT_REFRESH) == 0) {
-			// Plan immediate refresh if not already planned.
-			zone_events_schedule_now(zone, ZONE_EVENT_REFRESH);
-		}
+		replan_load_bootstrap(conf, zone);
 		break;
 	case ZONE_STATUS_NOT_FOUND:
 		break;
