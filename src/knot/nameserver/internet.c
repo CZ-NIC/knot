@@ -822,12 +822,9 @@ static int process_soa_answer(knot_pkt_t *pkt, struct answer_data *data)
 	zone_t *zone = data->param->zone;
 
 	/* Check RCODE. */
-	uint8_t rcode = knot_wire_get_rcode(pkt->wire);
-	if (rcode != KNOT_RCODE_NOERROR) {
-		const knot_lookup_t *lut = knot_lookup_by_id(knot_rcode_names, rcode);
-		if (lut != NULL) {
-			REFRESH_LOG(LOG_WARNING, "server responded with %s", lut->name);
-		}
+	if (knot_pkt_ext_rcode(pkt) != KNOT_RCODE_NOERROR) {
+		REFRESH_LOG(LOG_WARNING, "server responded with error '%s'",
+		            knot_pkt_ext_rcode_name(pkt));
 		return KNOT_STATE_FAIL;
 	}
 

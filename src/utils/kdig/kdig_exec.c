@@ -885,17 +885,9 @@ static int process_xfr_packet(const knot_pkt_t      *query,
 			}
 
 			// Check for error reply.
-			uint16_t rcode = knot_pkt_get_ext_rcode(reply);
-			if (rcode != KNOT_RCODE_NOERROR) {
-				const char *rcode_str = "Unknown";
-
-				const knot_lookup_t *code =
-					knot_lookup_by_id(knot_rcode_names, rcode);
-				if (code != NULL) {
-					rcode_str = code->name;
-				}
-
-				ERR("server replied %s\n", rcode_str);
+			if (knot_pkt_ext_rcode(reply) != KNOT_RCODE_NOERROR) {
+				ERR("server replied with error '%s'\n",
+				    knot_pkt_ext_rcode_name(reply));
 				knot_pkt_free(&reply);
 				net_close(net);
 				return 0;
