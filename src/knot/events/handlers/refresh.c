@@ -801,9 +801,7 @@ int event_refresh(conf_t *conf, zone_t *zone)
 {
 	assert(zone);
 
-	// slave zones only
 	if (!zone_is_slave(conf, zone)) {
-		assert(0 && "unreachable");
 		return KNOT_EOK;
 	}
 
