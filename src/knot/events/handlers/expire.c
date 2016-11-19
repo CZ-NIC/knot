@@ -21,6 +21,7 @@
 #include "knot/common/log.h"
 #include "knot/conf/conf.h"
 #include "knot/events/handlers.h"
+#include "knot/events/replan.h"
 #include "knot/zone/contents.h"
 #include "knot/zone/zone.h"
 
@@ -36,6 +37,9 @@ int event_expire(conf_t *conf, zone_t *zone)
 
 	zone->zonefile.exists = false;
 	mem_trim();
+
+	zone->timers.next_refresh = time(NULL);
+	replan_from_timers(conf, zone);
 
 	return KNOT_EOK;
 }
