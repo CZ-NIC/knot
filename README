@@ -40,7 +40,7 @@ $ sudo apt-get upgrade
 
 Install prerequisites:
 $ sudo apt-get install \
-  libtool autoconf liburcu-dev libgnutls28-dev libjansson-dev libedit-dev
+  libtool autoconf make liburcu-dev libgnutls28-dev libjansson-dev libedit-dev
 
 Install optional packages to override embedded libraries:
 $ sudo apt-get install liblmdb-dev
