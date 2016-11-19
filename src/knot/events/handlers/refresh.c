@@ -831,13 +831,15 @@ int event_refresh(conf_t *conf, zone_t *zone)
 	}
 
 	/* Rechedule events. */
-	zone_events_replan_after_timers(conf, zone);
-	zone_events_schedule_at(zone, ZONE_EVENT_NOTIFY, now);
+	replan_from_timers(conf, zone);
+	if (updated) {
+		zone_events_schedule_now(zone, ZONE_EVENT_NOTIFY);
 
-	conf_val_t val = conf_zone_get(conf, C_ZONEFILE_SYNC, zone->name);
-	int64_t sync_timeout = conf_int(&val);
-	if (sync_timeout == 0 && updated) {
-		zone_events_schedule_at(zone, ZONE_EVENT_FLUSH, now);
+		conf_val_t val = conf_zone_get(conf, C_ZONEFILE_SYNC, zone->name);
+		int64_t sync_timeout = conf_int(&val);
+		if (sync_timeout == 0) {
+			zone_events_schedule_now(zone, ZONE_EVENT_FLUSH);
+		}
 	}
 
 	if (!bootstrap) {
