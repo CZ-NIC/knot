@@ -142,10 +142,12 @@ static bool transfer_result_has_data(const struct transfer_result *result)
 	return result->zone || !EMPTY_LIST(result->changesets);
 }
 
-time_t bootstrap_next(const zone_timers_t *timers)
+static time_t bootstrap_next(const zone_timers_t *timers)
 {
+	time_t expired_at = timers->last_refresh + timers->soa_expire;
+
 	// previous interval
-	time_t interval = timers->next_refresh - timers->last_refresh;
+	time_t interval = timers->next_refresh - expired_at;
 	if (interval < 0) {
 		interval = 0;
 	}
