@@ -21,6 +21,7 @@
 #include "knot/conf/conf.h"
 #include "knot/events/handlers.h"
 #include "knot/events/log.h"
+#include "knot/events/replan.h"
 #include "knot/zone/zone-load.h"
 #include "knot/zone/zone.h"
 #include "knot/zone/zonefile.h"
@@ -85,29 +86,6 @@ int event_load(conf_t *conf, zone_t *zone)
 		zone_contents_deep_free(&old);
 	}
 
-	/* Schedule notify and refresh after load. */
-	if (zone_is_slave(conf, zone)) {
-		zone_events_schedule_now(zone, ZONE_EVENT_REFRESH);
-	}
-	if (!zone_contents_is_empty(contents)) {
-		zone_events_schedule_now(zone, ZONE_EVENT_NOTIFY);
-	}
-
-	/* Schedule zone resign. */
-	conf_val_t val = conf_zone_get(conf, C_DNSSEC_SIGNING, zone->name);
-	if (conf_bool(&val)) {
-		log_dnssec_next(zone->name, dnssec_refresh);
-		zone_events_schedule_at(zone, ZONE_EVENT_DNSSEC, dnssec_refresh);
-	}
-
-	/* Periodic execution. */
-	val = conf_zone_get(conf, C_ZONEFILE_SYNC, zone->name);
-	int64_t sync_timeout = conf_int(&val);
-	if (sync_timeout >= 0) {
-		// TODO: tmp
-		//zone_events_schedule(zone, ZONE_EVENT_FLUSH, sync_timeout);
-	}
-
 	uint32_t current_serial = zone_contents_serial(zone->contents);
 	if (old_contents) {
 		log_zone_info(zone->name, "loaded, serial %u -> %u",
@@ -121,9 +99,19 @@ int event_load(conf_t *conf, zone_t *zone)
 		zone_control_clear(zone);
 	}
 
-	/* Update expiration in timers. */
+	/* Schedule depedent events. */
+
 	const knot_rdataset_t *soa = zone_soa(zone);
 	zone->timers.soa_expire = knot_soa_expire(soa);
+	replan_from_timers(conf, zone);
+
+	conf_val_t val = conf_zone_get(conf, C_DNSSEC_SIGNING, zone->name);
+	if (conf_bool(&val)) {
+		log_dnssec_next(zone->name, dnssec_refresh);
+		zone_events_schedule_at(zone, ZONE_EVENT_DNSSEC, dnssec_refresh);
+	}
+
+	zone_events_schedule_now(zone, ZONE_EVENT_NOTIFY);
 
 	return KNOT_EOK;
 
@@ -132,10 +120,7 @@ fail:
 	zone_contents_deep_free(&contents);
 
 	/* Try to bootstrap the zone if local error. */
-	// TODO: review
-	//if (zone_is_slave(conf, zone) && !zone_events_is_scheduled(zone, ZONE_EVENT_REFRESH)) {
-	//	zone_events_schedule_now(zone, ZONE_EVENT_REFRESH);
-	//}
+	replan_from_timers(conf, zone);
 
 	return ret;
 }
