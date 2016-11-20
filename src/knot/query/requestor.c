@@ -139,6 +139,9 @@ struct knot_request *knot_request_make(knot_mm_t *mm,
 		request->source.ss_family = AF_UNSPEC;
 	}
 
+	if (tsig_key && tsig_key->algorithm == DNSSEC_TSIG_UNKNOWN) {
+		tsig_key = NULL;
+	}
 	tsig_init(&request->tsig, tsig_key);
 
 	return request;
