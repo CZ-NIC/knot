@@ -111,7 +111,10 @@ int event_load(conf_t *conf, zone_t *zone)
 		zone_events_schedule_at(zone, ZONE_EVENT_DNSSEC, dnssec_refresh);
 	}
 
-	zone_events_schedule_now(zone, ZONE_EVENT_NOTIFY);
+	// TODO: track serial across restart and avoid unnecessary notify
+	if (!old_contents || old_serial != current_serial) {
+		zone_events_schedule_now(zone, ZONE_EVENT_NOTIFY);
+	}
 
 	return KNOT_EOK;
 
