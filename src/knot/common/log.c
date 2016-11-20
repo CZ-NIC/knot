@@ -315,11 +315,7 @@ static void log_msg_text(int level, const char *zone, const char *fmt, va_list a
 	// Prefix zone name.
 	size_t zone_len = 0;
 	if (zone != NULL) {
-		// Strip terminating dot (unless root zone).
 		zone_len = strlen(zone);
-		if (zone_len > 1 && zone[zone_len - 1] == '.') {
-			zone_len -= 1;
-		}
 
 		int ret = log_msg_add(&write, &capacity, "[%.*s] ", zone_len, zone);
 		if (ret != KNOT_EOK) {
