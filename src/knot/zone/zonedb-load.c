@@ -133,6 +133,7 @@ static zone_t *create_zone_reload(conf_t *conf, const knot_dname_t *name,
 		return NULL;
 	}
 	zone->contents = old_zone->contents;
+	zone->bootstrap_retry = old_zone->bootstrap_retry;
 
 	zone_status_t zstatus;
 	if (zone_is_slave(conf, zone) && old_zone->flags & ZONE_EXPIRED) {
