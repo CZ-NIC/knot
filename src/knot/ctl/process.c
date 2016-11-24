@@ -42,8 +42,8 @@ int ctl_process(knot_ctl_t *ctl, server_t *server)
 		// Receive data unit.
 		int ret = knot_ctl_receive(args.ctl, &args.type, &args.data);
 		if (ret != KNOT_EOK) {
-			log_debug("control, failed to receive (%s)",
-			          knot_strerror(ret));
+			log_ctl_debug("control, failed to receive (%s)",
+			              knot_strerror(ret));
 			mp_delete(args.mm.ctx);
 			return ret;
 		}
@@ -73,16 +73,22 @@ int ctl_process(knot_ctl_t *ctl, server_t *server)
 		}
 
 		const char *cmd_name = args.data[KNOT_CTL_IDX_CMD];
+		const char *zone_name = args.data[KNOT_CTL_IDX_ZONE];
 
 		ctl_cmd_t cmd = ctl_str_to_cmd(cmd_name);
 		if (cmd != CTL_NONE) {
-			log_info("control, received command '%s'", cmd_name);
+			if (zone_name != NULL) {
+				log_ctl_zone_str_info(zone_name,
+				             "control, received command '%s'", cmd_name);
+			} else {
+				log_ctl_info("control, received command '%s'", cmd_name);
+			}
 			ctl_log_data(&args.data);
 		} else if (cmd_name != NULL){
-			log_debug("control, invalid command '%s'", cmd_name);
+			log_ctl_debug("control, invalid command '%s'", cmd_name);
 			continue;
 		} else {
-			log_debug("control, empty command");
+			log_ctl_debug("control, empty command");
 			continue;
 		}
 
@@ -94,16 +100,16 @@ int ctl_process(knot_ctl_t *ctl, server_t *server)
 		case KNOT_CTL_ESTOP:
 			break;
 		default:
-			log_debug("control, command '%s' (%s)", cmd_name,
-			          knot_strerror(cmd_ret));
+			log_ctl_debug("control, command '%s' (%s)", cmd_name,
+			              knot_strerror(cmd_ret));
 			break;
 		}
 
 		// Finalize the answer block.
 		ret = knot_ctl_send(ctl, KNOT_CTL_TYPE_BLOCK, NULL);
 		if (ret != KNOT_EOK) {
-			log_debug("control, failed to reply (%s)",
-			          knot_strerror(ret));
+			log_ctl_debug("control, failed to reply (%s)",
+			              knot_strerror(ret));
 		}
 
 		// Stop if required.
@@ -111,8 +117,8 @@ int ctl_process(knot_ctl_t *ctl, server_t *server)
 			// Finalize the answer message.
 			ret = knot_ctl_send(ctl, KNOT_CTL_TYPE_END, NULL);
 			if (ret != KNOT_EOK) {
-				log_debug("control, failed to reply (%s)",
-				          knot_strerror(ret));
+				log_ctl_debug("control, failed to reply (%s)",
+				              knot_strerror(ret));
 			}
 
 			mp_delete(args.mm.ctx);

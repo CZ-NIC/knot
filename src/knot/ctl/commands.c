@@ -41,15 +41,25 @@ void ctl_log_data(knot_ctl_data_t *data)
 	const char *item = (*data)[KNOT_CTL_IDX_ITEM];
 	const char *id = (*data)[KNOT_CTL_IDX_ID];
 
+	if (section == NULL) {
+		return;
+	}
+
 	if (zone != NULL) {
-		log_debug("control, zone '%s'", zone);
-	} else if (section != NULL) {
-		log_debug("control, item '%s%s%s%s%s%s'", section,
-		          (id   != NULL ? "["  : ""),
-		          (id   != NULL ? id   : ""),
-		          (id   != NULL ? "]"  : ""),
-		          (item != NULL ? "."  : ""),
-		          (item != NULL ? item : ""));
+		log_ctl_zone_str_debug(zone,
+		              "control, item '%s%s%s%s%s%s'", section,
+		              (id   != NULL ? "["  : ""),
+		              (id   != NULL ? id   : ""),
+		              (id   != NULL ? "]"  : ""),
+		              (item != NULL ? "."  : ""),
+		              (item != NULL ? item : ""));
+	} else {
+		log_ctl_debug("control, item '%s%s%s%s%s%s'", section,
+		              (id   != NULL ? "["  : ""),
+		              (id   != NULL ? id   : ""),
+		              (id   != NULL ? "]"  : ""),
+		              (item != NULL ? "."  : ""),
+		              (item != NULL ? item : ""));
 	}
 }
 
@@ -62,7 +72,7 @@ static void send_error(ctl_args_t *args, const char *msg)
 
 	int ret = knot_ctl_send(args->ctl, KNOT_CTL_TYPE_DATA, &data);
 	if (ret != KNOT_EOK) {
-		log_debug("control, failed to send error (%s)", knot_strerror(ret));
+		log_ctl_debug("control, failed to send error (%s)", knot_strerror(ret));
 	}
 }
 
@@ -108,8 +118,8 @@ static int zones_apply(ctl_args_t *args, int (*fcn)(zone_t *, ctl_args_t *))
 			ret = fcn(zone, args);
 		}
 		if (ret != KNOT_EOK) {
-			log_zone_str_debug(args->data[KNOT_CTL_IDX_ZONE],
-			                   "control, (%s)", knot_strerror(ret));
+			log_ctl_zone_str_error(args->data[KNOT_CTL_IDX_ZONE],
+			                       "control, error (%s)", knot_strerror(ret));
 			send_error(args, knot_strerror(ret));
 		}
 
