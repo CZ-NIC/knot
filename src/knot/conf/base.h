@@ -44,6 +44,10 @@
 	log_msg(severity, "config, " msg, ##__VA_ARGS__); \
 	} while (0)
 
+#define CONF_LOG_ZONE(severity, zone, msg, ...) do { \
+	log_msg_zone(severity, zone, "config, " msg, ##__VA_ARGS__); \
+	} while (0)
+
 /*! Configuration getter output. */
 typedef struct {
 	/*! Item description. */

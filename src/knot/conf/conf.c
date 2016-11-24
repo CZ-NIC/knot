@@ -30,15 +30,6 @@
 #include "contrib/wire_ctx.h"
 #include "contrib/openbsd/strlcat.h"
 
-/*! Configuration specific logging. */
-#define CONF_LOG(severity, msg, ...) do { \
-	log_msg(severity, "config, " msg, ##__VA_ARGS__); \
-	} while (0)
-
-#define CONF_LOG_ZONE(severity, zone, msg, ...) do { \
-	log_msg_zone(severity, zone, "config, " msg, ##__VA_ARGS__); \
-	} while (0)
-
 conf_val_t conf_get_txn(
 	conf_t *conf,
 	knot_db_txn_t *txn,
