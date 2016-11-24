@@ -207,10 +207,10 @@ void log_levels_add(log_target_t target, log_source_t src, int levels)
 	}
 }
 
-static void emit_log_msg(int level, const char *zone, size_t zone_len, const char *msg)
+static void emit_log_msg(int level, log_source_t src, const char *zone,
+                         size_t zone_len, const char *msg)
 {
 	log_t *log = s_log;
-	log_source_t src = zone ? LOG_SOURCE_ZONE : LOG_SOURCE_SERVER;
 
 	// Syslog target.
 	if (*src_levels(log, LOG_TARGET_SYSLOG, src) & LOG_MASK(level)) {
@@ -289,7 +289,8 @@ static int log_msg_add(char **write, size_t *capacity, const char *fmt, ...)
 	return KNOT_EOK;
 }
 
-static void log_msg_text(int level, const char *zone, const char *fmt, va_list args)
+static void log_msg_text(int level, log_source_t src, const char *zone,
+                         const char *fmt, va_list args)
 {
 	if (!log_isopen()) {
 		return;
@@ -328,36 +329,45 @@ static void log_msg_text(int level, const char *zone, const char *fmt, va_list a
 	int ret = vsnprintf(write, capacity, fmt, args);
 	if (ret >= 0) {
 		// Send to logging targets.
-		emit_log_msg(level, zone, zone_len, buff);
+		emit_log_msg(level, src, zone, zone_len, buff);
 	}
 
 	rcu_read_unlock();
 }
 
-void log_msg(int priority, const char *fmt, ...)
+void log_fmt(int priority, log_source_t src, const char *fmt, ...)
 {
 	va_list args;
 	va_start(args, fmt);
-	log_msg_text(priority, NULL, fmt, args);
+	log_msg_text(priority, src, NULL, fmt, args);
 	va_end(args);
 }
 
-void log_msg_zone(int priority, const knot_dname_t *zone, const char *fmt, ...)
+void log_fmt_zone(int priority, log_source_t src, const knot_dname_t *zone,
+                  const char *fmt, ...)
 {
 	char buff[KNOT_DNAME_TXT_MAXLEN + 1];
 	char *zone_str = knot_dname_to_str(buff, zone, sizeof(buff));
+	if (zone_str == NULL) {
+		zone_str = NULL_ZONE_STR;
+	}
 
 	va_list args;
 	va_start(args, fmt);
-	log_msg_text(priority, zone_str ? zone_str : NULL_ZONE_STR, fmt, args);
+	log_msg_text(priority, src, zone_str, fmt, args);
 	va_end(args);
 }
 
-void log_msg_zone_str(int priority, const char *zone, const char *fmt, ...)
+void log_fmt_zone_str(int priority, log_source_t src, const char *zone,
+                      const char *fmt, ...)
 {
+	if (zone == NULL) {
+		zone = NULL_ZONE_STR;
+	}
+
 	va_list args;
 	va_start(args, fmt);
-	log_msg_text(priority, zone ? zone : NULL_ZONE_STR, fmt, args);
+	log_msg_text(priority, src, zone, fmt, args);
 	va_end(args);
 }
 
