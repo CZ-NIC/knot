@@ -99,12 +99,12 @@ int main(int argc, char *argv[])
 
 	/* TODO: Remove logging from zone loading. */
 	log_init();
-	log_levels_set(LOGT_STDOUT, LOG_ANY, LOG_MASK(LOG_ERR));
-	log_levels_set(LOGT_STDERR, LOG_ANY, 0);
-	log_levels_set(LOGT_SYSLOG, LOG_ANY, 0);
-	log_flag_set(LOG_FNO_TIMESTAMP | LOG_FNO_INFO);
+	log_levels_set(LOG_TARGET_STDOUT, LOG_SOURCE_ANY, LOG_MASK(LOG_ERR));
+	log_levels_set(LOG_TARGET_STDERR, LOG_SOURCE_ANY, 0);
+	log_levels_set(LOG_TARGET_SYSLOG, LOG_SOURCE_ANY, 0);
+	log_flag_set(LOG_FLAG_NOTIMESTAMP | LOG_FLAG_NOINFO);
 	if (verbose) {
-		log_levels_add(LOGT_STDOUT, LOG_ANY, LOG_MASK(LOG_DEBUG));
+		log_levels_add(LOG_TARGET_STDOUT, LOG_SOURCE_ANY, LOG_MASK(LOG_DEBUG));
 	}
 
 	knot_dname_t *dname = knot_dname_from_str_alloc(zonename);

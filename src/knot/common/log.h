@@ -40,26 +40,26 @@
 /*! \brief Format for timestamps in log files. */
 #define KNOT_LOG_TIME_FORMAT "%Y-%m-%dT%H:%M:%S"
 
-/*! \brief Logging facility types. */
+/*! \brief Logging targets. */
 typedef enum {
-	LOGT_SYSLOG = 0, /*!< Logging to syslog(3) facility. */
-	LOGT_STDERR = 1, /*!< Print log messages to the stderr. */
-	LOGT_STDOUT = 2, /*!< Print log messages to the stdout. */
-	LOGT_FILE   = 3  /*!< Generic logging to (unbuffered) file on the disk. */
-} logfacility_t;
+	LOG_TARGET_SYSLOG = 0, /*!< System log. */
+	LOG_TARGET_STDERR = 1, /*!< Standard error stream. */
+	LOG_TARGET_STDOUT = 2, /*!< Standard output stream. */
+	LOG_TARGET_FILE   = 3  /*!< Generic logging to a file (unbuffered). */
+} log_target_t;
 
 /*! \brief Logging sources. */
 typedef enum {
-	LOG_SERVER = 0, /*!< Server module. */
-	LOG_ZONE   = 1, /*!< Zone manipulation module. */
-	LOG_ANY    = 2  /*!< Any module. */
-} logsrc_t;
+	LOG_SOURCE_SERVER = 0, /*!< Server module. */
+	LOG_SOURCE_ZONE   = 1, /*!< Zone manipulation module. */
+	LOG_SOURCE_ANY    = 2  /*!< Any module. */
+} log_source_t;
 
 /*! \brief Logging format flags. */
 typedef enum {
-	LOG_FNO_TIMESTAMP = 1 << 0, /*!< Don't print timestamp prefix. */
-	LOG_FNO_INFO      = 1 << 1  /*!< Don't print info level prefix. */
-} logflag_t;
+	LOG_FLAG_NOTIMESTAMP = 1 << 0, /*!< Don't print timestamp prefix. */
+	LOG_FLAG_NOINFO      = 1 << 1  /*!< Don't print info level prefix. */
+} log_flag_t;
 
 /*!
  * \brief Setup logging subsystem.
@@ -74,28 +74,28 @@ void log_close(void);
 /*!
  * \brief Set logging format flag.
  */
-void log_flag_set(logflag_t flag);
+void log_flag_set(log_flag_t flag);
 
 /*!
- * \brief Set log levels for given facility.
+ * \brief Set log levels for given target.
  *
- * \param facility  Logging facility index (LOGT_SYSLOG...).
- * \param src       Logging source (LOG_SERVER...LOG_ANY).
- * \param levels    Bitmask of specified log levels.
+ * \param target  Logging target index (LOG_TARGET_SYSLOG...).
+ * \param src     Logging source (LOG_SOURCE_SERVER...LOG_SOURCE_ANY).
+ * \param levels  Bitmask of specified log levels.
  */
-void log_levels_set(logfacility_t facility, logsrc_t src, int levels);
+void log_levels_set(log_target_t target, log_source_t src, int levels);
 
 /*!
- * \brief Add log levels to a given facility.
+ * \brief Add log levels to a given target.
  *
  * New levels are added on top of existing, the resulting levels set is
  * "old_levels OR new_levels".
  *
- * \param facility  Logging facility index (LOGT_SYSLOG...).
- * \param src       Logging source (LOG_SERVER...LOG_ANY).
- * \param levels    Bitmask of specified log levels.
+ * \param target  Logging target index (LOG_TARGET_SYSLOG...).
+ * \param src     Logging source (LOG_SOURCE_SERVER...LOG_SOURCE_ANY).
+ * \param levels  Bitmask of specified log levels.
  */
-void log_levels_add(logfacility_t facility, logsrc_t src, int levels);
+void log_levels_add(log_target_t target, log_source_t src, int levels);
 
 /*!
  * \brief Log message into server category.

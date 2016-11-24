@@ -451,7 +451,7 @@ int main(int argc, char **argv)
 	/* Initialize logging subsystem. */
 	log_init();
 	if (verbose) {
-		log_levels_add(LOGT_STDOUT, LOG_ANY, LOG_MASK(LOG_DEBUG));
+		log_levels_add(LOG_TARGET_STDOUT, LOG_SOURCE_ANY, LOG_MASK(LOG_DEBUG));
 	}
 
 	/* Set up the configuration */
