@@ -141,6 +141,7 @@ static const yp_item_t desc_control[] = {
 static const yp_item_t desc_log[] = {
 	{ C_TARGET,  YP_TSTR, YP_VNONE },
 	{ C_SERVER,  YP_TOPT, YP_VOPT = { log_severities, 0 } },
+	{ C_CTL,     YP_TOPT, YP_VOPT = { log_severities, 0 } },
 	{ C_ZONE,    YP_TOPT, YP_VOPT = { log_severities, 0 } },
 	{ C_ANY,     YP_TOPT, YP_VOPT = { log_severities, 0 } },
 	{ C_COMMENT, YP_TSTR, YP_VNONE },

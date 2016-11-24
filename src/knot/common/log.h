@@ -50,9 +50,10 @@ typedef enum {
 
 /*! \brief Logging sources. */
 typedef enum {
-	LOG_SOURCE_SERVER = 0, /*!< Server module. */
-	LOG_SOURCE_ZONE   = 1, /*!< Zone manipulation module. */
-	LOG_SOURCE_ANY    = 2  /*!< Any module. */
+	LOG_SOURCE_SERVER  = 0, /*!< Server module. */
+	LOG_SOURCE_CONTROL = 1, /*!< Server control module. */
+	LOG_SOURCE_ZONE    = 2, /*!< Zone manipulation module. */
+	LOG_SOURCE_ANY     = 3  /*!< Any module. */
 } log_source_t;
 
 /*! \brief Logging format flags. */

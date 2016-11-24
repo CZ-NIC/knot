@@ -1171,6 +1171,7 @@ will be logged to both standard error output and syslog. The ``info`` and
  log:
    - target: stdout | stderr | syslog | STR
      server: critical | error | warning | notice | info | debug
+     control: critical | error | warning | notice | info | debug
      zone: critical | error | warning | notice | info | debug
      any: critical | error | warning | notice | info | debug
 
@@ -1195,6 +1196,15 @@ server
 
 Minimum severity level for messages related to general operation of the server
 that are logged.
+
+*Default:* not set
+
+.. _log_control:
+
+control
+-------
+
+Minimum severity level for messages related to server control that are logged.
 
 *Default:* not set
 

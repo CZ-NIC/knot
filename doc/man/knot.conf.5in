@@ -1004,6 +1004,7 @@ will be logged to both standard error output and syslog. The \fBinfo\fP and
 log:
   \- target: stdout | stderr | syslog | STR
     server: critical | error | warning | notice | info | debug
+    control: critical | error | warning | notice | info | debug
     zone: critical | error | warning | notice | info | debug
     any: critical | error | warning | notice | info | debug
 .ft P
@@ -1029,6 +1030,11 @@ Possible values:
 .sp
 Minimum severity level for messages related to general operation of the server
 that are logged.
+.sp
+\fIDefault:\fP not set
+.SS control
+.sp
+Minimum severity level for messages related to server control that are logged.
 .sp
 \fIDefault:\fP not set
 .SS zone

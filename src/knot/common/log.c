@@ -458,6 +458,11 @@ void log_reconfigure(conf_t *conf)
 		levels = conf_opt(&levels_val);
 		sink_levels_add(log, target, LOG_SOURCE_SERVER, levels);
 
+		// Set CONTROL logging.
+		levels_val = conf_id_get(conf, C_LOG, C_CTL, &id);
+		levels = conf_opt(&levels_val);
+		sink_levels_add(log, target, LOG_SOURCE_CONTROL, levels);
+
 		// Set ZONE logging.
 		levels_val = conf_id_get(conf, C_LOG, C_ZONE, &id);
 		levels = conf_opt(&levels_val);
