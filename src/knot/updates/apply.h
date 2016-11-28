@@ -129,6 +129,8 @@ int apply_changeset(apply_ctx_t *ctx, zone_t *zone, changeset_t *ch,
 /*!
  * \brief Applies changesets directly to the zone, without copying it.
  *
+ * \warning Modified zone is in inconsitent state after error and should be freed.
+ *
  * \param ctx     Apply context.
  * \param chsets  List of changesets to be applied to the zone.
  *

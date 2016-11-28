@@ -378,7 +378,7 @@ int apply_replace_soa(apply_ctx_t *ctx, changeset_t *chset)
 
 	// Check for SOA with proper serial but different rdata.
 	if (node_rrtype_exists(contents->apex, KNOT_RRTYPE_SOA)) {
-		return KNOT_EINVAL;
+		return KNOT_EZONEINVAL;
 	}
 
 	return apply_add_rr(ctx, chset->soa_to);
@@ -483,17 +483,11 @@ int apply_changesets_directly(apply_ctx_t *ctx, list_t *chsets)
 	WALK_LIST(set, *chsets) {
 		int ret = apply_single(ctx, set);
 		if (ret != KNOT_EOK) {
-			update_rollback(ctx);
 			return ret;
 		}
 	}
 
-	int ret = zone_contents_adjust_full(ctx->contents);
-	if (ret != KNOT_EOK) {
-		update_rollback(ctx);
-	}
-
-	return ret;
+	return zone_contents_adjust_full(ctx->contents);
 }
 
 int apply_changeset_directly(apply_ctx_t *ctx, changeset_t *ch)
