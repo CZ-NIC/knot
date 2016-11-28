@@ -42,6 +42,8 @@ int zone_load_check(conf_t *conf, zone_contents_t *contents);
 /*!
  * \brief Update zone contents from the journal.
  *
+ * \warning If error, the zone is in inconsitent state and should be freed.
+ *
  * \param conf
  * \param zone
  * \param contents
