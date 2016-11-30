@@ -61,6 +61,7 @@ const error_table_t error_messages[] = {
 	{ KNOT_EZONENOENT,   "zone file not found" },
 	{ KNOT_ENOZONE,      "no such zone found" },
 	{ KNOT_ENONODE,      "no such node in zone found" },
+	{ KNOT_ENORECORD,    "no such record in zone found" },
 	{ KNOT_ENOMASTER,    "no active master" },
 	{ KNOT_EDNAMEPTR,    "domain name pointer larger than allowed" },
 	{ KNOT_EPAYLOAD,     "payload in OPT RR larger than max wire size" },

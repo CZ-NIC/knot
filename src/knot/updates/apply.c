@@ -347,13 +347,20 @@ static int apply_add(zone_contents_t *contents, changeset_t *chset,
 /*! \brief Replace old SOA with a new one. */
 static int apply_replace_soa(zone_contents_t *contents, changeset_t *chset)
 {
+	if (!knot_dname_is_equal(chset->soa_to->owner, contents->apex->owner)) {
+		return KNOT_EDENIED;
+	}
+
 	assert(chset->soa_from && chset->soa_to);
 	int ret = remove_rr(contents->nodes, contents->apex, chset->soa_from, chset);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
 
-	assert(!node_rrtype_exists(contents->apex, KNOT_RRTYPE_SOA));
+	// Check for SOA with proper serial but different rdata.
+	if (node_rrtype_exists(contents->apex, KNOT_RRTYPE_SOA)) {
+		return KNOT_ENORECORD;
+	}
 
 	return add_rr(contents, contents->apex, chset->soa_to, chset, false);
 }
