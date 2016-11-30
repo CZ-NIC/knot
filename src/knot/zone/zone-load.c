@@ -136,7 +136,7 @@ int zone_load_journal(conf_t *conf, zone_t *zone, zone_contents_t *contents)
 		log_zone_info(zone->name, "changes from journal applied %u -> %u",
 		              serial, zone_contents_serial(contents));
 	} else {
-		log_zone_error(zone->name, "changes from journal applied %u -> %u (%s)",
+		log_zone_error(zone->name, "failed to apply journal changes %u -> %u (%s)",
 		               serial, zone_contents_serial(contents),
 		               knot_strerror(ret));
 	}
