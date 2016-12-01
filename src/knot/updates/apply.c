@@ -378,7 +378,7 @@ int apply_replace_soa(apply_ctx_t *ctx, changeset_t *chset)
 
 	// Check for SOA with proper serial but different rdata.
 	if (node_rrtype_exists(contents->apex, KNOT_RRTYPE_SOA)) {
-		return KNOT_EZONEINVAL;
+		return KNOT_ESOAINVAL;
 	}
 
 	return apply_add_rr(ctx, chset->soa_to);

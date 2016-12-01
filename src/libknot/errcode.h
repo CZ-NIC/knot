@@ -89,6 +89,7 @@ enum knot_error {
 	KNOT_EOF,
 	KNOT_ESYSTEM,
 	KNOT_EFILE,
+	KNOT_ESOAINVAL,
 
 	/* Control states. */
 	KNOT_CTL_ESTOP,
